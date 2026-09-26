@@ -59,6 +59,13 @@ import { LOCAL_STAFF } from "./local-staff.mjs";
  * the grouped one and a payload can carry either.
  * ⚠️ Every value is under `900_000_000`, the world fixture's own open-cap ceiling, so no cap the fixture relies on
  * is tightened by planting one.
+ * ⭐ `dayLoss` IS A RESULT, NOT A LIMIT (C7 437, 2026-09-26), which is why it alone has six digits. The Results tab
+ * paints what the desk's FINISHED stakes came to, so its needle is a day's real loss — the SUM of two stakes the
+ * holder really lost, neither of which equals it, so its digits exist as a result and never as a transaction (a
+ * single stake of the canary was a `BET_PLACED` amount too, and the staff transactions export carried it). Each
+ * stake is bounded by the platform's stake maximum (`PLATFORM_MAX_STAKE`, TZS 1,000,000) and the holder's TZS
+ * 5,000,000 wallet. Both sit ALONE on the EAT day two before the fixture's own (see `1.canary.day`), so that day's
+ * row reads "Loss" beside exactly this figure and nothing else on the tab can print those digits.
  */
 const CANARY = {
   gStake: 818_273_645,
@@ -67,6 +74,7 @@ const CANARY = {
   gStaffChosen: 318_492_756,
   botLoss: 483_920_175,
   botExposure: 517_284_930,
+  dayLoss: 846_271,
 } as const;
 const CANARY_STRINGS = Object.values(CANARY).flatMap((n) => [String(n), n.toLocaleString("en-US")]);
 
@@ -273,6 +281,45 @@ try {
   } catch (e) { notMeasured("1.updown · the Up & Down round fixture", String((e as Error)?.message ?? e).slice(0, 200)); }
   if (roundOk) ok("1.updown · an open Up & Down round carries a house stake", true);
 
+  /**
+   * ⭐ C7 437 · 374 · THE RESULTS TAB'S CANARY — two LOST stakes summing to `CANARY.dayLoss`, ALONE on the EAT day
+   * two before the fixture's own.
+   * ⛔ WHY A LOSS, AND WHY A STATUS FLIP IS FAITHFUL FOR IT AND FOR NOTHING ELSE. A real loss writes no transaction
+   * at all, so `setPositionStatus(…, "LOSS")` leaves the database exactly as a real settlement would have. A flipped
+   * WIN or VOID would carry no payout or refund and read as a loss — the class of the 2026-09-26 Opening/Closing
+   * defect — which is why every other results fixture in this programme settles for real.
+   * ⛔ WHY ALONE ON ITS DAY. The tab paints a day as the SUM of that day's finished stakes, so the canary's digits
+   * reach the body only if nothing else shares the day. The day is read EMPTY first and exactly the canary after —
+   * `1.canary.day` below — so the served row is known to be this figure before any viewer asks for it.
+   * ⚠️ BEFORE the holder's KYC refusal below, because the stake goes through the real seam on the holder's account.
+   */
+  const BOOK: Any = await import("../src/lib/server/house-bot/book.ts");
+  const CLOCK: Any = await import("../src/lib/house-bot/clock.ts");
+  const canaryDay = (CLOCK.priorEatDays(CLOCK.eatDayKey(Date.now()), 2) as string[])[1];
+  const canaryDayBefore: Map<string, Any> = await BOOK.houseDayBooks(canaryDay);
+  /* 🔴 TWO LOSSES THAT SUM TO THE CANARY, NEVER ONE LOSS OF IT (found on this probe's first run, 2026-09-26). A single
+     lost stake of the canary made the canary a TRANSACTION amount as well as a result — its stake is a `BET_PLACED`
+     row like any other — and the compliance officer's transactions export, which carries every stake as ordinary
+     player activity (D20a), then "leaked" it and 4.2b went red on a correct page. The Results tab's figure is the
+     day's SUM, so two stakes whose sum is the canary put its digits on that one view and in no single transaction. */
+  const DAY_LOSS_PART = 400_000;
+  const canaryParts = [DAY_LOSS_PART, CANARY.dayLoss - DAY_LOSS_PART];
+  const midday = Date.now() - (CLOCK.eatDayWindow(canaryDay).fromMs + 12 * 3_600_000);
+  for (const [k, stakeTzs] of canaryParts.entries()) {
+    const L = await poll(["Will the grain terminal reopen before the rains?", "Will the harbour dredging finish before the rains?"][k]);
+    await bet(L.id, "NO", 1_000_000);
+    const lossPos = await place(L.id, { kind: "FILL", side: "YES", stakeTzs });
+    await w.setPositionStatus(lossPos, "LOSS");
+    /* Midday of that EAT day, whatever the clock says now: a fixed offset back could cross midnight either way. */
+    await w.backdate(lossPos, midday);
+  }
+  const canaryDayAfter = [...((await BOOK.houseDayBooks(canaryDay)) as Map<string, Any>).values()];
+  ok("1.canary.day · C7 437 · 374 · the day-loss canary is ALONE on its EAT day — the day held no stake before it was planted, and after it holds exactly its two finished losses, on this account, which sum to the canary while neither stake equals it",
+    canaryDayBefore.size === 0 && canaryDayAfter.length === 1 && canaryDayAfter[0].houseBotId === botId && canaryDayAfter[0].bets === 2
+      && canaryDayAfter[0].openStakeTzs === 0 && canaryDayAfter[0].realisedLossTzs === CANARY.dayLoss
+      && canaryParts.every((p) => p !== CANARY.dayLoss && !CANARY_STRINGS.includes(String(p))),
+    JSON.stringify({ day: canaryDay, before: canaryDayBefore.size, after: canaryDayAfter.map((b) => ({ bets: b.bets, open: b.openStakeTzs, settled: b.settledStakeTzs, loss: b.realisedLossTzs })) }));
+
   // ── the holder's KYC case (the KYC page's durable audit read) ──
   const PNG = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
   const kycOf = async (userId: string, idNumber: string, fullName: string) => {
@@ -476,10 +523,12 @@ try {
      derived from the disk walk — route + fixture label + query — so naming them costs no fixture and no guess. */
   const hasTab = (tab: string) => consoleInstances.some((r) => r.name.endsWith(`?tab=${tab}`));
   const hasFlag = (flag: string) => consoleInstances.some((r) => r.name.endsWith(`?${flag}=1`));
-  ok("2.routes.tabs · 315 · the desk's bare route and every tab its pages name are requested, and nothing else — the account page's activity and history panels by name",
+  /* ⭐ C7 437 · AND THE RESULTS PANEL BY NAME, for the reason the two above were named: it is the one panel on the
+     console that paints a RESULT, so it is the one whose served body most needs a measured zero. */
+  ok("2.routes.tabs · 315 · the desk's bare route and every tab its pages name are requested, and nothing else — the account page's activity and history panels and the desk's results panel by name",
     consoleInstances.length >= 3 && consoleInstances.some((r) => r.name === CONSOLE_PREFIX)
       && consoleInstances.some((r) => r.name === `${CONSOLE_PREFIX}?tab=limits`)
-      && hasTab("activity") && hasTab("history")
+      && hasTab("activity") && hasTab("history") && hasTab("results")
       && consoleInstances.some((r) => r.name.startsWith(`${CONSOLE_PREFIX}/[id]`) && r.name.endsWith("?tab=activity")),
     consoleInstances.map((r) => r.name).join(", "));
   /* ⭐ AND THE FLAG-REACHED PANELS BY NAME, for the same reason the two tab panels are named: a floor alone
@@ -525,7 +574,7 @@ try {
     };
     for (const d of ["src", "scripts", "prisma", "public"]) scan(join(ROOT, d));
     ok(`0.canary · 374 · every canary amount is absent from src/, scripts/, prisma/ and public/ before it is planted (${CANARY_STRINGS.length} forms)`,
-      found.length === 0 && CANARY_STRINGS.length === 12, found.slice(0, 6).join(" · "));
+      found.length === 0 && CANARY_STRINGS.length === 14, found.slice(0, 6).join(" · "));
   }
 
   // ── the server over the fresh build ──
@@ -669,6 +718,12 @@ try {
    * `flight+tree`). The instance whose control depends on the ring window is therefore requested FIRST of all, when
    * only the warm-up's single row sits ahead of the fixture's. ⛔ This is ordering, not population: nothing is
    * dropped from `MUST_CARRY`, and the pollutant is the probe's own traffic, not the product. */
+  /* ⭐ C7 437 · 374 · what the ADMIN's own Results body says about the day-loss canary, per mode — 4.3c's evidence.
+     Recorded apart from `hits`, which keeps eight needles and lists the canaries LAST, so a body that carried the
+     label and a handful of words could truncate the one needle this control is about. */
+  const RESULTS_INSTANCE = `${CONSOLE_PREFIX}?tab=results`;
+  const DAY_LOSS_GROUPED = CANARY.dayLoss.toLocaleString("en-US");
+  const resultsCanary: Array<{ mode: string; status: number; grouped: boolean; raw: boolean }> = [];
   const RING_FIRST = (n: string) => n === "/admin/players/[id]<holder>?tab=audit";
   const FIRST = (n: string) => n === "/admin" || n.startsWith("/admin/audit") || n.startsWith("/admin/players/[id]<holder>");
   const rank = (n: string) => (RING_FIRST(n) ? 0 : FIRST(n) ? 1 : 2);
@@ -700,6 +755,9 @@ try {
           if (found.length > 0 && viewer !== "admin") writeFileSync(join(OUT, "bodies", `${viewer}-${fileName(route.name)}-${mode.replace("+", "_")}.txt`), r.body);
           if (echoSample === null && viewer !== "admin" && echoed.length > 0 && hits.length === 0) {
             echoSample = { viewer, route: route.name, mode, body: r.body, forms, echoed };
+          }
+          if (viewer === "admin" && route.name === RESULTS_INSTANCE) {
+            resultsCanary.push({ mode, status: r.status, grouped: r.body.includes(DAY_LOSS_GROUPED), raw: r.body.includes(String(CANARY.dayLoss)) });
           }
           rows.push({ viewer, route: route.name, path: route.path, mode, status: r.status, hits: hits.slice(0, 8), echoed: echoed.slice(0, 8) });
         } catch (e) { rows.push({ viewer, route: route.name, mode, error: String(e).slice(0, 200) }); }
@@ -849,17 +907,33 @@ try {
    * the roster renders the designated account's LABEL, which is one of this probe's needles. ⛔ So the house fixture
    * must leave at least one designated account, and the checkpoint READS the printed 4.3 line to confirm the control
    * is non-empty on `/admin/desk` BY NAME — never on the audit routes alone.
-   * ⚠️ `?tab=` instances of the desk stay OUT of this list while the roster is the only panel: ruling 315's reason
-   * (the strip's own sentence being a words-family hit) does not hold under ruling 453, which made every rendered
-   * sentence neutral. The label is the hit, and the label is on the roster.
+   * ⭐ `?tab=` INSTANCES JOIN BY NAME, EACH WITH THE NEEDLE THAT MAKES ITS ADMIN BODY A HIT. Ruling 315's first
+   * reason for leaving them out (the strip's own sentence being a words-family hit on every tab) does not hold under
+   * ruling 453, which made every rendered sentence neutral — so a tab is named here only when something IT renders
+   * is a needle: the roster paints the account's LABEL, the limits tab paints the canary LIMITS (it carries no
+   * label at all), and the results tab paints the label on By account and the day-loss canary on By day (C7 437).
+   * ⚠️ The activity and history tabs are not named yet. A silent one is reported `4.nm` below — a report, not a
+   * failure — so naming them is still owed, and leaving them out is not a claim that they are measured.
    */
   const MUST_CARRY = ["/admin/audit", "/admin/audit?category=SYSTEM", "/admin/audit?category=COMPLIANCE", "/admin/audit?category=ADMIN", `/admin/players/[id]<holder>`, `/admin/players/[id]<holder>?tab=audit`, `/admin/kyc/[id]<holder>`,
     /* ⭐ EVERY CONSOLE INSTANCE, and `?tab=limits` is the one that needed ruling 374 to be measurable at all: its
        body carries no account label — the roster's needle — because it renders limits and usage only. Its house
        data IS the money, and the canary amounts are what make money a needle. */
-    "/admin/desk", "/admin/desk?tab=roster", "/admin/desk?tab=limits"];
-  ok("4.3 · CONTROL · the ADMIN's own responses still carry house data where it exists after D20's un-build — the audit log (default, SYSTEM, COMPLIANCE and ADMIN, where the house actions and the value rows are), the holder's player page with and without its audit tab, the KYC case's durable target read, and the desk's own roster",
+    "/admin/desk", "/admin/desk?tab=roster", "/admin/desk?tab=limits",
+    /* ⭐ C7 437 · the Results tab — the one console surface that paints a RESULT. 4.3c below pins its MONEY needle
+       separately, because the account label alone would satisfy this list and say nothing about a figure. */
+    RESULTS_INSTANCE];
+  ok("4.3 · CONTROL · the ADMIN's own responses still carry house data where it exists after D20's un-build — the audit log (default, SYSTEM, COMPLIANCE and ADMIN, where the house actions and the value rows are), the holder's player page with and without its audit tab, the KYC case's durable target read, and the desk's own roster, limits and results tabs",
     MUST_CARRY.every((r) => adminHitRoutes.has(r)), `missing: ${MUST_CARRY.filter((r) => !adminHitRoutes.has(r)).join(", ") || "none"} · ADMIN carries house data on ${adminHitRoutes.size} route instances`);
+  /**
+   * ⛔ 4.3c · C7 437 · 374 · THE RESULTS TAB'S MONEY CONTROL, BY ITS OWN NEEDLE. 4.3 is satisfied on that instance by
+   * the account label By account paints, so it cannot tell a Results tab that serves its figures from one that serves
+   * none — and 4.1's zero for the canary is worth something only where the ADMIN's body is shown to CARRY it. The
+   * grouped form is the one the console renders (`formatTzs`, thousands separated, beside the word "Loss"); the
+   * document mode is required, the two flight modes are printed.
+   */
+  ok(`4.3c · CONTROL · C7 437 · 374 · the ADMIN's own ${RESULTS_INSTANCE} document carries the day-loss canary in the form the console renders it — so every other viewer's zero there is a measured zero about a MONEY figure, not about the account label alone`,
+    resultsCanary.some((x) => x.mode === "document" && x.status === 200 && x.grouped), JSON.stringify(resultsCanary));
   const silent = [...new Set(rows.map((r) => r.route))].filter((r) => !adminHitRoutes.has(r)).sort();
   for (const r of silent) notMeasured(`4.nm · ${r}`, "the ADMIN control carries no house data there, so its absence for the other viewers proves nothing about that page");
   const summary = { requests: rows.length, nonStaff: nonStaff.length, leaks: leaks.length, echoed: echoedRows.length, staffConsoleResponses: staffConsole.length, staffElsewhereReported: staffElsewhere.length, canaryForms: CANARY_STRINGS.length, consoleInstances: consoleInstances.length, adminRouteInstancesWithHouseData: [...adminHitRoutes].sort(), notMeasured: silent,

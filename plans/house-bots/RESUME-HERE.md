@@ -102,9 +102,9 @@ The account page's ledger has the same shape in eight columns. Below `sm` it is 
 5. **D19/D20 stand.** House bots are never public — not to players, not to the holder — and are ordinary players in
    every report.
 
-**Suite floors — a lower count is a regression, not drift:** console **864 memory / 623 Postgres** (2026-09-26, step 1) ·
-engine **808 / 787** · money **132 / 150**. **Declared mutations:** console 348 (340 + step 1's 8, 2026-09-26) · engine 80 · money 56 + seam 7 ·
-c5 97 — all resolve exactly once (`test:red-anchors` §3, 2026-09-26).
+**Suite floors — a lower count is a regression, not drift:** console **923 memory / 669 Postgres** (2026-09-26, step 3) · reports **249 / 80** · comms **52 / 50** ·
+engine **825 / 804** (step 5) · money **132 / 150**. **Declared mutations:** console 373 (340 + step 1's 8 + step 3's 25, 2026-09-26) · engine 101 (80 + step 5's 21) · money 56 + seam 7 ·
+c5 100 (99 primaries; step 8 added 3) — all resolve exactly once (`test:red-anchors` §3, 2026-09-26).
 
 ## 0b · ▶ WHAT IS OPEN, in the order to work it
 
@@ -208,20 +208,20 @@ pushed to `main` and verified serving before the next:**
    "any ADMIN". SWITCH_OFF stays open to
    every ADMIN. Cases on both stores with controls, a declared mutation for each branch, the refusal rendered at 360 and
    1280. ⛔ Never touch the live switch while building or testing this — the desk's current ON state stays as it is.
-3. **The Results tab** (decision 1), exactly per `HOUSE-PNL-PLAN.md` — the reader, the tab, §7's cases, controls and
+3. ✅ **The Results tab** — **LIVE 2026-09-26**, gates green before the push (`docs/HOUSE-BOTS.md` §12.7; the D20b amendment is `docs/COMPLIANCE-DECISIONS.md` `2026-09-26 · D20b AMENDED`). Built (decision 1) exactly per `HOUSE-PNL-PLAN.md` — the reader, the tab, §7's cases, controls and
    mutations, the 360/1280 layout. ⛔ Commit its D20b amendment IN THE SAME COMMIT as the build, so its "Enforced by"
    line is true on the day it lands — and REWRITE the plan's §4.3 template first (the plan's status line says how): it
    was drafted for an explicit owner approval, and Ali delegated instead. Quote his delegation (§0b) verbatim, say
    plainly the session decided under it, and name the real audience (the ADMIN role).
 4. **The account finder list** (decision 4), with its walls pinned and mutated.
-5. **The fire-path assertions** (decision 6): the fire heartbeat and the fire-time RG pre-check, both stores.
+5. ✅ **DONE 2026-09-26 — the fire-path assertions** (`docs/HOUSE-BOTS.md` §12.8; engine 825/804, 21 mutations) (decision 6): the fire heartbeat and the fire-time RG pre-check, both stores.
 6. **Ruling 543** (`C5-D20-REPLAN.md`): `audit()` promises fail-open but `chainSecret()` throws in production past
    that fallback, so three house writers can report a landed write as failed. Its schedule hung on the withdrawn
    ruling 501; re-derive that it is still unbuilt (it was on 2026-09-26), then fix it with a case and a mutation.
 7. Ours, small: give `red:house-bot-ops` a red entry file of its own (§0b NOT OURS; the diagnosis and the named fix
    are `house-bot-ops-cases.mts:55-79`). Re-derive the undeclared count with `test:red-anchors` §4 first — the fix
    removes exactly one entry, and parallel lanes move the count.
-8. Owed text: accepted risks 8–12 were never written into either register (`docs/HOUSE-BOTS.md` §13); their sealed
+8. ✅ **DONE 2026-09-26** (`test:house-bot-disclosure` 118/0, d.7/d.7b/d.7.c1; risk 12 states D1's owner-role reading) — owed text: accepted risks 8–12 were never written into either register (`docs/HOUSE-BOTS.md` §13); their sealed
    text is `04-amendments.md` S5 — check each against today's code before copying it into both registers identically.
 9. **Close:** drive the four fleets WHOLE again (§0b a's recipe), verify the deploy serves the final sha, and write the
    handover in §5.
@@ -270,7 +270,7 @@ pushed to `main` and verified serving before the next:**
 | The verification record | `docs/HOUSE-BOTS.md` §12 (§12.3 `Left today`, §12.4 the ledger, §12.5 the settlement fix) |
 | The build record — commit table, D19/D20 rulings, what waited on Ali | `plans/house-bots/PROGRESS.md` (history; nothing in it is current state) |
 | The console's money law (360, 361, 373) | `plans/house-bots/C7-SPEC.md`; ruling 266 is in `plans/house-bots/C5-D20-REPLAN.md` |
-| D3 and its 2026-09-25 amendment, D19, D20 | `docs/COMPLIANCE-DECISIONS.md` |
+| D3 and its 2026-09-25 amendment, D19, D20, D20b's 2026-09-26 amendment (the Results tab) and D1's 2026-09-26 reading (the owner role) | `docs/COMPLIANCE-DECISIONS.md` |
 
 ## 3 · The rules that do not bend
 
@@ -364,4 +364,16 @@ KP_BASE=http://localhost:3031 KP_WIDTHS=360,1280 npm run -s qa:house-bots-visual
     audited with its actor and alerts every admin. ⛔ **Still OPEN, and not ours to fold in silently:** FS-09's other
     alerts (designation, verify, Start, rules and limits saves) are never sent — `announceRoster` has two callers. A
     build of its own, with cases on both stores.
-  - ⏳ Step 3 (the Results tab) is built in a local dev tree (`C:/kipindi-hb-s3`, never pushed) and lands after its gates.
+  - ✅ **Step 3 LIVE** — the Results tab (`docs/HOUSE-BOTS.md` §12.7): its first gate run found six defects before the push (a blind money
+    walk, a house suite red on `main` since another lane's `0f1f9dd9`, a canary that was also a transaction, a note line
+    past the viewport at 640, Results cards too narrow at 1024, a gate list missing the reader), all fixed; console
+    923/669, visual 499/0, probe 37/0. Its 25 new mutations are driven after the push.
+  - ✅ **Step 8 DONE** — accepted risks 8–12 in BOTH registers, one text each, every sentence checked against today's code
+    (risk 9's verify bucket is Redis-shared as RECORDED; risk 10's window is 180 s; risk 12 states D1's owner-role reading
+    and FS-09's unsent alerts); `test:house-bot-disclosure` 118/0 (floor 114 → 118), 3 new c5 mutations, and
+    `red:house-bot-c5` now fails a run on BROKEN-INJECTION instead of passing it silently.
+  - ✅ **Step 5 DONE** — the fire heartbeat and the fire-time holder check are asserted on both stores (16.69a–i, 16.63a–g),
+    each with a control, on an EMPTY poll so only fire's own check can pause the account; engine 825/804 (floor 808/787 →
+    825/804), 21 declared mutations (3 on the Postgres twin's SQL). ⚠️ Recorded, not changed: `return finish(…)` inside
+    fire()'s try is not awaited, so a store failure writing a terminal row escapes as a throw (16.69f0 pins it).
+  - Step 8's three c5 mutations, driven at the live commit `ac631c35`: **3 caught, 0 missed, 0 broken-injection, 0 dirty.**

@@ -903,9 +903,15 @@ if (STORE === "memory") {
      * six spreads at 2843, 3219, 3628, 3760, 3903, 4494. The moved site is still the EMERGENCY VOID's `BET_REFUND`
      * write, still carrying `...(p.houseBotId ? { houseBotId: p.houseBotId } : {})` beside `positionId: p.id` — so
      * it is the same site at a new line, which is the only reading under which a re-pin is honest.
+     * ⭐ AND THEN ALL SEVEN MOVED +5 (2026-09-26), found RED on clean `main` by the house-bots session: `0f1f9dd9`
+     * (another lane's "No report read walks a whole table any more") is ONE hunk in this file, `@@ -405,11 +405,16 @@`,
+     * above every site. Re-derived from the tree, not the delta: the seven `db.txn.create(` lines now read 1570, 2838,
+     * 3213, 3623, 3755, 3896, 4489, each the same write it was, in the same order (the stake form, the `realRefund`
+     * write, the cash-out, the one-sided refund, the void refund, the winner payout, the emergency void) — so the
+     * controls' `:2833`/`:1565` move with them.
      */
     ok("0.232.2 · …and the seven marked sites are exactly the seven line numbers this pin was written against — a site that MOVES is reported here (the pin is line-pinned on purpose; the money anchors match by text and cannot rot from a line move)",
-      j(marked) === j(["market-service.ts:1565", "market-service.ts:2833", "market-service.ts:3208", "market-service.ts:3618", "market-service.ts:3750", "market-service.ts:3891", "market-service.ts:4484"]), j(marked));
+      j(marked) === j(["market-service.ts:1570", "market-service.ts:2838", "market-service.ts:3213", "market-service.ts:3623", "market-service.ts:3755", "market-service.ts:3896", "market-service.ts:4489"]), j(marked));
 
     /**
      * ⛔ **THE ANCHORS FILE IS OPENED, BECAUSE THE LABEL SAID IT WAS AND IT WAS NOT** (C5-7's review, low). 0.232.2
@@ -961,7 +967,7 @@ if (STORE === "memory") {
 
     const dropped = scan(ms.replace(SPREAD_2833, ""));
     ok("0.232.c1 · CONTROL · a positioned write whose marker is DELETED is reported, and exactly one site goes red — the plant really changed the file",
-      dropped.length === 1 && dropped[0].at === `${MS}:2833` && /NO marker/.test(dropped[0].why ?? ""), j(dropped));
+      dropped.length === 1 && dropped[0].at === `${MS}:2838` && /NO marker/.test(dropped[0].why ?? ""), j(dropped));
     /* ⭐ THE ACCEPT SIDE, AND IT IS ABOUT A SITE THAT DOES NOT EXIST YET. Putting the deleted spread back would only
        rebuild `ms` and prove nothing, so the control appends a BRAND NEW positioned writer to the same real file: the
        pin must pass it because its marker is right, and refuse the identical writer with the marker removed. Without
@@ -982,11 +988,11 @@ async function __c2NewPositionedWriter(q: { id: string; houseBotId: string | nul
     /* ⛔ THE ONE A PRESENCE CHECK CANNOT SEE: the marker is THERE, well-formed, and read from another position. */
     const wrongSource = scan(ms.replace(SPREAD_2833, `      ...(position.houseBotId ? { houseBotId: position.houseBotId } : {}),`));
     ok("0.232.c3 · CONTROL · a marker copied from the WRONG object — present, well-formed, reading another position in scope — is reported, which is the defect a presence-only scan passes",
-      wrongSource.length === 1 && wrongSource[0].at === `${MS}:2833` && /WRONG object/.test(wrongSource[0].why ?? ""), j(wrongSource));
+      wrongSource.length === 1 && wrongSource[0].at === `${MS}:2838` && /WRONG object/.test(wrongSource[0].why ?? ""), j(wrongSource));
     const wrongProp = scan(ms.replace(SPREAD_2833, `      houseBotId: position.houseBotId ?? null,`));
     const rightProp = scan(ms.replace(SPREAD_2833, `      houseBotId: p.houseBotId ?? null,`));
     ok("0.232.c3b · CONTROL · the same defect in the OTHER accepted spelling (houseBotId: <x>.houseBotId ?? null) is reported, and the RIGHT identifier in that spelling is accepted — both directions, so the pin is not just refusing the spelling",
-      wrongProp.length === 1 && wrongProp[0].at === `${MS}:2833` && /WRONG object/.test(wrongProp[0].why ?? "") && rightProp.length === 0, j({ wrongProp, rightProp }));
+      wrongProp.length === 1 && wrongProp[0].at === `${MS}:2838` && /WRONG object/.test(wrongProp[0].why ?? "") && rightProp.length === 0, j({ wrongProp, rightProp }));
     const reformatted = scan(ms.replace(SPREAD_2833, `      ...(p.houseBotId\n        ? { houseBotId: p.houseBotId }\n        : {}),`));
     ok("0.232.c3c · CONTROL · the accept side of the shape: the SAME marker reformatted over three lines is still read — a pin that a line break blinds is one reformat away from passing an unmarked write",
       reformatted.length === 0, j(reformatted));
@@ -994,7 +1000,7 @@ async function __c2NewPositionedWriter(q: { id: string; houseBotId: string | nul
     /* ⛔ THE STAKE FORM, MOVED OFF ITS POSITION. */
     const movedStakeForm = scan(ms.replace(SPREAD_2833, `      ...(ctx.kind === "house" ? { houseBotId: ctx.botId } : {}),`));
     ok("0.232.c4 · CONTROL · the stake form used where no position with that positionId is marked from the same ctx is reported — the exemption is earned per site, never granted by file or by line number",
-      movedStakeForm.length === 1 && movedStakeForm[0].at === `${MS}:2833` && /stake form/.test(movedStakeForm[0].why ?? ""), j(movedStakeForm));
+      movedStakeForm.length === 1 && movedStakeForm[0].at === `${MS}:2838` && /stake form/.test(movedStakeForm[0].why ?? ""), j(movedStakeForm));
     /* ⚠️ THE PLANT CARRIES NO NEWLINE, and that is not a detail: tracked source is CRLF in this checkout, so a
        `\n` anchor matches nothing and the plant silently plants NOTHING — a control that then reports the file is
        clean, which is exactly the silent pass this checkpoint exists to refuse (it happened here, once, and this
@@ -1003,7 +1009,7 @@ async function __c2NewPositionedWriter(q: { id: string; houseBotId: string | nul
     const c4bPlant = ms.replace("id: positionId,", "id: positionIdOfAnotherBet,");
     const stakeUnmarked = scan(c4bPlant);
     ok("0.232.c4b · CONTROL · …and the REAL stake write goes red the moment the position it is paired with stops being the one it names — so 0.232.1's green on that site is a measurement of the pairing, not a permanent pass",
-      c4bPlant !== ms && stakeUnmarked.length === 1 && stakeUnmarked[0].at === `${MS}:1565` && /stake form/.test(stakeUnmarked[0].why ?? ""), j(stakeUnmarked));
+      c4bPlant !== ms && stakeUnmarked.length === 1 && stakeUnmarked[0].at === `${MS}:1570` && /stake form/.test(stakeUnmarked[0].why ?? ""), j(stakeUnmarked));
 
     /* ⛔ THE BYPASS CONTROLS, AND THEY CALL `bypassIn` — THE CODE THAT SHIPS. The old 0.232.c5 re-implemented the
        walk inline, so the loop that actually produces `bypass` was UNPLANTED: one character (`rel === DAL` →
@@ -2245,7 +2251,13 @@ export const HOUSE_HOOK_MODULES = ["src/lib/server/house-bot/holder-hook", "src/
  * argument. The pin's job is unchanged and undiminished: a call with the wrong number of arguments is still red,
  * and the viewer pin and the own-route pin below still read arguments 0 and 1. A door that grows an argument gets
  * its pin MOVED TO THE NEW SHAPE; it never gets the pin dropped. */
-export const CONSOLE_GATES: Readonly<Record<string, number>> = { houseStakeForConsole: 3, houseBotLabelsForConsole: 3, houseConsoleAudience: 2, houseAuditForConsole: 3, houseRosterForConsole: 2, houseUsageForConsole: 3, houseLimitsSaveForConsole: 3, houseRulesSaveForConsole: 3, houseDetailForConsole: 4, houseFeedForConsole: 3, houseHistoryForConsole: 3, houseCancelIntentForConsole: 3, houseSwitchForConsole: 3, houseAccountActForConsole: 3, houseAccountsForConsole: 3, houseCheckForConsole: 3, houseDesignateForConsole: 3, houseWhyIdleForConsole: 3 };
+/* ⭐ 2026-09-26 · C7 437 · `houseResultsForConsole` — the desk's Results tab, and the ONE reader on the console that
+ * hands a page a result (D20b amended for that one view). It is pinned at **2**, the roster's shape: the viewer and
+ * the route, and nothing else — seven fixed days and no query, so there is no third argument a caller could use to
+ * widen the window. ⛔ Its route belt refuses every route but the desk's own BEFORE the audience question, which is
+ * why the own-route pin below matters more here than anywhere: the audience answers a non-desk `/admin` route by
+ * that route's domain, and `/admin/house` would admit the accounting roles. */
+export const CONSOLE_GATES: Readonly<Record<string, number>> = { houseStakeForConsole: 3, houseBotLabelsForConsole: 3, houseConsoleAudience: 2, houseAuditForConsole: 3, houseRosterForConsole: 2, houseUsageForConsole: 3, houseLimitsSaveForConsole: 3, houseRulesSaveForConsole: 3, houseDetailForConsole: 4, houseFeedForConsole: 3, houseHistoryForConsole: 3, houseCancelIntentForConsole: 3, houseSwitchForConsole: 3, houseAccountActForConsole: 3, houseAccountsForConsole: 3, houseCheckForConsole: 3, houseDesignateForConsole: 3, houseWhyIdleForConsole: 3, houseResultsForConsole: 2 };
 /** A console file: a page, layout, route, action or component the console serves — everything under the three admin folders. */
 export const inConsolePopulation = (rel: string) =>
   rel.startsWith("src/app/admin/") || rel.startsWith("src/app/api/admin/") || rel.startsWith("src/components/admin/");
@@ -2616,6 +2628,13 @@ export const CONSOLE_GATE_NON_READERS = ["ConsoleAuditRead", "ConsoleDeskShell",
      exported rather than regexed out of the source. Pure copy: it awaits nothing, reaches no `db.`, names no store
      member and decides no audience (0.512b checks that rather than taking this sentence on trust). */
   "CONSOLE_ACCOUNT_WORD",
+  /* ⭐ 2026-09-26 · C7 437 · the Results tab's painted SHAPES and its one sentence. The four types are what
+     `houseResultsForConsole` returns — a word, a magnitude already formatted, and the flags the page styles by,
+     with no id and no raw number (437(g)). `CONSOLE_RESULTS_NOTE` is the note under By day, pure copy: it awaits
+     nothing, reaches no `db.`, names no store member and decides no audience, which is what 0.512b checks rather
+     than takes on trust. ⛔ The READER is `houseResultsForConsole`, with its own `CONSOLE_GATES` entry above at
+     arity TWO. `CONSOLE_ACCOUNT_WORD` gained `goneMany` in the same change and is already classified above. */
+  "CONSOLE_RESULTS_NOTE", "ConsoleResultCell", "ConsoleResultsAccountRow", "ConsoleResultsDayRow", "ConsoleResultsView",
   "isHouseConsoleRoute", "unsetCaptionFor"] as const;
 
 /**
@@ -3242,6 +3261,11 @@ if (STORE === "memory") {
         /* ⭐ replan ruling 537 · the limits SAVE. A floor at the count this commit measures, never a loose `>= 0`:
          * an action that stopped calling the gated writer would otherwise read as compliance. */
         && r.consoleGateCalls.houseLimitsSaveForConsole >= 1
+        /* ⭐ 2026-09-26 · C7 437 · the Results tab's reader — the one console door that hands a page a result. A
+         * floor at the count this commit measures (the desk page calls it once), never a loose `>= 0`: a page that
+         * stopped calling the gated reader and found its figures some other way would otherwise read as compliance.
+         * 0.260.c5 below shows this clause, its arity pin and its own-route pin each fire on the desk page itself. */
+        && r.consoleGateCalls.houseResultsForConsole >= 1
         && r.readerFiles.length >= 14 && MEASURED_LEAKS.every((f) => r.readerFiles.includes(f)) && j(r.outsideReaderFiles) === j(Object.keys(AUDIT_READERS_OUTSIDE_CONSOLE).sort()),
       j({ population: r.population, readerCalls: r.readerCalls, gateCalls: r.gateCalls, consoleGateCalls: r.consoleGateCalls, readerFiles: r.readerFiles, outsideReaderFiles: r.outsideReaderFiles, auditReaders, auditExports, problems: r.problems }));
 
@@ -3374,6 +3398,32 @@ export async function houseStakeForConsole(viewerUserId: string | null, route: s
         && j(gatePlants.reassignedSession.map((p) => p.replace(/^[^:]+:\d+: /, ""))) === j(["hands houseStakeForConsole a viewer that is not the signed-in session's id: session?.userId ?? null"])
         && gatePlants.gateAsValue.some((p) => p.includes("names the console gate houseStakeForConsole outside a call")) && gatePlants.officerConst.length === 0,
       j(gatePlants));
+    /* ⛔ 0.260.c5 · C7 437 · THE RESULTS READER'S THREE PINS FIRE ON THE DESK PAGE ITSELF, not on a page invented for
+     * the purpose. Its own call is re-shaped four ways: a third argument (a caller widening a window that is fixed
+     * at seven days), another section's route (the case the reader's route belt exists for — the audience answers
+     * `/admin/house` by that route's domain), a literal viewer, and the call taken away with the import left in
+     * place (a page that paints results without asking the gate). Each is reported, the last by 0.260.1's own
+     * floor reading 0; the page as written is reported for nothing. */
+    {
+      const DESK = "src/app/admin/desk/page.tsx";
+      const desk = code5(DESK);
+      const RESULTS_CALL = "houseResultsForConsole(session?.userId ?? null, \"/admin/desk\")";
+      const resultsPlants = {
+        asWritten: run(DESK, desk),
+        thirdArg: run(DESK, plant(desk, RESULTS_CALL, "houseResultsForConsole(session?.userId ?? null, \"/admin/desk\", sp)")),
+        otherRoute: run(DESK, plant(desk, RESULTS_CALL, "houseResultsForConsole(session?.userId ?? null, \"/admin/house\")")),
+        literalViewer: run(DESK, plant(desk, RESULTS_CALL, "houseResultsForConsole(\"usr_admin\", \"/admin/desk\")")),
+        callsWithout: consoleHouseReadProblems(withFile(DESK, plant(desk, `await ${RESULTS_CALL}`, "null")), roles).consoleGateCalls.houseResultsForConsole,
+        callsAsWritten: r.consoleGateCalls.houseResultsForConsole,
+      };
+      ok("0.260.c5 · CONTROL · C7 437 · on the desk page's OWN Results call, a third argument, another section's route and a literal viewer are each reported, and the call taken away (the import left in place) measures 0 calls where the page as written measures at least 1 — so 0.260.1's arity, own-route and floor clauses for houseResultsForConsole can each fail",
+        resultsPlants.asWritten.length === 0
+          && resultsPlants.thirdArg.some((p) => p.includes("houseResultsForConsole takes 3 arguments, not 2"))
+          && resultsPlants.otherRoute.some((p) => p.includes("asks houseResultsForConsole about /admin/house, not this file's own console route /admin/desk"))
+          && resultsPlants.literalViewer.some((p) => p.includes("hands houseResultsForConsole a viewer that is not the signed-in session's id: \"usr_admin\""))
+          && resultsPlants.callsWithout === 0 && resultsPlants.callsAsWritten >= 1,
+        j(resultsPlants));
+    }
 
     const planted = (rel: string, code: string) => run(rel, code);
     const importPlants = {

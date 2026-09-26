@@ -71,7 +71,7 @@
  */
 import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 
-await runTwoStores({ suite: "test:house-bot-reports", casesFile: "scripts/lib/house-bot-reports-cases.mts", minPass: { memory: 248, postgres: 80 }, dbPrefix: "hb_reports" });
+await runTwoStores({ suite: "test:house-bot-reports", casesFile: "scripts/lib/house-bot-reports-cases.mts", minPass: { memory: 249, postgres: 80 }, dbPrefix: "hb_reports" });
 // ⭐ **MEASURED ON THE FULLY INTEGRATED TREE: 247/80 → 248 memory / 80 postgres, RAISED TO WHAT THE RUN PRINTED
 // AND TO NOTHING ELSE** (OMEGA-COMPILE01, 2026-09-21, after all five branches were merged into `ops-lane`).
 // `npm run test:house-bot-reports` printed ALL PASS with `0.pg · exit 0 · 80 passed (at least 80) · 0 failed`, and

@@ -388,8 +388,10 @@ console.log(`\n${fail === 0 ? "ALL PASS" : "FAILURES"} — house-bot-disclosure:
  * and exited 0, and it is a predeploy gate — so the whole 143-gate chain would have gone green over an
  * exemption with nothing left watching it. A floor that trails the assertions it protects is not a ratchet.
  * ⛔ 114 is what a green run PRINTED on this tree, not 109 + 5.
+ * ⭐ 114 → 118 (2026-09-26, build step 8), the count that run PRINTED — with 115 before it: accepted risks 8–12 arrived
+ * in both registers, and d.7, d.7b and d.7.c1 hold them to one text; d.2 now counts 1–20.
  */
-const MIN_ASSERTIONS = 114;
+const MIN_ASSERTIONS = 118;
 if (pass < MIN_ASSERTIONS) {
   console.error(`\n!! FLOOR — test:house-bot-disclosure ran ${pass} assertion(s), fewer than the ${MIN_ASSERTIONS} a green run printed. Cases that stop running are not cases that pass.`);
   process.exit(4);

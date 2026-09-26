@@ -1,6 +1,6 @@
 # House results: one view on the Desk, for the desk's ADMIN audience (HOUSE-PNL-PLAN)
 
-**Status: ✅ DECIDED 2026-09-26, NOT YET BUILT.** Ali delegated the choices; every §11 choice is taken as its RECOMMENDED option (`plans/house-bots/RESUME-HERE.md` §0c, decision 1). The Results tab keeps the desk's audience, the ADMIN role (§0c, decision 3). Build it as §0c's step 3, with the §4 amendment in the SAME commit — after rewriting §4.3's template to the delegation form (its first block says how).
+**Status: ✅ DECIDED and BUILT 2026-09-26** (§0c's step 3), with the §4 amendment in the SAME commit. Ali delegated the choices; every §11 choice is taken as its RECOMMENDED option (`plans/house-bots/RESUME-HERE.md` §0c, decision 1). The Results tab keeps the desk's audience, the ADMIN role (§0c, decision 3). ⛔ **This file is now the plan the build came from, not its authority:** the amendment is the entry headed `2026-09-26 · D20b AMENDED` in `docs/COMPLIANCE-DECISIONS.md` (§4.3's template was rewritten to the delegation form for it), and the build is C7 ruling 437 in `C7-SPEC.md`. Where this plan and the code or 437 differ, the code and 437 are right.
 
 This plan comes from a read-only research pass on `C:/kipindi-house-bots`, branch `bot-flow-seal`, at `6427ef64`.
 - The tree is clean. The Opening/Closing fix the drafts were waiting on has landed as `5f1737af`.
@@ -241,6 +241,11 @@ The full text is in the `amendment_text` field and is reproduced in §4.3.
 
 ### 4.3 The text
 
+> ✅ **REWRITTEN IN THE BUILD (2026-09-26) — the text below is SUPERSEDED and is never to be copied into the log.**
+> What was committed is the entry headed `2026-09-26 · D20b AMENDED — decided by the session under the owner's
+> delegation of 2026-09-26` at the head of `docs/COMPLIANCE-DECISIONS.md`, and its in-place pointers say "(delegated)".
+> The template is kept only as the record of what the rewrite changed. The rewrite followed this block, which read:
+>
 > ⛔ **REWRITE THIS TEMPLATE BEFORE IT IS COMMITTED (2026-09-26).** It was drafted for an explicit owner approval;
 > Ali DELEGATED the decision instead (his words: `RESUME-HERE.md` §0b). Committed as written it would present a
 > session's decision as the owner's. Before the build commit:

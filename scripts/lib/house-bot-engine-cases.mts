@@ -2079,6 +2079,9 @@ section("§16 · fireClaimedIntent and pollerPass");
 const FI: Any = await import("../../src/lib/server/house-bot/fire.ts");
 const WK: Any = await import("../../src/lib/server/house-bot/worker.ts");
 const ADM: Any = await import("../../src/lib/server/admission.ts");
+/* 16.63 reads and writes the holder's responsible-gambling row itself — never through `selfExclude`/`coolOff`/`setLimits`,
+ * which fire the in-app holder hook (see the 16.63 block). */
+const RG16: Any = await import("../../src/lib/server/responsible-gambling.ts");
 await guard("16", async () => {
   const w = await loadWorld();
   if (!(await w.db.user.findById(WORLD_OFFICER))) await w.user({ id: WORLD_OFFICER, role: "ADMIN" });
@@ -2154,6 +2157,26 @@ await guard("16", async () => {
     dueAt: w.iso(-5_000), deadlineAt: w.iso(3_600_000), staleAt: w.iso(600_000), status: "PENDING", reasonCode: null, why: null,
     decision: {}, attempts: 0, transientAttempts: 0, nextAttemptAt: null, claimedBy: null, claimedUntil: null, positionId: null, finishedAt: null, alertedAt: null, ...o,
   });
+  /** A promise's value, or `{ threw }` — never a throw handed to the section guard. */
+  const settle = async (p: Any): Promise<Any> => { try { return await p; } catch (e) { return { threw: String((e as Error)?.message ?? e) }; } };
+  /**
+   * REMOVE a bot a 16.63/16.69 block made (§19's `retire`), so no account left ACTIVE, AUTO_PAUSED or carrying
+   * responsible-gambling state reaches a later section. Never throws: it answers whether the bot is REMOVED after.
+   */
+  const retire16 = async (botId: string): Promise<boolean> => {
+    try {
+      const b: Any = await S.houseBotStore.get(botId);
+      if (b && b.status !== "REMOVED") {
+        await S.houseBotStore.setStatus(botId, {
+          from: [b.status], to: "REMOVED", pauseReason: null, pausedFromStatus: null,
+          removal: { byId: WORLD_OFFICER, reason: "section 16 fixture", cause: "MANUAL" },
+        });
+      }
+      return ((await S.houseBotStore.get(botId)) as Any)?.status === "REMOVED";
+    } catch {
+      return false;
+    }
+  };
 
   /* ── 16.1 MON-13 preconditions, inFlight, the placed path ── */
   {
@@ -2180,6 +2203,208 @@ await guard("16", async () => {
     ok("16.5 · ruling 68 · applyOutcome throwing (the alert failed after the stake) → fire never throws; the requeue finds nothing to hand back (PLACED)",
       out.kind === "requeued" && out.written === false && (await is(i.id, "PLACED", null)), j(out));
     ok("16.6 · …and the row is out of inFlight on that path too", !EN2.engineState().inFlight.has(i.id));
+  }
+
+  /* ── 16.69 · B7's FIRST limb · THE FIRE HEARTBEAT (ruling 69, ENG-33; RESUME-HERE §0c decision 6, build step 5) ──
+   * MEASURED before this build: no case on either store asserted ANY part of it — no script named FIRE_HEARTBEAT_MS
+   * or called `.heartbeat(`, and no declared mutation touched fire.ts's timer or either DAL twin's `heartbeat`.
+   * ⛔ THE TIMER IS CAPTURED, NEVER WAITED FOR. `fireClaimedIntent` registers its interval SYNCHRONOUSLY, before its
+   * first await, so `setInterval` is patched for that one synchronous start and put back at once. `clearInterval` stays
+   * patched until the fire has returned (fire.ts clears in its `finally`) and hands every handle that is not the
+   * captured one to the real function, so a timer a lock, an admission slot or Prisma clears meanwhile is untouched.
+   * ⛔ THE FIRE IS PARKED AT ITS FIRST READ — `houseBotControlStore.get`, the master switch — so a tick lands while the
+   * row is still CLAIMED and in flight. Only that one call is parked (the store is put back at once), and the gate is
+   * opened in a `finally` BEFORE the fire is awaited: a failing case must never hang the section.
+   * ⛔ The rows are inserted CLAIMED with claimedUntil +20 s, so an extension to ≈ now + CLAIM_TTL_SEC is a move of
+   * minutes that a TOLERANCE reads on either clock (Postgres writes the database's now(), memory Date.now()); "did not
+   * move" is two reads of an untouched value, so it is exact. */
+  const beatingFire = (i: Any, alerts: Any, o: { me?: string; beat?: (...a: Any[]) => Promise<Any> } = {}) => {
+    const realSet = globalThis.setInterval;
+    const realClear = globalThis.clearInterval;
+    const control = S.houseBotControlStore;
+    const realGet = control.get;
+    const intents = S.houseBotIntentStore;
+    const realBeat = intents.heartbeat;
+    const handle: Any = { unrefs: 0, unref() { this.unrefs++; return this; }, ref() { return this; }, hasRef() { return false; } };
+    const set: Array<{ fn: () => void; ms: number }> = [];
+    const calls: Array<{ args: Any[]; pr: Promise<Any> }> = [];
+    let cleared = 0, parked = 0;
+    let release!: () => void;
+    const gate = new Promise<void>((r) => { release = r; });
+    let p!: Promise<Any>;
+    try {
+      (globalThis as Any).setInterval = (fn: () => void, ms: number) => { set.push({ fn, ms }); return handle; };
+      (globalThis as Any).clearInterval = (h: Any) => { if (h === handle) { cleared++; return undefined; } return realClear(h); };
+      control.get = async (...a: Any[]) => { parked++; await gate; return realGet.apply(control, a); };
+      intents.heartbeat = (...a: Any[]) => { const pr = (o.beat ?? realBeat).apply(intents, a); calls.push({ args: a, pr }); return pr; };
+      p = fireSafe(i, alerts, o.me ?? ME);
+    } catch (e) {
+      // Nothing started: put back what only `restore` would otherwise put back.
+      release();
+      (globalThis as Any).clearInterval = realClear;
+      Object.assign(intents, { heartbeat: realBeat });
+      throw e;
+    } finally {
+      // Only fire's OWN interval is captured, and only its own first read is parked.
+      (globalThis as Any).setInterval = realSet;
+      Object.assign(control, { get: realGet });
+    }
+    return {
+      p, set, handle, calls,
+      parked: () => parked,
+      cleared: () => cleared,
+      release: () => release(),
+      /** Once the fire has returned: the real clearInterval and the real heartbeat back, and the gate open whatever happened. */
+      restore: () => { release(); (globalThis as Any).clearInterval = realClear; Object.assign(intents, { heartbeat: realBeat }); },
+    };
+  };
+  /** One gated fire: `atGate` runs while it is parked, then the gate opens, the fire is awaited and everything is put back. */
+  const withBeatingFire = async (i: Any, alerts: Any, atGate: (f: Any) => Promise<void>, o: { me?: string; beat?: (...a: Any[]) => Promise<Any> } = {}) => {
+    const f = beatingFire(i, alerts, o);
+    try {
+      try { await atGate(f); } finally { f.release(); }
+      return { f, out: await f.p };
+    } finally {
+      await f.p; // fireSafe never rejects, and the gate is already open
+      f.restore();
+    }
+  };
+  const claimedRow = async (b: Any, marketId: string): Promise<Any> =>
+    row((await S.houseBotIntentStore.insert(pendingRow(b, marketId, { status: "CLAIMED", claimedBy: ME, claimedUntil: w.iso(20_000), attempts: 1, stakeTzs: 5_000 }))).id);
+  const made69 = { bots: [] as string[], rows: [] as string[] };
+  {
+    const b = await botWith();
+    made69.bots.push(b.botId);
+    const { m } = await lockedPoll(10_000);
+    const i = await claimedRow(b, m.id);
+    made69.rows.push(i.id);
+    let r: Any, mid: Any, tickAt = 0, callsMid = 0, clearedMid = -1, parkedMid = 0, inFlightMid = false;
+    const { f, out } = await withBeatingFire(i, recorder().alerts, async (g: Any) => {
+      inFlightMid = EN2.engineState().inFlight.has(i.id);
+      parkedMid = g.parked();
+      tickAt = Date.now();
+      g.set[0]?.fn();
+      callsMid = g.calls.length;
+      r = await settle(g.calls[0]?.pr);
+      mid = await row(i.id);
+      clearedMid = g.cleared();
+    });
+    ok("16.69a · ⭐ ruling 69 · fire starts ONE heartbeat timer, every FIRE_HEARTBEAT_MS, unref'd so it never holds the process open — and a claim's TTL is more than three beats long, so two failed beats in a row still leave the claim alive",
+      f.set.length === 1 && f.set[0].ms === K.FIRE_HEARTBEAT_MS && f.handle.unrefs === 1 && K.FIRE_HEARTBEAT_MS * 3 < K.CLAIM_TTL_SEC * 1000,
+      j({ timers: f.set.map((s: Any) => s.ms), unrefs: f.handle.unrefs, beatMs: K.FIRE_HEARTBEAT_MS, ttlSec: K.CLAIM_TTL_SEC }));
+    ok("16.69b · ⭐ ruling 69 · the heartbeat, ticked while the fire is still in flight (parked at its first read, the row CLAIMED), extends THIS worker's claim: heartbeat(row, me) answers true and claimedUntil moves from +20 s to ≈ now + CLAIM_TTL_SEC",
+      inFlightMid && parkedMid === 1 && callsMid === 1 && j(f.calls[0]?.args) === j([i.id, ME]) && r === true && mid?.status === "CLAIMED"
+        && Date.parse(mid.claimedUntil) - Date.parse(i.claimedUntil) >= 150_000
+        && Math.abs(Date.parse(mid.claimedUntil) - (tickAt + K.CLAIM_TTL_SEC * 1000)) < 10_000,
+      j({ inFlight: inFlightMid, parked: parkedMid, calls: callsMid, args: f.calls[0]?.args, r, was: i.claimedUntil, now: mid?.claimedUntil, status: mid?.status, tickAt: new Date(tickAt).toISOString() }));
+    const house = await houseOn(m.id);
+    const placed: Any = await row(i.id);
+    ok("16.69c · …and the fire then places as usual, and its timer is cleared only when it returns — never while it was parked, exactly once after",
+      out?.kind === "outcome" && out.outcome?.kind === "placed" && placed?.status === "PLACED" && house.length === 1 && house[0].stake === 5_000
+        && clearedMid === 0 && f.cleared() === 1 && !EN2.engineState().inFlight.has(i.id),
+      j({ out, row: placed?.status, house: house.map((p: Any) => p.stake), clearedMid, cleared: f.cleared() }));
+    const late = await settle(S.houseBotIntentStore.heartbeat(i.id, ME));
+    const after: Any = await row(i.id);
+    ok("16.69d · a heartbeat on a row that is no longer CLAIMED writes nothing: on the PLACED row, which still carries this worker's claimedBy, it answers false and claimedUntil does not move",
+      placed?.status === "PLACED" && placed.claimedBy === ME && late === false && after?.status === "PLACED" && Date.parse(after.claimedUntil) === Date.parse(placed.claimedUntil),
+      j({ late, before: placed && [placed.status, placed.claimedBy, placed.claimedUntil], after: after && [after.status, after.claimedUntil] }));
+  }
+  {
+    // The same fixture fired by a worker that does NOT hold the claim (16.12's shape).
+    const b = await botWith();
+    made69.bots.push(b.botId);
+    const { m } = await lockedPoll(10_000);
+    const i = await claimedRow(b, m.id);
+    made69.rows.push(i.id);
+    let r: Any, mid: Any, callsMid = 0;
+    const { f, out } = await withBeatingFire(i, recorder().alerts, async (g: Any) => {
+      g.set[0]?.fn();
+      callsMid = g.calls.length;
+      r = await settle(g.calls[0]?.pr);
+      mid = await row(i.id);
+    }, { me: "another-worker" });
+    ok("16.69e · ⛔ a heartbeat never extends ANOTHER worker's claim: ticked from a fire that does not hold the row, it answers false and claimedUntil does not move — and that fire ends LOST (ruling 165), nothing placed",
+      callsMid === 1 && j(f.calls[0]?.args) === j([i.id, "another-worker"]) && r === false
+        && mid?.status === "CLAIMED" && mid.claimedBy === ME && Date.parse(mid.claimedUntil) === Date.parse(i.claimedUntil)
+        && out?.kind === "lost" && (await houseOn(m.id)).length === 0,
+      j({ calls: callsMid, args: f.calls[0]?.args, r, mid: mid && [mid.status, mid.claimedBy, mid.claimedUntil], was: i.claimedUntil, out }));
+    await closeLive(i.id);
+  }
+  {
+    /* ⛔ THE ONE THROW ROUTE OUT OF fire(), AND THE CASE DEPENDS ON IT. `return finish(…)` inside fire()'s try is not
+     * awaited, so a store failure while writing a terminal row rejects fire() itself instead of reaching its catch —
+     * that is how a throw reaches `fireClaimedIntent`'s `finally` at all (16.5/16.6's applyOutcome throw never does:
+     * `apply` requeues it). Were that line ever made `return await`, the throw would stop, and 16.69f0 says so in red
+     * rather than letting 16.69f pass on the success path. On an EMPTY poll the fire's own terminal write is
+     * SKIPPED(CONDITION_GONE), and only this row's write fails. */
+    const b = await botWith();
+    made69.bots.push(b.botId);
+    const { m } = await lockedPoll(0);
+    const i = await claimedRow(b, m.id);
+    made69.rows.push(i.id);
+    const intents = S.houseBotIntentStore;
+    const realFinish = intents.finish;
+    let got: Any = null, inFlightAfter = true;
+    intents.finish = async (...a: Any[]) => { if (a[0] === i.id) throw new Error("injected finish failure"); return realFinish.apply(intents, a); };
+    try {
+      got = await withBeatingFire(i, recorder().alerts, async () => {});
+      inFlightAfter = EN2.engineState().inFlight.has(i.id);
+    } finally {
+      Object.assign(intents, { finish: realFinish });
+    }
+    const threw = typeof got?.out?.threw === "string" && got.out.threw.includes("injected finish failure");
+    ok("16.69f0 · fixture · a store failure while fire writes its terminal row escapes fire() as a THROW — the one throw route out of fire is the unawaited `return finish(…)` inside its try; were it ever made `return await`, THIS line goes red, never 16.69f green on the success path",
+      threw, j(got?.out));
+    ok("16.69f · ⛔ ruling 69 · a THROW out of fire still clears the heartbeat timer AND the in-flight entry — both are cleared on every exit, a throw included",
+      threw && got?.f?.cleared() === 1 && !inFlightAfter, j({ out: got?.out, cleared: got?.f?.cleared(), inFlight: inFlightAfter }));
+    await closeLive(i.id);
+  }
+  {
+    /* ENG-33's fix line: "the heartbeat's failure to extend claimedUntil does not abort the in-flight fire". The beat
+     * is swallowed on purpose — the claim's TTL is the backstop — so the only way to see it NOT swallowed is an
+     * unhandled rejection. The listener counts only the injected message, lives for one fire plus 25 ms, and is removed
+     * in a `finally`; 16.69h proves it hears a rejection of exactly that shape at all. */
+    const b = await botWith();
+    made69.bots.push(b.botId);
+    const { m } = await lockedPoll(10_000);
+    const i = await claimedRow(b, m.id);
+    made69.rows.push(i.id);
+    const DOWN = "heartbeat store down";
+    const seen: string[] = [];
+    const onUnhandled = (e: unknown) => { seen.push(String((e as Error)?.message ?? e)); };
+    const ours = () => seen.filter((s) => s === DOWN).length;
+    let got: Any = null, ticked = 0, afterFire = -1, afterControl = -1;
+    process.on("unhandledRejection", onUnhandled);
+    try {
+      got = await withBeatingFire(i, recorder().alerts, async (g: Any) => {
+        g.set[0]?.fn();
+        g.set[0]?.fn();
+        ticked = g.calls.length;
+      }, { beat: async () => { throw Object.assign(new Error(DOWN), { code: "P1001" }); } });
+      await sleep(25);
+      afterFire = ours();
+      void Promise.reject(Object.assign(new Error(DOWN), { code: "P1001" }));
+      await sleep(25);
+      afterControl = ours();
+    } finally {
+      process.off("unhandledRejection", onUnhandled);
+    }
+    const foreign = seen.filter((s) => s !== DOWN);
+    ok("16.69g · ENG-33 · a heartbeat whose store write FAILS is swallowed: ticked twice against a store that throws, no rejection escapes the timer, and the fire still places",
+      ticked === 2 && afterFire === 0 && got?.out?.kind === "outcome" && got.out.outcome?.kind === "placed" && (await is(i.id, "PLACED", null)),
+      j({ ticked, unhandled: afterFire, out: got?.out, foreign }));
+    ok("16.69h · CONTROL · the recorder 16.69g reads does see an unhandled rejection of exactly that shape, so its zero is a measurement and not a deaf listener",
+      afterControl - afterFire === 1, j({ afterFire, afterControl, foreign }));
+  }
+  {
+    const left: string[] = [];
+    for (const id of made69.bots) if (!(await retire16(id))) left.push(id);
+    const live: string[] = [];
+    for (const id of made69.rows) { const r: Any = await row(id); if (!r || r.status === "PENDING" || r.status === "CLAIMED") live.push(id); }
+    ok("16.69i · fixture · every account 16.69 made is REMOVED again, and no row it claimed is left live",
+      made69.bots.length === 4 && left.length === 0 && made69.rows.length === 4 && live.length === 0, j({ bots: made69.bots.length, left, rows: made69.rows.length, live }));
+    // Two stakes placed above: give the platform's per-minute house count back (the world's own fixture of time).
+    await w.ageHouseMinute();
   }
 
   /* ── 16.7 the step-9 re-cut and the write-back clamp (MON-02, ruling 67) ── */
@@ -2352,6 +2577,82 @@ await guard("16", async () => {
     const bot: Any = await S.houseBotStore.get(b.botId);
     ok("16.17 · the holder's password changed → the mapper's consent re-read: AUTO_PAUSED(PASSWORD_CHANGED), row CANCELLED(BOT_NOT_ACTIVE), one alert",
       bot.status === "AUTO_PAUSED" && bot.pauseReason === "PASSWORD_CHANGED" && (await is(i.id, "CANCELLED", "BOT_NOT_ACTIVE")) && rec.count("botStopped") === 1, j({ status: bot.status, reason: bot.pauseReason, out }));
+  }
+
+  /* ── 16.63 · B7's SECOND limb · THE HOLDER CHECK AT FIRE (ruling 63, fire.ts step 4; RESUME-HERE §0c decision 6) ──
+   * MEASURED before this build: 16.17 was the only case that reached step 4, and it could not fail on it — a password
+   * change on a poll with locked money, where the seam refuses the same holder anyway (H2's consent check, and the
+   * in-lock loss limit), so removing step 4 changed no row, bot or position.
+   * ⭐ THE DISCRIMINATOR IS WHERE FIRE STOPS, AND AN EMPTY POLL MAKES IT VISIBLE. With nothing locked against the row, a
+   * fire that got past step 4 ends SKIPPED(CONDITION_GONE) at the amount step with the bot still ACTIVE and never
+   * reaches the seam — so in 16.63a–c only fire's OWN holder check can pause the account, and 16.63e is that control.
+   * (Should a later step ever finish an empty poll EARLIER, the controls go red first — by design.)
+   * ⛔ THE STATE IS WRITTEN WITHOUT THE IN-APP HOLDER HOOK. `selfExclude`, `coolOff` and `setLimits` fire the real hook
+   * asynchronously (the §19 race behind C4 ruling 156): it would pause the bot BEFORE the fire, and the case would pass
+   * for the wrong reason, since house_bot_inactive writes the same CANCELLED(BOT_NOT_ACTIVE) row. So the settings row
+   * and the account status are written directly, as §19 row 8 and 19.E do; the bot is read ACTIVE right before each
+   * fire, and the fire's OUTCOME is asserted (botStopped, with its cause), not only the row.
+   * ⛔ The timers are DAYS away (the RG timer columns are naive DateTime), and nothing is lost yet, so the rolling
+   * 24-hour loss window over the naive Transaction.createdAt never enters into it. */
+  {
+    const DAY = 86_400_000;
+    const made63: string[] = [];
+    const rgWrite = async (userId: string, patch: Any) => { const cur = await RG16.getRgSettings(userId); await w.db.responsible.upsert({ ...cur, ...patch }); };
+    const atFire = async (setup: (userId: string) => Promise<void>) => {
+      const b = await botWith();
+      made63.push(b.botId);
+      const { m } = await lockedPoll(0);
+      const i = await w.intent(b, m.id, FILL());
+      await setup(b.userId);
+      const before: Any = await S.houseBotStore.get(b.botId);
+      const rec = recorder();
+      const out = await fireSafe(i, rec.alerts);
+      const bot: Any = await S.houseBotStore.get(b.botId);
+      const r: Any = await row(i.id);
+      return { before: before?.status, out, bot, r, placed: (await houseOn(m.id)).length, alerts: rec.count("botStopped") };
+    };
+    const shown = (x: Any) => j({
+      before: x.before, out: x.out, placed: x.placed, alerts: x.alerts, row: x.r && [x.r.status, x.r.reasonCode],
+      bot: x.bot && { status: x.bot.status, reason: x.bot.pauseReason, voidCause: x.bot.consentVoidCause, voidAt: x.bot.consentVoidAt },
+    });
+    /** Fire itself stopped the account for `cause`: botStopped from the ACTIVE bot it read, the row closed, nothing placed, one alert. */
+    const stoppedAtFire = (x: Any, cause: string) => x.before === "ACTIVE"
+      && x.out?.kind === "outcome" && x.out.outcome?.kind === "botStopped" && x.out.outcome.to === "AUTO_PAUSED" && x.out.outcome.cause === cause
+      && x.bot?.status === "AUTO_PAUSED" && x.bot.pauseReason === cause
+      && x.r?.status === "CANCELLED" && x.r.reasonCode === "BOT_NOT_ACTIVE" && x.placed === 0 && x.alerts === 1;
+    /** Fire went past the holder check: the empty poll ended the row at the amount step and the bot is untouched. */
+    const wentOn = (x: Any) => x.before === "ACTIVE"
+      && x.out?.kind === "finished" && x.out.status === "SKIPPED" && x.out.code === "CONDITION_GONE"
+      && x.r?.status === "SKIPPED" && x.r.reasonCode === "CONDITION_GONE" && x.bot?.status === "ACTIVE" && x.placed === 0 && x.alerts === 0;
+
+    const excluded = await atFire(async (u) => {
+      await rgWrite(u, { selfExclusionUntil: w.iso(7 * DAY), selfExclusionStartedAt: w.iso() });
+      await w.setUserFields(u, { status: "SELF_EXCLUDED" });
+    });
+    ok("16.63a · ⭐ ruling 63 · a SELF-EXCLUDED holder at fire is stopped by fire's OWN holder check (on an empty poll no later step can pause the account): the bot AUTO_PAUSED(SELF_EXCLUDED) with its consent voided, the row CANCELLED(BOT_NOT_ACTIVE), nothing placed, one alert",
+      stoppedAtFire(excluded, "SELF_EXCLUDED") && excluded.bot.consentVoidCause === "SELF_EXCLUDED" && excluded.bot.consentVoidAt != null, shown(excluded));
+    const cooling = await atFire(async (u) => { await rgWrite(u, { coolingOffUntil: w.iso(2 * DAY), coolingOffStartedAt: w.iso() }); });
+    ok("16.63b · ⭐ ruling 63 · a cooling-off TIMER alone — the account's status still ACTIVE — stops the bot at fire the same way: AUTO_PAUSED(COOLING_OFF), consent voided, the row CANCELLED(BOT_NOT_ACTIVE)",
+      stoppedAtFire(cooling, "COOLING_OFF") && cooling.bot.consentVoidCause === "COOLING_OFF" && cooling.bot.consentVoidAt != null, shown(cooling));
+    const ownLimit = await atFire(async (u) => { await rgWrite(u, { dailyLossLimit: 1_000 }); });
+    ok("16.63c · ⭐ ruling 63 · the holder's OWN daily loss limit, asked about THIS row's stake, stops the bot at fire as loss_limit_daily: AUTO_PAUSED(OWNER_LOSS_LIMIT), consent NOT voided, the row CANCELLED(BOT_NOT_ACTIVE) — never a requeue",
+      stoppedAtFire(ownLimit, "OWNER_LOSS_LIMIT") && ownLimit.bot.consentVoidAt == null && ownLimit.bot.consentVoidCause == null, shown(ownLimit));
+    const equal = await atFire(async (u) => { await rgWrite(u, { dailyLossLimit: 2_000 }); });
+    ok("16.63d · CONTROL · a loss limit EQUAL to the row's stake fits (nothing lost today + 2,000 is not over 2,000): fire goes on, the empty poll ends it SKIPPED(CONDITION_GONE), and the bot stays ACTIVE",
+      wentOn(equal), shown(equal));
+    const none = await atFire(async () => {});
+    ok("16.63e · CONTROL · a holder with no responsible-gambling state, on the same empty poll, reaches the amount step: SKIPPED(CONDITION_GONE), the bot ACTIVE — so in 16.63a–c only fire's holder check could have paused it",
+      wentOn(none), shown(none));
+    const ended = await atFire(async (u) => {
+      await rgWrite(u, { coolingOffUntil: w.iso(-2 * DAY), coolingOffStartedAt: w.iso(-3 * DAY) });
+      await w.setUserFields(u, { status: "COOLED_OFF" });
+    });
+    ok("16.63f · CONTROL · a break that has ENDED — its timer two days past, the status still COOLED_OFF — is no break at fire: SKIPPED(CONDITION_GONE), the bot ACTIVE",
+      wentOn(ended), shown(ended));
+    const left: string[] = [];
+    for (const id of made63) if (!(await retire16(id))) left.push(id);
+    ok("16.63g · fixture · every account 16.63 made is REMOVED again, so no account carrying a loss limit or a break reaches a later section",
+      made63.length === 6 && left.length === 0, j({ made: made63.length, left }));
   }
 
   /* ── 16.18 rules at fire (ruling 65) ── */

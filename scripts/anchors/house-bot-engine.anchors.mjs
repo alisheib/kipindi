@@ -17,6 +17,8 @@
  * N1-3, N1-4, N1-8 and N2-E1 had no assertion that could fail on them; each got a case first (16.46, 16.33b, 17.13b, 7.3b)
  * and only then joined this list. N1-9 (the inline fire not registered in inFlight) is NOT declared: no inline fire exists
  * yet (ruling 69 registers every fire; the inline Enter now fire is Commit 7's), so its mutation joins with that fire.
+ * So did register B7's two fire-path limbs (RESUME-HERE §0c decision 6, build step 5): the fire heartbeat and the holder
+ * check at fire got their cases first (16.69a–i, 16.63a–g, both stores) and only then the `69…` and `63…` entries below.
  *
  * ⛔ A red anchor quotes SOURCE. Editing one of these lines must be paired with re-anchoring here.
  */
@@ -34,6 +36,11 @@ const OUTCOMES = "src/lib/server/house-bot/outcomes.ts";
 const TERMINAL_VENDOR = "src/lib/server/updown-terminal-vendor.ts";
 /* ⭐ C5 alerts · the boot refusal that had no voice until the clock-skew build (01 register:1210). */
 const ENGINE = "src/lib/server/house-bot/engine.ts";
+/* ⭐ Build step 5 (B7) · the fresh holder read fire's step 4 asks, the one cause list it decides with, and the heartbeat's
+   cadence. The last two are shared modules: the drive needs a tree equal to its commit (the harness refuses otherwise). */
+const CONTROL_READS = "src/lib/server/house-bot/control.ts";
+const CONSENT = "src/lib/house-bot/consent.ts";
+const CONSTANTS = "src/lib/house-bot/constants.ts";
 
 export const MUTATIONS = [
   /* ── C7 step 4b · THE STALENESS VERDICT (rulings 352, 353, 354; replan 435(e)) ───────────────────────────────
@@ -942,5 +949,203 @@ export const MUTATIONS = [
     expect: "17.53b · ⛔ …AND IT WRITES NOTHING",
     suite: "engine-mem",
     sections: "17",
+  },
+
+  /* ── BUILD STEP 5 · REGISTER B7's TWO UNASSERTED FIRE-PATH LIMBS (RESUME-HERE §0c decision 6, 2026-09-26) ─────────
+   * B7 (NEXT-SESSION-2026-09-22 item 7) named three limbs; the third, the DAL claim-reclaim arm, was already c13.d–g
+   * with its mutations in `house-bot-dal-claim.anchors.mjs`. These are the other two, each put back on the line it
+   * lives on. The `-pg` ones are the Postgres twin's own SQL, which the memory child cannot see.
+   * ⛔ THE HEARTBEAT (16.69) is captured at the fire's synchronous start and ticked by hand while the fire is parked at
+   * its first read, so every defect here is seen without waiting 30 s.
+   * ⛔ THE HOLDER CHECK AT FIRE (16.63) runs on an EMPTY poll: the seam refuses the same holder with the same row, so on
+   * a poll with money these mutations would change nothing a case can see — only WHERE fire stops. */
+  {
+    name: "69a-beat-never-ticks · the heartbeat's interval is read as SECONDS, so a fire that runs past its claim's TTL is never renewed",
+    file: FIRE,
+    from: `  }, FIRE_HEARTBEAT_MS);`,
+    to: `  }, FIRE_HEARTBEAT_MS * 1000);`,
+    expect: "16.69a · ⭐ ruling 69 · fire starts ONE heartbeat timer",
+    suite: "engine-mem",
+    sections: "16",
+  },
+  {
+    name: "69a-beat-outlives-claim · the heartbeat constant is set to the claim's whole TTL, so the claim can lapse between two beats",
+    file: CONSTANTS,
+    from: `export const FIRE_HEARTBEAT_MS = 30_000;`,
+    to: `export const FIRE_HEARTBEAT_MS = 180_000;`,
+    expect: "16.69a · ⭐ ruling 69 · fire starts ONE heartbeat timer",
+    suite: "engine-mem",
+    sections: "16",
+  },
+  {
+    name: "69a-beat-holds-process · the timer is no longer unref'd, so an in-flight fire holds the process open on SIGTERM",
+    file: FIRE,
+    from: `  beat.unref?.();`,
+    to: `  void beat;`,
+    expect: "16.69a · ⭐ ruling 69 · fire starts ONE heartbeat timer",
+    suite: "engine-mem",
+    sections: "16",
+  },
+  {
+    name: "69b-beat-writes-nothing · the timer ticks and never calls the store, so a long fire's claim lapses under it",
+    file: FIRE,
+    from: `      try { await houseBotIntentStore.heartbeat(intent.id, deps.me); } catch { /* the claim's TTL is the backstop */ }`,
+    to: `      try { /* no beat */ } catch { /* the claim's TTL is the backstop */ }`,
+    expect: "16.69b · ⭐ ruling 69 · the heartbeat, ticked while the fire is still in flight",
+    suite: "engine-mem",
+    sections: "16",
+  },
+  {
+    name: "69b-heartbeat-extends-nothing-mem · the memory twin answers true and writes the row back unchanged (memory twin)",
+    file: DAL,
+    from: `    memWrite("HouseBotIntent", { ...i, claimedUntil: new Date(Date.now() + CLAIM_TTL_SEC * 1000).toISOString() }, "update");`,
+    to: `    memWrite("HouseBotIntent", { ...i }, "update");`,
+    expect: "16.69b · ⭐ ruling 69 · the heartbeat, ticked while the fire is still in flight",
+    suite: "engine-mem",
+    sections: "16",
+  },
+  {
+    name: "69b-heartbeat-extends-nothing-pg · the Postgres twin sets claimedUntil to itself, so a beat answers true and moves nothing (Postgres SQL)",
+    file: DAL,
+    from: "    const text = updateSql(\"HouseBotIntent\", [`\"claimedUntil\" = now() + (${p.raw(CLAIM_TTL_SEC, \"int\")} * interval '1 second')`],",
+    to: "    const text = updateSql(\"HouseBotIntent\", [`\"claimedUntil\" = \"claimedUntil\"`],",
+    expect: "16.69b · ⭐ ruling 69 · the heartbeat, ticked while the fire is still in flight",
+    suite: "engine-pg",
+    sections: "16",
+  },
+  {
+    name: "69c-beat-leaks · the timer is never cleared, so every fire leaves a beat running for a row it no longer holds",
+    file: FIRE,
+    from: `    clearInterval(beat);`,
+    to: `    void beat;`,
+    expect: "16.69c · …and the fire then places as usual, and its timer is cleared only when it returns",
+    suite: "engine-mem",
+    sections: "16",
+  },
+  {
+    name: "69d-heartbeat-revives-mem · the status guard goes, so a beat re-stamps a row that is already PLACED (memory twin)",
+    file: DAL,
+    from: "  async heartbeat(id, me) {\n    const i = memIntents.get(id);\n    if (!i || i.status !== \"CLAIMED\" || i.claimedBy !== me) return false;",
+    to: "  async heartbeat(id, me) {\n    const i = memIntents.get(id);\n    if (!i || i.claimedBy !== me) return false;",
+    expect: "16.69d · a heartbeat on a row that is no longer CLAIMED writes nothing",
+    suite: "engine-mem",
+    sections: "16",
+  },
+  {
+    name: "69d-heartbeat-revives-pg · the WHERE loses its status term, so a beat re-stamps a row that is already PLACED (Postgres SQL)",
+    file: DAL,
+    from: "    const text = updateSql(\"HouseBotIntent\", [`\"claimedUntil\" = now() + (${p.raw(CLAIM_TTL_SEC, \"int\")} * interval '1 second')`],\n      `\"id\" = ${p.raw(id, \"text\")} AND \"status\" = 'CLAIMED' AND \"claimedBy\" = ${p.raw(me, \"text\")}`, { returning: `\"id\"` });",
+    to: "    const text = updateSql(\"HouseBotIntent\", [`\"claimedUntil\" = now() + (${p.raw(CLAIM_TTL_SEC, \"int\")} * interval '1 second')`],\n      `\"id\" = ${p.raw(id, \"text\")} AND \"claimedBy\" = ${p.raw(me, \"text\")}`, { returning: `\"id\"` });",
+    expect: "16.69d · a heartbeat on a row that is no longer CLAIMED writes nothing",
+    suite: "engine-pg",
+    sections: "16",
+  },
+  {
+    name: "69e-heartbeat-steals-mem · the worker guard goes, so any fire's beat extends a claim another worker holds (memory twin)",
+    file: DAL,
+    from: "  async heartbeat(id, me) {\n    const i = memIntents.get(id);\n    if (!i || i.status !== \"CLAIMED\" || i.claimedBy !== me) return false;",
+    to: "  async heartbeat(id, me) {\n    const i = memIntents.get(id);\n    if (!i || i.status !== \"CLAIMED\") return false;",
+    expect: "16.69e · ⛔ a heartbeat never extends ANOTHER worker's claim",
+    suite: "engine-mem",
+    sections: "16",
+  },
+  {
+    name: "69e-heartbeat-steals-pg · the WHERE loses its claimedBy term, so any fire's beat extends a claim another worker holds (Postgres SQL)",
+    file: DAL,
+    from: "    const text = updateSql(\"HouseBotIntent\", [`\"claimedUntil\" = now() + (${p.raw(CLAIM_TTL_SEC, \"int\")} * interval '1 second')`],\n      `\"id\" = ${p.raw(id, \"text\")} AND \"status\" = 'CLAIMED' AND \"claimedBy\" = ${p.raw(me, \"text\")}`, { returning: `\"id\"` });",
+    to: "    const text = updateSql(\"HouseBotIntent\", [`\"claimedUntil\" = now() + (${p.raw(CLAIM_TTL_SEC, \"int\")} * interval '1 second')`],\n      `\"id\" = ${p.raw(id, \"text\")} AND \"status\" = 'CLAIMED'`, { returning: `\"id\"` });",
+    expect: "16.69e · ⛔ a heartbeat never extends ANOTHER worker's claim",
+    suite: "engine-pg",
+    sections: "16",
+  },
+  {
+    name: "69f-beat-cleared-only-on-success · the clear moves out of the finally, so a fire that THROWS leaves its heartbeat running",
+    file: FIRE,
+    from: "    return await fire(intent, deps);\n  } finally {\n    clearInterval(beat);",
+    to: "    const out = await fire(intent, deps);\n    clearInterval(beat);\n    return out;\n  } finally {",
+    expect: "16.69f · ⛔ ruling 69 · a THROW out of fire still clears",
+    suite: "engine-mem",
+    sections: "16",
+  },
+  {
+    name: "69f-in-flight-kept-on-throw · the in-flight delete moves out of the finally, so a fire that THROWS holds one of the process's slots for ever",
+    file: FIRE,
+    from: "    return await fire(intent, deps);\n  } finally {\n    clearInterval(beat);\n    state.inFlight.delete(intent.id);\n  }",
+    to: "    const out = await fire(intent, deps);\n    state.inFlight.delete(intent.id);\n    return out;\n  } finally {\n    clearInterval(beat);\n  }",
+    expect: "16.69f · ⛔ ruling 69 · a THROW out of fire still clears",
+    suite: "engine-mem",
+    sections: "16",
+  },
+  {
+    name: "69g-beat-throws-out · the beat's catch goes, so a store that is down turns every tick into an unhandled rejection",
+    file: FIRE,
+    from: `      try { await houseBotIntentStore.heartbeat(intent.id, deps.me); } catch { /* the claim's TTL is the backstop */ }`,
+    to: `      await houseBotIntentStore.heartbeat(intent.id, deps.me);`,
+    expect: "16.69g · ENG-33 · a heartbeat whose store write FAILS is swallowed",
+    suite: "engine-mem",
+    sections: "16",
+  },
+  {
+    name: "63a-holder-check-dropped · fire stops asking about the holder's live causes, so a self-excluded account's bot fires on",
+    file: FIRE,
+    from: `    if (read.causes.length > 0 || !read.consentOk) {`,
+    to: `    if (!read.consentOk) {`,
+    expect: "16.63a · ⭐ ruling 63 · a SELF-EXCLUDED holder at fire",
+    suite: "engine-mem",
+    sections: "16",
+  },
+  {
+    name: "63b-rg-timers-blinded · the holder read drops the break and exclusion TIMERS, so a cooling-off with its status still ACTIVE is invisible at fire",
+    file: CONTROL_READS,
+    from: `    rg: { selfExclusionUntil: rg.selfExclusionUntil ?? null, coolingOffUntil: rg.coolingOffUntil ?? null },`,
+    to: `    rg: { selfExclusionUntil: null, coolingOffUntil: null },`,
+    expect: "16.63b · ⭐ ruling 63 · a cooling-off TIMER alone",
+    suite: "engine-mem",
+    sections: "16",
+  },
+  {
+    name: "63c-own-limit-not-asked · fire reads the holder without the row's stake, so the holder's own daily loss limit is never asked at fire",
+    file: FIRE,
+    from: `    const read = await readBotAndHolder(intent.houseBotId, { ownerLossStakeTzs: intent.stakeTzs });`,
+    to: `    const read = await readBotAndHolder(intent.houseBotId);`,
+    expect: "16.63c · ⭐ ruling 63 · the holder's OWN daily loss limit",
+    suite: "engine-mem",
+    sections: "16",
+  },
+  {
+    name: "63c-own-limit-requeues · every holder cause is sent as house_consent_stale, whose re-read asks no stake, so an own-limit stop becomes a requeue",
+    file: FIRE,
+    from: `      return apply(intent, deps, refusal(read.causes[0]?.code === "OWNER_LOSS_LIMIT" ? "loss_limit_daily" : "house_consent_stale"));`,
+    to: `      return apply(intent, deps, refusal("house_consent_stale"));`,
+    expect: "16.63c · ⭐ ruling 63 · the holder's OWN daily loss limit",
+    suite: "engine-mem",
+    sections: "16",
+  },
+  {
+    name: "63d-own-limit-over-asks · fire asks the loss limit about one shilling MORE than the row stakes, so a limit the stake exactly fits stops the bot",
+    file: FIRE,
+    from: `    const read = await readBotAndHolder(intent.houseBotId, { ownerLossStakeTzs: intent.stakeTzs });`,
+    to: `    const read = await readBotAndHolder(intent.houseBotId, { ownerLossStakeTzs: intent.stakeTzs + 1 });`,
+    expect: "16.63d · CONTROL · a loss limit EQUAL to the row's stake fits",
+    suite: "engine-mem",
+    sections: "16",
+  },
+  {
+    name: "63e-holder-check-refuses-everyone · the holder check refuses every fire, so a holder with nothing against them is never staked for",
+    file: FIRE,
+    from: `    if (read.causes.length > 0 || !read.consentOk) {`,
+    to: `    if (true as boolean) {`,
+    expect: "16.63e · CONTROL · a holder with no responsible-gambling state",
+    suite: "engine-mem",
+    sections: "16",
+  },
+  {
+    name: "63f-ended-break-still-blocks · a COOLED_OFF status counts as a break whatever its timer says, so an ended break stops the bot for ever",
+    file: CONSENT,
+    from: `  if (coolingTimer || (user.status === "COOLED_OFF" && s.rg.coolingOffUntil == null)) {`,
+    to: `  if (coolingTimer || user.status === "COOLED_OFF") {`,
+    expect: "16.63f · CONTROL · a break that has ENDED",
+    suite: "engine-mem",
+    sections: "16",
   },
 ];

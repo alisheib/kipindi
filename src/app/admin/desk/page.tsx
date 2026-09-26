@@ -19,8 +19,11 @@
  * ceiling is a "limit". A screenshot is the likeliest accidental disclosure channel this project has and the
  * repository is public, so a heading that named the feature would disclose it the moment one image left the screen.
  *
- * ⛔ **MONEY ONLY AS USAGE AGAINST A CONFIGURED LIMIT** (ruling 266). No result, no net, no book, no fee withheld and
- * no bare balance — here or anywhere on this section. An unset limit renders "Not set", never a zero: the seam's own
+ * ⛔ **MONEY ONLY AS USAGE AGAINST A CONFIGURED LIMIT** (ruling 266). No net, no book, no fee withheld and no bare
+ * balance — here or anywhere on this section — and no result EXCEPT on the Results panel: D20b was amended for that
+ * one view under the owner's delegation of 2026-09-26 (C7 437; `docs/COMPLIANCE-DECISIONS.md`, the entry headed
+ * `· D20b AMENDED`), which states what the desk's FINISHED stakes came to, in words, by day and by account, and
+ * nowhere else. The band, the roster, the activity row and the limits stay usage only. An unset limit renders "Not set", never a zero: the seam's own
  * `over(cap, value)` is `cap == null || value > cap`, so an unset limit REFUSES every stake, and "TZS 0 of TZS 0"
  * would tell the reader the opposite of the truth. A FAILED read renders the kit's `unavailable` tile or
  * `AdminLoadError` — never a fabricated figure (ruling 355).
@@ -45,7 +48,7 @@ import { ScrollX } from "@/components/ui/scroll-x";
 import { Tabs } from "@/components/ui/tabs";
 import { Toggle } from "@/components/ui/toggle";
 import { currentSession } from "@/lib/server/auth-service";
-import { CONSOLE_REFUSAL_TITLE, houseRosterForConsole, houseUsageForConsole, houseFeedForConsole, houseHistoryForConsole, houseConsoleAudience, type ConsoleDeskShell, type ConsoleQuery, type ConsoleUsageCell, type ConsoleUsageRow } from "@/lib/server/house-console-read";
+import { CONSOLE_REFUSAL_TITLE, houseRosterForConsole, houseUsageForConsole, houseFeedForConsole, houseHistoryForConsole, houseResultsForConsole, houseConsoleAudience, type ConsoleDeskShell, type ConsoleResultCell, type ConsoleQuery, type ConsoleUsageCell, type ConsoleUsageRow } from "@/lib/server/house-console-read";
 import { CONSOLE_ROUTE, CONSOLE_TABS, LIMITS_TAB_READY, consoleTab, consoleTabHref } from "@/lib/house-bot/console-routes";
 import { ActivityFilters } from "./activity-filters";
 import { StopQueued } from "./stop-queued";
@@ -68,7 +71,7 @@ export const metadata = { title: "Admin · Desk" };
  *  audience and served to another — the population the bundle scan reads (rulings 302, 356, 380). */
 export const dynamic = "force-dynamic";
 
-const TAB_LABEL: Record<(typeof CONSOLE_TABS)[number], string> = { roster: "Roster", activity: "Activity", limits: "Limits", history: "History" };
+const TAB_LABEL: Record<(typeof CONSOLE_TABS)[number], string> = { roster: "Roster", activity: "Activity", limits: "Limits", history: "History", results: "Results" };
 
 /**
  * WHAT EACH PANEL IS FOR, in one sentence an officer can act on.
@@ -91,6 +94,7 @@ const TAB_GUIDANCE: Record<(typeof CONSOLE_TABS)[number], string> = {
      ⭐ "and saves nothing" is the whole promise of the fill control, proved by `qa:desk-recommend` 5. */
   limits: "The platform-wide ceilings every account is held to, on top of its own. All eight must be set before the master switch will turn on, and a blank limit refuses every stake rather than meaning no limit. Use recommended values fills only the empty ones with a suggested starting set and saves nothing — check the numbers, then press Save. Every limit can be changed here afterwards, at any time.",
   history: "Every change anyone has made to the desk — accounts designated, started, paused or removed, limits and rules saved, and every time the switch moved.",
+  results: "What the desk's finished stakes came to, by the EAT day each was placed: money back less money staked, after the platform's fee. A refunded stake counts as nothing.",
 };
 
 /** The limits card's heading, in ONE home: it is also what the form suppresses so the page does not say it
@@ -142,6 +146,23 @@ export function Usage({ cell }: { cell: ConsoleUsageCell }) {
           signal (§A4), and the roster's own status chip is where a stopped account is coloured. */}
       {cell.edgeText ? <span className="text-text-secondary">{cell.edgeText}</span> : null}
     </>
+  );
+}
+
+/**
+ * ONE RESULT ON THE RESULTS TAB (C7 437(e)) — a WORD beside a MAGNITUDE, never a signed amount (361).
+ *
+ * ⛔ THE SPACE BETWEEN THE WORD AND THE FIGURE IS BREAKABLE and only the figure is `.amount` (409): at 360 "Loss" may
+ * sit above "TZS 12,600", and the figure itself never breaks. ⛔ NO COLOUR CARRIES THE SIGN (§A4) — a profit is not
+ * green and a loss is not red; the word says which. An absent result ("Nothing settled", "No stakes", "—") and a failed
+ * read are quiet text, never a zero.
+ */
+export function ResultWords({ result }: { result: ConsoleResultCell }) {
+  if (result.figure === null) return <span className={result.muted ? "text-text-tertiary" : "text-text"}>{result.word}</span>;
+  return (
+    <span className="text-text">
+      {result.word}{" "}<span className="amount tabular-nums">{result.figure}</span>
+    </span>
   );
 }
 
@@ -258,7 +279,8 @@ async function AdminDeskContent({ searchParams }: DeskProps) {
   const feedView = tab === "activity" ? await houseFeedForConsole(session?.userId ?? null, "/admin/desk", sp) : null;
   const limitsView = tab === "limits" ? await houseUsageForConsole(session?.userId ?? null, "/admin/desk", { houseBotId: null }) : null;
   const historyView = tab === "history" ? await houseHistoryForConsole(session?.userId ?? null, "/admin/desk", sp) : null;
-  const view: ConsoleDeskShell | null = rosterView ?? feedView ?? limitsView ?? historyView;
+  const resultsView = tab === "results" ? await houseResultsForConsole(session?.userId ?? null, "/admin/desk") : null;
+  const view: ConsoleDeskShell | null = rosterView ?? feedView ?? limitsView ?? historyView ?? resultsView;
   if (!view) return null;
 
   const rosterFull = view.rosterFullReason !== null;
@@ -282,6 +304,10 @@ async function AdminDeskContent({ searchParams }: DeskProps) {
      ⛔ `null` is a read that FAILED and `[]` is a list with nothing in it — two different treatments (355). */
   const feedRows = feedView?.feed ?? null;
   const historyRows = historyView?.history ?? null;
+  /* ⭐ C7 437 — the Results panel's two slices, hoisted the same way. The day rows are always seven (a failed day is a
+     row that says so); the account rows are `null` when the roster read failed and nobody can tell whose line is whose. */
+  const resultDays = resultsView?.resultDays ?? null;
+  const resultAccounts = resultsView?.resultAccounts ?? null;
 
   return (
     <>
@@ -901,7 +927,7 @@ async function AdminDeskContent({ searchParams }: DeskProps) {
                           {r.note !== null && (
                             <tr className={`${NOTE_ROW}${r.anchored ? " bg-bg-overlay" : ""}`}>
                               <td colSpan={10} className="!pt-0">
-                                <div className="max-w-[80ch] whitespace-normal text-body-sm text-text-secondary">{r.note}</div>
+                                <div className="max-w-[min(80ch,calc(100vw_-_4rem))] whitespace-normal text-body-sm text-text-secondary">{r.note}</div>
                               </td>
                             </tr>
                           )}
@@ -1090,6 +1116,94 @@ async function AdminDeskContent({ searchParams }: DeskProps) {
               </div>
             )}
           </AdminCard>
+          </>)}
+        </>)}
+
+        {tab === "results" && (<>
+          {resultsView !== null && (<>
+          {/* ⭐ C7 437 · WHAT THE DESK'S FINISHED STAKES CAME TO — D20b AMENDED FOR THIS ONE VIEW, under the owner's
+              delegation of 2026-09-26 (`docs/COMPLIANCE-DECISIONS.md`, the entry headed `· D20b AMENDED`).
+              ⛔ WORDS, NEVER SIGNS: every figure is a magnitude beside "Profit" or "Loss" (361). ⛔ NO PAGER, NO
+              EXPORT, NO LINK TO ANY REPORT: seven fixed days and a bounded roster, and a VIEW is all the amendment
+              permits. ⛔ MONEY IS THE SECOND COLUMN in both tables (373), and each figure is `.amount` in a cell that
+              may wrap between the word and the figure — never inside the figure (409, 432(b)).
+              ⭐ BELOW `sm` EACH TABLE FOLDS ITS LAST COLUMN UNDER ITS FIRST, from the same painted field: one view
+              model, two layouts, so the phone and the wide screen cannot say different things about one day. */}
+          {/* ⭐ SIDE BY SIDE FROM 1280, STACKED BELOW IT (measured 2026-09-26): at 1024 two cards leave each table a 360px
+              strip, and By day needed 390 — so below 1280 each card takes the whole column. The compact gutter is the
+              ledger's own; with it, and with a day, a state and a result that never break mid-phrase, both tables fit
+              their half at 1280 and the whole strip at 360. */}
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-2 xl:items-start">
+            <AdminCard title="By day" padding="p-0">
+              <ScrollX label="Results by day">
+                <table className="admin-tbl [&_td]:!px-1.5 [&_th]:!px-1.5">
+                  <thead className="font-mono text-micro eyebrow uppercase text-text-tertiary border-b border-border-subtle bg-bg-sunken/50">
+                    <tr>
+                      <th scope="col" className="text-left p-3">Day (EAT)</th>
+                      <th scope="col" className="text-right p-3 !whitespace-normal">Result</th>
+                      <th scope="col" className="text-right p-3 !whitespace-normal">Stakes placed</th>
+                      <th scope="col" className="max-sm:hidden text-left p-3">State</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {resultDays !== null && resultDays.map((r, i) => (
+                      <tr key={`${r.dayTitle}-${i}`} className="border-b border-border-subtle">
+                        <td className="p-3 text-text" title={r.dayTitle || undefined}>
+                          <span className="whitespace-nowrap">{r.dayText}</span>
+                          <span className="block sm:hidden text-text-tertiary">{r.stateText}</span>
+                        </td>
+                        <td className="p-3 text-right sm:whitespace-nowrap"><ResultWords result={r.result} /></td>
+                        <td className="p-3 text-right font-mono tabular-nums text-text-secondary">{r.stakesText}</td>
+                        <td className="max-sm:hidden p-3 text-text-secondary whitespace-nowrap">{r.stateText}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </ScrollX>
+              <p className="px-4 pt-3 pb-4 text-body-sm text-text-tertiary">{resultsView.resultsNote}</p>
+            </AdminCard>
+
+            <AdminCard title="By account" padding="p-0">
+              {resultAccounts === null ? (
+                <div className="px-4 pb-4"><AdminLoadError what="the desk's results by account" /></div>
+              ) : (
+                <ScrollX label="Results by account">
+                  <table className="admin-tbl [&_td]:!px-1.5 [&_th]:!px-1.5">
+                    <thead className="font-mono text-micro eyebrow uppercase text-text-tertiary border-b border-border-subtle bg-bg-sunken/50">
+                      <tr>
+                        <th scope="col" className="text-left p-3 min-w-[104px] sm:min-w-[150px]">Account</th>
+                        <th scope="col" className="text-right p-3 !whitespace-normal">Today</th>
+                        <th scope="col" className="max-sm:hidden text-right p-3 !whitespace-normal">Last 7 days</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {resultAccounts.length === 0 ? (
+                        <AdminTableEmpty colSpan={3} title="No accounts on the desk" body="An account appears here once it is on the desk, with what its finished stakes came to today and over the last seven days." />
+                      ) : (
+                        resultAccounts.map((r, i) => (
+                          <tr key={`${r.accountName}-${i}`} className="border-b border-border-subtle">
+                            <td className="p-3">
+                              {/* The SAME account cell as the activity and history panels (§K5): the Owner's own label,
+                                  bounded and never rewritten (474), and every removed account folded into one plain line. */}
+                              {r.accountIsOperatorText
+                                ? <Link href={r.accountHref as Route} className="inline-flex items-center min-h-[var(--tap-min)] font-medium text-royal-300 hover:underline" data-operator-text="label">{r.accountName}</Link>
+                                : <span className="text-text-tertiary">{r.accountName}</span>}
+                              {r.accountHandle && <div className="font-mono text-body-sm text-text-subtle">{r.accountHandle}</div>}
+                            </td>
+                            <td className="p-3 text-right sm:whitespace-nowrap">
+                              <ResultWords result={r.today} />
+                              <span className="block sm:hidden text-text-tertiary">Last 7 days{" "}<ResultWords result={r.week} /></span>
+                            </td>
+                            <td className="max-sm:hidden p-3 text-right whitespace-nowrap"><ResultWords result={r.week} /></td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </ScrollX>
+              )}
+            </AdminCard>
+          </div>
           </>)}
         </>)}
       </AdminBody>

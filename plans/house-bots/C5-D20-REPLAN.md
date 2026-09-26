@@ -105,7 +105,9 @@ memo or column (W21, W22 moot).
   switch, Enter now and targets, engine health, the action feed, cap usage. **Struck:** the R2 overview exposure split
   (L39), the staff-edge href test (L38), R1 (e)'s two-admin flag (L35), the per-bot CSV and internal-record writers (L48).
   **Default for its rulings:** no results/P&L report, CSV or per-market house line in the console beyond what a control
-  needs (cap usage against its limit, the kill switch's held amount if 254's CAP_EXPOSURE is kept). L34 is closed as not a
+  needs (cap usage against its limit, the kill switch's held amount if 254's CAP_EXPOSURE is kept). ⚠️ *Amended
+  2026-09-26 (delegated, D20b): except ONE results view on the desk, for its ADMIN audience — not a report, with no
+  CSV, no export and no per-market line (C7 437).* L34 is closed as not a
   defect (bots are players in admin counts by D20).
 - **Commit 8 (release):** L26/L27 stay platform defects for Ali but are no longer release preconditions (no house column
   ships); final docs (RULES §2.11, FLOWS §9, DATA-RETENTION, FAILURE-INVENTORY §7.1) follow D20.
@@ -125,7 +127,7 @@ bots and what keeps D19 true").
      CHECKs, the schema, both DAL twins, `rules.ts` fields, `FIELD_META`, `CLEAR_EXEMPT`, the rules-suite pins and fixtures),
      `ALERT_KEY.staffEdge`, `STAFF_EDGE_MIN_SETTLED` and `houseStaffScorecard`. Re-run `test:house-bot-migrations`,
      `test:dal-parity` and `test:house-bot-rules`. **W16 is moot.**
-266. **Commit 7's console shows money only as usage against a configured limit.** ⚠️ *Amended 2026-09-25 by the owner (D3, `docs/COMPLIANCE-DECISIONS.md`): the desk's activity-table `Opening`/`Closing` cells carry the holder's ledger balance — the one exception (C7-SPEC 373(f)/(g)).* A figure the bot's own controls need
+266. **Commit 7's console shows money only as usage against a configured limit.** ⚠️ *Amended 2026-09-25 by the owner (D3, `docs/COMPLIANCE-DECISIONS.md`): the desk's activity-table `Opening`/`Closing` cells carry the holder's ledger balance — one exception (C7-SPEC 373(f)/(g)).* ⚠️ *Amended 2026-09-26 under the owner's delegation (D20b, `docs/COMPLIANCE-DECISIONS.md`, the entry `2026-09-26 · D20b AMENDED`): ONE exception by role — the desk's results view may state what its finished stakes came to (C7 360(E), 437). The Book card, "Today's net", fee withheld and the money tab's house chip stay struck.* A figure the bot's own controls need
      stays — today's loss against the daily loss cap, open exposure against the exposure cap, the kill switch's held amount
      if ruling 254's CAP_EXPOSURE figure is kept — written as "used X of Y". Struck from `03-design-spec.md` S1/S3 and PLAN
      §8: the lifetime and today "Book" card, "Today's net" as a results KPI, fee withheld, and the money tab's house chip on

@@ -747,7 +747,7 @@ async function AdminDeskAccountContent({
                           {r.note !== null && (
                             <tr className={`${NOTE_ROW}${r.anchored ? " bg-bg-overlay" : ""}`}>
                               <td colSpan={8} className="!pt-0">
-                                <div className="max-w-[80ch] whitespace-normal text-body-sm text-text-secondary">{r.note}</div>
+                                <div className="max-w-[min(80ch,calc(100vw_-_4rem))] whitespace-normal text-body-sm text-text-secondary">{r.note}</div>
                               </td>
                             </tr>
                           )}

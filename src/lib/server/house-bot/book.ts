@@ -27,6 +27,12 @@
  * through `house-console-read.ts`, never directly (ruling 340). `netTzs` and `feeWithheldTzs` are results, and
  * ruling 266 confines console money to usage against a configured limit — so a reader returning them would
  * invite the next page to "just use the book". `test:house-bot-console` 1.371 is the standing grep.
+ * ⚠️ AND THERE IS STILL NO RESULTS READER HERE, THOUGH THE CONSOLE NOW STATES ONE RESULT (D20b amended 2026-09-26
+ * under the owner's delegation; C7 ruling 437). The desk's Results tab derives its figure from `houseDayBooks`
+ * INSIDE the gate module (`houseResultsForConsole` in `house-console-read.ts`) as minus `realisedLossTzs` — the
+ * same settled figure both automatic loss stops act on — so this module gains no export, and the screen and the
+ * stop cannot disagree about a day. That one view is all the amendment permits; `netTzs`, `feeWithheldTzs` and
+ * every other results figure stay gone.
  */
 import { houseBookStore, type HouseBookRawRow, type HouseTx } from "@/lib/server/house-bot-dal";
 import { eatDayWindow } from "@/lib/house-bot/clock";
