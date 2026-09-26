@@ -6,6 +6,26 @@
 
 ---
 
+## 2026-09-26 · Cash paid to inviters stays OFF-platform and unrecorded; the card share icon carries no code
+
+**Authority.** Ali, 2026-09-26, answering two direct questions at the close of the invite's production
+verification (`docs/PLAYER-INVITE-UNPAID.md` §13).
+
+1. **Cash to inviters.** Asked *"should the cash you pay inviters outside 50pick be recorded in 50pick?"*,
+   with the note in the question itself that **paying for referrals is a regulated inducement even
+   off-platform**, Ali chose **"No, keep it off-platform."** 50pick therefore records no such payment:
+   `/admin/affiliate` counts friends joined and nothing else, and the platform itself still credits a
+   player referrer nothing (`inviteRewards` WITHDRAWN, § 2026-09-25 below). ⚠️ The regulatory status of
+   the owner's own cash payments is not changed by where they are recorded; that question sits with the
+   Gaming Board of Tanzania, and this entry records only that he was told.
+2. **Card share icon.** The compact share icon on market cards keeps carrying no `?ref=` (**"Keep as
+   is"**): wiring it would change AGENT commission attribution and put an account-minting write on the
+   busiest pages (`PLAYER-INVITE-UNPAID.md` §11).
+
+⛔ Do not add a cash-payment log, and do not wire the card icon, without a new dated decision here.
+
+---
+
 ## 2026-09-26 · RG Policy v2026-09-26 — §4 says only what the code does; the under-25 promise is BUILT, the late-night bullet CUT
 
 **Authority.** Ali, 2026-09-26, delegating: *"take any decision needed based on overall decisions I took ever and

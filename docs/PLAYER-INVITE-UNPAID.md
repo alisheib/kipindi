@@ -98,7 +98,8 @@ campaigns) and not `/admin/agents` (the paid agent programme; both untouched):
   agrees with the Payout ledger on the same page instead of contradicting it;
 - a compliance note stating what is live and what switching it on would make it.
 
-⛔ **Cash paid to an inviter outside the platform is recorded nowhere in 50pick.**
+⛔ **Cash paid to an inviter outside the platform is recorded nowhere in 50pick** — by Ali's decision
+of 2026-09-26 (`COMPLIANCE-DECISIONS.md`), not an omission. Do not build a cash log without a new one.
 
 ## 4 · Why not just set the commission to 0%
 
@@ -241,7 +242,11 @@ found real defects while being rewritten:
 longer calls `inviteViewerFor` inline. An anchor that cannot inject is a control that has silently
 stopped controlling.
 
-## 11 · The one gap left open, and why it is a decision rather than a bug
+## 11 · The card share icon carries no code — DECIDED, keep it that way
+
+✅ **Ali, 2026-09-26: keep as is.** Asked directly ("should the small share icon on market cards
+carry the player's invite code?"), with the two costs below in front of him. Do not wire it without
+a new decision from him.
 
 The **compact share icon on market CARDS** (`market-card.tsx` → `<ShareButton compact>`) passes no
 `refCode`. It never has, for any programme — the paid agent's card shares were equally uncounted.
@@ -332,7 +337,8 @@ was "at least one bettable market exists" on an unseeded in-memory board, unrela
 - The live board never reaches `networkidle`, and a fresh browser gets the first-visit primer over
   the rail; both drives handle it (see their headers).
 
-**Open — Ali's decisions, not defects:**
-1. §11 — should the small share icon on market **cards** carry the player's `?ref=`?
-2. Should the cash Ali pays inviters **off-platform** be recorded in 50pick (today it is recorded
-   nowhere, §3)?
+**Ali's decisions, asked 2026-09-26 and answered the same day:**
+1. §11 — the small share icon on market **cards** stays WITHOUT `?ref=` (**keep as is**).
+2. The cash Ali pays inviters **off-platform** stays **off-platform and unrecorded** in 50pick (§3).
+   ⚠️ He was told, when choosing, that paying for referrals is a regulated inducement whatever the
+   channel; recorded in `COMPLIANCE-DECISIONS.md` § 2026-09-26.
