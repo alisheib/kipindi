@@ -2255,16 +2255,25 @@ export const HOUSE_HOOK_MODULES = ["src/lib/server/house-bot/holder-hook", "src/
  * and the viewer pin and the own-route pin below still read arguments 0 and 1. A door that grows an argument gets
  * its pin MOVED TO THE NEW SHAPE; it never gets the pin dropped. */
 /* ⭐ 2026-09-26 · C7 437 · `houseResultsForConsole` — the desk's Results tab, and the ONE reader on the console that
- * hands a page a result (D20b amended for that one view). It is pinned at **2**, the roster's shape: the viewer and
+ * hands a page a result (D20b amended for that one view). ⚠️ SUPERSEDED AT STEP 9, KEPT AS THE RECORD (the entry below
+ * says what moved and why): it was pinned at **2**, the roster's shape: the viewer and
  * the route, and nothing else — seven fixed days and no query, so there is no third argument a caller could use to
  * widen the window. ⛔ Its route belt refuses every route but the desk's own BEFORE the audience question, which is
  * why the own-route pin below matters more here than anywhere: the audience answers a non-desk `/admin` route by
  * that route's domain, and `/admin/house` would admit the accounting roles. */
+/* ⭐ 2026-09-26 · STEP 9 (every desk table sorts; the roster pages) · `houseRosterForConsole` AND `houseResultsForConsole`
+ * MOVE FROM **2** TO **3** — RE-ANCHORED, NEVER RELAXED, the account page's own precedent above. Each now takes the
+ * REQUEST's own query string, which the door validates in the ONE parse every desk reader shares: the roster reads its
+ * sort and its page from it, the Results tab its two tables' SORT and nothing else. ⛔ The Results window stays FIXED in
+ * code (`RESULT_DAYS`, walked back from the core's own day): no part of the address reaches a read, which is what the
+ * 2-argument pin used to hold by construction and what `test:house-bot-console`'s step-9 cases now hold by measurement
+ * (a window word on the Results address changes nothing). The arity pin still reddens a call with the query dropped or
+ * with a fourth argument — 0.260.c5 plants both on the desk page's own call. */
 /* ⭐ 2026-09-26 · RESUME-HERE §0c decision 4 · `houseAccountListForConsole` — the find step's list of every account,
  * pinned at **3**: the viewer, the route, and the REQUEST's own query string, which the door validates part by part.
  * ⛔ Its route belt refuses any route outside the desk's own section before the audience question, for the Results
  * tab's reason: a row's reason says which accounts are on the desk, and a non-desk route is answered by its own domain. */
-export const CONSOLE_GATES: Readonly<Record<string, number>> = { houseStakeForConsole: 3, houseBotLabelsForConsole: 3, houseConsoleAudience: 2, houseAuditForConsole: 3, houseRosterForConsole: 2, houseUsageForConsole: 3, houseLimitsSaveForConsole: 3, houseRulesSaveForConsole: 3, houseDetailForConsole: 4, houseFeedForConsole: 3, houseHistoryForConsole: 3, houseCancelIntentForConsole: 3, houseSwitchForConsole: 3, houseAccountActForConsole: 3, houseAccountsForConsole: 3, houseAccountListForConsole: 3, houseCheckForConsole: 3, houseDesignateForConsole: 3, houseWhyIdleForConsole: 3, houseResultsForConsole: 2 };
+export const CONSOLE_GATES: Readonly<Record<string, number>> = { houseStakeForConsole: 3, houseBotLabelsForConsole: 3, houseConsoleAudience: 2, houseAuditForConsole: 3, houseRosterForConsole: 3, houseUsageForConsole: 3, houseLimitsSaveForConsole: 3, houseRulesSaveForConsole: 3, houseDetailForConsole: 4, houseFeedForConsole: 3, houseHistoryForConsole: 3, houseCancelIntentForConsole: 3, houseSwitchForConsole: 3, houseAccountActForConsole: 3, houseAccountsForConsole: 3, houseAccountListForConsole: 3, houseCheckForConsole: 3, houseDesignateForConsole: 3, houseWhyIdleForConsole: 3, houseResultsForConsole: 3 };
 /** A console file: a page, layout, route, action or component the console serves — everything under the three admin folders. */
 export const inConsolePopulation = (rel: string) =>
   rel.startsWith("src/app/admin/") || rel.startsWith("src/app/api/admin/") || rel.startsWith("src/components/admin/");
@@ -2663,6 +2672,16 @@ export const CONSOLE_GATE_NON_READERS = ["ConsoleAuditRead", "ConsoleDeskShell",
      reaches no `db.`, names no store member and decides no audience, which is what 0.512b checks rather than takes on
      trust. ⛔ The READER is `houseAccountListForConsole`, with its own `CONSOLE_GATES` entry above at arity THREE. */
   "CONSOLE_LIST_COPY", "ConsoleAccountListQuery", "ConsoleAccountListRow", "ConsoleAccountListView",
+  /* ⭐ 2026-09-27 · build step 9 · every desk table sorts. Four TYPES (a table's name, a column's key, one header's
+     token-and-word, the view a panel hands its `SortTh` headers) and three VALUES: `CONSOLE_SORT_LABEL`, every
+     sortable header's word; `CONSOLE_SORT_TABLES`, each table's columns, address prefix and default; and
+     `consoleSortToken`, a column's header word slugged into its address token. All three are copy and arithmetic:
+     none awaits, reaches `db.`, names a store member or decides an audience, which is what 0.512b checks rather than
+     takes on trust. ⛔ The READERS that parse and apply a sort are the ones already gated — `houseRosterForConsole`
+     and `houseResultsForConsole` (arity THREE since this step), `houseDetailForConsole`, `houseFeedForConsole` and
+     `houseHistoryForConsole` — each with its `CONSOLE_GATES` entry above. */
+  "CONSOLE_SORT_LABEL", "CONSOLE_SORT_TABLES", "ConsoleSortColumn", "ConsoleSortKey", "ConsoleSortTable",
+  "ConsoleSortView", "consoleSortToken",
   "isHouseConsoleRoute", "unsetCaptionFor"] as const;
 
 /**
@@ -3448,18 +3467,23 @@ export async function houseStakeForConsole(viewerUserId: string | null, route: s
     {
       const DESK = "src/app/admin/desk/page.tsx";
       const desk = code5(DESK);
-      const RESULTS_CALL = "houseResultsForConsole(session?.userId ?? null, \"/admin/desk\")";
+      /* ⭐ STEP 9 · THE CALL TAKES THE ADDRESS NOW (arity 3, the sort only — see CONSOLE_GATES), so the arity plant is
+         the query DROPPED and, separately, a FOURTH argument; the route and viewer plants keep the address in place so
+         each reports only its own defect. */
+      const RESULTS_CALL = "houseResultsForConsole(session?.userId ?? null, \"/admin/desk\", sp)";
       const resultsPlants = {
         asWritten: run(DESK, desk),
-        thirdArg: run(DESK, plant(desk, RESULTS_CALL, "houseResultsForConsole(session?.userId ?? null, \"/admin/desk\", sp)")),
-        otherRoute: run(DESK, plant(desk, RESULTS_CALL, "houseResultsForConsole(session?.userId ?? null, \"/admin/house\")")),
-        literalViewer: run(DESK, plant(desk, RESULTS_CALL, "houseResultsForConsole(\"usr_admin\", \"/admin/desk\")")),
+        queryDropped: run(DESK, plant(desk, RESULTS_CALL, "houseResultsForConsole(session?.userId ?? null, \"/admin/desk\")")),
+        thirdArg: run(DESK, plant(desk, RESULTS_CALL, "houseResultsForConsole(session?.userId ?? null, \"/admin/desk\", sp, sp)")),
+        otherRoute: run(DESK, plant(desk, RESULTS_CALL, "houseResultsForConsole(session?.userId ?? null, \"/admin/house\", sp)")),
+        literalViewer: run(DESK, plant(desk, RESULTS_CALL, "houseResultsForConsole(\"usr_admin\", \"/admin/desk\", sp)")),
         callsWithout: consoleHouseReadProblems(withFile(DESK, plant(desk, `await ${RESULTS_CALL}`, "null")), roles).consoleGateCalls.houseResultsForConsole,
         callsAsWritten: r.consoleGateCalls.houseResultsForConsole,
       };
-      ok("0.260.c5 · CONTROL · C7 437 · on the desk page's OWN Results call, a third argument, another section's route and a literal viewer are each reported, and the call taken away (the import left in place) measures 0 calls where the page as written measures at least 1 — so 0.260.1's arity, own-route and floor clauses for houseResultsForConsole can each fail",
+      ok("0.260.c5 · CONTROL · C7 437 · on the desk page's OWN Results call, the address dropped, a fourth argument, another section's route and a literal viewer are each reported, and the call taken away (the import left in place) measures 0 calls where the page as written measures at least 1 — so 0.260.1's arity, own-route and floor clauses for houseResultsForConsole can each fail",
         resultsPlants.asWritten.length === 0
-          && resultsPlants.thirdArg.some((p) => p.includes("houseResultsForConsole takes 3 arguments, not 2"))
+          && resultsPlants.queryDropped.some((p) => p.includes("houseResultsForConsole takes 2 arguments, not 3"))
+          && resultsPlants.thirdArg.some((p) => p.includes("houseResultsForConsole takes 4 arguments, not 3"))
           && resultsPlants.otherRoute.some((p) => p.includes("asks houseResultsForConsole about /admin/house, not this file's own console route /admin/desk"))
           && resultsPlants.literalViewer.some((p) => p.includes("hands houseResultsForConsole a viewer that is not the signed-in session's id: \"usr_admin\""))
           && resultsPlants.callsWithout === 0 && resultsPlants.callsAsWritten >= 1,

@@ -304,7 +304,13 @@ await runTwoStores({
    * ⭐ 972/706 → 1007/728 (2026-09-26), the counts that run PRINTED on the integrated tree: build step 6 (replan ruling
    * 543) — §2i, an audit that cannot be signed no longer reports a landed write as failed, on both stores except the
    * writer source law 2.543.8/8c — and build step 10, §4c on the memory child: a pressed link says it is loading (the
-   * mark inside each kit link and on the date filter's Custom chip, its shape, the CSS — each with a control). */
-  minPass: { memory: 1007, postgres: 728 },
+   * mark inside each kit link and on the date filter's Custom chip, its shape, the CSS — each with a control).
+   * ⭐ 972/706 → 1028/760 (2026-09-27), the counts that run PRINTED: build step 9, every desk table sorts and none can
+   * grow past a page — §2k on both stores (every key and direction against orders computed from stored facts, ties,
+   * missing-last, the anchored row, per-row figures, validation, links, the roster pager) and 1.318pg, the Postgres
+   * child's own roll-call over the first `console-pg` declarations; on the memory child, the source pins that every
+   * sortable header is `SortTh` fed from the reader. (Measured on its own tree, at `c3c3b4a5` plus step 9.)
+   * ⭐ → 1063/782 (2026-09-27), the counts the INTEGRATED tree printed — steps 4, 6, 7, 9 and 10 together. */
+  minPass: { memory: 1063, postgres: 782 },
   dbPrefix: "hb_console",
 });

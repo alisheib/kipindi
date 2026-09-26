@@ -39,6 +39,7 @@ import { AdminPageHead, AdminKpi, AdminCard, AdminLoadError } from "@/components
 import { AdminBody, KpiGrid } from "@/components/admin/admin-body";
 import { AdminTableEmpty } from "@/components/admin/admin-table-empty";
 import { AdminPagination, buildBaseHref } from "@/components/admin/admin-pagination";
+import { SortTh } from "@/components/admin/admin-sort";
 import { Button } from "@/components/ui/button";
 import { Callout } from "@/components/ui/callout";
 import { Chip } from "@/components/ui/chip";
@@ -275,11 +276,11 @@ async function AdminDeskContent({ searchParams }: DeskProps) {
    * count beside the switch cannot disagree with the limits panel one click away. Calling both would put TWO control
    * reads in one render, and two reads of one question can disagree inside a render (346's own defect, and the
    * reason `countLive` is banned here). */
-  const rosterView = tab === "roster" ? await houseRosterForConsole(session?.userId ?? null, "/admin/desk") : null;
+  const rosterView = tab === "roster" ? await houseRosterForConsole(session?.userId ?? null, "/admin/desk", sp) : null;
   const feedView = tab === "activity" ? await houseFeedForConsole(session?.userId ?? null, "/admin/desk", sp) : null;
   const limitsView = tab === "limits" ? await houseUsageForConsole(session?.userId ?? null, "/admin/desk", { houseBotId: null }) : null;
   const historyView = tab === "history" ? await houseHistoryForConsole(session?.userId ?? null, "/admin/desk", sp) : null;
-  const resultsView = tab === "results" ? await houseResultsForConsole(session?.userId ?? null, "/admin/desk") : null;
+  const resultsView = tab === "results" ? await houseResultsForConsole(session?.userId ?? null, "/admin/desk", sp) : null;
   const view: ConsoleDeskShell | null = rosterView ?? feedView ?? limitsView ?? historyView ?? resultsView;
   if (!view) return null;
 
@@ -537,6 +538,13 @@ async function AdminDeskContent({ searchParams }: DeskProps) {
             opener does not take this exact form reads as ABOVE the rail, which is the strongest possible answer and
             would let the limits anchor pass while sitting on any tab at all. */}
         {tab === "roster" && (<>
+          {/* ⭐ STEP 9 · THE ROSTER SORTS AND PAGES, AND IT IS GUARDED ONCE INSIDE ITS OWN GROUP — the activity panel's
+              shape, for the activity panel's reason (433(e)): the tab test stays the group's only condition. */}
+          {rosterView !== null && (<>
+          {/* 387/432(j) · an address that was not taken at its word SAYS SO, naming each part it dropped. */}
+          {rosterView.queryRefusal && (
+            <Callout tone="warning" title={CONSOLE_REFUSAL_TITLE}>{rosterView.queryRefusal}</Callout>
+          )}
           <AdminCard padding="p-0">
             {rosterRows === null ? (
               /* 355 · a FAILED read is never an empty state and never a zero. */
@@ -552,7 +560,7 @@ async function AdminDeskContent({ searchParams }: DeskProps) {
                       {/* ⛔ A FLOOR ON THE SUBJECT COLUMN, MEASURED. `.admin-tbl` is `width: 100%`, so without it the
                           account column absorbed the whole shortfall and laid out at 93px at 360 — the label and the
                           handle crushed together, which is the G-4/G-5 defect the kit documents one file over. */}
-                      <th scope="col" className="text-left p-3 min-w-[150px]">Account</th>
+                      <SortTh field={rosterView.rosterSort.columns.account.field} label={rosterView.rosterSort.columns.account.label} current={rosterView.rosterSort.current} dir={rosterView.rosterSort.dir} sp={rosterView.rosterParams} baseHref={CONSOLE_ROUTE} prefix={rosterView.rosterSort.prefix} className="p-3 min-w-[150px]" />
                       {/* ⛔ `whitespace-normal`, AND IT IS THE FIX FOR A CLIPPED MONEY FIGURE (ruling 432(o)).
                           `.admin-tbl th` is `white-space: nowrap`, so "LOSS TODAY (PROJECTED)" — 22 characters of
                           tracked mono — set this column's minimum at ~210px, and because the cells are right-aligned
@@ -570,10 +578,10 @@ async function AdminDeskContent({ searchParams }: DeskProps) {
                           other headers.
                           ⛔ Ruling 373's "the basis is NAMED IN THE HEADER" is KEPT — "(projected)" still reads,
                           on the second line. */}
-                      <th scope="col" className="text-right p-3 !whitespace-normal">Loss today (projected)</th>
+                      <SortTh field={rosterView.rosterSort.columns.loss.field} label={rosterView.rosterSort.columns.loss.label} current={rosterView.rosterSort.current} dir={rosterView.rosterSort.dir} sp={rosterView.rosterParams} baseHref={CONSOLE_ROUTE} prefix={rosterView.rosterSort.prefix} align="right" className="p-3 !whitespace-normal" />
                       {/* ⛔ "Open exposure", not "Exposure": the band's tile above measures the SAME figure and calls
                           it that, and the one thing a reader uses to tie a band to a column is the name (432(o)). */}
-                      <th scope="col" className="text-right p-3 !whitespace-normal">Open exposure</th>
+                      <SortTh field={rosterView.rosterSort.columns.exposure.field} label={rosterView.rosterSort.columns.exposure.label} current={rosterView.rosterSort.current} dir={rosterView.rosterSort.dir} sp={rosterView.rosterParams} baseHref={CONSOLE_ROUTE} prefix={rosterView.rosterSort.prefix} align="right" className="p-3 !whitespace-normal" />
                       {/* ⛔ A FLOOR ON THE STATUS COLUMN, MEASURED (ruling 432(o)). Read off the 1280 tile: the
                           AUTO-PAUSED chip rendered as a TWO-LINE pill — "AUTO-" / "PAUSED", a ~34px box — beside
                           22px single-line ACTIVE and PAUSED pills in the same column, at 360, 640, 768, 1024 AND
@@ -583,16 +591,16 @@ async function AdminDeskContent({ searchParams }: DeskProps) {
                           is the chip itself, so a nowrap parent does not reach it. 96px + the cell's 32px of
                           padding = 128. ⛔ This is a COLUMN floor, never the TABLE's (373): at 360 the table is
                           already wider than its card, so columns 1–3 keep their own minimums and nothing moves. */}
-                      <th scope="col" className="text-left p-3 min-w-[128px]">Status</th>
+                      <SortTh field={rosterView.rosterSort.columns.status.field} label={rosterView.rosterSort.columns.status.label} current={rosterView.rosterSort.current} dir={rosterView.rosterSort.dir} sp={rosterView.rosterParams} baseHref={CONSOLE_ROUTE} prefix={rosterView.rosterSort.prefix} className="p-3 min-w-[128px]" />
                       {/* ⛔ RIGHT-ALIGNED like the two money usages beside it: same grammar, same shape, so three
                           adjacent usage figures read on ONE axis instead of two (432(o)). */}
-                      <th scope="col" className="text-right p-3 !whitespace-normal">Bets today</th>
+                      <SortTh field={rosterView.rosterSort.columns.bets.field} label={rosterView.rosterSort.columns.bets.label} current={rosterView.rosterSort.current} dir={rosterView.rosterSort.dir} sp={rosterView.rosterParams} baseHref={CONSOLE_ROUTE} prefix={rosterView.rosterSort.prefix} align="right" className="p-3 !whitespace-normal" />
                       {/* ⭐ 432(g) · "LAST BET" ARRIVED WITH ITS READER. It needs a last-placement instant, and the
                           only reader that has one is `botRateUsage` — ruling 351's one new seam member, added at
                           this step because the account page's two count rows need it too. Left-aligned and not
                           `tabular`: it is a phrase, not a figure, and putting it on the money axis would read as a
                           third usage column. */}
-                      <th scope="col" className="text-left p-3">Last bet</th>
+                      <SortTh field={rosterView.rosterSort.columns.lastBet.field} label={rosterView.rosterSort.columns.lastBet.label} current={rosterView.rosterSort.current} dir={rosterView.rosterSort.dir} sp={rosterView.rosterParams} baseHref={CONSOLE_ROUTE} prefix={rosterView.rosterSort.prefix} className="p-3" />
                       <th scope="col" className="text-left p-3">Products</th>
                       {/* ⭐ THE WAY OUT ARRIVED WITH THE PAGE IT OPENS (ruling 432(h)). Until `/admin/desk/[id]`
                           had a page every row's "open →" answered the app-root 404 — the first control an officer
@@ -668,7 +676,21 @@ async function AdminDeskContent({ searchParams }: DeskProps) {
                 </table>
               </ScrollX>
             )}
+            {/* ⭐ STEP 9 · THE KIT PAGER, TWENTY TO A PAGE, OVER THE READER'S COUNT (344) — `rpage`, the roster's own word.
+                At the configured ceiling of twenty it draws nothing; it is here so the table can never outgrow a page. */}
+            {rosterRows !== null && rosterView.rosterTotal !== null && (
+              <div className="p-4 pt-0">
+                <AdminPagination
+                  total={rosterView.rosterTotal}
+                  page={rosterView.rosterPage}
+                  perPage={rosterView.rosterPerPage}
+                  param="rpage"
+                  baseHref={buildBaseHref(CONSOLE_ROUTE, rosterView.rosterParams, "rpage")}
+                />
+              </div>
+            )}
           </AdminCard>
+          </>)}
         </>)}
 
         {tab === "activity" && (<>
@@ -728,9 +750,9 @@ async function AdminDeskContent({ searchParams }: DeskProps) {
                             column absorbs the whole shortfall at 360 and the label and the handle crush together.
                             ⭐ LOWERED AT PHONE WIDTH ONLY so the second money answer reaches the strip; the label
                             wraps to two lines there, which it already does for every long account name. */}
-                        <th scope="col" className="text-left p-3 min-w-[104px] sm:min-w-[150px]">Account</th>
+                        <SortTh field={feedView.feedSort.columns.account.field} label={feedView.feedSort.columns.account.label} current={feedView.feedSort.current} dir={feedView.feedSort.dir} sp={feedView.feedParams} baseHref={CONSOLE_ROUTE} prefix={feedView.feedSort.prefix} className="p-3 min-w-[104px] sm:min-w-[150px]" />
                         <th scope="col" className="text-right p-3 !whitespace-normal">Opening</th>
-                        <th scope="col" className="text-right p-3 !whitespace-normal">Stake</th>
+                        <SortTh field={feedView.feedSort.columns.stake.field} label={feedView.feedSort.columns.stake.label} current={feedView.feedSort.current} dir={feedView.feedSort.dir} sp={feedView.feedParams} baseHref={CONSOLE_ROUTE} prefix={feedView.feedSort.prefix} align="right" className="p-3 !whitespace-normal" />
                         {/* ⭐ THE DAY'S BUDGET, FALLING (owner, 2026-09-24) — 373's named fallback: the ceiling is
                             in the header so the cell carries ONE figure. ⛔ ON THE DESK-WIDE TABLE EACH ROW COUNTS
                             AGAINST ITS OWN ACCOUNT'S CAP, which is why the reader looks both up per account. */}
@@ -740,11 +762,11 @@ async function AdminDeskContent({ searchParams }: DeskProps) {
                             paints a STATE, the roster still carries no balance, and no player surface carries it. */}
                         <th scope="col" className="text-right p-3 !whitespace-normal">Closing</th>
                         <th scope="col" className="text-right p-3 !whitespace-normal">Left today</th>
-                        <th scope="col" className="text-left p-3 min-w-[128px]">When (EAT)</th>
+                        <SortTh field={feedView.feedSort.columns.when.field} label={feedView.feedSort.columns.when.label} current={feedView.feedSort.current} dir={feedView.feedSort.dir} sp={feedView.feedParams} baseHref={CONSOLE_ROUTE} prefix={feedView.feedSort.prefix} className="p-3 min-w-[128px]" />
                         {/* ⭐ THE STAKE'S TYPE IS THIS CELL'S SECOND LINE, IN PLAIN WORDS (2026-09-26) — it had a
                             column of its own until the ledger had to fit 1280. The chip says how the stake ended and
                             the line under it says what kind of stake it was: one chip, never two (`8018653b`). */}
-                        <th scope="col" className="text-left p-3 min-w-[110px]">Outcome</th>
+                        <SortTh field={feedView.feedSort.columns.outcome.field} label={feedView.feedSort.columns.outcome.label} current={feedView.feedSort.current} dir={feedView.feedSort.dir} sp={feedView.feedParams} baseHref={CONSOLE_ROUTE} prefix={feedView.feedSort.prefix} className="p-3 min-w-[110px]" />
                         {/* ⛔ BESIDE PRODUCT, NOT FIRST — the account page says why in full. The
                             desk-wide table leads with Account and Stake, and neither may leave the 360 strip. */}
                         <th scope="col" className="text-left p-3">Round</th>
@@ -1045,8 +1067,8 @@ async function AdminDeskContent({ searchParams }: DeskProps) {
                   <table className="admin-tbl">
                     <thead className="font-mono text-micro eyebrow uppercase text-text-tertiary border-b border-border-subtle bg-bg-sunken/50">
                       <tr>
-                        <th scope="col" className="text-left p-3 min-w-[150px]">Account</th>
-                        <th scope="col" className="text-left p-3 min-w-[128px]">When (EAT)</th>
+                        <SortTh field={historyView.historySort.columns.account.field} label={historyView.historySort.columns.account.label} current={historyView.historySort.current} dir={historyView.historySort.dir} sp={historyView.historyParams} baseHref={CONSOLE_ROUTE} prefix={historyView.historySort.prefix} className="p-3 min-w-[150px]" />
+                        <SortTh field={historyView.historySort.columns.when.field} label={historyView.historySort.columns.when.label} current={historyView.historySort.current} dir={historyView.historySort.dir} sp={historyView.historyParams} baseHref={CONSOLE_ROUTE} prefix={historyView.historySort.prefix} className="p-3 min-w-[128px]" />
                         <th scope="col" className="text-left p-3 !whitespace-normal">Event</th>
                         <th scope="col" className="text-left p-3">Change</th>
                         <th scope="col" className="text-left p-3 !whitespace-normal">Who</th>
@@ -1129,6 +1151,10 @@ async function AdminDeskContent({ searchParams }: DeskProps) {
               may wrap between the word and the figure — never inside the figure (409, 432(b)).
               ⭐ BELOW `sm` EACH TABLE FOLDS ITS LAST COLUMN UNDER ITS FIRST, from the same painted field: one view
               model, two layouts, so the phone and the wide screen cannot say different things about one day. */}
+          {/* 387/432(j) · an address that was not taken at its word SAYS SO — a sort word that is no column is named here. */}
+          {resultsView.queryRefusal && (
+            <Callout tone="warning" title={CONSOLE_REFUSAL_TITLE}>{resultsView.queryRefusal}</Callout>
+          )}
           {/* ⭐ SIDE BY SIDE FROM 1280, STACKED BELOW IT (measured 2026-09-26): at 1024 two cards leave each table a 360px
               strip, and By day needed 390 — so below 1280 each card takes the whole column. The compact gutter is the
               ledger's own; with it, and with a day, a state and a result that never break mid-phrase, both tables fit
@@ -1139,10 +1165,10 @@ async function AdminDeskContent({ searchParams }: DeskProps) {
                 <table className="admin-tbl [&_td]:!px-1.5 [&_th]:!px-1.5">
                   <thead className="font-mono text-micro eyebrow uppercase text-text-tertiary border-b border-border-subtle bg-bg-sunken/50">
                     <tr>
-                      <th scope="col" className="text-left p-3">Day (EAT)</th>
-                      <th scope="col" className="text-right p-3 !whitespace-normal">Result</th>
-                      <th scope="col" className="text-right p-3 !whitespace-normal">Stakes placed</th>
-                      <th scope="col" className="max-sm:hidden text-left p-3">State</th>
+                      <SortTh field={resultsView.daySort.columns.day.field} label={resultsView.daySort.columns.day.label} current={resultsView.daySort.current} dir={resultsView.daySort.dir} sp={resultsView.resultsParams} baseHref={CONSOLE_ROUTE} prefix={resultsView.daySort.prefix} className="p-3" />
+                      <SortTh field={resultsView.daySort.columns.result.field} label={resultsView.daySort.columns.result.label} current={resultsView.daySort.current} dir={resultsView.daySort.dir} sp={resultsView.resultsParams} baseHref={CONSOLE_ROUTE} prefix={resultsView.daySort.prefix} align="right" className="p-3 !whitespace-normal" />
+                      <SortTh field={resultsView.daySort.columns.stakes.field} label={resultsView.daySort.columns.stakes.label} current={resultsView.daySort.current} dir={resultsView.daySort.dir} sp={resultsView.resultsParams} baseHref={CONSOLE_ROUTE} prefix={resultsView.daySort.prefix} align="right" className="p-3 !whitespace-normal" />
+                      <SortTh field={resultsView.daySort.columns.state.field} label={resultsView.daySort.columns.state.label} current={resultsView.daySort.current} dir={resultsView.daySort.dir} sp={resultsView.resultsParams} baseHref={CONSOLE_ROUTE} prefix={resultsView.daySort.prefix} className="max-sm:hidden p-3" />
                     </tr>
                   </thead>
                   <tbody>
@@ -1171,9 +1197,9 @@ async function AdminDeskContent({ searchParams }: DeskProps) {
                   <table className="admin-tbl [&_td]:!px-1.5 [&_th]:!px-1.5">
                     <thead className="font-mono text-micro eyebrow uppercase text-text-tertiary border-b border-border-subtle bg-bg-sunken/50">
                       <tr>
-                        <th scope="col" className="text-left p-3 min-w-[104px] sm:min-w-[150px]">Account</th>
-                        <th scope="col" className="text-right p-3 !whitespace-normal">Today</th>
-                        <th scope="col" className="max-sm:hidden text-right p-3 !whitespace-normal">Last 7 days</th>
+                        <SortTh field={resultsView.acctSort.columns.account.field} label={resultsView.acctSort.columns.account.label} current={resultsView.acctSort.current} dir={resultsView.acctSort.dir} sp={resultsView.resultsParams} baseHref={CONSOLE_ROUTE} prefix={resultsView.acctSort.prefix} className="p-3 min-w-[104px] sm:min-w-[150px]" />
+                        <SortTh field={resultsView.acctSort.columns.today.field} label={resultsView.acctSort.columns.today.label} current={resultsView.acctSort.current} dir={resultsView.acctSort.dir} sp={resultsView.resultsParams} baseHref={CONSOLE_ROUTE} prefix={resultsView.acctSort.prefix} align="right" className="p-3 !whitespace-normal" />
+                        <SortTh field={resultsView.acctSort.columns.week.field} label={resultsView.acctSort.columns.week.label} current={resultsView.acctSort.current} dir={resultsView.acctSort.dir} sp={resultsView.resultsParams} baseHref={CONSOLE_ROUTE} prefix={resultsView.acctSort.prefix} align="right" className="max-sm:hidden p-3 !whitespace-normal" />
                       </tr>
                     </thead>
                     <tbody>

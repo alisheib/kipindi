@@ -45,6 +45,7 @@ export type DeclaredMutation = { readonly name: string; readonly expect: string;
  */
 export const ROLL_CALL_SITES: Readonly<Record<string, string>> = {
   "console-mem": "scripts/lib/house-bot-console-cases.mts · 1.318",
+  "console-pg": "scripts/lib/house-bot-console-cases.mts · 1.318pg (the Postgres child's own roll-call, over the labels THAT child printed — step 9 declared the key's first three entries, 2026-09-27)",
   "engine-mem": "scripts/lib/house-bot-engine-cases.mts · 1.505",
   "engine-pg": "scripts/lib/house-bot-engine-cases.mts · 1.505",
   "money-mem": "scripts/lib/house-bot-money-cases.mts · 1.505",

@@ -173,6 +173,21 @@ const STATES: Array<[string, Any]> = [];
 
 const w = await loadWorld();
 const GATEM: Any = await import("../../src/lib/server/house-console-read.ts");
+/**
+ * ⭐ STEP 9 · THE ROSTER PAGES AT TWENTY (2026-09-27), and this suite's world outgrows twenty accounts — nearly every
+ * case designates its own. A case that FINDS one account's row, or scans every row's painted words for §3, reads EVERY
+ * page through the door itself (`rpage`) and gets page 1's view carrying every page's rows, so no row can hide on page 2
+ * of a find or a scan. The page count is the reader's own (`rosterTotal` / `rosterPerPage`), never assumed here; a
+ * refused or failed read is handed back untouched.
+ */
+const rosterEvery = async (viewer: string): Promise<Any> => {
+  const first: Any = await GATEM.houseRosterForConsole(viewer, "/admin/desk");
+  if (first == null || !Array.isArray(first.rows) || typeof first.rosterTotal !== "number") return first;
+  const pages = Math.max(1, Math.ceil(first.rosterTotal / first.rosterPerPage));
+  const rows: Any[] = [...first.rows];
+  for (let n = 2; n <= pages; n++) rows.push(...(((await GATEM.houseRosterForConsole(viewer, "/admin/desk", { rpage: String(n) })) as Any)?.rows ?? []));
+  return { ...first, rows };
+};
 const ROLES: Any = await import("../../src/lib/server/roles.ts");
 const RBAC: Any = await import("../../src/lib/server/rbac.ts");
 /** ⭐ C7 step 6 · the picker's own bucket (387(e)) — named here because `rateCheckAsync` FAILS OPEN on a key it
@@ -228,6 +243,28 @@ const panelOf = (tab: string): string => {
   const close = pageCode.indexOf("\n        </>)}", open);
   return close < 0 ? pageCode.slice(open) : pageCode.slice(open, close);
 };
+/**
+ * ⭐ STEP 9 · A TABLE'S HEADER ROW, READ OFF THE PAGE'S SOURCE — the plain `<th>` and the kit's `<SortTh>` alike, in
+ * source order. Every sortable header became `SortTh` at step 9: its WORD is the reader's (`CONSOLE_SORT_LABEL`, reached
+ * through the view's `…Sort.columns.<key>.label`) and its RENDERED class is `text-left`/`text-right` from `align` in
+ * front of its own `className` — exactly what `SortTh` renders. So every pin that read a header's word or class reads
+ * the SAME fact it read before, resolved the way the render resolves it; the pins are re-pointed, not relaxed.
+ * ⛔ A literal `label="…"` is read AS WRITTEN, so a word typed at a call site is seen for what it is.
+ */
+const HEADER_RE = /<SortTh\b[^>]*\/>|<th\s[^>]*\/>|<th\s[^>]*>[\s\S]*?<\/th>/g;
+type Head = { label: string; cls: string; sortable: boolean; src: string };
+const headOf = (src: string): Head => {
+  if (src.startsWith("<SortTh")) {
+    const key = /\blabel=\{[\w.]+\.columns\.(\w+)\.label\}/.exec(src)?.[1];
+    const literal = /\blabel="([^"]*)"/.exec(src)?.[1];
+    const label = literal ?? (key ? (GATEM.CONSOLE_SORT_LABEL as Record<string, string>)[key] ?? `?${key}` : "?");
+    const cls = `${/\balign="right"/.test(src) ? "text-right" : "text-left"} ${/\bclassName="([^"]*)"/.exec(src)?.[1] ?? ""}`.trim();
+    return { label, cls, sortable: true, src };
+  }
+  const inner = src.endsWith("/>") ? "" : src.slice(src.indexOf(">") + 1, src.lastIndexOf("</th>"));
+  return { label: inner.replace(/\{[^{}]*\}/g, " ").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim(), cls: /\bclassName="([^"]*)"/.exec(src)?.[1] ?? "", sortable: false, src };
+};
+const theadHeaders = (src: string): Head[] => [...src.matchAll(HEADER_RE)].map((m) => headOf(m[0]));
 
 try {
 section("§1 · the audience, decided on the STORED role, through the gate");
@@ -5097,7 +5134,8 @@ try {
         && /COUNTER/.test('const KINDS = ["COUNTER"];'), "");
     /* ⛔ THE MONEY COLUMN IS SECOND, IT IS THE KIT'S OWN MONEY SHAPE, AND THE TABLE TAKES NO MIN-WIDTH. */
     const feedThead = /\{tab === "activity"[\s\S]*?<\/thead>/.exec(detail)?.[0] ?? "";
-    const feedHeaders = [...feedThead.matchAll(/<th\s[^>]*>([^<]*)</g)].map((m) => m[1].trim());
+    /* ⭐ STEP 9 · read through `theadHeaders`: When, Stake and Outcome are the kit's `SortTh` now, their words the reader's. */
+    const feedHeaders = theadHeaders(feedThead).map((h) => h.label);
     /* ⛔ THE ACTIVITY PANEL'S OWN SLICE, not the whole file — the page paints four tables and the targets and
        history ones have their own, different column counts. Measured: an unscoped read returned spans [9,9,3,4]
        and the pin failed for the right reason on the wrong population. */
@@ -5146,7 +5184,7 @@ try {
        wrap sets its column's minimum at its own width and, the cells being right-aligned, pins the figure to the
        far edge: that is the measured 432(o) defect, and more money columns is exactly the pressure that invites
        it. ⛔ DERIVED: every right-aligned header in this panel must be allowed to wrap. */
-    const moneyHeaders = [...feedThead.matchAll(/<th\s[^>]*className="([^"]*text-right[^"]*)"[^>]*>/g)].map((m) => m[1]);
+    const moneyHeaders = theadHeaders(feedThead).filter((h) => /\btext-right\b/.test(h.cls)).map((h) => h.cls);
     ok("1.373 · 432(o) · every money header on the ACTIVITY table may WRAP — a nowrap header sets the column's minimum and pins the right-aligned figure to the card's edge",
       moneyHeaders.length >= 3 && moneyHeaders.every((c) => /!whitespace-normal/.test(c)),
       j({ moneyHeaders: moneyHeaders.length }));
@@ -5187,7 +5225,7 @@ try {
     ok("1.373 · CONTROL · the span scan really would report a stale number — the defect invisible to every gate, because a spanning cell renders as one cell whatever it says",
       spansOf(feedPanel.replace(/colSpan=\{\d+\}/, "colSpan={3}")).some((n) => n !== feedHeaders.length), "");
     const histThead = /\{tab === "history"[\s\S]*?<\/thead>/.exec(detail)?.[0] ?? "";
-    const histHeaders = [...histThead.matchAll(/<th\s[^>]*>([^<]*)</g)].map((m) => m[1].trim());
+    const histHeaders = theadHeaders(histThead).map((h) => h.label);
     ok("1.373 · 266 · the history table carries NO money column at all — who, what, when and the change, and a door where an amount would have been",
       all(histHeaders) === all(["When (EAT)", "Event", "Change", "Who"]) && !/amount/.test(histThead), j(histHeaders));
     /* 🔴 THE REFUSAL'S HEADING IS NUMBER-AGNOSTIC, AND THAT TOO WAS READ OFF A TILE: a singular title
@@ -5238,9 +5276,11 @@ section("§2e3 · the desk landing page's activity and history panels");
       && /param="page"/.test(landing) && /param="hpage"/.test(landing)
       && !/baseHref=\{buildBaseHref\(CONSOLE_ROUTE, \{/.test(landing),
     "");
-  ok("1.411 · both landing panels draw the shared `AdminPagination`, each total is a COUNTING field of its view, and neither is a rendered array's length",
-    (landing.match(/<AdminPagination/g) ?? []).length === 2
+  /* ⭐ STEP 9 · THREE: the roster pages too, over its reader's own count (and draws nothing at the ceiling of twenty). */
+  ok("1.411 · the three paged landing panels draw the shared `AdminPagination`, each total is a COUNTING field of its view, and none is a rendered array's length",
+    (landing.match(/<AdminPagination/g) ?? []).length === 3
       && /total=\{feedView\.feedTotal\}/.test(landing) && /total=\{historyView\.historyTotal\}/.test(landing)
+      && /total=\{rosterView\.rosterTotal\}/.test(landing)
       && !/total=\{[^}]*\.length\}/.test(landing)
       && !/parsePage/.test(landing)
       && /page=\{feedView\.feedPage\}/.test(landing) && /perPage=\{feedView\.feedPerPage\}/.test(landing),
@@ -5249,8 +5289,15 @@ section("§2e3 · the desk landing page's activity and history panels");
      that is never paged is 432(a)'s dead control. ⭐ C7 437's Results panel is a third: seven FIXED days and a bounded
      roster, so a pager there would page nothing — and its panel is asserted non-empty, so "no pager" cannot pass on a
      slice that found no panel at all. */
-  ok("1.411 · the roster, limits and results panels draw NO pager — a numbered control over a list that is never paged is a control with nothing behind it",
-    !/<AdminPagination/.test(panelOf("roster")) && !/<AdminPagination/.test(panelOf("limits"))
+  /* ⭐ STEP 9 · THE ROSTER LEFT THIS LIST, AND WHY THAT IS NOT A DEAD CONTROL. Ali asked that no desk table can ever
+     grow past a page, so the reader PAGES the roster at twenty and the page draws the kit pager over the reader's count:
+     at the configured ceiling of twenty it renders nothing (the kit pager returns null on one page — ruling 411's own
+     reason the loader draws no ghost for it), and the day that ceiling moves it is a real pager, not a longer table.
+     The limits and Results panels still draw none, for the reasons above. */
+  ok("1.411 · the limits and results panels draw NO pager — a numbered control over a list that is never paged is a control with nothing behind it — and the roster's is the kit pager over its reader's own count, its own page word and its validated parameters",
+    /<AdminPagination/.test(panelOf("roster")) && /param="rpage"/.test(panelOf("roster"))
+      && /baseHref=\{buildBaseHref\(CONSOLE_ROUTE, rosterView\.rosterParams, "rpage"\)\}/.test(panelOf("roster"))
+      && !/<AdminPagination/.test(panelOf("limits"))
       && !/<AdminPagination/.test(panelOf("results")) && panelOf("results").length > 200
       && /<AdminPagination/.test(panelOf("activity")) && /<AdminPagination/.test(panelOf("history")),
     "");
@@ -5285,9 +5332,9 @@ section("§2e3 · the desk landing page's activity and history panels");
      SUBJECT COLUMN IS FIRST — the roster's own shape one card above, applied to this table's own subject. */
   {
     const feedThead = /<thead[\s\S]*?<\/thead>/.exec(panelOf("activity"))?.[0] ?? "";
-    const feedHeaders = [...feedThead.matchAll(/<th\s[^>]*>([^<]*)</g)].map((m) => m[1].trim());
+    const feedHeaders = theadHeaders(feedThead).map((h) => h.label);
     const histThead = /<thead[\s\S]*?<\/thead>/.exec(panelOf("history"))?.[0] ?? "";
-    const histHeaders = [...histThead.matchAll(/<th\s[^>]*>([^<]*)</g)].map((m) => m[1].trim());
+    const histHeaders = theadHeaders(histThead).map((h) => h.label);
     ok("1.373 · the desk activity table's headers are the control facts in order — the SUBJECT first and the money SECOND, headed exactly `Stake`, with the control column carrying no header word",
       /* ⛔ `all`, NOT `j` — its per-account twin already uses `all`, and this one was one column away from
          comparing prefixes only. This suite's own header records the `317-word-hole` defect, where a long set
@@ -5375,7 +5422,7 @@ section("§2e3 · the desk landing page's activity and history panels");
        the ACCOUNT page only, so the landing page's typed `12` would have survived this very change unreported. Every
        span on both ledgers — the empty state, the phone stack and the note line — equals that ledger's own header
        count, read from its own thead. */
-    const headerCount = (panel: string) => [...(/<thead[\s\S]*?<\/thead>/.exec(panel)?.[0] ?? "").matchAll(/<th\s/g)].length;
+    const headerCount = (panel: string) => theadHeaders(/<thead[\s\S]*?<\/thead>/.exec(panel)?.[0] ?? "").length;
     const spansHeld = (panel: string, cols: number) => {
       const spans = [...panel.matchAll(/colSpan=\{(\d+)\}/g)].map((m) => Number(m[1]));
       return headerCount(panel) === cols && spans.length === 3 && spans.every((s) => s === cols);
@@ -6504,7 +6551,7 @@ try {
     if (!saved.ok) throw new Error("2g: the fixture could not save its rules");
   };
   const rosterRow = async (botId: string): Promise<Any> => {
-    const v = await GATEM.houseRosterForConsole(OFFICER, "/admin/desk");
+    const v = await rosterEvery(OFFICER);
     return v.rows.find((r: Any) => r.id === botId);
   };
   const detail = async (id: string): Promise<Any> => GATEM.houseDetailForConsole(OFFICER, "/admin/desk", id);
@@ -6580,7 +6627,7 @@ try {
         && reached.products[0] === scopeLine("Up & Down", [CHAIN_LABEL]) && !reached.products[0].includes(CHAIN_KEY)
         && reached.products[1] === scopeLine("Polls", ["Macro"]) && !/macro/.test(reached.products[1]),
       j({ products: reached.products, inert: reached.inert }));
-    STATES.push(["roster-inert", await GATEM.houseRosterForConsole(OFFICER, "/admin/desk")]);
+    STATES.push(["roster-inert", await rosterEvery(OFFICER)]);
 
     /* ⛔ A HALF-CLAIM IS STILL A REFUSAL: Up & Down reaching a chain does not excuse a Polls that reaches nothing. */
     await writeRules(prod.botId, ruleDoc((r) => {
@@ -7102,7 +7149,7 @@ try {
         && v.whyNotBetting.items[0].message === R.INERT_COPY.byHandNoScreen.enterNow
         && v.startReadiness?.blockers === 1 && v.startReadiness?.items[0].label === "Enter now" && v.startReadiness?.items[0].unset === false,
       j({ why: v.whyNotBetting, readiness: v.startReadiness }));
-    STATES.push(["roster-byhand", await GATEM.houseRosterForConsole(OFFICER, "/admin/desk")], ["detail-byhand", v]);
+    STATES.push(["roster-byhand", await rosterEvery(OFFICER)], ["detail-byhand", v]);
     await w.dal.houseBotStore.setStatus(byHand.botId, { from: ["ACTIVE"], to: "PAUSED", pauseReason: "MANUAL", pausedFromStatus: null });
     const refused = await act({ id: byHand.botId, act: "START" });
     ok("2g.byhand · ⛔ Start hands the predicate the same screens — its default — and refuses the account with the by-hand sentence passed through, the Rules href and the label, leaving it PAUSED",
@@ -7450,7 +7497,8 @@ try {
     const panel = panelOf("results");
     const tablesOf = (p: string): string[] =>
       p.split(/<table\b/).slice(1).map((t) => (t.includes("</table>") ? t.slice(0, t.indexOf("</table>")) : t));
-    const thsOf = (t: string): string[] => [...t.matchAll(/<th\b[^>]*>[\s\S]*?<\/th>/g)].map((m) => m[0]);
+    /* ⭐ STEP 9 · every header of both tables is the kit's `SortTh` now; `HEADER_RE` reads either shape. */
+    const thsOf = (t: string): string[] => [...t.matchAll(HEADER_RE)].map((m) => m[0]);
     const tdsOf = (t: string): string[] => [...t.slice(Math.max(0, t.indexOf("<tbody"))).matchAll(/<td\b[^>]*>[\s\S]*?<\/td>/g)].map((m) => m[0]);
     const fieldsOf = (s: string): string => [...new Set([...s.matchAll(/\br\.(\w+)/g)].map((m) => m[1]))].sort().join(",");
     const labelOf = (s: string): string => s.replace(/\{[^{}]*\}/g, " ").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
@@ -7460,7 +7508,7 @@ try {
       const folds = [...t.matchAll(/<span className="block sm:hidden[^"]*">([\s\S]*?)<\/span>/g)].map((m) => m[1]);
       return hiddenTh.length === 1 && hiddenTd.length === 1 && folds.length === 1
         && fieldsOf(folds[0]) !== "" && fieldsOf(folds[0]) === fieldsOf(hiddenTd[0])
-        && (labelOf(folds[0]) === "" || labelOf(folds[0]) === labelOf(hiddenTh[0]));
+        && (labelOf(folds[0]) === "" || labelOf(folds[0]) === headOf(hiddenTh[0]).label);
     };
     const layoutHolds = (p: string): boolean => {
       const tables = tablesOf(p);
@@ -7473,7 +7521,7 @@ try {
             && tds.findIndex((d) => /<ResultWords\b/.test(d)) === 1
             && !/\bmin-w-/.test(t.slice(0, t.indexOf(">") + 1));
         })
-        && minWs.length === 1 && thsOf(tables[1])[0].includes(`className="${minWs[0]}"`) && labelOf(thsOf(tables[1])[0]) === "Account"
+        && minWs.length === 1 && thsOf(tables[1])[0].includes(`className="${minWs[0]}"`) && headOf(thsOf(tables[1])[0]).label === "Account"
         && empties[0].length === 0 && empties[1].length === 1 && empties[1][0] === thsOf(tables[1]).length
         && tables.every(foldHolds);
     };
@@ -7922,7 +7970,7 @@ try {
     {
       const RESULT_PHRASE = /\b(?:Profit|Loss) TZS [\d,]+/;
       const others: Array<[string, Any]> = [
-        ["roster", await GATEM.houseRosterForConsole(OFFICER, "/admin/desk")],
+        ["roster", await rosterEvery(OFFICER)],
         ["activity", await GATEM.houseFeedForConsole(OFFICER, "/admin/desk", { tab: "activity" })],
         ["limits", await GATEM.houseUsageForConsole(OFFICER, "/admin/desk", { houseBotId: null })],
         ["history", await GATEM.houseHistoryForConsole(OFFICER, "/admin/desk", { tab: "history" })],
@@ -8449,6 +8497,650 @@ try {
 }
 
 /* ════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+ * §2k · STEP 9 — EVERY DESK TABLE SORTS, AND NONE CAN GROW PAST A PAGE (Ali, 2026-09-26)
+ *
+ * As typed: "before finsihing amke su relaso all desk tbale sand grid sgot th erug tpaging pleas enad sroting etc.. to
+ * prveent vey rlong grids". Nine tables: the roster, the two ledgers, the two histories, the Targets grid and the
+ * Results tab's two. Every case runs on BOTH stores and every claim carries a CONTROL.
+ * ⛔ THE EXPECTED ORDERS ARE THE TEST'S OWN. Where this block made the population (the account ledger, the Targets
+ * grid), each sequence is computed HERE from every row's STORED facts, read back from the store, with this block's own
+ * comparator — never the reader's or the DAL's — and the served order must EQUAL it, on the memory twin and on Postgres:
+ * that is "the two twins give the identical order", measured. Where the population is the whole desk, the claim is a
+ * PROPERTY of every adjacent pair of every page, read off the cells an officer reads.
+ * ════════════════════════════════════════════════════════════════════════════════════════════════════════════════ */
+section("§2k · step 9 — every desk table sorts, and none can grow past a page");
+try {
+  const TAG9 = `s9${process.pid}`;
+  const ROUTE9 = "/admin/desk";
+  const nap = (msec: number) => new Promise((r) => setTimeout(r, msec));
+  /** The TEST's own text order: A–Z folded to a–z, then code point — written here, never imported from the DAL. */
+  const byCodePoint = (x: string, y: string): number => {
+    const X = Array.from(x), Y = Array.from(y);
+    for (let i = 0; i < Math.min(X.length, Y.length); i++) {
+      const d = (X[i].codePointAt(0) ?? 0) - (Y[i].codePointAt(0) ?? 0);
+      if (d !== 0) return d < 0 ? -1 : 1;
+    }
+    return X.length === Y.length ? 0 : X.length < Y.length ? -1 : 1;
+  };
+  const fold = (s: string) => s.replace(/[A-Z]/g, (c) => c.toLowerCase());
+  const textOrder = (a: string, b: string): number => byCodePoint(fold(a), fold(b)) || byCodePoint(a, b);
+  const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  /** A painted `whenTitle` ("26 Sep 2026 14:03:22 EAT") in seconds — its own precision and no more. */
+  const secsOf = (t: string | null | undefined): number | null => {
+    const m = /^(\d{1,2}) (\w{3}) (\d{4}) (\d\d):(\d\d):(\d\d)/.exec(t ?? "");
+    return m ? Date.UTC(Number(m[3]), MON.indexOf(m[2]), Number(m[1]), Number(m[4]), Number(m[5]), Number(m[6])) / 1000 : null;
+  };
+  /** A painted figure ("TZS 1,500", "used TZS 1,500", "3") as a number — `null` where the cell paints none. */
+  const figureOf = (s: string | null | undefined): number | null => {
+    const m = /([\d,]+)/.exec(s ?? "");
+    return m ? Number(m[1].replace(/,/g, "")) : null;
+  };
+  const LIFECYCLE = ["PENDING", "CLAIMED", "PLACED", "WIN", "LOSS", "VOID", "CASHED_OUT", "SKIPPED", "EXPIRED", "FAILED", "CANCELLED"];
+  const CHIP_RANK: Record<string, number> = { Queued: 0, "In flight": 1, Placed: 2, Won: 3, Lost: 4, Void: 5, "Cashed out": 6, Skipped: 7, Expired: 8, Failed: 9, Cancelled: 10 };
+  const newestFirst = (a: { ms: number; id: string }, b: { ms: number; id: string }) => b.ms - a.ms || (a.id < b.id ? 1 : a.id > b.id ? -1 : 0);
+  /** Every page of one address, in order — `pageWord` is the table's own page parameter. */
+  const walk9 = async (read: (q: Record<string, unknown>) => Promise<Any>, q: Record<string, unknown>, pageWord: string,
+    rowsOf: (v: Any) => Any[] | null, totalOf: (v: Any) => number | null): Promise<{ pages: Any[]; rows: Any[] }> => {
+    const first = await read(q);
+    const pages: Any[] = [first];
+    const last = Math.max(1, Math.ceil((totalOf(first) ?? 0) / 20));
+    for (let n = 2; n <= last; n++) pages.push(await read({ ...q, [pageWord]: String(n) }));
+    return { pages, rows: pages.flatMap((v) => rowsOf(v) ?? []) };
+  };
+  /**
+   * THE PAIR CHECKER every property below uses: `key` may be `null` — missing, LAST in both directions — and an equal
+   * key must satisfy `tie`. Returns the positions of every pair out of order; empty means the whole walk is in order.
+   */
+  const pairsOut = <R>(rows: R[], key: (r: R) => number | string | null, dir: "asc" | "desc", tie: (a: R, b: R) => boolean): number[] => {
+    const bad: number[] = [];
+    for (let i = 1; i < rows.length; i++) {
+      const ka = key(rows[i - 1]), kb = key(rows[i]);
+      const cmp = ka === null || kb === null ? 0 : typeof ka === "number" && typeof kb === "number" ? ka - kb : textOrder(String(ka), String(kb));
+      const fine = ka === null || kb === null ? kb === null && (ka !== null || tie(rows[i - 1], rows[i]))
+        : cmp === 0 ? tie(rows[i - 1], rows[i])
+        : dir === "asc" ? cmp < 0 : cmp > 0;
+      if (!fine) bad.push(i);
+    }
+    return bad;
+  };
+  const setIntentAt = async (id: string, atIso: string): Promise<void> => {
+    if (w.onPostgres) await w.prisma().$executeRawUnsafe(`UPDATE "HouseBotIntent" SET "createdAt" = $1::timestamptz WHERE "id" = $2`, atIso, id);
+    else ((globalThis as Any).__50PICK_HB_INTENTS as Map<string, Any>).get(id).createdAt = atIso;
+  };
+  const one = (word: string) => `One part of this address was not understood and was ignored: ${word}. The rest of the filter is in force.`;
+  const ctl9: Any = await w.dal.houseBotControlStore.get();
+  const mine9: Array<{ botId: string; userId: string }> = [];
+  const REMOVE9 = { to: "REMOVED", pauseReason: null, pausedFromStatus: null, removal: { byId: OFFICER, reason: "fixture", cause: "MANUAL" } };
+  const bot9 = async (o: Record<string, unknown> = {}) => { const b = await w.bot(o as Any); mine9.push(b); await nap(3); return b; };
+  const placeFor = async (acct: { botId: string; userId: string }, stake: number): Promise<{ id: string; marketId: string; pos: string }> => {
+    const mkt = await w.poll({ graceMin: 0 });
+    const i = await w.intent(acct, mkt.id, { kind: "OPENER", side: "YES", stakeTzs: stake });
+    const r = await w.place(acct, i);
+    if (!r.ok) throw new Error(`§2k fixture bet refused: ${j(r)}`);
+    await nap(3);
+    return { id: i.id, marketId: mkt.id, pos: r.data.positionId };
+  };
+  try {
+    await w.limits();
+    if (!ctl9.enabled) await w.switchOn();
+    await w.ageHouseMinute();
+
+    /* ━━ THE ACCOUNT LEDGER — one account, twenty-four stakes: four placed for real and ended four ways, one in flight,
+       queued, skipped, failed and cancelled rows, a stake tie at ONE instant stored against id order, and an anchor made
+       LAST with the LARGEST stake, so its page differs between the panel's own order and the Stake order. ━━━━━━━━━━━━ */
+    const led = await bot9({ label: `zz ledger ${TAG9}` });
+    const ledRows: Array<{ id: string; marketId: string }> = [];
+    const placed9: Array<{ id: string; end: string }> = [];
+    for (const [stake, end] of [[3_000, "WIN"], [5_000, "LOSS"], [2_000, "VOID"], [4_000, "OPEN"]] as Array<[number, string]>) {
+      const p = await placeFor(led, stake);
+      if (end !== "OPEN") await w.setPositionStatus(p.pos, end);
+      ledRows.push(p);
+      placed9.push({ id: p.id, end });
+    }
+    const inFlight = await w.intent(led, `mkt_${TAG9}_flight`, { kind: "FILL", side: "YES", stakeTzs: 2_500 });
+    ledRows.push({ id: inFlight.id, marketId: `mkt_${TAG9}_flight` });
+    const insert9 = async (bot: { botId: string; userId: string }, n: string, status: string, stakeTzs: number): Promise<string> => {
+      const id = `hbi_${TAG9}_${n}`;
+      const marketId = `mkt_${TAG9}_${n}`;
+      await w.dal.houseBotIntentStore.insert({
+        id, houseBotId: bot.botId, botUserId: bot.userId, kind: "FILL", anchorKey: marketId, marketId, productLine: "MARKET",
+        triggerPositionId: null, triggerUserId: null, targetId: null, requestedById: null, entryCondition: null, side: "YES", stakeTzs,
+        dueAt: w.iso(-1_000), deadlineAt: w.iso(3_600_000), staleAt: w.iso(600_000), status,
+        reasonCode: status === "SKIPPED" ? "CAP_PER_HOUR" : status === "FAILED" ? "INTERNAL" : null, why: null,
+        decision: { snapshot: { titleEn: `Step nine market ${n}`, category: "other", cutoff: w.iso(3_600_000), roundNumber: null } },
+        attempts: 0, transientAttempts: 0, nextAttemptAt: null, claimedBy: null, claimedUntil: null, positionId: null, finishedAt: null, alertedAt: null,
+      } as Any);
+      if (bot.botId === led.botId) ledRows.push({ id, marketId });
+      await nap(3);
+      return id;
+    };
+    const STATUS9 = ["PENDING", "SKIPPED", "FAILED", "CANCELLED"];
+    /* 4 placed + 1 in flight + 16 here + 2 tied + the anchor = the twenty-four the comment above promises. */
+    for (let n = 1; n <= 16; n++) await insert9(led, `r${String(n).padStart(2, "0")}`, STATUS9[n % 4], [1_100, 1_200, 1_200, 1_300, 2_000][n % 5] + (n % 3) * 100);
+    const TIE1 = await insert9(led, "t1", "SKIPPED", 1_500);
+    const TIE2 = await insert9(led, "t2", "FAILED", 1_500);
+    const TIE_AT = w.iso(-45_000);
+    await setIntentAt(TIE1, TIE_AT);
+    await setIntentAt(TIE2, TIE_AT);
+    const ANCHOR = await insert9(led, "anchor", "PENDING", 9_900);
+    /* The account's OWN history: its designation, then two changes, so its one sortable column has an order to reverse. */
+    for (const [kind, from, to] of [["PAUSED", "ACTIVE", "PAUSED"], ["STARTED", "PAUSED", "ACTIVE"]] as const) {
+      await w.dal.houseBotEventStore.append({ houseBotId: led.botId, userId: null, marketId: null, kind, fromStatus: from, toStatus: to, reason: null, actorId: OFFICER, payload: null } as Any);
+      await nap(3);
+    }
+
+    /* The facts each expected order is computed from — READ BACK from the store, never typed. */
+    const info = new Map<string, { id: string; ms: number; stake: number; chip: string }>();
+    for (const r of ledRows) {
+      const s: Any = await w.dal.houseBotIntentStore.get(r.id);
+      const end = placed9.find((p) => p.id === r.id)?.end;
+      const chip = end !== undefined && ["WIN", "LOSS", "VOID", "CASHED_OUT"].includes(end) ? end : String(s.status);
+      info.set(r.id, { id: r.id, ms: Date.parse(s.createdAt), stake: Number(s.stakeTzs), chip });
+    }
+    const byMarket = new Map(ledRows.map((r) => [`/admin/markets/${encodeURIComponent(r.marketId)}`, r.id]));
+    const expect9 = (key: "when" | "stake" | "outcome", dir: "asc" | "desc"): string[] => [...info.values()].sort((a, b) => {
+      if (key === "when") return dir === "desc" ? newestFirst(a, b) : -newestFirst(a, b);
+      const ka = key === "stake" ? a.stake : LIFECYCLE.indexOf(a.chip);
+      const kb = key === "stake" ? b.stake : LIFECYCLE.indexOf(b.chip);
+      return (dir === "asc" ? ka - kb : kb - ka) || newestFirst(a, b);
+    }).map((x) => x.id);
+    const readLed = (q: Record<string, unknown>) => GATEM.houseDetailForConsole(OFFICER, ROUTE9, led.botId, { tab: "activity", ...q });
+    const walkLed = (q: Record<string, unknown>) => walk9(readLed, q, "page", (v) => v.feed, (v) => v.feedTotal);
+    const idsOf = (rows: Any[]): string[] => rows.map((r: Any) => byMarket.get(r.marketHref) ?? `?${r.marketHref}`);
+
+    const bare = await walkLed({});
+    const served: Record<string, string[]> = {};
+    const walked: Record<string, { pages: Any[]; rows: Any[] }> = {};
+    for (const [token, key] of [["stake", "stake"], ["when-eat", "when"], ["outcome", "outcome"]] as const) {
+      for (const dir of ["asc", "desc"] as const) {
+        walked[`${key}:${dir}`] = await walkLed({ sort: token, dir });
+        served[`${key}:${dir}`] = idsOf(walked[`${key}:${dir}`].rows);
+      }
+    }
+    const matches = (key: "when" | "stake" | "outcome", dir: "asc" | "desc") => all(served[`${key}:${dir}`]) === all(expect9(key, dir));
+    ok("1.s9 · ledger · Stake · every page, concatenated, is in stake order BOTH ways with the panel's own order (newest first, the id last) breaking every tie — computed here from each stake's stored facts, and equal on this store",
+      info.size === 24 && matches("stake", "asc") && matches("stake", "desc"),
+      j({ asc: served["stake:asc"]?.slice(0, 4), want: expect9("stake", "asc").slice(0, 4) }));
+    ok("1.s9 · ledger · When · oldest first is the EXACT reverse of the panel's own order, and newest first IS it",
+      matches("when", "asc") && matches("when", "desc") && all(served["when:asc"]) === all([...served["when:desc"]].reverse()),
+      j({ asc: served["when:asc"]?.slice(0, 3) }));
+    ok("1.s9 · ledger · Outcome · the chip in lifecycle order — queued, in flight, placed, won, lost, void, then the ways a stake ends unplaced — ranked by the POSITION's result where there is one, both ways",
+      matches("outcome", "asc") && matches("outcome", "desc")
+        && placed9.every((p) => info.get(p.id)?.chip === (p.end === "OPEN" ? "PLACED" : p.end)),
+      j({ asc: served["outcome:asc"]?.map((id) => info.get(id)?.chip).slice(0, 8) }));
+    const chipsAsc = (walked["outcome:asc"]?.rows ?? []).map((r: Any) => String(r.resultWord ?? r.statusWord));
+    ok("1.s9 · ledger · Outcome · CONTROL · the painted chips really run in that order down the pages, the four ways a placed stake ended are all on the table, and a planted swap is reported",
+      pairsOut(chipsAsc, (c: string) => CHIP_RANK[c] ?? null, "asc", () => true).length === 0
+        && ["Won", "Lost", "Void", "Placed", "Queued", "In flight"].every((c) => chipsAsc.includes(c))
+        && pairsOut([...chipsAsc].reverse(), (c: string) => CHIP_RANK[c] ?? null, "asc", () => true).length > 0,
+      j(chipsAsc.slice(0, 10)));
+    const tiePos = (k: string) => [served[k].indexOf(TIE2), served[k].indexOf(TIE1)];
+    ok("1.s9 · ledger · ties · two stakes of one amount at ONE instant, stored against id order, come back in the id order the default tail names — in BOTH directions of the Stake sort, so the order is total",
+      tiePos("stake:asc")[0] >= 0 && tiePos("stake:asc")[0] + 1 === tiePos("stake:asc")[1]
+        && tiePos("stake:desc")[0] >= 0 && tiePos("stake:desc")[0] + 1 === tiePos("stake:desc")[1]
+        && info.get(TIE1)?.ms === info.get(TIE2)?.ms && TIE1 < TIE2,
+      j({ asc: tiePos("stake:asc"), desc: tiePos("stake:desc") }));
+    ok("1.s9 · ledger · a bare address is EXACTLY today's order — the panel's own newest-first, on every page — and it marks When in force, newest first",
+      all(idsOf(bare.rows)) === all(expect9("when", "desc")) && bare.pages[0].feedSort.current === "when-eat" && bare.pages[0].feedSort.dir === "desc"
+        && bare.pages[0].feedOrderNote === "Newest first." && bare.pages[0].feedParams.sort === undefined && bare.pages[0].feedParams.dir === undefined,
+      j({ current: bare.pages[0].feedSort?.current, note: bare.pages[0].feedOrderNote }));
+    ok("1.s9 · ledger · CONTROL · the orders really differ from one another and from the bare address, and the population spans two pages — so the equalities above are measurements",
+      bare.pages.length === 2 && all(served["stake:asc"]) !== all(served["stake:desc"]) && all(served["stake:asc"]) !== all(idsOf(bare.rows))
+        && all(served["outcome:asc"]) !== all(served["when:desc"]) && walked["stake:asc"].pages.every((v: Any) => v.feedTotal === 24),
+      j({ pages: bare.pages.length }));
+    /* ━━ PER-ROW FIGURES ARE THE ROW'S OWN, WHATEVER THE ORDER — Opening, Closing and Left today are running figures read
+       from bounded scans after the page is cut, so a sort that moves a row to another page must not change what it says. */
+    const figuresOf = (r: Any) => all([r.opening, r.closing, r.closingTitle, r.leftToday, r.leftTodayTitle, r.stake, r.whenTitle, r.resultWord, r.statusWord, r.note, r.typeWord]);
+    const base = new Map(bare.rows.map((r: Any) => [r.marketHref, figuresOf(r)]));
+    const drift = Object.values(walked).flatMap((x) => x.rows.filter((r: Any) => figuresOf(r) !== base.get(r.marketHref)).map((r: Any) => r.marketHref));
+    ok("1.s9 · ledger · every row's Opening, Closing, Left today, stake, time and chip are IDENTICAL under every sort and on whichever page it lands",
+      drift.length === 0 && Object.values(walked).every((x) => x.rows.length === 24), j(drift.slice(0, 3)));
+    const withMoney = bare.rows.filter((r: Any) => r.closing !== null || r.leftToday !== null).length;
+    ok("1.s9 · ledger · CONTROL · the fixture really paints running figures for that to be a measurement, and the comparison fires on a row whose closing is planted",
+      withMoney >= 4 && figuresOf({ ...bare.rows[0], closing: "TZS 1" }) !== base.get(bare.rows[0].marketHref), j({ withMoney }));
+    /* ━━ THE ANCHORED ROW UNDER A SORT — decided: it lands where it IS in the order in force (docs/HOUSE-BOTS.md §7.1c) ━━ */
+    const anchoredSorted = await readLed({ sort: "stake", dir: "asc", intent: ANCHOR });
+    const anchoredBare = await readLed({ intent: ANCHOR });
+    const rankSorted = expect9("stake", "asc").indexOf(ANCHOR) + 1;
+    const rankBare = expect9("when", "desc").indexOf(ANCHOR) + 1;
+    const anchoredOn = (v: Any) => (v.feed ?? []).filter((r: Any) => r.anchored).map((r: Any) => byMarket.get(r.marketHref));
+    ok("1.s9 · anchored · a bell's row followed onto a SORTED address lands on the page the row holds IN THAT ORDER, flagged, with the sort kept in force",
+      anchoredSorted.feedPage === Math.ceil(rankSorted / 20) && anchoredSorted.feedPage === 2 && all(anchoredOn(anchoredSorted)) === all([ANCHOR])
+        && anchoredSorted.feedSort.current === "stake" && anchoredSorted.feedSort.dir === "asc",
+      j({ page: anchoredSorted.feedPage, rankSorted, anchored: anchoredOn(anchoredSorted) }));
+    ok("1.s9 · anchored · CONTROL · the same bell with NO sort lands on the panel's own page for it (the unchanged counting rank), and the two pages really differ",
+      anchoredBare.feedPage === Math.ceil(rankBare / 20) && all(anchoredOn(anchoredBare)) === all([ANCHOR]) && anchoredBare.feedPage !== anchoredSorted.feedPage,
+      j({ bare: anchoredBare.feedPage, sorted: anchoredSorted.feedPage, rankBare, rankSorted }));
+    const rankStore = await w.dal.houseBotIntentStore.rankInFeed({ houseBotId: led.botId }, { key: "stake", dir: "asc" }, ANCHOR);
+    const rankNone = await w.dal.houseBotIntentStore.rankInFeed({ houseBotId: led.botId, statuses: ["EXPIRED"] }, { key: "stake", dir: "asc" }, ANCHOR);
+    ok("1.s9 · anchored · the store's own rank is the row's place in the order it pages by, on this store — and a row outside the population has none",
+      rankStore === rankSorted && rankNone === null, j({ rankStore, rankSorted, rankNone }));
+    /* ━━ NOTES, LINKS AND THE HEADER PARTS ━━ */
+    const s1 = walked["stake:desc"].pages[0], s2 = walked["when:asc"].pages[0], s3 = walked["outcome:asc"].pages[0];
+    ok("1.s9 · notes · the order note says the order IN FORCE — a sorted ledger never says \"Newest first.\"",
+      s1.feedOrderNote === "Largest stake first, then newest first." && s2.feedOrderNote === "Oldest first."
+        && s3.feedOrderNote === "By outcome, queued first, then newest first." && walked["stake:asc"].pages[0].feedOrderNote === "Smallest stake first, then newest first."
+        && walked["outcome:desc"].pages[0].feedOrderNote === "By outcome, cancelled first, then newest first.",
+      j([s1.feedOrderNote, s2.feedOrderNote, s3.feedOrderNote]));
+    const kept = await readLed({ sort: "stake", dir: "asc", kind: "filling", page: "2" });
+    const railHrefs: string[] = kept.feedFilters.flatMap((g: Any) => g.options.map((o: Any) => o.href as string));
+    ok("1.s9 · links · the sort rides every rail link and the pager's base, a filter rides the headers' parameters, and no link keeps the page",
+      railHrefs.length > 5 && railHrefs.every((h) => h.includes("sort=stake") && h.includes("dir=asc") && !/[?&]page=/.test(h))
+        && kept.feedParams.sort === "stake" && kept.feedParams.dir === "asc" && kept.feedParams.kind === "filling" && kept.feedParams.page === undefined
+        && kept.feedSort.current === "stake" && kept.feedSort.dir === "asc" && kept.feedSort.prefix === ""
+        && all(Object.keys(kept.feedSort.columns)) === all(["when", "stake", "outcome"])
+        && all(Object.values(kept.feedSort.columns)) === all([{ field: "when-eat", label: "When (EAT)" }, { field: "stake", label: "Stake" }, { field: "outcome", label: "Outcome" }]),
+      j({ href: railHrefs[0], params: kept.feedParams, sort: kept.feedSort }));
+    const railKeeps = (hs: string[]) => hs.every((h) => h.includes("sort=stake") && !/[?&]page=/.test(h));
+    ok("1.s9 · links · CONTROL · the rail check reports a link that loses the sort and one that keeps the page",
+      !railKeeps([...railHrefs, "/admin/desk/x?tab=activity"]) && !railKeeps([...railHrefs, "/admin/desk/x?tab=activity&sort=stake&page=2"]) && railKeeps(railHrefs), "");
+    /* ━━ VALIDATION — every sort word checked against ITS table's closed list, refused by name, never travelling ━━ */
+    const refused = {
+      sort: await readLed({ sort: "balance" }),
+      dir: await readLed({ dir: "sideways" }),
+      notHere: await readLed({ sort: "account" }),
+      repeated: await readLed({ sort: ["stake", "when-eat"] }),
+      both: await readLed({ sort: "zzbalance", dir: "zzsideways", hsort: "zzwho", hdir: "zzup", tsort: "zzpoll", tdir: "zzdown" }),
+      noColumn: await GATEM.houseDetailForConsole(OFFICER, ROUTE9, led.botId, { tab: "targets", tdir: "asc" }),
+    };
+    ok("1.s9 · validation · a sort word that is no column of THIS table — a person's field, the desk's Account column on the account page, a repeat — is refused as \"sort\", a direction that is not one as \"sort direction\", and the ledger keeps its own order",
+      refused.sort.queryRefusal === one("sort") && refused.dir.queryRefusal === one("sort direction")
+        && refused.notHere.queryRefusal === one("sort") && refused.repeated.queryRefusal === one("sort")
+        && [refused.sort, refused.dir, refused.notHere, refused.repeated].every((v: Any) => v.feedSort.current === "when-eat" && v.feedSort.dir === "desc"
+          && all(idsOf(v.feed)) === all(idsOf(bare.pages[0].feed))),
+      j({ sort: refused.sort.queryRefusal, notHere: refused.notHere.queryRefusal }));
+    ok("1.s9 · validation · a DIRECTION with no column to reverse — the Targets grid is in its own order — is refused as \"sort direction\" and nothing is in force",
+      refused.noColumn.queryRefusal === one("sort direction") && refused.noColumn.targetsSort.current === "" && refused.noColumn.targetsParams.tdir === undefined,
+      j({ refusal: refused.noColumn.queryRefusal, params: refused.noColumn.targetsParams }));
+    const carried = (v: Any): string => all([v.feedParams, v.historyParams, v.targetsParams, v.feedSort, v.historySort, v.targetsSort,
+      v.feedFilters.flatMap((g: Any) => g.options.map((o: Any) => o.href))]);
+    ok("1.s9 · validation · refused sort words travel NOWHERE — not into any panel's parameters, not into a header's parts, not into a rail link — and ONE sentence names both kinds once",
+      !/zz/.test(carried(refused.both))
+        && refused.both.queryRefusal === "Parts of this address were not understood and were ignored: sort and sort direction. The rest of the filter is in force.",
+      j({ refusal: refused.both.queryRefusal }));
+    const clean9 = await readLed({ sort: "outcome", dir: "asc", hsort: "when-eat", hdir: "asc", tsort: "poll", tdir: "asc" });
+    ok("1.s9 · validation · CONTROL · a clean address is refused nothing and EVERY part of it is carried, and the travel scan fires on a planted value",
+      clean9.queryRefusal === null && clean9.feedParams.sort === "outcome" && clean9.historyParams.hdir === "asc" && clean9.historyParams.hsort === undefined
+        && clean9.targetsParams.tsort === "poll" && clean9.targetsParams.tdir === "asc"
+        && /zz/.test(carried({ ...clean9, feedParams: { ...clean9.feedParams, sort: "zzbalance" } })),
+      j({ feed: clean9.feedParams, history: clean9.historyParams, targets: clean9.targetsParams }));
+
+    /* ━━ THE ROSTER — six sortable columns, designation order on a bare address, and a pager at twenty ━━━━━━━━━━━━━━━━
+       Made BEFORE the desk-wide tables below, so the histories there hold every one of these accounts' changes. */
+    const TIE_DESIG = "2020-01-01T00:00:00.000Z";
+    await bot9({ label: `tie b ${TAG9}`, botId: `hb_${TAG9}_tie_b`, designatedAt: TIE_DESIG });
+    await bot9({ label: `tie a ${TAG9}`, botId: `hb_${TAG9}_tie_a`, designatedAt: TIE_DESIG });
+    const acA = await bot9({ label: `a-${TAG9}` });
+    const acB = await bot9({ label: `B-${TAG9}` });
+    await bot9({ label: `c-${TAG9}` });
+    const acD = await bot9({ label: `d-${TAG9}`, caps: { capDailyLossTzs: null, freqMaxPerDay: null } });
+    await w.dal.houseBotStore.setStatus(acD.botId, { from: ["ACTIVE"], to: "PAUSED", pauseReason: "MANUAL", pausedFromStatus: null });
+    for (const stake of [1_000, 2_000]) await placeFor(acA, stake);
+    await placeFor(acB, 6_000);
+    for (let n = (await w.dal.houseBotStore.listNonRemoved()).length; n < 23; n++) await bot9({ label: `fill ${n} ${TAG9}` });
+    const rosterNow = (await w.dal.houseBotStore.listNonRemoved()) as Any[];
+    const stored = new Map(rosterNow.map((b: Any) => [b.id as string, b]));
+    const lastAt = new Map(((await w.dal.houseSeamStore.botRateUsage({ houseBotId: null })) as Any[]).map((r: Any) => [r.houseBotId as string, r.lastPlacedAt as string | null]));
+    const readR = (q: Record<string, unknown>) => GATEM.houseRosterForConsole(OFFICER, ROUTE9, q);
+    const walkR = (q: Record<string, unknown>) => walk9(readR, q, "rpage", (v) => v.rows, (v) => v.rosterTotal);
+    const desigTie = (a: Any, b: Any) => {
+      const x = stored.get(a.id), y = stored.get(b.id);
+      const d = Date.parse(x?.designatedAt) - Date.parse(y?.designatedAt);
+      return d < 0 || (d === 0 && x.id < y.id);
+    };
+    const STATUS_RANK: Record<string, number> = { Active: 0, Paused: 1, "Auto-paused": 2 };
+    /* ⛔ Each key is what the CELL paints — the figure an officer reads — except Last bet, whose cell paints a relative
+       phrase: there the key is the stored instant it is phrased from (two accounts may last have bet in one second). */
+    const rKey: Record<string, (r: Any) => number | string | null> = {
+      account: (r) => r.label,
+      "loss-today-projected": (r) => (r.lossCell?.halves?.length ? figureOf(r.lossCell.used) : null),
+      "open-exposure": (r) => (r.exposureCell?.halves?.length ? figureOf(r.exposureCell.used) : null),
+      status: (r) => STATUS_RANK[r.statusWord] ?? null,
+      "bets-today": (r) => (r.betsCell?.halves?.length ? figureOf(r.betsCell.used) : null),
+      "last-bet": (r) => { const at = Date.parse(lastAt.get(r.id) ?? ""); return r.lastBet === null || !Number.isFinite(at) ? null : at; },
+    };
+    const rWalks: Record<string, { pages: Any[]; rows: Any[] }> = {};
+    const rBad: Record<string, number[]> = {};
+    for (const token of Object.keys(rKey)) {
+      for (const dir of ["asc", "desc"] as const) {
+        rWalks[`${token}:${dir}`] = await walkR({ rsort: token, rdir: dir });
+        rBad[`${token}:${dir}`] = pairsOut(rWalks[`${token}:${dir}`].rows, rKey[token], dir, desigTie);
+      }
+    }
+    const rBare = await walkR({});
+    ok("1.s9 · roster · every one of its six sortable columns orders every page both ways by the figure its CELL paints — the label A to Z ignoring case, the two used amounts, the lifecycle, today's count, the last bet — with designation and then the id breaking every tie",
+      Object.values(rBad).every((b) => b.length === 0) && Object.values(rWalks).every((x) => x.rows.length === rosterNow.length && new Set(x.rows.map((r: Any) => r.id)).size === rosterNow.length),
+      j(Object.entries(rBad).filter(([, b]) => b.length > 0).map(([k, b]) => [k, b.slice(0, 2)])));
+    const lastIs = (rows: Any[], id: string) => rows.length > 0 && rows[rows.length - 1].id === id;
+    const nullTail = (rows: Any[], isNull: (r: Any) => boolean) => { const k = rows.findIndex(isNull); return k > 0 && rows.slice(k).every(isNull); };
+    ok("1.s9 · roster · missing · an account whose limit is not set paints no figure and sorts LAST in BOTH directions, and accounts that never bet have no last bet and sort last both ways too",
+      lastIs(rWalks["loss-today-projected:asc"].rows, acD.botId) && lastIs(rWalks["loss-today-projected:desc"].rows, acD.botId)
+        && lastIs(rWalks["bets-today:asc"].rows, acD.botId) && lastIs(rWalks["bets-today:desc"].rows, acD.botId)
+        && nullTail(rWalks["last-bet:desc"].rows, (r) => r.lastBet === null) && nullTail(rWalks["last-bet:asc"].rows, (r) => r.lastBet === null),
+      j({ lossAsc: rWalks["loss-today-projected:asc"].rows.at(-1)?.id, d: acD.botId }));
+    const tieAt = (rows: Any[]) => [rows.findIndex((r: Any) => r.id === `hb_${TAG9}_tie_a`), rows.findIndex((r: Any) => r.id === `hb_${TAG9}_tie_b`)];
+    ok("1.s9 · roster · ties · two accounts designated in the SAME millisecond, stored against id order, tie on today's count and come back in id order in BOTH directions",
+      (["bets-today:asc", "bets-today:desc", "open-exposure:desc"] as const).every((k) => { const [a, b] = tieAt(rWalks[k].rows); return a >= 0 && a + 1 === b; })
+        && Date.parse(stored.get(`hb_${TAG9}_tie_a`)?.designatedAt) === Date.parse(stored.get(`hb_${TAG9}_tie_b`)?.designatedAt),
+      j({ asc: tieAt(rWalks["bets-today:asc"].rows), desc: tieAt(rWalks["bets-today:desc"].rows) }));
+    const labelsAsc = rWalks["account:asc"].rows.map((r: Any) => String(r.label));
+    ok("1.s9 · roster · Account · CONTROL · case-folding is really exercised — \"B-…\" sorts between \"a-…\" and \"c-…\" though code-unit order would put it first — and the pair checker reports the ascending walk read as descending",
+      labelsAsc.indexOf(`a-${TAG9}`) < labelsAsc.indexOf(`B-${TAG9}`) && labelsAsc.indexOf(`B-${TAG9}`) < labelsAsc.indexOf(`c-${TAG9}`)
+        && `B-${TAG9}` < `a-${TAG9}` && pairsOut(rWalks["account:asc"].rows, rKey.account, "desc", desigTie).length > 0,
+      j(labelsAsc.filter((l) => l.includes(TAG9)).slice(0, 5)));
+    ok("1.s9 · roster · a bare address is EXACTLY today's order — designation, oldest first, as the roster read returns it — with NO header in force, and every account appears exactly once",
+      rBare.rows.length === rosterNow.length && new Set(rBare.rows.map((r: Any) => r.id)).size === rosterNow.length
+        && pairsOut(rBare.rows, (r: Any) => Date.parse(stored.get(r.id)?.designatedAt), "asc", () => true).length === 0
+        && rBare.pages[0].rosterSort.current === "" && rBare.pages[0].rosterParams.rsort === undefined && rBare.pages[0].queryRefusal === null,
+      j({ current: rBare.pages[0].rosterSort?.current }));
+    /* ━━ THE ROSTER'S PAGER ━━ */
+    const rPast = await readR({ rpage: "999", rsort: "status" });
+    const rBadPage = await readR({ rpage: "x" });
+    const rP2 = rWalks["status:asc"].pages[1];
+    ok("1.s9 · roster pager · twenty to a page over the WHOLE roster's count — never the page's length — the pages together are the roster exactly once, and a page past the end is the last page with its rows",
+      rosterNow.length > 20 && rBare.pages[0].rows.length === 20 && rBare.pages[0].rosterTotal === rosterNow.length && rBare.pages[0].rosterPerPage === 20
+        && rBare.pages.length === Math.ceil(rosterNow.length / 20)
+        && rPast.rosterPage === rBare.pages.length && rPast.rows.length === rosterNow.length - 20 * (rBare.pages.length - 1)
+        && rP2?.rosterPage === 2 && rP2.rosterParams.rsort === "status",
+      j({ total: rBare.pages[0].rosterTotal, roster: rosterNow.length, past: rPast.rosterPage }));
+    ok("1.s9 · roster pager · CONTROL · a page that is not a whole number is refused BY NAME and page 1 is served",
+      rBadPage.rosterPage === 1 && rBadPage.queryRefusal === one("page") && rBadPage.rows.length === 20, j(rBadPage.queryRefusal));
+    const rRef = { sort: await readR({ rsort: "balance" }), dirOnly: await readR({ rdir: "asc" }), clean: await readR({ rsort: "status", rdir: "asc" }) };
+    ok("1.s9 · roster · validation · a sort word that is no roster column is refused as \"sort\", a direction with no column as \"sort direction\", and the roster keeps its own order; a clean pair is honoured and carried",
+      rRef.sort.queryRefusal === one("sort") && rRef.dirOnly.queryRefusal === one("sort direction")
+        && [rRef.sort, rRef.dirOnly].every((v: Any) => v.rows.length === 20 && pairsOut(v.rows, (r: Any) => Date.parse(stored.get(r.id)?.designatedAt), "asc", () => true).length === 0)
+        && rRef.sort.rosterSort.current === "" && rRef.dirOnly.rosterSort.current === ""
+        && rRef.clean.queryRefusal === null && rRef.clean.rosterParams.rsort === "status" && rRef.clean.rosterParams.rdir === "asc"
+        && rRef.clean.rosterSort.prefix === "r" && all(Object.keys(rRef.clean.rosterSort.columns)) === all(["account", "loss", "exposure", "status", "bets", "lastBet"]),
+      j({ sort: rRef.sort.queryRefusal, dirOnly: rRef.dirOnly.queryRefusal, clean: rRef.clean.rosterParams }));
+
+    /* ━━ THE DESK-WIDE LEDGER — the population is the whole desk, so the claim is a property of every adjacent pair ━━ */
+    const gone = await bot9({ label: `gone ${TAG9}` });
+    for (const n of ["g1", "g2"]) await insert9(gone, n, "PENDING", 7_700);
+    await w.dal.houseBotStore.setStatus(gone.botId, { from: ["ACTIVE", "PAUSED", "AUTO_PAUSED"], ...REMOVE9 });
+    const roster9 = (await w.dal.houseBotStore.listNonRemoved()) as Any[];
+    const rankAsc = new Map([...roster9].sort((a: Any, b: Any) => textOrder(a.label, b.label)
+      || (Date.parse(a.designatedAt) - Date.parse(b.designatedAt)) || (a.id < b.id ? -1 : 1)).map((b: Any, k) => [b.label as string, k]));
+    const acctKey = (dir: "asc" | "desc") => (r: Any): number | null => {
+      if (!r.accountIsOperatorText) return null;
+      const k = rankAsc.get(r.accountName);
+      return k === undefined ? Number.NaN : dir === "asc" ? k : -k;
+    };
+    const newerOrSame = (a: Any, b: Any) => (secsOf(a.whenTitle) ?? 0) >= (secsOf(b.whenTitle) ?? 0);
+    const goneTail = (rows: Any[]) => nullTail(rows, (r) => !r.accountIsOperatorText);
+    const readDesk = (q: Record<string, unknown>) => GATEM.houseFeedForConsole(OFFICER, ROUTE9, { tab: "activity", ...q });
+    const walkDesk = (q: Record<string, unknown>) => walk9(readDesk, q, "page", (v) => v.feed, (v) => v.feedTotal);
+    const deskBare = await walkDesk({});
+    const deskAcct = { asc: await walkDesk({ sort: "account", dir: "asc" }), desc: await walkDesk({ sort: "account", dir: "desc" }) };
+    ok("1.s9 · desk ledger · Account · every page, concatenated, is in the ROSTER's label order both ways — A to Z ignoring case, then designation — each account's stakes newest first, and every stake of an account no longer on the desk LAST in BOTH directions",
+      pairsOut(deskAcct.asc.rows, acctKey("asc"), "asc", newerOrSame).length === 0
+        && pairsOut(deskAcct.desc.rows, acctKey("desc"), "asc", newerOrSame).length === 0
+        && goneTail(deskAcct.asc.rows) && goneTail(deskAcct.desc.rows)
+        && deskAcct.asc.rows.filter((r: Any) => r.stake === formatTzs(7_700) && !r.accountIsOperatorText).length === 2,
+      j({ asc: pairsOut(deskAcct.asc.rows, acctKey("asc"), "asc", newerOrSame).slice(0, 3), desc: pairsOut(deskAcct.desc.rows, acctKey("desc"), "asc", newerOrSame).slice(0, 3) }));
+    ok("1.s9 · desk ledger · Account · CONTROL · the walk covers the whole desk (the bare address's every row), holds several named accounts, and the pair checker reports the ascending walk read as descending",
+      deskAcct.asc.rows.length === deskBare.rows.length && deskAcct.asc.rows.length > 20
+        && new Set(deskAcct.asc.rows.filter((r: Any) => r.accountIsOperatorText).map((r: Any) => r.accountName)).size >= 3
+        && pairsOut(deskAcct.asc.rows, acctKey("desc"), "asc", newerOrSame).length > 0,
+      j({ rows: deskAcct.asc.rows.length, bare: deskBare.rows.length }));
+    const deskStake = { asc: await walkDesk({ sort: "stake", dir: "asc" }), desc: await walkDesk({ sort: "stake", dir: "desc" }) };
+    ok("1.s9 · desk ledger · Stake · the painted stake runs in order down every page both ways, equal stakes newest first",
+      pairsOut(deskStake.asc.rows, (r: Any) => figureOf(r.stake), "asc", newerOrSame).length === 0
+        && pairsOut(deskStake.desc.rows, (r: Any) => figureOf(r.stake), "desc", newerOrSame).length === 0
+        && deskStake.asc.rows.length === deskBare.rows.length,
+      j({ first: deskStake.desc.rows[0]?.stake, last: deskStake.desc.rows.at(-1)?.stake }));
+    const deskOutcome = await walkDesk({ sort: "outcome", dir: "desc" });
+    ok("1.s9 · desk ledger · Outcome · the painted chip runs in lifecycle order down every page, cancelled first when descending",
+      pairsOut(deskOutcome.rows, (r: Any) => CHIP_RANK[String(r.resultWord ?? r.statusWord)] ?? null, "desc", newerOrSame).length === 0
+        && deskOutcome.rows.length === deskBare.rows.length, j({ first: deskOutcome.rows[0]?.statusWord }));
+    /* The desk's Account order waits for the core's own roster, so the anchor is ranked AFTER the set, from that roster. */
+    const deskRank = deskAcct.asc.rows.map((r: Any) => byMarket.get(r.marketHref) ?? null).indexOf(ANCHOR) + 1;
+    const deskAnchored = await readDesk({ sort: "account", dir: "asc", intent: ANCHOR });
+    ok("1.s9 · anchored · on the DESK-WIDE ledger under the Account order — the one order that waits for the roster — the bell lands on the page its row holds in that order, flagged",
+      deskRank > 0 && deskAnchored.feedPage === Math.ceil(deskRank / 20)
+        && (deskAnchored.feed ?? []).filter((r: Any) => r.anchored).map((r: Any) => byMarket.get(r.marketHref)).join() === ANCHOR
+        && deskAnchored.feedSort.current === "account",
+      j({ deskRank, page: deskAnchored.feedPage }));
+    const deskKept = await readDesk({ sort: "account", dir: "desc", outcome: "queued" });
+    ok("1.s9 · desk ledger · links · the desk's own header parts are its four columns, and the Account sort rides the rail and the pager's base with the filter",
+      all(Object.keys(deskKept.feedSort.columns)) === all(["account", "stake", "when", "outcome"])
+        && deskKept.feedParams.sort === "account" && deskKept.feedParams.dir === undefined && deskKept.feedParams.outcome === "queued"
+        && deskKept.feedFilters.every((g: Any) => g.options.every((o: Any) => o.href.includes("sort=account")))
+        && deskKept.feedOrderNote === "By account, Z to A, then newest first. Accounts no longer on the desk come last.",
+      j({ params: deskKept.feedParams, note: deskKept.feedOrderNote }));
+
+    /* ━━ THE HISTORIES ━━ */
+    const readHist = (q: Record<string, unknown>) => GATEM.houseHistoryForConsole(OFFICER, ROUTE9, { tab: "history", ...q });
+    const walkHist = (q: Record<string, unknown>) => walk9(readHist, q, "hpage", (v) => v.history, (v) => v.historyTotal);
+    const histBare = await walkHist({});
+    const histAcct = { asc: await walkHist({ hsort: "account", hdir: "asc" }), desc: await walkHist({ hsort: "account" }) };
+    ok("1.s9 · desk history · Account · every page in the roster's label order both ways, each account's changes newest first, and the desk's OWN changes and every account no longer on the desk LAST in both directions",
+      pairsOut(histAcct.asc.rows, acctKey("asc"), "asc", newerOrSame).length === 0
+        && pairsOut(histAcct.desc.rows, acctKey("desc"), "asc", newerOrSame).length === 0
+        && goneTail(histAcct.asc.rows) && goneTail(histAcct.desc.rows)
+        && histAcct.asc.rows.some((r: Any) => r.accountName === GATEM.CONSOLE_ACCOUNT_WORD.desk) && histAcct.asc.rows.length === histBare.rows.length
+        && histAcct.desc.pages[0].historyOrderNote === "By account, Z to A, then newest first. The desk's own changes, and accounts no longer on the desk, come last.",
+      j({ rows: histAcct.asc.rows.length, note: histAcct.desc.pages[0].historyOrderNote }));
+    const proj = (rows: Any[]) => rows.map((r: Any) => [r.whenTitle, r.eventWord, r.accountName, r.who, r.change].join("|"));
+    const histAsc = await walkHist({ hdir: "asc" });
+    ok("1.s9 · desk history · When · oldest first is the EXACT reverse of the bare address, and the bare address marks When in force with \"Newest first.\"",
+      all(proj(histAsc.rows)) === all(proj(histBare.rows).reverse()) && histBare.pages[0].historySort.current === "when-eat"
+        && histBare.pages[0].historyOrderNote === "Newest first." && histAsc.pages[0].historyOrderNote === "Oldest first."
+        && histAsc.pages[0].historyParams.hdir === "asc" && histAsc.pages[0].historyParams.hsort === undefined,
+      j({ rows: histAsc.rows.length }));
+    ok("1.s9 · desk history · CONTROL · the history spans pages, and the reverse check reports a sequence that is not reversed",
+      histBare.pages.length >= 2 && all(proj(histAsc.rows)) !== all(proj(histBare.rows)), j({ pages: histBare.pages.length }));
+    const ledEvents = (await w.dal.houseBotEventStore.listAll({ houseBotId: led.botId, limit: 50 })) as Any[];
+    const designated = ledEvents.find((e: Any) => e.kind === "DESIGNATED");
+    const histRank = histAcct.asc.rows.map((r: Any) => `${r.accountName}|${r.eventWord}`).indexOf(`zz ledger ${TAG9}|${GATEM.CONSOLE_EVENT_WORD.DESIGNATED}`) + 1;
+    const histAnchored = await readHist({ hsort: "account", hdir: "asc", event: designated?.id });
+    ok("1.s9 · anchored · a bell's change followed onto the SORTED desk history lands on the page it holds in that order, flagged — and that page is past the first",
+      designated !== undefined && histRank > 20 && histAnchored.historyPage === Math.ceil(histRank / 20)
+        && (histAnchored.history ?? []).filter((r: Any) => r.anchored).length === 1,
+      j({ histRank, page: histAnchored.historyPage }));
+    const readLedHist = (q: Record<string, unknown>) => GATEM.houseDetailForConsole(OFFICER, ROUTE9, led.botId, { tab: "history", ...q });
+    const ledHist = { bare: await walk9(readLedHist, {}, "hpage", (v) => v.history, (v) => v.historyTotal), asc: await walk9(readLedHist, { hdir: "asc" }, "hpage", (v) => v.history, (v) => v.historyTotal) };
+    const ledAcct = await readLedHist({ hsort: "account" });
+    ok("1.s9 · account history · oldest first is the exact reverse of its own order, and the desk's Account column is refused here — this table has one sortable column",
+      all(proj(ledHist.asc.rows)) === all(proj(ledHist.bare.rows).reverse()) && ledHist.bare.rows.length >= 3
+        && all(proj(ledHist.asc.rows)) !== all(proj(ledHist.bare.rows))
+        && ledAcct.queryRefusal === one("sort") && all(Object.keys(ledHist.bare.pages[0].historySort.columns)) === all(["when"]),
+      j({ rows: ledHist.bare.rows.length, refusal: ledAcct.queryRefusal }));
+
+    /* ━━ THE TARGETS GRID — twenty-three targets, titles in mixed case, some ended and some removed ━━ */
+    const tg = await bot9({ label: `targets ${TAG9}` });
+    const TITLES = ["banana", "Apple", "apple", "cherry", "Banana split", "date", "Elder", "fig", "Grape", "grape", "kiwi", "Lemon", "lime", "Mango", "melon", "nut", "Olive", "orange", "Peach", "pear", "Plum", "quince", "Raisin"];
+    const tIds: string[] = [];
+    for (let n = 0; n < TITLES.length; n++) {
+      const id = `hbt_${TAG9}_${String(n).padStart(2, "0")}`;
+      await w.dal.targetStore.insert({ id, houseBotId: tg.botId, marketId: `mkt_${TAG9}_t${n}`, delayMinSec: 10, delayMaxSec: 20, timingFrom: "STAKE", reactTo: "FIRST", createdById: OFFICER,
+        snapshot: { titleEn: TITLES[n], category: "sports", cutoff: "2026-12-31T00:00:00.000Z", rawYes: 0, rawNo: 0 } } as Any);
+      tIds.push(id);
+      await nap(3);
+    }
+    for (const k of [2, 5, 9, 14, 20]) await w.dal.targetStore.endActive(tIds[k], "OUT_OF_SCOPE");
+    for (const k of [7, 16]) await w.dal.targetStore.remove(tIds[k], OFFICER);
+    const tInfo = new Map<string, Any>();
+    for (const id of tIds) tInfo.set(id, await w.dal.targetStore.get(id));
+    const T_LIFE = ["ACTIVE", "ENDED", "REMOVED"];
+    const tWant = (key: "poll" | "status" | "lastChange" | null, dir: "asc" | "desc"): string[] => [...tInfo.values()].sort((a: Any, b: Any) => {
+      const tail = newestFirst({ ms: Date.parse(a.createdAt), id: a.id }, { ms: Date.parse(b.createdAt), id: b.id });
+      if (key === null) return tail;
+      const s = dir === "asc" ? 1 : -1;
+      const by = key === "poll" ? textOrder(a.snapshot.titleEn, b.snapshot.titleEn)
+        : key === "status" ? T_LIFE.indexOf(a.status) - T_LIFE.indexOf(b.status)
+        : Date.parse(a.endedAt ?? a.createdAt) - Date.parse(b.endedAt ?? b.createdAt);
+      return s * by || tail;
+    }).map((t: Any) => t.id);
+    const readT = (q: Record<string, unknown>) => GATEM.houseDetailForConsole(OFFICER, ROUTE9, tg.botId, { tab: "targets", ...q });
+    const walkT = async (q: Record<string, unknown>) => (await walk9(readT, q, "tpage", (v) => v.targets, (v) => v.targetsTotal)).rows.map((t: Any) => t.id as string);
+    const tServed: Record<string, string[]> = { bare: await walkT({}) };
+    for (const [token, key] of [["poll", "poll"], ["status", "status"], ["last-change", "lastChange"]] as const) {
+      for (const dir of ["asc", "desc"] as const) tServed[`${key}:${dir}`] = await walkT({ tsort: token, tdir: dir });
+    }
+    const tMatch = (key: "poll" | "status" | "lastChange", dir: "asc" | "desc") => all(tServed[`${key}:${dir}`]) === all(tWant(key, dir));
+    ok("1.s9 · targets · Poll · every page in title order both ways — A to Z ignoring case, then code point — with the grid's own order (newest first, the id last) breaking every tie, equal to this block's own computation on this store",
+      tMatch("poll", "asc") && tMatch("poll", "desc")
+        && tServed["poll:asc"].indexOf(tIds[1]) < tServed["poll:asc"].indexOf(tIds[2]) && tServed["poll:asc"].indexOf(tIds[2]) < tServed["poll:asc"].indexOf(tIds[0]),
+      j({ asc: tServed["poll:asc"].slice(0, 4).map((id) => tInfo.get(id)?.snapshot.titleEn), want: tWant("poll", "asc").slice(0, 4).map((id) => tInfo.get(id)?.snapshot.titleEn) }));
+    ok("1.s9 · targets · Status and Last change · the lifecycle Active → Ended → Removed and the instant the grid paints, both ways, each tie in the grid's own order",
+      tMatch("status", "asc") && tMatch("status", "desc") && tMatch("lastChange", "asc") && tMatch("lastChange", "desc"),
+      j({ status: tServed["status:asc"].slice(0, 3), lastChange: tServed["lastChange:desc"].slice(0, 3) }));
+    const tBareView = await readT({});
+    ok("1.s9 · targets · a bare address is EXACTLY today's order, newest target first, with NO header in force — the grid's own order is a column nobody sees",
+      all(tServed.bare) === all(tWant(null, "desc")) && tBareView.targetsSort.current === "" && tBareView.targetsParams.tsort === undefined
+        && tServed.bare.length === 23 && tBareView.targetsTotal === 23,
+      j({ current: tBareView.targetsSort.current }));
+    ok("1.s9 · targets · CONTROL · the grid spans two pages, the orders differ from each other and from the bare address, and case-folding is really exercised (\"Apple\" and \"apple\" differ only in case)",
+      tServed["poll:asc"].length === 23 && all(tServed["poll:asc"]) !== all(tServed.bare) && all(tServed["poll:asc"]) !== all(tServed["poll:desc"])
+        && all(tServed["status:asc"]) !== all(tServed.bare) && textOrder("Apple", "banana") < 0 && byCodePoint("banana", "Apple") > 0, "");
+    const tPaged = await readT({ tsort: "poll", tdir: "asc", tpage: "2" });
+    ok("1.s9 · targets · the grid's parameters carry its sort and its tab — the pager's base — never the page, and page 2 continues the same order",
+      tPaged.targetsPage === 2 && tPaged.targetsParams.tab === "targets" && tPaged.targetsParams.tsort === "poll" && tPaged.targetsParams.tdir === "asc"
+        && tPaged.targetsParams.tpage === undefined && all(tPaged.targets.map((t: Any) => t.id)) === all(tWant("poll", "asc").slice(20)),
+      j(tPaged.targetsParams));
+    /* The DAL's own half: a stored title that is not a string sorts LAST both ways, and a cursor cannot page a sorted list. */
+    const tg2 = await bot9({ label: `targets two ${TAG9}` });
+    for (const [k, title] of [["b", "Beta"], ["n", 42], ["a", "alpha"]] as Array<[string, unknown]>) {
+      await w.dal.targetStore.insert({ id: `hbt_${TAG9}_odd_${k}`, houseBotId: tg2.botId, marketId: `mkt_${TAG9}_odd_${k}`, delayMinSec: 10, delayMaxSec: 20, timingFrom: "STAKE", reactTo: "FIRST", createdById: OFFICER,
+        snapshot: { titleEn: title, category: "sports", cutoff: "2026-12-31T00:00:00.000Z", rawYes: 0, rawNo: 0 } } as Any);
+      await nap(3);
+    }
+    const oddIds = async (dir: "asc" | "desc") => ((await w.dal.targetStore.listForBot(tg2.botId, "all", null, { limit: 20, order: { key: "poll", dir } })).rows as Any[]).map((t: Any) => String(t.id).slice(-1));
+    const oddAsc = await oddIds("asc"), oddDesc = await oddIds("desc");
+    ok("1.s9 · targets · DAL · a stored title that is not a string sorts LAST in both directions, on this store",
+      all(oddAsc) === all(["a", "b", "n"]) && all(oddDesc) === all(["b", "a", "n"]), j({ oddAsc, oddDesc }));
+    let cursorRefused = "";
+    try { await w.dal.houseBotIntentStore.listFeed({ houseBotId: led.botId, limit: 5, cursor: { createdAt: w.iso(), id: "hbi_x" }, order: { key: "stake", dir: "asc" } }); } catch (e) { cursorRefused = String((e as Any)?.message ?? e); }
+    const cursorDefault = await w.dal.houseBotIntentStore.listFeed({ houseBotId: led.botId, limit: 5, cursor: { createdAt: w.iso(), id: "hbi_x" } });
+    ok("1.s9 · DAL · a keyset cursor is a position in the DEFAULT order, so a sorted page refuses one on this store — and the default order still takes it",
+      /cannot page a sorted list/.test(cursorRefused) && Array.isArray(cursorDefault.rows), cursorRefused);
+
+    /* ━━ THE RESULTS TAB — two tables, two namespaced sorts, and a window no address can move ━━ */
+    const readRes = (q: Record<string, unknown> = {}) => GATEM.houseResultsForConsole(OFFICER, ROUTE9, { tab: "results", ...q });
+    const resTwo = await GATEM.houseResultsForConsole(OFFICER, ROUTE9);
+    const resBare = await readRes();
+    const dayProj = (v: Any) => v.resultDays.map((d: Any) => `${d.dayTitle}|${d.result.text}|${d.stakesText}|${d.stateText}`);
+    const acctProj = (v: Any) => (v.resultAccounts ?? []).map((a: Any) => `${a.accountName}|${a.today.text}|${a.week.text}`);
+    ok("1.s9 · results · a bare address is EXACTLY today's two tables — the same as the reader asked with no address at all — the day in force on By day and nothing in force on By account",
+      all(dayProj(resBare)) === all(dayProj(resTwo)) && all(acctProj(resBare)) === all(acctProj(resTwo))
+        && resBare.daySort.current === "day-eat" && resBare.acctSort.current === "" && resBare.queryRefusal === null,
+      j({ day: resBare.daySort?.current, acct: resBare.acctSort?.current }));
+    const resDayAsc = await readRes({ daysort: "day-eat", daydir: "asc", range: "all", from: "2020-01-01T00:00", to: "2030-01-01T00:00" });
+    ok("1.s9 · results · By day oldest first is the EXACT reverse of its own order — and window words on the same address move NOTHING: still the same seven days",
+      all(dayProj(resDayAsc)) === all(dayProj(resBare).reverse()) && resDayAsc.resultDays.length === 7
+        && all([...dayProj(resDayAsc)].sort()) === all([...dayProj(resBare)].sort()),
+      j({ days: resDayAsc.resultDays.map((d: Any) => d.dayText) }));
+    const resultOf = (c: Any): number | null => (c.word === "Profit" ? figureOf(c.figure) : c.word === "Loss" ? -(figureOf(c.figure) ?? 0) : c.word === "Even" ? 0 : null);
+    const STATE_RANK: Record<string, number> = { "Still running": 0, Final: 1, "No stakes": 2 };
+    const dayAt = new Map(resBare.resultDays.map((d: Any, i: number) => [d.dayTitle, i]));
+    const dayTie = (a: Any, b: Any) => (dayAt.get(a.dayTitle) ?? 0) < (dayAt.get(b.dayTitle) ?? 0);
+    const dayBad: string[] = [];
+    for (const [token, key] of [["result", (d: Any) => resultOf(d.result)], ["stakes-placed", (d: Any) => figureOf(d.stakesText)], ["state", (d: Any) => STATE_RANK[d.stateText] ?? null]] as Array<[string, (d: Any) => number | null]>) {
+      for (const dir of ["asc", "desc"] as const) {
+        const v = await readRes({ daysort: token, daydir: dir });
+        if (pairsOut(v.resultDays, key, dir, dayTie).length > 0 || v.resultDays.length !== 7) dayBad.push(`${token}:${dir}`);
+      }
+    }
+    ok("1.s9 · results · By day's Result, Stakes placed and State order the seven days both ways by what each cell paints — a day with no result LAST both ways — each tie in the table's own order",
+      dayBad.length === 0 && resBare.resultDays.some((d: Any) => resultOf(d.result) !== null), j(dayBad));
+    const acctAt = new Map((resBare.resultAccounts ?? []).map((a: Any, i: number) => [a.accountName, i]));
+    const acctTie = (a: Any, b: Any) => (acctAt.get(a.accountName) ?? 0) < (acctAt.get(b.accountName) ?? 0);
+    const acctBad: string[] = [];
+    for (const [token, key] of [["account", (a: Any) => (a.accountIsOperatorText ? a.accountName : null)], ["today", (a: Any) => resultOf(a.today)], ["last-7-days", (a: Any) => resultOf(a.week)]] as Array<[string, (a: Any) => number | string | null]>) {
+      for (const dir of ["asc", "desc"] as const) {
+        const v = await readRes({ acctsort: token, acctdir: dir });
+        if (pairsOut(v.resultAccounts ?? [], key, dir, acctTie).length > 0 || (v.resultAccounts ?? []).length !== (resBare.resultAccounts ?? []).length) acctBad.push(`${token}:${dir}`);
+      }
+    }
+    const acctAsc = await readRes({ acctsort: "account", acctdir: "asc" });
+    const acctDesc = await readRes({ acctsort: "account", acctdir: "desc" });
+    ok("1.s9 · results · By account orders by the account's label, today's result and the week's both ways — and the line folding every account no longer on the desk has no label and sorts LAST in both directions",
+      acctBad.length === 0 && (resBare.resultAccounts ?? []).some((a: Any) => !a.accountIsOperatorText)
+        && !acctAsc.resultAccounts.at(-1).accountIsOperatorText && !acctDesc.resultAccounts.at(-1).accountIsOperatorText,
+      j({ acctBad }));
+    const both = await readRes({ daysort: "stakes-placed", daydir: "asc", acctsort: "today" });
+    ok("1.s9 · results · the two tables sort INDEPENDENTLY on one address — each keeps the other's order in its parameters, the tab rides both, and each header row marks its own column",
+      both.daySort.current === "stakes-placed" && both.daySort.dir === "asc" && both.acctSort.current === "today" && both.acctSort.dir === "desc"
+        && both.resultsParams.tab === "results" && both.resultsParams.daysort === "stakes-placed" && both.resultsParams.daydir === "asc"
+        && both.resultsParams.acctsort === "today" && both.resultsParams.acctdir === undefined
+        && both.daySort.prefix === "day" && both.acctSort.prefix === "acct" && both.queryRefusal === null,
+      j(both.resultsParams));
+    const resRef = await readRes({ daysort: "zzprofit", acctsort: "zznet" });
+    ok("1.s9 · results · validation · a sort word that is no column of either table is refused as \"sort\", both tables keep their own order, and nothing refused rides into the parameters",
+      resRef.queryRefusal === one("sort") && all(dayProj(resRef)) === all(dayProj(resBare)) && all(acctProj(resRef)) === all(acctProj(resBare))
+        && !/zz/.test(all([resRef.resultsParams, resRef.daySort, resRef.acctSort])),
+      j({ refusal: resRef.queryRefusal }));
+
+    /* ━━ THE PAGES, AT SOURCE (memory child: files, not a store) — a DUMB renderer (319, 340, 388, 453) ━━━━━━━━━━━━━━ */
+    if (!w.onPostgres) {
+      const detail9 = decomment(read(DETAIL_PAGE));
+      const DESK_ROUTE = "CONSOLE_ROUTE", ACCOUNT_ROUTE = "`${CONSOLE_ROUTE}/${view.id}`";
+      /** [the page's code, the view, its sort field, its params field, the reader's table, the base route] — one row per sortable table. */
+      const SITES: Array<[string, string, string, string, string, string]> = [
+        [pageCode, "rosterView", "rosterSort", "rosterParams", "roster", DESK_ROUTE],
+        [pageCode, "feedView", "feedSort", "feedParams", "feedDesk", DESK_ROUTE],
+        [pageCode, "historyView", "historySort", "historyParams", "historyDesk", DESK_ROUTE],
+        [pageCode, "resultsView", "daySort", "resultsParams", "resultDays", DESK_ROUTE],
+        [pageCode, "resultsView", "acctSort", "resultsParams", "resultAccounts", DESK_ROUTE],
+        [detail9, "view", "feedSort", "feedParams", "feedAccount", ACCOUNT_ROUTE],
+        [detail9, "view", "historySort", "historyParams", "historyAccount", ACCOUNT_ROUTE],
+        [detail9, "view", "targetsSort", "targetsParams", "targets", ACCOUNT_ROUTE],
+      ];
+      const sortThs = (code: string): string[] => [...code.matchAll(/<SortTh\b[^>]*\/>/g)].map((m) => m[0]);
+      const siteHolds = ([code, v, s, params, table, route]: [string, string, string, string, string, string]): boolean => {
+        const mine = sortThs(code).filter((t) => t.includes(`current={${v}.${s}.current}`));
+        const want = [...(GATEM.CONSOLE_SORT_TABLES[table].keys as readonly string[])];
+        return mine.length === want.length && mine.every((t, i) => t.startsWith(
+          `<SortTh field={${v}.${s}.columns.${want[i]}.field} label={${v}.${s}.columns.${want[i]}.label} current={${v}.${s}.current} dir={${v}.${s}.dir} sp={${v}.${params}} baseHref={${route}} prefix={${v}.${s}.prefix}`));
+      };
+      const everySite = (sites: typeof SITES) => sites.every(siteHolds)
+        && sortThs(pageCode).length + sortThs(detail9).length === SITES.reduce((n, [, , , , table]) => n + GATEM.CONSOLE_SORT_TABLES[table].keys.length, 0)
+        && ![pageCode, detail9].some((c) => /<SortTh\b[^>]*\bsp=\{sp\}/.test(c) || /<SortTh\b[^>]*\blabel="/.test(c));
+      ok("1.s9 · the pages · every sortable header on both pages is the kit's `SortTh`, one per column of its table in the reader's own order, every part of it — token, word, column in force, direction, prefix — from ONE sort view of the reader, its parameters that panel's VALIDATED ones and never the raw address, and no header word typed at the call site",
+        everySite(SITES), j(SITES.map((s) => [s[4], siteHolds(s)])));
+      const plant = (from: string, to: string) => SITES.map((s) => [s[0].replace(from, to), ...s.slice(1)] as [string, string, string, string, string, string]);
+      ok("1.s9 · the pages · CONTROL · the same pin reports a header handed the raw address, a word typed at the call site, and two headers swapped — each planted in a copy, each seen to land",
+        !everySite(plant("sp={feedView.feedParams}", "sp={sp}")) && !everySite(plant("label={rosterView.rosterSort.columns.status.label}", 'label="Status"'))
+          && !everySite(plant("field={resultsView.daySort.columns.result.field}", "field={resultsView.daySort.columns.stakes.field}"))
+          && pageCode.includes("sp={feedView.feedParams}") && pageCode.includes("label={rosterView.rosterSort.columns.status.label}"),
+        "");
+      ok("1.s9 · the pages · the roster draws the kit pager over its reader's own count with its own page word, the roster and Results panels paint the console's one refusal Callout, and the Targets pager's base is the reader's parameters — not a tab typed at the call site",
+        /total=\{rosterView\.rosterTotal\}/.test(pageCode) && /page=\{rosterView\.rosterPage\}/.test(pageCode) && /perPage=\{rosterView\.rosterPerPage\}/.test(pageCode)
+          && /\{rosterView\.queryRefusal && \(\s*<Callout tone="warning" title=\{CONSOLE_REFUSAL_TITLE\}>\{rosterView\.queryRefusal\}<\/Callout>/.test(panelOf("roster"))
+          && /\{resultsView\.queryRefusal && \(\s*<Callout tone="warning" title=\{CONSOLE_REFUSAL_TITLE\}>\{resultsView\.queryRefusal\}<\/Callout>/.test(panelOf("results"))
+          && /baseHref=\{buildBaseHref\(`\$\{CONSOLE_ROUTE\}\/\$\{view\.id\}`, view\.targetsParams, "tpage"\)\}/.test(detail9) && !/\{ tab: "targets" \}/.test(detail9)
+          && /houseRosterForConsole\(session\?\.userId \?\? null, "\/admin\/desk", sp\)/.test(pageCode) && /houseResultsForConsole\(session\?\.userId \?\? null, "\/admin\/desk", sp\)/.test(pageCode),
+        "");
+      ok("1.s9 · the pages · CONTROL · that pin reports the Targets base typed back at the call site and the roster's refusal Callout taken away",
+        !/baseHref=\{buildBaseHref\(`\$\{CONSOLE_ROUTE\}\/\$\{view\.id\}`, view\.targetsParams, "tpage"\)\}/.test(detail9.replace("view.targetsParams, \"tpage\"", "{ tab: \"targets\" }, \"tpage\""))
+          && !/\{rosterView\.queryRefusal && \(/.test(panelOf("roster").replace("{rosterView.queryRefusal && (", "{false && (")),
+        "");
+    }
+
+    /* The sorted states, for §3's lexicon: every sorted note, header word, token and parameter. */
+    STATES.push(["s9-ledger-sorted", walked["outcome:asc"].pages[0]], ["s9-ledger-refused", refused.both], ["s9-desk-account", deskAcct.desc.pages[0]],
+      ["s9-history-account", histAcct.desc.pages[0]], ["s9-targets-sorted", tPaged], ["s9-roster-sorted", rRef.clean], ["s9-results-sorted", both]);
+  } finally {
+    const live = new Set(((await w.dal.houseBotStore.listNonRemoved()) as Any[]).map((b: Any) => b.id));
+    for (const b of mine9) if (live.has(b.botId)) await w.dal.houseBotStore.setStatus(b.botId, { from: ["ACTIVE", "PAUSED", "AUTO_PAUSED"], ...REMOVE9 });
+    const left = ((await w.dal.houseBotStore.listNonRemoved()) as Any[]).filter((b: Any) => mine9.some((m) => m.botId === b.id)).length;
+    const ctlNow: Any = await w.dal.houseBotControlStore.get();
+    if (ctl9.enabled && !ctlNow.enabled) await w.switchOn();
+    else if (!ctl9.enabled && (ctlNow.enabled || ctlNow.offCause !== ctl9.offCause)) {
+      if (!ctlNow.enabled) await w.switchOn();
+      await w.dal.houseBotControlStore.switchOff({ cause: ctl9.offCause ?? "MANUAL", byId: OFFICER, reason: "test" });
+    }
+    const ctlEnd: Any = await w.dal.houseBotControlStore.get();
+    ok("1.s9 · teardown · every account this block designated is off the roster again (the slots are shared) and the master switch is where the block found it",
+      mine9.length >= 10 && left === 0 && ctlEnd.enabled === ctl9.enabled, j({ designated: mine9.length, left }));
+  }
+} catch (err) {
+  ok("0.throw.2k · no step-9 case threw — a throw here would otherwise skip §3's lexicon scan and §4's whole source law",
+    false, String((err as Any)?.stack ?? err).replace(/\s+/g, " ").slice(0, 400));
+}
+
+/* ════════════════════════════════════════════════════════════════════════════════════════════════════════════════
  * §3 · THE NEUTRAL LEXICON (ruling 453)
  * ════════════════════════════════════════════════════════════════════════════════════════════════════════════════ */
 
@@ -8565,6 +9257,11 @@ section("§3 · nothing the desk renders names the feature, in ANY state");
     ...(view.resultAccounts ?? []).flatMap((r: Any) => [r.accountIsOperatorText ? null : r.accountName, r.accountHandle,
       ...[r.today, r.week].flatMap((c: Any) => [c?.text, c?.word, c?.figure])]),
     ...Object.values(view.feedParams ?? {}), ...Object.values(view.historyParams ?? {}),
+    /* ⭐ STEP 9 · EVERY TABLE'S SORT PARTS AND PARAMETERS. A sortable header's word, its token (which reaches the address
+       bar), the token in force, the prefix and every live parameter reach the DOM or the URL, so each is in 453's scan. */
+    ...[view.rosterSort, view.feedSort, view.historySort, view.targetsSort, view.daySort, view.acctSort].filter(Boolean)
+      .flatMap((s: Any) => [s.current, s.prefix, s.dir, ...Object.values(s.columns ?? {}).flatMap((c: Any) => [c.field, c.label])]),
+    ...Object.values(view.rosterParams ?? {}), ...Object.values(view.targetsParams ?? {}), ...Object.values(view.resultsParams ?? {}),
     /* ⭐ RESUME-HERE §0c decision 4 · THE FIND STEP'S ACCOUNT LIST. A row's two instants and their hover titles, the
        rail's group and option words AND each option's key and link (a token is a painted word slugged, so the scan
        covers the address bar by construction), the three header words and their sort tokens, the live parameters,
@@ -8581,7 +9278,7 @@ section("§3 · nothing the desk renders names the feature, in ANY state");
     ...Object.values(GATEM.CONSOLE_EVENT_WORD as Record<string, string>),
   ].filter((s: unknown): s is string => typeof s === "string");
 
-  const fresh = await GATEM.houseRosterForConsole(OFFICER, "/admin/desk");
+  const fresh = await rosterEvery(OFFICER);
   const scanned: Array<[string, string[]]> = [["fresh", copyOf(fresh)], ...STATES.map(([n, v]) => [n, copyOf(v)] as [string, string[]])];
   const hits = scanned.flatMap(([n, c]) => c.filter((s) => NEUTRAL.test(s)).map((s) => `${n}: ${s}`));
   const total = scanned.reduce((n, [, c]) => n + c.length, 0);
@@ -8733,7 +9430,11 @@ if (STORE === "memory") {
    * every string written as element content — every table header, every Callout body, the primary button's label —
    * was outside this guard, and the control could not reveal it because all three of its plants were attributes. */
   ok("4.453 · …and the population includes the page's JSX PROSE, not only its attribute literals",
-    ["Designate an account", "Master switch", "Account", "Status", "Products"].every((s) => jsxLits.includes(s)),
+    /* ⭐ 2026-09-27 · step 9 · "Account" and "Status" left the page's element content: every sortable header's word is
+       now the reader's `CONSOLE_SORT_LABEL`, handed to the kit's `SortTh` — which the reader's own half of this scan
+       (`lexiconFiles`) covers. The claim is unchanged — ELEMENT CONTENT is in the population — so it names two headers
+       that are still written as JSX text on this page: "Opening" (the ledger) and "Change" (the history). */
+    ["Designate an account", "Master switch", "Opening", "Change", "Products"].every((s) => jsxLits.includes(s)),
     j({ pageStrings: jsxLits.length }));
   /* ⛔ THE PLANTED CONTROL, and it must fire: the real page with the head title and the switch's aria-label put back
    * to the words ruling 306 originally wrote. A guard whose control cannot fire is decoration. */
@@ -8859,7 +9560,9 @@ export default function Ruling513Control() {
 
   /* 1.300 / 1.380 · the gate is awaited FIRST, with a STRING LITERAL route, before the reader. */
   const gateAt = pageCode.indexOf('houseConsoleAudience(session?.userId ?? null, "/admin/desk")');
-  const readerAt = pageCode.indexOf('houseRosterForConsole(session?.userId ?? null, "/admin/desk")');
+  /* ⭐ 2026-09-27 · step 9 · the roster reader takes the request's query as its THIRD argument (arity 3 in
+     `CONSOLE_GATES`); the route is still the literal this pin exists for. */
+  const readerAt = pageCode.indexOf('houseRosterForConsole(session?.userId ?? null, "/admin/desk", sp)');
   ok("1.300 · the page awaits `houseConsoleAudience` with a literal route BEFORE it calls the gated reader",
     gateAt > 0 && readerAt > gateAt, j({ gateAt, readerAt }));
   ok("1.380 · the route argument is a literal, never a header value", !/headers\(\)/.test(pageCode) && !/x-pathname/.test(pageCode));
@@ -9269,7 +9972,10 @@ export default function Ruling513Control() {
   const thead = /<thead[\s\S]*?<\/thead>/.exec(pageCode)?.[0] ?? "";
   /* ⚠️ `<th\s` — the whitespace is load-bearing: `<th[^>]*>` also matches `<thead …>`, which put an empty first
      entry in front of every header and made this case report a 7-column table as an 8-column one. */
-  const headers = [...thead.matchAll(/<th\s[^>]*>([^<]*)</g)].map((m) => m[1].trim());
+  /* ⭐ STEP 9 · six of the roster's eight headers are the kit's `SortTh`; `theadHeaders` resolves each to its word and
+     its rendered class, so every pin below reads the same facts it read off the plain `<th>`s. */
+  const rosterHeads = theadHeaders(thead);
+  const headers = rosterHeads.map((h) => h.label);
   /* ⭐ EIGHT COLUMNS AT LAST (rulings 310, 432(g), 432(h)). Six shipped at step 1 because the other two were
    * tied to things that did not exist: the way-out link to `/admin/desk/[id]`, which would have answered the
    * app-root 404, and "Last bet" to a last-placement instant no reader had. C7 step 4 built the page and added
@@ -9289,10 +9995,12 @@ export default function Ruling513Control() {
      rather than the scope widened, because 432(o)'s measurement was taken on the roster's own 22-character basis. */
   ok("1.373 · 432(o) · every money-bearing header ON THE ROSTER may WRAP, so a long basis costs thead height and not a clipped figure",
     (thead.match(/!whitespace-normal/g) ?? []).length === 3
-      && /<th scope="col" className="text-right p-3 !whitespace-normal">Loss today \(projected\)<\/th>/.test(pageCode)
+      && rosterHeads.some((h) => h.label === "Loss today (projected)" && h.cls === "text-right p-3 !whitespace-normal")
       /* ⛔ THE `!` IS THE ASSERTION. `.admin-tbl th` is (0,1,1) and a bare utility is (0,1,0), so the class LOST to
-         the stylesheet: the first fix compiled, passed every source pin, and left the figure sliced on screen. */
-      && !/className="text-right p-3 whitespace-normal"/.test(pageCode), "");
+         the stylesheet: the first fix compiled, passed every source pin, and left the figure sliced on screen.
+         ⭐ STEP 9 · read off every header's RENDERED class, so a `SortTh` with a bare utility is seen as well. */
+      && !/className="text-right p-3 whitespace-normal"/.test(pageCode)
+      && !theadHeaders(pageCode).some((h) => /(^|\s)whitespace-normal(\s|$)/.test(h.cls)), "");
   /* ⛔ AND THE BAND AND THE COLUMN CALL THE SAME FIGURE THE SAME THING (432(o)): the tile above reads "Open exposure"
    * and the column below it read "Exposure", which is the one word a reader uses to tie the two together. */
   /* ⚠️ IT NOW COMPARES THEM. The label said "every money column's header is the label of the tile that measures the
@@ -9310,7 +10018,7 @@ export default function Ruling513Control() {
   /* ⛔ AND THE COUNT USAGE READS ON THE SAME AXIS AS THE TWO MONEY USAGES BESIDE IT (432(o)): same grammar, same
    * shape, three adjacent figures — left-aligning one of them put them on two axes. */
   ok("1.407 · 432(o) · every usage column is right-aligned, so three adjacent usage figures read on ONE axis",
-    (panelOf("roster").match(/<th scope="col" className="text-right p-3 !whitespace-normal">/g) ?? []).length === 3
+    rosterHeads.filter((h) => h.cls === "text-right p-3 !whitespace-normal").length === 3
       && (panelOf("roster").match(/<td className="p-3 text-right(?: text-text-secondary)?"><Usage cell=/g) ?? []).length === 3, "");
   ok("1.373 · no header reads 'House stake', 'Today net' or 'Live balance'",
     !/House stake|house stake|Today net|Live balance/.test(pageCode), "");
@@ -9359,7 +10067,7 @@ export default function Ruling513Control() {
      Every panel that paints that header is read out of its OWN slice and must carry the floor — derived from the
      closed tab list, so a panel written tomorrow is inside the rule without anyone remembering to add it. */
   const subjectCols = CR.CONSOLE_TABS
-    .map((k: string) => [k, /<th scope="col" className="([^"]*)">Account<\/th>/.exec(panelOf(k))?.[1] ?? null] as [string, string | null])
+    .map((k: string) => [k, theadHeaders(panelOf(k)).find((h) => h.label === "Account")?.cls ?? null] as [string, string | null])
     .filter(([, c]) => c !== null) as [string, string][];
   /* 🔴 474 · OPERATOR TEXT IS BOUNDED, NEVER REWRITTEN — AND A CSS TRANSFORM IS A REWRITE. Found on a
      PHOTOGRAPH, not in any source scan: `.row-link` carries `text-transform: uppercase` and
@@ -9404,18 +10112,24 @@ export default function Ruling513Control() {
   ok("1.373 · CONTROL · the closed set really would report a phone floor of zero hidden behind the same 150px — which the substring test it replaced accepted",
     !SUBJECT_FLOOR.some((re) => re.test("text-left p-3 min-w-[0px] sm:min-w-[150px]")), "");
   ok("1.373 · …and only the SUBJECT and STATUS columns carry a floor — never a money column, which would pin its figure off-screen",
-    /<th scope="col" className="text-left p-3 min-w-\[150px\]">Account<\/th>/.test(pageCode)
-      && /<th scope="col" className="text-left p-3 min-w-\[128px\]">Status<\/th>/.test(pageCode)
+    rosterHeads.find((h) => h.label === "Account")?.cls === "text-left p-3 min-w-[150px]"
+      && rosterHeads.find((h) => h.label === "Status")?.cls === "text-left p-3 min-w-[128px]"
       /* ⛔ THE ROSTER'S OWN TWO FLOORS, counted in the ROSTER's own slice — the other three panels have their own
          subject columns and their own floors, and a page-wide count would let one be deleted while another is
          added. ⛔ THE "NO MONEY FLOOR" HALF STAYS PAGE-WIDE, because it is a rule about every table here. */
       && (panelOf("roster").match(/min-w-\[/g) ?? []).length === 2
-      && !/text-right p-3[^"]*min-w-\[/.test(pageCode), "");
+      && !/text-right p-3[^"]*min-w-\[/.test(pageCode)
+      /* ⭐ STEP 9 · and on every header's RENDERED class: a right-aligned `SortTh` carries no `text-right` in its source. */
+      && !theadHeaders(pageCode).some((h) => /\btext-right\b/.test(h.cls) && /\bmin-w-\[/.test(h.cls)), "");
   /* ⛔ ONLY THE FIGURE IS IN `.amount` (ruling 409). Wrapping "used" and "of" inside it put prose in the money face
    * and made each unbreakable unit wider than the figure it protected — the constraint 432(b) was solving. A COUNT
    * is not money, so it takes the mono/tabular face without `.amount`'s meaning. */
-  ok("1.407 / 1.409 · every `<th>` carries `scope=\"col\"`; the FIGURE alone is `.amount tabular-nums`, its words are not, and no cell is bound by `.tabular`",
-    headers.length === (thead.match(/scope="col"/g) ?? []).length
+  /* ⭐ STEP 9 · 407's SECOND CLAUSE IS NOW IN FORCE: "a sortable header uses `SortTh`". The kit's `SortTh` renders its own
+     `<th>` and takes no `scope` prop, so the claim is split along the ruling's own line: every PLAIN header still carries
+     `scope="col"`, and every other header is the kit's sortable cell — exactly one per column of the reader's table. */
+  ok("1.407 / 1.409 · every plain `<th>` carries `scope=\"col\"` and every sortable one is the kit's `SortTh`, one per roster column; the FIGURE alone is `.amount tabular-nums`, its words are not, and no cell is bound by `.tabular`",
+    rosterHeads.filter((h) => !h.sortable).every((h) => /\bscope="col"/.test(h.src)) && rosterHeads.filter((h) => !h.sortable).length === 2
+      && rosterHeads.filter((h) => h.sortable).length === (GATEM.CONSOLE_SORT_TABLES.roster.keys as readonly string[]).length
       && /const figure = cell\.money \? "amount tabular-nums" : "font-mono tabular-nums";/.test(pageCode)
       && (pageCode.match(/className=\{figure\}/g) ?? []).length === 1
       && !/className="amount tabular-nums">\{cell\./.test(pageCode)
@@ -9626,11 +10340,14 @@ export default function Ruling513Control() {
      handed through as an expression (387 — an address that was not taken at its word says so, in the door's own
      words). It is NAMED here rather than being allowed to shorten the floor for everything else, so a second
      expression-bodied Callout — the way a hand-written sentence would sneak past a length rule — is reported. */
-  const EXPR_BODIES = ["{feedView.queryRefusal}"];
+  /* ⭐ STEP 9 · THREE SINCE THE ROSTER AND THE RESULTS TAB SORT: each validates its own address and paints the SAME
+     refusal Callout the activity panel does, with the reader's own sentence. The list stays NAMED and the count an
+     EQUALITY, so a fourth expression body is still reported. */
+  const EXPR_BODIES = ["{rosterView.queryRefusal}", "{feedView.queryRefusal}", "{resultsView.queryRefusal}"];
   const proseBodies = calloutBodies.filter((b) => !EXPR_BODIES.includes(b));
-  ok("1.308 · 432(n) · CONTROL · the Callout bodies were really read, every body this page WORDS ITSELF is a real sentence, and the one expression body is the reader's own refusal",
+  ok("1.308 · 432(n) · CONTROL · the Callout bodies were really read, every body this page WORDS ITSELF is a real sentence, and the expression bodies are exactly the reader's own refusals",
     proseBodies.length >= 3 && proseBodies.every((b) => b.length > 40)
-      && calloutBodies.length - proseBodies.length === 1
+      && calloutBodies.length - proseBodies.length === EXPR_BODIES.length
       && gateCode.includes("The desk is off. Nothing will be staked."),
     j({ prose: proseBodies.map((b) => b.length), expr: calloutBodies.length - proseBodies.length }));
 
@@ -11845,6 +12562,25 @@ if (STORE === "memory") {
       !navCss(css.replace(".glass-panel:has(.link-pending) tbody {", ".glass-panel:has(.link-pending) tfoot {"))
         && !navCss(css.replace('[data-motion="reduced"] .link-pending::after,', '[data-motion="reduced"] .link-pending-x::after,')), "");
   }
+}
+
+/* ⭐ 1.318pg · THE POSTGRES CHILD'S OWN ROLL-CALL, AND IT MUST BE LAST (build step 9, 2026-09-27). Step 9 declared the
+ * first `console-pg` mutations — three, planted in the Postgres twin's SQL, which only this child can see go red — and
+ * `test:house-bot-reports` 0.505 then reported the key audited by nobody. 1.318 cannot audit them: it runs in the
+ * memory child and reads THAT child's labels. So the Postgres child runs the same shared roll-call over the labels IT
+ * printed, with the same control. The source tier reads this same file, which both children run. */
+if (STORE !== "memory") {
+  const selfCode = decomment(readFileSync(fileURLToPath(import.meta.url), "utf8"));
+  const LBL = "1.318pg · every declared `console-pg` mutation names an assertion THIS run actually printed — an `expect` that matches no label can only ever report WRONG-ASSERTION";
+  const LBLC = "1.318pg · CONTROL · the roll-call reads this run's own labels and this suite's own source, so a drifted `expect` IS reported and an invented one is never found";
+  const input = {
+    suiteKeys: ["console-pg"], declarations: DECLARED_MUTATIONS as DeclaredMutation[],
+    emitted, source: selfCode, ownLabels: [LBL, LBLC],
+  };
+  const rc = expectDriftReport(input);
+  ok(LBL, rc.declared >= 3 && rc.stale.length === 0, j(rc));
+  const control = expectDriftControl(input, 120);
+  ok(LBLC, control.pass, control.extra);
 }
 console.log(`\n@@SUMMARY ${JSON.stringify({ pass, fail })}`);
 console.log(`\n${fail === 0 ? "ALL PASS" : "FAILURES"} — house-bot-console [${STORE}]: ${pass} passed, ${fail} failed`);

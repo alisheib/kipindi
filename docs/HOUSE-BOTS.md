@@ -753,9 +753,9 @@ Warnings: EMAIL_UNVERIFIED · IDENTITY_NOT_APPROVED · RECRUITED · OPEN_POSITIO
 
 | Route | What it is |
 |---|---|
-| `/admin/desk` | The landing page. Tabs: `roster` · `activity` · `limits` · `history` · `results` (what the desk's finished stakes came to over the last 7 EAT days, by day and by account, in words — C7 437, D20b amended 2026-09-26). Owner-only, which in code is the ADMIN role. |
+| `/admin/desk` | The landing page. Tabs: `roster` · `activity` · `limits` · `history` · `results` (what the desk's finished stakes came to over the last 7 EAT days, by day and by account, in words — C7 437, D20b amended 2026-09-26). Every table on it sorts and every one that can grow pages at twenty (§7.1b). Owner-only, which in code is the ADMIN role. |
 | `/admin/desk/new` | The designate wizard: find the account (search it, or pick it from the list of every account — paged, sortable, filterable; §7.1a) → check what the platform already knows → consent and name it → confirm with the holder's password. |
-| `/admin/desk/[id]` | One account. Tabs: `overview` · `activity` · `rules` · `targets` · `history`. |
+| `/admin/desk/[id]` | One account. Tabs: `overview` · `activity` · `rules` · `targets` · `history`. Its three grids sort (§7.1b). |
 
 ⛔ Every tab key lives in `src/lib/house-bot/console-routes.ts` and the list holds **only keys whose panel is
 built** — a rail option with no panel is a dead control, and an unrecognised `?tab=` resolves to the default
@@ -843,6 +843,87 @@ not only the desk.
 a control) and 8 declared `nav-` mutations; `qa:nav-pending` on a served build presses a real tab, chip, header, page
 and account tab at 1280 and 360 with the server's answer held, and measures the mark, the dimming, that `loading.tsx`
 did not take over, and the landing.
+
+### 7.1c Every desk table sorts, and none can grow past a page (2026-09-26, build step 9)
+
+Ali, as typed: *"before finsihing amke su relaso all desk tbale sand grid sgot th erug tpaging pleas enad sroting etc..
+to prveent vey rlong grids"*. Every table on `/admin/desk` and `/admin/desk/[id]` now sorts on the server, and every one
+that can grow pages at twenty. The model is the find list (§7.1a): the reader parses the address once and hands the page
+every header's token and word, the header in force, its direction and the panel's own validated parameters; the page
+draws the kit's `SortTh` (which keeps `aria-sort` and the 44px tap floor) and the kit's `AdminPagination`.
+
+| Table | Sortable columns | A bare address | Address words |
+|---|---|---|---|
+| Roster (`/admin/desk`) | Account · Loss today (projected) · Open exposure · Status · Bets today · Last bet | designation order, oldest first — no header in force | `rsort` `rdir` · pages at 20 on `rpage` |
+| Desk activity | Account · Stake · When (EAT) · Outcome | When, newest first | `sort` `dir` (pages on `page`) |
+| Desk history | Account · When (EAT) | When, newest first | `hsort` `hdir` (pages on `hpage`) |
+| Results · By day | Day (EAT) · Result · Stakes placed · State | the day, newest first | `daysort` `daydir` |
+| Results · By account | Account · Today · Last 7 days | the roster's order, the folded line last — no header in force | `acctsort` `acctdir` |
+| Account activity (`/admin/desk/[id]`) | When (EAT) · Stake · Outcome | When, newest first | `sort` `dir` (pages on `page`) |
+| Account targets | Poll · Status · Last change | newest target first — no header in force | `tsort` `tdir` (pages on `tpage`) |
+| Account history | When (EAT) | When, newest first | `hsort` `hdir` (pages on `hpage`) |
+
+A token is the column's own header word, slugged (`stake`, `when-eat`, `loss-today-projected`, `last-7-days`, …) —
+453's rule, so the address can never carry a word its header does not. Each table's words wear the prefix its page
+number already wore, so `SortTh` resets exactly its own table's page; the Results tab's two tables sort independently on
+one address. A header click keeps every filter and the other table's sort, and drops only the page.
+
+**How each order works.**
+- **A bare address is exactly the order the table had before step 9** — the same statement on the same store, the same
+  anchor arithmetic, the same pages. Where that order is a column (When, the day) the header shows in force; where no
+  column shows it (designation, newest target, roster order) no header is in force until one is clicked.
+- **Every order is total**: the key, then the table's own order for a tie (newest first on the ledgers, the grids and the
+  histories; designation on the roster and By account; the table's own day order on By day), ending on the row's id —
+  so two renders, and the memory and Postgres stores, cannot page one population two ways. A **missing value sorts last
+  in both directions**: an unset limit (its cell says "Not set" and paints no figure), a failed read ("—"), an account
+  that never bet, a day or an account with no result, a title that is not text, and on the desk-wide Account order every
+  row of an account no longer on the desk and the desk's own changes.
+- **Money and counts** order by the figure the cell paints (the roster's used amounts, not a ratio); **Status** and
+  **Outcome** by lifecycle — Active → Paused → Auto-paused; Queued → In flight → Placed → Won → Lost → Void →
+  Cashed out → Skipped → Expired → Failed → Cancelled, where a placed stake that has ended is ranked by its result, as its
+  chip reads; Active → Ended → Removed for a target. **Text** (an account's label, a poll's title) is A–Z ignoring the
+  case of A–Z, then code point — one order, `foldedCodePointOrder` in the DAL, written again in SQL as `translate(…)
+  COLLATE "C"`, and never `localeCompare`, whose answer depends on the runtime's locale data. The ledgers' Account order
+  ranks the roster by label in the reader and hands the ranking to the DAL, which cannot join a label itself.
+- **The order note says the order in force.** "Newest first." on a bare address; "Largest stake first, then newest
+  first.", "Oldest first.", "By outcome, queued first, then newest first.", "By account, A to Z, …" under a sort. On a
+  phone the ledgers' header row is hidden (the row is a stack), so the note is where a phone reads the order — and a
+  phone cannot change it: the sort controls are the header, which is not drawn below `sm`. A sorted link still renders
+  sorted there.
+
+**A bell's row under a sort — decided: it lands where it IS in the order in force.** `&intent=` and `&event=` are a
+landing instruction in the same address as the sort, and both are honoured: dropping the sort would throw away a valid
+part of the address, and ranking the row in the default order would land on a page the row is not on. The rank comes
+from the DAL's own `rankInFeed` / `rankInAll`, over the SAME predicate and the SAME named order the page is cut from, so
+it is exact. A bare address keeps the counting rank it always had (and its tie step-back, which only that rank needs).
+
+**The address is validated part by part**, in the one parse every desk reader shares: a token that is no column of THAT
+table (the desk's Account column on the account page, a person's field, a repeat) is refused as "sort", a direction that
+is not `asc`/`desc` — or one with no column to reverse — as "sort direction", a roster page that is not a whole number as
+"page"; each falls back to the table's own order and never rides into a link. The roster and Results panels gained the
+console's one refusal Callout for this.
+
+**What does not sort, and why.**
+- **Opening, Closing and Left today** (both ledgers) are running figures, read from bounded scans *after* the page is
+  cut; an order over them would need every row of the population priced first. Every row's figures are its own under
+  any order — `test:house-bot-console` 1.s9 compares them row by row across every sort.
+- **Round** identifies a round only beside its Game, and **Game**'s name is read defensively out of an untyped stored
+  snapshot per row; ordering the population by it would need a second reading of that blob in SQL, matched to the first
+  on every hostile shape.
+- **Event, Change and Who** (the histories) are words, relations and ids with no order anyone reads.
+- **Products** (the roster) is a list of lines, and the **control columns** (the way out, Stop) have nothing to order.
+
+**The roster pages at twenty.** It is bounded by the configured maximum (1–20), so the pager draws nothing today — the
+kit pager renders nothing on one page, which is ruling 411's reason the loader draws no pager ghost for it — and it is
+there so the roster cannot outgrow a page if that ceiling ever moves. ⚠️ `scripts/grid-paging.test.mts` still lists the
+desk page in `FIXED_GRIDS` with the argument that every account must be visible at once to be controlled; at a ceiling of
+twenty that stays true (every account is on page 1), and the entry is the place to revisit if the ceiling is raised.
+**Results are not paged**: By day is always seven rows and By account at most the roster's ceiling plus one folded line.
+
+**The gates:** `test:house-bot-console` §2i (both stores: every key and direction against orders computed from the stored
+facts, ties, missing-last, the anchored row, per-row figures, validation, links, the roster pager, and the source pins
+that every sortable header is `SortTh` fed from the reader), `test:dal-parity` 16.feedOrder (one named order per twin,
+shared by each list and its rank member), and `qa:house-bots-visual` §5.10 on a sorted address of every desk table.
 
 ### 7.2 Configuring an account, end to end
 
@@ -2156,7 +2237,9 @@ always a refusal, green on re-run twice before) — and was **169 / 161, 0 faile
 ⚠️ **NOT RENDERED:** the three warnings (designate's amber toast, Start's and the kill switch's warning) reuse the kit's
 existing warning toast and callout, and the suite proves each answer on both stores; showing them on a served page needs
 a build whose chain cannot sign (`AUDIT_CHAIN_SECRET` equal to `SESSION_SECRET`), which this pass did not stand up.
-The 18 declared mutations are driven after the push, at the live commit, and recorded with the next commit.
+**LIVE at `f03f8566`** (deploy verified). Its 18 mutations, driven at that commit in a detached tree: console **14 of
+14 caught** (the 12 `543-*`, `537-recorded`, `start-drops-its-warnings`), engine **3 of 3** (one on the Postgres twin),
+money `D19-5` **1 of 1** — 0 missed, 0 files left dirty.
 
 ### 12.12 A press that is still loading says so — built 2026-09-26 (RESUME-HERE §0c build step 10)
 
@@ -2174,7 +2257,7 @@ at all moved between the press and the answer.
 | `test:house-bot-console` §4c (8 pins, each with a control) | inside the 1007 / 728 above |
 | `test:reduce-motion` · `test:keyframes` · `test:motion-ladder` · `test:filter-language` · `test:design-frozen` · `test:pager-reach` · `test:grid-paging` · `test:section-rail` · `test:ui-consistency` · `test:chip-contract` · `test:hooks-order` · `test:shell-boundary` | all exit 0 |
 | `test:tap-target` · `test:type-scale` | red with the SAME failures on `5b82a079` without this step (another lane's `generate-button.tsx`, the date filter's pre-existing `btn-xs`; type-scale 759 / 239) — NOT OURS |
-| `test:motion` | needs a served page on `BASE` (default `localhost:3000`); NOT MEASURED in the gate run, run against production after the deploy |
+| `test:motion` | needs a served page on `BASE` (default `localhost:3000`); NOT MEASURED in the gate run (it needs a served page); **run against production at `f03f8566` after the deploy: 43 passed, 0 failed** |
 
 **Found by the first served run, before the push:**
 - **The desk's filter chips marked themselves but dimmed nothing**: the desk's rail sits ABOVE its table's card, not
@@ -2188,7 +2271,100 @@ at all moved between the press and the answer.
 
 **Declared mutations: 8**, every id starting `nav-` in `scripts/anchors/house-bot-console.anchors.mjs` (`console-mem`):
 the mark dropped from each of the four kit links and from the Custom chip, a mark painted at rest, rows that never dim,
-and a loop that runs on at the low-end tier. The console total is 420. Driven after the push, at the live commit.
+and a loop that runs on at the low-end tier. The console total is 420. **LIVE at `f03f8566`** (deploy verified; the
+served stylesheet carries the rules); driven at that commit together with step 6's console plants: **all 8 caught**,
+0 files left dirty (the console drive's 22 of 22).
+
+### 12.13 Every desk table sorts, and none can grow past a page — built 2026-09-26/27 (build step 9)
+
+What it does and what it refuses is §7.1c. This is what proving it took, on a tree at `c3c3b4a5` plus this change (a
+patch, integrated by the main session).
+
+| Gate, on the patched tree | Printed |
+|---|---|
+| `tsc --noEmit` | exit 0 |
+| `test:red-anchors` | `red-anchors: 3434 passed, 4 failed` — the four known before this step (bar-geometry `sort-summary-unbound`, updown-handover `no-handover-at-all`, 4.1/4.2 `68 vs 65`); all 430 console anchors resolve exactly once |
+| `test:house-bot-console` | **1028 memory / 760 Postgres, 0 failed** — §2i on both stores, 1.318pg; floor 972/706 → 1028/760 |
+| `test:house-bot-reports` | **251 / 80, 0 failed** — floor unchanged (the run printed the floor) |
+| `test:dal-parity` | `dal-parity: 1488 passed, 0 failed` — 16.feedOrder and its control |
+| `test:tab-anchors` · `test:house-bot-surfaces` · `test:filter-language` | green · 74 passed, 0 failed · 254 assertions passed |
+| `qa:house-bots-visual` §5.10 | **NOT RUN here** — written, and run by the main session on a served build at integration (a junctioned tree cannot serve one) |
+
+**Found by the first gate run, before the patch:**
+- **The roster outgrew its own page inside the suite.** The console world designates far more than twenty accounts, so
+  case 2g's row finder threw on an account that had moved to page 2 — and §3's lexicon scan was reading page 1 only.
+  Every case that FINDS a roster row or scans every row now reads every page through the door (`rosterEvery`).
+- **The Results reader parsed its address on `Date.now()`**, which 437(e) forbids in that block (the reader has no clock
+  of its own). It now parses once the core is read, on the core's own day.
+- **The account ledger's column list was in the wrong order** — Stake, When, Outcome in the reader against When, Stake,
+  Outcome on the page. The source pin that every header is `SortTh` in the reader's order caught it.
+- **`console-pg` was a new suite key audited by nobody** (`test:house-bot-reports` 0.505) — step 9 declared its first
+  three entries. It now has its own roll-call, 1.318pg, in the Postgres child, and a `ROLL_CALL_SITES` entry.
+- **Seven new exports of the gate module were unclassified** (0.512) — the sort copy, the table list, the token helper
+  and four types. They are declared non-readers, and 0.512b checks the three values really are.
+
+**Pins re-pointed, each to prove the same thing on the new markup** (every sortable header is the kit's `SortTh` now,
+its word the reader's `CONSOLE_SORT_LABEL` and its rendered class `align` + `className`; `theadHeaders` in the console
+cases reads a header row the way the render resolves it):
+- the header-word equalities of both ledgers and both histories (1.373), the per-panel `colSpan` rule (decision 2) and
+  the loader's column count (1.417) — read through `theadHeaders`;
+- the roster's header order (1.310/1.373), its wrapping money headers and their exact class (432(o), now also read off
+  every header's RENDERED class, so a `SortTh` carrying a bare `whitespace-normal` is caught), its three right-aligned
+  usage headers (1.407), its two floors and "no floor on a right-aligned header" (1.373, now also on rendered classes),
+  and the subject floor on every panel (1.373);
+- 1.407/1.409: "every `<th>` carries `scope="col"`" became "every PLAIN `<th>` carries it and every sortable one is the
+  kit's `SortTh`, one per roster column" — ruling 407's own two clauses. ⚠️ The kit's `SortTh` renders no `scope`
+  attribute; adding `scope="col"` to it is a one-line kit change this step could not make (`admin-sort.tsx` was being
+  edited by the main session);
+- the Results layout (1.437n) reads `SortTh` headers and resolves the folded column's word through the reader;
+- 1.411: the roster left the "draws no pager" list (it pages now, over its reader's count, and draws nothing at the
+  ceiling of twenty) and the landing page draws three pagers, not two;
+- 1.308's named expression-bodied Callouts: three — the roster's and the Results tab's refusals joined the activity
+  panel's; the list stays named and the count an equality;
+- 1.300: the gate-before-reader order is found at the roster reader's new three-argument call (the literal route is
+  unchanged);
+- 4.453's JSX-prose population names "Opening" and "Change" in place of "Account" and "Status", which are the reader's
+  words now (the reader is inside the same scan);
+- 2g's row finder and the roster states §3 scans read every roster page (above);
+- `test:house-bot-reports`: `houseRosterForConsole` and `houseResultsForConsole` 2 → 3 in `CONSOLE_GATES`, and 0.260.c5
+  now plants the address DROPPED and a FOURTH argument (the third is the real call now).
+
+**Anchors re-pointed** (same defect, new markup): `340-null`, `373-subject`, `373-order`, `432o-nowrap-header`,
+`432o-status-floor`, `432o-bets-axis`, `437-money-third`, `302-anchor-ignored`; `432o-exposure-name` moved to the
+reader's `CONSOLE_SORT_LABEL`, where the word now lives; `407-tabular` and `344-landing-total-from-rows` re-quote their
+re-labelled assertions.
+
+**Declared mutations: 30**, every id starting `sort-` in `scripts/anchors/house-bot-console.anchors.mjs` (26
+`console-mem`, 1 `reports-mem`, 3 `console-pg` on the Postgres twin's SQL); the console total is 430.
+They were driven on 2026-09-27 in a THROWAWAY CLONE — a `git clone --shared` of this tree at `c3c3b4a5` with the
+patch applied and committed in the clone only (the harness refuses a target that differs from HEAD), deleted after,
+its `node_modules` junction first. `node scripts/red-house-bot-console.mjs --only sort-` printed `baseline green` for
+`console-mem`, `reports-mem` and `console-pg`, then **`house-bot-console RED: 30 caught, 0 missed, 0 files left
+dirty`**, and the clone's `git status` showed 0 changed paths afterwards. The console floor was then re-measured at
+its raised value: `exit 0 · 1028 passed (at least 1028)` and `exit 0 · 760 passed (at least 760)`.
+
+**Integrated 2026-09-27 on top of steps 6 and 10** (`f03f8566` + this step; one lock acquisition, never piped):
+`test:house-bot-console` **1063 memory / 782 Postgres, 0 failed** (floor → 1063/782); engine 829/810, ops 100/104, caps
+89/96, designation 169/161, money 132/150, reports 251/80, comms 52/50, disclosure: all pass; `test:dal-parity`
+**1488/0**; `test:grid-paging` **41/0**; `typecheck`, `next build`, `verify:house-bot-bundle`, `test:tab-anchors`,
+`test:house-bot-surfaces`, `test:filter-language`, `test:pager-reach`, `test:section-rail`, `test:ui-consistency`: green;
+`test:red-anchors` 3480 passed, only the four known failures of other lanes; `test:tap-target` and `test:type-scale`
+carry exactly `main`'s known failures. `qa:nav-pending` **111/0/0**.
+**The first served run of §5.10 found three defects in the GATE, not in the product**, fixed before the push:
+- its "the page does not scroll sideways" check read `document.scrollWidth`, which cannot fail on the console (it clips
+  horizontal overflow) — its own control went red at every route and width. It now measures the rightmost edge of
+  anything under `<main>`, not entering a box that scrolls, and its control plants an over-wide element there;
+- an EMPTY table hides its own header row (the kit's `data-table-empty` rule), which it misread as a ledger's phone
+  stack — the targets table on the served account is empty (no seed writes targets), so its header controls are now
+  reported NOT MEASURED with that reason; the targets order is held on both stores by `test:house-bot-console`;
+- §5.7's control (one extra 160px column must make the ledger's strip scroll) could not fire on the narrower account
+  ledger at 1440 — a min-width on a table cell is not honoured and the other columns gave way. Its extra cell now holds
+  content wider than the whole strip.
+Also: the kit `SortTh` now carries `scope="col"` (it was the one header on the desk without it), and
+`scripts/grid-paging.test.mts` records why the roster's entry in `FIXED_GRIDS` still holds with a pager at twenty.
+With those fixes, `qa:house-bots-visual` on the served desk at 360, 640, 1024, 1280 and 1440, every tab and every sorted
+address: **1262 passed, 0 failed, 5 NOT MEASURED** — the five are the empty targets table's header controls, one per width.
+The sorted tiles were read at 360 and 1280: one header in force with its arrow, the order note in the table's card.
 
 ---
 

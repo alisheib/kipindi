@@ -40,6 +40,7 @@ import { AdminPageGate } from "@/components/admin/admin-section-gate";
 import { AdminBody } from "@/components/admin/admin-body";
 import { AdminTableEmpty } from "@/components/admin/admin-table-empty";
 import { AdminPagination, buildBaseHref } from "@/components/admin/admin-pagination";
+import { SortTh } from "@/components/admin/admin-sort";
 import { Callout } from "@/components/ui/callout";
 import { Chip } from "@/components/ui/chip";
 import { FormColumn } from "@/components/ui/form-column";
@@ -587,9 +588,9 @@ async function AdminDeskAccountContent({
                         {/* ⭐ LOWERED AT PHONE WIDTH ONLY so the second money answer reaches the strip. The
                             timestamp keeps its nowrap either way — 432(b) forbids clipping a time, and the
                             due sub-line under it is the one part allowed to wrap. */}
-                        <th scope="col" className="text-left p-3 min-w-[104px] sm:min-w-[128px]">When (EAT)</th>
+                        <SortTh field={view.feedSort.columns.when.field} label={view.feedSort.columns.when.label} current={view.feedSort.current} dir={view.feedSort.dir} sp={view.feedParams} baseHref={`${CONSOLE_ROUTE}/${view.id}`} prefix={view.feedSort.prefix} className="p-3 min-w-[104px] sm:min-w-[128px]" />
                         <th scope="col" className="text-right p-3 !whitespace-normal">Opening</th>
-                        <th scope="col" className="text-right p-3 !whitespace-normal">Stake</th>
+                        <SortTh field={view.feedSort.columns.stake.field} label={view.feedSort.columns.stake.label} current={view.feedSort.current} dir={view.feedSort.dir} sp={view.feedParams} baseHref={`${CONSOLE_ROUTE}/${view.id}`} prefix={view.feedSort.prefix} align="right" className="p-3 !whitespace-normal" />
                         {/* ⭐ THE DAY'S BUDGET, FALLING (owner, 2026-09-24). The CEILING is named here and not in
                             the cell — ruling 373's own named fallback for a third money cell, and the reason it
                             exists: two figures in one narrow cell is what put the money off a 360 screen before.
@@ -603,7 +604,7 @@ async function AdminDeskAccountContent({
                         <th scope="col" className="text-right p-3 !whitespace-normal">Left today</th>
                         {/* ⭐ THE STAKE'S TYPE IS THIS CELL'S SECOND LINE, IN PLAIN WORDS — the desk-wide table's
                             own decision (2026-09-26), so the two ledgers keep one shape. */}
-                        <th scope="col" className="text-left p-3 min-w-[110px]">Outcome</th>
+                        <SortTh field={view.feedSort.columns.outcome.field} label={view.feedSort.columns.outcome.label} current={view.feedSort.current} dir={view.feedSort.dir} sp={view.feedParams} baseHref={`${CONSOLE_ROUTE}/${view.id}`} prefix={view.feedSort.prefix} className="p-3 min-w-[110px]" />
                         {/* ⛔ BESIDE PRODUCT, NOT FIRST. The visual gate's §5.2 contract measures the first
                             THREE cells — today When · Stake · Outcome — and asserts the subject and the first
                             money answer are in the 360 strip without scrolling. Putting the game there would
@@ -831,9 +832,9 @@ async function AdminDeskAccountContent({
                 <table className="admin-tbl">
                   <thead className="font-mono text-micro eyebrow uppercase text-text-tertiary border-b border-border-subtle bg-bg-sunken/50">
                     <tr>
-                      <th scope="col" className="text-left p-3 min-w-[150px]">Poll</th>
-                      <th scope="col" className="text-left p-3 min-w-[128px]">Status</th>
-                      <th scope="col" className="text-left p-3 !whitespace-normal">Last change</th>
+                      <SortTh field={view.targetsSort.columns.poll.field} label={view.targetsSort.columns.poll.label} current={view.targetsSort.current} dir={view.targetsSort.dir} sp={view.targetsParams} baseHref={`${CONSOLE_ROUTE}/${view.id}`} prefix={view.targetsSort.prefix} className="p-3 min-w-[150px]" />
+                      <SortTh field={view.targetsSort.columns.status.field} label={view.targetsSort.columns.status.label} current={view.targetsSort.current} dir={view.targetsSort.dir} sp={view.targetsParams} baseHref={`${CONSOLE_ROUTE}/${view.id}`} prefix={view.targetsSort.prefix} className="p-3 min-w-[128px]" />
+                      <SortTh field={view.targetsSort.columns.lastChange.field} label={view.targetsSort.columns.lastChange.label} current={view.targetsSort.current} dir={view.targetsSort.dir} sp={view.targetsParams} baseHref={`${CONSOLE_ROUTE}/${view.id}`} prefix={view.targetsSort.prefix} className="p-3 !whitespace-normal" />
                     </tr>
                   </thead>
                   <tbody>
@@ -879,7 +880,7 @@ async function AdminDeskAccountContent({
                   page={view.targetsPage}
                   perPage={view.targetsPerPage}
                   param="tpage"
-                  baseHref={buildBaseHref(`${CONSOLE_ROUTE}/${view.id}`, { tab: "targets" }, "tpage")}
+                  baseHref={buildBaseHref(`${CONSOLE_ROUTE}/${view.id}`, view.targetsParams, "tpage")}
                 />
               </div>
             )}
@@ -907,7 +908,7 @@ async function AdminDeskAccountContent({
                   <table className="admin-tbl">
                     <thead className="font-mono text-micro eyebrow uppercase text-text-tertiary border-b border-border-subtle bg-bg-sunken/50">
                       <tr>
-                        <th scope="col" className="text-left p-3 min-w-[128px]">When (EAT)</th>
+                        <SortTh field={view.historySort.columns.when.field} label={view.historySort.columns.when.label} current={view.historySort.current} dir={view.historySort.dir} sp={view.historyParams} baseHref={`${CONSOLE_ROUTE}/${view.id}`} prefix={view.historySort.prefix} className="p-3 min-w-[128px]" />
                         <th scope="col" className="text-left p-3 !whitespace-normal">Event</th>
                         <th scope="col" className="text-left p-3">Change</th>
                         <th scope="col" className="text-left p-3 !whitespace-normal">Who</th>

@@ -43,6 +43,12 @@
  *   9. on the designate wizard's FIND step, the list of every account (RESUME-HERE §0c decision 4): three sortable
  *      headers with exactly one in force, every way in on a row at the tap floor, and NO sideways scroll at ANY
  *      width, with a control column; and §5.2 holds that moneyless table's first row inside the strip whole.
+ *  10. on a SORTED address of every desk table (step 9 — Ali: every desk table sorts, and none can grow past a page):
+ *      in each table the address sorts, exactly ONE header in force — the one it asked for, in the direction it asked
+ *      — every visible sort control at the tap floor (a ledger's header row is hidden below `sm` BY DESIGN, and there
+ *      the order note must say the order instead), and NO sideways scroll of the page itself, with a control. The desk's
+ *      sorted addresses join the derived population; the account page's are added once an account id is read off the
+ *      served roster's own way-out link (NOT MEASURED when the roster has none).
  *
  * ⛔ NO POSTGRES OR NO SERVER IS A FAILURE, NOT A SKIP (exit 3, NOT MEASURED) — a visual gate that skips silently is
  * the "not applicable" verdict this programme has paid for twice.
@@ -88,13 +94,42 @@ function consoleRoutesFromSource() {
   return [...tabs.map((t) => (t === dflt ? route : `${route}?tab=${t}`)), wizard];
 }
 const DERIVED_ROUTES = consoleRoutesFromSource();
+/**
+ * ⭐ STEP 9 · ONE SORTED ADDRESS PER DESK TABLE, and what each must show. Keyed by the QUERY, so the account page's three
+ * match whichever account id is read off the served roster (or handed in through `KP_ROUTES`). Each names the region
+ * (`ScrollX`'s own label) of every table the address sorts, the header word that must be the ONE in force, its
+ * `aria-sort`, and — for a ledger, whose header row is hidden below `sm` — the order note that must say it instead.
+ * ⛔ THE TOKENS ARE TYPED HERE, and that is safe by construction: a token that rots is REFUSED by the page, which then
+ * puts its own order in force — a different word, or none — and the "the header the address asked for" check goes red.
+ */
+const SORTED_DESK = {
+  "rsort=status&rdir=asc": [{ region: "Desk roster", label: "Status", dir: "ascending" }],
+  "tab=activity&sort=stake&dir=asc": [{ region: "Desk activity", label: "Stake", dir: "ascending", note: "Smallest stake first, then newest first." }],
+  "tab=history&hsort=account&hdir=asc": [{ region: "Desk history", label: "Account", dir: "ascending" }],
+  "tab=results&daysort=stakes-placed&daydir=asc&acctsort=today": [
+    { region: "Results by day", label: "Stakes placed", dir: "ascending" },
+    { region: "Results by account", label: "Today", dir: "descending" },
+  ],
+};
+const SORTED_ACCOUNT = {
+  "tab=activity&sort=outcome&dir=asc": [{ region: "Account activity", label: "Outcome", dir: "ascending", note: "By outcome, queued first, then newest first." }],
+  "tab=targets&tsort=poll&tdir=asc": [{ region: "Account targets", label: "Poll", dir: "ascending" }],
+  "tab=history&hdir=asc": [{ region: "Account history", label: "When (EAT)", dir: "ascending" }],
+};
+/** The sorted spec a route answers to, or null — a desk route by its query, an account route (never `/new`) by its query. */
+function sortedSpecFor(route) {
+  const [path, query = ""] = route.split("?");
+  if (path === "/admin/desk") return SORTED_DESK[query] ?? null;
+  if (/^\/admin\/desk\/[^/]+$/.test(path) && !path.endsWith("/new")) return SORTED_ACCOUNT[query] ?? null;
+  return null;
+}
 if (!process.env.KP_ROUTES && !DERIVED_ROUTES) {
   console.error("REFUSED — qa:house-bots-visual could not read CONSOLE_ROUTE/CONSOLE_TABS/DEFAULT_TAB out of src/lib/house-bot/console-routes.ts.");
   process.exit(2);
 }
 const ROUTES = process.env.KP_ROUTES
   ? process.env.KP_ROUTES.split(",").map((s) => s.trim()).filter(Boolean)
-  : DERIVED_ROUTES;
+  : [...DERIVED_ROUTES, ...Object.keys(SORTED_DESK).map((q) => `/admin/desk?${q}`)];
 console.log(`routes (${process.env.KP_ROUTES ? "KP_ROUTES" : "derived from CONSOLE_TABS"}): ${ROUTES.join(" ")}`);
 /**
  * ⛔ RULING 474's TWO OPERATOR-DATA VALUES, READ FROM THE READER'S OWN LIST — never typed here.
@@ -156,6 +191,19 @@ try {
     nm("sign-in", `the local admin could not sign in at ${BASE} (seed with scripts/seed-admin-local.mts and set DISABLE_ADMIN_TOTP=true)`);
     console.log(`\nqa:house-bots-visual: ${pass} passed, ${fail} failed, ${notMeasured} NOT MEASURED`);
     process.exit(3);
+  }
+  /* ⭐ STEP 9 · THE ACCOUNT PAGE'S SORTED ADDRESSES NEED AN ACCOUNT, and the served roster names one: its first way-out
+     link. Read, never typed — a seed's ids are not this script's to know. An empty roster is NOT MEASURED, a report. */
+  if (!process.env.KP_ROUTES) {
+    await page.goto(`${BASE}/admin/desk`, { waitUntil: "load", timeout: 60_000 });
+    await page.waitForSelector("[data-section-rail]", { timeout: 30_000 }).catch(() => null);
+    const accountHref = await page.$eval('a.row-link[href^="/admin/desk/"]', (a) => a.getAttribute("href")).catch(() => null);
+    if (accountHref && /^\/admin\/desk\/[^/?#]+$/.test(accountHref)) {
+      for (const q of Object.keys(SORTED_ACCOUNT)) ROUTES.push(`${accountHref}?${q}`);
+      console.log(`routes (step 9 · the account page's sorted addresses, on ${accountHref.replace(/[^/]+$/, "<the roster's first account>")}): ${Object.keys(SORTED_ACCOUNT).length}`);
+    } else {
+      nm("§5.10 the account page's sorted addresses", "the served roster painted no way-out link, so no account id could be read — seed an account (scripts/seed-house-bots-local.mts)");
+    }
   }
   await page.close();
 
@@ -669,6 +717,81 @@ try {
         ok(`§5.5 ${route} @${width} · every empty-state message box is inside the viewport`,
           facts.emptyBoxes.every((b) => b.left >= -1 && b.right <= facts.vw + 1), JSON.stringify(facts.emptyBoxes));
       }
+      /* ⭐ §5.10 · A SORTED ADDRESS, READ OFF THE SERVED PAGE (step 9, 2026-09-26). Before §5.7 touches anything: the page
+         is measured as painted. For every table the address sorts — exactly ONE header in force, the one asked for, in
+         the direction asked; every visible sort control at the tap floor (and where the header row is hidden by design,
+         below `sm` on a ledger, the order note says the order instead); and the PAGE does not scroll sideways — with a
+         control that makes it. */
+      const sortedSpec = sortedSpecFor(route);
+      if (sortedSpec) {
+        const sorted = await p.evaluate((spec) => {
+          const tapMin = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--tap-min")) || 44;
+          const shown = (el) => el.getClientRects().length > 0 && getComputedStyle(el).visibility !== "hidden";
+          const tables = spec.map((s) => {
+            const region = [...document.querySelectorAll("[role='region']")].find((r) => r.getAttribute("aria-label") === s.region) ?? null;
+            const table = region ? region.querySelector("table.admin-tbl") : null;
+            if (!table) return { ...s, found: false };
+            const heads = [...table.querySelectorAll("thead th[aria-sort]")];
+            const inForce = heads.filter((th) => th.getAttribute("aria-sort") !== "none")
+              .map((th) => ({ word: (th.textContent ?? "").replace(/[↑↓]/g, "").replace(/\s+/g, " ").trim(), sort: th.getAttribute("aria-sort") }));
+            const theadShown = shown(table.querySelector("thead"));
+            /* A column hidden below `sm` (Results' State and Last 7 days) hides its header too — only a SHOWN header is a control. */
+            const shownHeads = heads.filter((th) => shown(th));
+            const links = shownHeads.map((th) => th.querySelector("a")).filter((a) => a && shown(a));
+            const short = links.filter((a) => a.getBoundingClientRect().height < tapMin - 0.5).map((a) => `${Math.round(a.getBoundingClientRect().height)}px:${(a.textContent ?? "").trim().slice(0, 16)}`);
+            const noteShown = s.note ? [...document.querySelectorAll("p")].some((el) => shown(el) && (el.textContent ?? "").trim() === s.note) : null;
+            const empty = table.querySelector(":scope > tbody > tr[data-table-empty]") !== null;
+            return { ...s, found: true, sortable: heads.length, shownSortable: shownHeads.length, inForce, theadShown, links: links.length, short, noteShown, empty };
+          });
+          /* ⛔ NOT `document.documentElement.scrollWidth`: the console clips horizontal overflow, so the document never
+             scrolls and that number could not fail — its own control proved it on this check's first served run (red at
+             every route and width). What an officer loses is anything whose right edge passes the viewport; a box that
+             scrolls or clips is measured by its own edge and not entered (its content is reachable by scrolling it). */
+          const clipsX = (el) => /^(auto|scroll|hidden|clip)$/.test(getComputedStyle(el).overflowX);
+          const main = document.querySelector("main") ?? document.body;
+          const rightmost = () => {
+            let worst = 0;
+            const walk = (el) => { for (const c of el.children) { const r = c.getBoundingClientRect(); if (r.width > 0 && r.height > 0) worst = Math.max(worst, r.right); if (!clipsX(c)) walk(c); } };
+            walk(main);
+            return Math.round(worst);
+          };
+          const edge = rightmost();
+          const pageFits = edge <= window.innerWidth + 1;
+          const probe = document.createElement("div");
+          probe.style.width = `${window.innerWidth + 200}px`;
+          probe.style.height = "1px";
+          main.appendChild(probe);
+          const controlScrolls = rightmost() > window.innerWidth + 1;
+          probe.remove();
+          return { tables, pageFits, controlScrolls, tapMin, vw: window.innerWidth, scrollWidth: edge };
+        }, sortedSpec);
+        for (const t of sorted.tables) {
+          if (!t.found) {
+            nm(`§5.10 ${route} @${width} · ${t.region}`, "the table this address sorts was not painted — a failed read paints its error in place of the table, and a table that is not there is not measured");
+            continue;
+          }
+          ok(`§5.10 ${route} @${width} · step 9 · ${t.region} · exactly ONE header is in force, the one the address asked for, in the direction it asked`,
+            t.sortable >= 1 && t.inForce.length === 1 && t.inForce[0].word.startsWith(t.label) && t.inForce[0].sort === t.dir,
+            JSON.stringify({ sortable: t.sortable, inForce: t.inForce }));
+          if (t.empty) {
+            /* ⛔ AN EMPTY TABLE HIDES ITS OWN HEADER ROW (the kit's `data-table-empty` rule) — so there is no sort control on
+               screen to measure, and the ledger branch below would misread it as the phone stack. The order itself is held
+               by `test:house-bot-console` on both stores; seeding rows for this table is what would measure it here. */
+            nm(`§5.10 ${route} @${width} · ${t.region} · the header row's sort controls`, "the table is empty, so the kit hides its header row — no sort control is on screen (the order is held by test:house-bot-console on both stores)");
+          } else if (t.theadShown) {
+            ok(`§5.10 ${route} @${width} · step 9 · ${t.region} · every sort control on the header row reaches the ${sorted.tapMin}px tap floor`,
+              t.shownSortable >= 1 && t.links === t.shownSortable && t.short.length === 0, `${t.links} of ${t.shownSortable} shown sort controls · short: ${t.short.join(" | ")}`);
+          } else {
+            /* A ledger's header row is hidden below `sm` BY DESIGN (the row is a stack) — so the order is SAID, not drawn. */
+            ok(`§5.10 ${route} @${width} · step 9 · ${t.region} · the header row is hidden here by design, and the order note says the order in force instead`,
+              t.note !== undefined && t.noteShown === true, JSON.stringify({ note: t.note, noteShown: t.noteShown }));
+          }
+        }
+        ok(`§5.10 ${route} @${width} · step 9 · nothing on the sorted page runs past the viewport's right edge at this width`,
+          sorted.pageFits, JSON.stringify({ vw: sorted.vw, scrollWidth: sorted.scrollWidth }));
+        ok(`§5.10 ${route} @${width} · step 9 · CONTROL · one element wider than the viewport planted in <main> IS found past the edge, so the fit above is a measurement`,
+          sorted.controlScrolls, "");
+      }
       /* ⭐ §5.7 · THE LEDGER FITS ITS STRIP FROM 1280 UP, AT ITS WORST CASE (RESUME-HERE §0c decision 2, 2026-09-26).
          The owner reads the activity ledger at 1280, where the strip is ≈998px, and the desk-wide table measured
          1251px there — Round, Game and the stop control reachable only by dragging. Note and Type left their
@@ -692,8 +815,9 @@ try {
           const rows = [...table.querySelectorAll("tbody tr")].filter(shown);
           for (const tr of [table.querySelector("thead tr"), ...rows]) {
             const extra = document.createElement(tr.closest("thead") ? "th" : "td");
-            extra.style.minWidth = "160px";
-            extra.textContent = "·";
+            /* ⛔ CONTENT WIDER THAN THE WHOLE STRIP, not `min-width: 160px` — a min-width on a table cell is not reliably
+               honoured, and on the account ledger at 1440 the other columns simply gave way, so the control could not fire. */
+            extra.innerHTML = `<span style="display:inline-block;width:${region.clientWidth + 160}px">·</span>`;
             tr.appendChild(extra);
           }
           const widened = measure();

@@ -161,6 +161,10 @@ export function SortTh({
    */
   return (
     <th
+      /* ⭐ `scope="col"` (2026-09-27, house-bots build step 9): every plain header on the desk carries it, and the
+         sortable ones — the header an officer is most likely to navigate by — did not, so a screen reader could not
+         tie a sorted column's cells back to it. */
+      scope="col"
       aria-sort={isActive ? (dir === "asc" ? "ascending" : "descending") : "none"}
       className={`${align === "right" ? "text-right" : "text-left"} ${className ?? ""}`}
     >

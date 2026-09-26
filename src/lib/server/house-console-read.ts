@@ -47,7 +47,7 @@ import { BY_HAND_SCREENS, CONSOLE_ROUTE, CONSOLE_LIMITS_HREF, CONSOLE_LIMITS_FIR
 import { EAT_LABEL, WEEKDAYS, WEEKDAY_LABEL, eatDayKey, eatDayWindow, eatWeekday, formatEat, formatMinutes, priorEatDays, type Weekday } from "@/lib/house-bot/clock";
 /* ⭐ C7 step 5 (the account half) · the closed lists the two panels' word maps are TOTAL over. Pure copy module,
  * no read, no client directive — the same folder `console-routes.ts` and `rules.ts` already live in. */
-import { INTENT_KINDS, INTENT_PRODUCT_LINES, INTENT_STATUSES, type EngineCode, type HouseBotEventKind, type IntentKind, type IntentStatus } from "@/lib/house-bot/constants";
+import { BOT_STATUSES, INTENT_KINDS, INTENT_PRODUCT_LINES, INTENT_STATUSES, type EngineCode, type HouseBotEventKind, type IntentKind, type IntentStatus } from "@/lib/house-bot/constants";
 /* ⭐ The platform's ONE window resolver, so "today" means one span on this screen and on every other (ruling 410). */
 import { parseEatLocal, resolveRange } from "./date-range";
 import { CAP_FIELDS, ENTRY_MODES, ENTRY_MODE_WORDS, FIELD_META, LIMIT_FIELDS, DEFAULT_RULES_V1, MAX_SCHEDULE_WINDOWS, PRODUCT_WORDS, REQUIRED_FOR_MASTER_ON, REQUIRED_FOR_START, ROUND_TO_OPTIONS, RULE_NUMBER_FIELDS, SCOPE_PRODUCTS, describeWindow, fieldBounds, isClearExempt, leafUsedBy, migrateRules, parseHouseBotRules, recommendedRules, rulesInertReasons, rulesLiveBoundProblems, rulesReach, unitSuffix, type BoundsContext, type CapField, type FieldId, type HouseBotCaps, type HouseBotRulesV1, type InertReason, type LeafModeState, type LimitField, type LiveBoundProblem, type ParseContext, type ScopeProduct, type EntryMode } from "@/lib/house-bot/rules";
@@ -66,7 +66,7 @@ import { explainBotIdle } from "./house-bot/planner";
 import { switchOffHouseBots } from "./house-bot/kill-switch";
 import { houseEngineAlerts } from "./house-bot/emitters";
 import { TONE_CHIP, type StatusChipVariant } from "@/lib/status-tone";
-import { houseBotControlStore, houseBotEventStore, houseBotStore, houseBookStore, houseBotIntentStore, houseBotRuntimeStore, houseSeamStore, targetStore as houseBotTargetStore, HouseSchemaNotReady, type IntentFeedCount, type IntentProductLine, type StoredHouseBot, type StoredHouseBotControl, type StoredHouseBotEvent, type StoredHouseBotIntent, type StoredHouseBotRuntime, type StoredHouseBotTarget } from "./house-bot-dal";
+import { houseBotControlStore, houseBotEventStore, houseBotStore, houseBookStore, houseBotIntentStore, houseBotRuntimeStore, houseSeamStore, targetStore as houseBotTargetStore, HouseSchemaNotReady, foldedCodePointOrder, type EventListOrder, type IntentFeedCount, type IntentFeedOrder, type IntentProductLine, type StoredHouseBot, type StoredHouseBotControl, type StoredHouseBotEvent, type StoredHouseBotIntent, type StoredHouseBotRuntime, type StoredHouseBotTarget, type TargetListOrder } from "./house-bot-dal";
 import { houseDayBook, houseDayBooks, houseOpenExposure, type HouseDayBook } from "./house-bot/book";
 import { HOUSE_BOT_STATUS_DISPLAY } from "./house-bot/status-display";
 import { DESIGNATE_COPY, designateHouseBot, reverifyHouseBot, startHouseBot } from "./house-bot/designation";
@@ -351,8 +351,26 @@ export type ConsoleDeskShell = {
 };
 
 export type ConsoleRosterView = ConsoleDeskShell & {
-  /** The roster. ⛔ `null` means the READ FAILED — `AdminLoadError`, never an empty state (355). */
+  /**
+   * The roster — ONE PAGE of it (step 9: twenty to a page, like every desk table). ⛔ `null` means the READ FAILED —
+   * `AdminLoadError`, never an empty state (355).
+   */
   rows: ConsoleRosterRow[] | null;
+  /**
+   * ⭐ STEP 9 · THE ROSTER PAGES AND SORTS. It is bounded by the configured maximum (1–20), so at twenty to a page the
+   * pager draws nothing today — and it is paged anyway, so no desk table can ever grow past a page if that ceiling
+   * moves. ⛔ `rosterTotal` is the WHOLE roster's length, never the page's (344); `null` with `rows`.
+   */
+  rosterTotal: number | null;
+  /** The page SERVED — a page past the end is the last page. */
+  rosterPage: number;
+  rosterPerPage: number;
+  /** The six sortable headers and the one in force — none on a bare address, which is designation order. */
+  rosterSort: ConsoleSortView<SortKeysOf<"roster">>;
+  /** The roster's live parameters — its sort, VALIDATED — for the headers and the pager's base. */
+  rosterParams: Record<string, string | undefined>;
+  /** ⛔ ONE sentence naming every part of the address that was thrown away, or `null` (387, 432(j)). */
+  queryRefusal: string | null;
   /** Non-null EXACTLY when `rows` is empty, naming the cause (310's precedence: off beats "none yet"). ⛔ An empty
    *  table that does not say WHY is the defect 416 exists for, so the page renders this instead of the rows. */
   empty: ConsoleEmpty | null;
@@ -1186,8 +1204,15 @@ function sumDay(dayBooks: Map<string, HouseDayBook> | null, pick: (b: HouseDayBo
 export async function houseRosterForConsole(
   viewerUserId: string | null | undefined,
   route: string,
+  /**
+   * ⭐ STEP 9 · THE REQUEST'S OWN QUERY STRING, UNTOUCHED — the door validates it, in the ONE parse every desk reader
+   * takes: the roster's sort and page, and every other part (a refused part of any panel is named here too, as the
+   * history tab names a bad `page`).
+   */
+  query?: ConsoleQuery,
 ): Promise<ConsoleRosterView | null> {
   if (!(await houseConsoleAudience(viewerUserId, route))) return null;
+  const q = parseConsoleQuery(query, Date.now(), consoleTab, CONSOLE_DESK_SORT_TABLES);
 
   const { core, extra: parseCtx, extraB: rates } = await readDeskCore(
     () => loadParseContext(),
@@ -1256,7 +1281,59 @@ export async function houseRosterForConsole(
           ? { title: "The desk is off", body: "No account has been designated yet." }
           : { title: "No accounts yet", body: "Designated accounts appear here, oldest first." };
 
-  return { ...shell, rows, empty };
+  /* ⭐ STEP 9 · THE ORDER, THEN THE PAGE. The rows above are in the roster's own order (designation, oldest first) and a
+   * bare address keeps exactly that. A sort orders by the figure the CELL paints — the used amount, not a ratio, and
+   * none where the cell shows none ("Not set", a failed read, "—"), which sorts LAST — then designation, then the id.
+   * ⛔ A page past the end is served as the last page; the total is the whole roster, never the page. */
+  const rosterSort = consoleSortOf(q, "roster");
+  const ordered = rows === null || rosterSort.key === null || roster === null || rows.length !== roster.length ? rows
+    : consoleOrdered(rows, (i) => consoleRosterKey(rosterSort.key, roster[i], { dayBooks, exposure, lastPlacedAt: (id) => rateById.get(id)?.lastPlacedAt ?? null }),
+      rosterSort.dir, (i, j) => consoleDesignationOrder(roster[i], roster[j]));
+  const rosterTotal = ordered === null ? null : ordered.length;
+  const rosterPage = consoleLastPage(rosterTotal, q.rpage, CONSOLE_ROSTER_PER_PAGE);
+  return {
+    ...shell,
+    rows: ordered === null ? null : ordered.slice((rosterPage - 1) * CONSOLE_ROSTER_PER_PAGE, rosterPage * CONSOLE_ROSTER_PER_PAGE),
+    empty,
+    rosterTotal,
+    rosterPage,
+    rosterPerPage: CONSOLE_ROSTER_PER_PAGE,
+    rosterSort: consoleSortView(rosterSort),
+    rosterParams: consoleSortParams(rosterSort),
+    queryRefusal: consoleRefusalSentence(q.refusals),
+  };
+}
+
+/** Twenty to a page — the admin table size, written here for the reason `CONSOLE_TARGETS_PER_PAGE` states. */
+const CONSOLE_ROSTER_PER_PAGE = 20;
+
+/**
+ * One roster row's sort key — the figure its cell PAINTS, or `null` where the cell paints none. ⛔ Read from the same
+ * facts the cell was built from, never from the painted string: a usage figure is `Math.max(0, used)` exactly as
+ * `moneyUsage`/`countUsage` show it, an unset limit is "Not set" (no figure), a failed read is "—", and an account that
+ * never staked (or a failed rate read) has no last bet. Status is the lifecycle, `BOT_STATUSES`' own order; the label is
+ * the account's own, in the DAL's one text order.
+ */
+function consoleRosterKey(
+  key: ConsoleSortKey | null,
+  bot: StoredHouseBot,
+  f: { dayBooks: Map<string, HouseDayBook> | null; exposure: Map<string, number> | null; lastPlacedAt: (id: string) => string | null },
+): number | string | null {
+  switch (key) {
+    case "account": return bot.label;
+    case "loss": return f.dayBooks == null || bot.capDailyLossTzs == null ? null : Math.max(0, f.dayBooks.get(bot.id)?.projectedLossTzs ?? 0);
+    case "exposure": return f.exposure == null || bot.capOpenExposureTzs == null ? null : Math.max(0, f.exposure.get(bot.id) ?? 0);
+    case "bets": return f.dayBooks == null || bot.freqMaxPerDay == null ? null : Math.max(0, f.dayBooks.get(bot.id)?.bets ?? 0);
+    case "lastBet": {
+      const at = Date.parse(f.lastPlacedAt(bot.id) ?? "");
+      return Number.isFinite(at) ? at : null;
+    }
+    case "status": {
+      const k = (BOT_STATUSES as readonly string[]).indexOf(bot.status);
+      return k < 0 ? null : k;
+    }
+    default: return null;
+  }
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════════════════════════════════════════
@@ -3354,6 +3431,18 @@ export type ConsoleDetailView = {
   targetsPage: number;
   /** The page size the pager must be drawn with, so the page and the control can never disagree. */
   targetsPerPage: number;
+  /**
+   * ⭐ STEP 9 · THE GRID'S SORTABLE HEADERS — Poll, Status, Last change — and the one in force, or none: a bare address
+   * is the grid's own order, newest target first, which no column shows. ⛔ The page takes every token, word and
+   * direction from here and types none of them.
+   */
+  targetsSort: ConsoleSortView<SortKeysOf<"targets">>;
+  /** The grid's live parameters (the tab and its sort, VALIDATED) — the pager's base, never re-typed at the call site. */
+  targetsParams: Record<string, string | undefined>;
+  /** ⭐ STEP 9 · the activity panel's sortable headers (Stake, When, Outcome) and the one in force. */
+  feedSort: ConsoleSortView<SortKeysOf<"feedAccount">>;
+  /** ⭐ STEP 9 · the history panel's sortable header (When) and its direction. */
+  historySort: ConsoleSortView<SortKeysOf<"historyAccount">>;
   /* ── C7 step 5 · THE ACTIVITY PANEL ──────────────────────────────────────────────────────────────────────────
    * ⛔ THREE ANSWERS, AND THEY ARE NOT INTERCHANGEABLE (rulings 355, 421, and the correction already recorded at
    * `houseUsageForConsole`): `[]` is a list with nothing in it, `null` is a read that FAILED and paints the kit's
@@ -3423,6 +3512,21 @@ const CONSOLE_TARGETS_PER_PAGE = 20;
 /** `?tpage=` as a whole page number. Anything else — absent, 0, -3, 1.5, NaN — is page 1. */
 function consolePageNumber(raw: number | undefined): number {
   return Number.isSafeInteger(raw) && (raw as number) >= 1 ? (raw as number) : 1;
+}
+
+/**
+ * ⭐ STEP 9 · the account page's three sortable grids, finished for the page — built for EVERY state, a removed account
+ * included, so the view's keys never come and go (358's lesson). The Targets pager's base is here too: it used to be a
+ * `{ tab: "targets" }` typed at the call site, which a sort would have silently dropped from page 2.
+ */
+function consoleDetailSorts(q: ConsoleParsed): Pick<ConsoleDetailView, "feedSort" | "historySort" | "targetsSort" | "targetsParams"> {
+  const targets = consoleSortOf(q, "targets");
+  return {
+    feedSort: consoleSortView(consoleSortOf(q, "feedAccount")),
+    historySort: consoleSortView(consoleSortOf(q, "historyAccount")),
+    targetsSort: consoleSortView(targets),
+    targetsParams: { tab: "targets", ...consoleSortParams(targets) },
+  };
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════════════════════════════════════
@@ -3879,6 +3983,25 @@ export type ConsoleQuery = {
   intent?: string | string[];
   event?: string | string[];
   /**
+   * ⭐ STEP 9 · EVERY TABLE'S SORT, AND THE ROSTER'S PAGE. Each table owns a PREFIX, the one its page number already
+   * wore where it had one (`page`/`hpage`/`tpage` → `sort`/`hsort`/`tsort`), so `SortTh`'s own `prefix` namespaces the
+   * three words together and a header click resets exactly its own table's page. The Results tab's two tables are
+   * `day…` and `acct…`, so sorting one keeps the other's order. ⛔ Every value is checked by the ONE parse below.
+   */
+  sort?: string | string[];
+  dir?: string | string[];
+  hsort?: string | string[];
+  hdir?: string | string[];
+  tsort?: string | string[];
+  tdir?: string | string[];
+  rsort?: string | string[];
+  rdir?: string | string[];
+  rpage?: string | string[];
+  daysort?: string | string[];
+  daydir?: string | string[];
+  acctsort?: string | string[];
+  acctdir?: string | string[];
+  /**
    * ⭐ THE ONE ACT A LINK MAY OPEN (register A5, 2026-09-23). `consoleReverifyHref` has answered a stale
    * consent with `?reverify=1` since it was written and nothing read it, so the way out landed on the
    * overview with no dialog. ⛔ IT IS A FLAG, NOT AN ACT NAME: only this parameter opens anything, and only
@@ -3886,6 +4009,192 @@ export type ConsoleQuery = {
    */
   reverify?: string | string[];
 };
+
+/* ══════════════════════════════════════════════════════════════════════════════════════════════════════════════
+ * STEP 9 (2026-09-26) · EVERY DESK TABLE SORTS, AND NONE CAN GROW PAST A PAGE
+ *
+ * Ali, as typed: "before finsihing amke su relaso all desk tbale sand grid sgot th erug tpaging pleas enad sroting
+ * etc.. to prveent vey rlong grids". The find list (step 4) was the model: the READER parses the address once and
+ * builds every header href's parts, every pager base and every word; the page renders the kit's `SortTh` from them.
+ *
+ * ⛔ **A BARE ADDRESS IS EXACTLY TODAY'S ORDER.** A table whose own order IS a column (activity and history: When,
+ * newest first; Results by day: the day, newest first) shows that header in force; a table whose order no column
+ * shows (the roster in designation order, the Targets grid newest first, Results by account in roster order) shows
+ * none in force until one is clicked. Neither reads a single row differently until an address asks.
+ * ⛔ **EVERY ORDER IS TOTAL**: the key, then the table's own order for a tie, ending on the row's id — so two renders
+ * and the two stores cannot page one population two ways. A MISSING value (never bet, a failed read, an unset limit
+ * whose cell shows no figure, an account no longer on the desk) sorts LAST in both directions.
+ * ⛔ **WHAT DOES NOT SORT, AND WHY** (docs/HOUSE-BOTS.md §7.1c): the ledgers' Opening, Closing and Left today are
+ * RUNNING figures read from bounded scans AFTER the page is cut — an order over them would need every row of the
+ * population priced first; Round is unique only beside its Game, and the Game's name is read defensively out of an
+ * untyped stored blob, which a second reading in SQL would have to match on every hostile shape; the history's
+ * Event, Change and Who are words, relations and ids with no order anyone reads; the roster's Products is a list;
+ * and a control column has nothing to order.
+ * ══════════════════════════════════════════════════════════════════════════════════════════════════════════════ */
+
+/**
+ * Every sortable column's WORD, in ONE home: the header an officer reads AND, slugged, the token its link carries
+ * (453 — the find list's rule: an address can never carry a word its header does not). ⛔ The page renders these;
+ * it never types a sortable header's word itself.
+ */
+export const CONSOLE_SORT_LABEL = {
+  account: "Account",
+  loss: "Loss today (projected)",
+  exposure: "Open exposure",
+  status: "Status",
+  bets: "Bets today",
+  lastBet: "Last bet",
+  stake: "Stake",
+  when: "When (EAT)",
+  outcome: "Outcome",
+  poll: "Poll",
+  lastChange: "Last change",
+  day: "Day (EAT)",
+  result: "Result",
+  stakes: "Stakes placed",
+  state: "State",
+  today: "Today",
+  week: "Last 7 days",
+} as const;
+export type ConsoleSortKey = keyof typeof CONSOLE_SORT_LABEL;
+
+/** The URL token one column is addressed by — its own header word, slugged, and nothing else. */
+export const consoleSortToken = (key: ConsoleSortKey): string => consoleSlug(CONSOLE_SORT_LABEL[key]);
+
+/**
+ * Each table's sortable columns, in the order its header draws them; the column its own order IS (`null` when no
+ * column shows it); and the prefix its three address words wear (`sort`/`dir`/`page` with it in front).
+ */
+export const CONSOLE_SORT_TABLES = {
+  roster: { prefix: "r", keys: ["account", "loss", "exposure", "status", "bets", "lastBet"], dflt: null },
+  feedDesk: { prefix: "", keys: ["account", "stake", "when", "outcome"], dflt: "when" },
+  feedAccount: { prefix: "", keys: ["when", "stake", "outcome"], dflt: "when" },
+  historyDesk: { prefix: "h", keys: ["account", "when"], dflt: "when" },
+  historyAccount: { prefix: "h", keys: ["when"], dflt: "when" },
+  targets: { prefix: "t", keys: ["poll", "status", "lastChange"], dflt: null },
+  resultDays: { prefix: "day", keys: ["day", "result", "stakes", "state"], dflt: "day" },
+  resultAccounts: { prefix: "acct", keys: ["account", "today", "week"], dflt: null },
+} as const satisfies Record<string, { prefix: string; keys: readonly ConsoleSortKey[]; dflt: ConsoleSortKey | null }>;
+export type ConsoleSortTable = keyof typeof CONSOLE_SORT_TABLES;
+type SortKeysOf<T extends ConsoleSortTable> = (typeof CONSOLE_SORT_TABLES)[T]["keys"][number];
+
+/** The tables each page's address carries — the parse's second difference between the two shapes, passed in like `tabOf`. */
+const CONSOLE_DESK_SORT_TABLES = ["roster", "feedDesk", "historyDesk", "resultDays", "resultAccounts"] as const satisfies readonly ConsoleSortTable[];
+const CONSOLE_ACCOUNT_SORT_TABLES = ["feedAccount", "historyAccount", "targets"] as const satisfies readonly ConsoleSortTable[];
+
+/** One table's validated sort: the column in force — `null` is the table's own order, which no column shows — and its direction. */
+type ConsoleSortParsed = { table: ConsoleSortTable; key: ConsoleSortKey | null; dir: "asc" | "desc" };
+
+/** One sortable header, finished: its token and its word. */
+export type ConsoleSortColumn = { field: string; label: string };
+/**
+ * ⭐ WHAT A TABLE'S HEADER ROW NEEDS TO DRAW `SortTh`, AND NOTHING THE PAGE COULD RE-SPELL: every sortable column's token
+ * and word, the token in force (`""` when the table is in its own order and no header is in force), the direction, and
+ * the prefix its address words wear. The params `SortTh` keeps are the panel's own validated params field.
+ */
+export type ConsoleSortView<K extends ConsoleSortKey> = {
+  columns: Readonly<Record<K, ConsoleSortColumn>>;
+  current: string;
+  dir: "asc" | "desc";
+  prefix: string;
+};
+
+/** A table's own order — what a bare address is on. */
+function consoleSortDefault(table: ConsoleSortTable): ConsoleSortParsed {
+  return { table, key: CONSOLE_SORT_TABLES[table].dflt, dir: "desc" };
+}
+/** Is this the table's own order — the one every read, pin and anchor count served before step 9? */
+function consoleSortIsDefault(s: ConsoleSortParsed): boolean {
+  return s.key === CONSOLE_SORT_TABLES[s.table].dflt && s.dir === "desc";
+}
+/** The sort this page's parse holds for the FIRST of these tables it carries, or that table's own order. */
+function consoleSortOf(p: ConsoleParsed, ...tables: [ConsoleSortTable, ...ConsoleSortTable[]]): ConsoleSortParsed {
+  for (const t of tables) {
+    const s = p.sorts[t];
+    if (s) return s;
+  }
+  return consoleSortDefault(tables[0]);
+}
+/** A table's live sort parameters — VALIDATED values only, each left out at its default, never a refused one. */
+function consoleSortParams(s: ConsoleSortParsed): Record<string, string | undefined> {
+  const { prefix, dflt } = CONSOLE_SORT_TABLES[s.table];
+  return {
+    [`${prefix}sort`]: s.key === null || s.key === dflt ? undefined : consoleSortToken(s.key),
+    [`${prefix}dir`]: s.key === null || s.dir === "desc" ? undefined : s.dir,
+  };
+}
+/** The header row's finished parts. */
+function consoleSortView<K extends ConsoleSortKey>(s: ConsoleSortParsed): ConsoleSortView<K> {
+  const spec = CONSOLE_SORT_TABLES[s.table];
+  const keys: readonly ConsoleSortKey[] = spec.keys;
+  return {
+    columns: Object.fromEntries(keys.map((k) => [k, { field: consoleSortToken(k), label: CONSOLE_SORT_LABEL[k] }])) as Record<K, ConsoleSortColumn>,
+    current: s.key === null ? "" : consoleSortToken(s.key),
+    dir: s.dir,
+    prefix: spec.prefix,
+  };
+}
+/**
+ * ⛔ THE ORDER NOTE SAYS THE ORDER IN FORCE — it said "Newest first." whatever the address asked, and under a sort
+ * that sentence is false (the phone, whose ledger hides its header row, has nothing else to read the order from).
+ * A bare address keeps the note it always had, word for word.
+ */
+function consoleOrderNote(s: ConsoleSortParsed, subject: "feed" | "history"): string {
+  if (consoleSortIsDefault(s) || s.key === null) return CONSOLE_ORDER_NOTE;
+  const then = "then newest first.";
+  if (s.key === "when") return "Oldest first.";
+  if (s.key === "stake") return s.dir === "desc" ? `Largest stake first, ${then}` : `Smallest stake first, ${then}`;
+  if (s.key === "outcome") return s.dir === "asc" ? `By outcome, queued first, ${then}` : `By outcome, cancelled first, ${then}`;
+  const last = subject === "history" ? "The desk's own changes, and accounts no longer on the desk, come last." : "Accounts no longer on the desk come last.";
+  return `By account, ${s.dir === "asc" ? "A to Z" : "Z to A"}, ${then} ${last}`;
+}
+/**
+ * The roster ranked by its accounts' own labels (`foldedCodePointOrder`, the DAL's one text order), then designation,
+ * then the id — handed to the DAL as the ACCOUNT order of a list it cannot join to labels itself. `desc` reverses it.
+ * A failed roster read ranks nobody, so every row is "missing" and the list keeps its own order.
+ */
+function consoleAccountRanking(roster: readonly StoredHouseBot[] | null, dir: "asc" | "desc"): string[] {
+  if (roster === null) return [];
+  const ranked = [...roster].sort((a, b) => foldedCodePointOrder(a.label, b.label) || consoleDesignationOrder(a, b));
+  if (dir === "desc") ranked.reverse();
+  return ranked.map((b) => b.id);
+}
+/** Designation order, then the id — the roster's own order made TOTAL (`listNonRemoved` orders by the instant alone). */
+function consoleDesignationOrder(a: StoredHouseBot, b: StoredHouseBot): number {
+  return (Date.parse(a.designatedAt) - Date.parse(b.designatedAt)) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+}
+/** The activity order a sort asks the DAL for — `undefined` for the panel's own order, so that read is unchanged. */
+function consoleFeedOrder(s: ConsoleSortParsed, roster: readonly StoredHouseBot[] | null): IntentFeedOrder | undefined {
+  if (s.key === null || consoleSortIsDefault(s)) return undefined;
+  if (s.key === "account") return { key: "account", accountIds: consoleAccountRanking(roster, s.dir) };
+  return { key: s.key === "stake" ? "stake" : s.key === "outcome" ? "outcome" : "when", dir: s.dir };
+}
+/** The history order a sort asks the DAL for — `undefined` for the panel's own order. */
+function consoleEventOrder(s: ConsoleSortParsed, roster: readonly StoredHouseBot[] | null): EventListOrder | undefined {
+  if (s.key === null || consoleSortIsDefault(s)) return undefined;
+  if (s.key === "account") return { key: "account", accountIds: consoleAccountRanking(roster, s.dir) };
+  return { key: "when", dir: s.dir };
+}
+/** The Targets grid order a sort asks the DAL for — `undefined` for the grid's own order. */
+function consoleTargetOrder(s: ConsoleSortParsed): TargetListOrder | undefined {
+  if (s.key === null) return undefined;
+  return { key: s.key === "poll" ? "poll" : s.key === "status" ? "status" : "lastChange", dir: s.dir };
+}
+/**
+ * An in-memory table in a sort's order: the key (a number, a string in the DAL's one text order, or `null` — missing,
+ * LAST in both directions), then `tie` — the table's own order, ending on the row's id. Used by the three tables whose
+ * rows are all in hand (the roster, and the Results tab's two).
+ */
+function consoleOrdered<R>(rows: readonly R[], key: (i: number) => number | string | null, dir: "asc" | "desc", tie: (i: number, j: number) => number): R[] {
+  const sign = dir === "asc" ? 1 : -1;
+  const idx = rows.map((_, i) => i).sort((i, j) => {
+    const a = key(i), b = key(j);
+    if (a === null || b === null) return a === b ? tie(i, j) : a === null ? 1 : -1;
+    const by = typeof a === "number" && typeof b === "number" ? a - b : foldedCodePointOrder(String(a), String(b));
+    return sign * by || tie(i, j);
+  });
+  return idx.map((i) => rows[i]);
+}
 
 /** The parsed, validated query. `refusals` names every axis that was thrown away, by its own screen word. */
 type ConsoleParsed = {
@@ -3907,6 +4216,9 @@ type ConsoleParsed = {
   intentId: string | null;
   eventId: string | null;
   refusals: string[];
+  /** ⭐ STEP 9 · the roster's own page (1 when absent), and every table's validated sort this page carries. */
+  rpage: number;
+  sorts: Readonly<Partial<Record<ConsoleSortTable, ConsoleSortParsed>>>;
 };
 
 /** One value of a repeated or array-shaped parameter is no value at all — a repeated parameter is a refusal. */
@@ -3949,6 +4261,12 @@ function parseConsoleQuery(
    * prevent. Everything below this line is identical for both, which is why there is one parse and not two.
    */
   tabOf: (raw: string | string[] | undefined) => string,
+  /**
+   * ⭐ STEP 9 · THE SECOND DIFFERENCE, PASSED IN THE SAME WAY: which tables this page's address sorts. `sort`/`dir` is
+   * the activity panel's on both pages, but the account page's has no Account column, so each page's closed list of
+   * tokens is its own — `?sort=account` is a refusal there and a column here.
+   */
+  sortTables: readonly ConsoleSortTable[],
 ): ConsoleParsed {
   const q = query ?? {};
   const refusals: string[] = [];
@@ -4040,7 +4358,31 @@ function parseConsoleQuery(
     }
   }
 
+  /* ⭐ STEP 9 · EACH TABLE'S SORT, CHECKED AGAINST THAT TABLE'S OWN CLOSED LIST — the find list's parse, per table. A
+     token that is no column of it is refused as "sort", a direction that is not one as "sort direction", and so is a
+     direction with no column to apply it to (a table in its own order has none to reverse); each falls back to the
+     table's own order and never rides into a link. A repeated word is a refusal, as everywhere on this rail. */
+  const rosterPage = pageOf(q.rpage, "page");
+  const words = q as Readonly<Record<string, string | string[] | undefined>>;
+  const sorts: Partial<Record<ConsoleSortTable, ConsoleSortParsed>> = {};
+  for (const table of sortTables) {
+    const spec = CONSOLE_SORT_TABLES[table];
+    const keys: readonly ConsoleSortKey[] = spec.keys;
+    const sortOne = oneParam(words[`${spec.prefix}sort`]);
+    const asked = sortOne.value == null ? null : sortOne.value.toLowerCase();
+    const hit = asked == null ? null : keys.find((k) => consoleSortToken(k) === asked) ?? null;
+    if (sortOne.repeated || (asked != null && hit == null)) say("sort");
+    const key: ConsoleSortKey | null = hit ?? spec.dflt;
+    const dirOne = oneParam(words[`${spec.prefix}dir`]);
+    const dirAsked = dirOne.value == null ? null : dirOne.value.toLowerCase();
+    const dirHit = dirAsked === "asc" || dirAsked === "desc" ? dirAsked : null;
+    if (dirOne.repeated || (dirAsked != null && dirHit == null) || (dirHit != null && key == null)) say("sort direction");
+    sorts[table] = { table, key, dir: key == null ? "desc" : dirHit ?? "desc" };
+  }
+
   return {
+    rpage: rosterPage.n,
+    sorts,
     tab: tabOf(q.tab),
     tpage: targets.n,
     page: feedPage.n,
@@ -4122,6 +4464,9 @@ function consoleFeedParams(p: ConsoleParsed): Record<string, string | undefined>
     kind: p.kind ? consoleAxisToken("kind", p.kind) : undefined,
     product: p.product ? consoleAxisToken("product", p.product) : undefined,
     outcome: p.outcome ? consoleAxisToken("outcome", p.outcome) : undefined,
+    /* ⭐ STEP 9 · AND THE SORT IN FORCE, so a chip, a page and a header click each keep the others (the find list's
+       rule): every rail link and the pager's base are built from this object. Left out at the panel's own order. */
+    ...consoleSortParams(consoleSortOf(p, "feedDesk", "feedAccount")),
   };
 }
 
@@ -4228,14 +4573,15 @@ function consolePanelShell(base: string, p: ConsoleParsed): Pick<ConsoleDetailVi
     feedEmpty: filtered ? CONSOLE_FEED_EMPTY_FILTERED : CONSOLE_FEED_EMPTY,
     feedFiltered: filtered,
     feedClearHref: consoleFeedLink(base, { tab: "activity" }, {}),
-    feedOrderNote: CONSOLE_ORDER_NOTE,
+    /* ⭐ STEP 9 · THE NOTE SAYS THE ORDER IN FORCE — "Newest first." on a bare address, as it always has. */
+    feedOrderNote: consoleOrderNote(consoleSortOf(p, "feedDesk", "feedAccount"), "feed"),
     historyPage: p.hpage,
     historyPerPage: CONSOLE_HISTORY_PER_PAGE,
-    /* The history panel has no rail, so its only live parameter is the tab — and, for the reason above, the
-       bell's `&event=` anchor is not carried into the pager's own links either. */
-    historyParams: { tab: "history" },
+    /* The history panel has no rail, so its only live parameters are the tab and (step 9) its sort — and, for the
+       reason above, the bell's `&event=` anchor is not carried into the pager's own links either. */
+    historyParams: { tab: "history", ...consoleSortParams(consoleSortOf(p, "historyDesk", "historyAccount")) },
     historyEmpty: CONSOLE_HISTORY_EMPTY,
-    historyOrderNote: CONSOLE_ORDER_NOTE,
+    historyOrderNote: consoleOrderNote(consoleSortOf(p, "historyDesk", "historyAccount"), "history"),
     queryRefusal: consoleRefusalSentence(p.refusals),
   };
 }
@@ -4250,7 +4596,13 @@ function consolePanelShell(base: string, p: ConsoleParsed): Pick<ConsoleDetailVi
  * with no basis. An anchor outside the filter has no page in it and the panel stays where the officer asked to be.
  * ⚠️ It runs ONLY when a bell was followed and no page was typed, so an ordinary render takes neither read.
  */
-async function consoleFeedAnchorPage(anchorId: string, filter: IntentFeedCount, fallback: number): Promise<number> {
+async function consoleFeedAnchorPage(anchorId: string, filter: IntentFeedCount, fallback: number, order?: IntentFeedOrder): Promise<number> {
+  /* ⭐ STEP 9 · UNDER A SORT THE BELL LANDS WHERE ITS ROW IS IN THAT ORDER (docs/HOUSE-BOTS.md §7.1c). The anchor is a
+     landing instruction and the sort is part of the same address; dropping the sort would throw away a valid part of
+     it, and ranking in the default order would land on a page the row is not on. The rank is the DAL's own
+     (`rankInFeed`) over the SAME predicate and the SAME named order the page is cut from, so it is exact — no tie can
+     inflate it. ⛔ The DEFAULT order keeps the counting rank below, untouched. */
+  if (order !== undefined) return consoleRankedPage(() => houseBotIntentStore.rankInFeed(filter, order, anchorId), CONSOLE_FEED_PER_PAGE, fallback);
   try {
     const row = await houseBotIntentStore.get(anchorId);
     if (!row) return fallback;
@@ -4273,13 +4625,27 @@ async function consoleFeedAnchorPage(anchorId: string, filter: IntentFeedCount, 
  * CONTROL ROW's own events (`houseBotId: null` — the switch, the limits save, the withdrawal), which a per-account
  * narrowing correctly drops and the desk's own history must not.
  */
-async function consoleHistoryAnchorPage(anchorId: string, botId: string | null, fallback: number): Promise<number> {
+async function consoleHistoryAnchorPage(anchorId: string, botId: string | null, fallback: number, order?: EventListOrder): Promise<number> {
+  /* ⭐ STEP 9 · the feed's rule, over the event log: under a sort the row's rank IN THAT ORDER, exact. */
+  if (order !== undefined) {
+    return consoleRankedPage(() => houseBotEventStore.rankInAll(botId !== null ? { houseBotId: botId } : {}, order, anchorId), CONSOLE_HISTORY_PER_PAGE, fallback);
+  }
   try {
     const row = await houseBotEventStore.get(anchorId);
     if (!row) return fallback;
     if (botId !== null && row.houseBotId !== botId) return fallback;
     const rank = await houseBotEventStore.countAll({ ...(botId !== null ? { houseBotId: botId } : {}), fromIso: row.createdAt });
     return rank > 0 ? Math.max(1, Math.ceil(rank / CONSOLE_HISTORY_PER_PAGE)) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+/** A sorted rank turned into its page; a row not in the population, or a read that failed, stays where the officer asked. */
+async function consoleRankedPage(rank: () => Promise<number | null>, perPage: number, fallback: number): Promise<number> {
+  try {
+    const r = await rank();
+    return r != null && r > 0 ? Math.ceil(r / perPage) : fallback;
   } catch {
     return fallback;
   }
@@ -5249,7 +5615,7 @@ export async function houseDetailForConsole(
   if (!(await houseConsoleAudience(viewerUserId, route))) return null;
 
   const nowMs = Date.now();
-  const q = parseConsoleQuery(query, nowMs, consoleDetailTab);
+  const q = parseConsoleQuery(query, nowMs, consoleDetailTab, CONSOLE_ACCOUNT_SORT_TABLES);
 
   /* ⛔ `get(id)`, NEVER `listNonRemoved` (358): the second excludes a REMOVED account in both twins, so a page built
    * on it would 404 on a row that exists and PLAN §8's read-only state would be unreachable. */
@@ -5325,6 +5691,7 @@ export async function houseDetailForConsole(
       /* 358 · a removed account takes neither list read, so both slices are `null` — the state the page reads as
        * "there was never a read to fail", which is the distinction 355 and 421 exist to keep. */
       ...consolePanelShell(consoleBotHref(bot.id), q),
+      ...consoleDetailSorts(q),
       feed: null,
       feedTotal: null,
       history: null,
@@ -5345,6 +5712,11 @@ export async function houseDetailForConsole(
    *   badge "active targets among the newest 20" — a figure with no basis the moment a 21st target exists, and
    *   one that would have changed as an officer paged. */
   const wantPage = q.tpage;
+  /* ⭐ STEP 9 · THE THREE GRIDS' ORDERS, from the one parse. `undefined` is each grid's own order, which reads exactly
+     what it read before — the same statement, the same anchor count. */
+  const feedOrder = consoleFeedOrder(consoleSortOf(q, "feedAccount"), null);
+  const historyOrder = consoleEventOrder(consoleSortOf(q, "historyAccount"), null);
+  const targetsOrder = consoleTargetOrder(consoleSortOf(q, "targets"));
   /* ⭐ C7 STEP 5 · THE TWO PANELS' READS JOIN THE SAME SETTLED SET, AND ONLY THE TAB IN VIEW TAKES ITS OWN.
    * ⛔ Each is settled on its OWN, never wrapped with another read (355, 435(d)): a failed row read must not blank
    * the total beside it, because `null` rows and a real total say different things and paint different treatments.
@@ -5362,9 +5734,9 @@ export async function houseDetailForConsole(
   };
   /* A bell was followed and no page was typed: resolve the anchor's own page before the set is issued. */
   const wantFeedPage = wantFeed && q.intentId && !q.pageAsked
-    ? await consoleFeedAnchorPage(q.intentId, feedFilter, q.page) : q.page;
+    ? await consoleFeedAnchorPage(q.intentId, feedFilter, q.page, feedOrder) : q.page;
   const wantHistoryPage = wantHistory && q.eventId && !q.hpageAsked
-    ? await consoleHistoryAnchorPage(q.eventId, bot.id, q.hpage) : q.hpage;
+    ? await consoleHistoryAnchorPage(q.eventId, bot.id, q.hpage, historyOrder) : q.hpage;
   const [holderR, dayR, exposureR, staffR, rateR, targetsR, targetsCountR, targetsActiveR, parseR, boundsR,
     feedR, feedCountR, historyR, historyCountR, leftScanR, txnScanR] = await Promise.allSettled([
     readBotAndHolder(bot.id, { nowMs }),
@@ -5372,7 +5744,7 @@ export async function houseDetailForConsole(
     houseOpenExposure(bot.id),
     houseBotIntentStore.staffChosenPlacedToday({ houseBotId: bot.id, dayKey }),
     houseSeamStore.botRateUsage({ houseBotId: bot.id }),
-    houseBotTargetStore.listForBot(bot.id, "all", null, { limit: CONSOLE_TARGETS_PER_PAGE, offset: (wantPage - 1) * CONSOLE_TARGETS_PER_PAGE }),
+    houseBotTargetStore.listForBot(bot.id, "all", null, { limit: CONSOLE_TARGETS_PER_PAGE, offset: (wantPage - 1) * CONSOLE_TARGETS_PER_PAGE, order: targetsOrder }),
     houseBotTargetStore.countForBot(bot.id, "all"),
     houseBotTargetStore.countActive({ botId: bot.id }),
     loadParseContext(),
@@ -5380,11 +5752,11 @@ export async function houseDetailForConsole(
      * `rulesLiveBoundProblems` needs and all it needs, so the why-panel refuses what Start refuses. */
     getGlobalConfig(),
     wantFeed
-      ? houseBotIntentStore.listFeed({ ...feedFilter, limit: CONSOLE_FEED_PER_PAGE, offset: (wantFeedPage - 1) * CONSOLE_FEED_PER_PAGE })
+      ? houseBotIntentStore.listFeed({ ...feedFilter, limit: CONSOLE_FEED_PER_PAGE, offset: (wantFeedPage - 1) * CONSOLE_FEED_PER_PAGE, order: feedOrder })
       : Promise.resolve(null),
     wantFeed ? houseBotIntentStore.countFeed(feedFilter) : Promise.resolve(null),
     wantHistory
-      ? houseBotEventStore.listAll({ houseBotId: bot.id, limit: CONSOLE_HISTORY_PER_PAGE, offset: (wantHistoryPage - 1) * CONSOLE_HISTORY_PER_PAGE })
+      ? houseBotEventStore.listAll({ houseBotId: bot.id, limit: CONSOLE_HISTORY_PER_PAGE, offset: (wantHistoryPage - 1) * CONSOLE_HISTORY_PER_PAGE, order: historyOrder })
       : Promise.resolve(null),
     wantHistory ? houseBotEventStore.countAll({ houseBotId: bot.id }) : Promise.resolve(null),
     /* ⭐ THE DAY'S PLACED STAKES, FOR THE "Left today" COLUMN — read ONLY when the activity panel is the one being
@@ -5428,7 +5800,7 @@ export async function houseDetailForConsole(
   if (targetPage != null && shownPage !== wantPage) {
     try {
       targetPage = await houseBotTargetStore.listForBot(bot.id, "all", null,
-        { limit: CONSOLE_TARGETS_PER_PAGE, offset: (shownPage - 1) * CONSOLE_TARGETS_PER_PAGE });
+        { limit: CONSOLE_TARGETS_PER_PAGE, offset: (shownPage - 1) * CONSOLE_TARGETS_PER_PAGE, order: targetsOrder });
     } catch { targetPage = null; }
   }
   const targetRows = targetPage == null ? null : targetPage.rows;
@@ -5448,11 +5820,12 @@ export async function houseDetailForConsole(
   const feedTotal = wantFeed && feedCountR.status === "fulfilled" ? feedCountR.value : null;
   let feedPageRows = wantFeed && feedR.status === "fulfilled" ? feedR.value : null;
   let feedShown = consoleLastPage(feedTotal, wantFeedPage, CONSOLE_FEED_PER_PAGE);
-  if (wantFeed && q.intentId != null && !q.pageAsked && feedShown === wantFeedPage && feedShown > 1
+  /* ⚠️ THE STEP BACK IS THE COUNTING RANK'S CORRECTION, SO ONLY THE DEFAULT ORDER TAKES IT: a sorted rank is exact. */
+  if (wantFeed && q.intentId != null && !q.pageAsked && feedOrder === undefined && feedShown === wantFeedPage && feedShown > 1
     && feedPageRows != null && !feedPageRows.rows.some((i) => i.id === q.intentId)) feedShown -= 1;
   if (wantFeed && feedPageRows != null && feedShown !== wantFeedPage) {
     try {
-      feedPageRows = await houseBotIntentStore.listFeed({ ...feedFilter, limit: CONSOLE_FEED_PER_PAGE, offset: (feedShown - 1) * CONSOLE_FEED_PER_PAGE });
+      feedPageRows = await houseBotIntentStore.listFeed({ ...feedFilter, limit: CONSOLE_FEED_PER_PAGE, offset: (feedShown - 1) * CONSOLE_FEED_PER_PAGE, order: feedOrder });
     } catch { feedPageRows = null; }
   }
   /* ⛔ ONE ACCOUNT, SO BOTH LOOKUPS ANSWER FOR IT AND FOR NOTHING ELSE — a stray id gets `null`, never this
@@ -5476,11 +5849,11 @@ export async function houseDetailForConsole(
   const historyTotal = wantHistory && historyCountR.status === "fulfilled" ? historyCountR.value : null;
   let historyPageRows = wantHistory && historyR.status === "fulfilled" ? historyR.value : null;
   let historyShown = consoleLastPage(historyTotal, wantHistoryPage, CONSOLE_HISTORY_PER_PAGE);
-  if (wantHistory && q.eventId != null && !q.hpageAsked && historyShown === wantHistoryPage && historyShown > 1
+  if (wantHistory && q.eventId != null && !q.hpageAsked && historyOrder === undefined && historyShown === wantHistoryPage && historyShown > 1
     && historyPageRows != null && !historyPageRows.some((e) => e.id === q.eventId)) historyShown -= 1;
   if (wantHistory && historyPageRows != null && historyShown !== wantHistoryPage) {
     try {
-      historyPageRows = await houseBotEventStore.listAll({ houseBotId: bot.id, limit: CONSOLE_HISTORY_PER_PAGE, offset: (historyShown - 1) * CONSOLE_HISTORY_PER_PAGE });
+      historyPageRows = await houseBotEventStore.listAll({ houseBotId: bot.id, limit: CONSOLE_HISTORY_PER_PAGE, offset: (historyShown - 1) * CONSOLE_HISTORY_PER_PAGE, order: historyOrder });
     } catch { historyPageRows = null; }
   }
   const history: ConsoleEventRow[] | null = historyPageRows == null ? null
@@ -6062,6 +6435,7 @@ export async function houseDetailForConsole(
     targetsPage: shownPage,
     targetsPerPage: CONSOLE_TARGETS_PER_PAGE,
     ...consolePanelShell(consoleBotHref(bot.id), q),
+    ...consoleDetailSorts(q),
     /* ⛔ THE PAGE THE ROWS REALLY CAME FROM, never the one the address asked for — the pager and the table cannot
      * disagree about which page is on screen. */
     feedPage: feedShown,
@@ -6203,6 +6577,8 @@ export type ConsoleFeedView = ConsoleDeskShell
     feedTotal: number | null;
     /** `null` when this render offers no cancel at all, so the page draws no control rather than a dead one. */
     cancelCopy: ConsoleCancelCopy | null;
+    /** ⭐ STEP 9 · the desk ledger's sortable headers (Account, Stake, When, Outcome) and the one in force. */
+    feedSort: ConsoleSortView<SortKeysOf<"feedDesk">>;
   };
 
 /** The desk-wide history panel. */
@@ -6211,6 +6587,8 @@ export type ConsoleHistoryView = ConsoleDeskShell
   & {
     history: ConsoleDeskEventRow[] | null;
     historyTotal: number | null;
+    /** ⭐ STEP 9 · the desk history's sortable headers (Account, When) and the one in force. */
+    historySort: ConsoleSortView<SortKeysOf<"historyDesk">>;
   };
 
 /** The desk's own empty states. ⛔ DIFFERENT WORDS from the account page's: "this account" and "the desk" are
@@ -6281,7 +6659,7 @@ export async function houseFeedForConsole(
 ): Promise<ConsoleFeedView | null> {
   if (!(await houseConsoleAudience(viewerUserId, route))) return null;
 
-  const q = parseConsoleQuery(query, Date.now(), consoleTab);
+  const q = parseConsoleQuery(query, Date.now(), consoleTab, CONSOLE_DESK_SORT_TABLES);
   /* ⛔ NO ACCOUNT FACET AT ALL — the desk IS the population. An empty-string or "any" sentinel would be a fourth
    * spelling of "no filter" that the shared predicate would then have to know about. */
   const feedFilter: IntentFeedCount = {
@@ -6291,12 +6669,21 @@ export async function houseFeedForConsole(
     ...(q.fromIso ? { fromIso: q.fromIso } : {}),
     ...(q.toIso ? { toIso: q.toIso } : {}),
   };
+  /* ⭐ STEP 9 · THE ORDER THIS PAGE IS CUT FROM. Every order but one is known before any read. The ACCOUNT order ranks
+   * the ROSTER by label, and the roster is a member of the core set — so under that one order the page is read AFTER
+   * the set, from the set's own roster (one roster read per render, never a second one that could disagree with the
+   * account cells painted from the first — 346). Every other order, the default included, reads its page inside the
+   * set exactly as before. */
+  const feedSort = consoleSortOf(q, "feedDesk");
+  const byAccount = feedSort.key === "account";
+  const earlyOrder = byAccount ? undefined : consoleFeedOrder(feedSort, null);
   /* A bell was followed and no page was typed: resolve the anchor's own page before the set is issued. */
-  const wantPage = q.intentId && !q.pageAsked
-    ? await consoleFeedAnchorPage(q.intentId, feedFilter, q.page) : q.page;
+  const wantPage = q.intentId && !q.pageAsked && !byAccount
+    ? await consoleFeedAnchorPage(q.intentId, feedFilter, q.page, earlyOrder) : q.page;
 
   const { core, extra: pageRead, extraB: totalRead, extraC: leftScan } = await readDeskCore(
-    () => houseBotIntentStore.listFeed({ ...feedFilter, limit: CONSOLE_FEED_PER_PAGE, offset: (wantPage - 1) * CONSOLE_FEED_PER_PAGE }),
+    () => (byAccount ? Promise.resolve(null)
+      : houseBotIntentStore.listFeed({ ...feedFilter, limit: CONSOLE_FEED_PER_PAGE, offset: (wantPage - 1) * CONSOLE_FEED_PER_PAGE, order: earlyOrder })),
     () => houseBotIntentStore.countFeed(feedFilter),
     /* ⭐ THE DAY'S PLACED STAKES ACROSS EVERY ACCOUNT, for the "Left today" column. ⛔ NOT `feedFilter`: the budget
      * is spent by every placed stake whatever the officer has filtered the table to, and a figure that changed
@@ -6308,17 +6695,22 @@ export async function houseFeedForConsole(
     },
   );
   const shell = deskShell(core);
+  const feedOrder = byAccount ? consoleFeedOrder(feedSort, core.roster) : earlyOrder;
+  const askedPage = byAccount && q.intentId && !q.pageAsked
+    ? await consoleFeedAnchorPage(q.intentId, feedFilter, q.page, feedOrder) : wantPage;
 
   const feedTotal = totalRead;
   let rows = pageRead;
-  let shown = consoleLastPage(feedTotal, wantPage, CONSOLE_FEED_PER_PAGE);
+  let shown = consoleLastPage(feedTotal, askedPage, CONSOLE_FEED_PER_PAGE);
   /* ⛔ THE ANCHOR'S RANK IS INCLUSIVE, SO A TIE INFLATES IT — the step back is what makes it exact, and it costs no
-   * read: the rows are already in hand (the whole argument is written at the account page's own reader). */
-  if (q.intentId != null && !q.pageAsked && shown === wantPage && shown > 1
+   * read: the rows are already in hand (the whole argument is written at the account page's own reader).
+   * ⭐ STEP 9 · THE DEFAULT ORDER'S CORRECTION ONLY: a sorted rank is exact, so it takes no step back. */
+  if (q.intentId != null && !q.pageAsked && feedOrder === undefined && shown === askedPage && shown > 1
     && rows != null && !rows.rows.some((i) => i.id === q.intentId)) shown -= 1;
-  if (rows != null && shown !== wantPage) {
+  /* The page past the end is re-read as the last page — and under the Account order, the page itself is read here. */
+  if ((rows != null && shown !== askedPage) || byAccount) {
     try {
-      rows = await houseBotIntentStore.listFeed({ ...feedFilter, limit: CONSOLE_FEED_PER_PAGE, offset: (shown - 1) * CONSOLE_FEED_PER_PAGE });
+      rows = await houseBotIntentStore.listFeed({ ...feedFilter, limit: CONSOLE_FEED_PER_PAGE, offset: (shown - 1) * CONSOLE_FEED_PER_PAGE, order: feedOrder });
     } catch { rows = null; }
   }
 
@@ -6389,6 +6781,7 @@ export async function houseFeedForConsole(
     /* ⛔ NO CONTROL WHERE THERE IS NOTHING TO STOP (432(a)). A failed read offers none either: `feed` is `null` and
      * the panel paints the kit's failure treatment instead of a table with buttons in it. */
     cancelCopy: feed != null && feed.some((r) => r.cancelId !== null) ? CONSOLE_CANCEL_COPY : null,
+    feedSort: consoleSortView(feedSort),
   };
 }
 
@@ -6408,24 +6801,33 @@ export async function houseHistoryForConsole(
 ): Promise<ConsoleHistoryView | null> {
   if (!(await houseConsoleAudience(viewerUserId, route))) return null;
 
-  const q = parseConsoleQuery(query, Date.now(), consoleTab);
-  const wantPage = q.eventId && !q.hpageAsked
-    ? await consoleHistoryAnchorPage(q.eventId, null, q.hpage) : q.hpage;
+  const q = parseConsoleQuery(query, Date.now(), consoleTab, CONSOLE_DESK_SORT_TABLES);
+  /* ⭐ STEP 9 · the activity reader's rule: the Account order waits for the core set's own roster; every other order,
+     the default included, reads its page inside the set as before. */
+  const historySort = consoleSortOf(q, "historyDesk");
+  const byAccount = historySort.key === "account";
+  const earlyOrder = byAccount ? undefined : consoleEventOrder(historySort, null);
+  const wantPage = q.eventId && !q.hpageAsked && !byAccount
+    ? await consoleHistoryAnchorPage(q.eventId, null, q.hpage, earlyOrder) : q.hpage;
 
   const { core, extra: pageRead, extraB: totalRead } = await readDeskCore(
-    () => houseBotEventStore.listAll({ limit: CONSOLE_HISTORY_PER_PAGE, offset: (wantPage - 1) * CONSOLE_HISTORY_PER_PAGE }),
+    () => (byAccount ? Promise.resolve(null)
+      : houseBotEventStore.listAll({ limit: CONSOLE_HISTORY_PER_PAGE, offset: (wantPage - 1) * CONSOLE_HISTORY_PER_PAGE, order: earlyOrder })),
     () => houseBotEventStore.countAll({}),
   );
   const shell = deskShell(core);
+  const historyOrder = byAccount ? consoleEventOrder(historySort, core.roster) : earlyOrder;
+  const askedPage = byAccount && q.eventId && !q.hpageAsked
+    ? await consoleHistoryAnchorPage(q.eventId, null, q.hpage, historyOrder) : wantPage;
 
   const historyTotal = totalRead;
   let rows = pageRead;
-  let shown = consoleLastPage(historyTotal, wantPage, CONSOLE_HISTORY_PER_PAGE);
-  if (q.eventId != null && !q.hpageAsked && shown === wantPage && shown > 1
+  let shown = consoleLastPage(historyTotal, askedPage, CONSOLE_HISTORY_PER_PAGE);
+  if (q.eventId != null && !q.hpageAsked && historyOrder === undefined && shown === askedPage && shown > 1
     && rows != null && !rows.some((e) => e.id === q.eventId)) shown -= 1;
-  if (rows != null && shown !== wantPage) {
+  if ((rows != null && shown !== askedPage) || byAccount) {
     try {
-      rows = await houseBotEventStore.listAll({ limit: CONSOLE_HISTORY_PER_PAGE, offset: (shown - 1) * CONSOLE_HISTORY_PER_PAGE });
+      rows = await houseBotEventStore.listAll({ limit: CONSOLE_HISTORY_PER_PAGE, offset: (shown - 1) * CONSOLE_HISTORY_PER_PAGE, order: historyOrder });
     } catch { rows = null; }
   }
 
@@ -6451,6 +6853,7 @@ export async function houseHistoryForConsole(
     queryRefusal: panel.queryRefusal,
     history,
     historyTotal,
+    historySort: consoleSortView(historySort),
   };
 }
 
@@ -6518,6 +6921,14 @@ export type ConsoleResultsView = ConsoleDeskShell & {
   /** `null` when the roster read failed — nobody can tell which line is whose (355). */
   resultAccounts: ConsoleResultsAccountRow[] | null;
   resultsNote: string;
+  /** ⭐ STEP 9 · By day's four sortable headers and the one in force — the day, newest first, on a bare address. */
+  daySort: ConsoleSortView<SortKeysOf<"resultDays">>;
+  /** ⭐ STEP 9 · By account's three sortable headers — none in force on a bare address, which is the roster's own order. */
+  acctSort: ConsoleSortView<SortKeysOf<"resultAccounts">>;
+  /** Both tables' live sort parameters and the tab — so sorting one table keeps the other's order. */
+  resultsParams: Record<string, string | undefined>;
+  /** ⛔ ONE sentence naming every part of the address that was thrown away, or `null` (387, 432(j)). */
+  queryRefusal: string | null;
 };
 
 /** The note under By day — the same-word problem named: the band's "Loss today" is PROJECTED, this is SETTLED. */
@@ -6617,6 +7028,13 @@ function resultDayText(dayKey: string, index: number): { dayText: string; dayTit
 export async function houseResultsForConsole(
   viewerUserId: string | null | undefined,
   route: string,
+  /**
+   * ⭐ STEP 9 · THE REQUEST'S OWN QUERY STRING — READ FOR THE TWO TABLES' ORDER AND NOTHING ELSE. ⛔ No part of it
+   * reaches a read: the seven days are `RESULT_DAYS`, fixed in code and walked back from the core's own day (437(c)), so
+   * no address can widen or move the window. A window word on this address (`range`, `from`, `to`) is validated like
+   * everywhere else and changes nothing here.
+   */
+  query?: ConsoleQuery,
 ): Promise<ConsoleResultsView | null> {
   if (route !== CONSOLE_ROUTE) return null;
   if (!(await houseConsoleAudience(viewerUserId, route))) return null;
@@ -6628,6 +7046,10 @@ export async function houseResultsForConsole(
     return { keys, books: await Promise.allSettled(keys.map((k) => houseDayBooks(k))) };
   });
   const view = deskShell(core);
+  /* ⭐ STEP 9 · THE ADDRESS IS PARSED ON THE CORE'S OWN DAY, never a clock of this reader's (437(e) holds this block to
+     none). The instant only resolves a feed WINDOW, which this reader never reads — the week is `RESULT_DAYS` back from
+     `core.dayKey` — so what matters here is the parse's verdict on each part, and that does not depend on the instant. */
+  const q = parseConsoleQuery(query, eatDayWindow(core.dayKey)?.fromMs ?? 0, consoleTab, CONSOLE_DESK_SORT_TABLES);
 
   const days: { key: string | null; books: Map<string, HouseDayBook> | null }[] = [
     { key: core.dayKey, books: core.dayBooks },
@@ -6678,7 +7100,58 @@ export async function houseResultsForConsole(
     }
   }
 
-  return { ...view, resultDays, resultAccounts, resultsNote: CONSOLE_RESULTS_NOTE };
+  /* ⭐ STEP 9 · THE TWO TABLES IN THE ORDER THEIR ADDRESS ASKS — every row the same painted row, only its place moves.
+   * The keys are the TALLIES the cells were painted from, computed again here by the same pure functions — never parsed
+   * back out of the words, and never a raw figure handed to the page (437(g)). A cell that states no result
+   * ("Nothing settled", "No stakes", "—", a failed read) has no key and sorts LAST; a tie keeps the table's own order. */
+  const daySort = consoleSortOf(q, "resultDays");
+  const acctSort = consoleSortOf(q, "resultAccounts");
+  const dayTallies = days.map((d) => (d.books === null ? null : tallyOf(d.books.values())));
+  const sortedDays = consoleSortIsDefault(daySort) || daySort.key === null ? resultDays
+    : consoleOrdered(resultDays, (i) => consoleResultDayKey(daySort.key, days[i].key, dayTallies[i]), daySort.dir, (i, j) => i - j);
+  let sortedAccounts = resultAccounts;
+  if (resultAccounts !== null && byId !== null && acctSort.key !== null) {
+    const ids = [...byId.keys()];
+    const gone = new Set<string>();
+    for (const d of days) for (const id of d.books?.keys() ?? []) if (!byId.has(id)) gone.add(id);
+    const tallyFor = (set: ReadonlySet<string>, books: Map<string, HouseDayBook> | null): ResultTally | null =>
+      books === null ? null : tallyOf([...set].map((id) => books.get(id)));
+    const facts = [...ids.map((id) => ({ label: byId.get(id)?.label ?? null, set: new Set([id]) as ReadonlySet<string> })),
+      ...(gone.size > 0 ? [{ label: null, set: gone as ReadonlySet<string> }] : [])];
+    const key = acctSort.key;
+    sortedAccounts = facts.length !== resultAccounts.length ? resultAccounts
+      : consoleOrdered(resultAccounts, (i) => (key === "account" ? facts[i].label
+        : resultValue(key === "today" ? tallyFor(facts[i].set, days[0].books) : sumTallies(days.map((d) => tallyFor(facts[i].set, d.books))))),
+      acctSort.dir, (i, j) => i - j);
+  }
+  return {
+    ...view,
+    resultDays: sortedDays,
+    resultAccounts: sortedAccounts,
+    resultsNote: CONSOLE_RESULTS_NOTE,
+    daySort: consoleSortView(daySort),
+    acctSort: consoleSortView(acctSort),
+    resultsParams: { tab: "results", ...consoleSortParams(daySort), ...consoleSortParams(acctSort) },
+    queryRefusal: consoleRefusalSentence(q.refusals),
+  };
+}
+
+/** A result as a signed number, exactly where `resultCell` paints one (Profit, Loss, Even) — otherwise `null`. */
+function resultValue(t: ResultTally | null): number | null {
+  if (t === null || !Number.isSafeInteger(t.result) || t.bets === 0 || t.settledStake === 0) return null;
+  return t.result;
+}
+
+/** One By-day row's sort key: the day's own key, its result, its count, or its state in lifecycle order. */
+function consoleResultDayKey(key: ConsoleSortKey | null, dayKey: string | null, t: ResultTally | null): number | string | null {
+  if (key === "day") return dayKey;
+  if (key === "result") return resultValue(t);
+  if (key === "stakes") return t === null ? null : t.bets;
+  if (key === "state") {
+    const k = ([RESULT_STATE.running, RESULT_STATE.final, RESULT_STATE.none] as string[]).indexOf(resultState(t));
+    return k < 0 ? null : k;
+  }
+  return null;
 }
 
 

@@ -118,12 +118,17 @@ export async function loadWorld() {
   async function switchOn(): Promise<void> { await dal.houseBotControlStore.switchOn({ byId: OFFICER, reason: "test" }); }
   async function switchOff(): Promise<void> { await dal.houseBotControlStore.switchOff({ cause: "MANUAL", byId: OFFICER, reason: "test" }); }
 
-  /** A designated, ACTIVE bot on a fresh holder with a real consent fingerprint and open caps. */
-  async function bot(o: { balance?: number; bonusBalance?: number; caps?: Record<string, unknown>; holderId?: string } = {}): Promise<{ botId: string; userId: string }> {
+  /**
+   * A designated, ACTIVE bot on a fresh holder with a real consent fingerprint and open caps.
+   * ⭐ `label`, `designatedAt` and `botId` ARE OPTIONAL AND DEFAULT TO WHAT EVERY EXISTING CALLER ALREADY GOT (added
+   * 2026-09-26 for step 9's sorts): the roster sorts by the label, orders its ties by designation and then the id, so a
+   * case about those needs to choose them — two accounts designated in the same millisecond, stored against id order.
+   */
+  async function bot(o: { balance?: number; bonusBalance?: number; caps?: Record<string, unknown>; holderId?: string; label?: string; designatedAt?: string; botId?: string } = {}): Promise<{ botId: string; userId: string }> {
     const userId = o.holderId ?? await user({ balance: o.balance ?? 5_000_000, bonusBalance: o.bonusBalance ?? 0, passwordHash: HOLDER_HASH });
-    const botId = uid("hb");
-    const label = `Bot ${seq}`;
-    const now = iso();
+    const botId = o.botId ?? uid("hb");
+    const label = o.label ?? `Bot ${seq}`;
+    const now = o.designatedAt ?? iso();
     await dal.houseBotStore.designate({
       bot: {
         id: botId, userId, label, labelKey: labelKey(label), note: null, passwordFingerprint: passwordFingerprint(HOLDER_HASH),

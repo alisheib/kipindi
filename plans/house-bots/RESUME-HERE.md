@@ -102,8 +102,8 @@ The account page's ledger has the same shape in eight columns. Below `sm` it is 
 5. **D19/D20 stand.** House bots are never public — not to players, not to the holder — and are ordinary players in
    every report.
 
-**Suite floors — a lower count is a regression, not drift:** console **1007 memory / 728 Postgres** (2026-09-26, steps 6 and 10) · reports **251 / 80** (step 4: c6c637c1's census sample classified and pinned) · comms **52 / 50** ·
-engine **829 / 810** (step 6) · ops **100 / 104** (step 7) · money **132 / 150**. **Declared mutations:** console 420 (340 + step 1's 8 + step 3's 25 + step 4's 27 + step 6's 12 + step 10's 8, 2026-09-26) · engine 104 (80 + step 5's 21 + step 6's 3) · money 56 + seam 7 ·
+**Suite floors — a lower count is a regression, not drift:** console **1063 memory / 782 Postgres** (2026-09-27, step 9 integrated) · reports **251 / 80** (step 4: c6c637c1's census sample classified and pinned) · comms **52 / 50** ·
+engine **829 / 810** (step 6) · ops **100 / 104** (step 7) · money **132 / 150**. **Declared mutations:** console 450 (340 + step 1's 8 + step 3's 25 + step 4's 27 + step 6's 12 + step 10's 8 + step 9's 30, 2026-09-27) · engine 104 (80 + step 5's 21 + step 6's 3) · money 56 + seam 7 ·
 c5 100 (99 primaries; step 8 added 3) — all resolve exactly once (`test:red-anchors` §3, 2026-09-26).
 
 ## 0b · ▶ WHAT IS OPEN, in the order to work it
@@ -221,25 +221,28 @@ pushed to `main` and verified serving before the next:**
    flag instead of catching — a landed designation, Start, Pause/Remove, rules save, switch-on, kill switch or staff
    cancel is reported as landed, with a warning that its compliance record did not, and no event carries a phantom
    audit id. Console §2i, engine 13.35b/c + 17.14b–e, `test:audit` 543.1–3; 18 mutations. Shipped in ONE commit with
-   step 10 (tested together in one lock acquisition — the lock was contended by other lanes all evening).
+   step 10 (tested together in one lock acquisition — the lock was contended by other lanes all evening). **LIVE at
+   `f03f8566`**; its mutations driven there: console 14/14, engine 3/3, money 1/1.
 7. ✅ **BUILT 2026-09-26 — `red:house-bot-ops` has a write-free entry of its own** (`docs/HOUSE-BOTS.md` §12.10): the
    key runs `scripts/red-house-bot-ops.mts`, the pure detectors moved verbatim into `house-bot-ops-detectors.mts`, and
    `test:red-anchors` §4's undeclared count fell 68 → 67. Ops 100/104 (memory floor 89 → 100), red 50/50. ⚠️ Its gate
    run found `ops.pop.0p` red ON MAIN (a stale known string) — fixed in the same commit.
 8. ✅ **DONE 2026-09-26** (`test:house-bot-disclosure` 118/0, d.7/d.7b/d.7.c1; risk 12 states D1's owner-role reading) — owed text: accepted risks 8–12 were never written into either register (`docs/HOUSE-BOTS.md` §13); their sealed
    text is `04-amendments.md` S5 — check each against today's code before copying it into both registers identically.
-9. **Every desk table sorts, and none can grow past a page** — Ali, 2026-09-26, mid-session, as typed: *"before
-   finsihing amke su relaso all desk tbale sand grid sgot th erug tpaging pleas enad sroting etc.. to prveent vey rlong
-   grids"*. Measured before building: every table that GROWS already pages at 20 (desk activity and history; the
-   account's activity, targets and history; the find list). The roster is bounded by its limit (1–20) but unpaged, the
-   Results tables are bounded (7 days; at most 21 rows), and only the find list sorts. So: server-side sort on every
-   desk table, the reader parsing and building every link as the find list does, and the roster paged at 20.
+9. ✅ **BUILT 2026-09-27 — every desk table sorts, and none can grow past a page** (Ali, as typed: *"before finsihing amke
+   su relaso all desk tbale sand grid sgot th erug tpaging pleas enad sroting etc.. to prveent vey rlong grids"*;
+   `docs/HOUSE-BOTS.md` §7.1c, §12.13). Server-side sort on all eight desk tables (roster, desk activity and history, both
+   Results tables, the account's activity, targets and history), each column where an order means something, every
+   order total (ties end on the id, a missing value last both ways), the same order in SQL and memory, a bad sort word
+   refused by name; the roster pages at 20 (the ceiling's own maximum, so it never draws while the ceiling holds).
+   ⚠️ **One limit, stated:** on a phone the two ACTIVITY ledgers show each row as a stack with no header row, so their
+   sort is changed from a wider screen (the order note says the order in force); every other table sorts at every width.
 10. ✅ **BUILT 2026-09-26 — no navigation looks stuck** (Ali, as typed: *"alos when jumoing from tba to anothe rmake sur eu ahve
    th erigh tloading states and etc toamke percet and user to not to think it sstucl"*; `docs/HOUSE-BOTS.md` §7.1b, §12.12).
    MEASURED first: a held tab, sort, page or chip press left the old page on screen with nothing moving — `loading.tsx`
    does not take over for a query-only change. Now every kit link that changes the page (section rail, sortable header,
    pager, filter chip) and the date filter's Custom window marks itself at once, and what it will replace dims.
-   `qa:nav-pending` 111/0/0 at 1280 and 360; 8 `nav-` mutations.
+   `qa:nav-pending` 111/0/0 at 1280 and 360; 8 `nav-` mutations. **LIVE at `f03f8566`**, all 8 caught there.
 11. **Close:** drive the four fleets WHOLE again (§0b a's recipe), verify the deploy serves the final sha, and write the
    handover in §5.
 
@@ -419,3 +422,9 @@ KP_BASE=http://localhost:3031 KP_WIDTHS=360,1280 npm run -s qa:house-bots-visual
     covered both: console 1007/728, engine 829/810, `qa:nav-pending` 111/0/0, visual 208/0, build and bundle green.
     ⚠️ Not rendered: ruling 543's three warnings (they reuse the kit's warning toast/callout; the suite proves each
     answer). The desk filter chips first dimmed nothing (their rail sits above the card) — fixed before the push.
+  - ✅ **Step 9 BUILT** — every desk table sorts; the roster pages. Built by a delegated builder in its own tree (30/30
+    `sort-` mutations caught there), integrated on top of steps 6/10: console 1063/782, engine 829/810, dal-parity 1488,
+    every house suite, `grid-paging` 41/0, `qa:nav-pending` 111/0/0. The integration found three defects in the VISUAL
+    GATE, not the product, all fixed: §5.10's page-fit check could not fail (the console clips horizontal overflow), an
+    empty table's hidden header was misread as the phone stack, and §5.7's control could not widen the account ledger at
+    1440. The kit `SortTh` now carries `scope="col"`.

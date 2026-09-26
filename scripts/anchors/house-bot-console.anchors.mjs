@@ -571,10 +571,14 @@ export const MUTATIONS = [
     /* ⚠️ RE-ANCHORED 2026-09-18 (B2, ruling 348): `readDeskCore` now takes a FACTORY, so the second quoted
        line moved. THE DEFECT IS UNCHANGED — the verdict is resolved and then not acted on, and every read
        below runs for a viewer outside the audience. */
+    /* ⚠️ RE-ANCHORED 2026-09-26 (step 9): the roster reader now parses its address between the verdict and the reads.
+       THE DEFECT IS UNCHANGED. */
     from: `  if (!(await houseConsoleAudience(viewerUserId, route))) return null;
+  const q = parseConsoleQuery(query, Date.now(), consoleTab, CONSOLE_DESK_SORT_TABLES);
 
   const { core, extra: parseCtx, extraB: rates } = await readDeskCore(`,
     to: `  const mayView = await houseConsoleAudience(viewerUserId, route);
+  const q = parseConsoleQuery(query, Date.now(), consoleTab, CONSOLE_DESK_SORT_TABLES);
 
   const { core, extra: parseCtx, extraB: rates } = await readDeskCore(`,
     expect: "1.300 · the reader refuses a PLAYER with `null` and performs ZERO store calls",
@@ -808,7 +812,7 @@ export const MUTATIONS = [
     file: PAGE,
     from: `  const figure = cell.money ? "amount tabular-nums" : "font-mono tabular-nums";`,
     to: `  const figure = cell.money ? "amount" : "font-mono";`,
-    expect: "1.407 / 1.409 · every `<th>` carries `scope=\"col\"`",
+    expect: "1.407 / 1.409 · every plain `<th>` carries `scope=\"col\"`",
     suite: "console-mem",
   },
   {
@@ -839,10 +843,10 @@ export const MUTATIONS = [
        ⚠️ RE-ANCHORED AGAIN 2026-09-26 (C7 437): the Results panel's By account table opens on the same responsive
        Account header, so the line matched 2×; it is held with the `Opening` header beneath it, which is the activity
        ledger's alone. */
-    from: `                        <th scope="col" className="text-left p-3 min-w-[104px] sm:min-w-[150px]">Account</th>
-                        <th scope="col" className="text-right p-3 !whitespace-normal">Opening</th>`,
-    to: `                        <th scope="col" className="text-left p-3">Account</th>
-                        <th scope="col" className="text-right p-3 !whitespace-normal">Opening</th>`,
+    /* ⚠️ RE-ANCHORED 2026-09-26 (step 9): the header is the kit's `SortTh` now, its word the reader's and its class
+       `align` + `className`. THE DEFECT IS UNCHANGED. */
+    from: `                        <SortTh field={feedView.feedSort.columns.account.field} label={feedView.feedSort.columns.account.label} current={feedView.feedSort.current} dir={feedView.feedSort.dir} sp={feedView.feedParams} baseHref={CONSOLE_ROUTE} prefix={feedView.feedSort.prefix} className="p-3 min-w-[104px] sm:min-w-[150px]" />`,
+    to: `                        <SortTh field={feedView.feedSort.columns.account.field} label={feedView.feedSort.columns.account.label} current={feedView.feedSort.current} dir={feedView.feedSort.dir} sp={feedView.feedParams} baseHref={CONSOLE_ROUTE} prefix={feedView.feedSort.prefix} className="p-3" />`,
     expect: "1.373 · EVERY panel that paints the subject column carries the SAME floor",
     suite: "console-mem",
   },
@@ -857,8 +861,10 @@ export const MUTATIONS = [
   {
     name: "373-order · the money columns move out of the answer position",
     file: PAGE,
-    from: `                      <th scope="col" className="text-left p-3 min-w-[128px]">Status</th>`,
-    to: `                      <th scope="col" className="text-left p-3 min-w-[128px]">State</th>`,
+    /* ⚠️ RE-ANCHORED 2026-09-26 (step 9): the header is the kit's `SortTh` now, its word the reader's and its class
+       `align` + `className`. THE DEFECT IS UNCHANGED. */
+    from: `                      <SortTh field={rosterView.rosterSort.columns.status.field} label={rosterView.rosterSort.columns.status.label} current={rosterView.rosterSort.current} dir={rosterView.rosterSort.dir} sp={rosterView.rosterParams} baseHref={CONSOLE_ROUTE} prefix={rosterView.rosterSort.prefix} className="p-3 min-w-[128px]" />`,
+    to: `                      <SortTh field={rosterView.rosterSort.columns.status.field} label="State" current={rosterView.rosterSort.current} dir={rosterView.rosterSort.dir} sp={rosterView.rosterParams} baseHref={CONSOLE_ROUTE} prefix={rosterView.rosterSort.prefix} className="p-3 min-w-[128px]" />`,
     expect: "1.310 / 1.373 · the roster's headers are the control facts, in order",
     suite: "console-mem",
   },
@@ -1594,8 +1600,10 @@ import { formatEat } from "@/lib/utils";`,
   {
     name: "432o-nowrap-header · the money header is nowrap again, which pins its figure off a 360 screen",
     file: PAGE,
-    from: `                      <th scope="col" className="text-right p-3 !whitespace-normal">Loss today (projected)</th>`,
-    to: `                      <th scope="col" className="text-right p-3 whitespace-normal">Loss today (projected)</th>`,
+    /* ⚠️ RE-ANCHORED 2026-09-26 (step 9): the header is the kit's `SortTh` now, its word the reader's and its class
+       `align` + `className`. THE DEFECT IS UNCHANGED. */
+    from: `                      <SortTh field={rosterView.rosterSort.columns.loss.field} label={rosterView.rosterSort.columns.loss.label} current={rosterView.rosterSort.current} dir={rosterView.rosterSort.dir} sp={rosterView.rosterParams} baseHref={CONSOLE_ROUTE} prefix={rosterView.rosterSort.prefix} align="right" className="p-3 !whitespace-normal" />`,
+    to: `                      <SortTh field={rosterView.rosterSort.columns.loss.field} label={rosterView.rosterSort.columns.loss.label} current={rosterView.rosterSort.current} dir={rosterView.rosterSort.dir} sp={rosterView.rosterParams} baseHref={CONSOLE_ROUTE} prefix={rosterView.rosterSort.prefix} align="right" className="p-3 whitespace-normal" />`,
     /* ⚠️ RE-AIMED 2026-09-25: the assertion was renamed to say ON THE ROSTER, because it reads the FIRST thead on
        the page and never governed the activity table's money headers, whose own pin now sits beside that panel. */
     expect: "1.373 · 432(o) · every money-bearing header ON THE ROSTER may WRAP",
@@ -1609,24 +1617,30 @@ import { formatEat } from "@/lib/utils";`,
      * batch drive; the `expect` quoted the first, so the drive reported WRONG-ASSERTION on a guard that worked. */
     name: "432o-status-floor · the status column loses its floor, so the AUTO-PAUSED chip is a two-line pill again",
     file: PAGE,
-    from: `                      <th scope="col" className="text-left p-3 min-w-[128px]">Status</th>`,
-    to: `                      <th scope="col" className="text-left p-3">Status</th>`,
+    /* ⚠️ RE-ANCHORED 2026-09-26 (step 9): the header is the kit's `SortTh` now, its word the reader's and its class
+       `align` + `className`. THE DEFECT IS UNCHANGED. */
+    from: `                      <SortTh field={rosterView.rosterSort.columns.status.field} label={rosterView.rosterSort.columns.status.label} current={rosterView.rosterSort.current} dir={rosterView.rosterSort.dir} sp={rosterView.rosterParams} baseHref={CONSOLE_ROUTE} prefix={rosterView.rosterSort.prefix} className="p-3 min-w-[128px]" />`,
+    to: `                      <SortTh field={rosterView.rosterSort.columns.status.field} label={rosterView.rosterSort.columns.status.label} current={rosterView.rosterSort.current} dir={rosterView.rosterSort.dir} sp={rosterView.rosterParams} baseHref={CONSOLE_ROUTE} prefix={rosterView.rosterSort.prefix} className="p-3" />`,
     expect: "1.373 · …and only the SUBJECT and STATUS columns carry a floor",
     suite: "console-mem",
   },
   {
     name: "432o-exposure-name · the column and the tile call the same figure two different things",
-    file: PAGE,
-    from: `                      <th scope="col" className="text-right p-3 !whitespace-normal">Open exposure</th>`,
-    to: `                      <th scope="col" className="text-right p-3 !whitespace-normal">Exposure</th>`,
+    /* ⚠️ RE-ANCHORED 2026-09-26 (step 9): a sortable header's WORD has one home, the reader's `CONSOLE_SORT_LABEL`,
+       which the page renders and the token is slugged from — so the rename is planted there. THE DEFECT IS UNCHANGED. */
+    file: GATE,
+    from: `  exposure: "Open exposure",`,
+    to: `  exposure: "Exposure",`,
     expect: "1.310 / 1.373 · the roster's headers are the control facts, in order",
     suite: "console-mem",
   },
   {
     name: "432o-bets-axis · the count usage is left-aligned again, on a different axis from the money beside it",
     file: PAGE,
-    from: `                      <th scope="col" className="text-right p-3 !whitespace-normal">Bets today</th>`,
-    to: `                      <th scope="col" className="text-left p-3">Bets today</th>`,
+    /* ⚠️ RE-ANCHORED 2026-09-26 (step 9): the header is the kit's `SortTh` now, its word the reader's and its class
+       `align` + `className`. THE DEFECT IS UNCHANGED. */
+    from: `                      <SortTh field={rosterView.rosterSort.columns.bets.field} label={rosterView.rosterSort.columns.bets.label} current={rosterView.rosterSort.current} dir={rosterView.rosterSort.dir} sp={rosterView.rosterParams} baseHref={CONSOLE_ROUTE} prefix={rosterView.rosterSort.prefix} align="right" className="p-3 !whitespace-normal" />`,
+    to: `                      <SortTh field={rosterView.rosterSort.columns.bets.field} label={rosterView.rosterSort.columns.bets.label} current={rosterView.rosterSort.current} dir={rosterView.rosterSort.dir} sp={rosterView.rosterParams} baseHref={CONSOLE_ROUTE} prefix={rosterView.rosterSort.prefix} className="p-3" />`,
     expect: "1.407 · 432(o) · every usage column is right-aligned",
     suite: "console-mem",
   },
@@ -2897,8 +2911,10 @@ import { formatEat } from "@/lib/utils";`,
   {
     name: "437-money-third · a column is pushed in front of the Result, so the answer is no longer the second column",
     file: PAGE,
-    from: `<th scope="col" className="text-right p-3 !whitespace-normal">Result</th>`,
-    to: `<th scope="col" className="text-left p-3">Kind</th><th scope="col" className="text-right p-3 !whitespace-normal">Result</th>`,
+    /* ⚠️ RE-ANCHORED 2026-09-26 (step 9): the header is the kit's `SortTh` now, its word the reader's and its class
+       `align` + `className`. THE DEFECT IS UNCHANGED. */
+    from: `<SortTh field={resultsView.daySort.columns.result.field} label={resultsView.daySort.columns.result.label} current={resultsView.daySort.current} dir={resultsView.daySort.dir} sp={resultsView.resultsParams} baseHref={CONSOLE_ROUTE} prefix={resultsView.daySort.prefix} align="right" className="p-3 !whitespace-normal" />`,
+    to: `<th scope="col" className="text-left p-3">Kind</th><SortTh field={resultsView.daySort.columns.result.field} label={resultsView.daySort.columns.result.label} current={resultsView.daySort.current} dir={resultsView.daySort.dir} sp={resultsView.resultsParams} baseHref={CONSOLE_ROUTE} prefix={resultsView.daySort.prefix} align="right" className="p-3 !whitespace-normal" />`,
     expect: "1.437n · LAYOUT",
     suite: "console-mem",
   },
@@ -3048,8 +3064,9 @@ import { formatEat } from "@/lib/utils";`,
   {
     name: "302-anchor-ignored · a bell's `&intent=` stops resolving its row's page, so an officer who followed an alert lands on page 1 and the row the alert is about is nowhere on the screen",
     file: GATE,
+    /* ⚠️ RE-ANCHORED 2026-09-26 (step 9): the call now hands the order in force (`undefined` on a bare address). */
     from: `  const wantFeedPage = wantFeed && q.intentId && !q.pageAsked
-    ? await consoleFeedAnchorPage(q.intentId, feedFilter, q.page) : q.page;`,
+    ? await consoleFeedAnchorPage(q.intentId, feedFilter, q.page, feedOrder) : q.page;`,
     to: `  const wantFeedPage = q.page;`,
     expect: "1.302 · a bell's `&intent=` resolves the row's page SERVER-SIDE",
     suite: "console-mem",
@@ -3168,7 +3185,7 @@ import { formatEat } from "@/lib/utils";`,
     file: PAGE,
     from: `                  total={feedView.feedTotal}`,
     to: `                  total={feedRows.length}`,
-    expect: "1.411 · both landing panels draw the shared `AdminPagination`, each total is a COUNTING field of its view, and neither is a rendered array's length",
+    expect: "1.411 · the three paged landing panels draw the shared `AdminPagination`, each total is a COUNTING field of its view",
     suite: "console-mem",
   },
   {
@@ -4182,5 +4199,262 @@ import Link from "next/link";`,
     to: "[data-motion=\"reduced\"] .link-pending-x::after,",
     expect: "1.nav.3 · the CSS draws it",
     suite: "console-mem",
+  },
+  /* ── 2026-09-26 · STEP 9 · EVERY DESK TABLE SORTS, AND NONE CAN GROW PAST A PAGE ────────────────────────────────
+   * Each puts back a shape step 9 could plausibly have shipped in: a direction that does nothing, a missing value that
+   * sorts first, an order with no tie-break, a chip ranked without its result, a text order that is case-blind or
+   * missing-blind, a cursor handed to a sorted page, a roster page that is the whole roster or a page past the end
+   * served empty, a sort word dropped in silence or a refused one carried into a link, a bell that lands in the wrong
+   * order, a note that still says "Newest first.", a rail or a pager that loses the sort, the desk's Account order
+   * quietly served as time, the Results sort ignored or its folded line ranked first, a header handed the raw address,
+   * a pager base typed at the call site, a refusal with no Callout, and three Postgres twins that part company with
+   * memory. Every `from` resolves exactly once in its own file (`test:red-anchors` §3). */
+  {
+    name: "sort-dal-dir-ignored · the memory twin's sorted page ignores the direction, so Stake descending comes back ascending",
+    file: DAL,
+    from: `    return (dir === "asc" ? ka - kb : kb - ka) || memNewestFirst(a, b);`,
+    to: `    return (ka - kb) || memNewestFirst(a, b);`,
+    expect: "1.s9 · ledger · Stake · every page, concatenated, is in stake order BOTH ways",
+    suite: "console-mem",
+  },
+  {
+    name: "sort-dal-nulls-first · a row whose key is missing sorts FIRST, so every stake of an account no longer on the desk heads the Account order",
+    file: DAL,
+    from: `    if (ka === null || kb === null) return ka === kb ? memNewestFirst(a, b) : ka === null ? 1 : -1;`,
+    to: `    if (ka === null || kb === null) return ka === kb ? memNewestFirst(a, b) : ka === null ? -1 : 1;`,
+    expect: "1.s9 · desk ledger · Account · every page, concatenated, is in the ROSTER's label order both ways",
+    suite: "console-mem",
+  },
+  {
+    name: "sort-dal-no-tiebreak · the default tail loses its id, so two stakes of one amount at one instant come back in whatever order the store holds them",
+    file: DAL,
+    from: `  ms(b.createdAt) - ms(a.createdAt) || (a.id < b.id ? 1 : a.id > b.id ? -1 : 0);`,
+    to: `  ms(b.createdAt) - ms(a.createdAt);`,
+    expect: "1.s9 · ledger · ties · two stakes of one amount at ONE instant",
+    suite: "console-mem",
+  },
+  {
+    name: "sort-dal-outcome-status-only · the Outcome order ranks the intent's status alone, so a stake that WON sorts among the ones still placed",
+    file: DAL,
+    from: `    return st !== undefined && results.includes(st) ? st : r.status;`,
+    to: `    return r.status;`,
+    expect: "1.s9 · ledger · Outcome · the chip in lifecycle order",
+    suite: "console-mem",
+  },
+  {
+    name: "sort-text-case-blind · the one text order compares code points alone, so \"Banana\" sorts before \"apple\" and a title list reads unsorted",
+    file: DAL,
+    from: `  return codePointOrder(fold(a), fold(b)) || codePointOrder(a, b);`,
+    to: `  return codePointOrder(a, b);`,
+    expect: "1.s9 · targets · Poll · every page in title order both ways",
+    suite: "console-mem",
+  },
+  {
+    name: "sort-dal-title-nulls-first · a stored title that is not a string sorts FIRST, ahead of every poll with a name",
+    file: DAL,
+    from: `    if (ta === null || tb === null) return ta === tb ? memNewestFirst(a, b) : ta === null ? 1 : -1;`,
+    to: `    if (ta === null || tb === null) return ta === tb ? memNewestFirst(a, b) : ta === null ? -1 : 1;`,
+    expect: "1.s9 · targets · DAL · a stored title that is not a string sorts LAST",
+    suite: "console-mem",
+  },
+  {
+    name: "sort-dal-cursor · a keyset cursor is taken by a sorted page, so the engine's walker could page a list in an order its cursor does not name",
+    file: DAL,
+    from: `function memOrderedPage<R extends { createdAt: string; id: string }>(rows: R[], order: (a: R, b: R) => number, cursor: KeysetCursor | null | undefined, limit: number, offset = 0): Page<R> {
+  if (cursor) throw new Error(SORTED_CURSOR_REFUSAL);`,
+    to: `function memOrderedPage<R extends { createdAt: string; id: string }>(rows: R[], order: (a: R, b: R) => number, cursor: KeysetCursor | null | undefined, limit: number, offset = 0): Page<R> {`,
+    expect: "1.s9 · DAL · a keyset cursor is a position in the DEFAULT order",
+    suite: "console-mem",
+  },
+  {
+    name: "sort-reader-nulls-first · the in-memory tables put a cell that paints no figure FIRST, so an unset limit heads the Loss order",
+    file: GATE,
+    from: `    if (a === null || b === null) return a === b ? tie(i, j) : a === null ? 1 : -1;`,
+    to: `    if (a === null || b === null) return a === b ? tie(i, j) : a === null ? -1 : 1;`,
+    expect: "1.s9 · roster · missing · an account whose limit is not set paints no figure and sorts LAST in BOTH directions",
+    suite: "console-mem",
+  },
+  {
+    name: "sort-reader-no-tie · the in-memory tables drop their tie-break, so two accounts that tie come back in whatever order the roster read returned",
+    file: GATE,
+    from: `    return sign * by || tie(i, j);`,
+    to: `    return sign * by;`,
+    expect: "1.s9 · roster · ties · two accounts designated in the SAME millisecond",
+    suite: "console-mem",
+  },
+  {
+    name: "sort-reader-dir-ignored · the in-memory tables ignore the direction, so every roster column clicked twice reads the same",
+    file: GATE,
+    from: `  const sign = dir === "asc" ? 1 : -1;
+  const idx = rows.map((_, i) => i).sort((i, j) => {`,
+    to: `  const sign = 1;
+  const idx = rows.map((_, i) => i).sort((i, j) => {`,
+    expect: "1.s9 · roster · every one of its six sortable columns orders every page both ways",
+    suite: "console-mem",
+  },
+  {
+    name: "sort-roster-page-size · the roster's page is two hundred rows, so the pager Ali asked for never pages anything",
+    file: GATE,
+    from: `const CONSOLE_ROSTER_PER_PAGE = 20;`,
+    to: `const CONSOLE_ROSTER_PER_PAGE = 200;`,
+    expect: "1.s9 · roster pager · twenty to a page",
+    suite: "console-mem",
+  },
+  {
+    name: "sort-roster-total-from-page · the roster pager's total is the page's own length, so it can never offer a second page",
+    file: GATE,
+    from: `  const rosterTotal = ordered === null ? null : ordered.length;`,
+    to: `  const rosterTotal = ordered === null ? null : Math.min(ordered.length, CONSOLE_ROSTER_PER_PAGE);`,
+    expect: "1.s9 · roster pager · twenty to a page",
+    suite: "console-mem",
+  },
+  {
+    name: "sort-roster-past-end-empty · a roster page past the end is served empty under a pager that says there are more",
+    file: GATE,
+    from: `  const rosterPage = consoleLastPage(rosterTotal, q.rpage, CONSOLE_ROSTER_PER_PAGE);`,
+    to: `  const rosterPage = q.rpage;`,
+    expect: "1.s9 · roster pager · twenty to a page",
+    suite: "console-mem",
+  },
+  {
+    name: "sort-refusal-silent · a sort word that is no column is dropped in silence, so the officer is shown an order nobody asked for",
+    file: GATE,
+    from: `    if (sortOne.repeated || (asked != null && hit == null)) say("sort");`,
+    to: `    if (sortOne.repeated) say("sort");`,
+    expect: "1.s9 · validation · a sort word that is no column of THIS table",
+    suite: "console-mem",
+  },
+  {
+    name: "sort-dir-without-column · a direction with nothing to reverse is taken at its word and silently ignored",
+    file: GATE,
+    from: `    if (dirOne.repeated || (dirAsked != null && dirHit == null) || (dirHit != null && key == null)) say("sort direction");`,
+    to: `    if (dirOne.repeated || (dirAsked != null && dirHit == null)) say("sort direction");`,
+    expect: "1.s9 · validation · a DIRECTION with no column to reverse",
+    suite: "console-mem",
+  },
+  {
+    name: "sort-refused-travels · a refused direction rides into every link the panel builds, so the next read is asked the same unanswerable question",
+    file: GATE,
+    from: `    sorts[table] = { table, key, dir: key == null ? "desc" : dirHit ?? "desc" };`,
+    to: `    sorts[table] = { table, key, dir: key == null ? "desc" : (dirHit ?? dirAsked ?? "desc") as "asc" | "desc" };`,
+    expect: "1.s9 · validation · refused sort words travel NOWHERE",
+    suite: "console-mem",
+  },
+  {
+    name: "sort-anchor-default-rank · a bell followed onto a SORTED ledger is ranked in the default order, so it lands on a page its row is not on",
+    file: GATE,
+    from: `  if (order !== undefined) return consoleRankedPage(() => houseBotIntentStore.rankInFeed(filter, order, anchorId), CONSOLE_FEED_PER_PAGE, fallback);`,
+    to: ``,
+    expect: "1.s9 · anchored · a bell's row followed onto a SORTED address lands on the page the row holds IN THAT ORDER",
+    suite: "console-mem",
+  },
+  {
+    name: "sort-note-stale · the order note says \"Newest first.\" whatever the address asked, so a phone reads a false order under a sorted ledger",
+    file: GATE,
+    from: `  if (consoleSortIsDefault(s) || s.key === null) return CONSOLE_ORDER_NOTE;`,
+    to: `  if (s.table.length > 0) return CONSOLE_ORDER_NOTE;`,
+    expect: "1.s9 · notes · the order note says the order IN FORCE",
+    suite: "console-mem",
+  },
+  {
+    name: "sort-rail-drops-sort · the activity panel's parameters leave the sort out, so every rail chip and the pager's page 2 fall back to newest first",
+    file: GATE,
+    from: `    ...consoleSortParams(consoleSortOf(p, "feedDesk", "feedAccount")),`,
+    to: ``,
+    expect: "1.s9 · links · the sort rides every rail link and the pager's base",
+    suite: "console-mem",
+  },
+  {
+    name: "sort-history-params-drop · the history's parameters leave the sort out, so its pager's page 2 is page 2 of a different order",
+    file: GATE,
+    from: `    historyParams: { tab: "history", ...consoleSortParams(consoleSortOf(p, "historyDesk", "historyAccount")) },`,
+    to: `    historyParams: { tab: "history" },`,
+    expect: "1.s9 · desk history · When · oldest first is the EXACT reverse of the bare address",
+    suite: "console-mem",
+  },
+  {
+    name: "sort-desk-account-as-time · the desk ledger's Account order is served as the default one, so the header is in force over rows that are not in its order",
+    file: GATE,
+    from: `function consoleFeedOrder(s: ConsoleSortParsed, roster: readonly StoredHouseBot[] | null): IntentFeedOrder | undefined {
+  if (s.key === null || consoleSortIsDefault(s)) return undefined;
+  if (s.key === "account") return { key: "account", accountIds: consoleAccountRanking(roster, s.dir) };`,
+    to: `function consoleFeedOrder(s: ConsoleSortParsed, roster: readonly StoredHouseBot[] | null): IntentFeedOrder | undefined {
+  if (s.key === null || consoleSortIsDefault(s)) return undefined;`,
+    expect: "1.s9 · desk ledger · Account · every page, concatenated, is in the ROSTER's label order both ways",
+    suite: "console-mem",
+  },
+  {
+    name: "sort-results-days-ignored · By day's sort is read and never applied, so the header is in force over the table's own order",
+    file: GATE,
+    from: `  const sortedDays = consoleSortIsDefault(daySort) || daySort.key === null ? resultDays`,
+    to: `  const sortedDays = daySort.table.length > 0 ? resultDays`,
+    expect: "1.s9 · results · By day oldest first is the EXACT reverse of its own order",
+    suite: "console-mem",
+  },
+  {
+    name: "sort-results-fold-first · the line folding the accounts no longer on the desk is given an empty label, so it heads the Account order instead of ending it",
+    file: GATE,
+    from: `      ...(gone.size > 0 ? [{ label: null, set: gone as ReadonlySet<string> }] : [])];`,
+    to: `      ...(gone.size > 0 ? [{ label: "", set: gone as ReadonlySet<string> }] : [])];`,
+    expect: "1.s9 · results · By account orders by the account's label",
+    suite: "console-mem",
+  },
+  {
+    name: "sort-header-raw-address · a sortable header is handed the raw address instead of the panel's validated parameters, so a refused value rides its link",
+    file: PAGE,
+    from: `                        <SortTh field={feedView.feedSort.columns.account.field} label={feedView.feedSort.columns.account.label} current={feedView.feedSort.current} dir={feedView.feedSort.dir} sp={feedView.feedParams} baseHref={CONSOLE_ROUTE} prefix={feedView.feedSort.prefix} className="p-3 min-w-[104px] sm:min-w-[150px]" />`,
+    to: `                        <SortTh field={feedView.feedSort.columns.account.field} label={feedView.feedSort.columns.account.label} current={feedView.feedSort.current} dir={feedView.feedSort.dir} sp={sp} baseHref={CONSOLE_ROUTE} prefix={feedView.feedSort.prefix} className="p-3 min-w-[104px] sm:min-w-[150px]" />`,
+    expect: "1.s9 · the pages · every sortable header on both pages is the kit's `SortTh`",
+    suite: "console-mem",
+  },
+  {
+    name: "sort-targets-base-typed · the Targets pager's base is typed at the call site again, so page 2 of a sorted grid is page 2 of the unsorted one",
+    file: DETAIL,
+    from: `                  baseHref={buildBaseHref(\`\${CONSOLE_ROUTE}/\${view.id}\`, view.targetsParams, "tpage")}`,
+    to: `                  baseHref={buildBaseHref(\`\${CONSOLE_ROUTE}/\${view.id}\`, { tab: "targets" }, "tpage")}`,
+    expect: "1.s9 · the pages · the roster draws the kit pager over its reader's own count",
+    suite: "console-mem",
+  },
+  {
+    name: "sort-roster-refusal-unpainted · the roster reads a refusal and paints no Callout, so an address that was not taken at its word looks as though it was",
+    file: PAGE,
+    from: `          {rosterView.queryRefusal && (`,
+    to: `          {false && rosterView.queryRefusal && (`,
+    expect: "1.s9 · the pages · the roster draws the kit pager over its reader's own count",
+    suite: "console-mem",
+  },
+  {
+    name: "sort-roster-arity · the roster reader's arity pin falls back to two, so a caller could drop the address and the gate's own pin would call that correct",
+    file: REPORTS,
+    from: `houseRosterForConsole: 3, houseUsageForConsole: 3,`,
+    to: `houseRosterForConsole: 2, houseUsageForConsole: 3,`,
+    expect: "0.260.1 · ⛔ D19 · every audit row a console file reads",
+    suite: "reports-mem",
+  },
+  /* ⭐ THE POSTGRES TWIN'S OWN THREE — each names `console-pg`, because the memory child never runs this SQL: a clause
+     that parts company with the memory comparator is caught only by the same case failing on Postgres. */
+  {
+    name: "sort-pg-title-nulls-first · the Postgres title order loses NULLS LAST on its first key, so descending puts a title that is no string FIRST",
+    file: DAL,
+    from: "  return `translate(${title}, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz') COLLATE \"C\" ${d} NULLS LAST,`",
+    to: "  return `translate(${title}, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz') COLLATE \"C\" ${d},`",
+    expect: "1.s9 · targets · DAL · a stored title that is not a string sorts LAST",
+    suite: "console-pg",
+  },
+  {
+    name: "sort-pg-outcome-status-only · the Postgres Outcome order ranks the intent's status alone, parting company with the memory twin on every settled stake",
+    file: DAL,
+    from: "COALESCE(${result}, \"status\")) ${sqlDir(order.dir)} NULLS LAST, ${SQL_NEWEST_FIRST}`;",
+    to: "COALESCE(NULL, \"status\")) ${sqlDir(order.dir)} NULLS LAST, ${SQL_NEWEST_FIRST}`;",
+    expect: "1.s9 · ledger · Outcome · the chip in lifecycle order",
+    suite: "console-pg",
+  },
+  {
+    name: "sort-pg-history-account-reversed · the Postgres history's Account order reads the ranking backwards, so the desk history sorts Z to A under an A-to-Z header",
+    file: DAL,
+    from: "  return `array_position(${p.raw([...order.accountIds], \"text[]\")}, \"houseBotId\") ASC NULLS LAST, ${SQL_NEWEST_FIRST}`;",
+    to: "  return `array_position(${p.raw([...order.accountIds], \"text[]\")}, \"houseBotId\") DESC NULLS LAST, ${SQL_NEWEST_FIRST}`;",
+    expect: "1.s9 · desk history · Account · every page in the roster's label order both ways",
+    suite: "console-pg",
   },
 ];
