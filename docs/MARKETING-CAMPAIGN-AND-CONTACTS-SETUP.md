@@ -92,8 +92,11 @@ Ali's delegation · 10 legal questions, each shipping with a safe default that I
 
 ⚠ RECORDED, NOT OURS TO CHANGE: `selfExclude` keeps the FIRST `selfExclusionStartedAt` across a restore
   and a new exclusion (U10 does not trust that stamp). ERASURE CAN RE-OPEN MARKETING on Postgres — U16's,
-  written into its §9 text. `test:betting-ink` (landing hero) and `test:ui-consistency`
-  (`admin/finance/loading.tsx`) were red on clean main at S6 — other lanes'.
+  written into its §9 text. ⚠️ `predeploy` at S7's close, all 154 steps run and recorded on the final
+  tree: typecheck, build and every marketing/RG suite GREEN; red only in other lanes' areas, none on a
+  marketing file — `test:betting-ink` (the landing hero's open-markets figure), `qa:live` (its card-body
+  click is intercepted by the market card's own `a.mcardp-open` overlay — selector drift after the
+  market-card change, the overlay leads to the same page), and `test:revoked-deadend` (E-381, mid-visit).
 
 ⚠ TRAPS — each cost someone a session somewhere:
   ⛔ `prisma migrate diff` SWEEPS IN every object `schema.prisma` does not declare — the eight trigram
