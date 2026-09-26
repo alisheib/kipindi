@@ -711,11 +711,12 @@ export async function buildDailyOps(generatorId: string): Promise<Report> {
   const marginDec = Number(marginPct.toPrecision(12));
   const marginShown = (Math.sign(marginDec) * Math.round(Math.abs(marginDec) * 10)) / 10;
 
-  /* Net after taxes = GGR less the booked levies. GGR comes from the Transaction table and the two
-     levies from the ledger; all three are whole shillings, so the arithmetic on the face closes
-     exactly. (That it subtracts a fee-based tax from a turnover figure is an open owner question —
-     SESSION-PROMPT-FINANCE-SEAL §2.) */
-  const netAfterTax = traTax === null || gbtLevy === null ? null : ggr - traTax - gbtLevy;
+  /* GGR less the booked levies. GGR comes from the Transaction table and the two levies from the
+     ledger; all three are whole shillings, so the arithmetic on the face closes exactly.
+     ⛔ IT IS NOT PROFIT AFTER TAX, and it used to be labelled "Net after tax": it subtracts a tax
+     charged on the settlement FEE from a TURNOVER figure, two different bases. Ali's ruling
+     2026-09-26: relabel, do not re-base — the line keeps its arithmetic and says what it is. */
+  const ggrLessLevies = traTax === null || gbtLevy === null ? null : ggr - traTax - gbtLevy;
 
   // --- Hourly breakdown ---
   type HourRow = {
@@ -768,10 +769,10 @@ export async function buildDailyOps(generatorId: string): Promise<Report> {
       { label: "Margin", num: marginShown / 100, format: "percent", tone: marginPct >= 5 ? "good" : "bad" },
       /* ⛔ OMITTED, NOT ZEROED, when the ledger could not be read — see the levy note above.
          A tax tile reading "0" is indistinguishable from a day that owed nothing. */
-      ...(traTax === null || gbtLevy === null || netAfterTax === null ? [] : [
+      ...(traTax === null || gbtLevy === null || ggrLessLevies === null ? [] : [
         { label: `TRA ${(TRA_RATE * 100).toFixed(0)}% (booked)`, num: traTax, format: "tzs" as const, tone: "neutral" as const },
         { label: `GBT ${(GBT_RATE * 100).toFixed(0)}% (booked)`, num: gbtLevy, format: "tzs" as const, tone: "neutral" as const },
-        { label: "Net after tax (TZS)", num: netAfterTax, format: "tzs" as const, tone: (netAfterTax >= 0 ? "good" : "bad") as "good" | "bad" },
+        { label: "GGR less levies booked (TZS)", num: ggrLessLevies, format: "tzs" as const, tone: (ggrLessLevies >= 0 ? "good" : "bad") as "good" | "bad" },
       ]),
     ],
     sections: [
@@ -794,11 +795,11 @@ export async function buildDailyOps(generatorId: string): Promise<Report> {
              GGR again. It is the gross settlement fee: `HOUSE:COMMISSION` movement plus the two
              levies that were debited out of it. ⛔ All four lines vanish together on a failed
              ledger read; a partial tax block is worse than none. */
-          ...(traTax === null || gbtLevy === null || netAfterTax === null || commissionGross === null ? [] : [
+          ...(traTax === null || gbtLevy === null || ggrLessLevies === null || commissionGross === null ? [] : [
             { metric: "Commission booked (levy base)", value: commissionGross, count: null, note: "Gross settlement fee" },
             { metric: `TRA tax (${(TRA_RATE * 100).toFixed(0)}% of commission)`, value: traTax, count: null, note: "As booked to the ledger" },
             { metric: `GBT levy (${(GBT_RATE * 100).toFixed(0)}% of commission)`, value: gbtLevy, count: null, note: "As booked to the ledger" },
-            { metric: "Net after tax", value: netAfterTax, count: null, note: "GGR - TRA - GBT" },
+            { metric: "GGR less levies booked", value: ggrLessLevies, count: null, note: "GGR - TRA - GBT (not profit after tax)" },
           ]),
           { metric: "Deposits", value: totalDeposits, count: deposits.length, note: "" },
           { metric: "Withdrawals", value: totalWithdrawals, count: withdrawals.length, note: "" },
@@ -856,7 +857,7 @@ export async function buildDailyOps(generatorId: string): Promise<Report> {
           "a turnover measure and is NOT the levy base: it still contains stakes on open positions.",
       ]),
       "Total tax = TRA + GBT, deducted from the operator's commission — does NOT affect player payouts.",
-      "Each levy is rounded to the nearest shilling before the net is derived, so the " +
+      "Each levy is rounded to the nearest shilling before \"GGR less levies booked\" is derived, so the " +
         "figures on this page add up exactly as printed.",
       "Margin = GGR / (total sales − refunded stakes) × 100.",
       `Reporting day: ${dateLabel} 00:00–24:00 East Africa Time (UTC+3).`,

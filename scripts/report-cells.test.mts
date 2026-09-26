@@ -273,13 +273,13 @@ const NUMERIC_TILES: Record<string, number> = {
      which an unsized number column would print `#####` instead of the money. */
   const big = 1_234_567_890;
   /* ⭐ AND THE SHAPES A DATABASE-FREE CATALOGUE RUN NEVER PRODUCES: a non-zero percent, a
-     NEGATIVE money figure (daily-ops' "Net after tax" on a losing day — its levy tiles are only
+     NEGATIVE money figure (daily-ops' "GGR less levies booked" on a losing day — its levy tiles are only
      built when the ledger is readable), and a non-finite figure, which must reach the workbook as
      the PDF's "—" rather than as `<v>NaN</v>`, a file Excel refuses to open. */
   const probe = [
     { label: "Stakes (TZS)", num: big, format: "tzs" as const },
     { label: "Margin", num: 0.2875, format: "percent" as const },
-    { label: "Net after tax (TZS)", num: -12_345, format: "tzs" as const },
+    { label: "GGR less levies booked (TZS)", num: -12_345, format: "tzs" as const },
     { label: "Broken (TZS)", num: Number.NaN, format: "tzs" as const },
   ];
   const buf = await renderXlsx({
