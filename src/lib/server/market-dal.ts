@@ -304,8 +304,14 @@ export interface MarketStore {
    * used to attribute money, and a money read that could exclude Up & Down is the exact
    * defect `npm run test:product-line` exists to prevent (see the READ-PATH RULE on
    * `listMarkets`). Being unable to filter is what makes it safe; do not add one.
+   *
+   * ⭐ `ids` SCOPES THE READ TO THE MARKETS A CALLER ALREADY HOLDS, and it is the only narrowing
+   * this read accepts (2026-09-26). A windowed report attributes only the positions its own
+   * transactions name, so it needs only their markets — not ~13,000 rows. Omitted = EVERY row
+   * (the historical behaviour); `[]` = none. It selects by identity, never by product line, so it
+   * still cannot drop an Up & Down round a caller asked about.
    */
-  attribution(): Promise<MarketAttribution[]>;
+  attribution(ids?: readonly string[]): Promise<MarketAttribution[]>;
   /**
    * THE HOUSE-BOOK PROJECTION — the columns `/admin/house` needs, for the ids it already holds.
    *
@@ -362,6 +368,11 @@ export interface MarketStore {
     category?: MarketCategory;
     /** Cap the rows returned. Omit for "all of them" (the historical behaviour). */
     limit?: number;
+    /** Only markets whose `settledAt` is in `[settledFrom, settledTo)` (epoch ms) — the bounds
+     *  every windowed money read uses. Pushed into the WHERE clause; a market never settled has
+     *  no `settledAt` and is excluded, exactly as the JS filter it replaces skipped it. */
+    settledFrom?: number;
+    settledTo?: number;
   }): Promise<StoredMarket[]>;
 }
 
@@ -498,8 +509,11 @@ export interface PositionStore {
    * money aggregates, which attribute every bet transaction in a window and cannot know
    * which positions those are without the map. `listForMarkets` is the right primitive
    * when the caller already holds the ids; this one is for when it does not.
+   * ⭐ `ids` (2026-09-26): a windowed report DOES know them — every bet transaction carries its
+   * `positionId` — so it passes exactly those and reads a window's worth of rows instead of the
+   * table. Omitted = every row; `[]` = none.
    */
-  attribution(): Promise<PositionAttribution[]>;
+  attribution(ids?: readonly string[]): Promise<PositionAttribution[]>;
   /**
    * One player's positions on one market.
    *
@@ -596,10 +610,11 @@ const memoryMarkets: MarketStore = {
   async delete(id) { markets.delete(id); },
   async has(id) { return markets.has(id); },
   async values() { return Array.from(markets.values()); },
-  async attribution() {
+  async attribution(ids) {
     // The projection is free in memory; it exists so a test that passes here means the
     // same thing in production — the Prisma twin returns exactly these four fields.
-    return Array.from(markets.values()).map((m) => ({
+    const src = ids ? ids.map((id) => markets.get(id)).filter((m): m is StoredMarket => !!m) : Array.from(markets.values());
+    return src.map((m) => ({
       id: m.id,
       titleEn: m.titleEn,
       category: m.category,
@@ -677,6 +692,8 @@ const memoryMarkets: MarketStore = {
       .filter((m) => q.productLine === "ALL" || (m.productLine ?? "MARKET") === q.productLine)
       .filter((m) => !q.status || m.status === q.status)
       .filter((m) => !q.category || m.category === q.category)
+      .filter((m) => q.settledFrom == null || (m.settledAt != null && Date.parse(m.settledAt) >= q.settledFrom))
+      .filter((m) => q.settledTo == null || (m.settledAt != null && Date.parse(m.settledAt) < q.settledTo))
       // Same ordering as the Prisma implementation, so a test that passes in memory
       // means the same thing in production.
       .sort((a, b) => a.resolutionAt.localeCompare(b.resolutionAt));
@@ -694,8 +711,9 @@ const memoryPositions: PositionStore = {
     positions.set(p.id, prev ? { ...p, houseBotId: prev.houseBotId ?? null } : p);
   },
   async values() { return Array.from(positions.values()); },
-  async attribution() {
-    return Array.from(positions.values()).map((p) => ({ id: p.id, marketId: p.marketId }));
+  async attribution(ids) {
+    const src = ids ? ids.map((id) => positions.get(id)).filter((p): p is StoredPosition => !!p) : Array.from(positions.values());
+    return src.map((p) => ({ id: p.id, marketId: p.marketId }));
   },
   async listOpen() { return Array.from(positions.values()).filter((p) => p.status === "OPEN"); },
   async listForUser(userId, limit = 100, productLine) {
@@ -921,6 +939,17 @@ const STAMPABLE: Record<string, (v: unknown) => unknown> = {
   updatedAt: (v) => (v ? new Date(v as string) : new Date()),
 };
 
+
+/** `id IN (…)` in bounded chunks. A windowed report can name thousands of ids (`?range=all`), and
+ *  one enormous bind list is the shape of raw-SQL failure this repo has already paid for on
+ *  production only; 5,000 per query stays far below Postgres' 32,767-parameter ceiling. */
+function idChunks(ids: readonly string[], size = 5_000): string[][] {
+  const unique = [...new Set(ids)];
+  const out: string[][] = [];
+  for (let i = 0; i < unique.length; i += size) out.push(unique.slice(i, i + size));
+  return out;
+}
+
 const prismaMarkets: MarketStore = {
   async get(id, tx) {
     const r = await (tx ?? pc()).predictionMarket.findUnique({ where: { id } });
@@ -1051,12 +1080,14 @@ const prismaMarkets: MarketStore = {
     const rows = await pc().predictionMarket.findMany();
     return rows.map(toStoredMarket);
   },
-  async attribution() {
-    // ⛔ NO `where`. See the interface comment: a money attribution read that could exclude
-    // a product line is the defect test:product-line exists to catch.
-    const rows = await pc().predictionMarket.findMany({
-      select: { id: true, titleEn: true, category: true, productLine: true },
-    });
+  async attribution(ids) {
+    // ⛔ NO PRODUCT-LINE `where`. See the interface comment: a money attribution read that could
+    // exclude a product line is the defect test:product-line exists to catch. The only narrowing
+    // is by IDENTITY, for the markets a windowed caller already holds.
+    const select = { id: true, titleEn: true, category: true, productLine: true } as const;
+    const rows = ids === undefined
+      ? await pc().predictionMarket.findMany({ select })
+      : (await Promise.all(idChunks(ids).map((chunk) => pc().predictionMarket.findMany({ where: { id: { in: chunk } }, select })))).flat();
     return rows.map((r) => ({
       id: r.id,
       titleEn: r.titleEn,
@@ -1162,11 +1193,15 @@ const prismaMarkets: MarketStore = {
     return rows.map(toStoredMarket);
   },
   async listBoard(q) {
+    const settled = q.settledFrom != null || q.settledTo != null
+      ? { settledAt: { ...(q.settledFrom != null ? { gte: new Date(q.settledFrom) } : {}), ...(q.settledTo != null ? { lt: new Date(q.settledTo) } : {}) } }
+      : {};
     const rows = await pc().predictionMarket.findMany({
       where: {
         ...(q.productLine === "ALL" ? {} : { productLine: q.productLine }),
         ...(q.status ? { status: q.status } : {}),
         ...(q.category ? { category: q.category } : {}),
+        ...settled,
       },
       // Matches the old in-JS `sort((a,b) => a.resolutionAt.localeCompare(b.resolutionAt))`
       // so callers see byte-identical ordering — this change is a query-plan change,
@@ -1220,8 +1255,10 @@ const prismaPositions: PositionStore = {
     const rows = await pc().position.findMany();
     return rows.map(toStoredPosition);
   },
-  async attribution() {
-    return pc().position.findMany({ select: { id: true, marketId: true } });
+  async attribution(ids) {
+    const select = { id: true, marketId: true } as const;
+    if (ids === undefined) return pc().position.findMany({ select });
+    return (await Promise.all(idChunks(ids).map((chunk) => pc().position.findMany({ where: { id: { in: chunk } }, select })))).flat();
   },
   async listOpen() {
     // Pushed down. See the interface comment: this runs on every boot and the table only

@@ -330,11 +330,24 @@ export type ReportWindow = {
 };
 
 export async function loadReportWindow(start: number, end: number): Promise<ReportWindow> {
-  const [txns, attribution] = await Promise.all([
-    db.txn.listInRange(start, end),
-    loadMoneyAttribution(),
-  ]);
-  return { start, end, txns, attribution };
+  const txns = await db.txn.listInRange(start, end);
+  // The window's own transactions name the positions it needs — attribute exactly those.
+  return { start, end, txns, attribution: await loadMoneyAttribution(positionIdsOf(txns)) };
+}
+
+/** Every position a window's transactions name — the only ones its money can be attributed to. */
+function positionIdsOf(txns: readonly StoredTxn[]): string[] {
+  const ids = new Set<string>();
+  for (const t of txns) if (t.positionId) ids.add(t.positionId);
+  return [...ids];
+}
+
+/** The shared snapshot's attribution ONLY when it is the SAME window — it is now scoped to that
+ *  window's positions, so a snapshot of a different window would silently fail to attribute the
+ *  caller's money. Otherwise, a scoped load over the caller's own transactions. */
+async function windowAttribution(ctx: ReportWindow | undefined, start: number, end: number, txns: readonly StoredTxn[]): Promise<MoneyAttribution> {
+  if (ctx && ctx.start === start && ctx.end === end) return ctx.attribution;
+  return loadMoneyAttribution(positionIdsOf(txns));
 }
 
 /** Use the shared snapshot only when it is the SAME window. ⛔ Never "close enough": a
@@ -345,11 +358,20 @@ async function windowTxns(ctx: ReportWindow | undefined, start: number, end: num
   return db.txn.listInRange(start, end);
 }
 
-export async function loadMoneyAttribution(): Promise<MoneyAttribution> {
-  const [marketRows, positionRows] = await Promise.all([
-    marketStore.attribution(),
-    positionStore.attribution(),
-  ]);
+/**
+ * ⭐ SCOPED BY DEFAULT FOR EVERY WINDOWED CALLER (2026-09-26). This read BOTH whole tables —
+ * every market (~13,000, one per Up & Down round) and every position — on every render of
+ * `/admin/reports` and `/admin/insights`, to attribute a window that names a few hundred
+ * positions. Given `positionIds`, it reads exactly those positions and then exactly their
+ * markets; the maps it returns answer every lookup the window can make, so every figure is
+ * unchanged (`test:report-window-reads` §6 proves it against the whole-table load).
+ * Omitted = the whole-table load, kept for a caller with no window (and for
+ * `test:product-line` B9, which proves the unscoped read sees both product lines).
+ */
+export async function loadMoneyAttribution(positionIds?: readonly string[]): Promise<MoneyAttribution> {
+  const positionRows = await positionStore.attribution(positionIds);
+  const marketIds = positionIds === undefined ? undefined : [...new Set(positionRows.map((p) => p.marketId))];
+  const marketRows = await marketStore.attribution(marketIds);
   const catByMarket = new Map<string, MarketCategory>();
   const plByMarket = new Map<string, GameLine>();
   for (const m of marketRows) {
@@ -440,10 +462,8 @@ export async function moneyByGame(
    *  `categoryBreakdown` — see the DG-A-01 notes above. Omit and it reads its own. */
   ctx?: ReportWindow,
 ): Promise<{ market: GameMoney; updown: GameMoney; unattributed: GameMoney }> {
-  const [allTxn, attr] = await Promise.all([
-    windowTxns(ctx, start, end),
-    ctx ? Promise.resolve(ctx.attribution) : loadMoneyAttribution(),
-  ]);
+  const allTxn = await windowTxns(ctx, start, end);
+  const attr = await windowAttribution(ctx, start, end, allTxn);
   // ⛔ `?? "MARKET"` here is UNCHANGED and is not the F-03 defect below: this resolves a
   // market that exists but carries no readable product line, which the DAL already coerces
   // to MARKET at the row level. The defect was defaulting an unresolvable POSITION.
@@ -614,7 +634,8 @@ export async function categoryBreakdown(
   // no `productLine` parameter, so it cannot exclude Up & Down. `test:product-line` was updated
   // in the same commit to assert exactly that, behaviourally, rather than by grepping for a
   // string this file no longer contains.
-  const attr = ctx?.attribution ?? (await loadMoneyAttribution());
+  const windowRows = await windowTxns(ctx, start, end);
+  const attr = await windowAttribution(ctx, start, end, windowRows);
   const posCat = new Map<string, MarketCategory>();
   for (const [positionId, marketId] of attr.marketOfPosition) {
     const c = attr.catByMarket.get(marketId);
@@ -629,7 +650,7 @@ export async function categoryBreakdown(
   const acc = new Map<MarketCategory, { stakes: number; payouts: number }>();
   // The window is the WHERE clause now; the per-row `within` below is therefore
   // redundant but harmless, and kept so the bounds stay stated at the point of use.
-  for (const t of await windowTxns(ctx, start, end)) {
+  for (const t of windowRows) {
     if (t.status !== "CONFIRMED" || !t.positionId) continue;
     const isStake = t.type === "BET_PLACED";
     // A refund is payout-like for GGR: it returns a stake we keep nothing from.

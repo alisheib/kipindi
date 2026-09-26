@@ -20,9 +20,11 @@
  *
  *   §1 daily-ops      — ONE read, of exactly [EAT midnight, next EAT midnight); figures unchanged
  *   §2 fiu-sar        — ONE read, of exactly the pack month; boundary rows in/out; ties ordered
- *   §3 every builder  — no builder walks the table except the ALL-TIME match-integrity review
- *   §4 match-integrity — "the most recent 200" IS the newest 200 (it was the first 200 read)
- *   §5 a malformed pack period is refused, not turned into NaN bounds
+ *   §3 every builder  — NO builder walks the table (match-integrity's all-time walk went 2026-09-26)
+ *   §4 match-integrity — "the most recent 200" IS the newest 200; count/total are CONFIRMED aggregates
+ *   §5 settlement fees — read only the markets SETTLED in the window, rows identical to the old filter
+ *   §6 attribution     — reads the window's positions and their markets; every figure identical
+ *   §7 a malformed pack period is refused, not turned into NaN bounds
  */
 import { readFileSync } from "node:fs";
 
@@ -154,26 +156,26 @@ console.log("\n── 2 · fiu-sar reads its pack MONTH, not the table ──");
   ok("a tie on amount is broken by time — the earlier breach first", idxOf(onStart) < idxOf(tieLater));
 }
 
-console.log("\n── 3 · no builder walks the Transaction table except the ALL-TIME review ──");
+console.log("\n── 3 · NO report builder walks the Transaction table ──");
 {
-  /* ⚠️ ONE WHOLE-TABLE READ REMAINS, ON PURPOSE, AND IT IS NAMED RATHER THAN HIDDEN. `buildMatchIntegrity`
-     reconciles EVERY voided market against EVERY refund — both sides all-time — so there is no window
-     to push down, and bounding only the refund side would print refunds with no market to explain
-     them. It is a SCALE item (a type-filtered count + sum + newest 200 in SQL), recorded in the
-     handover §2 — not a window bug. Any OTHER builder that reads the table fails here, by name. */
+  /* ⭐ THE LAST ONE IS GONE (2026-09-26). `buildMatchIntegrity` was allowed one all-time walk here —
+     it reconciles every voided market against every refund, so there is no window to push down.
+     All-time is still the semantics; the walk was not needed for it: the count and total are SQL
+     aggregates (`totalsByType`) and the rows are the newest 200 (`newestConfirmedOfType`). */
   const WHOLE = new Set(["listAll", "listByStatus", "search", "listSince"]);
   const walkers: string[] = [];
-  let reviewWalks = 0;
   for (const [id, entry] of Object.entries(REPORT_CATALOGUE)) {
     reset();
     await (entry as { build: (g: string) => Promise<Report> }).build(GEN);
     const walks = txnCalls.filter((k) => WHOLE.has(k));
-    if (id === "match-integrity") reviewWalks = walks.length;
-    else if (walks.length) walkers.push(`${id}: ${walks.join(", ")}`);
+    if (walks.length) walkers.push(`${id}: ${walks.join(", ")}`);
   }
-  ok("CONTROL · the instrument sees the one all-time read it expects (else it is measuring nothing)",
-    reviewWalks >= 1, `match-integrity whole-table reads: ${reviewWalks}`);
-  ok("🔴 no other report builder walks the Transaction table", walkers.length === 0, walkers.join(" · ") || `${Object.keys(REPORT_CATALOGUE).length} builders`);
+  // CONTROL — the instrument must SEE a whole-table read, or "none seen" proves nothing.
+  reset();
+  await db.txn.listAll();
+  ok("CONTROL · the instrument sees a whole-table read when one happens", txnCalls.includes("listAll"), txnCalls.join(", "));
+  ok("🔴 no report builder walks the Transaction table", walkers.length === 0,
+    walkers.join(" · ") || `${Object.keys(REPORT_CATALOGUE).length} builders`);
 }
 
 console.log("\n── 4 · match-integrity's \"most recent 200\" IS the newest 200 ──");
@@ -183,7 +185,10 @@ console.log("\n── 4 · match-integrity's \"most recent 200\" IS the newest 2
      Seeded oldest-first, so the old code's first 200 are exactly the wrong 200. */
   const base = Date.UTC(2026, 4, 1);
   for (let i = 0; i < 205; i++) await put(base + i * HOUR, "BET_REFUND", 1_000);
-  const refunds = allTxns().filter((t) => t.type === "BET_REFUND");
+  // ⚠️ A NEWER refund that never moved money: it must be neither a row nor counted (CONFIRMED basis,
+  // the same as every other money figure — production has 806 of 806 CONFIRMED, so nothing moves).
+  const failedRefund = await put(base + 999 * HOUR, "BET_REFUND", 50_000, { status: "FAILED" });
+  const refunds = allTxns().filter((t) => t.type === "BET_REFUND" && t.status === "CONFIRMED");
   const expected = [...refunds]
     .sort((a, b) => (b.createdAt < a.createdAt ? -1 : b.createdAt > a.createdAt ? 1 : 0) || b.id.localeCompare(a.id))
     .slice(0, 200).map((t) => t.id);
@@ -196,9 +201,134 @@ console.log("\n── 4 · match-integrity's \"most recent 200\" IS the newest 2
   ok("the 200 rows shown are EXACTLY the 200 newest", got.length === 200 && got.every((id, i) => id === expected[i]),
     `first shown ${got[0]} vs newest ${expected[0]} · ${got.filter((id) => !expected.includes(id)).length} rows not among the newest`);
   ok("…and the oldest refund is NOT among them", !got.includes(oldest), oldest);
+  ok("a refund that never moved money is not a row", !got.includes(failedRefund), failedRefund);
+  const countTile = r.summary?.find((k) => k.label === "Refund transactions")?.num;
+  const totalTile = r.summary?.find((k) => k.label === "Stakes refunded (TZS)")?.num;
+  const confirmedTotal = refunds.reduce((s, t) => s + Math.abs(t.amount), 0);
+  ok("the count is every CONFIRMED refund, all time", countTile === refunds.length, `tile ${countTile} vs ${refunds.length}`);
+  ok("…and the total is their sum (the FAILED 50,000 is not in it)", totalTile === Math.round(confirmedTotal),
+    `tile ${totalTile} vs ${confirmedTotal}`);
 }
 
-console.log("\n── 5 · a malformed pack period is refused, not turned into NaN bounds ──");
+console.log("\n── 5 · settlement fees read the markets SETTLED IN the window, not every resolved market ──");
+{
+  const { marketStore, positionStore } = await import("../src/lib/server/market-dal.ts");
+  const { settlementFeesByPoll } = await import("../src/lib/server/analytics.ts");
+  const { listMarkets } = await import("../src/lib/server/market-service.ts");
+  type StoredMarket = import("../src/lib/server/market-service.ts").StoredMarket;
+  const T = Date.UTC(2026, 6, 10), W = { start: T, end: T + 7 * DAY };
+  const mkM = (id: string, over: Partial<StoredMarket>): StoredMarket => ({
+    id, titleEn: `poll ${id}`, titleSw: `poll ${id}`, titleZh: null, category: "sports", sourceUrl: "https://x.test",
+    resolutionCriterion: "t", resolutionAt: iso(T), selectionClosedAt: null, status: "RESOLVED",
+    yesPool: 10_000, noPool: 30_000, predictorCount: 4, feeSnapshot: null, resolvedOutcome: "YES",
+    resolutionStage1By: null, resolutionStage1At: null, resolutionStage2By: null, resolutionStage2At: null,
+    objectionsClosedAt: null, settledAt: null, productLine: "MARKET", proposedBy: "t", createdAt: iso(T), updatedAt: iso(T),
+    ...over,
+  } as StoredMarket);
+  // A row ON each bound, plus the shapes the loop must still skip.
+  await marketStore.set(mkM("wr_fee_before", { settledAt: iso(W.start - 1) }));        // OUT
+  await marketStore.set(mkM("wr_fee_start", { settledAt: iso(W.start) }));             // IN (>= start)
+  await marketStore.set(mkM("wr_fee_round", { settledAt: iso(W.start + DAY), productLine: "UPDOWN", resolvedOutcome: "NO" })); // IN — a round counts
+  await marketStore.set(mkM("wr_fee_last", { settledAt: iso(W.end - 1) }));            // IN
+  await marketStore.set(mkM("wr_fee_end", { settledAt: iso(W.end) }));                 // OUT (< end)
+  await marketStore.set(mkM("wr_fee_unsettled", { settledAt: null }));                 // OUT — no fee booked yet
+  await marketStore.set(mkM("wr_fee_void", { settledAt: iso(W.start + DAY), status: "VOIDED", resolvedOutcome: "VOID" })); // OUT — not RESOLVED
+
+  const boardCalls: Array<Record<string, unknown>> = [];
+  const realBoard = marketStore.listBoard.bind(marketStore);
+  marketStore.listBoard = (async (q: Parameters<typeof realBoard>[0]) => { boardCalls.push({ ...q }); return realBoard(q); }) as typeof marketStore.listBoard;
+  const got = await settlementFeesByPoll(W);
+  marketStore.listBoard = realBoard;
+
+  // The legacy shape, reproduced as the reference: every resolved market, filtered in JS.
+  const legacy = (await listMarkets({ status: "RESOLVED", productLine: "ALL" }))
+    .filter((m) => m.settledAt && Date.parse(m.settledAt) >= W.start && Date.parse(m.settledAt) < W.end)
+    .filter((m) => m.resolvedOutcome === "YES" || m.resolvedOutcome === "NO")
+    .map((m) => m.id).sort();
+  const gotIds = got.rows.map((r) => r.marketId).filter((id) => id.startsWith("wr_fee_")).sort();
+  ok("🔴 the market read carries the window (settledFrom/settledTo pushed into the query)",
+    boardCalls.some((q) => q.settledFrom === W.start && q.settledTo === W.end), JSON.stringify(boardCalls));
+  ok("the fee rows are EXACTLY the legacy JS filter's rows", JSON.stringify(gotIds) === JSON.stringify(legacy.filter((id) => id.startsWith("wr_fee_"))),
+    `${gotIds.join(",")} vs ${legacy.join(",")}`);
+  ok("…which is start, the round and last — both bounds and both product lines honoured",
+    JSON.stringify(gotIds) === JSON.stringify(["wr_fee_last", "wr_fee_round", "wr_fee_start"]), gotIds.join(","));
+  /* ⚠️ AND THE STORE READ ITSELF, not only through the fee builder. `settlementFeesByPoll` re-checks
+     the bounds in its loop, so an off-by-one in `listBoard` would never move a fee row — and would
+     wait, silent, for the next caller that trusts the read. Measured: an inclusive `settledTo`
+     survived every assertion above. */
+  const direct = (await listMarkets({ status: "RESOLVED", productLine: "ALL", settledFrom: W.start, settledTo: W.end }))
+    .map((m) => m.id).filter((id) => id.startsWith("wr_fee_")).sort();
+  ok("listBoard's settled range is [from, to) exactly — ON start in, ON end out",
+    JSON.stringify(direct) === JSON.stringify(["wr_fee_last", "wr_fee_round", "wr_fee_start"]), direct.join(","));
+  void positionStore;
+}
+
+console.log("\n── 6 · attribution reads the window's positions and markets, and every figure is unchanged ──");
+{
+  const { marketStore, positionStore } = await import("../src/lib/server/market-dal.ts");
+  const { categoryBreakdown, moneyByGame, loadMoneyAttribution, loadReportWindow } = await import("../src/lib/server/report-money.ts");
+  type StoredMarket = import("../src/lib/server/market-service.ts").StoredMarket;
+  const T = Date.UTC(2026, 7, 3), W = { start: T, end: T + 5 * DAY };
+  const base = { titleSw: "x", titleZh: null, sourceUrl: "https://x.test", resolutionCriterion: "t", resolutionAt: iso(T),
+    selectionClosedAt: null, status: "LIVE", yesPool: 0, noPool: 0, predictorCount: 0, feeSnapshot: null, resolvedOutcome: null,
+    resolutionStage1By: null, resolutionStage1At: null, resolutionStage2By: null, resolutionStage2At: null,
+    objectionsClosedAt: null, settledAt: null, proposedBy: "t", createdAt: iso(T), updatedAt: iso(T) };
+  await marketStore.set({ ...base, id: "wr_at_poll", titleEn: "poll", category: "sports", productLine: "MARKET" } as StoredMarket);
+  await marketStore.set({ ...base, id: "wr_at_round", titleEn: "round", category: "crypto", productLine: "UPDOWN" } as StoredMarket);
+  await marketStore.set({ ...base, id: "wr_at_demo", titleEn: "Demo · poll", category: "macro", productLine: "MARKET" } as StoredMarket);
+  await marketStore.set({ ...base, id: "wr_at_elsewhere", titleEn: "elsewhere", category: "politics", productLine: "MARKET" } as StoredMarket);
+  const pos = (id: string, marketId: string) => positionStore.set({ id, userId: "usr_wr_player", marketId, side: "YES", stake: 1_000,
+    potentialPayout: 0, status: "OPEN", finalPayout: null, placedAt: iso(T), settledAt: null });
+  await pos("wr_p_poll", "wr_at_poll"); await pos("wr_p_round", "wr_at_round"); await pos("wr_p_demo", "wr_at_demo");
+  await pos("wr_p_elsewhere", "wr_at_elsewhere");
+  await put(T + HOUR, "BET_PLACED", -4_000, { positionId: "wr_p_poll" });
+  await put(T + 2 * HOUR, "BET_PAYOUT", 1_500, { positionId: "wr_p_poll" });
+  await put(T + 3 * HOUR, "BET_PLACED", -7_000, { positionId: "wr_p_round" });
+  await put(T + 4 * HOUR, "BET_PLACED", -2_000, { positionId: "wr_p_demo" });
+  await put(T - HOUR, "BET_PLACED", -9_000, { positionId: "wr_p_elsewhere" });   // OUTSIDE the window
+  await put(T + 5 * HOUR, "BET_PLACED", -3_000, { positionId: "wr_p_missing" }); // a position with no row
+
+  const posCalls: Array<readonly string[] | undefined> = [], mktCalls: Array<readonly string[] | undefined> = [];
+  const realPos = positionStore.attribution.bind(positionStore), realMkt = marketStore.attribution.bind(marketStore);
+  positionStore.attribution = (async (ids?: readonly string[]) => { posCalls.push(ids); return realPos(ids); }) as typeof positionStore.attribution;
+  marketStore.attribution = (async (ids?: readonly string[]) => { mktCalls.push(ids); return realMkt(ids); }) as typeof marketStore.attribution;
+  const scopedCtx = await loadReportWindow(W.start, W.end);
+  const cbScoped = await categoryBreakdown(W, undefined, scopedCtx);
+  const gbScoped = await moneyByGame(W.start, W.end, scopedCtx);
+  const cbOwn = await categoryBreakdown(W);               // no snapshot: scoped over its own window
+  positionStore.attribution = realPos; marketStore.attribution = realMkt;
+
+  // The reference: the historical WHOLE-TABLE attribution over the same transactions.
+  const wholeCtx = { ...scopedCtx, attribution: await loadMoneyAttribution() };
+  const cbWhole = await categoryBreakdown(W, undefined, wholeCtx);
+  const gbWhole = await moneyByGame(W.start, W.end, wholeCtx);
+
+  ok("🔴 no attribution read of the WHOLE position table on a windowed path", posCalls.length > 0 && posCalls.every((ids) => ids !== undefined),
+    `${posCalls.length} call(s): ${posCalls.map((ids) => (ids ? `${ids.length} ids` : "WHOLE TABLE")).join(", ")}`);
+  ok("…nor of the whole market table", mktCalls.length > 0 && mktCalls.every((ids) => ids !== undefined),
+    mktCalls.map((ids) => (ids ? `${ids.length} ids` : "WHOLE TABLE")).join(", "));
+  ok("…and the positions asked for are exactly the ones the window's transactions name",
+    JSON.stringify([...(posCalls[0] ?? [])].sort()) === JSON.stringify(["wr_p_demo", "wr_p_missing", "wr_p_poll", "wr_p_round"]),
+    JSON.stringify(posCalls[0]));
+  ok("categoryBreakdown is IDENTICAL to the whole-table attribution", JSON.stringify(cbScoped) === JSON.stringify(cbWhole),
+    `${JSON.stringify(cbScoped)} vs ${JSON.stringify(cbWhole)}`);
+  ok("…and so is its no-snapshot path", JSON.stringify(cbOwn) === JSON.stringify(cbWhole));
+  /* ⚠️ A SNAPSHOT OF ANOTHER WINDOW MUST BE REFUSED. The snapshot's attribution now covers only ITS
+     window's positions, so reusing it for a different window would silently drop this window's
+     money from the breakdown. The consumers must fall back to their own scoped load. */
+  const otherCtx = await loadReportWindow(W.end + DAY, W.end + 2 * DAY);   // a window with none of these positions
+  ok("a snapshot of a DIFFERENT window is not trusted for attribution — categoryBreakdown",
+    JSON.stringify(await categoryBreakdown(W, undefined, otherCtx)) === JSON.stringify(cbWhole));
+  ok("…nor for moneyByGame", JSON.stringify(await moneyByGame(W.start, W.end, otherCtx)) === JSON.stringify(gbWhole));
+  ok("moneyByGame is IDENTICAL to the whole-table attribution", JSON.stringify(gbScoped) === JSON.stringify(gbWhole),
+    `${JSON.stringify(gbScoped)} vs ${JSON.stringify(gbWhole)}`);
+  ok("CONTROL · the fixture exercises both games, a demo row and an unmatched position",
+    gbWhole.market.stakes > 0 && gbWhole.updown.stakes > 0 && gbWhole.unattributed.stakes > 0
+      && cbWhole.some((c) => c.category === "sports") && !cbWhole.some((c) => c.category === "macro"),
+    JSON.stringify(gbWhole));
+}
+
+console.log("\n── 7 · a malformed pack period is refused, not turned into NaN bounds ──");
 {
   const refuses = (p: string) => { try { packPeriodBounds(p); return false; } catch { return true; } };
   ok("\"2026-06\" resolves", !refuses("2026-06"));

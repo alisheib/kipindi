@@ -76,13 +76,24 @@ is a second implementation that will drift.
     opaque throw in Prisma — on the filing an officer signs; the prepare action takes it from a
     form field);
   - `report-parity` §4 now also scans `reports/finance-window.ts`, the one `windowed` builder.
-- 🟡 **STILL OPEN, named on purpose — `buildMatchIntegrity` reads the whole table**, ALL-TIME by
-  design: it reconciles every voided market against every refund, so there is no window to push
-  down and bounding one side would print refunds with no market to explain them. The fix is a
-  scale one — a type-filtered SQL count + sum + the newest 200 — and `test:report-window-reads` §3
-  allows exactly this one read. Two whole-table reads of OTHER tables also sit on windowed paths
-  and no scan sees them: `settlementFeesByPoll` (every RESOLVED market) and
-  `loadMoneyAttribution` (every market and position).
+- ~~🟡 `buildMatchIntegrity` reads the whole table; `settlementFeesByPoll` reads every RESOLVED
+  market; `loadMoneyAttribution` reads every market and position.~~ ✅ **ALL THREE FIXED
+  2026-09-26 — no report read walks a whole table any more.**
+  - **match-integrity** stays ALL-TIME (that is its meaning) but no longer needs the walk: count and
+    total are SQL aggregates (`totalsByType`), the rows are `newestConfirmedOfType("BET_REFUND",
+    200)`. ⚠️ Now CONFIRMED-only, the basis of every other money figure; it counted every status
+    before — measured on production, all 806 refund rows are CONFIRMED, so nothing printed moved.
+  - **settlement fees** pass their window into the query (`listBoard`'s new `settledFrom/settledTo`,
+    `[from, to)` on `settledAt`); the rows are identical to the old JS filter.
+  - **attribution** reads only the positions the window's transactions name, then only their
+    markets (`attribution(ids)`, chunked 5,000 ids per query). It still cannot filter by product
+    line, so `test:product-line` holds. A shared snapshot is now used only for its OWN window — a
+    snapshot of another window would have silently dropped money.
+  - Guards: `test:report-window-reads` 41/0 (§3 no builder walks the table · §4 newest 200 +
+    CONFIRMED aggregates · §5 settled window, including the store read itself · §6 scoped attribution
+    IDENTICAL to the whole-table load, and a foreign snapshot refused), RED **7/7**. ⭐ And the
+    PRISMA twins, which no memory test executes, on a real Postgres: **`npm run e2e:report-reads`**
+    13/0 (loopback-only — it writes fixtures; run on a throwaway local database).
 - ~~**The XLSX headline "At a glance" block writes money as fused strings**
   (`"158,000   (11 txns)"`) — unsummable in Excel.~~ ✅ **FIXED 2026-09-25.** `SummaryItem` is
   now EITHER `{ num, format }` OR `{ value }` — never both, and the display words come only from
@@ -191,7 +202,8 @@ Every one has a red control; a guard without one is a claim on trust.
 | `npm run test:report-cells` | renders the real documents and reads CELLS back with ExcelJS; §5 — every "At a glance" figure is a formatted NUMBER cell with its delta beside it, the money tiles SUM to the builder's figures, and a ten-figure sum is never `#####` | reverting the fixes reproduces the documented symptoms: an EMPTY totals cell, and "width 10 vs 27 chars"; §5 caught 11/11 mutations (2026-09-25) |
 | `npm run verify:reports-live` | PRODUCTION, read-only: every report builds; totals equal their rows (or a cap sentence says so); every non-text tile is a number; the daily-ops TRA/GBT tiles equal an INDEPENDENT ledger read | the refusals (no `--prod`, no URL, internal host, undeployed HEAD) each exit 2; run from `railway run --service Postgres` |
 | `npm run qa:report-renderers` | every report × PDF/XLSX through the real route, the seed checked, the 400/404/anonymous refusals | needs `DISABLE_ADMIN_TOTP=true next dev`, no DATABASE_URL, localhost only |
-| `npm run test:report-window-reads` | a windowed report reads its WINDOW: daily-ops and fiu-sar make exactly one `listInRange` of exactly their day/month and no other `db.txn` read; no builder but the all-time match-integrity walks the table; its "most recent 200" are the newest 200; a malformed pack period is refused | 8 failures on the pre-fix code; RED 7/7 (2026-09-25) |
+| `npm run test:report-window-reads` | a windowed report reads its WINDOW: daily-ops and fiu-sar make exactly one `listInRange` of exactly their day/month and no other `db.txn` read; NO builder walks the Transaction table; match-integrity's "most recent 200" are the newest 200 and its count/total are CONFIRMED aggregates; settlement fees read only markets settled in `[from, to)`; attribution reads only the window's positions/markets with every figure identical; a malformed pack period is refused | 8 failures on the 2026-09-25 pre-fix code; RED 7/7 (09-25) and 7/7 (09-26) |
+| `npm run e2e:report-reads` | the PRISMA twins of those reads on a real Postgres: the `settledAt` range, `attribution(ids)` across 5,000-id chunks, `newestConfirmedOfType`'s ordering, `totalsByType`, match-integrity on them | 13/0 on a throwaway local database; refuses any non-loopback host (it writes fixtures) |
 | `npm run test:brand-assets` | every report/brand asset is pixel-identical to `src/lib/brand-mark.ts` | decoded-pixel compare, 0 differing samples of 1,048,576 |
 | `npm run qa:finance-alignment` | 63 rectangle measurements at 360/768/1280 | **fails 15 assertions on the pre-fix code** |
 
