@@ -583,8 +583,10 @@ full set (36 routes, all double-gated out of production).
   [`docs/DESIGN_AUTHORITY.md`](docs/DESIGN_AUTHORITY.md) first, then
   [`src/app/globals.css`](src/app/globals.css)** (the authoritative
   implementation). Historical note: the `--hero-grad-warm` token was once
-  misnamed but is now correctly a deep royal radial (`globals.css`). Lesson
-  retained: **trust the tokens, not the name** — and never the superseded teal
+  misnamed; it was later corrected to a deep royal radial, and on 2026-09-26 it
+  was DELETED with its only consumer when landing v3 flattened the hero (Ali's
+  ruling R4(1), `docs/design-system/v4-2026-09-26-landing-ten/INHERIT-MANIFEST.md`).
+  Lesson retained: **trust the tokens, not the name** — and never the superseded teal
   kit, which would revert the brand to teal 215 and resurrect the killed light
   theme (audit C9).
 - The Tanzania licensing path (Gaming Board of Tanzania) and the payment

@@ -2107,6 +2107,11 @@ const memoryDb = {
       (Array.from(store.objections.values()) as StoredObjection[])
         .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
         .slice(0, limit),
+    /** Every objection UPHELD with a remedy that changed the verdict (REVERSE or VOID). */
+    listUpheldRulings: (): Array<{ marketId: string; remedy: string; reviewedBy: string | null; reviewedAt: string | null }> =>
+      (Array.from(store.objections.values()) as StoredObjection[])
+        .filter((o) => o.status === "UPHELD" && (o.remedy === "REVERSE" || o.remedy === "VOID"))
+        .map((o) => ({ marketId: o.marketId, remedy: o.remedy ?? "", reviewedBy: o.reviewedBy ?? null, reviewedAt: o.reviewedAt ?? null })),
   },
   proposalVote: {
     get: (proposalId: string, userId: string): StoredProposalVote | null =>

@@ -21,7 +21,8 @@
  * this scan again — but as a live consumer, not as a query kept warm for nobody.
  */
 import { listMarkets, ratesFor, type StoredMarket } from "./market-service";
-import { signoffOf, type Signoff } from "@/lib/markets/signoff";
+import { signoffOf, type Signoff, type Ruling } from "@/lib/markets/signoff";
+import { objectionRulings } from "./reversals";
 import { db } from "./store";
 import { poolFee } from "@/lib/payout";
 import type { TickerRow } from "@/lib/markets/ticker";
@@ -94,7 +95,7 @@ function settledAmount(m: StoredMarket): number | null {
   return poolFee(m.yesPool, m.noPool, ratesFor(m), m.resolvedOutcome).netPool;
 }
 
-function toSettlementRow(m: StoredMarket, reversed: ReadonlySet<string>): SettlementRow {
+function toSettlementRow(m: StoredMarket, rulings: ReadonlyMap<string, Ruling[]>): SettlementRow {
   return {
     id: m.id,
     settledAtMs: m.settledAt ? Date.parse(m.settledAt) : null,
@@ -104,7 +105,7 @@ function toSettlementRow(m: StoredMarket, reversed: ReadonlySet<string>): Settle
     titleSw: m.titleSw,
     titleZh: m.titleZh,
     sourceUrl: m.sourceUrl,
-    signoff: signoffOf(m, reversed.has(m.id)),
+    signoff: signoffOf(m, rulings.get(m.id)),
   };
 }
 
@@ -118,17 +119,9 @@ export async function getPlatformStats(): Promise<PlatformStats> {
   // surfaces that DO want polls only filter these same rows below rather than re-querying.
   const resolved = await listMarkets({ status: "RESOLVED", productLine: "ALL" })
     .catch(() => [] as Awaited<ReturnType<typeof listMarkets>>);
-  // Markets whose verdict an upheld objection REVERSED — their stamps name who signed the verdict
-  // that was overturned, so the strip must not credit them with the one that stands (signoff.ts).
-  // One read of a rare table, inside this 60s memo. A failed read withholds nothing it can prove:
-  // it falls back to the stamps, which is what the strip said before the objection existed.
-  const reversed = new Set(
-    // `Promise.resolve().then(...)`: the in-memory store answers synchronously and the Prisma one
-    // asynchronously, and a `.catch` hung straight on a sync array would throw instead of falling back.
-    (await Promise.resolve().then(() => db.objection.list()).catch(() => []))
-      .filter((o) => o.status === "UPHELD" && o.remedy === "REVERSE")
-      .map((o) => o.marketId),
-  );
+  // Verdicts an upheld objection REVERSED or VOIDED (reversals.ts): their stamps name who signed the
+  // verdict that was thrown out, so the strip must not credit them with the one that stands (signoff.ts).
+  const rulings = await objectionRulings();
 
   // ⛔ THE TICKER AND THE STRIP ARE THE POLL PRODUCT LINE ONLY, AND THE COUNT ABOVE IS NOT.
   // Both readings are deliberate. `settledCount` pairs with a whole-platform payout total, so it
@@ -139,7 +132,7 @@ export async function getPlatformStats(): Promise<PlatformStats> {
   // no second query.
   const settlements = resolved
     .filter((m) => m.productLine === "MARKET")
-    .map((m) => toSettlementRow(m, reversed))
+    .map((m) => toSettlementRow(m, rulings))
     .filter((r) => typeof r.settledAtMs === "number" && Number.isFinite(r.settledAtMs) && r.settledAtMs > 0)
     // 🔴 RULE 5, WHICH THIS FEED WAS BYPASSING. `ticker.ts` states it as law 25 — *"the outcome
     // is READ, never inferred: a row whose outcome is absent is DROPPED rather than guessed"* —

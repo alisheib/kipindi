@@ -3967,15 +3967,9 @@ html[data-sheet-open] .route-enter { animation: none; }
 @media (min-width: 1024px) {
   .kp-hero__inner--solo { grid-template-columns: minmax(0, 1fr); grid-template-areas: "intro" "act"; }
 }
-/* ⭐ BELOW 1024 THE TRUST LINES COME BEFORE THE CTAs (one DOM, `order`). The delivery's placement map
-   wants licence, 18+, mobile money and the helpline on a phone's FIRST screen; its own phone order put
-   them after two full-width CTAs, below 740px. After the card and before the CTAs, they land inside it
-   while the card still ends inside it (V15). The header carries Sign up at every width, so the primary
-   action is never off the first screen. INHERIT-MANIFEST L18. */
-@media (max-width: 1023.98px) {
-  /* density: general — the home hero's trust lines, not the board; both card-spacing settings. */
-  .kp-hero__trust { order: -1; }
-}
+/* The trust lines come BEFORE the CTAs in the SOURCE (landing-hero.tsx), not by `order`: the delivery
+   wants licence, 18+, mobile money and the helpline on a phone's first screen, and a CSS reorder would
+   make keyboard order disagree with the screen (WCAG 1.3.2 — v3 review). INHERIT-MANIFEST L18. */
 
 /* The reader's own reading of the brand line (sw, zh), under it — MOBILE-VISUAL ruling 12. Sora,
    one weight under the headline, on the h3 rung (h2 from 1024): a translation, not a second
@@ -4013,6 +4007,8 @@ html[data-sheet-open] .route-enter { animation: none; }
    visibly taller than the three above it, which read as a stray gap. */
 .kp-hero__tel {
   position: relative;
+  display: inline-block;
+  max-width: 100%;
   color: var(--text);
   font-weight: 600;
   text-decoration: underline;
@@ -4021,6 +4017,10 @@ html[data-sheet-open] .route-enter { animation: none; }
 /* Label and number are each unbreakable, the space between them is not: under large text the line
    breaks BETWEEN them and never inside "0800 11 0011". */
 .kp-hero__tel > span { white-space: nowrap; }
+/* inline-block: the link is ONE box of its own line height (19.5px at --type-small), so ±13px reaches
+   45.5px — past the preferred 44, since this platform allows exactly 40 or 44+ and "41, 42 and 43 are
+   not nearly 44" (V4, tap-target §1) — whether it sits on one line or, under large text, wraps between
+   label and number (v3 review: an ::after on a plain inline measured from the ~16px content box). */
 .kp-hero__tel::after { content: ""; position: absolute; left: 0; right: 0; top: -13px; bottom: -13px; }
 
 /* 11px: the kit sets the minimum for NEW work at `--type-micro`, and this is new work. (This
@@ -5361,11 +5361,13 @@ textarea::-webkit-resizer {
 /* The price line: the round's real reads since it opened, the opening price dashed across. Strokes
    keep their width however the box stretches (`vector-effect` on the elements). */
 .kp-udchart { flex: 1 1 auto; min-width: 0; height: 112px; display: block; overflow: visible; }
-.kp-udchart__open { stroke: var(--text-subtle); stroke-width: 1; stroke-dasharray: 4 4; }
+.kp-udchart__open { stroke: var(--text-subtle); stroke-width: 1; stroke-dasharray: 6 4; }
 /* The line is NEUTRAL: the round is not decided by "above or below the open" but by the two targets,
    which carry the outcome inks. */
 .kp-udchart__line { fill: none; stroke: var(--text); stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; }
-.kp-udchart__target { stroke-width: 1; stroke-dasharray: 2 3; opacity: 0.85; }
+/* DOTTED, so the caption can name them apart from the dashed opening line by pattern, not by colour
+   alone (WCAG 1.4.1). */
+.kp-udchart__target { stroke-width: 1.5; stroke-dasharray: 0.5 4; stroke-linecap: round; opacity: 0.9; }
 .kp-udchart__target--up { stroke: var(--yes-300); }
 .kp-udchart__target--down { stroke: var(--no-300); }
 
@@ -5427,9 +5429,9 @@ textarea::-webkit-resizer {
 /* ── §1g SETTLED IN THE LAST SEVEN DAYS — the only element proving a cycle completes ──────── */
 .kp-settled { border-top: 1px solid var(--border); margin-top: var(--rh-close); list-style: none; padding: 0; }
 /* The ROW is the target (see trust-band.tsx): the question alone measured 20px at 360, under half
-   the 44px floor. Since landing v3 the question is the row's link and STRETCHES over it
-   (`::after`, inset 0) — the market card's `.mcardp-open` pattern — so the source can be a link of
-   its own, raised above that layer, without a link inside a link.
+   the 44px floor. Since landing v3 the row's link is its own element laid over the whole row
+   (`.kp-settled__open`, inset 0 — the market card's `.mcardp-open` pattern), so the source can be a
+   link of its own, raised above it, without a link inside a link.
    Phone: pill + question, then the date and sign-off, then source left and paid right.
    From 768: one line — pill · question over its meta · source · paid. */
 .kp-settled__row {
@@ -5464,7 +5466,9 @@ textarea::-webkit-resizer {
   color: var(--text-muted);
   text-decoration: none;
 }
-.kp-settled__q::after { content: ""; position: absolute; inset: 0; }
+/* The row's link: a real element over the whole row (the market card's `.mcardp-open` pattern); the source
+   link sits above it. */
+.kp-settled__open { position: absolute; inset: 0; z-index: 0; border-radius: var(--r-sm); }
 /* The date and the sign-off: a sentence ("Settled 26 Sep · Two officers"), so it takes the reading
    floor (§T4 — a sentence drops to --type-small, never the 11px label rung). */
 .kp-settled__meta {

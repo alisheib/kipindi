@@ -96,16 +96,19 @@ function Inked({ text, yes, no }: { text: string; yes: string; no: string }) {
  * wording is assessed, so a paraphrase would be a new claim to assess.
  * ⭐ THE ORDER IS THE FIRST SCREEN'S. The delivery wants licence, 18+, mobile money AND the helpline on
  * a phone's first screen (its ACCEPTANCE K29 and placement map P15), while its own phone order puts
- * these lines after the CTAs — below 740px. So below 1024 they come BEFORE the CTAs (CSS `order`, one
- * DOM), and in this order: what a first-time visitor must see first, "named sources" last because the
- * featured card already states its source. INHERIT-MANIFEST L18.
+ * these lines after the CTAs — below 740px. So they come BEFORE the CTAs, in the SOURCE and therefore
+ * on screen, at every width: a CSS `order` would have made keyboard and screen-reader order disagree
+ * with what is seen (WCAG 1.3.2 / 2.4.3 — the v3 review). Within the list: what a first-time visitor
+ * must see first, "named sources" last because the featured card already states its source.
+ * INHERIT-MANIFEST L18.
  * ⚠️ The licence NUMBER is not repeated here — the footer carries it on every page (K39), as the
  * delivery's own hero omits it; the line stays short enough for the first screen.
  * ⛔ No `aria-label` on the roundel: "18+" is its text, and ARIA prohibits a label on a generic span.
+ * `role="list"`: WebKit drops the list role from a `ul` styled `list-style: none` (VoiceOver on iPhone).
  */
 function TrustLines({ t }: { t: Dict }) {
   return (
-    <ul className="kp-hero__trust">
+    <ul className="kp-hero__trust" role="list">
       <li>
         <span className="kp-rg__18">{t.footer.eighteenPlus}</span>
         <span>{t.footer.licensedByGbt}</span>
@@ -262,8 +265,10 @@ export function LandingHero({ figures, t, locale, isAuthed, nowMs, cards }: Prop
         )}
 
         <div className="kp-hero__act">
+          <TrustLines t={t} />
           {/* TWO CTAs, not three — `Sign in` lives in the header at every width. Below 1024 they
-              follow the card (the delivery's placement map, P4); from 1024 they sit under the lede. */}
+              follow the card and its trust lines (the delivery's placement map P4, and L18); from 1024
+              they sit under the lede and the trust lines. */}
           <div className="kp-hero__ctas">
             {isAuthed ? (
               <>
@@ -287,7 +292,6 @@ export function LandingHero({ figures, t, locale, isAuthed, nowMs, cards }: Prop
               </>
             )}
           </div>
-          <TrustLines t={t} />
         </div>
       </div>
     </section>

@@ -146,7 +146,8 @@ export function TrustBand({
               </Link>
             </div>
 
-            <ul className="kp-settled">
+            {/* `role="list"`: WebKit drops the list role from a `list-style: none` ul (VoiceOver). */}
+            <ul className="kp-settled" role="list">
               {settlements.map((s) => (
                 <SettledRow key={s.id} row={s} t={t} locale={locale} nowMs={nowMs} />
               ))}
@@ -261,14 +262,19 @@ function SettledRow({ row, t, locale, nowMs }: { row: SettlementRow; t: Dict; lo
        The row used to BE the anchor: the question alone measured 20px tall at 360, under half the
        44px floor, and making the row the link put the target at its own 64px minimum. v3 asks for
        the settling source as a link beside it (the delivery's results row), and a link cannot sit
-       inside a link. So the question is the row's link and STRETCHES over the whole row
-       (`.kp-settled__q::after`), exactly as the market card's `.mcardp-open` does, and the source
-       link is raised above that layer. The tap target is unchanged; the source is now checkable in
+       inside a link. So the row's link is its own element laid over the whole row
+       (`.kp-settled__open`), exactly as the market card's `.mcardp-open` is, and the source link is
+       raised above it. The tap target is unchanged; the source is now checkable in
        one tap, which is the point of naming it. */
     <li className="kp-settled__row">
       {/* `.kp-settled__pill` is `grid-area: o` and NOTHING else — the geometry is `.chip`'s. */}
       <Chip variant={variant} className="kp-settled__pill">{label}</Chip>
-      <Link href={`/markets/${row.id}` as never} className="kp-settled__q">{question}</Link>
+      {/* The row's link is a REAL element laid over the whole row (`.kp-settled__open`, the market card's
+          `.mcardp-open` pattern) — not an `::after` on the question: a pseudo-element stretched to the row
+          is measured from the link's own ~20px box by every tap-reach instrument, and the gate would have
+          failed every row (v3 review). Its accessible name is the question. */}
+      <Link href={`/markets/${row.id}` as never} className="kp-settled__open" aria-label={question} />
+      <span className="kp-settled__q">{question}</span>
       {meta && <span className="kp-settled__meta">{meta}</span>}
       {/* The named public source the outcome was judged against — the host as the label, the real
           URL as the destination, opened beside the page. */}

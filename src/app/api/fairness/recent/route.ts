@@ -19,6 +19,7 @@
 import { NextResponse } from "next/server";
 import { autoResolveExpiredDemoMarkets, listMarkets } from "@/lib/server/market-service";
 import { signoffOf } from "@/lib/markets/signoff";
+import { objectionRulings } from "@/lib/server/reversals";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -68,6 +69,8 @@ export async function GET() {
     .sort((a, b) =>
       (b.settledAt ?? b.resolutionStage2At ?? "").localeCompare(a.settledAt ?? a.resolutionStage2At ?? ""))
     .slice(0, 50);
+  // The same reversal rule /fairness and the landing apply (memoised — this feed is polled).
+  const rulings = await objectionRulings();
   return NextResponse.json({
     attestations: resolved.map((m) => ({
       marketId: m.id,
@@ -82,7 +85,7 @@ export async function GET() {
       twoOfficer: !!(m.resolutionStage1By && m.resolutionStage2By && m.resolutionStage1By !== m.resolutionStage2By),
       // The sign-off in words the public can check (two / one / auto), from the one rule /fairness and
       // the landing read. Additive: `twoOfficer` stays for existing clients.
-      signoff: signoffOf(m),
+      signoff: signoffOf(m, rulings.get(m.id)),
       stage1At: m.resolutionStage1At,
       stage2At: m.resolutionStage2At,
       // ⭐ The clock the MONEY moved on, published so a client can tell "a verdict was

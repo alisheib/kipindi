@@ -76,9 +76,10 @@ export type TopicAggregate = {
   /** Σ of their pools, TZS. */
   poolTzs: number;
   /**
-   * The topic's crowd lean as a YES percentage, or **null when nothing in it is staked** — the
-   * tile draws a 2px underline at this width, and a 50%-wide bar over an empty topic is the same
-   * fabricated claim as a "50%" label, drawn instead of written. `pricedYesPct` is the one rule.
+   * The topic's crowd lean as a YES percentage, or **null when nothing in it is staked** — a
+   * 50%-wide bar over an empty topic would be the same fabricated claim as a "50%" label, drawn
+   * instead of written. `pricedYesPct` is the one rule. ⚠️ Since landing v3 (2026-09-26) the tile
+   * no longer DRAWS it (an unlabelled bar); it stays computed because it is a real fact about the topic.
    */
   leanYesPct: number | null;
 };

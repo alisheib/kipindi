@@ -19,16 +19,22 @@
  * ── WHEN BETTING CLOSES (v3 review) ────────────────────────────────────────────────────────────
  * - The digits become an em-dash pair, not "0:00": a zeroed clock reads as a thing that should have
  *   happened and did not — the /updown card's own rule for a clock with nothing left to count.
- * - Closed is decided by EITHER clock. The server anchor is replayed as-is when the App Router restores
- *   "/" from its cache on Back, so the offset would absorb the whole time spent away and count a shut
- *   round as open; the device clock is the backstop. A fast device hides UP/DOWN a little early —
- *   harmless, the band keeps its link to every round — never late.
+ * - A RESTORED PAGE RE-ANCHORS. On Back the App Router restores "/" from its cache and hands this leaf
+ *   the SAME `serverNowMs` it rendered with, so the offset would absorb the whole time spent away and
+ *   count a shut round as open. The leaf remembers, per page session, the moment it first saw each
+ *   server instant (`performance.now()`) and on a replay adds the real time elapsed since. ⛔ NOT the
+ *   device clock: a phone set fast would then close a round that is still taking bets (v3 review) —
+ *   E-72 moved this platform's countdowns OFF the device clock for exactly that reason.
  * - UP/DOWN hide with it (`data-closed` + `:has()` in globals.css). If keyboard focus was on one of
  *   them it moves to the band's "all rounds" link first, so focus never falls to <body> unannounced.
  */
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useTickSeconds } from "@/components/updown/round-countdown";
 import { cn } from "@/lib/utils";
+
+/** Per page session: server instant → `performance.now()` when this leaf first mounted with it. Client-only;
+ *  a monotonic clock, so it cannot be moved by a device's wall-clock setting. */
+const FIRST_SEEN = new Map<number, number>();
 
 function digits(left: number): string {
   const h = Math.floor(left / 3600), m = Math.floor((left % 3600) / 60), s = left % 60;
@@ -48,11 +54,18 @@ export function UpdownRing({
   /** "Selections closed" — once it does not. */
   capClosed: string;
 }) {
-  const left = useTickSeconds(targetMs, serverNowMs, true, null);
+  // The anchor the countdown runs from: the server's instant, advanced by the real time elapsed when a
+  // cached page is replayed. Computed only in the browser; the server render shows `--:--` regardless.
+  const anchor = useMemo(() => {
+    if (typeof window === "undefined" || typeof performance === "undefined") return serverNowMs;
+    const first = FIRST_SEEN.get(serverNowMs);
+    if (first == null) { FIRST_SEEN.set(serverNowMs, performance.now()); return serverNowMs; }
+    return serverNowMs + Math.max(0, performance.now() - first);
+  }, [serverNowMs]);
+  const left = useTickSeconds(targetMs, anchor, true, null);
   const ref = useRef<HTMLDivElement>(null);
   const total = Math.max(1, Math.round((targetMs - opensAtMs) / 1000));
-  // `left` ticks every second, so re-reading the device clock here is re-evaluated on every tick.
-  const closed = left != null && (left <= 0 || Date.now() >= targetMs);
+  const closed = left != null && left <= 0;
   const pct = left == null ? 100 : closed ? 0 : Math.max(0, Math.min(100, (left / total) * 100));
   const text = left == null ? "--:--" : closed ? "—:—" : digits(left);
   const urgent = !closed && left != null && left <= 30;

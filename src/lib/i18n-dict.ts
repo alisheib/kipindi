@@ -618,7 +618,8 @@ export const dict = {
       // landing v3 (WP12): the singular. The page printed "1 rounds live now" (production, 2026-09-26).
       updownRoundsLiveOne: "1 round live now",
       // landing v3 (WP12): the caption under the live round's price line.
-      udDashed: "Dashed line: the price when this round opened.",
+      // Names all three lines: the chart draws the opening price dashed and the two deciding prices dotted.
+      udDashed: "Dashed line: the opening price. Dotted lines: the prices that decide UP and DOWN.",
       updownStartsSoon: "New rounds every few minutes",
       pickASideNow: "Pick a side now",
       pickASideStake: "Pick a side, stake TZS",
@@ -781,6 +782,8 @@ export const dict = {
       resVoided: "Market voided",
       resTwoOfficer: "Confirmed under the two-officer review rule",
       resSingleOfficer: "Resolved by an officer against the declared public source",
+      // landing v3 review: an upheld objection REVERSED or VOIDED the recorded verdict (lib/markets/signoff.ts).
+      resCorrectedOnObjection: "Corrected on objection: an officer upheld an objection to the recorded verdict",
       resProvisional: "Provisional — becomes final on",
       resFinal: "Resolution is final",
       resFinalPool: "Final pool",
@@ -3280,7 +3283,7 @@ export const dict = {
       // drafted, marked for native review; English is binding.
       updownRoundsLiveOne: "raundi 1 hai sasa",
       // drafted, marked for native review; English is binding.
-      udDashed: "Mstari wa vitone: bei raundi hii ilipofunguliwa.",
+      udDashed: "Mstari wa vistari: bei ya ufunguzi. Mistari ya vitone: bei zinazoamua JUU na CHINI.",
       updownStartsSoon: "Raundi mpya kila baada ya dakika chache",
       pickASideNow: "Chagua upande sasa",
       pickASideStake: "Chagua upande, weka dau kwa TZS",
@@ -3324,8 +3327,9 @@ export const dict = {
       settledVoid: "yalirejeshwa",
       settledSeeAll: "Matokeo yote",
       // drafted, marked for native review; English is binding.
-      // "Imehitimishwa" (was concluded), not "Imelipwa" (was paid): a VOID row was refunded and a silent row paid nothing.
-      settledOn: "Imehitimishwa {date}",
+      // "Lilikamilika" (it was completed — the verb of this strip's own head, "Yaliyokamilika hivi karibuni"),
+      // never "Imelipwa" (was paid): a VOID row was refunded and a silent row paid nothing.
+      settledOn: "Lilikamilika {date}",
       // drafted, marked for native review; English is binding.
       settledSourceNewTab: "hufungua chanzo cha matokeo katika kichupo kipya",
     },
@@ -3398,6 +3402,8 @@ export const dict = {
       resVoided: "Soko limebatilishwa",
       resTwoOfficer: "Imethibitishwa kwa kanuni ya maofisa wawili",
       resSingleOfficer: "Imetatuliwa na afisa kwa kutumia chanzo rasmi kilichotangazwa",
+      // drafted, marked for native review; English is binding.
+      resCorrectedOnObjection: "Imerekebishwa baada ya pingamizi: afisa alikubali pingamizi dhidi ya uamuzi uliorekodiwa",
       resProvisional: "Ya muda — inakuwa ya mwisho tarehe",
       resFinal: "Utatuzi ni wa mwisho",
       resFinalPool: "Jumla ya dimbwi",
@@ -5465,7 +5471,7 @@ export const dict = {
       // drafted, marked for native review; English is binding.
       updownRoundsLiveOne: "1 个回合进行中",
       // drafted, marked for native review; English is binding.
-      udDashed: "虚线：本轮开盘时的价格。",
+      udDashed: "虚线：开盘价。点线：决定涨跌的价格。",
       updownStartsSoon: "每隔几分钟就有新回合",
       pickASideNow: "立即选择一方",
       pickASideStake: "选择一方，用TZS投注",
@@ -5582,6 +5588,8 @@ export const dict = {
       resVoided: "市场已作废",
       resTwoOfficer: "已通过双审核员规则确认",
       resSingleOfficer: "已由审核员依据公布的官方来源结算",
+      // drafted, marked for native review; English is binding.
+      resCorrectedOnObjection: "经异议更正：审核员支持了对原裁定的异议",
       resProvisional: "临时结果——最终生效日期",
       resFinal: "结算为最终结果",
       resFinalPool: "最终奖池",

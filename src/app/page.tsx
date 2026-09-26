@@ -59,7 +59,8 @@ export const metadata: Metadata = {
  *
  * ── THE COMPOSITION, AND WHY IT IS IN THIS ORDER ──────────────────────────────────────────────
  * hero → how it works → pick a side (grid) → browse by topic → Up & Down → why it can be trusted
- * (+ the settled strip and the RG line inside that last act) → footer.
+ * (+ the settled strip inside that last act) → footer. The RG line that closed the act is gone since
+ * landing v3 (R4(5)): the 18+ roundel and the RG motto sit in the hero's trust lines and the footer.
  *
  * The purpose is a funnel: show what Tanzania is actually predicting today, THEN teach the
  * mechanic, THEN prove the results are trustworthy. Up & Down moves BELOW the grid — it was
@@ -354,10 +355,10 @@ export default async function LandingPage() {
       {/* ── §1e UP & DOWN — the soonest live round, full width (landing v3, WP12; R4(6)) ──────── */}
       <UpdownBand t={t} liveCount={updownLiveCount} round={udRound} />
 
-      {/* ── §1f WHY THE RESULT CAN BE TRUSTED + §1g SETTLED + §1h RG ──────────────────────────
+      {/* ── §1f WHY THE RESULT CAN BE TRUSTED + §1g SETTLED ────────────────────────────────────
           Chapter break: tinted band, 144 from Up & Down, and it runs continuously into the
-          footer's own claret rule (hence `--seam`). The settled strip and the RG line are parts
-          of this act, not two more sections. */}
+          footer's own claret rule (hence `--seam`). The settled strip is part of this act, not
+          another section. */}
       <TrustBand t={t} locale={locale} settlements={stats.recentSettlements.slice(0, 5)} nowMs={nowMs} />
       {/* ⛔ NO RG LINE HERE ANY MORE (landing v3, R4(5)). The 18+ roundel and the RG motto sit in the
           hero's trust lines — on the first screen — and in the footer, which follows directly. */}

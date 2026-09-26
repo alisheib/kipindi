@@ -13,7 +13,7 @@ import { PageHero } from "@/components/ui/page-hero";
 import { Chip } from "@/components/ui/chip";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { listTerminalMarkets } from "@/lib/server/market-service";
-import { listObjections } from "@/lib/server/objections-service";
+import { objectionRulings } from "@/lib/server/reversals";
 import { signoffOf, signoffWord } from "@/lib/markets/signoff";
 import { Pagination, PLAYER_PER_PAGE } from "@/components/ui/pagination";
 import { Suspense } from "react";
@@ -123,12 +123,9 @@ export default async function FairnessPage({ searchParams }: { searchParams: Pro
    */
   const terminal = await listTerminalMarkets();
   // Verdicts an upheld objection REVERSED: their stamps name who signed the overturned verdict, so
-  // the table says "corrected on objection" instead of crediting them (lib/markets/signoff.ts).
-  const reversed = new Set(
-    (await listObjections({ status: "UPHELD" }).catch(() => []))
-      .filter((o) => o.remedy === "REVERSE")
-      .map((o) => o.marketId),
-  );
+  // the table says "corrected on objection" instead of crediting them (lib/markets/signoff.ts). One
+  // narrow memoised read (lib/server/reversals.ts) — this page is signed-out and curl-able.
+  const rulings = await objectionRulings();
   const sp = await searchParams;
   const state = parseAttestationParams(sp);
   const nowMs = Date.now();
@@ -142,7 +139,7 @@ export default async function FairnessPage({ searchParams }: { searchParams: Pro
     // ⛔ THE CLOCK THE TABLE PRINTS — see the contract's note on `ATTESTATION_NATURAL_DIR`.
     resolvedAtMs: Date.parse(m.resolutionStage2At ?? "") || 0,
     twoOfficer: !!(m.resolutionStage1By && m.resolutionStage2By && m.resolutionStage1By !== m.resolutionStage2By),
-    signoff: signoffOf(m, reversed.has(m.id)),
+    signoff: signoffOf(m, rulings.get(m.id)),
     titleEn: m.titleEn,
     titleSw: m.titleSw ?? "",
     titleZh: m.titleZh ?? "",
