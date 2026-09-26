@@ -36,6 +36,10 @@
  *   7. from 1280 up, the ACTIVITY ledger fits its strip with no sideways scroll, measured with every money cell
  *      filled to seven digits after the tile is written (RESUME-HERE §0c decision 2), with a control column — except
  *      the desk-wide ledger below 1440, whose measured overflow is held by a ratchet that may only fall (§12.6);
+ *   8. on the RESULTS tab, at EVERY width, EACH of its tables fits its own strip with no sideways scroll and every
+ *      money figure inside it — as painted and again with every figure at seven digits — with a control column per
+ *      table and a population control (C7 437). §5.2 reads only the FIRST table and licenses a phone scroll; this
+ *      tab has two tables and a result you have to drag sideways to read is not one you can read.
  *
  * ⛔ NO POSTGRES OR NO SERVER IS A FAILURE, NOT A SKIP (exit 3, NOT MEASURED) — a visual gate that skips silently is
  * the "not applicable" verdict this programme has paid for twice.
@@ -706,6 +710,83 @@ try {
         ok(`§5.7 ${route} @${width} · CONTROL · …the fill reached all four money cells of every ledger row, and one more column makes the same region scroll`,
           fit !== null && fit.ledgerRows >= 1 && fit.filledCells === 4 * fit.ledgerRows && fit.widened.scrollWidth > fit.widened.clientWidth + 1,
           JSON.stringify(fit));
+      }
+      /* ⭐ §5.8 · THE RESULTS TAB — EVERY TABLE, AT EVERY WIDTH (C7 437, 2026-09-26).
+         ⛔ WHY §5.2 CANNOT SPEAK FOR THIS TAB. Every geometry fact above reads `document.querySelector("table.admin-tbl")`
+         — the FIRST table — so By account, the second, was never measured at all; and at 360 By day's first row is a
+         multi-cell row, so it falls into 432(b)'s licence, which PASSES a sideways scroll. That licence was measured on
+         a cell holding a usage PAIR; a result is one word and one figure, and a result you must drag to read is the
+         defect. So here: each table's own strip, no sideways scroll, every figure inside it — as painted, and again
+         with every figure filled to seven digits, the fill §5.7 uses (a single stake tops out at seven digits; a day
+         of many can exceed it, and the control below is what proves such a figure would scroll inside its own strip
+         rather than widen the page).
+         ⛔ THE FILL AND THE CONTROL COLUMN MUTATE THE PAGE, so they run after the tile was written, on a page about to
+         close, and every table is measured as painted BEFORE any of them is touched.
+         ⛔ THE CONTROL COLUMN IS 160px WIDER THAN THE STRIP ITSELF, NOT 160px. `.admin-tbl` is `width: 100%`, and from
+         `lg` each card is half the console, so a bare 160px column is absorbed by the table's own slack and the region
+         never scrolls — a control that fails on a correct page. A column wider than the strip must overflow a strip
+         that is really bounded, and it must NOT be absorbed by a strip that grows with its table instead of
+         scrolling, which is the defect the "no sideways scroll" half cannot see by itself: so the control also
+         requires the strip's own width not to have moved.
+         ⛔ POPULATION: the tab renders TWO tables (a failed account read paints `AdminLoadError` in place of the
+         second), and a table whose rows carry no figure has nothing for the containment half to hold. Either is
+         NOT MEASURED — a report, never a pass. */
+      if (/[?&]tab=results/.test(route)) {
+        const SEVEN = "TZS 8,888,888";
+        const res = await p.evaluate((seven) => {
+          const shown = (el) => el.getClientRects().length > 0 && getComputedStyle(el).visibility !== "hidden";
+          const readRegion = (region) => {
+            const b = region.getBoundingClientRect();
+            const amounts = [...region.querySelectorAll(".amount")].filter(shown);
+            const outside = amounts.filter((m) => { const r = m.getBoundingClientRect(); return r.left < b.left - 1 || r.right > b.right + 1; })
+              .map((m) => { const r = m.getBoundingClientRect(); return `${(m.textContent ?? "").trim()} @${Math.round(r.left)}→${Math.round(r.right)} in ${Math.round(b.left)}→${Math.round(b.right)}`; });
+            return { scrollWidth: region.scrollWidth, clientWidth: region.clientWidth, left: Math.round(b.left), right: Math.round(b.right),
+              amounts: amounts.length, atSeven: amounts.filter((m) => (m.textContent ?? "").trim() === seven).length, outside };
+          };
+          const found = [...document.querySelectorAll("table.admin-tbl")].map((table) => {
+            const region = table.closest("[role='region']");
+            const rows = [...table.querySelectorAll("tbody tr")].filter(shown);
+            const dataRows = rows.filter((tr) => !(tr.children.length === 1 && tr.children[0].hasAttribute("colspan"))).length;
+            return { table, region, rows, dataRows, name: region?.getAttribute("aria-label") ?? "(a table outside any region)", painted: region ? readRegion(region) : null, filled: null, widened: null };
+          });
+          for (const f of found) if (f.region) for (const m of [...f.region.querySelectorAll(".amount")].filter(shown)) m.textContent = seven;
+          for (const f of found) if (f.region) f.filled = readRegion(f.region);
+          for (const f of found) {
+            if (!f.region) continue;
+            const extraPx = f.region.clientWidth + 160;
+            for (const tr of [f.table.querySelector("thead tr"), ...f.rows]) {
+              if (!tr) continue;
+              const extra = document.createElement(tr.closest("thead") ? "th" : "td");
+              extra.style.minWidth = `${extraPx}px`;
+              extra.textContent = "·";
+              tr.appendChild(extra);
+            }
+            f.widened = readRegion(f.region);
+          }
+          return { vw: window.innerWidth, tables: found.map(({ name, dataRows, painted, filled, widened }) => ({ name, dataRows, painted, filled, widened })) };
+        }, SEVEN);
+        if (res.tables.length !== 2) {
+          nm(`§5.8 ${route} @${width}`, `${res.tables.length} table(s) on the tab, not its two (by day and by account) — a failed read paints its error in place of a table, and a missing table is not measured: ${JSON.stringify(res.tables.map((t) => t.name))}`);
+        } else {
+          for (const t of res.tables) {
+            if (t.painted === null) {
+              ok(`§5.8 ${route} @${width} · every results table sits in its own scroll strip (407)`, false, t.name);
+              continue;
+            }
+            if (t.dataRows === 0 || t.painted.amounts === 0) {
+              nm(`§5.8 ${route} @${width} · ${t.name}`, `${t.dataRows} data row(s) and ${t.painted.amounts} money figure(s) — nothing for the containment half to hold, so the table's fit was not measured (seed it with scripts/seed-house-bot-panels-local.mts)`);
+              continue;
+            }
+            const fits = (m) => m.scrollWidth <= m.clientWidth + 1 && m.outside.length === 0;
+            ok(`§5.8 ${route} @${width} · ${t.name} · the table fits its strip with NO sideways scroll and every money figure inside it — as painted and with every figure at seven digits — and the strip itself is on screen`,
+              fits(t.painted) && fits(t.filled) && t.painted.left >= -1 && t.painted.right <= res.vw + 1,
+              JSON.stringify({ vw: res.vw, painted: t.painted, filled: t.filled }));
+            ok(`§5.8 ${route} @${width} · ${t.name} · CONTROL · the fill reached every figure, and one more column wider than the strip makes the SAME strip scroll without the strip growing`,
+              t.filled.amounts === t.painted.amounts && t.filled.atSeven === t.filled.amounts
+                && t.widened.scrollWidth > t.widened.clientWidth + 1 && t.widened.clientWidth <= t.painted.clientWidth + 1,
+              JSON.stringify({ painted: { clientWidth: t.painted.clientWidth, amounts: t.painted.amounts }, filled: { amounts: t.filled.amounts, atSeven: t.filled.atSeven }, widened: t.widened }));
+          }
+        }
       }
       await p.close();
     }

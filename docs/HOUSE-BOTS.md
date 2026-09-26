@@ -10,7 +10,9 @@
 > reward walker. Passages below that describe them are marked "⛔ Superseded by D20" in place, never deleted. **Unchanged:**
 > the engine, the money rules (cash only, never cashed out, no wagering progress, commission or reward), consent,
 > designation, caps and limits, the kill switch, the admin alerts about bot status, D19's absence proofs, the console gate
-> on house audit rows, erasure, and commit 7's console for CONTROLLING bots. **Accepted for Ali:** statutory figures
+> on house audit rows, erasure, and commit 7's console for CONTROLLING bots. ⚠️ **D20b AMENDED 2026-09-26
+> (delegated):** one Results view on the desk, for its ADMIN audience — what the desk's finished stakes won or lost, in
+> words; not a report, no CSV, no export (`COMPLIANCE-DECISIONS.md`, entry `2026-09-26 · D20b AMENDED`). **Accepted for Ali:** statutory figures
 > include 50pick's own house stakes as player activity, and the harm and AML detectors can flag a bot account like any
 > player's. The ruling of record: [`COMPLIANCE-DECISIONS.md`](COMPLIANCE-DECISIONS.md) "Owner ruling D20", and
 > [`C5-D20-REPLAN.md`](../plans/house-bots/C5-D20-REPLAN.md).
@@ -751,7 +753,7 @@ Warnings: EMAIL_UNVERIFIED · IDENTITY_NOT_APPROVED · RECRUITED · OPEN_POSITIO
 
 | Route | What it is |
 |---|---|
-| `/admin/desk` | The landing page. Tabs: `roster` · `activity` · `limits` · `history`. Owner-only. |
+| `/admin/desk` | The landing page. Tabs: `roster` · `activity` · `limits` · `history` · `results` (what the desk's finished stakes came to over the last 7 EAT days, by day and by account, in words — C7 437, D20b amended 2026-09-26). Owner-only, which in code is the ADMIN role. |
 | `/admin/desk/new` | The designate wizard: find the account → check what the platform already knows → consent and name it → confirm with the holder's password. |
 | `/admin/desk/[id]` | One account. Tabs: `overview` · `activity` · `rules` · `targets` · `history`. |
 
@@ -960,7 +962,7 @@ the dotted form loads a page that **never hydrates**: every control is inert and
 
 ## 8. Reporting
 
-⛔ **Superseded by D20 (Ali, 2026-09-17):** there is no house report. Struck from what this section was to hold: the house-liquidity report, the house-market statement, the R7 audit index, the month picker, the transactions CSV's `house` filter and `house_bot_id` column, and the owner-only per-bot CSV (C5-SPEC rulings 199–213; 211 and 212 stay recorded only as platform defects L26/L27, no longer release preconditions); PLAN §9's house lines and exclusions — `MoneySummary.house`, the Gaming Board pack's house memo, the FIU SAR's Context column, match integrity's house parts, daily ops' house rows, the finance "House bots net" tile and margin delta, the `/admin/house` marker card, the compliance holder chip, and the active-player, unique-player, top-contributor, insights, harm and AML exclusions (224–231); and the per-bot fee figure's reporting use (below). What stands: every report, statutory filing, admin count and detector treats a house bot's account exactly like any player's; R8's durable audit reads for the report pack and RG engagement (214–216); and C5-8 writes this section to say so.
+⛔ **Superseded by D20 (Ali, 2026-09-17):** there is no house report. ⚠️ *2026-09-26 (delegated, D20b amended): the desk's Results tab states what its finished stakes won or lost, for the ADMIN audience — a VIEW, not a report: no CSV, no export, no filing (`COMPLIANCE-DECISIONS.md`, entry `2026-09-26 · D20b AMENDED`).* Struck from what this section was to hold: the house-liquidity report, the house-market statement, the R7 audit index, the month picker, the transactions CSV's `house` filter and `house_bot_id` column, and the owner-only per-bot CSV (C5-SPEC rulings 199–213; 211 and 212 stay recorded only as platform defects L26/L27, no longer release preconditions); PLAN §9's house lines and exclusions — `MoneySummary.house`, the Gaming Board pack's house memo, the FIU SAR's Context column, match integrity's house parts, daily ops' house rows, the finance "House bots net" tile and margin delta, the `/admin/house` marker card, the compliance holder chip, and the active-player, unique-player, top-contributor, insights, harm and AML exclusions (224–231); and the per-bot fee figure's reporting use (below). What stands: every report, statutory filing, admin count and detector treats a house bot's account exactly like any player's; R8's durable audit reads for the report pack and RG engagement (214–216); and C5-8 writes this section to say so.
 
 **Written in commit 5 (C5-8, 2026-09-21) — and what it says is that there is nothing special to say.**
 
@@ -994,7 +996,7 @@ regulator-facing list). Two readers, deliberately different, each pinned by `tes
 in-memory twin, or unmask the RG subject, and a named assertion goes red. All three were driven by hand in C5-8 and each
 turned its own assertion red (`8.216.1`, `8.216.3`, `8.216.5`).
 
-- ~~**Fee withheld per bot is derived, and proven against the ledger**~~ (C5-SPEC ruling 183). ⛔ **UN-BUILT in C5-5b** (owner ruling D20, Ali 2026-09-17; replan ruling 266): its only planned consumer, R1 section 3, is struck, and commit 7's console shows money only as usage against a configured limit — so the derivation had no caller, and a reader with no consumer is not kept. Removed from `src/lib/server/house-bot/book.ts`: `derivedFeeShares`, `foldEntryBook`, `houseStaffScorecard` and the widened `houseBotBook`; removed from the DAL twins: `houseBookStore.feeInputs` and `ledgerRows`; removed from `test:house-bot-reports`: §2 (the ledger cross-check) and §1. `HouseBotBook.feeWithheldTzs` is null again, as it was in commit 1, and `houseBotBook` itself has no caller — Commit 7's rulings give it one or delete it. PLAN §18's row "R3 fee withheld per bot" is superseded in place.
+- ~~**Fee withheld per bot is derived, and proven against the ledger**~~ (C5-SPEC ruling 183). ⛔ **UN-BUILT in C5-5b** (owner ruling D20, Ali 2026-09-17; replan ruling 266): its only planned consumer, R1 section 3, is struck, and commit 7's console shows money only as usage against a configured limit — so the derivation had no caller, and a reader with no consumer is not kept. Removed from `src/lib/server/house-bot/book.ts`: `derivedFeeShares`, `foldEntryBook`, `houseStaffScorecard` and the widened `houseBotBook`; removed from the DAL twins: `houseBookStore.feeInputs` and `ledgerRows`; removed from `test:house-bot-reports`: §2 (the ledger cross-check) and §1. ~~`HouseBotBook.feeWithheldTzs` is null again, as it was in commit 1, and `houseBotBook` itself has no caller — Commit 7's rulings give it one or delete it.~~ ⛔ *Corrected 2026-09-26:* both were deleted at C7 step 7 (`fb189e7d`, ruling 371; `book.ts`'s header), and `test:house-bot-console` 1.371 is the standing grep that they stay gone. The desk's Results tab (C7 437) reads `houseDayBooks` only, through the gate module. PLAN §18's row "R3 fee withheld per bot" is superseded in place.
 
 ---
 
@@ -1085,7 +1087,7 @@ The throttle keys are fixed in `ALERT_KEY`. Proven by `test:house-bot-comms` (39
 
 ⛔ **There are none, and that is the ruling** (owner ruling D19, 2026-09-16 — `COMPLIANCE-DECISIONS.md`).
 
-⛔ **Owner ruling D20 (Ali, 2026-09-17), just below D19:** the admin console and the regulator's paper carry no house split either. ⚠️ **One exception since 2026-09-26:** the ISO 27001 audit-chain export stays unfiltered (ruling 501 withdrawn — `COMPLIANCE-DECISIONS.md`, entry `2026-09-26 · House bots: ruling 501 WITHDRAWN`), so when its 25,000-row window reaches house rows it names `house_bot.*` actions and prints full actor ids to its recipients (the ISO auditor, ADMIN or accounting-view staff); every statutory figure is unchanged. Every report and statutory filing — the Gaming Board monthly pack and the FIU SAR included — treats a house bot's account as an ordinary player's account, with no house memo, column or line. ~~The private Board draft (commit 6) says so.~~ There is no Board draft: owner ruling D21 (2026-09-20), the Gaming Board row below.
+⛔ **Owner ruling D20 (Ali, 2026-09-17), just below D19:** the admin console and the regulator's paper carry no house split either. ⚠️ **Two exceptions since 2026-09-26.** The first: the ISO 27001 audit-chain export stays unfiltered (ruling 501 withdrawn — `COMPLIANCE-DECISIONS.md`, entry `2026-09-26 · House bots: ruling 501 WITHDRAWN`), so when its 25,000-row window reaches house rows it names `house_bot.*` actions and prints full actor ids to its recipients (the ISO auditor, ADMIN or accounting-view staff); every statutory figure is unchanged. The second: the desk's Results tab (D20b amended 2026-09-26 under the owner's delegation — `COMPLIANCE-DECISIONS.md`, entry `2026-09-26 · D20b AMENDED`), which states to the desk's ADMIN audience what the desk's finished stakes won or lost — a view on the console, never a report, a CSV or a filing, and never on a player-reachable surface. Every report and statutory filing — the Gaming Board monthly pack and the FIU SAR included — treats a house bot's account as an ordinary player's account, with no house memo, column or line. ~~The private Board draft (commit 6) says so.~~ There is no Board draft: owner ruling D21 (2026-09-20), the Gaming Board row below.
 
 | Surface | What it says about house bots |
 |---|---|
@@ -1766,8 +1768,8 @@ refusal, asserted nowhere before, is a new 1.541 case. 1.435's count is eleven, 
 
 **What changed, on BOTH activity ledgers** (the desk-wide one and each account's): `Type` left its column and is the
 `Outcome` cell's second line — plain words under the one chip (`8018653b`'s one-chip rule); `Note` left its column and
-is a full-width line of its own under its row, from `sm` up and only on a row that carries one, held to an 80ch reading
-measure; and the gutter is ONE `!px-1.5` at every width. ⚠️ **On this project's spacing scale `px-1.5` is 8px and `px-2`
+is a full-width line of its own under its row, from `sm` up and only on a row that carries one, held to an 80ch reading measure that never runs past the viewport (at 640 an 80ch line was wider than the strip —
+the first served run caught it); and the gutter is ONE `!px-1.5` at every width. ⚠️ **On this project's spacing scale `px-1.5` is 8px and `px-2`
 is 12px** (`tailwind.config.ts` `spacing`) — so the desktop gutter went 12px → 8px, and phones were already 8px. The first
 draft of this record and of the code comments said "6px", which the compiled CSS disproved before anything shipped.
 Round, Opening, Stake, Closing, Left today, Outcome, Game, When and Account keep their columns; below `sm` the stacked
@@ -1829,8 +1831,68 @@ in this run; its CSS was verified compiled (below) and its render is re-read on 
 | `qa:house-bots-visual` at 360/640/1024/1280/1440 | 394 passed, 1 failed — the desk-wide 1280 fit above, now held by its ratchet; tiles read at 360 and 1280 (both ledgers) |
 | CSS, checked without the lock | the step's classes compiled with the project's own Tailwind config and parsed by the build's PostCSS: every new selector generated as intended, and the 12px `sm:` gutter no longer generated |
 
-The owner said to go live once sure (RESUME-HERE §5 quotes him). The ten mutations are driven after the push, in a
-detached tree at the live commit, and their result is added here.
+The owner said to go live once sure (RESUME-HERE §5 quotes him). The ten mutations were driven after the push, in a
+detached tree at the live commit `5d1e8abf`, on a green baseline: **10 caught, 0 missed, 0 files left dirty.**
+
+### 12.7 The Results tab — built 2026-09-26 (C7 437; D20b amended under the owner's delegation; build step 3)
+
+**What shipped.** A fifth tab, `/admin/desk?tab=results`, appended last and unbadged, behind the desk's own audience
+(the ADMIN role). **By day**: the last seven EAT days, newest first — Today, Yesterday, then weekday and date — each
+with its result in words (`Profit TZS X` / `Loss TZS X` / `Even` / `Nothing settled` / `—`), the stakes placed that
+day, and its state (`Still running` / `Final` / `No stakes`). **By account**: every account on the roster, today and
+over the seven days, then ONE line folding the accounts no longer on the desk. The figure is `book.ts`'s own settled
+loss with the sign turned — the function the settled daily-loss row and both automatic loss stops act on — so the
+screen and the stop cannot disagree; a stake counts on the EAT day it was PLACED. The reader is
+`houseResultsForConsole` (route belt before the audience question; today is the core's own day book, the six before it
+walked back from the render's key by `priorEatDays`; every read settled on its own, so a failed day is a row that says
+`couldn't read — this is not zero` and a seven-day total over it is refused). The amendment, its reasons and
+everything it does not permit are `docs/COMPLIANCE-DECISIONS.md` `2026-09-26 · D20b AMENDED`, with in-place pointers.
+
+**Found on the way — each would have shipped red or wrong** (the first full gate run, before the push):
+- 🔴 **1.360's money walk was blind to most of the page.** Its literal scanner read a template with `${…}` as if its
+  closing backtick opened a new literal, and swallowed whole table rows — step 1's row classes hid Left today, the
+  stake and the limit values, so it reported 11 sites of 29. It now pairs templates across their expressions and
+  scans the strings inside them too.
+- 🔴 **`test:house-bot-reports` 0.232 had been RED on clean `main` since `0f1f9dd9`** (another lane's single 5-line
+  hunk above all seven marked money-write sites in `market-service.ts`). Re-derived from the tree — the same seven
+  writes, each +5 — and re-pinned; nobody had run the suite since that commit.
+- ⛔ **The probe's result canary was also a transaction amount.** One lost stake of the canary made its digits a
+  `BET_PLACED` row, which the compliance officer's transactions export correctly carries (D20a), so 4.2b went red on a
+  correct page. The canary is now two losses that SUM to it, neither equal to it: its digits exist only as a result.
+- ⛔ **At 640 the activity ledger's note line ran past the viewport** (an 80ch line is 656px there); it is now
+  `min(80ch, 100vw − 4rem)`. **At 1024 both Results tables overflowed their half-width cards** (390px and 368px in 360px
+  strips); the cards stack below 1280 and sit side by side from it, on the ledger's compact gutter, with days, states
+  and results that never break mid-phrase.
+- ⚠️ 1.343's list of gate readers and one mutation's `expect` (the fourth account word) had to learn the new reader.
+- ⭐ **The visual seed now writes the outcome codes production writes** (`UD_STALE_PRICE`, `POISON`) instead of codes no
+  sentence exists for — so the activity note line was photographed for the first time — and it settles a Results week
+  for real (WIN, LOSS and VOID, one left running, two accounts, one removed).
+
+**The gates, on the committed tree:**
+
+| Instrument | Result |
+|---|---|
+| `typecheck`, `npm run build`, `verify:house-bot-bundle`, `test:tab-anchors`, `test:house-bot-surfaces` | green |
+| `test:house-bot-console` | **923 memory / 669 Postgres, 0 failed** (floor raised from 864/623) |
+| `test:house-bot-reports` | **249 / 80, 0 failed** (floor 248 → 249) |
+| `test:house-bot-comms` | **52 / 50, 0 failed** (floor raised from 48/46) |
+| `test:house-bot-disclosure` | 115 passed, 0 failed |
+| `qa:house-bot-console-probe` | 37 passed, 0 failed (its 142 NOT MEASURED are the non-owner-staff reports ruling 260 reads by design) — the canary absent before it is planted, carried by the ADMIN's Results document, and in no other viewer's 3,353 responses |
+| `qa:house-bots-visual` at 360/640/1024/1280/1440 | **499 passed, 0 failed** — §5.8 holds both Results tables at every width, as painted and at seven digits; tiles read at 360, 1024 and 1280 |
+| `test:red-anchors` §3 | all 373 console anchors resolve exactly once; only the four failures already on clean `main` in other lanes' files |
+| `test:type-scale` | red identically on clean `main` (§3 759, §6 239) — this step adds no sub-floor prose |
+
+Declared mutations for this step: 25 new — `437-sign`, `437-projected`, `437-stake-only`, `437-second-today`,
+`437-route-belt`, `437-audience`, `437-fail-as-empty`, `437-partial-total`, `437-roster-fold`, `437-window-8`,
+`437-days-from-clock`, `437-even-painted-as-money`, `437-open-is-even`, `437-leak-activity`, `437-label`,
+`437-alert-link`, `437-clock`, `437-money-third`, `437-fold-field`, `437-gone-word-collides`, `437-signed-formatter`,
+`312-results-panel-gone`, `312-results-badge`, `306-results-second-read`, `360-result-in-roster` — and five re-aimed
+(`312-rail`, `320-tab-key-gone`, `312-rail-order`, `320-tab-panel-gone`, `373-subject`, plus `account-word-is-the-event-word`'s
+expect). They are driven after the push, in a detached tree at the live commit.
+
+⚠️ **Noted, not changed (not this step's):** `usageRow` paints ANY negative figure as `ahead by X`, so the PROJECTED
+daily-loss row can also read "ahead by" on a day whose settled profit exceeds its open stake; the owner's 2026-09-23
+ruling covered the SETTLED row only (C7 366 records it as not ruled on).
 
 ---
 

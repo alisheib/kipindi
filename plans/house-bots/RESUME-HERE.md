@@ -102,8 +102,8 @@ The account page's ledger has the same shape in eight columns. Below `sm` it is 
 5. **D19/D20 stand.** House bots are never public — not to players, not to the holder — and are ordinary players in
    every report.
 
-**Suite floors — a lower count is a regression, not drift:** console **864 memory / 623 Postgres** (2026-09-26, step 1) ·
-engine **808 / 787** · money **132 / 150**. **Declared mutations:** console 348 (340 + step 1's 8, 2026-09-26) · engine 80 · money 56 + seam 7 ·
+**Suite floors — a lower count is a regression, not drift:** console **923 memory / 669 Postgres** (2026-09-26, step 3) · reports **249 / 80** · comms **52 / 50** ·
+engine **808 / 787** · money **132 / 150**. **Declared mutations:** console 373 (340 + step 1's 8 + step 3's 25, 2026-09-26) · engine 80 · money 56 + seam 7 ·
 c5 97 — all resolve exactly once (`test:red-anchors` §3, 2026-09-26).
 
 ## 0b · ▶ WHAT IS OPEN, in the order to work it
@@ -208,7 +208,7 @@ pushed to `main` and verified serving before the next:**
    "any ADMIN". SWITCH_OFF stays open to
    every ADMIN. Cases on both stores with controls, a declared mutation for each branch, the refusal rendered at 360 and
    1280. ⛔ Never touch the live switch while building or testing this — the desk's current ON state stays as it is.
-3. **The Results tab** (decision 1), exactly per `HOUSE-PNL-PLAN.md` — the reader, the tab, §7's cases, controls and
+3. ✅ **The Results tab** — **LIVE 2026-09-26**, gates green before the push (`docs/HOUSE-BOTS.md` §12.7; the D20b amendment is `docs/COMPLIANCE-DECISIONS.md` `2026-09-26 · D20b AMENDED`). Built (decision 1) exactly per `HOUSE-PNL-PLAN.md` — the reader, the tab, §7's cases, controls and
    mutations, the 360/1280 layout. ⛔ Commit its D20b amendment IN THE SAME COMMIT as the build, so its "Enforced by"
    line is true on the day it lands — and REWRITE the plan's §4.3 template first (the plan's status line says how): it
    was drafted for an explicit owner approval, and Ali delegated instead. Quote his delegation (§0b) verbatim, say
@@ -270,7 +270,7 @@ pushed to `main` and verified serving before the next:**
 | The verification record | `docs/HOUSE-BOTS.md` §12 (§12.3 `Left today`, §12.4 the ledger, §12.5 the settlement fix) |
 | The build record — commit table, D19/D20 rulings, what waited on Ali | `plans/house-bots/PROGRESS.md` (history; nothing in it is current state) |
 | The console's money law (360, 361, 373) | `plans/house-bots/C7-SPEC.md`; ruling 266 is in `plans/house-bots/C5-D20-REPLAN.md` |
-| D3 and its 2026-09-25 amendment, D19, D20 | `docs/COMPLIANCE-DECISIONS.md` |
+| D3 and its 2026-09-25 amendment, D19, D20, D20b's 2026-09-26 amendment (the Results tab) and D1's 2026-09-26 reading (the owner role) | `docs/COMPLIANCE-DECISIONS.md` |
 
 ## 3 · The rules that do not bend
 
@@ -364,4 +364,7 @@ KP_BASE=http://localhost:3031 KP_WIDTHS=360,1280 npm run -s qa:house-bots-visual
     audited with its actor and alerts every admin. ⛔ **Still OPEN, and not ours to fold in silently:** FS-09's other
     alerts (designation, verify, Start, rules and limits saves) are never sent — `announceRoster` has two callers. A
     build of its own, with cases on both stores.
-  - ⏳ Step 3 (the Results tab) is built in a local dev tree (`C:/kipindi-hb-s3`, never pushed) and lands after its gates.
+  - ✅ **Step 3 LIVE** — the Results tab (`docs/HOUSE-BOTS.md` §12.7): its first gate run found six defects before the push (a blind money
+    walk, a house suite red on `main` since another lane's `0f1f9dd9`, a canary that was also a transaction, a note line
+    past the viewport at 640, Results cards too narrow at 1024, a gate list missing the reader), all fixed; console
+    923/669, visual 499/0, probe 37/0. Its 25 new mutations are driven after the push.

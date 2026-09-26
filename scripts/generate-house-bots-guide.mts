@@ -221,8 +221,9 @@ roster, and the panel beside the Rules form, will usually name the reason too.</
 </table>
 
 <h2>6 · Did it win or lose?</h2>
-<p>Every bet an account places ends in one of four states. You can see them on the market itself, and in the
-ordinary money reports — house accounts appear there as normal players, which is deliberate.</p>
+<p>Every bet an account places ends in one of four states. You can see them on the market itself and on the desk's
+<b>Activity</b> tab; what they came to in money over the last 7 days is on the desk's <b>Results</b> tab (below); and
+the ordinary money reports count house accounts as normal players, which is deliberate.</p>
 <table>
   <thead><tr><th style="width:18%">Result</th><th>What happened</th><th style="width:30%">The money</th></tr></thead>
   <tbody>
@@ -244,14 +245,22 @@ it held right after — so Opening less Stake is always Closing. A later payout 
 and everyone is refunded. That is the system working correctly: the account risked nothing and lost nothing. A run
 of refunds means the markets were quiet, not that anything is broken.</p></div>
 
-<div class="box good"><b class="lead">Where to read today's result</b>
+<div class="box good"><b class="lead">Where to read the result</b>
+<p>The desk's <b>Results</b> tab shows what the desk's finished stakes came to over the <b>last 7 days</b> (EAT), in
+words — <i>Profit TZS 12,600</i>, <i>Loss TZS 12,600</i> or <i>Even</i>, never a plus or minus sign. <b>By day</b>
+has one line per day for the whole desk, with how many stakes were placed; <b>By account</b> has each account's
+result today and over the 7 days. A stake counts on the day it was <b>placed</b> — the same day the daily loss limit
+counts it on — and a refund counts as nothing. A stake still running counts nothing until it finishes, so its day
+reads <b>Still running</b>, and can still change after midnight, until the last stake finishes and the day reads
+<b>Final</b>.</p>
 <p>On the <b>Limits</b> tab, and on each account's own page, the daily loss limit has <b>two</b> rows against one
 cap. <b>Projected</b> is what could still be lost — your open stakes counted as though they all lost, which is what
 decides whether a new bet is allowed. <b>Settled</b> is what has actually finished: it reads
 <i>used TZS 4,000 of TZS 100,000</i> when the day is down, and <b><i>ahead by TZS 186 · limit TZS 100,000</i></b>
-when it is up.</p>
+when it is up. It is the same figure the Results tab shows for today — the whole desk's on the Limits tab, the
+account's own on its page.</p>
 <p>The rest of the desk shows <b>risk</b> on purpose — staked today, what may still be lost, how close each limit
-is. For full results over time, use the ordinary money reports, where house accounts are counted exactly like any
+is. For anything older than 7 days, use the ordinary money reports, where house accounts are counted exactly like any
 other player.</p></div>
 
 <h2>7 · Money limits</h2>

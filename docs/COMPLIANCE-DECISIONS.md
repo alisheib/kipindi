@@ -6,6 +6,129 @@
 
 ---
 
+## 2026-09-26 · D20b AMENDED — decided by the session under the owner's delegation of 2026-09-26
+
+**Authority.** Ali, 2026-09-26, delegating, as typed:
+*"please proceed for all other questions tkaing th eirght decison that suit 50pick more aesthically, perfeclty, profesinally and clenaly and based on our overlal architecture and standards of work. then giv em new prmot to finlize in another session"*.
+**Ali did not approve this entry and has not read it. The house-bots session decided it on that delegation**
+(`plans/house-bots/RESUME-HERE.md` §0c decision 1, build step 3), and rests it on his own earlier decisions, each named
+below. The same message released the ISO 27001 exclusion; that entry, just below, said this amendment would be
+entered here in the commit that builds it.
+
+**What the owner himself decided before the delegation.** These are recorded in commit messages, not in his own words:
+- 2026-09-23 (`735712b0`): the settled daily-loss row states a profit (recorded below, because it never was).
+- 2026-09-25 (`8018653b`): he was offered the amount won or lost beside the activity row's Won/Lost word, and shown
+  that it would need rulings 266 and 361 amended. He chose the word alone.
+- 2026-09-25 (`3859118f`, C7 373(g)): no profit/loss column on the activity row. He chose to build the desk's P&L
+  **once, as its own surface, with one amendment**, rather than add it a column at a time. That refusal stands.
+
+**What the session weighed.** Five texts forbid a result figure on the console in terms:
+- D20b ("no house lines on admin screens");
+- replan 266 ("money only as usage against a configured limit", striking "Today's net" and the "Book" card);
+- the replan's §4 Commit 7 default ("no results/P&L report … in the console beyond what a control needs");
+- C7 360 ("Struck … any net, profit, return, won/lost … any signed money");
+- C7 408 ("NO console surface renders a sum, total row, net … P&L").
+
+The alternative that needs no amendment is today's desk-wide figure alone, which the Limits tab's settled row has
+stated since 2026-09-23. The session chose one view, built once, under this one amendment, because:
+- it carries out the shape the owner chose on 2026-09-25 — one surface, one amendment;
+- its figure is `book.ts`'s own settled figure, the one both automatic loss stops act on, so the screen and the stop
+  cannot disagree;
+- words keep C7 361's ban on signed money;
+- a Polls / Up & Down split would be a second arithmetic, and a split by stake type is the staff scorecard D20 struck,
+  so neither is built.
+
+⛔ **THE AMENDMENT IS NARROW, AND THE NARROWNESS IS THE POINT.** D20's reasoning is not withdrawn.
+- A desk account is still an ordinary player in every report, statutory figure, admin count and detector (D20a,
+  unchanged).
+- Every other admin-only tool that D20b lists stays struck.
+
+⚠️ **WHO SEES IT: THE ADMIN ROLE, NOT ONE PERSON.** The view sits behind `houseConsoleAudience`
+(`src/lib/server/house-console-read.ts`), which on the desk's own route admits a viewer only when the STORED role is
+ADMIN (`isAdmin`, `src/lib/server/roles.ts`).
+- `roles.ts` calls that role "Owner" and `/admin/desk` an "Owner-only" route. The role is held by more than one
+  account (measured 2026-09-26, `RESUME-HERE.md` §0c decision 3), so "Owner-only" here means every ADMIN — the
+  audience the desk already has.
+- A grant edit on `/admin/roles` cannot widen it: the console answers its own route before the grant matrix (C7 341).
+- A holder who is also an ADMIN sees their own account's line (C7 458, X13, already accepted).
+- Who may switch the desk ON is a separate question with its own entry (`2026-09-26 · D1 READ AS THE OWNER ROLE`,
+  below), and it neither widens nor narrows who may read this.
+
+**Permitted, from this date, written by ROLE.** The desk's RESULT: for the stakes the desk placed, the money each FINISHED stake brought back to its account, less that stake. It is:
+- totalled by the EAT day each stake was PLACED, over a fixed window of the last 7 EAT days, today included — for the
+  whole desk one line per day, and for each account today and the whole window;
+- shown beside how many stakes were placed that day and whether any are still running;
+- written in words ("Profit TZS X", "Loss TZS X", "Even"), never as a signed amount;
+- shown on ONE view of `/admin/desk`, for the desk's ADMIN audience behind `houseConsoleAudience`, read only through
+  the gated console reader, and nowhere else.
+
+The view's current form is the desk's Results tab (`/admin/desk?tab=results`). The permission names the ROLE, not the
+tab, so a rename cannot leave it permitting something that no longer exists (the 2026-09-25 D3 lesson).
+
+**Recorded here, because it was never written down.** Ali's 2026-09-23 ruling (`735712b0`): the SETTLED daily-loss
+row states a profit as `ahead by X · limit Y`, on the Limits tab and on each account's overview. It is the view's own
+figure for today, stated against the same limit. This entry covers it by role and does not widen it.
+
+**Still forbidden, and the guards stay pointed at all of it:**
+- any REPORT or record: the Board pack, FIU SAR, match integrity, daily ops, finance, insights, analytics, the harm and
+  AML detectors, the ISO 27001 export and the reports catalogue (D20a unchanged);
+- any EXPORT: CSV, print view, PDF or download (D14, and D20b's per-account CSV);
+- any bell, email, digest or alert that carries the figure or links to the view;
+- `/admin/house`: no line of this figure, and no read in either direction;
+- any split by stake type, entry mode or who chose the stake. That is the entry split and staff scorecard D20 struck
+  (C7 349; replan 265, 267);
+- per-market, per-counterparty-player or per-officer money (C7 365);
+- a lifetime, month-to-date or wider window; fee withheld; a "net to 50pick" figure (replan 183 stays un-built); any
+  "Book" card;
+- the figure anywhere else on the console: the band (C7 303), the roster, the activity row (the chip stays a word),
+  and the Limits tab and each account's page beyond their 2026-09-23 settled rows;
+- any statement of what is owed to or settled with a holder (C7 375, 457);
+- the holder's balance beyond the 2026-09-25 D3 amendment;
+- every player-reachable surface and the holder, without exception (D19, untouched);
+- any house word on the view (C7 453).
+
+⚠️ **WHAT THE FIGURE IS.** Per stake:
+- A win counts its payout less its stake. The payout is already after the platform's fee.
+- A loss counts minus its stake. A loss writes no ledger row; the outcome is read from the position.
+- A refund counts nothing.
+- A stake still running counts nothing until it finishes, and its day says so.
+
+Which day:
+- A stake belongs to the EAT day it was PLACED, so a day's figure can move after midnight until its last stake
+  finishes.
+- A past line may differ from the figure a loss limit acted on at the time, because that figure is not kept.
+
+Where the number comes from:
+- It is the day book's own settled figure with the sign turned (`book.ts`: minus `realisedLossTzs`). The daily loss
+  limit's settled row and both automatic loss stops act on that same function.
+- A manual adjustment to a holder's wallet is not counted: only confirmed payout, refund and cash-out rows on the
+  desk's own stakes are.
+
+⚠️ **AND IT IS NOT THE PLATFORM'S WHOLE RESULT.** The platform's fee on those pools is ordinary commission on
+`/admin/house`, counted there as player activity (D20a). The two are never added together or netted against each
+other.
+
+⚠️ **IF ALI REVERSES THIS.** It binds as a delegated decision until he rules on it. One commit removes the tab, its
+reader and the pointers named below, and D20b reads as it did; nothing else in the product depends on it.
+
+**Amends** (each marked in place as "(delegated)", except C7 366's note, which writes down the owner's own 2026-09-23
+ruling and is marked as his):
+- D20b (here and in `plans/house-bots/PROGRESS.md`), and in `PROGRESS.md` the D20c row's "no results report" clause
+  and the Commit 7 bullet;
+- replan 266 and §4's Commit 7 default (`plans/house-bots/C5-D20-REPLAN.md`);
+- C7 303 (Why only), 305 (title), 312, 360, 361 (pointer), 366, 372, 374, 408, 453, 459 and 461, and new C7 437
+  (`plans/house-bots/C7-SPEC.md`);
+- `docs/HOUSE-BOTS.md`'s D20 banner, §7.1, §8 and §10, and the source docblocks that stated the old rule.
+
+**Does not amend:**
+- D1, D19, D20a, D20c as this log states it, D20d, D3 and its 2026-09-25 amendment, D6, D14;
+- replan 183, 265, 267;
+- C7 347, 348, 349, 350, 365, 368, 369, 371, 373(g), 375, 404, 406, 456, 458.
+
+**Enforced by:** `test:house-bot-console` 1.437a–n and 1.360 (memory and Postgres), with declared mutations in `red:house-bot-console`; the register pins (1.437m); and `qa:house-bot-console-probe`'s result canary.
+
+---
+
 ## 2026-09-26 · The LIVE strip: signed out, a person on a break sees the lobby like any visitor — no device-marker cookie (owner ruling)
 
 **Owner instruction (Ali, 2026-09-26), as typed:** *"leve at is"* — the answer to: *should a phone that started a
@@ -835,7 +958,7 @@ players" — "normal players everywhere" for reports, and "drop them all" for th
 | # | Ruling |
 |---|---|
 | D20a | **Reports treat a house account exactly like any player's account.** The Gaming Board monthly pack, the FIU SAR, the match-integrity report, daily ops, every admin count (active and unique players, predictors, top contributors), the finance and insights figures and the harm and AML detectors carry no house memo, column, split, exclusion or line. |
-| D20b | **No admin-only house tools:** no house-liquidity report or house-market statement, no house filter or `house_bot_id` column on the transactions CSV, no per-bot CSV, no staff-edge alert, no house lines on admin screens, no house stake in decision audits, no house share in the emergency-void notice, no KYC house line, no internal record and no staff chip or row tag. This reverses D19b's report half; ~~the private Board draft stays~~ ⛔ struck by D21 (2026-09-20): there is no Board draft. |
+| D20b | **No admin-only house tools:** no house-liquidity report or house-market statement, no house filter or `house_bot_id` column on the transactions CSV, no per-bot CSV, no staff-edge alert, no house lines on admin screens, no house stake in decision audits, no house share in the emergency-void notice, no KYC house line, no internal record and no staff chip or row tag. This reverses D19b's report half; ~~the private Board draft stays~~ ⛔ struck by D21 (2026-09-20): there is no Board draft. ⚠️ **AMENDED 2026-09-26 (delegated): the desk may show what its own finished stakes won or lost, on ONE view of `/admin/desk` for the desk's ADMIN audience — see the dated entry `2026-09-26 · D20b AMENDED` near the head of this log. Every other tool in this row stays struck, and D20a is untouched.** |
 | D20c | **Unchanged:** D19 in full (nothing about house bots reaches a player or the holder), the console's gate that keeps house audit rows from any non-staff session, report completeness under house audit volume, erasure safety, marker integrity, the money rules (house stakes are cash only, never cashed out, and earn no wagering progress, commission or reward), the engine, consent, caps, the kill switch, admin alerts about a bot's state, and the console that controls the bots. |
 | D20d | **Accepted consequences:** statutory figures (GGR, levies, player counts) include 50pick's own house stakes as player activity; the harm and AML detectors can flag a house account like any player's. |
 
