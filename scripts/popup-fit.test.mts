@@ -188,6 +188,7 @@ const REVIEWED: readonly string[] = [
   "src/components/layout/avatar-menu.tsx",
   "src/components/layout/needle-drawer.tsx",
   "src/components/layout/notifications-panel.tsx",
+  "src/components/layout/wallet-sheet.tsx",   // reviewed 2026-09-27 (landing v3 WP14) — no max-h, no overflow-hidden, no nowrap; the amount wraps (overflow-wrap: anywhere) and Modal scrolls
   "src/components/markets/bet-confirm-modal.tsx",
   "src/components/markets/conviction-dial.tsx",
   "src/components/markets/filter-sheet.tsx",

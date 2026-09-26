@@ -1178,6 +1178,8 @@ export const dict = {
       // Withdraw only: payouts go to mobile money and never to a bank (2026-09-13).
       mobileMoneyOnly: "Mobile money",
       available: "Available",
+      // landing v3 · R1 · the Wallet sheet's link to the full wallet page (history, statements).
+      openWallet: "Open wallet",
       holdWarning: "hold",
       withdrawFailed: "Withdrawal didn't go through",
       // ⛔ `verifyFirst` / `verifyFirstBody` / `continueKyc` were DELETED 2026-08-20 with
@@ -3679,6 +3681,8 @@ export const dict = {
       // Withdraw only: payouts go to mobile money and never to a bank (2026-09-13).
       mobileMoneyOnly: "Pesa ya simu",
       available: "Inapatikana",
+      // drafted, marked for native review; English is binding.
+      openWallet: "Fungua pochi",
       holdWarning: "zinatolewa",
       withdrawFailed: "Kutoa hakujafanikiwa",
       // Deleted 2026-08-20 with the EN keys above — see the note there.
@@ -5867,6 +5871,8 @@ export const dict = {
       // Withdraw only: payouts go to mobile money and never to a bank (2026-09-13).
       mobileMoneyOnly: "移动支付",
       available: "可用余额",
+      // drafted, marked for native review; English is binding.
+      openWallet: "打开钱包",
       holdWarning: "处理中",
       withdrawFailed: "提现未成功",
       // Deleted 2026-08-20 with the EN keys above — see the note there.

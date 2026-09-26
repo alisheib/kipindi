@@ -23,6 +23,15 @@
  * it.** Stating it that way is what lets the guard fail in BOTH directions — a missing
  * balance, and a second door beside it.
  *
+ * ── AMENDED 2026-09-26 BY ALI'S RULING R1 (landing v3) ───────────────────────
+ * The capsule is still the one door and the eye still lives inside it; the door now OPENS THE
+ * WALLET (a bottom sheet below 1024, a panel under the chip from 1024) instead of navigating to
+ * /wallet: balance, Deposit and Withdraw side by side at the SAME size, Set limits, and the full
+ * wallet page. At ZERO balance the capsule gives way to a gold Deposit at every width — the
+ * header never prints "TZS 0". A frozen wallet keeps its capsule, and its Wallet offers no money
+ * buttons. §1, §4 and §7 pin the amended contract. Authority:
+ * `docs/design-system/v4-2026-09-26-landing-ten/INHERIT-MANIFEST.md` R1, L19, L20.
+ *
  * Run: npm run test:wallet-reach
  */
 import { readFileSync } from "node:fs";
@@ -47,14 +56,19 @@ const { formatBalancePill, formatTzs, formatTzsCompact, BALANCE_COMPACT_ABOVE } 
 // ── 1 · ONE CAPSULE: the number and its eye are a single control ─────────────
 {
   ok("1: the pill renders a capsule wrapper", /data-testid="wallet-balance-capsule"/.test(pill));
-  ok("1: the number inside it links to /wallet", /href="\/wallet"/.test(pill));
-  ok("1: the eye lives INSIDE the capsule, not beside it", /<CashEye\b/.test(pill));
-  // ⛔ A <button> nested inside an <a> is invalid HTML and neither control is reliably
-  // operable. The capsule must hold the two as SIBLINGS.
+  // ⭐ R1 · the number is a BUTTON that opens the Wallet — announced as opening a dialog, with its state.
   const capsuleOpen = pill.slice(pill.indexOf("wallet-balance-capsule"));
-  ok("1: the eye is a SIBLING of the link, never nested inside it",
-     capsuleOpen.indexOf("</Link>") < capsuleOpen.indexOf("<CashEye"),
-     "a <button> inside an <a> is invalid HTML");
+  // ⚠️ Sliced to the chip's own testid, not to the next ">" — the arrow in its onClick is one.
+  const chip = capsuleOpen.slice(capsuleOpen.indexOf("<button"), capsuleOpen.indexOf('data-testid="wallet-balance-pill"'));
+  ok("1: R1 · the number is a <button> that OPENS the Wallet (not a link that navigates)",
+     /<button\b/.test(chip) && /aria-haspopup="dialog"/.test(chip) && /aria-expanded=\{open\}/.test(chip) && /onClick=\{\(\) => setOpen\(true\)\}/.test(chip));
+  ok("1: …and the Wallet it opens is mounted by the capsule's own component",
+     /<WalletSheet open=\{open\}[^\n]*anchorRef=\{capsuleRef\}/.test(pill) && /ref=\{capsuleRef\}/.test(pill));
+  ok("1: the eye lives INSIDE the capsule, not beside it", /<CashEye\b/.test(pill));
+  // ⛔ Two <button>s cannot nest either — the capsule holds the chip and the eye as SIBLINGS.
+  ok("1: the eye is a SIBLING of the chip button, never nested inside it",
+     capsuleOpen.indexOf("</button>") > 0 && capsuleOpen.indexOf("</button>") < capsuleOpen.indexOf("<CashEye"),
+     "a control inside a control is invalid HTML");
   // ⚠️ The testid is the LAST attribute on the capsule, so the border sits BEFORE it —
   // a forward-only window found nothing and failed on correct code. Read the whole
   // element, not the text after its name.
@@ -77,8 +91,10 @@ const { formatBalancePill, formatTzs, formatTzsCompact, BALANCE_COMPACT_ABOVE } 
   ok("1: it holds the 44px tap height, BY NAME — a --h-control-* rung, not a bare literal",
      /height: "var\(--h-control-md\)"/.test(pill));
   // ⛔ The top bar consumes ONE component — no wrapper div, no second CashEye out there.
-  ok("1: the top bar renders the capsule as a single control",
-     /<WalletBalancePill balance=\{user\.balance\}\s*\/>/.test(bar));
+  // ⭐ R1 · with the LIVE balance (SSE), so the bar's zero/funded decision and the figure agree.
+  ok("1: the top bar renders the capsule as a single control, fed the LIVE balance",
+     /<WalletBalancePill balance=\{liveBalance\} held=\{!!user\.walletHeld\}\s*\/>/.test(bar) &&
+     /const liveBalance = useLiveBalance\(user\.balance \?\? 0\)/.test(bar));
   ok("1: …and no longer mounts its own CashEye beside it", !/<CashEye\b/.test(bar));
 }
 
@@ -124,8 +140,8 @@ const { formatBalancePill, formatTzs, formatTzsCompact, BALANCE_COMPACT_ABOVE } 
   // still rendered at 360, 33px past the edge. The hide must be on a WRAPPER.
   const at = bar.indexOf('href="/wallet/deposit"');
   const dep = bar.slice(Math.max(0, at - 400), at + 400);
-  ok("4: the Deposit CTA is hidden by a WRAPPER, not by classes on the .btn",
-     /<span className="hidden sm:inline-flex">\s*<Link/.test(dep));
+  ok("4: the Deposit CTA is hidden by a WRAPPER, not by classes on the .btn (funded only — R1)",
+     /<span className=\{funded \? "hidden sm:inline-flex" : "inline-flex"\}>\s*<Link/.test(dep));
   ok("4: ⛔ and the hide is NOT on the button itself, where `.btn` would beat it",
      !/className="btn[^"]*\bhidden\b/.test(bar));
   ok("4: the mark carries the brand below xl", /mark-flip-i inline-flex xl:hidden/.test(bar));
@@ -213,6 +229,42 @@ const { formatBalancePill, formatTzs, formatTzsCompact, BALANCE_COMPACT_ABOVE } 
   ok("6: …and Live still holds one of them", hrefs.includes("/live"), hrefs.join(", "));
   const more = rail.slice(rail.indexOf("moreItems"), rail.indexOf("moreActive"));
   ok("6: Wallet is STILL the named text entry under More on phones", /href: "\/wallet"/.test(more));
+}
+
+// ── 7 · R1 · THE WALLET — what the door opens (landing v3, 2026-09-26) ─────
+{
+  const sheet = decomment(readFileSync(join(ROOT, "src/components/layout/wallet-sheet.tsx"), "utf8"));
+  ok("7: a bottom sheet below 1024 and a panel under the chip from 1024",
+     /<Modal\b[^>]*\bsheet\b[^>]*sheetUntil="lg"[^>]*anchorRef=\{anchorRef\}/.test(sheet));
+  // ⭐ V19 · MONEY PARITY. Withdraw is as easy to find as Deposit: the same rung, the same box,
+  // side by side. Only the skin differs (struck gold for money in, ghost for money out).
+  const link = (href: string) => {
+    const at = sheet.indexOf(`href="${href}"`);
+    return at < 0 ? "" : sheet.slice(sheet.lastIndexOf("<Link", at), sheet.indexOf("</Link>", at));
+  };
+  const dep = link("/wallet/deposit"), wd = link("/wallet/withdraw");
+  const geom = (s: string) => (s.match(/className="btn (?:gilt-metal|btn-ghost) ([^"]+)"/) ?? [])[1] ?? null;
+  ok("7: ⭐ Deposit and Withdraw are BOTH in the Wallet", !!dep && !!wd);
+  ok("7: ⭐ …at the SAME size — one rung and one box, only the skin differs",
+     geom(dep) !== null && geom(dep) === geom(wd), `${geom(dep)} vs ${geom(wd)}`);
+  ok("7: …Deposit is struck gold (money), Withdraw is not a lesser control hidden in a menu",
+     /btn gilt-metal/.test(dep) && /btn btn-ghost/.test(wd));
+  const pairAt = sheet.indexOf("kp-wsheet__pair");
+  ok("7: …side by side, in one two-column pair", pairAt > 0 && pairAt < sheet.indexOf('href="/wallet/deposit"') && pairAt < sheet.indexOf('href="/wallet/withdraw"') &&
+     /\.kp-wsheet__pair\s*\{[^}]*grid-template-columns:\s*1fr 1fr/.test(css));
+  ok("7: Set limits and the full wallet page are in the Wallet",
+     /href="\/profile\/responsible-gambling"/.test(sheet) && /href="\/wallet"/.test(sheet));
+  // ⛔ A frozen wallet is offered nothing its pages refuse.
+  const heldAt = sheet.indexOf("{held ? (");
+  ok("7: ⛔ a FROZEN wallet gets no money buttons — the pair lives in the not-held branch",
+     heldAt > 0 && heldAt < sheet.indexOf('href="/wallet/deposit"') && /t\.kycGate\.frozenTitle/.test(sheet));
+  ok("7: the balance obeys the eye — the Wallet masks through <Cash>, with its own eye",
+     /<Cash>\{formatTzs\(balance\)\}<\/Cash>/.test(sheet) && /<CashEye\b/.test(sheet));
+  // ⭐ ZERO: never "TZS 0" in the header — the capsule yields to a gold Deposit at every width.
+  ok("7: ⭐ at zero the capsule is not rendered (unless the wallet is frozen)",
+     /\(funded \|\| user\.walletHeld\) && \(\s*<WalletBalancePill/.test(bar) && /const funded = liveBalance > 0/.test(bar));
+  ok("7: ⭐ …and Deposit shows at EVERY width, labelled, when there is no balance",
+     /funded \? "hidden sm:inline-flex" : "inline-flex"/.test(bar) && /funded \? "hidden sm:inline lg:hidden xl:inline" : "inline"/.test(bar));
 }
 
 console.log(`\nwallet-reach: ${pass} passed, ${fail} failed`);
