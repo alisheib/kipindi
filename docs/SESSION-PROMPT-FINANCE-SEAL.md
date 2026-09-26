@@ -188,6 +188,28 @@ is a second implementation that will drift.
   `GGR − booked TRA − booked GBT`: a tax on the settlement FEE subtracted from a TURNOVER figure,
   so it was never profit after tax. Relabel only — the arithmetic is unchanged, not re-based.
   ✅ Ali also confirmed the name `verify:reports-live` for the production-reading script.
+- ✅ **`test:orphans` GREEN AGAIN (2026-09-26)** — it was red on main on 20 other lanes' scripts. The
+  allowlist is SHRINK-ONLY by design, so every one was ADOPTED or DELETED, never declared:
+  - **the gate learned to see real execution.** Seven files were run on every pass of a wired suite
+    and still reported as orphans: spawned by a `*-cases.mts` file (the house-bot two-process child
+    and its `--import` clock-skew preload), launched from `rehearsals/run.mts`'s registry
+    (`audit-burst`, `rollback`, and the lib they import), loaded by `red-anchors`' `readdirSync` walk,
+    or imported two hops down (`player-surface-text`). `orphan-scripts.mjs` now follows LOADS and
+    LAUNCHES to a fixpoint — never a path merely held in a string, so `delete-seed-markets.mjs` stays
+    declared (8 mutation controls + 1 positive control on the gate itself).
+  - **12 wired**, never as `test:*`: `db:seed-kyc-stages-local`; `live:kyc-at-withdrawal` (signed-out,
+    now reads the privacy version from the page source — it was red on a pin that moved on
+    2026-09-22 — and shoots into `.qa-shots/`); `live:marketing-u1-phone-key`, `-u2-formatter`,
+    `-u5-helpline`, `-u6-consent-ledger`; `qa:marketing-u8-optout`; `qa:d36-d37-remeasure` (its
+    `/s+/g` was missing the backslash and stripped every letter "s"), `qa:d37-tile-fit`,
+    `qa:d42-ring-legend`, `qa:d45-d52-remeasure`, `qa:u34-wallet-pill`. ⚠️ The mobile/ops drives sign in
+    as the shared `mobile01` persona on production — run them only when that lane is not driving.
+  - **1 deleted:** `live/revoked-deadend-prod.mjs` — E-381 is closed and verified on production
+    (LIVE-QA-CAMPAIGN), and the drive works by DISPLACING a session, so re-running it on the shared
+    persona would sign other lanes out.
+- ⚠️ **Pre-existing, other lanes: `test:red-anchors` is red on main** — two declared mutation anchors
+  no longer resolve (`bar-geometry` → `query-bar.tsx`, `updown-handover` → `updown-card-phase.ts`) and
+  68 harnesses exceed the undeclared-anchor ceiling of 65. Not caused by this lane.
 - ⚠️ **Rotate the production DB password.** It was echoed into a session transcript on 2026-09-25.
 
 ---

@@ -24,7 +24,7 @@
  */
 import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
+import { dirname, join, posix } from "node:path";
 import { spawnSync } from "node:child_process";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -153,6 +153,96 @@ for (const entry of namedDirectly) {
   }
 }
 
+/**
+ * 🔴 ONE HOP WAS NOT ENOUGH IN PRACTICE, AND "A HELPER OF A HELPER" WAS THE WRONG PICTURE (2026-09-26).
+ * Seven files were run on every pass of a wired suite and reported as orphans. None was a helper's helper:
+ * `lib/house-bot-two-process-child.mts` is SPAWNED by the `*-cases.mts` file a house-bot suite hands to its
+ * runner. `lib/clock-skew-preload.mjs` is that spawn's `--import`. `rehearsals/audit-burst.mts` is what
+ * `rehearsals/run.mts` launches from its registry's `script:` field. `anchors/*.anchors.mjs` is loaded by
+ * `red-anchors.test.mts` through a `readdirSync` walk. Each sat past the one hop, where no source was read.
+ *
+ * ⛔ SO THE WALK GOES ON, BUT ONLY THROUGH A LOAD OR A LAUNCH. From every reachable file, to a fixpoint, a file
+ * counts only when that source LOADS it (a static `import`/`export … from`, `import()`, `require()`) or LAUNCHES it
+ * (the arguments of `spawn`/`spawnSync`/`fork`/`exec*`, `--import` included, or `new URL(…)`). Relative
+ * specifiers are resolved, so `./lib/x.mts` from `rehearsals/` is `rehearsals/lib/x.mts`. Two computed shapes count:
+ *   · import(`./dir/${f}`) loads every code file DIRECTLY in `dir`.
+ *   · a launch of a computed member, e.g. spawnSync("npx", ["tsx", r.script!]), runs every `script: "<path>"`
+ *     in that file or a module it imports.
+ * Anything else a transitive source says is NOT a reference. That includes a const holding a path, a `file:`
+ * mutation target, a scan subject and prose in a string.
+ *
+ * ⛔ WHY NOT THE ONE-HOP RULE, REPEATED. Measured: a plain fixpoint marks `delete-seed-markets.mjs` reachable,
+ * because `lib/house-bot-reports-cases.mts` holds `const seedRel = "scripts/delete-seed-markets.mjs"` in order to
+ * READ it as a pin subject. Nothing runs that file. The gate would then call its allowlist entry stale and ask for
+ * it to be forgotten. That is E-136 again, hiding in a string instead of a comment. Hop 1 above is unchanged, so
+ * this block can only ADD reachability through a load or a launch; it cannot remove any.
+ */
+const fileSet = new Set(files);
+/** A string that IS a path, whole: a relative specifier from `from`, or `scripts/<rel>` from the repo root. */
+const pathOf = (from, s) => {
+  const rel = /^\.\.?\//.test(s) ? posix.normalize(posix.join(dirOf(from) || ".", s))
+    : s.startsWith("scripts/") ? s.slice("scripts/".length) : null;
+  return rel && rel !== from && fileSet.has(rel) ? rel : null;
+};
+const addPath = (hits, from, s) => { const rel = pathOf(from, s); if (rel) hits.add(rel); };
+/** The argument text of every `callee(…)`, parens balanced, so a spawn written across lines is read whole. */
+function callArgs(src, callee) {
+  const out = [];
+  const re = new RegExp(`${callee.source}\\s*\\(`, "g");
+  for (let m; (m = re.exec(src)); ) {
+    let i = re.lastIndex, depth = 1;
+    while (i < src.length && depth) { if (src[i] === "(") depth++; else if (src[i] === ")") depth--; i++; }
+    out.push(src.slice(re.lastIndex, i - 1));
+  }
+  return out;
+}
+const LOAD = /(?<![\w$.])(?:import|require)/;
+const LAUNCH = /(?:(?<![\w$])(?:spawn|spawnSync|fork|execFile|execFileSync|execSync)|(?<![\w$.])exec|\bnew\s+URL)/;
+// `import type … from` is erased before anything runs, so it loads nothing and is not counted.
+const STATIC = /(?:^|[;\s])(?:import|export)\s(?!type\s)[^;"'`]*?\sfrom\s*(["'])([^"']+)\1|(?:^|[;\s])import\s*(["'])([^"']+)\3/gm;
+const STR = /(["'`])((?:(?!\1)[^\\\n]|\\.)*)\1/g;
+const codeCache = new Map();
+const codeOf = (rel) => {
+  if (!codeCache.has(rel)) {
+    let s = "";
+    try { s = stripComments(readFileSync(join(here, rel), "utf8")); } catch {}
+    codeCache.set(rel, s);
+  }
+  return codeCache.get(rel);
+};
+function executes(from) {
+  const src = codeOf(from);
+  const hits = new Set();
+  const imported = new Set();
+  for (const m of src.matchAll(STATIC)) {
+    const rel = pathOf(from, m[2] ?? m[4]);
+    if (rel) { hits.add(rel); imported.add(rel); }
+  }
+  const launched = callArgs(src, LAUNCH);
+  for (const a of [...callArgs(src, LOAD), ...launched]) {
+    for (const s of a.matchAll(STR)) addPath(hits, from, s[2]);
+    // the hop-1 test, applied to ONE load/launch argument: the path is often assembled, e.g. join(ROOT, "scripts", "lib", "x.mjs")
+    for (const n of files) if (n !== from && (a.includes(n) || (dirOf(n) === dirOf(from) && a.includes(baseOf(n))))) hits.add(n);
+    const walk = /^\s*`(\.{1,2}\/(?:[\w.-]+\/)*)\$\{/.exec(a);
+    if (walk) {
+      const dir = posix.normalize(posix.join(dirOf(from) || ".", walk[1])).replace(/\/$/, "").replace(/^\.$/, "");
+      for (const n of files) if (dirOf(n) === dir) hits.add(n);
+    }
+  }
+  const props = new Set(launched.flatMap((a) => [...a.matchAll(/(?<![\w$"'`])[A-Za-z_$][\w$]*\??\.([A-Za-z_$][\w$]*)!?(?=\s*[,\])])/g)].map((m) => m[1])));
+  for (const f of [from, ...imported]) {
+    for (const p of props) {
+      for (const m of codeOf(f).matchAll(new RegExp(`(?<![\\w$])["']?${p}["']?\\s*:\\s*(["'])([^"'\\n]+)\\1`, "g"))) addPath(hits, f, m[2]);
+    }
+  }
+  hits.delete(from);
+  return hits;
+}
+const hop1Size = reachable.size;
+for (const queue = [...reachable]; queue.length; ) {
+  for (const n of executes(queue.shift())) if (!reachable.has(n)) { reachable.add(n); queue.push(n); }
+}
+
 const orphans = files.filter((n) => !reachable.has(n)).sort();
 
 // Bootstrap, once. It REFUSES to overwrite: re-seeding would let a future session bury newly
@@ -208,7 +298,7 @@ console.log(`  files            ${files.length}`);
 // ⛔ Never silent. A gate that narrows its own population without saying so reads as
 // "everything is covered" when it is not — so the number is printed even at zero.
 console.log(`  git-ignored      ${skippedIgnored}   (not the product — excluded from the population)`);
-console.log(`  reachable        ${reachable.size}`);
+console.log(`  reachable        ${reachable.size}   (${reachable.size - hop1Size} only through a load/launch chain past hop 1)`);
 console.log(`  orphaned         ${orphans.length}`);
 console.log(`  declared         ${declared.size}   (allowlist recorded ${allow.recordedOn ?? "?"})`);
 

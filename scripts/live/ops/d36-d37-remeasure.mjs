@@ -159,7 +159,7 @@ try {
     if (tiles.length < 3) {
       // ⛔ SAY WHAT THE PAGE ACTUALLY RENDERED. "0 tiles" is the same reading for "this account has
       //    no history", "the selector is wrong" and "the page failed" — and they need different work.
-      const seen = (await h.textContent("body")).replace(/s+/g, " ").slice(0, 400);
+      const seen = (await h.textContent("body")).replace(/\s+/g, " ").slice(0, 400);
       const url = h.url();
       say("BLIND", "D37", `only ${tiles.length} tiles found at ${url} — page reads: "${seen}"`);
     } else {
