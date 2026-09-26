@@ -6,6 +6,45 @@
 
 ---
 
+## 2026-09-26 · House bots: ruling 501 WITHDRAWN — the ISO 27001 export stays unfiltered (owner: the exclusion is not required; the session kept it unfiltered)
+
+**Owner instruction (Ali, 2026-09-26), as typed:** *"this we dot cre gbt said it sok we need nothign we can decide
+anything Regulator audit export (ISO 27001)"*. Read as: the owner does not require the exclusion — Ali reports that
+the Gaming Board told him it needs nothing (a verbal report, as D21 is; **no document is on file**) — and he leaves
+the choice open ("we can decide anything"). **The basis is the owner's instruction, not D21**: D21 speaks to what the
+Board needs, and the ISO 27001 export goes to an ISO auditor.
+
+Build ruling 501 (`plans/house-bots/C5-D20-REPLAN.md`, a session's ruling implementing D20) said the ISO 27001
+hand-off must EXCLUDE `house_bot.*` audit rows and state the excluded count. It was never built, and it is now
+**withdrawn** (replan ruling 557 records the reversal). `buildIsoAudit` (`src/lib/server/reports/catalogue.ts`) stays
+**unfiltered**: no row is removed by action. It still holds only the OLDEST 25,000 rows, so whether a given export
+contains any house row depends on the live row count — NOT MEASURED. The session chose unfiltered over excluding
+because an audit-log export with rows withheld is weaker evidence than one without; the owner released the
+requirement, and the choice between the two was the session's.
+
+⛔ **D21c IS NOT BREACHED, AND WHY.** D21c forbids treating the Board's indifference as a licence to drop a guard.
+Nothing built is dropped here — 501 was never built — and the requirement was released by the owner himself, for
+this one document.
+
+⚠️ **THE CONSEQUENCE, stated so nobody later reads it as an oversight.** An export whose 25,000-row window reaches
+house rows shows its recipients — the ISO 27001 auditor, and the ADMIN or accounting-view staff who can generate it
+(`src/app/api/admin/reports/[id]/route.ts`) — the `house_bot.*` action names, the `HouseBot` / `HouseBotControl` /
+`User` targets (as id prefixes) and **full actor ids**: the officer who acted, and on a consent-withdrawal row the
+holder's own user id. That makes it **the one regulator-facing artefact that may name the feature**; it is marked as
+D20's one exception in `docs/HOUSE-BOTS.md`'s D20 banner. D19 is untouched for players: the export is generated only
+behind the platform's report gate and never reaches a player-role account — a holder who is also staff can see it,
+which is the risk C7 ruling 458 (X13) already accepts for the console itself. D20a is untouched (house stakes still
+count in GGR and the levies as ordinary player activity; no statutory figure gains a house line, memo or column).
+
+The same message delegated the programme's other open questions to the session ("please proceed for all other
+questions tkaing th eirght decison that suit 50pick …"); they are recorded with their reasons in
+`plans/house-bots/RESUME-HERE.md` §0c. Two touch a ruling here, and neither is recorded as permitted before it exists:
+the desk's Results view amends D20b and is entered in this log in the commit that builds it; and enforcing D1 ("Ali
+alone turns it on") on the switch — measured 2026-09-26: the code accepts ANY of 3 ADMIN accounts, and a second
+account has switched the desk ON — changes no ruling, it makes the code keep one.
+
+---
+
 ## 2026-09-26 · Marketing SMS rulings — no Gaming Board approval, no PDPA registration, and the helpline is OURS (owner rulings on OQ1, OQ2, OQ4)
 
 **Owner instruction (Ali, 2026-09-26), as typed:** *"gaming board said they done tcar eit snor part of their approbla we
@@ -433,9 +472,9 @@ struck rather than deleted because it was true when it was written.
 
 ---
 
-## 2026-09-18 · D20's consequence for the ISO 27001 export — the regulator hand-off EXCLUDES house audit rows by category, and SAYS SO with the count
+## 2026-09-18 · D20's consequence for the ISO 27001 export — the regulator hand-off EXCLUDES house audit rows by category, and SAYS SO with the count — ⛔ WITHDRAWN 2026-09-26 (entry `2026-09-26 · House bots: ruling 501 WITHDRAWN`)
 
-**Status:** decided on branch `house-bots` (build ruling 501), to be built **before Commit 8**. 🔴 **NOT BUILT, AND NO LONGER PROSPECTIVE (checked 2026-09-26 at `91c672c1`):** `buildIsoAudit` (`src/lib/server/reports/catalogue.ts`) still calls `getAuditPageDurable({ limit: ISO_EXPORT_LIMIT })` with no action filter. Every designation, switch event and engine switch-off writes a `house_bot.*` audit row (`HOUSE_AUDIT`, `src/lib/house-bot/constants.ts`), and the desk was first designated and switched on, on production, on 2026-09-21 — every switch event since, the engine's own switch-offs included, writes such a row — so such rows exist there. Whether a given export contains any is NOT MEASURED: it takes the OLDEST 25,000 rows, so the answer depends on the live row count. The exclusion is owed either way. Open work: `plans/house-bots/RESUME-HERE.md` §0b. (Was:) ~~Prospective, not live: the
+**Status:** decided on branch `house-bots` (build ruling 501), to be built **before Commit 8**. 🔴 **NOT BUILT, AND NO LONGER PROSPECTIVE (checked 2026-09-26 at `91c672c1`):** `buildIsoAudit` (`src/lib/server/reports/catalogue.ts`) still calls `getAuditPageDurable({ limit: ISO_EXPORT_LIMIT })` with no action filter. Every designation, switch event and engine switch-off writes a `house_bot.*` audit row (`HOUSE_AUDIT`, `src/lib/house-bot/constants.ts`), and the desk was first designated and switched on, on production, on 2026-09-21 — every switch event since, the engine's own switch-offs included, writes such a row — so such rows exist there. Whether a given export contains any is NOT MEASURED: it takes the OLDEST 25,000 rows, so the answer depends on the live row count. ⛔ **WITHDRAWN 2026-09-26** — the owner released it and the session kept the export unfiltered (entry `2026-09-26 · House bots: ruling 501 WITHDRAWN`, above): nothing is built and the export stays unfiltered. (Was:) ~~Prospective, not live: the
 master switch ships OFF, so no `house_bot.*` row exists on production today — which is precisely why it is settled before the
 release commit rather than after.~~ ⚠️ **Flagged to Ali as the one build decision here with a regulatory consequence:** he may want
 his compliance advisor's eye on the wording of the exclusion note.
@@ -462,7 +501,7 @@ behind, and it is the one artefact that physically leaves the company:
 So the document that goes to a regulator would name the feature and its record ids. This is a conformance gap against a decision
 already taken, not a new question of principle.
 
-**The decision: EXCLUDE, not neutralise, and not leave.**
+**The decision: EXCLUDE, not neutralise, and not leave.** ⛔ **Withdrawn 2026-09-26** — never built; the owner released it and the session kept the export unfiltered (entry `2026-09-26 · House bots: ruling 501 WITHDRAWN`).
 1. `getAuditPageDurable` gains the `excludeActions` parameter its sibling `getAuditForActorDurable` already carries
    (`src/lib/server/audit.ts:758`); the ISO builder passes `Object.keys(HOUSE_AUDIT)`.
 2. **The report's own notes state that rows were excluded, and how many.** Renaming house actions into a neutral form would
@@ -656,7 +695,7 @@ moving the notice first.
 |---|---|
 | D1 | Build everything. A global **master switch ships OFF** on production, and Ali alone turns it on. |
 | D2/D7 | ⛔ **REVERSED by D19a (2026-09-16): no public text at all.** (Superseded text:) Amend the published Rules and Terms (en/sw/zh): a carve-out from the prohibited-conduct list for accounts 50pick operates, plus one disclosure line. **Effective on deploy, with no 14-day notice** (owner ruling; 50pick reports to GBT). |
-| D3 | The bot account belongs to a real person. **They may use it and withdraw normally.** The console reads the **live wallet balance** (no shadow balance) ⛔ **— but it never RENDERS it (corrected 2026-09-18; a consequence of D20 through replan ruling 266, sharpened by C7 ruling 459, that the marking passes missed).** The wallet read exists and is used to derive a funded **STATE**; **no console surface paints a bare balance anywhere**, because it is a real person's money figure, it is the one number on these screens belonging to someone other than 50pick, and it is the one most likely to sit in a screenshot.  ⚠️ **AMENDED 2026-09-25 (owner): the desk’s ACTIVITY rows may paint it — see the dated entry at the head of this log. Everywhere else, including the designate wizard, the roster and every player surface, the prohibition stands.** |
+| D3 | The bot account belongs to a real person. **They may use it and withdraw normally.** The console reads the **live wallet balance** (no shadow balance) ⛔ **— but it never RENDERS it (corrected 2026-09-18; a consequence of D20 through replan ruling 266, sharpened by C7 ruling 459, that the marking passes missed).** The wallet read exists and is used to derive a funded **STATE**; **no console surface paints a bare balance anywhere**, because it is a real person's money figure, it is the one number on these screens belonging to someone other than 50pick, and it is the one most likely to sit in a screenshot.  ⚠️ **AMENDED 2026-09-25 (owner): the desk’s ACTIVITY rows may paint it — see the dated entry `2026-09-25 · D3 AMENDED` near the head of this log. Everywhere else, including the designate wizard, the roster and every player surface, the prohibition stands.** |
 | D3b | **No payment feature.** The holder tops up through the normal deposit flow and is reimbursed out of band. While their bot is **ACTIVE**, every deposit or withdrawal on the account alerts admins. While inactive, nothing is watched. |
 | D4 | A **roster** of bots, each with its own rules. One master switch plus global limits. |
 | D5 | Consent = the owner types the account's **password** (only). |

@@ -65,12 +65,13 @@ ecison" · "bots ar enoma player please".
 `bot-flow-seal`, both machines, and what is open. What stays below is the owner's standing rules (item 2) and the
 dated build record of 2026-09-14…21 (items 3 and 5), kept for its rulings — nothing in it is a current instruction.
 The 2026-09-22 register the old item 0 pointed at is closed (the editor `8fc40f48`, the blockers live at `b8615d28`,
-the ten minors on 2026-09-23), except two items carried out of it: the owner decision on a half-configured account
-(now beside the behaviour in `docs/HOUSE-BOTS.md` §5.4) and B7's unasserted fire heartbeat and fire-time RG pre-check
-(for `RESUME-HERE.md` §0b); that day's handover files were deleted 2026-09-26 as spent and git history keeps them.
+the ten minors on 2026-09-23), except two items carried out of it, both decided 2026-09-26 in `RESUME-HERE.md` §0c:
+the half-configured account (decision 5, kept as it is; the note is in `docs/HOUSE-BOTS.md` §5.4) and B7's unasserted
+fire heartbeat and fire-time RG pre-check (decision 6, build order step 5); that day's handover files were deleted
+2026-09-26 as spent and git history keeps them.
 **Standing, from the deleted 2026-09-19 bullet:** never weaken a guard, lower a floor, widen an exemption or delete a
 proof. **Next free ruling numbers** — re-derived from the files 2026-09-26; re-derive again before taking one (ruling
-516 (iii)): the replan band **557** (`C5-D20-REPLAN.md` §5 ends at 556) · Commit 7's band **437** (`C7-SPEC.md`'s last
+516 (iii)): the replan band **558** (`C5-D20-REPLAN.md` ends at 557, 2026-09-26) · Commit 7's band **437** (`C7-SPEC.md`'s last
 `#### ` ruling is 436; its §8 list 452–461 is not a band) · 334–339 and 376–379 stay reserved and unspent.
 1. Get onto the branch on whatever machine you are on: `RESUME-HERE.md` §0 (branch `bot-flow-seal`; Ali-Blade15 works on `C:/`, the office PC on `F:/`).
 2. **Coordination is light** (Ali, 2026-09-14: only pushes to live need coordinating). Send no hello, ALL-CLEAR, start or end messages, and never wait on another session's reply.
