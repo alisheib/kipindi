@@ -42,8 +42,8 @@ export const MUTATIONS = [
     why: "⭐ THE ORIGINAL DEFECT, VERBATIM: the balance is gated shown/hidden/shown/hidden as the window widens. Every branch is defensible and the SEQUENCE is not — a player on a 1920 monitor loses the balance a 1440 laptop shows, and no explanation exists outside a source comment",
     file: BAR,
     suite: "wallet-reach",
-    from: `            <WalletBalancePill balance={user.balance} />`,
-    to: `            <span className="hidden sm:flex lg:hidden xl:flex 2xl:hidden"><WalletBalancePill balance={user.balance} /></span>`,
+    from: `            <WalletBalancePill balance={liveBalance} held={!!user.walletHeld} />`,
+    to: `            <span className="hidden sm:flex lg:hidden xl:flex 2xl:hidden"><WalletBalancePill balance={liveBalance} held={!!user.walletHeld} /></span>`,
     expect: "3: ⛔ the old non-monotonic ladder has not come back",
   },
   {

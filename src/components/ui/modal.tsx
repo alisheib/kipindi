@@ -168,6 +168,21 @@ export type ModalProps = {
    *  and the RG reality-check, which dock to the bottom edge on mobile for
    *  thumb reach. Default false = the standard centered dialog. */
   sheet?: boolean;
+  /**
+   * Where the SHEET stops being a sheet (default "sm" — every existing caller).
+   * "lg" keeps the bottom sheet up to 1023px: the Wallet (landing v3, Ali's ruling R1, 2026-09-26)
+   * is "a bottom sheet below 1024, a panel under the chip from 1024", so a 768 tablet gets the
+   * thumb-reach sheet and only a desktop gets the panel.
+   */
+  sheetUntil?: "sm" | "lg";
+  /**
+   * From `lg`, pin the panel UNDER this element (its bottom + 8px, right edges aligned) instead of
+   * centring it — the Wallet panel opens under the balance chip that opened it. The scrim goes
+   * transparent there: it still closes on a click outside and the dialog is still modal (focus
+   * trap, Esc), but a small panel under its trigger does not dim the page it belongs to.
+   * ⚠️ Only meaningful with `sheet` + `sheetUntil="lg"`; below lg the element is ignored.
+   */
+  anchorRef?: React.RefObject<HTMLElement | null>;
 };
 
 /** The shared centered-dialog shell. Controlled — the caller owns `open`. */
@@ -187,9 +202,26 @@ export function Modal({
   zIndex = 100,
   ariaBusy,
   sheet = false,
+  sheetUntil = "sm",
+  anchorRef,
 }: ModalProps) {
   const { t } = useT();
   const [mounted, setMounted] = React.useState(false);
+  const tall = sheet && sheetUntil === "lg";
+  const anchored = tall && !!anchorRef;
+  /* The panel's place under its trigger, read from the trigger itself — on open and on resize, so
+     a window resized with the panel open keeps it under the chip. CSS applies it from lg only. */
+  const [anchorAt, setAnchorAt] = React.useState<{ top: number; right: number } | null>(null);
+  React.useEffect(() => {
+    if (!open || !anchored) return;
+    const measure = () => {
+      const r = anchorRef?.current?.getBoundingClientRect();
+      if (r) setAnchorAt({ top: Math.round(r.bottom + 8), right: Math.max(8, Math.round(window.innerWidth - r.right)) });
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, [open, anchored, anchorRef]);
   const panelRef = React.useRef<HTMLDivElement>(null);
   const prevFocus = React.useRef<HTMLElement | null>(null);
   /* §M2 — the modal rung's exit is `.m-out` over one `--t-quick` beat.
@@ -290,7 +322,8 @@ export function Modal({
       aria-label={labelledBy ? undefined : ariaLabel}
       aria-labelledby={labelledBy}
       className={`fixed inset-0 flex justify-center overflow-y-auto overscroll-contain ${
-        sheet ? "items-end sm:items-center px-0 sm:px-3 py-0 sm:py-4" : "px-3 py-4"
+        tall ? "items-end lg:items-center px-0 lg:px-3 py-0 lg:py-4"
+          : sheet ? "items-end sm:items-center px-0 sm:px-3 py-0 sm:py-4" : "px-3 py-4"
       } ${exiting ? "pointer-events-none" : ""}`}
       style={{ zIndex }}
     >
@@ -303,7 +336,7 @@ export function Modal({
            `animation` shorthands, so they cannot be worn at once — the later
            declaration would win outright. Swapping the class keeps the blur by
            naming the same token the utility does; no value is restated. */
-        className={`${exiting ? "m-out" : "m-scrim"} fixed inset-0 bg-black/60`}
+        className={`${exiting ? "m-out" : "m-scrim"} fixed inset-0 bg-black/60${anchored ? " kp-modal-scrim--anchored" : ""}`}
         style={exiting ? { backdropFilter: "blur(var(--m-blur-behind))" } : undefined}
       />
       {/* ⭐ RUNG 3 (M2) — the dialog PICKS a rung instead of composing one. `mat-modal`
@@ -335,10 +368,16 @@ export function Modal({
         /* §M2: modal → `.m-dialog-in` or `.m-sheet-in` on the way in, `.m-out` on
            the way out. The sheet's ≥sm keyframe swap goes with the entrance only —
            `.m-out` is one exit for both variants, which is what the law names. */
-        className={`${exiting ? "m-out" : sheet ? "m-sheet-in kp-modal-sheet" : "m-dialog-in"} mat-modal relative w-full p-5 lg:p-6 ${
-          sheet ? "rounded-t-modal sm:rounded-modal sm:my-auto" : "my-auto rounded-modal"
-        } ${panelClassName}`}
-        style={{ maxWidth }}
+        className={`${exiting ? "m-out" : tall ? "m-sheet-in kp-modal-sheet-lg" : sheet ? "m-sheet-in kp-modal-sheet" : "m-dialog-in"} mat-modal relative w-full p-5 lg:p-6 ${
+          tall ? "rounded-t-modal lg:rounded-modal lg:my-auto"
+            : sheet ? "rounded-t-modal sm:rounded-modal sm:my-auto" : "my-auto rounded-modal"
+        }${anchored ? " kp-modal-anchored" : ""} ${panelClassName}`}
+        style={{
+          maxWidth,
+          ...(anchored && anchorAt
+            ? ({ "--anchor-top": `${anchorAt.top}px`, "--anchor-right": `${anchorAt.right}px` } as React.CSSProperties)
+            : null),
+        }}
       >
         {showClose && (
           <button
@@ -360,6 +399,11 @@ export function Modal({
           Swaps the kit keyframe only; no new motion vocabulary. Reduced motion is handled
           globally by motion.css. */}
       <style>{`@media (min-width: 640px) { .kp-modal-sheet { animation-name: m-settle-lift; } }`}</style>
+      {/* The tall sheet swaps at lg instead — to the MENU settle when it is a panel under its
+          trigger (the kit's floating-surface entrance, `.m-float-in`'s keyframe), else the dialog's. */}
+      {tall && (
+        <style>{`@media (min-width: 1024px) { .kp-modal-sheet-lg { animation-name: ${anchored ? "m-settle-menu" : "m-settle-lift"}; } }`}</style>
+      )}
     </div>,
     document.body,
   );

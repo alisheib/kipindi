@@ -9,16 +9,20 @@
 
 ## §0 · RESUME AT — the v3 build (reopened 2026-09-26)
 
-**State (2026-09-26):** D0 filed — the v3 delivery, its acceptance record, this tracker and the §2
-build plan are on `main`; the dropped folder in `C:\kipindi-main` is deleted once this push is live.
-**Next:** batch D1, the landing sections (§1 rows WP2, WP8, WP10, WP11, WP12, WP13, WP17, RG), built as
-§2.1 describes.
+**State (2026-09-26):** D0 ✅. D1 — the landing sections — is LIVE (`54f8199b`) and measured on
+production the same day: gate V1, V2 and V5–V16 clean in every cell; V3, V14, V15, V16 and V17 each
+RED-proved on production. What the production gate still reports is not D1's (the GATE row names each).
+Ali then asked for the Wallet before D2, so WP14 part 1 (the chip opens the Wallet; gold Deposit at
+zero) is built on branch `landing-v3` and in local verification.
+**Next:** finish WP14 — part 1 live and measured, then part 2 (the signed-in hero: Your picks and the
+same Deposit/Withdraw pair). Then batch D2 with **WP6 first**: production prints "YES @ 100% / NO @ 0%"
+on one-sided markets in the hero grid and the board (V17: 64 findings).
 
 Ali, 2026-09-26, handing over the v3 concept: *"proceed perfecting it … we can't come back until
 pushed live and validated visually and logically."* The delivery is filed raw at
 [`docs/design-system/v4-2026-09-26-landing-ten/`](design-system/v4-2026-09-26-landing-ten/). Its
 [`INHERIT-MANIFEST.md`](design-system/v4-2026-09-26-landing-ten/INHERIT-MANIFEST.md) holds **Ali's four
-rulings (R1–R4)** and **every place our laws beat the delivery (L1–L17)**. Read it before building a
+rulings (R1–R4)** and **every place our laws beat the delivery (L1–L20)**. Read it before building a
 row; this section does not repeat it.
 
 **How a session works this programme**
@@ -45,12 +49,33 @@ row; this section does not repeat it.
    ported (L12).
 5. The gate's landmark selectors (V14's `.kp-hero`, `.kp-qrow`, `.kp-topic`, `.kp-settled__row`, the
    V8 text map, the RED targets) are tied to class names. A rebuild re-points them in the same commit.
+6. `.qa-shots/` is gitignored, so the verification scripts live in **`scripts/qa/landing-v3/`**:
+   `verify-local.sh <label>` (boot, seed, capture, gate, RED V15–V17), `verify-prod.sh <label> <sha>`
+   (waits for the sha, captures production, gate, RED V3/V14–V17), `verify-wallet.sh <label>` (tsc, boot,
+   the Wallet drive `wallet.mjs`, signed-in captures) and `capture.mjs` (viewport tiles; `MODE=concept`
+   captures the delivery beside the build). Each runs under the lock:
+   `bash ~/heavy-node-lock.sh run landing bash scripts/qa/landing-v3/verify-local.sh d2a`. Frames and
+   reports land in `.qa-shots/landing-v3/<label>/`.
+7. Git Bash eats backslashes in heredocs, `node -e` and `sed` replacements (a regex became an
+   alternation; `\r\n` became a raw newline). Write patch scripts with the Write tool. Working-tree files
+   are CRLF on this machine (autocrlf), so a patch script normalises `\r\n` and restores it.
+8. The heavy-node lock is shared by every session: never `rm -rf` it on an earlier reading. Re-read the
+   owner immediately before and remove it only if it still names you.
+9. V14 is red on a LOCAL run: the in-memory seed produces no settled row the strip will show, so the
+   results strip (WP13) and V14 are measured on production only.
+10. The gate's V3 treats the top of the bottom rail as the fold (V15's rule, fixed in `54f8199b`): a
+    control under the rail at the fold is below the screen, not occluded. What V3 still reports on
+    production is the chat bubble — Ali's open call ("Landing page to a 10").
+11. V4 on production reports `.ticker-pause` at 40×31 on every cell. It is the LIVE strip's pause, sized
+    to the strip on purpose by that lane (`globals.css`, the note above `.ticker-pause`: the whole running
+    strip is the finger target). Not this programme's to change; it stays named on the GATE row.
 
 ## §0a · The paste-in prompt for the next session
 
 > Continue the 50pick landing v3 build. Read `docs/LANDING-TEN.md` §0 and §1 first, then
 > `docs/design-system/v4-2026-09-26-landing-ten/INHERIT-MANIFEST.md` (Ali's rulings R1–R4 and laws
-> L1–L17), then §2 (how each row is built) and §3 (every delivery item and the row that delivers it).
+> L1–L20), then §2 (how each row is built) and §3 (every delivery item and the row that delivers it).
+> Verify with the scripts in `scripts/qa/landing-v3/` (§0 trap 6), always under the heavy-node lock.
 > Open the concept (`npx serve docs/design-system/v4-2026-09-26-landing-ten/design`, then
 > `50pick Home Concept v3.dc.html`, with `?signedIn=1&balance=1&wallet=1&locale=sw` as needed) at 360,
 > 768 and 1280 beside the build. Work the next ⬜ batch of §2.0 in order, in your own worktree off
@@ -67,34 +92,34 @@ row; this section does not repeat it.
 
 | ID | Unit | Status | Commit | Evidence / note |
 |---|---|---|---|---|
-| D0 | File the delivery, its acceptance record, this tracker; delete the dropped folder | 🔨 | | |
+| D0 | File the delivery, its acceptance record, this tracker; delete the dropped folder | ✅ | 1173dc2b | live 2026-09-26; the dropped folder deleted, `C:\kipindi-main` fast-forwarded |
 | WP1 | Header collapse below 1100, Menu button, segmented language | ⛔ | | R1 kept the header; L4 |
-| WP2 | Hero order, trust lines, headline clamp, backdrop drawing removed | 🔨 |  | R4(1) |
+| WP2 | Hero order, trust lines, headline clamp, backdrop drawing removed | ✅ | 54f8199b | measured on production 2026-09-26 (360/768/1280 × sw/en/zh frames looked at); R4(1), L18 |
 | WP3 | Featured card: full question, meta + source, time top-right, 24h mark and delta | ⬜ | | |
 | WP4 | Question board rows: title link + YES@/NO@ buttons + time left | ⬜ | | |
 | WP5 | Pick slip: sheet below 1024, inline from 1024, after-placing share | ⬜ | | R2 |
 | WP6 | One-sided state on every card + the grid's degeneracy floor | ⬜ | | L14; delivers MOBILE-VISUAL ruling 13 |
 | WP7 | Estimate line on cards | ⛔ | | R3 |
-| WP8 | Proof rail: phone ledger rows, conviction reading as the bar's label | 🔨 |  |  |
+| WP8 | Proof rail: phone ledger rows, conviction reading as the bar's label | ✅ | 54f8199b | measured on production 2026-09-26 (360/768/1280 × sw/en/zh frames looked at) |
 | WP9 | Pick-a-side grid: phone snap rail with a peek, 2 and 3 columns | ⬜ | | |
-| WP10 | Topics: six tiles, Other last, "All topics" as the section link | 🔨 |  |  |
-| WP11 | How it works: "A named source", the fee from config, h3 steps | 🔨 |  | L3 |
-| WP12 | Up & Down band: the soonest round, price line, ring, UP/DOWN, plural fixed | 🔨 |  | R4(6) |
-| WP13 | Results: date, the market's own sign-off, source link, paid | 🔨 |  | L2 |
-| WP14 | Wallet: chip opens sheet/panel, equal Deposit/Withdraw, gold Deposit at zero, signed-in hero | ⬜ | | R1 |
+| WP10 | Topics: six tiles, Other last, "All topics" as the section link | ✅ | 54f8199b | measured on production 2026-09-26 (360/768/1280 × sw/en/zh frames looked at) |
+| WP11 | How it works: "A named source", the fee from config, h3 steps | ✅ | 54f8199b | measured on production 2026-09-26 (360/768/1280 × sw/en/zh frames looked at); the fee reads 13% through `ratesFrom`; L3 |
+| WP12 | Up & Down band: the soonest round, price line, ring, UP/DOWN, plural fixed | ✅ | 54f8199b | measured on production 2026-09-26 (360/768/1280 × sw/en/zh frames looked at); full width, R4(6) |
+| WP13 | Results: date, the market's own sign-off, source link, paid | 🔨 | 54f8199b | live and measured 2026-09-26 (a reversed market reads "Corrected on objection" on production). ⚠️ Open: at 360 in sw the source host truncates to ~9 characters beside "TZS 39,570 yalilipwa" — fixed with D2. L2 |
+| WP14 | Wallet: chip opens sheet/panel, equal Deposit/Withdraw, gold Deposit at zero, signed-in hero | 🔨 | | Part 1 (the chip opens the Wallet; gold Deposit at zero) built, `test:wallet-reach` 48/48 and five mutations caught; local drive pending. Part 2: the signed-in hero. R1, L19, L20 |
 | WP14b | Share in card footers; Share on WhatsApp after placing | ⬜ | | |
 | WP15 | Motion and performance | ⬜ | | L12 |
-| WP16 | i18n: every new key in en, sw and zh | ⬜ | | |
-| WP17 | Accessibility: heading order, no nested controls, dialog semantics | 🔨 |  |  |
-| RG | Drop the RG line above the footer; chat bubble hides under a sheet | 🔨 |  | R4(5), R4(7) |
-| V15 | Gate: first screen at 360 × 740 | ⬜ | | |
-| V16 | Gate: no promised winnings | ⬜ | | |
-| V17 | Gate: no 0% or 100% price | ⬜ | | |
+| WP16 | i18n: every new key in en, sw and zh | 🔨 | 54f8199b | D1's keys in all three (`test:i18n`); sw/zh drafts carry the native-review marker (rows SW, ZH) |
+| WP17 | Accessibility: heading order, no nested controls, dialog semantics | 🔨 | 54f8199b | heading order and split row links live; dialog semantics arrive with the Wallet (WP14) and the slip (WP5) |
+| RG | Drop the RG line above the footer; chat bubble hides under a sheet | 🔨 | 54f8199b | RG line dropped, live 2026-09-26 (R4(5)); the chat bubble under a sheet ships with D3 (R4(7)) |
+| V15 | Gate: first screen at 360 × 740 | ✅ | 54f8199b | production 2026-09-26: 0 findings; RED PROVED on production |
+| V16 | Gate: no promised winnings | ✅ | 54f8199b | production 2026-09-26: 0 findings; RED PROVED on production |
+| V17 | Gate: no 0% or 100% price | ✅ | 54f8199b | production 2026-09-26: RED PROVED; its 64 findings are WP6's to clear (one-sided markets print 100%) |
 | V18 | Gate: every market shows price or state, time, pool, source | ⬜ | | |
 | V19 | Gate: Withdraw as reachable and as large as Deposit | ⬜ | | |
 | V20 | Gate: sheets trap focus, close on Esc, respect the safe area | ⬜ | | |
 | V21 | Gate: the placement map, by bounding box | ⬜ | | |
-| GATE | `qa:landing-ten` V1–V14 clean on production (V3, V14 open by R4); `npm run test:all` + typecheck green | ⬜ | | R4 |
+| GATE | `qa:landing-ten` V1–V14 clean on production (V3, V14 open by R4); `npm run test:all` + typecheck green | ⬜ | | Production 2026-09-26 after D1: V1, V2, V5–V16 clean. Still reported: V3 ×12 (the chat bubble, Ali's call), V4 ×32 (`.ticker-pause` 40×31, the LIVE-strip lane's, §0 trap 11), V17 ×64 (WP6). R4 |
 | PANEL | The eight-reviewer re-score, recorded below | ⬜ | | |
 | FUNNEL | Visitors → sign-ups → first pick, measured before and after launch | ⬜ | | |
 | SW | Native Swahili sign-off of every new sw string | ⏳ | | Ali |
