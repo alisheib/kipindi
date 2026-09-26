@@ -2547,8 +2547,8 @@ by U1's driver at the §11 matrix unless a unit says otherwise.
   self-exclusion timer is running. A self-excluded person is never signed in (every session revoked, sign-in refused), and
   `coolOffAction` signs the player out — so, signed out, they see the lobby like any visitor, strip included, exactly as they
   already see `/results` and the landing's settled strip. The strip is site content, not a §4 "marketing message".
-  ❓ **OPEN FOR ALI:** recognising a signed-out person on a break needs a device marker — a new cookie, which is a Privacy
-  notice change (his call, as `kp-density` was).
+  ✅ **ALI RULED 2026-09-26: LEAVE IT AS IT IS** — no device marker (a new cookie would be a Privacy-notice change);
+  signed out, a person on a break sees the lobby like any visitor. Recorded in `docs/COMPLIANCE-DECISIONS.md`.
 - 🔵 **D81 — the language code fails AA at 4.12:1, and only on the row for the language the player already uses.** EN 4.86:1, ZH 4.86:1, SW 4.12:1, identical foreground: the miss is the SELECTED row's
   tinted background. Handed over as "the topbar pill, 52 of 52 cells" and re-measured — the topbar pill is 12.17:1 and passes; the failing element is the code INSIDE the menu, `text-text-faint`, 11px bold.
   Live (`6a20bd78`) with `--text-subtle` (5.63:1). `--text-muted` measured 9.9:1 and was rejected for promoting a secondary label over the thing it annotates.
