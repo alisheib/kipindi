@@ -67,9 +67,17 @@ import { injectDefect } from "./red-anchor.mjs";
  * ⛔ So every injected file is PARSED BEFORE IT IS WRITTEN, and a mutation whose file will not parse is
  * BROKEN-INJECTION — a failure, never a catch. This is the `to` half of what `test:red-anchors` §3 does for
  * the `from`, and nothing else in the repository asks it.
+ * ⚠️ ONLY A SCRIPT HAS A GRAMMAR TO BREAK (2026-09-26, house-bots step 8). The first declarations into a MARKDOWN
+ * register (`docs/HOUSE-BOTS.md` and `docs/COMPLIANCE-DECISIONS.md`, whose accepted risks 8–12 the disclosure suite
+ * holds verbatim) would have reached esbuild as TypeScript and been classed BROKEN-INJECTION every time, proving
+ * nothing either way. So a file that is not a script is not parsed: prose has no syntax to break, and the shared
+ * resolver has already refused a `from` that does not match exactly once. Every file a declaration named before that
+ * day is a script and is still parsed, exactly as before.
  */
 const esbuild = createRequire(import.meta.url)("esbuild");
+const SCRIPT_FILE = /\.(?:[cm]?[jt]sx?)$/;
 const parses = (file, code) => {
+  if (!SCRIPT_FILE.test(file)) return null;
   try { esbuild.transformSync(code, { loader: file.endsWith("x") ? "tsx" : "ts", sourcefile: file }); return null; }
   catch (e) { return `${file}: ${String(e.errors?.[0]?.text ?? e.message).slice(0, 160)}`; }
 };
@@ -217,5 +225,8 @@ for (const [p, before] of shaBefore) {
   if (sha(p) !== before) { dirty++; console.log(`DIRTY ${p} — NOT restored byte-identically`); }
   try { unlinkSync(`${p}.red-tmp`); } catch { /* already gone */ }
 }
-console.log(`\nhouse-bot-c5 RED: ${caught} caught, ${wrong} wrong-assertion, ${missed} missed, ${stale} stale, ${dirty} files left dirty`);
-if (wrong + missed + stale > 0 || dirty > 0) process.exit(1);
+/* ⛔ BROKEN-INJECTION IS A FAILURE, AS THE HEADER SAYS — and until 2026-09-26 the exit code did not say so: it was
+   counted, printed per declaration and then left out of this line and of the exit, so a run whose only defect was an
+   unparseable injection exited 0 over a summary that never mentioned it. */
+console.log(`\nhouse-bot-c5 RED: ${caught} caught, ${wrong} wrong-assertion, ${missed} missed, ${stale} stale, ${brokenInj} broken-injection, ${dirty} files left dirty`);
+if (wrong + missed + stale + brokenInj > 0 || dirty > 0) process.exit(1);

@@ -104,7 +104,7 @@ The account page's ledger has the same shape in eight columns. Below `sm` it is 
 
 **Suite floors — a lower count is a regression, not drift:** console **923 memory / 669 Postgres** (2026-09-26, step 3) · reports **249 / 80** · comms **52 / 50** ·
 engine **808 / 787** · money **132 / 150**. **Declared mutations:** console 373 (340 + step 1's 8 + step 3's 25, 2026-09-26) · engine 80 · money 56 + seam 7 ·
-c5 97 — all resolve exactly once (`test:red-anchors` §3, 2026-09-26).
+c5 100 (99 primaries; step 8 added 3) — all resolve exactly once (`test:red-anchors` §3, 2026-09-26).
 
 ## 0b · ▶ WHAT IS OPEN, in the order to work it
 
@@ -221,7 +221,7 @@ pushed to `main` and verified serving before the next:**
 7. Ours, small: give `red:house-bot-ops` a red entry file of its own (§0b NOT OURS; the diagnosis and the named fix
    are `house-bot-ops-cases.mts:55-79`). Re-derive the undeclared count with `test:red-anchors` §4 first — the fix
    removes exactly one entry, and parallel lanes move the count.
-8. Owed text: accepted risks 8–12 were never written into either register (`docs/HOUSE-BOTS.md` §13); their sealed
+8. ✅ **DONE 2026-09-26** (`test:house-bot-disclosure` 118/0, d.7/d.7b/d.7.c1; risk 12 states D1's owner-role reading) — owed text: accepted risks 8–12 were never written into either register (`docs/HOUSE-BOTS.md` §13); their sealed
    text is `04-amendments.md` S5 — check each against today's code before copying it into both registers identically.
 9. **Close:** drive the four fleets WHOLE again (§0b a's recipe), verify the deploy serves the final sha, and write the
    handover in §5.
@@ -368,3 +368,7 @@ KP_BASE=http://localhost:3031 KP_WIDTHS=360,1280 npm run -s qa:house-bots-visual
     walk, a house suite red on `main` since another lane's `0f1f9dd9`, a canary that was also a transaction, a note line
     past the viewport at 640, Results cards too narrow at 1024, a gate list missing the reader), all fixed; console
     923/669, visual 499/0, probe 37/0. Its 25 new mutations are driven after the push.
+  - ✅ **Step 8 DONE** — accepted risks 8–12 in BOTH registers, one text each, every sentence checked against today's code
+    (risk 9's verify bucket is Redis-shared as RECORDED; risk 10's window is 180 s; risk 12 states D1's owner-role reading
+    and FS-09's unsent alerts); `test:house-bot-disclosure` 118/0 (floor 114 → 118), 3 new c5 mutations, and
+    `red:house-bot-c5` now fails a run on BROKEN-INJECTION instead of passing it silently.
