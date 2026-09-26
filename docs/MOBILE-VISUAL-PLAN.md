@@ -1528,6 +1528,7 @@ view"), it changes spacing only, and **`MarketListRow` is still not built**. `DE
 | Header | auth pills 48 → 40 (`--h-control-sm`) below 640; the top safe-area inset added via `--header-h` (U23) | bar height 56 **plus** `safe-area-inset-top`, read through `--header-h` (no literal offsets); both pills visible at the same height |
 | Bottom rail | items 64 → 48 **only** under the short-screen gate (U21), with the chat offset and footer clearance derived from `--rail-h` | 64px items in portrait; five slots; labels |
 | Home | `--rh-*` phone rungs, hero padding, lede one step, CTA height 56 → 48 (class `btn-xl` kept), proof in one row, topic tiles, the Closing-soonest row layout | sections, copy, the 17px question size, fabricated-number rules, PV-01 brand-mark backdrop |
+| Home — ⚠️ SUPERSEDED 2026-09-26 | Ali handed over the landing v3 concept and ruled on it (`docs/design-system/v4-2026-09-26-landing-ten/INHERIT-MANIFEST.md` R1–R4). The home row above no longer binds `/`: its sections, copy and the PV-01 backdrop change under that programme, tracked in `docs/LANDING-TEN.md` §1. This plan must not revert them | the phone floors this plan owns everywhere else (tap 40, safe areas, the rail) |
 | Chat bubble | 52 → 44, hide while scrolling | the `bottom: isMobile ? 80 : 16,` / `zIndex: 60` adjacent lines (`test:stacking`) |
 | Overlays, toasts, notices | padding and figure rungs, close 48 → 44, questions as sheets, ≤ 2 toasts, one non-compliance bar at a time | money-commit `btn-lg`, feedback timings, z-ladder, compliance visibility, bet confirm centred |
 | Desktop ≥ 640 | only the defect fixes, the countdown (ruled everywhere), and D9 | every card and board pixel (proved by a zero-diff control) |
@@ -1535,6 +1536,7 @@ view"), it changes spacing only, and **`MarketListRow` is still not built**. `DE
 ## §7 — Standing rulings this plan inherits
 
 - **PV-01 RULED keep**: the hero brand-mark backdrop stays.
+  ⚠️ **REVERSED 2026-09-26 by Ali** (landing v3, INHERIT-MANIFEST R4(1)): the hero backdrop drawing is removed. **Ruling 13 ("a price needs two sides") is delivered on the market card by landing v3 WP6** — U32 should read `docs/LANDING-TEN.md` §1 before building it again.
 - **PV-05 CLOSED 2026-09-04** (`docs/design-brief/player-visual-2026-09/handover/DECISIONS.md`): commit-sequence motion correct as
   shipped; both "dial reads thin / three words" concerns overturned by measurement. ⛔ The bet dial and its panel copy are not repainted here.
   D5 (hand-typed `animation-delay` 100/180/260/340ms at `chat-styles.css:904-907`, chat empty-state chips) stays filed; U7 does not touch it.
