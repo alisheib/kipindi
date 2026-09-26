@@ -158,6 +158,7 @@ git history. It is gone from the tip; rewriting history is Ali's decision alone.
   **68** undeclared against a ceiling of 65. ⚠️ ONE of the 68 IS ours: `red:house-bot-ops`, counted because its red
   entry point shares a source with an `rmSync` — the named fix is a red entry file of its own
   (`house-bot-ops-cases.mts:55-75`, `red-anchors.test.mts:240-264`); it would leave 67. ⛔ Never bump the ceiling.
+  ✅ **DONE 2026-09-26 (build step 7): measured 67**, and the 67 left are other lanes' — ours is out of the count.
 - `scripts/focus-and-fit.mjs:119`/`:122` counts every buried control as touching too, then reports the two as
   disjoint — "4 fully under the rail and 4 touching it" describes 4, not 8.
 - The desk's design measurement has never run: `qa:tab-candidates` short-circuits any railed page to "ALREADY A RAIL"
@@ -213,14 +214,15 @@ pushed to `main` and verified serving before the next:**
    line is true on the day it lands — and REWRITE the plan's §4.3 template first (the plan's status line says how): it
    was drafted for an explicit owner approval, and Ali delegated instead. Quote his delegation (§0b) verbatim, say
    plainly the session decided under it, and name the real audience (the ADMIN role).
-4. ✅ **BUILT 2026-09-26 — the account finder list** (decision 4), gates green before the push (`docs/HOUSE-BOTS.md` §7.1a, §12.9; console 972/706, 27 mutations): every account, twenty to a page, three sortable columns, two filters, the three walls pinned and mutated.
+4. ✅ **LIVE 2026-09-26 — the account finder list** (decision 4; served at `c3c3b4a5`, verified by `dpl`), gates green before the push (`docs/HOUSE-BOTS.md` §7.1a, §12.9; console 972/706, 27 mutations): every account, twenty to a page, three sortable columns, two filters, the three walls pinned and mutated.
 5. ✅ **DONE 2026-09-26 — the fire-path assertions** (`docs/HOUSE-BOTS.md` §12.8; engine 825/804, 21 mutations) (decision 6): the fire heartbeat and the fire-time RG pre-check, both stores.
 6. **Ruling 543** (`C5-D20-REPLAN.md`): `audit()` promises fail-open but `chainSecret()` throws in production past
    that fallback, so three house writers can report a landed write as failed. Its schedule hung on the withdrawn
    ruling 501; re-derive that it is still unbuilt (it was on 2026-09-26), then fix it with a case and a mutation.
-7. Ours, small: give `red:house-bot-ops` a red entry file of its own (§0b NOT OURS; the diagnosis and the named fix
-   are `house-bot-ops-cases.mts:55-79`). Re-derive the undeclared count with `test:red-anchors` §4 first — the fix
-   removes exactly one entry, and parallel lanes move the count.
+7. ✅ **BUILT 2026-09-26 — `red:house-bot-ops` has a write-free entry of its own** (`docs/HOUSE-BOTS.md` §12.10): the
+   key runs `scripts/red-house-bot-ops.mts`, the pure detectors moved verbatim into `house-bot-ops-detectors.mts`, and
+   `test:red-anchors` §4's undeclared count fell 68 → 67. Ops 100/104 (memory floor 89 → 100), red 50/50. ⚠️ Its gate
+   run found `ops.pop.0p` red ON MAIN (a stale known string) — fixed in the same commit.
 8. ✅ **DONE 2026-09-26** (`test:house-bot-disclosure` 118/0, d.7/d.7b/d.7.c1; risk 12 states D1's owner-role reading) — owed text: accepted risks 8–12 were never written into either register (`docs/HOUSE-BOTS.md` §13); their sealed
    text is `04-amendments.md` S5 — check each against today's code before copying it into both registers identically.
 9. **Every desk table sorts, and none can grow past a page** — Ali, 2026-09-26, mid-session, as typed: *"before
@@ -397,6 +399,13 @@ KP_BASE=http://localhost:3031 KP_WIDTHS=360,1280 npm run -s qa:house-bots-visual
     skeleton (tsc), a handle and two dates 3px wider than the 360 strip (a phone-only 4px gutter), and
     `test:house-bot-reports` red from the finance lane's c6c637c1 (its census sample, now classified and pinned with a
     control). Console 972/706, reports 251/80, visual 519/0 and 112/0 on the list's own routes (2 NOT MEASURED: the
-    cannot-be-chosen view has no choosable handle to measure). Its 27 mutations are driven after the push.
+    cannot-be-chosen view has no choosable handle to measure). **LIVE at `c3c3b4a5`** (deploy verified). Its 27 mutations,
+    driven at that commit: **27 caught, 0 missed, 0 dirty**; `red:filter-language` at the same commit: **28/28 caught**.
   - ⏳ **Ali added two asks mid-session** — steps 9 and 10 above (every desk table sorts and pages; no navigation looks
     stuck). The close became step 11.
+  - ✅ **Step 7 BUILT** — `red:house-bot-ops` has its own write-free entry; §4's undeclared count 68 → 67. The first gate
+    run was red for a reason on `main`, not in the step: the ops walker's positive control looked for `const PORT = 5433;`,
+    which `db-scratch.mts` no longer has, so `ops.pop.0p` failed and the red proof missed `ops.pop.walk` (49/50). Fixed in
+    both places; ops 100/104, red 50/50. Measured against `c3c3b4a5` without the step: `test:house-bot-holder-lifecycle`
+    2.2, `test:decomment` 2.1 and `test:live-target-safe` §1b are red identically there — other lanes' populations, NOT OURS.
+    Its four hand-driven mutations are driven after the push.

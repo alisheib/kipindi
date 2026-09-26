@@ -95,7 +95,13 @@
  *     gate is scoped to what decides whether the container boots), and an unresolvable ref (exit 3 NOT
  *     MEASURED, never GO). ⛔ The cases never name `origin/main`: this suite is discovered by
  *     `test:all`, and a remote-tracking ref is a property of the machine, not of the tree.
+ *   · memory 100, postgres 104 — house-bots build step 7 (2026-09-26), the counts that run PRINTED:
+ *     `red:house-bot-ops` got its own write-free entry, and §0's `ops.red.*` guard (11 cases, memory
+ *     child only) pins it. ⚠️ The same run found `ops.pop.0p` RED ON MAIN before this step: its known
+ *     string was `const PORT = 5433;`, and `db-scratch.mts` had since made the port overridable, so the
+ *     positive control (and the red proof's `ops.pop.walk`, 49/50) failed for a reason nobody read. Both
+ *     now name the line the file really has; the red proof prints 50/50.
  */
 import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 
-await runTwoStores({ suite: "test:house-bot-ops", casesFile: "scripts/lib/house-bot-ops-cases.mts", minPass: { memory: 89, postgres: 104 }, dbPrefix: "hb_ops" });
+await runTwoStores({ suite: "test:house-bot-ops", casesFile: "scripts/lib/house-bot-ops-cases.mts", minPass: { memory: 100, postgres: 104 }, dbPrefix: "hb_ops" });

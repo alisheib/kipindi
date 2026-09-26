@@ -2032,6 +2032,45 @@ What it is and what it refuses to do is §7.1a. This is what proving it took.
 `console-mem`, 1 `reports-mem`); the console total is 400. They are driven after the push, in a detached tree at the
 live commit, and their result is recorded with the next commit.
 
+### 12.10 `red:house-bot-ops` gets its own entry file — built 2026-09-26 (RESUME-HERE §0c step 7)
+
+**What changed.** `npm run red:house-bot-ops` used to run `scripts/lib/house-bot-ops-cases.mts --prove-red`: one file
+with two entry points, whose §9 cleans up a temporary git index with a file-writing call. `test:red-anchors` §4 reads
+the WHOLE source of the script a `red:*` command names, comments included, so from `48c1c959` (2026-09-20) the
+in-memory red proof counted as a harness whose disk anchors nobody audits. The pure half of the case list (the
+detectors, both exemption lists, the planted region and `redCases()`) moved VERBATIM into
+`scripts/lib/house-bot-ops-detectors.mts`. Only `export` was added, and `SELF` now names the file that holds the
+planted region. The key now runs `scripts/red-house-bot-ops.mts`, which imports that module and writes nothing, and the
+case list refuses `--prove-red` with exit 2. ⛔ Nothing was declared: this harness injects no string into any file, so
+an anchors file would invent mutations (ruling 505). `isInProcess` was not widened, and `UNDECLARED_CEILING` stays 65.
+
+**Pinned so it cannot drift back.** `test:house-bot-ops` §0 (memory child), `ops.red.*`:
+- §4's rule is READ out of `red-anchors.test.mts`, never re-typed.
+- The key carries the flag and runs its own entry.
+- The entry's raw source, and its whole import closure (5 files), hold no file-writing call and import no child process.
+- A planted tree proves the walk follows imports and skips `import type`.
+- As the positive control, the same predicate convicts the case list's §9.
+- The refusals are DRIVEN. The old command exits 2. The entry exits 2 without its flag, and with it exits 0 with a tally
+  equal to the in-process plant count.
+
+| Instrument | Result |
+|---|---|
+| `test:red-anchors` §4, replayed statically (Perl, with §4's own rule) | before, at `ac631c35`: 186 `red:*`, 95 declaration files, 19 in-process, **68 undeclared** · after: 20 in-process, **67 undeclared**. The only key to leave the list is `red:house-bot-ops`, and no other key changed class |
+| `test:red-anchors`, run once on the changed tree (2026-09-26 · Ali-Blade15 · `ac631c35` plus this step, uncommitted) | **3278 passed, 4 failed**: 20 in-process with `red:house-bot-ops` among them, **67 undeclared**, both printed lists identical name for name to the replay's. The four failures are 4.1 and 4.2 (67 vs 65) and two §3 anchors in other lanes' files (`bar-geometry` → `query-bar.tsx`, `updown-handover` → `updown-card-phase.ts`); none is this step's |
+| The move | the moved body diffs against the pristine case list with exactly 7 changed lines (six `export`s and `SELF`); the case list keeps exactly one file-writing call, at §9 |
+| `test:house-bot-ops` (both stores), `red:house-bot-ops`, `test:deferred-register` — run 2026-09-26 on the integrated tree (`c3c3b4a5` + this step) | **memory 100 / Postgres 104, 0 failed** (floor 89 → 100) · **50/50 caught**, exit 0 · **14 passed, 0 failed**. ⚠️ The first run was red, and not because of this step: `ops.pop.0p` failed on `main` without it too (its known string `const PORT = 5433;` no longer exists — `db-scratch.mts` made the port overridable), and so the red proof missed `ops.pop.walk` (49/50) and the new `ops.red.1e` inherited that miss. Both controls now name the real line. |
+| The walkers that read `scripts/` | `test:guards-exist`, `test:orphans`, `test:pii-logs`, `test:support-contact`, `test:dead-schema`, `test:house-bot-reports`: green. `test:house-bot-holder-lifecycle` 2.2 (28 vs 25), `test:decomment` 2.1 (22 vs 20) and `test:live-target-safe` §1b are red **identically at `c3c3b4a5` without this step** — other lanes' scripts grew those populations; NOT OURS, recorded, not widened. |
+
+Declared mutations, each driven by hand in a detached tree nobody edits, and each restored byte-identically. There is
+deliberately no anchors file. They are driven after the push, at the live commit, and their result is recorded with the
+next commit:
+- `ops-red-entry-writes`: a file-writing call added to the entry. Must fail `ops.red.1c` and `ops.red.1d`, and put the
+  key back among §4's undeclared.
+- `ops-red-key-back-on-cases`: the key pointed back at the case list. Must fail `ops.red.1b`, and the key then exits 2.
+- `ops-red-flag-dropped`: the key without `--prove-red`. Must fail `ops.red.1a`, and the entry exits 2.
+- `ops-red-closure-writes`: a file-writing call added to the detectors module. Must fail `ops.red.1d` ONLY, while §4
+  stays at its count. §4 reads one file; `ops.red.1d` reads the closure.
+
 ---
 
 ## 13. Accepted risks

@@ -821,7 +821,7 @@
     "ops:payments-now": "node scripts/live/ops/payments-now.cjs",
     "ops:updown-probe-bars": "tsx scripts/ops-updown-probe-bars.mts",
     "test:house-bot-ops": "tsx scripts/db-scratch.mts --run npx tsx scripts/house-bot-ops.test.mts",
-    "red:house-bot-ops": "tsx scripts/lib/house-bot-ops-cases.mts --prove-red",
+    "red:house-bot-ops": "tsx scripts/red-house-bot-ops.mts --prove-red",
     "ops:house-bots-off": "tsx scripts/ops-house-bots-off.mts",
     "ops:house-bots-status": "tsx scripts/ops-house-bots-status.mts",
     "ops:house-bots-remark": "tsx scripts/ops-house-bots-remark.mts",
