@@ -15,7 +15,7 @@
  *
  * Run: npm run test:ticker-honesty       RED proof: npm run red:ticker-honesty
  */
-import { tickerEvents, TICKER_LIMIT, type TickerRow } from "../src/lib/markets/ticker.ts";
+import { tickerEvents, tickerShowsOn, TICKER_LIMIT, type TickerRow } from "../src/lib/markets/ticker.ts";
 import { readFileSync } from "node:fs";
 
 let pass = 0;
@@ -239,6 +239,104 @@ const row = (over: Partial<TickerRow> & { id: string }): TickerRow => ({
   // the build when audit.ts dragged in node:async_hooks.
   ok(/import type \{[^}]*TickerEvent[^}]*\} from "@\/lib\/markets\/ticker"/.test(client),
     "10.2 the client imports the type with `import type` (erased at compile time)");
+}
+
+/* ══════════════ 11 · LOBBY ONLY, NEVER FOR A PLAYER ON A BREAK, AND IT CAN BE STOPPED ══════════════
+   Owner decision 2026-09-26 (revising the removal of 2026-09-24, `adbc31e7`): the strip returns on the
+   four browsing pages and nowhere near money, identity, limits or the bet screen. Every refusal below
+   is paired with the positive control that the strip IS still painted where it belongs — a gate that
+   only said "not on /wallet" would pass just as happily over a strip deleted everywhere. */
+{
+  for (const p of ["/", "/markets", "/live", "/results", "/markets/"]) {
+    ok(tickerShowsOn(p), `11.1-control the strip shows on the lobby page ${p}`);
+  }
+  const never = [
+    "/wallet", "/wallet/deposit", "/wallet/withdraw", "/profile", "/profile/kyc",
+    "/profile/responsible-gambling", "/auth/login", "/markets/mkt_abc", "/updown", "/updown/r_1",
+    "/positions", "/legal/terms", "/help", "/agent", "/admin", "/results/x", "/marketsx", "", null, undefined,
+  ];
+  for (const p of never) ok(!tickerShowsOn(p as string), `11.2 the strip never shows on ${JSON.stringify(p)}`);
+
+  const shell = readCode("src/components/layout/app-shell.tsx", "11.3");
+  ok(/<LiveTicker\s+events=\{tickerEvents\}/.test(shell), "11.3-control the shell renders the strip");
+  // ⚠️ SIGNED-IN ONLY, and the label says so: a self-excluded person has no session at all (every
+  // session is revoked and sign-in refused), so this gate cannot reach them — see app-shell's note.
+  ok(/promoSuppressed\s*\?\s*Promise\.resolve\(\[\]\)\s*:\s*getTickerFeed\(/.test(shell),
+    "11.4 a SIGNED-IN player on an active break is never sent the feed (source check)");
+
+  const client = readCode("src/components/layout/live-ticker.tsx", "11.5");
+  ok(client.includes("usePathname()") && /const shown = events\.length > 0 && tickerShowsOn\(\s*pathname\s*\)/.test(client)
+    && /if \(!shown\) return null/.test(client),
+    "11.5 the client gates on the LIVE pathname (the root layout does not re-render on a soft navigation)");
+  ok(client.includes("aria-pressed={stopped}"), "11.6 the stop control reports its state to a screen reader");
+  ok(client.includes("onClick={toggle}") && /className="ticker-viewport"[\s\S]{0,900}toggle\(\)/.test(client),
+    "11.7 the named control AND a tap on the run both stop it");
+  // A tap is ignored under a calm gate — read from the control's own visibility, one truth.
+  ok(/getComputedStyle\(control\)\.display === "none"\) return;[\s\S]{0,700}toggle\(\)/.test(client),
+    "11.15 a tap does nothing while a calm gate holds the run still");
+  // STILL is a stylesheet mode: before the client decides, and the player's stop — never a hover.
+  ok(/data-still=\{still \? "" : undefined\}/.test(client), "11.16 [data-still] follows the player's stop, never a hold");
+  // A hold dies with the strip: root-layout state outlives the DOM across a soft navigation.
+  ok(/useEffect\(\(\) => \{ if \(!shown\) setHeld\(false\); \}, \[shown\]\)/.test(client),
+    "11.17 a hold is released when the strip leaves the page");
+  // The server paints the readable list; it only moves once the client knows this device's choice —
+  // and the control is not offered until it can work.
+  ok(/const still = !ready \|\| stopped;/.test(client) && /visibility: ready \? undefined : "hidden"/.test(client),
+    "11.18 painted as the still list until the client has decided (no flash, readable without JavaScript)");
+  // 🔴 The running box keeps its scroll offset across the switch; resuming must zero it, or the run sits
+  // the offset TWICE along and every later stop jumps back by it (second review, 2026-09-26).
+  ok(/resumeFrom\.current = null;\s*vp\.scrollLeft = 0;/.test(client), "11.21 starting the run zeroes the box's scroll offset");
+  // A mouse drag or a scroll on the stopped list is not a tap.
+  ok(/Math\.abs\(e\.clientX - p\.x\) > 6 \|\| e\.currentTarget\.scrollLeft !== p\.scrollLeft\)\) return;/.test(client),
+    "11.22 a drag or a scroll on the list never restarts the run");
+
+  // ⛔ ticker.ts is now IN THE BROWSER BUNDLE (the client value-imports `tickerShowsOn`), so it must
+  // import nothing — one server import there drags the server graph into a browser chunk.
+  const pure = readCode("src/lib/markets/ticker.ts", "11.14");
+  ok(pure.includes("export function tickerShowsOn"), "11.14-control ticker.ts is still the real module");
+  ok(!/^\s*import\s/m.test(pure) && !/\bimport\s*\(/.test(pure) && !/\brequire\s*\(/.test(pure),
+    "11.14 ticker.ts imports NOTHING (it ships to the browser)");
+
+  /** The declaration block of the FIRST rule whose selector list contains `selector` exactly. */
+  // Line endings normalised: a CRLF checkout and an LF one must read the same (`red-anchor.mjs`'s lesson).
+  const css = readCode("src/app/globals.css", "11.8").replace(/\r\n/g, "\n");
+  const ruleFor = (selector: string): string => {
+    let from = 0;
+    for (;;) {
+      const at = css.indexOf(selector, from);
+      if (at < 0) return "";
+      const next = css[at + selector.length];
+      // `.ticker-viewport` must not match `.ticker-viewport-x` — the selector has to END here.
+      if (next === "," || next === " " || next === "{" || next === "\n") {
+        const open = css.indexOf("{", at);
+        return css.slice(open, css.indexOf("}", open) + 1);
+      }
+      from = at + 1;
+    }
+  };
+  const media = css.slice(css.indexOf("@media (prefers-reduced-motion: reduce) {\n  .ticker-track"));
+  const mediaBlock = media.slice(0, media.indexOf("\n}"));
+  ok(mediaBlock.includes(".ticker-viewport { overflow-x: auto") && mediaBlock.includes(".ticker-pause { display: none"),
+    "11.8 the OS reduced-motion gate: a scroller, no control");
+  ok(mediaBlock.includes(".ticker-track { animation: none"), "11.13 the OS reduced-motion gate: the track stops");
+  // The player's own stop is the same readable list — never a frozen fragment (D32).
+  ok(ruleFor(".ticker-strip[data-still] .ticker-track").includes("animation: none")
+    && ruleFor(".ticker-strip[data-still] .ticker-viewport").includes("overflow-x: auto")
+    && ruleFor(".ticker-strip[data-still] .ticker-copy-dup").includes("display: none"),
+    "11.19 a STILL strip is a swipeable list of every event, not a frozen frame");
+  // The media branch hides the control at the SAME specificity as the base rule, so order decides.
+  const baseAt = css.indexOf(".ticker-pause {\n  width:");
+  ok(baseAt > 0 && baseAt < css.indexOf("@media (prefers-reduced-motion: reduce) {\n  .ticker-track"),
+    "11.12 the control's base rule comes BEFORE the calm branch that hides it");
+  // Every in-app calm gate must turn the run into a still, swipeable list — never freeze it on a fragment.
+  for (const gate of ["html.kp-reduce-motion", '[data-motion="minimal"]', '[data-motion="reduced"]']) {
+    ok(ruleFor(`${gate} .ticker-viewport`).includes("overflow-x: auto"), `11.9 ${gate}: the run becomes a scroller`);
+    ok(ruleFor(`${gate} .ticker-copy-dup`).includes("display: none"), `11.10 ${gate}: the duplicate copy goes`);
+    ok(ruleFor(`${gate} .ticker-pause`).includes("display: none"), `11.11 ${gate}: no pause control where nothing moves`);
+    // Pinned on its own: the in-app clamp would keep the strip LOOKING still without this rule, while
+    // the track still reports an animation — and the tap guard would then believe it was running.
+    ok(ruleFor(`${gate} .ticker-track`).includes("animation: none"), `11.13 ${gate}: the track stops`);
+  }
 }
 
 console.log(`ticker-honesty: ${pass} assertions passed`);

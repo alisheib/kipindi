@@ -1,6 +1,8 @@
-# House results: one owner-only view on the Desk (HOUSE-PNL-PLAN)
+# House results: one view on the Desk, for the desk's ADMIN audience (HOUSE-PNL-PLAN)
 
-**Status: PLAN, not built.** This comes from a read-only research pass on `C:/kipindi-house-bots`, branch `bot-flow-seal`, at `6427ef64`.
+**Status: ✅ DECIDED 2026-09-26, NOT YET BUILT.** Ali delegated the choices; every §11 choice is taken as its RECOMMENDED option (`plans/house-bots/RESUME-HERE.md` §0c, decision 1). The Results tab keeps the desk's audience, the ADMIN role (§0c, decision 3). Build it as §0c's step 3, with the §4 amendment in the SAME commit — after rewriting §4.3's template to the delegation form (its first block says how).
+
+This plan comes from a read-only research pass on `C:/kipindi-house-bots`, branch `bot-flow-seal`, at `6427ef64`.
 - The tree is clean. The Opening/Closing fix the drafts were waiting on has landed as `5f1737af`.
 - Nothing was run.
 - Production figures are from the SELECT-only read of 2026-09-26 ≈00:10 EAT (`plans/house-bots/RESUME-HERE.md:8-22`). They are quoted as read, never as conclusions. Re-read them before quoting.
@@ -30,7 +32,7 @@
 
 **Why days can look small.** As read on 26 Sep, 534 of the desk's 694 stakes were refunded. So a day's result comes from the few stakes that were actually decided.
 
-**What it costs.** One written change to your 17 Sep rule ("no house lines on admin screens"), narrowed to this one tab and recorded in the compliance log in your own words. Everything else that rule banned stays banned.
+**What it costs.** One written change to your 17 Sep rule ("no house lines on admin screens"), narrowed to this one tab and recorded in the compliance log — with your delegation of 2026-09-26 quoted, since you left the decision to the session. Everything else that rule banned stays banned.
 
 **What you decide.** The 11 one-line choices at the end (§11). The recommended option is first each time.
 
@@ -199,7 +201,7 @@ The full text is in the `amendment_text` field and is reproduced in §4.3.
 
 | Text | Where | Change |
 |---|---|---|
-| D20b | `COMPLIANCE-DECISIONS.md:635` | Pointer: one owner-only view; every other tool stays struck; D20a untouched |
+| D20b | `COMPLIANCE-DECISIONS.md`, the D20b row (find it by name — line numbers rot) | Pointer: one view for the desk's ADMIN audience; every other tool stays struck; D20a untouched |
 | D20b | `PROGRESS.md:56` | Same pointer |
 | Commit 7 bullet | `PROGRESS.md:685` ("no results or P&L report") | Pointer |
 | Replan 266 | `C5-D20-REPLAN.md:128-131` | One exception by role; Book card, "Today's net", fee withheld and money-tab chip stay struck |
@@ -238,6 +240,17 @@ The full text is in the `amendment_text` field and is reproduced in §4.3.
 - `03-design-spec.md:259` and `PLAN.md:440`: the Book card stays struck.
 
 ### 4.3 The text
+
+> ⛔ **REWRITE THIS TEMPLATE BEFORE IT IS COMMITTED (2026-09-26).** It was drafted for an explicit owner approval;
+> Ali DELEGATED the decision instead (his words: `RESUME-HERE.md` §0b). Committed as written it would present a
+> session's decision as the owner's. Before the build commit:
+> - Heading: `## <date> · D20b AMENDED — decided by the session under the owner's delegation of 2026-09-26`.
+> - Replace "Owner decision (Ali, …), asked explicitly" and the placeholder quote with his delegation, verbatim.
+> - Delete "He was shown …", "He chose one view" and "The owner has judged … accepted that trade knowingly" — none of
+>   it happened; say instead what the session weighed and why (the reasons are `RESUME-HERE.md` §0c decision 1).
+> - Every pointer's "AMENDED … (owner)" becomes "AMENDED … (delegated)".
+> - "ONE owner-only view" becomes the real audience: the ADMIN role, through `houseConsoleAudience` (§0c decision 3).
+> - Place the entry by its dated heading at the head of the log, never by a line number (the `:9` below has rotted).
 
 The text below is identical to `amendment_text`.
 
@@ -312,7 +325,7 @@ The text below is identical to `amendment_text`.
 > **Enforced by:** `test:house-bot-console` 1.437 and 1.360 (memory and Postgres), with declared mutations in `red:house-bot-console`; and `qa:house-bot-console-probe`'s result canary.
 
 **2 · The in-place pointers.**
-- **D20b row (`:635`), `PROGRESS.md:56`:** "⚠️ AMENDED <DATE> (owner): the desk may show what its own finished stakes won or lost, on ONE owner-only view. See the dated entry at the head of the log. Every other tool in this row stays struck, and D20a is untouched."
+- **D20b row (find it by name), `PROGRESS.md`'s D20b row:** "⚠️ AMENDED <DATE> (owner): the desk may show what its own finished stakes won or lost, on ONE owner-only view. See the dated entry at the head of the log. Every other tool in this row stays struck, and D20a is untouched."
 - **`PROGRESS.md:685`:** "⚠️ AMENDED <DATE>: one results view on the desk. It is not a report and has no CSV (C7 437)."
 - **Replan 266:** "⚠️ AMENDED <DATE> (owner): ONE exception by role. The desk's results view may state what its finished stakes came to (C7 360(E), 437). The Book card, 'Today's net', fee withheld and the money-tab chip stay struck."
 - **Replan §4 default:** "⚠️ AMENDED <DATE> (owner): except ONE results view on the desk. It is owner-only and not a report, with no CSV, no export and no per-market line."
@@ -560,7 +573,7 @@ Then **push, confirm the deploy's `dpl=` sha on production, and read the live ta
 
 ---
 
-## 11 · Choices for Ali
+## 11 · Choices for Ali — ✅ decided 2026-09-26: every recommended option (RESUME-HERE §0c)
 
 One line each; the recommended option is first.
 

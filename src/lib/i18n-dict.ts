@@ -473,6 +473,7 @@ export const dict = {
          three English words at the one field that decides whether they are allowed an account. */
       dateDay: "Day", dateMonth: "Month", dateYear: "Year",
       liveTickerLabel: "Live settlement activity",
+      liveTickerPause: "Pause live feed",
       weekdaysShort: ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"],
     },
     nav: {
@@ -3144,6 +3145,7 @@ export const dict = {
       monthsShort: ["Jan", "Feb", "Mac", "Apr", "Mei", "Jun", "Jul", "Ago", "Sep", "Okt", "Nov", "Des"],
       dateDay: "Siku", dateMonth: "Mwezi", dateYear: "Mwaka",
       liveTickerLabel: "Shughuli za utatuzi mubashara",
+      liveTickerPause: "Sitisha mubashara",
       weekdaysShort: ["Jtt", "Jnn", "Jtn", "Alh", "Iju", "Jms", "Jpl"],
     },
     nav: {
@@ -5316,6 +5318,7 @@ export const dict = {
       monthsShort: ["1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"],
       dateDay: "日", dateMonth: "月", dateYear: "年",
       liveTickerLabel: "实时结算动态",
+      liveTickerPause: "暂停实时动态",
       weekdaysShort: ["一", "二", "三", "四", "五", "六", "日"],
     },
     nav: {

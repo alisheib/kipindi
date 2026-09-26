@@ -160,7 +160,7 @@ try {
     const t = await bodyText(fPage);
     await shot(fPage, `E-${label}`);
     // ⚠️ "no refusal text + long page" is NOT evidence — the sign-in page satisfies both,
-    // and "tzs" appears in the LiveTicker marquee on every page including signed-out ones.
+    // and "tzs" can appear in the LiveTicker marquee (lobby pages only since 2026-09-26, signed-out included).
     // Require the console chrome AND that we are still on the route we asked for.
     r.check(`accounting: ${path} renders for FINANCE (not a refusal, not the login page)`,
       !/you do not have access|restricted|forbidden|admin sign in/.test(t)

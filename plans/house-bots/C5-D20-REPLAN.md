@@ -472,7 +472,7 @@ bots and what keeps D19 true").
      **(e) A decision that turns out wrong is reversed by a new numbered ruling** that says what was believed, what was
      measured, and what changed. A ruling is a record of reasoning, not a position to defend.
 
-501. **The ISO 27001 regulator hand-off EXCLUDES house audit rows by category, and SAYS SO with the excluded count.**
+501. **The ISO 27001 regulator hand-off EXCLUDES house audit rows by category, and SAYS SO with the excluded count.** ⛔ **WITHDRAWN 2026-09-26** — the owner released it and the session kept the export unfiltered (`docs/COMPLIANCE-DECISIONS.md`, entry `2026-09-26 · House bots: ruling 501 WITHDRAWN`; ruling 557). Never built.
      Measured: `catalogue.ts:474` reads the whole durable audit table unfiltered (`getAuditPageDurable({limit:
      ISO_EXPORT_LIMIT})` — the reader offers only `limit` and `category`, never an action filter) and prints
      `action: e.action` at `:553` and `target: ${e.targetType}:…` at `:555` verbatim. House rows carry 31 literal
@@ -1273,7 +1273,7 @@ bots and what keeps D19 true").
        never to reject — with its own planted control. Ruling 537's limits save already carries the
        operator-facing half (`recorded: false` → a WARNING, the save still reported as landed), and that is
        the shape the other three adopt.
-     - **Scheduled: before Commit 8**, with ruling 501's ISO work, because both touch the audit export and
+     - **Scheduled: before Commit 8**, with ruling 501's ISO work (⚠️ 501 withdrawn 2026-09-26 — 543 now stands alone: `plans/house-bots/RESUME-HERE.md` §0c step 6), because both touch the audit export and
        both are regulator-facing. ⛔ Not at C7 step 4 — the ceremony step must not also be re-writing the
        platform's audit contract underneath itself.
 
@@ -1699,3 +1699,19 @@ bots and what keeps D19 true").
        exactly one caller in `src/`, inside the gated writer) and no account is designated.
      - **Numbering, reconciled with the peer:** 555 is the peer's and stands; this is **556**; the peer
        takes **557+**. No renumbering is owed.
+
+557. **RULING 501 IS WITHDRAWN (2026-09-26): the ISO 27001 export stays unfiltered.** Written per rule 500(e) —
+     what was believed, what was measured, what changed. *(557 was checked free across the tree before it was taken.)*
+     - **Believed (501, 2026-09-18):** D20's "no report names house bots" reaches the ISO 27001 hand-off, so it must
+       exclude `house_bot.*` rows by category and say how many it excluded; scheduled before Commit 8.
+     - **Measured (2026-09-26):** 501 was never built — `buildIsoAudit` (`src/lib/server/reports/catalogue.ts`) still
+       reads `getAuditPageDurable({ limit: ISO_EXPORT_LIMIT })` with no action filter — and the export holds only the
+       OLDEST 25,000 rows, so whether any given export reaches a house row depends on the live count (NOT MEASURED).
+     - **What changed:** the owner's instruction, as typed — *"this we dot cre gbt said it sok we need nothign we can
+       decide anything Regulator audit export (ISO 27001)"* — does not require the exclusion (Ali reports the Board
+       needs nothing; no document is on file) and leaves the choice open. The session kept the export unfiltered: an
+       audit-log export with rows withheld is weaker evidence than one without, and nothing built is dropped, so
+       D21c is not breached. The consequence — an export reaching house rows names `house_bot.*` actions and prints
+       full actor ids (an officer's, and a holder's own on a consent-withdrawal row) to its recipients — is recorded in `docs/COMPLIANCE-DECISIONS.md` (entry `2026-09-26 · House bots: ruling 501
+       WITHDRAWN`) and as D20's one exception in `docs/HOUSE-BOTS.md`. Ruling 543, scheduled "with 501's ISO work",
+       now stands alone (`plans/house-bots/RESUME-HERE.md` §0c step 6).

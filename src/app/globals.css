@@ -1393,6 +1393,43 @@ body {
    direct flex children of the track, which is the only reason the wrapper is invisible to layout; it belongs
    here so the one rule that needs to override it can. */
 .ticker-copy-dup { display: contents; }
+/* The strip's pause control (2026-09-26). 40px wide and the strip's full 32px tall, on the end cap's solid
+   ground. ⚠️ 32 is under `--tap-min`, and that is answered, not ignored: a tap anywhere on the running strip
+   is the same toggle (live-ticker.tsx), so the finger target is the whole run. This button is the NAMED
+   control — a keyboard stop and a screen-reader name — and it is sized to the strip, not to a finger.
+   ⛔ THESE BASE RULES MUST STAY ABOVE THE CALM BRANCHES BELOW. The media-query branch hides the control with
+   `.ticker-pause { display: none }` — the SAME specificity as `display: inline-flex` here — so whichever is
+   written LATER wins. Declared after the calm branch, the control showed under reduced motion. */
+.ticker-pause {
+  width: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-subtle);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  transition: color var(--t-flick) var(--m-glide);
+}
+.ticker-pause:hover { color: var(--text); }
+.ticker-pause[aria-pressed="true"] { color: var(--live-400); }
+.ticker-pause:focus-visible { outline: 2px solid var(--live-400); outline-offset: -4px; border-radius: 6px; }
+/* The run is a tap target while it moves (see the pause note above); a still run is a scroller, not a button. */
+.ticker-viewport { cursor: pointer; }
+/* ⭐ STILL = THE READABLE LIST, NOT A FROZEN FRAME (2026-09-26). A paused marquee behind a clipping box is
+   D32 exactly — a fragment of event 1 and eleven events out of reach — so a strip that is not moving takes
+   the same still, swipeable shape as the calm branches below: when the player stops it, AND as the server
+   paints it (before, or without, JavaScript — at scroll 0 it is the marquee's first frame). The control
+   STAYS (it is how they start it again), and a tap still toggles, so `cursor` is left alone.
+   `live-ticker.tsx` keeps the reader's place across every switch. */
+.ticker-strip[data-still] .ticker-track { animation: none; transform: none; }
+.ticker-strip[data-still] .ticker-viewport { overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: thin; }
+.ticker-strip[data-still] .ticker-copy-dup { display: none; }
+/* A scroller takes keyboard focus (Chrome 130+, Firefox), and the strip's own `overflow: hidden` would clip an
+   outer ring to a sliver — so the ring is drawn INSIDE, the pattern this file already uses for clipped boxes.
+   ⚠️ And LIFTED above the end cap (z-index 10, overlapping the run's last 40px), which otherwise painted its
+   solid fade over the ring's right edge. The fade steps aside while the list has focus. */
+.ticker-viewport:focus-visible { outline: 2px solid var(--live-400); outline-offset: -2px; position: relative; z-index: 11; }
 
 /* 🔴 D26 · THE 18+ LICENCE FOOTER SAT INSIDE THE VIEWPORT AT FIRST PAINT AND WAS THEN THROWN OFF IT.
    `app-shell` is `min-h-screen flex flex-col` with `<main class="flex-1">` above `<PublicFooter>`, so while the
@@ -1512,9 +1549,31 @@ html[data-fab-idle] .cm-fab:not(.cm-fab--open):not(:focus-within) {
    `transform`, so the track would stay translated and the scroll would start in the wrong place. */
 @media (prefers-reduced-motion: reduce) {
   .ticker-track { animation: none; transform: none; }
-  .ticker-viewport { overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: thin; }
+  .ticker-viewport { overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: thin; cursor: auto; }
   .ticker-copy-dup { display: none; }
+  .ticker-pause { display: none; }
 }
+/* 🔴 AND THE FIX ABOVE ONLY EVER COVERED ONE OF THE FOUR GATES (found 2026-09-26, re-siting the strip).
+   `theme-provider.tsx` sets three more: the in-app Reduce motion switch (`html.kp-reduce-motion` +
+   `data-motion=minimal`) runs the universal clamp in motion.css — a 0.01ms single iteration, which ends back
+   at `translateX(0)` — and the LOW-END ANDROID tier (`data-motion=reduced`, "our target device") switches the
+   loop off in §6's list. Both left exactly the frozen 24%-of-one-event state D32 describes, behind a clipping
+   box, with the duplicate still in place. Same promise, same branch.
+   ⚠️ Written as TWO sets, one per gate, never one mixed list: `test:reduce-motion` 2.0 requires every
+   fragment of a list naming the `reduced` tier to carry a tier attribute (a fragment without one is how a
+   leaked comment once dropped 27 entries), and `html.kp-reduce-motion` carries none. */
+html.kp-reduce-motion .ticker-track,
+[data-motion="minimal"] .ticker-track { animation: none; transform: none; }
+html.kp-reduce-motion .ticker-viewport,
+[data-motion="minimal"] .ticker-viewport { overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: thin; cursor: auto; }
+html.kp-reduce-motion .ticker-copy-dup,
+[data-motion="minimal"] .ticker-copy-dup,
+html.kp-reduce-motion .ticker-pause,
+[data-motion="minimal"] .ticker-pause { display: none; }
+[data-motion="reduced"] .ticker-track { animation: none; transform: none; }
+[data-motion="reduced"] .ticker-viewport { overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: thin; cursor: auto; }
+[data-motion="reduced"] .ticker-copy-dup,
+[data-motion="reduced"] .ticker-pause { display: none; }
 @keyframes ticker-scroll {
   0%   { transform: translateX(0); }
   100% { transform: translateX(-50%); }

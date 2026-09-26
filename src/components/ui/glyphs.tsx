@@ -185,6 +185,10 @@ const Ibase = {
   layoutGrid: (p: GlyphProps) => <G {...p}><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /></G>,
   radio: (p: GlyphProps) => <G {...p}><circle cx="12" cy="12" r="2.5" fill="currentColor" stroke="none" /><path d="M7.5 7.5a6 6 0 0 0 0 9M16.5 7.5a6 6 0 0 1 0 9M5 5a9 9 0 0 0 0 14M19 5a9 9 0 0 1 0 14" /></G>,
   pause: (p: GlyphProps) => <G {...p}><rect x="7" y="5" width="3" height="14" rx="1" /><rect x="14" y="5" width="3" height="14" rx="1" /></G>,
+  /* Play without the ring — `pause`'s partner in a toggle. `play` above sits in a circle and
+     `pause` does not, so swapping the two on one control jumps in weight and outline every press.
+     Same 5..19 vertical span as the bars, filled, so the pair reads as one mark changing state. */
+  playBare: (p: GlyphProps) => <G {...p}><path d="M8.5 5.5v13L19 12z" fill="currentColor" /></G>,
 // ───────────────────────── A1 · player-facing ─────────────────────────
 
   /* Mail — help, forgot-password, account */
