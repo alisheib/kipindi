@@ -42,6 +42,8 @@ import { sortBy, type SortDir, type SortSpec } from "@/lib/query/sort";
 import { PLAYER_PRESETS, inWindow, type PlayerPresetId } from "@/lib/query/windows";
 import { MAX_QUERY_LEN } from "@/lib/search/query";
 
+import type { Signoff } from "@/lib/markets/signoff";
+
 /* ─────────────────────────── the row this module reasons about ────────────────────────── */
 
 export type AttestationRow = {
@@ -66,6 +68,12 @@ export type AttestationRow = {
    * record must prove is that two DISTINCT officers signed, not who they were.
    */
   twoOfficer: boolean;
+  /**
+   * The sign-off as the public reads it — two officers, one officer, the automatic resolver, or
+   * corrected on objection — from `signoffOf` (`lib/markets/signoff.ts`), the one rule the landing
+   * strip reads too. `null` = the market carries no stamp.
+   */
+  signoff: Signoff | null;
   titleEn: string;
   titleSw: string;
   titleZh: string;

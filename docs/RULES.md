@@ -703,7 +703,7 @@ found was made data-driven rather than recorded as a duplicate:
 | Was | Now |
 |---|---|
 | `estimateHowItWorks` hardcoded **"1.5×"** | `{mult}` — read from `estimatedWinningsRate`. ⚠️ Up & Down runs **1.4×**, so the hint explaining the figure was quoting a different figure from the button beside it. |
-| `card3Body` · `howStep3B` stated the retired ceiling, ungated, to every new player | rewritten to the rule that is actually true, with no figure at all |
+| `card3Body` · `howStep3B` stated the retired ceiling, ungated, to every new player | rewritten to the rule that is actually true; since landing v3 (2026-09-26) `howStep3B` states the fee as an INTERPOLATED `{pct}` read through `ratesFrom` (the binding game-rules page's own function) — never a literal |
 | `/legal/terms` §4 stated the retired rule in **all three languages**; §5 said the withdrawal fee was **1%** | 13% of the losing side; 1.5% — what production has charged all along |
 | the in-app assistant taught the retired rule, a "base TZS 500" stake and a "1x-200x multiplier" | the current rule, the real bounds, and that the maximum is **per bet** |
 | 🔴 leaderboard `tierSovereign`/`tierDiamond`/`tierGold` restated the ROI thresholds — the **same numbers the classifier tests**, in three languages | `{roi}`/`{resolved}`, interpolated from `TIER_THRESHOLDS` |

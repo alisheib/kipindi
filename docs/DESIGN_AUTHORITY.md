@@ -1009,17 +1009,16 @@ Two more standing rules from the same pass:
    `rounded-md` is 8px while `--r-md` is 12px — they disagree. Reconciling them shifts
    every corner in the product, so it was deliberately deferred. New design uses the
    semantic `rounded-card` / `control` / `chip` / `modal`. **Do not renumber the scale.**
-5. **Cold-start is ONE rule with FIVE consumers, and it is TWO questions — not one.**
+5. **Cold-start is ONE rule with FOUR consumers, and it is TWO questions — not one.**
    The consumers are the board (`markets/page.tsx`), the market card
-   (`market-card.tsx`), the detail page (`markets/[id]/page.tsx`), the **landing hero**
-   (`components/home/landing-hero.tsx` via `lib/markets/hero.ts`, 2026-08-13), and — since
-   batch 3, same date — the **landing's topic-tile lean underline**
-   (`lib/markets/landing.ts:141`), which draws the aggregate bar's own 2px
-   `--bar-fill-yes` rule per topic and is gated identically: a topic with `pool === 0`
-   renders no underline, never one drawn to the 50% midpoint. The detail page shipped a
-   fabricated 50/50 split and a "TIPPING" badge above "TZS 0" until the freeze pass. If
-   the rule changes, change all five — two surfaces disagreeing about someone's money is
-   exactly the defect B6 exists for.
+   (`market-card.tsx`), the detail page (`markets/[id]/page.tsx`) and the **landing hero**
+   (`components/home/landing-hero.tsx` via `lib/markets/hero.ts`, 2026-08-13). ⚠️ The fifth,
+   the **landing's topic-tile lean underline**, was REMOVED with landing v3 (2026-09-26): it drew a
+   YES lean with no text beside it, and the delivery requires every bar to carry a text description.
+   `landingTopics` still computes `leanYesPct` under the same gate — a real fact, simply not drawn.
+   The detail page shipped a fabricated 50/50 split and a "TIPPING" badge above "TZS 0" until the
+   freeze pass. If the rule changes, change all four — two surfaces disagreeing about someone's
+   money is exactly the defect B6 exists for.
 
    ⚠️ **CORRECTED 2026-08-13.** This item used to state the rule as
    `volume === 0 && predictors === 0`. That conjunction is not the rule; it is the bug the

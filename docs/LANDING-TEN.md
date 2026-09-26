@@ -69,24 +69,24 @@ row; this section does not repeat it.
 |---|---|---|---|---|
 | D0 | File the delivery, its acceptance record, this tracker; delete the dropped folder | 🔨 | | |
 | WP1 | Header collapse below 1100, Menu button, segmented language | ⛔ | | R1 kept the header; L4 |
-| WP2 | Hero order, trust lines, headline clamp, backdrop drawing removed | ⬜ | | R4(1) |
+| WP2 | Hero order, trust lines, headline clamp, backdrop drawing removed | 🔨 |  | R4(1) |
 | WP3 | Featured card: full question, meta + source, time top-right, 24h mark and delta | ⬜ | | |
 | WP4 | Question board rows: title link + YES@/NO@ buttons + time left | ⬜ | | |
 | WP5 | Pick slip: sheet below 1024, inline from 1024, after-placing share | ⬜ | | R2 |
 | WP6 | One-sided state on every card + the grid's degeneracy floor | ⬜ | | L14; delivers MOBILE-VISUAL ruling 13 |
 | WP7 | Estimate line on cards | ⛔ | | R3 |
-| WP8 | Proof rail: phone ledger rows, conviction reading as the bar's label | ⬜ | | |
+| WP8 | Proof rail: phone ledger rows, conviction reading as the bar's label | 🔨 |  |  |
 | WP9 | Pick-a-side grid: phone snap rail with a peek, 2 and 3 columns | ⬜ | | |
-| WP10 | Topics: six tiles, Other last, "All topics" as the section link | ⬜ | | |
-| WP11 | How it works: "A named source", the fee from config, h3 steps | ⬜ | | L3 |
-| WP12 | Up & Down band: the soonest round, price line, ring, UP/DOWN, plural fixed | ⬜ | | R4(6) |
-| WP13 | Results: date, the market's own sign-off, source link, paid | ⬜ | | L2 |
+| WP10 | Topics: six tiles, Other last, "All topics" as the section link | 🔨 |  |  |
+| WP11 | How it works: "A named source", the fee from config, h3 steps | 🔨 |  | L3 |
+| WP12 | Up & Down band: the soonest round, price line, ring, UP/DOWN, plural fixed | 🔨 |  | R4(6) |
+| WP13 | Results: date, the market's own sign-off, source link, paid | 🔨 |  | L2 |
 | WP14 | Wallet: chip opens sheet/panel, equal Deposit/Withdraw, gold Deposit at zero, signed-in hero | ⬜ | | R1 |
 | WP14b | Share in card footers; Share on WhatsApp after placing | ⬜ | | |
 | WP15 | Motion and performance | ⬜ | | L12 |
 | WP16 | i18n: every new key in en, sw and zh | ⬜ | | |
-| WP17 | Accessibility: heading order, no nested controls, dialog semantics | ⬜ | | |
-| RG | Drop the RG line above the footer; chat bubble hides under a sheet | ⬜ | | R4(5), R4(7) |
+| WP17 | Accessibility: heading order, no nested controls, dialog semantics | 🔨 |  |  |
+| RG | Drop the RG line above the footer; chat bubble hides under a sheet | 🔨 |  | R4(5), R4(7) |
 | V15 | Gate: first screen at 360 × 740 | ⬜ | | |
 | V16 | Gate: no promised winnings | ⬜ | | |
 | V17 | Gate: no 0% or 100% price | ⬜ | | |
@@ -127,17 +127,20 @@ feature (a plant against a feature that does not exist yet cannot prove anything
 ### §2.1 · The rows
 
 **WP2 · Hero order** — `src/components/home/landing-hero.tsx`, `.kp-hero*` in `globals.css`, `src/app/page.tsx`
-- One DOM, ordered: eyebrow → `<h1>` → sw/zh sub-line (`home.heroHeadlineSub`, shown only when it
-  differs from the headline) → lede → **featured card** → CTAs → trust lines. From 1024 the block is two
-  columns — copy, CTAs and trust lines on the left, the featured card on the right — by CSS grid areas,
-  never a second copy of the DOM.
-- Headline `clamp(40px, 6.2vw, 88px)`, Sora 800, line-height 1, `text-wrap: balance`. The YES/NO inks come
-  from the headline's `\b(YES|NO)\b` split in `Headline`; the sub-line keeps its own NDIO/HAPANA (是/否)
-  inks (MOBILE-VISUAL ruling 12).
-- Trust lines: new keys `home.trustLicence` (with `LICENCE_NUMBER()` from `src/lib/support-config.ts`),
-  `home.trustMoney`, `home.trustSource`, plus the 18+ roundel, the RG line (R4(5)) and the helpline
-  (`HELPLINE()` / `HELPLINE_TEL()`, a `tel:` link) — the placement map puts licence, 18+ **and helpline** on
-  the first screen, which the concept's own trust lines forgot.
+- One DOM, ordered: eyebrow → `<h1 lang="en">` → sw/zh sub-line (`home.heroHeadlineSub`, shown only when it
+  differs from the headline) → lede → **featured card** → trust lines → CTAs. From 1024 the block is two
+  columns — copy, trust lines and CTAs on the left, the featured card on the right — by CSS grid areas,
+  never a second copy of the DOM. ⚠️ Trust lines BEFORE the CTAs, in the source (L18): the delivery's phone
+  order put them after the CTAs, below the first screen its own placement map requires; a CSS `order`
+  was tried and removed because keyboard order then disagreed with the screen.
+- Headline on the locked ladder — 44 below 1024, 60 from 1024, 72 from 1280 (the delivery's
+  `clamp(40px, 6.2vw, 88px)` mapped onto §T1 steps), Sora 800, `text-wrap: balance`. The YES/NO inks come
+  from `Inked` over the English words; the sub-line is inked with the reader's own side words
+  (`sideWord`), MOBILE-VISUAL ruling 12.
+- Trust lines, in this order: 18+ roundel + `footer.licensedByGbt` · `home.trustCell3H` (mobile money) ·
+  `footer.stopGambling` + the helpline (`HELPLINE()` / `HELPLINE_TEL()`, a `tel:` link at the tap floor) ·
+  `home.trustCell1H` (named sources). Every string is an existing key — no new regulated copy. The licence
+  NUMBER stays in the footer on every page (K39), as in the delivery's own hero.
 - The lede drops the jargon word the before state used ("Trade questions…" → "Pick a side on questions…").
 - The proof rail, the conviction bar and the closing-soonest board move **below** the hero block.
 - Remove the faint dial drawing behind the hero (R4(1)).
@@ -324,7 +327,7 @@ drift from that file or a row names an id §1 does not have. An item is done whe
 | P12 | Pick-a-side cards: snap rail with a peek · two columns · three | WP9 | |
 | P13 | Share: card footer + after placing (WhatsApp) | WP14b, WP5 | |
 | P14 | Set limits / Take a break: pick sheet, Wallet, Menu, footer | WP5, WP14 | No Menu (R1); the footer already carries both |
-| P15 | Licence · 18+ · helpline: first screen + footer | WP2 | Trust lines with `LICENCE_NUMBER()` and `HELPLINE()`; the footer already carries all three |
+| P15 | Licence · 18+ · helpline: first screen + footer | WP2 | Trust lines (licence + 18+, mobile money, helpline, sources) before the CTAs — L18; the licence number and all three stay in the footer |
 | K1 | Every placement row verified at 360, 768, 1280 in sw, en, zh | V21, PANEL | |
 | K2 | 4a: phone, balance — chip + gold Deposit in the header; hero balance with equal Deposit/Withdraw | WP14 | The phone fit is measured (§2.1 WP14) |
 | K3 | 4b: chip opens the Wallet sheet — balance, withdrawable, equal pair, Set limits; Esc and backdrop close | WP14, V20 | |
@@ -445,6 +448,9 @@ This codebase has been burned by every one of these:
 | V11 | Dead states | `TZS 0`; a 0%/100% price leading the page |
 | V12 | Settled honesty | a refund word over a market that was decided and simply had no pool |
 | V14 | Renders without JS | the page paints with scripting disabled |
+| V15 | First screen (v3) | on phone cells 360–639 wide, the featured card's price and YES/NO end by a FIXED 740px of document, measured at the top of the page — not the viewport, which is 780 on the 360 cells — or by the top of the fixed bottom rail when that is higher (a control under the rail is not on the screen) |
+| V16 | No promised winnings (v3) | visible text naming "win TZS", "utashinda", "赢得 TZS", or a stake times a multiplier |
+| V17 | No degenerate price (v3) | a 0% or 100% read inside any card or board row — the conviction bar's aggregate is not a price and is not read |
 
 ## Known gaps — stated, not implied
 

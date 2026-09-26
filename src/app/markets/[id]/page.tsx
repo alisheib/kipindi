@@ -48,6 +48,8 @@ import { renderFailure } from "@/lib/failure-reasons";
 import { getBonusSummary } from "@/lib/server/bonus-service";
 import { pickLocalized, pickCriterion, marketCategoryLabel } from "@/lib/localized";
 import { PageContainer } from "@/components/layout/page-container";
+import { signoffOf } from "@/lib/markets/signoff";
+import { objectionRulings } from "@/lib/server/reversals";
 
 
 export const dynamic = "force-dynamic";
@@ -235,14 +237,18 @@ export default async function MarketDetail({
     }
   }
 
-  // Two-officer attestation is claimed ONLY for genuinely distinct human officers
-  // — never synthetic/auto (demo, sentinel) resolution whose ids are "system_*".
-  const _s1 = m.resolutionStage1By, _s2 = m.resolutionStage2By;
-  const twoOfficer = !!(_s1 && _s2 && _s1 !== _s2 && !_s1.startsWith("system") && !_s2.startsWith("system"));
-  // Single-admin (the default authorization): ONE genuine human officer sealed it
-  // (s1===s2, both real). Distinct from auto/system resolution (ids "system_*"),
-  // which claims neither line. Lets the panel state honestly how it resolved.
-  const singleOfficer = !twoOfficer && !!(_s1 && !_s1.startsWith("system"));
+  // ⭐ WHO SIGNED IT OFF — THE ONE RULE (lib/markets/signoff.ts), the same the landing's settled strip,
+  // /fairness and /api/fairness/recent read, so a reader who follows a settled row here reads the same
+  // answer. Two-officer attestation is claimed ONLY for genuinely distinct human officers — never the
+  // automatic resolver ("system_*") — and a verdict an upheld objection REVERSED or VOIDED is said to be
+  // corrected on objection, never credited to whoever signed the verdict that was thrown out (v3 review:
+  // this page derived it inline and did not know objections existed).
+  const signoff = isResolved ? signoffOf(m, (await objectionRulings()).get(m.id)) : null;
+  const twoOfficer = signoff === "two";
+  // Single-admin (the default authorization): ONE genuine human officer sealed it. Distinct from
+  // automatic resolution, which claims neither line.
+  const singleOfficer = signoff === "one";
+  const correctedOnObjection = signoff === "objection";
   // One-sided: all bets are on the same side — winners would win their own money.
   // Platform rule: full refund at 0% fee at resolution. Surface a disclaimer so
   // players know before they place or hold a bet.
@@ -767,6 +773,7 @@ export default async function MarketDetail({
               resolvedAt={m.resolutionStage2At ?? m.updatedAt}
               twoOfficer={twoOfficer}
               singleOfficer={singleOfficer}
+              correctedOnObjection={correctedOnObjection}
               sourceUrl={m.sourceUrl}
               objectionsClosedAt={m.objectionsClosedAt}
               serverNow={Date.now()}

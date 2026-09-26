@@ -207,6 +207,7 @@ export function TippingBar({
   emptyLabel = "No bets yet",
   probabilityLabel = "YES probability {pct}%",
   labels = { yes: "YES", no: "NO", tipping: "tipping", leansYes: "leans yes", leansNo: "leans no" },
+  as = "progressbar",
 }: {
   yesPct?: number;
   height?: number;
@@ -234,6 +235,10 @@ export function TippingBar({
   probabilityLabel?: string;
   /** The five words under the bar when `showLabels`. Same rule as `probabilityLabel`. */
   labels?: { yes: string; no: string; tipping: string; leansYes: string; leansNo: string };
+  /** How the bar is ANNOUNCED. `progressbar` (the default, every existing caller) exposes the value;
+   *  `img` names the bar by its label alone — for a bar that is a SPLIT of the money, not progress
+   *  towards anything, where "progress bar, 70 percent" misdescribes it (landing v3, WP8/WP3). */
+  as?: "progressbar" | "img";
 }) {
   const target = Math.max(0, Math.min(100, yesPct));
   const [animYes, setAnimYes] = React.useState(target);
@@ -290,9 +295,8 @@ export function TippingBar({
       <div className={cn("w-full", className)} style={railVars}>
         <div
           className="tipbar-empty"
-          role="progressbar"
-          aria-valuemin={0}
-          aria-valuemax={100}
+          role={as}
+          {...(as === "progressbar" ? { "aria-valuemin": 0, "aria-valuemax": 100 } : {})}
           aria-label={emptyLabel}
         />
       </div>
@@ -304,10 +308,8 @@ export function TippingBar({
       <div
         className={cn("tipbar-rail", animate && "tipbar-anim", recastOnHover && "tipbar-recast")}
         onMouseEnter={handleEnter}
-        role="progressbar"
-        aria-valuenow={target}
-        aria-valuemin={0}
-        aria-valuemax={100}
+        role={as}
+        {...(as === "progressbar" ? { "aria-valuenow": target, "aria-valuemin": 0, "aria-valuemax": 100 } : {})}
         /* ⛔ THIS WAS A HARDCODED ENGLISH STRING — `YES probability ${target}%` — and it
            never went through the dictionary at all, so a Chinese screen-reader user HEARD
            "YES probability 100 percent" on a page whose every visible word was Chinese.

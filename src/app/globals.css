@@ -799,13 +799,11 @@
      ⚠️ Written as a list, not a glob: a starred path inside a CSS comment is how
      the 2026-08-07 dropped-rule defect happened. `test:reduce-motion` rule 0.1. */
   --hero-panel-grad:  linear-gradient(135deg, oklch(22% 0.140 268) 0%, oklch(30% 0.165 268) 100%);
-  /* Hero "warm" — kit-faithful deep royal radial. Spec: kit/banners.jsx
-     BannerHero (1600×540) uses a radial ellipse 90% 70% at 75% 30% from
-     oklch(24% .15 268) → oklch(20% .135 268) → oklch(15% .13 268). Same
-     hue as the cool hero but deeper / denser, so the eye reads it as
-     premium and supports gold + pearl ink without competing for attention. */
-  --hero-grad-warm:   radial-gradient(ellipse 90% 70% at 75% 30%, oklch(24% 0.150 268) 0%, oklch(20% 0.135 268) 60%, oklch(15% 0.130 268) 100%);
-  --hero-mark-opacity: 0.10;
+  /* ⛔ `--hero-grad-warm` (a radial royal wash) and `--hero-mark-opacity` (the backdrop drawing's
+     opacity) were DELETED 2026-09-26 with their only consumer: the landing v3 ruling removes the
+     hero's drawing and flattens its surface (INHERIT-MANIFEST R4(1), L16 — "no decorative gradients
+     or illustrations"). The hero now stands on `--bg-overlay`, the same sunken surface as the page's
+     tinted bands. The v3-2026-08-11 archive still names both tokens; it is a frozen record. */
   --hero-text-strong:  var(--pearl-50);
   --hero-text-muted:   var(--pearl-300);
   --hero-yes-accent:   var(--yes-300);
@@ -3907,51 +3905,123 @@ html[data-sheet-open] .route-enter { animation: none; }
    md:text-[68px]` — three sizes, none of them on the `--type-*` ladder, which law T1 closes.
    Every size below IS a ladder step, so the hero cannot drift off the scale. */
 
+/* ⛔ FLAT, AND THE DRAWING IS GONE (landing v3, 2026-09-26 — INHERIT-MANIFEST R4(1), L16). The
+   hero used to stand on a radial royal wash with the brand mark drawn behind it at 10% opacity.
+   The delivery's graphic-design reviewer asks for no decorative gradient or illustration, and Ali
+   ruled the drawing out (reversing PV-01). `--bg-overlay` is the page's sunken surface, the same
+   one the tinted bands use, so the hero reads as the first band rather than as a poster. The claret
+   edges stay: they are the brand's editorial accent on every band (L16), not landing decoration. */
+/* ⛔ NO `overflow: hidden` ANY MORE: its only reason was the 1100px backdrop drawing, and kept after the
+   drawing went it would CUT enlarged trust-line text instead of letting it wrap (v3 review). */
 .kp-hero {
   position: relative;
-  overflow: hidden;
-  background: var(--hero-grad-warm);
+  background: var(--bg-overlay);
   border-top: 1px solid var(--claret-edge);
   border-bottom: 1px solid var(--claret-edge);
 }
 
-/* The mark is the backdrop: GEOMETRY AND OPACITY ONLY, never recoloured (B1a / kit §Assets).
-   Its chord is deliberately off-centre — the unequal halves ARE the tipping idea — so the
-   shipped file is used as-is rather than redrawn. -14deg is the page's signature needle axis,
-   shared with the gilt eyebrow tick and the conviction needle. */
-.kp-hero__mark {
-  position: absolute;
-  top: -14%;
-  left: 50%;
-  width: 1100px;
-  max-width: none;
-  opacity: var(--hero-mark-opacity);
-  transform: translateX(-50%) rotate(-14deg);
-  pointer-events: none;
-  user-select: none;
-}
-
-/* The hero is full-bleed (the gradient and the mark need the whole width), so it sits OUTSIDE
-   `PageContainer` and owns its own measure. `--w-board` is the same 1280 the board uses, so the
-   hero's content edge lines up with every section below it. */
+/* The hero is full-bleed (its surface runs edge to edge), so it sits OUTSIDE `PageContainer` and
+   owns its own measure. `--w-board` is the same 1280 the board uses, so the hero's content edge
+   lines up with every section below it.
+   ⭐ THREE BLOCKS, ONE DOM, PLACED BY GRID AREAS (WP2). Below 1024 they stack in source order —
+   intro (what 50pick is) → card (a live market) → act (what to do, and why to trust it) — so the
+   featured market sits right after the lede on a phone, inside the first screen (V15). From 1024
+   the intro and the act share the left column and the card takes the right one, vertically centred
+   against the pair, which is the delivery's desktop composition. No `order`, no second copy.
+   ⚠️ THE PHONE RUNG IS SET HERE, NOT IN A MEDIA QUERY — the 768 block overrides both values. U6
+   stepped it 48/32 → 32/24 (measured −64px at 360). It is padded, not rhythm-scaled: this element
+   deliberately does not consume --rh-* (§Spacing). */
 .kp-hero__inner {
   position: relative;
   max-width: var(--w-board);
   margin-inline: auto;
-  /* ⚠️ THE PHONE RUNG IS SET HERE, NOT IN A MEDIA QUERY — the 768 block below overrides both
-     values, so this declaration is now read as "the phone hero" and nothing else. U6 stepped it
-     48/32 → 32/24 (measured −64px at 360: 16 of padding at each end, 8 off each of four gaps).
-     ⛔ THE GAP IS NOT DECORATION HERE. `.kp-hero__inner` is the grid whose five children are the
-     eyebrow+headline, the proof rail, the conviction bar, the question board and the foot — so
-     this one number is every seam inside the hero, and §Spacing's note (§4576) records that this
-     element deliberately does NOT consume --rh-*. It is padded, not rhythm-scaled. */
   padding: var(--sp-8) var(--sp-4);
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: "intro" "card" "act";
   gap: var(--sp-6);
 }
+.kp-hero__intro { grid-area: intro; display: flex; flex-direction: column; gap: var(--sp-3); min-width: 0; }
+.kp-hero__card { grid-area: card; min-width: 0; }
+.kp-hero__act { grid-area: act; display: flex; flex-direction: column; gap: var(--sp-5); min-width: 0; }
 @media (min-width: 768px) {
   .kp-hero__inner { padding: var(--sp-16) var(--sp-6); gap: var(--sp-10); }
+  .kp-hero__intro { gap: var(--sp-4); }
 }
+@media (min-width: 1024px) {
+  .kp-hero__inner {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-areas: "intro card" "act card";
+    column-gap: var(--sp-12);
+    row-gap: var(--sp-8);
+    align-items: center;
+  }
+  /* The left pair sits as one block beside the card: the intro rests on the row line, the act
+     hangs from it, so the two read as a column rather than as two cells centred apart. */
+  .kp-hero__intro { align-self: end; }
+  .kp-hero__act { align-self: start; }
+}
+/* An empty book renders no featured market: the pitch and the act take the whole width, with no blank
+   right column and no doubled gap where the card would have been. */
+.kp-hero__inner--solo { grid-template-areas: "intro" "act"; }
+@media (min-width: 1024px) {
+  .kp-hero__inner--solo { grid-template-columns: minmax(0, 1fr); grid-template-areas: "intro" "act"; }
+}
+/* The trust lines come BEFORE the CTAs in the SOURCE (landing-hero.tsx), not by `order`: the delivery
+   wants licence, 18+, mobile money and the helpline on a phone's first screen, and a CSS reorder would
+   make keyboard order disagree with the screen (WCAG 1.3.2 — v3 review). INHERIT-MANIFEST L18. */
+
+/* The reader's own reading of the brand line (sw, zh), under it — MOBILE-VISUAL ruling 12. Sora,
+   one weight under the headline, on the h3 rung (h2 from 1024): a translation, not a second
+   headline. Its NDIO/HAPANA (是/否) carry the outcome inks through `Inked` in landing-hero.tsx. */
+.kp-hero__sub {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: var(--type-h3);
+  line-height: 1.25;
+  color: var(--text-muted);
+  margin: 0;
+  text-wrap: balance;
+}
+@media (min-width: 1024px) { .kp-hero__sub { font-size: var(--type-h2); } }
+
+/* The trust lines: licence and 18+, mobile money, named sources, the RG line with the helpline.
+   Each line is a 28px marker column (the 18+ roundel is 28 — `.kp-rg__18`) and the words, so the
+   four lines share one left edge whatever marks them. */
+.kp-hero__trust {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--sp-2);
+  font-size: var(--type-small);
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+.kp-hero__trust > li { display: grid; grid-template-columns: 28px minmax(0, 1fr); column-gap: var(--sp-3); align-items: center; }
+.kp-hero__trust-glyph { display: flex; justify-content: center; color: var(--text-subtle); }
+/* The helpline is a call a player can make from here, at the tap floor (§A2). ⭐ The REACH is an
+   out-of-flow `::after` (13px above and below the ~16px CONTENT box of an inline link — not its line
+   height, which V4 caught measuring 36px at ±10 — reaching 42px, over the 40px `--tap-min`), the platform's
+   own pattern for a small link (see `.mcardp-share`): a 40px line box made the last trust line
+   visibly taller than the three above it, which read as a stray gap. */
+.kp-hero__tel {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+  color: var(--text);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+/* Label and number are each unbreakable, the space between them is not: under large text the line
+   breaks BETWEEN them and never inside "0800 11 0011". */
+.kp-hero__tel > span { white-space: nowrap; }
+/* inline-block: the link is ONE box of its own line height (19.5px at --type-small), so ±13px reaches
+   45.5px — past the preferred 44, since this platform allows exactly 40 or 44+ and "41, 42 and 43 are
+   not nearly 44" (V4, tap-target §1) — whether it sits on one line or, under large text, wraps between
+   label and number (v3 review: an ::after on a plain inline measured from the ~16px content box). */
+.kp-hero__tel::after { content: ""; position: absolute; left: 0; right: 0; top: -13px; bottom: -13px; }
 
 /* 11px: the kit sets the minimum for NEW work at `--type-micro`, and this is new work. (This
    note used to justify itself against `.board-section-eyebrow`'s 10px — a rule nothing had
@@ -3984,7 +4054,15 @@ html[data-sheet-open] .route-enter { animation: none; }
   /* density: general — the home hero's lede, not the board; both card-spacing settings. */
   .kp-hero__lede { font-size: var(--type-h4); }
 }
-.kp-hero__ctas { display: flex; flex-wrap: wrap; gap: var(--sp-3); margin-top: var(--sp-6); }
+/* No margin: the act block (`.kp-hero__act`) owns the seam above the CTAs and below them. Below
+   1024 each CTA may grow to share a line and wraps whole before it shrinks, so at 768 they sit side
+   by side and at 360 each takes the full width (the 560 rule below); from 1024 they keep their own
+   width under the lede. */
+.kp-hero__ctas { display: flex; flex-wrap: wrap; gap: var(--sp-3); }
+@media (max-width: 1023.98px) {
+  /* density: general — the home hero’s calls to action, not the board; both card-spacing settings. */
+  .kp-hero__ctas > .kp-hero__cta { flex: 1 1 240px; justify-content: center; }
+}
 .kp-conv__read {
   font-family: var(--font-mono);
   font-size: var(--type-small);
@@ -4005,19 +4083,21 @@ html[data-sheet-open] .route-enter { animation: none; }
 .kp-hero__headline {
   font-family: var(--font-display);
   font-weight: 800;
-  font-size: var(--type-h1);
+  font-size: var(--type-display-2);
   line-height: 1.02;
   letter-spacing: -0.022em;
   color: var(--hero-text-strong);
   margin: 0;
   text-wrap: balance;
 }
-/* ⚠️ THE KIT CONTRADICTS ITSELF HERE (contradiction 12, PLAN-OF-RECORD §8.4): §1a specifies
-   `--type-display-2` (44px) "at 390", while §Responsive specifies `--type-h1` (32px) "≤560".
-   390 is inside ≤560, so the two cannot both hold. The width-specific table wins — it is the
-   responsive authority — so 360 gets 32px and 44px starts above the band it excludes. */
-@media (min-width: 561px)  { .kp-hero__headline { font-size: var(--type-display-2); } }
+/* ⭐ THE v3 CURVE ON THE LOCKED LADDER (WP2, L6). The delivery asks for `clamp(40px, 6.2vw, 88px)`;
+   §T1 closes the type ladder, so the curve is mapped onto its nearest steps instead of typed:
+   44 (`--type-display-2`) below 1024 — the delivery's 40 at a phone and 47.6 at 768 both land
+   nearest it — then 60 (`--type-display-1`) from 1024 and 72 (`--type-hero`) from 1280, where 6.2vw
+   is 63 and 79. The 2026-09 phone rung was 32 (the kit's own contradiction 12, ruled for the old
+   hero); whether 44 still leaves v3's featured card inside the first screen is V15's to answer. */
 @media (min-width: 1024px) { .kp-hero__headline { font-size: var(--type-display-1); } }
+@media (min-width: 1280px) { .kp-hero__headline { font-size: var(--type-hero); } }
 
 /* Proof rail — three REAL figures, separated by hairlines.
    ⛔ The kit hides the third figure at 390. We keep all three and reflow instead: each one is a
@@ -4025,7 +4105,7 @@ html[data-sheet-open] .route-enter { animation: none; }
    trade on the surface whose whole job is proving the platform is real. */
 .kp-proof {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--sp-4);
 }
 .kp-proof__fig {
@@ -4067,10 +4147,6 @@ html[data-sheet-open] .route-enter { animation: none; }
   background: var(--live-400);
   flex: none;
 }
-@media (min-width: 561px) {
-  .kp-proof { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .kp-proof__fig:nth-child(3) { border-left: 1px solid var(--border); }
-}
 /* 🔴 THE 44px STEP WAITS FOR 1024, AND IT IS A MONEY FIX, NOT A TASTE ONE (§M4 — money never
    reflows). It used to ride inside the 561 block above, so from 561 up the gilt pool figure was
    set in `--type-display-2` inside a track a third of the measure wide, and it WRAPPED at its own
@@ -4086,9 +4162,10 @@ html[data-sheet-open] .route-enter { animation: none; }
       940     892       269.7            fits            fits by 5.7px
      1024     976       297.7            fits           fits by 33.7px
    768 clears TODAY's figure by a single pixel and still wraps a nine-character one, so the step
-   is at 1024 — which is also where `.kp-hero__headline` takes its own second step. From 561 to
+   is at 1024 — which is also where `.kp-hero__headline` takes its own second step. From 640 to
    1023 the rail stays at --type-h2 (24px → 14.4px/char): 144px for the widest figure this book
-   can print, against 148.7px of track at the narrowest width in that band.
+   can print, against 175px of track at 640 (inner 608 − 2×16 gap, ÷3, less the 16 + 1 of padding
+   and hairline). The three columns start at 640 since landing v3; they used to start at 561.
    ⚠️ THE EXEMPLAR READ "TZS 999.9M" AND THAT STRING DOES NOT EXIST (S-02, scan #1, 2026-08-28).
    `formatTzsCompact` cannot emit it in any version: a ".9" mantissa in the M band occurs only
    below 10M ("TZS 9.9M"), so a 999.9 always lands in B. THE ARITHMETIC IS UNCHANGED — 264 is
@@ -4106,25 +4183,43 @@ html[data-sheet-open] .route-enter { animation: none; }
 @media (min-width: 1024px) {
   .kp-proof__num { font-size: var(--type-display-2); }
 }
-/* ONE FIGURE PER ROW at ≤560. It replaces a 2+1 that was correct engineering and read as an
-   accident: figure 3 took the whole 328px measure while 1 and 2 shared it, so "83 OPEN
-   PREDICTIONS" looked orphaned rather than stacked — left-aligned against nothing.
-   ⛔ 3-up at 360 is NOT available and never was; the rule this replaces said as much in words.
-   328px inner − 2×16 gap = three 98.7px tracks, 81.7px usable after padding-left and hairline,
-   against a 115px numeral at --type-h2 and a 134px caption ("OPEN PREDICTIONS" — Swahili "Masoko
-   yaliyo wazi" is wider still). The only two options were 2+1 and 1+1+1. This is 1+1+1: the
-   vertical hairlines become horizontal ones, every figure gets the full measure, and caption
-   wrapping at 360 ends in all three locales.
-   Cost 3 × 44 min-height + 2 × (12 + 1px) = ~182px against ~116px, so ~+66px of hero — repaid
-   about 4× over by the phone rhythm step-down (−288px on this page at 360; see --rh-* §Spacing). */
-@media (max-width: 560.98px) {
-  /* density: general — the home hero's proof figures, not the board; both card-spacing settings. */
-  .kp-proof { grid-template-columns: minmax(0, 1fr); gap: var(--sp-3); }
-  .kp-proof__fig { padding-left: 0; border-left: 0; }
-  .kp-proof__fig + .kp-proof__fig { border-top: 1px solid var(--border); padding-top: var(--sp-3); }
+/* ⭐ LEDGER ROWS BELOW 640 (landing v3, WP8) — caption left, figure right, a hairline under each.
+   ⛔ 3-up below 640 is NOT available and never was: at 360, 328px inner − 2×16 gap gives three
+   98.7px tracks, 81.7px usable, against a 115px numeral at --type-h2 and a 134px caption. The
+   2026-09 answer was one figure per row, number over caption (~182px for the three). A ledger row
+   says the same thing in one line each — the shape a statement of account has — so the rail costs
+   three 44px rows and reads down its right edge like a column of sums.
+   ⛔ THE FIGURE NEVER WRAPS OR SHRINKS (§M4 — money never reflows): it is `flex: none` and the
+   caption takes the remainder and may wrap. The widest figure this rail can print is ten
+   characters, 144px at --type-h2, which leaves the caption 172px at 360.
+   The markup keeps figure-then-caption, which is what `test:betting-ink` §1 pins; `row-reverse`
+   is what puts the caption first on screen. */
+@media (max-width: 639.98px) {
+  /* density: general — the home proof figures, not the board; both card-spacing settings. */
+  .kp-proof { grid-template-columns: minmax(0, 1fr); gap: 0; border-top: 1px solid var(--border); }
+  .kp-proof__fig {
+    flex-direction: row-reverse;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--sp-3);
+    padding: var(--sp-2) 0;
+    border-left: 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .kp-proof__fig:first-child { padding-left: 0; }
+  .kp-proof__num { flex: none; }
+  .kp-proof__cap { margin-top: 0; min-width: 0; }
+  /* The pip follows the count in the markup (D51, for the left-aligned rail) — on a RIGHT-aligned
+     ledger that pushed "40" 16px off the column of sums. Drawn first here; the DOM, which
+     `test:betting-ink` pins, is untouched. */
+  .kp-proof__pip { order: -1; }
 }
 
-.kp-conv { max-width: 620px; }
+/* The proof section, below the hero (v3). Its three parts keep their own measures: the rail spans
+   the column, the conviction bar holds a reading measure (the delivery's 760), the board spans. */
+.kp-lproof__inner { display: grid; gap: var(--sp-8); }
+@media (min-width: 768px) { .kp-lproof__inner { gap: var(--sp-10); } }
+.kp-conv { max-width: 760px; }
 
 
 /* 🔴 D60 + D61 · THE FAIRNESS RECORD STOPS BEING A FIVE-COLUMN TABLE ON A PHONE.
@@ -4302,14 +4397,8 @@ html[data-sheet-open] .route-enter { animation: none; }
   .kp-qrow__unit--label { margin-left: 0.35em; }
 }
 
-/* Hero foot — the lede and its two CTAs, with one real card beside them. */
-.kp-hero__foot { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-8); }
-@media (min-width: 1024px) {
-  .kp-hero__foot { grid-template-columns: minmax(0, 1fr) 380px; gap: var(--sp-16); align-items: start; }
-}
-@media (min-width: 1280px) {
-  .kp-hero__foot { grid-template-columns: minmax(0, 1fr) 420px; }
-}
+/* `.kp-hero__foot` (the lede + CTAs beside the card, under the board) was DELETED with landing v3:
+   the hero's own grid (`.kp-hero__inner`, intro / card / act) now places those three. */
 /* At 360 the two CTAs each take the full width rather than sharing a cramped line — flex-wrap
    breaks a line BEFORE it shrinks, so two side-by-side buttons would land one-per-line anyway,
    at half width and ragged. */
@@ -5151,23 +5240,35 @@ textarea::-webkit-resizer {
   margin: var(--sp-2) 0 0;
 }
 
-/* ── §1d BROWSE BY TOPIC — count + pool per tile, lean underline ──────────────────────────── */
+/* ── §1d BROWSE BY TOPIC — count + pool per tile (landing v3, WP10) ───────────────────────────
+   Six tiles: two columns below 1024 (three rows), three from 1024 (two rows) — the delivery's
+   placement, and six divides both. ⭐ NO ORPHAN AT ANY COUNT. A thin book can hold fewer than six
+   topics; the last tile then spans the rest of its row instead of standing alone under a gap (V6
+   counts an orphan as a ragged grid). */
 .kp-topics {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--sp-2);
-  margin-top: var(--rh-close);
+  margin-top: var(--sp-5);
 }
-@media (min-width: 768px)  { .kp-topics { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--sp-3); } }
-@media (min-width: 1024px) { .kp-topics { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--sp-3); } }
+.kp-topic:last-child:nth-child(odd) { grid-column: 1 / -1; }
+@media (min-width: 768px)  { .kp-topics { gap: var(--sp-3); } }
+@media (min-width: 1024px) {
+  .kp-topics { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .kp-topic:last-child:nth-child(odd) { grid-column: auto; }
+  .kp-topic:last-child:nth-child(3n + 1) { grid-column: 1 / -1; }
+  .kp-topic:last-child:nth-child(3n + 2) { grid-column: 2 / -1; }
+}
+/* The tile: the topic's name over its count and pool. No glyph — it repeated the name — and no lean
+   underline, which drew a YES lean with no words beside it (landing v3, K22). */
 .kp-topic {
   position: relative;
   overflow: hidden;
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px var(--sp-3);
-  min-height: 64px;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+  min-height: 72px;
   padding: var(--sp-3) var(--sp-4);
   border: 1px solid var(--border);
   border-radius: var(--r-md);
@@ -5180,28 +5281,24 @@ textarea::-webkit-resizer {
   border-color: var(--border-royal);
   transform: translateY(-1px);
 }
-.kp-topic__glyph { flex: none; display: flex; color: var(--text-faint); transition: color var(--t-quick) ease-out; }
-.kp-topic:hover .kp-topic__glyph { color: var(--brand-300); }
-/* ⚠️ THESE TWO DECLARATIONS ARE LOAD-BEARING AND THE KIT PAID FOR THEM (round 2.4). Without
-   `flex: none` on the meta, its box shrinks under its own text and the text runs BACKWARDS over
-   the topic name; without `text-overflow` on the name, the name cannot ellipsise either. At
-   195px with `Hali ya hewa` (nearly twice `Weather`) the two cannot share a line — so the meta
-   takes its own row and can no longer be squeezed. */
+/* The name: two lines at most, never a cut word. ⭐ WITH THE GLYPH GONE THE NAME HAS THE WHOLE TILE —
+   108px at 320 and 128px at 360 — which clears every Swahili category label on one line except the
+   two-word "Hali ya hewa" at 320, which takes a second line instead of losing a letter (the 2026-09-23
+   measurements: Hali ya hewa 107.7 · Utamaduni 96.5 · Teknolojia 90.7 · Nyingine 79.5 @17px). The
+   clamp is a bound on a pathological string, not the normal case. */
 .kp-topic__n {
-  flex: 1 1 auto;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   font-family: var(--font-display);
-  font-weight: 600;
+  font-weight: 700;
   font-size: var(--type-h4);
+  line-height: 1.25;
   color: var(--text);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
 }
 .kp-topic__m {
-  flex: none;
-  flex-basis: 100%;
-  padding-left: calc(18px + var(--sp-3));
   font-family: var(--font-mono);
   font-size: var(--type-micro);
   font-weight: 700;
@@ -5212,118 +5309,78 @@ textarea::-webkit-resizer {
 /* 🔴 D33 · THE POOL FIGURE IS ONE TOKEN, BECAUSE MONEY NEVER REFLOWS (§M4).
    It used to be a bare text node in `.kp-topic__m`, so the meta's normal wrapping was free to break
    it at its own space: measured 2026-09-23, "TZS 0" and "TZS 8K" split across two lines on 5 of 6
-   tiles at 320 SW, 5 of 6 at 360 ZH and 2 of 6 at 360 EN — "TZS" over "0", a figure reading as two.
-   ⚠️ THE BREAK DOES NOT DISAPPEAR, IT MOVES. The meta is still allowed to wrap at the " · " before
-   the figure, so a tile that needs two lines still gets two — this rule decides only WHERE, and the
-   figure is no longer a legal break point.
-   ⛔ AND THIS IS THE ONE PLACE `white-space: nowrap` IS ALLOWED NEAR MONEY. The proof-rail note
-   above forbids it outright, because there a nowrap would convert a wrap into a CLIP and §A5 forbids
-   clipping money. The difference is measured, not assumed: the widest figure `formatTzsCompact` can
-   emit is ten characters (`test:money-format` §3 pins that), 66px at --type-micro's 0.6em advance,
-   against 78px of usable meta at 320 — the narrowest tile the book has. It fits with 12px to spare,
-   so there is nothing for `.kp-topic`'s `overflow: hidden` to cut. Change the type rung or the
-   meta's padding and that margin is what you have spent. */
+   tiles at 320 SW — "TZS" over "0", a figure reading as two. The meta may still wrap at the " · "
+   before the figure; the figure is no longer a legal break point.
+   ⛔ AND THIS IS THE ONE PLACE `white-space: nowrap` IS ALLOWED NEAR MONEY. The widest figure
+   `formatTzsCompact` can emit is ten characters (`test:money-format` §3 pins that), 66px at
+   --type-micro's 0.6em advance, against 108px of meta at 320 now the glyph is gone — so there is
+   nothing for `.kp-topic`'s `overflow: hidden` to cut. */
 .kp-topic__pool { white-space: nowrap; }
-
-/* 🔴 THE PHONE TILE PUTS THE NAME ON ITS OWN LINE, AND THE GLYPH DOWN BESIDE THE META.
-   ⚠️ WHAT WAS WRONG: the tile is a wrapping flex row — glyph, name, then a meta forced onto
-   its own line by `flex-basis: 100%`. The name carries `flex: 1 1 auto`, so its basis is its
-   CONTENT width, and flex-wrap breaks a line before it shrinks one (the hero CTA block states
-   the same law). A name wider than the box beside the glyph therefore did not ellipsise and did
-   not shrink — it WRAPPED, dropping under the glyph and leaving the glyph alone on a row.
-   Measured 2026-09-23 at 360 SW, `Hali ya hewa` and `Utamaduni` did this while `Michezo` and
-   `Kripto` did not: one grid drawing two different tiles, and because grid rows stretch, each
-   ragged tile dragged its partner to 98px with its content floating in the middle of it.
-   ⛔ AND NEITHER ELLIPSIS NOR A SMALLER TYPE RUNG COULD FIX IT — measured, not assumed. The
-   glyph plus its gap takes 30px, so the name box is 96px at 360 and only 76px at 320, out of
-   108px of tile. Against that, the seven category labels in Swahili (the DEFAULT locale) run:
-     Hali ya hewa 107.7 · Utamaduni 96.5 · Teknolojia 90.7 · Mada zote 89.5 · Nyingine 79.5   @17px
-   At 320, FIVE of them overflow 76px at 17px and `Utamaduni` still overflows at 14px (79.4) —
-   so no type rung clears it, and `Utamaduni` and `Teknolojia` are single unbroken words that
-   cannot wrap, which means the only thing left for them is a cut: `Utamadu…`. A category label
-   is what a player navigates by. Truncating one to save a row is the wrong trade.
-   ⭐ SO THE GLYPH MOVES INSTEAD OF THE WORD. The name takes the tile's whole measure — 108px at
-   320, 128px at 360 — which clears every label above on ONE line, and the glyph goes down to the
-   meta row, where it costs nothing: `.kp-topic__m` was already paying a hand-typed
-   `padding-left: calc(18px + var(--sp-3))` for the express purpose of clearing a glyph that is
-   now actually there. Every tile ends the same height, no name is cut, and the row is shorter
-   than the ragged one it replaces.
-   ⛔ PHONE ONLY. From 561 up the tile is 300px or wider and the flex row has never had this
-   problem, so the glyph keeps leading the name there — the layout the design system froze. */
-@media (max-width: 560.98px) {
-  /* density: general — the home topic tiles, not the board; both card-spacing settings. */
-  .kp-topic {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
-    grid-template-areas:
-      "n n"
-      "g m";
-    align-items: center;
-  }
-  .kp-topic__glyph { grid-area: g; }
-  /* ⚠️ AND THE NAME MUST BE ALLOWED TO WRAP HERE, OR THE MEASURE ABOVE IS HALF A FIX. The base
-     rule sets `white-space: nowrap` with an ellipsis, which is right at desktop where the tile is
-     300px+ and a cut can only mean something pathological. At 320 the tile gives the name 106px
-     and `Hali ya hewa` needs 107.7 — so with nowrap it came back as `Hali ya hew…`, cut by 1.7px.
-     It is two words: it should take a second line, not lose a letter. Every SINGLE word now fits
-     (Utamaduni 96.5, Teknolojia 90.7, Nyingine 79.5 against 106), which is what made this layout
-     the right one; the clamp is a bound on a pathological string, not the normal case. */
-  .kp-topic__n {
-    grid-area: n;
-    white-space: normal;
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
-    line-height: 1.25;
-  }
-  .kp-topic__m { grid-area: m; flex-basis: auto; padding-left: 0; }
-}
 .kp-topic__live { color: var(--text-muted); }
-/* The topic's crowd lean, drawn with the conviction bar's own gradient. ⛔ Rendered ONLY when the
-   topic has money on it — a 50%-wide bar over an empty topic is the same fabricated claim as a
-   "50%" label, drawn instead of written (licence condition 1). */
-.kp-topic__lean {
-  position: absolute;
-  left: 0;
-  bottom: 0;
-  height: 2px;
-  background: var(--bar-fill-yes);
-  opacity: 0.6;
-  /* ⚠️ A `width` TRANSITION, AND THE BEST `scaleX` CANDIDATE IN THE FILE — flat
-     2px, no radius, no glow, anchored `left: 0`, so `transform-origin: left` would
-     be visually identical and composited. It is NOT converted here for one reason
-     only: the width is written inline by `home/topic-tiles.tsx`
-     (`style={{ width: `${tp.leanYesPct}%` }}`), so the CSS half cannot move without
-     the component half, and that file is not this pass's to edit. The two changes
-     have to land together or the bar stops drawing the crowd's lean at all.
-     `ease-out` → `linear`: an opacity fade travels nowhere. */
-  transition: width var(--t-move) var(--m-glide), opacity var(--t-quick) linear;
-}
-.kp-topic:hover .kp-topic__lean { opacity: 1; }
 
-/* ── §1e UP AND DOWN — 920 centred is the whole fix for the ~500px hole at 1440 ───────────── */
+/* ── §1e UP AND DOWN — a live round, full width (landing v3, WP12) ────────────────────────────
+   It was a 920px link-card with a count and a button, centred to close a hole at 1440 that a
+   two-item flex row left. v3 has content on both sides — the copy and its actions, then the round:
+   its price line, its ring — so it takes the board column (Ali, R4(6)), and it is a CONTAINER, not
+   a link, because it now holds links of its own (WP17). Two columns once each can hold 360px,
+   stacked below that. Same raised material as the market cards (`--wash-raised`), not a poster wash. */
 .kp-updown {
-  display: block;
   position: relative;
-  overflow: hidden;
-  max-width: 920px;
-  margin-inline: auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr));
+  align-items: center;
+  gap: var(--sp-6);
   padding: var(--sp-5);
-  border: 1px solid var(--brand-soft);
-  border-radius: var(--r-lg);
-  background: var(--hero-panel-grad);
+  border: 1px solid var(--border);
+  border-radius: var(--r-xl);
+  background: var(--wash-raised);
   box-shadow: var(--elev-raised);
-  transition: border-color var(--t-quick) ease-out, box-shadow var(--t-quick) ease-out;
 }
 @media (min-width: 768px) { .kp-updown { padding: var(--sp-6); } }
-.kp-updown:hover { border-color: var(--brand-400); box-shadow: var(--elev-raised-hover); }
-.kp-updown__row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--sp-4);
+.kp-updown__copy { min-width: 0; display: flex; flex-direction: column; gap: var(--sp-2); }
+.kp-updown__acts { display: flex; flex-wrap: wrap; gap: var(--sp-3); margin-top: var(--sp-3); }
+/* UP and DOWN share a phone's width equally; from 640 they keep their own. */
+@media (max-width: 639.98px) {
+  /* density: general — the home Up & Down band, not the board; both card-spacing settings. */
+  .kp-updown__bet { flex: 1 1 0; justify-content: center; }
 }
+/* When betting on the round has closed the ring says so, and UP/DOWN leave with it: a button into
+   a round that takes no bets is an invitation the page cannot honour. Where `:has()` is unsupported
+   they stay, and the round page states the closed round itself. */
+.kp-updown:has(.kp-udring[data-closed]) .kp-updown__bet { display: none; }
+.kp-updown__round { min-width: 0; display: flex; flex-direction: column; gap: var(--sp-3); }
+.kp-updown__head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-3); flex-wrap: wrap; }
+.kp-updown__open { font-family: var(--font-mono); font-weight: 700; font-size: var(--type-small); font-variant-numeric: tabular-nums; color: var(--text); }
+/* The round's rule, as the round page states it: UP at or above one price, DOWN at or below the other. */
+.kp-updown__rules { margin: 0; display: flex; flex-wrap: wrap; gap: var(--sp-1) var(--sp-4); font-family: var(--font-mono); font-weight: 700; font-size: var(--type-small); font-variant-numeric: tabular-nums; }
+.kp-updown__rule--up { color: var(--yes-300); }
+.kp-updown__rule--down { color: var(--no-300); }
+.kp-updown__viz { display: flex; align-items: center; gap: var(--sp-4); }
+.kp-updown__note { margin: 0; font-size: var(--type-small); color: var(--text-subtle); }
+
+/* The price line: the round's real reads since it opened, the opening price dashed across. Strokes
+   keep their width however the box stretches (`vector-effect` on the elements). */
+.kp-udchart { flex: 1 1 auto; min-width: 0; height: 112px; display: block; overflow: visible; }
+.kp-udchart__open { stroke: var(--text-subtle); stroke-width: 1; stroke-dasharray: 6 4; }
+/* The line is NEUTRAL: the round is not decided by "above or below the open" but by the two targets,
+   which carry the outcome inks. */
+.kp-udchart__line { fill: none; stroke: var(--text); stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; }
+/* DOTTED, so the caption can name them apart from the dashed opening line by pattern, not by colour
+   alone (WCAG 1.4.1). */
+.kp-udchart__target { stroke-width: 1.5; stroke-dasharray: 0.5 4; stroke-linecap: round; opacity: 0.9; }
+.kp-udchart__target--up { stroke: var(--yes-300); }
+.kp-udchart__target--down { stroke: var(--no-300); }
+
+/* The ring: time left to bet as an arc with the digits inside (96px, the delivery's size), and its
+   caption under it on the eyebrow rung, free to wrap. The digits are the only thing on the page
+   that change every second. */
+.kp-udring { flex: none; width: 128px; display: flex; flex-direction: column; align-items: center; gap: var(--sp-2); text-align: center; }
+.kp-udring__dial { position: relative; width: 96px; height: 96px; display: flex; align-items: center; justify-content: center; }
+.kp-udring__svg { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); }
+.kp-udring__track { fill: none; stroke: var(--border); stroke-width: 3; }
+.kp-udring__arc { fill: none; stroke: var(--brand-400); stroke-width: 3; stroke-linecap: round; }
+.kp-udring__digits { position: relative; font-family: var(--font-mono); font-weight: 700; font-size: var(--type-h3); font-variant-numeric: tabular-nums; line-height: 1; color: var(--text); }
+.kp-udring__cap { font-family: var(--font-mono); font-weight: 700; font-size: var(--type-micro); text-transform: uppercase; letter-spacing: 0.08em; line-height: 1.3; color: var(--text-subtle); overflow-wrap: anywhere; text-wrap: balance; }
 
 /* ── §1f WHY THE RESULT CAN BE TRUSTED — one editorial claim, three demoted facts ─────────── */
 .kp-claim {
@@ -5370,17 +5427,19 @@ textarea::-webkit-resizer {
 .kp-trust__marks { display: flex; align-items: center; gap: var(--sp-2); margin-top: var(--sp-3); }
 
 /* ── §1g SETTLED IN THE LAST SEVEN DAYS — the only element proving a cycle completes ──────── */
-.kp-settled { border-top: 1px solid var(--border); margin-top: var(--rh-close); }
-/* The ROW is the anchor (see trust-band.tsx): the question alone measured 20px at 360,
-   under half the 44px floor. As a link it needs the text-decoration reset and a hover the whole
-   row shares. */
+.kp-settled { border-top: 1px solid var(--border); margin-top: var(--rh-close); list-style: none; padding: 0; }
+/* The ROW is the target (see trust-band.tsx): the question alone measured 20px at 360, under half
+   the 44px floor. Since landing v3 the row's link is its own element laid over the whole row
+   (`.kp-settled__open`, inset 0 — the market card's `.mcardp-open` pattern), so the source can be a
+   link of its own, raised above it, without a link inside a link.
+   Phone: pill + question, then the date and sign-off, then source left and paid right.
+   From 768: one line — pill · question over its meta · source · paid. */
 .kp-settled__row {
-  color: inherit;
-  text-decoration: none;
+  position: relative;
   transition: background var(--t-quick) ease-out;
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  grid-template-areas: "o q" ". s" ". a";
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas: "o q q" ". m m" ". s a";
   align-items: center;
   gap: var(--sp-1) var(--sp-4);
   min-height: 64px;
@@ -5390,8 +5449,8 @@ textarea::-webkit-resizer {
 @media (min-width: 768px) {
   .kp-settled__row {
     grid-template-columns: auto minmax(0, 1fr) auto auto;
-    grid-template-areas: "o q s a";
-    gap: var(--sp-4);
+    grid-template-areas: "o q s a" "o m s a";
+    column-gap: var(--sp-4);
   }
 }
 .kp-settled__row:hover { background: var(--bg-overlay); }
@@ -5405,15 +5464,45 @@ textarea::-webkit-resizer {
   white-space: nowrap;
   font-size: var(--type-small);
   color: var(--text-muted);
+  text-decoration: none;
 }
+/* The row's link: a real element over the whole row (the market card's `.mcardp-open` pattern); the source
+   link sits above it. */
+.kp-settled__open { position: absolute; inset: 0; z-index: 0; border-radius: var(--r-sm); }
+/* The date and the sign-off: a sentence ("Settled 26 Sep · Two officers"), so it takes the reading
+   floor (§T4 — a sentence drops to --type-small, never the 11px label rung). */
+.kp-settled__meta {
+  grid-area: m;
+  min-width: 0;
+  font-size: var(--type-small);
+  color: var(--text-subtle);
+}
+/* The source: a link of its own, above the row's stretched link, at the tap floor (§A2). */
 .kp-settled__src {
   grid-area: s;
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  min-height: var(--tap-min);
   font-family: var(--font-mono);
   font-size: var(--type-micro);
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  color: var(--text-faint);
+  color: var(--text-muted);
+  text-decoration: underline;
+  text-underline-offset: 3px;
   white-space: nowrap;
+}
+.kp-settled__src:hover { color: var(--text); }
+.kp-settled__ext { display: inline-flex; flex: none; }
+/* Below 768 the source shares its line with the amount: the host gives way (an ellipsis) so the money
+   never moves — §M4. From 768 the row is one line and both keep their width. */
+.kp-settled__src { min-width: 0; }
+.kp-settled__host { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+@media (min-width: 768px) {
+  .kp-settled__amt { min-width: 20ch; }
 }
 /* Gilt is correct here and nowhere near it is: this is money that was EARNED and PAID (Q5). */
 .kp-settled__amt {
@@ -5428,30 +5517,14 @@ textarea::-webkit-resizer {
 /* A void paid nothing — it says so in words rather than wearing the money ink over a blank. */
 .kp-settled__amt--void { color: var(--text-faint); font-weight: 400; }
 
-/* ── §1h THE RESPONSIBLE-GAMBLING LINE ───────────────────────────────────────────────────────
-   ⚠️ EVERY STRING IS VERBATIM FROM `public-footer.tsx` — no new RG copy exists anywhere in this
-   work, and the footer itself is untouched. Placement above the footer is a REGULATORY question
-   (LCCP §SR 5.1.5 governs where RG messaging must appear); it is built as designed and flagged
-   for compliance sign-off. It is one deletion if refused.
-
-   ⭐ NO `margin-top` HERE — batch 4. It used to carry `margin-top: var(--rh-close)` ON TOP of the
-   trust band's own `.kp-band--closes` padding-bottom, which is precisely the double-count the
-   `--rh-*` tokens' comment at the top of this file warns about: 96 + 48 = **144px of blank
-   measured** above a one-line strip, at all 12 width×locale combinations. The gap above this rule
-   is now the trust band's `--rh-section` and nothing else — ONE definition, one token.
-   ⚠️ This paragraph used to end "identical at every width", and that clause is DELETED, not
-   softened: since 2026-08-21 `--rh-section` has two rungs (64 at ≤767, 96 from 768 — see §Spacing),
-   so the seam is 64 on a phone and 96 above it. What is identical at every width is that ONE token
-   defines it. ⛔ Do not add a margin here; if this seam ever needs a different gap, change the
-   band's padding, not both. */
-.kp-rg {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--sp-3) var(--sp-4);
-  padding-top: var(--rh-close);
-  border-top: 1px solid var(--border);
-}
+/* ── THE 18+ ROUNDEL ─────────────────────────────────────────────────────────────────────────
+   ⛔ THE RG LINE ABOVE THE FOOTER (`.kp-rg`, `rg-line.tsx`) WAS DELETED 2026-09-26 — Ali's landing v3
+   ruling R4(5): the 18+ roundel and the RG motto now sit in the hero's trust lines, on the first
+   screen, and stay in the footer; the third copy between the two went. Both remaining copies read
+   the footer's own keys, so no RG sentence was written or paraphrased. `.kp-settled`'s band now
+   runs straight into the footer's claret rule.
+   The roundel itself stays here, ONE definition: the footer's identity column and the hero's
+   trust lines both wear `.kp-rg__18`, so the two marks cannot drift to different sizes again. */
 .kp-rg__18 {
   flex: none;
   display: inline-flex;
@@ -5466,10 +5539,6 @@ textarea::-webkit-resizer {
   font-size: var(--type-micro);
   color: var(--no-300);
 }
-.kp-rg__say { font-size: var(--type-small); font-style: italic; color: var(--text-subtle); }
-/* `.kp-rg__links` / `.kp-rg__link` DELETED in batch 4 with their only consumer (the three links
-   that duplicated the footer's PLAY SAFE column). They had exactly one citer — `rg-line.tsx` —
-   so they went in the same commit rather than being left for `test:orphans` to find later. */
 
 
 /* =====================================================================

@@ -22,7 +22,9 @@ import { Chip } from "@/components/ui/chip";
 import { STATUS_TONE, TONE_CHIP } from "@/lib/status-tone";
 import { pickLocalized } from "@/lib/localized";
 import { outcomeWord } from "@/lib/side-label";
-import { formatTzs } from "@/lib/utils";
+import { fill, formatTzs } from "@/lib/utils";
+import { eatDayKey, formatEatDay } from "@/lib/eat-day";
+import { signoffWord } from "@/lib/markets/signoff";
 import type { Dict, Locale } from "@/lib/i18n-dict";
 import { Reveal } from "@/components/layout/reveal";
 import type { SettlementRow } from "@/lib/server/platform-stats";
@@ -37,25 +39,30 @@ import type { SettlementRow } from "@/lib/server/platform-stats";
  * whose whole job is to be read. When the marker is absent from the claim the sentence renders
  * whole: a missing emphasis is invisible, a mis-split sentence is broken.
  */
+/* ⭐ AN h2 SINCE LANDING v3 (WP17). The claim was a <p>, so this band's three <h3> cells sat under
+   the Up & Down band's <h2> — a screen reader navigating by heading heard the trust facts as part of
+   the fast game. The claim IS this section's heading; it now says so. */
 function Claim({ text, accent }: { text: string; accent: string }) {
   const i = accent ? text.indexOf(accent) : -1;
-  if (i < 0) return <p className="kp-claim">{text}</p>;
+  if (i < 0) return <h2 className="kp-claim">{text}</h2>;
   return (
-    <p className="kp-claim">
+    <h2 className="kp-claim">
       {text.slice(0, i)}
       <em>{accent}</em>
       {text.slice(i + accent.length)}
-    </p>
+    </h2>
   );
 }
 
 export function TrustBand({
-  t, locale, settlements,
+  t, locale, settlements, nowMs,
 }: {
   t: Dict;
   locale: Locale;
   /** Already ordered `settledAt` DESC by `getPlatformStats`; only rows whose money has moved. */
   settlements: SettlementRow[];
+  /** The render instant — a settlement from an earlier year prints its year. */
+  nowMs: number;
 }) {
   const cells = [
     { glyph: <I.shieldcheck s={26} />, h: t.home.trustCell1H, b: t.home.trustCell1B, marks: false },
@@ -139,11 +146,12 @@ export function TrustBand({
               </Link>
             </div>
 
-            <div className="kp-settled">
+            {/* `role="list"`: WebKit drops the list role from a `list-style: none` ul (VoiceOver). */}
+            <ul className="kp-settled" role="list">
               {settlements.map((s) => (
-                <SettledRow key={s.id} row={s} t={t} locale={locale} />
+                <SettledRow key={s.id} row={s} t={t} locale={locale} nowMs={nowMs} />
               ))}
-            </div>
+            </ul>
           </>
         )}
       </div>
@@ -196,8 +204,11 @@ export function TrustBand({
  * whole row is a link to the market. Simulated on production before shipping: source-host spread
  * across the five rows falls from 148px to 15px at both 768 and 1280, no amount cell clips in any
  * locale, and 360 is untouched because the row stacks below 768. */
-const AMT_MIN = "20ch";
-function SettledRow({ row, t, locale }: { row: SettlementRow; t: Dict; locale: Locale }) {
+/* ⭐ SINCE LANDING v3 THE FLOOR LIVES IN globals.css, FROM 768 ONLY (`.kp-settled__amt`). The row is
+   one line from 768 — the layout the 20ch floor was measured for — but below it v3 put the source and
+   the amount on a SHARED line, and a 156px floor there ran the source link over the amount at 360
+   (found by the v3 review). Below 768 the amount takes its own width and the source gives way. */
+function SettledRow({ row, t, locale, nowMs }: { row: SettlementRow; t: Dict; locale: Locale; nowMs: number }) {
   // 🔴 THE NULL ARM, WHICH DID NOT EXIST. `SettlementRow.outcome` is
   // `"YES" | "NO" | "VOID" | null`, and the old line was a two-armed dictionary ternary on the
   // YES token — so an UNRECORDED outcome fell through to the NO arm and rendered **"NO", in
@@ -231,66 +242,67 @@ function SettledRow({ row, t, locale }: { row: SettlementRow; t: Dict; locale: L
   // betting pair for its own meaning (§B2a), not app states borrowing it.
   const variant = isVoid ? TONE_CHIP[STATUS_TONE.VOID.player] : row.outcome === "YES" ? "yes" : "no";
   const question = pickLocalized(locale, row.titleEn, row.titleSw, row.titleZh);
+  // ⭐ WHEN, AND WHO (landing v3, WP13): the day the money moved, in the reader's own month words and
+  // the platform's zone (`formatEatDay`, the /updown history formatter — `formatDayShort` is English
+  // months in every locale), with the year when it is not this one; and THIS market's own sign-off
+  // from `signoffOf` (lib/markets/signoff.ts) — never a fixed "two officers", which single-admin
+  // resolution would make false (INHERIT-MANIFEST L2). `/fairness` renders the same rule and the same
+  // words, so a reader who follows a row there reads the same answer.
+  const when = row.settledAtMs != null ? (() => {
+    const key = eatDayKey(row.settledAtMs);
+    const day = formatEatDay(key, t.common.monthsShort, locale);
+    const thisYear = key.slice(0, 4) === eatDayKey(nowMs).slice(0, 4);
+    return fill(t.home.settledOn, { date: locale === "zh" || thisYear ? day : `${day} ${key.slice(0, 4)}` });
+  })() : null;
+  const who = row.signoff ? signoffWord(t.common, row.signoff) : null;
+  const meta = [when, who].filter(Boolean).join(" · ");
+  const host = sourceHost(row.sourceUrl);
   return (
-    /* ⭐ THE WHOLE ROW IS THE LINK, AND THAT IS A FIX, NOT A FLOURISH. The question alone was the
-       anchor, and at 360 it is one line of `--type-small` — measured at **20px**, less than half
-       the 44px floor, on a NEW control with no frozen-card exemption to hide behind. Caught by
-       `qa:landing-shots` at 360 in sw and zh.
-       Making the row the anchor puts the target at the row's own 64px minimum without moving one
-       pixel of layout — and it is what a reader expects anyway: tapping a settled row opens the
-       market, not just the eleven characters of its title that fit. `aria-label` names the whole
-       thing so a screen reader hears the question rather than "link". */
-    <Link
-      href={`/markets/${row.id}` as never}
-      className="kp-settled__row"
-      aria-label={question}
-    >
-      {/* `.kp-settled__pill` is `grid-area: o` and NOTHING else — it never set a height,
-          a padding or a size. The geometry came from `.chip`, and the kit's `md` base is
-          that rule byte-for-byte (21px / 0 8px / 10.5px), with the status metrics (23px /
-          0 9px / 11px) on the VOID arm exactly as `.chip-pending` gave them. */}
+    /* ⭐ THE WHOLE ROW IS STILL THE TARGET, AND NOW THE SOURCE IS A LINK OF ITS OWN.
+       The row used to BE the anchor: the question alone measured 20px tall at 360, under half the
+       44px floor, and making the row the link put the target at its own 64px minimum. v3 asks for
+       the settling source as a link beside it (the delivery's results row), and a link cannot sit
+       inside a link. So the row's link is its own element laid over the whole row
+       (`.kp-settled__open`), exactly as the market card's `.mcardp-open` is, and the source link is
+       raised above it. The tap target is unchanged; the source is now checkable in
+       one tap, which is the point of naming it. */
+    <li className="kp-settled__row">
+      {/* `.kp-settled__pill` is `grid-area: o` and NOTHING else — the geometry is `.chip`'s. */}
       <Chip variant={variant} className="kp-settled__pill">{label}</Chip>
+      {/* The row's link is a REAL element laid over the whole row (`.kp-settled__open`, the market card's
+          `.mcardp-open` pattern) — not an `::after` on the question: a pseudo-element stretched to the row
+          is measured from the link's own ~20px box by every tap-reach instrument, and the gate would have
+          failed every row (v3 review). Its accessible name is the question. */}
+      <Link href={`/markets/${row.id}` as never} className="kp-settled__open" aria-label={question} />
       <span className="kp-settled__q">{question}</span>
-      {/* The named public source the outcome was judged against — the host only, because a full
-          URL on a display row is noise and the market page carries the link itself. */}
-      <span className="kp-settled__src">{sourceHost(row.sourceUrl)}</span>
-      {/* 🔴 THIS SAID "REFUNDED" OVER MARKETS THAT WERE NEVER REFUNDED. The condition was
-          `isVoid || amountTzs == null || amountTzs <= 0`, which folds THREE different states into
-          one word. A VOID really was refunded — every stake went back. But a market resolved YES or
-          NO whose pool was empty paid nothing because there was nothing in it, and telling a player
-          their money came back when no money was ever staked is a false statement about money on
-          the same panel whose header says the outcome is read and never inferred.
-          ⛔ THE ZERO ARM NOW RENDERS NOTHING rather than borrowing a word that belongs to a
-          different event. The outcome pill and the source still say what happened; silence about a
-          sum nobody staked is the only honest thing this column can say, and inventing a fourth
-          phrase would be new assessed copy in three locales for a row that has nothing to report.
-          ⚠️ `amountTzs == null` stays WITH the void arm: `settledAmount` returns null exactly when
-          the outcome is not YES or NO, so null here means VOID and nothing else.
-          Caught on production 2026-09-24: a settled row carried the "NDIO" outcome pill and the
-          refund word in the same row. */}
+      {meta && <span className="kp-settled__meta">{meta}</span>}
+      {/* The named public source the outcome was judged against — the host as the label, the real
+          URL as the destination, opened beside the page. */}
+      {host ? (
+        <a className="kp-settled__src" href={row.sourceUrl} target="_blank" rel="noopener noreferrer" aria-label={`${host} · ${t.home.settledSourceNewTab}`}>
+          <span className="kp-settled__host">{host}</span>
+          <span aria-hidden className="kp-settled__ext"><I.externalLink s={11} /></span>
+        </a>
+      ) : <span className="kp-settled__src" aria-hidden />}
+      {/* 🔴 THIS SAID "REFUNDED" OVER MARKETS THAT WERE NEVER REFUNDED. The condition folded THREE
+          states into one word. A VOID really was refunded — every stake went back. A market resolved
+          YES or NO whose pool was empty paid nothing because there was nothing in it; telling a player
+          their money came back when none was staked is a false statement about money.
+          ⛔ THE ZERO ARM RENDERS NOTHING rather than borrowing a word from a different event.
+          ⚠️ `amountTzs == null` stays WITH the void arm: `settledAmount` returns null exactly when the
+          outcome is not YES or NO. */}
       {isVoid || row.amountTzs == null ? (
-        <span className="kp-settled__amt kp-settled__amt--void" style={{ minWidth: AMT_MIN }}>{t.home.settledVoid}</span>
+        <span className="kp-settled__amt kp-settled__amt--void">{t.home.settledVoid}</span>
       ) : row.amountTzs > 0 ? (
-        <span className="kp-settled__amt" style={{ minWidth: AMT_MIN }}>{formatTzs(row.amountTzs)} {t.home.settledPaid}</span>
+        <span className="kp-settled__amt">{formatTzs(row.amountTzs)} {t.home.settledPaid}</span>
       ) : (
-        /* 🔴 AN EMPTY CELL, NOT NO CELL. Returning null here removed the grid ITEM, so the row’s
-           money track collapsed: one row in five came out 19.5px shorter than its neighbours at 360
-           and 412, and at 1280 the track went to 0px and the source host slid across to fill it.
-           The silence about a sum nobody staked is correct and stays — what was wrong is that the
-           silence also took the layout with it. An empty span holds the track at its declared size
-           and prints nothing.
-           ⛔ `aria-hidden` and no text: a screen reader must not announce an empty money cell as if
-           it were a figure, and there is no figure here to announce. */
-        /* 🔴 THE EMPTY SPAN RESERVED NOTHING — an empty block box has height 0, so the grid track
-           stayed at 0px and row 4 stayed 70.5px against its neighbours’ 90px at 360 and 412.
-           Re-measured on production after it shipped: amtH = 0, tracks "21px 16.5px 0px". The
-           element was there and did nothing, which is the shape this session keeps paying for.
-           A non-breaking space gives the box exactly one line box at the cell’s own line-height —
-           no magic number, and it tracks the type scale if that ever moves. `aria-hidden` keeps it
-           out of the accessibility tree, so nothing is announced for a sum nobody staked. */
-        <span className="kp-settled__amt" style={{ minWidth: AMT_MIN }} aria-hidden>{" "}</span>
+        /* 🔴 AN EMPTY CELL, NOT NO CELL — and not an EMPTY span either. Returning null removed the grid
+           item and collapsed the row; an empty span has height 0 and held nothing. A non-breaking
+           space gives the cell one line box at its own line-height, so the silent row keeps its
+           tracks (measured on production 2026-09-24). `aria-hidden`: there is no figure to announce. */
+        <span className="kp-settled__amt" aria-hidden>{"\u00a0"}</span>
       )}
-    </Link>
+    </li>
   );
 }
 

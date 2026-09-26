@@ -275,11 +275,23 @@ const CHECKS = /* js */ `(() => {
       overlays.push(el);
     }
     const TARGETS = ".kp-qrow__price, .kp-qrow__num, .kp-proof__num, .kp-topic__m, a.btn, button.btn, .mcardp-yes, .mcardp-no, .kp-shead__link";
+    /* ⚠️ THE SCREEN ENDS WHERE THE BOTTOM RAIL BEGINS — V15's own rule, applied here too (landing v3).
+       The rail is docked over the last ~64px and the page reserves that space, so a control whose
+       sampling line lies under it is BELOW THE FOLD, not buried: one scroll and it is clear. Counted
+       as occlusion, the first v3 run (2026-09-26) reported the proof figures, the CTAs and the
+       featured card's YES/NO peeking at the fold of the 320–768 frames as "buried". The rail is not exempted as an overlay; a target
+       whose centre is on the screen and still loses the hit test (the chat bubble) is still found. */
+    let fold = vh;
+    for (const o of overlays) {
+      const r = o.getBoundingClientRect();
+      if (r.width > vw * 0.6 && r.bottom >= vh - 1 && r.top > vh * 0.6) fold = Math.min(fold, r.top);
+    }
     const bad = [];
     for (const t of document.querySelectorAll(TARGETS)) {
       if (!vis(t)) continue;
       const r = t.getBoundingClientRect();
       if (r.bottom < 0 || r.top > vh) continue;
+      if (r.top + r.height / 2 >= fold) continue;             // below the fold: the rail's space, not an occlusion
       let buried = 0;
       for (let i = 0; i < 5; i++) {
         const x = r.left + (r.width * (i + 0.5)) / 5, y = r.top + r.height / 2;
@@ -686,9 +698,91 @@ const CHECKS = /* js */ `(() => {
     push("V14", bad);
   }
 
+  /* ── V15 the first screen shows a live market (landing v3) ───────────────────────────────────
+     The delivery's mobile reviewer: at 360 x 740 the first screen shows the pitch AND a live market
+     with its price and its YES/NO. So on every phone cell the featured card's price and its action
+     row must END by 740px of document, measured at the top of the page. 740 is a FIXED line, not the
+     viewport: the 360 cells are 780 tall, and a budget read off innerHeight would quietly grow with
+     the cell. A cell narrower than 360 is reported by V1/V2, not here — 740 is the delivery's frame.
+     No featured card at all is a finding, not a pass: a first screen without a market is the exact
+     state this class exists to catch. */
+  if (vw >= 360 && vw < 640) {
+    const bad = [];
+    /* ⚠️ THE FIRST SCREEN ENDS WHERE THE BOTTOM RAIL BEGINS. The delivery's frame has no rail; ours
+       keeps one (R1), fixed over the last ~64px of the viewport, and a button under it is not on the
+       screen. So the line is 740 or the top of any wide fixed bar pinned to the bottom, whichever is
+       higher on the page (found building v3: the budget read the 740 and ignored the rail). */
+    let line = 740;
+    for (const el of document.querySelectorAll("body *")) {
+      if (getComputedStyle(el).position !== "fixed" || !vis(el)) continue;
+      const r = el.getBoundingClientRect();
+      if (r.width > vw * 0.6 && r.bottom >= vh - 1 && r.top > vh * 0.6) line = Math.min(line, Math.round(r.top));
+    }
+    const card = [...document.querySelectorAll(".kp-hero__card .mcardp")].find(vis);
+    if (!card) bad.push({ what: "no featured market in the hero", measured: "0 visible .kp-hero__card .mcardp", where: "hero" });
+    else {
+      for (const [q, name] of [[".mcardp-prob", "its price"], [".mcardp-actions", "its YES/NO"]]) {
+        const el = card.querySelector(q);
+        if (!el || !vis(el)) { bad.push({ what: "the featured card shows no " + name, measured: "0 visible " + q, where: sel(card) }); continue; }
+        const bottom = Math.round(el.getBoundingClientRect().bottom + scrollY);
+        if (bottom > line) bad.push({ what: "the featured card's " + name.replace("its ", "") + " ends below the first screen", measured: bottom + "px > " + line + (line < 740 ? " (the bottom rail)" : ""), where: sel(el) });
+      }
+    }
+    push("V15", bad);
+  } else push("V15", []);
+
+  /* ── V16 no promised winnings (landing v3) ──────────────────────────────────────────────────
+     Law 1 of the delivery and LAWS §C3: no "win TZS X" on an open market, no stake-times-multiplier
+     sum, in any of the three languages. The estimate is off on the landing by ruling (R3), so ANY
+     multiplier-of-a-stake string here is a finding. Read from visible text only — a string a
+     screen reader hears but nobody sees is still a claim, but a hidden sizer is not. */
+  {
+    const bad = [];
+    const PROMISE = [
+      [/\\bwin\\s+(up\\s+to\\s+)?TZS\\b/i, "win TZS"],
+      [/\\butashinda\\b/i, "utashinda"],
+      [/赢得\\s*TZS/, "赢得 TZS"],
+      [/\\bTZS\\s?[\\d,.]+\\s*[×x]\\s*\\d/i, "a stake times a multiplier"],
+      [/\\b\\d+(?:\\.\\d+)?\\s*[×x]\\s+(?:your\\s+)?stake\\b/i, "a multiple of your stake"],
+    ];
+    const seen = new Set();
+    for (const el of textLeaves()) {
+      const t = (el.textContent || "").replace(/\\s+/g, " ").trim();
+      for (const [re, name] of PROMISE) {
+        if (re.test(t) && !seen.has(t)) { seen.add(t); bad.push({ what: "a promised return: " + name, measured: JSON.stringify(t.slice(0, 60)), where: sel(el) }); }
+      }
+    }
+    push("V16", bad);
+  }
+
+  /* ── V17 no degenerate price anywhere a market is priced (landing v3) ──────────────────────
+     V11 catches a 0% / 100% price LEADING the page; V17 catches one anywhere on a card or a board
+     row. A one-sided market has no price (a price needs two sides, MOBILE-VISUAL ruling 13) and a
+     lopsided two-sided one is shown within 1-99 (L14), so a rendered 0% or 100% is always a
+     statement of certainty nobody's money made. Read per market surface, never off the whole page:
+     the conviction bar's reading is an aggregate, not a price. */
+  {
+    const bad = [];
+    const DEGEN = /(?:^|[^\\d.])(0|100)\\s?%/;
+    for (const surface of document.querySelectorAll(".mcardp, .kp-qrow")) {
+      if (!vis(surface)) continue;
+      for (const el of surface.querySelectorAll("*")) {
+        if (!vis(el)) continue;
+        const own = [...el.childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent).join("");
+        const joined = (own + " " + (el.children.length ? "" : "")).trim();
+        const full = (el.textContent || "").replace(/\\s+/g, " ").trim();
+        // a price reads as NUMBER then "%" — test the element's full text when it is small (a button
+        // label, a price cell), its own text otherwise, so a long sentence is not searched twice.
+        const probe = full.length <= 24 ? full : joined;
+        if (probe && DEGEN.test(probe)) { bad.push({ what: "a 0% or 100% price", measured: JSON.stringify(probe.slice(0, 40)), where: sel(surface) + " > " + sel(el) }); break; }
+      }
+    }
+    push("V17", bad);
+  }
+
   /* ── the text map V8 needs, compared across locales AFTER the sweep ──────────────────────── */
   const textMap = {};
-  for (const s2 of [".kp-hero__headline", ".kp-hero__eyebrow", ".kp-lede", ".kp-shead__h", ".kp-step__h", ".kp-step__b", ".kp-trust__b", ".kp-rg__say", ".kp-proof__cap"]) {
+  for (const s2 of [".kp-hero__headline", ".kp-hero__eyebrow", ".kp-lede", ".kp-shead__h", ".kp-step__h", ".kp-step__b", ".kp-trust__b", ".kp-hero__trust", ".kp-proof__cap"]) {
     textMap[s2] = [...document.querySelectorAll(s2)].filter(vis).map((e) => (e.textContent || "").trim()).slice(0, 6);
   }
 
@@ -716,7 +810,7 @@ const REDS = {
         e.style.cssText += ";overflow:hidden !important;white-space:nowrap !important;text-overflow:clip !important;max-width:20px !important;display:block !important";
         return { applied: e.scrollWidth > e.clientWidth + 1, note: e.scrollWidth + " vs " + e.clientWidth }; })()`,
 
-  V3: `(() => { const t = [...document.querySelectorAll(".kp-qrow__price, a.btn, .kp-proof__num")].find((x) => { const r = x.getBoundingClientRect(); return r.width > 0 && r.top >= 0 && r.top < innerHeight; });
+  V3: `(() => { const t = [...document.querySelectorAll(".kp-qrow__price, a.btn, .kp-proof__num")].find((x) => { const r = x.getBoundingClientRect(); return r.width > 0 && r.top >= 0 && r.top + r.height / 2 < innerHeight * 0.6; });
         if (!t) return { applied: false, note: "no on-screen target" };
         const r = t.getBoundingClientRect(); const f = document.createElement("div");
         f.style.cssText = "position:fixed;z-index:99999;background:#f00;width:" + Math.max(24, r.width) + "px;height:" + Math.max(24, r.height) + "px;left:" + r.left + "px;top:" + r.top + "px";
@@ -829,6 +923,24 @@ const REDS = {
         if (!m) return { applied: false, note: "no topic meta" };
         m.textContent = "4 hai · TZS 0";
         return { applied: /TZS\\s*0/.test(m.textContent), note: m.textContent }; })()`,
+  // landing v3 — push the featured card down past the first screen. A margin, not an inserted node:
+  // the hero is a grid of NAMED areas, and a new child would be auto-placed into a row of its own
+  // at the end rather than in front of the card.
+  V15: `(() => { const c = document.querySelector(".kp-hero__card");
+        if (!c) return { applied: false, note: "no .kp-hero__card" };
+        const before = Math.round(c.getBoundingClientRect().top + scrollY);
+        c.style.marginTop = "800px";
+        const after = Math.round(c.getBoundingClientRect().top + scrollY);
+        return { applied: after - before >= 700, note: "card top " + before + " -> " + after }; })()`,
+  V16: `(() => { const host = document.querySelector("main") || document.body;
+        const p = document.createElement("p"); p.textContent = "Win TZS 50,000 today";
+        p.style.cssText = "font-size:16px;color:#fff;position:relative";
+        host.prepend(p);
+        return { applied: p.getBoundingClientRect().height > 0, note: "planted a promised return" }; })()`,
+  V17: `(() => { const b = [...document.querySelectorAll(".mcardp .btn-yes, .mcardp-yes")].find((x) => x.getBoundingClientRect().width > 0);
+        if (!b) return { applied: false, note: "no visible YES button on a card" };
+        b.textContent = "YES @ 100%";
+        return { applied: b.textContent === "YES @ 100%", note: "a card button now reads 100%" }; })()`,
 };
 
 /* ══════════════════════════════════════════════════════════════════════════════════════════════ */

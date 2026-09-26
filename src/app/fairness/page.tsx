@@ -13,6 +13,8 @@ import { PageHero } from "@/components/ui/page-hero";
 import { Chip } from "@/components/ui/chip";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { listTerminalMarkets } from "@/lib/server/market-service";
+import { objectionRulings } from "@/lib/server/reversals";
+import { signoffOf, signoffWord } from "@/lib/markets/signoff";
 import { Pagination, PLAYER_PER_PAGE } from "@/components/ui/pagination";
 import { Suspense } from "react";
 import { FilterPill } from "@/components/ui/filter-pill";
@@ -120,6 +122,10 @@ export default async function FairnessPage({ searchParams }: { searchParams: Pro
    * call. This paragraph found that out.
    */
   const terminal = await listTerminalMarkets();
+  // Verdicts an upheld objection REVERSED: their stamps name who signed the overturned verdict, so
+  // the table says "corrected on objection" instead of crediting them (lib/markets/signoff.ts). One
+  // narrow memoised read (lib/server/reversals.ts) — this page is signed-out and curl-able.
+  const rulings = await objectionRulings();
   const sp = await searchParams;
   const state = parseAttestationParams(sp);
   const nowMs = Date.now();
@@ -133,6 +139,7 @@ export default async function FairnessPage({ searchParams }: { searchParams: Pro
     // ⛔ THE CLOCK THE TABLE PRINTS — see the contract's note on `ATTESTATION_NATURAL_DIR`.
     resolvedAtMs: Date.parse(m.resolutionStage2At ?? "") || 0,
     twoOfficer: !!(m.resolutionStage1By && m.resolutionStage2By && m.resolutionStage1By !== m.resolutionStage2By),
+    signoff: signoffOf(m, rulings.get(m.id)),
     titleEn: m.titleEn,
     titleSw: m.titleSw ?? "",
     titleZh: m.titleZh ?? "",
@@ -360,8 +367,12 @@ export default async function FairnessPage({ searchParams }: { searchParams: Pro
                       */}
                     <td role="cell" data-th={t.common.thOfficers} className="p-3 text-[11px] text-text-muted">
                       <div className="flex items-center gap-1">
-                        {m.twoOfficer ? <I.users s={11} /> : <I.shieldcheck s={11} />}
-                        <span>{m.twoOfficer ? t.common.twoOfficerSealed : t.common.oneOfficerSealed}</span>
+                        {/* 🔴 AN AUTOMATIC SEAL WAS PUBLISHED AS "ONE OFFICER" (found 2026-09-26, landing v3
+                            review). This cell asked only "two distinct stamps?", and the automatic resolver
+                            stamps its own actor into both — so a machine's verdict read as a person's. The
+                            shared rule names it; a row with no stamp keeps the old one-officer reading. */}
+                        {m.signoff === "two" ? <I.users s={11} /> : m.signoff === "auto" ? <I.bot s={11} /> : m.signoff === "objection" ? <I.flag s={11} /> : <I.shieldcheck s={11} />}
+                        <span>{signoffWord(t.common, m.signoff ?? "one")}</span>
                       </div>
                     </td>
                     <td role="cell" data-th={t.common.thResolved} className="p-3 font-mono text-[11px] text-text-muted whitespace-nowrap">{fmtTime(m.resolvedAtMs ? new Date(m.resolvedAtMs).toISOString() : null)}</td>

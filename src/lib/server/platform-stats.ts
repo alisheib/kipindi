@@ -21,6 +21,8 @@
  * this scan again — but as a live consumer, not as a query kept warm for nobody.
  */
 import { listMarkets, ratesFor, type StoredMarket } from "./market-service";
+import { signoffOf, type Signoff, type Ruling } from "@/lib/markets/signoff";
+import { objectionRulings } from "./reversals";
 import { db } from "./store";
 import { poolFee } from "@/lib/payout";
 import type { TickerRow } from "@/lib/markets/ticker";
@@ -34,6 +36,16 @@ export type SettlementRow = Omit<TickerRow, "title"> & {
   titleZh: string | null;
   /** The public source the outcome was judged against — the settled strip names it. */
   sourceUrl: string;
+  /**
+   * Who signed THIS market off (landing v3, WP13) — two distinct officers, one officer, the automatic
+   * resolver, or "corrected on objection" when an upheld objection REVERSED the verdict (its stamps
+   * then name who signed the overturned one). `null` when the market carries no stamp at all.
+   * ⛔ Never a fixed count: single-admin resolution is the default in every money mode
+   * (`test:two-admin` asserts the ABSENCE of a hard two-officer lock), and a strip that printed "two
+   * officers" over a one-officer verdict would be a regulatory finding (INHERIT-MANIFEST L2).
+   * Derived by `signoffOf` (`lib/markets/signoff.ts`), the one rule `/fairness` reads too.
+   */
+  signoff: Signoff | null;
 };
 
 export type PlatformStats = {
@@ -83,7 +95,7 @@ function settledAmount(m: StoredMarket): number | null {
   return poolFee(m.yesPool, m.noPool, ratesFor(m), m.resolvedOutcome).netPool;
 }
 
-function toSettlementRow(m: StoredMarket): SettlementRow {
+function toSettlementRow(m: StoredMarket, rulings: ReadonlyMap<string, Ruling[]>): SettlementRow {
   return {
     id: m.id,
     settledAtMs: m.settledAt ? Date.parse(m.settledAt) : null,
@@ -93,6 +105,7 @@ function toSettlementRow(m: StoredMarket): SettlementRow {
     titleSw: m.titleSw,
     titleZh: m.titleZh,
     sourceUrl: m.sourceUrl,
+    signoff: signoffOf(m, rulings.get(m.id)),
   };
 }
 
@@ -106,6 +119,9 @@ export async function getPlatformStats(): Promise<PlatformStats> {
   // surfaces that DO want polls only filter these same rows below rather than re-querying.
   const resolved = await listMarkets({ status: "RESOLVED", productLine: "ALL" })
     .catch(() => [] as Awaited<ReturnType<typeof listMarkets>>);
+  // Verdicts an upheld objection REVERSED or VOIDED (reversals.ts): their stamps name who signed the
+  // verdict that was thrown out, so the strip must not credit them with the one that stands (signoff.ts).
+  const rulings = await objectionRulings();
 
   // ⛔ THE TICKER AND THE STRIP ARE THE POLL PRODUCT LINE ONLY, AND THE COUNT ABOVE IS NOT.
   // Both readings are deliberate. `settledCount` pairs with a whole-platform payout total, so it
@@ -116,7 +132,7 @@ export async function getPlatformStats(): Promise<PlatformStats> {
   // no second query.
   const settlements = resolved
     .filter((m) => m.productLine === "MARKET")
-    .map(toSettlementRow)
+    .map((m) => toSettlementRow(m, rulings))
     .filter((r) => typeof r.settledAtMs === "number" && Number.isFinite(r.settledAtMs) && r.settledAtMs > 0)
     // 🔴 RULE 5, WHICH THIS FEED WAS BYPASSING. `ticker.ts` states it as law 25 — *"the outcome
     // is READ, never inferred: a row whose outcome is absent is DROPPED rather than guessed"* —

@@ -2772,6 +2772,19 @@ export const prismaDb = {
       const rows = await pc().objection.findMany({ orderBy: { createdAt: "desc" }, take: limit });
       return rows.map(toStoredObjection);
     },
+    /** Every objection UPHELD with a remedy that changed the verdict (REVERSE or VOID) — the market, the
+     *  remedy, who ruled and when. Narrow on purpose (four columns, no player text, no cap): the public
+     *  sign-off reads it, and a capped newest-1000 list would silently drop an old ruling (v3 review). */
+    listUpheldRulings: async (): Promise<Array<{ marketId: string; remedy: string; reviewedBy: string | null; reviewedAt: string | null }>> => {
+      const rows = await pc().objection.findMany({
+        where: { status: "UPHELD", remedy: { in: ["REVERSE", "VOID"] } },
+        select: { marketId: true, remedy: true, reviewedBy: true, reviewedAt: true },
+      });
+      return rows.map((r) => ({
+        marketId: r.marketId, remedy: r.remedy ?? "", reviewedBy: r.reviewedBy ?? null,
+        reviewedAt: r.reviewedAt ? new Date(r.reviewedAt).toISOString() : null,
+      }));
+    },
   },
 
   // ── PROPOSAL ──────────────────────────────────────────────────────────────
