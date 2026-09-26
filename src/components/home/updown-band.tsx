@@ -2,14 +2,22 @@
  * §1e — UP & DOWN, the fast game, as a LIVE ROUND rather than a poster (landing v3, WP12).
  *
  * The band used to be one link with a count ("1 rounds live now") and a button: it told a visitor a
- * second game existed and showed nothing of it. v3 shows the soonest round that is still taking bets:
- * its asset and duration, the real price line since it opened with the opening price dashed across
- * it, a countdown ring to when betting closes, and UP / DOWN straight into that round with the side
- * kept.
+ * second game existed and showed nothing of it. v3 shows a round that is still taking bets: its asset
+ * and duration, the price line since it opened, the opening price dashed across it, the two prices
+ * that decide it, a countdown ring to when betting closes, and UP / DOWN straight into that round with
+ * the side kept.
  *
- * ⛔ REAL DATA OR NOTHING (A-5). The line is the round's own CONFIRMED observations (`priceSeries`
- * from `getRoundDetail`) — fewer than two and it draws the opening line alone. Nothing is sampled or
- * simulated: the concept's moving line was a random walk, and it is not ported (L12).
+ * ⛔ THE ROUND'S OWN RULE IS ON SCREEN (v3 review). It resolves UP if the price reaches `upTarget`, DOWN
+ * if it reaches `downTarget`, and a finish between them is VOID with every stake refunded
+ * (updown-service.ts). A dashed opening line alone, with the line coloured by "above or below the
+ * open", told a reader a rule the round does not have. Both targets are drawn in the outcome inks and
+ * named as the round page names them ("UP ≥ $X", "DOWN ≤ $Y" — price-hero.tsx); the line itself is
+ * neutral.
+ * ⛔ REAL DATA OR NOTHING (A-5). The line is the round's own CONFIRMED observations (`priceSeries` from
+ * `getRoundDetail`) — fewer than two and no line is drawn. Observations exist only at grid boundaries,
+ * so no "current price" is printed: the newest confirmed read is usually the round's own opening one,
+ * and labelling it "now" would call a minutes-old number live. The concept's moving line was a random
+ * walk and is not ported (L12).
  * ⛔ NOT ONE LINK ANY MORE. The whole band was an `<a>`; with buttons inside it, that would nest
  * interactive elements (WP17). It is a container, and each control is its own link.
  * Full width of the board column (Ali, 2026-09-26, R4(6)) — the band now has content on both sides.
@@ -23,14 +31,16 @@ import { usd } from "@/lib/usd-price";
 import { sideWord } from "@/lib/side-label";
 import type { Dict } from "@/lib/i18n-dict";
 
-/** The soonest open round, already reduced to what the band draws. */
+/** A round still taking bets, already reduced to what the band draws. */
 export type UpdownBandRound = {
   roundId: string;
   assetName: string;
   durationMinutes: number;
   decimals: number;
   openPrice: number | null;
-  livePrice: number | null;
+  /** The price that wins UP, and the one that wins DOWN; between them the round voids. */
+  upTarget: number | null;
+  downTarget: number | null;
   /** Confirmed reads inside the round window, oldest first; null when fewer than two exist. */
   series: { ms: number; price: number }[] | null;
   opensAtMs: number;
@@ -41,10 +51,13 @@ export type UpdownBandRound = {
 
 const W = 400, H = 112, PAD = 10;
 
-/** The mini line: price over time since the round opened, and the opening price as a dashed rule. */
+/** The mini chart: the opening price dashed, the two deciding prices, and the real reads since open. */
 function PriceLine({ round, label }: { round: UpdownBandRound; label: string }) {
   const pts = round.series ?? [];
-  const values = [...pts.map((p) => p.price), ...(round.openPrice != null ? [round.openPrice] : [])];
+  const values = [
+    ...pts.map((p) => p.price),
+    ...[round.openPrice, round.upTarget, round.downTarget].filter((v): v is number => v != null),
+  ];
   if (values.length === 0) return null;
   const lo = Math.min(...values), hi = Math.max(...values);
   const span = hi - lo || 1;
@@ -52,16 +65,16 @@ function PriceLine({ round, label }: { round: UpdownBandRound; label: string }) 
   const t0 = round.opensAtMs;
   const t1 = pts.length ? Math.max(pts[pts.length - 1].ms, t0 + 1) : t0 + 1;
   const x = (ms: number) => ((ms - t0) / (t1 - t0)) * W;
-  const last = pts.length ? pts[pts.length - 1].price : null;
-  const up = last != null && round.openPrice != null ? last >= round.openPrice : true;
+  const rule = (v: number | null, cls: string) =>
+    v == null ? null : <line className={cls} x1="0" x2={W} y1={y(v)} y2={y(v)} vectorEffect="non-scaling-stroke" />;
   return (
     <svg className="kp-udchart" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" role="img" aria-label={label}>
-      {round.openPrice != null && (
-        <line className="kp-udchart__open" x1="0" x2={W} y1={y(round.openPrice)} y2={y(round.openPrice)} vectorEffect="non-scaling-stroke" />
-      )}
+      {rule(round.upTarget, "kp-udchart__target kp-udchart__target--up")}
+      {rule(round.downTarget, "kp-udchart__target kp-udchart__target--down")}
+      {rule(round.openPrice, "kp-udchart__open")}
       {pts.length >= 2 && (
         <polyline
-          className={up ? "kp-udchart__line kp-udchart__line--up" : "kp-udchart__line kp-udchart__line--down"}
+          className="kp-udchart__line"
           points={pts.map((p) => `${x(p.ms).toFixed(1)},${y(p.price).toFixed(1)}`).join(" ")}
           vectorEffect="non-scaling-stroke"
         />
@@ -73,7 +86,8 @@ function PriceLine({ round, label }: { round: UpdownBandRound; label: string }) 
 export function UpdownBand({ t, liveCount, round }: { t: Dict; liveCount: number; round: UpdownBandRound | null }) {
   const up = sideWord(t, "YES", "UPDOWN");
   const down = sideWord(t, "NO", "UPDOWN");
-  const now = round?.livePrice ?? round?.series?.[round.series.length - 1]?.price ?? null;
+  const upRule = round?.upTarget != null ? `${up.toUpperCase()} ≥ ${usd(round.upTarget, round.decimals)}` : null;
+  const downRule = round?.downTarget != null ? `${down.toUpperCase()} ≤ ${usd(round.downTarget, round.decimals)}` : null;
   return (
     <Reveal band="updown" className="kp-band kp-band--tight kp-band--closes">
       <div className="kp-band__inner">
@@ -102,10 +116,16 @@ export function UpdownBand({ t, liveCount, round }: { t: Dict; liveCount: number
                   </Link>
                 </>
               )}
-              {/* `whiteSpace: normal` inline: `.btn` is unlayered and `whitespace-normal` lives in a
-                  cascade layer, so the utility never won — an inline style is the one mechanism that
-                  cannot lose here (measured on production when the band was 229px wide at 200% zoom). */}
-              <Link href={"/updown" as never} className="btn btn-ghost btn-lg max-w-full" style={{ whiteSpace: "normal" }}>
+              {/* Beside UP/DOWN this is the quiet way in; with no round to show it is the band's one
+                  action, so it keeps the primary skin the band has always had (v3 review).
+                  `whiteSpace: normal` inline: `.btn` is unlayered and the utility lives in a cascade
+                  layer, so the utility never won (measured on production at 200% zoom). */}
+              <Link
+                href={"/updown" as never}
+                className={`btn ${round ? "btn-ghost" : "btn-primary"} btn-lg max-w-full kp-updown__all`}
+                style={{ whiteSpace: "normal" }}
+              >
+                {!round && <I.trendingUp s={16} />}
                 {t.home.updownCta}
                 <I.chevronRight s={14} />
               </Link>
@@ -116,12 +136,14 @@ export function UpdownBand({ t, liveCount, round }: { t: Dict; liveCount: number
             <div className="kp-updown__round">
               <div className="kp-updown__head">
                 <span className="kp-hero__eyebrow">{round.assetName} · {round.durationMinutes} {t.market.udMin}</span>
-                {now != null && <span className="kp-updown__now">{usd(now, round.decimals)}</span>}
+                {round.openPrice != null && (
+                  <span className="kp-updown__open">{t.market.udOpenPrice} {usd(round.openPrice, round.decimals)}</span>
+                )}
               </div>
               <div className="kp-updown__viz">
                 <PriceLine
                   round={round}
-                  label={`${round.assetName} · ${t.market.udOpenPrice} ${usd(round.openPrice, round.decimals)}${now != null ? ` → ${usd(now, round.decimals)}` : ""}`}
+                  label={[round.assetName, upRule, downRule, round.openPrice != null ? `${t.market.udOpenPrice} ${usd(round.openPrice, round.decimals)}` : null].filter(Boolean).join(" · ")}
                 />
                 <UpdownRing
                   opensAtMs={round.opensAtMs}
@@ -131,7 +153,14 @@ export function UpdownBand({ t, liveCount, round }: { t: Dict; liveCount: number
                   capClosed={t.market.udSelectionsClosed}
                 />
               </div>
-              <p className="kp-updown__note">{t.home.udDashed}</p>
+              {upRule && downRule && (
+                <p className="kp-updown__rules">
+                  <span className="kp-updown__rule--up">{upRule}</span>
+                  <span className="kp-updown__rule--down">{downRule}</span>
+                </p>
+              )}
+              {/* Only when the dashed line is actually drawn (v3 review). */}
+              {round.openPrice != null && <p className="kp-updown__note">{t.home.udDashed}</p>}
             </div>
           )}
         </div>

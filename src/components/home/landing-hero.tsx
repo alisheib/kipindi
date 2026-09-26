@@ -36,7 +36,7 @@ import { TippingBar } from "@/components/brand";
 import { fill, formatNumber, formatTzs, formatTzsCompact } from "@/lib/utils";
 import { pickLocalized } from "@/lib/localized";
 import { timeLeftLabel } from "@/lib/markets/time-left";
-import { HELPLINE, HELPLINE_TEL, LICENCE_NUMBER } from "@/lib/support-config";
+import { HELPLINE, HELPLINE_TEL } from "@/lib/support-config";
 import type { Dict, Locale } from "@/lib/i18n-dict";
 import type { HeroFigures, HeroRow } from "@/lib/markets/hero";
 import { sideWord } from "@/lib/side-label";
@@ -88,43 +88,46 @@ function Inked({ text, yes, no }: { text: string; yes: string; no: string }) {
 }
 
 /**
- * The trust lines — licence, 18+, mobile money, named sources, and the helpline.
+ * The trust lines — licence and 18+, mobile money, the RG line with the helpline, named sources.
  *
  * ⭐ NOT ONE NEW REGULATED SENTENCE. Every string is read from the key the footer or the trust band
- * already ships (`footer.licensedByGbt`, `footer.license`, `footer.stopGambling`, `footer.helpline`,
- * `home.trustCell3H`, `home.trustCell1H`), and the licence number and helpline come from
- * `support-config.ts`, their one home. RG and licence wording is assessed, so a paraphrase would be a
- * new claim to assess; a shared key means a correction reaches both places in one edit.
- * ⚠️ The HELPLINE is here although the concept's trust lines omit it: the delivery's own placement map
- * puts "Licence · 18+ · helpline" on the first screen (INHERIT-MANIFEST, LANDING-TEN §3 P15). It is a
- * `tel:` link at the tap floor, so a player can call it from the line that names it.
- * ⛔ The delivery's draft licence string starts with the digit ZERO. Ours starts with the letter O —
- * which is why the number is never typed into a string (L3).
+ * already ships (`footer.licensedByGbt`, `footer.stopGambling`, `footer.helpline`, `home.trustCell3H`,
+ * `home.trustCell1H`), and the helpline comes from `support-config.ts`, its one home. RG and licence
+ * wording is assessed, so a paraphrase would be a new claim to assess.
+ * ⭐ THE ORDER IS THE FIRST SCREEN'S. The delivery wants licence, 18+, mobile money AND the helpline on
+ * a phone's first screen (its ACCEPTANCE K29 and placement map P15), while its own phone order puts
+ * these lines after the CTAs — below 740px. So below 1024 they come BEFORE the CTAs (CSS `order`, one
+ * DOM), and in this order: what a first-time visitor must see first, "named sources" last because the
+ * featured card already states its source. INHERIT-MANIFEST L18.
+ * ⚠️ The licence NUMBER is not repeated here — the footer carries it on every page (K39), as the
+ * delivery's own hero omits it; the line stays short enough for the first screen.
+ * ⛔ No `aria-label` on the roundel: "18+" is its text, and ARIA prohibits a label on a generic span.
  */
 function TrustLines({ t }: { t: Dict }) {
   return (
     <ul className="kp-hero__trust">
       <li>
-        <span aria-label={t.footer.eighteenPlus} className="kp-rg__18">{t.footer.eighteenPlus}</span>
-        <span>
-          {t.footer.licensedByGbt}{" "}
-          <span className="kp-hero__lic">{t.footer.license}: {LICENCE_NUMBER()}</span>
-        </span>
+        <span className="kp-rg__18">{t.footer.eighteenPlus}</span>
+        <span>{t.footer.licensedByGbt}</span>
       </li>
       <li>
         <span className="kp-hero__trust-glyph" aria-hidden><I.phone s={16} /></span>
         <span>{t.home.trustCell3H}</span>
       </li>
       <li>
-        <span className="kp-hero__trust-glyph" aria-hidden><I.shieldcheck s={16} /></span>
-        <span>{t.home.trustCell1H}</span>
-      </li>
-      <li>
-        <span className="kp-hero__trust-glyph" aria-hidden><I.rgSelfCare s={16} /></span>
+        <span className="kp-hero__trust-glyph" aria-hidden><I.headset s={16} /></span>
         <span>
           {t.footer.stopGambling}{" "}
-          <a className="kp-hero__tel" href={`tel:${HELPLINE_TEL()}`}>{t.footer.helpline} {HELPLINE()}</a>
+          {/* Label and number are separate unbreakable runs, so under large text the line breaks
+              BETWEEN them and never inside the number (the footer's own shape). */}
+          <a className="kp-hero__tel" href={`tel:${HELPLINE_TEL()}`}>
+            <span>{t.footer.helpline}</span> <span>{HELPLINE()}</span>
+          </a>
         </span>
+      </li>
+      <li>
+        <span className="kp-hero__trust-glyph" aria-hidden><I.shieldcheck s={16} /></span>
+        <span>{t.home.trustCell1H}</span>
       </li>
     </ul>
   );
@@ -184,7 +187,9 @@ export function LandingHero({ figures, t, locale, isAuthed, nowMs, cards }: Prop
 
   return (
     <section className="kp-hero" data-band="hero">
-      <div className="kp-hero__inner">
+      {/* `--solo`: an empty book has no featured market, and a two-column grid would leave its right
+          half blank (and a doubled gap on a phone) — the pitch and the CTAs take the whole width. */}
+      <div className={featured ? "kp-hero__inner" : "kp-hero__inner kp-hero__inner--solo"}>
         <div className="kp-hero__intro">
           {/* 🔴 `text-balance` ON EVERY EYEBROW. These are short uppercase mono labels, and when one
               wraps it drops its last token alone ("TANZANIA · DAR ES SALAAM · TANGU / 2026" at 320).
@@ -195,7 +200,9 @@ export function LandingHero({ figures, t, locale, isAuthed, nowMs, cards }: Prop
             {t.home.heroLocation} · {t.home.heroEst}
           </p>
           {/* The brand line stays English in every locale; its accents are the English words. */}
-          <h1 className="kp-hero__headline">
+          {/* `lang="en"`: the brand line is English in every locale (ruling 12), so a Swahili or Chinese
+              screen reader must pronounce it as English (WCAG 3.1.2). */}
+          <h1 className="kp-hero__headline" lang="en">
             <Inked text={t.home.heroHeadline} yes="YES" no="NO" />
           </h1>
           {/* ⭐ THE BRAND LINE STAYS ENGLISH AND GETS A READING UNDERNEATH IT (owner decision,
@@ -362,9 +369,9 @@ export function LandingProof({ figures, t, locale, paidOutTzs }: {
         <div className="kp-conv">
           <p className="kp-hero__eyebrow text-balance">{t.home.heroConvEyebrow}</p>
           {figures.yesShare == null ? (
-            <TippingBar empty emptyLabel={t.home.heroConvEmpty} height={10} />
+            <TippingBar empty emptyLabel={t.home.heroConvEmpty} height={10} as="img" />
           ) : (
-            <TippingBar yesPct={figures.yesShare} height={10} showLabels={false} recastOnHover={false} probabilityLabel={convRead} />
+            <TippingBar yesPct={figures.yesShare} height={10} showLabels={false} recastOnHover={false} probabilityLabel={convRead} as="img" />
           )}
           <p className="kp-conv__read">{convRead}</p>
         </div>

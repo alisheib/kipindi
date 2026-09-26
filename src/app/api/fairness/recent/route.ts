@@ -18,6 +18,7 @@
  */
 import { NextResponse } from "next/server";
 import { autoResolveExpiredDemoMarkets, listMarkets } from "@/lib/server/market-service";
+import { signoffOf } from "@/lib/markets/signoff";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -79,6 +80,9 @@ export async function GET() {
       // leaking internal officer user-ids (or staff names) on an unauthenticated
       // endpoint. Accountability by identity lives in the private audit chain.
       twoOfficer: !!(m.resolutionStage1By && m.resolutionStage2By && m.resolutionStage1By !== m.resolutionStage2By),
+      // The sign-off in words the public can check (two / one / auto), from the one rule /fairness and
+      // the landing read. Additive: `twoOfficer` stays for existing clients.
+      signoff: signoffOf(m),
       stage1At: m.resolutionStage1At,
       stage2At: m.resolutionStage2At,
       // ⭐ The clock the MONEY moved on, published so a client can tell "a verdict was

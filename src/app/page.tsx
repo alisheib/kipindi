@@ -173,32 +173,46 @@ export default async function LandingPage() {
   // it is not necessarily one of the grid's — it joins the id list explicitly rather than being
   // fetched separately, which would be a second unbounded read.
   const drawnIds = [...new Set([...comp.grid.map((r) => r.id), ...heroIds])];
-  const traderMap = await traderSeedsByMarket(drawnIds)
-    .catch(() => new Map() as Awaited<ReturnType<typeof traderSeedsByMarket>>);
-  // One query for the whole board — never map getCardChart across a list.
-  const cardCharts = await getCardCharts(drawnIds).catch(() => new Map());
-
   // ── The Up & Down band's live round (landing v3, WP12) ────────────────────────────────────────
-  // The SOONEST round still taking bets — the one a visitor can act on first. ONE round read, through
-  // the same `getRoundDetail` the round page renders from, so the band and /updown/[id] cannot
-  // describe one round two ways. A failed read is not a zero: the band falls back to its copy and
-  // the link to /updown, and prints no round it could not read.
-  const soonestUd = [...updownOpen].sort(
-    (a, b) => Date.parse(a.selectionClosedAt ?? a.resolutionAt) - Date.parse(b.selectionClosedAt ?? b.resolutionAt),
-  )[0];
-  const udDetail = soonestUd
-    ? await roundStore.getByMarketId(soonestUd.id)
+  // The soonest round still taking bets that a reader can still ACT on: rounds with under a minute of
+  // betting left are skipped — the band is five sections down, and a round picked for having the least
+  // time left had usually shut by the time anyone scrolled to it (v3 review). Up to three candidates are
+  // tried in order, so one failed or already-locked read does not blank the band while others are open.
+  // Each read goes through the same `getRoundDetail` the round page renders from, so the band and
+  // /updown/[id] cannot describe one round two ways. A failed read is not a zero: with no readable round
+  // the band keeps its copy and its link to /updown, and prints no round it could not read.
+  // ⭐ Started beside the cards' reads rather than after them — it depends on nothing they return.
+  const UD_MIN_LEFT_MS = 60_000;
+  const udCandidates = [...updownOpen]
+    .filter((m) => Date.parse(m.selectionClosedAt ?? m.resolutionAt) - nowMs >= UD_MIN_LEFT_MS)
+    .sort((x, y) => Date.parse(x.selectionClosedAt ?? x.resolutionAt) - Date.parse(y.selectionClosedAt ?? y.resolutionAt))
+    .slice(0, 3);
+  const readUdRound = async () => {
+    for (const m of udCandidates) {
+      const d = await roundStore.getByMarketId(m.id)
         .then((r) => (r ? getRoundDetail(r.id) : null))
-        .catch(() => null)
-    : null;
-  const udRound: UpdownBandRound | null = udDetail && udDetail.round.state === "open"
+        .catch(() => null);
+      if (d && d.round.state === "open") return d;
+    }
+    return null;
+  };
+  const [traderMap, cardCharts, udDetail] = await Promise.all([
+    traderSeedsByMarket(drawnIds).catch(() => new Map() as Awaited<ReturnType<typeof traderSeedsByMarket>>),
+    // One query for the whole board — never map getCardChart across a list.
+    getCardCharts(drawnIds).catch(() => new Map()),
+    readUdRound(),
+  ]);
+  const udRound: UpdownBandRound | null = udDetail
     ? {
         roundId: udDetail.round.roundId,
         assetName: pickLocalized(locale, udDetail.asset.nameEn, udDetail.asset.nameSw, udDetail.asset.nameZh),
         durationMinutes: udDetail.round.durationMinutes,
         decimals: udDetail.asset.decimals,
         openPrice: udDetail.round.openPrice,
-        livePrice: udDetail.asset.livePrice,
+        // The round's own rule: UP if the price reaches upTarget, DOWN if it reaches downTarget, and a
+        // finish between them is VOID with every stake refunded — the band draws both lines (v3 review).
+        upTarget: udDetail.round.upTarget,
+        downTarget: udDetail.round.downTarget,
         series: udDetail.priceSeries?.map((p) => ({ ms: Date.parse(p.t), price: p.price })) ?? null,
         opensAtMs: Date.parse(udDetail.round.opensAt),
         betsCloseAtMs: Date.parse(udDetail.round.selectionClosedAt ?? udDetail.round.closesAt),
@@ -344,7 +358,7 @@ export default async function LandingPage() {
           Chapter break: tinted band, 144 from Up & Down, and it runs continuously into the
           footer's own claret rule (hence `--seam`). The settled strip and the RG line are parts
           of this act, not two more sections. */}
-      <TrustBand t={t} locale={locale} settlements={stats.recentSettlements.slice(0, 5)} />
+      <TrustBand t={t} locale={locale} settlements={stats.recentSettlements.slice(0, 5)} nowMs={nowMs} />
       {/* ⛔ NO RG LINE HERE ANY MORE (landing v3, R4(5)). The 18+ roundel and the RG motto sit in the
           hero's trust lines — on the first screen — and in the footer, which follows directly. */}
     </div>

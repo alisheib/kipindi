@@ -3,9 +3,17 @@
  * locales — and prove each one can still FAIL.
  *
  *   npm run qa:home-tighten -- http://localhost:3042
- *   RED_D51=1  npm run qa:home-tighten -- <base>     the pip leads the figure again
+ *   RED_D51=1  npm run qa:home-tighten -- <base>     the pip sits at the figures' shared edge again
  *   RED_D33=1  npm run qa:home-tighten -- <base>     the pool figure may break at its space again
- *   RED_TILE=1 npm run qa:home-tighten -- <base>     the topic tile is a wrapping flex row again
+ *   RED_TILE=1 npm run qa:home-tighten -- <base>     a topic name is one unbreakable line again
+ *
+ * ── LANDING v3 (2026-09-26) CHANGED TWO OF THE THREE FACTS, AND THIS FILE WITH THEM ────────────
+ * - Below 640 the proof rail is a LEDGER — caption left, figure RIGHT — so the figures must share a
+ *   RIGHT edge there (a column of sums). The pip is drawn before the count (`order: -1`) so it cannot
+ *   push the digits off that edge; RED_D51 undoes exactly that. Every width this probe runs is < 640.
+ * - The topic tile has no glyph any more (it repeated the name), so "the glyph never leaves the meta's
+ *   row" has nothing to measure. What remains is that no name is cut; RED_TILE makes the name one
+ *   unbreakable line again, which cuts the two-word labels at 320.
  *
  * ── WHY A BROWSER AND NOT A NODE SUITE ────────────────────────────────────────────────────
  * All three defects are things a laid-out page DOES, not things the source SAYS. D51 is a 16px
@@ -65,21 +73,11 @@ for (const W of WIDTHS) {
     }
     if (RED_TILE) {
       await p.addStyleTag({ content:
-        ".kp-topic { display: flex !important; }" +
-        ".kp-topic__glyph { grid-area: auto !important; }" +
-        ".kp-topic__n { grid-area: auto !important; flex: 1 1 auto !important; display: block !important;" +
-        "  white-space: nowrap !important; -webkit-line-clamp: none !important; }" +
-        ".kp-topic__m { grid-area: auto !important; flex-basis: 100% !important;" +
-        "  padding-left: calc(18px + var(--sp-3)) !important; }" });
+        ".kp-topic__n { display: block !important; white-space: nowrap !important; -webkit-line-clamp: none !important; }" });
     }
     if (RED_D51) {
-      // D51's fix is DOM ORDER, not CSS — so the control puts the pip back in front of the figure.
-      await p.evaluate(() => {
-        for (const n of document.querySelectorAll(".kp-proof__num")) {
-          const pip = n.querySelector(".kp-proof__pip");
-          if (pip) n.insertBefore(pip, n.firstChild);
-        }
-      });
+      // On the ledger the pip is DRAWN first (`order: -1`); the control draws it after the count again.
+      await p.addStyleTag({ content: ".kp-proof__pip { order: 0 !important; }" });
     }
     await p.waitForTimeout(250);
 
@@ -88,18 +86,18 @@ for (const W of WIDTHS) {
       const R = (n) => Math.round(n * 10) / 10;
       const out = { d51: null, d33: [], tiles: [], planted: [], money: [] };
 
-      // ── §1 · the three proof figures share one left edge ──────────────────────────────
-      // The pip is an ELEMENT, so measuring the number's BOX would report 16 either way and
-      // could never see this defect. Only the TEXT's own client rects answer it.
+      // ── §1 · the three proof figures share one RIGHT edge (the phone ledger) ─────────────
+      // The pip is an ELEMENT, so measuring the number's BOX would report the same edge either way
+      // and could never see this defect. Only the TEXT's own client rects answer it.
       const digits = [];
       for (const el of document.querySelectorAll(".kp-proof__num")) {
         const xs = [];
         for (const n of el.childNodes) {
           if (n.nodeType !== 3 || !n.textContent.trim()) continue;
           const rg = document.createRange(); rg.selectNodeContents(n);
-          for (const q of rg.getClientRects()) if (q.width > 0) xs.push(R(q.left));
+          for (const q of rg.getClientRects()) if (q.width > 0) xs.push(R(q.right));
         }
-        if (xs.length) digits.push({ x: Math.min(...xs), txt: el.innerText.trim().slice(0, 12) });
+        if (xs.length) digits.push({ x: Math.max(...xs), txt: el.innerText.trim().slice(0, 12) });
       }
       out.d51 = { digits, spread: digits.length ? R(Math.max(...digits.map((z) => z.x)) - Math.min(...digits.map((z) => z.x))) : null };
 
@@ -121,17 +119,11 @@ for (const W of WIDTHS) {
       }
       pools.forEach((el, i) => { el.textContent = saved[i]; });
 
-      // ── §3 · no topic name is cut, and the glyph never leaves the meta's row ──────────
+      // ── §3 · no topic name is cut ────────────────────────────────────────────────────
       const tiles = [...document.querySelectorAll(".kp-topic")];
       for (const t of tiles) {
-        const n = t.querySelector(".kp-topic__n"), g = t.querySelector(".kp-topic__glyph"), m = t.querySelector(".kp-topic__m");
-        const nb = n.getBoundingClientRect(), gb = g ? g.getBoundingClientRect() : null, mb = m ? m.getBoundingClientRect() : null;
-        out.tiles.push({
-          L: n.innerText.trim(),
-          h: R(t.getBoundingClientRect().height),
-          cut: n.scrollWidth > n.clientWidth + 1,
-          glyphOrphaned: !!(gb && mb && gb.bottom <= nb.top + 1),
-        });
+        const n = t.querySelector(".kp-topic__n");
+        out.tiles.push({ L: n.innerText.trim(), h: R(t.getBoundingClientRect().height), cut: n.scrollWidth > n.clientWidth + 1 });
       }
       const nameEl = tiles[0] ? tiles[0].querySelector(".kp-topic__n") : null;
       if (nameEl) {
@@ -149,7 +141,7 @@ for (const W of WIDTHS) {
     probes++;
 
     if (r.d51.digits.length !== 3) failures.push(at + " §1 expected 3 proof figures, saw " + r.d51.digits.length);
-    else if (r.d51.spread > 1) failures.push(at + " §1 the proof figures do not share a left edge — spread " + r.d51.spread + "px (" + r.d51.digits.map((z) => z.txt + "@" + z.x).join(" ") + ")");
+    else if (r.d51.spread > 1) failures.push(at + " §1 the proof figures do not share a right edge — spread " + r.d51.spread + "px (" + r.d51.digits.map((z) => z.txt + "@" + z.x).join(" ") + ")");
 
     if (!r.d33.length) failures.push(at + " §2 no .kp-topic__pool on the page — the figure is not a node, so it cannot be protected");
     for (const m of r.d33) {
@@ -163,7 +155,6 @@ for (const W of WIDTHS) {
 
     for (const t of r.tiles) {
       if (t.cut) failures.push(at + " §3 the topic name \"" + t.L + "\" is cut");
-      if (t.glyphOrphaned) failures.push(at + " §3 the glyph on \"" + t.L + "\" sits on a row of its own above the name");
     }
     for (const t of r.planted) if (t.cut) failures.push(at + " §3 planted label \"" + t.L + "\" is cut — needs " + t.w + "px, box is " + t.box + "px");
 

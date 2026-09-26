@@ -3911,9 +3911,10 @@ html[data-sheet-open] .route-enter { animation: none; }
    ruled the drawing out (reversing PV-01). `--bg-overlay` is the page's sunken surface, the same
    one the tinted bands use, so the hero reads as the first band rather than as a poster. The claret
    edges stay: they are the brand's editorial accent on every band (L16), not landing decoration. */
+/* ⛔ NO `overflow: hidden` ANY MORE: its only reason was the 1100px backdrop drawing, and kept after the
+   drawing went it would CUT enlarged trust-line text instead of letting it wrap (v3 review). */
 .kp-hero {
   position: relative;
-  overflow: hidden;
   background: var(--bg-overlay);
   border-top: 1px solid var(--claret-edge);
   border-bottom: 1px solid var(--claret-edge);
@@ -3960,6 +3961,21 @@ html[data-sheet-open] .route-enter { animation: none; }
   .kp-hero__intro { align-self: end; }
   .kp-hero__act { align-self: start; }
 }
+/* An empty book renders no featured market: the pitch and the act take the whole width, with no blank
+   right column and no doubled gap where the card would have been. */
+.kp-hero__inner--solo { grid-template-areas: "intro" "act"; }
+@media (min-width: 1024px) {
+  .kp-hero__inner--solo { grid-template-columns: minmax(0, 1fr); grid-template-areas: "intro" "act"; }
+}
+/* ⭐ BELOW 1024 THE TRUST LINES COME BEFORE THE CTAs (one DOM, `order`). The delivery's placement map
+   wants licence, 18+, mobile money and the helpline on a phone's FIRST screen; its own phone order put
+   them after two full-width CTAs, below 740px. After the card and before the CTAs, they land inside it
+   while the card still ends inside it (V15). The header carries Sign up at every width, so the primary
+   action is never off the first screen. INHERIT-MANIFEST L18. */
+@media (max-width: 1023.98px) {
+  /* density: general — the home hero's trust lines, not the board; both card-spacing settings. */
+  .kp-hero__trust { order: -1; }
+}
 
 /* The reader's own reading of the brand line (sw, zh), under it — MOBILE-VISUAL ruling 12. Sora,
    one weight under the headline, on the h3 rung (h2 from 1024): a translation, not a second
@@ -3990,19 +4006,21 @@ html[data-sheet-open] .route-enter { animation: none; }
 }
 .kp-hero__trust > li { display: grid; grid-template-columns: 28px minmax(0, 1fr); column-gap: var(--sp-3); align-items: center; }
 .kp-hero__trust-glyph { display: flex; justify-content: center; color: var(--text-subtle); }
-.kp-hero__lic { font-family: var(--font-mono); font-variant-numeric: tabular-nums; color: var(--text-subtle); white-space: nowrap; }
-/* The helpline is a call a player can make from here, at the tap floor (§A2) — an inline link at
-   text height would be 20px tall. */
+/* The helpline is a call a player can make from here, at the tap floor (§A2). ⭐ The REACH is an
+   out-of-flow `::after` (10px above and below a ~20px line = the 40px `--tap-min`), the platform's
+   own pattern for a small link (see `.mcardp-share`): a 40px line box made the last trust line
+   visibly taller than the three above it, which read as a stray gap. */
 .kp-hero__tel {
-  display: inline-flex;
-  align-items: center;
-  min-height: var(--tap-min);
+  position: relative;
   color: var(--text);
   font-weight: 600;
   text-decoration: underline;
   text-underline-offset: 3px;
-  white-space: nowrap;
 }
+/* Label and number are each unbreakable, the space between them is not: under large text the line
+   breaks BETWEEN them and never inside "0800 11 0011". */
+.kp-hero__tel > span { white-space: nowrap; }
+.kp-hero__tel::after { content: ""; position: absolute; left: 0; right: 0; top: -10px; bottom: -10px; }
 
 /* 11px: the kit sets the minimum for NEW work at `--type-micro`, and this is new work. (This
    note used to justify itself against `.board-section-eyebrow`'s 10px — a rule nothing had
@@ -4190,6 +4208,10 @@ html[data-sheet-open] .route-enter { animation: none; }
   .kp-proof__fig:first-child { padding-left: 0; }
   .kp-proof__num { flex: none; }
   .kp-proof__cap { margin-top: 0; min-width: 0; }
+  /* The pip follows the count in the markup (D51, for the left-aligned rail) — on a RIGHT-aligned
+     ledger that pushed "40" 16px off the column of sums. Drawn first here; the DOM, which
+     `test:betting-ink` pins, is untouched. */
+  .kp-proof__pip { order: -1; }
 }
 
 /* The proof section, below the hero (v3). Its three parts keep their own measures: the rail spans
@@ -5327,17 +5349,24 @@ textarea::-webkit-resizer {
 .kp-updown:has(.kp-udring[data-closed]) .kp-updown__bet { display: none; }
 .kp-updown__round { min-width: 0; display: flex; flex-direction: column; gap: var(--sp-3); }
 .kp-updown__head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-3); flex-wrap: wrap; }
-.kp-updown__now { font-family: var(--font-mono); font-weight: 700; font-size: var(--type-small); font-variant-numeric: tabular-nums; color: var(--text); }
+.kp-updown__open { font-family: var(--font-mono); font-weight: 700; font-size: var(--type-small); font-variant-numeric: tabular-nums; color: var(--text); }
+/* The round's rule, as the round page states it: UP at or above one price, DOWN at or below the other. */
+.kp-updown__rules { margin: 0; display: flex; flex-wrap: wrap; gap: var(--sp-1) var(--sp-4); font-family: var(--font-mono); font-weight: 700; font-size: var(--type-small); font-variant-numeric: tabular-nums; }
+.kp-updown__rule--up { color: var(--yes-300); }
+.kp-updown__rule--down { color: var(--no-300); }
 .kp-updown__viz { display: flex; align-items: center; gap: var(--sp-4); }
-.kp-updown__note { margin: 0; font-family: var(--font-mono); font-size: var(--type-micro); color: var(--text-subtle); }
+.kp-updown__note { margin: 0; font-size: var(--type-small); color: var(--text-subtle); }
 
 /* The price line: the round's real reads since it opened, the opening price dashed across. Strokes
    keep their width however the box stretches (`vector-effect` on the elements). */
 .kp-udchart { flex: 1 1 auto; min-width: 0; height: 112px; display: block; overflow: visible; }
 .kp-udchart__open { stroke: var(--text-subtle); stroke-width: 1; stroke-dasharray: 4 4; }
-.kp-udchart__line { fill: none; stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; }
-.kp-udchart__line--up { stroke: var(--yes-300); }
-.kp-udchart__line--down { stroke: var(--no-300); }
+/* The line is NEUTRAL: the round is not decided by "above or below the open" but by the two targets,
+   which carry the outcome inks. */
+.kp-udchart__line { fill: none; stroke: var(--text); stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; }
+.kp-udchart__target { stroke-width: 1; stroke-dasharray: 2 3; opacity: 0.85; }
+.kp-udchart__target--up { stroke: var(--yes-300); }
+.kp-udchart__target--down { stroke: var(--no-300); }
 
 /* The ring: time left to bet as an arc with the digits inside (96px, the delivery's size), and its
    caption under it on the eyebrow rung, free to wrap. The digits are the only thing on the page
@@ -5395,7 +5424,7 @@ textarea::-webkit-resizer {
 .kp-trust__marks { display: flex; align-items: center; gap: var(--sp-2); margin-top: var(--sp-3); }
 
 /* ── §1g SETTLED IN THE LAST SEVEN DAYS — the only element proving a cycle completes ──────── */
-.kp-settled { border-top: 1px solid var(--border); margin-top: var(--rh-close); }
+.kp-settled { border-top: 1px solid var(--border); margin-top: var(--rh-close); list-style: none; padding: 0; }
 /* The ROW is the target (see trust-band.tsx): the question alone measured 20px at 360, under half
    the 44px floor. Since landing v3 the question is the row's link and STRETCHES over it
    (`::after`, inset 0) — the market card's `.mcardp-open` pattern — so the source can be a link of
@@ -5435,11 +5464,12 @@ textarea::-webkit-resizer {
   text-decoration: none;
 }
 .kp-settled__q::after { content: ""; position: absolute; inset: 0; }
+/* The date and the sign-off: a sentence ("Settled 26 Sep · Two officers"), so it takes the reading
+   floor (§T4 — a sentence drops to --type-small, never the 11px label rung). */
 .kp-settled__meta {
   grid-area: m;
   min-width: 0;
-  font-family: var(--font-mono);
-  font-size: var(--type-micro);
+  font-size: var(--type-small);
   color: var(--text-subtle);
 }
 /* The source: a link of its own, above the row's stretched link, at the tap floor (§A2). */
@@ -5461,7 +5491,14 @@ textarea::-webkit-resizer {
   white-space: nowrap;
 }
 .kp-settled__src:hover { color: var(--text); }
-.kp-settled__ext { display: inline-flex; }
+.kp-settled__ext { display: inline-flex; flex: none; }
+/* Below 768 the source shares its line with the amount: the host gives way (an ellipsis) so the money
+   never moves — §M4. From 768 the row is one line and both keep their width. */
+.kp-settled__src { min-width: 0; }
+.kp-settled__host { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+@media (min-width: 768px) {
+  .kp-settled__amt { min-width: 20ch; }
+}
 /* Gilt is correct here and nowhere near it is: this is money that was EARNED and PAID (Q5). */
 .kp-settled__amt {
   grid-area: a;

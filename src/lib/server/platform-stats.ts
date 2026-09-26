@@ -20,7 +20,8 @@
  * with it in all three locales. If a "total paid out" figure is ever wanted back it belongs beside
  * this scan again — but as a live consumer, not as a query kept warm for nobody.
  */
-import { listMarkets, ratesFor, AUTO_RESOLVER_ACTOR, type StoredMarket } from "./market-service";
+import { listMarkets, ratesFor, type StoredMarket } from "./market-service";
+import { signoffOf, type Signoff } from "@/lib/markets/signoff";
 import { db } from "./store";
 import { poolFee } from "@/lib/payout";
 import type { TickerRow } from "@/lib/markets/ticker";
@@ -35,33 +36,16 @@ export type SettlementRow = Omit<TickerRow, "title"> & {
   /** The public source the outcome was judged against — the settled strip names it. */
   sourceUrl: string;
   /**
-   * Who signed THIS market off, read from its own stamps (landing v3, WP13): two distinct officers,
-   * one officer, or the automatic resolver. `null` when the market carries no stamp at all.
+   * Who signed THIS market off (landing v3, WP13) — two distinct officers, one officer, the automatic
+   * resolver, or "corrected on objection" when an upheld objection REVERSED the verdict (its stamps
+   * then name who signed the overturned one). `null` when the market carries no stamp at all.
    * ⛔ Never a fixed count: single-admin resolution is the default in every money mode
    * (`test:two-admin` asserts the ABSENCE of a hard two-officer lock), and a strip that printed "two
-   * officers" over a one-officer verdict would be a regulatory finding, not a copy slip
-   * (INHERIT-MANIFEST L2). `/fairness` derives its own "two officers" the same way.
+   * officers" over a one-officer verdict would be a regulatory finding (INHERIT-MANIFEST L2).
+   * Derived by `signoffOf` (`lib/markets/signoff.ts`), the one rule `/fairness` reads too.
    */
   signoff: Signoff | null;
 };
-
-export type Signoff = "two" | "one" | "auto";
-
-/**
- * The sign-off a market actually received.
- * ⭐ The two stamps are the whole truth: a solo resolve stamps BOTH with the same officer, a
- * two-officer resolve stamps two different officers, and the automatic resolver stamps its own
- * actor. ⚠️ Every automatic actor is a `system_` id (`AUTO_RESOLVER_ACTOR`, and the demo auto-settle
- * `system_demo_auto`); an officer id never is. Reading the prefix rather than listing ids means a
- * future automatic path cannot be counted as a person signing.
- */
-export function signoffOf(m: Pick<StoredMarket, "resolutionStage1By" | "resolutionStage2By">): Signoff | null {
-  const a = m.resolutionStage1By, b = m.resolutionStage2By;
-  if (!a && !b) return null;
-  const isAuto = (id: string | null) => !!id && (id === AUTO_RESOLVER_ACTOR || id.startsWith("system_"));
-  if (isAuto(a) || isAuto(b)) return "auto";
-  return a && b && a !== b ? "two" : "one";
-}
 
 export type PlatformStats = {
   /** Settled polls AND Up & Down rounds — see the productLine note in the read below. */
@@ -110,7 +94,7 @@ function settledAmount(m: StoredMarket): number | null {
   return poolFee(m.yesPool, m.noPool, ratesFor(m), m.resolvedOutcome).netPool;
 }
 
-function toSettlementRow(m: StoredMarket): SettlementRow {
+function toSettlementRow(m: StoredMarket, reversed: ReadonlySet<string>): SettlementRow {
   return {
     id: m.id,
     settledAtMs: m.settledAt ? Date.parse(m.settledAt) : null,
@@ -120,7 +104,7 @@ function toSettlementRow(m: StoredMarket): SettlementRow {
     titleSw: m.titleSw,
     titleZh: m.titleZh,
     sourceUrl: m.sourceUrl,
-    signoff: signoffOf(m),
+    signoff: signoffOf(m, reversed.has(m.id)),
   };
 }
 
@@ -134,6 +118,17 @@ export async function getPlatformStats(): Promise<PlatformStats> {
   // surfaces that DO want polls only filter these same rows below rather than re-querying.
   const resolved = await listMarkets({ status: "RESOLVED", productLine: "ALL" })
     .catch(() => [] as Awaited<ReturnType<typeof listMarkets>>);
+  // Markets whose verdict an upheld objection REVERSED — their stamps name who signed the verdict
+  // that was overturned, so the strip must not credit them with the one that stands (signoff.ts).
+  // One read of a rare table, inside this 60s memo. A failed read withholds nothing it can prove:
+  // it falls back to the stamps, which is what the strip said before the objection existed.
+  const reversed = new Set(
+    // `Promise.resolve().then(...)`: the in-memory store answers synchronously and the Prisma one
+    // asynchronously, and a `.catch` hung straight on a sync array would throw instead of falling back.
+    (await Promise.resolve().then(() => db.objection.list()).catch(() => []))
+      .filter((o) => o.status === "UPHELD" && o.remedy === "REVERSE")
+      .map((o) => o.marketId),
+  );
 
   // ⛔ THE TICKER AND THE STRIP ARE THE POLL PRODUCT LINE ONLY, AND THE COUNT ABOVE IS NOT.
   // Both readings are deliberate. `settledCount` pairs with a whole-platform payout total, so it
@@ -144,7 +139,7 @@ export async function getPlatformStats(): Promise<PlatformStats> {
   // no second query.
   const settlements = resolved
     .filter((m) => m.productLine === "MARKET")
-    .map(toSettlementRow)
+    .map((m) => toSettlementRow(m, reversed))
     .filter((r) => typeof r.settledAtMs === "number" && Number.isFinite(r.settledAtMs) && r.settledAtMs > 0)
     // 🔴 RULE 5, WHICH THIS FEED WAS BYPASSING. `ticker.ts` states it as law 25 — *"the outcome
     // is READ, never inferred: a row whose outcome is absent is DROPPED rather than guessed"* —

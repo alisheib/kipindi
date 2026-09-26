@@ -32,9 +32,16 @@ import type { TopicAggregate } from "@/lib/markets/landing";
 /** The tile count — two full rows of three, three of two. */
 export const TOPIC_TILES = 6;
 
-/** Most live first (the order `landingTopics` already returns), "other" moved to the end. */
+/**
+ * Most live first (the order `landingTopics` already returns), "other" moved to the end.
+ * ⚠️ THE LAST SLOT IS RESERVED FOR "OTHER" WHEN IT IS LIVE. There are six named categories and
+ * "other"; appending Other and THEN cutting to six would drop it on every full book, however many
+ * markets it held — "Other last" silently becoming "Other never" (found by the v3 review).
+ */
 export function topicTileOrder(topics: TopicAggregate[]): TopicAggregate[] {
-  return [...topics.filter((tp) => tp.id !== "other"), ...topics.filter((tp) => tp.id === "other")].slice(0, TOPIC_TILES);
+  const named = topics.filter((tp) => tp.id !== "other");
+  const other = topics.filter((tp) => tp.id === "other");
+  return [...named.slice(0, TOPIC_TILES - other.length), ...other];
 }
 
 export function TopicTiles({ topics, t }: { topics: TopicAggregate[]; t: Dict }) {

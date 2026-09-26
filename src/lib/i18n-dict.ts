@@ -329,6 +329,8 @@ export const dict = {
       oneOfficerSealed: "One officer",
       // landing v3 (WP13): the third honest answer — the automatic resolver, which is not a person.
       autoSealed: "Automatic",
+      // An upheld objection REVERSED the verdict: the stamps name who signed the overturned one.
+      correctedOnObjection: "Corrected on objection",
       attestationPublishHint: "Resolution attestations publish here automatically the moment a market settles.",
       thMarket: "Market",
       thOutcome: "Outcome",
@@ -603,7 +605,8 @@ export const dict = {
       heroBoardCloseToday: "{n} close today",
       heroNoPrice: "No bets yet",
       heroBrowseAll: "Browse all {n} markets",
-      heroBody: "Trade questions about Tanzania's weather, markets, sport and culture — settled by official sources.",
+      // landing v3: "Trade" was trading jargon on a pick-a-side product (the delivery's first-time-visitor reviewer).
+      heroBody: "Pick a side on questions about Tanzania's weather, markets, sport and culture, settled by official sources.",
       heroCta: "Browse markets",
       myPositions: "My positions",
       browsFirst: "Browse markets first →",
@@ -687,6 +690,7 @@ export const dict = {
       settledSeeAll: "All results",
       // landing v3 (WP13): each settled row states when it settled, beside who signed it off.
       settledOn: "Settled {date}",
+      settledSourceNewTab: "opens the settling source in a new tab",
     },
     market: {
       title: "Markets",
@@ -3025,6 +3029,8 @@ export const dict = {
       oneOfficerSealed: "Afisa mmoja",
       // drafted, marked for native review; English is binding.
       autoSealed: "Kiotomatiki",
+      // drafted, marked for native review; English is binding.
+      correctedOnObjection: "Imerekebishwa baada ya pingamizi",
       attestationPublishHint: "Uthibitisho wa utatuzi unachapishwa hapa moja kwa moja soko linapokamilika.",
       thMarket: "Soko",
       thOutcome: "Matokeo",
@@ -3271,6 +3277,7 @@ export const dict = {
       updownEyebrow: "Mchezo wa kasi · hai",
       updownCta: "Cheza Juu na Chini",
       updownRoundsLive: "raundi {n} hai sasa",
+      // drafted, marked for native review; English is binding.
       updownRoundsLiveOne: "raundi 1 hai sasa",
       // drafted, marked for native review; English is binding.
       udDashed: "Mstari wa vitone: bei raundi hii ilipofunguliwa.",
@@ -3287,9 +3294,11 @@ export const dict = {
       howEyebrow: "50pick inafanya kazi vipi",
       howStep1H: "Chagua upande",
       howStep1B: "Kila soko ni swali moja lenye majibu mawili. Weka dau unalotaka kwa shilingi — sindano ya imani inaonyesha pesa za umati zilipo tayari.",
+      // drafted, marked for native review; English is binding.
       howStep2H: "Chanzo kilichotajwa",
       howStep2B: "Kila soko linatatuliwa kwa chanzo rasmi cha umma kilichotajwa: wakala wa hali ya hewa, jedwali la ligi, kiwango cha kati cha Benki Kuu ya Tanzania. Afisa anathibitisha — wawili, pale idhini ya maafisa wawili inapowashwa.",
       howStep3H: "Washindi wanagawana bwawa",
+      // drafted, marked for native review; English is binding.
       howStep3B: "Bwawa linagawanywa kati ya wote waliokuwa sahihi, kasoro kamisheni ya {pct}% inayotozwa kwenye upande ulioshindwa pekee. Ushindi wako huingia kwenye salio lako la 50pick, tayari kutolewa kwa pesa ya simu.",
 
       gridEyebrowPool: "Bwawa kubwa kwanza",
@@ -3315,7 +3324,9 @@ export const dict = {
       settledVoid: "yalirejeshwa",
       settledSeeAll: "Matokeo yote",
       // drafted, marked for native review; English is binding.
-      settledOn: "Iliamuliwa {date}",
+      settledOn: "Imelipwa {date}",
+      // drafted, marked for native review; English is binding.
+      settledSourceNewTab: "hufungua chanzo cha matokeo katika kichupo kipya",
     },
     market: {
       title: "Masoko",
@@ -5204,6 +5215,8 @@ export const dict = {
       oneOfficerSealed: "一位审核员",
       // drafted, marked for native review; English is binding.
       autoSealed: "自动结算",
+      // drafted, marked for native review; English is binding.
+      correctedOnObjection: "经异议更正",
       attestationPublishHint: "市场结算后结算证明会自动发布在此。",
       thMarket: "市场",
       thOutcome: "结果",
@@ -5448,6 +5461,7 @@ export const dict = {
       updownEyebrow: "快速游戏 · 进行中",
       updownCta: "玩涨跌",
       updownRoundsLive: "{n} 个回合进行中",
+      // drafted, marked for native review; English is binding.
       updownRoundsLiveOne: "1 个回合进行中",
       // drafted, marked for native review; English is binding.
       udDashed: "虚线：本轮开盘时的价格。",
@@ -5464,9 +5478,11 @@ export const dict = {
       howEyebrow: "50pick 如何运作",
       howStep1H: "选择一方",
       howStep1B: "每个市场都是一个问题、两个答案。用先令投注您想要的金额——信念指针显示大众资金目前所在的位置。",
+      // drafted, marked for native review; English is binding.
       howStep2H: "指定来源",
       howStep2B: "每个市场都以指定的官方公开来源结算：气象局、联赛积分榜、坦桑尼亚银行中间价。由一名审核员签核——启用双审核员授权时为两名。",
       howStep3H: "赢家分享奖池",
+      // drafted, marked for native review; English is binding.
       howStep3B: "奖池由所有判断正确的人分享，扣除仅从失败一方收取的 {pct}% 佣金。奖金存入您的 50pick 余额，可提现到移动支付账户。",
 
       gridEyebrowPool: "奖池最大优先",
@@ -5493,6 +5509,8 @@ export const dict = {
       settledSeeAll: "全部结果",
       // drafted, marked for native review; English is binding.
       settledOn: "{date} 结算",
+      // drafted, marked for native review; English is binding.
+      settledSourceNewTab: "在新标签页中打开结算来源",
     },
     market: {
       title: "市场",

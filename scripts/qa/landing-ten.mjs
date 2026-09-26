@@ -760,7 +760,7 @@ const CHECKS = /* js */ `(() => {
 
   /* ── the text map V8 needs, compared across locales AFTER the sweep ──────────────────────── */
   const textMap = {};
-  for (const s2 of [".kp-hero__headline", ".kp-hero__eyebrow", ".kp-lede", ".kp-shead__h", ".kp-step__h", ".kp-step__b", ".kp-trust__b", ".kp-rg__say", ".kp-proof__cap"]) {
+  for (const s2 of [".kp-hero__headline", ".kp-hero__eyebrow", ".kp-lede", ".kp-shead__h", ".kp-step__h", ".kp-step__b", ".kp-trust__b", ".kp-hero__trust", ".kp-proof__cap"]) {
     textMap[s2] = [...document.querySelectorAll(s2)].filter(vis).map((e) => (e.textContent || "").trim()).slice(0, 6);
   }
 

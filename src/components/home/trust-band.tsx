@@ -22,7 +22,9 @@ import { Chip } from "@/components/ui/chip";
 import { STATUS_TONE, TONE_CHIP } from "@/lib/status-tone";
 import { pickLocalized } from "@/lib/localized";
 import { outcomeWord } from "@/lib/side-label";
-import { fill, formatDayShort, formatTzs } from "@/lib/utils";
+import { fill, formatTzs } from "@/lib/utils";
+import { eatDayKey, formatEatDay } from "@/lib/eat-day";
+import { signoffWord } from "@/lib/markets/signoff";
 import type { Dict, Locale } from "@/lib/i18n-dict";
 import { Reveal } from "@/components/layout/reveal";
 import type { SettlementRow } from "@/lib/server/platform-stats";
@@ -53,12 +55,14 @@ function Claim({ text, accent }: { text: string; accent: string }) {
 }
 
 export function TrustBand({
-  t, locale, settlements,
+  t, locale, settlements, nowMs,
 }: {
   t: Dict;
   locale: Locale;
   /** Already ordered `settledAt` DESC by `getPlatformStats`; only rows whose money has moved. */
   settlements: SettlementRow[];
+  /** The render instant — a settlement from an earlier year prints its year. */
+  nowMs: number;
 }) {
   const cells = [
     { glyph: <I.shieldcheck s={26} />, h: t.home.trustCell1H, b: t.home.trustCell1B, marks: false },
@@ -142,11 +146,11 @@ export function TrustBand({
               </Link>
             </div>
 
-            <div className="kp-settled">
+            <ul className="kp-settled">
               {settlements.map((s) => (
-                <SettledRow key={s.id} row={s} t={t} locale={locale} />
+                <SettledRow key={s.id} row={s} t={t} locale={locale} nowMs={nowMs} />
               ))}
-            </div>
+            </ul>
           </>
         )}
       </div>
@@ -199,8 +203,11 @@ export function TrustBand({
  * whole row is a link to the market. Simulated on production before shipping: source-host spread
  * across the five rows falls from 148px to 15px at both 768 and 1280, no amount cell clips in any
  * locale, and 360 is untouched because the row stacks below 768. */
-const AMT_MIN = "20ch";
-function SettledRow({ row, t, locale }: { row: SettlementRow; t: Dict; locale: Locale }) {
+/* ⭐ SINCE LANDING v3 THE FLOOR LIVES IN globals.css, FROM 768 ONLY (`.kp-settled__amt`). The row is
+   one line from 768 — the layout the 20ch floor was measured for — but below it v3 put the source and
+   the amount on a SHARED line, and a 156px floor there ran the source link over the amount at 360
+   (found by the v3 review). Below 768 the amount takes its own width and the source gives way. */
+function SettledRow({ row, t, locale, nowMs }: { row: SettlementRow; t: Dict; locale: Locale; nowMs: number }) {
   // 🔴 THE NULL ARM, WHICH DID NOT EXIST. `SettlementRow.outcome` is
   // `"YES" | "NO" | "VOID" | null`, and the old line was a two-armed dictionary ternary on the
   // YES token — so an UNRECORDED outcome fell through to the NO arm and rendered **"NO", in
@@ -234,15 +241,19 @@ function SettledRow({ row, t, locale }: { row: SettlementRow; t: Dict; locale: L
   // betting pair for its own meaning (§B2a), not app states borrowing it.
   const variant = isVoid ? TONE_CHIP[STATUS_TONE.VOID.player] : row.outcome === "YES" ? "yes" : "no";
   const question = pickLocalized(locale, row.titleEn, row.titleSw, row.titleZh);
-  // ⭐ WHEN, AND WHO (landing v3, WP13): the date the market settled and THIS market's own sign-off.
-  // The sign-off is read from its stamps (`signoffOf` in platform-stats.ts) — never a fixed "two
-  // officers", which single-admin resolution would make false (INHERIT-MANIFEST L2). The words are
-  // /fairness's own (`common.twoOfficerSealed` / `oneOfficerSealed`), so the two pages cannot disagree.
-  const when = row.settledAtMs != null ? fill(t.home.settledOn, { date: formatDayShort(new Date(row.settledAtMs).toISOString()) }) : null;
-  const who = row.signoff === "two" ? t.common.twoOfficerSealed
-    : row.signoff === "one" ? t.common.oneOfficerSealed
-    : row.signoff === "auto" ? t.common.autoSealed
-    : null;
+  // ⭐ WHEN, AND WHO (landing v3, WP13): the day the money moved, in the reader's own month words and
+  // the platform's zone (`formatEatDay`, the /updown history formatter — `formatDayShort` is English
+  // months in every locale), with the year when it is not this one; and THIS market's own sign-off
+  // from `signoffOf` (lib/markets/signoff.ts) — never a fixed "two officers", which single-admin
+  // resolution would make false (INHERIT-MANIFEST L2). `/fairness` renders the same rule and the same
+  // words, so a reader who follows a row there reads the same answer.
+  const when = row.settledAtMs != null ? (() => {
+    const key = eatDayKey(row.settledAtMs);
+    const day = formatEatDay(key, t.common.monthsShort, locale);
+    const thisYear = key.slice(0, 4) === eatDayKey(nowMs).slice(0, 4);
+    return fill(t.home.settledOn, { date: locale === "zh" || thisYear ? day : `${day} ${key.slice(0, 4)}` });
+  })() : null;
+  const who = row.signoff ? signoffWord(t.common, row.signoff) : null;
   const meta = [when, who].filter(Boolean).join(" · ");
   const host = sourceHost(row.sourceUrl);
   return (
@@ -254,7 +265,7 @@ function SettledRow({ row, t, locale }: { row: SettlementRow; t: Dict; locale: L
        (`.kp-settled__q::after`), exactly as the market card's `.mcardp-open` does, and the source
        link is raised above that layer. The tap target is unchanged; the source is now checkable in
        one tap, which is the point of naming it. */
-    <div className="kp-settled__row">
+    <li className="kp-settled__row">
       {/* `.kp-settled__pill` is `grid-area: o` and NOTHING else — the geometry is `.chip`'s. */}
       <Chip variant={variant} className="kp-settled__pill">{label}</Chip>
       <Link href={`/markets/${row.id}` as never} className="kp-settled__q">{question}</Link>
@@ -262,8 +273,8 @@ function SettledRow({ row, t, locale }: { row: SettlementRow; t: Dict; locale: L
       {/* The named public source the outcome was judged against — the host as the label, the real
           URL as the destination, opened beside the page. */}
       {host ? (
-        <a className="kp-settled__src" href={row.sourceUrl} target="_blank" rel="noopener noreferrer">
-          {host}
+        <a className="kp-settled__src" href={row.sourceUrl} target="_blank" rel="noopener noreferrer" aria-label={`${host} · ${t.home.settledSourceNewTab}`}>
+          <span className="kp-settled__host">{host}</span>
           <span aria-hidden className="kp-settled__ext"><I.externalLink s={11} /></span>
         </a>
       ) : <span className="kp-settled__src" aria-hidden />}
@@ -275,17 +286,17 @@ function SettledRow({ row, t, locale }: { row: SettlementRow; t: Dict; locale: L
           ⚠️ `amountTzs == null` stays WITH the void arm: `settledAmount` returns null exactly when the
           outcome is not YES or NO. */}
       {isVoid || row.amountTzs == null ? (
-        <span className="kp-settled__amt kp-settled__amt--void" style={{ minWidth: AMT_MIN }}>{t.home.settledVoid}</span>
+        <span className="kp-settled__amt kp-settled__amt--void">{t.home.settledVoid}</span>
       ) : row.amountTzs > 0 ? (
-        <span className="kp-settled__amt" style={{ minWidth: AMT_MIN }}>{formatTzs(row.amountTzs)} {t.home.settledPaid}</span>
+        <span className="kp-settled__amt">{formatTzs(row.amountTzs)} {t.home.settledPaid}</span>
       ) : (
         /* 🔴 AN EMPTY CELL, NOT NO CELL — and not an EMPTY span either. Returning null removed the grid
            item and collapsed the row; an empty span has height 0 and held nothing. A non-breaking
            space gives the cell one line box at its own line-height, so the silent row keeps its
            tracks (measured on production 2026-09-24). `aria-hidden`: there is no figure to announce. */
-        <span className="kp-settled__amt" style={{ minWidth: AMT_MIN }} aria-hidden>{"\u00a0"}</span>
+        <span className="kp-settled__amt" aria-hidden>{"\u00a0"}</span>
       )}
-    </div>
+    </li>
   );
 }
 
