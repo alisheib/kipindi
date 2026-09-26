@@ -9,16 +9,14 @@
 
 ## §0 · RESUME AT — the v3 build (reopened 2026-09-26)
 
-**State (2026-09-27):** D0 ✅ and D1 LIVE (`54f8199b`, measured on production 2026-09-26 — gate V1, V2
-and V5–V16 clean in every cell; V3, V14, V15, V16 and V17 RED-proved on production). WP14 part 1 — the
-chip opens the Wallet, a gold Deposit at zero — is LIVE (`9b96d930`) and measured on production with
-`mobile01` (signed-in pages render; the zero-balance header). WP14 part 2 — the signed-in hero (Your
-picks; the balance with the same Deposit/Withdraw pair, or the empty-balance prompt; Set limits) — is
-built, verified locally (`hero-mine.mjs`), and ships with the WP13 phone fix (source and amount each
-take a line below 640).
-**Next:** confirm WP14 part 2 and the WP13 fix on production (the strip exists only there), tick WP14 and
-WP13. Then batch D2 with **WP6 first**: production prints "YES @ 100% / NO @ 0%" on one-sided markets in
-the hero grid and the board (V17: 64 findings).
+**State (2026-09-27):** D0 ✅, D1 ✅ (`54f8199b`) and **WP14 ✅ — the Wallet, whole** (part 1 `9b96d930`,
+part 2 `e9b4056c`): the chip opens the Wallet, a gold Deposit replaces "TZS 0", and the signed-in hero shows
+Your picks and the same Deposit/Withdraw pair. Measured on production 2026-09-27 with `mobile01`
+(zero balance, no picks); the FUNDED Wallet and hero are measured locally (no funded QA player on
+production). WP13's phone fix is live too. What the production gate still reports is named on the GATE row.
+**Next:** batch D2 (§2.0), **WP6 first**: production prints "YES @ 100% / NO @ 0%" on one-sided markets in
+the hero grid and the board (V17: 64 findings) — the one-sided state on every card, then WP3, WP4, WP9,
+WP14b and V18. Then D3 (the pick slip, WP5, and the chat bubble under sheets) and D5 (the gate + panel).
 
 Ali, 2026-09-26, handing over the v3 concept: *"proceed perfecting it … we can't come back until
 pushed live and validated visually and logically."* The delivery is filed raw at
@@ -107,8 +105,8 @@ row; this section does not repeat it.
 | WP10 | Topics: six tiles, Other last, "All topics" as the section link | ✅ | 54f8199b | measured on production 2026-09-26 (360/768/1280 × sw/en/zh frames looked at) |
 | WP11 | How it works: "A named source", the fee from config, h3 steps | ✅ | 54f8199b | measured on production 2026-09-26 (360/768/1280 × sw/en/zh frames looked at); the fee reads 13% through `ratesFrom`; L3 |
 | WP12 | Up & Down band: the soonest round, price line, ring, UP/DOWN, plural fixed | ✅ | 54f8199b | measured on production 2026-09-26 (360/768/1280 × sw/en/zh frames looked at); full width, R4(6) |
-| WP13 | Results: date, the market's own sign-off, source link, paid | 🔨 | 54f8199b | live and measured 2026-09-26 (a reversed market reads "Corrected on objection" on production). ⚠️ Open: at 360 in sw the source host truncates to ~9 characters beside "TZS 39,570 yalilipwa" — fixed with D2. L2 |
-| WP14 | Wallet: chip opens sheet/panel, equal Deposit/Withdraw, gold Deposit at zero, signed-in hero | 🔵 | 9b96d930 | Part 1 LIVE, measured on production 2026-09-27 with `mobile01` (zero balance: labelled gold Deposit, no capsule, no "TZS 0", signed-in pages render at 360/1280 sw/en). The FUNDED Wallet is measured locally only — production has no funded QA player: 17 cells clean (docking, panel under the chip, V19 parity, focus trap, Esc, outside click, focus return). Part 2 (signed-in hero) built and driven locally; `test:wallet-reach` 48/48, `test:landing-mine` 22/22, both mutation-proved. R1, L19–L21 |
+| WP13 | Results: date, the market's own sign-off, source link, paid | ✅ | e9b4056c | measured on production 2026-09-27: date, the market's own sign-off (a reversed market reads "Corrected on objection"), source, paid; below 640 the amount and the source each take a line, so the host reads whole. L2 |
+| WP14 | Wallet: chip opens sheet/panel, equal Deposit/Withdraw, gold Deposit at zero, signed-in hero | ✅ | e9b4056c | measured on production 2026-09-27 with `mobile01` (zero balance, no picks: header Deposit, hero empty-balance line + Deposit, no Withdraw, Set limits; pages render at 360/1280 sw/en). Funded Wallet + hero measured locally (Wallet 17 cells, hero 15 cells; 360–1280 × sw/en/zh). `test:wallet-reach` 48/48, `test:landing-mine` 22/22, both mutation-proved. R1, L19–L21 |
 | WP14b | Share in card footers; Share on WhatsApp after placing | ⬜ | | |
 | WP15 | Motion and performance | ⬜ | | L12 |
 | WP16 | i18n: every new key in en, sw and zh | 🔨 | 54f8199b | D1's keys in all three (`test:i18n`); sw/zh drafts carry the native-review marker (rows SW, ZH) |
@@ -121,7 +119,7 @@ row; this section does not repeat it.
 | V19 | Gate: Withdraw as reachable and as large as Deposit | ⬜ | | |
 | V20 | Gate: sheets trap focus, close on Esc, respect the safe area | ⬜ | | |
 | V21 | Gate: the placement map, by bounding box | ⬜ | | |
-| GATE | `qa:landing-ten` V1–V14 clean on production (V3, V14 open by R4); `npm run test:all` + typecheck green | ⬜ | | Production 2026-09-26 after D1: V1, V2, V5–V16 clean. Still reported: V3 ×12 (the chat bubble, Ali's call), V4 ×32 (`.ticker-pause` 40×31, the LIVE-strip lane's, §0 trap 11), V17 ×64 (WP6). R4 |
+| GATE | `qa:landing-ten` V1–V14 clean on production (V3, V14 open by R4); `npm run test:all` + typecheck green | ⬜ | | Production 2026-09-27 after `e9b4056c` (33 of 33 cells measured): V1, V2, V5–V16 clean. Still reported, each with its owner: V3 ×12 (the chat bubble, Ali's call), V4 ×33 (`.ticker-pause` 40×31, the LIVE-strip lane's, §0 trap 11), V17 ×66 (WP6, next). R4 |
 | PANEL | The eight-reviewer re-score, recorded below | ⬜ | | |
 | FUNNEL | Visitors → sign-ups → first pick, measured before and after launch | ⬜ | | |
 | SW | Native Swahili sign-off of every new sw string | ⏳ | | Ali |

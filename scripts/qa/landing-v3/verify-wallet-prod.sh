@@ -22,4 +22,11 @@ case "$live" in "$SHA"*|"${SHA:0:7}"*) ;; *) say "production is NOT serving $SHA
 
 say "signed-in check (mobile01, once)"
 LIVE_BASE="$BASE" OUT="$OUT/wallet" node scripts/qa/landing-v3/wallet-prod.mjs 2>&1 | tee -a "$LOG"
+if [ "${WITH_GATE:-0}" = "1" ]; then
+  say "signed-out capture 360/768/1280 (the settled strip exists only here)"
+  MODE=build BASE="$BASE" OUT="$OUT/prod" WIDTHS=360,768,1280 node scripts/qa/landing-v3/capture.mjs 2>&1 | tee -a "$LOG"
+  say "gate: base pass against production"
+  BASE="$BASE" node scripts/qa/landing-ten.mjs --pass=base > "$OUT/gate-base.txt" 2>&1
+  say "gate exit=$?"; sed -n '/SUMMARY/,$p' "$OUT/gate-base.txt" | tee -a "$LOG"
+fi
 say "done"
