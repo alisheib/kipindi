@@ -609,6 +609,15 @@ export const dict = {
       heroBody: "Pick a side on questions about Tanzania's weather, markets, sport and culture, settled by official sources.",
       heroCta: "Browse markets",
       myPositions: "My positions",
+      // landing v3 · WP14 part 2 — the signed-in hero (the delivery's wallet scenario §4a/§4c).
+      yourPicks: "Your picks",
+      picksOpen: "open",
+      picksAwaiting: "awaiting result",
+      picksPaidWeek: "paid to you this week",
+      picksNone: "No picks yet. Choose a side on a market to make your first.",
+      // ⚠️ "by mobile money OR CARD": deposits take cards (wallet.mobileMoney); the concept's "with
+      // mobile money" alone was a false statement (INHERIT-MANIFEST L19).
+      emptyBalance: "Your balance is empty. Add funds by mobile money or card to make your next pick.",
       browsFirst: "Browse markets first →",
       liveSection: "Live",
       updownEyebrow: "Fast game · live",
@@ -3277,6 +3286,13 @@ export const dict = {
       heroBody: "Shiriki katika utabiri wa hali ya hewa, masoko, michezo na utamaduni wa Tanzania — kila tukio likithibitishwa kwa mujibu wa vyanzo rasmi.",
       heroCta: "Tazama masoko",
       myPositions: "Nafasi zangu",
+      // drafted, marked for native review; English is binding.
+      yourPicks: "Chaguo zako",
+      picksOpen: "wazi",
+      picksAwaiting: "yanasubiri matokeo",
+      picksPaidWeek: "ulizolipwa wiki hii",
+      picksNone: "Bado huna chaguo. Chagua upande kwenye soko ili ufanye chaguo lako la kwanza.",
+      emptyBalance: "Salio lako ni tupu. Weka pesa kwa pesa ya simu au kadi ili ufanye chaguo lako lijalo.",
       browsFirst: "Tazama masoko kwanza →",
       liveSection: "Hai",
       updownEyebrow: "Mchezo wa kasi · hai",
@@ -5467,6 +5483,13 @@ export const dict = {
       heroBody: "参与坦桑尼亚天气、市场、体育和文化方面的问题竞猜——由官方来源验证结算。",
       heroCta: "浏览市场",
       myPositions: "我的持仓",
+      // drafted, marked for native review; English is binding.
+      yourPicks: "您的选择",
+      picksOpen: "进行中",
+      picksAwaiting: "等待结果",
+      picksPaidWeek: "本周已支付给您",
+      picksNone: "您还没有选择。在任一市场选择一方，完成您的第一次选择。",
+      emptyBalance: "您的余额为空。通过手机钱包或银行卡充值，即可进行下一次选择。",
       browsFirst: "先浏览市场 →",
       liveSection: "直播",
       updownEyebrow: "快速游戏 · 进行中",

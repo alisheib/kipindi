@@ -50,6 +50,9 @@ curl -s -o /dev/null -w "warm /wallet %{http_code} %{time_total}s\n" "$BASE/wall
 say "drive the Wallet"
 BASE="$BASE" OUT="$OUT/wallet" node scripts/qa/landing-v3/wallet.mjs 2>&1 | tee -a "$LOG"
 
+say "drive the signed-in hero (WP14 part 2)"
+BASE="$BASE" OUT="$OUT/hero" node scripts/qa/landing-v3/hero-mine.mjs 2>&1 | tee -a "$LOG"
+
 say "capture landing signed in (zero + funded) 360/768/1280 sw,en"
 MODE=build BASE="$BASE" OUT="$OUT/build" AUTH=demo0 WIDTHS=360,768,1280 LOCALES=sw,en MAX_TILES=2 node scripts/qa/landing-v3/capture.mjs 2>&1 | tee -a "$LOG"
 MODE=build BASE="$BASE" OUT="$OUT/build" AUTH=demo1 WIDTHS=360,768,1280 LOCALES=sw,en MAX_TILES=2 node scripts/qa/landing-v3/capture.mjs 2>&1 | tee -a "$LOG"

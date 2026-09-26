@@ -48,6 +48,18 @@ try {
           tzsZero: /TZS\s*0(?![\d,.])/.test(bar?.innerText ?? ""),
           errorScreen: /something went wrong|hitilafu|出错/i.test(document.body.innerText.slice(0, 3000)),
           overflowX: document.documentElement.scrollWidth - innerWidth,
+          // WP14 part 2 — the signed-in hero (home only)
+          mine: (() => {
+            const root = document.querySelector('[data-testid="landing-mine"]');
+            if (!root) return null;
+            return {
+              stats: [...root.querySelectorAll(".kp-mine__stat")].filter(vis).length,
+              lead: [...root.querySelectorAll(".kp-mine__lead")].filter(vis).map((p) => p.innerText.trim()),
+              deposit: vis(root.querySelector('[data-testid="hero-deposit"]') ?? document.createElement("i")),
+              withdraw: vis(root.querySelector('[data-testid="hero-withdraw"]') ?? document.createElement("i")),
+              limits: vis(root.querySelector('a[href="/profile/responsible-gambling"]') ?? document.createElement("i")),
+            };
+          })(),
         };
       });
       await page.screenshot({ path: join(OUT, `${id}.png`) });
@@ -59,6 +71,17 @@ try {
       if (m.capsule) f.push("zero balance shows the capsule");
       if (m.tzsZero) f.push('header prints "TZS 0"');
       if (!m.deposit) f.push("no visible header Deposit at zero");
+      if (path === "/") {
+        // mobile01 is never funded and holds no picks: the empty-balance line ALONE, Deposit, no Withdraw.
+        if (!m.mine) f.push("the signed-in hero did not render ([data-testid=landing-mine])");
+        else {
+          if (m.mine.stats) f.push(`a player with no picks sees ${m.mine.stats} stats`);
+          if (m.mine.lead.length !== 1) f.push(`want the empty-balance line alone, got ${m.mine.lead.length}`);
+          if (!m.mine.deposit) f.push("no Deposit in the hero");
+          if (m.mine.withdraw) f.push("Withdraw offered at zero");
+          if (!m.mine.limits) f.push("no Set limits in the hero");
+        }
+      }
       if (errors.length) f.push("page error: " + errors[0]);
       lines.push(`${f.length ? "FAIL" : "ok  "} ${id}  h1="${m.h1}" deposit="${m.deposit}"${f.length ? " — " + f.join(" | ") : ""}`);
     } catch (e) {

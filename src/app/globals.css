@@ -1063,6 +1063,9 @@ body {
    names the axis the value beside it answers. It joins the list rather than carrying a
    seventh copy of 0.14em. */
 .kp-fsheet-trigger[data-shape="field"] .kp-fsheet-trigger-label,
+/* landing v3 · WP14 — the Wallet's "Available" and the signed-in hero's "Your picks" / "Available". */
+.kp-wsheet__label,
+.kp-mine__eyebrow,
 .mcardp-pctcap { letter-spacing: 0.14em; }
 
 /* ===========================================================================
@@ -5447,10 +5450,10 @@ textarea::-webkit-resizer {
 }
 .kp-wsheet { display: flex; flex-direction: column; gap: var(--sp-4); padding: var(--sp-3) var(--sp-5) calc(var(--sp-5) + env(safe-area-inset-bottom, 0px)); }
 .kp-wsheet__grab { width: 44px; height: 4px; margin: 0 auto; border-radius: var(--r-pill); background: var(--border-strong); }
-.kp-wsheet__label { font-family: var(--font-mono); font-weight: 700; font-size: var(--type-micro); letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-subtle); }
+.kp-wsheet__label { font-family: var(--font-mono); font-weight: 700; font-size: var(--type-micro); text-transform: uppercase; color: var(--text-subtle); }
 .kp-wsheet__bal { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); margin-top: var(--sp-1); }
 .kp-wsheet__amt { font-family: var(--font-mono); font-weight: 700; font-size: var(--type-h1); line-height: 1.1; font-variant-numeric: tabular-nums; color: var(--gold-300); overflow-wrap: anywhere; }
-.kp-wsheet__pair { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-3); }
+.kp-wsheet__pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-3); }
 .kp-wsheet__col { display: flex; flex-direction: column; align-items: stretch; gap: var(--sp-2); min-width: 0; }
 /* 56 on the sheet (thumb reach, the delivery's 54 rounded UP to the --h-control-xl rung), 48 in the panel. */
 .kp-wsheet__act { width: 100%; height: var(--h-control-xl); }
@@ -5462,6 +5465,31 @@ textarea::-webkit-resizer {
 .kp-wsheet__links { display: flex; flex-wrap: wrap; column-gap: var(--sp-4); }
 .kp-wsheet__link { display: inline-flex; align-items: center; min-height: var(--h-control-md); font-weight: 600; font-size: var(--type-small); color: var(--text); text-decoration: underline; text-decoration-color: var(--border-strong); text-underline-offset: 4px; }
 .kp-wsheet__link:hover { text-decoration-color: currentColor; }
+/* ── WP14 part 2 · THE SIGNED-IN HERO (the delivery's §4a/§4c) ─────────────────────────────────
+   Your picks → the balance with the same Deposit/Withdraw pair (or the empty-balance prompt) →
+   Set limits. The pair is the Wallet's: one rung, one box, only the skin differs (V19). */
+.kp-mine { display: flex; flex-direction: column; gap: var(--sp-5); }
+.kp-mine__eyebrow { font-family: var(--font-mono); font-weight: 700; font-size: var(--type-micro); text-transform: uppercase; color: var(--text-subtle); }
+.kp-mine__stats { display: flex; flex-wrap: wrap; gap: var(--sp-3) var(--sp-8); margin-top: var(--sp-2); }
+.kp-mine__stat { display: flex; flex-direction: column; gap: var(--sp-1); min-width: 0; }
+.kp-mine__n { font-family: var(--font-mono); font-weight: 700; font-size: var(--type-h1); line-height: 1.1; font-variant-numeric: tabular-nums; color: var(--text); overflow-wrap: anywhere; }
+.kp-mine__n--gold { color: var(--gold-300); }
+.kp-mine__l { font-size: var(--type-small); line-height: 1.35; color: var(--text-muted); }
+.kp-mine__lead { font-size: var(--type-h4); line-height: 1.5; color: var(--text-muted); max-width: 34em; }
+.kp-mine__wallet { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-4) var(--sp-5); padding: var(--sp-4); border: 1px solid var(--border); border-radius: var(--r-lg); max-width: 560px; }
+.kp-mine__bal { flex: 1 1 180px; min-width: 0; }
+.kp-mine__amt { margin-top: var(--sp-1); font-family: var(--font-mono); font-weight: 700; font-size: var(--type-h2); line-height: 1.15; font-variant-numeric: tabular-nums; color: var(--gold-300); overflow-wrap: anywhere; }
+/* ⚠️ minmax(0, 1fr), NOT 1fr: a bare 1fr is minmax(auto, 1fr), so a column grows to fit its label and the pair
+   stops being equal — measured 134.9 vs 136.1px in English ("Withdraw" is the longer word). Equal by construction. */
+.kp-mine__pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-3); flex: 1 1 300px; }
+.kp-mine__act { width: 100%; }
+.kp-mine__empty { display: flex; flex-direction: column; gap: var(--sp-4); }
+.kp-mine__held { display: flex; flex-direction: column; gap: var(--sp-1); padding: var(--sp-4); border-radius: var(--r-lg); background: var(--bg-inset); max-width: 560px; }
+.kp-mine__held-t { font-family: var(--font-display); font-weight: 700; font-size: var(--type-h4); line-height: 1.25; color: var(--text); }
+.kp-mine__held-b { font-size: var(--type-small); line-height: 1.45; color: var(--text-muted); }
+.kp-mine__limits { display: inline-flex; align-items: center; gap: var(--sp-1); align-self: flex-start; min-height: var(--h-control-md); font-weight: 600; font-size: var(--type-small); color: var(--text); text-decoration: underline; text-decoration-color: var(--border-strong); text-underline-offset: 4px; }
+.kp-mine__limits:hover { text-decoration-color: currentColor; }
+
 @media (min-width: 1024px) {
   .kp-wsheet { padding: var(--sp-5); }
   .kp-wsheet__grab { display: none; }
@@ -5583,10 +5611,16 @@ textarea::-webkit-resizer {
 }
 .kp-settled__src:hover { color: var(--text); }
 .kp-settled__ext { display: inline-flex; flex: none; }
-/* Below 768 the source shares its line with the amount: the host gives way (an ellipsis) so the money
-   never moves — §M4. From 768 the row is one line and both keep their width. */
+/* From 640 to 767 the source shares its line with the amount: the host gives way (an ellipsis) so the
+   money never moves — §M4. From 768 the row is one line and both keep their width.
+   ⚠️ BELOW 640 EACH TAKES A LINE (found on production 2026-09-26): at 360 in Swahili "TZS 39,570
+   yalilipwa" left the host about nine characters — "PREMIERLE…", a source nobody could read. The
+   amount keeps a line of its own, so the money still never moves, and the host reads whole. */
 .kp-settled__src { min-width: 0; }
 .kp-settled__host { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 639.98px) {
+  .kp-settled__row { grid-template-areas: "o q q" ". m m" ". a a" ". s s"; }
+}
 @media (min-width: 768px) {
   .kp-settled__amt { min-width: 20ch; }
 }
