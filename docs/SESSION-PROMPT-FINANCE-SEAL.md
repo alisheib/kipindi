@@ -210,21 +210,34 @@ is a second implementation that will drift.
 - ⚠️ **Pre-existing, other lanes: `test:red-anchors` is red on main** — two declared mutation anchors
   no longer resolve (`bar-geometry` → `query-bar.tsx`, `updown-handover` → `updown-card-phase.ts`) and
   68 harnesses exceed the undeclared-anchor ceiling of 65. Not caused by this lane.
-- 🔴 **FOR ALI — the audit chain reads "UNVERIFIED" on production, in the ISO 27001 export a regulator
-  would receive.** Measured 2026-09-26 by letting production verify ITSELF (the ISO audit export
-  downloaded through the real admin route — production holds `AUDIT_CHAIN_SECRET`; the laptop never
-  did): **all 40,939 entries link correctly** — nothing was inserted, removed or reordered — but
-  **9 entries' hashes recompute under no known signing key**, the first at `…000000012` (the very
-  start of the log), and **no baseline has ever been declared**. The designed remedy is a one-time
-  baseline: `npm run audit:baseline` (a read-only census), then `-- --declare --by <officer>
-  --yes-write-to-this-database`, which PERMANENTLY records "these rows predate the signing regime and
-  are accepted as they stand" under that officer's name. ⛔ `scripts/audit-baseline.mts` itself says
-  never to run it to turn a check green: declare only once the census shows every one of the 9 is
-  in the log's early era (the pre-`AUDIT_CHAIN_SECRET` fallback key, or rows from before the payload
-  normalisation fix). A session must not declare it. The census needs the app's signing keys, so it
-  runs as `railway run --service 50pick` with `DATABASE_URL` set to the Postgres service's public URL;
-  it did not complete on 2026-09-26 (a dropped proxy connection, then two session restarts), so
-  running it is the next step.
+- ✅ **THE AUDIT CHAIN'S "UNVERIFIED" — ROOT CAUSE FOUND AND FIXED 2026-09-26; one decision left for
+  Ali.** Production verified ITSELF through the real admin route (it holds `AUDIT_CHAIN_SECRET`; the
+  laptop never did): **all 40,939 entries link** — nothing inserted, removed or reordered — but **9
+  hashes recompute under no key**, so the ISO 27001 export a regulator would receive read UNVERIFIED.
+  - **Which rows** (the census now PRINTS them — the tool's header promised the declaring officer would
+    see the rows, and it never did): all 9 are `payouts.unavailable_derived`, written 2026-09-24
+    09:25–14:22 UTC, the day the outage alert shipped (`2a9b1ef5`). The first 30,000 entries of the log
+    (2026-09-11 → 09-23) have ZERO — so ⛔ NOT "legacy early days": my first guess was wrong, and the
+    census by era is what caught it. (The log's first surviving row is seq 266,304, not 1; the tool's
+    "seq 1 .." line said otherwise and is corrected.)
+  - **Why — no tampering.** The same production process wrote the rows beside each one (a sweep, Up &
+    Down rounds, settlements) and those verify. The alert's payload carries `oldestStuckHours`, a double
+    needing 17 significant digits; the Prisma → Postgres `jsonb` round trip stores 16 (signed
+    `54.744926944444444`, stored `54.74492694444444` — the production row verbatim). A local-Postgres
+    probe dropped the last digit of 26 of 48 such floats.
+  - **Fixed:** `normalizePayload` now signs every FRACTION at 15 significant digits (which any double
+    round trip keeps exactly); integers pass untouched. Guards: `test:audit` 10b (the store's 16-digit
+    loss simulated; red on the old code) and **`npm run e2e:audit-roundtrip`** on a real local Postgres
+    — 26 awkward entries, all re-verify; on the old code 15 fail with every link intact, i.e. production's
+    symptom reproduced. Loopback-only (it writes audit rows).
+  - ❓ **FOR ALI — declare the baseline for those 9 rows.** They can never re-verify (rewriting a signed
+    row is exactly what the chain exists to expose), and the cause is now understood and closed — the
+    case the baseline exists for. `npm run audit:baseline -- --declare --by <officer id>
+    --yes-write-to-this-database`, run where `AUDIT_CHAIN_SECRET` is present (`railway run --service
+    50pick`, `DATABASE_URL` = the Postgres public URL), permanently records "these 9 rows, with this
+    digest, are accepted as they stand" under the officer's name; afterwards the export reads Intact and
+    ANY future mismatch is flagged as an edit. ⛔ Declare only AFTER this fix is deployed, and only on
+    Ali's explicit yes — the census immediately before declaring must still show exactly these 9.
 - 🔴 **ALI'S ACTION — rotate the production DB password** (it was echoed into a session transcript on
   2026-09-25; a session must never rotate it itself). The steps, checked against this project's
   variables on 2026-09-26 (Postgres service: `POSTGRES_PASSWORD` is the source, `PGPASSWORD`,

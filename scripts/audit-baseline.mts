@@ -66,8 +66,18 @@ if (existing) {
 }
 
 const census = await censusUnverifiable();
-console.log(`\n  POPULATION : ${census.scanned} row(s) walked, seq 1 .. ${census.frontierSeq}`);
+// ⚠️ NOT "seq 1 ..": the table's first surviving row is not seq 1 (production's began at 266,304 on
+// 2026-09-11), so the population is stated as what was walked, up to the frontier.
+console.log(`\n  POPULATION : ${census.scanned} row(s) walked, up to seq ${census.frontierSeq}`);
 console.log(`  UNVERIFIABLE: ${census.count} row(s) recompute under no known signing key`);
+if (census.sample.length) {
+  // ⭐ THE ROWS, IN FRONT OF THE PERSON DECIDING — identity only. If these are not all from the era the
+  // platform's history predicts (the pre-AUDIT_CHAIN_SECRET fallback, pre-normalisation writes), STOP.
+  console.log(`\n  THE ROWS (first ${census.sample.length}${census.count > census.sample.length ? ` of ${census.count}` : ""}, chain order):`);
+  for (const r of census.sample) {
+    console.log(`    seq ${r.seq}  ${r.createdAt}  ${r.category.padEnd(10)} ${r.action}  ${r.id}${r.beyondFrontier ? "  (beyond frontier)" : ""}`);
+  }
+}
 console.log(`  DIGEST     : ${census.digest}`);
 
 if (census.scanned === 0) {
