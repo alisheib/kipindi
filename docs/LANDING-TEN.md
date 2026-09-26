@@ -9,20 +9,22 @@
 
 ## §0 · RESUME AT — the v3 build (reopened 2026-09-26)
 
-**State (2026-09-26):** D0 ✅. D1 — the landing sections — is LIVE (`54f8199b`) and measured on
-production the same day: gate V1, V2 and V5–V16 clean in every cell; V3, V14, V15, V16 and V17 each
-RED-proved on production. What the production gate still reports is not D1's (the GATE row names each).
-Ali then asked for the Wallet before D2, so WP14 part 1 (the chip opens the Wallet; gold Deposit at
-zero) is built on branch `landing-v3` and in local verification.
-**Next:** finish WP14 — part 1 live and measured, then part 2 (the signed-in hero: Your picks and the
-same Deposit/Withdraw pair). Then batch D2 with **WP6 first**: production prints "YES @ 100% / NO @ 0%"
-on one-sided markets in the hero grid and the board (V17: 64 findings).
+**State (2026-09-27):** D0 ✅ and D1 LIVE (`54f8199b`, measured on production 2026-09-26 — gate V1, V2
+and V5–V16 clean in every cell; V3, V14, V15, V16 and V17 RED-proved on production). WP14 part 1 — the
+chip opens the Wallet, a gold Deposit at zero — is LIVE (`9b96d930`) and measured on production with
+`mobile01` (signed-in pages render; the zero-balance header). WP14 part 2 — the signed-in hero (Your
+picks; the balance with the same Deposit/Withdraw pair, or the empty-balance prompt; Set limits) — is
+built, verified locally (`hero-mine.mjs`), and ships with the WP13 phone fix (source and amount each
+take a line below 640).
+**Next:** confirm WP14 part 2 and the WP13 fix on production (the strip exists only there), tick WP14 and
+WP13. Then batch D2 with **WP6 first**: production prints "YES @ 100% / NO @ 0%" on one-sided markets in
+the hero grid and the board (V17: 64 findings).
 
 Ali, 2026-09-26, handing over the v3 concept: *"proceed perfecting it … we can't come back until
 pushed live and validated visually and logically."* The delivery is filed raw at
 [`docs/design-system/v4-2026-09-26-landing-ten/`](design-system/v4-2026-09-26-landing-ten/). Its
 [`INHERIT-MANIFEST.md`](design-system/v4-2026-09-26-landing-ten/INHERIT-MANIFEST.md) holds **Ali's four
-rulings (R1–R4)** and **every place our laws beat the delivery (L1–L20)**. Read it before building a
+rulings (R1–R4)** and **every place our laws beat the delivery (L1–L21)**. Read it before building a
 row; this section does not repeat it.
 
 **How a session works this programme**
@@ -74,7 +76,7 @@ row; this section does not repeat it.
 
 > Continue the 50pick landing v3 build. Read `docs/LANDING-TEN.md` §0 and §1 first, then
 > `docs/design-system/v4-2026-09-26-landing-ten/INHERIT-MANIFEST.md` (Ali's rulings R1–R4 and laws
-> L1–L20), then §2 (how each row is built) and §3 (every delivery item and the row that delivers it).
+> L1–L21), then §2 (how each row is built) and §3 (every delivery item and the row that delivers it).
 > Verify with the scripts in `scripts/qa/landing-v3/` (§0 trap 6), always under the heavy-node lock.
 > Open the concept (`npx serve docs/design-system/v4-2026-09-26-landing-ten/design`, then
 > `50pick Home Concept v3.dc.html`, with `?signedIn=1&balance=1&wallet=1&locale=sw` as needed) at 360,
@@ -106,7 +108,7 @@ row; this section does not repeat it.
 | WP11 | How it works: "A named source", the fee from config, h3 steps | ✅ | 54f8199b | measured on production 2026-09-26 (360/768/1280 × sw/en/zh frames looked at); the fee reads 13% through `ratesFrom`; L3 |
 | WP12 | Up & Down band: the soonest round, price line, ring, UP/DOWN, plural fixed | ✅ | 54f8199b | measured on production 2026-09-26 (360/768/1280 × sw/en/zh frames looked at); full width, R4(6) |
 | WP13 | Results: date, the market's own sign-off, source link, paid | 🔨 | 54f8199b | live and measured 2026-09-26 (a reversed market reads "Corrected on objection" on production). ⚠️ Open: at 360 in sw the source host truncates to ~9 characters beside "TZS 39,570 yalilipwa" — fixed with D2. L2 |
-| WP14 | Wallet: chip opens sheet/panel, equal Deposit/Withdraw, gold Deposit at zero, signed-in hero | 🔨 | | Part 1 (the chip opens the Wallet; gold Deposit at zero) built, `test:wallet-reach` 48/48 and five mutations caught; local drive pending. Part 2: the signed-in hero. R1, L19, L20 |
+| WP14 | Wallet: chip opens sheet/panel, equal Deposit/Withdraw, gold Deposit at zero, signed-in hero | 🔵 | 9b96d930 | Part 1 LIVE, measured on production 2026-09-27 with `mobile01` (zero balance: labelled gold Deposit, no capsule, no "TZS 0", signed-in pages render at 360/1280 sw/en). The FUNDED Wallet is measured locally only — production has no funded QA player: 17 cells clean (docking, panel under the chip, V19 parity, focus trap, Esc, outside click, focus return). Part 2 (signed-in hero) built and driven locally; `test:wallet-reach` 48/48, `test:landing-mine` 22/22, both mutation-proved. R1, L19–L21 |
 | WP14b | Share in card footers; Share on WhatsApp after placing | ⬜ | | |
 | WP15 | Motion and performance | ⬜ | | L12 |
 | WP16 | i18n: every new key in en, sw and zh | 🔨 | 54f8199b | D1's keys in all three (`test:i18n`); sw/zh drafts carry the native-review marker (rows SW, ZH) |
@@ -283,23 +285,28 @@ feature (a plant against a feature that does not exist yet cannot prove anything
 - A silent row keeps its grid tracks. Guards at risk: `test:ticker-honesty` §9 and `test:outcome`/
   `outcome-display` §4 regexes over `platform-stats.ts` and `trust-band.tsx`.
 
-**WP14 · Wallet** (R1) — `src/components/layout/wallet-balance-pill.tsx`, a new Wallet sheet/panel, `landing-hero.tsx`
-- The capsule's number becomes a `<button aria-expanded>` that opens the Wallet: a `Modal` sheet below
-  1024, a panel under the capsule from 1024. The eye (`CashEye`) stays a sibling inside the capsule.
-- The Wallet: the balance (gold) · the available amount, read exactly as `/wallet` reads it
-  (`db.wallet.findByUserId` → `balance`; bonus is separate and not withdrawable) · Deposit
-  (`/wallet/deposit`) and Withdraw (`/wallet/withdraw`) side by side at the same size · the mobile-money
-  note · Set limits · a link to the full wallet. A held or frozen wallet says so, as every money screen does.
-- At zero: no capsule, no Withdraw — a gold Deposit takes its place at every width. Never "TZS 0".
-- Phone header with a balance (scenario 4a): the capsule **and** a gold Deposit. Today Deposit is hidden below
-  640 for room. Make it fit before giving up: below 640 the capsule drops its "TZS" prefix (its accessible
-  name keeps "Wallet: TZS 12,400"), and Deposit may go icon-only with an accessible name. Measure at 320 and
-  360 in sw, en and zh with the bell and avatar present; nothing may fall under the 40px tap floor.
-- The signed-in hero: Your picks (open · awaiting result · paid this week, from `listPositionsForUser` and
-  the markets' `isSelectionClosed`), then the same Deposit/Withdraw pair, or the empty-balance prompt.
-  On phones it must not push the featured card below the first screen.
-- Guard to rewrite, not delete: `test:wallet-reach` §1 pins "the number links to /wallet". Under R1 it
-  opens the Wallet; the one-door rule and the eye-inside rule stay.
+**WP14 · Wallet** (R1) — `wallet-balance-pill.tsx`, `wallet-sheet.tsx`, `ui/modal.tsx`, `top-app-bar.tsx`, `landing-hero.tsx`, `lib/server/landing-picks.ts`
+- BUILT (part 1): the capsule's number is a `<button aria-haspopup="dialog" aria-expanded>` that opens the
+  Wallet — `<Modal sheet sheetUntil="lg" anchorRef>`: a bottom sheet below 1024 (56px pair, grab handle,
+  safe-area padding), a panel under the capsule from 1024 (right edges aligned, transparent scrim). The eye
+  stays a sibling inside the capsule; the Wallet carries its own eye.
+- The Wallet: the balance in gold labelled "Available" (the withdraw page's word — the whole balance is
+  withdrawable since the bonus wallet went; "can be withdrawn now" is not always true, L19) · Deposit and
+  Withdraw side by side at the same size, each with its own channel under it ("Mobile money or card" /
+  "Mobile money", L19) · Set limits · Open wallet · Close. A frozen wallet says so and gets no money buttons.
+- At zero: no capsule, no Withdraw — a labelled gold Deposit at every width. Never "TZS 0". The bar decides
+  with the LIVE balance (`useLiveBalance`), so an SSE deposit brings the capsule back without a navigation.
+- Phone header with a balance (scenario 4a) — MEASURED, L20: the chip drops "TZS" below 640 (its aria-label
+  keeps it) and the right cluster is 251 of its 278px at 360; a Deposit beside it needs ~48px, so the header
+  Deposit keeps its yield below 640 and the pair is one tap away in the Wallet (and in the signed-in hero).
+- Part 2 — the signed-in hero: Your picks (open · awaiting result · paid this week, read exactly as
+  `/positions` reads them, L21), then the same Deposit/Withdraw pair, or the empty-balance prompt with
+  Deposit and My positions; Set limits. The trust lines stay above it (R4(5)). A player with no picks gets
+  one sentence, never three zeros; a failed read shows nothing. On phones the block follows the featured card,
+  so it cannot push the card below the first screen.
+- Guards: `test:wallet-reach` (amended to R1, §7 the Wallet; `red:wallet-reach` 6/6) and
+  `test:landing-mine` (the rule driven, the EAT week, the hero's contract). Drives:
+  `scripts/qa/landing-v3/wallet.mjs`, `hero-mine.mjs` (local), `wallet-prod.mjs` (production, mobile01).
 
 **WP14b · Share** — card footers already carry `ShareButton compact` left of Details (`test:card-share`
 pins it exactly). What is added: "Share on WhatsApp" after placing (WP5).

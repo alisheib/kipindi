@@ -40,6 +40,14 @@ import { HELPLINE, HELPLINE_TEL } from "@/lib/support-config";
 import type { Dict, Locale } from "@/lib/i18n-dict";
 import type { HeroFigures, HeroRow } from "@/lib/markets/hero";
 import { sideWord } from "@/lib/side-label";
+import { Cash } from "@/components/ui/cash";
+import type { LandingPicks } from "@/lib/server/landing-picks";
+
+/**
+ * What the signed-in hero knows about the player (landing v3 · WP14 part 2). Each part is null when
+ * its read FAILED — and a null part renders nothing, never a zero (B-1).
+ */
+export type LandingMine = { picks: LandingPicks | null; balance: number | null; held: boolean };
 
 export type HeroCardData = {
   charts: Map<string, { spark?: number[]; move24h?: number }>;
@@ -53,6 +61,8 @@ type Props = {
   isAuthed: boolean;
   nowMs: number;
   cards: HeroCardData;
+  /** Signed in only — see LandingMine. */
+  mine?: LandingMine | null;
 };
 
 /** Escape a word for use inside a RegExp — the side words are data, not patterns. */
@@ -182,7 +192,7 @@ function QuestionRow({ row, t, locale }: { row: HeroRow; t: Dict; locale: Locale
   );
 }
 
-export function LandingHero({ figures, t, locale, isAuthed, nowMs, cards }: Props) {
+export function LandingHero({ figures, t, locale, isAuthed, nowMs, cards, mine }: Props) {
   const { featured } = figures;
   const chart = featured ? cards.charts.get(featured.id) : undefined;
   const yes = sideWord(t, "YES", "MARKET");
@@ -269,32 +279,110 @@ export function LandingHero({ figures, t, locale, isAuthed, nowMs, cards }: Prop
           {/* TWO CTAs, not three — `Sign in` lives in the header at every width. Below 1024 they
               follow the card and its trust lines (the delivery's placement map P4, and L18); from 1024
               they sit under the lede and the trust lines. */}
-          <div className="kp-hero__ctas">
-            {isAuthed ? (
-              <>
-                <Link href={"/markets" as never} className="btn btn-primary btn-xl rounded-pill kp-hero__cta">
-                  {t.home.heroCta}
-                  <I.arrowRight s={16} />
-                </Link>
-                <Link href={"/positions" as never} className="btn btn-ghost btn-xl rounded-pill kp-hero__cta">
-                  {t.home.myPositions}
-                </Link>
-              </>
-            ) : (
-              <>
-                <Link href={"/auth/register" as never} className="btn btn-primary btn-xl rounded-pill kp-hero__cta">
-                  {t.common.createAccount}
-                  <I.arrowRight s={16} />
-                </Link>
-                <Link href={"/markets" as never} className="btn btn-ghost btn-xl rounded-pill kp-hero__cta">
-                  {fill(t.home.heroBrowseAll, { n: figures.openCount })}
-                </Link>
-              </>
-            )}
-          </div>
+          {isAuthed ? (
+            <SignedInAct t={t} mine={mine ?? null} />
+          ) : (
+            <div className="kp-hero__ctas">
+              <Link href={"/auth/register" as never} className="btn btn-primary btn-xl rounded-pill kp-hero__cta">
+                {t.common.createAccount}
+                <I.arrowRight s={16} />
+              </Link>
+              <Link href={"/markets" as never} className="btn btn-ghost btn-xl rounded-pill kp-hero__cta">
+                {fill(t.home.heroBrowseAll, { n: figures.openCount })}
+              </Link>
+            </div>
+          )}
         </div>
       </div>
     </section>
+  );
+}
+
+/**
+ * THE SIGNED-IN HERO (landing v3 · WP14 part 2 — the delivery's wallet scenario §4a and §4c).
+ *
+ * Where a visitor is offered "Create account", a player sees their own position: Your picks (open ·
+ * awaiting result · paid this week), then the balance with Deposit and Withdraw side by side at the
+ * SAME size (the Wallet's pair, V19) — or, at zero, the empty-balance prompt with Deposit and My
+ * positions. Then Set limits.
+ * ⛔ A FAILED READ SHOWS NOTHING, NEVER ZEROS (B-1): null `picks` hides the figures, null `balance`
+ * hides the wallet box. A player with no picks at all gets one sentence, not three zeros — a row of
+ * zeros is advertised emptiness, the dead state the gate's V11 exists for.
+ * ⚠️ The trust lines stay above it for a player too: R4(5) puts the RG line in the hero's trust lines,
+ * and a player holding money is who it is for (INHERIT-MANIFEST L21).
+ * ⛔ A frozen wallet is offered no money buttons — the same rule as the Wallet (`wallet-sheet.tsx`).
+ */
+function SignedInAct({ t, mine }: { t: Dict; mine: LandingMine | null }) {
+  const picks = mine?.picks ?? null;
+  const balance = mine?.balance ?? null;
+  const held = !!mine?.held;
+  const noPicks = !!picks && picks.open === 0 && picks.awaiting === 0 && picks.paidThisWeekTzs === 0;
+  // At zero the empty-balance prompt already says what to do next; the no-picks sentence beside it said it twice.
+  const emptyWallet = !held && balance !== null && balance <= 0;
+  return (
+    <div className="kp-mine" data-testid="landing-mine">
+      {picks && (noPicks ? (
+        emptyWallet ? null : <p className="kp-mine__lead">{t.home.picksNone}</p>
+      ) : (
+        <div>
+          <p className="kp-mine__eyebrow">{t.home.yourPicks}</p>
+          <ul className="kp-mine__stats" role="list">
+            <li className="kp-mine__stat">
+              <span className="kp-mine__n">{formatNumber(picks.open)}</span>
+              <span className="kp-mine__l">{t.home.picksOpen}</span>
+            </li>
+            <li className="kp-mine__stat">
+              <span className="kp-mine__n">{formatNumber(picks.awaiting)}</span>
+              <span className="kp-mine__l">{t.home.picksAwaiting}</span>
+            </li>
+            <li className="kp-mine__stat">
+              <span className="kp-mine__n kp-mine__n--gold"><Cash>{formatTzs(picks.paidThisWeekTzs)}</Cash></span>
+              <span className="kp-mine__l">{t.home.picksPaidWeek}</span>
+            </li>
+          </ul>
+        </div>
+      ))}
+      {held ? (
+        <div className="kp-mine__held" role="status">
+          <p className="kp-mine__held-t">{t.kycGate.frozenTitle}</p>
+          <p className="kp-mine__held-b">{t.kycGate.frozenBody}</p>
+        </div>
+      ) : balance !== null && balance > 0 ? (
+        <div className="kp-mine__wallet">
+          <div className="kp-mine__bal">
+            <p className="kp-mine__eyebrow">{t.wallet.available}</p>
+            <p className="kp-mine__amt"><Cash>{formatTzs(balance)}</Cash></p>
+          </div>
+          <div className="kp-mine__pair">
+            <Link href="/wallet/deposit" className="btn gilt-metal btn-lg kp-mine__act" data-testid="hero-deposit">
+              <I.plus s={16} />
+              {t.common.deposit}
+            </Link>
+            <Link href="/wallet/withdraw" className="btn btn-ghost btn-lg kp-mine__act" data-testid="hero-withdraw">
+              <I.arrowUpFromLine s={16} />
+              {t.common.withdraw}
+            </Link>
+          </div>
+        </div>
+      ) : balance !== null ? (
+        <div className="kp-mine__empty">
+          <p className="kp-mine__lead">{t.home.emptyBalance}</p>
+          <div className="kp-hero__ctas">
+            <Link href="/wallet/deposit" className="btn gilt-metal btn-xl rounded-pill kp-hero__cta" data-testid="hero-deposit">
+              <I.plus s={16} />
+              {t.common.deposit}
+            </Link>
+            <Link href={"/positions" as never} className="btn btn-ghost btn-xl rounded-pill kp-hero__cta">
+              {t.home.myPositions}
+            </Link>
+          </div>
+        </div>
+      ) : null}
+      <Link href="/profile/responsible-gambling" className="kp-mine__limits">
+        {t.footer.setLimits}
+        <I.arrowRight s={14} />
+      </Link>
+    </div>
   );
 }
 

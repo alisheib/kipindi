@@ -251,7 +251,7 @@ const { formatBalancePill, formatTzs, formatTzsCompact, BALANCE_COMPACT_ABOVE } 
      /btn gilt-metal/.test(dep) && /btn btn-ghost/.test(wd));
   const pairAt = sheet.indexOf("kp-wsheet__pair");
   ok("7: …side by side, in one two-column pair", pairAt > 0 && pairAt < sheet.indexOf('href="/wallet/deposit"') && pairAt < sheet.indexOf('href="/wallet/withdraw"') &&
-     /\.kp-wsheet__pair\s*\{[^}]*grid-template-columns:\s*1fr 1fr/.test(css));
+     /\.kp-wsheet__pair\s*\{[^}]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/.test(css));
   ok("7: Set limits and the full wallet page are in the Wallet",
      /href="\/profile\/responsible-gambling"/.test(sheet) && /href="\/wallet"/.test(sheet));
   // ⛔ A frozen wallet is offered nothing its pages refuse.

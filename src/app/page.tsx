@@ -29,6 +29,9 @@ import { timeLeftLabel } from "@/lib/markets/time-left";
 import { getServerT } from "@/lib/i18n-server";
 import { getGlobalConfig } from "@/lib/server/market-config";
 import { ratesFrom } from "@/app/legal/rules/_shared";
+import { landingPicks } from "@/lib/server/landing-picks";
+import { db } from "@/lib/server/store";
+import type { LandingMine } from "@/components/home/landing-hero";
 
 export const dynamic = "force-dynamic";
 
@@ -221,6 +224,19 @@ export default async function LandingPage() {
       }
     : null;
   const isAuthed = !!session;
+  // ⭐ WP14 part 2 · the signed-in hero's own reads, in parallel. Each fails to NULL on its own, and a
+  // null part renders nothing (B-1: a failed read is not a zero). The wallet row is the same one the
+  // header reads (app-shell), so the hero's balance and the chip cannot disagree.
+  const mine: LandingMine | null = session
+    ? await Promise.all([
+        landingPicks(session.userId, nowMs).catch(() => null),
+        Promise.resolve().then(() => db.wallet.findByUserId(session.userId)).catch(() => undefined),
+      ]).then(([picks, wallet]) => ({
+        picks,
+        balance: wallet === undefined ? null : (wallet?.balance ?? 0),
+        held: !!wallet && wallet.status !== "ACTIVE",
+      }))
+    : null;
 
   // ONE definition, shared with the hero and /markets — this was a fifth copy of the same nine
   // lines, and the copies had drifted (three could render "0m left" on a market still taking
@@ -245,6 +261,7 @@ export default async function LandingPage() {
         isAuthed={isAuthed}
         nowMs={nowMs}
         cards={{ charts: cardCharts, traders: traderMap }}
+        mine={mine}
       />
 
       {/* ── §1a′ THE PROOF — the three figures, the whole board's conviction, the closing-soonest
