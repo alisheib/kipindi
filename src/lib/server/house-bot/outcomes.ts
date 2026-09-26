@@ -90,11 +90,17 @@ export type AppliedOutcome =
 
 /* ═══ Engine audits (04 A19 allowlist) ═════════════════════════════════════════════════════════════ */
 
+/**
+ * The engine's compliance row; the row's id, or null when the row is NOT in the log.
+ * ⛔ NEVER THE ID OF AN ENTRY THAT DID NOT LAND (replan ruling 543). `audit()` resolves whether or not it could sign
+ * and persist, and the answer it resolves with still carries a ticketed id — handing that on would stamp an event
+ * (`setAuditId`) with a reference to a row that no table holds. Null is the truth, and every caller already reads
+ * it as "this event has no audit row": the stop, the switch-off and the poison pass go on, and their alerts still go.
+ */
 export async function engineAudit(action: HouseAuditAction, target: { type: "HouseBot"; id: string } | { type: "HouseBotControl"; id: string }, payload: Record<string, unknown>): Promise<string | null> {
   if (!isAllowedHouseAuditPayload(payload)) throw new Error(`house engine audit ${action}: payload keys outside the R7 allowlist`);
-  const entry = (await audit({ category: HOUSE_AUDIT[action], action, actorId: SYSTEM_HOUSE_BOT_ACTOR, targetType: target.type, targetId: target.id, payload })) as unknown;
-  const id = entry && typeof entry === "object" && typeof (entry as { id?: unknown }).id === "string" ? (entry as { id: string }).id : null;
-  return id;
+  const entry = await audit({ category: HOUSE_AUDIT[action], action, actorId: SYSTEM_HOUSE_BOT_ACTOR, targetType: target.type, targetId: target.id, payload });
+  return entry.recorded ? entry.id : null;
 }
 
 /** Claim the key, then send; a failed send gives the claim back (C3 review LI-8). True when this call sent it. */

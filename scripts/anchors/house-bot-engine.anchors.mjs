@@ -1148,4 +1148,37 @@ export const MUTATIONS = [
     suite: "engine-mem",
     sections: "16",
   },
+
+  /* ── 2026-09-26 · REPLAN RULING 543 — an entry that did not land has no id to stamp ──────────────────────────────
+   * `audit()` now resolves an entry it could not sign (or that the database refused) with its ticketed id all the
+   * same, so the engine's two writers must answer null for it: a phantom id on an event names a row no table holds,
+   * and a phantom id on a press marks it audited so the lease repair never writes the row that was lost. */
+  {
+    name: "543-engine-phantom-id · engineAudit hands on the id of an entry that never landed, and the stop's event is stamped with it",
+    file: OUTCOMES,
+    from: `  return entry.recorded ? entry.id : null;`,
+    to: `  return entry.id;`,
+    expect: "13.35b · ⭐ 543 · a stop whose compliance row cannot be SIGNED",
+    suite: "engine-mem",
+    sections: "13",
+  },
+  {
+    name: "543-press-phantom-id · writePressAudit answers the id of an entry that never landed, marking the press audited",
+    file: "src/lib/server/house-bot/press-audit.ts",
+    from: `  return row.recorded ? row.id : null;`,
+    to: `  return row.id;`,
+    expect: "17.14b · ⭐ 543 · a press audit that cannot be SIGNED",
+    suite: "engine-mem",
+    sections: "17",
+  },
+  {
+    /* Postgres by nature: the memory store has no persist path to refuse. */
+    name: "543-outage-reads-recorded · a row the DATABASE refused, kept only in this process's ring, is reported recorded",
+    file: "src/lib/server/audit.ts",
+    from: `      return { ...stamped, recorded: false, unrecorded: "PERSIST_FAILED" };`,
+    to: `      return { ...stamped, recorded: true };`,
+    expect: "17.14d · ⭐ 543 · Postgres",
+    suite: "engine-pg",
+    sections: "17",
+  },
 ];

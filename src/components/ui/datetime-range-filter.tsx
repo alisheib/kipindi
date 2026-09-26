@@ -28,13 +28,14 @@
  * player surfaces (`PLAYER_PRESETS` is defined here); hard-coding the admin 32px rank inside it
  * would bake an admin fork into shared code. `test:filter-language` §7.3 asserts exactly that.
  */
-import { useMemo, useState } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
 import { DateSelect } from "@/components/ui/date-select";
 import { TimeSelect } from "@/components/ui/time-select";
 import { FilterPill, filterPillClass, type FilterPillRank } from "@/components/ui/filter-pill";
 import { cn } from "@/lib/utils";
+import { PendingMark } from "@/components/ui/link-pending";
 import { eatDayKey } from "@/lib/eat-day";
 import { useT } from "@/lib/i18n";
 
@@ -154,6 +155,11 @@ export function DateTimeRangeFilter({
    */
   const todayIso = useMemo(() => eatDayKey(Date.now()), []);
 
+  /* ⭐ THE CUSTOM WINDOW'S NAVIGATION SAYS IT IS LOADING (house-bots build step 10). The presets are links and carry
+     their own mark; Apply and Clear navigate from code, so they run inside a transition whose pending flag puts the
+     same mark on the Custom chip — the page never sits unchanged after a press. */
+  const [navPending, startNav] = useTransition();
+
   const pushParams = (mut: (p: URLSearchParams) => void) => {
     const p = new URLSearchParams(sp.toString());
     mut(p);
@@ -163,7 +169,7 @@ export function DateTimeRangeFilter({
     /* ⛔ ONE DECISION, TWO DOORS. `hrefForPreset` below builds the same URL for the `<Link>`; this runs for the
        Custom panel's Apply and Clear. Both must obey the caller's `replace`, or a rail stacks history on one half
        of itself and not the other. */
-    if (replace) router.replace(to, { scroll: false }); else router.push(to, { scroll: false });
+    startNav(() => { if (replace) router.replace(to, { scroll: false }); else router.push(to, { scroll: false }); });
   };
 
   const pickPreset = (id: string) => {
@@ -273,6 +279,7 @@ export function DateTimeRangeFilter({
             className={filterPillClass({ rank, on: activeId === "custom" })}
           >
             {t.common.rangeCustom}
+            <PendingMark on={navPending} />
           </button>
         )}
       </div>

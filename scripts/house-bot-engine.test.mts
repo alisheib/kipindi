@@ -90,5 +90,9 @@ import { runTwoStores } from "./lib/house-bot-two-stores.mts";
  * walks the console`s read-only explanation over live markets and finds one this account would stake on,
  * 17.53b holds that the walk wrote NEITHER an intent NOR an opener draw, and 17.53c is its control — the
  * PLANNER over that same account and market writes both, so 17.53b measures absence and not emptiness.
- * What a run PRINTED: `808 passed` memory and `787 passed` Postgres, ALL PASS on both stores, 0 failed. */
-await runTwoStores({ suite: "test:house-bot-engine", casesFile: "scripts/lib/house-bot-engine-cases.mts", minPass: { memory: 825, postgres: 804 }, dbPrefix: "hb_engine" });
+ * What a run PRINTED: `808 passed` memory and `787 passed` Postgres, ALL PASS on both stores, 0 failed.
+ * ⭐ 825/804 → 829/810 (2026-09-26, house-bots build step 6 — replan ruling 543), the counts that run PRINTED on the
+ * integrated tree: 13.35b/c (a stop whose compliance row cannot be signed stamps no audit id; its control) and
+ * 17.14b/c on both stores, and on Postgres 17.14d/e — a BEFORE INSERT trigger stands in for the outage, so an append
+ * the database refuses answers PERSIST_FAILED and a press audit written through it answers null. */
+await runTwoStores({ suite: "test:house-bot-engine", casesFile: "scripts/lib/house-bot-engine-cases.mts", minPass: { memory: 829, postgres: 810 }, dbPrefix: "hb_engine" });

@@ -2711,6 +2711,10 @@ const SWITCH_COPY = {
      told "nothing changed" about a desk that IS on would switch it on again, and that is the one response this
      record cannot survive. */
   onNotRecorded: "The desk is on. ⚠️ Its compliance record could not be written — tell whoever keeps the records.",
+  /* ⛔ AND THE STOP, WHICH WAS THE WORST OF THEM (replan ruling 543). Until the audit contract was fixed, a record
+     that could not be signed THREW out of the kill switch after the desk had stopped, and the action's catch told
+     the officer "Nothing changed. Reload the page and try again." about a desk that WAS off. */
+  offNotRecorded: "The desk is off. ⚠️ Its compliance record could not be written — tell whoever keeps the records.",
 } as const;
 
 /** ⛔ 306's own count, worded as a REFUSAL rather than as an instruction — the strip already carries the link. */
@@ -2886,15 +2890,24 @@ export async function houseSwitchForConsole(
   const off = await switchOffHouseBots({ cause: "MANUAL", byId: viewerUserId, reason, alerts: houseEngineAlerts() });
   if (!off.ok) return { ok: false, error: SWITCH_COPY.offFailed };
   if (!off.changed) return { ok: true, on: false, changed: false, note: SWITCH_COPY.alreadyOff, warn: false };
+  /* ⛔ 543 · A STOP WHOSE COMPLIANCE ROW DID NOT LAND SAYS BOTH, AND THE RECORD SENTENCE LEADS. The desk IS off —
+     never "nothing changed", which is what the officer was told before the audit contract was fixed — and its
+     record is missing, which is the one thing they have to pass on. It is a warning, never a failure. */
+  const recordNote = off.recorded ? null : SWITCH_COPY.offNotRecorded;
   /* ⛔ "BUSY" IS NEVER A FAILURE AND NEVER LEAVES THE SWITCH ON (04 A9): the drain only INFORMS, so it changes one
      sentence — the honest one about a bet that may still be completing. */
   const cancelled = off.cancelled > 0 ? cancelledClause(off.cancelled) : null;
+  const sentences = (...parts: Array<string | null>): string | null => {
+    const kept = parts.filter((p): p is string => p !== null);
+    return kept.length === 0 ? null : kept.join(" ");
+  };
   if (off.drain === "busy") {
-    return { ok: true, on: false, changed: true, note: cancelled ? `${SWITCH_COPY.busy} ${cancelled}` : SWITCH_COPY.busy, warn: true };
+    return { ok: true, on: false, changed: true, note: sentences(recordNote, SWITCH_COPY.busy, cancelled), warn: true };
   }
   /* A clean stop says only what the strip does not already say. 432(n): the strip repaints "The desk is off.
-     Nothing will be staked." on the very next read, so repeating it here would be the same fact twice. */
-  return { ok: true, on: false, changed: true, note: cancelled, warn: false };
+     Nothing will be staked." on the very next read, so repeating it here would be the same fact twice — unless the
+     record is missing, when the sentence carries the one fact the strip cannot. */
+  return { ok: true, on: false, changed: true, note: sentences(recordNote, cancelled), warn: recordNote !== null };
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════════════════════════════════════════
@@ -5117,10 +5130,15 @@ export async function houseAccountActForConsole(
       : started.masterOn
         ? startWarning
         : startWarning === null ? ACT_COPY.startedWhileOff : `${ACT_COPY.startedWhileOff} ${startWarning}`;
+    /* ⛔ 543 · A START WHOSE COMPLIANCE ROW DID NOT LAND SAYS BOTH, AND THE RECORD SENTENCE LEADS. The account IS
+       running — before the audit contract was fixed this path threw and the officer read "That could not be
+       written. Nothing changed", and a retry met "already running" — and its record is missing. The sentence is
+       the console's ONE spelling of it (`ACT_COPY.notRecorded`), never a second one typed here. */
+    const startUnrecorded = !started.alreadyRunning && !started.recorded;
     return {
       ok: true, changed: !started.alreadyRunning,
-      note,
-      warn: (!started.masterOn || startWarning !== null) && !started.alreadyRunning,
+      note: startUnrecorded ? (note === null ? ACT_COPY.notRecorded : `${ACT_COPY.notRecorded} ${note}`) : note,
+      warn: ((!started.masterOn || startWarning !== null) && !started.alreadyRunning) || startUnrecorded,
     };
   }
 
@@ -7602,7 +7620,8 @@ export type ConsoleDesignateInput = {
 };
 
 export type ConsoleDesignateResult =
-  | { ok: true; href: string; note: string }
+  /** ⛔ `warn` (replan ruling 543): the account IS on the desk and its compliance record is missing — the note says both. */
+  | { ok: true; href: string; note: string; warn: boolean }
   /** `field` is the form's own control, never a column (D19); `href` is where the refusal says to go. */
   | { ok: false; error: string; field?: "label" | "note" | "password"; href?: string };
 
@@ -7690,7 +7709,17 @@ export async function houseDesignateForConsole(
    * ⛔ IT IS THE TAB HELPER, NOT A TYPED QUERY STRING: `consoleBotTabHref` is the one home for these links, and
    * a hand-written `?tab=rules` here would be the fourth spelling of a route this module exists to keep single.
    */
-  if (done.ok) return { ok: true, href: consoleBotTabHref(done.bot.id, "rules"), note: DESIGNATE_FORM_COPY.done };
+  /* ⛔ 543 · A DESIGNATION WHOSE COMPLIANCE ROW DID NOT LAND IS STILL A DESIGNATION, and says both. Before the audit
+     contract was fixed it threw here after the account was on the desk: the officer read "That could not be written.
+     Nothing changed — try again", and the retry spent another of the holder's password attempts to meet
+     "already on the desk". The record sentence is the console's one spelling (`ACT_COPY.notRecorded`). */
+  if (done.ok) {
+    return {
+      ok: true, href: consoleBotTabHref(done.bot.id, "rules"),
+      note: done.recorded ? DESIGNATE_FORM_COPY.done : `${ACT_COPY.notRecorded} ${DESIGNATE_FORM_COPY.done}`,
+      warn: !done.recorded,
+    };
+  }
 
   /* ⛔ EVERY REFUSAL AN OFFICER READS IS THE CONSOLE'S OWN, KEYED BY CODE (453). `designateHouseBot` answers with
      `eligibility.ts`'s and `rules.ts`'s sentences, and measured, those carry the feature's words — "Another bot is

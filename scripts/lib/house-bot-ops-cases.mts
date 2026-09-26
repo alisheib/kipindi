@@ -1540,9 +1540,11 @@ if (STORE === "postgres") {
 // a state nothing can undo. Every earlier section needs a desk that still works.
 //
 // ⭐ THE TWO CHILDREN SPLIT THE TWO AUDIT OUTCOMES, and each says which half it measured. The memory
-// child forces the compliance row to FAIL — the only way it can fail is `chainSecret()` throwing, which
-// is production without a distinct AUDIT_CHAIN_SECRET, so that is exactly what is arranged — and proves
-// the desk still moved and the result says `recorded: false`. The Postgres child runs it whole and
+// child forces the compliance row NOT TO LAND — `chainSecret()` refusing to sign, which is production
+// without a distinct AUDIT_CHAIN_SECRET, so that is exactly what is arranged — and proves the desk still
+// moved and the result says `recorded: false`. (Until replan ruling 543 that refusal made `audit()`
+// REJECT and the service caught it; since 2026-09-26 `audit()` RESOLVES it unrecorded and the service
+// reads the flag. The arrangement and the answer are the same.) The Postgres child runs it whole and
 // counts ONE audit row, ONE global event and ONE alert. Neither child could prove both.
 // ═══════════════════════════════════════════════════════════════════════════════════════════
 
@@ -1587,9 +1589,11 @@ if (STORE === "memory") {
       short.ok === false && short.code === "REASON" && long.ok === false && long.code === "REASON" && control.offCause !== "SUNSET",
       j({ short: short.code, long: long.code, offCause: control.offCause }));
 
-    // ⛔ THE ONLY WAY audit() CAN FAIL is chainSecret() throwing — with a database it FAILS OPEN and keeps
-    // an in-memory entry rather than rejecting. So production without a distinct AUDIT_CHAIN_SECRET is the
-    // real shape of this failure, and it is what is arranged here, for exactly one call.
+    // ⛔ THE ONE WAY A COMPLIANCE ROW FAILS TO LAND ON THE MEMORY TWIN is chainSecret() refusing to sign —
+    // the memory store has no persist path to lose. So production without a distinct AUDIT_CHAIN_SECRET is
+    // the real shape of this failure, and it is what is arranged here, for exactly one call. Since replan
+    // ruling 543 `audit()` RESOLVES that entry unrecorded (UNSIGNED — nothing written) instead of rejecting,
+    // and the service reads the flag: `recorded: false` and no audit id, exactly as before.
     const prevEnv = (process.env as Record<string, string | undefined>).NODE_ENV;
     const prevSecret = process.env.AUDIT_CHAIN_SECRET;
     (process.env as Record<string, string | undefined>).NODE_ENV = "production";

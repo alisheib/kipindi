@@ -42,6 +42,27 @@ async function guard(label: string, fn: () => Promise<void> | void): Promise<voi
   // The whole message, on one line: Prisma puts the database's own text after its first lines, which a stack cut lost.
   try { await fn(); } catch (e) { ok(`${label} · threw`, false, `${String((e as Error)?.message ?? e).replace(/\s+/g, " ")} | ${(e as Error)?.stack?.split("\n").slice(1, 4).join(" | ") ?? ""}`); }
 }
+/**
+ * ⭐ REPLAN RULING 543 · ONE CALL WITH THE AUDIT CHAIN UNSIGNABLE — `NODE_ENV=production` and no `AUDIT_CHAIN_SECRET`,
+ * exactly the precondition `chainSecret()` refuses on a served build. The audit queue is drained BEFORE the env moves (no
+ * earlier fire-and-forget append may be stamped under it) and again before it is put back (nothing queued inside may be
+ * stamped outside), and both variables are restored in a `finally`.
+ */
+async function withUnsignableChain<T>(fn: () => Promise<T>): Promise<T> {
+  const AUD543: Any = await import("../../src/lib/server/audit.ts");
+  await AUD543.auditFlush();
+  const env0 = { node: process.env.NODE_ENV, chain: process.env.AUDIT_CHAIN_SECRET };
+  const put = (k: string, v: string | undefined): void => { if (v === undefined) delete (process.env as Any)[k]; else (process.env as Any)[k] = v; };
+  try {
+    put("NODE_ENV", "production");
+    put("AUDIT_CHAIN_SECRET", undefined);
+    return await fn();
+  } finally {
+    await AUD543.auditFlush();
+    put("NODE_ENV", env0.node);
+    put("AUDIT_CHAIN_SECRET", env0.chain);
+  }
+}
 
 process.env.MARKET_SCHEDULER = "false";
 const L: Any = await import("../../src/lib/server/locks.ts");
@@ -1516,6 +1537,28 @@ await guard("13", async () => {
     await w.setUserFields(bp.userId, { status: "CLOSED", closedAt: w.iso() });
     await apply(await fresh(bp), refuse("account_blocked"), recorder().alerts);
     ok("13.37 · a PAUSED bot whose account closed is REMOVED too", (await botRow(bp.botId)).status === "REMOVED");
+  }
+
+  /* ── 13.35b · replan ruling 543 · a stop whose compliance row cannot be SIGNED still stops, still tells, and stamps
+     NO phantom id. Before the audit contract was fixed the unsigned row THREW out of `engineAudit` after the status
+     had moved — the alert was never sent — and once it stopped throwing, the ticketed id of an entry that never
+     landed would have been stamped on the event as if a row existed. ── */
+  {
+    const AUD543: Any = await import("../../src/lib/server/audit.ts");
+    const b = await w.bot();
+    const rec = recorder();
+    const stopped = await withUnsignableChain(() => OC.stopBot(b.botId, { to: "AUTO_PAUSED", cause: "ACCOUNT_BLOCKED" }, rec.alerts))
+      .catch((e: unknown) => `threw: ${String((e as Error)?.message ?? e)}`);
+    const bot = await botRow(b.botId);
+    const ev = (await eventsOf(b.botId)).find((e) => e.kind === "AUTO_PAUSED");
+    ok("13.35b · ⭐ 543 · a stop whose compliance row cannot be SIGNED still stops the bot and still tells someone — and its event carries NO audit id, never the id of a row that does not exist",
+      stopped === true && bot.status === "AUTO_PAUSED" && !!ev && ev.auditId == null && rec.count("botStopped") === 1,
+      `${j(stopped)} · ${j(ev)} · ${j(rec.calls)}`);
+    const b2 = await w.bot();
+    const stopped2 = await OC.stopBot(b2.botId, { to: "AUTO_PAUSED", cause: "ACCOUNT_BLOCKED" }, recorder().alerts);
+    const ev2 = (await eventsOf(b2.botId)).find((e) => e.kind === "AUTO_PAUSED");
+    ok("13.35c · CONTROL · the same stop with the secret in place stamps its event with an id the audit store really holds — so the null above is the missing record, not a stop that never audits",
+      stopped2 === true && typeof ev2?.auditId === "string" && AUD543.getAuditById(ev2.auditId) !== undefined, j(ev2));
   }
 
   /* ── 13.38 house_consent_stale: recompute the holder's causes (A3, PLAN §14) ── */
@@ -3281,6 +3324,50 @@ await guard("17", async () => {
     const written = await safe(() => PA.writePressAudit(press({}), q));
     const entry = typeof written === "string" ? (await AUD.getAuditByActionsDurable(["house_bot.enter_now"], { limit: 50 })).entries.find((e: Any) => e.id === written) : null;
     ok("17.18 · ruling 74 · the repair writes AS THE OFFICER who pressed, never system_house_bot", entry?.actorId === WORLD_OFFICER && entry?.category === "COMPLIANCE", j({ written, actor: entry?.actorId }));
+
+    /* ── 17.14b · replan ruling 543 · the id is what marks a press AUDITED, so an entry that did not land has none ──
+       `audit()` resolves an entry it cannot sign with a ticketed id all the same; handing that on would mark the press
+       audited, and the lease repair would never write the row that was lost. */
+    const unsignedId = await withUnsignableChain(() => safe(() => PA.writePressAudit(press({}), q)));
+    ok("17.14b · ⭐ 543 · a press audit that cannot be SIGNED answers null — never the id of a row that does not exist, which would mark the press audited and stop the lease repair from ever writing it",
+      unsignedId === null, j({ unsignedId }));
+    const signedId = await safe(() => PA.writePressAudit(press({}), q));
+    ok("17.14c · CONTROL · …while the same write with the secret in place answers an id the audit store really holds — so the null above is the missing row, not a writer that answers null",
+      typeof signedId === "string" && AUD.getAuditById(signedId) !== undefined, j({ signedId }));
+
+    /* ── 17.14d · Postgres · a row the DATABASE refuses (ruling 543's second shortfall) ──────────────────────────────
+       The fail-open for a database outage was already there: a signed copy kept in this process's ring. What was not
+       there was the SAYING — `recorded` read true and the ring-only id was handed on as if a table row existed. A
+       BEFORE INSERT trigger that raises stands in for the outage, on this run's own scratch database, for exactly two
+       calls, and is dropped in a `finally`. ⚠️ Memory has no persist path at all, so this is Postgres by nature. */
+    if (w.onPostgres) {
+      const db = w.prisma();
+      await AUD.auditFlush();
+      let refused: Any = null;
+      let refusedWrite: Any = null;
+      try {
+        await db.$executeRawUnsafe(`CREATE OR REPLACE FUNCTION hb543_refuse_audit() RETURNS trigger LANGUAGE plpgsql AS $f$ BEGIN RAISE EXCEPTION 'hb543 planted refusal'; END $f$`);
+        await db.$executeRawUnsafe(`CREATE TRIGGER hb543_refuse BEFORE INSERT ON "AuditLog" FOR EACH ROW EXECUTE FUNCTION hb543_refuse_audit()`);
+        refused = await safe(() => AUD.audit({ category: "SYSTEM", action: "probe.543.persist", actorId: null, targetType: null, targetId: null, payload: { probe: 1 } }));
+        refusedWrite = await safe(() => PA.writePressAudit(press({}), q));
+        await AUD.auditFlush();
+      } finally {
+        await db.$executeRawUnsafe(`DROP TRIGGER IF EXISTS hb543_refuse ON "AuditLog"`);
+        await db.$executeRawUnsafe(`DROP FUNCTION IF EXISTS hb543_refuse_audit()`);
+      }
+      const rowsOf = async (id: unknown): Promise<number> =>
+        Number(((await db.$queryRawUnsafe(`SELECT count(*)::int AS n FROM "AuditLog" WHERE "id" = $1`, String(id))) as Any[])[0]?.n ?? -1);
+      const refusedRows = await rowsOf(refused?.id);
+      ok("17.14d · ⭐ 543 · Postgres · an append the DATABASE refuses resolves unrecorded — PERSIST_FAILED — with a signed copy in this process's ring and NO row in the table, and a press audit written through it answers null",
+        refused?.recorded === false && refused?.unrecorded === "PERSIST_FAILED" && AUD.getAuditById(refused?.id) !== undefined
+          && refusedRows === 0 && refusedWrite === null,
+        j({ refused: refused && { recorded: refused.recorded, unrecorded: refused.unrecorded, threw: refused.threw ?? null }, tableRows: refusedRows, refusedWrite }));
+      const after = await safe(() => AUD.audit({ category: "SYSTEM", action: "probe.543.persisted", actorId: null, targetType: null, targetId: null, payload: { probe: 2 } }));
+      await AUD.auditFlush();
+      const afterRows = await rowsOf(after?.id);
+      ok("17.14e · CONTROL · with the refusal dropped the same append is recorded and IS in the table — so PERSIST_FAILED above is the database's refusal and not a constant",
+        after?.recorded === true && after?.unrecorded === undefined && afterRows === 1, j({ recorded: after?.recorded, tableRows: afterRows }));
+    }
   }
 
   /* ── 17.19 endTargets (N2 §4 step 9; rulings 75–76) ── */

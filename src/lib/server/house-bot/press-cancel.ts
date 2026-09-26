@@ -190,7 +190,10 @@ export async function cancelQueuedStake(input: StaffCancelInput): Promise<StaffC
   } catch {
     /* ⛔ THE CANCEL LANDED. An audit lost here is written once by the planner's lease repair from the same builder,
      * so it is NOT reported to the officer as a failure — "nothing was stopped" would be the opposite of the truth
-     * on a control that has already stopped a stake. `recorded` says so instead. */
+     * on a control that has already stopped a stake. `recorded` says so instead.
+     * ⚠️ SINCE REPLAN RULING 543 THIS CATCH IS FOR THE STORE CALLS ONLY (the lease, the reads, `setAuditId`). The audit
+     * itself no longer throws: `writePressAudit` answers null for a row that did not land — unsigned, or refused by
+     * the database — so `recorded` stays false above, the press stays unaudited, and the repair writes it later. */
     recorded = false;
   }
 
