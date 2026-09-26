@@ -288,7 +288,14 @@ await runTwoStores({
    * ⭐ 845/604 → 854/613 (2026-09-26), the counts that run PRINTED: 1.626h (a settled stake still brackets itself,
    * with real BET_PAYOUT/BET_REFUND rows — four assertions), 1.368b (the D3 scan moved onto a ledger that paints
    * balances — three, replacing 1.368's vacuous activity assertion and its control), 1.435b (the why-panel's
-   * guard, RENDERED — two) and 1.541's removed-account door (two): +11 −2 = +9 on each store. */
-  minPass: { memory: 854, postgres: 613 },
+   * guard, RENDERED — two) and 1.541's removed-account door (two): +11 −2 = +9 on each store.
+   * ⭐ 854/613 → 864/623 (2026-09-26), the counts that run PRINTED: RESUME-HERE §0c decision 2, the ledger at 1280 —
+   * §2e3b's ten source assertions on both ledgers (type placement, note line, phone stack, the two-row record, one
+   * gutter, derived spans — each with its control), +10 on each store.
+   * ⭐ 864/623 → 923/669 (2026-09-26), the counts that run PRINTED: C7 437, the Results tab — §2h's behavioural block on
+   * both stores (audience, one arithmetic with the stop, outcomes and words, cohort, window, one read per day, a failed
+   * day, removed accounts, grammar, containment, lexicon, layout) and, on the memory child, the source pins it
+   * brought (1.360 built, 1.361 widened, 1.437m's register pins, the five-tab rail). */
+  minPass: { memory: 923, postgres: 669 },
   dbPrefix: "hb_console",
 });

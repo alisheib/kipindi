@@ -18,7 +18,11 @@
  * history predicts, stop and find out why first.
  *
  * ⛔ DRY RUN IS THE DEFAULT, and `--declare` against a non-loopback database additionally demands
- * `--yes-write-to-this-database`.
+ * `--yes-write-to-this-database`, `--by <officer id>` and `--expect-digest <sha256>`.
+ *
+ * ⭐ `--expect-digest` IS THE DIGEST THE OFFICER REVIEWED, and the declaration is REFUSED if the census
+ * taken at write time differs (2026-09-26). A census and a declaration are two runs; a row that stopped
+ * verifying between them would otherwise be accepted, permanently, without anyone having seen it.
  */
 import { censusUnverifiable, readUnverifiableBaseline, UNVERIFIABLE_BASELINE_ACTION, audit, verifyChainFull } from "../src/lib/server/audit";
 
@@ -48,6 +52,14 @@ if (declare && !loopback && !has("yes-write-to-this-database")) {
   );
   process.exit(2);
 }
+const expectDigest = str("expect-digest", "");
+if (declare && !loopback && (!by || !/^[0-9a-f]{64}$/.test(expectDigest))) {
+  console.error(
+    `!! A declaration on ${host} needs --by <officer id> (whose acceptance this is) and\n` +
+    `   --expect-digest <the 64-hex DIGEST from the census the officer reviewed>.`,
+  );
+  process.exit(2);
+}
 
 console.log(`\naudit-baseline — database host ${host}${loopback ? " (loopback)" : ""}`);
 console.log(`  mode       : ${declare ? `DECLARE (appends one ${UNVERIFIABLE_BASELINE_ACTION} row)` : "CENSUS (reads only)"}`);
@@ -66,8 +78,18 @@ if (existing) {
 }
 
 const census = await censusUnverifiable();
-console.log(`\n  POPULATION : ${census.scanned} row(s) walked, seq 1 .. ${census.frontierSeq}`);
+// ⚠️ NOT "seq 1 ..": the table's first surviving row is not seq 1 (production's began at 266,304 on
+// 2026-09-11), so the population is stated as what was walked, up to the frontier.
+console.log(`\n  POPULATION : ${census.scanned} row(s) walked, up to seq ${census.frontierSeq}`);
 console.log(`  UNVERIFIABLE: ${census.count} row(s) recompute under no known signing key`);
+if (census.sample.length) {
+  // ⭐ THE ROWS, IN FRONT OF THE PERSON DECIDING — identity only. If these are not all from the era the
+  // platform's history predicts (the pre-AUDIT_CHAIN_SECRET fallback, pre-normalisation writes), STOP.
+  console.log(`\n  THE ROWS (first ${census.sample.length}${census.count > census.sample.length ? ` of ${census.count}` : ""}, chain order):`);
+  for (const r of census.sample) {
+    console.log(`    seq ${r.seq}  ${r.createdAt}  ${r.category.padEnd(10)} ${r.action}  ${r.id}${r.beyondFrontier ? "  (beyond frontier)" : ""}`);
+  }
+}
 console.log(`  DIGEST     : ${census.digest}`);
 
 if (census.scanned === 0) {
@@ -84,6 +106,15 @@ if (!declare) {
   console.log(`\n  Nothing was written. Re-run with --declare to record this census in the chain.`);
   console.log(`  ⛔ Before you do: ${census.count} row(s) will be permanently accepted as un-attestable.`);
   process.exit(0);
+}
+
+if (expectDigest && expectDigest !== census.digest) {
+  console.error(
+    `\n!! REFUSED — the census at write time (digest ${census.digest}, ${census.count} row(s)) is NOT the one\n` +
+    `   the officer reviewed (${expectDigest}). Something changed between the two runs: census again, look\n` +
+    `   at the rows, and decide again. Nothing was written.`,
+  );
+  process.exit(2);
 }
 
 const entry = await audit({

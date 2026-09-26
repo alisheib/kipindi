@@ -11,8 +11,12 @@
  *
  * ⛔ FAIL CLOSED. A viewer that cannot be read is not in the audience.
  * ⛔ OWNER RULING D20 (2026-09-17): a house bot is an ordinary player in every report, and the admin-only house
- * displays are un-built — so what this module gates is the AUDIT ROWS a console page renders, and nothing else. A later
- * console surface that reads house data reads it through here (C5-SPEC ruling 259's audience), never past it.
+ * displays are un-built — so what this module gates is what the CONSOLE ITSELF renders: the audit rows and the named
+ * readers and doors below (ruling 340), and nothing else. A later console surface that reads house data reads it
+ * through here (C5-SPEC ruling 259's audience), never past it.
+ * ⚠️ D20b AMENDED 2026-09-26 FOR ONE VIEW, under the owner's delegation (C7 437; `docs/COMPLIANCE-DECISIONS.md`, the
+ * entry headed `2026-09-26 · D20b AMENDED`): the desk's Results tab states what its FINISHED stakes came to, through
+ * `houseResultsForConsole` here and nowhere else. D20a is untouched, and nothing else D20b struck comes back.
  *
  * ⛔ WHAT THIS MODULE GATES, NAMED (C7-SPEC ruling 340). Two things, and a console file may reach neither any other way:
  *   · the AUDIT ROWS a console page renders — `houseAuditForConsole`, seventeen call sites in fourteen files;
@@ -40,7 +44,7 @@ import type { AuditEntry } from "./audit";
 import type { StoredUser, StoredTxn } from "./store";
 import { formatTzs, formatTzsCompact, formatNumber } from "@/lib/utils";
 import { BY_HAND_SCREENS, CONSOLE_ROUTE, CONSOLE_LIMITS_HREF, CONSOLE_LIMITS_FIRST_UNSET_HREF, CONSOLE_NEW_ROUTE, DEFAULT_TAB, consoleBotHref, consoleBotTabHref, consoleDetailTab, consoleNewHref, consoleTab, type ConsoleDetailTab, type ConsoleTab, type ConsoleWizardStep } from "@/lib/house-bot/console-routes";
-import { WEEKDAYS, WEEKDAY_LABEL, eatDayKey, eatDayWindow, formatEat, formatMinutes, type Weekday } from "@/lib/house-bot/clock";
+import { EAT_LABEL, WEEKDAYS, WEEKDAY_LABEL, eatDayKey, eatDayWindow, eatWeekday, formatEat, formatMinutes, priorEatDays, type Weekday } from "@/lib/house-bot/clock";
 /* ⭐ C7 step 5 (the account half) · the closed lists the two panels' word maps are TOTAL over. Pure copy module,
  * no read, no client directive — the same folder `console-routes.ts` and `rules.ts` already live in. */
 import { INTENT_KINDS, INTENT_PRODUCT_LINES, INTENT_STATUSES, type EngineCode, type HouseBotEventKind, type IntentKind, type IntentStatus } from "@/lib/house-bot/constants";
@@ -170,6 +174,11 @@ export async function houseAuditForConsole<T extends ConsoleAuditRead>(viewerUse
  * TZS 50,000`, lower-case "used", no percentage in the words, no "remaining", no arrow. An unset limit is "Not set"
  * and never a zero — `over(cap, value)` in the seam is `cap == null || value > cap`, so an unset limit REFUSES every
  * stake, and "TZS 0 of TZS 0" would tell the owner the opposite of the truth.
+ * ⚠️ AND C7 360's CLOSED SET NOW HAS FIVE ROLES AND ONE BRACKET, each confined to its own surface: A to D as written
+ * (a settled row in profit reads `ahead by X · limit Y` since the owner's 2026-09-23 ruling, still role B, and so is
+ * `Left today`); BAL, the holder's ledger balance in the activity tables' Opening and Closing cells only (D3 amended
+ * 2026-09-25); and E, the desk's result on the Results tab only (D20b amended 2026-09-26, C7 437), a WORD beside a
+ * magnitude and never a signed amount. Everything else 266 struck stays struck.
  * ══════════════════════════════════════════════════════════════════════════════════════════════════════════════════ */
 
 /** A KPI tile, painted. `unavailable` is the kit's own "n/a · couldn't compute" state — never a fabricated zero. */
@@ -887,8 +896,8 @@ type DeskCore = {
   /**
    * ⭐ C7 STEP 5 (the LANDING half) · HOW MANY STAKES ARE QUEUED ACROSS THE WHOLE DESK — the activity tab's badge.
    * ⛔ IT IS A MEMBER OF THE CORE SET AND NOT A CALLER'S EXTRA, AND THE REASON IS MEASURED, NOT PREFERRED. The rail
-   * renders ABOVE the panels on EVERY tab (406), so every one of the four landing readers has to be able to paint
-   * this badge; as a positional extra each reader would have carried it in a different slot, which is precisely how
+   * renders ABOVE the panels on EVERY tab (406), so every one of the landing readers (five since C7 437) has to be
+   * able to paint this badge; as a positional extra each reader would have carried it in a different slot, which is precisely how
    * two readers come to count two different populations under one number. It is a SHELL fact, and the shell is what
    * this function exists to build.
    * ⛔ IT MAY NOT COME FROM A SECOND GATED READER (the one-reader-per-render spy) AND MAY NOT BE COUNTED FROM ROWS
@@ -902,15 +911,18 @@ type DeskCore = {
 };
 
 /**
- * ⛔ TWO EXTRAS, EACH SETTLED ON ITS OWN, AND THAT IS RULING 355 RATHER THAN A CONVENIENCE. The roster needs both
+ * ⛔ THE CALLER'S EXTRAS, EACH SETTLED ON ITS OWN, AND THAT IS RULING 355 RATHER THAN A CONVENIENCE. The roster needs both
  * the Products words (`loadParseContext`) and the rate read "Last bet" comes from (`botRateUsage`, ruling 351); the
  * limits panel needs one read of its own, and each landing panel needs its own page and its own total. Wrapping two
  * reads in a single `Promise.all` inside the settled set would make ONE failure blank BOTH figures, which is the
  * attribution 355 exists to keep — a failed Products read must not take the Last bet column with it.
- * ⛔ SEVEN MEMBERS, AND THE COUNT IS STATED HERE BECAUSE IT WAS ONCE WRONG IN THIS VERY DOCBLOCK: the array below is
- * the control row, the roster, the day books, the open exposure, the engine's beats WITH THE DATABASE CLOCK THEY
- * ARE AGED AGAINST (M1, 2026-09-23 — one member, because they are one figure: see `engineNotice`'s own note), the
- * QUEUED-stake count the rail's badge paints, and the caller's two extras.
+ * ⛔ NINE MEMBERS, AND THE COUNT IS STATED HERE BECAUSE IT HAS BEEN WRONG IN THIS VERY DOCBLOCK TWICE: the array
+ * below is the control row, the roster, the day books, the open exposure, the engine's beats WITH THE DATABASE CLOCK
+ * THEY ARE AGED AGAINST (M1, 2026-09-23 — one member, because they are one figure: see `engineNotice`'s own note), the
+ * QUEUED-stake count the rail's badge paints, and the caller's THREE extras (the third slot added 2026-09-24 for
+ * `Left today`; an extra a caller does not pass settles as `null`). It said "SEVEN" and "two extras" until 2026-09-26.
+ * ⭐ The Results tab (C7 437) spends its ONE extra on the six earlier days, walked back from THIS `dayKey`, so its
+ * today is the `dayBooks` member itself and never a second read of it.
  */
 async function readDeskCore<A, B, C>(
   extraA: (dayKey: string) => Promise<A>,
@@ -1577,9 +1589,16 @@ function limitValue(field: FieldId, raw: number | null): string {
 }
 
 /**
- * ONE usage row. ⛔ The DISPLAY is clamped at zero and the READER is not (ruling 366): a cohort in profit has a
- * NEGATIVE realised loss, and "−TZS 12,000 of TZS 50,000" is "Today's net" wearing a cap's label, which ruling 266
- * struck. `foldDayBook` keeps the signed value and every gate and stop still reads it.
+ * ONE usage row. ⛔ The READER is never clamped (ruling 366): a cohort in profit has a NEGATIVE realised loss,
+ * `foldDayBook` keeps the signed value, and every gate and stop still reads it.
+ * ⭐ AND SINCE THE OWNER'S 2026-09-23 RULING THIS ROW IS NOT CLAMPED EITHER (366 as amended, `735712b0`): a negative
+ * used figure is stated as a profit in WORDS, `ahead by X · limit Y` (the branch below), never as a signed amount,
+ * because "−TZS 12,000 of TZS 50,000" would be "Today's net" wearing a cap's label, which ruling 266 struck. It was
+ * written "The DISPLAY is clamped at zero" here until 2026-09-26 — false of this row since that ruling. The clamp now
+ * lives where no ruling lifted it: the roster's loss cell (`moneyUsage`) and the band's Loss today tile.
+ * ⚠️ The ruling was made for the SETTLED row. The PROJECTED row runs through this same function, so on a day whose
+ * settled profit exceeds its open stake (projected = realised + open, below zero) it states `ahead by` too — not
+ * ruled on; C7 366 records it.
  * ⛔ AND USAGE AT OR OVER ITS LIMIT SAYS SO IN WORDS (ruling 367): the bar saturates at 100% and cannot tell 100%
  * from 140%, so the SENTENCE carries the true amount and names the state. The tone never changes — colour is never
  * this signal (§A4), and claret is reserved for irreversible ceremony and the AUTO_PAUSED chip.
@@ -1596,8 +1615,10 @@ function usageRow(name: string, used: number | null, limit: number | null): Cons
    *
    * 🔴 MEASURED ON PRODUCTION THE SAME DAY. The desk was ahead by TZS 186 across four wins, one loss and six
    * refunds, and every money surface on the console read `used TZS 0` — identical to a desk that had broken even,
-   * with nowhere else to tell the two apart. Only the SETTLED loss row can reach here negative
-   * (`realisedLossTzs` = settled stake − returned; a stake total and an exposure total cannot go below zero), and
+   * with nowhere else to tell the two apart. The SETTLED loss row is the one this was ruled for
+   * (`realisedLossTzs` = settled stake − returned; a stake total and an exposure total cannot go below zero —
+   * ⚠️ corrected 2026-09-26: this said "only the settled row can reach here negative", but the PROJECTED row is
+   * realised + open and goes below zero whenever the day's profit exceeds its open stake), and
    * `book.ts` already says of that figure: *"Realised loss may be negative: that is a profit, and it is reported
    * as such, never clamped."* This cell was the clamp.
    *
@@ -3729,7 +3750,8 @@ export type ConsoleFeedRow = {
    * ⭐ HOW THE STAKE ENDED — "Won", "Lost", "Void" — or `null` while it is still running or was never placed
    * (owner, 2026-09-25). The Outcome cell paints THIS where it exists and the intent's own word otherwise, so one
    * chip carries the furthest-along truth about the row instead of two chips disagreeing.
-   * ⛔ A STATE, NEVER A FIGURE: ruling 266 is untouched, and the amount won or lost is deliberately not here.
+   * ⛔ A STATE, NEVER A FIGURE: ruling 266 holds on this row, and the amount won or lost is deliberately not here —
+   * the desk's result is stated once, on the Results tab (C7 437), never beside this chip (373(g)).
    */
   resultWord: string | null;
   resultChip: StatusChipVariant | null;
@@ -6067,6 +6089,8 @@ export const CONSOLE_ACCOUNT_WORD = {
   unreadable: "Could not be read",
   /** The account is not on the roster any more. A fact about the SUBJECT, not an event on the row. */
   gone: "An account no longer on the desk",
+  /** Several of them folded into ONE line — the Results tab's By account (C7 437(f)); still a SUBJECT, never an event. */
+  goneMany: "Accounts no longer on the desk",
   /** An event of the CONTROL ROW itself — the switch, a limits save, the withdrawal. It belongs to no account. */
   desk: "The desk",
 } as const;
@@ -6410,6 +6434,233 @@ export async function houseHistoryForConsole(
     history,
     historyTotal,
   };
+}
+
+
+/* ═══ C7 437 · THE DESK'S RESULTS — what its FINISHED stakes came to, by the EAT day each was placed ═══════════════
+ *
+ * ⚠️ D20b IS AMENDED FOR THIS ONE VIEW, under the owner's delegation of 2026-09-26 (`docs/COMPLIANCE-DECISIONS.md`,
+ * the entry headed `· D20b AMENDED`). Everything else D20b, 266, 360 and 408 strike stays struck — on this console
+ * and everywhere else — and D20a is untouched: a desk account is still an ordinary player in every report.
+ *
+ * ⭐ ONE ARITHMETIC WITH THE STOPS (437(d)). A day's figure is `book.ts`'s own settled figure with the sign turned —
+ * the function the settled daily-loss row and both automatic loss stops act on — so this screen and the stop can
+ * never disagree about the same day. Desk = Σ over the day's map (removed accounts included, as the stop counts
+ * them); an account's seven days = Σ of its seven days, and unreadable when any one of them is.
+ * ⭐ TODAY IS THE CORE'S OWN MAP, NEVER READ TWICE (346, 433(d)); the six days before it are walked back from the
+ * render's own key (`priorEatDays`), never from a second clock (348), each read settled on its own so one failed
+ * day blanks one row and never the tab (355).
+ * ⛔ WORDS, NEVER SIGNS (361, 437(e)): "Profit TZS X", "Loss TZS X", "Even" — the figure is always a magnitude.
+ * ⛔ PAINTED STRINGS ONLY (372(b), 437(g)): no id, no raw number the page could re-format.
+ */
+
+/** The failed-read sentence, the console's one spelling of it (372(c)): a blank here would read as a zero. */
+const CONSOLE_UNREADABLE_FIGURE = "couldn't read — this is not zero";
+
+/** One result cell. ⛔ A WORD beside a MAGNITUDE — never a signed amount (361, 437(e)). */
+export type ConsoleResultCell = {
+  /** The whole cell as one string: the word, then the figure when there is one. */
+  text: string;
+  /** "Profit", "Loss", "Even", "Nothing settled", "No stakes", "—", or the failed-read sentence. */
+  word: string;
+  /** Beside Profit or Loss only: the magnitude, e.g. `TZS 12,600`. `null` for every other word. */
+  figure: string | null;
+  /** The read behind this cell FAILED — painted as such, never as a zero (355). */
+  unreadable: boolean;
+  /** Quiet text: no result to state ("Nothing settled", "No stakes", "—") or a failed read. "Even" is a result. */
+  muted: boolean;
+};
+
+/** One EAT day of the desk, painted. */
+export type ConsoleResultsDayRow = {
+  /** "Today", "Yesterday", or e.g. "Thu 24 Sep". */
+  dayText: string;
+  /** The full date, for the cell's title — e.g. "Thu 24 Sep 2026 (EAT)". */
+  dayTitle: string;
+  result: ConsoleResultCell;
+  /** How many stakes were placed that day, as a count; "—" when the day could not be read. */
+  stakesText: string;
+  /** "Still running", "Final", "No stakes", or "—" when the day could not be read. */
+  stateText: string;
+};
+
+/** One account (or every removed account, folded into one line), painted. */
+export type ConsoleResultsAccountRow = {
+  accountName: string;
+  accountIsOperatorText: boolean;
+  accountHandle: string | null;
+  accountHref: string | null;
+  today: ConsoleResultCell;
+  week: ConsoleResultCell;
+};
+
+export type ConsoleResultsView = ConsoleDeskShell & {
+  /** Exactly seven rows, newest first: today, then the six EAT days before it. */
+  resultDays: ConsoleResultsDayRow[];
+  /** `null` when the roster read failed — nobody can tell which line is whose (355). */
+  resultAccounts: ConsoleResultsAccountRow[] | null;
+  resultsNote: string;
+};
+
+/** The note under By day — the same-word problem named: the band's "Loss today" is PROJECTED, this is SETTLED. */
+export const CONSOLE_RESULTS_NOTE =
+  "A day with stakes still running can still change, so a past day may differ from the figure a loss limit acted on at the time. The Loss today tile above counts running stakes as lost; this tab counts only finished ones.";
+
+const RESULT_WORD = {
+  profit: "Profit",
+  loss: "Loss",
+  even: "Even",
+  unsettled: "Nothing settled",
+  none: "No stakes",
+  blank: "—",
+} as const;
+
+const RESULT_STATE = { running: "Still running", final: "Final", none: "No stakes", blank: "—" } as const;
+
+/** How many days the tab shows, today included (437(c)): the fixed window, never widened by a query. */
+const RESULT_DAYS = 7;
+
+/** ⭐ THE ONE SIGN (437(d)): the day book's realised LOSS, turned into a result. Nothing else here negates money. */
+function settledResultOf(b: HouseDayBook): number {
+  return -b.realisedLossTzs;
+}
+
+/** The four things a result cell needs, summed over any set of day books. */
+type ResultTally = { bets: number; openStake: number; settledStake: number; result: number };
+
+function tallyOf(books: Iterable<HouseDayBook | undefined>): ResultTally {
+  const t: ResultTally = { bets: 0, openStake: 0, settledStake: 0, result: 0 };
+  for (const b of books) {
+    if (!b) continue;
+    t.bets += b.bets;
+    t.openStake += b.openStakeTzs;
+    t.settledStake += b.settledStakeTzs;
+    t.result += settledResultOf(b);
+  }
+  return t;
+}
+
+/** A sum of tallies, and unreadable the moment any one of them is (437(g): a partial total is refused, never shown). */
+function sumTallies(tallies: readonly (ResultTally | null)[]): ResultTally | null {
+  const sum: ResultTally = { bets: 0, openStake: 0, settledStake: 0, result: 0 };
+  for (const t of tallies) {
+    if (t === null) return null;
+    sum.bets += t.bets;
+    sum.openStake += t.openStake;
+    sum.settledStake += t.settledStake;
+    sum.result += t.result;
+  }
+  return sum;
+}
+
+/**
+ * ⭐ THE WORDS BUILDER (437(e)). ⛔ `formatTzs` of the MAGNITUDE only — it prints a negative as `TZS −X` and rounds
+ * silently, so a non-integer figure (which no settled stake can produce) is refused as unreadable, never painted.
+ * `−0` — what turning an exactly-even day's sign yields — is neither above nor below zero, and reads "Even".
+ */
+function resultCell(t: ResultTally | null, emptyWord: string): ConsoleResultCell {
+  const plain = (word: string, muted: boolean): ConsoleResultCell => ({ text: word, word, figure: null, unreadable: false, muted });
+  if (t === null || !Number.isSafeInteger(t.result)) {
+    return { text: CONSOLE_UNREADABLE_FIGURE, word: CONSOLE_UNREADABLE_FIGURE, figure: null, unreadable: true, muted: true };
+  }
+  if (t.bets === 0) return plain(emptyWord, true);
+  if (t.settledStake === 0) return plain(RESULT_WORD.unsettled, true);
+  if (t.result > 0 || t.result < 0) {
+    const word = t.result > 0 ? RESULT_WORD.profit : RESULT_WORD.loss;
+    const figure = formatTzs(Math.abs(t.result));
+    return { text: `${word} ${figure}`, word, figure, unreadable: false, muted: false };
+  }
+  return plain(RESULT_WORD.even, false);
+}
+
+function resultState(t: ResultTally | null): string {
+  if (t === null) return RESULT_STATE.blank;
+  if (t.bets === 0) return RESULT_STATE.none;
+  return t.openStake > 0 ? RESULT_STATE.running : RESULT_STATE.final;
+}
+
+/** A day's name on the tab: "Today", "Yesterday", or its weekday and date — all from the KEY, never a clock. */
+function resultDayText(dayKey: string, index: number): { dayText: string; dayTitle: string } {
+  const w = eatDayWindow(dayKey);
+  if (!w) return { dayText: dayKey, dayTitle: dayKey };
+  const weekday = WEEKDAY_LABEL[eatWeekday(w.fromMs)];
+  const dayTitle = `${weekday} ${formatEat(w.fromMs, "D MMM YYYY")} (${EAT_LABEL})`;
+  const dayText = index === 0 ? "Today" : index === 1 ? "Yesterday" : `${weekday} ${formatEat(w.fromMs, "D MMM")}`;
+  return { dayText, dayTitle };
+}
+
+/**
+ * ⭐ THE DESK'S RESULTS TAB'S GATED READER (C7 437; rulings 340, 346, 348, 355, 372).
+ *
+ * ⛔ THE ROUTE BELT COMES BEFORE THE AUDIENCE QUESTION (437(b)). `houseConsoleAudience` answers any non-desk `/admin`
+ * route by that route's own domain — called with `/admin/house` it would admit the accounting roles — so this reader
+ * refuses every route but the desk's own before it asks anything, and a refused viewer causes no read at all.
+ */
+export async function houseResultsForConsole(
+  viewerUserId: string | null | undefined,
+  route: string,
+): Promise<ConsoleResultsView | null> {
+  if (route !== CONSOLE_ROUTE) return null;
+  if (!(await houseConsoleAudience(viewerUserId, route))) return null;
+
+  /* ⚠️ THE FACTORY IS `async`, so even a throw inside it settles as a failed extra read rather than taking the whole
+     render down with it; the inner `allSettled` never rejects, so each earlier day fails on its own. */
+  const { core, extra: prior } = await readDeskCore(async (dayKey) => {
+    const keys = priorEatDays(dayKey, RESULT_DAYS - 1);
+    return { keys, books: await Promise.allSettled(keys.map((k) => houseDayBooks(k))) };
+  });
+  const view = deskShell(core);
+
+  const days: { key: string | null; books: Map<string, HouseDayBook> | null }[] = [
+    { key: core.dayKey, books: core.dayBooks },
+    ...(prior === null
+      ? Array.from({ length: RESULT_DAYS - 1 }, () => ({ key: null, books: null }))
+      : prior.keys.map((key, k) => {
+        const r = prior.books[k];
+        return { key, books: r.status === "fulfilled" ? r.value : null };
+      })),
+  ];
+
+  const resultDays: ConsoleResultsDayRow[] = days.map((d, i) => {
+    const t = d.books === null ? null : tallyOf(d.books.values());
+    return {
+      ...(d.key === null ? { dayText: RESULT_STATE.blank, dayTitle: "" } : resultDayText(d.key, i)),
+      result: resultCell(t, RESULT_WORD.blank),
+      stakesText: t === null ? RESULT_STATE.blank : formatNumber(t.bets),
+      stateText: resultState(t),
+    };
+  });
+
+  /* ⭐ BY ACCOUNT: every account on the roster, in the roster's own order, then ONE line folding every account that
+     staked in the window and is no longer on the desk — their stakes stay in every total, as the stop counts them. */
+  const byId = consoleRosterMap(core.roster);
+  let resultAccounts: ConsoleResultsAccountRow[] | null = null;
+  if (byId !== null) {
+    const accountTally = (ids: ReadonlySet<string>, books: Map<string, HouseDayBook> | null): ResultTally | null =>
+      books === null ? null : tallyOf([...ids].map((id) => books.get(id)));
+    const cellsFor = (ids: ReadonlySet<string>) => ({
+      today: resultCell(accountTally(ids, days[0].books), RESULT_WORD.none),
+      week: resultCell(sumTallies(days.map((d) => accountTally(ids, d.books))), RESULT_WORD.none),
+    });
+    resultAccounts = [...byId.keys()].map((id) => ({
+      ...consoleAccountCell(byId, id),
+      accountHref: consoleBotHref(id),
+      ...cellsFor(new Set([id])),
+    }));
+    const goneIds = new Set<string>();
+    for (const d of days) for (const id of d.books?.keys() ?? []) if (!byId.has(id)) goneIds.add(id);
+    if (goneIds.size > 0) {
+      resultAccounts.push({
+        accountName: goneIds.size === 1 ? CONSOLE_ACCOUNT_WORD.gone : CONSOLE_ACCOUNT_WORD.goneMany,
+        accountIsOperatorText: false,
+        accountHandle: null,
+        accountHref: null,
+        ...cellsFor(goneIds),
+      });
+    }
+  }
+
+  return { ...view, resultDays, resultAccounts, resultsNote: CONSOLE_RESULTS_NOTE };
 }
 
 
@@ -6905,8 +7156,11 @@ export async function houseCheckForConsole(
   const warnings: ConsoleCheckRow[] = el === null ? [] : el.warnings.map(row);
   const eligible = el !== null && el.eligible;
 
-  /* ⛔ 459 · A FUNDED STATE, NEVER A BARE BALANCE. Ruling 266 holds with no exception anywhere on this console:
-     the figure is a real person's wallet position — the one number on these screens belonging to somebody other
+  /* ⛔ 459 · A FUNDED STATE, NEVER A BARE BALANCE. Ruling 266 holds on THIS card with no exception. (It said "with
+     no exception anywhere on this console" until 2026-09-26; the console has three since, each confined to its own
+     surface and none reaching this card: the settled row's profit, the owner 2026-09-23; the activity tables'
+     Opening and Closing, D3 amended 2026-09-25; the Results tab, D20b amended 2026-09-26, C7 437.)
+     The figure is a real person's wallet position — the one number on these screens belonging to somebody other
      than the platform, and the one most likely to sit in a screenshot — and the decision this card supports,
      "can this account fund anything at all", is answered by a state and not by a magnitude. The officer who wants
      the figure is one link away on the holder's own money screen (456). "Funded" is a word this product already

@@ -1,5 +1,12 @@
 # SESSION PROMPT — the Finance tab seal
 
+> ## ✅ STATUS: COMPLETE — 2026-09-26. NOTHING HERE IS FOR A SESSION TO PICK UP.
+> Every development item below is done, pushed to `main` and verified on production. The one thing
+> left is an OWNER action, not development: **Ali rotates the production DB password** (steps in §2,
+> including the GitHub backup secret). This file stays as the RECORD — §0 (the defect shape) and §5
+> (decisions not to be re-litigated) are cited as authority by CLAUDE.md, MONEY-GATE-REMEDIATION,
+> FEE-MODEL-DECISION and F6-LIQUIDITY. Worktree `C:\kipindi-finance` and branch `finance-seal-2` retired.
+
 > **Written to be picked up on ANOTHER MACHINE.** Everything a next session needs is in this
 > file and in git; nothing here depends on the local memory of the machine that wrote it.
 > Branch `finance-seal` (§1), merged to `main` and deployed live on 2026-09-25; follow-up branch
@@ -44,7 +51,7 @@ is a second implementation that will drift.
 
 ---
 
-## §2 · 🔴 STILL OPEN — pick these up
+## §2 · ✅ DONE — the queue as it was worked (history, not a to-do list)
 
 - ~~**`LEAD-A.2`** (`docs/MONEY-GATE-REMEDIATION.md`): the `market.resolved` audit payload records a
   levy figure the ledger never booked — the third site of the levy defect.~~ ❌ **NOT A DEFECT —
@@ -210,21 +217,35 @@ is a second implementation that will drift.
 - ⚠️ **Pre-existing, other lanes: `test:red-anchors` is red on main** — two declared mutation anchors
   no longer resolve (`bar-geometry` → `query-bar.tsx`, `updown-handover` → `updown-card-phase.ts`) and
   68 harnesses exceed the undeclared-anchor ceiling of 65. Not caused by this lane.
-- 🔴 **FOR ALI — the audit chain reads "UNVERIFIED" on production, in the ISO 27001 export a regulator
-  would receive.** Measured 2026-09-26 by letting production verify ITSELF (the ISO audit export
-  downloaded through the real admin route — production holds `AUDIT_CHAIN_SECRET`; the laptop never
-  did): **all 40,939 entries link correctly** — nothing was inserted, removed or reordered — but
-  **9 entries' hashes recompute under no known signing key**, the first at `…000000012` (the very
-  start of the log), and **no baseline has ever been declared**. The designed remedy is a one-time
-  baseline: `npm run audit:baseline` (a read-only census), then `-- --declare --by <officer>
-  --yes-write-to-this-database`, which PERMANENTLY records "these rows predate the signing regime and
-  are accepted as they stand" under that officer's name. ⛔ `scripts/audit-baseline.mts` itself says
-  never to run it to turn a check green: declare only once the census shows every one of the 9 is
-  in the log's early era (the pre-`AUDIT_CHAIN_SECRET` fallback key, or rows from before the payload
-  normalisation fix). A session must not declare it. The census needs the app's signing keys, so it
-  runs as `railway run --service 50pick` with `DATABASE_URL` set to the Postgres service's public URL;
-  it did not complete on 2026-09-26 (a dropped proxy connection, then two session restarts), so
-  running it is the next step.
+- ✅ **THE AUDIT CHAIN'S "UNVERIFIED" — ROOT CAUSE FOUND, FIXED, AND THE 9 ROWS DECLARED 2026-09-26.** Production verified ITSELF through the real admin route (it holds `AUDIT_CHAIN_SECRET`; the
+  laptop never did): **all 40,939 entries link** — nothing inserted, removed or reordered — but **9
+  hashes recompute under no key**, so the ISO 27001 export a regulator would receive read UNVERIFIED.
+  - **Which rows** (the census now PRINTS them — the tool's header promised the declaring officer would
+    see the rows, and it never did): all 9 are `payouts.unavailable_derived`, written 2026-09-24
+    09:25–14:22 UTC, the day the outage alert shipped (`2a9b1ef5`). The first 30,000 entries of the log
+    (2026-09-11 → 09-23) have ZERO — so ⛔ NOT "legacy early days": my first guess was wrong, and the
+    census by era is what caught it. (The log's first surviving row is seq 266,304, not 1; the tool's
+    "seq 1 .." line said otherwise and is corrected.)
+  - **Why — no tampering.** The same production process wrote the rows beside each one (a sweep, Up &
+    Down rounds, settlements) and those verify. The alert's payload carries `oldestStuckHours`, a double
+    needing 17 significant digits; the Prisma → Postgres `jsonb` round trip stores 16 (signed
+    `54.744926944444444`, stored `54.74492694444444` — the production row verbatim). A local-Postgres
+    probe dropped the last digit of 26 of 48 such floats.
+  - **Fixed:** `normalizePayload` now signs every FRACTION at 15 significant digits (which any double
+    round trip keeps exactly); integers pass untouched. Guards: `test:audit` 10b (the store's 16-digit
+    loss simulated; red on the old code) and **`npm run e2e:audit-roundtrip`** on a real local Postgres
+    — 26 awkward entries, all re-verify; on the old code 15 fail with every link intact, i.e. production's
+    symptom reproduced. Loopback-only (it writes audit rows).
+  - ✅ **DECLARED, on Ali's explicit yes (2026-09-26), after the fix was live (`b4440d99`).** The census
+    immediately before showed the same 9 rows and the same digest he approved; the declaration is chain
+    entry `aud_bmuikthvb46c92c_000000001` (2026-09-26 16:01 UTC), `--by usr_1b3e6fd5048b1d873e931715`
+    (Ali's officer account), digest `17c01bd31e4367948dfb998723a7304408b809f2e40542f0758531ce7d82a0f3`.
+    Production's own verifier then read **valid=true · baselined 9 · unattested 0 · linkBroken false**,
+    so the ISO 27001 export reads Intact, and ANY future row that fails to recompute is now an EDIT.
+    ⭐ `audit:baseline` now also REQUIRES `--by` and `--expect-digest <the reviewed digest>` for a
+    production declaration, and refuses when the census at write time differs from the one reviewed.
+    ⚠️ The first declare attempt hung on a dead Railway-proxy socket with no query running (nothing was
+    written); the retry added `connect_timeout/pool_timeout/socket_timeout` to the URL.
 - 🔴 **ALI'S ACTION — rotate the production DB password** (it was echoed into a session transcript on
   2026-09-25; a session must never rotate it itself). The steps, checked against this project's
   variables on 2026-09-26 (Postgres service: `POSTGRES_PASSWORD` is the source, `PGPASSWORD`,

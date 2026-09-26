@@ -118,6 +118,26 @@ await (async () => {
   // Simulate the Postgres round-trip that produced the production failure.
   undef.payload = JSON.parse(JSON.stringify({ ...(undef.payload as object) }));
   ok("hash survives the persisted-payload round-trip", verifyChain().valid);
+
+  // 10b. A FRACTION NEEDING 17 SIGNIFICANT DIGITS (production, 2026-09-24/26: 9 rows).
+  //     `payouts.unavailable_derived` carried `oldestStuckHours: 54.744926944444444`; the Prisma →
+  //     Postgres jsonb round trip stored `54.74492694444444` (16 digits), so the row could never
+  //     re-verify. A fraction is now signed at 15 significant digits, which any store keeps exactly.
+  await audit({
+    category: "WALLET", action: "payouts.unavailable_derived", actorId: null,
+    targetType: "PAYMENT", targetId: "payouts",
+    payload: { oldestStuckHours: 54.744926944444444, stuckCount: 1, atMs: 1_790_000_000_123, rate: 0.1 + 0.2 },
+  });
+  await auditFlush();
+  const flt = getAuditPage({ limit: 1 })[0];
+  const fp = flt.payload as { oldestStuckHours: number; stuckCount: number; atMs: number; rate: number };
+  const sig = (n: number) => n.toString().replace(/^-?0\.0*|[.\-]|e.*$/g, "").replace(/^0+/, "").length;
+  ok("a fraction is signed at ≤15 significant digits", sig(fp.oldestStuckHours) <= 15 && sig(fp.rate) <= 15);
+  ok("…while integers pass untouched (amounts, counts, millisecond instants)", fp.stuckCount === 1 && fp.atMs === 1_790_000_000_123);
+  // The store keeps 15–16 significant digits: simulate it at 16 — the harsher case measured on production.
+  const stored16 = (n: number) => Number(n.toPrecision(16));
+  flt.payload = { ...fp, oldestStuckHours: stored16(fp.oldestStuckHours), rate: stored16(fp.rate) };
+  ok("🔴 the hash survives a store that keeps 16 significant digits (it did not, before 2026-09-26)", verifyChain().valid);
 // ═══ 11. Key rotation must not read as tampering — but tampering still must ═══
 // The chain reported BROKEN in production because AUDIT_CHAIN_SECRET was introduced
 // after entries had been signed with the SESSION_SECRET fallback. "BROKEN" on a

@@ -996,4 +996,34 @@ export const MUTATIONS = [
     expect: "0.m5.2 · ⛔ the officer's cancellation confirmation states the same four things whatever the house held: marketCancelledAdminHtml's rows are exactly Market, Reason, Players refunded, Total refunded, and every label is a PLAIN string literal",
     suite: "reports-mem",
   },
+  /* ══ c5-step8 · accepted risks 8–12 in the two registers (2026-09-26) ════════════════════════════════════
+   * ⚠️ NOT CONVERTED REGISTER ENTRIES, so the 262-row arithmetic in this file's header does not count them, and the
+   * header's run figure (96 primaries) no longer counts every primary — re-derive from `MUTATIONS`, never from prose.
+   * They are the first declarations into the two MARKDOWN registers, and each proves that `test:house-bot-disclosure`
+   * goes red on the defect it names. `red-house-bot-c5.mjs`'s `parses()` skips a non-script file, since prose has no
+   * grammar to break, so these reach the suite instead of being classed BROKEN-INJECTION. */
+  {
+    name: "c5-step8:risk10 · one register's copy drifts — the house doc's risk 10 says the stale-price skip fails OPEN while the compliance log still says closed. How 13, 15 and 20 came apart",
+    file: "docs/HOUSE-BOTS.md",
+    from: "This fails closed. ⚠️ **Checked against the code 2026-09-26.** Every mode, not most:",
+    to: "This fails open. ⚠️ **Checked against the code 2026-09-26.** Every mode, not most:",
+    expect: "d.7 · ⛔ accepted risks 8–12 are in BOTH registers as the SAME TEXT",
+    suite: "disclosure",
+  },
+  {
+    name: "c5-step8:risk9 · the compliance log's risk 9 loses its number, so the list 1–20 has a hole there. d.7 goes red with it, and CAUGHT reads d.2",
+    file: "docs/COMPLIANCE-DECISIONS.md",
+    from: "9. **Per-process state (F7):** the maintenance latch",
+    to: "**Per-process state (F7):** the maintenance latch",
+    expect: "d.2 · risks 1–20 are present by number in both registers",
+    suite: "disclosure",
+  },
+  {
+    name: "c5-step8:placeholder · the \"⏳ never added\" line comes back into the compliance log above risk 8, so the register lists the risks AND says they are missing",
+    file: "docs/COMPLIANCE-DECISIONS.md",
+    from: "8. **Rollback window:** unmarked payouts, possible cash-outs",
+    to: "Risks 8–12 (release and verification) ⏳ were owed by build commit 8 and were never appended.\n8. **Rollback window:** unmarked payouts, possible cash-outs",
+    expect: "d.7b · the \"⏳ never added\" placeholder is gone from BOTH accepted-risk sections",
+    suite: "disclosure",
+  },
 ];

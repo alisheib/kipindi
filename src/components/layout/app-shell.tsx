@@ -267,8 +267,8 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
   //   · It fails OPEN on an RG read error (see `promoSuppressed`).
   // The strip is site content, not one of the "marketing messages" `/legal/responsible-gambling` §4
   // governs (those are SMS, email and push). Recognising a signed-out person on a break would need a
-  // device marker — a new cookie, i.e. a Privacy-notice change — which is the owner's decision, open
-  // in `docs/MOBILE-VISUAL-PLAN.md` D32.
+  // device marker — a new cookie, i.e. a Privacy-notice change — and the owner ruled on 2026-09-26 to
+  // leave it as it is (`docs/COMPLIANCE-DECISIONS.md`). Adding one needs a new ruling.
   // Site-wide operator banner (§9.3 #5) — maintenance notice takes priority over an active
   // broadcast. Cheap cached config read (graceful on failure).
   const [platformCfg, tickerEvents] = await Promise.all([
