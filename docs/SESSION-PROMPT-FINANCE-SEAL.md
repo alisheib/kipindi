@@ -172,10 +172,11 @@ is a second implementation that will drift.
     next build of the same code passed. §4's "a transient build failure is not a defect" held —
     but read the deployment list after every push: a failed build leaves production on the OLD
     commit with nothing on the site to say so.
-- ❓ **FOR ALI — "Net after tax" on the Daily Operations report** is `GGR − booked TRA − booked
-  GBT`: a tax on the settlement FEE subtracted from a TURNOVER figure, so the line mixes two bases.
-  Either relabel it ("GGR less levies booked") or base it on the commission booked
-  (`HOUSE:COMMISSION` movement). A wording/definition call, not a bug fix — not changed.
+- ✅ **RULED BY ALI 2026-09-26 — "Net after tax" RELABELLED "GGR less levies booked"** on the Daily
+  Operations report (tile, table row, note, and the `verify:reports-live` lookup). It is
+  `GGR − booked TRA − booked GBT`: a tax on the settlement FEE subtracted from a TURNOVER figure,
+  so it was never profit after tax. Relabel only — the arithmetic is unchanged, not re-based.
+  ✅ Ali also confirmed the name `verify:reports-live` for the production-reading script.
 - ⚠️ **Rotate the production DB password.** It was echoed into a session transcript on 2026-09-25.
 
 ---

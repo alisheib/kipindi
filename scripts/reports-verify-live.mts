@@ -164,7 +164,7 @@ for (const [id, entry] of Object.entries(REPORT_CATALOGUE)) {
     const ggrItem = pick(/^GGR\b|gross gaming/i);
     check("CONTROL · the GGR summary label was actually FOUND (REP-01)", ggrItem !== undefined,
       `labels: ${(report.summary ?? []).map((s) => s.label).join(" | ")}`);
-    const traItem = pick(/^TRA\b/i), gbtItem = pick(/^GBT\b/i), netItem = pick(/net after tax/i);
+    const traItem = pick(/^TRA\b/i), gbtItem = pick(/^GBT\b/i), netItem = pick(/^GGR less levies booked/i);
     /* ⭐ THE LEVY TILES AGAINST AN INDEPENDENT LEDGER READ (LEAD-F.3). The old check only asked the
        face to close — net == GGR − TRA − GBT — which the builder computes from those very figures,
        so it passed just as happily on the code that multiplied GGR by the rates. This reads
@@ -182,7 +182,7 @@ for (const [id, entry] of Object.entries(REPORT_CATALOGUE)) {
         `tile ${fig(traItem)}, ledger ${ledgerAfter.tra}`);
       check("GBT tile == HOUSE:GBT_LEVY booked today (read independently)", fig(gbtItem) === ledgerAfter.gbt,
         `tile ${fig(gbtItem)}, ledger ${ledgerAfter.gbt}`);
-      check("face arithmetic: net after tax == GGR − TRA − GBT", Math.abs(fig(netItem) - (fig(ggrItem) - fig(traItem) - fig(gbtItem))) < 1,
+      check("face arithmetic: GGR less levies booked == GGR − TRA − GBT", Math.abs(fig(netItem) - (fig(ggrItem) - fig(traItem) - fig(gbtItem))) < 1,
         `net ${fig(netItem)}, ggr ${fig(ggrItem)}, tra ${fig(traItem)}, gbt ${fig(gbtItem)}`);
     }
     check("period names EAT", /EAT/i.test(report.meta?.period ?? ""), report.meta?.period);

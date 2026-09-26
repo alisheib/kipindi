@@ -6,7 +6,7 @@
 
 ---
 
-## 2026-09-26 (second) · Marketing SMS — no Gaming Board approval, no PDPA registration, and the helpline is OURS (owner rulings on OQ1, OQ2, OQ4)
+## 2026-09-26 · Marketing SMS rulings — no Gaming Board approval, no PDPA registration, and the helpline is OURS (owner rulings on OQ1, OQ2, OQ4)
 
 **Owner instruction (Ali, 2026-09-26), as typed:** *"gaming board said they done tcar eit snor part of their approbla we
 cans end anythgina s logn as we have sms gaetway. pdf is not needed as well . the right helpline is ours."* Read as:
@@ -32,6 +32,26 @@ APPROVAL step; it does not remove the law every marketing SMS is under, which co
 **Where it is enforced:** `src/lib/marketing/footer.ts` (`STATUTORY_SMS_HELPLINE` = `support-config.ts`'s
 `HELPLINE_TEL()`), guarded by `test:campaign-compose` §12. The approval gate was never built, so withdrawing it
 removes no code.
+
+---
+
+## 2026-09-26 · Cash paid to inviters stays OFF-platform and unrecorded; the card share icon carries no code
+
+**Authority.** Ali, 2026-09-26, answering two direct questions at the close of the invite's production
+verification (`docs/PLAYER-INVITE-UNPAID.md` §13).
+
+1. **Cash to inviters.** Asked *"should the cash you pay inviters outside 50pick be recorded in 50pick?"*,
+   with the note in the question itself that **paying for referrals is a regulated inducement even
+   off-platform**, Ali chose **"No, keep it off-platform."** 50pick therefore records no such payment:
+   `/admin/affiliate` counts friends joined and nothing else, and the platform itself still credits a
+   player referrer nothing (`inviteRewards` WITHDRAWN, § 2026-09-25 below). ⚠️ The regulatory status of
+   the owner's own cash payments is not changed by where they are recorded; that question sits with the
+   Gaming Board of Tanzania, and this entry records only that he was told.
+2. **Card share icon.** The compact share icon on market cards keeps carrying no `?ref=` (**"Keep as
+   is"**): wiring it would change AGENT commission attribution and put an account-minting write on the
+   busiest pages (`PLAYER-INVITE-UNPAID.md` §11).
+
+⛔ Do not add a cash-payment log, and do not wire the card icon, without a new dated decision here.
 
 ---
 
@@ -75,7 +95,7 @@ named control in code; a bullet with no control is refused. **Red:** `red:rg-pol
 
 ⚠️ **What this does NOT claim.** No marketing SMS is sent today — the campaign engine is not built yet. (This line
 also said broadcast waits on the Gaming Board's written approval; the owner ruled the same day that it does not —
-see 2026-09-26 (second), above.) §4 describes the
+see 2026-09-26 · Marketing SMS rulings, above.) §4 describes the
 rules every marketing message will pass; it is true now because nothing is sent, and it stays true because every send
 must go through that gate (U9's dispatch step).
 
