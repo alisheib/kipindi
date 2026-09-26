@@ -210,7 +210,41 @@ is a second implementation that will drift.
 - ⚠️ **Pre-existing, other lanes: `test:red-anchors` is red on main** — two declared mutation anchors
   no longer resolve (`bar-geometry` → `query-bar.tsx`, `updown-handover` → `updown-card-phase.ts`) and
   68 harnesses exceed the undeclared-anchor ceiling of 65. Not caused by this lane.
-- ⚠️ **Rotate the production DB password.** It was echoed into a session transcript on 2026-09-25.
+- 🔴 **FOR ALI — the audit chain reads "UNVERIFIED" on production, in the ISO 27001 export a regulator
+  would receive.** Measured 2026-09-26 by letting production verify ITSELF (the ISO audit export
+  downloaded through the real admin route — production holds `AUDIT_CHAIN_SECRET`; the laptop never
+  did): **all 40,939 entries link correctly** — nothing was inserted, removed or reordered — but
+  **9 entries' hashes recompute under no known signing key**, the first at `…000000012` (the very
+  start of the log), and **no baseline has ever been declared**. The designed remedy is a one-time
+  baseline: `npm run audit:baseline` (a read-only census), then `-- --declare --by <officer>
+  --yes-write-to-this-database`, which PERMANENTLY records "these rows predate the signing regime and
+  are accepted as they stand" under that officer's name. ⛔ `scripts/audit-baseline.mts` itself says
+  never to run it to turn a check green: declare only once the census shows every one of the 9 is
+  in the log's early era (the pre-`AUDIT_CHAIN_SECRET` fallback key, or rows from before the payload
+  normalisation fix). A session must not declare it. The census needs the app's signing keys, so it
+  runs as `railway run --service 50pick` with `DATABASE_URL` set to the Postgres service's public URL;
+  it did not complete on 2026-09-26 (a dropped proxy connection, then two session restarts), so
+  running it is the next step.
+- 🔴 **ALI'S ACTION — rotate the production DB password** (it was echoed into a session transcript on
+  2026-09-25; a session must never rotate it itself). The steps, checked against this project's
+  variables on 2026-09-26 (Postgres service: `POSTGRES_PASSWORD` is the source, `PGPASSWORD`,
+  `DATABASE_URL` and `DATABASE_PUBLIC_URL` are built from it; the app's `DATABASE_URL` references it):
+  1. At a quiet hour: Railway → **Postgres** → Backups → **Back up now** (or
+     `railway postgres pitr backup create --service Postgres --name pre-password-rotation`).
+  2. Make a new password: 32+ characters, **letters and digits only** (no `@ : / ? #`, which break
+     the URL).
+  3. Railway → Postgres → **Database → Query**, run: `ALTER USER postgres WITH PASSWORD '<new>';`
+     (the user is `POSTGRES_USER`, `postgres` on this template). From here, NEW connections with the
+     old password fail; the app's already-open connections keep working.
+  4. Railway → Postgres → **Variables** → set `POSTGRES_PASSWORD` (and `PGPASSWORD`, if it is a plain
+     value rather than a `${{…}}` reference) to the same new value. Confirm `DATABASE_URL` and
+     `DATABASE_PUBLIC_URL` now show it.
+  5. Railway → **50pick** → deploy/restart, so the app reconnects with the new URL.
+  6. ⛔ **GitHub → the repo → Settings → Secrets → `BACKUP_SOURCE_DATABASE_URL`** → paste the NEW
+     `DATABASE_PUBLIC_URL`. The nightly backup (`backup-nightly.yml`) keeps its own copy; forgetting
+     this step silently stops backups.
+  7. Check: https://50pick.tz/api/health shows `database.reachable: true`; the next nightly backup
+     run is green. It was echoed into a session transcript on 2026-09-25.
 
 ---
 

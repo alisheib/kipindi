@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { I, plateGlyph } from "@/components/ui/glyphs";
 import { IconPlate } from "@/components/ui/icon-plate";
@@ -11,6 +11,7 @@ import { useDeferredToast } from "@/components/ui/toast";
 import type { AffiliateConfig, BonusRecipient, BonusTrigger, PrizeMilestone } from "@/lib/server/affiliate-config";
 import { UnsavedChangesGuard, PendingChangesBar } from "@/components/ui/unsaved-changes";
 import { saveAffiliateConfigAction } from "./actions";
+import { runAdminAction } from "@/lib/client/run-admin-action";
 // ⭐ THE PLATFORM'S ONE MONEY FORMATTER. The banner below quotes the officer's own figures back
 // to them, and a hand-rolled `toLocaleString()` beside it would be a second spelling of TZS.
 import { formatTzs as fmt } from "@/lib/utils";
@@ -129,6 +130,8 @@ export function AffiliateAdminClient({ config, rewardsLive = false }: {
   /* ⭐ THE WHOLE CONFIG IS ONE STATE OBJECT, so the comparison is exact and needs no hook:
      every field the officer can touch lives in `c`, and `config` is what the server last saved. */
   const unsaved = JSON.stringify(c) !== JSON.stringify(config);
+  /** The master-switch row's own Save — the bar's `saveAnchor`, so the two are never on screen together. */
+  const saveRef = useRef<HTMLButtonElement>(null);
 
   const on = c.enabled;
   const setMaster = (v: boolean) => setC((p) => ({ ...p, enabled: v }));
@@ -136,10 +139,15 @@ export function AffiliateAdminClient({ config, rewardsLive = false }: {
   const patchBonus = (u: Partial<AffiliateConfig["bonus"]>) => setC((p) => ({ ...p, bonus: { ...p.bonus, ...u } }));
   const patchPrize = (u: Partial<AffiliateConfig["prize"]>) => setC((p) => ({ ...p, prize: { ...p.prize, ...u } }));
 
+  /* `runAdminAction` turns a thrown action into the `{ ok:false, error }` the toast renders
+     (a redirect is rethrown). On success `c` is re-seeded from what the server stored, but only
+     if it is still what was sent: an edit made while the save ran stays on screen and dirty. */
   const save = () => {
+    const sent = JSON.stringify(c);
     start(async () => {
-      const r = await saveAffiliateConfigAction(c);
+      const r = await runAdminAction(() => saveAffiliateConfigAction(c));
       if (r.ok) {
+        setC((cur) => (JSON.stringify(cur) === sent ? r.config : cur));
         router.refresh();
         deferToast({ title: "Affiliate config saved · Imehifadhiwa", variant: "success" });
       } else {
@@ -150,13 +158,16 @@ export function AffiliateAdminClient({ config, rewardsLive = false }: {
 
   return (
     <div className="space-y-3">
-      {/* One signal, two surfaces. This page is long enough that Save scrolls away. */}
+      {/* One signal, two surfaces. The bar's Save shows only while the form's own Save (the
+          master-switch row, `saveAnchor`) is off screen; both say "Save" and call `save`. */}
       <PendingChangesBar
         dirty={unsaved}
         saving={pending}
         detail="Affiliate bonuses and prize milestones apply to every referral."
+        saveLabel="Save"
         onSave={save}
         onDiscard={() => setC(config)}
+        saveAnchor={saveRef}
       />
       <UnsavedChangesGuard dirty={unsaved} body="The affiliate configuration has been changed but not saved. Leaving now discards the change." />
       {/* Master switch + Save.
@@ -200,7 +211,8 @@ export function AffiliateAdminClient({ config, rewardsLive = false }: {
         </div>
         <div className="ml-auto flex items-center gap-4">
           <Toggle on={on} onClick={() => setMaster(!on)} aria-label="Program master switch" />
-          <Button variant="primary" size="sm" leading={<I.check s={14} />} loading={pending} onClick={save}>
+          {/* Disabled while nothing has changed, so it cannot pass for a save still to do. */}
+          <Button ref={saveRef} variant="primary" size="sm" leading={<I.check s={14} />} loading={pending} disabled={!unsaved} onClick={save}>
             Save
           </Button>
         </div>

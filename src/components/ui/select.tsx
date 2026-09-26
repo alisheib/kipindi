@@ -5,7 +5,8 @@
  *
  * Dark glass dropdown panel, brand-500 focus ring, mono font.
  * Keyboard navigable (arrows, Home/End, enter, escape, Tab-to-close, type-to-search).
- * Hidden input for form submission.
+ * Hidden input for form submission — a pick raises `input`/`change` on it, and a form reset puts an
+ * uncontrolled choice back to its default (see `pick`), so the form's dirty tracking sees this control.
  *
  * ⭐ A5 · IT IS AN APG SELECT-ONLY COMBOBOX, not a button that looks like one. The trigger
  * names the listbox it owns (`aria-controls`), names the row it is on
@@ -137,12 +138,65 @@ export function Select({
 
   useEffect(() => { setMounted(true); }, []);
 
+  /**
+   * ⛔ A PICK MUST REACH THE FORM, AND IT DID NOT (2026-09-26). The console's forms learn they are dirty
+   * from bubbling `input`/`change` events (`useFormDirty`), and a pick moved the hidden input by a React
+   * re-render alone — which fires nothing. So a Select-only change never raised the pending bar, and a Save
+   * that stays disabled while nothing has changed could never have been pressed for it.
+   * ⭐ ONE `input` AND ONE `change`, raised on the hidden input AFTER the commit: by then the input already
+   * holds the new value, and any field the same pick reveals is already in the form, so a listener reading
+   * `FormData` reads the truth. ⚠️ A PICK ONLY, and only when the value moves — a reset, or a parent moving a
+   * controlled value, is not a person choosing, and a native `<select>` fires nothing for either.
+   * ⛔ The caller's `onChange` is still called ONCE, in `pick`; React raises no `onChange` for a hidden input,
+   * so a controlled caller never hears the same pick twice.
+   * ⚠️ `announce` holds the VALUE picked, not a flag, and only a commit that lands on that value announces. A
+   * controlled parent may refuse or remap a pick; a flag would then stay set, and the parent's next move (a
+   * Discard) would be announced as if the person had chosen it. The next commit that moves `selected` clears it.
+   */
+  const hiddenRef = useRef<HTMLInputElement>(null);
+  const announce = useRef<string | null>(null);
+
   const pick = useCallback((val: string) => {
+    if (val !== selected) announce.current = val;
     if (!controlled) setInternal(val);
     onChange?.(val);
     setOpen(false);
     triggerRef.current?.focus();
-  }, [controlled, onChange]);
+  }, [controlled, onChange, selected]);
+
+  useEffect(() => {
+    const asked = announce.current;
+    announce.current = null;
+    if (asked === null || asked !== selected) return;
+    const el = hiddenRef.current;
+    if (!el) return;
+    el.dispatchEvent(new Event("input", { bubbles: true }));
+    el.dispatchEvent(new Event("change", { bubbles: true }));
+  }, [selected]);
+
+  /**
+   * ⛔ A FORM RESET PUTS THE CHOICE BACK (2026-09-26). Every Discard in the console is `form.reset()`, which
+   * restores native fields from their defaults and knows nothing about this control's state — so the trigger
+   * kept showing the discarded choice and the hidden input kept posting it. The kit Checkbox's rule, applied
+   * here: UNCONTROLLED ONLY (a controlled value is its parent's to put back) and NO `onChange` (a reset is not
+   * a pick).
+   * ⚠️ The hidden input is written IN the handler, not after a render: callers run `markSaved()` on the line
+   * after `reset()`, and that snapshot must already read the default.
+   */
+  useEffect(() => {
+    if (controlled) return undefined;
+    const form = triggerRef.current?.form;
+    if (!form) return undefined;
+    const restore = (e: Event) => {
+      if (e.defaultPrevented) return;
+      const back = defaultValue ?? "";
+      announce.current = null;
+      setInternal(back);
+      if (hiddenRef.current) hiddenRef.current.value = back;
+    };
+    form.addEventListener("reset", restore);
+    return () => form.removeEventListener("reset", restore);
+  }, [controlled, defaultValue]);
 
   /**
    * ⛔ G-8 (2026-08-02) — THE "OPEN ABOVE" BRANCH NEVER OPENED ABOVE.
@@ -367,7 +421,7 @@ export function Select({
         </svg>
       </button>
 
-      {name && <input type="hidden" name={name} value={selected} />}
+      {name && <input ref={hiddenRef} type="hidden" name={name} value={selected} />}
 
       {mounted && present && createPortal(
         <div

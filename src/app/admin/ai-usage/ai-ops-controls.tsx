@@ -28,7 +28,10 @@ export function AiOpsControls({
      is exactly why it reads as exempt at a glance — but the model is not applied on change, it
      waits for Apply, so an officer who picks a different model and clicks away has silently
      lost the change and the AI keeps running on the old one. ⭐ This is why `useFormDirty`
-     binds `change` as well as `input`: a select fires no `input` event in every engine. */
+     binds `change` as well as `input`: a select fires no `input` event in every engine.
+     🔴 AND UNTIL 2026-09-26 THE KIT SELECT FIRED NEITHER, so a model change never raised the bar
+     here at all. A pick now raises both on its hidden input — which is what lets Apply stay
+     disabled while nothing has changed without ever locking out a real change. */
   const formRef = useRef<HTMLFormElement>(null);
   /* The form's own Save. The bar draws no second one while this is on screen (owner, 2026-09-22). */
   const saveRef = useRef<HTMLButtonElement>(null);
@@ -73,7 +76,8 @@ export function AiOpsControls({
               }))}
             />
           </div>
-          <Button ref={saveRef} type="submit" size="sm" loading={pending}>Apply</Button>
+          {/* Disabled while nothing has changed — the same `dirty` the bar and the guard read. */}
+          <Button ref={saveRef} type="submit" size="sm" loading={pending} disabled={!dirty}>Apply</Button>
         </form>
         <div className="mt-2 rounded-md border border-border bg-bg-overlay px-3 py-2.5 text-body-sm text-text-muted leading-relaxed space-y-1">
           <p>

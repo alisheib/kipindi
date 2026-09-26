@@ -511,6 +511,17 @@ export function DeskRulesForm({
    */
   const onFormInput = () => { formProps.onInput(); syncEmptiness(); };
   const onFormChange = () => { formProps.onChange(); syncEmptiness(); };
+  /**
+   * 🔴 A DISCARD USED TO BRING THE BAR STRAIGHT BACK (read at source, 2026-09-26). The Discard snapshots the form
+   * on the line after `reset()`, while the React-held values below are still the discarded ones in their
+   * `PostedValue` inputs; the render that puts them back then raises `input`, and the form compares the SAVED
+   * values against a baseline holding the discarded ones — dirty, over nothing, with Save armed.
+   * ⭐ So the baseline is taken again once that render has landed (a child's effect runs before this one). And the
+   * TimeSelects are re-mounted on the same count: they keep their segments in their own state, which a reset
+   * cannot reach, so without it a box would show the discarded time while the form posts the saved one.
+   */
+  const [resets, setResets] = useState(0);
+  useEffect(() => { if (resets > 0) markSaved(); }, [resets, markSaved]);
   /* ⚠️ A RESET FIRES BEFORE THE FORM IS RESET (the event is cancellable), so the live facts are re-read in a
      microtask, once the reset has landed — the kit's Checkbox syncs its own paint the same way. */
   /* ⛔ AND THE THREE REACT-HELD CONTROLS GO BACK TOO: `form.reset()` restores `defaultValue`/`defaultChecked`
@@ -521,6 +532,7 @@ export function DeskRulesForm({
     setAllDay(model.schedule.allDay);
     setTimes(Object.fromEntries(model.schedule.windows.flatMap((w) => [[w.startKey, w.start], [w.endKey, w.end]])));
     setChoices(Object.fromEntries(model.rules.filter((r) => r.options !== null).map((r) => [r.key, r.value])));
+    setResets((n) => n + 1);
     queueMicrotask(syncEmptiness);
   };
 
@@ -810,6 +822,7 @@ export function DeskRulesForm({
                         <div key={box.key} className="space-y-1" data-field={box.key}>
                           <FieldLegend className="block mb-1.5">{box.label}</FieldLegend>
                           <TimeSelect
+                            key={`${box.key}:${resets}`}
                             size="md"
                             defaultValue={box.saved}
                             error={!!errors[box.key]}
@@ -1005,7 +1018,8 @@ export function DeskRulesForm({
        * for it. One `input` event per box, bubbling, is what the form is already listening for.
        */}
       <div className="flex flex-col items-start sm:flex-row sm:items-center gap-2 pt-1">
-        <Button ref={saveRef} type="submit" size="md" variant="primary" loading={pending}>
+        {/* Disabled while nothing has changed — the same `dirty` the bar and the guard read. */}
+        <Button ref={saveRef} type="submit" size="md" variant="primary" loading={pending} disabled={!dirty}>
           Save · Hifadhi
         </Button>
         <Button type="button" size="md" variant="ghost" disabled={pending} onClick={fillStarting}>

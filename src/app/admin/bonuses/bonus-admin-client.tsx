@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { I, plateGlyph } from "@/components/ui/glyphs";
 import { IconPlate } from "@/components/ui/icon-plate";
@@ -11,6 +11,7 @@ import { useDeferredToast } from "@/components/ui/toast";
 import type { BonusConfig } from "@/lib/server/bonus-config";
 import { UnsavedChangesGuard, PendingChangesBar } from "@/components/ui/unsaved-changes";
 import { saveBonusConfigAction, grantBonusToPlayerAction, cancelGrantAction } from "./bonus-actions";
+import { runAdminAction } from "@/lib/client/run-admin-action";
 import { formatTzs } from "@/lib/utils";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ConfirmModal } from "@/components/ui/modal";
@@ -118,11 +119,24 @@ export function BonusAdminClient({ config, productWithdrawn = false }: { config:
   const [c, setC] = useState<BonusConfig>(config);
   const configDirty = JSON.stringify(c) !== JSON.stringify(config);
   const on = c.enabled;
+  /** The panel's own Save — the bar's `saveAnchor`, so the two are never on screen together. */
+  const saveRef = useRef<HTMLButtonElement>(null);
 
+  /* ⛔ `runAdminAction`: a thrown action (an RBAC refusal, a server fault) otherwise ends the
+     spinner with no word said. It rethrows a redirect and turns anything else into the
+     `{ ok:false, error }` the toast below renders — and on a failure `c` is kept, so the bar
+     stays up with the edits still in it.
+     ⭐ On success `c` is re-seeded from what the server STORED (`setBonusConfig` returns it), so
+     `configDirty` compares like with like once the refreshed `config` lands and the bar goes
+     clean on a save that really landed.
+     ⛔ Only if `c` is still what was SENT: the fields stay editable while the save runs, and an
+     edit made meanwhile must stay on screen and dirty, not be overwritten and called "Saved". */
   const save = () => {
+    const sent = JSON.stringify(c);
     start(async () => {
-      const r = await saveBonusConfigAction(c);
+      const r = await runAdminAction(() => saveBonusConfigAction(c));
       if (r.ok) {
+        setC((cur) => (JSON.stringify(cur) === sent ? r.config : cur));
         router.refresh();
         deferToast({ title: "Bonus config saved · Imehifadhiwa", variant: "success" });
       } else {
@@ -161,7 +175,9 @@ export function BonusAdminClient({ config, productWithdrawn = false }: { config:
           </div>
         </div>
         <Toggle on={on} onClick={() => setC((p) => ({ ...p, enabled: !p.enabled }))} aria-label="Bonus program master switch" />
-        <Button variant="primary" size="sm" leading={<I.check s={14} />} loading={pending} onClick={save}>Save</Button>
+        {/* ⭐ Disabled while nothing has changed: a Save that is always live cannot tell the owner
+            whether there is anything to save, or whether the last save took. */}
+        <Button ref={saveRef} variant="primary" size="sm" leading={<I.check s={14} />} loading={pending} disabled={!configDirty} onClick={save}>Save</Button>
       </div>
 
       {/* Defaults */}
@@ -238,13 +254,17 @@ export function BonusAdminClient({ config, productWithdrawn = false }: { config:
         * The exemption in the triage is for a toggle where FLIPPING IS THE SAVE; here every
         * switch, including the master `enabled`, is held in `c` until Save is pressed. An owner
         * who turned the bonus programme off and walked away left it running.
+        * ⛔ ONE SAVE ON SCREEN (Ali, 2026-09-26). `saveAnchor` is the panel's own Save, and the two
+        * share their words and their call: the bar's Save shows only while that one is out of sight.
         */}
       <PendingChangesBar
         dirty={configDirty}
         saving={pending}
         detail="The bonus programme keeps running on the saved settings until this is saved."
+        saveLabel="Save"
         onSave={save}
         onDiscard={() => setC(config)}
+        saveAnchor={saveRef}
       />
       <UnsavedChangesGuard dirty={configDirty} body="The bonus configuration has been changed but not saved. Leaving now discards the change." />
     </div>
