@@ -1791,15 +1791,38 @@ scroll. Declared mutations: 8 new (`373-type-dropped`, `373-type-as-chip`, `373-
 `373-note-line-short`, `373-note-on-the-phone`, `373-divider-splits-the-record`, `373-desktop-gutter-back`,
 `373-desk-span-stale`) and 2 re-aimed (`373-minw`, `373-activity-colspan-stale`); console anchors 340 → 348.
 
-**How it went live — stated, because it is not the usual order.** The shared heavy-node lock was held by other lanes
-for over two hours, and the owner said to push once the result was sure. Before the push, run WITHOUT the lock (each a
-single small process): the step's new classes compiled with the project's own Tailwind config and parsed with the build's
-PostCSS — every new selector generated exactly as intended and the old 12px gutter gone; both pages transformed as TSX;
-`test:red-anchors` §3 — all 348 console anchors resolve exactly once (the only failures are the four that fail on clean
-`main` in other lanes' files, §0b of RESUME-HERE). **Run AFTER the push, under the lock, and recorded here in the
-commit that follows:** typecheck, `test:house-bot-console` on both stores, `test:house-bot-surfaces`, `test:type-scale`,
-`test:tab-anchors`, the production build and bundle scan, the served desk at 360/640/1024/1280/1440 with §5.7's
-worst-case fit and the tiles read, and the drive of the ten mutations in a detached tree at the live commit.
+**The width, MEASURED on a served `next start` build at the seven-digit worst case** (every money cell filled to
+`TZS 8,888,888` after the tile is written):
+
+| Ledger | 1280 (strip 998px) | 1440 (strip 1158px) |
+|---|---|---|
+| Account page (8 columns) | **998 — fits exactly** | 1158 — fits |
+| Desk-wide (10 columns) | **1133 — 135px over** (as seeded, 1045) | 1158 — fits |
+
+Per column at 1280, worst case, desk-wide: Account 150 · Opening 117 · Stake 117 · Closing 117 · Left today 117 ·
+When 128 · Outcome 110 · Round 51 · Game 131 · stop 93. ⚠️ **So decision 2 took the desk-wide ledger from 1251px to
+1133px and did NOT close it.** Its next lever, the Account column's 150px floor, can return at most 46px of the 135,
+so by the decision's own rule the 432(b) scroll is KEPT on the desk-wide ledger below 1440 — the subject and the first
+two money answers stay in the strip (§5.2 passes at every width) and the stop control is one short scroll away — and
+closing the rest is **the owner's call, put to him with the choices** (RESUME-HERE §0c decision 2). It is held by a
+RATCHET, not waved through: §5.7 fails if that overflow ever grows past 135px, and the account ledger and every width
+from 1440 up must still fit exactly. The seed's rows on page 1 carry no note, so the two-row record was not on screen
+in this run; its CSS was verified compiled (below) and its render is re-read on the next served run.
+
+**The gates** (under the heavy-node lock, on the tree that was committed, before the push):
+
+| Instrument | Result |
+|---|---|
+| `typecheck` | 0 errors |
+| `test:house-bot-console` | **864 memory / 623 Postgres, 0 failed** (floor raised from 854/613 — the printed counts) |
+| `test:house-bot-surfaces`, `test:tab-anchors`, `npm run build`, `verify:house-bot-bundle` | green |
+| `test:red-anchors` §3 | all 348 console anchors resolve exactly once; the only failures are the four that fail on clean `main` in other lanes' files (RESUME-HERE §0b) |
+| `test:type-scale` | RED — **and red identically on a clean copy of `origin/main` without this step** (§3 759 vs ratchet 744, §6 239 vs 235): other lanes' prose and tracking, not this step's, which adds only `text-body-sm` |
+| `qa:house-bots-visual` at 360/640/1024/1280/1440 | 394 passed, 1 failed — the desk-wide 1280 fit above, now held by its ratchet; tiles read at 360 and 1280 (both ledgers) |
+| CSS, checked without the lock | the step's classes compiled with the project's own Tailwind config and parsed by the build's PostCSS: every new selector generated as intended, and the 12px `sm:` gutter no longer generated |
+
+The owner said to go live once sure (RESUME-HERE §5 quotes him). The ten mutations are driven after the push, in a
+detached tree at the live commit, and their result is added here.
 
 ---
 

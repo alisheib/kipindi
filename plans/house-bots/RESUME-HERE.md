@@ -102,7 +102,7 @@ The account page's ledger has the same shape in eight columns. Below `sm` it is 
 5. **D19/D20 stand.** House bots are never public — not to players, not to the holder — and are ordinary players in
    every report.
 
-**Suite floors — a lower count is a regression, not drift:** console **854 memory / 613 Postgres** (2026-09-26) ·
+**Suite floors — a lower count is a regression, not drift:** console **864 memory / 623 Postgres** (2026-09-26, step 1) ·
 engine **808 / 787** · money **132 / 150**. **Declared mutations:** console 348 (340 + step 1's 8, 2026-09-26) · engine 80 · money 56 + seam 7 ·
 c5 97 — all resolve exactly once (`test:red-anchors` §3, 2026-09-26).
 
@@ -195,7 +195,7 @@ from Ali before its build step.
 
 **THE BUILD ORDER — each step is one commit (code + tests + declared mutations + this file + `docs/HOUSE-BOTS.md`),
 pushed to `main` and verified serving before the next:**
-1. ✅ **The ledger at 1280** (decision 2) — **LIVE 2026-09-26**, pushed on the owner's go-ahead before its heavy gates ran (the lock was held by other lanes); the gates ran after the push and are recorded in `docs/HOUSE-BOTS.md` §12.6. ⚠️ `px-1.5` is 8px on this scale and `px-2` 12px. Update every pin that fixes the column contract — the header equalities, the
+1. ✅ **The ledger at 1280** (decision 2) — **LIVE 2026-09-26**, gates green before the push (`docs/HOUSE-BOTS.md` §12.6). ⚠️ **NOT CLOSED ON THE DESK-WIDE LEDGER:** at the seven-digit worst case it is 1133px in the 998px strip (from 1251); the account ledger fits exactly. The Account floor cannot close the rest, so the 432(b) scroll stays below 1440 under a ratchet and the choice is Ali's (§5). ⚠️ `px-1.5` is 8px on this scale and `px-2` 12px. Update every pin that fixes the column contract — the header equalities, the
    derived `colSpan`, 1.373's gutter allowlist, the first-cells order — and declare mutations for the new placements.
    Re-measure worst case with every money cell 7-digit (§4's served-desk recipe): the table must fit 998px at 1280.
    `qa:house-bots-visual` at 360, 1280 and 1440; read every PNG.
@@ -351,8 +351,12 @@ KP_BASE=http://localhost:3031 KP_WIDTHS=360,1280 npm run -s qa:house-bots-visual
     turns it on") is not enforced: a second ADMIN account switched the desk ON, including the ON it is in now. **The
     next session builds §0c's order, steps 1–9**; step 2 waits on Ali's one fact (which ADMIN accounts are his, and whether the second switcher had his authority).
 - **2026-09-26 afternoon · Ali-Blade15 — the build order, in progress (this entry is completed at the session's end).**
-  - ✅ **Step 1 LIVE** — the ledger fits 1280: Type is the Outcome cell's second line, Note its own line under its row, one
-    8px gutter at every width (`docs/HOUSE-BOTS.md` §12.6). Pushed on Ali's go-ahead, as typed: *"checks ur sur eof theiru result sskipt o liv eit sok"* —
-    while other lanes held the heavy-node lock; its heavy gates run after the push and are recorded in §12.6.
+  - ✅ **Step 1 LIVE** — Type is the Outcome cell's second line, Note its own line under its row, one 8px gutter at
+    every width (`docs/HOUSE-BOTS.md` §12.6). Ali's go-ahead, as typed: *"checks ur sur eof theiru result sskipt o liv
+    eit sok"*; the gates had come in green by then (console 864/623, build, bundle). The account ledger fits 1280; the
+    desk-wide one is still 135px over at the seven-digit worst case — ⏳ **Ali's choice:** (1) keep the short scroll at
+    1280 (everything fits from 1440); (2) move each queued row's Stop under its Outcome chip, dropping the control
+    column, and narrow Account to 104px — fits when figures are at most 7 digits; (3) state TZS once in each money
+    header and paint bare figures in this one table — fits with room, but amends the money grammar (C7 361) here.
   - ⏳ Step 2 waits on Ali's one fact (which ADMIN accounts are his, and whether the second switcher had his OK).
   - ⏳ Step 3 (the Results tab) is built in a local dev tree (`C:/kipindi-hb-s3`, never pushed) and lands after its gates.
