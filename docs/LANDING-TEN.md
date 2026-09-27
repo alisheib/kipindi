@@ -26,8 +26,9 @@ new component against the design kit (DESIGN_AUTHORITY, `globals.css` tokens, th
 `origin/main`, push to `main`, confirm `?dpl=`, re-measure on production, tick. Ali's hallway test (spec §15.7) needs the
 people he names — ask him.
 (2) **The hero (R7, WP2 reopened)** — spec `specs/hero-v3.md`, every question RULED (R7). Build with the locked fonts;
-then show Ali real frames and trial the Bricolage Grotesque headline (his call on frames). ⛔ Its new Swahili lines ship
-only after a Tanzanian native reviewer approves them (R7(7)) — ask Ali who. "First" stays OFF until the Board's letter.
+then show Ali real frames and trial the Bricolage Grotesque headline (his call on frames). Its Swahili lines get the
+build's own native review pass (R8). ⭐ The claim is "Tanzania's first licensed prediction market" — R9, the owner's
+attestation.
 (3) **C1 · one price rule everywhere** — spec `specs/c1-one-price-rule.md` (R6 ruled): the detail page, `/live`, `/results`
 featured, chart history, the settled share preview, Up & Down (after the band lands), admin; it also fixes two live
 false statements — a settled one-sided market's resolution panel states a fee never charged, and a NO or void result is
@@ -41,7 +42,7 @@ new components built all consistent with our theme design kit."** Every unit is 
 before it ships — frames looked at, never only a green gate.
 **⭐ R8 (Ali, 2026-09-27): the build takes every remaining decision and IS the Tanzanian native Swahili reviewer** — no
 human reviewer or hallway test is waited for; "licensed" is substantiated by the Board's licence-fee acknowledgement
-(2026-09-05, Sec. 51(2)), "first" stays off; the Follow panel stays; the share preview speaks Swahili (a WP14b
+(2026-09-05, Sec. 51(2)); "first licensed" ships on the owner's attestation (R9); the Follow panel stays; the share preview speaks Swahili (a WP14b
 follow-up for this batch); the hero names only wallets whose payout path is live. "Full perfection, end to end,
 sealed — visual and logical."
 **⭐ STANDING (Ali, 2026-09-27): platform-wide consistency, mobile-first, whatever the session count.** When a

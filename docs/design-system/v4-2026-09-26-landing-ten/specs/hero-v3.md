@@ -1,5 +1,9 @@
 # Hero — final design
 
+> **⭐ R9 (Ali, 2026-09-27, as owner): ship claim STATE P now — "Tanzania's first licensed prediction market" / "Soko la kwanza
+> la utabiri lenye leseni Tanzania" / "坦桑尼亚首家持牌预测市场".** `FIRST_LICENSED_EVIDENCE()` = 2026-09-27, citing R9 (owner's
+> attestation + the Board's licence-fee acknowledgement of 2026-09-05). Keep "licensed" in the claim. Native sw review: R8.
+
 > **⭐ RULED by Ali, 2026-09-27 — INHERIT-MANIFEST R7.** Build: claim state N now ("first" gated on the Board's letter);
 > drop the warning sentence, keep the quiet 18+ · licence · helpline row; headline "NDIO au HAPANA?"; locked fonts, then a
 > Bricolage Grotesque headline TRIAL for Ali to judge on real frames; neutral 18+ ink site-wide; all four wallets named after a
