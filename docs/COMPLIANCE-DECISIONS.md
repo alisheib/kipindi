@@ -6,6 +6,49 @@
 
 ---
 
+## 2026-09-27 · "One-sided win" retired — the state is "One side only" everywhere (owner ruling R6(1); supersedes 2026-07-21)
+
+**Owner decision:** Ali, 2026-09-27, asked in session as a numbered choice (landing v3 C1 spec
+`docs/design-system/v4-2026-09-26-landing-ten/specs/c1-one-price-rule.md`, ruling 1) and answered as recommended
+(1a). Recorded as INHERIT-MANIFEST **R6(1)**.
+
+**Why:** the 2026-07-21 label named an OPEN market's state after a result — a "win" — that has not happened and, on a
+refund, never happens. Since landing v3 WP6 every market card names the same state **"One side only"**, so the detail
+page's callout was the last place the old label survived, and it put two names on one state on one page. The 07-21
+guardrail itself forbids implying a cash win; "One side only" states the pool's shape and nothing more.
+
+**What changed (landing v3 C1, commit A, branch `landing-v3-c1`):**
+- `/markets/[id]`: the callout headed "One-sided win", whose body promised a refund "before resolution", is deleted.
+  The rail's label row reads the card's `market.oneSideOnly` — EN "One side only" · SW "Upande mmoja tu" · ZH
+  "仅单边有投注" — and the refund rule is the card's ONE conditional sentence, `market.oneSidedNote` (INHERIT-MANIFEST
+  L22): at the money control while betting is open, under the rail once betting has closed, and nothing once the
+  market is settled (the resolution panel then states the refund).
+- The keys `market.oneSidedMarket` (EN "One-sided win" · SW "Ushindi wa upande mmoja" · ZH "单边获胜") and
+  `market.oneSidedBody` are deleted from all three locales. The callout was their only reader.
+- Guard: `npm run test:one-sided` 8.9 fails if either key returns to any locale or any file in `src/` reads it, and
+  8.5 pins where the note sits; `npm run red:one-sided` proves both can fail.
+
+**What did NOT change (deliberate scope):**
+- The mechanic. A pool with one empty side is refunded in full at zero fee at settlement, whatever the verdict
+  (`settleMarket`'s one-sided branch, rules §7, pinned by `test:one-sided` §6).
+- The published rules keep their legal wording "One-sided market:" (`src/app/legal/rules/_content-yes-no.tsx`). That is
+  legal text defining the mechanic, not the product's state label.
+- Machine identifiers and internal strings: the audit action `market.resolved.one_sided_refund`, its internal `reason`
+  string ("One-sided win — all bets on same side, …") and the comment above the branch inside `settleMarket` are left
+  as they are. Settlement code is outside this batch, and an audit reason is read by an auditor, not shown to a
+  player. `isOneSided`, `notifyOneSidedRefund` and `oneSidedRefundHtml` keep their names.
+- Historical design documents that quote "one-sided win" (`F6-LIQUIDITY-DESIGN.md`, `perfection-plan.md`) are records
+  and are not rewritten.
+
+**Supersedes:** § 2026-07-21 · Player terminology: "one-sided market" → "one-sided win" (licence). It is kept below as
+the record, with a pointer here; the two entries together are the history. Its guardrail against implying a cash win
+stands and is now met more strictly.
+
+**Guardrail (⛔):** do not restore "One-sided win" (or "one-sided market") as a player-facing state label. The state is
+"One side only", and the refund sentence stays the one conditional sentence of L22.
+
+---
+
 ## 2026-09-27 · Invite rewards need no separate Gaming Board clearance — 50pick's licence covers them (owner ruling)
 
 **Owner instruction (Ali, 2026-09-27), as typed:** *"np no gbt dens haveot do with this our license covers thi
@@ -4474,6 +4517,9 @@ not delete the `capped-commission` model (existing polls settle on it).
 ---
 
 ## 2026-07-21 · Player terminology: "one-sided market" → "one-sided win" (licence)
+
+> ⚠️ **SUPERSEDED 2026-09-27** by § 2026-09-27 · "One-sided win" retired — the state is "One side only" everywhere
+> (owner ruling R6(1)). Kept as the record; do not apply the label below.
 
 **Owner decision:** Ali, explicit, 2026-07-21 (authorised in-session). **Critical for the
 GBT licence — apply everywhere.**

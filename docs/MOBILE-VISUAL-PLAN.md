@@ -1436,10 +1436,13 @@ own words beneath it.**
   one count: `markets/[id]/page.tsx` has ONE call site, so the seven are 2+1+1+1+1+1.
   The `/markets` rows read the same rule (`shownYesPct`), so the odds filters no longer file a NO-only market
   under long shots at 0%, and the detail page prints a TWO-sided price as the card does (99, never 100).
-  ⚠️ **Still U32's, not the card's** — each still prints 0/100 on a ONE-sided market: the detail page's bar,
-  side picker and JSON-LD, and its callout still reads "One-sided win" / "before resolution" where rules §7
-  says a refund "at closing"; `/live`'s pulse grid and featured contest; `/results`' featured result. (Its
-  metadata and `/api/og/market` read the rule since landing v3 WP14b.) ⭐ S07-results-01 and the nested half of
+  ⚠️ **Still U32's, not the card's** — each still prints 0/100 on a ONE-sided market: `/live`'s pulse grid and
+  featured contest; `/results`' featured result. (Its metadata and `/api/og/market` read the rule since landing
+  v3 WP14b.) ✅ **Built by landing v3 C1 commit A** (branch `landing-v3-c1`, 2026-09-27, not live): the detail
+  page's bar, caption, side picker and JSON-LD read `priceState`; its "One-sided win" / "before resolution"
+  callout is retired for the card's own label and conditional refund note (R6(1), COMPLIANCE-DECISIONS
+  2026-09-27); its resolution panel no longer prints a fee on a one-sided refund (E-419); and a settled card's
+  result word wears its own side's ink (NO, void). `test:one-sided` §8. ⭐ S07-results-01 and the nested half of
   S07-results-26 (share on a settled card navigating away) are delivered by landing v3 WP14b.
 
 **14. Item 7 — the leaderboard ranks raw ROI. RULED: rank by the law its own tiers already state.**

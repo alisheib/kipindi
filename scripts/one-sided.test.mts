@@ -30,6 +30,17 @@ import { decomment } from "./lib/decomment.mts";
 import { priceState, priceTier, shownYesPct } from "../src/lib/markets/price-state.ts";
 import { matchesOdds, type DiscoveryRow } from "../src/lib/markets/discovery.ts";
 import { dict } from "../src/lib/i18n-dict.ts";
+import { poolFee } from "../src/lib/payout.ts";
+
+/** §14 · the files that may still call the old price helpers. ⛔ It only shrinks (C1: B, C, G each remove entries). */
+const ALLOW_OLD_PRICE: readonly string[] = [
+  "src/app/live/page.tsx",
+  "src/app/results/page.tsx",
+  "src/app/admin/markets/page.tsx",
+  "src/app/admin/markets/[id]/page.tsx",
+  "src/app/admin/resolver-queue/page.tsx",
+  "src/app/admin/resolver/[id]/page.tsx",
+];
 
 const ROOT = new URL("..", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1");
 const SRC = join(ROOT, "src");
@@ -234,14 +245,121 @@ log("\n── 7 · one rule for every row and the page the card links to");
   check("7.1 the /markets row's price is the printable one (`shownYesPct`), not the raw share",
     /yesPct: shownYesPct\(m\.yesPool, m\.noPool\)/.test(board) && !/yesPct: pricedYesPct\(/.test(board));
   check("7.2 the landing's hero rows too", /yesPct: shownYesPct\(m\.yesPool, m\.noPool\)/.test(landing));
-  check("7.3 the detail page prints a two-sided price as the card does (no 99 on the card, 100 one tap later)",
-    /const yesPct = shownYesPct\(m\.yesPool, m\.noPool\) \?\? impliedYesPct\(m\);/.test(detail));
+  check("7.3 the detail page prints a price as the card does — 1–99 only where both sides hold money, and no fallback helper",
+    /const yesPct = price\.kind === "priced" \? price\.yesPct : null;/.test(detail) && !/impliedYesPct|shownYesPct\(/.test(detail));
   // Behaviour: a NO-only market is in no odds bucket (its card says "One side only"), a real long shot is.
   const row = (yesPool: number, noPool: number) => ({ yesPct: shownYesPct(yesPool, noPool) }) as unknown as DiscoveryRow;
   const noOnly = row(0, 20_000);
   check("7.4 ⛔ a one-sided market is filed under no price bucket — not 'Longshots' at 0%",
     !matchesOdds(noOnly, "long") && !matchesOdds(noOnly, "call") && !matchesOdds(noOnly, "cont") && matchesOdds(noOnly, "any"));
   check("7.4-control a real two-sided long shot (1,000 vs 20,000 → 5%) IS a long shot", matchesOdds(row(1_000, 20_000), "long"));
+}
+
+// ── 8 · the market DETAIL page, its side picker and its resolution panel (landing v3 C1, commit A) ─
+log("\n── 8 · the detail page reads the card's rule (C1)");
+{
+  const detail = decomment(read("src/app/markets/[id]/page.tsx"));
+  const fnAt = detail.indexOf("export default async function MarketDetail(");
+  check("8.0 slice sanity: the detail page's component is found", fnAt > 0, `at ${fnAt}`);
+  check("8.1 the page decides its price from the pools, once, and prints none without two sides",
+    /const price = priceState\(m\.yesPool, m\.noPool\);/.test(detail)
+    && /const yesPct = price\.kind === "priced" \? price\.yesPct : null;/.test(detail));
+  check("8.2 the bar's empty rail is keyed on the price, and named like the card's (outcome · one side · never bet · no pool)",
+    /empty=\{yesPct === null\}/.test(detail)
+    && /emptyLabel=\{outcomeLabel \?\? \(emptySide \? t\.market\.oneSideOnly : neverBet \? t\.market\.noBetsYet : t\.market\.noPoolYet\)\}/.test(detail));
+  check("8.3 the JSON-LD reads the share preview's one string, never a `YES ${…}%` template",
+    /description: sharePreviewDescription\(sharePrice/.test(detail) && !/`YES \$\{/.test(detail));
+  // The rail's caption and label: ONE 11px caption element (the type-scale ratchet), the label row keyed on the pool.
+  const railAt = detail.indexOf("yesPct={yesPct ?? undefined}");
+  const rail = railAt > 0 ? detail.slice(railAt, detail.indexOf("<Stat ", railAt)) : "";
+  check("8.4-slice the rail slice is the real bar block (it holds the TippingBar props and ends before the KPI strip)",
+    rail.length > 200 && rail.length < 3_000 && /probabilityLabel=/.test(rail), String(rail.length));
+  check("8.4 'No bets yet' only where nobody ever bet, 'Be the first' only while open; one caption element; the label row on a one-sided pool",
+    /const railCaption = price\.kind === "none" && neverBet \? \(freshMarket \? `\$\{t\.market\.noBetsYet\} · \$\{t\.market\.beFirst\}` : t\.market\.noBetsYet\) : null;/.test(detail)
+    && (rail.match(/text-\[11px\]/g) ?? []).length === 1
+    && /\{emptySide && <p className="-mt-3 flex justify-center"><span className="mcardp-oneside">\{t\.market\.oneSideOnly\}<\/span><\/p>\}/.test(rail));
+  const asideAt = detail.indexOf("<aside ");
+  const aside = asideAt > 0 ? detail.slice(asideAt, detail.indexOf("</aside>", asideAt)) : "";
+  const sectionAt = detail.indexOf('<section className="order-2');
+  const section = sectionAt > 0 ? detail.slice(sectionAt, detail.indexOf("</section>", sectionAt)) : "";
+  check("8.5-slice the aside and the content section are real slices", aside.length > 1_000 && section.length > 1_000,
+    `aside ${aside.length} · section ${section.length}`);
+  check("8.5 the refund note is the card's ONE conditional sentence, withheld once settled, at the money control while open and under the rail once closed; no 'One-sided win' body",
+    /const oneSidedNote = emptySide && !settled \? t\.market\.oneSidedNote\.replace\("\{side\}", sideWord\(t, emptySide, "MARKET"\)\) : null;/.test(detail)
+    && /const settled = !!m\.resolvedOutcome \|\| isResolved;/.test(detail)
+    && section.includes("{!bettingOpen && oneSidedCallout}")
+    && (aside.match(/\{oneSidedCallout\}/g) ?? []).length === 2
+    && !/oneSidedBody|oneSidedMarket/.test(detail));
+  // The picker: no price prop, the pools decide, both figures gated.
+  const picker = decomment(read("src/components/markets/side-picker.tsx"));
+  const props = picker.slice(picker.indexOf("type Props = {"), picker.indexOf("};", picker.indexOf("type Props = {")));
+  const figures = picker.match(/\{yesPct !== null && <span className="font-mono text-\[12\.5px\]">@ \{(?:yesPct|100 - yesPct)\}%<\/span>\}/g) ?? [];
+  check("8.6 the side picker takes NO price prop, prices from the pools, and gates both '@ n%' figures",
+    props.includes("yesPool: number;") && !/\byesPct\??:/.test(props)
+    && /const price = priceState\(yesPool, noPool\);/.test(picker)
+    && /const yesPct = price\.kind === "priced" \? price\.yesPct : null;/.test(picker)
+    && !/hasPool/.test(picker)
+    && figures.length === 2 && (picker.match(/@ \{/g) ?? []).length === 2
+    && !/<SidePicker[^>]*\byesPct=/.test(detail), `${figures.length} gated figures`);
+  check("8.6-control an ungated figure IS detected",
+    !/\{yesPct !== null && <span className="font-mono text-\[12\.5px\]">@ \{yesPct\}%<\/span>\}/.test('{hasPool && <span className="font-mono text-[12.5px]">@ {yesPct}%</span>}'));
+  const en = dict.en.market as Record<string, string>;
+  check("8.7 the panel's pending refund sentence says the refund is in full and carries no fee",
+    /refunded in full/.test(en.resOneSidedPending ?? "") && /no fee/.test(en.resOneSidedPending ?? ""), en.resOneSidedPending);
+  // The panel: a refund (void, or one side only) shows no fee row and no fee-capped callout.
+  const panel = decomment(read("src/components/markets/resolution-panel.tsx"));
+  check("8.8 the resolution panel treats a one-sided pool as the refund it is (no fee row, no capped callout, no payout note)",
+    /const refundedAll = isVoid \|\| priceState\(yesPool, noPool\)\.kind === "oneSided";/.test(panel)
+    && /\{refundedAll \? \(/.test(panel) && /\{!refundedAll && fee\.capped && \(/.test(panel)
+    && /\{!refundedAll && <p/.test(panel)
+    && !/\{isVoid \? \(/.test(panel) && !/!isVoid &&/.test(panel));
+  // ⭐ CONTROL — the display guard is NEEDED: under loser-share, the fee helper really does price a
+  // one-sided pool resolved against its money (the phantom fee C1 found on production's panel).
+  check("8.8-control poolFee DOES price a fee on a YES-only pool resolved NO (why the panel must not print it)",
+    poolFee(35_000, 0, { feeModel: "loser-share", platformFeeRate: 0.03, operatorFeeRate: 0.10, commissionRate: 0.1, feeCeilingRate: 1 / 3 }, "NO").fee > 0);
+  // R6(1) · "One-sided win" is retired everywhere a player reads it.
+  const L = ["en", "sw", "zh"] as const;
+  const stale = L.filter((loc) => "oneSidedMarket" in (dict[loc].market as object) || "oneSidedBody" in (dict[loc].market as object));
+  const walkSrc = (dir: string): string[] => readdirSync(dir).flatMap((e) => {
+    const p = join(dir, e);
+    return statSync(p).isDirectory() ? walkSrc(p) : /\.tsx?$/.test(e) ? [p] : [];
+  });
+  const users = walkSrc(SRC).filter((f) => /\b(?:oneSidedMarket|oneSidedBody)\b/.test(decomment(readFileSync(f, "utf8")))).map(rel);
+  check("8.9 R6(1): no `oneSidedMarket`/`oneSidedBody` key in any locale, and no reader in src/", stale.length === 0 && users.length === 0,
+    `${stale.join(",")} ${users.join(",")}`);
+  // §10 · a settled card's result word wears its own side's ink.
+  const css = read("src/app/globals.css");
+  const baseAt = css.indexOf(".mcardp-pct {");
+  const noAt = css.indexOf(".mcardp-pct--no { color: var(--no-400); }");
+  const voidAt = css.indexOf(".mcardp-pct--void { color: var(--text-muted); }");
+  check("8.10 ⛔ a NO result takes the no ink and a void the neutral muted ink (never the slot's YES ink)",
+    /const resultInk = resolvedOutcome === "NO" \? "mcardp-pct--no" : resolvedOutcome === "VOID" \? "mcardp-pct--void" : null;/.test(card)
+    && /<div className=\{cn\("mcardp-pct", resultInk\)\}>\{outcomeLabel\}<\/div>/.test(card)
+    && baseAt > 0 && noAt > baseAt && voidAt > baseAt, `base@${baseAt} no@${noAt} void@${voidAt}`);
+  check("8.10-control the pre-fix result slot (the YES ink inherited) IS detected",
+    !/<div className=\{cn\("mcardp-pct", resultInk\)\}>\{outcomeLabel\}<\/div>/.test('<div className="mcardp-pct">{outcomeLabel}</div>'));
+}
+
+// ── 14 · the sweep: no page or component prints the old price helpers (C1; the list only shrinks) ─
+log("\n── 14 · no surface calls impliedYesPct/pricedYesPct any more, except the declared remainder");
+{
+  // ⛔ The ALLOW list may only SHRINK: after C1-A it held /live, /results and the four admin files; B took
+  // /live, C took /results, G takes the admin four. A stale entry (no call left) fails too.
+  const ALLOW = new Set<string>(ALLOW_OLD_PRICE);
+  const OLD = /\b(?:impliedYesPct|pricedYesPct)\(/;
+  const walkDir = (dir: string): string[] => readdirSync(dir).flatMap((e) => {
+    const p = join(dir, e);
+    return statSync(p).isDirectory() ? walkDir(p) : /\.tsx?$/.test(e) ? [p] : [];
+  });
+  const files = [...walkDir(join(SRC, "app")), ...walkDir(join(SRC, "components"))];
+  const callers = files.filter((f) => OLD.test(decomment(readFileSync(f, "utf8")))).map(rel);
+  const unexpected = callers.filter((f) => !ALLOW.has(f));
+  const staleAllow = [...ALLOW].filter((f) => !callers.includes(f));
+  check("14.0 the sweep reads the real tree (it walked the app and component folders)", files.length > 200, String(files.length));
+  check("14.1 ⛔ no page or component calls impliedYesPct/pricedYesPct outside the declared remainder", unexpected.length === 0, unexpected.join(", "));
+  check("14.2 every declared remainder still calls one (a stale entry is a list that stopped shrinking)", staleAllow.length === 0, staleAllow.join(", "));
+  check("14.1-control a planted call IS detected, a mention in prose is not",
+    OLD.test(decomment("const y = impliedYesPct(m);")) && !OLD.test(decomment("// impliedYesPct(m) returned 50")));
 }
 
 log(`\n${fail === 0 ? "ALL PASS" : `${fail} FAILED`} — one-sided markets`);

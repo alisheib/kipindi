@@ -800,8 +800,6 @@ export const dict = {
       // Market detail page
       closedAwaitingSettlement: "Closed · Awaiting settlement",
       volume: "Volume", predictors: "Predictors", resolves: "Resolves",
-      oneSidedMarket: "One-sided win",
-      oneSidedBody: "All current bets are on the same side. If no opposing bets are placed before resolution, everyone gets a full refund and we take no fee — there is no opposing pool to pay winnings from.",
       yourPositions: "Your positions",
       noBetYet: "You haven\u2019t bet on this market yet. Use the dial to get started.",
       resolutionCriterion: "Resolution criterion",
@@ -832,6 +830,9 @@ export const dict = {
       // markets frozen at capped-commission, whose players are still owed the arithmetic.
       resFeeCappedNote: "This poll was lopsided, so our commission was capped. {commission} of the pool would have been {uncapped} — more than we allow ourselves to take — so we charged {charged}, which is {ceiling} of the smaller side. We never take more than a third of what you win.",
       resVoidRefund: "All stakes were refunded in full — no fee taken.",
+      // C1 · a RESOLVED market with money on one side only, before settlement: its pools are final (a resolved
+      // market cannot be reopened), and settlement refunds every stake at zero fee (rules §7).
+      resOneSidedPending: "Only one side holds stakes, so every stake will be refunded in full — no fee taken.",
       resYourPayoutNote: "Your own payout is shown under Your positions above.",
       resDispute: "Questions about this resolution?",
       resContact: "Contact support",
@@ -3460,8 +3461,6 @@ export const dict = {
       noLiveMatch: "Hakuna soko hai linalolingana",
       closedAwaitingSettlement: "Imefungwa · Inasubiri utatuzi",
       volume: "Kiasi", predictors: "Watabiri", resolves: "Inaisha",
-      oneSidedMarket: "Ushindi wa upande mmoja",
-      oneSidedBody: "Dau zote za sasa ziko upande mmoja. Kama hakuna dau la upande mwingine kabla ya matokeo, kila mtu atarudishiwa dau lake kamili na hatutachukua ada — hakuna bwawa la upande mwingine la kulipa ushindi.",
       yourPositions: "Nafasi zako",
       noBetYet: "Bado hujaweka dau kwenye soko hili. Tumia kidhibiti kuanza.",
       resolutionCriterion: "Kigezo cha utatuzi",
@@ -3484,6 +3483,7 @@ export const dict = {
       resFeeCapped: "Ada imewekewa kikomo",
       resFeeCappedNote: "Kura hii ilikuwa na upande mmoja mkubwa, kwa hiyo kamisheni yetu iliwekewa kikomo. {commission} ya bwawa ingekuwa {uncapped} — zaidi ya tunavyojiruhusu kuchukua — kwa hiyo tulitoza {charged}, sawa na {ceiling} ya upande mdogo. Hatuchukui zaidi ya theluthi moja ya unachoshinda.",
       resVoidRefund: "Dau zote zilirejeshwa kikamilifu — hakuna ada iliyokatwa.",
+      resOneSidedPending: "Upande mmoja tu una dau, kwa hiyo kila dau litarejeshwa kikamilifu — hakuna ada itakayokatwa.",
       resYourPayoutNote: "Malipo yako mwenyewe yanaonyeshwa chini ya Nafasi zako hapo juu.",
       resDispute: "Una maswali kuhusu utatuzi huu?",
       resContact: "Wasiliana na msaada",
@@ -5680,8 +5680,6 @@ export const dict = {
       noLiveMatch: "没有匹配的直播市场",
       closedAwaitingSettlement: "已关闭 · 等待结算",
       volume: "成交量", predictors: "预测者", resolves: "结算时间",
-      oneSidedMarket: "单边获胜",
-      oneSidedBody: "目前所有投注都在同一方。若在结算前无人投注对方，所有人将获全额退款且我们不收取任何费用——因为没有对方池子来支付奖金。",
       yourPositions: "您的持仓",
       noBetYet: "您还没有在这个市场投注。使用刻度盘开始。",
       resolutionCriterion: "结算标准",
@@ -5704,6 +5702,7 @@ export const dict = {
       resFeeCapped: "手续费上限",
       resFeeCappedNote: "此轮投注严重失衡，因此我们的佣金已封顶。奖池的 {commission} 本应是 {uncapped}——超出我们允许自己收取的上限——所以我们只收 {charged}，即较小一方的 {ceiling}。我们收取的绝不超过您赢得金额的三分之一。",
       resVoidRefund: "所有投注已全额退还——未收取任何费用。",
+      resOneSidedPending: "仅有一方持有下注，因此全部下注将全额退还——不收取任何费用。",
       resYourPayoutNote: "您的个人赔付显示在上方「您的持仓」中。",
       resDispute: "对此结算有疑问？",
       resContact: "联系客服",

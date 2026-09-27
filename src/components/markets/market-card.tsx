@@ -336,6 +336,12 @@ export function MarketCard({
   // that no side is better than a wrong side. `outcomeWord` cannot express "no side" — it
   // always returns a word — so the absence has to be decided here.
   const outcomeLabel = resolvedOutcome ? outcomeWord(t, resolvedOutcome, productLine) : null;
+  /* ⭐ C1 §10 · THE RESULT WEARS ITS OWN SIDE'S INK. The word used to inherit the price slot's YES ink, so a
+     NO result ("HAPANA") and a void ("Batili") were painted YES-green on /results, /watchlist and the
+     /markets resolved strip. A NO verdict takes the no ink, a void the neutral muted ink; a YES verdict keeps
+     the slot's own. The stored outcome is the key, so UP and DOWN follow YES and NO (the lexicon's one
+     mapping, `toStoredSide`). ⛔ Never keyed on the pools: a result is the verdict, not the crowd. */
+  const resultInk = resolvedOutcome === "NO" ? "mcardp-pct--no" : resolvedOutcome === "VOID" ? "mcardp-pct--void" : null;
   // Real YES% history only, ≥4 points (else hide — A-5 no-fabrication rule).
   // A fresh market has no history, so never draw the spark on one.
   // ⛔ Nor on a one-sided one (WP6): its history is a line pinned at 100 or 0, which draws the very
@@ -427,8 +433,8 @@ export function MarketCard({
               AND money changed hands is a void, and a void now takes this branch. */}
           {resolvedOutcome ? (
             <>
-              <div className="mcardp-pctcap">{t.market.result}</div>
-              <div className="mcardp-pct">{outcomeLabel}</div>
+              <div className="mcardp-pctcap mcardp-pctcap--result">{t.market.result}</div>
+              <div className={cn("mcardp-pct", resultInk)}>{outcomeLabel}</div>
             </>
           ) : noPrice ? (
             /* No crowd price — an honest em-dash, never a fabricated 50%.
