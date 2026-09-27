@@ -207,9 +207,11 @@ try {
     await page.waitForURL(/\/updown\//, { timeout: 60000 });
     await page.waitForTimeout(3000);
     await page.addStyleTag({ content: "nextjs-portal,[data-nextjs-toast]{display:none!important}" }).catch(() => {});
-    await page.screenshot({ path: join(FR, "PAIR-2-round-360-sw.png") });
-    await page.evaluate(() => scrollBy(0, 640)); await page.waitForTimeout(400);
-    await page.screenshot({ path: join(FR, "PAIR-2-round-360-sw-b.png") });
+    await page.screenshot({ path: join(FR, "PAIR-2-round-360-sw-b.png") });      // where #stake lands the player
+    await page.evaluate(() => scrollTo(0, 0)); await page.waitForTimeout(400);
+    await page.screenshot({ path: join(FR, "PAIR-2-round-360-sw.png") });        // the page's top
+    const landed = await page.evaluate(() => { const s = document.getElementById("stake"); return s ? Math.round(s.getBoundingClientRect().top) : null; });
+    check("the round page has the #stake target the picks land on", landed != null, `stake panel at ${landed}px from the page top`);
     check("click-through lands on the round with side=UP", /\/updown\/[^?]+\?side=UP/.test(page.url()), page.url());
     await ctx.close();
   }
@@ -275,6 +277,11 @@ try {
         return now && flag ? Math.round((now.left + now.width / 2) - (flag.left + flag.width / 2)) : null;
       });
       if (cell === "360-sw") check("playhead parks on the flag after the deciding instant", park != null && Math.abs(park) <= 8, `offset ${park}px`);
+      const fx = await page.evaluate(MEASURE_BAND);
+      const s7 = report.states.S7?.[cell]?.figures;
+      if (s7) check(`the deciding instant moves nothing (${cell}): plate top and band height as at close`,
+        fx.plateFromTop === s7.plateFromTop && Math.abs(fx.wrap.h - s7.wrap.h) <= 0.6,
+        `plate ${s7.plateFromTop}→${fx.plateFromTop}px, band ${s7.wrap.h}→${fx.wrap.h}px, verdict "${fx.verdictText}"`);
       await tiles(page, `S7x-${cell}`);
     } catch (e) {
       report.breaches.push(`S5/S7 ${cell}: ${String(e.message).split("\n")[0]}`);

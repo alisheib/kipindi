@@ -138,6 +138,22 @@ export function MEASURE_BAND() {
   }
   const fab = document.querySelector(".cm-fab");
   const plate = bug ? box(bug) : null;
+  // The playhead against the newest data mark (latest stem, or the last tie tick): their boxes must not overlap
+  // (frame panel round 2 — "now" and "the last read" fused into one two-tone line).
+  const rectOf = (el) => { if (!el) return null; const b = el.getBoundingClientRect(); return b.width || b.height ? b : null; };
+  const nowR = rectOf(q(".kp-udtrack__now"));
+  const ties = [...wrap.querySelectorAll(".kp-udtrack__tie")];
+  const markR = rectOf(q(".kp-udtrack__stem--latest")) && rectOf(ties.at(-1))
+    ? [rectOf(q(".kp-udtrack__stem--latest")), rectOf(ties.at(-1))].sort((a, b) => b.left - a.left)[0]
+    : rectOf(q(".kp-udtrack__stem--latest")) ?? rectOf(ties.at(-1));
+  const overlap = nowR && markR
+    ? Math.max(0, Math.min(nowR.right, markR.right + 1) - Math.max(nowR.left, markR.left - 1))
+      * Math.max(0, Math.min(nowR.bottom, markR.bottom + 1) - Math.max(nowR.top, markR.top - 1))
+    : 0;
+  // S8 (and every state's last act): the act keeps its air — from the copy above, and to the card's edge below.
+  const lastAct = [...wrap.querySelectorAll(".kp-updown__acts > *")].filter(vis).at(-1);
+  const actR = rectOf(lastAct), wrapR = wrap.getBoundingClientRect(), copyR = rectOf(copy);
+  const padB = parseFloat(getComputedStyle(wrap).paddingBottom);
   return {
     innerWidth, innerHeight,
     overflowX: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) - innerWidth,
@@ -158,6 +174,10 @@ export function MEASURE_BAND() {
     acts: [...wrap.querySelectorAll(".kp-updown__acts a")].filter(vis).map((a) => ({ ...box(a), text: text(a) })),
     small, green: Object.fromEntries(green), clipped,
     fab: fab && vis(fab) ? box(fab) : null,
+    nowMarkOverlap: Math.round(overlap * 10) / 10,
+    actToEdge: actR ? Math.round(wrapR.bottom - actR.bottom) : null, padBottom: padB,
+    copyToAct: actR && copyR && solo ? Math.round(actR.top - copyR.bottom) : null,
+    plateFromTop: plate ? Math.round(bug.getBoundingClientRect().top - wrapR.top) : null,
     focus: document.activeElement ? `${document.activeElement.tagName}.${(document.activeElement.className || "").toString().split(/\s+/).slice(-1)[0]}` : null,
   };
 }
@@ -183,7 +203,12 @@ export function judgeBand(f, cell, ref = null) {
   if (cell.state && seen !== cell.state && !(cell.state === "S5" && seen === "S5")) bad(`state: expected ${cell.state}, the band shows ${seen} (lead=${f.lead} aged=${f.aged} closed=${f.closed})`);
   if (f.overflowX > 0) bad(`V1 horizontal overflow ${f.overflowX}px`);
   if (f.clipped.length) bad(`V2 clipped: ${f.clipped.join(" | ")}`);
-  if (seen === "S8") return out;
+  if (seen === "S8") {
+    if (f.copyToAct != null && f.copyToAct < 12) bad(`S8: the Play button sits ${f.copyToAct}px under the copy (≥ 12)`);
+    if (f.actToEdge != null && f.actToEdge < f.padBottom - 0.5) bad(`S8: the Play button is ${f.actToEdge}px off the card's edge (≥ ${f.padBottom})`);
+    return out;
+  }
+  if (f.nowMarkOverlap > 0) bad(`the playhead overlaps the newest read by ${f.nowMarkOverlap}px²`);
   // The band's height is the CARD's (`.kp-updown`, border to border) — the spec's ≈592px sum is the card's
   // content; the section around it adds the page rhythm's padding, which is not the band's to budget.
   const H = f.wrap?.h ?? 0;
