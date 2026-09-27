@@ -535,6 +535,17 @@ been written down, which is exactly how the never-imported `Sparkline` came to c
      cap 0.12em/0.9). A recorded split, not a rule: a NEW svg chart takes the quiet dialect
      unless its plot is as dense as the hero's; the ENGINE charts draw their own reference
      lines (§B12.6's vendor tier) and are out of this dialect note's scope.
+     ⭐ *Recorded 2026-09-27 (R5, the landing's Up & Down match — `charts/updown-match-track.tsx`):*
+     the match track's rail is a NEUTRAL TIME RAIL that doubles as the open (`--text-faint`, 2px),
+     never gilt (landing L8): the stems read against it, but it is time first. A recorded split from
+     the round-page hero's gilt dashed open, not a precedent against it; its locked stretch takes the
+     quiet dialect exactly (1px · "2 5" · 0.55).
+     ⭐ *Since R5 (2026-09-27):* the round-page hero's value ink follows the round's TARGETS — UP ink at
+     or above `upTarget`, DOWN ink at or below `downTarget`, `--text-muted` strictly between
+     (settlement's `decideOutcomeByTargets`, computed by the page; `price-hero.tsx` `tone`). E-261
+     generalised: a banded round voids anywhere inside its band, not only at exactly flat. The
+     `/updown` card and the terminal still colour by the open until F1 — a split inside the void band
+     only.
    - **Live ink** — aqua is the heartbeat: every MICRO spark (card, wallet, leaderboard) and
      the live end-point dot **on charts whose price path is not itself direction ink** (the
      P&L walk — its aqua dot + halo). ⭐ *Ruled 2026-09-04 (round 2), by

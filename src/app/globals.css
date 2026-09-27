@@ -1202,7 +1202,12 @@ body {
   letter-spacing: 0.005em;
   text-shadow: 0 1px 0 oklch(20% 0.10 268 / 0.40);
 }
+/* The solid buttons' hover lift is gated to pointers that hover (here and on the four fills below). On touch a
+   :hover sticks to the last-tapped element, so the side a player tapped stayed lit after Back — on the landing's
+   Up & Down plate that is a lit leader (L17). Found in the band's frame panel, 2026-09-27; applied platform-wide. */
+@media (hover: hover) {
 .btn-primary:hover:not(:disabled) { filter: brightness(var(--btn-hover-gain)) saturate(1.04) drop-shadow(0 6px 16px color-mix(in oklab, var(--royal-400) 30%, transparent)); }
+}
 
 /* v2 kit: one flat-solid family — YES/NO/gold are SOLID fills (not gradients),
    with an EVEN 1px inset ring + soft shadow. (primary keeps its gradient.)
@@ -1223,7 +1228,9 @@ body {
   box-shadow: inset 0 0 0 1px oklch(80% 0.14 152 / 0.4), 0 1px 2px oklch(10% 0.05 264 / 0.35);
   text-shadow: 0 1px 1px oklch(20% 0.1 264 / 0.32);
 }
+@media (hover: hover) {
 .btn-yes:hover:not(:disabled) { filter: brightness(var(--btn-hover-gain)); box-shadow: inset 0 0 0 1px oklch(80% 0.14 152 / 0.4), 0 5px 16px oklch(60% 0.16 150 / 0.5); }
+}
 
 .btn-no {
   background: oklch(56% 0.200 25);
@@ -1234,7 +1241,9 @@ body {
   box-shadow: inset 0 0 0 1px oklch(80% 0.15 25 / 0.4), 0 1px 2px oklch(10% 0.05 264 / 0.35);
   text-shadow: 0 1px 1px oklch(20% 0.1 264 / 0.32);
 }
+@media (hover: hover) {
 .btn-no:hover:not(:disabled) { filter: brightness(var(--btn-hover-gain)); box-shadow: inset 0 0 0 1px oklch(80% 0.15 25 / 0.4), 0 5px 16px oklch(57% 0.20 25 / 0.5); }
+}
 
 .btn-ghost {
   background: transparent;
@@ -1252,9 +1261,11 @@ body {
   border-color: transparent;
   box-shadow: inset 0 0 0 1px oklch(80% 0.15 25 / 0.3), 0 1px 2px oklch(10% 0.05 264 / 0.35);
 }
+@media (hover: hover) {
 .btn-danger:hover:not(:disabled) {
   filter: brightness(var(--btn-hover-gain));
   box-shadow: inset 0 0 0 1px oklch(80% 0.15 25 / 0.3), 0 5px 16px oklch(60% 0.22 25 / 0.4);
+}
 }
 
 .btn-gold {
@@ -1265,7 +1276,9 @@ body {
   box-shadow: inset 0 0 0 1px oklch(95% 0.054 84 / 0.55), 0 1px 2px oklch(10% 0.05 262 / 0.35);
   letter-spacing: 0.02em;
 }
+@media (hover: hover) {
 .btn-gold:hover:not(:disabled) { filter: brightness(var(--btn-hover-gain)); box-shadow: inset 0 0 0 1px oklch(95% 0.054 84 / 0.55), 0 5px 16px oklch(80% 0.114 84 / 0.5); }
+}
 
 .btn-claret {
   background: linear-gradient(180deg, var(--claret-500) 0%, var(--claret-700) 100%);
@@ -5404,69 +5417,237 @@ textarea::-webkit-resizer {
 .kp-topic__pool { white-space: nowrap; }
 .kp-topic__live { color: var(--text-muted); }
 
-/* ── §1e UP AND DOWN — a live round, full width (landing v3, WP12) ────────────────────────────
-   It was a 920px link-card with a count and a button, centred to close a hole at 1440 that a
-   two-item flex row left. v3 has content on both sides — the copy and its actions, then the round:
-   its price line, its ring — so it takes the board column (Ali, R4(6)), and it is a CONTAINER, not
-   a link, because it now holds links of its own (WP17). Two columns once each can hold 360px,
-   stacked below that. Same raised material as the market cards (`--wash-raised`), not a poster wash. */
+/* ── §1e UP AND DOWN — the match (landing v3, WP12 · R5, 2026-09-27) ─────────────────────────────
+   A scoreboard and a match timeline for one live round (spec updown-band-v2 §6). The round's state
+   (aged, closed) is a data attribute on the band's client wrapper (UpdownMatchState), so nothing here
+   needs :has() — a browser without it would otherwise keep a present-tense verdict for ever.
+   Same raised material as the market cards (`--wash-raised`); full width of the board column (R4(6)).
+   Four type roles in the round panel: display (the verdict only), title (the asset name only), body
+   (13px Inter) and figures (mono). Nothing new in the panel is tracked or uppercase. */
 .kp-updown {
-  position: relative;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr));
-  align-items: center;
-  gap: var(--sp-6);
-  padding: var(--sp-5);
-  border: 1px solid var(--border);
-  border-radius: var(--r-xl);
-  background: var(--wash-raised);
-  box-shadow: var(--elev-raised);
+  position: relative; display: grid; grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: "copy" "round" "acts"; align-items: start; row-gap: var(--sp-4);
+  /* Below 768 the card's inset is the market cards' (--sp-4), not --sp-5: the 8px it returns is what keeps
+     the plate's dated detail on ONE line at 360 ("saa 18:38 · Chini ya ufunguzi kwa $12.40", measured
+     2026-09-27 — it wrapped at --sp-5). */
+  padding: var(--sp-4); border: 1px solid var(--border); border-radius: var(--r-xl);
+  background: var(--wash-raised); box-shadow: var(--elev-raised);
 }
-@media (min-width: 768px) { .kp-updown { padding: var(--sp-6); } }
-.kp-updown__copy { min-width: 0; display: flex; flex-direction: column; gap: var(--sp-2); }
-.kp-updown__acts { display: flex; flex-wrap: wrap; gap: var(--sp-3); margin-top: var(--sp-3); }
-/* UP and DOWN share a phone's width equally; from 640 they keep their own. */
-@media (max-width: 639.98px) {
-  /* density: general — the home Up & Down band, not the board; both card-spacing settings. */
-  .kp-updown__bet { flex: 1 1 0; justify-content: center; }
+.kp-updown--solo { grid-template-areas: "copy" "acts"; }
+@media (min-width: 768px) { .kp-updown { padding: var(--sp-6); row-gap: var(--sp-5); } }
+@media (min-width: 1024px) {
+  .kp-updown:not(.kp-updown--solo) { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+    grid-template-areas: "copy round" "acts round"; column-gap: var(--sp-8); }
+  .kp-updown:not(.kp-updown--solo) > .kp-updown__copy { align-self: end; }
+  .kp-updown:not(.kp-updown--solo) > .kp-updown__acts { align-self: start; }
+  .kp-updown:not(.kp-updown--solo) > .kp-udmatch { align-self: center; padding-top: 0; border-top: 0;
+    padding-left: var(--sp-6); border-left: 1px solid var(--border); }
 }
-/* When betting on the round has closed the ring says so, and UP/DOWN leave with it: a button into
-   a round that takes no bets is an invitation the page cannot honour. Where `:has()` is unsupported
-   they stay, and the round page states the closed round itself. */
-.kp-updown:has(.kp-udring[data-closed]) .kp-updown__bet { display: none; }
-.kp-updown__round { min-width: 0; display: flex; flex-direction: column; gap: var(--sp-3); }
-.kp-updown__head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-3); flex-wrap: wrap; }
-.kp-updown__open { font-family: var(--font-mono); font-weight: 700; font-size: var(--type-small); font-variant-numeric: tabular-nums; color: var(--text); }
-/* The round's rule, as the round page states it: UP at or above one price, DOWN at or below the other. */
-.kp-updown__rules { margin: 0; display: flex; flex-wrap: wrap; gap: var(--sp-1) var(--sp-4); font-family: var(--font-mono); font-weight: 700; font-size: var(--type-small); font-variant-numeric: tabular-nums; }
-.kp-updown__rule--up { color: var(--yes-300); }
-.kp-updown__rule--down { color: var(--no-300); }
-.kp-updown__viz { display: flex; align-items: center; gap: var(--sp-4); }
-.kp-updown__note { margin: 0; font-size: var(--type-small); color: var(--text-subtle); }
+.kp-updown__copy { grid-area: copy; min-width: 0; display: flex; flex-direction: column; gap: var(--sp-2); }
+.kp-updown__copy > p { text-wrap: balance; }
+/* The S8 line ("raundi 2 hai sasa | Raundi mpya …") is a sentence: the 13px floor, not the topic tiles' micro. */
+.kp-updown .kp-topic__m { font-size: var(--type-small); }
+.kp-updown__acts { grid-area: acts; display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-3); }
+/* (0,2,0) and (0,3,0): they beat the unlayered .btn and .kp-shead__link display rules. At close the
+   quiet "all rounds" link gives way to the primary "play the next round" — the path forward. */
+.kp-updown .kp-updown__next { display: none; }
+.kp-updown[data-closed] .kp-updown__all { display: none; }
+.kp-updown[data-closed] .kp-updown__next { display: inline-flex; }
 
-/* The price line: the round's real reads since it opened, the opening price dashed across. Strokes
-   keep their width however the box stretches (`vector-effect` on the elements). */
-.kp-udchart { flex: 1 1 auto; min-width: 0; height: 112px; display: block; overflow: visible; }
-.kp-udchart__open { stroke: var(--text-subtle); stroke-width: 1; stroke-dasharray: 6 4; }
-/* The line is NEUTRAL: the round is not decided by "above or below the open" but by the two targets,
-   which carry the outcome inks. */
-.kp-udchart__line { fill: none; stroke: var(--text); stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; }
-/* DOTTED, so the caption can name them apart from the dashed opening line by pattern, not by colour
-   alone (WCAG 1.4.1). */
-.kp-udchart__target { stroke-width: 1.5; stroke-dasharray: 0.5 4; stroke-linecap: round; opacity: 0.9; }
-.kp-udchart__target--up { stroke: var(--yes-300); }
-.kp-udchart__target--down { stroke: var(--no-300); }
+.kp-udmatch { grid-area: round; min-width: 0; display: flex; flex-direction: column; gap: var(--sp-4);
+  padding-top: var(--sp-4); border-top: 1px solid var(--border); }
+@media (min-width: 768px) { .kp-udmatch { gap: var(--sp-5); padding-top: var(--sp-5); } }
 
-/* The ring: time left to bet as an arc with the digits inside (96px, the delivery's size), and its
-   caption under it on the eyebrow rung, free to wrap. The digits are the only thing on the page
-   that change every second. */
-.kp-udring { flex: none; width: 128px; display: flex; flex-direction: column; align-items: center; gap: var(--sp-2); text-align: center; }
-.kp-udring__dial { position: relative; width: 96px; height: 96px; display: flex; align-items: center; justify-content: center; }
-.kp-udring__svg { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); }
-.kp-udring__track { fill: none; stroke: var(--border); stroke-width: 3; }
-.kp-udring__arc { fill: none; stroke: var(--brand-400); stroke-width: 3; stroke-linecap: round; }
-.kp-udring__digits { position: relative; font-family: var(--font-mono); font-weight: 700; font-size: var(--type-h3); font-variant-numeric: tabular-nums; line-height: 1; color: var(--text); }
-.kp-udring__cap { font-family: var(--font-mono); font-weight: 700; font-size: var(--type-micro); text-transform: uppercase; letter-spacing: 0.08em; line-height: 1.3; color: var(--text-subtle); overflow-wrap: anywhere; text-wrap: balance; }
+/* G1 — identity and clock. Below 768 two rows; from 768 one row, clock on the right. */
+.kp-udmatch__head { display: flex; flex-direction: column; gap: var(--sp-2); }
+@media (min-width: 768px) { .kp-udmatch__head { flex-direction: row; align-items: center; justify-content: space-between; gap: var(--sp-4); } }
+.kp-udmatch__fixture { margin: 0; display: flex; align-items: center; gap: var(--sp-2); min-width: 0; }
+.kp-udmatch__mark { --mark: var(--sp-8); }
+@media (min-width: 768px) { .kp-udmatch__mark { --mark: var(--sp-10); } }
+.kp-udmatch__name { font-family: var(--font-display); font-weight: 600; font-size: var(--type-body); line-height: 1.25; color: var(--text); }
+
+/* Baseline, not centre: the 13px caption and the mono digits read as one sentence ("Betting closes in 08:25"), and
+   centring stepped the caption's baseline 3–4px above the digits' (frame panel round 2). */
+.kp-udclock__row { margin: 0; display: flex; align-items: baseline; gap: var(--sp-2); height: var(--sp-5); }
+.kp-udclock__row--closed { display: none; }
+.kp-updown[data-closed] .kp-udclock__row--open { display: none; }
+.kp-updown[data-closed] .kp-udclock__row--closed { display: flex; }
+.kp-udclock__glyph { flex: none; align-self: center; color: var(--text-faint); }
+@media (max-width: 359px) {
+  /* density: general — the band's closed clock row fitting 320, not card spacing; both card-spacing settings. */
+  /* "Dau limefungwa" + "Tazama raundi hii ›" is 256px and the row has 254 at 320: the link's chevron gives way (the
+     link keeps its ink and weight), so the lock and the text column stay put and the row keeps one line. */
+  .kp-udclock__watch svg { display: none; }
+  /* One plate height for every state below 360, sized for the tallest (kick-off: two verdict lines + two lines),
+     so no refresh, aging or first read moves the picks (frame panel round 3). */
+  /* (0,2,0) on purpose: the <640 rule below is (0,1,0) and later in the file, and it won at 320 (drive 6). */
+  .kp-udbug .kp-udbug__mid { min-height: calc(var(--sp-1) * 3 + var(--vd) * 1.15 * 2 + var(--type-small) * 2.9); }
+  /* The clauses stack instead of breaking after a dangling "·": the time on one line, the move on the next. */
+  .kp-udbug__detail .kp-udbug__sep, .kp-udbug__verdict .kp-udbug__sep { display: none; }
+  .kp-udbug__detail .kp-udbug__chunk, .kp-udbug__kick, .kp-udbug__pick-side { display: block; }
+}
+.kp-udclock__cap { font-size: var(--type-small); line-height: 1.35; color: var(--text-subtle); white-space: nowrap; }
+/* line-height 1: the digits' line box never outgrows the row's --sp-5, so the row is the same height open and
+   closed (measured 2026-09-27: 23px open vs 20px closed at 768+, the band jumped at close). */
+.kp-udclock__digits { margin-left: auto; font-family: var(--font-mono); font-weight: 700; font-size: var(--type-h4);
+  font-variant-numeric: tabular-nums; line-height: 1; color: var(--text); }
+/* The Watch link: a 44px tap box inside a 20px row — the negative margin spends the box in the gaps around
+   the row, so the row does not grow at close (44 = --h-control-md). Sentence case in the body face, like the
+   caption beside it (I-17: C8 keeps only the Chip and the section link tracked); it never wraps — in tracked
+   caps "TAZAMA RAUNDI HII" broke onto two lines at 360 (measured 2026-09-27). */
+.kp-udclock__watch { display: inline-flex; align-items: center; gap: var(--sp-1); min-height: var(--h-control-md);
+  margin-left: auto; margin-block: calc((var(--sp-5) - var(--h-control-md)) / 2); white-space: nowrap;
+  font-size: var(--type-small); font-weight: 600; color: var(--brand-300); transition: color var(--t-quick) ease-out; }
+.kp-udclock__watch:hover { color: var(--brand-200); }
+/* The ring hugs the LABEL: around the 44px tap box (spent in the gaps above and below the 20px row) the kit's ring
+   ran over the fixture Chip and onto the plate (frame panel round 4). */
+.kp-udclock__watch:focus-visible { outline: none; }
+.kp-udclock__watch-label { display: inline-flex; align-items: center; gap: var(--sp-1); }
+.kp-udclock__watch:focus-visible .kp-udclock__watch-label { outline: 2px solid var(--brand-500); outline-offset: 2px; border-radius: var(--r-sm); }
+@media (min-width: 768px) {
+  .kp-udclock__digits { margin-left: 0; font-size: var(--type-h3); }
+  .kp-udclock__watch { margin-left: var(--sp-2); }
+}
+
+/* G2 — the score: one plate holding the verdict and the two sides. The sides ARE the Up/Down links,
+   always solid and equal — the leader is never lit (L17); it is told by the verdict's words, arrow and ink.
+   Concentric radii: plate --r-lg (16) − 4px inset = the buttons' --r-md (12). */
+.kp-udbug { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-areas: "mid mid" "up down";
+  gap: var(--sp-1); padding: var(--sp-1); background: var(--bg-inset); border: 1px solid var(--border); border-radius: var(--r-lg); }
+@media (min-width: 640px) {
+  .kp-udbug { grid-template-columns: minmax(112px, 1fr) minmax(0, 2fr) minmax(112px, 1fr);
+    grid-template-areas: "up mid down"; align-items: center; }
+}
+/* The words block has ONE height in every state — the verdict line plus two lines of detail/note — and its words
+   centre in it: the picks never move when the 60-second refresh changes the state (a one-row plate from 640 moved
+   ~10px between S1 and S3/S5), and a one-line detail leaves no empty strip under it (frame panel round 2). */
+.kp-udbug { --vd: var(--type-h3); }
+@media (min-width: 768px) { .kp-udbug { --vd: var(--type-h2); } }
+.kp-udbug__mid { grid-area: mid; min-width: 0; display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: var(--sp-1); padding: var(--sp-2); text-align: center;
+  min-height: calc(var(--sp-2) * 2 + var(--vd) * 1.15 + var(--sp-1) + var(--type-small) * 2.9); }
+.kp-udbug__verdict { margin: 0; font-family: var(--font-display); font-weight: 700; font-size: var(--vd);
+  line-height: 1.15; letter-spacing: -0.01em; color: var(--text); text-wrap: balance; word-break: keep-all;
+  transition: color var(--t-base) var(--m-glide); }
+/* inline-block: Tailwind's preflight makes every svg display:block, which put the arrow on a line of its own
+   above the words (measured 2026-09-27 — the verdict ran to two lines at every width). */
+.kp-udbug__arrow { display: inline-block; width: 0.8em; height: 0.8em; margin-inline-end: var(--sp-1); vertical-align: -0.05em; }
+/* The verdict's words never split; the kick-off line may break only after its dot, keeping "pick a side" whole.
+   (Scoped to the verdict: the kick-off DETAIL reuses the tense spans and must wrap at 360.) */
+.kp-udbug__verdict :is(.kp-udbug__now, .kp-udbug__was, .kp-udbug__kick), .kp-udbug__cta > span { white-space: nowrap; }
+.kp-udbug__was { display: none; }
+.kp-udbug[data-lead="up"] .kp-udbug__verdict { color: var(--yes-300); }
+.kp-udbug[data-lead="down"] .kp-udbug__verdict { color: var(--no-300); }
+.kp-udbug[data-lead="awaiting"] .kp-udbug__verdict { color: var(--text-subtle); }
+/* AGED — after the lead rules on purpose: equal specificity, so source order decides. */
+.kp-updown[data-aged] .kp-udbug__verdict { color: var(--text-muted); }
+.kp-updown[data-aged] .kp-udbug__now { display: none; }
+.kp-updown[data-aged] .kp-udbug__was { display: inline; }
+.kp-updown[data-closed] .kp-udbug__cta { display: none; }
+/* DECIDED — past the deciding instant the headline is "Inasubiri tokeo" in neutral ink, never the last lead. */
+.kp-udbug__decided { display: none; }
+.kp-updown[data-decided] .kp-udbug__verdict { color: var(--text); }
+.kp-updown[data-decided] .kp-udbug__verdict > :not(.kp-udbug__decided) { display: none; }
+.kp-updown[data-decided] .kp-udbug__decided { display: inline; }
+.kp-udbug__sub { display: flex; flex-direction: column; align-items: center; font-size: var(--type-small); }
+@media (max-width: 639px) {
+  /* density: general — the plate's two-tier layout below its one-row width, not card spacing; both settings. */
+  /* The words' insets step down to --sp-1 (8px with the plate's own, above and below alike), so the clock, the
+     answer and both picks sit within the spec's 170px at 360 (§15.4). */
+  .kp-udbug__mid { padding-block: var(--sp-1);
+    min-height: calc(var(--sp-1) * 3 + var(--vd) * 1.15 + var(--type-small) * 2.9); }
+  /* Below 640 the words keep a --sp-1 inline inset too: the dated detail then has room for its longest spec'd
+     one-line form, "saa 20:16 · Chini ya ufunguzi kwa $999.99", at 360 (§15.4). */
+  .kp-udbug__mid { padding-inline: var(--sp-1); }
+}
+/* The level line's tail ("— haitoshi kuamua" / "— not enough to decide") restates the verdict "Hakuna anayeongoza",
+   so the band shows the line without it at every width (the round page keeps the full sentence). Selected through the
+   detail so no stacking rule can re-show it (frame panel round 3: it leaked back at 320). */
+.kp-udbug__detail .kp-udbug__sep--tail, .kp-udbug__detail .kp-udbug__chunk--tail { display: none; }
+.kp-udbug__detail, .kp-udbug__note, .kp-udbug__agednote { margin: 0; font-size: var(--type-small); line-height: 1.45; text-wrap: balance; }
+.kp-udbug__chunk { white-space: nowrap; }
+.kp-udbug__agednote { display: none; color: var(--text-subtle); }
+.kp-updown[data-aged]:not([data-closed]) .kp-udbug__agednote { display: block; }
+.kp-udbug__detail { color: var(--text-muted); }
+.kp-udbug__detail .amount { font-weight: 700; color: var(--text); }
+.kp-udbug__note { color: var(--text-subtle); }
+.kp-udnum { white-space: nowrap; }
+.kp-udbug__pick--up, .kp-udbug__side--up { grid-area: up; }
+.kp-udbug__pick--down, .kp-udbug__side--down { grid-area: down; }
+/* CLOSED — the picks leave; inert, neutral sides with the suspended-selection padlock take their exact box. */
+.kp-udbug__side { display: none; align-items: center; justify-content: center; gap: var(--sp-2);
+  height: var(--h-control-lg); border: 1px solid var(--border); border-radius: var(--r-md);
+  font-weight: 600; font-size: var(--type-body); color: var(--text-subtle); }
+.kp-udbug__side > svg { color: var(--text-faint); }
+.kp-updown[data-closed] .kp-udbug__pick { display: none; }
+.kp-updown[data-closed] .kp-udbug__side { display: flex; }
+
+/* G3 — the match timeline (components/charts/updown-match-track.tsx). Plot 56 · 64 from 768 · 72 from 1024.
+   Neutral time: the rail, posts, played stretch and playhead never take a side's ink (§B2a) or gilt (L8). */
+.kp-udtrack { --trk-h: calc(var(--sp-12) + var(--sp-2)); display: grid; grid-template-columns: var(--sp-3) minmax(0, 1fr);
+  grid-template-rows: var(--sp-5) var(--trk-h); column-gap: var(--sp-2); padding-inline-end: var(--sp-2); }
+@media (min-width: 768px) { .kp-udtrack { --trk-h: var(--sp-16); } }
+@media (min-width: 1024px) { .kp-udtrack { --trk-h: calc(var(--sp-16) + var(--sp-2)); } }
+.kp-udtrack__gutter { grid-area: 2 / 1; display: flex; flex-direction: column; justify-content: space-around;
+  align-items: center; color: var(--text-faint); }
+.kp-udtrack__lane { grid-area: 1 / 2; position: relative; }
+.kp-udtrack__open { position: absolute; left: 0; bottom: var(--sp-1); font-size: var(--type-small); line-height: 1;
+  white-space: nowrap; color: var(--text-subtle); }
+.kp-udtrack__mark { position: absolute; left: var(--x); bottom: var(--sp-1); transform: translateX(-50%); line-height: 0; color: var(--text-subtle); }
+.kp-udtrack__mark--end { transform: translateX(-23%); }          /* the flag's pole sits on the finish post */
+.kp-udtrack__plot { grid-area: 2 / 2; position: relative; }
+.kp-udtrack__svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.kp-udtrack__rail { stroke: var(--text-faint); stroke-width: 2; stroke-linecap: round; }
+.kp-udtrack__locked { stroke: var(--text-subtle); stroke-width: 1; stroke-dasharray: 2 5; opacity: 0.55; }
+.kp-udtrack__post { stroke: var(--text-faint); stroke-width: 1; }
+.kp-udtrack__void { fill: color-mix(in oklab, var(--text-subtle) 22%, transparent); }
+.kp-udtrack__kick { fill: var(--text-subtle); }
+.kp-udtrack__tie { stroke: var(--text-subtle); stroke-width: 2; stroke-linecap: round; }
+.kp-udtrack__stem { stroke-width: 2; stroke-linecap: round; }
+.kp-udtrack__stem--up { stroke: color-mix(in oklab, var(--yes-400) 70%, transparent); }
+.kp-udtrack__stem--down { stroke: color-mix(in oklab, var(--no-400) 70%, transparent); }
+.kp-udtrack__stem--latest { stroke-width: 3; }
+.kp-udtrack__stem--latest.kp-udtrack__stem--up { stroke: var(--yes-400); }
+.kp-udtrack__stem--latest.kp-udtrack__stem--down { stroke: var(--no-400); }
+.kp-udtrack__bead--up { fill: var(--yes-300); transform: translateY(-4px); }
+.kp-udtrack__bead--down { fill: var(--no-300); transform: translateY(4px); }
+/* Emphasis follows the tense: a stale or closed verdict is muted, so its read no longer shouts either. The hue
+   still names the side; only the full-strength emphasis leaves (frame panel, 2026-09-27). */
+.kp-updown:is([data-aged], [data-closed]) .kp-udtrack__stem--latest.kp-udtrack__stem--up { stroke: color-mix(in oklab, var(--yes-400) 70%, transparent); }
+.kp-updown:is([data-aged], [data-closed]) .kp-udtrack__stem--latest.kp-udtrack__stem--down { stroke: color-mix(in oklab, var(--no-400) 70%, transparent); }
+.kp-updown:is([data-aged], [data-closed]) .kp-udtrack__bead--up { fill: color-mix(in oklab, var(--yes-300) 70%, transparent); }
+.kp-updown:is([data-aged], [data-closed]) .kp-udtrack__bead--down { fill: color-mix(in oklab, var(--no-300) 70%, transparent); }
+/* --text-muted (was --text-subtle): the played stretch carries "now" by itself beside a fresh read (round 4). */
+.kp-udtrack__elapsed { position: absolute; left: 0; top: calc(50% - 1px); height: 2px; width: var(--x);
+  background: var(--text-muted); border-radius: var(--r-pill); pointer-events: none; }
+.kp-udtrack__now { position: absolute; top: 20%; bottom: 20%; left: var(--x); width: 2px; margin-left: -1px;
+  background: var(--text-muted); border-radius: var(--r-pill); pointer-events: none; }
+/* Within 2.5% of the newest read (UpdownMatchNow's NOW_NEAR_PCT) the playhead draws only on the half away from it:
+   below the rail beside an Up stem, above it beside a Down stem, clear of a tie tick's 10.7% half-height —
+   so "now" and "the last read" never fuse into one two-tone line (frame panel round 2). */
+/* Round 4: any part of the line beside a fresh read still read as a data mark (a white stem on the other side), so
+   inside the window the line is not drawn at all — "now" is the bright END of the played stretch on the rail, which
+   ends at the same x. The line returns once "now" is clear of the read. */
+.kp-udtrack__now[data-near] { display: none; }
+
+/* G4 — the terms: one glyph column, hanging indent, two sentences in two inks. */
+.kp-udrule { margin: 0; display: grid; grid-template-columns: var(--sp-3) minmax(0, 1fr); column-gap: var(--sp-2);
+  font-size: var(--type-small); line-height: 1.45; text-wrap: balance; }
+.kp-udrule__glyph { display: flex; align-items: center; height: 1.45em; color: var(--text-subtle); }
+.kp-udrule__decides { color: var(--text-muted); }
+.kp-udrule__was { display: none; }
+.kp-updown[data-decided] .kp-udrule__now { display: none; }
+.kp-updown[data-decided] .kp-udrule__was { display: inline; }
+.kp-udrule__refund { color: var(--text-subtle); }
+/* From 640 the second sentence moves as one unit: it stays on one line wherever the rule fits and otherwise breaks
+   at the full stop — at 1024 it split "from / the open" (round 4). Below 640 the two-line budget rules. */
+@media (min-width: 640px) { .kp-udrule__refund { display: inline-block; } }
+/* keep-all everywhere EXCEPT zh — the trust band's measured rule (trust-band.tsx): in Chinese it forbids
+   a break between characters and leaves a paragraph ending after seven glyphs. */
+html:not([lang="zh"]) :is(.kp-udbug__detail, .kp-udbug__note, .kp-udbug__agednote, .kp-udrule) { word-break: keep-all; overflow-wrap: break-word; }
+/* The rule's two short Chinese sentences are the exception: keep-all there breaks only at 。，and spaces, so no word
+   (相差) is split at a line end — the long trust-band paragraphs keep the general rule. */
+html[lang="zh"] .kp-udrule { word-break: keep-all; }
 
 /* ── WP14 THE WALLET (landing v3 · Ali's ruling R1, 2026-09-26) ─────────────────────────────────
    The balance chip opens it: a bottom sheet below 1024, a panel under the chip from 1024 (`<Modal
@@ -6116,6 +6297,29 @@ textarea::-webkit-resizer {
 .ud-prices { margin-top: var(--ud-gap-sm); }
 .ud-act { margin-top: auto; padding-top: var(--ud-act-pt); }
 .ud-foot { margin-top: var(--ud-gap-lg); padding-top: var(--ud-gap-sm); }
+/* The round page's open + targets: beside the confirmed price where there is room; below 400 they wrap under it
+   and read as a left-aligned list, not a column floating at the right (frame panel, 2026-09-27). */
+.ud-hero-chunk { white-space: nowrap; }
+@media (max-width: 399px) {
+  /* density: general — the round page's figures wrapping under the price, not card spacing; both settings. */
+  .ud-hero-stats { flex-basis: 100%; text-align: left; }
+  /* The move and its quote stamp stack, the "·" between them hidden — the band's own rule (round 3). */
+  .ud-hero-sep { display: none; }
+  .ud-hero-chunk { display: block; }
+}
+
+/* ── THE ASSET MARK (`asset-mark.tsx`, hoisted from the card 2026-09-27 · landing v3, R5) ─────────
+   One round glyph chip on the board card, the round page and the landing band. Its size is `--mark`:
+   from the caller's class, or set inline when a size is passed; the card's 40px otherwise. A precious
+   metal takes a brighter NEUTRAL chip — lightness and rim weight, never hue: gold is money, and nothing
+   else (Q5, 2026-08-10). `[data-lg]` keeps the card's 14px figure at 44px and up. */
+.ud-mark { display: inline-flex; flex: none; align-items: center; justify-content: center;
+  width: var(--mark, var(--sp-10)); height: var(--mark, var(--sp-10)); border-radius: 50%;
+  font-family: var(--font-mono); font-weight: 700; font-size: var(--type-small);
+  background: var(--bg-inset); border: 1px solid var(--border); color: var(--text-subtle); }
+.ud-mark--metal { background: color-mix(in oklab, var(--text-subtle) 12%, var(--bg-inset));
+  border-color: color-mix(in oklab, var(--text-muted) 42%, transparent); color: var(--text-secondary); }
+.ud-mark[data-lg] { font-size: 14px; }
 
 /* ─────────────────────────────────────────────────────────────────────────────
    [COMPACT] THE MARKET CARD ON A PHONE — U3, docs/MOBILE-VISUAL-PLAN.md.

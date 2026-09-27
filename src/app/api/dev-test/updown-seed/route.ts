@@ -63,7 +63,23 @@ export async function POST(req: Request) {
     { key: "XAG", symbol: "XAG/USD", nameEn: "Silver", nameSw: "Fedha", nameZh: "白银", iconKey: "silver", url: "https://www.kitco.com/price/precious-metals/silver", category: "macro" as const },
   ];
 
+  // Optional `assets: ["BTC"]` — seed only these keys, so a drive that must know which round a surface
+  // shows (the landing band's picker, landing v3 WP12) runs exactly one chain. Default: all three.
+  const only: string[] | null = Array.isArray(body?.assets) ? body.assets.filter((k: unknown) => typeof k === "string") : null;
+  // Optional `pause: ["BTC"]` — pause those assets' running chains first (their open round plays out; no new
+  // one opens), so the next `updown-advance` moves only the chains this call starts.
+  if (Array.isArray(body?.pause)) {
+    for (const a of await listAssets()) {
+      if (!body.pause.includes(a.key)) continue;
+      for (const c of await listChains({ assetId: a.id })) {
+        if (c.state !== "RUNNING") continue;
+        const p = await setChainState(c.id, "PAUSED", ACTOR);
+        if (!p.ok) notes.push(`${a.key}/${c.durationMinutes}m pause: ${p.error}`);
+      }
+    }
+  }
   for (const w of want) {
+    if (only && !only.includes(w.key)) continue;
     const assets = await listAssets();
     let asset = assets.find((a) => a.key === w.key);
     if (!asset) {
@@ -71,7 +87,10 @@ export async function POST(req: Request) {
         key: w.key, symbol: w.symbol, nameEn: w.nameEn, nameSw: w.nameSw, nameZh: w.nameZh,
         // ⚠️ minMoveTicks 2, not 1 — the config refuses a band the same size as the rounding
         // error (MIN_MOVE_TICKS_FLOOR). This seed shipped `1` and silently created NOTHING.
-        iconKey: w.iconKey, priceSourceUrl: w.url, category: w.category, decimals: 2, minMoveTicks: 2,
+        // Optional `minMoveTicks` (default 2) — a wider band for an asset CREATED by this call, so a drive can
+        // show a round whose void band is visible (landing v3 WP12: production's gold runs at ±$0.40).
+        iconKey: w.iconKey, priceSourceUrl: w.url, category: w.category, decimals: 2,
+        minMoveTicks: Number.isInteger(body?.minMoveTicks) && body.minMoveTicks >= 2 ? body.minMoveTicks : 2,
       }, ACTOR);
       if (!r.ok) { notes.push(`${w.key}: ${r.error}`); continue; }
       asset = r.data;
