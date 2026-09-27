@@ -188,4 +188,12 @@ export const MUTATIONS = [
     to: `empty emptyLabel={t.market.noBetsYet}`,
     expect: "10.4",
   },
+  // ── landing v3 C1 · commit D — chart history ─────────────────────────────────────────────────────
+  {
+    name: "C1-D · the chart plots every snapshot again (a one-sided 100 and an empty 50 on the line)",
+    file: "src/lib/server/market-history.ts",
+    from: `return p.kind === "priced" ? [{ s, pct: p.yesPct }] : [];`,
+    to: `return [{ s, pct: Math.round((s as { yes?: number }).yes! * 100) }];`,
+    expect: "11.1",
+  },
 ];

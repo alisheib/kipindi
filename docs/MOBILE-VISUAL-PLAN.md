@@ -1449,7 +1449,10 @@ own words beneath it.**
   (R6(2), `isTipping` in `price-state.ts`). `test:one-sided` §9. ✅ **C1 commit C**: `/results`' notable
   spotlight is crowned only for a verdict over a TWO-sided pool (`isNotableResult` — a one-sided refund and a
   void earned nothing), draws a price only where both pools hold money (the final split reads "Final pool"),
-  names its empty rail by the verdict first, and translates its topic chip. `test:one-sided` §10. ⭐ S07-results-01 and the nested half of
+  names its empty rail by the verdict first, and translates its topic chip. `test:one-sided` §10. ✅ **C1
+  commit D**: the detail chart, the card sparkline and the 24h move (and so `/markets`' "Biggest move") plot
+  priced snapshots only — no one-sided 100 or empty 50 on a line, 99 not 100 on a lopsided pool, no move from a
+  baseline that had no price. `test:history` §5 (proven red on the pre-C1 module), `test:one-sided` §11. ⭐ S07-results-01 and the nested half of
   S07-results-26 (share on a settled card navigating away) are delivered by landing v3 WP14b.
 
 **14. Item 7 — the leaderboard ranks raw ROI. RULED: rank by the law its own tiers already state.**
