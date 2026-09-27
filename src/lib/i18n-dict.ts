@@ -3363,7 +3363,7 @@ export const dict = {
       udMatchTimerAriaSec: "Dau linafungwa baada ya sekunde {s}",
       udMatchAriaNone: "bado hakuna",
       udMatchAriaRead: "saa {time}: {move}",
-      updownStartsSoon: "Raundi mpya kila\u00A0baada\u00A0ya dakika chache",
+      updownStartsSoon: "Raundi mpya kila\u00A0baada\u00A0ya\u00A0dakika\u00A0chache",
       pickASideNow: "Chagua upande sasa",
       pickASideStake: "Chagua upande, weka dau kwa TZS",
       priceCompetitionPool: "Mashindano ya bei. Sogeza sindano ya imani kwenye soko lolote.",

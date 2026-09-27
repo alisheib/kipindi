@@ -5477,7 +5477,7 @@ textarea::-webkit-resizer {
   /* density: general — the band's closed clock row fitting 320, not card spacing; both card-spacing settings. */
   /* "Dau limefungwa" + "Tazama raundi hii ›" is 256px and the row has 254 at 320: the link's chevron gives way (the
      link keeps its ink and weight), so the lock and the text column stay put and the row keeps one line. */
-  .kp-udclock__watch > svg { display: none; }
+  .kp-udclock__watch svg { display: none; }
   /* One plate height for every state below 360, sized for the tallest (kick-off: two verdict lines + two lines),
      so no refresh, aging or first read moves the picks (frame panel round 3). */
   /* (0,2,0) on purpose: the <640 rule below is (0,1,0) and later in the file, and it won at 320 (drive 6). */
@@ -5502,6 +5502,7 @@ textarea::-webkit-resizer {
 /* The ring hugs the LABEL: around the 44px tap box (spent in the gaps above and below the 20px row) the kit's ring
    ran over the fixture Chip and onto the plate (frame panel round 4). */
 .kp-udclock__watch:focus-visible { outline: none; }
+.kp-udclock__watch-label { display: inline-flex; align-items: center; gap: var(--sp-1); }
 .kp-udclock__watch:focus-visible .kp-udclock__watch-label { outline: 2px solid var(--brand-500); outline-offset: 2px; border-radius: var(--r-sm); }
 @media (min-width: 768px) {
   .kp-udclock__digits { margin-left: 0; font-size: var(--type-h3); }

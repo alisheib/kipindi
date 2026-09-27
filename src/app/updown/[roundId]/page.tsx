@@ -524,61 +524,6 @@ export default async function UpDownRoundPage({
           />
 
           <div className="flex min-w-0 flex-col gap-4">
-            {/* Pool */}
-            <section aria-label={t.market.udPool} style={{ ...card, padding: "14px 16px 16px" }}>
-              <p className={eyebrow}>{t.market.udPool}</p>
-              <div className="mt-2.5 flex items-baseline justify-between gap-3">
-                <div>
-                  {/* ⭐ DG-A-12 · §M4 + §T1 — THE POOL FIGURE AND THE COUNT BESIDE IT MOVE TOGETHER.
-                      `volumeTzs` is an amount, so §M4 gives it `.amount` (mono + tabular-nums +
-                      letter-spacing 0) in place of `font-mono … tabular-nums`. 17px is on
-                      neither ladder (§T1); `text-title-sm` (18) is the nearest rung, +1px.
-                      ⛔ The predictor count at L465 is the SAME 17px and sits in the same
-                      `items-baseline justify-between` row — it moves in this edit too, or the
-                      pool's two headline figures end up a pixel apart on one baseline. It is a
-                      COUNT, not an amount, so it keeps `font-mono tabular-nums` and does NOT
-                      take `.amount` (§M4 governs amounts only). `leading-[1.1]` stays on both:
-                      the rung would otherwise impose 24px and open the pair up. */}
-                  <p className="m-0 amount text-title-sm font-bold leading-[1.1] text-text">{formatTzs(round.volumeTzs)}</p>
-                  <p className="mt-1 font-mono text-micro uppercase eyebrow text-text-faint">{t.market.udVolume}</p>
-                </div>
-                <div className="text-right">
-                  <p className="m-0 flex items-center justify-end gap-1.5 font-mono text-title-sm font-bold leading-[1.1] tabular-nums text-text">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3.4" /><path d="M5.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6" /></svg>
-                    {round.players.toLocaleString()}
-                  </p>
-                  <p className="mt-1 font-mono text-micro uppercase eyebrow text-text-faint">{t.market.udPlayers}</p>
-                </div>
-              </div>
-              {/* 🔴 PV-06 · THE THIRD HAND-ROLLED SPLIT BAR, and the third different drawing of
-                  one idea. `market-card.tsx` used the kit's `TippingBar`; this page and
-                  `updown-card.tsx` each drew their own two-span strip — 6px with a 0.5 gap
-                  here, 5px with a 2px gap there — and neither could inherit the cold-start
-                  rail the primitive already owns (§B9: "A STATE OF THIS BAR, not a second
-                  component"). So an empty round advertised "Up 50% · 50% Down" on both.
-                  One bar now, at `.mcardp`'s own height. */}
-              <div className="mt-3.5">
-                {upPct !== null && downPct !== null && (
-                  <div className="flex items-baseline justify-between gap-2 font-mono text-[9.5px] font-bold tracking-[0.06em]">
-                    <span style={{ color: "var(--yes-300)" }}>{t.market.udUp} {upPct}%</span>
-                    <span style={{ color: "var(--no-300)" }}>{downPct}% {t.market.udDown}</span>
-                  </div>
-                )}
-                {upPct === null ? (
-                  <TippingBar className="mt-1.5" height={7} showLabels={false} recastOnHover={false}
-                    empty emptyLabel={t.market.noBetsYet} />
-                ) : (
-                  <TippingBar className="mt-1.5" yesPct={upPct} height={7} showLabels={false}
-                    recastOnHover={false} resolved={round.state === "resolved"}
-                    probabilityLabel={t.market.probBarAria.replace("{side}", t.market.udUp)} />
-                )}
-                <div className="mt-1.5 flex items-baseline justify-between gap-2 font-mono text-[10.5px] tabular-nums text-text-muted">
-                  <span>{formatTzs(upTzs)}</span>
-                  <span>{formatTzs(downTzs)}</span>
-                </div>
-              </div>
-            </section>
-
             {/* Stake (open) · Result (resolved & played) · calm panels otherwise.
                 ⭐ UD-2 · the open/locked pair is ONE client component that derives its
                 phase from the instants (`roundPhase` + the server-anchored clock), so
@@ -746,6 +691,62 @@ export default async function UpDownRoundPage({
                 )}
               </section>
             ) : null}
+            {/* Pool — AFTER the stake panel (frame panel round 5, 2026-09-27): a pick from the landing band lands
+                on #stake at the bottom of the view, and with the pool between them the round's countdown fell off
+                the top. Countdown → confirmed price → the slip now fit one phone screen; the pool follows. */}
+            <section aria-label={t.market.udPool} style={{ ...card, padding: "14px 16px 16px" }}>
+              <p className={eyebrow}>{t.market.udPool}</p>
+              <div className="mt-2.5 flex items-baseline justify-between gap-3">
+                <div>
+                  {/* ⭐ DG-A-12 · §M4 + §T1 — THE POOL FIGURE AND THE COUNT BESIDE IT MOVE TOGETHER.
+                      `volumeTzs` is an amount, so §M4 gives it `.amount` (mono + tabular-nums +
+                      letter-spacing 0) in place of `font-mono … tabular-nums`. 17px is on
+                      neither ladder (§T1); `text-title-sm` (18) is the nearest rung, +1px.
+                      ⛔ The predictor count at L465 is the SAME 17px and sits in the same
+                      `items-baseline justify-between` row — it moves in this edit too, or the
+                      pool's two headline figures end up a pixel apart on one baseline. It is a
+                      COUNT, not an amount, so it keeps `font-mono tabular-nums` and does NOT
+                      take `.amount` (§M4 governs amounts only). `leading-[1.1]` stays on both:
+                      the rung would otherwise impose 24px and open the pair up. */}
+                  <p className="m-0 amount text-title-sm font-bold leading-[1.1] text-text">{formatTzs(round.volumeTzs)}</p>
+                  <p className="mt-1 font-mono text-micro uppercase eyebrow text-text-faint">{t.market.udVolume}</p>
+                </div>
+                <div className="text-right">
+                  <p className="m-0 flex items-center justify-end gap-1.5 font-mono text-title-sm font-bold leading-[1.1] tabular-nums text-text">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3.4" /><path d="M5.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6" /></svg>
+                    {round.players.toLocaleString()}
+                  </p>
+                  <p className="mt-1 font-mono text-micro uppercase eyebrow text-text-faint">{t.market.udPlayers}</p>
+                </div>
+              </div>
+              {/* 🔴 PV-06 · THE THIRD HAND-ROLLED SPLIT BAR, and the third different drawing of
+                  one idea. `market-card.tsx` used the kit's `TippingBar`; this page and
+                  `updown-card.tsx` each drew their own two-span strip — 6px with a 0.5 gap
+                  here, 5px with a 2px gap there — and neither could inherit the cold-start
+                  rail the primitive already owns (§B9: "A STATE OF THIS BAR, not a second
+                  component"). So an empty round advertised "Up 50% · 50% Down" on both.
+                  One bar now, at `.mcardp`'s own height. */}
+              <div className="mt-3.5">
+                {upPct !== null && downPct !== null && (
+                  <div className="flex items-baseline justify-between gap-2 font-mono text-[9.5px] font-bold tracking-[0.06em]">
+                    <span style={{ color: "var(--yes-300)" }}>{t.market.udUp} {upPct}%</span>
+                    <span style={{ color: "var(--no-300)" }}>{downPct}% {t.market.udDown}</span>
+                  </div>
+                )}
+                {upPct === null ? (
+                  <TippingBar className="mt-1.5" height={7} showLabels={false} recastOnHover={false}
+                    empty emptyLabel={t.market.noBetsYet} />
+                ) : (
+                  <TippingBar className="mt-1.5" yesPct={upPct} height={7} showLabels={false}
+                    recastOnHover={false} resolved={round.state === "resolved"}
+                    probabilityLabel={t.market.probBarAria.replace("{side}", t.market.udUp)} />
+                )}
+                <div className="mt-1.5 flex items-baseline justify-between gap-2 font-mono text-[10.5px] tabular-nums text-text-muted">
+                  <span>{formatTzs(upTzs)}</span>
+                  <span>{formatTzs(downTzs)}</span>
+                </div>
+              </div>
+            </section>
           </div>
         </div>
 

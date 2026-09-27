@@ -214,14 +214,17 @@ try {
       const rail = [...document.querySelectorAll("nav")].map((n) => n.getBoundingClientRect()).filter((r) => r.bottom >= innerHeight - 1 && r.top > innerHeight / 2)[0];
       const chip = s?.querySelector("[data-kit-chip]")?.getBoundingClientRect();
       const price = document.querySelector("section[data-tone]")?.getBoundingClientRect();
+      // The round's countdown pod (its caption and digits carry .m-tick) — it must be in the landed view too (round 5).
+      const pod = document.querySelector("main .m-tick")?.parentElement?.getBoundingClientRect();
       const r = s?.getBoundingClientRect();
       return r ? { top: Math.round(r.top), bottom: Math.round(r.bottom), header: Math.round(h?.getBoundingClientRect().bottom ?? 0),
         railTop: Math.round(rail?.top ?? innerHeight), chipInView: !!chip && chip.top >= 0 && chip.bottom <= innerHeight,
         chip: (s.querySelector("[data-kit-chip]")?.textContent || "").trim(), priceVisible: !!price && price.bottom > (h?.getBoundingClientRect().bottom ?? 0) + 24,
+        clockVisible: !!pod && pod.top >= (h?.getBoundingClientRect().bottom ?? 0) - 1 && pod.bottom <= innerHeight,
         focused: document.activeElement === s } : null;
     });
-    check("a pick LANDS on the stake panel: all of it between header and rail, the side Chip in view, the confirmed price still above (measured before any scroll)",
-      !!landed && landed.top >= landed.header - 1 && landed.bottom <= landed.railTop + 1 && landed.chipInView && landed.priceVisible,
+    check("a pick LANDS on the stake panel: all of it between header and rail, the side Chip in view, the countdown and the confirmed price above it (measured before any scroll)",
+      !!landed && landed.top >= landed.header - 1 && landed.bottom <= landed.railTop + 1 && landed.chipInView && landed.priceVisible && landed.clockVisible,
       JSON.stringify(landed));
     await page.screenshot({ path: join(FR, "PAIR-2-round-360-sw-b.png") });      // where #stake lands the player
     await page.evaluate(() => scrollTo(0, 0)); await page.waitForTimeout(400);

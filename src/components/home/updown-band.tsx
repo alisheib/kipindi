@@ -136,8 +136,7 @@ export function UpdownBand({ t, locale, liveCount, round }: {
                       (WCAG 4.1.2). Past the deciding instant "Awaiting result" is the verdict's, not this row's. */}
                   <span className="kp-udclock__cap" id="kp-udclock-state">{t.market.udLockedTitle}</span>
                   <Link href={roundHref as never} className="kp-udclock__watch" aria-describedby="kp-udclock-state">
-                    <span className="kp-udclock__watch-label">{t.market.udRcWatchRound}</span>
-                    <I.chevronRight s={14} />
+                    <span className="kp-udclock__watch-label">{t.market.udRcWatchRound}<I.chevronRight s={14} /></span>
                   </Link>
                 </p>
               </div>
