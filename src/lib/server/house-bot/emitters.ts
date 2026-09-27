@@ -17,8 +17,10 @@
  * ⛔ THE HOLDER IS A HANDLE (04 R6) and an officer's reason is never quoted (INT-10) — both enforced in the copy.
  */
 import { displayLabel } from "@/lib/display-label";
+import { formatNumber, formatTzs } from "@/lib/utils";
 import { formatEat } from "@/lib/house-bot/clock";
 import { RUNTIME_KEY } from "@/lib/house-bot/constants";
+import { FIELD_META, FIELD_ORDER, isFieldId, type FieldMeta } from "@/lib/house-bot/rules";
 import type { MoneyEventCode } from "@/lib/house-bot/alert-copy";
 import type { CredentialChangedVia, PauseReason } from "@/lib/house-bot/pause-reasons";
 import {
@@ -29,6 +31,7 @@ import {
   notifyAdminsHouseBotAlert, notifyAdminsHouseBotBet, notifyAdminsHouseBotHourSummary, notifyAdminsHouseBotMoneyEvent,
   notifyAdminsHouseBotPaused, notifyAdminsHouseBotRoster, notifyAdminsHouseBotStaffChosen, notifyAdminsHouseBotSwitch,
 } from "../notification-service";
+import { officerLabel } from "../actor-label";
 import { formatEatLocal } from "../date-range";
 import { db } from "../store";
 import { playerHandle } from "./alerts";
@@ -229,17 +232,90 @@ export function houseHolderAlerts(): HolderAlerts {
   };
 }
 
-/* ═══ The two the console and the money hooks call directly ══════════════════════════════════════ */
+/* ═══ The ones the console's acts and the money hooks call directly ══════════════════════════════ */
+
+/** One field a save moved, as its writer holds it: the field id (a `FIELD_META` key) and the two stored values. */
+export type RosterChange = { field: string; before: unknown; after: unknown };
 
 /**
  * A roster change (C13): designated, verified, started, paused by hand, removed, rules or limits saved, targets.
- * `event` is one of `ROSTER_EVENT_CODES` and `detail` its parts (ruling 142) — commit 7's console actions call this.
+ * `event` is one of `ROSTER_EVENT_CODES` and `detail` its parts (ruling 142).
+ *
+ * ⭐ FS-09 (2026-09-27) · EVERY ACT THAT LANDS CALLS THIS, ONCE, AFTER ITS HISTORY EVENT IS WRITTEN — designate,
+ * re-verify, Start, Pause, Remove, the rules save and the limits save (`designation.ts`, `roster-actions.ts`,
+ * `rules-save.ts`, `limits-save.ts`). A refused act never reaches it, and a save that moved nothing does not call it.
+ * ⛔ ALL OF ITS WORK IS INSIDE `safe`, the officer's name and the diff's formatting included: every caller has
+ * already LANDED its write, so nothing here may throw back into a path that would then report the act as failed.
+ * ⛔ THE OFFICER IS PASSED AS AN ID (`actorId`) and named here, after the act, the platform's one way
+ * (`officerLabel`: their display name, else the id) — never "Player #…", which `displayLabel` would print for a
+ * member of staff with no display name. An officer with no display name, or whose user row cannot be read, is
+ * therefore named by their ACCOUNT ID — `officerLabel`'s own fallback, as `docs/HOUSE-BOTS.md` §9.2 says — which is
+ * language-neutral, so no English stand-in lands inside the Swahili and Chinese bodies (ruling 142). The "by" clause
+ * is left out only when no `actorId` is passed, or `officerLabel` itself throws.
+ * ⛔ `botId` NULL is the desk's own change (a limits save): the notifier titles and links it as the desk's.
  */
 export async function announceRoster(o: {
-  botId: string; label: string; event: string; eventId: string;
+  botId: string | null; label: string | null; event: string; eventId: string | null;
+  actorId?: string | null;
+  /** RULES_SAVED / LIMITS_SAVED: every field that moved. Formatted here, into the sentence's one diff slot. */
+  changes?: readonly RosterChange[];
   detail?: { byName?: string | null; field?: string | null; from?: string | null; to?: string | null; marketTitle?: string | null; timing?: { delaySec?: number | null; from?: "STAKE" | "EXIT" | null; heldToExit?: boolean | null } | null; cancelled?: number | null };
 }): Promise<void> {
-  await safe("roster", () => notifyAdminsHouseBotRoster({ ...o, at: nowAt() }));
+  await safe("roster", async () => {
+    const byName = o.detail?.byName ?? (o.actorId ? await officerName(o.actorId) : null);
+    const moved = o.changes ? rosterDiff(o.changes) : {};
+    return notifyAdminsHouseBotRoster({
+      botId: o.botId, label: o.label, event: o.event, eventId: o.eventId, at: nowAt(),
+      detail: { ...o.detail, ...moved, byName },
+    });
+  });
+}
+
+/** An officer's name for a roster sentence: their display name, else their account id — `officerLabel` falls back to
+ *  the id when the name is empty AND when the user row cannot be read. Null (the clause then left out) only if
+ *  `officerLabel` itself throws. */
+async function officerName(id: string): Promise<string | null> {
+  try { return (await officerLabel(id))?.trim() || null; } catch { return null; }
+}
+
+/** One stored value, in the sentence's language-neutral form: a figure with its unit symbol, or "—" for unset. */
+function rosterValue(meta: FieldMeta, v: unknown): string {
+  if (v == null) return "—";
+  if (typeof v !== "number" || !Number.isFinite(v)) return String(v);
+  if (meta.unit === "TZS") return formatTzs(v);
+  if (meta.unit === "%") return `${formatNumber(v)}%`;
+  if (meta.unit === "s" || meta.unit === "min") return `${formatNumber(v)} ${meta.unit}`;
+  return formatNumber(v);
+}
+
+/**
+ * THE BEFORE → AFTER DIFF, IN `ROSTER_SENTENCE`'s OWN SHAPE (04 C13: "daily loss cap TZS 50,000 → TZS 200,000").
+ *
+ * The sentence has ONE diff slot — `field`, `from`, `to` — and renders `field: from → to` when `to` is set and
+ * `field` alone when it is not. So:
+ *   · one number moved → the three parts, exactly as the copy was written for;
+ *   · several moved → every one of them in `field`, `label: from → to` each, joined by "; " in page order, with
+ *     `from`/`to` left empty — no count word, no "and N more", because any such word would be English inside the
+ *     Swahili and Chinese bodies (ruling 142) and a partial list would hide the field somebody raised.
+ * ⛔ A SWITCH, A LIST OR A CHOICE IS NAMED, NOT VALUED: "on", "off" and a list's members are words or tokens the
+ *    sentence cannot translate, and the account's stored rules keep the values the link opens onto.
+ * ⛔ A RULE LEAF CARRIES ITS SECTION ("Counter · Delay minimum") where its own label does not already begin with
+ *    it — the Counter's bare "Delay minimum" would otherwise read as either of the Opener's two, and a caps or
+ *    limits label is already unambiguous.
+ * ⛔ THE UNITS ARE SYMBOLS ("26 s", "30 min", "40%"), never the words `unitSuffix` spells, which are English.
+ */
+function rosterDiff(changes: readonly RosterChange[]): { field: string | null; from: string | null; to: string | null } {
+  const order = (f: string) => { const i = (FIELD_ORDER as readonly string[]).indexOf(f); return i < 0 ? Number.MAX_SAFE_INTEGER : i; };
+  const parts = [...changes].sort((a, b) => order(a.field) - order(b.field)).map((c) => {
+    const meta = isFieldId(c.field) ? FIELD_META[c.field] : null;
+    if (!meta) return { name: c.field, from: null, to: null };
+    const name = meta.group === "rules" && !meta.label.startsWith(meta.section) ? `${meta.section} · ${meta.label}` : meta.label;
+    /* A field with no numeric bounds is a switch, a list or a choice: named only. */
+    return meta.min === null ? { name, from: null, to: null } : { name, from: rosterValue(meta, c.before), to: rosterValue(meta, c.after) };
+  });
+  if (parts.length === 0) return { field: null, from: null, to: null };
+  if (parts.length === 1) return { field: parts[0].name, from: parts[0].from, to: parts[0].to };
+  return { field: parts.map((p) => (p.to == null ? p.name : `${p.name}: ${p.from} → ${p.to}`)).join("; "), from: null, to: null };
 }
 
 /** The holder's own money moved on a live house-bot account (F7, step 10's hooks). `event` is a code (ruling 142). */

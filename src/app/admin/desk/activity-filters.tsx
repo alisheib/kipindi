@@ -15,9 +15,11 @@
  * the measured half of owner ruling D19 that survives minification. `/admin/house` already ships a server-rendered
  * rail with server-built hrefs; this is that idiom, one directory over.
  *
- * ⛔ **ONE `data-filter-rail`, AND IT IS NOT ON THE `<Tabs>`** (`test:filter-language` §0.4, §6.1-§6.8, and the
- * console's own rail case), with `replace`, because a filter is not a navigation and a rail that stacks history
- * buries the page an officer arrived from under twenty of its own states.
+ * ⛔ **THIS IS THE SECTION'S ONE filter-rail FILE, carrying `data-filter-rail` once, AND NO RAIL HOOK IS ON THE
+ * `<Tabs>`** (`test:filter-language` §0.4, §6.1-§6.8, and the console's own rail case), with `replace`, because a
+ * filter is not a navigation and a rail that stacks history buries the page an officer arrived from under twenty of
+ * its own states. ⚠️ Ruling 410 as amended 2026-09-27: an activity panel with rows ALSO renders the kit's phone sort
+ * rail (`components/admin/card-sort-control.tsx`, shown below `sm` only) — one of each, pinned by the console's 1.410.
  *
  * 🔴 **THE CONTROLS ARE NO LONGER `rank="dense"`, AND THAT IS A MEASUREMENT AND NOT A PREFERENCE (2026-09-23).**
  * The dense rank's floor is 32px — `--h-control-xs`, the documented admin exception — and this section's own

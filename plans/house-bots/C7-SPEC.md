@@ -1203,6 +1203,10 @@ Nothing outside this module types the segment after that pass. ⛔ The inventory
    refusing `replace` was refusing a silent rewrite of every caller, and it still stands for every caller that does
    not ask.
 
+**⭐ AMENDED 2026-09-27 (the phone sort rail) — recorded in `docs/HOUSE-BOTS.md` §12.15, which is the one record.** The
+filters are still in ONE rail FILE; each activity panel whose ledger has rows now RENDERS a second `data-filter-rail`,
+the kit's card sort rail, at every width — SHOWN below `sm` only, and not drawn at all over an empty ledger — by design.
+
 #### 411. Pagination is the kit pager at 20, carrying every live filter, and its ghost is drawn only where the list is unbounded
 
 **Decision.** The activity feed and the history tab page with `AdminPagination page total perPage={PER_PAGE} baseHref={buildBaseHref("/admin/desk", {tab, …filters})}`, using `parsePage`; `PER_PAGE` is taken from the primitive (20), never re-typed; every filter in force is carried in `baseHref` so paging never silently clears one, and changing a filter resets `page`. The loader draws a pager ghost ONLY where the row source is unbounded (the feed and the history). The roster gets none — not because it holds 5 rows, but because `maxDesignatedBots`' CEILING is 20, and 20 rows at 20 per page is a single page, so the pager returns null and a forced ghost would over-draw 77 px.

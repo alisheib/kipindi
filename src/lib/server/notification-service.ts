@@ -28,7 +28,9 @@ import { formatTzs, formatDateShort } from "@/lib/utils";
 // overdue-review alert), and the label that alert names a player by.
 import { KYC_REVIEW_SLA_HOURS } from "@/lib/kyc-sla";
 import { displayLabel } from "@/lib/display-label";
-import { CONSOLE_ROUTE, consoleActivityHref, consoleBotHref, consoleEventHref, consoleReverifyHref } from "@/lib/house-bot/console-routes";
+import {
+  CONSOLE_ROUTE, consoleActivityHref, consoleBotHref, consoleBotTabHref, consoleDeskEventHref, consoleEventHref, consoleReverifyHref, consoleTabHref,
+} from "@/lib/house-bot/console-routes";
 import type { LocalizedText } from "@/lib/localized";
 import { sideWordIn, outcomeWordIn, type StoredSide, type StoredOutcome } from "@/lib/side-label";
 import type { NotificationFilter, NotificationSort } from "@/lib/notification-filters";
@@ -2657,9 +2659,17 @@ export async function notifyAdminsHouseBotAlert(opts: {
  * ⛔ `event` is a CODE and `detail` is its parts — a name, a field with its two figures, a poll's title — so each
  * language's sentence is built here (ruling 142). It never quotes an officer's reason (INT-10): the body points at
  * the bot's history, where the reason is recorded.
+ *
+ * ⭐ FS-09 (2026-09-27) · `botId` NULL IS THE DESK'S OWN CHANGE — a limits save belongs to no account. Its title names
+ * no bot and its link is the desk's own history (`consoleDeskEventHref`), where the control row's events are listed.
+ * ⛔ `eventId` NULL is a landed act whose history row could not be written (the rules save logs and continues): the
+ * link then opens that history at its top rather than naming an event that does not exist.
+ * ⛔ AND THE TAIL SAYS "REASON" ONLY WHERE THERE IS ONE. Pause, Remove and a target press carry the officer's typed
+ * reason on their event; a designation, a confirmation, a Start and a save carry none, and a sentence pointing at a
+ * reason that was never asked for would be false.
  */
 export async function notifyAdminsHouseBotRoster(opts: {
-  botId: string; label: string; event: string; eventId: string; at: string;
+  botId: string | null; label: string | null; event: string; eventId: string | null; at: string;
   detail?: { byName?: string | null; field?: string | null; from?: string | null; to?: string | null; marketTitle?: string | null; timing?: { delaySec?: number | null; from?: "STAKE" | "EXIT" | null; heldToExit?: boolean | null } | null; cancelled?: number | null };
 }): Promise<number> {
   const { houseBotAlertRecipients } = await import("./house-bot/alerts");
@@ -2669,22 +2679,32 @@ export async function notifyAdminsHouseBotRoster(opts: {
   const said = isRosterEventCode(opts.event)
     ? ROSTER_SENTENCE[opts.event](detail)
     : { en: "The bot changed.", sw: "Boti imebadilika.", zh: "该机器人已更改。" };
-  const href = consoleEventHref(opts.botId, opts.eventId);
+  const bot = opts.botId != null && opts.label != null ? { id: opts.botId, label: opts.label } : null;
+  const href = bot
+    ? (opts.eventId ? consoleEventHref(bot.id, opts.eventId) : consoleBotTabHref(bot.id, "history"))
+    : (opts.eventId ? consoleDeskEventHref(opts.eventId) : consoleTabHref("history"));
+  /* The roster codes whose event carries the officer's own typed reason; the rest ask for none. */
+  const reasoned = ["PAUSED", "REMOVED", "TARGET_ADDED", "TARGET_CHANGED", "TARGET_REMOVED", "TARGET_STOPPED"].includes(opts.event);
+  const tail = !bot
+    ? { en: "Recorded in the house bots' history.", sw: "Imeandikwa kwenye historia ya boti za nyumba.", zh: "已记录在平台机器人的历史中。" }
+    : reasoned
+      ? { en: "Reason recorded in this bot's history.", sw: "Sababu imeandikwa kwenye historia ya boti hii.", zh: "原因已记录在该机器人的历史中。" }
+      : { en: "Recorded in this bot's history.", sw: "Imeandikwa kwenye historia ya boti hii.", zh: "已记录在该机器人的历史中。" };
   return fanOutHouseAdmin(recipients, {
-    titleEn: `House bot "${opts.label}" · ${opts.event} · ${opts.at}`,
-    titleSw: `Boti "${opts.label}" · ${opts.event} · ${opts.at}`,
-    titleZh: `平台机器人 "${opts.label}" · ${opts.event} · ${opts.at}`,
-    bodyEn: `${said.en} Reason recorded in this bot's history.`,
-    bodySw: `${said.sw} Sababu imeandikwa kwenye historia ya boti hii.`,
-    bodyZh: `${said.zh} 原因已记录在该机器人的历史中。`,
+    titleEn: bot ? `House bot "${bot.label}" · ${opts.event} · ${opts.at}` : `House bots · ${opts.event} · ${opts.at}`,
+    titleSw: bot ? `Boti "${bot.label}" · ${opts.event} · ${opts.at}` : `Boti za nyumba · ${opts.event} · ${opts.at}`,
+    titleZh: bot ? `平台机器人 "${bot.label}" · ${opts.event} · ${opts.at}` : `平台机器人 · ${opts.event} · ${opts.at}`,
+    bodyEn: `${said.en} ${tail.en}`,
+    bodySw: `${said.sw} ${tail.sw}`,
+    bodyZh: `${said.zh} ${tail.zh}`,
     href,
     email: {
-      subject: `House bot ${opts.label} · ${opts.event}`,
+      subject: bot ? `House bot ${bot.label} · ${opts.event}` : `House bots · ${opts.event}`,
       eyebrow: "House bots · roster",
-      heading: "A house bot changed",
+      heading: bot ? "A house bot changed" : "The house bots changed",
       subtitle: said.en,
       rows: [
-        { label: "Bot", value: opts.label },
+        ...(bot ? [{ label: "Bot", value: bot.label }] : []),
         { label: "Change", value: opts.event },
         ...(detail.byName ? [{ label: "By", value: detail.byName }] : []),
       ],

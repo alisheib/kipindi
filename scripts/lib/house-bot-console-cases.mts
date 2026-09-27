@@ -1341,6 +1341,8 @@ section("§2 · the strip, the band, the roster and every failure");
       CR.consoleReverifyHref(RECORD_ID),
       CR.consoleActivityHref(RECORD_ID),
       CR.consoleEventHref(RECORD_ID, "hbe_00000000000000000000abcd"),
+      /* ⭐ FS-09 · the desk's own history row, which a limits-save alert links to. */
+      CR.consoleDeskEventHref("hbe_00000000000000000000abcd"),
     ].map((h: string) => h.split("?")[0].split("#")[0]);
     const crumbsOf = (p: string): string[] => crumbsFromPath(p);
     const painted = consolePaths.filter((p) => crumbsOf(p).some((c: string) => c.includes(RECORD_ID)));
@@ -5097,9 +5099,15 @@ try {
       /baseHref=\{buildBaseHref\(`\$\{CONSOLE_ROUTE\}\/\$\{view\.id\}`, view\.feedParams, "page"\)\}/.test(detail)
         && /baseHref=\{buildBaseHref\(`\$\{CONSOLE_ROUTE\}\/\$\{view\.id\}`, view\.historyParams, "hpage"\)\}/.test(detail),
       "");
-    /* ⛔ THE RAIL IS ONE, IT IS UNDER THE SECTION, AND IT IS NOT ON THE `<Tabs>`. */
+    /* ⛔ THE RAIL FILE IS ONE, IT IS UNDER THE SECTION, AND IT IS NOT ON THE `<Tabs>`.
+       ⚠️ AMENDED 2026-09-27 (the phone sort rail; docs/HOUSE-BOTS.md §12.15). This case used to be read as "ONE
+       `data-filter-rail` under this section", and in the SERVED page that stopped being true that day: each activity
+       panel now renders TWO — the section's filter rail, and the kit's card sort rail (`components/admin`, outside the
+       section) that stands in for the ledger's hidden header row below `sm`. What 410 protects is ONE rail FILE — §K5,
+       never two copies of one control — and that is what this counts. The rendered pair is a design, not a drift, and
+       it is pinned as one in `1.s9p`'s block: exactly one `<ActivityFilters` and one `<CardSortControl` per panel. */
     const railHooks = sectionFiles.filter((f) => /data-filter-rail/.test(decomment(read(f))));
-    ok("1.410 · exactly ONE `data-filter-rail` exists under the whole section, it is in the rail's own file, and the `<Tabs>` element carries none",
+    ok("1.410 · exactly ONE file under the whole section carries `data-filter-rail` — the rail's own file, once — and the `<Tabs>` element carries none (the kit's phone sort rail is the one other RENDERED `data-filter-rail` on an activity panel, by design, and its file is outside the section)",
       railHooks.length === 1 && railHooks[0] === rail
         && (railSrc.match(/data-filter-rail/g) ?? []).length === 1
         && !/<Tabs[\s\S]*?data-filter-rail/.test(detail),
@@ -5258,7 +5266,8 @@ section("§2e3 · the desk landing page's activity and history panels");
   const landing = pageCode;
   const railFile = `${SECTION}/activity-filters.tsx`;
   /* ⛔ ONE RAIL FILE, RENDERED BY BOTH PAGES (§K5). Two copies of one control is the defect this section was
-     pulled up on, and a second rail would also be a second `data-filter-rail` under one section (1.410). */
+     pulled up on, and a second rail would also be a second rail FILE under one section (1.410 — which counts files;
+     the panel's one other rendered rail, the kit's phone sort rail, is 410's 2026-09-27 amendment, pinned in 1.s9p). */
   ok("1.410 · the landing activity panel renders the SAME rail file the account page does, with the reader's own groups, presets and default — and the section still holds exactly one rail file",
     /<ActivityFilters groups=\{feedView\.feedFilters\} presets=\{feedView\.feedPresets\} presetDefault=\{feedView\.feedPresetDefault\} \/>/.test(landing)
       && /<ActivityFilters groups=\{view\.feedFilters\} presets=\{view\.feedPresets\} presetDefault=\{view\.feedPresetDefault\} \/>/.test(decomment(read(DETAIL_PAGE)))
@@ -8497,6 +8506,543 @@ try {
 }
 
 /* ════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+ * §2j · FS-09 — EVERY ROSTER ACT THAT LANDS TELLS EVERY ADMIN, ONCE, AND NOBODY ELSE (Ali, 2026-09-27)
+ *
+ * As typed: "Some desk actions (adding an account, Start, saving rules or limits) still don't send the admin alerts
+ * they were planned to send". `announceRoster` had two callers — Pause and Remove — while DESIGNATED, VERIFIED,
+ * STARTED, RULES_SAVED and LIMITS_SAVED had their sentences in `ROSTER_SENTENCE` and nothing sending them, and
+ * `test:house-bot-comms` drove the NOTIFIER directly, so it proved the letter and never the wiring.
+ * ⛔ SO EVERY ACT HERE GOES THROUGH THE OFFICER'S OWN DOOR — the gated writer the desk's server action calls — as a
+ * SECOND admin with a display name, and the proof is read out of the INBOXES: the other admin's and the actor's each
+ * gain exactly ONE row of the act's code, linking to the event the act wrote, naming the officer; the holder's inbox
+ * and a bystander player's gain nothing (D19c). Every landed act has a CONTROL beside it — a REFUSED act (wrong
+ * password, stale version, wrong typed word, a Start the rules refuse) and, for the saves and Pause, an act that
+ * changes nothing — and each control must leave every inbox exactly as it was.
+ * ⛔ THE ROSTER IS SHARED (20 slots): every account this block creates is REMOVED before it ends; the one limit it
+ * moves is put back by its own second save, which is itself a measured case — and by a `finally` through the DAL
+ * whenever anything stops the block before that save lands.
+ * ════════════════════════════════════════════════════════════════════════════════════════════════════════════════ */
+section("§2j · FS-09 — every roster act that lands tells every admin, once, and nobody else");
+try {
+  const { hashPassword, randomId }: Any = await import("../../src/lib/server/crypto.ts");
+  const ROUTE_J = "/admin/desk";
+  const NAME_J = "Officer Fs09";
+  const PW_J = "candidate-password-fs09";
+  const officerJ = await w.user({ role: "ADMIN" });
+  await w.setUserFields(officerJ, { displayName: NAME_J });
+  const bystanderJ = await w.user({ role: "PLAYER" });
+  const mineJ: Array<{ botId: string; userId: string }> = [];
+  const keepJ = (b: { botId: string; userId: string }) => { mineJ.push(b); return b; };
+  const fixtureJ = async (caps: Record<string, unknown> = {}) => keepJ(await w.bot({ caps }));
+  const actJ = (input: Any): Promise<Any> => GATEM.houseAccountActForConsole(officerJ, ROUTE_J, input);
+
+  /** The HOUSE_BOT rows of one roster code in one inbox. The title carries the code between two middots. */
+  const rosterRows = async (uid: string, code: string): Promise<Any[]> =>
+    ((await w.db.notification.findByUser(uid, 5000)) as Any[])
+      .filter((r) => r.kind === "HOUSE_BOT" && String(r.titleEn ?? "").includes(` · ${code} · `));
+  const inboxSize = async (uid: string | null): Promise<number> =>
+    (uid ? ((await w.db.notification.findByUser(uid, 5000)) as Any[]).length : 0);
+  type Fan = { officer: Any[]; actor: Any[]; holder: number; bystander: number };
+  /** Run one act and return what it added: the rows of `code` in both admins' inboxes, and ANY row for the holder
+   *  and for a bystander player. Everything is awaited inside the act, so nothing is read before it lands. */
+  const measure = async (code: string, holder: string | null, run: () => Promise<Any>): Promise<{ r: Any; fan: Fan }> => {
+    const idsOf = async (uid: string) => new Set((await rosterRows(uid, code)).map((x) => x.id));
+    const [b0, b1, h0, p0] = [await idsOf(OFFICER), await idsOf(officerJ), await inboxSize(holder), await inboxSize(bystanderJ)];
+    const r = await run();
+    const fresh = async (uid: string, before: Set<string>) => (await rosterRows(uid, code)).filter((x) => !before.has(x.id));
+    return { r, fan: { officer: await fresh(OFFICER, b0), actor: await fresh(officerJ, b1), holder: (await inboxSize(holder)) - h0, bystander: (await inboxSize(bystanderJ)) - p0 } };
+  };
+  /** Exactly one row in EACH admin's inbox, both linking to `href`, both naming the officer, and nothing for the
+   *  holder or the bystander. */
+  const landedOnce = (fan: Fan, href: string): boolean =>
+    fan.officer.length === 1 && fan.actor.length === 1
+      && fan.officer[0].href === href && fan.actor[0].href === href
+      && String(fan.officer[0].bodyEn).includes(` by ${NAME_J}`) && String(fan.officer[0].bodySw).includes(` na ${NAME_J}`)
+      && String(fan.officer[0].bodyZh).includes(`（${NAME_J}）`)
+      && /· \d\d:\d\d:\d\d$/.test(String(fan.officer[0].titleEn))
+      && fan.holder === 0 && fan.bystander === 0;
+  const silent = (fan: Fan): boolean => fan.officer.length === 0 && fan.actor.length === 0 && fan.holder === 0 && fan.bystander === 0;
+  const fanOf = (fan: Fan) => ({ officer: fan.officer.map((x) => [x.titleEn, x.href]), actor: fan.actor.length, holder: fan.holder, bystander: fan.bystander, body: fan.officer[0]?.bodyEn ?? null });
+  const eventOfJ = async (botId: string | null, kind: string, not: Set<string> = new Set()): Promise<Any> =>
+    ((await w.dal.houseBotEventStore.listByKinds([kind], botId ? { houseBotId: botId, limit: 50 } : { limit: 500 })) as Any[])
+      .find((e) => !not.has(e.id)) ?? null;
+
+  try {
+    /* ━━ 2.fs09.1 · DESIGNATE ━━ */
+    const candidate = async (): Promise<string> => {
+      const id = await w.user({ role: "PLAYER", balance: 250_000 });
+      const salt = randomId(16);
+      await w.setUserFields(id, {
+        passwordHash: await hashPassword(PW_J, salt), passwordSalt: salt,
+        passwordSetAt: new Date().toISOString(), passwordSetVia: "SELF_CHANGE",
+      });
+      return id;
+    };
+    /* ⛔ THE CAPACITY READ, SCOPED TO THIS ONE CALL — §2i's own recipe: earlier blocks fill the roster past its ceiling
+       through the DAL, and a ROSTER_FULL here would be a fixture artefact, not this block's answer. */
+    const designateJ = async (userId: string, label: string, password: string): Promise<Any> => {
+      const realCount = w.dal.houseBotStore.countLive;
+      w.dal.houseBotStore.countLive = async () => 0;
+      try {
+        return await GATEM.houseDesignateForConsole(officerJ, ROUTE_J, { userId, label, password });
+      } finally {
+        w.dal.houseBotStore.countLive = realCount;
+      }
+    };
+    const refusedHolder = await candidate();
+    const dRefused = await measure("DESIGNATED", refusedHolder, () => designateJ(refusedHolder, "Alert check refused", "not-their-password"));
+    ok("2.fs09.1c · CONTROL · a designation REFUSED on a wrong password tells nobody — no DESIGNATED row in either admin's inbox, and nothing for the holder",
+      dRefused.r?.ok === false && silent(dRefused.fan) && (await w.dal.houseBotStore.findLiveByUserId(refusedHolder)) == null,
+      j({ result: dRefused.r, fan: fanOf(dRefused.fan) }));
+    const holderJ = await candidate();
+    const dLanded = await measure("DESIGNATED", holderJ, () => designateJ(holderJ, "Alert check designate", PW_J));
+    const designated: Any = await w.dal.houseBotStore.findLiveByUserId(holderJ);
+    if (designated) keepJ({ botId: designated.id, userId: holderJ });
+    const dEvent = designated ? await eventOfJ(designated.id, "DESIGNATED") : null;
+    ok("2.fs09.1 · DESIGNATED · adding an account tells EVERY admin once — the other admin and the actor each get ONE row linking to the account's DESIGNATED event, naming the officer in all three languages — and the holder and a bystander get nothing (D19c)",
+      dLanded.r?.ok === true && designated !== null && dEvent !== null
+        && landedOnce(dLanded.fan, `/admin/desk/${designated.id}?tab=history&event=${dEvent.id}`)
+        && String(dLanded.fan.officer[0]?.bodyEn).startsWith("The bot was designated by ")
+        && String(dLanded.fan.officer[0]?.bodyEn).endsWith(" Recorded in this bot's history."),
+      j({ result: dLanded.r, fan: fanOf(dLanded.fan), eventId: dEvent?.id ?? null }));
+
+    /* ━━ 2.fs09.3c · START REFUSED — the account just designated has no caps, so Start refuses it ━━ */
+    if (designated) {
+      const sRefused = await measure("STARTED", holderJ, () => actJ({ id: designated.id, act: "START" }));
+      ok("2.fs09.3c · CONTROL · a Start the rules REFUSE tells nobody — the account stays paused and no STARTED row appears anywhere",
+        sRefused.r?.ok === false && silent(sRefused.fan) && ((await w.dal.houseBotStore.get(designated.id)) as Any)?.status === "PAUSED",
+        j({ result: sRefused.r, fan: fanOf(sRefused.fan) }));
+
+      /* ━━ 2.fs09.2 · RE-VERIFY — the wrong password first (the control), then the holder's own ━━ */
+      const vRefused = await measure("VERIFIED", holderJ, () => actJ({ id: designated.id, act: "REVERIFY", password: "not-their-password" }));
+      ok("2.fs09.2c · CONTROL · a re-verify REFUSED on a wrong password tells nobody",
+        vRefused.r?.ok === false && silent(vRefused.fan), j({ result: vRefused.r, fan: fanOf(vRefused.fan) }));
+      const vLanded = await measure("VERIFIED", holderJ, () => actJ({ id: designated.id, act: "REVERIFY", password: PW_J }));
+      const vEvent = await eventOfJ(designated.id, "VERIFIED");
+      ok("2.fs09.2 · VERIFIED · confirming the holder's permission tells EVERY admin once, linking to the VERIFIED event and naming the officer — the holder is told nothing",
+        vLanded.r?.ok === true && vEvent !== null
+          && landedOnce(vLanded.fan, `/admin/desk/${designated.id}?tab=history&event=${vEvent.id}`),
+        j({ result: vLanded.r, fan: fanOf(vLanded.fan), eventId: vEvent?.id ?? null }));
+    } else {
+      ok("2.fs09.3c · CONTROL · a Start the rules REFUSE tells nobody — the account stays paused and no STARTED row appears anywhere", false, "no designated account to measure");
+      ok("2.fs09.2c · CONTROL · a re-verify REFUSED on a wrong password tells nobody", false, "no designated account to measure");
+      ok("2.fs09.2 · VERIFIED · confirming the holder's permission tells EVERY admin once, linking to the VERIFIED event and naming the officer — the holder is told nothing", false, "no designated account to measure");
+    }
+
+    /* ━━ 2.fs09.3 · START — §2i's startable recipe: real rules, a salt, the gap floor ━━ */
+    {
+      const b = await fixtureJ({ freqMinGapSec: 20 });
+      await w.dal.houseBotStore.setStatus(b.botId, { from: ["ACTIVE"], to: "PAUSED", pauseReason: "MANUAL", pausedFromStatus: null });
+      await w.setUserFields(b.userId, { passwordSalt: "case-salt-for-start-fs09" });
+      const cur: Any = await w.dal.houseBotStore.get(b.botId);
+      const rules: Any = R.DEFAULT_RULES_V1({ stakeBounds: { minTzs: 1_000, maxTzs: 10_000_000 } });
+      rules.scope.products.polls = true;
+      rules.scope.categories = ["macro"];
+      rules.modes.polls = { counter: true, fill: true, opener: true };
+      const saved = await w.dal.houseBotStore.saveRules(b.botId, cur.rulesVersion, { rules });
+      if (!saved.ok) throw new Error("§2j fixture: the Start account could not save its rules");
+      const sLanded = await measure("STARTED", b.userId, () => actJ({ id: b.botId, act: "START" }));
+      const sEvent = await eventOfJ(b.botId, "STARTED");
+      ok("2.fs09.3 · STARTED · a Start that lands tells EVERY admin once, linking to the STARTED event and naming the officer — the holder is told nothing",
+        sLanded.r?.ok === true && sLanded.r?.changed === true && sEvent !== null
+          && landedOnce(sLanded.fan, `/admin/desk/${b.botId}?tab=history&event=${sEvent.id}`)
+          && ((await w.dal.houseBotStore.get(b.botId)) as Any)?.status === "ACTIVE",
+        j({ result: sLanded.r, fan: fanOf(sLanded.fan), eventId: sEvent?.id ?? null }));
+      const sAgain = await measure("STARTED", b.userId, () => actJ({ id: b.botId, act: "START" }));
+      ok("2.fs09.3n · CONTROL · pressing Start on an account that is ALREADY running changes nothing and tells nobody",
+        sAgain.r?.ok === true && sAgain.r?.changed === false && silent(sAgain.fan), j({ result: sAgain.r, fan: fanOf(sAgain.fan) }));
+    }
+
+    /* ━━ 2.fs09.4 · THE RULES SAVE — §2i's whole-form recipe, the counter delay set BY KEY ━━ */
+    {
+      const acct = await fixtureJ({ freqMinGapSec: 20 });
+      const RULE_IDS = R.RULE_NUMBER_FIELDS as readonly string[];
+      const formOf = async (): Promise<Any> => (await GATEM.houseDetailForConsole(officerJ, ROUTE_J, acct.botId)).rulesForm;
+      const post = async (minDelay: string): Promise<Any> => {
+        const f: Any = await formOf();
+        const row: Any = await w.dal.houseBotStore.get(acct.botId);
+        const keyOf = (id: string): string => (f.rules as Any[])[RULE_IDS.indexOf(id)].key;
+        const numbers = Object.fromEntries((f.rules as Any[]).map((r: Any) => [r.key, r.value]));
+        return {
+          accountId: acct.botId,
+          baseVersion: row.rulesVersion,
+          values: { ...Object.fromEntries((f.caps as Any[]).map((x: Any) => [x.key, x.value])), "stake-max": "1000000" },
+          flags: Object.fromEntries((f.flags as Any[]).map((x: Any) => [x.key, x.on])),
+          lists: {
+            categories: (f.lists as Any[]).find((l: Any) => l.field === "categories").entries.filter((e: Any) => e.on).map((e: Any) => e.value),
+            chains: (f.lists as Any[]).find((l: Any) => l.field === "chains").entries.filter((e: Any) => e.on).map((e: Any) => e.value),
+          },
+          numbers: { ...numbers, [keyOf("counter.delayMinSec")]: minDelay, [keyOf("counter.delayMaxSec")]: "55" },
+          amountKind: f.amountKind.value,
+          schedule: {
+            days: (f.schedule.days as Any[]).filter((d: Any) => d.on).map((d: Any) => d.value),
+            allDay: f.schedule.allDay,
+            windows: (f.schedule.windows as Any[]).map((x: Any) => ({ start: x.start, end: x.end })),
+          },
+        };
+      };
+      const saveJ = (body: Any): Promise<Any> => GATEM.houseRulesSaveForConsole(officerJ, ROUTE_J, body);
+      const f0: Any = await formOf();
+      const shownMin = String((f0.rules as Any[])[RULE_IDS.indexOf("counter.delayMinSec")].value);
+      const first = await measure("RULES_SAVED", acct.userId, async () => saveJ(await post("26")));
+      const rEvent1 = await eventOfJ(acct.botId, "RULES_SAVED");
+      const body1 = String(first.fan.officer[0]?.bodyEn ?? "");
+      ok("2.fs09.4 · RULES_SAVED · a rules save that moves several fields tells EVERY admin once, linking to its RULES_SAVED event, with EVERY moved field's before → after in the one sentence — the cap as money, the delay with its unit symbol and its section",
+        first.r?.ok === true && rEvent1 !== null
+          && landedOnce(first.fan, `/admin/desk/${acct.botId}?tab=history&event=${rEvent1.id}`)
+          && body1.startsWith("Its rules changed — ")
+          && body1.includes(`Stake max: ${formatTzs(10_000_000)} → ${formatTzs(1_000_000)}`)
+          && body1.includes(`Counter · Delay minimum: ${shownMin} s → 26 s`)
+          && body1.includes("; ") && body1.endsWith(" Recorded in this bot's history."),
+        j({ result: first.r, fan: fanOf(first.fan), shownMin }));
+      const before2 = new Set([rEvent1?.id].filter(Boolean) as string[]);
+      const second = await measure("RULES_SAVED", acct.userId, async () => saveJ(await post("27")));
+      const rEvent2 = await eventOfJ(acct.botId, "RULES_SAVED", before2);
+      ok("2.fs09.4b · RULES_SAVED · a save that moves ONE field says exactly that field, from and to, in the copy's own three slots — and nothing it did not move",
+        second.r?.ok === true && rEvent2 !== null
+          && landedOnce(second.fan, `/admin/desk/${acct.botId}?tab=history&event=${rEvent2.id}`)
+          && second.fan.officer[0]?.bodyEn === `Its rules changed — Counter · Delay minimum: 26 s → 27 s by ${NAME_J}. Recorded in this bot's history.`
+          && String(second.fan.officer[0]?.bodySw).includes("Kanuni zake zimebadilika — Counter · Delay minimum: 26 s → 27 s")
+          && String(second.fan.officer[0]?.bodyZh).includes("其规则已更改——Counter · Delay minimum: 26 s → 27 s"),
+        j({ result: second.r, fan: fanOf(second.fan), sw: second.fan.officer[0]?.bodySw ?? null }));
+      const v3 = ((await w.dal.houseBotStore.get(acct.botId)) as Any).rulesVersion;
+      const same = await measure("RULES_SAVED", acct.userId, async () => saveJ(await post("27")));
+      ok("2.fs09.4n · CONTROL · a rules save that moves NOTHING still lands (the version advances) and tells nobody — an alert saying the rules changed would be false",
+        same.r?.ok === true && ((await w.dal.houseBotStore.get(acct.botId)) as Any).rulesVersion === v3 + 1 && silent(same.fan),
+        j({ result: same.r, fan: fanOf(same.fan) }));
+      const stale = await post("28");
+      stale.baseVersion -= 1;
+      const refused = await measure("RULES_SAVED", acct.userId, () => saveJ(stale));
+      ok("2.fs09.4c · CONTROL · a rules save REFUSED as stale tells nobody, and the stored delay is untouched",
+        refused.r?.ok === false && silent(refused.fan)
+          && ((await w.dal.houseBotStore.get(acct.botId)) as Any)?.rules?.counter?.delayMinSec === 27,
+        j({ result: refused.r, fan: fanOf(refused.fan) }));
+    }
+
+    /* ━━ 2.fs09.5 · THE LIMITS SAVE — the DESK's change: no account, its own history row, its own link ━━ */
+    {
+      const LIMITS = R.LIMIT_FIELDS as readonly string[];
+      const viewJ = async (): Promise<Any> => GATEM.houseUsageForConsole(OFFICER, ROUTE_J, { houseBotId: null });
+      const bodyAt = async (patch: Record<string, string> = {}): Promise<Any> => {
+        const v: Any = await viewJ();
+        return {
+          baseVersion: v.limitsVersion,
+          values: { ...Object.fromEntries((v.limits as Any[]).map((l: Any) => [l.key, l.input])), ...patch } as Record<string, string>,
+        };
+      };
+      const keyOfLimit = async (field: string): Promise<string> => ((await viewJ()).limits as Any[])[LIMITS.indexOf(field)].key;
+      const bellKey = await keyOfLimit("bellAlertsPerHour");
+      const saveL = (body: Any): Promise<Any> => GATEM.houseLimitsSaveForConsole(officerJ, ROUTE_J, body);
+      /* The stored value exactly as found — the `finally` below puts THIS back, not a figure derived from it. */
+      const bellStored = ((await w.dal.houseBotControlStore.get()) as Any).bellAlertsPerHour;
+      const bell0 = Number(bellStored);
+      const bell1 = bell0 >= 60 ? bell0 - 1 : bell0 + 1;
+      let stoppedBy: unknown = null;
+      try {
+        const beforeEvents = new Set(((await w.dal.houseBotEventStore.listByKinds(["LIMITS_SAVED"], { limit: 500 })) as Any[]).map((e) => e.id));
+        const l1 = await measure("LIMITS_SAVED", null, async () => saveL(await bodyAt({ [bellKey]: String(bell1) })));
+        const lEvent1 = await eventOfJ(null, "LIMITS_SAVED", beforeEvents);
+        ok("2.fs09.5 · LIMITS_SAVED · the desk's limits save writes its OWN history row — no account, no holder, the officer as actor — which the save had never written",
+          l1.r?.ok === true && lEvent1 !== null && lEvent1.houseBotId === null && lEvent1.userId === null && lEvent1.actorId === officerJ,
+          j({ result: l1.r, event: lEvent1 && { houseBotId: lEvent1.houseBotId, userId: lEvent1.userId, actorId: lEvent1.actorId } }));
+        ok("2.fs09.5b · LIMITS_SAVED · and it tells EVERY admin once, as the DESK's change: no account in the title, the link on the desk's own history at that row, the one moved limit from and to",
+          lEvent1 !== null && landedOnce(l1.fan, `/admin/desk?tab=history&event=${lEvent1.id}`)
+            && String(l1.fan.officer[0]?.titleEn).startsWith("House bots · LIMITS_SAVED · ")
+            && l1.fan.officer[0]?.bodyEn === `The global limits changed — Bell alerts per hour: ${bell0} → ${bell1} by ${NAME_J}. Recorded in the house bots' history.`,
+          j({ fan: fanOf(l1.fan), title: l1.fan.officer[0]?.titleEn ?? null, eventId: lEvent1?.id ?? null }));
+        const v2 = ((await w.dal.houseBotControlStore.get()) as Any).limitsVersion;
+        const lSame = await measure("LIMITS_SAVED", null, async () => saveL(await bodyAt()));
+        ok("2.fs09.5n · CONTROL · a limits save that moves NOTHING still lands (the version advances) and tells nobody",
+          lSame.r?.ok === true && ((await w.dal.houseBotControlStore.get()) as Any).limitsVersion === v2 + 1 && silent(lSame.fan),
+          j({ result: lSame.r, fan: fanOf(lSame.fan) }));
+        const staleL = await bodyAt({ [bellKey]: String(bell0) });
+        staleL.baseVersion -= 1;
+        const lRefused = await measure("LIMITS_SAVED", null, () => saveL(staleL));
+        ok("2.fs09.5c · CONTROL · a limits save REFUSED as stale tells nobody, and the limit is untouched",
+          lRefused.r?.ok === false && silent(lRefused.fan) && Number(((await w.dal.houseBotControlStore.get()) as Any).bellAlertsPerHour) === bell1,
+          j({ result: lRefused.r, fan: fanOf(lRefused.fan) }));
+        /* The limit is put back by a real save, which is measured like any other. */
+        const back = await measure("LIMITS_SAVED", null, async () => saveL(await bodyAt({ [bellKey]: String(bell0) })));
+        ok("2.fs09.5r · putting the limit back is a save like any other — one row per admin, from and to reversed — and the desk is where this block found it",
+          back.r?.ok === true && back.fan.officer.length === 1 && back.fan.actor.length === 1
+            && String(back.fan.officer[0]?.bodyEn).includes(`Bell alerts per hour: ${bell1} → ${bell0} by ${NAME_J}.`)
+            && Number(((await w.dal.houseBotControlStore.get()) as Any).bellAlertsPerHour) === bell0,
+          j({ result: back.r, fan: fanOf(back.fan) }));
+      } catch (err) {
+        stoppedBy = err;
+      } finally {
+        /* ⛔ `bellAlertsPerHour` IS A SHARED DESK LIMIT — every later block reads the desk this one leaves. 2.fs09.5r
+           measures the put-back when the block runs through; this is the net under a throw or a refused save between
+           the two: whenever the stored value is not the one found, it goes back through the DAL at a FRESH version,
+           so a stale form can never refuse it (a second try covers a write that raced the first read). */
+        for (let attempt = 0; attempt < 2; attempt++) {
+          const now: Any = await w.dal.houseBotControlStore.get();
+          if (now.bellAlertsPerHour === bellStored) break;
+          if ((await w.dal.houseBotControlStore.saveLimits(now.limitsVersion, { bellAlertsPerHour: bellStored })).ok) break;
+        }
+      }
+      /* The net is measured, not trusted — and BEFORE a stop is passed on, so a throw above still reports it. */
+      const bellNow = ((await w.dal.houseBotControlStore.get()) as Any).bellAlertsPerHour;
+      ok("2.fs09.5z · the net · whatever stopped the lines above, the shared bell limit is back where this block found it before any later block reads the desk",
+        bellNow === bellStored, j({ found: bellStored, now: bellNow, stoppedBy: stoppedBy === null ? null : String(stoppedBy) }));
+      if (stoppedBy !== null) throw stoppedBy;
+    }
+
+    /* ━━ 2.fs09.6 · PAUSE AND REMOVE — the two that already sent, now naming the officer like the rest ━━ */
+    {
+      const pa = await fixtureJ();
+      const pLanded = await measure("PAUSED", pa.userId, () => actJ({ id: pa.botId, act: "PAUSE", reason: "alert check pause" }));
+      const pEvent = await eventOfJ(pa.botId, "PAUSED");
+      ok("2.fs09.6 · PAUSED · a Pause by hand tells EVERY admin once, linking to the PAUSED event and naming the officer, and points at the reason its event keeps",
+        pLanded.r?.ok === true && pLanded.r?.changed === true && pEvent !== null
+          && landedOnce(pLanded.fan, `/admin/desk/${pa.botId}?tab=history&event=${pEvent.id}`)
+          && String(pLanded.fan.officer[0]?.bodyEn).endsWith(" Reason recorded in this bot's history."),
+        j({ result: pLanded.r, fan: fanOf(pLanded.fan), eventId: pEvent?.id ?? null }));
+      const pAgain = await measure("PAUSED", pa.userId, () => actJ({ id: pa.botId, act: "PAUSE", reason: "alert check pause again" }));
+      ok("2.fs09.6n · CONTROL · pausing an account that is not running changes nothing and tells nobody",
+        pAgain.r?.ok === true && pAgain.r?.changed === false && silent(pAgain.fan), j({ result: pAgain.r, fan: fanOf(pAgain.fan) }));
+      const re = await fixtureJ();
+      const rRefused = await measure("REMOVED", re.userId, () => actJ({ id: re.botId, act: "REMOVE", reason: "alert check removal", typed: "remove" }));
+      ok("2.fs09.7c · CONTROL · a Remove REFUSED on the wrong typed word tells nobody, and the account is still on the desk",
+        rRefused.r?.ok === false && silent(rRefused.fan) && ((await w.dal.houseBotStore.get(re.botId)) as Any)?.status === "ACTIVE",
+        j({ result: rRefused.r, fan: fanOf(rRefused.fan) }));
+      const rLanded = await measure("REMOVED", re.userId, () => actJ({ id: re.botId, act: "REMOVE", reason: "alert check removal", typed: GATEM.CONSOLE_REMOVE_WORD }));
+      const rEvent = await eventOfJ(re.botId, "REMOVED");
+      ok("2.fs09.7 · REMOVED · a Remove tells EVERY admin once, linking to the REMOVED event and naming the officer",
+        rLanded.r?.ok === true && rLanded.r?.changed === true && rEvent !== null
+          && landedOnce(rLanded.fan, `/admin/desk/${re.botId}?tab=history&event=${rEvent.id}`),
+        j({ result: rLanded.r, fan: fanOf(rLanded.fan), eventId: rEvent?.id ?? null }));
+    }
+  } finally {
+    for (const b of mineJ) {
+      await w.dal.houseBotStore.setStatus(b.botId, {
+        from: ["ACTIVE", "PAUSED", "AUTO_PAUSED"], to: "REMOVED", pauseReason: null, pausedFromStatus: null,
+        removal: { byId: OFFICER, reason: "fixture", cause: "MANUAL" },
+      });
+    }
+  }
+  const stillLiveJ = ((await w.dal.houseBotStore.listNonRemoved()) as Any[]).filter((b) => mineJ.some((m) => m.botId === b.id));
+  ok("2.fs09.t · teardown · every account this block created is off the roster again (the 20 slots are shared)",
+    mineJ.length >= 5 && stillLiveJ.length === 0, j({ created: mineJ.length, stillLive: stillLiveJ.length }));
+
+  /* ━━ 2.fs09.8 · THE TARGET CODES — no act sends them because no act EXISTS (memory child: it reads files) ━━
+   * ⛔ `ROSTER_EVENT_CODES` names TARGET_ADDED, TARGET_CHANGED, TARGET_REMOVED and TARGET_STOPPED, and nothing under
+   * `src/` adds, changes, removes or vetoes a target: the targeting screen is not built (`BY_HAND_SCREENS.targeting`
+   * is false). A code with no act is not a missing alert — but the day a writer arrives it must arrive WITH its alert,
+   * so this holds the two together. 🔴 Its first version held nothing (adversarial review, 2026-09-27): it looked for an
+   * `update` the store does not have, only on a receiver spelled `targetStore`, and ANY `announceRoster(` in the file
+   * satisfied it. So every part of it is now read from the code, not typed:
+   *   · THE WRITERS ARE THE INTERFACE'S. `HouseBotTargetStore` is read out of the DAL, and its members must be exactly
+   *     the fourteen classified here (2.fs09.8i): the four OFFICER writers `insert`, `casUpdate`, `remove` and `veto`;
+   *     the two SYSTEM ends `endActive` and `endAllForBot` (by the planner, a void consent, a Remove or the sunset —
+   *     the §9.2 row after the roster's says those send no alert, and they already have callers); and eight readers.
+   *     A new member is red until somebody classifies it.
+   *   · THE RECEIVER IS WHATEVER THE FILE BOUND THE DAL'S `targetStore` TO, resolved from that file's own import of
+   *     `house-bot-dal`: the name, an import alias (`house-console-read.ts` imports it as `houseBotTargetStore`), a
+   *     namespace import's member, a dynamic import's destructured name. A use that is not a member access — the
+   *     store destructured, handed to a function, put in an object, exported — is an ESCAPE the scan cannot follow,
+   *     and is reported; so is a file under `src/` that re-exports it from the DAL.
+   *   · THE ALERT MUST BE A TARGET ONE: a file that reaches an officer writer must call `announceRoster` (or its
+   *     import alias) with a literal `event:` that is one of the TARGET_* codes `ROSTER_EVENT_CODES` holds. A file
+   *     that announces only PAUSED is still silent about its target.
+   * Every rule has a planted CONTROL below that must be reported, and one that must not — so the zeros are a scan. */
+  if (STORE === "memory") {
+    const { ROSTER_EVENT_CODES }: Any = await import("../../src/lib/house-bot/alert-copy.ts");
+    const TARGET_CODES = (ROSTER_EVENT_CODES as readonly string[]).filter((c) => c.startsWith("TARGET_"));
+    const DAL_REL = "src/lib/server/house-bot-dal.ts";
+    const OFFICER_WRITERS = ["casUpdate", "insert", "remove", "veto"];
+    const SYSTEM_ENDS = ["endActive", "endAllForBot"];
+    const READERS = ["activeForMarket", "countActive", "countForBot", "everStopped", "get", "getForUpdate", "listActive", "listForBot"];
+    const classified = [...OFFICER_WRITERS, ...SYSTEM_ENDS, ...READERS].sort();
+    const ifaceBody = /export interface HouseBotTargetStore \{([\s\S]*?)\n\}/.exec(decomment(read(DAL_REL)))?.[1] ?? "";
+    const members = [...new Set([...ifaceBody.matchAll(/^ {2}([\w$]+)\??\s*[(:<]/gm)].map((m) => m[1]))].sort();
+    const esc = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    /** A module specifier ending in `mod` — relative, or through the `@/` alias. */
+    /* ⚠️ ANY EXTENSION A SPECIFIER CAN CARRY (2026-09-27 verifier): `.js` and `.mjs` name the same module to the
+       bundler, and a scan that knew only `.ts` read such an import as no binding at all. */
+    const FROM = (mod: string): string => String.raw`["'][^"'\n]*\/${mod}(?:\.(?:ts|tsx|mts|js|mjs))?["']`;
+    /** The text between a call's parentheses, from the index of its `(` — string and template literals skipped whole. */
+    const argsAt = (code: string, open: number): string => {
+      let depth = 0;
+      let quote = "";
+      for (let i = open; i < code.length; i++) {
+        const c = code[i];
+        if (quote) {
+          if (c === String.fromCharCode(92)) i++;
+          else if (c === quote) quote = "";
+          continue;
+        }
+        if (c === "\"" || c === "'" || c === "`") quote = c;
+        else if (c === "(") depth++;
+        else if (c === ")" && --depth === 0) return code.slice(open + 1, i);
+      }
+      return code.slice(open + 1);
+    };
+    type TargetScan = { receivers: string[]; writes: string[]; escapes: string[]; announced: string[]; reexport: boolean };
+    /** One file's (decommented) code: what it bound the DAL's `targetStore` to, which officer writers it reaches through
+     *  that, which uses escape the scan, which TARGET_* codes its `announceRoster` calls carry, and whether it re-exports
+     *  the store from the DAL. */
+    const scanTargets = (code: string): TargetScan => {
+      const spans: Array<[number, number]> = [];
+      const receivers: string[] = [];
+      const modules: string[] = [];
+      const bind = (re: RegExp, each: (m: RegExpMatchArray) => void) => {
+        for (const m of code.matchAll(re)) { spans.push([m.index!, m.index! + m[0].length]); each(m); }
+      };
+      const pick = (list: string, spec: RegExp) => {
+        for (const part of list.split(",")) {
+          const s = spec.exec(part.trim());
+          if (s) receivers.push(esc(s[2] ?? s[1]));
+        }
+      };
+      bind(new RegExp(String.raw`\bimport\s+(?!type\b)(?:[\w$]+\s*,\s*)?\{([^}]*)\}\s*from\s*${FROM("house-bot-dal")}`, "g"),
+        (m) => pick(m[1], /^(targetStore)(?:\s+as\s+([\w$]+))?$/));
+      /* The braces' content may hold NO opening brace either: a destructure inside a function body would otherwise be
+         matched from the body's own brace, capture the statement before it, and be consumed unread (control 8c2). */
+      bind(new RegExp(String.raw`\{([^{}]*)\}\s*=\s*(?:await\s+)?import\(\s*${FROM("house-bot-dal")}\s*\)`, "g"),
+        (m) => pick(m[1], /^(targetStore)(?:\s*:\s*([\w$]+))?$/));
+      bind(new RegExp(String.raw`\bimport\s+(?:[\w$]+\s*,\s*)?\*\s*as\s+([\w$]+)\s*from\s*${FROM("house-bot-dal")}`, "g"), (m) => modules.push(m[1]));
+      bind(new RegExp(String.raw`\b(?:const|let|var)\s+([\w$]+)\s*=\s*(?:await\s+)?import\(\s*${FROM("house-bot-dal")}\s*\)`, "g"), (m) => modules.push(m[1]));
+      for (const n of modules) receivers.push(String.raw`${esc(n)}\s*!?\s*(?:\?\.|\.)\s*targetStore`);
+      /* A type-only import and a re-export bind no receiver; they are accounted for here so the catch-all below reads
+         only the DAL references no pattern above recognised (a default import, a require, an import-equals). */
+      bind(new RegExp(String.raw`\bimport\s+type\s+\{[^}]*\}\s*from\s*${FROM("house-bot-dal")}`, "g"), () => {});
+      bind(new RegExp(String.raw`\bexport\s+(?:type\s+)?(?:\*(?:\s*as\s+[\w$]+)?|\{[^}]*\})\s*from\s*${FROM("house-bot-dal")}`, "g"), () => {});
+      const writes: string[] = [];
+      const escapes: string[] = [];
+      /** Every use of `pattern` outside the bindings above: a member access hands its member to `member`; anything
+       *  else — a destructure, an argument, an object's shorthand, an export — is an escape. */
+      const uses = (pattern: string, member: (name: string) => void) => {
+        /* ⛔ A SPREAD IS A USE (2026-09-27 verifier): `{ ...targetStore }` hands every writer away, and a look-behind
+           that refused any preceding dot never saw it. A real member access (`x.targetStore`) is still skipped. */
+        for (const m of code.matchAll(new RegExp(String.raw`(?<![\w$])(?<!(?<!\.\.)\.)${pattern}(?![\w$])`, "g"))) {
+          const at = m.index!;
+          if (spans.some(([a, b]) => at >= a && at < b)) continue;
+          const next = /^\s*!?\s*(?:\?\.|\.)\s*([\w$]+)/.exec(code.slice(at + m[0].length, at + m[0].length + 80));
+          if (next) member(next[1]);
+          else escapes.push(code.slice(at, at + m[0].length + 24).replace(/\s+/g, " "));
+        }
+      };
+      for (const r of receivers) {
+        uses(r, (name) => {
+          if (OFFICER_WRITERS.includes(name)) writes.push(name);
+          else if (!classified.includes(name)) escapes.push(`targetStore.${name}`);
+        });
+      }
+      for (const n of modules) uses(esc(n), () => {});
+      /* ⛔ THE ANNOUNCER IS BOUND, NOT NAMED (2026-09-27 verifier): the file's own import of announceRoster from the
+         emitters module — static, or a dynamic import's destructure — by its name or its alias. A call spelled
+         `announceRoster(` with nothing bound to it (a same-named local, or no import at all) announces nothing. */
+      const announcers: string[] = [];
+      for (const m of code.matchAll(new RegExp(String.raw`\bimport\s+(?!type\b)(?:[\w$]+\s*,\s*)?\{([^}]*)\}\s*from\s*${FROM("emitters")}`, "g"))) {
+        for (const part of m[1].split(",")) {
+          const s = /^announceRoster(?:\s+as\s+([\w$]+))?$/.exec(part.trim());
+          if (s) announcers.push(s[1] ?? "announceRoster");
+        }
+      }
+      for (const m of code.matchAll(new RegExp(String.raw`\{([^{}]*)\}\s*=\s*(?:await\s+)?import\(\s*${FROM("emitters")}\s*\)`, "g"))) {
+        for (const part of m[1].split(",")) {
+          const s = /^announceRoster(?:\s*:\s*([\w$]+))?$/.exec(part.trim());
+          if (s) announcers.push(s[1] ?? "announceRoster");
+        }
+      }
+      /* ⛔ THE CATCH-ALL: a reference to the DAL module no pattern above recognised, in a file that names targetStore,
+         is a binding this scan cannot follow — so it is reported, never trusted. */
+      for (const m of code.matchAll(new RegExp(FROM("house-bot-dal"), "g"))) {
+        const at = m.index!;
+        if (!spans.some(([a, b]) => at >= a && at < b) && /\btargetStore\b/.test(code)) escapes.push(`an unrecognised binding of the DAL: ${code.slice(Math.max(0, at - 40), at + m[0].length).replace(/\s+/g, " ")}`);
+      }
+      const announced: string[] = [];
+      for (const name of announcers) {
+        for (const m of code.matchAll(new RegExp(String.raw`(?<![\w$.])${esc(name)}\s*\(`, "g"))) {
+          const ev = /\bevent\s*:\s*(["'`])([A-Z_]+)\1/.exec(argsAt(code, m.index! + m[0].length - 1))?.[2];
+          if (ev && TARGET_CODES.includes(ev)) announced.push(ev);
+        }
+      }
+      const reexport = new RegExp(String.raw`\bexport\s+(?:\*(?:\s*as\s+[\w$]+)?|\{[^}]*\btargetStore\b[^}]*\})\s*from\s*${FROM("house-bot-dal")}`).test(code);
+      return { receivers, writes, escapes, announced, reexport };
+    };
+    const reported = (s: TargetScan): boolean => (s.writes.length > 0 && s.announced.length === 0) || s.escapes.length > 0 || s.reexport;
+
+    const srcFiles: string[] = [];
+    const walkSrc = (dir: string) => {
+      for (const entry of readdirSync(join(ROOT, dir)).sort()) {
+        const rel = `${dir}/${entry}`;
+        if (statSync(join(ROOT, rel)).isDirectory()) walkSrc(rel);
+        else if (/\.(ts|tsx)$/.test(entry)) srcFiles.push(rel);
+      }
+    };
+    walkSrc("src");
+    const scans = srcFiles.filter((rel) => rel !== DAL_REL).map((rel) => ({ rel, ...scanTargets(decomment(read(rel))) }));
+    const bound = scans.filter((s) => s.receivers.length > 0).map((s) => s.rel);
+    const aliased = scans.filter((s) => s.receivers.some((r) => r !== "targetStore")).map((s) => `${s.rel} as ${s.receivers.join(",")}`);
+    const writers = scans.filter((s) => s.writes.length > 0).map((s) => `${s.rel}: ${[...new Set(s.writes)].join(",")}`);
+    const silentWriters = scans.filter((s) => s.writes.length > 0 && s.announced.length === 0).map((s) => s.rel);
+    const escaped = scans.filter((s) => s.escapes.length > 0).map((s) => `${s.rel}: ${s.escapes.join(" | ")}`);
+    const reexports = scans.filter((s) => s.reexport).map((s) => s.rel);
+    ok("2.fs09.8 · the four target codes have no writer to announce them YET — nothing under src/ outside the DAL calls insert, casUpdate, remove or veto on the DAL's targetStore, under any name it is bound to, and the targeting screen is not built",
+      srcFiles.length > 300 && bound.length >= 9 && aliased.length >= 1 && writers.length === 0 && CR.BY_HAND_SCREENS.targeting === false,
+      j({ files: srcFiles.length, bound, aliased, writers }));
+    ok("2.fs09.8a · THE LAW · every file under src/ that reaches the DAL's targetStore — by name, import alias, namespace or dynamic import — and calls an officer writer on it also calls announceRoster with a TARGET_* event; the store never leaves a file as a value, and nothing re-exports it",
+      TARGET_CODES.length === 4 && silentWriters.length === 0 && escaped.length === 0 && reexports.length === 0,
+      j({ targetCodes: TARGET_CODES, silentWriters, escaped, reexports }));
+    ok("2.fs09.8i · the target store's interface is exactly the fourteen members this law classifies — four officer writers, two system ends, eight readers — so a new writer cannot arrive unclassified",
+      classified.length === 14 && members.join(",") === classified.join(","),
+      j({ members, unclassified: members.filter((m) => !classified.includes(m)), gone: classified.filter((m) => !members.includes(m)) }));
+
+    /* ━━ the planted CONTROLS — each a file the scan has never seen ━━ */
+    const IMPORTED = `import { houseBotStore, targetStore, type StoredHouseBotTarget } from "../house-bot-dal";\n`;
+    /* The four names are typed HERE, not taken from `OFFICER_WRITERS`: a control derived from the list it checks would
+       follow that list into any mistake — a writer filed among the readers would plant nothing and stay green. */
+    const plantedWriters = ["insert", "casUpdate", "remove", "veto"].map((wr) => [wr, reported(scanTargets(`${IMPORTED}await targetStore\n    .${wr}(id, by);\n`))]);
+    ok("2.fs09.8c1 · CONTROL · a planted writer with no alert IS reported for each of the four officer writers — insert, casUpdate (the DAL's real change writer, which the first scan missed), remove and veto — across a line break",
+      plantedWriters.length === 4 && plantedWriters.every(([, r]) => r === true), j(plantedWriters));
+    const viaAlias = [
+      `import { targetStore as targets } from "./house-bot-dal";\nawait targets.casUpdate(id, 1, patch, by);\n`,
+      `import * as dal from "@/lib/server/house-bot-dal";\nawait dal.targetStore.veto(id);\n`,
+      `async function drop(id: string) {\n  const { houseBotStore, targetStore: t } = await import("../house-bot-dal");\n  await t.remove(id, by);\n}\n`,
+      `const dal = await import("../house-bot-dal");\nawait dal.targetStore?.insert(row);\n`,
+      `import { targetStore } from "../house-bot-dal.js";\nawait targetStore.insert(row);\n`,
+    ].map((code) => reported(scanTargets(code)));
+    ok("2.fs09.8c2 · CONTROL · a writer on an ALIASED receiver IS reported — targetStore as X in the file's own DAL import — and so is one through a namespace import, a dynamic import's renamed destructure, and a dynamic import's module object, and one imported from the DAL's .js specifier",
+      viaAlias.length === 5 && viaAlias.every((r) => r === true), j(viaAlias));
+    const nonTarget = [
+      `${IMPORTED}import { announceRoster } from "./emitters";\nawait targetStore.remove(id, by);\nawait announceRoster({ botId, label, event: "PAUSED", eventId, actorId, detail: { cancelled } });\nconst later = "TARGET_REMOVED";\n`,
+      `${IMPORTED}await targetStore.insert(row);\nawait announceRoster;\nawait announceMoneyEvent({ event: "TARGET_ADDED" });\n`,
+      `${IMPORTED}const announceRoster = (_x: unknown) => {};\nawait targetStore.insert(row);\nannounceRoster({ event: "TARGET_ADDED" });\n`,
+      `${IMPORTED}await targetStore.insert(row);\nawait announceRoster({ botId, label, event: "TARGET_ADDED", eventId });\n`,
+    ].map((code) => reported(scanTargets(code)));
+    ok("2.fs09.8c3 · CONTROL · a writer whose file announces only a NON-target code IS reported — an announceRoster with event PAUSED, a TARGET_* word outside the call, or another emitter carrying it, does not cover a target — and neither does a TARGET_* call through a same-named local or through no import at all",
+      nonTarget.every((r) => r === true), j(nonTarget));
+    const escapes = [
+      `${IMPORTED}const { veto } = targetStore;\nawait veto(id);\n`,
+      `${IMPORTED}await withTargets(targetStore);\n`,
+      `${IMPORTED}const deps = { targetStore };\n`,
+      `export { targetStore } from "../house-bot-dal";\n`,
+      `export * from "./house-bot-dal";\n`,
+      `${IMPORTED}await withTargets({ ...targetStore });\n`,
+      `const dal = require("../house-bot-dal");\nawait dal.targetStore.insert(row);\n`,
+    ].map((code) => reported(scanTargets(code)));
+    ok("2.fs09.8c4 · CONTROL · the store leaving a file as a value IS reported — destructured, handed to a function, put in an object — and so is a re-export of it from the DAL, a spread of it, and a binding of the DAL the scan cannot follow (a require)",
+      escapes.every((r) => r === true), j(escapes));
+    const clean = [
+      `${IMPORTED}import { announceRoster } from "./emitters";\nawait targetStore.veto(id);\nawait announceRoster({ botId, label, event: "TARGET_STOPPED", eventId, actorId, detail: { cancelled: 2 } });\n`,
+      `${IMPORTED}import { announceRoster as tell } from "./emitters";\nawait targetStore.insert(row);\nawait tell({ botId, label, event: "TARGET_ADDED", eventId, actorId });\n`,
+      `${IMPORTED}await targetStore.listActive();\nawait targetStore?.activeForMarket(id);\n`,
+      `${IMPORTED}await targetStore.endAllForBot(id, "SUNSET", t);\n`,
+      `const targetStore = fakeTargets();\nawait targetStore.insert(row);\n`,
+      `${IMPORTED}const { announceRoster } = await import("./emitters");\nawait targetStore.insert(row);\nawait announceRoster({ botId, label, event: "TARGET_ADDED", eventId });\n`,
+      `import type { StoredHouseBotTarget } from "../house-bot-dal";\nconst targetStore = fakeTargets();\nawait targetStore.insert(row);\n`,
+    ].map((code) => reported(scanTargets(code)));
+    ok("2.fs09.8c5 · CONTROL · and the scan is not a blanket — a writer announcing a TARGET_* code (by name or by alias), a reader, a system end, and a same-named local that is not the DAL's are all NOT reported — nor a writer whose announcer is a dynamic import's destructure, nor a type-only import of the DAL beside a local",
+      clean.every((r) => r === false), j(clean));
+  }
+} catch (err) {
+  ok("0.throw.2j · no FS-09 case threw — a throw here would otherwise skip §3's lexicon scan and §4's whole source law",
+    false, String((err as Any)?.stack ?? err).replace(/\s+/g, " ").slice(0, 400));
+}
+
+/* ════════════════════════════════════════════════════════════════════════════════════════════════════════════════
  * §2k · STEP 9 — EVERY DESK TABLE SORTS, AND NONE CAN GROW PAST A PAGE (Ali, 2026-09-26)
  *
  * As typed: "before finsihing amke su relaso all desk tbale sand grid sgot th erug tpaging pleas enad sroting etc.. to
@@ -9100,10 +9646,15 @@ try {
       ok("1.s9 · the pages · every sortable header on both pages is the kit's `SortTh`, one per column of its table in the reader's own order, every part of it — token, word, column in force, direction, prefix — from ONE sort view of the reader, its parameters that panel's VALIDATED ones and never the raw address, and no header word typed at the call site",
         everySite(SITES), j(SITES.map((s) => [s[4], siteHolds(s)])));
       const plant = (from: string, to: string) => SITES.map((s) => [s[0].replace(from, to), ...s.slice(1)] as [string, string, string, string, string, string]);
+      /* ⚠️ RE-POINTED 2026-09-27 (the phone sort rail): the plant was the bare `sp={feedView.feedParams}`, and `replace`
+         takes the FIRST occurrence — which is now the phone rail's, drawn above the table, so the plant landed on the rail
+         and the header pin rightly stayed whole. The plant names a HEADER's parameters by what follows them in a
+         `SortTh` (its `baseHref`), so it lands on the first header of the activity table, as it always meant to; the
+         rail's own raw-address plant is `1.s9p`'s. */
       ok("1.s9 · the pages · CONTROL · the same pin reports a header handed the raw address, a word typed at the call site, and two headers swapped — each planted in a copy, each seen to land",
-        !everySite(plant("sp={feedView.feedParams}", "sp={sp}")) && !everySite(plant("label={rosterView.rosterSort.columns.status.label}", 'label="Status"'))
+        !everySite(plant("sp={feedView.feedParams} baseHref={CONSOLE_ROUTE}", "sp={sp} baseHref={CONSOLE_ROUTE}")) && !everySite(plant("label={rosterView.rosterSort.columns.status.label}", 'label="Status"'))
           && !everySite(plant("field={resultsView.daySort.columns.result.field}", "field={resultsView.daySort.columns.stakes.field}"))
-          && pageCode.includes("sp={feedView.feedParams}") && pageCode.includes("label={rosterView.rosterSort.columns.status.label}"),
+          && pageCode.includes("sp={feedView.feedParams} baseHref={CONSOLE_ROUTE}") && pageCode.includes("label={rosterView.rosterSort.columns.status.label}"),
         "");
       ok("1.s9 · the pages · the roster draws the kit pager over its reader's own count with its own page word, the roster and Results panels paint the console's one refusal Callout, and the Targets pager's base is the reader's parameters — not a tab typed at the call site",
         /total=\{rosterView\.rosterTotal\}/.test(pageCode) && /page=\{rosterView\.rosterPage\}/.test(pageCode) && /perPage=\{rosterView\.rosterPerPage\}/.test(pageCode)
@@ -9116,6 +9667,246 @@ try {
         !/baseHref=\{buildBaseHref\(`\$\{CONSOLE_ROUTE\}\/\$\{view\.id\}`, view\.targetsParams, "tpage"\)\}/.test(detail9.replace("view.targetsParams, \"tpage\"", "{ tab: \"targets\" }, \"tpage\""))
           && !/\{rosterView\.queryRefusal && \(/.test(panelOf("roster").replace("{rosterView.queryRefusal && (", "{false && (")),
         "");
+    }
+
+    /* ━━ THE PHONE'S SORT RAIL (2026-09-27) — Ali: "on a phone, the two activity lists can't be re-sorted … a phone sort
+       button". Below `sm` both ledgers render each row as a stacked card and hide their header row, so the header row's
+       controls stand above the table as the kit's card sort rail (`CardSortControl`, the platform's own answer for sorting
+       where there is no header row — never a second sort control). What it must be, each with a control: fed ONLY from the
+       reader's sort view — the same view, VALIDATED parameters and route the `SortTh` headers are handed — so a chip and
+       its column's header are ONE address (rendered and compared, not assumed); drawn below `sm` only, the header row
+       being the control from `sm` up, and never over an empty table, which hides its own header row; at the rank the
+       section's 40px tap floor needs; and answering to an id no other rail uses. (memory child: files and a render.) ━━ */
+    if (!w.onPostgres) {
+      const detailP = decomment(read(DETAIL_PAGE));
+      /** The activity panel's own slice of either page — the landing page's by its panel opener, the account page's to its table's end. */
+      const activityOf = (code: string, which: "desk" | "account"): string => {
+        if (which === "account") return /\{tab === "activity"[\s\S]*?<\/table>/.exec(code)?.[0] ?? "";
+        const open = code.indexOf(`{tab === "activity" && (<>`);
+        if (open < 0) return "";
+        const close = code.indexOf("\n        </>)}", open);
+        return close < 0 ? code.slice(open) : code.slice(open, close);
+      };
+      /** [ledger, the page's code, the view, the route its `SortTh` headers are handed, the rail's own id] */
+      type PhoneSite = [which: "desk" | "account", code: string, v: string, route: string, id: string];
+      const PHONE: PhoneSite[] = [
+        ["desk", pageCode, "feedView", "CONSOLE_ROUTE", "desk-activity-sort"],
+        ["account", detailP, "view", "`${CONSOLE_ROUTE}/${view.id}`", "account-activity-sort"],
+      ];
+      const railTag = (v: string, route: string, id: string) =>
+        `<CardSortControl basePath={${route}} railId="${id}" prefix={${v}.feedSort.prefix} current={${v}.feedSort.current} dir={${v}.feedSort.dir} sp={${v}.feedParams} options={Object.values(${v}.feedSort.columns)} rank="secondary" />`;
+      const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const phoneHeld = ([which, code, v, route, id]: PhoneSite): boolean => {
+        const panel = activityOf(code, which);
+        /* After the order note and before the table's scroller — the header row's own place — behind the rows-exist
+           branch, in a wrapper hidden from `sm` up. ⚠️ `decomment` keeps a JSX comment's braces, so empty ones may sit between. */
+        const block = new RegExp(`<p className="text-body-sm text-text-tertiary">\\{${esc(v)}\\.feedOrderNote\\}</p>\\s*</div>\\s*(?:\\{\\s*\\}\\s*)*`
+          + `\\{feedRows\\.length > 0 && \\(\\s*<div className="sm:hidden">\\s*${esc(railTag(v, route, id))}\\s*</div>\\s*\\)\\}\\s*(?:\\{\\s*\\}\\s*)*<ScrollX label=`);
+        const heads = [...panel.matchAll(/<SortTh\b[^>]*\/>/g)].map((m) => m[0]);
+        const failedAt = panel.indexOf("feedRows === null ? (");
+        return block.test(panel)
+          && (code.match(/<CardSortControl\b/g) ?? []).length === 1
+          /* the SAME parameters, prefix and route the headers of this table are handed, so the two cannot be fed apart */
+          && heads.length >= 3 && heads.every((t) => t.includes(`sp={${v}.feedParams} baseHref={${route}} prefix={${v}.feedSort.prefix}`))
+          /* the header row is the control from `sm` up — the rail's exact complement, on the same table */
+          && /<thead className="max-sm:hidden /.test(panel)
+          /* inside the branch that paints the table, never the failed read's */
+          && failedAt >= 0 && failedAt < panel.indexOf("<CardSortControl");
+      };
+      ok("1.s9p · phone · each activity ledger draws the kit's card sort rail in its header row's place — after the order note, before the table — below `sm` only and never over an empty table, fed ONLY from the reader's sort view: its columns in the header order, the column in force, the direction, the prefix, the panel's VALIDATED parameters and the headers' own route, at the non-dense rank",
+        PHONE.every(phoneHeld), j(PHONE.map((s) => [s[0], phoneHeld(s), (s[1].match(/<CardSortControl\b/g) ?? []).length])));
+      /* Each plant is one line of the real markup, so it lands whatever the checkout's line endings. */
+      const PLANTS: Array<[string, string]> = [
+        ["sp={feedView.feedParams} options={", "sp={sp} options={"],
+        ["options={Object.values(view.feedSort.columns)}", "options={[{ field: \"stake\", label: \"Stake\" }]}"],
+        ["<div className=\"sm:hidden\">", "<div>"],
+        ["{feedRows.length > 0 && (", "{("],
+        ["options={Object.values(feedView.feedSort.columns)} rank=\"secondary\"", "options={Object.values(feedView.feedSort.columns)} rank=\"dense\""],
+        ["basePath={`${CONSOLE_ROUTE}/${view.id}`}", "basePath={CONSOLE_ROUTE}"],
+      ];
+      const plantP = (from: string, to: string): PhoneSite[] => PHONE.map(([which, code, ...rest]) => [which, code.replace(from, to), ...rest] as PhoneSite);
+      const landed = PLANTS.map(([from]) => PHONE.some(([, code]) => code.includes(from)));
+      ok("1.s9p · phone · CONTROL · the same pin reports the rail handed the raw address, options typed at the call site, the rail drawn at every width, the rail drawn over an empty table, the dense rank on the phone, and the account's rail sorting the desk's route — each planted in a copy, each seen to land",
+        landed.every(Boolean) && PLANTS.every(([from, to]) => !plantP(from, to).every(phoneHeld)),
+        j({ landed }));
+      /* ⭐ RULING 410, AS AMENDED 2026-09-27 (docs/HOUSE-BOTS.md §12.15). 1.410 counts rail FILES under the section, and
+         the SERVED activity panel now renders two `data-filter-rail`s: the section's one filter rail and the kit's phone
+         sort rail. That pair is a design, not a drift, so it is pinned as one — each activity panel renders EXACTLY ONE
+         of each (a second filter rail is §K5's two copies of one control; a second sort rail is two controls for one
+         order), neither page renders either anywhere else, and the kit rail's file carries its hook exactly once, so a
+         panel's rendered rails are those two and no more. The panel is sliced WHOLE, opener to closer, so a rail added
+         after the table is inside what is counted. */
+      const panelWhole = (code: string): string => {
+        const open = code.indexOf(`{tab === "activity" && (<>`);
+        const close = open < 0 ? -1 : code.indexOf("\n        </>)}", open);
+        return close < 0 ? "" : code.slice(open, close);
+      };
+      const railsOf = (code: string) => ({
+        filters: (panelWhole(code).match(/<ActivityFilters\b/g) ?? []).length, sorts: (panelWhole(code).match(/<CardSortControl\b/g) ?? []).length,
+        filtersInFile: (code.match(/<ActivityFilters\b/g) ?? []).length, sortsInFile: (code.match(/<CardSortControl\b/g) ?? []).length,
+      });
+      const railPair = (codes: string[]): boolean => codes.every((code) => {
+        const r = railsOf(code);
+        return r.filters === 1 && r.sorts === 1 && r.filtersInFile === 1 && r.sortsInFile === 1;
+      });
+      const kitHooks = (decomment(read("src/components/admin/card-sort-control.tsx")).match(/data-filter-rail/g) ?? []).length;
+      ok("1.410 · amended 2026-09-27 · each activity panel renders exactly ONE `<ActivityFilters` (the section's one filter-rail file) and exactly ONE `<CardSortControl` (the kit's phone sort rail), neither page renders either anywhere else, and the kit rail's file carries `data-filter-rail` once — so a panel's rendered rails are those two and no more",
+        railPair([pageCode, detailP]) && kitHooks === 1,
+        j({ desk: railsOf(pageCode), account: railsOf(detailP), kitHooks }));
+      /* [the page's code, the plant's anchor, the plant, what the PANEL slice must then count] — the third lands after the
+         desk's table, at its pager, so it proves the slice reaches past the table rather than stopping at it. */
+      const PAIR_PLANTS: Array<[string, string, string, (r: ReturnType<typeof railsOf>) => boolean]> = [
+        [pageCode, "<ActivityFilters groups=", "<ActivityFilters groups={[]} /><ActivityFilters groups=", (r) => r.filters === 2],
+        [detailP, "<CardSortControl basePath=", "<CardSortControl basePath=\"/x\" railId=\"x\" /><CardSortControl basePath=", (r) => r.sorts === 2],
+        [pageCode, "baseHref={buildBaseHref(CONSOLE_ROUTE, feedView.feedParams, \"page\")}",
+          "baseHref={buildBaseHref(CONSOLE_ROUTE, feedView.feedParams, \"page\")} /><CardSortControl basePath=\"/x\" railId=\"x\"", (r) => r.sorts === 2],
+      ];
+      const sortGone = detailP.replace(/<CardSortControl\b[^>]*\/>/, "");
+      ok("1.410 · amended · CONTROL · the same pin reports a second filter rail on the desk's panel, a second sort rail on the account's, a sort rail added after the desk's table (seen by the whole-panel slice itself), and a panel with its sort rail gone — each planted in a copy, each seen to land",
+        PAIR_PLANTS.every(([code, from]) => code.includes(from))
+          && PAIR_PLANTS.every(([code, from, to, seenBy]) => seenBy(railsOf(code.replace(from, to))) && !railPair([code.replace(from, to)]))
+          && sortGone !== detailP && railsOf(sortGone).sorts === 0 && !railPair([sortGone])
+          && railPair([pageCode]) && railPair([detailP]),
+        "");
+      /* ⭐ ONE ADDRESS PER COLUMN, RENDERED — the kit's `SortTh` header row and the kit's rail, handed exactly the props each
+         page hands them, over the reader's own views: sorted with a filter and a page asked for, the desk-wide ledger,
+         refused sort words, and a bare address. A chip and the header of its column must be the same link, character
+         for character; the rail must mark exactly one chip — the column in force, with its direction — and no link may
+         keep the page or carry a refused word. */
+      try {
+        const { createElement: h }: Any = await import("react");
+        const { renderToStaticMarkup }: Any = await import("react-dom/server");
+        const { SortTh }: Any = await import("../../src/components/admin/admin-sort.tsx");
+        const { CardSortControl }: Any = await import("../../src/components/admin/card-sort-control.tsx");
+        const hrefsOf = (html: string): string[] => [...html.matchAll(/<a\b[^>]*?\bhref="([^"]*)"/g)].map((m) => m[1].replace(/&amp;/g, "&"));
+        const headersOf = (v: Any, route: string, sp: Record<string, string | undefined> = v.feedParams): string => renderToStaticMarkup(h("table", null, h("thead", null, h("tr", null,
+          ...(Object.values(v.feedSort.columns) as Any[]).map((c: Any) => h(SortTh, {
+            key: c.field, field: c.field, label: c.label, current: v.feedSort.current, dir: v.feedSort.dir, sp, baseHref: route, prefix: v.feedSort.prefix,
+          }))))));
+        const railOf = (v: Any, route: string, o: Record<string, unknown> = {}): string => renderToStaticMarkup(h(CardSortControl, {
+          basePath: route, railId: "probe-sort", prefix: v.feedSort.prefix, current: v.feedSort.current, dir: v.feedSort.dir, sp: v.feedParams,
+          options: Object.values(v.feedSort.columns), rank: "secondary", ...o,
+        }));
+        /** The chip in force's VISIBLE text — its word and its arrow. The visually hidden direction word (the kit's `sr-only`
+         *  span) is not part of what is SEEN, so it is taken out here and read on its own by `saidOf`. */
+        const SR_WORD = /<span class="sr-only">([\s\S]*?)<\/span>/g;
+        const chipsOn = (html: string): string[] => [...html.matchAll(/<a\b[^>]*\baria-current="page"[^>]*>([\s\S]*?)<\/a>/g)].map((m) => m[1].replace(SR_WORD, "").replace(/<[^>]*>/g, "").trim());
+        /** Every chip in order: whether it is the one in force, and the visually hidden words it carries. */
+        const saidOf = (html: string): Array<{ on: boolean; said: string[] }> => [...html.matchAll(/<a\b([^>]*)>([\s\S]*?)<\/a>/g)]
+          .map((m) => ({ on: /\baria-current="page"/.test(m[1]), said: [...m[2].matchAll(SR_WORD)].map((s) => s[1]) }));
+        /** The one direction the header row says through `aria-sort`, or null when it says none or several. */
+        const headerSays = (html: string): string | null => {
+          const said = [...html.matchAll(/<th\b[^>]*\baria-sort="(ascending|descending)"/g)].map((m) => m[1]);
+          return said.length === 1 ? said[0] : null;
+        };
+        /** The table's OWN page parameter, handed in as a stale page would be: both must drop it. */
+        const pagedOf = (v: Any): Record<string, string | undefined> => ({ ...v.feedParams, page: "2", [`${v.feedSort.prefix}page`]: "2" });
+        const keepsNoPage = (hrefs: string[], prefix: string): boolean => hrefs.length > 0 && hrefs.every((href) => !new RegExp(`[?&]${prefix}page=`).test(href));
+        const ACCOUNT_ROUTE = `${CR.CONSOLE_ROUTE}/${led.botId}`;
+        const SEEN: Array<[string, Any, string]> = [
+          ["account · Stake ascending, a filter, page 2 asked", kept, ACCOUNT_ROUTE],
+          ["desk · Account descending, a filter", deskKept, CR.CONSOLE_ROUTE],
+          ["account · refused sort words", refused.both, ACCOUNT_ROUTE],
+          ["account · a bare address", bare.pages[0], ACCOUNT_ROUTE],
+        ];
+        /* ⚠️ THE PAGE CLAUSE NEEDS A PAGE TO DROP (2026-09-27, review): every view above is the reader's, and the reader's
+           VALIDATED parameters never carry the page — `kept` asked for page 2 and its `feedParams.page` is undefined (1.s9's
+           own pin) — so "no link keeps the page" read four views with nothing to keep and could not fail. Each address is
+           therefore rendered a SECOND time, headers and rail alike, with the table's own page parameter handed in as a
+           stale one would be (`page`, and the prefixed key the kit derives for this table), and both renders must drop it
+           and stay one address. */
+        const seen = SEEN.map(([name, v, route]) => {
+          const cols = Object.values(v.feedSort.columns) as Any[];
+          const rail = railOf(v, route);
+          const want = cols.find((c: Any) => c.field === v.feedSort.current)?.label ?? null;
+          const paged = pagedOf(v);
+          return {
+            name, n: cols.length, heads: hrefsOf(headersOf(v, route)), chips: hrefsOf(rail), on: chipsOn(rail), want: want === null ? null : `${want}${v.feedSort.dir === "asc" ? "↑" : "↓"}`,
+            prefix: String(v.feedSort.prefix), pagedHeads: hrefsOf(headersOf(v, route, paged)), pagedChips: hrefsOf(railOf(v, route, { sp: paged })),
+            header: headerSays(headersOf(v, route)), said: saidOf(rail), dir: v.feedSort.dir as string,
+          };
+        });
+        const pageDropped = (s: (typeof seen)[number]): boolean =>
+          keepsNoPage(s.chips, s.prefix) && keepsNoPage(s.heads, s.prefix) && keepsNoPage(s.pagedChips, s.prefix) && keepsNoPage(s.pagedHeads, s.prefix)
+            && s.pagedChips.length === s.n && all(s.pagedChips) === all(s.pagedHeads);
+        ok("1.s9p · phone · RENDERED · on every address — sorted with a filter and a page asked for, desk-wide, refused, bare — each chip of the phone rail and the header of the same column are ONE address, column for column in the header order, exactly ONE chip is in force naming the column in force with its direction, and no link keeps the page — each address rendered again with the table's own page parameter handed in, which rail and headers must both drop and stay one address — or carries a refused word",
+          seen.every((s) => s.n >= 3 && s.heads.length === s.n && all(s.chips) === all(s.heads) && s.on.length === 1 && s.want !== null && s.on[0] === s.want)
+            && seen[0].n === 3 && seen[1].n === 4
+            && seen.every(pageDropped) && !seen[2].chips.some((href) => /zz/.test(href))
+            && seen[0].chips.every((href) => href.includes("kind=filling")) && seen[1].chips.every((href) => href.includes("outcome=queued")),
+          j(seen.map((s) => ({ name: s.name, n: s.n, same: all(s.chips) === all(s.heads), on: s.on, want: s.want, pageDropped: pageDropped(s) }))));
+        const heads0 = seen[0].heads;
+        const flip = kept.feedSort.dir === "asc" ? "desc" : "asc";
+        /* The fourth plant is the page clause's own: a rail keyed to another table's prefix keeps THIS table's page, and the
+           same check that passed every address above must report it. */
+        const keptPaged = hrefsOf(railOf(kept, ACCOUNT_ROUTE, { sp: pagedOf(kept), prefix: "h" }));
+        ok("1.s9p · phone · RENDERED · CONTROL · the comparison reports a rail handed the raw address (a refused window riding it), a rail on another table's prefix, a rail reading its direction backwards, and — handed a page — a rail that keeps it; each rendered and seen to differ",
+          all(hrefsOf(railOf(kept, ACCOUNT_ROUTE, { sp: { ...kept.feedParams, range: "zzforever" } }))) !== all(heads0)
+            && all(hrefsOf(railOf(kept, ACCOUNT_ROUTE, { prefix: "h" }))) !== all(heads0)
+            && all(hrefsOf(railOf(kept, ACCOUNT_ROUTE, { dir: flip }))) !== all(heads0)
+            && keptPaged.some((href) => /[?&]page=2(&|$)/.test(href)) && !keepsNoPage(keptPaged, seen[0].prefix)
+            && !pageDropped({ ...seen[0], pagedChips: keptPaged })
+            && all(hrefsOf(railOf(kept, ACCOUNT_ROUTE))) === all(heads0),
+          j({ keptPaged: keptPaged[0] }));
+        /* ⭐ THE DIRECTION, SAID (2026-09-27, review). On a phone the header row — the one place `aria-sort` says which way
+           the column runs — is `display: none`, the chip's arrow is `aria-hidden`, and `FilterPill` says only
+           `aria-current`: a screen reader heard WHICH column and never which way. The chip in force now carries the
+           direction as visually hidden words, and they must be the very word `aria-sort` gives that column's header,
+           after a space so the name reads "Stake ascending"; no other chip says any. */
+        const saysDir = (said: Array<{ on: boolean; said: string[] }>, header: string | null, dir: string): boolean => {
+          const want = dir === "asc" ? "ascending" : "descending";
+          const on = said.filter((c) => c.on);
+          return said.length >= 3 && header === want && on.length === 1 && on[0].said.length === 1 && on[0].said[0] === ` ${want}`
+            && said.filter((c) => !c.on).every((c) => c.said.length === 0);
+        };
+        ok("1.s9p · phone · RENDERED · on every address the chip in force — and no other chip — SAYS its direction in words a screen reader reads, visually hidden, the very word `aria-sort` gives the header of its column (the arrow is aria-hidden, and below `sm` no header row is drawn to say it)",
+          seen.every((s) => saysDir(s.said, s.header, s.dir)) && seen.some((s) => s.dir === "asc") && seen.some((s) => s.dir === "desc"),
+          j(seen.map((s) => ({ name: s.name, header: s.header, said: s.said.filter((c) => c.on || c.said.length > 0) }))));
+        const said0 = seen[0].said;
+        ok("1.s9p · phone · RENDERED · CONTROL · the same check reports a rail whose direction words are gone, the OTHER word, a word on a chip not in force, and a word with no space before it — each seen to differ",
+          !saysDir(saidOf(railOf(kept, ACCOUNT_ROUTE).replace(SR_WORD, "")), seen[0].header, seen[0].dir)
+            && !saysDir(saidOf(railOf(kept, ACCOUNT_ROUTE, { dir: flip })), seen[0].header, seen[0].dir)
+            && !saysDir(said0.map((c) => (c.on ? c : { ...c, said: [" descending"] })), seen[0].header, seen[0].dir)
+            && !saysDir(said0.map((c) => (c.on ? { ...c, said: c.said.map((w) => w.trim()) } : c)), seen[0].header, seen[0].dir)
+            && saysDir(said0, seen[0].header, seen[0].dir),
+          j({ said0 }));
+        /* ⭐ THE TAP FLOOR, AND THE KIT'S OTHER TWO CONSOLES UNCHANGED: the desk hands the rail the non-dense rank, and a rail
+           handed none is still the 32px dense rail `/admin/ai-polls` and `/admin/candidates` draw. */
+        const chipClasses = (html: string): string[] => [...html.matchAll(/<a\b[^>]*\bclass="([^"]*)"/g)].map((m) => m[1]);
+        const deskRail = railOf(deskKept, CR.CONSOLE_ROUTE);
+        const kitRail = renderToStaticMarkup(h(CardSortControl, {
+          basePath: CR.CONSOLE_ROUTE, railId: "probe-sort", prefix: deskKept.feedSort.prefix, current: deskKept.feedSort.current,
+          dir: deskKept.feedSort.dir, sp: deskKept.feedParams, options: Object.values(deskKept.feedSort.columns),
+        }));
+        const floorHeld = (desk: string, kit: string): boolean =>
+          chipClasses(desk).length === 4 && chipClasses(desk).every((c) => /(^|\s)min-h-\[44px\](\s|$)/.test(c) && !/min-h-\[32px\]/.test(c))
+            && chipClasses(kit).length === 4 && chipClasses(kit).every((c) => /(^|\s)min-h-\[32px\](\s|$)/.test(c))
+            && /data-filter-rail="probe-sort"/.test(desk);
+        ok("1.s9p · phone · RENDERED · at the desk's rank every chip of the rail stands on the 44px rung — none on the 32px dense one, which is under the section's 40px tap floor — while a rail handed no rank is still the dense rail the kit's two other consoles draw",
+          floorHeld(deskRail, kitRail), j({ desk: chipClasses(deskRail).length, kit: chipClasses(kitRail).map((c) => /min-h-\[\d+px\]/.exec(c)?.[0]) }));
+        ok("1.s9p · phone · RENDERED · CONTROL · the floor check reports the desk's rail rendered at the dense rank, and a kit default that is not the dense rank",
+          !floorHeld(railOf(deskKept, CR.CONSOLE_ROUTE, { rank: "dense" }), kitRail) && !floorHeld(deskRail, deskRail), "");
+      } catch (err) {
+        ok("1.s9p · phone · RENDERED · on every address — the render itself threw, so no chip was compared with its header", false,
+          String((err as Any)?.stack ?? err).replace(/\s+/g, " ").slice(0, 400));
+      }
+      /* ⭐ EVERY CARD SORT RAIL ANSWERS TO ITS OWN NAME — `railId` exists so a driver can tell which rail it pressed. */
+      const railIds: string[] = [];
+      const walkRails = (dir: string) => {
+        for (const e of readdirSync(join(ROOT, dir))) {
+          const rel = `${dir}/${e}`;
+          if (statSync(join(ROOT, rel)).isDirectory()) walkRails(rel);
+          else if (/\.tsx$/.test(e) && read(rel).includes("<CardSortControl")) {
+            for (const m of decomment(read(rel)).matchAll(/<CardSortControl\b[^>]*?\brailId="([^"]+)"/g)) railIds.push(m[1]);
+          }
+        }
+      };
+      walkRails("src");
+      const idsUnique = (ids: string[]) => ids.length >= 6 && new Set(ids).size === ids.length && ids.includes("desk-activity-sort") && ids.includes("account-activity-sort");
+      ok("1.s9p · phone · every card sort rail in the product answers to its OWN id — the desk's two among them — so a driver can tell each rail it presses from every other",
+        idsUnique(railIds), j(railIds));
+      ok("1.s9p · phone · CONTROL · the same check reports the account's rail answering to the desk's id",
+        !idsUnique(railIds.map((id) => (id === "account-activity-sort" ? "desk-activity-sort" : id))), "");
     }
 
     /* The sorted states, for §3's lexicon: every sorted note, header word, token and parameter. */

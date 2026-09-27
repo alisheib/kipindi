@@ -841,8 +841,9 @@ until it is pressed — which is also why it serves every admin table and player
 not only the desk.
 **The gates:** `test:house-bot-console` §4c (the mark inside each link, the Custom chip, its shape, the CSS — each with
 a control) and 8 declared `nav-` mutations; `qa:nav-pending` on a served build presses a real tab, chip, header, page
-and account tab at 1280 and 360 with the server's answer held, and measures the mark, the dimming, that `loading.tsx`
-did not take over, and the landing.
+and account tab at 1280 and 360 — and, at 360 only, a chip of the desk ledger's phone sort rail (§7.1c; NOT MEASURED,
+with the reason, when the ledger is empty and the rail is therefore not drawn) — with the server's answer held, and
+measures the mark, the dimming, that `loading.tsx` did not take over, and the landing.
 
 ### 7.1c Every desk table sorts, and none can grow past a page (2026-09-26, build step 9)
 
@@ -887,9 +888,40 @@ one address. A header click keeps every filter and the other table's sort, and d
   ranks the roster by label in the reader and hands the ranking to the DAL, which cannot join a label itself.
 - **The order note says the order in force.** "Newest first." on a bare address; "Largest stake first, then newest
   first.", "Oldest first.", "By outcome, queued first, then newest first.", "By account, A to Z, …" under a sort. On a
-  phone the ledgers' header row is hidden (the row is a stack), so the note is where a phone reads the order — and a
-  phone cannot change it: the sort controls are the header, which is not drawn below `sm`. A sorted link still renders
-  sorted there.
+  phone the ledgers' header row is hidden (the row is a stack), so the note is where a phone reads the order.
+- **A phone sorts the two ledgers too — the phone sort rail (2026-09-27).** Ali: *"on a phone, the two activity lists
+  can't be re-sorted … a phone sort button"*. Below `sm`, between the order note and the first row — where the header
+  row sits on a wider screen — each activity ledger draws **Sort · Panga** and one chip per sortable column (desk:
+  Account · Stake · When (EAT) · Outcome; account: When (EAT) · Stake · Outcome), the one in force marked with its arrow
+  — and, for a screen reader, with the direction in visually hidden words ("Stake ascending"), because the arrow is
+  hidden from it and the header row whose `aria-sort` says the direction is not drawn below `sm`;
+  pressing a chip does exactly what pressing that column's header does, and pressing the one in force reverses it.
+  With rows, the panel therefore renders TWO `data-filter-rail`s, by design — its filter rail and this one, in the page
+  at every width and shown below `sm` only; over an empty ledger there is no rail (ruling 410 as amended, §12.15).
+  - It is the kit's own card sort rail (`CardSortControl`, `/admin/ai-polls` and `/admin/candidates`), the platform's
+    answer for sorting where there is no header row — never a second sort control. Its links are built by the same
+    lines as `SortTh`'s (the same prefixed words, the same page reset, the same next-direction rule), and both pages feed
+    it ONLY from the reader's sort view: its columns in header order, the column in force, the direction, the prefix,
+    the panel's **validated** parameters and the headers' own route. So a chip and its column's header are one address
+    and a sort word the reader refused never rides into a chip.
+  - **One control per screen.** The rail is drawn below `sm` only (the header row is the control from `sm` up), and not
+    at all over an empty table, whose header row the kit hides at every width. Its breakpoint sits on a wrapper, so the
+    rail has no sibling in the card: a pressed chip fades the rows exactly as a pressed header does (the console fades
+    whatever follows a pressed filter rail, which inside the card would have faded the rows twice over).
+  - **At the tap floor.** The kit rail takes its rank as one prop, defaulting to the dense rank its two other consoles
+    draw; the desk passes the shared 44px rank because its visual gate holds every control to `--tap-min` (40px) and
+    the dense rank's 32px floor is the mouse-only admin exception. `test:filter-language` §6.6 follows the prop to its
+    dense default and §6.6c–e walk every call site: each call parsed (6.6d), a spread counted as lifting the rank
+    (6.6c), and the only call sites allowed to lift it named — these two, each rail id a spec literal of
+    `qa:house-bots-visual` §5.10 (6.6e).
+  - Proven by `test:house-bot-console` `1.s9p` (memory child): the source pins on both pages, the chip and header
+    rendered side by side over the reader's own views (sorted with a filter and a page, desk-wide, refused, bare — and
+    each again with the table's own page handed in, which both must drop) and compared link for link, the direction
+    words, the tap-floor rank, a unique rail id, and exactly one of each rail per panel — each with a control, and ten
+    declared mutations `phone-sort-*`. `qa:house-bots-visual` §5.10 now requires, at 360, the rail shown with exactly
+    one chip in force naming the column the address asked for, its arrow and its hidden words both saying the direction
+    asked, and every chip at the tap floor; from `sm` up, the rail in the page but not shown; over an empty table, no
+    rail. `qa:nav-pending` presses one of its chips at 360 (`desk-phone-sort`) and holds the press's pending state.
 
 **A bell's row under a sort — decided: it lands where it IS in the order in force.** `&intent=` and `&event=` are a
 landing instruction in the same address as the sort, and both are honoured: dropping the sort would throw away a valid
@@ -1199,7 +1231,7 @@ The throttle keys are fixed in `ALERT_KEY`. Proven by `test:house-bot-comms` (39
 | The holder stakes against their own bot (A21) | C13 matrix | Admins | Bell + email | Once per bot and market (`holderAgainst`). Writes event HOLDER_AGAINST_BOT. The bet is never refused and the bot never paused. | `/admin/markets/<marketId>` |
 | The master switch goes ON or OFF, by hand or automatically | `notifyAdminsHouseBotSwitch` | Admins | Bell + email | Every one | `/admin/desk` |
 | Money moves on an ACTIVE bot's account (deposit credited, withdrawal requested, AML hold, paid, failed or AML-rejected, officer adjustment) | `notifyAdminsHouseBotMoneyEvent` | Admins | Bell + email | Never capped; two identical events are two rows | `/admin/transactions?q=<txnId>` |
-| Roster changes: DESIGNATED, VERIFIED, STARTED, a manual PAUSED, REMOVED, RULES_SAVED and LIMITS_SAVED with a before → after diff, TARGET_ADDED, TARGET_UPDATED, TARGET_REMOVED, and TARGET_ENDED from a staff veto. ⛔ **Corrected 2026-09-26 (checked against the code): only a manual PAUSED and REMOVED are sent.** `announceRoster` (`src/lib/server/house-bot/emitters.ts`) has exactly two callers, `pauseHouseBot` and `removeHouseBot` (`src/lib/server/house-bot/roster-actions.ts`). DESIGNATED, VERIFIED, STARTED, RULES_SAVED, LIMITS_SAVED and the four target codes (`ROSTER_EVENT_CODES` names them TARGET_ADDED, TARGET_CHANGED, TARGET_REMOVED and TARGET_STOPPED) have their sentences in `ROSTER_SENTENCE` (`src/lib/house-bot/alert-copy.ts`) and no caller: those acts leave their COMPLIANCE audit rows and history events and tell no admin. `test:house-bot-comms` drives the emitter directly, so it proves the letter, never the wiring. This is FS-09's planned mitigation, still OPEN and a build of its own (accepted risk 12 (c); `COMPLIANCE-DECISIONS.md`, entry `2026-09-26 · D1 READ AS THE OWNER ROLE`) | `notifyAdminsHouseBotRoster` | Every recipient | Bell + email | Uncapped; the title ends HH:MM:SS | `/admin/desk/<botId>?tab=history&event=<eventId>` |
+| Roster changes: DESIGNATED, VERIFIED, STARTED, a manual PAUSED, REMOVED, RULES_SAVED and LIMITS_SAVED with a before → after diff, TARGET_ADDED, TARGET_UPDATED, TARGET_REMOVED, and TARGET_ENDED from a staff veto. ✅ **Sent since 2026-09-27 (FS-09's planned mitigation, built and checked against the code; it replaces the 2026-09-26 correction that only a manual PAUSED and REMOVED were sent).** Every act that LANDS calls `announceRoster` (`src/lib/server/house-bot/emitters.ts`) once, after its history event is written, and the alert links to that event: `designateHouseBot`, `reverifyHouseBot` and `startHouseBot` (`src/lib/server/house-bot/designation.ts`), `pauseHouseBot` and `removeHouseBot` (`roster-actions.ts`), `saveHouseBotRules` (`rules-save.ts`) and `saveHouseBotLimits` (`limits-save.ts`). Each names the officer who acted — "by {name}", read after the act by `officerLabel` (their display name, else their account id; never a "Player #" handle). A refused act sends nothing; a rules or limits save that moved no field still lands and sends nothing; a send that fails never fails the act. RULES_SAVED and LIMITS_SAVED carry every field that moved as `label: before → after` in the sentence's one diff slot (money as TZS, times with the symbols `s` and `min`, a rule leaf with its section — a switch, a list or a choice is named, not valued, because its values are words the Swahili and Chinese sentences cannot carry). LIMITS_SAVED is the DESK's change: the limits save now writes its own `LIMITS_SAVED` history event with no account and no holder (it wrote none before), the alert's title names no bot, and it links to the desk's own history row. ⚠️ The four target codes (`ROSTER_EVENT_CODES` names them TARGET_ADDED, TARGET_CHANGED, TARGET_REMOVED and TARGET_STOPPED) are still sent by nothing because no act exists to send them: nothing under `src/` adds, changes, removes or vetoes a target (the targeting screen is not built). `test:house-bot-console` 2.fs09.8 holds the first act that does to its alert: a file under `src/` that calls one of the target store's four officer writers (`insert`, `casUpdate`, `remove`, `veto`) on the DAL's `targetStore` — under its own name or an import alias, through a namespace or a dynamic import — must also call `announceRoster` with a literal TARGET_* event (2.fs09.8a); the store passed on as a value or re-exported is reported, because the scan cannot follow it there; and the store's interface must hold exactly the fourteen members the check classifies, so a new writer is red until it is classified (2.fs09.8i). The store's two system ends (`endActive`, `endAllForBot`) are not officer acts and send no alert (the next row). Each rule has a planted control that must be reported (2.fs09.8c1–c5). Proof: `test:house-bot-console` §2j, through the officer's own door on both stores — every act gives each admin exactly one row linking to its event, the holder and a player nothing, and every act has a refused or nothing-moved control that tells nobody | `notifyAdminsHouseBotRoster` | Every recipient | Bell + email | Uncapped; the title ends HH:MM:SS | `/admin/desk/<botId>?tab=history&event=<eventId>`; the desk's LIMITS_SAVED: `/admin/desk?tab=history&event=<eventId>` |
 | A target ended by the planner, by Remove or by the sunset | — | — | No alert | History and the targets tab record it. | — |
 | An engine alert (a failed intent, a poison row, a stake not whole, a balance or cash-only skip, and the other keys in §9.3) | `notifyAdminsHouseBotAlert` | Admins | Bell + email | Once per bot, code and EAT day, unless §9.3 gives the key | `/admin/desk/<botId>?tab=activity&range=all&outcome=failed&intent=<intentId>` |
 | A market holding a staff-chosen stake is voided or reopened | `notifyAdminsHouseBotAlert` | Every recipient | Bell + email | Once per market (`staffStakeVoided`) | `/admin/markets/<marketId>` |
@@ -1286,8 +1318,8 @@ enforced as the platform's OWNER ROLE — ADMIN, the tier that alone runs staff,
 owner's choice on `/admin/staff`. There is no per-account list (it would be a second, hidden notion of "owner" and would
 lock the desk off after an automatic stop). Every switch-on writes an event and a compliance audit row naming its actor
 and alerts every admin; switching OFF stays open to every ADMIN. The record is `docs/COMPLIANCE-DECISIONS.md`, entry
-`2026-09-26 · D1 READ AS THE OWNER ROLE`. ⛔ FS-09's other alerts (designation, verify, Start, rules and limits saves)
-are still NOT sent — an open build (RESUME-HERE §5).
+`2026-09-26 · D1 READ AS THE OWNER ROLE`. ✅ FS-09's other alerts (designation, verify, Start, rules and limits saves)
+are sent since 2026-09-27, each naming the officer (§9.2).
 
 | Step | What it is | How it is proved |
 |---|---|---|
@@ -2366,6 +2398,149 @@ With those fixes, `qa:house-bots-visual` on the served desk at 360, 640, 1024, 1
 address: **1262 passed, 0 failed, 5 NOT MEASURED** — the five are the empty targets table's header controls, one per width.
 The sorted tiles were read at 360 and 1280: one header in force with its arrow, the order note in the table's card.
 
+
+### 12.14 The four fleets driven whole at the close — 2026-09-27 (RESUME-HERE §0c build step 11)
+
+Driven in a detached tree at `9a647397` — the commit that carries every step of the build order — with the driver that
+`plans/house-bots/tools/fleet.sh` was then made from (its `--dry` prints the same 18 slices), c5 first while that tree
+still equalled `main`. `test:red-anchors` ran first: 3480 passed, only the four known failures of other lanes, so every
+declared mutation resolved.
+
+| Fleet | Slices | Printed |
+|---|---|---|
+| c5 (99 primaries; a partner rides with its primary) | 3 | 45 + 45 + 9 caught · 0 wrong-assertion · 0 missed · 0 stale · 0 broken-injection |
+| console (450) | 10 | 45 × 10 caught · 0 missed |
+| engine (104, three on the Postgres twin) | 3 | 45 + 45 + 14 caught · 0 missed · 0 not measured |
+| money + seam (56 + 7) | 2 | 45 + 18 caught · 0 missed · 0 not measured |
+
+**716 of 716 caught, and no slice left a file dirty**; the drive tree was removed at the end. A session restart cut slice 8
+off mid-drive: the tree was found clean, and the resumed run drove slice 8 again from its start (a slice is skipped only
+once its log ends in `EXIT=`). Other lanes held the lock between slices for much of the day, so the 18 slices ran from
+22:42 UTC on 09-26 to 15:15 UTC on 09-27.
+
+**The desk rules drive (`qa:desk-rules-flow`), checked at the close because another lane reported two of its checks as
+this lane's:** `qa:desk-rules-flow` printed **81/89** at `9a647397` on a local `next dev`, and **89/89** after three repairs to the drive itself (pushed at `fe12e905`, re-run on the merged tree). None of the eight failures was the desk: (1) since `3e94bf2f` a clean form's Save stays disabled, so the drive's wait for it to re-enable ran out on every landed save and the checks read an empty toast list — the lane that made that change had fixed the wait and 8.6b on `main` the same day, and the merge kept its version; (2) §9d's two extra browser contexts signed the same admin in, and with one live session per account the drive's own page was signed OUT — which is why 9d.3 and 10.1 found no Custom chip and no Remove button (the two another lane reported as this lane's); the page is now signed back in; (3) the Custom panel has ten numeric fields and the drive typed the from-date twice, leaving Apply disabled; it now starts `to` half-way along. A click that times out now records what answers at the control's centre.
+
+### 12.15 The phone sort rail — built 2026-09-27 (Ali: "on a phone, the two activity lists can't be re-sorted … a phone sort button")
+
+What it does is §7.1c. What proving it took, on a worktree at `ffc0b63c` plus this change (a patch, integrated by the
+main session; one lock acquisition per batch, every gate on its own log, never piped):
+
+| Check, on the patched tree | Printed |
+|---|---|
+| console memory child (`house-bot-console-cases.mts`, `HB_MONEY_STORE=memory`) | first run **1070 passed, 1 failed** — the moved control below; after its re-point **1071 passed, 0 failed** (1063 + the eight `1.s9p` cases); 1.318's roll-call: 429 `console-mem` declarations, none stale |
+| `test:filter-language` | `255 assertions passed … all green` |
+| the three new `red:filter-language` cases, driven alone | `3/3 caught · 0 files left dirty · gate after restore exit 0` |
+| `test:red-anchors` | `3759 passed, 2 failed` — the two known anchors of other lanes (bar-geometry `sort-summary-unbound`, updown-handover `no-handover-at-all`); all eight `phone-sort-*` resolve exactly once |
+| focused `tsc` (the two pages, the kit rail, both other call sites; 1613 files read) | exit 0, and its CONTROL — a probe handing the rail `rank="bogus"` — exit 2, `TS2322` |
+| `docs:house-bots-guide`'s generator | its HTML equals the hand edit character for character (line endings aside) |
+| the Postgres child, `qa:house-bots-visual` §5.10, the declared mutations | **NOT RUN here** — the floor (1063/782) is left for the two-store run to raise; §5.10's new phone branch needs a served build |
+
+**Found by the first run:** `1.s9 · the pages · CONTROL` planted a raw address with `replace("sp={feedView.feedParams}", …)`,
+which takes the FIRST occurrence — now the phone rail's, drawn above the table — so the plant landed on the rail and the
+header pin rightly stayed whole. It now plants `sp={feedView.feedParams} baseHref={CONSOLE_ROUTE}`, a header's own
+parameters, as it always meant to; the rail's own raw-address plant is `1.s9p`'s.
+
+**Guards widened, never loosened:** `test:filter-language` §6.6 counted `rank="dense"` literally, so the kit rail's
+`rank={rank}` would have read "0 dense of 1". A rank passed through the rail's one prop now counts as dense only where
+that prop DEFAULTS to dense (`RANK_PROP_RAILS`), and the new §6.6c walks every call site of the component: one that lifts
+the rank must be named and must carry a rail id the visual gate drives; everything else takes the default.
+**Declared mutations: 8** `phone-sort-*` in `scripts/anchors/house-bot-console.anchors.mjs` (all `console-mem`), plus
+three new `red:filter-language` cases — **10 and 7 after the review below.**
+
+#### 12.15a The review's five fixes (2026-09-27, the same day)
+
+An adversarial review of the patch found five minor defects; each is fixed properly, none by weakening a check.
+
+1. **⭐ RULING 410, AMENDED — the "ONE `data-filter-rail`" law was false in the served page.** Each activity panel
+   whose ledger has rows now renders TWO `[data-filter-rail]`s at every width: the section's filter rail
+   (`activity-filters.tsx`) and the kit's phone sort rail, in the DOM at every width, shown below `sm` only, and not
+   drawn over an empty ledger. **The amendment: ruling 410's "ONE rail"
+   means ONE rail FILE under the section** (§K5 — never two copies of one control; still exactly `activity-filters.tsx`),
+   **and the kit's phone sort rail is the one other RENDERED `data-filter-rail` on an activity panel, by design.** The
+   two page comments and `1.410`'s rationale and label now say that, and a new pin holds the rendered pair: each
+   activity panel renders exactly one `<ActivityFilters` and exactly one `<CardSortControl`, neither page renders
+   either anywhere else, and the kit rail's file carries its hook once — with a control that plants a second filter
+   rail, a second sort rail, a sort rail after the table and a panel without its sort rail. Ruling 410 in
+   `plans/house-bots/C7-SPEC.md` points here.
+2. **The RENDERED "no link keeps the page" clause could not fail** — every view fed to it was the reader's, and the
+   reader's validated parameters never carry the page. Each address is now rendered again, headers and rail alike,
+   with the table's own page parameter handed in; both must drop it and stay one address. Its control renders a rail
+   that keeps the page, and the new declared mutation `phone-sort-kit-keeps-page` removes the kit's page reset.
+3. **`test:filter-language` §6.6c's call-site walk had three holes**, each a way to lift the rank unseen, each now its
+   own assertion: **6.6d** — every `<CardSortControl` opening must be a tag the walk parsed (a `<X …>…</X>` call was
+   invisible), and every importer must name the component only in its import and those tags (an alias or a
+   `createElement` call is refused); **6.6c** — a `{...spread}` in the tag counts as lifting the rank (refused off the
+   list, and refused on it, since a named call site must lift the rank where it can be read); **6.6e** — a named call
+   site's rail id must be the visual gate's SPEC literal `rail: "<id>"` in its code, not any quoted string or a comment.
+   Four new `red:filter-language` plants (non-self-closing call, spread, id only in a comment, id as another string).
+4. **`qa:nav-pending` had no phone case.** `desk-phone-sort` presses a not-in-force chip of the desk ledger's phone
+   sort rail on `/admin/desk?tab=activity`, must land on a `sort=` address and dims the card's rows; it runs only at
+   widths under 640 (a per-case `below`, NOT MEASURED with a reason when no such width is driven), is NOT MEASURED
+   with the page's own reason when the ledger is empty or failed (the rail is then not drawn), and FAILS — never
+   skips — when the ledger has rows and the rail is missing or hidden.
+5. **A screen reader on a phone was never told the sort direction** — the chip's arrow is `aria-hidden`, `FilterPill`
+   says only `aria-current`, and the header row carrying `aria-sort` is `display: none` below `sm`. The kit rail's chip
+   in force now carries the direction as visually hidden words (the kit's `sr-only`, " ascending" / " descending",
+   English like the rest of this admin-only rail) — so `/admin/ai-polls` and `/admin/candidates` get the fix too.
+   `1.s9p` reads the chip's visible text without them and pins the words on their own (the very word `aria-sort` gives
+   that column's header, on the chip in force and no other), with a control and the declared mutation
+   `phone-sort-kit-says-wrong-way`; `qa:house-bots-visual` §5.10 reads the word and arrow without them and requires the
+   words to be the direction the address asked for.
+
+| Check, on the patched tree (one lock acquisition, every gate on its own log) | Printed |
+|---|---|
+| console memory child | **1075 passed, 0 failed** (1071 + the four new cases); 1.318's roll-call: 431 `console-mem` declarations, none stale |
+| the three kit mutations, each injected, run and restored (`phone-sort-kit-direction`, `-keeps-page`, `-says-wrong-way`) | `3 caught, 0 missed, 0 files left dirty` — each red on its own `1.s9p · phone · RENDERED` label |
+| `test:filter-language` | `257 assertions passed … all green` (255 + 6.6d + 6.6e) |
+| the seven phone-sort `red:filter-language` cases, driven alone (the build's three and the review's four) | `7/7 caught · 0 files left dirty · gate after restore exit 0`; the review's four were first shown to be real holes by running a copy of the build's walk over each planted text in memory — GREEN on all four |
+| `test:red-anchors` | `3763 passed, 2 failed` — the same two known anchors of other lanes |
+| focused `tsc` (the kit rail, both desk pages, both other call sites) | exit 0; CONTROL `rank: "bogus"` exit 2, `TS2322` |
+| the Postgres child, `qa:house-bots-visual` §5.10, `qa:nav-pending` | **NOT RUN here** — both probes need a served build; the floor (1063/782) is left for the two-store run to raise |
+
+**Integrated and served 2026-09-27** (with FS-09, below; one lock acquisition, never piped): `test:house-bot-console`
+**1105 / 804, 0 failed** (floor → 1105/804); `test:filter-language` 257, all green, after the lead closed the verifier's
+last hole — a rank written `rank='x'` or `rank = "x"` read as "no rank"; §6.6c now reads any spelling JSX accepts, and two
+new red cases (`card-sort-rank-single-quoted`, `card-sort-rank-spaced`) prove it. On a served build: `qa:house-bots-visual`
+at 360, 640 and 1280 **762 passed, 0 failed, 3 NOT MEASURED** (the empty targets table's header, one per width);
+`qa:nav-pending` **112 passed, 0 failed** — the new phone case presses a chip at 360, sees the mark and the rows dimmed,
+and lands sorted. Its 4 NOT MEASURED were the PROBE: it held every RSC request without the prefetch header, Next 16's
+sidebar prefetches carry none, and the pressed navigation queued behind them; it now holds only the request whose path
+and query are the pressed link's href (its re-run on a served build of the pushed commit is recorded under §12.16's
+table). The tiles were read at 360: the rail sits under the order note, the pressed chip
+carries its bar, and "Account ↓" lands with "By account, Z to A" above the re-sorted rows.
+
+### 12.16 FS-09 — every landed roster act tells every admin, once — built 2026-09-27 (Ali: "some desk actions … still don't send the admin alerts they were planned to send")
+
+**What changed.** `announceRoster` had two callers (Pause, Remove). Now every act that LANDS calls it once, after its
+history event is written and after its compliance row, inside the emitter's own `safe()` so an alert can never turn a
+landed act into a reported failure: **designate, re-verify (confirm permission), Start, Pause, Remove, the rules save,
+and the desk-wide limits save**. Each names the officer (`officerLabel`: the display name, else the account id); a
+rules or limits save carries every moved field as `label: before → after` (money through `formatTzs`; a switch, list or
+choice named but not valued); a save that moves nothing, and every refused act, announces nothing. The limits save now
+writes the desk-wide `LIMITS_SAVED` history event 02 §3.8 always described, so its alert has a row to link to
+(`/admin/desk?tab=history&event=<id>`). Recipients stay `houseBotAlertRecipients()` — every ADMIN, never the holder (D19).
+**The four target codes** have no writer to send them: nothing under `src/` calls an officer writer on the DAL's
+`targetStore`, and the targeting screen is not built. 2.fs09.8a is the law that makes the first writer announce: it reads
+the store's interface (fourteen members, classified), follows every binding of the store (name, alias, namespace, dynamic
+import, `.js`/`.mjs` specifiers), reports a spread, a value escape, a re-export and any binding it cannot follow, and
+accepts only an `announceRoster` the file itself imports from the emitters module with a literal `TARGET_*` event.
+
+| Gate, on the integrated tree | Printed |
+|---|---|
+| `test:house-bot-console` §2j (both stores) and 2.fs09.8 (memory) | inside the **1105 / 804, 0 failed** above |
+| `test:house-bot-designation` · `comms` · `ops` · `caps` · `money` · `reports` · `engine` · `disclosure` | 169/161 · 52/50 · 100/104 · 89/96 · 133/151 (floor → 133/151) · 251/80 · 829/810 · 118 — all 0 failed |
+| `qa:desk-rules-flow` on `next dev` (designates, saves rules, Starts through the real screens) | **89/89** |
+| `typecheck` · `next build` · `verify:house-bot-bundle` · `test:red-anchors` | exit 0 · compiled · green · 3811 passed, only the two rotted anchors of other lanes |
+
+**Found on the way, by the adversarial reviews and the lead:** the first target law matched `update` where the DAL's
+writer is `casUpdate`, never followed an import alias, and accepted any `announceRoster(` in a file — the reviewer's
+plants each passed it; a later verifier found a spread, a `.js` specifier, an unfollowable binding and an unbound
+announcer still passed — all closed, each with a planted control. The compliance register's D1 entry, which said both
+"NOT wired" and "Built", now strikes the stale half. **Declared mutations: 24 `fs09-*`** (console-mem); the one whose plant
+leaned on the unbound-announcer hole now binds its announcer with a dynamic import, so it still proves "a writer that
+does announce". Both builds' mutations are driven after the push, at the live commit.
+
 ---
 
 ## 13. Accepted risks
@@ -2394,7 +2569,7 @@ in this one not at all, and a reader who trusted the sentence never looked. Meas
 9. **Per-process state (F7):** the maintenance latch, the vendor price cache ~~and the verify bucket~~ are per container. Production stays at 1 replica (~~`RAILWAY-LIVE.md:353`~~). ⚠️ **Checked against the code 2026-09-26.** The latch is `getPlatformConfig`'s first read (`src/lib/server/platform-config.ts`), and it is what the bet path's own maintenance check reads (`isMaintenanceMode`) — but a house fire re-reads maintenance from the stored config row before it reaches the bet (`maintenanceOn`, `src/lib/server/house-bot/control.ts`; `test:house-bot-engine` 16.15), so maintenance stops a house stake on every container, while a player's bet on another container still reads that container's latch. The price cache is the in-process store behind `peekVendorBar` (`src/lib/server/updown-terminal-vendor.ts`) — the chart's cached one-minute bars and, since 2026-09-23, the oracle's last boundary reading — and a container holding no fresh bar skips with UD_STALE_PRICE (risk 10). ⛔ The verify bucket is NOT per container: `desk.verify` is taken through `rateCheckAsync` (`src/lib/server/rate-limit.ts`), one budget for every container in Redis, falling back to the in-process bucket only while Redis is unconfigured or failing; `docs/RAILWAY-LIVE.md` §6 records Redis as armed across containers in production — a record, not re-measured here — and the holder's failed-password count in the database, with its reserve, binds either way. The one replica is likewise a record: `docs/RAILWAY-LIVE.md` §2 (measured there 2026-09-04) and its §13 row 6, as is its trap 13, which records that Railway ignored the repository's `railway.json` and with it the 60 s `overlapSeconds` that file declares; neither is re-measured here. More than one container, or an overlap that takes effect, is a house release event (`docs/HOUSE-BOTS.md` §14, F7).
 10. **Up & Down with no fresh vendor bar:** modes ~~mostly~~ skip with UD_STALE_PRICE (A15). This fails closed. ⚠️ **Checked against the code 2026-09-26.** Every mode, not most: COUNTER, FILL and OPENER each judge closeness on a price when the stake is decided and again when it fires (`udCloseness`, `src/lib/server/house-bot/decide.ts`, re-run by `src/lib/server/house-bot/fire.ts`), and with no price fresh enough each skips with UD_STALE_PRICE; nothing falls back to an older price (`udPriceForDecision`, `src/lib/server/house-bot/ud-price.ts`). Fresh means a bar this container holds (`peekVendorBar`: a chart's cached one-minute vendor bar or, since 2026-09-23, the oracle's own boundary reading) younger than `UD_VENDOR_BAR_MAX_AGE_SEC` (180 s), or a confirmed observation younger than `UD_OBSERVATION_MAX_AGE_SEC` (60 s), both in `src/lib/house-bot/constants.ts`. ⚠️ The bar window was 120 s until 2026-09-23 (`636e173b`), which refused the desk's first live Up & Down stakes: a bar is published well after its own boundary, and an opener then waits out its drawn delay before it fires. 180 s is a deliberate widening — closeness may be judged on a price up to three minutes old — bounded because the provider publishes nothing fresher. The observation window sits below the provider's publish lag on purpose, so in practice the bar decides; the constant's own docblock gives the reason.
 11. **Sunset can't unwind open stakes:** emergency void works on a whole market only (~~`market-service.ts:4061`~~). Open stakes settle normally. ⚠️ **Checked against the code 2026-09-26 — true, and on both products.** `emergencyVoidMarket` (`src/lib/server/market-service.ts`) refunds EVERY open stake in its market, and an Up & Down round's operator void (`voidRoundByOperator`, `src/lib/server/updown-service.ts`) refunds every stake in its round, so a void used to unwind the house would cancel every player's stake beside it; nothing voids one position, and a house position cannot be cashed out — it gets the ordinary closed-exit refusal (`cashOutPosition`; D19c, C4 ruling 147). A sunset (`npm run ops:house-bots-sunset`, `src/lib/server/house-bot/sunset.ts`) therefore removes every account, ends every target and cancels every queued stake, and leaves the open stakes to settle into the holders' wallets; its one admin alert carries the open amount, so "withdrawn" is never read as "nothing left on the table".
-12. **Until the F2 code-state flip is deployed:** OFF and Remove are database states that any ADMIN can reverse (~~`rbac-guard.ts:208-225`~~). ~~A22 alerts every recipient when that happens.~~ ⚠️ **Checked against the code 2026-09-26.** The flip is built and not thrown — `desk` ships ACTIVE in `src/lib/feature-state.ts` (read by `houseBotsLive()`; the key was `houseBots` until 2026-09-21) — so this risk is live. The desk's door is `houseConsoleAudience` (`src/lib/server/house-console-read.ts`), never `requireOwner`, and it answers the same: the ADMIN role. (a) Any ADMIN may switch the desk back ON after any OFF — an officer's, or one the engine wrote itself (`GLOBAL_LOSS_STOP`, `ENGINE_FAULT`, `ENGINE_ERRORS`): while the code state is ACTIVE, `switchOnHouseBots` refuses an OFF desk only for a SUNSET or an unset required limit. ⚠️ That is D1 as it is read since 2026-09-26 (delegated): the owner is the ADMIN role, the tier that alone runs staff, roles and the desk, so no per-account switch list is built, and every switch-on writes a `SWITCH_ON` event and a COMPLIANCE audit row naming its actor and alerts every admin (`docs/COMPLIANCE-DECISIONS.md`, entry `2026-09-26 · D1 READ AS THE OWNER ROLE`). (b) A removed account's record never runs again, but any ADMIN who has the holder's password may designate the same player account as a new record and start it (`designateHouseBot`; `test:house-bot-designation` 4.7). (c) A22's one resolver, `houseBotAlertRecipients` (`src/lib/server/house-bot/alerts.ts`), names every ADMIN, and each is told by bell and email of every switch ON, of every OFF the console, the engine or a sunset throws (the terminal fallback `npm run ops:house-bots-off` sends none; its SWITCH_OFF event is the record), and of a Pause or Remove by hand. ⛔ They are NOT told of a designation, a re-verify, a Start or a rules, limits or target save: those roster sentences are written (`ROSTER_SENTENCE`, `src/lib/house-bot/alert-copy.ts`) and no code path sends them, so a re-designated account is recorded — its COMPLIANCE audit rows, its history events and the roster itself — and no other admin is told; the D1 entry names this as a separate build. (d) The sunset's database half alone (`offCause = SUNSET`) refuses the switch but not a designation, a re-verify or a Start, which read only the code half; nothing can stake while the switch is refused, and the code half closes the rest (`docs/HOUSE-BOTS.md` §11, "Sunset").
+12. **Until the F2 code-state flip is deployed:** OFF and Remove are database states that any ADMIN can reverse (~~`rbac-guard.ts:208-225`~~). ~~A22 alerts every recipient when that happens.~~ ⚠️ **Checked against the code 2026-09-26.** The flip is built and not thrown — `desk` ships ACTIVE in `src/lib/feature-state.ts` (read by `houseBotsLive()`; the key was `houseBots` until 2026-09-21) — so this risk is live. The desk's door is `houseConsoleAudience` (`src/lib/server/house-console-read.ts`), never `requireOwner`, and it answers the same: the ADMIN role. (a) Any ADMIN may switch the desk back ON after any OFF — an officer's, or one the engine wrote itself (`GLOBAL_LOSS_STOP`, `ENGINE_FAULT`, `ENGINE_ERRORS`): while the code state is ACTIVE, `switchOnHouseBots` refuses an OFF desk only for a SUNSET or an unset required limit. ⚠️ That is D1 as it is read since 2026-09-26 (delegated): the owner is the ADMIN role, the tier that alone runs staff, roles and the desk, so no per-account switch list is built, and every switch-on writes a `SWITCH_ON` event and a COMPLIANCE audit row naming its actor and alerts every admin (`docs/COMPLIANCE-DECISIONS.md`, entry `2026-09-26 · D1 READ AS THE OWNER ROLE`). (b) A removed account's record never runs again, but any ADMIN who has the holder's password may designate the same player account as a new record and start it (`designateHouseBot`; `test:house-bot-designation` 4.7). (c) A22's one resolver, `houseBotAlertRecipients` (`src/lib/server/house-bot/alerts.ts`), names every ADMIN, and each is told by bell and email of every switch ON, of every OFF the console, the engine or a sunset throws (the terminal fallback `npm run ops:house-bots-off` sends none; its SWITCH_OFF event is the record), of a Pause or Remove by hand, and — ✅ since 2026-09-27 (checked against the code; FS-09's build, which the D1 entry named as separate) — of every designation, re-verify, Start, rules save and limits save that lands, each alert linking to the act's history event (`announceRoster`, `src/lib/server/house-bot/emitters.ts`; `test:house-bot-console` §2j). Those five alerts and the Pause and Remove alerts name the officer who acted (their display name, else their account id); the switch-ON alert names no one — ruling 420 keeps its actor an id, on its `SWITCH_ON` event and audit row. A save's alert gives every moved number before → after; switches, lists and choices by name. So a re-designated account is recorded — its COMPLIANCE audit rows, its history events and the roster itself — AND every other admin is told who did it. ⚠️ A target add, change, removal or veto is not announced, because no such act exists yet: nothing under `src/` calls the target store's four officer writers (`insert`, `casUpdate`, `remove`, `veto`; the system's own ends — by the planner, a void consent, a Remove or the sunset — send no alert by design). `test:house-bot-console` 2.fs09.8 holds the first file that does to an `announceRoster` call with a TARGET_* event, whatever name it binds the DAL's `targetStore` to (its own, an import alias, a namespace or a dynamic import); it reports the store passed on as a value or re-exported, where it could not follow it, and a new member of the store until it is classified. (d) The sunset's database half alone (`offCause = SUNSET`) refuses the switch but not a designation, a re-verify or a Start, which read only the code half; nothing can stake while the switch is refused, and the code half closes the rest (`docs/HOUSE-BOTS.md` §11, "Sunset").
 13. **Selection edge, bounded not eliminated.** Staff choose the poll and the moment, and can decline after seeing the computed side. They can also see what players cannot: positions with owner names and phones on the admin market page, AML views, and AI poll data (reasoning, confidence, reviewer). The side can't be typed, but it can be matched by waiting until the thinner side is the side they favour. Bounds: the blackout (AI result check recorded, or market reopened), the formula side and amount, staff-chosen caps inside the locks, the counterparty share limit and pro-rata counterparty caps, a durable record of every press (placed or refused), ~~previews per officer, the vetoes register, and the monthly staff-edge scorecard with its alert (W16)~~. ⛔ **Superseded by D20 (Ali, 2026-09-17):** those three are R1's report sections (c) previews without a stake, (h) vetoes and (f) the staff-chosen scorecard, plus the staff-edge alert, all struck (C5-SPEC rulings 202, 218–223); D20 does not strike the durable rows beneath them (`ENTER_NOW_PREVIEWED` and `STAFF_INTENT_CANCELLED` events, VETOED targets).
 14. New with D17: a person chooses the moment of an opener stake and of any stake; opening empty markets is already superseded (UPDOWN D3, automated OPENER).
 15. **Void after a staff-chosen stake.** A single admin can still void or reopen a market holding one (no officer lock: I10 and the 2026-07-24 guardrail). ~~Mitigation is display, the R9 `houseStake.staffChosen` payload, the `staff-stake-voided` alert and an R1 row only.~~ ⛔ **Superseded by D20 (Ali, 2026-09-17):** the display, the R9 payload and the R1 row are struck (C5-SPEC rulings 187–194, 199–213); of that list only the `staff-stake-voided` alert (commit 4) is untouched by D20.

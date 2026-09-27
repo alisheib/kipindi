@@ -310,7 +310,13 @@ await runTwoStores({
    * missing-last, the anchored row, per-row figures, validation, links, the roster pager) and 1.318pg, the Postgres
    * child's own roll-call over the first `console-pg` declarations; on the memory child, the source pins that every
    * sortable header is `SortTh` fed from the reader. (Measured on its own tree, at `c3c3b4a5` plus step 9.)
-   * ⭐ → 1063/782 (2026-09-27), the counts the INTEGRATED tree printed — steps 4, 6, 7, 9 and 10 together. */
-  minPass: { memory: 1063, postgres: 782 },
+   * ⭐ → 1063/782 (2026-09-27), the counts the INTEGRATED tree printed — steps 4, 6, 7, 9 and 10 together.
+   * ⭐ 1063/782 → 1093/804 (2026-09-27), the counts this run PRINTED: FS-09's roster alerts — §2j on both stores
+   * (every landed act through the officer's own door, its refused and nothing-moved controls, the limits net
+   * 2.fs09.5z) and, on the memory child, the target law 2.fs09.8 with its interface pin and five planted controls:
+   * `0.mem · exit 0 · 1093 passed` and `0.pg · exit 0 · 804 passed`, ALL PASS on both stores.
+   * ⭐ → 1105/804 (2026-09-27), the counts the INTEGRATED tree printed — the phone sort rail's 1.s9p and the lead's
+   * tightened 2.fs09.8 controls (a spread, a .js specifier, an unfollowable binding, an unbound announcer) together. */
+  minPass: { memory: 1105, postgres: 804 },
   dbPrefix: "hb_console",
 });
