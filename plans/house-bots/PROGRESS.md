@@ -13,6 +13,7 @@
 |---|---|
 | **Live state** | ⛔ **Not kept in this file.** Read `RESUME-HERE.md` "THE LIVE STATE", and re-read production before quoting any of it. The rows this table used to carry went stale one after another — "the switch is OFF", then "ON since 2026-09-21" and "the desk has staked nothing" — and all three were false by 2026-09-25. |
 | **Commit status** | The "Build: 8 commits" table below. Commit 5's gate is the gate line at the head of `DEFERRED-TESTS.md` (§1, §1c, §1d, §1j and §2 all empty) — count the row ids from that file every time; the "ELEVEN gating rows" this table carried had already gone stale when it was retired (2026-09-26). |
+| **Development** | ✅ **DONE 2026-09-27** — the 2026-09-26 build order (`RESUME-HERE.md` §0c, eleven steps, two of them Ali's own asks: every desk table sorts and pages; every press says it is loading) is complete and live at `9a647397`, and the four fleets were driven whole there. Nothing is in development; what remains needs Ali's word (`RESUME-HERE.md` §0c, "Not built"). |
 | **The locks** | ONE money lock (`HouseBotControl.enabled`, `DEFAULT false`) plus a kill switch (`HOUSE_BOT_ENGINE`, which runs unless it is the literal `false`) — `docs/HOUSE-BOTS.md` at its head. ⛔ Turning the switch ON is the owner's act alone and no session ever touches it; the engine can switch it OFF by itself (`ENGINE_FAULT`, `ENGINE_ERRORS`, `GLOBAL_LOSS_STOP`). |
 
 ## ⛔ OWNER RULING D19 (Ali, 2026-09-16) — HOUSE BOTS ARE NEVER PUBLIC. **This outranks every plan document.**

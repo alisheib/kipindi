@@ -2366,6 +2366,29 @@ With those fixes, `qa:house-bots-visual` on the served desk at 360, 640, 1024, 1
 address: **1262 passed, 0 failed, 5 NOT MEASURED** — the five are the empty targets table's header controls, one per width.
 The sorted tiles were read at 360 and 1280: one header in force with its arrow, the order note in the table's card.
 
+
+### 12.14 The four fleets driven whole at the close — 2026-09-27 (RESUME-HERE §0c build step 11)
+
+Driven in a detached tree at `9a647397` — the commit that carries every step of the build order — with the driver that
+`plans/house-bots/tools/fleet.sh` was then made from (its `--dry` prints the same 18 slices), c5 first while that tree
+still equalled `main`. `test:red-anchors` ran first: 3480 passed, only the four known failures of other lanes, so every
+declared mutation resolved.
+
+| Fleet | Slices | Printed |
+|---|---|---|
+| c5 (99 primaries; a partner rides with its primary) | 3 | 45 + 45 + 9 caught · 0 wrong-assertion · 0 missed · 0 stale · 0 broken-injection |
+| console (450) | 10 | 45 × 10 caught · 0 missed |
+| engine (104, three on the Postgres twin) | 3 | 45 + 45 + 14 caught · 0 missed · 0 not measured |
+| money + seam (56 + 7) | 2 | 45 + 18 caught · 0 missed · 0 not measured |
+
+**716 of 716 caught, and no slice left a file dirty**; the drive tree was removed at the end. A session restart cut slice 8
+off mid-drive: the tree was found clean, and the resumed run drove slice 8 again from its start (a slice is skipped only
+once its log ends in `EXIT=`). Other lanes held the lock between slices for much of the day, so the 18 slices ran from
+22:42 UTC on 09-26 to 15:15 UTC on 09-27.
+
+**The desk rules drive (`qa:desk-rules-flow`), checked at the close because another lane reported two of its checks as
+this lane's:** `qa:desk-rules-flow` printed **81/89** at `9a647397` on a local `next dev`, and **89/89** after three repairs to the drive itself (pushed at `fe12e905`, re-run on the merged tree). None of the eight failures was the desk: (1) since `3e94bf2f` a clean form's Save stays disabled, so the drive's wait for it to re-enable ran out on every landed save and the checks read an empty toast list — the lane that made that change had fixed the wait and 8.6b on `main` the same day, and the merge kept its version; (2) §9d's two extra browser contexts signed the same admin in, and with one live session per account the drive's own page was signed OUT — which is why 9d.3 and 10.1 found no Custom chip and no Remove button (the two another lane reported as this lane's); the page is now signed back in; (3) the Custom panel has ten numeric fields and the drive typed the from-date twice, leaving Apply disabled; it now starts `to` half-way along. A click that times out now records what answers at the control's centre.
+
 ---
 
 ## 13. Accepted risks
