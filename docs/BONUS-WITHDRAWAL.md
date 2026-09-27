@@ -301,8 +301,9 @@ superseded, so it failed on its own premise. Its intent outlived its subject, so
 ## 8 · Turning it back on
 
 ⚠️ **For `invite` this already happened (2026-09-25), and it opened the SURFACE only.** The money is
-a separate switch, `inviteRewards`, and turning THAT on is
-[`PLAYER-INVITE-UNPAID.md`](PLAYER-INVITE-UNPAID.md) §7 / §12 (Gaming Board clearance first), not
+a separate control — since 2026-09-26 the Owner's Payable / Not payable switch on `/admin/affiliate` —
+and turning THAT on is the Owner's ceremony in [`PLAYER-INVITE-UNPAID.md`](PLAYER-INVITE-UNPAID.md) §12
+(no separate Gaming Board clearance: 50pick's licence covers invite rewards, owner ruling 2026-09-27), not
 the steps below. The steps below now apply to `bonus`.
 
 One word in `PRODUCT_STATE` in `src/lib/feature-state.ts`, per feature. Then:

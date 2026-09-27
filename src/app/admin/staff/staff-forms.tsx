@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { ConfirmModal } from "@/components/ui/modal";
 import { UnsavedChangesGuard, PendingChangesBar } from "@/components/ui/unsaved-changes";
 import { focusFirstInvalid } from "@/lib/client/focus-first-invalid";
+import { runAdminAction } from "@/lib/client/run-admin-action";
 import { setStaffRoleAction, addStaffByPhoneAction } from "./actions";
 
 export type RoleInfo = {
@@ -113,7 +114,9 @@ export function AssignRoleForm({ userId, currentRole, roleInfos }: { userId: str
       fd.set("userId", userId);
       fd.set("role", role);
       fd.set("reason", reason);
-      const r = await setStaffRoleAction(fd);
+      /* A THROWN action (an expired owner session, a server fault) becomes `{ ok: false }` here,
+         so it lands in the toast rather than ending the spinner in silence. */
+      const r = await runAdminAction(() => setStaffRoleAction(fd));
       if (!r.ok) { toast({ title: "Couldn't change role", description: r.error, variant: "danger" }); return; }
       router.refresh();
       deferToast({ title: "Role updated", description: "They've been signed out and will re-enter with the new role.", variant: "success" });
@@ -132,7 +135,10 @@ export function AssignRoleForm({ userId, currentRole, roleInfos }: { userId: str
     <form ref={assignFormRef} onSubmit={onSubmit} className="space-y-3">
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Field label="Role" hint="One role per person.">
-          <Select name="role" ariaLabel="Role" defaultValue={currentRole} onChange={setRole} options={ROLE_OPTIONS(roleInfos, true)} />
+          {/* ⛔ CONTROLLED (`value`, not `defaultValue`). Uncontrolled, Discard put `role` back
+              while the dropdown went on SHOWING the discarded pick — the consequence panel and
+              the Save label said one role, the control another. */}
+          <Select name="role" ariaLabel="Role" value={role} onChange={setRole} options={ROLE_OPTIONS(roleInfos, true)} />
         </Field>
         <Field label="Reason (audited)" hint="Why the change — recorded in the compliance log.">
           <Input name="reason" value={reason} onChange={(e) => setReason(e.currentTarget.value)} placeholder="e.g. moved to the finance desk" />
@@ -152,7 +158,17 @@ export function AssignRoleForm({ userId, currentRole, roleInfos }: { userId: str
         saveLabel={isRevoke ? "Revoke staff access" : "Change role"}
       />
       <UnsavedChangesGuard dirty={unsaved} body="This role change has not been saved. Leaving now discards it." />
-      <Button ref={saveRef} type="submit" variant="primary" loading={pending} disabled={!changed}>
+      {/* ⭐ DISABLED UNTIL A DIFFERENT ROLE IS PICKED, which covers "while nothing has changed"
+          and one case more: a typed reason with the same role is unsaved WORK (the bar keeps it)
+          but not a saveable change. The title says why, so the dead button is not a mystery. */}
+      <Button
+        ref={saveRef}
+        type="submit"
+        variant="primary"
+        loading={pending}
+        disabled={!changed}
+        title={changed ? undefined : "Pick a different role first."}
+      >
         {isRevoke ? "Revoke staff access" : "Change role"}
       </Button>
 
@@ -191,6 +207,8 @@ export function AddStaffForm({ roleInfos }: { roleInfos: Record<string, RoleInfo
   /* The container `focusFirstInvalid` searches — see the note in `run()` for why it is this
      form and not the document. */
   const formRef = useRef<HTMLFormElement>(null);
+  /* The form's own Save. The bar draws no second one while this is on screen (owner, 2026-09-22). */
+  const saveRef = useRef<HTMLButtonElement>(null);
 
   /* Same question as the form above: has the officer typed anything that leaving would lose?
      All three start at a known default, so this is a comparison, not a touched flag. */
@@ -204,7 +222,8 @@ export function AddStaffForm({ roleInfos }: { roleInfos: Record<string, RoleInfo
       fd.set("phone", phone);
       fd.set("role", role);
       fd.set("reason", reason);
-      const r = await addStaffByPhoneAction(fd);
+      // Same wrapper as the role change above: a thrown action surfaces, never in silence.
+      const r = await runAdminAction(() => addStaffByPhoneAction(fd));
       if (!r.ok) {
         toast({ title: "Couldn't add staff", description: r.error, variant: "danger" });
         /* ⛔ SCOPED TO THIS FORM, NOT `document.body`. This page renders TWO forms and both
@@ -219,7 +238,11 @@ export function AddStaffForm({ roleInfos }: { roleInfos: Record<string, RoleInfo
       }
       router.refresh();
       deferToast({ title: "Staff added", description: `${info?.label ?? role} assigned. They've been signed out and will re-enter with the new role.`, variant: "success" });
-      setPhone(""); setReason("");
+      /* ⛔ ALL THREE back to their defaults, the role included. Leaving the role on any pick other
+         than SUPPORT kept `unsaved` true, so the bar went on saying "Unsaved changes" over a
+         promotion that had just been saved — owner, 2026-09-26: "users are confused whether the
+         save worked or not". */
+      setPhone(""); setReason(""); setRole("SUPPORT");
     });
   };
 
@@ -237,7 +260,9 @@ export function AddStaffForm({ roleInfos }: { roleInfos: Record<string, RoleInfo
           <Input name="phone" value={phone} onChange={(e) => setPhone(e.currentTarget.value)} placeholder="+255…" mono />
         </Field>
         <Field label="Role" dataField="role">
-          <Select name="role" ariaLabel="Role" defaultValue="SUPPORT" onChange={setRole} options={options} />
+          {/* Controlled for the same reason as the role-change form: Discard and a successful
+              add both put `role` back, and the dropdown has to show it. */}
+          <Select name="role" ariaLabel="Role" value={role} onChange={setRole} options={options} />
         </Field>
         <Field label="Reason (audited)" dataField="reason">
           <Input name="reason" value={reason} onChange={(e) => setReason(e.currentTarget.value)} placeholder="e.g. new support hire" />
@@ -248,13 +273,16 @@ export function AddStaffForm({ roleInfos }: { roleInfos: Record<string, RoleInfo
         dirty={unsaved}
         saving={pending}
         detail="Promoting an account grants console access and signs the person out."
+        saveAnchor={saveRef}
         /* Through the FORM, so the bar cannot skip onSubmit validation. */
         onSave={() => formRef.current?.requestSubmit()}
         onDiscard={() => { setPhone(""); setRole("SUPPORT"); setReason(""); }}
         saveLabel="Add as staff"
+        savedLabel="Staff added"
       />
       <UnsavedChangesGuard dirty={unsaved} body="This staff promotion has been part-filled and not saved. Leaving now discards it." />
-      <Button type="submit" variant="primary" loading={pending}>Add as staff</Button>
+      {/* Disabled while the form is empty — nothing typed, nothing to add. */}
+      <Button ref={saveRef} type="submit" variant="primary" loading={pending} disabled={!unsaved}>Add as staff</Button>
 
       <ConfirmModal
         open={confirming}

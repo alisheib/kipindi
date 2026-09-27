@@ -5,9 +5,11 @@
  *  - Mint every player a stable, shareable referral code (lazy, on first touch).
  *  - Bind a new registration to its referrer from a referral code, with
  *    anti-fraud guards (no self-referral, one referrer per recruit, IP overlap).
- *  - Accrue the three PLAYER reward modes — COMMISSION, BONUS, PRIZE — gated first by the product
- *    state `inviteRewards` (WITHDRAWN since 2026-09-25: every player accrual is refused in `policyFor`),
- *    then by the admin config; capped, idempotent, audited. Agent commission is its own branch.
+ *  - Accrue the three PLAYER reward modes — COMMISSION, BONUS, PRIZE — gated first by the Owner's
+ *    "Payable / Not payable" switch under the code/env ceiling (`invite-rewards-switch.ts`; Not payable
+ *    by default, and `policyFor` refuses every player accrual while it is), then by the admin config;
+ *    capped, idempotent, audited. The money path re-reads the switch before every player accrual.
+ *    Agent commission is its own branch.
  *  - Credit a PLAYER reward as a CONFIRMED BONUS_CREDIT (bonus wallet, cash fallback) and AGENT
  *    commission as AGENT_COMMISSION cash — immutable money history, like every other movement.
  *  - Expose read models for /profile/invite ("Invite friends", unpaid, for a player; the agent
@@ -17,8 +19,10 @@
  * Money rule: every figure is whole TZS. No fractional shillings.
  */
 import { db, type StoredAffiliateAccount, type StoredReferralReward, type StoredUser } from "./store";
-import { inviteIsLiveFor, playerInviteRewardsLive, bonusIsLiveFor, NO_VIEWER, type InviteViewer } from "@/lib/feature-state";
-import { getAffiliateConfig } from "./affiliate-config";
+import { inviteIsLiveFor, bonusIsLiveFor, NO_VIEWER, type InviteViewer } from "@/lib/feature-state";
+import { effectivePlayerTerms, invitePaysPlayers } from "@/lib/affiliate-rules";
+import { getAffiliateConfig, reloadAffiliateConfig, armedRetiredDepositModes } from "./affiliate-config";
+import { confirmInvitePayableNow, inviteScreenAffiliateConfig, playerInvitePayable, playerInvitePayableNow, refreshInvitePayable } from "./invite-rewards-switch";
 import { getAgentConfig, commissionWindowEnd, PLATFORM_MAX_COMMISSION_PCT, type AgentConfig } from "./agent-config";
 import { splitWithholding } from "@/lib/agent-commission";
 import { displayLabel } from "@/lib/display-label";
@@ -254,11 +258,21 @@ export type ReferralRefusal =
   | "agent_rate_unset"
   | "player_invite_withdrawn"
   /** ⭐ The unpaid player invite (2026-09-25): the SURFACE is live and the attribution is real,
-   *  but `inviteRewards` is WITHDRAWN, so nothing accrues. ⛔ Distinct from
+   *  but invites are Not payable (the Owner's switch, under its ceiling), so nothing accrues. The
+   *  code keeps its 2026-09-25 name for continuity with the rows already in the chain. ⛔ Distinct from
    *  `player_invite_withdrawn` (no link at all) and from `programme_disabled` (the operator's own
-   *  master switch) — three different zeros, and an officer reading the audit must be able to
+   *  service-level pause) — three different zeros, and an officer reading the audit must be able to
    *  tell which one they are looking at. */
   | "player_rewards_withdrawn"
+  /** ⛔ Invites ARE payable, but the `affiliate.config` row could not be re-read just before pricing
+   *  (2026-09-26, `reloadAffiliateConfig`), so the accrual is REFUSED rather than priced from this
+   *  container's boot-time cache — which may be the stale value another container has since replaced. */
+  | "player_config_unreadable"
+  /** ⛔ A DEPOSIT PAYS NO REFERRAL REWARD (Ali, 2026-09-26): the published RG policy promises "No bonus
+   *  offers tied to deposit increases". Written when a deposit reaches the hook while a retired
+   *  deposit-tied mode (`FIRST_DEPOSIT` bonus, `DEPOSIT_THRESHOLD` prize) is still armed — by the stored
+   *  row or by the config in hand — and by a payer asked to pay on anything but SIGNUP / FIRST_BET. */
+  | "player_deposit_trigger_retired"
   /** The referrer's own account is CLOSED, SUSPENDED or SELF_EXCLUDED — `playerStandingFor`. */
   | "player_account_not_in_standing"
   | "window_expired"
@@ -292,7 +306,7 @@ export type ReferralPolicy = {
   txnType: "AGENT_COMMISSION" | "BONUS_CREDIT";
   /** 0 = uncapped. */
   capPerRecruitTzs: number;
-  /** 0 = lifetime. Measured from the BIND. */
+  /** 0 = lifetime (AGENT only — a PLAYER window is always 1–60, `effectivePlayerTerms`). Measured from the BIND. */
   windowMonths: number;
   /**
    * ⭐ LOCAL WITHHOLDING TAX ON THE RECIPIENT'S EARNINGS, as a PERCENT of the gross accrual.
@@ -411,8 +425,8 @@ export function playerInviteEligibleFor(
  * standing loses both in the same instant.
  *
  * ⚠️ IT ANSWERS "MAY SEE AND MAY RECRUIT", AND SINCE 2026-09-25 THAT IS NO LONGER THE SAME
- * QUESTION AS "MAY EARN" — an ordinary player's invite pays nothing. `playerInviteRewardsLive()`
- * is the money, and no viewer opens it.
+ * QUESTION AS "MAY EARN" — an ordinary player's invite pays nothing unless the Owner has made invites
+ * payable. That switch (`invite-rewards-switch.ts`) is the money, and no viewer opens it.
  *
  * `null` / a failed read → `NO_VIEWER`: a failed read must never open a withdrawn programme.
  */
@@ -519,13 +533,15 @@ export function policyFor(
 
   // ── PLAYER ────────────────────────────────────────────────────────────────
   /**
-   * 🔴 THE PLATFORM PAYS A PLAYER NOTHING FOR AN INVITE, AND THIS IS THE LINE THAT MAKES IT
-   * TRUE (Ali, 2026-09-25: *"we don't want to pay anything on affiliate … i'll pay him cash not
-   * through 50pick"*). It sits ABOVE `cfg.enabled` on purpose: a product state outranks an
-   * operator config, so no combination of `/admin/affiliate` switches, no persisted row and no
-   * restored snapshot can put the player promo back on the money path. One word in
-   * `feature-state.ts` — or `FEATURE_INVITEREWARDS=ACTIVE` — brings it back, and every line
-   * below this one is kept alive and driven for exactly that day.
+   * 🔴 WHILE INVITES ARE NOT PAYABLE THE PLATFORM PAYS A PLAYER NOTHING FOR AN INVITE, AND THIS IS
+   * THE LINE THAT MAKES IT TRUE (Ali, 2026-09-25: *"we don't want to pay anything on affiliate … i'll
+   * pay him cash not through 50pick"*). It sits ABOVE `cfg.enabled` on purpose: the switch outranks
+   * the operator config, so no combination of `/admin/affiliate` settings, no persisted row and no
+   * restored snapshot can put the player promo on the money path.
+   * ⭐ 2026-09-26 — WHAT IT ASKS IS THE OWNER'S SWITCH (`invite-rewards-switch.ts`): Payable only when
+   * the code/env ceiling allows it AND a correctly sealed stored record says so; Not payable by default
+   * and on every failure. It is the synchronous snapshot — every money-path caller (`accrualContextFor`,
+   * `payBonus`, `payPrize`) has awaited `refreshInvitePayable()` just before, so it is fresh there.
    *
    * ⛔ "WE'LL JUST SET THE COMMISSION TO 0%" WAS THE ALTERNATIVE, AND IT WOULD HAVE PAID. The
    * shipped config carries `prize.enabled: true` at TZS 10,000 a head with commission already
@@ -538,20 +554,28 @@ export function policyFor(
    * explainable at all — would never fire. A payout of nothing and a refusal to pay are
    * different facts, and the officer reading the audit needs the second one.
    */
-  if (!playerInviteRewardsLive()) return { ok: false, refusal: "player_rewards_withdrawn" };
-  if (!cfg.enabled) return { ok: false, refusal: "programme_disabled" };
+  if (!playerInvitePayable()) return { ok: false, refusal: "player_rewards_withdrawn" };
+  /* ⛔ `cfg.enabled` IS A SERVICE-LEVEL PAUSE NOW, NOT A PAGE CONTROL (2026-09-26). The two switch
+     states are the master; Make payable sets this true and a Save never sends it. It still refuses
+     here — a row that says false pauses the promo, and the page then reads "Not payable · paused at
+     service level". `=== true`, never truthiness: a stored "false" is a string. */
+  if (cfg.enabled !== true) return { ok: false, refusal: "programme_disabled" };
+  /* ⭐ THE TERMS ARE CLAMPED HERE, THE PLAYER TWIN OF THE AGENT BRANCH'S `Math.min` ABOVE: at most 50%
+     of margin, a 1–60 month window (never 0, which `commissionWindowEnd` reads as lifetime), and an
+     unsound rate, window or cap pays nothing rather than reading as "uncapped". */
+  const terms = effectivePlayerTerms(cfg);
   return {
     ok: true,
     policy: {
       programme: "PLAYER",
       // Already a fraction on this side. ⛔ Do not divide.
-      rate: cfg.commission.enabled ? cfg.commission.rate : 0,
+      rate: terms.rate,
       // The player promo routes through the bonus wallet when the bonus programme is on;
       // `creditWallet` still falls back to cash if the grant cannot be made, exactly as before.
       destination: "BONUS",
       txnType: "BONUS_CREDIT",
-      capPerRecruitTzs: cfg.commission.capPerRecruitTzs,
-      windowMonths: cfg.commission.windowMonths,
+      capPerRecruitTzs: terms.capPerRecruitTzs,
+      windowMonths: terms.windowMonths,
       // ⛔ ZERO FOR PLAYER, BY CONSTRUCTION AND NOT BY CONFIG. A player promo pays a
       // promotional grant; there is no commission income to withhold against, and a tax
       // line on a bonus would report promotional spend to TRA as remitted tax.
@@ -618,11 +642,11 @@ export async function accrualContextFor(
     // flips). Only the product state and the referrer's OWN standing may open this branch.
     //
     // ⭐ SINCE 2026-09-25 REACHING THE OTHER SIDE OF THIS GATE IS NO LONGER A PAYMENT. The
-    // surface is ACTIVE, so an ordinary player's attribution passes here and is then refused by
-    // `policyFor` with `player_rewards_withdrawn` — a different refusal, in a different place,
-    // for a different reason, and both land in the audit. ⛔ Do not "simplify" the two into one
-    // check: a player whose link is dead and a player whose link works but pays nothing are not
-    // the same player, and the officer's zero has to name which.
+    // surface is ACTIVE, so an ordinary player's attribution passes here and — while invites are
+    // Not payable — is then refused by `policyFor` with `player_rewards_withdrawn`: a different
+    // refusal, in a different place, for a different reason, and both land in the audit. ⛔ Do not
+    // "simplify" the two into one check: a player whose link is dead and a player whose link works
+    // but pays nothing are not the same player, and the officer's zero has to name which.
     if (!inviteIsLiveFor({
       role: referrer.role,
       agentInGoodStanding: false,
@@ -630,6 +654,25 @@ export async function accrualContextFor(
     })) {
       return { ok: false, refusal: "player_invite_withdrawn", attribution };
     }
+    /* ⛔ THE MONEY PATH READS THE OWNER'S SWITCH FRESH, NOT FROM THIS CONTAINER'S CACHE. A deploy runs
+       two containers side by side and config is not propagated between them, so a Stop paying pressed
+       on one must be obeyed by the next accrual on the other. A failed read refuses this accrual —
+       deliberately, for inducement money. The hooks run after the bet/deposit/settlement locks.
+       ⭐ The fresh answer refuses HERE, and it has also just refreshed the snapshot `policyFor` reads
+       below, so the two cannot disagree; the refusal is the same code `policyFor` would write. */
+    const payableNow = await refreshInvitePayable();
+    if (!payableNow) return { ok: false, refusal: "player_rewards_withdrawn", attribution };
+    /* ⛔ …AND THE CONFIG FRESH TOO, ONLY NOW THAT IT PAYS, BEFORE `policyFor` PRICES IT BELOW. This
+       container's cache is the config it BOOTED with; the row is what the Owner and the growth officer
+       last stored, on whichever container (`reloadAffiliateConfig` replaces the cache `policyFor` and
+       the hooks read next). A row that cannot be read refuses — never the stale cache. Not payable
+       never reaches this line, so an unpaid platform pays nothing for the read. */
+    const configNow = await reloadAffiliateConfig();
+    if (!configNow.ok) return { ok: false, refusal: "player_config_unreadable", attribution };
+    /* ⛔ NO ROW IS NOT A CONFIG (review P10, 2026-09-26). An absent `affiliate.config` answers the shipped
+       defaults — the prize ON at TZS 10,000 — which nobody stored or saw priced; on the money path it is
+       refused exactly like a row that could not be read. (A screen may still SHOW the defaults.) */
+    if (configNow.stored === false) return { ok: false, refusal: "player_config_unreadable", attribution };
   }
 
   const resolved = policyFor(attribution.programme, account, getAffiliateConfig(), getAgentConfig());
@@ -695,9 +738,9 @@ async function mayRecruit(
    * again the moment `invite` is ever switched back to WITHDRAWN.
    *
    * ⛔ `FEATURE_INVITE=ACTIVE` IS NO LONGER WHAT OPENS THIS BRANCH — the shipped product state is
-   * ACTIVE and the override exists to CLOSE it. The money is the other switch entirely
-   * (`inviteRewards`, refused in `policyFor`), so passing here says a bind may be recorded and
-   * says nothing at all about payment.
+   * ACTIVE and the override exists to CLOSE it. The money is the other switch entirely (the Owner's
+   * Payable switch under the `inviteRewards` ceiling, refused in `policyFor`), so passing here says a
+   * bind may be recorded and says nothing at all about payment.
    */
   const playerStanding = playerStandingFor(referrer);
   if (!playerStanding.ok) return { ok: false, refusal: playerStanding.refusal };
@@ -733,20 +776,31 @@ export async function resolveReferralPreview(code: string) {
    */
   const may = await mayRecruit(referrer, affiliate);
   if (!may.ok) return null;
-  const cfg = getAffiliateConfig();
   // New-player bonus is only advertised when the program + bonus mode are on
   // and the new player is actually a recipient.
   // ⛔ NEVER FOR AN AGENT'S CODE. The agent programme pays commission to the agent and makes
   // no offer to the recruit at all, so advertising a welcome bonus on an agent's ribbon
   // would be the player promo's terms on a page the player promo does not govern.
-  // ⛔ `playerInviteRewardsLive()` FIRST, AND IT IS THE SAME REASON THE REST OF THIS CONDITION
-  // EXISTS: the ribbon is a promise, so it obeys the switch that decides whether the promise can
-  // be kept. With `inviteRewards` WITHDRAWN `policyFor` refuses every player accrual, so an
-  // offer here would be the product advertising money it has already decided not to pay.
-  // ⚠️ The bonus MODE is off in the shipped config too, so today both halves say zero — which is
-  // exactly why the product state is named explicitly rather than left to agree by accident.
+  // ⛔ THE OWNER'S SWITCH FIRST, AND IT IS THE SAME REASON THE REST OF THIS CONDITION EXISTS: the
+  // ribbon is a promise, so it obeys the switch that decides whether the promise can be kept. While
+  // invites are Not payable `policyFor` refuses every player accrual, so an offer here would be the
+  // product advertising money it has already decided not to pay.
+  // ⚠️ The bonus MODE is off in the shipped config too, so by default both halves say zero — which is
+  // exactly why the switch is named explicitly rather than left to agree by accident. Read through the
+  // screens' ≤ 10 s cache: the register page is a screen, not the payer.
+  const payable = may.programme === "PLAYER" && await playerInvitePayableNow();
+  /* ⛔ …THROUGH THE ONE PLAYER-FACING "PAID" (review P8, 2026-09-26): the switch, the service-level pause
+     off and a reward armed, on the settings as last read from their ROW — never this container's boot-time
+     copy, which may still hold a bonus the Owner switched off on another container. */
+  const ribbonCfg = payable ? await inviteScreenAffiliateConfig() : null;
+  const ribbonPays = ribbonCfg !== null && invitePaysPlayers(payable, ribbonCfg);
+  const cfg = ribbonCfg ?? getAffiliateConfig();
+  /* ⛔ AND ONLY THE SIGN-UP BONUS IS EVER OFFERED ON THE RIBBON (2026-09-26). An offer on any other trigger
+     would be a bonus tied to a deposit, which the RG policy rules out — so a config that somehow still
+     spells one offers the new player nothing at all, and the register page words a sign-up offer only. */
+  const ribbonTrigger: string = cfg.bonus.trigger;
   const newPlayerBonusTzs =
-    may.programme === "PLAYER" && playerInviteRewardsLive() && cfg.enabled && cfg.bonus.enabled && (cfg.bonus.recipient === "NEW" || cfg.bonus.recipient === "BOTH")
+    ribbonPays && cfg.bonus.enabled && ribbonTrigger === "SIGNUP" && (cfg.bonus.recipient === "NEW" || cfg.bonus.recipient === "BOTH")
       ? cfg.bonus.newAmountTzs
       : 0;
   const name =
@@ -755,8 +809,8 @@ export async function resolveReferralPreview(code: string) {
       : "a friend";
   return {
     referrerName: name,
+    /** A SIGN-UP bonus for the new player, or 0 — never anything else (see `ribbonTrigger` above). */
     newPlayerBonusTzs,
-    bonusTrigger: cfg.bonus.trigger,
     /** ⭐ The read model behind the "Verified 50pick Agent" trust mark. It is a claim about a
      *  vetted, fee-paying, compliance-approved partner — so it is derived from the same
      *  standing check that decides whether the code binds at all, never from a role string. */
@@ -974,8 +1028,9 @@ export async function bindRecruit(opts: { recruitUserId: string; code: string; i
    *
    * ⚠️ 2026-09-25 — THE GATE IS OPEN FOR EVERY PLAYER IN GOOD STANDING (`invite` ACTIVE, unpaid): these
    * binds are now written on purpose and are the roster `/admin/affiliate` counts for Ali's off-platform
-   * cash. The concern above moved to `inviteRewards`: switching it ACTIVE makes every bind already
-   * recorded payable on the recruit's NEXT event (`docs/PLAYER-INVITE-UNPAID.md` §12).
+   * cash. The concern above moved to the invite's money: the Owner making invites PAYABLE (since
+   * 2026-09-26 his ceremony on `/admin/affiliate`) makes every bind already recorded payable on the
+   * recruit's NEXT event — which is why his dialog prices the roster (`docs/PLAYER-INVITE-UNPAID.md` §12).
    *
    * ⭐ `approvedAt` / `active` ARRIVED 2026-09-07, exactly as this comment reserved — and they
    * live in `mayRecruit`, the ONE predicate the ribbon reads too. A closed, suspended,
@@ -1094,30 +1149,63 @@ function referrerSharesIp(referrerUserId: string, ip: string): boolean {
 // an "is this an agent" early return: an agent context never arrives, so there is no guard
 // clause for anyone to forget and no third definition of what an agent is.
 
-/** Pay the sign-up / first-deposit bonus once per recruit. ⛔ PLAYER programme only. */
+/** Pay the SIGN-UP bonus once per recruit. ⛔ PLAYER programme only, and sign-up only: the first-deposit
+ *  trigger is retired (RG policy, 2026-09-26) and refused below. */
 async function payBonus(opts: { referrerUserId: string; recruitUserId: string; held: boolean }): Promise<void> {
-  const cfg = getAffiliateConfig();
+  // ⛔ FRESH, like `accrualContextFor`: the sign-up bonus reaches here from `bindRecruit` without it.
+  const bonusPayableNow = await refreshInvitePayable();
+  if (!bonusPayableNow) return;
+  /* ⛔ …AND THE CONFIG FRESH, ONLY NOW THAT IT PAYS: the bonus is priced from the ROW, never from the
+     cache this container booted with. The mode check sits BELOW the reads on purpose — ONE check, on the
+     fresh row; every caller has already checked its own copy before calling. A row that cannot be read
+     pays nothing, and the audit says why. */
+  const bonusConfigNow = await reloadAffiliateConfig();
+  if (!bonusConfigNow.ok) {
+    auditRefusal("affiliate.accrual_refused", "player_config_unreadable", opts.recruitUserId, null, { hook: "bonus", referrerUserId: opts.referrerUserId, programme: "PLAYER" });
+    return;
+  }
+  const cfg = bonusConfigNow.config;
+  // ⛔ No row is the shipped defaults, which nobody stored: refused like an unreadable row (review P10).
+  if (bonusConfigNow.stored === false) {
+    auditRefusal("affiliate.accrual_refused", "player_config_unreadable", opts.recruitUserId, null, { hook: "bonus", referrerUserId: opts.referrerUserId, programme: "PLAYER", row: "absent" });
+    return;
+  }
   if (!cfg.enabled || !cfg.bonus.enabled) return;
+  /* ⛔ THE SIGN-UP BONUS ONLY (RG policy, 2026-09-26): a bonus armed on any other trigger — the retired
+     `FIRST_DEPOSIT` above all — is refused, audited, whatever reached this config. */
+  const bonusTriggerNow: string = cfg.bonus.trigger;
+  if (bonusTriggerNow !== "SIGNUP") {
+    auditRefusal("affiliate.accrual_refused", "player_deposit_trigger_retired", opts.recruitUserId, null, { hook: "bonus", referrerUserId: opts.referrerUserId, programme: "PLAYER", trigger: bonusTriggerNow });
+    return;
+  }
   // The player promo's own destination: bonus wallet when the bonus programme is on, cash
   // otherwise. ⛔ An agent's policy is never `PLAYER`, so this can never route agent money.
   const playerPolicy = policyFor("PLAYER", null, cfg, getAgentConfig());
   if (!playerPolicy.ok) return;
   const policy = playerPolicy.policy;
 
-  // Serialize per recruit so two concurrent triggers (e.g. sign-up + a racing
-  // first-deposit, or a retry) can't both pass the once-per-recruit guard and
-  // double-pay. The guard is RE-READ inside the lock — the read-then-act was
-  // the race. (withLock is a cross-instance advisory lock in prod.)
+  // Serialize per recruit so two concurrent triggers (e.g. a sign-up and its
+  // retry) can't both pass the once-per-recruit guard and double-pay. The guard
+  // is RE-READ inside the lock — the read-then-act was the race. (withLock is a
+  // cross-instance advisory lock in prod.)
   await withLock(`referral:reward:${opts.recruitUserId}`, async () => {
     // Idempotency — only one bonus per recruit, ever (re-checked under the lock).
     const priorBonus = (await db.referralReward.listByRecruit(opts.recruitUserId)).some((r) => r.type === "BONUS");
     if (priorBonus) return;
 
     const status: StoredReferralReward["status"] = opts.held ? "HELD" : "PAID";
-    const triggerLabel = cfg.bonus.trigger === "SIGNUP" ? "sign-up" : "deposit";
+    const triggerLabel = "sign-up";
 
     const payTo = async (userId: string, amount: number, who: "new" | "referrer") => {
       if (amount <= 0) return;
+      /* ⛔ THE LAST WORD, INSIDE THE LOCK, BEFORE EACH CREDIT (review P6, 2026-09-26). The fresh read above
+         ran before this lock was taken; a Stop paying that landed while this payer waited must be obeyed
+         here — a read that STARTS NOW. What it cannot catch is a Stop landing between this read and the
+         credit, which is the dialog's "a reward already being paid at that instant can still land". */
+      if (!(await confirmInvitePayableNow())) {
+        auditRefusal("affiliate.accrual_refused", "player_rewards_withdrawn", opts.recruitUserId, null, { hook: "bonus", referrerUserId: opts.referrerUserId, programme: "PLAYER", stage: "credit", recipient: who });
+        return;
+      }
       // If the credit can't land (frozen/missing wallet), record the reward as
       // HELD rather than PAID — otherwise the ledger claims money was paid that
       // never moved, and the held queue lets an officer retry it.
@@ -1155,8 +1243,31 @@ async function payBonus(opts: { referrerUserId: string; recruitUserId: string; h
 /** Pay the milestone prize to the referrer once per recruit. ⛔ PLAYER programme only —
  *  an agent is paid a share of revenue they generated, and nothing else. */
 async function payPrize(opts: { referrerUserId: string; recruitUserId: string; milestoneLabel: string }): Promise<void> {
-  const cfg = getAffiliateConfig();
+  // ⛔ FRESH — the switch may have been stopped in another container since the hook's own read.
+  const prizePayableNow = await refreshInvitePayable();
+  if (!prizePayableNow) return;
+  /* ⛔ …AND THE CONFIG FRESH, ONLY NOW THAT IT PAYS: the prize is priced from the ROW, never from the
+     cache this container booted with (the shipped prize is ON at TZS 10,000). ONE mode check, below the
+     reads, on the fresh row; a row that cannot be read pays nothing, and the audit says why. */
+  const prizeConfigNow = await reloadAffiliateConfig();
+  if (!prizeConfigNow.ok) {
+    auditRefusal("affiliate.accrual_refused", "player_config_unreadable", opts.recruitUserId, null, { hook: "prize", referrerUserId: opts.referrerUserId, programme: "PLAYER" });
+    return;
+  }
+  const cfg = prizeConfigNow.config;
+  // ⛔ No row is the shipped defaults — the prize ON at TZS 10,000 — which nobody stored (review P10).
+  if (prizeConfigNow.stored === false) {
+    auditRefusal("affiliate.accrual_refused", "player_config_unreadable", opts.recruitUserId, null, { hook: "prize", referrerUserId: opts.referrerUserId, programme: "PLAYER", row: "absent" });
+    return;
+  }
   if (!cfg.enabled || !cfg.prize.enabled || cfg.prize.amountTzs <= 0) return;
+  /* ⛔ THE FIRST-BET PRIZE ONLY (RG policy, 2026-09-26): a prize armed on any other milestone — the
+     retired `DEPOSIT_THRESHOLD` above all — is refused, audited, whatever reached this config. */
+  const prizeMilestoneNow: string = cfg.prize.milestone;
+  if (prizeMilestoneNow !== "FIRST_BET") {
+    auditRefusal("affiliate.accrual_refused", "player_deposit_trigger_retired", opts.recruitUserId, null, { hook: "prize", referrerUserId: opts.referrerUserId, programme: "PLAYER", milestone: prizeMilestoneNow });
+    return;
+  }
   const playerPolicy = policyFor("PLAYER", null, cfg, getAgentConfig());
   if (!playerPolicy.ok) return;
   const policy = playerPolicy.policy;
@@ -1172,6 +1283,11 @@ async function payPrize(opts: { referrerUserId: string; recruitUserId: string; m
     if (cfg.prize.capPerReferrer > 0) {
       const prizeCount = (await db.referralReward.listByReferrer(opts.referrerUserId)).filter((r) => r.type === "PRIZE").length;
       if (prizeCount >= cfg.prize.capPerReferrer) return false;
+    }
+    // ⛔ THE LAST WORD, INSIDE THE LOCK (review P6): a Stop paying that landed while this payer waited wins.
+    if (!(await confirmInvitePayableNow())) {
+      auditRefusal("affiliate.accrual_refused", "player_rewards_withdrawn", opts.recruitUserId, null, { hook: "prize", referrerUserId: opts.referrerUserId, programme: "PLAYER", stage: "credit" });
+      return false;
     }
     const credited = await creditWallet(opts.referrerUserId, cfg.prize.amountTzs, `Referral prize · ${opts.milestoneLabel}`, `referral:prize:${opts.recruitUserId}`, policy);
     await recordReward({
@@ -1268,13 +1384,18 @@ export async function onRecruitBet(recruitUserId: string, opts: {
   // Fires only when: the bet meets the minimum amount AND the recruit has deposited.
   if (cfg.prize.enabled && cfg.prize.milestone === "FIRST_BET") {
     const meetsMinBet = opts.stake >= (cfg.prize.minBetAmountTzs ?? 0);
+    /* ⭐ `requireDeposit` IS AN ANTI-FRAUD PRECONDITION, NOT A REWARD FOR DEPOSITING (kept on purpose,
+       2026-09-26): the prize is for the friend's first BET, an account that never funded itself cannot
+       farm it with free sign-ups, and it grows with nothing deposited — the RG policy's "No bonus offers
+       tied to deposit increases" is not crossed. ⛔ A read that fails pays NOTHING on this bet (it used
+       to allow it); the prize is once per friend, so the friend's next qualifying bet simply re-checks. */
     let hasDeposited = true;
     if (cfg.prize.requireDeposit) {
       try {
         // ⛔ C5-SPEC ruling 173: house rows are never DEPOSITs but fill the newest-1,000 window; excluded in the read.
         const txns = await db.txn.findByUser(recruitUserId, 1000, { excludeHouseBets: true });
         hasDeposited = txns.some((t) => t.type === "DEPOSIT" && t.status === "CONFIRMED");
-      } catch { /* if we can't check, allow it — never block a valid reward */ }
+      } catch { hasDeposited = false; }
     }
     if (meetsMinBet && hasDeposited) {
       await payPrize({ referrerUserId, recruitUserId, milestoneLabel: "first bet" });
@@ -1453,6 +1574,13 @@ export async function onRecruitSettlement(
     const split = splitWithholding(cut, policy.withholdingPct);
     if (split.netTzs <= 0) return null;
 
+    /* ⛔ THE PLAYER PROMO'S LAST WORD, INSIDE THE LOCK (review P6, 2026-09-26): a Stop paying that landed
+       while this settlement waited on its lock is obeyed here, on a read that starts now. ⭐ PLAYER only —
+       an agent's commission is contracted income, and the Owner's invite switch has never governed it. */
+    if (policy.programme === "PLAYER" && !(await confirmInvitePayableNow())) {
+      auditRefusal("affiliate.accrual_refused", "player_rewards_withdrawn", recruitUserId, attribution, { hook: "settlement", marketId: opts.marketId, stage: "credit" });
+      return null;
+    }
     const credited = await creditWallet(referrerUserId, split.netTzs, "Agent commission", sourceRef, policy, split.taxWithheldTzs);
     /**
      * ⛔ AN AGENT ACCRUAL IS NEVER `HELD`. `HELD` is terminal in this codebase — no code path
@@ -1611,9 +1739,17 @@ export async function clawbackMarketCommission(
 }
 
 /**
- * A recruit's deposit confirmed. Fires the first-deposit bonus (if that's the
- * configured trigger) and the DEPOSIT_THRESHOLD milestone prize.
- * `cumulativeDepositsTzs` includes this deposit.
+ * A recruit's deposit confirmed. `cumulativeDepositsTzs` includes this deposit.
+ *
+ * ⛔ A DEPOSIT PAYS NO REFERRAL REWARD — NOT A BONUS, NOT A PRIZE (Ali, 2026-09-26). The published
+ * Responsible Gambling policy promises, among the operator's responsibilities, "No bonus offers tied to
+ * deposit increases" (`src/app/legal/responsible-gambling/page.tsx` §4), and the two modes this hook used
+ * to fire — the `FIRST_DEPOSIT` bonus and the `DEPOSIT_THRESHOLD` prize — were exactly that. They are
+ * RETIRED in the rules (a save naming one is refused; a stored row naming one loads with that mode OFF),
+ * and this hook calls NO payer at all, whatever any config says.
+ * ⭐ It still resolves the accrual context, so an unpaid or out-of-standing deposit is explained in the
+ * audit exactly as before; and if a retired mode is somehow still ARMED — by the stored row or by the
+ * config in hand — the refusal is written out loud: `player_deposit_trigger_retired`.
  */
 export async function onRecruitDeposit(recruitUserId: string, opts: { cumulativeDepositsTzs: number }): Promise<void> {
   const resolved = await accrualContextFor(recruitUserId);
@@ -1624,17 +1760,11 @@ export async function onRecruitDeposit(recruitUserId: string, opts: { cumulative
     return;
   }
   const { policy, attribution } = resolved.ctx;
-  // ⛔ Deposit-triggered rewards are the PLAYER promo's flat instruments. An agent is paid on
-  // revenue at settlement and nothing else — by construction, see `onRecruitBet`.
+  // ⛔ An agent is paid on revenue at settlement and nothing else — by construction, see `onRecruitBet`.
   if (!policy.flatRewards) return;
-  const referrerUserId = attribution.referrerUserId;
-  const cfg = getAffiliateConfig();
-
-  if (cfg.bonus.enabled && cfg.bonus.trigger === "FIRST_DEPOSIT") {
-    await payBonus({ referrerUserId, recruitUserId, held: false });
-  }
-  if (cfg.prize.enabled && cfg.prize.milestone === "DEPOSIT_THRESHOLD" && opts.cumulativeDepositsTzs >= cfg.prize.depositThresholdTzs) {
-    await payPrize({ referrerUserId, recruitUserId, milestoneLabel: "deposit milestone" });
+  const retiredOnDeposit = armedRetiredDepositModes();
+  if (retiredOnDeposit.bonus || retiredOnDeposit.prize) {
+    auditRefusal("affiliate.accrual_refused", "player_deposit_trigger_retired", recruitUserId, attribution, { hook: "deposit", bonusOnDeposit: retiredOnDeposit.bonus, prizeOnDeposit: retiredOnDeposit.prize, cumulativeDepositsTzs: opts.cumulativeDepositsTzs });
   }
 }
 
@@ -1656,19 +1786,23 @@ export type PlayerReferralSummary = {
   recruitCount: number;
   earnedTzs: number;
   recruits: RecruitRow[];
-  programEnabled: boolean;
   /**
-   * ⭐ DOES THIS PAGE TALK ABOUT MONEY AT ALL? `playerInviteRewardsLive()`, threaded rather than
-   * re-asked, so the page cannot render an earnings ring the accrual has already refused — and so
-   * the ONE question "is the player promo paid today" has ONE answer on the server.
-   * ⛔ Not the same fact as `programEnabled`, which is the operator's master switch INSIDE a paid
-   * programme. Today `rewardsLive` is false and `programEnabled` is true: the invite works, and
-   * the platform pays nothing for it.
+   * ⭐ DOES THIS PAGE TALK ABOUT MONEY AT ALL? `invitePaysPlayers` — the Owner's switch
+   * (`playerInvitePayableNow()`), the service-level pause off, AND at least one reward armed — threaded
+   * rather than re-asked, so the page cannot render an earnings ring the accrual has already refused, and
+   * the ONE question "does the player promo pay today" has ONE answer on the server.
+   * ⛔ Since 2026-09-26 (review P8) a PAUSED programme, and "Make payable → Nothing yet" with every reward
+   * off, answer false here too: the player sees the unpaid invite, never "Invite & Earn" over nothing.
+   * That retired the page's "paused" banner and the `programEnabled` field it read.
    */
   rewardsLive: boolean;
   /** Adaptive promise lines reflecting which modes are live. ⛔ Empty whenever `rewardsLive` is
    *  false — every one of them is a sentence about money. */
   promises: Array<{ icon: "percent" | "ticket" | "gift"; en: string; sw: string }>;
+  /** ⭐ The promised first-bet prize's conditions, for the page's requirements list — from the SAME config
+   *  as the promise, so the list states the real minimum bet and asks for a deposit only when the prize
+   *  does. `null` when no prize is promised. */
+  prizeTerms: { requireDeposit: boolean; minBetTzs: number } | null;
 };
 
 /**
@@ -1679,7 +1813,6 @@ export type PlayerReferralSummary = {
  */
 export async function getPlayerReferralSummary(userId: string) {
   const acct = await ensureAffiliateAccount(userId);
-  const cfg = getAffiliateConfig();
 
   const referrerRewards = await db.referralReward.listByReferrer(userId);
   // Indexed on `recruitedBy` — this used to `db.user.list()` and filter the whole table.
@@ -1713,41 +1846,60 @@ export async function getPlayerReferralSummary(userId: string) {
 
   /**
    * ⛔ EVERY PROMISE BELOW IS A SENTENCE ABOUT MONEY, so the whole block is gated on the same
-   * product state the accrual reads — not on the three config modes it interrogates. Those modes
-   * stay switched on in the shipped config (prize, TZS 10,000, FIRST_BET); reading them alone is
-   * precisely how this page would print *"Get TZS 10,000 when a friend deposits & places their
-   * first bet"* on the day `policyFor` refuses to pay a shilling.
-   * ⭐ The strings themselves are untouched and unreachable rather than deleted: flip
-   * `inviteRewards` back to ACTIVE and the paid promo returns whole.
+   * switch the accrual reads — not on the three config modes it interrogates. The shipped config
+   * has the prize on (TZS 10,000, FIRST_BET); reading the modes alone is precisely how this page
+   * would print *"Get TZS 10,000 when a friend deposits & places their first bet"* on a day
+   * `policyFor` refuses to pay a shilling.
+   * ⭐ The strings are untouched and unreachable rather than deleted: the Owner making invites
+   * payable brings the paid promo back whole.
    */
-  const rewardsLive = playerInviteRewardsLive();
+  const rewardsLive = await playerInvitePayableNow();
+  /* ⛔ …AND "PAID" MEANS SOMETHING PAYS (review P8, 2026-09-26). After "Make payable → Nothing yet" the
+     switch alone says Payable with every reward off, and this page said "Invite & Earn", painted the gold
+     dial and listed bonus requirements over nothing. `invitePaysPlayers` is the one answer every player
+     surface gives — on the settings as last read from their ROW (`inviteScreenAffiliateConfig`, ≤ 10 s),
+     never this container's boot-time copy. A settings read that fails says nothing about money. */
+  const screenCfg = rewardsLive ? await inviteScreenAffiliateConfig() : null;
+  const cfg = screenCfg ?? getAffiliateConfig();
+  const paysPlayers = screenCfg !== null && invitePaysPlayers(rewardsLive, screenCfg);
   const promises: PlayerReferralSummary["promises"] = [];
-  if (rewardsLive && cfg.commission.enabled) {
+  let prizeTerms: PlayerReferralSummary["prizeTerms"] = null;
+  // ⭐ The commission promise quotes the terms the PAYER uses (clamped: ≤ 50%, 1–60 months), so the
+  // page cannot promise a rate or a window the accrual would not honour.
+  const terms = effectivePlayerTerms(cfg);
+  if (paysPlayers && terms.rate > 0) {
     promises.push({
       icon: "percent",
-      en: `Earn ${Math.round(cfg.commission.rate * 100)}% of your friends' fees for ${cfg.commission.windowMonths} months`,
-      sw: `Pata ${Math.round(cfg.commission.rate * 100)}% ya ada za marafiki kwa miezi ${cfg.commission.windowMonths}`,
+      en: `Earn ${Math.round(terms.rate * 100)}% of your friends' fees for ${terms.windowMonths} months`,
+      sw: `Pata ${Math.round(terms.rate * 100)}% ya ada za marafiki kwa miezi ${terms.windowMonths}`,
     });
   }
-  if (rewardsLive && cfg.prize.enabled && cfg.prize.amountTzs > 0) {
+  /* ⛔ ONLY THE FIRST-BET PRIZE AND THE SIGN-UP BONUS ARE EVER PROMISED (2026-09-26): a deposit pays no
+     referral reward (the RG policy's "No bonus offers tied to deposit increases"), so a config that
+     somehow still spells a deposit trigger promises nothing. "Deposits & places their first bet" is the
+     `requireDeposit` precondition, said only when it is set. */
+  const promisedMilestone: string = cfg.prize.milestone;
+  const promisedTrigger: string = cfg.bonus.trigger;
+  if (paysPlayers && cfg.prize.enabled && promisedMilestone === "FIRST_BET" && cfg.prize.amountTzs > 0) {
     const minBet = cfg.prize.minBetAmountTzs ?? 0;
+    prizeTerms = { requireDeposit: cfg.prize.requireDeposit === true, minBetTzs: minBet > 0 ? minBet : 0 };
     const minBetLabel = minBet > 0 ? ` (min ${formatTzs(minBet)})` : "";
     const minBetLabelSw = minBet > 0 ? ` (angalau ${formatTzs(minBet)})` : "";
     promises.push({
       icon: "ticket",
-      en: cfg.prize.milestone === "FIRST_BET"
+      en: cfg.prize.requireDeposit
         ? `Get ${formatTzs(cfg.prize.amountTzs)} when a friend deposits & places their first bet${minBetLabel}`
-        : `Get ${formatTzs(cfg.prize.amountTzs)} when a friend deposits`,
-      sw: cfg.prize.milestone === "FIRST_BET"
+        : `Get ${formatTzs(cfg.prize.amountTzs)} when a friend places their first bet${minBetLabel}`,
+      sw: cfg.prize.requireDeposit
         ? `Pata ${formatTzs(cfg.prize.amountTzs)} rafiki anapoweka amana na dau la kwanza${minBetLabelSw}`
-        : `Pata ${formatTzs(cfg.prize.amountTzs)} rafiki anapoweka amana`,
+        : `Pata ${formatTzs(cfg.prize.amountTzs)} rafiki anapoweka dau la kwanza${minBetLabelSw}`,
     });
   }
-  if (rewardsLive && cfg.bonus.enabled && (cfg.bonus.recipient === "REFERRER" || cfg.bonus.recipient === "BOTH") && cfg.bonus.referrerAmountTzs > 0) {
+  if (paysPlayers && cfg.bonus.enabled && promisedTrigger === "SIGNUP" && (cfg.bonus.recipient === "REFERRER" || cfg.bonus.recipient === "BOTH") && cfg.bonus.referrerAmountTzs > 0) {
     promises.push({
       icon: "gift",
-      en: `Get ${formatTzs(cfg.bonus.referrerAmountTzs)} when a friend ${cfg.bonus.trigger === "SIGNUP" ? "signs up" : "makes their first deposit"}`,
-      sw: `Pata ${formatTzs(cfg.bonus.referrerAmountTzs)} rafiki ${cfg.bonus.trigger === "SIGNUP" ? "anapojisajili" : "anapoweka amana ya kwanza"}`,
+      en: `Get ${formatTzs(cfg.bonus.referrerAmountTzs)} when a friend signs up`,
+      sw: `Pata ${formatTzs(cfg.bonus.referrerAmountTzs)} rafiki anapojisajili`,
     });
   }
 
@@ -1757,9 +1909,9 @@ export async function getPlayerReferralSummary(userId: string) {
     recruitCount: acct.recruitCount,
     earnedTzs: acct.totalEarnedTzs,
     recruits,
-    programEnabled: cfg.enabled,
-    rewardsLive,
+    rewardsLive: paysPlayers,
     promises,
+    prizeTerms,
   };
 }
 
@@ -2112,9 +2264,10 @@ export async function getAdminAffiliateStats() {
      * product state it is in.
      */
     referrerCount: accounts.filter((a) => !isApprovedAgent(a) && a.recruitCount > 0).length,
-    /** Whether the PLAYER programme can pay at all today — the page's one discriminator, resolved
-     *  on the server beside the numbers it governs. */
-    rewardsLive: playerInviteRewardsLive(),
+    /** Whether the PLAYER programme can pay at all today — the Owner's switch under its ceiling,
+     *  resolved on the server beside the numbers it governs. (`/admin/affiliate`'s own state card reads
+     *  `invitePayableView`, which also folds in the service-level pause.) */
+    rewardsLive: await playerInvitePayableNow(),
     commissionPaidTzs,
     totalPaidTzs,
     topReferrer: top ? { handle: top.handle, recruits: top.recruits } : null,

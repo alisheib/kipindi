@@ -39,8 +39,8 @@ export async function computeAchievementShelf(userId: string) {
    * unpaid invite gives every player in good standing a real link, so the ladder is climbable
    * again and `getPlayerReferralSummary().recruitCount` is a real number.
    * ⛔ AND A BADGE IS NOT A REWARD. The Connector is recognition of something the account did; it
-   * pays nothing, so it does not make the invite an inducement and it is not gated on
-   * `playerInviteRewardsLive()`. ⚠️ If it ever grows a prize, that changes and this is the line
+   * pays nothing, so it does not make the invite an inducement and it is not gated on the Owner's
+   * Payable switch (`playerInvitePayableNow()`). ⚠️ If it ever grows a prize, that changes and this is the line
    * that has to change with it.
    * ⭐ Approved AGENTS keep it on their own AGENT-stamped book, and someone out of standing —
    * closed, suspended, self-excluded, or a deactivated agent — loses it with every other surface,

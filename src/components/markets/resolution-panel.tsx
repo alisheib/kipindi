@@ -40,6 +40,10 @@ type Props = {
   /** True when ONE genuine human officer resolved it (single-admin authorization,
    *  the default). Mutually exclusive with twoOfficer; both false = auto/system. */
   singleOfficer?: boolean;
+  /** An upheld objection REVERSED or VOIDED the recorded verdict (lib/markets/signoff.ts). The stamps and
+   *  the recorded evidence then belong to the verdict that was thrown out, so neither is shown as if it
+   *  justified the outcome that stands. */
+  correctedOnObjection?: boolean;
   sourceUrl: string;
   objectionsClosedAt: string | null;
   serverNow: number;
@@ -106,7 +110,7 @@ const fmtPct = (r: number) => {
 };
 
 export function ResolutionPanel({
-  marketId, outcome, resolvedAt, twoOfficer, singleOfficer, sourceUrl, objectionsClosedAt, serverNow,
+  marketId, outcome, resolvedAt, twoOfficer, singleOfficer, correctedOnObjection = false, sourceUrl, objectionsClosedAt, serverNow,
   yesPool, noPool, fee, rates, evidence, settledAt, objection,
 }: Props) {
   const { t } = useT();
@@ -116,7 +120,8 @@ export function ResolutionPanel({
   // fact about the pool now, not a disclaimer about the verdict.
   const held = !settledAt && objectionsClosedAt != null && serverNow < Date.parse(objectionsClosedAt);
   // Only the real recorded excerpt is ever shown — empty/whitespace → omit the block.
-  const evidenceText = evidence?.trim() || null;
+  // Not shown after a correction on objection: the recorded quote justified the verdict that was thrown out.
+  const evidenceText = correctedOnObjection ? null : (evidence?.trim() || null);
 
   return (
     <section className="glass-panel p-5 space-y-4">
@@ -145,6 +150,11 @@ export function ResolutionPanel({
           <p className="flex items-start gap-2 text-body-sm text-text-muted">
             <I.sealCheck s={14} className="mt-[1px] shrink-0 text-yes-300" />
             <span>{t.market.resSingleOfficer}</span>
+          </p>
+        ) : correctedOnObjection ? (
+          <p className="flex items-start gap-2 text-body-sm text-text-muted">
+            <I.flag s={14} className="mt-[1px] shrink-0 text-text-subtle" />
+            <span>{t.market.resCorrectedOnObjection}</span>
           </p>
         ) : null}
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-[11.5px] text-text-subtle">

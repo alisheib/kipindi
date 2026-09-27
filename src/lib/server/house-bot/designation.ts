@@ -49,10 +49,15 @@ import { houseBotStatusWord } from "./status-display";
 /**
  * One house audit row, awaited, in its `HOUSE_AUDIT` category (R7). ⛔ A payload outside the allowlist is a
  * programming error and throws — a label or a name written into the seven-year chain cannot be erased.
+ * ⛔ IT ANSWERS WHETHER THE ROW IS IN THE LOG (replan ruling 543). Every call site runs AFTER a write that has
+ * already landed — a counter, a designation, a Start, a void — so a row that could not be written is the CALLER's
+ * to say beside the act, never a throw that reports a completed act as a failed one. Designate and Start carry
+ * the answer to the console as `recorded`; the verify and void paths log it (`audit()` already has).
  */
-async function houseAudit(action: HouseAuditAction, actorId: string | null, target: { type: "HouseBot" | "User"; id: string }, payload: Record<string, unknown>): Promise<void> {
+async function houseAudit(action: HouseAuditAction, actorId: string | null, target: { type: "HouseBot" | "User"; id: string }, payload: Record<string, unknown>): Promise<boolean> {
   if (!isAllowedHouseAuditPayload(payload)) throw new Error(`house audit ${action}: payload keys outside the R7 allowlist`);
-  await audit({ category: HOUSE_AUDIT[action], action, actorId, targetType: target.type, targetId: target.id, payload });
+  const logged = await audit({ category: HOUSE_AUDIT[action], action, actorId, targetType: target.type, targetId: target.id, payload });
+  return logged.recorded;
 }
 
 /* ═══ Password check (04 C4 service side, 02 §2.6 steps 2–6) ═══════════════════════════════════════ */
@@ -245,7 +250,8 @@ export const DESIGNATE_COPY = {
 export const FEATURE_WITHDRAWN_REFUSAL = "Withdrawn from the product — nothing can be added, started or re-checked here.";
 
 export type DesignateResult =
-  | { ok: true; bot: StoredHouseBot }
+  /** ⛔ `recorded` false: the account IS designated and its compliance row did not land (ruling 543) — say both. */
+  | { ok: true; bot: StoredHouseBot; recorded: boolean }
   | { ok: false; code: "INVALID" | "INELIGIBLE" | "ALREADY_BOT" | "PASSWORD_CHANGED" | "ROSTER_FULL" | VerifyRefusalCode;
     message: string; field?: string; href?: string; row?: EligibilityRow; data?: { botId: string };
     attemptsBeforeLock?: number | null; retryAfterSec?: number | null };
@@ -339,8 +345,9 @@ export async function designateHouseBot(input: {
   if (written.kind === "full") return { ok: false, code: "ROSTER_FULL", message: DESIGNATE_COPY.rosterFull(written.count, written.max), href: CONSOLE_LIMITS_HREF };
 
   // After the locks: the COMPLIANCE row (R7 — no label, note or fingerprint). The holder is told nothing (D19c, ruling 149).
-  await houseAudit("house_bot.designated", officerId, { type: "HouseBot", id: written.bot.id }, { botId: written.bot.id, holderUserId: userId });
-  return { ok: true, bot: written.bot };
+  // ⛔ 543 · the account is designated whatever the row did; whether the row landed travels with the answer.
+  const designated = await houseAudit("house_bot.designated", officerId, { type: "HouseBot", id: written.bot.id }, { botId: written.bot.id, holderUserId: userId });
+  return { ok: true, bot: written.bot, recorded: designated };
 }
 
 /**
@@ -478,8 +485,10 @@ export type StartResult =
    * wearing the wrong word, and the officer's own decision to run a by-hand-only account is theirs to make.
    * ⚠️ EMPTY ON `alreadyRunning`: the rules were not re-read for an account that was already ACTIVE, and a
    * warning inferred from a read that did not happen is worse than none.
+   * ⭐ `recorded` (replan ruling 543) is false when the account IS running and its compliance row did not land —
+   * the console says both. It is true on `alreadyRunning`, where nothing was written and nothing is owed.
    */
-  | { ok: true; alreadyRunning: boolean; masterOn: boolean; warnings: string[] }
+  | { ok: true; alreadyRunning: boolean; masterOn: boolean; warnings: string[]; recorded: boolean }
   | { ok: false; code: "NOT_FOUND" | "REMOVED" | "INELIGIBLE" | "CONSENT" | "RULES" | "LOSS_CAP" | "OWNER_LOSS_LIMIT" | "CHANGED";
     message: string; field?: string; href?: string; row?: EligibilityRow };
 
@@ -505,7 +514,7 @@ export async function startHouseBot(input: { officerId: string; botId: string; r
   if (!bot) return { ok: false, code: "NOT_FOUND", message: "No bot with that ID." };
   if (bot.status === "REMOVED") return { ok: false, code: "REMOVED", message: VERIFY_COPY.removed };
   const control = await houseBotControlStore.get();
-  if (bot.status === "ACTIVE") return { ok: true, alreadyRunning: true, masterOn: control.enabled, warnings: [] };
+  if (bot.status === "ACTIVE") return { ok: true, alreadyRunning: true, masterOn: control.enabled, warnings: [], recorded: true };
 
   const el = await houseBotEligibility(bot.userId, { context: "start", botId, actorId: officerId });
   const early = el.blocking.find((r) => !START_LATE_ROWS.includes(r.code));
@@ -550,11 +559,12 @@ export async function startHouseBot(input: { officerId: string; botId: string; r
     return { kind: "ok", from: cur.status };
   }));
   if (written.kind === "removed") return { ok: false, code: "REMOVED", message: VERIFY_COPY.removed };
-  if (written.kind === "already") return { ok: true, alreadyRunning: true, masterOn: control.enabled, warnings: [] };
+  if (written.kind === "already") return { ok: true, alreadyRunning: true, masterOn: control.enabled, warnings: [], recorded: true };
   if (written.kind === "changed") return { ok: false, code: "CHANGED", message: "Can't start: their password or permission changed a moment ago. Enter their password to confirm it again.", href: consoleReverifyHref(botId) };
 
-  await houseAudit("house_bot.started", officerId, { type: "HouseBot", id: botId }, { botId, holderUserId: bot.userId, from: written.from, to: "ACTIVE", rulesVersion: bot.rulesVersion });
-  return { ok: true, alreadyRunning: false, masterOn: (await houseBotControlStore.get()).enabled, warnings: problems.warnings };
+  // ⛔ 543 · the account is ACTIVE by this line; whether its compliance row landed travels with the answer.
+  const startRecorded = await houseAudit("house_bot.started", officerId, { type: "HouseBot", id: botId }, { botId, holderUserId: bot.userId, from: written.from, to: "ACTIVE", rulesVersion: bot.rulesVersion });
+  return { ok: true, alreadyRunning: false, masterOn: (await houseBotControlStore.get()).enabled, warnings: problems.warnings, recorded: startRecorded };
 }
 
 /* ═══ Consent void (04 A3, C8, N2 §4 step 10) ═════════════════════════════════════════════════════════ */

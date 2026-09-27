@@ -1619,6 +1619,13 @@ const memoryDb = {
      * direction it decides itself; the landing's "paid out" band wants the signed
      * sum. Two questions, two methods.
      */
+    /** In-memory twin of the Prisma read: the newest `limit` CONFIRMED rows of one type,
+     *  `createdAt` then `id` descending — the order a "most recent N" disclosure promises. */
+    newestConfirmedOfType: (type: StoredTxn["type"], limit: number): StoredTxn[] =>
+      Array.from(store.txns.values())
+        .filter((t) => t.type === type && t.status === "CONFIRMED")
+        .sort((a, b) => (b.createdAt < a.createdAt ? -1 : b.createdAt > a.createdAt ? 1 : 0) || b.id.localeCompare(a.id))
+        .slice(0, Math.max(0, limit)),
     totalsByType: (types: StoredTxn["type"][]): Record<string, { amount: number; count: number }> => {
       const out: Record<string, { amount: number; count: number }> = {};
       for (const t of types) out[t] = { amount: 0, count: 0 };
@@ -2100,6 +2107,11 @@ const memoryDb = {
       (Array.from(store.objections.values()) as StoredObjection[])
         .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
         .slice(0, limit),
+    /** Every objection UPHELD with a remedy that changed the verdict (REVERSE or VOID). */
+    listUpheldRulings: (): Array<{ marketId: string; remedy: string; reviewedBy: string | null; reviewedAt: string | null }> =>
+      (Array.from(store.objections.values()) as StoredObjection[])
+        .filter((o) => o.status === "UPHELD" && (o.remedy === "REVERSE" || o.remedy === "VOID"))
+        .map((o) => ({ marketId: o.marketId, remedy: o.remedy ?? "", reviewedBy: o.reviewedBy ?? null, reviewedAt: o.reviewedAt ?? null })),
   },
   proposalVote: {
     get: (proposalId: string, userId: string): StoredProposalVote | null =>

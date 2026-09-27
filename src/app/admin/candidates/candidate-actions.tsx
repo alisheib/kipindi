@@ -6,6 +6,7 @@ import { Select } from "@/components/ui/select";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ActionOverlay, useActionOverlay } from "@/components/admin/action-overlay";
 import { approveCandidateAction, rejectCandidateAction, publishCandidateAction } from "./actions";
+import { runAdminAction } from "@/lib/client/run-admin-action";
 import { UnsavedChangesGuard, PendingChangesBar } from "@/components/ui/unsaved-changes";
 
 const REJECT_REASONS = [
@@ -30,16 +31,14 @@ export function CandidateActions({ id, mode }: { id: string; mode: "review" | "p
   const approve = () => {
     overlay.run("Approving candidate…", "Inaendelea kuidhinisha. Subiri kidogo.");
     start(async () => {
-      try {
-        const fd = new FormData();
-        fd.set("id", id);
-        const r = await approveCandidateAction(fd);
-        if (!r.ok) { overlay.fail("Could not approve", r.error ?? "Try again."); return; }
-        router.refresh();
-        overlay.succeed("Candidate approved", "Ready to publish as a live market.");
-      } catch {
-        overlay.fail("Could not approve", "Server error — please try again.");
-      }
+      const fd = new FormData();
+      fd.set("id", id);
+      // `runAdminAction`: an expired session's sign-in redirect passes through; a bare catch used
+      // to swallow it and say "Server error" instead.
+      const r = await runAdminAction(() => approveCandidateAction(fd));
+      if (!r.ok) { overlay.fail("Could not approve", r.error ?? "Try again."); return; }
+      router.refresh();
+      overlay.succeed("Candidate approved", "Ready to publish as a live market.");
     });
   };
 
@@ -47,34 +46,26 @@ export function CandidateActions({ id, mode }: { id: string; mode: "review" | "p
     setOpenReject(false);
     overlay.run("Rejecting candidate…", "Recording your decision in the audit log.");
     start(async () => {
-      try {
-        const fd = new FormData();
-        fd.set("id", id);
-        fd.set("reason", reason);
-        fd.set("note", note);
-        const r = await rejectCandidateAction(fd);
-        if (!r.ok) { overlay.fail("Could not reject", r.error ?? "Try again."); return; }
-        router.refresh();
-        overlay.succeed("Candidate rejected", "Moved to history.");
-      } catch {
-        overlay.fail("Could not reject", "Server error — please try again.");
-      }
+      const fd = new FormData();
+      fd.set("id", id);
+      fd.set("reason", reason);
+      fd.set("note", note);
+      const r = await runAdminAction(() => rejectCandidateAction(fd));
+      if (!r.ok) { overlay.fail("Could not reject", r.error ?? "Try again."); return; }
+      router.refresh();
+      overlay.succeed("Candidate rejected", "Moved to history.");
     });
   };
 
   const publish = () => {
     overlay.run("Publishing market…", "Creating a live market. Players will be able to bet on it.");
     start(async () => {
-      try {
-        const fd = new FormData();
-        fd.set("id", id);
-        const r = await publishCandidateAction(fd);
-        if (!r.ok) { overlay.fail("Publish failed", r.error ?? "Try again."); return; }
-        router.refresh();
-        overlay.succeed("Market is live", `Market ${r.marketId} — players can now place bets.`);
-      } catch {
-        overlay.fail("Publish failed", "Server error — please try again.");
-      }
+      const fd = new FormData();
+      fd.set("id", id);
+      const r = await runAdminAction(() => publishCandidateAction(fd));
+      if (!r.ok) { overlay.fail("Publish failed", r.error ?? "Try again."); return; }
+      router.refresh();
+      overlay.succeed("Market is live", `Market ${r.marketId} — players can now place bets.`);
     });
   };
 
@@ -177,13 +168,14 @@ function RejectForm({
         * this is a bare `absolute` div. The sidebar, the tabs and every row link stay clickable
         * straight through it, so a typed rejection note is exposed to navigation exactly like a
         * page-level field. The dismissible-looking chrome is what makes it easy to miss.
+        * ⛔ AND THE BAR CARRIES NO REJECT. A primary button in a window-wide bar that rejects a
+        * candidate without naming it is a decision taken out of sight of its record — the bar
+        * warns and offers Discard; the Reject stays in this panel, beside the candidate it acts on.
         */}
       <PendingChangesBar
         dirty={dirty}
         label="Rejection not recorded"
-        detail="The reason and note are held in this panel only."
-        saveLabel="Reject"
-        onSave={() => onSubmit(reason, note)}
+        detail="The reason and note are held in this panel only. Press Reject in the panel to record it."
         onDiscard={onCancel}
       />
       <UnsavedChangesGuard

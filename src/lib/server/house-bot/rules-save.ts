@@ -391,24 +391,23 @@ export async function saveHouseBotRules(input: {
   }
   /**
    * ⛔ THE WRITE HAS ALREADY LANDED, SO A FAILURE HERE MAY NOT BE REPORTED AS "NOTHING WAS SAVED" — measured
-   * on a served build for the global save (`limits-save.ts`), where `chainSecret()` throws under
-   * NODE_ENV=production without a distinct AUDIT_CHAIN_SECRET and escapes the in-memory fallback. The outcome
+   * on a served build for the global save (`limits-save.ts`), where `chainSecret()` threw under
+   * NODE_ENV=production without a distinct AUDIT_CHAIN_SECRET and escaped the in-memory fallback. The outcome
    * is the truth and the gap is named: the save is `ok`, `recorded` is false, and the console says BOTH.
+   * ⭐ SINCE REPLAN RULING 543 THE FLAG IS READ, NOT CAUGHT: `audit()` resolves an entry it could not sign or
+   * persist with `recorded` false, so a catch here would never run and would report a record that does not exist.
    */
-  let recorded = true;
-  try {
-    await audit({
-      category: HOUSE_AUDIT["house_bot.rules_saved"],
-      action: "house_bot.rules_saved",
-      actorId: input.actorId,
-      targetType: "HouseBot",
-      targetId: input.botId,
-      payload,
-    });
-  } catch (err) {
-    recorded = false;
-    console.error("[house-bot] the rules_saved compliance row could not be written (the rules DID change):",
-      err instanceof Error ? err.message : String(err));
+  const logged = await audit({
+    category: HOUSE_AUDIT["house_bot.rules_saved"],
+    action: "house_bot.rules_saved",
+    actorId: input.actorId,
+    targetType: "HouseBot",
+    targetId: input.botId,
+    payload,
+  });
+  const recorded = logged.recorded;
+  if (!recorded) {
+    console.error(`[house-bot] the rules_saved compliance row could not be written (the rules DID change): ${logged.unrecorded}`);
   }
 
   return { ok: true, rulesVersion: cas.row.rulesVersion, changes, rulesChanged, recorded, warnings: checked.warnings };

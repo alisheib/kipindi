@@ -7,45 +7,9 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { injectDefect } from "./red-anchor.mjs";
 
-const LANDING = "src/lib/markets/landing.ts";
 
-const CASES = [
-  {
-    name: "the grid does not exclude the hero's ids (the exact batch-2 repetition)",
-    file: LANDING,
-    from: `  const open = rows.filter((r) => matchesStatus(r, "open", nowMs) && !excluded.has(r.id));`,
-    to: `  const open = rows.filter((r) => matchesStatus(r, "open", nowMs));`,
-    expect: "2.1",
-  },
-  {
-    name: "the cold-book lens picks the money lens on an empty book (states a number nobody produced)",
-    file: LANDING,
-    from: `  return openPoolTzs > 0 ? "pool" : "new";`,
-    to: `  return "pool";`,
-    expect: "1.1",
-  },
-  {
-    name: "a topic's lean is a mean of per-row percentages instead of the summed-pool ratio",
-    file: LANDING,
-    from: `        leanYesPct: pricedYesPct(a.yes, a.no),`,
-    to: `        leanYesPct: 50,`,
-    expect: "3.3",
-  },
-  {
-    name: "a CLOSED market is not excluded from the topic fold",
-    file: LANDING,
-    from: `    if (!matchesStatus(r, "open", nowMs)) continue;`,
-    to: `    // disabled`,
-    expect: "3.1",
-  },
-  {
-    name: "the reconciliation check always reports ok (a vacuous assertion)",
-    file: LANDING,
-    from: `  return { ok: countDelta === 0 && poolDelta === 0, countDelta, poolDelta };`,
-    to: `  return { ok: true, countDelta, poolDelta };`,
-    expect: "3.8-control",
-  },
-];
+// ⭐ The cases are DATA in `scripts/anchors/landing-contract.anchors.mjs`, audited by `test:red-anchors` §3.
+import { MUTATIONS as CASES } from "./anchors/landing-contract.anchors.mjs";
 
 const runGate = () => {
   try {

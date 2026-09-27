@@ -85,9 +85,8 @@ export function NavMore({
     };
   }, [open]);
 
-  if (items.length === 0) return null;
-
   const isRail = variant === "rail";
+  const hasItems = items.length > 0;
 
   /* 🔴 D30 — THE CHAT BUBBLE WAS EATING THIS MENU'S LAST ROW, AND NO z-index ON THE PANEL
      COULD HAVE FIXED IT. The rail is `fixed z-40` and this panel is `absolute z-[50]` INSIDE
@@ -107,10 +106,22 @@ export function NavMore({
   useEffect(() => {
     if (!isRail) return;
     const el = document.documentElement;
-    if (open) el.setAttribute("data-rail-menu-open", "");
+    if (open && hasItems) el.setAttribute("data-rail-menu-open", "");
     else el.removeAttribute("data-rail-menu-open");
     return () => el.removeAttribute("data-rail-menu-open");
-  }, [isRail, open]);
+  }, [isRail, open, hasItems]);
+
+  /* 🔴 EVERY HOOK ABOVE THIS LINE — THE EARLY RETURN USED TO SIT ABOVE THE D30 EFFECT, AND IT TOOK
+     THE WHOLE SITE DOWN ON EVERY SOFT SIGN-IN OR SIGN-OUT (found 2026-09-26, live since `2c9380e0`).
+     The top bar passes `items=[]` to a signed-out viewer and a full list to a signed-in one, at a fixed
+     position with no key — so when a Server Action changes the session (starting a break, self-
+     excluding, closing the account, signing in through the form) or a `router.refresh()` lands after a
+     session ended elsewhere, React re-renders THIS SAME fiber with one hook fewer (or more) and throws
+     "Rendered fewer hooks than expected" (#300 / #310). That is above `app/error.tsx`, so the player got
+     the root error screen — at the exact moment they had just asked for a break. Guarded by
+     `test:hooks-order`. */
+  if (!hasItems) return null;
+
   const anyActive = active ?? items.some((it) => pathname.startsWith(it.href));
 
   if (isRail) {

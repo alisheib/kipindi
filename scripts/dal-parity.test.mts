@@ -1023,6 +1023,24 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
     ok("16.feedShared · ⛔ 344 · neither counting reader pages, slices or reads through its twin's list member",
       !/pageLimit|memPage|sqlPage|\.slice\(/.test(objectMethod(memIntents, "countFeed") + objectMethod(priIntents, "countFeed")
         + objectMethod(memEvents, "countAll") + objectMethod(priEvents, "countAll")), "");
+
+    /* ⭐ STEP 9 (2026-09-26) · ONE NAMED ORDER BEHIND EACH SORTED PAGE AND THE RANK A BELL LANDS BY — ruling 345's shape,
+     * applied to the ORDER. A sorted page and the rank that says which page a row is on are two members, and the moment
+     * the order is written twice they can disagree: the bell lands on page 3 and the row is on page 4. So each pair must
+     * NAME its twin's one order function (and its one predicate), never restate either. */
+    const orderPairs = (): boolean =>
+      pair(memIntents, "listFeed", "rankInFeed", /memFeedOrder\(/) && pair(priIntents, "listFeed", "rankInFeed", /feedOrderSql\(/)
+        && pair(memEvents, "listAll", "rankInAll", /memEventOrder\(/) && pair(priEvents, "listAll", "rankInAll", /eventOrderSql\(/)
+        && /memFeedMatches\(filter\)/.test(objectMethod(memIntents, "rankInFeed")) && /feedWhere\(filter, p\)/.test(objectMethod(priIntents, "rankInFeed"))
+        && /memEventMatches\(opts\)/.test(objectMethod(memEvents, "rankInAll")) && /eventWhere\(opts, p\)/.test(objectMethod(priEvents, "rankInAll"))
+        && /^async function memFeedOrder\(/m.test(houseDalSrc) && /^function feedOrderSql\(/m.test(houseDalSrc)
+        && /^function memEventOrder\(/m.test(houseDalSrc) && /^function eventOrderSql\(/m.test(houseDalSrc);
+    ok("16.feedOrder · ⭐ step 9 · each sorted list and its rank member read ONE named order per twin (memFeedOrder / feedOrderSql, memEventOrder / eventOrderSql) over the SAME named predicate",
+      orderPairs(), `rankInFeed mem ${objectMethod(memIntents, "rankInFeed").length} chars · pri ${objectMethod(priIntents, "rankInFeed").length} chars`);
+    ok("16.feedOrder.c1 · CONTROL · a rank member that restates its order instead of naming it is caught, and the shipped bodies are not",
+      !/memFeedOrder\(/.test(objectMethod(memIntents, "rankInFeed").split("memFeedOrder(").join("((a, b) => a.stakeTzs - b.stakeTzs)("))
+        && !/eventOrderSql\(/.test(objectMethod(priEvents, "rankInAll").split("eventOrderSql(").join("`\"createdAt\" DESC`("))
+        && /memFeedOrder\(/.test(objectMethod(memIntents, "rankInFeed")) && /eventOrderSql\(/.test(objectMethod(priEvents, "rankInAll")), "");
   }
 
   const filtersSrc = decomment(readFileSync(join(SRC, "lib/server/txn-filters.ts"), "utf8"));

@@ -22,6 +22,8 @@ const FEED = "src/lib/server/ticker-feed.ts";
 const STATS = "src/lib/server/platform-stats.ts";
 const CLIENT = "src/components/layout/live-ticker.tsx";
 const DICT = "src/lib/i18n-dict.ts";
+const SHELL = "src/components/layout/app-shell.tsx";
+const CSS = "src/app/globals.css";
 
 /** Each case: the defect that was really shipped (or really possible), and the assertion id the
  *  gate must fail on. `expect` is matched against the gate's own failure lines. */
@@ -116,6 +118,112 @@ const CASES = [
     from: `      tickerSettled: "settled", tickerOn: "on",`,
     to: `      tickerPredicted: "predicted", tickerSettled: "settled", tickerOn: "on",`,
     expect: "8.2",
+  },
+  // ── 11 · lobby only, never for a player on a break, stoppable (2026-09-26) ──
+  {
+    name: "the page rule matches by PREFIX, so the bet screen and every future page inherit the strip",
+    file: PURE,
+    from: `  return TICKER_ROUTES.includes(p);`,
+    to: `  return TICKER_ROUTES.some((r) => p.startsWith(r));`,
+    expect: "11.2",
+  },
+  {
+    name: "a SIGNED-IN player on an active break is sent the settlement feed anyway",
+    file: SHELL,
+    from: `    promoSuppressed ? Promise.resolve([]) : getTickerFeed(locale).catch(() => []),`,
+    to: `    getTickerFeed(locale).catch(() => []),`,
+    expect: "11.4",
+  },
+  {
+    name: "the client stops reading the page, so the strip runs above the wallet and the bet screen again",
+    file: CLIENT,
+    from: `  const shown = events.length > 0 && tickerShowsOn(pathname);`,
+    to: `  const shown = events.length > 0;`,
+    expect: "11.5",
+  },
+  {
+    name: "a STOPPED strip freezes mid-flight again — a fragment of event 1, eleven events out of reach (D32)",
+    file: CSS,
+    from: `.ticker-strip[data-still] .ticker-track { animation: none; transform: none; }`,
+    to: `.ticker-strip[data-still] .ticker-track { animation-play-state: paused; }`,
+    expect: "11.19",
+  },
+  {
+    name: "a mouse hover flips the strip into its stopped mode (the run jumps to a list under the pointer)",
+    file: CLIENT,
+    from: `data-still={still ? "" : undefined}`,
+    to: `data-still={still || held ? "" : undefined}`,
+    expect: "11.16",
+  },
+  {
+    name: "a hold outlives the strip across a soft navigation and brings it back frozen",
+    file: CLIENT,
+    from: `  useEffect(() => { if (!shown) setHeld(false); }, [shown]);`,
+    to: `  useEffect(() => {}, [shown]);`,
+    expect: "11.17",
+  },
+  {
+    name: "the server paints the run moving, so a remembered stop flashes motion and jumps back",
+    file: CLIENT,
+    from: `const still = !ready || stopped;`,
+    to: `const still = stopped;`,
+    expect: "11.18",
+  },
+  {
+    name: "a tap under a calm gate flips a hidden remembered stop",
+    file: CLIENT,
+    from: `if (control && getComputedStyle(control).display === "none") return;`,
+    to: `if (control && getComputedStyle(control).display === "flex") return;`,
+    expect: "11.15",
+  },
+  {
+    name: "the in-app Reduce motion rule for the track goes, leaving an animation the tap guard trusts",
+    file: CSS,
+    from: `html.kp-reduce-motion .ticker-track,\n[data-motion="minimal"] .ticker-track { animation: none; transform: none; }`,
+    to: `html.kp-reduce-motion .ticker-track-x { animation: none; }`,
+    expect: "11.13",
+  },
+  {
+    name: "Play leaves the box scrolled, so the run sits the offset TWICE along and every later stop jumps back",
+    file: CLIENT,
+    from: `    resumeFrom.current = null;\n    vp.scrollLeft = 0;`,
+    to: `    resumeFrom.current = null;`,
+    expect: "11.21",
+  },
+  {
+    name: "a mouse drag on the stopped list restarts the run under the reader's pointer",
+    file: CLIENT,
+    from: `if (p && (Math.abs(e.clientX - p.x) > 6 || e.currentTarget.scrollLeft !== p.scrollLeft)) return;`,
+    to: `if (p && false) return;`,
+    expect: "11.22",
+  },
+  {
+    name: "the browser-bundled ticker module imports a SERVER module (the server graph in a browser chunk)",
+    file: PURE,
+    from: `export const TICKER_LIMIT = 12;`,
+    to: `import { db } from "@/lib/server/store";\nexport const TICKER_LIMIT = 12;`,
+    expect: "11.14",
+  },
+  {
+    name: "the stop control no longer tells a screen reader whether the strip is stopped",
+    file: CLIENT,
+    from: `          aria-pressed={stopped}`,
+    to: `          data-stopped={stopped}`,
+    expect: "11.6",
+  },
+  {
+    name: "the OS reduced-motion branch shows a pause control over a strip that does not move",
+    file: CSS,
+    from: `  .ticker-copy-dup { display: none; }\n  .ticker-pause { display: none; }\n}`,
+    to: `  .ticker-copy-dup { display: none; }\n}`,
+    expect: "11.8",
+  },
+  {
+    name: "on the LOW-END ANDROID tier the strip freezes on 24% of one event again (the D32 defect)",
+    file: CSS,
+    from: `[data-motion="reduced"] .ticker-viewport { overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: thin; cursor: auto; }`,
+    to: `[data-motion="reduced"] .ticker-viewport { cursor: auto; }`,
+    expect: "11.9",
   },
 ];
 

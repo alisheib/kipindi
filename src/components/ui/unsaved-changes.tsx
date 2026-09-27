@@ -46,6 +46,8 @@ import { useRouter } from "next/navigation";
 import { ConfirmModal } from "@/components/ui/modal";
 import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
+import { Chip } from "@/components/ui/chip";
+import { I } from "@/components/ui/glyphs";
 
 /**
  * Install the guard. `dirty` is the caller's own answer to "would leaving lose work?" — the
@@ -106,6 +108,17 @@ type BarProps = {
    * so this cannot silently remove the only Save from a form that has no inline one.
    */
   saveAnchor?: React.RefObject<HTMLElement | null>;
+  /**
+   * ⭐ WHAT THE BAR SAYS FOR A MOMENT AFTER A SAVE LANDS (owner, 2026-09-26: *"users are confused
+   * whether the save worked or not"*). Default "Saved"; a form whose save is an addition names it
+   * ("Staff added"). `false` turns it off.
+   * ⛔ IT CAN ONLY FOLLOW A SAVE THAT LANDED, judged when `saving` falls, never when the form goes
+   * clean: the bar was dirty when the save began and offered a Save, nothing was edited meanwhile,
+   * and the form is clean at the end (or goes clean moments later, as refreshed props arrive). A
+   * refusal stays dirty and Discard never sets `saving`, so neither can print it — a "Saved" that is
+   * sometimes a lie is worse than none.
+   */
+  savedLabel?: string | false;
 };
 
 /**
@@ -141,6 +154,98 @@ const subscribeRegistry = (l: () => void) => { listeners.add(l); return () => { 
 const getRegistryVersion = () => registryVersion;
 const getServerVersion = () => 0;
 
+/**
+ * ⭐ THE "SAVED" STATE HAS ONE HOME, BESIDE THE REGISTRY — the same singleton rule as the bar. It is
+ * painted by the SAME element that said "Unsaved changes", so the change lands in the live region
+ * the officer's screen reader is already listening to, and the rise motion does not replay.
+ * ⚠️ `token` keys the dwell timer: a newer save, an edit or an unmount replaces or clears the slot,
+ * and the older timer then finds a different token and does nothing.
+ */
+type SavedState = { id: number; text: string; token: number };
+let saved: SavedState | null = null;
+let savedToken = 0;
+const SAVED_DWELL_MS = 2_500;
+const setSaved = (next: SavedState | null) => { saved = next; bumpRegistry(); };
+
+/**
+ * ⚠️ EDITS ARE COUNTED PAGE-WIDE, so a save cycle can tell whether the officer touched anything while it
+ * ran. TRUSTED events only: a form that resets itself or replays `input` after its save is not an edit.
+ * A click counts because a custom toggle and the bar's own Discard change a form without any `input`.
+ */
+let editEpoch = 0;
+let editWatchers = 0;
+const EDIT_EVENTS = ["input", "change", "click"] as const;
+const noteEdit = (e: Event) => { if (e.isTrusted) editEpoch++; };
+const watchEdits = () => {
+  if (editWatchers++ === 0) for (const t of EDIT_EVENTS) document.addEventListener(t, noteEdit, true);
+  return () => {
+    if (--editWatchers === 0) for (const t of EDIT_EVENTS) document.removeEventListener(t, noteEdit, true);
+  };
+};
+/* How long after `saving` falls a form that is still dirty may go clean and count as that save landing. */
+const LANDING_MS = 1_500;
+
+/**
+ * ⭐ THE SAVE-CYCLE DECISION, AS A PURE FUNCTION — no React, no DOM, no clock of its own. The bar's layout
+ * effect feeds it one commit at a time and does what the verdict says, so the rules below are exactly
+ * what `npm run test:save-cycle` drives, scenario by scenario; the component keeps no private copy.
+ *
+ * `prev` is what the bar remembered after its last commit (`null` on the first). `next` is this commit:
+ * the flags, whether a Save is offered, the "Saved" words (`false` = off), the page-wide trusted-edit
+ * count and the time. The verdict says what THIS bar shows:
+ *   · "dirty" — unsaved work: register the entry (and end this bar's "Saved", if it is showing);
+ *   · "hold"  — clean, but its save is still running and may yet land: keep the entry, spinner and all;
+ *   · "saved" — the save landed: fill the slot with `text` and let the entry go;
+ *   · "none"  — nothing to show from this form.
+ *
+ * ⛔ "saved" IS DECIDED WHEN `saving` FALLS, never at the clean. It needs all of: the form was dirty when
+ * `saving` rose, a Save was offered then, no trusted edit since, and the form clean at the fall — or
+ * clean within `LANDING_MS` after it, with no edit in between (refreshed props arriving late).
+ */
+export type SaveCycle = {
+  dirty: boolean;
+  saving: boolean;
+  /** Remembered from the commit where `saving` rose. */
+  startedDirty: boolean;
+  offered: boolean;
+  edits: number;
+  /** Open after a save that ended still dirty: a clean until then is that save landing. 0 = closed. */
+  landUntil: number;
+};
+export type SaveCommit = {
+  dirty: boolean;
+  saving: boolean;
+  hasSave: boolean;
+  savedLabel: string | false;
+  editEpoch: number;
+  now: number;
+};
+export type SaveVerdict =
+  | { cycle: SaveCycle; show: "dirty" | "hold" | "none" }
+  | { cycle: SaveCycle; show: "saved"; text: string };
+
+export function decideSaveCycle(prev: SaveCycle | null, next: SaveCommit): SaveVerdict {
+  const { dirty, saving, hasSave, savedLabel, editEpoch, now } = next;
+  const p: SaveCycle = prev ?? { dirty, saving, startedDirty: false, offered: false, edits: 0, landUntil: 0 };
+  const rose = saving && !p.saving;
+  const fell = !saving && p.saving;
+  const cycle: SaveCycle = rose
+    ? { dirty, saving, startedDirty: dirty, offered: hasSave, edits: editEpoch, landUntil: 0 }
+    : { ...p, dirty, saving };
+  const untouched = cycle.startedDirty && cycle.offered && editEpoch === cycle.edits;
+  let landed = false;
+  if (fell) {
+    landed = untouched && !dirty;
+    cycle.landUntil = untouched && dirty ? now + LANDING_MS : 0;
+  } else if (!saving && !dirty && p.dirty) {
+    landed = untouched && cycle.landUntil > 0 && now <= cycle.landUntil;
+    cycle.landUntil = 0;
+  }
+  if (landed && savedLabel !== false) return { cycle, show: "saved", text: savedLabel };
+  if (dirty) return { cycle, show: "dirty" };
+  return { cycle, show: saving && untouched ? "hold" : "none" };
+}
+
 export function PendingChangesBar(props: BarProps) {
   const {
     dirty,
@@ -151,6 +256,7 @@ export function PendingChangesBar(props: BarProps) {
     detail,
     saveLabel = "Save changes",
     discardLabel = "Discard",
+    savedLabel = "Saved",
   } = props;
   /* ⛔ SSR: `createPortal` needs a DOM. Mount-gate it so the server renders the SPACER only —
      which is right, because the spacer belongs to the page and the bar belongs to the window. */
@@ -169,20 +275,62 @@ export function PendingChangesBar(props: BarProps) {
    * render. Registering the VALUES would mean an effect that re-runs each render, notifies the
    * painter, re-renders it, produces new arrows, and re-runs the effect: an infinite loop. The
    * painter therefore reads `entry.props.current`, which is always this render's props, and the
-   * registration effect depends only on `dirty`.
+   * registration effect depends only on the flags it decides from, never on the callbacks.
    */
   const propsRef = React.useRef<BarProps>(props);
   propsRef.current = props;
 
-  React.useEffect(() => {
-    if (dirty) {
-      registry.set(id, { id, seq: ++dirtySeq, props: propsRef });
-      bumpRegistry();
-    } else if (registry.delete(id)) {
-      bumpRegistry();
+  /**
+   * ⭐ "SAVED" — JUDGED WHEN THE SAVE ENDS, NEVER WHEN THE FORM GOES CLEAN (see `savedLabel`).
+   * 🔴 It used to be decided at the clean, so an officer who typed the old values back mid-save got
+   * "Saved" before the result — and, if the save then failed, beside its own "Couldn't save". Each
+   * cycle is now remembered from the commit where `saving` rises (was the bar dirty, did it offer a
+   * Save, the edit count) and judged in the commit where it falls.
+   * ⚠️ A form that marks itself clean before its transition ends is HELD: the entry stays registered,
+   * spinner and all, until the result — so the bar never vanishes and comes back as "Saved".
+   * ⚠️ A form that goes clean when refreshed props arrive may do so just after `saving` falls. A save
+   * that ends still dirty therefore leaves a `LANDING_MS` window: the next clean inside it, with no
+   * edit in between, is that save landing. A refusal never goes clean by itself; Discard is a click.
+   * ⭐ THE RULES LIVE IN `decideSaveCycle` ABOVE, and this effect only carries out its verdict — so the
+   * function `test:save-cycle` drives is the one that ships.
+   * ⛔ ONE EFFECT DECIDES THE SLOT AND THE REGISTRY, so the slot is filled before the entry leaves and
+   * no render sees "nothing to paint" — that render would unmount the bar, and a "Saved" arriving in a
+   * fresh element is one nobody is announced. A layout effect, so the frame between is never painted.
+   */
+  const hasSave = !!onSave;
+  const cycle = React.useRef<SaveCycle | null>(null);
+  React.useEffect(() => watchEdits(), []);
+  React.useLayoutEffect(() => {
+    const wasDirty = cycle.current?.dirty ?? dirty;
+    const verdict = decideSaveCycle(cycle.current, { dirty, saving, hasSave, savedLabel, editEpoch, now: Date.now() });
+    cycle.current = verdict.cycle;
+
+    let changed = false;
+    if (verdict.show === "saved") {
+      const token = ++savedToken;
+      saved = { id, text: verdict.text, token };
+      changed = true;
+      setTimeout(() => { if (saved?.token === token) setSaved(null); }, SAVED_DWELL_MS);
+    } else if (verdict.show === "dirty" && saved?.id === id) {
+      saved = null; // editing again ends it
+      changed = true;
     }
-    return () => { if (registry.delete(id)) bumpRegistry(); };
-  }, [dirty, id]);
+    if (verdict.show === "dirty" || verdict.show === "hold") {
+      const entry = registry.get(id);
+      if (!entry) registry.set(id, { id, seq: ++dirtySeq, props: propsRef });
+      else if (dirty && !wasDirty) entry.seq = ++dirtySeq; // dirtied again while held: newest again
+      changed = changed || !entry || (dirty && !wasDirty);
+    } else if (registry.delete(id)) {
+      changed = true;
+    }
+    if (changed) bumpRegistry();
+  }, [dirty, saving, hasSave, savedLabel, id]);
+  /* A bar that is gone cannot say anything — a form that navigates away on success relies on its toast. */
+  React.useEffect(() => () => {
+    registry.delete(id);
+    if (saved?.id === id) saved = null;
+    bumpRegistry();
+  }, [id]);
 
   /* `saving` and `label` are read off the ref, so a change to either would otherwise never
      reach the painter. This nudges it without re-registering (and without touching `seq`, which
@@ -193,7 +341,11 @@ export function PendingChangesBar(props: BarProps) {
   void version; // the subscription is the point; the registry below is the actual read
 
   const entries = [...registry.values()];
-  const painterId = entries.length ? Math.min(...entries.map((e) => e.id)) : 0;
+  /* ⭐ ONE ELEMENT, THREE STATES: unsaved work anywhere on the page wins over "Saved", which wins over
+     nothing. In "saved" the painter is the bar that saved — the one that was already on screen. */
+  const savedNow = saved;
+  const mode: "dirty" | "saved" | null = entries.length ? "dirty" : savedNow ? "saved" : null;
+  const painterId = mode === "dirty" ? Math.min(...entries.map((e) => e.id)) : (savedNow?.id ?? 0);
   const top = entries.length ? entries.reduce((a, b) => (b.seq > a.seq ? b : a)) : null;
 
   /**
@@ -209,20 +361,35 @@ export function PendingChangesBar(props: BarProps) {
    */
   const shownAnchorEl = top?.props.current.saveAnchor?.current ?? null;
   const [anchorOnScreen, setAnchorOnScreen] = React.useState(false);
+  /* The bar's measured height — set by the reserve effect below, read here to cut the bar's own band
+     out of what counts as "on screen". */
+  const [reservePx, setReservePx] = React.useState(0);
   React.useEffect(() => {
     if (!shownAnchorEl || typeof IntersectionObserver === "undefined") {
       setAnchorOnScreen(false);
       return undefined;
     }
-    /* ⚠️ A high threshold on purpose: a Save button one pixel into view is not "in reach", and a
-       low threshold makes the bar's button flicker on and off as the page settles. */
+    /**
+     * ⚠️ A high threshold on purpose: a Save button one pixel into view is not "in reach", and a low
+     * threshold makes the bar's button flicker on and off as the page settles.
+     * 🔴 AND THE THRESHOLD ALONE NEVER ENFORCED IT (2026-09-26). `isIntersecting` is true for ANY
+     * overlap, and the observer reports on every crossing — so the old test read a button with one
+     * pixel left in view as on screen, and the bar kept its Save hidden until the button was gone.
+     * The RATIO is the test, read off the LAST record, which is the current state.
+     * 🔴 AND THE BAR'S OWN BAND IS NOT SCREEN. The root was the whole viewport, so a form Save sitting
+     * BEHIND the bar counted as visible and the bar hid its Save — no Save anywhere. The bottom margin
+     * takes the measured bar height off the root, and the observer is rebuilt when that height moves.
+     */
     const io = new IntersectionObserver(
-      (records) => setAnchorOnScreen(records.some((r) => r.isIntersecting)),
-      { threshold: 0.75 },
+      (records) => {
+        const r = records[records.length - 1];
+        setAnchorOnScreen(!!r && r.isIntersecting && r.intersectionRatio >= 0.75);
+      },
+      { threshold: 0.75, rootMargin: `0px 0px -${reservePx}px 0px` },
     );
     io.observe(shownAnchorEl);
     return () => io.disconnect();
-  }, [shownAnchorEl]);
+  }, [shownAnchorEl, reservePx]);
 
   /**
    * ⚠️ THE PAGE RESERVES THE BAR'S MEASURED HEIGHT, AND BOTH HALVES OF THAT WERE LEARNED THE
@@ -239,11 +406,14 @@ export function PendingChangesBar(props: BarProps) {
    *   element and re-read whenever it changes.
    */
   const barRef = React.useRef<HTMLDivElement>(null);
+  /* `mode` is a dependency so the reserve holds through the "Saved" dwell and clears when it ends. */
   React.useEffect(() => {
     const el = barRef.current;
     if (!el) return;
     const apply = () => {
-      document.body.style.paddingBottom = `${Math.ceil(el.getBoundingClientRect().height)}px`;
+      const h = Math.ceil(el.getBoundingClientRect().height);
+      document.body.style.paddingBottom = `${h}px`;
+      setReservePx(h);
     };
     apply();
     const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(apply) : null;
@@ -252,23 +422,28 @@ export function PendingChangesBar(props: BarProps) {
       ro?.disconnect();
       document.body.style.paddingBottom = "";
     };
-  }, [mounted, dirty, painterId, id]);
+  }, [mounted, dirty, painterId, id, mode]);
 
   /* ⛔ EXACTLY ONE INSTANCE PAINTS. Everything above still runs in every instance — each one
-     registers, so the count is right and the reserve follows whichever instance is painting. */
-  if (!dirty || id !== painterId || !top) return null;
+     registers, so the count is right and the reserve follows whichever instance is painting.
+     ⚠️ Not gated on this instance's own `dirty`: a held save is clean while it still paints, and in
+     the one render between a save and the registry catching up, that gate would unmount the bar and
+     remount it for "Saved" (see the save-cycle effect). */
+  if (mode === null || id !== painterId) return null;
 
   /* The entry the officer touched last, which may belong to a DIFFERENT instance than this one.
-     Reading it through the ref is what keeps an inline `onSave` correct. */
-  const shown = top.props.current;
-  const shownLabel = shown.label ?? "Unsaved changes";
-  const shownDetail = shown.detail;
-  const shownSaving = shown.saving ?? false;
-  const shownSaveLabel = shown.saveLabel ?? "Save changes";
-  const shownDiscardLabel = shown.discardLabel ?? "Discard";
-  const shownSave = shown.onSave;
-  const shownDiscard = shown.onDiscard;
-  const others = entries.length - 1;
+     Reading it through the ref is what keeps an inline `onSave` correct. None in "saved". */
+  const shown = top?.props.current;
+  const shownLabel = shown?.label ?? "Unsaved changes";
+  const shownDetail = shown?.detail;
+  const shownSaving = shown?.saving ?? false;
+  const shownSaveLabel = shown?.saveLabel ?? "Save changes";
+  const shownDiscardLabel = shown?.discardLabel ?? "Discard";
+  const shownSave = shown?.onSave;
+  const shownDiscard = shown?.onDiscard;
+  /* Only entries with unsaved work count: a HELD entry is clean (its save is still running), and
+     counting it would announce "+1 more unsaved change" for a form that has nothing unsaved. */
+  const others = entries.filter((e) => e !== top && e.props.current.dirty).length;
 
   /**
    * 🔴 IT PORTALS, AND THAT IS NOT OPTIONAL — `test:stacking` §5 names the mechanism.
@@ -291,6 +466,8 @@ export function PendingChangesBar(props: BarProps) {
            typing — on the very form the message is about. */
         role="status"
         aria-live="polite"
+        /* The state as a hook for drives and gates: "dirty" or "saved". */
+        data-pending-state={mode}
         className="kp-rail kp-rise fixed inset-x-0 bottom-0 z-nav"
       >
         <div
@@ -303,42 +480,62 @@ export function PendingChangesBar(props: BarProps) {
           className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 lg:px-6"
           style={{ minHeight: "var(--h-pending-bar)" }}
         >
-          <span className="inline-flex items-center gap-2 font-mono text-micro uppercase eyebrow text-warning-fg">
-            <span aria-hidden className="h-1.5 w-1.5 shrink-0 rounded-pill bg-warning-fg" />
-            {shownLabel}
-          </span>
-          {shownDetail && <span className="min-w-0 text-caption text-text-secondary">{shownDetail}</span>}
-          {/* ⭐ THE OTHERS ARE COUNTED, NOT HIDDEN. Only one form's actions can sit on one bar
-              without a Save button that saves an ambiguous thing — but silently omitting the
-              rest would let an officer discard the visible one and leave believing the page was
-              clean. Nothing is at risk either way: every instance still renders its own
-              `UnsavedChangesGuard`, so all of them are covered on the way out. */}
-          {/* ⚠️ `text-body-sm` (13px), NOT `text-micro` — and `test:type-scale` was right to
-              refuse the first draft. This is a SENTENCE an officer has to read, so §T4's 12.5px
-              floor applies; `text-micro`/`caption`/`label` are all below it and none of them
-              counts as a fix. The sub-micro tier is for UPPERCASE tracked microlabels only,
-              which this is not. */}
-          {others > 0 && (
-            <span className="text-body-sm text-text-tertiary">
-              +{others} more unsaved {others === 1 ? "change" : "changes"} on this page
+          {/* ⭐ "SAVED" — the same microlabel as "Unsaved changes" in the app-state success ink, and NO
+              button: there is nothing left to act on, and a button here would be a second thing to
+              read while the officer is checking whether the save worked. */}
+          {mode === "saved" ? (
+            <span className="inline-flex items-center gap-2 font-mono text-micro uppercase eyebrow text-success-fg">
+              <I.check s={12} aria-hidden />
+              {savedNow?.text}
             </span>
+          ) : (
+            <>
+              {/* Another form is still dirty, so the bar stays "Unsaved changes" — and says, first,
+                  that the one just saved did land. */}
+              {savedNow && (
+                <Chip size="sm" variant="success">
+                  <I.check s={10} aria-hidden />
+                  {savedNow.text}
+                </Chip>
+              )}
+              <span className="inline-flex items-center gap-2 font-mono text-micro uppercase eyebrow text-warning-fg">
+                <span aria-hidden className="h-1.5 w-1.5 shrink-0 rounded-pill bg-warning-fg" />
+                {shownLabel}
+              </span>
+              {shownDetail && <span className="min-w-0 text-caption text-text-secondary">{shownDetail}</span>}
+              {/* ⭐ THE OTHERS ARE COUNTED, NOT HIDDEN. Only one form's actions can sit on one bar
+                  without a Save button that saves an ambiguous thing — but silently omitting the
+                  rest would let an officer discard the visible one and leave believing the page was
+                  clean. Nothing is at risk either way: every instance still renders its own
+                  `UnsavedChangesGuard`, so all of them are covered on the way out. */}
+              {/* ⚠️ `text-body-sm` (13px), NOT `text-micro` — and `test:type-scale` was right to
+                  refuse the first draft. This is a SENTENCE an officer has to read, so §T4's 12.5px
+                  floor applies; `text-micro`/`caption`/`label` are all below it and none of them
+                  counts as a fix. The sub-micro tier is for UPPERCASE tracked microlabels only,
+                  which this is not. */}
+              {others > 0 && (
+                <span className="text-body-sm text-text-tertiary">
+                  +{others} more unsaved {others === 1 ? "change" : "changes"} on this page
+                </span>
+              )}
+              {/* ⭐ The actions sit at the END on one line and WRAP as a pair at 390 — the same
+                  `flex-wrap` + `ml-auto` shape the admin card header uses, so a narrow screen
+                  never puts Save on its own orphan row. */}
+              <span className="ml-auto flex items-center gap-2">
+                {shownDiscard && (
+                  <Button type="button" variant="ghost" size="sm" onClick={shownDiscard} disabled={shownSaving}>
+                    {shownDiscardLabel}
+                  </Button>
+                )}
+                {/* ⛔ NEVER A SECOND SAVE WHILE THE FORM'S OWN IS ON SCREEN — see `saveAnchor`. */}
+                {shownSave && !anchorOnScreen && (
+                  <Button type="button" variant="primary" size="sm" onClick={shownSave} loading={shownSaving}>
+                    {shownSaveLabel}
+                  </Button>
+                )}
+              </span>
+            </>
           )}
-          {/* ⭐ The actions sit at the END on one line and WRAP as a pair at 390 — the same
-              `flex-wrap` + `ml-auto` shape the admin card header uses, so a narrow screen
-              never puts Save on its own orphan row. */}
-          <span className="ml-auto flex items-center gap-2">
-            {shownDiscard && (
-              <Button type="button" variant="ghost" size="sm" onClick={shownDiscard} disabled={shownSaving}>
-                {shownDiscardLabel}
-              </Button>
-            )}
-            {/* ⛔ NEVER A SECOND SAVE WHILE THE FORM'S OWN IS ON SCREEN — see `saveAnchor`. */}
-            {shownSave && !anchorOnScreen && (
-              <Button type="button" variant="primary" size="sm" onClick={shownSave} loading={shownSaving}>
-                {shownSaveLabel}
-              </Button>
-            )}
-          </span>
         </div>
       </div>
   );

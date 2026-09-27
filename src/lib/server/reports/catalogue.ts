@@ -1091,8 +1091,16 @@ export async function buildMatchIntegrity(generatorId: string): Promise<Report> 
   // voided Up & Down round refunds real money, so leaving it out would show refunds
   // with no market to explain them — the exact discrepancy an inspector looks for.
   const voidedMarkets = await listMarkets({ status: "VOIDED", productLine: "ALL" });
-  const refunds = (await db.txn.listAll()).filter((t) => t.type === "BET_REFUND");
-  const refundTotal = refunds.reduce((s, t) => s + Math.abs(t.amount), 0);
+  /* ⭐ NO WHOLE-TABLE READ (2026-09-26). This walked every transaction ever recorded to find the
+     refunds. The count and total are now SQL aggregates and the section's rows are the newest 200,
+     read in order. ⚠️ CONFIRMED only — the same basis as every other money figure (report-money's
+     `summarise`). It used to count every status; measured on production 2026-09-26, every
+     BET_REFUND row is CONFIRMED (806 of 806), so no printed figure moves. `test:report-window-reads`. */
+  const REFUND_ROWS = 200;
+  const refundAgg = (await db.txn.totalsByType(["BET_REFUND"])).BET_REFUND ?? { amount: 0, count: 0 };
+  const refundCount = refundAgg.count;
+  const refundTotal = refundAgg.amount;
+  const newestRefunds = await db.txn.newestConfirmedOfType("BET_REFUND", REFUND_ROWS);
 
   /**
    * 🔴 L57's third item — the missing "Resolution path" column, added 2026-09-20.
@@ -1132,12 +1140,9 @@ export async function buildMatchIntegrity(generatorId: string): Promise<Report> 
   }));
 
   /* 🔴 NEWEST FIRST, THEN CAPPED. The section below tells the Gaming Board it shows "the most recent
-     200 of N" — but this took the FIRST 200 of an UNORDERED read (insertion order in memory, heap order
-     in Postgres), i.e. roughly the OLDEST. ISO timestamps sort as strings; the id breaks a tie.
-     `test:report-window-reads` §4. (This read stays ALL-TIME on purpose — see §3 of that suite.) */
-  const newestFirst = [...refunds].sort((a, b) =>
-    (b.createdAt < a.createdAt ? -1 : b.createdAt > a.createdAt ? 1 : 0) || b.id.localeCompare(a.id));
-  const refundRows: Row[] = newestFirst.slice(0, 200).map((t) => ({
+     200 of N" — and until 2026-09-25 it took the FIRST 200 of an UNORDERED read, i.e. roughly the
+     OLDEST. The store now returns them newest-first (`createdAt`, then `id`). `test:report-window-reads` §4. */
+  const refundRows: Row[] = newestRefunds.map((t) => ({
     when: t.createdAt.slice(0, 10),
     player: maskUserId(t.userId),
     amount: Math.abs(t.amount),
@@ -1159,7 +1164,7 @@ export async function buildMatchIntegrity(generatorId: string): Promise<Report> 
     },
     summary: [
       { label: "Voided markets", num: voidedMarkets.length, format: "integer", tone: voidedMarkets.length > 0 ? "neutral" : "good" },
-      { label: "Refund transactions", num: refunds.length, format: "integer", tone: "neutral" },
+      { label: "Refund transactions", num: refundCount, format: "integer", tone: "neutral" },
       { label: "Stakes refunded (TZS)", num: Math.round(refundTotal), format: "tzs", tone: "neutral" },
     ],
     sections: [
@@ -1187,9 +1192,9 @@ export async function buildMatchIntegrity(generatorId: string): Promise<Report> 
         // confidence in the document. Same discipline as the X-Export-Truncated header
         // on the transactions CSV.
         description:
-          refunds.length > refundRows.length
+          refundCount > refundRows.length
             ? `Individual stake refunds posted to player wallets. Showing the most recent ` +
-              `${refundRows.length} of ${refunds.length}; the total below covers all ${refunds.length}.`
+              `${refundRows.length} of ${refundCount}; the total below covers all ${refundCount}.`
             : "Individual stake refunds posted to player wallets.",
         columns: [
           { header: "Date", key: "when", format: "date", width: 14 },
@@ -1199,10 +1204,10 @@ export async function buildMatchIntegrity(generatorId: string): Promise<Report> 
         ],
         rows: refundRows,
         totals: {
-          when: refunds.length > refundRows.length ? "Total (all)" : "Total",
+          when: refundCount > refundRows.length ? "Total (all)" : "Total",
           player: "",
           amount: refundTotal,
-          ref: `${refunds.length} refunds`,
+          ref: `${refundCount} refunds`,
         },
       },
     ],

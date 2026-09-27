@@ -24,6 +24,9 @@ discovery ONLY), accepted 2026-08-12; its `ACCEPTANCE.md` records INHERIT/IGNORE
 every place our laws beat the kit. Both archives are frozen; the *rules* extracted from them
 live in `DESIGN_AUTHORITY.md`. The v3 kit is being applied per `design-brief/PLAN-OF-RECORD.md`;
 the measured reference from that commission round lives at `docs/design-brief/handover-2026-08/`.
+**`v4-2026-09-26-landing-ten/`** is the landing v3 concept (concept, review board, spec, acceptance,
+i18n draft, before shots), filed raw 2026-09-26; its `INHERIT-MANIFEST.md` records the verdicts, Ali's
+rulings R1–R4 and every place our laws beat the delivery. The build is tracked in `docs/LANDING-TEN.md` §1.
 
 ---
 

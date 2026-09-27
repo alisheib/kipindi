@@ -118,7 +118,8 @@ export function PublicFooter({
         <div className="space-y-3">
           <div className="flex items-center gap-2.5">
             <span
-              aria-label={t.footer.eighteenPlus}
+              /* No aria-label: "18+" is the text, and ARIA prohibits a label on a generic span (landing v3
+                 review — the hero trust lines wear the same roundel and dropped it in the same edit). */
               /* ⛔ WAS A HAND-BUILT UTILITY STRING, AND IT RENDERED THE 18+ MARK AT A
                  DIFFERENT SIZE FROM THE DESIGN SYSTEM'S OWN. `w-7 h-7` looks like 28px
                  and is not: tailwind.config.ts:220 overrides spacing "7" to 40px, so this

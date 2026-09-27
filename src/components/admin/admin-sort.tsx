@@ -11,6 +11,7 @@
  *   // then slice with parsePage / render <SortTh ... /> headers
  */
 import Link from "next/link";
+import { LinkPending } from "@/components/ui/link-pending";
 
 export type SortDir = "asc" | "desc";
 
@@ -160,6 +161,10 @@ export function SortTh({
    */
   return (
     <th
+      /* ⭐ `scope="col"` (2026-09-27, house-bots build step 9): every plain header on the desk carries it, and the
+         sortable ones — the header an officer is most likely to navigate by — did not, so a screen reader could not
+         tie a sorted column's cells back to it. */
+      scope="col"
       aria-sort={isActive ? (dir === "asc" ? "ascending" : "descending") : "none"}
       className={`${align === "right" ? "text-right" : "text-left"} ${className ?? ""}`}
     >
@@ -180,6 +185,8 @@ export function SortTh({
           className={`text-brand-300 transition-opacity ${isActive ? "" : "opacity-0 group-hover:opacity-60"}`}
           aria-hidden
         >{dir === "asc" ? "↑" : "↓"}</span>
+        {/* ⭐ A pressed header whose sorted rows are still on their way says so — `link-pending.tsx`. */}
+        <LinkPending />
       </Link>
     </th>
   );

@@ -903,9 +903,15 @@ if (STORE === "memory") {
      * six spreads at 2843, 3219, 3628, 3760, 3903, 4494. The moved site is still the EMERGENCY VOID's `BET_REFUND`
      * write, still carrying `...(p.houseBotId ? { houseBotId: p.houseBotId } : {})` beside `positionId: p.id` — so
      * it is the same site at a new line, which is the only reading under which a re-pin is honest.
+     * ⭐ AND THEN ALL SEVEN MOVED +5 (2026-09-26), found RED on clean `main` by the house-bots session: `0f1f9dd9`
+     * (another lane's "No report read walks a whole table any more") is ONE hunk in this file, `@@ -405,11 +405,16 @@`,
+     * above every site. Re-derived from the tree, not the delta: the seven `db.txn.create(` lines now read 1570, 2838,
+     * 3213, 3623, 3755, 3896, 4489, each the same write it was, in the same order (the stake form, the `realRefund`
+     * write, the cash-out, the one-sided refund, the void refund, the winner payout, the emergency void) — so the
+     * controls' `:2833`/`:1565` move with them.
      */
     ok("0.232.2 · …and the seven marked sites are exactly the seven line numbers this pin was written against — a site that MOVES is reported here (the pin is line-pinned on purpose; the money anchors match by text and cannot rot from a line move)",
-      j(marked) === j(["market-service.ts:1565", "market-service.ts:2833", "market-service.ts:3208", "market-service.ts:3618", "market-service.ts:3750", "market-service.ts:3891", "market-service.ts:4484"]), j(marked));
+      j(marked) === j(["market-service.ts:1570", "market-service.ts:2838", "market-service.ts:3213", "market-service.ts:3623", "market-service.ts:3755", "market-service.ts:3896", "market-service.ts:4489"]), j(marked));
 
     /**
      * ⛔ **THE ANCHORS FILE IS OPENED, BECAUSE THE LABEL SAID IT WAS AND IT WAS NOT** (C5-7's review, low). 0.232.2
@@ -961,7 +967,7 @@ if (STORE === "memory") {
 
     const dropped = scan(ms.replace(SPREAD_2833, ""));
     ok("0.232.c1 · CONTROL · a positioned write whose marker is DELETED is reported, and exactly one site goes red — the plant really changed the file",
-      dropped.length === 1 && dropped[0].at === `${MS}:2833` && /NO marker/.test(dropped[0].why ?? ""), j(dropped));
+      dropped.length === 1 && dropped[0].at === `${MS}:2838` && /NO marker/.test(dropped[0].why ?? ""), j(dropped));
     /* ⭐ THE ACCEPT SIDE, AND IT IS ABOUT A SITE THAT DOES NOT EXIST YET. Putting the deleted spread back would only
        rebuild `ms` and prove nothing, so the control appends a BRAND NEW positioned writer to the same real file: the
        pin must pass it because its marker is right, and refuse the identical writer with the marker removed. Without
@@ -982,11 +988,11 @@ async function __c2NewPositionedWriter(q: { id: string; houseBotId: string | nul
     /* ⛔ THE ONE A PRESENCE CHECK CANNOT SEE: the marker is THERE, well-formed, and read from another position. */
     const wrongSource = scan(ms.replace(SPREAD_2833, `      ...(position.houseBotId ? { houseBotId: position.houseBotId } : {}),`));
     ok("0.232.c3 · CONTROL · a marker copied from the WRONG object — present, well-formed, reading another position in scope — is reported, which is the defect a presence-only scan passes",
-      wrongSource.length === 1 && wrongSource[0].at === `${MS}:2833` && /WRONG object/.test(wrongSource[0].why ?? ""), j(wrongSource));
+      wrongSource.length === 1 && wrongSource[0].at === `${MS}:2838` && /WRONG object/.test(wrongSource[0].why ?? ""), j(wrongSource));
     const wrongProp = scan(ms.replace(SPREAD_2833, `      houseBotId: position.houseBotId ?? null,`));
     const rightProp = scan(ms.replace(SPREAD_2833, `      houseBotId: p.houseBotId ?? null,`));
     ok("0.232.c3b · CONTROL · the same defect in the OTHER accepted spelling (houseBotId: <x>.houseBotId ?? null) is reported, and the RIGHT identifier in that spelling is accepted — both directions, so the pin is not just refusing the spelling",
-      wrongProp.length === 1 && wrongProp[0].at === `${MS}:2833` && /WRONG object/.test(wrongProp[0].why ?? "") && rightProp.length === 0, j({ wrongProp, rightProp }));
+      wrongProp.length === 1 && wrongProp[0].at === `${MS}:2838` && /WRONG object/.test(wrongProp[0].why ?? "") && rightProp.length === 0, j({ wrongProp, rightProp }));
     const reformatted = scan(ms.replace(SPREAD_2833, `      ...(p.houseBotId\n        ? { houseBotId: p.houseBotId }\n        : {}),`));
     ok("0.232.c3c · CONTROL · the accept side of the shape: the SAME marker reformatted over three lines is still read — a pin that a line break blinds is one reformat away from passing an unmarked write",
       reformatted.length === 0, j(reformatted));
@@ -994,7 +1000,7 @@ async function __c2NewPositionedWriter(q: { id: string; houseBotId: string | nul
     /* ⛔ THE STAKE FORM, MOVED OFF ITS POSITION. */
     const movedStakeForm = scan(ms.replace(SPREAD_2833, `      ...(ctx.kind === "house" ? { houseBotId: ctx.botId } : {}),`));
     ok("0.232.c4 · CONTROL · the stake form used where no position with that positionId is marked from the same ctx is reported — the exemption is earned per site, never granted by file or by line number",
-      movedStakeForm.length === 1 && movedStakeForm[0].at === `${MS}:2833` && /stake form/.test(movedStakeForm[0].why ?? ""), j(movedStakeForm));
+      movedStakeForm.length === 1 && movedStakeForm[0].at === `${MS}:2838` && /stake form/.test(movedStakeForm[0].why ?? ""), j(movedStakeForm));
     /* ⚠️ THE PLANT CARRIES NO NEWLINE, and that is not a detail: tracked source is CRLF in this checkout, so a
        `\n` anchor matches nothing and the plant silently plants NOTHING — a control that then reports the file is
        clean, which is exactly the silent pass this checkpoint exists to refuse (it happened here, once, and this
@@ -1003,7 +1009,7 @@ async function __c2NewPositionedWriter(q: { id: string; houseBotId: string | nul
     const c4bPlant = ms.replace("id: positionId,", "id: positionIdOfAnotherBet,");
     const stakeUnmarked = scan(c4bPlant);
     ok("0.232.c4b · CONTROL · …and the REAL stake write goes red the moment the position it is paired with stops being the one it names — so 0.232.1's green on that site is a measurement of the pairing, not a permanent pass",
-      c4bPlant !== ms && stakeUnmarked.length === 1 && stakeUnmarked[0].at === `${MS}:1565` && /stake form/.test(stakeUnmarked[0].why ?? ""), j(stakeUnmarked));
+      c4bPlant !== ms && stakeUnmarked.length === 1 && stakeUnmarked[0].at === `${MS}:1570` && /stake form/.test(stakeUnmarked[0].why ?? ""), j(stakeUnmarked));
 
     /* ⛔ THE BYPASS CONTROLS, AND THEY CALL `bypassIn` — THE CODE THAT SHIPS. The old 0.232.c5 re-implemented the
        walk inline, so the loop that actually produces `bypass` was UNPLANTED: one character (`rel === DAL` →
@@ -2105,6 +2111,9 @@ export const AUDIT_NON_READERS = [
   "AuditCategory", "AuditEntry", "UNVERIFIABLE_BASELINE_ACTION", "UnverifiableBaseline", "audit", "auditBootId",
   "auditFlush", "auditPending", "auditRingSize", "auditTicketsIssued", "censusUnverifiable", "classifyChainLinks",
   "readUnverifiableBaseline", "reconstructChainOrder", "verifyChain", "verifyChainFull",
+  /* ⭐ 2026-09-26 (the finance lane's `c6c637c1`): the census sample's element TYPE — a row's identity, never a row;
+     what it may carry is pinned field by field in `auditNonReaderRowClaimProblems` below. */
+  "UnverifiableRow",
 ] as const;
 /*
  * ⭐ SIX NAMES ADDED 2026-09-21 BY THE ops LANE, AND THEY ARE THE MERGE'S OWN DEFECT — `auditBootId`,
@@ -2162,6 +2171,9 @@ export const AUDIT_READERS_OUTSIDE_CONSOLE: Readonly<Record<string, string>> = {
   "src/app/api/dev-test/stress-regulator-grade/route.ts": "a dev-test route that answers 404 in production; it counts the ring's rows and checks their order",
   "src/lib/server/house-bot/eligibility.ts": "the designation's own officer lookup: an email read from the holder's rows, never a row handed on",
   "src/lib/server/house-bot/oversight.ts": "Commit 4's oversight alerts about what staff did with a bot: rows read by action and folded into two AlertOnce keys (ruling 264)",
+  /* Classified 2026-09-27, read from the source (`lastRecordedSwitchSeq`): the invite lane's Payable / Not payable switch
+     added the reader and 0.260.1 went red on the release branch at once — the guard doing its job. */
+  "src/lib/server/invite-rewards-switch.ts": "the invite Payable switch's own COMPLIANCE trail (affiliate.payable.on / .off), read by action and reduced to ONE number — the highest confirmed record seq — so /admin/affiliate can flag an older restored record; no row is handed on",
   "src/lib/server/kyc-risk.ts": "the KYC withdrawal refusals and the aml approvals, read by action and folded into counts and a recommendation",
   /* Classified 2026-09-26, read from the source (`readExclusionRecord`): the marketing lane's `f1ad4417` added the
      reader and 0.260.1 went red on `main` at once, which is the guard doing its job. */
@@ -2198,6 +2210,7 @@ export const AUDIT_ROW_PAYLOAD: Readonly<Record<string, "handedOn" | "folded" | 
   "src/app/api/dev-test/stress-regulator-grade/route.ts": "folded",
   "src/lib/server/house-bot/eligibility.ts": "folded",
   "src/lib/server/house-bot/oversight.ts": "folded",
+  "src/lib/server/invite-rewards-switch.ts": "folded",
   "src/lib/server/kyc-risk.ts": "handedOn",
   "src/lib/server/marketing/rg.ts": "folded",
   "src/lib/server/notification-service.ts": "folded",
@@ -2245,7 +2258,26 @@ export const HOUSE_HOOK_MODULES = ["src/lib/server/house-bot/holder-hook", "src/
  * argument. The pin's job is unchanged and undiminished: a call with the wrong number of arguments is still red,
  * and the viewer pin and the own-route pin below still read arguments 0 and 1. A door that grows an argument gets
  * its pin MOVED TO THE NEW SHAPE; it never gets the pin dropped. */
-export const CONSOLE_GATES: Readonly<Record<string, number>> = { houseStakeForConsole: 3, houseBotLabelsForConsole: 3, houseConsoleAudience: 2, houseAuditForConsole: 3, houseRosterForConsole: 2, houseUsageForConsole: 3, houseLimitsSaveForConsole: 3, houseRulesSaveForConsole: 3, houseDetailForConsole: 4, houseFeedForConsole: 3, houseHistoryForConsole: 3, houseCancelIntentForConsole: 3, houseSwitchForConsole: 3, houseAccountActForConsole: 3, houseAccountsForConsole: 3, houseCheckForConsole: 3, houseDesignateForConsole: 3, houseWhyIdleForConsole: 3 };
+/* ⭐ 2026-09-26 · C7 437 · `houseResultsForConsole` — the desk's Results tab, and the ONE reader on the console that
+ * hands a page a result (D20b amended for that one view). ⚠️ SUPERSEDED AT STEP 9, KEPT AS THE RECORD (the entry below
+ * says what moved and why): it was pinned at **2**, the roster's shape: the viewer and
+ * the route, and nothing else — seven fixed days and no query, so there is no third argument a caller could use to
+ * widen the window. ⛔ Its route belt refuses every route but the desk's own BEFORE the audience question, which is
+ * why the own-route pin below matters more here than anywhere: the audience answers a non-desk `/admin` route by
+ * that route's domain, and `/admin/house` would admit the accounting roles. */
+/* ⭐ 2026-09-26 · STEP 9 (every desk table sorts; the roster pages) · `houseRosterForConsole` AND `houseResultsForConsole`
+ * MOVE FROM **2** TO **3** — RE-ANCHORED, NEVER RELAXED, the account page's own precedent above. Each now takes the
+ * REQUEST's own query string, which the door validates in the ONE parse every desk reader shares: the roster reads its
+ * sort and its page from it, the Results tab its two tables' SORT and nothing else. ⛔ The Results window stays FIXED in
+ * code (`RESULT_DAYS`, walked back from the core's own day): no part of the address reaches a read, which is what the
+ * 2-argument pin used to hold by construction and what `test:house-bot-console`'s step-9 cases now hold by measurement
+ * (a window word on the Results address changes nothing). The arity pin still reddens a call with the query dropped or
+ * with a fourth argument — 0.260.c5 plants both on the desk page's own call. */
+/* ⭐ 2026-09-26 · RESUME-HERE §0c decision 4 · `houseAccountListForConsole` — the find step's list of every account,
+ * pinned at **3**: the viewer, the route, and the REQUEST's own query string, which the door validates part by part.
+ * ⛔ Its route belt refuses any route outside the desk's own section before the audience question, for the Results
+ * tab's reason: a row's reason says which accounts are on the desk, and a non-desk route is answered by its own domain. */
+export const CONSOLE_GATES: Readonly<Record<string, number>> = { houseStakeForConsole: 3, houseBotLabelsForConsole: 3, houseConsoleAudience: 2, houseAuditForConsole: 3, houseRosterForConsole: 3, houseUsageForConsole: 3, houseLimitsSaveForConsole: 3, houseRulesSaveForConsole: 3, houseDetailForConsole: 4, houseFeedForConsole: 3, houseHistoryForConsole: 3, houseCancelIntentForConsole: 3, houseSwitchForConsole: 3, houseAccountActForConsole: 3, houseAccountsForConsole: 3, houseAccountListForConsole: 3, houseCheckForConsole: 3, houseDesignateForConsole: 3, houseWhyIdleForConsole: 3, houseResultsForConsole: 3 };
 /** A console file: a page, layout, route, action or component the console serves — everything under the three admin folders. */
 export const inConsolePopulation = (rel: string) =>
   rel.startsWith("src/app/admin/") || rel.startsWith("src/app/api/admin/") || rel.startsWith("src/components/admin/");
@@ -2494,9 +2526,24 @@ export function auditNonReaderRowClaimProblems(file: string, code: string): stri
     if (!/\): Promise<UnverifiableBaseline \| null> \{/.test(reader))
       problems.push(`${file}: readUnverifiableBaseline no longer returns Promise<UnverifiableBaseline | null> — the classification's "returns no row" is unproved`);
   }
+  /* ⭐ RE-PINNED 2026-09-26, NOT LOOSENED: the finance lane's `c6c637c1` gave the census a SAMPLE — the first rows (a
+     capped few, in chain order) that recompute under no known key, so the declaration can name what it accepts. Each
+     sample row is an IDENTITY (`UnverifiableRow`: seq, id, time, category, action, frontier flag) and never a row: no
+     payload, no actor, no target. So the claim this pin holds is now "four scalars and a capped identity sample", and
+     it is measured on the type's own field list and the cap — a widened field set or an uncapped sample is reported
+     exactly as a widened `where` is. The census has no caller under `src/` (the baseline ops script and the attestation
+     test only), so no screen shows the sample at all. */
   if (census.length < 100) problems.push(`${file}: censusUnverifiable was not found (or is a stub) — the classification is unproved`);
-  else if (!/\): Promise<\{ frontierSeq: number; count: number; digest: string; scanned: number; \}> \{/.test(census))
-    problems.push(`${file}: censusUnverifiable no longer returns four scalars — the classification's "returns no row" is unproved`);
+  else if (!/\): Promise<\{ frontierSeq: number; count: number; digest: string; scanned: number;[^}]*\bsample: UnverifiableRow\[\]; \}> \{/.test(census))
+    problems.push(`${file}: censusUnverifiable no longer returns four scalars and an UnverifiableRow sample — the classification's "returns no row" is unproved`);
+  const IDENTITY_ONLY = ["seq", "id", "createdAt", "category", "action", "beyondFrontier"];
+  const rowType = /export type UnverifiableRow = \{([^}]*)\};/.exec(code)?.[1] ?? null;
+  const rowFields = rowType === null ? [] : [...rowType.matchAll(/(\w+)\s*:/g)].map((m) => m[1]);
+  if (rowType === null) problems.push(`${file}: the UnverifiableRow type was not found — the census sample's shape is unproved`);
+  else if (rowFields.length === 0 || rowFields.some((f) => !IDENTITY_ONLY.includes(f)))
+    problems.push(`${file}: UnverifiableRow carries more than a row's identity (${rowFields.join(", ")}) — the census would hand a row out`);
+  const cap = Number(/const UNVERIFIABLE_SAMPLE_CAP = (\d+);/.exec(code)?.[1] ?? NaN);
+  if (!(cap >= 1 && cap <= 50)) problems.push(`${file}: the census sample is not capped at 50 or fewer rows (UNVERIFIABLE_SAMPLE_CAP) — an uncapped sample is a row list`);
   for (const name of AUDIT_ROW_TOUCHING_NON_READERS) {
     const body = ws(functionDeclarationText(file, code, name));
     if (body.length > 0 && /\bAuditEntry\b/.test(body)) problems.push(`${file}: ${name} names AuditEntry — a declared non-reader must hand no row out`);
@@ -2616,6 +2663,29 @@ export const CONSOLE_GATE_NON_READERS = ["ConsoleAuditRead", "ConsoleDeskShell",
      exported rather than regexed out of the source. Pure copy: it awaits nothing, reaches no `db.`, names no store
      member and decides no audience (0.512b checks that rather than taking this sentence on trust). */
   "CONSOLE_ACCOUNT_WORD",
+  /* ⭐ 2026-09-26 · C7 437 · the Results tab's painted SHAPES and its one sentence. The four types are what
+     `houseResultsForConsole` returns — a word, a magnitude already formatted, and the flags the page styles by,
+     with no id and no raw number (437(g)). `CONSOLE_RESULTS_NOTE` is the note under By day, pure copy: it awaits
+     nothing, reaches no `db.`, names no store member and decides no audience, which is what 0.512b checks rather
+     than takes on trust. ⛔ The READER is `houseResultsForConsole`, with its own `CONSOLE_GATES` entry above at
+     arity TWO. `CONSOLE_ACCOUNT_WORD` gained `goneMany` in the same change and is already classified above. */
+  "CONSOLE_RESULTS_NOTE", "ConsoleResultCell", "ConsoleResultsAccountRow", "ConsoleResultsDayRow", "ConsoleResultsView",
+  /* ⭐ 2026-09-26 · RESUME-HERE §0c decision 4 · the find step's account list: its query shape (what the page hands
+     the door, untouched), its painted row and view shapes, and ONE constant — `CONSOLE_LIST_COPY`, every word the list
+     paints that is not a row's own value. The three types are types; the constant is pure copy: it awaits nothing,
+     reaches no `db.`, names no store member and decides no audience, which is what 0.512b checks rather than takes on
+     trust. ⛔ The READER is `houseAccountListForConsole`, with its own `CONSOLE_GATES` entry above at arity THREE. */
+  "CONSOLE_LIST_COPY", "ConsoleAccountListQuery", "ConsoleAccountListRow", "ConsoleAccountListView",
+  /* ⭐ 2026-09-27 · build step 9 · every desk table sorts. Four TYPES (a table's name, a column's key, one header's
+     token-and-word, the view a panel hands its `SortTh` headers) and three VALUES: `CONSOLE_SORT_LABEL`, every
+     sortable header's word; `CONSOLE_SORT_TABLES`, each table's columns, address prefix and default; and
+     `consoleSortToken`, a column's header word slugged into its address token. All three are copy and arithmetic:
+     none awaits, reaches `db.`, names a store member or decides an audience, which is what 0.512b checks rather than
+     takes on trust. ⛔ The READERS that parse and apply a sort are the ones already gated — `houseRosterForConsole`
+     and `houseResultsForConsole` (arity THREE since this step), `houseDetailForConsole`, `houseFeedForConsole` and
+     `houseHistoryForConsole` — each with its `CONSOLE_GATES` entry above. */
+  "CONSOLE_SORT_LABEL", "CONSOLE_SORT_TABLES", "ConsoleSortColumn", "ConsoleSortKey", "ConsoleSortTable",
+  "ConsoleSortView", "consoleSortToken",
   "isHouseConsoleRoute", "unsetCaptionFor"] as const;
 
 /**
@@ -3242,6 +3312,14 @@ if (STORE === "memory") {
         /* ⭐ replan ruling 537 · the limits SAVE. A floor at the count this commit measures, never a loose `>= 0`:
          * an action that stopped calling the gated writer would otherwise read as compliance. */
         && r.consoleGateCalls.houseLimitsSaveForConsole >= 1
+        /* ⭐ 2026-09-26 · C7 437 · the Results tab's reader — the one console door that hands a page a result. A
+         * floor at the count this commit measures (the desk page calls it once), never a loose `>= 0`: a page that
+         * stopped calling the gated reader and found its figures some other way would otherwise read as compliance.
+         * 0.260.c5 below shows this clause, its arity pin and its own-route pin each fire on the desk page itself. */
+        && r.consoleGateCalls.houseResultsForConsole >= 1
+        /* ⭐ 2026-09-26 · decision 4 · the find step's list reader — the wizard page calls it once. A floor at the
+         * count this commit measures, never a loose `>= 0`, for the Results clause's reason; 0.260.c6 shows it fire. */
+        && r.consoleGateCalls.houseAccountListForConsole >= 1
         && r.readerFiles.length >= 14 && MEASURED_LEAKS.every((f) => r.readerFiles.includes(f)) && j(r.outsideReaderFiles) === j(Object.keys(AUDIT_READERS_OUTSIDE_CONSOLE).sort()),
       j({ population: r.population, readerCalls: r.readerCalls, gateCalls: r.gateCalls, consoleGateCalls: r.consoleGateCalls, readerFiles: r.readerFiles, outsideReaderFiles: r.outsideReaderFiles, auditReaders, auditExports, problems: r.problems }));
 
@@ -3260,7 +3338,8 @@ if (STORE === "memory") {
     const rowShaped = auditCode.replace(READER_SIG, "export async function readUnverifiableBaseline(): Promise<AuditEntry | null> {");
     /* ⚠️ A REGEX, NOT A MULTI-LINE STRING LITERAL: `src/` is CRLF on this machine and a plant written with `\n`
      * would silently replace NOTHING, leaving a control that plants nothing and passes for the wrong reason. */
-    const censusStub = auditCode.replace(/\): Promise<\{\s*frontierSeq: number; count: number; digest: string; scanned: number;\s*\}> \{/, "): Promise<AuditEntry[]> {");
+    /* ⭐ RE-AIMED 2026-09-26 at the census's new signature (four scalars and its identity sample), so the plant lands. */
+    const censusStub = auditCode.replace(/\): Promise<\{\s*frontierSeq: number; count: number; digest: string; scanned: number;[^}]*\bsample: UnverifiableRow\[\];\s*\}> \{/, "): Promise<AuditEntry[]> {");
     ok("0.260.c4 · CONTROL · the audit module passes this pin TODAY, and the SAME checker reports it the moment the reader's `where` is widened to every row, the moment its return type becomes an audit row, and the moment the census hands back rows — so 0.260.2's zero is a live measurement and the six classifications are not a blanket exemption",
       widened !== auditCode && rowShaped !== auditCode && censusStub !== auditCode
         && auditNonReaderRowClaimProblems(`${AUDIT_MODULE}.ts`, widened).some((p) => p.includes("without pinning where.action"))
@@ -3268,6 +3347,15 @@ if (STORE === "memory") {
         && auditNonReaderRowClaimProblems(`${AUDIT_MODULE}.ts`, rowShaped).some((p) => p.includes("readUnverifiableBaseline names AuditEntry"))
         && auditNonReaderRowClaimProblems(`${AUDIT_MODULE}.ts`, censusStub).some((p) => p.includes("censusUnverifiable no longer returns four scalars")),
       j({ widened: auditNonReaderRowClaimProblems(`${AUDIT_MODULE}.ts`, widened), rowShaped: auditNonReaderRowClaimProblems(`${AUDIT_MODULE}.ts`, rowShaped), censusStub: auditNonReaderRowClaimProblems(`${AUDIT_MODULE}.ts`, censusStub) }));
+    /* ⭐ 0.260.c4b · the two pins the census's 2026-09-26 SAMPLE brought can fail too: a sample row that carries more
+       than an identity, and a sample with no cap, are each reported — plants that must land before they are read. */
+    const rowWidened = auditCode.replace("action: string; beyondFrontier: boolean };", "action: string; beyondFrontier: boolean; payload: unknown };");
+    const uncapped = auditCode.replace("const UNVERIFIABLE_SAMPLE_CAP = 50;", "const UNVERIFIABLE_SAMPLE_CAP = 5000;");
+    ok("0.260.c4b · CONTROL · the census sample is held to a row's IDENTITY and to its cap — a sample row given the payload and a sample cap of 5,000 are each reported",
+      rowWidened !== auditCode && uncapped !== auditCode
+        && auditNonReaderRowClaimProblems(`${AUDIT_MODULE}.ts`, rowWidened).some((p) => p.includes("UnverifiableRow carries more than a row's identity"))
+        && auditNonReaderRowClaimProblems(`${AUDIT_MODULE}.ts`, uncapped).some((p) => p.includes("the census sample is not capped")),
+      j({ rowWidened: auditNonReaderRowClaimProblems(`${AUDIT_MODULE}.ts`, rowWidened), uncapped: auditNonReaderRowClaimProblems(`${AUDIT_MODULE}.ts`, uncapped) }));
 
     /* ⛔ 0.512 · RULING 512 · THE GATE TABLE IS HELD TO THE GATE MODULE'S OWN EXPORTS, BOTH WAYS. `CONSOLE_GATES` is
      * five names typed by hand and nothing compared it with the module it describes — while 0.260.1 directly above
@@ -3374,6 +3462,61 @@ export async function houseStakeForConsole(viewerUserId: string | null, route: s
         && j(gatePlants.reassignedSession.map((p) => p.replace(/^[^:]+:\d+: /, ""))) === j(["hands houseStakeForConsole a viewer that is not the signed-in session's id: session?.userId ?? null"])
         && gatePlants.gateAsValue.some((p) => p.includes("names the console gate houseStakeForConsole outside a call")) && gatePlants.officerConst.length === 0,
       j(gatePlants));
+    /* ⛔ 0.260.c5 · C7 437 · THE RESULTS READER'S THREE PINS FIRE ON THE DESK PAGE ITSELF, not on a page invented for
+     * the purpose. Its own call is re-shaped four ways: a third argument (a caller widening a window that is fixed
+     * at seven days), another section's route (the case the reader's route belt exists for — the audience answers
+     * `/admin/house` by that route's domain), a literal viewer, and the call taken away with the import left in
+     * place (a page that paints results without asking the gate). Each is reported, the last by 0.260.1's own
+     * floor reading 0; the page as written is reported for nothing. */
+    {
+      const DESK = "src/app/admin/desk/page.tsx";
+      const desk = code5(DESK);
+      /* ⭐ STEP 9 · THE CALL TAKES THE ADDRESS NOW (arity 3, the sort only — see CONSOLE_GATES), so the arity plant is
+         the query DROPPED and, separately, a FOURTH argument; the route and viewer plants keep the address in place so
+         each reports only its own defect. */
+      const RESULTS_CALL = "houseResultsForConsole(session?.userId ?? null, \"/admin/desk\", sp)";
+      const resultsPlants = {
+        asWritten: run(DESK, desk),
+        queryDropped: run(DESK, plant(desk, RESULTS_CALL, "houseResultsForConsole(session?.userId ?? null, \"/admin/desk\")")),
+        thirdArg: run(DESK, plant(desk, RESULTS_CALL, "houseResultsForConsole(session?.userId ?? null, \"/admin/desk\", sp, sp)")),
+        otherRoute: run(DESK, plant(desk, RESULTS_CALL, "houseResultsForConsole(session?.userId ?? null, \"/admin/house\", sp)")),
+        literalViewer: run(DESK, plant(desk, RESULTS_CALL, "houseResultsForConsole(\"usr_admin\", \"/admin/desk\", sp)")),
+        callsWithout: consoleHouseReadProblems(withFile(DESK, plant(desk, `await ${RESULTS_CALL}`, "null")), roles).consoleGateCalls.houseResultsForConsole,
+        callsAsWritten: r.consoleGateCalls.houseResultsForConsole,
+      };
+      ok("0.260.c5 · CONTROL · C7 437 · on the desk page's OWN Results call, the address dropped, a fourth argument, another section's route and a literal viewer are each reported, and the call taken away (the import left in place) measures 0 calls where the page as written measures at least 1 — so 0.260.1's arity, own-route and floor clauses for houseResultsForConsole can each fail",
+        resultsPlants.asWritten.length === 0
+          && resultsPlants.queryDropped.some((p) => p.includes("houseResultsForConsole takes 2 arguments, not 3"))
+          && resultsPlants.thirdArg.some((p) => p.includes("houseResultsForConsole takes 4 arguments, not 3"))
+          && resultsPlants.otherRoute.some((p) => p.includes("asks houseResultsForConsole about /admin/house, not this file's own console route /admin/desk"))
+          && resultsPlants.literalViewer.some((p) => p.includes("hands houseResultsForConsole a viewer that is not the signed-in session's id: \"usr_admin\""))
+          && resultsPlants.callsWithout === 0 && resultsPlants.callsAsWritten >= 1,
+        j(resultsPlants));
+    }
+    /* ⛔ 0.260.c6 · RESUME-HERE §0c decision 4 · THE LIST READER'S THREE PINS FIRE ON THE WIZARD PAGE ITSELF. Its own
+     * call is re-shaped four ways: the address dropped (a door that could no longer be told what was asked), another
+     * section's route (the case the reader's route belt exists for), a literal viewer, and the call taken away with
+     * the import left in place — each reported, the last by 0.260.1's own floor reading 0. */
+    {
+      const NEW_PAGE = "src/app/admin/desk/new/page.tsx";
+      const wizard = code5(NEW_PAGE);
+      const LIST_CALL = "houseAccountListForConsole(session?.userId ?? null, \"/admin/desk\", sp)";
+      const listPlants = {
+        asWritten: run(NEW_PAGE, wizard),
+        twoArgs: run(NEW_PAGE, plant(wizard, LIST_CALL, "houseAccountListForConsole(session?.userId ?? null, \"/admin/desk\")")),
+        otherRoute: run(NEW_PAGE, plant(wizard, LIST_CALL, "houseAccountListForConsole(session?.userId ?? null, \"/admin/players\", sp)")),
+        literalViewer: run(NEW_PAGE, plant(wizard, LIST_CALL, "houseAccountListForConsole(\"usr_admin\", \"/admin/desk\", sp)")),
+        callsWithout: consoleHouseReadProblems(withFile(NEW_PAGE, plant(wizard, `await ${LIST_CALL}`, "null")), roles).consoleGateCalls.houseAccountListForConsole,
+        callsAsWritten: r.consoleGateCalls.houseAccountListForConsole,
+      };
+      ok("0.260.c6 · CONTROL · decision 4 · on the wizard page's OWN list call, a dropped address, another section's route and a literal viewer are each reported, and the call taken away (the import left in place) measures 0 calls where the page as written measures at least 1 — so 0.260.1's arity, own-route and floor clauses for houseAccountListForConsole can each fail",
+        wizard.includes(LIST_CALL) && listPlants.asWritten.length === 0
+          && listPlants.twoArgs.some((p) => p.includes("houseAccountListForConsole takes 2 arguments, not 3"))
+          && listPlants.otherRoute.some((p) => p.includes("asks houseAccountListForConsole about /admin/players, not this file's own console route /admin/desk/new"))
+          && listPlants.literalViewer.some((p) => p.includes("hands houseAccountListForConsole a viewer that is not the signed-in session's id: \"usr_admin\""))
+          && listPlants.callsWithout === 0 && listPlants.callsAsWritten >= 1,
+        j(listPlants));
+    }
 
     const planted = (rel: string, code: string) => run(rel, code);
     const importPlants = {

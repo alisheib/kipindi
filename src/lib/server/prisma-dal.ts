@@ -1893,6 +1893,20 @@ export const prismaDb = {
      * "withdrawals" because there had been none would read as a missing section rather
      * than as a true zero.
      */
+    /**
+     * The newest `limit` CONFIRMED rows of one type, `createdAt` then `id` descending.
+     * 🔴 WHY: match-integrity printed "the most recent 200 of N" refunds after reading the WHOLE
+     * Transaction table to find them. Its count and total come from `totalsByType` (SQL
+     * aggregates); this supplies the rows the section shows, and nothing else.
+     */
+    newestConfirmedOfType: async (type: StoredTxn["type"], limit: number): Promise<StoredTxn[]> => {
+      const rows = await pc().transaction.findMany({
+        where: { type, status: "CONFIRMED" },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        take: Math.max(0, limit),
+      });
+      return rows.map(toStoredTxn);
+    },
     totalsByType: async (types: StoredTxn["type"][]): Promise<Record<string, { amount: number; count: number }>> => {
       const out: Record<string, { amount: number; count: number }> = {};
       for (const t of types) out[t] = { amount: 0, count: 0 };
@@ -2757,6 +2771,19 @@ export const prismaDb = {
     list: async (limit = 1000): Promise<StoredObjection[]> => {
       const rows = await pc().objection.findMany({ orderBy: { createdAt: "desc" }, take: limit });
       return rows.map(toStoredObjection);
+    },
+    /** Every objection UPHELD with a remedy that changed the verdict (REVERSE or VOID) — the market, the
+     *  remedy, who ruled and when. Narrow on purpose (four columns, no player text, no cap): the public
+     *  sign-off reads it, and a capped newest-1000 list would silently drop an old ruling (v3 review). */
+    listUpheldRulings: async (): Promise<Array<{ marketId: string; remedy: string; reviewedBy: string | null; reviewedAt: string | null }>> => {
+      const rows = await pc().objection.findMany({
+        where: { status: "UPHELD", remedy: { in: ["REVERSE", "VOID"] } },
+        select: { marketId: true, remedy: true, reviewedBy: true, reviewedAt: true },
+      });
+      return rows.map((r) => ({
+        marketId: r.marketId, remedy: r.remedy ?? "", reviewedBy: r.reviewedBy ?? null,
+        reviewedAt: r.reviewedAt ? new Date(r.reviewedAt).toISOString() : null,
+      }));
     },
   },
 

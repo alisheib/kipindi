@@ -360,7 +360,8 @@ export function DeskLimitsForm({
           ⛔ `items-start` on the stacked axis, not `items-center`: a centred one-line sentence under a
           left-aligned button is the second look for one control this section has already been pulled up for. */}
       <div className="flex flex-col items-start sm:flex-row sm:items-center gap-2 pt-1">
-        <Button ref={saveRef} type="submit" size="md" variant="primary" loading={pending}>
+        {/* Disabled while nothing has changed — the same `armed` the bar and the guard read. */}
+        <Button ref={saveRef} type="submit" size="md" variant="primary" loading={pending} disabled={!armed}>
           Save · Hifadhi
         </Button>
         {/**

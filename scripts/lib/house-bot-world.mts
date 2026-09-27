@@ -39,7 +39,14 @@ export async function loadWorld() {
   const uid = (p: string) => `${p}_${process.pid}_${++seq}`;
   const iso = (msFromNow = 0) => new Date(Date.now() + msFromNow).toISOString();
 
-  async function user(o: { id?: string; balance?: number; bonusBalance?: number; role?: string; passwordHash?: string | null; recruitedBy?: string | null } = {}): Promise<string> {
+  /**
+   * ⭐ `createdAt` AND `lastLoginAt` ARE OPTIONAL AND BOTH DEFAULT TO WHAT EVERY EXISTING CALLER ALREADY GOT (added
+   * 2026-09-26 for the find step's account list, which sorts and filters on exactly these two instants).
+   * ⛔ SET AT CREATE, NEVER THROUGH `setUserFields`: the Prisma twin's `update` converts `lastLoginAt` but not
+   * `createdAt`, and a raw SQL write of either is the naive-timestamp trap (RESUME-HERE §1) — `create` is the one
+   * path that converts both on both stores.
+   */
+  async function user(o: { id?: string; balance?: number; bonusBalance?: number; role?: string; passwordHash?: string | null; recruitedBy?: string | null; createdAt?: string; lastLoginAt?: string | null } = {}): Promise<string> {
     const id = o.id ?? uid("usr_hb");
     const now = iso();
     await db.user.create({
@@ -47,7 +54,7 @@ export async function loadWorld() {
       passwordHash: o.passwordHash ?? null, passwordSalt: null, failedLoginCount: 0, lockedUntil: null,
       role: o.role ?? "PLAYER", status: "ACTIVE", locale: "EN", displayName: null, dob: null, region: null,
       acceptedTermsVersion: null, acceptedTermsAt: null, marketingOptIn: false, twoFactorEnabled: false,
-      avatarDataUrl: null, recruitedBy: o.recruitedBy ?? null, createdAt: now, updatedAt: now, lastLoginAt: null, closedAt: null,
+      avatarDataUrl: null, recruitedBy: o.recruitedBy ?? null, createdAt: o.createdAt ?? now, updatedAt: now, lastLoginAt: o.lastLoginAt ?? null, closedAt: null,
     } as never);
     await db.wallet.create({
       id: `wal_${id}`, userId: id, balance: o.balance ?? 0, pending: 0, hold: 0, bonusBalance: o.bonusBalance ?? 0,
@@ -111,12 +118,17 @@ export async function loadWorld() {
   async function switchOn(): Promise<void> { await dal.houseBotControlStore.switchOn({ byId: OFFICER, reason: "test" }); }
   async function switchOff(): Promise<void> { await dal.houseBotControlStore.switchOff({ cause: "MANUAL", byId: OFFICER, reason: "test" }); }
 
-  /** A designated, ACTIVE bot on a fresh holder with a real consent fingerprint and open caps. */
-  async function bot(o: { balance?: number; bonusBalance?: number; caps?: Record<string, unknown>; holderId?: string } = {}): Promise<{ botId: string; userId: string }> {
+  /**
+   * A designated, ACTIVE bot on a fresh holder with a real consent fingerprint and open caps.
+   * ⭐ `label`, `designatedAt` and `botId` ARE OPTIONAL AND DEFAULT TO WHAT EVERY EXISTING CALLER ALREADY GOT (added
+   * 2026-09-26 for step 9's sorts): the roster sorts by the label, orders its ties by designation and then the id, so a
+   * case about those needs to choose them — two accounts designated in the same millisecond, stored against id order.
+   */
+  async function bot(o: { balance?: number; bonusBalance?: number; caps?: Record<string, unknown>; holderId?: string; label?: string; designatedAt?: string; botId?: string } = {}): Promise<{ botId: string; userId: string }> {
     const userId = o.holderId ?? await user({ balance: o.balance ?? 5_000_000, bonusBalance: o.bonusBalance ?? 0, passwordHash: HOLDER_HASH });
-    const botId = uid("hb");
-    const label = `Bot ${seq}`;
-    const now = iso();
+    const botId = o.botId ?? uid("hb");
+    const label = o.label ?? `Bot ${seq}`;
+    const now = o.designatedAt ?? iso();
     await dal.houseBotStore.designate({
       bot: {
         id: botId, userId, label, labelKey: labelKey(label), note: null, passwordFingerprint: passwordFingerprint(HOLDER_HASH),

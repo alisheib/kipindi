@@ -112,6 +112,8 @@ const NEW_PAGE = `${SECTION}/new/page.tsx`;
 const NEW_LOADING = `${SECTION}/new/loading.tsx`;
 const NEW_ACTIONS = `${SECTION}/new/actions.ts`;
 const NEW_CLIENT = `${SECTION}/new/designate-wizard.tsx`;
+/** ⭐ RESUME-HERE §0c decision 4 · the find step's list of every account — a SERVER component, named for the same reason. */
+const NEW_LIST = `${SECTION}/new/account-list.tsx`;
 
 /**
  * ⛔ EVERY STRING OF A FILE THAT CAN REACH THE DOM, and only those (ruling 453). A module specifier is NOT one
@@ -171,6 +173,21 @@ const STATES: Array<[string, Any]> = [];
 
 const w = await loadWorld();
 const GATEM: Any = await import("../../src/lib/server/house-console-read.ts");
+/**
+ * ⭐ STEP 9 · THE ROSTER PAGES AT TWENTY (2026-09-27), and this suite's world outgrows twenty accounts — nearly every
+ * case designates its own. A case that FINDS one account's row, or scans every row's painted words for §3, reads EVERY
+ * page through the door itself (`rpage`) and gets page 1's view carrying every page's rows, so no row can hide on page 2
+ * of a find or a scan. The page count is the reader's own (`rosterTotal` / `rosterPerPage`), never assumed here; a
+ * refused or failed read is handed back untouched.
+ */
+const rosterEvery = async (viewer: string): Promise<Any> => {
+  const first: Any = await GATEM.houseRosterForConsole(viewer, "/admin/desk");
+  if (first == null || !Array.isArray(first.rows) || typeof first.rosterTotal !== "number") return first;
+  const pages = Math.max(1, Math.ceil(first.rosterTotal / first.rosterPerPage));
+  const rows: Any[] = [...first.rows];
+  for (let n = 2; n <= pages; n++) rows.push(...(((await GATEM.houseRosterForConsole(viewer, "/admin/desk", { rpage: String(n) })) as Any)?.rows ?? []));
+  return { ...first, rows };
+};
 const ROLES: Any = await import("../../src/lib/server/roles.ts");
 const RBAC: Any = await import("../../src/lib/server/rbac.ts");
 /** ⭐ C7 step 6 · the picker's own bucket (387(e)) — named here because `rateCheckAsync` FAILS OPEN on a key it
@@ -226,6 +243,28 @@ const panelOf = (tab: string): string => {
   const close = pageCode.indexOf("\n        </>)}", open);
   return close < 0 ? pageCode.slice(open) : pageCode.slice(open, close);
 };
+/**
+ * ⭐ STEP 9 · A TABLE'S HEADER ROW, READ OFF THE PAGE'S SOURCE — the plain `<th>` and the kit's `<SortTh>` alike, in
+ * source order. Every sortable header became `SortTh` at step 9: its WORD is the reader's (`CONSOLE_SORT_LABEL`, reached
+ * through the view's `…Sort.columns.<key>.label`) and its RENDERED class is `text-left`/`text-right` from `align` in
+ * front of its own `className` — exactly what `SortTh` renders. So every pin that read a header's word or class reads
+ * the SAME fact it read before, resolved the way the render resolves it; the pins are re-pointed, not relaxed.
+ * ⛔ A literal `label="…"` is read AS WRITTEN, so a word typed at a call site is seen for what it is.
+ */
+const HEADER_RE = /<SortTh\b[^>]*\/>|<th\s[^>]*\/>|<th\s[^>]*>[\s\S]*?<\/th>/g;
+type Head = { label: string; cls: string; sortable: boolean; src: string };
+const headOf = (src: string): Head => {
+  if (src.startsWith("<SortTh")) {
+    const key = /\blabel=\{[\w.]+\.columns\.(\w+)\.label\}/.exec(src)?.[1];
+    const literal = /\blabel="([^"]*)"/.exec(src)?.[1];
+    const label = literal ?? (key ? (GATEM.CONSOLE_SORT_LABEL as Record<string, string>)[key] ?? `?${key}` : "?");
+    const cls = `${/\balign="right"/.test(src) ? "text-right" : "text-left"} ${/\bclassName="([^"]*)"/.exec(src)?.[1] ?? ""}`.trim();
+    return { label, cls, sortable: true, src };
+  }
+  const inner = src.endsWith("/>") ? "" : src.slice(src.indexOf(">") + 1, src.lastIndexOf("</th>"));
+  return { label: inner.replace(/\{[^{}]*\}/g, " ").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim(), cls: /\bclassName="([^"]*)"/.exec(src)?.[1] ?? "", sortable: false, src };
+};
+const theadHeaders = (src: string): Head[] => [...src.matchAll(HEADER_RE)].map((m) => headOf(m[0]));
 
 try {
 section("§1 · the audience, decided on the STORED role, through the gate");
@@ -1773,13 +1812,17 @@ section("§2 · the strip, the band, the roster and every failure");
   {
     await w.limits({ gCapPerMarketTzs: null, gMaxBetsPerDay: null });
     const realCtl = w.dal.houseBotControlStore.get;
-    const spyCtl = { roster: 0, usage: 0, sawSpy: 0, sawReal: 0 };
-    let rosterPass: Any, usagePass: Any;
+    /* ⭐ THREE PASSES SINCE C7 437. The Results tab is a fifth render with its own gated reader, and it paints the SAME
+       strip, band and rail badge as the other four — so it is held to the same one control read per pass, and a
+       results reader that took its own second look at the control row would be a strip that could disagree with the
+       badge beside it on exactly one tab. */
+    const spyCtl = { roster: 0, usage: 0, results: 0, sawSpy: 0, sawReal: 0 };
+    let rosterPass: Any, usagePass: Any, resultsPass: Any;
     /* ⛔ THE IDENTITY THE CONTROL BELOW CHECKS. Each spy records, FROM INSIDE ITS OWN BODY, which function object was
      * installed on the store at the moment the reader called it. That is what proves the patch reached the module
      * under test — the old control called through the handle it had just patched, so it incremented whatever the
      * readers had done and could not fail. A control that fires either way is not a control. */
-    let rosterSpy: Any, usageSpy: Any;
+    let rosterSpy: Any, usageSpy: Any, resultsSpy: Any;
     try {
       rosterSpy = (...a: Any[]) => {
         spyCtl.roster++;
@@ -1795,23 +1838,34 @@ section("§2 · the strip, the band, the roster and every failure");
       };
       w.dal.houseBotControlStore.get = usageSpy;
       usagePass = await GATEM.houseUsageForConsole(OFFICER, "/admin/desk", { houseBotId: null });
+      resultsSpy = (...a: Any[]) => {
+        spyCtl.results++;
+        if (w.dal.houseBotControlStore.get === resultsSpy) spyCtl.sawSpy++; else spyCtl.sawReal++;
+        return realCtl.apply(w.dal.houseBotControlStore, a as Any);
+      };
+      w.dal.houseBotControlStore.get = resultsSpy;
+      resultsPass = await GATEM.houseResultsForConsole(OFFICER, "/admin/desk");
     } finally { w.dal.houseBotControlStore.get = realCtl; }
     ok("1.306 · 1.312 · each render pass reads the control row EXACTLY ONCE — the strip's count and the rail's badge can never be two different reads",
-      spyCtl.roster === 1 && spyCtl.usage === 1, j(spyCtl));
-    ok("1.306 · CONTROL · IDENTITY · both reads went through the patched handle itself — not through a second copy of the DAL, and not through a control that called its own patch",
-      spyCtl.sawSpy === 2 && spyCtl.sawReal === 0 && rosterSpy !== usageSpy
+      spyCtl.roster === 1 && spyCtl.usage === 1 && spyCtl.results === 1, j(spyCtl));
+    ok("1.306 · CONTROL · IDENTITY · all three reads went through the patched handle itself — not through a second copy of the DAL, and not through a control that called its own patch",
+      spyCtl.sawSpy === 3 && spyCtl.sawReal === 0
+        && rosterSpy !== usageSpy && usageSpy !== resultsSpy && rosterSpy !== resultsSpy
         && w.dal.houseBotControlStore.get === realCtl, j(spyCtl));
-    ok("1.306 · 1.312 · …and both panels report the SAME derived count, which is the number the badge and the sentence both paint",
-      rosterPass.unsetRequired === 2 && usagePass.unsetRequired === rosterPass.unsetRequired,
-      j({ roster: rosterPass.unsetRequired, usage: usagePass.unsetRequired }));
-    /* ⛔ AND THE SHELL IS THE SAME SHELL ON BOTH TABS (ruling 406): the switch, the auto-off cause and the band live
+    ok("1.306 · 1.312 · …and all three panels report the SAME derived count, which is the number the badge and the sentence both paint",
+      rosterPass.unsetRequired === 2 && usagePass.unsetRequired === rosterPass.unsetRequired
+        && resultsPass?.unsetRequired === rosterPass.unsetRequired,
+      j({ roster: rosterPass.unsetRequired, usage: usagePass.unsetRequired, results: resultsPass?.unsetRequired }));
+    /* ⛔ AND THE SHELL IS THE SAME SHELL ON EVERY TAB (ruling 406): the switch, the auto-off cause and the band live
      * above the rail, so a reader that built its own version of them would let one tab say the desk is off while the
-     * other said it was on. */
-    ok("1.406 · the strip, the auto-off cause and the band are the SAME values on both panels — one shell, built once",
-      usagePass.stateSentence === rosterPass.stateSentence && usagePass.offCause === rosterPass.offCause
-        && j(usagePass.tiles) === j(rosterPass.tiles) && usagePass.on === rosterPass.on
-        && usagePass.limitsFirstUnsetHref === rosterPass.limitsFirstUnsetHref,
-      j({ roster: rosterPass.stateSentence, usage: usagePass.stateSentence }));
+     * other said it was on. The Results reader is held to it too — it is the one reader whose own figures are a
+     * RESULT, so a band it rebuilt from them would be the band 303 forbids. */
+    ok("1.406 · the strip, the auto-off cause and the band are the SAME values on all three panels — one shell, built once",
+      [usagePass, resultsPass].every((p: Any) => p != null
+        && p.stateSentence === rosterPass.stateSentence && p.offCause === rosterPass.offCause
+        && j(p.tiles) === j(rosterPass.tiles) && p.on === rosterPass.on
+        && p.limitsFirstUnsetHref === rosterPass.limitsFirstUnsetHref),
+      j({ roster: rosterPass.stateSentence, usage: usagePass.stateSentence, results: resultsPass?.stateSentence }));
     await w.limits();
   }
 
@@ -2487,11 +2541,14 @@ section("§2b · the limits save");
 
   /* ⛔ A SAVE THAT LANDED MAY NOT REPORT THAT NOTHING WAS SAVED — AND THIS WAS MEASURED ON A SERVED BUILD.
    *
-   * The audit module is documented as never rejecting and it fails OPEN on a database outage, so the first pass
+   * The audit module was documented as never rejecting and it failed OPEN on a database outage, so the first pass
    * awaited it after the write and let it speak for itself. Driven against `next start`, `chainSecret()` threw
    * outright (`NODE_ENV=production` without a distinct `AUDIT_CHAIN_SECRET`) — past the in-memory fallback too —
    * and the officer was told "Nothing was saved. Reload the page and try again." while the control row HAD moved.
    * The next thing an officer does with that sentence is type the change again.
+   * ⭐ SINCE REPLAN RULING 543 (2026-09-26) THE AUDIT NO LONGER THROWS HERE: it RESOLVES unrecorded (UNSIGNED), and the
+   * save reads that flag instead of catching a rejection — §2i holds the contract, and the declared `537-recorded`
+   * mutation now forces the flag read itself to lie. This case is unchanged, because the officer's answer is.
    * ⛔ THE FAULT IS INJECTED THROUGH THE AUDIT MODULE'S OWN PRECONDITION, not through a seam invented for a test:
    * under `NODE_ENV=production` it REQUIRES a chain secret distinct from the session secret, and both halves of
    * that are restored in a `finally`. ⛔ And the gap is never swallowed: `recorded` is FALSE, which is what makes
@@ -4903,8 +4960,14 @@ try {
       const ACCOUNT_WORDS: string[] = Object.values(GATEM.CONSOLE_ACCOUNT_WORD as Record<string, string>);
       const EVENT_WORDS: string[] = Object.values(GATEM.CONSOLE_EVENT_WORD as Record<string, string>);
       const collisions = ACCOUNT_WORDS.filter((a) => EVENT_WORDS.includes(a));
-      ok("1.317 · 432(n) · M6 · not one of the console's three ACCOUNT words is also one of its event words — checked over the whole of both TOTAL maps, so the row that records a removal cannot print the same sentence in the subject column and the event column",
-        ACCOUNT_WORDS.length === 3 && EVENT_WORDS.length >= 20 && collisions.length === 0,
+      /* ⭐ FOUR SINCE C7 437, AND THE POPULATION CHANGE IS DELIBERATE: the Results tab's By account folds EVERY account
+         that is no longer on the desk into ONE line, and one line about several accounts needs its own plural word
+         ("Accounts no longer on the desk") beside `gone`'s singular. It is still a SUBJECT, never an event, so it is
+         held to the same collision check — and the four are held apart from EACH OTHER too, because two subject words
+         that read the same would be the very two-sentences-one-meaning defect M6 exists against. */
+      ok("1.317 · 432(n) · M6 · not one of the console's four ACCOUNT words is also one of its event words — checked over the whole of both TOTAL maps, so the row that records a removal cannot print the same sentence in the subject column and the event column",
+        ACCOUNT_WORDS.length === 4 && new Set(ACCOUNT_WORDS).size === ACCOUNT_WORDS.length
+          && EVENT_WORDS.length >= 20 && collisions.length === 0,
         j({ accountWords: ACCOUNT_WORDS, collisions, eventWords: EVENT_WORDS.length }));
       const m6Removed = m6Rows.filter((r: Any) => r.accountName === GATEM.CONSOLE_ACCOUNT_WORD.gone);
       /* ⚠️ WHAT THIS CASE MEASURED ON ITS FIRST RUN, AND WHY THE CLAIM IS THE ONE BELOW. The first form demanded
@@ -5071,13 +5134,16 @@ try {
         && /COUNTER/.test('const KINDS = ["COUNTER"];'), "");
     /* ⛔ THE MONEY COLUMN IS SECOND, IT IS THE KIT'S OWN MONEY SHAPE, AND THE TABLE TAKES NO MIN-WIDTH. */
     const feedThead = /\{tab === "activity"[\s\S]*?<\/thead>/.exec(detail)?.[0] ?? "";
-    const feedHeaders = [...feedThead.matchAll(/<th\s[^>]*>([^<]*)</g)].map((m) => m[1].trim());
+    /* ⭐ STEP 9 · read through `theadHeaders`: When, Stake and Outcome are the kit's `SortTh` now, their words the reader's. */
+    const feedHeaders = theadHeaders(feedThead).map((h) => h.label);
     /* ⛔ THE ACTIVITY PANEL'S OWN SLICE, not the whole file — the page paints four tables and the targets and
        history ones have their own, different column counts. Measured: an unscoped read returned spans [9,9,3,4]
        and the pin failed for the right reason on the wrong population. */
     const feedPanel = /\{tab === "activity"[\s\S]*?<\/table>/.exec(detail)?.[0] ?? "";
+    /* ⭐ THE RECORD IS A KEYED FRAGMENT SINCE 2026-09-26 (the row, then its note's own line), so the ROW is the first
+       `</tr>` after that key — the note line carries no wide cell and is held by its own assertions below. */
     const wideCells = (panel: string): string[] => {
-      const row = /<tr key=\{`\$\{r\.whenTitle\}[\s\S]*?<\/tr>/.exec(panel)?.[0] ?? "";
+      const row = /<Fragment key=\{`\$\{r\.whenTitle\}[\s\S]*?<\/tr>/.exec(panel)?.[0] ?? "";
       const cuts = [...row.matchAll(/<td\s/g)].map((m) => m.index ?? 0);
       return cuts.map((start, k) => row.slice(start, cuts[k + 1] ?? row.length))
         .filter((cell) => /className="hidden sm:table-cell/.test(cell));
@@ -5090,7 +5156,9 @@ try {
       /* ⭐ "Left today" JOINED 2026-09-24, THIRD AND DIRECTLY AFTER Stake: ruling 1085 puts money "SECOND (and
          third where two exist)", and the claim MEASURED a few assertions below — the FIRST `.amount` cell is the SECOND WIDE cell of the
          second — is what keeps 373 true with two money columns on one row. */
-      all(feedHeaders) === all(["When (EAT)", "Opening", "Stake", "Closing", "Left today", "Outcome", "Type", "Round", "Game", "Note"]), j(feedHeaders));
+      /* ⭐ "Type" AND "Note" LEFT THEIR COLUMNS 2026-09-26 (RESUME-HERE §0c decision 2) — Type is the Outcome cell's
+         second line and Note a line of its own under its row; where each went is asserted in §2e2b below. */
+      all(feedHeaders) === all(["When (EAT)", "Opening", "Stake", "Closing", "Left today", "Outcome", "Round", "Game"]), j(feedHeaders));
     /* 🔴 THIS WAS A `.test()` ON THE STAKE CELL ALONE, UNDER A LABEL THAT SAID "the money cell" (found 2026-09-25).
      * `Left today` and `Remaining` already escaped it — both carry a `title=` and a null branch, so neither matches
      * the pinned literal — and it kept passing on the strength of Stake while claiming to govern all of them.
@@ -5116,12 +5184,12 @@ try {
        wrap sets its column's minimum at its own width and, the cells being right-aligned, pins the figure to the
        far edge: that is the measured 432(o) defect, and more money columns is exactly the pressure that invites
        it. ⛔ DERIVED: every right-aligned header in this panel must be allowed to wrap. */
-    const moneyHeaders = [...feedThead.matchAll(/<th\s[^>]*className="([^"]*text-right[^"]*)"[^>]*>/g)].map((m) => m[1]);
+    const moneyHeaders = theadHeaders(feedThead).filter((h) => /\btext-right\b/.test(h.cls)).map((h) => h.cls);
     ok("1.373 · 432(o) · every money header on the ACTIVITY table may WRAP — a nowrap header sets the column's minimum and pins the right-aligned figure to the card's edge",
       moneyHeaders.length >= 3 && moneyHeaders.every((c) => /!whitespace-normal/.test(c)),
       j({ moneyHeaders: moneyHeaders.length }));
     ok("1.373 · CONTROL · the header scan really read the ACTIVITY table and not the history one, so the order above is that table's",
-      feedHeaders.length === 10 && !feedHeaders.includes("Event"), j(feedHeaders));
+      feedHeaders.length === 8 && !feedHeaders.includes("Event"), j(feedHeaders));
 
     /* 🔴 THE CLAIM THIS RULING RESTS ON WAS ASSERTED IN THREE PLACES AND MEASURED IN NONE (found 2026-09-25).
      * C7-SPEC's Proof line and two comments in this file say "the first `.amount`-carrying cell is the row's
@@ -5157,7 +5225,7 @@ try {
     ok("1.373 · CONTROL · the span scan really would report a stale number — the defect invisible to every gate, because a spanning cell renders as one cell whatever it says",
       spansOf(feedPanel.replace(/colSpan=\{\d+\}/, "colSpan={3}")).some((n) => n !== feedHeaders.length), "");
     const histThead = /\{tab === "history"[\s\S]*?<\/thead>/.exec(detail)?.[0] ?? "";
-    const histHeaders = [...histThead.matchAll(/<th\s[^>]*>([^<]*)</g)].map((m) => m[1].trim());
+    const histHeaders = theadHeaders(histThead).map((h) => h.label);
     ok("1.373 · 266 · the history table carries NO money column at all — who, what, when and the change, and a door where an amount would have been",
       all(histHeaders) === all(["When (EAT)", "Event", "Change", "Who"]) && !/amount/.test(histThead), j(histHeaders));
     /* 🔴 THE REFUSAL'S HEADING IS NUMBER-AGNOSTIC, AND THAT TOO WAS READ OFF A TILE: a singular title
@@ -5208,17 +5276,29 @@ section("§2e3 · the desk landing page's activity and history panels");
       && /param="page"/.test(landing) && /param="hpage"/.test(landing)
       && !/baseHref=\{buildBaseHref\(CONSOLE_ROUTE, \{/.test(landing),
     "");
-  ok("1.411 · both landing panels draw the shared `AdminPagination`, each total is a COUNTING field of its view, and neither is a rendered array's length",
-    (landing.match(/<AdminPagination/g) ?? []).length === 2
+  /* ⭐ STEP 9 · THREE: the roster pages too, over its reader's own count (and draws nothing at the ceiling of twenty). */
+  ok("1.411 · the three paged landing panels draw the shared `AdminPagination`, each total is a COUNTING field of its view, and none is a rendered array's length",
+    (landing.match(/<AdminPagination/g) ?? []).length === 3
       && /total=\{feedView\.feedTotal\}/.test(landing) && /total=\{historyView\.historyTotal\}/.test(landing)
+      && /total=\{rosterView\.rosterTotal\}/.test(landing)
       && !/total=\{[^}]*\.length\}/.test(landing)
       && !/parsePage/.test(landing)
       && /page=\{feedView\.feedPage\}/.test(landing) && /perPage=\{feedView\.feedPerPage\}/.test(landing),
     j({ pagers: (landing.match(/<AdminPagination/g) ?? []).length }));
   /* ⛔ AND THE UNPAGED PANELS DRAW NONE: the roster and the limits panel are whole reads, and a pager over a list
-     that is never paged is 432(a)'s dead control. */
-  ok("1.411 · the roster and limits panels draw NO pager — a numbered control over a list that is never paged is a control with nothing behind it",
-    !/<AdminPagination/.test(panelOf("roster")) && !/<AdminPagination/.test(panelOf("limits"))
+     that is never paged is 432(a)'s dead control. ⭐ C7 437's Results panel is a third: seven FIXED days and a bounded
+     roster, so a pager there would page nothing — and its panel is asserted non-empty, so "no pager" cannot pass on a
+     slice that found no panel at all. */
+  /* ⭐ STEP 9 · THE ROSTER LEFT THIS LIST, AND WHY THAT IS NOT A DEAD CONTROL. Ali asked that no desk table can ever
+     grow past a page, so the reader PAGES the roster at twenty and the page draws the kit pager over the reader's count:
+     at the configured ceiling of twenty it renders nothing (the kit pager returns null on one page — ruling 411's own
+     reason the loader draws no ghost for it), and the day that ceiling moves it is a real pager, not a longer table.
+     The limits and Results panels still draw none, for the reasons above. */
+  ok("1.411 · the limits and results panels draw NO pager — a numbered control over a list that is never paged is a control with nothing behind it — and the roster's is the kit pager over its reader's own count, its own page word and its validated parameters",
+    /<AdminPagination/.test(panelOf("roster")) && /param="rpage"/.test(panelOf("roster"))
+      && /baseHref=\{buildBaseHref\(CONSOLE_ROUTE, rosterView\.rosterParams, "rpage"\)\}/.test(panelOf("roster"))
+      && !/<AdminPagination/.test(panelOf("limits"))
+      && !/<AdminPagination/.test(panelOf("results")) && panelOf("results").length > 200
       && /<AdminPagination/.test(panelOf("activity")) && /<AdminPagination/.test(panelOf("history")),
     "");
   /* ⛔ EACH PANEL'S EMPTY STATE IS THE KIT'S AND IS REACHED ONLY BY A `length === 0` BRANCH; THE FAILURE STATE IS
@@ -5229,7 +5309,14 @@ section("§2e3 · the desk landing page's activity and history panels");
       && (panelOf("activity").match(/<AdminTableEmpty/g) ?? []).length === 1
       && (panelOf("history").match(/<AdminTableEmpty/g) ?? []).length === 1
       && (panelOf("activity").match(/<AdminLoadError/g) ?? []).length === 1
-      && (panelOf("history").match(/<AdminLoadError/g) ?? []).length === 1,
+      && (panelOf("history").match(/<AdminLoadError/g) ?? []).length === 1
+      /* ⭐ C7 437 · THE RESULTS PANEL'S OWN PAIR. Its By-day rows are always seven — a failed DAY is a row that says
+         so, never a failure card — so the one failure card on the panel is By account's, reached only when the
+         roster read failed and nobody can tell whose line is whose; and its one empty state only on a roster that
+         is genuinely empty. */
+      && /resultAccounts === null \? \(/.test(landing) && /resultAccounts\.length === 0 \? \(/.test(landing)
+      && (panelOf("results").match(/<AdminTableEmpty/g) ?? []).length === 1
+      && (panelOf("results").match(/<AdminLoadError/g) ?? []).length === 1,
     "");
   /* ⛔ AND THE TWO FAILURE SENTENCES NAME THEIR OWN SUBJECT — "the desk's activity" is not "the desk's history",
      and neither is "the roster": a failure treatment that does not say what failed is one an officer cannot act on. */
@@ -5237,21 +5324,22 @@ section("§2e3 · the desk landing page's activity and history panels");
     const whats = [...landing.matchAll(/<AdminLoadError what=\{?"([^"]+)"/g)].map((m) => m[1]);
     ok("1.355 · every failure treatment on this page NAMES its own subject, and no two name the same one",
       whats.length >= 4 && new Set(whats).size === whats.length
-        && whats.includes("the desk's activity") && whats.includes("the desk's history"),
+        && whats.includes("the desk's activity") && whats.includes("the desk's history")
+        && whats.includes("the desk's results by account"),
       j(whats));
   }
   /* ⛔ THE MONEY COLUMN OF THE DESK FEED IS THE KIT'S OWN MONEY SHAPE, ITS HEADER IS EXACTLY `Stake`, AND THE
      SUBJECT COLUMN IS FIRST — the roster's own shape one card above, applied to this table's own subject. */
   {
     const feedThead = /<thead[\s\S]*?<\/thead>/.exec(panelOf("activity"))?.[0] ?? "";
-    const feedHeaders = [...feedThead.matchAll(/<th\s[^>]*>([^<]*)</g)].map((m) => m[1].trim());
+    const feedHeaders = theadHeaders(feedThead).map((h) => h.label);
     const histThead = /<thead[\s\S]*?<\/thead>/.exec(panelOf("history"))?.[0] ?? "";
-    const histHeaders = [...histThead.matchAll(/<th\s[^>]*>([^<]*)</g)].map((m) => m[1].trim());
+    const histHeaders = theadHeaders(histThead).map((h) => h.label);
     ok("1.373 · the desk activity table's headers are the control facts in order — the SUBJECT first and the money SECOND, headed exactly `Stake`, with the control column carrying no header word",
       /* ⛔ `all`, NOT `j` — its per-account twin already uses `all`, and this one was one column away from
          comparing prefixes only. This suite's own header records the `317-word-hole` defect, where a long set
          compared under the truncating serialiser let a rename through unreported. */
-      all(feedHeaders) === all(["Account", "Opening", "Stake", "Closing", "Left today", "When (EAT)", "Outcome", "Type", "Round", "Game", "Note", ""]),
+      all(feedHeaders) === all(["Account", "Opening", "Stake", "Closing", "Left today", "When (EAT)", "Outcome", "Round", "Game", ""]),
       j(feedHeaders));
     ok("1.373 · 266 · the desk history table carries NO money column at all — whose, when, what, the change and who did it, and a door where an amount would have been",
       j(histHeaders) === j(["Account", "When (EAT)", "Event", "Change", "Who"]) && !/amount/.test(histThead),
@@ -5259,6 +5347,99 @@ section("§2e3 · the desk landing page's activity and history panels");
     ok("1.373 · the desk feed's money cell is the kit's own money shape — `tabular text-right` with `.amount` — and neither landing table takes a `min-w-*` on the table itself",
       /<td className="hidden sm:table-cell p-3 tabular text-right"><span className="amount">\{r\.stake\}<\/span><\/td>/.test(panelOf("activity"))
         && !/admin-tbl min-w-/.test(landing), "");
+  }
+  /* ═══ §2e3b · THE LEDGER AT 1280 — WHERE `Type` AND `Note` WENT (RESUME-HERE §0c decision 2, 2026-09-26) ═══
+   * Both activity tables gave up two columns so the desk-wide one fits the ≈998px strip at 1280 (measured at its
+   * seven-digit worst case by `qa:house-bots-visual` §5.7). What only the source can say is that nothing the owner
+   * named was LOST on the way: the stake's type is the Outcome cell's second line in plain words — never a second
+   * chip (`8018653b`) — the note is a line of its own under its row from `sm` up, the phone's stack still carries
+   * both, and the two rows of one record read as one. Every assertion runs on BOTH pages, each with a control. */
+  {
+    const detailCode = decomment(read(DETAIL_PAGE));
+    const ledgers: [string, string, number][] = [
+      ["desk", panelOf("activity"), 10],
+      ["account", /\{tab === "activity"[\s\S]*?<\/table>/.exec(detailCode)?.[0] ?? "", 8],
+    ];
+    const rowOf = (panel: string) => /<Fragment key=\{`\$\{r\.whenTitle\}[\s\S]*?<\/tr>/.exec(panel)?.[0] ?? "";
+    const cellsOf = (row: string): string[] => {
+      const cuts = [...row.matchAll(/<td\s/g)].map((m) => m.index ?? 0);
+      return cuts.map((start, k) => row.slice(start, cuts[k + 1] ?? row.length));
+    };
+    const wideOf = (panel: string) => cellsOf(rowOf(panel)).filter((c) => /className="hidden sm:table-cell/.test(c));
+    const OUTCOME_CHIP = /<Chip size="sm" variant=\{r\.resultChip \?\? r\.statusChip\}>\{r\.resultWord \?\? r\.statusWord\}<\/Chip>/;
+    const TYPE_LINE = /<span className="block mt-1 text-body-sm text-text-secondary">\{r\.typeWord\}<\/span>/;
+    const typeHeld = (panel: string): boolean => {
+      const typeCells = wideOf(panel).filter((c) => /r\.typeWord/.test(c));
+      return typeCells.length === 1 && OUTCOME_CHIP.test(typeCells[0]) && TYPE_LINE.test(typeCells[0])
+        && (typeCells[0].match(/<Chip\b/g) ?? []).length === 1
+        && !/<th\s[^>]*>Type</.test(panel);
+    };
+    ok("1.373 · decision 2 · the stake's TYPE is the Outcome cell's second line on both ledgers, in plain words under the one chip — not a column, and never a second chip",
+      ledgers.every(([, p]) => typeHeld(p)), j(ledgers.map(([k, p]) => [k, wideOf(p).filter((c) => /r\.typeWord/.test(c)).length])));
+    ok("1.373 · decision 2 · CONTROL · the type as a second chip, the type line dropped, and a Type column restored are each reported",
+      ledgers.every(([, p]) => !typeHeld(p.replace(TYPE_LINE, "<Chip size=\"sm\">{r.typeWord}</Chip>"))
+        && !typeHeld(p.replace(TYPE_LINE, ""))
+        && !typeHeld(p.replace(/<td className="hidden sm:table-cell p-3">\s*<Chip/, '<td className="hidden sm:table-cell p-3">{r.typeWord}</td><td className="hidden sm:table-cell p-3"><Chip'))), "");
+    /* ⛔ THE NOTE'S LINE: after its row, inside the same keyed record, only when the row carries one, spanning every
+       column (the span is ALSO held by the derived colSpan rule), and held to a reading measure. */
+    /* ⚠️ `decomment` keeps a JSX comment's braces (`{` newlines `}`), so empty braces may sit between the two rows. */
+    const NOTE_LINE = /<\/tr>\s*(?:\{\s*\}\s*)*\{r\.note !== null && \(\s*<tr className=\{`\$\{NOTE_ROW\}\$\{r\.anchored \? " bg-bg-overlay" : ""\}`\}>\s*<td colSpan=\{(\d+)\} className="!pt-0">\s*<div className="max-w-\[min\(80ch,calc\(100vw_-_4rem\)\)\] whitespace-normal text-body-sm text-text-secondary">\{r\.note\}<\/div>\s*<\/td>\s*<\/tr>\s*\)\}\s*<\/Fragment>/;
+    const noteHeld = (panel: string, cols: number): boolean =>
+      Number(NOTE_LINE.exec(panel)?.[1] ?? -1) === cols
+        && /<tr className=\{`border-b border-border-subtle\$\{r\.note !== null \? NOTED_ROW : ""\}\$\{r\.anchored \? " bg-bg-overlay" : ""\}`\}>/.test(rowOf(panel))
+        && !wideOf(panel).some((c) => /r\.note/.test(c))
+        && !/<th\s[^>]*>Note</.test(panel);
+    ok("1.373 · decision 2 · the NOTE is a full-width line of its own under its row on both ledgers — only on a row that carries one, spanning every column, and in no column",
+      ledgers.every(([, p, n]) => noteHeld(p, n)), j(ledgers.map(([k, p]) => [k, NOTE_LINE.exec(p)?.[1] ?? null])));
+    ok("1.373 · decision 2 · CONTROL · a note line that is never drawn, one short of the row, and a note back in a column are each reported",
+      ledgers.every(([, p, n]) => !noteHeld(p.replace("{r.note !== null && (", "{r.note === \"never\" && ("), n)
+        && !noteHeld(p.replace(/<td colSpan=\{\d+\} className="!pt-0">/, `<td colSpan={${n - 1}} className="!pt-0">`), n)
+        && !noteHeld(p.replace(/(<td className="hidden sm:table-cell p-3 tabular text-text-secondary">\{r\.roundNo)/, '<td className="hidden sm:table-cell p-3">{r.note}</td>$1'), n)), "");
+    /* ⛔ ONE VIEW MODEL, TWO LAYOUTS: the phone's stacked cell still carries the type and the note, as before. */
+    ok("1.373 · decision 2 · the phone's stacked cell still carries the type and the note on both ledgers — below `sm` nothing moved",
+      ledgers.every(([, p, n]) => {
+        const stack = cellsOf(rowOf(p)).find((c) => c.startsWith(`<td className="sm:hidden p-3" colSpan={${n}}>`)) ?? "";
+        return /\{r\.when\} · \{r\.typeWord\}/.test(stack) && /\{r\.note !== null && <p className="mt-1 text-caption text-text-secondary">\{r\.note\}<\/p>\}/.test(stack);
+      }), "");
+    /* ⛔ THE TWO ROWS READ AS ONE RECORD, and the hover colour is the KIT'S, read from the stylesheet — never typed. */
+    const constOf = (name: string) => new RegExp(`export const ${name} = "([^"]*)";`).exec(pageCode)?.[1] ?? "";
+    const NOTED = constOf("NOTED_ROW").trim().split(/\s+/);
+    const NOTE = constOf("NOTE_ROW").trim().split(/\s+/);
+    const kitHover = (/\.admin-tbl tbody tr:hover \{ background: ([^;]+); \}/.exec(read("src/app/globals.css"))?.[1] ?? "").replace(/, /g, ",").replace(/ /g, "_");
+    const pairHeld = (noted: string[], note: string[]): boolean =>
+      kitHover.length > 0
+        && note[0] === "hidden" && note.includes("sm:table-row") && note.includes("[&>td]:!shadow-none")
+        && note.includes(`[tr:hover+&]:bg-[${kitHover}]`)
+        && noted.includes("sm:!border-b-0") && noted.includes("[&:has(+tr:last-child)]:!border-b-0")
+        && noted.includes(`[&:has(+tr:hover)]:bg-[${kitHover}]`)
+        && ![...noted, ...note].some((c) => /min-w-|(^|:)!?p[xlr]?-/.test(c));
+    ok("1.373 · decision 2 · a row and its note line read as ONE record — the note line is hidden below `sm`, the row drops its divider, and each lights with the other in the kit's own hover colour",
+      pairHeld(NOTED, NOTE), j({ NOTED, NOTE, kitHover }));
+    ok("1.373 · decision 2 · CONTROL · the note line shown on a phone, the divider kept between the two rows, and the hover split are each reported",
+      !pairHeld(NOTED, NOTE.filter((c) => c !== "hidden")) && !pairHeld(NOTED.filter((c) => c !== "sm:!border-b-0"), NOTE)
+        && !pairHeld(NOTED, NOTE.filter((c) => !c.startsWith("[tr:hover+&]"))), "");
+    /* 🔴 THE DESK-WIDE TABLE'S SPANS WERE PINNED BY NOTHING (found 2026-09-26): the derived colSpan rule above reads
+       the ACCOUNT page only, so the landing page's typed `12` would have survived this very change unreported. Every
+       span on both ledgers — the empty state, the phone stack and the note line — equals that ledger's own header
+       count, read from its own thead. */
+    const headerCount = (panel: string) => theadHeaders(/<thead[\s\S]*?<\/thead>/.exec(panel)?.[0] ?? "").length;
+    const spansHeld = (panel: string, cols: number) => {
+      const spans = [...panel.matchAll(/colSpan=\{(\d+)\}/g)].map((m) => Number(m[1]));
+      return headerCount(panel) === cols && spans.length === 3 && spans.every((s) => s === cols);
+    };
+    ok("1.373 · decision 2 · every `colSpan` on BOTH ledgers — empty state, phone stack and note line — equals that ledger's own header count",
+      ledgers.every(([, p, n]) => spansHeld(p, n)),
+      j(ledgers.map(([k, p]) => [k, headerCount(p), [...p.matchAll(/colSpan=\{(\d+)\}/g)].map((m) => Number(m[1]))])));
+    ok("1.373 · decision 2 · CONTROL · a stale span on the desk-wide ledger is reported, which the account-page rule above could never see",
+      !spansHeld(ledgers[0][1].replace(/colSpan=\{\d+\}/, "colSpan={12}"), ledgers[0][2]), "");
+    /* ⛔ ONE GUTTER AT EVERY WIDTH on BOTH ledgers — the landing page's opener sweep above covers only its own file. */
+    const LEDGER_OPENER = '<table className="admin-tbl [&_td]:!px-1.5 [&_th]:!px-1.5 max-sm:!text-caption">';
+    ok("1.373 · decision 2 · both activity ledgers open with the kit class and ONE 8px gutter at every width — no `sm:` gutter survives in the section",
+      ledgers.every(([, p]) => p.includes(LEDGER_OPENER))
+        /* ⚠️ `(?<!max-)`: the rule is that no WIDER gutter comes back from `sm` up. A phone-only tightening
+           (`max-sm:`, the account list's, 2026-09-26) is the opposite direction and is not what this refuses. */
+        && !sectionFiles.some((f) => /(?<!max-)sm:\[&_t[dh]\]:!px-/.test(read(f))),
+      j(ledgers.map(([k, p]) => [k, /<table className="[^"]*"/.exec(p)?.[0] ?? null])));
   }
   /* ⛔ THE HOUR SUMMARY'S BELL LANDS ON THE WINDOW IT IS ABOUT. `parseEatLocal` requires a full instant and
      answers null for `14:00`, so the clock form resolved to "custom" over the last 24 hours — a different window
@@ -5789,6 +5970,536 @@ try {
 }
 
 /* ════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+ * §2f2 · THE FIND STEP'S ACCOUNT LIST — `/admin/desk/new` with no account chosen (RESUME-HERE §0c decision 4)
+ *
+ * Ali asked for the searchable picker AND a full list — paged, sortable, filterable, "full paging, sorting,
+ * validation" — inside the wizard's three walls: no money anywhere on the page, no name, phone or email on a row,
+ * and no sentence in the client file.
+ * ⛔ EVERY ASSERTION HERE IS POPULATION-INDEPENDENT. By now the world holds every account §1–§2f created — role
+ * accounts, candidates, a bulk dozen, burners — and the memory twin's insertion order is not sorted order, so no case
+ * assumes a count or a position: each one WALKS EVERY PAGE, or picks out the fixtures this block tagged with its pid.
+ * ════════════════════════════════════════════════════════════════════════════════════════════════════════════════ */
+section("§2f2 · the account list on the find step (RESUME-HERE §0c decision 4)");
+try {
+  const LCOPY: Any = GATEM.CONSOLE_LIST_COPY;
+  const { playerHandle: handleOf }: Any = await import("../../src/lib/server/house-bot/alerts.ts");
+  /* ⚠️ THE NO-BREAK SPACE IS BUILT, NEVER TYPED: the Edit tool decodes a typed backslash-u into the raw character. */
+  const NB = String.fromCharCode(0xa0);
+  const DAY = 86_400_000;
+  const T0 = Date.now();
+  const ago = (ms: number): string => new Date(T0 - ms).toISOString();
+  const TAG = `finder${process.pid}`;
+  const listOf = (q: Record<string, unknown> = {}, viewer: string | null = OFFICER, route = "/admin/desk"): Promise<Any> =>
+    GATEM.houseAccountListForConsole(viewer, route, q);
+  /** Every page of one address, in order — the only honest way to ask about a population this block did not make. */
+  const walk = async (q: Record<string, unknown> = {}): Promise<{ pages: Any[]; rows: Any[] }> => {
+    const first = await listOf(q);
+    const pages: Any[] = [first];
+    const last = first?.total == null ? 1 : Math.max(1, Math.ceil(first.total / first.perPage));
+    for (let n = 2; n <= last; n++) pages.push(await listOf({ ...q, page: String(n) }));
+    return { pages, rows: pages.flatMap((v) => v?.rows ?? []) };
+  };
+  /** A player that CAN be chosen: a password hash and salt of its own. ⚠️ Not a credential — nothing here signs in. */
+  const chooser = async (id: string, o: { createdAt?: string; lastLoginAt?: string | null } = {}): Promise<string> => {
+    await w.user({ id, role: "PLAYER", ...o });
+    await w.setUserFields(id, { passwordHash: `hash-${TAG}`, passwordSalt: `salt-${TAG}` });
+    return id;
+  };
+
+  /* ── THE FIXTURES, every id carrying this run's tag ─────────────────────────────────────────────────────────── */
+  /* A holder with ALL THREE person fields set, so "no name, phone or email on a row" is a measurement of something. */
+  const PROBE = await chooser(`usr_${TAG}_probe`, { createdAt: ago(3 * DAY), lastLoginAt: ago(1 * DAY) });
+  const PROBE_NAME = "Finder Probe Name";
+  const PROBE_EMAIL = `${TAG}-probe@example.test`;
+  await w.setUserFields(PROBE, { displayName: PROBE_NAME, email: PROBE_EMAIL });
+  const probeRow: Any = await w.db.user.findById(PROBE);
+  const PROBE_PHONE: string = probeRow?.phoneE164 ?? "";
+  /* ⛔ THREE ACCOUNTS OPENED IN THE SAME MILLISECOND, STORED IN THE REVERSE OF THEIR ID ORDER — so on the memory twin the
+     store's own order is the opposite of the tie-break, and a missing tie-break is VISIBLE (the picker's `387-order`
+     lesson: a fixture whose insertion order already is the sorted order proves nothing about the sort). */
+  const TIE_AT = ago(40 * DAY);
+  const TIES = [`usr_${TAG}_tie_c`, `usr_${TAG}_tie_b`, `usr_${TAG}_tie_a`];
+  for (const id of TIES) await chooser(id, { createdAt: TIE_AT });
+  /* Two accounts that SHARE A HANDLE — a handle is the id's last six characters — stored in reverse id order too. */
+  const SAME = [`usr_${TAG}y_samehd`, `usr_${TAG}x_samehd`];
+  for (const id of SAME) await chooser(id, { createdAt: ago(41 * DAY) });
+  /* Two accounts that last signed in at the SAME instant, stored in reverse id order. */
+  const SIGNED_AT = ago(3 * DAY);
+  const SIGNED_TIES = [`usr_${TAG}_sig_b`, `usr_${TAG}_sig_a`];
+  for (const id of SIGNED_TIES) await chooser(id, { createdAt: ago(42 * DAY), lastLoginAt: SIGNED_AT });
+  /* The sign-in windows' four edges: two days ago, twenty days ago, three hours in the FUTURE, and never. */
+  const S2D = await chooser(`usr_${TAG}_s2d`, { createdAt: ago(50 * DAY), lastLoginAt: ago(2 * DAY) });
+  const S20D = await chooser(`usr_${TAG}_s20d`, { createdAt: ago(50 * DAY), lastLoginAt: ago(20 * DAY) });
+  const SFUT = await chooser(`usr_${TAG}_sfut`, { createdAt: ago(50 * DAY), lastLoginAt: new Date(T0 + 3 * 3_600_000).toISOString() });
+  const SNEVER = await chooser(`usr_${TAG}_snev`, { createdAt: ago(50 * DAY), lastLoginAt: null });
+  /* Two blocked kinds this block makes itself; the officer's own account and the desk's accounts are the other two. */
+  const STAFF = await chooser(`usr_${TAG}_staff`, { createdAt: ago(5 * DAY) });
+  await w.setUserFields(STAFF, { role: "SUPPORT" });
+  const CLOSED = await chooser(`usr_${TAG}_closed`, { createdAt: ago(5 * DAY) });
+  await w.setUserFields(CLOSED, { status: "CLOSED", closedAt: ago(1 * DAY) });
+  const onDeskIds: string[] = ((await w.dal.houseBotStore.listNonRemoved()) as Any[]).map((b: Any) => b.userId);
+
+  /* ━━ 1.387L · THE AUDIENCE, ON THE STORED ROW, AND NOT ONE READ BEFORE THE VERDICT (259, 387) ━━━━━━━━━━━━━━━━━ */
+  {
+    const spy = { users: 0, roster: 0 };
+    const orig = { users: w.db.user.list, roster: w.dal.houseBotStore.listNonRemoved };
+    const NON_OWNER = [...ROLES.STAFF_ROLES.filter((r: string) => r !== "ADMIN"), "PLAYER", "AGENT"] as string[];
+    const outsiders: Array<[string, string | null]> = [];
+    for (const role of NON_OWNER) outsiders.push([role, await w.user({ role })]);
+    outsiders.push(["signed out", null], ["no such account", "usr_no_such_account_at_all"]);
+    const answers: Array<[string, unknown]> = [];
+    let refusedReads = { users: -1, roster: -1 };
+    let beltAnswers: unknown[] = [];
+    let beltReads = { users: -1, roster: -1 };
+    let inSection: Any = null;
+    let owner: Any = null;
+    try {
+      w.db.user.list = (...a: Any[]) => { spy.users++; return orig.users.apply(w.db.user, a as Any); };
+      w.dal.houseBotStore.listNonRemoved = (...a: Any[]) => { spy.roster++; return orig.roster.apply(w.dal.houseBotStore, a as Any); };
+      for (const [who, id] of outsiders) answers.push([who, await listOf({}, id)]);
+      refusedReads = { ...spy };
+      beltAnswers = [await listOf({}, OFFICER, "/admin/players"), await listOf({}, OFFICER, "/admin"), await listOf({}, OFFICER, "/admin/deskx")];
+      beltReads = { users: spy.users - refusedReads.users, roster: spy.roster - refusedReads.roster };
+      inSection = await listOf({}, OFFICER, "/admin/desk/new");
+      owner = await listOf({}, OFFICER);
+    } finally {
+      w.db.user.list = orig.users; w.dal.houseBotStore.listNonRemoved = orig.roster;
+    }
+    ok("1.387L · audience · all eight non-owner roles, a signed-out caller and an unknown account get `null` and nothing else — and the reader took ZERO reads for any of them",
+      NON_OWNER.length === 8 && answers.length === 10 && answers.every(([, v]) => v === null)
+        && refusedReads.users === 0 && refusedReads.roster === 0,
+      j({ answers: answers.map(([who, v]) => [who, v === null ? null : "a view"]), refusedReads }));
+    ok("1.387L · audience · the route belt · the OWNER asking about a route OUTSIDE the desk's own section gets `null` with zero reads — the audience answers such a route by its own domain, and a row's reason says who is on the desk",
+      beltAnswers.length === 3 && beltAnswers.every((v) => v === null) && beltReads.users === 0 && beltReads.roster === 0,
+      j({ beltAnswers: beltAnswers.map((v) => (v === null ? null : "a view")), beltReads }));
+    ok("1.387L · audience · CONTROL · the owner on a route INSIDE the section gets a view, and it fired both reads through the very objects the spies watch — so every zero above is a measurement and not an unreached patch",
+      owner !== null && Array.isArray(owner.rows) && inSection !== null && Array.isArray(inSection.rows)
+        && spy.users - refusedReads.users - beltReads.users >= 2 && spy.roster - refusedReads.roster - beltReads.roster >= 2,
+      j({ spy, owner: owner !== null, inSection: inSection !== null }));
+  }
+
+  /* ━━ 1.387L · WALL 2 — NO NAME, PHONE OR EMAIL ON A ROW (346, 420) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+  {
+    const whole = await walk();
+    const probeRows = whole.rows.filter((r: Any) => r.userId === PROBE);
+    const pageText = whole.pages.map((v: Any) => all(v));
+    const carries = (s: string) => pageText.some((t: string) => t.includes(s));
+    /* ⚠️ EVERY INDEX IS GUARDED: a declared mutation that shortens the walk must redden ITS OWN label further down, not
+       throw here and take the rest of this section with it (which the drive would report as WRONG-ASSERTION). */
+    const probeOne: Any = probeRows[0] ?? null;
+    ok("1.387L · no name, phone or email · a holder with all three set is on the list as its HANDLE alone, and not one page of the whole list carries any of the three",
+      probeRows.length === 1 && probeOne?.handle === handleOf(PROBE) && String(probeOne?.handle ?? "").startsWith("Player #")
+        && !carries(PROBE_NAME) && !carries(PROBE_EMAIL)
+        && PROBE_PHONE.length > 5 && !carries(PROBE_PHONE) && !carries(PROBE_PHONE.replace(/^\+/, "")),
+      j({ rows: probeRows.length, handle: probeOne?.handle, pages: whole.pages.length }));
+    const planted = { ...(probeOne ?? {}), handle: `${probeOne?.handle} ${PROBE_EMAIL}` };
+    ok("1.387L · no name, phone or email · CONTROL · the holder's own record really carries all three, and the same scan fires on a list row planted with the email appended",
+      probeRow?.displayName === PROBE_NAME && probeRow?.email === PROBE_EMAIL && PROBE_PHONE.startsWith("+255")
+        && all(planted).includes(PROBE_EMAIL) && probeOne !== null && !all(probeOne).includes(PROBE_EMAIL),
+      j({ name: probeRow?.displayName === PROBE_NAME, email: probeRow?.email === PROBE_EMAIL, phone: PROBE_PHONE.length }));
+  }
+
+  /* ━━ 1.387L · WALL 1 — NO MONEY, NOT EVEN A READ OF IT (459, 356) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+  {
+    const wallet = w.db.wallet as Record<string, Any>;
+    const members = Object.keys(wallet).filter((k) => typeof wallet[k] === "function");
+    const origW: Record<string, Any> = Object.fromEntries(members.map((k) => [k, wallet[k]]));
+    const reads = { n: 0 };
+    let listed: Any = null;
+    let listReads = -1;
+    let checkReads = -1;
+    try {
+      for (const k of members) wallet[k] = (...a: Any[]) => { reads.n++; return origW[k].apply(wallet, a); };
+      listed = await walk();
+      listReads = reads.n;
+      await GATEM.houseCheckForConsole(OFFICER, "/admin/desk", PROBE);
+      checkReads = reads.n - listReads;
+    } finally {
+      for (const k of members) wallet[k] = origW[k];
+    }
+    ok("1.387L · no money · the list reads NO wallet at all — every wallet member of the store spied, across every page — and no page carries a currency figure or even the unit",
+      members.length >= 3 && listReads === 0 && listed !== null && listed.pages.length >= 2
+        && listed.pages.every((v: Any) => !/TZS/.test(all(v))),
+      j({ members, listReads, pages: listed?.pages.length }));
+    ok("1.387L · no money · CONTROL · the check card's reader DOES read the wallet through the same spies, and the unit scan fires on a planted figure",
+      checkReads >= 1 && /TZS/.test(all({ ...listed?.pages[0], count: "TZS 5,000" })),
+      j({ checkReads }));
+  }
+
+  /* ━━ 1.387L · PAGING — twenty to a page, over a counting total, and a page past the end is the last page ━━━━━━━━ */
+  {
+    const everyone = (await w.db.user.list()) as Any[];
+    const whole = await walk();
+    const first = whole.pages[0];
+    const totalPages = Math.max(1, Math.ceil(first.total / 20));
+    const ids = whole.rows.map((r: Any) => r.userId as string);
+    const seen = new Set(ids);
+    const sizesRight = whole.pages.every((v: Any, i: number) => v.page === i + 1 && v.rows.length === Math.min(20, first.total - i * 20));
+    ok("1.387L · paging · twenty to a page, the total is the WHOLE population and never a page's length, every page holds exactly what the arithmetic says, and walking every page visits every account exactly once",
+      first.perPage === 20 && first.total === everyone.length && whole.pages.length === totalPages && sizesRight
+        && seen.size === ids.length && ids.length === first.total && everyone.every((u: Any) => seen.has(u.id)),
+      j({ perPage: first.perPage, total: first.total, users: everyone.length, pages: whole.pages.length, visited: ids.length }));
+    const past = await listOf({ page: "999" });
+    const lastPage = whole.pages[whole.pages.length - 1];
+    ok("1.387L · paging · a page past the end is served as the LAST page, with its rows — never an empty page under a pager that says there are more",
+      past.page === totalPages && past.rows.length > 0 && past.queryRefusal === null
+        && all(past.rows.map((r: Any) => r.userId)) === all(lastPage.rows.map((r: Any) => r.userId)),
+      j({ page: past.page, rows: past.rows.length, lastPage: totalPages }));
+    const bad: Array<[string, unknown]> = [["zero", "0"], ["a word", "abc"], ["a fraction", "1.5"], ["a negative", "-3"], ["an exponent", "1e3"], ["a repeat", ["1", "2"]]];
+    const refusedPages: Array<[string, Any]> = [];
+    for (const [what, v] of bad) refusedPages.push([what, await listOf({ page: v })]);
+    ok("1.387L · paging · a page that is not a whole number from 1 — zero, a word, a fraction, a negative, an exponent, a repeat — is refused BY NAME and page 1 is served",
+      refusedPages.every(([, v]) => v.page === 1 && typeof v.queryRefusal === "string" && v.queryRefusal.includes(": page.")
+        && all(v.rows.map((r: Any) => r.userId)) === all(first.rows.map((r: Any) => r.userId))),
+      j(refusedPages.map(([what, v]) => [what, v.page, v.queryRefusal])));
+    const asked2 = await listOf({ page: "2" });
+    ok("1.387L · paging · CONTROL · the population really spans more than one page, page 1 and page 2 hold different accounts, and a clean page number is honoured, not refused — so the refusals above are the parse and not a door that serves page 1 to everything",
+      first.total > 20 && whole.pages.length >= 2
+        && (whole.pages[1]?.rows ?? []).every((r: Any) => !first.rows.some((x: Any) => x.userId === r.userId))
+        && asked2.page === 2 && asked2.queryRefusal === null
+        && all(asked2.rows.map((r: Any) => r.userId)) === all((whole.pages[1]?.rows ?? []).map((r: Any) => r.userId)),
+      j({ total: first.total, pages: whole.pages.length, asked2: asked2.page }));
+  }
+  /* ━━ 1.387L · SORTING — every key, both directions, one total order on either store ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   * ⛔ CHECKED AS A PROPERTY OF EVERY ADJACENT PAIR, over the concatenation of every page, against each account's own
+   * stored instant — never against a list typed here. A missing instant must come LAST in both directions, and equal
+   * keys must come in ascending id order: that tie-break is what makes the order total, and it is the half a fixture
+   * stored in id order could never test, which is why the three ties above were stored backwards. */
+  {
+    const raw = new Map(((await w.db.user.list()) as Any[]).map((u: Any) => [u.id as string, u]));
+    const at = (v: string | null | undefined): number | null => (v == null || !Number.isFinite(Date.parse(v)) ? null : Date.parse(v));
+    const cu = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
+    const inOrder = (rows: Any[], key: (id: string) => number | string | null, dir: "asc" | "desc"): string[] => {
+      const bad: string[] = [];
+      for (let i = 1; i < rows.length; i++) {
+        const a = rows[i - 1].userId as string, b = rows[i].userId as string;
+        const ka = key(a), kb = key(b);
+        const fine = ka === null || kb === null ? kb === null && (ka !== null || cu(a, b) < 0)
+          : ka === kb ? cu(a, b) < 0
+          : dir === "asc" ? ka < kb : ka > kb;
+        if (!fine) bad.push(`${a} → ${b}`);
+      }
+      return bad;
+    };
+    const KEYS: Array<[string, (id: string) => number | string | null]> = [
+      ["joined", (id) => at(raw.get(id)?.createdAt)],
+      ["signed-in", (id) => at(raw.get(id)?.lastLoginAt)],
+      ["account", (id) => handleOf(id)],
+    ];
+    const walked: Record<string, { asc: Any[]; desc: Any[]; badAsc: string[]; badDesc: string[] }> = {};
+    for (const [token, key] of KEYS) {
+      const asc = (await walk({ sort: token, dir: "asc" })).rows;
+      const desc = (await walk({ sort: token, dir: "desc" })).rows;
+      walked[token] = { asc, desc, badAsc: inOrder(asc, key, "asc"), badDesc: inOrder(desc, key, "desc") };
+    }
+    const positions = (rows: Any[], ids: string[]) => ids.map((id) => rows.findIndex((r: Any) => r.userId === id));
+    const ascending = (p: number[]) => p.every((x) => x >= 0) && p.every((x, i) => i === 0 || p[i - 1] < x);
+    const J = walked["joined"], S = walked["signed-in"], A = walked["account"];
+    ok("1.387L · sorting · Joined · every page, concatenated, is in joining order BOTH ways with the id breaking every tie — and three accounts opened in the same millisecond come back in id order though the store holds them the other way round",
+      J.badAsc.length === 0 && J.badDesc.length === 0 && J.asc.length > 20 && J.asc.length === J.desc.length
+        && ascending(positions(J.asc, [...TIES].sort())) && ascending(positions(J.desc, [...TIES].sort())),
+      j({ asc: J.badAsc.slice(0, 2), desc: J.badDesc.slice(0, 2), ties: [positions(J.asc, [...TIES].sort()), positions(J.desc, [...TIES].sort())] }));
+    const nullsLast = (rows: Any[]) => {
+      const firstNull = rows.findIndex((r: Any) => at(raw.get(r.userId)?.lastLoginAt) === null);
+      return firstNull > 0 && rows.slice(firstNull).every((r: Any) => at(raw.get(r.userId)?.lastLoginAt) === null);
+    };
+    ok("1.387L · sorting · Signed in · …ordered by the last sign-in both ways, ties broken by the id — and an account that never signed in sorts LAST in BOTH directions",
+      S.badAsc.length === 0 && S.badDesc.length === 0 && nullsLast(S.asc) && nullsLast(S.desc)
+        && ascending(positions(S.asc, [...SIGNED_TIES].sort())) && ascending(positions(S.desc, [...SIGNED_TIES].sort())),
+      j({ asc: S.badAsc.slice(0, 2), desc: S.badDesc.slice(0, 2), nullsLast: [nullsLast(S.asc), nullsLast(S.desc)] }));
+    ok("1.387L · sorting · Account · …ordered by the HANDLE both ways — never a name, a phone or an email — and two accounts that share a handle are told apart by the id",
+      A.badAsc.length === 0 && A.badDesc.length === 0 && handleOf(SAME[0]) === handleOf(SAME[1])
+        && ascending(positions(A.asc, [...SAME].sort())) && ascending(positions(A.desc, [...SAME].sort())),
+      j({ asc: A.badAsc.slice(0, 2), desc: A.badDesc.slice(0, 2), handle: handleOf(SAME[0]) }));
+    const bare = await listOf({});
+    ok("1.387L · sorting · an address with no sort is Joined, newest first — the header the page marks in force, in the direction the kit's arrow draws — and the three headers are the three columns, in order",
+      bare.sort === "joined" && bare.dir === "desc"
+        && all(bare.rows.map((r: Any) => r.userId)) === all(J.desc.slice(0, 20).map((r: Any) => r.userId))
+        && all(bare.columns) === all([{ field: "account", label: "Account" }, { field: "joined", label: "Joined" }, { field: "signed-in", label: "Signed in" }]),
+      j({ sort: bare.sort, dir: bare.dir, columns: bare.columns }));
+    ok("1.387L · sorting · CONTROL · the two directions really differ over every key, and the pair checker reports two adjacent rows put the wrong way round",
+      KEYS.every(([token]) => walked[token].asc[0]?.userId !== walked[token].desc[0]?.userId)
+        && inOrder([J.asc[1], J.asc[0]], KEYS[0][1], "asc").length === 1
+        && inOrder([S.asc[S.asc.length - 1], S.asc[0]], KEYS[1][1], "asc").length === 1,
+      j(KEYS.map(([token]) => [token, walked[token].asc[0]?.userId, walked[token].desc[0]?.userId])));
+  }
+
+  /* ━━ 1.387L · FILTERING — the two axes, and the sign-in window bounded at BOTH ends ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+  {
+    const everyone = (await w.db.user.list()) as Any[];
+    const can = await walk({ show: "can-be-chosen" });
+    const cannot = await walk({ show: "cannot-be-chosen" });
+    ok("1.387L · filtering · Show · \"Can be chosen\" holds only rows with no reason, each one a way in; \"Cannot be chosen\" only rows with one, none a way in; and the two totals add up to the whole list",
+      can.rows.length > 0 && cannot.rows.length > 0
+        && can.rows.every((r: Any) => r.reason === null && r.href !== null) && cannot.rows.every((r: Any) => r.reason !== null && r.href === null)
+        && can.pages[0].total + cannot.pages[0].total === everyone.length
+        && can.pages[0].total === can.rows.length && cannot.pages[0].total === cannot.rows.length,
+      j({ can: can.pages[0].total, cannot: cannot.pages[0].total, all: everyone.length }));
+    const reasonOf = (id: string): string | null => cannot.rows.find((r: Any) => r.userId === id)?.reason ?? null;
+    ok("1.387L · filtering · Show · CONTROL · the cannot side really holds every blocked kind — the officer's own account, a staff account, a closed account and an account already on the desk — each with its own reason, and none of them on the can side",
+      reasonOf(OFFICER) === "Your own account" && reasonOf(STAFF) === "A staff account" && reasonOf(CLOSED) === "The account is closed"
+        && onDeskIds.length >= 1 && onDeskIds.every((id) => reasonOf(id) === "Already on the desk")
+        && [OFFICER, STAFF, CLOSED, ...onDeskIds].every((id) => !can.rows.some((r: Any) => r.userId === id)),
+      j({ officer: reasonOf(OFFICER), staff: reasonOf(STAFF), closed: reasonOf(CLOSED), onDesk: onDeskIds.slice(0, 3).map(reasonOf) }));
+    const idsOf = async (q: Record<string, unknown>) => new Set((await walk(q)).rows.map((r: Any) => r.userId as string));
+    const d7 = await idsOf({ signed: "past-7-days" });
+    const d30 = await idsOf({ signed: "past-30-days" });
+    const nev = await idsOf({ signed: "never" });
+    const anyTime = await idsOf({});
+    ok("1.387L · filtering · Signed in · the window is bounded at BOTH ends — two days ago is in both windows, twenty days ago only in the thirty-day one, a stamp three hours in the FUTURE in neither, and an account that never signed in only under Never",
+      d7.has(S2D) && d30.has(S2D) && !nev.has(S2D)
+        && !d7.has(S20D) && d30.has(S20D) && !nev.has(S20D)
+        && !d7.has(SFUT) && !d30.has(SFUT) && !nev.has(SFUT) && anyTime.has(SFUT)
+        && !d7.has(SNEVER) && !d30.has(SNEVER) && nev.has(SNEVER),
+      j({ s2d: [d7.has(S2D), d30.has(S2D)], s20d: [d7.has(S20D), d30.has(S20D)], future: [d7.has(SFUT), d30.has(SFUT), anyTime.has(SFUT)], never: nev.has(SNEVER) }));
+    const stampOf = (id: string): number | null => {
+      const v = everyone.find((u: Any) => u.id === id)?.lastLoginAt;
+      return v == null ? null : Date.parse(v);
+    };
+    const now2 = Date.now();
+    const inside = (ids: Set<string>, span: number) => [...ids].every((id) => { const s = stampOf(id); return s !== null && s > now2 - span - 60_000 && s <= now2; });
+    ok("1.387L · filtering · Signed in · every account a window serves really falls inside it, every account under Never has no sign-in at all, the seven-day window sits inside the thirty-day one, and Never holds EVERY such account",
+      inside(d7, 7 * DAY) && inside(d30, 30 * DAY) && [...nev].every((id) => stampOf(id) === null)
+        && [...d7].every((id) => d30.has(id))
+        && everyone.filter((u: Any) => u.lastLoginAt == null).length === nev.size && anyTime.size === everyone.length,
+      j({ d7: d7.size, d30: d30.size, never: nev.size, any: anyTime.size }));
+    ok("1.387L · filtering · Signed in · CONTROL · the window checker reports an account planted into a window it does not belong to — twenty days ago under seven days, a future stamp under thirty, a sign-in under Never",
+      !inside(new Set([...d7, S20D]), 7 * DAY) && !inside(new Set([...d30, SFUT]), 30 * DAY)
+        && ![...nev, S2D].every((id) => stampOf(id) === null),
+      "");
+  }
+
+  /* ━━ 1.387L · VALIDATION — every parameter checked, every refusal named, nothing refused ever travels ━━━━━━━━━━━━ */
+  {
+    const one = (word: string) => `One part of this address was not understood and was ignored: ${word}. The rest of the filter is in force.`;
+    const each: Array<[string, string, Any]> = [
+      ["show", "show", await listOf({ show: "maybe" })],
+      ["signed", "signed in", await listOf({ signed: "yesterday" })],
+      ["sort", "sort", await listOf({ sort: "balance" })],
+      ["dir", "sort direction", await listOf({ dir: "sideways" })],
+      ["page", "page", await listOf({ page: "two" })],
+    ];
+    ok("1.387L · validation · every parameter the list takes is checked against its closed list or its shape, and a value that is not on it is refused BY ITS SCREEN WORD — show, signed in, sort, sort direction, page — under the console's one refusal heading",
+      each.every(([, word, v]) => v.queryRefusal === one(word) && v.refusalTitle === GATEM.CONSOLE_REFUSAL_TITLE),
+      j(each.map(([k, , v]) => [k, v.queryRefusal])));
+    const combined = await listOf({ show: "can-be-chosen", signed: "past-30-days", sort: "bogus", dir: "sideways", page: "abc" });
+    ok("1.387L · validation · a refused part falls back to its default while every VALID part beside it stays in force — and one sentence names all three that were dropped",
+      combined.queryRefusal === "Parts of this address were not understood and were ignored: sort, sort direction and page. The rest of the filter is in force."
+        && combined.params.show === "can-be-chosen" && combined.params.signed === "past-30-days"
+        && combined.sort === "joined" && combined.dir === "desc" && combined.page === 1
+        && combined.filters[0].options.find((o: Any) => o.on)?.key === "can-be-chosen"
+        && combined.rows.every((r: Any) => r.reason === null),
+      j({ refusal: combined.queryRefusal, params: combined.params }));
+    const refused = await listOf({ show: "zzmaybe", signed: "zzyesterday", sort: "zzbalance", dir: "zzsideways", page: "zzpage", q: "zzsearch", step: "zzreview" });
+    const carried = (v: Any): string => [...Object.values(v.params), v.sort, v.dir, ...v.filters.flatMap((g: Any) => g.options.map((o: Any) => o.href))].join(" ");
+    ok("1.387L · validation · a refused value travels NOWHERE — not into the live parameters, not into the sort in force, not into a rail link — and a key the list does not own is dropped, never carried",
+      !/zz/.test(carried(refused)) && refused.sort === "joined"
+        && Object.keys(refused.params).sort().join(",") === "dir,show,signed,sort"
+        && Object.values(refused.params).every((x) => x === undefined),
+      j({ params: refused.params, hrefs: refused.filters.flatMap((g: Any) => g.options.map((o: Any) => o.href)).slice(0, 2) }));
+    const personSorts: Array<[string, Any]> = [];
+    for (const s of ["name", "phone", "email", "displayname"]) personSorts.push([s, await listOf({ sort: s })]);
+    ok("1.387L · validation · 420 · the list CANNOT be sorted by a person's name, phone or email — each is refused as a sort and the list keeps its own order",
+      personSorts.every(([, v]) => v.queryRefusal === one("sort") && v.sort === "joined"),
+      j(personSorts.map(([s, v]) => [s, v.sort])));
+    const clean = await listOf({ show: "cannot-be-chosen", signed: "never", sort: "account", dir: "asc", page: "1" });
+    const repeated = await listOf({ show: ["can-be-chosen", "cannot-be-chosen"] });
+    ok("1.387L · validation · CONTROL · a clean address is refused nothing and every part of it IS carried, the travel scan fires on a planted value, and the same parse DOES name a repeated parameter",
+      clean.queryRefusal === null && clean.params.show === "cannot-be-chosen" && clean.params.signed === "never"
+        && clean.params.sort === "account" && clean.params.dir === "asc"
+        && /zz/.test(carried({ ...clean, params: { ...clean.params, sort: "zzbalance" } }))
+        && repeated.queryRefusal === one("show") && repeated.params.show === undefined,
+      j({ clean: clean.params, repeated: repeated.queryRefusal }));
+  }
+
+  /* ━━ 1.387L · LINKS — a row is the way in exactly when it can be chosen, and the rail never loses the sort ━━━━━━━━ */
+  {
+    const everyRow = (await walk({})).rows;
+    ok("1.387L · links · a row that can be chosen opens the wizard's check step for exactly that account, and a row that cannot opens nothing",
+      everyRow.length > 20
+        && everyRow.every((r: Any) => (r.reason === null ? r.href === CR.consoleNewHref({ userId: r.userId }) : r.href === null))
+        && everyRow.some((r: Any) => r.href !== null) && everyRow.some((r: Any) => r.href === null),
+      j({ rows: everyRow.length, choosable: everyRow.filter((r: Any) => r.href !== null).length }));
+    const kept = await listOf({ sort: "account", dir: "asc", page: "2", signed: "never" });
+    const hrefs: string[] = kept.filters.flatMap((g: Any) => g.options.map((o: Any) => o.href as string));
+    const railHolds = (hs: string[]) => hs.every((h) => h.startsWith(`${CR.CONSOLE_NEW_ROUTE}?`) && !/[?&]page=/.test(h) && h.includes("sort=account") && h.includes("dir=asc"));
+    ok("1.387L · links · every rail link stays on the wizard's own route, DROPS the page and KEEPS the sort and the other axis — and exactly one option per axis is marked in force",
+      hrefs.length === 7 && railHolds(hrefs)
+        && kept.filters[0].options.every((o: Any) => o.href.includes("signed=never"))
+        && kept.filters.every((g: Any) => g.options.filter((o: Any) => o.on).length === 1)
+        && kept.filters[0].options.find((o: Any) => o.on)?.key === "" && kept.filters[1].options.find((o: Any) => o.on)?.key === "never",
+      j(hrefs.slice(0, 3)));
+    const tokens: Array<[string, string, string]> = kept.filters.flatMap((g: Any) => g.options.filter((o: Any) => o.key !== "").map((o: Any) => [g.param, o.key, o.label] as [string, string, string]));
+    const trips: boolean[] = [];
+    for (const [param, key] of tokens) trips.push((await listOf({ [param]: key })).queryRefusal === null);
+    ok("1.387L · links · 453 · every rail token is its option's own painted word, slugged — never a code — and every one round-trips through the door with nothing refused",
+      tokens.length === 5 && trips.length === 5 && trips.every(Boolean)
+        && tokens.every(([, key, label]) => key === label.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, ""))
+        && tokens.every(([, key]) => !NEUTRAL.test(key) && houseHits(key).length === 0),
+      j(tokens));
+    ok("1.387L · links · CONTROL · the rail check reports a planted link that keeps the page, and one that loses the sort",
+      !railHolds([...hrefs, `${CR.CONSOLE_NEW_ROUTE}?page=2&sort=account&dir=asc`])
+        && !railHolds([...hrefs, `${CR.CONSOLE_NEW_ROUTE}?signed=never`]),
+      "");
+  }
+  /* ━━ 1.387L · FAILED READS — 355 against 421, and the picker's latent defect NOT copied ━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+  {
+    const origU = w.db.user.list;
+    const origR = w.dal.houseBotStore.listNonRemoved;
+    let usersFail: Any = null, rosterFail: Any = null, schemaGone: Any = null;
+    try {
+      w.db.user.list = () => { throw new Error("planted: the account read failed"); };
+      usersFail = await listOf({ sort: "account", page: "abc" });
+    } finally { w.db.user.list = origU; }
+    try {
+      w.dal.houseBotStore.listNonRemoved = () => Promise.reject(new Error("planted: the roster read failed"));
+      rosterFail = await listOf({});
+    } finally { w.dal.houseBotStore.listNonRemoved = origR; }
+    try {
+      w.dal.houseBotStore.listNonRemoved = () => Promise.reject(new w.dal.HouseSchemaNotReady("planted"));
+      schemaGone = await walk({});
+    } finally { w.dal.houseBotStore.listNonRemoved = origR; }
+    const normal = await walk({});
+    ok("1.387L · failed reads · 355 · a failed account read is a failed LIST — no rows, no total, no count and no empty state — while the rail, the sort and the refusal still paint",
+      usersFail !== null && usersFail.rows === null && usersFail.total === null && usersFail.count === null && usersFail.empty === null
+        && usersFail.filters.length === 2 && usersFail.sort === "account"
+        && typeof usersFail.queryRefusal === "string" && usersFail.queryRefusal.includes(": page."),
+      j({ rows: usersFail?.rows, total: usersFail?.total, refusal: usersFail?.queryRefusal }));
+    ok("1.387L · failed reads · 355 · a failed ROSTER read is a failed list too — never an empty desk that would offer an account already on it as choosable",
+      rosterFail !== null && rosterFail.rows === null && rosterFail.total === null && rosterFail.count === null,
+      j({ rows: rosterFail?.rows, total: rosterFail?.total }));
+    ok("1.387L · failed reads · 421 · a database with no house tables is a desk nobody is on — every row still paints, and no account reads as already on the desk",
+      schemaGone.rows.length > 20 && schemaGone.rows.every((r: Any) => r.reason !== "Already on the desk"),
+      j({ rows: schemaGone.rows.length }));
+    ok("1.387L · failed reads · CONTROL · the same address with both reads working paints the same accounts, and DOES mark the ones already on the desk — so each degraded shape above is a measurement",
+      normal.rows.length === schemaGone.rows.length && normal.rows.some((r: Any) => r.reason === "Already on the desk"),
+      j({ rows: normal.rows.length }));
+    STATES.push(["wizard-list-failed", usersFail]);
+  }
+
+  /* ━━ 1.387L · EMPTY — a filter that matches nothing names its cause (416) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+  let emptyView: Any = null;
+  {
+    const origU = w.db.user.list;
+    let onlyMe: Any = null;
+    try {
+      /* The one account that always exists — the viewer's own, which can never be chosen. */
+      w.db.user.list = async () => ((await origU.apply(w.db.user, [] as Any)) as Any[]).filter((u: Any) => u.id === OFFICER);
+      emptyView = await listOf({ show: "can-be-chosen" });
+      onlyMe = await listOf({});
+    } finally { w.db.user.list = origU; }
+    ok("1.387L · empty · a filter that matches nothing is the kit's EMPTY state naming its own cause — no rows, a total of zero, the filtered sentence and a count that says so — never a failure and never a blank table",
+      emptyView.rows.length === 0 && emptyView.total === 0 && emptyView.count === "0 of 1 account"
+        && emptyView.empty?.title === LCOPY.emptyFiltered.title && emptyView.empty?.body === LCOPY.emptyFiltered.body,
+      j({ rows: emptyView?.rows, empty: emptyView?.empty, count: emptyView?.count }));
+    ok("1.387L · empty · CONTROL · the same one-account platform UNFILTERED is not empty — the officer's own account is on it and cannot be chosen — so the empty state above was earned by the filter",
+      onlyMe.rows.length === 1 && onlyMe.rows[0].userId === OFFICER && onlyMe.rows[0].reason === "Your own account"
+        && onlyMe.empty === null && onlyMe.count === `1 account ·${NB}1 cannot be chosen`,
+      j({ rows: onlyMe?.rows?.length, count: onlyMe?.count }));
+    STATES.push(["wizard-list-empty", emptyView]);
+  }
+
+  /* ━━ 1.387L · RENDERED — the three walls read off the list's own markup (memory child: the render reads no store) ━━ */
+  if (!w.onPostgres) {
+    try {
+      const { createElement: h }: Any = await import("react");
+      const { renderToStaticMarkup }: Any = await import("react-dom/server");
+      const { DeskAccountList }: Any = await import("../../src/app/admin/desk/new/account-list.tsx");
+      const render = (view: Any): string => renderToStaticMarkup(h(DeskAccountList, { view }));
+      const probePage = (await walk({})).pages.find((v: Any) => v.rows.some((r: Any) => r.userId === PROBE));
+      const blockedPage = await listOf({ show: "cannot-be-chosen" });
+      const refusedPage = await listOf({ sort: "zzbalance", show: "maybe" });
+      const failedPage = await (async () => {
+        const origU = w.db.user.list;
+        try { w.db.user.list = () => { throw new Error("planted"); }; return await listOf({}); } finally { w.db.user.list = origU; }
+      })();
+      const htmls = { probe: render(probePage), blocked: render(blockedPage), refused: render(refusedPage), failed: render(failedPage), empty: render(emptyView) };
+      const moneyIn = (html: string) => /class="[^"]*\bamount\b/.test(html) || /TZS/.test(html);
+      const sortCells = (html: string) => (html.match(/aria-sort="/g) ?? []).length;
+      const sortedCells = (html: string) => (html.match(/aria-sort="(?:ascending|descending)"/g) ?? []).length;
+      const personIn = (html: string) => [PROBE_NAME, PROBE_EMAIL, PROBE_PHONE].some((s) => s.length > 0 && html.includes(s));
+      const rowLinks = (html: string) => [...html.matchAll(/<a [^>]*href="\/admin\/desk\/new\?u=[^"]*"[^>]*>/g)].map((m) => m[0]);
+      ok("1.387L · RENDERED · the list as served — no money element and no currency, exactly three sortable headers with exactly one in force, none of the holder's three person fields, every choosable row's way in at the tap floor, and no way in on a row that cannot be chosen",
+        [htmls.probe, htmls.blocked].every((x) => !moneyIn(x) && sortCells(x) === 3 && sortedCells(x) === 1 && !personIn(x))
+          && htmls.probe.includes(handleOf(PROBE))
+          && rowLinks(htmls.probe).length === probePage.rows.filter((r: Any) => r.href !== null).length && rowLinks(htmls.probe).length >= 1
+          && rowLinks(htmls.probe).every((a) => /class="[^"]*min-h-\[var\(--tap-min\)\]/.test(a))
+          && rowLinks(htmls.blocked).length === 0 && blockedPage.rows.length >= 1,
+        j({ links: rowLinks(htmls.probe).length, sortCells: sortCells(htmls.probe), sorted: sortedCells(htmls.probe), money: moneyIn(htmls.probe) }));
+      ok("1.387L · RENDERED · a refused address paints the refusal Callout above the table and no header link carries the refused value, the failed read paints the kit's failure treatment and NO table, and the filtered-empty state paints the kit's empty row",
+        htmls.refused.includes(GATEM.CONSOLE_REFUSAL_TITLE) && htmls.refused.includes("were not understood") && !/zz/.test(htmls.refused)
+          && htmls.failed.includes(LCOPY.loadError) && !htmls.failed.includes("<table") && !htmls.failed.includes("aria-sort")
+          && htmls.empty.includes("data-table-empty") && htmls.empty.includes(LCOPY.emptyFiltered.title) && !htmls.empty.includes("?u="),
+        j({ refused: htmls.refused.length, failed: htmls.failed.length, empty: htmls.empty.length }));
+      const plantedEmail = render({ ...probePage, rows: probePage.rows.map((r: Any) => (r.userId === PROBE ? { ...r, handle: `${r.handle} ${PROBE_EMAIL}` } : r)) });
+      ok("1.387L · RENDERED · CONTROL · a money span planted into the markup and the email planted into a row's handle are each reported by the same scans",
+        moneyIn(`${htmls.probe}<span class="amount">TZS 5,000</span>`) && personIn(plantedEmail) && !personIn(htmls.probe),
+        "");
+    } catch (err) {
+      ok("1.387L · RENDERED · the list as served — the render itself threw, so none of its walls was read off markup", false,
+        String((err as Any)?.stack ?? err).replace(/\s+/g, " ").slice(0, 400));
+    }
+  }
+
+  /* ━━ 1.387L · THE PAGE AND THE LIST FILE, AT SOURCE (memory child: files, not a store) ━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+  if (!w.onPostgres) {
+    const pageSrc = decomment(read(NEW_PAGE));
+    const body = pageSrc.slice(pageSrc.indexOf("async function AdminDeskNewContent"));
+    const READ_LINE = /const list = step === "find" \? await houseAccountListForConsole\(session\?\.userId \?\? null, "\/admin\/desk", sp\) : null;/;
+    ok("1.387L · the page · the list is read ONLY on the find step, after the page's own audience verdict, with the request's address handed over untouched — and it is rendered only there, under the picker's card",
+      READ_LINE.test(pageSrc) && (pageSrc.match(/houseAccountListForConsole\(/g) ?? []).length === 1
+        && body.indexOf("houseConsoleAudience") >= 0 && body.indexOf("houseConsoleAudience") < body.indexOf("houseAccountListForConsole")
+        && /\{step === "find" && list !== null && <DeskAccountList view=\{list\} \/>\}/.test(pageSrc)
+        && pageSrc.indexOf("<DeskAccountPicker") > 0 && pageSrc.indexOf("<DeskAccountPicker") < pageSrc.indexOf("<DeskAccountList"),
+      "");
+    ok("1.387L · the page · CONTROL · a crafted `?u=` resolves to a step that is NOT find — the check, or the step it names — and no account resolves to find, so the guard has both values to decide between; and the pin fires on a page that reads the list unguarded",
+      CR.consoleWizardStep(undefined, true) === "check" && CR.consoleWizardStep("review", true) === "review"
+        && CR.consoleWizardStep(undefined, false) === "find" && CR.consoleWizardStep("review", false) === "find"
+        && !READ_LINE.test(pageSrc.replace('const list = step === "find" ? await', "const list = true ? await")),
+      "");
+    const listRaw = read(NEW_LIST);
+    const listSrc = decomment(listRaw);
+    ok("1.387L · the list file · it spends the view as painted — the pager's total is the view's counting field, the headers and the pager carry the view's own validated parameters, the rail takes the view's groups and NO window, the empty and failed branches are the kit's own, and nothing here filters, sorts, slices, routes or reads",
+      /total=\{view\.total\}/.test(listSrc) && !/total=\{[^}]*\.length\}/.test(listSrc)
+        && /sp=\{view\.params\}/.test(listSrc) && /baseHref=\{view\.route\}/.test(listSrc)
+        && /baseHref=\{buildBaseHref\(view\.route, view\.params, "page"\)\}/.test(listSrc)
+        && /<ActivityFilters groups=\{view\.filters\} \/>/.test(listSrc) && !/presets=/.test(listSrc)
+        && /rows === null \? \(/.test(listSrc) && /<AdminLoadError what=\{view\.loadError\} \/>/.test(listSrc)
+        && /rows\.length === 0 && view\.empty !== null \? \(/.test(listSrc) && /<AdminTableEmpty /.test(listSrc)
+        && (listSrc.match(/<SortTh /g) ?? []).length === 1
+        && !/\.filter\(|\.sort\(|\.slice\(|\/admin\/desk|house-bot-dal|@\/lib\/server\/house-bot|\bdb\./.test(listSrc)
+        && !listRaw.includes('"use client"'),
+      "");
+    ok("1.387L · the list file · CONTROL · the same pins fire on a total taken from the rows, on a header handed the raw address, and on a rail handed a window",
+      /total=\{[^}]*\.length\}/.test(listSrc.replace("total={view.total}", "total={rows.length}"))
+        && !/sp=\{view\.params\}/.test(listSrc.replace("sp={view.params}", "sp={sp}"))
+        && /presets=/.test(listSrc.replace("<ActivityFilters groups={view.filters} />", "<ActivityFilters groups={view.filters} presets={[]} presetDefault=\"all\" />")),
+      "");
+    const railSrc = decomment(read(`${SECTION}/activity-filters.tsx`));
+    ok("1.410 · decision 4 · the section's ONE rail draws its window only when it is handed one — both activity panels still pass theirs, the find step's list passes none — and the section still holds exactly one rail file",
+      /\{presets !== undefined && presetDefault !== undefined && \(<I18nProvider initial="en">/.test(railSrc)
+        && /presets\?: readonly string\[\];/.test(railSrc) && /presetDefault\?: string;/.test(railSrc)
+        && /presets=\{feedView\.feedPresets\}/.test(pageCode) && /presets=\{view\.feedPresets\}/.test(decomment(read(DETAIL_PAGE)))
+        && sectionFiles.filter((f) => /data-filter-rail/.test(decomment(read(f)))).length === 1,
+      "");
+    ok("1.410 · decision 4 · CONTROL · the same pin fires on the rail with its window drawn unconditionally again — the shape it had before the list existed",
+      !/\{presets !== undefined && presetDefault !== undefined && \(<I18nProvider initial="en">/.test(
+        railSrc.replace('{presets !== undefined && presetDefault !== undefined && (<I18nProvider initial="en">', '{(<I18nProvider initial="en">'))
+        && railSrc.includes('{presets !== undefined && presetDefault !== undefined && (<I18nProvider initial="en">'),
+      "");
+  }
+
+  /* The list's painted states, for §3's lexicon — the ordinary page, a refused address, the copy table itself. */
+  STATES.push(["wizard-list", await listOf({})]);
+  STATES.push(["wizard-list-refused", await listOf({ sort: "bogus", show: "maybe", page: "0" })]);
+  STATES.push(["wizard-list-filtered", await listOf({ show: "cannot-be-chosen", signed: "never", sort: "signed-in", dir: "asc" })]);
+  STATES.push(["wizard-list-copy", GATEM.CONSOLE_LIST_COPY]);
+} catch (err) {
+  ok("0.throw.2f2 · no account-list case threw — a throw here would otherwise skip §3's lexicon scan and §4's whole source law",
+    false, String((err as Any)?.stack ?? err).replace(/\s+/g, " ").slice(0, 400));
+}
+
+/* ════════════════════════════════════════════════════════════════════════════════════════════════════════════════
  * §2g · THE SCOPE PICKERS, THE ROSTER'S OPERATIVE SCOPE AND THE WHY-PANEL (prod finding 2026-09-22, read-only)
  *
  * An ACTIVE account on a switched-ON desk had matched no market, ever — zero intents, zero positions — while the
@@ -5840,7 +6551,7 @@ try {
     if (!saved.ok) throw new Error("2g: the fixture could not save its rules");
   };
   const rosterRow = async (botId: string): Promise<Any> => {
-    const v = await GATEM.houseRosterForConsole(OFFICER, "/admin/desk");
+    const v = await rosterEvery(OFFICER);
     return v.rows.find((r: Any) => r.id === botId);
   };
   const detail = async (id: string): Promise<Any> => GATEM.houseDetailForConsole(OFFICER, "/admin/desk", id);
@@ -5916,7 +6627,7 @@ try {
         && reached.products[0] === scopeLine("Up & Down", [CHAIN_LABEL]) && !reached.products[0].includes(CHAIN_KEY)
         && reached.products[1] === scopeLine("Polls", ["Macro"]) && !/macro/.test(reached.products[1]),
       j({ products: reached.products, inert: reached.inert }));
-    STATES.push(["roster-inert", await GATEM.houseRosterForConsole(OFFICER, "/admin/desk")]);
+    STATES.push(["roster-inert", await rosterEvery(OFFICER)]);
 
     /* ⛔ A HALF-CLAIM IS STILL A REFUSAL: Up & Down reaching a chain does not excuse a Polls that reaches nothing. */
     await writeRules(prod.botId, ruleDoc((r) => {
@@ -6438,7 +7149,7 @@ try {
         && v.whyNotBetting.items[0].message === R.INERT_COPY.byHandNoScreen.enterNow
         && v.startReadiness?.blockers === 1 && v.startReadiness?.items[0].label === "Enter now" && v.startReadiness?.items[0].unset === false,
       j({ why: v.whyNotBetting, readiness: v.startReadiness }));
-    STATES.push(["roster-byhand", await GATEM.houseRosterForConsole(OFFICER, "/admin/desk")], ["detail-byhand", v]);
+    STATES.push(["roster-byhand", await rosterEvery(OFFICER)], ["detail-byhand", v]);
     await w.dal.houseBotStore.setStatus(byHand.botId, { from: ["ACTIVE"], to: "PAUSED", pauseReason: "MANUAL", pausedFromStatus: null });
     const refused = await act({ id: byHand.botId, act: "START" });
     ok("2g.byhand · ⛔ Start hands the predicate the same screens — its default — and refuses the account with the by-hand sentence passed through, the Rules href and the label, leaving it PAUSED",
@@ -6591,6 +7302,1845 @@ try {
 }
 
 /* ════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+ * §2h · THE DESK'S RESULTS TAB (C7 437 · D20b AMENDED 2026-09-26, decided by the session under the owner's delegation)
+ *
+ * The one view the amendment permits: what the desk's FINISHED stakes came to, by the EAT day each stake was PLACED,
+ * as a word beside a magnitude — on the Results tab and nowhere else. Every case below runs on BOTH stores, over ONE
+ * fixture built here, except the pure and source pins at the head of the block, which read no store at all.
+ *
+ * ⛔ SETTLED FOR REAL. Every WIN, LOSS and VOID below is a real resolution through `resolveMarket` + `settleMarket`,
+ * with a real player on the other side of every house stake, so the payout, the refund and the fee are the ledger's
+ * own rows. `setPositionStatus` writes NO money: a WIN or a VOID written that way is a figure the ledger never
+ * produced, which is why it appears exactly once below — as 1.437b's control, BECAUSE it is unfaithful.
+ * ⛔ ISOLATED BY ACCOUNT, AND THE ISOLATION NARROWS THE POPULATION, NEVER THE ARITHMETIC. Every block above this one
+ * leaves house stakes on today's EAT day, and on Postgres a scratch cluster that outlives a run can carry earlier
+ * runs' stakes on the six days before it, so a whole-desk figure here would be a sum over whatever the file happened
+ * to do first. The block therefore designates FOUR FRESH accounts and, once their stakes are settled, wraps
+ * `houseBookStore.dayRows` in a filter that drops every row belonging to any OTHER account. Each row the real store
+ * returns for one of the four passes through untouched, so the reader, `houseDayBook`, the Limits tab, the account
+ * pages and `lossStops` all read the real store's own per-account sums, over one population. The first 1.437b case
+ * reads the WHOLE desk BEFORE the filter goes on, so the same identities are measured on the unfiltered desk too.
+ * ⛔ THE ROSTER IS SHARED (20 slots), SO EVERY ACCOUNT DESIGNATED HERE IS REMOVED BEFORE THE BLOCK ENDS, in a
+ * `finally`, and the master switch is put back where the block found it. The global loss stop in 1.437b really does
+ * switch the TEST world's desk off: that is the only way `lossStops` can say it would have.
+ *
+ * THE FIXTURE (A, B, C, D are the four fresh accounts; every house stake is YES against one player's NO):
+ *   today      · A WINS 10,000 against a player's 20,000 (the fee is real) · B LOSES 30,000 · C LOSES 4,000 and is
+ *                then REMOVED · D's 5,000 is really VOIDED · B holds 3,000 OPEN on a market nobody resolves
+ *   day −1     · A's 2,000, moved to 23:59:30 EAT yesterday, then resolved against A TODAY — a real loss
+ *   day −2     · D's 1,000, moved into that day, then really VOIDED — the day's only stake
+ *   day −3     · D's 1,000, moved into that day and never resolved — the day's only stake, still OPEN
+ *   day −5     · A's 1,000 against a player's 2,000, moved into that day, then WON — the window's one profit DAY
+ *   day −4, −6 · nothing at all
+ * ════════════════════════════════════════════════════════════════════════════════════════════════════════════════ */
+section("§2h · the desk's Results tab — what its finished stakes came to (C7 437)");
+try {
+  const CLOCK: Any = await import("../../src/lib/house-bot/clock.ts");
+  const BOOK: Any = await import("../../src/lib/server/house-bot/book.ts");
+  const PL: Any = await import("../../src/lib/server/house-bot/planner.ts");
+  const DR: Any = await import("../../src/lib/server/date-range.ts");
+  const DAY_MS = 86_400_000;
+  const UNREADABLE = "couldn't read — this is not zero";
+  const GONE: string = GATEM.CONSOLE_ACCOUNT_WORD.gone;
+  const GONE_MANY: string = GATEM.CONSOLE_ACCOUNT_WORD.goneMany;
+  /* ⭐ 437(e)'s WHOLE GRAMMAR AS ONE PATTERN: a word beside an UNSIGNED magnitude, or one of the five plain words. A
+     sign, a bare figure or any other word in front of `TZS` is outside it — which is what 1.437i's control plants. */
+  const GRAMMAR = /^(?:Profit|Loss) TZS [\d,]+$|^Even$|^Nothing settled$|^No stakes$|^—$|^couldn't read — this is not zero$/;
+  /** A painted cell read back as a number — the TEST's own parse of the words, never the reader's arithmetic. A cell
+   *  that states no result is 0; a failed read, or anything outside the grammar, is NaN, so every equality fails. */
+  const figureOf = (c: Any): number => {
+    const m = /^(Profit|Loss) TZS ([\d,]+)$/.exec(typeof c?.text === "string" ? c.text : "");
+    if (m) return (m[1] === "Profit" ? 1 : -1) * Number(m[2].replace(/,/g, ""));
+    return c != null && c.unreadable === false && ["Even", "Nothing settled", "No stakes", "—"].includes(c.text) ? 0 : Number.NaN;
+  };
+  const sum = (xs: number[]): number => xs.reduce((n, x) => n + x, 0);
+  const deskOf = (view: Any): number => figureOf(view?.resultDays?.[0]?.result);
+  const rowsSum = (view: Any, k: "today" | "week"): number => sum((view?.resultAccounts ?? []).map((r: Any) => figureOf(r[k])));
+  const rowOf = (view: Any, b: { botId: string }): Any =>
+    (view?.resultAccounts ?? []).find((r: Any) => r.accountHref === CR.consoleBotHref(b.botId));
+  const goneRow = (view: Any): Any => (view?.resultAccounts ?? []).find((r: Any) => r.accountIsOperatorText === false && r.accountHref === null);
+  /** The `(settled)` usage row's used figure — the Limits tab's, or an account page's. */
+  const settledOf = (view: Any): number | null => (view?.usage ?? []).find((r: Any) => /\(settled\)$/.test(r.name))?.usedTzs ?? null;
+  /** The EAT day `i` days before a view's own key, walked from the day's first instant — never with `priorEatDays`,
+   *  which is the function 1.437e measures. */
+  const keyAt = (view: Any, i: number): string => CLOCK.eatDayKey(CLOCK.eatDayStartMs(view.dayKey) - i * DAY_MS);
+  const fromOf = (key: string): string => new Date(CLOCK.eatDayStartMs(key)).toISOString();
+  const REMOVE = { to: "REMOVED", pauseReason: null, pausedFromStatus: null, removal: { byId: OFFICER, reason: "fixture", cause: "MANUAL" } };
+
+  /* ── THE PURE AND SOURCE PINS FIRST — they read no store, so a fixture that failed below cannot take them with it ── */
+
+  /* ━━ 1.437e · THE WINDOW AND THE DAY, the pure half (rulings 348, 437(c)) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   * ⛔ SEVEN EAT DAYS WALKED BACK FROM THE RENDER'S OWN KEY — calendar arithmetic on a KEY, never on an instant, and
+   * never from a second clock (348). The three boundaries are the ones a naive walk gets wrong: a month end in a common
+   * year, a year end, and leap day. The behavioural half (seven rows, row 0 is the shell's key) is with the fixture. */
+  {
+    /* The function under test, called so that a throw on a GOOD key is a red line here and never a throw that takes
+       the whole block (and the fixture after it) down with it. */
+    const P = (k: string, n: number): string[] | null => { try { return CLOCK.priorEatDays(k, n); } catch { return null; } };
+    const throws = (f: () => unknown): boolean => { try { f(); return false; } catch { return true; } };
+    const walks: Array<[string, string[]]> = [
+      ["2026-03-01", ["2026-02-28", "2026-02-27"]],
+      ["2027-01-01", ["2026-12-31", "2026-12-30"]],
+      ["2028-03-01", ["2028-02-29", "2028-02-28"]],
+    ];
+    ok("1.437e · `priorEatDays` walks back across a month end, a year end and leap day — 2026-03-01, 2027-01-01 and 2028-03-01 — gives nothing for zero, six for six, and THROWS on a malformed key or a count that is not a whole number",
+      walks.every(([k, want]) => all(P(k, 2)) === all(want)) && P("2026-03-01", 0)?.length === 0
+        && P("2026-09-26", 6)?.length === 6 && P("2026-09-26", 6)?.[5] === "2026-09-20"
+        && throws(() => CLOCK.priorEatDays("2026-3-1", 2)) && throws(() => CLOCK.priorEatDays("2026-03-01", -1))
+        && throws(() => CLOCK.priorEatDays("2026-03-01", 1.5)),
+      j(walks.map(([k]) => [k, P(k, 2)])));
+    /* ⛔ THE CONTROL IS THE WALK THAT LOOKS RIGHT: a key cut from `toISOString()` is the UTC date, which is the day
+       BEFORE the EAT day from 21:00Z to midnight — so a walk built that way is one day off at every boundary above. */
+    const at2130 = Date.parse("2026-09-25T21:30:00.000Z");
+    const naiveWalk = (k: string, n: number): string[] =>
+      Array.from({ length: n }, (_, i) => new Date(CLOCK.eatDayStartMs(k) - (i + 1) * DAY_MS).toISOString().slice(0, 10));
+    ok("1.437e · CONTROL · a key cut from `toISOString().slice(0, 10)` is a DIFFERENT day at 21:30Z, and a walk-back built that way is a day off at all three boundaries — so the walks above can tell the two apart",
+      new Date(at2130).toISOString().slice(0, 10) === "2026-09-25" && CLOCK.eatDayKey(at2130) === "2026-09-26"
+        && walks.every(([k, want]) => all(naiveWalk(k, 2)) !== all(want)),
+      j(walks.map(([k]) => [k, naiveWalk(k, 2)])));
+    /* ⭐ AND THE PLATFORM'S OWN "TODAY" IS THE DESK'S DAY: `?range=today` on every other admin surface starts at
+       `eatDayStartMs(eatDayKey(t))`, on both sides of 21:00Z — so an officer who takes a day from this tab to any
+       other page lands on the same day. */
+    const instants = ["2026-09-25T20:59:59.999Z", "2026-09-25T21:00:00.000Z", "2026-09-26T00:00:00.000Z"].map((s) => Date.parse(s));
+    const starts = instants.map((t) => [DR.resolveRange({ range: "today" }, t).start, CLOCK.eatDayStartMs(CLOCK.eatDayKey(t))] as [number, number]);
+    ok("1.437e · the platform's `?range=today` starts where the desk's day starts — at 20:59:59.999Z, 21:00:00.000Z and 00:00Z alike — and the day turns between the first two instants, not between the last two",
+      starts.every(([a, b]) => a === b) && starts[0][1] !== starts[1][1] && starts[1][1] === starts[2][1]
+        && starts[1][1] === Date.parse("2026-09-25T21:00:00.000Z"),
+      j(starts.map(([a, b]) => [new Date(a).toISOString(), new Date(b).toISOString()])));
+    /* ⛔ THE SOURCE HALF: ONE walk-back, from the core's key, over a window of 7 — and the module's day-key
+       derivations are still the two 1.348 names (`readDeskCore`'s and the account page's), none of them in this
+       reader. Read out of the DECOMMENTED module, so a docblock quoting a call cannot stand in for one. */
+    const gateSrc = decomment(read(GATE)).replace(/\r\n/g, "\n");
+    const readerBlock = (code: string): string => {
+      const at = code.indexOf("export async function houseResultsForConsole(");
+      if (at < 0) return "";
+      const end = code.indexOf("\n}\n", at);
+      return end < 0 ? code.slice(at) : code.slice(at, end);
+    };
+    const dayLawHolds = (code: string): boolean => {
+      const block = readerBlock(code);
+      return block.length > 500
+        && (block.match(/\bpriorEatDays\(dayKey, RESULT_DAYS - 1\)/g) ?? []).length === 1
+        && (code.match(/\bpriorEatDays\(/g) ?? []).length === 1
+        && (code.match(/\bconst RESULT_DAYS = 7;/g) ?? []).length === 1
+        && (code.match(/\beatDayKey\(/g) ?? []).length === 2
+        && !/\beatDayKey\(|Date\.now\(\)/.test(block);
+    };
+    ok("1.437e · SOURCE · the results reader walks back with `priorEatDays(dayKey, RESULT_DAYS - 1)` EXACTLY ONCE, from the core's own key, over a window of 7 — and the gate module still derives a day key in exactly TWO places, neither of them in this reader",
+      dayLawHolds(gateSrc),
+      j({ block: readerBlock(gateSrc).length, walks: (gateSrc.match(/\bpriorEatDays\(/g) ?? []).length, eatDayKey: (gateSrc.match(/\beatDayKey\(/g) ?? []).length }));
+    const plantDay = (from: string, to: string): string => gateSrc.replace(from, () => to);
+    const ownClock = plantDay("priorEatDays(dayKey, RESULT_DAYS - 1)", "priorEatDays(eatDayKey(Date.now()), RESULT_DAYS - 1)");
+    const secondWalk = plantDay("const keys = priorEatDays(dayKey, RESULT_DAYS - 1);",
+      "const keys = priorEatDays(dayKey, RESULT_DAYS - 1); const again = priorEatDays(dayKey, RESULT_DAYS - 1);");
+    const thirdKey = plantDay("const RESULT_DAYS = 7;", "const RESULT_DAYS = 7; const strayDay = eatDayKey(0);");
+    const eightDays = plantDay("const RESULT_DAYS = 7;", "const RESULT_DAYS = 8;");
+    ok("1.437e · CONTROL · a reader that takes its own clock, a second walk-back, a third `eatDayKey(` and an eight-day window are each reported — in copies of the module, each plant seen to land",
+      [ownClock, secondWalk, thirdKey, eightDays].every((c) => c !== gateSrc && !dayLawHolds(c)),
+      j([ownClock, secondWalk, thirdKey, eightDays].map((c) => [c !== gateSrc, dayLawHolds(c)])));
+  }
+
+  /* ━━ 1.437l · NO CHANNEL — a VIEW is all the amendment permits (D20b amended; 437(g)) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   * ⛔ NOTHING PUSHES THE DESK'S RESULT. No alert, notification or report may carry it or send a reader to it: the tab
+   * is reached by an officer opening it, and by nothing else. ⚠️ `alert-copy.ts` lives in `src/lib/house-bot/`, not in
+   * `server/house-bot/` — the population is the files that EXIST, each asserted non-empty, so a moved file is a red
+   * line here and never a scan of nothing. ⛔ AND THE READER HAS ONE CALLER, and the owner's book (`/admin/house`, the
+   * house ledger, `house-book.ts`) and this reader never name each other: two surfaces that each state a result about
+   * the same money are the two-figures-one-question defect 346 exists against. */
+  {
+    const CHANNELS = [
+      "src/lib/house-bot/alert-copy.ts", "src/lib/server/notification-service.ts", "src/lib/server/comms-registry.ts",
+      "src/lib/server/house-bot/alerts.ts", "src/lib/server/house-bot/emitters.ts", "src/lib/server/reports/catalogue.ts",
+    ];
+    const RESULTS_LINK = /[?&]tab=results\b|consoleTabHref\(\s*["'`]results["'`]\s*\)/;
+    const channel: Array<[string, string]> = CHANNELS.map((f) => [f, existsSync(join(ROOT, f)) ? decomment(read(f)) : ""]);
+    ok("1.437l · NO CHANNEL · no alert copy, notification source or report in the catalogue links to the Results tab — neither a `?tab=results` nor a `consoleTabHref` of `results` — so the desk's result is reached only by opening the tab",
+      channel.every(([, c]) => c.length > 200) && channel.every(([, c]) => !RESULTS_LINK.test(c)),
+      j(channel.map(([f, c]) => [f.split("/").pop(), c.length, RESULTS_LINK.test(c)])));
+    const srcCode = (f: string): string => decomment(read(f));
+    /* A CALL, never the declaration: the reader's own `function houseResultsForConsole(` is taken out first. */
+    const callsReader = (code: string): boolean =>
+      /\bhouseResultsForConsole\s*\(/.test(code.replace(/\bfunction\s+houseResultsForConsole\s*\(/g, ""));
+    const srcFiles = walkSection("src").filter((f) => /\.(?:ts|tsx|mts)$/.test(f));
+    const callers = srcFiles.filter((f) => read(f).includes("houseResultsForConsole") && callsReader(srcCode(f)));
+    ok("1.437l · the desk's landing page is the reader's ONLY caller under `src/` — no report, export, route handler, action or second page reads the desk's results",
+      srcFiles.length > 300 && all(callers) === all([PAGE]), j({ files: srcFiles.length, callers }));
+    const ACCOUNTING = [...walkSection("src/app/admin/house").filter(isScannable), "src/lib/server/house-ledger.ts", "src/lib/house-book.ts"];
+    const namesReader = ACCOUNTING.filter((f) => existsSync(join(ROOT, f)) && /\bhouseResultsForConsole\b/.test(srcCode(f)));
+    const gateNames = (code: string): string[] => ["house-ledger", "house-book", "/admin/house"].filter((n) => code.includes(n));
+    const gateCodeL = decomment(read(GATE));
+    ok("1.437l · the owner's book stays the owner's — no file under `src/app/admin/house/**`, `house-ledger.ts` or `house-book.ts` names the desk's results reader, and the reader's module names none of them",
+      ACCOUNTING.length >= 5 && ACCOUNTING.every((f) => existsSync(join(ROOT, f))) && namesReader.length === 0 && gateNames(gateCodeL).length === 0,
+      j({ files: ACCOUNTING.length, namesReader, gate: gateNames(gateCodeL) }));
+    const catalogue = channel[5][1];
+    ok("1.437l · CONTROL · each is planted in memory and reported — a `?tab=results` in the alert copy, a `consoleTabHref` of `results` in the catalogue, a second call of the reader in the catalogue, the reader's name in the owner's book page, and `house-ledger` in the reader's module",
+      RESULTS_LINK.test(`${channel[0][1]}\nconst href = "/admin/desk?tab=results";`)
+        && RESULTS_LINK.test(`${catalogue}\nconst href = consoleTabHref("results");`)
+        && callsReader(`${catalogue}\nconst leak = await houseResultsForConsole(null, "/admin/desk");`) && !callsReader(catalogue)
+        && !callsReader("export async function houseResultsForConsole(viewerUserId, route) {}")
+        && /\bhouseResultsForConsole\b/.test(`${srcCode("src/app/admin/house/page.tsx")}\nimport { houseResultsForConsole } from "@/lib/server/house-console-read";`)
+        && gateNames(`${gateCodeL}\nimport { houseLedger } from "./house-ledger";`).includes("house-ledger"),
+      "");
+  }
+
+  /* ━━ 1.437n · THE LAYOUT, read out of the Results panel's OWN slice (rulings 373, 409, 432(b)) ━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   * ⛔ MONEY IS THE SECOND COLUMN in both tables, so the figure is on screen at 360 beside the thing it is about.
+   * ⛔ NO WIDTH FLOOR on either table or on any money column: a floor is what pushes a 360 card sideways. The ONE
+   * `min-w` the panel may carry is the By-account `Account` column's own subject floor, which 1.373 REQUIRES of every
+   * panel that paints that column — so it is named here, not silently exempted.
+   * ⛔ THE EMPTY STATE SPANS EVERY HEADER, or the kit's empty card is a ragged half-row.
+   * ⛔ ONE VIEW MODEL, TWO LAYOUTS: below `sm` each table hides ONE column and folds it under the first cell, and the
+   * fold must paint the SAME view-model field as the wide cell it replaces (State → `r.stateText`, Last 7 days →
+   * `r.week`), under the same words — or a phone and a wide screen say two things about one day.
+   * ⚠️ The wrapper around the two cards is NOT read: its grid is a page-level choice this case must not freeze. */
+  {
+    const panel = panelOf("results");
+    const tablesOf = (p: string): string[] =>
+      p.split(/<table\b/).slice(1).map((t) => (t.includes("</table>") ? t.slice(0, t.indexOf("</table>")) : t));
+    /* ⭐ STEP 9 · every header of both tables is the kit's `SortTh` now; `HEADER_RE` reads either shape. */
+    const thsOf = (t: string): string[] => [...t.matchAll(HEADER_RE)].map((m) => m[0]);
+    const tdsOf = (t: string): string[] => [...t.slice(Math.max(0, t.indexOf("<tbody"))).matchAll(/<td\b[^>]*>[\s\S]*?<\/td>/g)].map((m) => m[0]);
+    const fieldsOf = (s: string): string => [...new Set([...s.matchAll(/\br\.(\w+)/g)].map((m) => m[1]))].sort().join(",");
+    const labelOf = (s: string): string => s.replace(/\{[^{}]*\}/g, " ").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+    const foldHolds = (t: string): boolean => {
+      const hiddenTh = thsOf(t).filter((h) => /\bmax-sm:hidden\b/.test(h));
+      const hiddenTd = tdsOf(t).filter((d) => /^<td className="[^"]*\bmax-sm:hidden\b/.test(d));
+      const folds = [...t.matchAll(/<span className="block sm:hidden[^"]*">([\s\S]*?)<\/span>/g)].map((m) => m[1]);
+      return hiddenTh.length === 1 && hiddenTd.length === 1 && folds.length === 1
+        && fieldsOf(folds[0]) !== "" && fieldsOf(folds[0]) === fieldsOf(hiddenTd[0])
+        && (labelOf(folds[0]) === "" || labelOf(folds[0]) === headOf(hiddenTh[0]).label);
+    };
+    const layoutHolds = (p: string): boolean => {
+      const tables = tablesOf(p);
+      const minWs = [...p.matchAll(/className="([^"]*\bmin-w-[^"]*)"/g)].map((m) => m[1]);
+      const empties = tables.map((t) => [...t.matchAll(/<AdminTableEmpty colSpan=\{(\d+)\}/g)].map((m) => Number(m[1])));
+      return tables.length === 2
+        && tables.every((t) => {
+          const ths = thsOf(t), tds = tdsOf(t);
+          return ths.length >= 3 && ths.length === tds.length
+            && tds.findIndex((d) => /<ResultWords\b/.test(d)) === 1
+            && !/\bmin-w-/.test(t.slice(0, t.indexOf(">") + 1));
+        })
+        && minWs.length === 1 && thsOf(tables[1])[0].includes(`className="${minWs[0]}"`) && headOf(thsOf(tables[1])[0]).label === "Account"
+        && empties[0].length === 0 && empties[1].length === 1 && empties[1][0] === thsOf(tables[1]).length
+        && tables.every(foldHolds);
+    };
+    ok("1.437n · LAYOUT · in both results tables the first money cell is the SECOND column and every row lines up with its headers; no table and no money column carries a width floor (the one `min-w` is the Account column's 1.373 floor); the By-account empty state spans every header; and each below-`sm` fold paints the same view-model field as the wide cell it replaces",
+      panel.length > 200 && layoutHolds(panel),
+      j(tablesOf(panel).map((t) => [thsOf(t).length, tdsOf(t).length, tdsOf(t).findIndex((d) => /<ResultWords\b/.test(d)), foldHolds(t)])));
+    /* ⛔ THE CONTROLS PLANT IN A COPY OF THE PANEL, AND EACH PLANT MUST LAND — a plant that found nothing to replace
+       would hand `layoutHolds` the real panel and the control would pass on nothing. */
+    const byDay = tdsOf(tablesOf(panel)[0] ?? "");
+    const swapCells = (p: string, a: string, b: string): string => {
+      const i1 = a ? p.indexOf(a) : -1;
+      const i2 = b && i1 >= 0 ? p.indexOf(b, i1 + a.length) : -1;
+      return i1 < 0 || i2 < 0 ? p : p.slice(0, i1) + b + p.slice(i1 + a.length, i2) + a + p.slice(i2 + b.length);
+    };
+    const moved = swapCells(panel, byDay[1] ?? "", byDay[2] ?? "");
+    /* ⚠️ BY PATTERN, NOT BY THE OPENER'S WHOLE TEXT: the tables took the ledger's compact gutter after this control was
+       written, and a plant keyed on the bare `admin-tbl` opener stopped landing — which the landed-check caught. */
+    const floored = panel.replace(/<table className="admin-tbl/, () => '<table className="admin-tbl min-w-[640px]');
+    const narrowEmpty = panel.replace("colSpan={3}", () => "colSpan={2}");
+    const wrongFold = panel.replace('block sm:hidden text-text-tertiary">{r.stateText}</span>', () => 'block sm:hidden text-text-tertiary">{r.dayTitle}</span>');
+    ok("1.437n · CONTROL · the money moved to the THIRD column, a floor on a table, an empty state one column short and a fold that paints a different field are each reported — in copies of the panel, each plant seen to land",
+      [moved, floored, narrowEmpty, wrongFold].every((p) => p !== panel && !layoutHolds(p)),
+      j([moved, floored, narrowEmpty, wrongFold].map((p) => [p !== panel, layoutHolds(p)])));
+  }
+
+  /* What the teardown puts back — read BEFORE anything is changed, and everything after it is inside the `try` whose
+     `finally` restores it, so no failure below can leave the desk switched on or the day-book store wrapped. */
+  const ctl0: Any = await w.dal.houseBotControlStore.get();
+  const realDay = w.dal.houseBookStore.dayRows;
+  const mine: Array<{ botId: string; userId: string }> = [];
+  const MINE = new Set<string>();
+  try {
+    await w.limits();
+    if (!ctl0.enabled) await w.switchOn();
+    /* The global per-minute count is shared with every block above; age it once, before the first stake here. */
+    await w.ageHouseMinute();
+    const designate = async (): Promise<{ botId: string; userId: string }> => {
+      const b = await w.bot();
+      mine.push(b);
+      MINE.add(b.botId);
+      return b;
+    };
+    const accA = await designate();
+    const accB = await designate();
+    const accC = await designate();
+    const accD = await designate();
+    type Leg = { marketId: string; player: string; pos: string; stakeTzs: number };
+    /** One market per house stake: a real player's NO, locked past its window, then the account's YES through the
+     *  seam exactly as `fire.ts` places one (a FILL sized inside the player's locked NO). */
+    const leg = async (b: { botId: string; userId: string }, houseYesTzs: number, playerNoTzs: number): Promise<Leg> => {
+      const market = await w.poll({ graceMin: 0 });
+      const player = await w.user({ balance: 1_000_000 });
+      const pr = await w.svc.buyPosition(player, { marketId: market.id, side: "NO", stake: playerNoTzs, idempotencyKey: crypto.randomUUID() });
+      if (!pr.ok) throw new Error(`§2h fixture: the player's NO ${playerNoTzs} was refused: ${j(pr)}`);
+      await w.backdate(pr.data.positionId, 10_000);
+      const hr = await w.place(b, await w.intent(b, market.id, { kind: "FILL", side: "YES", stakeTzs: houseYesTzs }));
+      if (!hr.ok) throw new Error(`§2h fixture: the house YES ${houseYesTzs} was refused: ${j(hr)}`);
+      return { marketId: market.id, player, pos: hr.data.positionId, stakeTzs: houseYesTzs };
+    };
+    const settle = async (l: Leg, outcome: "YES" | "NO" | "VOID"): Promise<boolean> => {
+      const res = await w.svc.resolveMarket({ marketId: l.marketId, outcome, officerId: OFFICER });
+      const st = await w.svc.settleMarket(l.marketId, { force: true });
+      return res?.ok === true && st?.ok === true;
+    };
+    const aWin = await leg(accA, 10_000, 20_000);
+    const bLoss = await leg(accB, 30_000, 40_000);
+    const cLoss = await leg(accC, 4_000, 5_000);
+    const dVoid = await leg(accD, 5_000, 5_000);
+    const bOpen = await leg(accB, 3_000, 3_000);
+    const aYday = await leg(accA, 2_000, 2_000);
+    const dDay2 = await leg(accD, 1_000, 1_000);
+    const dDay3 = await leg(accD, 1_000, 1_000);
+    const aDay5 = await leg(accA, 1_000, 2_000);
+    /* ⛔ A FIXTURE OF TIME ONLY (the world's declared `backdate`): each stake is moved to the instant its day needs
+       BEFORE its market is resolved, so the money it brings back is written today, as a stake placed on an earlier
+       day and settled today really is. The arithmetic is on the position's own read-back `placedAt`, so the move is
+       exact on both stores. */
+    const todayKey: string = CLOCK.eatDayKey(Date.now());
+    const todayStart: number = CLOCK.eatDayStartMs(todayKey);
+    const moveTo = async (l: Leg, atMs: number): Promise<void> => {
+      const p: Any = await w.mdal.positionStore.get(l.pos);
+      await w.backdate(l.pos, Date.parse(p.placedAt) - atMs);
+    };
+    await moveTo(aYday, todayStart - 30_000);
+    await moveTo(dDay2, todayStart - 2 * DAY_MS + 12 * 3_600_000);
+    await moveTo(dDay3, todayStart - 3 * DAY_MS + 12 * 3_600_000);
+    await moveTo(aDay5, todayStart - 5 * DAY_MS + 12 * 3_600_000);
+    const settledOk = [
+      await settle(aWin, "YES"), await settle(bLoss, "NO"), await settle(cLoss, "NO"),
+      await settle(dVoid, "VOID"), await settle(aYday, "NO"), await settle(dDay2, "VOID"), await settle(aDay5, "YES"),
+    ];
+    await w.dal.houseBotStore.setStatus(accC.botId, { from: ["ACTIVE"], ...REMOVE });
+    const legs: Leg[] = [aWin, bLoss, cLoss, dVoid, bOpen, aYday, dDay2, dDay3, aDay5];
+    const statusOf: Record<string, unknown> = {};
+    for (const [name, l] of Object.entries({ aWin, bLoss, cLoss, dVoid, bOpen, aYday, dDay2, dDay3, aDay5 })) {
+      statusOf[name] = ((await w.mdal.positionStore.get(l.pos)) as Any)?.status;
+    }
+    /* ⭐ THE INDEPENDENT LEDGER WALK. It reads the transactions by POSITION and nothing else — not the marker the
+       book filters on, not the day window, not `book.ts` — so a payout the book failed to see, or one it counted
+       twice, is a difference between the two. The settled population is the markets THIS FIXTURE resolved, never a
+       position's status, so a status written with no money behind it (1.437b's control) moves the book and not the
+       walk. */
+    const txns: Any[] = await w.db.txn.listAll();
+    const returnedOn = (l: Leg): number => txns
+      .filter((t) => t.positionId === l.pos && t.status === "CONFIRMED" && (t.type === "BET_PAYOUT" || t.type === "BET_REFUND"))
+      .reduce((n, t) => n + Number(t.amount), 0);
+    const walk = (ls: Leg[]): number => sum(ls.map((l) => returnedOn(l) - l.stakeTzs));
+    const walkToday = walk([aWin, bLoss, cLoss, dVoid]);
+    ok("1.437 · fixture · nine real house stakes against nine real players: seven resolved and settled for real (a WIN, two LOSSES, a VOID, yesterday's loss, day −2's VOID, day −5's WIN), two left OPEN, and C removed after staking",
+      settledOk.every(Boolean)
+        && all(statusOf) === all({ aWin: "WIN", bLoss: "LOSS", cLoss: "LOSS", dVoid: "VOID", bOpen: "OPEN", aYday: "LOSS", dDay2: "VOID", dDay3: "OPEN", aDay5: "WIN" })
+        && returnedOn(dVoid) === 5_000 && returnedOn(dDay2) === 1_000
+        && returnedOn(aWin) > aWin.stakeTzs && returnedOn(aDay5) > aDay5.stakeTzs
+        && [bLoss, cLoss, bOpen, aYday, dDay3].every((l) => returnedOn(l) === 0)
+        && txns.filter((t) => legs.some((l) => l.pos === t.positionId) && t.type === "CASHOUT").length === 0
+        && ((await w.dal.houseBotStore.get(accC.botId)) as Any)?.status === "REMOVED",
+      j({ settledOk, statusOf, returned: legs.map(returnedOn) }));
+
+    /* ━━ 1.437b · ONE ARITHMETIC, first on the WHOLE desk — read BEFORE the isolation goes on ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     * ⭐ 437(d): the tab's day figure is `book.ts`'s own settled figure with the sign turned — the one the Limits tab's
+     * settled row and both automatic stops act on — so no two readings of it can disagree. Measured here over EVERY
+     * stake on the desk today, whoever placed it, so the identity is not a property of this fixture's population. */
+    const wholeView: Any = await GATEM.houseResultsForConsole(OFFICER, "/admin/desk");
+    const wholeBook: Any = await BOOK.houseDayBook(wholeView.dayKey, null);
+    const wholeUsage: Any = await GATEM.houseUsageForConsole(OFFICER, "/admin/desk", { houseBotId: null });
+    const oneArithmetic = (view: Any, bookLoss: number, settledUsed: number | null): boolean => {
+      const d = deskOf(view);
+      return Number.isFinite(d) && d === -bookLoss && d === rowsSum(view, "today") && settledUsed === -d;
+    };
+    ok("1.437b · ONE ARITHMETIC on the WHOLE desk — today's desk result equals minus the day book's realised loss, the sum of every account line's Today (the removed-accounts line included), and minus the Limits tab's settled row",
+      oneArithmetic(wholeView, wholeBook.realisedLossTzs, settledOf(wholeUsage)),
+      j({ desk: deskOf(wholeView), book: wholeBook.realisedLossTzs, rows: rowsSum(wholeView, "today"), settled: settledOf(wholeUsage) }));
+    {
+      const other = deskOf(wholeView) === 999_999 ? "Profit TZS 999,998" : "Profit TZS 999,999";
+      const nudged = { ...wholeView, resultDays: [{ ...wholeView.resultDays[0], result: { ...wholeView.resultDays[0].result, text: other, unreadable: false } }, ...wholeView.resultDays.slice(1)] };
+      ok("1.437b · CONTROL · the same four-way check reports a desk cell that says anything else, over the same book and the same Limits row",
+        !oneArithmetic(nudged, wholeBook.realisedLossTzs, settledOf(wholeUsage)) && deskOf(nudged) !== deskOf(wholeView),
+        j({ nudged: deskOf(nudged), desk: deskOf(wholeView) }));
+    }
+
+    /* ⛔ THE ISOLATION GOES ON HERE (see the section header), and it is taken off in the `finally` below. */
+    w.dal.houseBookStore.dayRows = async function (this: Any, input: Any, tx?: Any) {
+      const rows: Any[] = await realDay.call(w.dal.houseBookStore, input, tx);
+      return rows.filter((r: Any) => MINE.has(r.houseBotId));
+    };
+    const isolated = w.dal.houseBookStore.dayRows;
+    const v: Any = await GATEM.houseResultsForConsole(OFFICER, "/admin/desk");
+    const book: Any = await BOOK.houseDayBook(v.dayKey, null);
+    const usage: Any = await GATEM.houseUsageForConsole(OFFICER, "/admin/desk", { houseBotId: null });
+    const desk = deskOf(v);
+    const days: Any[] = v.resultDays;
+    STATES.push(["results-rows", v]);
+
+    /* ━━ 1.437a · THE AUDIENCE, AND THE ROUTE BELT IN FRONT OF IT (rulings 340, 437(b)) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     * ⛔ A REFUSED VIEWER CAUSES NO READ AT ALL: `null` out, and not one control-row, day-book or roster call. The
+     * refused viewers are the ones with a reason to be near this money — a player, the account's own holder, a player
+     * who staked against the desk, an accounting officer — and nobody signed in.
+     * ⛔ THE ROUTE BELT: `houseConsoleAudience` answers any other `/admin` route by that route's own domain, so called
+     * with `/admin/house` it would admit whoever the owner's book admits. The reader refuses every route but the desk's
+     * own BEFORE it asks — asserted with the ADMIN, whom the audience question alone WOULD have let in there. */
+    {
+      const player = await w.user({ role: "PLAYER" });
+      const finance = await w.user({ role: "FINANCE" });
+      const realCtl = w.dal.houseBotControlStore.get;
+      const realList = w.dal.houseBotStore.listNonRemoved;
+      const calls = { ctl: 0, day: 0, list: 0 };
+      const refused: Array<[string, unknown]> = [];
+      let refusedCalls = { ...calls };
+      let control: Any = null;
+      let controlCalls = { ...calls };
+      try {
+        w.dal.houseBotControlStore.get = (...a: Any[]) => { calls.ctl++; return realCtl.apply(w.dal.houseBotControlStore, a as Any); };
+        w.dal.houseBookStore.dayRows = (...a: Any[]) => { calls.day++; return isolated.apply(w.dal.houseBookStore, a as Any); };
+        w.dal.houseBotStore.listNonRemoved = (...a: Any[]) => { calls.list++; return realList.apply(w.dal.houseBotStore, a as Any); };
+        const viewers: Array<[string, string | null | undefined, string]> = [
+          ["a player", player, "/admin/desk"],
+          ["the holder", accA.userId, "/admin/desk"],
+          ["a trigger player", aWin.player, "/admin/desk"],
+          ["a FINANCE officer", finance, "/admin/desk"],
+          ["signed out (null)", null, "/admin/desk"],
+          ["signed out (undefined)", undefined, "/admin/desk"],
+          ["the ADMIN on /admin/house", OFFICER, "/admin/house"],
+          ["a FINANCE officer on /admin/house", finance, "/admin/house"],
+        ];
+        for (const [who, id, route] of viewers) refused.push([who, await GATEM.houseResultsForConsole(id, route)]);
+        refusedCalls = { ...calls };
+        control = await GATEM.houseResultsForConsole(OFFICER, "/admin/desk");
+        controlCalls = { ctl: calls.ctl - refusedCalls.ctl, day: calls.day - refusedCalls.day, list: calls.list - refusedCalls.list };
+      } finally {
+        w.dal.houseBotControlStore.get = realCtl;
+        w.dal.houseBookStore.dayRows = isolated;
+        w.dal.houseBotStore.listNonRemoved = realList;
+      }
+      ok("1.437a · AUDIENCE · a player, the holder, a trigger player, a FINANCE officer and a signed-out viewer each get `null`, and so does the ADMIN on `/admin/house` (the route belt) — with ZERO control-row, day-book and roster reads between them",
+        refused.length === 8 && refused.every(([, r]) => r === null)
+          && refusedCalls.ctl === 0 && refusedCalls.day === 0 && refusedCalls.list === 0,
+        j({ answered: refused.filter(([, r]) => r !== null).map(([who]) => who), refusedCalls }));
+      const adminOnHouse = await GATEM.houseConsoleAudience(OFFICER, "/admin/house");
+      ok("1.437a · CONTROL · the same ADMIN on `/admin/desk` gets seven day rows through the very spies that counted zero — and the audience question ALONE admits that ADMIN on `/admin/house`, so the null there is the belt's",
+        control?.resultDays?.length === 7 && controlCalls.ctl >= 1 && controlCalls.day >= 1 && controlCalls.list >= 1
+          && adminOnHouse === true && w.dal.houseBotControlStore.get === realCtl && w.dal.houseBookStore.dayRows === isolated,
+        j({ rows: control?.resultDays?.length, controlCalls, adminOnHouse }));
+    }
+
+    /* ━━ 1.437b · ONE ARITHMETIC — the screen, the book, the Limits tab, the account pages, the ledger and the STOP ━━━━━━━━━
+     * ⭐ 437(d): one figure, read six ways. The desk's Today is `book.ts`'s settled figure with the sign turned; it is
+     * the sum of the account lines; it is minus the Limits tab's settled row; and it is an INDEPENDENT walk of the
+     * ledger over this fixture's own stakes (payouts and refunds by position, less the settled stakes). Each account's
+     * Today is minus its own page's settled row. And the global loss stop acts on exactly that figure: set the limit to
+     * today's loss and the desk switches off; one shilling higher and it does not. */
+    ok("1.437b · ONE ARITHMETIC — today's desk result equals minus the day book's realised loss, the sum of the account lines' Today, minus the Limits tab's settled row, and an independent walk of the ledger over the fixture's own stakes",
+      Number.isFinite(desk) && desk === -book.realisedLossTzs && desk === rowsSum(v, "today")
+        && settledOf(usage) === -desk && desk === walkToday,
+      j({ desk, book: book.realisedLossTzs, rows: rowsSum(v, "today"), settled: settledOf(usage), walk: walkToday }));
+    {
+      const perAccount: Array<{ name: string; today: number; settled: number | null; walked: number }> = [];
+      for (const [name, b, ls] of [["A", accA, [aWin]], ["B", accB, [bLoss]], ["D", accD, [dVoid]]] as Array<[string, { botId: string }, Leg[]]>) {
+        const page: Any = await GATEM.houseDetailForConsole(OFFICER, "/admin/desk", b.botId);
+        perAccount.push({ name, today: figureOf(rowOf(v, b)?.today), settled: settledOf(page), walked: walk(ls) });
+      }
+      /* A removed account's page need not state a settled row at all, so C is compared only where its page still
+         states one; on this tab its stake is the removed-accounts line. */
+      const cSettled = settledOf(await GATEM.houseDetailForConsole(OFFICER, "/admin/desk", accC.botId));
+      ok("1.437b · …and each account's Today is minus its OWN account page's settled loss row and the walk of its own stakes — A a profit, B a loss, D even — and the removed-accounts line is the walk of C's stake",
+        perAccount.every((p) => p.settled !== null && p.today === -p.settled && p.today === p.walked)
+          && figureOf(goneRow(v)?.today) === walk([cLoss]) && (cSettled === null || -cSettled === walk([cLoss])),
+        j({ perAccount, gone: goneRow(v)?.today?.text, cSettled }));
+    }
+    /* ⛔ THE CONTROLS. A figure of zero, or one sign across every account, would let an equality pass on nothing; a fee
+       of zero would let a result that ignored the fee pass; and a WIN written as a STATUS with no money is the one
+       write that moves the book and not the ledger — so the walk must disagree with it, and agree again once undone. */
+    await w.setPositionStatus(bOpen.pos, "WIN");
+    const flipped: Any = await GATEM.houseResultsForConsole(OFFICER, "/admin/desk");
+    await w.setPositionStatus(bOpen.pos, "OPEN");
+    const restored: Any = await GATEM.houseResultsForConsole(OFFICER, "/admin/desk");
+    ok("1.437b · CONTROL · the figure is non-zero with MIXED signs across accounts, the fee is real (A's payout is less than the whole pool of 30,000), and a WIN written as a STATUS with no money moves the desk away from the ledger walk by exactly that stake — and back once it is undone",
+      desk !== 0 && figureOf(rowOf(v, accA)?.today) > 0 && figureOf(rowOf(v, accB)?.today) < 0
+        && returnedOn(aWin) > aWin.stakeTzs && returnedOn(aWin) < aWin.stakeTzs + 20_000
+        && deskOf(flipped) !== walkToday && deskOf(flipped) === walkToday - bOpen.stakeTzs && deskOf(restored) === walkToday,
+      j({ desk, payout: returnedOn(aWin), flipped: deskOf(flipped), restored: deskOf(restored), walk: walkToday }));
+    /* ⛔ THE STOP, ON THE TEST WORLD'S OWN CONTROL ROW. `lossStops` switches the desk off only through the store's own
+       `switchOff`, which answers only for a desk that is ON — so the row is ON here (the block switched it on), the
+       limit PLUS ONE is tried FIRST (tried second it would meet a desk already off and pass on nothing), and the row
+       is switched straight back on. No account is passed in: the per-account stops are not this case's subject. */
+    {
+      const deskLoss = -desk;
+      const seen = { switchedOff: 0, security: 0 };
+      const quiet = async (): Promise<void> => {};
+      const alerts = {
+        placed: quiet, once: quiet, botStopped: quiet,
+        security: async () => { seen.security++; },
+        switchedOff: async () => { seen.switchedOff++; },
+      };
+      const ctlOn: Any = await w.dal.houseBotControlStore.get();
+      const above: Any = await PL.lossStops(Date.now(), [], { ...ctlOn, enabled: true, gCapDailyLossTzs: deskLoss + 1 }, alerts);
+      const onAfterAbove = ((await w.dal.houseBotControlStore.get()) as Any).enabled;
+      const at: Any = await PL.lossStops(Date.now(), [], { ...ctlOn, enabled: true, gCapDailyLossTzs: deskLoss }, alerts);
+      const afterAt: Any = await w.dal.houseBotControlStore.get();
+      if (!afterAt.enabled) await w.switchOn();
+      ok("1.437b · …and the STOP acts on the same figure: `lossStops` with the global daily loss limit AT today's desk loss switches the test world's desk off, as GLOBAL_LOSS_STOP, with one switched-off alert and no security alert",
+        ctlOn.enabled === true && deskLoss > 0 && at?.global === true && afterAt.enabled === false
+          && afterAt.offCause === "GLOBAL_LOSS_STOP" && seen.switchedOff === 1 && seen.security === 0,
+        j({ deskLoss, at, offCause: afterAt.offCause, seen }));
+      ok("1.437b · CONTROL · at today's desk loss PLUS ONE the same stop does not fire and the desk stays on — tried first, while the desk was on",
+        above?.global === false && onAfterAbove === true, j({ deskLoss, above, onAfterAbove }));
+    }
+
+    /* ━━ 1.437c · OUTCOMES AND WORDS (437(e)) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     * ⛔ A VOID brings the stake back and is 0; a LOSS is minus the stake; an OPEN stake is not a result yet and is left
+     * out — but it keeps its day "Still running", because that day can still change. ⛔ And each word is its OWN
+     * branch: a real −0 is "Even" (a result), a day with nothing finished is "Nothing settled", an empty day is "—"
+     * with the state "No stakes" — three different facts that a lazy builder would paint as one zero. */
+    ok("1.437c · OUTCOMES · a VOID is 0 (D's only stake today was voided and reads Even), a LOSS is minus its stake (B lost 30,000; the removed account lost 4,000), and an OPEN stake is excluded (B's open 3,000 is in no figure) while its day reads Still running",
+      rowOf(v, accD)?.today?.text === "Even" && rowOf(v, accD)?.today?.muted === false && returnedOn(dVoid) === dVoid.stakeTzs
+        && rowOf(v, accB)?.today?.text === `Loss ${formatTzs(30_000)}` && goneRow(v)?.today?.text === `Loss ${formatTzs(4_000)}`
+        && days[0].stateText === "Still running" && days[0].stakesText === formatNumber(5),
+      j({ d: rowOf(v, accD)?.today, b: rowOf(v, accB)?.today?.text, gone: goneRow(v)?.today?.text, day0: [days[0].stateText, days[0].stakesText] }));
+    ok("1.437c · WORDS · a day whose only stake was really voided reads Even and Final; a day whose only stake is still open reads Nothing settled and Still running; a day with a win reads Profit; the two empty days read — with the state No stakes and a count of 0",
+      days[2].result.text === "Even" && days[2].result.muted === false && days[2].stateText === "Final" && days[2].stakesText === "1"
+        && returnedOn(dDay2) === dDay2.stakeTzs
+        && days[3].result.text === "Nothing settled" && days[3].result.muted === true && days[3].stateText === "Still running" && days[3].stakesText === "1"
+        && days[5].result.text === `Profit ${formatTzs(walk([aDay5]))}` && days[5].stateText === "Final" && days[5].stakesText === "1"
+        && [4, 6].every((i) => days[i].result.text === "—" && days[i].result.muted === true && days[i].stateText === "No stakes" && days[i].stakesText === "0"),
+      j(days.map((d: Any) => [d.result.text, d.stateText, d.stakesText])));
+    ok("1.437c · CONTROL · a genuinely level SETTLED day is not Nothing settled, a profit day is not Even, and a day with nothing finished is not Even — each word is its own branch",
+      days[2].result.text !== "Nothing settled" && days[3].result.text !== "Even"
+        && /^Profit TZS [\d,]+$/.test(days[5].result.text) && days[5].result.text !== "Even" && days[5].result.muted === false,
+      j({ level: days[2].result.text, open: days[3].result.text, profit: days[5].result.text }));
+
+    /* ━━ 1.437d · THE COHORT IS THE DAY A STAKE WAS PLACED (R3) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     * ⛔ A stake placed at 23:59:30 EAT and settled the next day belongs to the day it was placed on — the day the risk
+     * was taken, which is the day the loss limit and both stops count it against. A tab that filed it under the day it
+     * SETTLED would show a figure no stop ever acted on. */
+    const yPos: Any = await w.mdal.positionStore.get(aYday.pos);
+    ok("1.437d · COHORT · a stake placed at 23:59:30 EAT yesterday and settled today as a real loss is on YESTERDAY's row — Loss TZS 2,000, one stake, Final — and in the account's Last 7 days",
+      Date.parse(yPos?.placedAt) < todayStart && Math.abs(todayStart - Date.parse(yPos?.placedAt) - 30_000) <= 1
+        && yPos?.status === "LOSS" && returnedOn(aYday) === 0
+        && days[1].dayText === "Yesterday" && days[1].result.text === `Loss ${formatTzs(2_000)}` && days[1].stakesText === "1" && days[1].stateText === "Final"
+        && figureOf(rowOf(v, accA)?.week) === walk([aWin, aYday, aDay5]),
+      j({ placedAt: yPos?.placedAt, day1: days[1].result.text, week: rowOf(v, accA)?.week?.text }));
+    ok("1.437d · CONTROL · …and TODAY's row does not carry it: today is the walk of today's stakes alone and A's Today is its win alone — a fold by the day a stake SETTLED would have put the 2,000 on today",
+      desk === walkToday && figureOf(rowOf(v, accA)?.today) === walk([aWin])
+        && walkToday + walk([aYday]) !== desk && walk([aWin, aYday]) !== figureOf(rowOf(v, accA)?.today),
+      j({ desk, walkToday, bySettlement: walkToday + walk([aYday]) }));
+
+    /* ━━ 1.437e · THE WINDOW AND THE DAY, the behavioural half ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     * ⛔ EXACTLY SEVEN ROWS, newest first, and row 0 is the SHELL's own day key — the key the strip, the band and the
+     * rail were painted from in the same pass — with each row's full date that key walked back one EAT day at a time.
+     * The expected titles are built from the key with the clock's own helpers, and the walk is `keyAt`'s, never
+     * `priorEatDays`, so the function under test is not also the ruler. */
+    const titleOf = (key: string): string => {
+      const at = CLOCK.eatDayStartMs(key);
+      return `${CLOCK.WEEKDAY_LABEL[CLOCK.eatWeekday(at)]} ${CLOCK.formatEat(at, "D MMM YYYY")} (${CLOCK.EAT_LABEL})`;
+    };
+    const windowHolds = (view: Any): boolean => Array.isArray(view?.resultDays) && view.resultDays.length === 7
+      && typeof view.dayKey === "string" && /^\d{4}-\d{2}-\d{2}$/.test(view.dayKey)
+      && view.resultDays.every((r: Any, i: number) => r.dayTitle === titleOf(keyAt(view, i)))
+      && view.resultDays[0].dayText === "Today" && view.resultDays[1].dayText === "Yesterday"
+      && view.resultDays.slice(2).every((r: Any) => typeof r.dayText === "string" && r.dayText.length > 0 && r.dayTitle.startsWith(`${r.dayText} `));
+    ok("1.437e · WINDOW · exactly SEVEN day rows, newest first — Today, Yesterday, then a weekday and date — and row 0 is the shell's own day key, each row's full date that key walked back one EAT day at a time",
+      windowHolds(v) && v.dayKey === todayKey, j({ dayKey: v.dayKey, titles: v.resultDays.map((r: Any) => r.dayTitle) }));
+    ok("1.437e · CONTROL · an eighth row, a window shifted by one day and rows painted from another day's key are each reported",
+      !windowHolds({ ...v, resultDays: [...v.resultDays, v.resultDays[6]] })
+        && !windowHolds({ ...v, resultDays: [...v.resultDays.slice(1), v.resultDays[6]] })
+        && !windowHolds({ ...v, dayKey: keyAt(v, 1) }),
+      "");
+
+    /* ━━ 1.437f · ONE READ PER DAY (rulings 346, 433(d)) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     * ⛔ SEVEN day-book reads for seven rows: today's is the core's OWN read — the one the band and the rail were built
+     * from — never a second look at it, and each earlier day is read exactly once, all seven over the whole desk. The
+     * spy records the handle it was called through, so the count is the reader's and not the spy's own. */
+    {
+      const reads: Any[] = [];
+      let calledHandle: Any = null;
+      let fView: Any = null;
+      try {
+        w.dal.houseBookStore.dayRows = function (this: Any, input: Any, tx?: Any) {
+          calledHandle = w.dal.houseBookStore.dayRows;
+          reads.push(input);
+          return isolated.call(w.dal.houseBookStore, input, tx);
+        };
+        fView = await GATEM.houseResultsForConsole(OFFICER, "/admin/desk");
+      } finally { w.dal.houseBookStore.dayRows = isolated; }
+      const readsHold = (xs: Any[], view: Any): boolean => {
+        const froms = xs.map((x) => x?.fromIso);
+        const want = Array.from({ length: 7 }, (_, i) => fromOf(keyAt(view, i)));
+        return xs.length === 7 && new Set(froms).size === 7 && froms.filter((f) => f === want[0]).length === 1
+          && want.every((f) => froms.includes(f)) && xs.every((x) => x?.houseBotId === null);
+      };
+      ok("1.437f · ONE READ PER DAY — seven day-book reads for seven rows, seven distinct days, today's read exactly once (the core's own), every one over the whole desk",
+        fView !== null && readsHold(reads, fView), j(reads.map((x) => x?.fromIso)));
+      const todayRead = reads.find((x) => x?.fromIso === fromOf(fView?.dayKey ?? todayKey));
+      ok("1.437f · CONTROL · a planted second read of today is reported, and the spy was the handle the reader actually called",
+        todayRead !== undefined && !readsHold([...reads, { ...todayRead }], fView ?? v)
+          && calledHandle !== null && calledHandle !== isolated && w.dal.houseBookStore.dayRows === isolated,
+        j({ reads: reads.length, today: todayRead?.fromIso ?? null }));
+    }
+
+    /* ━━ 1.437g · ONE FAILED DAY BLANKS ONE ROW — never the tab, and never as a zero (rulings 355, 372(c), 437(g)) ━━━━━━━━━━━
+     * ⛔ THE PLANTED FAILURE IS DISCRIMINATED BY `fromIso`: only day −2's read rejects, so today's core read and the five
+     * other days are real. That row says the read failed — never blank, never "Even", never "—" — and so does every
+     * account's Last 7 days, because a seven-day sum missing a day is a partial total, which 437(g) refuses to show. */
+    const failFrom = fromOf(keyAt(v, 2));
+    let failedCalls = 0;
+    let gView: Any = null;
+    try {
+      w.dal.houseBookStore.dayRows = async function (this: Any, input: Any, tx?: Any) {
+        if (input?.fromIso === failFrom) { failedCalls++; throw new Error("planted: day -2's read fails, and only that one"); }
+        return isolated.call(w.dal.houseBookStore, input, tx);
+      };
+      gView = await GATEM.houseResultsForConsole(OFFICER, "/admin/desk");
+    } finally { w.dal.houseBookStore.dayRows = isolated; }
+    const g2: Any = gView?.resultDays?.[2];
+    ok("1.437g · ONE FAILED DAY · only day −2's read rejects: that row says `couldn't read — this is not zero` (its count and state are dashes), and every account's Last 7 days says the same",
+      failedCalls === 1 && g2?.result?.text === UNREADABLE && g2.result.unreadable === true && g2.stakesText === "—" && g2.stateText === "—"
+        && gView.resultAccounts.length > 0 && gView.resultAccounts.every((r: Any) => r.week?.text === UNREADABLE && r.week?.unreadable === true),
+      j({ failedCalls, row: g2, weeks: gView?.resultAccounts?.map((r: Any) => r.week?.text) }));
+    ok("1.437g · …and everything else is REAL: the six other days and every account's Today are exactly what they are with no failure",
+      gView !== null && [0, 1, 3, 4, 5, 6].every((i) => all(gView.resultDays[i]) === all(v.resultDays[i]))
+        && gView.resultAccounts.length === v.resultAccounts.length
+        && gView.resultAccounts.every((r: Any, i: number) => all(r.today) === all(v.resultAccounts[i].today) && r.accountName === v.resultAccounts[i].accountName),
+      j({ lines: [gView?.resultAccounts?.length, v.resultAccounts.length] }));
+    ok("1.437g · CONTROL · the failed row is not blank, not Even, not No stakes and not — (each would read as a zero), and the same row without the failure is the real Even",
+      typeof g2?.result?.text === "string" && g2.result.text !== "" && !["Even", "No stakes", "—", "Nothing settled"].includes(g2.result.text)
+        && g2.result.figure === null && v.resultDays[2].result.text === "Even",
+      j({ failed: g2?.result?.text ?? null, real: v.resultDays[2].result.text }));
+    STATES.push(["results-day-failed", gView]);
+
+    /* ━━ 1.437h · A REMOVED ACCOUNT STAYS IN EVERY TOTAL (437(f)) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     * ⛔ Its stakes were placed and settled; removing the account afterwards un-places nothing, and both loss stops
+     * still count them. So the desk's figures include it, and By account folds EVERY such account into ONE line — "An
+     * account no longer on the desk" for one, "Accounts no longer on the desk" for several — so the lines always add up
+     * to the days. A fold over the roster alone would silently drop that money. */
+    const gl: Any = goneRow(v);
+    const daySum = (view: Any): number => sum((view?.resultDays ?? []).map((r: Any) => figureOf(r.result)));
+    ok("1.437h · REMOVED · C, removed after staking, is still in today's desk result, in ONE removed-accounts line that reads `An account no longer on the desk` — no link, no handle — carrying C's loss",
+      gl?.accountName === GONE && gl.accountIsOperatorText === false && gl.accountHref === null && gl.accountHandle === null
+        && gl.today?.text === `Loss ${formatTzs(4_000)}` && gl.week?.text === `Loss ${formatTzs(4_000)}`
+        && rowOf(v, accC) === undefined && v.resultAccounts.filter((r: Any) => r.accountHref === null).length === 1
+        && desk === figureOf(rowOf(v, accA)?.today) + figureOf(rowOf(v, accB)?.today) + figureOf(rowOf(v, accD)?.today) + figureOf(gl.today),
+      j({ gone: gl, lines: v.resultAccounts.length }));
+    ok("1.437h · the account lines' Last 7 days add up to the day rows — every account on the roster plus the removed-accounts line, and nothing else",
+      Number.isFinite(daySum(v)) && rowsSum(v, "week") === daySum(v), j({ weeks: rowsSum(v, "week"), days: daySum(v) }));
+    const rosterOnly = sum(v.resultAccounts.filter((r: Any) => r.accountIsOperatorText === true).map((r: Any) => figureOf(r.week)));
+    ok("1.437h · CONTROL · a fold over the ROSTER only would differ from the day rows — by exactly the removed account's 4,000",
+      rosterOnly !== daySum(v) && rosterOnly - daySum(v) === 4_000, j({ rosterOnly, days: daySum(v) }));
+    /* A SECOND removed account that staked in the window turns the one line plural. D is removed here (C already is);
+       both still give their slots back in the teardown, which removes whatever is left. */
+    await w.dal.houseBotStore.setStatus(accD.botId, { from: ["ACTIVE"], ...REMOVE });
+    const vMany: Any = await GATEM.houseResultsForConsole(OFFICER, "/admin/desk");
+    const glMany: Any = goneRow(vMany);
+    ok("1.437h · with a SECOND removed account in the window the line reads `Accounts no longer on the desk` — still ONE line, carrying both accounts' money, with every total unchanged",
+      glMany?.accountName === GONE_MANY && vMany.resultAccounts.filter((r: Any) => r.accountHref === null).length === 1
+        && rowOf(vMany, accD) === undefined
+        && figureOf(glMany.today) === walk([cLoss, dVoid]) && figureOf(glMany.week) === walk([cLoss, dVoid, dDay2])
+        && deskOf(vMany) === desk && daySum(vMany) === daySum(v) && rowsSum(vMany, "week") === daySum(vMany),
+      j({ gone: glMany, desk: deskOf(vMany) }));
+    ok("1.437h · CONTROL · the singular and the plural are different words, and the line was the SINGULAR before the second removal",
+      GONE !== GONE_MANY && gl?.accountName === GONE && glMany?.accountName !== gl?.accountName, j([GONE, GONE_MANY]));
+    STATES.push(["results-removed-many", vMany]);
+
+    /* ━━ 1.437i · THE GRAMMAR, over every result cell of every state this block painted (rulings 361, 437(e)) ━━━━━━━━━━━━━━
+     * ⛔ WORDS, NEVER SIGNS: a figure is a magnitude beside "Profit" or "Loss" and nothing else; every other cell is one
+     * of five plain words; and a cell's `text` is exactly its word and its figure, so the page cannot paint one thing
+     * while the model says another. The whole desk's view is in the population too, not only this fixture's. */
+    const cellsOf = (view: Any): Any[] => [
+      ...(view?.resultDays ?? []).map((r: Any) => r.result),
+      ...(view?.resultAccounts ?? []).flatMap((r: Any) => [r.today, r.week]),
+    ];
+    const grammarHolds = (cells: Any[]): boolean => cells.length > 0 && cells.every((c: Any) => typeof c?.text === "string" && GRAMMAR.test(c.text)
+      && (c.figure === null ? c.text === c.word : /^TZS [\d,]+$/.test(c.figure) && c.text === `${c.word} ${c.figure}`));
+    const everyCell = [v, gView, vMany, wholeView, flipped, restored].flatMap(cellsOf);
+    ok("1.437i · GRAMMAR · every result cell of every state reads Profit or Loss beside an UNSIGNED `TZS` figure, or Even, Nothing settled, No stakes, — or the failed-read sentence — and its text is exactly its word and its figure",
+      everyCell.length >= 60 && grammarHolds(everyCell),
+      j({ cells: everyCell.length, off: everyCell.filter((c: Any) => !grammarHolds([c])).slice(0, 4) }));
+    ok("1.437i · CONTROL · `+TZS 1,000`, `−TZS 1,000`, `TZS 0`, `Net TZS 5` and `Profit TZS −1,000` are each refused by the same pattern, and so is a cell whose figure carries a sign",
+      ["+TZS 1,000", "−TZS 1,000", "TZS 0", "Net TZS 5", "Profit TZS −1,000"].every((s) => !GRAMMAR.test(s))
+        && !grammarHolds([{ text: "Loss TZS 1,000", word: "Loss", figure: "TZS −1,000", unreadable: false, muted: false }])
+        && grammarHolds([{ text: "Loss TZS 1,000", word: "Loss", figure: "TZS 1,000", unreadable: false, muted: false }]),
+      "");
+
+    /* ━━ 1.437j · CONTAINMENT — the result is painted on THIS tab and nowhere else (D20b amended for ONE view) ━━━━━━━━━━━━━━━
+     * ⛔ Every other view model the desk paints over the SAME fixture — the roster, the activity feed, the Limits tab,
+     * the history, an account's own page — carries no `Profit TZS` / `Loss TZS` phrase. Scanned over the WHOLE
+     * serialisation (`all`), never the display helper. */
+    {
+      const RESULT_PHRASE = /\b(?:Profit|Loss) TZS [\d,]+/;
+      const others: Array<[string, Any]> = [
+        ["roster", await rosterEvery(OFFICER)],
+        ["activity", await GATEM.houseFeedForConsole(OFFICER, "/admin/desk", { tab: "activity" })],
+        ["limits", await GATEM.houseUsageForConsole(OFFICER, "/admin/desk", { houseBotId: null })],
+        ["history", await GATEM.houseHistoryForConsole(OFFICER, "/admin/desk", { tab: "history" })],
+        ["account", await GATEM.houseDetailForConsole(OFFICER, "/admin/desk", accA.botId)],
+      ];
+      const carriers = others.filter(([, view]) => RESULT_PHRASE.test(all(view))).map(([n]) => n);
+      ok("1.437j · CONTAINMENT · the roster, activity, limits, history and account views on the same fixture carry no `Profit TZS` / `Loss TZS` phrase — and the results view does",
+        others.every(([, view]) => view != null && all(view).length > 200) && carriers.length === 0 && RESULT_PHRASE.test(all(v)),
+        j({ carriers, sizes: others.map(([n, view]) => [n, all(view).length]) }));
+      const feedView: Any = others[1][1];
+      const plantedFeed = { ...feedView, feed: [{ ...(feedView?.feed?.[0] ?? {}), note: "Profit TZS 1" }, ...(feedView?.feed ?? []).slice(1)] };
+      ok("1.437j · CONTROL · `Profit TZS 1` planted in one activity row is reported",
+        (feedView?.feed?.length ?? 0) > 0 && RESULT_PHRASE.test(all(plantedFeed)) && !RESULT_PHRASE.test(all(feedView)),
+        j({ rows: feedView?.feed?.length ?? null }));
+    }
+
+    /* ━━ 1.437k · THE NEUTRAL LEXICON over the Results tab's own view models (ruling 453) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     * ⛔ The same test §3 and 4.453 apply, run here on every Results state this block painted — every day, every cell,
+     * every account line, the note and the shell's own strings — with 474's operator exemptions taken BY NAME from the
+     * list the reader publishes: an account's own label is the Owner's text, and a switch reason is a person's. §3
+     * scans the same states again with its own sweep; this case is the tab's own, so it cannot pass by being absent. */
+    {
+      const EXEMPT = new Set((GATEM.OPERATOR_DATA_EXEMPT as ReadonlyArray<Any>).map((e: Any) => String(e.value)));
+      const TAIL = new RegExp(` ·${String.fromCharCode(0xa0)}reason: [\\s\\S]*$`);
+      const resultsCopy = (view: Any): string[] => [
+        ...Object.entries(view ?? {}).filter(([k, s]) => typeof s === "string" && !EXEMPT.has(k)).map(([, s]) => (s as string).replace(TAIL, "")),
+        ...(view?.resultDays ?? []).flatMap((r: Any) => [r.dayText, r.dayTitle, r.stakesText, r.stateText, r.result?.text, r.result?.word, r.result?.figure]),
+        ...(view?.resultAccounts ?? []).flatMap((r: Any) => [r.accountIsOperatorText ? null : r.accountName, r.accountHandle,
+          ...[r.today, r.week].flatMap((c: Any) => [c?.text, c?.word, c?.figure])]),
+      ].filter((s: unknown): s is string => typeof s === "string");
+      const lexHits = (view: Any): string[] => resultsCopy(view).filter((s) => NEUTRAL.test(s));
+      ok("1.437k · LEXICON · nothing the Results tab paints, in any of its states, names the feature — every day, every cell, every account line, the note and the shell's own strings",
+        [v, gView, vMany].every((x) => resultsCopy(x).length >= 40 && lexHits(x).length === 0) && resultsCopy(v).includes(GATEM.CONSOLE_RESULTS_NOTE),
+        j({ hits: [v, gView, vMany].flatMap(lexHits), sizes: [v, gView, vMany].map((x) => resultsCopy(x).length) }));
+      ok("1.437k · CONTROL · `Bot results` planted in the note, and as one day's name, is reported each time",
+        lexHits({ ...v, resultsNote: "Bot results" }).length === 1
+          && lexHits({ ...v, resultDays: [{ ...v.resultDays[0], dayText: "Bot results" }, ...v.resultDays.slice(1)] }).length === 1,
+        "");
+    }
+
+    /* ── end of the Results tab's cases; the teardown below gives the roster its slots back ── */
+  } finally {
+    w.dal.houseBookStore.dayRows = realDay;
+    const rosterMine = async (): Promise<number> =>
+      ((await w.dal.houseBotStore.listNonRemoved()) as Any[]).filter((b) => MINE.has(b.id)).length;
+    const onBefore = await rosterMine();
+    for (const b of mine) await w.dal.houseBotStore.setStatus(b.botId, { from: ["ACTIVE", "PAUSED", "AUTO_PAUSED"], ...REMOVE });
+    const onAfter = await rosterMine();
+    /* The master switch, put back where the block found it: ON if it was on; OFF with its own cause if it was off. */
+    const ctlNow: Any = await w.dal.houseBotControlStore.get();
+    if (ctl0.enabled && !ctlNow.enabled) await w.switchOn();
+    else if (!ctl0.enabled && (ctlNow.enabled || ctlNow.offCause !== ctl0.offCause)) {
+      if (!ctlNow.enabled) await w.switchOn();
+      await w.dal.houseBotControlStore.switchOff({ cause: ctl0.offCause ?? "MANUAL", byId: OFFICER, reason: "test" });
+    }
+    const ctlEnd: Any = await w.dal.houseBotControlStore.get();
+    await w.limits();
+    ok("1.437 · teardown · every account the block designated is off the roster again (the 20 slots are shared), the day-book store is the real one, and the master switch is where the block found it",
+      mine.length === 4 && onBefore >= 1 && onAfter === 0 && w.dal.houseBookStore.dayRows === realDay
+        && ctlEnd.enabled === ctl0.enabled
+        && (ctl0.enabled || ctlEnd.offCause === ctl0.offCause || (ctl0.offCause == null && ctlEnd.offCause === "MANUAL")),
+      j({ designated: mine.length, onBefore, onAfter, enabled: [ctl0.enabled, ctlEnd.enabled], offCause: [ctl0.offCause, ctlEnd.offCause] }));
+  }
+} catch (err) {
+  ok("0.throw.2h · no Results-tab case threw — a throw here would otherwise skip §3's lexicon scan and §4's whole source law",
+    false, String((err as Any)?.stack ?? err).replace(/\s+/g, " ").slice(0, 400));
+}
+
+/* ════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+ * §2i · REPLAN RULING 543 — AN AUDIT THAT CANNOT BE SIGNED NO LONGER REPORTS A LANDED WRITE AS FAILED (2026-09-26)
+ *
+ * ⛔ WHAT WAS WRONG. `audit()` documented a fail-open it did not keep. `chainSecret()` throws under
+ * `NODE_ENV=production` without an `AUDIT_CHAIN_SECRET` distinct from `SESSION_SECRET`, and it threw DURING SIGNING —
+ * past the in-memory fallback, because that fallback signs too. So every house writer that awaited its compliance
+ * row after its own write had landed reported the landed write as a failure: a designation ("That could not be
+ * written. Nothing changed"), a Start, and the kill switch ("Nothing changed. Reload the page" — about a desk that
+ * WAS off). Five writers had meanwhile adopted ruling 537's `recorded: false` by CATCHING the rejection, so fixing the
+ * contract alone would have flipped every one of them to `recorded: true` over a row that was never written.
+ * ⛔ WHAT THIS BLOCK HOLDS, ON BOTH STORES: the contract itself (it resolves, it names the shortfall, nothing is
+ * written or chained, and the fault really was live), the three surfaces that used to lie (the kill switch, Start,
+ * designate) and the four writers whose recorded:false branch had no case at all (the rules save, Pause and Remove,
+ * switch-on and the staff cancel) — every one with a CONTROL in the untouched env — and, in the memory child, the
+ * source law over every house writer (2.543.8).
+ * ⛔ THE FAULT IS INJECTED THROUGH THE AUDIT MODULE'S OWN PRECONDITION, ONE CALL WIDE (`withUnsignableChain`): the
+ * queue is drained BEFORE the env moves, so no earlier fire-and-forget append is stamped under it, and again before it
+ * is put back, so nothing queued inside is stamped outside; every variable is restored in a `finally`. A write is
+ * asserted through `getAuditById`, the table and the event's own `auditId` — never through the ring's size, because
+ * other appends interleave.
+ * ⛔ EVERY DESK THIS BLOCK SWITCHES IS THE SCRATCH ONE — the two-store runner's own database, or the memory store.
+ * ⛔ THE ROSTER IS SHARED (20 slots): every account this block creates is REMOVED before it ends, and the master switch
+ * is put back where the block found it. The designation cases need a free slot on a roster earlier blocks have filled
+ * past its ceiling through the DAL, so the capacity read is scoped to 0 for exactly those two calls — a fixture of
+ * STATE, restored in a `finally`, the kind §2h uses for the day book — and never by raising the ceiling 1.359 and
+ * 1.412 measure, nor by removing an account another block left.
+ * ════════════════════════════════════════════════════════════════════════════════════════════════════════════════ */
+section("§2i · ruling 543 — an audit that cannot be signed never reports a landed write as failed");
+try {
+  const AUD: Any = await import("../../src/lib/server/audit.ts");
+  const KS: Any = await import("../../src/lib/server/house-bot/kill-switch.ts");
+  const { hashPassword, randomId }: Any = await import("../../src/lib/server/crypto.ts");
+  /** The tail every one of the console's missing-record sentences shares (switch on, switch off, and every act). */
+  const RECORD_GONE = "Its compliance record could not be written";
+  const SAME_SECRET = "same-secret-for-both-32-characters";
+  const REMOVE_543 = { to: "REMOVED", pauseReason: null, pausedFromStatus: null, removal: { byId: OFFICER, reason: "fixture", cause: "MANUAL" } };
+
+  /**
+   * ⭐ ONE CALL WITH THE CHAIN UNSIGNABLE — `NODE_ENV=production` and either no `AUDIT_CHAIN_SECRET` ("absent") or one
+   * equal to `SESSION_SECRET` ("same"): the two halves of the precondition `chainSecret()` refuses on a served build.
+   * ⚠️ "same" rewrites SESSION_SECRET for the call, so it wraps only a bare `audit()`; every act uses "absent".
+   */
+  async function withUnsignableChain<T>(mode: "absent" | "same", fn: () => Promise<T>): Promise<T> {
+    await AUD.auditFlush();
+    const env0 = { node: process.env.NODE_ENV, chain: process.env.AUDIT_CHAIN_SECRET, session: process.env.SESSION_SECRET };
+    const put = (k: string, v: string | undefined): void => { if (v === undefined) delete (process.env as Any)[k]; else (process.env as Any)[k] = v; };
+    try {
+      put("NODE_ENV", "production");
+      if (mode === "absent") put("AUDIT_CHAIN_SECRET", undefined);
+      else { put("SESSION_SECRET", SAME_SECRET); put("AUDIT_CHAIN_SECRET", SAME_SECRET); }
+      return await fn();
+    } finally {
+      await AUD.auditFlush();
+      put("NODE_ENV", env0.node);
+      put("AUDIT_CHAIN_SECRET", env0.chain);
+      put("SESSION_SECRET", env0.session);
+    }
+  }
+  /** A promise's outcome as data, so a REJECTION is a failed assertion here and never a throw that skips the block. */
+  const settle = (p: Promise<Any>): Promise<{ v?: Any; e?: string }> =>
+    Promise.resolve(p).then((v) => ({ v }), (e: unknown) => ({ e: String((e as Error)?.message ?? e) }));
+  /** Rows the TABLE holds for one id — Postgres only; the memory store has no table, so its answer is 0. */
+  const tableRows = async (id: string): Promise<number> => (w.onPostgres
+    ? Number(((await w.prisma().$queryRawUnsafe(`SELECT count(*)::int AS n FROM "AuditLog" WHERE "id" = $1`, id)) as Any[])[0]?.n ?? -1)
+    : 0);
+  const ticketOf = (id: unknown): number => Number(/_(\d{9})$/.exec(String(id))?.[1] ?? Number.NaN);
+  const probe = (action: string) => ({ category: "SYSTEM", action, actorId: null, targetType: null, targetId: null, payload: { probe: action } });
+
+  /* ━━ 2.543.0–3 · THE CONTRACT ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+  {
+    const before = AUD.verifyChain();
+    ok("2.543.0 · fixture · the audit chain this child has written so far verifies BEFORE this block touches it — so a break found below was made here",
+      before.valid === true, j(before));
+
+    const t0 = AUD.auditTicketsIssued();
+    const absent = await withUnsignableChain("absent", () => settle(AUD.audit(probe("probe.543.absent"))));
+    const t1 = AUD.auditTicketsIssued();
+    const u = absent.v;
+    ok("2.543.1 · ⭐ an append that cannot be SIGNED — production, no chain secret — RESOLVES, never rejects, and names its shortfall: recorded false, UNSIGNED, and a ticketed id this very call was issued",
+      absent.e === undefined && u?.recorded === false && u?.unrecorded === "UNSIGNED"
+        && String(u?.id).startsWith(`aud_${AUD.auditBootId()}_`) && ticketOf(u?.id) > t0 && ticketOf(u?.id) <= t1,
+      j({ rejected: absent.e ?? null, recorded: u?.recorded, unrecorded: u?.unrecorded, id: u?.id, tickets: [t0, t1] }));
+    const same = await withUnsignableChain("same", () => settle(AUD.audit(probe("probe.543.same"))));
+    ok("2.543.1b · …and the same answer when the chain secret EQUALS the session secret — the other half of the refusal, which a secret that is merely present does not pass",
+      same.e === undefined && same.v?.recorded === false && same.v?.unrecorded === "UNSIGNED" && AUD.getAuditById(same.v?.id) === undefined,
+      j({ rejected: same.e ?? null, recorded: same.v?.recorded, unrecorded: same.v?.unrecorded }));
+    const rows = u ? await tableRows(String(u.id)) : -1;
+    ok("2.543.2 · nothing of it was written ANYWHERE: the audit store has no entry for its id, on Postgres the table has no row, and its hash is a word rather than a hash",
+      u !== undefined && AUD.getAuditById(u.id) === undefined && rows === 0 && u.entryHash === "UNSIGNED" && u.prevHash === "UNSIGNED",
+      j({ inStore: u ? AUD.getAuditById(u.id) !== undefined : null, tableRows: rows, entryHash: u?.entryHash, prevHash: u?.prevHash }));
+    const live = await withUnsignableChain("absent", async () => {
+      try { AUD.verifyChain(); return "the verifier did not throw"; } catch (e) { return String((e as Error)?.message ?? e); }
+    });
+    ok("2.543.2c · CONTROL · the fault was LIVE for those calls: under the same env the chain's own verifier THROWS the refusal — so the resolve above is the fix, not an env change that never took",
+      /AUDIT_CHAIN_SECRET must be set in production/.test(live), live);
+    const signed = await settle(AUD.audit(probe("probe.543.signed")));
+    await AUD.auditFlush();
+    const signedRows = signed.v ? await tableRows(String(signed.v.id)) : -1;
+    const chain = AUD.verifyChain();
+    ok("2.543.3 · CONTROL · with the secret back the SAME append is recorded — so the flag is a measurement, not a constant — its entry is in the store, and the chain still verifies, so no unsigned entry ever joined it",
+      signed.e === undefined && signed.v?.recorded === true && signed.v?.unrecorded === undefined
+        && AUD.getAuditById(signed.v?.id) !== undefined && signedRows === (w.onPostgres ? 1 : 0) && chain.valid === true,
+      j({ rejected: signed.e ?? null, recorded: signed.v?.recorded, inStore: AUD.getAuditById(signed.v?.id) !== undefined, tableRows: signedRows, chain }));
+  }
+
+  /* ━━ THE ACTS — every desk below is this run's scratch desk; the block puts it back as it found it ━━━━━━━━━━━━ */
+  const ctl0: Any = await w.dal.houseBotControlStore.get();
+  const mine543: Array<{ botId: string; userId: string }> = [];
+  try {
+    await w.limits();
+    if (ctl0.enabled) await w.switchOff();
+    else if (ctl0.offCause === "SUNSET") { await w.switchOn(); await w.switchOff(); }
+    const WORD = GATEM.CONSOLE_SWITCH_ON_WORD;
+    const eventIds = async (kind: string): Promise<Set<string>> =>
+      new Set(((await w.dal.houseBotEventStore.listByKinds([kind], { limit: 500 })) as Any[]).map((e) => e.id));
+    const newEvent = async (kind: string, before: Set<string>): Promise<Any> =>
+      ((await w.dal.houseBotEventStore.listByKinds([kind], { limit: 500 })) as Any[]).find((e) => !before.has(e.id)) ?? null;
+    const eventOf = async (botId: string, kind: string): Promise<Any> =>
+      ((await w.dal.houseBotEventStore.listByBot(botId, { limit: 50 })).rows as Any[]).find((e) => e.kind === kind) ?? null;
+    const offBells = async (): Promise<Set<string>> => new Set(((await w.db.notification.findByUser(OFFICER, 1000)) as Any[])
+      .filter((r) => r.kind === "HOUSE_BOT" && /switched OFF/.test(String(r.titleEn ?? ""))).map((r) => r.id));
+    const act = (input: Any): Promise<Any> => GATEM.houseAccountActForConsole(OFFICER, "/admin/desk", input);
+    const fixtureBot = async (caps: Record<string, unknown> = {}): Promise<{ botId: string; userId: string }> => {
+      const b = await w.bot({ caps });
+      mine543.push(b);
+      return b;
+    };
+
+    /* ━━ 2.543.10 · SWITCH-ON — its recorded:false branch had no case ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+    {
+      const before = await eventIds("SWITCH_ON");
+      const on = await withUnsignableChain("absent", () => settle(GATEM.houseSwitchForConsole(OFFICER, "/admin/desk", { to: "ON", reason: "record check, switched on", typed: WORD })));
+      const ev = await newEvent("SWITCH_ON", before);
+      const row: Any = await w.dal.houseBotControlStore.get();
+      ok("2.543.10 · switching the desk ON while its compliance record cannot be signed: the desk IS on, the answer is a success, and it is a WARNING that the record could not be written — with no audit id on the event",
+        on.e === undefined && on.v?.ok === true && on.v?.changed === true && on.v?.on === true && on.v?.warn === true
+          && String(on.v?.note).includes(RECORD_GONE) && !NEUTRAL.test(String(on.v?.note))
+          && row.enabled === true && ev !== null && ev.auditId == null,
+        j({ threw: on.e ?? null, result: on.v, enabled: row.enabled, auditId: ev ? ev.auditId : "no event" }));
+      await w.switchOff();
+      const before2 = await eventIds("SWITCH_ON");
+      const onOk = await GATEM.houseSwitchForConsole(OFFICER, "/admin/desk", { to: "ON", reason: "record check, switched on again", typed: WORD });
+      const ev2 = await newEvent("SWITCH_ON", before2);
+      ok("2.543.10c · CONTROL · the same switch-on with the secret in place carries no note and no warning, and its event carries an audit id the audit store holds",
+        onOk.ok === true && onOk.changed === true && onOk.warn === false && onOk.note === null
+          && typeof ev2?.auditId === "string" && AUD.getAuditById(ev2.auditId) !== undefined,
+        j({ result: onOk, auditId: ev2?.auditId ?? null }));
+    }
+
+    /* ━━ 2.543.4 · THE KILL SWITCH — the worst of them: the desk WAS off and the officer read "Nothing changed" ━━━━ */
+    {
+      /* 4a · the SERVICE, with a recorder for the channel, so "the alert still went" is measured, not inferred. */
+      if (!(await w.dal.houseBotControlStore.get()).enabled) await w.switchOn();
+      const calls: Any[] = [];
+      const unused = async (): Promise<void> => { throw new Error("§2i: the kill switch speaks only on switchedOff"); };
+      const rec = { placed: unused, once: unused, security: unused, botStopped: unused, switchedOff: async (c: Any) => { calls.push(c); } };
+      const before = await eventIds("SWITCH_OFF");
+      const svc = await withUnsignableChain("absent", () => settle(KS.switchOffHouseBots({ cause: "MANUAL", byId: OFFICER, reason: "record check, service", alerts: rec })));
+      const ev = await newEvent("SWITCH_OFF", before);
+      const afterSvc: Any = await w.dal.houseBotControlStore.get();
+      ok("2.543.4a · ⭐ the kill switch while its compliance record cannot be signed: the desk IS off, the stop is reported as landed, the alert still goes out, the event carries no audit id — and the service says the record did not land",
+        svc.e === undefined && svc.v?.ok === true && svc.v?.changed === true && svc.v?.recorded === false
+          && afterSvc.enabled === false && calls.length === 1 && ev !== null && ev.auditId == null,
+        j({ threw: svc.e ?? null, result: svc.v, enabled: afterSvc.enabled, alerts: calls.length, auditId: ev ? ev.auditId : "no event" }));
+
+      /* 4b · the CONSOLE door the officer presses, with the REAL alert channel. */
+      await w.switchOn();
+      const bellsBefore = await offBells();
+      const before2 = await eventIds("SWITCH_OFF");
+      const viaConsole = await withUnsignableChain("absent", () => settle(GATEM.houseSwitchForConsole(OFFICER, "/admin/desk", { to: "OFF", reason: "record check, console" })));
+      const ev2 = await newEvent("SWITCH_OFF", before2);
+      const afterConsole: Any = await w.dal.houseBotControlStore.get();
+      const rang = [...(await offBells())].some((id) => !bellsBefore.has(id));
+      const c = viaConsole.v;
+      ok("2.543.4b · …and the CONSOLE says both, as a warning: the desk is off and its compliance record could not be written — never \"Nothing changed\" — the event carries no audit id, and the officer's bell still rang",
+        viaConsole.e === undefined && c?.ok === true && c?.changed === true && c?.on === false && c?.warn === true
+          && String(c?.note).startsWith("The desk is off.") && String(c?.note).includes(RECORD_GONE) && !NEUTRAL.test(String(c?.note))
+          && afterConsole.enabled === false && ev2 !== null && ev2.auditId == null && rang,
+        j({ threw: viaConsole.e ?? null, result: c, enabled: afterConsole.enabled, auditId: ev2 ? ev2.auditId : "no event", rang }));
+
+      /* 4c · CONTROL — the same console stop, the secret in place. */
+      await w.switchOn();
+      const before3 = await eventIds("SWITCH_OFF");
+      const plain = await GATEM.houseSwitchForConsole(OFFICER, "/admin/desk", { to: "OFF", reason: "record check, control" });
+      const ev3 = await newEvent("SWITCH_OFF", before3);
+      ok("2.543.4c · CONTROL · the same stop with the secret in place carries no record sentence and no warning, and stamps its event with an id the audit store holds — so the two above are the missing record's doing",
+        plain.ok === true && plain.changed === true && plain.warn === false && !String(plain.note ?? "").includes(RECORD_GONE)
+          && typeof ev3?.auditId === "string" && AUD.getAuditById(ev3.auditId) !== undefined,
+        j({ result: plain, auditId: ev3?.auditId ?? null }));
+    }
+
+    /* ━━ 2.543.5 · START ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+    {
+      /** A stopped account Start will accept — the fixture 1.415 measured: a salt, real rules and the gap floor. */
+      const startable = async (): Promise<{ botId: string; userId: string }> => {
+        const b = await fixtureBot({ freqMinGapSec: 20 });
+        await w.dal.houseBotStore.setStatus(b.botId, { from: ["ACTIVE"], to: "PAUSED", pauseReason: "MANUAL", pausedFromStatus: null });
+        await w.setUserFields(b.userId, { passwordSalt: "case-salt-for-start-543" });
+        const cur: Any = await w.dal.houseBotStore.get(b.botId);
+        const rules: Any = R.DEFAULT_RULES_V1({ stakeBounds: { minTzs: 1_000, maxTzs: 10_000_000 } });
+        rules.scope.products.polls = true;
+        rules.scope.categories = ["macro"];
+        rules.modes.polls = { counter: true, fill: true, opener: true };
+        const saved = await w.dal.houseBotStore.saveRules(b.botId, cur.rulesVersion, { rules });
+        if (!saved.ok) throw new Error("§2i fixture: the Start account could not save its rules");
+        return b;
+      };
+      const a = await startable();
+      const started = await withUnsignableChain("absent", () => settle(act({ id: a.botId, act: "START" })));
+      const s = started.v;
+      const status = ((await w.dal.houseBotStore.get(a.botId)) as Any)?.status;
+      ok("2.543.5 · ⭐ Start while its compliance record cannot be signed: the account IS running, the answer is a success, and it is a WARNING carrying the record sentence — never \"That could not be written. Nothing changed\"",
+        started.e === undefined && s?.ok === true && s?.changed === true && s?.warn === true
+          && String(s?.note).includes(RECORD_GONE) && !NEUTRAL.test(String(s?.note)) && status === "ACTIVE",
+        j({ threw: started.e ?? null, result: s, status }));
+      const b = await startable();
+      const plain = await act({ id: b.botId, act: "START" });
+      ok("2.543.5c · CONTROL · the same Start with the secret in place says nothing about a record — so the sentence above is the missing record's, and not something Start always says",
+        plain.ok === true && plain.changed === true && !String(plain.note ?? "").includes(RECORD_GONE)
+          && ((await w.dal.houseBotStore.get(b.botId)) as Any)?.status === "ACTIVE",
+        j(plain));
+    }
+
+    /* ━━ 2.543.6 · DESIGNATE ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+    {
+      const PW543 = "candidate-password-543";
+      /** A player with a REAL salted password, which is what `verifyHouseBotPassword` checks (§2f's recipe). */
+      const candidate = async (): Promise<string> => {
+        const id = await w.user({ role: "PLAYER", balance: 250_000 });
+        const salt = randomId(16);
+        await w.setUserFields(id, {
+          passwordHash: await hashPassword(PW543, salt), passwordSalt: salt,
+          passwordSetAt: new Date().toISOString(), passwordSetVia: "SELF_CHANGE",
+        });
+        return id;
+      };
+      /* ⛔ THE CAPACITY READ, SCOPED TO THIS ONE CALL (see the block header): the ceiling is not what this case
+         measures, and a ROSTER_FULL here would be a fixture artefact masquerading as the assertion's own answer. */
+      const designateOnce = async (userId: string, label: string, unsignable: boolean): Promise<{ v?: Any; e?: string }> => {
+        const realCount = w.dal.houseBotStore.countLive;
+        w.dal.houseBotStore.countLive = async () => 0;
+        try {
+          const call = () => settle(GATEM.houseDesignateForConsole(OFFICER, "/admin/desk", { userId, label, password: PW543 }));
+          return unsignable ? await withUnsignableChain("absent", call) : await call();
+        } finally {
+          w.dal.houseBotStore.countLive = realCount;
+        }
+      };
+      const keep = async (userId: string): Promise<Any> => {
+        const bot: Any = await w.dal.houseBotStore.findLiveByUserId(userId);
+        if (bot) mine543.push({ botId: bot.id, userId });
+        return bot;
+      };
+      const u1 = await candidate();
+      const d1 = await designateOnce(u1, "Record check one", true);
+      const bot1 = await keep(u1);
+      ok("2.543.6 · ⭐ a designation while its compliance record cannot be signed: the account IS on the desk, the answer is a success, and it is a WARNING carrying the record sentence — never \"That could not be written. Nothing changed\", which sent the officer to spend another of the holder's attempts",
+        d1.e === undefined && d1.v?.ok === true && d1.v?.warn === true && String(d1.v?.note).includes(RECORD_GONE)
+          && !NEUTRAL.test(all(d1.v)) && bot1 !== null && bot1.status === "PAUSED",
+        j({ threw: d1.e ?? null, result: d1.v, bot: bot1?.status ?? null }));
+      const u2 = await candidate();
+      const d2 = await designateOnce(u2, "Record check two", false);
+      const bot2 = await keep(u2);
+      ok("2.543.6c · CONTROL · the same designation with the secret in place is a plain success — no warning and no record sentence — and the capacity read really was put back",
+        d2.e === undefined && d2.v?.ok === true && d2.v?.warn === false && !String(d2.v?.note).includes(RECORD_GONE) && bot2 !== null
+          && (await w.dal.houseBotStore.countLive()) > 0,
+        j({ threw: d2.e ?? null, result: d2.v }));
+    }
+
+    /* ━━ 2.543.7 · THE RULES SAVE — its recorded:false branch had no case ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+    {
+      const acct = await fixtureBot({ freqMinGapSec: 20 });
+      const RULE_IDS = R.RULE_NUMBER_FIELDS as readonly string[];
+      /** The whole form as the browser posts it (2h's recipe), with the counter delay window set by KEY. */
+      const post = async (minDelay: string): Promise<Any> => {
+        const f: Any = (await GATEM.houseDetailForConsole(OFFICER, "/admin/desk", acct.botId)).rulesForm;
+        const row: Any = await w.dal.houseBotStore.get(acct.botId);
+        const keyOf = (id: string): string => (f.rules as Any[])[RULE_IDS.indexOf(id)].key;
+        const numbers = Object.fromEntries((f.rules as Any[]).map((r: Any) => [r.key, r.value]));
+        return {
+          accountId: acct.botId,
+          baseVersion: row.rulesVersion,
+          values: { ...Object.fromEntries((f.caps as Any[]).map((x: Any) => [x.key, x.value])), "stake-max": "1000000" },
+          flags: Object.fromEntries((f.flags as Any[]).map((x: Any) => [x.key, x.on])),
+          lists: {
+            categories: (f.lists as Any[]).find((l: Any) => l.field === "categories").entries.filter((e: Any) => e.on).map((e: Any) => e.value),
+            chains: (f.lists as Any[]).find((l: Any) => l.field === "chains").entries.filter((e: Any) => e.on).map((e: Any) => e.value),
+          },
+          numbers: { ...numbers, [keyOf("counter.delayMinSec")]: minDelay, [keyOf("counter.delayMaxSec")]: "55" },
+          amountKind: f.amountKind.value,
+          schedule: {
+            days: (f.schedule.days as Any[]).filter((d: Any) => d.on).map((d: Any) => d.value),
+            allDay: f.schedule.allDay,
+            windows: (f.schedule.windows as Any[]).map((x: Any) => ({ start: x.start, end: x.end })),
+          },
+        };
+      };
+      const body = await post("26");
+      const saved = await withUnsignableChain("absent", () => settle(GATEM.houseRulesSaveForConsole(OFFICER, "/admin/desk", body)));
+      const stored: Any = await w.dal.houseBotStore.get(acct.botId);
+      ok("2.543.7 · a rules save while its compliance record cannot be signed still LANDS — the new value is on the row — and says the record did not: recorded false, never \"Nothing was saved\"",
+        saved.e === undefined && saved.v?.ok === true && saved.v?.recorded === false && stored.rules?.counter?.delayMinSec === 26,
+        j({ threw: saved.e ?? null, result: saved.v, stored: stored.rules?.counter?.delayMinSec }));
+      const good = await GATEM.houseRulesSaveForConsole(OFFICER, "/admin/desk", await post("27"));
+      ok("2.543.7c · CONTROL · the same save with the secret in place reports its record written — so the flag above is a measurement and not a constant",
+        good.ok === true && good.recorded === true && ((await w.dal.houseBotStore.get(acct.botId)) as Any)?.rules?.counter?.delayMinSec === 27,
+        j(good));
+    }
+
+    /* ━━ 2.543.9 · PAUSE AND REMOVE — their recorded:false branch had no case ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+    {
+      const pa = await fixtureBot();
+      const paused = await withUnsignableChain("absent", () => settle(act({ id: pa.botId, act: "PAUSE", reason: "record check pause" })));
+      const pEvent = await eventOf(pa.botId, "PAUSED");
+      const re = await fixtureBot();
+      const removed = await withUnsignableChain("absent", () => settle(act({ id: re.botId, act: "REMOVE", reason: "record check removal", typed: GATEM.CONSOLE_REMOVE_WORD })));
+      const rEvent = await eventOf(re.botId, "REMOVED");
+      ok("2.543.9 · Pause and Remove while their compliance records cannot be signed: each account MOVED, each answer is a success carrying the record sentence as a WARNING, and neither event is stamped with the id of a row that does not exist",
+        paused.v?.ok === true && paused.v?.changed === true && paused.v?.warn === true && String(paused.v?.note).includes(RECORD_GONE)
+          && removed.v?.ok === true && removed.v?.changed === true && removed.v?.warn === true && String(removed.v?.note).includes(RECORD_GONE)
+          && ((await w.dal.houseBotStore.get(pa.botId)) as Any)?.status === "PAUSED" && ((await w.dal.houseBotStore.get(re.botId)) as Any)?.status === "REMOVED"
+          && pEvent !== null && pEvent.auditId == null && rEvent !== null && rEvent.auditId == null,
+        j({ pause: paused.v ?? paused.e, remove: removed.v ?? removed.e, pauseAuditId: pEvent?.auditId ?? "no event", removeAuditId: rEvent?.auditId ?? "no event" }));
+      const pc = await fixtureBot();
+      const pausedOk = await act({ id: pc.botId, act: "PAUSE", reason: "record check pause, control" });
+      const pcEvent = await eventOf(pc.botId, "PAUSED");
+      ok("2.543.9c · CONTROL · the same Pause with the secret in place is no warning, and its event carries an audit id the audit store holds",
+        pausedOk.ok === true && pausedOk.changed === true && pausedOk.warn === false
+          && typeof pcEvent?.auditId === "string" && AUD.getAuditById(pcEvent.auditId) !== undefined,
+        j({ result: pausedOk, auditId: pcEvent?.auditId ?? null }));
+    }
+
+    /* ━━ 2.543.11 · THE STAFF CANCEL — its recorded:false branch had no case ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+    {
+      const sc = await fixtureBot();
+      const market = await w.poll();
+      /** One QUEUED (PENDING) by-hand stake on the account — the only status the stop control is offered on. */
+      const queued = async (): Promise<string> => {
+        const id = w.constants.HOUSE_ID_PREFIX ? `${w.constants.HOUSE_ID_PREFIX.intent}${w.uid("x")}` : w.uid("hbi_");
+        await w.dal.houseBotIntentStore.insert({
+          id, houseBotId: sc.botId, botUserId: sc.userId, kind: "MANUAL", marketId: market.id, productLine: "MARKET",
+          anchorKey: w.constants.manualAnchorKey(OFFICER, crypto.randomUUID()), triggerPositionId: null, triggerUserId: null, targetId: null,
+          requestedById: OFFICER, entryCondition: "THIN", side: "YES", stakeTzs: 2_000,
+          dueAt: w.iso(-1_000), deadlineAt: w.iso(3_600_000), staleAt: w.iso(600_000), status: "PENDING", reasonCode: null,
+          why: null, decision: {}, attempts: 0, transientAttempts: 0, nextAttemptAt: null, claimedBy: null,
+          claimedUntil: null, positionId: null, finishedAt: null, alertedAt: null,
+        } as Any);
+        return id;
+      };
+      const i1 = await queued();
+      const sub1 = crypto.randomUUID();
+      const cut = await withUnsignableChain("absent", () => settle(GATEM.houseCancelIntentForConsole(OFFICER, "/admin/desk", { id: i1, submitId: sub1, reason: "record check stop" })));
+      const press1: Any = await w.dal.pressStore.findByActorSubmit(OFFICER, sub1);
+      const ev1 = ((await w.dal.houseBotEventStore.listByBot(sc.botId, { limit: 50 })).rows as Any[])
+        .find((e) => e.kind === "STAFF_INTENT_CANCELLED" && (e.payload as Any)?.intentId === i1) ?? null;
+      ok("2.543.11 · the staff cancel while its decision record cannot be signed: the stake IS stopped, the answer is a success whose warning says the record is not written yet, and neither the press nor its event holds the id of a row that does not exist — so the lease repair still writes it",
+        cut.e === undefined && cut.v?.ok === true && cut.v?.changed === true && cut.v?.warn === true
+          && typeof cut.v?.note === "string" && !NEUTRAL.test(cut.v.note)
+          && ((await w.dal.houseBotIntentStore.get(i1)) as Any)?.status === "CANCELLED"
+          && press1 !== null && press1.auditId == null && ev1 !== null && ev1.auditId == null,
+        j({ threw: cut.e ?? null, result: cut.v, pressAuditId: press1?.auditId ?? "no press", eventAuditId: ev1?.auditId ?? "no event" }));
+      const i2 = await queued();
+      const sub2 = crypto.randomUUID();
+      const cut2 = await GATEM.houseCancelIntentForConsole(OFFICER, "/admin/desk", { id: i2, submitId: sub2, reason: "record check stop, control" });
+      const press2: Any = await w.dal.pressStore.findByActorSubmit(OFFICER, sub2);
+      ok("2.543.11c · CONTROL · the same cancel with the secret in place is no warning, and its press is audited with an id the audit store holds",
+        cut2.ok === true && cut2.changed === true && cut2.warn === false
+          && typeof press2?.auditId === "string" && AUD.getAuditById(press2.auditId) !== undefined,
+        j({ result: cut2, pressAuditId: press2?.auditId ?? null }));
+    }
+  } finally {
+    for (const b of mine543) await w.dal.houseBotStore.setStatus(b.botId, { from: ["ACTIVE", "PAUSED", "AUTO_PAUSED"], ...REMOVE_543 });
+    /* The master switch, put back where the block found it: ON if it was on; OFF with its own cause if it was off. */
+    const ctlNow: Any = await w.dal.houseBotControlStore.get();
+    if (ctl0.enabled && !ctlNow.enabled) await w.switchOn();
+    else if (!ctl0.enabled && (ctlNow.enabled || ctlNow.offCause !== ctl0.offCause)) {
+      if (!ctlNow.enabled) await w.switchOn();
+      await w.dal.houseBotControlStore.switchOff({ cause: ctl0.offCause ?? "MANUAL", byId: OFFICER, reason: "test" });
+    }
+  }
+  const stillLive = ((await w.dal.houseBotStore.listNonRemoved()) as Any[]).filter((b) => mine543.some((m) => m.botId === b.id));
+  const ctlEnd: Any = await w.dal.houseBotControlStore.get();
+  ok("2.543.t · teardown · every account this block created is off the roster again (the 20 slots are shared), and the master switch is where the block found it",
+    mine543.length >= 9 && stillLive.length === 0 && ctlEnd.enabled === ctl0.enabled
+      && (ctl0.enabled || ctlEnd.offCause === ctl0.offCause || (ctl0.offCause == null && ctlEnd.offCause === "MANUAL")),
+    j({ created: mine543.length, stillLive: stillLive.length, enabled: [ctl0.enabled, ctlEnd.enabled], offCause: [ctl0.offCause, ctlEnd.offCause] }));
+
+  /* ━━ 2.543.8 · THE SOURCE LAW OVER EVERY HOUSE WRITER (memory child — it reads files, not a store) ━━━━━━━━━━━━━━
+   * ⛔ WHY A LAW AND NOT ONLY THE CASES ABOVE. The defect this ruling closes was a SHAPE: five writers took their
+   * `recorded` from a catch around `audit()`, which since the contract fix can never run — so each would report a
+   * record that was never written, and a new writer copying any of them would too. The population is the directory,
+   * walked from disk; every call of the audit module's writer in it must be awaited into a name whose `.recorded` is
+   * read in the same block, and no `try {` may directly wrap one. */
+  if (STORE === "memory") {
+    const HB_DIR = "src/lib/server/house-bot";
+    const writerFiles = readdirSync(join(ROOT, HB_DIR)).filter((f) => f.endsWith(".ts")).sort().map((f) => `${HB_DIR}/${f}`);
+    /** Every call of `audit(` in one file, and every way it breaks the 543 law. Literals and regexes are blanked first,
+     *  so a brace inside a string cannot move the block boundary the law is measured against. */
+    const auditLaw = (rel: string, src: string): { calls: number; problems: string[] } => {
+      const code = blankLiterals(decomment(src), { regex: true });
+      const problems: string[] = [];
+      let calls = 0;
+      for (const m of code.matchAll(/(?<![\w.$])audit\s*\(/g)) {
+        calls++;
+        const at = m.index ?? 0;
+        const where = `${rel}:${code.slice(0, at).split("\n").length}`;
+        const bound = /(?:const|let)\s+([A-Za-z_$][\w$]*)\s*=\s*\(?\s*await\s+$/.exec(code.slice(code.lastIndexOf("\n", at) + 1, at));
+        let open = -1;
+        for (let k = at - 1, depth = 0; k >= 0; k--) {
+          if (code[k] === "}") depth++;
+          else if (code[k] === "{") { if (depth === 0) { open = k; break; } depth--; }
+        }
+        let close = code.length;
+        for (let k = at, depth = 0; k < code.length; k++) {
+          if (code[k] === "{") depth++;
+          else if (code[k] === "}") { if (depth === 0) { close = k; break; } depth--; }
+        }
+        if (open >= 0 && /\btry\s*$/.test(code.slice(Math.max(0, open - 16), open))) problems.push(`${where} · a try { directly wraps the call — its catch can never run`);
+        if (!bound) { problems.push(`${where} · the call's answer is not awaited into a name`); continue; }
+        if (!new RegExp(`\\b${bound[1].replace(/\$/g, "\\$")}\\.recorded\\b`).test(code.slice(at, close))) {
+          problems.push(`${where} · ${bound[1]} = await audit(…) never reads ${bound[1]}.recorded in its block`);
+        }
+      }
+      return { calls, problems };
+    };
+    const law = writerFiles.map((rel) => ({ rel, ...auditLaw(rel, read(rel)) }));
+    const withCalls = law.filter((x) => x.calls > 0).map((x) => x.rel.slice(HB_DIR.length + 1));
+    const KNOWN = ["designation.ts", "limits-save.ts", "outcomes.ts", "press-audit.ts", "roster-actions.ts", "rules-save.ts", "sunset.ts", "switch-on.ts"];
+    const problems = law.flatMap((x) => x.problems);
+    ok("2.543.8 · ⛔ every house writer READS the flag: each audit( call under src/lib/server/house-bot/ — the directory walked from disk, the eight known writers among them — is awaited into a name whose .recorded is read in its own block, and no try { wraps one",
+      writerFiles.length >= 30 && KNOWN.every((f) => withCalls.includes(f)) && law.reduce((n, x) => n + x.calls, 0) >= KNOWN.length && problems.length === 0,
+      j({ files: writerFiles.length, writers: withCalls, calls: law.reduce((n, x) => n + x.calls, 0), problems }));
+    const plantInto = (rel: string, from: string, to: string): string => {
+      const src = read(rel);
+      return src.includes(from) ? src.replace(from, to) : "";
+    };
+    const caughtAgain = plantInto(`${HB_DIR}/switch-on.ts`, "  const entry = await audit({",
+      "  try { await audit({ category: \"SYSTEM\", action: \"planted.543\", actorId: null, targetType: null, targetId: null }); } catch { /* planted */ }\n  const entry = await audit({");
+    const flagIgnored = plantInto(`${HB_DIR}/outcomes.ts`, "  return entry.recorded ? entry.id : null;", "  return entry.id;");
+    const synthetic = {
+      caught: "async function f() {\n  let recorded = true;\n  try {\n    await audit({ action: \"x\" });\n  } catch {\n    recorded = false;\n  }\n}",
+      unread: "async function f() {\n  const entry = await audit({ action: \"x\" });\n  return entry.id;\n}",
+      bare: "async function f() {\n  await audit({ action: \"x\" });\n}",
+      clean: "async function f() {\n  const entry = await audit({ action: \"x { not a brace }\" });\n  return entry.recorded ? entry.id : null;\n}",
+    };
+    ok("2.543.8c · CONTROL · the law REPORTS the shapes it forbids — a try planted around a real writer's call, a real writer whose read of the flag is removed, and a caught, an unread and a bare call — and passes a clean one whose string carries a brace",
+      caughtAgain !== "" && auditLaw("switch-on.ts", caughtAgain).problems.length >= 2
+        && flagIgnored !== "" && auditLaw("outcomes.ts", flagIgnored).problems.length === 1
+        && auditLaw("caught.ts", synthetic.caught).problems.length >= 2 && auditLaw("unread.ts", synthetic.unread).problems.length === 1
+        && auditLaw("bare.ts", synthetic.bare).problems.length === 1 && auditLaw("clean.ts", synthetic.clean).problems.length === 0,
+      j({ caught: auditLaw("switch-on.ts", caughtAgain).problems, synthetic: Object.fromEntries(Object.entries(synthetic).map(([k, v]) => [k, auditLaw(`${k}.ts`, v).problems.length])) }));
+  }
+} catch (err) {
+  ok("0.throw.2i · no ruling-543 case threw — a throw here would otherwise skip §3's lexicon scan and §4's whole source law",
+    false, String((err as Any)?.stack ?? err).replace(/\s+/g, " ").slice(0, 400));
+}
+
+/* ════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+ * §2k · STEP 9 — EVERY DESK TABLE SORTS, AND NONE CAN GROW PAST A PAGE (Ali, 2026-09-26)
+ *
+ * As typed: "before finsihing amke su relaso all desk tbale sand grid sgot th erug tpaging pleas enad sroting etc.. to
+ * prveent vey rlong grids". Nine tables: the roster, the two ledgers, the two histories, the Targets grid and the
+ * Results tab's two. Every case runs on BOTH stores and every claim carries a CONTROL.
+ * ⛔ THE EXPECTED ORDERS ARE THE TEST'S OWN. Where this block made the population (the account ledger, the Targets
+ * grid), each sequence is computed HERE from every row's STORED facts, read back from the store, with this block's own
+ * comparator — never the reader's or the DAL's — and the served order must EQUAL it, on the memory twin and on Postgres:
+ * that is "the two twins give the identical order", measured. Where the population is the whole desk, the claim is a
+ * PROPERTY of every adjacent pair of every page, read off the cells an officer reads.
+ * ════════════════════════════════════════════════════════════════════════════════════════════════════════════════ */
+section("§2k · step 9 — every desk table sorts, and none can grow past a page");
+try {
+  const TAG9 = `s9${process.pid}`;
+  const ROUTE9 = "/admin/desk";
+  const nap = (msec: number) => new Promise((r) => setTimeout(r, msec));
+  /** The TEST's own text order: A–Z folded to a–z, then code point — written here, never imported from the DAL. */
+  const byCodePoint = (x: string, y: string): number => {
+    const X = Array.from(x), Y = Array.from(y);
+    for (let i = 0; i < Math.min(X.length, Y.length); i++) {
+      const d = (X[i].codePointAt(0) ?? 0) - (Y[i].codePointAt(0) ?? 0);
+      if (d !== 0) return d < 0 ? -1 : 1;
+    }
+    return X.length === Y.length ? 0 : X.length < Y.length ? -1 : 1;
+  };
+  const fold = (s: string) => s.replace(/[A-Z]/g, (c) => c.toLowerCase());
+  const textOrder = (a: string, b: string): number => byCodePoint(fold(a), fold(b)) || byCodePoint(a, b);
+  const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  /** A painted `whenTitle` ("26 Sep 2026 14:03:22 EAT") in seconds — its own precision and no more. */
+  const secsOf = (t: string | null | undefined): number | null => {
+    const m = /^(\d{1,2}) (\w{3}) (\d{4}) (\d\d):(\d\d):(\d\d)/.exec(t ?? "");
+    return m ? Date.UTC(Number(m[3]), MON.indexOf(m[2]), Number(m[1]), Number(m[4]), Number(m[5]), Number(m[6])) / 1000 : null;
+  };
+  /** A painted figure ("TZS 1,500", "used TZS 1,500", "3") as a number — `null` where the cell paints none. */
+  const figureOf = (s: string | null | undefined): number | null => {
+    const m = /([\d,]+)/.exec(s ?? "");
+    return m ? Number(m[1].replace(/,/g, "")) : null;
+  };
+  const LIFECYCLE = ["PENDING", "CLAIMED", "PLACED", "WIN", "LOSS", "VOID", "CASHED_OUT", "SKIPPED", "EXPIRED", "FAILED", "CANCELLED"];
+  const CHIP_RANK: Record<string, number> = { Queued: 0, "In flight": 1, Placed: 2, Won: 3, Lost: 4, Void: 5, "Cashed out": 6, Skipped: 7, Expired: 8, Failed: 9, Cancelled: 10 };
+  const newestFirst = (a: { ms: number; id: string }, b: { ms: number; id: string }) => b.ms - a.ms || (a.id < b.id ? 1 : a.id > b.id ? -1 : 0);
+  /** Every page of one address, in order — `pageWord` is the table's own page parameter. */
+  const walk9 = async (read: (q: Record<string, unknown>) => Promise<Any>, q: Record<string, unknown>, pageWord: string,
+    rowsOf: (v: Any) => Any[] | null, totalOf: (v: Any) => number | null): Promise<{ pages: Any[]; rows: Any[] }> => {
+    const first = await read(q);
+    const pages: Any[] = [first];
+    const last = Math.max(1, Math.ceil((totalOf(first) ?? 0) / 20));
+    for (let n = 2; n <= last; n++) pages.push(await read({ ...q, [pageWord]: String(n) }));
+    return { pages, rows: pages.flatMap((v) => rowsOf(v) ?? []) };
+  };
+  /**
+   * THE PAIR CHECKER every property below uses: `key` may be `null` — missing, LAST in both directions — and an equal
+   * key must satisfy `tie`. Returns the positions of every pair out of order; empty means the whole walk is in order.
+   */
+  const pairsOut = <R>(rows: R[], key: (r: R) => number | string | null, dir: "asc" | "desc", tie: (a: R, b: R) => boolean): number[] => {
+    const bad: number[] = [];
+    for (let i = 1; i < rows.length; i++) {
+      const ka = key(rows[i - 1]), kb = key(rows[i]);
+      const cmp = ka === null || kb === null ? 0 : typeof ka === "number" && typeof kb === "number" ? ka - kb : textOrder(String(ka), String(kb));
+      const fine = ka === null || kb === null ? kb === null && (ka !== null || tie(rows[i - 1], rows[i]))
+        : cmp === 0 ? tie(rows[i - 1], rows[i])
+        : dir === "asc" ? cmp < 0 : cmp > 0;
+      if (!fine) bad.push(i);
+    }
+    return bad;
+  };
+  const setIntentAt = async (id: string, atIso: string): Promise<void> => {
+    if (w.onPostgres) await w.prisma().$executeRawUnsafe(`UPDATE "HouseBotIntent" SET "createdAt" = $1::timestamptz WHERE "id" = $2`, atIso, id);
+    else ((globalThis as Any).__50PICK_HB_INTENTS as Map<string, Any>).get(id).createdAt = atIso;
+  };
+  const one = (word: string) => `One part of this address was not understood and was ignored: ${word}. The rest of the filter is in force.`;
+  const ctl9: Any = await w.dal.houseBotControlStore.get();
+  const mine9: Array<{ botId: string; userId: string }> = [];
+  const REMOVE9 = { to: "REMOVED", pauseReason: null, pausedFromStatus: null, removal: { byId: OFFICER, reason: "fixture", cause: "MANUAL" } };
+  const bot9 = async (o: Record<string, unknown> = {}) => { const b = await w.bot(o as Any); mine9.push(b); await nap(3); return b; };
+  const placeFor = async (acct: { botId: string; userId: string }, stake: number): Promise<{ id: string; marketId: string; pos: string }> => {
+    const mkt = await w.poll({ graceMin: 0 });
+    const i = await w.intent(acct, mkt.id, { kind: "OPENER", side: "YES", stakeTzs: stake });
+    const r = await w.place(acct, i);
+    if (!r.ok) throw new Error(`§2k fixture bet refused: ${j(r)}`);
+    await nap(3);
+    return { id: i.id, marketId: mkt.id, pos: r.data.positionId };
+  };
+  try {
+    await w.limits();
+    if (!ctl9.enabled) await w.switchOn();
+    await w.ageHouseMinute();
+
+    /* ━━ THE ACCOUNT LEDGER — one account, twenty-four stakes: four placed for real and ended four ways, one in flight,
+       queued, skipped, failed and cancelled rows, a stake tie at ONE instant stored against id order, and an anchor made
+       LAST with the LARGEST stake, so its page differs between the panel's own order and the Stake order. ━━━━━━━━━━━━ */
+    const led = await bot9({ label: `zz ledger ${TAG9}` });
+    const ledRows: Array<{ id: string; marketId: string }> = [];
+    const placed9: Array<{ id: string; end: string }> = [];
+    for (const [stake, end] of [[3_000, "WIN"], [5_000, "LOSS"], [2_000, "VOID"], [4_000, "OPEN"]] as Array<[number, string]>) {
+      const p = await placeFor(led, stake);
+      if (end !== "OPEN") await w.setPositionStatus(p.pos, end);
+      ledRows.push(p);
+      placed9.push({ id: p.id, end });
+    }
+    const inFlight = await w.intent(led, `mkt_${TAG9}_flight`, { kind: "FILL", side: "YES", stakeTzs: 2_500 });
+    ledRows.push({ id: inFlight.id, marketId: `mkt_${TAG9}_flight` });
+    const insert9 = async (bot: { botId: string; userId: string }, n: string, status: string, stakeTzs: number): Promise<string> => {
+      const id = `hbi_${TAG9}_${n}`;
+      const marketId = `mkt_${TAG9}_${n}`;
+      await w.dal.houseBotIntentStore.insert({
+        id, houseBotId: bot.botId, botUserId: bot.userId, kind: "FILL", anchorKey: marketId, marketId, productLine: "MARKET",
+        triggerPositionId: null, triggerUserId: null, targetId: null, requestedById: null, entryCondition: null, side: "YES", stakeTzs,
+        dueAt: w.iso(-1_000), deadlineAt: w.iso(3_600_000), staleAt: w.iso(600_000), status,
+        reasonCode: status === "SKIPPED" ? "CAP_PER_HOUR" : status === "FAILED" ? "INTERNAL" : null, why: null,
+        decision: { snapshot: { titleEn: `Step nine market ${n}`, category: "other", cutoff: w.iso(3_600_000), roundNumber: null } },
+        attempts: 0, transientAttempts: 0, nextAttemptAt: null, claimedBy: null, claimedUntil: null, positionId: null, finishedAt: null, alertedAt: null,
+      } as Any);
+      if (bot.botId === led.botId) ledRows.push({ id, marketId });
+      await nap(3);
+      return id;
+    };
+    const STATUS9 = ["PENDING", "SKIPPED", "FAILED", "CANCELLED"];
+    /* 4 placed + 1 in flight + 16 here + 2 tied + the anchor = the twenty-four the comment above promises. */
+    for (let n = 1; n <= 16; n++) await insert9(led, `r${String(n).padStart(2, "0")}`, STATUS9[n % 4], [1_100, 1_200, 1_200, 1_300, 2_000][n % 5] + (n % 3) * 100);
+    const TIE1 = await insert9(led, "t1", "SKIPPED", 1_500);
+    const TIE2 = await insert9(led, "t2", "FAILED", 1_500);
+    const TIE_AT = w.iso(-45_000);
+    await setIntentAt(TIE1, TIE_AT);
+    await setIntentAt(TIE2, TIE_AT);
+    const ANCHOR = await insert9(led, "anchor", "PENDING", 9_900);
+    /* The account's OWN history: its designation, then two changes, so its one sortable column has an order to reverse. */
+    for (const [kind, from, to] of [["PAUSED", "ACTIVE", "PAUSED"], ["STARTED", "PAUSED", "ACTIVE"]] as const) {
+      await w.dal.houseBotEventStore.append({ houseBotId: led.botId, userId: null, marketId: null, kind, fromStatus: from, toStatus: to, reason: null, actorId: OFFICER, payload: null } as Any);
+      await nap(3);
+    }
+
+    /* The facts each expected order is computed from — READ BACK from the store, never typed. */
+    const info = new Map<string, { id: string; ms: number; stake: number; chip: string }>();
+    for (const r of ledRows) {
+      const s: Any = await w.dal.houseBotIntentStore.get(r.id);
+      const end = placed9.find((p) => p.id === r.id)?.end;
+      const chip = end !== undefined && ["WIN", "LOSS", "VOID", "CASHED_OUT"].includes(end) ? end : String(s.status);
+      info.set(r.id, { id: r.id, ms: Date.parse(s.createdAt), stake: Number(s.stakeTzs), chip });
+    }
+    const byMarket = new Map(ledRows.map((r) => [`/admin/markets/${encodeURIComponent(r.marketId)}`, r.id]));
+    const expect9 = (key: "when" | "stake" | "outcome", dir: "asc" | "desc"): string[] => [...info.values()].sort((a, b) => {
+      if (key === "when") return dir === "desc" ? newestFirst(a, b) : -newestFirst(a, b);
+      const ka = key === "stake" ? a.stake : LIFECYCLE.indexOf(a.chip);
+      const kb = key === "stake" ? b.stake : LIFECYCLE.indexOf(b.chip);
+      return (dir === "asc" ? ka - kb : kb - ka) || newestFirst(a, b);
+    }).map((x) => x.id);
+    const readLed = (q: Record<string, unknown>) => GATEM.houseDetailForConsole(OFFICER, ROUTE9, led.botId, { tab: "activity", ...q });
+    const walkLed = (q: Record<string, unknown>) => walk9(readLed, q, "page", (v) => v.feed, (v) => v.feedTotal);
+    const idsOf = (rows: Any[]): string[] => rows.map((r: Any) => byMarket.get(r.marketHref) ?? `?${r.marketHref}`);
+
+    const bare = await walkLed({});
+    const served: Record<string, string[]> = {};
+    const walked: Record<string, { pages: Any[]; rows: Any[] }> = {};
+    for (const [token, key] of [["stake", "stake"], ["when-eat", "when"], ["outcome", "outcome"]] as const) {
+      for (const dir of ["asc", "desc"] as const) {
+        walked[`${key}:${dir}`] = await walkLed({ sort: token, dir });
+        served[`${key}:${dir}`] = idsOf(walked[`${key}:${dir}`].rows);
+      }
+    }
+    const matches = (key: "when" | "stake" | "outcome", dir: "asc" | "desc") => all(served[`${key}:${dir}`]) === all(expect9(key, dir));
+    ok("1.s9 · ledger · Stake · every page, concatenated, is in stake order BOTH ways with the panel's own order (newest first, the id last) breaking every tie — computed here from each stake's stored facts, and equal on this store",
+      info.size === 24 && matches("stake", "asc") && matches("stake", "desc"),
+      j({ asc: served["stake:asc"]?.slice(0, 4), want: expect9("stake", "asc").slice(0, 4) }));
+    ok("1.s9 · ledger · When · oldest first is the EXACT reverse of the panel's own order, and newest first IS it",
+      matches("when", "asc") && matches("when", "desc") && all(served["when:asc"]) === all([...served["when:desc"]].reverse()),
+      j({ asc: served["when:asc"]?.slice(0, 3) }));
+    ok("1.s9 · ledger · Outcome · the chip in lifecycle order — queued, in flight, placed, won, lost, void, then the ways a stake ends unplaced — ranked by the POSITION's result where there is one, both ways",
+      matches("outcome", "asc") && matches("outcome", "desc")
+        && placed9.every((p) => info.get(p.id)?.chip === (p.end === "OPEN" ? "PLACED" : p.end)),
+      j({ asc: served["outcome:asc"]?.map((id) => info.get(id)?.chip).slice(0, 8) }));
+    const chipsAsc = (walked["outcome:asc"]?.rows ?? []).map((r: Any) => String(r.resultWord ?? r.statusWord));
+    ok("1.s9 · ledger · Outcome · CONTROL · the painted chips really run in that order down the pages, the four ways a placed stake ended are all on the table, and a planted swap is reported",
+      pairsOut(chipsAsc, (c: string) => CHIP_RANK[c] ?? null, "asc", () => true).length === 0
+        && ["Won", "Lost", "Void", "Placed", "Queued", "In flight"].every((c) => chipsAsc.includes(c))
+        && pairsOut([...chipsAsc].reverse(), (c: string) => CHIP_RANK[c] ?? null, "asc", () => true).length > 0,
+      j(chipsAsc.slice(0, 10)));
+    const tiePos = (k: string) => [served[k].indexOf(TIE2), served[k].indexOf(TIE1)];
+    ok("1.s9 · ledger · ties · two stakes of one amount at ONE instant, stored against id order, come back in the id order the default tail names — in BOTH directions of the Stake sort, so the order is total",
+      tiePos("stake:asc")[0] >= 0 && tiePos("stake:asc")[0] + 1 === tiePos("stake:asc")[1]
+        && tiePos("stake:desc")[0] >= 0 && tiePos("stake:desc")[0] + 1 === tiePos("stake:desc")[1]
+        && info.get(TIE1)?.ms === info.get(TIE2)?.ms && TIE1 < TIE2,
+      j({ asc: tiePos("stake:asc"), desc: tiePos("stake:desc") }));
+    ok("1.s9 · ledger · a bare address is EXACTLY today's order — the panel's own newest-first, on every page — and it marks When in force, newest first",
+      all(idsOf(bare.rows)) === all(expect9("when", "desc")) && bare.pages[0].feedSort.current === "when-eat" && bare.pages[0].feedSort.dir === "desc"
+        && bare.pages[0].feedOrderNote === "Newest first." && bare.pages[0].feedParams.sort === undefined && bare.pages[0].feedParams.dir === undefined,
+      j({ current: bare.pages[0].feedSort?.current, note: bare.pages[0].feedOrderNote }));
+    ok("1.s9 · ledger · CONTROL · the orders really differ from one another and from the bare address, and the population spans two pages — so the equalities above are measurements",
+      bare.pages.length === 2 && all(served["stake:asc"]) !== all(served["stake:desc"]) && all(served["stake:asc"]) !== all(idsOf(bare.rows))
+        && all(served["outcome:asc"]) !== all(served["when:desc"]) && walked["stake:asc"].pages.every((v: Any) => v.feedTotal === 24),
+      j({ pages: bare.pages.length }));
+    /* ━━ PER-ROW FIGURES ARE THE ROW'S OWN, WHATEVER THE ORDER — Opening, Closing and Left today are running figures read
+       from bounded scans after the page is cut, so a sort that moves a row to another page must not change what it says. */
+    const figuresOf = (r: Any) => all([r.opening, r.closing, r.closingTitle, r.leftToday, r.leftTodayTitle, r.stake, r.whenTitle, r.resultWord, r.statusWord, r.note, r.typeWord]);
+    const base = new Map(bare.rows.map((r: Any) => [r.marketHref, figuresOf(r)]));
+    const drift = Object.values(walked).flatMap((x) => x.rows.filter((r: Any) => figuresOf(r) !== base.get(r.marketHref)).map((r: Any) => r.marketHref));
+    ok("1.s9 · ledger · every row's Opening, Closing, Left today, stake, time and chip are IDENTICAL under every sort and on whichever page it lands",
+      drift.length === 0 && Object.values(walked).every((x) => x.rows.length === 24), j(drift.slice(0, 3)));
+    const withMoney = bare.rows.filter((r: Any) => r.closing !== null || r.leftToday !== null).length;
+    ok("1.s9 · ledger · CONTROL · the fixture really paints running figures for that to be a measurement, and the comparison fires on a row whose closing is planted",
+      withMoney >= 4 && figuresOf({ ...bare.rows[0], closing: "TZS 1" }) !== base.get(bare.rows[0].marketHref), j({ withMoney }));
+    /* ━━ THE ANCHORED ROW UNDER A SORT — decided: it lands where it IS in the order in force (docs/HOUSE-BOTS.md §7.1c) ━━ */
+    const anchoredSorted = await readLed({ sort: "stake", dir: "asc", intent: ANCHOR });
+    const anchoredBare = await readLed({ intent: ANCHOR });
+    const rankSorted = expect9("stake", "asc").indexOf(ANCHOR) + 1;
+    const rankBare = expect9("when", "desc").indexOf(ANCHOR) + 1;
+    const anchoredOn = (v: Any) => (v.feed ?? []).filter((r: Any) => r.anchored).map((r: Any) => byMarket.get(r.marketHref));
+    ok("1.s9 · anchored · a bell's row followed onto a SORTED address lands on the page the row holds IN THAT ORDER, flagged, with the sort kept in force",
+      anchoredSorted.feedPage === Math.ceil(rankSorted / 20) && anchoredSorted.feedPage === 2 && all(anchoredOn(anchoredSorted)) === all([ANCHOR])
+        && anchoredSorted.feedSort.current === "stake" && anchoredSorted.feedSort.dir === "asc",
+      j({ page: anchoredSorted.feedPage, rankSorted, anchored: anchoredOn(anchoredSorted) }));
+    ok("1.s9 · anchored · CONTROL · the same bell with NO sort lands on the panel's own page for it (the unchanged counting rank), and the two pages really differ",
+      anchoredBare.feedPage === Math.ceil(rankBare / 20) && all(anchoredOn(anchoredBare)) === all([ANCHOR]) && anchoredBare.feedPage !== anchoredSorted.feedPage,
+      j({ bare: anchoredBare.feedPage, sorted: anchoredSorted.feedPage, rankBare, rankSorted }));
+    const rankStore = await w.dal.houseBotIntentStore.rankInFeed({ houseBotId: led.botId }, { key: "stake", dir: "asc" }, ANCHOR);
+    const rankNone = await w.dal.houseBotIntentStore.rankInFeed({ houseBotId: led.botId, statuses: ["EXPIRED"] }, { key: "stake", dir: "asc" }, ANCHOR);
+    ok("1.s9 · anchored · the store's own rank is the row's place in the order it pages by, on this store — and a row outside the population has none",
+      rankStore === rankSorted && rankNone === null, j({ rankStore, rankSorted, rankNone }));
+    /* ━━ NOTES, LINKS AND THE HEADER PARTS ━━ */
+    const s1 = walked["stake:desc"].pages[0], s2 = walked["when:asc"].pages[0], s3 = walked["outcome:asc"].pages[0];
+    ok("1.s9 · notes · the order note says the order IN FORCE — a sorted ledger never says \"Newest first.\"",
+      s1.feedOrderNote === "Largest stake first, then newest first." && s2.feedOrderNote === "Oldest first."
+        && s3.feedOrderNote === "By outcome, queued first, then newest first." && walked["stake:asc"].pages[0].feedOrderNote === "Smallest stake first, then newest first."
+        && walked["outcome:desc"].pages[0].feedOrderNote === "By outcome, cancelled first, then newest first.",
+      j([s1.feedOrderNote, s2.feedOrderNote, s3.feedOrderNote]));
+    const kept = await readLed({ sort: "stake", dir: "asc", kind: "filling", page: "2" });
+    const railHrefs: string[] = kept.feedFilters.flatMap((g: Any) => g.options.map((o: Any) => o.href as string));
+    ok("1.s9 · links · the sort rides every rail link and the pager's base, a filter rides the headers' parameters, and no link keeps the page",
+      railHrefs.length > 5 && railHrefs.every((h) => h.includes("sort=stake") && h.includes("dir=asc") && !/[?&]page=/.test(h))
+        && kept.feedParams.sort === "stake" && kept.feedParams.dir === "asc" && kept.feedParams.kind === "filling" && kept.feedParams.page === undefined
+        && kept.feedSort.current === "stake" && kept.feedSort.dir === "asc" && kept.feedSort.prefix === ""
+        && all(Object.keys(kept.feedSort.columns)) === all(["when", "stake", "outcome"])
+        && all(Object.values(kept.feedSort.columns)) === all([{ field: "when-eat", label: "When (EAT)" }, { field: "stake", label: "Stake" }, { field: "outcome", label: "Outcome" }]),
+      j({ href: railHrefs[0], params: kept.feedParams, sort: kept.feedSort }));
+    const railKeeps = (hs: string[]) => hs.every((h) => h.includes("sort=stake") && !/[?&]page=/.test(h));
+    ok("1.s9 · links · CONTROL · the rail check reports a link that loses the sort and one that keeps the page",
+      !railKeeps([...railHrefs, "/admin/desk/x?tab=activity"]) && !railKeeps([...railHrefs, "/admin/desk/x?tab=activity&sort=stake&page=2"]) && railKeeps(railHrefs), "");
+    /* ━━ VALIDATION — every sort word checked against ITS table's closed list, refused by name, never travelling ━━ */
+    const refused = {
+      sort: await readLed({ sort: "balance" }),
+      dir: await readLed({ dir: "sideways" }),
+      notHere: await readLed({ sort: "account" }),
+      repeated: await readLed({ sort: ["stake", "when-eat"] }),
+      both: await readLed({ sort: "zzbalance", dir: "zzsideways", hsort: "zzwho", hdir: "zzup", tsort: "zzpoll", tdir: "zzdown" }),
+      noColumn: await GATEM.houseDetailForConsole(OFFICER, ROUTE9, led.botId, { tab: "targets", tdir: "asc" }),
+    };
+    ok("1.s9 · validation · a sort word that is no column of THIS table — a person's field, the desk's Account column on the account page, a repeat — is refused as \"sort\", a direction that is not one as \"sort direction\", and the ledger keeps its own order",
+      refused.sort.queryRefusal === one("sort") && refused.dir.queryRefusal === one("sort direction")
+        && refused.notHere.queryRefusal === one("sort") && refused.repeated.queryRefusal === one("sort")
+        && [refused.sort, refused.dir, refused.notHere, refused.repeated].every((v: Any) => v.feedSort.current === "when-eat" && v.feedSort.dir === "desc"
+          && all(idsOf(v.feed)) === all(idsOf(bare.pages[0].feed))),
+      j({ sort: refused.sort.queryRefusal, notHere: refused.notHere.queryRefusal }));
+    ok("1.s9 · validation · a DIRECTION with no column to reverse — the Targets grid is in its own order — is refused as \"sort direction\" and nothing is in force",
+      refused.noColumn.queryRefusal === one("sort direction") && refused.noColumn.targetsSort.current === "" && refused.noColumn.targetsParams.tdir === undefined,
+      j({ refusal: refused.noColumn.queryRefusal, params: refused.noColumn.targetsParams }));
+    const carried = (v: Any): string => all([v.feedParams, v.historyParams, v.targetsParams, v.feedSort, v.historySort, v.targetsSort,
+      v.feedFilters.flatMap((g: Any) => g.options.map((o: Any) => o.href))]);
+    ok("1.s9 · validation · refused sort words travel NOWHERE — not into any panel's parameters, not into a header's parts, not into a rail link — and ONE sentence names both kinds once",
+      !/zz/.test(carried(refused.both))
+        && refused.both.queryRefusal === "Parts of this address were not understood and were ignored: sort and sort direction. The rest of the filter is in force.",
+      j({ refusal: refused.both.queryRefusal }));
+    const clean9 = await readLed({ sort: "outcome", dir: "asc", hsort: "when-eat", hdir: "asc", tsort: "poll", tdir: "asc" });
+    ok("1.s9 · validation · CONTROL · a clean address is refused nothing and EVERY part of it is carried, and the travel scan fires on a planted value",
+      clean9.queryRefusal === null && clean9.feedParams.sort === "outcome" && clean9.historyParams.hdir === "asc" && clean9.historyParams.hsort === undefined
+        && clean9.targetsParams.tsort === "poll" && clean9.targetsParams.tdir === "asc"
+        && /zz/.test(carried({ ...clean9, feedParams: { ...clean9.feedParams, sort: "zzbalance" } })),
+      j({ feed: clean9.feedParams, history: clean9.historyParams, targets: clean9.targetsParams }));
+
+    /* ━━ THE ROSTER — six sortable columns, designation order on a bare address, and a pager at twenty ━━━━━━━━━━━━━━━━
+       Made BEFORE the desk-wide tables below, so the histories there hold every one of these accounts' changes. */
+    const TIE_DESIG = "2020-01-01T00:00:00.000Z";
+    await bot9({ label: `tie b ${TAG9}`, botId: `hb_${TAG9}_tie_b`, designatedAt: TIE_DESIG });
+    await bot9({ label: `tie a ${TAG9}`, botId: `hb_${TAG9}_tie_a`, designatedAt: TIE_DESIG });
+    const acA = await bot9({ label: `a-${TAG9}` });
+    const acB = await bot9({ label: `B-${TAG9}` });
+    await bot9({ label: `c-${TAG9}` });
+    const acD = await bot9({ label: `d-${TAG9}`, caps: { capDailyLossTzs: null, freqMaxPerDay: null } });
+    await w.dal.houseBotStore.setStatus(acD.botId, { from: ["ACTIVE"], to: "PAUSED", pauseReason: "MANUAL", pausedFromStatus: null });
+    for (const stake of [1_000, 2_000]) await placeFor(acA, stake);
+    await placeFor(acB, 6_000);
+    for (let n = (await w.dal.houseBotStore.listNonRemoved()).length; n < 23; n++) await bot9({ label: `fill ${n} ${TAG9}` });
+    const rosterNow = (await w.dal.houseBotStore.listNonRemoved()) as Any[];
+    const stored = new Map(rosterNow.map((b: Any) => [b.id as string, b]));
+    const lastAt = new Map(((await w.dal.houseSeamStore.botRateUsage({ houseBotId: null })) as Any[]).map((r: Any) => [r.houseBotId as string, r.lastPlacedAt as string | null]));
+    const readR = (q: Record<string, unknown>) => GATEM.houseRosterForConsole(OFFICER, ROUTE9, q);
+    const walkR = (q: Record<string, unknown>) => walk9(readR, q, "rpage", (v) => v.rows, (v) => v.rosterTotal);
+    const desigTie = (a: Any, b: Any) => {
+      const x = stored.get(a.id), y = stored.get(b.id);
+      const d = Date.parse(x?.designatedAt) - Date.parse(y?.designatedAt);
+      return d < 0 || (d === 0 && x.id < y.id);
+    };
+    const STATUS_RANK: Record<string, number> = { Active: 0, Paused: 1, "Auto-paused": 2 };
+    /* ⛔ Each key is what the CELL paints — the figure an officer reads — except Last bet, whose cell paints a relative
+       phrase: there the key is the stored instant it is phrased from (two accounts may last have bet in one second). */
+    const rKey: Record<string, (r: Any) => number | string | null> = {
+      account: (r) => r.label,
+      "loss-today-projected": (r) => (r.lossCell?.halves?.length ? figureOf(r.lossCell.used) : null),
+      "open-exposure": (r) => (r.exposureCell?.halves?.length ? figureOf(r.exposureCell.used) : null),
+      status: (r) => STATUS_RANK[r.statusWord] ?? null,
+      "bets-today": (r) => (r.betsCell?.halves?.length ? figureOf(r.betsCell.used) : null),
+      "last-bet": (r) => { const at = Date.parse(lastAt.get(r.id) ?? ""); return r.lastBet === null || !Number.isFinite(at) ? null : at; },
+    };
+    const rWalks: Record<string, { pages: Any[]; rows: Any[] }> = {};
+    const rBad: Record<string, number[]> = {};
+    for (const token of Object.keys(rKey)) {
+      for (const dir of ["asc", "desc"] as const) {
+        rWalks[`${token}:${dir}`] = await walkR({ rsort: token, rdir: dir });
+        rBad[`${token}:${dir}`] = pairsOut(rWalks[`${token}:${dir}`].rows, rKey[token], dir, desigTie);
+      }
+    }
+    const rBare = await walkR({});
+    ok("1.s9 · roster · every one of its six sortable columns orders every page both ways by the figure its CELL paints — the label A to Z ignoring case, the two used amounts, the lifecycle, today's count, the last bet — with designation and then the id breaking every tie",
+      Object.values(rBad).every((b) => b.length === 0) && Object.values(rWalks).every((x) => x.rows.length === rosterNow.length && new Set(x.rows.map((r: Any) => r.id)).size === rosterNow.length),
+      j(Object.entries(rBad).filter(([, b]) => b.length > 0).map(([k, b]) => [k, b.slice(0, 2)])));
+    const lastIs = (rows: Any[], id: string) => rows.length > 0 && rows[rows.length - 1].id === id;
+    const nullTail = (rows: Any[], isNull: (r: Any) => boolean) => { const k = rows.findIndex(isNull); return k > 0 && rows.slice(k).every(isNull); };
+    ok("1.s9 · roster · missing · an account whose limit is not set paints no figure and sorts LAST in BOTH directions, and accounts that never bet have no last bet and sort last both ways too",
+      lastIs(rWalks["loss-today-projected:asc"].rows, acD.botId) && lastIs(rWalks["loss-today-projected:desc"].rows, acD.botId)
+        && lastIs(rWalks["bets-today:asc"].rows, acD.botId) && lastIs(rWalks["bets-today:desc"].rows, acD.botId)
+        && nullTail(rWalks["last-bet:desc"].rows, (r) => r.lastBet === null) && nullTail(rWalks["last-bet:asc"].rows, (r) => r.lastBet === null),
+      j({ lossAsc: rWalks["loss-today-projected:asc"].rows.at(-1)?.id, d: acD.botId }));
+    const tieAt = (rows: Any[]) => [rows.findIndex((r: Any) => r.id === `hb_${TAG9}_tie_a`), rows.findIndex((r: Any) => r.id === `hb_${TAG9}_tie_b`)];
+    ok("1.s9 · roster · ties · two accounts designated in the SAME millisecond, stored against id order, tie on today's count and come back in id order in BOTH directions",
+      (["bets-today:asc", "bets-today:desc", "open-exposure:desc"] as const).every((k) => { const [a, b] = tieAt(rWalks[k].rows); return a >= 0 && a + 1 === b; })
+        && Date.parse(stored.get(`hb_${TAG9}_tie_a`)?.designatedAt) === Date.parse(stored.get(`hb_${TAG9}_tie_b`)?.designatedAt),
+      j({ asc: tieAt(rWalks["bets-today:asc"].rows), desc: tieAt(rWalks["bets-today:desc"].rows) }));
+    const labelsAsc = rWalks["account:asc"].rows.map((r: Any) => String(r.label));
+    ok("1.s9 · roster · Account · CONTROL · case-folding is really exercised — \"B-…\" sorts between \"a-…\" and \"c-…\" though code-unit order would put it first — and the pair checker reports the ascending walk read as descending",
+      labelsAsc.indexOf(`a-${TAG9}`) < labelsAsc.indexOf(`B-${TAG9}`) && labelsAsc.indexOf(`B-${TAG9}`) < labelsAsc.indexOf(`c-${TAG9}`)
+        && `B-${TAG9}` < `a-${TAG9}` && pairsOut(rWalks["account:asc"].rows, rKey.account, "desc", desigTie).length > 0,
+      j(labelsAsc.filter((l) => l.includes(TAG9)).slice(0, 5)));
+    ok("1.s9 · roster · a bare address is EXACTLY today's order — designation, oldest first, as the roster read returns it — with NO header in force, and every account appears exactly once",
+      rBare.rows.length === rosterNow.length && new Set(rBare.rows.map((r: Any) => r.id)).size === rosterNow.length
+        && pairsOut(rBare.rows, (r: Any) => Date.parse(stored.get(r.id)?.designatedAt), "asc", () => true).length === 0
+        && rBare.pages[0].rosterSort.current === "" && rBare.pages[0].rosterParams.rsort === undefined && rBare.pages[0].queryRefusal === null,
+      j({ current: rBare.pages[0].rosterSort?.current }));
+    /* ━━ THE ROSTER'S PAGER ━━ */
+    const rPast = await readR({ rpage: "999", rsort: "status" });
+    const rBadPage = await readR({ rpage: "x" });
+    const rP2 = rWalks["status:asc"].pages[1];
+    ok("1.s9 · roster pager · twenty to a page over the WHOLE roster's count — never the page's length — the pages together are the roster exactly once, and a page past the end is the last page with its rows",
+      rosterNow.length > 20 && rBare.pages[0].rows.length === 20 && rBare.pages[0].rosterTotal === rosterNow.length && rBare.pages[0].rosterPerPage === 20
+        && rBare.pages.length === Math.ceil(rosterNow.length / 20)
+        && rPast.rosterPage === rBare.pages.length && rPast.rows.length === rosterNow.length - 20 * (rBare.pages.length - 1)
+        && rP2?.rosterPage === 2 && rP2.rosterParams.rsort === "status",
+      j({ total: rBare.pages[0].rosterTotal, roster: rosterNow.length, past: rPast.rosterPage }));
+    ok("1.s9 · roster pager · CONTROL · a page that is not a whole number is refused BY NAME and page 1 is served",
+      rBadPage.rosterPage === 1 && rBadPage.queryRefusal === one("page") && rBadPage.rows.length === 20, j(rBadPage.queryRefusal));
+    const rRef = { sort: await readR({ rsort: "balance" }), dirOnly: await readR({ rdir: "asc" }), clean: await readR({ rsort: "status", rdir: "asc" }) };
+    ok("1.s9 · roster · validation · a sort word that is no roster column is refused as \"sort\", a direction with no column as \"sort direction\", and the roster keeps its own order; a clean pair is honoured and carried",
+      rRef.sort.queryRefusal === one("sort") && rRef.dirOnly.queryRefusal === one("sort direction")
+        && [rRef.sort, rRef.dirOnly].every((v: Any) => v.rows.length === 20 && pairsOut(v.rows, (r: Any) => Date.parse(stored.get(r.id)?.designatedAt), "asc", () => true).length === 0)
+        && rRef.sort.rosterSort.current === "" && rRef.dirOnly.rosterSort.current === ""
+        && rRef.clean.queryRefusal === null && rRef.clean.rosterParams.rsort === "status" && rRef.clean.rosterParams.rdir === "asc"
+        && rRef.clean.rosterSort.prefix === "r" && all(Object.keys(rRef.clean.rosterSort.columns)) === all(["account", "loss", "exposure", "status", "bets", "lastBet"]),
+      j({ sort: rRef.sort.queryRefusal, dirOnly: rRef.dirOnly.queryRefusal, clean: rRef.clean.rosterParams }));
+
+    /* ━━ THE DESK-WIDE LEDGER — the population is the whole desk, so the claim is a property of every adjacent pair ━━ */
+    const gone = await bot9({ label: `gone ${TAG9}` });
+    for (const n of ["g1", "g2"]) await insert9(gone, n, "PENDING", 7_700);
+    await w.dal.houseBotStore.setStatus(gone.botId, { from: ["ACTIVE", "PAUSED", "AUTO_PAUSED"], ...REMOVE9 });
+    const roster9 = (await w.dal.houseBotStore.listNonRemoved()) as Any[];
+    const rankAsc = new Map([...roster9].sort((a: Any, b: Any) => textOrder(a.label, b.label)
+      || (Date.parse(a.designatedAt) - Date.parse(b.designatedAt)) || (a.id < b.id ? -1 : 1)).map((b: Any, k) => [b.label as string, k]));
+    const acctKey = (dir: "asc" | "desc") => (r: Any): number | null => {
+      if (!r.accountIsOperatorText) return null;
+      const k = rankAsc.get(r.accountName);
+      return k === undefined ? Number.NaN : dir === "asc" ? k : -k;
+    };
+    const newerOrSame = (a: Any, b: Any) => (secsOf(a.whenTitle) ?? 0) >= (secsOf(b.whenTitle) ?? 0);
+    const goneTail = (rows: Any[]) => nullTail(rows, (r) => !r.accountIsOperatorText);
+    const readDesk = (q: Record<string, unknown>) => GATEM.houseFeedForConsole(OFFICER, ROUTE9, { tab: "activity", ...q });
+    const walkDesk = (q: Record<string, unknown>) => walk9(readDesk, q, "page", (v) => v.feed, (v) => v.feedTotal);
+    const deskBare = await walkDesk({});
+    const deskAcct = { asc: await walkDesk({ sort: "account", dir: "asc" }), desc: await walkDesk({ sort: "account", dir: "desc" }) };
+    ok("1.s9 · desk ledger · Account · every page, concatenated, is in the ROSTER's label order both ways — A to Z ignoring case, then designation — each account's stakes newest first, and every stake of an account no longer on the desk LAST in BOTH directions",
+      pairsOut(deskAcct.asc.rows, acctKey("asc"), "asc", newerOrSame).length === 0
+        && pairsOut(deskAcct.desc.rows, acctKey("desc"), "asc", newerOrSame).length === 0
+        && goneTail(deskAcct.asc.rows) && goneTail(deskAcct.desc.rows)
+        && deskAcct.asc.rows.filter((r: Any) => r.stake === formatTzs(7_700) && !r.accountIsOperatorText).length === 2,
+      j({ asc: pairsOut(deskAcct.asc.rows, acctKey("asc"), "asc", newerOrSame).slice(0, 3), desc: pairsOut(deskAcct.desc.rows, acctKey("desc"), "asc", newerOrSame).slice(0, 3) }));
+    ok("1.s9 · desk ledger · Account · CONTROL · the walk covers the whole desk (the bare address's every row), holds several named accounts, and the pair checker reports the ascending walk read as descending",
+      deskAcct.asc.rows.length === deskBare.rows.length && deskAcct.asc.rows.length > 20
+        && new Set(deskAcct.asc.rows.filter((r: Any) => r.accountIsOperatorText).map((r: Any) => r.accountName)).size >= 3
+        && pairsOut(deskAcct.asc.rows, acctKey("desc"), "asc", newerOrSame).length > 0,
+      j({ rows: deskAcct.asc.rows.length, bare: deskBare.rows.length }));
+    const deskStake = { asc: await walkDesk({ sort: "stake", dir: "asc" }), desc: await walkDesk({ sort: "stake", dir: "desc" }) };
+    ok("1.s9 · desk ledger · Stake · the painted stake runs in order down every page both ways, equal stakes newest first",
+      pairsOut(deskStake.asc.rows, (r: Any) => figureOf(r.stake), "asc", newerOrSame).length === 0
+        && pairsOut(deskStake.desc.rows, (r: Any) => figureOf(r.stake), "desc", newerOrSame).length === 0
+        && deskStake.asc.rows.length === deskBare.rows.length,
+      j({ first: deskStake.desc.rows[0]?.stake, last: deskStake.desc.rows.at(-1)?.stake }));
+    const deskOutcome = await walkDesk({ sort: "outcome", dir: "desc" });
+    ok("1.s9 · desk ledger · Outcome · the painted chip runs in lifecycle order down every page, cancelled first when descending",
+      pairsOut(deskOutcome.rows, (r: Any) => CHIP_RANK[String(r.resultWord ?? r.statusWord)] ?? null, "desc", newerOrSame).length === 0
+        && deskOutcome.rows.length === deskBare.rows.length, j({ first: deskOutcome.rows[0]?.statusWord }));
+    /* The desk's Account order waits for the core's own roster, so the anchor is ranked AFTER the set, from that roster. */
+    const deskRank = deskAcct.asc.rows.map((r: Any) => byMarket.get(r.marketHref) ?? null).indexOf(ANCHOR) + 1;
+    const deskAnchored = await readDesk({ sort: "account", dir: "asc", intent: ANCHOR });
+    ok("1.s9 · anchored · on the DESK-WIDE ledger under the Account order — the one order that waits for the roster — the bell lands on the page its row holds in that order, flagged",
+      deskRank > 0 && deskAnchored.feedPage === Math.ceil(deskRank / 20)
+        && (deskAnchored.feed ?? []).filter((r: Any) => r.anchored).map((r: Any) => byMarket.get(r.marketHref)).join() === ANCHOR
+        && deskAnchored.feedSort.current === "account",
+      j({ deskRank, page: deskAnchored.feedPage }));
+    const deskKept = await readDesk({ sort: "account", dir: "desc", outcome: "queued" });
+    ok("1.s9 · desk ledger · links · the desk's own header parts are its four columns, and the Account sort rides the rail and the pager's base with the filter",
+      all(Object.keys(deskKept.feedSort.columns)) === all(["account", "stake", "when", "outcome"])
+        && deskKept.feedParams.sort === "account" && deskKept.feedParams.dir === undefined && deskKept.feedParams.outcome === "queued"
+        && deskKept.feedFilters.every((g: Any) => g.options.every((o: Any) => o.href.includes("sort=account")))
+        && deskKept.feedOrderNote === "By account, Z to A, then newest first. Accounts no longer on the desk come last.",
+      j({ params: deskKept.feedParams, note: deskKept.feedOrderNote }));
+
+    /* ━━ THE HISTORIES ━━ */
+    const readHist = (q: Record<string, unknown>) => GATEM.houseHistoryForConsole(OFFICER, ROUTE9, { tab: "history", ...q });
+    const walkHist = (q: Record<string, unknown>) => walk9(readHist, q, "hpage", (v) => v.history, (v) => v.historyTotal);
+    const histBare = await walkHist({});
+    const histAcct = { asc: await walkHist({ hsort: "account", hdir: "asc" }), desc: await walkHist({ hsort: "account" }) };
+    ok("1.s9 · desk history · Account · every page in the roster's label order both ways, each account's changes newest first, and the desk's OWN changes and every account no longer on the desk LAST in both directions",
+      pairsOut(histAcct.asc.rows, acctKey("asc"), "asc", newerOrSame).length === 0
+        && pairsOut(histAcct.desc.rows, acctKey("desc"), "asc", newerOrSame).length === 0
+        && goneTail(histAcct.asc.rows) && goneTail(histAcct.desc.rows)
+        && histAcct.asc.rows.some((r: Any) => r.accountName === GATEM.CONSOLE_ACCOUNT_WORD.desk) && histAcct.asc.rows.length === histBare.rows.length
+        && histAcct.desc.pages[0].historyOrderNote === "By account, Z to A, then newest first. The desk's own changes, and accounts no longer on the desk, come last.",
+      j({ rows: histAcct.asc.rows.length, note: histAcct.desc.pages[0].historyOrderNote }));
+    const proj = (rows: Any[]) => rows.map((r: Any) => [r.whenTitle, r.eventWord, r.accountName, r.who, r.change].join("|"));
+    const histAsc = await walkHist({ hdir: "asc" });
+    ok("1.s9 · desk history · When · oldest first is the EXACT reverse of the bare address, and the bare address marks When in force with \"Newest first.\"",
+      all(proj(histAsc.rows)) === all(proj(histBare.rows).reverse()) && histBare.pages[0].historySort.current === "when-eat"
+        && histBare.pages[0].historyOrderNote === "Newest first." && histAsc.pages[0].historyOrderNote === "Oldest first."
+        && histAsc.pages[0].historyParams.hdir === "asc" && histAsc.pages[0].historyParams.hsort === undefined,
+      j({ rows: histAsc.rows.length }));
+    ok("1.s9 · desk history · CONTROL · the history spans pages, and the reverse check reports a sequence that is not reversed",
+      histBare.pages.length >= 2 && all(proj(histAsc.rows)) !== all(proj(histBare.rows)), j({ pages: histBare.pages.length }));
+    const ledEvents = (await w.dal.houseBotEventStore.listAll({ houseBotId: led.botId, limit: 50 })) as Any[];
+    const designated = ledEvents.find((e: Any) => e.kind === "DESIGNATED");
+    const histRank = histAcct.asc.rows.map((r: Any) => `${r.accountName}|${r.eventWord}`).indexOf(`zz ledger ${TAG9}|${GATEM.CONSOLE_EVENT_WORD.DESIGNATED}`) + 1;
+    const histAnchored = await readHist({ hsort: "account", hdir: "asc", event: designated?.id });
+    ok("1.s9 · anchored · a bell's change followed onto the SORTED desk history lands on the page it holds in that order, flagged — and that page is past the first",
+      designated !== undefined && histRank > 20 && histAnchored.historyPage === Math.ceil(histRank / 20)
+        && (histAnchored.history ?? []).filter((r: Any) => r.anchored).length === 1,
+      j({ histRank, page: histAnchored.historyPage }));
+    const readLedHist = (q: Record<string, unknown>) => GATEM.houseDetailForConsole(OFFICER, ROUTE9, led.botId, { tab: "history", ...q });
+    const ledHist = { bare: await walk9(readLedHist, {}, "hpage", (v) => v.history, (v) => v.historyTotal), asc: await walk9(readLedHist, { hdir: "asc" }, "hpage", (v) => v.history, (v) => v.historyTotal) };
+    const ledAcct = await readLedHist({ hsort: "account" });
+    ok("1.s9 · account history · oldest first is the exact reverse of its own order, and the desk's Account column is refused here — this table has one sortable column",
+      all(proj(ledHist.asc.rows)) === all(proj(ledHist.bare.rows).reverse()) && ledHist.bare.rows.length >= 3
+        && all(proj(ledHist.asc.rows)) !== all(proj(ledHist.bare.rows))
+        && ledAcct.queryRefusal === one("sort") && all(Object.keys(ledHist.bare.pages[0].historySort.columns)) === all(["when"]),
+      j({ rows: ledHist.bare.rows.length, refusal: ledAcct.queryRefusal }));
+
+    /* ━━ THE TARGETS GRID — twenty-three targets, titles in mixed case, some ended and some removed ━━ */
+    const tg = await bot9({ label: `targets ${TAG9}` });
+    const TITLES = ["banana", "Apple", "apple", "cherry", "Banana split", "date", "Elder", "fig", "Grape", "grape", "kiwi", "Lemon", "lime", "Mango", "melon", "nut", "Olive", "orange", "Peach", "pear", "Plum", "quince", "Raisin"];
+    const tIds: string[] = [];
+    for (let n = 0; n < TITLES.length; n++) {
+      const id = `hbt_${TAG9}_${String(n).padStart(2, "0")}`;
+      await w.dal.targetStore.insert({ id, houseBotId: tg.botId, marketId: `mkt_${TAG9}_t${n}`, delayMinSec: 10, delayMaxSec: 20, timingFrom: "STAKE", reactTo: "FIRST", createdById: OFFICER,
+        snapshot: { titleEn: TITLES[n], category: "sports", cutoff: "2026-12-31T00:00:00.000Z", rawYes: 0, rawNo: 0 } } as Any);
+      tIds.push(id);
+      await nap(3);
+    }
+    for (const k of [2, 5, 9, 14, 20]) await w.dal.targetStore.endActive(tIds[k], "OUT_OF_SCOPE");
+    for (const k of [7, 16]) await w.dal.targetStore.remove(tIds[k], OFFICER);
+    const tInfo = new Map<string, Any>();
+    for (const id of tIds) tInfo.set(id, await w.dal.targetStore.get(id));
+    const T_LIFE = ["ACTIVE", "ENDED", "REMOVED"];
+    const tWant = (key: "poll" | "status" | "lastChange" | null, dir: "asc" | "desc"): string[] => [...tInfo.values()].sort((a: Any, b: Any) => {
+      const tail = newestFirst({ ms: Date.parse(a.createdAt), id: a.id }, { ms: Date.parse(b.createdAt), id: b.id });
+      if (key === null) return tail;
+      const s = dir === "asc" ? 1 : -1;
+      const by = key === "poll" ? textOrder(a.snapshot.titleEn, b.snapshot.titleEn)
+        : key === "status" ? T_LIFE.indexOf(a.status) - T_LIFE.indexOf(b.status)
+        : Date.parse(a.endedAt ?? a.createdAt) - Date.parse(b.endedAt ?? b.createdAt);
+      return s * by || tail;
+    }).map((t: Any) => t.id);
+    const readT = (q: Record<string, unknown>) => GATEM.houseDetailForConsole(OFFICER, ROUTE9, tg.botId, { tab: "targets", ...q });
+    const walkT = async (q: Record<string, unknown>) => (await walk9(readT, q, "tpage", (v) => v.targets, (v) => v.targetsTotal)).rows.map((t: Any) => t.id as string);
+    const tServed: Record<string, string[]> = { bare: await walkT({}) };
+    for (const [token, key] of [["poll", "poll"], ["status", "status"], ["last-change", "lastChange"]] as const) {
+      for (const dir of ["asc", "desc"] as const) tServed[`${key}:${dir}`] = await walkT({ tsort: token, tdir: dir });
+    }
+    const tMatch = (key: "poll" | "status" | "lastChange", dir: "asc" | "desc") => all(tServed[`${key}:${dir}`]) === all(tWant(key, dir));
+    ok("1.s9 · targets · Poll · every page in title order both ways — A to Z ignoring case, then code point — with the grid's own order (newest first, the id last) breaking every tie, equal to this block's own computation on this store",
+      tMatch("poll", "asc") && tMatch("poll", "desc")
+        && tServed["poll:asc"].indexOf(tIds[1]) < tServed["poll:asc"].indexOf(tIds[2]) && tServed["poll:asc"].indexOf(tIds[2]) < tServed["poll:asc"].indexOf(tIds[0]),
+      j({ asc: tServed["poll:asc"].slice(0, 4).map((id) => tInfo.get(id)?.snapshot.titleEn), want: tWant("poll", "asc").slice(0, 4).map((id) => tInfo.get(id)?.snapshot.titleEn) }));
+    ok("1.s9 · targets · Status and Last change · the lifecycle Active → Ended → Removed and the instant the grid paints, both ways, each tie in the grid's own order",
+      tMatch("status", "asc") && tMatch("status", "desc") && tMatch("lastChange", "asc") && tMatch("lastChange", "desc"),
+      j({ status: tServed["status:asc"].slice(0, 3), lastChange: tServed["lastChange:desc"].slice(0, 3) }));
+    const tBareView = await readT({});
+    ok("1.s9 · targets · a bare address is EXACTLY today's order, newest target first, with NO header in force — the grid's own order is a column nobody sees",
+      all(tServed.bare) === all(tWant(null, "desc")) && tBareView.targetsSort.current === "" && tBareView.targetsParams.tsort === undefined
+        && tServed.bare.length === 23 && tBareView.targetsTotal === 23,
+      j({ current: tBareView.targetsSort.current }));
+    ok("1.s9 · targets · CONTROL · the grid spans two pages, the orders differ from each other and from the bare address, and case-folding is really exercised (\"Apple\" and \"apple\" differ only in case)",
+      tServed["poll:asc"].length === 23 && all(tServed["poll:asc"]) !== all(tServed.bare) && all(tServed["poll:asc"]) !== all(tServed["poll:desc"])
+        && all(tServed["status:asc"]) !== all(tServed.bare) && textOrder("Apple", "banana") < 0 && byCodePoint("banana", "Apple") > 0, "");
+    const tPaged = await readT({ tsort: "poll", tdir: "asc", tpage: "2" });
+    ok("1.s9 · targets · the grid's parameters carry its sort and its tab — the pager's base — never the page, and page 2 continues the same order",
+      tPaged.targetsPage === 2 && tPaged.targetsParams.tab === "targets" && tPaged.targetsParams.tsort === "poll" && tPaged.targetsParams.tdir === "asc"
+        && tPaged.targetsParams.tpage === undefined && all(tPaged.targets.map((t: Any) => t.id)) === all(tWant("poll", "asc").slice(20)),
+      j(tPaged.targetsParams));
+    /* The DAL's own half: a stored title that is not a string sorts LAST both ways, and a cursor cannot page a sorted list. */
+    const tg2 = await bot9({ label: `targets two ${TAG9}` });
+    for (const [k, title] of [["b", "Beta"], ["n", 42], ["a", "alpha"]] as Array<[string, unknown]>) {
+      await w.dal.targetStore.insert({ id: `hbt_${TAG9}_odd_${k}`, houseBotId: tg2.botId, marketId: `mkt_${TAG9}_odd_${k}`, delayMinSec: 10, delayMaxSec: 20, timingFrom: "STAKE", reactTo: "FIRST", createdById: OFFICER,
+        snapshot: { titleEn: title, category: "sports", cutoff: "2026-12-31T00:00:00.000Z", rawYes: 0, rawNo: 0 } } as Any);
+      await nap(3);
+    }
+    const oddIds = async (dir: "asc" | "desc") => ((await w.dal.targetStore.listForBot(tg2.botId, "all", null, { limit: 20, order: { key: "poll", dir } })).rows as Any[]).map((t: Any) => String(t.id).slice(-1));
+    const oddAsc = await oddIds("asc"), oddDesc = await oddIds("desc");
+    ok("1.s9 · targets · DAL · a stored title that is not a string sorts LAST in both directions, on this store",
+      all(oddAsc) === all(["a", "b", "n"]) && all(oddDesc) === all(["b", "a", "n"]), j({ oddAsc, oddDesc }));
+    let cursorRefused = "";
+    try { await w.dal.houseBotIntentStore.listFeed({ houseBotId: led.botId, limit: 5, cursor: { createdAt: w.iso(), id: "hbi_x" }, order: { key: "stake", dir: "asc" } }); } catch (e) { cursorRefused = String((e as Any)?.message ?? e); }
+    const cursorDefault = await w.dal.houseBotIntentStore.listFeed({ houseBotId: led.botId, limit: 5, cursor: { createdAt: w.iso(), id: "hbi_x" } });
+    ok("1.s9 · DAL · a keyset cursor is a position in the DEFAULT order, so a sorted page refuses one on this store — and the default order still takes it",
+      /cannot page a sorted list/.test(cursorRefused) && Array.isArray(cursorDefault.rows), cursorRefused);
+
+    /* ━━ THE RESULTS TAB — two tables, two namespaced sorts, and a window no address can move ━━ */
+    const readRes = (q: Record<string, unknown> = {}) => GATEM.houseResultsForConsole(OFFICER, ROUTE9, { tab: "results", ...q });
+    const resTwo = await GATEM.houseResultsForConsole(OFFICER, ROUTE9);
+    const resBare = await readRes();
+    const dayProj = (v: Any) => v.resultDays.map((d: Any) => `${d.dayTitle}|${d.result.text}|${d.stakesText}|${d.stateText}`);
+    const acctProj = (v: Any) => (v.resultAccounts ?? []).map((a: Any) => `${a.accountName}|${a.today.text}|${a.week.text}`);
+    ok("1.s9 · results · a bare address is EXACTLY today's two tables — the same as the reader asked with no address at all — the day in force on By day and nothing in force on By account",
+      all(dayProj(resBare)) === all(dayProj(resTwo)) && all(acctProj(resBare)) === all(acctProj(resTwo))
+        && resBare.daySort.current === "day-eat" && resBare.acctSort.current === "" && resBare.queryRefusal === null,
+      j({ day: resBare.daySort?.current, acct: resBare.acctSort?.current }));
+    const resDayAsc = await readRes({ daysort: "day-eat", daydir: "asc", range: "all", from: "2020-01-01T00:00", to: "2030-01-01T00:00" });
+    ok("1.s9 · results · By day oldest first is the EXACT reverse of its own order — and window words on the same address move NOTHING: still the same seven days",
+      all(dayProj(resDayAsc)) === all(dayProj(resBare).reverse()) && resDayAsc.resultDays.length === 7
+        && all([...dayProj(resDayAsc)].sort()) === all([...dayProj(resBare)].sort()),
+      j({ days: resDayAsc.resultDays.map((d: Any) => d.dayText) }));
+    const resultOf = (c: Any): number | null => (c.word === "Profit" ? figureOf(c.figure) : c.word === "Loss" ? -(figureOf(c.figure) ?? 0) : c.word === "Even" ? 0 : null);
+    const STATE_RANK: Record<string, number> = { "Still running": 0, Final: 1, "No stakes": 2 };
+    const dayAt = new Map(resBare.resultDays.map((d: Any, i: number) => [d.dayTitle, i]));
+    const dayTie = (a: Any, b: Any) => (dayAt.get(a.dayTitle) ?? 0) < (dayAt.get(b.dayTitle) ?? 0);
+    const dayBad: string[] = [];
+    for (const [token, key] of [["result", (d: Any) => resultOf(d.result)], ["stakes-placed", (d: Any) => figureOf(d.stakesText)], ["state", (d: Any) => STATE_RANK[d.stateText] ?? null]] as Array<[string, (d: Any) => number | null]>) {
+      for (const dir of ["asc", "desc"] as const) {
+        const v = await readRes({ daysort: token, daydir: dir });
+        if (pairsOut(v.resultDays, key, dir, dayTie).length > 0 || v.resultDays.length !== 7) dayBad.push(`${token}:${dir}`);
+      }
+    }
+    ok("1.s9 · results · By day's Result, Stakes placed and State order the seven days both ways by what each cell paints — a day with no result LAST both ways — each tie in the table's own order",
+      dayBad.length === 0 && resBare.resultDays.some((d: Any) => resultOf(d.result) !== null), j(dayBad));
+    const acctAt = new Map((resBare.resultAccounts ?? []).map((a: Any, i: number) => [a.accountName, i]));
+    const acctTie = (a: Any, b: Any) => (acctAt.get(a.accountName) ?? 0) < (acctAt.get(b.accountName) ?? 0);
+    const acctBad: string[] = [];
+    for (const [token, key] of [["account", (a: Any) => (a.accountIsOperatorText ? a.accountName : null)], ["today", (a: Any) => resultOf(a.today)], ["last-7-days", (a: Any) => resultOf(a.week)]] as Array<[string, (a: Any) => number | string | null]>) {
+      for (const dir of ["asc", "desc"] as const) {
+        const v = await readRes({ acctsort: token, acctdir: dir });
+        if (pairsOut(v.resultAccounts ?? [], key, dir, acctTie).length > 0 || (v.resultAccounts ?? []).length !== (resBare.resultAccounts ?? []).length) acctBad.push(`${token}:${dir}`);
+      }
+    }
+    const acctAsc = await readRes({ acctsort: "account", acctdir: "asc" });
+    const acctDesc = await readRes({ acctsort: "account", acctdir: "desc" });
+    ok("1.s9 · results · By account orders by the account's label, today's result and the week's both ways — and the line folding every account no longer on the desk has no label and sorts LAST in both directions",
+      acctBad.length === 0 && (resBare.resultAccounts ?? []).some((a: Any) => !a.accountIsOperatorText)
+        && !acctAsc.resultAccounts.at(-1).accountIsOperatorText && !acctDesc.resultAccounts.at(-1).accountIsOperatorText,
+      j({ acctBad }));
+    const both = await readRes({ daysort: "stakes-placed", daydir: "asc", acctsort: "today" });
+    ok("1.s9 · results · the two tables sort INDEPENDENTLY on one address — each keeps the other's order in its parameters, the tab rides both, and each header row marks its own column",
+      both.daySort.current === "stakes-placed" && both.daySort.dir === "asc" && both.acctSort.current === "today" && both.acctSort.dir === "desc"
+        && both.resultsParams.tab === "results" && both.resultsParams.daysort === "stakes-placed" && both.resultsParams.daydir === "asc"
+        && both.resultsParams.acctsort === "today" && both.resultsParams.acctdir === undefined
+        && both.daySort.prefix === "day" && both.acctSort.prefix === "acct" && both.queryRefusal === null,
+      j(both.resultsParams));
+    const resRef = await readRes({ daysort: "zzprofit", acctsort: "zznet" });
+    ok("1.s9 · results · validation · a sort word that is no column of either table is refused as \"sort\", both tables keep their own order, and nothing refused rides into the parameters",
+      resRef.queryRefusal === one("sort") && all(dayProj(resRef)) === all(dayProj(resBare)) && all(acctProj(resRef)) === all(acctProj(resBare))
+        && !/zz/.test(all([resRef.resultsParams, resRef.daySort, resRef.acctSort])),
+      j({ refusal: resRef.queryRefusal }));
+
+    /* ━━ THE PAGES, AT SOURCE (memory child: files, not a store) — a DUMB renderer (319, 340, 388, 453) ━━━━━━━━━━━━━━ */
+    if (!w.onPostgres) {
+      const detail9 = decomment(read(DETAIL_PAGE));
+      const DESK_ROUTE = "CONSOLE_ROUTE", ACCOUNT_ROUTE = "`${CONSOLE_ROUTE}/${view.id}`";
+      /** [the page's code, the view, its sort field, its params field, the reader's table, the base route] — one row per sortable table. */
+      const SITES: Array<[string, string, string, string, string, string]> = [
+        [pageCode, "rosterView", "rosterSort", "rosterParams", "roster", DESK_ROUTE],
+        [pageCode, "feedView", "feedSort", "feedParams", "feedDesk", DESK_ROUTE],
+        [pageCode, "historyView", "historySort", "historyParams", "historyDesk", DESK_ROUTE],
+        [pageCode, "resultsView", "daySort", "resultsParams", "resultDays", DESK_ROUTE],
+        [pageCode, "resultsView", "acctSort", "resultsParams", "resultAccounts", DESK_ROUTE],
+        [detail9, "view", "feedSort", "feedParams", "feedAccount", ACCOUNT_ROUTE],
+        [detail9, "view", "historySort", "historyParams", "historyAccount", ACCOUNT_ROUTE],
+        [detail9, "view", "targetsSort", "targetsParams", "targets", ACCOUNT_ROUTE],
+      ];
+      const sortThs = (code: string): string[] => [...code.matchAll(/<SortTh\b[^>]*\/>/g)].map((m) => m[0]);
+      const siteHolds = ([code, v, s, params, table, route]: [string, string, string, string, string, string]): boolean => {
+        const mine = sortThs(code).filter((t) => t.includes(`current={${v}.${s}.current}`));
+        const want = [...(GATEM.CONSOLE_SORT_TABLES[table].keys as readonly string[])];
+        return mine.length === want.length && mine.every((t, i) => t.startsWith(
+          `<SortTh field={${v}.${s}.columns.${want[i]}.field} label={${v}.${s}.columns.${want[i]}.label} current={${v}.${s}.current} dir={${v}.${s}.dir} sp={${v}.${params}} baseHref={${route}} prefix={${v}.${s}.prefix}`));
+      };
+      const everySite = (sites: typeof SITES) => sites.every(siteHolds)
+        && sortThs(pageCode).length + sortThs(detail9).length === SITES.reduce((n, [, , , , table]) => n + GATEM.CONSOLE_SORT_TABLES[table].keys.length, 0)
+        && ![pageCode, detail9].some((c) => /<SortTh\b[^>]*\bsp=\{sp\}/.test(c) || /<SortTh\b[^>]*\blabel="/.test(c));
+      ok("1.s9 · the pages · every sortable header on both pages is the kit's `SortTh`, one per column of its table in the reader's own order, every part of it — token, word, column in force, direction, prefix — from ONE sort view of the reader, its parameters that panel's VALIDATED ones and never the raw address, and no header word typed at the call site",
+        everySite(SITES), j(SITES.map((s) => [s[4], siteHolds(s)])));
+      const plant = (from: string, to: string) => SITES.map((s) => [s[0].replace(from, to), ...s.slice(1)] as [string, string, string, string, string, string]);
+      ok("1.s9 · the pages · CONTROL · the same pin reports a header handed the raw address, a word typed at the call site, and two headers swapped — each planted in a copy, each seen to land",
+        !everySite(plant("sp={feedView.feedParams}", "sp={sp}")) && !everySite(plant("label={rosterView.rosterSort.columns.status.label}", 'label="Status"'))
+          && !everySite(plant("field={resultsView.daySort.columns.result.field}", "field={resultsView.daySort.columns.stakes.field}"))
+          && pageCode.includes("sp={feedView.feedParams}") && pageCode.includes("label={rosterView.rosterSort.columns.status.label}"),
+        "");
+      ok("1.s9 · the pages · the roster draws the kit pager over its reader's own count with its own page word, the roster and Results panels paint the console's one refusal Callout, and the Targets pager's base is the reader's parameters — not a tab typed at the call site",
+        /total=\{rosterView\.rosterTotal\}/.test(pageCode) && /page=\{rosterView\.rosterPage\}/.test(pageCode) && /perPage=\{rosterView\.rosterPerPage\}/.test(pageCode)
+          && /\{rosterView\.queryRefusal && \(\s*<Callout tone="warning" title=\{CONSOLE_REFUSAL_TITLE\}>\{rosterView\.queryRefusal\}<\/Callout>/.test(panelOf("roster"))
+          && /\{resultsView\.queryRefusal && \(\s*<Callout tone="warning" title=\{CONSOLE_REFUSAL_TITLE\}>\{resultsView\.queryRefusal\}<\/Callout>/.test(panelOf("results"))
+          && /baseHref=\{buildBaseHref\(`\$\{CONSOLE_ROUTE\}\/\$\{view\.id\}`, view\.targetsParams, "tpage"\)\}/.test(detail9) && !/\{ tab: "targets" \}/.test(detail9)
+          && /houseRosterForConsole\(session\?\.userId \?\? null, "\/admin\/desk", sp\)/.test(pageCode) && /houseResultsForConsole\(session\?\.userId \?\? null, "\/admin\/desk", sp\)/.test(pageCode),
+        "");
+      ok("1.s9 · the pages · CONTROL · that pin reports the Targets base typed back at the call site and the roster's refusal Callout taken away",
+        !/baseHref=\{buildBaseHref\(`\$\{CONSOLE_ROUTE\}\/\$\{view\.id\}`, view\.targetsParams, "tpage"\)\}/.test(detail9.replace("view.targetsParams, \"tpage\"", "{ tab: \"targets\" }, \"tpage\""))
+          && !/\{rosterView\.queryRefusal && \(/.test(panelOf("roster").replace("{rosterView.queryRefusal && (", "{false && (")),
+        "");
+    }
+
+    /* The sorted states, for §3's lexicon: every sorted note, header word, token and parameter. */
+    STATES.push(["s9-ledger-sorted", walked["outcome:asc"].pages[0]], ["s9-ledger-refused", refused.both], ["s9-desk-account", deskAcct.desc.pages[0]],
+      ["s9-history-account", histAcct.desc.pages[0]], ["s9-targets-sorted", tPaged], ["s9-roster-sorted", rRef.clean], ["s9-results-sorted", both]);
+  } finally {
+    const live = new Set(((await w.dal.houseBotStore.listNonRemoved()) as Any[]).map((b: Any) => b.id));
+    for (const b of mine9) if (live.has(b.botId)) await w.dal.houseBotStore.setStatus(b.botId, { from: ["ACTIVE", "PAUSED", "AUTO_PAUSED"], ...REMOVE9 });
+    const left = ((await w.dal.houseBotStore.listNonRemoved()) as Any[]).filter((b: Any) => mine9.some((m) => m.botId === b.id)).length;
+    const ctlNow: Any = await w.dal.houseBotControlStore.get();
+    if (ctl9.enabled && !ctlNow.enabled) await w.switchOn();
+    else if (!ctl9.enabled && (ctlNow.enabled || ctlNow.offCause !== ctl9.offCause)) {
+      if (!ctlNow.enabled) await w.switchOn();
+      await w.dal.houseBotControlStore.switchOff({ cause: ctl9.offCause ?? "MANUAL", byId: OFFICER, reason: "test" });
+    }
+    const ctlEnd: Any = await w.dal.houseBotControlStore.get();
+    ok("1.s9 · teardown · every account this block designated is off the roster again (the slots are shared) and the master switch is where the block found it",
+      mine9.length >= 10 && left === 0 && ctlEnd.enabled === ctl9.enabled, j({ designated: mine9.length, left }));
+  }
+} catch (err) {
+  ok("0.throw.2k · no step-9 case threw — a throw here would otherwise skip §3's lexicon scan and §4's whole source law",
+    false, String((err as Any)?.stack ?? err).replace(/\s+/g, " ").slice(0, 400));
+}
+
+/* ════════════════════════════════════════════════════════════════════════════════════════════════════════════════
  * §3 · THE NEUTRAL LEXICON (ruling 453)
  * ════════════════════════════════════════════════════════════════════════════════════════════════════════════════ */
 
@@ -6698,14 +9248,37 @@ section("§3 · nothing the desk renders names the feature, in ANY state");
        reaches either one. */
     ...(view.feed ?? []).flatMap((r: Any) => [r.when, r.whenTitle, r.stake, r.leftToday, r.leftTodayTitle, r.closing, r.closingTitle, r.opening, r.roundNo, r.statusWord, r.resultWord, r.typeWord, r.productWord, r.note, r.marketHref]),
     ...(view.history ?? []).flatMap((r: Any) => [r.when, r.whenTitle, r.eventWord, r.change, r.who, r.moneyHref]),
+    /* ⭐ C7 437 · THE RESULTS TAB'S OWN COPY — every day's name and title, its count and state, and each result cell's
+       word, figure and whole text; every account line's handle and cells. ⛔ An account's `accountName` is scanned
+       ONLY when it is the console's own word (the removed-accounts line): when `accountIsOperatorText` is true it is
+       the Owner's label, and 474 exempts it here exactly as the roster row's `label` is exempted by never being
+       reached. `accountHref` is a record id, which this sweep never scans on any panel. */
+    ...(view.resultDays ?? []).flatMap((r: Any) => [r.dayText, r.dayTitle, r.stakesText, r.stateText, r.result?.text, r.result?.word, r.result?.figure]),
+    ...(view.resultAccounts ?? []).flatMap((r: Any) => [r.accountIsOperatorText ? null : r.accountName, r.accountHandle,
+      ...[r.today, r.week].flatMap((c: Any) => [c?.text, c?.word, c?.figure])]),
     ...Object.values(view.feedParams ?? {}), ...Object.values(view.historyParams ?? {}),
+    /* ⭐ STEP 9 · EVERY TABLE'S SORT PARTS AND PARAMETERS. A sortable header's word, its token (which reaches the address
+       bar), the token in force, the prefix and every live parameter reach the DOM or the URL, so each is in 453's scan. */
+    ...[view.rosterSort, view.feedSort, view.historySort, view.targetsSort, view.daySort, view.acctSort].filter(Boolean)
+      .flatMap((s: Any) => [s.current, s.prefix, s.dir, ...Object.values(s.columns ?? {}).flatMap((c: Any) => [c.field, c.label])]),
+    ...Object.values(view.rosterParams ?? {}), ...Object.values(view.targetsParams ?? {}), ...Object.values(view.resultsParams ?? {}),
+    /* ⭐ RESUME-HERE §0c decision 4 · THE FIND STEP'S ACCOUNT LIST. A row's two instants and their hover titles, the
+       rail's group and option words AND each option's key and link (a token is a painted word slugged, so the scan
+       covers the address bar by construction), the three header words and their sort tokens, the live parameters,
+       and the copy table's second empty state. A row's `handle` and `reason` are read by the rows branch above;
+       its `href` carries a record id and, like every other panel's, is not scanned. */
+    ...(view.rows ?? []).flatMap((r: Any) => [r.joined, r.joinedTitle, r.signedIn, r.signedInTitle]),
+    ...(view.filters ?? []).flatMap((g: Any) => [g.label, ...(g.options ?? []).flatMap((o: Any) => [o.label, o.key, o.href])]),
+    ...(view.columns ?? []).flatMap((c: Any) => [c.field, c.label]),
+    ...Object.values(view.params ?? {}),
+    view.emptyFiltered?.title, view.emptyFiltered?.body,
     /* ⛔ AND THE WHOLE OF BOTH TOTAL MAPS, NOT ONLY THE ROWS THIS FIXTURE HAPPENED TO PAINT. A word map scanned
        through its rendered rows is scanned at whatever coverage the fixture reached; scanned whole it is scanned
        at 100%, which is the only coverage a TOTAL map is worth having. */
     ...Object.values(GATEM.CONSOLE_EVENT_WORD as Record<string, string>),
   ].filter((s: unknown): s is string => typeof s === "string");
 
-  const fresh = await GATEM.houseRosterForConsole(OFFICER, "/admin/desk");
+  const fresh = await rosterEvery(OFFICER);
   const scanned: Array<[string, string[]]> = [["fresh", copyOf(fresh)], ...STATES.map(([n, v]) => [n, copyOf(v)] as [string, string[]])];
   const hits = scanned.flatMap(([n, c]) => c.filter((s) => NEUTRAL.test(s)).map((s) => `${n}: ${s}`));
   const total = scanned.reduce((n, [, c]) => n + c.length, 0);
@@ -6743,6 +9316,29 @@ section("§3 · nothing the desk renders names the feature, in ANY state");
       && seen.has("Nothing is staked until an officer starts this account and the desk's master switch is on.")
       && seen.has("Already on the desk"),
     j({ states: scanned.map(([n]) => n) }));
+  /* ⭐ C7 437 · AND THE RESULTS TAB'S WORDS ARE PROVEN PRESENT BY VALUE, for the reason the wizard's are above: its
+     states joined the list in §2h, and a field rename on its view model would otherwise drop every one of them out of
+     the scan while `hits.length === 0` still read as compliance. Each word below is painted by a DIFFERENT branch of
+     the words builder — a profit, a loss, a real −0, a day with nothing finished, an empty day, a failed read — plus
+     both states and both removed-accounts words, so no branch can leave the scan unnoticed. */
+  ok("3.453 · C7 437 · …and the scan really did include the Results tab's own words — a profit, a loss, Even, Nothing settled, No stakes, the failed read, both states and both removed-accounts lines",
+    [...seen].some((s) => /^Profit TZS [\d,]+$/.test(s)) && [...seen].some((s) => /^Loss TZS [\d,]+$/.test(s))
+      && ["Even", "Nothing settled", "No stakes", "couldn't read — this is not zero", "Still running", "Final"].every((s) => seen.has(s))
+      && seen.has(GATEM.CONSOLE_ACCOUNT_WORD.gone) && seen.has(GATEM.CONSOLE_ACCOUNT_WORD.goneMany)
+      && seen.has(GATEM.CONSOLE_RESULTS_NOTE),
+    j({ states: scanned.filter(([n]) => n.startsWith("results")).map(([n, c]) => [n, c.length]) }));
+  /* ⭐ RESUME-HERE §0c decision 4 · AND THE FIND STEP'S LIST IS PROVEN PRESENT BY VALUE, for the same reason: its states
+     joined the list in §2f2, and a field rename on its view model would otherwise drop them out of the scan while
+     `hits.length === 0` still read as compliance. One word from each branch — the heading, both chip rows, the failed
+     and the filtered-empty states, a sign-in word, a date's hover title and a rail link. */
+  {
+    const LIST: Any = GATEM.CONSOLE_LIST_COPY;
+    ok("3.453 · decision 4 · …and the scan really did include the find step's account list — its heading, both chip rows, its failed and its filtered-empty states, the Never word, an EAT hover title and a rail link",
+      [LIST.title, LIST.loadError, LIST.never, LIST.emptyFiltered.title, LIST.emptyFiltered.body, "Can be chosen", "Past 30 days", "Signed in", "Any time"].every((s: string) => seen.has(s))
+        && [...seen].some((s) => /^\d{1,2} [A-Z][a-z]{2} \d{4} \d{2}:\d{2} EAT$/.test(s))
+        && [...seen].some((s) => s.startsWith(`${CR.CONSOLE_NEW_ROUTE}?`)),
+      j({ states: scanned.filter(([n]) => n.startsWith("wizard-list")).map(([n, c]) => [n, c.length]) }));
+  }
   /* ⛔ THE SWEEP REALLY IS A SWEEP. A `copyOf` that quietly returned only the keys it used to type would pass
    * every assertion above, so the keys the typed list MISSED are named here — and nothing else names them. */
   {
@@ -6824,7 +9420,7 @@ if (STORE === "memory") {
        now the FIRST thing the extra prints. */
     allLits.length >= 1_332 && litHits.length === 0
       && sectionFiles.length >= 10
-      && [PAGE, LAYOUT, LOADING, LIVE, DETAIL_PAGE, NEW_PAGE, NEW_LOADING, NEW_ACTIONS, NEW_CLIENT].every((f) => sectionFiles.includes(f))
+      && [PAGE, LAYOUT, LOADING, LIVE, DETAIL_PAGE, NEW_PAGE, NEW_LOADING, NEW_ACTIONS, NEW_CLIENT, NEW_LIST].every((f) => sectionFiles.includes(f))
       && sectionUnscannable.length === 0 && lexiconFiles.length === sectionFiles.length + 1,
     /* ⛔ THE COUNT COMES FIRST, because `j()` truncates at 260 characters and the walked FILE LIST pushed
        `literals` off the end — so the number a later session must raise the floor TO was the one number this line
@@ -6834,7 +9430,11 @@ if (STORE === "memory") {
    * every string written as element content — every table header, every Callout body, the primary button's label —
    * was outside this guard, and the control could not reveal it because all three of its plants were attributes. */
   ok("4.453 · …and the population includes the page's JSX PROSE, not only its attribute literals",
-    ["Designate an account", "Master switch", "Account", "Status", "Products"].every((s) => jsxLits.includes(s)),
+    /* ⭐ 2026-09-27 · step 9 · "Account" and "Status" left the page's element content: every sortable header's word is
+       now the reader's `CONSOLE_SORT_LABEL`, handed to the kit's `SortTh` — which the reader's own half of this scan
+       (`lexiconFiles`) covers. The claim is unchanged — ELEMENT CONTENT is in the population — so it names two headers
+       that are still written as JSX text on this page: "Opening" (the ledger) and "Change" (the history). */
+    ["Designate an account", "Master switch", "Opening", "Change", "Products"].every((s) => jsxLits.includes(s)),
     j({ pageStrings: jsxLits.length }));
   /* ⛔ THE PLANTED CONTROL, and it must fire: the real page with the head title and the switch's aria-label put back
    * to the words ruling 306 originally wrote. A guard whose control cannot fire is decoration. */
@@ -6960,7 +9560,9 @@ export default function Ruling513Control() {
 
   /* 1.300 / 1.380 · the gate is awaited FIRST, with a STRING LITERAL route, before the reader. */
   const gateAt = pageCode.indexOf('houseConsoleAudience(session?.userId ?? null, "/admin/desk")');
-  const readerAt = pageCode.indexOf('houseRosterForConsole(session?.userId ?? null, "/admin/desk")');
+  /* ⭐ 2026-09-27 · step 9 · the roster reader takes the request's query as its THIRD argument (arity 3 in
+     `CONSOLE_GATES`); the route is still the literal this pin exists for. */
+  const readerAt = pageCode.indexOf('houseRosterForConsole(session?.userId ?? null, "/admin/desk", sp)');
   ok("1.300 · the page awaits `houseConsoleAudience` with a literal route BEFORE it calls the gated reader",
     gateAt > 0 && readerAt > gateAt, j({ gateAt, readerAt }));
   ok("1.380 · the route argument is a literal, never a header value", !/headers\(\)/.test(pageCode) && !/x-pathname/.test(pageCode));
@@ -7287,13 +9889,16 @@ export default function Ruling513Control() {
    * ⭐ FOUR KEYS AT C7 STEP 5's LANDING HALF, AND THE ORDER IS ASSERTED RATHER THAN THE COUNT: `roster · activity ·
    * limits · history` is ruling 312's own rail order — who is on the desk, what it is doing, what would stop it,
    * what was done to it — and a list with the right members in the wrong order is a rail an officer has to read
-   * twice. This line was `1.312a` and hard-coded the two-key list; it is REPLACED rather than relaxed. */
-  ok("1.312 · the rail's options come from the closed list, and the page renders a panel for every key in it — four keys, in rail order",
+   * twice. This line was `1.312a` and hard-coded the two-key list; it is REPLACED rather than relaxed.
+   * ⭐ FIVE KEYS SINCE C7 437, and REPLACED AGAIN rather than relaxed: `results` is appended LAST, after the four
+   * control tabs in 312's own order, because it controls nothing (the case below pins "last" and "no badge" on their
+   * own, each with a control). The literal is still the whole list, so a sixth key is a line somebody has to read. */
+  ok("1.312 · the rail's options come from the closed list, and the page renders a panel for every key in it — five keys, in rail order",
     /CONSOLE_TABS\.map/.test(pageCode) && CR.CONSOLE_TABS.every((k: string) => pageCode.includes(`tab === "${k}"`))
-      && CR.CONSOLE_TABS.length === 4 && j([...CR.CONSOLE_TABS]) === j(["roster", "activity", "limits", "history"]), j(CR.CONSOLE_TABS));
+      && CR.CONSOLE_TABS.length === 5 && j([...CR.CONSOLE_TABS]) === j(["roster", "activity", "limits", "history", "results"]), j(CR.CONSOLE_TABS));
   /* ⛔ AND EVERY KEY'S PANEL IS REALLY THERE TO BE SLICED — the population trap a `panelOf` scan carries: an
    * opener that moved would make every panel-scoped scan below read an EMPTY string and pass on nothing. */
-  ok("1.312 · CONTROL · each of the four panels is found and non-empty in the page's own source, so every panel-scoped scan below is measuring a table and not an empty slice",
+  ok("1.312 · CONTROL · each of the five panels is found and non-empty in the page's own source, so every panel-scoped scan below is measuring a table and not an empty slice",
     CR.CONSOLE_TABS.every((k: string) => panelOf(k).length > 200) && panelOf("nowhere") === "",
     j(CR.CONSOLE_TABS.map((k: string) => [k, panelOf(k).length])));
   /* ⛔ A TAB EXISTS ONLY WITH ITS PANEL (ruling 312), AND THE LIST GROWS ONE KEY PER PANEL. The `limits` key joined
@@ -7305,6 +9910,34 @@ export default function Ruling513Control() {
     ok(`1.302 · \`?tab=${j(raw)}\` resolves to the roster — never a 404 and never a redirect`, CR.consoleTab(raw) === "roster", j(CR.consoleTab(raw)));
   }
   ok("1.302 · `?tab=limits` now resolves to the LIMITS panel, because the panel exists", CR.consoleTab("limits") === "limits", j(CR.consoleTab("limits")));
+  /* ⭐ C7 437 · `?tab=results` RESOLVES TO ITSELF, AND ONLY ON THE LANDING PAGE. The account page has no Results tab in
+     the first cut (`CONSOLE_DETAIL_TABS` is unchanged), so a detail-rail link to one would be a dead control that
+     silently repaints the overview — 432(i)'s class. */
+  ok("1.302 · `?tab=results` resolves to the RESULTS panel, because the panel exists — a landing tab with its own rail link, and never a tab of an account's page",
+    CR.consoleTab("results") === "results" && CR.consoleTabExists("results") === true
+      && CR.consoleTabHref("results") === "/admin/desk?tab=results"
+      && CR.consoleDetailTabExists("results") === false && CR.consoleDetailTab("results") === CR.DEFAULT_DETAIL_TAB,
+    j({ tab: CR.consoleTab("results"), detail: CR.consoleDetailTab("results") }));
+  ok("1.302 · CONTROL · a misspelt, a capitalised and an account-page-only key still fall back to the roster — so the line above is the closed list answering, not a resolver that echoes whatever it is given",
+    ["resultz", "Results", "overview"].every((raw) => CR.consoleTab(raw) === "roster"), "");
+  /* ⭐ C7 437 · `results` IS LAST AND CARRIES NO BADGE. It controls nothing, so it may not sit between the four
+     control tabs (312's order is who is on the desk, what it is doing, what would stop it, what was done to it), and a
+     count beside it would be a number nothing on the page can act on (432(a)) — the badge expression is still the
+     two-tab one 1.405 pins, and it may not name `results` at all. */
+  const lastAndUnbadged = (tabs: readonly string[], code: string): boolean =>
+    tabs.length === 5 && tabs[tabs.length - 1] === "results" && tabs.indexOf("results") === tabs.length - 1
+      && j(tabs.slice(0, 4)) === j(["roster", "activity", "limits", "history"])
+      && /count: k === "limits" \? view\.unsetRequired : k === "activity" \? view\.pendingIntents \?\? undefined : undefined/.test(code)
+      && !/\bk === "results"/.test(code);
+  ok("1.312 · C7 437 · `results` is the LAST key on the rail, after the four control tabs in 312's own order, and it carries NO badge — it controls nothing, so it neither splits the control tabs nor counts anything",
+    lastAndUnbadged([...CR.CONSOLE_TABS], pageCode), j(CR.CONSOLE_TABS));
+  ok("1.312 · C7 437 · CONTROL · a rail with `results` placed third, and a badge expression that names `results`, are each reported",
+    (() => {
+      const badged = pageCode.replace(': k === "activity" ? view.pendingIntents ?? undefined : undefined', () => ': k === "activity" ? view.pendingIntents ?? undefined : k === "results" ? 0 : undefined');
+      return badged !== pageCode
+        && !lastAndUnbadged(["roster", "activity", "results", "limits", "history"], pageCode)
+        && !lastAndUnbadged([...CR.CONSOLE_TABS], badged);
+    })(), "");
   /* ⭐ C7 STEP 4 BUILT THE ONE SURFACE `notFound()` IS RESERVED FOR (rulings 302, 399). Until this step the
      assertion was that the section called it NOWHERE; now it is that the section calls it EXACTLY ONCE, on the
      account page, and AFTER the audience verdict — which is 1.399's source half. The two readings are the same
@@ -7339,7 +9972,10 @@ export default function Ruling513Control() {
   const thead = /<thead[\s\S]*?<\/thead>/.exec(pageCode)?.[0] ?? "";
   /* ⚠️ `<th\s` — the whitespace is load-bearing: `<th[^>]*>` also matches `<thead …>`, which put an empty first
      entry in front of every header and made this case report a 7-column table as an 8-column one. */
-  const headers = [...thead.matchAll(/<th\s[^>]*>([^<]*)</g)].map((m) => m[1].trim());
+  /* ⭐ STEP 9 · six of the roster's eight headers are the kit's `SortTh`; `theadHeaders` resolves each to its word and
+     its rendered class, so every pin below reads the same facts it read off the plain `<th>`s. */
+  const rosterHeads = theadHeaders(thead);
+  const headers = rosterHeads.map((h) => h.label);
   /* ⭐ EIGHT COLUMNS AT LAST (rulings 310, 432(g), 432(h)). Six shipped at step 1 because the other two were
    * tied to things that did not exist: the way-out link to `/admin/desk/[id]`, which would have answered the
    * app-root 404, and "Last bet" to a last-placement instant no reader had. C7 step 4 built the page and added
@@ -7359,10 +9995,12 @@ export default function Ruling513Control() {
      rather than the scope widened, because 432(o)'s measurement was taken on the roster's own 22-character basis. */
   ok("1.373 · 432(o) · every money-bearing header ON THE ROSTER may WRAP, so a long basis costs thead height and not a clipped figure",
     (thead.match(/!whitespace-normal/g) ?? []).length === 3
-      && /<th scope="col" className="text-right p-3 !whitespace-normal">Loss today \(projected\)<\/th>/.test(pageCode)
+      && rosterHeads.some((h) => h.label === "Loss today (projected)" && h.cls === "text-right p-3 !whitespace-normal")
       /* ⛔ THE `!` IS THE ASSERTION. `.admin-tbl th` is (0,1,1) and a bare utility is (0,1,0), so the class LOST to
-         the stylesheet: the first fix compiled, passed every source pin, and left the figure sliced on screen. */
-      && !/className="text-right p-3 whitespace-normal"/.test(pageCode), "");
+         the stylesheet: the first fix compiled, passed every source pin, and left the figure sliced on screen.
+         ⭐ STEP 9 · read off every header's RENDERED class, so a `SortTh` with a bare utility is seen as well. */
+      && !/className="text-right p-3 whitespace-normal"/.test(pageCode)
+      && !theadHeaders(pageCode).some((h) => /(^|\s)whitespace-normal(\s|$)/.test(h.cls)), "");
   /* ⛔ AND THE BAND AND THE COLUMN CALL THE SAME FIGURE THE SAME THING (432(o)): the tile above reads "Open exposure"
    * and the column below it read "Exposure", which is the one word a reader uses to tie the two together. */
   /* ⚠️ IT NOW COMPARES THEM. The label said "every money column's header is the label of the tile that measures the
@@ -7380,7 +10018,7 @@ export default function Ruling513Control() {
   /* ⛔ AND THE COUNT USAGE READS ON THE SAME AXIS AS THE TWO MONEY USAGES BESIDE IT (432(o)): same grammar, same
    * shape, three adjacent figures — left-aligning one of them put them on two axes. */
   ok("1.407 · 432(o) · every usage column is right-aligned, so three adjacent usage figures read on ONE axis",
-    (panelOf("roster").match(/<th scope="col" className="text-right p-3 !whitespace-normal">/g) ?? []).length === 3
+    rosterHeads.filter((h) => h.cls === "text-right p-3 !whitespace-normal").length === 3
       && (panelOf("roster").match(/<td className="p-3 text-right(?: text-text-secondary)?"><Usage cell=/g) ?? []).length === 3, "");
   ok("1.373 · no header reads 'House stake', 'Today net' or 'Live balance'",
     !/House stake|house stake|Today net|Live balance/.test(pageCode), "");
@@ -7402,7 +10040,9 @@ export default function Ruling513Control() {
      is `padding: 12px 16px` at (0,1,1), so 96px of a 318px strip went on gutters before a figure was drawn. That
      is a legitimate class on a money table; a WIDTH is not, and the difference is what this line still guards.
      The allowed set is CLOSED and spelled out, so a fifth class arriving on a table is reported like any width. */
-  const TABLE_CLASS_OK = new Set(["[&_td]:!px-1.5", "[&_th]:!px-1.5", "sm:[&_td]:!px-2", "sm:[&_th]:!px-2", "max-sm:!text-caption"]);
+  /* ⭐ SHRUNK 2026-09-26, never widened: the `sm:` 12px gutter left with RESUME-HERE §0c decision 2, so the activity
+     tables carry ONE gutter at every width and its two `sm:` spellings are no longer allowed on any table here. */
+  const TABLE_CLASS_OK = new Set(["[&_td]:!px-1.5", "[&_th]:!px-1.5", "max-sm:!text-caption"]);
   const openerClasses = (t: string) => (/className="([^"]*)"/.exec(t)?.[1] ?? "").split(/\s+/).filter(Boolean);
   ok("1.373 · the money-bearing TABLE carries no `min-w-*` of its own — a width on the table stretches every column — and EVERY table on this page opens with the kit class and nothing but the declared gutter set, derived from the page rather than asked of one of them",
     tableOpeners.length >= 3 && tableOpeners.every((t: string) => {
@@ -7427,7 +10067,7 @@ export default function Ruling513Control() {
      Every panel that paints that header is read out of its OWN slice and must carry the floor — derived from the
      closed tab list, so a panel written tomorrow is inside the rule without anyone remembering to add it. */
   const subjectCols = CR.CONSOLE_TABS
-    .map((k: string) => [k, /<th scope="col" className="([^"]*)">Account<\/th>/.exec(panelOf(k))?.[1] ?? null] as [string, string | null])
+    .map((k: string) => [k, theadHeaders(panelOf(k)).find((h) => h.label === "Account")?.cls ?? null] as [string, string | null])
     .filter(([, c]) => c !== null) as [string, string][];
   /* 🔴 474 · OPERATOR TEXT IS BOUNDED, NEVER REWRITTEN — AND A CSS TRANSFORM IS A REWRITE. Found on a
      PHOTOGRAPH, not in any source scan: `.row-link` carries `text-transform: uppercase` and
@@ -7463,24 +10103,33 @@ export default function Ruling513Control() {
      `min-w-[0px] sm:min-w-[150px]`. ⛔ The spellings are now a CLOSED SET, both stated, so a third one is reported
      rather than absorbed — and what they share is the fact that matters: 150px from `sm` up. */
   const SUBJECT_FLOOR = [/(^|\s)min-w-\[150px\](\s|$)/, /(^|\s)min-w-\[104px\]\s+sm:min-w-\[150px\](\s|$)/];
+  /* ⭐ THE POPULATION FLOOR ROSE 3 → 4 WITH C7 437, to what the page now paints: the Results panel's By account table
+     opens on the same `Account` subject column, in the activity panel's responsive spelling. A floor only rises, and
+     a fourth panel that lost its subject column would otherwise pass on the other three. */
   ok("1.373 · EVERY panel that paints the subject column carries the SAME floor from `sm` up, in one of two DECLARED spellings, read out of that panel's own slice — a floor deleted from one table can no longer pass on another table still having one",
-    subjectCols.length >= 3 && subjectCols.every(([, c]) => SUBJECT_FLOOR.some((re) => re.test(c))),
+    subjectCols.length >= 4 && subjectCols.some(([k]) => k === "results") && subjectCols.every(([, c]) => SUBJECT_FLOOR.some((re) => re.test(c))),
     j(subjectCols));
   ok("1.373 · CONTROL · the closed set really would report a phone floor of zero hidden behind the same 150px — which the substring test it replaced accepted",
     !SUBJECT_FLOOR.some((re) => re.test("text-left p-3 min-w-[0px] sm:min-w-[150px]")), "");
   ok("1.373 · …and only the SUBJECT and STATUS columns carry a floor — never a money column, which would pin its figure off-screen",
-    /<th scope="col" className="text-left p-3 min-w-\[150px\]">Account<\/th>/.test(pageCode)
-      && /<th scope="col" className="text-left p-3 min-w-\[128px\]">Status<\/th>/.test(pageCode)
+    rosterHeads.find((h) => h.label === "Account")?.cls === "text-left p-3 min-w-[150px]"
+      && rosterHeads.find((h) => h.label === "Status")?.cls === "text-left p-3 min-w-[128px]"
       /* ⛔ THE ROSTER'S OWN TWO FLOORS, counted in the ROSTER's own slice — the other three panels have their own
          subject columns and their own floors, and a page-wide count would let one be deleted while another is
          added. ⛔ THE "NO MONEY FLOOR" HALF STAYS PAGE-WIDE, because it is a rule about every table here. */
       && (panelOf("roster").match(/min-w-\[/g) ?? []).length === 2
-      && !/text-right p-3[^"]*min-w-\[/.test(pageCode), "");
+      && !/text-right p-3[^"]*min-w-\[/.test(pageCode)
+      /* ⭐ STEP 9 · and on every header's RENDERED class: a right-aligned `SortTh` carries no `text-right` in its source. */
+      && !theadHeaders(pageCode).some((h) => /\btext-right\b/.test(h.cls) && /\bmin-w-\[/.test(h.cls)), "");
   /* ⛔ ONLY THE FIGURE IS IN `.amount` (ruling 409). Wrapping "used" and "of" inside it put prose in the money face
    * and made each unbreakable unit wider than the figure it protected — the constraint 432(b) was solving. A COUNT
    * is not money, so it takes the mono/tabular face without `.amount`'s meaning. */
-  ok("1.407 / 1.409 · every `<th>` carries `scope=\"col\"`; the FIGURE alone is `.amount tabular-nums`, its words are not, and no cell is bound by `.tabular`",
-    headers.length === (thead.match(/scope="col"/g) ?? []).length
+  /* ⭐ STEP 9 · 407's SECOND CLAUSE IS NOW IN FORCE: "a sortable header uses `SortTh`". The kit's `SortTh` renders its own
+     `<th>` and takes no `scope` prop, so the claim is split along the ruling's own line: every PLAIN header still carries
+     `scope="col"`, and every other header is the kit's sortable cell — exactly one per column of the reader's table. */
+  ok("1.407 / 1.409 · every plain `<th>` carries `scope=\"col\"` and every sortable one is the kit's `SortTh`, one per roster column; the FIGURE alone is `.amount tabular-nums`, its words are not, and no cell is bound by `.tabular`",
+    rosterHeads.filter((h) => !h.sortable).every((h) => /\bscope="col"/.test(h.src)) && rosterHeads.filter((h) => !h.sortable).length === 2
+      && rosterHeads.filter((h) => h.sortable).length === (GATEM.CONSOLE_SORT_TABLES.roster.keys as readonly string[]).length
       && /const figure = cell\.money \? "amount tabular-nums" : "font-mono tabular-nums";/.test(pageCode)
       && (pageCode.match(/className=\{figure\}/g) ?? []).length === 1
       && !/className="amount tabular-nums">\{cell\./.test(pageCode)
@@ -7565,7 +10214,11 @@ export default function Ruling513Control() {
     /* ⭐ THIRTEEN SINCE 2026-09-25: the activity row got a PHONE shape, and it carries the same two doors the wide
        row does — the account and the market — so each appears twice in the file, once per layout. The pin is still
        POSITIONAL and still an equality, so a door added to one layout and not the other is reported. */
-    const WANT = ["Link unsetHref as Route", "WayOutLink view.limitsHref", "Link view.designateHref as Route", "Link view.limitsFirstUnsetHref as Route", "Link r.inert.href as Route", "Link r.href as Route", "Link r.accountHref as Route", "Link r.marketHref as Route", "Link r.accountHref as Route", "Link r.marketHref as Route", "Link r.marketHref as Route", "Link r.accountHref as Route", "Link r.moneyHref as Route"];
+    /* ⭐ FOURTEEN SINCE C7 437: the Results panel's By account table names each account through the section's own
+       account cell — the Owner's label as a link to that account's page — and it is the LAST link on the page, as the
+       panel is the last panel. The removed-accounts line paints no link (there is no one page for several accounts),
+       which is why this is one entry and not two. */
+    const WANT = ["Link unsetHref as Route", "WayOutLink view.limitsHref", "Link view.designateHref as Route", "Link view.limitsFirstUnsetHref as Route", "Link r.inert.href as Route", "Link r.href as Route", "Link r.accountHref as Route", "Link r.marketHref as Route", "Link r.accountHref as Route", "Link r.marketHref as Route", "Link r.marketHref as Route", "Link r.accountHref as Route", "Link r.moneyHref as Route", "Link r.accountHref as Route"];
     /* 🔴 THIS EQUALITY COMPARED A TRUNCATED PREFIX, AND HAD DONE SINCE THE LIST OUTGREW IT (found 2026-09-25).
        `j` slices at 260 characters — this file's own header says so, and says `all` is "the only form an assertion
        may scan" — while `WANT` serialises to about 389. So this line compared entries 1–8 of 13 and silently
@@ -7687,20 +10340,239 @@ export default function Ruling513Control() {
      handed through as an expression (387 — an address that was not taken at its word says so, in the door's own
      words). It is NAMED here rather than being allowed to shorten the floor for everything else, so a second
      expression-bodied Callout — the way a hand-written sentence would sneak past a length rule — is reported. */
-  const EXPR_BODIES = ["{feedView.queryRefusal}"];
+  /* ⭐ STEP 9 · THREE SINCE THE ROSTER AND THE RESULTS TAB SORT: each validates its own address and paints the SAME
+     refusal Callout the activity panel does, with the reader's own sentence. The list stays NAMED and the count an
+     EQUALITY, so a fourth expression body is still reported. */
+  const EXPR_BODIES = ["{rosterView.queryRefusal}", "{feedView.queryRefusal}", "{resultsView.queryRefusal}"];
   const proseBodies = calloutBodies.filter((b) => !EXPR_BODIES.includes(b));
-  ok("1.308 · 432(n) · CONTROL · the Callout bodies were really read, every body this page WORDS ITSELF is a real sentence, and the one expression body is the reader's own refusal",
+  ok("1.308 · 432(n) · CONTROL · the Callout bodies were really read, every body this page WORDS ITSELF is a real sentence, and the expression bodies are exactly the reader's own refusals",
     proseBodies.length >= 3 && proseBodies.every((b) => b.length > 40)
-      && calloutBodies.length - proseBodies.length === 1
+      && calloutBodies.length - proseBodies.length === EXPR_BODIES.length
       && gateCode.includes("The desk is off. Nothing will be staked."),
     j({ prose: proseBodies.map((b) => b.length), expr: calloutBodies.length - proseBodies.length }));
 
-  /* 1.361 · no banned formatter, here or in the gated reader. */
+  /* ━━ 1.360 · MONEY IN FIVE ROLES AND ONE BRACKET, AND NOWHERE ELSE (C7 360, as amended by C7 437) ━━━━━━━━━━━━━━━━━━━━━
+   * ⛔ THE WALK C7-SPEC 360's PROOF SPECIFIED AND NOBODY WROTE. Until C7 437 the ruling's only trace in this file was a
+   * comment naming "1.360's money walk" (§2e2's rail note) — so the closed set of money roles was a list nothing
+   * enforced, and it had already been exceeded TWICE with no one noticing: `Left today` (373(d), a form of B) and the
+   * D3 Opening/Closing bracket (BAL). A panel that states what the desk's stakes came to is exactly the day a list that
+   * nothing enforces stops being good enough, so the walk is built with it.
+   * ⛔ PER SITE, KEYED BY THE FIGURE IT PAINTS — never by line number (which rots) and never by file (one file already
+   * paints four roles). Four kinds of site, each read out of the section's DECOMMENTED source:
+   *   · a `formatTzs(` call — the section formats no money itself today, so any one is a finding;
+   *   · a class literal carrying `amount` — keyed by the `{figure}` it wraps, or, for a class bound to a `const`, by
+   *     the figure that const is spent on;
+   *   · a prop that is `…Tzs` or reads a `…Tzs` field — the limits bar's raw range;
+   *   · a `title` / `aria-label` / `aria-valuetext` carrying a digit group or naming a money field, at a CONSOLE call
+   *     site. The kit's own mirrors (`AdminKpi`'s value `title`, `ProgressBar`'s `aria-valuetext`) live in the kit and
+   *     are outside this population by construction — the carve-out 360 names, and no wider.
+   * ⛔ BOTH WAYS: a site with no declared role is reported, AND a declared site that is gone is reported — a role list
+   * that keeps an entry for a figure nobody paints any more is how the next figure inherits a permission.
+   * ⛔ ROLE E LIVES ON THE RESULTS PANEL AND NOWHERE ELSE. Its one site is `ResultWords`'s figure, so the component is
+   * held to `panelOf("results")`: rendered there and only there, declared once, named by no other file. */
+  {
+    type MoneyRole = "A" | "B" | "C" | "D" | "E" | "BAL";
+    const RULES_FORM = `${SECTION}/[id]/rules-form.tsx`;
+    const MONEY_ROLE: Record<string, MoneyRole> = {
+      /* (A) a configured limit's own value, in the control that edits it — and read-only on the account's saved rules. */
+      [`${FORM} · amount · row.value`]: "A",
+      [`${RULES_FORM} · amount · row.saved`]: "A",
+      [`${RULES_FORM} · amount · cap.saved`]: "A",
+      [`${DETAIL_PAGE} · amount · r.value`]: "A",
+      /* (B) usage of ONE configured limit with that limit: the roster cell, the limits bar and its raw range, and
+         373(d)'s `Left today` with its 361 sentence as the hover. */
+      [`${PAGE} · amount · h.figure`]: "B",
+      [`${PAGE} · prop · value={row.usedTzs ?? 0}`]: "B",
+      [`${PAGE} · prop · max={row.limitTzs}`]: "B",
+      [`${PAGE} · amount · r.leftToday`]: "B",
+      [`${PAGE} · attr · title={r.leftTodayTitle ?? undefined}`]: "B",
+      [`${DETAIL_PAGE} · amount · r.leftToday`]: "B",
+      [`${DETAIL_PAGE} · attr · title={r.leftTodayTitle ?? undefined}`]: "B",
+      /* (C) the amount of ONE action — one stake, on its own row, never summed. */
+      [`${PAGE} · amount · r.stake`]: "C",
+      [`${DETAIL_PAGE} · amount · r.stake`]: "C",
+      /* (BAL) D3 as amended 2026-09-25 — the holder's ledger balance bracketing ONE stake, and the instant it belongs to. */
+      [`${PAGE} · amount · r.opening`]: "BAL",
+      [`${PAGE} · amount · r.closing`]: "BAL",
+      [`${PAGE} · attr · title={r.closingTitle ?? undefined}`]: "BAL",
+      [`${DETAIL_PAGE} · amount · r.opening`]: "BAL",
+      [`${DETAIL_PAGE} · amount · r.closing`]: "BAL",
+      [`${DETAIL_PAGE} · attr · title={r.closingTitle ?? undefined}`]: "BAL",
+      /* (E) C7 437 — the desk's result, a magnitude beside a word, on the Results panel only. */
+      [`${PAGE} · amount · result.figure`]: "E",
+    };
+    /* A class list, not prose: every token lower-case and class-shaped. ⚠️ Only DOUBLE-quoted and backtick literals are
+       read — JSX text is full of apostrophes ("desk's"), and pairing two of them on one line would hand the scan a
+       stretch of prose to mistake for a class list. */
+    const CLASSY = /^[!a-z0-9:\-[\]\/.()%&>+_#,]+$/;
+    const MONEY_NAME = /Tzs\b|formatTzs|amount|stake|opening|closing|leftToday|balance|figure|result|payout|profit|\bnet\b|loss|remaining/i;
+    const DIGIT_GROUP = /\d{1,3}(?:,\d{3})+|\bTZS\b|\d{4,}/;
+    const ATTR = /\b(title|aria-label|aria-valuetext)=(?:"([^"]*)"|\{((?:[^{}]|\{[^{}]*\})*)\})/g;
+    const PROP = /(?<=[\s(])([A-Za-z][\w-]*)=\{((?:[^{}]|\{[^{}]*\})*)\}/g;
+    const figureAt = (code: string, at: number): string => {
+      const bound = /const (\w+) = [^;\n]*$/.exec(code.slice(code.lastIndexOf("\n", at) + 1, at))?.[1];
+      const got = bound
+        ? new RegExp(`className=\\{${bound}\\}>\\{([^{}]+)\\}`).exec(code)?.[1]
+        : />\{([^{}]+)\}/.exec(code.slice(at, at + 240))?.[1];
+      return (got ?? "?").trim();
+    };
+    /* 🔴 THE LITERAL PAIRING HAS TO SURVIVE A TEMPLATE WITH `${…}` IN IT (found on this walk's first run, 2026-09-26).
+       It read `"…"|`[^`$]*``, and a template holding an expression does not match that — so its CLOSING backtick was
+       taken for an OPENING one, and the "literal" ran on to the next backtick in the file, swallowing whole table rows
+       and every `"amount"` class inside them: the activity ledger's row classes (`${…NOTED_ROW…}`) hid Left today,
+       the stake and the limit values from the walk, which then reported them MISSING. A template now pairs across its
+       `${…}` expressions; its static text is one literal, and every string INSIDE an expression is scanned as well, so
+       the walk sees more than it did, never less. */
+    const literalsOf = (code: string): { text: string; at: number }[] => {
+      const lits: { text: string; at: number }[] = [];
+      for (const m of code.matchAll(/"([^"\n]*)"|`((?:[^`\\$]|\\.|\$(?!\{)|\$\{(?:[^{}]|\{[^{}]*\})*\})*)`/g)) {
+        const at = m.index ?? 0;
+        if (m[1] !== undefined) { lits.push({ text: m[1], at }); continue; }
+        const body = m[2] ?? "";
+        lits.push({ text: body.replace(/\$\{(?:[^{}]|\{[^{}]*\})*\}/g, " "), at });
+        for (const e of body.matchAll(/\$\{((?:[^{}]|\{[^{}]*\})*)\}/g)) {
+          for (const s of e[1].matchAll(/"([^"\n]*)"/g)) lits.push({ text: s[1], at: at + 1 + (e.index ?? 0) + 2 + (s.index ?? 0) });
+        }
+      }
+      return lits;
+    };
+    const moneySites = (file: string, code: string): string[] => {
+      const out: string[] = [];
+      for (const m of code.matchAll(/\bformatTzs\(((?:[^()]|\([^()]*\))*)\)/g)) out.push(`${file} · formatTzs · formatTzs(${m[1].trim()})`);
+      for (const lit of literalsOf(code)) {
+        const tokens = lit.text.trim().split(/\s+/);
+        if (tokens.includes("amount") && tokens.every((t) => CLASSY.test(t))) out.push(`${file} · amount · ${figureAt(code, lit.at)}`);
+      }
+      for (const m of code.matchAll(PROP)) {
+        if (/^(title|aria-label|aria-valuetext)$/.test(m[1])) continue;
+        if (m[1].endsWith("Tzs") || /\b\w+Tzs\b/.test(m[2])) out.push(`${file} · prop · ${m[1]}={${m[2].trim()}}`);
+      }
+      for (const m of code.matchAll(ATTR)) {
+        if (m[2] !== undefined && DIGIT_GROUP.test(m[2])) out.push(`${file} · attr · ${m[1]}="${m[2]}"`);
+        if (m[3] !== undefined && MONEY_NAME.test(m[3])) out.push(`${file} · attr · ${m[1]}={${m[3].trim()}}`);
+      }
+      return out;
+    };
+    const codeOf = new Map(sectionFiles.map((f) => [f, decomment(read(f))] as [string, string]));
+    const sites = sectionFiles.flatMap((f) => moneySites(f, codeOf.get(f)!));
+    const unroled = (keys: string[]) => [...new Set(keys.filter((k) => !(k in MONEY_ROLE)))];
+    const missing = Object.keys(MONEY_ROLE).filter((k) => !sites.includes(k));
+    const roles = new Set(sites.map((k) => MONEY_ROLE[k]).filter(Boolean));
+    ok("1.360 · every money site under the section — a `formatTzs` call, an `.amount` figure, a `…Tzs` prop, a money `title`/`aria-*` — carries a DECLARED role, A to E or the D3 balance bracket, and every declared site is still painted",
+      sectionFiles.length >= 10 && sites.length >= Object.keys(MONEY_ROLE).length
+        && unroled(sites).length === 0 && missing.length === 0
+        && (["A", "B", "C", "E", "BAL"] as MoneyRole[]).every((r) => roles.has(r)),
+      j({ sites: sites.length, unroled: unroled(sites), missing }));
+    /* ⛔ ROLE E'S CONTAINMENT, over the component rather than the figure: `{result.figure}` is spent in ONE function,
+       and that function may be rendered inside the Results panel and nowhere else. */
+    const sliceTab = (code: string, tab: string): string => {
+      const open = code.indexOf(`{tab === "${tab}" && (<>`);
+      if (open < 0) return "";
+      const close = code.indexOf("\n        </>)}", open);
+      return close < 0 ? code.slice(open) : code.slice(open, close);
+    };
+    const others = sectionFiles.filter((f) => f !== PAGE).map((f) => codeOf.get(f)!);
+    const eHeld = (code: string): boolean => {
+      const body = /export function ResultWords\([\s\S]*?\n\}/.exec(code)?.[0] ?? "";
+      const inPanel = (sliceTab(code, "results").match(/<ResultWords\b/g) ?? []).length;
+      return (code.match(/export function ResultWords\(/g) ?? []).length === 1
+        && inPanel >= 3 && (code.match(/<ResultWords\b/g) ?? []).length === inPanel
+        && (code.match(/\bresult\.figure\b/g) ?? []).length === (body.match(/\bresult\.figure\b/g) ?? []).length
+        && others.every((c) => !/\bResultWords\b/.test(c));
+    };
+    ok("1.360 · role E — what the desk's stakes came to — is painted by ONE component, declared once, rendered only inside the Results panel and named by no other file of the section",
+      eHeld(pageCode), j({ inPanel: (panelOf("results").match(/<ResultWords\b/g) ?? []).length, onPage: (pageCode.match(/<ResultWords\b/g) ?? []).length }));
+    /* ⛔ THE CONTROLS PLANT WHAT 360 NAMES, IN A COPY OF THE PAGE: a result formatted on the ROSTER, a money `title` the
+       console writes itself (a literal digit group, and a result field), and the result's own component rendered on
+       the roster. Each must be reported, and each plant must really have landed. */
+    const rosterOpen = '{tab === "roster" && (<>';
+    const plant = (from: string, to: string): string => pageCode.replace(from, () => to);
+    const plantedFormat = plant(rosterOpen, `${rosterOpen}<span>{formatTzs(result)}</span>`);
+    const plantedTitle = plant("title={r.dayTitle || undefined}", 'title="TZS 42,000"');
+    const plantedField = plant("title={r.dayTitle || undefined}", "title={r.result.text}");
+    const plantedE = plant(rosterOpen, `${rosterOpen}<ResultWords result={r.today} />`);
+    ok("1.360 · CONTROL · a planted `formatTzs(result)` on the roster, a console-written money `title` — a literal digit group, and a result field — and the result's own component rendered on the roster are each reported",
+      [plantedFormat, plantedTitle, plantedField, plantedE].every((c) => c !== pageCode)
+        && unroled(moneySites(PAGE, plantedFormat)).some((k) => k.endsWith("formatTzs(result)"))
+        && unroled(moneySites(PAGE, plantedTitle)).some((k) => k.endsWith('title="TZS 42,000"'))
+        && unroled(moneySites(PAGE, plantedField)).some((k) => k.endsWith("title={r.result.text}"))
+        && !eHeld(plantedE) && eHeld(pageCode),
+      j({ format: unroled(moneySites(PAGE, plantedFormat)), title: unroled(moneySites(PAGE, plantedTitle)) }));
+  }
+
+  /* 1.361 · no banned formatter, here or in the gated reader.
+     ⛔ WIDENED AT C7 437 FROM `page.tsx` + THE GATE TO THE WHOLE SECTION. C7 361's words are "refused in every console
+     file", and the account page — which paints money columns of its own — its forms and the wizard were scanned for
+     ONE of the four names only, by 1.369. The list is unchanged; only where it looks has grown. */
   const BANNED = ["formatTzsSigned", "formatTzsAbs", "formatWhole", "toLocaleString"];
+  const bannedIn = (code: string): string[] => BANNED.filter((n) => code.includes(n));
   ok("1.361 · no console file or gated reader calls a banned money formatter or declares a local one",
-    BANNED.every((n) => !pageCode.includes(n) && !gateCode.includes(n)), BANNED.filter((n) => pageCode.includes(n) || gateCode.includes(n)).join(","));
+    sectionFiles.length >= 10 && bannedIn(sectionCode).length === 0 && bannedIn(gateCode).length === 0,
+    [...bannedIn(sectionCode), ...bannedIn(gateCode)].join(","));
+  ok("1.361 · CONTROL · the scan reaches the WHOLE section — a banned formatter planted in the account page, which the page-and-gate scan it replaced never read, is reported",
+    (() => {
+      const planted = sectionFiles
+        .map((f) => (f === DETAIL_PAGE ? `${decomment(read(f))}\nconst shown = formatTzsSigned(-1);\n` : decomment(read(f)))).join("\n");
+      return bannedIn(planted).includes("formatTzsSigned") && bannedIn(pageCode).length === 0 && sectionFiles.includes(DETAIL_PAGE);
+    })(), "");
   ok("1.361 · `formatTzsCompact` appears only in the KPI value slot's one sanctioned home",
-    !pageCode.includes("formatTzsCompact") && (gateCode.match(/formatTzsCompact/g) ?? []).length <= 2, "");
+    !sectionCode.includes("formatTzsCompact") && (gateCode.match(/formatTzsCompact/g) ?? []).length <= 2, "");
+
+  /* ━━ 1.437m · THE REGISTER SAYS WHAT THE CODE DOES, AND WHO DECIDED IT (C7 437; D20b AMENDED) ━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   * ⛔ NO SCRIPT PINNED D20b OR 266 BEFORE THIS, and the Results tab is the first surface that exists only because D20b
+   * was amended. So the amendment is read at run time, from the regulator-facing log itself: the dated heading (found
+   * by its TEXT — the log is newest-first and every line number below the head moves with each entry), the permission
+   * written by ROLE rather than by tab, the owner's delegation QUOTED VERBATIM with his typos kept (the session decided
+   * under it; it did not receive an approval, and the entry must never read as if it had), the D20b row's own pointer,
+   * and C7-SPEC 360's role (E), which is the closed set 1.360 above enforces.
+   * ⛔ THE CONTROLS EDIT A COPY IN MEMORY AND NEVER THE REGISTER. A harness that rewrote the compliance log in place, on
+   * a tree where other sessions commit, is a worse risk than the one it proves (`house-bot-chatbot.anchors.mjs`). Each
+   * control also requires its plant to have LANDED, so a register that lost the entry cannot pass them vacuously.
+   * ⚠️ WHITESPACE IS FOLDED before the sentence and the quote are compared: the log is hard-wrapped prose, and a line
+   * break inside a sentence is a space in the document a reader sees. */
+  {
+    const LOG = "docs/COMPLIANCE-DECISIONS.md";
+    const CD = read(LOG).replace(/\r\n/g, "\n");
+    const SPEC = read("plans/house-bots/C7-SPEC.md").replace(/\r\n/g, "\n");
+    const HEADING = /^## \d{4}-\d{2}-\d{2} · D20b AMENDED — decided by the session under the owner's delegation of 2026-09-26$/m;
+    const PERMITTED = "**Permitted, from this date, written by ROLE.** The desk's RESULT: for the stakes the desk placed, the money each FINISHED stake brought back to its account, less that stake.";
+    /* The owner's words of 2026-09-26, as typed (`plans/house-bots/RESUME-HERE.md` §0b). ⛔ NEVER CORRECT THEM. */
+    const DELEGATION = "please proceed for all other questions tkaing th eirght decison that suit 50pick more aesthically, perfeclty, profesinally and clenaly and based on our overlal architecture and standards of work. then giv em new prmot to finlize in another session";
+    const fold = (s: string) => s.replace(/\s+/g, " ");
+    const loose = (s: string) => new RegExp(s.trim().split(/\s+/).map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("\\s+"));
+    const entryOf = (doc: string): string => {
+      const m = HEADING.exec(doc);
+      if (!m) return "";
+      const rest = doc.slice(m.index + m[0].length);
+      const next = rest.search(/^## /m);
+      return doc.slice(m.index, m.index + m[0].length + (next < 0 ? rest.length : next));
+    };
+    const d20bRow = (doc: string): string => doc.split("\n").find((l) => l.startsWith("| D20b |")) ?? "";
+    const entryHolds = (doc: string): boolean => {
+      const e = fold(entryOf(doc));
+      return e.length > 0 && e.includes(fold(PERMITTED)) && e.includes(DELEGATION);
+    };
+    const rowHolds = (doc: string): boolean => /AMENDED/.test(d20bRow(doc)) && d20bRow(doc).includes("(delegated)");
+    const spec360 = /^#### 360\.[\s\S]*?(?=^#### )/m.exec(SPEC)?.[0] ?? "";
+    ok("1.437m · the compliance log carries the dated `D20b AMENDED` entry, decided by the session under the owner's delegation of 2026-09-26 — found by its heading, never by a line number",
+      HEADING.test(CD) && (CD.match(new RegExp(HEADING.source, "gm")) ?? []).length === 1 && entryOf(CD).length > 1_000,
+      j({ heading: HEADING.exec(CD)?.[0] ?? null, entry: entryOf(CD).length }));
+    ok("1.437m · …the entry grants the view by ROLE in the exact Permitted sentence, and quotes the owner's delegation VERBATIM, typos kept — the session's decision, never dressed as his approval",
+      entryHolds(CD), j({ permitted: fold(entryOf(CD)).includes(fold(PERMITTED)), quote: fold(entryOf(CD)).includes(DELEGATION) }));
+    ok("1.437m · the D20b row itself says AMENDED and `(delegated)` — the pointer the next reader of the table meets before the entry",
+      d20bRow(CD).length > 0 && rowHolds(CD), j(d20bRow(CD).slice(-220)));
+    ok("1.437m · C7-SPEC ruling 360 names role **(E)** — the closed set the 1.360 walk enforces is the one the ruling writes",
+      spec360.length > 500 && spec360.includes("**(E)**"), j({ ruling360: spec360.length }));
+    const noSentence = CD.replace(loose(PERMITTED), () => "");
+    const ownerRow = CD.replace(d20bRow(CD), () => d20bRow(CD).replace("(delegated)", "(owner)"));
+    const paraphrased = CD.replace(entryOf(CD), () => entryOf(CD).replace(loose(DELEGATION), () => "please take the right decisions for 50pick"));
+    ok("1.437m · CONTROL · a copy with the Permitted sentence deleted, one whose D20b row says `(owner)` instead of `(delegated)`, and one with the owner's words paraphrased are each reported — the register itself is never edited",
+      noSentence !== CD && !entryHolds(noSentence)
+        && ownerRow !== CD && !rowHolds(ownerRow)
+        && paraphrased !== CD && !entryHolds(paraphrased)
+        && CD === read(LOG).replace(/\r\n/g, "\n"),
+      j({ sentence: noSentence !== CD, row: ownerRow !== CD, quote: paraphrased !== CD }));
+  }
 
   /* 1.306(c) / 1.404 · never gold, never a tone, never a pulse. */
   ok("1.306 · no file under the section contains `gold` or `gilt` — gold is earned money only, and `test:gold-is-money` is scoped to two identity files and could never report a tile here",
@@ -7781,6 +10653,8 @@ export default function Ruling513Control() {
         /^\{\s*const session = await currentSession\(\);\s*if \(!\(await houseConsoleAudience\(session\?\.userId \?\? null, "\/admin\/desk"\)\)\) return null;/.test(body)
           && body.indexOf("houseConsoleAudience") < body.indexOf("await searchParams")
           && body.indexOf("houseConsoleAudience") < body.indexOf("houseCheckForConsole")
+          /* ⭐ RESUME-HERE §0c decision 4 · and before the find step's account list, the page's second reader. */
+          && body.indexOf("houseConsoleAudience") < body.indexOf("houseAccountListForConsole")
           && body.indexOf("houseConsoleAudience") < body.indexOf("<AdminPageHead")
       )(wizardCode.slice(wizardCode.indexOf("async function AdminDeskNewContent"))
         .replace(/^async function AdminDeskNewContent\([^)]*\)[^{]*/, "")),
@@ -7876,7 +10750,7 @@ export default function Ruling513Control() {
     }
     /* ⛔ AND THE WIZARD READS NOTHING OF ITS OWN (340): no house module, no DAL, no eligibility, no designation. */
     ok("1.359 · 340 · no file under the wizard imports `eligibility.ts`, `designation.ts`, the DAL or `sensitive-reveal` — the check card is served by the gated reader alone",
-      [NEW_PAGE, NEW_LOADING, NEW_ACTIONS, NEW_CLIENT].every((f) => {
+      [NEW_PAGE, NEW_LOADING, NEW_ACTIONS, NEW_CLIENT, NEW_LIST].every((f) => {
         const c = decomment(read(f));
         return !/house-bot\/eligibility|house-bot\/designation|house-bot-dal|sensitive-reveal/.test(c);
       }), "");
@@ -7901,14 +10775,37 @@ export default function Ruling513Control() {
        ghost was a row short and the wrong way round — 34px at 1280, 43px at 360), and `SkFormCard` ghosted the
        CONSENT step's two fields and an unconditional submit button on a route that opens at the FIND step, which
        has one field and no button. The sequence below is the find card, ghost for ghost. */
-    ok("1.417 · the wizard loader's ghost sequence matches the page's own order — the head's action, the page's measure, the bar and the bar's own line, then the FIND step's card",
-      j(newGhosts) === j(["SkChip", "FormColumn", "div", "div", "SkBar", "div", "SkTitle", "div", "SkBar", "SkBar", "div", "SkBar", "SkBar", "SkBar"]), j(newGhosts));
+    /* ⭐ RE-DERIVED AT RESUME-HERE §0c DECISION 4, AND LONGER BY EXACTLY THE CARD THE PAGE GAINED. The find step now
+       paints a second card under the picker — every account, with its own two-row rail, its count line, a sortable
+       header row, twenty rows and a pager — so the loader ghosts that card too, in the page's order: the table card
+       (`SkTableCard`), and inside its `beforeBody` slot the rail's wrapper, its two chip rows and the count line. */
+    ok("1.417 · the wizard loader's ghost sequence matches the page's own order — the head's action, the page's measure, the bar and the bar's own line, the FIND step's card, then the account list's card with its rail and its count line",
+      all(newGhosts) === all(["SkChip", "FormColumn", "div", "div", "SkBar", "div", "SkTitle", "div", "SkBar", "SkBar", "div", "SkBar", "SkBar", "SkBar",
+        "SkTableCard", "div", "div", "SkChip", "SkChip", "SkBar"]), j(newGhosts));
     ok("1.417 · …and it ghosts at the PAGE'S OWN MEASURE with the PAGE'S OWN RHYTHM, so the swap cannot jump sideways or re-space itself",
       /<FormColumn measure="form" className="space-y-4">/.test(newLoader)
         && /<FormColumn measure="form" className="space-y-4">/.test(wizardSrc)
         && (wizardSrc.match(/<FormColumn measure="form"/g) ?? []).length === 1, "");
+    /* ⛔ THE SUBMIT CHECK IS ASKED OF THE FIND CARD'S OWN GHOST, which is where a submit would sit. The file-wide count
+       was a proxy that held while the find card was the only card: the list's two chip rows are 44px too, and they are
+       the page's real chips, not a button. The claim is unchanged — one 44px bar in the find card, the field. */
+    const findGhost = newLoader.slice(newLoader.indexOf('<div className="glass-panel p-4">'), newLoader.indexOf("<SkTableCard "));
     ok("1.417 · …and neither the loader nor the page ghosts a submit the find step does not have",
-      !/SkFormCard/.test(newLoader) && (newLoader.match(/h-\[44px\]/g) ?? []).length === 1, "");
+      !/SkFormCard/.test(newLoader) && findGhost.length > 100 && (findGhost.match(/h-\[44px\]/g) ?? []).length === 1, "");
+    /* ⭐ AND THE LIST'S GHOST STATES THE LIST'S REAL FACTS, read from the reader rather than typed twice: its column
+       count, its page size, a sortable header row (a `SortTh` cell is 44px, not a plain header's 35), a pager, no
+       minimum width (the real table takes none, so a 640px ghost would scroll sideways at 360 where the page does
+       not), and rows at the height a row whose first cell is a tap-floor link really is — 12 + 40 + 12 + 1. */
+    {
+      const listView: Any = await GATEM.houseAccountListForConsole(OFFICER, "/admin/desk", {});
+      const tableGhost = /<SkTableCard [^>]*?beforeBody=/.exec(newLoader)?.[0] ?? "";
+      ok("1.417 · decision 4 · the account list's ghost states the list's real facts — the reader's own column count and page size, a sortable header row, a pager, no minimum width and the tap-floor row height",
+        listView !== null && new RegExp(`cols=\\{${listView.columns.length}\\}`).test(tableGhost)
+          && new RegExp(`rows=\\{${listView.perPage}\\}`).test(tableGhost)
+          && /\bsortable\b/.test(tableGhost) && /\bpager\b/.test(tableGhost) && /minWidth=\{0\}/.test(tableGhost)
+          && /rowMinH=\{65\}/.test(tableGhost) && /sw=\{false\}/.test(tableGhost),
+        j({ tableGhost: tableGhost.slice(0, 200), cols: listView?.columns?.length, perPage: listView?.perPage }));
+    }
   }
 
   /* 1.422 · read-only is unreachable BY CONSTRUCTION on an Owner-only route, so no page may draw one. */
@@ -8424,7 +11321,11 @@ export default function Ruling513Control() {
      about, and the third argument below is that account's own `userId`, read from the roster the shell already
      holds. It is the HOLDER again, never `e.actorId`: the history's Who column carries the ACTOR, by id and never
      behind a player's mask, and the two are three lines apart in the same row. */
-    const HOLDER_ARGS = ["bot.userId", "bot.userId", "found.userId", "u.id", "id"];
+  /* ⭐ SIX SITES AT RESUME-HERE §0c DECISION 4 — the find step's account list names every row's account by its
+     handle, and the fifth argument below is that account's OWN id, from the row it paints: the holder-to-be again,
+     exactly as the picker's is. It is never `viewerUserId` — the officer's own account is a row on that list too,
+     and it is named by its own id like every other. */
+    const HOLDER_ARGS = ["bot.userId", "bot.userId", "found.userId", "u.id", "u.id", "id"];
     ok("1.420 · `playerHandle` is used for the HOLDER only, never for a staff actor — every call takes an account's own id, pinned by position",
       j(handleArgs) === j(HOLDER_ARGS), j({ found: handleArgs, want: HOLDER_ARGS }));
   }
@@ -8696,6 +11597,23 @@ export default function Ruling513Control() {
             && /copy\.consentBullets\.map/.test(decomment(read(NEW_CLIENT)))
             && !decomment(read(NEW_CLIENT)).includes(GATEM.CONSOLE_WIZARD_COPY.passwordHint),
           j({ bullets: GATEM.CONSOLE_WIZARD_COPY.consentBullets.length }));
+        /* ⭐ RESUME-HERE §0c decision 4 · WALL 3, AND THE FIND STEP'S LIST STANDS OUTSIDE IT BY BEING A SERVER FILE THAT
+           OWNS NO SENTENCE AT ALL. It is not a client file, so the six-string allowance above does not reach it — and
+           it needs none: every word it paints is `houseAccountListForConsole`'s. Held to the stricter rule on purpose,
+           so the day it gains a client directive it is already a file that types nothing. */
+        {
+          const listRaw = read(NEW_LIST);
+          const listProse = proseOf(listRaw, NEW_LIST);
+          ok("1.388 · decision 4 · the find step's account list is a SERVER file — no client directive, so neither its prop names nor its strings reach a public chunk — and it types no sentence at all: every 25+ character string in it is a class list",
+            !listRaw.includes('"use client"') && !clientFiles.includes(NEW_LIST) && listProse.length === 0
+              && domLiterals(NEW_LIST, listRaw).filter((x) => x.length >= 25 && isClassList(x)).length >= 3
+              && clientFiles.includes(NEW_CLIENT) && stray.length === 0,
+            j({ prose: listProse, classLists: domLiterals(NEW_LIST, listRaw).filter((x) => x.length >= 25 && isClassList(x)).length }));
+          ok("1.388 · decision 4 · CONTROL · the same scan reports the list's own empty-state sentence planted into that file, and the client-directive test sees a directive planted at its head",
+            proseOf(`${listRaw}\nconst LEAK = "${GATEM.CONSOLE_LIST_COPY.emptyFiltered.body}";`, NEW_LIST).length === 1
+              && `"use client";\n${listRaw}`.includes('"use client"') && !listRaw.includes('"use client"'),
+            "");
+        }
       }
       ok("1.388 · CONTROL · the measure fires on the prop name ruling 388 forbids, and the arming word is the SERVER's — no console client file types it",
         NEUTRAL.test("houseBotLabel") && houseHits("houseBotLabel").length > 0
@@ -8746,7 +11664,9 @@ export default function Ruling513Control() {
      * is added here is the shape that pin cannot see from the other side: nothing under the section BUILDS that
      * argument from a header or a search param, which would report as a value rather than as a literal and would
      * let a mistyped route widen a page's read audience to a whole RBAC domain. */
-    const gateCalls = [...pageCode.matchAll(/house(?:ConsoleAudience|RosterForConsole|UsageForConsole|AuditForConsole|FeedForConsole|HistoryForConsole)\(([^;]*?)\)/g)].map((m) => m[1]);
+    /* ⭐ C7 437 · THE RESULTS READER JOINS THE LIST it was never on: its call is a gate call like the other five, and
+       while it was missing here its `"/admin/desk"` literal was one the line below could not account for. */
+    const gateCalls = [...pageCode.matchAll(/house(?:ConsoleAudience|RosterForConsole|UsageForConsole|AuditForConsole|FeedForConsole|HistoryForConsole|ResultsForConsole)\(([^;]*?)\)/g)].map((m) => m[1]);
     ok("1.343 · every gate call under the section passes the literal `\"/admin/desk\"` as its route, and there are at least three of them",
       gateCalls.length >= 3 && gateCalls.every((a) => a.includes('"/admin/desk"')), j(gateCalls));
     /* ⛔ THE PIN IS ON THE ROUTE ARGUMENT ITSELF, WHICH IS STRICTLY STRONGER THAN THE FILE-WIDE SCAN IT REPLACES.
@@ -9572,6 +12492,95 @@ if (STORE === "memory") {
   ok("1.350 · 351 · the one seam member this step added is the one ruling 351 names, and it is the ONLY new one",
     /botRateUsage\(input: \{ houseBotId: string \| null \}/.test(dal350)
       && (dal350.match(/botRateUsage\(/g) ?? []).length === 3, j({ named: (dal350.match(/botRateUsage\(/g) ?? []).length }));
+  section("§4c · a pressed link says it is still loading (house-bots build step 10)");
+  /* ⭐ THE OWNER'S ASK, 2026-09-26: *"when jumoing from tba to anothe rmake sur eu ahve th erigh tloading states and etc
+   * toamke percet and user to not to think it sstucl"*. Every desk tab, sortable header, pager and filter chip changes
+   * only the query of the page it is on, and the page's loading.tsx does not take over for that (measured on a served
+   * build by `qa:nav-pending`, which also measures the mark and the dimming itself). THESE PINS HOLD THE SOURCE, so a
+   * later edit cannot drop the mark from one kit link — or render it outside the link, where the router would never
+   * report it pending — and leave every other gate green. */
+  /** Does a source render `<LinkPending />` INSIDE one of its own `<Link …>…</Link>` elements, imported from the kit? */
+  const navMarkInsideLink = (raw: string) => {
+    const code = decomment(raw);
+    return /import \{ LinkPending \} from "@\/components\/ui\/link-pending";/.test(code)
+      && [...code.matchAll(/<Link\b[\s\S]*?<\/Link>/g)].some((m) => m[0].includes("<LinkPending />"));
+  };
+  ok("1.nav.1a · ⭐ the section rail (ui/tabs.tsx) renders the pending mark INSIDE its own link — a pressed tab says it is loading",
+    navMarkInsideLink(read("src/components/ui/tabs.tsx")), "src/components/ui/tabs.tsx");
+  ok("1.nav.1b · ⭐ the sortable header (admin/admin-sort.tsx) renders the pending mark INSIDE its own link — a pressed header says it is loading",
+    navMarkInsideLink(read("src/components/admin/admin-sort.tsx")), "src/components/admin/admin-sort.tsx");
+  ok("1.nav.1c · ⭐ the pager (ui/pagination.tsx) renders the pending mark INSIDE its own link — a pressed page says it is loading",
+    navMarkInsideLink(read("src/components/ui/pagination.tsx")), "src/components/ui/pagination.tsx");
+  ok("1.nav.1d · ⭐ the filter chip (ui/filter-pill.tsx) renders the pending mark INSIDE its own link — a pressed chip says it is loading",
+    navMarkInsideLink(read("src/components/ui/filter-pill.tsx")), "src/components/ui/filter-pill.tsx");
+  {
+    /* ⭐ THE ONE NAVIGATION A PRESS STARTS IN CODE: the date filter's Custom Apply/Clear. Both router calls run inside
+     * the transition, and the Custom chip — a `<button>`, not a link — carries the same mark on its pending flag. */
+    const dtrShape = (raw: string) => {
+      const code = decomment(raw);
+      const custom = /<button\b[\s\S]*?\{t\.common\.rangeCustom\}[\s\S]*?<\/button>/.exec(code)?.[0] ?? "";
+      return /const \[navPending, startNav\] = useTransition\(\);/.test(code)
+        && /startNav\(\(\) => \{ if \(replace\) router\.replace\(to, \{ scroll: false \}\); else router\.push\(to, \{ scroll: false \}\); \}\);/.test(code)
+        && custom.includes("<PendingMark on={navPending} />");
+    };
+    const dtr = read("src/components/ui/datetime-range-filter.tsx");
+    ok("1.nav.1e · ⭐ the date filter's Custom window (ui/datetime-range-filter.tsx) navigates inside a transition and marks its chip while it is pending",
+      dtrShape(dtr), "src/components/ui/datetime-range-filter.tsx");
+    ok("1.nav.1ex · CONTROL · the same check refuses a Custom chip without the mark, and a navigation made outside the transition",
+      !dtrShape(dtr.replace("<PendingMark on={navPending} />", "")) && !dtrShape(dtr.replace("startNav(() => { if (replace)", "(() => { if (replace)")), "");
+  }
+  {
+    const tabsRaw = read("src/components/ui/tabs.tsx");
+    const moved = tabsRaw.replace("<LinkPending />", "").replace("</Link>", "</Link>\n<LinkPending />");
+    ok("1.nav.1x · CONTROL · the same check refuses a mark moved OUTSIDE the link, and a link with no mark at all — so the four above are measurements",
+      !navMarkInsideLink(moved) && !navMarkInsideLink(tabsRaw.replace("<LinkPending />", "")) && navMarkInsideLink(tabsRaw), "");
+  }
+  /** The mark is the ROUTER's answer, a client component, rendered ONLY while pending, aria-hidden, and wordless. */
+  const navMarkShape = (code: string) => /^\s*"use client";/.test(code)
+    && /import \{ useLinkStatus \} from "next\/link";/.test(code)
+    && /const \{ pending \} = useLinkStatus\(\);\s*return <PendingMark on=\{pending\} \/>;/.test(code)
+    && /return on \? <span data-link-pending="" aria-hidden="true" className="link-pending" \/> : null;/.test(code);
+  {
+    const lp = decomment(read("src/components/ui/link-pending.tsx"));
+    ok("1.nav.2 · the mark is the ROUTER's own answer (useLinkStatus), rendered ONLY while its link is pending — never a timer, never at rest — aria-hidden and carrying no words",
+      navMarkShape(lp), "");
+    ok("1.nav.2x · CONTROL · a mark rendered always, or one keyed on anything but the router's flag, is refused",
+      !navMarkShape(lp.replace("return on ?", "return true ?")) && !navMarkShape(lp.replace("useLinkStatus()", "useState(false)")), "");
+  }
+  /** The stylesheet draws it: what a press replaces dims, the mark waits before it shows, the loop is the kit's own and
+   *  stops at the low-end tier, and the link holds the mark only while it exists. */
+  const navCss = (s: string) => /\[data-section-rail\]:has\(\.link-pending\) ~ \*,\s*\[data-measure="console"\] \[data-filter-rail\]:has\(\.link-pending\) ~ \*,\s*\.glass-panel:has\(\.link-pending\) tbody \{\s*opacity: 0\.45;/.test(s)
+    && /\.link-pending \{[^}]*animation: kp-fade var\(--t-quick\) var\(--m-glide\) var\(--t-quick\) both;/.test(s)
+    && /\.link-pending::after \{[^}]*animation: progSweep [^;]*infinite;/.test(s)
+    && /\[data-motion="reduced"\] \.link-pending::after,\s*\[data-motion="minimal"\] \.link-pending::after \{ animation: none; \}/.test(s)
+    && /:is\(a, button\):has\(> \.link-pending\) \{ position: relative; \}/.test(s);
+  {
+    const css = read("src/app/globals.css");
+    ok("1.nav.3 · the CSS draws it: the panels after a pressed section rail or console filter rail and the rows of a pressed card dim, the mark enters after --t-quick, its loop is the kit's progSweep and stops at the low-end tier",
+      navCss(css), "");
+    ok("1.nav.3x · CONTROL · the same check refuses a stylesheet whose rows no longer dim, and one whose loop runs on at the low-end tier",
+      !navCss(css.replace(".glass-panel:has(.link-pending) tbody {", ".glass-panel:has(.link-pending) tfoot {"))
+        && !navCss(css.replace('[data-motion="reduced"] .link-pending::after,', '[data-motion="reduced"] .link-pending-x::after,')), "");
+  }
+}
+
+/* ⭐ 1.318pg · THE POSTGRES CHILD'S OWN ROLL-CALL, AND IT MUST BE LAST (build step 9, 2026-09-27). Step 9 declared the
+ * first `console-pg` mutations — three, planted in the Postgres twin's SQL, which only this child can see go red — and
+ * `test:house-bot-reports` 0.505 then reported the key audited by nobody. 1.318 cannot audit them: it runs in the
+ * memory child and reads THAT child's labels. So the Postgres child runs the same shared roll-call over the labels IT
+ * printed, with the same control. The source tier reads this same file, which both children run. */
+if (STORE !== "memory") {
+  const selfCode = decomment(readFileSync(fileURLToPath(import.meta.url), "utf8"));
+  const LBL = "1.318pg · every declared `console-pg` mutation names an assertion THIS run actually printed — an `expect` that matches no label can only ever report WRONG-ASSERTION";
+  const LBLC = "1.318pg · CONTROL · the roll-call reads this run's own labels and this suite's own source, so a drifted `expect` IS reported and an invented one is never found";
+  const input = {
+    suiteKeys: ["console-pg"], declarations: DECLARED_MUTATIONS as DeclaredMutation[],
+    emitted, source: selfCode, ownLabels: [LBL, LBLC],
+  };
+  const rc = expectDriftReport(input);
+  ok(LBL, rc.declared >= 3 && rc.stale.length === 0, j(rc));
+  const control = expectDriftControl(input, 120);
+  ok(LBLC, control.pass, control.extra);
 }
 console.log(`\n@@SUMMARY ${JSON.stringify({ pass, fail })}`);
 console.log(`\n${fail === 0 ? "ALL PASS" : "FAILURES"} — house-bot-console [${STORE}]: ${pass} passed, ${fail} failed`);

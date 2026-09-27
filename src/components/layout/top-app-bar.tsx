@@ -7,7 +7,7 @@ import { LanguageMenu } from "@/components/ui/language-menu";
 import { NotificationsPanel } from "@/components/layout/notifications-panel";
 import { AvatarMenu } from "@/components/layout/avatar-menu";
 import { NavMore } from "@/components/layout/nav-more";
-import { WalletBalancePill } from "@/components/layout/wallet-balance-pill";
+import { WalletBalancePill, useLiveBalance } from "@/components/layout/wallet-balance-pill";
 import { ProposalsStateBadge } from "@/components/ui/proposals-state-badge";
 import { I } from "@/components/ui/glyphs";
 import { useT } from "@/lib/i18n";
@@ -89,6 +89,10 @@ export type TopAppBarUser = {
 export function TopAppBar({ user, proposalsState, inviteVisible = false, invitePaid = false }: { user: TopAppBarUser; proposalsState: ProposalsState; inviteVisible?: boolean; invitePaid?: boolean }) {
   const pathname = usePathname();
   const { t } = useT();
+  // ⭐ R1 (landing v3, 2026-09-26) · the bar decides with the LIVE balance, so a deposit landing over
+  // SSE brings the capsule back and a bet that empties the wallet brings Deposit — no navigation.
+  const liveBalance = useLiveBalance(user.balance ?? 0);
+  const funded = liveBalance > 0;
 
   // Core links render inline from `lg`; overflow links fold into the "More"
   // menu at lg and render inline only at `xl` (IA review R1 — no primary
@@ -231,7 +235,10 @@ export function TopAppBar({ user, proposalsState, inviteVisible = false, inviteP
               present, no duplicate. */}
           <LanguageMenu />
 
-          {user.isAuthed && user.balance !== null && user.balance !== undefined && (
+          {/* ⭐ R1 · AT ZERO THE CAPSULE GIVES WAY TO A GOLD DEPOSIT (below) — never "TZS 0" in the
+              header (the delivery's V11). A FROZEN wallet keeps its capsule at any balance: the Wallet
+              it opens is where the freeze is explained, and Deposit is refused to it anyway. */}
+          {user.isAuthed && user.balance !== null && user.balance !== undefined && (funded || user.walletHeld) && (
             // ⭐ THE BALANCE IS VISIBLE AT EVERY WIDTH — Ali, 2026-08-25, after players
             // voted DOWN the phone-only wallet icon that used to stand in for it.
             //
@@ -254,7 +261,7 @@ export function TopAppBar({ user, proposalsState, inviteVisible = false, inviteP
             // ⛔ AND THE PILL IS NOW THE WALLET DOOR AT EVERY WIDTH — it has always been a
             // `<Link href="/wallet">`. That is why removing the icon costs nothing: the
             // door did not go away, the DUPLICATE did.
-            <WalletBalancePill balance={user.balance} />
+            <WalletBalancePill balance={liveBalance} held={!!user.walletHeld} />
           )}
 
           {/* ⛔ THE WRAPPER SPAN IS LOAD-BEARING — `hidden sm:inline-flex` ON the button
@@ -308,7 +315,12 @@ export function TopAppBar({ user, proposalsState, inviteVisible = false, inviteP
                language control is the one a trilingual product cannot do without, and it
                was deliberately made always-present after living in two places.
                ⚠️ ONE CLASS REVERSES THIS if the commercial call goes the other way. */
-            <span className="hidden sm:inline-flex">
+            /* ⭐ R1 (2026-09-26) · AT ZERO THIS IS THE WALLET'S DOOR, SO IT SHOWS AT EVERY WIDTH, LABELLED.
+               The yield below `sm` was forced by the capsule beside it (the measurement above); with no
+               capsule there is room, and a player with nothing to play with needs exactly this control.
+               With a balance the yield stands: the capsule opens the Wallet, where Deposit and Withdraw
+               sit side by side, one tap away (INHERIT-MANIFEST L20). */
+            <span className={funded ? "hidden sm:inline-flex" : "inline-flex"}>
             <Link
               href="/wallet/deposit"
               aria-label={t.common.deposit}
@@ -325,7 +337,7 @@ export function TopAppBar({ user, proposalsState, inviteVisible = false, inviteP
                   `aria-label` stay, exactly as they do on a phone, so nothing becomes
                   unnameable or unreachable. Measured, not assumed: the label is 108px in EN,
                   103px in SW, 84px in ZH. */}
-              <span className="hidden sm:inline lg:hidden xl:inline">
+              <span className={funded ? "hidden sm:inline lg:hidden xl:inline" : "inline"}>
                 {t.common.deposit}
               </span>
             </Link>

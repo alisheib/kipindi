@@ -123,7 +123,11 @@ export async function settlementFeesByPoll(period: Window = "28d"): Promise<Sett
   // by fee model — and Up & Down rounds are the ONLY polls on `capped-commission @
   // 13%`, so omitting them would leave that model's row permanently empty and
   // understate settlement fees. Guarded by test:product-line.
-  const markets = await listMarkets({ status: "RESOLVED", productLine: "ALL" }).catch(() => []);
+  // ⭐ THE WINDOW IS IN THE QUERY (2026-09-26). This read every RESOLVED market on the platform —
+  // 6,689 on production, one per Up & Down round, growing ~360 a day — to keep the ones settled in
+  // the window. The `settledAt` bounds below are the same ones the loop re-checks, so the rows kept
+  // are identical (`test:report-window-reads` §5).
+  const markets = await listMarkets({ status: "RESOLVED", productLine: "ALL", settledFrom: start, settledTo: end }).catch(() => []);
   const rows: PollFeeRow[] = [];
   const byModel: Record<FeeModel, { count: number; fee: number }> = {
     "loser-share": { count: 0, fee: 0 },

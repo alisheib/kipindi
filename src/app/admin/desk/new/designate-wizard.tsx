@@ -241,7 +241,7 @@ export function DeskAccountPicker({
 
 /** What the designation posts and what it gets back — declared structurally, for ruling 384's reason above. */
 type DesignateResult =
-  | { ok: true; href: string; note: string }
+  | { ok: true; href: string; note: string; warn?: boolean }
   | { ok: false; error: string; field?: "label" | "note" | "password"; href?: string };
 
 /**
@@ -349,7 +349,9 @@ export function DeskDesignateForm({
         return;
       }
       setPassword("");
-      deferToast({ title: "On the desk", description: result.note, variant: "success" });
+      /* ⛔ A DESIGNATION THAT LANDED WITHOUT ITS COMPLIANCE ROW SAYS BOTH (replan rulings 537, 543). The account IS on
+         the desk, so it is never a failure; the server owns the sentence and whether it is a warning. */
+      deferToast({ title: "On the desk", description: result.note, variant: result.warn ? "warning" : "success" });
       router.push(result.href as never);
     });
   };

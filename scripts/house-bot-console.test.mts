@@ -288,7 +288,29 @@ await runTwoStores({
    * ⭐ 845/604 → 854/613 (2026-09-26), the counts that run PRINTED: 1.626h (a settled stake still brackets itself,
    * with real BET_PAYOUT/BET_REFUND rows — four assertions), 1.368b (the D3 scan moved onto a ledger that paints
    * balances — three, replacing 1.368's vacuous activity assertion and its control), 1.435b (the why-panel's
-   * guard, RENDERED — two) and 1.541's removed-account door (two): +11 −2 = +9 on each store. */
-  minPass: { memory: 854, postgres: 613 },
+   * guard, RENDERED — two) and 1.541's removed-account door (two): +11 −2 = +9 on each store.
+   * ⭐ 854/613 → 864/623 (2026-09-26), the counts that run PRINTED: RESUME-HERE §0c decision 2, the ledger at 1280 —
+   * §2e3b's ten source assertions on both ledgers (type placement, note line, phone stack, the two-row record, one
+   * gutter, derived spans — each with its control), +10 on each store.
+   * ⭐ 864/623 → 923/669 (2026-09-26), the counts that run PRINTED: C7 437, the Results tab — §2h's behavioural block on
+   * both stores (audience, one arithmetic with the stop, outcomes and words, cohort, window, one read per day, a failed
+   * day, removed accounts, grammar, containment, lexicon, layout) and, on the memory child, the source pins it
+   * brought (1.360 built, 1.361 widened, 1.437m's register pins, the five-tab rail).
+   * ⭐ 923/669 → 972/706 (2026-09-26), the counts that run PRINTED: RESUME-HERE §0c decision 4, the find step's list of
+   * every account — §2f2 on both stores (audience and route belt, the one parse and its refusal, sort and its total
+   * order, the two filters, paging past the end, links built from the validated parameters, the three walls, both
+   * empty states and the failed read) and, on the memory child, the source pins it brought (a server component, the
+   * shared rail with no window, the phone gutter).
+   * ⭐ 972/706 → 1007/728 (2026-09-26), the counts that run PRINTED on the integrated tree: build step 6 (replan ruling
+   * 543) — §2i, an audit that cannot be signed no longer reports a landed write as failed, on both stores except the
+   * writer source law 2.543.8/8c — and build step 10, §4c on the memory child: a pressed link says it is loading (the
+   * mark inside each kit link and on the date filter's Custom chip, its shape, the CSS — each with a control).
+   * ⭐ 972/706 → 1028/760 (2026-09-27), the counts that run PRINTED: build step 9, every desk table sorts and none can
+   * grow past a page — §2k on both stores (every key and direction against orders computed from stored facts, ties,
+   * missing-last, the anchored row, per-row figures, validation, links, the roster pager) and 1.318pg, the Postgres
+   * child's own roll-call over the first `console-pg` declarations; on the memory child, the source pins that every
+   * sortable header is `SortTh` fed from the reader. (Measured on its own tree, at `c3c3b4a5` plus step 9.)
+   * ⭐ → 1063/782 (2026-09-27), the counts the INTEGRATED tree printed — steps 4, 6, 7, 9 and 10 together. */
+  minPass: { memory: 1063, postgres: 782 },
   dbPrefix: "hb_console",
 });

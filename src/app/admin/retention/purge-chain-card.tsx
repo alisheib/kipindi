@@ -17,6 +17,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { useDeferredToast } from "@/components/ui/toast";
 import { formatTzsCompact } from "@/lib/utils";
 import { focusFirstInvalid } from "@/lib/client/focus-first-invalid";
+import { runAdminAction } from "@/lib/client/run-admin-action";
 import {
   purgeCostAction, purgeStage1Action, purgeStage2Action, purgeAdvanceAction, purgeCancelAction, purgeJobAction,
 } from "./purge-actions";
@@ -80,9 +81,11 @@ export function PurgeChainCard({ chains, stage1, viewerId }: {
   const label = chain?.label ?? "";
 
   /**
-   * ⭐ THE STAGE-1 CEREMONY IN ONE PLACE, read by the button and by the bar. It was written
-   * inline on the button's `onClick`; the bar needed the same call, and a second copy of a
-   * two-officer ceremony is two things to keep in step — the exact shape §0a forbids.
+   * ⭐ THE STAGE-1 CEREMONY IN ONE PLACE. The card's "Record the reason" button is its only
+   * caller — the bar no longer offers it (see the bar below), because signing step 1 of a purge
+   * is a decision, not a save.
+   * ⛔ `runAdminAction`: a thrown action (an expired session, a server fault) used to escape the
+   * transition and end the spinner in silence; it now reaches the danger toast below.
    */
   const editable = !job && !signed;
   const stagedWork = reason.trim().length > 0 || basis !== BASIS_DEFAULT;
@@ -90,7 +93,7 @@ export function PurgeChainCard({ chains, stage1, viewerId }: {
   const recordReason = () => start(async () => {
     const fd = new FormData();
     fd.set("chainId", chainId); fd.set("reason", reason); fd.set("basis", basis);
-    const r = await purgeStage1Action(fd);
+    const r = await runAdminAction(() => purgeStage1Action(fd));
     if (!r.ok && r.field) focusFirstInvalid(document.body, [r.field]);
     toast(r.ok
       ? { title: "Reason recorded — a second officer must now confirm", variant: "success" }
@@ -324,16 +327,14 @@ export function PurgeChainCard({ chains, stage1, viewerId }: {
         * state in which these two fields are editable — after stage 1 the reason belongs to the
         * audit record, not to this form, and a bar still offering to "discard" it would be
         * describing work that is no longer the operator's to throw away.
+        * ⛔ NO SAVE ON THIS BAR (Ali, 2026-09-26). Recording the reason is your signature on step 1
+        * of purging a NAMED chain; a primary button in the bar would sign it without naming the
+        * chain. The bar warns and offers Discard, and names the card's button that records it.
         */}
       <PendingChangesBar
         dirty={editable && stagedWork}
         label="Reason not recorded"
-        detail="Nothing is purged until a second officer confirms — but this reason is lost if you leave."
-        saveLabel="Record the reason"
-        /* ⚠️ NO SAVE UNTIL IT WOULD SUCCEED. The server requires five characters and a computed
-           cost; a bar button that is always present would fail into a toast and read as a
-           broken control rather than an unmet precondition. */
-        onSave={canRecord ? recordReason : undefined}
+        detail="Use “Record the reason (step 1 of 2)” to keep it — it is lost if you leave. Nothing is purged until a second officer confirms."
         onDiscard={() => { setReason(""); setBasis(BASIS_DEFAULT); }}
       />
       <UnsavedChangesGuard

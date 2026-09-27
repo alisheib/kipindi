@@ -30,7 +30,9 @@
  *   §8      · the Gaming Board draft is STRUCK (owner ruling, 2026-09-20). Its absence, the dated note on each of the
  *             nine citations, and the dormant `BOARD_DISCLOSURE_RECORDED` value being declared-but-unreachable.
  *   §docs   · accepted risk 21 in BOTH registers, verbatim; its PREMISE measured live in the published rulebooks; and
- *             F6 §5 condition 1 still unsatisfied.
+ *             F6 §5 condition 1 still unsatisfied. Since 2026-09-26 also risks 1–20 by number in both (d.2), and
+ *             risks 8–12 (04 S5) verbatim in both, one line each in one unbroken list, with the placeholder that
+ *             stood in their place gone (d.7, d.7b, d.7.c1).
  *
  * ⛔ WHAT IS DELIBERATELY NOT BUILT HERE is in `plans/house-bots/DEFERRED-TESTS.md` §1L with its reason, never dropped.
  *
@@ -474,7 +476,7 @@ export async function runAbsenceCases(ok: Ok, section: Section, ROOT: string): P
   }
 
   // ══ §docs · the registers of record ════════════════════════════════════════════════════════════════════
-  section("§docs · accepted risk 21 in both registers, its premise measured live, and the condition still unsatisfied");
+  section("§docs · accepted risks 8–12 and 21 in both registers, risk 21's premise measured live, and the condition still unsatisfied");
   {
     const CD = lf(read("docs/COMPLIANCE-DECISIONS.md"));
     const HB = lf(read("docs/HOUSE-BOTS.md"));
@@ -491,20 +493,28 @@ export async function runAbsenceCases(ok: Ok, section: Section, ROOT: string): P
       cdRisks.length > 4_000 && hbRisks.length > 3_000, j({ compliance: cdRisks.length, houseBots: hbRisks.length }));
     /**
      * Risk 21's lead paragraph, located by its own opening — never by a line number, which is how every anchor in the
-     * commit-6 plan rotted. It ends at the next numbered risk, the next `###` heading or the "Risks 8–12" line,
-     * because the two registers place it DIFFERENTLY: in `COMPLIANCE-DECISIONS.md` it leads the section, above the
-     * numbered list; in `HOUSE-BOTS.md` §13 it follows risk 20 and is followed by its evidence heading. An end anchored
-     * to one register's neighbour would silently swallow the other's evidence block into the comparison.
+     * commit-6 plan rotted. It ends at the next numbered risk or the next `###` heading, because the two registers
+     * place it DIFFERENTLY: in `COMPLIANCE-DECISIONS.md` it leads the section, above the numbered list; in
+     * `HOUSE-BOTS.md` §13 it follows risk 20 and is followed by its evidence heading. An end anchored to one register's
+     * neighbour would silently swallow the other's evidence block into the comparison.
+     * ⚠️ It also ended at a "Risks 8–12" line until 2026-09-26, when that placeholder was replaced by the risks
+     * themselves and the alternative, which then matched nothing, was deleted; d.7b holds that the line stays gone.
      */
-    const risk21 = (text: string) => slice(text, /^\*\*21 \(added 2026-09-16 with D19\)\.\*\*/m, /^(?:\d+\. |### |Risks 8)/m).trim();
+    const risk21 = (text: string) => slice(text, /^\*\*21 \(added 2026-09-16 with D19\)\.\*\*/m, /^(?:\d+\. |### )/m).trim();
     const norm = (s: string) => s.replace(/\s+/g, " ").trim();
     const cd21 = risk21(cdRisks), hb21 = risk21(hbRisks);
     ok("d.1 · ⛔ accepted risk 21 is in BOTH registers and the two copies are the SAME TEXT (whitespace normalised) — it existed in full in `COMPLIANCE-DECISIONS.md` with its dated ruling-503 correction and nowhere in `HOUSE-BOTS.md` §13, while §13's own preamble claimed the two files carry the same text",
       cd21.length > 800 && hb21.length > 800 && norm(cd21) === norm(hb21),
       j({ complianceChars: cd21.length, houseBotsChars: hb21.length, equal: norm(cd21) === norm(hb21), firstDivergence: norm(cd21) === norm(hb21) ? null : norm(hb21).slice(0, 120) }));
-    const numbers = (text: string) => [13, 14, 15, 16, 17, 18, 19, 20].filter((n) => new RegExp(`^${n}\\. `, "m").test(text));
-    ok("d.2 · risks 13–20 are present by number in both registers — risk 21 arrived beside them and displaced none",
-      numbers(cdRisks).length === 8 && numbers(hbRisks).length === 8, j({ compliance: numbers(cdRisks), houseBots: numbers(hbRisks) }));
+    /**
+     * d.2 · EVERY NUMBERED RISK, BY NUMBER, IN BOTH — 1–20 since 2026-09-26, when 8–12 (04 S5) replaced the "⏳ never
+     * added" line that stood in their place; while that gap stood it counted 13–20 alone. `^1\. ` cannot match "10."
+     * to "19.", and risk 21 is `**21 (…`, never "21. ", so no other line in either slice answers.
+     */
+    const RISK_NUMBERS = Array.from({ length: 20 }, (_, i) => i + 1);
+    const numbers = (text: string) => RISK_NUMBERS.filter((n) => new RegExp(`^${n}\\. `, "m").test(text));
+    ok("d.2 · risks 1–20 are present by number in both registers — 8–12 (04 S5) arrived 2026-09-26 where a placeholder stood, risk 21 beside them, and none displaced another",
+      numbers(cdRisks).length === RISK_NUMBERS.length && numbers(hbRisks).length === RISK_NUMBERS.length, j({ compliance: numbers(cdRisks), houseBots: numbers(hbRisks) }));
     const DNR = ["No human-typed side.", "No human-typed amount.", "No sizing against cancellable money"];
     ok("d.3 · the three do-not-restore lines are in `HOUSE-BOTS.md` §13's own section and are not weakened by risk 21's insertion",
       DNR.every((s) => HB.includes(s)) && HB.includes("### Do not restore"), j(DNR.filter((s) => !HB.includes(s))));
@@ -549,11 +559,73 @@ export async function runAbsenceCases(ok: Ok, section: Section, ROOT: string): P
     ok("d.6.c1 · POSITIVE CONTROL · the shape test is the register's own, not one invented for this entry: D19a's existing sentence passes it unchanged, and a fabricated \"a signed letter from the Gaming Board is attached\" fails it",
       verbalShape(D19A_FORM) && CD.includes(D19A_FORM) && !verbalShape("Ali reports that a signed letter from the Gaming Board is attached; no document is on file"),
       j({ d19a: verbalShape(D19A_FORM), fabricated: verbalShape("Ali reports that a signed letter from the Gaming Board is attached; no document is on file") }));
+    /**
+     * ⭐ d.7 · ACCEPTED RISKS 8–12 (04 S5), WRITTEN INTO BOTH REGISTERS ON 2026-09-26 — AND HELD AS THE SAME TEXT.
+     * Build commit 8 owed them, and until that day both registers carried a "⏳ never added" line in their place. They
+     * are held the way d.1 holds risk 21 — text equality, risk by risk, whitespace folded — because 13, 15 and 20 show
+     * what two copies of one risk become when they are written apart (`plans/house-bots/DEFERRED-TESTS.md` §1L). A
+     * later dated note on any of the five has to land in BOTH copies in the same words, or this goes red.
+     * ⛔ WHOLE LINES, NEVER `slice()`. Each risk is ONE line, the house style of 1–20, so it is read by its own line
+     * anchor. `slice()` above searches for its end in `rest.slice(1)`, and for a start of "10. ", "11. " or "12. " that
+     * string begins "0. ", "1. " or "2. " — which `/^\d+\. /m` matches at offset 0, so each of 10–12 would come back as
+     * the single character "1" and an equality over them would pass over nothing.
+     * ⛔ AND ONE UNBROKEN LIST, 7 → 8 … 12 → 13, each on the very next line, and each number starting exactly one line
+     * — so a placeholder, a blank line or a paragraph opened inside the list, or a second copy of a risk, is reported
+     * rather than read past.
+     */
+    const OWED = [8, 9, 10, 11, 12];
+    const lineStarts = (text: string, n: number): number => (text.match(new RegExp(`^${n}\\. `, "gm")) ?? []).length;
+    const riskLine = (text: string, n: number): string => (new RegExp(`^${n}\\. [^\\n]*$`, "m").exec(text)?.[0] ?? "").trim();
+    const contiguous = (text: string): boolean => [7, ...OWED].every((n) => new RegExp(`^${n}\\. [^\\n]*\\n${n + 1}\\. `, "m").test(text));
+    const owedPairs = (cd: string, hb: string) => OWED.map((n) => ({ n, cd: riskLine(cd, n), hb: riskLine(hb, n) }));
+    const sameText = (p: { cd: string; hb: string }): boolean =>
+      p.cd.length > 400 && p.hb.length > 400 && norm(p.cd) === norm(p.hb) && p.cd.includes("Checked against the code");
+    const owedHolds = (cd: string, hb: string): boolean =>
+      owedPairs(cd, hb).every(sameText) && contiguous(cd) && contiguous(hb) && OWED.every((n) => lineStarts(cd, n) === 1 && lineStarts(hb, n) === 1);
+    const owed = owedPairs(cdRisks, hbRisks);
+    ok("d.7 · ⛔ accepted risks 8–12 are in BOTH registers as the SAME TEXT, risk by risk (whitespace folded), each ONE line carrying its dated check against the code, in one unbroken list 7 → 13 — owed since build commit 8 (04 S5) and written 2026-09-26; risks 13, 15 and 20 show what two copies written apart become",
+      owedHolds(cdRisks, hbRisks),
+      j({
+        risks: owed.map((p) => ({ n: p.n, compliance: p.cd.length, houseBots: p.hb.length, same: norm(p.cd) === norm(p.hb), checked: p.cd.includes("Checked against the code") })),
+        contiguous: { compliance: contiguous(cdRisks), houseBots: contiguous(hbRisks) },
+        once: OWED.map((n) => `${n}:${lineStarts(cdRisks, n)}/${lineStarts(hbRisks, n)}`),
+      }));
+    const PLACEHOLDER = /^Risks 8–12\b[^\n]*⏳/m;
+    ok("d.7b · the \"⏳ never added\" placeholder is gone from BOTH accepted-risk sections — a register that lists risks 8–12 AND says they are missing contradicts itself",
+      !PLACEHOLDER.test(cdRisks) && !PLACEHOLDER.test(hbRisks), j({ compliance: PLACEHOLDER.test(cdRisks), houseBots: PLACEHOLDER.test(hbRisks) }));
     ok("d.1.c1 · CONTROL · risk 21 DELETED from a copy of §13 is reported, and so is a copy in which one word of it is changed — d.1 is a text equality, not a presence check, so a paraphrase that drifts from the register is caught too",
       risk21(hbRisks.split(hb21).join("")).length === 0 && norm(cd21) !== norm(hb21.replace("misleading", "unfair")),
       j({ deleted: risk21(hbRisks.split(hb21).join("")).length, reworded: norm(cd21) !== norm(hb21.replace("misleading", "unfair")) }));
-    ok("d.2.c1 · CONTROL · one risk number deleted from a copy of either slice is reported by d.2's measure",
-      numbers(cdRisks.replace(/^15\. /m, "xx. ")).length === 7 && numbers(hbRisks.replace(/^20\. /m, "xx. ")).length === 7,
-      j({ compliance: numbers(cdRisks.replace(/^15\. /m, "xx. ")).length, houseBots: numbers(hbRisks.replace(/^20\. /m, "xx. ")).length }));
+    /* ⛔ Each plant must LAND (the copy differs) before its count is read, so a register that already lost the number
+       cannot pass this vacuously. 9 and 12 exercise the range that arrived on 2026-09-26; 15 and 20 the one before. */
+    const dropNumber = (text: string, n: number): string => text.replace(new RegExp(`^${n}\\. `, "m"), "xx. ");
+    const dropReported = (text: string, n: number): boolean =>
+      dropNumber(text, n) !== text && numbers(dropNumber(text, n)).length === RISK_NUMBERS.length - 1;
+    ok("d.2.c1 · CONTROL · one risk number deleted from a copy of either slice is reported by d.2's measure — 9 and 12 from the range 8–12 that arrived on 2026-09-26, as 15 and 20 from 13–20",
+      [9, 15].every((n) => dropReported(cdRisks, n)) && [12, 20].every((n) => dropReported(hbRisks, n)),
+      j({ compliance: [9, 15].map((n) => numbers(dropNumber(cdRisks, n)).length), houseBots: [12, 20].map((n) => numbers(dropNumber(hbRisks, n)).length) }));
+    /* ⛔ THE CONTROLS EDIT COPIES IN MEMORY AND NEVER A REGISTER, and each first requires its plant to have LANDED — a
+       register that already lost the line a control plants into cannot pass it vacuously. */
+    const r10 = riskLine(hbRisks, 10);
+    const reworded = hbRisks.replace(r10, () => r10.replace("fails closed", "fails open"));
+    const r11 = riskLine(cdRisks, 11);
+    const cut = cdRisks.replace(`${r11}\n`, () => "");
+    const r8 = riskLine(hbRisks, 8);
+    const opened = hbRisks.replace(`${r8}\n`, () => `${r8}\n\n`);
+    const r7 = riskLine(cdRisks, 7);
+    const REPLANT = "Risks 8–12 (release and verification) ⏳ were owed by build commit 8 and were never appended.";
+    const replanted = cdRisks.replace(`${r7}\n`, () => `${r7}\n\n${REPLANT}\n\n`);
+    ok("d.7.c1 · CONTROL · each way the two copies can part is reported by d.7's or d.7b's own measure: one word changed in ONE copy of risk 10 (\"fails closed\" → \"fails open\"), risk 11's line deleted from a copy of the compliance register, a blank line opened after risk 8 in a copy of §13, and the placeholder written back into a copy — and the registers themselves are never edited",
+      r10.length > 400 && reworded !== hbRisks && !sameText({ cd: riskLine(cdRisks, 10), hb: riskLine(reworded, 10) }) && !owedHolds(cdRisks, reworded)
+        && r11.length > 400 && cut !== cdRisks && riskLine(cut, 11) === "" && !owedHolds(cut, hbRisks)
+        && r8.length > 400 && opened !== hbRisks && !contiguous(opened) && !owedHolds(cdRisks, opened)
+        && r7.length > 100 && replanted !== cdRisks && PLACEHOLDER.test(replanted) && !contiguous(replanted)
+        && CD === lf(read("docs/COMPLIANCE-DECISIONS.md")) && HB === lf(read("docs/HOUSE-BOTS.md")),
+      j({
+        reworded: reworded !== hbRisks && !owedHolds(cdRisks, reworded),
+        cut: cut !== cdRisks && riskLine(cut, 11) === "",
+        opened: opened !== hbRisks && !contiguous(opened),
+        replanted: replanted !== cdRisks && PLACEHOLDER.test(replanted),
+      }));
   }
 }

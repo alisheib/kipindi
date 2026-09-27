@@ -23,6 +23,7 @@
  */
 import { matchesStatus, sortRows, pricedYesPct, type SortId } from "./discovery";
 import type { HeroRow } from "./hero";
+import { priceTier } from "./price-state";
 
 /**
  * Cards on the landing grid.
@@ -76,15 +77,16 @@ export type TopicAggregate = {
   /** Σ of their pools, TZS. */
   poolTzs: number;
   /**
-   * The topic's crowd lean as a YES percentage, or **null when nothing in it is staked** — the
-   * tile draws a 2px underline at this width, and a 50%-wide bar over an empty topic is the same
-   * fabricated claim as a "50%" label, drawn instead of written. `pricedYesPct` is the one rule.
+   * The topic's crowd lean as a YES percentage, or **null when nothing in it is staked** — a
+   * 50%-wide bar over an empty topic would be the same fabricated claim as a "50%" label, drawn
+   * instead of written. `pricedYesPct` is the one rule. ⚠️ Since landing v3 (2026-09-26) the tile
+   * no longer DRAWS it (an unlabelled bar); it stays computed because it is a real fact about the topic.
    */
   leanYesPct: number | null;
 };
 
 export type LandingComposition = {
-  /** The six cards below the hero, disjoint from it — see `landingGrid`. */
+  /** The `LANDING_GRID_SIZE` cards below the hero, disjoint from it — see `landingGrid`. */
   grid: HeroRow[];
   /** Which lens `grid` is ordered by. The heading must state this. */
   lens: GridLens;
@@ -110,7 +112,7 @@ export type LandingComposition = {
  * ⚠️ The trade, stated: if the single biggest pool on the platform is also the soonest to close,
  * the hero shows it and this grid does not. That is the lesser cost — the alternative is the
  * defect — and the section's "see all" link goes to the board sorted by the same lens, where it is
- * present and first.
+ * present and first. The same holds for a one-sided pool passed over for a priced one (WP6, below).
  */
 export function landingGrid(
   rows: readonly HeroRow[],
@@ -119,7 +121,19 @@ export function landingGrid(
 ): HeroRow[] {
   const excluded = new Set(opts.excludeIds);
   const open = rows.filter((r) => matchesStatus(r, "open", nowMs) && !excluded.has(r.id));
-  return sortRows(open, { sort: opts.lens, dir: null }).slice(0, opts.size ?? LANDING_GRID_SIZE);
+  const byLens = sortRows(open, { sort: opts.lens, dir: null });
+  // ⭐ WP6 · THE SEATS GO TO PRICED MARKETS FIRST — then the chosen cards are SHOWN in lens order.
+  // The delivery wants contested markets ahead of one-sided and empty ones (the hero's floor, applied
+  // here too: production led this grid with two one-sided cards reading "YES 100%"). The heading
+  // states the lens ("Biggest pools first"), and a card order that broke it would make the heading
+  // false; picking by tier and DISPLAYING by lens keeps both true — the grid holds the biggest priced
+  // pools, in pool order. ⛔ A partition, never a filter: on a thin day one-sided and empty markets
+  // still fill the seats, so the grid is never short (`test:landing-contract` §4).
+  const size = opts.size ?? LANDING_GRID_SIZE;
+  const seated = new Set(
+    [0, 1, 2].flatMap((tier) => byLens.filter((r) => priceTier(r) === tier)).slice(0, size).map((r) => r.id),
+  );
+  return byLens.filter((r) => seated.has(r.id));
 }
 
 /** Per-topic counts and pools over the OPEN book — the same set the hero's figures describe. */

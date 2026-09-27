@@ -147,11 +147,10 @@ export default async function RegisterPage({
                       at all (the preview is null), so this can never vouch for a dead partner. */}
                   {referral.verifiedAgent && <VerifiedAgentBadge label={t.agent.verifiedBadge} size="sm" className="mb-1" />}
                   <p className="text-[14px] font-bold text-text">{referral.verifiedAgent ? fill(t.agent.invitedBy, { name: referral.referrerName }) : `${t.auth.invitedBy} ${referral.referrerName}`}</p>
+                  {/* A sign-up offer only: the ribbon never carries a deposit-tied bonus (RG policy, 2026-09-26). */}
                   {referral.newPlayerBonusTzs > 0 && (
                     <p className="mt-1 text-body-sm font-semibold text-gold-300">
-                      {referral.bonusTrigger === "SIGNUP"
-                        ? `${t.auth.signUpAndGet} ${formatTzs(referral.newPlayerBonusTzs)} ${t.auth.toStart}`
-                        : `${t.auth.getOnFirstDeposit} ${formatTzs(referral.newPlayerBonusTzs)}`}
+                      {`${t.auth.signUpAndGet} ${formatTzs(referral.newPlayerBonusTzs)} ${t.auth.toStart}`}
                     </p>
                   )}
                 </div>

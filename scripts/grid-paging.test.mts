@@ -176,6 +176,10 @@ const FIXED_GRIDS: Record<string, string> = {
   // ⛔ If the ceiling is ever lifted to a number an operator cannot hold on one screen, this entry goes
   // and the roster gains a pager with a COUNTING reader beside its paged one (AdminPagination needs a real
   // total, and the house DAL clamps list readers at 500 — a total built from a paged reader would lie).
+  // ⭐ 2026-09-27 (house-bots build step 9, Ali: "all desk tables and grids got the right paging"): the roster now
+  // carries that pager, at TWENTY — the ceiling's own maximum (`maxDesignatedBots` is 1–20) — over the full
+  // non-removed read, so while the ceiling holds it never draws and every row stays visible at once; the day the
+  // ceiling rises past twenty, the second page is already there. This entry's reason therefore still holds.
   "src/app/admin/desk/page.tsx": "one row per designated account, capped by the operator-set maxDesignatedBots the page prints beside it as \"N of M\" and the designation service refuses against. Every row must be visible at once to be controlled — a row on page 2 is one nobody pauses, and this one can be moving money while it hides",
 };
 

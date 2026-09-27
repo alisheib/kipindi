@@ -28,11 +28,14 @@
  * ⛔ **A19 ORDER**: the conditional write, then the event, then the awaited compliance row, then the admin alert —
  * every one of them outside every lock.
  *
- * ⛔ **AND THE COMPLIANCE ROW CANNOT REPORT A LANDED WRITE AS A FAILED ONE** (replan ruling 543). `audit()`'s own
- * docblock promises it never rejects, and `chainSecret()` throws past that promise under `NODE_ENV=production`
- * without a distinct `AUDIT_CHAIN_SECRET`. By the time this module audits, the desk is ON. So the outcome is the
- * truth and the gap is NAMED — `recorded: false` — exactly as ruling 537's limits save already does, and the
- * console renders a WARNING rather than a failure. 543 is fixed in the audit CONTRACT before Commit 8, not here.
+ * ⛔ **AND THE COMPLIANCE ROW CANNOT REPORT A LANDED WRITE AS A FAILED ONE** (replan ruling 543). By the time this
+ * module audits, the desk is ON. So the outcome is the truth and the gap is NAMED — `recorded: false` — exactly as
+ * ruling 537's limits save does, and the console renders a WARNING rather than a failure.
+ * ⭐ 543 IS NOW FIXED IN THE AUDIT CONTRACT (2026-09-26, `RESUME-HERE` §0c step 6), and this module reads it rather
+ * than working around it. `audit()` used to promise it never rejects while `chainSecret()` threw past that promise
+ * under `NODE_ENV=production` without a distinct `AUDIT_CHAIN_SECRET`; it now RESOLVES such an entry with
+ * `recorded` false (UNSIGNED — nothing written), so this reads the flag. A catch here would never run, and the id
+ * of an entry that did not land is never stamped on the event.
  */
 import { audit } from "../audit";
 import { houseBotsLive } from "@/lib/feature-state";
@@ -115,23 +118,18 @@ export async function switchOnHouseBots(input: { actorId: string; reason: string
   if (!isAllowedHouseAuditPayload(payload)) {
     throw new Error("house audit house_bot.switch_on: payload keys outside the R7 allowlist");
   }
-  let recorded = true;
-  let auditId: string | null = null;
-  try {
-    const entry = (await audit({
-      category: HOUSE_AUDIT["house_bot.switch_on"],
-      action: "house_bot.switch_on",
-      /* ⛔ AN ACTOR IS AN ID (ruling 420): no display name, no handle, and no second read to find one. */
-      actorId: input.actorId,
-      targetType: "HouseBotControl",
-      targetId: HOUSE_CONTROL_ID,
-      payload,
-    })) as unknown;
-    auditId = entry && typeof entry === "object" && typeof (entry as { id?: unknown }).id === "string" ? (entry as { id: string }).id : null;
-  } catch (err) {
-    recorded = false;
-    console.error("[house-bot] the switch_on compliance row could not be written (the desk IS on):", errMessage(err));
-  }
+  const entry = await audit({
+    category: HOUSE_AUDIT["house_bot.switch_on"],
+    action: "house_bot.switch_on",
+    /* ⛔ AN ACTOR IS AN ID (ruling 420): no display name, no handle, and no second read to find one. */
+    actorId: input.actorId,
+    targetType: "HouseBotControl",
+    targetId: HOUSE_CONTROL_ID,
+    payload,
+  });
+  const recorded = entry.recorded;
+  const auditId = recorded ? entry.id : null;
+  if (!recorded) console.error(`[house-bot] the switch_on compliance row could not be written (the desk IS on): ${entry.unrecorded}`);
   if (auditId) await houseBotEventStore.setAuditId(event.id, auditId);
 
   /* ⛔ THE ALERT IS LAST AND IT NEVER FAILS THE ACT (`emitters.ts`'s own rule). The desk is on; a bell that could

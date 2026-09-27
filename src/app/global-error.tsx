@@ -93,10 +93,34 @@ export default function GlobalError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  /* 🔴 THE ROOT BOUNDARY NEVER REPORTED — AND THAT IS HOW A SITE-WIDE CRASH STAYED INVISIBLE FOR THREE
+     DAYS (2026-09-23 → 2026-09-26). `NavMore` called a hook after an early return; every soft sign-in or
+     sign-out threw above `app/error.tsx` and landed HERE, and this boundary only wrote to a phone's
+     console. `RouteError` has beaconed to `/api/client-error` since 2026-09-18; the one boundary that
+     catches a crash in the ROOT LAYOUT — the shell every page shares — did not. Same beacon, same body,
+     same server-side scrub (`lib/server/client-error.ts`), and wrapped, because this is the last surface
+     in the product and it must never throw. Pinned by `test:client-error-report` §4i. */
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      // eslint-disable-next-line no-console
-      console.error("[50pick] root error boundary fired", { digest: error.digest });
+    if (typeof window === "undefined") return;
+    // eslint-disable-next-line no-console
+    console.error("[50pick] root error boundary fired", { digest: error.digest });
+    try {
+      const body = JSON.stringify({
+        message: String(error?.message ?? "unknown").slice(0, 1_000),
+        stack: String(error?.stack ?? "").slice(0, 4_000),
+        path: window.location.pathname,
+        digest: error?.digest ?? null,
+        build: String((globalThis as { NEXT_DEPLOYMENT_ID?: string }).NEXT_DEPLOYMENT_ID ?? "") || null,
+      });
+      if (typeof navigator.sendBeacon === "function") {
+        navigator.sendBeacon("/api/client-error", new Blob([body], { type: "application/json" }));
+      } else {
+        void fetch("/api/client-error", {
+          method: "POST", body, keepalive: true, headers: { "content-type": "application/json" },
+        }).catch(() => undefined);
+      }
+    } catch {
+      /* reporting is a nice-to-have; the page is not */
     }
   }, [error]);
 

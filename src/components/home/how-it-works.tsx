@@ -12,13 +12,22 @@
  * Every value comes from a token through a class in `globals.css` (`.kp-band`, `.kp-steps`).
  */
 import { Reveal } from "@/components/layout/reveal";
+import { fill } from "@/lib/utils";
 import type { Dict } from "@/lib/i18n-dict";
 
-export function HowItWorks({ t }: { t: Dict }) {
+/**
+ * `feePct` — our fee as a share of the losing side, a bare number for the step-3 "{pct}%" slot.
+ * ⛔ It is PASSED IN, never typed: `docs/RULES.md` opens with "do not restate a rate anywhere else",
+ * and `test:rate-copy` fails any player string that carries a literal percentage. The page reads it
+ * through `ratesFrom` (`app/legal/rules/_shared.tsx`), the function the binding game-rules page
+ * uses — which reads the rate back from `poolFee` itself, so this line cannot quote a number the
+ * settlement arithmetic does not charge (landing v3, WP11; the delivery's draft typed "13%").
+ */
+export function HowItWorks({ t, feePct }: { t: Dict; feePct: number }) {
   const steps = [
     { n: "01", h: t.home.howStep1H, b: t.home.howStep1B },
     { n: "02", h: t.home.howStep2H, b: t.home.howStep2B },
-    { n: "03", h: t.home.howStep3H, b: t.home.howStep3B },
+    { n: "03", h: t.home.howStep3H, b: fill(t.home.howStep3B, { pct: feePct }) },
   ];
   return (
     <Reveal band="how" className="kp-band kp-band--overlay kp-band--tight">

@@ -306,3 +306,8 @@ prelaunch-keep-users.json
 
 # Cropped-corner evidence (scripts/qa-corner-radius.mjs). Regenerable; stays out of the tree (W20).
 .qa-corners/
+
+# One-Save drive screenshots (scripts/qa-single-save.mjs). Regenerable evidence; the guard is test:single-save.
+.qa-single-save/
+# Owner-switch ceremony drive screenshots (scripts/qa-invite-ceremony.mjs, localhost only). Regenerable.
+.qa-invite-ceremony/

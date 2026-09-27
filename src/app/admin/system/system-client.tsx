@@ -4,6 +4,7 @@ import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { focusFirstInvalid } from "@/lib/client/focus-first-invalid";
+import { runAdminAction } from "@/lib/client/run-admin-action";
 import { useDeferredToast, useToast } from "@/components/ui/toast";
 import { I } from "@/components/ui/glyphs";
 import { Input, Field } from "@/components/ui/input";
@@ -115,7 +116,9 @@ export function SupportConfigForm({ config }: { config: SupportConfig }) {
     const form = e.currentTarget;
     const fd = new FormData(form);
     start(async () => {
-      const r = await updateSupportConfigAction(fd);
+      /* A THROWN action (an expired session, a server fault) becomes `{ ok: false }` here, so it
+         lands in the toast below rather than ending the spinner in silence. */
+      const r = await runAdminAction(() => updateSupportConfigAction(fd));
       if (!r.ok) {
         toast({ title: "Couldn't update", description: r.error, variant: "danger" });
         /* ⭐ DG-S-06 — and then TAKE THEM THERE. The toast says what is wrong; it does not move
@@ -194,7 +197,11 @@ export function SupportConfigForm({ config }: { config: SupportConfig }) {
           <Input value={LICENCE_NUMBER()} readOnly disabled mono />
         </Field>
       </div>
-      <Button ref={saveRef} type="submit" variant="primary" loading={pending}>
+      {/* ⭐ Disabled while nothing has changed. Safe to key off `dirty` because every editable
+          control here is a named text box the snapshot hook reads; the three read-only boxes
+          carry no name and post nothing. A disabled default button also stops Enter in a box
+          from submitting a form with nothing to save. */}
+      <Button ref={saveRef} type="submit" variant="primary" loading={pending} disabled={!dirty}>
         Save · Hifadhi
       </Button>
       {/* ⛔ THIS PAGE IS A SECTION RAIL, which is exactly why the bar earns its place: an
@@ -206,7 +213,9 @@ export function SupportConfigForm({ config }: { config: SupportConfig }) {
         detail="Support contact details are shown on help, login, legal and KYC pages."
         saveAnchor={saveRef}
         onSave={() => cfgFormRef.current?.requestSubmit()}
-        onDiscard={() => { cfgFormRef.current?.reset(); markSaved(); }}
+        /* ⛔ `reset()` fires no event, so the dial preview's mirror is put back by hand — or
+           "Dial target" would keep showing the number that was just discarded. */
+        onDiscard={() => { cfgFormRef.current?.reset(); setPhone(config.phone); markSaved(); }}
         saveLabel="Save · Hifadhi"
       />
       <UnsavedChangesGuard dirty={dirty} body="The support contact details have been changed but not saved. Leaving now discards the change." />
@@ -235,6 +244,8 @@ export function AnnouncementForm({
      a CONTAINER, not `document.body`: the banner message and the maintenance note are two text
      boxes on the same page, and scoping the search is what keeps the cursor in this card. */
   const cardRef = useRef<HTMLDivElement>(null);
+  /* The card's own Save. The bar draws no second one while this is on screen (owner, 2026-09-22). */
+  const saveRef = useRef<HTMLButtonElement>(null);
 
   const submit = () => {
     if (active && !message.trim()) {
@@ -246,9 +257,10 @@ export function AnnouncementForm({
     fd.set("message", message.trim());
     fd.set("tone", tone);
     start(async () => {
-      const r = await setAnnouncementAction(fd);
+      // Same wrapper as the support form: a thrown action surfaces here, never in silence.
+      const r = await runAdminAction(() => setAnnouncementAction(fd));
       if (!r.ok) {
-        toast({ title: "Couldn't update", description: (r as { error?: string }).error, variant: "danger" });
+        toast({ title: "Couldn't update", description: r.error, variant: "danger" });
         /* ⭐ DG-S-06 — the server refuses with `"announcement-message"`, so the cursor lands in
            the message box, not on the toggle the operator meant to switch on. */
         if (r.field) focusFirstInvalid(cardRef.current, [r.field]);
@@ -305,7 +317,7 @@ export function AnnouncementForm({
           <span className="text-[13px] font-semibold text-text">{active ? "Live" : "Off"}</span>
         </label>
       </div>
-      <Button onClick={submit} loading={pending} disabled={!changed}>
+      <Button ref={saveRef} onClick={submit} loading={pending} disabled={!changed}>
         {active ? "Publish banner" : "Save"}
       </Button>
       {/* ⭐ `changed` ALREADY EXISTED and is the honest comparison against the saved values —
@@ -315,6 +327,7 @@ export function AnnouncementForm({
         dirty={changed}
         saving={pending}
         detail="The banner is shown to every player on every page."
+        saveAnchor={saveRef}
         onSave={submit}
         onDiscard={() => { setActive(initialActive); setMessage(initialMessage); setTone(initialTone); }}
         saveLabel={active ? "Publish banner" : "Save"}

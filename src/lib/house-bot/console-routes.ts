@@ -49,10 +49,14 @@ export const CONSOLE_NEW_ROUTE = `${CONSOLE_ROUTE}/new`;
  * ⭐ `activity` AND `history` JOINED AT C7 STEP 5's LANDING HALF, WITH THE DESK-WIDE READERS BEHIND THEM —
  * `houseFeedForConsole` (every account's stakes in one list) and `houseHistoryForConsole` (every account's changes
  * AND the control row's own: the switch, a limits save, the withdrawal, which a per-account narrowing correctly
- * drops). Each is a gated reader building ONE `readDeskCore` set, so all four tabs paint the same strip, the same
+ * drops). Each is a gated reader building ONE `readDeskCore` set, so every tab paints the same strip, the same
  * band and the same queued-stake badge.
  * ⛔ THE ORDER IS THE RAIL'S ORDER AND IT IS RULING 312's OWN: roster · activity · limits · history — who is on
  * the desk, what it is doing, what would stop it, what was done to it.
+ * ⭐ `results` JOINED LAST (C7 437, D20b amended under the owner's delegation of 2026-09-26), with
+ * `houseResultsForConsole` behind it: what the desk's FINISHED stakes came to, by the EAT day each was placed. It is
+ * last because it controls nothing — the four control tabs stay together, in 312's order — and it carries no badge.
+ * There is no Results tab on an account's own page (`CONSOLE_DETAIL_TABS` is unchanged).
  * ⛔ THE LIST STILL GROWS ONLY WITH A PANEL. A rail option with no panel is a dead control, `?tab=` resolves
  * against this list, and `consoleTabExists` is what every surface asks before it renders a link to one.
  * ⚠️ THE ACCOUNT PAGE'S HALF LANDED FIRST, AND THE ORDER WAS FORCED (see `CONSOLE_DETAIL_TABS` below): comms case
@@ -60,7 +64,7 @@ export const CONSOLE_NEW_ROUTE = `${CONSOLE_ROUTE}/new`;
  * LANDING `?tab=activity` link with no panel behind it. That case is deleted with this build, because its subject
  * is gone: there is no dead tab left for it to measure.
  */
-export const CONSOLE_TABS = ["roster", "activity", "limits", "history"] as const;
+export const CONSOLE_TABS = ["roster", "activity", "limits", "history", "results"] as const;
 export type ConsoleTab = (typeof CONSOLE_TABS)[number];
 
 /** The panel a bare visit renders, and what any unrecognised `?tab=` value resolves to (ruling 302). */

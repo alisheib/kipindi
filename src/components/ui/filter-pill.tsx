@@ -33,6 +33,7 @@
  */
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { LinkPending } from "@/components/ui/link-pending";
 
 /**
  * A pill states its selection in one of two ways, and they are NOT interchangeable:
@@ -253,6 +254,9 @@ export function FilterPill({
           {count}
         </span>
       )}
+      {/* ⭐ A pressed chip whose rows are still on their way says so — `link-pending.tsx`. It renders
+          nothing at rest, and when it does it is out of flow, so the pill's geometry never moves. */}
+      <LinkPending />
     </Link>
   );
 }

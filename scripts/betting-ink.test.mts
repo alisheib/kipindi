@@ -47,7 +47,11 @@ function liveDefects(css: string, hero: string): string[] {
   if (pip && (BETTING.test(pip) || /--bar-glow-yes/.test(pip))) d.push(".kp-proof__pip wears the YES ink or glow");
   if (pip && !/background:\s*var\(--live-400\)/.test(pip)) d.push(".kp-proof__pip is not the broadcast --live-400");
   const h = code(hero);
-  const openFigure = h.match(/<span className="kp-proof__num" style=\{\{ color: "([^"]+)" \}\}>\s*<span className="kp-proof__pip"/)?.[1];
+  // 🔴 D51 (mobile-visual) MOVED THE PIP AFTER THE FIGURE and this matcher still demanded it lead,
+  // so §1a failed on main — a guard reading "not found" about markup that was there. Found by the
+  // landing v3 build, 2026-09-26. The figure's ink is the claim; the pip may sit either side of the
+  // count, so both orders are accepted, and anything else between them is still a miss.
+  const openFigure = h.match(/<span className="kp-proof__num" style=\{\{ color: "([^"]+)" \}\}>\s*(?:\{formatNumber\(figures\.openCount\)\}\s*)?<span className="kp-proof__pip"/)?.[1];
   if (!openFigure) d.push("the hero's open-markets figure was not found beside its pip");
   else if (BETTING.test(openFigure)) d.push(`the hero's open-markets figure is ${openFigure}`);
   return d;

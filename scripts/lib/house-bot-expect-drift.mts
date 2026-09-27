@@ -45,6 +45,7 @@ export type DeclaredMutation = { readonly name: string; readonly expect: string;
  */
 export const ROLL_CALL_SITES: Readonly<Record<string, string>> = {
   "console-mem": "scripts/lib/house-bot-console-cases.mts · 1.318",
+  "console-pg": "scripts/lib/house-bot-console-cases.mts · 1.318pg (the Postgres child's own roll-call, over the labels THAT child printed — step 9 declared the key's first three entries, 2026-09-27)",
   "engine-mem": "scripts/lib/house-bot-engine-cases.mts · 1.505",
   "engine-pg": "scripts/lib/house-bot-engine-cases.mts · 1.505",
   "money-mem": "scripts/lib/house-bot-money-cases.mts · 1.505",
@@ -88,7 +89,7 @@ export const ROLL_CALL_OWED: Readonly<Record<string, string>> = {
   "dal-pg": "1 declaration · the Postgres twin of the same c13 case list — same site, same reason",
   rbac: "2 declarations · scripts/rbac.test.mts — a PLATFORM suite, outside the house campaign's files",
   "admin-nav": "1 declaration · scripts/admin-nav.test.mts — a PLATFORM suite, outside the house campaign's files",
-  disclosure: "1 declaration · scripts/house-bot-disclosure.test.mts — a single-run suite with no cases file and no `expect`-drift roll-call of its own; the declaration it carries is ruling 387's search-grammar half, whose subject (`src/lib/search/fields.ts`) no other house suite can reach",
+  disclosure: "scripts/house-bot-disclosure.test.mts — a single-run suite with no `expect`-drift roll-call of its own. ⚠️ Corrected 2026-09-26: this entry said \"1 declaration\" and \"no cases file\"; the suite runs two cases files, and its declarations (0.505 counts them, and no count is kept here) are ruling 387's search-grammar half (`house-bot-console.anchors.mjs`, whose subject `src/lib/search/fields.ts` no other house suite can reach), the vocabulary and resolver controls in `house-bot-c5.anchors.mjs`, and since 2026-09-26 the accepted-risk register pins d.2, d.7 and d.7b there (`c5-step8:*`)",
 };
 
 export type DriftReport = {

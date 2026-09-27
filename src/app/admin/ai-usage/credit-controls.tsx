@@ -55,7 +55,8 @@ export function CreditControls({ limitUsd }: { limitUsd: number }) {
         <Field label="Spend limit per top-up window (USD)" className="flex-1 min-w-[140px]" dataField="limitUsd">
           <Input name="limitUsd" type="number" step="0.01" min="0.01" inputMode="decimal" defaultValue={String(limitUsd)} placeholder="20" mono />
         </Field>
-        <Button ref={saveRef} type="submit" loading={pending}>Set limit</Button>
+        {/* Disabled while nothing has changed — the same `dirty` the bar and the guard read. */}
+        <Button ref={saveRef} type="submit" loading={pending} disabled={!dirty}>Set limit</Button>
       </form>
       <ConfirmDialog
         tone="warning"

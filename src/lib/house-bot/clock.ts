@@ -129,6 +129,21 @@ export function eatKeyFor(unit: EatKeyUnit, atMs: number): string {
   }
 }
 
+/**
+ * The `n` EAT days BEFORE `dayKey`, newest first: `priorEatDays("2026-03-01", 2)` is `["2026-02-28", "2026-02-27"]`.
+ *
+ * ⭐ CALENDAR ARITHMETIC ON A KEY, NEVER ON AN INSTANT (C7 ruling 437). The desk's Results tab takes today's key from
+ * the one read that fixed it for the render and walks back from there, so the seven days it shows can never straddle
+ * two different "todays" — and the gate module keeps its one key derivation (1.348). EAT has no daylight saving, so
+ * a day is always exactly 24 hours and stepping back one day from its first instant lands on the day before.
+ * ⛔ A malformed key or count THROWS, as `book.ts`'s `dayWindowIso` does: an invented day is worse than no day.
+ */
+export function priorEatDays(dayKey: string, n: number): string[] {
+  const w = eatDayWindow(dayKey);
+  if (!w || !Number.isSafeInteger(n) || n < 0) throw new Error(`priorEatDays: "${dayKey}" × ${n} is not an EAT day key and a count`);
+  return Array.from({ length: n }, (_, k) => eatDayKey(w.fromMs - (k + 1) * DAY_MS));
+}
+
 // ---------------------------------------------------------------------------
 // The week — schedule windows (04 C15)
 // ---------------------------------------------------------------------------

@@ -31,6 +31,12 @@ export type SwitchOffOutcome =
       drain: "drained" | "busy" | "skipped";
       cancelled: number;
       message: string;
+      /**
+       * ⛔ FALSE WHEN THE OFF LANDED AND ITS COMPLIANCE ROW DID NOT (replan ruling 543). The switch IS off either way;
+       * this is the half the caller must say beside it, never a reason to report the stop as failed. True when
+       * nothing changed, because nothing was owed.
+       */
+      recorded: boolean;
     }
   | { ok: false; failure: "WRITE_FAILED"; message: string; error: string };
 
@@ -57,7 +63,7 @@ export async function switchOffHouseBots(input: {
     return { ok: false, failure: "WRITE_FAILED", message: SWITCH_OFF_COPY.WRITE_FAILED, error: errMessage(e) };
   }
   // The conditional update matched nothing: another writer switched it off first. Nothing more to write or say.
-  if (!off) return { ok: true, changed: false, drain: "skipped", cancelled: 0, message: SWITCH_OFF_COPY.ALREADY_OFF };
+  if (!off) return { ok: true, changed: false, drain: "skipped", cancelled: 0, message: SWITCH_OFF_COPY.ALREADY_OFF, recorded: true };
 
   // ── 2 · drain, bounded: has the bet that was already inside the lock finished? ──
   let drain: "drained" | "busy";
@@ -77,11 +83,18 @@ export async function switchOffHouseBots(input: {
     houseBotId: null, userId: null, marketId: null, kind: "SWITCH_OFF", fromStatus: "ON", toStatus: "OFF",
     reason, actorId: byId, payload: { cause, cancelled, drain },
   });
+  /* ⛔ 543 · THE AUDIT CANNOT UN-STOP THE DESK. Until the audit contract was fixed, a compliance row that could not
+     be signed THREW here — after the OFF had landed, before the alert — and the console told the officer "Nothing
+     changed" about a desk that WAS off, while nobody was told it had stopped. `engineAudit` now answers null for a
+     row that did not land; the alert still goes, and the answer says the record is missing. */
   const auditId = await engineAudit("house_bot.switch_off", { type: "HouseBotControl", id: off.id }, {
     from: "ON", to: "OFF", cause, counts: { cancelled },
   });
   if (auditId) await houseBotEventStore.setAuditId(event.id, auditId);
   await input.alerts.switchedOff({ cause, cancelled });
 
-  return { ok: true, changed: true, drain, cancelled, message: drain === "drained" ? SWITCH_OFF_COPY.DRAINED : SWITCH_OFF_COPY.BUSY };
+  return {
+    ok: true, changed: true, drain, cancelled, message: drain === "drained" ? SWITCH_OFF_COPY.DRAINED : SWITCH_OFF_COPY.BUSY,
+    recorded: auditId !== null,
+  };
 }
