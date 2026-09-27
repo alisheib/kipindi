@@ -4605,11 +4605,9 @@ html[data-sheet-open] .route-enter { animation: none; }
 .mcardp-traders { margin-top: -2px; min-height: var(--mcard-traders-h); }
 .mcardp-traders .t-txt { font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); }
 .mcardp-traders .t-txt b { color: var(--text); font-weight:600; }
-/* A1 · demoted 24h move — mono micro-text, right-aligned just above the bar. */
+/* A1 · the move-line row, right-aligned just above the bar: the 24h move (`.mcardp-h24`, every priced card)
+   or "One side only". */
 .mcardp-moveline { display:flex; justify-content:flex-end; align-items:center; min-height:12px; margin:-3px 0 -5px; }
-.mcardp-move { display:inline-flex; align-items:center; gap:3px; font-family:var(--font-mono); font-size:10px; font-weight:600; letter-spacing:0.02em; line-height:1; font-variant-numeric:tabular-nums; white-space:nowrap; }
-.mcardp-move svg { width:10px; height:10px; }
-.mcardp-move .u { opacity:0.6; margin-left:1px; }
 /* A1 · 24h YES% sparkline directly under the bar; draws in on mount.
    pathLength=1 normalizes the dash regardless of the rendered card width. */
 .mcardp-spark { margin-top:-4px; height: var(--mcard-spark-h); }
@@ -4868,8 +4866,9 @@ html[data-sheet-open] .route-enter { animation: none; }
   .mcardp--featured > .mcardp-meta,
   .mcardp--featured > .mcardp-foot { order: 0; }
 }
-/* The 24h delta, keyed to the mark: the meta row's rung, neutral ink (a move of the YES price is not a
-   side, §B2a). It rides the move-line row the card always had, so it costs no height. */
+/* The 24h move — ONE reading on every priced card ("▲5 · 24h ago"): the meta row's rung, neutral ink (a move
+   of the YES price is not a side, §B2a; `test:betting-ink` §5). The featured card keys it to the mark on its
+   bar. It rides the move-line row the card always had, so it costs no height. */
 .mcardp-h24 {
   display: inline-flex;
   align-items: center;

@@ -258,6 +258,12 @@ be mistaken for one:
 in `--yes-*`. Urgency is carried by motion (`ud-count-pulse`) and the player's LIVE signal by the broadcast red of §B11;
 the text keeps its neutral ink. `test:betting-ink` pins the sites.
 
+⛔ **Nor to express a price MOVE** (2026-09-27, the landing v3 WP3+WP4 review, R8). A market card's 24h move
+of the YES price is not a side, and a green-up / rose-down move invites chasing. The grid card printed "+5pt" in
+`--yes-400` / `--no-400` while the featured card on the same page printed the same move "▲5 · 24h ago" in neutral
+ink: ONE reading on every card now — `DayAgoMove` in `market-card.tsx`, `.mcardp-h24`, `--text-subtle`, ▲/▼, bare
+points — printed only where a price exists now. `test:betting-ink` §5 pins it, with planted inked moves.
+
 ⛔ Never reach for the betting pair to express an app state: a surface that says *saved* in
 the YES ink has spent the money vocabulary on chrome, and the next player to see that green
 has one less reason to read it as their side. ⛔ And never re-hue a state token toward the

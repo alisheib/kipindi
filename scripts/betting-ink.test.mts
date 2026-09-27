@@ -8,12 +8,15 @@
  *     The player's LIVE signal is the broadcast red of §B11.
  *   · URGENCY — the Up & Down countdown's final 30 s painted the digits `--no-300`, beside the round's Down side,
  *     where rose reads as "price going down". The pulse (`ud-count-pulse`) carries the urgency.
+ *   · A PRICE MOVE (§5, 2026-09-27, the landing v3 WP3+WP4 review, R8) — the grid card inked its 24h move
+ *     "+5pt" green-up / rose-down while the featured card on the same page printed the same move "▲5 · 24h ago"
+ *     in neutral ink. A move of the YES price is not a side, and a green-up move invites chasing.
  *
  * ⛔ SCOPED TO THE NAMED SITES, and the scope is the point: these files use the betting pair correctly elsewhere
  * (Up/Down price arrows, split labels, the YES/NO buttons). Each check is a function returning defects, run on the
  * real files and on planted copies carrying the shipped defect — so a check that stopped matching goes red (§3).
  */
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -139,6 +142,58 @@ const plantDigitsTsx = digits.replace('className="kp-udclock__digits"', 'classNa
 ok("§4b control · every planted copy found its target", plantDigitsCss !== css && plantDigitsTsx !== digits);
 ok("§4c control · rose digits in the stylesheet are reported", matchTimeDefects(plantDigitsCss, digits).length > 0, "", matchTimeDefects(plantDigitsCss, digits).join("; "));
 ok("§4d control · rose digits inline in the leaf are reported", matchTimeDefects(css, plantDigitsTsx).length > 0, "", matchTimeDefects(css, plantDigitsTsx).join("; "));
+
+/* §5 · A PRICE MOVE IS NOT A SIDE (landing v3 WP3+WP4 review, R8, 2026-09-27) ───────────────────────────────
+   DESIGN_AUTHORITY §B2 / §B2a keep the YES/NO pair for the sides. The 24h move of the YES price is ONE reading
+   on every card — "▲5 · 24h ago", neutral ink, the featured card's since WP3 — drawn by ONE component
+   (`DayAgoMove`); the grid card's own renderer, which inked "+5pt" in the betting pair, is gone. The
+   component is the only surface that prints a 24h move (`t.market.h24Ago` is read by the card alone). */
+console.log("\n§5 · the 24h move wears neutral ink, one reading on every card");
+const MCARD = "src/components/markets/market-card.tsx";
+const DICT = "src/lib/i18n-dict.ts";
+function moveDefects(sheet: string, cardSrc: string): string[] {
+  const d: string[] = [];
+  const k = code(cardSrc);
+  const at = k.indexOf("function DayAgoMove(");
+  const fn = at < 0 ? "" : (k.slice(at).match(/^[\s\S]*?\r?\n\}\r?\n/)?.[0] ?? "");
+  if (!fn) d.push("the one move component (`DayAgoMove`) was not found in market-card.tsx");
+  else {
+    if (BETTING.test(fn)) d.push("the move component paints the betting pair");
+    if (/\bstyle=/.test(fn)) d.push("the move component sets an inline style (its ink is the stylesheet's)");
+    if (!/className="mcardp-h24"/.test(fn)) d.push("the move component does not wear .mcardp-h24");
+  }
+  if (/\bMoveText\b|"mcardp-move"/.test(k)) d.push("a second move renderer is back in market-card.tsx");
+  if (!/<DayAgoMove move=\{yesPct - dayAgo\} label=\{t\.market\.h24Ago\} keyed \/>/.test(k)) d.push("the featured card does not print its move through the one component");
+  if (!/<DayAgoMove move=\{move24h\} label=\{t\.market\.h24Ago\} keyed=\{false\} \/>/.test(k)) d.push("the grid card does not print its move through the one component");
+  const r = code(sheet).match(/\.mcardp-h24\s*\{([^}]*)\}/)?.[1];
+  if (r === undefined) d.push(".mcardp-h24 is missing from globals.css");
+  else if (BETTING.test(r)) d.push(".mcardp-h24 paints the betting pair");
+  else if (!/color:\s*var\(--text-subtle\)/.test(r)) d.push(".mcardp-h24 is not the neutral --text-subtle");
+  if (/\.mcardp-move\b/.test(code(sheet))) d.push("the retired .mcardp-move rule is back in globals.css");
+  return d;
+}
+const mcard = read(MCARD);
+ok("§5a the featured and the grid card print the 24h move through ONE neutral component",
+  moveDefects(css, mcard).length === 0, moveDefects(css, mcard).join("; "));
+// Every other surface: the move's words are read by the card alone, and the retired second wording is gone.
+const moveReaders: string[] = [];
+(function scan(dir: string) {
+  for (const e of readdirSync(join(ROOT, dir))) {
+    const p = `${dir}/${e}`;
+    if (statSync(join(ROOT, p)).isDirectory()) scan(p);
+    else if (/\.tsx?$/.test(e) && p !== DICT && /\bh24Ago\b/.test(code(read(p)))) moveReaders.push(p);
+  }
+})("src");
+ok("§5b the card is the only surface that prints a 24h move, and the retired `twentyFourHourMove` is gone",
+  moveReaders.length === 1 && moveReaders[0] === MCARD && !/\btwentyFourHourMove\b/.test(code(read(DICT))),
+  moveReaders.join(", "));
+const plantMoveInline = mcard.replace('<span className="mcardp-h24">', '<span className="mcardp-h24" style={{ color: move > 0 ? "var(--yes-400)" : "var(--no-400)" }}>');
+const plantMoveSheet = css.replace(/(\.mcardp-h24 \{[^}]*?)color: var\(--text-subtle\);/, "$1color: var(--yes-400);");
+const plantMoveGrid = mcard.replace("<DayAgoMove move={move24h} label={t.market.h24Ago} keyed={false} />", "<MoveText move={move24h} label={t.market.h24Ago} />");
+ok("§5c control · every planted copy found its target", plantMoveInline !== mcard && plantMoveSheet !== css && plantMoveGrid !== mcard);
+ok("§5d control · a YES/NO-inked move (inline, the retired grid spelling) is reported", moveDefects(css, plantMoveInline).length > 0, "", moveDefects(css, plantMoveInline).join("; "));
+ok("§5e control · a YES-green move in the stylesheet is reported", moveDefects(plantMoveSheet, mcard).length > 0, "", moveDefects(plantMoveSheet, mcard).join("; "));
+ok("§5f control · a grid card with its own move renderer again is reported", moveDefects(css, plantMoveGrid).length > 0, "", moveDefects(css, plantMoveGrid).join("; "));
 
 console.log(`\n${fail === 0 ? "ALL PASS" : "FAILURES"} — ${pass} passed, ${fail} failed`);
 if (pass + fail < 8) { console.error(`!! only ${pass + fail} assertions ran`); process.exit(3); }

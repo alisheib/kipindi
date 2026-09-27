@@ -148,7 +148,7 @@ const card = decomment(read("src/components/markets/market-card.tsx"));
   check("2.3 the 24h mark is featured, live and priced only", DAYAGO.test(card));
   check("2.3-control a mark on every card IS detected", !DAYAGO.test("const dayAgo = dayAgoYesPct(yesPool, noPool, move24h);"));
   check("2.4 the delta prints the mark's own number (`yesPct - dayAgo`), and the bar draws that mark",
-    /<DayAgoMove move=\{yesPct - dayAgo\} label=\{t\.market\.h24Ago\} \/>/.test(card) && /mark=\{dayAgo\}/.test(card));
+    /<DayAgoMove move=\{yesPct - dayAgo\} label=\{t\.market\.h24Ago\} keyed \/>/.test(card) && /mark=\{dayAgo\}/.test(card));
   check("2.5 the featured bar is an IMAGE of the split, named by the whole reading",
     /as=\{featured \? "img" : undefined\}/.test(card) && /probabilityLabel=\{barReading \?\? /.test(card)
     && /const barReading = featured && showPrice\s*\?/.test(card));

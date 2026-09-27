@@ -117,7 +117,8 @@ type Props = {
    *   · a meta line — "Closes 27 Sep · Settles on {source}" — under the question from 640, and under the
    *     YES/NO row below it (the V15 budget), after the pick ON SCREEN only: in the reading order it stays
    *     before the pick (K36);
-   *   · the 24h mark on the bar and "▲n · 24h ago" beside it, only between two prices;
+   *   · the 24h mark on the bar, only between two prices, and the mark's key before the "▲n · 24h ago" every
+   *     priced card prints (the line is the mark's legend here; a grid card's bar draws no mark, so no key);
    *   · the bar is an IMAGE named by the whole split ("62% YES, 38% NO");
    *   · below `FEATURED_PREDICTOR_FLOOR` predictors it withholds the count and the crest row (R7).
    * No new glow and no new colour: the edge and the royal wash are the whole of its look.
@@ -164,34 +165,25 @@ function getSignalBadge(
   return null;
 }
 
-/** Demoted 24h move — mono micro-text, right-aligned above the bar (Part B-2:
- *  it no longer competes as a chip in the header). Green up / rose down. */
-function MoveText({ move, label }: { move: number; label: string }) {
+/** THE 24h MOVE — ONE reading on every card ("▲5 · 24h ago"), since the WP3 review (R8, 2026-09-27).
+ *  Neutral ink: a move of the YES price is not a side (§B2 / §B2a keep the YES/NO pair for the sides), and a
+ *  green-up / rose-down move invites chasing. The grid card's inked "+5pt" said the same number in the
+ *  betting pair on the same page and was retired; `test:betting-ink` §5 pins both call sites.
+ *  The triangle is decoration; a screen reader hears the sign. `keyed` draws the small key before it — the
+ *  mark's own shape — so on the featured card the line is the legend of the mark on its bar; a grid card's
+ *  bar draws no mark, so it draws no key. Printed only where a price exists NOW (a move of no price is no
+ *  reading — WP6). M5: the triangle nudges on a data CHANGE of direction only, never on mount. */
+function DayAgoMove({ move, label, keyed }: { move: number; label: string; keyed: boolean }) {
   const dir = move > 0 ? "up" : move < 0 ? "down" : "flat";
-  const color = dir === "up" ? "var(--yes-400)" : dir === "down" ? "var(--no-400)" : "var(--text-subtle)";
-  /* M5 directional primitive — nudge on a data CHANGE only, never on mount
-     (the keyframe's own rule). Static until the refreshed board flips `dir`. */
   const prevDirRef = useRef(dir);
   const dirChangedRef = useRef(false);
   if (dir !== prevDirRef.current) { dirChangedRef.current = true; prevDirRef.current = dir; }
-  const nudge = dirChangedRef.current;
-  return (
-    <span className="mcardp-move" title={label} style={{ color }}>
-      {dir === "up" ? <I.trendingUp s={10} className={nudge ? "g-nudge-up" : undefined} /> : dir === "down" ? <I.trendingDown s={10} className={nudge ? "g-nudge-down" : undefined} /> : <I.arrowRight s={10} />}
-      {move > 0 ? "+" : ""}{move}<span className="u">pt</span>
-    </span>
-  );
-}
-
-/** WP3 · the featured card's 24h delta, keyed to the mark on its bar ("▲5 · 24h ago"). Neutral ink: a move
- *  of the YES price is not a side (§B2a). The triangle is decoration; a screen reader hears the sign. The
- *  small key before it is the mark's own shape, so the line is the mark's legend (no row under the bar). */
-function DayAgoMove({ move, label }: { move: number; label: string }) {
+  const nudge = !dirChangedRef.current ? undefined : dir === "up" ? "g-nudge-up" : dir === "down" ? "g-nudge-down" : undefined;
   return (
     <span className="mcardp-h24">
-      <span className="mcardp-h24-key" aria-hidden />
-      <span aria-hidden>{move > 0 ? "▲" : move < 0 ? "▼" : "±"}</span>
-      <span className="sr-only">{move > 0 ? "+" : move < 0 ? "−" : "±"}</span>
+      {keyed && <span className="mcardp-h24-key" aria-hidden />}
+      <span aria-hidden className={nudge}>{dir === "up" ? "▲" : dir === "down" ? "▼" : "±"}</span>
+      <span className="sr-only">{dir === "up" ? "+" : dir === "down" ? "−" : "±"}</span>
       {Math.abs(move)}{" · "}{label}
     </span>
   );
@@ -554,9 +546,9 @@ export function MarketCard({
           {oneSided ? (
             <span className="mcardp-oneside" data-market-part="state">{t.market.oneSideOnly}</span>
           ) : dayAgo !== null ? (
-            <DayAgoMove move={yesPct - dayAgo} label={t.market.h24Ago} />
+            <DayAgoMove move={yesPct - dayAgo} label={t.market.h24Ago} keyed />
           ) : (
-            !featured && !fresh && move24h !== undefined && <MoveText move={move24h} label={t.market.twentyFourHourMove} />
+            !featured && showPrice && move24h !== undefined && <DayAgoMove move={move24h} label={t.market.h24Ago} keyed={false} />
           )}
         </div>
       )}

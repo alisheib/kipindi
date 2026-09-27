@@ -164,7 +164,9 @@ function TrustLines({ t }: { t: Dict }) {
  *   sides → the price within 1–99 (L14) and the figures on the buttons; one side → "One side only", the
  *   dashed rail, bare buttons and the refund rule; empty → "No bets yet" only where nobody ever bet, else
  *   "No pool yet" (the D29 rule: `predictorCount` is never decremented, so a cashed-out market has a pool
- *   of 0 and a predictor). ONE label, read by the price slot and the rail alike.
+ *   of 0 and a predictor). ONE label, read by the price slot and the rail alike, and in the CARDS' own keys
+ *   (`market.noBetsYet` / `market.noPoolYet`): one state has one wording on the page (B9). The row's own
+ *   `home.heroNoPrice` said the never-bet state in other words than the cards and was retired 2026-09-27.
  * ⭐ NO 24h MARK ON A ROW (the concept draws none) and no share (WP14b: the footer share is the cards').
  * ⛔ `row.yesPct` is the rounded share — 100 on a one-sided pool — and is never read here.
  * The gate's V18 reads the row through `data-market-surface` / `data-market-part`, never through a word.
@@ -180,7 +182,7 @@ function QuestionRow({ row, t, locale, nowMs }: { row: HeroRow; t: Dict; locale:
   // The instant the countdown counts to, as a day (the Gaming Board's "a timer names its instant").
   const closes = fill(t.market.closesOn, { date: formatEatDate(row.bettableUntilMs, nowMs, t.common.monthsShort, locale) });
   const [settlesPre = "", settlesPost = ""] = t.market.settlesOn.split("{source}");
-  const emptyLabel = price.kind === "oneSided" ? t.market.oneSideOnly : row.predictors === 0 ? t.home.heroNoPrice : t.market.noPoolYet;
+  const emptyLabel = price.kind === "oneSided" ? t.market.oneSideOnly : row.predictors === 0 ? t.market.noBetsYet : t.market.noPoolYet;
   const oneSidedNote = price.kind === "oneSided" ? t.market.oneSidedNote.replace("{side}", sideWord(t, price.emptySide, "MARKET")) : null;
   // The card's own names for the pair, so one control has one vocabulary: no figure without a price.
   const yesAria = (price.kind === "priced" ? t.market.backSideAria.replace("{pct}", String(price.yesPct)) : t.market.backSideAriaNoPrice).replace("{side}", yesWord);
