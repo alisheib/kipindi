@@ -15,7 +15,7 @@
  *
  * No server imports, no "use client" — the nodejs og route and the page's `generateMetadata` both call it.
  */
-import { priceState } from "./price-state";
+import { isTipping, priceState } from "./price-state";
 import { dict } from "../i18n-dict";
 
 export type SharePreviewPrice =
@@ -26,7 +26,7 @@ export type SharePreviewPrice =
 export function sharePreviewPrice(yesPool: number, noPool: number, predictorCount: number): SharePreviewPrice {
   const p = priceState(yesPool, noPool);
   if (p.kind === "priced") {
-    const lean = Math.abs(p.yesPct - 50) < 4 ? "tipping" : p.yesPct > 50 ? "leans yes" : "leans no";
+    const lean = isTipping(p.yesPct) ? "tipping" : p.yesPct > 50 ? "leans yes" : "leans no";
     return { kind: "priced", yesPct: p.yesPct, noPct: 100 - p.yesPct, lean };
   }
   if (p.kind === "oneSided") return { kind: "oneSided", label: dict.en.market.oneSideOnly };

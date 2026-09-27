@@ -23,6 +23,8 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
 import { MARK, markColors, type FiftyMarkVariant } from "@/lib/brand-mark";
+// R6(2) · the ONE tipping rule the card badge, the share preview and /live read too (a pure module, no directive).
+import { isTipping } from "@/lib/markets/price-state";
 
 export type { FiftyMarkVariant };
 
@@ -344,7 +346,7 @@ export function TippingBar({
             {labels.yes} <strong data-lead={target >= 50 || undefined}>{target}%</strong>
           </span>
           <span className="tipbar-lean">
-            {Math.abs(target - 50) < 3 ? labels.tipping : target > 50 ? labels.leansYes : labels.leansNo}
+            {isTipping(target) ? labels.tipping : target > 50 ? labels.leansYes : labels.leansNo}
           </span>
           <span className="tb-no">
             <strong data-lead={target < 50 || undefined}>{100 - target}%</strong> {labels.no}

@@ -196,13 +196,15 @@ const SPLIT_BAR_ALLOW = new Set(["src/app/positions/page.tsx"]);
  * ⛔ ONE FILE, AND THE GUARANTEE IS STRONGER THAN THE BRANCH IT REPLACES.
  *
  * `featured-contest.tsx` renders a 32px bar with no `empty` prop, and it cannot need one: its
- * caller (`/live`) narrows with `.filter((m): m is … & { yesPct: number })`, so an unpriced
- * market is unrepresentable in that array — a TYPE guarantee, not a runtime hope. Adding a dead
- * branch to satisfy a scanner would be worse code and a false claim about what can happen.
+ * caller (`/live`) builds the slides with `liveContest` (`lib/markets/live-contest.ts`), which keeps
+ * PRICED markets only through `shownYesPct` — so an empty AND a one-sided pool (landing v3 C1) are
+ * unrepresentable in that array, and the prop is a plain `number`. `test:one-sided` 9.6 drives that
+ * helper on a thin wall. Adding a dead branch to satisfy a scanner would be worse code and a false
+ * claim about what can happen.
  *
- * ⚠️ The narrowing is the whole safeguard, so it is written at BOTH ends: the filter carries the
+ * ⚠️ The helper is the whole safeguard, so it is written at BOTH ends: `live-contest.ts` carries the
  * reason, and the JSX carries "⛔ if you ever widen this prop to `number | null`, add the branch".
- * If that filter is ever relaxed, DELETE this entry — the list may only shrink.
+ * If that helper ever lets an unpriced row through, DELETE this entry — the list may only shrink.
  */
 const TIPPING_COLD_START_OK = new Set([
   "src/app/live/featured-contest.tsx",

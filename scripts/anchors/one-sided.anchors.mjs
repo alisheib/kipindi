@@ -137,4 +137,33 @@ export const MUTATIONS = [
     to: `  const price = priceState(yesPool, noPool); void impliedYesPct({ yesPool, noPool });`,
     expect: "14.1",
   },
+  // ── landing v3 C1 · commit B — /live, and R6(2) the one tipping rule ─────────────────────────────
+  {
+    name: "C1-B · the pulse card calls a one-sided pool 'No bets yet' again (money IS on it)",
+    file: "src/app/live/pulse-grid.tsx",
+    from: `  const noPriceWord = price.kind === "oneSided" ? t.market.oneSideOnly`,
+    to: `  const noPriceWord = false ? t.market.oneSideOnly`,
+    expect: "9.3",
+  },
+  {
+    name: "C1-B · the pulse card says 'No bets yet' over a pool a cash-out emptied (somebody did bet)",
+    file: "src/app/live/pulse-grid.tsx",
+    from: `    : market.predictors === 0 ? t.market.noBetsYet : t.market.noPoolYet;`,
+    to: `    : t.market.noBetsYet;`,
+    expect: "9.4",
+  },
+  {
+    name: "C1-B · /live features a one-sided market again (the raw share is never null on one side)",
+    file: "src/lib/markets/live-contest.ts",
+    from: `    const yesPct = shownYesPct(row.yesPool, row.noPool);`,
+    to: `    const yesPct = row.yesPool + row.noPool > 0 ? Math.round((row.yesPool / (row.yesPool + row.noPool)) * 100) : null;`,
+    expect: "9.6",
+  },
+  {
+    name: "R6(2) · the bar's lean word keeps its own tipping threshold again (< 3, not the one rule)",
+    file: "src/components/brand.tsx",
+    from: `            {isTipping(target) ? labels.tipping`,
+    to: `            {Math.abs(target - 50) < 3 ? labels.tipping`,
+    expect: "9.8",
+  },
 ];

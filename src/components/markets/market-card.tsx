@@ -15,7 +15,7 @@ import { useT } from "@/lib/i18n";
 import { pickLocalized, marketCategoryLabel } from "@/lib/localized";
 import { outcomeWord, sideWord, type LabelProductLine } from "@/lib/side-label";
 import { MicroSpark } from "@/components/charts/micro-spark";
-import { priceState } from "@/lib/markets/price-state";
+import { isTipping, priceState } from "@/lib/markets/price-state";
 
 type Props = {
   id: string;
@@ -138,7 +138,8 @@ function getSignalBadge(
   // most contested market on the board.
   // ⚠️ `yesPct` is null wherever the card states no price — an empty pool AND a one-sided one
   // (WP6): a pool with one side is not a contest either, whatever number it rounds to.
-  if (volume > 0 && yesPct !== null && Math.abs(yesPct - 50) <= 3) return { kind: "tipping", label: labels.tipping };
+  // R6(2) · the ONE tipping rule (`isTipping`, |YES − 50| ≤ 3), the same the bar, the share preview and /live read.
+  if (volume > 0 && yesPct !== null && isTipping(yesPct)) return { kind: "tipping", label: labels.tipping };
   return null;
 }
 

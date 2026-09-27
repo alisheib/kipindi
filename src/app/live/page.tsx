@@ -13,13 +13,13 @@
 import Link from "next/link";
 import { fill } from "@/lib/utils";
 import { timeLeftLabel } from "@/lib/markets/time-left";
-import { listMarkets, impliedYesPct, isClosedByTime, isSelectionClosed, traderSeedsByMarket } from "@/lib/server/market-service";
+import { listMarkets, isClosedByTime, isSelectionClosed, traderSeedsByMarket } from "@/lib/server/market-service";
 import { PulseRing } from "@/components/brand";
 import { BrandTopo } from "@/components/brand-topo";
 import { PageHero } from "@/components/ui/page-hero";
 import { EmptyState } from "@/components/ui/empty-state";
-// ⛔ THE ONE COLD-START RULE (§C2 / RULES law 5) — see the `yesPct` note below.
-import { pricedYesPct } from "@/lib/markets/discovery";
+// ⛔ THE ONE PRICE RULE (C1): the count and the carousel read the pools through `price-state.ts`.
+import { liveContest } from "@/lib/markets/live-contest";
 import { parseQuery, matchesQuery, fieldNames, MARKET_SEARCH, MAX_QUERY_LEN } from "@/lib/search";
 import { clampText, oneParam } from "@/lib/query/parse";
 import { LivePulseGrid } from "./pulse-grid";
@@ -132,13 +132,12 @@ export default async function LivePage({
     titleSw: m.titleSw,
     titleZh: m.titleZh,
     category: m.category,
-    // 🔴 `pricedYesPct`, NOT `impliedYesPct` — PV-06, second pass 2026-09-03. This wall is the
-    // SIXTH surface to take the fabricating function (see `updown-board.ts` for the first). It
-    // returns a hardcoded 50 on an empty pool, and `PulseCard` fed it straight to a `TippingBar`
-    // carrying no `empty` prop — so the honest rail was structurally UNREACHABLE here whatever
-    // the pool held, and an untouched market advertised "@ 50% · @ 50%" as a crowd price.
-    // ⛔ null means "no crowd price exists", never "unknown, show 50".
-    yesPct: pricedYesPct(m.yesPool, m.noPool),
+    // ⭐ C1 · THE POOLS, NEVER A FINISHED PRICE. The card decides its own state from them (`priceState`),
+    // exactly as the market card does, so no caller can hand it a figure that disagrees with the money:
+    // PV-06 (2026-09-03) stopped an empty pool printing "@ 50% · @ 50%" here, and until C1 a one-sided
+    // pool still printed "@ 100% · @ 0%".
+    yesPool: m.yesPool,
+    noPool: m.noPool,
     volume: m.yesPool + m.noPool,
     predictors: m.predictorCount,
     timeLeft: isSelectionClosed(m) ? t.market.waitingForResults : timeLeftStr(m.selectionClosedAt ?? m.resolutionAt),
@@ -148,25 +147,14 @@ export default async function LivePage({
     roundId: roundByMarket.get(m.id) ?? null,
   }));
 
-  // ⛔ A MARKET WITH NO POOL IS NOT "TIPPING", IT IS UNPRICED. With `impliedYesPct` every empty
-  // market scored exactly 50 and therefore counted as maximally contested — so this headline
-  // figure was inflated by the markets nobody had bet on at all. `null` is excluded, not
-  // coerced (PV-06).
-  const tippingMarkets = markets.filter((m) => m.yesPct !== null && Math.abs(m.yesPct - 50) < 8).length;
-  // The most-contested markets = odds closest to 50/50 (NOT markets[0], which is
-  // just the soonest-closing since listMarkets sorts by resolutionAt). The aqua
-  // hero features the top few as a swipeable carousel (title pre-localized here
-  // so the client component stays i18n-free).
-  // 🔴 AND AN UNPRICED MARKET CANNOT BE "THE MOST CONTESTED" — it is the emptiest. Because
-  // `impliedYesPct` scored an untouched pool at exactly 50, a market NOBODY had bet on sorted
-  // FIRST here and was promoted into the hero carousel as the wall's most contested question,
-  // under a 32px TippingBar drawn at a perfect half-and-half. That is the fabrication in its
-  // most prominent possible position, and it is why this filter is a `filter`, not a `?? 50`.
-  const topContested = markets
-    .filter((m): m is typeof m & { yesPct: number } => m.yesPct !== null)
-    .sort((a, b) => Math.abs(a.yesPct - 50) - Math.abs(b.yesPct - 50))
-    .slice(0, 6)
-    .map((m) => ({ id: m.id, title: pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh), yesPct: m.yesPct, productLine: m.productLine }));
+  // The header's "n tipping" and the aqua hero's "Most contested" carousel (closest to an even split,
+  // NOT markets[0], which is only the soonest-closing): both from `liveContest`, which counts and features
+  // PRICED markets only — an empty or one-sided pool is not a contest (its history is in that file).
+  // Titles are pre-localised here so the client carousel stays i18n-free.
+  const { tipping: tippingMarkets, mostContested } = liveContest(markets);
+  const topContested = mostContested.map(({ row: m, yesPct }) => ({
+    id: m.id, title: pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh), yesPct, productLine: m.productLine, roundId: m.roundId,
+  }));
 
   return (
     <div className="relative min-h-[calc(100vh-44px)]">

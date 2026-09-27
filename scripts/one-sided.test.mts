@@ -27,14 +27,15 @@
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import { decomment } from "./lib/decomment.mts";
-import { priceState, priceTier, shownYesPct } from "../src/lib/markets/price-state.ts";
+import { priceState, priceTier, shownYesPct, isTipping, TIPPING_BAND } from "../src/lib/markets/price-state.ts";
+import { liveContest } from "../src/lib/markets/live-contest.ts";
+import { leanWords } from "../src/lib/side-label.ts";
 import { matchesOdds, type DiscoveryRow } from "../src/lib/markets/discovery.ts";
 import { dict } from "../src/lib/i18n-dict.ts";
 import { poolFee } from "../src/lib/payout.ts";
 
 /** §14 · the files that may still call the old price helpers. ⛔ It only shrinks (C1: B, C, G each remove entries). */
 const ALLOW_OLD_PRICE: readonly string[] = [
-  "src/app/live/page.tsx",
   "src/app/results/page.tsx",
   "src/app/admin/markets/page.tsx",
   "src/app/admin/markets/[id]/page.tsx",
@@ -338,6 +339,63 @@ log("\n── 8 · the detail page reads the card's rule (C1)");
     && baseAt > 0 && noAt > baseAt && voidAt > baseAt, `base@${baseAt} no@${noAt} void@${voidAt}`);
   check("8.10-control the pre-fix result slot (the YES ink inherited) IS detected",
     !/<div className=\{cn\("mcardp-pct", resultInk\)\}>\{outcomeLabel\}<\/div>/.test('<div className="mcardp-pct">{outcomeLabel}</div>'));
+}
+
+// ── 9 · /live: the pulse wall, its count and its carousel (landing v3 C1, commit B) — and R6(2) ─────
+log("\n── 9 · /live reads the pools, and 'tipping' is ONE rule (C1 · R6(2))");
+{
+  const live = decomment(read("src/app/live/page.tsx"));
+  check("9.1 /live hands the wall the POOLS and builds its count and carousel with `liveContest`, never an old helper",
+    /yesPool: m\.yesPool,/.test(live) && /noPool: m\.noPool,/.test(live) && /liveContest\(markets\)/.test(live)
+    && !/\b(?:pricedYesPct|impliedYesPct)\(/.test(live));
+  const grid = decomment(read("src/app/live/pulse-grid.tsx"));
+  const cardAt = grid.indexOf("function PulseCard(");
+  const pulse = cardAt > 0 ? grid.slice(cardAt) : "";
+  check("9.2 the pulse card decides its state from the pools (slice control: it is the real card, it rises)",
+    /kp-rise/.test(pulse) && /const price = priceState\(market\.yesPool, market\.noPool\);/.test(pulse) && pulse.length < 8_000,
+    String(pulse.length));
+  check("9.3 a one-sided pool is named 'One side only' on the rail and in the caption, never a price",
+    /const noPriceWord = price\.kind === "oneSided" \? t\.market\.oneSideOnly/.test(pulse)
+    && /empty emptyLabel=\{noPriceWord\}/.test(pulse) && /\{noPriceWord\}<\/div>/.test(pulse)
+    && /\{price\.kind !== "priced" \? \(/.test(pulse));
+  check("9.4 'No bets yet' only where nobody ever bet; a cash-out-emptied pool is 'No pool yet'",
+    /: market\.predictors === 0 \? t\.market\.noBetsYet : t\.market\.noPoolYet;/.test(pulse));
+  check("9.5 the refund rule (L22) on every one-sided wall card, in the card's own side words",
+    /\{price\.kind === "oneSided" && \(\s*<p className="mcardp-onesided-note mt-2">\{t\.market\.oneSidedNote\.replace\("\{side\}", sideWord\(t, price\.emptySide, productLine\)\)\}<\/p>/.test(pulse));
+  // Behaviour: the thin wall. A one-sided pool (either side) and an empty one are no contest; a lopsided
+  // two-sided market IS one, at its 1–99 price.
+  const row = (id: string, yesPool: number, noPool: number) => ({ id, yesPool, noPool });
+  const thin = [row("yesOnly", 25_000, 0), row("noOnly", 0, 9_000), row("empty", 0, 0), row("lopsided", 200_000, 1_000)];
+  const a = liveContest(thin);
+  check("9.6 ⛔ a thin wall features ONLY the priced market, at 99 — never a one-sided or empty one — and counts none as tipping",
+    JSON.stringify(a.mostContested.map((x) => [x.row.id, x.yesPct])) === '[["lopsided",99]]' && a.tipping === 0,
+    JSON.stringify({ featured: a.mostContested.map((x) => [x.row.id, x.yesPct]), tipping: a.tipping }));
+  const b = liveContest([...thin, row("close", 10_000, 9_000)]);
+  check("9.6-control a real contest (10,000 v 9,000 → 53) IS featured first and IS counted tipping",
+    b.mostContested[0]?.row.id === "close" && b.mostContested[0]?.yesPct === 53 && b.tipping === 1,
+    JSON.stringify({ featured: b.mostContested.map((x) => [x.row.id, x.yesPct]), tipping: b.tipping }));
+  const fc = decomment(read("src/app/live/featured-contest.tsx"));
+  check("9.7 the carousel links an Up & Down slide to its round (one href), and leans in the product's own words",
+    /const href = m\.productLine === "UPDOWN" \? \(m\.roundId \? `\/updown\/\$\{m\.roundId\}` : "\/updown"\) : `\/markets\/\$\{m\.id\}`;/.test(fc)
+    && (fc.match(/href=\{href as Route\}/g) ?? []).length === 2 && !/`\/markets\/\$\{m\.id\}` as Route/.test(fc)
+    && /\.\.\.leanWords\(t, m\.productLine\)/.test(fc));
+  const lw = leanWords(dict.en as never, "UPDOWN");
+  check("9.7b an Up & Down round leans 'up'/'down' in every locale, never 'yes'/'no'",
+    lw.leansYes === "leans up" && lw.leansNo === "leans down"
+    && (["sw", "zh"] as const).every((loc) => {
+      const w = leanWords(dict[loc] as never, "UPDOWN");
+      const m = dict[loc].market as Record<string, string>;
+      return !!w.leansYes && w.leansYes !== m.leansYes && w.leansNo !== m.leansNo;
+    }));
+  // ⭐ R6(2) · ONE tipping rule — the constant, and every surface reads it through `isTipping`.
+  const TIPPING_READERS = ["src/components/brand.tsx", "src/components/markets/market-card.tsx", "src/lib/markets/share-preview.ts", "src/lib/markets/live-contest.ts"];
+  const ownRule = /Math\.abs\(\s*[\w.]+\s*-\s*50\s*\)\s*<=?\s*\d/;
+  const readers = TIPPING_READERS.map((f) => ({ f, src: decomment(read(f)) }));
+  const bad = readers.filter(({ src }) => !/\bisTipping\(/.test(src) || ownRule.test(src)).map(({ f }) => f);
+  check("9.8 ⛔ R6(2): ONE tipping rule, |YES − 50| ≤ 3 — the bar's lean word, the card badge, the share preview and /live all read `isTipping`, none keeps its own threshold",
+    TIPPING_BAND === 3 && isTipping(53) && isTipping(47) && !isTipping(54) && !isTipping(46) && bad.length === 0, bad.join(", "));
+  check("9.8-control a surface keeping its own threshold IS detected (the bar's old `< 3`, /live's old `< 8`)",
+    ownRule.test("{Math.abs(target - 50) < 3 ? labels.tipping : x}") && ownRule.test("Math.abs(m.yesPct - 50) < 8"));
 }
 
 // ── 14 · the sweep: no page or component prints the old price helpers (C1; the list only shrinks) ─

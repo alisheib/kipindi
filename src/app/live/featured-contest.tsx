@@ -12,7 +12,7 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import Link from "next/link";
 import type { Route } from "next";
-import { sideWord } from "@/lib/side-label";
+import { leanWords, sideWord } from "@/lib/side-label";
 import { TippingBar } from "@/components/brand";
 import { I } from "@/components/ui/glyphs";
 import { useT } from "@/lib/i18n";
@@ -21,7 +21,9 @@ import { useT } from "@/lib/i18n";
 // and this type used to drop the field — so the hero named its sides in poll vocabulary over an
 // Up & Down round. An optional field with a `?? "MARKET"` at the render would be the same bug
 // wearing a default; required means `tsc` makes /live state it.
-export type FeaturedMarket = { id: string; title: string; yesPct: number; productLine: "MARKET" | "UPDOWN" };
+// `roundId` is REQUIRED for the same reason: an Up & Down slide opens its own round page directly (no
+// redirect hop through /markets/[id]), and `null` sends it to the Up & Down board.
+export type FeaturedMarket = { id: string; title: string; yesPct: number; productLine: "MARKET" | "UPDOWN"; roundId: string | null };
 
 const AUTO_ADVANCE_MS = 6000;
 const SWIPE_THRESHOLD = 40;
@@ -73,6 +75,7 @@ export function FeaturedContest({
 
   if (n === 0) return null;
   const m = markets[Math.min(idx, n - 1)];
+  const href = m.productLine === "UPDOWN" ? (m.roundId ? `/updown/${m.roundId}` : "/updown") : `/markets/${m.id}`;
 
   return (
     <div
@@ -142,7 +145,7 @@ export function FeaturedContest({
             collapse the track and bring the defect straight back; `aria-hidden` alone would
             leave six focusable headings inside one link, the exact self-contradiction the dot
             rail's note below exists to describe. */}
-        <Link href={`/markets/${m.id}` as Route} className="group block">
+        <Link href={href as Route} className="group block">
           <div className="kp-slide-stack mb-4">
             {markets.map((mm, i) => (
               <h2
@@ -155,17 +158,16 @@ export function FeaturedContest({
             ))}
           </div>
         </Link>
-        {/* ⭐ NO `empty` BRANCH HERE, AND THAT IS A TYPE GUARANTEE RATHER THAN AN OVERSIGHT.
-            `/live`'s `topContested` narrows with `.filter((m): m is … & { yesPct: number })`, so
-            an unpriced market cannot reach this carousel at all — which is the right answer twice
-            over: a market NOBODY has bet on is not "the most contested", it is the emptiest, and
-            before PV-06 it sorted FIRST here (an untouched pool scored exactly 50 through
-            `impliedYesPct`) and was promoted into the hero under a 32px bar drawn at a perfect
-            half-and-half. ⛔ If you ever widen this prop to `number | null`, add the branch —
-            the guarantee lives in the caller's filter, not in this file. */}
+        {/* ⭐ NO `empty` BRANCH HERE, AND THAT IS A GUARANTEE RATHER THAN AN OVERSIGHT. `/live` builds
+            these slides with `liveContest` (`lib/markets/live-contest.ts`), which features PRICED markets
+            only — through `shownYesPct`, so an empty pool AND a one-sided pool (C1) are both unable to
+            reach this carousel, and every figure here is a two-sided price within 1–99. A market nobody
+            has bet on is not "the most contested", it is the emptiest; one with money on one side has no
+            price at all. ⛔ If you ever widen this prop to `number | null`, add the branch — the guarantee
+            lives in the caller's helper, not in this file. */}
         <TippingBar yesPct={m.yesPct} height={32} showLabels
           probabilityLabel={t.market.probBarAria.replace("{side}", sideWord(t, "YES", m.productLine))}
-          labels={{ yes: sideWord(t, "YES", m.productLine), no: sideWord(t, "NO", m.productLine), tipping: t.market.tipping, leansYes: t.market.leansYes, leansNo: t.market.leansNo }} />
+          labels={{ yes: sideWord(t, "YES", m.productLine), no: sideWord(t, "NO", m.productLine), tipping: t.market.tipping, ...leanWords(t, m.productLine) }} />
         {/* `flex-wrap` (2026-08-21): the dot rail below grew from ~88px to 144px when its dots
             gained real hit areas (six slides at 24px, against six 6/18px dots on 8px gaps), so
             at 360 — where this panel has ~296px of content width — it can no longer be certain
@@ -173,7 +175,7 @@ export function FeaturedContest({
             horizontal overflow, and a squeezed rail would re-create the tiny targets the
             padding just removed. */}
         <div className="mt-4 flex flex-wrap items-center gap-3">
-          <Link href={`/markets/${m.id}` as Route} className="btn btn-primary btn-md inline-flex">
+          <Link href={href as Route} className="btn btn-primary btn-md inline-flex">
             {openLabel}
           </Link>
           {/* 🔴 THE PAGER SAID TWO OPPOSITE THINGS ABOUT ITSELF, AND SHIPPED BOTH.
