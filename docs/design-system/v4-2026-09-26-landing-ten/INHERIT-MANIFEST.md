@@ -45,6 +45,24 @@ and §1 (status board). This file is frozen once written, except to add a ruling
 | R8 | Ali, 2026-09-27, sending the Gaming Board's payment acknowledgement: "all other decisions you take them, and you act as a Tanzania native speaker … full perfection, end to end, sealed — visual and logical" | (1) **Licence proof on file:** the Gaming Board of Tanzania's acknowledgement of the LICENCE FEE for operations under Sec. 51(2) of the Gaming Act, paid 2026-09-05 (Ali holds the document; ⛔ it is not committed — it carries a personal e-mail). It substantiates "licensed" (the hero's claim state N). It is NOT a first-of-kind finding, so "first" stays OFF until a Board letter or register entry says so. (2) **The build takes every remaining decision** and records each here or in the unit's docs. (3) **The build performs the native Swahili review** (acting as a Tanzanian native speaker: Tanzanian, not Kenyan, usage; the product's own dictionary words first) — this replaces the human reviewer of R7(7) and the band's hallway test; every new sw line gets that review pass before it ships, and a line that passes loses its "drafted, marked for native review" comment. zh gets the same care. (4) **Q2 decided: the "Follow 50pick" panel stays as it is** — his own 2026-09-12 instruction ("in front of them, click x to hide"); once per visit, never over a money control. (5) **Q3 decided: the share preview speaks Swahili** (`titleSw` + a Swahili description) — the default locale and the audience a shared link reaches; og:locale already says sw_TZ. (6) **Wallet names:** the hero names only the mobile-money methods whose PAYOUT path is live in the platform's own config and on production's withdraw page — verified by the build, not asked of Ali; a method that cannot pay out is not named in "deposit and withdraw with …". |
 | R9 | Ali, 2026-09-27, as owner: "please say we're the first — I'm the owner and we're the first" | **The hero says it: "Tanzania's first licensed prediction market" / sw "Soko la kwanza la utabiri lenye leseni Tanzania" / zh "坦桑尼亚首家持牌预测市场"** — claim state P of `specs/hero-v3.md`, shipped now. Evidence on record: the OWNER'S ATTESTATION (this ruling) that 50pick is Tanzania's first licensed prediction market, plus the Gaming Board's licence-fee acknowledgement (2026-09-05, Sec. 51(2); R8(1)). The risk was put to him first (the Fair Competition Act s.15/16 and the Board's 'misleading' rule) and he ruled with it. ⭐ "licensed" stays in the claim: it is what makes "first" true against offshore sites that reach Tanzanians without a Board licence. `FIRST_LICENSED_EVIDENCE()` (the spec's gate) is set to this ruling's date, 2026-09-27, citing R9; if the Board or a competitor ever disputes it, the claim returns to state N ("Licensed prediction market · Tanzania") in one change. Supersedes R7(1) and R8(1)'s "first stays off". |
 
+
+**R8 applied — decisions the build took for WP12, the Up & Down band (2026-09-27/28; each from the four-expert frame
+panel's findings, the record in `docs/LANDING-TEN.md` §2.1 WP12 "Frame rating").** (a) Card inset below 768 is the
+market cards' `--sp-4`, not the spec's `--sp-5` (the dated detail needs the 8px at 360). (b) The detail is two
+no-break clauses with a separator span; below 360 they stack and the "·" hides. (c) The level line's tail ("— haitoshi
+kuamua") is not shown on the band — it restates the verdict; the round page keeps it. (d) The plate's words block has
+one height in every state, words centred — the picks never move on a refresh. (e) Beside a fresh read (max(2.5%,
+12px)) the playhead line is not drawn and "now" is the bright end of the played stretch; just past the lock it parks
+on the post. The spec's "playhead drawn as a line" otherwise stands. (f) Past the deciding instant the headline is
+"Inasubiri matokeo", never the last lead; the rule turns past tense. (g) The picks link to `#stake`; the round page's
+stake panel lands at the bottom of the view with the countdown and the confirmed price above it, and the pool card
+moves after the stake panel (DOM order). (h) Native review: "Tofauti na ufunguzi isipofika $0.40, kila dau linarudi."
+(names the open, strictly "does not reach"); "muda ukiisha"; "tokeo" → "matokeo" platform-wide; "juu au chini" and
+"kila baada ya dakika chache" never split; the timer's spoken name is a duration. (i) Platform-wide: the solid
+buttons' hover lift only where a pointer hovers (touch :hover lit the tapped side — a lit leader, L17). Declined, with
+the recorded reason: stretching the picks (48px centred, §15.4), the playhead out of the plot (§0), spending the
+section link's tap box (C13), dropping the S3 refund note (I-2), a second countdown in the stake panel. S6 is not
+producible by the engine (E-83) and is pinned by `test:updown-match` §8.
 ---
 
 ## 3 · Where our laws beat the delivery
