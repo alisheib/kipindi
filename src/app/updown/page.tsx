@@ -322,7 +322,6 @@ export default async function UpDownPage({
                 myPayoutIfDown={r.myPayoutIfDown}
                 volumeTzs={r.volumeTzs}
                 players={r.players}
-                upPct={r.upPct}
                 pricing={r.pricing}
                 state={r.state}
                 outcome={r.outcome === "VOID" ? null : r.outcome}

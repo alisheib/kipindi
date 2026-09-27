@@ -1454,7 +1454,11 @@ own words beneath it.**
   priced snapshots only — no one-sided 100 or empty 50 on a line, 99 not 100 on a lopsided pool, no move from a
   baseline that had no price. `test:history` §5 (proven red on the pre-C1 module), `test:one-sided` §11. ✅ **C1
   commit E**: a SETTLED market's share preview (og image, og:description, JSON-LD) leads with its result in its
-  own side's ink ("Result: NO."), reads its split as the final pool, and states no price. `test:share-preview` §4. ⭐ S07-results-01 and the nested half of
+  own side's ink ("Result: NO."), reads its split as the final pool, and states no price. `test:share-preview` §4.
+  ✅ **C1 commit F**: the `/updown` card and the round page draw a split only where both sides hold money (from
+  the round's raw pools; the board ships no finished `upPct` any more); a one-sided round shows the dashed rail
+  named "One side only" and the label row — no more "Up 100% · 0% Down" above "Nobody has backed Down yet".
+  `test:one-sided` §13; `qa:cold-start`'s invariant is now "a split ⟺ both sides funded". ⭐ S07-results-01 and the nested half of
   S07-results-26 (share on a settled card navigating away) are delivered by landing v3 WP14b.
 
 **14. Item 7 — the leaderboard ranks raw ROI. RULED: rank by the law its own tiers already state.**

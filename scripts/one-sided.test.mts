@@ -456,6 +456,35 @@ log("\n── 11 · a chart point needs a price (C1; behaviour in test:history �
   check("11.4-control the pre-C1 spelling IS detected", /Math\.round\(\s*\w+\.yes \* 100\)/.test("p: Math.round(s.yes * 100)"));
 }
 
+// ── 13 · Up & Down: the card and the round page draw a price only from two funded sides (C1, commit F) ─
+log("\n── 13 · Up & Down reads the pools (C1)");
+{
+  const udCard = decomment(read("src/components/updown/updown-card.tsx"));
+  const round = decomment(read("src/app/updown/[roundId]/page.tsx"));
+  const splitAt = udCard.indexOf('<div className="ud-split">');
+  const split = splitAt > 0 ? udCard.slice(splitAt, splitAt + 2_500) : "";
+  check("13.0 slice sanity: the card's split block is found (it holds the kit bar)", split.includes("<TippingBar") && split.includes("ud-split"), String(split.length));
+  check("13.1 the card decides its price from the round's RAW pools, and prints none without two sides",
+    /const price = priceState\(pricing\.upPool, pricing\.downPool\);/.test(udCard)
+    && /const upPct = price\.kind === "priced" \? price\.yesPct : null;/.test(udCard));
+  check("13.2 …and so does the round page",
+    /const price = priceState\(round\.pricing\.upPool, round\.pricing\.downPool\);/.test(round)
+    && /const upPct = price\.kind === "priced" \? price\.yesPct : null;/.test(round));
+  check("13.3 the empty rail is named for its state — 'One side only', 'No bets yet' only where nobody played, else 'No pool yet'",
+    udCard.includes("emptyLabel={price.kind === \"oneSided\" ? t.market.oneSideOnly : players === 0 ? t.market.noBetsYet : t.market.noPoolYet}")
+    && round.includes("emptyLabel={price.kind === \"oneSided\" ? t.market.oneSideOnly : round.players === 0 ? t.market.noBetsYet : t.market.noPoolYet}"));
+  const roundSplitAt = round.indexOf("{upPct !== null && downPct !== null ? (");
+  const roundSplit = roundSplitAt > 0 ? round.slice(roundSplitAt, roundSplitAt + 1_500) : "";
+  check("13.4 a one-sided round carries the 'One side only' label where the split would be (card and round page)",
+    /\) : price\.kind === "oneSided" \? \(\s*<div className="flex"><span className="mcardp-oneside">\{t\.market\.oneSideOnly\}<\/span><\/div>/.test(split)
+    && /\) : price\.kind === "oneSided" \? \(\s*<div className="flex"><span className="mcardp-oneside">\{t\.market\.oneSideOnly\}<\/span><\/div>/.test(roundSplit));
+  const board = decomment(read("src/lib/server/updown-board.ts"));
+  const udPage = decomment(read("src/app/updown/page.tsx"));
+  check("13.5 ⛔ the board ships no finished price any more (no `upPct`, no old helper), and the page passes none",
+    !/\bupPct\b/.test(board) && !/pricedYesPct/.test(board) && !/upPct=/.test(udPage));
+  check("13.5-control the pre-C1 producer line IS detected", /\bupPct\b/.test("    upPct: pricedYesPct(m.yesPool, m.noPool),"));
+}
+
 // ── 14 · the sweep: no page or component prints the old price helpers (C1; the list only shrinks) ─
 log("\n── 14 · no surface calls impliedYesPct/pricedYesPct any more, except the declared remainder");
 {

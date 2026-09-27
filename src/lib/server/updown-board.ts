@@ -19,14 +19,6 @@ import { publicSourceClassFor, type PublicSourceClass } from "./updown-symbols";
 // CHART-SPRINT-2 · the terminal chart's vendor-bars tier (real market OHLC; E-53-safe proxying).
 import { vendorBarsFor, VENDOR_PLAN } from "./updown-terminal-vendor";
 import { ratesFor, listPositionsForUser, listPositionsForMarket, projectedPayout } from "./market-service";
-// 🔴 `pricedYesPct`, NOT `impliedYesPct` — PV-06, 2026-09-03. Two functions answer "what share
-// of the pool is on UP", and they disagree about the only case that matters: `impliedYesPct`
-// returns a hardcoded **50** on an empty pool (`market-service.ts:315`), `pricedYesPct` returns
-// **null**. This board took the fabricating one, so a round with `VOL TZS 0` and ZERO predictors
-// rendered a filled "Up 50% · 50% Down" bar on production — a crowd price invented for a crowd
-// that does not exist (RULES law 5 / §C2). Five surfaces already consume the honest rule; this
-// was the sixth that was never wired to it.
-import { pricedYesPct } from "@/lib/markets/discovery";
 // ⭐ D2 · the shape the player surfaces price a bet from. Isomorphic by design — the card is a
 // client component, this is the server, and one definition of "what would I be paid" is the
 // point (same reasoning as `updown-refund-reason.ts`).
@@ -98,9 +90,6 @@ export type BoardRound = {
   voidReason: string | null;
   volumeTzs: number;
   players: number;
-  /** The UP share of the pool, or **null** when no money is in it — see the `pricedYesPct`
-   *  import note. ⛔ Never coalesce this to 50 at a call site; that is the defect, relocated. */
-  upPct: number | null;
   /**
    * ⭐ D2 · THE ROUND'S REAL MONEY, so a player can be told what they would ACTUALLY be paid
    * before they bet — see `@/lib/updown-pricing`.
@@ -113,7 +102,12 @@ export type BoardRound = {
    * on a real one-sided round: the fat side returns exactly 1.00× and the empty side 16.66×.
    * Both buttons printed 1.5.
    *
-   * ⛔ RAW SHILLINGS, NOT `upPct`. The percentage is rounded to an integer for the bar, and
+   * ⭐ C1 · AND THE ONLY PRICE A SURFACE MAY DRAW COMES FROM THESE POOLS, through `priceState`: the
+   * board used to ship a finished `upPct` as well (PV-06 had made it null on an EMPTY pool, but a
+   * one-sided round still arrived as 100 or 0 and printed "Up 100% · 0% Down" directly above
+   * "Nobody has backed Down yet"). The field is gone, so no surface can draw a price the pools deny.
+   *
+   * ⛔ RAW SHILLINGS, NOT A PERCENTAGE. A percentage is rounded to an integer for the bar, and
    * "is this side empty" — the whole question the copy answers — cannot be read off a rounded
    * percentage: 0 and 400 on a 100,000 pool are both `0%`.
    *
@@ -439,7 +433,6 @@ async function toBoardRound(
     voidReason: r.voidReason,
     volumeTzs: m.yesPool + m.noPool,
     players: m.predictorCount,
-    upPct: pricedYesPct(m.yesPool, m.noPool),
     // ⭐ D2 · the pool itself, so every player surface can price a bet through the SAME
     // `payoutFor` settlement pays with. See the field comment for what this replaced.
     pricing: {

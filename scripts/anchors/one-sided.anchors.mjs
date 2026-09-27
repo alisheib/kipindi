@@ -196,4 +196,19 @@ export const MUTATIONS = [
     to: `return [{ s, pct: Math.round((s as { yes?: number }).yes! * 100) }];`,
     expect: "11.1",
   },
+  // ── landing v3 C1 · commit F — Up & Down ──────────────────────────────────────────────────────────
+  {
+    name: "C1-F · the Up & Down card prices a one-sided round again ('Up 100% · 0% Down')",
+    file: "src/components/updown/updown-card.tsx",
+    from: `  const upPct = price.kind === "priced" ? price.yesPct : null;`,
+    to: `  const upPct = pricing.upPool + pricing.downPool > 0 ? Math.round((pricing.upPool / (pricing.upPool + pricing.downPool)) * 100) : null;`,
+    expect: "13.1",
+  },
+  {
+    name: "C1-F · the Up & Down card calls every empty rail 'No bets yet' again (a one-sided round has money)",
+    file: "src/components/updown/updown-card.tsx",
+    from: `emptyLabel={price.kind === "oneSided" ? t.market.oneSideOnly : players === 0 ? t.market.noBetsYet : t.market.noPoolYet}`,
+    to: `emptyLabel={t.market.noBetsYet}`,
+    expect: "13.3",
+  },
 ];
