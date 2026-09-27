@@ -806,11 +806,19 @@ async function runSurface(f: Fixtures): Promise<void> {
   // ⚠️ SELF-CONTAINED, like S19b: a stop and a resume from the player's own link write the two rows.
   await stopMarketing(f.playerToken, "SW");
   await resumeMarketing(f.playerToken, "SW");
-  const auditRows = (await getAuditForTargetsDurable({
+  // ⚠️ POLLED, NEVER SLEPT: `syncPlayerToggle` writes its audit row fire-and-forget (the house
+  // pattern), so a read straight after the act raced it — green in the suite, red in the red
+  // harness's baseline, where the timing differs (found 2026-09-27: 1 row of 2).
+  const readAudit = async () => (await getAuditForTargetsDurable({
     targetType: "User", targetIds: [f.playerId],
     actions: ["privacy.marketing_consent.withdrawn", "privacy.marketing_consent.given"],
     sinceIso: "1970-01-01T00:00:00.000Z",
   })).entries;
+  let auditRows = await readAudit();
+  for (let i = 0; i < 40 && auditRows.length < 2; i++) {
+    await new Promise((r) => setTimeout(r, 50));
+    auditRows = await readAudit();
+  }
   const payloads = JSON.stringify(auditRows.map((e) => e.payload));
   ok("S22 · ⛔ D6 — the player's toggle audit rows name the token REFERENCE, never the live token (`/admin/audit` prints payloads)",
     auditRows.length >= 2 && !payloads.includes(f.playerToken) && payloads.includes(optOutTokenRef(f.playerToken)),
