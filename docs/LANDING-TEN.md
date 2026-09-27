@@ -39,8 +39,11 @@ V20, the chat bubble under sheets) and D5. The specs are build inputs: delete ea
 **⭐ Ali, 2026-09-27: "make sure everything in the plan is applied, every decision, every design component perfectly made,
 new components built all consistent with our theme design kit."** Every unit is checked against R1–R7, L1–L23 and the kit
 before it ships — frames looked at, never only a green gate.
-**Ali's asks of 2026-09-27, still open:** where the "Follow 50pick" panel may appear (manifest Q2); the share preview's
-language (Q3); the hallway-test people and the sw/zh native reviewers.
+**⭐ R8 (Ali, 2026-09-27): the build takes every remaining decision and IS the Tanzanian native Swahili reviewer** — no
+human reviewer or hallway test is waited for; "licensed" is substantiated by the Board's licence-fee acknowledgement
+(2026-09-05, Sec. 51(2)), "first" stays off; the Follow panel stays; the share preview speaks Swahili (a WP14b
+follow-up for this batch); the hero names only wallets whose payout path is live. "Full perfection, end to end,
+sealed — visual and logical."
 **⭐ STANDING (Ali, 2026-09-27): platform-wide consistency, mobile-first, whatever the session count.** When a
 landing row shows the same rule broken on another surface, fix it there too — do not park it with another lane.
 First such batch, **C1 · one price rule everywhere**: the detail page's bar, side picker and JSON-LD, and its
