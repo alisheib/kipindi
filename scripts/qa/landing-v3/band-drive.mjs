@@ -207,11 +207,19 @@ try {
     await page.waitForURL(/\/updown\//, { timeout: 60000 });
     await page.waitForTimeout(3000);
     await page.addStyleTag({ content: "nextjs-portal,[data-nextjs-toast]{display:none!important}" }).catch(() => {});
+    const landed = await page.evaluate(() => {
+      const s = document.getElementById("stake"); const h = document.querySelector("header");
+      const chip = s?.querySelector("[data-kit-chip]")?.getBoundingClientRect();
+      return s ? { top: Math.round(s.getBoundingClientRect().top), header: Math.round(h?.getBoundingClientRect().bottom ?? 0),
+        chipInView: !!chip && chip.top >= 0 && chip.bottom <= innerHeight, chip: (s.querySelector("[data-kit-chip]")?.textContent || "").trim(),
+        focused: document.activeElement === s } : null;
+    });
+    check("a pick LANDS on the stake panel: its top just under the header, the side Chip in view (measured before any scroll)",
+      !!landed && landed.top >= landed.header - 1 && landed.top <= landed.header + 120 && landed.chipInView,
+      JSON.stringify(landed));
     await page.screenshot({ path: join(FR, "PAIR-2-round-360-sw-b.png") });      // where #stake lands the player
     await page.evaluate(() => scrollTo(0, 0)); await page.waitForTimeout(400);
     await page.screenshot({ path: join(FR, "PAIR-2-round-360-sw.png") });        // the page's top
-    const landed = await page.evaluate(() => { const s = document.getElementById("stake"); return s ? Math.round(s.getBoundingClientRect().top) : null; });
-    check("the round page has the #stake target the picks land on", landed != null, `stake panel at ${landed}px from the page top`);
     check("click-through lands on the round with side=UP", /\/updown\/[^?]+\?side=UP/.test(page.url()), page.url());
     await ctx.close();
   }
@@ -317,6 +325,18 @@ try {
     await ctx.close();
   }
   report.s1Read = s1.read;
+  {
+    const offs = {};
+    for (const st of ["S1", "S2", "S3", "S4", "S5", "S7"]) for (const [cell, v] of Object.entries(report.states[st] ?? {})) {
+      const f = v.figures; if (!f?.plate || !f.taps?.length) continue;
+      (offs[cell] ??= []).push([st, Math.round(f.taps[0].top - f.plate.top)]);
+    }
+    for (const [cell, list] of Object.entries(offs)) {
+      if (list.length < 2) continue;
+      const vals = list.map(([, o]) => o), spread = Math.max(...vals) - Math.min(...vals);
+      check(`the picks hold one position across states (${cell})`, spread <= 2, list.map(([s, o]) => `${s} ${o}px`).join(" · "));
+    }
+  }
 
 
 } catch (e) {

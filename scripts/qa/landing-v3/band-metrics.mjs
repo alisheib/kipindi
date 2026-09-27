@@ -145,7 +145,7 @@ export function MEASURE_BAND() {
   const ties = [...wrap.querySelectorAll(".kp-udtrack__tie")];
   const markR = rectOf(q(".kp-udtrack__stem--latest")) && rectOf(ties.at(-1))
     ? [rectOf(q(".kp-udtrack__stem--latest")), rectOf(ties.at(-1))].sort((a, b) => b.left - a.left)[0]
-    : rectOf(q(".kp-udtrack__stem--latest")) ?? rectOf(ties.at(-1));
+    : rectOf(q(".kp-udtrack__stem--latest")) ?? rectOf(ties.at(-1)) ?? rectOf(q(".kp-udtrack__kick"));
   const overlap = nowR && markR
     ? Math.max(0, Math.min(nowR.right, markR.right + 1) - Math.max(nowR.left, markR.left - 1))
       * Math.max(0, Math.min(nowR.bottom, markR.bottom + 1) - Math.max(nowR.top, markR.top - 1))
@@ -163,7 +163,9 @@ export function MEASURE_BAND() {
     closed: wrap.hasAttribute("data-closed"),
     band: box(band), wrap: box(wrap), copy: box(copy), round: box(round), plate, track: box(track),
     fixture: box(fixture), clockRow: box(clockRow), clockRowClosed: vis(clockClosed),
-    clockRowLines: lines(clockRow),
+    // max(row, caption): the row is a fixed 20px, so a caption that wraps overflows it without growing it — the
+    // row alone would read one line (the RED control went blind to exactly that on drive 5).
+    clockRowLines: clockRow ? Math.max(lines(clockRow) ?? 1, lines(clockRow.querySelector(".kp-udclock__cap")) ?? 1) : null,
     verdict: box(verdict), verdictLines: lines(verdict), verdictPx: verdict ? parseFloat(getComputedStyle(verdict).fontSize) : null,
     verdictText: text(verdict),
     detail: box(detail), detailLines: lines(detail), detailText: text(detail), delta, detailNeed, detailRoom,

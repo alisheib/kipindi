@@ -19,6 +19,7 @@
  * verdict still wins when it already says locked. The belt under this braces is in
  * the hook itself, which refuses `place()` past the lock on every surface.
  */
+import { useEffect, useRef } from "react";
 import { Chip } from "@/components/ui/chip";
 import { useServerNow } from "./round-countdown";
 import { roundPhase, type RoundPhaseState } from "@/lib/updown-card-phase";
@@ -75,9 +76,20 @@ export function RoundActionPanel(props: {
   const nowMs = now ?? serverNowMs;
   const { bettable, locked } = roundPhase({ state, selectionClosesAtMs, closesAtMs: Date.parse(closesAt), nowMs });
 
+  // A pick from the landing band links here with #stake: the player lands ON the stake panel — the bet slip, the side
+  // locked — not two screens above it. The App Router does not scroll to a hash whose element renders after the
+  // navigation commits, so the panel does it once, and takes focus for keyboard and screen-reader users
+  // (frame panel round 3, 2026-09-27: the tap landed on the page's top).
+  const stakeRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (!bettable || window.location.hash !== "#stake" || !stakeRef.current) return;
+    stakeRef.current.scrollIntoView({ block: "start" });
+    stakeRef.current.focus({ preventScroll: true });
+  }, [bettable]);
+
   if (bettable) {
     return (
-      <section id="stake" aria-label={props.ariaStake} className="scroll-mt-24" style={{ ...cardStyle, padding: "14px 16px 16px" }}>
+      <section id="stake" ref={stakeRef} tabIndex={-1} aria-label={props.ariaStake} className="scroll-mt-24" style={{ ...cardStyle, padding: "14px 16px 16px" }}>
         <RoundStakePanel
           {...stakePanel}
           selectionClosesAtMs={selectionClosesAtMs}

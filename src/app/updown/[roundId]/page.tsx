@@ -180,7 +180,12 @@ export default async function UpDownRoundPage({
   const source = decided
     ? `${t.market[SOURCE_CLASS_KEY[asset.sourceClass]]}${stamp ? ` · ${stamp}` : ""}`
     : t.market[SOURCE_CLASS_KEY[asset.sourceClass]];
-  const aboveBelow = decided ? moveText : [moveText, stamp].filter(Boolean).join(" · ") || null;
+  // Two clauses, never split inside: the move and its quote stamp. Below 400 they stack and the "·" hides, so no
+  // line ends on a dangling dot — the landing band's own rule (frame panel round 3, 2026-09-27).
+  const aboveBelow = decided ? moveText
+    : moveText && stamp
+      ? <><span className="ud-hero-chunk">{moveText}</span><span className="ud-hero-sep">{" · "}</span><span className="ud-hero-chunk">{stamp}</span></>
+      : (moveText ?? stamp);
 
   // The BAR is a percentage and rounds; the MONEY beside it is not.
   //

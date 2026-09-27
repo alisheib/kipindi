@@ -24,7 +24,7 @@
  */
 import type { CSSProperties } from "react";
 import { I } from "@/components/ui/glyphs";
-import type { UpdownBandRound } from "@/lib/updown-match";
+import { matchLead, type UpdownBandRound } from "@/lib/updown-match";
 import { MATCH, matchGeometry } from "./updown-match-geometry";
 import { UpdownMatchNow } from "./updown-match-now";
 
@@ -52,7 +52,10 @@ export function UpdownMatchTrack({ round, label, openLabel, anchorMs }: {
   const lastTie = g.ties.length ? g.ties[g.ties.length - 1] : null;
   const mark = lastTie && (!latestStem || lastTie.x > latestStem.x)
     ? { x: lastTie.x, kind: "tie" as const }
-    : latestStem ? { x: latestStem.x, kind: latestStem.side } : null;
+    : latestStem ? { x: latestStem.x, kind: latestStem.side }
+      : g.kick ? { x: 0, kind: "kick" as const } : null;
+  // The void band belongs to the level state (spec §8 S3); at kick-off the track is dot, rail and playhead only.
+  const showVoid = g.void != null && matchLead(round) === "level";
   const gate = pct(g.gatePct);
   const at = (x: number) => ({ "--x": pct(x) }) as CSSProperties;
   return (
@@ -65,7 +68,7 @@ export function UpdownMatchTrack({ round, label, openLabel, anchorMs }: {
       </div>
       <div className="kp-udtrack__plot" aria-hidden>
         <svg className="kp-udtrack__svg" width="100%" height="100%" focusable="false">
-          {g.void && <rect className="kp-udtrack__void" x="0" width="100%" y={pct(g.void.y)} height={pct(g.void.h)} />}
+          {showVoid && g.void && <rect className="kp-udtrack__void" x="0" width="100%" y={pct(g.void.y)} height={pct(g.void.h)} />}
           <line className="kp-udtrack__rail" x1="0" y1="50%" x2={gate} y2="50%" />
           <line className="kp-udtrack__locked" x1={gate} y1="50%" x2="100%" y2="50%" />
           <line className="kp-udtrack__post" x1={gate} y1="0" x2={gate} y2="100%" />

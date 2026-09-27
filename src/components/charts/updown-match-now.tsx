@@ -29,7 +29,7 @@ export function UpdownMatchNow({ opensAtMs, closesAtMs, anchorMs, markX = null, 
   anchorMs: number;
   /** The newest data mark's x (%) and kind — the newest stem (its side) or a tie tick — or null. */
   markX?: number | null;
-  markKind?: "up" | "down" | "tie" | null;
+  markKind?: "up" | "down" | "tie" | "kick" | null;
 }) {
   const now = useServerNowGated(anchorMs, (n) => String(Math.round(matchX(n, opensAtMs, closesAtMs) * 4)));
   const x = matchX(now ?? anchorMs, opensAtMs, closesAtMs);

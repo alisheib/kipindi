@@ -31,6 +31,7 @@
  * Pure and exported so the arithmetic can be tested without a browser; the component is the
  * only caller.
  */
+import type { ReactNode } from "react";
 import { usd as usdPrice } from "@/lib/usd-price";
 
 export function priceTagOffsetY(
@@ -73,7 +74,7 @@ export function PriceHero({
     upLabel?: string;       // "Up target"
     downLabel?: string;     // "Down target"
     awaitingRead: string;   // "Awaiting read"
-    aboveBelow: string | null; // "Above open by $4.45" — null when no live price
+    aboveBelow: ReactNode | null; // "Above open by $4.45" — null when no live price
     source: string | null;  // "Source: Kitco · quoted 14:34:58" — null when unknown
     chartAlt: string;
   };
