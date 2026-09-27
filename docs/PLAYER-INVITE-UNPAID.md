@@ -681,9 +681,25 @@ values were "stored, not applied". Since 2026-09-26 the server refuses the Save 
 
 ### 2026-09-26/27 · This release: the Owner's switch, the retired deposit modes, the fix round
 
-LIVE: <sha> — verified on production <date>
+✅ **DONE — LIVE `ec2f3253` (2026-09-27), verified on production.** Development of this lane is complete:
+nothing is pending but the Owner's own decision to make invites payable (Gaming Board clearance first).
+- `/api/health` → `inviteRewards { payable: false, paying: false, ceiling: "OWNER" }`; the served commit
+  (`?dpl=`) is `ec2f3253`, and the state was the same after every drive below.
+- Railway (production, service `50pick`): no `FEATURE_*` variable at all — names listed, nothing changed —
+  so the Owner's switch is the only control.
+- `npm run qa:invite-phone` as `mobile01` on https://www.50pick.tz: every check passed, in sw, en and zh —
+  the page is unpaid and says so, with no money words.
+- `npm run qa:invite-admin` as the Owner (Ali's go-ahead, 2026-09-27): every check passed — chip "Not
+  payable", "Never switched on", every reward setting locked with no Save, "Make payable…" opens the
+  ceremony whose Confirm stays disabled with a reason and a partial or wrong-case word, then Cancel. The
+  armed state is proven only locally (it never types MAKE PAYABLE on production), and the drive's safety net
+  aborted every write — proven on each context by a decoy.
+- Before the push, on the same tree: `npm run typecheck`, both invite suites and their red controls (every
+  planted defect caught), and locally `npm run qa:invite-ceremony` — Not payable → the ceremony → Payable →
+  arm the prize and Save → Stop paying → Not payable, with `/api/health` `payable`/`paying` agreeing at each
+  step. Counts are not quoted here: re-derive them by running the commands.
 
-What this release does, as the code on branch `release-final` makes it true:
+What this release does, as the code on `main` makes it true:
 - **Payment becomes the Owner's switch** on `/admin/affiliate` (§3, §12): **Not payable** by default
   and in every failure mode; Make payable is the Owner's ceremony (a cleaned reason of 5–300
   characters and the typed words `MAKE PAYABLE`, defaulting to every reward off); Stop paying is the
