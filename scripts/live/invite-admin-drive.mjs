@@ -65,7 +65,9 @@ const WORDS = {
   titleOn: /Payable · Zinalipwa/i,
   bodyOff: /Invites are tracked; 50pick pays nothing/i,
   lockedCaption: /Locked — Not payable/i,
-  regulated: /Gaming Board of Tanzania must clear this reward structure/i,
+  terms: /Referrer commission is capped at 50% of margin/i,
+  // ⛔ Owner ruling 2026-09-27: 50pick's licence covers invite rewards — nothing on the switch asks for clearance.
+  boardAsk: /Gaming Board|clearance|regulated inducement/i,
   provenance: [
     /Never switched on\./i,
     // ⭐ The record's number rides with it (review P1): "Since … · who · “reason” · record #N".
@@ -326,8 +328,8 @@ async function driveCeremony(page, w, trigger) {
   const raw = await dialog.innerText();
   const text = flat(raw);
   const lines = raw.split(/\n+/).map((l) => l.trim()).filter(Boolean);
-  check(w, "the dialog names the Gaming Board of Tanzania", /Gaming Board of Tanzania/i.test(text),
-    (lines.find((l) => /Gaming Board/i.test(l)) ?? "no line mentions the Gaming Board").slice(0, 140));
+  check(w, "the dialog asks for no Gaming Board clearance (Owner ruling 2026-09-27: 50pick's licence covers invite rewards)", !WORDS.boardAsk.test(text),
+    (lines.find((l) => WORDS.boardAsk.test(l)) ?? "no line asks for it").slice(0, 140));
   check(w, "the dialog says the rewards land as CASH", /CASH/.test(text),
     (lines.find((l) => /CASH/.test(l)) ?? "no line says CASH").slice(0, 140));
   // ⛔ "withdrawable at once" was not true (addendum H): a player's first withdrawal waits on their identity check.
@@ -533,7 +535,8 @@ try {
       const prov = WORDS.provenance.map((re) => body.match(re)?.[0]).find(Boolean);
       check(w, "the state card states its provenance (since / who / why, never switched on, or unreadable)", !!prov,
         prov ?? "none of the four provenance sentences is on the page");
-      check(w, "the Gaming Board line is on the page", WORDS.regulated.test(body));
+      check(w, "the state card states the enforced 50% cap, and nothing on the page asks for Gaming Board clearance",
+        WORDS.terms.test(body) && !WORDS.boardAsk.test(body), body.match(WORDS.boardAsk)?.[0] ?? "");
       check(w, 'the locked caption "Locked — Not payable" is shown', WORDS.lockedCaption.test(body));
 
       // ── THE LOCK ──────────────────────────────────────────────────────────────────────────────────

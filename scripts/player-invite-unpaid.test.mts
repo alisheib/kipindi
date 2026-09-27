@@ -318,7 +318,7 @@ setAffiliateConfig({
   const OWNER = "piu8_owner";
   const GROWTH = "piu8_growth";
   const OK_TOTP = { totp: "ok" as const };
-  const REASON = "Gaming Board cleared the structure";
+  const REASON = "Owner approved the reward structure";
   await mkFixtureUser(OWNER, { role: "ADMIN" });
   await mkFixtureUser(GROWTH);
   await db.user.update(GROWTH, { role: "GROWTH" } as never);
@@ -1419,8 +1419,14 @@ setAffiliateConfig({
       ok("8.dialogs.absent · never switched on: Not payable, 'Never switched on.', the Owner offered Make payable only; a growth officer no dialog and the sentence saying who can",
         copy.state === "NOT_PAYABLE" && chipOk(copy) && copy.provenance === "Never switched on." && copy.makePayable !== null && copy.stopPaying === null
           && growthAbsent.makePayable === null && growthAbsent.stopPaying === null
-          && growthAbsent.notes.includes("Only the Owner can make invites payable, after Gaming Board clearance."),
+          && growthAbsent.notes.includes("Only the Owner can make invites payable."),
         JSON.stringify({ prov: copy.provenance, mp: copy.makePayable !== null, sp: copy.stopPaying !== null, growth: growthAbsent.notes }));
+      /* ⛔ OWNER RULING 2026-09-27: 50pick's licence covers invite rewards, so the switch asks for no Gaming Board
+         clearance anywhere — not on the card, not in the Make-payable dialog, not in a growth officer's notes. */
+      const boardAsk = /Gaming Board|clearance|regulated inducement/i;
+      const boardHit = (JSON.stringify(copy) + JSON.stringify(growthAbsent)).match(boardAsk)?.[0] ?? null;
+      ok("8.dialogs.noboard · the card, the Make-payable dialog and a growth officer's notes ask for no Gaming Board clearance (Owner ruling 2026-09-27), and the card still states the enforced 50% cap",
+        boardHit === null && /capped at 50% of margin/.test(copy.terms), JSON.stringify({ terms: copy.terms, boardHit }));
       const effects = copy.makePayable?.effects ?? [];
       ok("8.dialogs.cash · the CASH effect says withdrawable CASH and that a first withdrawal still needs the identity check (KYC at withdrawal) — never 'withdrawable at once'",
         effects.some((x) => /withdrawable CASH/.test(x) && /KYC at withdrawal/.test(x)) && !effects.some((x) => /at once/.test(x)), JSON.stringify(effects));
@@ -1428,7 +1434,7 @@ setAffiliateConfig({
       ({ copy } = await viewCopy(OWNER));
       ok("8.dialogs.off · stored Not payable: Make payable only, and the provenance 'Since … · who · “reason” · record #30'",
         copy.state === "NOT_PAYABLE" && chipOk(copy) && copy.makePayable !== null && copy.stopPaying === null
-          && /^Since .+ · .+ · “Gaming Board cleared the structure” · record #30$/.test(copy.provenance ?? ""), JSON.stringify(copy.provenance));
+          && /^Since .+ · .+ · “Owner approved the reward structure” · record #30$/.test(copy.provenance ?? ""), JSON.stringify(copy.provenance));
       row = sealInviteSwitch(record(true, 30));
       ({ copy } = await viewCopy(OWNER));
       const growthPaying = (await viewCopy(GROWTH)).copy;

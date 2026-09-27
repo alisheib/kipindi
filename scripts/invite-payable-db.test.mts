@@ -358,7 +358,7 @@ console.log("\n§1 · defineConfig.reload()");
 // ════════════════════════════════════════════════════════════════════════════════════════════════════
 console.log("\n§2 · the money path on a stale container");
 const sealed = (payable: boolean, seq: number) =>
-  S.sealInviteSwitch({ payable, seq, changedAt: new Date().toISOString(), changedBy: "ipdb_owner", reason: "Gaming Board cleared it" });
+  S.sealInviteSwitch({ payable, seq, changedAt: new Date().toISOString(), changedBy: "ipdb_owner", reason: "Owner approved the structure" });
 /** Make THIS process's cache hold `cfg` again — the container that booted before the change. */
 const staleCache = (cfg: unknown) => { (globalThis as { __50PICK_CONFIGS?: Map<string, unknown> }).__50PICK_CONFIGS!.set("affiliate.config", clone(cfg)); };
 /**
@@ -546,7 +546,7 @@ console.log("\n§3 · the ceremony and the Save on a stale container");
   const OK_TOTP = { totp: "ok" as const };
   const seqNow = async () => { const s = await S.readStoredSwitchFresh(); return s.kind === "SET" ? s.seq : 0; };
   const on = async (over: Record<string, unknown> = {}) =>
-    C.switchInvitePayable(OWNER, { to: "PAYABLE", reason: "Gaming Board cleared it", typed: C.INVITE_PAYABLE_WORD, start: "NOTHING", expectSeq: await seqNow(), ...over } as never, OK_TOTP);
+    C.switchInvitePayable(OWNER, { to: "PAYABLE", reason: "Owner approved the structure", typed: C.INVITE_PAYABLE_WORD, start: "NOTHING", expectSeq: await seqNow(), ...over } as never, OK_TOTP);
   const stop = async () => C.switchInvitePayable(OWNER, { to: "NOT_PAYABLE", reason: "Pause for the audit", expectSeq: await seqNow() }, OK_TOTP);
   const row = () => TABLE.get("affiliate.config") as Cfg;
   const switchPayable = async () => { const s = await S.readStoredSwitchFresh(); return s.kind === "SET" && s.payable === true; };
@@ -682,7 +682,7 @@ console.log("\n§5 · the compliance records, when the database refuses them");
   const OWNER = "ipdb_owner";
   const OK_TOTP = { totp: "ok" as const };
   const seqNow = async () => { const s = await S.readStoredSwitchFresh(); return s.kind === "SET" ? s.seq : 0; };
-  const on = async () => C.switchInvitePayable(OWNER, { to: "PAYABLE", reason: "Gaming Board cleared it", typed: C.INVITE_PAYABLE_WORD, start: "NOTHING", expectSeq: await seqNow() } as never, OK_TOTP);
+  const on = async () => C.switchInvitePayable(OWNER, { to: "PAYABLE", reason: "Owner approved the structure", typed: C.INVITE_PAYABLE_WORD, start: "NOTHING", expectSeq: await seqNow() } as never, OK_TOTP);
   const stop = async () => C.switchInvitePayable(OWNER, { to: "NOT_PAYABLE", reason: "Pause for the audit", expectSeq: await seqNow() }, OK_TOTP);
   const switchPayable = async () => { const s = await S.readStoredSwitchFresh(); return s.kind === "SET" && s.payable === true; };
   const ringCount = async (action: string) => { await auditFlush(); return getAuditPage({ limit: 10_000 }).filter((e) => e.action === action).length; };
