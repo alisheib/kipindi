@@ -94,6 +94,39 @@ ok("§3d control · a YES-green hero figure is reported", liveDefects(css, plant
 ok("§3e control · rose pod digits are reported", urgencyDefects(plantPod, card).length > 0, "", urgencyDefects(plantPod, card).join("; "));
 ok("§3f control · rose card digits are reported", urgencyDefects(pod, plantCard).length > 0, "", urgencyDefects(pod, plantCard).join("; "));
 
+/* §4 · THE MATCH'S TIME IS NEUTRAL (landing v3, R5 · spec updown-band-v2 §15.1) ──────────────────────
+   The landing's Up & Down band draws TIME — its clock row, the match track's rail, locked stretch, posts,
+   lane marks and label, the playhead and the played stretch — beside two sides that DO wear the betting
+   pair (the verdict, the picks, the stems). Time in green or rose would read as a side winning; the
+   digits in rose beside the Down pick would read as "price going down" (E-406's exact defect). */
+console.log("\n§4 · the Up & Down match: the clock, the rail and the playhead never wear a side's ink");
+const DIGITS = "src/components/home/updown-match-digits.tsx";
+const TIME_SELECTORS = /^\.kp-udclock|^\.kp-udtrack__(?:rail|locked|post|mark|open|now|elapsed)\b/;
+function matchTimeDefects(sheet: string, digits: string): string[] {
+  const d: string[] = [];
+  // Media wrappers are unwrapped so a rule inside `@media (min-width: 768px) { … }` is read as its own rule.
+  const c = code(sheet).replace(/@media[^{]*\{/g, "");
+  let seen = 0;
+  for (const m of c.matchAll(/([^{}]+)\{([^}]*)\}/g)) {
+    const sels = m[1].split(",").map((s) => s.trim()).filter(Boolean);
+    const hit = sels.filter((s) => TIME_SELECTORS.test(s));
+    if (!hit.length) continue;
+    seen++;
+    if (BETTING.test(m[2])) d.push(`${hit.join(", ")} paints the betting pair`);
+  }
+  if (seen < 8) d.push(`only ${seen} match-time rules were found in globals.css — the selectors moved`);
+  if (BETTING.test(code(digits))) d.push("updown-match-digits.tsx paints the betting pair");
+  return d;
+}
+const digits = read(DIGITS);
+ok("§4a the clock row, the rail, the posts, the lane and the playhead: no betting ink",
+  matchTimeDefects(css, digits).length === 0, matchTimeDefects(css, digits).join("; "));
+const plantDigitsCss = css.replace(/(\.kp-udclock__digits \{[^}]*?)color: var\(--text\);/, "$1color: var(--no-300);");
+const plantDigitsTsx = digits.replace('className="kp-udclock__digits"', 'className="kp-udclock__digits" style={{ color: "var(--no-300)" }}');
+ok("§4b control · every planted copy found its target", plantDigitsCss !== css && plantDigitsTsx !== digits);
+ok("§4c control · rose digits in the stylesheet are reported", matchTimeDefects(plantDigitsCss, digits).length > 0, "", matchTimeDefects(plantDigitsCss, digits).join("; "));
+ok("§4d control · rose digits inline in the leaf are reported", matchTimeDefects(css, plantDigitsTsx).length > 0, "", matchTimeDefects(css, plantDigitsTsx).join("; "));
+
 console.log(`\n${fail === 0 ? "ALL PASS" : "FAILURES"} — ${pass} passed, ${fail} failed`);
 if (pass + fail < 8) { console.error(`!! only ${pass + fail} assertions ran`); process.exit(3); }
 process.exit(fail === 0 ? 0 : 1);

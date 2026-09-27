@@ -56,4 +56,19 @@ export const MUTATIONS = [
     to: "",
     expect: "4.x components/charts/outcome-cubes.tsx has an import site",
   },
+  {
+    name: "D5 · a stem placed by a computed x outside the home (the match track copied into a page, R5)",
+    file: "src/app/results/page.tsx",
+    from: "function OutcomeDonut({ yes, no, voided, size = 38 }",
+    to: "function StrayStem({ x }: { x: string }) { return <svg><line x1={x} x2={x} y1=\"0\" y2=\"10\" /></svg>; }\n" +
+        "function OutcomeDonut({ yes, no, voided, size = 38 }",
+    expect: "3.1 zero chart-shaped files outside the system",
+  },
+  {
+    name: "the match track's playhead losing its import site is a dead member (R5)",
+    file: "src/components/charts/updown-match-track.tsx",
+    from: 'import { UpdownMatchNow } from "./updown-match-now";',
+    to: "",
+    expect: "4.x components/charts/updown-match-now.tsx has an import site",
+  },
 ];

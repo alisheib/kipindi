@@ -32,7 +32,9 @@ import { refundReasonFor, REFUND_REASON_KEY, viewerRefundCopy } from "@/lib/updo
 import { pickLocalized } from "@/lib/localized";
 // ⛔ ONE lexicon for side words across both products — never a local ternary (test:labels §4).
 import { outcomeWord } from "@/lib/side-label";
-import { formatTzs } from "@/lib/utils";
+import { fill, formatTzs } from "@/lib/utils";
+// R5 · the page's tone is settlement's own target rule — the landing band reads the same function.
+import { decideOutcomeByTargets } from "@/lib/server/updown-service";
 // ⭐ The kit's ONE pool-split bar, and the home of the cold-start rail (§B9) — PV-06.
 import { TippingBar } from "@/components/brand";
 import { RoundCountdownPod } from "@/components/updown/round-countdown";
@@ -153,10 +155,30 @@ export default async function UpDownRoundPage({
      rather than something a comment asserts. */
   const heroLive = heroPrice({ state: round.state, closePrice: round.closePrice, livePrice: asset.livePrice });
   const move = heroLive != null && round.openPrice != null ? heroLive - round.openPrice : null;
+  /* ⭐ R5 (2026-09-27, spec updown-band-v2 §12) · THIS PAGE AGREES WITH THE LANDING BAND.
+     The band says "Juu iliongoza saa 14:26" from settlement's own target rule; a player who taps
+     through must meet the same answer here, in the same ink, at the same minute.
+     · TONE BY THE TARGETS, computed on the server: UP at or above `upTarget`, DOWN at or below
+       `downTarget`, level strictly between — E-261 generalised (a banded round voids anywhere inside
+       its band, not only at exactly flat). No tone when the read is unknown.
+     · While the round is open the price stamp joins the MOVE line ("… · imenukuliwa 14:26:00 EAT"),
+       beside the figure it dates, and the source line names the market's class alone. Decided rounds
+       keep today's strings. */
+  const tone = (() => {
+    if (heroLive == null) return null;
+    const o = decideOutcomeByTargets(heroLive, round.upTarget, round.downTarget);
+    return o.voidReason === "source-failed" ? null : o.outcome === "UP" ? "up" as const : o.outcome === "DOWN" ? "down" as const : "level" as const;
+  })();
+  const stamp = asset.sourceQuotedAt ? `${t.market.udQuoted} ${fmtEAT(asset.sourceQuotedAt)}` : null;
+  const moveText = move == null || move === 0 ? null
+    : !decided && tone === "level" ? fill(t.market.udLevelBy, { amount: `$${Math.abs(move).toFixed(dec)}` })
+      : `${move > 0 ? t.market.udAboveOpenBy : t.market.udBelowOpenBy} $${Math.abs(move).toFixed(dec)}`;
   // E-53 · the KIND of market, never the vendor. The class arrives already resolved from
   // the server (`publicSourceClassFor`), so the domain is not in this payload to leak.
-  const source =
-    `${t.market[SOURCE_CLASS_KEY[asset.sourceClass]]}${asset.sourceQuotedAt ? ` · ${t.market.udQuoted} ${fmtEAT(asset.sourceQuotedAt)}` : ""}`;
+  const source = decided
+    ? `${t.market[SOURCE_CLASS_KEY[asset.sourceClass]]}${stamp ? ` · ${stamp}` : ""}`
+    : t.market[SOURCE_CLASS_KEY[asset.sourceClass]];
+  const aboveBelow = decided ? moveText : [moveText, stamp].filter(Boolean).join(" · ") || null;
 
   // The BAR is a percentage and rounds; the MONEY beside it is not.
   //
@@ -477,13 +499,14 @@ export default async function UpDownRoundPage({
             livePrice={heroLive}
             priceSeries={priceSeries}
             decimals={dec}
+            tone={tone}
             copy={{
-              priceLabel: decided ? t.market.udClosePrice : t.market.udLivePrice,
+              priceLabel: decided ? t.market.udClosePrice : t.market.udConfirmedPrice,
               openLabel: t.market.udOpenPrice,
               upLabel: t.market.udUp,
               downLabel: t.market.udDown,
               awaitingRead: t.market.udAwaitingRead,
-              aboveBelow: move != null && move !== 0 ? `${move > 0 ? t.market.udAboveOpenBy : t.market.udBelowOpenBy} $${Math.abs(move).toFixed(dec)}` : null,
+              aboveBelow,
               source,
               chartAlt: `${name} ${t.market.udTitle}`,
             }}

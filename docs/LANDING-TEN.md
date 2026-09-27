@@ -14,20 +14,33 @@ market with money on one side states no price, on every card; V17 0 on productio
 share works on every card in every phase; the WhatsApp preview reads the card's price rule and carries the site's
 og tags; `qa:landing-v3:og-prod` CLEAN on 15 production markets). D2 step 0 (the gate's V18 + its own hardening) is
 live in the scripts; V18 reads 1,584 on production until WP3/WP4 add the attributes it reads (GATE row).
-**Next:** (1) **the Up & Down band (R5)** — being built in the landing worktree from
-`docs/design-system/v4-2026-09-26-landing-ten/specs/updown-band-v2.md`; then its local drive and a four-expert
-rating of the real frames until every score is 10, then push; (2) **the hero** — in design (marketing specialists +
-a four-judge panel), with Ali's rulings on the 'first' claim and the RG line to come; (3) **C1 · one price rule
-everywhere** — spec `specs/c1-one-price-rule.md`, both rulings made (R6); it also fixes a live false money
-statement (a settled one-sided market's resolution panel states a fee never charged) and the result word's ink
-(a NO or void result is painted YES-green on every settled card); (4) **WP3 + WP4** as one deploy (they add V18's
-attributes) — spec `specs/d2-wp3-wp4-wp9-v18-wp14b.md`; (5) **WP9** alone. Then D3 (WP5 the pick slip + WhatsApp
-after placing, V20, the chat bubble under sheets) and D5. The specs are build inputs: delete each when its unit ships.
-**Ali's asks of 2026-09-27, open:** (a) the Up & Down band's chart "nobody understands" — a redesign, to be rated
-10/10 by a UI/UX + gambling-industry panel on real frames before it ships (WP12 note; ruling R5: 60s refresh, no
-pool on the band, `/updown` card to follow); (b) the HERO's first screen — "first prediction market in Tanzania",
-no gambling warning, better type — in design by marketing specialists + a four-judge panel, with the claim's
-proof and the RG line to be ruled by him; (c) where the "Follow 50pick" panel may appear (manifest Q2).
+**Next:** RESUME HERE (handover 2026-09-27, the session that shipped the one-sided state and the share fixes) —
+(1) **The Up & Down band (R5, WP12 🔨)** is BUILT from `specs/updown-band-v2.md` and committed on branch `landing-v3`
+(pushed to `origin/landing-v3`, NOT to `main` — nothing of it is live). Typecheck clean; `test:updown-match` 86/0 and every
+touched suite green (the builder's report is in that commit's message). It has NEVER been rendered. Do, in order: write
+`scripts/qa/landing-v3/band-metrics.mjs` + `band-agree.mjs` (spec §15.4/§15.6, each with a RED control); a local drive under
+the lock (seed Up & Down rounds in every state the spec's §8 lists; clear `.next` first); look at every frame at
+360/768/1280 × sw/en/zh; then the **four-expert frame panel** (UI/UX lead, graphic designer, gambling-industry designer,
+accessibility/RG — a workflow of agents that READ the frame PNGs) — fix and re-shoot until every score is 10; check every
+new component against the design kit (DESIGN_AUTHORITY, `globals.css` tokens, the type ladder, the chart home); then merge
+`origin/main`, push to `main`, confirm `?dpl=`, re-measure on production, tick. Ali's hallway test (spec §15.7) needs the
+people he names — ask him.
+(2) **The hero (R7, WP2 reopened)** — spec `specs/hero-v3.md`, every question RULED (R7). Build with the locked fonts;
+then show Ali real frames and trial the Bricolage Grotesque headline (his call on frames). ⛔ Its new Swahili lines ship
+only after a Tanzanian native reviewer approves them (R7(7)) — ask Ali who. "First" stays OFF until the Board's letter.
+(3) **C1 · one price rule everywhere** — spec `specs/c1-one-price-rule.md` (R6 ruled): the detail page, `/live`, `/results`
+featured, chart history, the settled share preview, Up & Down (after the band lands), admin; it also fixes two live
+false statements — a settled one-sided market's resolution panel states a fee never charged, and a NO or void result is
+painted YES-green on every settled card (§10).
+(4) **WP3 + WP4** as one deploy (they add V18's `data-market-*` attributes; V18 reads 1,584 on production until then) —
+spec `specs/d2-wp3-wp4-wp9-v18-wp14b.md`; (5) **WP9** alone. (6) The small builds R7 queued: retire "Tabiri matukio. Si
+bahati." (tab title + primer); the 18+ badge's neutral ink site-wide. Then D3 (WP5 the pick slip + WhatsApp after placing,
+V20, the chat bubble under sheets) and D5. The specs are build inputs: delete each when its unit ships.
+**⭐ Ali, 2026-09-27: "make sure everything in the plan is applied, every decision, every design component perfectly made,
+new components built all consistent with our theme design kit."** Every unit is checked against R1–R7, L1–L23 and the kit
+before it ships — frames looked at, never only a green gate.
+**Ali's asks of 2026-09-27, still open:** where the "Follow 50pick" panel may appear (manifest Q2); the share preview's
+language (Q3); the hallway-test people and the sw/zh native reviewers.
 **⭐ STANDING (Ali, 2026-09-27): platform-wide consistency, mobile-first, whatever the session count.** When a
 landing row shows the same rule broken on another surface, fix it there too — do not park it with another lane.
 First such batch, **C1 · one price rule everywhere**: the detail page's bar, side picker and JSON-LD, and its
@@ -120,7 +133,7 @@ row; this section does not repeat it.
 | WP9 | Pick-a-side grid: phone snap rail with a peek, 2 and 3 columns | ⬜ | | |
 | WP10 | Topics: six tiles, Other last, "All topics" as the section link | ✅ | 54f8199b | measured on production 2026-09-26 (360/768/1280 × sw/en/zh frames looked at) |
 | WP11 | How it works: "A named source", the fee from config, h3 steps | ✅ | 54f8199b | measured on production 2026-09-26 (360/768/1280 × sw/en/zh frames looked at); the fee reads 13% through `ratesFrom`; L3 |
-| WP12 | Up & Down band: the soonest round, price line, ring, UP/DOWN, plural fixed | ✅ | 54f8199b | measured on production 2026-09-26 (360/768/1280 × sw/en/zh frames looked at); full width, R4(6). ⚠️ Ali 2026-09-27: the price-line chart is not understood — a redesign is in design (§0); the chart moved into `components/charts/` meanwhile |
+| WP12 | Up & Down band: R5 — the Match (spec v2) | 🔨 | | built in the landing worktree 2026-09-27, uncommitted: scoreboard + match track + one-line clock, the R5(a) 60-second refresh, the round page's §12 agreement; `test:updown-match` (every check run against a planted wrong copy too) and the extended `test:chart-one-home` / `test:betting-ink` / `test:contrast` green. Next: the local drive (§15.2–15.6), the hallway test and the 10/10 frame panel below, then push. The price-line band it replaces was ✅ `54f8199b` (production 2026-09-26) |
 | WP13 | Results: date, the market's own sign-off, source link, paid | ✅ | e9b4056c | measured on production 2026-09-27: date, the market's own sign-off (a reversed market reads "Corrected on objection"), source, paid; below 640 the amount and the source each take a line, so the host reads whole. L2 |
 | WP14 | Wallet: chip opens sheet/panel, equal Deposit/Withdraw, gold Deposit at zero, signed-in hero | ✅ | e9b4056c | measured on production 2026-09-27 with `mobile01` (zero balance, no picks: header Deposit, hero empty-balance line + Deposit, no Withdraw, Set limits; pages render at 360/1280 sw/en). Funded Wallet + hero measured locally (Wallet 17 cells, hero 15 cells; 360–1280 × sw/en/zh). `test:wallet-reach` 48/48, `test:landing-mine` 22/22, both mutation-proved. R1, L19–L21 |
 | WP14b | Share on every card footer, in every phase; the WhatsApp preview card (og tags spread from `ROOT_OPEN_GRAPH`, no 0/100 in the preview) | ✅ | 541a9e76 | measured on production 2026-09-27: `qa:landing-v3:og-prod` CLEAN on 15 markets (og:type/site_name/locale present, one-sided markets preview "One side only.", images 1200×630 PNG) — its baseline before the push failed on all 15; `/results` captured 360/768/1280 × sw/en/zh, settled cards one `<article>`, looked at; the share drive (26/26: Copy, WhatsApp, Esc, backdrop stay on `/results`) ran locally. "Share on WhatsApp" after placing is WP5's; K50 closes with both |
@@ -309,16 +322,60 @@ feature (a plant against a feature that does not exist yet cannot prove anything
   config (`getEffectiveConfig` → `describeFeeModel`), passed in as a prop; the string carries `{pct}`.
 - The step-2 body keeps the dictionary's two-officer clause verbatim (MOBILE-VISUAL ruling 15).
 
-**WP12 · Up & Down band** — `src/app/page.tsx`, a new client ring component
-- The soonest open round among the live Up & Down markets: `roundStore.getByMarketId`
-  (`src/lib/server/updown-dal.ts`) then `getRoundDetail` (`src/lib/server/updown-board.ts`), which returns
-  the asset's names, `durationMinutes`, `openPrice`, `closesAt`, `serverNowMs` and `priceSeries`.
-- Shows: asset and duration · a mini price line with a dashed opening-price line · a countdown ring with
-  `role="timer"`, ticking on `subscribeSecond` (`src/lib/use-shared-second.ts`), `ud-count-pulse` only in
-  the final 30s · UP and DOWN links into the round with the side kept · "All rounds".
-- The band is one `<Link>` today; it becomes a container so its buttons are not nested in a link.
-- The plural: a new `…One` sibling key beside `updownRoundsLive` (the repo's plural convention).
-- Full width (R4(6)). With no live round, today's band.
+**WP12 · Up & Down band — R5, "the Match"** — spec
+[`specs/updown-band-v2.md`](design-system/v4-2026-09-26-landing-ten/specs/updown-band-v2.md) (the design, its
+states, sketches and verification; this row is its summary). The price-line chart and countdown ring (✅
+`54f8199b`) were replaced by ruling R5 (Ali, 2026-09-27: the chart was not understood).
+- **Data, zero new queries.** `getRoundDetail` reads the asset's confirmed reads ONCE (`roundReadWindow`) for
+  the round-page hero (`seriesFromReads`, unchanged) and the band (`roundReads`, `readCadenceMs`); a store error
+  is `null`, never "no reads". The picker (`src/lib/server/updown-band-round.ts`): ≥ 2 min of betting left ·
+  seasoned (≥ 3 min old) first · the shortest duration · the most time left · three candidates; the first with a
+  confirmed read after its open wins, a kick-off round is the fallback, and the walk stops at the first young
+  candidate — usually one `getRoundDetail`, never more than three. `toUpdownBandRound` reduces it to the band's
+  type (`src/lib/updown-match.ts`), which carries NO money field (law 40).
+- **Shows (sw, 360):** the fixture (`AssetMark`, name, the kit Chip "10 DAKIKA") and ONE clock line "Dau
+  linafungwa baada ya 01:52"; the plate — the verdict ("↑ Juu inaongoza", settlement's own
+  `decideOutcomeByTargets` on the newest confirmed read), its dated detail ("saa 14:26 · Juu ya ufunguzi kwa
+  $18.52") and the Up/Down links IN the plate, solid and equal, never lit; the match track
+  (`src/components/charts/updown-match-track.tsx` + the playhead leaf `updown-match-now.tsx`): a stem per confirmed
+  read on a fixed open → close domain, the lock post at bets-close, the flag at the deciding price; the rule in two
+  sentences ("Bei ya saa 14:32 inaamua. Tofauti ikiwa ndogo kuliko $0.02, kila dau linarudi."); "Raundi zote ›".
+- **Honesty.** Every verdict is dated and turns past tense ("Juu iliongoza") when its read goes stale by the
+  terminal's own rule (`src/lib/updown-quote-age.ts`, shared) or at the deciding instant — on the server and on the
+  client wrapper's `data-aged` (no `:has()`). No absolute price, no pool, no "live" beside a number. Level lines
+  never name a side. At bets-close: "Dau limefungwa" + "Tazama raundi hii ›" in the clock row, padlocked inert
+  sides in the picks' box, "Cheza raundi ijayo ›" as the primary; focus moves off a pick.
+- **R5(a) · the 60-second refresh**, built in: while the tab is visible the band's wrapper
+  (`updown-match-state.tsx`) re-reads the asset's newest CONFIRMED read from the public
+  `GET /api/updown/history?asset=…&range=15M` (no new route) and folds it in with `mergeConfirmedRead` — the same
+  round type, stale rule and target comparison (pinned equal to settlement's); a failed read changes nothing; it
+  stops at the deciding instant. A read that landed while the tab was hidden and was superseded is not drawn (the
+  verdict always reads the newest).
+- **The round page agrees (spec §12):** "Confirmed price" (was "Live price"); while open the quote stamp joins the
+  move line; the hero's ink follows the targets (`price-hero.tsx` `tone`, `data-tone`); a level read says the band's
+  own "Only $0.20 from the open — not enough to decide". The `/updown` card and terminal follow in F1 (R5(c)).
+- **Motion:** the digits (1/s) and the playhead (on quarter-percent moves) ride the page's one shared second; no
+  pulse on the band (the page keeps one loop, the live dot); the verdict's ink fades on the tense swap only.
+- With no readable round: today's band, unchanged (S8). Full width (R4(6)).
+- **Guards:** `test:updown-match` (in predeploy) · `test:chart-one-home` D5 + members · `test:betting-ink` §4 ·
+  `test:contrast` R5 pairs · `red:chart-one-home`. The frame gate (`band-metrics.mjs`) and the agreement drive
+  (`band-agree.mjs`) of spec §15.4/§15.6 are still to be written.
+- ⚠️ **V18:** the band shows no pool and no source by ruling (R5(b)) and is outside V18's population (the
+  featured card, the grid cards, the board rows). If Ali reverses R5(b), the band joins V18 with
+  `data-market-part` tags.
+
+**WP12 · Hallway test** (spec §15.7 — a ship gate). 8–10 adult Swahili speakers who follow football and do not
+work in crypto; one mid-range Android at 360, default brightness; frames A (S1 sw), B (S4 sw), C (S1 sw without
+the track) for 3 seconds each; Q1–Q4 asked in Swahili, answers verbatim. Pass: ≥ 80% on Q1, Q2, Q4 for A and on
+Q2, Q4 for B; Q3 under 60% forces a rewrite of the refund sentence. Native review: one sw and one zh reviewer
+(the strings the spec lists). **Record** (initials · phone · answers · verdict): *not run yet — Ali names the
+people (spec §16-3).*
+
+**WP12 · Frame rating** (spec §15.8 — every score 10 before shipping). Real local viewport tiles
+(`scripts/qa/landing-v3/capture.mjs`): S1 at 360/768/1280 × sw/en/zh, S2–S7 at 360 sw and 1280 en, S3 and S4
+at 360 zh, and the band → round-page click-through pair at 360 sw; four reviewers (UI/UX lead, graphic
+designer, gambling-industry designer, accessibility + RG); a frame's score is its lowest; any score under 10
+names the defect, is fixed, and the WHOLE panel re-scores. **Record:** *not run yet.*
 
 **WP13 · Results strip** — `src/components/home/trust-band.tsx`, `toSettlementRow` in `src/lib/server/platform-stats.ts`
 - Each row: outcome pill · question (a link) · settled date · **the market's own sign-off** · source (its own
@@ -371,8 +428,10 @@ pins it). What D2 adds:
   stream first — V14's cause, R4(8)); the preview check asserts no preview is minted for it, not the status.
 
 **WP15 · Motion and performance** — needles move only when a pool changes (`TippingBar` already starts at
-its target); per-second work only inside the ring and countdowns; reduced motion and Save-Data (mapped to
-`data-motion="reduced"`) turn off the price-line animation. No loops beyond the live dot and the final-30s pulse.
+its target); per-second work only inside the countdowns and the Up & Down playhead (server-anchored, no
+transition); the Up & Down band's confirmed price refreshes once a minute while the tab is visible (R5(a)) and
+nothing about a price animates; reduced motion and Save-Data (mapped to `data-motion="reduced"`) are honoured.
+At most two loops (R5 amended K20: the band has no final-30s pulse, so the page keeps one, the live dot).
 
 **WP16 · i18n** — every new key in en, sw and zh in `src/lib/i18n-dict.ts`; `npm run test:i18n` forbids
 an sw or zh value equal to its en value unless listed in `IDENTICAL_OK`. New sw/zh strings carry the
@@ -447,8 +506,8 @@ drift from that file or a row names an id §1 does not have. An item is done whe
 | K16 | No decorative gradients or illustrations | WP2 | R4(1), L16 |
 | K17 | Needles move only on real pool changes | WP15 | |
 | K18 | 24h mark and delta on the featured card | WP3 | |
-| K19 | Up & Down: dashed open-price line, live line, ring countdown | WP12 | |
-| K20 | Only two loops, both opacity fades | WP15 | |
+| K19 | Up & Down: match scoreboard from the last confirmed price, dated, with the Up/Down buttons in it; open→finish match track (a stem per confirmed read, lock at bets close, flag at the deciding price, playhead); one-line countdown | WP12 | R5 |
+| K20 | At most two loops | WP15 | R5 |
 | K21 | Reduced motion and Save-Data honoured | WP15 | |
 | K22 | Every bar and chart has a text description | WP3, WP8, WP12, WP17 | |
 | K23 | Pick from the home page: two taps plus confirm | WP5 | R2 |

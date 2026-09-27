@@ -936,6 +936,72 @@ const PLACEHOLDER_CHECKS: Check[] = [
 ];
 CHECKS.push(...PLACEHOLDER_CHECKS);
 
+/* ⭐ R5 · THE LANDING'S UP & DOWN MATCH (2026-09-27, spec updown-band-v2 §5.4 / §15.1).
+   The band's scoreboard sits on a `--bg-inset` plate inside a `--wash-raised` panel, and its timeline
+   draws straight on the panel. Every ink below is READ OFF THE RULE THAT PAINTS IT (`matchInk`), never
+   typed here, so moving a mark to another token moves its number. Text is held to 4.5; the timeline's
+   marks — rail, posts, glyphs, stems, bead, playhead, played stretch — are non-text and held to WCAG
+   1.4.11's 3.0 against the wash's WORST stop (its lighter end, for light ink). The earlier stems are
+   `color-mix(… 70%, transparent)`, i.e. the ink at 70% alpha, composited as §A1 requires
+   (`contrastAlpha`), with the 70 read from the rule. C11: the review asked for `--border-control` and
+   `--border-strong` on the rail and posts, and both miss 3.0 on this wash — they take `--text-faint`,
+   and these rows are the proof. */
+function matchInk(selector: string, prop: "color" | "stroke" | "fill" | "background"): Oklch {
+  const m = new RegExp(`(?:^|;)\\s*${prop}\\s*:\\s*var\\(--([\\w-]+)\\)`).exec(ruleBody(selector));
+  if (!m) throw new Error(`contrast-audit: "${selector} { ${prop} }" is not one colour token`);
+  return token(m[1]);
+}
+function matchMix(selector: string, prop: "stroke"): { ink: Oklch; alpha: number } {
+  const m = new RegExp(`${prop}\\s*:\\s*color-mix\\(in oklab, var\\(--([\\w-]+)\\) (\\d+(?:\\.\\d+)?)%, transparent\\)`).exec(ruleBody(selector));
+  if (!m) throw new Error(`contrast-audit: "${selector} { ${prop} }" is not a token faded with transparent`);
+  return { ink: token(m[1]), alpha: Number(m[2]) / 100 };
+}
+const onPlate = (name: string, fg: Oklch): Check => ({ name: `R5 · ${name} on the plate (--bg-inset)`, fg, bg: T.bgInset, min: 4.5 });
+const onPanel = (name: string, fg: Oklch, min: number, alpha?: number): Check =>
+  ({ name: `R5 · ${name} on --wash-raised (worst stop)`, fg, bg: worstStop(fg, T.washRaisedStops), min, ...(alpha !== undefined ? { alpha } : {}) });
+const stemUp = matchMix(".kp-udtrack__stem--up", "stroke");
+const stemDown = matchMix(".kp-udtrack__stem--down", "stroke");
+CHECKS.push(
+  // ── text on the plate ──
+  onPlate("verdict, level/kick-off (--text)", matchInk(".kp-udbug__verdict", "color")),
+  onPlate("verdict, Up leads", matchInk('.kp-udbug[data-lead="up"] .kp-udbug__verdict', "color")),
+  onPlate("verdict, Down leads", matchInk('.kp-udbug[data-lead="down"] .kp-udbug__verdict', "color")),
+  onPlate("verdict, awaiting", matchInk('.kp-udbug[data-lead="awaiting"] .kp-udbug__verdict', "color")),
+  onPlate("verdict, aged (past tense)", matchInk(".kp-updown[data-aged] .kp-udbug__verdict", "color")),
+  onPlate("detail words", matchInk(".kp-udbug__detail", "color")),
+  onPlate("detail amount", matchInk(".kp-udbug__detail .amount", "color")),
+  onPlate("level note", matchInk(".kp-udbug__note", "color")),
+  onPlate("closed side label", matchInk(".kp-udbug__side", "color")),
+  // ── text on the panel ──
+  onPanel("asset name", matchInk(".kp-udmatch__name", "color"), 4.5),
+  onPanel("clock caption", matchInk(".kp-udclock__cap", "color"), 4.5),
+  onPanel("clock digits", matchInk(".kp-udclock__digits", "color"), 4.5),
+  onPanel("lane label (Ufunguzi)", matchInk(".kp-udtrack__open", "color"), 4.5),
+  onPanel("rule, sentence 1", matchInk(".kp-udrule__decides", "color"), 4.5),
+  onPanel("rule, sentence 2", matchInk(".kp-udrule__refund", "color"), 4.5),
+  onPanel("--yes-300 as text", token("yes-300"), 4.5),
+  onPanel("--no-300 as text", token("no-300"), 4.5),
+  // ── the timeline's marks (non-text, 1.4.11) ──
+  onPanel("rail", matchInk(".kp-udtrack__rail", "stroke"), 3.0),
+  onPanel("posts (lock, flag)", matchInk(".kp-udtrack__post", "stroke"), 3.0),
+  onPanel("gutter arrows", matchInk(".kp-udtrack__gutter", "color"), 3.0),
+  onPanel("clock / lock glyph", matchInk(".kp-udclock__glyph", "color"), 3.0),
+  onPanel("lane lock and flag", matchInk(".kp-udtrack__mark", "color"), 3.0),
+  onPanel("newest Up stem", matchInk(".kp-udtrack__stem--latest.kp-udtrack__stem--up", "stroke"), 3.0),
+  onPanel("newest Down stem", matchInk(".kp-udtrack__stem--latest.kp-udtrack__stem--down", "stroke"), 3.0),
+  onPanel(`earlier Up stems (${stemUp.alpha * 100}% alpha)`, stemUp.ink, 3.0, stemUp.alpha),
+  onPanel(`earlier Down stems (${stemDown.alpha * 100}% alpha)`, stemDown.ink, 3.0, stemDown.alpha),
+  onPanel("Up bead", matchInk(".kp-udtrack__bead--up", "fill"), 3.0),
+  onPanel("Down bead", matchInk(".kp-udtrack__bead--down", "fill"), 3.0),
+  onPanel("tie tick", matchInk(".kp-udtrack__tie", "stroke"), 3.0),
+  onPanel("opening dot", matchInk(".kp-udtrack__kick", "fill"), 3.0),
+  onPanel("playhead", matchInk(".kp-udtrack__now", "background"), 3.0),
+  onPanel("played stretch", matchInk(".kp-udtrack__elapsed", "background"), 3.0),
+  // The locked stretch is the quiet dialect (B12.2: 1px, dashed, 0.55) and never the sole sign of the
+  // lock — the lock post and its glyph are. Measured and printed, not gated.
+  { ...onPanel("locked stretch (quiet dialect, decorative — exempt)", matchInk(".kp-udtrack__locked", "stroke"), 3.0, ruleOpacity(".kp-udtrack__locked")), decorative: true },
+);
+
 /* ⛔ §P-u — AND THE CALL-SITE ALPHAS ARE BANNED OUTRIGHT ON INK, because no stylesheet rule
    exists for this file to read them from. `text-text-subtle/40` renders 2.02:1 and
    `/50` renders 2.56 — both under the 3.0 non-text floor, let alone 4.5. The four sites that

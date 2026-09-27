@@ -46,8 +46,8 @@
 **3. Motion & data-viz**
 - [ ] Needles move only on real pool changes
 - [ ] 24h mark and delta on the featured card
-- [ ] Up & Down: dashed open-price line, live line, ring countdown
-- [ ] Only two loops, both opacity fades (live dot, final 30s)
+- [ ] Up & Down: match scoreboard from the last confirmed price, dated, with the Up/Down buttons in it; open→finish match track (a stem per confirmed read, lock at bets close, flag at the deciding price, playhead); one-line countdown *(amended by ruling R5, 2026-09-27 — was "dashed open-price line, live line, ring countdown")*
+- [ ] At most two loops *(amended by R5 — was "Only two loops, both opacity fades (live dot, final 30s)"; the landing band has no final-30s pulse, so the page keeps one loop, the live dot)*
 - [ ] Reduced motion and Save-Data honoured
 - [ ] Every bar and chart has a text description
 

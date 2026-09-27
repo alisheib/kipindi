@@ -36,6 +36,7 @@ import { usd } from "@/lib/usd-price";
 import { useT } from "@/lib/i18n";
 import { useUpDownQuickBet, usePlacePulse } from "./use-quick-bet";
 import { UpDownStakeControls, GLYPH_NO_SHRINK } from "./updown-stake-controls";
+import { AssetMark } from "./asset-mark";
 import { Button } from "@/components/ui/button";
 // ⭐ The kit's ONE pool-split bar, and the home of the cold-start rail (§B9). See the pool-split
 // block below for why this card stopped drawing its own — PV-06.
@@ -246,56 +247,11 @@ function formatClock(ms: number): string | null {
 }
 
 /**
- * The two-character mark for an asset.
- *
- * ⚠️ NOT `ticker.slice(0, 2)` — XAU and XAG both start "XA", so every metal rendered an
- * identical chip and Gold was visually indistinguishable from Silver on the board.
- * These are the real element symbols, which is also what the design spec asked for.
+ * The asset mark lives in `./asset-mark` since 2026-09-27 (landing v3, R5): the landing's server-side
+ * Up & Down band renders it too, and a server component must not import a helper from this `"use client"`
+ * module. Re-exported so every existing importer of `AssetMark` from here is unchanged.
  */
-const ASSET_MARKS: Record<string, string> = {
-  gold: "Au", silver: "Ag", platinum: "Pt", copper: "Cu", oil: "Oil", fx: "FX", crypto: "₿",
-};
-function markFor(icon: string, ticker: string): string {
-  return ASSET_MARKS[icon] ?? ticker.slice(-2).toUpperCase();
-}
-
-/**
- * The asset mark — a glyph chip carrying which asset this is.
- *
- * ⭐ Q5, RESOLVED 2026-08-10: **GOLD IS MONEY, AND NOTHING ELSE.** This chip used to tint
- * itself with `--gold-500` / `--gold-400` / `--gold-300` when the asset happened to be gold,
- * and its own comment conceded that was "the one place gold is not earned money". M3 says
- * struck gold appears only where money was **earned** — so the product was spending its most
- * meaningful ink on a label, and a player learning "gold = I won something" had to unlearn it
- * on the board.
- *
- * ⛔ The escape hatch closed with Q7. The standing answer was *"accept it — real artwork
- * replaces the tint anyway"*, and Ali ruled 2026-08-10 that the `Au`/`Ag` lettermarks are
- * FINAL. There is no artwork coming, so the tint is not temporary and had to be decided on
- * its merits. It loses: a law with an exception for the one case that tempted us is not a law.
- *
- * ⚠️ Identity still has to be visible — the fix is not "make gold look like everything else".
- * XAU keeps a distinct **neutral metallic** treatment (a brighter rim and ink than the base
- * chip), so the asset is still instantly recognisable without borrowing the money ink.
- */
-export function AssetMark({ icon, ticker, size = 40 }: { icon: string; ticker: string; size?: number }) {
-  // A precious-metal asset earns a brighter METALLIC chip — lightness and rim weight, never hue.
-  const metal = icon === "gold" || icon === "silver" || icon === "platinum";
-  return (
-    <span
-      aria-hidden
-      className="inline-flex shrink-0 items-center justify-center rounded-full font-mono font-bold"
-      style={{
-        width: size, height: size, fontSize: size >= 44 ? 14 : 13,
-        background: metal ? "color-mix(in oklab, var(--text-subtle) 12%, var(--bg-inset))" : "var(--bg-inset)",
-        border: `1px solid ${metal ? "color-mix(in oklab, var(--text-muted) 42%, transparent)" : "var(--border)"}`,
-        color: metal ? "var(--text-secondary)" : "var(--text-subtle)",
-      }}
-    >
-      {markFor(icon, ticker)}
-    </span>
-  );
-}
+export { AssetMark };
 
 /**
  * ⭐ EVERYTHING THIS CARD DERIVES FROM THE CLOCK, IN ONE PURE CALL.
