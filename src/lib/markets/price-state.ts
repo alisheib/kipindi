@@ -44,6 +44,17 @@ export function priceState(yesPool: number, noPool: number): PriceState {
 }
 
 /**
+ * The YES figure a surface may PRINT or rank by: the two-sided price (1–99), or **null** where there
+ * is none — nothing staked, or one side only. This is what a board row carries as `yesPct`, so the
+ * `/markets` odds filters and "closest call" sort treat a one-sided market as the card shows it (no
+ * price), instead of filing a NO-only pool under long shots at 0%.
+ */
+export function shownYesPct(yesPool: number, noPool: number): number | null {
+  const p = priceState(yesPool, noPool);
+  return p.kind === "priced" ? p.yesPct : null;
+}
+
+/**
  * The landing's price-quality tier, from the pools: 0 two-sided (a price exists), 1 one-sided, 2 empty.
  *
  * The hero's floor and the landing grid both order by it, so a market with no price never takes a seat

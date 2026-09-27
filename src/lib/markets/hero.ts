@@ -16,9 +16,10 @@
  * hands them here, which is what lets `test:hero-contract` prove the licence conditions with no
  * database and no browser.
  *
- * The cold-start rule (DESIGN_AUTHORITY §B6 / law 81) has FOUR consumers now: the board, the
- * market card, the detail page, and this file. The rule is `pricedYesPct` — one function, and it
- * returns null rather than a number when nobody has staked.
+ * The cold-start rule (DESIGN_AUTHORITY §B6 / law 81): a market's printable price is `shownYesPct` /
+ * `priceState` (`price-state.ts`) — null when nobody has staked OR money sits on one side only, and a
+ * two-sided price within 1–99 — read by the board, the market card, the detail page and this file's
+ * rows. The AGGREGATE share below is `pricedYesPct` over summed pools, which is not a market's price.
  */
 import { matchesStatus, pricedYesPct, sortRows, type DiscoveryRow } from "./discovery";
 import { priceTier } from "./price-state";
@@ -116,7 +117,7 @@ export function heroFigures(rows: readonly HeroRow[], nowMs: number): HeroFigure
   // walked back in through the branch the lens added.
   //
   // ⭐ QUALITY IS A PARTITION, NOT A SORT KEY, and it is applied BEFORE position. A market with no
-  // price and a market priced 0 or 100 are not "slightly worse" than a contested one — they are a
+  // price and a market with one side of its pool empty are not "slightly worse" than a contested one — they are a
   // different kind of thing to put in front of a first-time visitor, and no amount of closing
   // sooner should promote them past a real question.
   // ⛔ TIERED RATHER THAN FILTERED, so the board is never SHORT either. Within each tier the

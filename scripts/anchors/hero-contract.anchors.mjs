@@ -54,7 +54,9 @@ export const MUTATIONS = [
     name: "WP6 · the tier is read from the ROUNDED share again (a 25,000-vs-100 market filed as one-sided)",
     file: "src/lib/markets/hero.ts",
     from: "  const ordered = [0, 1, 2].flatMap((tier) => lens(open.filter((r) => priceTier(r) === tier)));",
-    to: "  const ordered = [0, 1, 2].flatMap((tier) => lens(open.filter((r) => (r.yesPct == null ? 2 : (r.yesPct === 0 || r.yesPct === 100) ? 1 : 0) === tier)));",
+    // The pre-WP6 rule exactly: the tier read from the ROUNDED raw share (a row's own yesPct is the
+    // printable price since WP6, so the defect is re-planted from the pools it used to round).
+    to: "  const ordered = [0, 1, 2].flatMap((tier) => lens(open.filter((r) => { const s = pricedYesPct(r.yesPool, r.noPool); return (s == null ? 2 : s === 0 || s === 100 ? 1 : 0) === tier; })));",
     expect: "both lopsided two-sided markets rank ahead of the one-sided one",
   },
   {

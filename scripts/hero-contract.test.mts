@@ -28,7 +28,7 @@
  */
 import { pricedYesPct, matchesStatus, type DiscoveryRow } from "../src/lib/markets/discovery.ts";
 import { heroFigures, QUESTION_BOARD_SIZE, type HeroRow } from "../src/lib/markets/hero.ts";
-import { priceState, priceTier } from "../src/lib/markets/price-state.ts";
+import { priceState, priceTier, shownYesPct } from "../src/lib/markets/price-state.ts";
 
 let fail = 0;
 const log = (m: string) => console.log(m);
@@ -50,7 +50,7 @@ function heroRow(over: Partial<HeroRow> = {}): HeroRow {
     category: "sports",
     pool: yesPool + noPool,
     predictors: 4,
-    yesPct: pricedYesPct(yesPool, noPool),
+    yesPct: shownYesPct(yesPool, noPool),
     move24h: undefined,
     createdAtMs: NOW - 10 * H,
     bettableUntilMs: NOW + 10 * H,
@@ -73,8 +73,10 @@ function heroRow(over: Partial<HeroRow> = {}): HeroRow {
     ...over,
     // Derived AFTER the spread so a caller overriding pools cannot leave pool/yesPct disagreeing
     // with them — a fixture that contradicts itself proves whatever you want.
+    // ⚠️ `shownYesPct`, as `app/page.tsx` builds the real rows since WP6: the printable price, null
+    // on an empty OR one-sided pool. (`pricedYesPct` is the aggregate's raw share — §1 and §4.)
     pool: (over.yesPool ?? yesPool) + (over.noPool ?? noPool),
-    yesPct: pricedYesPct(over.yesPool ?? yesPool, over.noPool ?? noPool),
+    yesPct: shownYesPct(over.yesPool ?? yesPool, over.noPool ?? noPool),
   };
 }
 
@@ -212,7 +214,7 @@ log("\n── 5 · the lens: closing today, most contested first ─────
     firstDegenerate === -1 || firstDegenerate > lastContested,
     shown.map((r) => String(r.yesPct)).join(","));
   ok("⛔ an unpriced market never takes a seat from a priced one",
-    !shown.some((r) => r.yesPct == null),
+    !shown.some((r) => r.yesPool + r.noPool === 0),
     shown.map((r) => String(r.yesPct)).join(","));
 
   // 🔴 THE PAIR THIS EXISTS FOR, UNCHANGED BY THE LENS. While the board started at [0], the hero
@@ -325,8 +327,10 @@ log("\n── 5d · a lopsided but TWO-SIDED market is priced, not collapsed (WP
     JSON.stringify([lop, mir]));
   // ⭐ CONTROL: the rounded share of these rows IS 100 and 0 — so the old `yesPct === 0 || === 100`
   // test demotes them, and this block tells the two rules apart. If it ever stops, the block proves nothing.
+  const rawLop = pricedYesPct(lateLop.yesPool, lateLop.noPool);
+  const rawMir = pricedYesPct(lateMirror.yesPool, lateMirror.noPool);
   ok("CONTROL: the rounded shares are 100 and 0, which the rounded test would have demoted",
-    lateLop.yesPct === 100 && lateMirror.yesPct === 0, `${lateLop.yesPct} ${lateMirror.yesPct}`);
+    rawLop === 100 && rawMir === 0, `${rawLop} ${rawMir}`);
 }
 
 // ── 6 · an empty platform ──────────────────────────────────────────────────────

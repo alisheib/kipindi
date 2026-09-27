@@ -341,14 +341,17 @@ export function MarketCard({
   // ⛔ Nor on a one-sided one (WP6): its history is a line pinned at 100 or 0, which draws the very
   // certainty the card has just stopped printing.
   const showSpark = !fresh && !oneSided && Array.isArray(spark) && spark.length >= 4;
-  /* The refund rule, in the tense the card's phase allows (WP6). OPEN: a conditional — betting may
-     still bring the other side. CLOSED, not yet settled: the pools are frozen (`buyPositionInner` and
-     `cashOutPosition` both refuse after close), so settlement WILL refund every stake whatever the
-     verdict (`settleMarket`'s one-sided branch; rules §7). SETTLED or VOID: nothing — the card cannot
-     see what each position was paid, and a past-tense money claim it cannot check is not made. */
+  /* The refund rule (WP6), restating `settleMarket`'s one-sided branch and rules §7: every stake back in
+     full, whatever the verdict. ONE conditional sentence in every unsettled phase — "If betting closes
+     one-sided…" — and never a closed-phase "will be refunded". 🔴 That variant was built and withdrawn
+     before it shipped (the WP6 review): a market CLOSED by the sentinel before its selection window
+     can be put back to LIVE by `adminReopenMarket`, and one stake on the empty side then makes it
+     two-sided — the promise would have been false. The conditional is true in every case.
+     SETTLED or VOID: nothing — the card cannot see what each position was paid, and a past-tense
+     money claim it cannot check is not made. */
   const settled = !!resolvedOutcome || isResolved || status === "VOIDED";
   const oneSidedNote = !emptySide || settled ? null
-    : (live ? t.market.oneSidedNote : t.market.oneSidedClosedNote).replace("{side}", sideWord(t, emptySide, productLine));
+    : t.market.oneSidedNote.replace("{side}", sideWord(t, emptySide, productLine));
   // Trader crest — avatars when we have seeds; the predictor-count row renders
   // on EVERY card (with or without avatars) so cards stay the same shape in a
   // grid. The count moves out of the meta row and into this row.
@@ -455,8 +458,10 @@ export function MarketCard({
           bar sits at the same offset whether or not a 24h move exists. */}
       {/* ⭐ WP6 · On a one-sided card this row carries "One side only" instead of a 24h move — there is
           no price to move — in every phase, so a closed or settled one-sided card says why it has no
-          price too. It sits where the delivery puts it (right above the rail) and costs no height:
-          one nowrap micro-label line inside the row's own 12px. */}
+          price too. It sits where the delivery puts it (right above the rail). ⚠️ On a LIVE card the
+          row always existed, so the label costs no height; on a closed or settled one-sided card the
+          row is new and costs one card gap + 4px — accepted, it is the only word that explains the
+          dash (those cards already vary in height with the 24h band, D49). */}
       {(live || oneSided) && (
         <div className="mcardp-moveline">
           {oneSided ? (
@@ -479,7 +484,9 @@ export function MarketCard({
           full green pill would be the 100% the card no longer prints — and the rail is named "One side
           only", never "No bets yet": money IS on it (the D29 false-absence defect, one state over).
           A settled card still names its rail by the outcome first. */}
-      <TippingBar yesPct={yesPct} height={7} resolved={isResolved} showLabels={false} recastOnHover={false} empty={noPrice || oneSided} emptyLabel={outcomeLabel ?? (oneSided ? t.market.oneSideOnly : t.market.noBetsYet)} probabilityLabel={t.market.probBarAria.replace("{side}", sideWord(t, "YES", productLine))} />
+      {/* ⚠️ And "No bets yet" only where nobody EVER bet: a market whose only bettor cashed out has an
+          empty pool and a predictor — its rail is "No pool yet", the D29 rule the caption already keeps. */}
+      <TippingBar yesPct={yesPct} height={7} resolved={isResolved} showLabels={false} recastOnHover={false} empty={noPrice || oneSided} emptyLabel={outcomeLabel ?? (oneSided ? t.market.oneSideOnly : neverBet ? t.market.noBetsYet : t.market.noPoolYet)} probabilityLabel={t.market.probBarAria.replace("{side}", sideWord(t, "YES", productLine))} />
       {noPrice && neverBet && <div className="mcardp-nobets">{t.market.noBetsYet}</div>}
       {/* The refund rule, read at the reading floor (a sentence, not a micro-label: L6). It takes the
           slot the 24h band would, which a one-sided card never draws, so the card grows only by the

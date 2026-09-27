@@ -25,7 +25,9 @@
 import Link from "next/link";
 import { I } from "@/components/ui/glyphs";
 import { Reveal } from "@/components/layout/reveal";
-import { UpdownRing } from "@/components/home/updown-ring";
+// The ring and the price line live in the chart home (`test:chart-one-home`); this band keeps the words.
+import { UpdownRing } from "@/components/charts/updown-ring";
+import { UpdownPriceLine } from "@/components/charts/updown-price-line";
 import { fill } from "@/lib/utils";
 import { usd } from "@/lib/usd-price";
 import { sideWord } from "@/lib/side-label";
@@ -48,40 +50,6 @@ export type UpdownBandRound = {
   betsCloseAtMs: number;
   serverNowMs: number;
 };
-
-const W = 400, H = 112, PAD = 10;
-
-/** The mini chart: the opening price dashed, the two deciding prices, and the real reads since open. */
-function PriceLine({ round, label }: { round: UpdownBandRound; label: string }) {
-  const pts = round.series ?? [];
-  const values = [
-    ...pts.map((p) => p.price),
-    ...[round.openPrice, round.upTarget, round.downTarget].filter((v): v is number => v != null),
-  ];
-  if (values.length === 0) return null;
-  const lo = Math.min(...values), hi = Math.max(...values);
-  const span = hi - lo || 1;
-  const y = (v: number) => (hi === lo ? H / 2 : PAD + (1 - (v - lo) / span) * (H - PAD * 2));
-  const t0 = round.opensAtMs;
-  const t1 = pts.length ? Math.max(pts[pts.length - 1].ms, t0 + 1) : t0 + 1;
-  const x = (ms: number) => ((ms - t0) / (t1 - t0)) * W;
-  const rule = (v: number | null, cls: string) =>
-    v == null ? null : <line className={cls} x1="0" x2={W} y1={y(v)} y2={y(v)} vectorEffect="non-scaling-stroke" />;
-  return (
-    <svg className="kp-udchart" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" role="img" aria-label={label}>
-      {rule(round.upTarget, "kp-udchart__target kp-udchart__target--up")}
-      {rule(round.downTarget, "kp-udchart__target kp-udchart__target--down")}
-      {rule(round.openPrice, "kp-udchart__open")}
-      {pts.length >= 2 && (
-        <polyline
-          className="kp-udchart__line"
-          points={pts.map((p) => `${x(p.ms).toFixed(1)},${y(p.price).toFixed(1)}`).join(" ")}
-          vectorEffect="non-scaling-stroke"
-        />
-      )}
-    </svg>
-  );
-}
 
 export function UpdownBand({ t, liveCount, round }: { t: Dict; liveCount: number; round: UpdownBandRound | null }) {
   const up = sideWord(t, "YES", "UPDOWN");
@@ -141,7 +109,7 @@ export function UpdownBand({ t, liveCount, round }: { t: Dict; liveCount: number
                 )}
               </div>
               <div className="kp-updown__viz">
-                <PriceLine
+                <UpdownPriceLine
                   round={round}
                   label={[round.assetName, upRule, downRule, round.openPrice != null ? `${t.market.udOpenPrice} ${usd(round.openPrice, round.decimals)}` : null].filter(Boolean).join(" · ")}
                 />

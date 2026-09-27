@@ -22,7 +22,7 @@ import { roundStore } from "@/lib/server/updown-dal";
 import { getRoundDetail } from "@/lib/server/updown-board";
 import { pickLocalized } from "@/lib/localized";
 import { Reveal } from "@/components/layout/reveal";
-import { pricedYesPct } from "@/lib/markets/discovery";
+import { shownYesPct } from "@/lib/markets/price-state";
 import { heroFigures, type HeroRow } from "@/lib/markets/hero";
 import { landingComposition, LANDING_GRID_SIZE } from "@/lib/markets/landing";
 import { timeLeftLabel } from "@/lib/markets/time-left";
@@ -134,7 +134,8 @@ export default async function LandingPage() {
     category: m.category,
     pool: m.yesPool + m.noPool,
     predictors: m.predictorCount,
-    yesPct: pricedYesPct(m.yesPool, m.noPool),
+    // The printable price, or null — the same rule as the card and `/markets` (`price-state.ts`, WP6).
+    yesPct: shownYesPct(m.yesPool, m.noPool),
     // The hero's lens (price tier, then `close` / `closing`) never reads move24h — and we have no
     // 24h baseline at this point in the render. A-5: absent, not invented.
     move24h: undefined,

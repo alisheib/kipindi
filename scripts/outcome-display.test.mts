@@ -220,8 +220,8 @@ check(
   // ⚠️ AMENDED 2026-09-27 (landing v3 WP6): the rail is also drawn empty over a ONE-SIDED pool, and
   //    there "no bets yet" would be the same false absence this block exists for — money IS on it.
   //    So the name is the outcome, else "One side only" where one side holds money, else "no bets".
-  check("D29 the empty rail is named by what is KNOWN — the outcome, else one side only, else 'no bets yet'",
-    /emptyLabel=\{outcomeLabel \?\? \(oneSided \? t\.market\.oneSideOnly : t\.market\.noBetsYet\)\}/.test(card),
+  check("D29 the empty rail is named by what is KNOWN — the outcome, else one side only, else 'no bets yet' only where nobody ever bet",
+    /emptyLabel=\{outcomeLabel \?\? \(oneSided \? t\.market\.oneSideOnly : neverBet \? t\.market\.noBetsYet : t\.market\.noPoolYet\)\}/.test(card),
     "`\"\"` would leave a role=progressbar with no name at all on every voided card; a bare noBetsYet names a one-sided rail falsely");
   check("D29 the visible 'no bets yet' caption is gated on the history test too",
     /\{noPrice && neverBet && <div className="mcardp-nobets">/.test(card),
@@ -237,8 +237,8 @@ check(
     !/\{noPrice && neverBet && <div className="mcardp-nobets">/
       .test('{noPrice && <div className="mcardp-nobets">{t.market.noBetsYet}</div>}'));
   check("D29 control · a one-sided rail named 'no bets yet' IS detected",
-    !/emptyLabel=\{outcomeLabel \?\? \(oneSided \? t\.market\.oneSideOnly : t\.market\.noBetsYet\)\}/
-      .test("empty={noPrice || oneSided} emptyLabel={outcomeLabel ?? t.market.noBetsYet}"));
+    !/emptyLabel=\{outcomeLabel \?\? \(oneSided \? t\.market\.oneSideOnly : neverBet \? t\.market\.noBetsYet : t\.market\.noPoolYet\)\}/
+      .test("empty={noPrice || oneSided} emptyLabel={outcomeLabel ?? (oneSided ? t.market.oneSideOnly : t.market.noBetsYet)}"));
 }
 
 // ---------------------------------------------------------------------------

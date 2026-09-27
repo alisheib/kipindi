@@ -758,10 +758,11 @@ export const dict = {
       // landing v3 · WP6 — a market with money on ONE side has no price (MOBILE-VISUAL ruling 13).
       // The refund sentences restate rules §7 (`_content-yes-no.tsx`) and `settleMarket`'s one-sided
       // branch: every stake back in full, whatever the verdict. "No stake on {side}", not "no one
-      // picked": a cash-out empties a side somebody did pick. ⛔ No digits here (`test:rate-copy`).
+      // picked": a cash-out empties a side somebody did pick. ONE conditional sentence for every
+      // unsettled phase — a closed-phase "will be refunded" was withdrawn, because `adminReopenMarket`
+      // can put a sentinel-CLOSED market back to LIVE. ⛔ No digits here (`test:rate-copy`).
       oneSideOnly: "One side only",
       oneSidedNote: "No stake on {side} yet. If betting closes one-sided, every stake is refunded in full.",
-      oneSidedClosedNote: "Betting closed with stakes on one side only. Every stake will be refunded in full when the market settles.",
       closed: "closed",
       // Time-left. The NUMBER is inside the string so each locale owns its own
       // spacing and word order. They used to be bare suffixes concatenated as
@@ -3405,10 +3406,8 @@ export const dict = {
       noPoolYet: "Hakuna bwawa bado",
       // drafted, marked for native review; English is binding.
       oneSideOnly: "Upande mmoja tu",
-      // drafted, marked for native review; English is binding.
-      oneSidedNote: "Hakuna dau upande wa {side} bado. Ubashiri ukifungwa ukiwa na upande mmoja tu, kila dau hurudishwa kamili.",
-      // drafted, marked for native review; English is binding.
-      oneSidedClosedNote: "Ubashiri umefungwa ukiwa na dau upande mmoja tu. Kila dau litarudishwa kamili soko litakapotatuliwa.",
+      // drafted, marked for native review; English is binding. The second sentence is rules §7's own.
+      oneSidedNote: "Hakuna dau upande wa {side} bado. Kama upande mmoja tu una dau wakati wa kufunga, kila dau hurudishwa kamili.",
       closed: "imefungwa",
       timeLeftD: "siku {n} zimebaki", timeLeftH: "masaa {n} yamebaki", timeLeftM: "dakika {n} zimebaki",
       showMarketN: "Onyesha soko {n}", prevMarket: "Soko lililopita", nextMarket: "Soko linalofuata", showResultN: "Onyesha tokeo maarufu {n}",
@@ -5603,12 +5602,10 @@ export const dict = {
       noBetsYet: "暂无投注",
       beFirst: "成为第一个预测者",
       noPoolYet: "暂无奖池",
-      // drafted, marked for native review; English is binding.
-      oneSideOnly: "仅有一方",
+      // drafted, marked for native review; English is binding. 单边 is rules §7's term (单边市场).
+      oneSideOnly: "仅单边有投注",
       // drafted, marked for native review; English is binding.
       oneSidedNote: "「{side}」方尚无投注。若截止时仅有一方持有下注，全部下注将全额退还。",
-      // drafted, marked for native review; English is binding.
-      oneSidedClosedNote: "投注已截止，且仅有一方持有下注。市场结算时，全部下注将全额退还。",
       closed: "已关闭",
       timeLeftD: "{n}天后", timeLeftH: "{n}小时后", timeLeftM: "{n}分钟后",
       showMarketN: "显示市场 {n}", prevMarket: "上一个市场", nextMarket: "下一个市场", showResultN: "显示精选结果 {n}",

@@ -27,7 +27,8 @@
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import { decomment } from "./lib/decomment.mts";
-import { priceState, priceTier } from "../src/lib/markets/price-state.ts";
+import { priceState, priceTier, shownYesPct } from "../src/lib/markets/price-state.ts";
+import { matchesOdds, type DiscoveryRow } from "../src/lib/markets/discovery.ts";
 import { dict } from "../src/lib/i18n-dict.ts";
 
 const ROOT = new URL("..", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1");
@@ -131,8 +132,22 @@ log("\n── 3 · the card's one-sided state");
   check("3.5 the one-sided rail is the dashed empty rail, never a full pill",
     /empty=\{noPrice \|\| oneSided\}/.test(card));
   check("3.6 the rail and the label say 'One side only', never 'No bets yet' (money IS on it)",
-    /oneSided \? t\.market\.oneSideOnly : t\.market\.noBetsYet/.test(card)
+    /emptyLabel=\{outcomeLabel \?\? \(oneSided \? t\.market\.oneSideOnly : neverBet \? t\.market\.noBetsYet : t\.market\.noPoolYet\)\}/.test(card)
     && /<span className="mcardp-oneside">\{t\.market\.oneSideOnly\}<\/span>/.test(card));
+  // ⛔ THE HEADLINE SLOT (WP6 review): without its own one-sided arm a one-sided card falls through to
+  // the priced arm and prints `{yesPct}%` — 0 there, "YES 0%" on a market whose money is all on YES.
+  const armAt = card.search(/\) : oneSided \? \(\s*<div className="mcardp-pct mcardp-pct--empty" aria-hidden>—<\/div>/);
+  const pricedAt = card.indexOf('<div className="mcardp-pct">{yesPct}');
+  check("3.11 ⛔ the price slot has a one-sided arm (the dash), and it comes before the priced arm",
+    armAt > 0 && pricedAt > armAt, `oneSided arm @${armAt}, priced arm @${pricedAt}`);
+  // The label is the only word that explains the dash on a CLOSED or SETTLED one-sided card.
+  check("3.12 the 'One side only' row renders on one-sided cards in EVERY phase, not only live ones",
+    /\{\(live \|\| oneSided\) && \(\s*<div className="mcardp-moveline">/.test(card));
+  // One conditional sentence in every unsettled phase — never a closed-phase promise (a sentinel-CLOSED
+  // market can be reopened by `adminReopenMarket`, and one stake on the empty side ends the refund).
+  check("3.13 the note is the one conditional sentence, whatever the phase",
+    /t\.market\.oneSidedNote\.replace\("\{side\}", sideWord\(t, emptySide, productLine\)\)/.test(card)
+    && !/oneSidedClosedNote/.test(card));
   check("3.7 no 24h sparkline on a one-sided card (its history is a line pinned at 100)",
     /const showSpark = !fresh && !oneSided && /.test(card));
   check("3.8 the note names the empty side in the card's own product vocabulary",
@@ -147,6 +162,8 @@ log("\n── 3 · the card's one-sided state");
     !/\{showPrice && <span className="font-mono text-\[11\.5px\]"> @ \{yesPct\}%<\/span>\}/
       .test('{!noPrice && <span className="font-mono text-[11.5px]"> @ {yesPct}%</span>}'));
   check("3.5-control the pre-fix rail IS detected", !/empty=\{noPrice \|\| oneSided\}/.test("empty={noPrice}"));
+  check("3.12-control a live-only gate IS detected",
+    !/\{\(live \|\| oneSided\) && \(\s*<div className="mcardp-moveline">/.test('{live && (\n        <div className="mcardp-moveline">'));
 }
 
 // ── 4 · the hero board row, and the landing's price floor ────────────────────────────────────────
@@ -175,10 +192,11 @@ log("\n── 5 · the dictionary");
   const L = ["en", "sw", "zh"] as const;
   for (const loc of L) {
     const m = dict[loc].market as Record<string, string>;
-    check(`5.1 ${loc} has the label and both notes`, !!m.oneSideOnly && !!m.oneSidedNote && !!m.oneSidedClosedNote);
+    check(`5.1 ${loc} has the label and the note`, !!m.oneSideOnly && !!m.oneSidedNote);
+    check(`5.1b ${loc} has NO closed-phase "will be refunded" promise (a reopened market would break it)`, !("oneSidedClosedNote" in m));
     check(`5.2 ${loc} names the empty side in the open-market note`, (m.oneSidedNote ?? "").includes("{side}"), m.oneSidedNote);
     // ⛔ A "100%" or "0%" in the note would be the very figure the card withholds (and `test:rate-copy`).
-    check(`5.3 ${loc} states no percentage`, !/\d\s*%/.test(`${m.oneSideOnly} ${m.oneSidedNote} ${m.oneSidedClosedNote}`));
+    check(`5.3 ${loc} states no percentage`, !/\d\s*%/.test(`${m.oneSideOnly} ${m.oneSidedNote}`));
   }
   const en = dict.en.market as Record<string, string>;
   check("5.4 the English note says the refund is in full, and conditions it on betting closing one-sided",
@@ -205,6 +223,25 @@ log("\n── 6 · the refund the note promises is the one settlement pays");
     /if only one side holds any stake at closing, every stake is refunded in full/.test(rules));
   // ⭐ CONTROL — the branch slice is real code, not an empty or whole-file slice.
   check("6.1-control the branch slice is bounded (it is not the whole file)", branch.length > 200 && branch.length < 20_000, String(branch.length));
+}
+
+// ── 7 · the board, the hero rows and the detail page print the SAME price as the card ───────────
+log("\n── 7 · one rule for every row and the page the card links to");
+{
+  const board = decomment(read("src/app/markets/page.tsx"));
+  const landing = decomment(read("src/app/page.tsx"));
+  const detail = decomment(read("src/app/markets/[id]/page.tsx"));
+  check("7.1 the /markets row's price is the printable one (`shownYesPct`), not the raw share",
+    /yesPct: shownYesPct\(m\.yesPool, m\.noPool\)/.test(board) && !/yesPct: pricedYesPct\(/.test(board));
+  check("7.2 the landing's hero rows too", /yesPct: shownYesPct\(m\.yesPool, m\.noPool\)/.test(landing));
+  check("7.3 the detail page prints a two-sided price as the card does (no 99 on the card, 100 one tap later)",
+    /const yesPct = shownYesPct\(m\.yesPool, m\.noPool\) \?\? impliedYesPct\(m\);/.test(detail));
+  // Behaviour: a NO-only market is in no odds bucket (its card says "One side only"), a real long shot is.
+  const row = (yesPool: number, noPool: number) => ({ yesPct: shownYesPct(yesPool, noPool) }) as unknown as DiscoveryRow;
+  const noOnly = row(0, 20_000);
+  check("7.4 ⛔ a one-sided market is filed under no price bucket — not 'Longshots' at 0%",
+    !matchesOdds(noOnly, "long") && !matchesOdds(noOnly, "call") && !matchesOdds(noOnly, "cont") && matchesOdds(noOnly, "any"));
+  check("7.4-control a real two-sided long shot (1,000 vs 20,000 → 5%) IS a long shot", matchesOdds(row(1_000, 20_000), "long"));
 }
 
 log(`\n${fail === 0 ? "ALL PASS" : `${fail} FAILED`} — one-sided markets`);

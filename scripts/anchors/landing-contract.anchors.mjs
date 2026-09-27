@@ -46,6 +46,13 @@ export const MUTATIONS = [
     expect: "3.8-control",
   },
   {
+    name: "the grid stops filtering by status (a RESOLVED market is offered live YES/NO buttons)",
+    file: "src/lib/markets/landing.ts",
+    from: `  const open = rows.filter((r) => matchesStatus(r, "open", nowMs) && !excluded.has(r.id));`,
+    to: `  const open = rows.filter((r) => !excluded.has(r.id));`,
+    expect: "2.5",
+  },
+  {
     name: "WP6 · the grid seats by the lens alone (a one-sided TZS 90,000 card takes a priced market's seat)",
     file: "src/lib/markets/landing.ts",
     from: `    [0, 1, 2].flatMap((tier) => byLens.filter((r) => priceTier(r) === tier)).slice(0, size).map((r) => r.id),`,

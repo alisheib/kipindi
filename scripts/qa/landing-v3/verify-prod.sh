@@ -21,6 +21,12 @@ case "$live" in "$SHA"*|"${SHA:0:7}"*) ;; *) say "production is NOT serving $SHA
 
 say "capture production (signed out)"
 MODE=build BASE="$BASE" OUT="$OUT/prod" node scripts/qa/landing-v3/capture.mjs 2>&1 | tee -a "$LOG"
+# D2 rows change `market-card.tsx`, which /markets, /results and /watchlist render too — those pages are
+# re-shot on every D2 deploy (LANDING-TEN §2.0). PAGES is a space-separated list WITHOUT leading slashes.
+for P in ${PAGES:-}; do
+  say "capture production /$P"
+  MODE=build BASE="$BASE" OUT="$OUT/prod" PAGE="$P" MAX_TILES=4 node scripts/qa/landing-v3/capture.mjs 2>&1 | tee -a "$LOG"
+done
 say "gate: base pass against production"
 BASE="$BASE" node scripts/qa/landing-ten.mjs --pass=base > "$OUT/gate-base.txt" 2>&1
 say "gate exit=$?"; sed -n '/SUMMARY/,$p' "$OUT/gate-base.txt" | tee -a "$LOG"

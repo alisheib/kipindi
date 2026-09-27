@@ -1066,7 +1066,7 @@ body {
 /* landing v3 · WP14 — the Wallet's "Available" and the signed-in hero's "Your picks" / "Available". */
 .kp-wsheet__label,
 .kp-mine__eyebrow,
-/* landing v3 · WP6 — "One side only" stands where the price's own caption would, so it is set like it. */
+/* landing v3 · WP6 — the one-sided state label on the move-line row, set as the price caption is (mono caps, label rung). */
 .mcardp-oneside,
 .mcardp-pctcap { letter-spacing: 0.14em; }
 
@@ -4785,7 +4785,8 @@ html[data-sheet-open] .route-enter { animation: none; }
    cold-start em-dash and dashed `--bar-empty-track` rail, and says why in two
    places. The LABEL rides the move-line row directly above the rail (the
    delivery's placement), as the price caption is set: mono, uppercase, the
-   label rung, subtle — no height of its own inside the row's 12px. The NOTE is
+   label rung, subtle — inside the row's 12px (a row a LIVE card always had;
+   on a closed or settled one-sided card the row is new). The NOTE is
    the refund rule, a sentence, so it reads at the §T4 floor (--type-small, 13px,
    L6) in the muted body ink, never as a micro-label; it takes the slot the 24h
    band would, which a one-sided card never draws. */
@@ -4803,6 +4804,9 @@ html[data-sheet-open] .route-enter { animation: none; }
   line-height: 1.4;
   color: var(--text-muted);
   text-wrap: pretty;
+  /* A reading measure: on the full-width featured card at 768–1023 the sw note set as ONE ~104-
+     character line (V7). Every card narrower than ~560px is untouched. */
+  max-inline-size: 60ch;
 }
 @media (hover: hover) {
   .mcardp-details:hover { text-decoration: underline; }
@@ -5646,6 +5650,7 @@ textarea::-webkit-resizer {
 .kp-settled__src { min-width: 0; }
 .kp-settled__host { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 @media (max-width: 639.98px) {
+  /* density: general — a settled row's line layout (the host must read whole at 360), not card spacing; both settings. */
   .kp-settled__row { grid-template-areas: "o q q" ". m m" ". a a" ". s s"; }
 }
 @media (min-width: 768px) {

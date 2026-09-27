@@ -228,16 +228,46 @@ feature (a plant against a feature that does not exist yet cannot prove anything
   the wallet debit and the position; Esc, backdrop and Cancel all close without betting; focus stays
   trapped; the confirm cannot double-submit.
 
-**WP6 · One-sided markets** — `market-card.tsx`, `src/lib/markets/landing.ts`, the seven `<MarketCard>` call sites
-- A market is one-sided when it holds money and one side's pool is empty. The card gets the pools (or a
-  `oneSided` flag) as a **required** prop at all seven call sites — a default is how a caller that does not
-  know its product compiles. Never infer it from a rounded 0 or 100.
-- One-sided: "— One side only", the dashed rail (`--bar-empty-track`), buttons without a price, and the
-  note "No one has picked {side} yet. If betting closes one-sided, every stake is refunded."
-- Two-sided: the displayed price is kept within 1–99 (L14).
-- `landingGrid`: sort contested markets first, as a sort — a filter empties `test:landing-contract`'s
-  fixture (§2.1 control).
-- This delivers MOBILE-VISUAL ruling 13 on the card; that plan's U32 is told so.
+**WP6 · One-sided markets** — BUILT. `src/lib/markets/price-state.ts`, `market-card.tsx`, the seven `<MarketCard>` call sites, `landing-hero.tsx` (`QuestionRow`), `hero.ts`, `landing.ts`
+- ONE pure helper, `priceState(yesPool, noPool)` (no imports, no "use client" — the card and the server
+  pages both call it): nothing staked → `none`; money on one side only → `oneSided` + the empty side;
+  both sides → `priced`, shown within **1–99** (L14; the NO figure is always 100 − YES). `priceTier` is
+  the same answer as 0/1/2 for the orderings. ⛔ Never inferred from a rounded 0/100, and `pricedYesPct`
+  is unchanged (the conviction bar, the topic lean and the odds filters read it; `test:hero-contract` §1).
+- The card takes **`yesPool` and `noPool` as required props** in place of `yesPct`/`volume`, at all seven
+  call sites (`markets/page.tsx` ×2, `markets/[id]/page.tsx` ×1, `page.tsx`, `results/page.tsx`,
+  `watchlist/page.tsx`, `landing-hero.tsx`) — the `impliedYesPct(m)` and `yesPct ?? 0` feeds are gone.
+- One-sided card: the em-dash in the price slot; "One side only" on the move-line row right above the
+  rail (the price caption's micro-label, in every phase); the dashed `--bar-empty-track` rail named "One
+  side only" (never "No bets yet" — money is on it); no 24h sparkline; the YES/NO buttons stay (taking
+  the empty side is what prices the market) with no "@ n%" on screen or in their names; no TIPPING badge.
+- The note, a sentence at `--type-small` (L6) capped at a 60ch measure: "No stake on {side} yet. If betting
+  closes one-sided, every stake is refunded in full." — ONE conditional sentence in every unsettled phase
+  (the delivery's "No one has picked" is false after a cash-out empties a side somebody picked, L22);
+  settled or void — none (the card cannot see what was paid). ⛔ A closed-phase "will be refunded" variant
+  was built and withdrawn before shipping: a sentinel-CLOSED market can be put back to LIVE by
+  `adminReopenMarket`, and one stake on the empty side ends the refund. Its truth is pinned:
+  `test:one-sided` §6 reads `settleMarket`'s one-sided branch and rules §7. sw is rules §7's own sentence;
+  zh names the state with the rules' 单边.
+- The hero board row reads the same helper: "— One side only", no lean rule; its refund note and dashed
+  rail arrive with WP4's rebuilt row.
+- Orderings: the hero's floor tiers by `priceTier` (pools). `landingGrid` gives the seats to priced markets
+  first and then SHOWS the seated cards in the lens order its heading states ("Biggest pools first") — a
+  partition, never a filter (`test:landing-contract` §4, L23).
+- Guards: `test:one-sided` + `red:one-sided` 8/8 (incl. the settlement branch); `test:outcome` D29 pin
+  amended; `hero-contract` §5d; `landing-contract` §4; the three harnesses' anchors declared in
+  `scripts/anchors/`. Drive: `npm run qa:landing-v3:wp6` (`verify-wp6.sh` + `seed-onesided.mjs`).
+- One rule for every row: `shownYesPct` (the printable price, null on an empty OR one-sided pool) is the
+  `yesPct` of the `/markets` rows and the hero rows, so the odds filters and "closest call" no longer file
+  a NO-only market under long shots at 0%; and the detail page prints a two-sided price as the card does
+  (a 200,000-vs-1,000 market reads 99 on both, B6).
+- ⚠️ NOT this row's, left with MOBILE-VISUAL U32 (ruling 13's other surfaces), each still printing 0/100
+  on a ONE-SIDED market: the detail page's bar, side picker, metadata and JSON-LD (and its callout still
+  says "One-sided win" and "before resolution" where the rules say "at closing"); `/api/og/market`;
+  `/live`'s pulse grid and featured contest; `/results`' featured result.
+- Accepted, recorded: a closed or settled one-sided card gains the label row (one gap + 4px); on the
+  landing grid one card with a note stretches its row (`grid-auto-rows: 1fr`) — WP9 gives every grid card
+  the same slots.
 
 **WP7 · Estimate line** — ⛔ not built (R3).
 
@@ -560,10 +590,12 @@ while the open book held nine contested markets. The lens ordered only the *clos
 contestedness; only two markets close today, so three of the five seats came from a fallback tail
 sorted by closing time with no price filter at all.
 
-The fix is a **floor, not a wider window**: `hero.ts` partitions by degeneracy (0 contested,
-1 priced at 0%/100%, 2 unpriced) **before** position, so a degenerate row takes a seat only once
-every contested market is already on screen — and the board is never short, because degenerate rows
-are still shown, just last.
+The fix is a **floor, not a wider window**: `hero.ts` partitions by price tier (0 two-sided,
+1 one-sided, 2 unpriced — `priceTier`, read from the pools since WP6; it used to read a rounded
+0%/100%, which filed a two-sided 199-vs-1 market with the one-sided ones) **before** position, so a
+degenerate row takes a seat only once every priced market is already on screen — and the board is
+never short, because degenerate rows are still shown, just last. The landing grid applies the same
+tiers to its seats (WP6).
 
 ⚠️ `hero-contract` §5b's fixture was **the one shape that cannot fail**: its tail defaulted to
 10k/10k, i.e. contested, so it could not tell a floor from its absence. It now has an unpriced tail,

@@ -116,4 +116,4 @@ for (const w of W) for (const loc of LOCALES) {
   await ctx.close();
 }
 await browser.close();
-writeFileSync(join(OUT, `report-${MODE}${AUTH ? "-" + AUTH : ""}.json`), JSON.stringify(report, null, 2));
+writeFileSync(join(OUT, `report-${MODE}${PAGE ? "-" + PAGE.replace(/\W+/g, "_") : ""}${AUTH ? "-" + AUTH : ""}.json`), JSON.stringify(report, null, 2));

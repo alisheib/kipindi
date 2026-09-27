@@ -24,8 +24,10 @@ try {
 const pool = (seeded.ids ?? []).map((x) => x.id).filter((id) => !resolvedIds.has(id));
 if (pool.length < 10) { console.error(`only ${pool.length} unused live markets`); process.exit(1); }
 
-// Fixed seats, so phase 2 never re-uses a phase-1 market.
-const SEATS = { O1: pool[3], O2: pool[4], O3: pool[5], C1: pool[6], C2: pool[7], C3: pool[8], L: pool[9] };
+// Fixed seats from the END of the list, so phase 2 never re-uses a phase-1 market and the settled-row
+// seed (`resolve-seed-markets`, which bets on the FIRST live markets) can run between the phases.
+const tail = pool.slice(-7);
+const SEATS = { O1: tail[0], O2: tail[1], O3: tail[2], C1: tail[3], C2: tail[4], C3: tail[5], L: tail[6] };
 
 const bet = async (marketId, n, stake, yesRatio, userPrefix) => {
   const r = await fetch(`${BASE}/api/dev-test/stress-bulk-bet`, {

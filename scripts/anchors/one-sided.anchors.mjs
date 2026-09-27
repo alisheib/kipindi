@@ -60,6 +60,27 @@ export const MUTATIONS = [
     expect: "5.5",
   },
   {
+    name: "the price slot loses its one-sided arm (the card falls through to 'YES 0%')",
+    file: "src/components/markets/market-card.tsx",
+    from: `          ) : oneSided ? (`,
+    to: `          ) : false ? (`,
+    expect: "3.11",
+  },
+  {
+    name: "the 'One side only' row shows on live cards only again (a closed one-sided card loses its word)",
+    file: "src/components/markets/market-card.tsx",
+    from: `      {(live || oneSided) && (`,
+    to: `      {live && (`,
+    expect: "3.12",
+  },
+  {
+    name: "the /markets row files a one-sided market by its raw 0/100 share again (Longshots at 0%)",
+    file: "src/app/markets/page.tsx",
+    from: `    yesPct: shownYesPct(m.yesPool, m.noPool),`,
+    to: `    yesPct: pricedYesPct(m.yesPool, m.noPool),`,
+    expect: "7.1",
+  },
+  {
     name: "settlement refunds a one-sided market only when the backed side wins (the note would lie)",
     file: "src/lib/server/market-service.ts",
     from: `    && ((m.yesPool > 0 && m.noPool === 0) || (m.yesPool === 0 && m.noPool > 0));`,

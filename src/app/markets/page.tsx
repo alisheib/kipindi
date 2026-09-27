@@ -4,6 +4,7 @@ import { timeLeftLabel } from "@/lib/markets/time-left";
 import Link from "next/link";
 import { SignalPip } from "@/components/brand";
 import { MarketCard } from "@/components/markets/market-card";
+import { shownYesPct } from "@/lib/markets/price-state";
 import {
   listMarkets,
   isClosedByTime,
@@ -38,7 +39,6 @@ import {
   matchesStatus,
   filterRows,
   parseDiscoveryParams,
-  pricedYesPct,
   relaxations,
   sortRows,
   type DiscoveryRow,
@@ -103,7 +103,7 @@ type BoardMarket = Awaited<ReturnType<typeof getBoard>>[number];
 /**
  * Decorate a stored market into the shape the pure contract reasons about.
  *
- * ⚠️ `yesPct` is null on an empty pool. `impliedYesPct` returns a hardcoded 50 when nobody has
+ * ⚠️ `yesPct` is null on an empty pool, and on a one-sided one (WP6 — see `shownYesPct`). `impliedYesPct` returns a hardcoded 50 when nobody has
  * staked (`market-service.ts:232-236`) — passing that into an odds bucket would file a
  * cold-start market under "Close call · 40–60%" on a number nobody produced.
  *
@@ -118,9 +118,11 @@ function toRow(m: BoardMarket, watched: Set<string>, move24h: number | undefined
     category: m.category,
     pool,
     predictors: m.predictorCount,
-    // ONE definition of "priced, or null because nobody staked" — shared with the landing hero
-    // so the two surfaces cannot disagree about which markets have a crowd price (B9 / law 81).
-    yesPct: pricedYesPct(m.yesPool, m.noPool),
+    // ONE definition of "priced, or null because there is no price" — shared with the landing hero
+    // and the market card (`price-state.ts`), so no two surfaces disagree about which markets have
+    // a crowd price (B9 / law 81). ⭐ Null for a ONE-SIDED pool too (WP6, ruling 13): its card says
+    // "One side only", so the odds filters must not file it under long shots at 0%.
+    yesPct: shownYesPct(m.yesPool, m.noPool),
     move24h,
     createdAtMs: Date.parse(m.createdAt),
     bettableUntilMs: Date.parse(m.selectionClosedAt ?? m.resolutionAt),
