@@ -19,7 +19,8 @@ import { ScrollX } from "@/components/ui/scroll-x";
 import { Select } from "@/components/ui/select";
 import { I } from "@/components/ui/glyphs";
 import { ProbabilityBar } from "@/components/markets/probability-bar";
-import { getMarket, listPositionsForMarket, impliedYesPct } from "@/lib/server/market-service";
+import { getMarket, listPositionsForMarket } from "@/lib/server/market-service";
+import { priceState } from "@/lib/markets/price-state";
 import { db } from "@/lib/server/store";
 import { displayLabel, displayInitials } from "@/lib/display-label";
 import { formatTzs, formatBalancePill, formatDateTime } from "@/lib/utils";
@@ -156,7 +157,10 @@ async function MarketPredictorsContent({
   const hasFilter = !!query || !!sideFilter || !!statusFilter;
 
   // KPIs
-  const yes = impliedYesPct(m);
+  // ⭐ C1 · the player surfaces' price rule: a figure only where both pools hold money. The ONE-SIDED callout
+  // below no longer sits under a 100/0 bar that contradicts it.
+  const price = priceState(m.yesPool, m.noPool);
+  const noPriceLabel = price.kind === "oneSided" ? "One side only" : m.predictorCount > 0 ? "No pool" : "No bets";
   const yesPositions = allPositions.filter((p) => p.side === "YES");
   const noPositions  = allPositions.filter((p) => p.side === "NO");
   const yesStaked    = yesPositions.reduce((s, p) => s + p.stake, 0);
@@ -227,8 +231,8 @@ async function MarketPredictorsContent({
             </a>
           </div>
           <div className="mt-3">
-            <ProbabilityBar yesPct={yes} size="micro" resolved={m.status === "RESOLVED"} />
-            <p className="mt-1 font-mono text-[10px] text-text-subtle">{yes}% YES · {100 - yes}% NO</p>
+            <ProbabilityBar yesPct={price.kind === "priced" ? price.yesPct : undefined} empty={price.kind !== "priced"} emptyLabel={noPriceLabel} size="micro" resolved={m.status === "RESOLVED"} />
+            <p className="mt-1 font-mono text-[10px] text-text-subtle">{price.kind === "priced" ? `${price.yesPct}% YES · ${100 - price.yesPct}% NO` : noPriceLabel}</p>
           </div>
           {/* Pool breakdown — YES/NO/total player volume */}
           <div className="mt-3 pt-3 border-t border-border/60 grid grid-cols-1 sm:grid-cols-3 gap-x-4 gap-y-1 font-mono text-[10.5px]">

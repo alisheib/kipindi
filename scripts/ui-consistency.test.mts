@@ -208,15 +208,9 @@ const SPLIT_BAR_ALLOW = new Set(["src/app/positions/page.tsx"]);
  */
 const TIPPING_COLD_START_OK = new Set([
   "src/app/live/featured-contest.tsx",
-  // `probability-bar.tsx` is a thin PASS-THROUGH wrapper, and every one of its consumers is the
-  // officer console (`admin/markets`, `admin/markets/[id]`, `admin/resolver/[id]`,
-  // `admin/resolver-queue` — verified 2026-09-03). §C2 governs what a PLAYER is shown; an
-  // officer reading the crowd's implied 50 beside a pool of zero is an internal statistic on a
-  // page that also shows them the raw pools. It sits in `components/markets/` rather than
-  // `components/admin/`, which is the only reason the path-based population sees it at all.
-  // ⛔ THE EXEMPTION IS CONDITIONAL ON THAT USAGE: the moment any player surface imports
-  // `ProbabilityBar`, delete this entry and give the wrapper an `empty` passthrough.
-  "src/components/markets/probability-bar.tsx",
+  // ✅ 2026-09-27 (landing v3 C1): `probability-bar.tsx` LEFT this list — the wrapper forwards `empty`
+  // and `emptyLabel` now, and the four officer surfaces draw the named empty rail on an empty or
+  // one-sided pool instead of the crowd's implied 50 or a 100/0. The list only shrinks.
 ]);
 
 const RULES: Rule[] = [

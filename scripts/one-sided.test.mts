@@ -35,13 +35,9 @@ import { matchesOdds, type DiscoveryRow } from "../src/lib/markets/discovery.ts"
 import { dict } from "../src/lib/i18n-dict.ts";
 import { poolFee } from "../src/lib/payout.ts";
 
-/** §14 · the files that may still call the old price helpers. ⛔ It only shrinks (C1: B, C, G each remove entries). */
-const ALLOW_OLD_PRICE: readonly string[] = [
-  "src/app/admin/markets/page.tsx",
-  "src/app/admin/markets/[id]/page.tsx",
-  "src/app/admin/resolver-queue/page.tsx",
-  "src/app/admin/resolver/[id]/page.tsx",
-];
+/** §14 · the files that may still call the old price helpers. ⛔ It only shrinks: C1-B took /live, C1-C /results,
+ *  C1-G the four admin pages — it is EMPTY now, and must stay empty. */
+const ALLOW_OLD_PRICE: readonly string[] = [];
 
 const ROOT = new URL("..", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1");
 const SRC = join(ROOT, "src");
@@ -503,6 +499,10 @@ log("\n── 14 · no surface calls impliedYesPct/pricedYesPct any more, except
   check("14.0 the sweep reads the real tree (it walked the app and component folders)", files.length > 200, String(files.length));
   check("14.1 ⛔ no page or component calls impliedYesPct/pricedYesPct outside the declared remainder", unexpected.length === 0, unexpected.join(", "));
   check("14.2 every declared remainder still calls one (a stale entry is a list that stopped shrinking)", staleAllow.length === 0, staleAllow.join(", "));
+  // The officer console draws the named empty rail too (C1-G): the bar wrapper forwards the state.
+  const pbar = decomment(read("src/components/markets/probability-bar.tsx"));
+  check("14.3 the officer bar wrapper forwards the empty rail and its name (no implied 50 or 100/0 on the console)",
+    /empty=\{!!empty\} emptyLabel=\{emptyLabel\}/.test(pbar) && /\byesPct\?: number;/.test(pbar));
   check("14.1-control a planted call IS detected, a mention in prose is not",
     OLD.test(decomment("const y = impliedYesPct(m);")) && !OLD.test(decomment("// impliedYesPct(m) returned 50")));
 }

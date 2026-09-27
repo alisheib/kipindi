@@ -1458,7 +1458,11 @@ own words beneath it.**
   ✅ **C1 commit F**: the `/updown` card and the round page draw a split only where both sides hold money (from
   the round's raw pools; the board ships no finished `upPct` any more); a one-sided round shows the dashed rail
   named "One side only" and the label row — no more "Up 100% · 0% Down" above "Nobody has backed Down yet".
-  `test:one-sided` §13; `qa:cold-start`'s invariant is now "a split ⟺ both sides funded". ⭐ S07-results-01 and the nested half of
+  `test:one-sided` §13; `qa:cold-start`'s invariant is now "a split ⟺ both sides funded". ✅ **C1 commit G**
+  (officer console, English only): `/admin/markets`, `/admin/markets/[id]`, `/admin/resolver-queue` and
+  `/admin/resolver/[id]` read the same rule — the named empty rail ("One side only" / "No pool" / "No bets"), no
+  crowd dial without a price, and the resolver told that a one-sided verdict moves no money. With that no page or
+  component calls `impliedYesPct`/`pricedYesPct` any more (`test:one-sided` §14's list is empty). ⭐ S07-results-01 and the nested half of
   S07-results-26 (share on a settled card navigating away) are delivered by landing v3 WP14b.
 
 **14. Item 7 — the leaderboard ranks raw ROI. RULED: rank by the law its own tiers already state.**

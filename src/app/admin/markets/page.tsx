@@ -9,7 +9,8 @@ import { I } from "@/components/ui/glyphs";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { Select } from "@/components/ui/select";
 import Link from "next/link";
-import { listMarkets, impliedYesPct, type MarketCategory } from "@/lib/server/market-service";
+import { listMarkets, type MarketCategory } from "@/lib/server/market-service";
+import { priceState } from "@/lib/markets/price-state";
 import { ProbabilityBar } from "@/components/markets/probability-bar";
 import { formatTzs, formatBalancePill, formatDateTime } from "@/lib/utils";
 import { SELECTION } from "@/lib/admin-status-lexicon";
@@ -170,7 +171,9 @@ async function AdminMarketsContent({
               </thead>
               <tbody>
                 {paged.map((m) => {
-                  const yes = impliedYesPct(m);
+                  // ⭐ C1 · the player surfaces' price rule, for the officer too: a figure only where both pools hold
+                  // money; a one-sided pool is named (it refunds), an empty one says so.
+                  const price = priceState(m.yesPool, m.noPool);
                   return (
                     <tr key={m.id} className="align-top">
                       <td className="max-w-[360px]">
@@ -192,7 +195,7 @@ async function AdminMarketsContent({
                               <span className="h-1.5 w-1.5 rounded-pill" style={{ background: m.resolvedOutcome === "YES" ? "var(--yes-400)" : "var(--no-400)" }} />
                               Settled {m.resolvedOutcome}
                             </span>
-                            <p className="mt-1 font-mono text-[10px] text-text-subtle">closed at {yes}% YES</p>
+                            <p className="mt-1 font-mono text-[10px] text-text-subtle">{price.kind === "priced" ? `closed at ${price.yesPct}% YES` : price.kind === "oneSided" ? (m.settledAt ? "one side only · refunded" : "one side only · refund at settlement") : m.predictorCount > 0 ? "no pool" : "no bets"}</p>
                           </>
                         ) : m.resolvedOutcome === "VOID" || m.status === "VOIDED" ? (
                           <span className="font-mono text-caption uppercase tracking-[0.08em] text-text-tertiary">Void · refunded</span>
@@ -201,8 +204,8 @@ async function AdminMarketsContent({
                           <span className="font-mono text-caption uppercase tracking-[0.08em] text-text-tertiary">Settled</span>
                         ) : (
                           <>
-                            <ProbabilityBar yesPct={yes} size="micro" />
-                            <p className="mt-1 font-mono text-[10px] text-text-subtle">{yes}% YES</p>
+                            <ProbabilityBar yesPct={price.kind === "priced" ? price.yesPct : undefined} empty={price.kind !== "priced"} emptyLabel={price.kind === "oneSided" ? "One side only" : m.predictorCount > 0 ? "No pool" : "No bets"} size="micro" />
+                            <p className="mt-1 font-mono text-[10px] text-text-subtle">{price.kind === "priced" ? `${price.yesPct}% YES` : price.kind === "oneSided" ? "One side only · refunds if it closes so" : m.predictorCount > 0 ? "No pool" : "No bets"}</p>
                           </>
                         )}
                       </td>
