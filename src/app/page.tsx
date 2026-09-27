@@ -32,7 +32,7 @@ import { ratesFrom } from "@/app/legal/rules/_shared";
 import { landingPicks } from "@/lib/server/landing-picks";
 import { db } from "@/lib/server/store";
 import { getKillSwitches } from "@/lib/server/payment-ops";
-import { heroRailNames } from "@/lib/server/payout-rails";
+import { heroRailNames, heroRails } from "@/lib/server/payout-rails";
 import type { LandingMine } from "@/components/home/landing-hero";
 
 export const dynamic = "force-dynamic";
@@ -354,7 +354,7 @@ export default async function LandingPage() {
           Chapter break: tinted band, 144 from Up & Down, and it runs continuously into the
           footer's own claret rule (hence `--seam`). The settled strip is part of this act, not
           another section. */}
-      <TrustBand t={t} locale={locale} settlements={stats.recentSettlements.slice(0, 5)} nowMs={nowMs} />
+      <TrustBand t={t} locale={locale} settlements={stats.recentSettlements.slice(0, 5)} nowMs={nowMs} rails={heroRails(railPauses)} />
       {/* ⛔ NO RG LINE HERE ANY MORE (landing v3, R4(5)). The 18+ roundel and the RG motto sit in the
           hero's trust lines — on the first screen — and in the footer, which follows directly. */}
     </div>

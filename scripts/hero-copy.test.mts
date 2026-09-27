@@ -257,6 +257,14 @@ const CHECKS: Check[] = [
     if (!/railListParts\(locale, rails\)/.test(w.hero)) d.push("the hero does not join the names with railListParts(locale, rails)");
     return d;
   } },
+  { id: "3e", label: "the trust band's wallet marks come from the same heroRails list as the hero's names (a paused rail leaves both)", run: (w) => {
+    const d: string[] = [];
+    const band = w.src.get("src/components/home/trust-band.tsx") ?? "";
+    if (!/<TrustBand\b[^>]*rails=\{heroRails\(railPauses\)\}/.test(w.page)) d.push("page.tsx does not pass rails={heroRails(railPauses)} to TrustBand");
+    if (/MOBILE_MONEY_METHODS\.map\(/.test(band)) d.push("trust-band.tsx draws MOBILE_MONEY_METHODS, not the rails it is given");
+    if (!/\brails\.map\(/.test(band)) d.push("trust-band.tsx does not draw the rails it is given");
+    return d;
+  } },
 
   /* §4 · no warning sentence, one lang */
   { id: "4a", label: "the hero does not read footer.stopGambling (the footer keeps it, R7(2))", run: (w) =>
@@ -317,11 +325,15 @@ const PLANTS: Record<string, { note: string; plant: (w: World) => World }[]> = {
     { note: "a wallet name typed into the sw sentence", plant: (w) => withDict(w, "sw", "home.heroRails", "Weka na toa pesa kwa M-Pesa na {rails}.") },
     { note: "the page passes a typed list", plant: (w) => ({ ...w, page: w.page.replace("rails={heroRailNames(railPauses)}", 'rails={["M-Pesa"]}') }) },
   ],
+  "3e": [
+    { note: "the trust band draws the whole catalogue again", plant: (w) => { const s = new Map(w.src); s.set("src/components/home/trust-band.tsx", (s.get("src/components/home/trust-band.tsx") ?? "").replace("rails.map((m) =>", "MOBILE_MONEY_METHODS.map((m) =>")); return { ...w, src: s }; } },
+    { note: "the page stops passing heroRails to the band", plant: (w) => ({ ...w, page: w.page.replace("rails={heroRails(railPauses)}", "rails={payoutCapableRails()}") }) },
+  ],
   "4a": [{ note: "the warning sentence back in the trust rows", plant: (w) => inTrust(w, "<li>{t.footer.stopGambling}</li>") }],
   "4b": [{ note: "a second lang in the hero", plant: (w) => inTrust(w, '<li lang="sw">x</li>') }],
   "5a": [
     { note: "官方 in the zh lede", plant: (w) => withDict(w, "zh", "home.heroLedePay", "官方结算，即获赔付。") },
-    { note: "the named-sources cell back on the first screen (sw says \"rasmi\")", plant: (w) => inTrust(w, "<li>{t.home.trustCell1H}</li>") },
+    { note: "\"rasmi\" in the sw wallet row (a first-screen key)", plant: (w) => withDict(w, "sw", "home.heroRails", "Weka na toa pesa kwa {rails} rasmi.") },
   ],
 };
 

@@ -42,9 +42,14 @@ export function payoutCapableRails(): PaymentMethodSpec[] {
 /** The kill-switch map as `getKillSwitches()` returns it; `null` when it could not be read. */
 export type RailPauses = Readonly<Record<string, { deposits: boolean; withdrawals: boolean } | undefined>>;
 
-/** The names the hero prints: payout-capable, and paused for neither direction right now. */
+/** The rails the landing names or shows: payout-capable, and paused for neither direction right now. The hero's
+ *  wallet row and the trust band's marks both read THIS, so a paused rail leaves both at once (review, 2026-09-27:
+ *  the band still drew the logo of a rail the hero had dropped). */
+export function heroRails(pauses: RailPauses | null): PaymentMethodSpec[] {
+  return payoutCapableRails().filter((m) => !pauses?.[m.id]?.deposits && !pauses?.[m.id]?.withdrawals);
+}
+
+/** The names the hero prints — `heroRails`, by name. */
 export function heroRailNames(pauses: RailPauses | null): string[] {
-  return payoutCapableRails()
-    .filter((m) => !pauses?.[m.id]?.deposits && !pauses?.[m.id]?.withdrawals)
-    .map((m) => m.name);
+  return heroRails(pauses).map((m) => m.name);
 }

@@ -48,8 +48,12 @@ owner and we're the first"*. Build spec: `specs/hero-v3.md` (branch `landing-v3-
    sources"*) and its "named public sources" row are gone from the hero: the sources include CoinGecko and ITV, which are
    not official bodies, and each market's own card names its source. `test:hero-copy` §5 fails if official / rasmi /
    官方, machine / mashine, crowd / umati or chance / bahati appear in any string the hero's first screen reads, in any
-   language. ⚠️ Not changed here: the trust band further down the page still reads `home.trustCell1H`, whose Swahili is
-   *"Vyanzo rasmi vya umma vilivyotajwa"* ("official") — recorded for that band's own review.
+   language. The same day's native review (R8, commit a204ad81) brought the rest of the platform's player-facing
+   copy in line with the English "public / named public": the trust band's heading (`home.trustCell1H`, sw "Vyanzo
+   vya umma vilivyotajwa"), how-it-works step 2, /fairness, the two-officer and single-officer lines and the primer
+   card (whose English also said "an official public source") — in sw, zh and en. Kept on purpose, consistent across
+   the three languages: the objection and proposal flows, where "the official source" is a procedural instruction
+   about the market's declared source, not a claim about it.
 6. **"Ukiwa sahihi, unalipwa" / "Be right, get paid" / "预测正确，即获赔付" — why it is literally true.** A correct pick
    is never paid less than its stake, in every product: the fee is a share of the LOSING pool only, so the winners' net
    pool is at least their own stakes (the winner floor in `src/lib/payout.ts`; `market-config.ts` refuses a fee over
