@@ -149,20 +149,20 @@ const invalidFields = () => page.evaluate(() =>
   [...document.querySelectorAll('main form input[aria-invalid="true"]')].map((i) => i.name));
 /**
  * ⛔ SUBMIT, THEN WAIT FOR THE TRANSITION TO END — NEVER A FIXED DELAY (2026-09-22). The form's Save is the kit's
- * Button with `loading={pending}`, which sets `aria-busy` and `disabled` for exactly as long as the server action is
- * in flight. A fixed 3–4 s wait raced it: on a dev server compiling the action's chunk on its first call — measured
+ * Button with `loading={pending}`, which sets `aria-busy` for exactly as long as the server action is in flight
+ * (`disabled` too — but since 2026-09-26 it also stays disabled once nothing is left to save, so it is NOT the
+ * end-of-flight signal; see below). A fixed 3–4 s wait raced it: on a dev server compiling the action's chunk on its first call — measured
  * at 24.5 s under load — every check after the submit read the form MID-FLIGHT (no toast yet, every control
  * disabled), and the failures cascaded through the next four sections. A gate that fails for a reason that has
  * nothing to do with the product teaches people to ignore it.
  */
-/* 🔴 AND ON `aria-busy` ALONE, NOT `disabled` (2026-09-27). Since `3e94bf2f` ("One Save on screen on every admin
-   form") the Save is ALSO disabled whenever the form has nothing unsaved — so a save that LANDS leaves it disabled
-   for good, the old "not disabled" wait ran out its full 120 s on every landed save, and by then the "Saved" toast
-   had long gone: 7.1, 7.3, 7b.1, 8.6, 8.6b and 9b.5 all read an empty toast list. `aria-busy` is the in-flight
-   signal alone, which is what this wait was always for. */
 const submitForm = async (maxMs = 120_000) => {
   await clickWhy("submit", page.locator("main form button[type=submit]"), 4000);
   await page.waitForTimeout(250);
+  /* ⛔ SETTLED = NOT BUSY, NEVER "ENABLED AGAIN". Since 2026-09-26 (one Save on screen) the form's Save is
+     DISABLED once nothing is left to save — so after a save that LANDS it never re-enables, and waiting for
+     it did the full timeout, by which time the 4.5 s toast was gone and §7 read "no toast" over a save that
+     had landed. `aria-busy` is the kit Button's in-flight mark (button.tsx), set only while loading. */
   await page.waitForFunction(() => {
     const b = document.querySelector("main form button[type=submit]");
     return !!b && b.getAttribute("aria-busy") !== "true";
@@ -591,15 +591,12 @@ ok("8.6a the offer is STILL there after a second visit — a draft is not consum
   (await page.locator("main").getByText(/Unsaved changes from earlier/).count()) > 0,
   "the entry was deleted on mount; the work is gone");
 
-/* ⛔ IGNORE the offer — fill and save around it. That is the owner's own path. */
+/* ⛔ IGNORE the offer — fill and save around it. That is the owner's own path.
+   ⚠️ A REAL EDIT, NOT "Use starting values" (2026-09-26). That button fills EMPTY boxes only, and on this
+   form every box was filled by §7 — so the form stayed clean, and since the one-Save change a clean form's
+   Save is disabled: nothing was saved and 8.6b/8.6 read the draft offer that correctly survived. */
 await clearToasts();
-await clickIfThere("Use starting values");
-await page.waitForTimeout(800);
-/* ⛔ AND CHANGE ONE VALUE (2026-09-27). Since `3e94bf2f` the Save is disabled on a form with nothing unsaved, and
-   "Use starting values" can leave this form exactly as §7 saved it — the 2026-09-27 run met a DISABLED Save here,
-   so 8.6b and 8.6 measured a save that never happened. One limit moved makes it a real save, as the owner's own
-   path (fill the form around the offer, then save) always was. */
-await soft("change one limit", () => page.locator('main form input[name="bets-per-day"]').fill("179", { timeout: 4000 }));
+await soft("fill bets-per-hour", () => page.locator('main form input[name="bets-per-hour"]').fill("19", { timeout: 4000 }));
 await page.waitForTimeout(400);
 await submitForm();
 ok("8.6b a clean save clears the offer ON SCREEN, with no reload",

@@ -20,6 +20,7 @@ import { ResolutionPanel } from "@/components/markets/resolution-panel";
 import { Chip } from "@/components/ui/chip";
 import { Stat } from "@/components/ui/stat";
 import { cashOutValue, getMarket, impliedYesPct, isClosedByTime, isSelectionClosed, listPositionsForUser, ratesFor } from "@/lib/server/market-service";
+import { shownYesPct } from "@/lib/markets/price-state";
 import { timeLeftLabel } from "@/lib/markets/time-left";
 import { poolFee } from "@/lib/payout";
 import { getEffectiveConfig } from "@/lib/server/market-config";
@@ -62,7 +63,9 @@ export async function generateMetadata(
   try { m = await getMarket(id); } catch { /* graceful */ }
   if (!m) notFound();
   const { locale } = await getServerT();
-  const yes = impliedYesPct(m);
+  // A two-sided price is printed within 1–99, as the card prints it (WP6, L14 — `shownYesPct`); a
+  // one-sided or empty pool keeps the old figure until MOBILE-VISUAL U32 gives this page ruling 13.
+  const yes = shownYesPct(m.yesPool, m.noPool) ?? impliedYesPct(m);
 
   // F5 — a shared WIN link carries a signed token. When it validates, the share
   // preview becomes the win card. The token only names the position; the amount
@@ -139,7 +142,12 @@ export default async function MarketDetail({
     redirect(round ? `/updown/${round.id}${lockedSide ? `?side=${lockedSide}` : ""}` : "/updown");
   }
 
-  const yesPct = impliedYesPct(m);
+  // ⭐ WP6 · the SAME printable price as the card that linked here (`shownYesPct`, 1–99 when both pools
+  // hold money), so a 200,000-vs-1,000 market no longer reads 99 on the card and 100 one tap later
+  // (B6). ⚠️ A ONE-SIDED pool still falls back to `impliedYesPct` (100/0) here: this page's price for
+  // it is MOBILE-VISUAL U32's (ruling 13), recorded in `docs/LANDING-TEN.md` §2.1 WP6. Display only —
+  // SidePicker, the bar and the JSON-LD read it; no money path does.
+  const yesPct = shownYesPct(m.yesPool, m.noPool) ?? impliedYesPct(m);
 
   // The resolution criterion FOR THIS READER, and the fact of whether we had it.
   // ⛔ Not `pickLocalized`: that helper discards the fallback, which is right for a
@@ -191,9 +199,9 @@ export default async function MarketDetail({
    * `positions/page.tsx`, which had the identical line.
    * ⚠️ 2026-09-25 — THE PROGRAMME RETURNED, UNPAID. `invite` is ACTIVE, so every player in good
    * standing now gets their code on this link BY DESIGN, and a friend who signs up through it is bound
-   * and counted (`docs/PLAYER-INVITE-UNPAID.md` §2). "Paying nothing" still holds only because
-   * `inviteRewards` is WITHDRAWN — flip it and every bind already written becomes payable on the
-   * recruit's next event (§12).
+   * and counted (`docs/PLAYER-INVITE-UNPAID.md` §2). "Paying nothing" holds only while the Owner's
+   * switch on `/admin/affiliate` says Not payable (under the `inviteRewards` ceiling, 2026-09-26) — make
+   * invites payable and every bind already written earns on the recruit's next event (§12).
    */
   // ⭐ Standing, not role: a deactivated agent's code leaves the share link in the same instant
   // it leaves the bind (`inviteViewerFor` reads the same predicate the bind gate does).
@@ -1029,8 +1037,8 @@ export default async function MarketDetail({
                   titleSw={s.titleSw}
                   titleZh={s.titleZh}
                   category={s.category}
-                  yesPct={impliedYesPct(s)}
-                  volume={s.yesPool + s.noPool}
+                  yesPool={s.yesPool}
+                  noPool={s.noPool}
                   predictors={s.predictorCount}
                   // ⚠️ Counts down to BETTING CLOSE, not to resolution. This rail is a
                   // "place another prediction" invitation, so a countdown to the

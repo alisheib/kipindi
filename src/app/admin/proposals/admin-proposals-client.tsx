@@ -776,6 +776,11 @@ export function AdminProposalsClient({ config, queue, canSaveConfig, canApprove,
         saveLabel="Save config"
         onSave={configDirty && !editDirty && !noteDirty && canSaveConfig ? saveConfig : undefined}
         saveAnchor={saveRef}
+        /* ⭐ DISCARD PUTS BACK ALL THREE KINDS OF WORK the bar names — every other bar in the console
+           offers it, and this one never did, so the only way out of "Not saved yet" was to leave
+           the page (found by `qa:single-save` A2d, 2026-09-26). The source link returns to the
+           proposal's own, the same value the selection effect pre-fills. */
+        onDiscard={() => { setC(config); resetReview(); setSourceUrl(sel?.sourceUrl ?? ""); }}
       />
       <UnsavedChangesGuard
         dirty={anyDirty}

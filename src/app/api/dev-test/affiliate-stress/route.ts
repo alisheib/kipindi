@@ -11,9 +11,11 @@
  *   - no NaN / negative balances
  *   - throughput within a soft performance budget
  *
- * ⚠️ SINCE 2026-09-25 THE PLAYER PROGRAMME PAYS NOTHING (`inviteRewards` WITHDRAWN): every money
- * assertion here uses a PLAYER referrer and is refused (`player_rewards_withdrawn`) unless the dev
- * server runs with FEATURE_INVITEREWARDS=ACTIVE. The maintained guards are `test:player-invite-unpaid`
+ * ⚠️ SINCE 2026-09-25 THE PLAYER PROGRAMME PAYS NOTHING WHILE INVITES ARE NOT PAYABLE — since 2026-09-26
+ * the Owner's switch on /admin/affiliate, Not payable by default, under the `inviteRewards` ceiling: every
+ * money assertion here uses a PLAYER referrer and is refused (`player_rewards_withdrawn`) unless the Owner
+ * has made invites payable, or the dev server runs with FEATURE_INVITEREWARDS=ACTIVE (which forces the
+ * switch on). The maintained guards are `test:player-invite-unpaid`
  * and `test:referral` (docs/PLAYER-INVITE-UNPAID.md §7-§8).
  *
  * 404 in production. POST ?referrers=&recruits=&events= (all optional).
@@ -64,8 +66,9 @@ export async function POST(req: NextRequest) {
       {
         enabled: true,
         commission: { enabled: true, rate: 0.5, windowMonths: 24, capPerRecruitTzs: COMMISSION_CAP },
-        bonus: { enabled: true, recipient: "BOTH", newAmountTzs: 2_000, referrerAmountTzs: 1_000, trigger: "FIRST_DEPOSIT" },
-        prize: { enabled: true, milestone: "FIRST_BET", depositThresholdTzs: 10_000, amountTzs: 5_000, capPerReferrer: 10_000 },
+        // ⛔ SIGN-UP, never FIRST_DEPOSIT (retired 2026-09-26, the RG policy): the bonus pays at bind.
+        bonus: { enabled: true, recipient: "BOTH", newAmountTzs: 2_000, referrerAmountTzs: 1_000, trigger: "SIGNUP" },
+        prize: { enabled: true, milestone: "FIRST_BET", amountTzs: 5_000, capPerReferrer: 10_000 },
       } as Partial<AffiliateConfig>,
       OFFICER,
     );

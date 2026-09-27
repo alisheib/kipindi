@@ -7,8 +7,12 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { I } from "@/components/ui/glyphs";
 import { Avatar } from "@/components/ui/avatar";
 import { ScrollX } from "@/components/ui/scroll-x";
-import { getAffiliateConfig } from "@/lib/server/affiliate-config";
-import { getAdminAffiliateStats } from "@/lib/server/affiliate-service";
+import { currentSession } from "@/lib/server/auth-service";
+import { getAffiliateConfig, reloadAffiliateConfig } from "@/lib/server/affiliate-config";
+import { getAdminAffiliateStats, referralRewardDestination } from "@/lib/server/affiliate-service";
+import { invitePayableView } from "@/lib/server/invite-rewards-switch";
+import { invitePayableDialogs } from "@/lib/server/invite-rewards-ceremony";
+import { affiliateConfigFingerprint, priceInviteRewards } from "@/lib/affiliate-rules";
 import { AffiliateAdminClient } from "./affiliate-admin-client";
 import { formatDateShort, formatTzs, formatBalancePill } from "@/lib/utils";
 import { AdminBody } from "@/components/admin/admin-body";
@@ -22,7 +26,8 @@ const LEDGER_CHIP: Record<string, "resolved" | "pending" | "objection"> = { PAID
 /**
  * /admin/affiliate — referral program control room, on the shared admin shell.
  * The route is gated by the admin layout (role + TOTP); the save action
- * re-checks the role for defence-in-depth.
+ * re-checks the role for defence-in-depth, and the Payable / Not payable
+ * ceremony re-checks that the viewer is the Owner on their STORED row.
  */
 type AffiliateProps = { searchParams: Promise<{ lsort?: string; ldir?: string; lpage?: string; bpage?: string }> };
 
@@ -34,8 +39,29 @@ export default async function AdminAffiliatePage(props: AffiliateProps) {
 
 async function AdminAffiliateContent({ searchParams }: AffiliateProps) {
   const sp = await searchParams;
-  const config = getAffiliateConfig();
-  const stats = await getAdminAffiliateStats();
+  /* 🔴 THE SETTINGS ARE RE-READ FROM THEIR ROW FIRST (review P3, 2026-09-26). This container's copy is the
+     one it booted with; a page seeded from it showed — and saved back — values another container had
+     already replaced. The row is read before the switch view (which reads the service-level pause from
+     the same copy). A read that fails leaves this container's copy on the page, SAYS so on the card, and
+     costs nothing in safety: the Save re-reads the row under the lock and refuses a stale fingerprint. */
+  const settingsRow = await reloadAffiliateConfig();
+  /* ⭐ THE SWITCH IS READ FRESH, FOR THIS VIEWER — the ceremony's `expectSeq` comes from this read, and
+     whether the viewer is the Owner is decided on their STORED role, never on the session cookie. It runs
+     beside the stats read rather than before it: neither waits on the other. */
+  const [view, stats] = await Promise.all([
+    (async () => invitePayableView((await currentSession())?.userId ?? null))(),
+    getAdminAffiliateStats(),
+  ]);
+  /* ⛔ ONE READ OF THE SETTINGS, AND IT IS THE ONE THE OWNER SEES PRICED. The editor's values, the price
+     in the Make-payable dialog, the fingerprint that "the settings on this page" posts back AND the Save's
+     `baseFingerprint` all come from this object — a second read could price one config and fingerprint another. */
+  const config = settingsRow.ok ? settingsRow.config : getAffiliateConfig();
+  const fingerprint = affiliateConfigFingerprint(config);
+  const rosterRecruits = stats.leaderboard.map((r) => r.recruits);
+  const price = priceInviteRewards(config, { destination: referralRewardDestination(), rosterRecruitsPerInviter: rosterRecruits, armed: true });
+  /* ⛔ ONLY THE PAINTED WORDS CROSS TO THE CLIENT. `view` carries the Owner's user id and the stored record;
+     `copy` is every sentence the card and the dialogs need, finished on the server. */
+  const copy = invitePayableDialogs(view, price, fingerprint, { settingsUnread: !settingsRow.ok });
 
   // Payout ledger (prefix "l") — newest first by default; amount + referrer + status sortable.
   const l = parseSort(sp, ["date", "amount", "referrer", "status"] as const, "date", "desc", "l");
@@ -51,17 +77,17 @@ async function AdminAffiliateContent({ searchParams }: AffiliateProps) {
 
   /**
    * ⭐ THE ROSTER IS PAGINATED NOW BECAUSE IT IS THE WHOLE ROSTER (see `getAdminAffiliateStats`).
-   * The platform pays invite partners nothing; the operator pays them in cash outside it, and
-   * this is the list that payment is made from — so the officer must be able to reach the last
+   * While Not payable the platform pays invite partners nothing; the operator pays them in cash
+   * outside it, and this is the list that payment is made from — so the officer must be able to reach the last
    * row, not the best ten. ⛔ Its own page param (`bpage`), never the ledger's: paging one table
    * must not silently move the other.
    */
   const bPage = parsePage(sp.bpage, stats.leaderboard.length);
   const boardPage = stats.leaderboard.slice((bPage - 1) * PER_PAGE, bPage * PER_PAGE);
   const bBase = buildBaseHref("/admin/affiliate", sp, "bpage");
-  /** ⛔ ONE DISCRIMINATOR, from the server. `config.enabled` is the operator's master switch over
-   *  the three reward modes; `rewardsLive` is whether any of them may run at all. */
-  const paid = stats.rewardsLive;
+  /** ⛔ ONE DISCRIMINATOR, from the server: the page's two states. Payable is the Owner's switch under its
+   *  ceiling AND the service-level pause off (`view.paying`); anything else is Not payable. */
+  const paid = view.paying;
 
   return (
     <>
@@ -69,19 +95,17 @@ async function AdminAffiliateContent({ searchParams }: AffiliateProps) {
         title="Affiliate program"
         sw="Mpango wa marafiki"
         actions={
-          // ⛔ THE HEADER CHIP REPORTS THE PRODUCT STATE FIRST. `config.enabled` alone printed
-          // "Active" over a programme that cannot pay a shilling, because it is the master switch
-          // INSIDE the paid programme — true, and the wrong question.
-          paid
-            ? <Chip size="sm" variant={config.enabled ? "active" : "paused"}>{config.enabled ? "Active" : "Paused"}</Chip>
-            : <Chip size="sm" variant="paused">Unpaid — tracking only</Chip>
+          // ⛔ EXACTLY ONE OF TWO WORDS — "Payable" or "Not payable", the server's, never a third. The chip
+          // once printed "Active" over a programme that could not pay a shilling, because it read the
+          // switch INSIDE the programme instead of the one above it.
+          <Chip size="sm" variant={copy.chip.variant}>{copy.chip.label}</Chip>
         }
       />
 
       <AdminBody>
-        {/* KPIs. ⭐ The second and third tiles swap with the product state: "Active affiliates"
-            counts referrers who were PAID and "Commission paid" sums what was paid — under the
-            unpaid invite neither can grow, and a figure that never moves teaches an officer to stop
+        {/* KPIs. ⭐ The second and third tiles swap with the page's state: "Active affiliates"
+            counts referrers who were PAID and "Commission paid" sums what was paid — while Not
+            payable neither can grow, and a figure that never moves teaches an officer to stop
             reading the row. What replaces them: "Players inviting" (how many players have brought anyone) and
             "Paid by 50pick" (what the platform has actually paid on this programme — summed, see that
             tile's note; TZS 0 on a clean unpaid history). */}
@@ -99,20 +123,20 @@ async function AdminAffiliateContent({ searchParams }: AffiliateProps) {
                with the caption "rewards withdrawn", and that is a money statement the page can
                CONTRADICT ON ITSELF: `getAdminAffiliateStats` still totals every PAID
                PLAYER-programme row truthfully, and the Payout ledger card further down renders
-               those very rows. Any legacy reward paid before 2026-09-25, and anything paid during a
-               future flip of `inviteRewards` to ACTIVE and back, would have the tile saying the
-               platform paid nothing four inches above the table of what it paid.
+               those very rows. Any legacy reward paid before 2026-09-25, and anything paid while
+               invites were Payable and then stopped, would have the tile saying the platform paid
+               nothing four inches above the table of what it paid.
                ⭐ `totalPaidTzs` was already computed and returned and read by nothing. On a clean
                unpaid history it renders TZS 0 exactly as intended — now for a reason the data can
-               keep. The caption stays: it states the PRODUCT STATE (no new accrual can be created),
-               which is true regardless of history. ⛔ Never re-hardcode this. */
-            <AdminKpi label="Paid by 50pick"    sw="Zilizolipwa na 50pick" value={formatBalancePill(stats.totalPaidTzs)} delta="rewards withdrawn" deltaDir="flat" />
+               keep. The caption states the PAGE'S STATE (no new accrual can be created while Not
+               payable), which is true regardless of history. ⛔ Never re-hardcode this. */
+            <AdminKpi label="Paid by 50pick"    sw="Zilizolipwa na 50pick" value={formatBalancePill(stats.totalPaidTzs)} delta="all-time · Not payable" deltaDir="flat" />
           )}
           <AdminKpi label="Top referrer"       sw="Bingwa"          value={stats.topReferrer?.handle ?? "—"} delta={stats.topReferrer ? `${stats.topReferrer.recruits} recruits` : "none yet"} deltaDir="flat" />
         </KpiGrid>
 
-        {/* Interactive config editor */}
-        <AffiliateAdminClient config={config} rewardsLive={paid} />
+        {/* The Payable / Not payable state card and the reward editor it locks. */}
+        <AffiliateAdminClient config={config} baseFingerprint={fingerprint} copy={copy} rosterRecruits={rosterRecruits} />
 
         {/* Compliance note */}
         <AdminCard className="border-no-700/40 bg-no-500/[0.06]">
@@ -122,20 +146,17 @@ async function AdminAffiliateContent({ searchParams }: AffiliateProps) {
               <p className="font-bold text-no-300 mb-1">Compliance note · Kumbuka</p>
               {paid ? (
                 <>
-                  This is a regulated inducement. Pause or limit the program until the reward structure is cleared with the
-                  Gaming Board of Tanzania. Keep referrer commission ≤ 50% of margin; review caps quarterly per GBT guidance.
+                  Invites are payable: 50pick pays the rewards switched on above from its own money. Referrer commission is
+                  capped at 50% of margin.
                 </>
               ) : (
                 <>
-                  {/* ⭐ THE NOTE CHANGES BECAUSE THE FACT CHANGED. A reward for bringing gamblers is a regulated
-                      inducement; a share link that pays nothing is not one, and leaving the inducement warning up
-                      would misdescribe what is live — while deleting it would lose the warning the day the switch
-                      flips. So it states both: what is running, and what turning it on would make it. */}
-                  The player invite is <strong className="text-text">unpaid</strong> — the platform credits nothing for a
-                  referral (product state <code className="font-mono">inviteRewards = WITHDRAWN</code>), so the settings
-                  below are stored but not consulted. Rewarding referrals is a regulated inducement: clear the structure
-                  with the Gaming Board of Tanzania before switching it on, then keep referrer commission ≤ 50% of margin.
-                  Cash paid to an inviter outside the platform is not recorded here.
+                  {/* ⭐ THE NOTE CHANGES BECAUSE THE FACT CHANGED: it says what is running (a share link that pays
+                      nothing) and what the Owner's switch would change. ⛔ No Gaming Board clearance line —
+                      the Owner ruled on 2026-09-27 that 50pick's licence covers invite rewards. */}
+                  The player invite is <strong className="text-text">Not payable</strong> — the platform credits nothing for
+                  a referral, and every reward setting above stays locked until the Owner makes invites payable. Referrer
+                  commission is capped at 50% of margin. Cash paid to an inviter outside the platform is not recorded here.
                 </>
               )}
               {/* ⭐ 2026-09-26 — THE OWNER HAD TO ASK WHERE PLAYERS FIND IT, from inside this console on a
@@ -213,17 +234,17 @@ async function AdminAffiliateContent({ searchParams }: AffiliateProps) {
         <AdminCard title="Payout ledger" sw="Daftari la malipo" padding={ledgerSorted.length > 0 ? "p-0" : "p-4"}>
           {ledgerSorted.length === 0 ? (
             /* ⛔ "yet" AND "appear here as friends sign up and play" BOTH PROMISE A FUTURE THE
-               PRODUCT HAS REFUSED. Under the unpaid invite no friend signing up or playing will
-               ever put a row here, so the empty state was telling an officer to wait for something
-               that cannot arrive. It states the reason instead — and the paid wording returns
-               untouched the day `inviteRewards` does. */
+               PAGE HAS REFUSED. While Not payable no friend signing up or playing will ever put a
+               row here, so the empty state was telling an officer to wait for something that cannot
+               arrive. It states the reason instead — and the paid wording returns untouched the day
+               invites are Payable. */
             <EmptyState
               kind="admin"
-              title={paid ? "No payouts yet" : "Nothing to pay — the invite is unpaid"}
+              title={paid ? "No payouts yet" : "Nothing to pay — invites are Not payable"}
               titleSw={paid ? "Hakuna malipo bado" : "Hakuna malipo — mialiko hailipwi"}
               body={paid
                 ? "Rewards appear here as friends sign up and play."
-                : "The platform credits nothing for a player referral (inviteRewards = WITHDRAWN), so no row can be created. Rows already here, if any, predate that or were paid while it was switched on."}
+                : "The platform credits nothing for a player referral while invites are Not payable, so no row can be created until the Owner makes them payable."}
             />
           ) : (
             <>

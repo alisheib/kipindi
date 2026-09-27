@@ -220,9 +220,11 @@ export function TippingBar({
    *  sweeps across, leading side bolds. Disable on order books, depth
    *  charts, and any list of > 10 bars in view. */
   recastOnHover?: boolean;
-  /** No activity yet — render a neutral dashed track (no split, no needle,
+  /** No crowd price — render a neutral dashed track (no split, no needle,
    *  no labels). An empty market has no crowd price, so a centred 50/50 would
-   *  be a fabricated one (RULES law 5). A STATE OF THIS BAR, not a second
+   *  be a fabricated one (RULES law 5); nor does a pool with money on ONE side
+   *  (MOBILE-VISUAL ruling 13, landing v3 WP6), where a full pill would be a
+   *  100% nobody's money stated. A STATE OF THIS BAR, not a second
    *  component — DESIGN_AUTHORITY B9. */
   empty?: boolean;
   /** Accessible name for the empty rail. Pass the caller's localised string —

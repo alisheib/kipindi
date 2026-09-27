@@ -17,6 +17,14 @@
  * feature back on by editing a row, which is the entire point of keeping it up here:
  * `bonus-config.ts` records Jay's (Gaming Board) item #5 as a FEATURE-STATE, NOT A DELETION,
  * and a feature-state that a misclick can reverse is not a state, it is a default.
+ * ⭐ 2026-09-26 — `inviteRewards` (the invite's MONEY) GAINED A SWITCH BENEATH ITS CEILING, and the
+ * rule above is why it sits beneath rather than beside. This file stays the OUTER ceiling and the
+ * hard kill (`inviteRewardsCeiling`); inside it the Owner's "Payable / Not payable" switch on
+ * `/admin/affiliate` decides, through a ceremony and an HMAC-sealed row whose record cannot be FORGED
+ * (`server/invite-rewards-switch.ts`). Not payable is the default and every failure mode, so a
+ * misclick cannot reverse it and a missing, unread or tampered row reads as Not payable. ⚠️ An OLDER
+ * genuine record restored by someone with database write access is read as stored — the seal proves
+ * authorship, not recency — and the admin page flags a record older than its last recorded change.
  *
  * ── WHY `WITHDRAWN` IS NOT `COMING_SOON` ─────────────────────────────────────
  * A gilt "coming soon" badge is a PROMISE. Invite wore one while it waited for sign-off.
@@ -25,7 +33,8 @@
  * entry point, no badge, no tooltip, no mention.
  * ⚠️ 2026-09-25 — THE INVITE HALF OF THAT CALL WAS REPLACED, and the paragraph above is kept as
  * the reasoning, not as the current product: players DO have an invite again, as a SHARE that
- * pays nothing (`invite` ACTIVE + `inviteRewards` WITHDRAWN). The bonus wallet sentence stands,
+ * pays nothing (`invite` ACTIVE + the invite's money Not payable — `inviteRewards` WITHDRAWN until
+ * 2026-09-26, the Owner's switch since). The bonus wallet sentence stands,
  * and so does the rule itself — a state that is not part of the product renders nothing, and a
  * state that is renders without a badge.
  * ⭐ **AND SINCE 2026-09-06 THE STATE IS GONE, NOT MERELY UNUSED.** This section argued the
@@ -69,8 +78,9 @@ import type { Role } from "@/lib/server/roles";
  *
  * ⚠️ The CONCEPT still exists where it is genuinely implemented — the Proposals feature-state
  * machine (`proposals-config.ts`, `propose-promo.tsx`, `coming-soon-banner.tsx`) renders a real
- * gilt badge for it. This module governs FIVE features: `invite` (ACTIVE — the unpaid player
- * share) and its money half `inviteRewards` (WITHDRAWN), `bonus` and `install` (WITHDRAWN, and
+ * gilt badge for it. This module governs FIVE features: `invite` (ACTIVE — the player share) and
+ * its money half `inviteRewards` (ACTIVE since 2026-09-26: the Owner's switch decides, Not payable
+ * by default), `bonus` and `install` (WITHDRAWN, and
  * neither promised), and `desk` — which is ACTIVE and is not a player surface at all (owner
  * ruling D19: nothing about it reaches a player or the holder). Its WITHDRAWN state is a SUNSET,
  * written by `ops:house-bots-sunset` in the database and by this constant in the code.
@@ -115,26 +125,33 @@ export type FeatureName = "invite" | "inviteRewards" | "bonus" | "install" | "de
  * *"we don't want to pay anything on affiliate … i want to track how many people he got with
  * this link, i'll pay him cash not through 50pick, and we can keep that option if needed"*).
  * The player invite is a SHARE, not an inducement: the link works, the recruits are counted, and
- * the platform credits nothing. WITHDRAWN here refuses every PLAYER-programme accrual in
- * `policyFor`, so the zero is a product state and not a config value.
+ * by default the platform credits nothing. `policyFor` refuses every PLAYER-programme accrual
+ * while invites are Not payable, so the zero is a state and not a config value.
  *
- * 🔴 AND THAT DISTINCTION IS THE WHOLE POINT — "set the commission to 0%" WOULD NOT HAVE HELD.
+ * ⭐ 2026-09-26 — ACTIVE, REDEFINED: "the paid promo is part of the product; the Owner's switch
+ * decides" (Ali: *"2 options, payable and not payable … if not payable keep everything locked"*).
+ * ACTIVE no longer means "pays". It means the OWNER may make invites payable on `/admin/affiliate`,
+ * through a ceremony (a written reason and the typed words MAKE PAYABLE), and until he does — and
+ * after any missing, unread, tampered or re-keyed record — nothing is paid. See
+ * `inviteRewardsCeiling` below for the three answers this entry and its env override give.
+ *
+ * 🔴 AND WHY THE ZERO IS STILL NOT A CONFIG VALUE — "set the commission to 0%" WOULD NOT HAVE HELD.
  * `affiliate.config` is a DB row with `prize.enabled: true` and `amountTzs: 10_000` in its
- * shipped defaults, `defineConfig` hydrates a persisted row as `{ ...defaults, ...restored }`
- * with no validation, and `/admin/affiliate` is one click from switching a mode back on. A rate
- * of zero beside a live prize mode still pays TZS 10,000 a head — the same route by which
- * `feeVatRatePct` reached production as 0. The operator's levers stay exactly where they are and
- * keep meaning what they say; this switch decides whether they are consulted at all.
+ * shipped defaults, and a rate of zero beside a live prize mode still pays TZS 10,000 a head. The
+ * Owner's switch is a separate, HMAC-sealed row: a hand edit cannot FORGE a record that turns it on
+ * (restoring an older genuine one is possible with database write access, and is flagged on the admin
+ * page), and the reward settings are LOCKED while it says Not payable; the operator's levers keep
+ * meaning what they say, and the switch decides whether they are consulted at all.
  *
  * ⛔ IT GOVERNS THE PLAYER PROGRAMME ONLY. An approved agent's commission is contracted income
  * bought with a TZS 100,000 fee; it is ended by their STANDING and their officer's rate, never by
  * a promo switch. `policyFor`'s AGENT branch does not read this, exactly as it does not read
  * `cfg.enabled` — see `test:player-invite-unpaid` §2 and `test:agent-policy` §4.
  *
- * ⚠️ TURNING IT ON IS ONE WORD HERE (or `FEATURE_INVITEREWARDS=ACTIVE`), and the paid path is
- * NOT dead code while it sleeps: `test:referral`, `test:rg-cash-incentive` §5 and
- * `test:withdrawn-features` §4 all drive the ON branch on every deploy, which is the reason the
- * override exists at all.
+ * ⚠️ `FEATURE_INVITEREWARDS` STAYS, AS THE OUTER CEILING: `WITHDRAWN` is the hard kill (nothing the
+ * page does can pay), `ACTIVE` FORCES payment and bypasses the ceremony — an infrastructure act for
+ * the suites that drive the paid path on every deploy (`test:referral`, `test:rg-cash-incentive` §5,
+ * `test:withdrawn-features` §4), and the page says "Forced on by the server" while it is set.
  *
  * `bonus` — WITHDRAWN for everyone. No role opens it.
  *
@@ -154,7 +171,7 @@ export type FeatureName = "invite" | "inviteRewards" | "bonus" | "install" | "de
  */
 const PRODUCT_STATE: Record<FeatureName, FeatureState> = {
   invite: "ACTIVE",
-  inviteRewards: "WITHDRAWN",
+  inviteRewards: "ACTIVE",
   bonus: "WITHDRAWN",
   install: "WITHDRAWN",
   desk: "ACTIVE",
@@ -243,8 +260,8 @@ export const NO_VIEWER: InviteViewer = { role: null, agentInGoodStanding: false,
 
 /**
  * Invite's state for a given viewer — may they hold a link and be credited with the people who
- * arrive on it? ⛔ It says NOTHING about money; `playerInviteRewardsLive()` below is that
- * question, and the two are separate switches.
+ * arrive on it? ⛔ It says NOTHING about money; the Owner's Payable switch, under
+ * `inviteRewardsCeiling()` below, is that question, and the two are separate switches.
  *
  * An agent in good standing gets the live programme whatever the product state says. Everyone
  * else needs the product state ACTIVE *and* `playerInviteEligible` — which is closed both to an
@@ -274,13 +291,29 @@ export function inviteIsLiveFor(viewer: InviteViewer | null | undefined): boolea
 }
 
 /**
- * ⭐ MAY A **PLAYER**-PROGRAMME REFERRAL PAY ANYTHING AT ALL? Today: no.
+ * The OUTER CEILING over the invite's money — what the code and the server's environment allow,
+ * before the Owner's switch is asked at all.
+ *   · FORCED — `FEATURE_INVITEREWARDS=ACTIVE`: payable, and the stored switch is not consulted at all.
+ *     Tests and infra only; it bypasses the ceremony, and `/admin/affiliate` says "Forced on by the server".
+ *   · CLOSED — `FEATURE_INVITEREWARDS=WITHDRAWN` (the hard kill), or the code constant WITHDRAWN.
+ *     Nothing pays, whatever the switch says, and the page cannot turn it on.
+ *   · OWNER  — the shipped state: the Owner's Payable / Not payable switch decides.
+ */
+export type InviteRewardsCeiling = "FORCED" | "OWNER" | "CLOSED";
+
+/**
+ * ⭐ MAY A **PLAYER**-PROGRAMME REFERRAL PAY ANYTHING AT ALL? — THE CEILING HALF OF THAT QUESTION.
  *
  * This is the second half of the pair. `inviteIsLiveFor` opens the SURFACE — the link, the QR,
- * the share sheet, the attribution. This opens the MONEY, and it is WITHDRAWN: the platform
- * credits a player nothing for the friends they bring, by product state rather than by a config
- * row anyone can click (see `inviteRewards` in the table above for why 0% would not have held).
+ * the share sheet, the attribution. This bounds the MONEY. `playerInviteRewardsLive()` answered it
+ * outright until 2026-09-26 and is DELETED rather than kept as a shim, so the compiler named every
+ * caller: the answer now needs the Owner's stored switch, which is a DATABASE read, and this module
+ * must stay free of server imports because client bundles reach it. The composition lives in
+ * `server/invite-rewards-switch.ts` (`playerInvitePayable`, `playerInvitePayableNow`,
+ * `refreshInvitePayable`), and every one of them fails CLOSED.
  *
+ * ⛔ AN UNRECOGNISED ENV VALUE FALLS BACK TO THE CODE, like `resolvedState`: a typo can neither force
+ * payment nor lift the kill. Only the exact words move it.
  * ⛔ NO VIEWER ARGUMENT, ON PURPOSE. It is a property of the PROGRAMME, not of a person: there
  * is no player for whom the answer differs, and a viewer parameter would invite exactly the
  * "this one account still earns" exception the state exists to forbid. An AGENT's income is not
@@ -289,10 +322,13 @@ export function inviteIsLiveFor(viewer: InviteViewer | null | undefined): boolea
  * ⛔ GATE THE OFFER, NEVER THE REFUSAL (this module's own header). This decides whether an
  * accrual is CREATED. It must never be consulted to decide whether an already-accrued reward may
  * be paid, reversed or clawed back: rewards written while the programme paid are real debts, and
- * switching the product state must not strand them.
+ * switching payment off must not strand them.
  */
-export function playerInviteRewardsLive(): boolean {
-  return resolvedState("inviteRewards") === "ACTIVE";
+export function inviteRewardsCeiling(): { ceiling: InviteRewardsCeiling; source: "ENV" | "CODE" } {
+  const raw = process.env.FEATURE_INVITEREWARDS;
+  if (raw === "ACTIVE") return { ceiling: "FORCED", source: "ENV" };
+  if (raw === "WITHDRAWN") return { ceiling: "CLOSED", source: "ENV" };
+  return PRODUCT_STATE.inviteRewards === "ACTIVE" ? { ceiling: "OWNER", source: "CODE" } : { ceiling: "CLOSED", source: "CODE" };
 }
 
 /** Bonus wallet state. No role exception — withdrawn is withdrawn. */

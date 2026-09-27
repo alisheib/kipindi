@@ -15,6 +15,7 @@ import { useT } from "@/lib/i18n";
 import { pickLocalized, marketCategoryLabel } from "@/lib/localized";
 import { outcomeWord, sideWord, type LabelProductLine } from "@/lib/side-label";
 import { MicroSpark } from "@/components/charts/micro-spark";
+import { priceState } from "@/lib/markets/price-state";
 
 type Props = {
   id: string;
@@ -22,8 +23,22 @@ type Props = {
   titleSw: string;
   titleZh?: string | null;
   category: string;
-  yesPct: number;
-  volume: number;
+  /**
+   * The two pools, TZS. ⛔ REQUIRED, WITHOUT A DEFAULT, AND THE CARD'S ONLY SOURCE FOR A PRICE
+   * (landing v3 WP6, MOBILE-VISUAL ruling 13, INHERIT-MANIFEST L14).
+   *
+   * 🔴 The card used to take a finished `yesPct` and a `volume`. Five callers computed the price
+   * with `impliedYesPct` and two passed `yesPct ?? 0`, so a market with money on ONE side reached
+   * this card as a plain 100 or 0 and rendered "YES 100% · NO @ 0%": a certainty nobody's money
+   * stated, on the landing page and the board. The card could not tell a one-sided pool from a
+   * 99.6% one, because by then the fact was a rounded number — and inferring it back from 0/100 is
+   * the move ruling 13 forbids. Taking the pools means the caller cannot hand over a price that
+   * disagrees with them, and `priceState` (`lib/markets/price-state.ts`) decides the rest, once.
+   * Required for the reason `productLine` is: a default lets a caller that does not know its
+   * market compile. `test:one-sided` checks every call site passes both.
+   */
+  yesPool: number;
+  noPool: number;
   predictors: number;
   timeLeft: string;
   status: "LIVE" | "RESOLVED" | "CLOSED" | "VOIDED" | "DRAFT";
@@ -105,7 +120,7 @@ type Props = {
  * once, because all four render this component.
  */
 function getSignalBadge(
-  live: boolean, yesPct: number, volume: number, predictors: number, timeLeft: string, fresh: boolean,
+  live: boolean, yesPct: number | null, volume: number, predictors: number, timeLeft: string, fresh: boolean,
   labels: { hot: string; soon: string; tipping: string; new: string },
 ): { kind: "hot" | "soon" | "tipping" | "new"; label: string } | null {
   if (!live) return null;
@@ -121,7 +136,9 @@ function getSignalBadge(
   // passed on the count while `yesPct` was the hardcoded 50 that `impliedYesPct`
   // returns for an empty pool. The card then badged a fabricated dead-heat as the
   // most contested market on the board.
-  if (volume > 0 && Math.abs(yesPct - 50) <= 3) return { kind: "tipping", label: labels.tipping };
+  // ⚠️ `yesPct` is null wherever the card states no price — an empty pool AND a one-sided one
+  // (WP6): a pool with one side is not a contest either, whatever number it rounds to.
+  if (volume > 0 && yesPct !== null && Math.abs(yesPct - 50) <= 3) return { kind: "tipping", label: labels.tipping };
   return null;
 }
 
@@ -219,13 +236,22 @@ function HowItWorks() {
 }
 
 export function MarketCard({
-  id, titleEn, titleSw, titleZh, category, yesPct, volume, predictors, timeLeft, status, resolvedOutcome, productLine, spark, move24h, traders, selectionClosed, comments, isNew, featured, className,
+  id, titleEn, titleSw, titleZh, category, yesPool, noPool, predictors, timeLeft, status, resolvedOutcome, productLine, spark, move24h, traders, selectionClosed, comments, isNew, featured, className,
 }: Props) {
   const router = useRouter();
   const { t, locale } = useT();
   const title = pickLocalized(locale, titleEn, titleSw, titleZh);
   const live = status === "LIVE" && !selectionClosed;
   const isResolved = status === "RESOLVED";
+  const volume = yesPool + noPool;
+  /* ⭐ WP6 · WHAT THE CARD MAY SAY ABOUT A PRICE, decided once from the pools (`price-state.ts`).
+     `oneSided`: money on one side only — no price (ruling 13), the dashed rail, buttons without a
+     figure, and the refund rule. `yesPct`: the two-sided price within 1–99 (L14); it is only ever
+     rendered where `showPrice` holds, and the NO figure is always `100 − yesPct`. */
+  const price = priceState(yesPool, noPool);
+  const oneSided = price.kind === "oneSided";
+  const emptySide = price.kind === "oneSided" ? price.emptySide : null;
+  const yesPct = price.kind === "priced" ? price.yesPct : 0;
   /* ⭐ §B11 (D4, 2026-08-21) — ONE WORD, AND ITS TONE COMES FROM THE DICTIONARY.
    *
    * 🔴 THE WORD AND THE COLOUR USED TO BE DECIDED BY TWO INDEPENDENT LADDERS. A ternary
@@ -291,7 +317,11 @@ export function MarketCard({
      is still asserted rather than assumed: if that ever stops holding, the card must fall silent
      rather than tell a refunded player that nobody bet. */
   const neverBet = predictors === 0;
-  const signal = getSignalBadge(live, yesPct, volume, predictors, timeLeft, fresh, {
+  /* A crowd price is stated only where both pools hold money. `noPrice` stays the pool-is-empty
+     question above (the D29 gate, and `isNew` can still force it); `oneSided` is the second way a
+     card has no price, and it is a different claim — money IS on it — so it gets its own words. */
+  const showPrice = !noPrice && price.kind === "priced";
+  const signal = getSignalBadge(live, showPrice ? yesPct : null, volume, predictors, timeLeft, fresh, {
     hot: t.common.hot, soon: t.common.soon, tipping: t.market.tipping, new: t.common.newBadge,
   });
   /** The settled side, or null when we genuinely don't know. Never inferred from
@@ -308,7 +338,20 @@ export function MarketCard({
   const outcomeLabel = resolvedOutcome ? outcomeWord(t, resolvedOutcome, productLine) : null;
   // Real YES% history only, ≥4 points (else hide — A-5 no-fabrication rule).
   // A fresh market has no history, so never draw the spark on one.
-  const showSpark = !fresh && Array.isArray(spark) && spark.length >= 4;
+  // ⛔ Nor on a one-sided one (WP6): its history is a line pinned at 100 or 0, which draws the very
+  // certainty the card has just stopped printing.
+  const showSpark = !fresh && !oneSided && Array.isArray(spark) && spark.length >= 4;
+  /* The refund rule (WP6), restating `settleMarket`'s one-sided branch and rules §7: every stake back in
+     full, whatever the verdict. ONE conditional sentence in every unsettled phase — "If betting closes
+     one-sided…" — and never a closed-phase "will be refunded". 🔴 That variant was built and withdrawn
+     before it shipped (the WP6 review): a market CLOSED by the sentinel before its selection window
+     can be put back to LIVE by `adminReopenMarket`, and one stake on the empty side then makes it
+     two-sided — the promise would have been false. The conditional is true in every case.
+     SETTLED or VOID: nothing — the card cannot see what each position was paid, and a past-tense
+     money claim it cannot check is not made. */
+  const settled = !!resolvedOutcome || isResolved || status === "VOIDED";
+  const oneSidedNote = !emptySide || settled ? null
+    : t.market.oneSidedNote.replace("{side}", sideWord(t, emptySide, productLine));
   // Trader crest — avatars when we have seeds; the predictor-count row renders
   // on EVERY card (with or without avatars) so cards stay the same shape in a
   // grid. The count moves out of the meta row and into this row.
@@ -397,6 +440,11 @@ export function MarketCard({
                "no bets yet" on a market that refunded real money is the same false statement
                this defect is about, moved from the eye to the ear. */
             <div className="mcardp-pct mcardp-pct--empty" {...(neverBet ? { "aria-label": t.market.noBetsYet } : {})}>—</div>
+          ) : oneSided ? (
+            /* ⭐ WP6 · MONEY ON ONE SIDE, SO NO PRICE (ruling 13). The same em-dash as an empty pool;
+               what tells the two apart is the "One side only" label directly above the rail, which is
+               also what a screen reader reads — so the dash itself is hidden rather than named twice. */
+            <div className="mcardp-pct mcardp-pct--empty" aria-hidden>—</div>
           ) : (
             <>
               <div className="mcardp-pctcap">{sideWord(t, "YES", productLine)}</div>
@@ -408,9 +456,19 @@ export function MarketCard({
 
       {/* Move-line slot — always present on live cards (reserved height) so the
           bar sits at the same offset whether or not a 24h move exists. */}
-      {live && (
+      {/* ⭐ WP6 · On a one-sided card this row carries "One side only" instead of a 24h move — there is
+          no price to move — in every phase, so a closed or settled one-sided card says why it has no
+          price too. It sits where the delivery puts it (right above the rail). ⚠️ On a LIVE card the
+          row always existed, so the label costs no height; on a closed or settled one-sided card the
+          row is new and costs one card gap + 4px — accepted, it is the only word that explains the
+          dash (those cards already vary in height with the 24h band, D49). */}
+      {(live || oneSided) && (
         <div className="mcardp-moveline">
-          {!fresh && move24h !== undefined && <MoveText move={move24h} label={t.market.twentyFourHourMove} />}
+          {oneSided ? (
+            <span className="mcardp-oneside">{t.market.oneSideOnly}</span>
+          ) : (
+            !fresh && move24h !== undefined && <MoveText move={move24h} label={t.market.twentyFourHourMove} />
+          )}
         </div>
       )}
 
@@ -422,8 +480,18 @@ export function MarketCard({
           bets yet" only where nobody ever bet. ⛔ NOT `""`: an empty string leaves a
           `role="progressbar"` with no name at all, which is what a voided card would have got,
           and a nameless control is not an improvement on a false one. */}
-      <TippingBar yesPct={yesPct} height={7} resolved={isResolved} showLabels={false} recastOnHover={false} empty={noPrice} emptyLabel={outcomeLabel ?? t.market.noBetsYet} probabilityLabel={t.market.probBarAria.replace("{side}", sideWord(t, "YES", productLine))} />
+      {/* ⭐ WP6 · A one-sided pool draws the same dashed `--bar-empty-track` rail as an empty one — a
+          full green pill would be the 100% the card no longer prints — and the rail is named "One side
+          only", never "No bets yet": money IS on it (the D29 false-absence defect, one state over).
+          A settled card still names its rail by the outcome first. */}
+      {/* ⚠️ And "No bets yet" only where nobody EVER bet: a market whose only bettor cashed out has an
+          empty pool and a predictor — its rail is "No pool yet", the D29 rule the caption already keeps. */}
+      <TippingBar yesPct={yesPct} height={7} resolved={isResolved} showLabels={false} recastOnHover={false} empty={noPrice || oneSided} emptyLabel={outcomeLabel ?? (oneSided ? t.market.oneSideOnly : neverBet ? t.market.noBetsYet : t.market.noPoolYet)} probabilityLabel={t.market.probBarAria.replace("{side}", sideWord(t, "YES", productLine))} />
       {noPrice && neverBet && <div className="mcardp-nobets">{t.market.noBetsYet}</div>}
+      {/* The refund rule, read at the reading floor (a sentence, not a micro-label: L6). It takes the
+          slot the 24h band would, which a one-sided card never draws, so the card grows only by the
+          note's own lines. */}
+      {oneSidedNote && <p className="mcardp-onesided-note">{oneSidedNote}</p>}
 
       {showSpark && (
         <MicroSpark data={spark!} width={300} height={28} padX={0} padY={4} smooth area stretch
@@ -468,11 +536,14 @@ export function MarketCard({
               takes the label's full ink like every other word in the button. Guarded by
               `test:contrast` §P-u2 (the family's own ink/fill pair, at the call site's own
               opacity — 0 today because there is none left). */}
-          <button type="button" aria-label={(noPrice ? t.market.backSideAriaNoPrice : t.market.backSideAria.replace("{pct}", String(yesPct))).replace("{side}", sideWord(t, "YES", productLine))} onClick={go("YES")} className="btn btn-yes btn-md">
-            {sideWord(t, "YES", productLine)}{!noPrice && <span className="font-mono text-[11.5px]"> @ {yesPct}%</span>}
+          {/* ⭐ WP6 · ONE PAIR, THE FIGURE SWITCHED BY `showPrice`. A one-sided market keeps both
+              buttons — taking the empty side is exactly what gives it a price — but neither carries
+              "@ 100%" / "@ 0%", on the screen or in the accessible name. */}
+          <button type="button" aria-label={(showPrice ? t.market.backSideAria.replace("{pct}", String(yesPct)) : t.market.backSideAriaNoPrice).replace("{side}", sideWord(t, "YES", productLine))} onClick={go("YES")} className="btn btn-yes btn-md">
+            {sideWord(t, "YES", productLine)}{showPrice && <span className="font-mono text-[11.5px]"> @ {yesPct}%</span>}
           </button>
-          <button type="button" aria-label={(noPrice ? t.market.backSideAriaNoPrice : t.market.backSideAria.replace("{pct}", String(100 - yesPct))).replace("{side}", sideWord(t, "NO", productLine))} onClick={go("NO")} className="btn btn-no btn-md">
-            {sideWord(t, "NO", productLine)}{!noPrice && <span className="font-mono text-[11.5px]"> @ {100 - yesPct}%</span>}
+          <button type="button" aria-label={(showPrice ? t.market.backSideAria.replace("{pct}", String(100 - yesPct)) : t.market.backSideAriaNoPrice).replace("{side}", sideWord(t, "NO", productLine))} onClick={go("NO")} className="btn btn-no btn-md">
+            {sideWord(t, "NO", productLine)}{showPrice && <span className="font-mono text-[11.5px]"> @ {100 - yesPct}%</span>}
           </button>
         </div>
       ) : (

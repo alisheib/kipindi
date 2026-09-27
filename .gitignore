@@ -309,3 +309,5 @@ prelaunch-keep-users.json
 
 # One-Save drive screenshots (scripts/qa-single-save.mjs). Regenerable evidence; the guard is test:single-save.
 .qa-single-save/
+# Owner-switch ceremony drive screenshots (scripts/qa-invite-ceremony.mjs, localhost only). Regenerable.
+.qa-invite-ceremony/

@@ -5,7 +5,10 @@
  *   • eager write-through hydration from SystemConfig on boot,
  *   • a sync `get()` that returns a defensive copy,
  *   • a `set(updates, officerId)` that merges → validates → caches → persists →
- *     writes an ADMIN audit event with a `{ before, after, changes }` payload.
+ *     writes an ADMIN audit event with a `{ before, after, changes }` payload,
+ *   • a `setVerified` that reads the row back before it says "saved", and
+ *   • a `reload()` that re-reads the row and replaces the cache, for a caller that must not act on
+ *     a value another container may have changed since this one booted (see its own docblock).
  *
  * Behaviour is identical to the hand-rolled modules (same cache semantics, same
  * eager `loadConfig().then(merge)`, same audit shape). Callers that need extra
@@ -67,6 +70,16 @@ const hydrated: Set<string> = (globalThis.__50PICK_CONFIGS_HYDRATED ??= new Set(
 /** Keys with a hydration attempt in flight — so a re-arm cannot stampede the DB. Process-local
  *  on purpose: it guards concurrency, not state, and must not survive a hot-reload. */
 const inFlight = new Set<string>();
+/** ⭐ `reload()`'s ordering state — process-local for the same reason as `inFlight`.
+ *  · `cacheGen` moves on every write THIS process makes to a key's cache (`set`, `setVerified`,
+ *    `reload`), so a read that started before one cannot land after it and put the older value back.
+ *  · `pendingSave` is the latest fire-and-forget `set()` write, so a reload reads AFTER it resolved.
+ *  · `reloading` is the reload in flight, so concurrent callers share one read. */
+const cacheGen = new Map<string, number>();
+const pendingSave = new Map<string, Promise<void>>();
+const reloading = new Map<string, Promise<unknown>>();
+const genOf = (key: string): number => cacheGen.get(key) ?? 0;
+const bumpGen = (key: string): void => { cacheGen.set(key, genOf(key) + 1); };
 
 export function defineConfig<T extends object, U = Partial<T>>(opts: DefineConfigOpts<T, U>) {
   const { key, defaults, validate, audit: auditOpts, migrate } = opts;
@@ -110,10 +123,13 @@ export function defineConfig<T extends object, U = Partial<T>>(opts: DefineConfi
      */
     if (!dbPresent()) { hydrated.add(key); return; }
     inFlight.add(key);
+    const genAtStart = genOf(key);
     void load<Record<string, unknown>>(key)
       .then((res) => {
         if (!res.ok) return; // could not ask — gate stays DOWN, a later call retries
-        if (res.value) {
+        // ⛔ A `reload()` that landed while this boot read was in flight holds a NEWER row: this older
+        // read must not put the previous value back over it. The gate still closes — the store answered.
+        if (res.value && genOf(key) === genAtStart) {
           const restored = migrate ? migrate(res.value) : (res.value as Partial<T>);
           registry.set(key, { ...defaults, ...restored });
         }
@@ -159,7 +175,10 @@ export function defineConfig<T extends object, U = Partial<T>>(opts: DefineConfi
       if (!v.ok) return { ok: false, error: v.reason };
     }
     registry.set(key, merged);
-    void save(key, merged);
+    bumpGen(key);
+    /* Still fire-and-forget — the sync contract above. The pending write is REMEMBERED (never awaited
+       here) so a `reload()` reads after it has resolved instead of racing it back to the older row. */
+    pendingSave.set(key, Promise.resolve(save(key, merged)).then(() => undefined, () => undefined));
     if (auditOpts) {
       audit({
         category: "ADMIN",
@@ -236,6 +255,7 @@ export function defineConfig<T extends object, U = Partial<T>>(opts: DefineConfi
     }
 
     registry.set(key, merged);
+    bumpGen(key);
     if (auditOpts) {
       audit({
         category: "ADMIN",
@@ -249,7 +269,67 @@ export function defineConfig<T extends object, U = Partial<T>>(opts: DefineConfi
     return { ok: true, config: { ...merged } };
   };
 
-  return { get, set, setVerified };
+  /** `stored` — the row EXISTS. False means the store answered "no row" and `config` is the defaults: a
+   *  caller that must not act on shipped defaults (the money path) refuses on it (review, 2026-09-26). */
+  type ReloadResult = { ok: true; config: T; stored: boolean } | { ok: false; error: string };
+
+  /**
+   * ⭐ RE-READ THE PERSISTED ROW NOW AND REPLACE THIS PROCESS'S CACHE WITH IT (added 2026-09-26).
+   *
+   * 🔴 WHY. Every config here hydrates ONCE per container and is never propagated: `set()` and
+   * `setVerified()` change only the container that ran them. A deploy runs the old and the new
+   * container side by side for about a minute (`railway.json` `overlapSeconds`), and a second replica
+   * would make that permanent — so a container keeps acting on the config it booted with. On the player
+   * invite that is money: the Owner makes invites payable with "Nothing yet" (every reward OFF) on one
+   * container while the other still caches the shipped prize ON at TZS 10,000, reads the switch fresh
+   * and pays the prize from its stale cache. A caller that must not act on a stale value re-reads here.
+   *
+   * ⭐ THE SAME PATH AS HYDRATION: `migrate` (a sanitizer, where the config has one) onto `defaults`, and
+   * an ABSENT row is the defaults — exactly what a container booting now would hold. A read that
+   * answered also closes the hydration gate, because it IS a read that answered.
+   * ⛔ FAILS CLOSED: a read that could not ask answers `ok: false` and leaves the cache as it was. The
+   * CALLER must then refuse the act it was about to price — never fall back to the cached value, which
+   * is the stale value this exists to replace.
+   * ⭐ ORDERED AGAINST THIS PROCESS'S OWN WRITES: it reads after a pending `set()` write has resolved,
+   * and a read overtaken by a local write (`set`, `setVerified`, another reload) neither lands over it
+   * nor discards itself: it answers only when the read and the local value AGREE, and otherwise answers
+   * `ok: false` — the two cannot be ordered, so the caller refuses rather than guess. Concurrent callers
+   * share one read. `stored: false` says the store has NO row (the defaults were answered).
+   * ⚠️ With no database there is no row another container could have changed: the cache IS the store,
+   * and this answers it without a read (every suite and local dev take that path).
+   */
+  const reload = (): Promise<ReloadResult> => {
+    if (!dbPresent()) return Promise.resolve<ReloadResult>({ ok: true, config: get(), stored: true });
+    const shared = reloading.get(key) as Promise<ReloadResult> | undefined;
+    if (shared) return shared;
+    const genAtStart = genOf(key);
+    const run: Promise<ReloadResult> = (async (): Promise<ReloadResult> => {
+      await pendingSave.get(key);
+      const res = await load<Record<string, unknown>>(key);
+      if (!res.ok) return { ok: false, error: res.error };
+      const next = (res.value
+        ? { ...defaults, ...(migrate ? migrate(res.value) : (res.value as Partial<T>)) }
+        : { ...defaults }) as T;
+      /* ⛔ A LOCAL WRITE LANDED WHILE THIS READ WAS IN FLIGHT, and the two cannot be ordered: this read may
+         have executed AFTER another container's newer write, or before the local one landed. So it answers
+         only when the read and the local value AGREE — and otherwise fails closed, for the caller to refuse
+         (review 2026-09-26: answering the local value alone could discard a newer row it had just read). */
+      if (genOf(key) !== genAtStart) {
+        const local = get();
+        return sameConfig(next, local) ? { ok: true, config: local, stored: !!res.value } : { ok: false, error: "The settings changed while they were being read. Try again." };
+      }
+      registry.set(key, next);
+      bumpGen(key);
+      hydrated.add(key);
+      return { ok: true, config: { ...next }, stored: !!res.value };
+    })()
+      .catch((err: unknown): ReloadResult => ({ ok: false, error: String((err as Error)?.message ?? err) }))
+      .finally(() => { if (reloading.get(key) === run) reloading.delete(key); });
+    reloading.set(key, run);
+    return run;
+  };
+
+  return { get, set, setVerified, reload };
 }
 
 /**

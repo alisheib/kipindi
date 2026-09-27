@@ -9,14 +9,22 @@
 
 ## §0 · RESUME AT — the v3 build (reopened 2026-09-26)
 
-**State (2026-09-27):** D0 ✅, D1 ✅ (`54f8199b`) and **WP14 ✅ — the Wallet, whole** (part 1 `9b96d930`,
-part 2 `e9b4056c`): the chip opens the Wallet, a gold Deposit replaces "TZS 0", and the signed-in hero shows
-Your picks and the same Deposit/Withdraw pair. Measured on production 2026-09-27 with `mobile01`
-(zero balance, no picks); the FUNDED Wallet and hero are measured locally (no funded QA player on
-production). WP13's phone fix is live too. What the production gate still reports is named on the GATE row.
-**Next:** batch D2 (§2.0), **WP6 first**: production prints "YES @ 100% / NO @ 0%" on one-sided markets in
-the hero grid and the board (V17; the count is on the GATE row) — the one-sided state on every card, then WP3, WP4, WP9,
-WP14b and V18. Then D3 (the pick slip, WP5, and the chat bubble under sheets) and D5 (the gate + panel).
+**State (2026-09-27):** D0 ✅, D1 ✅ (`54f8199b`), WP14 ✅ (the Wallet, `e9b4056c`) and **WP6 ✅ — a market
+with money on one side states no price, on every card** (`31662831`): "One side only", the dashed rail, bare
+YES/NO and the refund rule; a two-sided price within 1–99; the hero, the grid and the `/markets` filters order
+and file by the same rule (`price-state.ts`). Measured on production 2026-09-27: V17 0 in 33 of 33 cells (was 66).
+What the production gate still reports is named on the GATE row.
+**Next:** the rest of batch D2 (§2.0), in this order — (1) gate step 0: V18's block and the gate's own defects
+(a `--cell`/`--pass` that matches nothing prints GATE GREEN; a bare `--cell` is ignored); (2) **WP14b** — BUILT in
+the landing worktree, uncommitted at this writing: the share preview (og tags spread from `ROOT_OPEN_GRAPH`, no
+0/100 in the image or description, `test:share-preview` + `red:share-preview` 5/5, `qa:landing-v3:og-prod`) and
+the card share on closed/settled cards (one `<article>` root, `test:card-share` §7) — it needs its local drive,
+then push; (3) **WP3 + WP4** as one deploy; (4) **WP9** alone. Build specs for all five, with the conflicts between
+them resolved, were written read-only on 2026-09-27 — rebuild them from §2.1 if the scratch copy is gone.
+Then D3 (WP5 the pick slip + WhatsApp after placing, V20, the chat bubble under sheets) and D5.
+**Ali's asks of 2026-09-27, open:** (a) the Up & Down band's chart "nobody understands" — a redesign, to be rated
+10/10 by a UI/UX + gambling-industry panel on real frames before it ships (WP12 note); (b) where the "Follow
+50pick" panel may appear (manifest Q2).
 
 Ali, 2026-09-26, handing over the v3 concept: *"proceed perfecting it … we can't come back until
 pushed live and validated visually and logically."* The delivery is filed raw at
@@ -98,13 +106,13 @@ row; this section does not repeat it.
 | WP3 | Featured card: full question, meta + source, time top-right, 24h mark and delta | ⬜ | | |
 | WP4 | Question board rows: title link + YES@/NO@ buttons + time left | ⬜ | | |
 | WP5 | Pick slip: sheet below 1024, inline from 1024, after-placing share | ⬜ | | R2 |
-| WP6 | One-sided state on every card + the grid's degeneracy floor | ⬜ | | L14; delivers MOBILE-VISUAL ruling 13 |
+| WP6 | One-sided state on every card + the grid's degeneracy floor | ✅ | 31662831 | measured on production 2026-09-27: V17 0 in 33/33 cells (was 66), RED V17 PROVED; `/`, `/markets`, `/results` at 360/768/1280 × sw/en/zh, frames looked at — no card reads 0% or 100%, one-sided cards read "One side only" + the rule in all three. The one-sided FEATURED card measured locally (production's featured is contested). L14, L22, L23; delivers MOBILE-VISUAL ruling 13 on the card |
 | WP7 | Estimate line on cards | ⛔ | | R3 |
 | WP8 | Proof rail: phone ledger rows, conviction reading as the bar's label | ✅ | 54f8199b | measured on production 2026-09-26 (360/768/1280 × sw/en/zh frames looked at) |
 | WP9 | Pick-a-side grid: phone snap rail with a peek, 2 and 3 columns | ⬜ | | |
 | WP10 | Topics: six tiles, Other last, "All topics" as the section link | ✅ | 54f8199b | measured on production 2026-09-26 (360/768/1280 × sw/en/zh frames looked at) |
 | WP11 | How it works: "A named source", the fee from config, h3 steps | ✅ | 54f8199b | measured on production 2026-09-26 (360/768/1280 × sw/en/zh frames looked at); the fee reads 13% through `ratesFrom`; L3 |
-| WP12 | Up & Down band: the soonest round, price line, ring, UP/DOWN, plural fixed | ✅ | 54f8199b | measured on production 2026-09-26 (360/768/1280 × sw/en/zh frames looked at); full width, R4(6) |
+| WP12 | Up & Down band: the soonest round, price line, ring, UP/DOWN, plural fixed | ✅ | 54f8199b | measured on production 2026-09-26 (360/768/1280 × sw/en/zh frames looked at); full width, R4(6). ⚠️ Ali 2026-09-27: the price-line chart is not understood — a redesign is in design (§0); the chart moved into `components/charts/` meanwhile |
 | WP13 | Results: date, the market's own sign-off, source link, paid | ✅ | e9b4056c | measured on production 2026-09-27: date, the market's own sign-off (a reversed market reads "Corrected on objection"), source, paid; below 640 the amount and the source each take a line, so the host reads whole. L2 |
 | WP14 | Wallet: chip opens sheet/panel, equal Deposit/Withdraw, gold Deposit at zero, signed-in hero | ✅ | e9b4056c | measured on production 2026-09-27 with `mobile01` (zero balance, no picks: header Deposit, hero empty-balance line + Deposit, no Withdraw, Set limits; pages render at 360/1280 sw/en). Funded Wallet + hero measured locally (Wallet 17 cells, hero 15 cells; 360–1280 × sw/en/zh). `test:wallet-reach` 48/48, `test:landing-mine` 22/22, both mutation-proved. R1, L19–L21 |
 | WP14b | Share in card footers; Share on WhatsApp after placing | ⬜ | | |
@@ -114,12 +122,12 @@ row; this section does not repeat it.
 | RG | Drop the RG line above the footer; chat bubble hides under a sheet | 🔨 | 54f8199b | RG line dropped, live 2026-09-26 (R4(5)); the chat bubble under a sheet ships with D3 (R4(7)) |
 | V15 | Gate: first screen at 360 × 740 | ✅ | 54f8199b | production 2026-09-26: 0 findings; RED PROVED on production |
 | V16 | Gate: no promised winnings | ✅ | 54f8199b | production 2026-09-26: 0 findings; RED PROVED on production |
-| V17 | Gate: no 0% or 100% price | ✅ | 54f8199b | production 2026-09-26: RED PROVED; its 64 findings are WP6's to clear (one-sided markets print 100%) |
+| V17 | Gate: no 0% or 100% price | ✅ | 54f8199b | production 2026-09-26: RED PROVED; its findings were WP6's — 0 on production 2026-09-27 after `31662831` |
 | V18 | Gate: every market shows price or state, time, pool, source | ⬜ | | |
 | V19 | Gate: Withdraw as reachable and as large as Deposit | ⬜ | | |
 | V20 | Gate: sheets trap focus, close on Esc, respect the safe area | ⬜ | | |
 | V21 | Gate: the placement map, by bounding box | ⬜ | | |
-| GATE | `qa:landing-ten` V1–V14 clean on production (V3, V14 open by R4); `npm run test:all` + typecheck green | ⬜ | | Production 2026-09-27 after `e9b4056c` (33 of 33 cells measured): V1, V2, V5–V16 clean. Still reported, each with its owner: V3 ×12 (the chat bubble, Ali's call), V4 ×33 (`.ticker-pause` 40×31, the LIVE-strip lane's, §0 trap 11), V17 ×66 (WP6, next). R4 |
+| GATE | `qa:landing-ten` V1–V14 clean on production (V3, V14 open by R4); `npm run test:all` + typecheck green | ⬜ | | Production 2026-09-27 after `31662831` (33 of 33 cells measured): V1, V2, V5–V17 clean. Still reported, each with its owner: V3 ×12 (the chat bubble, Ali's call), V4 ×33 (`.ticker-pause` 40×31, the LIVE-strip lane's, §0 trap 11). `test:all` is red on OTHER lanes' ratchets (type-scale, stacking, tap-target, decomment, eyebrow-roles, two red-anchors §3 anchors) — each red on clean `origin/main` too. R4 |
 | PANEL | The eight-reviewer re-score, recorded below | ⬜ | | |
 | FUNNEL | Visitors → sign-ups → first pick, measured before and after launch | ⬜ | | |
 | SW | Native Swahili sign-off of every new sw string | ⏳ | | Ali |
@@ -228,16 +236,46 @@ feature (a plant against a feature that does not exist yet cannot prove anything
   the wallet debit and the position; Esc, backdrop and Cancel all close without betting; focus stays
   trapped; the confirm cannot double-submit.
 
-**WP6 · One-sided markets** — `market-card.tsx`, `src/lib/markets/landing.ts`, the seven `<MarketCard>` call sites
-- A market is one-sided when it holds money and one side's pool is empty. The card gets the pools (or a
-  `oneSided` flag) as a **required** prop at all seven call sites — a default is how a caller that does not
-  know its product compiles. Never infer it from a rounded 0 or 100.
-- One-sided: "— One side only", the dashed rail (`--bar-empty-track`), buttons without a price, and the
-  note "No one has picked {side} yet. If betting closes one-sided, every stake is refunded."
-- Two-sided: the displayed price is kept within 1–99 (L14).
-- `landingGrid`: sort contested markets first, as a sort — a filter empties `test:landing-contract`'s
-  fixture (§2.1 control).
-- This delivers MOBILE-VISUAL ruling 13 on the card; that plan's U32 is told so.
+**WP6 · One-sided markets** — BUILT. `src/lib/markets/price-state.ts`, `market-card.tsx`, the seven `<MarketCard>` call sites, `landing-hero.tsx` (`QuestionRow`), `hero.ts`, `landing.ts`
+- ONE pure helper, `priceState(yesPool, noPool)` (no imports, no "use client" — the card and the server
+  pages both call it): nothing staked → `none`; money on one side only → `oneSided` + the empty side;
+  both sides → `priced`, shown within **1–99** (L14; the NO figure is always 100 − YES). `priceTier` is
+  the same answer as 0/1/2 for the orderings. ⛔ Never inferred from a rounded 0/100, and `pricedYesPct`
+  is unchanged (the conviction bar, the topic lean and the odds filters read it; `test:hero-contract` §1).
+- The card takes **`yesPool` and `noPool` as required props** in place of `yesPct`/`volume`, at all seven
+  call sites (`markets/page.tsx` ×2, `markets/[id]/page.tsx` ×1, `page.tsx`, `results/page.tsx`,
+  `watchlist/page.tsx`, `landing-hero.tsx`) — the `impliedYesPct(m)` and `yesPct ?? 0` feeds are gone.
+- One-sided card: the em-dash in the price slot; "One side only" on the move-line row right above the
+  rail (the price caption's micro-label, in every phase); the dashed `--bar-empty-track` rail named "One
+  side only" (never "No bets yet" — money is on it); no 24h sparkline; the YES/NO buttons stay (taking
+  the empty side is what prices the market) with no "@ n%" on screen or in their names; no TIPPING badge.
+- The note, a sentence at `--type-small` (L6) capped at a 60ch measure: "No stake on {side} yet. If betting
+  closes one-sided, every stake is refunded in full." — ONE conditional sentence in every unsettled phase
+  (the delivery's "No one has picked" is false after a cash-out empties a side somebody picked, L22);
+  settled or void — none (the card cannot see what was paid). ⛔ A closed-phase "will be refunded" variant
+  was built and withdrawn before shipping: a sentinel-CLOSED market can be put back to LIVE by
+  `adminReopenMarket`, and one stake on the empty side ends the refund. Its truth is pinned:
+  `test:one-sided` §6 reads `settleMarket`'s one-sided branch and rules §7. sw is rules §7's own sentence;
+  zh names the state with the rules' 单边.
+- The hero board row reads the same helper: "— One side only", no lean rule; its refund note and dashed
+  rail arrive with WP4's rebuilt row.
+- Orderings: the hero's floor tiers by `priceTier` (pools). `landingGrid` gives the seats to priced markets
+  first and then SHOWS the seated cards in the lens order its heading states ("Biggest pools first") — a
+  partition, never a filter (`test:landing-contract` §4, L23).
+- Guards: `test:one-sided` + `red:one-sided` 8/8 (incl. the settlement branch); `test:outcome` D29 pin
+  amended; `hero-contract` §5d; `landing-contract` §4; the three harnesses' anchors declared in
+  `scripts/anchors/`. Drive: `npm run qa:landing-v3:wp6` (`verify-wp6.sh` + `seed-onesided.mjs`).
+- One rule for every row: `shownYesPct` (the printable price, null on an empty OR one-sided pool) is the
+  `yesPct` of the `/markets` rows and the hero rows, so the odds filters and "closest call" no longer file
+  a NO-only market under long shots at 0%; and the detail page prints a two-sided price as the card does
+  (a 200,000-vs-1,000 market reads 99 on both, B6).
+- ⚠️ NOT this row's, left with MOBILE-VISUAL U32 (ruling 13's other surfaces), each still printing 0/100
+  on a ONE-SIDED market: the detail page's bar, side picker, metadata and JSON-LD (and its callout still
+  says "One-sided win" and "before resolution" where the rules say "at closing"); `/api/og/market`;
+  `/live`'s pulse grid and featured contest; `/results`' featured result.
+- Accepted, recorded: a closed or settled one-sided card gains the label row (one gap + 4px); on the
+  landing grid one card with a note stretches its row (`grid-auto-rows: 1fr`) — WP9 gives every grid card
+  the same slots.
 
 **WP7 · Estimate line** — ⛔ not built (R3).
 
@@ -560,10 +598,12 @@ while the open book held nine contested markets. The lens ordered only the *clos
 contestedness; only two markets close today, so three of the five seats came from a fallback tail
 sorted by closing time with no price filter at all.
 
-The fix is a **floor, not a wider window**: `hero.ts` partitions by degeneracy (0 contested,
-1 priced at 0%/100%, 2 unpriced) **before** position, so a degenerate row takes a seat only once
-every contested market is already on screen — and the board is never short, because degenerate rows
-are still shown, just last.
+The fix is a **floor, not a wider window**: `hero.ts` partitions by price tier (0 two-sided,
+1 one-sided, 2 unpriced — `priceTier`, read from the pools since WP6; it used to read a rounded
+0%/100%, which filed a two-sided 199-vs-1 market with the one-sided ones) **before** position, so a
+degenerate row takes a seat only once every priced market is already on screen — and the board is
+never short, because degenerate rows are still shown, just last. The landing grid applies the same
+tiers to its seats (WP6).
 
 ⚠️ `hero-contract` §5b's fixture was **the one shape that cannot fail**: its tail defaulted to
 10k/10k, i.e. contested, so it could not tell a floor from its absence. It now has an unpriced tail,

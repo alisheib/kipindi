@@ -1,113 +1,126 @@
 /**
  * Affiliate / referral program config — the admin money-lever.
  *
- * One global config object. A master `enabled` switch plus three
- * independently-toggleable reward modes (commission / bonus / prize), each
- * with its own rates, amounts and caps. Every mutation is HMAC-audited for the
- * GBT inspector trail, and the object is DB-persisted + cached across
- * hot-reloads by the shared `defineConfig` factory (same eager write-through
- * hydration + ADMIN `{ before, after, changes }` audit as bonus/proposals). The
- * only affiliate-specific piece is the deep `merge` for its nested modes.
+ * One global config object: a service-level `enabled` pause plus three independently-toggleable
+ * reward modes (commission / bonus / prize), each with its own rates, amounts and caps. Every
+ * mutation is HMAC-audited for the GBT inspector trail, and the object is DB-persisted + cached
+ * across hot-reloads by the shared `defineConfig` factory (same eager write-through hydration +
+ * ADMIN `{ before, after, changes }` audit as bonus/proposals). The affiliate-specific pieces are the
+ * deep `merge` for its nested modes and the rules in `@/lib/affiliate-rules`.
  *
- * Brand/compliance note: referral rewards are a regulated inducement under
- * Gaming Board of Tanzania guidance. The master switch lets the operator run
- * the whole program dark, or enable only the modes they've cleared.
+ * Compliance: referral rewards are paid under 50pick's licence — no separate Gaming Board clearance (the
+ * Owner's ruling of 2026-09-27, docs/COMPLIANCE-DECISIONS.md). The Owner's switch is the one control.
  *
- * ⛔ SINCE 2026-09-25 THIS IS NOT WHAT DECIDES WHETHER A PLAYER IS PAID. The product state
- * `inviteRewards` (feature-state.ts) is WITHDRAWN and `policyFor` refuses every PLAYER accrual
- * ABOVE `enabled`, so the values here are stored but cannot pay a player, and the paused banner
- * does not show. See docs/PLAYER-INVITE-UNPAID.md §4/§12. Agent commission is not read from here
- * at all (agent-config.ts).
+ * ⛔ THIS IS NOT WHAT DECIDES WHETHER A PLAYER IS PAID (since 2026-09-25, and since 2026-09-26 by the
+ * Owner's switch). `policyFor` asks the OWNER'S "Payable / Not payable" switch first
+ * (`invite-rewards-switch.ts`, composed under the code/env ceiling in `feature-state.ts`) and refuses
+ * every PLAYER accrual while it says Not payable — whatever these values say. Not payable is the
+ * default and every failure mode. The values here are the amounts the switch pays WHEN it is on, and
+ * `/admin/affiliate` locks them while it is off. See docs/PLAYER-INVITE-UNPAID.md §4/§12. Agent
+ * commission is not read from here at all (agent-config.ts).
+ *
+ * ⛔ A ROW CANNOT SMUGGLE A VALUE IN ANY MORE. Saves are TYPE-validated (`validateAffiliateConfig`:
+ * whole shillings, a whole-percent rate ≤ 50%, a 1–60 month window) and a persisted row is repaired
+ * field by field on load (`sanitizePersistedAffiliateConfig`, where a bad field falls back to the value
+ * that PAYS LEAST, never to the shipped prize) — `defineConfig` itself merges a restored row
+ * unchecked, which is how `feeVatRatePct` once reached production as 0.
  */
 import { defineConfig } from "./define-config";
+import {
+  DEFAULT_AFFILIATE_CONFIG,
+  AFFILIATE_SECTIONS,
+  affiliateSectionKeys,
+  retiredDepositModes,
+  sanitizePersistedAffiliateConfig,
+  validateAffiliateConfig,
+  type AffiliateConfig,
+  type AffiliateSection,
+} from "../affiliate-rules";
+
+export type { AffiliateConfig, BonusRecipient, BonusTrigger, PrizeMilestone } from "../affiliate-rules";
+export { DEFAULT_AFFILIATE_CONFIG } from "../affiliate-rules";
 
 const AFFILIATE_CONFIG_KEY = "affiliate.config";
 
-export type BonusRecipient = "NEW" | "REFERRER" | "BOTH";
-export type BonusTrigger = "SIGNUP" | "FIRST_DEPOSIT";
-export type PrizeMilestone = "FIRST_BET" | "DEPOSIT_THRESHOLD";
 export type InviteTrigger = "SIGNUP" | "FIRST_BET";
 
-export type AffiliateConfig = {
-  /** Master switch. When false, links still resolve (recruits still bind to
-   *  their referrer) but NO new rewards accrue and players see a paused
-   *  banner (only while `inviteRewards` is ACTIVE). This is the lever the operator flips to run the program dark. */
-  enabled: boolean;
-
-  commission: {
-    enabled: boolean;
-    /** Share of the operator margin a recruit generates that the referrer
-     *  earns, as a fraction 0..1 (e.g. 0.50 = 50%). */
-    rate: number;
-    /** How long after a recruit joins commission keeps accruing, in months. */
-    windowMonths: number;
-    /** Max total commission earnable from a single recruit, in TZS. 0 = uncapped. */
-    capPerRecruitTzs: number;
-  };
-
-  bonus: {
-    enabled: boolean;
-    recipient: BonusRecipient;
-    /** Credit to the newly-recruited player, in TZS. */
-    newAmountTzs: number;
-    /** Credit to the referrer, in TZS. */
-    referrerAmountTzs: number;
-    trigger: BonusTrigger;
-  };
-
-  prize: {
-    enabled: boolean;
-    milestone: PrizeMilestone;
-    /** Only used when milestone === DEPOSIT_THRESHOLD. */
-    depositThresholdTzs: number;
-    /** Fixed prize paid to the referrer when a recruit hits the milestone. */
-    amountTzs: number;
-    /** Max number of milestone prizes a single referrer can earn. 0 = uncapped. */
-    capPerReferrer: number;
-    /** Minimum bet amount the recruit must place to trigger the FIRST_BET milestone.
-     *  Per Management Bonus Rules §4.2c: at least one position ≥ TZS 20,000. */
-    minBetAmountTzs: number;
-    /** When true, the recruit must have deposited funds before the milestone triggers.
-     *  Per Management Bonus Rules §4.2b. */
-    requireDeposit: boolean;
-  };
-};
+declare global {
+  // eslint-disable-next-line no-var
+  var __50PICK_AFFILIATE_ROW_RETIRED: { bonus: boolean; prize: boolean } | undefined;
+}
 
 /**
- * Defaults per 50pick Management Bonus Rules §4 (2026-07-01):
- *   - Invite bonus: TZS 10,000 to REFERRER
- *   - Triggers when the recruit: registers + deposits + places ≥1 position ≥ TZS 20,000
- *   - This maps to prize mode (FIRST_BET milestone) with deposit requirement
- *   - Signup bonus disabled (was testing-only)
- *   - Commission disabled (not in management rules)
- *
- * All values are admin-adjustable at /admin/affiliate. The defaults here are the
- * management-approved starting point.
+ * ⛔ WHAT THE STORED ROW ITSELF ARMED, AS IT WAS LAST READ (2026-09-26). A row that still arms a retired
+ * deposit-tied mode (`FIRST_DEPOSIT`, `DEPOSIT_THRESHOLD`) loads with that mode switched OFF, so the
+ * config in hand pays nothing — but it can no longer SAY a deposit mode was armed, and the deposit hook
+ * must refuse such a row out loud, audited, until a Save rewrites it. Noted on every read of the row
+ * (boot hydration, `reload`, `setVerified`'s read-back), on `globalThis` beside the registry it describes.
  */
-export const DEFAULT_AFFILIATE_CONFIG: AffiliateConfig = {
-  enabled: true,
-  commission: { enabled: false, rate: 0.5, windowMonths: 24, capPerRecruitTzs: 250_000 },
-  bonus: { enabled: false, recipient: "REFERRER", newAmountTzs: 2_000, referrerAmountTzs: 10_000, trigger: "SIGNUP" },
-  prize: { enabled: true, milestone: "FIRST_BET", depositThresholdTzs: 10_000, amountTzs: 10_000, capPerReferrer: 20, minBetAmountTzs: 20_000, requireDeposit: true },
-};
+function noteRowRetiredModes(persisted: unknown): void {
+  globalThis.__50PICK_AFFILIATE_ROW_RETIRED = retiredDepositModes(persisted);
+}
+
+/** A partial update: any top-level field, and any subset of a mode's fields. */
+export type AffiliateConfigUpdate = { [K in keyof AffiliateConfig]?: AffiliateConfig[K] extends object ? Partial<AffiliateConfig[K]> : AffiliateConfig[K] };
+
+const isObject = (v: unknown): v is Record<string, unknown> => !!v && typeof v === "object" && !Array.isArray(v);
+
+/**
+ * ⭐ KEY BY KEY, OFF THE RULE TABLE — never `{ ...section }`. A spread copies whatever keys the object
+ * carries, so a stray field in a posted form (or in a hand-edited row) would ride into the registry
+ * and back out to the database. The keys come from `affiliateSectionKeys`, which the compiler holds
+ * to `keyof AffiliateConfig[section]`.
+ */
+function cloneSection<S extends AffiliateSection>(section: S, from: AffiliateConfig[S]): AffiliateConfig[S] {
+  const src = from as Record<string, unknown>;
+  const out: Record<string, unknown> = {};
+  for (const key of affiliateSectionKeys(section)) out[String(key)] = src[String(key)];
+  return out as unknown as AffiliateConfig[S];
+}
 
 function deepClone(c: AffiliateConfig): AffiliateConfig {
   return {
     enabled: c.enabled,
-    commission: { ...c.commission },
-    bonus: { ...c.bonus },
-    prize: { ...c.prize },
+    commission: cloneSection("commission", c.commission),
+    bonus: cloneSection("bonus", c.bonus),
+    prize: cloneSection("prize", c.prize),
   };
 }
 
-// The shared factory owns the globalThis cache, eager DB hydration, write-through
-// persistence and the ADMIN `{ before, after, changes }` audit. Affiliate's only
-// specialisations are the deep `merge` (three nested reward-mode objects) and the
-// `validate` guard below. Getters are sync (58 call sites), matching the factory.
-const _config = defineConfig<AffiliateConfig, DeepPartial<AffiliateConfig>>({
+/**
+ * Deep-merge a partial update onto the current config, KNOWN KEYS ONLY. A value of the wrong TYPE
+ * is merged as sent and then refused by `validateAffiliateConfig` — the merge does not guess.
+ */
+function mergeConfig(base: AffiliateConfig, u: AffiliateConfigUpdate): AffiliateConfig {
+  const upd: Record<string, unknown> = isObject(u) ? u : {};
+  const merged = deepClone(base);
+  if (upd.enabled !== undefined) (merged as { enabled: unknown }).enabled = upd.enabled;
+  for (const section of AFFILIATE_SECTIONS) {
+    const part = upd[section];
+    if (!isObject(part)) continue;
+    const target = merged[section] as Record<string, unknown>;
+    for (const key of affiliateSectionKeys(section)) {
+      const v = part[String(key)];
+      if (v !== undefined) target[String(key)] = v;
+    }
+  }
+  return merged;
+}
+
+// The shared factory owns the globalThis cache, eager DB hydration, write-through persistence and
+// the ADMIN `{ before, after, changes }` audit. Getters are sync (58 call sites), matching the factory.
+const _config = defineConfig<AffiliateConfig, AffiliateConfigUpdate>({
   key: AFFILIATE_CONFIG_KEY,
   defaults: DEFAULT_AFFILIATE_CONFIG,
-  validate,
+  validate: validateAffiliateConfig,
+  /* ⛔ THE LOAD IS REPAIRED, NOT TRUSTED — see `sanitizePersistedAffiliateConfig`. `defineConfig`
+     merges `{ ...defaults, ...restored }` shallowly and unchecked; this hands it a complete, typed
+     object instead. ⭐ And it NOTES what the row itself armed first (`noteRowRetiredModes`), because
+     the repair switches a retired deposit-tied mode off and the config in hand can no longer say so. */
+  migrate: (persisted) => {
+    noteRowRetiredModes(persisted);
+    return sanitizePersistedAffiliateConfig(persisted);
+  },
   audit: { action: "affiliate.config.updated", targetType: "AffiliateConfig" },
   merge: (current, updates) => mergeConfig(current, updates),
 });
@@ -117,35 +130,59 @@ export function getAffiliateConfig(): AffiliateConfig {
   return deepClone(_config.get());
 }
 
-/** Deep-merge a partial update onto the current config. */
-function mergeConfig(base: AffiliateConfig, u: DeepPartial<AffiliateConfig>): AffiliateConfig {
-  return {
-    enabled: u.enabled ?? base.enabled,
-    commission: { ...base.commission, ...(u.commission ?? {}) },
-    bonus: { ...base.bonus, ...(u.bonus ?? {}) },
-    prize: { ...base.prize, ...(u.prize ?? {}) },
-  };
-}
-
-type DeepPartial<T> = { [K in keyof T]?: T[K] extends object ? Partial<T[K]> : T[K] };
-
-function validate(c: AffiliateConfig): { ok: true } | { ok: false; reason: string } {
-  // Commission rate is a hard regulated ceiling: never let the referrer cut
-  // exceed 100% of margin, and keep the demo guidance at ≤ 100%.
-  if (c.commission.rate < 0 || c.commission.rate > 1) return { ok: false, reason: "Commission rate must be 0–100%." };
-  if (c.commission.windowMonths < 1 || c.commission.windowMonths > 60) return { ok: false, reason: "Commission window must be 1–60 months." };
-  if (c.commission.capPerRecruitTzs < 0 || c.commission.capPerRecruitTzs > 50_000_000) return { ok: false, reason: "Per-recruit cap must be 0–50,000,000 TZS." };
-  if (c.bonus.newAmountTzs < 0 || c.bonus.newAmountTzs > 1_000_000) return { ok: false, reason: "New-player bonus must be 0–1,000,000 TZS." };
-  if (c.bonus.referrerAmountTzs < 0 || c.bonus.referrerAmountTzs > 1_000_000) return { ok: false, reason: "Referrer bonus must be 0–1,000,000 TZS." };
-  if (c.prize.amountTzs < 0 || c.prize.amountTzs > 1_000_000) return { ok: false, reason: "Prize amount must be 0–1,000,000 TZS." };
-  if (c.prize.depositThresholdTzs < 0 || c.prize.depositThresholdTzs > 50_000_000) return { ok: false, reason: "Deposit threshold must be 0–50,000,000 TZS." };
-  if (c.prize.capPerReferrer < 0 || c.prize.capPerReferrer > 10_000) return { ok: false, reason: "Prize cap must be 0–10,000." };
-  if (c.prize.minBetAmountTzs < 0 || c.prize.minBetAmountTzs > 10_000_000) return { ok: false, reason: "Min bet amount must be 0–10,000,000 TZS." };
-  return { ok: true };
-}
-
-export function setAffiliateConfig(updates: DeepPartial<AffiliateConfig>, officerId: string):
+/**
+ * The SYNCHRONOUS save — `set()` persists fire-and-forget. Kept for the existing test and dev-route
+ * callers, which configure on the first tick with no database.
+ * ⛔ Not for an officer: a failed write here still reports success. The console saves through
+ * `setAffiliateConfigVerified`, via `saveInviteRewardSettings` (`invite-rewards-ceremony.ts`).
+ */
+export function setAffiliateConfig(updates: AffiliateConfigUpdate, officerId: string):
   | { ok: true; config: AffiliateConfig }
   | { ok: false; error: string } {
   return _config.set(updates, officerId);
+}
+
+/**
+ * 🔴 THE OFFICER SAVE — persists, READS THE ROW BACK, and only then caches, audits and reports
+ * success (`define-config.ts` → `setVerified`). A "Saved" that did not land is how an officer ends
+ * up saving the same field twice and trusting neither.
+ * ⛔ Called by the console only through `invite-rewards-ceremony.ts`, under the switch's lock, so a
+ * save and a Payable / Not payable change cannot interleave.
+ */
+export function setAffiliateConfigVerified(updates: AffiliateConfigUpdate, officerId: string):
+  Promise<{ ok: true; config: AffiliateConfig } | { ok: false; error: string }> {
+  return _config.setVerified(updates, officerId);
+}
+
+/**
+ * ⭐ THE MONEY PATH'S CONFIG READ — re-read `affiliate.config` from its row NOW, replace this
+ * container's cache with it, and return it (`define-config.ts` → `reload`: the same sanitize-on-load
+ * as hydration, so a bad field still falls back to the value that pays least).
+ *
+ * 🔴 WHY. This container's cache is the config it BOOTED with. When the Owner makes invites payable
+ * with "Nothing yet" on another container — or the growth officer saves there — this one would read
+ * the switch fresh and still price from its old cache: the shipped prize ON at TZS 10,000.
+ * ⛔ `ok: false` (the row could not be read) means REFUSE the accrual — never pay from the cache.
+ * ⛔ AND SO DOES `stored: false` ON THE MONEY PATH (review, 2026-09-26): the store has NO row, and the
+ * config answered is the shipped defaults — prize ON at TZS 10,000 — which nobody chose. The page and the
+ * ceremony may still start from the defaults (a first Save or Make payable writes the row).
+ * ⛔ CALL IT ONLY AFTER THE SWITCH HAS SAID PAYABLE, so an unpaid platform never pays for the read.
+ * With no database it reads nothing: the cache is the store.
+ */
+export async function reloadAffiliateConfig(): Promise<{ ok: true; config: AffiliateConfig; stored: boolean } | { ok: false; error: string }> {
+  const fresh = await _config.reload();
+  return fresh.ok ? { ok: true, config: deepClone(fresh.config), stored: fresh.stored } : { ok: false, error: fresh.error };
+}
+
+/**
+ * ⛔ DOES ANYTHING STILL ARM A RETIRED DEPOSIT-TIED MODE? — for the deposit hook's audited refusal
+ * (2026-09-26, the RG policy's "No bonus offers tied to deposit increases"). True for a mode when EITHER
+ * the stored row, as last read, armed it (the load has already switched it off in the config in hand) OR
+ * the config in hand itself still spells it (something bypassed the load's repair). Answering it costs no
+ * read. ⛔ It only decides what is AUDITED: a deposit pays no referral reward whatever this says.
+ */
+export function armedRetiredDepositModes(): { bonus: boolean; prize: boolean } {
+  const inHand = retiredDepositModes(_config.get());
+  const row = globalThis.__50PICK_AFFILIATE_ROW_RETIRED ?? { bonus: false, prize: false };
+  return { bonus: inHand.bonus || row.bonus, prize: inHand.prize || row.prize };
 }

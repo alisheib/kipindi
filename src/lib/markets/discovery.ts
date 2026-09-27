@@ -57,7 +57,9 @@ export type DiscoveryRow = {
   /** yesPool + noPool, TZS. */
   pool: number;
   predictors: number;
-  /** null when `pool === 0` — see above. */
+  /** The printable price, or null when there is none: `pool === 0` (see above) OR money on one side
+   *  only (MOBILE-VISUAL ruling 13, landing v3 WP6). Producers use `shownYesPct` (`price-state.ts`),
+   *  which also keeps a two-sided price within 1–99, so a row and its card agree. */
   yesPct: number | null;
   /** undefined without a 24h baseline (`market-history.ts`). A-5: never coerced to 0. */
   move24h: number | undefined;
@@ -106,8 +108,13 @@ export type DiscoveryRow = {
 /**
  * The crowd's implied YES share, or **null when nobody has staked**.
  *
- * ⭐ ONE DEFINITION, THREE CONSUMERS (B9 / law 81): the board's `toRow`, the landing hero's
- * per-question price, and the hero's aggregate conviction bar. It is deliberately NOT
+ * ⚠️ SINCE landing v3 WP6 (2026-09-27) THIS IS THE RAW SHARE, FOR AGGREGATES: the hero's conviction
+ * bar and the topic lean read it over summed pools. A MARKET'S displayed price — on the card, the
+ * board row (`toRow`), the hero row — is `shownYesPct` / `priceState` (`price-state.ts`), which also
+ * withholds a price on a one-sided pool and keeps a two-sided one within 1–99. This returns 100 for a
+ * one-sided pool (`test:hero-contract` §1 pins that), which no market surface may print.
+ *
+ * ⭐ It is deliberately NOT
  * `impliedYesPct` from `market-service.ts` — that function returns a hardcoded **50** on an
  * empty pool, which is the right answer for a money projection and a fabricated number on a
  * display surface. Licence condition 1: never render a guessed figure. Matching

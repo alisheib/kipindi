@@ -6,7 +6,7 @@ import { MARKET_CARD_H_CLOSED } from "@/components/markets/card-geometry";
 import { Chip } from "@/components/ui/chip";
 import { FilterPill, FilterGroupKey } from "@/components/ui/filter-pill";
 import { TippingBar } from "@/components/brand";
-import { listMarkets, impliedYesPct, MARKET_CATEGORIES, listTerminalMarkets } from "@/lib/server/market-service";
+import { listMarkets, MARKET_CATEGORIES, listTerminalMarkets } from "@/lib/server/market-service";
 // ⛔ THE ONE COLD-START RULE (§C2) — see the `yesPct` note in FeaturedResult.
 import { pricedYesPct } from "@/lib/markets/discovery";
 import { categoryOptions } from "@/lib/markets/category-label";
@@ -505,8 +505,8 @@ async function ResultsContent({
                     titleSw={m.titleSw}
                     titleZh={m.titleZh}
                     category={m.category}
-                    yesPct={impliedYesPct(m)}
-                    volume={m.yesPool + m.noPool}
+                    yesPool={m.yesPool}
+                    noPool={m.noPool}
                     predictors={m.predictorCount}
                     // §L3 — was `${t.market.resolvedOutcome} ${m.resolvedOutcome}`, i.e. a
                     // translated label wrapped around the raw enum on the public results board.

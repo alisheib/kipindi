@@ -31,7 +31,7 @@ import { Pagination, PLAYER_PER_PAGE } from "@/components/ui/pagination";
 import { SearchBox } from "@/components/ui/search-box";
 import { getSession } from "@/lib/server/session";
 import { listWatchedMarketIds } from "@/lib/server/watchlist-service";
-import { playerMarketsByIds, impliedYesPct, isClosedByTime, isSelectionClosed } from "@/lib/server/market-service";
+import { playerMarketsByIds, isClosedByTime, isSelectionClosed } from "@/lib/server/market-service";
 import { RefreshPoller } from "@/components/ui/refresh-poller";
 import { getServerT } from "@/lib/i18n-server";
 import { outcomeWord } from "@/lib/side-label";
@@ -253,8 +253,8 @@ export default async function WatchlistPage({
                   titleSw={m.titleSw}
                   titleZh={m.titleZh}
                   category={m.category}
-                  yesPct={impliedYesPct(m)}
-                  volume={m.yesPool + m.noPool}
+                  yesPool={m.yesPool}
+                  noPool={m.noPool}
                   predictors={m.predictorCount}
                   timeLeft={timeLeft}
                   status={m.status === "VOIDED" ? "VOIDED" : m.status === "RESOLVED" ? "RESOLVED" : m.status}

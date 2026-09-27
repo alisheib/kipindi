@@ -565,7 +565,6 @@ export const dict = {
       claimBonus: "Claim your welcome bonus",
       bonusWalletHint: "Added to your bonus wallet — play it through to turn it into cash.",
       signUpAndGet: "Sign up & get",
-      getOnFirstDeposit: "Get on your first deposit",
       toStart: "to start",
       wrongCode: "Wrong code \u2014 try again.",
       codeExpired: "Code expired \u2014 request a new one.",
@@ -756,6 +755,14 @@ export const dict = {
       noBetsYet: "No bets yet",
       beFirst: "Be the first to predict",
       noPoolYet: "No pool yet",
+      // landing v3 · WP6 — a market with money on ONE side has no price (MOBILE-VISUAL ruling 13).
+      // The refund sentences restate rules §7 (`_content-yes-no.tsx`) and `settleMarket`'s one-sided
+      // branch: every stake back in full, whatever the verdict. "No stake on {side}", not "no one
+      // picked": a cash-out empties a side somebody did pick. ONE conditional sentence for every
+      // unsettled phase — a closed-phase "will be refunded" was withdrawn, because `adminReopenMarket`
+      // can put a sentinel-CLOSED market back to LIVE. ⛔ No digits here (`test:rate-copy`).
+      oneSideOnly: "One side only",
+      oneSidedNote: "No stake on {side} yet. If betting closes one-sided, every stake is refunded in full.",
       closed: "closed",
       // Time-left. The NUMBER is inside the string so each locale owns its own
       // spacing and word order. They used to be bare suffixes concatenated as
@@ -1410,8 +1417,8 @@ export const dict = {
       inviteEarn: "Invite & Earn", inviteEarnSub: "Refer friends · earn rewards",
       // ⭐ THE UNPAID INVITE'S OWN WORDS (2026-09-25). ⛔ NOT a rewording of the paid promo's keys
       // (`inviteEarn`/`inviteEarnSub` above; `yourReferrals`, `noReferralsYet/Body`, `rewardsDisclaimer`, `inviteReq*` below):
-      // those are the PAID promo's, they stay exactly as they are, and `inviteRewards` ACTIVE
-      // brings them back. A page that pays nothing may not borrow a sentence that promises
+      // those are the PAID promo's, they stay exactly as they are, and the Owner's Payable switch
+      // (with a reward armed) brings them back. A page that pays nothing may not borrow a sentence that promises
       // something — which is what re-pointing `inviteEarn` at neutral copy would have quietly done
       // to every other reader of that key.
       inviteFriends: "Invite friends", inviteFriendsSub: "Share your link · see who joins",
@@ -1468,12 +1475,12 @@ export const dict = {
       sessionSecurity: "Session security",
       sessionSecurityBody: "Your session is tied to this browser. Sign out above to end it. Each sign-in requires a fresh OTP.",
       shareText: "Join me on 50pick — predict and win. Use my link:",
-      programPaused: "The program is paused right now. Your link still works — rewards resume when it's back on.",
       howItWorks: "How it works", yourReferrals: "Your referrals",
       bonusRequirements: "Bonus requirements",
       inviteReqRegister: "Your friend must register using your referral link.",
       inviteReqDeposit: "They must deposit funds into their account.",
-      inviteReqBet: "They must place at least one position worth TZS 20,000 or more.",
+      inviteReqBet: "They must place at least one position worth {amount} or more.",
+      inviteReqBetAny: "They must place at least one position.",
       inviteReqCash: "Reward credited to your main balance as withdrawable cash — no wagering requirement.",
       inviteReqWager: "Bonus credited to your Bonus Wallet — {wager}\u00d7 wagering required before withdrawal.",
       inviteReqExpiry: "Bonuses expire 30 days after being credited if not played through.",
@@ -3254,7 +3261,6 @@ export const dict = {
       claimBonus: "Pata bonasi yako ya kukukaribisha",
       bonusWalletHint: "Imeongezwa kwenye pochi yako ya bonasi — cheza ili kuibadilisha kuwa pesa.",
       signUpAndGet: "Jisajili na upate",
-      getOnFirstDeposit: "Pata kwenye amana yako ya kwanza",
       toStart: "kuanza",
       wrongCode: "Msimbo si sahihi \u2014 jaribu tena.",
       codeExpired: "Msimbo umeisha muda \u2014 omba mpya.",
@@ -3398,6 +3404,10 @@ export const dict = {
       noBetsYet: "Bila dau bado",
       beFirst: "Kuwa wa kwanza kutabiri",
       noPoolYet: "Hakuna bwawa bado",
+      // drafted, marked for native review; English is binding.
+      oneSideOnly: "Upande mmoja tu",
+      // drafted, marked for native review; English is binding. The second sentence is rules §7's own.
+      oneSidedNote: "Hakuna dau upande wa {side} bado. Kama upande mmoja tu una dau wakati wa kufunga, kila dau hurudishwa kamili.",
       closed: "imefungwa",
       timeLeftD: "siku {n} zimebaki", timeLeftH: "masaa {n} yamebaki", timeLeftM: "dakika {n} zimebaki",
       showMarketN: "Onyesha soko {n}", prevMarket: "Soko lililopita", nextMarket: "Soko linalofuata", showResultN: "Onyesha tokeo maarufu {n}",
@@ -3919,12 +3929,12 @@ export const dict = {
       sessionSecurity: "Usalama wa kikao",
       sessionSecurityBody: "Kikao chako kimefungwa kwenye kivinjari hiki. Toka hapo juu kukimaliza.",
       shareText: "Jiunge nami kwenye 50pick — tabiri na ushinde. Tumia kiungo changu:",
-      programPaused: "Mpango umesimama kwa sasa. Kiungo chako kinafanya kazi — zawadi zitaendelea ukiwashwa.",
       howItWorks: "Inavyofanya kazi", yourReferrals: "Marafiki wako",
       bonusRequirements: "Masharti ya bonasi",
       inviteReqRegister: "Rafiki yako lazima ajisajili kwa kutumia kiungo chako.",
       inviteReqDeposit: "Lazima aweke fedha kwenye akaunti yake.",
-      inviteReqBet: "Lazima aweke angalau dau moja la TZS 20,000 au zaidi.",
+      inviteReqBet: "Lazima aweke angalau dau moja la {amount} au zaidi.",
+      inviteReqBetAny: "Lazima aweke angalau dau moja.",
       inviteReqCash: "Zawadi inapokelewa kwenye salio lako kuu kama fedha inayoweza kutolewa — hakuna sharti la mchezo.",
       inviteReqWager: "Bonasi inapokelewa kwenye Pochi ya Bonasi \u2014 mchezo {wager}\u00d7 unahitajika kabla ya kutoa.",
       inviteReqExpiry: "Bonasi zinaisha siku 30 baada ya kupokelewa zisipochezwa.",
@@ -5452,7 +5462,6 @@ export const dict = {
       claimBonus: "领取您的欢迎奖金",
       bonusWalletHint: "已添加到您的奖金钱包——完成打码即可提现。",
       signUpAndGet: "注册即得",
-      getOnFirstDeposit: "首充即得",
       toStart: "开始",
       codeExpiresIn: "验证码将在以下时间后过期",
       blockedContactSupport: "如果您认为这是错误，请联系 {email}。",
@@ -5593,6 +5602,10 @@ export const dict = {
       noBetsYet: "暂无投注",
       beFirst: "成为第一个预测者",
       noPoolYet: "暂无奖池",
+      // drafted, marked for native review; English is binding. 单边 is rules §7's term (单边市场).
+      oneSideOnly: "仅单边有投注",
+      // drafted, marked for native review; English is binding.
+      oneSidedNote: "「{side}」方尚无投注。若截止时仅有一方持有下注，全部下注将全额退还。",
       closed: "已关闭",
       timeLeftD: "{n}天后", timeLeftH: "{n}小时后", timeLeftM: "{n}分钟后",
       showMarketN: "显示市场 {n}", prevMarket: "上一个市场", nextMarket: "下一个市场", showResultN: "显示精选结果 {n}",
@@ -6114,12 +6127,12 @@ export const dict = {
       sessionSecurity: "会话安全",
       sessionSecurityBody: "您的会话绑定到此浏览器。点击上方退出结束会话。",
       shareText: "加入50pick——预测赢奖。使用我的链接：",
-      programPaused: "计划目前已暂停。您的链接仍然有效——恢复后奖励继续。",
       howItWorks: "使用方法", yourReferrals: "您的推荐",
       bonusRequirements: "奖金要求",
       inviteReqRegister: "您的朋友必须使用您的推荐链接注册。",
       inviteReqDeposit: "他们必须向账户充值。",
-      inviteReqBet: "他们必须至少投注一次，金额不低于 TZS 20,000。",
+      inviteReqBet: "他们必须至少投注一次，金额不低于 {amount}。",
+      inviteReqBetAny: "他们必须至少投注一次。",
       inviteReqCash: "奖励以可提现现金形式计入您的主余额——无打码要求。",
       inviteReqWager: "奖金到账奖金钱包 \u2014 提现前需完成{wager}\u00d7打码要求。",
       inviteReqExpiry: "奖金在到账后30天内未完成打码将过期。",

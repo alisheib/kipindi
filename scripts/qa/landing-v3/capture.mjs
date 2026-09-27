@@ -2,6 +2,8 @@
 //   MODE=build   BASE=http://localhost:3057  OUT=<dir>  node scripts/qa/landing-v3/capture.mjs
 //   MODE=concept OUT=<dir>                               node scripts/qa/landing-v3/capture.mjs
 // Optional: WIDTHS=360,768,1280  LOCALES=sw,en,zh  AUTH=demo0|demo1 (build only, /auth/demo)
+//           PAGE=markets (build only; the path WITHOUT its leading slash — Git Bash rewrites a
+//           "/markets" env value into a Windows path) — frames and report carry the page in their id.
 import { chromium } from "playwright";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
@@ -15,6 +17,7 @@ const W = (process.env.WIDTHS || "360,768,1280").split(",").map(Number);
 const LOCALES = (process.env.LOCALES || "sw,en,zh").split(",");
 const H = { 360: 780, 768: 1024, 1280: 860, 1024: 900, 320: 640, 414: 896 };
 const MAX_TILES = Number(process.env.MAX_TILES || 14);
+const PAGE = (process.env.PAGE || "").replace(/^\/+/, "");
 const CONCEPT = pathToFileURL(resolve("docs/design-system/v4-2026-09-26-landing-ten/design/50pick Home Concept v3.dc.html")).href;
 mkdirSync(OUT, { recursive: true });
 
@@ -34,6 +37,25 @@ const MEASURE = () => {
     hero: r(document.querySelector(".kp-hero")),
     featuredCard: r(card), featuredPrice: r(price), featuredActions: r(actions),
     ctas: r(document.querySelector(".kp-hero__ctas")), trust: r(document.querySelector(".kp-hero__trust")),
+    // landing v3 · WP6 — every visible market card's price state, as the reader sees it.
+    cards: [...document.querySelectorAll(".mcardp")].filter(vis).slice(0, 16).map((c) => {
+      const note = c.querySelector(".mcardp-onesided-note");
+      const lh = note ? parseFloat(getComputedStyle(note).lineHeight) : 0;
+      return {
+        featured: c.classList.contains("mcardp--featured"),
+        oneSided: !!c.querySelector(".mcardp-oneside"),
+        h: Math.round(c.getBoundingClientRect().height),
+        prob: (c.querySelector(".mcardp-prob")?.textContent || "").trim(),
+        label: (c.querySelector(".mcardp-oneside")?.textContent || "").trim(),
+        btns: [...c.querySelectorAll(".mcardp-actions .btn")].map((b) => (b.textContent || "").trim()),
+        btnAria: [...c.querySelectorAll(".mcardp-actions button")].map((b) => b.getAttribute("aria-label")),
+        rail: c.querySelector(".tipbar-empty") ? "empty:" + c.querySelector(".tipbar-empty").getAttribute("aria-label") : "priced",
+        note: note ? (note.textContent || "").trim() : null,
+        noteLines: note && lh ? Math.round(note.getBoundingClientRect().height / lh) : 0,
+        noteFont: note ? parseFloat(getComputedStyle(note).fontSize) : null,
+      };
+    }),
+    qrows: [...document.querySelectorAll(".kp-qrow__price")].filter(vis).map((p) => (p.textContent || "").replace(/\s+/g, " ").trim()),
     headings: [...document.querySelectorAll("h1,h2,h3,h4")].filter(vis).map((h) => `${h.tagName}:${(h.textContent || "").trim().slice(0, 50)}`),
     bands: [...document.querySelectorAll("[data-band]")].map((b) => b.getAttribute("data-band")),
     smallText: [...document.querySelectorAll("body *")].filter((e) => e.childNodes.length && [...e.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim()) && vis(e) && parseFloat(getComputedStyle(e).fontSize) < 12).map((e) => `${e.className?.toString().slice(0, 40)}:${parseFloat(getComputedStyle(e).fontSize)}:${(e.textContent || "").trim().slice(0, 24)}`).slice(0, 30),
@@ -46,7 +68,7 @@ const report = [];
 for (const w of W) for (const loc of LOCALES) {
   const h = H[w] || 900;
   const ctx = await browser.newContext({ viewport: { width: w, height: h }, deviceScaleFactor: 1 });
-  const id = `${MODE}-${w}-${loc}${AUTH ? "-" + AUTH : ""}`;
+  const id = `${MODE}${PAGE ? "-" + PAGE.replace(/\W+/g, "_") : ""}-${w}-${loc}${AUTH ? "-" + AUTH : ""}`;
   try {
     let url;
     if (MODE === "concept") {
@@ -57,7 +79,7 @@ for (const w of W) for (const loc of LOCALES) {
     } else {
       if (loc !== "sw") await ctx.addCookies([{ name: "kp-locale", value: loc, domain: new URL(BASE).hostname, path: "/" }]);
       await ctx.addInitScript(() => { try { localStorage.setItem("50pick-primer-seen", "1"); } catch {} });
-      url = BASE + "/";
+      url = BASE + "/" + PAGE;
     }
     const page = await ctx.newPage();
     if (MODE === "build" && AUTH) {
@@ -71,7 +93,7 @@ for (const w of W) for (const loc of LOCALES) {
     await page.addStyleTag({ content: "nextjs-portal,[data-nextjs-toast],[data-nextjs-dialog-overlay]{display:none!important}" }).catch(() => {});
     // must be the real page, not an error screen
     const h1 = await page.locator("h1").first().textContent({ timeout: 10000 }).catch(() => null);
-    if (!h1) throw new Error("no h1 — not the landing page");
+    if (!h1) throw new Error(`no h1 — not the ${PAGE || "landing"} page`);
     // fire every reveal
     const dh = await page.evaluate(() => document.documentElement.scrollHeight);
     for (let y = 0; y < dh; y += Math.floor(h * 0.8)) { await page.evaluate((v) => scrollTo(0, v), y); await page.waitForTimeout(150); }
@@ -94,4 +116,4 @@ for (const w of W) for (const loc of LOCALES) {
   await ctx.close();
 }
 await browser.close();
-writeFileSync(join(OUT, `report-${MODE}${AUTH ? "-" + AUTH : ""}.json`), JSON.stringify(report, null, 2));
+writeFileSync(join(OUT, `report-${MODE}${PAGE ? "-" + PAGE.replace(/\W+/g, "_") : ""}${AUTH ? "-" + AUTH : ""}.json`), JSON.stringify(report, null, 2));

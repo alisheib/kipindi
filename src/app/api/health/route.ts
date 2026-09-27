@@ -17,6 +17,8 @@ import { redisHealth } from "@/lib/server/redis";
 import { emailHealthPublic } from "@/lib/server/email";
 import { pingDatabase } from "@/lib/server/prisma";
 import { houseBotSchemaReady } from "@/lib/server/house-bot/schema-ready";
+import { inviteRewardsCeiling } from "@/lib/feature-state";
+import { invitePaysPlayersNow, playerInvitePayableNow } from "@/lib/server/invite-rewards-switch";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -81,6 +83,10 @@ export async function GET() {
     // count that stops moving, not be filtered out of the signal.
     const liveMarkets = await listMarkets({ status: "LIVE", productLine: "ALL" }).then((l) => l.length).catch(() => -1);
     const resolvedMarkets = await listMarkets({ status: "RESOLVED", productLine: "ALL" }).then((l) => l.length).catch(() => -1);
+    // The screens' read (≤ 10 s cache); never rejects, and a failed read answers false. `invitePaying`
+    // is the one player-facing "paid" (`invitePaysPlayersNow`), asked only once the switch says payable.
+    const invitePayable = await playerInvitePayableNow().catch(() => false);
+    const invitePaying = invitePayable ? await invitePaysPlayersNow().catch(() => false) : false;
 
     return NextResponse.json(
       {
@@ -150,6 +156,19 @@ export async function GET() {
         // Reported for the same reason: a password-only admin console must not be a silent state.
         security: {
           adminTotp: isAdminTotpEnforced() ? "enforced" : "DISABLED",
+        },
+        // 🔴 DOES 50PICK PAY FOR A PLAYER INVITE RIGHT NOW? Since 2026-09-26 that is the Owner's switch on
+        // /admin/affiliate, under a code/env ceiling — a state only a signed-in console could see. The
+        // live checks and drives branch on it (unpaid assertions only while `payable` is false), and an
+        // operator can answer "is referral money moving?" without signing in. `ceiling`: OWNER (the
+        // switch decides), FORCED (FEATURE_INVITEREWARDS=ACTIVE) or CLOSED (withdrawn). ⛔ No reason, no
+        // author, no record — facts already visible on the product. ⭐ `paying` (review P8, 2026-09-26) is
+        // what every PLAYER surface says: Payable AND the service-level pause off AND a reward armed — after
+        // "Make payable → Nothing yet", `payable` is true and `paying` is false.
+        inviteRewards: {
+          payable: invitePayable,
+          paying: invitePaying,
+          ceiling: inviteRewardsCeiling().ceiling,
         },
         // 🔴 Is transactional email actually being delivered? Every send on this
         // platform is fire-and-forget from a money or auth path, and the failure

@@ -19,9 +19,10 @@
  * allowed to be rendered as one: the aggregate conviction share when nothing at all is staked, and a
  * single question's YES price when that market's own pool is empty. `impliedYesPct` returns a
  * hardcoded **50** in both cases — right for a payout projection, a fabricated number on a display
- * surface — so this file consumes `pricedYesPct`, which returns **null**, and renders an em-dash
- * plus a labelled state instead. Licence condition 1 (DESIGN_AUTHORITY §B6 / law 81). ⛔ There is
- * deliberately no `?? 50` anywhere below.
+ * surface — so the aggregate comes from `pricedYesPct`, which returns **null**, and a question's own
+ * price from `priceState` (WP6), which also withholds it when money sits on ONE side only; each
+ * renders an em-dash plus a labelled state instead. Licence condition 1 (DESIGN_AUTHORITY §B6 /
+ * law 81) and MOBILE-VISUAL ruling 13. ⛔ There is deliberately no `?? 50` anywhere below.
  *
  * ⛔ THE BACKDROP DRAWING IS GONE ON PURPOSE (Ali, 2026-09-26, INHERIT-MANIFEST R4(1)): the delivery's
  * graphic-design reviewer asks for no decorative illustration, and the ruling reverses PV-01. The
@@ -40,6 +41,7 @@ import { HELPLINE, HELPLINE_TEL } from "@/lib/support-config";
 import type { Dict, Locale } from "@/lib/i18n-dict";
 import type { HeroFigures, HeroRow } from "@/lib/markets/hero";
 import { sideWord } from "@/lib/side-label";
+import { priceState } from "@/lib/markets/price-state";
 import { Cash } from "@/components/ui/cash";
 import type { LandingPicks } from "@/lib/server/landing-picks";
 
@@ -148,6 +150,11 @@ function TrustLines({ t }: { t: Dict }) {
 
 function QuestionRow({ row, t, locale }: { row: HeroRow; t: Dict; locale: Locale }) {
   const Glyph = I[categoryGlyph(row.category)];
+  /* ⭐ WP6 · the row's price state comes from its POOLS, exactly as the market card's does
+     (`price-state.ts`): empty → "No bets yet"; one side only → "One side only" (ruling 13 — never
+     "no bets", money is on it); both sides → the price within 1–99 (L14), and the lean rule drawn
+     from that same figure. `row.yesPct` is the rounded share, which reads 100 on a one-sided pool. */
+  const price = priceState(row.yesPool, row.noPool);
   return (
     <Link href={`/markets/${row.id}` as never} className="kp-qrow">
       <span className="kp-qrow__glyph" aria-hidden>
@@ -169,24 +176,26 @@ function QuestionRow({ row, t, locale }: { row: HeroRow; t: Dict; locale: Locale
           `noPrice`, and the two surfaces have to draw it the same way. */}
       <span className="kp-qrow__sub">{formatTzs(row.pool)}</span>
       <span className="kp-qrow__price">
-        {row.yesPct == null ? (
+        {price.kind === "priced" ? (
+          <>
+            <span className="kp-qrow__num">{price.yesPct}</span>
+            <span className="kp-qrow__unit">% {t.common.yes}</span>
+          </>
+        ) : (
           <>
             {/* Em-dash PLUS a labelled state — licence condition 1's exact prescription for an
                 unknown. The dash alone would read to a screen reader as nothing at all. */}
             <span className="kp-qrow__num" aria-hidden>—</span>
-            <span className="kp-qrow__unit kp-qrow__unit--label">{t.home.heroNoPrice}</span>
-          </>
-        ) : (
-          <>
-            <span className="kp-qrow__num">{row.yesPct}</span>
-            <span className="kp-qrow__unit">% {t.common.yes}</span>
+            <span className="kp-qrow__unit kp-qrow__unit--label">
+              {price.kind === "oneSided" ? t.market.oneSideOnly : t.home.heroNoPrice}
+            </span>
           </>
         )}
       </span>
-      {/* No lean rule on an unpriced market: a 50%-wide bar would be the same fabricated claim
-          drawn instead of written. */}
-      {row.yesPct != null && (
-        <span className="kp-qrow__lean" style={{ width: `${row.yesPct}%` }} aria-hidden />
+      {/* No lean rule without a price: a 50%-wide bar over an empty pool, or a full-width one over a
+          one-sided pool, would be the same fabricated claim drawn instead of written. */}
+      {price.kind === "priced" && (
+        <span className="kp-qrow__lean" style={{ width: `${price.yesPct}%` }} aria-hidden />
       )}
     </Link>
   );
@@ -248,11 +257,11 @@ export function LandingHero({ figures, t, locale, isAuthed, nowMs, cards, mine }
               titleSw={featured.titleSw}
               titleZh={featured.titleZh}
               category={featured.category}
-              // The card owns its own cold-start gate (`noPrice = volume === 0`), so the fallback
-              // here is unreachable — and it is 0 rather than 50 deliberately: if a future edit ever
-              // did render it, 0% is visibly absurd, whereas 50% looks like a price and would ship.
-              yesPct={featured.yesPct ?? 0}
-              volume={featured.pool}
+              // The pools, never `yesPct ?? 0` (WP6): the card decides empty / one-sided / priced
+              // from them itself (`price-state.ts`), and a one-sided featured market reads "One side
+              // only" with the refund rule instead of "YES 100%".
+              yesPool={featured.yesPool}
+              noPool={featured.noPool}
               predictors={featured.predictors}
               timeLeft={
                 featured.selectionClosed
