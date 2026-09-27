@@ -228,7 +228,7 @@ try {
   if (neutral.some((s) => onlyText.includes(s))) {
     ok("3.2 · ruling 146 · the house-only holder's resolution panel says, neutrally, that they cannot object", true);
     // Ruling 158 — found by reading this page's screenshot: the payout-held box above must not invite the objection.
-    const invitation = ["unaweza kupinga wakati fedha bado ziko kwenye dimbwi", "you can object while the pool is still intact"];
+    const invitation = ["unaweza kupinga wakati fedha bado ziko kwenye bwawa", "you can object while the pool is still intact"];
     const heldBox = ["Malipo yamesimamishwa", "Payout is on hold"].some((s) => onlyText.includes(s));
     ok("3.2b · ruling 158 · …and the payout-held box above it (present) does not invite an objection", heldBox && !invitation.some((s) => onlyText.includes(s)),
       heldBox ? invitation.find((s) => onlyText.includes(s)) ?? "" : "the payout-held box was not rendered, so the check would be vacuous");

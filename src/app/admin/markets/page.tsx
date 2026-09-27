@@ -109,7 +109,7 @@ async function AdminMarketsContent({
           <AdminKpi label="Live"      sw="Hai"           value={String(live.length)} />
           <AdminKpi label="Awaiting resolution" sw="Inangoja" value={String(closed.length)} />
           <AdminKpi label="Resolved"  sw="Imetatuliwa"   value={String(resolved.length)} />
-          <AdminKpi label="Total pool" sw="Jumla ya dimbwi" value={formatBalancePill(totalPool)} />
+          <AdminKpi label="Total pool" sw="Jumla ya bwawa" value={formatBalancePill(totalPool)} />
         </KpiGrid>
 
         <AdminCard>

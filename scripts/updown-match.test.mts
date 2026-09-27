@@ -427,7 +427,8 @@ for (const [name, byLoc] of Object.entries(WANT)) {
     aria === "Round timeline: opened 14:20, betting closes 14:30, the price at 14:32 decides (EAT). Confirmed prices since the open: 14:23: Below open by $6.20; 14:26: Above open by $18.52.", aria);
   ok("12.aria no reads ⇒ 'none yet'", matchWords(dict.en as Dict, "en", S4).aria.endsWith("since the open: none yet."));
   const all = (["en", "sw", "zh"] as const).map((l) => html([matchWords(dict[l] as Dict, l, S1).verdict, matchWords(dict[l] as Dict, l, S1).detail, matchWords(dict[l] as Dict, l, S1).rule])).join("");
-  ok("12.law no absolute price, no 'live', no pool on the band's words", !/85,0\d\d\.\d\d|\blive\b|\bhai\b|pool|dimbwi|奖池/i.test(all));
+  // ⚠️ `bwawa` joined 2026-09-27: landing v3 C1 unified the Swahili pool word on it (it had been "dimbwi" here).
+  ok("12.law no absolute price, no 'live', no pool on the band's words", !/85,0\d\d\.\d\d|\blive\b|\bhai\b|pool|dimbwi|bwawa|奖池/i.test(all));
 }
 
 // ── §13 · the band, rendered ────────────────────────────────────────────────────────────────────
