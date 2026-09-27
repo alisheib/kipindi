@@ -47,6 +47,12 @@ export function UpdownMatchTrack({ round, label, openLabel, anchorMs }: {
   anchorMs: number;
 }) {
   const g = matchGeometry(round);
+  // The newest data mark — the latest stem, or a later tie tick — so the playhead can keep off it.
+  const latestStem = g.stems.find((s) => s.latest) ?? null;
+  const lastTie = g.ties.length ? g.ties[g.ties.length - 1] : null;
+  const mark = lastTie && (!latestStem || lastTie.x > latestStem.x)
+    ? { x: lastTie.x, kind: "tie" as const }
+    : latestStem ? { x: latestStem.x, kind: latestStem.side } : null;
   const gate = pct(g.gatePct);
   const at = (x: number) => ({ "--x": pct(x) }) as CSSProperties;
   return (
@@ -66,7 +72,8 @@ export function UpdownMatchTrack({ round, label, openLabel, anchorMs }: {
           <line className="kp-udtrack__post" x1="100%" y1="0" x2="100%" y2="100%" />
           {g.kick && <circle className="kp-udtrack__kick" cx="0" cy="50%" r={MATCH.kick} />}
         </svg>
-        <UpdownMatchNow opensAtMs={round.opensAtMs} closesAtMs={round.closesAtMs} anchorMs={anchorMs} />
+        <UpdownMatchNow opensAtMs={round.opensAtMs} closesAtMs={round.closesAtMs} anchorMs={anchorMs}
+          markX={mark?.x ?? null} markKind={mark?.kind ?? null} />
         <svg className="kp-udtrack__svg" width="100%" height="100%" focusable="false">
           {g.ties.map((tie) => (
             <line key={`t${tie.x}`} className="kp-udtrack__tie"

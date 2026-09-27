@@ -76,7 +76,7 @@ export function RoundStakePanel(props: {
           <div className="flex items-center justify-between gap-2.5">
             <p className="m-0 font-mono text-micro font-semibold uppercase eyebrow text-text-faint">{t.market.udYourPick}</p>
             <Chip variant={lockedSide === "UP" ? "yes" : "no"} style={{ gap: 5 }}>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={lockedSide === "UP" ? "M5 15l7-7 7 7" : "M5 9l7 7 7-7"} /></svg>
+              {lockedSide === "UP" ? <I.arrowUp s={12} strokeWidth={2.5} /> : <I.arrowDown s={12} strokeWidth={2.5} />}
               {tapped}
             </Chip>
           </div>
@@ -130,14 +130,13 @@ export function RoundStakePanel(props: {
     : warn === "DOWN" ? t.market.udNobodyBacked.replace("{side}", t.market.udDown)
     : null;
   const customInvalid = bet.customMode && bet.customValue.trim() !== "" && !bet.customValid;
-  const arrow = isUp ? "M5 15l7-7 7 7" : "M5 9l7 7 7-7";
 
   return (
     <div data-testid="updown-stake-panel" className={cn(pulse && "ud-place-pulse")}>
       <div className="flex items-center justify-between gap-2.5">
         <p className="m-0 font-mono text-micro font-semibold uppercase eyebrow text-text-faint">{t.market.udYourPick}</p>
         <Chip variant={isUp ? "yes" : "no"} style={{ gap: 5 }}>
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={arrow} /></svg>
+          {isUp ? <I.arrowUp s={12} strokeWidth={2.5} /> : <I.arrowDown s={12} strokeWidth={2.5} />}
           {pickWord}
         </Chip>
       </div>

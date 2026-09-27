@@ -77,7 +77,7 @@ export function RoundActionPanel(props: {
 
   if (bettable) {
     return (
-      <section aria-label={props.ariaStake} style={{ ...cardStyle, padding: "14px 16px 16px" }}>
+      <section id="stake" aria-label={props.ariaStake} className="scroll-mt-24" style={{ ...cardStyle, padding: "14px 16px 16px" }}>
         <RoundStakePanel
           {...stakePanel}
           selectionClosesAtMs={selectionClosesAtMs}

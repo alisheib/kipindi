@@ -49,10 +49,14 @@ const clock = (ms: number) => fmtEATClock(ms) ?? "—";
  *  " — "), never mid-phrase — measured at 320, 2026-09-27: "Juu ya / ufunguzi kwa $18.52", "Tofauti / $0.01". */
 const chunk = (key: string, node: ReactNode) => <span key={key} className="kp-udbug__chunk">{node}</span>;
 
-/** A composed line split at its one clause break — " — " in sw/en, "，" in zh — the mark kept on the first part. */
-function clauses(s: string): [string, string | null] {
+/** A separator between two clauses, its own span: below 360 the clauses stack and the separator hides, so no
+ *  line ever ends on a dangling "·" (frame panel round 2, 2026-09-27). */
+const sep = (key: string, text: string, extra = "") => <span key={key} className={`kp-udbug__sep${extra}`}>{text}</span>;
+
+/** A composed line split at its one clause break — " — " in sw/en, "，" in zh: [head, the mark, tail]. */
+function clauses(s: string): [string, string, string] | [string, null, null] {
   const m = /( — |，)/.exec(s);
-  return m ? [s.slice(0, m.index + m[0].length).trimEnd(), s.slice(m.index + m[0].length)] : [s, null];
+  return m ? [s.slice(0, m.index), m[0], s.slice(m.index + m[0].length)] : [s, null, null];
 }
 
 /** How far a read sits from the open, as the plain words the detail uses — for the track's description. */
@@ -94,29 +98,38 @@ export function matchWords(t: Dict, locale: Locale, round: UpdownBandRound): Mat
     // The break, when there is one, falls after the dot: the side-picking words stay whole.
     verdict = [
       <span key="k" className="kp-udbug__kick">{t.home.udMatchKickoff}</span>,
-      <span key="c" className="kp-udbug__cta">{" · "}<span>{t.home.udMatchPickSide}</span></span>,
+      <span key="c" className="kp-udbug__cta">{sep("s", " · ")}<span className="kp-udbug__pick-side">{t.home.udMatchPickSide}</span></span>,
     ];
   } else {
     verdict = t.market.udAwaitingRead;
+  }
+  // Past the deciding instant (the wrapper's `data-decided`) the headline is "Inasubiri tokeo", never the last
+  // lead: a stale "Juu iliongoza" at display size above "iliamua" reads as "Juu won" (frame panel round 2).
+  // The band still never states the result — the round page does.
+  if (lead !== "awaiting") {
+    verdict = [...(verdict as ReactNode[]), <span key="d" className="kp-udbug__decided">{t.market.udAwaitingResult}</span>];
   }
 
   // ── The detail: a dated fact, unchanged by the tense swap ─────────────────────────────────────
   let detail: ReactNode | null = null;
   if (latest && round.openPrice != null && (lead === "up" || lead === "down" || lead === "level")) {
     const dev = latest.price - round.openPrice;
-    // "saa 14:26 ·" is one clause, the move another: the only break is after the dot.
-    const at = chunk("at", [<Fragment key="t">{fillNodes(t.home.udMatchAt, { time: time(latest.ms) })}</Fragment>, " ·"]);
+    // "saa 14:26" is one clause, the move another; the " · " between them is the only break (and hides below
+    // 360, where the two stack).
+    const at = chunk("at", <Fragment key="t">{fillNodes(t.home.udMatchAt, { time: time(latest.ms) })}</Fragment>);
     if (lead === "level") {
       const zero = usd(Math.abs(dev), round.decimals) === usd(0, round.decimals);
       if (zero) {
-        detail = [at, " ", chunk("m", t.home.udMatchLevelExact)];
+        detail = [at, sep("s", " · "), chunk("m", t.home.udMatchLevelExact)];
       } else {
-        const [head, tail] = clauses(t.market.udLevelBy);
-        detail = [at, " ", chunk("m", fillNodes(head, { amount: amt(Math.abs(dev)) })),
-          ...(tail ? [locale === "zh" ? "" : " ", chunk("m2", tail)] : [])];
+        // "Tofauti na ufunguzi $0.20 tu" | " — " | "haitoshi kuamua": the tail restates the verdict, so below 640
+        // it hides and the level line keeps to the plate's two reserved lines.
+        const [head, mark, tail] = clauses(t.market.udLevelBy);
+        detail = [at, sep("s", " · "), chunk("m", fillNodes(head, { amount: amt(Math.abs(dev)) })),
+          ...(mark != null ? [sep("s2", mark, " kp-udbug__sep--tail"), <span key="m2" className="kp-udbug__chunk kp-udbug__chunk--tail">{tail}</span>] : [])];
       }
     } else {
-      detail = [at, " ", chunk("m", [dev > 0 ? t.market.udAboveOpenBy : t.market.udBelowOpenBy, " ", amt(Math.abs(dev), "v")])];
+      detail = [at, sep("s", " · "), chunk("m", [dev > 0 ? t.market.udAboveOpenBy : t.market.udBelowOpenBy, " ", amt(Math.abs(dev), "v")])];
     }
   } else if (lead === "kickoff") {
     detail = [

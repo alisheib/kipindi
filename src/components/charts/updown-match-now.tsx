@@ -18,10 +18,18 @@ import type { CSSProperties } from "react";
 import { useServerNowGated } from "@/lib/use-shared-second";
 import { matchX } from "./updown-match-geometry";
 
-export function UpdownMatchNow({ opensAtMs, closesAtMs, anchorMs }: {
+/** Within this many percent of the newest mark, the playhead is drawn only on the half of the plot away from it —
+ *  a read lands at most ~2 minutes before "now", so the two routinely sat 0–5px apart and fused into one two-tone
+ *  line (frame panel round 2, 2026-09-27). 2.5% is ~6px at 360 and more than that on wider plots. */
+export const NOW_NEAR_PCT = 2.5;
+
+export function UpdownMatchNow({ opensAtMs, closesAtMs, anchorMs, markX = null, markKind = null }: {
   opensAtMs: number;
   closesAtMs: number;
   anchorMs: number;
+  /** The newest data mark's x (%) and kind — the newest stem (its side) or a tie tick — or null. */
+  markX?: number | null;
+  markKind?: "up" | "down" | "tie" | null;
 }) {
   const now = useServerNowGated(anchorMs, (n) => String(Math.round(matchX(n, opensAtMs, closesAtMs) * 4)));
   const x = matchX(now ?? anchorMs, opensAtMs, closesAtMs);
@@ -30,7 +38,8 @@ export function UpdownMatchNow({ opensAtMs, closesAtMs, anchorMs }: {
   return (
     <>
       <span className="kp-udtrack__elapsed" style={style} />
-      <span className="kp-udtrack__now" style={style} />
+      <span className="kp-udtrack__now" style={style}
+        data-near={markX != null && markKind != null && Math.abs(x - markX) < NOW_NEAR_PCT ? markKind : undefined} />
     </>
   );
 }

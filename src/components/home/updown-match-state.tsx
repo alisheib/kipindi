@@ -32,7 +32,7 @@
  * Focus never falls to <body>: if a pick has focus when betting closes, focus moves to the Watch link that
  * takes the digits' place in the clock row.
  */
-import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { secondsUntil, useServerNowGated } from "@/lib/use-shared-second";
 import { useReplayAnchor } from "@/lib/use-replay-anchor";
 import { matchAgedAtMs, mergeConfirmedRead, type UpdownBandRound } from "@/lib/updown-match";
@@ -69,12 +69,15 @@ export function UpdownMatchState({ className, round: initial, children }: {
   const decided = n >= round.closesAtMs;                        // the deciding price's instant has passed
 
   const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
+  // Layout effect: the move happens before the browser blurs the control that just went display:none. Both
+  // controls that leave at close hand focus on — a pick to the Watch link beside it, "Raundi zote" to "Cheza
+  // raundi ijayo" in its place (WCAG 2.4.3; frame panel round 2).
+  useLayoutEffect(() => {
     if (!closed) return;
     const a = document.activeElement;
-    if (a instanceof HTMLElement && a.classList.contains("kp-udbug__pick") && ref.current?.contains(a)) {
-      ref.current.querySelector<HTMLElement>(".kp-udclock__watch")?.focus();
-    }
+    if (!(a instanceof HTMLElement) || !ref.current?.contains(a)) return;
+    if (a.classList.contains("kp-udbug__pick")) ref.current.querySelector<HTMLElement>(".kp-udclock__watch")?.focus();
+    else if (a.classList.contains("kp-updown__all")) ref.current.querySelector<HTMLElement>(".kp-updown__next")?.focus();
   }, [closed]);
 
   // ── R5(a) · the 60-second confirmed-price refresh ───────────────────────────────────────────────
