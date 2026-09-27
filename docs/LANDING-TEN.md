@@ -107,18 +107,17 @@ row; this section does not repeat it.
 
 ## §0a · The paste-in prompt for the next session
 
-> Continue the 50pick landing v3 build. Read `docs/LANDING-TEN.md` §0 and §1 first, then
-> `docs/design-system/v4-2026-09-26-landing-ten/INHERIT-MANIFEST.md` (Ali's rulings R1–R4 and laws
-> L1–L21), then §2 (how each row is built) and §3 (every delivery item and the row that delivers it).
-> Verify with the scripts in `scripts/qa/landing-v3/` (§0 trap 6), always under the heavy-node lock.
-> Open the concept (`npx serve docs/design-system/v4-2026-09-26-landing-ten/design`, then
-> `50pick Home Concept v3.dc.html`, with `?signedIn=1&balance=1&wallet=1&locale=sw` as needed) at 360,
-> 768 and 1280 beside the build. Work the next ⬜ batch of §2.0 in order, in your own worktree off
-> `origin/main`. For each row: build it within `globals.css` tokens and existing components, run the
-> suites §2.1 names plus `npm run test:landing-ten-plan`, drive it locally at 360/768/1280 in sw/en/zh
-> and look at the frames, push to `main`, confirm the deployed sha, re-measure on production, then tick
-> the row and rewrite §0 in the same commit. The repo's laws win every conflict with the delivery;
-> a conflict nobody has ruled on goes to Ali as a numbered one-line choice, and into the manifest.
+> Continue the 50pick landing v3 build, end to end, sealed — visual and logical. Work in `C:\kipindi-landing-v3`
+> (branch `landing-v3`). Read `docs/LANDING-TEN.md` §0 first — its **Next:** paragraph is the exact resume point and
+> names the branch each built unit waits on. Then `docs/design-system/v4-2026-09-26-landing-ten/INHERIT-MANIFEST.md`
+> (rulings R1–R9, laws L1–L29, and the R8 decisions the build already took) and the unit's spec in that folder's
+> `specs/`. Every recorded decision is final; take any new decision yourself (R8), record it in the manifest, and act
+> as the Tanzanian native Swahili reviewer for every sw line. For each unit: merge its branch into `landing-v3`, run
+> its `scripts/qa/landing-v3/verify-*.sh` drive under `~/heavy-node-lock.sh` (detached; never `timeout`), look at every
+> frame, run the four-expert frame panel (UI/UX lead, graphic designer, gambling-industry designer, accessibility/RG —
+> agents that READ the PNGs; brief each round with what changed and what was declined, with the recorded reason) and
+> fix until every score is 10; then merge `origin/main`, push to `main`, confirm the deployed sha (`?dpl=`), re-measure
+> on production, tick the row and rewrite §0 in the same commit. Fix the same defect platform-wide, mobile first.
 
 ## §1 · Status board — the v3 build
 
