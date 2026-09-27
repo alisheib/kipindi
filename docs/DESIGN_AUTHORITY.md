@@ -544,8 +544,15 @@ been written down, which is exactly how the never-imported `Sparkline` came to c
      or above `upTarget`, DOWN ink at or below `downTarget`, `--text-muted` strictly between
      (settlement's `decideOutcomeByTargets`, computed by the page; `price-hero.tsx` `tone`). E-261
      generalised: a banded round voids anywhere inside its band, not only at exactly flat. The
-     `/updown` card and the terminal still colour by the open until F1 — a split inside the void band
-     only.
+     `/updown` card and terminal follow (F1, 2026-09-27; R5(c)): the card's figure, its move and its
+     arrow take the same three inks from `valueTone` (`src/lib/updown-match.ts` — `sideByTargets`, pinned
+     equal to settlement; the open decides only a round with no targets), under the label "Confirmed
+     price" ("Close" once settled), and a read strictly between the targets says the band's own
+     `udLevelBy`. The terminal's one live line takes `liveLineToken` — the in-play round's side by its
+     targets, the gilt reference when no round with targets is in play — and is named "Confirmed price
+     $…" under the pane. Its candles and curve keep the bar's and the window's own direction (history,
+     §B12.6): only the line that states NOW reads a round. `test:updown-match` §11b pins all of it
+     against a planted by-the-open ink.
    - **Live ink** — aqua is the heartbeat: every MICRO spark (card, wallet, leaderboard) and
      the live end-point dot **on charts whose price path is not itself direction ink** (the
      P&L walk — its aqua dot + halo). ⭐ *Ruled 2026-09-04 (round 2), by
@@ -604,7 +611,9 @@ been written down, which is exactly how the never-imported `Sparkline` came to c
    1h vendor bars, candles default), style rail
    **Curve | Candles** on history ranges, both on the `.pchart-range` vocabulary; the
    pane is 300px (380px ≥1024); panel chrome `px-3 pt-2 pb-1.5` on the elevated-card
-   recipe; the gilt dashed line is the ONE live-price statement (no series value labels);
+   recipe; the dashed line is the ONE live-price statement (no series value labels) —
+   gilt, or ⭐ *since R5(c) (Ali, 2026-09-27; built as F1)* the in-play round's side by its
+   targets (§B12.2), named "Confirmed price" under the pane: an owner ruling, not a session's;
    the receipt footer carries the E-53 source grammar. **The chart's FORM changes only by
    the player's own tap** — never by data shape, never by a poll, never by a session's
    taste: untouched ranges keep their natural default (15M/30M/1H curve · 6H/12H/24H candles), a

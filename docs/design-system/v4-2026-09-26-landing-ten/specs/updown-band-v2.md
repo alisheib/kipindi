@@ -1017,9 +1017,9 @@ What moves the band between these rows:
 
 Both pages can now describe one read at one minute only one way. The flow from the band into the page reads "Juu iliongoza saa 14:26" → "BEI ILIYOTHIBITISHWA … imenukuliwa 14:26:00 EAT" in the same ink.
 
-**Not in this release (F1):**
-- The `/updown` card (`updown-card.tsx` ~649) and `terminal-chart.tsx` still colour by the open, until F1.
-- Record this split in DESIGN_AUTHORITY §B12.2 (§14). It is inside the void band only.
+**Not in this release (F1):** ✅ **delivered 2026-09-27 on branch `landing-v3-f1`** (R5(c)).
+- The `/updown` card (`updown-card.tsx`) names its figure "Confirmed price" ("Close" once settled) on a row of its own and inks figure, move and arrow by the targets (`valueTone` in `src/lib/updown-match.ts`, built on `sideByTargets`); strictly between them it is muted and says `udLevelBy`. `terminal-chart.tsx`'s one live line wears the in-play round's side (`liveLineToken`; gilt with no round in play) and is named "Confirmed price $…" under the pane; its candles and curve keep their own direction. The card's trust line, win-target heading and quick-bet sentences reached the 13px floor in the same build.
+- DESIGN_AUTHORITY §B12.2 and §B12.6 record it; `test:updown-match` §11b pins it against a planted by-the-open ink.
 
 ---
 
@@ -1266,11 +1266,11 @@ Defaults are chosen, and nothing blocks the build.
    - **Recommended: yes (current default).**
    - The round page shows them, and warns about a one-sided round before any stake is confirmed.
 3. **Name the hallway-test people:** 8–10 Swahili speakers, plus one Swahili and one Chinese native reviewer.
-4. **Next build (F1): give the `/updown` card and the terminal the same "Confirmed price" label and targets-based colour?** **Recommended: yes.**
+4. **Next build (F1): give the `/updown` card and the terminal the same "Confirmed price" label and targets-based colour?** **Recommended: yes.** ✅ Ruled yes (R5(c)); delivered in F1 (§12).
 5. **Chat bubble at 360:** unchanged; it stays your call (V3).
 
 **Follow-ups, not in this build:**
-- **F1:** card and terminal agreement (the E-261 generalisation).
+- **F1:** card and terminal agreement (the E-261 generalisation). ✅ Delivered 2026-09-27 (branch `landing-v3-f1`, §12).
 - **F2:** the 60-second refresh, if yes.
 - **F3:** drop the track below 480px, only if the no-track variant tests equal and you agree.
 - **F4:** review the sitewide "Live … market" source wording (`udSource*`).

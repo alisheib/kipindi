@@ -21,6 +21,9 @@
  *  §9  the picker's order and the walk's stop
  *  §10 the round type carries no money (law 40)
  *  §11 R5(a) · the 60-second refresh folds in only a genuinely new confirmed read
+ *  §11b R5(c) · F1 — the /updown card's figure and the terminal's live line wear settlement's side, never the open's;
+ *       the card, RENDERED in en / sw / zh, names its price and says the band's level words; its trust line and
+ *       win-target heading clear the reading floor and hold every figure whole
  *  §12 the words, in en / sw / zh, and no eaten space (the served-HTML trap)
  *  §13 the band itself, rendered: S8 is today's band; a round renders the match in its DOM order
  */
@@ -33,6 +36,7 @@ import {
   matchLead, matchAgedAtMs, sideByTargets, mergeConfirmedRead, MATCH_SAME_READ_MS,
   type UpdownBandRound, type MatchSide,
 } from "../src/lib/updown-match.ts";
+import { readTone, valueTone, liveLineToken, READ_TONE_TOKEN, type ReadTone } from "../src/lib/updown-match.ts";
 import { QUOTE_GAP_FACTOR, QUOTE_STALE_FLOOR_MS, medianCadenceMs, quoteStaleAtMs, isQuoteStale } from "../src/lib/updown-quote-age.ts";
 import {
   pickBandCandidates, walkBandCandidates, toUpdownBandRound, hasPostOpenRead, isSeasoned, UD_MIN_LEFT_MS, UD_READ_AGE_MS,
@@ -353,6 +357,204 @@ ok("11.3 it reads the PUBLIC history feed (no new route) once a minute, only whi
   && /MATCH_REFRESH_MS = 60_000/.test(stateSrc)
   && /document\.visibilityState !== "visible"/.test(stateSrc)
   && /serverNow\(\) >= closesAtMs/.test(stateSrc));
+
+// ── §11b · R5(c) · F1 — the /updown card and the terminal read the TARGETS ─────────────────────────
+console.log("\n§11b · F1 — the card's figure and the terminal's live line wear settlement's side, never the open's");
+{
+  const toneOfOutcome = (o: string): ReadTone => (o === "UP" ? "up" : o === "DOWN" ? "down" : "level");
+  type ToneFn = (price: number, open: number, up: number, down: number) => ReadTone | null;
+  /** The §1 population — both exact targets, one tick either side of the open, a sweep across the band — by tone. */
+  const toneDefects = (tone: ToneFn): string[] => {
+    const d: string[] = [];
+    for (const [open, m, tick] of [[85000, 0.02, 0.01], [2650, 0.4, 0.01], [1.0845, 0.0003, 0.0001]] as const) {
+      const u = open + m, dn = open - m;
+      const prices = [u, dn, open, open + tick, open - tick, u - tick / 10, dn + tick / 10];
+      for (let i = 0; i <= 400; i++) prices.push(dn - 2 * m + (i / 100) * m);
+      for (const p of prices) {
+        const want = toneOfOutcome(decideOutcomeByTargets(p, u, dn).outcome);
+        const got = tone(p, open, u, dn);
+        if (got !== want) { d.push(`price ${p} (open ${open}, up ${u}, down ${dn}): ${got}, settlement says ${want}`); if (d.length > 3) return d; }
+      }
+    }
+    return d;
+  };
+  /** ⛔ THE PRE-F1 RULE, planted: the sign of the move from the OPEN (the card's old `dir`). It must fail. */
+  const byTheOpen: ToneFn = (p, open) => (p > open ? "up" : p < open ? "down" : "level");
+  const TONE_OF_TOKEN: Record<string, ReadTone> = { [READ_TONE_TOKEN.up]: "up", [READ_TONE_TOKEN.down]: "down", [READ_TONE_TOKEN.level]: "level" };
+  proves("11b.1 the card's tone (`valueTone`) IS settlement's on 1,224 prices, both exact targets included",
+    toneDefects((p, o, u, dn) => valueTone(p, o, u, dn)), toneDefects(byTheOpen));
+  proves("11b.2 the terminal's live line (`liveLineToken`) wears settlement's side on the same prices",
+    toneDefects((p, _o, u, dn) => TONE_OF_TOKEN[liveLineToken(p, { upTarget: u, downTarget: dn })] ?? null),
+    toneDefects((p, o) => TONE_OF_TOKEN[READ_TONE_TOKEN[byTheOpen(p, o, 0, 0)!]] ?? null));
+  ok("11b.2b · CONTROL bites: the pre-F1 terminal (a gilt line whatever the round) fails the same check",
+    toneDefects(() => TONE_OF_TOKEN["--gilt"] ?? null).length > 0);
+  ok("11b.3 no price, or a missing or non-numeric target ⇒ no targets tone",
+    readTone(null, 1, 0) === null && readTone(1, null, 0) === null && readTone(1, 1, undefined) === null
+    && readTone(Number.NaN, 1, 0) === null && readTone(1, Number.NaN, 0) === null);
+  ok("11b.4 the open decides ONLY a round with no targets (legacy) — never inside a frozen band",
+    valueTone(85000.01, 85000, null, null) === "up" && valueTone(84999.99, 85000, null, null) === "down"
+    && valueTone(85000, 85000, null, null) === "level" && valueTone(85000.01, 85000, 85000.02, 84999.98) === "level"
+    && valueTone(85000.01, null, null, null) === null && valueTone(null, 85000, 85000.02, 84999.98) === null);
+  ok("11b.5 the terminal's line is the gilt reference with no round in play, no targets, or no price",
+    liveLineToken(85000, null) === "--gilt" && liveLineToken(85000, { upTarget: null, downTarget: null }) === "--gilt"
+    && liveLineToken(null, { upTarget: 85000.02, downTarget: 84999.98 }) === "--gilt");
+  const heroSrc = readFileSync(new URL("../src/components/updown/price-hero.tsx", import.meta.url), "utf8");
+  const heroInk = heroSrc.match(/tone === "level" \? "var\(--([\w-]+)\)" : tone === "up" \? "var\(--([\w-]+)\)" : "var\(--([\w-]+)\)"/);
+  ok("11b.6 one ink per tone: the card and the terminal paint exactly the round page's three (`price-hero.tsx`)",
+    !!heroInk && READ_TONE_TOKEN.level === `--${heroInk[1]}` && READ_TONE_TOKEN.up === `--${heroInk[2]}` && READ_TONE_TOKEN.down === `--${heroInk[3]}`,
+    heroInk?.[0] ?? "the hero's tone ink line was not found");
+
+  // ── the WIRING: the card and the terminal call the rule (a helper nobody calls pins nothing) ──
+  const strip = (s: string) => s.replace(/\{\/\*[\s\S]*?\*\/\}/g, "").replace(/\/\*[\s\S]*?\*\//g, "").replace(/^[ \t]*\/\/.*$/gm, "");
+  const src = (rel: string) => strip(readFileSync(new URL(`../${rel}`, import.meta.url), "utf8"));
+  const cardWiring = (s: string): string[] => {
+    const d: string[] = [];
+    if (!s.includes("const tone = valueTone(livePrice, openPrice, upTarget, downTarget);")) d.push("the card does not take its tone from `valueTone` over the targets");
+    if (!s.includes("const priceColor = tone ? `var(${READ_TONE_TOKEN[tone]})` : \"var(--text-muted)\";")) d.push("the card's ink is not the tone's token");
+    if (/movePct > 0 \? "up"/.test(s) || /dir === "up" \? "var\(--yes-300\)"/.test(s)) d.push("the card still reads the sign of the move for its ink");
+    if (!/\{tone === "up" && <I\.trendingUp/.test(s) || !/\{tone === "down" && <I\.trendingDown/.test(s)) d.push("the arrow does not follow the tone");
+    return d;
+  };
+  const cardSrc = src("src/components/updown/updown-card.tsx");
+  const PRE_F1_CARD = 'const dir = movePct == null ? null : movePct > 0 ? "up" : movePct < 0 ? "down" : "flat";\n'
+    + 'const priceColor = dir === "up" ? "var(--yes-300)" : dir === "down" ? "var(--no-300)" : "var(--text-muted)";\n'
+    + '{dir === "up" && <I.trendingUp s={11} />}{dir === "down" && <I.trendingDown s={11} />}';
+  proves("11b.7 the card's figure, move and arrow are wired to `valueTone`", cardWiring(cardSrc), cardWiring(PRE_F1_CARD));
+  const termWiring = (s: string): string[] => {
+    const d: string[] = [];
+    if (!s.includes("color: ink(liveLineToken(data.livePrice, roundRef.current)),")) d.push("the drawn line's ink is not `liveLineToken`");
+    if (/ink\("--gilt"\)/.test(s)) d.push("a hard gilt line survives beside the rule");
+    if (!s.includes("const lineToken = liveLineToken(feed?.livePrice ?? null, round);")
+      || !s.includes("priceLineRef.current?.applyOptions({ color: makeInkResolver()(lineToken) });")) d.push("a new round or a crossed target does not recolour the line");
+    if (!s.includes("style={{ color: `var(${lineToken})` }}") || !s.includes("{labels.confirmedPrice}")) d.push("the line is not named \"Confirmed price\" in its own ink");
+    return d;
+  };
+  const termSrc = src("src/components/charts/terminal-chart.tsx");
+  proves("11b.8 the terminal's live line and its name are wired to `liveLineToken`",
+    termWiring(termSrc), termWiring(termSrc.replace("color: ink(liveLineToken(data.livePrice, roundRef.current)),", 'color: ink("--gilt"),')));
+  const pageSrc = src("src/app/updown/page.tsx"), labSrc = src("src/components/charts/updown-chart-lab.tsx");
+  ok("11b.9 the board hands the terminal its IN-PLAY round's targets (first unsettled round that has them) and the label",
+    pageSrc.includes("const inPlay = rounds.find((r) => !roundIsSettled(r.state) && r.upTarget != null && r.downTarget != null) ?? null;")
+    && pageSrc.includes("round={inPlay ? { upTarget: inPlay.upTarget, downTarget: inPlay.downTarget } : null}")
+    && pageSrc.includes("confirmedPrice: t.market.udConfirmedPrice,")
+    && labSrc.includes("round={round}") && labSrc.includes("confirmedPrice: labels.confirmedPrice,"));
+
+  // ── the card, RENDERED: what a player reads, in three languages ──
+  try {
+    const { UpDownCard } = await import("../src/components/updown/updown-card.tsx");
+    const { I18nProvider } = await import("../src/lib/i18n.tsx");
+    const { AppRouterContext } = await import("next/dist/shared/lib/app-router-context.shared-runtime.js");
+    const { fill } = await import("../src/lib/utils.ts");
+    const { usd } = await import("../src/lib/usd-price.ts");
+    const router = { push() {}, replace() {}, refresh() {}, back() {}, forward() {}, prefetch() {} };
+    const NOW = Date.UTC(2026, 8, 27, 11, 26);
+    const BASE = {
+      roundId: "udr_f1", assetName: "Bitcoin", assetTicker: "BTC", assetIcon: "crypto", durationMinutes: 10, decimals: 2,
+      openPrice: 85000, upTarget: 85000.02, downTarget: 84999.98, movePct: null,
+      closesAtMs: NOW + 6 * MIN, selectionClosesAtMs: NOW + 4 * MIN, serverNowMs: NOW, volumeTzs: 0, players: 0,
+      pricing: { upPool: 0, downPool: 0, rates: {}, show: false }, state: "open", sourceClass: "crypto",
+      sourceQuotedAt: new Date(NOW - 26_000).toISOString(),
+    };
+    type Fix = { props: Record<string, unknown>; tone: ReadTone | "none"; settled?: boolean; arrow: boolean; words: (t: Dict) => string | null };
+    const FIX: Record<string, Fix> = {
+      up: { props: { livePrice: 85018.52 }, tone: "up", arrow: true, words: () => null },
+      down: { props: { livePrice: 84987.6 }, tone: "down", arrow: true, words: () => null },
+      atUpTarget: { props: { livePrice: 85000.02 }, tone: "up", arrow: true, words: () => null },
+      level: { props: { livePrice: 85000.01 }, tone: "level", arrow: false, words: (t) => fill(t.market.udLevelBy, { amount: usd(0.01, 2) }) },
+      exact: { props: { livePrice: 85000 }, tone: "level", arrow: false, words: (t) => t.home.udMatchLevelExact },
+      closedLevel: { props: { state: "void", voidReason: "no-move", closePrice: 85000.01, livePrice: 85000.01 }, tone: "level", settled: true, arrow: false, words: () => null },
+      closedUp: { props: { state: "resolved", outcome: "UP", closePrice: 85010, livePrice: 85010 }, tone: "up", settled: true, arrow: true, words: () => null },
+      awaiting: { props: { livePrice: null }, tone: "none", arrow: false, words: () => null },
+    };
+    const render = (loc: Locale, f: Fix) => renderToStaticMarkup(createElement(AppRouterContext.Provider, { value: router as never },
+      createElement(I18nProvider, { initial: loc }, createElement(UpDownCard, { ...BASE, ...f.props } as never))));
+    const readRow = (html: string) => {
+      const row = html.slice(html.indexOf('<div class="ud-read"'), html.indexOf('<div class="ud-pod'));
+      const fig = row.match(/<span class="ml-auto inline-flex[^"]*"(?: style="color:var\((--[\w-]+)\)")?>([\s\S]*?)<\/span><\/div>/);
+      return {
+        tone: row.match(/data-tone="(\w+)"/)?.[1] ?? "?",
+        label: row.match(/<span class="font-mono text-micro font-semibold uppercase eyebrow text-text-faint">([^<]*)<\/span>/)?.[1] ?? "?",
+        ink: fig?.[1] ?? null,
+        arrow: /<svg/.test(fig?.[2] ?? ""),
+        words: row.match(/<p class="mt-1 mb-0 text-body-sm[^"]*">([\s\S]*?)<\/p>/)?.[1]?.replace(/<[^>]+>/g, "") ?? null,
+        amountWhole: !/<p[^>]*>[\s\S]*\$[\d.,]+[\s\S]*<\/p>/.test(row) || /<span class="amount">\$[\d.,]+<\/span>/.test(row),
+      };
+    };
+    const rowDefects = (html: (loc: Locale, f: Fix) => string): string[] => {
+      const d: string[] = [];
+      for (const loc of ["sw", "en", "zh"] as const) {
+        const t = dict[loc] as Dict;
+        for (const [name, f] of Object.entries(FIX)) {
+          const r = readRow(html(loc, f));
+          const want = { tone: f.tone, label: f.settled ? t.market.udClosePrice : t.market.udConfirmedPrice,
+            ink: f.tone === "none" ? null : READ_TONE_TOKEN[f.tone], words: f.words(t) };
+          const bad: string[] = [];
+          if (r.tone !== want.tone) bad.push(`data-tone ${r.tone}`);
+          if (r.label !== want.label) bad.push(`label "${r.label}"`);
+          if (r.ink !== want.ink) bad.push(`ink ${r.ink}`);
+          if (r.arrow !== f.arrow) bad.push(`arrow ${r.arrow}`);
+          if (r.words !== want.words) bad.push(`words "${r.words}"`);
+          if (!r.amountWhole) bad.push("the amount in the words is not its own mono element");
+          if (bad.length) d.push(`${loc}/${name}: ${bad.join(", ")}`);
+        }
+      }
+      return d;
+    };
+    // ⛔ The planted card paints a between-the-targets read by the OPEN (a cent above it: green, with the arrow).
+    const plantedByOpen = (loc: Locale, f: Fix) => {
+      const html = render(loc, f);
+      return f.tone === "level" && !f.settled && f.props.livePrice !== 85000
+        ? html.replace('style="color:var(--text-muted)"', 'style="color:var(--yes-300)"') : html;
+    };
+    proves("11b.10 the card RENDERED, en/sw/zh × up, down, exactly at the UP target, level, exactly level, closed level, closed up, awaiting: tone, ink, arrow, label (\"Confirmed price\" / \"Close\"), the band's level words",
+      rowDefects(render), rowDefects(plantedByOpen));
+    const sw = render("sw", FIX.level);
+    ok("11b.11 the sw level words are the band's own, with their spaces (no eaten space around the amount)",
+      readRow(sw).words === fill(dict.sw.market.udLevelBy, { amount: "$0.01" }) && /\S <span class="amount">\$0\.01<\/span> \S/.test(sw), readRow(sw).words ?? "no words");
+
+    // ── the reading floor on the same card (found by the band's frame panel) ──
+    const floorDefects = (html: string, minSentences = 1): string[] => {
+      const d: string[] = [];
+      const foot = html.slice(html.indexOf('<div class="ud-foot'), html.indexOf("</article>"));
+      const footTag = foot.slice(0, foot.indexOf(">"));
+      if (!/\btext-body-sm\b/.test(footTag)) d.push("the trust line is not on the kit's 13px");
+      if (/text-\[\d/.test(footTag)) d.push("the trust line hand-types a size");
+      if (!/<span class="whitespace-nowrap">· [^<]+ <span class="font-mono tabular-nums">\d\d:\d\d:\d\d EAT<\/span><\/span>/.test(foot)) d.push("the quote stamp is not held whole with its seconds");
+      if (!/<span class="ml-auto whitespace-nowrap">[^<]+ <span class="font-mono tabular-nums">\$85,000\.00<\/span><\/span>/.test(foot)) d.push("the open price in the trust line is not held whole");
+      const heading = html.slice(html.indexOf('<div class="ud-prices"'), html.indexOf('<div class="ud-act"'));
+      if (/\btruncate\b/.test(heading)) d.push("the win-target heading truncates");
+      if (!/<span class="whitespace-nowrap tabular-nums">\$85,000\.00<\/span>/.test(heading)) d.push("the heading's open price is not held whole");
+      const act = html.slice(html.indexOf('<div class="ud-act"'), html.indexOf('<div class="ud-foot'));
+      if (/<p class="[^"]*text-\[10px\]/.test(act)) d.push("a sentence under the action row is still 10px");
+      // ⛔ The population, or the line above passes over nothing: the sentences must actually be there, at 13px.
+      const lifted = (act.match(/<p class="[^"]*\btext-body-sm\b[^"]*">/g) ?? []).length;
+      if (lifted < minSentences) d.push(`only ${lifted} sentence(s) at 13px under the action row, expected ${minSentences} — nothing was measured`);
+      return d;
+    };
+    const signedOut = (loc: Locale) => renderToStaticMarkup(createElement(AppRouterContext.Provider, { value: router as never },
+      createElement(I18nProvider, { initial: loc }, createElement(UpDownCard, { ...BASE, livePrice: 85018.52, pricing: { ...BASE.pricing, show: true, rates: { estimatedWinningsRate: 0.4 } } } as never))));
+    const PRE_F1_FOOT = '<div class="ud-foot flex flex-wrap items-center justify-between gap-x-2 gap-y-1 font-mono text-[9.5px] text-text-faint"><span class="min-w-0">Soko la crypto · imenukuliwa 14:25:34 EAT</span><span class="shrink-0 tabular-nums">Ufunguzi $85,000.00</span></div></article>';
+    // The authed card's quick-bet control (`updown-stake-controls.tsx`, size "card") — its helper line, the empty-side
+    // sentence and the estimate note: three sentences that were 10px on the board card.
+    const signedIn = (loc: Locale) => renderToStaticMarkup(createElement(AppRouterContext.Provider, { value: router as never },
+      createElement(I18nProvider, { initial: loc }, createElement(UpDownCard, { ...BASE, livePrice: 85018.52, isAuthed: true, marketId: "mkt_f1",
+        minStake: 1000, maxStake: 100000, walletBalance: 50000, pricing: { ...BASE.pricing, show: true, rates: { estimatedWinningsRate: 0.4 } } } as never))));
+    const real = (["sw", "en", "zh"] as const).flatMap((l) => [
+      ...floorDefects(signedOut(l), 2).map((x) => `${l} signed out: ${x}`),
+      ...floorDefects(signedIn(l), 3).map((x) => `${l} signed in: ${x}`),
+    ]);
+    const html0 = signedOut("sw");
+    proves("11b.12 the trust line is 13px with its seconds and every figure whole; the win-target heading never truncates its price; every sentence under the action row is 13px, signed in and out (en/sw/zh)",
+      real, floorDefects(html0.slice(0, html0.indexOf('<div class="ud-foot')) + PRE_F1_FOOT));
+    // One control per defect, so each clause is shown to bite on its own.
+    const truncPlant = floorDefects(html0.replace('<span class="whitespace-nowrap tabular-nums">$85,000.00</span>', '<span class="truncate">$85,000.00</span>'));
+    ok("11b.12b · CONTROL bites: a heading that truncates the open price", truncPlant.some((x) => /heading/.test(x)), truncPlant.join("; "));
+    const tenPlant = floorDefects(signedIn("sw").replaceAll(' text-body-sm leading-[1.45] text-text-faint', ' text-[10px] leading-[1.45] text-text-faint'), 3);
+    ok("11b.12c · CONTROL bites: the quick-bet sentences back at 10px", tenPlant.some((x) => /10px/.test(x)) && tenPlant.some((x) => /nothing was measured/.test(x)), tenPlant.join("; "));
+  } catch (e) {
+    ok("11b.10 the card renders on the server", false, String((e as Error)?.stack ?? e).split("\n").slice(0, 3).join(" | "));
+  }
+}
 
 // ── §12 · the words ─────────────────────────────────────────────────────────────────────────────
 console.log("\n§12 · the words, in all three languages, and no eaten space");

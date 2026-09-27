@@ -334,7 +334,9 @@ export const NOT_EYEBROW = new Map([
   ["components/ui/tabs.tsx :: \"h-[40px] px-3.5 rounded-pill text-label font-mono font-semibold uppercase tracking-[0.14em] border transition-colors duration-quick ease-linear\", ↵ active", "CONTROL_LABEL"],
   ["components/ui/time-select.tsx :: className=\"inline-flex items-center px-2 bg-bg-elevated border-l border-border font-mono text-micro uppercase tracking-[0.08em] text-text-subtle shrink-0 select-none\" ↵ a", "OTHER"],
   ["components/updown/price-hero.tsx :: <span className=\"font-mono font-semibold uppercase tracking-[0.10em]\" style={{ fontSize: 9, color: \"var(--text-faint)\" }}>{copy.awaitingRead}</span> ↵ </>", "STATUS_CHIP"],
-  ["components/updown/updown-card.tsx :: <div className=\"font-mono text-micro uppercase tracking-[0.10em] text-text-faint\">{t.market.udAwaitingRead}</div> ↵ </>", "OTHER"],
+  // ⚠️ RE-KEYED 2026-09-27 (landing v3 F1). Same "Awaiting price" status word, same role: it moved out of the card's
+  // header into the named confirmed-price row, and its `<div>` became a `<span>` inside the figure's group.
+  ["components/updown/updown-card.tsx :: <span className=\"font-mono text-micro uppercase tracking-[0.10em] text-text-faint\">{t.market.udAwaitingRead}</span> ↵ </span>", "OTHER"],
   ["components/updown/updown-card.tsx :: <div className=\"mt-1 flex items-center gap-1.5 font-mono text-micro font-semibold uppercase tracking-[0.10em] text-text-subtle\"> ↵ {/* Stage 9b — kit <Dot pulse>. It IS `", "OTHER"],
   ["components/updown/updown-card.tsx :: className=\"font-mono uppercase tracking-[0.08em]\" ↵ style={{ color: \"var(--brand-300)\", fontSize: 10.5 }}", "CONTROL_LABEL"],
   ["components/updown/updown-handover.tsx :: className=\"btn btn-ghost btn-sm inline-flex items-center gap-1 font-mono uppercase tracking-[0.08em]\" ↵ style={{ color: \"var(--brand-300)\", fontSize: 10.5 }}", "CONTROL_LABEL"],
