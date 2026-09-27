@@ -23,8 +23,15 @@ then push; (3) **WP3 + WP4** as one deploy; (4) **WP9** alone. Build specs for a
 them resolved, were written read-only on 2026-09-27 — rebuild them from §2.1 if the scratch copy is gone.
 Then D3 (WP5 the pick slip + WhatsApp after placing, V20, the chat bubble under sheets) and D5.
 **Ali's asks of 2026-09-27, open:** (a) the Up & Down band's chart "nobody understands" — a redesign, to be rated
-10/10 by a UI/UX + gambling-industry panel on real frames before it ships (WP12 note); (b) where the "Follow
-50pick" panel may appear (manifest Q2).
+10/10 by a UI/UX + gambling-industry panel on real frames before it ships (WP12 note; ruling R5: 60s refresh, no
+pool on the band, `/updown` card to follow); (b) the HERO's first screen — "first prediction market in Tanzania",
+no gambling warning, better type — in design by marketing specialists + a four-judge panel, with the claim's
+proof and the RG line to be ruled by him; (c) where the "Follow 50pick" panel may appear (manifest Q2).
+**⭐ STANDING (Ali, 2026-09-27): platform-wide consistency, mobile-first, whatever the session count.** When a
+landing row shows the same rule broken on another surface, fix it there too — do not park it with another lane.
+First such batch, **C1 · one price rule everywhere**: the detail page's bar, side picker and JSON-LD, and its
+one-sided callout ("One-sided win" / "before resolution" → the card's words and rules §7's "at closing");
+`/live`'s pulse grid and featured contest; `/results`' featured result — all onto `price-state.ts`.
 
 Ali, 2026-09-26, handing over the v3 concept: *"proceed perfecting it … we can't come back until
 pushed live and validated visually and logically."* The delivery is filed raw at
@@ -115,7 +122,7 @@ row; this section does not repeat it.
 | WP12 | Up & Down band: the soonest round, price line, ring, UP/DOWN, plural fixed | ✅ | 54f8199b | measured on production 2026-09-26 (360/768/1280 × sw/en/zh frames looked at); full width, R4(6). ⚠️ Ali 2026-09-27: the price-line chart is not understood — a redesign is in design (§0); the chart moved into `components/charts/` meanwhile |
 | WP13 | Results: date, the market's own sign-off, source link, paid | ✅ | e9b4056c | measured on production 2026-09-27: date, the market's own sign-off (a reversed market reads "Corrected on objection"), source, paid; below 640 the amount and the source each take a line, so the host reads whole. L2 |
 | WP14 | Wallet: chip opens sheet/panel, equal Deposit/Withdraw, gold Deposit at zero, signed-in hero | ✅ | e9b4056c | measured on production 2026-09-27 with `mobile01` (zero balance, no picks: header Deposit, hero empty-balance line + Deposit, no Withdraw, Set limits; pages render at 360/1280 sw/en). Funded Wallet + hero measured locally (Wallet 17 cells, hero 15 cells; 360–1280 × sw/en/zh). `test:wallet-reach` 48/48, `test:landing-mine` 22/22, both mutation-proved. R1, L19–L21 |
-| WP14b | Share in card footers; Share on WhatsApp after placing | ⬜ | | |
+| WP14b | Share on every card footer, in every phase; the WhatsApp preview card (og tags spread from `ROOT_OPEN_GRAPH`, no 0/100 in the preview) | 🔨 | | built; "Share on WhatsApp" AFTER PLACING needs the slip, so it is WP5's (its unit names it); K50 closes only with both |
 | WP15 | Motion and performance | ⬜ | | L12 |
 | WP16 | i18n: every new key in en, sw and zh | 🔨 | 54f8199b | D1's keys in all three (`test:i18n`); sw/zh drafts carry the native-review marker (rows SW, ZH) |
 | WP17 | Accessibility: heading order, no nested controls, dialog semantics | 🔨 | 54f8199b | heading order and split row links live; dialog semantics arrive with the Wallet (WP14) and the slip (WP5) |
@@ -123,7 +130,7 @@ row; this section does not repeat it.
 | V15 | Gate: first screen at 360 × 740 | ✅ | 54f8199b | production 2026-09-26: 0 findings; RED PROVED on production |
 | V16 | Gate: no promised winnings | ✅ | 54f8199b | production 2026-09-26: 0 findings; RED PROVED on production |
 | V17 | Gate: no 0% or 100% price | ✅ | 54f8199b | production 2026-09-26: RED PROVED; its findings were WP6's — 0 on production 2026-09-27 after `31662831` |
-| V18 | Gate: every market shows price or state, time, pool, source | ⬜ | | |
+| V18 | Gate: every market shows price or state, time, pool, source | 🔨 | | the gate block, `REDS.V18` (one RED run per part, `RED_PART`) and the gate's own hardening are built (D2 step 0, `--compile` clean); the `data-market-surface` / `data-market-part` attributes it reads land with WP3 + WP4, which bring it to 0 |
 | V19 | Gate: Withdraw as reachable and as large as Deposit | ⬜ | | |
 | V20 | Gate: sheets trap focus, close on Esc, respect the safe area | ⬜ | | |
 | V21 | Gate: the placement map, by bounding box | ⬜ | | |
@@ -270,9 +277,9 @@ feature (a plant against a feature that does not exist yet cannot prove anything
   a NO-only market under long shots at 0%; and the detail page prints a two-sided price as the card does
   (a 200,000-vs-1,000 market reads 99 on both, B6).
 - ⚠️ NOT this row's, left with MOBILE-VISUAL U32 (ruling 13's other surfaces), each still printing 0/100
-  on a ONE-SIDED market: the detail page's bar, side picker, metadata and JSON-LD (and its callout still
-  says "One-sided win" and "before resolution" where the rules say "at closing"); `/api/og/market`;
-  `/live`'s pulse grid and featured contest; `/results`' featured result.
+  on a ONE-SIDED market: the detail page's bar, side picker and JSON-LD (and its callout still says "One-sided
+  win" and "before resolution" where the rules say "at closing"); `/live`'s pulse grid and featured contest;
+  `/results`' featured result. (The detail page's metadata and `/api/og/market` moved to WP14b and read the rule.)
 - Accepted, recorded: a closed or settled one-sided card gains the label row (one gap + 4px); on the
   landing grid one card with a note stretches its row (`grid-auto-rows: 1fr`) — WP9 gives every grid card
   the same slots.
@@ -344,8 +351,23 @@ feature (a plant against a feature that does not exist yet cannot prove anything
   `test:landing-mine` (the rule driven, the EAT week, the hero's contract). Drives:
   `scripts/qa/landing-v3/wallet.mjs`, `hero-mine.mjs` (local), `wallet-prod.mjs` (production, mobile01).
 
-**WP14b · Share** — card footers already carry `ShareButton compact` left of Details (`test:card-share`
-pins it exactly). What is added: "Share on WhatsApp" after placing (WP5).
+**WP14b · Share** — BUILT. Card footers already carried `ShareButton compact` left of Details (`test:card-share`
+pins it). What D2 adds:
+- **The card share works on EVERY card.** A closed, resolved or void card used to BE a `<Link>` wrapping its body,
+  share button included: the dialog's clicks bubbled to that Link and navigated, so on `/results` and
+  `/watchlist` WhatsApp and Copy never happened and closing the dialog left the page (MOBILE-VISUAL S07-results-01,
+  and the nested half of S07-results-26). Every phase is now one `<article>` with the stretched `.mcardp-open`
+  link and Details a real link (`test:card-share` §7, `red:card-share` 11/11; drive `share-drive.mjs`).
+- **The WhatsApp preview is true.** `src/lib/markets/share-preview.ts` applies the card's price rule to the
+  og:image (`/api/og/market/[id]`) and og:description: "One side only." / "No bets yet." / "No pool yet." where
+  there is no price, 1–99 where there is — never "YES 100%" or an invented 50/50. The market page's `openGraph`
+  spreads `ROOT_OPEN_GRAPH` (it was a bare object: no og:type, og:site_name or og:locale on the page every share
+  links to). `test:share-preview` (+ `red:share-preview` 5/5); production check `qa:landing-v3:og-prod` (fetch
+  only, read with WhatsApp's user agent — Next serves bots a different document; baseline on 2026-09-27 failed as
+  it should: 15 of 15 market pages without og:type/site_name/locale).
+- "Share on WhatsApp" after placing is WP5's (D3), built into `PositionShare`, not a new component.
+- ⚠️ An unknown market page answers HTTP 200 with Next's streamed not-found fallback (the loading skeleton opens the
+  stream first — V14's cause, R4(8)); the preview check asserts no preview is minted for it, not the status.
 
 **WP15 · Motion and performance** — needles move only when a pool changes (`TippingBar` already starts at
 its target); per-second work only inside the ring and countdowns; reduced motion and Save-Data (mapped to
@@ -365,6 +387,16 @@ template string: escape backslashes, no backticks), a `REDS.Vn` plant, a row in 
   those cells run locally through `/auth/demo?deposit=1`; production covers the zero-balance state.
 - V20's safe-area check needs an inset the headless browser does not have: emulate it or read the
   computed padding, and say which in the class table.
+- V18 reads PER SURFACE through the instrumentation contract — `data-market-surface` (featured · card ·
+  board) on each market's root and `data-market-part` (price · state · time · pool · predictors · source ·
+  pick) on each part; the part table is the V18 block's own comment. `.mcardp[data-row-id]` and `.kp-qrow`
+  widen the population, so a surface that loses its attribute is reported "unmarked", never skipped. Each
+  part is its own RED run: `RED_PART=<part> RED=V18 … --red --cell=…` (source · price · time · pool ·
+  predictors · order). `source` and `order` can only PROVE once WP3 draws a source.
+- The gate itself (D2 step 0, 2026-09-27): a `--cell`/`--pass` that matches nothing exits 2 ("nothing was
+  measured"), never GATE GREEN; a bare `--cell` (no "=") is refused; `--red` needs exactly one cell; a
+  chromium that does not launch is retried once, then exit 2 — an instrument failure, not a red gate.
+  `node scripts/qa/landing-ten.mjs --compile` checks every check and plant compiles, with no browser.
 
 **PANEL · the eight reviewers** — the Review Board §3e checklists, run by eight independent agents against
 production frames, each told to refute; the scores and any instrument defects go below this section.
@@ -445,7 +477,7 @@ drift from that file or a row names an id §1 does not have. An item is done whe
 | K47 | Line movement shown (24h mark and delta) | WP3 | |
 | K48 | Depth (pool and predictors) on every market | WP3, WP4, V18 | |
 | K49 | Closing time next to every price | WP3, WP4, WP9 | |
-| K50 | Share on cards; WhatsApp after placing; the WhatsApp preview card works | WP14b, WP5 | Each market's `og:image` read on production |
+| K50 | Share on cards; WhatsApp after placing; the WhatsApp preview card works | WP14b, WP5 | Card share + the preview card: WP14b (D2), each market's og tags and og:image read on production by `qa:landing-v3:og-prod`; after placing: WP5 (D3); ticks when both are ✅ |
 | K51 | Visitor → sign-up → first-pick funnel measured before and after | FUNNEL | |
 | K52 | `qa:landing-ten` V1–V21 clean at every cell (except Ali's open decisions) | GATE, V15, V16, V17, V18, V19, V20, V21 | |
 | K53 | Every new check (V15–V21) has a RED control reporting PROVED | V15, V16, V17, V18, V19, V20, V21 | |
@@ -460,6 +492,8 @@ drift from that file or a row names an id §1 does not have. An item is done whe
 npm run qa:landing-ten                        # the whole matrix, against production
 node scripts/qa/landing-ten.mjs --cell=<id>   # one cell
 RED=V7 node scripts/qa/landing-ten.mjs --red --cell=base-1280-sw   # prove a class can fail
+RED_PART=time RED=V18 node scripts/qa/landing-ten.mjs --red --cell=base-360-sw   # V18: one part per run
+node scripts/qa/landing-ten.mjs --compile                     # every check and plant compiles; no browser
 ```
 
 It measures **production**, deliberately. The local tree has no settlements, no resolved markets
@@ -519,6 +553,7 @@ This codebase has been burned by every one of these:
 | V15 | First screen (v3) | on phone cells 360–639 wide, the featured card's price and YES/NO end by a FIXED 740px of document, measured at the top of the page — not the viewport, which is 780 on the 360 cells — or by the top of the fixed bottom rail when that is higher (a control under the rail is not on the screen) |
 | V16 | No promised winnings (v3) | visible text naming "win TZS", "utashinda", "赢得 TZS", or a stake times a multiplier |
 | V17 | No degenerate price (v3) | a 0% or 100% read inside any card or board row — the conviction bar's aggregate is not a price and is not read |
+| V18 | Market completeness (v3) | per market surface on `/` — the featured card, each grid card, each closing-soonest board row (`[data-market-surface]`; `.mcardp[data-row-id]` and `.kp-qrow` widen the population so an unmarked surface is named, never skipped): a visible price holding a digit, or a labelled state holding words (the em-dash alone fails), the time left, the pool, the predictor count and the named source, each a `[data-market-part]` centred inside its own surface; the source and the price or state before the pick (`[data-market-part="pick"]`) in the DOM and on the screen. Read per surface, never off the page — the trust lines, the settled strip and the proof rail carry every part too. No surface at all is a finding. RED removes one part (`RED_PART` = source · price · time · pool · predictors · order) |
 
 ## Known gaps — stated, not implied
 
@@ -527,8 +562,9 @@ This codebase has been burned by every one of these:
   are honestly labelled as zoom. `zoom-200` (180 CSS px) is **informational, not gated** — WCAG
   1.4.10 Reflow sets **320**, which this matrix covers in all three locales and which is clean.
 - The gate sees the first-visit primer's **first card only**; the card-3 defect was found by hand.
-- **V6 is structurally blind to single-column grids** (`if (maxPerRow < 2) continue;`), and the gate
-  **reads no price**, which is why the hero's degeneracy defect had to be caught by eye.
+- **V6 is structurally blind to single-column grids** (`if (maxPerRow < 2) continue;`). ~~The gate reads no
+  price~~ — true until landing v3: the hero's degeneracy defect was caught by eye, and V17 (no 0/100 on any
+  card or row) and V18 (every market's price or state, time, pool, predictors and source) now read them.
 
 ## ⛔ NOT ENGINEERING WORK — owner decisions
 

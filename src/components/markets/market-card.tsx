@@ -571,9 +571,8 @@ export function MarketCard({
           </span>
         </span>
       </div>
-      {/* Footer row on every card (card-height parity live vs resolved). Live is a
-          real link (card body uses onClick nav); the resolved card is already a
-          full <Link>, so its footer is a decorative span to avoid a nested anchor. */}
+      {/* Footer row on every card (card-height parity live vs resolved). Every phase is an <article>
+          with a stretched link since WP14b, so Details is a real link on every card. */}
       {/* ⭐ SHARE SITS BESIDE DETAILS — Ali, 2026-08-25, and this is the footer rather than
           the card's top-right because the top-right is already occupied by the conviction
           readout (`YES 0%` / the resolved mark). The footer is the card's action zone.
@@ -591,30 +590,30 @@ export function MarketCard({
           `test:card-share`; they stay adjacent and in order. */}
       <div className="mcardp-foot flex items-center justify-end gap-2">
         <ShareButton compact marketId={id} title={title} />
-        {live ? (
-          <Link
-            href={`/markets/${id}` as never}
-            onClick={(e) => e.stopPropagation()}
-            className="mcardp-details"
-          >
-            {t.market.details}
-            <I.chevronRight s={11} />
-          </Link>
-        ) : (
-          <span className="mcardp-details" aria-hidden>
-            {t.market.details}
-            <I.chevronRight s={11} />
-          </span>
-        )}
+        {/* A real link in EVERY phase since landing v3 WP14b — the card is one <article> now (below). */}
+        <Link
+          href={`/markets/${id}` as never}
+          onClick={(e) => e.stopPropagation()}
+          className="mcardp-details"
+        >
+          {t.market.details}
+          <I.chevronRight s={11} />
+        </Link>
       </div>
     </>
   );
 
-  // LIVE: the whole card opens the market detail (no side preselected); the
-  // YES/NO buttons enter with that side locked. Inner controls stopPropagation
-  // so they never trigger the card's own navigation.
-  // Non-live: keep the whole card a link so results/history stay viewable.
-  return live ? (
+  // The whole card opens the market detail (no side preselected); on a live card the YES/NO buttons
+  // enter with that side locked. Inner controls stopPropagation so they never trigger the card's own
+  // navigation.
+  // 🔴 ONE ROOT FOR EVERY PHASE (landing v3 WP14b, 2026-09-27). A closed, resolved or void card used to
+  // BE a `<Link>` wrapping `{body}` — and `body` holds the share `<button>`: a control inside an anchor.
+  // The share dialog is a portal, but React bubbles its clicks through the tree to that Link, whose
+  // onClick prevents the default and navigates — so on /results and /watchlist, WhatsApp and Copy never
+  // happened and closing the dialog left the page (MOBILE-VISUAL S07-results-01, and the nested half of
+  // S07-results-26). Every phase is now the live card's shape: an <article>, the stretched link, and the
+  // real controls raised above it.
+  return (
     <article
       /* The row's machine-readable identity — see `position-card.tsx` for the contract and why a
          driver must not parse a visible word on a trilingual product. One attribute serves every
@@ -631,8 +630,6 @@ export function MarketCard({
           ⛔ AND IT COULD NOT SIMPLY BE WRAPPED IN ONE: a live card contains the YES/NO <button>s,
           and an <a> may not contain a button. So the anchor is STRETCHED over the card instead
           (`.mcardp-open`, globals.css) and the genuinely interactive children are raised above it.
-          ⭐ The non-live branch below has always been a real <Link> — so a RESOLVED card offered
-          "open in new tab" and a LIVE one did not, in the same component.
           It stays a Next <Link>, so the client-side navigation and the `50pick:navigating` beat
           are both unchanged; only the element a browser sees is different. Keyboard focus now lands
           on a real link, which is why role/tabIndex/onKeyDown are gone rather than kept alongside. */}
@@ -644,9 +641,5 @@ export function MarketCard({
       />
       {body}
     </article>
-  ) : (
-    <Link data-row-id={id} href={`/markets/${id}` as never} className={cn("mcardp group", featured && "mcardp--featured", className)}>
-      {body}
-    </Link>
   );
 }

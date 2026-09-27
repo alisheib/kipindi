@@ -1437,9 +1437,10 @@ own words beneath it.**
   The `/markets` rows read the same rule (`shownYesPct`), so the odds filters no longer file a NO-only market
   under long shots at 0%, and the detail page prints a TWO-sided price as the card does (99, never 100).
   ⚠️ **Still U32's, not the card's** — each still prints 0/100 on a ONE-sided market: the detail page's bar,
-  side picker, metadata and JSON-LD, and its callout still reads "One-sided win" / "before resolution" where
-  rules §7 says a refund "at closing"; `/api/og/market`; `/live`'s pulse grid and featured contest;
-  `/results`' featured result.
+  side picker and JSON-LD, and its callout still reads "One-sided win" / "before resolution" where rules §7
+  says a refund "at closing"; `/live`'s pulse grid and featured contest; `/results`' featured result. (Its
+  metadata and `/api/og/market` read the rule since landing v3 WP14b.) ⭐ S07-results-01 and the nested half of
+  S07-results-26 (share on a settled card navigating away) are delivered by landing v3 WP14b.
 
 **14. Item 7 — the leaderboard ranks raw ROI. RULED: rank by the law its own tiers already state.**
 - Measured on production 2026-09-23: **@Libuhi crowned at +52.9% on 17 settled**, above @Fulgence at +47.5% on 38

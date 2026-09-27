@@ -21,6 +21,8 @@ import { Chip } from "@/components/ui/chip";
 import { Stat } from "@/components/ui/stat";
 import { cashOutValue, getMarket, impliedYesPct, isClosedByTime, isSelectionClosed, listPositionsForUser, ratesFor } from "@/lib/server/market-service";
 import { shownYesPct } from "@/lib/markets/price-state";
+import { sharePreviewDescription, sharePreviewPrice } from "@/lib/markets/share-preview";
+import { ROOT_OPEN_GRAPH } from "../../layout";
 import { timeLeftLabel } from "@/lib/markets/time-left";
 import { poolFee } from "@/lib/payout";
 import { getEffectiveConfig } from "@/lib/server/market-config";
@@ -63,9 +65,10 @@ export async function generateMetadata(
   try { m = await getMarket(id); } catch { /* graceful */ }
   if (!m) notFound();
   const { locale } = await getServerT();
-  // A two-sided price is printed within 1–99, as the card prints it (WP6, L14 — `shownYesPct`); a
-  // one-sided or empty pool keeps the old figure until MOBILE-VISUAL U32 gives this page ruling 13.
-  const yes = shownYesPct(m.yesPool, m.noPool) ?? impliedYesPct(m);
+  // ⭐ The share preview's words come from the SAME rule as its image (`share-preview.ts`, landing v3
+  // WP14b): "YES 62% · NO 38%" only where both sides hold money; "One side only." / "No bets yet." where
+  // there is no price. It used to print "YES 100% · NO 0%" and an invented "YES 50% · NO 50%".
+  const preview = sharePreviewPrice(m.yesPool, m.noPool, m.predictorCount);
 
   // F5 — a shared WIN link carries a signed token. When it validates, the share
   // preview becomes the win card. The token only names the position; the amount
@@ -77,7 +80,7 @@ export async function generateMetadata(
 
   const desc = isWin
     ? `Won ${formatTzs(win!.payout)} on ${win!.side} · ${m.titleEn}`
-    : `YES ${yes}% · NO ${100 - yes}%. Predict on 50pick.`;
+    : sharePreviewDescription(preview);
   const ogImage = isWin
     ? `/api/og/market/${id}?w=${encodeURIComponent(w!)}`
     : `/api/og/market/${id}`;
@@ -87,7 +90,12 @@ export async function generateMetadata(
     // English (canonical — crawlers/share previews carry no locale cookie).
     title: pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh),
     description: desc,
+    // ⛔ Never write a bare `openGraph` object here: Next merges metadata per FIELD, so a partial object
+    // replaces the root's whole — this page, the one every share links to, emitted no og:type, og:site_name
+    // or og:locale until WP14b. ⛔ And no `url`: a win link carries `?w=`, and a scraper that follows
+    // og:url would fetch the plain market page and lose the win card.
     openGraph: {
+      ...ROOT_OPEN_GRAPH,
       title: isWin ? `Won ${formatTzs(win!.payout)} on 50pick` : m.titleEn,
       description: desc,
       images: [{ url: ogImage, width: 1200, height: 630 }],
