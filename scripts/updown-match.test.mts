@@ -366,7 +366,7 @@ const seen = (n: ReactNode, aged = false) => html(n)
 type Want = { verdict: string; aged?: string; detail: string; agedDetail?: string; rule: string; note?: string };
 const WANT: Record<string, Record<Locale, Want>> = {
   S1: {
-    en: { verdict: "Up leads", aged: "Up led", detail: "at 14:26 · Above open by $18.52", rule: "The price at 14:32 decides. Less than $0.02 from the open, and every stake comes back." },
+    en: { verdict: "Up leads", aged: "Up led", detail: "at 14:26 · Above open by $18.52", rule: "The price at 14:32 decides. Less than $0.02 from the open, every stake comes back." },
     sw: { verdict: "Juu inaongoza", aged: "Juu iliongoza", detail: "saa 14:26 · Juu ya ufunguzi kwa $18.52", rule: "Bei ya saa 14:32 inaamua. Tofauti ikiwa ndogo kuliko $0.02, kila dau linarudi." },
     zh: { verdict: "涨方领先", aged: "涨方曾领先", detail: "14:26 时 · 高于开盘 $18.52", rule: "以 14:32 的价格判定。与开盘价相差不足 $0.02，所有投注全额退还。" },
   },
@@ -376,7 +376,7 @@ const WANT: Record<string, Record<Locale, Want>> = {
     zh: { verdict: "跌方领先", aged: "跌方曾领先", detail: "14:26 时 · 低于开盘 $12.40", rule: "" },
   },
   S3: {
-    en: { verdict: "Nobody leads", aged: "Nobody led", detail: "at 14:26 · Only $0.20 from the open — not enough to decide", note: "If it closes here, every stake comes back.", rule: "The price at 14:32 decides. Less than $0.40 from the open, and every stake comes back." },
+    en: { verdict: "Nobody leads", aged: "Nobody led", detail: "at 14:26 · Only $0.20 from the open — not enough to decide", note: "If it closes here, every stake comes back.", rule: "The price at 14:32 decides. Less than $0.40 from the open, every stake comes back." },
     sw: { verdict: "Hakuna anayeongoza", aged: "Hakuna aliyeongoza", detail: "saa 14:26 · Tofauti $0.20 tu — haitoshi kuamua", note: "Ikifunga hapa, kila dau linarudi.", rule: "Bei ya saa 14:32 inaamua. Tofauti ikiwa ndogo kuliko $0.40, kila dau linarudi." },
     zh: { verdict: "暂无领先方", aged: "当时无领先方", detail: "14:26 时 · 与开盘价仅差 $0.20，不足以判定", note: "若以此价收盘，所有投注全额退还。", rule: "以 14:32 的价格判定。与开盘价相差不足 $0.40，所有投注全额退还。" },
   },

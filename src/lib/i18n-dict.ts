@@ -642,7 +642,7 @@ export const dict = {
       udMatchLevelExact: "Exactly at the opening price",
       udMatchLevelNote: "If it closes here, every stake comes back.",
       udMatchDecides: "The price at {close} decides.",
-      udMatchRefund: "Less than {margin} from the open, and every stake comes back.",
+      udMatchRefund: "Less than {margin} from the open, every stake comes back.",
       udMatchRefundRange: "{upWord} at {up} or higher, {downWord} at {down} or lower — in between, every stake comes back.",
       udMatchAllRounds: "All rounds",
       udMatchNextRound: "Play the next round",
@@ -3330,49 +3330,27 @@ export const dict = {
       updownEyebrow: "Mchezo wa kasi · hai",
       updownCta: "Cheza Juu na Chini",
       updownRoundsLive: "raundi {n} hai sasa",
-      // drafted, marked for native review; English is binding.
       updownRoundsLiveOne: "raundi 1 hai sasa",
-      // drafted, marked for native review; English is binding.
       udMatchUpLeads: "Juu inaongoza",
-      // drafted, marked for native review; English is binding.
       udMatchDownLeads: "Chini inaongoza",
-      // drafted, marked for native review; English is binding.
       udMatchUpLed: "Juu iliongoza",
-      // drafted, marked for native review; English is binding.
       udMatchDownLed: "Chini iliongoza",
-      // drafted, marked for native review; English is binding.
       udMatchNobody: "Hakuna anayeongoza",
-      // drafted, marked for native review; English is binding.
       udMatchNobodyWas: "Hakuna aliyeongoza",
-      // drafted, marked for native review; English is binding.
       udMatchKickoff: "Mwanzo",
-      // drafted, marked for native review; English is binding.
       udMatchPickSide: "Chagua upande",
-      // drafted, marked for native review; English is binding.
       udMatchAt: "saa {time}",
-      // drafted, marked for native review; English is binding.
       udMatchNoNewPrice: "Bado hakuna bei mpya tangu ufunguzi saa {time}",
-      // drafted, marked for native review; English is binding.
       udMatchOpenedAt: "Ilifunguliwa saa {time}",
-      // drafted, marked for native review; English is binding.
       udMatchLevelExact: "Sawa kabisa na bei ya ufunguzi",
-      // drafted, marked for native review; English is binding.
       udMatchLevelNote: "Ikifunga hapa, kila dau linarudi.",
-      // drafted, marked for native review; English is binding.
       udMatchDecides: "Bei ya saa {close} inaamua.",
-      // drafted, marked for native review; English is binding.
       udMatchRefund: "Tofauti ikiwa ndogo kuliko {margin}, kila dau linarudi.",
-      // drafted, marked for native review; English is binding.
       udMatchRefundRange: "{upWord} kwa {up} au zaidi, {downWord} kwa {down} au pungufu — katikati, kila dau linarudi.",
-      // drafted, marked for native review; English is binding.
       udMatchAllRounds: "Raundi zote",
-      // drafted, marked for native review; English is binding.
       udMatchNextRound: "Cheza raundi ijayo",
-      // drafted, marked for native review; English is binding.
       udMatchAria: "Ratiba ya raundi: ilifunguliwa {open}, dau linafungwa {lock}, bei ya saa {close} ndiyo inaamua (EAT). Bei zilizothibitishwa tangu ufunguzi: {reads}.",
-      // drafted, marked for native review; English is binding.
       udMatchAriaNone: "bado hakuna",
-      // drafted, marked for native review; English is binding.
       udMatchAriaRead: "saa {time}: {move}",
       updownStartsSoon: "Raundi mpya kila baada ya dakika chache",
       pickASideNow: "Chagua upande sasa",
@@ -3584,7 +3562,7 @@ export const dict = {
       // ── Juu na Chini (Up & Down) ─────────────────────────────────────────
       udTitle: "Juu na Chini",
       gameKey: "Mchezo",
-      udTagline: "Je, bei itakuwa juu au chini saa itakapoisha?",
+      udTagline: "Je, bei itakuwa juu au chini muda ukiisha?",
       udUp: "Juu", udDown: "Chini",
       udMin: "dakika",
       udClosesIn: "Inafunga baada ya",
@@ -5574,49 +5552,27 @@ export const dict = {
       updownEyebrow: "快速游戏 · 进行中",
       updownCta: "玩涨跌",
       updownRoundsLive: "{n} 个回合进行中",
-      // drafted, marked for native review; English is binding.
       updownRoundsLiveOne: "1 个回合进行中",
-      // drafted, marked for native review; English is binding.
       udMatchUpLeads: "涨方领先",
-      // drafted, marked for native review; English is binding.
       udMatchDownLeads: "跌方领先",
-      // drafted, marked for native review; English is binding.
       udMatchUpLed: "涨方曾领先",
-      // drafted, marked for native review; English is binding.
       udMatchDownLed: "跌方曾领先",
-      // drafted, marked for native review; English is binding.
       udMatchNobody: "暂无领先方",
-      // drafted, marked for native review; English is binding.
       udMatchNobodyWas: "当时无领先方",
-      // drafted, marked for native review; English is binding.
       udMatchKickoff: "开局",
-      // drafted, marked for native review; English is binding.
       udMatchPickSide: "选择一方",
-      // drafted, marked for native review; English is binding.
       udMatchAt: "{time} 时",
-      // drafted, marked for native review; English is binding.
       udMatchNoNewPrice: "自 {time} 开盘以来暂无新价格",
-      // drafted, marked for native review; English is binding.
       udMatchOpenedAt: "{time} 开盘",
-      // drafted, marked for native review; English is binding.
       udMatchLevelExact: "与开盘价完全相同",
-      // drafted, marked for native review; English is binding.
       udMatchLevelNote: "若以此价收盘，所有投注全额退还。",
-      // drafted, marked for native review; English is binding.
       udMatchDecides: "以 {close} 的价格判定。",
-      // drafted, marked for native review; English is binding.
       udMatchRefund: "与开盘价相差不足 {margin}，所有投注全额退还。",
-      // drafted, marked for native review; English is binding.
       udMatchRefundRange: "{up} 或以上为{upWord}，{down} 或以下为{downWord}；介于两者之间，所有投注全额退还。",
-      // drafted, marked for native review; English is binding.
       udMatchAllRounds: "全部回合",
-      // drafted, marked for native review; English is binding.
       udMatchNextRound: "玩下一回合",
-      // drafted, marked for native review; English is binding.
       udMatchAria: "回合时间线：{open} 开盘，{lock} 停止下注，以 {close} 的价格判定（EAT）。开盘后的确认价格：{reads}。",
-      // drafted, marked for native review; English is binding.
       udMatchAriaNone: "暂无",
-      // drafted, marked for native review; English is binding.
       udMatchAriaRead: "{time}：{move}",
       updownStartsSoon: "每隔几分钟就有新回合",
       pickASideNow: "立即选择一方",

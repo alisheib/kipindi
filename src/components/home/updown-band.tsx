@@ -133,7 +133,7 @@ export function UpdownBand({ t, locale, liveCount, round }: {
                 <p className="kp-udclock__row kp-udclock__row--closed">
                   <I.lock s={12} className="kp-udclock__glyph" />
                   <span className="kp-udclock__cap">{t.market.udLockedTitle}</span>
-                  <Link href={roundHref as never} className="kp-shead__link kp-udclock__watch">
+                  <Link href={roundHref as never} className="kp-udclock__watch">
                     {t.market.udRcWatchRound}
                     <I.chevronRight s={14} />
                   </Link>

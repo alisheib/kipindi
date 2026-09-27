@@ -976,6 +976,7 @@ CHECKS.push(
   onPanel("asset name", matchInk(".kp-udmatch__name", "color"), 4.5),
   onPanel("clock caption", matchInk(".kp-udclock__cap", "color"), 4.5),
   onPanel("clock digits", matchInk(".kp-udclock__digits", "color"), 4.5),
+  onPanel("Watch this round link (closed)", matchInk(".kp-udclock__watch", "color"), 4.5),
   onPanel("lane label (Ufunguzi)", matchInk(".kp-udtrack__open", "color"), 4.5),
   onPanel("rule, sentence 1", matchInk(".kp-udrule__decides", "color"), 4.5),
   onPanel("rule, sentence 2", matchInk(".kp-udrule__refund", "color"), 4.5),
