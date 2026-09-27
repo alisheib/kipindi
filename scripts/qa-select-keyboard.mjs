@@ -34,10 +34,17 @@ for (const [w, h] of [[1280, 900], [390, 844]]) {
   console.log(`\n§ ${w}px`);
   const ctx = await b.newContext({ storageState: state, viewport: { width: w, height: h } });
   await ctx.addInitScript(() => { try { localStorage.setItem("50pick-primer-seen", "1"); } catch {} });
-  const posted = [];
+  /* Every non-GET to the page is aborted. ⚠️ Not every one is a submit: the page's own background server
+     actions (the notifications poll among them) post to the page URL too, so only a body carrying THIS
+     form's field (`period`) counts as the form being submitted — the rest are listed, not failed. */
+  const submits = [], background = [];
   await ctx.route("**/*", (route) => {
     const r = route.request();
-    if (r.method() !== "GET" && r.url().includes("/profile/responsible-gambling")) { posted.push(r.url()); return route.abort(); }
+    if (r.method() !== "GET" && r.url().includes("/profile/responsible-gambling")) {
+      const body = (r.postData() ?? "").slice(0, 600);
+      (/(^|[^a-z])period([^a-z]|$)/i.test(body) ? submits : background).push(body.slice(0, 120));
+      return route.abort();
+    }
     return route.continue();
   });
   const page = await ctx.newPage();
@@ -96,7 +103,8 @@ for (const [w, h] of [[1280, 900], [390, 844]]) {
   s = await press("Enter");
   ok("Home then Enter chooses the first option (1w → 1h)", s.value === "1h" && !s.open, JSON.stringify(s));
 
-  ok("nothing was submitted", posted.length === 0, posted.join(" "));
+  ok("the form was never submitted (no request carried its `period` field)", submits.length === 0, submits.join(" | "));
+  if (background.length) console.log(`  (info) ${background.length} background request(s) to the page aborted, none carrying the form`);
   ok("no page errors", errors.length === 0, errors.slice(0, 2).join(" · "));
   await ctx.close();
 }

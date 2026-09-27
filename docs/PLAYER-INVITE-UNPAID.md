@@ -682,6 +682,16 @@ values were "stored, not applied". Since 2026-09-26 the server refuses the Save 
 
 ## 13 · Progress, and what was verified on PRODUCTION
 
+### 2026-09-27 · Follow-up: no Gaming Board clearance line (owner ruling)
+
+✅ **LIVE `bb1ada58` (2026-09-27).** Ali ruled that 50pick's licence covers invite rewards
+(`COMPLIANCE-DECISIONS.md` § 2026-09-27): the state card's clearance line and the Make-payable dialog's
+warning are gone, the card states the enforced 50% commission cap, and a growth officer reads "Only the
+Owner can make invites payable." Verified on the live commit before the next push: `npm run typecheck`,
+both invite suites with the new 8.dialogs.noboard, both red controls (every planted defect caught), and
+locally `npm run qa:invite-ceremony` and `qa:invite-admin` (ADMIN_SEED=1), all green.
+`/api/health` still reads `payable: false, paying: false, ceiling: "OWNER"`.
+
 ### 2026-09-26/27 · This release: the Owner's switch, the retired deposit modes, the fix round
 
 ✅ **DONE — LIVE `ec2f3253` (2026-09-27), verified on production.** Development of this lane is complete:
