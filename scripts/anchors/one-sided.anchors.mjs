@@ -166,4 +166,26 @@ export const MUTATIONS = [
     to: `            {Math.abs(target - 50) < 3 ? labels.tipping`,
     expect: "9.8",
   },
+  // ── landing v3 C1 · commit C — /results' notable spotlight ────────────────────────────────────────
+  {
+    name: "C1-C · the spotlight draws a one-sided pool as a price again (a 100/0 bar under the gilt seal)",
+    file: "src/app/results/page.tsx",
+    from: `{price.kind === "priced" ? (`,
+    to: `{price.kind !== "none" ? (`,
+    expect: "10.3",
+  },
+  {
+    name: "C1-C · a one-sided refund wears the crown again (only an empty pool is kept out)",
+    file: "src/lib/results/archive.ts",
+    from: `    && priceState(m.yesPool, m.noPool).kind === "priced";`,
+    to: `    && priceState(m.yesPool, m.noPool).kind !== "none";`,
+    expect: "10.8",
+  },
+  {
+    name: "C1-C · the spotlight's empty rail says 'No bets yet' whatever the pool (and not the verdict)",
+    file: "src/app/results/page.tsx",
+    from: `empty emptyLabel={outcomeLabel ?? railWords ?? t.market.noPoolYet}`,
+    to: `empty emptyLabel={t.market.noBetsYet}`,
+    expect: "10.4",
+  },
 ];

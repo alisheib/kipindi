@@ -30,13 +30,13 @@ import { decomment } from "./lib/decomment.mts";
 import { priceState, priceTier, shownYesPct, isTipping, TIPPING_BAND } from "../src/lib/markets/price-state.ts";
 import { liveContest } from "../src/lib/markets/live-contest.ts";
 import { leanWords } from "../src/lib/side-label.ts";
+import { isNotableResult } from "../src/lib/results/archive.ts";
 import { matchesOdds, type DiscoveryRow } from "../src/lib/markets/discovery.ts";
 import { dict } from "../src/lib/i18n-dict.ts";
 import { poolFee } from "../src/lib/payout.ts";
 
 /** §14 · the files that may still call the old price helpers. ⛔ It only shrinks (C1: B, C, G each remove entries). */
 const ALLOW_OLD_PRICE: readonly string[] = [
-  "src/app/results/page.tsx",
   "src/app/admin/markets/page.tsx",
   "src/app/admin/markets/[id]/page.tsx",
   "src/app/admin/resolver-queue/page.tsx",
@@ -396,6 +396,46 @@ log("\n── 9 · /live reads the pools, and 'tipping' is ONE rule (C1 · R6(2)
     TIPPING_BAND === 3 && isTipping(53) && isTipping(47) && !isTipping(54) && !isTipping(46) && bad.length === 0, bad.join(", "));
   check("9.8-control a surface keeping its own threshold IS detected (the bar's old `< 3`, /live's old `< 8`)",
     ownRule.test("{Math.abs(target - 50) < 3 ? labels.tipping : x}") && ownRule.test("Math.abs(m.yesPct - 50) < 8"));
+}
+
+// ── 10 · /results: the notable spotlight — who wears the crown, and how it is drawn (C1, commit C) ────
+log("\n── 10 · /results' notable result (C1)");
+{
+  const res = decomment(read("src/app/results/page.tsx"));
+  const fnAt = res.indexOf("function FeaturedResult(");
+  const featured = fnAt > 0 ? res.slice(fnAt, res.indexOf("\nfunction ", fnAt + 10)) : "";
+  check("10.0 slice sanity: FeaturedResult is the real spotlight (it names the notable result) and a bounded slice",
+    featured.includes("t.results.notableResult") && featured.length > 500 && featured.length < 8_000, String(featured.length));
+  check("10.1 the spotlight decides its state from the pools", /const price = priceState\(m\.yesPool, m\.noPool\);/.test(featured));
+  check("10.2 no old helper anywhere on the page", !/pricedYesPct/.test(res));
+  check("10.3 a price only where both pools hold money", /\{price\.kind === "priced" \? \(/.test(featured) && /yesPct=\{price\.yesPct\}/.test(featured));
+  check("10.4 the empty rail is named by the verdict first, then the pool's shape",
+    featured.includes("empty emptyLabel={outcomeLabel ?? railWords ?? t.market.noPoolYet}"));
+  check("10.5 a one-sided spotlight says 'One side only' under its rail",
+    /const railWords = price\.kind === "oneSided" \? t\.market\.oneSideOnly : m\.predictorCount === 0 \? t\.market\.noBetsYet : null;/.test(featured)
+    && /className="mcardp-oneside"/.test(featured));
+  check("10.6 no refund sentence on a SETTLED card (WP6's settled rule)", !/oneSidedNote/.test(featured));
+  check("10.7 a settled split reads 'Final pool', never a lean", /leansYes: t\.market\.resFinalPool/.test(featured)
+    && /tipping: t\.market\.resFinalPool/.test(featured) && /leansNo: t\.market\.resFinalPool/.test(featured));
+  // Behaviour: who may wear the crown.
+  check("10.8 ⛔ a one-sided market (every stake refunded) is NOT notable, whichever side it resolved",
+    !isNotableResult({ status: "RESOLVED", resolvedOutcome: "YES", yesPool: 35_000, noPool: 0 })
+    && !isNotableResult({ status: "RESOLVED", resolvedOutcome: "NO", yesPool: 35_000, noPool: 0 }));
+  check("10.9 a priced VOID and an empty pool are not notable either",
+    !isNotableResult({ status: "VOIDED", resolvedOutcome: "VOID", yesPool: 20_000, noPool: 5_000 })
+    && !isNotableResult({ status: "RESOLVED", resolvedOutcome: "VOID", yesPool: 20_000, noPool: 5_000 })
+    && !isNotableResult({ status: "RESOLVED", resolvedOutcome: "YES", yesPool: 0, noPool: 0 }));
+  check("10.10 RESOLVED with no recorded verdict is not notable (no side is better than a wrong side)",
+    !isNotableResult({ status: "RESOLVED", resolvedOutcome: null, yesPool: 20_000, noPool: 5_000 }));
+  check("10.8-control a verdict over a two-sided pool, even a lopsided one (25,000 v 100), IS notable",
+    isNotableResult({ status: "RESOLVED", resolvedOutcome: "NO", yesPool: 25_000, noPool: 100 }));
+  check("10.11 the page picks its notables through that rule", /paged\.filter\(isNotableResult\)/.test(res));
+  check("10.12 the spotlight's topic chip is translated, never the stored enum",
+    /<Chip variant="cat" size="sm">\{marketCategoryLabel\(t, m\.category\)\}<\/Chip>/.test(featured));
+  // ⭐ CONTROLS — the pre-C1 spellings ARE detected.
+  check("10-control the pre-C1 price line and rail label ARE detected",
+    /pricedYesPct/.test("const yesPct = pricedYesPct(m.yesPool, m.noPool);")
+    && !"empty emptyLabel={t.market.noBetsYet} />".includes("empty emptyLabel={outcomeLabel ?? railWords ?? t.market.noPoolYet}"));
 }
 
 // ── 14 · the sweep: no page or component prints the old price helpers (C1; the list only shrinks) ─

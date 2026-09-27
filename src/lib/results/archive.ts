@@ -16,6 +16,7 @@ import { countFor, countsFor, filterRows, type Axes } from "@/lib/query/counts";
 import { emptyKind, relaxations, type EmptyKind, type ExitCandidate, type Relaxation } from "@/lib/query/empty";
 import { sortBy, type SortDir, type SortSpec } from "@/lib/query/sort";
 import { MAX_QUERY_LEN } from "@/lib/search/query";
+import { priceState } from "@/lib/markets/price-state";
 
 /* ─────────────────────────── the row this module reasons about ────────────────────────── */
 
@@ -52,6 +53,18 @@ export type ArchiveRow = {
  * regulator reading the undivided archive is the last person who should be handed a pill that
  * names half its rows wrongly. ⭐ The Product group in the sheet is the way in.
  */
+/**
+ * Whether a settled row may be the page's NOTABLE result — the gilt, crowned spotlight above the grid.
+ * ⭐ C1 (Q5): only a verdict over a TWO-SIDED pool. A one-sided market refunded every stake (`settleMarket`'s
+ * one-sided branch, rules §7) and a void refunded everyone: nothing was won or lost, so neither wears the
+ * crown, however big its pool. ⛔ Read from the POOLS (`priceState`), never from a rounded 0/100.
+ */
+export function isNotableResult(m: { status: string; resolvedOutcome?: string | null; yesPool: number; noPool: number }): boolean {
+  return m.status === "RESOLVED"
+    && (m.resolvedOutcome === "YES" || m.resolvedOutcome === "NO")
+    && priceState(m.yesPool, m.noPool).kind === "priced";
+}
+
 export const ARCHIVE_LENSES = ["all", "yes", "no", "void"] as const;
 export type ArchiveLens = (typeof ARCHIVE_LENSES)[number];
 
