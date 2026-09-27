@@ -2187,6 +2187,9 @@ export const AUDIT_READERS_OUTSIDE_CONSOLE: Readonly<Record<string, string>> = {
   "src/lib/server/refused-funds.ts": "the refused-funds decisions only, read by their actions (REFUSED_FUNDS_ACTION) — but its ROWS carry an officer's free-text justification, so every page that renders them decides its audience on the STORED role first (434, guard 0.434)",
   "src/lib/server/report-pack.ts": "a report pack's own pack.* rows",
   "src/lib/server/reports/catalogue.ts": "report files behind the platform's report gate: the ISO 27001 chain export and the RG engagement report's rg.* rows",
+  /* Classified 2026-09-27, read from the source (`raiseLowBalanceFoundAtBoot`, `closeLowEpisodeFoundAtBoot`): the marketing
+     lane's SMS credit alarm added the reader and 0.260.1 went red on `marketing-s7` at once — the guard doing its job. */
+  "src/lib/server/sms.ts": "the SMS credit alarm's own low episode: the newest SYSTEM sms.balance_low / sms.balance_recovered row (limit 1), read by action after a restart and reduced to one yes/no — alarm, or close the episode; both functions return nothing, so no row is handed on",
   "src/lib/server/user-service.ts": "a player's own export and feed: house actions excluded in the read and house keys stripped (rulings 154, 170)",
 };
 /**
@@ -2217,6 +2220,7 @@ export const AUDIT_ROW_PAYLOAD: Readonly<Record<string, "handedOn" | "folded" | 
   "src/lib/server/refused-funds.ts": "handedOn",
   "src/lib/server/report-pack.ts": "gated",
   "src/lib/server/reports/catalogue.ts": "gated",
+  "src/lib/server/sms.ts": "folded",
   "src/lib/server/user-service.ts": "stripped",
 };
 

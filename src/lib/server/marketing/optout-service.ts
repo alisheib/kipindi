@@ -52,6 +52,9 @@ export type OptOutAct = "STOP" | "RESUME";
  * `push.marketingBody` — the same one the profile toggle uses, which names sender, content and
  * channel (D1). ⛔ `consent-wording.ts` pins this composition literally (OQ11); a copy change to
  * either half must be appended there or the gate stops counting it.
+ * ⚠️ The STOP sentence is never pinned: a withdrawal is never consent (`test:marketing-consent-ledger`
+ * 8b). Rewording it (2026-09-27: the page now names "offers and news by SMS", the consent's own noun)
+ * only changes the sentence recorded from then on.
  */
 export function optOutWording(act: OptOutAct, locale: MessagingLocale): string {
   const d = locale === "EN" ? dict.en : locale === "ZH" ? dict.zh : dict.sw;
@@ -134,19 +137,39 @@ export async function resolveOptOutToken(raw: string): Promise<OptOutResolution>
  * happens over GET — a valid token renders a number and a button, an invalid one the refusal, so every
  * GET was a free yes/no. Now each lookup is charged up front and REFUNDED when the token resolves:
  * a person opening their own link never spends anything, and a walker — whose every guess is a miss —
- * runs the bucket dry. ⛔ Once it is dry the lookup is not made at all (`throttled`), and the page
- * answers with the same refusal an unknown token gets, so an exhausted bucket is not an oracle either.
+ * runs the bucket dry. ⛔ Once it is dry the lookup is not made at all (`throttled`).
+ * 🔴 Corrected 2026-09-27 · the page then said "this link does not work" about a GENUINE link, and the
+ * person, told their link was broken, had no reason to try again. A dry bucket now reads as BUSY:
+ * nothing has changed, try again shortly (`refusalKindFor`). That is not an oracle: no lookup was made,
+ * so the answer is the same for every token, live or not.
  * ⚠️ The trade-off, stated: a genuine link opened behind the SAME address as an active walker is
  * refused until the bucket refills (10/min). The refusal names two other ways to stop.
  */
+/** The suite's handle on the same bucket. ⛔ Every call below types the literal `"optout.ip"` instead:
+ *  `RATE_RULES` is `Record<string, RateRule>`, so tsc cannot see a stale name, and `test:house-bot-reports`
+ *  0.L52.3 reads each call's action from the syntax tree and fails one it cannot read as a declared rule. */
 export const OPTOUT_BUDGET = "optout.ip" as const;
 export type OptOutPageResolution = OptOutResolution | { ok: false; reason: "throttled" };
 
+/**
+ * ⭐ WHICH REFUSAL THE PAGE SHOWS — one answer per cause the READER can act on, never per cause the
+ * service knows. `malformed` and `unknown` stay ONE sentence ("this link does not work"): telling a
+ * stranger which one they hit makes `/s/` an oracle for live tokens. `throttled` is `busy` (no lookup
+ * was made — see above), and a read that threw (passed in as `null`) is `failed` ("did not go through").
+ * It RETURNS null when the token resolved: no refusal, the page renders its button.
+ */
+export type OptOutRefusalKind = "invalid" | "busy" | "failed";
+export function refusalKindFor(r: OptOutPageResolution | null): OptOutRefusalKind | null {
+  if (!r) return "failed";
+  if (r.ok) return null;
+  return r.reason === "throttled" ? "busy" : "invalid";
+}
+
 export async function resolveOptOutTokenWithinBudget(raw: string, clientKey: string): Promise<OptOutPageResolution> {
-  const gate = await rateCheckAsync(clientKey, OPTOUT_BUDGET);
+  const gate = await rateCheckAsync(clientKey, "optout.ip");
   if (!gate.allowed) return { ok: false, reason: "throttled" };
   const r = await resolveOptOutToken(raw);
-  if (r.ok) await rateRefundAsync(clientKey, OPTOUT_BUDGET);
+  if (r.ok) await rateRefundAsync(clientKey, "optout.ip");
   return r;
 }
 
@@ -163,19 +186,19 @@ const linkBucketKey = (token: string): string =>
   `link:${createHash("sha256").update(`optout-link:${token}`).digest("hex").slice(0, 16)}`;
 
 async function actWithinBudget(clientKey: string, raw: string, act: () => Promise<OptOutActResult>): Promise<OptOutActResult> {
-  const gate = await rateCheckAsync(clientKey, OPTOUT_BUDGET);
+  const gate = await rateCheckAsync(clientKey, "optout.ip");
   if (!gate.allowed) return { ok: false, reason: "error" };
   const token = normalizeOptOutToken(raw);
   if (isOptOutTokenShape(token)) {
-    const perLink = await rateCheckAsync(linkBucketKey(token), OPTOUT_BUDGET);
+    const perLink = await rateCheckAsync(linkBucketKey(token), "optout.ip");
     if (!perLink.allowed) {
-      await rateRefundAsync(clientKey, OPTOUT_BUDGET);
+      await rateRefundAsync(clientKey, "optout.ip");
       return { ok: false, reason: "error" };
     }
   }
   const r = await act();
   // `error` means the token RESOLVED and a write failed — a hit, so it is refunded like a success.
-  if (r.ok || r.reason === "error") await rateRefundAsync(clientKey, OPTOUT_BUDGET);
+  if (r.ok || r.reason === "error") await rateRefundAsync(clientKey, "optout.ip");
   return r;
 }
 

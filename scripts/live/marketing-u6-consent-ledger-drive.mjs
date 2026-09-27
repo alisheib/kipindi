@@ -82,6 +82,13 @@ ok("3c · D2 · with kp-locale=zh the page shows the CHINESE sentence",
 ok("3d · ⛔ OQ11 · each sentence shown is one the gate COUNTS — pinned literally in consent-wording.ts",
   Object.values(SHOWN).every((s) => pinned.includes(JSON.stringify(s).slice(1, -1))),
   Object.entries(SHOWN).filter(([, s]) => !pinned.includes(JSON.stringify(s).slice(1, -1))).map(([l]) => l).join(",") || "all pinned");
+// ⭐ D2 (2026-09-27) · the form posts the language it was DRAWN in (a hidden `shownLocale`), so the ledger stores
+// the sentence the person ticked even when the cookie changes before submit. It must name the page's own language,
+// on the same page whose sentence assertions 3-3c just read.
+const shownField = (html) => (html.match(/name="shownLocale" value="([a-z]+)"/) || [])[1] || null;
+ok("3e · ⭐ D2 · each sign-up page posts the language it was drawn in — shownLocale sw / en / zh beside its own sentence",
+  shownField(reg.html) === "sw" && shownField(regEn.html) === "en" && shownField(regZh.html) === "zh",
+  `sw page → ${shownField(reg.html)} · en page → ${shownField(regEn.html)} · zh page → ${shownField(regZh.html)}`);
 
 // ── controls: prove this drive can fail, and is not just matching anything ────────────────
 ok("4 · CONTROL · a sentence that is NOT on the page is reported absent",

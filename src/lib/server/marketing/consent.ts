@@ -4,6 +4,7 @@ import { appendMarketingConsent } from "@/lib/server/marketing/consent-ledger";
 import { toMsisdn255 } from "@/lib/phone-normalize";
 import { parseTzNumber } from "@/lib/tz-msisdn";
 import { marketingRgStanding, MARKETING_RG_DEPS } from "@/lib/server/marketing/rg";
+import type { MarketingRgStanding } from "@/lib/server/marketing/rg";
 import { ageOnPlatformDate, MIN_AGE_YEARS } from "@/lib/id-documents";
 import { isFinalRefusal } from "@/lib/kyc-refusal";
 import { isSmsConsentWording } from "@/lib/marketing/consent-wording";
@@ -262,13 +263,36 @@ export async function mayReceiveMarketingSms(msisdn: string, now: Date = new Dat
  * (`rg.ts` `consentLapsed`). A COMPLAINT / OPERATOR / SELF_EXCLUSION suppression is the platform's
  * decision, not the player's consent, so it does not turn the switch off — and a tap cannot lift it.
  *
+ * ⭐ D4b (2026-09-27) · A BREAK OR SELF-EXCLUSION STILL IN FORCE reads OFF and HELD. 🔴 Only a LAPSED refusal
+ * read OFF, so a break still running fell through to ON: the switch showed a consent the gate refuses now and
+ * will never honour (a "yes" counts only if given AFTER the break ends, `rg.ts`), then flipped itself OFF when
+ * the break ended. Asked FIRST and for every player, consenting or not, because an ON tapped mid-break is void
+ * whoever taps it — the switch is locked for the duration and the screen says why.
+ *
  * ⛔ READ ONLY. Harm markers are not consent (and cost up to 10,000 rows), so they are not asked here.
  */
 export type MarketingToggleState = {
   on: boolean;
   /** OFF only because consent lapsed when a break or a self-exclusion ended — the screen says so. */
   paused: boolean;
+  /** OFF because a break or a self-exclusion is IN FORCE now (D4b): no "yes" can count until it ends. */
+  held: boolean;
+  /** When the hold ends, if a real future date is on record — null for a permanent or diverged one. */
+  heldUntil: string | null;
 };
+
+const TOGGLE_OFF: MarketingToggleState = { on: false, paused: false, held: false, heldUntil: null };
+/** `selfExclusionStandingOf` stores "permanent" as now + 100 years and reads anything past ten as permanent. */
+const PERMANENT_AFTER_MS = 10 * 365 * 86400_000;
+
+/** A break or self-exclusion in force — any RG refusal the player's own "yes" cannot lift (`consentLapsed`
+ *  is the one it can). Harm markers never reach here: the toggle's read stubs them out. */
+function holdOf(rg: MarketingRgStanding, now: Date): MarketingToggleState | null {
+  if (rg.ok || rg.consentLapsed || rg.skipReason === "rg_harm_marker") return null;
+  const ms = rg.until ? Date.parse(rg.until) : NaN;
+  const dated = Number.isFinite(ms) && ms > now.getTime() && ms - now.getTime() < PERMANENT_AFTER_MS;
+  return { on: false, paused: false, held: true, heldUntil: dated ? new Date(ms).toISOString() : null };
+}
 
 export async function marketingToggleState(
   user: Pick<StoredUser, "id" | "status" | "phoneE164" | "marketingOptIn">,
@@ -277,17 +301,31 @@ export async function marketingToggleState(
   // The ledger's own key (`consent-ledger.ts` writes by `toMsisdn255`), so the read finds its rows.
   const identifier = toMsisdn255(user.phoneE164);
   const key: MessagingKey = { channel: "SMS", identifier, category: "MARKETING" };
-  if (await playerConsentRefusal(user, key)) return { on: false, paused: false };
-  const suppressed = await Promise.resolve(db.suppression.find(key));
-  if (suppressed && isPersonCreatedSuppression(suppressed.reason)) return { on: false, paused: false };
   const rg = await marketingRgStanding(user, identifier, now.getTime(), { ...MARKETING_RG_DEPS, harmFlags: async () => [] });
-  if (!rg.ok && rg.consentLapsed) return { on: false, paused: true };
-  return { on: true, paused: false };
+  const held = holdOf(rg, now);
+  if (held) return held;
+  if (await playerConsentRefusal(user, key)) return TOGGLE_OFF;
+  const suppressed = await Promise.resolve(db.suppression.find(key));
+  if (suppressed && isPersonCreatedSuppression(suppressed.reason)) return TOGGLE_OFF;
+  if (!rg.ok && rg.consentLapsed) return { ...TOGGLE_OFF, paused: true };
+  return { ...TOGGLE_OFF, on: true };
 }
 
 /** `ok` — the switch now shows what was asked. `changed` — a consent record was written (the action
- *  audits it), which can be true even when `ok` is false: a write that landed is never hidden. */
-export type PlayerMarketingChoice = { ok: boolean; on: boolean; changed: boolean; liftedStop: boolean };
+ *  audits it), which can be true even when `ok` is false: a write that landed is never hidden.
+ *  `on` — the state READ after the act; null only when even a fresh read failed (never a guess).
+ *  `held` — refused because a break or self-exclusion is in force; nothing was written. */
+export type PlayerMarketingChoice = { ok: boolean; on: boolean | null; changed: boolean; liftedStop: boolean; held?: boolean };
+
+/** A fresh read of the switch for the catch below — null when that read fails too. */
+async function rereadToggle(userId: string): Promise<boolean | null> {
+  try {
+    const user = await Promise.resolve(db.user.findById(userId));
+    return user ? (await marketingToggleState(user)).on : null;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * D4 · THE PLAYER'S OWN SWITCH, WRITTEN — the one writer `/profile/notifications` calls. The action
@@ -301,6 +339,12 @@ export type PlayerMarketingChoice = { ok: boolean; on: boolean; changed: boolean
  *   · OFF → `marketingOptIn = false` and a WITHDRAWN row in the sentence shown.
  * ⭐ It answers with the state AFTER the writes: a ledger append that failed leaves the switch OFF and
  * the caller told so, never a success the gate would contradict.
+ * ⛔ D4b · an ON while a break or self-exclusion is in force writes NOTHING (`held`): the gate would count
+ * only a consent given after it ends, so a GIVEN row now records a consent that can never act. An OFF is
+ * still written — a "no" is never refused.
+ * ⭐ AND IT NEVER GUESSES (2026-09-27). The catch answered `on: !want` even when the writes had landed and
+ * only the final read threw — so a recorded OFF snapped back to ON. It now reads the state again, and says
+ * "unknown" (null) when it cannot.
  */
 export async function recordPlayerMarketingChoice(input: {
   userId: string;
@@ -313,8 +357,9 @@ export async function recordPlayerMarketingChoice(input: {
   let liftedStop = false;
   try {
     const user = await Promise.resolve(db.user.findById(input.userId));
-    if (!user) return { ok: false, on: !want, changed, liftedStop };
+    if (!user) return { ok: false, on: null, changed, liftedStop };
     const before = await marketingToggleState(user);
+    if (want && before.held) return { ok: false, on: false, changed, liftedStop, held: true };
     // An OFF is still written when the switch already shows OFF but the boolean reads true (a lapse,
     // or the old wording): the player said no, and the record should say so.
     const nothingToDo = want ? before.on : (!before.on && user.marketingOptIn !== true);
@@ -346,6 +391,8 @@ export async function recordPlayerMarketingChoice(input: {
     return { ok: after.on === want, on: after.on, changed, liftedStop };
   } catch (err) {
     console.error("[marketing-consent] profile choice failed:", (err as Error)?.message ?? err);
-    return { ok: false, on: !want, changed, liftedStop };
+    // The writes above may have landed before the throw: what the switch shows is READ, not assumed.
+    const on = await rereadToggle(input.userId);
+    return { ok: on === want, on, changed, liftedStop };
   }
 }

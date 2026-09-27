@@ -17,6 +17,7 @@
  *        ISO 27001 / pentest sentence stays, because it rests on the owner's recorded attestation (2026-08-20).
  *   §4 · cookies (§7): a census of every cookie name the code writes, pinned; each is described in all three
  *        locales, with the session cap and the sign-out note's lifetime read from the code, not retyped.
+ *   §4h · zh typography: no space after full-width punctuation (a {" "} after "：" printed a gap in §1).
  *
  * ⛔ The privacy page is inline JSX in one file, not dictionary-driven, so `test:i18n` sees none of it (the
  * 2026-08-20 COMPLIANCE-DECISIONS entry). `test:cert-d1` §2b keeps its older negatives; this suite is the gate.
@@ -627,6 +628,17 @@ ok("§5ak control · a new SMS provider in the union is reported until §4 names
   smsDefects(pageSrc, plantSmsProvider, smsTransportSrc, smsReceiptRoute).some((x) => x.includes('"africastalking" is unclassified')));
 ok("§5al control · a gateway with no delivery receipt is reported (§4 says it tells us whether each message was delivered)",
   smsDefects(pageSrc, smsSrc, smsTransportSrc, false).some((x) => x.includes("delivery-receipt")));
+
+/* ════════════════════════════════════════════════════════════════════════════
+ * §4h · zh TYPOGRAPHY — a full-width colon, stop, comma or closing bracket carries its own space, so a {" "} (or a
+ * typed space) after one prints a gap: §1 read "联系方式： msaada@…" (2026-09-27 re-review). Translation markup only,
+ * so the English hash and the version do not move.
+ * ══════════════════════════════════════════════════════════════════════════ */
+console.log("\n§4h · zh: no space after full-width punctuation");
+const zhGaps = (src: string) => [...code(blocks(src).zh).matchAll(/[：。，；、）](?:[ \t]*\{" "\}|[ \t]+(?=\S))/g)].map((m) => m[0]);
+ok("§4h zh puts no space after a full-width colon, stop, comma or closing bracket", zhGaps(pageSrc).length === 0, zhGaps(pageSrc).join(" | "));
+const plantZhGap = pageSrc.replace("达累斯萨拉姆。联系方式：", '达累斯萨拉姆。联系方式：{" "}');
+ok("§5am control · the §1 {\" \"} after \"联系方式：\" put back is reported", plantZhGap !== pageSrc && zhGaps(plantZhGap).length > 0);
 
 
 console.log(`\n${fail === 0 ? "ALL PASS" : "FAILURES"} — ${pass} passed, ${fail} failed`);

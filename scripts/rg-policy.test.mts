@@ -18,6 +18,10 @@
  *      the wrong promise, and adding a promise without a control cannot pass.
  *   §3 · zh/sw typography (2026-09-26 visual audit, prod-rg-s4-zh-360.png): a number keeps its unit (`&nbsp;`), and no
  *        Chinese sentence runs across a source line break — JSX prints that break as a space ("生效。 所有控制项").
+ *        3.3 (2026-09-27 re-review, local-rg-zh-360.png): a number RANGE sits whole in a whitespace-nowrap span — the
+ *        en dash is a break point, and the late-night window broke "（00:00–" / "06:00 EAT）" at 360.
+ *        3.4 (2026-09-27 final visual review, local-rg-s3-zh-360.png): the zh §2 settings link is whitespace-nowrap —
+ *        it broke "负责任博彩设" / "置", the underlined label split mid-term.
  *        Translations only, so the binding-English hash does not move.
  *
  * ⛔ IN-PROCESS BY CONSTRUCTION: `--prove-red` plants every defect IN MEMORY; this file makes no file-writing call.
@@ -125,6 +129,23 @@ function check(w: World): Result[] {
   const breaks = [...zh.matchAll(/(?:\p{Script=Han}|[。，、；：）])[ \t]*\n[ \t]*(?:\p{Script=Han}|[（])/gu)].map((m) => m[0].replace(/\s+/g, "⏎"));
   out.push({ label: "3.2 · zh: no Chinese sentence runs across a source line break (JSX prints it as a space)",
     ok: breaks.length === 0, extra: breaks.join(" | ") });
+  // A range outside a nowrap span can break after its en dash. The count is the control: a reader that finds no
+  // range at all (zh and sw carry three each) must not pass.
+  const NOWRAP = /<span className="whitespace-nowrap">[^<]*<\/span>/g;
+  const RANGE = /\d[\d:]*–\d[\d:]*/g;
+  const ranges = [...zh.matchAll(RANGE), ...sw.matchAll(RANGE)].length;
+  const loose = [
+    ...[...zh.replace(NOWRAP, "").matchAll(RANGE)].map((m) => `zh "${m[0]}"`),
+    ...[...sw.replace(NOWRAP, "").matchAll(RANGE)].map((m) => `sw "${m[0]}"`),
+  ];
+  out.push({ label: "3.3 · zh and sw keep every number range whole in a whitespace-nowrap span (the en dash is a break point)",
+    ok: ranges >= 4 && loose.length === 0, extra: loose.length ? `outside a span: ${loose.join(" | ")}` : `only ${ranges} ranges found` });
+  // The §2 settings link names one page; underlined in gold and split mid-term it reads as two. zh only: the en block is
+  // the hashed binding text, and sw wraps between words. A missing link fails too, so the check cannot pass on nothing.
+  const zhLink = /<a href="\/profile\/responsible-gambling" className="([^"]*)"/.exec(zh)?.[1];
+  out.push({ label: "3.4 · zh: the Responsible Gambling settings link stays on one line (whitespace-nowrap)",
+    ok: zhLink !== undefined && zhLink.split(/\s+/).includes("whitespace-nowrap"),
+    extra: zhLink === undefined ? "the zh settings link was not found" : `className="${zhLink}"` });
   return out;
 }
 
@@ -166,6 +187,12 @@ if (!PROVE_RED) {
       world: { ...REAL, page: REAL.page.replace("miaka&nbsp;18", "miaka 18") }, expect: /^3\.1 / },
     { name: "zh: the §2 sentences split across two source lines again ('生效。 所有控制项')",
       world: { ...REAL, page: REAL.page.replace("小时后生效。所有控制项", "小时后生效。\n          所有控制项") }, expect: /^3\.2 / },
+    { name: "zh: the late-night range out of its span again ('（00:00–' / '06:00 EAT）' at 360)",
+      world: { ...REAL, page: REAL.page.replace('<span className="whitespace-nowrap">（00:00–06:00&nbsp;EAT）</span>', "（00:00–06:00&nbsp;EAT）") }, expect: /^3\.3 / },
+    { name: "sw: 'dakika 5–120' out of its span again",
+      world: { ...REAL, page: REAL.page.replace('<span className="whitespace-nowrap">dakika&nbsp;5–120</span>', "dakika&nbsp;5–120") }, expect: /^3\.3 / },
+    { name: "zh: the settings link can break mid-term again ('负责任博彩设' / '置' at 360)",
+      world: { ...REAL, page: REAL.page.replace('className="whitespace-nowrap text-gold-300 hover:text-gold-200', 'className="text-gold-300 hover:text-gold-200') }, expect: /^3\.4 / },
   ];
   let caught = 0;
   for (const [i, c] of CASES.entries()) {

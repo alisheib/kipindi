@@ -1198,6 +1198,10 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
       && /row\.reason !== "WITHDRAWN"[\s\S]{0,120}reason:\s*"WITHDRAWN",\s*liftedAt:\s*null\s*\},\s*data:\s*takeOver/.test(sCreate)
       && /takeOver = \{ reason: row\.reason, evidence: row\.evidence, recordedBy: row\.recordedBy \}/.test(sCreate),
     `${sCreate.length} chars`);
+  ok("17.liftreason · ⛔ `lift` lifts ONLY a WITHDRAWN row, in BOTH twins — the store refuses a complaint, an officer's stop or a self-exclusion even if a caller forgets to check",
+    /liftedAt:\s*null,[\s\S]{0,120}reason:\s*"WITHDRAWN",[\s\S]{0,40}\},\s*data:\s*\{\s*liftedAt:\s*new Date\(at\)/.test(delegateMethod("suppression", "lift"))
+      && /if \(r\.reason !== "WITHDRAWN"\) return null;/.test(region(sMem, "lift: (")),
+    "prisma where + memory guard");
   ok("17.supersede.memory · ⛔ …and the memory twin does the same on the row already there",
     /if \(r\.liftedAt \|\| \(r\.reason === "WITHDRAWN" && row\.reason !== "WITHDRAWN"\)\)/.test(sMemCreate)
       && /r\.reason = row\.reason;/.test(sMemCreate) && /r\.evidence = row\.evidence;/.test(sMemCreate),

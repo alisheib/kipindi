@@ -8,7 +8,7 @@ import { getSupportConfig } from "@/lib/server/support-config";
 import { db } from "@/lib/server/store";
 import { verifyChain, getAuditPage } from "@/lib/server/audit";
 import { houseAuditForConsole } from "@/lib/server/house-console-read";
-import { smsHealthSnapshot, smsBalanceSnapshot, smsBalanceThresholds, refreshSmsBalance, SMS_BALANCE_RENDER_BUDGET_MS, sms as smsClient } from "@/lib/server/sms";
+import { smsHealthSnapshot, smsBalanceSnapshot, smsBalanceThresholds, smsRailProblem, refreshSmsBalance, SMS_BALANCE_RENDER_BUDGET_MS, sms as smsClient } from "@/lib/server/sms";
 import { smsCreditTile } from "./sms-credit-tile";
 import { rateLimitSnapshot } from "@/lib/server/rate-limit";
 import { admissionSnapshot } from "@/lib/server/admission";
@@ -202,12 +202,14 @@ async function AdminSystemContent({ searchParams }: SystemProps) {
    * itself now fails closed and answers `{ readable: false }` for a failure it CAN see, so a second catch here
    * could only hide one it cannot. */
   const houseEngine = tab === "diagnostics" ? await houseEngineHealthFor(sessionForHouse?.userId) : null;
-  // 🔴 E-330 ② survives in the caption: `successRate` is null for no traffic, which reads "idle since restart", never 100%.
+  // 🔴 E-330 ② survives in the caption: no traffic reads "0 sent since server start", never a 100% rate.
+  // ⛔ `rail` and the failed count are what keep "Healthy" honest (2026-09-27): a readable balance is not a rail that sends.
   const smsTile = smsCreditTile({
     provider: smsClient.name,
     read: await smsRead,
     snapshot: smsBalanceSnapshot(),
     health: smsHealthSnapshot(),
+    rail: smsRailProblem(),
     thresholds: smsBalanceThresholds(),
   });
 
@@ -223,9 +225,12 @@ async function AdminSystemContent({ searchParams }: SystemProps) {
           <AdminKpi label="Markets live"  sw="Soko hai"              value={liveMarkets.toLocaleString()} delta={`${resolvedMarkets} resolved`} />
           {/* ⭐ THE SMS CREDIT IS THE HEADLINE (owner ruling D7, 2026-09-26). An SMS costs TZS 6 and a rail that runs out
               is, once OTP is the login path, a login outage — so the tile answers "how much credit do we have" first and
-              says its state in words: low, below floor, unreadable, or last read at a time. Every state and every
-              no-break rule lives in `smsCreditTile`, driven by test:sms-cost-guard §9. ⛔ No pulse, no arrow. */}
-          <AdminKpi label="SMS credit"    sw="Salio"                value={smsTile.value} tone={smsTile.tone} delta={smsTile.caption} />
+              says its state in words: low, below floor, sends failing, no SMS can send, unreadable, or last read at a
+              time. When and how the figure was read is `provenance`, its own line under it; the state and the action
+              are `note` (prose, in the state's ink); the Railway names a fix needs are `vars`, whole, in mono; the chip
+              keeps one plain fact. Every state and every no-break rule lives in `smsCreditTile`, driven by
+              test:sms-cost-guard §9. ⛔ No pulse, no arrow. */}
+          <AdminKpi label="SMS credit"    sw="Salio"                value={smsTile.value} tone={smsTile.tone} provenance={smsTile.provenance} note={smsTile.note} noteCode={smsTile.vars} delta={smsTile.caption} />
         </KpiGrid>
 
         {/* Maintenance mode — global pause of new bets + deposits (§9.3 #1) */}

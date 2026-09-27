@@ -2418,6 +2418,10 @@ const memoryDb = {
           // is an ACTIVE row and may be lifted once. A strict `!== null` would refuse to lift a
           // row whose field was absent, stranding somebody who asked to be resubscribed.
           if (r.liftedAt) return null;
+          // ⛔ ONLY A PERSON'S OWN STOP IS LIFTABLE (`PERSON_LIFTABLE_REASONS`). The services check
+          // first; this is the store refusing too, so no future caller can lift a complaint, an
+          // officer's stop or a self-exclusion by forgetting that check.
+          if (r.reason !== "WITHDRAWN") return null;
           r.liftedAt = at;
           r.liftedReason = reason;
           return r;

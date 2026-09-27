@@ -24,6 +24,14 @@
  * the surface checks (S5–S21) have their OWN plants — an in-memory edit of the source TEXT or the
  * dictionary they read, whose anchor must resolve exactly once — so a static check is also proven
  * capable of failing.
+ * ⭐ 2026-09-27 added: a dry budget reads as BUSY, never "this link does not work" (37c); a retry on the
+ * busy and failed refusals (S5d); our desk under a failed tap (S18h); a skeleton built from the page's
+ * own parts, visible, with its read-aloud line last (S6b–d); the helpline under its responsible-gambling
+ * line and a label-free 18+ (S20d); the shell matching bare `/s` and one segment only (S21b); and bare
+ * `/s` as the refusal rather than a 404 inside the stripped shell (S23) — each with its own plant.
+ * ⭐ And from the final visual review: a failed tap moves nothing under the thumb (S18i), the pending label
+ * stays readable (S18j), zh keeps its words whole on the headings and notices (S18k, S7h: break hints
+ * where break-keep relies on them, none in ledger evidence), and the refusal's buttons are one group (S5e).
  *
  * Run:  npm run test:marketing-optout
  * Red:  npm run red:marketing-optout
@@ -40,9 +48,9 @@ import { mayReceiveMarketingSms } from "../src/lib/server/marketing/consent.ts";
 import {
   resolveOptOutToken, stopMarketing, resumeMarketing, mintOptOutToken,
   optOutWording, OPTOUT_MINT_ATTEMPTS, personMayLift,
-  resolveOptOutTokenWithinBudget, stopMarketingWithinBudget, OPTOUT_BUDGET,
+  resolveOptOutTokenWithinBudget, stopMarketingWithinBudget, OPTOUT_BUDGET, refusalKindFor,
 } from "../src/lib/server/marketing/optout-service.ts";
-import type { OptOutActResult } from "../src/lib/server/marketing/optout-service.ts";
+import type { OptOutActResult, OptOutPageResolution } from "../src/lib/server/marketing/optout-service.ts";
 import { OPTOUT_TOKEN_CHARS, OPTOUT_PATH } from "../src/lib/marketing/footer.ts";
 import {
   OPTOUT_TOKEN_ALPHABET, isOptOutTokenShape, normalizeOptOutToken, optOutTokenRef, isOptOutPath,
@@ -52,6 +60,7 @@ import { getAuditForTargetsDurable } from "../src/lib/server/audit.ts";
 import { gaExcluded } from "../src/lib/google-tag.ts";
 import { isProtectedPath } from "../src/proxy.ts";
 import { dict } from "../src/lib/i18n-dict.ts";
+import { KEEP_WORDS, TITLE_TEXT, NOTICE_TEXT, ACT_SENTENCE } from "../src/app/s/[token]/optout-classes.ts";
 
 /* ⛔ FAILURE IS THE DEFAULT, SET BEFORE THE FIRST `await`. A suite whose verdict is written only
  * at the end scores GREEN when a promise never settles or the process exits early. */
@@ -80,6 +89,8 @@ type OptOutPage = {
   resolve: (token: string) => Promise<{ ok: boolean }>;
   /** ⭐ The page's GET, within its budget (D6) — a miss spends, a hit is refunded. */
   resolveWithin: (token: string, clientKey: string) => Promise<{ ok: boolean; reason?: string }>;
+  /** ⭐ Which refusal the page shows for a read's answer (`refusalKindFor`) — null renders the button. */
+  refusalKind: (r: { ok: boolean; reason?: string } | null) => string | null;
   /** ⭐ The STOP act, within the same budget plus the per-link cap (D6). */
   stopWithin: (token: string, locale: MessagingLocale, clientKey: string) => Promise<OptOutActResult>;
   /** ⭐ The mint is in the shape so its number normalisation can be planted away (D6). */
@@ -95,6 +106,7 @@ type OptOutPage = {
 const SHIPPED: OptOutPage = {
   stop: stopMarketing, resume: resumeMarketing, resolve: resolveOptOutToken,
   resolveWithin: resolveOptOutTokenWithinBudget,
+  refusalKind: (r) => refusalKindFor(r as OptOutPageResolution | null),
   stopWithin: stopMarketingWithinBudget,
   mint: mintOptOutToken,
   isSuppressed: async (key) => (await Promise.resolve(db.suppression.find(key))) !== null,
@@ -112,6 +124,7 @@ const L = {
   selfExcluded: "36 · ⛔ D6 — a SELF-EXCLUDED player's toggle is never switched back on from an unauthenticated link",
   walkerDry: "37a · ⭐ D6 — a walker's MISSES run the GET budget dry, and a dry budget makes no lookup at all",
   personFree: "37b · ⭐ D6 — a person opening their OWN valid link never spends the budget, however often",
+  busy: "37c · 🔴 2026-09-27 — a dry budget reads as BUSY (nothing changed, try again), never 'this link does not work'; malformed and unknown stay ONE sentence, and a failed read is 'did not go through'",
   actWalker: "38a · ⭐ D6 — a script POSTing unknown tokens runs its address dry and is then refused with `error`, never a success",
   linkCap: "38b · ⭐ D6 — one valid link's acts are capped per LINK (no ledger flood from a held token), and the first taps all land",
   hitFree: "38c · …and a hit costs the ADDRESS nothing",
@@ -122,11 +135,16 @@ const SL = {
   mask: "S5 · the page renders a MASKED number, never the raw one (§5.14)",
   refusalNoTap: "S5b · ⛔ the invalid-token refusal does NOT tell the reader to tap a button that is not there",
   nextStep: "S5c · ⭐ D6 — the refusal names a next step: the profile toggle (a plain <a>, never <Link>) and our desk from `support-config`",
+  retry: "S5d · 🔴 2026-09-27 — the page picks its refusal through `refusalKindFor`, and the BUSY and FAILED refusals offer a retry of the same link (a plain <a>); the invalid one does not",
   loadingOne: "S6 · ⭐ D6 — the loading state describes ONE button and says its words to a screen reader",
+  loadingSame: "S6b · ⭐ 2026-09-27 — the skeleton is the page's OWN parts: `PageHeader`, the shared classes (`optout-classes.ts`) and the same strings, as transparent text on bars, so every line wraps where the real one will",
+  loadingOrder: "S6c · 🔴 2026-09-27 — the read-aloud line is the LAST child of the spaced stack, never the first (its gap drew the stop button 24px low at 360)",
+  loadingVisible: "S6d · 🔴 2026-09-27 — the skeleton is VISIBLE: bars and the action take the shared loader's surface (elevated, bordered), never a ~1:1 overlay tint, and the action says its words on screen",
   headings: (loc: string) => `S7c.${loc} · ⭐ D6 — idle, stopped and resumed each have their OWN heading`,
   noPromise: (loc: string) => `S7d.${loc} · ⛔ D6 — the resumed sentence and heading make NO delivery promise`,
   notOurs: (loc: string) => `S7e.${loc} · ⛔ D6 — the invalid-link sentence never says the link is "not ours"`,
   placeholders: (loc: string) => `S7f.${loc} · the next-step sentence names the toggle and the path by placeholder, so a rename cannot strand it`,
+  noun: (loc: string) => `S7g.${loc} · ⭐ 2026-09-27 — every heading and the stop button name what they stop with the consent's own noun (\`push.marketingTitle\`), and no opt-out sentence uses an older name`,
   serverAnswer: "S8 · ⛔ the success sentence is rendered from the SERVER'S ANSWER, never painted on the click",
   noConfirm: "S9 · ⛔ NO CONFIRMATION STEP CAN EXIST — the component's state union is exactly the five outcomes, with no step between the tap and the write",
   heading: "S18 · ⭐ D6 — the heading is chosen from the state (stopped / resumed / idle), never fixed",
@@ -136,11 +154,23 @@ const SL = {
   caught: "S18e · 🔴 D6 — a REJECTED action is this page's own error sentence, never the root error boundary",
   bodySize: "S18f · ⭐ D6 — the confirmation is body text (`md`), never an 11px footnote",
   budgeted: "S18g · the acts go through the BUDGETED service, from a request-read address",
+  contactOnError: "S18h · ⭐ 2026-09-27 — a failed tap shows our desk (phone and email, read on the SERVER) under the error, and the client never reads the support config",
+  errorBelow: "S18i · 🔴 2026-09-27 — a failed tap moves NOTHING under the thumb: the alert and our desk come after the button, what is above it reads the last OK answer, and the alert takes focus without a scroll",
+  busyLegible: "S18j · ⭐ 2026-09-27 — the tapped button stays READABLE while its answer is on the way (the disabled dim is outranked on a busy button)",
+  wrap: "S18k · ⭐ 2026-09-27 — the headings and notices keep zh words whole (break-keep, only on strings that carry break hints) and never end on one word; the ledger's sentence gets text-pretty only",
+  hints: (loc: string) => `S7h.${loc} · ⭐ 2026-09-27 — every opt-out string set break-keep carries its break hints, and the strings the LEDGER stores carry none`,
+  stepsGroup: "S5e · ⭐ 2026-09-27 — the refusal's two buttons are their OWN group, one shared width and a real gap, with our desk as a separate group below",
   shellFirst: "S20 · ⭐ D6 — `/s` gets its own shell, decided BEFORE the session read (an ended session's redirect would put the opt-out behind a login)",
   noUpsell: "S20b · ⛔ D6 — the opt-out shell carries NO sign-in/up, nav, rail, footer menus, invitations or soft links",
   shellCarries: "S20c · ⭐ …and it DOES carry the logo, the language menu, the landmark, the skip link and the regulator lines",
+  rgContext: "S20d · ⭐ 2026-09-27 — the helpline sits UNDER its responsible-gambling sentence (alone it read as our own line), and the 18+ roundel carries no aria-label (ARIA prohibits one on a generic span)",
   overlay: (file: string) => `S21 · ⛔ D6 — ${file} stays off the opt-out page, and only off it`,
+  shellMatch: "S21b · the shell's own test is a SEGMENT match built from `OPTOUT_PATH` — bare `/s` and `/s/<one segment>` only; a deeper path gets the FULL shell, so its 404 never renders inside the stripped one",
+  bare: "S23 · 🔴 2026-09-27 — bare `/s` (a link that lost its token) is the opt-out REFUSAL, not the root 404 inside the stripped shell — noindex and force-dynamic",
 } as const;
+
+/** ⭐ The shell's path test, held in a variable so a surface case can swap the old any-`/s/…` match back in. */
+let shellMatch: (p: string) => boolean = isOptOutPath;
 
 /* ══ SURFACE PLANTS — the S-checks read source TEXT, so a plant is an in-memory edit of that text ══
  * ⛔ Never written to disk (see the header). `from` must occur EXACTLY ONCE in the file as it is now, or
@@ -550,6 +580,19 @@ async function runAssertions(page: OptOutPage, f: Fixtures, tag: string): Promis
   ok(p(L.walkerDry),
     dry >= 10 && !dryOnValid.ok && dryOnValid.reason === "throttled",
     `${dry} of ${cap + 15} misses refused unread · a valid link behind the dry address: ${JSON.stringify(dryOnValid)}`);
+  // ── 15b · 🔴 WHAT THE PERSON BEHIND A DRY ADDRESS IS TOLD. No lookup was made, so their link may be
+  // genuine: "this link does not work" told them it was broken, and they did not try again.
+  const kinds = {
+    throttled: page.refusalKind({ ok: false, reason: "throttled" }),
+    unknown: page.refusalKind({ ok: false, reason: "unknown" }),
+    malformed: page.refusalKind({ ok: false, reason: "malformed" }),
+    failed: page.refusalKind(null),
+    resolved: page.refusalKind({ ok: true }),
+  };
+  ok(p(L.busy),
+    kinds.throttled === "busy" && kinds.unknown === "invalid" && kinds.malformed === "invalid"
+      && kinds.failed === "failed" && kinds.resolved === null,
+    JSON.stringify(kinds));
   const person = `person:${tag}${f.run}`;
   let refused = 0;
   for (let i = 0; i < cap + 15; i++) {
@@ -611,6 +654,9 @@ async function runSurface(f: Fixtures): Promise<void> {
   const clientSrc = read("src/app/s/[token]/optout-client.tsx");
   const loadingSrc = read("src/app/s/[token]/loading.tsx");
   const actionsSrc = read("src/app/s/[token]/actions.ts");
+  // 2026-09-27 · the refusal moved to its own module, shared with bare `/s`.
+  const refusalSrc = read("src/app/s/optout-refusal.tsx");
+  const bareSrc = read("src/app/s/page.tsx");
   ok("S3 · the route is force-dynamic — a cached opt-out page would show one person another's state",
     /export const dynamic = "force-dynamic"/.test(pageSrc));
   ok("S4 · ⛔ NOINDEX — a crawler following one of these links is a crawler CLICKING an opt-out",
@@ -621,26 +667,72 @@ async function runSurface(f: Fixtures): Promise<void> {
   // passed `optout.body` — "tap once to stop marketing messages" — into the invalid-token
   // refusal, on a page that renders no button at all. Found by reading the screenshot, not
   // by any assertion, which is why there is now an assertion.
-  const refusalBlock = pageSrc.match(/<Callout\s+layout="stack"[\s\S]*?<\/Callout>/)?.[0] ?? "";
+  const refusalBlock = refusalSrc.match(/<Callout\s+layout="stack"[\s\S]*?<\/Callout>/)?.[0] ?? "";
   ok(SL.refusalNoTap,
     refusalBlock.includes("t.optout.invalid") && !/t\.optout\.body/.test(refusalBlock), refusalBlock.slice(0, 90));
   // ⭐ D6 · AND IT IS NOT A DEAD END (F4): it names the next step, both other ways to stop, read from
   // the server config — and the one link that leaves this shell is a DOCUMENT navigation (E-70).
-  const nextSteps = pageSrc.slice(pageSrc.indexOf("function NextSteps"));
+  const nextSteps = refusalSrc.slice(refusalSrc.indexOf("function NextSteps"));
   ok(SL.nextStep,
-    /action=\{<NextSteps/.test(refusalBlock) && /t\.optout\.invalidNext/.test(pageSrc)
-      && /<a href="\/profile\/notifications"/.test(nextSteps) && !/from "next\/link"/.test(pageSrc)
+    /action=\{<NextSteps/.test(refusalBlock) && /t\.optout\.invalidNext/.test(refusalSrc)
+      && /<a href="\/profile\/notifications"/.test(nextSteps) && !/from "next\/link"/.test(refusalSrc)
+      && !/from "next\/link"/.test(pageSrc)
       && /SUPPORT_PHONE_TEL\(\)/.test(nextSteps) && /SUPPORT_EMAIL\(\)/.test(nextSteps),
     nextSteps.slice(0, 80));
+  // ⭐ 2026-09-27 · the refusal is chosen by the service's mapping (37c), and a retry is offered where
+  // retrying can help (busy, failed), as a plain <a> back to the same link.
+  ok(SL.retry,
+    /kind=\{refusalKindFor\(r\) \?\? "invalid"\}/.test(pageSrc)
+      && /retryHref=\{`\/s\/\$\{encodeURIComponent\(token\)\}`\}/.test(pageSrc)
+      && /retryHref=\{kind === "invalid" \? undefined : retryHref\}/.test(refusalBlock)
+      && /\{retryHref && \(\s*<a href=\{retryHref\}/.test(nextSteps) && /t\.optout\.retry/.test(nextSteps)
+      && /t\.optout\.busy/.test(refusalBlock) && /t\.optout\.error/.test(refusalBlock),
+    refusalBlock.slice(0, 120));
+  // ⭐ 2026-09-27 · the retry and the settings link were stacked 4px apart at two widths: their own group
+  // now, one shared width, a gap of at least 12px (`gap-2` on this repo's spacing scale), the desk below it.
+  {
+    const group = nextSteps.match(/<div className="([^"]*)">\s*\{retryHref && \(/)?.[1] ?? "";
+    const gap = Number(group.match(/\bgap-(\d+(?:\.5)?)\b/)?.[1] ?? 0);
+    const closeAt = nextSteps.indexOf("</div>", nextSteps.indexOf("{t.optout.openNotifications}"));
+    ok(SL.stepsGroup,
+      /\bflex-col\b/.test(group) && /\bitems-stretch\b/.test(group) && /\bw-full\b/.test(group) && /\bmax-w-/.test(group)
+        && gap >= 2 && closeAt > 0 && nextSteps.indexOf("<ContactLines") > closeAt,
+      `group "${group}"`);
+  }
   ok(SL.loadingOne,
     /t\.optout\.loading/.test(loadingSrc) && /aria-busy="true"/.test(loadingSrc)
       && (loadingSrc.match(/h-\[var\(--h-control-lg\)\]/g) ?? []).length === 1);
+  // ⭐ 2026-09-27 · THE SKELETON IS THE PAGE, DRAWN WITH ITS OWN PARTS. Both files take the same class
+  // names from one module, and the skeleton renders the same strings as transparent text on bars.
+  const bar = loadingSrc.match(/const BAR = "([^"]+)"/)?.[1] ?? "";
+  const shared = ["NUMBER_LABEL", "NUMBER_VALUE", "ACT_GROUP", "ACT_SENTENCE"];
+  ok(SL.loadingSame,
+    /from "\.\/optout-classes"/.test(loadingSrc) && /from "\.\/optout-classes"/.test(clientSrc)
+      && shared.every((c) => loadingSrc.includes(`className={${c}}`) && clientSrc.includes(`{${c}}`))
+      && loadingSrc.includes("<PageHeader eyebrow={SENDER_IDENTITY} title={<span className={`${TITLE_TEXT} ${BAR}`}>{t.optout.title}</span>} />")
+      && clientSrc.includes("title={<span className={TITLE_TEXT}>{title}</span>}")
+      && loadingSrc.includes("<p className={ACT_SENTENCE}><span className={BAR}>{t.optout.body}</span></p>")
+      && /\btext-transparent\b/.test(bar) && /\bbox-decoration-clone\b/.test(bar)
+      && /className="space-y-5"/.test(loadingSrc) && /<PageContainer tier="receipt" className="space-y-5">/.test(pageSrc),
+    `BAR = "${bar}"`);
+  const srOnlyAt = [...loadingSrc.matchAll(/className="sr-only"/g)].map((m) => m.index ?? -1);
+  ok(SL.loadingOrder,
+    srOnlyAt.length === 1 && srOnlyAt[0] > loadingSrc.indexOf('data-skeleton="action"'),
+    `sr-only at ${srOnlyAt.join(",")} · action at ${loadingSrc.indexOf('data-skeleton="action"')}`);
+  const actionDiv = loadingSrc.slice(loadingSrc.indexOf('data-skeleton="action"'));
+  const actionTag = actionDiv.slice(0, actionDiv.indexOf(">"));
+  ok(SL.loadingVisible,
+    /\bbg-bg-elevated\b/.test(bar) && /\bring-border\b/.test(bar) && !/bg-bg-overlay/.test(loadingSrc)
+      && /\bbg-bg-elevated\b/.test(actionTag) && /\bborder-border\b/.test(actionTag)
+      && /^[^<]*>\s*\{t\.optout\.loading\}\s*<\/div>/.test(actionDiv.slice(actionDiv.indexOf(">"))),
+    `BAR = "${bar}" · action ${actionTag.slice(0, 80)}`);
   // ⭐ EVERY STATE HAS ITS OWN SENTENCE, IN ALL THREE LOCALES, AND THEY ARE ALL DIFFERENT.
   // The unit's six states are loading · valid (`body`) · already suppressed · resubscribed ·
   // invalid token · error, plus `done` — the sentence a person reads after the tap that worked.
   // ⛔ Distinctness is the assertion that matters: two states sharing a sentence is a person
   // who cannot tell "you are already stopped" from "that did not go through".
-  const STATE_COPY = ["loading", "body", "already", "done", "resubscribed", "invalid", "error"] as const;
+  // `busy` (2026-09-27): a dry budget's own sentence, distinct from `invalid` by construction.
+  const STATE_COPY = ["loading", "body", "already", "done", "resubscribed", "invalid", "error", "busy"] as const;
   const HEADINGS = ["title", "stoppedTitle", "resumedTitle"] as const;
   for (const locale of ["sw", "en", "zh"] as const) {
     const d = dict[locale].optout as Record<string, string>;
@@ -678,6 +770,34 @@ async function runSurface(f: Fixtures): Promise<void> {
       !notOurs.test(d.invalid), d.invalid);
     ok(SL.placeholders(locale),
       /\{toggle\}/.test(d.invalidNext ?? "") && /\{path\}/.test(d.invalidNext ?? ""), d.invalidNext);
+    // ⭐ 2026-09-27 · ONE NAME FOR ONE THING. The heading and button said "marketing messages" (营销信息,
+    // "matangazo") while the consent a person gave says "offers and news by SMS" — a third name on the
+    // page whose sentences go into the consent ledger.
+    // Whitespace folded (a no-break space counts as a space), so a wrap hint in either string is not a rename.
+    const fold = (s: string) => s.replace(/\s+/g, " ").toLowerCase();
+    const noun = fold(dict[locale].push.marketingTitle);
+    const named = [d.title, d.stoppedTitle, d.resumedTitle, d.stopButton];
+    const oldNoun = { en: /marketing (messages|texts)/i, sw: /matangazo/i, zh: /营销/ }[locale];
+    const stale = Object.entries(d).filter(([, v]) => typeof v === "string" && oldNoun.test(v)).map(([k]) => k);
+    ok(SL.noun(locale),
+      named.every((x) => typeof x === "string" && fold(x).includes(noun)) && stale.length === 0,
+      `noun "${noun}" · ${named.join(" | ")}${stale.length ? ` · older name in ${stale.join(",")}` : ""}`);
+    // ⭐ 2026-09-27 · BREAK HINTS WHERE THE PAGE RELIES ON THEM, AND NEVER IN EVIDENCE. The page sets its
+    // headings and notices break-keep; a zh string with no zero-width hint could then break only at
+    // punctuation. sw/en headings keep "kwa SMS" / "by SMS" together with a no-break space. ⛔ The
+    // strings the ledger stores (`optOutWording`) carry neither: a hint there is an invisible byte in evidence.
+    {
+      const ZW = String.fromCharCode(0x200b), NB = String.fromCharCode(0xa0);
+      const KEPT = ["title", "stoppedTitle", "resumedTitle", "done", "already", "resubscribed", "invalid", "invalidNext", "error", "busy"];
+      const glue = { sw: `kwa${NB}SMS`, en: `by${NB}SMS`, zh: "" }[locale];
+      const missing = locale === "zh"
+        ? KEPT.filter((k) => !(d[k] ?? "").includes(ZW))
+        : HEADINGS.filter((k) => !(d[k] ?? "").includes(glue));
+      const evidence = { body: d.body, stopButton: d.stopButton, resubscribeButton: d.resubscribeButton, marketingBody: dict[locale].push.marketingBody };
+      const marked = Object.entries(evidence).filter(([, v]) => v.includes(ZW) || v.includes(NB)).map(([k]) => k);
+      ok(SL.hints(locale), missing.length === 0 && marked.length === 0,
+        `${missing.length ? `no hint in ${missing.join(",")}` : "hints in place"} · ${marked.length ? `evidence marked: ${marked.join(",")}` : "evidence clean"}`);
+    }
   }
   ok(SL.serverAnswer,
     /setState\(r\.ok \? r\.state : "error"\)/.test(clientSrc));
@@ -742,16 +862,73 @@ async function runSurface(f: Fixtures): Promise<void> {
   ok(SL.consentBeside,
     /t\.push\.marketingBody/.test(resumeGroup) && !/t\.optout\.body/.test(resumeGroup), resumeGroup.slice(0, 80));
   ok(SL.announced,
-    /role=\{state === "error" \? "alert" : "status"\}/.test(clientSrc) && /msgRef\.current\?\.focus\(\)/.test(clientSrc));
+    /<Callout size="md" tone=\{message\.tone\} role="status">/.test(clientSrc)
+      && /<Callout size="md" tone="danger" role="alert">/.test(clientSrc)
+      && /msgRef\.current\?\.focus\(\)/.test(clientSrc) && /errRef\.current\?\.focus\(/.test(clientSrc));
   ok(SL.sameAct,
     /if \(r\.ok\) \{\s*setIsSuppressed\(/.test(clientSrc) && /\{!isSuppressed \?/.test(clientSrc));
   ok(SL.caught,
     /fn\(token\)\.catch\(/.test(clientSrc));
-  ok(SL.bodySize,
-    /<Callout size="md"/.test(clientSrc));
+  {
+    // EVERY notice here is `md` — the status above the button and the alert below it.
+    const callouts = (clientSrc.match(/<Callout\b/g) ?? []).length;
+    const md = (clientSrc.match(/<Callout size="md"/g) ?? []).length;
+    ok(SL.bodySize, callouts >= 2 && md === callouts, `${md} of ${callouts} callouts are md`);
+  }
   ok(SL.budgeted,
     /stopMarketingWithinBudget\(/.test(actionsSrc) && /resumeMarketingWithinBudget\(/.test(actionsSrc)
       && /optOutClientKey\(\)/.test(actionsSrc) && /resolveOptOutTokenWithinBudget\(/.test(pageSrc));
+  // ⭐ 2026-09-27 · a failed tap is no longer "try again" and nothing else: our desk is shown under it,
+  // rendered on the server and handed down as a node (E-226 — the client never reads the config).
+  const errorBlock = clientSrc.includes('{state === "error" && (') ? clientSrc.slice(clientSrc.indexOf('{state === "error" && (')) : "";
+  ok(SL.contactOnError,
+    /\{t\.optout\.error\}<\/p>\s*\{contact\}\s*<\/Callout>/.test(errorBlock)
+      && /contact=\{<ContactLines t=\{t\} align="start" \/>\}/.test(pageSrc)
+      && !/support-config/.test(clientSrc)
+      && /export function ContactLines/.test(refusalSrc) && /SUPPORT_PHONE_TEL\(\)/.test(refusalSrc.slice(refusalSrc.indexOf("export function ContactLines"))),
+    errorBlock.slice(0, 160).replace(/\s+/g, " ") || "no error block");
+  // 🔴 2026-09-27 · the failure used to be inserted ABOVE the button, so the button dropped ~210px at 360
+  // and the desk's `tel:` row sat where the thumb had just tapped. Now the only failure text comes after
+  // the LAST button, nothing above the button reads the failure (`said` is the last OK answer), and the
+  // alert is focused without a scroll. The U8 drive measures the same thing in a browser.
+  {
+    const lastButton = clientSrc.lastIndexOf("</Button>");
+    const errAt = clientSrc.indexOf("{t.optout.error}");
+    ok(SL.errorBelow,
+      lastButton > 0 && errAt > lastButton && clientSrc.split("{t.optout.error}").length === 2
+        && /: said === "resumed" \? t\.optout\.resumedTitle/.test(clientSrc)
+        && /const message =\s*said === "stopped"/.test(clientSrc)
+        && !/(?<![.\w])state === "(idle|stopped|already|resumed)"/.test(clientSrc) // the component's own `state`, never the server's `r.state`
+        && /setIsSuppressed\([^)]*\);\s*setSaid\(r\.state\);/.test(clientSrc)
+        && /errRef\.current\?\.focus\(\{ preventScroll: true \}\)/.test(clientSrc),
+      `error sentence at ${errAt} · last button ends at ${lastButton}`);
+  }
+  // ⭐ 2026-09-27 · the pending label ("One moment…") is readable: `.btn:disabled` dims a disabled button to
+  // 0.45 and a busy one is disabled too; both buttons carry a busy rule that outranks it.
+  {
+    const busy = clientSrc.match(/const BUSY_LEGIBLE = "([^"]*)";/)?.[1] ?? "";
+    const opacity = Number(busy.match(/\baria-busy:disabled:opacity-(\d+)\b/)?.[1] ?? 0);
+    ok(SL.busyLegible,
+      opacity >= 80 && (clientSrc.match(/<Button [^>]*className=\{BUSY_LEGIBLE\}/g) ?? []).length === 2,
+      `BUSY_LEGIBLE = "${busy}"`);
+  }
+  // ⭐ 2026-09-27 · zh broke mid-word on this page (接|收, 优|惠, 关|闭) and notices ended on one word or one
+  // glyph. The headings and every notice sentence take the shared classes; the act sentence (ledger
+  // evidence, no hints) takes `text-pretty` only, because keep-all without hints breaks only at punctuation.
+  {
+    const cls = (s: string) => s.split(/\s+/);
+    const keep = cls(KEEP_WORDS).includes("break-keep") && cls(KEEP_WORDS).includes("[overflow-wrap:anywhere]");
+    const classesOk = keep && TITLE_TEXT === KEEP_WORDS
+      && cls(NOTICE_TEXT).includes("text-pretty") && cls(NOTICE_TEXT).includes("break-keep")
+      && cls(ACT_SENTENCE).includes("text-pretty") && !cls(ACT_SENTENCE).includes("break-keep");
+    const clientOk = clientSrc.includes("title={<span className={TITLE_TEXT}>{title}</span>}")
+      && (clientSrc.match(/<p className=\{NOTICE_TEXT\}>/g) ?? []).length === 2;
+    const refusalOk = refusalSrc.includes("title={<span className={TITLE_TEXT}>{t.optout.title}</span>}")
+      && /title=\{<span className=\{`block text-balance \$\{KEEP_WORDS\}`\}>/.test(refusalBlock)
+      && refusalBlock.includes("<span className={`block ${NOTICE_TEXT}`}>");
+    ok(SL.wrap, classesOk && clientOk && refusalOk,
+      `classes ${classesOk} · client ${clientOk} · refusal ${refusalOk}`);
+  }
 
   // ── D6 · THE NUMBER IS MASKED IN THE SHARED `+255••••NN` FORM ───────────────────────────
   const shown = await resolveOptOutToken(f.ancientToken);
@@ -782,8 +959,16 @@ async function runSurface(f: Fixtures): Promise<void> {
   ok(SL.noUpsell,
     shellBody.length > 200 && upsell.length === 0, upsell.join(", ") || "none");
   ok(SL.shellCarries,
-    ["<FiftyLockup", "<LanguageMenu", "<MainLandmark>", "<SkipToContent", "LICENCE_NUMBER()", "HELPLINE()", "t.footer.eighteenPlus"]
+    ["<FiftyLockup", "<LanguageMenu", "<MainLandmark>", "<SkipToContent", "LICENCE_NUMBER()", "HELPLINE()", "t.footer.eighteenPlus", "t.footer.stopGambling"]
       .every((s) => shellBody.includes(s)));
+  {
+    const rgAt = shellBody.indexOf("{t.footer.stopGambling}");
+    const helplineAt = shellBody.indexOf("{HELPLINE()}");
+    ok(SL.rgContext,
+      rgAt > 0 && helplineAt > rgAt && !/aria-label=\{t\.footer\.eighteenPlus\}/.test(shellBody)
+        && /<span className="kp-rg__18">\{t\.footer\.eighteenPlus\}<\/span>/.test(shellBody),
+      `rg line at ${rgAt} · helpline at ${helplineAt}`);
+  }
   const OVERLAYS = [
     "src/components/onboarding/first-visit-primer.tsx",
     "src/components/chat/ChatRoot.tsx",
@@ -799,8 +984,18 @@ async function runSurface(f: Fixtures): Promise<void> {
       !!re && hit.every((x) => re.test(x)) && miss.filter((x) => x !== "/markets" || !file.includes("channels")).every((x) => !re.test(x)),
       re ? `/${re.source}/` : "no HIDE_ON found");
   }
-  ok("S21b · the shell's own test is the SAME segment match, built from `OPTOUT_PATH`",
-    hit.every(isOptOutPath) && miss.every((x) => !isOptOutPath(x)));
+  // ⚠️ The overlays hide on ANY `/s…` path (harmless on a 404); the SHELL takes only the two routes that
+  // exist, so a deeper path's 404 renders in the full shell, where its soft links work.
+  const shellHit = [`${OPTOUT_PATH}${f.contactToken}`, "/s", "/s/", `${OPTOUT_PATH}ZZZZZZZZ`, `${OPTOUT_PATH}ZZZZZZZZ/`];
+  const shellMiss = [...miss, `${OPTOUT_PATH}ZZZZZZZZ/x`, "/s/a/b/c", "/s//"];
+  ok(SL.shellMatch,
+    shellHit.every((x) => shellMatch(x)) && shellMiss.every((x) => !shellMatch(x)),
+    `hit ${shellHit.filter((x) => !shellMatch(x)).join(",") || "all"} · wrongly hit ${shellMiss.filter((x) => shellMatch(x)).join(",") || "none"}`);
+  // ⭐ 2026-09-27 · bare `/s` has a page of its own: the same refusal, never the root 404 in the stripped shell.
+  ok(SL.bare,
+    /<OptOutRefusal t=\{t\} kind="invalid" \/>/.test(bareSrc) && /export const dynamic = "force-dynamic"/.test(bareSrc)
+      && /robots:\s*\{\s*index:\s*false/.test(bareSrc) && !/next\/link/.test(bareSrc),
+    bareSrc.match(/return <[^;]+;/)?.[0] ?? "no render");
 
   // ── D6 · THE LIVE TOKEN NEVER REACHES THE AUDIT CHAIN ───────────────────────────────────
   // ⚠️ SELF-CONTAINED, like S19b: a stop and a resume from the player's own link write the two rows.
@@ -852,6 +1047,8 @@ type Defect = {
   noActBudget?: boolean;      // the two acts are not budgeted at all
   noLinkCap?: boolean;        // a held valid link's acts are not capped per link
   actsChargeHits?: boolean;   // an act on a valid link spends the ADDRESS budget like a miss
+  // ── 2026-09-27 ──
+  throttledReadsInvalid?: boolean; // a dry budget tells a genuine link "this link does not work"
 };
 
 const TOKEN_MAX_AGE_MS = 365 * 86400_000;
@@ -1026,8 +1223,16 @@ function pageWithDefect(d: Defect): OptOutPage {
     return r;
   };
 
+  /** `refusalKindFor`, written out. ⛔ THE PRE-FIX SHAPE (2026-09-27): every `!ok` but a failed read was
+   *  "this link does not work", so a person behind a dry address was told their genuine link was broken. */
+  const refusalKind = (r: { ok: boolean; reason?: string } | null): string | null => {
+    if (!r) return "failed";
+    if (r.ok) return null;
+    return r.reason === "throttled" && !d.throttledReadsInvalid ? "busy" : "invalid";
+  };
+
   return {
-    stop, resume, isSuppressed, mint, resolveWithin, stopWithin,
+    stop, resume, isSuppressed, mint, resolveWithin, stopWithin, refusalKind,
     resolve: async (t) => ({ ok: (await resolve_(t)) !== null }),
     confirms: d.confirms === true,
   };
@@ -1111,6 +1316,8 @@ if (!PROVE_RED) {
     { name: "D6 · the two acts are not budgeted — a script POSTs guesses for free", defect: { noActBudget: true }, expect: L.actWalker },
     { name: "D6 · a held link's acts are uncapped — stop/start at request speed, a ledger row each", defect: { noLinkCap: true }, expect: L.linkCap },
     { name: "D6 · a real STOP spends the address like a guess — genuine STOPs behind one NAT run it dry", defect: { actsChargeHits: true }, expect: L.hitFree },
+    // ── 2026-09-27 ──
+    { name: "a dry budget tells a genuine link 'this link does not work' — so the person never tries again", defect: { throttledReadsInvalid: true }, expect: L.busy },
   ];
 
   for (const [i, c] of CASES.entries()) {
@@ -1139,7 +1346,11 @@ if (!PROVE_RED) {
   const CLIENT = "src/app/s/[token]/optout-client.tsx";
   const LOADING = "src/app/s/[token]/loading.tsx";
   const ACTIONS = "src/app/s/[token]/actions.ts";
-  const SKELETON = `<div data-skeleton="action" className="h-[var(--h-control-lg)] w-full rounded-lg bg-bg-overlay/60" />`;
+  const REFUSAL = "src/app/s/optout-refusal.tsx";
+  const BARE = "src/app/s/page.tsx";
+  const SKELETON = `data-skeleton="action" className="flex h-[var(--h-control-lg)] w-full items-center justify-center rounded-control border border-border bg-bg-elevated kp-shimmer-track text-body font-semibold text-text-muted"`;
+  const STACK = `<div role="status" aria-busy="true" className="space-y-5">`;
+  const BAR_DEF = `const BAR = "text-transparent bg-bg-elevated rounded-sm ring-1 ring-inset ring-border box-decoration-clone";`;
   /** Sets one dictionary sentence for the length of a case; returns the undo. */
   const setCopy = (loc: "sw" | "en" | "zh", key: string, value: () => string) => () => {
     const o = dict[loc].optout as Record<string, string>;
@@ -1148,7 +1359,8 @@ if (!PROVE_RED) {
     o[key] = value();
     return () => { if (had) o[key] = was; else delete o[key]; };
   };
-  const SURFACE_CASES: Array<{ name: string; expect: string; plant?: SurfacePlant; copy?: () => () => void }> = [
+  /** `swap` (2026-09-27): replaces an imported function the S-checks call, for the length of a case. */
+  const SURFACE_CASES: Array<{ name: string; expect: string; plant?: SurfacePlant; copy?: () => () => void; swap?: () => () => void }> = [
     { name: "D6 · the first-visit primer opens on /s again", expect: SL.overlay("first-visit-primer.tsx"),
       plant: { file: PRIMER, from: "(auth|admin|s)(", to: "(auth|admin)(" } },
     { name: "D6 · the chat bubble sits on /s again", expect: SL.overlay("ChatRoot.tsx"),
@@ -1165,8 +1377,8 @@ if (!PROVE_RED) {
       plant: { file: CLIENT, from: "? t.optout.stoppedTitle", to: "? t.optout.title" } },
     { name: "D6 · the resume button sits under the STOP instruction, not its consent sentence", expect: SL.consentBeside,
       plant: { file: CLIENT, from: "{t.push.marketingBody}</p>", to: "{t.optout.body}</p>" } },
-    { name: "D6 · the answer is a silent note, never announced", expect: SL.announced,
-      plant: { file: CLIENT, from: ` role={state === "error" ? "alert" : "status"}`, to: "" } },
+    { name: "D6 · the failure is a silent note, never announced", expect: SL.announced,
+      plant: { file: CLIENT, from: ` role="alert"`, to: "" } },
     { name: "D6 · a failed resume offers the STOP button — the button follows the last state, not the truth", expect: SL.sameAct,
       plant: { file: CLIENT, from: "{!isSuppressed ? (", to: `{!(state === "stopped" || state === "already") ? (` } },
     { name: "D6 · a rejected action falls to the root error boundary", expect: SL.caught,
@@ -1180,11 +1392,49 @@ if (!PROVE_RED) {
     { name: "the page hands the RAW number to the client", expect: SL.mask,
       plant: { file: PAGE, from: "masked={r.masked}", to: "masked={r.identifier}" } },
     { name: "the refusal tells the reader to tap a button that is not there", expect: SL.refusalNoTap,
-      plant: { file: PAGE, from: "{invalidNextStep(t)}", to: "{t.optout.body}" } },
+      plant: { file: REFUSAL, from: "{invalidNextStep(t)}", to: "{t.optout.body}" } },
     { name: "D6 · the refusal is a dead end again", expect: SL.nextStep,
-      plant: { file: PAGE, from: "action={<NextSteps t={t} />}", to: "" } },
+      plant: { file: REFUSAL, from: `action={<NextSteps t={t} retryHref={kind === "invalid" ? undefined : retryHref} />}`, to: "" } },
+    { name: "2026-09-27 · the page picks its refusal by hand again — a dry budget reads 'this link does not work'", expect: SL.retry,
+      plant: { file: PAGE, from: `kind={refusalKindFor(r) ?? "invalid"}`, to: `kind={r ? "invalid" : "failed"}` } },
     { name: "D6 · the skeleton promises two buttons", expect: SL.loadingOne,
-      plant: { file: LOADING, from: SKELETON, to: SKELETON + SKELETON } },
+      plant: { file: LOADING, from: SKELETON, to: `${SKELETON} data-second="h-[var(--h-control-lg)]"` } },
+    { name: "2026-09-27 · the skeleton's sentence goes back to a hand-sized bar", expect: SL.loadingSame,
+      plant: { file: LOADING, from: "<p className={ACT_SENTENCE}><span className={BAR}>{t.optout.body}</span></p>", to: `<div className="w-full rounded bg-bg-elevated" style={{ height: 42 }} />` } },
+    { name: "2026-09-27 · the read-aloud line goes back to FIRST in the spaced stack (the 24px drop)", expect: SL.loadingOrder,
+      plant: { file: LOADING, from: STACK, to: `${STACK}<p className="sr-only">{t.optout.loading}</p>` } },
+    { name: "2026-09-27 · the bars go back to a near-invisible overlay tint", expect: SL.loadingVisible,
+      plant: { file: LOADING, from: BAR_DEF, to: `const BAR = "text-transparent bg-bg-overlay/40 rounded-sm box-decoration-clone";` } },
+    { name: "2026-09-27 · a failed tap offers only 'try again' again — no way to reach us", expect: SL.contactOnError,
+      plant: { file: CLIENT, from: `{contact}`, to: "" } },
+    { name: "2026-09-27 · the failure goes back ABOVE the button — the button drops and the desk's tel: row lands under the thumb", expect: SL.errorBelow,
+      plant: { file: CLIENT, from: "<dl>", to: `{state === "error" && <p>{t.optout.error}</p>}<dl>` } },
+    { name: "2026-09-27 · the heading reads the failure, not the last OK answer — it changes height under the thumb", expect: SL.errorBelow,
+      plant: { file: CLIENT, from: `: said === "resumed" ? t.optout.resumedTitle`, to: `: state === "resumed" ? t.optout.resumedTitle` } },
+    { name: "2026-09-27 · the failed tap's alert scrolls itself into view — the button moves with the page", expect: SL.errorBelow,
+      plant: { file: CLIENT, from: "errRef.current?.focus({ preventScroll: true })", to: "errRef.current?.focus()" } },
+    { name: "2026-09-27 · the pending label goes back to the disabled 0.45 dim", expect: SL.busyLegible,
+      plant: { file: CLIENT, from: `const BUSY_LEGIBLE = "aria-busy:disabled:opacity-85 aria-busy:disabled:cursor-progress";`, to: `const BUSY_LEGIBLE = "";` } },
+    { name: "2026-09-27 · the heading loses its keep-words span — zh splits 接|收 again", expect: SL.wrap,
+      plant: { file: CLIENT, from: "title={<span className={TITLE_TEXT}>{title}</span>}", to: "title={title}" } },
+    { name: "2026-09-27 · the refusal's sentence loses text-pretty and break-keep — '…or contact / us.'", expect: SL.wrap,
+      plant: { file: REFUSAL, from: "<span className={`block ${NOTICE_TEXT}`}>", to: `<span className="block">` } },
+    { name: "2026-09-27 · the refusal's two buttons go back to one 4px-gap stack at two widths", expect: SL.stepsGroup,
+      plant: { file: REFUSAL, from: "flex w-full max-w-xs flex-col items-stretch gap-2", to: "flex flex-col items-center gap-1" } },
+    { name: "2026-09-27 · a zh heading loses its break hints — break-keep then breaks it only at punctuation", expect: SL.hints("zh"),
+      copy: setCopy("zh", "resumedTitle", () => "您已选择重新接收短信优惠与资讯") },
+    { name: "2026-09-27 · the sw heading loses its no-break space — 'kwa / SMS' splits again", expect: SL.hints("sw"),
+      copy: setCopy("sw", "stoppedTitle", () => "Ofa na habari kwa SMS zimesimamishwa") },
+    { name: "2026-09-27 · a break hint goes into ledger evidence (the stop sentence)", expect: SL.hints("zh"),
+      copy: setCopy("zh", "body", () => dict.zh.optout.body.replace("。", `。${String.fromCharCode(0x200b)}`)) },
+    { name: "2026-09-27 · the helpline loses its responsible-gambling line and reads as our own", expect: SL.rgContext,
+      plant: { file: SHELL, from: `<p className="italic text-text-subtle text-body-sm text-balance break-keep">{t.footer.stopGambling}</p>`, to: "" } },
+    { name: "2026-09-27 · the 18+ roundel gets its prohibited aria-label back", expect: SL.rgContext,
+      plant: { file: SHELL, from: `<span className="kp-rg__18">`, to: `<span aria-label={t.footer.eighteenPlus} className="kp-rg__18">` } },
+    { name: "2026-09-27 · the shell takes any /s/… path again — a deeper 404 renders inside the stripped shell", expect: SL.shellMatch,
+      swap: () => { const was = shellMatch; shellMatch = (p) => p === "/s" || p.startsWith(OPTOUT_PATH); return () => { shellMatch = was; }; } },
+    { name: "2026-09-27 · bare /s goes back to the root 404 inside the stripped shell", expect: SL.bare,
+      plant: { file: BARE, from: `<OptOutRefusal t={t} kind="invalid" />`, to: "null" } },
     { name: "D6 · the acts bypass the budget", expect: SL.budgeted,
       plant: { file: ACTIONS, from: "return stopMarketingWithinBudget(token, await actLocale(), await optOutClientKey());", to: "return stopMarketing(token, await actLocale());" } },
     { name: "D6 · the resumed sentence promises delivery again", expect: SL.noPromise("sw"),
@@ -1193,6 +1443,8 @@ if (!PROVE_RED) {
       copy: setCopy("en", "invalid", () => "This link is not one of ours, or it has been mistyped. Nothing has changed.") },
     { name: "D6 · the stopped heading is the stop instruction again", expect: SL.headings("zh"),
       copy: setCopy("zh", "stoppedTitle", () => dict.zh.optout.title) },
+    { name: "2026-09-27 · the English heading says 'marketing messages' again — a third name for one thing", expect: SL.noun("en"),
+      copy: setCopy("en", "title", () => "Stop marketing messages") },
     { name: "D6 · the next step types the toggle's name out, so a rename strands it", expect: SL.placeholders("sw"),
       copy: setCopy("sw", "invalidNext", () => "Ili kuacha matangazo, wasiliana nasi.") },
   ];
@@ -1201,7 +1453,7 @@ if (!PROVE_RED) {
     console.log(`── surface case ${i + 1}: ${c.name}`);
     SURFACE_PLANT = c.plant ?? null;
     surfacePlantHits = -1;
-    const undo = c.copy ? c.copy() : () => {};
+    const undo = c.copy ? c.copy() : c.swap ? c.swap() : () => {};
     try {
       await runSurface(await seed(200 + i));
     } finally {

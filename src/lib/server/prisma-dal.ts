@@ -3401,6 +3401,8 @@ export const prismaDb = {
         where: {
           channel: key.channel, identifier: key.identifier, category: key.category,
           liftedAt: null,
+          // ⛔ Only a person's own stop is liftable — see the memory twin.
+          reason: "WITHDRAWN",
         },
         data: { liftedAt: new Date(at), liftedReason: reason },
       });

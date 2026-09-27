@@ -9,8 +9,10 @@
  *
  * ⭐ SINCE 2026-09-26 IT ALSO PROVES WHAT THE ROW SAYS WAS SHOWN (D2) AND WHICH ROWS COUNT (OQ11, D3):
  * §6 drives the REAL registration service in English and Chinese and reads the row back — the path
- * that wrote "Nipe matangazo (hiari)." for every registrant whatever they read; §7 pins the actions
- * that must read the shown language from the cookie; §8 proves every consent sentence the dictionary
+ * that wrote "Nipe matangazo (hiari)." for every registrant whatever they read; §7 pins that both consent
+ * forms post the language they were DRAWN in (2026-09-27: the cookie alone could change between drawing
+ * and submitting), that the actions validate it to en/sw/zh before the cookie fallback, and runs that
+ * validator; §8 proves every consent sentence the dictionary
  * shows today is one of the literal SMS-naming sentences the gate accepts (`consent-wording.ts`),
  * that no withdrawal or pre-2026-09-26 sentence is, that the pinned list was only ever appended to, and
  * that the three consent points call the consent by ONE name in each language (D1).
@@ -27,7 +29,7 @@ process.env.EMAIL_OUTBOX_CAPTURE = "1";
 
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
-import { appendMarketingConsent, marketingConsentWording } from "../src/lib/server/marketing/consent-ledger.ts";
+import { appendMarketingConsent, marketingConsentWording, renderedLocaleOf } from "../src/lib/server/marketing/consent-ledger.ts";
 import type { AppendMarketingConsentInput, MarketingConsentSite } from "../src/lib/server/marketing/consent-ledger.ts";
 import { SMS_CONSENT_WORDINGS, isSmsConsentWording } from "../src/lib/marketing/consent-wording.ts";
 import { optOutWording } from "../src/lib/server/marketing/optout-service.ts";
@@ -45,11 +47,13 @@ process.exitCode = 1;
 const PROVE_RED = process.argv.includes("--prove-red");
 
 /** The sources §7 reads — handed in, so a red case can plant the pre-fix text. */
-type Sources = { registerActions: string; profileActions: string; authService: string };
+type Sources = { registerActions: string; registerPage: string; profileActions: string; profileCard: string; authService: string };
 const read = (rel: string) => decomment(readFileSync(new URL(`../${rel}`, import.meta.url), "utf8")).replace(/\r\n/g, "\n");
 const REAL_SOURCES: Sources = {
   registerActions: read("src/app/auth/register/actions.ts"),
+  registerPage: read("src/app/auth/register/page.tsx"),
   profileActions: read("src/app/profile/notifications/actions.ts"),
+  profileCard: read("src/app/profile/notifications/marketing-consent.tsx"),
   authService: read("src/lib/server/auth-service.ts"),
 };
 
@@ -61,6 +65,8 @@ type Impl = {
   register: (input: PasswordRegisterInput) => Promise<unknown>;
   /** OQ11's predicate — which stored sentences the gate counts as SMS consent. */
   isPinned: (wording: string) => boolean;
+  /** D2 · the validator for the language a form posts back as the one it was drawn in. */
+  rendered: (posted: unknown) => MessagingLocale | null;
   sources: Sources;
 };
 
@@ -70,6 +76,7 @@ const REAL: Impl = {
   suppress: async (row) => Promise.resolve(db.suppression.create(row)),
   register: registerWithPassword,
   isPinned: isSmsConsentWording,
+  rendered: renderedLocaleOf,
   sources: REAL_SOURCES,
 };
 
@@ -86,11 +93,14 @@ const LOCALES: MessagingLocale[] = ["SW", "EN", "ZH"];
 
 /**
  * ⭐ THE APPEND-ONLY PIN. A hash of the first entries of `SMS_CONSENT_WORDINGS` as they shipped on
- * 2026-09-26. Appending leaves it unchanged; editing or removing an entry — which would disqualify
+ * 2026-09-27. Appending leaves it unchanged; editing or removing an entry — which would disqualify
  * people who consented under it — changes it. ⛔ Never "update the hash" to make this pass.
+ * ⚠️ RE-PINNED ONCE, BEFORE THE FIRST DEPLOY (2026-09-27): `since` said 2026-09-26, the decision day,
+ * for a field documented as the ship date. No production row existed under these entries, so the
+ * date was corrected and the hash taken again (was fe46193d9f2c2416). The wordings are unchanged.
  */
 const PINNED_PREFIX_COUNT = 9;
-const PINNED_PREFIX_SHA = "fe46193d9f2c2416";
+const PINNED_PREFIX_SHA = "9b041893ec43a670";
 const prefixSha = (list: typeof SMS_CONSENT_WORDINGS) => createHash("sha256")
   .update(list.slice(0, PINNED_PREFIX_COUNT).map((w) => [w.since, w.site, w.locale, w.wording].join("|")).join("\n"), "utf8")
   .digest("hex").slice(0, 16);
@@ -221,16 +231,38 @@ async function runAssertions(impl: Impl, phone: string, tag: string): Promise<vo
   ok(p("6e · ⚠️ CONTROL — the three registrations really created three accounts"),
     !!en.user && !!zh.user && !!none.user, `${!!en.user} ${!!zh.user} ${!!none.user}`);
 
-  // ── 7 · D2 · THE ACTIONS READ THE SHOWN LANGUAGE FROM THE COOKIE ───────────────────────────
-  // A server action needs a request scope, so these are pinned at source level: the service above
-  // is only as honest as the locale its callers hand it.
+  // ── 7 · D2 · THE LANGUAGE A CONSENT FORM WAS DRAWN IN IS THE ONE RECORDED ──────────────────
+  // A server action needs a request scope, so the wiring is pinned at source level: the service above
+  // is only as honest as the locale its callers hand it. 🔴 Until 2026-09-27 both actions read the
+  // `kp-locale` cookie AT SUBMIT, and the cookie can change after the page is drawn (the language
+  // provider rewrites it on mount without redrawing the server's page; another tab can switch), so a
+  // Swahili tick was stored as the English sentence. ⭐ Each form now posts the language it was drawn
+  // in, the action validates it (`renderedLocaleOf`), and the cookie is only the fallback.
   const s = impl.sources;
-  ok(p("7 · the register actions read the page's language on the server (getServerT) and pass it to BOTH paths"),
-    /getServerT\(\)/.test(s.registerActions)
-      && /registerWithPassword\(\{[\s\S]*?locale:\s*await shownLocale\(\)[\s\S]*?\}\)/.test(s.registerActions)
-      && /requestRegisterOtp\(\{[\s\S]*?locale:\s*await shownLocale\(\)[\s\S]*?\}\)/.test(s.registerActions));
-  ok(p("7b · ⛔ the profile toggle records the language the page was shown in (getServerT), never User.locale"),
-    /getServerT\(\)/.test(s.profileActions) && !/user\.locale/.test(s.profileActions) && /locale:\s*shown/.test(s.profileActions));
+  ok(p("7 · the register actions record the language the form posts as DRAWN (validated), the cookie only as fallback, on BOTH paths"),
+    /renderedLocaleOf\(formData\.get\("shownLocale"\)\)\s*\?\?\s*messagingLocaleOf\(\(await getServerT\(\)\)\.locale\)/.test(s.registerActions)
+      && /registerWithPassword\(\{[\s\S]*?locale:\s*await shownLocale\(formData\)[\s\S]*?\}\)/.test(s.registerActions)
+      && /requestRegisterOtp\(\{[\s\S]*?locale:\s*await shownLocale\(formData\)[\s\S]*?\}\)/.test(s.registerActions));
+  ok(p("7a · ⭐ the sign-up form posts the language it was drawn in — a hidden shownLocale from the same getServerT() that drew its label"),
+    /const \{ t, locale \} = await getServerT\(\)/.test(s.registerPage)
+      && /<input type="hidden" name="shownLocale" value=\{locale\} \/>/.test(s.registerPage));
+  ok(p("7b · ⛔ the profile toggle records the language the switch was drawn in (validated), the cookie as fallback — never User.locale"),
+    /renderedLocaleOf\(renderedLocale\)\s*\?\?\s*messagingLocaleOf\(\(await getServerT\(\)\)\.locale\)/.test(s.profileActions)
+      && !/user\.locale/.test(s.profileActions) && /locale:\s*shown/.test(s.profileActions));
+  ok(p("7d · ⭐ the profile switch posts its OWN drawn language (useT().locale) with every tap"),
+    /const \{ t, locale \} = useT\(\)/.test(s.profileCard) && /setMarketingConsentAction\(want,\s*locale\)/.test(s.profileCard));
+  // ⛔ EXECUTED: the posted value only ever SELECTS one of three dictionary sentences, so it must be one
+  // of exactly three values — a case variant, a padded value or free text is refused (the cookie decides).
+  const table: Array<[unknown, MessagingLocale | null]> = [
+    ["en", "EN"], ["sw", "SW"], ["zh", "ZH"],
+    ["EN", null], ["Sw", null], [" sw", null], ["en-GB", null], ["fr", null], ["", null],
+    [null, null], [undefined, null], [1, null], [{}, null], ["<b>en</b>", null],
+    ["Send me 50pick offers and news by SMS (optional).", null],
+  ];
+  const wrongRendered = table.filter(([x, want]) => impl.rendered(x) !== want)
+    .map(([x, want]) => `${JSON.stringify(x) ?? String(x)} → ${impl.rendered(x)} (want ${want})`);
+  ok(p("7e · ⛔ EXECUTED · a posted language counts only as exactly en / sw / zh — case, padding and free text are refused"),
+    wrongRendered.length === 0, wrongRendered.join(" | "));
   ok(p("7c · ⛔ no registration site in auth-service writes a literal \"SW\" locale any more"),
     !/\blocale:\s*"SW"\s*,/.test(s.authService) && (s.authService.match(/messagingLocaleOf\(/g) ?? []).length >= 5,
     `${(s.authService.match(/messagingLocaleOf\(/g) ?? []).length} messagingLocaleOf call(s)`);
@@ -256,7 +288,7 @@ async function runAssertions(impl: Impl, phone: string, tag: string): Promise<vo
   const noChannel = SMS_CONSENT_WORDINGS.filter((w) => !(w.locale === "ZH" ? w.wording.includes("短信") : w.wording.includes("SMS")));
   ok(p("8d · every pinned sentence names its channel (SMS / 短信) — the reason the list exists"),
     noChannel.length === 0, noChannel.map((w) => w.wording.slice(0, 40)).join(" | "));
-  ok(p("8e · ⛔ APPEND-ONLY — the entries pinned on 2026-09-26 are byte-identical"),
+  ok(p("8e · ⛔ APPEND-ONLY — the entries pinned on 2026-09-27 (the ship date) are byte-identical"),
     prefixSha(SMS_CONSENT_WORDINGS) === PINNED_PREFIX_SHA && SMS_CONSENT_WORDINGS.length >= PINNED_PREFIX_COUNT,
     `sha ${prefixSha(SMS_CONSENT_WORDINGS)} · ${SMS_CONSENT_WORDINGS.length} entries`);
   // ⭐ ONE NAME (D1). The consent had a different name on every surface ("product updates", "Product news",
@@ -354,8 +386,32 @@ if (!PROVE_RED) {
     {
       name: "🔴 D2 · the profile toggle reads User.locale again (never written after sign-up, so always SW)",
       phone: "0712345606",
-      expect: "7b · ⛔ the profile toggle records the language the page was shown in (getServerT), never User.locale",
+      expect: "7b · ⛔ the profile toggle records the language the switch was drawn in (validated), the cookie as fallback — never User.locale",
       impl: { ...REAL, sources: { ...REAL_SOURCES, profileActions: REAL_SOURCES.profileActions.replace(/locale:\s*shown/, "locale: user.locale") } },
+    },
+    {
+      name: "🔴 D2 · the register action reads only the cookie at submit again — a Swahili tick stored as English once the provider rewrote it",
+      phone: "0712345611",
+      expect: "7 · the register actions record the language the form posts as DRAWN (validated), the cookie only as fallback, on BOTH paths",
+      impl: { ...REAL, sources: { ...REAL_SOURCES, registerActions: REAL_SOURCES.registerActions.replace('renderedLocaleOf(formData.get("shownLocale")) ?? ', "") } },
+    },
+    {
+      name: "🔴 D2 · the sign-up form stops posting the language it was drawn in",
+      phone: "0712345612",
+      expect: "7a · ⭐ the sign-up form posts the language it was drawn in — a hidden shownLocale from the same getServerT() that drew its label",
+      impl: { ...REAL, sources: { ...REAL_SOURCES, registerPage: REAL_SOURCES.registerPage.replace('<input type="hidden" name="shownLocale" value={locale} />', "") } },
+    },
+    {
+      name: "🔴 D2 · the profile switch posts no language, so a second tab's cookie decides again",
+      phone: "0712345613",
+      expect: "7d · ⭐ the profile switch posts its OWN drawn language (useT().locale) with every tap",
+      impl: { ...REAL, sources: { ...REAL_SOURCES, profileCard: REAL_SOURCES.profileCard.replace("setMarketingConsentAction(want, locale)", "setMarketingConsentAction(want)") } },
+    },
+    {
+      name: "⛔ D2 · the posted language is trusted as free text — whatever the client sends becomes the ledger's locale",
+      phone: "0712345614",
+      expect: "7e · ⛔ EXECUTED · a posted language counts only as exactly en / sw / zh — case, padding and free text are refused",
+      impl: { ...REAL, rendered: (x) => String(x ?? "").toUpperCase() as MessagingLocale },
     },
     {
       name: "🔴 D2 · a registration site writes the literal \"SW\" again",

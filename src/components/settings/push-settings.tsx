@@ -121,7 +121,7 @@ export function PushSettings() {
 
   return (
     <section className="rounded-xl glass-panel p-5">
-      <p className="gilt-eyebrow mb-1">{t.push.eyebrow}</p>
+      {/* No eyebrow of its own (consent-07): the page's header already says "Notifications" twice above it. */}
       <p className="mb-4 text-body-sm text-text-subtle">{t.push.sectionHint}</p>
       <div className="flex items-start justify-between gap-4 border-t border-border pt-4">
         <div className="flex items-start gap-3 min-w-0">
@@ -132,7 +132,8 @@ export function PushSettings() {
             <I.bellRing s={17} />
           </span>
           <div className="min-w-0">
-            <p className="font-display text-[14px] font-semibold text-text leading-tight">{t.push.title}</p>
+            {/* text-balance, like the SMS card below it: a two-line title never leaves one word alone at 360. */}
+            <p className="font-display text-[14px] font-semibold text-text leading-tight text-balance">{t.push.title}</p>
             {/* polite live region: a dismissed prompt raises no toast, so the changed hint is the only answer. */}
             <p className="mt-0.5 text-body-sm text-text-subtle leading-snug" aria-live="polite">{hint}</p>
           </div>

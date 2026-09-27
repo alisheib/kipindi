@@ -90,14 +90,24 @@ export function smsProviderResolution(): SmsProviderResolution {
  * QUEUED. The env that is NOT read here is as load-bearing as the ones that are.
  */
 export function smsConfigured(): boolean {
+  return smsRailProblem() === null;
+}
+
+/** Why SMS cannot deliver on this box, or null when it can. `smsConfigured()` is exactly `smsRailProblem() === null`,
+ *  so the two can never disagree. ⭐ The admin tile names the one that applies (2026-09-27): the balance read needs only
+ *  the keys, so a box with no sender ID answered a balance and was captioned "Healthy" while every send was refused. */
+export type SmsRailProblem = "provider-unrecognised" | "console-in-production" | "keys-not-set" | "sender-id";
+
+export function smsRailProblem(): SmsRailProblem | null {
   switch (smsProviderResolution()) {
     case "blackball":
-      return blackballConfigured() && !senderIdProblem(process.env.SMS_SENDER_ID);
+      if (!blackballConfigured()) return "keys-not-set";
+      return senderIdProblem(process.env.SMS_SENDER_ID) ? "sender-id" : null;
     case "console":
       // The stub is a working channel in dev and a black hole in production.
-      return process.env.NODE_ENV !== "production";
+      return process.env.NODE_ENV === "production" ? "console-in-production" : null;
     case "unrecognised":
-      return false;
+      return "provider-unrecognised";
   }
 }
 
@@ -120,9 +130,10 @@ const health = () => (globalThis.__50PICK_SMS_HEALTH ??= { sent: 0, failed: 0 })
 
 /** Below this, non-OTP traffic is refused. TZS. */
 const balanceFloor = () => Number(process.env.SMS_BALANCE_FLOOR_TZS) || 50;
-/** At or below this, ONE `sms.balance_low` audit row is written and every ADMIN/COMPLIANCE officer gets a bell row
- *  and an email (`notifyAdminsSmsCreditLow`) — on a downward crossing, and once for a balance a restart finds already
- *  low (see `recordBalance`). ⛔ Never an SMS: the rail it warns about is the one running out. TZS. */
+/** At or below this, ONE `sms.balance_low` audit row is written and every officer who can open Admin → System gets a
+ *  bell row and an email (`notifyAdminsSmsCreditLow`) — on a downward crossing of this line or of the floor, and once
+ *  for a balance a restart finds already low (see `recordBalance`). ⛔ Never an SMS: the rail it warns about is the one
+ *  running out. TZS. */
 const balanceAlert = () => Number(process.env.SMS_BALANCE_ALERT_TZS) || 150;
 
 /** The two lines the admin card names in words ("alert at TZS 150"). Read from the same env as the gate. */
@@ -146,7 +157,8 @@ const LOW_READING_RECHECK_MS = 60_000;
 /** A restart that finds the balance already low alarms at most once in this window (see `recordBalance`). */
 const BOOT_ALARM_REPEAT_MS = 24 * 60 * 60_000;
 
-/** One low-balance alarm: the audit row, then the officers. ⛔ Best-effort; never throws into a send. */
+/** One low-balance alarm: the audit row, then the officers. ⛔ Best-effort; never throws into a send.
+ *  `level` names the line the reading is under: the floor's copy says "paused", the alert line's "top up soon". */
 function raiseLowBalance(from: number | null, tzs: number, threshold: number): void {
   const floor = balanceFloor();
   audit({
@@ -155,7 +167,7 @@ function raiseLowBalance(from: number | null, tzs: number, threshold: number): v
     actorId: null,
     targetType: null,
     targetId: null,
-    payload: { from, to: tzs, threshold, floor },
+    payload: { from, to: tzs, threshold, floor, level: tzs < floor ? "floor" : "alert" },
   });
   // ⭐ THE ALARM REACHES A PERSON (2026-09-26). It used to be the audit row alone, which nothing read, under a
   // comment saying officers were alarmed. Lazy import: no static sms ↔ notification edge.
@@ -164,15 +176,52 @@ function raiseLowBalance(from: number | null, tzs: number, threshold: number): v
     .catch(() => {});
 }
 
-/** The first reading after a restart is already at or below the alert line. Alarm unless one was raised within a day:
- *  a restart is not a crossing, and every push to main is a restart. ⚠️ Fails OPEN — a duplicate beats silence. */
+/** A low episode opens with `sms.balance_low` and closes with `sms.balance_recovered`; the newer of the two says which
+ *  side of the alert line the account was last seen on. */
+const LOW_EPISODE_ACTIONS = ["sms.balance_low", "sms.balance_recovered"];
+
+/** The balance climbed back over the alert line: close the low episode, durably, so a restart can tell a NEW low spell
+ *  from the one already announced (the re-arm itself lives in the process and dies with it). One row per episode. */
+function recordRecovery(from: number | null, tzs: number, threshold: number): void {
+  audit({
+    category: "SYSTEM",
+    action: "sms.balance_recovered",
+    actorId: null,
+    targetType: null,
+    targetId: null,
+    payload: { from, to: tzs, threshold },
+  });
+}
+
+/** The first reading after a restart is already at or below the alert line. Alarm unless THIS low episode alarmed
+ *  within a day: a restart is not a crossing, and every push to main is a restart.
+ *  ⭐ ONE EPISODE, NOT ANY ROW (2026-09-27). It used to stay silent for any `sms.balance_low` under a day old, so a
+ *  second low spell after a top-up, found by a restart, was never announced. A newer `sms.balance_recovered` ends the
+ *  episode; and an episode that alarmed at the alert line and is now below the FLOOR alarms again, because invites
+ *  have paused since. ⚠️ Fails OPEN — a duplicate beats silence. */
 async function raiseLowBalanceFoundAtBoot(tzs: number, threshold: number): Promise<void> {
   try {
-    const { entries } = await getAuditByActionsDurable(["sms.balance_low"], { category: "SYSTEM", limit: 1 });
-    const last = entries[0] ? Date.parse(entries[0].createdAt) : NaN;
-    if (Number.isFinite(last) && Date.now() - last < BOOT_ALARM_REPEAT_MS) return;
+    const { entries } = await getAuditByActionsDurable(LOW_EPISODE_ACTIONS, { category: "SYSTEM", limit: 1 });
+    const last = entries[0];
+    const at = last ? Date.parse(last.createdAt) : NaN;
+    const sameEpisode = last?.action === "sms.balance_low" && Number.isFinite(at) && Date.now() - at < BOOT_ALARM_REPEAT_MS;
+    const floor = balanceFloor();
+    const lastTo = Number(last?.payload?.to);
+    const newlyBelowFloor = tzs < floor && !(Number.isFinite(lastTo) && lastTo < floor);
+    if (sameEpisode && !newlyBelowFloor) return;
   } catch { /* fail open */ }
   raiseLowBalance(null, tzs, threshold);
+}
+
+/** The first reading after a restart is ABOVE the alert line while the newest episode row still says low: the account
+ *  recovered while no process watched. Close the episode, or the next low reading's boot check would take a new low
+ *  spell for the old one and stay silent. One durable read per restart; a row only when an episode is open. */
+async function closeLowEpisodeFoundAtBoot(tzs: number, threshold: number): Promise<void> {
+  try {
+    const { entries } = await getAuditByActionsDurable(LOW_EPISODE_ACTIONS, { category: "SYSTEM", limit: 1 });
+    if (entries[0]?.action !== "sms.balance_low") return;
+  } catch { return; }
+  recordRecovery(null, tzs, threshold);
 }
 
 /**
@@ -199,17 +248,34 @@ async function raiseLowBalanceFoundAtBoot(tzs: number, threshold: number): Promi
  * ⚠️ …AND A RESTART MUST NOT SWALLOW IT (2026-09-26). The reading lives in the process, so after every deploy
  * `prev` is null, and a balance that crossed the line while no process was watching (a send reply is pre-charge,
  * so the old process can record 154 while the account holds 148) never alarmed at all. A first reading at or below
- * the line now alarms too, at most once a day.
+ * the line now alarms too, at most once per low episode a day.
+ *
+ * ⭐ THE FLOOR IS A CROSSING TOO (2026-09-27). Only the alert line alarmed, so the usual drain 160 → 140 → 40 told the
+ * officers "top up soon" once and then paused invites in silence. Crossing the floor now raises its own alarm (the
+ * "paused … top up now" copy), once per crossing; a single jump over both lines is one alarm, with the floor's copy.
+ *
+ * ⛔ A LATE READING NEVER OVERWRITES A NEWER ONE (2026-09-27). A balance read can land seconds after it was asked, and a
+ * send reply recorded meanwhile is newer. A reading is stamped with when it was ASKED (`readAt`) and dropped if the
+ * snapshot already holds a later one — otherwise an old figure re-armed the alarm, or undid a top-up.
  */
-function recordBalance(tzs: number | null): void {
+function recordBalance(tzs: number | null, readAt = Date.now()): void {
   if (tzs === null) return;
-  const prev = globalThis.__50PICK_SMS_BALANCE?.tzs ?? null;
-  globalThis.__50PICK_SMS_BALANCE = { tzs, at: Date.now() };
+  const cur = globalThis.__50PICK_SMS_BALANCE;
+  if (cur && cur.at > readAt) return;
+  const prev = cur?.tzs ?? null;
+  globalThis.__50PICK_SMS_BALANCE = { tzs, at: readAt };
   const threshold = balanceAlert();
+  const floor = balanceFloor();
   if (prev !== null && prev > threshold && tzs <= threshold) {
+    raiseLowBalance(prev, tzs, threshold);
+  } else if (prev !== null && prev >= floor && tzs < floor) {
     raiseLowBalance(prev, tzs, threshold);
   } else if (prev === null && tzs <= threshold) {
     void raiseLowBalanceFoundAtBoot(tzs, threshold);
+  } else if (prev !== null && prev <= threshold && tzs > threshold) {
+    recordRecovery(prev, tzs, threshold);
+  } else if (prev === null) {
+    void closeLowEpisodeFoundAtBoot(tzs, threshold);
   }
 }
 
@@ -238,10 +304,11 @@ export function smsBalanceSnapshot(): {
   };
 }
 
-/** Why a balance read produced no figure: `refused` — the vendor answered and turned us down (its measured
- *  bad-credentials reply is a 400); `unreachable` — no response, our timeout, or the vendor's own 5xx;
- *  `not-configured` — the provider's keys are not set on this box. */
-export type SmsBalanceError = "refused" | "unreachable" | "not-configured";
+/** Why a balance read produced no figure: `refused` — the vendor turned our CREDENTIALS down (a status:false
+ *  400/401/403; its measured bad-credentials reply is a 400); `unreachable` — no response, our timeout, a rate limit
+ *  (429) or the vendor's own 5xx; `unexpected` — any other reply (a moved endpoint's 404 page, a 200 whose balance we
+ *  cannot read), which says nothing about the keys; `not-configured` — the provider's keys are not set on this box. */
+export type SmsBalanceError = "refused" | "unreachable" | "unexpected" | "not-configured";
 
 /** What one `refreshSmsBalance` call knows. `tzs`/`at` are the ONE snapshot after the call.
  *  · `fresh` — this call's read landed · `reused` — a reading younger than `maxAgeMs`, no request
@@ -267,13 +334,15 @@ const balanceReadState = () => (globalThis.__50PICK_SMS_BALANCE_READ ??= { infli
 function readBalanceShared(read: () => Promise<BalanceReply>): Promise<boolean> {
   const st = balanceReadState();
   if (st.inflight) return st.inflight;
+  // Stamped with when it was ASKED, so a reading that lands after a newer one cannot overwrite it (see recordBalance).
+  const askedAt = Date.now();
   const p: Promise<boolean> = read()
     .catch((): BalanceReply => ({ tzs: null, error: "unreachable" }))
     .then((r) => {
       if (r.tzs === null) { st.failedAt = Date.now(); st.error = r.error; return false; }
       st.failedAt = null;
       st.error = null;
-      recordBalance(r.tzs);
+      recordBalance(r.tzs, askedAt);
       return true;
     })
     .finally(() => { if (st.inflight === p) st.inflight = null; });
@@ -398,6 +467,9 @@ const consoleTransport: SmsTransport = {
   },
 };
 
+/** The HTTP statuses a credential refusal comes with. The measured bad-credentials reply is a 400. */
+const CREDENTIAL_REFUSALS = new Set([400, 401, 403]);
+
 const blackballTransport: SmsTransport = {
   name: "blackball",
   async sendChunk(msgs) {
@@ -417,8 +489,12 @@ const blackballTransport: SmsTransport = {
     // ⛔ Only an authenticated reply carries the account's balance; a refusal's 0.0 is not one.
     const tzs = r.ok ? r.balance : null;
     if (tzs !== null) return { tzs, error: null };
-    // No response at all, or the vendor's own 5xx, is "did not answer"; any other reply read our request and refused it.
-    return { tzs: null, error: r.transport !== null || r.httpStatus >= 500 ? "unreachable" : "refused" };
+    // No response at all, a rate limit, or the vendor's own 5xx is "did not answer".
+    if (r.transport !== null || r.httpStatus >= 500 || r.httpStatus === 429) return { tzs: null, error: "unreachable" };
+    // ⛔ "refused" is a verdict on our KEYS, and the operator answers it by rotating them (2026-09-27): only a
+    // status:false 400/401/403 earns it. A moved endpoint's 404 page, or a 200 whose balance we cannot read, is not one.
+    if (!r.ok && CREDENTIAL_REFUSALS.has(r.httpStatus)) return { tzs: null, error: "refused" };
+    return { tzs: null, error: "unexpected" };
   },
 };
 
@@ -678,6 +754,8 @@ export async function sendBatch(messages: SmsOutbound[]): Promise<SmsBatchOutcom
 
   for (const group of chunk(prepared, BATCH_MAX)) {
     let outcome: ChunkOutcome;
+    // The reply's balance is as of this request, so it is stamped with when it was asked (see recordBalance).
+    const askedAt = Date.now();
     try {
       outcome = await transport.sendChunk(
         group.map((p) => ({ msisdn: p.msisdn, text: p.out.body, reference: p.reference })),
@@ -704,7 +782,7 @@ export async function sendBatch(messages: SmsOutbound[]): Promise<SmsBatchOutcom
     // Only an ACCEPTED reply identifies the account — see recordBalance for why a
     // refusal's `balance: 0.0` must never reach the floor.
     if (outcome.ok) {
-      recordBalance(outcome.balance);
+      recordBalance(outcome.balance, askedAt);
       if (outcome.balance !== null) balance = outcome.balance;
     }
     const settledAt = new Date().toISOString();

@@ -391,4 +391,19 @@ export const MUTATIONS = [
     to: `          if (false) {`,
     expect: `17.supersede.memory · ⛔ …and the memory twin does the same on the row already there`,
   },
+  {
+    name: "prisma-dal.ts — suppression.lift lifts any active row again, whatever its reason",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `          // ⛔ Only a person's own stop is liftable — see the memory twin.
+          reason: "WITHDRAWN",`,
+    to: `          // (reason filter removed)`,
+    expect: `17.liftreason · ⛔ \`lift\` lifts ONLY a WITHDRAWN row, in BOTH twins — the store refuses a complaint, an officer's stop or a self-exclusion even if a caller forgets to check`,
+  },
+  {
+    name: "store.ts — the memory suppression lift lifts any active row again, whatever its reason",
+    file: "src/lib/server/store.ts",
+    from: `          if (r.reason !== "WITHDRAWN") return null;`,
+    to: `          // (reason filter removed)`,
+    expect: `17.liftreason · ⛔ \`lift\` lifts ONLY a WITHDRAWN row, in BOTH twins — the store refuses a complaint, an officer's stop or a self-exclusion even if a caller forgets to check`,
+  },
 ];

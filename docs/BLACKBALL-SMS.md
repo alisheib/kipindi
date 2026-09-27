@@ -37,7 +37,7 @@ Wired: 2026-09-16. Code: `src/lib/server/sms-blackball.ts` (transport), `src/lib
 | Live sends | ✅ **one from PRODUCTION itself, 2026-09-23 — the end-to-end proof (§4.8)** · ✅ step 1 DELIVRD / Success in 2 s (received on the handset); ✅ step 2 batch of two accepted in one request, TZS 12; ✅ step 3 (2026-09-17 09:30 UTC) one good + one unroutable msisdn **accepted whole** ("Successfully submitted 2 message(s)"), TZS 6 charged; ✅ step 4 five times (2026-09-21 08:58 and 13:58, 2026-09-22 06:55, 08:28 and 09:12 UTC) — **10 of 10** drive sends used; the ceiling went 6 → 7 → 8 → 9 → 10 on Ali's instructions to validate the vendor's successive claims (`TOTAL_SEND_CEILING` in `scripts/live/blackball-drive.mts`). ⭐ Ali confirms the handset RECEIVES every one of them |
 | Delivery callback | ✅ **WORKING, PROVEN END TO END 2026-09-23** — a production-issued OTP was DELIVERED and its receipt settled the real row in **11 seconds** (`applied: 1`), after the vendor's first automatic batch at 03:46 (§4.7, §4.8) |
 | Phone-code login | ⏸ `OTP_ENABLED` unset — deliberately (§7, step 6) |
-| Balance | ⛔ Not recorded here — every delivered SMS costs TZS 6 (§5), so any figure in this file is wrong after the next send. Read it live on **Admin → System → the "SMS credit" tile**, which asks Blackball on each visit (free, sends nothing, reused for a minute): the headline is the credit in TZS; "—" with *"Couldn't read the balance · not zero · …"* means the read failed (the caption says why), and "—" with *"Last read … · was TZS … · couldn't refresh"* means the last figure is too old to trust — never that the account is empty (§5). Or use the portal, or `POST /api/account/balance` (§1.4). *(This cell said "TZS 196"; removed 2026-09-25.)* |
+| Balance | ⛔ Not recorded here — every delivered SMS costs TZS 6 (§5), so any figure in this file is wrong after the next send. Read it live on **Admin → System → the "SMS credit" tile**, which asks Blackball on each visit (free, sends nothing, reused for a minute): the headline is the credit in TZS; "—" with *"Couldn't read the balance — …"* means the read failed (the sentence under the figure says why), and "—" with *"Last read … · was TZS … · couldn't refresh — …"* means the last figure is too old to trust — never that the account is empty (§5). Or use the portal, or `POST /api/account/balance` (§1.4). *(This cell said "TZS 196"; removed 2026-09-25.)* |
 
 ---
 
@@ -86,10 +86,15 @@ on a below-floor reading older than a minute, and on every Admin → System rend
 Recording a refusal's `0.0` would store TZS 0, trip the cost floor, and hold every campaign — held before
 any request, so nothing could ever refresh it. That latch existed and is guarded by `test:sms-cost-guard` §2.
 ⭐ Because the endpoint is free and authenticated, it is the platform's one live **credential check**, so
-a failed read says which failure it was (2026-09-26): `refused` — the vendor answered and turned us down
-(a 4xx, or `status: false`, as with the fake-credential probe above); `unreachable` — no answer, our
-timeout, or the vendor's own 5xx; `not-configured` — the keys are not set on this box. Wrong keys and an
-outage no longer look the same.
+a failed read says which failure it was (2026-09-26, narrowed 2026-09-27): `refused` — the vendor turned our
+CREDENTIALS down, which is only a `status: false` reply with HTTP 400, 401 or 403 (the measured
+bad-credentials reply above is a 400); `unreachable` — no answer, our timeout, a rate limit (429) or the
+vendor's own 5xx; `unexpected` — any other reply (a moved endpoint's 404 page, a 200 whose balance cannot be
+read), which says nothing about the keys; `not-configured` — the keys are not set on this box. Wrong keys and
+an outage no longer look the same, and a reply we cannot read is no longer called wrong keys.
+⛔ **A late reading never overwrites a newer one** (2026-09-27). Every reading is stamped with when it was
+ASKED, not when it landed, and a reading that lands after a newer one is dropped — otherwise a slow balance
+read could undo a send reply recorded meanwhile, re-arm the alarm or hide a top-up.
 
 ### 1.5 `coding` — `GSM7` or `UCS2`
 
@@ -439,32 +444,108 @@ login codes. ⛔ **OTP is exempt, and never waits on a balance read**: refusing 
 a few shillings is a self-inflicted outage. A reading is trusted only from an accepted reply or the
 balance endpoint, expires after `SMS_BALANCE_TTL_MS`, and **unknown is never treated as low**. The
 low-balance alarm is edge-triggered: at or below `SMS_BALANCE_ALERT_TZS` it writes one `sms.balance_low`
-audit row AND, since 2026-09-26, reaches every ADMIN and COMPLIANCE officer — a bell notification linking to
-Admin → System and an email (⛔ never an SMS: the rail that is running out is not the channel to warn on) —
-once per downward crossing, and at most once a day for a restart that finds the balance already low.
+audit row AND, since 2026-09-26, reaches the officers — a bell notification linking to Admin → System and an
+email (⛔ never an SMS: the rail that is running out is not the channel to warn on) — once per downward
+crossing. Since 2026-09-27 a downward crossing of `SMS_BALANCE_FLOOR_TZS` is a crossing too, with its own
+alarm (the *"paused … top up now"* copy), once per crossing: the usual drain 160 → 140 → 40 alarms twice, at
+the alert line and at the floor, and a single jump over both lines is one alarm, with the floor's copy. The
+`sms.balance_low` payload carries `level: "floor" | "alert"`, the line the reading is under.
+
+**Who is alarmed (2026-09-27).** The officers who can OPEN the page the alarm links to, read from the live
+grants (`rolesThatCanOpen` in `notification-service.ts`): the Owner always, plus any other staff role while
+it holds a view grant on that page's domain (`ops` for Admin → System). The default grants give no other
+role `ops`, so by default the SMS-credit alarm reaches the Owner only — and so do the Sentinel-down alarm
+(also Admin → System) and the AI-spend alarm (Admin → AI usage), which use the same rule. ⛔ COMPLIANCE no
+longer receives these three by default: it was being told to act and sent to a page that refused it. If the
+grants cannot be read, the Owner alone.
+
+**A restart does not swallow it, and does not repeat it.** The reading lives in the process, so the first
+reading after every deploy has nothing to compare with. A first reading at or below the alert line alarms
+at most once per low episode a day: a low episode opens with `sms.balance_low` and closes with a durable
+`sms.balance_recovered` SYSTEM row, written when the balance climbs back over the alert line — or by the
+first reading after a restart that finds an open episode already recovered. A restart that finds the
+balance low stays silent only if the newest of those two rows is an `sms.balance_low` under 24 h old, and
+even then it alarms if that row was taken above the floor and the balance is now below it (invites have
+paused since). A duplicate beats silence: if the rows cannot be read, it alarms. The check reads only the
+newest SYSTEM `sms.balance_low` / `sms.balance_recovered` row (limit 1), turns it into one alarm-or-close
+decision and hands no row on, so `sms.ts` is registered as an audit reader outside the console —
+`AUDIT_READERS_OUTSIDE_CONSOLE`, and `folded` in `AUDIT_ROW_PAYLOAD` (`test:house-bot-reports` 0.260.1,
+2026-09-27).
 *(Until 2026-09-26 the alarm was the audit row alone, which nothing read, under a code comment saying officers
-were alarmed.)*
+were alarmed. Until 2026-09-27 it reached every ADMIN and COMPLIANCE officer, never fired at the floor, and a
+restart stayed silent for ANY `sms.balance_low` under a day old — so a second low spell after a top-up, found
+by a restart, was never announced.)*
 
 **Where the operator reads it — Admin → System, the "SMS credit" tile** (2026-09-26; Swahili gloss
 "Salio"). Each render asks the balance endpoint through `refreshSmsBalance` (free, authenticated, sends
 nothing) and waits at most ~2.5 s — a slower read carries on and records itself when it lands; a reading
 under a minute old is reused, concurrent visits share one request, and a failed read is not retried for
 `SMS_BALANCE_RETRY_MS` (its reason is kept for that window too). The tile's value is the credit
-(`TZS 185`), or "—" when there is no figure it can stand behind, and its caption says the state in words.
-No pulse and no arrow: the words and the colour carry it.
+(`TZS 185`), or "—" when there is no figure it can stand behind. `smsCreditTile`
+(`src/app/admin/system/sms-credit-tile.ts`) fills four slots under it, one job each (final visual review,
+2026-09-27):
 
-| State | Value | Caption | Colour |
-|---|---|---|---|
-| healthy | `TZS 185` | *Healthy · Blackball · idle since restart*, or *Healthy · Blackball · 98.0% ok · 12 sent since restart* (the counters live in the process) | normal |
-| at or below the alert line | `TZS 120` | *Low — top up soon · alert at TZS 150* | warning |
-| below the floor | `TZS 30` | *Below floor — invites paused, login codes still send · top up now* | danger |
-| no reading at all | "—" | *Couldn't read the balance · not zero*, then why: *Blackball refused our credentials* (`refused`) · *no answer from Blackball* (`unreachable`) · *Blackball keys not set* · *still waiting for Blackball* (the 2.5 s budget ran out; the read carries on) · *no balance read on Console (dev)* · *SMS provider not recognised* | normal |
-| a figure older than `SMS_BALANCE_TTL_MS` (the floor treats it as unknown) | "—" | *Last read 14:02 EAT · was TZS 185 · couldn't refresh*; an old low figure adds *, low* or *, below floor* | warning if it was low, never danger (the floor is not refusing on it) |
-| a figure inside the TTL that this render could not confirm | the figure | *Last read 14:02 EAT · couldn't refresh*, after the Low / Below-floor words when they apply | per level |
+1. **`provenance`** — `AdminKpi`'s optional `provenance` prop: its own line, `text-body-sm` (13px) in neutral
+   `text-text-secondary`, the first prose line under the value (after the one-word italic Swahili gloss). It
+   holds the exact figure behind a compacted headline (*TZS 1,234,567*) and, for a figure this render could
+   not confirm, when it was read and why it was not refreshed: *Last read 14:02 EAT · couldn't refresh —
+   \<why\>*, or *Last read 14:02 EAT · still waiting for Blackball* while a read runs. On a dead rail (whose
+   note already says why) it is just *Last read 14:02 EAT*, plus *· was TZS 185* under a dash. Absent when
+   the figure is current and under TZS 1,000,000.
+2. **`note`** — the state and the action only, as a **sentence**: `AdminKpi`'s optional `note`, drawn as
+   prose at `text-body-sm` in the state's ink. It never says *last read*.
+3. **`vars`** — the Railway variables a fix names, drawn by `AdminKpi`'s optional `noteCode` prop:
+   `BLACKBALL_CLIENT_ID` and `BLACKBALL_CLIENT_SECRET`, one per `font-mono text-body-sm` line, breaking only
+   after an underscore (`<wbr>`, ⛔ never U+200B — a copied name would carry it into the Railway search).
+4. **The chip** — one plain fact: *0 sent since server start*, or *1,234 sent, 1 failed since server start*
+   (the counters live on `globalThis`, so any restart zeroes them — hence "server start", never "deploy").
+   No provider, no delivery rate and no inner separator; the only dot is `AdminKpi`'s own leading *·*.
 
-A reading from another day carries its date (*25 Sep 14:02 EAT*). Amounts, *N sent*, *98.0% ok* and the
-time never break inside, and a *·* separator stays with the fact after it, so no line ends on a dot at 360.
-The unknown-with-reason caption is the longest, about four lines at 360.
+No pulse and no arrow: the words and the colour carry it. The tile is built from the balance read, the
+process's send counters and `smsRailProblem()` in `sms.ts` — why no SMS can leave this box, or null;
+`smsConfigured()` is exactly `smsRailProblem() === null`, so the two cannot disagree.
+
+⛔ **"Healthy" is said only when SMS can actually go out** (2026-09-27): the balance read needs only the keys,
+so a box with no sender ID answered a balance and was captioned "Healthy" while every send was refused.
+
+| State | Value | Provenance (its own line) | The sentence (`note`) | Colour |
+|---|---|---|---|---|
+| healthy | `TZS 185` | — | *Healthy · alert at TZS 150* — only when the figure is confirmed, the rail can send, the balance is above the alert line and sends are not failing | normal |
+| sends failing (a failure since server start and under 90 % delivered) | the figure | — (or *Last read …* when unconfirmed) | *Sends failing — 3 of 12 failed since server start · check Blackball*; when nothing was accepted, *… · none accepted, login codes included · check Blackball* | warning; danger when none was accepted |
+| no SMS can send | the figure, or "—" | *Last read 14:02 EAT* when the figure was not confirmed | *\<why\> · no SMS can send, login codes included · \<fix\>*: *Sender ID missing or too long … check SMS_SENDER_ID on Railway* · *Blackball keys not set … set both keys on Railway* · *SMS provider not recognised … set SMS_PROVIDER to blackball on Railway* · *The console stub is selected and sends nothing … set SMS_PROVIDER to blackball on Railway* (production only) · *Blackball refused our keys … check both keys on Railway* (a `refused` read). The two key fixes add `BLACKBALL_CLIENT_ID` and `BLACKBALL_CLIENT_SECRET` under the sentence (`vars`) | danger |
+| at or below the alert line | `TZS 120` | — | *Low — top up Blackball soon · invites pause below TZS 50* | warning |
+| below the floor | `TZS 30` | — | *Below the TZS 50 floor — invites paused, login codes still send · top up Blackball now* | danger |
+| no reading, the read failed | "—" | — | *Couldn't read the balance — no answer from Blackball* (`unreachable`) or *Couldn't read the balance — Blackball sent a reply we couldn't read* (`unexpected`); ⛔ it makes no claim about the amount (the old *· not zero* is gone) | warning |
+| no reading yet, the read still running | "—" | — | *Checking with Blackball… · reload in a few seconds* (the 2.5 s budget ran out; the read carries on and records itself) | normal |
+| no balance endpoint (the dev console) | "—" | — | *No balance read on Console (dev)* | normal |
+| a figure older than `SMS_BALANCE_TTL_MS` (the floor treats it as unknown) | "—" | *Last read 14:02 EAT · couldn't refresh — \<why\>*, or *· still waiting for Blackball* while a read runs; on a dead rail *Last read 14:02 EAT · was TZS 185* | *Was TZS 185* · *Was TZS 120, low · top up soon* · *Was TZS 30, below floor · invites are sending again · top up now* (the *sending again* clause is left out while a read is still running); a dead rail's sentence instead. ⛔ Never *paused*: the floor is not refusing on an unknown figure | ⚠️ **danger below the floor** (since 2026-09-27: invites are sending again on the credit login codes need) or on a dead rail; warning when low; otherwise warning, or normal while a read is still running |
+| a figure inside the TTL that this render could not confirm | the figure | *Last read 14:02 EAT · couldn't refresh — \<why\>*, or *· still waiting for Blackball* | the Low / Below-floor / Sends-failing words when they apply; otherwise none — ⛔ never *Healthy*, the provenance line alone carries the state | per level |
+| TZS 1,000,000 or more | *TZS 1.2M* (compacted, so it never clips in a 2-up tile at 360) | *TZS 1,234,567* — the exact figure, then *· last read …* when unconfirmed | as the level says | per level |
+
+Several states join into one sentence (*Low — … · Sends failing — …*); when and how the figure was read is
+never part of it — that is the provenance line. The reason a read failed survives a first reading: a figure
+the tile still holds says why it could not be refreshed. A credit of TZS 1,000,000 or more is compacted in
+the headline (*TZS 1.2M*, so it never clips in a 2-up tile at 360) and the exact figure is the provenance
+line under it (*TZS 1,234,567*), no longer the start of the chip. (Until the final visual review of
+2026-09-27 the chip read "Blackball · idle since restart" / "Blackball · 98.0% ok · 49 sent, 1 failed since
+restart", an unconfirmed figure added "· last read 14:02 EAT" to the end of the sentence, the key fixes said
+"BLACKBALL_CLIENT_ID / SECRET" — no variable is called SECRET — and a stale figure below the floor was
+warning, "never danger". That last rule is superseded: an expired reading is unknown, so invites are
+sending again on the credit login codes need.)
+
+A reading from another EAT day carries its date (*25 Sep 14:02 EAT*). The clock is the same on every
+Node/ICU build: the Dar es Salaam wall clock is read from `Intl` NUMERIC parts only (`Africa/Dar_es_Salaam`,
+`hourCycle: "h23"`, midnight is *00:00*), the month comes from a fixed Jan…Dec list, and the same-day test
+compares the year too. *(A newer ICU spelt September "Sept" and turned `test:sms-cost-guard` §9 red on one
+machine.)* Amounts, counts (*N sent*, *N failed*, *3 of 12 failed*) and the time never break inside, and a
+*·* separator stays with the fact after it, so no line ends on a dot at 360.
+⚠️ **How many lines the longest states take at 360 is not recorded here, because it has not been measured
+on this tile.** The candidates are a below-floor figure that could not be refreshed, keys refused after a
+reading (the sentence plus two mono key-name lines), and a stale below-floor figure; the provenance line and
+the key names left the sentence, but they are lines of their own, so the whole tile may not be shorter.
+Measure the whole tile from 1280 and 360 captures before quoting a number. *(This paragraph said "about four
+lines at 360" of the old caption; earlier captures contradicted it, and the sentence has moved out of the
+chip since.)*
 
 `/api/health` refreshes the same reading with a ~1 s budget (a deploy gate waits on that route; a reading
 under a minute old is reused) and publishes `sms.balanceTzs`, `balanceAt` (ISO) and `balanceStale` beside
@@ -489,7 +570,7 @@ the 15-minute TTL.
 | `SMS_BALANCE_FLOOR_TZS` / `SMS_BALANCE_ALERT_TZS` | default 50 / 150 (≈ 8 / 25 messages) |
 | `SMS_BALANCE_TTL_MS` | default 900000 (15 minutes) |
 | `SMS_BALANCE_RETRY_MS` | default 30000 — after a failed balance read, no new read is attempted for this long (a dead endpoint is not hammered by page renders or `/api/health`) |
-| *(not variables)* | the read's waits are code constants in `sms.ts`: `SMS_BALANCE_RENDER_BUDGET_MS` 2500 (Admin → System) and `SMS_BALANCE_HEALTH_BUDGET_MS` 1000 (`/api/health`); a reading older than 60 s is re-read before the floor refuses on it; a restart that finds the balance already low alarms at most once in 24 h |
+| *(not variables)* | the read's waits are code constants in `sms.ts`: `SMS_BALANCE_RENDER_BUDGET_MS` 2500 (Admin → System) and `SMS_BALANCE_HEALTH_BUDGET_MS` 1000 (`/api/health`); a reading older than 60 s is re-read before the floor refuses on it; a restart that finds the balance already low alarms at most once per low episode in 24 h (§5) |
 | `INVITE_SMS_MAX_PER_SEND` | default 500 |
 | `OTP_ENABLED` | `1` un-hides `/auth/otp`; ⚠️ no login/register UI links to it yet (§7, step 6) |
 
@@ -587,7 +668,12 @@ Answered already: sender ID, price, success body, `coding` values, balance endpo
 | `test:blackball` / `red:blackball` | the transport: HTTP-400 trap, `data` shapes, sender cap, reference floor, batching, timeouts, `coding`, balance endpoint |
 | `test:sms-dlr` / `red:sms-dlr` | the receiver: auth, exact reply body, unknown references, msisdn cross-check, monotonicity, no-guess rule, the observed DELIVRD receipt, no empty-callback audit |
 | `test:otp-delivery` / `red:otp-delivery` | the login path: refusal before minting, await, consume-on-failure, rate refund, locale, wire-form msisdn, UNKNOWN on a lost reply |
-| `test:sms-cost-guard` / `red:sms-cost-guard` | the floor: OTP exemption, the refusal-balance latch, staleness, balance-endpoint refresh, edge-triggered alarm; since 2026-09-26 also the live read (budget, one read in flight, the pause after a failure and why it failed, the low-reading re-check before a refusal), `/api/health`'s refresh, the officers' alarm (bell + email, the once-a-day restart alarm), and the Admin → System "SMS credit" tile's states. ✅ In `predeploy` since 2026-09-26 (after `test:pii-logs`), and its §8 asserts it stays there |
+| `test:sms-cost-guard` / `red:sms-cost-guard` | the floor: OTP exemption, the refusal-balance latch, staleness, balance-endpoint refresh, edge-triggered alarm; since 2026-09-26 also the live read (budget, one read in flight, the pause after a failure and why it failed, the low-reading re-check before a refusal), `/api/health`'s refresh, the officers' alarm (bell + email, the restart alarm), and the Admin → System "SMS credit" tile's states; since 2026-09-27 also the floor crossing, the low episode (`sms.balance_recovered`) across a restart, who the alarm reaches (a COMPLIANCE officer gets none by default), the late-reading guard, the `refused` / `unreachable` / `unexpected` verdicts, `smsRailProblem` agreeing with `smsConfigured`, and the tile's no-SMS-can-send, sends-failing and seven-figure states; and since the final visual review
+(2026-09-27) the provenance line under the figure, both real key names drawn whole (`<wbr>` after an
+underscore only), "Healthy · alert at …", the chip's one fact "since server start", a stale figure below the
+floor in danger, and the EAT clock's fixed month list (midnight and all twelve months asserted); the new red
+plants in `scripts/anchors/sms-cost-guard.anchors.mjs` cover each rule, the shell's `<wbr>` and the page's
+props (re-derive the count from a run). ✅ In `predeploy` since 2026-09-26 (after `test:pii-logs`), and its §8 asserts it stays there |
 | `test:dal-parity` §13 | both DAL backends map every `SmsMessage` field and enforce the same monotonic receipt rule |
 | `test:invites` | a configured provider sends three invites in ONE request; a typo'd provider refuses honestly |
 | `test:pii-logs` §4 | the message body never reaches a production log |

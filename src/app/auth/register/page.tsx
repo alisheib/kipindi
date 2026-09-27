@@ -53,7 +53,7 @@ export default async function RegisterPage({
   // old placement stopped bouncing anyone who reached this page from another `/auth` route.
   // `bounce-authed.ts` carries the measurement and the middleware loop it rules out.
   await bounceIfAuthed();
-  const { t } = await getServerT();
+  const { t, locale } = await getServerT();
   const sp = await searchParams;
   const phoneDefault = (sp.phone ?? "").replace(/^\+255/, "").replace(/\D+/g, "").slice(0, 9);
   const emailDefault = (sp.email ?? "").trim().slice(0, 254);
@@ -211,6 +211,9 @@ export default async function RegisterPage({
           )}
 
           <form action={startRegisterAction} className="space-y-4">
+            {/* D2 · the language THIS form was drawn in, so the consent ledger stores the sentence the person
+                actually ticked, even if the cookie changes before they submit (actions.ts `shownLocale`). */}
+            <input type="hidden" name="shownLocale" value={locale} />
             {referral && <input type="hidden" name="ref" value={refCode} />}
             {invite && <input type="hidden" name="invite" value={inviteCode} />}
             {nextOk && <input type="hidden" name="next" value={nextOk} />}

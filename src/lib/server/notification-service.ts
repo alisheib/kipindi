@@ -32,6 +32,7 @@ import { CONSOLE_ROUTE, consoleActivityHref, consoleBotHref, consoleEventHref, c
 import type { LocalizedText } from "@/lib/localized";
 import { sideWordIn, outcomeWordIn, type StoredSide, type StoredOutcome } from "@/lib/side-label";
 import type { NotificationFilter, NotificationSort } from "@/lib/notification-filters";
+import { EDITABLE_ROLES, domainForPath, isOwnerOnlyPath } from "./roles";
 
 export type NotifyInput = Omit<StoredNotification, "id" | "userId" | "readAt" | "dismissedAt" | "createdAt"> & {
   userId: string;
@@ -1627,14 +1628,34 @@ export async function notifyAdminsAmlReview(opts: { txnKind: "WITHDRAWAL" | "DEP
   } catch { /* officer email is best-effort */ }
 }
 
+/**
+ * ⛔ AN OPS ALARM GOES ONLY TO OFFICERS WHO CAN OPEN THE PAGE IT LINKS TO (2026-09-27). The Sentinel, AI-spend and
+ * SMS-credit alarms link to `/admin/system` or `/admin/ai-usage` (the `ops` domain), and the default grants give
+ * COMPLIANCE no `ops` view: a compliance officer was told to act and sent to a page that refused them. The roles come
+ * from the LIVE grants (`/admin/roles`, else the defaults): the Owner always, any other staff role only while it can
+ * view the page's domain; an Owner-only page is the Owner's alone. If the grants cannot be read, the Owner alone.
+ */
+export async function rolesThatCanOpen(href: string): Promise<string[]> {
+  if (isOwnerOnlyPath(href)) return ["ADMIN"];
+  try {
+    const { canView } = await import("./rbac");
+    const domain = domainForPath(href);
+    const roles: string[] = ["ADMIN"];
+    for (const role of EDITABLE_ROLES) if (await canView(role, domain)) roles.push(role);
+    return roles;
+  } catch {
+    return ["ADMIN"];
+  }
+}
+
 /** Operational alert: the Market Sentinel (the AI that auto-closes already-settled
  *  live markets) is failing its checks — most often an exhausted Anthropic API
  *  balance or an invalid key. Without this alert the sentinel can silently stop
  *  protecting live markets and players could bet on known outcomes. Fired
  *  debounced by the sentinel runner; in-app SECURITY bell + best-effort email to
- *  every ADMIN/COMPLIANCE officer. */
+ *  every officer who can open Admin → System (`rolesThatCanOpen`). */
 export async function notifyAdminsSentinelDown(opts: { reason: string; errorCount: number; sampleError: string }) {
-  const officers = await db.user.listByRoles(["ADMIN", "COMPLIANCE"]); // audit M5
+  const officers = await db.user.listByRoles(await rolesThatCanOpen("/admin/system")); // audit M5 · who can open the link
   for (const o of officers) {
     await notify({
       userId: o.id,
@@ -1674,10 +1695,10 @@ export async function notifyAdminsSentinelDown(opts: { reason: string; errorCoun
 
 /** AI spend alert: cycle spend has crossed the warn (≈80%) or the hard limit
  *  (100%) of the configured budget. Emails + in-app SECURITY bell to every
- *  ADMIN/COMPLIANCE officer so credit can be topped up before the AI goes dark.
+ *  officer who can open the AI usage page (`rolesThatCanOpen`) so credit can be topped up before the AI goes dark.
  *  Fired once per level by the usage meter (re-armed when the cycle resets). */
 export async function notifyAdminsAiCreditLimit(opts: { level: "warn" | "limit"; spentUsd: number; limitUsd: number }) {
-  const officers = await db.user.listByRoles(["ADMIN", "COMPLIANCE"]); // audit M5
+  const officers = await db.user.listByRoles(await rolesThatCanOpen("/admin/ai-usage")); // audit M5 · who can open the link
   const spent = `$${opts.spentUsd.toFixed(2)}`;
   const limit = `$${opts.limitUsd.toFixed(2)}`;
   const reached = opts.level === "limit";
@@ -1726,13 +1747,14 @@ export async function notifyAdminsAiCreditLimit(opts: { level: "warn" | "limit";
   } catch { /* officer email is best-effort */ }
 }
 
-/** SMS credit alert (2026-09-26): the Blackball balance reached the alert line (`SMS_BALANCE_ALERT_TZS`). Fired by
- *  `sms.ts` once per downward crossing — and once for a balance a restart finds already low, at most once a day —
- *  never once per send. Below the floor (`SMS_BALANCE_FLOOR_TZS`) invite and notice SMS are held; login codes still
- *  send. In-app SECURITY bell + best-effort email to every ADMIN/COMPLIANCE officer, like the AI credit alert.
+/** SMS credit alert (2026-09-26): the Blackball balance reached the alert line (`SMS_BALANCE_ALERT_TZS`), or crossed
+ *  the floor (`SMS_BALANCE_FLOOR_TZS`, 2026-09-27). Fired by `sms.ts` once per downward crossing — and once for a
+ *  balance a restart finds already low, at most once per low episode a day — never once per send. Below the floor
+ *  invite and notice SMS are held; login codes still send. In-app SECURITY bell + best-effort email to every officer
+ *  who can open Admin → System (`rolesThatCanOpen`), like the AI credit alert.
  *  ⛔ Never an SMS: the rail it warns about is the one running out. */
 export async function notifyAdminsSmsCreditLow(opts: { tzs: number; alertTzs: number; floorTzs: number }) {
-  const officers = await db.user.listByRoles(["ADMIN", "COMPLIANCE"]); // audit M5
+  const officers = await db.user.listByRoles(await rolesThatCanOpen("/admin/system")); // audit M5 · the officers who top it up
   const left = formatTzs(opts.tzs);
   const alert = formatTzs(opts.alertTzs);
   const floor = formatTzs(opts.floorTzs);

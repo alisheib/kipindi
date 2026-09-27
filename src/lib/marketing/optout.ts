@@ -85,11 +85,18 @@ export function optOutTokenRef(token: string): string {
 }
 
 /**
- * Is this request path the opt-out page? `/s` and `/s/<anything>` — ⛔ a SEGMENT match, so
- * `/settings` and `/support` are not. Built from `OPTOUT_PATH`, never re-typed (the page's own rule).
+ * Is this request path the opt-out page? Bare `/s` and `/s/<one segment>` — the two routes that exist.
+ * ⛔ A SEGMENT match, so `/settings` and `/support` are not. Built from `OPTOUT_PATH`, never re-typed
+ * (the page's own rule).
+ * 🔴 2026-09-27 · IT USED TO MATCH ANY `/s/…` PATH. `/s/<token>/<more>` has no route, so the root 404
+ * rendered inside the stripped shell, and its soft `<Link>`s opened the landing page with no nav until a
+ * hard reload. A deeper path now gets the full shell and its working 404.
  */
 export function isOptOutPath(pathname: string | null | undefined): boolean {
   const p = pathname ?? "";
   const bare = OPTOUT_PATH.replace(/\/$/, "");
-  return p === bare || p.startsWith(OPTOUT_PATH);
+  if (p === bare || p === OPTOUT_PATH) return true;
+  if (!p.startsWith(OPTOUT_PATH)) return false;
+  const rest = p.slice(OPTOUT_PATH.length).replace(/\/$/, "");
+  return rest.length > 0 && !rest.includes("/");
 }

@@ -258,7 +258,7 @@ export async function requestLoginOtp(input: z.input<typeof LoginRequestSchema>)
 
 /** Register a new account — OTP-driven. Returns OTP id. */
 export async function requestRegisterOtp(
-  // D2 · `locale` — the language the form was SHOWN in (the action reads the kp-locale cookie). Carried
+  // D2 · `locale` — the language the form was SHOWN in (the action reads the form's own `shownLocale` field, the cookie as fallback). Carried
   // to verification so the ledger row and `User.locale` say what the person actually read.
   input: z.input<typeof RegisterSchema> & { locale?: MessagingLocale },
 ): Promise<ServiceResult<{ otpId: string; phone: string; expiresAt: string }>> {
@@ -662,7 +662,7 @@ export type PasswordRegisterInput = {
   acceptTerms: boolean;
   acceptAge: boolean;
   marketingOptIn?: boolean;
-  /** D2 · the language the form was SHOWN in (the action reads the kp-locale cookie). Decides the
+  /** D2 · the language the form was SHOWN in (the action reads the form's own `shownLocale` field, the cookie as fallback). Decides the
    *  consent sentence the ledger stores and `User.locale`. SW when absent. */
   locale?: MessagingLocale;
   /** Affiliate referral code from a ?ref= link, if the user arrived via one. */

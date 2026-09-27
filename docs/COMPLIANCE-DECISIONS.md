@@ -69,11 +69,32 @@ keeps"* (2026-09-05, ruling ④).
 | # | Ruling | Where |
 |---|---|---|
 | 1 | **One consent, one name, naming sender, content and channel.** Register: *"Send me 50pick offers and news by SMS (optional)."* · *"Nitumie ofa na habari za 50pick kwa SMS (hiari)."* · *"通过短信向我发送 50pick 的优惠和资讯（可选）。"* Profile toggle: *"Offers and news by SMS"* · *"Ofa na habari kwa SMS"* · *"短信优惠与资讯"*, with a body naming SMS and the phone number and saying account, bet and money messages still arrive | `auth.optionalUpdates`, `push.marketingTitle`, `push.marketingBody` |
-| 2 | **The ledger records what was SHOWN.** Every write — register (password and OTP), the profile toggle, the opt-out stop and resume — stores the sentence in the language the page was rendered in (the `kp-locale` cookie read on the server, ⛔ never a form field), with that locale; registration also stores it on `User.locale` | `consent-ledger.ts` and its callers |
+| 2 | **The ledger records what was SHOWN.** Every write — register (password and OTP), the profile toggle, the opt-out stop and resume — stores the sentence in the language the page was rendered in (the `kp-locale` cookie read on the server, ⛔ never a form field — ⚠️ amended 2026-09-27, below: the language the form was drawn in first, validated, the cookie as the fallback), with that locale; registration also stores it on `User.locale` | `consent-ledger.ts` and its callers |
 | 3 | **OQ11's safe default.** A player is marketable only when `marketingOptIn === true` AND the latest `(SMS, identifier, MARKETING)` ledger row is GIVEN AND its wording is one of the pinned SMS-naming sentences. A "yes" under the old wording is `no_consent` ("consent predates the SMS wording"). ⛔ No backfill — the player is asked again. Only Ali may relax this | `src/lib/marketing/consent-wording.ts` (append-only literals), `marketing/consent.ts` |
-| 4 | **The profile toggle shows EFFECTIVE consent** (ON only when the consent part of the gate would pass; a consent lapsed by an ended break or an officer restore reads OFF, with one line saying that switching it on is how to opt in again). ON writes `true` + a GIVEN row in the shown sentence and lifts a suppression the PERSON created (their stop link) — ⛔ never COMPLAINT, OPERATOR or SELF_EXCLUSION, which neither turn the switch off nor are lifted by it. OFF writes `false` + WITHDRAWN (no suppression row). The `privacy.marketing_consent.*` audit row carries the locale and whether a stop was lifted | `marketing/consent.ts` |
+| 4 | **The profile toggle shows EFFECTIVE consent** (ON only when the consent part of the gate would pass; a consent lapsed by an ended break or an officer restore reads OFF, with one line saying that switching it on is how to opt in again; ⚠️ amended 2026-09-27, below: a break or self-exclusion still in force HOLDS it OFF and locked). ON writes `true` + a GIVEN row in the shown sentence and lifts a suppression the PERSON created (their stop link) — ⛔ never COMPLAINT, OPERATOR or SELF_EXCLUSION, which neither turn the switch off nor are lifted by it. OFF writes `false` + WITHDRAWN (no suppression row). The `privacy.marketing_consent.*` audit row carries the locale and whether a stop was lifted | `marketing/consent.ts` |
 | 5 | **The identity check is asked.** A FINAL KYC refusal refuses (UNDERAGE → `age_minor`; SANCTIONED / DUPLICATE_IDENTITY → `account_status`); a KYC document date of birth makes the YOUNGER age govern; a case an officer re-opens is marketable again | `marketing/consent.ts` |
 | 6 | **Resuming on the opt-out page is a consent.** It shows and records its own sentence (the resume button's label and the profile body, in the shown language), lifts only a suppression the person created, and states that the stop is lifted — ⛔ never that messages will arrive. On any other stop it answers "already", writes nothing and gives no reason; the resumed sentence is the same for everybody, so it discloses no responsible-gambling standing | `/s/[token]`, `marketing/optout-service.ts` |
+
+⚠️ **Amended 2026-09-27 (same delegation, on a re-review of this pass).**
+- **Ruling 2 — the language is the one the form was DRAWN in.** The cookie alone was wrong whenever it
+  changed between drawing and submitting (the language provider rewrites it on mount; another tab can switch
+  language), so a Swahili tick could be stored as the English sentence. The register form now posts a hidden
+  `shownLocale` and the profile switch posts its own `useT().locale`; `renderedLocaleOf` accepts exactly
+  `en`, `sw` or `zh`, and anything else falls back to the `kp-locale` cookie, which the opt-out acts still
+  use. The posted value only CHOOSES which of the dictionary's own sentences is stored — no client text ever
+  reaches the ledger. "⛔ never a form field" in ruling 2 is superseded by this.
+- **Ruling 4 — a break or self-exclusion in force HOLDS the switch.** It reads OFF and is locked for every
+  player, consenting or not, with "Off during your break or self-exclusion, until {date}. It stays off after
+  that unless you switch it on." (the end date in EAT; no date for a permanent or undated hold). An ON is refused on the
+  server with reason `held` and nothing is written — the gate counts only a consent given after the hold
+  ends, so a GIVEN row now would record a consent that can never act; an OFF is still recorded. The lapsed
+  line is a neutral statement, never a nudge: "Turned off when your break or self-exclusion ended. It stays
+  off unless you switch it on." (the words "Paused" / "Imesitishwa" / "已暂停" are gone).
+- **The nine pinned sentences carry `since` 2026-09-27, the ship date** (they said 2026-09-26, the decision
+  day, for a field that means the ship date). Re-dated, and the `test:marketing-consent-ledger` pin taken
+  again, BEFORE any production row was written under them; no wording changed. ⛔ If the deploy that first
+  ships them slips past 2026-09-27, `since` and the pin must both be corrected in that deploying commit.
+  After that, the append-only rule below holds without exception.
 
 ⚠️ **The rows already written stay as they are.** The ledger is append-only: REGISTRATION and PROFILE rows from
 2026-09-25 until this pass carry the Swahili sentence and `SW` whatever the player saw — they record THAT a choice
@@ -88,9 +109,12 @@ identity record that cannot be read (`age_unknown`), not as "every player withou
 would be an owner ruling and a new RG version. Privacy §3's withdrawal path (Profile → Notifications) is unchanged.
 
 ⚠️ **Open.** The new Swahili and Chinese sentences (rulings 1 and 6, and the opt-out page's headings and refusals)
-await a native speaker's read; a change to a consent sentence is appended, never edited (below). The opt-out page's
-own title and stop button still say "matangazo" / "marketing messages" while the three consent points say "ofa na
-habari" / "offers and news" — one consent, two nouns, left for a copy pass.
+await a native speaker's read; a change to a consent sentence is appended, never edited (below). ~~The opt-out
+page's own title and stop button still say "matangazo" / "marketing messages" while the three consent points say
+"ofa na habari" / "offers and news" — one consent, two nouns, left for a copy pass.~~ ✅ Done 2026-09-27: the `/s`
+page names what it stops with the consent's own noun (`push.marketingTitle`) in en, sw and zh — "Stop offers and
+news by SMS" / "Acha ofa na habari kwa SMS" / "停止接收短信优惠与资讯" — guarded by `test:marketing-optout` S7g. The
+STOP sentence the ledger records changed with it; it is a withdrawal, never consent, so it is not pinned.
 
 ⛔ **A consent sentence is evidence.** Rewording any of `auth.optionalUpdates`, `push.marketingTitle`,
 `push.marketingBody` or `optout.resubscribeButton` requires APPENDING the new sentences to `consent-wording.ts` in the
@@ -115,6 +139,11 @@ message, and reports delivery back (`docs/BLACKBALL-SMS.md`).
   real one to be named in §4 of all three languages, with the transport and the receipt route as witnesses.
 - ⚠️ **Not confirmed with the vendor:** where Blackball stores the data. The bullet says only "in Tanzania" of the
   gateway. If Blackball says it stores or processes data elsewhere, re-version the notice.
+- **2026-09-27 — translation markup only, no new version.** zh §1 no longer prints a space after "联系方式：" before
+  the contact address: the full-width colon carries its own spacing. No word changed and the English is untouched,
+  so the pinned English hash is unchanged and the version stays v2026-09-26. Guarded by `test:privacy-notice` §4h
+  (no space after full-width punctuation in the zh text), with its planted control §5am. The zh Blackball bullet
+  stands as quoted above; a re-review finding against it was refuted, so it is not reopened.
 
 ---
 
@@ -580,6 +609,15 @@ unit in the zh and sw text (a no-break space: "24 小时", "18 岁", "miaka 18",
 sentences so no space follows "。". No word changed and the English is untouched, so the version stays v2026-09-26
 and the pinned English hash is unchanged; `test:rg-policy` 3.1/3.2 guard the spacing, with three new
 `red:rg-policy` cases. ⛔ This is not a precedent for editing a translation's wording without a new version.
+*2026-09-27, the same kind of change:* the zh and sw number ranges now sit whole in `whitespace-nowrap` spans —
+zh "（00:00–06:00 EAT）" and "5–120 分钟", sw "(00:00–06:00 EAT)" and "dakika 5–120" — because the en dash is a
+line-break point, and at 360 zh §3 broke as "（00:00–" / "06:00 EAT）". Markup only: no word changed, the English
+is untouched, the pinned English hash is unchanged and the version stays v2026-09-26. Guarded by `test:rg-policy`
+3.3, with two new `red:rg-policy` cases.
+⚠️ *Known residual, left by decision (2026-09-27):* the ENGLISH §3 has a raw source newline between "06:00" and
+"EAT", and its ranges are not wrapped, so at some widths en can print "06:00" / "EAT)" or break after "00:00–". The
+2026-09-27 capture showed it on one line at 360. The binding English is hash-pinned (`test:rg-policy` 1.2), so a markup-only span
+there needs the hash re-pinned and a "markup only, no word changed" note here — ▶ Ali's call whether to do it.
 
 ---
 

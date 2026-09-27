@@ -1,5 +1,6 @@
 "use server";
 
+import { cookies } from "next/headers";
 import { getServerT } from "@/lib/i18n-server";
 import { stopMarketingWithinBudget, resumeMarketingWithinBudget } from "@/lib/server/marketing/optout-service";
 import type { OptOutActResult } from "@/lib/server/marketing/optout-service";
@@ -42,9 +43,24 @@ async function actLocale(): Promise<MessagingLocale> {
  * prevent, and a throttle is no different from a database error in that respect.
  */
 export async function stopMarketingAction(token: string): Promise<OptOutActResult> {
+  await qaHoldAct();
   return stopMarketingWithinBudget(token, await actLocale(), await optOutClientKey());
 }
 
 export async function resumeMarketingAction(token: string): Promise<OptOutActResult> {
+  await qaHoldAct();
   return resumeMarketingWithinBudget(token, await actLocale(), await optOutClientKey());
+}
+
+/**
+ * ⚠️ A DEV-ONLY HOLD ON THE ACT, so the pending button ("One moment…" and its spinner) stays on screen
+ * long enough for `marketing-u8-optout-drive.mjs` to photograph it. Set by a cookie the drive writes, so
+ * the acts keep their one-argument signature. ⛔ A NO-OP IN PRODUCTION, and capped. Not exported: every
+ * export of this file is a callable server action.
+ */
+const QA_HOLD_ACT_MAX_MS = 5000;
+async function qaHoldAct(): Promise<void> {
+  if (process.env.NODE_ENV === "production") return;
+  const ms = Number((await cookies()).get("kp-qa-hold-act-ms")?.value);
+  if (Number.isFinite(ms) && ms > 0) await new Promise((res) => setTimeout(res, Math.min(ms, QA_HOLD_ACT_MAX_MS)));
 }

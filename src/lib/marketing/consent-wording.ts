@@ -22,7 +22,9 @@
 export type ConsentWordingSite = "REGISTRATION" | "PROFILE" | "OPT_OUT_RESUME";
 
 export type PinnedConsentWording = {
-  /** The day this sentence first shipped. */
+  /** The day this sentence first shipped — the deploy that put it in front of people, not the day it was decided.
+   *  ⚠️ The first nine said 2026-09-26 (the D1/D6 decision) while production still showed the old wording; they
+   *  were corrected to the ship date on 2026-09-27, before any ledger row had been written under them. */
   readonly since: string;
   readonly site: ConsentWordingSite;
   readonly locale: "SW" | "EN" | "ZH";
@@ -31,18 +33,18 @@ export type PinnedConsentWording = {
 };
 
 export const SMS_CONSENT_WORDINGS: readonly PinnedConsentWording[] = [
-  // ── 2026-09-26 · D1 — /auth/register checkbox (`auth.optionalUpdates`) ──
-  { since: "2026-09-26", site: "REGISTRATION", locale: "SW", wording: "Nitumie ofa na habari za 50pick kwa SMS (hiari)." },
-  { since: "2026-09-26", site: "REGISTRATION", locale: "EN", wording: "Send me 50pick offers and news by SMS (optional)." },
-  { since: "2026-09-26", site: "REGISTRATION", locale: "ZH", wording: "通过短信向我发送 50pick 的优惠和资讯（可选）。" },
-  // ── 2026-09-26 · D1 — /profile/notifications toggle (`push.marketingTitle — push.marketingBody`) ──
-  { since: "2026-09-26", site: "PROFILE", locale: "SW", wording: "Ofa na habari kwa SMS — Ofa na habari za 50pick mara kwa mara kwa SMS kwenye namba yako. Zima wakati wowote — ujumbe kuhusu akaunti yako, dau na fedha bado utakufikia." },
-  { since: "2026-09-26", site: "PROFILE", locale: "EN", wording: "Offers and news by SMS — Occasional 50pick offers and news by SMS to your phone number. Turn it off at any time — messages about your account, bets and money still reach you." },
-  { since: "2026-09-26", site: "PROFILE", locale: "ZH", wording: "短信优惠与资讯 — 我们会不定期通过短信向您的手机号码发送 50pick 的优惠和资讯。您可随时关闭——有关您的账户、投注和资金的消息仍会发送给您。" },
-  // ── 2026-09-26 · D6 — /s/<token> resume (`optout.resubscribeButton — push.marketingBody`) ──
-  { since: "2026-09-26", site: "OPT_OUT_RESUME", locale: "SW", wording: "Anza kupokea tena — Ofa na habari za 50pick mara kwa mara kwa SMS kwenye namba yako. Zima wakati wowote — ujumbe kuhusu akaunti yako, dau na fedha bado utakufikia." },
-  { since: "2026-09-26", site: "OPT_OUT_RESUME", locale: "EN", wording: "Start them again — Occasional 50pick offers and news by SMS to your phone number. Turn it off at any time — messages about your account, bets and money still reach you." },
-  { since: "2026-09-26", site: "OPT_OUT_RESUME", locale: "ZH", wording: "重新开始接收 — 我们会不定期通过短信向您的手机号码发送 50pick 的优惠和资讯。您可随时关闭——有关您的账户、投注和资金的消息仍会发送给您。" },
+  // ── D1 (decided 2026-09-26, shipped 2026-09-27) — /auth/register checkbox (`auth.optionalUpdates`) ──
+  { since: "2026-09-27", site: "REGISTRATION", locale: "SW", wording: "Nitumie ofa na habari za 50pick kwa SMS (hiari)." },
+  { since: "2026-09-27", site: "REGISTRATION", locale: "EN", wording: "Send me 50pick offers and news by SMS (optional)." },
+  { since: "2026-09-27", site: "REGISTRATION", locale: "ZH", wording: "通过短信向我发送 50pick 的优惠和资讯（可选）。" },
+  // ── D1 (decided 2026-09-26, shipped 2026-09-27) — /profile/notifications toggle (`push.marketingTitle — push.marketingBody`) ──
+  { since: "2026-09-27", site: "PROFILE", locale: "SW", wording: "Ofa na habari kwa SMS — Ofa na habari za 50pick mara kwa mara kwa SMS kwenye namba yako. Zima wakati wowote — ujumbe kuhusu akaunti yako, dau na fedha bado utakufikia." },
+  { since: "2026-09-27", site: "PROFILE", locale: "EN", wording: "Offers and news by SMS — Occasional 50pick offers and news by SMS to your phone number. Turn it off at any time — messages about your account, bets and money still reach you." },
+  { since: "2026-09-27", site: "PROFILE", locale: "ZH", wording: "短信优惠与资讯 — 我们会不定期通过短信向您的手机号码发送 50pick 的优惠和资讯。您可随时关闭——有关您的账户、投注和资金的消息仍会发送给您。" },
+  // ── D6 (decided 2026-09-26, shipped 2026-09-27) — /s/<token> resume (`optout.resubscribeButton — push.marketingBody`) ──
+  { since: "2026-09-27", site: "OPT_OUT_RESUME", locale: "SW", wording: "Anza kupokea tena — Ofa na habari za 50pick mara kwa mara kwa SMS kwenye namba yako. Zima wakati wowote — ujumbe kuhusu akaunti yako, dau na fedha bado utakufikia." },
+  { since: "2026-09-27", site: "OPT_OUT_RESUME", locale: "EN", wording: "Start them again — Occasional 50pick offers and news by SMS to your phone number. Turn it off at any time — messages about your account, bets and money still reach you." },
+  { since: "2026-09-27", site: "OPT_OUT_RESUME", locale: "ZH", wording: "重新开始接收 — 我们会不定期通过短信向您的手机号码发送 50pick 的优惠和资讯。您可随时关闭——有关您的账户、投注和资金的消息仍会发送给您。" },
   // ⛔ APPEND BELOW THIS LINE — never edit or remove an entry above it.
 ];
 

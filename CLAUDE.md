@@ -361,9 +361,12 @@ contract, which read as a working integration to anyone scanning the file.
    auth), pre-charge on a success. The true figure is `POST /api/account/balance` —
    read through `refreshSmsBalance` (one path for the admin tile, `/api/health` and
    `sendBatch`); operators read it on Admin → System's "SMS credit" tile. It is also the
-   one free live credential check, so a failed read says `refused` (wrong keys) or
-   `unreachable` (no answer) — never "zero". Crossing `SMS_BALANCE_ALERT_TZS` reaches every
-   ADMIN/COMPLIANCE officer by bell and email, never by SMS.
+   one free live credential check, so a failed read says `refused` (a `status:false`
+   400/401/403 — wrong keys), `unreachable` (no answer, a 429 or a 5xx) or `unexpected` (any
+   other reply) — never "zero". Crossing `SMS_BALANCE_ALERT_TZS`, and since 2026-09-27
+   crossing `SMS_BALANCE_FLOOR_TZS`, alarms by bell and email, never by SMS, the officers who
+   can open Admin → System (`rolesThatCanOpen`: the Owner, plus any role holding an `ops` view
+   grant — by default the Owner only). `smsConfigured()` is exactly `smsRailProblem() === null`.
 
 Also not in the PDF: `coding` is `GSM7` | `UCS2` (GSM-7 cannot carry Chinese — chosen
 per message by `smsCodingFor`), and a success carries no per-message id (`data: null`).
@@ -389,6 +392,9 @@ is the durable record. Live state, the go-live order and the open vendor questio
 toggle (`push.marketingTitle`/`marketingBody`) and the opt-out page's resume are pinned as literals in
 `src/lib/marketing/consent-wording.ts`: rewording one means APPENDING the new sentences there in the
 same commit (never editing an entry), or every new opt-in stops counting as consent (OQ11).
+⛔ No line-break hint ever goes into a ledger string (`optout.body`, `optout.stopButton`,
+`optout.resubscribeButton`, `push.marketingBody`): no U+200B, no no-break space — the ledger stores their
+bytes, so zh `break-keep` is only for strings that carry hints (`test:marketing-optout` S7h).
 
 ## Persistence
 

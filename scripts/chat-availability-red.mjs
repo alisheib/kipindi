@@ -37,8 +37,9 @@ const MUTATIONS = [
     name: "mount <ChatRoot /> unconditionally — the coupling loses its other end",
     check: "2.2",
     file: "src/components/layout/lazy-overlays.tsx",
-    from: `      {chatbotEnabled && <ChatRoot />}`,
-    to: `      <ChatRoot />`,
+    // ⚠️ Re-anchored 2026-09-27: the mount gained `supportEmail` (7a472dfe) and this anchor stopped resolving.
+    from: `      {chatbotEnabled && <ChatRoot supportEmail={supportEmail} />}`,
+    to: `      <ChatRoot supportEmail={supportEmail} />`,
   },
   {
     // ⭐ THE ZERO-COVERAGE CASE. Rename the promise key and rule 1.1 has nothing

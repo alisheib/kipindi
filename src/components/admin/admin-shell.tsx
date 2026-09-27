@@ -377,11 +377,19 @@ export function AdminPageHead({
 
 /* ===== KPI tile ===== */
 
+/** "BLACKBALL_CLIENT_SECRET" → BLACKBALL_<wbr>CLIENT_<wbr>SECRET: a break may fall only after an underscore. */
+function breakAfterUnderscores(name: string) {
+  return name.split("_").flatMap<React.ReactNode>((part, i, parts) => (i < parts.length - 1 ? [`${part}_`, <wbr key={i} />] : [part]));
+}
+
 export function AdminKpi({
   label,
   sw,
   value,
   delta,
+  note,
+  provenance,
+  noteCode,
   /**
    * ⛔ DG-A-10 — THE DEFAULT IS NEUTRAL, AND IT USED TO BE "up". `delta` is a free caption and
    * almost every caller passes context rather than a movement, so the tile drew a brand-tinted
@@ -402,6 +410,16 @@ export function AdminKpi({
   sw?: string;
   value: string | number;
   delta?: string;
+  /** The tile's state as a sentence (2026-09-27, the SMS credit tile first): drawn as prose at the 13px reading floor,
+   *  in the tone's ink, above the delta chip — which is 10px and keeps the plain facts. Optional and additive: a tile
+   *  that passes none renders exactly as before. */
+  note?: string;
+  /** Where the figure came from, on its own line under it (2026-09-27): "Last read 20:30 EAT · couldn't refresh — …".
+   *  Neutral secondary ink at the reading floor — it qualifies the value, it is not the state. Optional and additive. */
+  provenance?: string;
+  /** Literal names the note tells the reader to check (Railway variables), one per line in mono under it, each read
+   *  and copied whole: a name may break only after an underscore, never mid-token. Optional and additive. */
+  noteCode?: string[];
   deltaDir?: "up" | "down" | "flat";
   /** Earned/gold emphasis for the value (e.g. Lifetime GGR). The single way to
    *  ask for gold — there is no `tone="gold"` (it was a redundant alias). */
@@ -442,6 +460,8 @@ export function AdminKpi({
     : effectiveTone === "success" ? "text-success"
     : effectiveTone === "gold" ? "text-gold"
     : "text-text";
+  // The state sentence takes the state's ink: words that tell the owner to act are never the faintest text on the card.
+  const noteInk = tone === "danger" ? "text-danger" : tone === "warning" ? "text-warning-fg" : "text-text-secondary";
   // ⛔ DG-A-10 — NO HOVER LIFT ON THE TILE BELOW. It is a `<div>`: not pressable, navigating
   // nowhere, and a shadow that rises under the pointer promises an action that does not exist.
   // It also carried `transition-all`, which this codebase bans outright — the pattern that once
@@ -517,6 +537,20 @@ export function AdminKpi({
       </div>
       {sw && (
         <div className="text-text-tertiary italic leading-tight" style={{ fontSize: 10.5 }}>{sw}</div>
+      )}
+      {/* ⭐ WHERE THE FIGURE CAME FROM (final visual review, 2026-09-27). It was clauses 4 and 5 of a red run-on, so an
+          unconfirmed "TZS 30" read as today's credit; it is the first line of prose under the figure now. */}
+      {provenance && <p className="text-body-sm break-words text-text-secondary">{provenance}</p>}
+      {/* ⭐ THE STATE IN WORDS (2026-09-27). Prose, not a label: DA rule 4's 12.5px floor; `break-words` is only the
+          backstop for a word longer than the tile — env names go in `noteCode` below. */}
+      {note && <p className={`text-body-sm break-words ${noteInk}`}>{note}</p>}
+      {/* A Railway name at 360 is wider than a 2-up tile: `break-words` split it "BLACKBALL_CLIENT" / "_ID". Each name is
+          its own mono line, and <wbr> after an underscore is its only break (⛔ never U+200B: a copy carries it into
+          the Railway search). */}
+      {noteCode && noteCode.length > 0 && (
+        <p className="font-mono text-body-sm break-words text-text">
+          {noteCode.map((name) => <span key={name} className="block">{breakAfterUnderscores(name)}</span>)}
+        </p>
       )}
       {(spark || delta) && (
         /**

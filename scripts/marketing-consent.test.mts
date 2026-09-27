@@ -24,12 +24,13 @@ import type { MarketingGateVerdict, MarketingSkipReason, MarketingToggleState, P
 import { marketingRgStanding } from "../src/lib/server/marketing/rg.ts";
 import { appendMarketingConsent, marketingConsentWording } from "../src/lib/server/marketing/consent-ledger.ts";
 import { db } from "../src/lib/server/store.ts";
-import type { StoredUser, StoredResponsibleGambling, StoredKyc, MessagingLocale, SuppressionReason } from "../src/lib/server/store.ts";
+import type { StoredUser, StoredResponsibleGambling, StoredKyc, MessagingLocale, SuppressionReason, StoredSuppression } from "../src/lib/server/store.ts";
 import { toMsisdn255 } from "../src/lib/phone-normalize.ts";
 import { parseTzNumber } from "../src/lib/tz-msisdn.ts";
 import { ageOn, MIN_AGE_YEARS } from "../src/lib/id-documents.ts";
 import { isFinalRefusal } from "../src/lib/kyc-refusal.ts";
 import { SMS_CONSENT_WORDINGS, isSmsConsentWording } from "../src/lib/marketing/consent-wording.ts";
+import { dict } from "../src/lib/i18n-dict.ts";
 import { selfExclusionStanding, selfExclusionStandingOf, selfExclude, coolOff } from "../src/lib/server/responsible-gambling.ts";
 import { dispatchSlice, MARKETING_RG_SUPPRESSED_ACTION } from "../src/lib/server/marketing/dispatch.ts";
 import type { SliceRecipient, SliceOutcome, SliceDeps } from "../src/lib/server/marketing/dispatch.ts";
@@ -37,6 +38,8 @@ import { mintOptOutToken, stopMarketing } from "../src/lib/server/marketing/opto
 import * as optoutService from "../src/lib/server/marketing/optout-service.ts";
 import { getAuditForTargetsDurable } from "../src/lib/server/audit.ts";
 import type { SmsOutbound, SmsBatchOutcome } from "../src/lib/server/sms.ts";
+import { formatHeldUntil } from "../src/app/profile/notifications/held-until.ts";
+import { EAT_OFFSET_MS } from "../src/lib/eat-day.ts";
 import { readFileSync } from "node:fs";
 import { decomment } from "./lib/decomment.mts";
 
@@ -707,6 +710,33 @@ type ToggleImpl = {
 };
 const REAL_TOGGLE: ToggleImpl = { choose: recordPlayerMarketingChoice, state: (u) => marketingToggleState(u) };
 
+/**
+ * A read that fails AFTER the writes landed: armed by the ledger append (the last write), the next
+ * `throws` reads of the RG row throw — the first read `marketingToggleState` makes. In memory, restored in
+ * `finally`, the way `test:marketing-optout` wraps `create`.
+ */
+async function afterWritesThrow<T>(throws: number, act: () => Promise<T>): Promise<{ result: T; thrown: number }> {
+  const store = db as unknown as {
+    messagingConsent: { create: (...a: unknown[]) => unknown };
+    responsible: { get: (...a: unknown[]) => unknown };
+  };
+  const realCreate = store.messagingConsent.create;
+  const realGet = store.responsible.get;
+  let armed = false, left = throws, thrown = 0;
+  store.messagingConsent.create = (...a: unknown[]) => { const r = realCreate.apply(store.messagingConsent, a); armed = true; return r; };
+  store.responsible.get = (...a: unknown[]) => {
+    if (armed && left > 0) { left--; thrown++; throw new Error("fixture: a read failed after the writes landed"); }
+    return realGet.apply(store.responsible, a);
+  };
+  try {
+    const result = await act();
+    return { result, thrown };
+  } finally {
+    store.messagingConsent.create = realCreate;
+    store.responsible.get = realGet;
+  }
+}
+
 async function runToggleAssertions(impl: ToggleImpl, run: number, tag: string): Promise<void> {
   const p = (n: string) => `${tag}${n}`;
   const mkp = async (i: number, over: Partial<StoredUser> = {}, rg?: Partial<StoredResponsibleGambling>, wording = PINNED_SW) => {
@@ -755,6 +785,10 @@ async function runToggleAssertions(impl: ToggleImpl, run: number, tag: string): 
   const sup2 = await Promise.resolve(db.suppression.find(b.key));
   ok(p("T2b · ⛔ …and the player's OFF→ON never lifts it — still refused on the suppression, the OPERATOR row still refusing"),
     (await gateSays(b.msisdn)) === "suppressed" && sup2?.reason === "OPERATOR", `${await gateSays(b.msisdn)} · ${JSON.stringify(sup2 ?? null)}`);
+  // The second layer, asked directly: the store refuses too, whoever calls it (toggle case 2 plants across both).
+  const storeLift = await Promise.resolve(db.suppression.lift(b.key, "profile", new Date().toISOString()));
+  ok(p("T2c · ⚠️ CONTROL — the STORE refuses as well: `suppression.lift` on the OPERATOR row lifts nothing, and it still refuses"),
+    storeLift === null && (await Promise.resolve(db.suppression.find(b.key)))?.reason === "OPERATOR", JSON.stringify(storeLift ?? null));
 
   // ── T3 · a break that ENDED — the consent on file predates it ──────────────────────────────
   const c = await mkp(3, { status: "COOLED_OFF" }, { coolingOffUntil: daysFromNow(-1) });
@@ -796,32 +830,213 @@ async function runToggleAssertions(impl: ToggleImpl, run: number, tag: string): 
   ok(p("T7 · the profile switch and the /s/ resume agree on which stops a person may lift (only WITHDRAWN)"),
     typeof other === "function" && reasons.every((r) => isPersonCreatedSuppression(r) === other(r)) && reasons.filter((r) => isPersonCreatedSuppression(r)).join() === "WITHDRAWN",
     typeof other === "function" ? reasons.map((r) => `${r}:${isPersonCreatedSuppression(r)}/${other(r)}`).join(" ") : "optout-service exports no personMayLift");
+
+  // ── T8 · D4b · a break IN FORCE — the switch is OFF, locked, and says until when ──────────────
+  // 🔴 Only a LAPSED refusal read OFF, so a running break fell through to ON: a consent the gate refuses now
+  // and will never honour (a yes counts only if given AFTER the break ends), and an ON tapped mid-break was
+  // written as a GIVEN row certain to lapse — then the switch flipped itself OFF when the break ended.
+  const breakEnds = daysFromNow(2);
+  const h = await mkp(8, { status: "COOLED_OFF" }, { coolingOffUntil: breakEnds });
+  ok(p("T8 · ⚠️ CONTROL — on a break with a consent on file, the gate refuses rg_cooling_off"), (await gateSays(h.msisdn)) === "rg_cooling_off", await gateSays(h.msisdn));
+  const s8 = await impl.state(await user(h.id));
+  ok(p("T8a · ⭐ D4b · during the break the switch reads OFF and HELD, with the break's end date — never ON"),
+    !s8.on && s8.held && !s8.paused && s8.heldUntil === new Date(breakEnds).toISOString(), JSON.stringify(s8));
+  const rows8 = async () => (await Promise.resolve(db.messagingConsent.listFor(h.key))).length;
+  const before8 = await rows8();
+  const r8 = await impl.choose({ userId: h.id, marketingOptIn: true, locale: "SW" });
+  const after8 = await rows8();
+  ok(p("T8b · ⛔ D4b · an ON tapped during the break writes NOTHING and answers held — no GIVEN row certain to lapse"),
+    !r8.ok && r8.held === true && r8.on === false && !r8.changed && after8 === before8, `${JSON.stringify(r8)} · rows ${before8} → ${after8}`);
+  const s8end = await marketingToggleState(await user(h.id), new Date(Date.parse(breakEnds) + DAY));
+  ok(p("T8c · …and on a clock after the break ends the SAME record reads paused (lapsed), no longer held"),
+    !s8end.on && s8end.paused && !s8end.held, JSON.stringify(s8end));
+  await impl.choose({ userId: h.id, marketingOptIn: false, locale: "SW" });
+  const row8 = await Promise.resolve(db.messagingConsent.latestFor(h.key));
+  ok(p("T8d · an OFF during the break is still recorded — a no is never refused"),
+    (await user(h.id)).marketingOptIn === false && row8?.status === "WITHDRAWN", `${(await user(h.id)).marketingOptIn} · ${row8?.status}`);
+  const nc = await mkp(9, { status: "COOLED_OFF", marketingOptIn: false }, { coolingOffUntil: daysFromNow(2) });
+  const s9 = await impl.state(await user(nc.id));
+  const r9 = await impl.choose({ userId: nc.id, marketingOptIn: true, locale: "SW" });
+  ok(p("T8e · a player with NO consent on a break is held too — the ON is void whoever taps it, and nothing is written"),
+    !s9.on && s9.held && !r9.ok && r9.held === true && (await user(nc.id)).marketingOptIn === false, `${JSON.stringify(s9)} · ${JSON.stringify(r9)}`);
+  const seUntil = daysFromNow(30);
+  const se = await mkp(10, { status: "SELF_EXCLUDED" }, { selfExclusionUntil: seUntil });
+  const s10 = await impl.state(await user(se.id));
+  ok(p("T8f · a self-exclusion in force reads held, until its end date"),
+    !s10.on && s10.held && s10.heldUntil === new Date(seUntil).toISOString(), JSON.stringify(s10));
+  const perm = await mkp(11, { status: "SELF_EXCLUDED" }, { selfExclusionUntil: daysFromNow(36_500) });
+  const s11 = await impl.state(await user(perm.id));
+  ok(p("T8g · a PERMANENT self-exclusion is held with NO date — never a date a century away"),
+    !s11.on && s11.held && s11.heldUntil === null, JSON.stringify(s11));
+
+  // ── T9 · a read that throws AFTER the writes landed — the answer is READ, never guessed ─────────
+  // 🔴 The catch answered `on: !want`, so an OFF whose records had landed showed the switch ON again.
+  const g9 = await mkp(12);
+  const f1 = await afterWritesThrow(1, () => impl.choose({ userId: g9.id, marketingOptIn: false, locale: "SW" }));
+  const row9 = await Promise.resolve(db.messagingConsent.latestFor(g9.key));
+  ok(p("T9 · ⚠️ CONTROL — the fault fired once, after the OFF's writes had landed (marketingOptIn=false, a WITHDRAWN row)"),
+    f1.thrown === 1 && (await user(g9.id)).marketingOptIn === false && row9?.status === "WITHDRAWN", `thrown ${f1.thrown} · ${row9?.status}`);
+  ok(p("T9a · ⭐ …and the answer is the RE-READ state, OFF as stored — not the guess !want (ON) that snapped the switch back"),
+    f1.result.on === false && f1.result.ok === true && f1.result.changed === true, JSON.stringify(f1.result));
+  const g10 = await mkp(13);
+  const f2 = await afterWritesThrow(2, () => impl.choose({ userId: g10.id, marketingOptIn: false, locale: "SW" }));
+  ok(p("T9b · when the fresh read fails too the answer is UNKNOWN (null) — still never a guess"),
+    f2.thrown === 2 && f2.result.on === null && f2.result.ok === false, `thrown ${f2.thrown} · ${JSON.stringify(f2.result)}`);
+}
+
+/* ══ THE CONSENT CARD — what the player SEES when a save fails, a read fails, or a break is running ══════
+ * Source-level (a client component needs a browser), each rule read where it lives, each with a red plant
+ * below that puts the pre-2026-09-27 text back. The copy rule reads the dictionary itself. */
+type CardSources = { card: string; action: string; page: string; lines: string[]; zhKeep: string[] };
+const readSrc = (rel: string) => decomment(readFileSync(new URL(`../${rel}`, import.meta.url), "utf8")).replace(/\r\n/g, "\n");
+const REAL_CARD: CardSources = {
+  card: readSrc("src/app/profile/notifications/marketing-consent.tsx"),
+  action: readSrc("src/app/profile/notifications/actions.ts"),
+  page: readSrc("src/app/profile/notifications/page.tsx"),
+  lines: [dict.en, dict.sw, dict.zh].flatMap((d) => [d.push.marketingPaused, d.push.marketingHeld, d.push.marketingHeldNoDate]),
+  // consent-02 · the zh lines this page renders `break-keep` — each must carry its own phrase breaks.
+  zhKeep: [dict.zh.push.marketingPaused, dict.zh.push.marketingHeld, dict.zh.push.marketingHeldNoDate, dict.zh.push.marketingUnavailable, dict.zh.watchlist.alertsHint],
+};
+/** A call to switch gambling offers back on, or a word saying the setting will resume by itself. */
+const NUDGE = /Switch it on to|opt in again|Paused|Iwashe|ukubali tena|Imesitishwa|开启即表示|已暂停/i;
+
+/** consent-02 · under `break-keep` a zh line can break only at a U+200B hint, a space or CJK punctuation. A run
+ *  longer than the ~13 glyphs the 360 column holds is then broken by `overflow-wrap:anywhere` — mid-word again —
+ *  so the longest run is held well under it. */
+const ZWSP = String.fromCharCode(0x200b);
+const KEEP_MAX = 7;
+const hanCount = (x: string) => x.match(/\p{Script=Han}/gu)?.length ?? 0;
+const longestKeepRun = (line: string): string =>
+  line.split(ZWSP).flatMap((x) => x.split(/[\s，。、；：！？（）—]+|\{\w+\}/u))
+    .reduce((a, b) => (hanCount(b) > hanCount(a) ? b : a), "");
+
+function assertConsentCard(s: CardSources, tag: string): void {
+  const p = (n: string) => `${tag}${n}`;
+  ok(p("C0 · ⚠️ CONTROL — the card, its action and its page were read, and the nine RG lines exist"),
+    s.card.length > 1_000 && s.action.length > 500 && s.page.length > 1_000 && s.lines.length === 9 && s.lines.every((l) => l.length > 20),
+    `${s.card.length}/${s.action.length}/${s.page.length} chars · ${s.lines.length} lines`);
+  ok(p("C1 · ⭐ the consent sentence is ALWAYS on screen — a failure never replaces it (the retry is tapped beside the sentence the ledger records as shown)"),
+    /<p className="[^"]*">\{t\.push\.marketingBody\}<\/p>/.test(s.card) && !/t\.error\.somethingDidntWork/.test(s.card));
+  ok(p("C2 · a failure answers on the push switch's channel — a factual toast with its next step (§F2, §F4)"),
+    /toast\(\{ title, description, variant: "factual" \}\)/.test(s.card));
+  ok(p("C3 · ⭐ a lapsed session is `signed_out` before anything is written — the card says sign in again and links to it"),
+    /if \(!session\) return \{ ok: false, reason: "signed_out", on: null \};/.test(s.action)
+      && s.action.indexOf('reason: "signed_out"') < s.action.indexOf("recordPlayerMarketingChoice(")
+      && /t\.push\.marketingErrSignedOut/.test(s.card) && /href="\/auth\/login\?next=\/profile\/notifications"/.test(s.card));
+  ok(p("C4 · D4b · the switch is locked while a break or self-exclusion is in force, and the card says until when"),
+    /disabled=\{pending \|\| held\}/.test(s.card) && /<HeldLine template=\{t\.push\.marketingHeld\} date=\{heldUntil\} \/>/.test(s.card));
+  ok(p("C5 · ⭐ after a failure the switch shows what the server READ — the pre-tap guess only when nothing was read, and then the page is re-read"),
+    /setOn\(typeof r\.on === "boolean" \? r\.on : !want\)/.test(s.card) && /router\.refresh\(\)/.test(s.card));
+  ok(p("C6 · ⭐ a failed read renders the card WITHOUT a switch and with our desk — never nothing"),
+    /<MarketingConsentUnavailable t=\{t\} \/>/.test(s.page) && !/\{marketing && <MarketingConsent/.test(s.page)
+      && /SUPPORT_PHONE_TEL\(\)/.test(s.page) && /t\.push\.marketingUnavailable/.test(s.page));
+  ok(p("C7 · the title keeps its last two words together ('by SMS', 'kwa SMS') — no lone channel word at 360"),
+    /<MarketingTitle text=\{t\.push\.marketingTitle\} \/>/.test(s.card) && /whitespace-nowrap">\{text\.slice\(cut \+ 1\)\}/.test(s.card));
+  const nudging = s.lines.filter((l) => NUDGE.test(l));
+  ok(p("C8 · ⛔ the lapse and hold lines STATE the mechanism in all three languages — no call to switch gambling offers back on, no 'paused'"),
+    nudging.length === 0, nudging.join(" | "));
+  ok(p("C9 · ⭐ consent-01 · the end date is written in the PAGE'S language (formatHeldUntil), never formatDate's en-GB, and kept on one line"),
+    /formatHeldUntil\(marketing\.heldUntil, locale, t\.common\.monthsShort\)/.test(s.page) && !/\bformatDate\b/.test(s.page)
+      && /<span className="whitespace-nowrap">\{date\}<\/span>/.test(s.card));
+  ok(p("C10 · consent-02 · the held and paused notes, the unreadable line and the watchlist hint are break-keep — and the PINNED consent sentence is not (it cannot carry break hints)"),
+    /const NOTE = "[^"]*\bbreak-keep \[overflow-wrap:anywhere\][^"]*";/.test(s.card)
+      && /<p className=\{NOTE\} data-testid="marketing-consent-held">/.test(s.card)
+      && /<p className=\{NOTE\} data-testid="marketing-consent-paused">/.test(s.card)
+      && /<p className="(?![^"]*break-keep)[^"]*">\{t\.push\.marketingBody\}<\/p>/.test(s.card)
+      && /<p className="[^"]*\bbreak-keep \[overflow-wrap:anywhere\][^"]*">\{t\.push\.marketingUnavailable\}<\/p>/.test(s.page)
+      && /<p className="[^"]*\bbreak-keep \[overflow-wrap:anywhere\][^"]*">\{t\.watchlist\.alertsHint\}<\/p>/.test(s.page));
+  const runs = s.zhKeep.map(longestKeepRun);
+  ok(p(`C11 · consent-02 · every zh line rendered break-keep carries its phrase breaks — no unbreakable run over ${KEEP_MAX} glyphs (the 360 column holds ~13)`),
+    s.zhKeep.length === 5 && s.zhKeep.every((l) => l.includes(ZWSP)) && runs.every((r) => hanCount(r) <= KEEP_MAX),
+    runs.map((r) => `${hanCount(r)}:${r}`).join(" · "));
+}
+
+/* ══ consent-01 · THE HELD DATE, EXECUTED — the formatter the page calls, on a fixed clock ══════════════════ */
+type HeldFmt = (iso: string, locale: "en" | "sw" | "zh", nowMs: number) => string | null;
+const REAL_HELD: HeldFmt = (iso, l, nowMs) => formatHeldUntil(iso, l, dict[l].common.monthsShort, nowMs);
+const HELD_NOW = Date.parse("2026-09-27T09:00:00.000Z"); // 12:00 in Dar es Salaam
+const ENGLISH_MONTH = /\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sept?|Oct|Nov|Dec)\b/;
+
+function assertHeldDate(fmt: HeldFmt, tag: string): void {
+  const p = (n: string) => `${tag}${n}`;
+  const all = (iso: string) => ({ en: fmt(iso, "en", HELD_NOW), sw: fmt(iso, "sw", HELD_NOW), zh: fmt(iso, "zh", HELD_NOW) });
+  const dec = all("2026-12-02T09:00:00.000Z");
+  ok(p("H1 · ⭐ each language writes its OWN month — '2 Dec' · '2 Des' · '2026年12月2日', never an English month inside sw or zh"),
+    dec.en === "2 Dec" && dec.sw === "2 Des" && dec.zh === "2026年12月2日" && !ENGLISH_MONTH.test(`${dec.sw} ${dec.zh}`),
+    JSON.stringify(dec));
+  const nextYear = all("2027-03-10T09:00:00.000Z");
+  ok(p("H2 · a self-exclusion that ends NEXT year says so — '10 Mar 2027' · '10 Mac 2027' · '2027年3月10日'"),
+    nextYear.en === "10 Mar 2027" && nextYear.sw === "10 Mac 2027" && nextYear.zh === "2027年3月10日", JSON.stringify(nextYear));
+  const midnight = fmt("2026-09-30T21:30:00.000Z", "en", HELD_NOW);
+  ok(p("H3 · the day is TANZANIA'S — 21:30Z on 30 Sep is 00:30 on 1 Oct in Dar es Salaam"), midnight === "1 Oct", String(midnight));
+  const hour = all("2026-09-27T10:00:30.000Z");
+  ok(p("H4 · an end less than a day away says the EAT clock, 24-hour, rounded UP — a one-hour break never reads 'until <today>'"),
+    hour.en === "27 Sep, 13:01" && hour.sw === "27 Sep, 13:01" && hour.zh === "2026年9月27日 13:01", JSON.stringify(hour));
+  ok(p("H5 · an unreadable date gives null, so the card shows the line without a date"), fmt("not a date", "sw", HELD_NOW) === null);
 }
 
 /** The switch written out so one step at a time can be made wrong. With no flag set it is asserted to
  *  agree with the shipped writer on every T-case before any plant is trusted. */
-type ToggleDefect = { noLift?: boolean; liftsAnyReason?: boolean; booleanState?: boolean; booleanOnlyWrite?: boolean };
+type ToggleDefect = {
+  noLift?: boolean; liftsAnyReason?: boolean; booleanState?: boolean; booleanOnlyWrite?: boolean;
+  // ── 2026-09-27 ──
+  heldReadsOn?: boolean;    // pre-D4b: a break still running falls through to ON (only a LAPSED refusal read OFF)
+  heldWrites?: boolean;     // pre-D4b: an ON mid-break is written as a GIVEN row certain to lapse
+  guessOnThrow?: boolean;   // the old catch: `on: !want` whatever the writes did
+};
+/**
+ * ⛔ `liftsAnyReason` IS PLANTED ACROSS BOTH LAYERS (2026-09-27). The store's own `suppression.lift` now refuses
+ * a row that is not WITHDRAWN (defence in depth — `test:dal-parity` 17.liftreason, and T2c above), so a model
+ * that dropped only the SERVICE's check still lifted nothing, and toggle case 2 stayed GREEN: it could no longer
+ * show that T2b fails when the defect is real. This is the store's `lift` with its reason filter gone too — the
+ * active row `find` returned (the memory twin hands back the stored row itself) superseded as the pre-fix
+ * store did, once, never deleted. Planting code only; the defect-free model calls the real `lift`.
+ */
+function liftIgnoringReason(row: StoredSuppression, reason: string): boolean {
+  if (row.liftedAt) return false;
+  row.liftedAt = new Date().toISOString();
+  row.liftedReason = reason;
+  return true;
+}
 function toggleModel(d: ToggleDefect): ToggleImpl {
-  const state = async (u: StoredUser): Promise<MarketingToggleState> =>
-    (d.booleanState ? { on: u.marketingOptIn === true, paused: false } : marketingToggleState(u));
+  const state = async (u: StoredUser): Promise<MarketingToggleState> => {
+    if (d.booleanState) return { on: u.marketingOptIn === true, paused: false, held: false, heldUntil: null };
+    const s = await marketingToggleState(u);
+    return d.heldReadsOn && s.held ? { on: u.marketingOptIn === true, paused: false, held: false, heldUntil: null } : s;
+  };
   const choose: ToggleImpl["choose"] = async ({ userId, marketingOptIn, locale }) => {
-    const u = (await Promise.resolve(db.user.findById(userId))) as StoredUser;
     const want = marketingOptIn === true;
-    const before = await state(u);
-    const nothing = d.booleanOnlyWrite ? u.marketingOptIn === want : (want ? before.on : (!before.on && u.marketingOptIn !== true));
-    if (nothing) return { ok: true, on: want, changed: false, liftedStop: false };
-    const key = { channel: "SMS" as const, identifier: toMsisdn255(u.phoneE164), category: "MARKETING" as const };
     let liftedStop = false;
-    if (want && !d.noLift) {
-      const stop = await Promise.resolve(db.suppression.find(key));
-      if (stop && (d.liftsAnyReason || isPersonCreatedSuppression(stop.reason))) {
-        liftedStop = (await Promise.resolve(db.suppression.lift(key, "profile", new Date().toISOString()))) !== null;
+    let changed = false;
+    try {
+      const u = (await Promise.resolve(db.user.findById(userId))) as StoredUser;
+      const before = await state(u);
+      if (want && before.held && !d.heldWrites) return { ok: false, on: false, changed, liftedStop, held: true };
+      const nothing = d.booleanOnlyWrite ? u.marketingOptIn === want : (want ? before.on : (!before.on && u.marketingOptIn !== true));
+      if (nothing) return { ok: true, on: want, changed, liftedStop };
+      const key = { channel: "SMS" as const, identifier: toMsisdn255(u.phoneE164), category: "MARKETING" as const };
+      if (want && !d.noLift) {
+        const stop = await Promise.resolve(db.suppression.find(key));
+        if (stop && (d.liftsAnyReason || isPersonCreatedSuppression(stop.reason))) {
+          liftedStop = d.liftsAnyReason
+            ? liftIgnoringReason(stop, "profile")
+            : (await Promise.resolve(db.suppression.lift(key, "profile", new Date().toISOString()))) !== null;
+        }
       }
+      if (u.marketingOptIn !== want) await Promise.resolve(db.user.update(u.id, { marketingOptIn: want }));
+      changed = true;
+      await appendMarketingConsent({ phoneE164: u.phoneE164, locale, status: want ? "GIVEN" : "WITHDRAWN", source: "PROFILE", site: "PROFILE", evidence: "/profile/notifications", recordedBy: null });
+      const after = await state({ ...u, marketingOptIn: want });
+      return { ok: after.on === want, on: after.on, changed, liftedStop };
+    } catch {
+      if (d.guessOnThrow) return { ok: false, on: !want, changed, liftedStop };
+      let on: boolean | null = null;
+      try {
+        const u2 = await Promise.resolve(db.user.findById(userId));
+        on = u2 ? (await state(u2 as StoredUser)).on : null;
+      } catch { on = null; }
+      return { ok: on === want, on, changed, liftedStop };
     }
-    if (u.marketingOptIn !== want) await Promise.resolve(db.user.update(u.id, { marketingOptIn: want }));
-    await appendMarketingConsent({ phoneE164: u.phoneE164, locale, status: want ? "GIVEN" : "WITHDRAWN", source: "PROFILE", site: "PROFILE", evidence: "/profile/notifications", recordedBy: null });
-    const after = await state({ ...u, marketingOptIn: want });
-    return { ok: after.on === want, on: after.on, changed: true, liftedStop };
   };
   return { choose, state };
 }
@@ -835,6 +1050,10 @@ if (!PROVE_RED) {
   assertDispatchShape("");
   console.log("\n── D4 · the profile switch (recordPlayerMarketingChoice, judged by the gate)\n");
   await runToggleAssertions(REAL_TOGGLE, 500, "");
+  console.log("\n── the consent card (what a failed save, a failed read and a running break look like)\n");
+  assertConsentCard(REAL_CARD, "");
+  console.log("\n── consent-01 · the held date, in the page's language (formatHeldUntil, fixed clock)\n");
+  assertHeldDate(REAL_HELD, "");
   console.log(`\nmarketing-consent: ${pass} passed, ${fail} failed`);
   process.exitCode = fail === 0 ? 0 : 1;
 } else {
@@ -1049,6 +1268,21 @@ if (!PROVE_RED) {
       defect: { booleanOnlyWrite: true },
       expect: "T3c · ⭐ ONE tap ON is the 'opt in again after it ends' RG §4 promises — the gate ALLOWS",
     },
+    {
+      name: "🔴 pre-D4b — a break still running falls through to ON, a consent the gate will never act on",
+      defect: { heldReadsOn: true },
+      expect: "T8a · ⭐ D4b · during the break the switch reads OFF and HELD, with the break's end date — never ON",
+    },
+    {
+      name: "🔴 pre-D4b — an ON tapped mid-break is written as a GIVEN row certain to lapse",
+      defect: { heldWrites: true },
+      expect: "T8b · ⛔ D4b · an ON tapped during the break writes NOTHING and answers held — no GIVEN row certain to lapse",
+    },
+    {
+      name: "🔴 the old catch — a throw after the writes landed answers the guess !want, so a recorded OFF shows ON",
+      defect: { guessOnThrow: true },
+      expect: "T9a · ⭐ …and the answer is the RE-READ state, OFF as stored — not the guess !want (ON) that snapped the switch back",
+    },
   ];
   for (const [i, c] of TOGGLE_CASES.entries()) {
     pass = 0; fail = 0; failed.length = 0;
@@ -1061,12 +1295,128 @@ if (!PROVE_RED) {
     else console.log(`   caught → ${c.expect}\n`);
   }
 
+  // ── the consent card: the shipped sources green first, then one pre-fix text at a time ──
+  pass = 0; fail = 0; failed.length = 0;
+  assertConsentCard(REAL_CARD, "cardbase:");
+  if (fail !== 0) problems.push(`CARD BASELINE: the shipped card is already red (${failed.join(" | ")})`);
+  console.log(`\n§0 card baseline · marketing-consent.tsx / actions.ts / page.tsx: ${pass} passed, ${fail} failed\n`);
+  const plant = (field: "card" | "action" | "page", from: string, to: string): CardSources => {
+    const src = REAL_CARD[field];
+    // ⛔ A plant that matches nothing proves nothing — it must hit the shipped text exactly once.
+    if (src.split(from).length !== 2) problems.push(`card plant "${from.slice(0, 50)}" does not match ${field} exactly once`);
+    const planted: CardSources = { ...REAL_CARD };
+    planted[field] = src.replace(from, to);
+    return planted;
+  };
+  const CARD_CASES: Array<{ name: string; src: CardSources; expect: string }> = [
+    {
+      name: "🔴 the pre-fix failure SWAPS the consent sentence for 'Something didn't work. Try again.'",
+      src: plant("card", ">{t.push.marketingBody}</p>", ">{failed ? t.error.somethingDidntWork : t.push.marketingBody}</p>"),
+      expect: "C1 · ⭐ the consent sentence is ALWAYS on screen — a failure never replaces it (the retry is tapped beside the sentence the ledger records as shown)",
+    },
+    {
+      name: "🔴 a lapsed session answers a bare { ok: false } — the card can only say 'try again', which never succeeds",
+      src: plant("action", 'if (!session) return { ok: false, reason: "signed_out", on: null };', "if (!session) return { ok: false, on: null };"),
+      expect: "C3 · ⭐ a lapsed session is `signed_out` before anything is written — the card says sign in again and links to it",
+    },
+    {
+      name: "🔴 pre-D4b — the switch stays tappable during a break",
+      src: plant("card", "disabled={pending || held}", "disabled={pending}"),
+      expect: "C4 · D4b · the switch is locked while a break or self-exclusion is in force, and the card says until when",
+    },
+    {
+      name: "🔴 a failure snaps the switch to the guess !want whatever the server read",
+      src: plant("card", 'setOn(typeof r.on === "boolean" ? r.on : !want);', "setOn(!want);"),
+      expect: "C5 · ⭐ after a failure the switch shows what the server READ — the pre-tap guess only when nothing was read, and then the page is re-read",
+    },
+    {
+      name: "🔴 a failed read leaves the card OFF the page — /s and Privacy §3 send people to a control that is not there",
+      src: plant("page", "<MarketingConsentUnavailable t={t} />", "null"),
+      expect: "C6 · ⭐ a failed read renders the card WITHOUT a switch and with our desk — never nothing",
+    },
+    {
+      name: "🔴 the title wraps word by word again — 'SMS' alone on line two at 360",
+      src: plant("card", "<MarketingTitle text={t.push.marketingTitle} />", '<p className="font-display">{t.push.marketingTitle}</p>'),
+      expect: "C7 · the title keeps its last two words together ('by SMS', 'kwa SMS') — no lone channel word at 360",
+    },
+    {
+      name: "🔴 the pre-fix lapse line — 'Paused … Switch it on to opt in again.' (a nudge back to gambling offers)",
+      src: { ...REAL_CARD, lines: [...REAL_CARD.lines.slice(1), "Paused when your break or self-exclusion ended. Switch it on to opt in again."] },
+      expect: "C8 · ⛔ the lapse and hold lines STATE the mechanism in all three languages — no call to switch gambling offers back on, no 'paused'",
+    },
+    {
+      name: "🔴 consent-01 · the pre-fix page — formatDate's en-GB 'Sept' inside the Swahili and Chinese sentences",
+      src: plant("page", "formatHeldUntil(marketing.heldUntil, locale, t.common.monthsShort)", "formatDate(marketing.heldUntil)"),
+      expect: "C9 · ⭐ consent-01 · the end date is written in the PAGE'S language (formatHeldUntil), never formatDate's en-GB, and kept on one line",
+    },
+    {
+      name: "🔴 consent-02 · the notes lose break-keep — zh splits 结|束 and 除|非 at 360 again",
+      src: plant("card", " break-keep [overflow-wrap:anywhere]\";", "\";"),
+      expect: "C10 · consent-02 · the held and paused notes, the unreadable line and the watchlist hint are break-keep — and the PINNED consent sentence is not (it cannot carry break hints)",
+    },
+    {
+      name: "🔴 consent-02 · a zh line without its phrase breaks — keep-all cannot break it, so overflow-wrap splits it mid-word",
+      src: { ...REAL_CARD, zhKeep: [...REAL_CARD.zhKeep.slice(1), REAL_CARD.zhKeep[0].split(ZWSP).join("")] },
+      expect: `C11 · consent-02 · every zh line rendered break-keep carries its phrase breaks — no unbreakable run over ${KEEP_MAX} glyphs (the 360 column holds ~13)`,
+    },
+  ];
+  for (const [i, c] of CARD_CASES.entries()) {
+    pass = 0; fail = 0; failed.length = 0;
+    const tag = `cardred${i + 1}:`;
+    console.log(`── card case ${i + 1}: ${c.name}`);
+    assertConsentCard(c.src, tag);
+    const wanted = `${tag}${c.expect}`;
+    if (fail === 0) problems.push(`card case ${i + 1} (${c.name}): stayed GREEN`);
+    else if (!failed.includes(wanted)) problems.push(`card case ${i + 1} (${c.name}): red, but not on "${c.expect}" — got ${failed.join(" | ")}`);
+    else console.log(`   caught → ${c.expect}\n`);
+  }
+
+  // ── consent-01 · the held date: the shipped formatter green first, then one wrong formatter at a time ──
+  pass = 0; fail = 0; failed.length = 0;
+  assertHeldDate(REAL_HELD, "heldbase:");
+  if (fail !== 0) problems.push(`HELD BASELINE: the shipped formatter is already red (${failed.join(" | ")})`);
+  console.log(`\n§0 held baseline · formatHeldUntil: ${pass} passed, ${fail} failed\n`);
+  const HELD_CASES: Array<{ name: string; fmt: HeldFmt; expect: string }> = [
+    {
+      name: "🔴 the pre-fix formatter — `formatDate`, en-GB whatever the page ('28 Sept 2026' in every language)",
+      fmt: (iso) => new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "Africa/Dar_es_Salaam" }),
+      expect: "H1 · ⭐ each language writes its OWN month — '2 Dec' · '2 Des' · '2026年12月2日', never an English month inside sw or zh",
+    },
+    {
+      name: "the year dropped — a self-exclusion ending next year reads as this year",
+      fmt: (iso, l, now) => { const s = REAL_HELD(iso, l, now); return s && l !== "zh" ? s.replace(/ \d{4}$/, "") : s; },
+      expect: "H2 · a self-exclusion that ends NEXT year says so — '10 Mar 2027' · '10 Mac 2027' · '2027年3月10日'",
+    },
+    {
+      name: "the UTC day and clock, not Tanzania's — three hours behind the break it describes",
+      fmt: (iso, l, now) => { const ms = Date.parse(iso); return Number.isFinite(ms) ? REAL_HELD(new Date(ms - EAT_OFFSET_MS).toISOString(), l, now - EAT_OFFSET_MS) : null; },
+      expect: "H3 · the day is TANZANIA'S — 21:30Z on 30 Sep is 00:30 on 1 Oct in Dar es Salaam",
+    },
+    {
+      name: "no clock — a one-hour break reads 'until <today>'",
+      fmt: (iso, l, now) => REAL_HELD(iso, l, now)?.replace(/,? \d{2}:\d{2}$/, "") ?? null,
+      expect: "H4 · an end less than a day away says the EAT clock, 24-hour, rounded UP — a one-hour break never reads 'until <today>'",
+    },
+  ];
+  for (const [i, c] of HELD_CASES.entries()) {
+    pass = 0; fail = 0; failed.length = 0;
+    const tag = `heldred${i + 1}:`;
+    console.log(`── held case ${i + 1}: ${c.name}`);
+    assertHeldDate(c.fmt, tag);
+    const wanted = `${tag}${c.expect}`;
+    if (fail === 0) problems.push(`held case ${i + 1} (${c.name}): stayed GREEN`);
+    else if (!failed.includes(wanted)) problems.push(`held case ${i + 1} (${c.name}): red, but not on "${c.expect}" — got ${failed.join(" | ")}`);
+    else console.log(`   caught → ${c.expect}\n`);
+  }
+
   const caughtGate = CASES.length - problems.filter((x) => x.startsWith("case")).length;
   const caughtLoop = LOOP_CASES.length - problems.filter((x) => x.startsWith("loop case")).length;
   const caughtToggle = TOGGLE_CASES.length - problems.filter((x) => x.startsWith("toggle case")).length;
-  const caught = caughtGate + caughtLoop + caughtToggle;
-  console.log(`\ngate ${caughtGate}/${CASES.length} · loop ${caughtLoop}/${LOOP_CASES.length} · toggle ${caughtToggle}/${TOGGLE_CASES.length}`);
-  console.log(`${caught}/${CASES.length + LOOP_CASES.length + TOGGLE_CASES.length} caught`);
+  const caughtCard = CARD_CASES.length - problems.filter((x) => x.startsWith("card case")).length;
+  const caughtHeld = HELD_CASES.length - problems.filter((x) => x.startsWith("held case")).length;
+  const caught = caughtGate + caughtLoop + caughtToggle + caughtCard + caughtHeld;
+  console.log(`\ngate ${caughtGate}/${CASES.length} · loop ${caughtLoop}/${LOOP_CASES.length} · toggle ${caughtToggle}/${TOGGLE_CASES.length} · card ${caughtCard}/${CARD_CASES.length} · held ${caughtHeld}/${HELD_CASES.length}`);
+  console.log(`${caught}/${CASES.length + LOOP_CASES.length + TOGGLE_CASES.length + CARD_CASES.length + HELD_CASES.length} caught`);
   if (problems.length) {
     console.log("\nPROBLEMS:");
     for (const x of problems) console.log(`  ✗ ${x}`);

@@ -521,14 +521,17 @@ function SkipToContent({ label }: { label: string }) {
  * ⛔ ONE DEFINITION OF THE `main-content` LANDMARK FOR BOTH SHELLS — the skip link's target, and the tag
  * `measure.anchors.mjs` mutates (its `from` must resolve exactly once in this file, so ⛔ do not spell
  * the opening tag out in a comment either). Each shell renders exactly one.
- * `flex-1`: the shell is a flex column, so a short page still puts the footer at the window's bottom.
+ * `flex-1` plus `#main-content { min-height: 100svh }` (globals.css, D26): main is always at least one
+ * viewport tall, so the footer starts BELOW the fold on every page, short ones included, and never
+ * shifts inside the viewport as content arrives. On `/s` that is ~520px of scroll above the licence
+ * lines, by design.
  */
 function MainLandmark({ children }: { children: React.ReactNode }) {
   return <main id="main-content" className="flex-1">{children}</main>;
 }
 
 /**
- * ⭐ D6 (2026-09-26) · THE SHELL FOR `/s/<token>`, THE WAY OUT OF A MARKETING SMS.
+ * ⭐ D6 (2026-09-26) · THE SHELL FOR `/s/<token>` (and bare `/s`), THE WAY OUT OF A MARKETING SMS.
  *
  * The person on this page came to STOP. The player shell put the whole betting product around that one
  * tap: a filled "Jisajili" in the page's own button colour, the market nav, the bottom rail, the chat
@@ -543,6 +546,9 @@ function MainLandmark({ children }: { children: React.ReactNode }) {
  * ⛔ The chat bubble and the first-visit primer are mounted from the root layout, outside this shell, so
  * they stay off `/s` through their own `HIDE_ON` (`ChatRoot.tsx`, `first-visit-primer.tsx`);
  * `test:marketing-optout` reads all three together.
+ * ⭐ 2026-09-27 · THE HELPLINE KEEPS ITS CONTEXT. Alone, "Simu ya msaada · 0800 11 0011" ("help phone") read
+ * as 50pick's own line — on a page for stopping marketing, often the only number on screen. The full
+ * footer's responsible-gambling line now sits above it, as it does there, so it reads as what it is.
  */
 function OptOutShell({ t, children }: { t: Dict; children: React.ReactNode }) {
   return (
@@ -561,12 +567,16 @@ function OptOutShell({ t, children }: { t: Dict; children: React.ReactNode }) {
         <div aria-hidden className="claret-rule mx-auto max-w-board" />
         <div className="mx-auto max-w-board px-3 lg:px-6 pt-4 pb-7 space-y-2">
           <div className="flex items-center gap-2.5">
-            <span aria-label={t.footer.eighteenPlus} className="kp-rg__18">{t.footer.eighteenPlus}</span>
+            {/* No aria-label: "18+" is the text, and ARIA prohibits a label on a generic span (public-footer.tsx). */}
+            <span className="kp-rg__18">{t.footer.eighteenPlus}</span>
             {/* zh keeps its words whole (break-keep); the zh string carries zero-width break hints. */}
             <p className="text-text-muted leading-relaxed text-body-sm text-balance break-keep">{t.footer.licensedByGbt}</p>
           </div>
-          <p className="font-mono text-[11px] text-text-subtle tabular-nums">{t.footer.license}: {LICENCE_NUMBER()}</p>
-          {/* The INDEPENDENT problem-gambling helpline (a pinned constant, not ours) — the regulator line. */}
+          {/* 13px, not the full footer's 11px: a licence line is read, and 11px is under the reading floor (type-scale §3). */}
+          <p className="font-mono text-body-sm text-text-subtle tabular-nums">{t.footer.license}: {LICENCE_NUMBER()}</p>
+          {/* The INDEPENDENT problem-gambling helpline (a pinned constant, not ours) — the regulator line,
+              under the same responsible-gambling sentence that introduces it in the full footer. */}
+          <p className="italic text-text-subtle text-body-sm text-balance break-keep">{t.footer.stopGambling}</p>
           <a href={`tel:${HELPLINE_TEL()}`} className="text-body-sm text-text-muted hover:text-text transition-colors inline-flex flex-wrap items-center gap-x-[0.28em] min-h-[44px]">
             <span className="whitespace-nowrap">{t.footer.helpline} ·</span>{" "}<span className="whitespace-nowrap">{HELPLINE()}</span>
           </a>

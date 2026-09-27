@@ -814,6 +814,19 @@ ok("§11 no module-scope value captures a config getter", [...new Set(v11)].leng
   ok("§14.7 ★ /help's at-risk answer (faq5) gives the helpline labelled and tappable",
     faq5.includes("href={`tel:${HELPLINE_TEL()}`}") && />\s*\{HELPLINE\(\)\}\s*<\/a>/.test(faq5) && /helpline/i.test(labelsIn(faq5)),
     faq5 ? `labels: ${labelsIn(faq5) || "none"}` : "the faq5 branch was not found in src/app/help/page.tsx");
+  // ★ …and the answer is set to be read (2026-09-27 final visual review, local-help-faq5-*-360): every open answer
+  // carries the summary's own bottom padding (pb-3), where the last line sat about 6px above the next row's divider;
+  // and in zh the at-risk answer breaks only at spaces and punctuation, where it split 充值 across two lines.
+  const answerSet = (src: string): boolean => {
+    const cls = /<p className=\{`([^`]*)`\}>/.exec(src.slice(src.indexOf("</summary>")))?.[1] ?? "";
+    return /(?:^|\s)pb-3(?:\s|$)/.test(cls)
+      && cls.includes('WHOLE_WORD_ANSWERS.has(key) ? " break-keep [overflow-wrap:anywhere]"')
+      && /const WHOLE_WORD_ANSWERS[^=]*=\s*new Set\(\[[^\]]*"faq5"[^\]]*\]\)/.test(src);
+  };
+  ok("§14.8 ★ /help's open answers clear the next divider (pb-3), and faq5 keeps its Chinese words whole (break-keep)",
+    answerSet(help));
+  ok("§14.9 ⚠️ CONTROL — the same check fails without the bottom padding, and fails with faq5 out of the whole-word set",
+    !answerSet(help.replace("mt-2 pb-3 pl-", "mt-2 pl-")) && !answerSet(help.replace('new Set(["faq5"])', "new Set([])")));
 }
 
 // ────────────────────────────────────────────────────────────────────────────

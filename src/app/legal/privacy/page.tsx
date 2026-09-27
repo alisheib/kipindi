@@ -266,8 +266,9 @@ function content(): Record<Locale, React.ReactNode> { return {
   zh: (
     <>
       <LegalSection n="1" title="数据控制者">
+        {/* No space after "：" before the link: the full-width colon carries its own (`test:privacy-notice` §4h). */}
         <p>
-          50pick Ltd，坦桑尼亚达累斯萨拉姆。联系方式：{" "}
+          50pick Ltd，坦桑尼亚达累斯萨拉姆。联系方式：
           <a href={`mailto:${SUPPORT_EMAIL()}`} className="font-mono text-brand-300 underline-offset-2 hover:underline">{SUPPORT_EMAIL()}</a>。我们的数据保护官（DPO）可通过同一地址联系。
         </p>
       </LegalSection>
