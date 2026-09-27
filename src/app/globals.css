@@ -5468,7 +5468,7 @@ textarea::-webkit-resizer {
 
 /* Baseline, not centre: the 13px caption and the mono digits read as one sentence ("Betting closes in 08:25"), and
    centring stepped the caption's baseline 3–4px above the digits' (frame panel round 2). */
-.kp-udclock__row { margin: 0; display: flex; align-items: baseline; gap: var(--sp-2); min-height: var(--sp-5); }
+.kp-udclock__row { margin: 0; display: flex; align-items: baseline; gap: var(--sp-2); height: var(--sp-5); }
 .kp-udclock__row--closed { display: none; }
 .kp-updown[data-closed] .kp-udclock__row--open { display: none; }
 .kp-updown[data-closed] .kp-udclock__row--closed { display: flex; }
@@ -5546,10 +5546,10 @@ textarea::-webkit-resizer {
 .kp-udbug__sub { display: flex; flex-direction: column; align-items: center; font-size: var(--type-small); }
 @media (max-width: 639px) {
   /* density: general — the plate's two-tier layout below its one-row width, not card spacing; both settings. */
-  /* The words' bottom inset steps down to --sp-1, so the clock, the answer and both picks sit within the spec's
-     170px at 360 (§15.4). */
-  .kp-udbug__mid { padding-bottom: var(--sp-1);
-    min-height: calc(var(--sp-2) + var(--sp-1) + var(--vd) * 1.15 + var(--sp-1) + var(--type-small) * 2.9); }
+  /* The words' insets step down to --sp-1 (8px with the plate's own, above and below alike), so the clock, the
+     answer and both picks sit within the spec's 170px at 360 (§15.4). */
+  .kp-udbug__mid { padding-block: var(--sp-1);
+    min-height: calc(var(--sp-1) * 3 + var(--vd) * 1.15 + var(--type-small) * 2.9); }
   /* The level line's tail ("— haitoshi kuamua") restates the verdict: in the two-tier plate it gives way, so the
      level state keeps to the same two lines as every other state. */
   .kp-udbug__sep--tail, .kp-udbug__chunk--tail { display: none; }

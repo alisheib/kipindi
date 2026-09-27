@@ -3353,7 +3353,7 @@ export const dict = {
       udMatchDecides: "Bei ya saa {close} inaamua.",
       udMatchDecided: "Bei ya saa {close} iliamua.",
       udMatchAgedNote: "Bado hakuna bei mpya.",
-      udMatchRefund: "Tofauti na ufunguzi ikiwa ndogo kuliko\u00A0{margin}, kila dau linarudi.",
+      udMatchRefund: "Tofauti na ufunguzi isipofika\u00A0{margin}, kila dau linarudi.",
       udMatchRefundRange: "{upWord} kwa {up} au zaidi, {downWord} kwa {down} au pungufu — katikati, kila dau linarudi.",
       udMatchAllRounds: "Raundi zote",
       udMatchNextRound: "Cheza raundi ijayo",
