@@ -46,7 +46,20 @@ const done = (code) => { console.log(`\nqa:nav-pending: ${pass} passed, ${fail} 
  * the control (a real `<Link>`); `lands` is what the address must carry once it has landed; `dims` names what the
  * press replaces: "after-rail" (what follows the section rail), "after-filter" (what follows the console filter rail —
  * the desk's sits ABOVE its table's card) or "card-rows" (the tbody of the card holding the pressed control).
+ * Two optional keys: `below` holds a case to the driven widths UNDER it (a control drawn only on a phone), and
+ * `whyAbsent` runs in the page before anything is pressed and names why the control is legitimately not there — the
+ * case is then NOT MEASURED with that reason, and when it names nothing, a missing or hidden control is a FAILURE.
  */
+/** Why the desk's activity ledger draws no phone sort rail — or null when it must draw one. Runs in the page. */
+const deskLedgerWhyAbsent = () => {
+  const region = [...document.querySelectorAll("[role='region']")].find((r) => r.getAttribute("aria-label") === "Desk activity");
+  const table = region ? region.querySelector("table.admin-tbl") : null;
+  if (!table) return "the desk's activity ledger painted no table (a failed read paints its load error instead), so there is no phone sort rail to press";
+  if (table.querySelector(":scope > tbody > tr[data-table-empty]")) {
+    return "the desk's activity ledger is EMPTY, so its phone sort rail is not drawn — by design; seed placed stakes (seed-house-bot-panels-local) to measure it";
+  }
+  return null;
+};
 const CASES = [
   { id: "desk-tab", open: "/admin/desk", press: '[data-section-rail] a[href*="tab=activity"]', lands: /[?&]tab=activity/, dims: "after-rail" },
   { id: "desk-chip", open: "/admin/desk?tab=activity", press: "[data-filter-rail] a.kp-fchip:not([data-on])", lands: null, dims: "after-filter" },
@@ -54,7 +67,30 @@ const CASES = [
   { id: "list-page", open: "/admin/desk/new", ready: "table.admin-tbl", press: 'a[href*="page=2"][aria-label]', lands: /[?&]page=2/, dims: "card-rows" },
   { id: "list-chip", open: "/admin/desk/new", ready: "table.admin-tbl", press: "[data-filter-rail] a.kp-fchip:not([data-on])", lands: null, dims: "card-rows" },
   { id: "account-tab", open: "@account", press: '[data-section-rail] a[href*="tab=history"]', lands: /[?&]tab=history/, dims: "after-rail" },
+  /* ⭐ THE PHONE'S SORT RAIL (2026-09-27, Ali: "a phone sort button"). Below `sm` the desk's activity ledger draws no
+     header row, and the kit's card sort rail stands in its place — so a press on one of its chips must say at once that
+     it landed, exactly as a header press does: the mark in the chip, the ROWS of its card dimmed (the rail sits inside
+     the card, wrapped so the filter-rail fade has no sibling to fade), the other cards untouched.
+     ⛔ PHONE WIDTHS ONLY: from `sm` (640px) up the rail is in the page but `display: none` — nobody can press it there,
+     and `qa:house-bots-visual` §5.10 holds that it is not shown. ⛔ NEVER A FALSE PASS ON AN EMPTY LEDGER: over an
+     empty table the rail is not drawn at all, and `whyAbsent` says so before anything is pressed. */
+  { id: "desk-phone-sort", open: "/admin/desk?tab=activity", press: '[data-filter-rail="desk-activity-sort"] a.kp-fchip:not([data-on])', lands: /[?&]sort=/, dims: "card-rows", below: 640, whyAbsent: deskLedgerWhyAbsent },
 ];
+
+/**
+ * ⛔ HOLD ONLY THE PRESSED LINK'S OWN NAVIGATION (2026-09-27). The first cut held EVERY non-prefetch RSC request while a
+ * press was pending — and Next 16's sidebar prefetches reach the server without the `next-router-prefetch` header this
+ * read, so they were held too, the router's own queue backed up behind them, and four landings of one run "stalled"
+ * (NOT MEASURED, the RSC log full of aborted /admin/candidates and /admin/markets fetches). A request is held only when
+ * its path and query — `_rsc` aside — are the pressed link's href.
+ */
+const isNavTo = (reqUrl, href) => {
+  if (!href) return false;
+  const a = new URL(reqUrl), b = new URL(href, BASE);
+  a.searchParams.delete("_rsc");
+  const norm = (u) => `${u.pathname}?${[...u.searchParams.entries()].map(([k, v]) => `${k}=${v}`).sort().join("&")}`;
+  return norm(a) === norm(b);
+};
 
 const browser = await chromium.launch();
 const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
@@ -79,32 +115,51 @@ try {
   await page.close();
 
   for (const c of CASES) {
-    for (const width of WIDTHS) {
+    /* A case held to phone widths drives only the widths under its `below`; if the run drives none, it says so — a
+       phone-only control is never silently skipped into a clean run. */
+    const widths = c.below ? WIDTHS.filter((w) => w < c.below) : WIDTHS;
+    if (widths.length === 0) { nm(c.id, `no driven width is below ${c.below}px (widths ${WIDTHS.join(", ")}) — the control is drawn only there`); continue; }
+    for (const width of widths) {
       const label = `${c.id} @${width}`;
       const route = c.open === "@account" ? accountHref : c.open;
       if (!route) { nm(label, "no account row on the served roster to open"); continue; }
       const p = await ctx.newPage();
       await p.setViewportSize({ width, height: 900 });
-      let holding = false;
+      let holding = null;
       const held = [];
       const rscLog = [];
       p.on("response", (res) => { const h = res.request().headers(); if (h["rsc"] === "1" && !h["next-router-prefetch"]) rscLog.push(`${res.status()} ${res.url().replace(BASE, "")}`); });
       p.on("requestfailed", (req) => { const h = req.headers(); if (h["rsc"] === "1") rscLog.push(`FAILED ${req.failure()?.errorText} ${req.url().replace(BASE, "")}`); });
       await p.route("**/*", (r) => {
         const h = r.request().headers();
-        if (holding && h["rsc"] === "1" && !h["next-router-prefetch"]) { held.push(r); return; }
+        if (holding && h["rsc"] === "1" && !h["next-router-prefetch"] && isNavTo(r.request().url(), holding)) { held.push(r); return; }
         r.continue().catch(() => {});
       });
       try {
         await p.goto(BASE + route, { waitUntil: "load", timeout: 60_000 });
         await p.waitForSelector(c.ready ?? "[data-section-rail]", { timeout: 60_000 });
         await p.waitForTimeout(400);
+        /* `whyAbsent` first: a control that is legitimately not drawn is NOT MEASURED with the page's own reason. Past
+           it, such a case's control MUST be there and shown — a missing or hidden one is the defect, not a skip. */
+        if (c.whyAbsent) {
+          const why = await p.evaluate(c.whyAbsent);
+          if (why) { nm(label, why); continue; }
+        }
         const control = p.locator(c.press).first();
-        if ((await control.count()) === 0) { nm(label, `no control matches ${c.press} on ${route}`); continue; }
+        if ((await control.count()) === 0) {
+          if (c.whyAbsent) ok(`${label} · the control is drawn — nothing on the page says it should be absent`, false, `no control matches ${c.press} on ${route}`);
+          else nm(label, `no control matches ${c.press} on ${route}`);
+          continue;
+        }
+        if (c.whyAbsent && !(await control.isVisible())) {
+          ok(`${label} · the control is SHOWN at this width — it is drawn, and hidden here`, false, `${c.press} on ${route}`);
+          continue;
+        }
         ok(`${label} · at rest there is no pending mark anywhere`, (await p.locator("[data-link-pending]").count()) === 0);
 
         const before = p.url();
-        holding = true;
+        holding = await control.getAttribute("href");
+        if (!holding) { nm(label, `the control matching ${c.press} carries no href to hold`); continue; }
         await control.click();
         await p.waitForTimeout(SETTLE_MS);
 
@@ -151,7 +206,7 @@ try {
         ok(`${label} · ⭐ the page's loading.tsx did NOT take over during the hold — the old page stayed, so without the mark nothing would have moved`,
           m.railStillThere && p.url() === before, `rail present: ${m.railStillThere} · address unchanged: ${p.url() === before}`);
 
-        holding = false;
+        holding = null;
         for (const r of held.splice(0)) await r.continue().catch(() => {});
         const landed = await p.waitForFunction(() => document.querySelectorAll("[data-link-pending]").length === 0, null, { timeout: 30_000 }).then(() => true, () => false);
         if (!landed) {
@@ -176,7 +231,7 @@ try {
       } catch (e) {
         nm(label, String(e?.message ?? e).split("\n")[0]);
       } finally {
-        holding = false;
+        holding = null;
         for (const r of held.splice(0)) await r.continue().catch(() => {});
         await p.close();
       }
@@ -186,19 +241,20 @@ try {
   // ── The low-end tier: the loop stops, the track stays (test:reduce-motion 2.1's contract, measured) ──
   {
     const p = await ctx.newPage();
-    let holding = false;
+    let holding = null;
     const held = [];
     await p.route("**/*", (r) => {
       const h = r.request().headers();
-      if (holding && h["rsc"] === "1" && !h["next-router-prefetch"]) { held.push(r); return; }
+      if (holding && h["rsc"] === "1" && !h["next-router-prefetch"] && isNavTo(r.request().url(), holding)) { held.push(r); return; }
       r.continue().catch(() => {});
     });
     try {
       await p.goto(`${BASE}/admin/desk`, { waitUntil: "load", timeout: 60_000 });
       await p.waitForSelector("[data-section-rail]", { timeout: 60_000 });
       await p.evaluate(() => document.documentElement.setAttribute("data-motion", "reduced"));
-      holding = true;
-      await p.locator('[data-section-rail] a[href*="tab=history"]').first().click();
+      const historyTab = p.locator('[data-section-rail] a[href*="tab=history"]').first();
+      holding = await historyTab.getAttribute("href");
+      await historyTab.click();
       await p.waitForTimeout(SETTLE_MS);
       const r = await p.evaluate(() => {
         const mark = document.querySelector("[data-link-pending]");
@@ -211,7 +267,7 @@ try {
     } catch (e) {
       nm("reduced tier", String(e?.message ?? e).split("\n")[0]);
     } finally {
-      holding = false;
+      holding = null;
       for (const r of held.splice(0)) await r.continue().catch(() => {});
       await p.close();
     }

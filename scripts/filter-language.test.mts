@@ -220,7 +220,7 @@ const SURFACES = [
 const ADMIN_SURFACES = [
   "src/app/admin/ai-polls/poll-filters.tsx",        // /admin/ai-polls — state + category + window
   "src/app/admin/candidates/candidate-filters.tsx", // /admin/candidates — state + category + window
-  "src/components/admin/card-sort-control.tsx",     // the hoisted card SORT rail (both consoles)
+  "src/components/admin/card-sort-control.tsx",     // the hoisted card SORT rail (both consoles, and the desk's two ledgers below `sm` — its rank is a prop, see RANK_PROP_RAILS)
   "src/app/admin/proposals/admin-proposals-client.tsx", // /admin/proposals — the queue rail
   "src/app/admin/ai-usage/page.tsx",                // window only
   "src/app/admin/finance/page.tsx",                 // window only
@@ -262,6 +262,35 @@ const ADMIN_SURFACES = [
 const TAP_FLOOR_SURFACES: readonly string[] = [
   "src/app/admin/desk/activity-filters.tsx",   // qa:house-bots-visual drives both Activity routes at 360 and 1280
 ];
+
+/**
+ * ⭐ A DECLARED KIT RAIL WHOSE RANK IS A PROP — §6.6 FOLLOWS THE PROP TO ITS DEFAULT AND TO EVERY CALL SITE (2026-09-27).
+ *
+ * 🔴 WRITTEN THE DAY `CardSortControl` GAINED ITS THIRD HOME. The desk's two activity ledgers hide their header row
+ * below `sm` (each row is a stacked card), so on a phone they could not be re-sorted at all; the platform's answer for
+ * sorting where there is no header row is this rail, and the desk draws it there. But the desk's own visual gate holds
+ * every control to `--tap-min` (40px) — the very measurement `TAP_FLOOR_SURFACES` above was written for — and the dense
+ * rank is 32px. The rail therefore takes its rank as ONE prop, DEFAULTING to the dense rank, and the desk passes the
+ * shared one.
+ * ⛔ A DEFAULT IS NOT A WAIVER, SO THE RULE GETS STRICTER RATHER THAN QUIETER. Counted the old way, `rank={rank}` is no
+ * dense rank at all and §6.6 would go red; waved through, any caller could lift the rank unseen. So for a file listed
+ * here, a rank-taking control counts as dense ONLY when it takes the rail's one prop AND that prop defaults to the
+ * dense rank (still a COUNT — a second control at a typed rank is still refused); and §6.6c then walks `src/` for
+ * every call site of the component: one that lifts the rank must be named below — earned the same way §6.6b earns a
+ * `TAP_FLOOR_SURFACES` place, by a visual gate that measures it against `--tap-min` — and every named one must lift it
+ * on every call, while every other call site takes the default. The two other consoles (`/admin/ai-polls`,
+ * `/admin/candidates`) are measured by the same rule and pass no rank at all.
+ */
+const RANK_PROP_RAILS: ReadonlyArray<{ file: string; component: string; tapFloorCallers: readonly string[] }> = [
+  {
+    file: "src/components/admin/card-sort-control.tsx",
+    component: "CardSortControl",
+    // qa:house-bots-visual §5.10 drives both activity ledgers' phone rails at 360 against --tap-min
+    tapFloorCallers: ["src/app/admin/desk/page.tsx", "src/app/admin/desk/[id]/page.tsx"],
+  },
+];
+const RANK_PASSED = /\brank=\{rank\}/g;
+const RANK_DEFAULT_DENSE = /\brank = "dense",/;
 
 /**
  * ⭐ EVERY PRIMITIVE THAT TAKES A `rank`, IN ONE PLACE — §6.2 and §6.6 are both derived from it.
@@ -870,7 +899,10 @@ for (const f of ADMIN_SURFACES) {
      `<FilterPill` alone, so the `<DateTimeRangeFilter>` sitting in the SAME rail — 33px against
      the pills' 32px — was not a control as far as this rule was concerned. See `RANK_TAKING`. */
   const controls = rankTags + rankHelpers;
-  const dense = (src.match(DENSE_ATTR) ?? []).length + (src.match(DENSE_PROP) ?? []).length;
+  /* ⭐ A rank passed through the rail's one prop counts as dense only where that prop DEFAULTS to dense — see
+     `RANK_PROP_RAILS`; §6.6c below holds every call site that lifts it. */
+  const passedDense = RANK_PROP_RAILS.some((r) => r.file === f) && RANK_DEFAULT_DENSE.test(src) ? (src.match(RANK_PASSED) ?? []).length : 0;
+  const dense = (src.match(DENSE_ATTR) ?? []).length + (src.match(DENSE_PROP) ?? []).length + passedDense;
   const tapFloor = TAP_FLOOR_SURFACES.includes(f);
   if (tapFloor) {
     /* ⭐ THE INVERSION, NOT A WAIVER — see `TAP_FLOOR_SURFACES`. Still a COUNT, so a rail that is half
@@ -927,6 +959,83 @@ for (const f of ADMIN_SURFACES) {
 const adminCode = ADMIN_SURFACES.filter((f) => existsSync(join(ROOT, f))).map((f) => strip(read(f)));
 ok(adminCode.some((s) => /currentState === s\.id/.test(s)) && adminCode.some((s) => /currentCategory === c\.id/.test(s)),
   "6.8b CONTROL: §6.8's two literal keys still name real code — otherwise the rule is vacuous");
+
+/**
+ * ⭐ 6.6c — EVERY CALL SITE OF A RANK-PROP RAIL, WALKED (2026-09-27; see `RANK_PROP_RAILS`). §6.6 holds the rail's own
+ * file to a dense DEFAULT; this holds the callers. A call site that lifts the rank must be NAMED, and a named one must
+ * lift it on every call to a rank that clears `--tap-min`, and must be measured there — each of its rails' own ids is
+ * one the visual gate drives, which is how a place on the list is earned (the same bar as §6.6b). Everything else takes
+ * the default. ⛔ The `=>`-first tag loop is §6.9's own, for the same reason.
+ *
+ * 🔴 THE FIRST WALK HAD THREE HOLES, EACH A WAY TO LIFT THE RANK UNSEEN (2026-09-27, review), and each is now its own
+ * assertion with its own `red:filter-language` plant:
+ *   · 6.6d — A CALL THE PATTERN DID NOT PARSE WAS NOT A CALL. The tag pattern reads a SELF-CLOSING tag; a
+ *     `<X …>…</X>` call (or one with a `>` inside an expression) matched nothing, so its rank was never read and
+ *     `calls >= callers` still held on the file's other call. Now every opening in a caller must be a tag this walk
+ *     parsed, and every file that imports the rail must name it only in that import and in those tags — an alias or a
+ *     `createElement` call is a call site the walk cannot see, so it is refused rather than trusted.
+ *   · 6.6c — A SPREAD CARRIES WHATEVER IT CARRIES. `{...props}` inside the tag can hold a rank the walk cannot read,
+ *     so it counts as lifting the rank: refused off the list, and refused ON it too, because a named call site must
+ *     lift the rank where it can be read (a spread after `rank="secondary"` could put the dense rank back).
+ *   · 6.6e — AN ID SEEN ONLY IN A COMMENT IS NOT A RAIL THE GATE DRIVES. The id was looked for as any quoted
+ *     occurrence in the gate's raw source; it is now looked for as the gate's own SPEC literal, `rail: "<id>"`, in its
+ *     code with the comments stripped — the form §5.10 reads to find the rail it measures.
+ */
+{
+  const visualCode = strip(read("scripts/qa-house-bots-visual.mjs"));
+  for (const r of RANK_PROP_RAILS) {
+    const opens = new RegExp(`<${r.component}\\b`, "g");
+    const named = new RegExp(`\\b${r.component}\\b`, "g");
+    const callTag = new RegExp(`<${r.component}\\b(?:=>|[^>])*?\\/>`, "g");
+    const moduleName = r.file.replace(/^.*\//, "").replace(/\.tsx?$/, "");
+    const importsIt = new RegExp(`\\bfrom\\s+["'][^"']*\\/${moduleName}["']`);
+    const callers = allSrc.filter((x) => x !== r.file && (strip(read(x)).match(opens) ?? []).length > 0);
+    const importers = allSrc.filter((x) => x !== r.file && importsIt.test(strip(read(x))));
+    const lifted: string[] = [];
+    const notLifted: string[] = [];
+    const unmeasured: string[] = [];
+    const unparsed: string[] = [];
+    let calls = 0;
+    for (const c of [...new Set([...callers, ...importers])]) {
+      const code = strip(read(c));
+      const tags = [...code.matchAll(callTag)].map((m) => m[0]);
+      const opened = (code.match(opens) ?? []).length;
+      const mentions = (code.match(named) ?? []).length;
+      /* 6.6d: every opening parsed, and the name used only as the one import and those tags. */
+      if (tags.length !== opened || mentions !== opened + 1) unparsed.push(`${c} (${opened} opened · ${tags.length} parsed · ${mentions} mentions)`);
+      for (const tag of tags) {
+        calls++;
+        /* ⛔ ANY SPELLING JSX ACCEPTS (2026-09-27): `rank='secondary'` and `rank = "secondary"` are the same prop as
+           `rank="secondary"`, and the first cut of this walk read only the last — so either of the others lifted the
+           kit rail off the dense rank unseen (the verifier's plant, both shapes GREEN). A braced value cannot be read. */
+        const rankAttr = /\brank\s*=\s*(?:"([^"]*)"|'([^']*)'|(\{))/.exec(tag);
+        const typed = rankAttr ? (rankAttr[1] ?? rankAttr[2] ?? null) : null;
+        const braced = !!rankAttr?.[3];
+        const spread = /\{\s*\.\.\./.test(tag);
+        const liftsIt = spread || braced || (typed !== null && typed !== "dense");
+        if (r.tapFloorCallers.includes(c)) {
+          if (typed === null || typed === "dense" || spread) notLifted.push(`${c}${spread ? " (a spread — its rank cannot be read)" : ""}`);
+          const idAttr = /\brailId\s*=\s*(?:"([^"]+)"|'([^']+)')/.exec(tag);
+          const id = idAttr ? (idAttr[1] ?? idAttr[2]) : "";
+          const spec = new RegExp(`\\brail:\\s*"${id.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}"`);
+          if (!id || !spec.test(visualCode) || !/--tap-min/.test(visualCode)) unmeasured.push(`${c}#${id || "no railId"}`);
+        } else if (liftsIt) {
+          lifted.push(`${c}${spread ? " (a spread)" : ""}`);
+        }
+      }
+    }
+    ok(callers.length >= 3 && calls >= callers.length && r.tapFloorCallers.every((c) => callers.includes(c))
+        && lifted.length === 0 && notLifted.length === 0,
+      `6.6c every call site of ${r.component} takes its DENSE default, except the named call sites a visual gate measures against --tap-min — and those lift it on every call, where it can be read (a spread counts as lifting it)`,
+      `callers ${callers.length} · calls ${calls} · lifted off the list: ${lifted.join(", ")} · named but not lifted: ${notLifted.join(", ")}`);
+    ok(callers.length >= 3 && unparsed.length === 0 && importers.every((c) => callers.includes(c)),
+      `6.6d every <${r.component} opening in src/ is a tag the call-site walk parsed, and every file importing it names it only in that import and those tags — a call the walk cannot read is refused, not trusted`,
+      `unparsed: ${unparsed.join(" | ")} · importers that render no tag: ${importers.filter((c) => !callers.includes(c)).join(", ")}`);
+    ok(r.tapFloorCallers.length > 0 && unmeasured.length === 0,
+      `6.6e every named call site of ${r.component} carries a rail id that is a SPEC literal of the visual gate — rail: "<id>" in its code, never only in a comment or some other string — and that gate reads --tap-min`,
+      `named but not measured: ${unmeasured.join(", ")}`);
+  }
+}
 
 // ── §6.9 · THE ADMIN STRAY SWEEP — RE-KEYED ON THE DEFECT, NOT ON THE DRESSING ────────────────
 /**

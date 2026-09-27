@@ -293,9 +293,11 @@ changes nothing that has already happened.</p></div>
     arrives. On a slow connection, wait for it — nothing is stuck.</div>
 </div>
 <div class="box"><b class="lead">On a phone</b>
-<p>The two activity tables show each stake as a stacked card with no heading row, so their order cannot be changed
-on a phone; the line above the table still says which order you are looking at. Every other table sorts on a phone
-too.</p></div>
+<p>The two activity tables show each stake as a stacked card with no heading row, so on a phone they carry a
+<b>Sort · Panga</b> row above the first card instead: one button for each column you can sort by, the one in use
+marked with its arrow (↑ or ↓). Press a button to sort by that column; press the marked one again to reverse the
+order. It does exactly what pressing that column's heading does on a computer, and the line above it still says which
+order you are looking at. Every other table keeps its heading row on a phone and sorts from it.</p></div>
 
 <footer>50pick · House Desk — Admin Guide. The settings table is generated from the console's own field list, so it
 cannot disagree with the screen. If this guide and the screen ever differ, the screen is correct.</footer>
