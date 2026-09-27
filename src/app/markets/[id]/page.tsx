@@ -21,7 +21,7 @@ import { Chip } from "@/components/ui/chip";
 import { Stat } from "@/components/ui/stat";
 import { cashOutValue, getMarket, isClosedByTime, isSelectionClosed, listPositionsForUser, ratesFor } from "@/lib/server/market-service";
 import { priceState } from "@/lib/markets/price-state";
-import { sharePreviewDescription, sharePreviewPrice } from "@/lib/markets/share-preview";
+import { sharePreviewDescription, sharePreviewPrice, sharePreviewSettled } from "@/lib/markets/share-preview";
 import { ROOT_OPEN_GRAPH } from "../../layout";
 import { timeLeftLabel } from "@/lib/markets/time-left";
 import { poolFee } from "@/lib/payout";
@@ -69,6 +69,9 @@ export async function generateMetadata(
   // WP14b): "YES 62% · NO 38%" only where both sides hold money; "One side only." / "No bets yet." where
   // there is no price. It used to print "YES 100% · NO 0%" and an invented "YES 50% · NO 50%".
   const preview = sharePreviewPrice(m.yesPool, m.noPool, m.predictorCount);
+  // ⭐ C1 · a settled market's preview leads with its result ("Result: NO."), never a price or a lean.
+  // "MARKET" is safe: an UPDOWN market is redirected by the page body, and its round page has its own metadata.
+  const settled = sharePreviewSettled(m.status, m.resolvedOutcome, "MARKET");
 
   // F5 — a shared WIN link carries a signed token. When it validates, the share
   // preview becomes the win card. The token only names the position; the amount
@@ -80,7 +83,7 @@ export async function generateMetadata(
 
   const desc = isWin
     ? `Won ${formatTzs(win!.payout)} on ${win!.side} · ${m.titleEn}`
-    : sharePreviewDescription(preview);
+    : sharePreviewDescription(preview, settled);
   const ogImage = isWin
     ? `/api/og/market/${id}?w=${encodeURIComponent(w!)}`
     : `/api/og/market/${id}`;
@@ -449,7 +452,7 @@ export default async function MarketDetail({
     name: m.titleEn,
     // ⭐ C1 · og:description, twitter and JSON-LD come from ONE string (`share-preview.ts`): no invented
     // "YES 50% · NO 50%" on an empty pool, no 100/0 on a one-sided one.
-    description: sharePreviewDescription(sharePrice),
+    description: sharePreviewDescription(sharePrice, sharePreviewSettled(m.status, m.resolvedOutcome, "MARKET")),
     startDate: m.createdAt,
     endDate: m.resolutionAt,
     eventStatus: isResolved ? "https://schema.org/EventCompleted" : "https://schema.org/EventScheduled",

@@ -1452,7 +1452,9 @@ own words beneath it.**
   names its empty rail by the verdict first, and translates its topic chip. `test:one-sided` §10. ✅ **C1
   commit D**: the detail chart, the card sparkline and the 24h move (and so `/markets`' "Biggest move") plot
   priced snapshots only — no one-sided 100 or empty 50 on a line, 99 not 100 on a lopsided pool, no move from a
-  baseline that had no price. `test:history` §5 (proven red on the pre-C1 module), `test:one-sided` §11. ⭐ S07-results-01 and the nested half of
+  baseline that had no price. `test:history` §5 (proven red on the pre-C1 module), `test:one-sided` §11. ✅ **C1
+  commit E**: a SETTLED market's share preview (og image, og:description, JSON-LD) leads with its result in its
+  own side's ink ("Result: NO."), reads its split as the final pool, and states no price. `test:share-preview` §4. ⭐ S07-results-01 and the nested half of
   S07-results-26 (share on a settled card navigating away) are delivered by landing v3 WP14b.
 
 **14. Item 7 — the leaderboard ranks raw ROI. RULED: rank by the law its own tiers already state.**

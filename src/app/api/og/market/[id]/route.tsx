@@ -19,7 +19,7 @@ import { getMarket } from "@/lib/server/market-service";
 // ⭐ The card's price rule (landing v3 WP14b): no price on an empty or one-sided pool, a two-sided one
 // within 1–99. It used to read `impliedYesPct` directly — "YES 100% · 0% NO" on a one-sided market and
 // an invented "YES 50% · tipping" on one nobody had bet on, in every WhatsApp preview.
-import { sharePreviewPrice } from "@/lib/markets/share-preview";
+import { sharePreviewPrice, sharePreviewSettled } from "@/lib/markets/share-preview";
 import { resolveWinShareToken } from "@/lib/server/share-token";
 
 export const runtime = "nodejs";
@@ -51,6 +51,10 @@ export async function GET(
   const m = await getMarket(id);
   if (!m) return new Response("Not found", { status: 404 });
   const price = sharePreviewPrice(m.yesPool, m.noPool, m.predictorCount);
+  // ⭐ C1 · a SETTLED market's card leads with its result, in its own side's ink (a void and an unrecorded
+  // verdict take the neutral ink), and its split reads as the final pool, not a lean.
+  const settled = sharePreviewSettled(m.status, m.resolvedOutcome, m.productLine);
+  const outcomeInk = settled?.tone === "YES" ? C.yesLabel : settled?.tone === "NO" ? C.noLabel : C.tipLabel;
 
   // ── WIN VARIANT (F5) ──────────────────────────────────────────────────────
   // Addressed ONLY by an HMAC-signed token we minted for the position's owner.
@@ -161,6 +165,12 @@ export async function GET(
 
         {/* Tipping bar */}
         <div style={{ marginTop: "auto", display: "flex", flexDirection: "column", gap: 16 }}>
+          {settled && (
+            <div style={{ display: "flex", alignItems: "baseline", fontFamily: "JetBrains Mono, monospace" }}>
+              <span style={{ fontSize: 15, color: C.tipLabel, opacity: 0.8, marginRight: 14 }}>{settled.caption}</span>
+              <span style={{ fontSize: 48, fontWeight: 700, lineHeight: 1, letterSpacing: "-0.02em", color: outcomeInk }}>{settled.word}</span>
+            </div>
+          )}
           {price.kind === "priced" ? (
             <>
               <div style={{
@@ -188,7 +198,7 @@ export async function GET(
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: 22, fontFamily: "JetBrains Mono, monospace" }}>
                 <span style={{ color: C.yesLabel, fontWeight: 700 }}>YES {price.yesPct}%</span>
                 <span style={{ color: C.tipLabel, opacity: 0.6, fontStyle: "italic", textTransform: "uppercase", fontSize: 14 }}>
-                  {price.lean}
+                  {settled ? settled.poolCaption : price.lean}
                 </span>
                 <span style={{ color: C.noLabel, fontWeight: 700 }}>{price.noPct}% NO</span>
               </div>
@@ -205,9 +215,13 @@ export async function GET(
                 opacity: 0.55,
                 display: "flex",
               }} />
-              <div style={{ display: "flex", justifyContent: "center", fontSize: 22, fontFamily: "JetBrains Mono, monospace" }}>
-                <span style={{ color: C.tipLabel, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em" }}>{price.label}</span>
-              </div>
+              {/* "No bets yet" / "No pool yet" say "yet", which is false of a finished market: a settled empty pool
+                  shows the result above and no label here. "One side only" stays true after settlement. */}
+              {!(settled && price.kind === "none") && (
+                <div style={{ display: "flex", justifyContent: "center", fontSize: 22, fontFamily: "JetBrains Mono, monospace" }}>
+                  <span style={{ color: C.tipLabel, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em" }}>{price.label}</span>
+                </div>
+              )}
             </>
           )}
 
