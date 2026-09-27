@@ -211,4 +211,12 @@ export const MUTATIONS = [
     to: `emptyLabel={t.market.noBetsYet}`,
     expect: "13.3",
   },
+  // ── landing v3 C1 · commit H — the phantom fee in the readers ─────────────────────────────────────
+  {
+    name: "C1-H · the readers' fee forgets settlement's one-sided refund again (a phantom loser-share fee)",
+    file: "src/lib/payout.ts",
+    from: `  if (isOneSided || m.resolvedOutcome === "VOID") {`,
+    to: `  if (m.resolvedOutcome === "VOID") {`,
+    expect: "15.1",
+  },
 ];

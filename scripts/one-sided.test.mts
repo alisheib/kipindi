@@ -33,7 +33,7 @@ import { leanWords } from "../src/lib/side-label.ts";
 import { isNotableResult } from "../src/lib/results/archive.ts";
 import { matchesOdds, type DiscoveryRow } from "../src/lib/markets/discovery.ts";
 import { dict } from "../src/lib/i18n-dict.ts";
-import { poolFee } from "../src/lib/payout.ts";
+import { chargedFee, poolFee } from "../src/lib/payout.ts";
 
 /** §14 · the files that may still call the old price helpers. ⛔ It only shrinks: C1-B took /live, C1-C /results,
  *  C1-G the four admin pages — it is EMPTY now, and must stay empty. */
@@ -479,6 +479,38 @@ log("\n── 13 · Up & Down reads the pools (C1)");
   check("13.5 ⛔ the board ships no finished price any more (no `upPct`, no old helper), and the page passes none",
     !/\bupPct\b/.test(board) && !/pricedYesPct/.test(board) && !/upPct=/.test(udPage));
   check("13.5-control the pre-C1 producer line IS detected", /\bupPct\b/.test("    upPct: pricedYesPct(m.yesPool, m.noPool),"));
+}
+
+// ── 15 · the phantom fee in the READERS (C1, commit H): `chargedFee` mirrors settlement's branches ───
+log("\n── 15 · a reader reports the fee settlement took (C1; driven through real settlement in test:charged-fee)");
+{
+  const LS = { feeModel: "loser-share" as const, platformFeeRate: 0.03, operatorFeeRate: 0.10, commissionRate: 0.1, feeCeilingRate: 1 / 3 };
+  const CAPPED = { commissionRate: 0.10, feeCeilingRate: 1 / 3 };
+  const against = chargedFee({ yesPool: 35_000, noPool: 0, resolvedOutcome: "NO" }, LS);
+  check("15.1 ⛔ a one-sided pool resolved AGAINST its money is charged nothing — every stake was refunded",
+    against.fee === 0 && against.refunded && against.netPool === 35_000, JSON.stringify(against));
+  const voided = chargedFee({ yesPool: 20_000, noPool: 5_000, resolvedOutcome: "VOID" }, CAPPED);
+  check("15.2 a void is charged nothing, even under capped-commission", voided.fee === 0 && voided.refunded, JSON.stringify(voided));
+  const two = chargedFee({ yesPool: 20_000, noPool: 5_000, resolvedOutcome: "NO" }, LS);
+  check("15.3 a verdict over two funded sides is charged EXACTLY settlement's `poolFee(…, winner)`",
+    two.fee === poolFee(20_000, 5_000, LS, "NO").fee && two.fee > 0 && !two.refunded, JSON.stringify(two));
+  check("15.1-control the helper settlement does NOT use on that branch DOES price the phantom (13% of the funded side)",
+    Math.round(poolFee(35_000, 0, LS, "NO").fee) === 4_550);
+  const readers: Array<[string, RegExp]> = [
+    ["src/lib/server/analytics.ts", /chargedFee\(\{ yesPool: m\.yesPool, noPool: m\.noPool, resolvedOutcome: m\.resolvedOutcome \}, rates\)/],
+    ["src/lib/server/platform-stats.ts", /chargedFee\(\{ yesPool: m\.yesPool, noPool: m\.noPool, resolvedOutcome: m\.resolvedOutcome \}, ratesFor\(m\)\)/],
+    ["src/app/admin/house/[marketId]/page.tsx", /chargedFee\(\{ yesPool: meta\.yesPool, noPool: meta\.noPool, resolvedOutcome: winner \}, rates\)/],
+    ["src/app/admin/markets/[id]/page.tsx", /chargedFee\(\{ yesPool: m\.yesPool, noPool: m\.noPool, resolvedOutcome: outcome \}, marketRates\)/],
+  ];
+  const wrong = readers.filter(([f, re]) => {
+    const s = decomment(read(f));
+    return !re.test(s) || /poolFee\([^;]*resolvedOutcome/.test(s) || /poolFee\([^;]*,\s*winner\)/.test(s);
+  }).map(([f]) => f);
+  check("15.4 the four readers (finance, the settled strip, the house book, the officer page) read `chargedFee`, never `poolFee(…, verdict)`",
+    wrong.length === 0, wrong.join(", "));
+  check("15.4-control the pre-C1 reader lines ARE detected",
+    /poolFee\([^;]*resolvedOutcome/.test("return poolFee(m.yesPool, m.noPool, ratesFor(m), m.resolvedOutcome).netPool;")
+    && /poolFee\([^;]*,\s*winner\)/.test("? Math.round(poolFee(meta.yesPool, meta.noPool, rates, winner).fee)"));
 }
 
 // ── 14 · the sweep: no page or component prints the old price helpers (C1; the list only shrinks) ─

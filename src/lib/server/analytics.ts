@@ -14,7 +14,7 @@ import { tallyWalletLiability, type WalletLiability } from "../wallet-liability"
 import { readKycMoneySnapshot } from "./kyc-money";
 import { moneyForWindow, EAT_OFFSET_MS } from "./report-money";
 import { listMarkets, ratesFor } from "./market-service";
-import { poolFee, levySplit, type FeeModel } from "../payout";
+import { chargedFee, levySplit, type FeeModel } from "../payout";
 
 /**
  * 🔴 `"today"` AND `"qtd"` ARE GONE FROM THIS UNION, AND THAT IS THE FIX — not re-pointing them.
@@ -116,6 +116,9 @@ export type SettlementFeesByPoll = {
  * MONEY-GATE-REMEDIATION §3.3). The BOOKED figure is `HOUSE:COMMISSION` movement plus the levies
  * debited out of it; this is a reconstruction for the per-poll view, not the ledger. Read-only; moves no money. Only YES/NO settlements bear a fee (VOID /
  * one-sided are full refunds at 0 fee and are omitted).
+ * ⭐ landing v3 C1 · the recompute is `chargedFee`, which mirrors settlement's own branches: it read `poolFee(…,
+ * resolvedOutcome)`, which prices a loser-share fee off the funded side of a ONE-SIDED pool resolved against its
+ * money — fee revenue settlement never took, counted here. The one-sided refund is now omitted, as this note says.
  */
 export async function settlementFeesByPoll(period: Window = "28d"): Promise<SettlementFeesByPoll> {
   const { start, end } = windowBounds(period);
@@ -139,7 +142,8 @@ export async function settlementFeesByPoll(period: Window = "28d"): Promise<Sett
     if (ts < start || ts >= end) continue;
     if (m.resolvedOutcome !== "YES" && m.resolvedOutcome !== "NO") continue; // VOID = refund, 0 fee
     const rates = ratesFor(m);
-    const fb = poolFee(m.yesPool, m.noPool, rates, m.resolvedOutcome);
+    const fb = chargedFee({ yesPool: m.yesPool, noPool: m.noPool, resolvedOutcome: m.resolvedOutcome }, rates);
+    if (fb.refunded) continue; // one side only: every stake refunded at 0 fee (settleMarket's one-sided branch)
     const fee = Math.round(fb.fee);
     const { operatorNet } = levySplit(fee, rates);
     const model = rates.feeModel;

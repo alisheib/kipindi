@@ -13,7 +13,7 @@ import { Chip } from "@/components/ui/chip";
 import { Sensitive } from "@/components/ui/sensitive";
 import { Stat } from "@/components/ui/stat";
 import { Callout } from "@/components/ui/callout";
-import { poolFee, payoutViewFor } from "@/lib/payout";
+import { chargedFee, poolFee, payoutViewFor } from "@/lib/payout";
 import { ratesFor } from "@/lib/server/market-service";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { Select } from "@/components/ui/select";
@@ -135,10 +135,9 @@ async function MarketPredictorsContent({
   const outcome = m.resolvedOutcome === "YES" || m.resolvedOutcome === "NO" || m.resolvedOutcome === "VOID"
     ? m.resolvedOutcome
     : undefined;
-  // ⚠️ The FEE needs the winning side, and a void has none. `poolFee` prices loser-share
-  // off whichever side lost, so "VOID" must not reach it — these are two different
-  // questions and collapsing them into one variable is what made E-56 possible.
-  const resolvedSide = outcome === "VOID" ? undefined : outcome;
+  // ⚠️ The FEE is read through `chargedFee` once there is a verdict (landing v3 C1): it mirrors settlement,
+  // so a VOID and a one-sided pool show the zero fee settlement takes — `poolFee` priced a loser-share fee off
+  // the funded side of a one-sided pool, and a capped-commission fee on a void. E-56 is why VOID is kept apart.
 
   // Sort
   const { sort, dir } = parseSort(sp, ["stake", "payout", "placed", "side", "status"] as const, "placed", "desc");
@@ -175,9 +174,14 @@ async function MarketPredictorsContent({
   const isLoserShare = marketRates.feeModel === "loser-share";
   // capped-commission is outcome-neutral (one fee). loser-share depends on the
   // winner, so show BOTH scenarios (and, once resolved, the fee actually charged).
-  const marketFee = poolFee(m.yesPool, m.noPool, marketRates, resolvedSide);
-  const feeIfYes = poolFee(m.yesPool, m.noPool, marketRates, "YES");
-  const feeIfNo = poolFee(m.yesPool, m.noPool, marketRates, "NO");
+  // Before a verdict: the outcome-neutral projection (capped-commission). After: what settlement debits.
+  const marketFee = outcome
+    ? chargedFee({ yesPool: m.yesPool, noPool: m.noPool, resolvedOutcome: outcome }, marketRates)
+    : poolFee(m.yesPool, m.noPool, marketRates);
+  // Each scenario is what settlement WOULD debit if that side won — 0 on a one-sided pool, which the
+  // ONE-SIDED callout below says is refunded (it used to sit beside a "Fee if NO wins" nobody would pay).
+  const feeIfYes = chargedFee({ yesPool: m.yesPool, noPool: m.noPool, resolvedOutcome: "YES" }, marketRates);
+  const feeIfNo = chargedFee({ yesPool: m.yesPool, noPool: m.noPool, resolvedOutcome: "NO" }, marketRates);
   const smallerSide = Math.min(m.yesPool, m.noPool);
 
   return (

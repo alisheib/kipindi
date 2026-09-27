@@ -1005,6 +1005,11 @@ ZH "钱包 · 隐藏密码") — a password action that does not exist on a link
 S02-home-02: a "Recently settled" row shows the outcome chip **YES** beside the money word **refunded**, because the word is inferred from a
 computed amount rather than from the settlement record. Either the chip or the word is wrong on a public proof-of-settlement strip.
 **Next step:** read the underlying settlement row for that market on production before deciding which side is wrong.
+**⚠️ 2026-09-27 (landing v3 C1 commit H, branch `landing-v3-c1`, not live):** neither is necessarily wrong. A market with money on ONE
+side that is resolved YES is refunded in full at settlement (`settleMarket`'s one-sided branch) — its verdict is YES and every stake came
+back. From C1-H the strip's figure comes from `chargedFee`, which marks exactly that settlement as a refund, so such a row reads "YES ·
+refunded" BY DESIGN (it used to read the whole pool as "paid", or the pool minus a phantom fee when resolved against the money). When the
+production row is read, check whether that market was one-sided before calling it a defect.
 
 ### 🔴 E-419 · HIGH · OPEN, needs data confirmation, filed 2026-09-16 — a settlement ledger shows a platform fee that was never charged
 
@@ -1022,6 +1027,21 @@ no winning pool, no capped callout, no payout note; settled it reads `resVoidRef
 `resOneSidedPending`. Display only — `poolFee` and settlement are untouched. Guard: `test:one-sided` 8.8, with a control proving
 `poolFee` really prices that phantom; `red:one-sided`. **Still to do before it closes:** count, on production, the settled one-sided
 markets whose panel shows a positive fee (C1 spec §8 step 3), then push, then re-read one on production.
+**⭐ 2026-09-27 · THE SAME PHANTOM IN FOUR READERS — FIX BUILT, NOT LIVE (landing v3 C1 commit H).** The finance per-poll fee view
+(`analytics.ts` `settlementFeesByPoll`, which also feeds the finance-window report), the landing's settled strip and ticker
+(`platform-stats.ts` `settledAmount`), the house book's per-game recompute (`/admin/house/[marketId]`) and the officer's market page
+(`/admin/markets/[id]`: "Fee charged", and the "Fee if YES/NO wins" tiles beside the ONE-SIDED callout) all priced a settled market with
+`poolFee(…, resolvedOutcome)`, so a one-sided pool resolved against its money counted loser-share revenue settlement never took (and a
+capped-commission VOID a fee on a refund). A new pure `chargedFee(m, rates)` in `payout.ts` mirrors `settleMarket`'s branches in its
+order — the one-sided predicate character for character, then VOID, then the very `poolFee(…, winner)` call settlement debits — and the
+four readers read it. `poolFee` and settlement are untouched; no caller moves money. `npm run test:charged-fee` (new, in predeploy) drives
+the REAL settlement on every branch under both fee models and pins `chargedFee` to what settlement retained, exactly (53/53); its
+planted-wrong control shows the old reader disagreeing on the one-sided-against branch and a capped void; proven red with the refund
+branch removed (14 failures), and `red:one-sided` carries the same mutation. ⚠️ Visible consequences: a settled one-sided market is
+omitted from the per-poll fee table (the function's own doc already said so), and on the landing strip it reads "refunded" instead of a
+"paid" figure (see E-418). **Not touched, and reported:** `market-service.ts`'s `market.selection_closed.thin_poll` AUDIT payload
+carries `feeIfYes`/`feeIfNo` from `poolFee` — on a one-sided pool one of them is a phantom — but it is an audit WRITE, outside a
+money-reading batch.
 
 ### ✅ E-380 · HIGH · FIXED 2026-09-11 — a money-writing seeder was on the production boot path, held off by two environment variables
 
