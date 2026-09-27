@@ -494,7 +494,9 @@ export function MarketCard({
       {/* ⚠️ And "No bets yet" only where nobody EVER bet: a market whose only bettor cashed out has an
           empty pool and a predictor — its rail is "No pool yet", the D29 rule the caption already keeps. */}
       <TippingBar yesPct={yesPct} height={7} resolved={isResolved} showLabels={false} recastOnHover={false} empty={noPrice || oneSided} emptyLabel={outcomeLabel ?? (oneSided ? t.market.oneSideOnly : neverBet ? t.market.noBetsYet : t.market.noPoolYet)} probabilityLabel={t.market.probBarAria.replace("{side}", sideWord(t, "YES", productLine))} />
-      {noPrice && neverBet && <div className="mcardp-nobets">{t.market.noBetsYet}</div>}
+      {/* ⛔ …and only while UNSETTLED: "yet" is false of a finished market. A settled card shows its verdict
+          (the result slot, and the rail named by the outcome); the detail page and the share image agree. */}
+      {noPrice && neverBet && !settled && <div className="mcardp-nobets">{t.market.noBetsYet}</div>}
       {/* The refund rule, read at the reading floor (a sentence, not a micro-label: L6). It takes the
           slot the 24h band would, which a one-sided card never draws, so the card grows only by the
           note's own lines. */}

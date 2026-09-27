@@ -118,6 +118,23 @@ export const SELECTION = {
 } satisfies Record<string, AdminLabel>;
 
 /**
+ * A REFUND, as the officer console states it (landing v3 C1 review). Settlement returns every open stake in
+ * full at zero fee on two branches: a VOID, and a pool with money on ONE side only (`settleMarket`'s one-sided
+ * branch, rules §7 — `chargedFee` mirrors both). Three surfaces say it (the market page's fee panel, the
+ * markets list, the resolver queue), and they say it in the SAME words, in the tense the money is actually in:
+ *   · `done` only once `settledAt` is stamped — a RESOLVED market with no `settledAt` still holds its pool;
+ *   · `atSettlement` once there is a verdict, or where the officer is about to give one (any verdict refunds);
+ *   · `ifOneSided` before a verdict elsewhere: one stake on the empty side, or a reopen, makes the pool two-sided.
+ * ⛔ A sentence, not a micro-label: it reads at the 13px floor on its own line, never appended to a 10px label.
+ * EN-only (the console has no dictionary keys).
+ */
+export const REFUND = {
+  done:         { en: "Refunded in full · no fee" },
+  atSettlement: { en: "Refunds in full at settlement · no fee" },
+  ifOneSided:   { en: "Refunds in full if still one-sided at settlement · no fee" },
+} satisfies Record<string, AdminLabel>;
+
+/**
  * FAMILY 1 — market-lifecycle enum.
  * The canonical human label for each `MarketStatus` value
  * (`src/lib/server/market-service.ts`). Rendered through the shared

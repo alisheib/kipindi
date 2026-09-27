@@ -298,7 +298,9 @@ export default async function MarketDetail({
     m.yesPool + m.noPool === 0 && m.predictorCount === 0;
   // The empty rail's words (the card's caption rule): "No bets yet" only where nobody EVER bet (a pool
   // emptied by a cash-out has no pool, but somebody did bet); "Be the first" only while it is open.
-  const railCaption = price.kind === "none" && neverBet ? (freshMarket ? `${t.market.noBetsYet} · ${t.market.beFirst}` : t.market.noBetsYet) : null;
+  // ⛔ And only while UNSETTLED: "yet" is false of a finished market, whose rail already names its verdict —
+  // the card's caption and the share image (the OG route) drop it for the same reason.
+  const railCaption = price.kind === "none" && neverBet && !settled ? (freshMarket ? `${t.market.noBetsYet} · ${t.market.beFirst}` : t.market.noBetsYet) : null;
   // A settled split is the pool's FINAL shape, not a lean (the /results spotlight and the settled share
   // image say the same).
   const leanWords = isResolved

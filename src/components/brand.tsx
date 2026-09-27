@@ -364,11 +364,19 @@ export function ConfidenceDial({
   size = 92,
   label,
   className,
+  empty,
 }: {
   yesPct?: number;
   size?: number;
   label?: string;
   className?: string;
+  /** No crowd price (an empty pool, or money on one side only) — the dial's OWN empty state, the
+   *  counterpart of the TippingBar's `empty` rail: the same ring at the same diameter, dashed and faded
+   *  like that rail, an em-dash where the figure sits, and no split and no needle (a 62 or a 100 would be
+   *  a price nobody's money stated). A STATE OF THIS DIAL, not a placeholder drawn beside it
+   *  (DESIGN_AUTHORITY B9): the resolver queue used to draw a second, larger ring with its own label type.
+   *  The label below is untouched, so an empty dial and a priced one wear one label. */
+  empty?: boolean;
 }) {
   const yes = Math.max(0, Math.min(100, yesPct));
   const tilt = ((yes - 50) / 50) * 22;
@@ -383,19 +391,29 @@ export function ConfidenceDial({
 
   return (
     <div className={cn("inline-flex flex-col items-center gap-1.5", className)}>
-      <svg viewBox="0 0 100 100" width={size} height={size}>
-        <defs>
-          <clipPath id={`cd-${id}`}>
-            <circle cx={cx} cy={cy} r={r} />
-          </clipPath>
-        </defs>
-        <circle cx={cx} cy={cy} r={r} fill="var(--bar-track)" />
-        <g clipPath={`url(#cd-${id})`}>
-          <path d={`M ${top.x} ${top.y} A ${r} ${r} 0 0 0 ${bot.x} ${bot.y} L ${top.x} ${top.y} Z`} fill="oklch(50% 0.14 152)" opacity={0.92} />
-          <path d={`M ${top.x} ${top.y} A ${r} ${r} 0 0 1 ${bot.x} ${bot.y} L ${top.x} ${top.y} Z`} fill="oklch(52% 0.16 22)" opacity={0.92} />
-          <line x1={top.x} y1={top.y} x2={bot.x} y2={bot.y} stroke="var(--bar-needle)" strokeWidth="2.2" strokeLinecap="round" />
-        </g>
-        <circle cx={cx} cy={cy} r={r} fill="none" stroke="var(--bar-track-border)" strokeWidth="1.5" />
+      {/* Empty: the dash is not a figure, so the ring is hidden from a screen reader and the label names it. */}
+      <svg viewBox="0 0 100 100" width={size} height={size} aria-hidden={empty || undefined}>
+        {!empty && (
+          <>
+            <defs>
+              <clipPath id={`cd-${id}`}>
+                <circle cx={cx} cy={cy} r={r} />
+              </clipPath>
+            </defs>
+            <circle cx={cx} cy={cy} r={r} fill="var(--bar-track)" />
+            <g clipPath={`url(#cd-${id})`}>
+              <path d={`M ${top.x} ${top.y} A ${r} ${r} 0 0 0 ${bot.x} ${bot.y} L ${top.x} ${top.y} Z`} fill="oklch(50% 0.14 152)" opacity={0.92} />
+              <path d={`M ${top.x} ${top.y} A ${r} ${r} 0 0 1 ${bot.x} ${bot.y} L ${top.x} ${top.y} Z`} fill="oklch(52% 0.16 22)" opacity={0.92} />
+              <line x1={top.x} y1={top.y} x2={bot.x} y2={bot.y} stroke="var(--bar-needle)" strokeWidth="2.2" strokeLinecap="round" />
+            </g>
+          </>
+        )}
+        {empty ? (
+          // The empty rail's dash, bent round: its ink, its fade; twelve even dashes, so no seam at the top.
+          <circle cx={cx} cy={cy} r={r} fill="none" stroke="var(--border-strong)" strokeWidth="3" pathLength={120} strokeDasharray="5.5 4.5" opacity={0.55} />
+        ) : (
+          <circle cx={cx} cy={cy} r={r} fill="none" stroke="var(--bar-track-border)" strokeWidth="1.5" />
+        )}
         <text
           x={cx}
           y={cy + 1.5}
@@ -404,10 +422,10 @@ export function ConfidenceDial({
           fontFamily="'JetBrains Mono', ui-monospace, monospace"
           fontWeight={700}
           fontSize="22"
-          fill="var(--text)"
+          fill={empty ? "var(--text-subtle)" : "var(--text)"}
           style={{ letterSpacing: "-0.04em" }}
         >
-          {yes}
+          {empty ? "—" : yes}
         </text>
       </svg>
       {label && (

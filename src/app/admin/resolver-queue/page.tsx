@@ -31,7 +31,7 @@ import { RowCheck, RowVerdict } from "./row-select";
 import type { BulkRow } from "./bulk-resolve-types";
 import { ControlLocked } from "@/components/admin/control-locked";
 import { formatDateTime } from "@/lib/utils";
-import { CEREMONY, SELECTION } from "@/lib/admin-status-lexicon";
+import { CEREMONY, REFUND, SELECTION } from "@/lib/admin-status-lexicon";
 import { AdminBody } from "@/components/admin/admin-body";
 import { SORT_OPTIONS, parseSort, compareBy } from "./queue-order";
 
@@ -381,7 +381,7 @@ async function ResolverQueueContent({
               // ⭐ C1 · a crowd reading only where both pools hold money; otherwise the dial is a dash and the bar
               // the named empty rail (a one-sided pool refunds whatever the verdict).
               const price = priceState(m.yesPool, m.noPool);
-              const crowdWord = price.kind === "oneSided" ? "one side only · refunds at settlement" : m.predictorCount > 0 ? "no pool" : "no bets";
+              const crowdWord = price.kind === "oneSided" ? "one side only" : m.predictorCount > 0 ? "no pool" : "no bets";
               const stage1 = !!m.resolutionStage1By;
               return (
                 <AdminCard key={m.id} padding="p-0" data-market-id={m.id}>
@@ -404,18 +404,15 @@ async function ResolverQueueContent({
                         ConfidenceDial, so a 90%-NO market rendered a YES-leaning needle labelled
                         "80%" — a false directional signal on the resolution surface. The verdict
                         is decided from the source, never from crowd sentiment. */}
-                    {price.kind === "priced" ? (
-                      <CircularProgress
-                        value={price.yesPct}
-                        size={64}
-                        label="crowd"
-                      />
-                    ) : (
-                      <div className="inline-flex shrink-0 flex-col items-center gap-1.5">
-                        <div aria-hidden className="grid h-[64px] w-[64px] place-items-center rounded-full border border-border font-mono text-body-sm text-text-subtle">—</div>
-                        <span className="font-mono text-body-sm text-text-subtle">no price</span>
-                      </div>
-                    )}
+                    {/* No price (an empty or one-sided pool): the SAME dial in its own empty state — its diameter,
+                        a dashed ring like the empty rail's, its label — never a second ring drawn beside it. */}
+                    <CircularProgress
+                      value={price.kind === "priced" ? price.yesPct : undefined}
+                      empty={price.kind !== "priced"}
+                      size={64}
+                      label={price.kind === "priced" ? "crowd" : "no price"}
+                      className="shrink-0"
+                    />
                     <div className="flex-1 min-w-0">
                       {/* ⛔ G-6 (2026-08-02). Measured at 360 on production: the three
                           items are 95 + 44 + 55 = 194px and the box is exactly 194px —
@@ -488,6 +485,11 @@ async function ResolverQueueContent({
                         </span>
                       )}
                     </div>
+                    {/* The crowd line is a LABEL; the refund is a sentence, so it reads at the floor on its own line —
+                        what the resolver page tells this officer before a verdict (any verdict refunds). */}
+                    {price.kind === "oneSided" && (
+                      <p className="mt-1 text-body-sm text-text-muted">{REFUND.atSettlement.en}</p>
+                    )}
                   </div>
 
                   {/* AI Sentinel recommendation (if this market was closed by AI) */}

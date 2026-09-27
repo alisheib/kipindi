@@ -34,6 +34,9 @@ import { isNotableResult } from "../src/lib/results/archive.ts";
 import { matchesOdds, type DiscoveryRow } from "../src/lib/markets/discovery.ts";
 import { dict } from "../src/lib/i18n-dict.ts";
 import { chargedFee, poolFee } from "../src/lib/payout.ts";
+import { createElement as h } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { ConfidenceDial } from "../src/components/brand.tsx";
 
 /** §14 · the files that may still call the old price helpers. ⛔ It only shrinks: C1-B took /live, C1-C /results,
  *  C1-G the four admin pages — it is EMPTY now, and must stay empty. */
@@ -271,10 +274,15 @@ log("\n── 8 · the detail page reads the card's rule (C1)");
   const rail = railAt > 0 ? detail.slice(railAt, detail.indexOf("<Stat ", railAt)) : "";
   check("8.4-slice the rail slice is the real bar block (it holds the TippingBar props and ends before the KPI strip)",
     rail.length > 200 && rail.length < 3_000 && /probabilityLabel=/.test(rail), String(rail.length));
-  check("8.4 'No bets yet' only where nobody ever bet, 'Be the first' only while open; one caption element; the label row on a one-sided pool",
-    /const railCaption = price\.kind === "none" && neverBet \? \(freshMarket \? `\$\{t\.market\.noBetsYet\} · \$\{t\.market\.beFirst\}` : t\.market\.noBetsYet\) : null;/.test(detail)
+  // ⚠️ AMENDED (C1 review): "No bets yet" also leaves a FINISHED market — "yet" is false once settled, and the
+  //    rail already names the verdict. The card's caption and the share image drop it for the same reason.
+  const RAIL_CAPTION = /const railCaption = price\.kind === "none" && neverBet && !settled \? \(freshMarket \? `\$\{t\.market\.noBetsYet\} · \$\{t\.market\.beFirst\}` : t\.market\.noBetsYet\) : null;/;
+  check("8.4 'No bets yet' only where nobody ever bet and only while unsettled, 'Be the first' only while open; one caption element; the label row on a one-sided pool",
+    RAIL_CAPTION.test(detail)
     && (rail.match(/text-\[11px\]/g) ?? []).length === 1
     && /\{emptySide && <p className="-mt-3 flex justify-center"><span className="mcardp-oneside">\{t\.market\.oneSideOnly\}<\/span><\/p>\}/.test(rail));
+  check("8.4-control the pre-review caption (no settled gate: 'No bets yet' under a finished market's verdict) IS detected",
+    !RAIL_CAPTION.test("  const railCaption = price.kind === \"none\" && neverBet ? (freshMarket ? `${t.market.noBetsYet} · ${t.market.beFirst}` : t.market.noBetsYet) : null;"));
   const asideAt = detail.indexOf("<aside ");
   const aside = asideAt > 0 ? detail.slice(asideAt, detail.indexOf("</aside>", asideAt)) : "";
   const sectionAt = detail.indexOf('<section className="order-2');
@@ -537,6 +545,76 @@ log("\n── 14 · no surface calls impliedYesPct/pricedYesPct any more, except
     /empty=\{!!empty\} emptyLabel=\{emptyLabel\}/.test(pbar) && /\byesPct\?: number;/.test(pbar));
   check("14.1-control a planted call IS detected, a mention in prose is not",
     OLD.test(decomment("const y = impliedYesPct(m);")) && !OLD.test(decomment("// impliedYesPct(m) returned 50")));
+}
+
+// ── 16 · the C1 review: a refund is ONE line on the officer's fee panel, the refund clause leaves the 10px
+//         label, and the resolver queue's no-price dial is the kit dial's own empty state ──────────────────
+log("\n── 16 · the C1 review (officer console)");
+{
+  const officer = decomment(read("src/app/admin/markets/[id]/page.tsx"));
+  check("16.1 the fee panel knows a refund from ANY of its three fees — the verdict's (void included) or either scenario",
+    /const feeRefunded = \("refunded" in marketFee && marketFee\.refunded\) \|\| feeIfYes\.refunded \|\| feeIfNo\.refunded;/.test(officer));
+  const SWAP = /\{feeRefunded \? \(\s*<p data-fee-refunded="" className="[^"]*\btext-body-sm\b[^"]*">\{refundLine\}<\/p>\s*\) : \(/g;
+  const swaps = officer.match(SWAP) ?? [];
+  check("16.2 BOTH fee grids (loser-share and capped) swap their fee stats for the ONE refund line, at the reading floor",
+    swaps.length === 2, `${swaps.length} swaps`);
+  check("16.2-control a grid printing its fee stats with no refund gate IS detected",
+    ('<Stat label="Fee if NO wins" value={formatTzs(Math.round(feeIfNo.fee))} money />'.match(SWAP) ?? []).length === 0);
+  check("16.3 a refund has no winners: the ratio is a dash on a refund, never 1.000×",
+    /value=\{!feeRefunded && marketFee\.larger > 0 \?/.test(officer)
+    && /tone=\{!feeRefunded && /.test(officer)
+    && /hint=\{feeRefunded \? "no winners on a refund" : "never below 1\.000×"\}/.test(officer));
+  check("16.4 the line is the lexicon's, and past tense only once settlement ran (a RESOLVED market with no settledAt still holds its pool)",
+    /const refundLine = m\.settledAt \? REFUND\.done\.en : outcome \? REFUND\.atSettlement\.en : REFUND\.ifOneSided\.en;/.test(officer));
+  check("16.5 no fee callout sits beside a refund, and the ONE-SIDED advice ('promote the other side') only before a verdict",
+    /\{!outcome && smallerSide === 0 && totalPool > 0 \? \(/.test(officer) && /\) : feeRefunded \? null : isLoserShare \? \(/.test(officer));
+  // Behaviour behind 16.1: which fee flags each shape of pool raises (the predicate reads all three).
+  const CAP = { feeModel: "capped-commission" as const, commissionRate: 0.1, feeCeilingRate: 1 / 3 };
+  const flags = (y: number, n: number, v: "YES" | "NO" | "VOID") => [
+    chargedFee({ yesPool: y, noPool: n, resolvedOutcome: v }, CAP).refunded,
+    chargedFee({ yesPool: y, noPool: n, resolvedOutcome: "YES" }, CAP).refunded,
+    chargedFee({ yesPool: y, noPool: n, resolvedOutcome: "NO" }, CAP).refunded,
+  ].join(",");
+  check("16.1-behaviour a two-sided VOID is caught by the verdict's own fee only (both scenarios would charge)",
+    flags(20_000, 5_000, "VOID") === "true,false,false", flags(20_000, 5_000, "VOID"));
+  check("16.1-behaviour a one-sided pool is caught by every fee, with or without a verdict",
+    flags(35_000, 0, "NO") === "true,true,true", flags(35_000, 0, "NO"));
+  check("16.1-control a two-sided verdict raises no flag (the fee stats stay)",
+    flags(20_000, 5_000, "YES") === "false,false,false", flags(20_000, 5_000, "YES"));
+
+  const list = decomment(read("src/app/admin/markets/page.tsx"));
+  const queue = decomment(read("src/app/admin/resolver-queue/page.tsx"));
+  const tenPxRefund = (src: string) => src.split(/\r?\n/).filter((l) => /text-\[10px\]/.test(l) && /refund/i.test(l));
+  const offenders = [...tenPxRefund(list), ...tenPxRefund(queue)];
+  check("16.6 no refund clause is set in a 10px mono label on the markets list or the resolver queue (the sentence floor is 12.5px)",
+    offenders.length === 0 && !/const crowdWord = [^;]*refund/i.test(queue), offenders.join(" | ").slice(0, 240));
+  check("16.6-control the pre-review 10px clause IS detected",
+    tenPxRefund('<p className="mt-1 font-mono text-[10px] text-text-subtle">{price.kind === "oneSided" ? "One side only · refunds if it closes so" : "No bets"}</p>').length === 1
+    && /const crowdWord = [^;]*refund/i.test('const crowdWord = price.kind === "oneSided" ? "one side only · refunds at settlement" : "no bets";'));
+  check("16.7 each clause reads at the floor on its own line, in the lexicon's words (list: settled + open; queue: at settlement)",
+    /<p className="mt-0\.5 text-body-sm text-text-muted">\{m\.settledAt \? REFUND\.done\.en : REFUND\.atSettlement\.en\}<\/p>/.test(list)
+    && /<p className="mt-0\.5 text-body-sm text-text-muted">\{REFUND\.ifOneSided\.en\}<\/p>/.test(list)
+    && /<p className="mt-1 text-body-sm text-text-muted">\{REFUND\.atSettlement\.en\}<\/p>/.test(queue));
+
+  // ONE empty state for the dial: the queue draws the kit dial in every state, never a ring of its own.
+  const dials = queue.match(/<CircularProgress\b/g) ?? [];
+  check("16.8 the resolver queue draws ONE dial in every state (the kit's), with its own empty state — no hand-drawn ring",
+    dials.length === 1 && /empty=\{price\.kind !== "priced"\}/.test(queue) && !/rounded-full border[^"]*"[^>]*>—</.test(queue),
+    `${dials.length} dials`);
+  check("16.8-control the pre-review hand-drawn placeholder IS detected",
+    /rounded-full border[^"]*"[^>]*>—</.test('<div aria-hidden className="grid place-items-center rounded-full border border-border font-mono text-body-sm text-text-subtle">—</div>'));
+  const priced = renderToStaticMarkup(h(ConfidenceDial, { yesPct: 70, size: 64, label: "crowd" }));
+  const empty = renderToStaticMarkup(h(ConfidenceDial, { empty: true, size: 64, label: "no price" }));
+  const labelStyle = (html: string) => (html.match(/<div style="([^"]*)">[^<]*<\/div><\/div>$/) ?? [])[1] ?? "";
+  check("16.9 the empty dial is the priced dial's own box and label: same size, same ring, the SAME label styling",
+    /width="64" height="64"/.test(empty) && /width="64" height="64"/.test(priced)
+    && /r="44"/.test(empty) && labelStyle(empty) !== "" && labelStyle(empty) === labelStyle(priced),
+    `${labelStyle(empty)} vs ${labelStyle(priced)}`);
+  check("16.9 …and it states no price: no split, no needle, no figure (the kit default is 62), an em-dash hidden from a reader",
+    !/<path\b/.test(empty) && !/<line\b/.test(empty) && !/>62</.test(empty) && />—</.test(empty)
+    && /aria-hidden="true"/.test(empty) && /stroke-dasharray=/.test(empty));
+  check("16.9-control the priced dial DOES draw its split and its figure (the matchers can see one)",
+    (priced.match(/<path\b/g) ?? []).length === 2 && />70</.test(priced) && !/stroke-dasharray=/.test(priced));
 }
 
 log(`\n${fail === 0 ? "ALL PASS" : `${fail} FAILED`} — one-sided markets`);
