@@ -200,5 +200,20 @@ const css = decomment(readFileSync(join(ROOT, "src/app/globals.css"), "utf8"));
      /\.mcardp-share\s*\{[^}]*position:\s*relative/.test(css));
 }
 
+// ── 7 · 🔴 ONE ROOT IN EVERY PHASE — the share button is never inside a link (landing v3 WP14b) ───
+// A closed, resolved or void card used to BE a `<Link>` wrapping the whole body, share button included:
+// the dialog's clicks bubbled (through React's tree, past the portal) to that Link, which navigated —
+// WhatsApp and Copy never happened on /results or /watchlist, and closing the dialog left the page.
+{
+  ok("7: \u26d4 no <Link> wraps the card body", !/<Link[^>]*>\s*\{body\}\s*<\/Link>/.test(card));
+  ok("7: the card returns ONE <article> for every phase", /return \(\s*<article/.test(card) && !/return live \? \(/.test(card));
+  ok("7: exactly one stretched link opens the market", (card.match(/className="mcardp-open"/g) ?? []).length === 1);
+  ok("7: Details is a real link in every phase, never an aria-hidden span",
+     (card.match(/className="mcardp-details"/g) ?? []).length === 1 && !/<span className="mcardp-details"/.test(card));
+  // ⭐ CONTROL — the matcher catches the shape that shipped.
+  ok("7: control \u00b7 the old closed-card root IS detected",
+     /<Link[^>]*>\s*\{body\}\s*<\/Link>/.test('<Link data-row-id={id} href={`/markets/${id}` as never} className={cn("mcardp group")}>\n      {body}\n    </Link>'));
+}
+
 console.log(`\ncard-share: ${pass} passed, ${fail} failed`);
 if (fail > 0) process.exit(1);

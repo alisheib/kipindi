@@ -197,7 +197,9 @@ try {
 
       await page.goto(`${BASE}/markets`, { waitUntil: "domcontentloaded" }); await settle(page);
       await noBar(page, `A.markets${W}`);
-      const href = await page.locator("a[data-row-id]").first().getAttribute("href").catch(() => null);
+      // Every market card is an <article data-row-id> with a stretched `a.mcardp-open` (landing v3 WP14b);
+      // `a[data-row-id]` matched only the old closed-card <Link> root, i.e. no live card at all.
+      const href = await page.locator("[data-row-id] a.mcardp-open").first().getAttribute("href").catch(() => null);
       if (href) {
         await page.goto(`${BASE}${href.split("?")[0]}`, { waitUntil: "domcontentloaded" }); await settle(page);
         R.check(`A.market${W} no identity panel where the dial is`, (await count(page, '[data-testid="kyc-gate-panel"]')) === 0);

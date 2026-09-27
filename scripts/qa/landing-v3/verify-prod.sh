@@ -31,9 +31,19 @@ say "gate: base pass against production"
 BASE="$BASE" node scripts/qa/landing-ten.mjs --pass=base > "$OUT/gate-base.txt" 2>&1
 say "gate exit=$?"; sed -n '/SUMMARY/,$p' "$OUT/gate-base.txt" | tee -a "$LOG"
 [ -f .qa-shots/landing-ten/gate.json ] && cp .qa-shots/landing-ten/gate.json "$OUT/gate-base.json"
+# WP14b (K50) — every landing market's share preview, read as WhatsApp reads it; fetch only.
+say "og previews (qa:landing-v3:og-prod)"
+BASE="$BASE" OUT="$OUT" node scripts/qa/landing-v3/og-prod.mjs > "$OUT/og-prod.txt" 2>&1
+say "og-prod exit=$?"; tail -2 "$OUT/og-prod.txt" | tee -a "$LOG"
 for V in V3 V14 V15 V16 V17; do
   say "RED $V on production base-360-sw"
   RED=$V BASE="$BASE" node scripts/qa/landing-ten.mjs --red --cell=base-360-sw > "$OUT/red-$V.txt" 2>&1
   grep -E "PROVED|BLIND|INCONCLUSIVE" "$OUT/red-$V.txt" | tail -2 | tee -a "$LOG"
+done
+# V18 — one RED run per part (D2 step 0). `source` and `order` stay INCONCLUSIVE until WP3 draws a source.
+for P in price time pool predictors source order; do
+  say "RED V18 ($P) on production base-360-sw"
+  RED_PART=$P RED=V18 BASE="$BASE" node scripts/qa/landing-ten.mjs --red --cell=base-360-sw > "$OUT/red-V18-$P.txt" 2>&1
+  grep -E "PROVED|BLIND|INCONCLUSIVE" "$OUT/red-V18-$P.txt" | tail -1 | tee -a "$LOG"
 done
 say "done"

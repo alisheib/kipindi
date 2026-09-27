@@ -48,6 +48,17 @@ const OUT = process.env.OUT || join(REPO, ".qa-shots", "landing-ten");
 const ONLY_PASS = (process.argv.find((a) => a.startsWith("--pass=")) || "").split("=")[1] || null;
 const RED = process.env.RED || null;
 const RED_MODE = process.argv.includes("--red");
+const ONLY_CELL = (process.argv.find((a) => a.startsWith("--cell=")) || "").split("=")[1] || null;
+// ⛔ A bare `--cell base-360-sw` (no "=") was silently ignored and the WHOLE matrix ran (landing v3 D2).
+for (const bare of ["--cell", "--pass"]) {
+  if (process.argv.includes(bare)) { console.error(`${bare} takes its value after "=" (${bare}=<id>); a bare ${bare} is ignored and the whole matrix would run`); process.exit(2); }
+}
+// V18's plant takes ONE part away from ONE surface; RED_PART names it (default "source"). One plant
+// proves only the branch it removes, so each part is its own run (scripts/qa/landing-v3/verify-*.sh).
+const RED_PARTS = ["source", "price", "time", "pool", "predictors", "order"];
+const RED_PART = process.env.RED_PART || "source";
+if (RED === "V18" && !RED_PARTS.includes(RED_PART)) { console.error(`RED_PART must be one of: ${RED_PARTS.join(" ")}`); process.exit(2); }
+const RED_TAG = RED === "V18" ? `V18-${RED_PART}` : RED;
 mkdirSync(OUT, { recursive: true });
 
 const UA_MOBILE = "Mozilla/5.0 (Linux; Android 13; SM-A145F) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.0.0 Mobile Safari/537.36";
@@ -105,7 +116,6 @@ function buildCells() {
   // finding there is unfixable by an outline offset: at 180 the info button sits 23px outside its
   // own card because .mcardp-timeleft is a fixed 155px in a 148px card.
   cells.push({ pass: "orientation", id: "zoom-200", w: 180, h: 780, mobile: true, locale: "sw", state: "returning", informational: true, note: "180 CSS px — BELOW WCAG 1.4.10 Reflow (320) and below the smallest supported phone; reported, not gated" });
-  const ONLY_CELL = (process.argv.find((a) => a.startsWith("--cell=")) || "").split("=")[1] || null;
   let out = ONLY_PASS ? cells.filter((c) => c.pass === ONLY_PASS) : cells;
   if (ONLY_CELL) out = out.filter((c) => c.id === ONLY_CELL);
   return out;
@@ -780,6 +790,82 @@ const CHECKS = /* js */ `(() => {
     push("V17", bad);
   }
 
+  /* ── V18 every market shows its price or state, time, pool, predictors and source (landing v3) ─
+     The delivery's V18 and ACCEPTANCE K7, K36, K48: every market surface on the page (the featured
+     card, each grid card, each closing-soonest board row) shows (a) a price, or a LABELLED state
+     (No bets yet, One side only, No pool yet, the result word; the em-dash alone is not a label),
+     (b) the time left, (c) the pool, (d) the predictors (depth: K48, and section 2.1 WP4 names V18
+     for it) and (e) the named source; and the source and the price or state come BEFORE the pick
+     (K36), in the DOM and on the screen.
+     ⛔ READ PER SURFACE, NEVER OFF THE PAGE. The trust lines say "named sources", the settled strip
+     links a source on every row, the proof rail prints a pool and the LIVE strip prints times: a
+     page-level search finds all four while every card shows none of them. One card's source is not
+     another's, so nothing is deduplicated across surfaces.
+     ⭐ FOUND BY THE INSTRUMENTATION CONTRACT, NOT BY A CLASS OR A WORD. Each part carries
+     data-market-part (price, state, time, pool, predictors, source, pick) and each surface
+     data-market-surface (featured, card, board), so a WP3/WP4 rebuild that renames every class keeps
+     this check, and no visible word is read (three locales). The classes widen the POPULATION only:
+     .mcardp[data-row-id] and .kp-qrow are examined even when they lose the attribute, and named as
+     unmarked rather than skipped. (The Up and Down card wears the .mcardp shell with no data-row-id,
+     which is why the card fallback asks for one, as scripts/live/mobile-visual-drive.mjs does.)
+     A part counts only when it is visible, centred inside its own surface's box (the card clips),
+     and says something: a price holds a digit, a state or a source holds letters, the rest hold a
+     letter or a digit. Time, pool and predictors are PRESENCE only: where they sit is K49's and the
+     placement map's (V21), and the delivery's own grid card prints its pool below the pick.
+     No surface at all is a finding, not a pass. */
+  {
+    const bad = [];
+    const LETTER = /\\p{L}/u, NAME = /\\p{L}{2}/u, DIGIT = /\\d/;
+    const DASH = String.fromCharCode(8212);                  // the em-dash, without an escape to mangle
+    const LABEL = { featured: "the featured card", card: "a grid card", board: "a board row" };
+    const says = (el) => (el.innerText || "").replace(/\\s+/g, " ").trim();
+    const wordy = (t) => LETTER.test(t) || DIGIT.test(t);
+    const inside = (el, box) => {
+      const r = el.getBoundingClientRect(), b = box.getBoundingClientRect();
+      const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+      return cx >= b.left - 1 && cx <= b.right + 1 && cy >= b.top - 1 && cy <= b.bottom + 1;
+    };
+    const find = (s, names, test) => [...s.querySelectorAll(names.map((n) => '[data-market-part="' + n + '"]').join(","))]
+      .find((el) => vis(el) && inside(el, s) && test(says(el)));
+    // BEFORE = earlier in the DOM AND earlier on the screen: above the pick, or on its line and left of it.
+    const follows = (el, pick) => !!(el.compareDocumentPosition(pick) & Node.DOCUMENT_POSITION_FOLLOWING);
+    const before = (el, pick) => {
+      if (!follows(el, pick)) return false;
+      const a = el.getBoundingClientRect(), b = pick.getBoundingClientRect();
+      return a.bottom <= b.top + 2 || (a.top < b.bottom && a.bottom > b.top && a.right <= b.left + 2);
+    };
+    const surfaces = [...document.querySelectorAll("[data-market-surface], .mcardp[data-row-id], .kp-qrow")].filter(vis);
+    const examined = {};
+    for (const s of surfaces) {
+      const kind = s.getAttribute("data-market-surface") || "unmarked";
+      const who = LABEL[kind] || "an unmarked market surface";
+      examined[kind] = (examined[kind] || 0) + 1;
+      const where = kind + " " + (s.getAttribute("data-row-id") || sel(s)) + ' "' + textOf(s).slice(0, 40) + '"';
+      if (!LABEL[kind]) bad.push({ what: "a market surface carries no known data-market-surface", measured: JSON.stringify(kind) + " on " + sel(s), where });
+      const shown = find(s, ["price"], (t) => DIGIT.test(t)) || find(s, ["state"], (t) => LETTER.test(t));
+      if (!shown) {
+        const dash = [...s.querySelectorAll("*")].some((e) => !e.children.length && (e.textContent || "").trim() === DASH && vis(e));
+        bad.push({ what: who + " shows neither a price nor a labelled state", measured: dash ? "an em-dash with no label" : "0 visible price or state", where });
+      }
+      for (const [p, name] of [["time", "time left"], ["pool", "pool"], ["predictors", "predictor count"]]) {
+        if (!find(s, [p], wordy)) bad.push({ what: who + " shows no " + name, measured: "0 visible [data-market-part=" + p + "]", where });
+      }
+      const src = find(s, ["source"], (t) => NAME.test(t));
+      if (!src) bad.push({ what: who + " names no source", measured: "0 visible [data-market-part=source]", where });
+      const pick = [...s.querySelectorAll('[data-market-part="pick"], .btn-yes, .btn-no')].find(vis);
+      if (!pick) continue;                                   // a closed market takes no pick: nothing can follow one
+      for (const [el, name] of [[shown, "its price or state"], [src, "its source"]]) {
+        if (!el || before(el, pick)) continue;
+        const a = el.getBoundingClientRect(), b = pick.getBoundingClientRect();
+        bad.push({ what: who + " shows " + name + " after the pick",
+          measured: "top " + Math.round(a.top) + " vs the pick's " + Math.round(b.top) + (follows(el, pick) ? "" : ", and later in the DOM"), where });
+      }
+    }
+    if (!surfaces.length) bad.push({ what: "no market surface on the page", measured: "0 visible [data-market-surface], .mcardp[data-row-id], .kp-qrow", where: "document" });
+    push("V18", bad);
+    V[V.length - 1].examined = examined;
+  }
+
   /* ── the text map V8 needs, compared across locales AFTER the sweep ──────────────────────── */
   const textMap = {};
   for (const s2 of [".kp-hero__headline", ".kp-hero__eyebrow", ".kp-lede", ".kp-shead__h", ".kp-step__h", ".kp-step__b", ".kp-trust__b", ".kp-hero__trust", ".kp-proof__cap"]) {
@@ -941,7 +1027,43 @@ const REDS = {
         if (!b) return { applied: false, note: "no visible YES button on a card" };
         b.textContent = "YES @ 100%";
         return { applied: b.textContent === "YES @ 100%", note: "a card button now reads 100%" }; })()`,
+  // landing v3 — V18: take ONE part away from ONE surface, the featured card first (it is on every cell
+  // with a market). RED_PART picks the part: source (default) · price (price AND state, since either
+  // passes) · time · pool · predictors · order (every source part moved after the pick). EVERY element
+  // of that part in the surface goes: WP3 gives the featured card a top-right time AND keeps the meta
+  // row's, and hiding one copy would leave the part on screen and read as BLIND when the check is not.
+  V18: `(() => { const PART = ${JSON.stringify(RED_PART)};
+        const vis = (el) => { const r = el.getBoundingClientRect(); const s = getComputedStyle(el);
+          return r.width > 0 && r.height > 0 && s.visibility !== "hidden" && s.display !== "none" && +s.opacity > 0.05; };
+        const names = PART === "price" ? ["price", "state"] : [PART === "order" ? "source" : PART];
+        const q = names.map((n) => '[data-market-part="' + n + '"]').join(",");
+        const surfaces = [...new Set(document.querySelectorAll("[data-market-surface], .mcardp[data-row-id], .kp-qrow"))].filter(vis);
+        surfaces.sort((a, b) => (b.getAttribute("data-market-surface") === "featured") - (a.getAttribute("data-market-surface") === "featured"));
+        for (const s of surfaces) {
+          const parts = [...s.querySelectorAll(q)].filter((el) => vis(el) && (el.innerText || "").trim());
+          if (!parts.length) continue;
+          const on = (s.getAttribute("data-market-surface") || "unmarked") + " " + (s.getAttribute("data-row-id") || "");
+          if (PART === "order") {
+            const pick = [...s.querySelectorAll('[data-market-part="pick"], .btn-yes, .btn-no')].find(vis);
+            if (!pick) continue;
+            for (const el of parts) pick.after(el);
+            return { applied: parts.every((el) => !!(pick.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING)),
+              note: "moved " + parts.length + " source part(s) after the pick on " + on };
+          }
+          for (const el of parts) el.style.setProperty("display", "none", "important");
+          return { applied: parts.every((el) => !vis(el)), note: "hid " + parts.length + " [data-market-part=" + names.join("|") + "] on " + on };
+        }
+        return { applied: false, note: "no visible surface shows a " + names.join("/") + " part" + (PART === "order" ? " and a pick" : "") }; })()`,
 };
+
+// A no-browser self-test (landing v3 D2): every check and every plant compiles. Cheap on a machine whose
+// RAM fails under load — run it before a browser pass: `node scripts/qa/landing-ten.mjs --compile`.
+if (process.argv.includes("--compile")) {
+  new Function("return " + CHECKS);
+  for (const v of Object.values(REDS)) new Function("return " + v);
+  console.log(`compiled CHECKS (${CHECKS.length} chars) and ${Object.keys(REDS).length} RED plants`);
+  process.exit(0);
+}
 
 /* ══════════════════════════════════════════════════════════════════════════════════════════════ */
 async function runCell(browser, cell, plantKey = null, signedInState = null) {
@@ -1042,8 +1164,27 @@ async function runCell(browser, cell, plantKey = null, signedInState = null) {
 }
 
 const cells = buildCells();
-console.log(`gate: ${cells.length} cells against ${BASE}${RED_MODE ? `  [RED CONTROL: ${RED}]` : ""}`);
-const browser = await chromium.launch({ headless: true });
+// ⛔ A FILTER THAT MATCHES NOTHING MEASURES NOTHING, AND NOTHING IS NOT GREEN. With zero cells the
+//    summary read TOTAL 0, 0 unmeasured, "GATE GREEN", exit 0 — a typo'd --cell certified the page.
+if (!cells.length) {
+  console.error(`⛔ no cell matches${ONLY_CELL ? ` --cell=${ONLY_CELL}` : ""}${ONLY_PASS ? ` --pass=${ONLY_PASS}` : ""}. Nothing was measured.`);
+  process.exit(2);
+}
+if (RED_MODE && cells.length !== 1) { console.error(`--red measures ONE cell: pass --cell=<id> (${cells.length} selected)`); process.exit(2); }
+console.log(`gate: ${cells.length} cells against ${BASE}${RED_MODE ? `  [RED CONTROL: ${RED_TAG}]` : ""}`);
+/* ⛔ AN INSTRUMENT THAT DID NOT START IS NOT A RED GATE. 2026-09-27: the WP6 drive's phase-1 gate died in
+   browserType.launch with a SyntaxError thrown inside Playwright; the same launch worked in the captures
+   either side of it and the machine bugchecked 0x1A four minutes later (failing RAM). Uncaught, that is
+   exit 1, the code a driver reads as GATE RED. One retry, then exit 2, the gate's "could not measure". */
+let browser = null;
+for (let attempt = 1; !browser; attempt++) {
+  try { browser = await chromium.launch({ headless: true }); }
+  catch (e) {
+    const why = String((e && e.message) || e).split(String.fromCharCode(10))[0];
+    if (attempt >= 2) { console.error(`⛔ INSTRUMENT: chromium did not launch (${why}). Nothing was measured; this is not a gate result.`); process.exit(2); }
+    console.error(`⚠️ chromium launch failed (${why}); one retry`);
+  }
+}
 
 /* ══════════════════════════════════════════════════════════════════════════════════════════════
    RED MODE — a DELTA, not a count.
@@ -1069,7 +1210,7 @@ if (RED_MODE) {
   const classes = [...new Set([...clean.V, ...planted.V].map((v) => v.cls))];
   const deltas = classes.map((cls) => ({ cls, clean: countOf(clean, cls), planted: countOf(planted, cls) }))
     .map((d) => ({ ...d, delta: d.planted - d.clean }));
-  console.log(`\nRED ${RED} on ${c.id}`);
+  console.log(`\nRED ${RED_TAG} on ${c.id}`);
   for (const d of deltas) console.log(`  ${d.cls.padEnd(4)} ${String(d.clean).padStart(3)} → ${String(d.planted).padStart(3)}  ${d.delta > 0 ? "+" + d.delta : d.delta === 0 ? "" : String(d.delta)}`);
   const target = deltas.find((d) => d.cls === RED);
   const collateral = deltas.filter((d) => d.cls !== RED && d.delta !== 0);
@@ -1085,7 +1226,7 @@ if (RED_MODE) {
       ? `✅ ${RED} PROVED: its own defect raised it by ${target.delta}.`
       : `⛔ ${RED} BLIND: the plant landed and the class did not move (${target ? target.delta : "n/a"}). The check is decoration until this passes.`);
   if (collateral.length) console.log(`   ⚠️ plant also moved: ${collateral.map((d) => `${d.cls}${d.delta > 0 ? "+" : ""}${d.delta}`).join(" ")}`);
-  writeFileSync(join(OUT, `red-${RED}.json`), JSON.stringify({ cell: c.id, deltas, pass }, null, 1));
+  writeFileSync(join(OUT, `red-${RED_TAG}.json`), JSON.stringify({ cell: c.id, deltas, pass }, null, 1));
   process.exit(pass ? 0 : 1);
 }
 
@@ -1189,7 +1330,7 @@ for (const r of results) for (const v of r.V || []) {
 }
 summary.byClass.V8 = { count: v8.length, cells: [], examples: v8.slice(0, 8) };
 
-writeFileSync(join(OUT, RED_MODE ? `red-${RED}.json` : "gate.json"), JSON.stringify({ summary, results }, null, 1));
+writeFileSync(join(OUT, RED_MODE ? `red-${RED_TAG}.json` : "gate.json"), JSON.stringify({ summary, results }, null, 1));
 
 console.log("\n──────── SUMMARY ────────");
 for (const [cls, v] of Object.entries(summary.byClass)) {
