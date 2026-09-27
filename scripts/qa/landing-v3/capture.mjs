@@ -4,6 +4,8 @@
 // Optional: WIDTHS=360,768,1280  LOCALES=sw,en,zh  AUTH=demo0|demo1 (build only, /auth/demo)
 //           PAGE=markets (build only; the path WITHOUT its leading slash — Git Bash rewrites a
 //           "/markets" env value into a Windows path) — frames and report carry the page in their id.
+//           SEED_WATCHLIST=1 (with AUTH) stars a spread of markets for the signed-in demo player
+//           (POST /api/dev-test/seed-watchlist, dev-only) before the page is loaded — `/watchlist` is empty otherwise.
 import { chromium } from "playwright";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
@@ -85,6 +87,11 @@ for (const w of W) for (const loc of LOCALES) {
     if (MODE === "build" && AUTH) {
       await page.goto(`${BASE}/auth/demo?deposit=${AUTH === "demo1" ? 1 : 0}`, { waitUntil: "load", timeout: 90000 }).catch(() => {});
       await page.waitForTimeout(1500);
+      if (process.env.SEED_WATCHLIST === "1") {
+        const seeded = await page.evaluate(() => fetch("/api/dev-test/seed-watchlist", { method: "POST", headers: { "content-type": "application/json" }, body: "{}" })
+          .then((r) => r.json()).then((j) => j.starred ?? j.error ?? null).catch((e) => String(e)));
+        console.log(`seed-watchlist → ${JSON.stringify(seeded)}`);
+      }
     }
     await page.goto(url, { waitUntil: "load", timeout: 120000 });
     await page.waitForTimeout(MODE === "build" ? 5000 : 2500);
