@@ -65,11 +65,24 @@ export function RoundStakePanel(props: {
   });
   const pulse = usePlacePulse(bet.justPlaced?.nonce);
 
-  // Signed out — one clear route to sign in, then back to this round to bet.
+  // Signed out — one clear route to sign in, then back to this round to bet. Arriving from a pick (the landing
+  // band's Juu/Chini, `?side=`), the side the player tapped is shown — the kit Chip of the locked panel below —
+  // instead of the question again; `signInHref` already carries it through sign-in (frame panel, 2026-09-27).
   if (!isAuthed) {
+    const tapped = lockedSide === "UP" ? t.market.udUp : lockedSide === "DOWN" ? t.market.udDown : null;
     return (
       <>
-        <p className="text-body-sm leading-[1.55] text-text-muted">{t.market.udTagline}</p>
+        {tapped ? (
+          <div className="flex items-center justify-between gap-2.5">
+            <p className="m-0 font-mono text-micro font-semibold uppercase eyebrow text-text-faint">{t.market.udYourPick}</p>
+            <Chip variant={lockedSide === "UP" ? "yes" : "no"} style={{ gap: 5 }}>
+              {lockedSide === "UP" ? <I.arrowUp s={12} strokeWidth={2.5} /> : <I.arrowDown s={12} strokeWidth={2.5} />}
+              {tapped}
+            </Chip>
+          </div>
+        ) : (
+          <p className="text-body-sm leading-[1.55] text-text-muted">{t.market.udTagline}</p>
+        )}
         <Link href={signInHref as never} className="btn btn-primary btn-lg mt-3 w-full justify-center">
           {t.market.udSignInToBet}
         </Link>
@@ -117,14 +130,13 @@ export function RoundStakePanel(props: {
     : warn === "DOWN" ? t.market.udNobodyBacked.replace("{side}", t.market.udDown)
     : null;
   const customInvalid = bet.customMode && bet.customValue.trim() !== "" && !bet.customValid;
-  const arrow = isUp ? "M5 15l7-7 7 7" : "M5 9l7 7 7-7";
 
   return (
     <div data-testid="updown-stake-panel" className={cn(pulse && "ud-place-pulse")}>
       <div className="flex items-center justify-between gap-2.5">
         <p className="m-0 font-mono text-micro font-semibold uppercase eyebrow text-text-faint">{t.market.udYourPick}</p>
         <Chip variant={isUp ? "yes" : "no"} style={{ gap: 5 }}>
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={arrow} /></svg>
+          {isUp ? <I.arrowUp s={12} strokeWidth={2.5} /> : <I.arrowDown s={12} strokeWidth={2.5} />}
           {pickWord}
         </Chip>
       </div>

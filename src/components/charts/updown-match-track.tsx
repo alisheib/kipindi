@@ -10,6 +10,11 @@
  * and the playhead (`UpdownMatchNow`). Real points only, no line between them (§B12.3); nothing about a
  * price animates (L12, A-5).
  *
+ * ⭐ THREE LAYERS, IN PAINT ORDER: neutral time (void band, rail, locked stretch, posts, opening dot) → the
+ * playhead and played stretch (`UpdownMatchNow`) → the data marks (tie ticks, stems, bead). A read lands at
+ * most a couple of minutes before "now", so the playhead often sits a few px from the newest stem: side ink
+ * must always paint OVER neutral time, never under it (frame panel, 2026-09-27 — the playhead hid the stem).
+ *
  * ⛔ NO TEXT IN THE SVG, AND NO viewBox. Coordinates are percentages and radii are px, so beads stay
  * round at every width; the lane's words are HTML. The whole track is ONE `role="img"` named by the
  * caller's sentence (K22) — the timeline in words, with EAT — and every child is aria-hidden.
@@ -19,7 +24,7 @@
  */
 import type { CSSProperties } from "react";
 import { I } from "@/components/ui/glyphs";
-import type { UpdownBandRound } from "@/lib/updown-match";
+import { matchLead, type UpdownBandRound } from "@/lib/updown-match";
 import { MATCH, matchGeometry } from "./updown-match-geometry";
 import { UpdownMatchNow } from "./updown-match-now";
 
@@ -42,6 +47,15 @@ export function UpdownMatchTrack({ round, label, openLabel, anchorMs }: {
   anchorMs: number;
 }) {
   const g = matchGeometry(round);
+  // The newest data mark — the latest stem, or a later tie tick — so the playhead can keep off it.
+  const latestStem = g.stems.find((s) => s.latest) ?? null;
+  const lastTie = g.ties.length ? g.ties[g.ties.length - 1] : null;
+  const mark = lastTie && (!latestStem || lastTie.x > latestStem.x)
+    ? { x: lastTie.x, kind: "tie" as const }
+    : latestStem ? { x: latestStem.x, kind: latestStem.side }
+      : g.kick ? { x: 0, kind: "kick" as const } : null;
+  // The void band belongs to the level state (spec §8 S3); at kick-off the track is dot, rail and playhead only.
+  const showVoid = g.void != null && matchLead(round) === "level";
   const gate = pct(g.gatePct);
   const at = (x: number) => ({ "--x": pct(x) }) as CSSProperties;
   return (
@@ -54,12 +68,16 @@ export function UpdownMatchTrack({ round, label, openLabel, anchorMs }: {
       </div>
       <div className="kp-udtrack__plot" aria-hidden>
         <svg className="kp-udtrack__svg" width="100%" height="100%" focusable="false">
-          {g.void && <rect className="kp-udtrack__void" x="0" width="100%" y={pct(g.void.y)} height={pct(g.void.h)} />}
+          {showVoid && g.void && <rect className="kp-udtrack__void" x="0" width="100%" y={pct(g.void.y)} height={pct(g.void.h)} />}
           <line className="kp-udtrack__rail" x1="0" y1="50%" x2={gate} y2="50%" />
           <line className="kp-udtrack__locked" x1={gate} y1="50%" x2="100%" y2="50%" />
           <line className="kp-udtrack__post" x1={gate} y1="0" x2={gate} y2="100%" />
           <line className="kp-udtrack__post" x1="100%" y1="0" x2="100%" y2="100%" />
           {g.kick && <circle className="kp-udtrack__kick" cx="0" cy="50%" r={MATCH.kick} />}
+        </svg>
+        <UpdownMatchNow opensAtMs={round.opensAtMs} closesAtMs={round.closesAtMs} anchorMs={anchorMs}
+          markX={mark?.x ?? null} markKind={mark?.kind ?? null} gatePct={g.gatePct} />
+        <svg className="kp-udtrack__svg" width="100%" height="100%" focusable="false">
           {g.ties.map((tie) => (
             <line key={`t${tie.x}`} className="kp-udtrack__tie"
               x1={pct(tie.x)} x2={pct(tie.x)} y1={pct(50 - MATCH.tieHalf)} y2={pct(50 + MATCH.tieHalf)} />
@@ -74,7 +92,6 @@ export function UpdownMatchTrack({ round, label, openLabel, anchorMs }: {
           ))}
           {g.bead && <circle className={BEAD_CLASS[g.bead.side]} cx={pct(g.bead.x)} cy={pct(g.bead.y)} r={MATCH.bead} />}
         </svg>
-        <UpdownMatchNow opensAtMs={round.opensAtMs} closesAtMs={round.closesAtMs} anchorMs={anchorMs} />
       </div>
     </div>
   );

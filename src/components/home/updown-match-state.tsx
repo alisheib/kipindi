@@ -6,10 +6,11 @@
  *
  * It owns three things for the whole band, so no descendant computes them twice:
  *
- * 1. THE TENSE AND THE LOCK, as `data-aged` / `data-closed` on this element — the CSS swaps the verdict
- *    to past tense and the picks for padlocked sides from them. ⛔ NOT `:has()`: a browser without it
+ * 1. THE TENSE, THE LOCK AND THE DECIDING INSTANT, as `data-aged` / `data-closed` / `data-decided` on this
+ *    element — the CSS swaps the verdict to past tense, the picks for padlocked sides, and (once the deciding
+ *    price's instant has passed) the rule to "decided" and the clock row to "awaiting result". ⛔ NOT `:has()`: a browser without it
  *    would keep a present-tense "Juu inaongoza" for ever, which is stale-as-live. It re-renders only when
- *    one of those two flags flips (≤ 2 renders after mount), on the page's ONE shared second, in the same
+ *    one of those three flags flips (≤ 3 renders after mount), on the page's ONE shared second, in the same
  *    frame as the digits (`closed` is the digits' own test: `secondsUntil(betsClose) === 0`). The server
  *    renders `data-aged` already when the round is aged at render.
  *
@@ -31,7 +32,7 @@
  * Focus never falls to <body>: if a pick has focus when betting closes, focus moves to the Watch link that
  * takes the digits' place in the clock row.
  */
-import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { secondsUntil, useServerNowGated } from "@/lib/use-shared-second";
 import { useReplayAnchor } from "@/lib/use-replay-anchor";
 import { matchAgedAtMs, mergeConfirmedRead, type UpdownBandRound } from "@/lib/updown-match";
@@ -60,19 +61,23 @@ export function UpdownMatchState({ className, round: initial, children }: {
   // Awaiting a price has no tense to lose.
   const canAge = round.reads != null && round.openPrice != null && round.upTarget != null && round.downTarget != null;
   const flags = (n: number) =>
-    `${canAge && agedAtMs != null && n >= agedAtMs ? 1 : 0}${secondsUntil(round.betsCloseAtMs, n) === 0 ? 1 : 0}`;
+    `${canAge && agedAtMs != null && n >= agedAtMs ? 1 : 0}${secondsUntil(round.betsCloseAtMs, n) === 0 ? 1 : 0}${n >= round.closesAtMs ? 1 : 0}`;
   const now = useServerNowGated(anchor, flags);
   const n = now ?? anchor;                       // SSR and first hydration: anchor === serverNowMs ⇒ identical markup
   const aged = canAge && agedAtMs != null && n >= agedAtMs;
   const closed = secondsUntil(round.betsCloseAtMs, n) === 0;   // the SAME test as the digits hitting 00
+  const decided = n >= round.closesAtMs;                        // the deciding price's instant has passed
 
   const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
+  // Layout effect: the move happens before the browser blurs the control that just went display:none. Both
+  // controls that leave at close hand focus on — a pick to the Watch link beside it, "Raundi zote" to "Cheza
+  // raundi ijayo" in its place (WCAG 2.4.3; frame panel round 2).
+  useLayoutEffect(() => {
     if (!closed) return;
     const a = document.activeElement;
-    if (a instanceof HTMLElement && a.classList.contains("kp-udbug__pick") && ref.current?.contains(a)) {
-      ref.current.querySelector<HTMLElement>(".kp-udclock__watch")?.focus();
-    }
+    if (!(a instanceof HTMLElement) || !ref.current?.contains(a)) return;
+    if (a.classList.contains("kp-udbug__pick")) ref.current.querySelector<HTMLElement>(".kp-udclock__watch")?.focus();
+    else if (a.classList.contains("kp-updown__all")) ref.current.querySelector<HTMLElement>(".kp-updown__next")?.focus();
   }, [closed]);
 
   // ── R5(a) · the 60-second confirmed-price refresh ───────────────────────────────────────────────
@@ -116,7 +121,8 @@ export function UpdownMatchState({ className, round: initial, children }: {
   const value = useMemo(() => ({ round, anchorMs: anchor }), [round, anchor]);
   return (
     <MatchContext.Provider value={value}>
-      <div ref={ref} className={className} data-aged={aged || undefined} data-closed={closed || undefined}>
+      <div ref={ref} className={className} data-aged={aged || undefined} data-closed={closed || undefined}
+        data-decided={decided || undefined}>
         {children}
       </div>
     </MatchContext.Provider>

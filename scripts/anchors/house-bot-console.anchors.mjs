@@ -77,6 +77,11 @@ const DECOMMENT = "scripts/lib/decomment.mts";
 const VISUAL = "scripts/qa-house-bots-visual.mjs";
 const SHELL = "src/components/admin/admin-shell.tsx";
 const CLOCK = "src/lib/house-bot/clock.ts";
+/* ⭐ FS-09 (2026-09-27) · the roster alerts every landed act now sends: the rules save, the one emitter they all go
+   through, and a file that reads targets (the planted-writer control of 2.fs09.8). */
+const RULES_SAVE = "src/lib/server/house-bot/rules-save.ts";
+const EMITTERS = "src/lib/server/house-bot/emitters.ts";
+const ENTER_NOW = "src/lib/server/house-bot/enter-now.ts";
 
 export const MUTATIONS = [
   /* ── C7 step 6 · THE DESIGNATE WIZARD (rulings 356, 359, 368/459, 382, 383, 385, 387, 388) ─────────────────────
@@ -4456,5 +4461,296 @@ import Link from "next/link";`,
     to: "  return `array_position(${p.raw([...order.accountIds], \"text[]\")}, \"houseBotId\") DESC NULLS LAST, ${SQL_NEWEST_FIRST}`;",
     expect: "1.s9 · desk history · Account · every page in the roster's label order both ways",
     suite: "console-pg",
+  },
+  /* ── 2026-09-27 · THE PHONE'S SORT RAIL — Ali: "on a phone, the two activity lists can't be re-sorted … a phone sort
+   * button". Each puts back a shape the rail could plausibly have shipped in: handed the raw address, options typed at the
+   * call site, drawn at every width beside the header row, drawn over an empty table, the dense rank under the phone's tap
+   * floor, the account's rail answering to the desk's name, a kit rail that reads its next direction its own way, and a
+   * kit default that is no longer the dense rank the kit's two other consoles draw. Every `from` resolves exactly once in
+   * its own file (`test:red-anchors` §3). */
+  {
+    name: "phone-sort-raw-address · the desk ledger's phone rail is handed the raw address instead of the panel's validated parameters, so a word the reader refused rides every chip",
+    file: PAGE,
+    from: `sp={feedView.feedParams} options={Object.values(feedView.feedSort.columns)}`,
+    to: `sp={sp} options={Object.values(feedView.feedSort.columns)}`,
+    expect: "1.s9p · phone · each activity ledger draws the kit's card sort rail in its header row's place",
+    suite: "console-mem",
+  },
+  {
+    name: "phone-sort-typed-options · the account ledger's phone rail types its own options, so a chip can name a column its header row does not sort",
+    file: DETAIL,
+    from: `options={Object.values(view.feedSort.columns)}`,
+    to: `options={[{ field: "stake", label: "Stake" }]}`,
+    expect: "1.s9p · phone · each activity ledger draws the kit's card sort rail in its header row's place",
+    suite: "console-mem",
+  },
+  {
+    name: "phone-sort-every-width · the desk ledger's phone rail loses its breakpoint, so from `sm` up two controls sort one table on one screen",
+    file: PAGE,
+    from: `                  <div className="sm:hidden">`,
+    to: `                  <div>`,
+    expect: "1.s9p · phone · each activity ledger draws the kit's card sort rail in its header row's place",
+    suite: "console-mem",
+  },
+  {
+    name: "phone-sort-over-empty · the account ledger's phone rail is drawn over an empty table, whose header row the kit hides at every width",
+    file: DETAIL,
+    from: `{feedRows.length > 0 && (`,
+    to: `{(`,
+    expect: "1.s9p · phone · each activity ledger draws the kit's card sort rail in its header row's place",
+    suite: "console-mem",
+  },
+  {
+    name: "phone-sort-dense · the desk ledger's phone rail takes the 32px dense rank on a phone, under the section's 40px tap floor",
+    file: PAGE,
+    from: `options={Object.values(feedView.feedSort.columns)} rank="secondary"`,
+    to: `options={Object.values(feedView.feedSort.columns)} rank="dense"`,
+    expect: "1.s9p · phone · each activity ledger draws the kit's card sort rail in its header row's place",
+    suite: "console-mem",
+  },
+  {
+    name: "phone-sort-shared-id · the account ledger's phone rail answers to the desk's id, so a driver cannot tell the two rails apart",
+    file: DETAIL,
+    from: `railId="account-activity-sort"`,
+    to: `railId="desk-activity-sort"`,
+    expect: "1.s9p · phone · every card sort rail in the product answers to its OWN id",
+    suite: "console-mem",
+  },
+  {
+    name: "phone-sort-kit-direction · the kit rail reads its next direction its own way, so a chip and the header of the same column are two addresses",
+    file: "src/components/admin/card-sort-control.tsx",
+    from: `    const nextDir: SortDir = isActive && dir === "desc" ? "asc" : "desc";`,
+    to: `    const nextDir: SortDir = isActive && dir === "asc" ? "desc" : "asc";`,
+    expect: "1.s9p · phone · RENDERED · on every address — sorted with a filter and a page asked for",
+    suite: "console-mem",
+  },
+  {
+    name: "phone-sort-kit-default · the kit rail's default leaves the dense rank, so the rails of the kit's two other consoles silently grow to 44px",
+    file: "src/components/admin/card-sort-control.tsx",
+    from: `  rank = "dense",`,
+    to: `  rank = "secondary",`,
+    expect: "1.s9p · phone · RENDERED · at the desk's rank every chip of the rail stands on the 44px rung",
+    suite: "console-mem",
+  },
+  /* ── 2026-09-27 · the review of the phone sort rail: the page clause could not fail (no view carried a page), and a
+   * screen reader on a phone was never told the direction. Each `from` resolves exactly once in the kit rail's file. */
+  {
+    name: "phone-sort-kit-keeps-page · the kit rail stops dropping its table's page, so a chip pressed on page 2 lands on page 2 of a new order while the header of the same column starts it from the top",
+    file: "src/components/admin/card-sort-control.tsx",
+    from: `if (v && k !== sortKey && k !== dirKey && k !== pageKey) params.set(k, v);`,
+    to: `if (v && k !== sortKey && k !== dirKey) params.set(k, v);`,
+    expect: "1.s9p · phone · RENDERED · on every address — sorted with a filter and a page asked for",
+    suite: "console-mem",
+  },
+  {
+    name: "phone-sort-kit-says-wrong-way · the chip in force tells a screen reader the OPPOSITE direction from its arrow and its column's header",
+    file: "src/components/admin/card-sort-control.tsx",
+    from: `{dir === "asc" ? " ascending" : " descending"}`,
+    to: `{dir === "asc" ? " descending" : " ascending"}`,
+    expect: "1.s9p · phone · RENDERED · on every address the chip in force — and no other chip — SAYS its direction",
+    suite: "console-mem",
+  },
+  /* ━━ FS-09 (2026-09-27) · EVERY LANDED ACT TELLS EVERY ADMIN ONCE — one declaration per wired call, each dropping
+     that call and going red on its own act's case in §2j; then the guards that keep the alert honest (a save that
+     moves nothing, a refusal, the officer's name, the desk's own link, the diff's shape, every recipient) and the
+     target law's planted writer. `§2j` runs on both stores; these name the memory child, where the harness drives. ━━ */
+  {
+    name: "fs09-designated · adding an account tells no admin again — the DESIGNATED alert's call is dropped",
+    file: DESIG,
+    from: `  await announceRoster({\n    botId: written.bot.id, label: written.bot.label, event: "DESIGNATED",`,
+    to: `  void ({\n    botId: written.bot.id, label: written.bot.label, event: "DESIGNATED",`,
+    expect: "2.fs09.1 · DESIGNATED · adding an account tells EVERY admin once",
+    suite: "console-mem",
+  },
+  {
+    name: "fs09-verified · a confirmed permission tells no admin again — the VERIFIED alert's call is dropped",
+    file: DESIG,
+    from: `  await announceRoster({ botId, label: bot.label, event: "VERIFIED", eventId: written.eventId, actorId: officerId });`,
+    to: `  void written.eventId;`,
+    expect: "2.fs09.2 · VERIFIED · confirming the holder's permission tells EVERY admin once",
+    suite: "console-mem",
+  },
+  {
+    name: "fs09-started · a Start tells no admin again — the STARTED alert's call is dropped",
+    file: DESIG,
+    from: `  await announceRoster({ botId, label: bot.label, event: "STARTED", eventId: written.eventId, actorId: officerId });`,
+    to: `  void written.eventId;`,
+    expect: "2.fs09.3 · STARTED · a Start that lands tells EVERY admin once",
+    suite: "console-mem",
+  },
+  {
+    name: "fs09-rules · a rules save tells no admin again — the RULES_SAVED alert's call is never reached",
+    file: RULES_SAVE,
+    from: `  if (moved.length > 0) {`,
+    to: `  if (false) {`,
+    expect: "2.fs09.4 · RULES_SAVED · a rules save that moves several fields tells EVERY admin once",
+    suite: "console-mem",
+  },
+  {
+    name: "fs09-rules-nochange · a rules save that moved NOTHING still rings every admin with \"its rules changed\"",
+    file: RULES_SAVE,
+    from: `  if (moved.length > 0) {`,
+    to: `  if (true) {`,
+    expect: "2.fs09.4n · CONTROL · a rules save that moves NOTHING still lands",
+    suite: "console-mem",
+  },
+  {
+    name: "fs09-limits · a limits save tells no admin again — the LIMITS_SAVED alert's call is never reached",
+    file: SAVE,
+    from: `  if (changes.length > 0) {`,
+    to: `  if (false) {`,
+    expect: "2.fs09.5b · LIMITS_SAVED · and it tells EVERY admin once, as the DESK's change",
+    suite: "console-mem",
+  },
+  {
+    name: "fs09-limits-nochange · a limits save that moved NOTHING still rings every admin",
+    file: SAVE,
+    from: `  if (changes.length > 0) {`,
+    to: `  if (true) {`,
+    expect: "2.fs09.5n · CONTROL · a limits save that moves NOTHING still lands",
+    suite: "console-mem",
+  },
+  {
+    name: "fs09-limits-event · the limits save writes no history row again, so the desk's history never shows it and the alert has no event to open",
+    file: SAVE,
+    from: `    savedEventId = (await houseBotEventStore.append({`,
+    to: `    savedEventId = (await (async (_e) => ({ id: null }))({`,
+    expect: "2.fs09.5 · LIMITS_SAVED · the desk's limits save writes its OWN history row",
+    suite: "console-mem",
+  },
+  {
+    name: "fs09-limits-refused · a limits save REFUSED as stale rings every admin anyway",
+    file: SAVE,
+    from: `  if (!Number.isInteger(input.baseVersion) || control.limitsVersion !== input.baseVersion) {`,
+    to: `  if (!Number.isInteger(input.baseVersion) || control.limitsVersion !== input.baseVersion) {\n    await announceRoster({ botId: null, label: null, event: "LIMITS_SAVED", eventId: null, actorId: input.actorId, changes: [] });`,
+    expect: "2.fs09.5c · CONTROL · a limits save REFUSED as stale tells nobody",
+    suite: "console-mem",
+  },
+  {
+    name: "fs09-paused · a Pause by hand tells no admin again — the PAUSED alert's call is dropped",
+    file: ROSTER,
+    from: `  await announceRoster({ botId: bot.id, label: bot.label, event: "PAUSED", eventId: event.id, actorId: input.actorId, detail: { cancelled } });`,
+    to: `  void event.id;`,
+    expect: "2.fs09.6 · PAUSED · a Pause by hand tells EVERY admin once",
+    suite: "console-mem",
+  },
+  {
+    name: "fs09-removed · a Remove tells no admin again — the REMOVED alert's call is dropped",
+    file: ROSTER,
+    from: `  await announceRoster({ botId: bot.id, label: bot.label, event: "REMOVED", eventId: event.id, actorId: input.actorId, detail: { cancelled } });`,
+    to: `  void event.id;`,
+    expect: "2.fs09.7 · REMOVED · a Remove tells EVERY admin once",
+    suite: "console-mem",
+  },
+  {
+    name: "fs09-officer-as-player · the officer is named the way a PLAYER is (\"Player #…\") instead of by their own name",
+    file: EMITTERS,
+    from: `    const byName = o.detail?.byName ?? (o.actorId ? await officerName(o.actorId) : null);`,
+    to: `    const byName = o.detail?.byName ?? (o.actorId ? displayLabel({ id: o.actorId, displayName: null }) : null);`,
+    expect: "2.fs09.3 · STARTED · a Start that lands tells EVERY admin once",
+    suite: "console-mem",
+  },
+  {
+    name: "fs09-section · a rule leaf loses its section, so the Counter's \"Delay minimum\" reads as either of the Opener's",
+    file: EMITTERS,
+    from: "    const name = meta.group === \"rules\" && !meta.label.startsWith(meta.section) ? `${meta.section} · ${meta.label}` : meta.label;",
+    to: `    const name = meta.label;`,
+    expect: "2.fs09.4b · RULES_SAVED · a save that moves ONE field says exactly that field",
+    suite: "console-mem",
+  },
+  {
+    name: "fs09-desk-link · the desk's own alert links to the history's top instead of the row it is about",
+    file: NOTIF,
+    from: `    : (opts.eventId ? consoleDeskEventHref(opts.eventId) : consoleTabHref("history"));`,
+    to: `    : (opts.eventId ? consoleTabHref("history") : consoleTabHref("history"));`,
+    expect: "2.fs09.5b · LIMITS_SAVED · and it tells EVERY admin once, as the DESK's change",
+    suite: "console-mem",
+  },
+  {
+    name: "fs09-reason-tail · every roster alert says \"Reason recorded\", pointing a designation at a reason nobody was asked for",
+    file: NOTIF,
+    from: `  const reasoned = ["PAUSED", "REMOVED", "TARGET_ADDED", "TARGET_CHANGED", "TARGET_REMOVED", "TARGET_STOPPED"].includes(opts.event);`,
+    to: `  const reasoned = true;`,
+    expect: "2.fs09.1 · DESIGNATED · adding an account tells EVERY admin once",
+    suite: "console-mem",
+  },
+  {
+    name: "fs09-one-recipient · the roster alert reaches only the FIRST admin found, not every one (A22)",
+    file: NOTIF,
+    from: `  const recipients = await houseBotAlertRecipients();\n  const { ROSTER_SENTENCE, isRosterEventCode } = await import("@/lib/house-bot/alert-copy");`,
+    to: `  const recipients = (await houseBotAlertRecipients()).slice(0, 1);\n  const { ROSTER_SENTENCE, isRosterEventCode } = await import("@/lib/house-bot/alert-copy");`,
+    expect: "2.fs09.2 · VERIFIED · confirming the holder's permission tells EVERY admin once",
+    suite: "console-mem",
+  },
+  /* ── 2.fs09.8 · THE TARGET LAW (rewritten 2026-09-27 after the adversarial review found the first scan held nothing:
+     it looked for an `update` the store does not have, only on a receiver spelled `targetStore`, and any
+     `announceRoster(` satisfied it). Each writer is planted where a real file reaches the store — by its own name, by
+     the alias `house-console-read.ts` imports it under, beside a non-target alert — and the scanner's own three
+     rules are each put back wrong once, so its controls are proved to bite. ─────────────────────────────────── */
+  {
+    name: "fs09-target-writer · a target writer arrives under src/ with no alert beside it",
+    file: ENTER_NOW,
+    from: `  const target = await targetStore.activeForMarket(marketId);`,
+    to: `  const target = await targetStore.activeForMarket(marketId);\n  if (Date.now() < 0) await targetStore.veto(target?.id ?? "");`,
+    expect: "2.fs09.8a · THE LAW · every file under src/ that reaches the DAL's targetStore",
+    suite: "console-mem",
+  },
+  {
+    name: "fs09-target-writer-announced · a target writer arrives WITH its alert, and the record that none exists goes stale",
+    file: ENTER_NOW,
+    from: `  const target = await targetStore.activeForMarket(marketId);`,
+    /* The plant BINDS its announcer (a dynamic import of the emitters module), as the scan now requires — a bare call
+       with no import announces nothing, so this plant keeps proving "a writer that does announce" (2026-09-27). */
+    to: `  const target = await targetStore.activeForMarket(marketId);\n  if (Date.now() < 0) { const { announceRoster } = await import("./emitters"); await targetStore.veto(target?.id ?? ""); await announceRoster({ botId: null, label: null, event: "TARGET_STOPPED", eventId: null }); }`,
+    expect: "2.fs09.8 · the four target codes have no writer to announce them YET",
+    suite: "console-mem",
+  },
+  {
+    name: "fs09-target-writer-alias · a change writer arrives on the ALIASED receiver (targetStore as houseBotTargetStore)",
+    file: GATE,
+    from: `  const [holderR, dayR, exposureR, staffR, rateR, targetsR, targetsCountR, targetsActiveR, parseR, boundsR,`,
+    to: `  if (Date.now() < 0) await houseBotTargetStore.casUpdate(bot.id, 0, {}, bot.id);\n  const [holderR, dayR, exposureR, staffR, rateR, targetsR, targetsCountR, targetsActiveR, parseR, boundsR,`,
+    expect: "2.fs09.8a · THE LAW · every file under src/ that reaches the DAL's targetStore",
+    suite: "console-mem",
+  },
+  {
+    name: "fs09-target-writer-nontarget · a target removal arrives in a file whose only alerts are PAUSED and REMOVED",
+    file: ROSTER,
+    from: `      const ended = await targetStore.endAllForBot(bot.id, "BOT_REMOVED", t);`,
+    to: `      const ended = await targetStore.endAllForBot(bot.id, "BOT_REMOVED", t);\n      if (Date.now() < 0) await targetStore.remove(bot.id, input.actorId, t);`,
+    expect: "2.fs09.8a · THE LAW · every file under src/ that reaches the DAL's targetStore",
+    suite: "console-mem",
+  },
+  {
+    name: "fs09-target-member · the target store gains a member nobody has classified as a writer or a reader",
+    file: DAL,
+    from: `  veto(targetId: string, tx?: HouseTx): Promise<{ row: StoredHouseBotTarget; previousEndCause: TargetEndCause | null } | null>;`,
+    to: `  veto(targetId: string, tx?: HouseTx): Promise<{ row: StoredHouseBotTarget; previousEndCause: TargetEndCause | null } | null>;\n  retime(targetId: string, delaySec: number, tx?: HouseTx): Promise<StoredHouseBotTarget | null>;`,
+    expect: "2.fs09.8i · the target store's interface is exactly the fourteen members this law classifies",
+    suite: "console-mem",
+  },
+  {
+    name: "fs09-target-scan-writer-as-reader · the scan files casUpdate among the READERS, so a change writer plants nothing",
+    file: CASES,
+    from: `    const OFFICER_WRITERS = ["casUpdate", "insert", "remove", "veto"];\n    const SYSTEM_ENDS = ["endActive", "endAllForBot"];\n    const READERS = ["activeForMarket",`,
+    to: `    const OFFICER_WRITERS = ["insert", "remove", "veto"];\n    const SYSTEM_ENDS = ["endActive", "endAllForBot"];\n    const READERS = ["casUpdate", "activeForMarket",`,
+    expect: "2.fs09.8c1 · CONTROL · a planted writer with no alert IS reported for each of the four officer writers",
+    suite: "console-mem",
+  },
+  {
+    name: "fs09-target-scan-no-alias · the scan reads only the bare name out of a file's DAL import, so an aliased store is invisible",
+    file: CASES,
+    from: `        (m) => pick(m[1], /^(targetStore)(?:\\s+as\\s+([\\w$]+))?$/));`,
+    to: `        (m) => pick(m[1], /^(targetStore)$/));`,
+    expect: "2.fs09.8c2 · CONTROL · a writer on an ALIASED receiver IS reported",
+    suite: "console-mem",
+  },
+  {
+    name: "fs09-target-scan-any-alert · the scan accepts ANY announceRoster call as a writer's alert, as the first version did",
+    file: CASES,
+    from: `          if (ev && TARGET_CODES.includes(ev)) announced.push(ev);`,
+    to: `          announced.push(ev ?? "any");`,
+    expect: "2.fs09.8c3 · CONTROL · a writer whose file announces only a NON-target code IS reported",
+    suite: "console-mem",
   },
 ];

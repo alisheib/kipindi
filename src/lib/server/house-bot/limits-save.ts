@@ -44,12 +44,14 @@ import {
 } from "@/lib/house-bot/rules";
 import {
   houseBotControlStore,
+  houseBotEventStore,
   houseBotStore,
   HouseSchemaNotReady,
   type HouseBotLimitsPatch,
   type StoredHouseBot,
   type StoredHouseBotControl,
 } from "../house-bot-dal";
+import { announceRoster } from "./emitters";
 
 /** One field that moved, for the audit row. ⛔ Numbers or null only — the R7 allowlist refuses anything else. */
 export type LimitChange = { field: string; before: number | null; after: number | null };
@@ -85,7 +87,8 @@ const limitsOf = (control: StoredHouseBotControl): HouseBotLimits =>
  *
  * The order is deliberate: the control row FIRST (so a missing schema and an unreadable row are told apart
  * before anything else is read), then the reads the validator needs, then the validation, then the one
- * conditional write, then the audit row. Nothing is written before the validator has passed, so a refused
+ * conditional write, then the desk's history row, then the audit row, then — only when a limit moved — every
+ * admin's alert (FS-09). Nothing is written before the validator has passed, so a refused
  * save leaves the row byte for byte as it was.
  */
 export async function saveHouseBotLimits(input: {
@@ -146,6 +149,25 @@ export async function saveHouseBotLimits(input: {
   const cas = await houseBotControlStore.saveLimits(input.baseVersion, patch);
   if (!cas.ok) return { ok: false, code: "CONFLICT" };
 
+  /**
+   * ⭐ THE DESK'S OWN HISTORY ROW — `LIMITS_SAVED`, which had a kind, a history word ("Desk limits saved") and a
+   * place in the desk-wide history reader, and no writer (FS-09, 2026-09-27; 02 §3.8 "LIMITS_SAVED and awaited
+   * COMPLIANCE"). ⛔ IT BELONGS TO NO ACCOUNT: `houseBotId` and `userId` are null, like the switch's own events, so
+   * the desk's history carries it and no account's history or holder's data-rights file ever can.
+   * ⛔ ITS FAILURE MAY NOT FAIL THE SAVE: the limits have already moved by this line (the rules save's own rule), so
+   * it is logged and the alert below links to the history's top instead of to an event that does not exist.
+   */
+  let savedEventId: string | null = null;
+  try {
+    savedEventId = (await houseBotEventStore.append({
+      houseBotId: null, userId: null, marketId: null, kind: "LIMITS_SAVED", fromStatus: null, toStatus: null,
+      reason: null, actorId: input.actorId, payload: { limitsVersion: cas.row.limitsVersion },
+    })).id;
+  } catch (err) {
+    console.error("[house-bot] the LIMITS_SAVED history row could not be written (the limits DID change):",
+      err instanceof Error ? err.message : String(err));
+  }
+
   const payload = { limitsVersion: cas.row.limitsVersion, changes };
   if (!isAllowedHouseAuditPayload(payload)) {
     throw new Error("house audit house_bot.limits_saved: payload keys outside the R7 allowlist");
@@ -177,6 +199,12 @@ export async function saveHouseBotLimits(input: {
   const recorded = logged.recorded;
   if (!recorded) {
     console.error(`[house-bot] the limits_saved compliance row could not be written (the limits DID change): ${logged.unrecorded}`);
+  }
+  /* ⭐ FS-09 · every admin is told what moved, once, after the history row — the DESK's alert (no account: `botId`
+     null), linking to that row on the desk's own history. ⛔ A save that moved nothing tells nobody: it landed (the
+     version advanced) and there is nothing to say. */
+  if (changes.length > 0) {
+    await announceRoster({ botId: null, label: null, event: "LIMITS_SAVED", eventId: savedEventId, actorId: input.actorId, changes });
   }
   return { ok: true, limitsVersion: cas.row.limitsVersion, changes, recorded, conflicts: checked.conflicts };
 }

@@ -86,7 +86,6 @@ const EXEMPT = new Map<string, string>([
   // in a constant beside its gradient id; nothing reads a series. ⛔ §3.2 keeps this honest: if
   // the file ever stops matching a detector this entry fails and must be deleted.
   ["components/ui/social-marks.tsx", "Instagram/TikTok vendor logos — a static brand outline in a `d={}` constant, the marks half of brand.tsx's documented exception; no data series"],
-  ["components/updown/round-stake-panel.tsx", "a glyph chosen by variable (an arrow constant), not computed from a series"],
   ["app/updown/[roundId]/page.tsx", "a glyph chosen by variable (outcomeArrow constant), not computed from a series"],
 ]);
 

@@ -114,9 +114,14 @@ export function MEASURE_BAND() {
     const hit = ["color", "backgroundColor", "fill", "stroke", "borderTopColor"].filter((p) => yes.has(s[p]));
     if (!hit.length) continue;
     if (hit.length === 1 && hit[0] === "color" && !(el.textContent || "").trim() && !(el instanceof SVGElement)) continue;
-    if (el.parentElement && getComputedStyle(el.parentElement).color === s.color && hit.every((p) => p === "color")) continue;
-    const cls = (el.className?.baseVal ?? el.className ?? "").toString().split(/\s+/).filter(Boolean).slice(-1)[0] || el.tagName.toLowerCase();
-    green.set(cls, (green.get(cls) || 0) + 1);
+    // Counted as the spec's KINDS (§15.4): the verdict (words + arrow), the Up pick, the newest stem + bead,
+    // the earlier Up stems. Anything else green is named by its own class — and is a breach.
+    const kind = el.closest(".kp-udbug__verdict") ? "verdict"
+      : el.closest(".kp-udbug__pick--up") ? "up pick"
+      : el.closest(".kp-udtrack__stem--latest, .kp-udtrack__bead") ? "newest stem + bead"
+      : el.closest(".kp-udtrack__stem--up") ? "earlier Up stems"
+      : (el.className?.baseVal ?? el.className ?? "").toString().split(/\s+/).filter(Boolean).slice(-1)[0] || el.tagName.toLowerCase();
+    green.set(kind, (green.get(kind) || 0) + 1);
   }
 
   // Clipping inside the band: a leaf with text whose content overflows a box that clips it.
@@ -133,6 +138,22 @@ export function MEASURE_BAND() {
   }
   const fab = document.querySelector(".cm-fab");
   const plate = bug ? box(bug) : null;
+  // The playhead against the newest data mark (latest stem, or the last tie tick): their boxes must not overlap
+  // (frame panel round 2 — "now" and "the last read" fused into one two-tone line).
+  const rectOf = (el) => { if (!el) return null; const b = el.getBoundingClientRect(); return b.width || b.height ? b : null; };
+  const nowR = rectOf(q(".kp-udtrack__now"));
+  const ties = [...wrap.querySelectorAll(".kp-udtrack__tie")];
+  const markR = rectOf(q(".kp-udtrack__stem--latest")) && rectOf(ties.at(-1))
+    ? [rectOf(q(".kp-udtrack__stem--latest")), rectOf(ties.at(-1))].sort((a, b) => b.left - a.left)[0]
+    : rectOf(q(".kp-udtrack__stem--latest")) ?? rectOf(ties.at(-1)) ?? rectOf(q(".kp-udtrack__kick"));
+  const overlap = nowR && markR
+    ? Math.max(0, Math.min(nowR.right, markR.right + 1) - Math.max(nowR.left, markR.left - 1))
+      * Math.max(0, Math.min(nowR.bottom, markR.bottom + 1) - Math.max(nowR.top, markR.top - 1))
+    : 0;
+  // S8 (and every state's last act): the act keeps its air — from the copy above, and to the card's edge below.
+  const lastAct = [...wrap.querySelectorAll(".kp-updown__acts > *")].filter(vis).at(-1);
+  const actR = rectOf(lastAct), wrapR = wrap.getBoundingClientRect(), copyR = rectOf(copy);
+  const padB = parseFloat(getComputedStyle(wrap).paddingBottom);
   return {
     innerWidth, innerHeight,
     overflowX: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) - innerWidth,
@@ -142,7 +163,9 @@ export function MEASURE_BAND() {
     closed: wrap.hasAttribute("data-closed"),
     band: box(band), wrap: box(wrap), copy: box(copy), round: box(round), plate, track: box(track),
     fixture: box(fixture), clockRow: box(clockRow), clockRowClosed: vis(clockClosed),
-    clockRowLines: lines(clockRow),
+    // max(row, caption): the row is a fixed 20px, so a caption that wraps overflows it without growing it — the
+    // row alone would read one line (the RED control went blind to exactly that on drive 5).
+    clockRowLines: clockRow ? Math.max(lines(clockRow) ?? 1, lines(clockRow.querySelector(".kp-udclock__cap")) ?? 1) : null,
     verdict: box(verdict), verdictLines: lines(verdict), verdictPx: verdict ? parseFloat(getComputedStyle(verdict).fontSize) : null,
     verdictText: text(verdict),
     detail: box(detail), detailLines: lines(detail), detailText: text(detail), delta, detailNeed, detailRoom,
@@ -153,6 +176,10 @@ export function MEASURE_BAND() {
     acts: [...wrap.querySelectorAll(".kp-updown__acts a")].filter(vis).map((a) => ({ ...box(a), text: text(a) })),
     small, green: Object.fromEntries(green), clipped,
     fab: fab && vis(fab) ? box(fab) : null,
+    nowMarkOverlap: Math.round(overlap * 10) / 10,
+    actToEdge: actR ? Math.round(wrapR.bottom - actR.bottom) : null, padBottom: padB,
+    copyToAct: actR && copyR && solo ? Math.round(actR.top - copyR.bottom) : null,
+    plateFromTop: plate ? Math.round(bug.getBoundingClientRect().top - wrapR.top) : null,
     focus: document.activeElement ? `${document.activeElement.tagName}.${(document.activeElement.className || "").toString().split(/\s+/).slice(-1)[0]}` : null,
   };
 }
@@ -178,7 +205,12 @@ export function judgeBand(f, cell, ref = null) {
   if (cell.state && seen !== cell.state && !(cell.state === "S5" && seen === "S5")) bad(`state: expected ${cell.state}, the band shows ${seen} (lead=${f.lead} aged=${f.aged} closed=${f.closed})`);
   if (f.overflowX > 0) bad(`V1 horizontal overflow ${f.overflowX}px`);
   if (f.clipped.length) bad(`V2 clipped: ${f.clipped.join(" | ")}`);
-  if (seen === "S8") return out;
+  if (seen === "S8") {
+    if (f.copyToAct != null && f.copyToAct < 12) bad(`S8: the Play button sits ${f.copyToAct}px under the copy (≥ 12)`);
+    if (f.actToEdge != null && f.actToEdge < f.padBottom - 0.5) bad(`S8: the Play button is ${f.actToEdge}px off the card's edge (≥ ${f.padBottom})`);
+    return out;
+  }
+  if (f.nowMarkOverlap > 0) bad(`the playhead overlaps the newest read by ${f.nowMarkOverlap}px²`);
   // The band's height is the CARD's (`.kp-updown`, border to border) — the spec's ≈592px sum is the card's
   // content; the section around it adds the page rhythm's padding, which is not the band's to budget.
   const H = f.wrap?.h ?? 0;
@@ -224,8 +256,10 @@ export function judgeBand(f, cell, ref = null) {
     for (const p of f.taps) if (Math.abs((p.top + p.bottom) / 2 - mid) > 1) bad(`${p.cls} not centred in the plate (${((p.top + p.bottom) / 2 - mid).toFixed(1)}px)`);
   }
   if (seen === "S1") {
-    const kinds = Object.keys(f.green).length;
-    if (kinds > 4) bad(`green marks in S1: ${kinds} kinds (${Object.keys(f.green).join(", ")}), want ≤ 4`);
+    const kinds = Object.keys(f.green);
+    const ALLOWED = ["verdict", "up pick", "newest stem + bead", "earlier Up stems"];
+    const stray = kinds.filter((k) => !ALLOWED.includes(k));
+    if (kinds.length > 4 || stray.length) bad(`green marks in S1: ${kinds.length} kinds (${kinds.join(", ")}), want ≤ 4 of ${ALLOWED.join(" / ")}`);
   }
   if (f.small.length) bad(`text under 13px outside the kit's labels: ${f.small.join(" | ")}`);
   if (seen === "S7" && ref && ref.wrap && f.wrap) {
@@ -274,6 +308,12 @@ if (import.meta.url === pathToFileURL(process.argv[1] || "").href) {
     if (RED) await page.addStyleTag({ content: RED_STYLE });
     await showBand(page);
     const f = await page.evaluate(MEASURE_BAND);
+    // SHOTS=<dir>: keep the frame (a viewport tile with the band under the header) for looking at.
+    if (process.env.SHOTS) {
+      const { mkdirSync } = await import("node:fs");
+      mkdirSync(process.env.SHOTS, { recursive: true });
+      await page.screenshot({ path: `${process.env.SHOTS}/${stateOf(f) ?? "none"}-${w}-${loc}.png` });
+    }
     const b = judgeBand(f, { w, loc, state: STATE || stateOf(f) });
     console.log(`${w}-${loc} ${stateOf(f)} ${figuresLine(f)}`);
     for (const m of b) console.log(`  BREACH ${m}`);

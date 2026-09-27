@@ -128,14 +128,15 @@ export function UpdownBand({ t, locale, liveCount, round }: {
                 <p className="kp-udclock__row kp-udclock__row--open">
                   <I.clock s={12} className="kp-udclock__glyph" />
                   <span className="kp-udclock__cap" aria-hidden>{t.market.udBetsCloseIn}</span>
-                  <UpdownMatchDigits label={t.market.udBetsCloseIn} />
+                  <UpdownMatchDigits aria={t.home.udMatchTimerAria} ariaSec={t.home.udMatchTimerAriaSec} />
                 </p>
                 <p className="kp-udclock__row kp-udclock__row--closed">
                   <I.lock s={12} className="kp-udclock__glyph" />
-                  <span className="kp-udclock__cap">{t.market.udLockedTitle}</span>
-                  <Link href={roundHref as never} className="kp-udclock__watch">
-                    {t.market.udRcWatchRound}
-                    <I.chevronRight s={14} />
+                  {/* The link is described by this caption, so the focus moved onto it at close also says why
+                      (WCAG 4.1.2). Past the deciding instant "Awaiting result" is the verdict's, not this row's. */}
+                  <span className="kp-udclock__cap" id="kp-udclock-state">{t.market.udLockedTitle}</span>
+                  <Link href={roundHref as never} className="kp-udclock__watch" aria-describedby="kp-udclock-state">
+                    <span className="kp-udclock__watch-label">{t.market.udRcWatchRound}<I.chevronRight s={14} /></span>
                   </Link>
                 </p>
               </div>
@@ -144,11 +145,13 @@ export function UpdownBand({ t, locale, liveCount, round }: {
             {/* G2 — the score. The picks ARE the Up/Down links: always solid and equal, never lit.
                 At close they leave and inert padlocked sides take their exact box. */}
             <UpdownMatchScore>
-              <Link href={`${roundHref}?side=UP` as never} className="btn btn-yes btn-lg kp-udbug__pick kp-udbug__pick--up">
+              {/* #stake: a pick lands on the round page's stake panel with the side locked — the bet slip — not
+                  two screens above it (frame panel round 2). */}
+              <Link href={`${roundHref}?side=UP#stake` as never} className="btn btn-yes btn-lg kp-udbug__pick kp-udbug__pick--up">
                 <I.arrowUp s={16} />
                 {w.up}
               </Link>
-              <Link href={`${roundHref}?side=DOWN` as never} className="btn btn-no btn-lg kp-udbug__pick kp-udbug__pick--down">
+              <Link href={`${roundHref}?side=DOWN#stake` as never} className="btn btn-no btn-lg kp-udbug__pick kp-udbug__pick--down">
                 <I.arrowDown s={16} />
                 {w.down}
               </Link>

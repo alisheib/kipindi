@@ -23,9 +23,9 @@ export const MUTATIONS = [
   },
   {
     name: "an exemption whose site vanished must be pruned, not left as a hole",
-    file: "src/components/updown/round-stake-panel.tsx",
-    from: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={arrow} /></svg>',
-    to: "",
+    file: "src/app/updown/[roundId]/page.tsx",
+    from: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={outcomeArrow} /></svg>',
+    to: "null",
     expect: "3.2 every exemption still matches a detector",
   },
   {

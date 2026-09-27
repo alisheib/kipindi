@@ -16,11 +16,20 @@
  * announcement. The visible caption beside it is aria-hidden, so the sentence is read exactly once.
  */
 import { mmss, useTickSeconds } from "@/components/updown/round-countdown";
+import { fill } from "@/lib/utils";
 import { useMatch } from "./updown-match-state";
 
-export function UpdownMatchDigits({ label }: { label: string }) {
+/** `aria` is the dictionary's "Dau linafungwa baada ya dakika {m} na sekunde {s}": read once, mm:ss alone could
+ *  be heard as a clock time ("baada ya 8:56"), beside the band's own "saa 19:38" (frame panel round 2). */
+export function UpdownMatchDigits({ aria, ariaSec }: { aria: string; ariaSec: string }) {
   const { round, anchorMs } = useMatch();
   const left = useTickSeconds(round.betsCloseAtMs, anchorMs, true, anchorMs);
   const text = mmss(left);                                   // "01:52" — fixed width, the card's format
-  return <span className="kp-udclock__digits" role="timer" aria-label={`${label} ${text}`}>{text}</span>;
+  const secs = Math.max(0, Math.floor(left ?? 0));
+  return (
+    <span className="kp-udclock__digits" role="timer"
+      aria-label={secs < 60 ? fill(ariaSec, { s: secs }) : fill(aria, { m: Math.floor(secs / 60), s: secs % 60 })}>
+      {text}
+    </span>
+  );
 }

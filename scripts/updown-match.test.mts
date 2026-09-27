@@ -362,13 +362,18 @@ const text = (n: ReactNode) => html(n).replace(/<[^>]+>/g, "");
  *  hold at most one nested span (a time), so the match allows exactly one level of nesting. */
 const seen = (n: ReactNode, aged = false) => html(n)
   .replace(new RegExp(`<span class="kp-udbug__${aged ? "now" : "was"}">(?:[^<]|<span[^>]*>[^<]*</span>)*</span>`, "g"), "")
+  .replace(/<span class="kp-udbug__decided">[^<]*<\/span>/g, "")
   .replace(/<[^>]+>/g, "");
+/** The rule as a reader sees it before (or, with `decided`, after) the deciding instant. */
+const seenRule = (n: ReactNode, decided = false) => html(n)
+  .replace(new RegExp(`<span class="kp-udrule__${decided ? "now" : "was"}">(?:[^<]|<span[^>]*>[^<]*</span>)*</span>`, "g"), "")
+  .replace(/<[^>]+>/g, "").replace(/\u00A0/g, " ");
 type Want = { verdict: string; aged?: string; detail: string; agedDetail?: string; rule: string; note?: string };
 const WANT: Record<string, Record<Locale, Want>> = {
   S1: {
-    en: { verdict: "Up leads", aged: "Up led", detail: "at 14:26 · Above open by $18.52", rule: "The price at 14:32 decides. Less than $0.02 from the open, every stake comes back." },
-    sw: { verdict: "Juu inaongoza", aged: "Juu iliongoza", detail: "saa 14:26 · Juu ya ufunguzi kwa $18.52", rule: "Bei ya saa 14:32 inaamua. Tofauti ikiwa ndogo kuliko $0.02, kila dau linarudi." },
-    zh: { verdict: "涨方领先", aged: "涨方曾领先", detail: "14:26 时 · 高于开盘 $18.52", rule: "以 14:32 的价格判定。与开盘价相差不足 $0.02，所有投注全额退还。" },
+    en: { verdict: "Up leads", aged: "Up led", detail: "at 14:26 · Above open by $18.52", rule: "The price at 14:32 decides. Under $0.02 from the open, every stake comes back." },
+    sw: { verdict: "Juu inaongoza", aged: "Juu iliongoza", detail: "saa 14:26 · Juu ya ufunguzi kwa $18.52", rule: "Bei ya saa 14:32 inaamua. Tofauti na ufunguzi isipofika $0.02, kila dau linarudi." },
+    zh: { verdict: "涨方领先", aged: "涨方曾领先", detail: "14:26 时 · 高于开盘 $18.52", rule: "以 14:32 的价格判定。与开盘价相差不足 $0.02，所有投注均退还。" },
   },
   S2: {
     en: { verdict: "Down leads", aged: "Down led", detail: "at 14:26 · Below open by $12.40", rule: "" },
@@ -376,9 +381,9 @@ const WANT: Record<string, Record<Locale, Want>> = {
     zh: { verdict: "跌方领先", aged: "跌方曾领先", detail: "14:26 时 · 低于开盘 $12.40", rule: "" },
   },
   S3: {
-    en: { verdict: "Nobody leads", aged: "Nobody led", detail: "at 14:26 · Only $0.20 from the open — not enough to decide", note: "If it closes here, every stake comes back.", rule: "The price at 14:32 decides. Less than $0.40 from the open, every stake comes back." },
-    sw: { verdict: "Hakuna anayeongoza", aged: "Hakuna aliyeongoza", detail: "saa 14:26 · Tofauti $0.20 tu — haitoshi kuamua", note: "Ikifunga hapa, kila dau linarudi.", rule: "Bei ya saa 14:32 inaamua. Tofauti ikiwa ndogo kuliko $0.40, kila dau linarudi." },
-    zh: { verdict: "暂无领先方", aged: "当时无领先方", detail: "14:26 时 · 与开盘价仅差 $0.20，不足以判定", note: "若以此价收盘，所有投注全额退还。", rule: "以 14:32 的价格判定。与开盘价相差不足 $0.40，所有投注全额退还。" },
+    en: { verdict: "Nobody leads", aged: "Nobody led", detail: "at 14:26 · Only $0.20 from the open — not enough to decide", note: "If it closes here, every stake comes back.", rule: "The price at 14:32 decides. Under $0.40 from the open, every stake comes back." },
+    sw: { verdict: "Hakuna anayeongoza", aged: "Hakuna aliyeongoza", detail: "saa 14:26 · Tofauti na ufunguzi $0.20 tu — haitoshi kuamua", note: "Ikifunga hapa, kila dau linarudi.", rule: "Bei ya saa 14:32 inaamua. Tofauti na ufunguzi isipofika $0.40, kila dau linarudi." },
+    zh: { verdict: "暂无领先方", aged: "当时无领先方", detail: "14:26 时 · 与开盘价仅差 $0.20，不足以判定", note: "若以此价收盘，所有投注全额退还。", rule: "以 14:32 的价格判定。与开盘价相差不足 $0.40，所有投注均退还。" },
   },
   S4: {
     en: { verdict: "Kick-off · Pick a side", detail: "No new price since the open at 14:20", agedDetail: "Opened at 14:20", rule: "" },
@@ -396,7 +401,7 @@ for (const [name, byLoc] of Object.entries(WANT)) {
     if (want.aged && seen(w.verdict, true) !== want.aged) bad.push(`aged verdict "${seen(w.verdict, true)}"`);
     if (seen(w.detail) !== want.detail) bad.push(`detail "${seen(w.detail)}"`);
     if (want.agedDetail && seen(w.detail, true) !== want.agedDetail) bad.push(`aged detail "${seen(w.detail, true)}"`);
-    if (want.rule && text(w.rule) !== want.rule) bad.push(`rule "${text(w.rule)}"`);
+    if (want.rule && seenRule(w.rule) !== want.rule) bad.push(`rule "${seenRule(w.rule)}"`);
     if ((w.note ?? undefined) !== want.note) bad.push(`note "${w.note}"`);
     ok(`12.${name}.${loc} ${want.verdict}`, bad.length === 0, bad.join(" · "));
   }
@@ -406,16 +411,35 @@ for (const [name, byLoc] of Object.entries(WANT)) {
   ok("12.S6 awaiting: 'Awaiting price', no second line, no guessed side", text(w.verdict) === dict.en.market.udAwaitingRead && w.detail === null && w.note === null);
   const asym = matchWords(dict.en as Dict, "en", band({ open: 85000, up: 85000.05, down: 84999.98, reads: [{ ms: O + 3 * MIN, price: 85001 }] }));
   ok("12.asym uneven targets state both prices, the side words named",
-    text(asym.rule) === "The price at 14:32 decides. Up at $85,000.05 or higher, Down at $84,999.98 or lower — in between, every stake comes back.", text(asym.rule));
+    seenRule(asym.rule) === "The price at 14:32 decides. Up at $85,000.05 or higher, Down at $84,999.98 or lower — in between, every stake comes back.", seenRule(asym.rule));
   // A paragraph boundary is a line break to a reader, so it is one here; inline tags are nothing.
   const strip = (s: string) => s.replace(/<\/p>/g, "\n").replace(/<[^>]+>/g, "");
   const w1 = matchWords(dict.sw as Dict, "sw", S1), w4 = matchWords(dict.sw as Dict, "sw", S4);
-  const swRule = html(w1.rule);
+  const swRule = html(w1.rule).replace(/<span class="kp-udrule__was">(?:[^<]|<span[^>]*>[^<]*<\/span>)*<\/span>/g, "");
   const swAll = renderToStaticMarkup(createElement(Fragment, null,
     createElement("p", { key: 1 }, w1.detail), createElement("p", { key: 2 }, w4.verdict), createElement("p", { key: 3 }, w4.detail)));
   const EATEN = ["kwa<span", "·Juu", "inaamua.Tofauti", "14:26·", "upandeBado"];
   const eaten = EATEN.filter((s) => (swAll + swRule).includes(s) || strip(swAll + swRule).includes(s));
   ok("12.html no eaten space in the markup or its text (kwa<span · ·Juu · inaamua.Tofauti · 14:26· · upandeBado)", eaten.length === 0, eaten.join(", "));
+  // ── frame panel 2026-09-27: the detail breaks only between its clauses; the rule turns past; the aged note ──
+  const d1 = html(w1.detail), d3 = html(matchWords(dict.sw as Dict, "sw", S3).detail);
+  ok("12.chunks the detail is two no-break clauses and a separator span — 'saa 14:26' | ' · ' | 'Juu ya ufunguzi kwa $18.52'",
+    /<span class="kp-udbug__chunk">saa <span[^>]*>14:26<\/span><\/span><span class="kp-udbug__sep"> · <\/span><span class="kp-udbug__chunk">Juu ya ufunguzi kwa <span class="amount">\$18\.52<\/span><\/span>/.test(d1), d1);
+  ok("12.chunks the level line: head | ' — ' (the tail's separator) | the tail, which gives way below 640",
+    /<span class="kp-udbug__chunk">Tofauti na ufunguzi <span class="amount">\$0\.20<\/span> tu<\/span><span class="kp-udbug__sep kp-udbug__sep--tail"> — <\/span><span class="kp-udbug__chunk kp-udbug__chunk--tail">haitoshi kuamua<\/span>/.test(d3), d3);
+  // Past the deciding instant the headline is "Inasubiri tokeo" — never the last lead (it read as the result).
+  const dec = html(w1.verdict);
+  ok("12.decided the verdict carries the awaiting-result headline for the deciding instant",
+    dec.includes(`<span class="kp-udbug__decided">${dict.sw.market.udAwaitingResult}</span>`), dec);
+  ok("12.decided …and none while awaiting a price (that verdict is already 'Inasubiri bei')",
+    !html(matchWords(dict.sw as Dict, "sw", S6).verdict).includes("kp-udbug__decided"));
+  for (const loc of ["en", "sw", "zh"] as const) {
+    const want = { en: "The price at 14:32 decided.", sw: "Bei ya saa 14:32 iliamua.", zh: "已以 14:32 的价格判定。" }[loc];
+    const r = seenRule(matchWords(dict[loc] as Dict, loc, S1).rule, true);
+    ok(`12.decided.${loc} past the deciding instant the rule reads "${want}"`, r.startsWith(want), r);
+  }
+  ok("12.aged note for a lead, none for kick-off or awaiting",
+    w1.agedNote === dict.sw.home.udMatchAgedNote && w4.agedNote === null && matchWords(dict.en as Dict, "en", S6).agedNote === null);
   ok("12.html …and the spaces are really there", swAll.includes("kwa <span") && strip(swRule).includes("inaamua. Tofauti") && strip(swAll).includes("14:26 · Juu"),
     `${strip(swAll)} ‖ ${strip(swRule)}`);
   const plantedRule = swRule.replace("</span> <span", "</span><span");
@@ -424,7 +448,10 @@ for (const [name, byLoc] of Object.entries(WANT)) {
   ok("12.zh two Chinese sentences join with no space after the full stop", !text(matchWords(dict.zh as Dict, "zh", S1).rule).includes("。 "));
   const aria = matchWords(dict.en as Dict, "en", S1).aria;
   ok("12.aria the timeline in words, with EAT and every read",
-    aria === "Round timeline: opened 14:20, betting closes 14:30, the price at 14:32 decides (EAT). Confirmed prices since the open: 14:23: Below open by $6.20; 14:26: Above open by $18.52.", aria);
+    aria === "Round timeline (EAT): open 14:20, betting close 14:30, deciding price 14:32. Confirmed prices since the open: 14:23: Below open by $6.20; 14:26: Above open by $18.52.", aria);
+  // The margin never parts from its phrase at a line end: a no-break space before it, in every language.
+  const nb = (["en", "sw", "zh"] as const).filter((l) => !html(matchWords(dict[l] as Dict, l, S1).rule).includes("\u00A0<span class=\"amount\">"));
+  ok("12.nbsp the rule's margin is held to its phrase by a no-break space (en, sw, zh)", nb.length === 0, nb.join(","));
   ok("12.aria no reads ⇒ 'none yet'", matchWords(dict.en as Dict, "en", S4).aria.endsWith("since the open: none yet."));
   const all = (["en", "sw", "zh"] as const).map((l) => html([matchWords(dict[l] as Dict, l, S1).verdict, matchWords(dict[l] as Dict, l, S1).detail, matchWords(dict[l] as Dict, l, S1).rule])).join("");
   ok("12.law no absolute price, no 'live', no pool on the band's words", !/85,0\d\d\.\d\d|\blive\b|\bhai\b|pool|dimbwi|奖池/i.test(all));
@@ -444,12 +471,12 @@ try {
   ok("13.2 a round: no live count beside it (I-12)", !s1.includes("raundi 2 hai sasa"));
   ok("13.3 DOM order: verdict, then the Up link, then the Down link",
     at("kp-udbug__verdict") > 0 && at("kp-udbug__verdict") < at("kp-udbug__pick--up") && at("kp-udbug__pick--up") < at("kp-udbug__pick--down"));
-  ok("13.4 the picks go into THIS round with the side kept", s1.includes('href="/updown/udr_test?side=UP"') && s1.includes('href="/updown/udr_test?side=DOWN"'));
+  ok("13.4 the picks go into THIS round with the side kept", s1.includes('href="/updown/udr_test?side=UP#stake"') && s1.includes('href="/updown/udr_test?side=DOWN#stake"'));
   ok("13.5 the lead is stamped for the ink, and the leader is never lit (both picks solid)",
     s1.includes('data-lead="up"') && s1.includes("btn btn-yes btn-lg kp-udbug__pick") && s1.includes("btn btn-no btn-lg kp-udbug__pick"));
   ok("13.6 the digits are SEEDED: real mm:ss at render, never --:--, as one timer",
-    /role="timer" aria-label="Dau linafungwa baada ya 02:00">02:00</.test(s1), s1.match(/role="timer"[^>]*>[^<]*</)?.[0] ?? "no timer");
-  ok("13.7 the track is one image named in words, with EAT", /role="img" aria-label="Ratiba ya raundi: [^"]*\(EAT\)[^"]*"/.test(s1));
+    /role="timer" aria-label="Dau linafungwa baada ya dakika 2 na sekunde 0">02:00</.test(s1), s1.match(/role="timer"[^>]*>[^<]*</)?.[0] ?? "no timer");
+  ok("13.7 the track is one image named in words, with EAT", /role="img" aria-label="Ratiba ya raundi \(EAT\): [^"]*"/.test(s1));
   ok("13.8 fresh at render ⇒ no data-aged; the S1 detail and rule are there",
     !s1.includes("data-aged") && s1.includes("Juu ya ufunguzi kwa <span") && s1.includes("Bei ya saa <span"));
   const agedRound = band({ reads: [{ ms: O + 1 * MIN, price: 85018.52 }], nowMs: O + 9 * MIN });

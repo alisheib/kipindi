@@ -131,7 +131,9 @@ those is missing, it stays silent — and that is by design.</p></div>
 
 <div class="steps">
   <div><b>Designate an account.</b> Pick an existing player account the desk will stake from, and confirm you have
-    the holder's permission. The desk never creates accounts of its own.</div>
+    the holder's permission. The desk never creates accounts of its own. Search for it by handle, phone number or
+    account ID — or, if you have none of those, pick it from the list of every account underneath the search:
+    twenty to a page, sortable by account, joined and signed in, and it says why an account cannot be chosen.</div>
   <div><b>Fill in the money limits.</b> On the <b>Limits</b> tab. Every limit must have a number — an empty limit
     is treated as "refuse", not as "no limit", so a blank box stops the account betting.</div>
   <div><b>Choose the markets.</b> On the <b>Rules</b> tab, under Markets: tick <b>Up &amp; Down</b> and/or
@@ -276,6 +278,26 @@ settle normally. Turning it on or off is recorded with who did it and why.</p>
 <div class="box good"><b class="lead">Safe to use</b>
 <p>Turning the switch off is the safest thing you can do if anything looks wrong. It stops new bets at once and
 changes nothing that has already happened.</p></div>
+
+<h2>9 · Reading the desk's tables</h2>
+<p>Every table on the desk works the same way.</p>
+<div class="steps">
+  <div><b>Sort by pressing a column's heading.</b> Press it to order the table by that column; press it again to
+    reverse the order. The heading in force shows an arrow (↑ or ↓). Running figures — Opening, Closing and Left
+    today — and a few descriptive columns do not sort, because their order only makes sense in time.</div>
+  <div><b>Twenty rows to a page.</b> Every list that can grow — activity, history, targets, the list of accounts —
+    shows twenty rows with a pager under it. The roster has one too, but it only appears if the maximum number of
+    accounts is ever raised above twenty; until then every account is on one screen.</div>
+  <div><b>A press that is loading says so.</b> When you press a tab, a heading, a page number or a filter, a thin
+    moving bar appears under what you pressed and the part of the page it will replace fades, until the new page
+    arrives. On a slow connection, wait for it — nothing is stuck.</div>
+</div>
+<div class="box"><b class="lead">On a phone</b>
+<p>The two activity tables show each stake as a stacked card with no heading row, so on a phone they carry a
+<b>Sort · Panga</b> row above the first card instead: one button for each column you can sort by, the one in use
+marked with its arrow (↑ or ↓). Press a button to sort by that column; press the marked one again to reverse the
+order. It does exactly what pressing that column's heading does on a computer, and the line above it still says which
+order you are looking at. Every other table keeps its heading row on a phone and sorts from it.</p></div>
 
 <footer>50pick · House Desk — Admin Guide. The settings table is generated from the console's own field list, so it
 cannot disagree with the screen. If this guide and the screen ever differ, the screen is correct.</footer>

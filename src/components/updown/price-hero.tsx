@@ -31,6 +31,7 @@
  * Pure and exported so the arithmetic can be tested without a browser; the component is the
  * only caller.
  */
+import type { ReactNode } from "react";
 import { usd as usdPrice } from "@/lib/usd-price";
 
 export function priceTagOffsetY(
@@ -73,7 +74,7 @@ export function PriceHero({
     upLabel?: string;       // "Up target"
     downLabel?: string;     // "Down target"
     awaitingRead: string;   // "Awaiting read"
-    aboveBelow: string | null; // "Above open by $4.45" — null when no live price
+    aboveBelow: ReactNode | null; // "Above open by $4.45" — null when no live price
     source: string | null;  // "Source: Kitco · quoted 14:34:58" — null when unknown
     chartAlt: string;
   };
@@ -163,8 +164,12 @@ export function PriceHero({
               </>
             )}
           </div>
+          {/* The band's detail, continued: "Juu ya ufunguzi kwa $18.52 · imenukuliwa 18:55:02 EAT" sits under the
+              figure it dates, at the sentence floor — it was a 9.5px footnote under the chart, so the landing's
+              answer arrived here as small print (frame panel, 2026-09-27). */}
+          {copy.aboveBelow && <p className="mt-1.5 mb-0 text-body-sm text-text-muted">{copy.aboveBelow}</p>}
         </div>
-        <div className="text-right">
+        <div className="ud-hero-stats text-right">
           <p className="m-0 font-mono text-micro font-semibold uppercase eyebrow text-text-faint">{copy.openLabel}</p>
           <p className="mt-[5px] mb-0 font-mono text-[13px] font-bold tabular-nums text-text-muted">{usd(openPrice)}</p>
           {/* ⭐ E-198 · THE TWO NUMBERS THAT DECIDE THE BET, IN TEXT, WHILE THEY STILL MATTER.
@@ -261,10 +266,7 @@ export function PriceHero({
         </svg>
       </div>
 
-      <p style={{ margin: "8px 0 0", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }} className="font-mono text-[9.5px] text-text-faint">
-        <span>{copy.aboveBelow ?? " "}</span>
-        {copy.source && <span>{copy.source}</span>}
-      </p>
+      {copy.source && <p className="mt-2 mb-0 text-body-sm text-text-subtle">{copy.source}</p>}
     </section>
   );
 }

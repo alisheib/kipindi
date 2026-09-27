@@ -34,6 +34,9 @@ export type MatchWords = {
   detail: ReactNode | null;
   /** The level state's refund note; null otherwise. */
   note: string | null;
+  /** Why a verdict turned past tense while betting is open ("Bado hakuna bei mpya."); shown by the CSS only
+   *  under the wrapper's `data-aged` and never once closed. Null where no lead can age (kick-off, awaiting). */
+  agedNote: string | null;
   /** The round's rule in two sentences; null when the open or a target is unknown. */
   rule: ReactNode | null;
   /** The timeline in words, with EAT — the track's accessible name (K22). */
@@ -41,6 +44,20 @@ export type MatchWords = {
 };
 
 const clock = (ms: number) => fmtEATClock(ms) ?? "—";
+
+/** One clause that never breaks inside itself: the detail may wrap only BETWEEN its clauses (after " · " and
+ *  " — "), never mid-phrase — measured at 320, 2026-09-27: "Juu ya / ufunguzi kwa $18.52", "Tofauti / $0.01". */
+const chunk = (key: string, node: ReactNode) => <span key={key} className="kp-udbug__chunk">{node}</span>;
+
+/** A separator between two clauses, its own span: below 360 the clauses stack and the separator hides, so no
+ *  line ever ends on a dangling "·" (frame panel round 2, 2026-09-27). */
+const sep = (key: string, text: string, extra = "") => <span key={key} className={`kp-udbug__sep${extra}`}>{text}</span>;
+
+/** A composed line split at its one clause break — " — " in sw/en, "，" in zh: [head, the mark, tail]. */
+function clauses(s: string): [string, string, string] | [string, null, null] {
+  const m = /( — |，)/.exec(s);
+  return m ? [s.slice(0, m.index), m[0], s.slice(m.index + m[0].length)] : [s, null, null];
+}
 
 /** How far a read sits from the open, as the plain words the detail uses — for the track's description. */
 function moveWords(t: Dict, read: MatchRead, open: number, decimals: number): string {
@@ -66,7 +83,8 @@ export function matchWords(t: Dict, locale: Locale, round: UpdownBandRound): Mat
   if (lead === "up" || lead === "down") {
     const Arrow = lead === "up" ? I.arrowUp : I.arrowDown;
     verdict = [
-      <Arrow key="a" s={16} className="kp-udbug__arrow" />,
+      // 2.5 on the 24 grid: the kit's 1.9 read as a hairline beside Sora 700 at 20–24px (frame panel, 2026-09-27).
+      <Arrow key="a" s={16} strokeWidth={2.5} className="kp-udbug__arrow" />,
       <span key="n" className="kp-udbug__now">{lead === "up" ? t.home.udMatchUpLeads : t.home.udMatchDownLeads}</span>,
       <span key="w" className="kp-udbug__was">{lead === "up" ? t.home.udMatchUpLed : t.home.udMatchDownLed}</span>,
     ];
@@ -80,24 +98,38 @@ export function matchWords(t: Dict, locale: Locale, round: UpdownBandRound): Mat
     // The break, when there is one, falls after the dot: the side-picking words stay whole.
     verdict = [
       <span key="k" className="kp-udbug__kick">{t.home.udMatchKickoff}</span>,
-      <span key="c" className="kp-udbug__cta">{" · "}<span>{t.home.udMatchPickSide}</span></span>,
+      <span key="c" className="kp-udbug__cta">{sep("s", " · ")}<span className="kp-udbug__pick-side">{t.home.udMatchPickSide}</span></span>,
     ];
   } else {
     verdict = t.market.udAwaitingRead;
+  }
+  // Past the deciding instant (the wrapper's `data-decided`) the headline is "Inasubiri tokeo", never the last
+  // lead: a stale "Juu iliongoza" at display size above "iliamua" reads as "Juu won" (frame panel round 2).
+  // The band still never states the result — the round page does.
+  if (lead !== "awaiting") {
+    verdict = [...(verdict as ReactNode[]), <span key="d" className="kp-udbug__decided">{t.market.udAwaitingResult}</span>];
   }
 
   // ── The detail: a dated fact, unchanged by the tense swap ─────────────────────────────────────
   let detail: ReactNode | null = null;
   if (latest && round.openPrice != null && (lead === "up" || lead === "down" || lead === "level")) {
     const dev = latest.price - round.openPrice;
-    const at = <Fragment key="at">{fillNodes(t.home.udMatchAt, { time: time(latest.ms) })}</Fragment>;
+    // "saa 14:26" is one clause, the move another; the " · " between them is the only break (and hides below
+    // 360, where the two stack).
+    const at = chunk("at", <Fragment key="t">{fillNodes(t.home.udMatchAt, { time: time(latest.ms) })}</Fragment>);
     if (lead === "level") {
       const zero = usd(Math.abs(dev), round.decimals) === usd(0, round.decimals);
-      detail = [at, " · ", zero
-        ? <Fragment key="m">{t.home.udMatchLevelExact}</Fragment>
-        : <Fragment key="m">{fillNodes(t.market.udLevelBy, { amount: amt(Math.abs(dev)) })}</Fragment>];
+      if (zero) {
+        detail = [at, sep("s", " · "), chunk("m", t.home.udMatchLevelExact)];
+      } else {
+        // "Tofauti na ufunguzi $0.20 tu" | " — " | "haitoshi kuamua": the tail restates the verdict, so below 640
+        // it hides and the level line keeps to the plate's two reserved lines.
+        const [head, mark, tail] = clauses(t.market.udLevelBy);
+        detail = [at, sep("s", " · "), chunk("m", fillNodes(head, { amount: amt(Math.abs(dev)) })),
+          ...(mark != null ? [sep("s2", mark, " kp-udbug__sep--tail"), <span key="m2" className="kp-udbug__chunk kp-udbug__chunk--tail">{tail}</span>] : [])];
+      }
     } else {
-      detail = [at, " · ", dev > 0 ? t.market.udAboveOpenBy : t.market.udBelowOpenBy, " ", amt(Math.abs(dev), "v")];
+      detail = [at, sep("s", " · "), chunk("m", [dev > 0 ? t.market.udAboveOpenBy : t.market.udBelowOpenBy, " ", amt(Math.abs(dev), "v")])];
     }
   } else if (lead === "kickoff") {
     detail = [
@@ -117,8 +149,13 @@ export function matchWords(t: Dict, locale: Locale, round: UpdownBandRound): Mat
     const refund = symmetric
       ? fillNodes(t.home.udMatchRefund, { margin: amt(margin) })
       : fillNodes(t.home.udMatchRefundRange, { upWord: up, up: amt(upT), downWord: down, down: amt(downT) });
+    // Present tense until the deciding instant, past after it (the wrapper's `data-decided`) — the band never
+    // states the result; the round page does.
     rule = [
-      <span key="d" className="kp-udrule__decides">{fillNodes(t.home.udMatchDecides, { close: time(round.closesAtMs) })}</span>,
+      <span key="d" className="kp-udrule__decides">
+        <span className="kp-udrule__now">{fillNodes(t.home.udMatchDecides, { close: time(round.closesAtMs) })}</span>
+        <span className="kp-udrule__was">{fillNodes(t.home.udMatchDecided, { close: time(round.closesAtMs) })}</span>
+      </span>,
       // Two sentences are joined by a space — except in Chinese, where a full stop takes none.
       locale === "zh" ? "" : " ",
       <span key="r" className="kp-udrule__refund">{refund}</span>,
@@ -134,5 +171,9 @@ export function matchWords(t: Dict, locale: Locale, round: UpdownBandRound): Mat
     open: clock(round.opensAtMs), lock: clock(round.betsCloseAtMs), close: clock(round.closesAtMs), reads: readsWords,
   });
 
-  return { lead, up, down, verdict, detail, note: lead === "level" ? t.home.udMatchLevelNote : null, rule, aria };
+  const canAge = lead === "up" || lead === "down" || lead === "level";
+  return {
+    lead, up, down, verdict, detail, note: lead === "level" ? t.home.udMatchLevelNote : null,
+    agedNote: canAge ? t.home.udMatchAgedNote : null, rule, aria,
+  };
 }

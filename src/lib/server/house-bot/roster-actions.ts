@@ -104,7 +104,7 @@ export async function pauseHouseBot(input: { actorId: string; botId: string; rea
     botId: bot.id, holderUserId: bot.userId, from: bot.status, to: "PAUSED", cause: "MANUAL", counts: { cancelled }, eventId: event.id,
   });
   if (auditId) await houseBotEventStore.setAuditId(event.id, auditId);
-  await announceRoster({ botId: bot.id, label: bot.label, event: "PAUSED", eventId: event.id, detail: { cancelled } });
+  await announceRoster({ botId: bot.id, label: bot.label, event: "PAUSED", eventId: event.id, actorId: input.actorId, detail: { cancelled } });
 
   return { ok: true, changed: true, status: "PAUSED", cancelled, targetsEnded: 0, recorded };
 }
@@ -152,7 +152,7 @@ export async function removeHouseBot(input: { actorId: string; botId: string; re
     counts: { cancelled, targetsEnded: written.targetsEnded }, eventId: event.id,
   });
   if (auditId) await houseBotEventStore.setAuditId(event.id, auditId);
-  await announceRoster({ botId: bot.id, label: bot.label, event: "REMOVED", eventId: event.id, detail: { cancelled } });
+  await announceRoster({ botId: bot.id, label: bot.label, event: "REMOVED", eventId: event.id, actorId: input.actorId, detail: { cancelled } });
 
   return { ok: true, changed: true, status: "REMOVED", cancelled, targetsEnded: written.targetsEnded, recorded };
 }

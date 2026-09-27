@@ -393,6 +393,87 @@ const CASES = [
     to: `        <DateTimeRangeFilter rank="dense" replace presetIds={presets} defaultPreset={presetDefault} />`,
     expect: "6.6",
   },
+
+  /* ── 2026-09-27 · THE KIT CARD SORT RAIL TAKES ITS RANK AS A PROP (`RANK_PROP_RAILS`, §6.6 + §6.6c) ──────────────
+     The desk's two activity ledgers draw it below `sm`, where their header row is hidden, at the rank the desk's
+     40px tap floor needs; the prop defaults to the dense rank so `/admin/ai-polls` and `/admin/candidates` are
+     unchanged. A default is not a waiver, so each way the new freedom could be misused gets a plant. */
+  {
+    // The default moves: the two other consoles' rails grow to 44px while every idiom assertion stays green.
+    name: "card-sort-default-undensified (the kit sort rail's default leaves the dense rank, so two consoles' rails grow unseen)",
+    file: "src/components/admin/card-sort-control.tsx",
+    from: `  rank = "dense",`,
+    to: `  rank = "secondary",`,
+    expect: "6.6 EVERY rank-taking control on src/components/admin/card-sort-control.tsx",
+  },
+  {
+    // A console with no tap-floor gate lifts the rank at its call site — the quiet way out of the dense rank.
+    name: "card-sort-caller-lifts-rank (a console no visual gate measures lifts the kit sort rail off the dense rank)",
+    file: "src/app/admin/candidates/page.tsx",
+    from: `              railId="candidate-sort-pending"`,
+    to: `              railId="candidate-sort-pending"\n              rank="secondary"`,
+    expect: "6.6c",
+  },
+  {
+    // The same lift in single quotes — valid JSX the first cut of §6.6c read as "no rank" (2026-09-27 verifier).
+    name: "card-sort-rank-single-quoted (a console lifts the kit sort rail's rank with rank='secondary')",
+    file: "src/app/admin/candidates/page.tsx",
+    from: `              railId="candidate-sort-pending"`,
+    to: `              railId="candidate-sort-pending"\n              rank='secondary'`,
+    expect: "6.6c",
+  },
+  {
+    // …and with spaces around the equals sign.
+    name: "card-sort-rank-spaced (a console lifts the kit sort rail's rank with rank = \"secondary\")",
+    file: "src/app/admin/candidates/page.tsx",
+    from: `              railId="candidate-sort-pending"`,
+    to: `              railId="candidate-sort-pending"\n              rank = "secondary"`,
+    expect: "6.6c",
+  },
+  {
+    // The desk's phone rail back at 32px, under the 40px floor its own gate holds — register L1's shape, one rail over.
+    name: "desk-sort-rail-densified (the desk account ledger's phone sort rail takes the 32px dense rank under a 40px floor)",
+    file: "src/app/admin/desk/[id]/page.tsx",
+    from: `options={Object.values(view.feedSort.columns)} rank="secondary"`,
+    to: `options={Object.values(view.feedSort.columns)} rank="dense"`,
+    expect: "6.6c",
+  },
+
+  /* ── 2026-09-27 · THE THREE HOLES THE REVIEW FOUND IN §6.6c's CALL-SITE WALK (§6.6c/d/e) ─────────────────────────
+     Each lifts the rank — or claims a measurement — in a shape the first walk could not see, and each went GREEN
+     against it. Each must now go red on its own assertion. */
+  {
+    // A non-self-closing call: the tag pattern read only `…/>`, so this call's rank was never read at all.
+    name: "card-sort-unparsed-call (a console lifts the kit sort rail's rank inside a <CardSortControl …>…</CardSortControl> call the walk did not parse)",
+    file: "src/app/admin/candidates/page.tsx",
+    from: `                { field: "confidence", label: "Confidence" },\n              ]}\n            />\n            <div className="divide-y divide-border/60 mt-3">\n              {pending.map((c) => (`,
+    to: `                { field: "confidence", label: "Confidence" },\n              ]}\n              rank="secondary"\n            ></CardSortControl>\n            <div className="divide-y divide-border/60 mt-3">\n              {pending.map((c) => (`,
+    expect: "6.6d",
+  },
+  {
+    // A spread: no `rank=` in the tag for the walk to see, and the rank rides in anyway.
+    name: "card-sort-spread-rank (a console lifts the kit sort rail's rank through a {...spread} the walk read as no rank at all)",
+    file: "src/app/admin/candidates/page.tsx",
+    from: `              railId="candidate-sort-pending"`,
+    to: `              railId="candidate-sort-pending"\n              {...{ rank: "secondary" as const }}`,
+    expect: "6.6c",
+  },
+  {
+    // The visual gate stops driving the desk's phone rail, and the id survives only in a comment beside the spec.
+    name: "desk-sort-rail-id-only-in-a-comment (the visual gate's spec loses the desk's phone rail id, which survives only in a comment)",
+    file: "scripts/qa-house-bots-visual.mjs",
+    from: `note: "Smallest stake first, then newest first.", rail: "desk-activity-sort" }]`,
+    to: `note: "Smallest stake first, then newest first." /* rail: "desk-activity-sort" */ }]`,
+    expect: "6.6e",
+  },
+  {
+    // The same, with the id left behind as some other quoted string — present, and driving nothing.
+    name: "desk-sort-rail-id-another-string (the visual gate's spec loses the desk's phone rail id, which survives as some other string)",
+    file: "scripts/qa-house-bots-visual.mjs",
+    from: `note: "Smallest stake first, then newest first.", rail: "desk-activity-sort" }]`,
+    to: `note: "Smallest stake first, then newest first.", railNote: "desk-activity-sort" }]`,
+    expect: "6.6e",
+  },
 ];
 
 const runGate = () => {

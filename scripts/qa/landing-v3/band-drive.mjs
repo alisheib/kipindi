@@ -5,12 +5,11 @@
 // drive's, not the picker's), moved through the states in the order time allows:
 //   S8  before any seed — no round;
 //   S4  a new round with its open confirmed (mock feed) and no read after it — kick-off;
-//   S3  + a read between the targets, 2 min in  (planted through /api/dev-test/updown-observe)
+//   S3  + a read between the ±$0.40 targets, 2 min in — the void band drawn (planted via /api/dev-test/updown-observe)
 //   S2  + a read below the down target, 4 min in
 //   S1  + a read above the up target, 6 min in — three stems on the track: a tie tick, a down stem, the bead;
 //   S5  the S1 page with Playwright's clock run past the read's stale instant (betting still open);
 //   S7  the same page run past betting's close, then past the deciding instant;
-//   S3g a gold round with production's ±$0.40 band, level — the void band drawn.
 // S6 ("Awaiting price") is not driven — see the note where it would be.
 // Each state is captured as VIEWPORT TILES with the band scrolled under the header (never full-page), its
 // figures measured and judged by `band-metrics.mjs`, and — where a lead exists — the agreement drive run.
@@ -153,7 +152,8 @@ try {
   // `test:updown-match` §8 (`reads: null` → awaiting) instead of by a fault hook in a money store.
 
   // ── S4 · kick-off: a new round, its open confirmed, no read after it ────────────────────────────
-  const s4seed = await post("/api/dev-test/updown-seed", { assets: ["BTC"], durations: [15], feedProvider: "mock" });
+  // ±$0.40 targets (40 ticks), production gold's band: the level read then draws its void band on the track.
+  const s4seed = await post("/api/dev-test/updown-seed", { assets: ["BTC"], durations: [15], feedProvider: "mock", minMoveTicks: 40 });
   log(`seed mock: ${s4seed.status}`);
   const adv2 = await post("/api/dev-test/updown-advance");
   log(`advance: ${adv2.status} rounds=${JSON.stringify(adv2.rounds?.[0]?.rounds?.slice(0, 2) ?? null)}`);
@@ -170,6 +170,13 @@ try {
   await until(T0 + 2 * 60_000);
   await plant("level");
   await shootState("S3", CELLS.S3);
+  {
+    const { ctx, page } = await newPage({ w: 360, loc: "sw" });
+    await openHome(page);
+    const v = await page.evaluate(() => { const r = document.querySelector(".kp-udtrack__void"); const p = document.querySelector(".kp-udtrack__plot"); if (!r || !p) return null; return Math.round((r.getBoundingClientRect().height / p.getBoundingClientRect().height) * 1000) / 10; });
+    check("the level round draws its void band (≥ 2.8% of the plot)", v != null && v >= 2.8, `${v}%`);
+    await ctx.close();
+  }
   await agreeAll("S3");
   await until(T0 + 4 * 60_000);
   await plant("down");
@@ -200,9 +207,28 @@ try {
     await page.waitForURL(/\/updown\//, { timeout: 60000 });
     await page.waitForTimeout(3000);
     await page.addStyleTag({ content: "nextjs-portal,[data-nextjs-toast]{display:none!important}" }).catch(() => {});
-    await page.screenshot({ path: join(FR, "PAIR-2-round-360-sw.png") });
-    await page.evaluate(() => scrollBy(0, 640)); await page.waitForTimeout(400);
-    await page.screenshot({ path: join(FR, "PAIR-2-round-360-sw-b.png") });
+    // Round 4: the panel lands at the BOTTOM of the view (above the phone rail), so the round's countdown and
+    // confirmed price stay visible above it — measured before any scroll.
+    const landed = await page.evaluate(() => {
+      const s = document.getElementById("stake"); const h = document.querySelector("header");
+      const rail = [...document.querySelectorAll("nav")].map((n) => n.getBoundingClientRect()).filter((r) => r.bottom >= innerHeight - 1 && r.top > innerHeight / 2)[0];
+      const chip = s?.querySelector("[data-kit-chip]")?.getBoundingClientRect();
+      const price = document.querySelector("section[data-tone]")?.getBoundingClientRect();
+      // The round's countdown pod (its caption and digits carry .m-tick) — it must be in the landed view too (round 5).
+      const pod = document.querySelector("main .m-tick")?.parentElement?.getBoundingClientRect();
+      const r = s?.getBoundingClientRect();
+      return r ? { top: Math.round(r.top), bottom: Math.round(r.bottom), header: Math.round(h?.getBoundingClientRect().bottom ?? 0),
+        railTop: Math.round(rail?.top ?? innerHeight), chipInView: !!chip && chip.top >= 0 && chip.bottom <= innerHeight,
+        chip: (s.querySelector("[data-kit-chip]")?.textContent || "").trim(), priceVisible: !!price && price.bottom > (h?.getBoundingClientRect().bottom ?? 0) + 24,
+        clockVisible: !!pod && pod.top >= (h?.getBoundingClientRect().bottom ?? 0) - 1 && pod.bottom <= innerHeight,
+        focused: document.activeElement === s } : null;
+    });
+    check("a pick LANDS on the stake panel: all of it between header and rail, the side Chip in view, the countdown and the confirmed price above it (measured before any scroll)",
+      !!landed && landed.top >= landed.header - 1 && landed.bottom <= landed.railTop + 1 && landed.chipInView && landed.priceVisible && landed.clockVisible,
+      JSON.stringify(landed));
+    await page.screenshot({ path: join(FR, "PAIR-2-round-360-sw-b.png") });      // where #stake lands the player
+    await page.evaluate(() => scrollTo(0, 0)); await page.waitForTimeout(400);
+    await page.screenshot({ path: join(FR, "PAIR-2-round-360-sw.png") });        // the page's top
     check("click-through lands on the round with side=UP", /\/updown\/[^?]+\?side=UP/.test(page.url()), page.url());
     await ctx.close();
   }
@@ -224,6 +250,7 @@ try {
     await page.locator('[data-band="updown"] .kp-udclock__digits').waitFor({ timeout: 60000 }).catch(() => {});
     await page.waitForTimeout(1500);
     const b = await secs(); const gone = Math.round((Date.now() - t0) / 1000);
+    await page.mouse.move(1, 1);          // a headless pointer hovers: park it off the band before the frame
     await showBand(page);
     await tiles(page, "BACK-360-sw");
     check("Back re-anchors the clock", a != null && b != null && Math.abs((a - b) - gone) <= 3, `before ${a}s, after ${b}s, ${gone}s elapsed`);
@@ -267,6 +294,11 @@ try {
         return now && flag ? Math.round((now.left + now.width / 2) - (flag.left + flag.width / 2)) : null;
       });
       if (cell === "360-sw") check("playhead parks on the flag after the deciding instant", park != null && Math.abs(park) <= 8, `offset ${park}px`);
+      const fx = await page.evaluate(MEASURE_BAND);
+      const s7 = report.states.S7?.[cell]?.figures;
+      if (s7) check(`the deciding instant moves nothing (${cell}): plate top and band height as at close`,
+        fx.plateFromTop === s7.plateFromTop && Math.abs(fx.wrap.h - s7.wrap.h) <= 0.6,
+        `plate ${s7.plateFromTop}→${fx.plateFromTop}px, band ${s7.wrap.h}→${fx.wrap.h}px, verdict "${fx.verdictText}"`);
       await tiles(page, `S7x-${cell}`);
     } catch (e) {
       report.breaches.push(`S5/S7 ${cell}: ${String(e.message).split("\n")[0]}`);
@@ -302,33 +334,20 @@ try {
     await ctx.close();
   }
   report.s1Read = s1.read;
-
-  // ── S3 on gold, the void band visible: production's gold runs at ±$0.40, so the seed creates XAU with a
-  // 40-tick band. The BTC round leaves the picker once it has < 2 minutes of betting left (T0 + 13 min).
-  await until(T0 + 13 * 60_000 + 5_000);
-  const g = await post("/api/dev-test/updown-seed", { assets: ["XAU"], durations: [15], feedProvider: "mock", minMoveTicks: 40, pause: ["BTC"] });
-  log(`seed XAU/15 ±40 ticks, BTC paused: ${g.status} ${JSON.stringify(g.notes ?? "")}`);
-  const ga = await post("/api/dev-test/updown-advance");
-  log(`advance: ${ga.status} advanced=${ga.advanced}`);
-  const gd = await post("/api/dev-test/updown-observe", { asset: "XAU", dryRun: true });
-  log(`gold round: ${JSON.stringify(gd.round)}`);
-  if (gd.round?.openPrice != null) {
-    await new Promise((r) => setTimeout(r, 20_000));
-    const half = Math.round(((gd.round.upTarget - gd.round.openPrice) / 2) * 100) / 100;
-    const gr = await post("/api/dev-test/updown-observe", { asset: "XAU", delta: half });
-    log(`plant gold level: ${JSON.stringify(gr.read)} (${gr.status})`);
-    await shootState("S3g", ["360-sw", "1280-en", "360-zh"]);
-    const voidSeen = await (async () => {
-      const { ctx, page } = await newPage({ w: 360, loc: "sw" });
-      await openHome(page);
-      const v = await page.evaluate(() => { const r = document.querySelector(".kp-udtrack__void"); if (!r) return null; const b = r.getBoundingClientRect(); const p = document.querySelector(".kp-udtrack__plot").getBoundingClientRect(); return Math.round((b.height / p.height) * 1000) / 10; });
-      await ctx.close();
-      return v;
-    })();
-    check("gold level round draws the void band (≥ 2.8% of the plot)", voidSeen != null && voidSeen >= 2.8, `${voidSeen}%`);
-  } else {
-    report.breaches.push("gold round did not open with a price");
+  {
+    const offs = {};
+    for (const st of ["S1", "S2", "S3", "S4", "S5", "S7"]) for (const [cell, v] of Object.entries(report.states[st] ?? {})) {
+      const f = v.figures; if (!f?.plate || !f.taps?.length) continue;
+      (offs[cell] ??= []).push([st, Math.round(f.taps[0].top - f.plate.top)]);
+    }
+    for (const [cell, list] of Object.entries(offs)) {
+      if (list.length < 2) continue;
+      const vals = list.map(([, o]) => o), spread = Math.max(...vals) - Math.min(...vals);
+      check(`the picks hold one position across states (${cell})`, spread <= 2, list.map(([s, o]) => `${s} ${o}px`).join(" · "));
+    }
   }
+
+
 } catch (e) {
   report.breaches.push(`drive aborted: ${String(e.stack || e.message).split("\n").slice(0, 3).join(" / ")}`);
   log(`ABORT ${String(e.stack || e.message).split("\n").slice(0, 3).join(" / ")}`);
