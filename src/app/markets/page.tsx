@@ -6,7 +6,6 @@ import { SignalPip } from "@/components/brand";
 import { MarketCard } from "@/components/markets/market-card";
 import {
   listMarkets,
-  impliedYesPct,
   isClosedByTime,
   isSelectionClosed,
   traderSeedsByMarket,
@@ -358,8 +357,8 @@ async function DiscoveryBoard({ searchParams }: { searchParams: Promise<SP> }) {
               titleSw={m.titleSw}
               titleZh={m.titleZh}
               category={m.category}
-              yesPct={impliedYesPct(m)}
-              volume={m.yesPool + m.noPool}
+              yesPool={m.yesPool}
+              noPool={m.noPool}
               predictors={m.predictorCount}
               timeLeft={
                 r.selectionClosed ? t.market.waitingForResults : timeLeftStr(m.selectionClosedAt ?? m.resolutionAt)
@@ -429,8 +428,8 @@ lastLabel={t.common.lastPage}
                 titleSw={m.titleSw}
                 titleZh={m.titleZh}
                 category={m.category}
-                yesPct={impliedYesPct(m)}
-                volume={m.yesPool + m.noPool}
+                yesPool={m.yesPool}
+                noPool={m.noPool}
                 predictors={m.predictorCount}
                 // §L3 — the THIRD copy of this shape, and the one actually on the board.
                 // It rendered "已结算 YES" live: a translated label closing around the stored

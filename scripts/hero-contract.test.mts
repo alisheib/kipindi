@@ -28,6 +28,7 @@
  */
 import { pricedYesPct, matchesStatus, type DiscoveryRow } from "../src/lib/markets/discovery.ts";
 import { heroFigures, QUESTION_BOARD_SIZE, type HeroRow } from "../src/lib/markets/hero.ts";
+import { priceState, priceTier } from "../src/lib/markets/price-state.ts";
 
 let fail = 0;
 const log = (m: string) => console.log(m);
@@ -201,9 +202,12 @@ log("\n── 5 · the lens: closing today, most contested first ─────
   // four board rows read "100% NDIO", because the markets closing soonest are exactly the ones
   // whose price has already collapsed. A market nobody can disagree about is the worst possible
   // advertisement for a prediction market, and it held the loudest position on the site.
-  const firstDegenerate = shown.findIndex((r) => r.yesPct === 0 || r.yesPct === 100);
-  const lastContested = shown.reduce((acc, r, idx) =>
-    (r.yesPct != null && r.yesPct !== 0 && r.yesPct !== 100 ? idx : acc), -1);
+  // ⚠️ WP6 (2026-09-27): "collapsed" is read from the POOLS — one side empty — never from a rounded
+  // 0/100, which is the inference MOBILE-VISUAL ruling 13 forbids (§5d holds the case that tells them apart).
+  const oneSided = (r: HeroRow) => (r.yesPool > 0) !== (r.noPool > 0);
+  const twoSided = (r: HeroRow) => r.yesPool > 0 && r.noPool > 0;
+  const firstDegenerate = shown.findIndex(oneSided);
+  const lastContested = shown.reduce((acc, r, idx) => (twoSided(r) ? idx : acc), -1);
   ok("⛔ no collapsed price outranks a contested one",
     firstDegenerate === -1 || firstDegenerate > lastContested,
     shown.map((r) => String(r.yesPct)).join(","));
@@ -279,7 +283,8 @@ log("\n── 5c · the price-quality floor ────────────
   const lateGood2 = heroRow({ yesPool: 53_000, noPool: 27_000, bettableUntilMs: NOW + 8 * 24 * H, resolvesAtMs: NOW + 9 * 24 * H });
   const f = heroFigures([soonDead, soonEmpty, soonZero, lateGood1, lateGood2], NOW);
   const shown = [f.featured!, ...f.board];
-  const deg = (r: { yesPct: number | null }) => r.yesPct == null || r.yesPct === 0 || r.yesPct === 100;
+  // WP6: a degenerate market is one without two sides of money — read from the pools.
+  const deg = (r: HeroRow) => !(r.yesPool > 0 && r.noPool > 0);
   const firstDeg = shown.findIndex(deg);
   const lastGood = shown.reduce((acc, r, i) => (deg(r) ? acc : i), -1);
   ok("⛔ no degenerate market outranks a contested one, however soon it closes",
@@ -294,6 +299,34 @@ log("\n── 5c · the price-quality floor ────────────
   ok("CONTROL: the soonest-closing three are NOT the first three",
     !soonest.includes(shown[0].id) || !soonest.includes(shown[1].id),
     shown.slice(0, 3).map((r) => String(r.yesPct)).join(","));
+}
+
+log("\n── 5d · a lopsided but TWO-SIDED market is priced, not collapsed (WP6) ─");
+{
+  // 🔴 THE TIER USED TO BE READ FROM THE ROUNDED FIGURE. 25,000 vs 100 rounds to 100, so the old floor
+  // filed a market two people had staked against each other with the one-sided ones — and its mirror
+  // image 100 vs 25,000 rounds to 0, filed the same way, while 1 vs 199 rounds to 1 and was "contested".
+  // One shape, two tiers, decided by `Math.round`. WP6 reads the tier from the pools (`priceTier`), and
+  // the card shows such a market at 99 / 1 (L14) — a price, not a certainty.
+  const soonOne    = heroRow({ yesPool: 30_000, noPool: 0, bettableUntilMs: NOW + 1 * H });
+  const lateLop    = heroRow({ yesPool: 25_000, noPool: 100, bettableUntilMs: NOW + 9 * 24 * H, resolvesAtMs: NOW + 10 * 24 * H });
+  const lateMirror = heroRow({ yesPool: 100, noPool: 25_000, bettableUntilMs: NOW + 8 * 24 * H, resolvesAtMs: NOW + 9 * 24 * H });
+  const f = heroFigures([soonOne, lateLop, lateMirror], NOW);
+  const shown = [f.featured!, ...f.board];
+  ok("⛔ both lopsided two-sided markets rank ahead of the one-sided one, however soon it closes",
+    shown.length === 3 && shown[2]?.id === soonOne.id, shown.map((r) => `${r.yesPool}/${r.noPool}`).join(","));
+  ok("mirror images share a tier, and it is the priced one",
+    priceTier(lateLop) === 0 && priceTier(lateMirror) === 0 && priceTier(soonOne) === 1,
+    `${priceTier(lateLop)} ${priceTier(lateMirror)} ${priceTier(soonOne)}`);
+  const lop = priceState(lateLop.yesPool, lateLop.noPool);
+  const mir = priceState(lateMirror.yesPool, lateMirror.noPool);
+  ok("they are SHOWN at 99 and 1, never 100 and 0 (L14)",
+    lop.kind === "priced" && lop.yesPct === 99 && mir.kind === "priced" && mir.yesPct === 1,
+    JSON.stringify([lop, mir]));
+  // ⭐ CONTROL: the rounded share of these rows IS 100 and 0 — so the old `yesPct === 0 || === 100`
+  // test demotes them, and this block tells the two rules apart. If it ever stops, the block proves nothing.
+  ok("CONTROL: the rounded shares are 100 and 0, which the rounded test would have demoted",
+    lateLop.yesPct === 100 && lateMirror.yesPct === 0, `${lateLop.yesPct} ${lateMirror.yesPct}`);
 }
 
 // ── 6 · an empty platform ──────────────────────────────────────────────────────

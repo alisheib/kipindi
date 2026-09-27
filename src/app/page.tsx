@@ -135,8 +135,8 @@ export default async function LandingPage() {
     pool: m.yesPool + m.noPool,
     predictors: m.predictorCount,
     yesPct: pricedYesPct(m.yesPool, m.noPool),
-    // The hero sorts by `closing` only, which never reads move24h — and we have no 24h baseline
-    // at this point in the render. A-5: absent, not invented.
+    // The hero's lens (price tier, then `close` / `closing`) never reads move24h — and we have no
+    // 24h baseline at this point in the render. A-5: absent, not invented.
     move24h: undefined,
     createdAtMs: Date.parse(m.createdAt),
     bettableUntilMs: Date.parse(m.selectionClosedAt ?? m.resolutionAt),
@@ -173,7 +173,7 @@ export default async function LandingPage() {
   // the landing page would draw — so it read the ENTIRE Position table, every render.
   // Waiting one round-trip to learn the ids buys an indexed lookup instead of an
   // unbounded scan that grows forever (positions are never pruned).
-  // ⛔ The hero's featured market is chosen by "closing soonest" across the whole open book, so
+  // ⛔ The hero's featured market is chosen by the hero's own lens across the whole open book, so
   // it is not necessarily one of the grid's — it joins the id list explicitly rather than being
   // fetched separately, which would be a second unbounded read.
   const drawnIds = [...new Set([...comp.grid.map((r) => r.id), ...heroIds])];
@@ -336,17 +336,14 @@ export default async function LandingPage() {
                     titleSw={r.titleSw}
                     titleZh={r.titleZh}
                     category={r.category}
-                    /* The card owns its own cold-start gate (`noPrice = volume === 0`), so the
-                       fallback here is unreachable — and it is 0 rather than 50 deliberately: a
-                       50 would look like a price and ship, a 0 is visibly absurd and gets caught.
-                       🔴 THE COMMENT WAS TRUE AND THE CODE WAS NOT (fixed 2026-09-03, PV-06
-                       sweep). This read `?? impliedYesPct({…})`, which returns exactly the
-                       hardcoded **50** the sentence above says it deliberately avoids — so the
-                       one safeguard here was a stale note describing code that had drifted out
-                       from under it. `?? 0` is now what it claims to be, and this file no longer
-                       reaches for the fabricating function at all. */
-                    yesPct={r.yesPct ?? 0}
-                    volume={r.pool}
+                    /* 🔴 THE POOLS, NOT `yesPct ?? 0` (landing v3 WP6). The fallback was meant as a
+                       tripwire — "a 0 is visibly absurd and gets caught" — and it was not: on this
+                       card a 0 renders as "NDIO 0% · HAPANA @ 100%", exactly what a one-sided market
+                       produces naturally, so the tripwire and the defect were the same number
+                       (MOBILE-VISUAL ruling 13). The card now derives its price state from the
+                       pools itself; there is nothing left here to fall back from. */
+                    yesPool={r.yesPool}
+                    noPool={r.noPool}
                     predictors={r.predictors}
                     timeLeft={r.selectionClosed ? t.home.waitingForResults : timeLeftStr(r.bettableUntilMs)}
                     status="LIVE"

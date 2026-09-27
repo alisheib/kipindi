@@ -52,6 +52,11 @@ const row = (over: Partial<HeroRow> & { id: string }): HeroRow => ({
   noPool: 0,
   sourceUrl: "https://example.tz",
   ...over,
+  // ⚠️ Derived AFTER the spread (WP6, 2026-09-27), as `hero-contract`'s fixture does: `pool` and
+  // `yesPct` used to stay 0/null whatever the pools said, so the "pool" lens sorted on all zeros and
+  // §2's "the biggest pool leads" passed through the closing-time tie-break alone.
+  pool: (over.yesPool ?? 0) + (over.noPool ?? 0),
+  yesPct: pricedYesPct(over.yesPool ?? 0, over.noPool ?? 0),
 });
 
 /* ══════════════ 1 · THE LENS ══════════════ */
@@ -129,6 +134,32 @@ const row = (over: Partial<HeroRow> & { id: string }): HeroRow => ({
   // s1(4000)+s2(0)+w1(1000)+stray(1000) = 6000
   const recStray = landingTopicsReconcile(compStray, { openCount: 4, poolTzs: 6000 });
   ok(recStray.ok, "3.11 reconciliation still holds WITH an uncategorised market present", JSON.stringify(recStray));
+}
+
+/* ══════════════ 4 · THE GRID'S PRICE FLOOR (landing v3 WP6) ══════════════
+   Production led "Pick a side now" with two ONE-SIDED cards reading "YES 100%" — the biggest pools
+   on the book were the ones with money on one side only. The seats now go to priced (two-sided)
+   markets first, and the seated cards are SHOWN in the lens order the heading states. */
+{
+  const big1  = row({ id: "big1", yesPool: 90_000, noPool: 0 });        // one-sided, the biggest pool
+  const empty = row({ id: "empty", yesPool: 0, noPool: 0 });            // nothing staked
+  const lop   = row({ id: "lop", yesPool: 25_000, noPool: 100 });       // two-sided, rounds to 100
+  const c1    = row({ id: "c1", yesPool: 3_000, noPool: 2_000 });
+  const c2    = row({ id: "c2", yesPool: 1_000, noPool: 1_000 });
+  const rows = [empty, c2, big1, c1, lop];
+  const grid = landingGrid(rows, T0, { lens: "pool", excludeIds: [], size: 3 });
+  eq(grid.map((r) => r.id), ["lop", "c1", "c2"], "4.1 the three seats go to the priced markets — a one-sided pool never outranks a priced one");
+  ok(grid.some((r) => r.id === "lop"), "4.2 a lopsided but TWO-SIDED market (25,000 vs 100) is priced, not demoted with the one-sided ones");
+  // ⭐ CONTROL — the plain lens WOULD have seated the one-sided card first, so 4.1 is the floor at work.
+  ok(big1.pool > lop.pool && big1.pool > c1.pool && lop.yesPct === 100,
+    "4.1-control big1 has the biggest pool (the lens alone leads with it) and lop's rounded share IS 100",
+    `big1=${big1.pool} lop=${lop.pool}/${lop.yesPct}%`);
+  // ⛔ A PARTITION, NEVER A FILTER: with more seats than priced markets the rest still fill them.
+  const wide = landingGrid(rows, T0, { lens: "pool", excludeIds: [], size: 5 });
+  eq(wide.length, 5, "4.3 the grid is never short — one-sided and empty markets still take the seats left over");
+  // ⭐ THE HEADING STAYS TRUE: the seated cards are displayed in lens order, so "Biggest pools first"
+  // describes the screen. The one-sided card, once seated, sits where its pool puts it.
+  eq(wide.map((r) => r.id), ["big1", "lop", "c1", "c2", "empty"], "4.4 seated cards are shown in the lens's own order (pool, biggest first)");
 }
 
 console.log(`landing-contract: ${pass} assertions passed`);

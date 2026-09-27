@@ -750,6 +750,8 @@
     "red:ticker-honesty": "node scripts/ticker-honesty-red.mjs",
     "test:landing-contract": "tsx scripts/landing-contract.test.mts",
     "red:landing-contract": "node scripts/landing-contract-red.mjs",
+    "test:one-sided": "tsx scripts/one-sided.test.mts",
+    "red:one-sided": "node scripts/one-sided-red.mjs",
     "test:time-left": "tsx scripts/time-left-contract.test.mts",
     "red:backup-order": "node scripts/red-backup-order.mjs",
     "red:wallet-reach": "node scripts/red-wallet-reach.mjs",

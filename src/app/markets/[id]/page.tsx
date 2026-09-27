@@ -1029,8 +1029,8 @@ export default async function MarketDetail({
                   titleSw={s.titleSw}
                   titleZh={s.titleZh}
                   category={s.category}
-                  yesPct={impliedYesPct(s)}
-                  volume={s.yesPool + s.noPool}
+                  yesPool={s.yesPool}
+                  noPool={s.noPool}
                   predictors={s.predictorCount}
                   // ⚠️ Counts down to BETTING CLOSE, not to resolution. This rail is a
                   // "place another prediction" invitation, so a countdown to the
