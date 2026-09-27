@@ -80,11 +80,24 @@ export function RoundActionPanel(props: {
   // locked — not two screens above it. The App Router does not scroll to a hash whose element renders after the
   // navigation commits, so the panel does it once, and takes focus for keyboard and screen-reader users
   // (frame panel round 3, 2026-09-27: the tap landed on the page's top).
+  // ⚠️ AFTER the router's own scroll: on a client navigation Next scrolls the new segment into view once it has
+  // committed — after this effect — so an immediate scrollIntoView was undone (drive 6: focus moved, the page stayed
+  // at its top). Two frames later the router is done; one settle check covers a slow commit.
   const stakeRef = useRef<HTMLElement>(null);
   useEffect(() => {
     if (!bettable || window.location.hash !== "#stake" || !stakeRef.current) return;
-    stakeRef.current.scrollIntoView({ block: "start" });
-    stakeRef.current.focus({ preventScroll: true });
+    const land = () => {
+      const el = stakeRef.current;
+      if (!el) return;
+      el.scrollIntoView({ block: "start" });
+      if (document.activeElement !== el) el.focus({ preventScroll: true });
+    };
+    let raf = requestAnimationFrame(() => { raf = requestAnimationFrame(land); });
+    const settle = window.setTimeout(() => {
+      const top = stakeRef.current?.getBoundingClientRect().top;
+      if (top != null && (top < 0 || top > window.innerHeight / 2)) land();
+    }, 400);
+    return () => { cancelAnimationFrame(raf); window.clearTimeout(settle); };
   }, [bettable]);
 
   if (bettable) {

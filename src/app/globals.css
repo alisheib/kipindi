@@ -5480,7 +5480,8 @@ textarea::-webkit-resizer {
   .kp-udclock__watch > svg { display: none; }
   /* One plate height for every state below 360, sized for the tallest (kick-off: two verdict lines + two lines),
      so no refresh, aging or first read moves the picks (frame panel round 3). */
-  .kp-udbug__mid { min-height: calc(var(--sp-1) * 3 + var(--vd) * 1.15 * 2 + var(--type-small) * 2.9); }
+  /* (0,2,0) on purpose: the <640 rule below is (0,1,0) and later in the file, and it won at 320 (drive 6). */
+  .kp-udbug .kp-udbug__mid { min-height: calc(var(--sp-1) * 3 + var(--vd) * 1.15 * 2 + var(--type-small) * 2.9); }
   /* The clauses stack instead of breaking after a dangling "·": the time on one line, the move on the next. */
   .kp-udbug__detail .kp-udbug__sep, .kp-udbug__verdict .kp-udbug__sep { display: none; }
   .kp-udbug__detail .kp-udbug__chunk, .kp-udbug__kick, .kp-udbug__pick-side { display: block; }
