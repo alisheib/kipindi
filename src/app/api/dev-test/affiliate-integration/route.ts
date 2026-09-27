@@ -2,8 +2,9 @@
  * /api/dev-test/affiliate-integration — Sprint 5. Proves the affiliate hooks
  * are wired into the REAL money flows (not just the engine): it calls the
  * actual wallet-service `deposit()` and market-service `buyPosition()` and
- * checks the referrer is credited as a side-effect — ⚠️ only with FEATURE_INVITEREWARDS=ACTIVE on the
- * dev server: since 2026-09-25 a PLAYER referrer is refused (`player_rewards_withdrawn`) and nothing is credited.
+ * checks the referrer is credited as a side-effect — ⚠️ only once invites are payable (the Owner's switch
+ * on /admin/affiliate, 2026-09-26) or with FEATURE_INVITEREWARDS=ACTIVE on the dev server: otherwise a
+ * PLAYER referrer is refused (`player_rewards_withdrawn`) and nothing is credited.
  *
  * 404 in production. POST, no body.
  */
@@ -44,24 +45,30 @@ export async function POST() {
     setAffiliateConfig({
       enabled: true,
       commission: { enabled: true, rate: 0.5, windowMonths: 24, capPerRecruitTzs: 250_000 },
-      bonus: { enabled: true, recipient: "BOTH", newAmountTzs: 2_000, referrerAmountTzs: 1_000, trigger: "FIRST_DEPOSIT" },
-      prize: { enabled: true, milestone: "FIRST_BET", depositThresholdTzs: 10_000, amountTzs: 5_000, capPerReferrer: 100 },
+      // ⛔ SIGN-UP, never FIRST_DEPOSIT (retired 2026-09-26 — the RG policy: "No bonus offers tied to deposit increases").
+      bonus: { enabled: true, recipient: "BOTH", newAmountTzs: 2_000, referrerAmountTzs: 1_000, trigger: "SIGNUP" },
+      prize: { enabled: true, milestone: "FIRST_BET", amountTzs: 5_000, capPerReferrer: 100 },
     } as Partial<AffiliateConfig>, OFFICER);
 
     const R = await mkUser();
     const acctR = await ensureAffiliateAccount(R.id);
     const C = await mkUser();
+    const rBeforeBind = await bal(R.id);
+    const cBeforeBind = await bal(C.id);
     const bind = await bindRecruit({ recruitUserId: C.id, code: acctR.code });
     ok("recruit bound to referrer", bind.bound === true);
+    await ok("the bind paid the SIGN-UP bonus (referrer +1,000, recruit +2,000)",
+      await bal(R.id) - rBeforeBind === 1_000 && await bal(C.id) - cBeforeBind === 2_000,
+      `ΔR=${await bal(R.id) - rBeforeBind} ΔC=${await bal(C.id) - cBeforeBind}`);
 
-    // ── REAL DEPOSIT through wallet-service.deposit() ────────────────────
+    // ── REAL DEPOSIT through wallet-service.deposit() — it pays NO referral reward ──
     const rBeforeDep = await bal(R.id);
     const cBeforeDep = await bal(C.id);
     const dep = await deposit(C.id, { provider: "MPESA", amount: 20_000, msisdn: C.phoneE164 });
     ok("real deposit() succeeded", dep.ok === true, dep.ok ? "" : (dep as { error: string }).error);
     if (dep.ok) {
-      await ok("deposit credited recruit wallet (20,000 + 2,000 bonus)", await bal(C.id) - cBeforeDep === 22_000, `Δ=${await bal(C.id) - cBeforeDep}`);
-      await ok("deposit fired referrer bonus (+1,000)", await bal(R.id) - rBeforeDep === 1_000, `Δ=${await bal(R.id) - rBeforeDep}`);
+      await ok("deposit credited the recruit exactly the deposit (20,000 — no referral bonus)", await bal(C.id) - cBeforeDep === 20_000, `Δ=${await bal(C.id) - cBeforeDep}`);
+      await ok("deposit paid the referrer nothing", await bal(R.id) - rBeforeDep === 0, `Δ=${await bal(R.id) - rBeforeDep}`);
     }
 
     // ── REAL BET through market-service.buyPosition() ───────────────────

@@ -4,9 +4,11 @@
  * services (config, binding, accrual, wallet credits, notifications, read
  * models, anti-fraud, pause gating) and returns a per-assertion report.
  *
- * ⚠️ SINCE 2026-09-25 THE PLAYER PROGRAMME PAYS NOTHING (`inviteRewards` WITHDRAWN): every money
- * assertion here uses a PLAYER referrer and is refused (`player_rewards_withdrawn`) unless the dev
- * server runs with FEATURE_INVITEREWARDS=ACTIVE. The maintained guards are `test:player-invite-unpaid`
+ * ⚠️ SINCE 2026-09-25 THE PLAYER PROGRAMME PAYS NOTHING WHILE INVITES ARE NOT PAYABLE — since 2026-09-26
+ * the Owner's switch on /admin/affiliate, Not payable by default, under the `inviteRewards` ceiling: every
+ * money assertion here uses a PLAYER referrer and is refused (`player_rewards_withdrawn`) unless the Owner
+ * has made invites payable, or the dev server runs with FEATURE_INVITEREWARDS=ACTIVE (which forces the
+ * switch on). The maintained guards are `test:player-invite-unpaid`
  * and `test:referral` (docs/PLAYER-INVITE-UNPAID.md §7-§8).
  *
  * Returns 404 in production. POST with no body.
@@ -167,25 +169,26 @@ export async function POST() {
     await onRecruitBet(prizeRecruit.id, { stake: 50_000, houseBotId: null });
     ok("prize not double-paid", await balOf(refUser.id) - beforePrize === 5_000);
 
-    // ── 5. Bonus on first deposit (BOTH recipients, once) ───────────────
+    // ── 5. Sign-up bonus (BOTH recipients, once) — and a deposit pays NOTHING ───────
+    // ⛔ Since 2026-09-26 a deposit never triggers a referral reward (the RG policy's "No bonus offers
+    // tied to deposit increases"): FIRST_DEPOSIT is retired, so the bonus is the SIGN-UP bonus, paid at bind.
     setAffiliateConfig(
       {
         enabled: true,
         commission: { enabled: false },
-        bonus: { enabled: true, recipient: "BOTH", newAmountTzs: 2_000, referrerAmountTzs: 1_000, trigger: "FIRST_DEPOSIT" },
+        bonus: { enabled: true, recipient: "BOTH", newAmountTzs: 2_000, referrerAmountTzs: 1_000, trigger: "SIGNUP" },
         prize: { enabled: false },
       } as Partial<AffiliateConfig>,
       OFFICER,
     );
     const bonusRecruit = await mkUser({ displayName: "Emanuel Toi" });
-    await bindRecruit({ recruitUserId: bonusRecruit.id, code: a1.code });
     const refBeforeBonus = await balOf(refUser.id);
     const recBeforeBonus = await balOf(bonusRecruit.id);
-    await onRecruitDeposit(bonusRecruit.id, { cumulativeDepositsTzs: 10_000 });
-    ok("referrer bonus credited", await balOf(refUser.id) - refBeforeBonus === 1_000, `Δ=${await balOf(refUser.id) - refBeforeBonus}`);
-    ok("new-player bonus credited", await balOf(bonusRecruit.id) - recBeforeBonus === 2_000, `Δ=${await balOf(bonusRecruit.id) - recBeforeBonus}`);
+    await bindRecruit({ recruitUserId: bonusRecruit.id, code: a1.code });
+    ok("referrer sign-up bonus credited", await balOf(refUser.id) - refBeforeBonus === 1_000, `Δ=${await balOf(refUser.id) - refBeforeBonus}`);
+    ok("new-player sign-up bonus credited", await balOf(bonusRecruit.id) - recBeforeBonus === 2_000, `Δ=${await balOf(bonusRecruit.id) - recBeforeBonus}`);
     await onRecruitDeposit(bonusRecruit.id, { cumulativeDepositsTzs: 20_000 });
-    ok("bonus not double-paid", await balOf(refUser.id) - refBeforeBonus === 1_000 && await balOf(bonusRecruit.id) - recBeforeBonus === 2_000);
+    ok("a deposit pays no referral reward (and the bonus is not double-paid)", await balOf(refUser.id) - refBeforeBonus === 1_000 && await balOf(bonusRecruit.id) - recBeforeBonus === 2_000);
 
     // ── 6. Pause gating ─────────────────────────────────────────────────
     setAffiliateConfig({ enabled: false } as Partial<AffiliateConfig>, OFFICER);

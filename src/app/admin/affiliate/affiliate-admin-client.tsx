@@ -8,25 +8,43 @@ import { Button } from "@/components/ui/button";
 import { Toggle } from "@/components/ui/toggle";
 import { Input } from "@/components/ui/input";
 import { useDeferredToast } from "@/components/ui/toast";
-import type { AffiliateConfig, BonusRecipient, BonusTrigger, PrizeMilestone } from "@/lib/server/affiliate-config";
+import {
+  PLAYER_MAX_COMMISSION_RATE,
+  PLAYER_WINDOW_MAX_MONTHS,
+  PLAYER_WINDOW_MIN_MONTHS,
+  affiliateConfigFingerprint,
+  changedRewardFields,
+  priceInviteRewards,
+  validateAffiliateConfig,
+  type AffiliateConfig,
+  type BonusRecipient,
+} from "@/lib/affiliate-rules";
+import type { InvitePayableCopy, InvitePayableInput } from "@/lib/server/invite-rewards-ceremony";
 import { UnsavedChangesGuard, PendingChangesBar } from "@/components/ui/unsaved-changes";
-import { saveAffiliateConfigAction } from "./actions";
+import { saveAffiliateConfigAction, setInvitePayableAction } from "./actions";
 import { runAdminAction } from "@/lib/client/run-admin-action";
-// ⭐ THE PLATFORM'S ONE MONEY FORMATTER. The banner below quotes the officer's own figures back
-// to them, and a hand-rolled `toLocaleString()` beside it would be a second spelling of TZS.
-import { formatTzs as fmt } from "@/lib/utils";
+import { PayableSwitch } from "./payable-switch";
 
 /**
- * Interactive affiliate-config editor (master switch + reward modes + save).
- * The page chrome (AdminPageHead, KPIs, leaderboard, ledger) is rendered by the
- * server page on the shared admin shell; this client owns only the editable state.
+ * Interactive affiliate editor: the Owner's Payable / Not payable state card, the three reward modes and
+ * ONE Save. The page chrome (AdminPageHead, KPIs, roster, ledger) is rendered by the server page on the
+ * shared admin shell; this client owns only the editable state.
+ *
+ * ⛔ THE TWO STATES ARE THE MASTER (2026-09-26). The old master-switch row is gone: Not payable LOCKS every
+ * reward setting — read-only fields, disabled switches and choices, no Save and no pending-changes bar —
+ * and Payable unlocks them behind the one Save below. The Save never sends the service-level pause
+ * (`enabled`); the ceremony is its only writer, and the server drops it from a post anyway.
  */
 
 function Field({
-  label, hint, prefix, suffix, value, onChange, width,
+  label, hint, prefix, suffix, value, onChange, width, readOnly, error,
 }: {
   label: string; hint?: string; prefix?: string; suffix?: string;
   value: number; onChange: (n: number) => void; width?: number;
+  /** Not payable: the value stays legible and cannot be changed. */
+  readOnly?: boolean;
+  /** Why the server would refuse THIS field — shown under it, and the Save stays disabled. */
+  error?: string;
 }) {
   return (
     <div style={{ width: width ?? "100%" }}>
@@ -38,18 +56,35 @@ function Field({
         mono
         size="sm"
         inputMode="numeric"
+        allowDecimal
+        readOnly={readOnly}
+        error={error}
         value={value}
         onChange={(e) => {
-          const n = Number(e.target.value.replace(/[^\d.]/g, ""));
+          if (readOnly) return;
+          /* ⛔ WHOLE NUMBERS ONLY, AND WHAT IS SHOWN IS WHAT IS HELD (addendum F, 2026-09-26). Every field
+             here is whole shillings, months, a count or a whole percent. The atom alone strips the dot, so a
+             pasted "7.5" became "75" — clamped to a 50% commission. The dot is let through to HERE and
+             everything from it on is dropped: "7.5" is 7, on screen and in the draft alike. */
+          const whole = e.target.value.split(".")[0].replace(/\D/g, "");
+          const n = whole === "" ? 0 : Number(whole);
           onChange(Number.isFinite(n) ? n : 0);
         }}
       />
-      {hint && <div className="mt-1.5 text-[10.5px] text-text-subtle">{hint}</div>}
+      {error ? (
+        <p className="mt-1.5 text-body-sm text-danger-fg">{error}</p>
+      ) : hint ? (
+        <div className="mt-1.5 text-[10.5px] text-text-subtle">{hint}</div>
+      ) : null}
     </div>
   );
 }
 
-function Seg<T extends string>({ value, onChange, options }: { value: T; onChange: (v: T) => void; options: Array<{ v: T; l: string }> }) {
+function Seg<T extends string>({ value, onChange, options, disabled }: {
+  value: T; onChange: (v: T) => void; options: Array<{ v: T; l: string }>;
+  /** Not payable: the stored choice stays painted, and no segment can be pressed. */
+  disabled?: boolean;
+}) {
   return (
     <div className="inline-flex gap-1 rounded-md border border-border bg-bg-overlay p-1">
       {options.map((o) => {
@@ -58,8 +93,10 @@ function Seg<T extends string>({ value, onChange, options }: { value: T; onChang
           <button
             key={o.v}
             type="button"
+            aria-pressed={active}
+            disabled={disabled}
             onClick={() => onChange(o.v)}
-            className={`h-7 rounded-md px-3 text-[12px] font-semibold transition-colors ${active ? "text-white" : "text-text-muted hover:text-text"}`}
+            className={`h-7 rounded-md px-3 text-[12px] font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${active ? "text-white" : disabled ? "text-text-muted" : "text-text-muted hover:text-text"}`}
             style={active ? { background: "var(--royal-500)" } : undefined}
           >
             {o.l}
@@ -71,19 +108,22 @@ function Seg<T extends string>({ value, onChange, options }: { value: T; onChang
 }
 
 function RewardCard({
-  icon: Icon, title, sw, desc, on, onToggle, disabled, children,
+  icon: Icon, title, sw, desc, on, onToggle, locked, children,
 }: {
   icon: (typeof I)[keyof typeof I]; title: string; sw: string; desc: string;
-  on: boolean; onToggle: () => void; disabled?: boolean; children?: React.ReactNode;
+  on: boolean; onToggle: () => void;
+  /** Not payable: the switch is disabled and the card is not painted as live. */
+  locked: boolean;
+  children?: React.ReactNode;
 }) {
-  const active = on && !disabled;
+  /* ⭐ A MODE SWITCHED ON WHILE NOT PAYABLE PAYS NOTHING, so it is not painted as live — but the card is
+     not dimmed either: its values stay legible, because the Owner reads them to decide whether "the
+     settings on this page" is what should pay. The locked fields carry the kit's own locked look. */
+  const active = on && !locked;
   return (
     <div
-      className="overflow-hidden rounded-lg border bg-bg-elevated transition-opacity"
-      style={{
-        borderColor: active ? "color-mix(in oklab, var(--royal-500) 30%, var(--border))" : "var(--border)",
-        opacity: disabled ? 0.5 : 1,
-      }}
+      className="overflow-hidden rounded-lg border bg-bg-elevated"
+      style={{ borderColor: active ? "color-mix(in oklab, var(--royal-500) 30%, var(--border))" : "var(--border)" }}
     >
       <div
         className="flex items-center gap-3 px-4 py-3.5"
@@ -109,271 +149,225 @@ function RewardCard({
           </div>
           <div className="mt-0.5 text-[11.5px] text-text-muted">{desc}</div>
         </div>
-        <Toggle on={on} onClick={onToggle} disabled={disabled} aria-label={`${title} enabled`} />
+        <Toggle on={on} onClick={onToggle} disabled={locked} aria-label={`${title} enabled`} />
       </div>
       {on && <div className="flex flex-wrap gap-4 p-4">{children}</div>}
     </div>
   );
 }
 
-export function AffiliateAdminClient({ config, rewardsLive = false }: {
+export function AffiliateAdminClient({ config, baseFingerprint, copy, rosterRecruits }: {
+  /** The stored reward settings — the SAME object the server priced and fingerprinted for `copy`. */
   config: AffiliateConfig;
-  /** ⭐ Resolved on the SERVER (`playerInviteRewardsLive()`) and threaded, like every other product
-   *  state a client component needs: this file is `"use client"` and may not read `feature-state`.
-   *  ⛔ Defaults to FALSE — the safe direction: a lost prop understates what the platform pays. */
-  rewardsLive?: boolean;
+  /** `affiliateConfigFingerprint(config)`, from the server — posted back by the Save as `baseFingerprint`. */
+  baseFingerprint: string;
+  /**
+   * ⭐ Every sentence of the switch, built on the server (`invitePayableDialogs`). ⛔ Never the view it is
+   * built from: that carries the Owner's user id, and a client prop ships to the browser.
+   */
+  copy: InvitePayableCopy;
+  /** Recruits per inviter already in the roster — prices the draft's exposure line. */
+  rosterRecruits: number[];
 }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const { deferToast, toast } = useDeferredToast(pending);
+  const locked = copy.locked;
+  const configKey = JSON.stringify(config);
   const [c, setC] = useState<AffiliateConfig>(config);
+  /* ⭐ THE DRAFT FOLLOWS THE SERVER WHEN THE SERVER MOVES. A ceremony changes the stored settings under an
+     open page — "Nothing yet" switches every mode off, and Stop paying locks the form — and a draft seeded
+     once would then sit on screen as unsaved edits nobody made. So when the stored settings or the lock
+     change, a clean draft takes the new settings, and a locked form always shows what is stored; an
+     unsaved edit survives only a refresh that leaves the form editable. Adjusted during render (React's
+     "state from a changed prop" pattern), so no frame paints the stale draft. */
+  const [seed, setSeed] = useState({ key: configKey, locked });
+  /* ⛔ THE SAVE'S BASE — the settings this draft was taken from, and their fingerprint (review P3,
+     2026-09-26). The Save posts ONLY the fields changed against it, with its fingerprint; the server refuses
+     a fingerprint that no longer matches the row. It follows the server only when the draft follows too
+     (a clean or locked form): a draft holding edits keeps its OLD base, so its Save is refused with "These
+     settings changed since this page loaded" rather than quietly writing its page-load values over them. */
+  const [base, setBase] = useState<{ config: AffiliateConfig; fingerprint: string }>({ config, fingerprint: baseFingerprint });
+  if (seed.key !== configKey || seed.locked !== locked) {
+    const clean = JSON.stringify(c) === JSON.stringify(base.config);
+    setSeed({ key: configKey, locked });
+    if (locked || clean) {
+      setC(config);
+      setBase({ config, fingerprint: baseFingerprint });
+    }
+  }
   /* ⭐ THE WHOLE CONFIG IS ONE STATE OBJECT, so the comparison is exact and needs no hook:
-     every field the officer can touch lives in `c`, and `config` is what the server last saved. */
-  const unsaved = JSON.stringify(c) !== JSON.stringify(config);
-  /** The master-switch row's own Save — the bar's `saveAnchor`, so the two are never on screen together. */
+     every field the officer can touch lives in `c`, and `base.config` is what this draft was taken from. */
+  const unsaved = !locked && JSON.stringify(c) !== JSON.stringify(base.config);
+  /** The form's own Save — the bar's `saveAnchor`, so the two are never on screen together. */
   const saveRef = useRef<HTMLButtonElement>(null);
 
-  const on = c.enabled;
-  const setMaster = (v: boolean) => setC((p) => ({ ...p, enabled: v }));
   const patchCommission = (u: Partial<AffiliateConfig["commission"]>) => setC((p) => ({ ...p, commission: { ...p.commission, ...u } }));
   const patchBonus = (u: Partial<AffiliateConfig["bonus"]>) => setC((p) => ({ ...p, bonus: { ...p.bonus, ...u } }));
   const patchPrize = (u: Partial<AffiliateConfig["prize"]>) => setC((p) => ({ ...p, prize: { ...p.prize, ...u } }));
 
+  /* ⭐ THE LIVE PREVIEW PRICES THE DRAFT WITH THE PAYER'S OWN RULES — the pure module the server validates
+     every save with and prices the Make-payable dialog from, so the three cannot describe one config three
+     ways. ⛔ A draft the server would refuse is not priced at all: its reason is shown instead, because a
+     price for settings that cannot be stored is a money statement about nothing. */
+  const check = validateAffiliateConfig(c);
+  /** ⛔ The refusal sits AT the field that causes it (addendum E); the Save stays disabled while there is one. */
+  const fieldError = (field: string): string | undefined => (!locked && !check.ok && check.field === field ? check.reason : undefined);
+  const preview = priceInviteRewards(c, { destination: copy.destination, rosterRecruitsPerInviter: rosterRecruits });
+
+  /** Discard takes what the server last rendered — and re-bases on it, so a Save after it posts a current base. */
+  const discard = () => { setC(config); setBase({ config, fingerprint: baseFingerprint }); };
+
   /* `runAdminAction` turns a thrown action into the `{ ok:false, error }` the toast renders
-     (a redirect is rethrown). On success `c` is re-seeded from what the server stored, but only
-     if it is still what was sent: an edit made while the save ran stays on screen and dirty. */
+     (a redirect is rethrown). On success the base moves to what the server stored, and `c` is re-seeded
+     from it only if it is still what was sent: an edit made while the save ran stays on screen and dirty.
+     ⛔ The post is `{ baseFingerprint, changes }` — only the fields changed against the base, never
+     `enabled` — and a draft the server would refuse is not sent at all. */
   const save = () => {
+    if (locked || !unsaved || !check.ok) return;
     const sent = JSON.stringify(c);
+    const post = { baseFingerprint: base.fingerprint, changes: changedRewardFields(base.config, c) };
     start(async () => {
-      const r = await runAdminAction(() => saveAffiliateConfigAction(c));
+      const r = await runAdminAction(() => saveAffiliateConfigAction(post));
       if (r.ok) {
+        setBase({ config: r.config, fingerprint: affiliateConfigFingerprint(r.config) });
         setC((cur) => (JSON.stringify(cur) === sent ? r.config : cur));
         router.refresh();
-        deferToast({ title: "Affiliate config saved · Imehifadhiwa", variant: "success" });
+        if (r.warning) toast({ title: "Affiliate config saved · Imehifadhiwa", description: r.warning, variant: "warning" });
+        else deferToast({ title: "Affiliate config saved · Imehifadhiwa", variant: "success" });
       } else {
         toast({ title: "Couldn't save", description: r.error, variant: "danger" });
       }
     });
   };
 
+  /** The ceremony's action, made throw-safe HERE — see the note at the top of `payable-switch.tsx`. */
+  const setPayable = (input: InvitePayableInput) => runAdminAction(() => setInvitePayableAction(input));
+
   return (
     <div className="space-y-3">
-      {/* One signal, two surfaces. The bar's Save shows only while the form's own Save (the
-          master-switch row, `saveAnchor`) is off screen; both say "Save" and call `save`. */}
-      <PendingChangesBar
-        dirty={unsaved}
-        saving={pending}
-        detail="Affiliate bonuses and prize milestones apply to every referral."
-        saveLabel="Save"
-        onSave={save}
-        onDiscard={() => setC(config)}
-        saveAnchor={saveRef}
-      />
+      {/* One signal, two surfaces. The bar's Save shows only while the form's own Save (at the foot of
+          the reward modes, `saveAnchor`) is off screen; both say "Save changes" and call `save`.
+          ⛔ Not payable renders no bar at all — there is nothing to save. And a draft the server would
+          refuse offers no Save in the bar either (`onSave` unset): its reason is at the field. */}
+      {!locked && (
+        <PendingChangesBar
+          dirty={unsaved}
+          saving={pending}
+          detail="Affiliate bonuses and prize milestones apply to every referral."
+          saveLabel="Save changes"
+          onSave={check.ok ? save : undefined}
+          onDiscard={discard}
+          saveAnchor={saveRef}
+        />
+      )}
       <UnsavedChangesGuard dirty={unsaved} body="The affiliate configuration has been changed but not saved. Leaving now discards the change." />
-      {/* Master switch + Save.
-          ⭐ 2026-09-26 — WRAPS, because at a phone's width the plate, the toggle and Save left the
-          sentence ~110px, one or two words a line, measured on production at 390. The text now keeps
-          at least 14rem and the two controls drop to their own line (right-aligned) when they do not
-          fit beside it; on a laptop nothing moves. */}
-      <div
-        className="flex flex-wrap items-center gap-4 rounded-lg border p-4"
-        style={{
-          borderColor: on ? "color-mix(in oklab, var(--royal-500) 28%, var(--border))" : "color-mix(in oklab, var(--warning-500) 36%, var(--border))",
-          background: on ? "var(--bg-elevated)" : "color-mix(in oklab, var(--warning-500) 8%, var(--bg-elevated))",
-        }}
-      >
-        <IconPlate
-          size={44}
-          bg={on ? "color-mix(in oklab, var(--royal-500) 18%, transparent)" : "color-mix(in oklab, var(--warning-500) 20%, transparent)"}
-          fg={on ? "var(--royal-300)" : "var(--warning-fg)"}
-        >
-          {on ? <I.megaphone s={plateGlyph(44)} /> : <I.pause s={plateGlyph(44)} />}
-        </IconPlate>
-        <div className="flex-1 min-w-0 basis-[14rem]">
-          <div className="text-[15px] font-bold">
-            Program master switch · <span className="font-normal italic text-text-subtle text-body-sm">Swichi kuu</span>
-          </div>
-          {/* 🔴 "rewards are accruing" WAS A FALSE STATEMENT ON A MONEY SCREEN, and only looking at
-              the rendered page found it. With `inviteRewards` WITHDRAWN (2026-09-25) nothing accrues
-              on this programme whatever this switch says — it is the operator's switch INSIDE the
-              paid promo, and the product state sits above it. An officer reading "rewards are
-              accruing" would reasonably conclude the platform was paying referrers, and act on it.
-              ⛔ The switch itself is NOT disabled: it is a real setting, it is saved, and it governs
-              the promo the day it is switched back on. What changes is that the sentence stops
-              claiming an outcome the product has already refused. */}
-          <div className="mt-0.5 text-[12px] text-text-muted">
-            {!rewardsLive
-              ? "Unpaid — every player in good standing has a referral link, and the platform credits nothing for a referral (product state inviteRewards = WITHDRAWN). This switch is stored for the day rewards are turned back on."
-              : on
-                ? "Live — every player has an active referral link and rewards are accruing."
-                : "Paused — links still resolve, but no new rewards accrue. Players see a paused banner."}
-          </div>
-        </div>
-        <div className="ml-auto flex items-center gap-4">
-          <Toggle on={on} onClick={() => setMaster(!on)} aria-label="Program master switch" />
-          {/* Disabled while nothing has changed, so it cannot pass for a save still to do. */}
-          <Button ref={saveRef} variant="primary" size="sm" leading={<I.check s={14} />} loading={pending} disabled={!unsaved} onClick={save}>
-            Save
-          </Button>
-        </div>
-      </div>
+
+      <PayableSwitch copy={copy} act={setPayable} />
 
       {/* Reward modes. DG-A-14: this eyebrow read "Reward modes · independently toggleable ·
           Njia za zawadi" — a bilingual label with its hint welded into the middle of it, so the
           hint was reading copy wearing the sub-floor microlabel recipe. The label keeps that
           recipe (and now matches the "English · Swahili" shape used everywhere else in this
           file); the hint moved to its own line on the reading rung. The wrapper keeps the pair
-          as ONE child of the outer `space-y-3`, so the surrounding rhythm is unchanged. */}
+          as ONE child of the outer stack, so the surrounding rhythm is unchanged. */}
       <div>
         <p className="font-mono text-micro uppercase eyebrow text-text-subtle">Reward modes · Njia za zawadi</p>
-        <p className="mt-0.5 text-body-sm text-text-subtle">
-          {rewardsLive ? "independently toggleable" : "stored, but not consulted while the invite is unpaid"}
-        </p>
+        {locked ? (
+          <p className="mt-0.5 flex items-center gap-1.5 text-body-sm text-text-muted">
+            <span aria-hidden className="shrink-0 text-warning-fg"><I.lock s={14} /></span>
+            {copy.lockedCaption}
+          </p>
+        ) : (
+          <p className="mt-0.5 text-body-sm text-text-subtle">independently toggleable</p>
+        )}
       </div>
-
-      {/* 🔴 A CONTROL THAT DOES NOTHING IS WORSE THAN NO CONTROL, and until this banner these three
-          cards were exactly that: an officer could switch commission on, type 50%, press Save, get a
-          success toast — and not one shilling would move, because `policyFor` refuses the PLAYER
-          branch ABOVE the config. The numbers were real, the save was real, the effect was zero, and
-          nothing on the screen said so. Whoever typed a rate would reasonably believe 50pick had
-          started paying referrers.
-          ⭐ SO THE CARDS ARE DISABLED AND THE REASON IS NAMED. They keep their stored values — this
-          is not a deletion, and flipping `inviteRewards` back to ACTIVE returns them exactly as the
-          officer left them. ⛔ It also names the ONE thing that changes it, because the honest answer
-          to "which button turns payment on?" is that there is no button: it is a code state and a
-          deploy, deliberately out of one-click reach of a misclick, and it is a regulated inducement
-          that needs Gaming Board clearance before it is switched on at all. */}
-      {!rewardsLive && (
-        <div
-          className="flex gap-2.5 rounded-xl border p-3"
-          style={{
-            background: "color-mix(in oklab, var(--warning-500) 12%, transparent)",
-            borderColor: "color-mix(in oklab, var(--warning-500) 30%, transparent)",
-          }}
-        >
-          <span className="shrink-0 text-warning-fg mt-0.5"><I.info s={16} /></span>
-          <div className="text-caption text-text-secondary leading-relaxed">
-            <p className="font-bold text-text mb-1">These three switches are stored, not applied.</p>
-            The player invite is <strong className="text-text">unpaid</strong>: every referral accrual
-            is refused before these values are read, so changing a rate or an amount here moves no
-            money and pays no player. Your numbers are kept exactly as you set them.
-            <br />
-            <span className="text-text">To actually pay referrers</span> the product state
-            <code className="font-mono mx-1">inviteRewards</code> must go to
-            <code className="font-mono mx-1">ACTIVE</code> — a one-word code change and a deploy,
-            not a setting on this page. ⛔ Rewarding referrals is a regulated inducement: clear the
-            structure with the Gaming Board of Tanzania first.
-            <br />
-            {/* ⭐ WHAT WOULD HAPPEN THE MOMENT IT IS SWITCHED ON, priced from the values on screen.
-                An officer who has armed a mode is entitled to know what their own numbers would do —
-                "it is off" is only half an answer, and the half that leaves them guessing. Read from
-                the live config, so it moves as they type and can never quote a stale figure. */}
-            {(c.commission.enabled || c.prize.enabled || c.bonus.enabled) && (
-              <>
-                <br />
-                {/* ⛔ THE CLAUSES ARE JOINED, NOT CONCATENATED WITH TRAILING SEMICOLONS. Appending
-                    "…;" to each enabled mode reads correctly only when all three are on: with one
-                    mode it printed "a TZS 10,000 prize on the recruit's first bet; — and it would
-                    apply…", a semicolon against a dash. The list is built first and punctuated
-                    once, so it reads as a sentence at one, two or three modes. */}
-                <span className="text-text">If it were switched on right now</span>, with the values
-                on this screen, each qualifying referral would pay{" "}
-                {(() => {
-                  const parts: React.ReactNode[] = [];
-                  if (c.commission.enabled) parts.push(<><strong className="text-text">{Math.round(c.commission.rate * 100)}%</strong> of the operator margin their recruits generate{c.commission.windowMonths > 0 ? ` for ${c.commission.windowMonths} months` : " for life"}</>);
-                  if (c.prize.enabled && c.prize.amountTzs > 0) parts.push(<>a <strong className="text-text">{fmt(c.prize.amountTzs)}</strong> prize on {c.prize.milestone === "FIRST_BET" ? "the recruit's first bet" : "a qualifying deposit"}</>);
-                  if (c.bonus.enabled && c.bonus.referrerAmountTzs > 0 && (c.bonus.recipient === "REFERRER" || c.bonus.recipient === "BOTH")) parts.push(<><strong className="text-text">{fmt(c.bonus.referrerAmountTzs)}</strong> to the referrer on {c.bonus.trigger === "SIGNUP" ? "sign-up" : "first deposit"}</>);
-                  return parts.map((p, i) => (
-                    <span key={i}>{i > 0 && (i === parts.length - 1 ? ", and " : ", ")}{p}</span>
-                  ));
-                })()}
-                .{" "}
-                {/* 🔴 THIS SENTENCE SAID "never retroactively to the people already in the roster
-                    below", AND THAT WAS FALSE — a wrong statement about money on the screen an
-                    officer would read before switching payment on. Two facts, and they are not the
-                    same: no BACK-PAY happens (accruals fire from live hooks; nothing re-walks past
-                    bets), but every recruit ALREADY bound becomes payable on their NEXT bet,
-                    deposit or settlement — and their commission window is already running, because
-                    `commissionWindowEnd` measures from `attribution.boundAt`, not from the day the
-                    switch moved. The roster below is therefore the population that would start
-                    paying, not a population that is excluded. Found by an adversarial audit that
-                    drove the flip and watched already-bound recruits pay out immediately. */}
-                <strong className="text-text">
-                  Everyone already in the roster below would start paying
-                </strong>{" "}
-                on their next bet, deposit or settlement — their window runs from the day they were
-                invited, not from the day you switch this on. Activity that has already happened is
-                not back-paid.
-              </>
-            )}
-            <br />
-            <span className="text-text-subtle">
-              What still works today: every player in good standing has a link (closed, suspended and
-              self-excluded accounts do not), and the roster below counts who they brought. Cash paid to an
-              inviter outside the platform is recorded nowhere in 50pick.
-            </span>
-          </div>
-        </div>
-      )}
 
       <RewardCard
         icon={I.percent} title="Commission" sw="Tume"
         desc="Referrer earns a share of the operator margin their recruits generate."
-        on={c.commission.enabled} onToggle={() => patchCommission({ enabled: !c.commission.enabled })} disabled={!on || !rewardsLive}
+        on={c.commission.enabled} onToggle={() => patchCommission({ enabled: !c.commission.enabled })} locked={locked}
       >
-        <Field label="Commission rate" hint="Share of operator margin" suffix="%" width={140}
-          value={Math.round(c.commission.rate * 100)} onChange={(n) => patchCommission({ rate: Math.max(0, Math.min(100, n)) / 100 })} />
-        <Field label="Window" hint="How long it accrues" suffix="months" width={130}
+        {/* ⛔ 50% OF MARGIN IS THE PLATFORM CEILING, AND THE FIELD CANNOT HOLD MORE — the same rule the
+            server refuses on save and the payer clamps again. */}
+        <Field label="Commission rate" hint={`Share of operator margin · whole percent, max ${Math.round(PLAYER_MAX_COMMISSION_RATE * 100)}%`} suffix="%" width={140} readOnly={locked}
+          error={fieldError("commission.rate")}
+          value={Math.round(c.commission.rate * 100)} onChange={(n) => patchCommission({ rate: Math.max(0, Math.min(Math.round(PLAYER_MAX_COMMISSION_RATE * 100), n)) / 100 })} />
+        {/* ⛔ 1–60 MONTHS, NEVER "FOR LIFE": the player promo has no lifetime term, and 0 is refused. */}
+        <Field label="Window" hint={`${PLAYER_WINDOW_MIN_MONTHS}–${PLAYER_WINDOW_MAX_MONTHS} months from the invite`} suffix="months" width={130} readOnly={locked}
+          error={fieldError("commission.windowMonths")}
           value={c.commission.windowMonths} onChange={(n) => patchCommission({ windowMonths: n })} />
-        <Field label="Per-recruit cap" hint="Max earnable per recruit (0 = none)" prefix="TZS" width={180}
+        <Field label="Per-recruit cap" hint="Max earnable per recruit (0 = none)" prefix="TZS" width={180} readOnly={locked}
+          error={fieldError("commission.capPerRecruitTzs")}
           value={c.commission.capPerRecruitTzs} onChange={(n) => patchCommission({ capPerRecruitTzs: n })} />
       </RewardCard>
 
       <RewardCard
         icon={I.gift} title="Bonus / discount" sw="Bonasi"
-        desc="Sign-up or first-deposit credit to the new player and/or referrer."
-        on={c.bonus.enabled} onToggle={() => patchBonus({ enabled: !c.bonus.enabled })} disabled={!on || !rewardsLive}
+        desc="A sign-up credit to the new player and/or the referrer."
+        on={c.bonus.enabled} onToggle={() => patchBonus({ enabled: !c.bonus.enabled })} locked={locked}
       >
         <div className="w-full">
           <div className="mb-1.5 text-[12px] font-semibold">Who gets it</div>
-          <Seg<BonusRecipient> value={c.bonus.recipient} onChange={(v) => patchBonus({ recipient: v })}
+          <Seg<BonusRecipient> value={c.bonus.recipient} onChange={(v) => patchBonus({ recipient: v })} disabled={locked}
             options={[{ v: "NEW", l: "New player" }, { v: "REFERRER", l: "Referrer" }, { v: "BOTH", l: "Both" }]} />
         </div>
-        <Field label="New-player amount" prefix="TZS" width={160} value={c.bonus.newAmountTzs} onChange={(n) => patchBonus({ newAmountTzs: n })} />
-        <Field label="Referrer amount" prefix="TZS" width={160} value={c.bonus.referrerAmountTzs} onChange={(n) => patchBonus({ referrerAmountTzs: n })} />
+        <Field label="New-player amount" prefix="TZS" width={160} readOnly={locked} error={fieldError("bonus.newAmountTzs")} value={c.bonus.newAmountTzs} onChange={(n) => patchBonus({ newAmountTzs: n })} />
+        <Field label="Referrer amount" prefix="TZS" width={160} readOnly={locked} error={fieldError("bonus.referrerAmountTzs")} value={c.bonus.referrerAmountTzs} onChange={(n) => patchBonus({ referrerAmountTzs: n })} />
+        {/* ⛔ Sign-up is the ONLY trigger (2026-09-26): the RG policy promises no bonus offers tied to deposits. */}
         <div className="w-full">
           <div className="mb-1.5 text-[12px] font-semibold">Trigger</div>
-          <Seg<BonusTrigger> value={c.bonus.trigger} onChange={(v) => patchBonus({ trigger: v })}
-            options={[{ v: "SIGNUP", l: "Sign-up" }, { v: "FIRST_DEPOSIT", l: "First deposit" }]} />
+          <div className="text-body-sm text-text-muted">Sign-up · a deposit never triggers a referral reward (Responsible Gambling policy)</div>
         </div>
       </RewardCard>
 
       <RewardCard
         icon={I.ticket} title="Prize" sw="Tuzo"
         desc="A fixed reward to the referrer when a recruit hits a milestone."
-        on={c.prize.enabled} onToggle={() => patchPrize({ enabled: !c.prize.enabled })} disabled={!on || !rewardsLive}
+        on={c.prize.enabled} onToggle={() => patchPrize({ enabled: !c.prize.enabled })} locked={locked}
       >
+        {/* ⛔ The first bet is the ONLY milestone (2026-09-26): a prize for depositing is retired. */}
         <div className="w-full">
           <div className="mb-1.5 text-[12px] font-semibold">Milestone</div>
-          <Seg<PrizeMilestone> value={c.prize.milestone} onChange={(v) => patchPrize({ milestone: v })}
-            options={[{ v: "FIRST_BET", l: "First bet" }, { v: "DEPOSIT_THRESHOLD", l: "Deposits ≥ threshold" }]} />
+          <div className="text-body-sm text-text-muted">A friend&apos;s first bet · never a deposit amount (Responsible Gambling policy)</div>
         </div>
-        {c.prize.milestone === "DEPOSIT_THRESHOLD" && (
-          <Field label="Deposit threshold" prefix="TZS" width={180} value={c.prize.depositThresholdTzs} onChange={(n) => patchPrize({ depositThresholdTzs: n })} />
-        )}
-        <Field label="Fixed prize" prefix="TZS" width={150} value={c.prize.amountTzs} onChange={(n) => patchPrize({ amountTzs: n })} />
-        {c.prize.milestone === "FIRST_BET" && (
-          <Field label="Min bet amount" hint="Recruit's bet must be ≥ this (§4.2c)" prefix="TZS" width={180} value={c.prize.minBetAmountTzs ?? 0} onChange={(n) => patchPrize({ minBetAmountTzs: n })} />
-        )}
+        <Field label="Fixed prize" prefix="TZS" width={150} readOnly={locked} error={fieldError("prize.amountTzs")} value={c.prize.amountTzs} onChange={(n) => patchPrize({ amountTzs: n })} />
+        <Field label="Min bet amount" hint="Recruit's bet must be ≥ this (§4.2c)" prefix="TZS" width={180} readOnly={locked} error={fieldError("prize.minBetAmountTzs")} value={c.prize.minBetAmountTzs ?? 0} onChange={(n) => patchPrize({ minBetAmountTzs: n })} />
         <div className="flex items-center gap-2.5">
-          <Toggle on={c.prize.requireDeposit ?? true} onClick={() => patchPrize({ requireDeposit: !(c.prize.requireDeposit ?? true) })} aria-label="Require deposit" />
+          <Toggle on={c.prize.requireDeposit ?? true} onClick={() => patchPrize({ requireDeposit: !(c.prize.requireDeposit ?? true) })} disabled={locked} aria-label="Require deposit" />
           <div>
             <div className="text-[12px] font-semibold">Require deposit (§4.2b)</div>
-            <div className="text-body-sm text-text-muted">Recruit must have deposited before prize fires</div>
+            <div className="text-body-sm text-text-muted">Anti-fraud check: the recruit must have deposited before the first-bet prize fires (not a reward for depositing)</div>
           </div>
         </div>
-        <Field label="Cap per referrer" hint="Max prizes (0 = none)" suffix="prizes" width={180} value={c.prize.capPerReferrer} onChange={(n) => patchPrize({ capPerReferrer: n })} />
+        <Field label="Cap per referrer" hint="Max prizes (0 = none)" suffix="prizes" width={180} readOnly={locked} error={fieldError("prize.capPerReferrer")} value={c.prize.capPerReferrer} onChange={(n) => patchPrize({ capPerReferrer: n })} />
       </RewardCard>
+
+      {/* Payable only: what the settings ON SCREEN would pay, then the form's one Save. */}
+      {!locked && (
+        <div className="rounded-lg border border-border bg-bg-elevated p-4">
+          <p className="font-mono text-micro uppercase eyebrow text-text-subtle">{unsaved ? "This will pay once saved" : "This will pay"}</p>
+          {check.ok ? (
+            <>
+              <p className="mt-1.5 text-body-sm font-semibold text-text">{preview.headline}</p>
+              {preview.lines.length > 0 && (
+                <ul className="mt-1.5 list-disc space-y-1 pl-5 text-body-sm text-text-secondary">
+                  {preview.lines.map((line, i) => <li key={i}>{line}</li>)}
+                </ul>
+              )}
+              {!preview.nothingPays && <p className="mt-1.5 text-body-sm text-text-muted">{preview.exposureLine}</p>}
+            </>
+          ) : (
+            <p className="mt-1.5 text-body-sm text-danger-fg">{check.reason}</p>
+          )}
+          <div className="mt-3 flex flex-wrap items-center justify-end gap-2">
+            <Button variant="ghost" size="sm" disabled={!unsaved || pending} onClick={discard}>Discard</Button>
+            {/* Disabled while nothing has changed, so it cannot pass for a save still to do — and while the
+                draft would be refused (addendum E): the reason is at the field. */}
+            <Button ref={saveRef} variant="primary" size="sm" leading={<I.check s={14} />} loading={pending} disabled={!unsaved || !check.ok} onClick={save}>Save changes</Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

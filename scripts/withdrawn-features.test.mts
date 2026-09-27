@@ -1,9 +1,11 @@
 /**
  * WITHDRAWN FEATURES — the guard that makes the withdrawal REAL rather than merely invisible.
  *
- * The bonus wallet, and the MONEY half of the player invite (`inviteRewards`), are withdrawn from the
- * player product (`src/lib/feature-state.ts`). The invite SURFACE (`invite`) has been ACTIVE and unpaid
- * since 2026-09-25; see docs/PLAYER-INVITE-UNPAID.md.
+ * The bonus wallet is withdrawn from the player product (`src/lib/feature-state.ts`), and the MONEY
+ * half of the player invite pays nothing by default: `inviteRewards` was WITHDRAWN from 2026-09-25 and
+ * since 2026-09-26 is the Owner's Payable / Not payable switch, Not payable until he acts, with
+ * `FEATURE_INVITEREWARDS` as its outer ceiling (§4 drives both directions). The invite SURFACE (`invite`)
+ * has been ACTIVE since 2026-09-25; see docs/PLAYER-INVITE-UNPAID.md.
  * Hiding surfaces is the easy half. This suite measures the two halves that actually matter:
  *
  *   LAW 1 — GATE THE OFFER, NEVER THE REFUSAL.  A feature flag may hide something we GIVE.
@@ -31,7 +33,10 @@ import { join } from "node:path";
 // ⛔ ONE HOME FOR COMMENT-STRIPPING — `test:decomment` §2.1 exists because two suites shipped
 // private four-line strippers. A note ABOUT a link must never be read as a link.
 import { decomment } from "./lib/decomment.mts";
-import { inviteIsLiveFor, bonusIsLiveFor, inviteStateFor, playerInviteRewardsLive } from "../src/lib/feature-state.ts";
+import { inviteIsLiveFor, bonusIsLiveFor, inviteStateFor, inviteRewardsCeiling } from "../src/lib/feature-state.ts";
+// ⭐ 2026-09-26 — the invite's MONEY is the Owner's switch under the `inviteRewards` ceiling;
+// `playerInviteRewardsLive()` was DELETED so every caller had to name the composition it means.
+import { playerInvitePayable, writeStoredSwitchVerified, __setInviteSwitchStoreForTests } from "../src/lib/server/invite-rewards-switch.ts";
 import { cashOutValue } from "../src/lib/server/market-service.ts";
 import { db } from "../src/lib/server/store.ts";
 import { bindRecruit, ensureAffiliateAccount, resolveReferralPreview, onRecruitBet, onRecruitSettlement } from "../src/lib/server/affiliate-service.ts";
@@ -67,7 +72,7 @@ function ok(label: string, cond: boolean, extra?: string) {
   ok("§1 invite is live for a player in good standing", inviteIsLiveFor(player));
   // ⛔ AND IT PAYS THEM NOTHING. The surface being live is not the programme being paid; these are
   // two switches now, and this is the line that says a page cannot infer one from the other.
-  ok("§1 ⛔ the PLAYER programme pays nothing — inviteRewards is WITHDRAWN", !playerInviteRewardsLive());
+  ok("§1 ⛔ the PLAYER programme pays nothing — invites are Not payable (no Owner record is stored)", !playerInvitePayable());
   ok("§1 invite is not live for a signed-out viewer", !inviteIsLiveFor(null));
   // ⭐ THE CONTROL IN THE CLOSED DIRECTION. Without it the section would pass by opening the seam
   // for everybody, which is indistinguishable from a seam that no longer decides anything.
@@ -176,12 +181,33 @@ function ok(label: string, cond: boolean, extra?: string) {
   process.env.FEATURE_INVITEREWARDS = "ACTIVE";
   process.env.FEATURE_BONUS = "ACTIVE";
   try {
-    ok("§4 the PAID player promo re-enables", playerInviteRewardsLive());
+    ok("§4 the PAID player promo re-enables — FEATURE_INVITEREWARDS=ACTIVE is the FORCED ceiling",
+      playerInvitePayable() && inviteRewardsCeiling().ceiling === "FORCED", JSON.stringify(inviteRewardsCeiling()));
     ok("§4 …and the surface is unaffected by the money switch", inviteIsLiveFor(player));
     ok("§4 bonus re-enables", bonusIsLiveFor("PLAYER"));
   } finally {
     delete process.env.FEATURE_INVITEREWARDS;
     delete process.env.FEATURE_BONUS;
+  }
+  // ⛔ THE HARD KILL, DRIVEN (2026-09-26). Since the Owner's switch arrived, the env override has a
+  // second job: `FEATURE_INVITEREWARDS=WITHDRAWN` must refuse a STORED ON record — the one thing the
+  // page itself can produce — or the kill is a word that stops nothing the Owner has started. So a
+  // sealed ON record is written to the switch's in-memory row, the CONTROL shows it pays under the
+  // shipped ceiling, and the kill must then refuse the very same row. ⭐ Restored before §5, whose
+  // legacy attribution must still be measured against the default (no row, Not payable).
+  __setInviteSwitchStoreForTests(null);
+  const storedOn = await writeStoredSwitchVerified({
+    payable: true, seq: 1, changedAt: new Date().toISOString(), changedBy: "usr_wf_owner", reason: "withdrawn-features §4 kill control",
+  });
+  try {
+    ok("§4 CONTROL · a stored ON record pays under the shipped ceiling (OWNER) — so the refusal below is the kill's",
+      storedOn.ok === true && playerInvitePayable() && inviteRewardsCeiling().ceiling === "OWNER", JSON.stringify(storedOn));
+    process.env.FEATURE_INVITEREWARDS = "WITHDRAWN";
+    ok("§4 ⛔ FEATURE_INVITEREWARDS=WITHDRAWN is the hard kill — the same stored ON record pays NOTHING",
+      !playerInvitePayable() && inviteRewardsCeiling().ceiling === "CLOSED" && inviteRewardsCeiling().source === "ENV", JSON.stringify(inviteRewardsCeiling()));
+  } finally {
+    delete process.env.FEATURE_INVITEREWARDS;
+    __setInviteSwitchStoreForTests(null); // ⭐ also empties the in-memory row: back to "never switched on"
   }
   process.env.FEATURE_INVITE = "WITHDRAWN";
   try {
@@ -193,14 +219,15 @@ function ok(label: string, cond: boolean, extra?: string) {
   // ⛔ And the override must not leak past this block, or every later assertion in any suite
   // that imports this module would be measuring the wrong state.
   ok("§4 the override is restored, not leaked",
-    inviteIsLiveFor(player) && !playerInviteRewardsLive() && !bonusIsLiveFor("PLAYER"));
+    inviteIsLiveFor(player) && !playerInvitePayable() && !bonusIsLiveFor("PLAYER"));
 }
 
 // ── §5 · ATTRIBUTION — A CODE ONLY RECRUITS IF ITS OWNER MAY REFER ─────────
 // (From 2026-09-06 to 2026-09-25 this section REFUSED every ordinary player's bind. A bind is
 // permanent (`already_bound`), and each one would start paying the day the programme returned.
-// Since 2026-09-25 the unpaid invite accepts that bind ON PURPOSE; docs/PLAYER-INVITE-UNPAID.md §12
-// says what these attributions do if `inviteRewards` is ever switched on.)
+// Since 2026-09-25 the unpaid invite accepts that bind ON PURPOSE; docs/PLAYER-INVITE-UNPAID.md §12,
+// "What happens the moment it IS switched on", says what these attributions do once the Owner makes
+// invites payable.)
 //
 // ⛔ THE REFUSAL THAT REMAINS is §5a2 (a SELF_EXCLUDED referrer binds nobody); §5c2 pins that a
 // role alone binds as PLAYER, never AGENT. §5c IS THE CONTROL: an approved agent's code still binds

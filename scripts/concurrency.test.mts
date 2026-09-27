@@ -44,8 +44,9 @@ const localDigits = new Map<string, string>();
 /**
  * Fixture user with a funded wallet. ⚠️ `role` is VESTIGIAL — no call site passes it. It existed for the
  * 2026-09-06 rule (only an agent's code recruited); since 2026-09-07 standing (`approvedAt`) decides, not
- * role, and since 2026-09-25 an ordinary PLAYER's code recruits (the unpaid invite,
- * docs/PLAYER-INVITE-UNPAID.md). §F uses a PLAYER referrer with FEATURE_INVITEREWARDS=ACTIVE; §F2 mints
+ * role, and since 2026-09-25 an ordinary PLAYER's code recruits (the invite, docs/PLAYER-INVITE-UNPAID.md —
+ * Not payable by default; since 2026-09-26 the Owner's switch decides). §F uses a PLAYER referrer with
+ * FEATURE_INVITEREWARDS=ACTIVE (the FORCED ceiling: payable with no stored record); §F2 mints
  * its agent with `approveFixtureAgent`.
  */
 async function fundedUser(id: string, balance: number, role: "PLAYER" | "AGENT" = "PLAYER"): Promise<void> {

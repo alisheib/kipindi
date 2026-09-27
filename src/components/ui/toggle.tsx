@@ -99,9 +99,10 @@ export function Toggle({
       onClick={onClick}
       /* ⛔ G-9 (2026-08-02). This control had `active:` and `focus-visible:` states and NO
          hover state at all — measured live across 374 admin controls, and the switches it
-         renders include `/admin/affiliate`'s "Program master switch" and `/admin/bonuses`'
-         "Bonus program master switch", i.e. the levers that decide whether those programmes
-         run. A consequential control that does not answer the pointer reads as inert.
+         renders include `/admin/affiliate`'s reward-mode switches and `/admin/bonuses`'
+         "Bonus program master switch", i.e. levers that decide what those programmes pay. (The
+         affiliate page's "Program master switch" is gone since 2026-09-26: whether invites pay is
+         the Owner's Payable / Not payable ceremony, which is buttons and a dialog, not this toggle.) A consequential control that does not answer the pointer reads as inert.
          The hover lives in `globals.css` as `.toggle-switch`, NOT here, because this
          component sets `background` and `border` via inline `style` and inline style beats
          any class — so the hover has to use properties the inline style does not set.

@@ -49,8 +49,9 @@ import { getTickerFeed } from "@/lib/server/ticker-feed";
 import { RealityCheckHost } from "@/components/rg/reality-check";
 import { getRgSettings } from "@/lib/server/responsible-gambling";
 import { hasRole, ADMIN_CONSOLE_ROLES, type Role } from "@/lib/server/roles";
-import { inviteIsLiveFor, playerInviteRewardsLive, installInviteIsLive, NO_VIEWER, type InviteViewer } from "@/lib/feature-state";
+import { inviteIsLiveFor, installInviteIsLive, NO_VIEWER, type InviteViewer } from "@/lib/feature-state";
 import { agentStandingFor, playerInviteEligibleFor } from "@/lib/server/affiliate-service";
+import { invitePaysPlayersNow } from "@/lib/server/invite-rewards-switch";
 import { displayLabel, displayInitials } from "@/lib/display-label";
 import { getServerT } from "@/lib/i18n-server";
 import { getPlatformConfig, maintenanceMessage } from "@/lib/server/platform-config";
@@ -71,6 +72,13 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
     return <>{children}</>;
   }
 
+  /* ⭐ THE PLAYER INVITE'S "PAID" IS READ HERE, STARTED NOW AND AWAITED AT `invitePaid` BELOW, so it
+     runs alongside the session and the batch rather than as one more sequential round trip on every
+     page. `invitePaysPlayersNow` (review P8, 2026-09-26): the Owner's switch through the screens' read
+     (≤ 10 s cache: at most one `SystemConfig` read per container per 10 s), the service-level pause off
+     and a reward actually armed — "Make payable → Nothing yet" is NOT paid here. The settings are
+     re-read only once the switch says payable. It never rejects — a failed read answers not paid. */
+  const invitePayableRead = invitePaysPlayersNow().catch(() => false);
   const session = await getSession();
   // ── 🔴 E-381 · A SESSION THAT HAS ENDED — HOW THE ROOT LAYOUT MAY ANSWER IT, AND HOW IT MAY NOT.
   //
@@ -307,10 +315,10 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
      dashboard · your recruits and commission" in gilt: two doors to one page describing two
      different programmes.
      ⛔ So the question this answers is "does THIS viewer's invite destination pay?" — the player
-     programme's product state, OR an approved agent's standing. `playerInviteRewardsLive()` keeps
-     its contract (no viewer, player programme only); the disjunction lives here, at the one place
-     that already knows the viewer. */
-  const invitePaid = playerInviteRewardsLive() || inviteViewer.agentInGoodStanding;
+     programme's one "paid" (`invitePaysPlayersNow`: the Owner's switch under its code/env ceiling, Not
+     payable by default, AND a reward armed), OR an approved agent's standing. The switch keeps its contract (no viewer, player programme only);
+     the disjunction lives here, at the one place that already knows the viewer. */
+  const invitePaid = (await invitePayableRead) || inviteViewer.agentInGoodStanding;
 
   /**
    * 🔴 THE AGENT DOOR IS RESOLVED HERE FOR THE REASON THE COMMENT ABOVE ALREADY GIVES.

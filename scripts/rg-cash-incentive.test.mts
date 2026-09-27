@@ -133,7 +133,8 @@ const HOUR = 3_600_000;
   // player-promo prize is a PLAYER referrer with the promo ON: the same env override
   // `withdrawn-features` §4 uses to keep the dormant path executable, restored in a `finally`.
   // ⭐ AND SINCE 2026-09-25 THE MONEY NEEDS ITS OWN OVERRIDE. The surface is ACTIVE by default now,
-  // but the player promo PAYS NOTHING (`inviteRewards` WITHDRAWN) — and this section is about what
+  // but the player promo PAYS NOTHING until the Owner makes invites payable (the Owner's switch since
+  // 2026-09-26; `FEATURE_INVITEREWARDS=ACTIVE` below is the FORCED ceiling) — and this section is about what
   // happens to a cash incentive when the referrer is in a cooling-off break. With the money off
   // there is no incentive to hold, "no cash" would be true for a reason that has nothing to do
   // with responsible gambling, and the HELD row this guard exists for would never be written.

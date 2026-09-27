@@ -360,7 +360,39 @@ if (LOCAL) {
    *
    * ⚠️ A 200 IS NOT A RENDER — measured, and recorded in `invite/page.tsx`'s own note: Next's
    * `notFound()` renders the not-found BODY at 200 here. So this asserts on CONTENT, never a status.
+   *
+   * ⭐ 2026-09-26 — AND WHETHER THE INVITE PAYS IS NOW THE OWNER'S SWITCH (/admin/affiliate, "Payable /
+   * Not payable"), so the MONEY half is asked of the SERVER instead of assumed: GET /api/health →
+   * `inviteRewards.paying`. ⛔ PAYING, NOT PAYABLE (review P8, 2026-09-26): after "Make payable → Nothing yet"
+   * the switch says payable with every reward off, and every player surface — this page included — then says
+   * nothing about money; `paying` is that one player-facing answer, and `payable` is only the switch. The
+   * unpaid assertions run only while `paying` is `false`; while it is `true` the paid promo belongs on this
+   * page, so they are SKIPPED — printed with the reason, never passed. ⛔ A missing or malformed field is the
+   * health contract changing, and it FAILS rather than let this block guess. The SHARE half is asserted in
+   * both states: a paid invite still hands the player a link.
    */
+  const inviteState = await (async () => {
+    let status = 0, body = null, err = "";
+    try {
+      const r = await fetch(BASE + "/api/health", { headers: { accept: "application/json" } });
+      status = r.status;
+      body = await r.json().catch(() => null);
+    } catch (e) { err = String(e?.message ?? e); }
+    const ir = body && typeof body === "object" ? body.inviteRewards : undefined;
+    const payable = ir && typeof ir === "object" ? ir.payable : undefined;
+    const paying = ir && typeof ir === "object" ? ir.paying : undefined;
+    const ceiling = ir && typeof ir === "object" ? ir.ceiling : undefined;
+    const shapeOk = typeof payable === "boolean" && typeof paying === "boolean" && ["FORCED", "OWNER", "CLOSED"].includes(ceiling);
+    // A FORCED ceiling always pays and a CLOSED one never does, and nothing is PAID unless the switch is
+    // payable; a body saying otherwise is broken too.
+    const agrees = shapeOk && !(ceiling === "CLOSED" && payable) && !(ceiling === "FORCED" && !payable) && !(paying && !payable);
+    const detail = err ? `(GET /api/health failed: ${err})`
+      : !shapeOk ? `(HTTP ${status}; inviteRewards = ${JSON.stringify(ir ?? null)} — the health contract changed: expected { payable: boolean, paying: boolean, ceiling: "FORCED" | "OWNER" | "CLOSED" })`
+      : !agrees ? `(inviteRewards = ${JSON.stringify(ir)} — payable=${payable}, paying=${paying} under a ${ceiling} ceiling cannot all be true)`
+      : `(payable=${payable}, paying=${paying}, ceiling=${ceiling})`;
+    return { ok: shapeOk && agrees, paying: shapeOk && agrees ? paying : null, detail };
+  })();
+  ok(`/api/health states whether a player invite is paid (inviteRewards.paying, .payable, .ceiling)`, inviteState.ok, inviteState.detail);
   await page.goto(BASE + "/profile/invite", { waitUntil: "domcontentloaded" }); await page.waitForTimeout(400);
   const inv = await page.locator("body").innerText();
   // 🔴 THIS ASSERTED `/50PICK-/` AND COULD NEVER PASS. That is the AGENT prefix
@@ -390,18 +422,26 @@ if (LOCAL) {
      JSON.stringify(refLink).slice(0, 200));
   // ⛔ THE MONEY HALF. Every one of these is a sentence the PAID promo prints and the unpaid one
   // must not: the earned tile's label, the prize amount, the milestone wording, a commission rate,
-  // and the bonus-requirements list. If `inviteRewards` is ever flipped on without this block being
-  // revisited, it goes red here rather than on a player's screen.
+  // and the bonus-requirements list. They run only while the server says invites PAY nothing
+  // (`inviteState.paying` above — "Make payable → Nothing yet" included): an Owner who arms a reward turns
+  // them into a printed SKIP, and a page that pays while the server says it does not still goes red here.
   // WARN: THE WORD BOUNDARIES ARE A CHARACTER CLASS, NOT a backslash-b, DELIBERATELY. A regex
   // word boundary written into this repo through a patch tool has been corrupted into a literal
   // 0x08 BACKSPACE before (agent branch, 2026-09-07): the regex then matches nothing, the
   // negation is always true, and the assertion reads GREEN while testing nothing. `cat -v` or
   // `od -c` shows it; grep, sed and an editor do not. This form cannot be mangled that way.
-  ok(`invite shows NO earned figure`, !/(^|[^A-Za-z])Earned([^A-Za-z]|$)/i.test(inv) && !/(^|[^A-Za-z])Pato([^A-Za-z]|$)/i.test(inv), inv.slice(0, 200));
-  ok(`invite has NO prize amount or milestone line`, !/10,000/.test(inv) && !/first bet/i.test(inv), inv.slice(0, 200));
-  ok(`invite has NO commission line`, !inv.includes("50%") && !/%\s*of your friends/i.test(inv));
-  ok(`invite has NO deposit-bonus line`, !/bonus on each/i.test(inv) && !/bonus requirements/i.test(inv));
-  ok(`invite says plainly that it pays nothing`, /no reward for invites|hailipi zawadi|不为邀请支付/i.test(inv), inv.slice(-220));
+  if (inviteState.ok && inviteState.paying === false) {
+    ok(`invite shows NO earned figure`, !/(^|[^A-Za-z])Earned([^A-Za-z]|$)/i.test(inv) && !/(^|[^A-Za-z])Pato([^A-Za-z]|$)/i.test(inv), inv.slice(0, 200));
+    ok(`invite has NO prize amount or milestone line`, !/10,000/.test(inv) && !/first bet/i.test(inv), inv.slice(0, 200));
+    ok(`invite has NO commission line`, !inv.includes("50%") && !/%\s*of your friends/i.test(inv));
+    ok(`invite has NO deposit-bonus line`, !/bonus on each/i.test(inv) && !/bonus requirements/i.test(inv));
+    ok(`invite says plainly that it pays nothing`, /no reward for invites|hailipi zawadi|不为邀请支付/i.test(inv), inv.slice(-220));
+  } else {
+    console.log(`  ⚠ SKIP  the invite's 5 UNPAID checks (no earned figure, no prize, no commission, no bonus list, the "pays nothing" line) — ${
+      inviteState.ok
+        ? "/api/health says inviteRewards.paying = true: an invite PAYS, so the paid promo belongs on this page"
+        : "the paying state is unknown (the /api/health check above FAILED)"} ${inviteState.detail}. NOT measured by this run.`);
+  }
   ok(`invite no error overlay`, !(await hasErrorOverlay(page)));
 
   // Card-body click opens the market detail WITH NO side preselected (like the

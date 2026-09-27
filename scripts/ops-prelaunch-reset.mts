@@ -55,6 +55,12 @@
  *   SystemConfig rows that are USER data, not rules: chat.daily.usr_* (5),
  *     bootstrap.login_promoted:+255* (2), email.suppression (test addresses that would
  *     silently block mail at launch), and test.overrides (dead key, no readers in src/).
+ *   invite.rewards.switch — the Owner's Payable / Not payable switch (2026-09-26). DELETED,
+ *     never kept: it is a sealed record of an ACT, not a rule, and its COMPLIANCE rows live
+ *     in the AuditLog this reset wipes. Kept, it would leave invites PAYABLE on day one with
+ *     the record of who made them payable, and why, erased. Deleted, invites read "Never
+ *     switched on" (Not payable) and the Owner repeats the ceremony, which writes its
+ *     COMPLIANCE row into the new chain.
  *
  * ⛔ THE AUDIT LOG IS A DELIBERATE DOCTRINE OVERRIDE. `docs/DATA-RETENTION.md` §3 says the
  * HMAC chain is on no deletion path, and it is right: deleting any row breaks the chain,
@@ -137,7 +143,10 @@ const CONFIG_ZERO: Record<string, string> = {
 
 // Config rows that are user data or dead keys — deleted outright.
 // Patterns, because the user-scoped ones carry an id in the key.
-const CONFIG_DROP_PATTERNS = [/^chat\.daily\./, /^bootstrap\.login_promoted:/, /^test\.overrides$/];
+// ⛔ `invite.rewards.switch` (2026-09-26) is here and NOT in CONFIG_KEEP: the reset deletes the whole
+// AuditLog, and that is where the switch's COMPLIANCE rows (who made invites payable, and why) live.
+// A switch that survived the reset would keep paying with its paper trail gone. See the header.
+const CONFIG_DROP_PATTERNS = [/^chat\.daily\./, /^bootstrap\.login_promoted:/, /^test\.overrides$/, /^invite\.rewards\.switch$/];
 
 // ── argv ───────────────────────────────────────────────────────────────────
 const argv = process.argv.slice(2);
@@ -683,9 +692,10 @@ async function execute(keep: { ids: string[]; rows: any[] }, unknownConfig: stri
     ["ai_usage_daily → {}", `UPDATE "SystemConfig" SET value='{}'::jsonb, "updatedAt"=now() WHERE key='ai_usage_daily'`],
     ["email.suppression → []", `UPDATE "SystemConfig" SET value='[]'::jsonb, "updatedAt"=now() WHERE key='email.suppression'`],
     [
-      "drop per-user + dead config keys",
+      "drop per-user + dead config keys + the invite payment switch",
       `DELETE FROM "SystemConfig"
-        WHERE key LIKE 'chat.daily.%' OR key LIKE 'bootstrap.login_promoted:%' OR key='test.overrides'`,
+        WHERE key LIKE 'chat.daily.%' OR key LIKE 'bootstrap.login_promoted:%' OR key='test.overrides'
+           OR key='invite.rewards.switch'`,
     ],
 
     // 9 ── AI cost history and the audit chain.
@@ -968,6 +978,10 @@ async function assertions(keepIds: string[], base: Baseline) {
     `SELECT count(*)::int n FROM "SystemConfig" WHERE key LIKE 'chat.daily.%' OR key LIKE 'bootstrap.login_promoted:%' OR key='test.overrides'`
   );
   c.push({ name: "per-user config keys gone", ok: leaked === 0, got: `${leaked}` });
+  // ⛔ The Owner's invite payment switch must not outlive the AuditLog that recorded it (see the header):
+  // after the reset invites are Not payable ("Never switched on") until the Owner's ceremony runs again.
+  const inviteSwitch = await g(`SELECT count(*)::int n FROM "SystemConfig" WHERE key='invite.rewards.switch'`);
+  c.push({ name: "invite payment switch gone (Not payable until the Owner acts again)", ok: inviteSwitch === 0, got: `${inviteSwitch}` });
 
   const hp = await one(`SELECT value FROM "SystemConfig" WHERE key='house.pool.state'`);
   c.push({

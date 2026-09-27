@@ -16,10 +16,47 @@
 
 const BASE = process.env.BASE ?? "http://localhost:3210";
 
-let pass = 0, fail = 0;
+let pass = 0, fail = 0, skipped = 0;
+const skippedWhy = [];
 function ok(label, cond, extra) {
   if (cond) { pass++; console.log(`  ok   ${label}`); }
   else { fail++; console.log(`  FAIL ${label}${extra ? ` — ${extra}` : ""}`); }
+}
+/** ⛔ A check this run could not make is SKIPPED — printed with its reason and counted, never a pass. */
+function skip(label, why, n = 1) {
+  skipped += n;
+  skippedWhy.push(label);
+  console.log(`  SKIP ${label} — ${why}`);
+}
+
+/**
+ * ⭐ DOES A PLAYER INVITE PAY RIGHT NOW? Since 2026-09-26 that is the Owner's switch on /admin/affiliate, so it is
+ * asked of the server — GET /api/health → `inviteRewards: { payable, paying, ceiling }` — never assumed.
+ * ⛔ The drive branches on `paying`, NOT `payable` (review P8, 2026-09-26): after "Make payable → Nothing yet"
+ * the switch says payable with every reward off, and every player surface then says nothing about money.
+ * ⛔ A missing or malformed field is the health CONTRACT changing, and §H FAILS on it: guessing would hold a paid
+ * page to unpaid expectations (red for no reason) or skip them on an unpaid one (green for no reason).
+ */
+async function inviteRewardsFromHealth() {
+  let status = 0, body = null, err = "";
+  try {
+    const res = await fetch(`${BASE}/api/health`, { headers: { accept: "application/json" } });
+    status = res.status;
+    body = await res.json().catch(() => null);
+  } catch (e) { err = String(e?.message ?? e); }
+  const ir = body && typeof body === "object" ? body.inviteRewards : undefined;
+  const payable = ir && typeof ir === "object" ? ir.payable : undefined;
+  const paying = ir && typeof ir === "object" ? ir.paying : undefined;
+  const ceiling = ir && typeof ir === "object" ? ir.ceiling : undefined;
+  const shapeOk = typeof payable === "boolean" && typeof paying === "boolean" && ["FORCED", "OWNER", "CLOSED"].includes(ceiling);
+  // A FORCED ceiling always pays and a CLOSED one never does, and nothing is PAID unless the switch is payable;
+  // a body saying otherwise is broken too.
+  const agrees = shapeOk && !(ceiling === "CLOSED" && payable) && !(ceiling === "FORCED" && !payable) && !(paying && !payable);
+  const detail = err ? `GET /api/health failed: ${err}`
+    : !shapeOk ? `HTTP ${status}; inviteRewards = ${JSON.stringify(ir ?? null)} — the health contract changed (expected { payable: boolean, paying: boolean, ceiling: "FORCED" | "OWNER" | "CLOSED" })`
+    : !agrees ? `inviteRewards = ${JSON.stringify(ir)} — payable=${payable}, paying=${paying} under a ${ceiling} ceiling cannot all be true`
+    : `payable=${payable}, paying=${paying}, ceiling=${ceiling}`;
+  return { ok: shapeOk && agrees, paying: shapeOk && agrees ? paying : null, detail };
 }
 
 /** Sign in as the demo player and keep the session cookie. */
@@ -59,6 +96,18 @@ console.log(`\nwithdrawn-render-drive — ${BASE}\n`);
   ok("§0 CONTROL · the session is authed (not the login page)", !html.includes("/auth/login?next="), "redirected to login");
 }
 
+// ── §H · WHICH INVITE IS THIS SERVER SHOWING — asked, never assumed ─────────
+// ⭐ The UNPAID assertions in §1 and §2 run only while this says `paying: false` ("Make payable → Nothing yet"
+// included). While it says `true` the paid promo legitimately carries money words, so those checks are SKIPPED
+// and counted; the share-surface checks run either way. ⚠️ `paying` is the screens' read (≤ 10 s cache) — the
+// same one the player pages render from.
+const invite = await inviteRewardsFromHealth();
+ok("§H /api/health states whether a player invite is paid (inviteRewards.paying, .payable, .ceiling)", invite.ok, invite.detail);
+const unpaid = invite.ok && invite.paying === false;
+const unpaidSkipWhy = invite.ok
+  ? `the server says an invite PAYS (${invite.detail}) — money words belong on the paid page`
+  : "the paying state is unknown — §H FAILED";
+
 // ── §1 · THE INVITE ENTRY POINT IS BACK, AND IT PROMISES NOTHING ───────────
 // 🔴 INVERTED 2026-09-25. This section asserted that no player surface links to
 // `/profile/invite`, which was the product from 2026-09-06 until the unpaid invite opened. The
@@ -96,14 +145,24 @@ console.log(`\nwithdrawn-render-drive — ${BASE}\n`);
        * this drive can hold the words to account — and it does it as a DELTA: the unpaid words must
        * be PRESENT here, which is what makes their absence elsewhere mean anything. The client
        * chrome's own label is NOT measured by this drive, nor by `qa:agent-drive` §6 — see the note above.
+       * ⚠️ 2026-09-26 — THE PAIR RUNS ONLY WHILE §H SAYS NOTHING IS PAID. Once the Owner arms a reward, a
+       * money word on a player surface can be the product; the pair is then SKIPPED with the reason, not passed.
        */
-      ok(`§1 ${path} ⭐ the row wears the UNPAID words`,
-        /Invite friends|Alika marafiki|邀请朋友/.test(html),
-        "the server-rendered invite row does not say 'Invite friends'");
+      if (unpaid) {
+        ok(`§1 ${path} ⭐ the row wears the UNPAID words`,
+          /Invite friends|Alika marafiki|邀请朋友/.test(html),
+          "the server-rendered invite row does not say 'Invite friends'");
+      } else {
+        skip(`§1 ${path} ⭐ the row wears the UNPAID words`, unpaidSkipWhy);
+      }
     }
-    ok(`§1 ${path} ⛔ no surface says "& Earn" / "upate zawadi" / "赚钱"`,
-      !/Invite &amp; Earn|Invite & Earn|upate zawadi|邀请赚钱/.test(html),
-      "a surface still advertises earnings");
+    if (unpaid) {
+      ok(`§1 ${path} ⛔ no surface says "& Earn" / "upate zawadi" / "赚钱"`,
+        !/Invite &amp; Earn|Invite & Earn|upate zawadi|邀请赚钱/.test(html),
+        "a surface still advertises earnings");
+    } else {
+      skip(`§1 ${path} ⛔ no surface says "& Earn" / "upate zawadi" / "赚钱"`, unpaidSkipWhy);
+    }
   }
 }
 
@@ -129,15 +188,21 @@ console.log(`\nwithdrawn-render-drive — ${BASE}\n`);
   ok("§2 /profile/invite renders 200 for a player", status === 200, `status=${status}`);
   ok("§2 a referral QR is drawn", /data:image\/(png|gif);base64/.test(html));
   ok("§2 a referral link is built", /register\?ref=/.test(html));
-  // ⛔ THE MONEY HALF — every sentence the PAID promo prints and this one must not. If
-  // `inviteRewards` is ever switched on without this drive being revisited, it fails here.
-  ok("§2 ⛔ no earnings figure", !/&gt;Earned&lt;|>Earned</.test(html));
-  ok("§2 ⛔ no prize amount or milestone copy", !/10,000/.test(html) && !/first bet/i.test(html));
-  ok("§2 ⛔ no bonus-requirements list", !/Bonus requirements|Masharti ya bonasi/i.test(html));
-  ok("§2 ⛔ no gilt corner on the share card (gold is money — DESIGN_AUTHORITY §M3)",
-    !/GiltCorner|gold-700/.test(html));
-  ok("§2 ⭐ it states plainly that invites pay nothing",
-    /no reward for invites|hailipi zawadi|不为邀请支付/.test(html), "the disclaimer line is missing");
+  // ⛔ THE MONEY HALF — every sentence the PAID promo prints and this one must not. They run only while
+  // §H says nothing is PAID (`paying: false`, 2026-09-26: the Owner's switch and an armed reward). Paying, they
+  // are SKIPPED and counted; a page that prints money while the server says nothing is paid still fails here.
+  if (unpaid) {
+    ok("§2 ⛔ no earnings figure", !/&gt;Earned&lt;|>Earned</.test(html));
+    ok("§2 ⛔ no prize amount or milestone copy", !/10,000/.test(html) && !/first bet/i.test(html));
+    ok("§2 ⛔ no bonus-requirements list", !/Bonus requirements|Masharti ya bonasi/i.test(html));
+    ok("§2 ⛔ no gilt corner on the share card (gold is money — DESIGN_AUTHORITY §M3)",
+      !/GiltCorner|gold-700/.test(html));
+    ok("§2 ⭐ it states plainly that invites pay nothing",
+      /no reward for invites|hailipi zawadi|不为邀请支付/.test(html), "the disclaimer line is missing");
+  } else {
+    skip("§2 the money half (no earnings figure · no prize or milestone · no bonus list · no gilt · the \"pays nothing\" line)",
+      unpaidSkipWhy, 5);
+  }
 }
 
 // ── §3 · NO BONUS SURFACE ON THE WALLET ────────────────────────────────────
@@ -178,6 +243,7 @@ console.log(`\nwithdrawn-render-drive — ${BASE}\n`);
     new Set(refs).size === 1, [...new Set(refs)].slice(0, 3).join(" "));
 }
 
-console.log(`\n${pass} passed · ${fail} failed`);
+console.log(`\n${pass} passed · ${fail} failed${skipped ? ` · ${skipped} SKIPPED` : ""}`);
+if (skipped) console.log(`⚠️  NOT measured by this run (${unpaidSkipWhy}):\n${skippedWhy.map((s) => `  · ${s}`).join("\n")}`);
 if (pass === 0) { console.log("⛔ 0 passed — a zero-assertion run is a SKIPPED run, never a green one."); process.exit(1); }
 process.exit(fail === 0 ? 0 : 1);
