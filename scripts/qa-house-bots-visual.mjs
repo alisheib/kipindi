@@ -46,9 +46,12 @@
  *  10. on a SORTED address of every desk table (step 9 — Ali: every desk table sorts, and none can grow past a page):
  *      in each table the address sorts, exactly ONE header in force — the one it asked for, in the direction it asked
  *      — every visible sort control at the tap floor (a ledger's header row is hidden below `sm` BY DESIGN, and there
- *      the order note must say the order instead), and NO sideways scroll of the page itself, with a control. The desk's
- *      sorted addresses join the derived population; the account page's are added once an account id is read off the
- *      served roster's own way-out link (NOT MEASURED when the roster has none).
+ *      the order note must say the order AND the ledger's phone sort rail must be shown in the header row's place, with
+ *      exactly one chip in force — the column asked for, in the direction asked, by its arrow and by the visually hidden
+ *      words a screen reader hears — and every chip at the tap floor; from `sm` up that rail must NOT be shown, and
+ *      over an empty table it must not be drawn at all), and NO sideways scroll of the page itself, with a control. The desk's sorted addresses join the derived population; the account page's
+ *      are added once an account id is read off the served roster's own way-out link (NOT MEASURED when the roster has
+ *      none).
  *
  * ⛔ NO POSTGRES OR NO SERVER IS A FAILURE, NOT A SKIP (exit 3, NOT MEASURED) — a visual gate that skips silently is
  * the "not applicable" verdict this programme has paid for twice.
@@ -101,10 +104,13 @@ const DERIVED_ROUTES = consoleRoutesFromSource();
  * `aria-sort`, and — for a ledger, whose header row is hidden below `sm` — the order note that must say it instead.
  * ⛔ THE TOKENS ARE TYPED HERE, and that is safe by construction: a token that rots is REFUSED by the page, which then
  * puts its own order in force — a different word, or none — and the "the header the address asked for" check goes red.
+ * ⭐ A LEDGER ALSO NAMES ITS PHONE SORT RAIL (2026-09-27, Ali: "a phone sort button"): below `sm`, where the header row is
+ * hidden, the kit's card sort rail (`data-filter-rail` = `rail`) is the control, and from `sm` up it must be gone — one
+ * control for one thing on one screen.
  */
 const SORTED_DESK = {
   "rsort=status&rdir=asc": [{ region: "Desk roster", label: "Status", dir: "ascending" }],
-  "tab=activity&sort=stake&dir=asc": [{ region: "Desk activity", label: "Stake", dir: "ascending", note: "Smallest stake first, then newest first." }],
+  "tab=activity&sort=stake&dir=asc": [{ region: "Desk activity", label: "Stake", dir: "ascending", note: "Smallest stake first, then newest first.", rail: "desk-activity-sort" }],
   "tab=history&hsort=account&hdir=asc": [{ region: "Desk history", label: "Account", dir: "ascending" }],
   "tab=results&daysort=stakes-placed&daydir=asc&acctsort=today": [
     { region: "Results by day", label: "Stakes placed", dir: "ascending" },
@@ -112,7 +118,7 @@ const SORTED_DESK = {
   ],
 };
 const SORTED_ACCOUNT = {
-  "tab=activity&sort=outcome&dir=asc": [{ region: "Account activity", label: "Outcome", dir: "ascending", note: "By outcome, queued first, then newest first." }],
+  "tab=activity&sort=outcome&dir=asc": [{ region: "Account activity", label: "Outcome", dir: "ascending", note: "By outcome, queued first, then newest first.", rail: "account-activity-sort" }],
   "tab=targets&tsort=poll&tdir=asc": [{ region: "Account targets", label: "Poll", dir: "ascending" }],
   "tab=history&hdir=asc": [{ region: "Account history", label: "When (EAT)", dir: "ascending" }],
 };
@@ -720,8 +726,8 @@ try {
       /* ⭐ §5.10 · A SORTED ADDRESS, READ OFF THE SERVED PAGE (step 9, 2026-09-26). Before §5.7 touches anything: the page
          is measured as painted. For every table the address sorts — exactly ONE header in force, the one asked for, in
          the direction asked; every visible sort control at the tap floor (and where the header row is hidden by design,
-         below `sm` on a ledger, the order note says the order instead); and the PAGE does not scroll sideways — with a
-         control that makes it. */
+         below `sm` on a ledger, the order note says the order and the ledger's phone sort rail is the control instead —
+         shown there, and only there); and the PAGE does not scroll sideways — with a control that makes it. */
       const sortedSpec = sortedSpecFor(route);
       if (sortedSpec) {
         const sorted = await p.evaluate((spec) => {
@@ -741,7 +747,29 @@ try {
             const short = links.filter((a) => a.getBoundingClientRect().height < tapMin - 0.5).map((a) => `${Math.round(a.getBoundingClientRect().height)}px:${(a.textContent ?? "").trim().slice(0, 16)}`);
             const noteShown = s.note ? [...document.querySelectorAll("p")].some((el) => shown(el) && (el.textContent ?? "").trim() === s.note) : null;
             const empty = table.querySelector(":scope > tbody > tr[data-table-empty]") !== null;
-            return { ...s, found: true, sortable: heads.length, shownSortable: shownHeads.length, inForce, theadShown, links: links.length, short, noteShown, empty };
+            /* ⭐ THE PHONE SORT RAIL, for a ledger that names one (2026-09-27): whether it is in the page at all, whether it is
+               SHOWN, its chips, the ones in force — by word and arrow — and every shown chip under the tap floor. A rail
+               missing from the markup is `present: false`, never the same answer as a rail hidden by its breakpoint. */
+            const railEl = s.rail ? document.querySelector(`[data-filter-rail="${s.rail}"]`) : null;
+            const chips = railEl ? [...railEl.querySelectorAll("a[href]")] : [];
+            /* ⭐ A CHIP'S SEEN TEXT AND ITS SAID TEXT ARE READ APART (2026-09-27). The chip in force carries its direction as
+               visually hidden words (the kit's `sr-only`) for a screen reader — the header row that says it through
+               `aria-sort` is not drawn here — so `textContent` is "Stake↑ ascending". The word and arrow are read with
+               those words taken out, and the words themselves are read on their own: they must be the direction asked. */
+            const saidIn = (a) => [...a.querySelectorAll(".sr-only")].map((el) => (el.textContent ?? "").trim());
+            const seenIn = (a) => [...a.querySelectorAll(".sr-only")].reduce((t, el) => t.replace(el.textContent ?? "", ""), a.textContent ?? "");
+            const rail = s.rail ? {
+              present: railEl !== null,
+              shown: railEl !== null && shown(railEl),
+              chips: chips.length,
+              inForce: chips.filter((a) => a.getAttribute("aria-current") === "page").map((a) => {
+                const text = seenIn(a);
+                return { word: text.replace(/[↑↓]/g, "").replace(/\s+/g, " ").trim(), arrow: text.includes("↑") ? "ascending" : text.includes("↓") ? "descending" : null, said: saidIn(a) };
+              }),
+              saidOff: chips.filter((a) => a.getAttribute("aria-current") !== "page").flatMap(saidIn),
+              short: chips.filter((a) => shown(a) && a.getBoundingClientRect().height < tapMin - 0.5).map((a) => `${Math.round(a.getBoundingClientRect().height)}px:${seenIn(a).trim().slice(0, 16)}`),
+            } : null;
+            return { ...s, found: true, sortable: heads.length, shownSortable: shownHeads.length, inForce, theadShown, links: links.length, short, noteShown, empty, rail };
           });
           /* ⛔ NOT `document.documentElement.scrollWidth`: the console clips horizontal overflow, so the document never
              scrolls and that number could not fail — its own control proved it on this check's first served run (red at
@@ -778,13 +806,37 @@ try {
                screen to measure, and the ledger branch below would misread it as the phone stack. The order itself is held
                by `test:house-bot-console` on both stores; seeding rows for this table is what would measure it here. */
             nm(`§5.10 ${route} @${width} · ${t.region} · the header row's sort controls`, "the table is empty, so the kit hides its header row — no sort control is on screen (the order is held by test:house-bot-console on both stores)");
+            /* ⛔ AND NO PHONE RAIL EITHER: the rail stands in for the header row, so where the kit hides the one the page
+               draws neither — a sort control over nothing is a control with nothing behind it. */
+            if (t.rail) {
+              ok(`§5.10 ${route} @${width} · step 9 · ${t.region} · an empty table draws no phone sort rail either — the rail stands in for the header row, which the kit hides over an empty table`,
+                t.rail.present === false, JSON.stringify(t.rail));
+            }
           } else if (t.theadShown) {
             ok(`§5.10 ${route} @${width} · step 9 · ${t.region} · every sort control on the header row reaches the ${sorted.tapMin}px tap floor`,
               t.shownSortable >= 1 && t.links === t.shownSortable && t.short.length === 0, `${t.links} of ${t.shownSortable} shown sort controls · short: ${t.short.join(" | ")}`);
+            /* ⛔ ONE CONTROL FOR ONE THING ON ONE SCREEN: where the header row is the control, the ledger's phone rail is in the
+               markup (its chips counted, so an absent rail cannot pass as a hidden one) and NOT shown. */
+            if (t.rail) {
+              ok(`§5.10 ${route} @${width} · step 9 · ${t.region} · the header row is the sort control at this width, so the phone sort rail is in the page but NOT shown beside it — one control for one thing on one screen`,
+                t.rail.present && !t.rail.shown && t.rail.chips >= 3, JSON.stringify(t.rail));
+            }
           } else {
             /* A ledger's header row is hidden below `sm` BY DESIGN (the row is a stack) — so the order is SAID, not drawn. */
             ok(`§5.10 ${route} @${width} · step 9 · ${t.region} · the header row is hidden here by design, and the order note says the order in force instead`,
               t.note !== undefined && t.noteShown === true, JSON.stringify({ note: t.note, noteShown: t.noteShown }));
+            /* ⭐ …AND THE ORDER CAN BE CHANGED HERE TOO (2026-09-27, Ali: "a phone sort button"). The header row's controls
+               stand above the table as the kit's card sort rail: shown, exactly ONE chip in force — the column the address
+               asked for, in the direction it asked — and every chip at the tap floor. A hidden header row with no rail
+               shown fails here, which is the defect this was built against. The direction is read twice: the arrow a
+               sighted officer sees, and the visually hidden words a screen reader hears (no `aria-sort` is drawn here to
+               say it) — the same word, on the chip in force and on no other. */
+            ok(`§5.10 ${route} @${width} · step 9 · ${t.region} · where the header row is hidden the phone sort rail is shown in its place — exactly ONE chip in force, the column the address asked for in the direction it asked, by its arrow AND in words a screen reader reads — and every chip reaches the ${sorted.tapMin}px tap floor`,
+              !!t.rail && t.rail.shown && t.rail.chips >= 3 && t.rail.inForce.length === 1
+                && t.rail.inForce[0].word === t.label && t.rail.inForce[0].arrow === t.dir
+                && t.rail.inForce[0].said.length === 1 && t.rail.inForce[0].said[0] === t.dir && t.rail.saidOff.length === 0
+                && t.rail.short.length === 0,
+              JSON.stringify(t.rail));
           }
         }
         ok(`§5.10 ${route} @${width} · step 9 · nothing on the sorted page runs past the viewport's right edge at this width`,

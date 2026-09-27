@@ -102,8 +102,8 @@ The account page's ledger has the same shape in eight columns. Below `sm` it is 
 5. **D19/D20 stand.** House bots are never public — not to players, not to the holder — and are ordinary players in
    every report.
 
-**Suite floors — a lower count is a regression, not drift:** console **1063 memory / 782 Postgres** (2026-09-27, step 9 integrated) · reports **251 / 80** (step 4: c6c637c1's census sample classified and pinned) · comms **52 / 50** ·
-engine **829 / 810** (step 6) · ops **100 / 104** (step 7) · money **132 / 150**. **Declared mutations:** console 450 (340 + step 1's 8 + step 3's 25 + step 4's 27 + step 6's 12 + step 10's 8 + step 9's 30, 2026-09-27) · engine 104 (80 + step 5's 21 + step 6's 3) · money 56 + seam 7 ·
+**Suite floors — a lower count is a regression, not drift:** console **1105 memory / 804 Postgres** (2026-09-27, the phone sort rail + FS-09 integrated) · reports **251 / 80** (step 4: c6c637c1's census sample classified and pinned) · comms **52 / 50** ·
+engine **829 / 810** (step 6) · ops **100 / 104** (step 7) · money **133 / 151** (2026-09-27, printed on the integrated tree). **Declared mutations:** console 484 (340 + step 1's 8 + step 3's 25 + step 4's 27 + step 6's 12 + step 10's 8 + step 9's 30 + the phone rail's 10 + FS-09's 24, 2026-09-27) · engine 104 (80 + step 5's 21 + step 6's 3) · money 56 + seam 7 ·
 c5 100 (99 primaries; step 8 added 3) — all resolve exactly once (`test:red-anchors` §3, 2026-09-26).
 
 ## 0b · ▶ WHAT IS OPEN
@@ -118,7 +118,13 @@ Nothing here blocks betting, and nothing is in development — §0c's build orde
   `test:red-anchors` §3 first (the tool does). ⛔ A red runner rewrites tracked files — never in a tree anyone edits.
   The whole drives so far: 579/579 (2026-09-26, §12.5) and **716/716 caught** at `9a647397` (c5 99 · console 450 · engine 104 · money + seam 63; 0 missed, 0 stale, 0 files left dirty) (2026-09-27, §12.14).
 - **(f) A house account label that is also a person's name** is in public git history (`cc211981`, 2026-09-24); it is
-  gone from the tip. Rewriting history is Ali's decision alone.
+  gone from the tip. ✅ **DECIDED 2026-09-27 under Ali's delegation** (*"decide as per what the architecture of the
+  platform requires"*): **history is NOT rewritten.** A rewrite means force-pushing `main`, which this repository's
+  push rule forbids for a reason — a dozen worktrees and parallel sessions build on it, and every one would be orphaned
+  — and it would not remove the name anyway: the repository is public, so clones, forks and GitHub's cached commit
+  pages keep the old commits. The exposure is one label in one plans file, with no credential, no money figure and no
+  holder record. If the exposure ever has to go to zero, the architectural answer is making the repository private
+  (Ali's call on GitHub, checked first against Railway's deploy access) — never a rewrite.
 
 **NOT OURS — report, never fix:**
 - `test:red-anchors` is red on clean `main`: two rotted anchors in other lanes' files (`bar-geometry` →
@@ -177,17 +183,20 @@ the step instructions are in git (this file at `9a647397`). ⛔ Nothing here is 
 | 9 | Every desk table sorts, and none can grow past a page (Ali's ask) | §7.1c, §12.13 | `9a647397` |
 | 10 | A press that is still loading says so (Ali's ask) | §7.1b, §12.12 | `f03f8566` |
 | 11 | The close — **716/716 caught** at `9a647397` (c5 99 · console 450 · engine 104 · money + seam 63; 0 missed, 0 stale, 0 files left dirty) | §12.14 | `9a647397` |
+| 12 | Ali's ask after the close: **the phone sort rail** — the two activity ledgers carry the kit's "Sort · Panga" chips below `sm` | §7.1c, §12.15 | the commit carrying this row |
+| 13 | Ali's ask after the close: **FS-09** — every landed roster act tells every admin once, naming the officer and what moved | §9.2, §12.16 | the commit carrying this row |
+| — | Ali's ask after the close: the name in public git history — **decided: NOT rewritten** (a force-push of `main` would orphan every parallel tree and not remove it from clones) | §0b (f) | — |
 
 **Not built, each by decision or out of this programme — none of them stops the desk:**
-- **On a phone the two activity ledgers cannot be re-sorted** (each row is a stack with no header row; the order note says
-  the order in force). Every other desk table sorts at every width. A phone sort control is a small follow-up if wanted.
-- **FS-09's other alerts** (designation, verify, Start, rules and limits saves) are still never sent — a build of its own.
+- **The four target alerts** (TARGET_ADDED/CHANGED/REMOVED/STOPPED) have no act to send them: the targeting screen is not
+  built. The law 2.fs09.8a makes the first target writer announce (§12.16).
 - **Ruling 543's read-path siblings**: `verifyChain()`, `verifyChainFull()` and the census still throw when the chain
   secret is misconfigured (read paths only); its three warnings are proven by the suite but were not rendered on a
   served page (that needs a build whose chain cannot sign).
 - **`test:house-bot-designation` 6.9** fails now and then on Postgres (always a refusal, green on re-run); its note says
   how to find the cause (print both timestamps on a failing run).
-- **Other lanes' reds on `main`, recorded, never widened by us:** `test:red-anchors` (two rotted anchors; §4 at 67 vs 65),
+- **Other lanes' reds on `main`, recorded, never widened by us:** `test:red-anchors` (two rotted anchors, `bar-geometry` and
+  `updown-handover`; §4's ratchet is green again since another lane's fix — measured 2026-09-27: 3811 passed, 2 failed),
   `test:tap-target` 2.1/5.1, `test:type-scale` §3/§6, `test:house-bot-holder-lifecycle` 2.2, `test:decomment` 2.1,
   `test:live-target-safe` §1b.
 
@@ -295,6 +304,19 @@ KP_BASE=http://localhost:3031 KP_WIDTHS=360,1280 npm run -s qa:house-bots-visual
 
 ## 5 · Handover log
 
+- **2026-09-27 evening · Ali-Blade15 — Ali's three follow-ups, decided and built.** His words: *"proceed doing those as the
+  session is up, decide as per what the architecture of the platform requires and as per perfection"*.
+  - **The phone sort rail** (§7.1c, §12.15): the kit's own `CardSortControl`, fed only from the reader's sort view, below
+    `sm` only, at the 44 px rank, never over an empty ledger; a chip and its header are one address (rendered and
+    compared); the in-force chip tells a screen reader its direction.
+  - **FS-09** (§9.2, §12.16): designate, re-verify, Start, Pause, Remove, the rules save and the desk limits save each alert
+    every admin once, after their history event, naming the officer and every moved value; refusals and no-change saves
+    alert nobody. The target codes wait for a target writer, which 2.fs09.8a obliges to announce.
+  - **The name in git history:** not rewritten, and why (§0b f).
+  - Built by two builders in isolated worktrees, each refuted by an adversarial reviewer, fixed, then verified again; the
+    lead closed the verifiers' last holes. Integrated: console 1105/804, every house suite green on both stores,
+    filter-language 257 green, `qa:house-bots-visual` 762/0 (3 NOT MEASURED: the empty targets table), `qa:nav-pending`
+    112/0 including the new phone case, `qa:desk-rules-flow` 89/89, build and bundle green.
 - **2026-09-26/27 · Ali-Blade15 — the build order, DONE. Everything below is on `main` and live.**
   - Steps 1–11 of §0c, each one commit (steps 6 and 10 share one, tested together), each pushed and verified serving;
     the table in §0c says where each is recorded. Ali added steps 9 and 10 mid-session ("all desk tables … paging and

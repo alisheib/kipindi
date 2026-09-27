@@ -197,6 +197,15 @@ export function consoleEventHref(botId: string, eventId: string): string {
 }
 
 /**
+ * The desk's OWN history, scrolled to one event. ⛔ A control-row event (a limits save, the switch) belongs to no
+ * account, so it has no account page to land on: the landing page's history panel carries those rows and honours the
+ * same `event=` anchor (`houseHistoryForConsole`).
+ */
+export function consoleDeskEventHref(eventId: string): string {
+  return `${CONSOLE_ROUTE}?tab=history&event=${eventId}`;
+}
+
+/**
  * ⭐ THE DESIGNATE WIZARD'S OWN STEP KEYS (C7 step 6; rulings 312, 319, 412).
  *
  * ⛔ THE SAME CLOSED-LIST LAW AS EVERY OTHER RAIL ON THIS SECTION: only keys whose panel is BUILT, and an

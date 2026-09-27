@@ -40,6 +40,7 @@ import { AdminBody, KpiGrid } from "@/components/admin/admin-body";
 import { AdminTableEmpty } from "@/components/admin/admin-table-empty";
 import { AdminPagination, buildBaseHref } from "@/components/admin/admin-pagination";
 import { SortTh } from "@/components/admin/admin-sort";
+import { CardSortControl } from "@/components/admin/card-sort-control";
 import { Button } from "@/components/ui/button";
 import { Callout } from "@/components/ui/callout";
 import { Chip } from "@/components/ui/chip";
@@ -704,7 +705,11 @@ async function AdminDeskContent({ searchParams }: DeskProps) {
               ⛔ THE RAIL IS THE ACCOUNT PAGE'S RAIL, THE SAME FILE (§K5): two copies of one control is the defect
               this section was pulled up on, and the rail types no route, no closed list and no label — every
               option's link is built from the SAME parse the read is taken with.
-              ⛔ ONE `data-filter-rail` under this section, and it is NOT on the `<Tabs>`.
+              ⛔ ONE filter-rail FILE under this section (`activity-filters.tsx`), and no rail hook on the `<Tabs>`.
+              With rows, the panel renders TWO `data-filter-rail`s, by design (ruling 410 as amended 2026-09-27):
+              this one, and the kit's phone sort rail inside the card below (in the page at every width, shown
+              below `sm` only, not drawn over an empty ledger), which is `components/admin`'s and not this
+              section's — exactly one of each, pinned by the console suite's 1.410.
               ⛔ THE SUBJECT COLUMN IS FIRST AND THE MONEY IS SECOND, which is the roster's own shape one card
               above: on a desk-wide list the subject is the ACCOUNT, and on the account page's own panel it is the
               instant. One rule, each panel's own subject — never two shapes for one table.
@@ -726,6 +731,25 @@ async function AdminDeskContent({ searchParams }: DeskProps) {
                 <div className="px-4 pt-4">
                   <p className="text-body-sm text-text-tertiary">{feedView.feedOrderNote}</p>
                 </div>
+                {/* ⭐ THE PHONE'S SORT CONTROL (Ali, 2026-09-27: "on a phone, the two activity lists can't be re-sorted …
+                    a phone sort button"). Below `sm` every row is a stacked card and the header row is not drawn, so the
+                    header row's controls stand HERE, where that row sits on a wider screen — as the kit's card sort rail,
+                    the platform's one answer for sorting where there is no header row, never a second sort control.
+                    ⛔ FED ONLY FROM THE READER'S SORT VIEW — the SAME view, parameters and route the `SortTh` headers
+                    below are handed — so a chip and its column's header are one address (the console suite renders both
+                    and compares them), and a sort word the reader refused can never ride into a link.
+                    ⛔ ONE CONTROL PER SCREEN: this is drawn below `sm` and the header row from `sm` up, never both; and not
+                    on an empty table, which hides its own header row at every width.
+                    ⛔ THE WRAPPER CARRIES THE BREAKPOINT, NOT THE RAIL, so the rail has no sibling inside this card: the
+                    console fades whatever FOLLOWS a pressed filter rail, and here that would fade the rows twice over. A
+                    press on a chip fades the rows exactly as a press on a header does.
+                    ⛔ THE NON-DENSE RANK: the dense rank's 32px floor is the mouse-only admin exception, and this is the
+                    phone — the section's visual gate holds every control to the 40px tap floor. */}
+                {feedRows.length > 0 && (
+                  <div className="sm:hidden">
+                    <CardSortControl basePath={CONSOLE_ROUTE} railId="desk-activity-sort" prefix={feedView.feedSort.prefix} current={feedView.feedSort.current} dir={feedView.feedSort.dir} sp={feedView.feedParams} options={Object.values(feedView.feedSort.columns)} rank="secondary" />
+                  </div>
+                )}
                 <ScrollX label="Desk activity">
                   {/* ⭐ THE MONEY ANSWERS FIT ON A PHONE, AND THE LEVER IS PADDING — NOT THE TYPE (owner asked
                       for the budget where he can see it, 2026-09-24). `.admin-tbl td` is `padding: 12px 16px` and

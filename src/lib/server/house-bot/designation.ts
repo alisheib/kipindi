@@ -43,6 +43,7 @@ import {
 import { formatEat } from "@/lib/house-bot/clock";
 import { CONSOLE_LIMITS_HREF, consoleBotTabHref, consoleReverifyHref } from "@/lib/house-bot/console-routes";
 import { houseBotStatusWord } from "./status-display";
+import { announceRoster } from "./emitters";
 
 /* ═══ Audit ═══════════════════════════════════════════════════════════════════════════════════════ */
 
@@ -347,7 +348,26 @@ export async function designateHouseBot(input: {
   // After the locks: the COMPLIANCE row (R7 — no label, note or fingerprint). The holder is told nothing (D19c, ruling 149).
   // ⛔ 543 · the account is designated whatever the row did; whether the row landed travels with the answer.
   const designated = await houseAudit("house_bot.designated", officerId, { type: "HouseBot", id: written.bot.id }, { botId: written.bot.id, holderUserId: userId });
+  /* ⭐ FS-09 · every admin is told, AFTER the history event exists — `designate` wrote DESIGNATED in the same
+     transaction as the account — and the alert links to it. Admins only (`houseBotAlertRecipients`): the holder is
+     told nothing, D19c above. */
+  await announceRoster({
+    botId: written.bot.id, label: written.bot.label, event: "DESIGNATED",
+    eventId: await designatedEventId(written.bot.id), actorId: officerId,
+  });
   return { ok: true, bot: written.bot, recorded: designated };
+}
+
+/**
+ * The DESIGNATED event `designate` wrote with the account, read back for the alert's link. ⛔ Null, never a throw, when
+ * it cannot be read: the account is designated by this line, and the alert then opens the account's history instead.
+ */
+async function designatedEventId(botId: string): Promise<string | null> {
+  try {
+    return (await houseBotEventStore.listByKinds(["DESIGNATED"], { houseBotId: botId, limit: 1 }))[0]?.id ?? null;
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -431,7 +451,7 @@ export async function reverifyHouseBot(input: { officerId: string; botId: string
   const v = await verifyHouseBotPassword({ officerId, userId: bot.userId, password: input.password, botId, submitId: input.submitId });
   if (!v.ok) return { ok: false, code: v.code, message: v.message, field: v.field, row: v.row, attemptsBeforeLock: v.attemptsBeforeLock, retryAfterSec: v.retryAfterSec };
 
-  type Written = { kind: "changed" } | { kind: "removed" } | { kind: "active" } | { kind: "blocked"; row: EligibilityRow } | { kind: "ok"; status: HouseBotStatus; wasActive: boolean };
+  type Written = { kind: "changed" } | { kind: "removed" } | { kind: "active" } | { kind: "blocked"; row: EligibilityRow } | { kind: "ok"; status: HouseBotStatus; wasActive: boolean; eventId: string };
   const written = await withLock(`wallet:${bot.userId}`, (tx) => houseAtomic(tx, async (t): Promise<Written> => {
     const fresh = await db.user.findById(bot.userId);
     if (!fresh || passwordFingerprint(fresh.passwordHash) !== v.fingerprint) return { kind: "changed" };
@@ -456,17 +476,19 @@ export async function reverifyHouseBot(input: { officerId: string; botId: string
       const moved = await houseBotStore.setStatus(botId, { from: ["AUTO_PAUSED"], to: "PAUSED", pauseReason: "MANUAL", pausedFromStatus: null }, t);
       if (moved) status = "PAUSED";
     }
-    await houseBotEventStore.append({
+    const verifiedEvent = await houseBotEventStore.append({
       houseBotId: botId, userId: bot.userId, marketId: null, kind: "VERIFIED", fromStatus: cur.status, toStatus: status,
       reason: null, actorId: officerId, payload: { wasActive },
     }, t);
-    return { kind: "ok", status, wasActive };
+    return { kind: "ok", status, wasActive, eventId: verifiedEvent.id };
   }));
   if (written.kind === "changed") return { ok: false, code: "CHANGED_AGAIN", field: "password", message: REVERIFY_COPY.changedAgain };
   if (written.kind === "blocked") return { ok: false, code: "BLOCKED", message: written.row.message, row: written.row };
   if (written.kind === "removed") return { ok: false, code: "BOT_REMOVED", message: VERIFY_COPY.removed };
   if (written.kind === "active") return { ok: false, code: "BOT_ACTIVE", message: REVERIFY_COPY.running };
 
+  /* ⭐ FS-09 · after the lock (A19): the confirmation is on the record, and every admin is told — never the holder. */
+  await announceRoster({ botId, label: bot.label, event: "VERIFIED", eventId: written.eventId, actorId: officerId });
   return { ok: true, verified: true, status: written.status, wasActive: written.wasActive };
 }
 
@@ -542,7 +564,7 @@ export async function startHouseBot(input: { officerId: string; botId: string; r
   const own = el.blocking.find((r) => r.code === "OWNER_LOSS_LIMIT");
   if (own) return { ok: false, code: "OWNER_LOSS_LIMIT", message: own.message, row: own };
 
-  type Written = { kind: "changed" } | { kind: "removed" } | { kind: "already" } | { kind: "ok"; from: HouseBotStatus };
+  type Written = { kind: "changed" } | { kind: "removed" } | { kind: "already" } | { kind: "ok"; from: HouseBotStatus; eventId: string };
   const written = await withLock(`wallet:${bot.userId}`, (tx) => houseAtomic(tx, async (t): Promise<Written> => {
     const cur = await houseBotStore.get(botId, t);
     if (!cur || cur.status === "REMOVED") return { kind: "removed" };
@@ -552,11 +574,11 @@ export async function startHouseBot(input: { officerId: string; botId: string; r
     const moved = await houseBotStore.setStatus(botId, { from: ["PAUSED", "AUTO_PAUSED"], to: "ACTIVE", pauseReason: null, pauseDetail: null, pausedFromStatus: null }, t);
     if (!moved) return { kind: "already" };
     await houseBotRuntimeStore.setScopeFrom(RUNTIME_KEY.bot(botId), t);
-    await houseBotEventStore.append({
+    const startedEvent = await houseBotEventStore.append({
       houseBotId: botId, userId: bot.userId, marketId: null, kind: "STARTED", fromStatus: cur.status, toStatus: "ACTIVE",
       reason: null, actorId: officerId, payload: { rulesVersion: cur.rulesVersion },
     }, t);
-    return { kind: "ok", from: cur.status };
+    return { kind: "ok", from: cur.status, eventId: startedEvent.id };
   }));
   if (written.kind === "removed") return { ok: false, code: "REMOVED", message: VERIFY_COPY.removed };
   if (written.kind === "already") return { ok: true, alreadyRunning: true, masterOn: control.enabled, warnings: [], recorded: true };
@@ -564,6 +586,9 @@ export async function startHouseBot(input: { officerId: string; botId: string; r
 
   // ⛔ 543 · the account is ACTIVE by this line; whether its compliance row landed travels with the answer.
   const startRecorded = await houseAudit("house_bot.started", officerId, { type: "HouseBot", id: botId }, { botId, holderUserId: bot.userId, from: written.from, to: "ACTIVE", rulesVersion: bot.rulesVersion });
+  /* ⭐ FS-09 · the account is running and its STARTED event is written: every admin is told, once. An account that
+     was already running wrote nothing above and returned before this line, so it tells nobody. */
+  await announceRoster({ botId, label: bot.label, event: "STARTED", eventId: written.eventId, actorId: officerId });
   return { ok: true, alreadyRunning: false, masterOn: (await houseBotControlStore.get()).enabled, warnings: problems.warnings, recorded: startRecorded };
 }
 
@@ -585,7 +610,9 @@ export type VoidResult =
  * A throw anywhere rolls every one of those back (targets stay ACTIVE). After the lock: the COMPLIANCE row.
  * ⛔ **AND NOTHING ELSE REACHES THE HOLDER — corrected in C5-8 (2026-09-21, ruling 258).** This paragraph used to
  * add "and for HOLDER_WITHDREW the holder's confirmation": owner ruling D19c admits no house-bot notice or email to
- * a holder for ANY cause, and this module sends none (it imports no emitter). Responsible-gambling causes send the
+ * a holder for ANY cause, and this module sends none. ⚠️ Since FS-09 (2026-09-27) it imports ONE emitter,
+ * `announceRoster`, for designate, re-verify and Start — and that one fans out to `houseBotAlertRecipients()` (every
+ * ADMIN) and never to the holder; the void below calls no emitter at all. Responsible-gambling causes send the
  * holder nothing (C8); IDENTITY_REFUSED and HOLDER_ERASURE_REQUEST are ADMIN notices from commit 4's emitters
  * (C3-SPEC ruling 12), never the holder's.
  *

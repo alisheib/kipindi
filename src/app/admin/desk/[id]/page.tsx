@@ -41,6 +41,7 @@ import { AdminBody } from "@/components/admin/admin-body";
 import { AdminTableEmpty } from "@/components/admin/admin-table-empty";
 import { AdminPagination, buildBaseHref } from "@/components/admin/admin-pagination";
 import { SortTh } from "@/components/admin/admin-sort";
+import { CardSortControl } from "@/components/admin/card-sort-control";
 import { Callout } from "@/components/ui/callout";
 import { Chip } from "@/components/ui/chip";
 import { FormColumn } from "@/components/ui/form-column";
@@ -555,7 +556,11 @@ async function AdminDeskAccountContent({
           {/* ⭐ C7 STEP 5 · WHAT THIS ACCOUNT HAS TRIED TO STAKE, NEWEST FIRST, WITH WHAT HAPPENED TO EACH.
               ⛔ THE RAIL IS A DUMB RENDERER AND EVERY LINK IN IT IS SERVER-BUILT (319, 453): it types no route,
               no closed list and no label, so the control an officer clicks is built from the SAME parse the read
-              is taken with. ⛔ ONE `data-filter-rail` under this section and it is NOT on the `<Tabs>`.
+              is taken with. ⛔ ONE filter-rail FILE under this section (`activity-filters.tsx`), and no rail
+              hook on the `<Tabs>`. With rows, the panel renders TWO `data-filter-rail`s, by design (ruling 410 as
+              amended 2026-09-27): this one, and the kit's phone sort rail inside the card below (in the page at
+              every width, shown below `sm` only, not drawn over an empty ledger) — exactly one of each, pinned
+              by the console suite's 1.410.
               ⛔ THE MONEY IS ONE INTENT'S OWN STAKE, SECOND COLUMN, NEVER A SUM (266, 360 role C, 373) — and no
               row carries `why`, `decision` or a trigger player's id, for the reasons the reader states by name. */}
           {!view.removed && (<>
@@ -575,6 +580,16 @@ async function AdminDeskAccountContent({
                 <div className="px-4 pt-4">
                   <p className="text-body-sm text-text-tertiary">{view.feedOrderNote}</p>
                 </div>
+                {/* ⭐ THE PHONE'S SORT CONTROL (Ali, 2026-09-27) — the desk-wide ledger's own decision, which carries the
+                    full argument: below `sm` the header row is not drawn, so the kit's card sort rail stands in its
+                    place, fed from the SAME sort view, parameters and route as the `SortTh` headers below (one address
+                    per column); drawn below `sm` only, never on an empty table, its breakpoint on the wrapper so a press
+                    fades the rows exactly as a header's does, at the non-dense rank the 40px tap floor needs. */}
+                {feedRows.length > 0 && (
+                  <div className="sm:hidden">
+                    <CardSortControl basePath={`${CONSOLE_ROUTE}/${view.id}`} railId="account-activity-sort" prefix={view.feedSort.prefix} current={view.feedSort.current} dir={view.feedSort.dir} sp={view.feedParams} options={Object.values(view.feedSort.columns)} rank="secondary" />
+                  </div>
+                )}
                 <ScrollX label="Account activity">
                   {/* ⭐ THE MONEY ANSWERS FIT ON A PHONE, AND THE LEVER IS PADDING — the whole argument is at the
                       desk-wide table's own activity table, which carries the same two classes for the same reason:

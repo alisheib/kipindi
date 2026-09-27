@@ -28,6 +28,8 @@ import { HOUSE_AUDIT, isAllowedHouseAuditPayload } from "@/lib/house-bot/constan
 import {
   CAP_FIELDS,
   DEFAULT_RULES_V1,
+  FIELD_META,
+  FIELD_ORDER,
   migrateRules,
   parseHouseBotRules,
   validateHouseBotRules,
@@ -45,6 +47,7 @@ import {
   type StoredHouseBot,
 } from "../house-bot-dal";
 import { loadRulesContext } from "./rules-context";
+import { announceRoster, type RosterChange } from "./emitters";
 
 /** One cap that moved, for the audit row. ⛔ Numbers or null only — the R7 allowlist refuses anything else. */
 export type CapChange = { field: string; before: number | null; after: number | null };
@@ -113,7 +116,8 @@ const capsOf = (bot: StoredHouseBot): HouseBotCaps =>
  *
  * The order is deliberate and mirrors the global save: the row FIRST (so a missing schema and an unreadable
  * row are told apart before anything else is read), then the platform context the validator needs, then the
- * validation, then ONE conditional write, then the history row, then the compliance row. Nothing is written
+ * validation, then ONE conditional write, then the history row, then the compliance row, then — only when a field
+ * moved — every admin's alert (FS-09). Nothing is written
  * before the validator has passed, so a refused save leaves the account byte for byte as it was.
  */
 export async function saveHouseBotRules(input: {
@@ -368,8 +372,9 @@ export async function saveHouseBotRules(input: {
    * account whose rules moved with no row saying so is a desk that cannot answer "who changed this".
    * ⚠️ The write has already landed by this line, so this is logged and reported — never thrown.
    */
+  let savedEventId: string | null = null;
   try {
-    await houseBotEventStore.append({
+    const savedEvent = await houseBotEventStore.append({
       houseBotId: input.botId,
       userId: bot.userId,
       marketId: null,
@@ -380,6 +385,7 @@ export async function saveHouseBotRules(input: {
       actorId: input.actorId,
       payload: { rulesVersion: cas.row.rulesVersion },
     });
+    savedEventId = savedEvent.id;
   } catch (err) {
     console.error("[house-bot] the RULES_SAVED history row could not be written (the rules DID change):",
       err instanceof Error ? err.message : String(err));
@@ -410,5 +416,60 @@ export async function saveHouseBotRules(input: {
     console.error(`[house-bot] the rules_saved compliance row could not be written (the rules DID change): ${logged.unrecorded}`);
   }
 
+  /**
+   * ⭐ FS-09 · EVERY ADMIN IS TOLD WHAT MOVED — AND ONLY WHEN SOMETHING DID.
+   * ⛔ A save that moved nothing still LANDS (the version advances and its history row is written above), but there
+   * is nothing to tell: an alert saying "its rules changed" over an identical account would be false. "Moved" is
+   * measured per field — every cap, and every leaf of the rules document read from the base the form was built on
+   * against what was stored — never by comparing the two documents whole, which a re-ordered key or a leaf filled
+   * in from its default would report as a change.
+   * ⛔ `eventId` null when the history row above could not be written: the save landed, so the admins are still told.
+   */
+  let moved: RosterChange[] = changes;
+  try {
+    moved = [...ruleLeafChanges(base, checked.rules), ...changes];
+  } catch (err) {
+    /* The rules DID change by this line: a comparison that fails still tells the admins about the caps it holds. */
+    console.error("[house-bot] the rules-save alert could not compare the rules document:", err instanceof Error ? err.message : String(err));
+  }
+  if (moved.length > 0) {
+    await announceRoster({
+      botId: input.botId, label: bot.label, event: "RULES_SAVED", eventId: savedEventId,
+      actorId: input.actorId, changes: moved,
+    });
+  }
+
   return { ok: true, rulesVersion: cas.row.rulesVersion, changes, rulesChanged, recorded, warnings: checked.warnings };
+}
+
+/** One dotted leaf of a rules document, or undefined where the path does not reach. */
+function leafAt(doc: unknown, path: string): unknown {
+  let cur: unknown = doc;
+  for (const part of path.split(".")) {
+    if (!isRecord(cur)) return undefined;
+    cur = cur[part];
+  }
+  return cur;
+}
+
+/** A leaf's value for comparison: a list of plain values compares as a set, anything else by its JSON. */
+function leafKey(v: unknown): string {
+  if (Array.isArray(v) && v.every((x) => typeof x !== "object" || x === null)) return JSON.stringify([...v].map(String).sort());
+  return JSON.stringify(v ?? null);
+}
+
+/**
+ * Every rules-document field (`FIELD_META` group `rules`, in page order) whose value differs between the document the
+ * form was built on and the one being stored. ⛔ The population is the metadata table itself, so a leaf added to the
+ * form is compared the day it exists — never a hand-kept second list.
+ */
+function ruleLeafChanges(before: unknown, after: unknown): RosterChange[] {
+  const out: RosterChange[] = [];
+  for (const id of FIELD_ORDER) {
+    if (FIELD_META[id].group !== "rules") continue;
+    const from = leafAt(before, id);
+    const to = leafAt(after, id);
+    if (leafKey(from) !== leafKey(to)) out.push({ field: id, before: from ?? null, after: to ?? null });
+  }
+  return out;
 }
