@@ -9,34 +9,36 @@
 
 ## §0 · RESUME AT — the v3 build (reopened 2026-09-26)
 
-**State (2026-09-27):** D0 ✅, D1 ✅ (`54f8199b`), WP14 ✅ (the Wallet, `e9b4056c`), **WP6 ✅** (`31662831` — a
-market with money on one side states no price, on every card; V17 0 on production) and **WP14b ✅** (`541a9e76` —
-share works on every card in every phase; the WhatsApp preview reads the card's price rule and carries the site's
-og tags; `qa:landing-v3:og-prod` CLEAN on 15 production markets). D2 step 0 (the gate's V18 + its own hardening) is
-live in the scripts; V18 reads 1,584 on production until WP3/WP4 add the attributes it reads (GATE row).
-**Next:** RESUME HERE (handover 2026-09-27, the session that shipped the one-sided state and the share fixes) —
-(1) **The Up & Down band (R5, WP12 🔨)** is BUILT from `specs/updown-band-v2.md` and committed on branch `landing-v3`
-(pushed to `origin/landing-v3`, NOT to `main` — nothing of it is live). Typecheck clean; `test:updown-match` 86/0 and every
-touched suite green (the builder's report is in that commit's message). It has NEVER been rendered. Do, in order: write
-`scripts/qa/landing-v3/band-metrics.mjs` + `band-agree.mjs` (spec §15.4/§15.6, each with a RED control); a local drive under
-the lock (seed Up & Down rounds in every state the spec's §8 lists; clear `.next` first); look at every frame at
-360/768/1280 × sw/en/zh; then the **four-expert frame panel** (UI/UX lead, graphic designer, gambling-industry designer,
-accessibility/RG — a workflow of agents that READ the frame PNGs) — fix and re-shoot until every score is 10; check every
-new component against the design kit (DESIGN_AUTHORITY, `globals.css` tokens, the type ladder, the chart home); then merge
-`origin/main`, push to `main`, confirm `?dpl=`, re-measure on production, tick. Ali's hallway test (spec §15.7) needs the
-people he names — ask him.
-(2) **The hero (R7, WP2 reopened)** — spec `specs/hero-v3.md`, every question RULED (R7). Build with the locked fonts;
-then show Ali real frames and trial the Bricolage Grotesque headline (his call on frames). Its Swahili lines get the
-build's own native review pass (R8). ⭐ The claim is "Tanzania's first licensed prediction market" — R9, the owner's
-attestation.
-(3) **C1 · one price rule everywhere** — spec `specs/c1-one-price-rule.md` (R6 ruled): the detail page, `/live`, `/results`
-featured, chart history, the settled share preview, Up & Down (after the band lands), admin; it also fixes two live
-false statements — a settled one-sided market's resolution panel states a fee never charged, and a NO or void result is
-painted YES-green on every settled card (§10).
-(4) **WP3 + WP4** as one deploy (they add V18's `data-market-*` attributes; V18 reads 1,584 on production until then) —
-spec `specs/d2-wp3-wp4-wp9-v18-wp14b.md`; (5) **WP9** alone. (6) The small builds R7 queued: retire "Tabiri matukio. Si
-bahati." (tab title + primer); the 18+ badge's neutral ink site-wide. Then D3 (WP5 the pick slip + WhatsApp after placing,
-V20, the chat bubble under sheets) and D5. The specs are build inputs: delete each when its unit ships.
+**State (2026-09-27):** D0 ✅, D1 ✅ (`54f8199b`), WP14 ✅ (the Wallet, `e9b4056c`), WP6 ✅ (`31662831`), WP14b ✅
+(`541a9e76`), and **WP12 — the Up & Down band, R5 "the Match" — pushed live 2026-09-28 on the owner's word ("push live what you have now") after five rounds of the four-expert
+frame panel on eight local drives** — 45 of 52 frames at 10 in round 5, the last four small fixes (the slip lands with
+the countdown in view, the Watch link's ring, a 12px floor on the playhead's window, S8's phrase) in this push and
+measured on production, not locally (record: §2.1 WP12 "Frame rating"). D2 step 0 (V18 + the gate's hardening) is live in the
+scripts; V18 reads 1,584 on production until WP3/WP4 add the attributes it reads (GATE row).
+**Next:** RESUME HERE (handover 2026-09-27 evening) — three more units are BUILT on their own branches (each by a build
+agent in its own worktree, code + unit guards only, NEVER rendered): render each in `C:\kipindi-landing-v3` after merging
+it, run its frame panel to 10, ship it, measure it on production — in this order:
+(1) **The hero (R7 + R9)** — branch `landing-v3-hero` (worktree `C:\kipindi-hero`, tip `751780f6`): "Tanzania's first
+licensed prediction market" (state P, `FIRST_LICENSED_EVIDENCE()` = 2026-09-27 citing R9), "NDIO au HAPANA?", the trust
+rows above the card, all four wallets named from the money path's own config, the neutral 18+ ink site-wide,
+`test:hero-copy` 13/0 + `red:hero-copy` 18/18; plus the native-review batch "official" → "public" claims (sw/zh/en) and
+"Machaguo yako"; the branch review's three findings fixed (one rail source for the hero and the trust band; `red:hero-copy` 20 caught, MISSED 0). Drive: `scripts/qa/landing-v3/verify-hero.sh` (served HTML per locale, six frame sizes × sw/en/zh,
+signed in, 130% text, focus/hover, the gate + REDs V15–V17/V21/V22). Merges into `landing-v3` without conflicts (trial).
+(2) **C1 · one price rule everywhere** — branch `landing-v3-c1` (`C:\kipindi-c1`, 10 commits to `c166f774` + the branch review's four fixes): R6(1) "One side
+only" everywhere, R6(2) `TIPPING_BAND = 3`, the phantom fee gone from the resolution panel AND four finance/admin readers
+(`chargedFee`, `test:charged-fee` 53/0 against real settlement), the result word's own ink, the sw pool word "bwawa".
+Drive: `verify-c1.sh` — its RED baseline first (the build report's steps 1–4, incl. the production `PROD-S1-FEE` count to
+report to Ali). One dictionary conflict with the band (adjacent sw lines) to resolve at merge.
+(3) **WP3 + WP4** — branch `landing-v3-wp34` (`C:\kipindi-wp34`, `4a42358a` + tooling `b9fb4c87` + review fixes `3312082f`, built ON C1: one neutral 24h-move component platform-wide, "Hakuna dau bado", "5 位预测者"): the featured
+card (time top-right, question clamped ≤ 3 lines below 640, source under YES/NO below 640, 24h mark, predictor floor 10 —
+L24–L29 in the manifest) and the board rows; the `data-market-*` attributes V18 reads. Drive: `verify-wp34.sh` (P1–P3).
+Re-run its first-screen budget after the hero merges (trust rows move above the card).
+(4) **F1 (R5(c))** — branch `landing-v3-f1` (`C:\kipindi-f1`, built ON C1): the `/updown` card and terminal take the band's
+wording ("Confirmed price") and its targets-based ink; the card's 9.5px trust footer and its truncated "HIGHER OR
+LOWER THAN $…" heading go to the 13px floor / never clip (found by the band's panel). (5) **WP9** alone. (6) The small R7 build: retire "Tabiri matukio. Si
+bahati." on all FIVE surfaces it reaches (the English-only tab title, the primer, the landing's How-it-works heading, the
+auth rail + register preview, the yes/no rules subtitle). Then D3 (WP5 the pick slip, V20, the chat bubble under sheets)
+and D5.
 **⭐ Ali, 2026-09-27: "make sure everything in the plan is applied, every decision, every design component perfectly made,
 new components built all consistent with our theme design kit."** Every unit is checked against R1–R7, L1–L23 and the kit
 before it ships — frames looked at, never only a green gate.
@@ -137,7 +139,7 @@ row; this section does not repeat it.
 | WP9 | Pick-a-side grid: phone snap rail with a peek, 2 and 3 columns | ⬜ | | |
 | WP10 | Topics: six tiles, Other last, "All topics" as the section link | ✅ | 54f8199b | measured on production 2026-09-26 (360/768/1280 × sw/en/zh frames looked at) |
 | WP11 | How it works: "A named source", the fee from config, h3 steps | ✅ | 54f8199b | measured on production 2026-09-26 (360/768/1280 × sw/en/zh frames looked at); the fee reads 13% through `ratesFrom`; L3 |
-| WP12 | Up & Down band: R5 — the Match (spec v2) | 🔨 | | built in the landing worktree 2026-09-27, uncommitted: scoreboard + match track + one-line clock, the R5(a) 60-second refresh, the round page's §12 agreement; `test:updown-match` (every check run against a planted wrong copy too) and the extended `test:chart-one-home` / `test:betting-ink` / `test:contrast` green. Next: the local drive (§15.2–15.6), the hallway test and the 10/10 frame panel below, then push. The price-line band it replaces was ✅ `54f8199b` (production 2026-09-26) |
+| WP12 | Up & Down band: R5 — the Match (spec v2) | 🔵 | 2acefc9d | live 2026-09-28: the scoreboard, the match track and the one-line clock, the 60-second refresh (R5(a)), the round page agreeing (§12); eight local drives (`verify-band.sh`: 19 checks incl. the agreement drive, the RED-controlled numeric gate, the #stake landing, one pick position across states) and five rounds of the four-expert frame panel (45/52 at 10 in round 5; record in §2.1 WP12). Production re-measure next (`verify-band-prod.sh`). The price-line band it replaces was ✅ `54f8199b` |
 | WP13 | Results: date, the market's own sign-off, source link, paid | ✅ | e9b4056c | measured on production 2026-09-27: date, the market's own sign-off (a reversed market reads "Corrected on objection"), source, paid; below 640 the amount and the source each take a line, so the host reads whole. L2 |
 | WP14 | Wallet: chip opens sheet/panel, equal Deposit/Withdraw, gold Deposit at zero, signed-in hero | ✅ | e9b4056c | measured on production 2026-09-27 with `mobile01` (zero balance, no picks: header Deposit, hero empty-balance line + Deposit, no Withdraw, Set limits; pages render at 360/1280 sw/en). Funded Wallet + hero measured locally (Wallet 17 cells, hero 15 cells; 360–1280 × sw/en/zh). `test:wallet-reach` 48/48, `test:landing-mine` 22/22, both mutation-proved. R1, L19–L21 |
 | WP14b | Share on every card footer, in every phase; the WhatsApp preview card (og tags spread from `ROOT_OPEN_GRAPH`, no 0/100 in the preview) | ✅ | 541a9e76 | measured on production 2026-09-27: `qa:landing-v3:og-prod` CLEAN on 15 markets (og:type/site_name/locale present, one-sided markets preview "One side only.", images 1200×630 PNG) — its baseline before the push failed on all 15; `/results` captured 360/768/1280 × sw/en/zh, settled cards one `<article>`, looked at; the share drive (26/26: Copy, WhatsApp, Esc, backdrop stay on `/results`) ran locally. "Share on WhatsApp" after placing is WP5's; K50 closes with both |
@@ -337,13 +339,24 @@ states, sketches and verification; this row is its summary). The price-line char
   confirmed read after its open wins, a kick-off round is the fallback, and the walk stops at the first young
   candidate — usually one `getRoundDetail`, never more than three. `toUpdownBandRound` reduces it to the band's
   type (`src/lib/updown-match.ts`), which carries NO money field (law 40).
-- **Shows (sw, 360):** the fixture (`AssetMark`, name, the kit Chip "10 DAKIKA") and ONE clock line "Dau
-  linafungwa baada ya 01:52"; the plate — the verdict ("↑ Juu inaongoza", settlement's own
-  `decideOutcomeByTargets` on the newest confirmed read), its dated detail ("saa 14:26 · Juu ya ufunguzi kwa
-  $18.52") and the Up/Down links IN the plate, solid and equal, never lit; the match track
-  (`src/components/charts/updown-match-track.tsx` + the playhead leaf `updown-match-now.tsx`): a stem per confirmed
-  read on a fixed open → close domain, the lock post at bets-close, the flag at the deciding price; the rule in two
-  sentences ("Bei ya saa 14:32 inaamua. Tofauti ikiwa ndogo kuliko $0.02, kila dau linarudi."); "Raundi zote ›".
+- **Shows (sw, 360):** the fixture (`AssetMark`, name, the kit Chip "15 DAKIKA") and ONE clock line "Dau linafungwa
+  baada ya 07:42" (baseline-aligned, a fixed 20px row open and closed); the plate — the verdict ("↑ Juu inaongoza",
+  settlement's own `decideOutcomeByTargets` on the newest confirmed read), its dated detail as two no-break clauses
+  ("saa 14:26" · "Juu ya ufunguzi kwa $18.52"; below 360 they stack and the "·" hides) and the Up/Down links IN the
+  plate, solid and equal, never lit. The words block has ONE height in every state (verdict + two lines; below 360
+  sized for kick-off's two verdict lines), words centred, so no refresh, aging or first read moves the picks (the drive
+  checks it per width). The match track: a stem per confirmed read on a fixed open → close domain, the lock post at
+  bets-close, the flag at the deciding price; three layers (neutral time → playhead → marks); beside a fresh read the
+  playhead line is not drawn and "now" is the bright end of the played stretch; just past the lock it parks on the post;
+  the void band only in the level state. The rule in two sentences ("Bei ya saa 14:32 inaamua. Tofauti na ufunguzi
+  isipofika $0.40, kila dau linarudi." — the margin held to its phrase by a no-break space in all three languages);
+  "Raundi zote ›". Level: "Hakuna anayeongoza · saa 14:26 · Tofauti na ufunguzi $0.20 tu" + "Ikifunga hapa, kila dau
+  linarudi." (the "— haitoshi kuamua" tail restates the verdict and is not shown on the band). Aged (betting open):
+  "Juu iliongoza" muted + "Bado hakuna bei mpya.", the newest stem and bead at the 70% ink. Closed: "Dau limefungwa"
+  + "Tazama raundi hii" (focus moves there from a pick, and to "Cheza raundi ijayo" from "Raundi zote"), padlocked sides,
+  "Cheza raundi ijayo ›". Past the deciding instant: the headline "Inasubiri matokeo" (never the last lead), the rule
+  in the past ("iliamua"). The picks link to `/updown/<id>?side=UP#stake`: the round page's stake panel scrolls itself
+  into view (after the router's own scroll) with the side Chip, the countdown and the confirmed price above it.
 - **Honesty.** Every verdict is dated and turns past tense ("Juu iliongoza") when its read goes stale by the
   terminal's own rule (`src/lib/updown-quote-age.ts`, shared) or at the deciding instant — on the server and on the
   client wrapper's `data-aged` (no `:has()`). No absolute price, no pool, no "live" beside a number. Level lines
@@ -355,9 +368,13 @@ states, sketches and verification; this row is its summary). The price-line char
   round type, stale rule and target comparison (pinned equal to settlement's); a failed read changes nothing; it
   stops at the deciding instant. A read that landed while the tab was hidden and was superseded is not drawn (the
   verdict always reads the newest).
-- **The round page agrees (spec §12):** "Confirmed price" (was "Live price"); while open the quote stamp joins the
-  move line; the hero's ink follows the targets (`price-hero.tsx` `tone`, `data-tone`); a level read says the band's
-  own "Only $0.20 from the open — not enough to decide". The `/updown` card and terminal follow in F1 (R5(c)).
+- **The round page (spec §12 and the panel's continuity fixes):** "Confirmed price"; the band's dated move line under
+  the price at 13px ("Juu ya ufunguzi kwa $18.52" · "imenukuliwa 18:55:02 EAT", stacking below 400); the stats stack
+  left below 400; the title wraps with the game's name whole; a signed-out player who tapped a side sees it in the
+  stake panel (the band's arrow in the kit Chip).
+- **Platform-wide, found by this unit:** the solid buttons' hover lift only where a pointer hovers (touch :hover lit
+  the tapped side after Back — a lit leader); "tokeo" → "matokeo" (6 keys); "juu au chini" / "higher or lower" never
+  split.
 - **Motion:** the digits (1/s) and the playhead (on quarter-percent moves) ride the page's one shared second; no
   pulse on the band (the page keeps one loop, the live dot); the verdict's ink fades on the tense swap only.
 - With no readable round: today's band, unchanged (S8). Full width (R4(6)).
@@ -392,7 +409,31 @@ time (Swahili time never passes 12); "ndogo kuliko" (not "chini ya", which would
 (`scripts/qa/landing-v3/capture.mjs`): S1 at 360/768/1280 × sw/en/zh, S2–S7 at 360 sw and 1280 en, S3 and S4
 at 360 zh, and the band → round-page click-through pair at 360 sw; four reviewers (UI/UX lead, graphic
 designer, gambling-industry designer, accessibility + RG); a frame's score is its lowest; any score under 10
-names the defect, is fixed, and the WHOLE panel re-scores. **Record:** *not run yet.*
+names the defect, is fixed, and the WHOLE panel re-scores. **Record (2026-09-27):** four reviewers as a workflow of agents that READ the real PNGs (UI/UX lead, graphic designer,
+gambling-industry designer, accessibility + RG), 52 frames a round — S1 at 360/768/1280 × sw/en/zh + 320 sw + 1024 en;
+S2–S5, S7 and S7 after the deciding instant at 360 sw, 320 sw, 768 en and 1280 en; S3/S4 at 360 zh; S8; the
+click-through pair; Back; the R5(a) refresh. A frame's score is its lowest; each round was briefed with what changed and
+what was declined (with the recorded reason), and the whole panel re-scored every frame.
+- Round 1 (drive 2): 1 frame at 10, lowest 6 — the playhead painted over the newest stem, the detail broke
+  mid-phrase, the plate jumped between states, the past-the-deciding-instant band read as a result, touch :hover lit
+  the tapped side after Back (fixed platform-wide), the round page truncated its title and printed the band's answer
+  at 9.5px.
+- Round 2 (drive 3): most frames 8–9 — the playhead still fused with a fresh read, a dangling "·" at 320, the sw rule
+  did not name the open, the timer's spoken name could be heard as a clock time.
+- Round 3 (drive 4): 11 frames at 10, most 9, PAIR-2-b 4 — the #stake landing did not scroll, the level tail leaked
+  back at 320, the picks moved between states at 320, "tokeo" → "matokeo" (native review, platform-wide).
+- Round 4 (drive 7): 18 at 10, 34 at 9 — beside a fresh read any part of the playhead still read as a data mark,
+  the landing hid the countdown and price, the Watch link's focus ring overran the Chip and plate.
+- Round 5 (drive 8): 45 at 10, 7 at 8–9 — the landed slip still had no clock (the pool card sat between), the ring
+  left the Watch link's chevron outside, "near" was only ~5.5px at 320.
+- Shipped 2026-09-28 on the owner's word ("push live what you have now") with round 5's four fixes in (`2acefc9d`):
+  they were not re-driven locally — the production re-measure (`verify-band-prod.sh`) is their check, and any
+  finding it or a sixth round raises is the next band commit.
+Declined, each with its recorded reason: stretching the picks to the plate's height (48px centred ±1px, §15.4);
+moving the playhead out of the plot ("the playhead drawn as a line", §0); spending the section link's tap box (C13 —
+the drive measured S7 +32px); dropping the S3 refund note (I-2); a content-length container query (not expressible).
+The drive's own checks (`band-drive.mjs`, 19 of them) and the gate's RED control ran on every drive; the RED control
+went blind once (drive 5: the fixed-height clock row hid a wrapped caption) and was fixed to count the caption.
 
 **WP13 · Results strip** — `src/components/home/trust-band.tsx`, `toSettlementRow` in `src/lib/server/platform-stats.ts`
 - Each row: outcome pill · question (a link) · settled date · **the market's own sign-off** · source (its own
