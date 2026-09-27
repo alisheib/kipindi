@@ -1842,6 +1842,27 @@ export function backupUnhealthyAdminHtml({ kind, reason, ageHours, destination }
   `);
 }
 
+/** Admin alert — the SMS credit reached the alert line (2026-09-26). Sent once per downward crossing by
+ *  `notifyAdminsSmsCreditLow`. Royal, never gold: our operating balance, not money owed to the reader. */
+export function smsCreditLowAdminHtml({ tzs, alertTzs, floorTzs }: {
+  tzs: number; alertTzs: number; floorTzs: number;
+}): string {
+  const belowFloor = tzs < floorTzs;
+  return wrap(`
+    ${eyebrow("SMS credit", "Salio")}
+    ${heading(belowFloor ? "SMS credit is below the floor" : "SMS credit is low")}
+    ${subtitle(belowFloor
+      ? "Invite and notice SMS are paused so the remaining credit is kept for login codes, which still send. Top up the Blackball account now."
+      : `Top up the Blackball account soon. Below ${formatTzs(floorTzs)}, invite and notice SMS pause and only login codes send.`)}
+    ${detailRows([
+      { label: "SMS credit", value: formatTzs(tzs), tone: belowFloor ? "bad" : undefined },
+      { label: "Alert line", value: formatTzs(alertTzs) },
+      { label: "Floor", value: formatTzs(floorTzs) },
+    ])}
+    ${ctaButton("/admin/system", "Open System · Fungua")}
+  `);
+}
+
 export function bonusCreditedHtml({ amountTzs, wagerRequiredTzs, sourceLabel }: {
   amountTzs: number; wagerRequiredTzs: number; sourceLabel?: string;
 }): string {

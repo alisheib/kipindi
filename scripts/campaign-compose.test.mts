@@ -251,7 +251,7 @@ function checkEnvelope(compose: Composer, log: (l: string) => void): string[] {
     log(`       ${JSON.stringify(f)}`);
     ok("§9 the footer carries the sender identity", f.includes(SENDER_IDENTITY));
     ok("§9 …the age restriction, in the Swahili already shipped on the registration screen", f.includes("18+"));
-    ok("§9 …the helpline (ours — OQ4)", f.includes(STATUTORY_SMS_HELPLINE));
+    ok("§9 …the helpline (the one 50pick publishes — OQ4)", f.includes(STATUTORY_SMS_HELPLINE));
     ok("§9 …and a working opt-out link", f.includes(`${shortDomain()}/s/${TOKEN}`), f);
     ok("§9 ⭐ it is 49 septets — and that number is COMPUTED, not typed",
       sizeSms(f).units === 49, `${sizeSms(f).units} septets`);
@@ -315,19 +315,56 @@ function checkEnvelope(compose: Composer, log: (l: string) => void): string[] {
   /* ── §12 · ONE helpline — OQ4 answered ─────────────────────────────────── */
   // ⭐ Until 2026-09-26 this section asserted the footer DIFFERED from the published helpline, because
   // OQ4 (ours, or the Gaming Board Code's 0800110051?) was Ali's to answer. He answered: "the right
-  // helpline is ours." The section now pins the answer the other way round.
+  // helpline is ours." — read as: the number 50pick already publishes (labelled on the site as the
+  // national helpline), not a line 50pick runs. The section now pins the answer the other way round.
   log("\n§12 · ONE HELPLINE — the footer carries the number support-config publishes (OQ4, answered 2026-09-26)");
   {
     const support = readFileSync(new URL("../src/lib/support-config.ts", import.meta.url), "utf8");
     const published = (support.match(/STATUTORY_HELPLINE\s*=\s*"([^"]+)"/) || [])[1] ?? "";
     ok("§12 control · support-config's published helpline was actually read", published.length > 5, `read "${published}"`);
-    ok("§12 ⭐ the marketing footer's helpline IS the published one — ours, not a second number",
-      published.replace(/\s/g, "") === STATUTORY_SMS_HELPLINE, `footer "${STATUTORY_SMS_HELPLINE}" · published "${published}"`);
-    ok("§12 …and the Gaming Board Code's 0800110051 appears nowhere in a composed footer",
-      !marketingFooter(TOKEN, "SW").includes("0800110051") && !marketingFooter(TOKEN, "EN").includes("0800110051"));
+    checkHelpline(published, STATUTORY_SMS_HELPLINE, marketingFooter, ok);
+  }
+
+  /* ── §13 · ONE cap, and the budget in the message's own encoding (2026-09-26) ── */
+  // 🔴 `SMS_MAX_SEGMENTS` said 2 while the composer refused anything over 1, and the refusal quoted the
+  // GSM-7 budget (111) for a UCS-2 message whose real room is 70 − 49 = 21.
+  log("\n§13 · ONE SEGMENT CAP, AND THE BUDGET IN THE MESSAGE'S OWN ENCODING");
+  {
+    const at = compose("50pick " + "a".repeat(operatorBudget("SW") - 7), TOKEN);
+    const over = compose("50pick " + "a".repeat(operatorBudget("SW") - 6), TOKEN);
+    ok("§13 ⛔ the composer and the plan agree on the cap — both accept the at-budget message and both refuse one more",
+      at.ok && planSms(at.text, 1).withinCap && !over.ok && !planSms(over.text, 1).withinCap,
+      `at ok=${at.ok} withinCap=${planSms(at.text, 1).withinCap} · over ok=${over.ok} withinCap=${planSms(over.text, 1).withinCap}`);
+    ok("§13 the UCS-2 budget is 70 minus the footer, computed — 21", operatorBudget("SW", "", "UCS2") === SMS_LIMITS.UCS2.single - 49,
+      `${operatorBudget("SW", "", "UCS2")}`);
+    const curly = "50pick: leo ni siku ya soka’ ok"; // 31 characters, one curly apostrophe → UCS-2
+    const c = compose(curly, TOKEN);
+    ok("§13 ⭐ a short body with one ’ is two messages, and the refusal quotes its REAL room (21), not 111",
+      c.size.encoding === "UCS2" && c.size.segments === 2 && c.problems.some((p) => p.includes("you have 21 characters")) && !c.problems.some((p) => p.includes("111")),
+      c.problems.join(" | "));
+    ok("§13 …and states what the body uses, in the same units", c.problems.some((p) => p.includes(`this uses ${curly.length}`)), c.problems.join(" | "));
   }
 
   return failed;
+}
+
+/**
+ * §12's two assertions as a function of the VALUES, so `--prove-red` can hand it the Board's number
+ * back in the footer (docs-prompt-17, 2026-09-26: §12 had no plant, so "a test fails if the Board's
+ * number gets back in" had never been shown able to fail — §5.11).
+ * ⚠️ "The published one" is the number 50pick already publishes, which every public surface labels
+ * the national helpline — not a line 50pick operates (OQ4 as clarified 2026-09-26).
+ */
+function checkHelpline(
+  published: string,
+  helpline: string,
+  footer: (token: string, locale: "SW" | "EN") => string,
+  ok: (label: string, cond: boolean, extra?: string) => void,
+): void {
+  ok("§12 ⭐ the marketing footer's helpline IS the published one — one number, not a second",
+    published.replace(/\s/g, "") === helpline, `footer "${helpline}" · published "${published}"`);
+  ok("§12 …and the Gaming Board Code's 0800110051 appears nowhere in a composed footer",
+    !footer("a1b2c3d4", "SW").includes("0800110051") && !footer("a1b2c3d4", "EN").includes("0800110051"));
 }
 
 /* ══ THE RUN ════════════════════════════════════════════════════════════════ */
@@ -470,6 +507,30 @@ if (!PROVE_RED) {
       landed: () => REAL("50pick: habari", "").problems.some((p) => p.includes("opt-out link")),
       landedAs: "the real composer refuses an empty token",
     },
+    {
+      // 🔴 The pre-2026-09-26 shape: the composer allowed what `withinCap` allowed (2), or the reverse.
+      name: "the composer keeps its OWN cap of 2 — the two truths the plan and the composer used to be",
+      expect: /^§13 ⛔ the composer and the plan agree on the cap/,
+      compose: (body, token) => {
+        const c = REAL(body, token);
+        if (c.size.segments !== 2) return c;
+        const problems = c.problems.filter((p) => !p.includes("messages, and the limit is"));
+        return { ...c, problems, ok: problems.length === 0 };
+      },
+      landed: () => REAL("50pick " + "a".repeat(operatorBudget("SW") - 6), "a1b2c3d4").problems.some((p) => p.includes("the limit is")),
+      landedAs: "the real composer refuses a two-segment message on the cap",
+    },
+    {
+      name: "the budget quoted in GSM-7 whatever the encoding — 111 for a UCS-2 message",
+      expect: /^§13 ⭐ a short body with one ’ is two messages/,
+      compose: (body, token) => {
+        const c = REAL(body, token);
+        const real = operatorBudget("SW", "", c.size.encoding);
+        return { ...c, budget: operatorBudget("SW"), problems: c.problems.map((p) => p.replace(`you have ${real} characters`, `you have ${operatorBudget("SW")} characters`)) };
+      },
+      landed: () => operatorBudget("SW") !== operatorBudget("SW", "", "UCS2"),
+      landedAs: "the GSM-7 and UCS-2 budgets differ, so quoting one for the other is a visible lie",
+    },
   ];
   for (const p of envPlants) {
     ok(`PLANT LANDED · ${p.name}`, p.landed(), p.landedAs);
@@ -477,6 +538,28 @@ if (!PROVE_RED) {
     const matched = failures.filter((f) => p.expect.test(f));
     ok(`  └─ fires: ${p.expect.source.slice(0, 56)}`, matched.length > 0,
       failures.length === 0 ? "NOTHING failed — the guard cannot see this defect" : `failed instead: ${failures.slice(0, 2).join(" | ")}`);
+  }
+
+  /* ── §12's plant: the Gaming Board Code's number back in the footer (OQ4) ── */
+  // ⭐ The real published number and the real footer, with ONLY the helpline swapped — so the two §12
+  // assertions are the ones that must fire, and nothing else about the footer is under test here.
+  {
+    const support = readFileSync(new URL("../src/lib/support-config.ts", import.meta.url), "utf8");
+    const published = (support.match(/STATUTORY_HELPLINE\s*=\s*"([^"]+)"/) || [])[1] ?? "";
+    const BOARD = "0800110051";
+    const planted = (token: string, locale: "SW" | "EN") => marketingFooter(token, locale).replace(STATUTORY_SMS_HELPLINE, BOARD);
+    ok("PLANT LANDED · the Board's 0800110051 back in the footer in place of the published helpline",
+      planted("a1b2c3d4", "SW").includes(BOARD) && planted("a1b2c3d4", "EN").includes(BOARD) && !planted("a1b2c3d4", "SW").includes(STATUTORY_SMS_HELPLINE),
+      JSON.stringify(planted("a1b2c3d4", "SW")));
+    const failures: string[] = [];
+    checkHelpline(published, BOARD, planted, (label, cond) => { if (!cond) failures.push(label); });
+    for (const expect of [/^§12 ⭐ the marketing footer's helpline IS the published one/, /^§12 …and the Gaming Board Code's 0800110051 appears nowhere/]) {
+      ok(`  └─ fires: ${expect.source.slice(0, 56)}`, failures.some((f) => expect.test(f)),
+        failures.length === 0 ? "NOTHING failed — the guard cannot see this defect" : `failed instead: ${failures.join(" | ")}`);
+    }
+    const control: string[] = [];
+    checkHelpline(published, STATUTORY_SMS_HELPLINE, marketingFooter, (label, cond) => { if (!cond) control.push(label); });
+    ok("  └─ control: the same two assertions pass on the shipped footer", control.length === 0, control.join(" | "));
   }
 
   // ⭐ A FINDING ABOUT THE GUARD ITSELF, NOT ABOUT THE CODE — and it is the reason §4b exists.

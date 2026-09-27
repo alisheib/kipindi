@@ -18,6 +18,9 @@ import { formatTzs } from "@/lib/utils";
 import { PageContainer } from "@/components/layout/page-container";
 import { inviteIsLiveFor } from "@/lib/feature-state";
 import { isFinalRefusal } from "@/lib/kyc-refusal";
+// ⭐ THE SHARED MASK (`+255••••21`), so this page and the opt-out page show one person's number the
+// same way (D6). The local star copy here was one of the hand-written masks `phone-normalize.ts` retired.
+import { maskPhone } from "@/lib/phone-normalize";
 
 export async function generateMetadata() {
   const { t } = await getServerT();
@@ -25,13 +28,6 @@ export async function generateMetadata() {
 }
 export const dynamic = "force-dynamic";
 
-
-/** Mask a Tanzanian E.164 phone for on-screen display per PDPA / GBT
- *  data-minimisation: keep prefix + 2 trailing digits, mask the rest. */
-function maskPhone(phoneE164: string): string {
-  if (phoneE164.length <= 6) return phoneE164;
-  return `${phoneE164.slice(0, 4)}*****${phoneE164.slice(-2)}`;
-}
 
 /**
  * Each language in its OWN name — the same endonyms the header's language menu lists, never translated.

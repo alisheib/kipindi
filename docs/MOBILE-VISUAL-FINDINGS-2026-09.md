@@ -2989,6 +2989,8 @@ On a phone, the free statutory helpline given in answer to 'I have a problem wit
 
 *Evidence:* Opened FAQ 5 reads 'Open Profile → Responsible gambling. … self-exclude. 0800 11 0011 (free).' In SW: '… kujizuia. 0800 11 0011 (bure).' The number is plain text appended at help/page.tsx:136, not a tel: link. The footer has it as a tel:0800110011 link; the FAQ answer does not (help-faq5-open-360-sw.png).
 
+*2026-09-26 — fixed in code by the marketing lane's audit-fix pass (with S08-info-H02): FAQ 5 now shows the helpline label ("Simu ya msaada" / "Helpline" / "求助热线") and the number as a `tel:` link, then "(bure)." / "(free)." / "（免费）。". Guards: `test:support-contact` §14.5–§14.7 and a fifth `red:support-contact` mutation. Closes when the sw 360 capture with FAQ 5 open is taken on the deployed build.*
+
 ### S08-06 · 🟡 medium · 🕓 unverified · filter
 **Leaderboard product lens rail (All / Markets / Up & Down)** — `/leaderboard`
 
@@ -3121,6 +3123,8 @@ On phones the five steps are listed twice in a row (icon list, then text list), 
 The one answer for a player at risk gives the free national helpline as untappable text with no lead-in, while the legal page makes it a tel: link.
 
 *Evidence:* src/app/help/page.tsx:136 `{key === "faq5" && ` ${HELPLINE()} (${t.common.free}).`}` — plain text. Live (details opened in-page): EN "…or self-exclude. 0800 11 0011 (free)." links: 0; SW "…au kujizuia. 0800 11 0011 (bure)." links: 0. The legal RG page renders the same number as `<a href={`tel:${HELPLINE_TEL()}`}>` (legal/responsible-gambling/page.tsx:93).
+
+*2026-09-26 — fixed in code with S08-05 (see there): a labelled `tel:` link, guarded by `test:support-contact` §14.7. Closes with the same deployed capture.*
 
 ### S08-info-L03 · 🟡 medium · 🕓 unverified · state
 **Tier badge tooltip (Tooltip around TierBadge)** — `/leaderboard`
@@ -3692,6 +3696,8 @@ Two verbs for the same action in the same view, in both locales.
 The consent sentence names documents that don't match the links beside it. SW wording changes the meaning of an opt-in and makes a routine sign-out sound punitive.
 
 *Evidence:* - "I accept the Terms and Privacy." (i18n :490) sits directly above links named "Terms of service" and "Privacy". SW: "Ninakubali Sheria na Faragha." (:3104) vs links "Masharti ya huduma" / "Faragha"; "Sheria" (laws) is not "Masharti" (terms). - SW marketing opt-in "Nipe matangazo (hiari)." (:3105) reads as "send me advertisements", while EN says "product updates". - SW session-ended title "Umetolewa" (:3121) reads as "you have been removed", vs EN "Signed out". - Trust strip "18+ · Licensed by GBT" (:494) uses an unexpanded acronym.
+
+*2026-09-26 — two of the four bullets addressed by the marketing lane's audit-fix pass. The opt-in: the box now names sender, content and channel in every language — sw "Nitumie ofa na habari za 50pick kwa SMS (hiari)." (consent law, `COMPLIANCE-DECISIONS.md` § "2026-09-26 · Marketing consent names SMS"). The terms label: sw reworded to "Masharti ya huduma" to match its link (`auth.termsAccept`) — confirm both on the deployed build. "Umetolewa" and the "GBT" acronym are untouched.*
 
 ### S09-auth-19 · ⚪ low · 🕓 unverified · number
 **Self-exclusion panel date and support phone** — `/auth/login?excluded=serving&until=2026-12-01`

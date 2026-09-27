@@ -78,4 +78,14 @@ export const MUTATIONS = [
     to: `              <a href="tel:0800119999" style={{ color: TEXT_MUTED, textDecoration: "none" }}>`,
     expect: `§15.1 ★ every helpline copy in the root error boundary matches the pinned constant`,
   },
+  {
+    // 🔴 THE SHAPE §14.1 COULD NOT SEE (MOBILE-VISUAL-FINDINGS S08-05 / S08-info-H02): /help's at-risk answer printing
+    // the helpline from a STRING — no tel:, nothing to tap — which is how it shipped until 2026-09-26. Single-quoted
+    // so the backticks and `${` in the source are literal.
+    name: "help/page.tsx — the at-risk answer's helpline goes back to untappable text",
+    file: "src/app/help/page.tsx",
+    from: '                      <a href={`tel:${HELPLINE_TEL()}`} className="whitespace-nowrap font-mono text-brand-300 underline-offset-2 hover:underline">{HELPLINE()}</a>',
+    to: '                      {`${HELPLINE()}`}',
+    expect: `§14.5 ★ no support contact is rendered as bare text from a string or after a label expression`,
+  },
 ];

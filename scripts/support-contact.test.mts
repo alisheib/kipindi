@@ -756,6 +756,64 @@ ok("§11 no module-scope value captures a config getter", [...new Set(v11)].leng
   ok("§14.4 ⚠️ CONTROL — the exemption list is exactly one named file that still exists",
     EXEMPT.length === 1 && files.some((f) => relative(ROOT, f).replace(/\\/g, "/") === EXEMPT[0]),
     EXEMPT.join(" | "));
+
+  /**
+   * ⭐ §14.5–§14.7 · THE SHAPES §14.1's `>{GETTER()}` CANNOT SEE (2026-09-26, MOBILE-VISUAL-FINDINGS S08-05 /
+   * S08-info-H02). /help's at-risk answer (faq5) appended `` ` ${HELPLINE()} (${t.common.free}).` `` — the helpline
+   * interpolated into a STRING, with no `>` before it, so §14.1 never looked, and a player asking about a gambling
+   * problem was handed a number they could not tap. A getter after a label expression (`{label}{" "}{HELPLINE()}`)
+   * has no `>` before it either. Both are text a player reads, so both must sit inside an anchor with the scheme.
+   * ⚠️ `.tsx` only: a `.ts` template is an email, SMS or prompt body, where an anchor is not the markup.
+   */
+  const anchoredWith = (body: string, index: number, scheme: string) => {
+    const before = body.slice(0, index);
+    const lastOpen = [...before.matchAll(/<a[\s>]/g)].map((x) => x.index).pop() ?? -1;
+    const inside = lastOpen !== -1 && lastOpen > before.lastIndexOf("</a>");
+    return inside && body.slice(lastOpen, body.indexOf(">", lastOpen) + 1).includes(scheme);
+  };
+  const stringRenders = (body: string, getter: string): number[] => {
+    const at: number[] = [];
+    // Interpolated into a template — unless it IS an href's target (`mailto:${…}` / `tel:${…}`).
+    for (const m of body.matchAll(new RegExp(`\\$\\{${getter}\\(\\)\\}`, "g"))) {
+      if (!/(?:mailto|tel):$/.test(body.slice(Math.max(0, m.index - 7), m.index))) at.push(m.index);
+    }
+    // A JSX child whose previous non-space character is not `>` (§14.1's shape), `=` (an attribute) or `$` (above).
+    for (const m of body.matchAll(new RegExp(`\\{\\s*${getter}\\(\\)\\s*\\}`, "g"))) {
+      const prev = body.slice(0, m.index).trimEnd().slice(-1);
+      if (prev !== ">" && prev !== "=" && prev !== "$") at.push(m.index);
+    }
+    return at;
+  };
+  const bareStrings = (rel: string, body: string): string[] => {
+    const out: string[] = [];
+    for (const [getter, scheme] of SCHEMES) for (const i of stringRenders(body, getter)) {
+      if (!anchoredWith(body, i, scheme)) out.push(`${rel}:${body.slice(0, i).split(/\r?\n/).length} renders ${getter}() as text with no ${scheme} anchor`);
+    }
+    return out;
+  };
+  const bareStr: string[] = [];
+  for (const f of files) {
+    const rel = relative(ROOT, f).replace(/\\/g, "/");
+    if (!rel.endsWith(".tsx") || EXEMPT.includes(rel)) continue;
+    bareStr.push(...bareStrings(rel, decomment(readFileSync(f, "utf8"))));
+  }
+  ok("§14.5 ★ no support contact is rendered as bare text from a string or after a label expression",
+    bareStr.length === 0, bareStr.join(" | "));
+  // ⭐ CONTROL — the pre-2026-09-26 /help line and the label-first shape are flagged; the fixed shape, an href
+  // target and an attribute are not.
+  ok("§14.6 ⚠️ CONTROL — the detector flags the old faq5 string and a label-first render, and accepts anchors, hrefs and attributes",
+    bareStrings("probe", "<p>{key === \"faq5\" && ` ${HELPLINE()} (${t.common.free}).`}</p>").length === 1 &&
+    bareStrings("probe", "<p>{t.footer.helpline}{\" \"}{HELPLINE()}</p>").length === 1 &&
+    bareStrings("probe", "<p>{t.footer.helpline}{\" \"}\n  <a href={`tel:${HELPLINE_TEL()}`} className=\"x\">{HELPLINE()}</a></p>").length === 0 &&
+    bareStrings("probe", "<a href={`mailto:${SUPPORT_EMAIL()}`}>{SUPPORT_EMAIL()}</a>").length === 0 &&
+    bareStrings("probe", "<Input value={HELPLINE()} readOnly />").length === 0);
+  // ★ The surface itself: the one answer written for a player at risk names the line AND dials it.
+  const help = decomment(readFileSync(join(SRC, "app/help/page.tsx"), "utf8"));
+  const faq5At = help.indexOf('key === "faq5"');
+  const faq5 = faq5At < 0 ? "" : help.slice(faq5At, help.indexOf("</p>", faq5At));
+  ok("§14.7 ★ /help's at-risk answer (faq5) gives the helpline labelled and tappable",
+    faq5.includes("href={`tel:${HELPLINE_TEL()}`}") && />\s*\{HELPLINE\(\)\}\s*<\/a>/.test(faq5) && /helpline/i.test(labelsIn(faq5)),
+    faq5 ? `labels: ${labelsIn(faq5) || "none"}` : "the faq5 branch was not found in src/app/help/page.tsx");
 }
 
 // ────────────────────────────────────────────────────────────────────────────

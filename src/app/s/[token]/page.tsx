@@ -1,10 +1,14 @@
 import { PageContainer } from "@/components/layout/page-container";
 import { PageHeader } from "@/components/ui/page-header";
-import { EmptyState } from "@/components/ui/empty-state";
+import { Callout } from "@/components/ui/callout";
 import { getServerT } from "@/lib/i18n-server";
+import type { Dict } from "@/lib/i18n-server";
 import { SENDER_IDENTITY } from "@/lib/marketing/footer";
-import { resolveOptOutToken } from "@/lib/server/marketing/optout-service";
+import { SUPPORT_EMAIL, SUPPORT_PHONE, SUPPORT_PHONE_TEL } from "@/lib/server/support-config";
+import { resolveOptOutTokenWithinBudget } from "@/lib/server/marketing/optout-service";
+import type { OptOutPageResolution } from "@/lib/server/marketing/optout-service";
 import { OptOutClient } from "./optout-client";
+import { optOutClientKey } from "./client-key";
 
 /**
  * `/s/[token]` — THE WAY OUT OF A MARKETING SMS. No login, one click, and a distinct sentence
@@ -28,6 +32,10 @@ import { OptOutClient } from "./optout-client";
  * would send `50pick.tz/s/<token>` to Google with every hit, which is a live opt-out
  * credential for a named person handed to a third party. That file already names this exact
  * hazard for `/agent/invite`.
+ *
+ * ⭐ D6 (2026-09-26) · A MINIMAL SHELL. `app-shell.tsx` gives `/s` the logo, the language menu and the
+ * footer's licence and helpline lines only — no sign-in or sign-up, no nav, no rail, no chat, no
+ * first-visit primer, no "propose markets and get paid". Somebody who came to leave is not sold to.
  */
 export const dynamic = "force-dynamic";
 
@@ -41,38 +49,117 @@ export async function generateMetadata() {
   };
 }
 
-export default async function OptOutPage({ params }: { params: Promise<{ token: string }> }) {
-  const { token } = await params;
-  const { t } = await getServerT();
-  const r = await resolveOptOutToken(token);
+/**
+ * ⚠️ A DEV-ONLY HOLD, SO THE LOADING STATE CAN BE PHOTOGRAPHED (`marketing-u8-optout-drive.mjs`). With
+ * the in-memory store the lookup lands in the same chunk as the fallback, so `loading.tsx` is never on
+ * screen long enough to capture. ⛔ A NO-OP IN PRODUCTION, whatever the query says — the same rule as
+ * every `api/dev-test` route — and capped, so a typo cannot hang a local server.
+ */
+const QA_HOLD_MAX_MS = 5000;
+async function qaHold(sp: Record<string, string | string[] | undefined>): Promise<void> {
+  if (process.env.NODE_ENV === "production") return;
+  const ms = Number(Array.isArray(sp.qa_hold_ms) ? sp.qa_hold_ms[0] : sp.qa_hold_ms);
+  if (Number.isFinite(ms) && ms > 0) await new Promise((res) => setTimeout(res, Math.min(ms, QA_HOLD_MAX_MS)));
+}
 
-  // ⛔ ONE SENTENCE FOR BOTH FAILURES. `malformed` and `unknown` are different to the service
-  // and identical to the reader: telling a stranger which of the two they hit turns `/s/` into
-  // an oracle for guessing live tokens. ⛔ And it is a REFUSAL, never a quiet success — the
-  // copy says plainly that nothing has changed.
-  if (!r.ok) {
+export default async function OptOutPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ token: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const { token } = await params;
+  await qaHold(await searchParams);
+  const { t } = await getServerT();
+  // ⭐ WITHIN A BUDGET ONLY A MISS SPENDS (D6) — see the service. ⛔ A read that FAILED is not an
+  // invalid link: it gets the "did not go through" sentence, never "this link does not work".
+  let r: OptOutPageResolution | null;
+  try {
+    r = await resolveOptOutTokenWithinBudget(token, await optOutClientKey());
+  } catch (err) {
+    console.error("[optout] page read failed:", (err as Error)?.message ?? err);
+    r = null;
+  }
+
+  // ⛔ ONE SENTENCE FOR EVERY FAILURE. `malformed`, `unknown` and `throttled` are different to the
+  // service and identical to the reader: telling a stranger which one they hit turns `/s/` into an
+  // oracle for guessing live tokens. ⛔ And it is a REFUSAL, never a quiet success — the copy says
+  // plainly that nothing has changed, and (F4) it names the next step.
+  if (!r || !r.ok) {
     return (
       <PageContainer tier="receipt" className="space-y-5">
         <PageHeader eyebrow={SENDER_IDENTITY} title={t.optout.title} />
-        {/* ⛔ NO `body` HERE, AND THAT IS THE POINT. The first version passed `optout.body` —
-            "tap once to stop marketing messages" — onto a page that renders NO BUTTON TO TAP.
-            Caught by reading the screenshot rather than by any assertion: instructing an action
-            the page does not offer is a small false promise, on the one page whose whole job is
-            never to make one. The refusal sentence stands alone. */}
-        <EmptyState kind="default" title={t.optout.invalid} />
+        {/* ⛔ NO `optout.body` HERE, AND THAT IS THE POINT. The first version passed "tap once to stop
+            marketing messages" onto a page that renders NO BUTTON TO TAP. Instructing an action the
+            page does not offer is a small false promise, on the one page whose whole job is never to
+            make one. ⭐ D6: the refusal no longer says "this link is not ours" (which read like a
+            phishing warning to somebody holding a genuine, truncated 50pick link) and it is no longer
+            a dead end — it names the two other ways to stop. */}
+        <Callout
+          layout="stack"
+          tone={r ? "neutral" : "danger"}
+          size="md"
+          titleAs="h2"
+          title={r ? t.optout.invalid : t.optout.error}
+          action={<NextSteps t={t} />}
+        >
+          {invalidNextStep(t)}
+        </Callout>
       </PageContainer>
     );
   }
 
   return (
     <PageContainer tier="receipt" className="space-y-5">
-      <PageHeader eyebrow={SENDER_IDENTITY} title={t.optout.title} subtitle={t.optout.body} />
-      <section className="rounded-xl glass-panel p-4">
-        {/* `tabular-nums` because it is a phone number, and masked because §5.14 allows nothing
-            else: whoever is holding this phone can open this page. */}
-        <p className="font-mono text-title-sm font-bold tabular-nums text-text">{r.masked}</p>
-      </section>
-      <OptOutClient token={token} suppressed={r.suppressed} />
+      {/* ⭐ THE HEADING, THE NUMBER AND THE ONE ACTION ALL LIVE IN THE CLIENT NOW (D6), because the
+          heading must follow the state: a fresh load of a stopped number used to show "Stop marketing
+          messages / tap once to stop…" directly above a button that RE-SUBSCRIBES. `r.masked` only —
+          §5.14 allows nothing else, and the raw number never leaves the server (`test:marketing-optout`
+          S5 greps this file for the identifier field, comments included). `r.token` is the
+          NORMALISED token, so a lower-case link acts on the same row it resolved. */}
+      <OptOutClient
+        token={r.token}
+        masked={r.masked}
+        suppressed={r.suppressed}
+        resumable={r.resumable}
+        eyebrow={SENDER_IDENTITY}
+      />
     </PageContainer>
+  );
+}
+
+/** The next-step sentence, with the profile toggle's own NAME and the path to it read from the dict
+ *  (so a rename of either cannot leave this sentence pointing at a control that no longer exists). */
+function invalidNextStep(t: Dict): string {
+  return t.optout.invalidNext
+    .replace("{toggle}", t.push.marketingTitle)
+    .replace("{path}", `${t.common.profile} → ${t.common.notifications}`);
+}
+
+/**
+ * The two other ways to stop. ⛔ PLAIN `<a>`, NEVER `<Link>`: `/profile/notifications` renders under the
+ * FULL player shell and this page under the minimal one, and a soft navigation keeps the layout it
+ * started in (E-70, `test:shell-boundary`). Signed out, the proxy sends it to sign-in and back.
+ * ⭐ Our own desk, read on the SERVER from `support-config` (E-226) — never typed, never the independent
+ * helpline, which is not ours to route a marketing request to. ⚠️ This names a way to ASK; support has no
+ * recorded-suppression tool yet, so the page promises contact, not a manual stop.
+ */
+function NextSteps({ t }: { t: Dict }) {
+  const phone = SUPPORT_PHONE();
+  const email = SUPPORT_EMAIL();
+  const link = "text-body-sm text-text-muted hover:text-text transition-colors inline-flex flex-wrap items-center justify-center gap-x-[0.28em] min-h-[44px]";
+  return (
+    <div className="flex flex-col items-center gap-1">
+      <a href="/profile/notifications" className="btn btn-ghost btn-md inline-flex items-center justify-center">
+        {t.optout.openNotifications}
+      </a>
+      <a href={`tel:${SUPPORT_PHONE_TEL()}`} className={link}>
+        <span className="whitespace-nowrap">{t.footer.contactUs} ·</span>{" "}<span className="whitespace-nowrap">{phone}</span>
+      </a>
+      <a href={`mailto:${email}`} className={link}>
+        <span className="whitespace-nowrap">{t.footer.email} ·</span>{" "}<span className="whitespace-nowrap">{email}</span>
+      </a>
+    </div>
   );
 }

@@ -358,7 +358,12 @@ contract, which read as a working integration to anyone scanning the file.
 3. **`data` is an ARRAY** of `{field: message}` on a schema error and `null` on an
    auth error; the PDF types it "Object".
 4. **A reply's `balance` is only half-true**: `0.0` on a refusal (decided before
-   auth), pre-charge on a success. The true figure is `POST /api/account/balance`.
+   auth), pre-charge on a success. The true figure is `POST /api/account/balance` —
+   read through `refreshSmsBalance` (one path for the admin tile, `/api/health` and
+   `sendBatch`); operators read it on Admin → System's "SMS credit" tile. It is also the
+   one free live credential check, so a failed read says `refused` (wrong keys) or
+   `unreachable` (no answer) — never "zero". Crossing `SMS_BALANCE_ALERT_TZS` reaches every
+   ADMIN/COMPLIANCE officer by bell and email, never by SMS.
 
 Also not in the PDF: `coding` is `GSM7` | `UCS2` (GSM-7 cannot carry Chinese — chosen
 per message by `smsCodingFor`), and a success carries no per-message id (`data: null`).
@@ -380,6 +385,10 @@ production send). Railway keeps HTTP logs only for the CURRENT deployment — th
 is the durable record. Live state, the go-live order and the open vendor questions:
 `docs/BLACKBALL-SMS.md`. Marketing/broadcast SMS is a separate programme, in build:
 `docs/MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md` (no Gaming Board approval needed — Ali, 2026-09-26).
+⛔ **Its consent sentences are evidence.** The register box (`auth.optionalUpdates`), the profile
+toggle (`push.marketingTitle`/`marketingBody`) and the opt-out page's resume are pinned as literals in
+`src/lib/marketing/consent-wording.ts`: rewording one means APPENDING the new sentences there in the
+same commit (never editing an entry), or every new opt-in stops counting as consent (OQ11).
 
 ## Persistence
 

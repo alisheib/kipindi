@@ -10,7 +10,8 @@
  *
  * Honest states: unsupported browser, permission blocked, and "not configured"
  * (no VAPID key on this deploy) are each surfaced truthfully rather than showing
- * a toggle that silently does nothing.
+ * a toggle that silently does nothing. A prompt the player closed unanswered is
+ * none of those: it is OFF, with a one-line next step (`test:feedback-law` 3.13).
  */
 import { useEffect, useState, useTransition } from "react";
 import { I } from "@/components/ui/glyphs";
@@ -26,6 +27,8 @@ export function PushSettings() {
   const { t } = useT();
   const { toast } = useToast();
   const [state, setState] = useState<State>("loading");
+  // The player closed the browser's permission prompt without answering: OFF, with a one-line next step.
+  const [dismissed, setDismissed] = useState(false);
   const [pending, start] = useTransition();
 
   useEffect(() => {
@@ -42,14 +45,22 @@ export function PushSettings() {
   }, []);
 
   function enable() {
+    setDismissed(false);
     start(async () => {
       try {
         const reg = await registerServiceWorker();
         if (!reg) { setState("unsupported"); return; }
         const sub = await subscribeToPush(reg);
         if (!sub) {
-          // Either permission was refused, or no VAPID key is configured.
-          setState(Notification.permission === "denied" ? "blocked" : "unconfigured");
+          // 🔴 THIS MAPPED EVERY NON-"denied" NULL TO `unconfigured` — so a player who only CLOSED the prompt
+          // (permission stays "default") read "Push isn't available on this deployment yet": jargon, and false.
+          // A missing VAPID key is caught on mount, so here there are three causes and three answers.
+          const permission = Notification.permission;
+          if (permission === "denied") { setState("blocked"); return; }
+          if (permission === "default") { setDismissed(true); setState("off"); return; }
+          // Granted, but the subscription itself failed: the refusal toast, and the switch stays off.
+          toast({ title: t.push.errOnTitle, description: t.push.errOnBody, variant: "factual" });
+          setState("off");
           return;
         }
         const json = sub.toJSON() as { endpoint?: string; keys?: { p256dh?: string; auth?: string } };
@@ -103,6 +114,7 @@ export function PushSettings() {
     state === "unsupported" ? t.push.unsupported
     : state === "blocked" ? t.push.blocked
     : state === "unconfigured" ? t.push.unconfigured
+    : state === "off" && dismissed ? t.push.dismissed
     : t.push.body;
 
   const interactive = state === "on" || state === "off";
@@ -121,7 +133,8 @@ export function PushSettings() {
           </span>
           <div className="min-w-0">
             <p className="font-display text-[14px] font-semibold text-text leading-tight">{t.push.title}</p>
-            <p className="mt-0.5 text-body-sm text-text-subtle leading-snug">{hint}</p>
+            {/* polite live region: a dismissed prompt raises no toast, so the changed hint is the only answer. */}
+            <p className="mt-0.5 text-body-sm text-text-subtle leading-snug" aria-live="polite">{hint}</p>
           </div>
         </div>
         {interactive ? (

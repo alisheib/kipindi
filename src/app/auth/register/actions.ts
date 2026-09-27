@@ -3,6 +3,18 @@
 import { redirect } from "next/navigation";
 import { registerWithPassword, requestRegisterOtp } from "@/lib/server/auth-service";
 import { normalizeReferralCode } from "@/lib/server/affiliate-service";
+import { getServerT } from "@/lib/i18n-server";
+import { messagingLocaleOf } from "@/lib/server/marketing/consent-ledger";
+
+/**
+ * D2 · THE LANGUAGE THE FORM WAS SHOWN IN — read on the server from the same `kp-locale` cookie the
+ * page rendered from (the `/s/[token]` pattern), ⛔ never taken from the form: it decides which
+ * sentence the consent ledger stores as evidence of what this person read, and evidence the caller
+ * chooses is not evidence. It is also the account's `User.locale` from the first day.
+ */
+async function shownLocale() {
+  return messagingLocaleOf((await getServerT()).locale);
+}
 
 /**
  * Phone + password registration. The OTP-only path (`requestRegisterOtp` via
@@ -32,6 +44,7 @@ export async function startRegisterAction(formData: FormData) {
   const result = await registerWithPassword({
     phone, email, password, passwordConfirm, dob,
     acceptTerms, acceptAge, marketingOptIn, referralCode, inviteCode,
+    locale: await shownLocale(),
   });
 
   if (!result.ok) {
@@ -105,6 +118,7 @@ export async function startRegisterOtpAction(formData: FormData) {
     acceptTerms: acceptTerms as true,
     acceptAge: acceptAge as true,
     marketingOptIn,
+    locale: await shownLocale(),
   });
   if (!result.ok) return { ok: false as const, error: result.error, code: result.code };
   const otpParams = new URLSearchParams({ purpose: "register", phone: result.data!.phone });

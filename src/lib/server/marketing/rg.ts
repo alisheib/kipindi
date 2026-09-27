@@ -45,7 +45,9 @@ export type MarketingRgStanding =
    *  cleared). The gate's under-25 rule reads it (U12): the published page promises no marketing to a
    *  player under 25 in a vulnerability segment, and this is the segment that promise is built on. */
   | { ok: true; coolingOffEnded: boolean; rgHistory: boolean }
-  | { ok: false; skipReason: MarketingRgSkipReason; detail: string; until: string | null };
+  /** `consentLapsed` — refused ONLY because no consent was given after the break ended or the officer's
+   *  restore: the one refusal the player's own "yes" lifts. The profile toggle reads it to show OFF (D4). */
+  | { ok: false; skipReason: MarketingRgSkipReason; detail: string; until: string | null; consentLapsed?: boolean };
 
 /** What the audit chain proves about the account's self-exclusions — the only durable record of WHEN an
  *  officer reopened one: `restorePlayerAction` writes no column, only this action. */
@@ -93,8 +95,8 @@ export function sixMonthFloor(startIso: string): number {
   return Math.max(calendar.getTime(), start + SELF_EXCLUSION_PERIODS_SEC["6m"] * 1000);
 }
 
-const refuse = (skipReason: MarketingRgSkipReason, detail: string, until: string | null): MarketingRgStanding =>
-  ({ ok: false, skipReason, detail, until });
+const refuse = (skipReason: MarketingRgSkipReason, detail: string, until: string | null, consentLapsed = false): MarketingRgStanding =>
+  ({ ok: false, skipReason, detail, until, consentLapsed });
 
 export async function marketingRgStanding(
   user: Pick<StoredUser, "id" | "status">,
@@ -120,6 +122,12 @@ export async function marketingRgStanding(
   if (user.status === "SELF_EXCLUDED") {
     return refuse("rg_self_excluded", `account is SELF_EXCLUDED (standing: ${se.state})`, row?.selfExclusionUntil ?? null);
   }
+  // ⛔ AN UNREADABLE END DATE REFUSES, exactly as an unreadable break does below. `selfExclusionStandingOf`
+  // reads it as "none", which on a reopened (ACTIVE) account would skip the restore, six-month and
+  // fresh-consent checks entirely. (A DateTime column cannot hold one; the memory store can.)
+  if (row?.selfExclusionUntil && Number.isNaN(Date.parse(row.selfExclusionUntil))) {
+    return refuse("rg_self_excluded", "the self-exclusion end date is unreadable, so it refuses", row.selfExclusionUntil);
+  }
   if (se.state === "serving") {
     return refuse("rg_self_excluded", se.permanent ? "permanent self-exclusion" : `self-exclusion serving until ${se.until}`, se.until);
   }
@@ -144,7 +152,7 @@ export async function marketingRgStanding(
     //    toggle left on through the exclusion, or an old opt-out link tapped while still excluded —
     //    is not the person asking to be marketed again.
     if (!(await consentedSince(rec.restoredAt as string))) {
-      return refuse("rg_self_excluded", `restored on ${rec.restoredAt}, and no consent given since`, se.until);
+      return refuse("rg_self_excluded", `restored on ${rec.restoredAt}, and no consent given since`, se.until, true);
     }
   }
 
@@ -159,7 +167,7 @@ export async function marketingRgStanding(
     const coMs = Date.parse(co);
     if (Number.isNaN(coMs)) return refuse("rg_cooling_off", "the break's end date is unreadable, so it refuses", co);
     if (coMs > now) return refuse("rg_cooling_off", `on a break until ${co}`, co);
-    if (!(await consentedSince(co))) return refuse("rg_cooling_off", `break ended on ${co}, and no consent given since`, co);
+    if (!(await consentedSince(co))) return refuse("rg_cooling_off", `break ended on ${co}, and no consent given since`, co, true);
     coolingOffEnded = true;
   } else if (user.status === "COOLED_OFF") {
     return refuse("rg_cooling_off", "account is COOLED_OFF with no break on record (diverged), so it refuses", null);

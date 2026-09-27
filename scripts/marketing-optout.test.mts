@@ -15,6 +15,16 @@
  * asserted to agree with the shipped service on every step. Without that, a red case going red
  * would be evidence about the model rather than about the product.
  *
+ * ⭐ D6 (2026-09-26) added: a case-insensitive token (31), resume lifting only a stop the person made
+ * (32), the RESUME row recording the consent sentence and never the stop instruction (15), the live
+ * token kept out of evidence (8), a self-repairing `already` (34), a mint that normalises its number
+ * (35), no self-excluded toggle switched on from a link (36) and a GET budget only misses spend (37) —
+ * each with its own red plant — plus the minimal shell, the overlay patterns and the copy rules (S17+).
+ * ⭐ The acts' budget (38a–c) runs through the object under test too, so its three plants reach it; and
+ * the surface checks (S5–S21) have their OWN plants — an in-memory edit of the source TEXT or the
+ * dictionary they read, whose anchor must resolve exactly once — so a static check is also proven
+ * capable of failing.
+ *
  * Run:  npm run test:marketing-optout
  * Red:  npm run red:marketing-optout
  */
@@ -24,16 +34,21 @@ import { readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { db } from "../src/lib/server/store.ts";
-import type { StoredUser, MessagingKey, MessagingLocale } from "../src/lib/server/store.ts";
-import { toMsisdn255 } from "../src/lib/phone-normalize.ts";
+import type { StoredUser, MessagingKey, MessagingLocale, SuppressionReason } from "../src/lib/server/store.ts";
+import { maskPhone, toMsisdn255 } from "../src/lib/phone-normalize.ts";
 import { mayReceiveMarketingSms } from "../src/lib/server/marketing/consent.ts";
 import {
   resolveOptOutToken, stopMarketing, resumeMarketing, mintOptOutToken,
-  optOutWording, OPTOUT_MINT_ATTEMPTS,
+  optOutWording, OPTOUT_MINT_ATTEMPTS, personMayLift,
+  resolveOptOutTokenWithinBudget, stopMarketingWithinBudget, OPTOUT_BUDGET,
 } from "../src/lib/server/marketing/optout-service.ts";
 import type { OptOutActResult } from "../src/lib/server/marketing/optout-service.ts";
 import { OPTOUT_TOKEN_CHARS, OPTOUT_PATH } from "../src/lib/marketing/footer.ts";
-import { OPTOUT_TOKEN_ALPHABET, isOptOutTokenShape } from "../src/lib/marketing/optout.ts";
+import {
+  OPTOUT_TOKEN_ALPHABET, isOptOutTokenShape, normalizeOptOutToken, optOutTokenRef, isOptOutPath,
+} from "../src/lib/marketing/optout.ts";
+import { rateCheckAsync, rateRefundAsync, RATE_RULES } from "../src/lib/server/rate-limit.ts";
+import { getAuditForTargetsDurable } from "../src/lib/server/audit.ts";
 import { gaExcluded } from "../src/lib/google-tag.ts";
 import { isProtectedPath } from "../src/proxy.ts";
 import { dict } from "../src/lib/i18n-dict.ts";
@@ -63,6 +78,12 @@ type OptOutPage = {
    *  against a page whose links expire. Every question the suite asks now goes through the
    *  object under test. */
   resolve: (token: string) => Promise<{ ok: boolean }>;
+  /** ⭐ The page's GET, within its budget (D6) — a miss spends, a hit is refunded. */
+  resolveWithin: (token: string, clientKey: string) => Promise<{ ok: boolean; reason?: string }>;
+  /** ⭐ The STOP act, within the same budget plus the per-link cap (D6). */
+  stopWithin: (token: string, locale: MessagingLocale, clientKey: string) => Promise<OptOutActResult>;
+  /** ⭐ The mint is in the shape so its number normalisation can be planted away (D6). */
+  mint: (identifier: string) => Promise<string | null>;
   /** ⭐ "Is this number still refusing?" — the DAL's own question, in the shape, so the strict
    *  `=== null` predicate that failed OPEN can be planted and proven to fire. An assertion no
    *  plant can reach is an assertion that cannot fail. */
@@ -73,9 +94,70 @@ type OptOutPage = {
 
 const SHIPPED: OptOutPage = {
   stop: stopMarketing, resume: resumeMarketing, resolve: resolveOptOutToken,
+  resolveWithin: resolveOptOutTokenWithinBudget,
+  stopWithin: stopMarketingWithinBudget,
+  mint: mintOptOutToken,
   isSuppressed: async (key) => (await Promise.resolve(db.suppression.find(key))) !== null,
   confirms: false,
 };
+
+/* ══ THE D6 ASSERTION LABELS — named once, because the red cases below must quote them exactly ══ */
+const L = {
+  evidence: "8 · ⛔ §5.14 + D6 — the evidence carries a token REFERENCE, never the live token and never a raw phone number",
+  resumeWording: "15 · ⛔ D6 — the GIVEN row records the CONSENT sentence shown beside the button (`push.marketingBody`), never the stop instruction",
+  lower: "31 · ⭐ D6 — a token typed in LOWER or MIXED case resolves and stops the same number (URL bars do not capitalise)",
+  operator: "32 · ⛔ D6 — 'start them again' on an OPERATOR suppression lifts NOTHING and writes no consent: one tap on an old SMS never undoes a stop somebody else made",
+  repair: "34 · 🔴 D6 — a STOP whose ledger write failed is REPAIRED by the retry: the latest ledger row is WITHDRAWN and the player's toggle is off",
+  mint: "35 · 🔴 D6 — a token minted from `+255…` (User.phoneE164) is keyed bare, so its STOP makes the gate refuse the number ON ITS SUPPRESSION",
+  selfExcluded: "36 · ⛔ D6 — a SELF-EXCLUDED player's toggle is never switched back on from an unauthenticated link",
+  walkerDry: "37a · ⭐ D6 — a walker's MISSES run the GET budget dry, and a dry budget makes no lookup at all",
+  personFree: "37b · ⭐ D6 — a person opening their OWN valid link never spends the budget, however often",
+  actWalker: "38a · ⭐ D6 — a script POSTing unknown tokens runs its address dry and is then refused with `error`, never a success",
+  linkCap: "38b · ⭐ D6 — one valid link's acts are capped per LINK (no ledger flood from a held token), and the first taps all land",
+  hitFree: "38c · …and a hit costs the ADDRESS nothing",
+} as const;
+
+/* ══ THE SURFACE LABELS — named once, because the surface plants below must quote them exactly ══ */
+const SL = {
+  mask: "S5 · the page renders a MASKED number, never the raw one (§5.14)",
+  refusalNoTap: "S5b · ⛔ the invalid-token refusal does NOT tell the reader to tap a button that is not there",
+  nextStep: "S5c · ⭐ D6 — the refusal names a next step: the profile toggle (a plain <a>, never <Link>) and our desk from `support-config`",
+  loadingOne: "S6 · ⭐ D6 — the loading state describes ONE button and says its words to a screen reader",
+  headings: (loc: string) => `S7c.${loc} · ⭐ D6 — idle, stopped and resumed each have their OWN heading`,
+  noPromise: (loc: string) => `S7d.${loc} · ⛔ D6 — the resumed sentence and heading make NO delivery promise`,
+  notOurs: (loc: string) => `S7e.${loc} · ⛔ D6 — the invalid-link sentence never says the link is "not ours"`,
+  placeholders: (loc: string) => `S7f.${loc} · the next-step sentence names the toggle and the path by placeholder, so a rename cannot strand it`,
+  serverAnswer: "S8 · ⛔ the success sentence is rendered from the SERVER'S ANSWER, never painted on the click",
+  noConfirm: "S9 · ⛔ NO CONFIRMATION STEP CAN EXIST — the component's state union is exactly the five outcomes, with no step between the tap and the write",
+  heading: "S18 · ⭐ D6 — the heading is chosen from the state (stopped / resumed / idle), never fixed",
+  consentBeside: "S18b · ⛔ D6 — the resume button carries its OWN consent sentence (`push.marketingBody`), and the stop instruction is not beside it",
+  announced: "S18c · ⭐ D6 — the answer is ANNOUNCED (status, or alert for a failure) and focus moves to it",
+  sameAct: "S18d · 🔴 D6 — a failed act keeps offering THE SAME act: the button follows `isSuppressed`, moved only by an ok answer",
+  caught: "S18e · 🔴 D6 — a REJECTED action is this page's own error sentence, never the root error boundary",
+  bodySize: "S18f · ⭐ D6 — the confirmation is body text (`md`), never an 11px footnote",
+  budgeted: "S18g · the acts go through the BUDGETED service, from a request-read address",
+  shellFirst: "S20 · ⭐ D6 — `/s` gets its own shell, decided BEFORE the session read (an ended session's redirect would put the opt-out behind a login)",
+  noUpsell: "S20b · ⛔ D6 — the opt-out shell carries NO sign-in/up, nav, rail, footer menus, invitations or soft links",
+  shellCarries: "S20c · ⭐ …and it DOES carry the logo, the language menu, the landmark, the skip link and the regulator lines",
+  overlay: (file: string) => `S21 · ⛔ D6 — ${file} stays off the opt-out page, and only off it`,
+} as const;
+
+/* ══ SURFACE PLANTS — the S-checks read source TEXT, so a plant is an in-memory edit of that text ══
+ * ⛔ Never written to disk (see the header). `from` must occur EXACTLY ONCE in the file as it is now, or
+ * the red run reports the plant as rotted instead of passing over nothing. */
+type SurfacePlant = { file: string; from: string; to: string };
+let SURFACE_PLANT: SurfacePlant | null = null;
+let surfacePlantHits = -1;
+
+/** ⚠️ A token of the right SHAPE that nobody minted, FRESH on every call. The acts' cap is keyed per
+ *  LINK, so a miss token shared between runs would reach the next run's walker already dry and answer
+ *  `error` from its first tap — a run-order artefact, not a property of the page. */
+let missSeq = 0;
+function freshMissToken(): string {
+  let n = ++missSeq, s = "";
+  for (let i = 0; i < 5; i++) { s = OPTOUT_TOKEN_ALPHABET[n % OPTOUT_TOKEN_ALPHABET.length] + s; n = Math.floor(n / OPTOUT_TOKEN_ALPHABET.length); }
+  return `ZZZ${s}`.slice(0, OPTOUT_TOKEN_CHARS);
+}
 
 /* ══ FIXTURES ═══════════════════════════════════════════════════════════════════════════════
  * Every run takes its OWN block of numbers: the memory store is a process-global map, so a red
@@ -99,6 +181,7 @@ function makeUser(id: string, phoneE164: string, over: Partial<StoredUser>): Sto
 }
 
 type Fixtures = {
+  run: number;
   /** A contact with a consent row and a minted token — the ordinary recipient. */
   contactToken: string; contactPhone: string;
   /** ⭐ A PLAYER, so the profile-toggle half is exercised rather than assumed. */
@@ -109,6 +192,16 @@ type Fixtures = {
   unknownToken: string;
   /** ⭐ A suppression written BEFORE the lift field existed — no `liftedAt` on it at all. */
   legacyPhone: string;
+  /** D6 · a number whose link is typed in lower case. */
+  caseToken: string; casePhone: string;
+  /** D6 · a number an OFFICER suppressed, with a link of its own. */
+  operatorToken: string; operatorPhone: string;
+  /** D6 · a PLAYER whose stop half-lands (the ledger write fails once). */
+  repairToken: string; repairPhone: string; repairId: string;
+  /** D6 · a SELF-EXCLUDED player who stopped by link and then taps "start them again". */
+  seToken: string; sePhone: string; seId: string;
+  /** D6 · a number handed to the mint in the `+255…` form. */
+  plusPhone: string;
 };
 
 async function seed(run: number): Promise<Fixtures> {
@@ -165,7 +258,45 @@ async function seed(run: number): Promise<Fixtures> {
     createdAt: "2026-01-01T00:00:00.000Z",
   } as unknown as Parameters<typeof db.suppression.create>[0]));
 
-  return { contactToken, contactPhone, playerToken, playerPhone, playerId, ancientToken, unknownToken, legacyPhone };
+  // F · D6 — a consented contact whose link will be typed in lower case
+  const casePhone = p(5);
+  await consent(casePhone, "2026-01-01T00:00:00.000Z");
+  const caseToken = await mint(casePhone);
+
+  // G · D6 — an OFFICER's suppression on a number that also has a link
+  const operatorPhone = p(6);
+  await consent(operatorPhone, "2026-01-01T00:00:00.000Z");
+  const operatorToken = await mint(operatorPhone);
+  const suppress = async (phone: string, reason: SuppressionReason, evidence: string) =>
+    Promise.resolve(db.suppression.create({
+      id: `sup${run}-${seq++}`, channel: "SMS", identifier: toMsisdn255(phone), category: "MARKETING",
+      reason, evidence, recordedBy: "officer-fixture", createdAt: "2026-02-01T00:00:00.000Z",
+      liftedAt: null, liftedReason: null,
+    }));
+  await suppress(operatorPhone, "OPERATOR", "officer:fixture");
+
+  // H · D6 — a PLAYER, toggle ON, whose STOP will half-land
+  const repairPhone = p(7);
+  const repairId = `our${run}-${seq++}`;
+  await Promise.resolve(db.user.create(makeUser(repairId, `+${toMsisdn255(repairPhone)}`, { marketingOptIn: true })));
+  await consent(repairPhone, "2026-01-01T00:00:00.000Z");
+  const repairToken = await mint(repairPhone);
+
+  // I · D6 — a SELF-EXCLUDED player who already stopped by link (toggle off, WITHDRAWN row)
+  const sePhone = p(8);
+  const seId = `ouse${run}-${seq++}`;
+  await Promise.resolve(db.user.create(makeUser(seId, `+${toMsisdn255(sePhone)}`, { marketingOptIn: false, status: "SELF_EXCLUDED" })));
+  const seToken = await mint(sePhone);
+  await suppress(sePhone, "WITHDRAWN", `optout:${optOutTokenRef(seToken)}`);
+
+  // J · D6 — a number that will be handed to the mint as `+255…`
+  const plusPhone = p(9);
+
+  return {
+    run, contactToken, contactPhone, playerToken, playerPhone, playerId, ancientToken, unknownToken, legacyPhone,
+    caseToken, casePhone, operatorToken, operatorPhone, repairToken, repairPhone, repairId, seToken, sePhone, seId,
+    plusPhone,
+  };
 }
 
 /* ══ THE ASSERTIONS ═════════════════════════════════════════════════════════════════════════ */
@@ -212,8 +343,13 @@ async function runAssertions(page: OptOutPage, f: Fixtures, tag: string): Promis
     ledger?.wording === optOutWording("STOP", SW) && ledger.wording.includes(dict.sw.optout.body),
     `stored ${JSON.stringify(ledger?.wording?.slice(0, 40))}`);
   ok(p("7 · the ledger row names the opt-out page as its source"), ledger?.source === "OPT_OUT_PAGE");
-  ok(p("8 · ⛔ §5.14 — the evidence carries the TOKEN, never a raw phone number"),
-    ledger?.evidence === `optout:${f.contactToken}` && !ledger.evidence.includes(toMsisdn255(f.contactPhone)));
+  const supRow = (await rows(f.contactPhone))[0];
+  ok(p(L.evidence),
+    ledger?.evidence === `optout:${optOutTokenRef(f.contactToken)}`
+      && !ledger.evidence.includes(f.contactToken)
+      && !ledger.evidence.includes(toMsisdn255(f.contactPhone))
+      && supRow?.evidence === `optout:${optOutTokenRef(f.contactToken)}`,
+    `ledger ${ledger?.evidence} · suppression ${supRow?.evidence}`);
 
   // ── 3 · TAPPING STOP TWICE IS NOT AN ERROR, AND NOT A SECOND ROW ────────────────────────
   const again = await page.stop(f.contactToken, SW);
@@ -236,9 +372,13 @@ async function runAssertions(page: OptOutPage, f: Fixtures, tag: string): Promis
   ok(p("14 · ⭐ …and the ORIGINAL refusal date is untouched, so 'when did they say no' is still answerable"),
     lifted !== undefined && lifted.createdAt === firstRow?.createdAt && lifted.liftedAt !== null,
     lifted ? `createdAt ${lifted.createdAt} liftedAt ${lifted.liftedAt}` : "the row is gone");
+  ok(p("14b · ⛔ D6 — the lift's own reason names the token REFERENCE, never the live token"),
+    !!lifted?.liftedReason && !lifted.liftedReason.includes(f.contactToken), `liftedReason ${lifted?.liftedReason}`);
   const gaveConsent = await Promise.resolve(db.messagingConsent.latestFor(keyFor(toMsisdn255(f.contactPhone))));
-  ok(p("15 · a GIVEN ledger row records the new consent, in the wording of the button they pressed"),
-    gaveConsent?.status === "GIVEN" && gaveConsent.wording === optOutWording("RESUME", SW));
+  ok(p(L.resumeWording),
+    gaveConsent?.status === "GIVEN" && gaveConsent.wording === optOutWording("RESUME", SW)
+      && gaveConsent.wording.includes(dict.sw.push.marketingBody) && !gaveConsent.wording.includes(dict.sw.optout.body),
+    `stored ${JSON.stringify(gaveConsent?.wording?.slice(0, 60))}`);
 
   // ── 5 · 🔴 STOP → START → STOP, THE SECOND FALSE SUCCESS ────────────────────────────────
   // Once a row can be lifted, re-suppression comes back through an upsert. A create that left
@@ -299,6 +439,148 @@ async function runAssertions(page: OptOutPage, f: Fixtures, tag: string): Promis
     "false here means a person who said stop is marketable again");
   ok(p("30 · …and the gate agrees, on the suppression"),
     (await refusedBy(f.legacyPhone)) === "suppressed", `refused by ${await refusedBy(f.legacyPhone)}`);
+
+  // ── 10 · D6 · THE TOKEN IS CASE-INSENSITIVE ────────────────────────────────────────────
+  // The alphabet has no lower-case members, so folding case widens nothing — it only stops a
+  // person who typed the link off a phone screen from being told it does not work.
+  const lower = f.caseToken.toLowerCase();
+  const mixed = f.caseToken.slice(0, 4).toLowerCase() + f.caseToken.slice(4);
+  const lowerRead = await page.resolve(lower);
+  const mixedRead = await page.resolve(` ${mixed} `);
+  const lowerStop = await page.stop(lower, SW);
+  ok(p(L.lower),
+    lowerRead.ok && mixedRead.ok && lowerStop.ok && lowerStop.state === "stopped"
+      && (await refusedBy(f.casePhone)) === "suppressed",
+    `lower ${lowerRead.ok} · mixed ${mixedRead.ok} · stop ${JSON.stringify(lowerStop)} · gate ${await refusedBy(f.casePhone)}`);
+
+  // ── 11 · D6 · RESUME LIFTS ONLY A STOP THE PERSON MADE ─────────────────────────────────
+  const opBefore = await Promise.resolve(db.messagingConsent.latestFor(keyFor(toMsisdn255(f.operatorPhone))));
+  const opResume = await page.resume(f.operatorToken, SW);
+  const opAfter = await Promise.resolve(db.messagingConsent.latestFor(keyFor(toMsisdn255(f.operatorPhone))));
+  const opRow = (await rows(f.operatorPhone))[0];
+  ok(p(L.operator),
+    opResume.ok && opResume.state === "already"
+      && (await refusedBy(f.operatorPhone)) === "suppressed"
+      && !!opRow && !opRow.liftedAt && opRow.reason === "OPERATOR"
+      && opAfter?.id === opBefore?.id,
+    `answer ${JSON.stringify(opResume)} · gate ${await refusedBy(f.operatorPhone)} · lifted ${opRow?.liftedAt} · ledger ${opBefore?.id}→${opAfter?.id}`);
+
+  // ── 11b · 🔴 AN OFFICER'S STOP ARRIVING OVER THE PERSON'S OWN STOP TAKES IT OVER ────────
+  // `casePhone` was stopped by its own link above (an active WITHDRAWN row). The DAL used to keep
+  // that FIRST reason when an officer's stop arrived, so `personMayLift` still said yes and the
+  // old link lifted the officer's refusal. The row must now read OPERATOR and the link lift nothing.
+  await Promise.resolve(db.suppression.create({
+    id: `sup11b${f.run}`, channel: "SMS", identifier: toMsisdn255(f.casePhone), category: "MARKETING",
+    reason: "OPERATOR", evidence: "officer:11b", recordedBy: "officer-fixture", createdAt: new Date().toISOString(),
+    liftedAt: null, liftedReason: null,
+  }));
+  const overResume = await page.resume(f.caseToken, SW);
+  const overRow = (await rows(f.casePhone))[0];
+  // …and a LIFTED person's stop that an officer re-arms carries the officer's reason, not the old one.
+  const liftedId = `25579${String(f.run).replace(/\D/g, "").slice(-7).padStart(7, "0")}`;
+  const liftedKey = keyFor(liftedId);
+  await Promise.resolve(db.suppression.create({
+    id: `sup11c${f.run}`, channel: "SMS", identifier: liftedId, category: "MARKETING",
+    reason: "WITHDRAWN", evidence: "optout:11c", recordedBy: null, createdAt: "2026-03-01T00:00:00.000Z",
+    liftedAt: null, liftedReason: null,
+  }));
+  await Promise.resolve(db.suppression.lift(liftedKey, "optout:11c", new Date().toISOString()));
+  await Promise.resolve(db.suppression.create({
+    id: `sup11d${f.run}`, channel: "SMS", identifier: liftedId, category: "MARKETING",
+    reason: "COMPLAINT", evidence: "complaint:11d", recordedBy: "officer-fixture", createdAt: new Date().toISOString(),
+    liftedAt: null, liftedReason: null,
+  }));
+  const rearmed = (await Promise.resolve(db.suppression.listFor(liftedId)))[0];
+  ok(p("32b · 🔴 the reason follows the stop NOW IN FORCE: an officer's stop over the person's own takes it over, and a re-armed row carries the new reason — so the old link lifts neither"),
+    overResume.ok && overResume.state === "already" && !!overRow && overRow.reason === "OPERATOR" && !overRow.liftedAt
+      && !!rearmed && rearmed.reason === "COMPLAINT" && !rearmed.liftedAt && rearmed.createdAt === "2026-03-01T00:00:00.000Z",
+    `over ${JSON.stringify(overResume)} · ${overRow?.reason}/${overRow?.liftedAt} · rearmed ${rearmed?.reason}/${rearmed?.liftedAt}/${rearmed?.createdAt}`);
+
+  // ── 12 · D6 · 🔴 A HALF-LANDED STOP IS REPAIRED BY THE RETRY ──────────────────────────
+  // The three writes are not one transaction. Plant a ledger failure on the FIRST write only: the
+  // suppression lands, the ledger does not, the page says "try again" — and the retry used to
+  // answer `already` without ever writing the WITHDRAWN row or turning the player's toggle off.
+  const realCreate = db.messagingConsent.create;
+  let failNext = true;
+  (db.messagingConsent as { create: unknown }).create = (row: Parameters<typeof realCreate>[0]) => {
+    if (failNext) { failNext = false; throw new Error("planted: the ledger write failed once"); }
+    return realCreate.call(db.messagingConsent, row);
+  };
+  let firstTry: OptOutActResult;
+  try {
+    firstTry = await page.stop(f.repairToken, SW);
+  } finally {
+    (db.messagingConsent as { create: unknown }).create = realCreate;
+  }
+  ok(p("33 · ⚠️ CONTROL — the planted failure really fired: the first STOP reported an error, not a success"),
+    firstTry.ok === false, JSON.stringify(firstTry));
+  const retry = await page.stop(f.repairToken, SW);
+  const repaired = await Promise.resolve(db.messagingConsent.latestFor(keyFor(toMsisdn255(f.repairPhone))));
+  const repairedUser = await Promise.resolve(db.user.findById(f.repairId));
+  ok(p(L.repair),
+    retry.ok && retry.state === "already" && repaired?.status === "WITHDRAWN" && repairedUser?.marketingOptIn === false
+      && (await refusedBy(f.repairPhone)) === "suppressed",
+    `retry ${JSON.stringify(retry)} · ledger ${repaired?.status} · toggle ${repairedUser?.marketingOptIn}`);
+
+  // ── 13 · D6 · 🔴 THE MINT KEYS THE NUMBER THE WAY THE GATE DOES ───────────────────────
+  const plusToken = await page.mint(`+${toMsisdn255(f.plusPhone)}`);
+  const plusStop = plusToken ? await page.stop(plusToken, SW) : null;
+  ok(p(L.mint),
+    !!plusToken && !!plusStop?.ok && (await refusedBy(f.plusPhone)) === "suppressed",
+    `token ${plusToken ? "minted" : "none"} · stop ${JSON.stringify(plusStop)} · gate ${await refusedBy(f.plusPhone)}`);
+  ok(p("35b · …and an unusable number mints NOTHING — a caller that gets null must not send"),
+    (await page.mint("12345")) === null);
+
+  // ── 14 · D6 · ⛔ NO SELF-EXCLUDED TOGGLE IS SWITCHED ON FROM A LINK ─────────────────────
+  const seResume = await page.resume(f.seToken, SW);
+  const seUser = await Promise.resolve(db.user.findById(f.seId));
+  ok(p(L.selfExcluded),
+    seResume.ok && seUser?.marketingOptIn === false && (await refusedBy(f.sePhone)) !== "ALLOWED",
+    `answer ${JSON.stringify(seResume)} · toggle ${seUser?.marketingOptIn} · gate ${await refusedBy(f.sePhone)}`);
+
+  // ── 15 · D6 · THE GET BUDGET — ONLY A MISS SPENDS ──────────────────────────────────────
+  const cap = RATE_RULES[OPTOUT_BUDGET]?.capacity ?? 30;
+  const walker = `walker:${tag}${f.run}`;
+  let dry = 0;
+  for (let i = 0; i < cap + 15; i++) {
+    const r = await page.resolveWithin(f.unknownToken, walker);
+    if (!r.ok && r.reason === "throttled") dry++;
+  }
+  const dryOnValid = await page.resolveWithin(f.ancientToken, walker);
+  ok(p(L.walkerDry),
+    dry >= 10 && !dryOnValid.ok && dryOnValid.reason === "throttled",
+    `${dry} of ${cap + 15} misses refused unread · a valid link behind the dry address: ${JSON.stringify(dryOnValid)}`);
+  const person = `person:${tag}${f.run}`;
+  let refused = 0;
+  for (let i = 0; i < cap + 15; i++) {
+    const r = await page.resolveWithin(f.ancientToken, person);
+    if (!r.ok) refused++;
+  }
+  ok(p(L.personFree), refused === 0, `${refused} of ${cap + 15} opens of a valid link were refused`);
+
+  // ── 16 · D6 · THE ACTS' BUDGET — MISSES SPEND, A HELD LINK IS CAPPED ──────────────────
+  // Moved here from the surface block so the plants below can reach it: it asks the OBJECT UNDER TEST.
+  const missToken = freshMissToken();
+  const actWalker = `actwalker:${tag}${f.run}`;
+  const walked: OptOutActResult[] = [];
+  for (let i = 0; i < cap + 10; i++) walked.push(await page.stopWithin(missToken, SW, actWalker));
+  ok(p(L.actWalker),
+    walked.every((r) => !r.ok) && walked.slice(-5).every((r) => !r.ok && r.reason === "error")
+      && walked.slice(0, 5).every((r) => !r.ok && r.reason === "unknown"),
+    walked.slice(-3).map((r) => JSON.stringify(r)).join(" "));
+  // A held link is capped on its OWN key, whichever address it comes from.
+  const held = await page.mint(toMsisdn255(phoneFor(f.run, 50)));
+  const heldAnswers: OptOutActResult[] = [];
+  for (let i = 0; i < cap + 5; i++) heldAnswers.push(await page.stopWithin(held ?? "", SW, `addr:${tag}${f.run}:${i}`));
+  ok(p(L.linkCap),
+    !!held && heldAnswers.slice(0, 5).every((r) => r.ok) && heldAnswers.slice(-3).every((r) => !r.ok && r.reason === "error"),
+    heldAnswers.slice(-3).map((r) => JSON.stringify(r)).join(" "));
+  // …and the address that carried the first hit was never charged for it. ⚠️ `cap - 1`, not `cap - 2`:
+  // the probe itself spends one, so an address that ALSO paid for its hit reads one lower and must fail.
+  const probeKey = `addr:${tag}${f.run}:0`;
+  const probe = await rateCheckAsync(probeKey, OPTOUT_BUDGET);
+  if (probe.allowed) await rateRefundAsync(probeKey, OPTOUT_BUDGET);
+  ok(p(L.hitFree), probe.allowed && probe.remaining >= cap - 1, `remaining ${probe.remaining}`);
 }
 
 /* ══ THE SURFACE ASSERTIONS — run once, not per model ═══════════════════════════════════════ */
@@ -315,55 +597,89 @@ async function runSurface(f: Fixtures): Promise<void> {
     isProtectedPath("/wallet") && isProtectedPath("/admin"));
 
   // ── THE PAGE ITSELF, READ FROM DISK ─────────────────────────────────────────────────────
-  // ⛔ These are the four properties no in-memory call can reach: they are facts about what
+  // ⛔ These are the properties no in-memory call can reach: they are facts about what
   // the route renders, and a suite that only exercised the service would pass with no page.
-  const pageSrc = readFileSync(join(ROOT, "src/app/s/[token]/page.tsx"), "utf8");
-  const clientSrc = readFileSync(join(ROOT, "src/app/s/[token]/optout-client.tsx"), "utf8");
+  // ⭐ A surface plant (red run only) edits the text IN MEMORY, once, and counts how often its anchor hit.
+  const read = (rel: string) => {
+    const src = readFileSync(join(ROOT, rel), "utf8").replace(/\r\n/g, "\n");
+    const plant = SURFACE_PLANT;
+    if (!plant || plant.file !== rel) return src;
+    surfacePlantHits = src.split(plant.from).length - 1;
+    return surfacePlantHits === 1 ? src.replace(plant.from, () => plant.to) : src;
+  };
+  const pageSrc = read("src/app/s/[token]/page.tsx");
+  const clientSrc = read("src/app/s/[token]/optout-client.tsx");
+  const loadingSrc = read("src/app/s/[token]/loading.tsx");
+  const actionsSrc = read("src/app/s/[token]/actions.ts");
   ok("S3 · the route is force-dynamic — a cached opt-out page would show one person another's state",
     /export const dynamic = "force-dynamic"/.test(pageSrc));
   ok("S4 · ⛔ NOINDEX — a crawler following one of these links is a crawler CLICKING an opt-out",
     /robots:\s*\{\s*index:\s*false/.test(pageSrc));
-  ok("S5 · the page renders a MASKED number, never the raw one (§5.14)",
+  ok(SL.mask,
     /r\.masked/.test(pageSrc) && !/r\.identifier/.test(pageSrc));
   // ⛔ THE REFUSAL MUST NOT INSTRUCT AN ACTION THE PAGE DOES NOT OFFER. The first version
   // passed `optout.body` — "tap once to stop marketing messages" — into the invalid-token
-  // EmptyState, on a page that renders no button at all. Found by reading the screenshot, not
+  // refusal, on a page that renders no button at all. Found by reading the screenshot, not
   // by any assertion, which is why there is now an assertion.
-  const refusalBlock = pageSrc.match(/<EmptyState[^>]*t\.optout\.invalid[^>]*\/>/)?.[0] ?? "";
-  ok("S5b · ⛔ the invalid-token refusal does NOT tell the reader to tap a button that is not there",
-    refusalBlock.length > 0 && !/t\.optout\.body/.test(refusalBlock), refusalBlock.slice(0, 90));
-  ok("S6 · a loading state exists — it is one of the unit's six",
-    readFileSync(join(ROOT, "src/app/s/[token]/loading.tsx"), "utf8").length > 100);
+  const refusalBlock = pageSrc.match(/<Callout\s+layout="stack"[\s\S]*?<\/Callout>/)?.[0] ?? "";
+  ok(SL.refusalNoTap,
+    refusalBlock.includes("t.optout.invalid") && !/t\.optout\.body/.test(refusalBlock), refusalBlock.slice(0, 90));
+  // ⭐ D6 · AND IT IS NOT A DEAD END (F4): it names the next step, both other ways to stop, read from
+  // the server config — and the one link that leaves this shell is a DOCUMENT navigation (E-70).
+  const nextSteps = pageSrc.slice(pageSrc.indexOf("function NextSteps"));
+  ok(SL.nextStep,
+    /action=\{<NextSteps/.test(refusalBlock) && /t\.optout\.invalidNext/.test(pageSrc)
+      && /<a href="\/profile\/notifications"/.test(nextSteps) && !/from "next\/link"/.test(pageSrc)
+      && /SUPPORT_PHONE_TEL\(\)/.test(nextSteps) && /SUPPORT_EMAIL\(\)/.test(nextSteps),
+    nextSteps.slice(0, 80));
+  ok(SL.loadingOne,
+    /t\.optout\.loading/.test(loadingSrc) && /aria-busy="true"/.test(loadingSrc)
+      && (loadingSrc.match(/h-\[var\(--h-control-lg\)\]/g) ?? []).length === 1);
   // ⭐ EVERY STATE HAS ITS OWN SENTENCE, IN ALL THREE LOCALES, AND THEY ARE ALL DIFFERENT.
   // The unit's six states are loading · valid (`body`) · already suppressed · resubscribed ·
   // invalid token · error, plus `done` — the sentence a person reads after the tap that worked.
   // ⛔ Distinctness is the assertion that matters: two states sharing a sentence is a person
   // who cannot tell "you are already stopped" from "that did not go through".
   const STATE_COPY = ["loading", "body", "already", "done", "resubscribed", "invalid", "error"] as const;
+  const HEADINGS = ["title", "stoppedTitle", "resumedTitle"] as const;
   for (const locale of ["sw", "en", "zh"] as const) {
-    const d = dict[locale].optout;
-    const said = STATE_COPY.map((k) => d[k as keyof typeof d] as string);
+    const d = dict[locale].optout as Record<string, string>;
+    const said = STATE_COPY.map((k) => d[k]);
     ok(`S7.${locale} · each state has its own distinct sentence in ${locale.toUpperCase()}`,
       said.every((x) => typeof x === "string" && x.length > 0) && new Set(said).size === said.length,
       `${new Set(said).size} distinct of ${said.length}`);
     // 🔴 DISTINCT IS NOT ENOUGH — NO SENTENCE MAY CONTAIN ANOTHER.
     // ⚠️ WHAT PROMPTED THIS, STATED ACCURATELY: the U8 visual drive matched the FRAGMENT
-    // "utapokea tena" and passed on the page that says the opposite. Swahili `done` is
-    // "Imekamilika. HUTAPOKEA TENA matangazo kutoka 50pick" (you will NOT get them again) and
-    // `resubscribed` is "UTAPOKEA TENA matangazo ya 50pick" (you WILL) — one leading letter
-    // reverses the meaning, and a fragment cannot tell them apart. The drive now matches on a
-    // word boundary; this assertion guards the stronger property one level up, so a future
-    // rewording cannot make one state's WHOLE sentence live inside another's.
-    // ⛔ It currently reports "none", and it did before this session too — it is a standing
-    // property of the copy, not the thing that caught the drive.
+    // "utapokea tena" and passed on the page that says the opposite. Swahili `done` said
+    // "HUTAPOKEA TENA" (you will NOT get them again) and `resubscribed` said "UTAPOKEA TENA"
+    // (you WILL) — one leading letter reversed the meaning, and a fragment could not tell them
+    // apart. The drive matches on a word boundary; this guards the stronger property one level
+    // up, so a future rewording cannot make one state's WHOLE sentence live inside another's.
     const contained = [];
     for (const a of said) for (const b of said) {
       if (a !== b && b.toLowerCase().includes(a.toLowerCase())) contained.push(`"${a}" inside "${b}"`);
     }
     ok(`S7b.${locale} · 🔴 and NO state's sentence CONTAINS another's — a shorter one inside a longer one is a reader that reports the opposite of what the page says`,
       contained.length === 0, contained.join(" | ") || "none");
+    // ⭐ D6 · THE HEADING FOLLOWS THE STATE, so the three headings must be three different words.
+    const heads = HEADINGS.map((k) => d[k]);
+    ok(SL.headings(locale),
+      heads.every((x) => typeof x === "string" && x.length > 0) && new Set(heads).size === heads.length,
+      heads.join(" | "));
+    // ⚠️ D6 · "RESUMED" STATES WHAT WAS DONE, NEVER A DELIVERY. The gate still refuses every contact
+    // (age_unknown until U33) and any player on an RG standing, so "you will get texts again" is false
+    // for most people who tap it — and one sentence for everybody discloses nobody's standing.
+    const promise = { en: /\bwill\b/i, sw: /\butapokea\b/i, zh: /将/ }[locale];
+    ok(SL.noPromise(locale),
+      !promise.test(d.resubscribed) && !promise.test(d.resumedTitle), `${d.resumedTitle} · ${d.resubscribed}`);
+    // ⛔ D6 · A GENUINE, TRUNCATED LINK IS NEVER CALLED "NOT OURS" — that reads as a phishing warning.
+    const notOurs = { en: /not (one of )?ours/i, sw: /si chetu/i, zh: /不是我们的/ }[locale];
+    ok(SL.notOurs(locale),
+      !notOurs.test(d.invalid), d.invalid);
+    ok(SL.placeholders(locale),
+      /\{toggle\}/.test(d.invalidNext ?? "") && /\{path\}/.test(d.invalidNext ?? ""), d.invalidNext);
   }
-  ok("S8 · ⛔ the success sentence is rendered from the SERVER'S ANSWER, never painted on the click",
+  ok(SL.serverAnswer,
     /setState\(r\.ok \? r\.state : "error"\)/.test(clientSrc));
   // ⛔ READ THE STATE UNION, NOT THE PROSE. An earlier draft of this assertion grepped the file
   // for the word "confirm" — and the component's own comment EXPLAINING that there is no
@@ -372,7 +688,7 @@ async function runSurface(f: Fixtures): Promise<void> {
   // in, and there is no state here it could occupy.
   const union = clientSrc.match(/useState<([^>]+)>/)?.[1] ?? "";
   const members = union.split("|").map((x) => x.trim().replace(/"/g, "")).sort();
-  ok("S9 · ⛔ NO CONFIRMATION STEP CAN EXIST — the component's state union is exactly the five outcomes, with no step between the tap and the write",
+  ok(SL.noConfirm,
     members.join(",") === "already,error,idle,resumed,stopped", `union = [${members}]`);
 
   // ── THE TOKEN'S ARITHMETIC ──────────────────────────────────────────────────────────────
@@ -380,6 +696,8 @@ async function runSurface(f: Fixtures): Promise<void> {
     OPTOUT_TOKEN_ALPHABET.length === 32 && 256 % OPTOUT_TOKEN_ALPHABET.length === 0);
   ok("S11 · ⛔ I, O, 0 and 1 are absent — a token is read off a phone screen and typed by hand",
     !/[IO01]/.test(OPTOUT_TOKEN_ALPHABET));
+  ok("S11b · ⭐ D6 — the alphabet has NO lower-case member, so folding case can never make two tokens collide",
+    OPTOUT_TOKEN_ALPHABET === OPTOUT_TOKEN_ALPHABET.toUpperCase() && normalizeOptOutToken(" ab2c ") === "AB2C");
   const minted = new Set<string>();
   for (let i = 0; i < 200; i++) {
     const t = await mintOptOutToken(`2557000${String(10000 + i)}`);
@@ -406,6 +724,98 @@ async function runSurface(f: Fixtures): Promise<void> {
     OPTOUT_PATH === "/s/" && live.startsWith(OPTOUT_PATH));
   ok("S16 · the token length the footer measures is the length this page accepts",
     OPTOUT_TOKEN_CHARS === 8 && isOptOutTokenShape(f.contactToken) && f.contactToken.length === OPTOUT_TOKEN_CHARS);
+
+  // ── D6 · THE CONSENT SENTENCE A RESUME RECORDS, IN EVERY LOCALE ─────────────────────────
+  for (const [L6, loc] of [["SW", "sw"], ["EN", "en"], ["ZH", "zh"]] as const) {
+    const resume = optOutWording("RESUME", L6);
+    const stop = optOutWording("STOP", L6);
+    ok(`S17.${loc} · ⛔ D6 — RESUME stores \`resubscribeButton — push.marketingBody\` and never the stop instruction; STOP still stores its own`,
+      resume === `${dict[loc].optout.resubscribeButton} — ${dict[loc].push.marketingBody}`
+        && !resume.includes(dict[loc].optout.body) && stop.includes(dict[loc].optout.body),
+      resume.slice(0, 70));
+  }
+
+  // ── D6 · THE CLIENT: STATE-DRIVEN HEADING, ITS OWN CONSENT SENTENCE, ANNOUNCED, FOCUSED ──
+  ok(SL.heading,
+    /isSuppressed\s*\?\s*t\.optout\.stoppedTitle/.test(clientSrc) && /t\.optout\.resumedTitle/.test(clientSrc));
+  const resumeGroup = clientSrc.slice(clientSrc.indexOf(": mayResume ?"), clientSrc.indexOf("resubscribeButton}"));
+  ok(SL.consentBeside,
+    /t\.push\.marketingBody/.test(resumeGroup) && !/t\.optout\.body/.test(resumeGroup), resumeGroup.slice(0, 80));
+  ok(SL.announced,
+    /role=\{state === "error" \? "alert" : "status"\}/.test(clientSrc) && /msgRef\.current\?\.focus\(\)/.test(clientSrc));
+  ok(SL.sameAct,
+    /if \(r\.ok\) \{\s*setIsSuppressed\(/.test(clientSrc) && /\{!isSuppressed \?/.test(clientSrc));
+  ok(SL.caught,
+    /fn\(token\)\.catch\(/.test(clientSrc));
+  ok(SL.bodySize,
+    /<Callout size="md"/.test(clientSrc));
+  ok(SL.budgeted,
+    /stopMarketingWithinBudget\(/.test(actionsSrc) && /resumeMarketingWithinBudget\(/.test(actionsSrc)
+      && /optOutClientKey\(\)/.test(actionsSrc) && /resolveOptOutTokenWithinBudget\(/.test(pageSrc));
+
+  // ── D6 · THE NUMBER IS MASKED IN THE SHARED `+255••••NN` FORM ───────────────────────────
+  const shown = await resolveOptOutToken(f.ancientToken);
+  ok("S19 · ⭐ D6 — the page's number reads `+255••••NN`, the shared mask, never `2557••••NN` (the operator digit)",
+    shown.ok && /^\+255•{4}\d{2}$/.test(shown.masked), shown.ok ? shown.masked : "did not resolve");
+  ok("S19c · ⚠️ CONTROL — the old bare-key mask (`2557••••NN`) FAILS the S19 pattern, so S19 is capable of failing",
+    !/^\+255•{4}\d{2}$/.test(maskPhone(toMsisdn255(f.contactPhone))), maskPhone(toMsisdn255(f.contactPhone)));
+  // ⚠️ SELF-CONTAINED: the person's own stop is made HERE (idempotent — `already` if it stands), so this
+  // holds on a fixture `runAssertions` never touched: the red run's surface baseline and every surface plant.
+  await stopMarketing(f.contactToken, "SW");
+  const operatorRead = await resolveOptOutToken(f.operatorToken);
+  const personRead = await resolveOptOutToken(f.contactToken);
+  ok("S19b · ⛔ D6 — an officer's stop is `resumable: false`, a person's own stop `resumable: true` — and the REASON is never handed to the page",
+    operatorRead.ok && operatorRead.suppressed && !operatorRead.resumable
+      && personRead.ok && personRead.suppressed && personRead.resumable
+      && !("reason" in operatorRead) && personMayLift("WITHDRAWN") && !personMayLift("SELF_EXCLUSION")
+      && !personMayLift("COMPLAINT") && !personMayLift("OPERATOR"),
+    JSON.stringify({ operator: operatorRead.ok && operatorRead.resumable, person: personRead.ok && personRead.resumable }));
+
+  // ── D6 · THE MINIMAL SHELL AND THE OVERLAYS THAT LIVE OUTSIDE IT ────────────────────────
+  const shellSrc = read("src/components/layout/app-shell.tsx");
+  const branchAt = shellSrc.indexOf("if (isOptOutPath(pathname))");
+  ok(SL.shellFirst,
+    branchAt > 0 && branchAt < shellSrc.indexOf("await getSession()"), `branch at ${branchAt}`);
+  const shellBody = shellSrc.slice(shellSrc.indexOf("function OptOutShell"));
+  const upsell = ["<TopAppBar", "<BottomNav", "<PublicFooter", "LazyChannelsPanel", "LazyInstallInvite", "<Link", "/auth/", "proposeGetPaid", "signUp", "signIn"]
+    .filter((s) => shellBody.includes(s));
+  ok(SL.noUpsell,
+    shellBody.length > 200 && upsell.length === 0, upsell.join(", ") || "none");
+  ok(SL.shellCarries,
+    ["<FiftyLockup", "<LanguageMenu", "<MainLandmark>", "<SkipToContent", "LICENCE_NUMBER()", "HELPLINE()", "t.footer.eighteenPlus"]
+      .every((s) => shellBody.includes(s)));
+  const OVERLAYS = [
+    "src/components/onboarding/first-visit-primer.tsx",
+    "src/components/chat/ChatRoot.tsx",
+    "src/components/social/channels-panel.tsx",
+  ];
+  const hit = [`${OPTOUT_PATH}${f.contactToken}`, "/s", `${OPTOUT_PATH}ZZZZZZZZ`];
+  const miss = ["/settings", "/support", "/", "/markets", "/sx/abc"];
+  for (const file of OVERLAYS) {
+    const src = read(file);
+    const m = src.match(/const HIDE_ON = \/(.+)\/;/);
+    const re = m ? new RegExp(m[1]) : null;
+    ok(SL.overlay(file.split("/").pop() ?? file),
+      !!re && hit.every((x) => re.test(x)) && miss.filter((x) => x !== "/markets" || !file.includes("channels")).every((x) => !re.test(x)),
+      re ? `/${re.source}/` : "no HIDE_ON found");
+  }
+  ok("S21b · the shell's own test is the SAME segment match, built from `OPTOUT_PATH`",
+    hit.every(isOptOutPath) && miss.every((x) => !isOptOutPath(x)));
+
+  // ── D6 · THE LIVE TOKEN NEVER REACHES THE AUDIT CHAIN ───────────────────────────────────
+  // ⚠️ SELF-CONTAINED, like S19b: a stop and a resume from the player's own link write the two rows.
+  await stopMarketing(f.playerToken, "SW");
+  await resumeMarketing(f.playerToken, "SW");
+  const auditRows = (await getAuditForTargetsDurable({
+    targetType: "User", targetIds: [f.playerId],
+    actions: ["privacy.marketing_consent.withdrawn", "privacy.marketing_consent.given"],
+    sinceIso: "1970-01-01T00:00:00.000Z",
+  })).entries;
+  const payloads = JSON.stringify(auditRows.map((e) => e.payload));
+  ok("S22 · ⛔ D6 — the player's toggle audit rows name the token REFERENCE, never the live token (`/admin/audit` prints payloads)",
+    auditRows.length >= 2 && !payloads.includes(f.playerToken) && payloads.includes(optOutTokenRef(f.playerToken)),
+    `${auditRows.length} rows · ${payloads.slice(0, 120)}`);
+  // (The acts' budget — formerly S23/S24/S24b — is 38a–c in `runAssertions`, where its plants reach it.)
 }
 
 /* ══ THE MODEL USED FOR PLANTING ════════════════════════════════════════════════════════════
@@ -421,13 +831,28 @@ type Defect = {
   falseSuccess?: boolean;     // an unknown token reports success
   noBridge?: boolean;         // the player lookup skips `userPhoneKeyFor`
   strictLift?: boolean;       // `liftedAt === null` — a row with no lift field reads as LIFTED
+  // ── D6 ──
+  caseSensitive?: boolean;    // the token is not case-folded
+  liftsAnyReason?: boolean;   // resume lifts an OPERATOR / COMPLAINT / SELF_EXCLUSION stop
+  resumeStoresStop?: boolean; // RESUME records `resubscribeButton — optout.body` (the stop instruction)
+  rawTokenEvidence?: boolean; // the live token is written into evidence
+  alreadySkipsRepair?: boolean; // `already` returns before a missing WITHDRAWN row / toggle is written
+  mintKeepsRaw?: boolean;     // the mint stores the identifier as given (`+255…`)
+  flipsSelfExcluded?: boolean; // a link switches a SELF_EXCLUDED player's toggle back on
+  noGetBudget?: boolean;      // the page's GET is not budgeted at all
+  chargesHits?: boolean;      // a valid link spends the budget like a miss
+  noActBudget?: boolean;      // the two acts are not budgeted at all
+  noLinkCap?: boolean;        // a held valid link's acts are not capped per link
+  actsChargeHits?: boolean;   // an act on a valid link spends the ADDRESS budget like a miss
 };
 
 const TOKEN_MAX_AGE_MS = 365 * 86400_000;
 
 function pageWithDefect(d: Defect): OptOutPage {
+  const fold = (raw: string) => (d.caseSensitive ? raw : normalizeOptOutToken(raw));
   /** The model's own resolution, so `expires` and `falseSuccess` can be planted into it. */
-  const resolve_ = async (token: string) => {
+  const resolve_ = async (raw: string) => {
+    const token = fold(raw);
     if (!isOptOutTokenShape(token)) return null;
     const row = await Promise.resolve(db.marketingOptOutToken.find(token));
     if (!row) return null;
@@ -435,76 +860,104 @@ function pageWithDefect(d: Defect): OptOutPage {
     if (d.expires && Date.now() - new Date(row.createdAt).getTime() > TOKEN_MAX_AGE_MS) return null;
     return row;
   };
+  const refOf = (token: string) => (d.rawTokenEvidence ? token : optOutTokenRef(token));
   const lookupUser = async (identifier: string) =>
     Promise.resolve(db.user.findByPhone(d.noBridge ? identifier : `+${identifier}`));
-
-  const stop = async (token: string, locale: MessagingLocale): Promise<OptOutActResult> => {
-    const row = await resolve_(token);
-    // ⛔ THE PRE-FIX SHAPE: a token nobody minted is told it worked.
-    if (!row) return d.falseSuccess ? { ok: true, state: "stopped" } : { ok: false, reason: "unknown" };
-    const key = keyFor(row.identifier);
-    const active = await Promise.resolve(db.suppression.find(key));
-    if (active) return { ok: true, state: "already" };
-    const existing = (await Promise.resolve(db.suppression.listFor(row.identifier)))
-      .find((r) => r.channel === key.channel && r.category === key.category);
-    // ⛔ THE PRE-FIX SHAPE: `update: {}` — a lifted row comes back untouched, so the person is
-    // told they will never be marketed again while the suppression stays lifted.
-    if (existing && d.reStopIsNoop) {
-      // the row is returned as-is; nothing re-arms it
-    } else if (existing) {
-      existing.liftedAt = null;
-      existing.liftedReason = null;
-    } else {
-      await Promise.resolve(db.suppression.create({
-        id: `m${seq++}`, channel: "SMS", identifier: row.identifier, category: "MARKETING",
-        reason: "WITHDRAWN", evidence: `optout:${token}`, recordedBy: null,
-        createdAt: new Date().toISOString(), liftedAt: null, liftedReason: null,
-      }));
-    }
-    await Promise.resolve(db.messagingConsent.create({
-      id: `ml${seq++}`, channel: "SMS", identifier: row.identifier, category: "MARKETING",
-      status: "WITHDRAWN", source: "OPT_OUT_PAGE", wording: optOutWording("STOP", locale),
-      locale, evidence: `optout:${token}`, recordedBy: null, createdAt: new Date().toISOString(),
+  const ledger = (identifier: string, status: "GIVEN" | "WITHDRAWN", wording: string, locale: MessagingLocale, ref: string) =>
+    Promise.resolve(db.messagingConsent.create({
+      id: `ml${seq++}`, channel: "SMS", identifier, category: "MARKETING",
+      status, source: "OPT_OUT_PAGE", wording, locale, evidence: `optout:${ref}`, recordedBy: null,
+      createdAt: new Date().toISOString(),
     }));
-    const u = await lookupUser(row.identifier);
-    if (u && u.marketingOptIn !== false) await db.user.update(u.id, { marketingOptIn: false });
-    return { ok: true, state: "stopped" };
+
+  const stop = async (raw: string, locale: MessagingLocale): Promise<OptOutActResult> => {
+    try {
+      const row = await resolve_(raw);
+      // ⛔ THE PRE-FIX SHAPE: a token nobody minted is told it worked.
+      if (!row) return d.falseSuccess ? { ok: true, state: "stopped" } : { ok: false, reason: "unknown" };
+      const ref = refOf(row.token);
+      const key = keyFor(row.identifier);
+      const active = await Promise.resolve(db.suppression.find(key));
+      if (active) {
+        // ⛔ THE PRE-FIX SHAPE (D6): `already` answered before the half-landed stop was finished.
+        if (!d.alreadySkipsRepair) {
+          const latest = await Promise.resolve(db.messagingConsent.latestFor(key));
+          if (latest?.status !== "WITHDRAWN") await ledger(row.identifier, "WITHDRAWN", optOutWording("STOP", locale), locale, ref);
+          const u = await lookupUser(row.identifier);
+          if (u && u.marketingOptIn !== false) await db.user.update(u.id, { marketingOptIn: false });
+        }
+        return { ok: true, state: "already" };
+      }
+      const existing = (await Promise.resolve(db.suppression.listFor(row.identifier)))
+        .find((r) => r.channel === key.channel && r.category === key.category);
+      // ⛔ THE PRE-FIX SHAPE: `update: {}` — a lifted row comes back untouched, so the person is
+      // told they will never be marketed again while the suppression stays lifted.
+      if (existing && d.reStopIsNoop) {
+        // the row is returned as-is; nothing re-arms it
+      } else if (existing) {
+        existing.liftedAt = null;
+        existing.liftedReason = null;
+      } else {
+        await Promise.resolve(db.suppression.create({
+          id: `m${seq++}`, channel: "SMS", identifier: row.identifier, category: "MARKETING",
+          reason: "WITHDRAWN", evidence: `optout:${ref}`, recordedBy: null,
+          createdAt: new Date().toISOString(), liftedAt: null, liftedReason: null,
+        }));
+      }
+      await ledger(row.identifier, "WITHDRAWN", optOutWording("STOP", locale), locale, ref);
+      const u = await lookupUser(row.identifier);
+      if (u && u.marketingOptIn !== false) await db.user.update(u.id, { marketingOptIn: false });
+      return { ok: true, state: "stopped" };
+    } catch {
+      return { ok: false, reason: "error" };
+    }
   };
 
-  const resume = async (token: string, locale: MessagingLocale): Promise<OptOutActResult> => {
-    const row = await resolve_(token);
-    if (!row) return d.falseSuccess ? { ok: true, state: "resumed" } : { ok: false, reason: "unknown" };
-    const key = keyFor(row.identifier);
-    const all = await Promise.resolve(db.suppression.listFor(row.identifier));
-    const mine = all.find((r) => r.channel === key.channel && r.category === key.category);
-    if (mine && mine.liftedAt === null) {
-      // ⛔ THE PRE-FIX SHAPE ①: the row is DELETED rather than superseded — the evidence that
-      // this person once said no is destroyed, which is what OD11 forbids.
-      if (d.deletesOnResume) {
-        // ⚠️ NEITHER TWIN HAS A DELETE TO CALL — that is the whole point of §17 — so the model
-        // reproduces what a delete LOOKS LIKE TO EVERY READER instead: the row stops being part
-        // of this person's suppression history. `listFor` no longer returns it, which is exactly
-        // the observable consequence of the `deleteMany` this plant stands in for.
-        mine.identifier = `__removed__${mine.id}`;
-        mine.liftedAt = new Date().toISOString();
-        mine.liftedReason = `optout:${token}`;
-      // ⛔ THE PRE-FIX SHAPE ②: the lift is written but the GATE cannot see it, so the page
-      // reports a success the send loop will not honour.
-      } else if (d.ignoresLift) {
-        mine.liftedReason = `optout:${token}`; // recorded, but `liftedAt` stays null
-      } else {
-        mine.liftedAt = new Date().toISOString();
-        mine.liftedReason = `optout:${token}`;
+  const resume = async (raw: string, locale: MessagingLocale): Promise<OptOutActResult> => {
+    try {
+      const row = await resolve_(raw);
+      if (!row) return d.falseSuccess ? { ok: true, state: "resumed" } : { ok: false, reason: "unknown" };
+      const ref = refOf(row.token);
+      const key = keyFor(row.identifier);
+      const all = await Promise.resolve(db.suppression.listFor(row.identifier));
+      const mine = all.find((r) => r.channel === key.channel && r.category === key.category);
+      // ⛔ THE PRE-FIX SHAPE (D6): any active stop is lifted, whoever made it.
+      if (mine && !mine.liftedAt && !d.liftsAnyReason && !personMayLift(mine.reason)) return { ok: true, state: "already" };
+      if (mine && !mine.liftedAt) {
+        // ⛔ THE PRE-FIX SHAPE ①: the row is DELETED rather than superseded — the evidence that
+        // this person once said no is destroyed, which is what OD11 forbids.
+        if (d.deletesOnResume) {
+          // ⚠️ NEITHER TWIN HAS A DELETE TO CALL — that is the whole point of §17 — so the model
+          // reproduces what a delete LOOKS LIKE TO EVERY READER instead: the row stops being part
+          // of this person's suppression history. `listFor` no longer returns it, which is exactly
+          // the observable consequence of the `deleteMany` this plant stands in for.
+          mine.identifier = `__removed__${mine.id}`;
+          mine.liftedAt = new Date().toISOString();
+          mine.liftedReason = `optout:${ref}`;
+        // ⛔ THE PRE-FIX SHAPE ②: the lift is written but the GATE cannot see it, so the page
+        // reports a success the send loop will not honour.
+        } else if (d.ignoresLift) {
+          mine.liftedReason = `optout:${ref}`; // recorded, but `liftedAt` stays null
+        } else {
+          mine.liftedAt = new Date().toISOString();
+          mine.liftedReason = `optout:${ref}`;
+        }
       }
+      // ⛔ THE PRE-FIX SHAPE (D6): the consent row recorded the STOP instruction as what was agreed to.
+      const dd = locale === "EN" ? dict.en : locale === "ZH" ? dict.zh : dict.sw;
+      const wording = d.resumeStoresStop
+        ? `${dd.optout.resubscribeButton} — ${dd.optout.body}`
+        : optOutWording("RESUME", locale);
+      await ledger(row.identifier, "GIVEN", wording, locale, ref);
+      const u = await lookupUser(row.identifier);
+      // ⛔ THE PRE-FIX SHAPE (D6): a self-excluded account's toggle switched on from a link.
+      if (u && u.marketingOptIn !== true && (d.flipsSelfExcluded || u.status !== "SELF_EXCLUDED")) {
+        await db.user.update(u.id, { marketingOptIn: true });
+      }
+      return { ok: true, state: "resumed" };
+    } catch {
+      return { ok: false, reason: "error" };
     }
-    await Promise.resolve(db.messagingConsent.create({
-      id: `ml${seq++}`, channel: "SMS", identifier: row.identifier, category: "MARKETING",
-      status: "GIVEN", source: "OPT_OUT_PAGE", wording: optOutWording("RESUME", locale),
-      locale, evidence: `optout:${token}`, recordedBy: null, createdAt: new Date().toISOString(),
-    }));
-    const u = await lookupUser(row.identifier);
-    if (u && u.marketingOptIn !== true) await db.user.update(u.id, { marketingOptIn: true });
-    return { ok: true, state: "resumed" };
   };
 
   /** ⛔ THE PRE-FIX PREDICATE. `=== null` is FALSE for a row that carries no lift field at all,
@@ -516,8 +969,57 @@ function pageWithDefect(d: Defect): OptOutPage {
       .find((r) => r.channel === key.channel && r.category === key.category);
     return row !== undefined && row.liftedAt === null;
   };
+
+  const mint = async (raw: string): Promise<string | null> => {
+    // ⛔ THE PRE-FIX SHAPE (D6): whatever it is handed is stored — `+255…` included.
+    const identifier = d.mintKeepsRaw ? raw : toMsisdn255(raw);
+    if (!identifier || identifier.replace(/\D/g, "").length < 12) return null;
+    for (let i = 0; i < OPTOUT_MINT_ATTEMPTS; i++) {
+      const token = OPTOUT_TOKEN_ALPHABET.split("").sort(() => Math.random() - 0.5).join("").slice(0, OPTOUT_TOKEN_CHARS);
+      const created = await Promise.resolve(db.marketingOptOutToken.create({
+        token, channel: "SMS", identifier, category: "MARKETING", createdAt: new Date().toISOString(),
+      }));
+      if (created) return created.token;
+    }
+    return null;
+  };
+
+  const resolveWithin = async (raw: string, clientKey: string): Promise<{ ok: boolean; reason?: string }> => {
+    // ⛔ THE PRE-FIX SHAPE (D6): the GET was never budgeted — every guess a free yes/no.
+    if (d.noGetBudget) return { ok: (await resolve_(raw)) !== null };
+    const gate = await rateCheckAsync(clientKey, OPTOUT_BUDGET);
+    if (!gate.allowed) return { ok: false, reason: "throttled" };
+    const row = await resolve_(raw);
+    // ⛔ THE PRE-FIX SHAPE (D6): a hit spends like a miss, so a person's own opens run them dry.
+    if (row && !d.chargesHits) await rateRefundAsync(clientKey, OPTOUT_BUDGET);
+    return row ? { ok: true } : { ok: false, reason: "unknown" };
+  };
+
+  /** The service's `actWithinBudget`, written out. ⚠️ Its per-link key is the model's own, so the
+   *  model's links and the shipped page's never share a bucket. */
+  const stopWithin = async (raw: string, locale: MessagingLocale, clientKey: string): Promise<OptOutActResult> => {
+    // ⛔ THE PRE-FIX SHAPE (D6): the acts are not budgeted at all — a script POSTs guesses for free.
+    if (d.noActBudget) return stop(raw, locale);
+    const gate = await rateCheckAsync(clientKey, OPTOUT_BUDGET);
+    if (!gate.allowed) return { ok: false, reason: "error" };
+    const token = fold(raw);
+    // ⛔ THE PRE-FIX SHAPE (D6): a held valid link flips stop/start at request speed, uncapped.
+    if (!d.noLinkCap && isOptOutTokenShape(token)) {
+      const perLink = await rateCheckAsync(`model-link:${token}`, OPTOUT_BUDGET);
+      if (!perLink.allowed) {
+        await rateRefundAsync(clientKey, OPTOUT_BUDGET);
+        return { ok: false, reason: "error" };
+      }
+    }
+    const r = await stop(raw, locale);
+    // ⛔ THE PRE-FIX SHAPE (D6): a real STOP spends the address like a guess, so a burst of genuine
+    // STOPs behind one carrier-NAT address after a large send runs it dry.
+    if (!d.actsChargeHits && (r.ok || r.reason === "error")) await rateRefundAsync(clientKey, OPTOUT_BUDGET);
+    return r;
+  };
+
   return {
-    stop, resume, isSuppressed,
+    stop, resume, isSuppressed, mint, resolveWithin, stopWithin,
     resolve: async (t) => ({ ok: (await resolve_(t)) !== null }),
     confirms: d.confirms === true,
   };
@@ -588,6 +1090,19 @@ if (!PROVE_RED) {
       defect: { noBridge: true },
       expect: "20 · ⭐ stopping from the LINK turns the PLAYER'S OWN PROFILE TOGGLE off — `User.phoneE164` is `+255…` and the marketing key is bare `255…`, so a bare lookup would have found nobody and silently done nothing",
     },
+    // ── D6 (2026-09-26) ──
+    { name: "D6 · the token is NOT case-folded — a link typed off a phone screen is told it does not work", defect: { caseSensitive: true }, expect: L.lower },
+    { name: "D6 · resume lifts ANY stop — one tap on an old SMS undoes an officer's suppression", defect: { liftsAnyReason: true }, expect: L.operator },
+    { name: "D6 · the RESUME row records the STOP instruction as the sentence consented to", defect: { resumeStoresStop: true }, expect: L.resumeWording },
+    { name: "D6 · the LIVE token is written into evidence, where any audit reader can act as the person", defect: { rawTokenEvidence: true }, expect: L.evidence },
+    { name: "D6 · `already` returns before a half-landed stop is finished — the ledger stays GIVEN and the toggle ON", defect: { alreadySkipsRepair: true }, expect: L.repair },
+    { name: "D6 · the mint stores `+255…` as given — its STOP writes a suppression the gate never finds", defect: { mintKeepsRaw: true }, expect: L.mint },
+    { name: "D6 · a link switches a SELF-EXCLUDED player's toggle back on", defect: { flipsSelfExcluded: true }, expect: L.selfExcluded },
+    { name: "D6 · the page's GET is not budgeted — every guess is a free yes/no", defect: { noGetBudget: true }, expect: L.walkerDry },
+    { name: "D6 · a valid link spends the budget like a miss — a person's own opens run them dry", defect: { chargesHits: true }, expect: L.personFree },
+    { name: "D6 · the two acts are not budgeted — a script POSTs guesses for free", defect: { noActBudget: true }, expect: L.actWalker },
+    { name: "D6 · a held link's acts are uncapped — stop/start at request speed, a ledger row each", defect: { noLinkCap: true }, expect: L.linkCap },
+    { name: "D6 · a real STOP spends the address like a guess — genuine STOPs behind one NAT run it dry", defect: { actsChargeHits: true }, expect: L.hitFree },
   ];
 
   for (const [i, c] of CASES.entries()) {
@@ -604,6 +1119,94 @@ if (!PROVE_RED) {
 
   const caught = CASES.length - problems.filter((x) => x.startsWith("case")).length;
   console.log(`\n${caught}/${CASES.length} caught`);
+
+  /* ── THE SURFACE PLANTS — one in-memory edit each, of the source text an S-check reads or of the
+   * dictionary it reads. ⛔ Each anchor must resolve EXACTLY ONCE in the file as it stands, or the plant
+   * is reported as rotted: a plant that edits nothing proves nothing. */
+  const PRIMER = "src/components/onboarding/first-visit-primer.tsx";
+  const CHAT = "src/components/chat/ChatRoot.tsx";
+  const CHANNELS = "src/components/social/channels-panel.tsx";
+  const SHELL = "src/components/layout/app-shell.tsx";
+  const PAGE = "src/app/s/[token]/page.tsx";
+  const CLIENT = "src/app/s/[token]/optout-client.tsx";
+  const LOADING = "src/app/s/[token]/loading.tsx";
+  const ACTIONS = "src/app/s/[token]/actions.ts";
+  const SKELETON = `<div data-skeleton="action" className="h-[var(--h-control-lg)] w-full rounded-lg bg-bg-overlay/60" />`;
+  /** Sets one dictionary sentence for the length of a case; returns the undo. */
+  const setCopy = (loc: "sw" | "en" | "zh", key: string, value: () => string) => () => {
+    const o = dict[loc].optout as Record<string, string>;
+    const had = Object.prototype.hasOwnProperty.call(o, key);
+    const was = o[key];
+    o[key] = value();
+    return () => { if (had) o[key] = was; else delete o[key]; };
+  };
+  const SURFACE_CASES: Array<{ name: string; expect: string; plant?: SurfacePlant; copy?: () => () => void }> = [
+    { name: "D6 · the first-visit primer opens on /s again", expect: SL.overlay("first-visit-primer.tsx"),
+      plant: { file: PRIMER, from: "(auth|admin|s)(", to: "(auth|admin)(" } },
+    { name: "D6 · the chat bubble sits on /s again", expect: SL.overlay("ChatRoot.tsx"),
+      plant: { file: CHAT, from: "(auth|admin|s)(", to: "(auth|admin)(" } },
+    { name: "D6 · the socials interstitial may open on /s again", expect: SL.overlay("channels-panel.tsx"),
+      plant: { file: CHANNELS, from: String.raw`= /^\/s(\/|$)|^\/(auth`, to: String.raw`= /^\/(auth` } },
+    { name: "D6 · /s renders inside the full betting shell", expect: SL.shellFirst,
+      plant: { file: SHELL, from: "if (isOptOutPath(pathname)) {", to: "if (isOptOutPath(pathname) && false) {" } },
+    { name: "D6 · the opt-out shell grows a sign-up link", expect: SL.noUpsell,
+      plant: { file: SHELL, from: "<LanguageMenu />", to: `<LanguageMenu /><a href="/auth/register">{t.nav.signUp}</a>` } },
+    { name: "D6 · the opt-out shell drops the regulator's licence line", expect: SL.shellCarries,
+      plant: { file: SHELL, from: "{LICENCE_NUMBER()}", to: "" } },
+    { name: "D6 · a stopped number keeps the 'stop' heading above a button that re-subscribes", expect: SL.heading,
+      plant: { file: CLIENT, from: "? t.optout.stoppedTitle", to: "? t.optout.title" } },
+    { name: "D6 · the resume button sits under the STOP instruction, not its consent sentence", expect: SL.consentBeside,
+      plant: { file: CLIENT, from: "{t.push.marketingBody}</p>", to: "{t.optout.body}</p>" } },
+    { name: "D6 · the answer is a silent note, never announced", expect: SL.announced,
+      plant: { file: CLIENT, from: ` role={state === "error" ? "alert" : "status"}`, to: "" } },
+    { name: "D6 · a failed resume offers the STOP button — the button follows the last state, not the truth", expect: SL.sameAct,
+      plant: { file: CLIENT, from: "{!isSuppressed ? (", to: `{!(state === "stopped" || state === "already") ? (` } },
+    { name: "D6 · a rejected action falls to the root error boundary", expect: SL.caught,
+      plant: { file: CLIENT, from: `fn(token).catch(() => ({ ok: false as const, reason: "error" }))`, to: "fn(token)" } },
+    { name: "D6 · the confirmation shrinks back to an 11px footnote", expect: SL.bodySize,
+      plant: { file: CLIENT, from: `<Callout size="md" tone={message.tone}`, to: "<Callout tone={message.tone}" } },
+    { name: "a success is painted on the click, not read from the server's answer", expect: SL.serverAnswer,
+      plant: { file: CLIENT, from: `setState(r.ok ? r.state : "error");`, to: `setState(act === "STOP" ? "stopped" : "resumed");` } },
+    { name: "a confirmation step gets a state to live in", expect: SL.noConfirm,
+      plant: { file: CLIENT, from: `useState<"idle" | "stopped"`, to: `useState<"idle" | "confirm" | "stopped"` } },
+    { name: "the page hands the RAW number to the client", expect: SL.mask,
+      plant: { file: PAGE, from: "masked={r.masked}", to: "masked={r.identifier}" } },
+    { name: "the refusal tells the reader to tap a button that is not there", expect: SL.refusalNoTap,
+      plant: { file: PAGE, from: "{invalidNextStep(t)}", to: "{t.optout.body}" } },
+    { name: "D6 · the refusal is a dead end again", expect: SL.nextStep,
+      plant: { file: PAGE, from: "action={<NextSteps t={t} />}", to: "" } },
+    { name: "D6 · the skeleton promises two buttons", expect: SL.loadingOne,
+      plant: { file: LOADING, from: SKELETON, to: SKELETON + SKELETON } },
+    { name: "D6 · the acts bypass the budget", expect: SL.budgeted,
+      plant: { file: ACTIONS, from: "return stopMarketingWithinBudget(token, await actLocale(), await optOutClientKey());", to: "return stopMarketing(token, await actLocale());" } },
+    { name: "D6 · the resumed sentence promises delivery again", expect: SL.noPromise("sw"),
+      copy: setCopy("sw", "resubscribed", () => "Utapokea tena matangazo ya 50pick.") },
+    { name: "D6 · a genuine link is called 'not ours' again", expect: SL.notOurs("en"),
+      copy: setCopy("en", "invalid", () => "This link is not one of ours, or it has been mistyped. Nothing has changed.") },
+    { name: "D6 · the stopped heading is the stop instruction again", expect: SL.headings("zh"),
+      copy: setCopy("zh", "stoppedTitle", () => dict.zh.optout.title) },
+    { name: "D6 · the next step types the toggle's name out, so a rename strands it", expect: SL.placeholders("sw"),
+      copy: setCopy("sw", "invalidNext", () => "Ili kuacha matangazo, wasiliana nasi.") },
+  ];
+  for (const [i, c] of SURFACE_CASES.entries()) {
+    pass = 0; fail = 0; failed.length = 0;
+    console.log(`── surface case ${i + 1}: ${c.name}`);
+    SURFACE_PLANT = c.plant ?? null;
+    surfacePlantHits = -1;
+    const undo = c.copy ? c.copy() : () => {};
+    try {
+      await runSurface(await seed(200 + i));
+    } finally {
+      undo();
+      SURFACE_PLANT = null;
+    }
+    if (c.plant && surfacePlantHits !== 1) problems.push(`surface case ${i + 1} (${c.name}): its anchor resolved ${surfacePlantHits} time(s) in ${c.plant.file}, not once — the plant has rotted`);
+    else if (fail === 0) problems.push(`surface case ${i + 1} (${c.name}): stayed GREEN`);
+    else if (!failed.includes(c.expect)) problems.push(`surface case ${i + 1} (${c.name}): red, but not on "${c.expect}" — got ${failed.join(" | ")}`);
+    else console.log(`   caught → ${c.expect}\n`);
+  }
+  const surfaceCaught = SURFACE_CASES.length - problems.filter((x) => x.startsWith("surface case")).length;
+  console.log(`\n${surfaceCaught}/${SURFACE_CASES.length} surface plants caught`);
   if (problems.length) {
     console.log("\nPROBLEMS:");
     for (const x of problems) console.log(`  ✗ ${x}`);

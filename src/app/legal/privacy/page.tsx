@@ -34,10 +34,12 @@ const TITLE: Record<Locale, string> = {
 // 2026-09-15.3: §5 states Google Analytics' retention as set in the GA property by Ali — event data 2 months, user data 14 months.
 // 2026-09-22: §7 names the card-spacing cookie `kp-density` (Mobile Visual Plan U2, approved by Ali the same day) — see
 // COMPLIANCE-DECISIONS.md "Privacy v2026-09-22" and `src/lib/card-spacing.ts`.
+// 2026-09-26: §4 names Blackball, the SMS gateway (`src/lib/server/sms-blackball.ts`), live since 2026-09-16 and the rail
+// every marketing text would use — it was the one processor §4 left out. `test:privacy-notice` §2e ties it to the code.
 const META: Record<Locale, string> = {
-  en: "Version 2026-09-22 · Aligned with the Tanzania Personal Data Protection Act 2022 and EU GDPR principles.",
-  sw: "Toleo 2026-09-22 · Imeoanishwa na Tanzania Personal Data Protection Act 2022 na kanuni za EU GDPR.",
-  zh: "版本 2026-09-22 · 符合 Tanzania Personal Data Protection Act 2022 及 EU GDPR 原则。",
+  en: "Version 2026-09-26 · Aligned with the Tanzania Personal Data Protection Act 2022 and EU GDPR principles.",
+  sw: "Toleo 2026-09-26 · Imeoanishwa na Tanzania Personal Data Protection Act 2022 na kanuni za EU GDPR.",
+  zh: "版本 2026-09-26 · 符合 Tanzania Personal Data Protection Act 2022 及 EU GDPR 原则。",
 };
 
 /**
@@ -91,6 +93,7 @@ function content(): Record<Locale, React.ReactNode> { return {
           <li>Cloud hosting providers: Railway, in the United States (region us-west2), which runs the app, holds its databases and keeps backups of them; and Cloudflare R2, in Western Europe, which stores identity documents, selfies and encrypted database backups; and GitHub Actions, in the United States, which creates the nightly database backup and test-restores it before it is encrypted and stored</li>
           <li>Cloudflare&apos;s network, which carries every connection to www.50pick.tz: each request is decrypted at the Cloudflare data centre nearest to you and encrypted again on its way to our servers</li>
           <li>Postmark, in the United States, which sends our emails: it keeps a record of each email, and records when an email is opened and which link in it is clicked</li>
+          <li>Blackball, our SMS gateway in Tanzania, which sends our text messages, such as one-time codes and, only if you agree to receive them, offers and news: it receives your phone number and the text of each message, and tells us whether each message was delivered</li>
           <li>Anthropic, which writes the answers in the 50pick Help chat: it receives the messages of that conversation, not your account details; it stores data in the United States and may process a request in the United States, Europe, Asia or Australia</li>
           <li>Sentry, in the European Union, which receives error reports from our servers: Tanzanian phone numbers, email addresses and long numbers such as a NIDA number are removed from a report before it is sent</li>
           <li>Google Analytics, run by Google, only if you allow analytics, which measures how the website is used: it receives the address and title of each page you open, with any part that could identify you removed; your browser and device type; an approximate location derived from your IP address; and a random identifier kept in a cookie. It does not receive your name, phone number, email address or account details, and it is not used for advertising. It does not run on staff pages or on a page opened from a password-reset, email-verification or agent-invitation link. Google may process this data in the United States and other countries</li>
@@ -194,6 +197,7 @@ function content(): Record<Locale, React.ReactNode> { return {
           <li>Watoa huduma za wingu: Railway, nchini Marekani (kanda us-west2), inayoendesha programu, kuhifadhi hifadhidata zake na nakala rudufu zake; na Cloudflare R2, barani Ulaya Magharibi, inayohifadhi nyaraka za utambulisho, selfie na nakala rudufu za hifadhidata zilizosimbwa; na GitHub Actions, nchini Marekani, inayotengeneza nakala rudufu ya kila usiku ya hifadhidata na kuijaribu kabla ya kusimbwa na kuhifadhiwa</li>
           <li>Mtandao wa Cloudflare, unaopitisha kila muunganisho wa www.50pick.tz: kila ombi husimbuliwa katika kituo cha data cha Cloudflare kilicho karibu nawe na kusimbwa tena linapoelekea kwenye seva zetu</li>
           <li>Postmark, nchini Marekani, inayotuma barua pepe zetu: huhifadhi kumbukumbu ya kila barua pepe, na hurekodi barua pepe inapofunguliwa na kiungo kinachobofywa ndani yake</li>
+          <li>Blackball, lango letu la SMS nchini Tanzania, linalotuma ujumbe wetu mfupi (SMS), kama misimbo ya matumizi ya mara moja na, ikiwa tu umekubali kuzipokea, ofa na habari: hupokea namba yako ya simu na maandishi ya kila ujumbe, na hutuambia kama kila ujumbe umefika</li>
           <li>Anthropic, inayoandika majibu katika gumzo la Msaada wa 50pick: hupokea ujumbe wa mazungumzo hayo, si taarifa za akaunti yako; huhifadhi data nchini Marekani na inaweza kuchakata ombi nchini Marekani, Ulaya, Asia au Australia</li>
           <li>Sentry, katika Umoja wa Ulaya, inayopokea ripoti za hitilafu kutoka kwenye seva zetu: namba za simu za Tanzania, anwani za barua pepe na namba ndefu kama namba ya NIDA huondolewa kwenye ripoti kabla haijatumwa</li>
           <li>Google Analytics, inayoendeshwa na Google, ikiwa tu utaruhusu takwimu, inayopima jinsi tovuti inavyotumika: hupokea anwani na kichwa cha kila ukurasa unaofungua, sehemu yoyote inayoweza kukutambulisha ikiwa imeondolewa; aina ya kivinjari na kifaa chako; eneo la takriban linalotokana na anwani yako ya IP; na kitambulisho cha nasibu kinachohifadhiwa kwenye kidakuzi. Haipokei jina lako, namba ya simu, anwani ya barua pepe wala taarifa za akaunti yako, na haitumiki kwa matangazo. Haiendeshwi kwenye kurasa za wafanyakazi wala kwenye ukurasa uliofunguliwa kutoka kiungo cha kubadilisha nenosiri, cha kuthibitisha barua pepe au cha mwaliko wa wakala. Google inaweza kuchakata data hii nchini Marekani na nchi nyingine</li>
@@ -296,6 +300,7 @@ function content(): Record<Locale, React.ReactNode> { return {
           <li>云托管服务商：Railway（美国，us-west2 区域），运行本应用、存放其数据库并保存数据库备份；Cloudflare R2（西欧），存放身份证件、自拍照及加密的数据库备份；以及 GitHub Actions（美国），负责生成每晚的数据库备份，并在加密存储前进行恢复验证</li>
           <li>Cloudflare 网络：承载所有访问 www.50pick.tz 的连接；每个请求在离您最近的 Cloudflare 数据中心解密，并在发往我们服务器的途中重新加密</li>
           <li>Postmark（美国）：发送我们的电子邮件；保存每封邮件的记录，并记录邮件何时被打开以及其中哪个链接被点击</li>
+          <li>Blackball（坦桑尼亚），我们的短信网关：发送我们的短信，例如一次性验证码，以及仅在您同意接收时发送的优惠和资讯；接收您的电话号码和每条短信的内容，并告知我们每条短信是否已送达</li>
           <li>Anthropic：为“50pick 帮助”聊天撰写回答；接收该对话中的消息，不含您的账户信息；数据存储于美国，请求可能在美国、欧洲、亚洲或澳大利亚处理</li>
           <li>Sentry（欧盟）：接收我们服务器的错误报告；报告发送前，会删除其中的坦桑尼亚电话号码、电子邮箱地址以及 NIDA 号码等长数字</li>
           <li>Google Analytics（由 Google 运营，仅在您允许分析时启用）：衡量网站的使用情况；接收您打开的每个页面的地址与标题（已删除任何可能识别您身份的部分）、您的浏览器与设备类型、根据您的 IP 地址推断的大致位置，以及保存在 cookie 中的随机标识符。不接收您的姓名、电话号码、电子邮箱地址或账户信息，也不用于广告。不在员工页面上运行，也不在通过重置密码、验证邮箱或代理邀请链接打开的页面上运行。Google 可能在美国及其他国家处理这些数据</li>

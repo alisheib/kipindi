@@ -9,6 +9,7 @@ import { listWatchedMarketIds } from "@/lib/server/watchlist-service";
 import { getServerT } from "@/lib/i18n-server";
 import { PageContainer } from "@/components/layout/page-container";
 import { db } from "@/lib/server/store";
+import { marketingToggleState } from "@/lib/server/marketing/consent";
 import { MarketingConsent } from "./marketing-consent";
 
 // Localised tab title (POLISH-BACKLOG §1.7) — was the hard-coded English
@@ -27,6 +28,8 @@ export default async function NotificationSettingsPage() {
     listWatchedMarketIds(session.userId).catch(() => [] as string[]),
     Promise.resolve(db.user.findById(session.userId)).catch(() => null),
   ]);
+  // D4 · the switch shows the EFFECTIVE consent (`marketingToggleState`), never the bare boolean.
+  const marketing = user ? await marketingToggleState(user).catch(() => null) : null;
 
   return (
     <PageContainer tier="form" className="space-y-5">
@@ -35,9 +38,9 @@ export default async function NotificationSettingsPage() {
 
       <PushSettings />
 
-      {/* E-409 · marketing consent, withdrawable at any time (Privacy §3). Hidden if the account read failed —
-          a switch showing a guessed state would be a lie about a consent. */}
-      {user && <MarketingConsent initialOn={user.marketingOptIn} />}
+      {/* E-409 · marketing consent, withdrawable at any time (Privacy §3). Hidden if the account or the
+          consent read failed — a switch showing a guessed state would be a lie about a consent. */}
+      {marketing && <MarketingConsent initialOn={marketing.on} initialPaused={marketing.paused} />}
 
       {/* Watchlist summary — what these alerts are actually about. */}
       <section className="rounded-xl glass-panel p-5">

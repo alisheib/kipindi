@@ -122,8 +122,11 @@ export const RATE_RULES: Record<string, RateRule> = {
   // is legal rather than generous: ETA s.32(1)(c) requires an opt-out in every message and has
   // no rate-limit exception, so a refused STOP is a person who asked to leave and was told no.
   // Tanzanian mobile networks put many real people behind one carrier NAT address; 30 burst and
-  // 10/min steady stops a script walking the token space and is nowhere near anybody tapping a
-  // link in their own SMS. ⚠️ A throttled act reports the RETRY message, never a success.
+  // 10/min steady is nowhere near anybody tapping a link in their own SMS. ⭐ D6 (2026-09-26): only a
+  // MISS spends it — an unresolvable token, on the page's GET or on either act — and a hit is refunded
+  // (`optout-service.ts`), so it runs a token-walking script dry without ever charging a real STOP; the
+  // same rule also caps each valid link's own acts under a hashed per-link key. ⚠️ A throttled act
+  // reports the RETRY message, never a success.
   "optout.ip":      { capacity: 30, refillPerMin: 10 },
 };
 

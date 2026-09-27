@@ -218,6 +218,25 @@ for (const r of REFUSALS) {
 ok("3.7 · the bare-word `failed:` title key is deleted, not merely unused",
   !/^\s*failed:\s*"/m.test(DICT), "a title that says only that something failed is §F's own counter-example");
 
+// ── A CLOSED permission prompt is not "unavailable" (2026-09-26) ──────────────
+// `subscribeToPush` returns null when the player dismisses the browser prompt (permission stays "default"), and
+// push-settings mapped every null that was not "denied" to `unconfigured` — "Push isn't available on this
+// deployment yet": engineering words, and false. A dismissal is OFF with a next step; only a missing VAPID key
+// (checked on mount) is `unconfigured`.
+{
+  const PUSH = stripComments(read("src/components/settings/push-settings.tsx"));
+  const onNull = PUSH.slice(PUSH.indexOf("if (!sub) {"), PUSH.indexOf("const json = sub.toJSON()"));
+  ok("3.13 · push-settings — a dismissed prompt (permission \"default\") is OFF with t.push.dismissed, never `unconfigured`",
+    onNull.length > 0 && /=== "default"\)\s*\{\s*setDismissed\(true\);\s*setState\("off"\)/.test(onNull)
+    && !/"unconfigured"/.test(onNull) && /\? t\.push\.dismissed/.test(PUSH),
+    onNull.trim().slice(0, 160));
+  ok("3.14 · push-settings — `unconfigured` is set only where the VAPID key is missing",
+    (PUSH.match(/setState\("unconfigured"\)/g) ?? []).length === 1
+    && /if \(!process\.env\.NEXT_PUBLIC_VAPID_PUBLIC_KEY\) \{ setState\("unconfigured"\); return; \}/.test(PUSH));
+  const values = dictValues("push", "dismissed");
+  ok("3.15 · push.dismissed resolves in EN, SW and ZH, none byte-identical", values.length === 3 && new Set(values).size === 3, `found ${values.length}`);
+}
+
 // ───────────────────────────────────────────────────────────────────────────────
 console.log("\n§4 · Nothing vibrates on a non-action");
 // ───────────────────────────────────────────────────────────────────────────────

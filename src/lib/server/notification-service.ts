@@ -1726,6 +1726,57 @@ export async function notifyAdminsAiCreditLimit(opts: { level: "warn" | "limit";
   } catch { /* officer email is best-effort */ }
 }
 
+/** SMS credit alert (2026-09-26): the Blackball balance reached the alert line (`SMS_BALANCE_ALERT_TZS`). Fired by
+ *  `sms.ts` once per downward crossing — and once for a balance a restart finds already low, at most once a day —
+ *  never once per send. Below the floor (`SMS_BALANCE_FLOOR_TZS`) invite and notice SMS are held; login codes still
+ *  send. In-app SECURITY bell + best-effort email to every ADMIN/COMPLIANCE officer, like the AI credit alert.
+ *  ⛔ Never an SMS: the rail it warns about is the one running out. */
+export async function notifyAdminsSmsCreditLow(opts: { tzs: number; alertTzs: number; floorTzs: number }) {
+  const officers = await db.user.listByRoles(["ADMIN", "COMPLIANCE"]); // audit M5
+  const left = formatTzs(opts.tzs);
+  const alert = formatTzs(opts.alertTzs);
+  const floor = formatTzs(opts.floorTzs);
+  const belowFloor = opts.tzs < opts.floorTzs;
+  for (const o of officers) {
+    await notify({
+      userId: o.id,
+      kind: "SECURITY",
+      titleEn: `SMS credit is low: ${left}`,
+      titleSw: `Salio la SMS linakaribia kuisha: ${left}`,
+      titleZh: `短信余额不足：${left}`,
+      bodyEn: belowFloor
+        ? `SMS credit is ${left}, below the ${floor} floor. Invite and notice SMS are paused; login codes still send. Top up Blackball now.`
+        : `SMS credit is ${left}, at or below the ${alert} alert line. Top up Blackball soon: below ${floor}, invite and notice SMS pause and only login codes send.`,
+      bodySw: belowFloor
+        ? `Salio la SMS ni ${left}, chini ya kiwango cha chini cha ${floor}. SMS za mialiko na taarifa zimesimamishwa; misimbo ya kuingia bado inatumwa. Ongeza salio la Blackball sasa.`
+        : `Salio la SMS ni ${left}, limefika kiwango cha tahadhari cha ${alert}. Ongeza salio la Blackball hivi karibuni: likishuka chini ya ${floor}, SMS za mialiko na taarifa zitasimamishwa na misimbo ya kuingia pekee ndiyo itatumwa.`,
+      bodyZh: belowFloor
+        ? `短信余额为 ${left}，已低于 ${floor} 的下限。邀请和通知短信已暂停，登录验证码仍会发送。请立即为 Blackball 充值。`
+        : `短信余额为 ${left}，已达到 ${alert} 的提醒线。请尽快为 Blackball 充值：余额低于 ${floor} 时，邀请和通知短信将暂停，仅发送登录验证码。`,
+      href: "/admin/system",
+    }).catch(() => {});
+  }
+  try {
+    const { sendEmail, smsCreditLowAdminHtml } = await import("./email");
+    const { resolvePhoneEmail } = await import("./email-map");
+    const emails = [...new Set(
+      officers
+        .map((o) => (o.email || resolvePhoneEmail(o.phoneE164) || "").trim().toLowerCase())
+        .filter((e) => e && !e.endsWith("@stub") && !e.endsWith("@none")),
+    )];
+    const html = smsCreditLowAdminHtml({ tzs: opts.tzs, alertTzs: opts.alertTzs, floorTzs: opts.floorTzs });
+    for (const to of emails) {
+      sendEmail({
+        to,
+        subject: belowFloor ? `50pick SMS credit is below the floor (${left})` : `50pick SMS credit is low (${left})`,
+        html,
+        tag: "sms-credit-low",
+        trackLinks: false,
+      }).catch(() => {});
+    }
+  } catch { /* officer email is best-effort */ }
+}
+
 /** Operational alert: the nightly backup is missing, failed, unverified or
  *  stale (>36 h). Fired once a day by the backup watchdog on the leader-leased
  *  lifecycle pass — the alert that ARRIVES, vs the compliance card an operator

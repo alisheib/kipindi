@@ -21,7 +21,8 @@ Wired: 2026-09-16. Code: `src/lib/server/sms-blackball.ts` (transport), `src/lib
 >
 > **Left with the vendor, none of it blocking:** the three whitelisted sender-ID strings with TCRA
 > confirmation, the interval between their 5 retries, and the `CODE` values that accompany failure
-> tokens (only `DELIVRD` has ever arrived). **Owner item:** the webhook secret travelled through chat and
+> tokens (only `DELIVRD` has ever arrived); since 2026-09-26 also where they store message data (the
+> Privacy notice says "in Tanzania") and whether the account has an inbound number (§8). **Owner item:** the webhook secret travelled through chat and
 > WhatsApp while this was being fixed — rotate it when convenient (new value in Railway, new URL to them,
 > one test send to confirm).
 
@@ -36,7 +37,7 @@ Wired: 2026-09-16. Code: `src/lib/server/sms-blackball.ts` (transport), `src/lib
 | Live sends | ✅ **one from PRODUCTION itself, 2026-09-23 — the end-to-end proof (§4.8)** · ✅ step 1 DELIVRD / Success in 2 s (received on the handset); ✅ step 2 batch of two accepted in one request, TZS 12; ✅ step 3 (2026-09-17 09:30 UTC) one good + one unroutable msisdn **accepted whole** ("Successfully submitted 2 message(s)"), TZS 6 charged; ✅ step 4 five times (2026-09-21 08:58 and 13:58, 2026-09-22 06:55, 08:28 and 09:12 UTC) — **10 of 10** drive sends used; the ceiling went 6 → 7 → 8 → 9 → 10 on Ali's instructions to validate the vendor's successive claims (`TOTAL_SEND_CEILING` in `scripts/live/blackball-drive.mts`). ⭐ Ali confirms the handset RECEIVES every one of them |
 | Delivery callback | ✅ **WORKING, PROVEN END TO END 2026-09-23** — a production-issued OTP was DELIVERED and its receipt settled the real row in **11 seconds** (`applied: 1`), after the vendor's first automatic batch at 03:46 (§4.7, §4.8) |
 | Phone-code login | ⏸ `OTP_ENABLED` unset — deliberately (§7, step 6) |
-| Balance | ⛔ Not recorded here — every delivered SMS costs TZS 6 (§5), so any figure in this file is wrong after the next send. Read it live: the portal, or the free `POST /api/account/balance` (§1.4). *(This cell said "TZS 196"; removed 2026-09-25.)* |
+| Balance | ⛔ Not recorded here — every delivered SMS costs TZS 6 (§5), so any figure in this file is wrong after the next send. Read it live on **Admin → System → the "SMS credit" tile**, which asks Blackball on each visit (free, sends nothing, reused for a minute): the headline is the credit in TZS; "—" with *"Couldn't read the balance · not zero · …"* means the read failed (the caption says why), and "—" with *"Last read … · was TZS … · couldn't refresh"* means the last figure is too old to trust — never that the account is empty (§5). Or use the portal, or `POST /api/account/balance` (§1.4). *(This cell said "TZS 196"; removed 2026-09-25.)* |
 
 ---
 
@@ -80,9 +81,15 @@ and a success both send `null`. `readFieldErrors` accepts array, object and null
   `{"status":true,"message":"Account balance","data":{"name":…,"currency":"TZS",…},"balance":244.0}`.
 
 So `sms.ts` records balances from **accepted** replies only, and reads the balance endpoint
-whenever a campaign meets a missing or stale reading. Recording a refusal's `0.0` would store
-TZS 0, trip the cost floor, and hold every campaign — held before any request, so nothing could
-ever refresh it. That latch existed and is guarded by `test:sms-cost-guard` §2.
+(`refreshSmsBalance`, the one read) whenever a send meets a missing or stale reading, before it refuses
+on a below-floor reading older than a minute, and on every Admin → System render and `/api/health` call.
+Recording a refusal's `0.0` would store TZS 0, trip the cost floor, and hold every campaign — held before
+any request, so nothing could ever refresh it. That latch existed and is guarded by `test:sms-cost-guard` §2.
+⭐ Because the endpoint is free and authenticated, it is the platform's one live **credential check**, so
+a failed read says which failure it was (2026-09-26): `refused` — the vendor answered and turned us down
+(a 4xx, or `status: false`, as with the fake-credential probe above); `unreachable` — no answer, our
+timeout, or the vendor's own 5xx; `not-configured` — the keys are not set on this box. Wrong keys and an
+outage no longer look the same.
 
 ### 1.5 `coding` — `GSM7` or `UCS2`
 
@@ -431,7 +438,41 @@ The cost floor holds `INVITE`/`OPS` traffic below `SMS_BALANCE_FLOOR_TZS` so the
 login codes. ⛔ **OTP is exempt, and never waits on a balance read**: refusing a login code to save
 a few shillings is a self-inflicted outage. A reading is trusted only from an accepted reply or the
 balance endpoint, expires after `SMS_BALANCE_TTL_MS`, and **unknown is never treated as low**. The
-low-balance alarm is edge-triggered — one audit row per downward crossing.
+low-balance alarm is edge-triggered: at or below `SMS_BALANCE_ALERT_TZS` it writes one `sms.balance_low`
+audit row AND, since 2026-09-26, reaches every ADMIN and COMPLIANCE officer — a bell notification linking to
+Admin → System and an email (⛔ never an SMS: the rail that is running out is not the channel to warn on) —
+once per downward crossing, and at most once a day for a restart that finds the balance already low.
+*(Until 2026-09-26 the alarm was the audit row alone, which nothing read, under a code comment saying officers
+were alarmed.)*
+
+**Where the operator reads it — Admin → System, the "SMS credit" tile** (2026-09-26; Swahili gloss
+"Salio"). Each render asks the balance endpoint through `refreshSmsBalance` (free, authenticated, sends
+nothing) and waits at most ~2.5 s — a slower read carries on and records itself when it lands; a reading
+under a minute old is reused, concurrent visits share one request, and a failed read is not retried for
+`SMS_BALANCE_RETRY_MS` (its reason is kept for that window too). The tile's value is the credit
+(`TZS 185`), or "—" when there is no figure it can stand behind, and its caption says the state in words.
+No pulse and no arrow: the words and the colour carry it.
+
+| State | Value | Caption | Colour |
+|---|---|---|---|
+| healthy | `TZS 185` | *Healthy · Blackball · idle since restart*, or *Healthy · Blackball · 98.0% ok · 12 sent since restart* (the counters live in the process) | normal |
+| at or below the alert line | `TZS 120` | *Low — top up soon · alert at TZS 150* | warning |
+| below the floor | `TZS 30` | *Below floor — invites paused, login codes still send · top up now* | danger |
+| no reading at all | "—" | *Couldn't read the balance · not zero*, then why: *Blackball refused our credentials* (`refused`) · *no answer from Blackball* (`unreachable`) · *Blackball keys not set* · *still waiting for Blackball* (the 2.5 s budget ran out; the read carries on) · *no balance read on Console (dev)* · *SMS provider not recognised* | normal |
+| a figure older than `SMS_BALANCE_TTL_MS` (the floor treats it as unknown) | "—" | *Last read 14:02 EAT · was TZS 185 · couldn't refresh*; an old low figure adds *, low* or *, below floor* | warning if it was low, never danger (the floor is not refusing on it) |
+| a figure inside the TTL that this render could not confirm | the figure | *Last read 14:02 EAT · couldn't refresh*, after the Low / Below-floor words when they apply | per level |
+
+A reading from another day carries its date (*25 Sep 14:02 EAT*). Amounts, *N sent*, *98.0% ok* and the
+time never break inside, and a *·* separator stays with the fact after it, so no line ends on a dot at 360.
+The unknown-with-reason caption is the longest, about four lines at 360.
+
+`/api/health` refreshes the same reading with a ~1 s budget (a deploy gate waits on that route; a reading
+under a minute old is reused) and publishes `sms.balanceTzs`, `balanceAt` (ISO) and `balanceStale` beside
+`balanceBelowFloor`, so a figure is never shown without its time — and a stale low figure reads
+`balanceBelowFloor: false`, because stale is unknown, never low. `sendBatch` goes through the same function (no
+second copy): a missing or stale reading is re-read before the floor decides, and a below-floor reading older
+than a minute is re-read before the batch is refused — a top-up is honoured within about a minute, not after
+the 15-minute TTL.
 
 ---
 
@@ -447,6 +488,8 @@ low-balance alarm is edge-triggered — one audit row per downward crossing.
 | `BLACKBALL_WEBHOOK_SECRET` | ≥ 16 chars, set in Railway. A placeholder is functionally ABSENT |
 | `SMS_BALANCE_FLOOR_TZS` / `SMS_BALANCE_ALERT_TZS` | default 50 / 150 (≈ 8 / 25 messages) |
 | `SMS_BALANCE_TTL_MS` | default 900000 (15 minutes) |
+| `SMS_BALANCE_RETRY_MS` | default 30000 — after a failed balance read, no new read is attempted for this long (a dead endpoint is not hammered by page renders or `/api/health`) |
+| *(not variables)* | the read's waits are code constants in `sms.ts`: `SMS_BALANCE_RENDER_BUDGET_MS` 2500 (Admin → System) and `SMS_BALANCE_HEALTH_BUDGET_MS` 1000 (`/api/health`); a reading older than 60 s is re-read before the floor refuses on it; a restart that finds the balance already low alarms at most once in 24 h |
 | `INVITE_SMS_MAX_PER_SEND` | default 500 |
 | `OTP_ENABLED` | `1` un-hides `/auth/otp`; ⚠️ no login/register UI links to it yet (§7, step 6) |
 
@@ -475,7 +518,8 @@ Each step is independently reversible, and none of the later ones is safe withou
      into `/auth/otp` except the unwired OTP actions themselves. Flipping it would only expose an
      orphan page — an unlinked way to trigger paid sends, for no player benefit.
    - Of the preconditions below, the receipt is met (§4.8); the balance is not — it covers only a few
-     dozen messages (re-read it from `/api/health`; never trust a figure written here).
+     dozen messages (read it live on Admin → System's "SMS credit" tile, §5; never trust a figure written
+     here). `/api/health` refreshes the same reading with a short budget and shows `balanceAt` beside it.
 
    **Offering phone-code login is a product change, not a variable:** a "send me a code" option on
    `/auth/login` (and register), inside the frozen design system, in EN + SW + ZH, with the visual
@@ -483,8 +527,8 @@ Each step is independently reversible, and none of the later ones is safe withou
 
 ### Preconditions for step 6 — measured, none assumed
 
-- `/api/health` → `sms.configured: true`, `webhookSecretSet: true`, and a `balanceTzs` comfortably
-  above the alert line.
+- `/api/health` → `sms.configured: true`, `webhookSecretSet: true`; and Admin → System's "SMS credit" tile
+  shows a credit comfortably above the alert line, read today (no "Last read … couldn't refresh").
 - At least one real delivery receipt has **arrived at production** and mapped. It is the only proof
   that Cloudflare, the token and the URL registration are all right, and it cannot be simulated.
 - The production boot log prints no `[sms]` warning.
@@ -524,6 +568,11 @@ callback was enabled and claimed "no callback POST ever reached us" two days aft
 5. The **exact strings of the three whitelisted sender IDs**, confirmation they are **TCRA-registered**, and
    whether they are case-sensitive.
 6. The **interval** between the 5 callback retries.
+7. **Where Blackball stores and processes message data** (numbers and texts). Privacy v2026-09-26 §4 names
+   Blackball as "our SMS gateway in Tanzania"; if they store or process it elsewhere, the notice needs a new
+   version (`COMPLIANCE-DECISIONS.md` § "2026-09-26 · Privacy v2026-09-26").
+8. Whether the account has an **inbound number** for replies, and its payload — until one exists, a reply of
+   STOP / ACHA to any SMS reaches nothing (marketing plan §4a OQ8, U46).
 
 Answered already: sender ID, price, success body, `coding` values, balance endpoint.
 
@@ -538,7 +587,7 @@ Answered already: sender ID, price, success body, `coding` values, balance endpo
 | `test:blackball` / `red:blackball` | the transport: HTTP-400 trap, `data` shapes, sender cap, reference floor, batching, timeouts, `coding`, balance endpoint |
 | `test:sms-dlr` / `red:sms-dlr` | the receiver: auth, exact reply body, unknown references, msisdn cross-check, monotonicity, no-guess rule, the observed DELIVRD receipt, no empty-callback audit |
 | `test:otp-delivery` / `red:otp-delivery` | the login path: refusal before minting, await, consume-on-failure, rate refund, locale, wire-form msisdn, UNKNOWN on a lost reply |
-| `test:sms-cost-guard` / `red:sms-cost-guard` | the floor: OTP exemption, the refusal-balance latch, staleness, balance-endpoint refresh, edge-triggered alarm |
+| `test:sms-cost-guard` / `red:sms-cost-guard` | the floor: OTP exemption, the refusal-balance latch, staleness, balance-endpoint refresh, edge-triggered alarm; since 2026-09-26 also the live read (budget, one read in flight, the pause after a failure and why it failed, the low-reading re-check before a refusal), `/api/health`'s refresh, the officers' alarm (bell + email, the once-a-day restart alarm), and the Admin → System "SMS credit" tile's states. ✅ In `predeploy` since 2026-09-26 (after `test:pii-logs`), and its §8 asserts it stays there |
 | `test:dal-parity` §13 | both DAL backends map every `SmsMessage` field and enforce the same monotonic receipt rule |
 | `test:invites` | a configured provider sends three invites in ONE request; a typo'd provider refuses honestly |
 | `test:pii-logs` §4 | the message body never reaches a production log |

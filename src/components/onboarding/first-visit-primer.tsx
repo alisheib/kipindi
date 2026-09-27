@@ -20,7 +20,9 @@ import { sideWord } from "@/lib/side-label";
 import { useT } from "@/lib/i18n";
 
 const STORAGE_KEY = "50pick-primer-seen";
-const HIDE_ON = /^\/(auth|admin)(\/|$)/;
+// ⛔ `s` = the marketing opt-out page (D6): somebody who came to STOP marketing is never shown a betting
+// tutorial — and they arrive in exactly the fresh browser this opens for. `test:marketing-optout` pins it.
+const HIDE_ON = /^\/(auth|admin|s)(\/|$)/;
 // B-26 — a deep-linked market detail (especially one carrying `?side=` from a
 // shared card) is a bet-intent moment: ambushing it 700ms in with a four-card
 // primer costs the platform its most valuable arriving click. The primer waits

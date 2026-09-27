@@ -17,6 +17,8 @@
  *
  * Run: node scripts/live/marketing-u6-consent-ledger-drive.mjs <sha>
  */
+import { readFileSync } from "node:fs";
+
 const WANT = (process.argv[2] || "").trim();
 if (!WANT) {
   console.error("!! give me the commit this build should be: node scripts/live/marketing-u6-consent-ledger-drive.mjs <sha>");
@@ -30,8 +32,9 @@ const UA = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Geck
 let pass = 0, fail = 0;
 const ok = (l, c, x = "") => { c ? pass++ : fail++; console.log(`${c ? "PASS" : "FAIL"} ${l}${x ? ` — ${x}` : ""}`); };
 
-const get = async (path) => {
-  const r = await fetch(`${BASE}${path}`, { headers: { "user-agent": UA }, cache: "no-store", redirect: "follow" });
+const get = async (path, locale) => {
+  const headers = { "user-agent": UA, ...(locale ? { cookie: `kp-locale=${locale}` } : {}) };
+  const r = await fetch(`${BASE}${path}`, { headers, cache: "no-store", redirect: "follow" });
   return { status: r.status, html: await r.text(), url: r.url };
 };
 
@@ -58,15 +61,34 @@ ok("2 · the sign-up page still serves after U6 wired the ledger into both regis
 ok("2b · the marketing consent checkbox is still on it — the consent point exists",
   /name="marketingOptIn"/.test(reg.html));
 
-// ⭐ THE ONE THAT MATTERS: what the ledger stores must be what the page SHOWS.
-const SHOWN_SW = "Nipe matangazo (hiari).";
+// ⭐ THE ONE THAT MATTERS: what the ledger stores must be what the page SHOWS — in EVERY language.
+// 🔴 Until 2026-09-26 this read only the Swahili page, and both registration paths stored the Swahili
+// sentence for everybody (D2); the English and Chinese pages are now read with their own cookie.
+// ⛔ Each sentence must ALSO be one the gate counts — pinned literally in consent-wording.ts (OQ11, D3).
+const SHOWN = {
+  sw: "Nitumie ofa na habari za 50pick kwa SMS (hiari).",
+  en: "Send me 50pick offers and news by SMS (optional).",
+  zh: "通过短信向我发送 50pick 的优惠和资讯（可选）。",
+};
+const pinned = readFileSync(new URL("../../src/lib/marketing/consent-wording.ts", import.meta.url), "utf8");
 ok("3 · ⭐ the Swahili sentence the ledger stores VERBATIM is the sentence production actually shows",
-  reg.html.includes(SHOWN_SW), JSON.stringify(SHOWN_SW));
+  reg.html.includes(SHOWN.sw), JSON.stringify(SHOWN.sw));
+const regEn = await get("/auth/register", "en");
+ok("3b · ⭐ D2 · with kp-locale=en the page shows the ENGLISH sentence the ledger now stores for that player",
+  regEn.status === 200 && regEn.html.includes(SHOWN.en) && !regEn.html.includes(SHOWN.sw), JSON.stringify(SHOWN.en));
+const regZh = await get("/auth/register", "zh");
+ok("3c · D2 · with kp-locale=zh the page shows the CHINESE sentence",
+  regZh.status === 200 && regZh.html.includes(SHOWN.zh) && !regZh.html.includes(SHOWN.sw), JSON.stringify(SHOWN.zh));
+ok("3d · ⛔ OQ11 · each sentence shown is one the gate COUNTS — pinned literally in consent-wording.ts",
+  Object.values(SHOWN).every((s) => pinned.includes(JSON.stringify(s).slice(1, -1))),
+  Object.entries(SHOWN).filter(([, s]) => !pinned.includes(JSON.stringify(s).slice(1, -1))).map(([l]) => l).join(",") || "all pinned");
 
 // ── controls: prove this drive can fail, and is not just matching anything ────────────────
 ok("4 · CONTROL · a sentence that is NOT on the page is reported absent",
-  !reg.html.includes("Nipe matangazo (lazima)."),
+  !reg.html.includes("Nitumie ofa na habari za 50pick kwa SMS (lazima)."),
   "a near-miss of the real string — if this passed, assertion 3 would be meaningless");
+ok("4a · CONTROL · the pre-2026-09-26 sentence is gone — it never named SMS",
+  !reg.html.includes("Nipe matangazo (hiari).") && !regEn.html.includes("Send me product updates (optional)."));
 ok("4b · CONTROL · the deploy-id reader is not matching everything",
   !dpl.startsWith("0000000"), `read ${dpl.slice(0, 12)}`);
 ok("4c · CONTROL · the page really was read, not an empty body",

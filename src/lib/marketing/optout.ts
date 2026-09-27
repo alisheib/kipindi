@@ -1,4 +1,4 @@
-import { OPTOUT_TOKEN_CHARS } from "./footer";
+import { OPTOUT_TOKEN_CHARS, OPTOUT_PATH } from "./footer";
 
 /**
  * U8 · THE OPT-OUT TOKEN, AS ARITHMETIC (OD43).
@@ -59,4 +59,37 @@ export function isOptOutTokenShape(token: string): boolean {
   if (token.length !== OPTOUT_TOKEN_CHARS) return false;
   for (const ch of token) if (!OPTOUT_TOKEN_ALPHABET.includes(ch)) return false;
   return true;
+}
+
+/**
+ * D6 · THE TOKEN AS SOMEBODY TYPED IT. The alphabet above has no lower-case members, so folding
+ * case cannot make two minted tokens collide or widen the guessing space — it only stops a person
+ * who typed `50pick.tz/s/k7mx…` into a phone's URL bar (which does not capitalise) from being told
+ * the link does not work. ⛔ Every reader of a token goes through this before the shape check.
+ */
+export function normalizeOptOutToken(raw: string | null | undefined): string {
+  return String(raw ?? "").trim().toUpperCase();
+}
+
+/**
+ * ⛔ THE TOKEN IS A LIVE CREDENTIAL, so it is never written into evidence, `liftedReason` or an
+ * audit payload in full: anybody who can read `/admin/audit` could otherwise open `/s/<token>`
+ * and act as the person, recorded with `recordedBy: null` as if they had. Two leading characters
+ * plus the row's own `identifier` still pick the link out of that number's tokens; the rest is
+ * starred at a fixed width (`*` is this codebase's audit-log vocabulary, `phone-normalize.ts`).
+ */
+export const OPTOUT_TOKEN_REF_CHARS = 2;
+export function optOutTokenRef(token: string): string {
+  const t = normalizeOptOutToken(token);
+  return `${t.slice(0, OPTOUT_TOKEN_REF_CHARS)}${"*".repeat(OPTOUT_TOKEN_CHARS - OPTOUT_TOKEN_REF_CHARS)}`;
+}
+
+/**
+ * Is this request path the opt-out page? `/s` and `/s/<anything>` — ⛔ a SEGMENT match, so
+ * `/settings` and `/support` are not. Built from `OPTOUT_PATH`, never re-typed (the page's own rule).
+ */
+export function isOptOutPath(pathname: string | null | undefined): boolean {
+  const p = pathname ?? "";
+  const bare = OPTOUT_PATH.replace(/\/$/, "");
+  return p === bare || p.startsWith(OPTOUT_PATH);
 }

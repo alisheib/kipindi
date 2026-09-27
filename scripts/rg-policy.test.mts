@@ -5,7 +5,7 @@
  * against the code. Two of its four bullets had nothing behind them: "no marketing to … players under 25 in
  * vulnerability segments" (no age band, no segment) and "no sign-up nudges in the late-night window" (no window).
  * The page had no version pin and no text hash, so it could be edited — or left promising — without anyone
- * noticing. Re-versioned 2026-09-26 on Ali's delegation (docs/COMPLIANCE-DECISIONS.md 2026-09-26): the under-25
+ * noticing. Re-versioned 2026-09-26 on Ali's delegation (docs/COMPLIANCE-DECISIONS.md § "2026-09-26 · RG Policy v2026-09-26"): the under-25
  * promise BUILT, the late-night bullet CUT.
  *
  * WHAT IT HOLDS:
@@ -16,6 +16,9 @@
  *        Chinese carry the same number of bullets.
  *   ⭐ Mapping by the PROMISE's words, not the bullet's position: reordering the list cannot move a control onto
  *      the wrong promise, and adding a promise without a control cannot pass.
+ *   §3 · zh/sw typography (2026-09-26 visual audit, prod-rg-s4-zh-360.png): a number keeps its unit (`&nbsp;`), and no
+ *        Chinese sentence runs across a source line break — JSX prints that break as a space ("生效。 所有控制项").
+ *        Translations only, so the binding-English hash does not move.
  *
  * ⛔ IN-PROCESS BY CONSTRUCTION: `--prove-red` plants every defect IN MEMORY; this file makes no file-writing call.
  *
@@ -111,6 +114,17 @@ function check(w: World): Result[] {
   out.push({ label: "2.3 · Swahili and Chinese carry the same number of §4 bullets as the binding English",
     ok: bullets(section4(b.sw)).length === en.length && bullets(section4(b.zh)).length === en.length,
     extra: `en ${en.length} · sw ${bullets(section4(b.sw)).length} · zh ${bullets(section4(b.zh)).length}` });
+  // §3 · zh/sw typography — read with comments removed, so a note ABOUT the rule cannot trip it
+  const zh = decomment(b.zh), sw = decomment(b.sw);
+  const split = [
+    ...[...zh.matchAll(/第[ \t]+\d|\d[ \t]+(?:小时|分钟|岁|节|周|个月|天|EAT)/g)].map((m) => `zh "${m[0]}"`),
+    ...[...sw.matchAll(/\b(?:miaka|sehemu ya|saa|dakika|wiki|mwezi|miezi|siku) \d|\d[ \t]+EAT/g)].map((m) => `sw "${m[0]}"`),
+  ];
+  out.push({ label: "3.1 · zh and sw keep each number with its unit (&nbsp;), so a line never ends on the bare number",
+    ok: split.length === 0, extra: split.join(" | ") });
+  const breaks = [...zh.matchAll(/(?:\p{Script=Han}|[。，、；：）])[ \t]*\n[ \t]*(?:\p{Script=Han}|[（])/gu)].map((m) => m[0].replace(/\s+/g, "⏎"));
+  out.push({ label: "3.2 · zh: no Chinese sentence runs across a source line break (JSX prints it as a space)",
+    ok: breaks.length === 0, extra: breaks.join(" | ") });
   return out;
 }
 
@@ -146,6 +160,12 @@ if (!PROVE_RED) {
       world: { ...REAL, page: REAL.page.replace("<li>Hakuna ofa za bonasi zinazohusishwa na ongezeko la fedha zinazowekwa</li>", "") }, expect: /^2\.3 / },
     { name: "the version bumped with no COMPLIANCE-DECISIONS record",
       world: { ...REAL, compliance: REAL.compliance.replace(/RG Policy v2026-09-26/g, "RG Policy vXXXX") }, expect: /^1\.3 / },
+    { name: "zh: an age split from its unit again ('低于 25' / '岁' at 360)",
+      world: { ...REAL, page: REAL.page.replace("低于 25&nbsp;岁", "低于 25 岁") }, expect: /^3\.1 / },
+    { name: "sw: 'miaka 18' back to a plain space",
+      world: { ...REAL, page: REAL.page.replace("miaka&nbsp;18", "miaka 18") }, expect: /^3\.1 / },
+    { name: "zh: the §2 sentences split across two source lines again ('生效。 所有控制项')",
+      world: { ...REAL, page: REAL.page.replace("小时后生效。所有控制项", "小时后生效。\n          所有控制项") }, expect: /^3\.2 / },
   ];
   let caught = 0;
   for (const [i, c] of CASES.entries()) {

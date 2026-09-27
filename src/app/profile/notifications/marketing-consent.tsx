@@ -9,10 +9,13 @@ import { setMarketingConsentAction } from "./actions";
 /**
  * E-409 · the player's marketing consent, withdrawable at any time (Privacy §3). Same row shape as
  * the push setting above it. The switch shows the SERVER's answer: a failed save puts it back.
+ * D4 · `initialOn` is the EFFECTIVE consent (`marketingToggleState`), and `initialPaused` says the
+ * consent lapsed when a break or self-exclusion ended — switching on is how the player opts in again.
  */
-export function MarketingConsent({ initialOn }: { initialOn: boolean }) {
+export function MarketingConsent({ initialOn, initialPaused = false }: { initialOn: boolean; initialPaused?: boolean }) {
   const { t } = useT();
   const [on, setOn] = useState(initialOn);
+  const [paused, setPaused] = useState(initialPaused);
   const [pending, start] = useTransition();
   const [failed, setFailed] = useState(false);
 
@@ -22,7 +25,7 @@ export function MarketingConsent({ initialOn }: { initialOn: boolean }) {
     setOn(want);
     start(async () => {
       const r = await setMarketingConsentAction(want).catch(() => ({ ok: false as const }));
-      if (r.ok) setOn(r.on);
+      if (r.ok) { setOn(r.on); setPaused(false); }
       else { setOn(!want); setFailed(true); }
     });
   };
@@ -37,9 +40,13 @@ export function MarketingConsent({ initialOn }: { initialOn: boolean }) {
           </span>
           <div className="min-w-0">
             <p className="font-display text-[14px] font-semibold text-text leading-tight">{t.push.marketingTitle}</p>
-            <p className="mt-0.5 text-body-sm text-text-subtle leading-snug">
+            {/* ⭐ Announced, so a save that failed is not a silent snap-back. */}
+            <p className="mt-0.5 text-body-sm text-text-subtle leading-snug" role="status" aria-live="polite">
               {failed ? t.error.somethingDidntWork : t.push.marketingBody}
             </p>
+            {paused && !on && !failed && (
+              <p className="mt-1 text-body-sm text-text-muted leading-snug" data-testid="marketing-consent-paused">{t.push.marketingPaused}</p>
+            )}
           </div>
         </div>
         <Toggle on={on} disabled={pending} onClick={flip} aria-label={t.push.marketingTitle} />

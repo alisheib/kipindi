@@ -375,4 +375,20 @@ export const MUTATIONS = [
     find: async (token: string): Promise<StoredMarketingOptOutToken | null> => {`,
     expect: `18.nodelete.prisma · the Prisma token namespace exposes NO delete`,
   },
+  {
+    // 🔴 E2E 2026-09-27 · the Prisma create keeps the FIRST reason again, so a person's old
+    // WITHDRAWN stop hides an officer's stop and their link can lift it.
+    name: "prisma-dal.ts — suppression.create stops handing the reason to the stop now in force",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `      await pc().suppression.updateMany({ where: { ...triple, liftedAt: { not: null } }, data: takeOver });`,
+    to: `      await pc().suppression.updateMany({ where: { ...triple, liftedAt: { not: null } }, data: {} });`,
+    expect: `17.supersede.prisma · ⛔ a RE-ARMED row takes the new reason, and a non-WITHDRAWN stop takes over an active WITHDRAWN one`,
+  },
+  {
+    name: "store.ts — the memory suppression create keeps the FIRST reason over an officer's stop",
+    file: "src/lib/server/store.ts",
+    from: `          if (r.liftedAt || (r.reason === "WITHDRAWN" && row.reason !== "WITHDRAWN")) {`,
+    to: `          if (false) {`,
+    expect: `17.supersede.memory · ⛔ …and the memory twin does the same on the row already there`,
+  },
 ];

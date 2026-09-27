@@ -11,7 +11,7 @@ import { headers } from "next/headers";
 import type { FailureReason, FailureDetail } from "@/lib/failure-reasons";
 import type { HouseSeamReason } from "@/lib/house-bot/bet-path";
 import { audit } from "./audit";
-import { db, type StoredUser } from "./store";
+import { db, type StoredUser, type MessagingLocale } from "./store";
 import { generateOtp, hashOtp, hashPassword, randomId, verifyOtp, verifyPassword } from "./crypto";
 import { rateCheckAsync, rateRefundAsync } from "./rate-limit";
 import { sms, otpMessage, smsConfigured, SmsError } from "./sms";
@@ -31,7 +31,7 @@ import { isLiveMoneyMode } from "./runtime-mode";
 import { selfExclusionStanding } from "./responsible-gambling";
 import { SUPPORT_PHONE } from "@/lib/server/support-config";
 import { TERMS_VERSION } from "@/lib/terms-version";
-import { appendMarketingConsent } from "@/lib/server/marketing/consent-ledger";
+import { appendMarketingConsent, messagingLocaleOf } from "@/lib/server/marketing/consent-ledger";
 
 /** Mask a phone for an audit payload — keep country code + last 2 (e.g.
  *  "+25570*****19"). The audit entry already carries actorId, so the full number
@@ -257,7 +257,11 @@ export async function requestLoginOtp(input: z.input<typeof LoginRequestSchema>)
 }
 
 /** Register a new account — OTP-driven. Returns OTP id. */
-export async function requestRegisterOtp(input: z.input<typeof RegisterSchema>): Promise<ServiceResult<{ otpId: string; phone: string; expiresAt: string }>> {
+export async function requestRegisterOtp(
+  // D2 · `locale` — the language the form was SHOWN in (the action reads the kp-locale cookie). Carried
+  // to verification so the ledger row and `User.locale` say what the person actually read.
+  input: z.input<typeof RegisterSchema> & { locale?: MessagingLocale },
+): Promise<ServiceResult<{ otpId: string; phone: string; expiresAt: string }>> {
   const parse = RegisterSchema.safeParse(input);
   if (!parse.success) return { ok: false, error: parse.error.errors[0]?.message ?? "Invalid input", code: "INVALID" };
   const meta = await clientMeta();
@@ -275,7 +279,7 @@ export async function requestRegisterOtp(input: z.input<typeof RegisterSchema>):
   const issued = await issueOtp(phone, "register", meta, ["auth.register"]);
   if (!issued.ok) return issued;
   // Stash registration intent (DOB, terms) so OTP verify can finalize
-  pendingRegistration.set(phone, { dob: parse.data.dob, marketingOptIn: parse.data.marketingOptIn ?? false });
+  pendingRegistration.set(phone, { dob: parse.data.dob, marketingOptIn: parse.data.marketingOptIn ?? false, locale: messagingLocaleOf(input.locale) });
   return { ok: true, data: { otpId: issued.data!.otpId, phone, expiresAt: issued.data!.expiresAt } };
 }
 
@@ -284,9 +288,9 @@ export async function requestRegisterOtp(input: z.input<typeof RegisterSchema>):
 // HMR doesn't wipe the entry between the two requests.
 declare global {
   // eslint-disable-next-line no-var
-  var __50PICK_PENDING_REG: Map<string, { dob: string; marketingOptIn: boolean }> | undefined;
+  var __50PICK_PENDING_REG: Map<string, { dob: string; marketingOptIn: boolean; locale?: MessagingLocale }> | undefined;
 }
-const pendingRegistration: Map<string, { dob: string; marketingOptIn: boolean }> =
+const pendingRegistration: Map<string, { dob: string; marketingOptIn: boolean; locale?: MessagingLocale }> =
   globalThis.__50PICK_PENDING_REG ?? (globalThis.__50PICK_PENDING_REG = new Map());
 
 /**
@@ -520,7 +524,8 @@ export async function verifyOtpAndAuth(input: z.input<typeof OtpVerifySchema>): 
       role: "PLAYER",
       // ACTIVE, not PENDING_KYC (2026-09-13) — see the password path below for why.
       status: "ACTIVE",
-      locale: "SW",
+      // D2 · the language the sign-up form was shown in (SW when unknown), not a literal.
+      locale: messagingLocaleOf(reg.locale),
       displayName: null,
       dob: reg.dob,
       region: null,
@@ -542,7 +547,9 @@ export async function verifyOtpAndAuth(input: z.input<typeof OtpVerifySchema>): 
     if (reg.marketingOptIn === true) {
       await appendMarketingConsent({
         phoneE164: phone,
-        locale: "SW",
+        // ⛔ D2 · the language the form was SHOWN in. A literal "SW" here recorded every EN/ZH
+        // registrant as having read the Swahili sentence (2026-09-25 → the fix).
+        locale: messagingLocaleOf(reg.locale),
         status: "GIVEN",
         source: "REGISTRATION",
         site: "REGISTRATION",
@@ -655,6 +662,9 @@ export type PasswordRegisterInput = {
   acceptTerms: boolean;
   acceptAge: boolean;
   marketingOptIn?: boolean;
+  /** D2 · the language the form was SHOWN in (the action reads the kp-locale cookie). Decides the
+   *  consent sentence the ledger stores and `User.locale`. SW when absent. */
+  locale?: MessagingLocale;
   /** Affiliate referral code from a ?ref= link, if the user arrived via one. */
   referralCode?: string;
   /** Invite-campaign code from a ?invite= link — grants the campaign bonus. */
@@ -756,7 +766,8 @@ export async function registerWithPassword(input: PasswordRegisterInput): Promis
     // day identity moved to withdrawal, labelled every ordinary playing customer as pending something.
     // Identity lives on the KYC row and is asked by the withdrawal gate alone (`kyc-gate.ts`).
     status: "ACTIVE",
-    locale: "SW",
+    // D2 · the language the sign-up form was shown in (SW when unknown), not a literal.
+    locale: messagingLocaleOf(input.locale),
     displayName: null,
     dob: baseParse.data.dob,
     region: null,
@@ -779,7 +790,9 @@ export async function registerWithPassword(input: PasswordRegisterInput): Promis
   if (baseParse.data.marketingOptIn === true) {
     await appendMarketingConsent({
       phoneE164: phone,
-      locale: "SW",
+      // ⛔ D2 · the language the form was SHOWN in. A literal "SW" here recorded every EN/ZH
+      // registrant as having read the Swahili sentence (2026-09-25 → the fix).
+      locale: messagingLocaleOf(input.locale),
       status: "GIVEN",
       source: "REGISTRATION",
       site: "REGISTRATION",

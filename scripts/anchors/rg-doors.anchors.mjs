@@ -218,7 +218,8 @@ export const MUTATIONS = [
     why: "🔴 THE LIFT, FOR BREAKS. Deleting the consent check makes cooling-off exactly `isLockedOut`: "
        + "the promotion arrives the minute the break ends.",
     file: MKT_RG,
-    from: `    if (!(await consentedSince(co))) return refuse("rg_cooling_off", \`break ended on \${co}, and no consent given since\`, co);`,
+    // 2026-09-26: the line now also marks the refusal `consentLapsed` (D4) — re-anchored, same deletion.
+    from: `    if (!(await consentedSince(co))) return refuse("rg_cooling_off", \`break ended on \${co}, and no consent given since\`, co, true);`,
     to: `    // (consent-after-the-break check removed)`,
     check: "8.8 ⭐ a break that ENDED yesterday",
   },
@@ -245,9 +246,30 @@ export const MUTATIONS = [
     why: "⭐ E-240's SHAPE, ONE LANE OVER. The predicate stays perfect and every behavioural test of it "
        + "stays green; the gate simply stops calling it.",
     file: MKT_GATE,
-    from: `    const rg = await marketingRgStanding(user, identifier);`,
+    // 2026-09-26: the gate now passes its injectable clock (`now`); 8.18 reads the GATE's body only,
+    // because the profile switch's read in the same file also calls the predicate.
+    from: `    const rg = await marketingRgStanding(user, identifier, now.getTime());`,
     to: `    const rg = { ok: true, coolingOffEnded: false, skipReason: "rg_self_excluded", detail: "" } as const;`,
     check: "8.18 ⭐ the gate CALLS marketingRgStanding",
+  },
+  {
+    name: "an-unreadable-exclusion-date-reads-as-none",
+    why: "⛔ THE ASYMMETRY, RESTORED (2026-09-26). An unreadable BREAK date refuses; without this line an "
+       + "unreadable EXCLUSION date on a reopened account reads as \"none\" and skips the restore, the six "
+       + "months and the fresh consent.",
+    file: MKT_RG,
+    from: `  if (row?.selfExclusionUntil && Number.isNaN(Date.parse(row.selfExclusionUntil))) {`,
+    to: `  if (false) {`,
+    check: "8.3d ⛔ an UNREADABLE self-exclusion end date",
+  },
+  {
+    name: "a-lapsed-consent-stops-saying-so",
+    why: "🔴 D4's SIGNAL, DROPPED. Without `consentLapsed` the profile switch cannot tell a break that "
+       + "ended (one ON lifts it) from one still running, so it goes back to reading the bare boolean.",
+    file: MKT_RG,
+    from: `  ({ ok: false, skipReason, detail, until, consentLapsed });`,
+    to: `  ({ ok: false, skipReason, detail, until, consentLapsed: false });`,
+    check: "8.8a …and it is marked consentLapsed",
   },
 
   // ── 5 · D10: push and watchlist alerts go back to trusting the timer (marketing S7) ────────────

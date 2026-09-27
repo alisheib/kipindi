@@ -2342,10 +2342,22 @@ const memoryDb = {
      *  create that returned the LIFTED row untouched would tell the person "you will not get
      *  marketing texts again" while the suppression stayed lifted and the next campaign sent
      *  to them. ⛔ So `liftedAt`/`liftedReason` are cleared and `createdAt` is NOT touched:
-     *  re-suppression re-arms the refusal without rewriting when it was first made. */
+     *  re-suppression re-arms the refusal without rewriting when it was first made.
+     *
+     *  🔴 AND THE REASON MUST FOLLOW THE STOP THAT IS NOW IN FORCE. Only a `WITHDRAWN` row may be
+     *  lifted by its link (`PERSON_LIFTABLE_REASONS`), so keeping the FIRST reason let a person's
+     *  old stop hide a complaint or an officer's stop behind it — one tap on an old SMS then
+     *  lifted a refusal somebody else made. ⛔ So a row being RE-ARMED takes the new refusal's
+     *  reason and evidence, and a non-`WITHDRAWN` refusal arriving over an active `WITHDRAWN` one
+     *  takes it over. `createdAt` still does not move. */
     create: (row: StoredSuppression): StoredSuppression => {
       for (const r of store.suppressions.values()) {
         if (r.channel === row.channel && r.identifier === row.identifier && r.category === row.category) {
+          if (r.liftedAt || (r.reason === "WITHDRAWN" && row.reason !== "WITHDRAWN")) {
+            r.reason = row.reason;
+            r.evidence = row.evidence;
+            r.recordedBy = row.recordedBy;
+          }
           r.liftedAt = null;
           r.liftedReason = null;
           return r;

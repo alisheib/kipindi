@@ -575,12 +575,20 @@ console.log("\n§8 · the marketing predicate is a STANDING, never a lockout (ma
   const idSeNoRow = await mplayer("mk_se_norow", "SELF_EXCLUDED");
   await expect("8.3c a SELF_EXCLUDED account with NO RG row (diverged) is refused — the status alone decides",
     ask("mk_se_norow", idSeNoRow, NONE, "SELF_EXCLUDED"), "rg_self_excluded");
+  // ⛔ The asymmetry closed 2026-09-26: an unreadable BREAK date refused, an unreadable EXCLUSION date on a
+  // reopened account read as "none" and skipped the restore, six-month and fresh-consent checks.
+  const idGarbled = await mplayer("mk_garbled");
+  await rg("mk_garbled", { selfExclusionUntil: "not-a-date" });
+  await expect("8.3d ⛔ an UNREADABLE self-exclusion end date on a reopened (ACTIVE) account refuses — never read as 'none'",
+    ask("mk_garbled", idGarbled), "rg_self_excluded");
 
   const idNoFresh = await mplayer("mk_nofresh");
   await rg("mk_nofresh", { selfExclusionUntil: at(-399) });
   await said(idNoFresh, "GIVEN", -500);
-  await expect("8.4 reopened by an officer, but the only consent PREDATES the exclusion — refused (OD12: a fresh consent after restoration)",
+  const noFresh = await expect("8.4 reopened by an officer, but the only consent PREDATES the exclusion — refused (OD12: a fresh consent after restoration)",
     ask("mk_nofresh", idNoFresh, deps(-300, -400)), "rg_self_excluded");
+  ok("8.4a …and it is marked consentLapsed — the one refusal the player's own ON lifts, so the profile switch shows OFF (D4)",
+    !noFresh.ok && noFresh.consentLapsed === true);
 
   const idInside = await mplayer("mk_inside");
   await rg("mk_inside", { selfExclusionUntil: at(-29) });
@@ -615,13 +623,16 @@ console.log("\n§8 · the marketing predicate is a STANDING, never a lockout (ma
   // ── cooling-off ────────────────────────────────────────────────────────────────────────
   const idBreak = await mplayer("mk_break", "COOLED_OFF");
   await rg("mk_break", { coolingOffUntil: at(2) });
-  await expect("8.7 a player ON a break is refused, with its own reason", ask("mk_break", idBreak, NONE, "COOLED_OFF"), "rg_cooling_off");
+  const onBreak = await expect("8.7 a player ON a break is refused, with its own reason", ask("mk_break", idBreak, NONE, "COOLED_OFF"), "rg_cooling_off");
+  ok("8.7a ⚠️ CONTROL — a break still RUNNING is not a lapsed consent: no tap lifts it", !onBreak.ok && onBreak.consentLapsed !== true);
 
   const idBreakOver = await mplayer("mk_breakover", "COOLED_OFF");
   await rg("mk_breakover", { coolingOffUntil: at(-1) });
   await said(idBreakOver, "GIVEN", -30);
-  await expect("8.8 ⭐ a break that ENDED yesterday does not reopen marketing by itself — the consent on file predates it (D9's shape, for breaks)",
+  const breakOver = await expect("8.8 ⭐ a break that ENDED yesterday does not reopen marketing by itself — the consent on file predates it (D9's shape, for breaks)",
     ask("mk_breakover", idBreakOver, NONE, "COOLED_OFF"), "rg_cooling_off");
+  ok("8.8a …and it is marked consentLapsed — the profile switch shows OFF, paused, and one ON lifts it (D4)",
+    !breakOver.ok && breakOver.consentLapsed === true);
 
   const idBack = await mplayer("mk_back", "COOLED_OFF");
   await rg("mk_back", { coolingOffUntil: at(-10) });
@@ -727,12 +738,19 @@ console.log("\n§8 · the marketing predicate is a STANDING, never a lockout (ma
   ok("8.17e detectHarmMarkers is asked with NO options — `sessionStartedAt` switches on the detector that writes",
     /detectHarmMarkers\(\s*\w+\s*\)/.test(rgSrc) && !/detectHarmMarkers\([^)]*,/.test(rgSrc));
   const gateSrc = decomment(readFileSync("src/lib/server/marketing/consent.ts", "utf8"));
-  const iConsent = gateSrc.indexOf("user.marketingOptIn !== true");
-  const iRg = gateSrc.search(/\bmarketingRgStanding\s*\(/);
+  // ⚠️ SCOPED TO THE GATE'S OWN BODY (2026-09-26). consent.ts also holds the profile switch's read
+  // (`marketingToggleState`), which calls the predicate too — a file-wide search would stay green with
+  // the GATE's call deleted.
+  const gateAt = gateSrc.indexOf("export async function mayReceiveMarketingSms");
+  const gateEnd = gateSrc.indexOf("\nexport ", gateAt + 10);
+  const gateBody = gateAt === -1 ? "" : gateSrc.slice(gateAt, gateEnd === -1 ? undefined : gateEnd);
+  const iConsent = gateBody.search(/\bplayerConsentRefusal\s*\(/);
+  const iRg = gateBody.search(/\bmarketingRgStanding\s*\(/);
   ok("8.18 ⭐ the gate CALLS marketingRgStanding — a missing call is the E-240 defect, invisible to every test of the predicate",
-    iRg !== -1, "no call found");
+    gateBody.length > 500 && iRg !== -1, gateBody.length > 500 ? "no call found in mayReceiveMarketingSms" : "the gate's body was not found");
   ok("8.18a …and asks it AFTER consent (§5.6 order — and the harm scan must not run on non-consenting players)",
-    iConsent !== -1 && iRg !== -1 && iConsent < iRg, `consent@${iConsent} rg@${iRg}`);
+    iConsent !== -1 && iRg !== -1 && iConsent < iRg && /async function playerConsentRefusal[\s\S]*?user\.marketingOptIn !== true/.test(gateSrc),
+    `consent@${iConsent} rg@${iRg}`);
   ok("8.18b ⛔ the gate calls neither isLockedOut nor selfExclusionStanding directly",
     !/\bisLockedOut\s*\(/.test(gateSrc) && !/\bselfExclusionStanding\s*\(/.test(gateSrc));
   void MARKETING_RG_DEPS;

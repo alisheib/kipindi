@@ -24,7 +24,8 @@ import { atRiskReply, buildUserMessage, sendMessage } from "@/lib/chat/send-mess
 import { chatWithClaude } from "@/app/_actions/chat";
 import { useT } from "@/lib/i18n";
 
-const HIDE_ON = /^\/(auth|admin)(\/|$)/;
+// `s` = the marketing opt-out page (D6) — no chat bubble on the way out; `test:marketing-optout` pins it.
+const HIDE_ON = /^\/(auth|admin|s)(\/|$)/;
 /* 2026-09-13 — 1024, the bottom rail's own `lg:hidden` edge. At 768 a tablet (768–1023) showed the
    rail but parked a "desktop" bubble at bottom:16, straight on top of the rail's More tab. Below
    1024 the chat now behaves as on a phone: bubble lifted above the rail, sheet + scrim. */

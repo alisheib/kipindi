@@ -8,7 +8,8 @@ import { getSupportConfig } from "@/lib/server/support-config";
 import { db } from "@/lib/server/store";
 import { verifyChain, getAuditPage } from "@/lib/server/audit";
 import { houseAuditForConsole } from "@/lib/server/house-console-read";
-import { smsHealthSnapshot, smsBalanceSnapshot, refreshSmsBalance, sms as smsClient } from "@/lib/server/sms";
+import { smsHealthSnapshot, smsBalanceSnapshot, smsBalanceThresholds, refreshSmsBalance, SMS_BALANCE_RENDER_BUDGET_MS, sms as smsClient } from "@/lib/server/sms";
+import { smsCreditTile } from "./sms-credit-tile";
 import { rateLimitSnapshot } from "@/lib/server/rate-limit";
 import { admissionSnapshot } from "@/lib/server/admission";
 import { retrySnapshot } from "@/lib/server/retry";
@@ -145,6 +146,11 @@ export default async function AdminSystemPage(props: SystemProps) {
 }
 
 async function AdminSystemContent({ searchParams }: SystemProps) {
+  // The SMS balance is read LIVE from the gateway (free, sends nothing) when the in-process reading is missing or over
+  // a minute old. ⭐ STARTED FIRST, AWAITED LAST, AND BOUNDED: this page holds the maintenance kill-switch, so it waits
+  // at most SMS_BALANCE_RENDER_BUDGET_MS for the vendor; a slower read carries on and records itself when it lands.
+  // ⛔ Guarded like every reading on this page: a vendor hiccup must never 500 the system page.
+  const smsRead = refreshSmsBalance({ maxAgeMs: 60_000, budgetMs: SMS_BALANCE_RENDER_BUDGET_MS }).catch(() => null);
   /* ⛔ The tab is READ, never trusted: an unknown `?tab=` falls back to the landing rather than
      rendering an empty page. §K rule 7f — the tab set's home is this page's own definition. */
   const sp = await searchParams;
@@ -153,12 +159,6 @@ async function AdminSystemContent({ searchParams }: SystemProps) {
   const chain = verifyChain();
   const session = await currentSession().catch(() => null);
   const auditCount = (await houseAuditForConsole(session?.userId ?? null, "/admin/system", getAuditPage({ limit: 100_000 }))).length;
-  const smsHealth = smsHealthSnapshot();
-  // The balance is read LIVE from the gateway (free, sends nothing) when the in-process reading is
-  // missing or over a minute old — after a restart there is otherwise no figure to show at all.
-  // ⛔ Guarded like every reading on this page: a vendor hiccup must never 500 the system page.
-  await refreshSmsBalance({ maxAgeMs: 60_000 }).catch(() => null);
-  const smsBalance = smsBalanceSnapshot();
   let totalUsers = 0;
   try { totalUsers = (await db.user.list()).length; } catch { /* graceful */ }
   const buckets = rateLimitSnapshot();
@@ -202,6 +202,14 @@ async function AdminSystemContent({ searchParams }: SystemProps) {
    * itself now fails closed and answers `{ readable: false }` for a failure it CAN see, so a second catch here
    * could only hide one it cannot. */
   const houseEngine = tab === "diagnostics" ? await houseEngineHealthFor(sessionForHouse?.userId) : null;
+  // 🔴 E-330 ② survives in the caption: `successRate` is null for no traffic, which reads "idle since restart", never 100%.
+  const smsTile = smsCreditTile({
+    provider: smsClient.name,
+    read: await smsRead,
+    snapshot: smsBalanceSnapshot(),
+    health: smsHealthSnapshot(),
+    thresholds: smsBalanceThresholds(),
+  });
 
   return (
     <>
@@ -209,18 +217,15 @@ async function AdminSystemContent({ searchParams }: SystemProps) {
       <AdminBody>
         {/* Health KPIs */}
         <KpiGrid>
-          <AdminKpi label="Audit chain"   sw="Mlolongo wa ukaguzi" value={chain.valid ? "Valid" : "BROKEN"} delta={`${auditCount.toLocaleString()} entries`} deltaDir={chain.valid ? "up" : "down"} pulse={!chain.valid} />
+          {/* DG-A-10: no arrow on a plain count — valid/broken is carried by the word and its tone. */}
+          <AdminKpi label="Audit chain"   sw="Mlolongo wa ukaguzi" value={chain.valid ? "Valid" : "BROKEN"} delta={`${auditCount.toLocaleString()} entries`} tone={chain.valid ? "success" : "danger"} pulse={!chain.valid} />
           <AdminKpi label="Total users"   sw="Watumiaji"            value={totalUsers.toLocaleString()} />
           <AdminKpi label="Markets live"  sw="Soko hai"              value={liveMarkets.toLocaleString()} delta={`${resolvedMarkets} resolved`} />
-          {/* 🔴 E-330 ② — "never tried" reads as Idle, not as 100%. `successRate` is now
-              `null` for no traffic (the payment-ops.ts:66 shape), so this branches on the
-              value that actually carries the fact rather than re-deriving it. The balance
-              is here because an SMS costs TZS 6 (measured on the first live send), the
-              account opened with TZS 250, and an SMS rail that runs out of credit is, once
-              OTP is the login path, a login outage. The caption wraps by design (E-30), but
-              never INSIDE the amount — "TZS" at the end of one line and "185" on the next
-              read as two facts, so the amount's own space is made non-breaking. */}
-          <AdminKpi label="SMS provider"  sw="Watoa SMS"            value={smsHealth.successRate === null ? "Idle" : `${(smsHealth.successRate * 100).toFixed(1)}% ok`} delta={`${smsClient.name} · ${smsHealth.sent} sent${smsBalance.tzs === null ? "" : ` · ${formatTzs(smsBalance.tzs).replace(" ", String.fromCharCode(0xa0))}`}`} deltaDir={smsBalance.belowAlert ? "down" : undefined} pulse={smsBalance.belowFloor} />
+          {/* ⭐ THE SMS CREDIT IS THE HEADLINE (owner ruling D7, 2026-09-26). An SMS costs TZS 6 and a rail that runs out
+              is, once OTP is the login path, a login outage — so the tile answers "how much credit do we have" first and
+              says its state in words: low, below floor, unreadable, or last read at a time. Every state and every
+              no-break rule lives in `smsCreditTile`, driven by test:sms-cost-guard §9. ⛔ No pulse, no arrow. */}
+          <AdminKpi label="SMS credit"    sw="Salio"                value={smsTile.value} tone={smsTile.tone} delta={smsTile.caption} />
         </KpiGrid>
 
         {/* Maintenance mode — global pause of new bets + deposits (§9.3 #1) */}

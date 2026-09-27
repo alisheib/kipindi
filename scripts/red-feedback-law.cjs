@@ -236,6 +236,14 @@ const MUTATIONS = [
     with: `    const prev = on;
     if (!confirm("Are you sure?")) return;`,
   },
+  {
+    // 🔴 THE 2026-09-26 DEFECT (3.13/3.14): a player who only closed the permission prompt reads
+    // "Push isn't available on this deployment yet" — jargon, and false.
+    name: "a dismissed permission prompt is reported as 'unavailable' again",
+    file: "src/components/settings/push-settings.tsx",
+    find: `          if (permission === "default") { setDismissed(true); setState("off"); return; }`,
+    with: `          if (permission === "default") { setState("unconfigured"); return; }`,
+  },
 ];
 
 const run = () => spawnSync("npx", ["tsx", SUITE], { encoding: "utf8", shell: true });

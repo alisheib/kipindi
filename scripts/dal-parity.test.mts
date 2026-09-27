@@ -1172,6 +1172,18 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
   ok("17.rearm.memory · ⛔ …and it clears the lift on that row, the same way the Prisma twin does",
     /r\.liftedAt = null/.test(sMemCreate) && /r\.liftedReason = null/.test(sMemCreate),
     `${sMemCreate.length} chars`);
+  // 🔴 THE REASON FOLLOWS THE STOP NOW IN FORCE (E2E review, 2026-09-27). Only `WITHDRAWN` is
+  // person-liftable, so a create that kept the FIRST reason let a person's old stop hide a
+  // complaint or an officer's stop: one tap on an old SMS lifted a refusal somebody else made.
+  ok("17.supersede.prisma · ⛔ a RE-ARMED row takes the new reason, and a non-WITHDRAWN stop takes over an active WITHDRAWN one",
+    /updateMany\(\{\s*where:\s*\{\s*\.\.\.triple,\s*liftedAt:\s*\{\s*not:\s*null\s*\}\s*\},\s*data:\s*takeOver/.test(sCreate)
+      && /row\.reason !== "WITHDRAWN"[\s\S]{0,120}reason:\s*"WITHDRAWN",\s*liftedAt:\s*null\s*\},\s*data:\s*takeOver/.test(sCreate)
+      && /takeOver = \{ reason: row\.reason, evidence: row\.evidence, recordedBy: row\.recordedBy \}/.test(sCreate),
+    `${sCreate.length} chars`);
+  ok("17.supersede.memory · ⛔ …and the memory twin does the same on the row already there",
+    /if \(r\.liftedAt \|\| \(r\.reason === "WITHDRAWN" && row\.reason !== "WITHDRAWN"\)\)/.test(sMemCreate)
+      && /r\.reason = row\.reason;/.test(sMemCreate) && /r\.evidence = row\.evidence;/.test(sMemCreate),
+    `${sMemCreate.length} chars`);
 
   /* ═══ U8 · A ROW IS NEVER DELETED, BUT IT MAY BE SUPERSEDED ═══════════════════════════
    * ⛔ THE "NO DELETE" ASSERTIONS ABOVE STAY EXACTLY AS THEY WERE. This is the other half of

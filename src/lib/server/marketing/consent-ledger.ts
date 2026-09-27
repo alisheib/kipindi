@@ -39,11 +39,23 @@ export type AppendMarketingConsentInput = {
 };
 
 /**
+ * D2 · THE LANGUAGE THE PERSON WAS SHOWN, as a ledger locale. The callers pass the `kp-locale` cookie the
+ * page rendered from (`getServerT().locale`, the resolution `/s/[token]/actions.ts` uses) — ⛔ never
+ * `User.locale`, which nothing wrote after sign-up, and never a literal "SW": from 2026-09-25 until this
+ * fix every REGISTRATION and PROFILE row said SW whatever the page showed. Unknown → SW, the default.
+ */
+export function messagingLocaleOf(raw: string | null | undefined): MessagingLocale {
+  const up = String(raw ?? "").toUpperCase();
+  return up === "EN" || up === "ZH" ? up : "SW";
+}
+
+/**
  * The exact sentence the person read, in the language they read it in.
  *
  * ⚠️ Swahili is the DEFAULT (`DEFAULT_LOCALE`), so an unrecognised locale falls to `sw` and
  * never to English — a record that says the player read English copy they were never shown
  * is a false record, not a harmless default.
+ * ⭐ OQ11: only the sentences pinned in `consent-wording.ts` count as SMS consent at the gate.
  */
 export function marketingConsentWording(site: MarketingConsentSite, locale: MessagingLocale): string {
   const d = locale === "EN" ? dict.en : locale === "ZH" ? dict.zh : dict.sw;
