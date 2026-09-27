@@ -303,6 +303,11 @@ file:line; re-verify only what a later commit may have moved.
   terms and the words are the decided call); move it to dict keys anyway so the string has one
   home, with identical en/sw/zh values unless Ali says otherwise. Eyebrow/lede stay translated
   (`t.home.*`).
+  ⚠️ **2026-09-27 — Ali said otherwise about the PLACEMENT (INHERIT-MANIFEST R7(3), hero v3):** the h1 is now
+  the question in the reader's language ("NDIO au HAPANA?" / "YES or NO?" / "是还是否？", `home.heroAsk`), and
+  "The wisdom of YES & NO." — still verbatim in all three locales — is the hero's sign-off and the share-image
+  line. The eyebrow and its keys are gone; the claim ("Tanzania’s first licensed prediction market", R9) and a
+  two-line lede replace them.
 - **Cold start**: `docs/DESIGN_AUTHORITY.md:494-498` — ONE rule (`volume===0 && predictors===0`
   on a live open market), THREE consumers (`markets/page.tsx:385`, `market-card.tsx:237-238`,
   `markets/[id]/page.tsx:209-224`; the card/detail split it into `fresh`/`noPrice` — read

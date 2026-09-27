@@ -31,6 +31,8 @@ import { getGlobalConfig } from "@/lib/server/market-config";
 import { ratesFrom } from "@/app/legal/rules/_shared";
 import { landingPicks } from "@/lib/server/landing-picks";
 import { db } from "@/lib/server/store";
+import { getKillSwitches } from "@/lib/server/payment-ops";
+import { heroRailNames } from "@/lib/server/payout-rails";
 import type { LandingMine } from "@/components/home/landing-hero";
 
 export const dynamic = "force-dynamic";
@@ -63,7 +65,8 @@ export const metadata: Metadata = {
  * ── THE COMPOSITION, AND WHY IT IS IN THIS ORDER ──────────────────────────────────────────────
  * hero → how it works → pick a side (grid) → browse by topic → Up & Down → why it can be trusted
  * (+ the settled strip inside that last act) → footer. The RG line that closed the act is gone since
- * landing v3 (R4(5)): the 18+ roundel and the RG motto sit in the hero's trust lines and the footer.
+ * landing v3 (R4(5)); since 2026-09-27 (R7(2)) the hero keeps the 18+ roundel, the licence line and
+ * the helpline in its trust rows, and the RG motto itself lives in the footer, on every page.
  *
  * The purpose is a funnel: show what Tanzania is actually predicting today, THEN teach the
  * mechanic, THEN prove the results are trustworthy. Up & Down moves BELOW the grid — it was
@@ -94,7 +97,7 @@ export const metadata: Metadata = {
  * NAMES the lens, so the grid is a claim rather than a sample (kit §1c).
  */
 export default async function LandingPage() {
-  const [{ t, locale }, liveRaw, updownLiveRaw, session, stats, rules] = await Promise.all([
+  const [{ t, locale }, liveRaw, updownLiveRaw, session, stats, rules, railPauses] = await Promise.all([
     getServerT(),
     listMarkets({ status: "LIVE" }).catch(() => [] as Awaited<ReturnType<typeof listMarkets>>),
     // The fast game is its own product line, so it never appears in the poll list above.
@@ -105,6 +108,11 @@ export default async function LandingPage() {
     // The rates every rule on this page quotes — the fee in "how it works" — from the SAME function
     // the binding /legal/rules page reads them through (landing v3, WP11). Never a literal.
     getGlobalConfig().then(ratesFrom),
+    // The hero's wallet row names only rails that pay out and that no officer has paused (R8(6),
+    // `server/payout-rails.ts`). The kill-switch map is read once per process and then held in
+    // memory; a failed read is null, and null names the static list — the money path's own
+    // fail-open direction, so the hero and the withdraw form cannot disagree about a rail.
+    getKillSwitches().catch(() => null),
   ]);
   const nowMs = Date.now();
   const liveAll = liveRaw.filter((m) => !isClosedByTime(m));
@@ -234,6 +242,7 @@ export default async function LandingPage() {
         nowMs={nowMs}
         cards={{ charts: cardCharts, traders: traderMap }}
         mine={mine}
+        rails={heroRailNames(railPauses)}
       />
 
       {/* ── §1a′ THE PROOF — the three figures, the whole board's conviction, the closing-soonest

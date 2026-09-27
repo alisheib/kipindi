@@ -577,22 +577,33 @@ export const dict = {
       requestCodeIn: "You can request a new code in",
     },
     home: {
-      heroLocation: "Tanzania · Dar es Salaam",
-      // ⚠️ The city is NOT repeated here. The hero composes `heroLocation · heroEst`, and while
-      // this key carried "Est. 2026 · Dar es Salaam" the eyebrow rendered
-      // "TANZANIA · DAR ES SALAAM · EST. 2026 · DAR ES SALAAM". Only the old photographic hero
-      // read this key, and it read it alone.
-      heroEst: "Est. 2026",
-      // ── the hero (round-2 kit §1a) ────────────────────────────────────────────────
-      // The headline is VERBATIM IN ALL THREE LOCALES — a decided call: YES and NO are
-      // product terms and the sentence is the brand line. It lives in the dict anyway so
-      // the string has ONE home; it used to be hardcoded English JSX in page.tsx with no
-      // key at all. `home.heroHeadline` is therefore on test:i18n's IDENTICAL_OK list.
+      // ── the hero (landing v3 · specs/hero-v3.md §3; INHERIT-MANIFEST R7, R8, R9) ──────────────
+      // The claim over the headline. `heroClaim` is state N; `heroClaimFirst` is state P and is read
+      // ONLY inside the `FIRST_LICENSED_EVIDENCE()` branch of landing-hero.tsx (support-config.ts; set
+      // 2026-09-27 by R9, the owner's attestation). ⛔ "licensed" is never dropped from either: it is
+      // what makes "first" true. `npm run test:hero-copy` §1.
+      heroClaim: "Licensed prediction market · Tanzania",
+      heroClaimFirst: "Tanzania’s first licensed prediction market",
+      // The h1: the question in the reader's language (R7(3)). {yes}/{no} are filled with
+      // `sideWord(t, …, "MARKET")` — the buttons' own words — and inked in the outcome colours. The
+      // text between them is the connective; its trailing space (none in zh) is the only place the
+      // line may break.
+      heroAsk: "{yes} or {no}?",
+      // Two designed lines: the product's own verbs, then what happens. "get paid" is literally true:
+      // a correct pick is never paid less than its stake (the winner floor in payout.ts; Up & Down
+      // settles through the same settleMarket), and a one-sided or void market refunds every stake.
+      heroLedeAct: "Pick a side, place your stake.",
+      heroLedePay: "Be right, get paid.",
+      // {rails} is `railListParts(locale, heroRailNames(…))` — the wallet names from the payment
+      // catalogue whose payout path is live, joined by Intl.ListFormat. ⛔ Never type a wallet name
+      // into this sentence (R8(6)).
+      heroRails: "Deposit and withdraw with {rails}.",
+      heroStart: "Start predicting",
+      // THE SIGN-OFF — the h1 until 2026-09-27, when R7(3) made the question the headline. VERBATIM IN
+      // ALL THREE LOCALES, a decided call: YES and NO are product terms and the sentence is the brand
+      // line (PLAN-OF-RECORD §7b). It closes the hero for a visitor (`lang="en"`) and stays the
+      // share-image line. `home.heroHeadline` is therefore on test:i18n's IDENTICAL_OK list.
       heroHeadline: "The wisdom of YES & NO.",
-      // The brand line, said in the reader's own language. Identical to `heroHeadline` in en on
-      // purpose: the component renders it only when the two differ, so an English reader is not
-      // shown the same sentence twice. See landing-hero.tsx.
-      heroHeadlineSub: "The wisdom of YES & NO.",
       heroProofOpen: "Open markets",
       heroProofPool: "In play now",
       heroProofPredictions: "Open predictions",
@@ -604,8 +615,6 @@ export const dict = {
       heroBoardCloseToday: "{n} close today",
       heroNoPrice: "No bets yet",
       heroBrowseAll: "Browse all {n} markets",
-      // landing v3: "Trade" was trading jargon on a pick-a-side product (the delivery's first-time-visitor reviewer).
-      heroBody: "Pick a side on questions about Tanzania's weather, markets, sport and culture, settled by official sources.",
       heroCta: "Browse markets",
       myPositions: "My positions",
       // landing v3 · WP14 part 2 — the signed-in hero (the delivery's wallet scenario §4a/§4c).
@@ -3299,11 +3308,18 @@ export const dict = {
       requestCodeIn: "Unaweza kuomba msimbo mpya baada ya",
     },
     home: {
-      heroLocation: "Tanzania · Dar es Salaam",
-      heroEst: "Tangu 2026",
-      // The headline stays in English by decision — see the en block.
+      // The hero — see the en block. Native review (R8(3)), 2026-09-27: Tanzanian usage and the
+      // product's own words — "Chagua upande, weka dau" is the stake panel's phrase, "weka / toa pesa"
+      // is how the M-Pesa menus say deposit and withdraw. The claim's word order is the owner's (R9).
+      heroClaim: "Soko la utabiri lenye leseni Tanzania",
+      heroClaimFirst: "Soko la kwanza la utabiri lenye leseni Tanzania",
+      heroAsk: "{yes} au {no}?",
+      heroLedeAct: "Chagua upande, weka dau.",
+      heroLedePay: "Ukiwa sahihi, unalipwa.",
+      heroRails: "Weka na toa pesa kwa {rails}.",
+      heroStart: "Anza kutabiri",
+      // The sign-off stays in English by decision — see the en block.
       heroHeadline: "The wisdom of YES & NO.",
-      heroHeadlineSub: "Hekima ya NDIO na HAPANA.",
       heroProofOpen: "Masoko yaliyo wazi",
       heroProofPool: "Fedha zilizowekwa",
       heroProofPredictions: "Utabiri ulio wazi",
@@ -3315,7 +3331,6 @@ export const dict = {
       heroBoardCloseToday: "{n} yanafunga leo",
       heroNoPrice: "Hakuna dau bado",
       heroBrowseAll: "Tazama masoko yote {n}",
-      heroBody: "Shiriki katika utabiri wa hali ya hewa, masoko, michezo na utamaduni wa Tanzania — kila tukio likithibitishwa kwa mujibu wa vyanzo rasmi.",
       heroCta: "Tazama masoko",
       myPositions: "Nafasi zangu",
       // drafted, marked for native review; English is binding.
@@ -4519,13 +4534,17 @@ export const dict = {
     },
     footer: {
       eighteenPlus: "18+",
-      licensedByGbt: "Imepata leseni kutoka Bodi ya Michezo ya Kubahatisha ya Tanzania.",
+      // 2026-09-27 (hero v3, R8(3) native review): the Board's own Swahili name is "Bodi ya Michezo ya
+      // Kubahatisha Tanzania" (no "ya" before Tanzania), and the line is a seal beside the 18+ roundel,
+      // so it reads as one. Shared by the footer and the hero. COMPLIANCE-DECISIONS 2026-09-27.
+      licensedByGbt: "Leseni ya Bodi ya Michezo ya Kubahatisha Tanzania.",
       license: "Leseni",
       playSafe: "Cheza kistaarabu",
       setLimits: "Weka mipaka",
       takeABreak: "Pumzika",
       selfExclude: "Jizuie",
-      stopGambling: "Kama kucheza kamari imekuwa sio burudani, acha.",
+      // 2026-09-27 (R7(7)): "kucheza" is a ku- noun, so "kumekuwa", and the copula is "si", not "sio".
+      stopGambling: "Kama kucheza kamari kumekuwa si burudani, acha.",
       fairness: "Uadilifu",
       resolutionAttestation: "Uthibitisho wa utatuzi",
       proposeGetPaid: "Pendekeza masoko upate pesa",
@@ -5521,11 +5540,19 @@ export const dict = {
       otpRateLimited: "请求受限 \u2014 请稍后重试。",
     },
     home: {
-      heroLocation: "坦桑尼亚 · 达累斯萨拉姆",
-      heroEst: "创立于2026年",
-      // The headline stays in English by decision — see the en block.
+      // The hero — see the en block. Reviewed 2026-09-27 (R8(3)): formal register and the product's
+      // own words (选择一方, 下注, 充值, 提现, 赔付); "预测正确", not 猜对 — a guess is chance.
+      // ⚠️ No 「」 around 是/否 in the h1 (spec §3, R7(3)): each is its own coloured span, so nothing
+      // can read it as a function word; DESIGN_AUTHORITY L4's brackets are for a side word in prose.
+      heroClaim: "坦桑尼亚持牌预测市场",
+      heroClaimFirst: "坦桑尼亚首家持牌预测市场",
+      heroAsk: "{yes}还是{no}？",
+      heroLedeAct: "选择一方，下注。",
+      heroLedePay: "预测正确，即获赔付。",
+      heroRails: "可通过 {rails} 充值和提现。",
+      heroStart: "开始预测",
+      // The sign-off stays in English by decision — see the en block.
       heroHeadline: "The wisdom of YES & NO.",
-      heroHeadlineSub: "「是」与「否」的智慧。",
       heroProofOpen: "开放市场",
       heroProofPool: "当前投注总额",
       heroProofPredictions: "未结算预测",
@@ -5537,7 +5564,6 @@ export const dict = {
       heroBoardCloseToday: "今天 {n} 个结束",
       heroNoPrice: "尚无投注",
       heroBrowseAll: "浏览全部 {n} 个市场",
-      heroBody: "参与坦桑尼亚天气、市场、体育和文化方面的问题竞猜——由官方来源验证结算。",
       heroCta: "浏览市场",
       myPositions: "我的持仓",
       // drafted, marked for native review; English is binding.

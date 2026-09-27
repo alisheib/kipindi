@@ -6,6 +6,70 @@
 
 ---
 
+## 2026-09-27 · The landing hero says "Tanzania's first licensed prediction market"; the RG sentence leaves the hero for the footer; two Swahili footer lines corrected (owner rulings R7, R8, R9)
+
+**Owner instructions (Ali, 2026-09-27), recorded verbatim in `docs/design-system/v4-2026-09-26-landing-ten/INHERIT-MANIFEST.md`:**
+R7 — *"say first prediction market in Tanzania, no need for this warning about gambling … the fonts are nice but
+basic"* (asked in session, answered); R8 — *"all other decisions you take them, and you act as a Tanzania native
+speaker … full perfection, end to end, sealed — visual and logical"*; R9 — *"please say we're the first — I'm the
+owner and we're the first"*. Build spec: `specs/hero-v3.md` (branch `landing-v3-hero`).
+
+**What changed:**
+1. **"First" is claimed — and gated in code.** The hero's claim reads *"Tanzania’s first licensed prediction market"* /
+   *"Soko la kwanza la utabiri lenye leseni Tanzania"* / *"坦桑尼亚首家持牌预测市场"* (the spec's state P). Evidence on
+   record: the OWNER'S ATTESTATION (INHERIT-MANIFEST R9) and the Gaming Board of Tanzania's acknowledgement of the licence
+   fee for operations under Sec. 51(2) of the Gaming Act, paid 2026-09-05 (R8(1); the owner holds the document — it is
+   not committed, it carries a personal e-mail). `FIRST_LICENSED_EVIDENCE()` in `src/lib/support-config.ts` — its only
+   home, a constant like `LICENCE_NUMBER()`, with no setter and no admin control — is set to **2026-09-27, citing
+   INHERIT-MANIFEST R9**. ⭐ "Licensed" stays in every form of the claim: it is what makes "first" true against offshore
+   sites that reach Tanzanians without a Board licence; the claim is never an unqualified "first prediction market".
+   The risk was put to the owner before he ruled (Fair Competition Act s.15/16; the Board's "misleading" rule).
+   **Rollback, if the Board or a competitor ever disputes it:** set the constant to `null` — every language returns to
+   state N, *"Licensed prediction market · Tanzania"* / *"Soko la utabiri lenye leseni Tanzania"* / *"坦桑尼亚持牌预测市场"*,
+   in one change. Guards: `npm run test:hero-copy` §1 (the "first" key is read in one place, inside that branch; no
+   other string anywhere claims a first; "licensed" is in both states in all three languages; THIS entry must exist
+   while the constant is set) and the live gate's V22 (`scripts/qa/landing-ten.mjs`).
+2. **The gambling-warning SENTENCE leaves the hero (R7(2)) — an override of the hero half of INHERIT-MANIFEST R4(5).**
+   The hero keeps one quiet row: the 18+ roundel, the licence line and the helpline number (`HELPLINE()`, 0800 11 0011,
+   ruled "ours" 2026-09-26) as a tap-to-call link — above the featured card, on a phone's first screen (the live gate's
+   V21 measures it). The full sentence (*"If gambling stops being fun, stop."*), the helpline and the limit links stay
+   in the footer on every page, unchanged (`test:rg-policy`). `test:hero-copy` §4 fails if the hero reads the sentence
+   again. The 18+ roundel takes a neutral ink site-wide (R7(5)) — a seal rather than a stop sign; its size, place and
+   text are unchanged.
+3. **Swahili licence line — the Board's own name (native review, R8(3)).** `footer.licensedByGbt` (sw), shown in the
+   footer and the hero: *"Imepata leseni kutoka Bodi ya Michezo ya Kubahatisha ya Tanzania."* → *"Leseni ya Bodi ya
+   Michezo ya Kubahatisha Tanzania."* The Board's Swahili name has no "ya" before "Tanzania", and the line is set as a
+   seal beside the 18+ roundel. Same assessed statement; the English (*"Licensed by the Gaming Board of Tanzania."*) is
+   binding and unchanged.
+4. **Swahili RG sentence — grammar only (R7(7)).** `footer.stopGambling` (sw): *"Kama kucheza kamari imekuwa sio
+   burudani, acha."* → *"Kama kucheza kamari kumekuwa si burudani, acha."* ("kucheza" is a ku- noun, so "kumekuwa"; the
+   negative copula is "si"). Same meaning; the English is binding and unchanged.
+5. **"Official" is no longer claimed on the landing's first screen.** The hero's old lede (*"…settled by official
+   sources"*) and its "named public sources" row are gone from the hero: the sources include CoinGecko and ITV, which are
+   not official bodies, and each market's own card names its source. `test:hero-copy` §5 fails if official / rasmi /
+   官方, machine / mashine, crowd / umati or chance / bahati appear in any string the hero's first screen reads, in any
+   language. ⚠️ Not changed here: the trust band further down the page still reads `home.trustCell1H`, whose Swahili is
+   *"Vyanzo rasmi vya umma vilivyotajwa"* ("official") — recorded for that band's own review.
+6. **"Ukiwa sahihi, unalipwa" / "Be right, get paid" / "预测正确，即获赔付" — why it is literally true.** A correct pick
+   is never paid less than its stake, in every product: the fee is a share of the LOSING pool only, so the winners' net
+   pool is at least their own stakes (the winner floor in `src/lib/payout.ts`; `market-config.ts` refuses a fee over
+   100% of the losing pool), Up & Down settles through the same `settleMarket()` (`updown-service.ts`), and a one-sided
+   or void market refunds every stake in full. The copy states no amount and no multiplier (the gate's V16). Ready
+   fallback if the Board objects to "unalipwa": *"Ukiwa sahihi, unagawana dau la upande mwingine."* / *"Be right, share
+   the other side's stakes."* / *"预测正确，分享对方的投注。"* — a one-key swap per language; ⛔ never "mgao".
+7. **Wallet names (R8(6)).** *"Deposit and withdraw with M-Pesa, Airtel Money, HaloPesa or Mixx by Yas"* names only the
+   rails whose PAYOUT path is live in the platform's own configuration (`src/lib/server/payout-rails.ts`: the payment
+   catalogue ∩ `WithdrawSchema` ∩ `DepositSchema` ∩ a wallet-cashin code, less any rail an officer has paused for
+   deposits or withdrawals). The names are never typed into the dictionary. `test:hero-copy` §3 pins the output and
+   cross-checks the withdraw page and the withdraw action.
+
+**Supersedes (each keeps a dated pointer here):** the hero half of INHERIT-MANIFEST R4(5) and its L18/L21 placement
+notes (item 2); R7(1) and R8(1)'s "first stays off" (item 1, by R9 itself); R7(6)'s "all four after a test payout each"
+(item 7, by R8(6)); the English-headline placement of MOBILE-VISUAL-PLAN ruling 12 (the brand line is now the hero's
+sign-off, verbatim).
+
+---
+
 ## 2026-09-27 · Invite rewards need no separate Gaming Board clearance — 50pick's licence covers them (owner ruling)
 
 **Owner instruction (Ali, 2026-09-27), as typed:** *"np no gbt dens haveot do with this our license covers thi

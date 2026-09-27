@@ -184,31 +184,54 @@ feature (a plant against a feature that does not exist yet cannot prove anything
 
 ### §2.1 · The rows
 
-**WP2 · Hero order** — `src/components/home/landing-hero.tsx`, `.kp-hero*` in `globals.css`, `src/app/page.tsx`
-- One DOM, ordered: eyebrow → `<h1 lang="en">` → sw/zh sub-line (`home.heroHeadlineSub`, shown only when it
-  differs from the headline) → lede → **featured card** → trust lines → CTAs. From 1024 the block is two
-  columns — copy, trust lines and CTAs on the left, the featured card on the right — by CSS grid areas,
-  never a second copy of the DOM. ⚠️ Trust lines BEFORE the CTAs, in the source (L18): the delivery's phone
-  order put them after the CTAs, below the first screen its own placement map requires; a CSS `order`
-  was tried and removed because keyboard order then disagreed with the screen.
-- Headline on the locked ladder — 44 below 1024, 60 from 1024, 72 from 1280 (the delivery's
-  `clamp(40px, 6.2vw, 88px)` mapped onto §T1 steps), Sora 800, `text-wrap: balance`. The YES/NO inks come
-  from `Inked` over the English words; the sub-line is inked with the reader's own side words
-  (`sideWord`), MOBILE-VISUAL ruling 12.
-- Trust lines, in this order: 18+ roundel + `footer.licensedByGbt` · `home.trustCell3H` (mobile money) ·
-  `footer.stopGambling` + the helpline (`HELPLINE()` / `HELPLINE_TEL()`, a `tel:` link at the tap floor) ·
-  `home.trustCell1H` (named sources). Every string is an existing key — no new regulated copy. The licence
-  NUMBER stays in the footer on every page (K39), as in the delivery's own hero.
-- The lede drops the jargon word the before state used ("Trade questions…" → "Pick a side on questions…").
-- The proof rail, the conviction bar and the closing-soonest board move **below** the hero block.
-- Remove the faint dial drawing behind the hero (R4(1)).
-- Guards at risk: `test:betting-ink` §1 pins the proof-rail figure markup exactly; `test:hero-contract`
-  (the featured market is never also a board row); `scripts/qa/landing-ten.mjs` V14 landmarks and the
-  V8 text map name `.kp-hero` — keep the class or re-point the gate in the same commit. The hero's entrance
-  stagger is keyed to `.kp-hero__inner > *:nth-child(n)`; reordering children re-orders the animation.
-- ⚠️ First-screen budget (V15): header 56 + the LIVE strip (back on `/` since 2026-09-26) + the hero must
-  leave the featured card's price and YES/NO above 740px at 360 wide, **in sw**, whose sub-line and lede
-  are the longest. Measure it; if it does not fit, shorten spacing on the `--rh-*` phone rungs, never the text.
+**WP2 · Hero** — `src/components/home/landing-hero.tsx`, `.kp-hero*` in `globals.css`, `src/app/page.tsx`,
+`src/lib/server/payout-rails.ts`, `src/lib/rail-list.ts`, `FIRST_LICENSED_EVIDENCE()` in `src/lib/support-config.ts`
+- ⭐ **HERO v3 — rebuilt 2026-09-27 from `specs/hero-v3.md` under R7, R8 and R9** (branch `landing-v3-hero`; not
+  live until it is merged, rendered and measured). This note describes the v3 hero. The first build (`54f8199b`,
+  measured on production 2026-09-26) had an English `<h1 lang="en">` over a sw/zh sub-line and its trust lines
+  after the card; both are gone.
+- **One DOM, source order = screen order: claim → h1 → lede → trust rows → featured card → CTAs → sign-off.**
+  From 1024 the intro (claim, h1, lede, trust rows) and the act (CTAs, sign-off) share the left column and the
+  card takes the right, by grid areas — never a second DOM, never a CSS `order` (keyboard order = screen order).
+- **Claim** — `p.kp-hero__claim`, a class of its own (the shared eyebrow also dresses the section labels):
+  `FiftyWordmark` 15 + a 1px `--border-strong` rule below 1280, then the text in JetBrains Mono 600, 13px,
+  capitals by CSS, `--text`, 0.14em (the shared list). State P — *"Tanzania’s first licensed prediction
+  market"* / *"Soko la kwanza la utabiri lenye leseni Tanzania"* / *"坦桑尼亚首家持牌预测市场"* — renders only while
+  `FIRST_LICENSED_EVIDENCE()` is set (R9, 2026-09-27); `null` returns every language to state N, *"Licensed
+  prediction market · Tanzania"*. "Licensed" is in both.
+- **h1** — `home.heroAsk` filled by `sideWord(t, …, "MARKET")`: *"NDIO au HAPANA?"* / *"YES or NO?"* /
+  *"是还是否？"*, with NO `lang` (R7(3)). Side words Sora 800 in the buttons' inks (`--hero-yes/no-accent`,
+  re-pointed 300 → 400), the connective Sora 400 `--text-muted`, "?" `--hero-text-strong`; 44 · **60 from 640**
+  · 72 from 1280; line-height 1.0; tracking −0.030 / −0.038 / −0.045em (zh 0 at 1.1). "NDIO au" and "HAPANA?"
+  never break inside. Claim + h1 are one `hgroup.kp-hero__lockup`.
+- **Lede** — two designed lines: `home.heroLedeAct` (Inter 500, `--text`) and `home.heroLedePay` (Inter 400,
+  muted); 17 below 561, 20 above.
+- **Trust rows** — `ul.kp-hero__trust` (class kept: V8, V21, capture.mjs), in the intro, the same for a visitor
+  and a player: row 1 = `.kp-rg__18` + `footer.licensedByGbt` + the helpline `tel:` (`footer.helpline` +
+  `HELPLINE()`, Inter 400 tabular, 1px underline, ±13px reach); row 2 = `I.mobileMoney` + `home.heroRails`,
+  whose `{rails}` is `railListParts(locale, heroRailNames(killSwitches))` — `Intl.ListFormat` disjunction over
+  the rails whose payout path is live (catalogue ∩ `WithdrawSchema` ∩ `DepositSchema` ∩ a wallet-cashin code,
+  less any paused rail; R8(6)). Today: M-Pesa, Airtel Money, HaloPesa, Mixx by Yas. No rails → no row.
+  ⛔ Not in the hero any more: the RG sentence (R7(2) — the footer keeps it on every page) and "named sources"
+  (the card names its own source).
+- **Act** — visitor: `home.heroStart` + arrow · `home.heroBrowseAll`, then the sign-off `p.kp-hero__signoff`
+  (`FiftyMark` 20 simplified, aria-hidden, + `home.heroHeadline` inked, `lang="en"` — the hero's only `lang`).
+  Player: `SignedInAct`, unchanged.
+- **Keys:** NEW `home.heroClaim`, `heroClaimFirst`, `heroAsk`, `heroLedeAct`, `heroLedePay`, `heroRails`,
+  `heroStart`. DELETED `home.heroLocation`, `heroEst`, `heroHeadlineSub`, `heroBody` (the hero was their only
+  reader). `home.heroHeadline` keeps its value and becomes the sign-off. sw `footer.licensedByGbt` and
+  `footer.stopGambling` corrected (COMPLIANCE-DECISIONS 2026-09-27).
+- The 18+ roundel takes a neutral ink site-wide (R7(5)). Phone spacing: padding `--sp-5 --sp-4 --sp-8`, grid gap
+  20, lockup 8, intro 12, +4 above the rows (8 / 12 / 16 / 20); from 768 lockup 12, intro 16.
+- The proof rail, the conviction bar and the closing-soonest board stay **below** the hero (`LandingProof`).
+  The faint dial drawing stays removed (R4(1)). The entrance stagger (`.kp-hero__inner > *`) is untouched.
+- **Guards:** `test:hero-copy` + `red:hero-copy` (NEW — the "first" gate, the question, the wallets, no warning
+  sentence / one `lang`, no over-claim; 18 plants, MISSED 0); `test:landing-mine` §3 re-pointed at the intro;
+  `test:i18n`; `test:contrast` (hero pairs on `--bg-overlay`). Live gate: 360 × 740 cells, **V21** (trust rows
+  and `tel:` above the rail below 640), **V22** ("first" only with its evidence), `.kp-hero__claim-text` in the
+  V8 text map and V8b; capture.mjs records claim / h1 / lede / rows / `tel:` / sign-off rects.
+- ⚠️ First-screen budget: spec §7 MODELS the sw 360 × 740 YES/NO bottom at ≈610 against a rail at ≈675 (65px
+  clear). A model, not a render — V15 and V21 on the 360 × 740 cells decide.
 
 **WP3 · Featured card** — `src/components/markets/market-card.tsx` (`featured` variant only), `TippingBar` in `src/components/brand.tsx`
 - Full question with no clamp (`.mcardp--featured .mcardp-q`).
@@ -226,6 +249,10 @@ feature (a plant against a feature that does not exist yet cannot prove anything
   milliseconds left instead.
 - Guards at risk: `MARKET_CARD_H` / `--mcard-h` size the `/markets` skeletons; keep these changes on the
   featured variant or re-derive the height (`qa:card-geometry`).
+- ⚠️ **2026-09-27 — what hero v3 leaves WP3 (spec §7, a model to be measured):** ≈65px between the featured
+  card's YES/NO row and the bottom rail at 360 × 740 in Swahili. So below 640 the featured question clamps at
+  **3 lines or fewer in every language** (≈ +22px over today's 2), and the "Settles on {source}" line goes
+  **below** the YES/NO row — about 632, 43px clear. This amends "no clamp" above for phones only.
 
 **WP4 · Question board rows** — `QuestionRow` in `landing-hero.tsx`, `.kp-qrow` in `globals.css`
 - The row stops being one `<Link>`: the title is its own link; the time left, the bar and the YES@/NO@
@@ -484,14 +511,14 @@ drift from that file or a row names an id §1 does not have. An item is done whe
 | P5 | Balance chip → Wallet: sheet below 1024, panel from 1024 | WP14 | R1 |
 | P6 | Deposit: header (gold), Wallet, hero | WP14 | R1, including the gold Deposit that replaces the capsule at zero |
 | P7 | Withdraw: Wallet + hero, same size as Deposit; hidden at zero | WP14, V19 | R1 |
-| P8 | Featured market: right after the lede; hero right column on desktop | WP2, WP3 | |
+| P8 | Featured market: right after the lede; hero right column on desktop | WP2, WP3 | Hero v3 (R7, 2026-09-27): the card follows the trust ROWS — claim → h1 → lede → trust rows → card — so 18+, the licence and the helpline reach a phone's first screen; right column from 1024 |
 | P9 | Pick slip: bottom sheet below 1024, inline from 1024 | WP5 | R2 |
 | P10 | Proof figures: ledger rows on phones, three columns above | WP8 | |
 | P11 | Closing-soonest board: stacked · title + bar · one line | WP4 | |
 | P12 | Pick-a-side cards: snap rail with a peek · two columns · three | WP9 | |
 | P13 | Share: card footer + after placing (WhatsApp) | WP14b, WP5 | |
 | P14 | Set limits / Take a break: pick sheet, Wallet, Menu, footer | WP5, WP14 | No Menu (R1); the footer already carries both |
-| P15 | Licence · 18+ · helpline: first screen + footer | WP2 | Trust lines (licence + 18+, mobile money, helpline, sources) before the CTAs — L18; the licence number and all three stay in the footer |
+| P15 | Licence · 18+ · helpline: first screen + footer | WP2 | ~~Trust lines before the CTAs — L18~~ ⚠️ 2026-09-27, hero v3 (R7(2)): one quiet row — 18+ · the licence line · the helpline `tel:` — plus the payout-live wallets, in the intro ABOVE the card (V21 measures them on the first screen); the RG sentence, the licence number and the helpline stay in the footer |
 | K1 | Every placement row verified at 360, 768, 1280 in sw, en, zh | V21, PANEL | |
 | K2 | 4a: phone, balance — chip + gold Deposit in the header; hero balance with equal Deposit/Withdraw | WP14 | The phone fit is measured (§2.1 WP14) |
 | K3 | 4b: chip opens the Wallet sheet — balance, withdrawable, equal pair, Set limits; Esc and backdrop close | WP14, V20 | |
@@ -519,10 +546,10 @@ drift from that file or a row names an id §1 does not have. An item is done whe
 | K25 | After placing: "You're with X% of the money on {side}" | WP5 | |
 | K26 | Settled rows show source, date, sign-off, amount paid | WP13 | The market's own sign-off (L2) |
 | K27 | Deposit and Withdraw are where section A says | WP14 | |
-| K28 | One sentence says what 50pick is, above the fold | WP2 | |
-| K29 | Licence, 18+ and mobile money on the first screen | WP2, V15 | |
+| K28 | One sentence says what 50pick is, above the fold | WP2 | Hero v3: the claim, "Tanzania’s first licensed prediction market" (R9), gated by `FIRST_LICENSED_EVIDENCE()` (`test:hero-copy` §1, V22) |
+| K29 | Licence, 18+ and mobile money on the first screen | WP2, V15, V21 | Hero v3 (2026-09-27): the trust rows sit above the card; V21 measures rows 1–2 and the helpline `tel:` above the bottom rail below 640, on 360 × 740 cells |
 | K30 | Three steps, including the fee as a number | WP11 | From config, never a literal (L3) |
-| K31 | EN / SW / 中文, with the sub-line under the brand headline | WP2 | The language menu stays (R1) |
+| K31 | EN / SW / 中文, with the sub-line under the brand headline | WP2 | The language menu stays (R1). ⚠️ 2026-09-27 (R7(3)): no sub-line — the h1 IS the reader's language ("NDIO au HAPANA?" / "YES or NO?" / "是还是否？"), and the English brand line is the hero's sign-off |
 | K32 | No jargon | WP16 | |
 | K33 | No promised returns; the estimate is marked and qualified (V16) | V16, WP7 | No estimate on cards (R3) |
 | K34 | The only urgency is a real countdown | WP15 | L17 |

@@ -548,6 +548,15 @@ const T = {
   pearl50: token("pearl-50"),
   bg: token("bg"),
   bgElevated: token("bg-elevated"),
+  // ── The landing hero's surface and its own inks (hero v3, 2026-09-27, spec §9) ──────────
+  // The hero stands on `--bg-overlay` (the sunken surface), and since hero v3 it sets its
+  // text there in five inks: the claim and the lede's first line in `--text`, the lede's
+  // second line, the trust rows and the h1's connective in `--text-muted`, the 18+ ring in
+  // `--text-subtle`, and the h1's side words in the hero-only accents, re-pointed 300 → 400.
+  bgOverlay: token("bg-overlay"),
+  heroYes: token("hero-yes-accent"),
+  heroNo: token("hero-no-accent"),
+  heroStrong: token("hero-text-strong"),
   // The button FILLS, read off the rules that paint them — not re-typed.
   btnNoBg: ruleValue(".btn-no", "background"),
   btnYesBg: ruleValue(".btn-yes", "background"),
@@ -755,6 +764,18 @@ const CHECKS: Check[] = [
   { name: "--text-subtle on --bg-inset", fg: T.textSubtle, bg: T.bgInset, min: 4.5 },
   { name: "--text-faint on --bg", fg: T.textFaint, bg: T.bg, min: 4.5 },
   { name: "--text-faint on --bg-elevated", fg: T.textFaint, bg: T.bgElevated, min: 4.5 },
+
+  // ── The landing hero (hero v3, 2026-09-27) — every ink it sets on its own surface ────────
+  // Body-size text (the 13px claim and trust rows, the 17–20px lede, the helpline link) is held
+  // to 4.5. The h1 is 44–72px Sora 800 — WCAG-large — so its side words need 3.0; they are held
+  // to 4.5 anyway, because they are the product's YES/NO words and the 400 shades must carry them
+  // as text, not just as colour. The 18+ ring is a non-text mark beside its own "18+" text: 3.0.
+  { name: "hero · --text on --bg-overlay (claim, lede line 1, helpline, wallet names)", fg: T.text, bg: T.bgOverlay, min: 4.5 },
+  { name: "hero · --text-muted on --bg-overlay (lede line 2, trust rows, the h1's connective)", fg: T.textMuted, bg: T.bgOverlay, min: 4.5 },
+  { name: "hero · --text-subtle on --bg-overlay (the 18+ ring, the wallet glyph)", fg: T.textSubtle, bg: T.bgOverlay, min: 3.0 },
+  { name: "hero · --hero-yes-accent on --bg-overlay (the h1's YES word)", fg: T.heroYes, bg: T.bgOverlay, min: 4.5 },
+  { name: "hero · --hero-no-accent on --bg-overlay (the h1's NO word)", fg: T.heroNo, bg: T.bgOverlay, min: 4.5 },
+  { name: "hero · --hero-text-strong on --bg-overlay (the h1's question mark)", fg: T.heroStrong, bg: T.bgOverlay, min: 4.5 },
   /**
    * ── THE WASH, SCORED (2026-08-07, ATOM D) ─────────────────────────────────
    * ⛔ ADDED BEFORE THE CARD WAS ALLOWED TO ADOPT IT, not after. `.mcardp` moves from
