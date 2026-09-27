@@ -10,6 +10,11 @@
  * and the playhead (`UpdownMatchNow`). Real points only, no line between them (§B12.3); nothing about a
  * price animates (L12, A-5).
  *
+ * ⭐ THREE LAYERS, IN PAINT ORDER: neutral time (void band, rail, locked stretch, posts, opening dot) → the
+ * playhead and played stretch (`UpdownMatchNow`) → the data marks (tie ticks, stems, bead). A read lands at
+ * most a couple of minutes before "now", so the playhead often sits a few px from the newest stem: side ink
+ * must always paint OVER neutral time, never under it (frame panel, 2026-09-27 — the playhead hid the stem).
+ *
  * ⛔ NO TEXT IN THE SVG, AND NO viewBox. Coordinates are percentages and radii are px, so beads stay
  * round at every width; the lane's words are HTML. The whole track is ONE `role="img"` named by the
  * caller's sentence (K22) — the timeline in words, with EAT — and every child is aria-hidden.
@@ -60,6 +65,9 @@ export function UpdownMatchTrack({ round, label, openLabel, anchorMs }: {
           <line className="kp-udtrack__post" x1={gate} y1="0" x2={gate} y2="100%" />
           <line className="kp-udtrack__post" x1="100%" y1="0" x2="100%" y2="100%" />
           {g.kick && <circle className="kp-udtrack__kick" cx="0" cy="50%" r={MATCH.kick} />}
+        </svg>
+        <UpdownMatchNow opensAtMs={round.opensAtMs} closesAtMs={round.closesAtMs} anchorMs={anchorMs} />
+        <svg className="kp-udtrack__svg" width="100%" height="100%" focusable="false">
           {g.ties.map((tie) => (
             <line key={`t${tie.x}`} className="kp-udtrack__tie"
               x1={pct(tie.x)} x2={pct(tie.x)} y1={pct(50 - MATCH.tieHalf)} y2={pct(50 + MATCH.tieHalf)} />
@@ -74,7 +82,6 @@ export function UpdownMatchTrack({ round, label, openLabel, anchorMs }: {
           ))}
           {g.bead && <circle className={BEAD_CLASS[g.bead.side]} cx={pct(g.bead.x)} cy={pct(g.bead.y)} r={MATCH.bead} />}
         </svg>
-        <UpdownMatchNow opensAtMs={round.opensAtMs} closesAtMs={round.closesAtMs} anchorMs={anchorMs} />
       </div>
     </div>
   );

@@ -642,7 +642,11 @@ export const dict = {
       udMatchLevelExact: "Exactly at the opening price",
       udMatchLevelNote: "If it closes here, every stake comes back.",
       udMatchDecides: "The price at {close} decides.",
-      udMatchRefund: "Less than {margin} from the open, every stake comes back.",
+      // After the deciding instant the rule speaks in the past; the band itself never states the result.
+      udMatchDecided: "The price at {close} decided.",
+      // Under a verdict gone past tense while betting is still open: why it turned grey.
+      udMatchAgedNote: "No newer price yet.",
+      udMatchRefund: "Under {margin} from the open, every stake comes back.",
       udMatchRefundRange: "{upWord} at {up} or higher, {downWord} at {down} or lower — in between, every stake comes back.",
       udMatchAllRounds: "All rounds",
       udMatchNextRound: "Play the next round",
@@ -3345,6 +3349,8 @@ export const dict = {
       udMatchLevelExact: "Sawa kabisa na bei ya ufunguzi",
       udMatchLevelNote: "Ikifunga hapa, kila dau linarudi.",
       udMatchDecides: "Bei ya saa {close} inaamua.",
+      udMatchDecided: "Bei ya saa {close} iliamua.",
+      udMatchAgedNote: "Bado hakuna bei mpya.",
       udMatchRefund: "Tofauti ikiwa ndogo kuliko {margin}, kila dau linarudi.",
       udMatchRefundRange: "{upWord} kwa {up} au zaidi, {downWord} kwa {down} au pungufu — katikati, kila dau linarudi.",
       udMatchAllRounds: "Raundi zote",
@@ -3676,7 +3682,7 @@ export const dict = {
       // drafted, marked for native review; English is binding.
       udConfirmedPrice: "Bei iliyothibitishwa",
       // drafted, marked for native review; English is binding.
-      udLevelBy: "Tofauti {amount} tu — haitoshi kuamua",
+      udLevelBy: "Tofauti na ufunguzi {amount} tu — haitoshi kuamua",
       udAboveOpenBy: "Juu ya ufunguzi kwa", udBelowOpenBy: "Chini ya ufunguzi kwa", udPool: "Dimbwi",
       udPickLocked: "Imefungwa kutoka chaguo lako kwenye ubao. Kubadili upande, ondoka kwenye raundi hii.",
       udConfirm: "Thibitisha", udYourResult: "Matokeo yako", udPaidOut: "Kilicholipwa", udOpenInPositions: "Fungua kwenye Nafasi",
@@ -5567,6 +5573,8 @@ export const dict = {
       udMatchLevelExact: "与开盘价完全相同",
       udMatchLevelNote: "若以此价收盘，所有投注全额退还。",
       udMatchDecides: "以 {close} 的价格判定。",
+      udMatchDecided: "已以 {close} 的价格判定。",
+      udMatchAgedNote: "暂无更新的价格。",
       udMatchRefund: "与开盘价相差不足 {margin}，所有投注全额退还。",
       udMatchRefundRange: "{up} 或以上为{upWord}，{down} 或以下为{downWord}；介于两者之间，所有投注全额退还。",
       udMatchAllRounds: "全部回合",

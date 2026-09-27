@@ -132,8 +132,14 @@ export function UpdownBand({ t, locale, liveCount, round }: {
                 </p>
                 <p className="kp-udclock__row kp-udclock__row--closed">
                   <I.lock s={12} className="kp-udclock__glyph" />
-                  <span className="kp-udclock__cap">{t.market.udLockedTitle}</span>
-                  <Link href={roundHref as never} className="kp-udclock__watch">
+                  {/* "Bets closed", then — past the deciding price's instant — "Awaiting result": the band never
+                      states the result, the round page does. The link is described by this caption, so the focus
+                      moved onto it at close also says why (WCAG 4.1.2). */}
+                  <span className="kp-udclock__cap" id="kp-udclock-state">
+                    <span className="kp-udclock__closed">{t.market.udLockedTitle}</span>
+                    <span className="kp-udclock__decided">{t.market.udAwaitingResult}</span>
+                  </span>
+                  <Link href={roundHref as never} className="kp-udclock__watch" aria-describedby="kp-udclock-state">
                     {t.market.udRcWatchRound}
                     <I.chevronRight s={14} />
                   </Link>

@@ -363,10 +363,14 @@ const text = (n: ReactNode) => html(n).replace(/<[^>]+>/g, "");
 const seen = (n: ReactNode, aged = false) => html(n)
   .replace(new RegExp(`<span class="kp-udbug__${aged ? "now" : "was"}">(?:[^<]|<span[^>]*>[^<]*</span>)*</span>`, "g"), "")
   .replace(/<[^>]+>/g, "");
+/** The rule as a reader sees it before (or, with `decided`, after) the deciding instant. */
+const seenRule = (n: ReactNode, decided = false) => html(n)
+  .replace(new RegExp(`<span class="kp-udrule__${decided ? "now" : "was"}">(?:[^<]|<span[^>]*>[^<]*</span>)*</span>`, "g"), "")
+  .replace(/<[^>]+>/g, "");
 type Want = { verdict: string; aged?: string; detail: string; agedDetail?: string; rule: string; note?: string };
 const WANT: Record<string, Record<Locale, Want>> = {
   S1: {
-    en: { verdict: "Up leads", aged: "Up led", detail: "at 14:26 · Above open by $18.52", rule: "The price at 14:32 decides. Less than $0.02 from the open, every stake comes back." },
+    en: { verdict: "Up leads", aged: "Up led", detail: "at 14:26 · Above open by $18.52", rule: "The price at 14:32 decides. Under $0.02 from the open, every stake comes back." },
     sw: { verdict: "Juu inaongoza", aged: "Juu iliongoza", detail: "saa 14:26 · Juu ya ufunguzi kwa $18.52", rule: "Bei ya saa 14:32 inaamua. Tofauti ikiwa ndogo kuliko $0.02, kila dau linarudi." },
     zh: { verdict: "涨方领先", aged: "涨方曾领先", detail: "14:26 时 · 高于开盘 $18.52", rule: "以 14:32 的价格判定。与开盘价相差不足 $0.02，所有投注全额退还。" },
   },
@@ -376,8 +380,8 @@ const WANT: Record<string, Record<Locale, Want>> = {
     zh: { verdict: "跌方领先", aged: "跌方曾领先", detail: "14:26 时 · 低于开盘 $12.40", rule: "" },
   },
   S3: {
-    en: { verdict: "Nobody leads", aged: "Nobody led", detail: "at 14:26 · Only $0.20 from the open — not enough to decide", note: "If it closes here, every stake comes back.", rule: "The price at 14:32 decides. Less than $0.40 from the open, every stake comes back." },
-    sw: { verdict: "Hakuna anayeongoza", aged: "Hakuna aliyeongoza", detail: "saa 14:26 · Tofauti $0.20 tu — haitoshi kuamua", note: "Ikifunga hapa, kila dau linarudi.", rule: "Bei ya saa 14:32 inaamua. Tofauti ikiwa ndogo kuliko $0.40, kila dau linarudi." },
+    en: { verdict: "Nobody leads", aged: "Nobody led", detail: "at 14:26 · Only $0.20 from the open — not enough to decide", note: "If it closes here, every stake comes back.", rule: "The price at 14:32 decides. Under $0.40 from the open, every stake comes back." },
+    sw: { verdict: "Hakuna anayeongoza", aged: "Hakuna aliyeongoza", detail: "saa 14:26 · Tofauti na ufunguzi $0.20 tu — haitoshi kuamua", note: "Ikifunga hapa, kila dau linarudi.", rule: "Bei ya saa 14:32 inaamua. Tofauti ikiwa ndogo kuliko $0.40, kila dau linarudi." },
     zh: { verdict: "暂无领先方", aged: "当时无领先方", detail: "14:26 时 · 与开盘价仅差 $0.20，不足以判定", note: "若以此价收盘，所有投注全额退还。", rule: "以 14:32 的价格判定。与开盘价相差不足 $0.40，所有投注全额退还。" },
   },
   S4: {
@@ -396,7 +400,7 @@ for (const [name, byLoc] of Object.entries(WANT)) {
     if (want.aged && seen(w.verdict, true) !== want.aged) bad.push(`aged verdict "${seen(w.verdict, true)}"`);
     if (seen(w.detail) !== want.detail) bad.push(`detail "${seen(w.detail)}"`);
     if (want.agedDetail && seen(w.detail, true) !== want.agedDetail) bad.push(`aged detail "${seen(w.detail, true)}"`);
-    if (want.rule && text(w.rule) !== want.rule) bad.push(`rule "${text(w.rule)}"`);
+    if (want.rule && seenRule(w.rule) !== want.rule) bad.push(`rule "${seenRule(w.rule)}"`);
     if ((w.note ?? undefined) !== want.note) bad.push(`note "${w.note}"`);
     ok(`12.${name}.${loc} ${want.verdict}`, bad.length === 0, bad.join(" · "));
   }
@@ -406,16 +410,29 @@ for (const [name, byLoc] of Object.entries(WANT)) {
   ok("12.S6 awaiting: 'Awaiting price', no second line, no guessed side", text(w.verdict) === dict.en.market.udAwaitingRead && w.detail === null && w.note === null);
   const asym = matchWords(dict.en as Dict, "en", band({ open: 85000, up: 85000.05, down: 84999.98, reads: [{ ms: O + 3 * MIN, price: 85001 }] }));
   ok("12.asym uneven targets state both prices, the side words named",
-    text(asym.rule) === "The price at 14:32 decides. Up at $85,000.05 or higher, Down at $84,999.98 or lower — in between, every stake comes back.", text(asym.rule));
+    seenRule(asym.rule) === "The price at 14:32 decides. Up at $85,000.05 or higher, Down at $84,999.98 or lower — in between, every stake comes back.", seenRule(asym.rule));
   // A paragraph boundary is a line break to a reader, so it is one here; inline tags are nothing.
   const strip = (s: string) => s.replace(/<\/p>/g, "\n").replace(/<[^>]+>/g, "");
   const w1 = matchWords(dict.sw as Dict, "sw", S1), w4 = matchWords(dict.sw as Dict, "sw", S4);
-  const swRule = html(w1.rule);
+  const swRule = html(w1.rule).replace(/<span class="kp-udrule__was">(?:[^<]|<span[^>]*>[^<]*<\/span>)*<\/span>/g, "");
   const swAll = renderToStaticMarkup(createElement(Fragment, null,
     createElement("p", { key: 1 }, w1.detail), createElement("p", { key: 2 }, w4.verdict), createElement("p", { key: 3 }, w4.detail)));
   const EATEN = ["kwa<span", "·Juu", "inaamua.Tofauti", "14:26·", "upandeBado"];
   const eaten = EATEN.filter((s) => (swAll + swRule).includes(s) || strip(swAll + swRule).includes(s));
   ok("12.html no eaten space in the markup or its text (kwa<span · ·Juu · inaamua.Tofauti · 14:26· · upandeBado)", eaten.length === 0, eaten.join(", "));
+  // ── frame panel 2026-09-27: the detail breaks only between its clauses; the rule turns past; the aged note ──
+  const d1 = html(w1.detail), d3 = html(matchWords(dict.sw as Dict, "sw", S3).detail);
+  ok("12.chunks the detail is two no-break clauses — 'saa 14:26 ·' | 'Juu ya ufunguzi kwa $18.52'",
+    /<span class="kp-udbug__chunk">saa <span[^>]*>14:26<\/span> ·<\/span> <span class="kp-udbug__chunk">Juu ya ufunguzi kwa <span class="amount">\$18\.52<\/span><\/span>/.test(d1), d1);
+  ok("12.chunks the level line breaks only at its dash — '… tu —' | 'haitoshi kuamua'",
+    /<span class="kp-udbug__chunk">Tofauti na ufunguzi <span class="amount">\$0\.20<\/span> tu —<\/span> <span class="kp-udbug__chunk">haitoshi kuamua<\/span>/.test(d3), d3);
+  for (const loc of ["en", "sw", "zh"] as const) {
+    const want = { en: "The price at 14:32 decided.", sw: "Bei ya saa 14:32 iliamua.", zh: "已以 14:32 的价格判定。" }[loc];
+    const r = seenRule(matchWords(dict[loc] as Dict, loc, S1).rule, true);
+    ok(`12.decided.${loc} past the deciding instant the rule reads "${want}"`, r.startsWith(want), r);
+  }
+  ok("12.aged note for a lead, none for kick-off or awaiting",
+    w1.agedNote === dict.sw.home.udMatchAgedNote && w4.agedNote === null && matchWords(dict.en as Dict, "en", S6).agedNote === null);
   ok("12.html …and the spaces are really there", swAll.includes("kwa <span") && strip(swRule).includes("inaamua. Tofauti") && strip(swAll).includes("14:26 · Juu"),
     `${strip(swAll)} ‖ ${strip(swRule)}`);
   const plantedRule = swRule.replace("</span> <span", "</span><span");

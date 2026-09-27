@@ -169,7 +169,8 @@ export default async function UpDownRoundPage({
     const o = decideOutcomeByTargets(heroLive, round.upTarget, round.downTarget);
     return o.voidReason === "source-failed" ? null : o.outcome === "UP" ? "up" as const : o.outcome === "DOWN" ? "down" as const : "level" as const;
   })();
-  const stamp = asset.sourceQuotedAt ? `${t.market.udQuoted} ${fmtEAT(asset.sourceQuotedAt)}` : null;
+  // No-break spaces: "imenukuliwa 18:55:02 EAT" is one unit and never splits at a line end.
+  const stamp = asset.sourceQuotedAt ? `${t.market.udQuoted}\u00A0${fmtEAT(asset.sourceQuotedAt).replace(/ /g, "\u00A0")}` : null;
   const moveText = move == null || move === 0 ? null
     : !decided && tone === "level" ? fill(t.market.udLevelBy, { amount: `$${Math.abs(move).toFixed(dec)}` })
       : `${move > 0 ? t.market.udAboveOpenBy : t.market.udBelowOpenBy} $${Math.abs(move).toFixed(dec)}`;
@@ -392,7 +393,10 @@ export default async function UpDownRoundPage({
             <AssetMark icon={asset.iconKey} ticker={ticker} size={44} />
             <div className="min-w-0">
               <h1 className="m-0 flex flex-wrap items-center gap-2">
-                <span className="overflow-hidden text-ellipsis whitespace-nowrap font-display text-title-lg font-bold leading-tight text-text">
+                {/* Wraps, balanced — never an ellipsis: at 360 in Swahili the one-line title printed "Bitcoin Juu na
+                    Ch…", the game's own name cut, on the page the landing band's picks land on (M4a; seen in the band's
+                    click-through frame, 2026-09-27). */}
+                <span className="font-display text-title-lg font-bold leading-tight text-text text-balance">
                   {name} {t.market.udTitle}
                 </span>
                 {/* PV-13c (2026-09-03) — was a raw `<span className="chip">`. */}

@@ -28,8 +28,13 @@ export function UpdownMatchScore({ children }: { children: ReactNode }) {
     <div className="kp-udbug" data-lead={w.lead}>
       <div className="kp-udbug__mid">
         <p className="kp-udbug__verdict">{w.verdict}</p>
-        {w.detail != null && <p className="kp-udbug__detail">{w.detail}</p>}
-        {w.note != null && <p className="kp-udbug__note">{w.note}</p>}
+        {/* Below 640 this block keeps two lines' height in every state, so the picks under it never move
+            when the 60-second refresh turns kick-off into a lead (frame panel, 2026-09-27). */}
+        <div className="kp-udbug__sub">
+          {w.detail != null && <p className="kp-udbug__detail">{w.detail}</p>}
+          {w.note != null && <p className="kp-udbug__note">{w.note}</p>}
+          {w.agedNote != null && <p className="kp-udbug__agednote">{w.agedNote}</p>}
+        </div>
       </div>
       {children}
     </div>

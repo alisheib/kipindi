@@ -951,7 +951,7 @@ function matchInk(selector: string, prop: "color" | "stroke" | "fill" | "backgro
   if (!m) throw new Error(`contrast-audit: "${selector} { ${prop} }" is not one colour token`);
   return token(m[1]);
 }
-function matchMix(selector: string, prop: "stroke"): { ink: Oklch; alpha: number } {
+function matchMix(selector: string, prop: "stroke" | "fill"): { ink: Oklch; alpha: number } {
   const m = new RegExp(`${prop}\\s*:\\s*color-mix\\(in oklab, var\\(--([\\w-]+)\\) (\\d+(?:\\.\\d+)?)%, transparent\\)`).exec(ruleBody(selector));
   if (!m) throw new Error(`contrast-audit: "${selector} { ${prop} }" is not a token faded with transparent`);
   return { ink: token(m[1]), alpha: Number(m[2]) / 100 };
@@ -961,6 +961,14 @@ const onPanel = (name: string, fg: Oklch, min: number, alpha?: number): Check =>
   ({ name: `R5 · ${name} on --wash-raised (worst stop)`, fg, bg: worstStop(fg, T.washRaisedStops), min, ...(alpha !== undefined ? { alpha } : {}) });
 const stemUp = matchMix(".kp-udtrack__stem--up", "stroke");
 const stemDown = matchMix(".kp-udtrack__stem--down", "stroke");
+// Frame panel 2026-09-27: once the verdict is past tense or betting has closed, the newest read steps down to the
+// earlier stems' 70% ink — still a mark that must read (1.4.11).
+const AGED = ".kp-updown:is([data-aged], [data-closed])";
+const agedStemUp = matchMix(`${AGED} .kp-udtrack__stem--latest.kp-udtrack__stem--up`, "stroke");
+const agedStemDown = matchMix(`${AGED} .kp-udtrack__stem--latest.kp-udtrack__stem--down`, "stroke");
+const agedBeadUp = matchMix(`${AGED} .kp-udtrack__bead--up`, "fill");
+const agedBeadDown = matchMix(`${AGED} .kp-udtrack__bead--down`, "fill");
+const voidBand = matchMix(".kp-udtrack__void", "fill");
 CHECKS.push(
   // ── text on the plate ──
   onPlate("verdict, level/kick-off (--text)", matchInk(".kp-udbug__verdict", "color")),
@@ -1001,6 +1009,13 @@ CHECKS.push(
   // The locked stretch is the quiet dialect (B12.2: 1px, dashed, 0.55) and never the sole sign of the
   // lock — the lock post and its glyph are. Measured and printed, not gated.
   { ...onPanel("locked stretch (quiet dialect, decorative — exempt)", matchInk(".kp-udtrack__locked", "stroke"), 3.0, ruleOpacity(".kp-udtrack__locked")), decorative: true },
+  onPanel(`aged/closed newest Up stem (${agedStemUp.alpha * 100}% alpha)`, agedStemUp.ink, 3.0, agedStemUp.alpha),
+  onPanel(`aged/closed newest Down stem (${agedStemDown.alpha * 100}% alpha)`, agedStemDown.ink, 3.0, agedStemDown.alpha),
+  onPanel(`aged/closed Up bead (${agedBeadUp.alpha * 100}% alpha)`, agedBeadUp.ink, 3.0, agedBeadUp.alpha),
+  onPanel(`aged/closed Down bead (${agedBeadDown.alpha * 100}% alpha)`, agedBeadDown.ink, 3.0, agedBeadDown.alpha),
+  // The void band is the refund zone drawn as a faint field; the rule's second sentence and the level note state
+  // it in words, so it is never the sole sign. Measured and printed, not gated.
+  { ...onPanel(`void band (${voidBand.alpha * 100}% field, decorative — exempt; stated in words)`, voidBand.ink, 3.0, voidBand.alpha), decorative: true },
 );
 
 /* ⛔ §P-u — AND THE CALL-SITE ALPHAS ARE BANNED OUTRIGHT ON INK, because no stylesheet rule

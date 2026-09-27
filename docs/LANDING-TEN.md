@@ -362,8 +362,18 @@ states, sketches and verification; this row is its summary). The price-line char
   pulse on the band (the page keeps one loop, the live dot); the verdict's ink fades on the tense swap only.
 - With no readable round: today's band, unchanged (S8). Full width (R4(6)).
 - **Guards:** `test:updown-match` (in predeploy) · `test:chart-one-home` D5 + members · `test:betting-ink` §4 ·
-  `test:contrast` R5 pairs · `red:chart-one-home`. The frame gate (`band-metrics.mjs`) and the agreement drive
-  (`band-agree.mjs`) of spec §15.4/§15.6 are still to be written.
+  `test:contrast` R5 pairs · `red:chart-one-home`.
+- **The local drive** (`scripts/qa/landing-v3/verify-band.sh` → `band-drive.mjs`, under the lock): one BTC chain of
+  15-minute rounds with ±$0.40 targets; S8 → S4 → S3 → S2 → S1 with a confirmed read planted every two minutes
+  through the dev-only `/api/dev-test/updown-observe` (the confirmed grid's own spacing); S5 and S7 by Playwright's
+  clock; frames as viewport tiles. It runs the numeric frame gate `band-metrics.mjs` (spec §15.4; its RED control
+  must report a wrapped caption AND a long band) and the agreement drive `band-agree.mjs` (§15.6) in S3, S2 and S1 ×
+  sw/en/zh, plus: served-HTML spacing, the click-through, Back re-anchoring the clock, the focus move at close, the
+  playhead parking on the flag, the void band drawn, and the R5(a) refresh bringing a newer read in without a reload.
+- ⚠️ **S6 ("Awaiting price") is not producible by the engine** (found by the drive, 2026-09-27): E-83 — `advanceChain`
+  never opens a round without its open price, so a refused open creates NO round and the band stays S8. The spec's
+  "S6 before the open confirms" (§15.3) cannot happen; S6 appears only when the store read fails (`reads: null`) and
+  is pinned by `test:updown-match` §8, not by a fault hook in a money store.
 - ⚠️ **V18:** the band shows no pool and no source by ruling (R5(b)) and is outside V18's population (the
   featured card, the grid cards, the board rows). If Ali reverses R5(b), the band joins V18 with
   `data-market-part` tags.
@@ -372,8 +382,11 @@ states, sketches and verification; this row is its summary). The price-line char
 work in crypto; one mid-range Android at 360, default brightness; frames A (S1 sw), B (S4 sw), C (S1 sw without
 the track) for 3 seconds each; Q1–Q4 asked in Swahili, answers verbatim. Pass: ≥ 80% on Q1, Q2, Q4 for A and on
 Q2, Q4 for B; Q3 under 60% forces a rewrite of the refund sentence. Native review: one sw and one zh reviewer
-(the strings the spec lists). **Record** (initials · phone · answers · verdict): *not run yet — Ali names the
-people (spec §16-3).*
+(the strings the spec lists). **Replaced by R8 (Ali, 2026-09-27):** the build performs the native Swahili (and zh)
+review and no human hallway test is waited for. **Record:** every band string passed the Tanzanian-usage review
+2026-09-27 and lost its "drafted" marker (sw + zh); one change — the tagline "…saa itakapoisha?" (reads as "when the
+hour ends") became the idiom "…muda ukiisha?". Checked on purpose: "saa 14:26" with 24-hour digits reads as clock
+time (Swahili time never passes 12); "ndogo kuliko" (not "chini ya", which would collide with the side name Chini).
 
 **WP12 · Frame rating** (spec §15.8 — every score 10 before shipping). Real local viewport tiles
 (`scripts/qa/landing-v3/capture.mjs`): S1 at 360/768/1280 × sw/en/zh, S2–S7 at 360 sw and 1280 en, S3 and S4

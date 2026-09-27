@@ -6,10 +6,11 @@
  *
  * It owns three things for the whole band, so no descendant computes them twice:
  *
- * 1. THE TENSE AND THE LOCK, as `data-aged` / `data-closed` on this element — the CSS swaps the verdict
- *    to past tense and the picks for padlocked sides from them. ⛔ NOT `:has()`: a browser without it
+ * 1. THE TENSE, THE LOCK AND THE DECIDING INSTANT, as `data-aged` / `data-closed` / `data-decided` on this
+ *    element — the CSS swaps the verdict to past tense, the picks for padlocked sides, and (once the deciding
+ *    price's instant has passed) the rule to "decided" and the clock row to "awaiting result". ⛔ NOT `:has()`: a browser without it
  *    would keep a present-tense "Juu inaongoza" for ever, which is stale-as-live. It re-renders only when
- *    one of those two flags flips (≤ 2 renders after mount), on the page's ONE shared second, in the same
+ *    one of those three flags flips (≤ 3 renders after mount), on the page's ONE shared second, in the same
  *    frame as the digits (`closed` is the digits' own test: `secondsUntil(betsClose) === 0`). The server
  *    renders `data-aged` already when the round is aged at render.
  *
@@ -60,11 +61,12 @@ export function UpdownMatchState({ className, round: initial, children }: {
   // Awaiting a price has no tense to lose.
   const canAge = round.reads != null && round.openPrice != null && round.upTarget != null && round.downTarget != null;
   const flags = (n: number) =>
-    `${canAge && agedAtMs != null && n >= agedAtMs ? 1 : 0}${secondsUntil(round.betsCloseAtMs, n) === 0 ? 1 : 0}`;
+    `${canAge && agedAtMs != null && n >= agedAtMs ? 1 : 0}${secondsUntil(round.betsCloseAtMs, n) === 0 ? 1 : 0}${n >= round.closesAtMs ? 1 : 0}`;
   const now = useServerNowGated(anchor, flags);
   const n = now ?? anchor;                       // SSR and first hydration: anchor === serverNowMs ⇒ identical markup
   const aged = canAge && agedAtMs != null && n >= agedAtMs;
   const closed = secondsUntil(round.betsCloseAtMs, n) === 0;   // the SAME test as the digits hitting 00
+  const decided = n >= round.closesAtMs;                        // the deciding price's instant has passed
 
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -116,7 +118,8 @@ export function UpdownMatchState({ className, round: initial, children }: {
   const value = useMemo(() => ({ round, anchorMs: anchor }), [round, anchor]);
   return (
     <MatchContext.Provider value={value}>
-      <div ref={ref} className={className} data-aged={aged || undefined} data-closed={closed || undefined}>
+      <div ref={ref} className={className} data-aged={aged || undefined} data-closed={closed || undefined}
+        data-decided={decided || undefined}>
         {children}
       </div>
     </MatchContext.Provider>

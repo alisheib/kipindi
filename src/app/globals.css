@@ -1202,7 +1202,12 @@ body {
   letter-spacing: 0.005em;
   text-shadow: 0 1px 0 oklch(20% 0.10 268 / 0.40);
 }
+/* The solid buttons' hover lift is gated to pointers that hover (here and on the four fills below). On touch a
+   :hover sticks to the last-tapped element, so the side a player tapped stayed lit after Back — on the landing's
+   Up & Down plate that is a lit leader (L17). Found in the band's frame panel, 2026-09-27; applied platform-wide. */
+@media (hover: hover) {
 .btn-primary:hover:not(:disabled) { filter: brightness(var(--btn-hover-gain)) saturate(1.04) drop-shadow(0 6px 16px color-mix(in oklab, var(--royal-400) 30%, transparent)); }
+}
 
 /* v2 kit: one flat-solid family — YES/NO/gold are SOLID fills (not gradients),
    with an EVEN 1px inset ring + soft shadow. (primary keeps its gradient.)
@@ -1223,7 +1228,9 @@ body {
   box-shadow: inset 0 0 0 1px oklch(80% 0.14 152 / 0.4), 0 1px 2px oklch(10% 0.05 264 / 0.35);
   text-shadow: 0 1px 1px oklch(20% 0.1 264 / 0.32);
 }
+@media (hover: hover) {
 .btn-yes:hover:not(:disabled) { filter: brightness(var(--btn-hover-gain)); box-shadow: inset 0 0 0 1px oklch(80% 0.14 152 / 0.4), 0 5px 16px oklch(60% 0.16 150 / 0.5); }
+}
 
 .btn-no {
   background: oklch(56% 0.200 25);
@@ -1234,7 +1241,9 @@ body {
   box-shadow: inset 0 0 0 1px oklch(80% 0.15 25 / 0.4), 0 1px 2px oklch(10% 0.05 264 / 0.35);
   text-shadow: 0 1px 1px oklch(20% 0.1 264 / 0.32);
 }
+@media (hover: hover) {
 .btn-no:hover:not(:disabled) { filter: brightness(var(--btn-hover-gain)); box-shadow: inset 0 0 0 1px oklch(80% 0.15 25 / 0.4), 0 5px 16px oklch(57% 0.20 25 / 0.5); }
+}
 
 .btn-ghost {
   background: transparent;
@@ -1252,9 +1261,11 @@ body {
   border-color: transparent;
   box-shadow: inset 0 0 0 1px oklch(80% 0.15 25 / 0.3), 0 1px 2px oklch(10% 0.05 264 / 0.35);
 }
+@media (hover: hover) {
 .btn-danger:hover:not(:disabled) {
   filter: brightness(var(--btn-hover-gain));
   box-shadow: inset 0 0 0 1px oklch(80% 0.15 25 / 0.3), 0 5px 16px oklch(60% 0.22 25 / 0.4);
+}
 }
 
 .btn-gold {
@@ -1265,7 +1276,9 @@ body {
   box-shadow: inset 0 0 0 1px oklch(95% 0.054 84 / 0.55), 0 1px 2px oklch(10% 0.05 262 / 0.35);
   letter-spacing: 0.02em;
 }
+@media (hover: hover) {
 .btn-gold:hover:not(:disabled) { filter: brightness(var(--btn-hover-gain)); box-shadow: inset 0 0 0 1px oklch(95% 0.054 84 / 0.55), 0 5px 16px oklch(80% 0.114 84 / 0.5); }
+}
 
 .btn-claret {
   background: linear-gradient(180deg, var(--claret-500) 0%, var(--claret-700) 100%);
@@ -5431,10 +5444,18 @@ textarea::-webkit-resizer {
     padding-left: var(--sp-6); border-left: 1px solid var(--border); }
 }
 .kp-updown__copy { grid-area: copy; min-width: 0; display: flex; flex-direction: column; gap: var(--sp-2); }
+.kp-updown__copy > p { text-wrap: balance; }
+/* The S8 line ("raundi 2 hai sasa | Raundi mpya …") is a sentence: the 13px floor, not the topic tiles' micro. */
+.kp-updown .kp-topic__m { font-size: var(--type-small); }
 .kp-updown__acts { grid-area: acts; display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-3); }
 /* (0,2,0) and (0,3,0): they beat the unlayered .btn and .kp-shead__link display rules. At close the
    quiet "all rounds" link gives way to the primary "play the next round" — the path forward. */
 .kp-updown .kp-updown__next { display: none; }
+/* "Raundi zote ›" keeps its 44px tap box, but the box's slack is spent in the gaps around it (as the Watch
+   link does), so the visible gap after the rule is the group's --sp-4, not ~32px (frame panel, 2026-09-27). */
+@media (max-width: 1023px) {
+  .kp-updown__acts .kp-updown__all { margin-block: calc((var(--sp-4) - var(--h-control-md)) / 2); }
+}
 .kp-updown[data-closed] .kp-updown__all { display: none; }
 .kp-updown[data-closed] .kp-updown__next { display: inline-flex; }
 
@@ -5455,6 +5476,13 @@ textarea::-webkit-resizer {
 .kp-updown[data-closed] .kp-udclock__row--open { display: none; }
 .kp-updown[data-closed] .kp-udclock__row--closed { display: flex; }
 .kp-udclock__glyph { flex: none; color: var(--text-faint); }
+.kp-udclock__decided { display: none; }
+.kp-updown[data-decided] .kp-udclock__closed { display: none; }
+.kp-updown[data-decided] .kp-udclock__decided { display: inline; }
+@media (max-width: 359px) {
+  /* density: general — the band's closed clock row fitting 320, not card spacing; both card-spacing settings. */
+  .kp-udclock__row--closed { flex-wrap: wrap; }
+}
 .kp-udclock__cap { font-size: var(--type-small); line-height: 1.35; color: var(--text-subtle); white-space: nowrap; }
 /* line-height 1: the digits' line box never outgrows the row's --sp-5, so the row is the same height open and
    closed (measured 2026-09-27: 23px open vs 20px closed at 768+, the band jumped at close). */
@@ -5478,8 +5506,11 @@ textarea::-webkit-resizer {
    Concentric radii: plate --r-lg (16) − 4px inset = the buttons' --r-md (12). */
 .kp-udbug { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-areas: "mid mid" "up down";
   gap: var(--sp-1); padding: var(--sp-1); background: var(--bg-inset); border: 1px solid var(--border); border-radius: var(--r-lg); }
+/* From 640 one row, and the middle takes 3.5 parts to the sides' one each: the level line "at 18:51 · Only $0.20
+   from the open — not enough to decide" needs ~377px, and at 1fr/2fr/1fr it broke mid-phrase at 1280 (measured
+   2026-09-27); the sides keep their 112px floor. */
 @media (min-width: 640px) {
-  .kp-udbug { grid-template-columns: minmax(112px, 1fr) minmax(0, 2fr) minmax(112px, 1fr);
+  .kp-udbug { grid-template-columns: minmax(112px, 1fr) minmax(0, 3.5fr) minmax(112px, 1fr);
     grid-template-areas: "up mid down"; align-items: center; }
 }
 .kp-udbug__mid { grid-area: mid; min-width: 0; display: flex; flex-direction: column; align-items: center;
@@ -5503,7 +5534,15 @@ textarea::-webkit-resizer {
 .kp-updown[data-aged] .kp-udbug__now { display: none; }
 .kp-updown[data-aged] .kp-udbug__was { display: inline; }
 .kp-updown[data-closed] .kp-udbug__cta { display: none; }
-.kp-udbug__detail, .kp-udbug__note { margin: 0; font-size: var(--type-small); line-height: 1.45; text-wrap: balance; }
+.kp-udbug__sub { display: flex; flex-direction: column; align-items: center; font-size: var(--type-small); }
+@media (max-width: 639px) {
+  /* density: general — the plate's two-tier layout below its one-row width, not card spacing; both settings. */
+  .kp-udbug__sub { min-height: calc(2 * 1.45em); }
+}
+.kp-udbug__detail, .kp-udbug__note, .kp-udbug__agednote { margin: 0; font-size: var(--type-small); line-height: 1.45; text-wrap: balance; }
+.kp-udbug__chunk { white-space: nowrap; }
+.kp-udbug__agednote { display: none; color: var(--text-subtle); }
+.kp-updown[data-aged]:not([data-closed]) .kp-udbug__agednote { display: block; }
 .kp-udbug__detail { color: var(--text-muted); }
 .kp-udbug__detail .amount { font-weight: 700; color: var(--text); }
 .kp-udbug__note { color: var(--text-subtle); }
@@ -5538,7 +5577,7 @@ textarea::-webkit-resizer {
 .kp-udtrack__post { stroke: var(--text-faint); stroke-width: 1; }
 .kp-udtrack__void { fill: color-mix(in oklab, var(--text-subtle) 22%, transparent); }
 .kp-udtrack__kick { fill: var(--text-subtle); }
-.kp-udtrack__tie { stroke: var(--text-muted); stroke-width: 2; stroke-linecap: round; }
+.kp-udtrack__tie { stroke: var(--text-subtle); stroke-width: 2; stroke-linecap: round; }
 .kp-udtrack__stem { stroke-width: 2; stroke-linecap: round; }
 .kp-udtrack__stem--up { stroke: color-mix(in oklab, var(--yes-400) 70%, transparent); }
 .kp-udtrack__stem--down { stroke: color-mix(in oklab, var(--no-400) 70%, transparent); }
@@ -5547,6 +5586,12 @@ textarea::-webkit-resizer {
 .kp-udtrack__stem--latest.kp-udtrack__stem--down { stroke: var(--no-400); }
 .kp-udtrack__bead--up { fill: var(--yes-300); transform: translateY(-4px); }
 .kp-udtrack__bead--down { fill: var(--no-300); transform: translateY(4px); }
+/* Emphasis follows the tense: a stale or closed verdict is muted, so its read no longer shouts either. The hue
+   still names the side; only the full-strength emphasis leaves (frame panel, 2026-09-27). */
+.kp-updown:is([data-aged], [data-closed]) .kp-udtrack__stem--latest.kp-udtrack__stem--up { stroke: color-mix(in oklab, var(--yes-400) 70%, transparent); }
+.kp-updown:is([data-aged], [data-closed]) .kp-udtrack__stem--latest.kp-udtrack__stem--down { stroke: color-mix(in oklab, var(--no-400) 70%, transparent); }
+.kp-updown:is([data-aged], [data-closed]) .kp-udtrack__bead--up { fill: color-mix(in oklab, var(--yes-300) 70%, transparent); }
+.kp-updown:is([data-aged], [data-closed]) .kp-udtrack__bead--down { fill: color-mix(in oklab, var(--no-300) 70%, transparent); }
 .kp-udtrack__elapsed { position: absolute; left: 0; top: calc(50% - 1px); height: 2px; width: var(--x);
   background: var(--text-subtle); border-radius: var(--r-pill); pointer-events: none; }
 .kp-udtrack__now { position: absolute; top: 20%; bottom: 20%; left: var(--x); width: 2px; margin-left: -1px;
@@ -5557,10 +5602,13 @@ textarea::-webkit-resizer {
   font-size: var(--type-small); line-height: 1.45; text-wrap: pretty; }
 .kp-udrule__glyph { display: flex; align-items: center; height: 1.45em; color: var(--text-subtle); }
 .kp-udrule__decides { color: var(--text-muted); }
+.kp-udrule__was { display: none; }
+.kp-updown[data-decided] .kp-udrule__now { display: none; }
+.kp-updown[data-decided] .kp-udrule__was { display: inline; }
 .kp-udrule__refund { color: var(--text-subtle); }
 /* keep-all everywhere EXCEPT zh — the trust band's measured rule (trust-band.tsx): in Chinese it forbids
    a break between characters and leaves a paragraph ending after seven glyphs. */
-html:not([lang="zh"]) :is(.kp-udbug__detail, .kp-udbug__note, .kp-udrule) { word-break: keep-all; overflow-wrap: break-word; }
+html:not([lang="zh"]) :is(.kp-udbug__detail, .kp-udbug__note, .kp-udbug__agednote, .kp-udrule) { word-break: keep-all; overflow-wrap: break-word; }
 
 /* ── WP14 THE WALLET (landing v3 · Ali's ruling R1, 2026-09-26) ─────────────────────────────────
    The balance chip opens it: a bottom sheet below 1024, a panel under the chip from 1024 (`<Modal
@@ -6210,6 +6258,12 @@ html:not([lang="zh"]) :is(.kp-udbug__detail, .kp-udbug__note, .kp-udrule) { word
 .ud-prices { margin-top: var(--ud-gap-sm); }
 .ud-act { margin-top: auto; padding-top: var(--ud-act-pt); }
 .ud-foot { margin-top: var(--ud-gap-lg); padding-top: var(--ud-gap-sm); }
+/* The round page's open + targets: beside the confirmed price where there is room; below 400 they wrap under it
+   and read as a left-aligned list, not a column floating at the right (frame panel, 2026-09-27). */
+@media (max-width: 399px) {
+  /* density: general — the round page's figures wrapping under the price, not card spacing; both settings. */
+  .ud-hero-stats { flex-basis: 100%; text-align: left; }
+}
 
 /* ── THE ASSET MARK (`asset-mark.tsx`, hoisted from the card 2026-09-27 · landing v3, R5) ─────────
    One round glyph chip on the board card, the round page and the landing band. Its size is `--mark`:
