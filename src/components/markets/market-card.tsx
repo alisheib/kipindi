@@ -10,12 +10,14 @@ import { Modal } from "@/components/ui/modal";
 import { ShareButton } from "@/components/markets/share-button";
 import { Chip } from "@/components/ui/chip";
 import { STATUS_TONE, TONE_CHIP } from "@/lib/status-tone";
-import { cn, formatTzs } from "@/lib/utils";
+import { cn, fill, formatTzs } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
 import { pickLocalized, marketCategoryLabel } from "@/lib/localized";
 import { outcomeWord, sideWord, type LabelProductLine } from "@/lib/side-label";
 import { MicroSpark } from "@/components/charts/micro-spark";
-import { isTipping, priceState } from "@/lib/markets/price-state";
+import { dayAgoYesPct, isTipping, priceState } from "@/lib/markets/price-state";
+import { closesWithinTheHour } from "@/lib/markets/time-left";
+import { FEATURED_PREDICTOR_FLOOR, featuredShowsPredictors } from "@/lib/markets/featured";
 
 type Props = {
   id: string;
@@ -69,6 +71,17 @@ type Props = {
    *  a comment that quotes deleted code is a decoy anchor. */
   productLine: LabelProductLine;
   sourceUrl?: string;
+  /** LANDING ONLY (landing v3 WP3/WP4, gate V18, K36): the NAME of the source this market settles on — the
+   *  registry's label, else the host — resolved on the server (`sourceNameFor`). The card never reads the
+   *  registry and never parses a URL. Absent on every other surface, so the /markets card and its skeleton
+   *  (`--mcard-h`, `qa:card-geometry`) do not change. */
+  sourceName?: string;
+  /** Featured card only (WP3): the betting-close line, worded on the server ("Closes 27 Sep" —
+   *  `market.closesOn` over `formatEatDate`). The same instant the top-right countdown counts to. */
+  closesOn?: string;
+  /** Milliseconds of betting left when `timeLeft` was computed — the same deadline, the same clock. It
+   *  drives SOON in every locale (INHERIT-MANIFEST L17); absent → no SOON. */
+  msLeft?: number;
   /** Recent YES% series for the sparkline (optional). */
   spark?: number[];
   /** 24h move in probability points (optional). */
@@ -95,13 +108,19 @@ type Props = {
    */
   isNew?: boolean;
   /**
-   * Lead card of a board. Spans two columns from `md` up and takes a slightly
-   * stronger edge + the royal wash, so a board has somewhere for the eye to
-   * land and a SHORT board still reads composed rather than as leftovers.
-   *
-   * A state of this card, never a second component (B9) — and deliberately
-   * restrained: no type-size change, no new glow. A "featured" card that
-   * restyled itself would be a second design to keep in sync forever.
+   * The landing hero's lead market — passed ONLY by `landing-hero.tsx`, so every `featured` branch below is
+   * landing-only. A state of this card, never a second component (B9). Since landing v3 WP3 it is the one
+   * card that restyles itself, and each difference is named here:
+   *   · the time left sits top-right (`.mcardp-closes`), not in the meta row;
+   *   · the question is whole from 640px (h4, h3 from 1024) and clamps at 3 lines below it — the first
+   *     screen's budget at 360 (V15, hero v3);
+   *   · a meta line — "Closes 27 Sep · Settles on {source}" — under the question from 640, and under the
+   *     YES/NO row below it (the V15 budget), after the pick ON SCREEN only: in the reading order it stays
+   *     before the pick (K36);
+   *   · the 24h mark on the bar and "▲n · 24h ago" beside it, only between two prices;
+   *   · the bar is an IMAGE named by the whole split ("62% YES, 38% NO");
+   *   · below `FEATURED_PREDICTOR_FLOOR` predictors it withholds the count and the crest row (R7).
+   * No new glow and no new colour: the edge and the royal wash are the whole of its look.
    */
   featured?: boolean;
   className?: string;
@@ -120,14 +139,16 @@ type Props = {
  * once, because all four render this component.
  */
 function getSignalBadge(
-  live: boolean, yesPct: number | null, volume: number, predictors: number, timeLeft: string, fresh: boolean,
+  live: boolean, yesPct: number | null, volume: number, predictors: number, msLeft: number | undefined, fresh: boolean,
   labels: { hot: string; soon: string; tipping: string; new: string },
 ): { kind: "hot" | "soon" | "tipping" | "new"; label: string } | null {
   if (!live) return null;
   // A brand-new market is NEW, never "tipping" — it isn't balanced, it's empty.
   if (fresh) return { kind: "new", label: labels.new };
   if (volume >= 30_000 || predictors >= 40) return { kind: "hot", label: labels.hot };
-  if (/^\d+m left$/.test(timeLeft) || /^\d+s left$/.test(timeLeft)) return { kind: "soon", label: labels.soon };
+  // ⭐ L17 · SOON asks the MILLISECONDS, never the label. The label is in the reader's language, and the old
+  // test of the English one never fired in Swahili or Chinese. One rule: `closesWithinTheHour` (time-left.ts).
+  if (closesWithinTheHour(msLeft)) return { kind: "soon", label: labels.soon };
   // "Tipping" REQUIRES A REAL POOL — an empty 50/50 is not a contest.
   // ⛔ The test used to be `volume > 0 || predictors > 0`, and the OR is the defect:
   // "tipping" is a claim about money sitting on both sides, and `predictors` is not
@@ -158,6 +179,20 @@ function MoveText({ move, label }: { move: number; label: string }) {
     <span className="mcardp-move" title={label} style={{ color }}>
       {dir === "up" ? <I.trendingUp s={10} className={nudge ? "g-nudge-up" : undefined} /> : dir === "down" ? <I.trendingDown s={10} className={nudge ? "g-nudge-down" : undefined} /> : <I.arrowRight s={10} />}
       {move > 0 ? "+" : ""}{move}<span className="u">pt</span>
+    </span>
+  );
+}
+
+/** WP3 · the featured card's 24h delta, keyed to the mark on its bar ("▲5 · 24h ago"). Neutral ink: a move
+ *  of the YES price is not a side (§B2a). The triangle is decoration; a screen reader hears the sign. The
+ *  small key before it is the mark's own shape, so the line is the mark's legend (no row under the bar). */
+function DayAgoMove({ move, label }: { move: number; label: string }) {
+  return (
+    <span className="mcardp-h24">
+      <span className="mcardp-h24-key" aria-hidden />
+      <span aria-hidden>{move > 0 ? "▲" : move < 0 ? "▼" : "±"}</span>
+      <span className="sr-only">{move > 0 ? "+" : move < 0 ? "−" : "±"}</span>
+      {Math.abs(move)}{" · "}{label}
     </span>
   );
 }
@@ -237,7 +272,7 @@ function HowItWorks() {
 }
 
 export function MarketCard({
-  id, titleEn, titleSw, titleZh, category, yesPool, noPool, predictors, timeLeft, status, resolvedOutcome, productLine, spark, move24h, traders, selectionClosed, comments, isNew, featured, className,
+  id, titleEn, titleSw, titleZh, category, yesPool, noPool, predictors, timeLeft, status, resolvedOutcome, productLine, sourceName, closesOn, msLeft, spark, move24h, traders, selectionClosed, comments, isNew, featured, className,
 }: Props) {
   const router = useRouter();
   const { t, locale } = useT();
@@ -322,7 +357,7 @@ export function MarketCard({
      question above (the D29 gate, and `isNew` can still force it); `oneSided` is the second way a
      card has no price, and it is a different claim — money IS on it — so it gets its own words. */
   const showPrice = !noPrice && price.kind === "priced";
-  const signal = getSignalBadge(live, showPrice ? yesPct : null, volume, predictors, timeLeft, fresh, {
+  const signal = getSignalBadge(live, showPrice ? yesPct : null, volume, predictors, msLeft, fresh, {
     hot: t.common.hot, soon: t.common.soon, tipping: t.market.tipping, new: t.common.newBadge,
   });
   /** The settled side, or null when we genuinely don't know. Never inferred from
@@ -348,6 +383,37 @@ export function MarketCard({
   // ⛔ Nor on a one-sided one (WP6): its history is a line pinned at 100 or 0, which draws the very
   // certainty the card has just stopped printing.
   const showSpark = !fresh && !oneSided && Array.isArray(spark) && spark.length >= 4;
+  /* ⭐ WP3 · THE 24h MARK — featured only, only where a price exists NOW and a move was measured between two
+     prices (`cardChartFrom`, C1; `dayAgoYesPct`). One-sided, empty or fresh: no mark and no delta (WP6). The
+     mark and the "▲n" read ONE number: the delta is `yesPct − dayAgo`, never a comparison. */
+  const dayAgo = featured && live && showPrice ? dayAgoYesPct(yesPool, noPool, move24h) : null;
+  /* The featured bar is an IMAGE of the split (`as="img"`), so its name is the whole reading — "62% YES,
+     38% NO" in this card's own side words — never "progress bar, 62 percent". Featured and priced only. */
+  const barReading = featured && showPrice
+    ? fill(t.market.barReading, { yesPct, yesWord: sideWord(t, "YES", productLine), noPct: 100 - yesPct, noWord: sideWord(t, "NO", productLine) })
+    : null;
+  /* WP3/WP4 · the meta line: the close (featured only) and the NAMED source (the landing only — V18, K36).
+     The name is its own span — the part the gate reads — set inside the dictionary's sentence, so each
+     locale keeps its own word order. Text, never a link: the card is one stretched link already (WP17),
+     and the market page links the source. */
+  const [settlesPre = "", settlesPost = ""] = t.market.settlesOn.split("{source}");
+  const metaLine = closesOn || sourceName ? (
+    <>
+      {closesOn}
+      {closesOn && sourceName ? " · " : null}
+      {sourceName && (
+        <>
+          {settlesPre}
+          <span className="mcardp-srcname" data-market-part="source">{sourceName}</span>
+          {settlesPost}
+        </>
+      )}
+    </>
+  ) : null;
+  /* ⭐ WP3 · THE PREDICTOR FLOOR (R7): the featured card — the page's lead market — withholds its count and
+     its crest row below `FEATURED_PREDICTOR_FLOOR` ("2 watabiri" there reads as a dead market). It says so
+     to the gate (V18 accepts exactly that), and every other card states its count at any size (K48). */
+  const showDepth = !featured || featuredShowsPredictors(predictors, fresh);
   /* The refund rule (WP6), restating `settleMarket`'s one-sided branch and rules §7: every stake back in
      full, whatever the verdict. ONE conditional sentence in every unsettled phase — "If betting closes
      one-sided…" — and never a closed-phase "will be refunded". 🔴 That variant was built and withdrawn
@@ -416,6 +482,10 @@ export function MarketCard({
         )}
         <span className="mcardp-catico"><CatIco /></span>
         <span className="mcardp-cat">{catLabel}</span>
+        {/* ⭐ WP3 · the featured card's time left, top-right (the delivery's placement), in the neutral ink:
+            time is not a side (§B2a, `test:betting-ink`). It keeps to the right on whichever line it lands
+            when the chips wrap (D65 — chips wrap, never cut). */}
+        {featured && <span className="mcardp-closes" data-market-part="time">{timeLeft}</span>}
       </div>
 
       <div className="mcardp-head">
@@ -423,8 +493,13 @@ export function MarketCard({
           {/* The featured card is only ever the landing hero's, where it follows the page's h1
               directly — so its question is the h2, and the heading order has no gap (WP17). */}
           {featured ? <h2 className="mcardp-q">{title}</h2> : <h3 className="mcardp-q">{title}</h3>}
+          {/* A grid card's source line lives in the question column, so it stays with its question when
+              the grid stretches the card (the head grows, the column does not move). */}
+          {!featured && metaLine && <p className="mcardp-src">{metaLine}</p>}
         </div>
-        <div className="mcardp-prob">
+        {/* `data-market-part` (the gate's V18): a price or a result is stated here; the em-dash arms are not
+            a label, so they carry none — their words are the one-sided label and the no-bets line below. */}
+        <div className="mcardp-prob" data-market-part={resolvedOutcome ? "state" : showPrice ? "price" : undefined}>
           {/* 🔴 D29 · THE OUTCOME COMES FIRST, and it used to be gated on `isResolved` — which is
               `status === "RESOLVED"` and so is FALSE on a VOIDED market. A void therefore fell
               through to the percentage arm and printed the empty pool's default 50%. Keying on
@@ -460,6 +535,11 @@ export function MarketCard({
           )}
         </div>
       </div>
+      {/* ⭐ WP3 · the featured meta line is a child of the CARD, placed here — after the question, before the
+          pick — so the reading order names the source before YES/NO at every width (K36). From 640 it sits
+          here on screen too; below 640 CSS `order` shows it under the YES/NO row, because the first screen at
+          360 has no room above it (V15, hero v3). It is text, not a control: the focus order is unchanged. */}
+      {featured && metaLine && <p className="mcardp-src mcardp-src--featured">{metaLine}</p>}
 
       {/* Move-line slot — always present on live cards (reserved height) so the
           bar sits at the same offset whether or not a 24h move exists. */}
@@ -472,9 +552,11 @@ export function MarketCard({
       {(live || oneSided) && (
         <div className="mcardp-moveline">
           {oneSided ? (
-            <span className="mcardp-oneside">{t.market.oneSideOnly}</span>
+            <span className="mcardp-oneside" data-market-part="state">{t.market.oneSideOnly}</span>
+          ) : dayAgo !== null ? (
+            <DayAgoMove move={yesPct - dayAgo} label={t.market.h24Ago} />
           ) : (
-            !fresh && move24h !== undefined && <MoveText move={move24h} label={t.market.twentyFourHourMove} />
+            !featured && !fresh && move24h !== undefined && <MoveText move={move24h} label={t.market.twentyFourHourMove} />
           )}
         </div>
       )}
@@ -493,8 +575,12 @@ export function MarketCard({
           A settled card still names its rail by the outcome first. */}
       {/* ⚠️ And "No bets yet" only where nobody EVER bet: a market whose only bettor cashed out has an
           empty pool and a predictor — its rail is "No pool yet", the D29 rule the caption already keeps. */}
-      <TippingBar yesPct={yesPct} height={7} resolved={isResolved} showLabels={false} recastOnHover={false} empty={noPrice || oneSided} emptyLabel={outcomeLabel ?? (oneSided ? t.market.oneSideOnly : neverBet ? t.market.noBetsYet : t.market.noPoolYet)} probabilityLabel={t.market.probBarAria.replace("{side}", sideWord(t, "YES", productLine))} />
-      {noPrice && neverBet && <div className="mcardp-nobets">{t.market.noBetsYet}</div>}
+      <TippingBar yesPct={yesPct} height={7} resolved={isResolved} showLabels={false} recastOnHover={false} empty={noPrice || oneSided} emptyLabel={outcomeLabel ?? (oneSided ? t.market.oneSideOnly : neverBet ? t.market.noBetsYet : t.market.noPoolYet)} probabilityLabel={barReading ?? t.market.probBarAria.replace("{side}", sideWord(t, "YES", productLine))} as={featured ? "img" : undefined} mark={dayAgo} />
+      {noPrice && neverBet && <div className="mcardp-nobets" data-market-part="state">{t.market.noBetsYet}</div>}
+      {/* ⭐ V18 · A LIVE MARKET WHOSE ONLY BETTOR CASHED OUT showed the em-dash, a rail whose "No pool yet" was
+          only its accessible name, and "TZS 0" — no visible word for why there is no price. The same line a
+          never-bet card has, in the rail's own words (D29: never "No bets yet" — somebody did bet). */}
+      {live && noPrice && !neverBet && <div className="mcardp-nobets" data-market-part="state">{t.market.noPoolYet}</div>}
       {/* The refund rule, read at the reading floor (a sentence, not a micro-label: L6). It takes the
           slot the 24h band would, which a one-sided card never draws, so the card grows only by the
           note's own lines. */}
@@ -510,9 +596,10 @@ export function MarketCard({
           which reads as failure rather than opportunity.
           2026-09-13 — on a fresh card the invitation is centred to match the centred
           empty-pool caption right above it; the two stacked lines had split alignment. */}
+      {showDepth && (
       <div className={fresh ? "mcardp-traders justify-center" : "mcardp-traders"}>
         {fresh ? (
-          <span className="t-txt mcardp-befirst">{t.market.beFirst}</span>
+          <span className="t-txt mcardp-befirst" data-market-part="predictors">{t.market.beFirst}</span>
         ) : (
           <>
             {hasTraders && (
@@ -522,13 +609,14 @@ export function MarketCard({
                 ))}
               </span>
             )}
-            <span className="t-txt"><b>{predictors.toLocaleString()}</b> {predictors === 1 ? t.market.predictorsCountOne : t.market.predictorsCount}</span>
+            <span className="t-txt" data-market-part="predictors"><b>{predictors.toLocaleString()}</b>{" "}{predictors === 1 ? t.market.predictorsCountOne : t.market.predictorsCount}</span>
           </>
         )}
       </div>
+      )}
 
       {live ? (
-        <div className="mcardp-actions">
+        <div className="mcardp-actions" data-market-part="pick">
           {/* 🔴 THE ARIA NAME IS BUILT FROM THE SAME `sideWord()` CALL AS THE VISIBLE LABEL.
               It used to come from the fixed `backYesAria` / `backNoAria` keys, which say
               YES / NO whatever the product — so on an Up & Down row the eye read UP and the
@@ -564,7 +652,7 @@ export function MarketCard({
       )}
 
       <div className="mcardp-meta">
-        <span>{fresh ? t.market.noPoolYet : formatTzs(volume)}</span>
+        <span data-market-part="pool">{fresh ? t.market.noPoolYet : formatTzs(volume)}</span>
         {comments != null && comments > 0 && (
           <>
             <span className="dot" />
@@ -572,8 +660,9 @@ export function MarketCard({
           </>
         )}
         <span className="mcardp-meta-right">
-          <span className={cn("mcardp-timeleft", live && "live")}>
-            {timeLeft}
+          {/* The featured card states its time top-right (WP3); its info button stays here. */}
+          <span className={cn("mcardp-timeleft", live && "live")} data-market-part={featured ? undefined : "time"}>
+            {!featured && timeLeft}
             {live && <HowItWorks />}
           </span>
         </span>
@@ -626,6 +715,10 @@ export function MarketCard({
          driver must not parse a visible word on a trilingual product. One attribute serves every
          surface this card appears on: /markets, /results and /watchlist. */
       data-row-id={id}
+      /* The gate's V18 surface (the featured card or a grid card) — inert everywhere else. A featured card
+         that withholds its count (R7) states the count and the floor, so the gate can check the rule. */
+      data-market-surface={featured ? "featured" : "card"}
+      {...(showDepth ? {} : { "data-market-predictors": predictors, "data-market-depth-floor": FEATURED_PREDICTOR_FLOOR })}
       className={cn("mcardp group", featured && "mcardp--featured", className)}
       style={{ cursor: "pointer" }}
     >

@@ -796,6 +796,13 @@ export const dict = {
       showMarketN: "Show market {n}", prevMarket: "Previous market", nextMarket: "Next market", showResultN: "Show notable result {n}",
       similarMarkets: "Similar markets", similarMarketsBody: "Live now — place another prediction without going back.",
       twentyFourHourMove: "24h move",
+      // landing v3 · WP3/WP4 — a market's meta line and the featured card's 24h mark. The source NAME is a
+      // proper name (a registry label, else a host) and is never translated. `barReading` is the featured
+      // bar's accessible name: the whole split, in the same side words as the buttons.
+      closesOn: "Closes {date}",
+      settlesOn: "Settles on {source}",
+      h24Ago: "24h ago",
+      barReading: "{yesPct}% {yesWord}, {noPct}% {noWord}",
       noLiveMatch: "No live markets match",
       // Market detail page
       closedAwaitingSettlement: "Closed · Awaiting settlement",
@@ -3460,6 +3467,14 @@ export const dict = {
       showMarketN: "Onyesha soko {n}", prevMarket: "Soko lililopita", nextMarket: "Soko linalofuata", showResultN: "Onyesha tokeo maarufu {n}",
       similarMarkets: "Masoko yanayofanana", similarMarketsBody: "Hai sasa — weka utabiri mwingine bila kurudi nyuma.",
       twentyFourHourMove: "Mwenendo wa saa 24",
+      // landing v3 · WP3/WP4 — R8 native review (Tanzanian usage, the dictionary's own words): the subject is
+      // "soko" (li-), so both halves of one meta line agree — "Litafungwa 27 Sep · Linatatuliwa kwa …".
+      // "Litafungwa" is the notice form for a scheduled close (future); "linatatuliwa kwa" is the settling
+      // phrase `howStep2B` / `twoOfficerBody` already use; "saa 24" as in `twentyFourHourMove`.
+      closesOn: "Litafungwa {date}",
+      settlesOn: "Linatatuliwa kwa {source}",
+      h24Ago: "saa 24 zilizopita",
+      barReading: "{yesWord} {yesPct}%, {noWord} {noPct}%",
       noLiveMatch: "Hakuna soko hai linalolingana",
       closedAwaitingSettlement: "Imefungwa · Inasubiri utatuzi",
       volume: "Kiasi", predictors: "Watabiri", resolves: "Inaisha",
@@ -5683,6 +5698,12 @@ export const dict = {
       showMarketN: "显示市场 {n}", prevMarket: "上一个市场", nextMarket: "下一个市场", showResultN: "显示精选结果 {n}",
       similarMarkets: "相似市场", similarMarketsBody: "正在进行——无需返回即可再下一注。",
       twentyFourHourMove: "24小时变动",
+      // landing v3 · WP3/WP4 — reviewed (R8): 截止 as in `closingSoon`; 结算来源 as in `settledSourceNewTab`;
+      // the side words in 「」 as in `probBarAria`; "{date} 截止" follows `home.settledOn`'s "{date} 结算".
+      closesOn: "{date} 截止",
+      settlesOn: "结算来源：{source}",
+      h24Ago: "24小时前",
+      barReading: "「{yesWord}」{yesPct}%，「{noWord}」{noPct}%",
       noLiveMatch: "没有匹配的直播市场",
       closedAwaitingSettlement: "已关闭 · 等待结算",
       volume: "成交量", predictors: "预测者", resolves: "结算时间",

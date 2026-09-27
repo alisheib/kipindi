@@ -31,12 +31,13 @@
  * Every value comes from a token via a class in `globals.css` — see the `.kp-hero*` block there.
  */
 import Link from "next/link";
-import { I, categoryGlyph } from "@/components/ui/glyphs";
+import { I } from "@/components/ui/glyphs";
 import { MarketCard } from "@/components/markets/market-card";
 import { TippingBar } from "@/components/brand";
 import { fill, formatNumber, formatTzs, formatTzsCompact } from "@/lib/utils";
 import { pickLocalized } from "@/lib/localized";
 import { timeLeftLabel } from "@/lib/markets/time-left";
+import { formatEatDate } from "@/lib/eat-day";
 import { HELPLINE, HELPLINE_TEL } from "@/lib/support-config";
 import type { Dict, Locale } from "@/lib/i18n-dict";
 import type { HeroFigures, HeroRow } from "@/lib/markets/hero";
@@ -148,56 +149,111 @@ function TrustLines({ t }: { t: Dict }) {
   );
 }
 
-function QuestionRow({ row, t, locale }: { row: HeroRow; t: Dict; locale: Locale }) {
-  const Glyph = I[categoryGlyph(row.category)];
-  /* ⭐ WP6 · the row's price state comes from its POOLS, exactly as the market card's does
-     (`price-state.ts`): empty → "No bets yet"; one side only → "One side only" (ruling 13 — never
-     "no bets", money is on it); both sides → the price within 1–99 (L14), and the lean rule drawn
-     from that same figure. `row.yesPct` is the rounded share, which reads 100 on a one-sided pool. */
+/**
+ * ONE ROW OF THE CLOSING-SOONEST BOARD (landing v3 · WP4).
+ *
+ * ⭐ AN `<li>` HOLDING THREE SIBLING ZONES, NEVER ONE LINK (WP17). The row used to BE a `<Link>`, which
+ * left no room for a side to be picked from it: an `<a>` may not hold another control. Now:
+ *   · the head link — the question and its meta line ("Closes 27 Sep · Settles on {source} · Pool TZS n ·
+ *     n predictors"), the concept's tap target, at least `--h-control-md` tall so a one-line question is
+ *     never a 21px target (V4);
+ *   · the reading — the price or the labelled state, the time left, and the 6px bar (not interactive);
+ *   · the pick — YES@ / NO@ as two real links to `/markets/{id}?side=…`, which locks the side for a player
+ *     and keeps it through sign-up for a visitor, until D3's pick slip takes the tap (WP5).
+ * ⭐ THE ROW'S PRICE STATE COMES FROM ITS POOLS, exactly as the card's does (`price-state.ts`, WP6): both
+ *   sides → the price within 1–99 (L14) and the figures on the buttons; one side → "One side only", the
+ *   dashed rail, bare buttons and the refund rule; empty → "No bets yet" only where nobody ever bet, else
+ *   "No pool yet" (the D29 rule: `predictorCount` is never decremented, so a cashed-out market has a pool
+ *   of 0 and a predictor). ONE label, read by the price slot and the rail alike.
+ * ⭐ NO 24h MARK ON A ROW (the concept draws none) and no share (WP14b: the footer share is the cards').
+ * ⛔ `row.yesPct` is the rounded share — 100 on a one-sided pool — and is never read here.
+ * The gate's V18 reads the row through `data-market-surface` / `data-market-part`, never through a word.
+ */
+function QuestionRow({ row, t, locale, nowMs }: { row: HeroRow; t: Dict; locale: Locale; nowMs: number }) {
   const price = priceState(row.yesPool, row.noPool);
+  const title = pickLocalized(locale, row.titleEn, row.titleSw, row.titleZh);
+  const yesWord = sideWord(t, "YES", "MARKET");
+  const noWord = sideWord(t, "NO", "MARKET");
+  const timeLeft = row.selectionClosed ? t.home.waitingForResults : timeLeftLabel(row.bettableUntilMs, nowMs, {
+    closed: t.market.closed, days: t.market.timeLeftD, hours: t.market.timeLeftH, minutes: t.market.timeLeftM,
+  }, fill);
+  // The instant the countdown counts to, as a day (the Gaming Board's "a timer names its instant").
+  const closes = fill(t.market.closesOn, { date: formatEatDate(row.bettableUntilMs, nowMs, t.common.monthsShort, locale) });
+  const [settlesPre = "", settlesPost = ""] = t.market.settlesOn.split("{source}");
+  const emptyLabel = price.kind === "oneSided" ? t.market.oneSideOnly : row.predictors === 0 ? t.home.heroNoPrice : t.market.noPoolYet;
+  const oneSidedNote = price.kind === "oneSided" ? t.market.oneSidedNote.replace("{side}", sideWord(t, price.emptySide, "MARKET")) : null;
+  // The card's own names for the pair, so one control has one vocabulary: no figure without a price.
+  const yesAria = (price.kind === "priced" ? t.market.backSideAria.replace("{pct}", String(price.yesPct)) : t.market.backSideAriaNoPrice).replace("{side}", yesWord);
+  const noAria = (price.kind === "priced" ? t.market.backSideAria.replace("{pct}", String(100 - price.yesPct)) : t.market.backSideAriaNoPrice).replace("{side}", noWord);
   return (
-    <Link href={`/markets/${row.id}` as never} className="kp-qrow">
-      <span className="kp-qrow__glyph" aria-hidden>
-        <Glyph s={20} />
-      </span>
-      {/* ⛔ A MEASURE CEILING, NOT A WIDTH. The row is a grid whose middle track is 1fr, so the
-          question grew with the viewport and nothing stopped it: 77 characters per line at 1024
-          and 116 at 1280, against a comfortable 45–75 (measured on production 2026-09-24). At 360
-          the column is 292px ≈ 44 characters, so this cap cannot touch a phone — it only stops the
-          line running away on a desktop.
-          🔴 44ch, NOT 68ch, AND THE NUMBER IS CALIBRATED RATHER THAN CHOSEN. `ch` is the advance of
-          the digit ZERO, which in Sora at 17px is 12.97px — while the average character advance in
-          running text is about 8.9px. A 68ch cap resolved to 882px and still produced 99 characters
-          per line. 44ch ≈ 571px ≈ 64 characters in this face. ⚠️ If the question ever changes
-          typeface this number is wrong again — V7 in the landing gate is what re-catches it. */}
-      <span className="kp-qrow__q" style={{ maxWidth: "44ch" }}>{pickLocalized(locale, row.titleEn, row.titleSw, row.titleZh)}</span>
-      {/* The pool is REAL even when it is zero, so it is always stated. Only the PRICE is
-          withheld — that is the distinction `market-card.tsx` draws between `fresh` and
-          `noPrice`, and the two surfaces have to draw it the same way. */}
-      <span className="kp-qrow__sub">{formatTzs(row.pool)}</span>
-      <span className="kp-qrow__price">
-        {price.kind === "priced" ? (
-          <>
-            <span className="kp-qrow__num">{price.yesPct}</span>
-            <span className="kp-qrow__unit">% {t.common.yes}</span>
-          </>
-        ) : (
-          <>
-            {/* Em-dash PLUS a labelled state — licence condition 1's exact prescription for an
-                unknown. The dash alone would read to a screen reader as nothing at all. */}
-            <span className="kp-qrow__num" aria-hidden>—</span>
-            <span className="kp-qrow__unit kp-qrow__unit--label">
-              {price.kind === "oneSided" ? t.market.oneSideOnly : t.home.heroNoPrice}
-            </span>
-          </>
-        )}
-      </span>
-      {/* No lean rule without a price: a 50%-wide bar over an empty pool, or a full-width one over a
-          one-sided pool, would be the same fabricated claim drawn instead of written. */}
-      {price.kind === "priced" && (
-        <span className="kp-qrow__lean" style={{ width: `${price.yesPct}%` }} aria-hidden />
-      )}
-    </Link>
+    <li className="kp-qrow" data-price={price.kind} data-market-surface="board" data-row-id={row.id}>
+      <Link href={`/markets/${row.id}` as never} className="kp-qrow__head">
+        <span className="kp-qrow__q">{title}</span>
+        <span className="kp-qrow__meta">
+          <span className="kp-qrow__close">{closes}</span>
+          {row.sourceName && (
+            <>
+              {" · "}
+              <span className="kp-qrow__src">
+                {settlesPre}
+                <span className="kp-qrow__srcname" data-market-part="source">{row.sourceName}</span>
+                {settlesPost}
+              </span>
+            </>
+          )}
+          {" · "}
+          {/* The pool is REAL even when it is zero, so it is always stated (V18, K48). */}
+          <span className="kp-qrow__pool" data-market-part="pool">{t.common.pool}{" "}{formatTzs(row.pool)}</span>
+          {" · "}
+          <span className="kp-qrow__depth" data-market-part="predictors">
+            {formatNumber(row.predictors)}{" "}{row.predictors === 1 ? t.market.predictorsCountOne : t.market.predictorsCount}
+          </span>
+        </span>
+      </Link>
+      <div className="kp-qrow__read">
+        <div className="kp-qrow__line">
+          <span className="kp-qrow__price" data-market-part={price.kind === "priced" ? "price" : undefined}>
+            {price.kind === "priced" ? (
+              <>
+                <span className="kp-qrow__num">{price.yesPct}</span>
+                <span className="kp-qrow__unit">{"% "}{t.common.yes}</span>
+              </>
+            ) : (
+              <>
+                {/* Em-dash PLUS a labelled state — licence condition 1's exact prescription for an
+                    unknown. The dash alone would read to a screen reader as nothing at all. */}
+                <span className="kp-qrow__num" aria-hidden>—</span>
+                <span className="kp-qrow__unit kp-qrow__unit--label" data-market-part="state">{emptyLabel}</span>
+              </>
+            )}
+          </span>
+          {/* Time is not a side: the neutral ink, never the betting pair (`test:betting-ink`). */}
+          <span className="kp-qrow__left" data-market-part="time">{timeLeft}</span>
+        </div>
+        {/* The bar repeats the line above it, so it is hidden from a screen reader rather than named twice
+            on four rows. No price → the dashed rail, named by the same label (one-sided or empty). */}
+        <div className="kp-qrow__bar" aria-hidden>
+          {price.kind === "priced" ? (
+            <TippingBar yesPct={price.yesPct} height={6} showLabels={false} recastOnHover={false} />
+          ) : (
+            <TippingBar empty emptyLabel={emptyLabel} height={6} />
+          )}
+        </div>
+      </div>
+      {/* Two real links until D3 (WP5's slip). `prefetch={false}`: four rows × two query variants would
+          otherwise prefetch eight detail pages. A one-sided or empty row keeps both — taking the empty
+          side is exactly what gives it a price — but neither carries a figure. */}
+      <div className="kp-qrow__act" data-market-part="pick">
+        <Link href={`/markets/${row.id}?side=YES` as never} prefetch={false} className="btn btn-yes btn-md kp-qrow__btn" aria-label={yesAria}>
+          {yesWord}{price.kind === "priced" && <span className="kp-qrow__at">{" @ "}{price.yesPct}%</span>}
+        </Link>
+        <Link href={`/markets/${row.id}?side=NO` as never} prefetch={false} className="btn btn-no btn-md kp-qrow__btn" aria-label={noAria}>
+          {noWord}{price.kind === "priced" && <span className="kp-qrow__at">{" @ "}{100 - price.yesPct}%</span>}
+        </Link>
+      </div>
+      {/* The refund rule (L22), the card's one conditional sentence, at the reading floor. */}
+      {oneSidedNote && <p className="kp-qrow__note">{oneSidedNote}</p>}
+    </li>
   );
 }
 
@@ -273,9 +329,14 @@ export function LandingHero({ figures, t, locale, isAuthed, nowMs, cards, mine }
                       minutes: t.market.timeLeftM,
                     }, fill)
               }
+              // The same deadline and clock as the label, so SOON fires in every locale (L17).
+              msLeft={featured.selectionClosed ? undefined : featured.bettableUntilMs - nowMs}
               status="LIVE"
               selectionClosed={featured.selectionClosed}
               sourceUrl={featured.sourceUrl}
+              // WP3 · the meta line: the close as a day, and the NAMED source (resolved on the server).
+              closesOn={fill(t.market.closesOn, { date: formatEatDate(featured.bettableUntilMs, nowMs, t.common.monthsShort, locale) })}
+              sourceName={featured.sourceName}
               spark={chart?.spark}
               move24h={chart?.move24h}
               traders={cards.traders.get(featured.id)}
@@ -398,12 +459,16 @@ function SignedInAct({ t, mine }: { t: Dict; mine: LandingMine | null }) {
 /**
  * The proof section — the three measured figures, the whole board's conviction, and the
  * closing-soonest board. It used to live INSIDE the hero, above the lede; v3 moves it directly below
- * the hero so the first screen shows the pitch and a live market (V15). Nothing in it changed meaning.
+ * the hero so the first screen shows the pitch and a live market (V15). The figures and the conviction
+ * bar are unchanged; the board's rows are rebuilt by WP4 (`QuestionRow`): a list of rows with a title
+ * link, a reading and a YES@/NO@ pair, each reading its time left from `nowMs`.
  */
-export function LandingProof({ figures, t, locale, paidOutTzs }: {
+export function LandingProof({ figures, t, locale, nowMs, paidOutTzs }: {
   figures: HeroFigures;
   t: Dict;
   locale: Locale;
+  /** The page's one clock — the rows' time left and close dates read it, as the hero's card does. */
+  nowMs: number;
   /**
    * Σ CONFIRMED payouts + cashouts, TZS — the third proof figure.
    * **null means the read failed**, and the slot is withheld rather than printed as a zero.
@@ -488,11 +553,12 @@ export function LandingProof({ figures, t, locale, paidOutTzs }: {
                 <> · {fill(t.home.heroBoardCloseToday, { n: figures.closingToday })}</>
               )}
             </h2>
-            <div className="kp-qboard">
+            {/* `role="list"`: WebKit drops the list role from a `ul` styled `list-style: none`. */}
+            <ul className="kp-qboard" role="list">
               {figures.board.map((row) => (
-                <QuestionRow key={row.id} row={row} t={t} locale={locale} />
+                <QuestionRow key={row.id} row={row} t={t} locale={locale} nowMs={nowMs} />
               ))}
-            </div>
+            </ul>
           </div>
         )}
       </div>

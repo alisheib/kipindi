@@ -645,6 +645,9 @@ const T = {
      the toast sits on `.mat-toast` (--wash-float) and both remaining consumers took
      the float wash. The two pairs it anchored moved to the wash stops below. */
   washFloatStops: tokenGradient("wash-float"),
+  /** The tipping bar's two fills (`.tipbar-yes` / `.tipbar-no`), read as ramps — the 24h mark sits on one of them. */
+  barFillYesStops: tokenGradient("bar-fill-yes"),
+  barFillNoStops: tokenGradient("bar-fill-no"),
 };
 
 /**
@@ -772,6 +775,14 @@ const CHECKS: Check[] = [
   { name: "--text-subtle on --wash-raised (worst stop)", fg: T.textSubtle, bg: worstStop(T.textSubtle, T.washRaisedStops), min: 4.5 },
   { name: "--text-muted on --wash-raised (worst stop)", fg: T.textMuted, bg: worstStop(T.textMuted, T.washRaisedStops), min: 4.5 },
   { name: "--text on --wash-raised (worst stop)", fg: T.text, bg: worstStop(T.text, T.washRaisedStops), min: 4.5 },
+  /**
+   * landing v3 · WP3 — THE 24h MARK (`.tipbar-mark`, `--text`) is a 2px GRAPHIC drawn over whichever fill sits
+   * under "where the price stood a day ago" — the YES fill when the price rose, the NO fill when it fell. A
+   * graphic that carries information is WCAG 1.4.11's 3:1, against each fill's WORST stop. The WP3 spec read
+   * `--text-muted` at about 2.8 against the YES fill, which is why the mark is `--text`.
+   */
+  { name: "24h mark (--text) on the YES fill (worst stop)", fg: T.text, bg: worstStop(T.text, T.barFillYesStops), min: 3.0 },
+  { name: "24h mark (--text) on the NO fill (worst stop)", fg: T.text, bg: worstStop(T.text, T.barFillNoStops), min: 3.0 },
   /**
    * The card's own edge, and a FORM CONTROL's edge on a card — two different rules,
    * which the gate already encodes and my first version of these two lines did not.

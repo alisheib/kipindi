@@ -74,3 +74,14 @@ export function formatEatDay(dayKey: string, monthsShort: readonly string[], loc
   const month = monthsShort[m - 1] ?? String(m);
   return locale === "zh" ? `${y}年${month}${d}日` : `${d} ${month}`;
 }
+
+/**
+ * A DAY a player reads, from an instant: `formatEatDay` in the reader's month words, plus the year when it
+ * is not this EAT year (Chinese's form always carries it). ONE rule for every "on {date}" line — the
+ * settled strip's "Settled 27 Sep" (WP13) and a market's "Closes 27 Sep" (WP3, WP4).
+ */
+export function formatEatDate(atMs: number, nowMs: number, monthsShort: readonly string[], locale: "en" | "sw" | "zh"): string {
+  const key = eatDayKey(atMs);
+  const day = formatEatDay(key, monthsShort, locale);
+  return locale === "zh" || key.slice(0, 4) === eatDayKey(nowMs).slice(0, 4) ? day : `${day} ${key.slice(0, 4)}`;
+}

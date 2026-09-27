@@ -52,6 +52,21 @@ export const MUTATIONS = [
     to: `<span className="kp-qrow__num">{row.yesPct}</span>`,
     expect: "4.2",
   },
+  // ── landing v3 · WP4 — the rebuilt board row ─────────────────────────────────────────────────────────
+  {
+    name: "WP4 · an unpriced board row draws a 50/50 split instead of the dashed rail",
+    file: "src/components/home/landing-hero.tsx",
+    from: `<TippingBar empty emptyLabel={emptyLabel} height={6} />`,
+    to: `<TippingBar yesPct={50} height={6} />`,
+    expect: "4.6",
+  },
+  {
+    name: "WP4 · the board row's YES link prints '@ n%' on a one-sided or empty row",
+    file: "src/components/home/landing-hero.tsx",
+    from: `{price.kind === "priced" && <span className="kp-qrow__at">{" @ "}{price.yesPct}%</span>}`,
+    to: `{true && <span className="kp-qrow__at">{" @ "}{price.yesPct}%</span>}`,
+    expect: "4.8",
+  },
   {
     name: "the note goes back to 'No one has picked {side}' (false after a cash-out)",
     file: "src/lib/i18n-dict.ts",

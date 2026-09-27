@@ -141,7 +141,7 @@ log("\n── 3 · the card's one-sided state");
     /empty=\{noPrice \|\| oneSided\}/.test(card));
   check("3.6 the rail and the label say 'One side only', never 'No bets yet' (money IS on it)",
     /emptyLabel=\{outcomeLabel \?\? \(oneSided \? t\.market\.oneSideOnly : neverBet \? t\.market\.noBetsYet : t\.market\.noPoolYet\)\}/.test(card)
-    && /<span className="mcardp-oneside">\{t\.market\.oneSideOnly\}<\/span>/.test(card));
+    && /<span className="mcardp-oneside"[^>]*>\{t\.market\.oneSideOnly\}<\/span>/.test(card));
   // ⛔ THE HEADLINE SLOT (WP6 review): without its own one-sided arm a one-sided card falls through to
   // the priced arm and prints `{yesPct}%` — 0 there, "YES 0%" on a market whose money is all on YES.
   const armAt = card.search(/\) : oneSided \? \(\s*<div className="mcardp-pct mcardp-pct--empty" aria-hidden>—<\/div>/);
@@ -181,8 +181,29 @@ log("\n── 4 · the hero board row and the landing tiers");
   const qrow = hero.slice(hero.indexOf("function QuestionRow("), hero.indexOf("export function LandingHero("));
   check("4.1 the board row reads its state from its pools", /const price = priceState\(row\.yesPool, row\.noPool\);/.test(qrow));
   check("4.2 ⛔ the row never prints or draws the rounded share (`row.yesPct`)", !/row\.yesPct/.test(qrow), "row.yesPct reads 100 on a one-sided pool");
-  check("4.3 a one-sided row is labelled 'One side only', not 'No bets yet'",
-    /price\.kind === "oneSided" \? t\.market\.oneSideOnly : t\.home\.heroNoPrice/.test(qrow));
+  // ⚠️ AMENDED 2026-09-27 (landing v3 WP4): the row's label is the card's D29 rule too — "No bets yet" only
+  //    where nobody ever bet; a pool a cash-out emptied is "No pool yet" (predictorCount never decrements).
+  check("4.3 a one-sided row is labelled 'One side only', and 'No bets yet' only where nobody ever bet",
+    /const emptyLabel = price\.kind === "oneSided" \? t\.market\.oneSideOnly : row\.predictors === 0 \? t\.home\.heroNoPrice : t\.market\.noPoolYet;/.test(qrow));
+  // ⭐ WP4 · the rebuilt row: the rail, the note, the gated figures, and three sibling zones (never one link).
+  check("4.6 an unpriced row draws the dashed rail named by that label; a priced row draws the price",
+    /<TippingBar empty emptyLabel=\{emptyLabel\}/.test(qrow) && /<TippingBar yesPct=\{price\.yesPct\}/.test(qrow));
+  check("4.7 the refund rule is the card's one conditional sentence, in the row's own side words",
+    /price\.kind === "oneSided" \? t\.market\.oneSidedNote\.replace\("\{side\}", sideWord\(t, price\.emptySide, "MARKET"\)\) : null/.test(qrow));
+  const atSuffixes = qrow.match(/\{price\.kind === "priced" && <span className="kp-qrow__at">/g) ?? [];
+  check("4.8 ⛔ neither side link carries '@ n%' without a price (both suffixes gated)", atSuffixes.length === 2, `${atSuffixes.length} gated suffixes`);
+  check("4.9 the row is an <li> of sibling zones, never one <Link className=\"kp-qrow\">",
+    /<li className="kp-qrow"/.test(qrow) && !/<Link[^>]*className="kp-qrow"/.test(qrow));
+  // ⭐ CONTROLS — each matcher shown refusing the pre-WP4 spelling.
+  check("4.3-control the pre-WP4 label (a cashed-out pool read 'No bets yet') IS detected",
+    !/const emptyLabel = price\.kind === "oneSided" \? t\.market\.oneSideOnly : row\.predictors === 0 \? t\.home\.heroNoPrice : t\.market\.noPoolYet;/
+      .test('{price.kind === "oneSided" ? t.market.oneSideOnly : t.home.heroNoPrice}'));
+  check("4.6-control a 50/50 rail on an unpriced row IS detected",
+    !/<TippingBar empty emptyLabel=\{emptyLabel\}/.test('<TippingBar yesPct={50} height={6} />'));
+  check("4.8-control an ungated suffix IS counted out",
+    ('{true && <span className="kp-qrow__at">{" @ "}{price.yesPct}%</span>}'.match(/\{price\.kind === "priced" && <span className="kp-qrow__at">/g) ?? []).length === 0);
+  check("4.9-control the pre-WP4 row (one link) IS detected",
+    /<Link[^>]*className="kp-qrow"/.test('<Link href={`/markets/${row.id}` as never} className="kp-qrow">'));
   check("4.2-control the slice is the real row (it renders .kp-qrow)", /className="kp-qrow"/.test(qrow));
 
   const heroTs = decomment(read("src/lib/markets/hero.ts"));

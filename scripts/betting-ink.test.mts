@@ -46,6 +46,14 @@ function liveDefects(css: string, hero: string): string[] {
   if (topic && BETTING.test(topic)) d.push(".kp-topic__live paints the betting pair");
   if (pip && (BETTING.test(pip) || /--bar-glow-yes/.test(pip))) d.push(".kp-proof__pip wears the YES ink or glow");
   if (pip && !/background:\s*var\(--live-400\)/.test(pip)) d.push(".kp-proof__pip is not the broadcast --live-400");
+  // landing v3 · WP3/WP4 — the featured card's top-right time and a board row's time left are TIME, not a
+  // side: the neutral `--text`, never the betting pair (§B2a, E-405).
+  for (const sel of [".mcardp-closes", ".kp-qrow__left"]) {
+    const r = rule(sel);
+    if (r === undefined) d.push(`${sel} is missing from globals.css`);
+    else if (BETTING.test(r)) d.push(`${sel} paints the betting pair`);
+    else if (!/color:\s*var\(--text\)/.test(r)) d.push(`${sel} is not the neutral --text`);
+  }
   const h = code(hero);
   // 🔴 D51 (mobile-visual) MOVED THE PIP AFTER THE FIGURE and this matcher still demanded it lead,
   // so §1a failed on main — a guard reading "not found" about markup that was there. Found by the
@@ -57,7 +65,7 @@ function liveDefects(css: string, hero: string): string[] {
   return d;
 }
 const css = read(CSS), hero = read(HERO);
-ok("§1a time-left, the topic live count, the hero figure and its pip: no betting ink", liveDefects(css, hero).length === 0, liveDefects(css, hero).join("; "));
+ok("§1a time-left (card, featured top-right, board row), the topic live count, the hero figure and its pip: no betting ink", liveDefects(css, hero).length === 0, liveDefects(css, hero).join("; "));
 
 /* §2 · URGENCY ───────────────────────────────────────────────────────────── */
 console.log("\n§2 · a countdown's last seconds pulse; they do not turn rose");
@@ -86,13 +94,18 @@ const plantPip = css.replace("  background: var(--live-400);\n  flex: none;", " 
 const plantHero = hero.replace('<span className="kp-proof__num" style={{ color: "var(--text)" }}>', '<span className="kp-proof__num" style={{ color: "var(--yes-400)" }}>');
 const plantPod = pod.replace('color: urgent ? "var(--text)"', 'color: urgent ? "var(--no-300)"');
 const plantCard = card.replace("color: tone,", 'color: urgent ? "var(--no-300)" : tone,');
+const plantRowLeft = css.replace(/(\.kp-qrow__left \{[^}]*?)color: var\(--text\);/, "$1color: var(--yes-300);");
+const plantCloses = css.replace(/(\.mcardp-closes \{[^}]*?)color: var\(--text\);/, "$1color: var(--yes-300);");
 ok("§3a control · every planted copy found its target",
-  plantMeta !== css && plantPip !== css && plantHero !== hero && plantPod !== pod && plantCard !== card);
+  plantMeta !== css && plantPip !== css && plantHero !== hero && plantPod !== pod && plantCard !== card
+  && plantRowLeft !== css && plantCloses !== css);
 ok("§3b control · YES-green time-left is reported", liveDefects(plantMeta, hero).length > 0, "", liveDefects(plantMeta, hero).join("; "));
 ok("§3c control · the YES pip and glow are reported", liveDefects(plantPip, hero).length > 0, "", liveDefects(plantPip, hero).join("; "));
 ok("§3d control · a YES-green hero figure is reported", liveDefects(css, plantHero).length > 0, "", liveDefects(css, plantHero).join("; "));
 ok("§3e control · rose pod digits are reported", urgencyDefects(plantPod, card).length > 0, "", urgencyDefects(plantPod, card).join("; "));
 ok("§3f control · rose card digits are reported", urgencyDefects(pod, plantCard).length > 0, "", urgencyDefects(pod, plantCard).join("; "));
+ok("§3g control · a YES-green board-row time left is reported", liveDefects(plantRowLeft, hero).length > 0, "", liveDefects(plantRowLeft, hero).join("; "));
+ok("§3h control · a YES-green featured top-right time is reported", liveDefects(plantCloses, hero).length > 0, "", liveDefects(plantCloses, hero).join("; "));
 
 /* §4 · THE MATCH'S TIME IS NEUTRAL (landing v3, R5 · spec updown-band-v2 §15.1) ──────────────────────
    The landing's Up & Down band draws TIME — its clock row, the match track's rail, locked stretch, posts,

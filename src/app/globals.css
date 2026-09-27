@@ -1686,6 +1686,20 @@ html.kp-reduce-motion .ticker-pause,
   box-shadow: 0 0 12px var(--bar-needle-glow);
   transform-origin: 50% 100%;
 }
+/* landing v3 · WP3 — the 24h mark: where the price stood a day ago (the featured card only, `mark` on
+   TippingBar). A still hairline, shorter than the needle so the two never read as one object, in `--text`
+   because it is a graphic that must read against BOTH fills at >= 3:1 (WCAG 1.4.11; `test:contrast` pairs it
+   with each fill's worst stop). Never animated (motion law L12): it changes only with a new render. */
+.tipbar-mark {
+  position: absolute;
+  top: -4px;
+  bottom: -4px;
+  width: 2px;
+  margin-left: -1px;
+  border-radius: var(--r-pill);
+  background: var(--text);
+  pointer-events: none;
+}
 .tipbar-shimmer {
   position: absolute;
   inset: 0;
@@ -4320,138 +4334,120 @@ html[data-sheet-open] .route-enter { animation: none; }
   .fairness-tbl td[data-th] .line-clamp-2 { -webkit-line-clamp: 4; }
 }
 
-/* The question board — the hero's substance. Four real open markets, closing soonest. */
+/* ── The question board (landing v3 · WP4) ─────────────────────────────────────────────────────────
+   A LIST of rows, each three SIBLING zones — the title link, the reading (price · time left · 6px bar), the
+   two side links — never one link (WP17). Written mobile-first: phone = title, meta, reading, then the
+   full-width YES/NO pair; from 640 the title and the reading sit side by side and the pair wraps below at
+   its own width; from 1024 one line — title · reading · pair. No phone-only query, so the Compact fence has
+   nothing to police. The old 821/560.98 blocks, the hover indent (D25) and the lean rule are gone. */
 .kp-qboard { border-top: 1px solid var(--border-royal); }
 .kp-qrow {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  grid-template-areas: "i q p" ". s p";
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: "head" "read" "act";
   align-items: center;
-  column-gap: var(--sp-4);
-  min-height: 76px;
-  padding: var(--sp-3) 0;
+  row-gap: var(--sp-3);
+  padding-block: var(--sp-4);
   border-bottom: 1px solid var(--border);
-  position: relative;
-  /* ⚠️ `padding-inline` IS A LAYOUT PROPERTY and it animates on hover — a reflow of
-     a three-column grid row, four rows deep, every time a pointer crosses the hero
-     board. Kept, and said out loud, because the alternative is worse than the cost:
-     the gesture is the row's CONTENT indenting inside a fixed rail, and a
-     `translateX` on the row would slide its background and its bottom border with
-     it, which is a different effect wearing the same name. `--t-quick` over 8px is
-     one short reflow, not a scroll-linked one.
-     `ease-out` → `linear` on the background: a colour crossfade travels nowhere. */
-  transition: background var(--t-quick) linear, padding-inline var(--t-quick) var(--m-glide);
 }
-.kp-qrow:hover { background: var(--bg-overlay); padding-inline: var(--sp-4); }
-.kp-qrow__glyph { grid-area: i; color: var(--text-faint); display: flex; }
+/* The note is NOT an area: an empty named row would still take a row-gap. It auto-places below. */
+.kp-qrow__note { grid-column: 1 / -1; }
+.kp-qrow__head {
+  grid-area: head;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--sp-1);
+  min-width: 0;
+  min-height: var(--h-control-md);   /* V4: a one-line title link is never a 21px target */
+  color: var(--text);
+  text-decoration: none;
+}
+/* ⛔ A MEASURE CEILING, NOT A WIDTH — 44ch, calibrated rather than chosen. `ch` is the advance of the digit
+   ZERO, which in Sora at 17px is 12.97px, while the average advance in running text is about 8.9px: a 68ch
+   cap resolved to 882px and still set 99 characters a line. 44ch is about 571px, about 64 characters in this
+   face (measured on production 2026-09-24). If the question ever changes typeface this number is wrong
+   again — V7 in the landing gate is what re-catches it. Below 640 it clamps at three lines (U6's bound: the
+   board takes whatever four markets close soonest, and one long title would otherwise run seven lines); the
+   ellipsis says the question continues, and the link — whose name is the whole question — opens it. */
 .kp-qrow__q {
-  grid-area: q;
   font-family: var(--font-display);
   font-weight: 700;
   font-size: var(--type-h4);
   letter-spacing: -0.01em;
   line-height: 1.25;
   color: var(--text);
+  max-inline-size: 44ch;
+  text-wrap: pretty;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
 }
-.kp-qrow__sub {
-  grid-area: s;
+/* The meta line — "Closes 27 Sep · Settles on {source} · Pool TZS n · n predictors" — is a sentence in body
+   type at the reading floor, the same voice as the featured card's line and the settled strip's (one design
+   for one kind of line); the MONEY and the count inside it are mono (§M4, §T5). */
+.kp-qrow__meta {
+  font-size: var(--type-small);
+  line-height: 1.5;
+  color: var(--text-subtle);
+  overflow-wrap: anywhere;
+}
+.kp-qrow__close, .kp-qrow__pool, .kp-qrow__depth { white-space: nowrap; }
+.kp-qrow__pool, .kp-qrow__depth { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.kp-qrow__srcname { color: var(--text-muted); }
+.kp-qrow__read { grid-area: read; display: grid; gap: var(--sp-2); min-width: 0; }
+.kp-qrow__line { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: var(--sp-3); row-gap: var(--sp-1); }
+.kp-qrow__price {
   font-family: var(--font-mono);
   font-size: var(--type-small);
-  font-variant-numeric: tabular-nums;
-  color: var(--text-faint);
-}
-.kp-qrow__price { grid-area: p; text-align: right; white-space: nowrap; }
-/* The price is NOT gilt. ACCEPTANCE.md §6 resolves the kit's gold-on-prices against the system
-   law (Q5, gold is money and nothing else) and says to default to non-gold: a crowd price is
-   odds, not money anybody has earned. */
-.kp-qrow__num {
-  font-family: var(--font-mono);
   font-weight: 700;
-  font-size: var(--type-h2);
   font-variant-numeric: tabular-nums;
-  color: var(--text);
-  line-height: 1.1;
+  min-width: 0;
 }
-.kp-qrow__unit {
-  display: block;
+/* The price is NOT gilt: a crowd price is odds, not money anybody earned (ACCEPTANCE §6, Q5). It names the
+   YES side, so it takes the YES ink (§B2a allows the betting pair on a side); the dash and the state label
+   stay neutral. */
+.kp-qrow__num { color: var(--text-faint); }
+.kp-qrow__unit { color: var(--text-subtle); }
+.kp-qrow__unit--label { margin-left: 0.35em; font-weight: 600; }  /* the phrase needs the space a "%" must not have */
+.kp-qrow[data-price="priced"] .kp-qrow__price { white-space: nowrap; }
+.kp-qrow[data-price="priced"] .kp-qrow__num,
+.kp-qrow[data-price="priced"] .kp-qrow__unit { color: var(--yes-300); }
+/* Time is not a side: the neutral ink, never the betting pair (`test:betting-ink`). */
+.kp-qrow__left {
+  margin-inline-start: auto;
   font-family: var(--font-mono);
-  font-size: var(--type-micro);
-  letter-spacing: 0.1em;
-  color: var(--text-subtle);
+  font-size: var(--type-small);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--text);
 }
-/* The row's own crowd lean, as a 2px rule on its bottom edge. Width is DATA (bound at the call
-   site) — and it is not drawn at all on a market nobody has staked.
-   `grid-area: 1/1/-1/-1` keeps this absolutely-positioned child from being auto-placed into a
-   cell of its own and opening an implicit row that would add height to every question. */
-.kp-qrow__lean {
-  position: absolute;
-  grid-area: 1 / 1 / -1 / -1;
-  left: 0;
-  bottom: -1px;
-  height: 2px;
-  background: var(--bar-fill-yes);
-  pointer-events: none;
+.kp-qrow__act { grid-area: act; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-2); }
+.kp-qrow__btn { padding-inline: var(--sp-2); }   /* sw "HAPANA @ 29%" fits a 140px half at 320 */
+.kp-qrow__at { font-family: var(--font-mono); font-size: var(--type-small); }
+@media (hover: hover) {
+  .kp-qrow__head:hover .kp-qrow__q { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 0.18em; }
 }
-@media (min-width: 821px) {
+/* Tablet: the title and the reading side by side; the pair wraps below at its own width. */
+@media (min-width: 640px) {
   .kp-qrow {
-    grid-template-columns: auto minmax(0, 1fr) auto auto;
-    grid-template-areas: "i q s p";
-    min-height: 88px;
-    column-gap: var(--sp-5);
+    grid-template-columns: minmax(0, 1fr) minmax(190px, 230px);
+    grid-template-areas: "head read" "act act";
+    column-gap: var(--sp-6);
   }
+  .kp-qrow__q { display: block; -webkit-line-clamp: unset; overflow: visible; }
+  .kp-qrow__act { justify-self: start; grid-template-columns: repeat(2, minmax(104px, 1fr)); }
 }
-/* ⭐ AT 360 THE QUESTION TAKES THE WHOLE LINE — measured, in Swahili, on the cold-start board.
-   With the price in its own column the question had ~150px and "Hakuna dau bado" had ~105px of
-   the 328px content width, so a three-line title sat jammed against the label. Nothing truncated
-   and no overflow, which is exactly why only LOOKING at it found this. The question now spans the
-   full width and the pool and price share the line below it — same DOM, same three fields, and
-   the longest label in the longest language stops competing with the sentence it belongs to. */
-@media (max-width: 560.98px) {
-  /* density: general — the home Closing-soonest rows (U6 owns them), not the board; both settings. */
+/* Desktop: one line — the title, the reading, the pair. */
+@media (min-width: 1024px) {
   .kp-qrow {
-    grid-template-columns: auto minmax(0, 1fr) auto;
-    grid-template-areas:
-      "i q q"
-      ". s p";
-    row-gap: var(--sp-2);
+    grid-template-columns: minmax(0, 1fr) minmax(190px, 230px) auto;
+    grid-template-areas: "head read act";
+    column-gap: var(--sp-8);
   }
-  /* On the meta line the value reads as a phrase — "— No bets yet", "71% YES" — rather than as
-     a stacked figure, which at this size looked like two unrelated fields. */
-  .kp-qrow__num { font-size: var(--type-h3); }
-  .kp-qrow__unit { display: inline; }
-  /* 🔴 A BOUND, AND IT DOES CROP — CORRECTED 2026-09-23, HAVING FIRST BEEN WRITTEN THE OTHER WAY.
-     This comment said "today it crops nothing", measured on a LOCAL server whose four markets had
-     short titles and ran 2 lines. Production's four do not: re-measured live, the questions run
-     4–7 lines at 320 SW, 4–5 at 360 SW and EN, 3 at 360 ZH, so the clamp engages on 4 of 4 rows at
-     320 and 360 and on 3 of 4 at 412. ⛔ A CLAIM ABOUT WHAT A PAGE SHOWS IS A CLAIM ABOUT ITS
-     CONTENT, AND THE TWO TREES HOLD DIFFERENT CONTENT. The rule is unchanged; the sentence about it
-     was wrong and is the thing that got fixed.
-     WHY IT STAYS. The board takes whatever four markets close soonest, so without a ceiling one long
-     title runs seven lines and takes a row past 180px — four of those are most of a hero. §9 U6
-     ordered this clamp for exactly that reason, at exactly this number. Live it holds every row to
-     121.3px against a 110 budget, from a ragged 164/143/164/164 before.
-     ⭐ AND THE CUT IS BOTH SIGNALLED AND RECOVERABLE. `-webkit-line-clamp` paints an ellipsis, so a
-     sighted reader is TOLD the question continues rather than shown a sentence that stops; and it
-     hides overflow without removing the text node, so the link's accessible name is still the whole
-     question — verified on production, where the full 120-character title reads back off the row.
-     The rest of it is one tap away, which is what a teaser board is for.
-     ⭐ AND IT IS THE PLATFORM'S OWN PATTERN, NOT A NEW ONE — checked against the law rather than
-     assumed. DESIGN_AUTHORITY's fit law says truncation is legitimate PAIRED WITH `title`, which
-     keeps the full string reachable (DG-A-10). `.mcardp-q` — the player-facing market card, shipped
-     and design-frozen — already clamps the SAME content type, a market question inside a link, to
-     `-webkit-line-clamp: 2` with no `title`; `admin/markets` and the resolver queue do the same.
-     This row is ONE LINE MORE GENEROUS than the card, and on a touch surface the link to the full
-     market is a stronger affordance than a `title` tooltip a finger can never summon. */
-  .kp-qrow__q {
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 3;
-    overflow: hidden;
-  }
-  /* ⚠️ The unpriced label is a PHRASE and needs the word space that a "%" must never have. Set
-     inline it rendered "—Hakuna dau bado". A `gap` on the cell would have fixed this one and
-     broken the other, turning "71% YES" into "71 % YES". */
-  .kp-qrow__unit--label { margin-left: 0.35em; }
+  .kp-qrow__act { justify-self: end; }
 }
 
 /* `.kp-hero__foot` (the lede + CTAs beside the card, under the board) was DELETED with landing v3:
@@ -4810,15 +4806,83 @@ html[data-sheet-open] .route-enter { animation: none; }
   white-space: nowrap;
   color: var(--text-subtle);
 }
-.mcardp-onesided-note {
+.mcardp-onesided-note,
+.kp-qrow__note {
   font-size: var(--type-small);
   line-height: 1.4;
   color: var(--text-muted);
   text-wrap: pretty;
   /* A reading measure: on the full-width featured card at 768–1023 the sw note set as ONE ~104-
-     character line (V7). Every card narrower than ~560px is untouched. */
+     character line (V7). Every card narrower than ~560px is untouched. The board row's note (WP4)
+     shares this ONE rule, so a full-width desktop row holds the same measure. */
   max-inline-size: 60ch;
 }
+
+/* ── The featured card, and the landing's source line (landing v3 · WP3) ─────────────────────────
+   Written mobile-first: the base rules are the phone's, and every wider rule is a `min-width` block —
+   no phone-only query, so the Compact fence (`test:density-contract` §2) has nothing to police. None of
+   these selectors is one a guard reads by first match. */
+/* The question. Whole from 640 — h4, then h3 from 1024 (the concept's 21–26px mapped onto the locked
+   ladder). Below 640 it keeps the card's 15px and clamps at THREE lines in every language: at 360 the
+   hero's first screen has ~65px left for everything WP3 adds (hero v3 §7), and the clamp paints an
+   ellipsis while the h2 keeps the whole question for a screen reader and the card's link names it. */
+.mcardp--featured .mcardp-q { -webkit-line-clamp: 3; min-height: 0; overflow-wrap: break-word; text-wrap: pretty; }
+@media (min-width: 640px) {
+  .mcardp--featured .mcardp-q { display: block; -webkit-line-clamp: unset; overflow: visible; font-size: var(--type-h4); font-weight: 700; }
+}
+@media (min-width: 1024px) {
+  .mcardp--featured .mcardp-q { font-size: var(--type-h3); line-height: 1.25; }
+}
+/* The time left, top-right: the meta row's rung, in `--text` (the tracker's ink; a countdown never takes
+   the betting pair, `test:betting-ink`). `margin-left: auto` keeps it right-aligned on whichever line it
+   lands when the chip row wraps (D65: chips wrap, never cut). */
+.mcardp-closes {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: var(--type-micro);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--text);
+}
+/* "Closes 27 Sep · Settles on {source}" is a SENTENCE, so it reads at the reading floor in body type (L6,
+   the settled strip's `.kp-settled__meta` precedent), never as 12px mono caps. It wraps and is never
+   ellipsised (V2); a long host breaks rather than overflows. A data line, so no eyebrow tracking. */
+.mcardp-src {
+  margin-top: var(--sp-1);
+  font-size: var(--type-small);
+  line-height: 1.4;
+  color: var(--text-subtle);
+  overflow-wrap: anywhere;
+  text-wrap: pretty;
+}
+.mcardp-srcname { color: var(--text-muted); }
+/* The featured card's line is a child of the CARD, after the question and before the pick in the
+   reading order (K36). Below 640 it is SHOWN under the YES/NO row — the first screen at 360 has no room
+   above it (V15, hero v3 §7) — by `order`, which moves no focusable thing (it is text). From 640 it sits
+   where it reads. */
+.mcardp-src--featured { margin-top: 0; order: 1; }
+.mcardp--featured > .mcardp-meta,
+.mcardp--featured > .mcardp-foot { order: 2; }
+@media (min-width: 640px) {
+  .mcardp-src--featured { order: 0; max-inline-size: 60ch; }
+  .mcardp--featured > .mcardp-meta,
+  .mcardp--featured > .mcardp-foot { order: 0; }
+}
+/* The 24h delta, keyed to the mark: the meta row's rung, neutral ink (a move of the YES price is not a
+   side, §B2a). It rides the move-line row the card always had, so it costs no height. */
+.mcardp-h24 {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  font-family: var(--font-mono);
+  font-size: var(--type-micro);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--text-subtle);
+}
+/* The legend key: the mark's own shape and ink, so "▲5 · 24h ago" names the hairline on the bar. */
+.mcardp-h24-key { width: 2px; height: 10px; border-radius: var(--r-pill); background: var(--text); }
 @media (hover: hover) {
   .mcardp-details:hover { text-decoration: underline; }
 }

@@ -35,7 +35,7 @@ export type TimeLeftLabels = {
   minutes: string;
 };
 
-const HOUR_MS = 3600_000;
+export const HOUR_MS = 3600_000;
 const DAY_MS = 24 * HOUR_MS;
 
 /**
@@ -56,4 +56,16 @@ export function timeLeftLabel(
   if (h > 0) return fillFn(labels.hours, { n: h });
   // ⛔ Never zero while the market is still open — see the header.
   return fillFn(labels.minutes, { n: Math.max(1, Math.floor(ms / 60_000)) });
+}
+
+/**
+ * ⭐ SOON's ONE TEST (landing v3 WP3, INHERIT-MANIFEST L17): betting shuts inside the band this label
+ * counts in MINUTES. The card used to ask the ENGLISH label (`/^\d+m left$/`), so a Swahili or Chinese
+ * reader never saw SOON on a market closing in ten minutes — a real countdown signal that depended on
+ * the reader's language. Asked of the milliseconds, it fires in every locale at the instant the label
+ * turns to minutes (the 1.10/1.11 boundary of `test:time-left`).
+ * `undefined` (a surface that is not counting down) and a closed or unparseable deadline are never SOON.
+ */
+export function closesWithinTheHour(msLeft: number | undefined): boolean {
+  return msLeft !== undefined && Number.isFinite(msLeft) && msLeft > 0 && msLeft < HOUR_MS;
 }

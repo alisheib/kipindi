@@ -23,7 +23,8 @@ import { STATUS_TONE, TONE_CHIP } from "@/lib/status-tone";
 import { pickLocalized } from "@/lib/localized";
 import { outcomeWord } from "@/lib/side-label";
 import { fill, formatTzs } from "@/lib/utils";
-import { eatDayKey, formatEatDay } from "@/lib/eat-day";
+import { formatEatDate } from "@/lib/eat-day";
+import { sourceHost } from "@/lib/markets/source-host";
 import { signoffWord } from "@/lib/markets/signoff";
 import type { Dict, Locale } from "@/lib/i18n-dict";
 import { Reveal } from "@/components/layout/reveal";
@@ -248,12 +249,11 @@ function SettledRow({ row, t, locale, nowMs }: { row: SettlementRow; t: Dict; lo
   // from `signoffOf` (lib/markets/signoff.ts) — never a fixed "two officers", which single-admin
   // resolution would make false (INHERIT-MANIFEST L2). `/fairness` renders the same rule and the same
   // words, so a reader who follows a row there reads the same answer.
-  const when = row.settledAtMs != null ? (() => {
-    const key = eatDayKey(row.settledAtMs);
-    const day = formatEatDay(key, t.common.monthsShort, locale);
-    const thisYear = key.slice(0, 4) === eatDayKey(nowMs).slice(0, 4);
-    return fill(t.home.settledOn, { date: locale === "zh" || thisYear ? day : `${day} ${key.slice(0, 4)}` });
-  })() : null;
+  // The date rule (the reader's month words, the year only when it is not this one) has ONE home since
+  // landing v3 WP3: `formatEatDate`, which a market's "Closes {date}" line reads too.
+  const when = row.settledAtMs != null
+    ? fill(t.home.settledOn, { date: formatEatDate(row.settledAtMs, nowMs, t.common.monthsShort, locale) })
+    : null;
   const who = row.signoff ? signoffWord(t.common, row.signoff) : null;
   const meta = [when, who].filter(Boolean).join(" · ");
   const host = sourceHost(row.sourceUrl);
@@ -306,11 +306,6 @@ function SettledRow({ row, t, locale, nowMs }: { row: SettlementRow; t: Dict; lo
   );
 }
 
-/** The source's host, uppercased by CSS. Falls back to nothing rather than to a raw URL. */
-function sourceHost(url: string): string {
-  try {
-    return new URL(url).hostname.replace(/^www\./, "");
-  } catch {
-    return "";
-  }
-}
+/* The source's host (uppercased by CSS) is `sourceHost` from `lib/markets/source-host.ts` since landing
+   v3 WP3 — the one display rule, shared with the markets' "Settles on" line. It returns null, never the
+   raw URL, when the URL does not parse. */
