@@ -2059,7 +2059,7 @@ export const dict = {
     primer: {
       card1Eyebrow: "what is 50pick",
       card1Title: "Predict events. Not chance.",
-      card1Body: "Every question is a real-world event with a YES or NO answer — settled against an official public source. No dice, no slots. Just conviction.",
+      card1Body: "Every question is a real-world event with a YES or NO answer — settled against a named public source. No dice, no slots. Just conviction.",
       card2Eyebrow: "how you bet",
       card2Title: "Drag the dial. Conviction = stake.",
       card2Body: "One gesture sets both your side and your stake. Drag toward YES or NO — the further from centre, the higher your conviction multiplier.",
@@ -3065,14 +3065,14 @@ export const dict = {
       depositNow: "Weka sasa",
       resolutionAttestation: "Uthibitisho wa utatuzi",
       howAMarketResolves: "Soko linatatuliwa vipi",
-      fairnessIntro: "Kila soko kwenye 50pick linatatuliwa na afisa wa ufuatiliaji dhidi ya chanzo rasmi cha URL. Kumbukumbu inashika saini, chanzo na matokeo yaliyorekodiwa. Idhini ya maafisa wawili ikiwashwa, afisa tofauti wa pili lazima athibitishe. Dirisha la pingamizi la {hours} linafunguliwa baada ya utatuzi, na hakuna fedha inayohamishwa hadi lifungwe.",
+      fairnessIntro: "Kila soko kwenye 50pick linatatuliwa na afisa wa ufuatiliaji dhidi ya chanzo cha umma cha URL. Kumbukumbu inashika saini, chanzo na matokeo yaliyorekodiwa. Idhini ya maafisa wawili ikiwashwa, afisa tofauti wa pili lazima athibitishe. Dirisha la pingamizi la {hours} linafunguliwa baada ya utatuzi, na hakuna fedha inayohamishwa hadi lifungwe.",
       fairnessHowItWorks: "Inavyofanya kazi",
       fairnessCreated: "Imeundwa",
       fairnessCreatedBody: "Afisa wa ufuatiliaji anachapisha swali, URL ya chanzo, kigezo cha utatuzi na muda wa utatuzi. Soko linafunguliwa.",
       fairnessStake: "Dau",
       fairnessStakeBody: "Wachezaji wananunua NDIO au HAPANA kwa uwezekano wa sasa wa bwawa. Bwawa linaongezeka; uwezekano unabadilika.",
       fairnessStage1: "Saini ya afisa",
-      fairnessStage1Body: "Wakati wa utatuzi afisa wa ufuatiliaji anakagua chanzo rasmi, anarekodi ushahidi na kufunga matokeo. Kumbukumbu inaandika saini.",
+      fairnessStage1Body: "Wakati wa utatuzi afisa wa ufuatiliaji anakagua chanzo cha umma, anarekodi ushahidi na kufunga matokeo. Kumbukumbu inaandika saini.",
       fairnessStage2: "Uthibitisho wa pili (ikiwashwa)",
       fairnessStage2Body: "Idhini ya maafisa wawili ikiwashwa, afisa tofauti anathibitisha na kumbukumbu inaandika saini ya pili. Dirisha la pingamizi la {hours} linafunguliwa baada ya utatuzi.",
       fairnessSettlement: "Malipo",
@@ -3334,7 +3334,7 @@ export const dict = {
       heroCta: "Tazama masoko",
       myPositions: "Nafasi zangu",
       // drafted, marked for native review; English is binding.
-      yourPicks: "Chaguo zako",
+      yourPicks: "Machaguo yako",
       picksOpen: "wazi",
       picksAwaiting: "yanasubiri matokeo",
       picksPaidWeek: "ulizolipwa wiki hii",
@@ -3371,8 +3371,8 @@ export const dict = {
       pickASideNow: "Chagua upande sasa",
       pickASideStake: "Chagua upande, weka dau kwa TZS",
       priceCompetitionPool: "Mashindano ya bei. Sogeza sindano ya imani kwenye soko lolote.",
-      twoOfficerResolution: "Azimio kwa chanzo rasmi",
-      twoOfficerBody: "Kila soko linatatuliwa kwa chanzo rasmi cha URL, likithibitishwa na afisa — au maafisa wawili pale idhini ya maafisa wawili inapowashwa.",
+      twoOfficerResolution: "Utatuzi kwa chanzo",
+      twoOfficerBody: "Kila soko linatatuliwa kwa chanzo cha umma cha URL, likithibitishwa na afisa — au maafisa wawili pale idhini ya maafisa wawili inapowashwa.",
       getPaidViaMpesa: "Lipwa kwa M-Pesa",
       getPaidBody: "Washindi hulipwa moja kwa moja kwenye salio lao la 50pick, tayari kutoa kwa pesa ya simu.",
       waitingForResults: "Inasubiri matokeo",
@@ -3382,7 +3382,7 @@ export const dict = {
       howStep1B: "Kila soko ni swali moja lenye majibu mawili. Weka dau unalotaka kwa shilingi — sindano ya imani inaonyesha pesa za umati zilipo tayari.",
       // drafted, marked for native review; English is binding.
       howStep2H: "Chanzo kilichotajwa",
-      howStep2B: "Kila soko linatatuliwa kwa chanzo rasmi cha umma kilichotajwa: wakala wa hali ya hewa, jedwali la ligi, kiwango cha kati cha Benki Kuu ya Tanzania. Afisa anathibitisha — wawili, pale idhini ya maafisa wawili inapowashwa.",
+      howStep2B: "Kila soko linatatuliwa kwa chanzo cha umma kilichotajwa: wakala wa hali ya hewa, jedwali la ligi, kiwango cha kati cha Benki Kuu ya Tanzania. Afisa anathibitisha — wawili, pale idhini ya maafisa wawili inapowashwa.",
       howStep3H: "Washindi wanagawana bwawa",
       // drafted, marked for native review; English is binding.
       howStep3B: "Bwawa linagawanywa kati ya wote waliokuwa sahihi, kasoro kamisheni ya {pct}% inayotozwa kwenye upande ulioshindwa pekee. Ushindi wako huingia kwenye salio lako la 50pick, tayari kutolewa kwa pesa ya simu.",
@@ -3397,7 +3397,7 @@ export const dict = {
       trustEyebrow: "Kwa nini matokeo yanaweza kuaminiwa",
       trustClaim: "Soko lina thamani ya kuchezwa tu ikiwa matokeo si maoni.",
       trustClaimAccent: "matokeo",
-      trustCell1H: "Vyanzo rasmi vya umma vilivyotajwa",
+      trustCell1H: "Vyanzo vya umma vilivyotajwa",
       trustCell1B: "Kila soko linaonyesha chanzo cha umma ambacho matokeo yake yanahukumiwa nacho, kabla uweke dau lolote.",
       trustCell2H: "Kinathibitishwa na afisa",
       trustCell2B: "Mtu anaandika kifungu cha ushahidi kinachohalalisha uamuzi, na kinaandikwa kwenye mnyororo wa ukaguzi wa kuongeza-tu.",
@@ -3488,7 +3488,7 @@ export const dict = {
       resEvidence: "Ushahidi uliorekodiwa na afisa",
       resVoided: "Soko limebatilishwa",
       resTwoOfficer: "Imethibitishwa kwa kanuni ya maofisa wawili",
-      resSingleOfficer: "Imetatuliwa na afisa kwa kutumia chanzo rasmi kilichotangazwa",
+      resSingleOfficer: "Imetatuliwa na afisa kwa kutumia chanzo cha umma kilichotangazwa",
       // drafted, marked for native review; English is binding.
       resCorrectedOnObjection: "Imerekebishwa baada ya pingamizi: afisa alikubali pingamizi dhidi ya uamuzi uliorekodiwa",
       resProvisional: "Ya muda — inakuwa ya mwisho tarehe",
@@ -4436,7 +4436,7 @@ export const dict = {
     primer: {
       card1Eyebrow: "50pick ni nini",
       card1Title: "Tabiri matukio. Si bahati.",
-      card1Body: "Kila swali ni tukio halisi lenye jibu la NDIO au HAPANA — linatatuliwa kupitia chanzo rasmi cha umma. Hakuna kete. Imani tu.",
+      card1Body: "Kila swali ni tukio halisi lenye jibu la NDIO au HAPANA — linatatuliwa kupitia chanzo cha umma kilichotajwa. Hakuna kete. Imani tu.",
       card2Eyebrow: "jinsi ya kuweka dau",
       card2Title: "Sogeza dial. Imani = dau.",
       card2Body: "Mguso mmoja huweka upande wako na dau lako. Sogeza kuelekea NDIO au HAPANA — kadri unavyosogea mbali, ndivyo kiwango chako kinaongezeka.",
@@ -5615,7 +5615,7 @@ export const dict = {
       howStep1B: "每个市场都是一个问题、两个答案。用先令投注您想要的金额——信念指针显示大众资金目前所在的位置。",
       // drafted, marked for native review; English is binding.
       howStep2H: "指定来源",
-      howStep2B: "每个市场都以指定的官方公开来源结算：气象局、联赛积分榜、坦桑尼亚银行中间价。由一名审核员签核——启用双审核员授权时为两名。",
+      howStep2B: "每个市场都以指定的公开来源结算：气象局、联赛积分榜、坦桑尼亚银行中间价。由一名审核员签核——启用双审核员授权时为两名。",
       howStep3H: "赢家分享奖池",
       // drafted, marked for native review; English is binding.
       howStep3B: "奖池由所有判断正确的人分享，扣除仅从失败一方收取的 {pct}% 佣金。奖金存入您的 50pick 余额，可提现到移动支付账户。",
@@ -5719,7 +5719,7 @@ export const dict = {
       resEvidence: "官员记录的证据",
       resVoided: "市场已作废",
       resTwoOfficer: "已通过双审核员规则确认",
-      resSingleOfficer: "已由审核员依据公布的官方来源结算",
+      resSingleOfficer: "已由审核员依据公布的公开来源结算",
       // drafted, marked for native review; English is binding.
       resCorrectedOnObjection: "经异议更正：审核员支持了对原裁定的异议",
       resProvisional: "临时结果——最终生效日期",
@@ -6662,7 +6662,7 @@ export const dict = {
     primer: {
       card1Eyebrow: "什么是50pick",
       card1Title: "预测事件。不是碰运气。",
-      card1Body: "每个问题都是真实事件，答案为「是」或「否」——以官方公开来源为准。没有骰子，没有老虎机。只有信念。",
+      card1Body: "每个问题都是真实事件，答案为「是」或「否」——以指定的公开来源为准。没有骰子，没有老虎机。只有信念。",
       card2Eyebrow: "如何投注",
       card2Title: "拖动刻度盘。信念 = 投注。",
       card2Body: "一个手势设置您的立场和投注额。向「是」或「否」拖动——离中心越远，信念倍数越高。",
