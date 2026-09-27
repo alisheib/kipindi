@@ -9,19 +9,20 @@
 
 ## §0 · RESUME AT — the v3 build (reopened 2026-09-26)
 
-**State (2026-09-27):** D0 ✅, D1 ✅ (`54f8199b`), WP14 ✅ (the Wallet, `e9b4056c`) and **WP6 ✅ — a market
-with money on one side states no price, on every card** (`31662831`): "One side only", the dashed rail, bare
-YES/NO and the refund rule; a two-sided price within 1–99; the hero, the grid and the `/markets` filters order
-and file by the same rule (`price-state.ts`). Measured on production 2026-09-27: V17 0 in 33 of 33 cells (was 66).
-What the production gate still reports is named on the GATE row.
-**Next:** the rest of batch D2 (§2.0), in this order — (1) gate step 0: V18's block and the gate's own defects
-(a `--cell`/`--pass` that matches nothing prints GATE GREEN; a bare `--cell` is ignored); (2) **WP14b** — BUILT in
-the landing worktree, uncommitted at this writing: the share preview (og tags spread from `ROOT_OPEN_GRAPH`, no
-0/100 in the image or description, `test:share-preview` + `red:share-preview` 5/5, `qa:landing-v3:og-prod`) and
-the card share on closed/settled cards (one `<article>` root, `test:card-share` §7) — it needs its local drive,
-then push; (3) **WP3 + WP4** as one deploy; (4) **WP9** alone. Build specs for all five, with the conflicts between
-them resolved, were written read-only on 2026-09-27 — rebuild them from §2.1 if the scratch copy is gone.
-Then D3 (WP5 the pick slip + WhatsApp after placing, V20, the chat bubble under sheets) and D5.
+**State (2026-09-27):** D0 ✅, D1 ✅ (`54f8199b`), WP14 ✅ (the Wallet, `e9b4056c`), **WP6 ✅** (`31662831` — a
+market with money on one side states no price, on every card; V17 0 on production) and **WP14b ✅** (`541a9e76` —
+share works on every card in every phase; the WhatsApp preview reads the card's price rule and carries the site's
+og tags; `qa:landing-v3:og-prod` CLEAN on 15 production markets). D2 step 0 (the gate's V18 + its own hardening) is
+live in the scripts; V18 reads 1,584 on production until WP3/WP4 add the attributes it reads (GATE row).
+**Next:** (1) **the Up & Down band (R5)** — being built in the landing worktree from
+`docs/design-system/v4-2026-09-26-landing-ten/specs/updown-band-v2.md`; then its local drive and a four-expert
+rating of the real frames until every score is 10, then push; (2) **the hero** — in design (marketing specialists +
+a four-judge panel), with Ali's rulings on the 'first' claim and the RG line to come; (3) **C1 · one price rule
+everywhere** — spec `specs/c1-one-price-rule.md`, both rulings made (R6); it also fixes a live false money
+statement (a settled one-sided market's resolution panel states a fee never charged) and the result word's ink
+(a NO or void result is painted YES-green on every settled card); (4) **WP3 + WP4** as one deploy (they add V18's
+attributes) — spec `specs/d2-wp3-wp4-wp9-v18-wp14b.md`; (5) **WP9** alone. Then D3 (WP5 the pick slip + WhatsApp
+after placing, V20, the chat bubble under sheets) and D5. The specs are build inputs: delete each when its unit ships.
 **Ali's asks of 2026-09-27, open:** (a) the Up & Down band's chart "nobody understands" — a redesign, to be rated
 10/10 by a UI/UX + gambling-industry panel on real frames before it ships (WP12 note; ruling R5: 60s refresh, no
 pool on the band, `/updown` card to follow); (b) the HERO's first screen — "first prediction market in Tanzania",
@@ -122,7 +123,7 @@ row; this section does not repeat it.
 | WP12 | Up & Down band: the soonest round, price line, ring, UP/DOWN, plural fixed | ✅ | 54f8199b | measured on production 2026-09-26 (360/768/1280 × sw/en/zh frames looked at); full width, R4(6). ⚠️ Ali 2026-09-27: the price-line chart is not understood — a redesign is in design (§0); the chart moved into `components/charts/` meanwhile |
 | WP13 | Results: date, the market's own sign-off, source link, paid | ✅ | e9b4056c | measured on production 2026-09-27: date, the market's own sign-off (a reversed market reads "Corrected on objection"), source, paid; below 640 the amount and the source each take a line, so the host reads whole. L2 |
 | WP14 | Wallet: chip opens sheet/panel, equal Deposit/Withdraw, gold Deposit at zero, signed-in hero | ✅ | e9b4056c | measured on production 2026-09-27 with `mobile01` (zero balance, no picks: header Deposit, hero empty-balance line + Deposit, no Withdraw, Set limits; pages render at 360/1280 sw/en). Funded Wallet + hero measured locally (Wallet 17 cells, hero 15 cells; 360–1280 × sw/en/zh). `test:wallet-reach` 48/48, `test:landing-mine` 22/22, both mutation-proved. R1, L19–L21 |
-| WP14b | Share on every card footer, in every phase; the WhatsApp preview card (og tags spread from `ROOT_OPEN_GRAPH`, no 0/100 in the preview) | 🔨 | | built; "Share on WhatsApp" AFTER PLACING needs the slip, so it is WP5's (its unit names it); K50 closes only with both |
+| WP14b | Share on every card footer, in every phase; the WhatsApp preview card (og tags spread from `ROOT_OPEN_GRAPH`, no 0/100 in the preview) | ✅ | 541a9e76 | measured on production 2026-09-27: `qa:landing-v3:og-prod` CLEAN on 15 markets (og:type/site_name/locale present, one-sided markets preview "One side only.", images 1200×630 PNG) — its baseline before the push failed on all 15; `/results` captured 360/768/1280 × sw/en/zh, settled cards one `<article>`, looked at; the share drive (26/26: Copy, WhatsApp, Esc, backdrop stay on `/results`) ran locally. "Share on WhatsApp" after placing is WP5's; K50 closes with both |
 | WP15 | Motion and performance | ⬜ | | L12 |
 | WP16 | i18n: every new key in en, sw and zh | 🔨 | 54f8199b | D1's keys in all three (`test:i18n`); sw/zh drafts carry the native-review marker (rows SW, ZH) |
 | WP17 | Accessibility: heading order, no nested controls, dialog semantics | 🔨 | 54f8199b | heading order and split row links live; dialog semantics arrive with the Wallet (WP14) and the slip (WP5) |
@@ -134,7 +135,7 @@ row; this section does not repeat it.
 | V19 | Gate: Withdraw as reachable and as large as Deposit | ⬜ | | |
 | V20 | Gate: sheets trap focus, close on Esc, respect the safe area | ⬜ | | |
 | V21 | Gate: the placement map, by bounding box | ⬜ | | |
-| GATE | `qa:landing-ten` V1–V14 clean on production (V3, V14 open by R4); `npm run test:all` + typecheck green | ⬜ | | Production 2026-09-27 after `31662831` (33 of 33 cells measured): V1, V2, V5–V17 clean. Still reported, each with its owner: V3 ×12 (the chat bubble, Ali's call), V4 ×33 (`.ticker-pause` 40×31, the LIVE-strip lane's, §0 trap 11). `test:all` is red on OTHER lanes' ratchets (type-scale, stacking, tap-target, decomment, eyebrow-roles, two red-anchors §3 anchors) — each red on clean `origin/main` too. R4 |
+| GATE | `qa:landing-ten` V1–V14 clean on production (V3, V14 open by R4); `npm run test:all` + typecheck green | ⬜ | | Production 2026-09-27 after `541a9e76` (33 of 33 cells measured): V1, V2, V5–V17 clean. Still reported, each with its owner: V3 ×12 (the chat bubble, Ali's call), V4 ×33 (`.ticker-pause` 40×31, the LIVE-strip lane's, §0 trap 11), V18 ×1,584 (48 per cell: every surface unmarked until WP3 + WP4 add `data-market-*`; its RED runs are INCONCLUSIVE until then — correct). `test:all` is red on OTHER lanes' ratchets (type-scale, stacking, tap-target, decomment, eyebrow-roles, two red-anchors §3 anchors) — each red on clean `origin/main` too. R4 |
 | PANEL | The eight-reviewer re-score, recorded below | ⬜ | | |
 | FUNNEL | Visitors → sign-ups → first pick, measured before and after launch | ⬜ | | |
 | SW | Native Swahili sign-off of every new sw string | ⏳ | | Ali |
