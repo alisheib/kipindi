@@ -316,7 +316,11 @@ KP_BASE=http://localhost:3031 KP_WIDTHS=360,1280 npm run -s qa:house-bots-visual
   - Built by two builders in isolated worktrees, each refuted by an adversarial reviewer, fixed, then verified again; the
     lead closed the verifiers' last holes. Integrated: console 1105/804, every house suite green on both stores,
     filter-language 257 green, `qa:house-bots-visual` 762/0 (3 NOT MEASURED: the empty targets table), `qa:nav-pending`
-    112/0 including the new phone case, `qa:desk-rules-flow` 89/89, build and bundle green.
+    112/0 including the new phone case, `qa:desk-rules-flow` 89/89, build and bundle green. Live at `994d2f0d`.
+  - **After the push, at `994d2f0d`:** the 34 new console mutations **34 caught, 0 missed, 0 dirty**; `red:filter-language`
+    **37/37**. `qa:nav-pending`'s recurring ~4 "landing" NOT MEASURED were its own hold: pausing the request made the
+    continued body abort, 13 of 24 presses never landed, against 24 of 24 with no hold. It now holds the RESPONSE
+    (`holdNavigation`): two runs **120 passed, 0 failed, 0 NOT MEASURED**. A real press never stalled (HOUSE-BOTS §12.15).
 - **2026-09-26/27 · Ali-Blade15 — the build order, DONE. Everything below is on `main` and live.**
   - Steps 1–11 of §0c, each one commit (steps 6 and 10 share one, tested together), each pushed and verified serving;
     the table in §0c says where each is recorded. Ali added steps 9 and 10 mid-session ("all desk tables … paging and

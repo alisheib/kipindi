@@ -2504,10 +2504,14 @@ last hole — a rank written `rank='x'` or `rank = "x"` read as "no rank"; §6.6
 new red cases (`card-sort-rank-single-quoted`, `card-sort-rank-spaced`) prove it. On a served build: `qa:house-bots-visual`
 at 360, 640 and 1280 **762 passed, 0 failed, 3 NOT MEASURED** (the empty targets table's header, one per width);
 `qa:nav-pending` **112 passed, 0 failed** — the new phone case presses a chip at 360, sees the mark and the rows dimmed,
-and lands sorted. Its 4 NOT MEASURED were the PROBE: it held every RSC request without the prefetch header, Next 16's
-sidebar prefetches carry none, and the pressed navigation queued behind them; it now holds only the request whose path
-and query are the pressed link's href (its re-run on a served build of the pushed commit is recorded under §12.16's
-table). The tiles were read at 360: the rail sits under the order note, the pressed chip
+and lands sorted. Its 4 NOT MEASURED ("the mark was still up 30s after release", a different four each run) were the
+PROBE's hold, measured on the served build of the pushed commit `994d2f0d` (2026-09-28): the probe PAUSED the pressed
+link's request and continued it on release, and a continued request's body was aborted 7 ms after its headers, so the
+router never committed. Four cases × 1280 and 360 × three presses: request paused, **13 of 24 never landed**; no hold at
+all, **24 of 24 landed**; request sent and its response held, **24 of 24 landed**. The probe now holds the response
+(`holdNavigation`, which is what a slow network does), and two runs printed **120 passed, 0 failed, 0 NOT MEASURED**
+each. ⚠️ The first explanation written here — the hold caught Next 16's header-less sidebar prefetches — was REFUTED
+by the re-run: holding only the pressed href still stalled four. The tiles were read at 360: the rail sits under the order note, the pressed chip
 carries its bar, and "Account ↓" lands with "By account, Z to A" above the re-sorted rows.
 
 ### 12.16 FS-09 — every landed roster act tells every admin, once — built 2026-09-27 (Ali: "some desk actions … still don't send the admin alerts they were planned to send")
@@ -2539,7 +2543,9 @@ plants each passed it; a later verifier found a spread, a `.js` specifier, an un
 announcer still passed — all closed, each with a planted control. The compliance register's D1 entry, which said both
 "NOT wired" and "Built", now strikes the stale half. **Declared mutations: 24 `fs09-*`** (console-mem); the one whose plant
 leaned on the unbound-announcer hole now binds its announcer with a dynamic import, so it still proves "a writer that
-does announce". Both builds' mutations are driven after the push, at the live commit.
+does announce". **Both builds' mutations, driven after the push at the live commit `994d2f0d`** in a dedicated detached
+tree (2026-09-28): `red:house-bot-console --only phone-sort,fs09` **34 caught, 0 missed, 0 files left dirty**, and
+`red:filter-language` **37/37 caught**, each on its own assertion.
 
 ---
 

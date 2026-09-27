@@ -9,8 +9,9 @@
  * `DISABLE_ADMIN_TOTP=true`) and the desk seeds (`seed-house-bots-local`, `seed-house-bot-panels-local`,
  * `seed-desk-accounts-local`), so every control below exists. `localhost`, never `127.0.0.1`.
  *
- * ⭐ HOW A PENDING STATE IS MADE LONG ENOUGH TO SEE. Every client navigation fetch (`RSC: 1`, not a prefetch) is
- * HELD by the browser until this script releases it. Each case presses ONE real control — the app's own `<Link>`,
+ * ⭐ HOW A PENDING STATE IS MADE LONG ENOUGH TO SEE. The pressed link's own navigation fetch (`RSC: 1`, not a
+ * prefetch) goes to the server at once, and its RESPONSE is held until this script releases it (`holdNavigation`,
+ * below — never the request itself). Each case presses ONE real control — the app's own `<Link>`,
  * never an injected anchor (that would be a hard navigation) — waits past the mark's entrance delay, measures, then
  * releases and measures the landing. What it asserts, per case and width:
  *   · at rest there is no mark anywhere (the control's markup is untouched until pressed);
@@ -77,13 +78,7 @@ const CASES = [
   { id: "desk-phone-sort", open: "/admin/desk?tab=activity", press: '[data-filter-rail="desk-activity-sort"] a.kp-fchip:not([data-on])', lands: /[?&]sort=/, dims: "card-rows", below: 640, whyAbsent: deskLedgerWhyAbsent },
 ];
 
-/**
- * ⛔ HOLD ONLY THE PRESSED LINK'S OWN NAVIGATION (2026-09-27). The first cut held EVERY non-prefetch RSC request while a
- * press was pending — and Next 16's sidebar prefetches reach the server without the `next-router-prefetch` header this
- * read, so they were held too, the router's own queue backed up behind them, and four landings of one run "stalled"
- * (NOT MEASURED, the RSC log full of aborted /admin/candidates and /admin/markets fetches). A request is held only when
- * its path and query — `_rsc` aside — are the pressed link's href.
- */
+/** A request is the pressed link's own navigation when its path and query — `_rsc` aside — are the link's href. */
 const isNavTo = (reqUrl, href) => {
   if (!href) return false;
   const a = new URL(reqUrl), b = new URL(href, BASE);
@@ -91,6 +86,26 @@ const isNavTo = (reqUrl, href) => {
   const norm = (u) => `${u.pathname}?${[...u.searchParams.entries()].map(([k, v]) => `${k}=${v}`).sort().join("&")}`;
   return norm(a) === norm(b);
 };
+
+/**
+ * ⛔ HOLD THE RESPONSE, NEVER THE REQUEST (2026-09-28). The first cut PAUSED the request before it was sent and
+ * continued it on release, and every run printed about four "landing" NOT MEASURED, a different four each time. A
+ * diagnostic on the served build of `994d2f0d` (four cases × 1280 and 360 × three presses) settled it: with the request
+ * paused, 13 of 24 presses never landed — the continued request's headers arrived, its body was aborted 7 ms later
+ * (`net::ERR_ABORTED`) and the router never committed; with NO hold, 24 of 24 landed; with the request sent at once and
+ * its response held, 24 of 24 landed. So the stall was this script's, never the desk's, and the hold below is also the
+ * one a slow network makes. ⚠️ The first explanation — that the pause caught Next 16's sidebar prefetches and the
+ * router queued behind them — was REFUTED by that run: narrowing the hold to the pressed href (`isNavTo`, kept because
+ * it holds exactly what a case measures) still stalled four. `held` collects each hold's release; releasing calls them.
+ */
+const holdNavigation = (p, isHeld, held) => p.route("**/*", async (r) => {
+  const h = r.request().headers();
+  if (!(h["rsc"] === "1" && !h["next-router-prefetch"] && isHeld(r.request().url()))) return r.continue().catch(() => {});
+  const released = new Promise((go) => held.push(go));
+  const res = await r.fetch().catch(() => null);
+  await released;
+  return res ? r.fulfill({ response: res }).catch(() => {}) : r.abort().catch(() => {});
+});
 
 const browser = await chromium.launch();
 const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
@@ -130,11 +145,7 @@ try {
       const rscLog = [];
       p.on("response", (res) => { const h = res.request().headers(); if (h["rsc"] === "1" && !h["next-router-prefetch"]) rscLog.push(`${res.status()} ${res.url().replace(BASE, "")}`); });
       p.on("requestfailed", (req) => { const h = req.headers(); if (h["rsc"] === "1") rscLog.push(`FAILED ${req.failure()?.errorText} ${req.url().replace(BASE, "")}`); });
-      await p.route("**/*", (r) => {
-        const h = r.request().headers();
-        if (holding && h["rsc"] === "1" && !h["next-router-prefetch"] && isNavTo(r.request().url(), holding)) { held.push(r); return; }
-        r.continue().catch(() => {});
-      });
+      await holdNavigation(p, (url) => isNavTo(url, holding), held);
       try {
         await p.goto(BASE + route, { waitUntil: "load", timeout: 60_000 });
         await p.waitForSelector(c.ready ?? "[data-section-rail]", { timeout: 60_000 });
@@ -207,7 +218,7 @@ try {
           m.railStillThere && p.url() === before, `rail present: ${m.railStillThere} · address unchanged: ${p.url() === before}`);
 
         holding = null;
-        for (const r of held.splice(0)) await r.continue().catch(() => {});
+        for (const go of held.splice(0)) go();
         const landed = await p.waitForFunction(() => document.querySelectorAll("[data-link-pending]").length === 0, null, { timeout: 30_000 }).then(() => true, () => false);
         if (!landed) {
           const marks = await p.locator("[data-link-pending]").count();
@@ -232,7 +243,7 @@ try {
         nm(label, String(e?.message ?? e).split("\n")[0]);
       } finally {
         holding = null;
-        for (const r of held.splice(0)) await r.continue().catch(() => {});
+        for (const go of held.splice(0)) go();
         await p.close();
       }
     }
@@ -243,11 +254,7 @@ try {
     const p = await ctx.newPage();
     let holding = null;
     const held = [];
-    await p.route("**/*", (r) => {
-      const h = r.request().headers();
-      if (holding && h["rsc"] === "1" && !h["next-router-prefetch"] && isNavTo(r.request().url(), holding)) { held.push(r); return; }
-      r.continue().catch(() => {});
-    });
+    await holdNavigation(p, (url) => isNavTo(url, holding), held);
     try {
       await p.goto(`${BASE}/admin/desk`, { waitUntil: "load", timeout: 60_000 });
       await p.waitForSelector("[data-section-rail]", { timeout: 60_000 });
@@ -268,7 +275,7 @@ try {
       nm("reduced tier", String(e?.message ?? e).split("\n")[0]);
     } finally {
       holding = null;
-      for (const r of held.splice(0)) await r.continue().catch(() => {});
+      for (const go of held.splice(0)) go();
       await p.close();
     }
   }
