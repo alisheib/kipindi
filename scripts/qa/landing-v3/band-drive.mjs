@@ -207,15 +207,21 @@ try {
     await page.waitForURL(/\/updown\//, { timeout: 60000 });
     await page.waitForTimeout(3000);
     await page.addStyleTag({ content: "nextjs-portal,[data-nextjs-toast]{display:none!important}" }).catch(() => {});
+    // Round 4: the panel lands at the BOTTOM of the view (above the phone rail), so the round's countdown and
+    // confirmed price stay visible above it — measured before any scroll.
     const landed = await page.evaluate(() => {
       const s = document.getElementById("stake"); const h = document.querySelector("header");
+      const rail = [...document.querySelectorAll("nav")].map((n) => n.getBoundingClientRect()).filter((r) => r.bottom >= innerHeight - 1 && r.top > innerHeight / 2)[0];
       const chip = s?.querySelector("[data-kit-chip]")?.getBoundingClientRect();
-      return s ? { top: Math.round(s.getBoundingClientRect().top), header: Math.round(h?.getBoundingClientRect().bottom ?? 0),
-        chipInView: !!chip && chip.top >= 0 && chip.bottom <= innerHeight, chip: (s.querySelector("[data-kit-chip]")?.textContent || "").trim(),
+      const price = document.querySelector("section[data-tone]")?.getBoundingClientRect();
+      const r = s?.getBoundingClientRect();
+      return r ? { top: Math.round(r.top), bottom: Math.round(r.bottom), header: Math.round(h?.getBoundingClientRect().bottom ?? 0),
+        railTop: Math.round(rail?.top ?? innerHeight), chipInView: !!chip && chip.top >= 0 && chip.bottom <= innerHeight,
+        chip: (s.querySelector("[data-kit-chip]")?.textContent || "").trim(), priceVisible: !!price && price.bottom > (h?.getBoundingClientRect().bottom ?? 0) + 24,
         focused: document.activeElement === s } : null;
     });
-    check("a pick LANDS on the stake panel: its top just under the header, the side Chip in view (measured before any scroll)",
-      !!landed && landed.top >= landed.header - 1 && landed.top <= landed.header + 120 && landed.chipInView,
+    check("a pick LANDS on the stake panel: all of it between header and rail, the side Chip in view, the confirmed price still above (measured before any scroll)",
+      !!landed && landed.top >= landed.header - 1 && landed.bottom <= landed.railTop + 1 && landed.chipInView && landed.priceVisible,
       JSON.stringify(landed));
     await page.screenshot({ path: join(FR, "PAIR-2-round-360-sw-b.png") });      // where #stake lands the player
     await page.evaluate(() => scrollTo(0, 0)); await page.waitForTimeout(400);

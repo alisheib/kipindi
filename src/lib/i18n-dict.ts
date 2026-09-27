@@ -652,7 +652,8 @@ export const dict = {
       udMatchNextRound: "Play the next round",
       udMatchAria: "Round timeline (EAT): open {open}, betting close {lock}, deciding price {close}. Confirmed prices since the open: {reads}.",
       // The timer's spoken name — a duration, never a clock time ("closes in 8:56" can be heard as 8:56 o'clock).
-      udMatchTimerAria: "Betting closes in {m} min {s} s",
+      udMatchTimerAria: "Betting closes in {m} min {s} sec",
+      udMatchTimerAriaSec: "Betting closes in {s} sec",
       udMatchAriaNone: "none yet",
       udMatchAriaRead: "{time}: {move}",
       updownStartsSoon: "New rounds every few minutes",
@@ -955,7 +956,7 @@ export const dict = {
       // state, not an error, and VOID is neutral — a refund, not a failure.
       udTitle: "Up & Down",
       gameKey: "Game",
-      udTagline: "Will the price be higher or lower when the clock runs out?",
+      udTagline: "Will the price be higher\u00A0or\u00A0lower when the clock runs out?",
       udUp: "Up", udDown: "Down",
       udMin: "min",
       udClosesIn: "Closes in",
@@ -3359,6 +3360,7 @@ export const dict = {
       udMatchNextRound: "Cheza raundi ijayo",
       udMatchAria: "Ratiba ya raundi (EAT): ufunguzi {open}, mwisho wa dau {lock}, bei ya kuamua saa {close}. Bei zilizothibitishwa tangu ufunguzi: {reads}.",
       udMatchTimerAria: "Dau linafungwa baada ya dakika {m} na sekunde {s}",
+      udMatchTimerAriaSec: "Dau linafungwa baada ya sekunde {s}",
       udMatchAriaNone: "bado hakuna",
       udMatchAriaRead: "saa {time}: {move}",
       updownStartsSoon: "Raundi mpya kila\u00A0baada\u00A0ya dakika chache",
@@ -3571,7 +3573,7 @@ export const dict = {
       // ── Juu na Chini (Up & Down) ─────────────────────────────────────────
       udTitle: "Juu na Chini",
       gameKey: "Mchezo",
-      udTagline: "Je, bei itakuwa juu au chini muda ukiisha?",
+      udTagline: "Je, bei itakuwa juu\u00A0au\u00A0chini muda ukiisha?",
       udUp: "Juu", udDown: "Chini",
       udMin: "dakika",
       udClosesIn: "Inafunga baada ya",
@@ -5584,6 +5586,7 @@ export const dict = {
       udMatchNextRound: "玩下一回合",
       udMatchAria: "回合时间线（EAT）：{open} 开盘，{lock} 停止下注，判定价格时间 {close}。开盘后的确认价格：{reads}。",
       udMatchTimerAria: "距停止下注 {m} 分 {s} 秒",
+      udMatchTimerAriaSec: "距停止下注 {s} 秒",
       udMatchAriaNone: "暂无",
       udMatchAriaRead: "{time}：{move}",
       updownStartsSoon: "每隔几分钟就有新回合",

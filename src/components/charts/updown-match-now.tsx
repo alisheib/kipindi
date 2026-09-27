@@ -23,16 +23,19 @@ import { matchX } from "./updown-match-geometry";
  *  line (frame panel round 2, 2026-09-27). 2.5% is ~6px at 360 and more than that on wider plots. */
 export const NOW_NEAR_PCT = 2.5;
 
-export function UpdownMatchNow({ opensAtMs, closesAtMs, anchorMs, markX = null, markKind = null }: {
+export function UpdownMatchNow({ opensAtMs, closesAtMs, anchorMs, markX = null, markKind = null, gatePct = null }: {
   opensAtMs: number;
   closesAtMs: number;
   anchorMs: number;
+  /** The lock post's x (%): just past it the playhead parks ON the post rather than beside it (round 4). */
+  gatePct?: number | null;
   /** The newest data mark's x (%) and kind — the newest stem (its side) or a tie tick — or null. */
   markX?: number | null;
   markKind?: "up" | "down" | "tie" | "kick" | null;
 }) {
   const now = useServerNowGated(anchorMs, (n) => String(Math.round(matchX(n, opensAtMs, closesAtMs) * 4)));
-  const x = matchX(now ?? anchorMs, opensAtMs, closesAtMs);
+  const raw = matchX(now ?? anchorMs, opensAtMs, closesAtMs);
+  const x = gatePct != null && raw > gatePct && raw - gatePct < NOW_NEAR_PCT ? gatePct : raw;
   // A custom property, not a geometry literal: the CSS owns every length (design-frozen skips `--*`).
   const style = { "--x": `${x}%` } as CSSProperties;
   return (

@@ -128,7 +128,7 @@ export function UpdownBand({ t, locale, liveCount, round }: {
                 <p className="kp-udclock__row kp-udclock__row--open">
                   <I.clock s={12} className="kp-udclock__glyph" />
                   <span className="kp-udclock__cap" aria-hidden>{t.market.udBetsCloseIn}</span>
-                  <UpdownMatchDigits aria={t.home.udMatchTimerAria} />
+                  <UpdownMatchDigits aria={t.home.udMatchTimerAria} ariaSec={t.home.udMatchTimerAriaSec} />
                 </p>
                 <p className="kp-udclock__row kp-udclock__row--closed">
                   <I.lock s={12} className="kp-udclock__glyph" />
@@ -136,7 +136,7 @@ export function UpdownBand({ t, locale, liveCount, round }: {
                       (WCAG 4.1.2). Past the deciding instant "Awaiting result" is the verdict's, not this row's. */}
                   <span className="kp-udclock__cap" id="kp-udclock-state">{t.market.udLockedTitle}</span>
                   <Link href={roundHref as never} className="kp-udclock__watch" aria-describedby="kp-udclock-state">
-                    {t.market.udRcWatchRound}
+                    <span className="kp-udclock__watch-label">{t.market.udRcWatchRound}</span>
                     <I.chevronRight s={14} />
                   </Link>
                 </p>

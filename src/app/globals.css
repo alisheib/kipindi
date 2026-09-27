@@ -5499,6 +5499,10 @@ textarea::-webkit-resizer {
   margin-left: auto; margin-block: calc((var(--sp-5) - var(--h-control-md)) / 2); white-space: nowrap;
   font-size: var(--type-small); font-weight: 600; color: var(--brand-300); transition: color var(--t-quick) ease-out; }
 .kp-udclock__watch:hover { color: var(--brand-200); }
+/* The ring hugs the LABEL: around the 44px tap box (spent in the gaps above and below the 20px row) the kit's ring
+   ran over the fixture Chip and onto the plate (frame panel round 4). */
+.kp-udclock__watch:focus-visible { outline: none; }
+.kp-udclock__watch:focus-visible .kp-udclock__watch-label { outline: 2px solid var(--brand-500); outline-offset: 2px; border-radius: var(--r-sm); }
 @media (min-width: 768px) {
   .kp-udclock__digits { margin-left: 0; font-size: var(--type-h3); }
   .kp-udclock__watch { margin-left: var(--sp-2); }
@@ -5612,19 +5616,18 @@ textarea::-webkit-resizer {
 .kp-updown:is([data-aged], [data-closed]) .kp-udtrack__stem--latest.kp-udtrack__stem--down { stroke: color-mix(in oklab, var(--no-400) 70%, transparent); }
 .kp-updown:is([data-aged], [data-closed]) .kp-udtrack__bead--up { fill: color-mix(in oklab, var(--yes-300) 70%, transparent); }
 .kp-updown:is([data-aged], [data-closed]) .kp-udtrack__bead--down { fill: color-mix(in oklab, var(--no-300) 70%, transparent); }
+/* --text-muted (was --text-subtle): the played stretch carries "now" by itself beside a fresh read (round 4). */
 .kp-udtrack__elapsed { position: absolute; left: 0; top: calc(50% - 1px); height: 2px; width: var(--x);
-  background: var(--text-subtle); border-radius: var(--r-pill); pointer-events: none; }
+  background: var(--text-muted); border-radius: var(--r-pill); pointer-events: none; }
 .kp-udtrack__now { position: absolute; top: 20%; bottom: 20%; left: var(--x); width: 2px; margin-left: -1px;
   background: var(--text-muted); border-radius: var(--r-pill); pointer-events: none; }
 /* Within 2.5% of the newest read (UpdownMatchNow's NOW_NEAR_PCT) the playhead draws only on the half away from it:
    below the rail beside an Up stem, above it beside a Down stem, clear of a tie tick's 10.7% half-height —
    so "now" and "the last read" never fuse into one two-tone line (frame panel round 2). */
-/* …and that half runs to the plot's edge, like the lock and flag posts, so it is never read as a white stem
-   (round 3). Beside the opening dot at kick-off it draws below the dot. */
-.kp-udtrack__now[data-near="up"] { top: calc(50% + var(--sp-1)); bottom: 0; }
-.kp-udtrack__now[data-near="down"] { top: 0; bottom: calc(50% + var(--sp-1)); }
-.kp-udtrack__now[data-near="tie"] { top: calc(50% + 10.7% + var(--sp-1)); bottom: 0; }
-.kp-udtrack__now[data-near="kick"] { top: calc(50% + var(--sp-2)); bottom: 0; }
+/* Round 4: any part of the line beside a fresh read still read as a data mark (a white stem on the other side), so
+   inside the window the line is not drawn at all — "now" is the bright END of the played stretch on the rail, which
+   ends at the same x. The line returns once "now" is clear of the read. */
+.kp-udtrack__now[data-near] { display: none; }
 
 /* G4 — the terms: one glyph column, hanging indent, two sentences in two inks. */
 .kp-udrule { margin: 0; display: grid; grid-template-columns: var(--sp-3) minmax(0, 1fr); column-gap: var(--sp-2);
@@ -5635,6 +5638,9 @@ textarea::-webkit-resizer {
 .kp-updown[data-decided] .kp-udrule__now { display: none; }
 .kp-updown[data-decided] .kp-udrule__was { display: inline; }
 .kp-udrule__refund { color: var(--text-subtle); }
+/* From 640 the second sentence moves as one unit: it stays on one line wherever the rule fits and otherwise breaks
+   at the full stop — at 1024 it split "from / the open" (round 4). Below 640 the two-line budget rules. */
+@media (min-width: 640px) { .kp-udrule__refund { display: inline-block; } }
 /* keep-all everywhere EXCEPT zh — the trust band's measured rule (trust-band.tsx): in Chinese it forbids
    a break between characters and leaves a paragraph ending after seven glyphs. */
 html:not([lang="zh"]) :is(.kp-udbug__detail, .kp-udbug__note, .kp-udbug__agednote, .kp-udrule) { word-break: keep-all; overflow-wrap: break-word; }

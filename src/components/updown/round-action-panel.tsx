@@ -86,16 +86,20 @@ export function RoundActionPanel(props: {
   const stakeRef = useRef<HTMLElement>(null);
   useEffect(() => {
     if (!bettable || window.location.hash !== "#stake" || !stakeRef.current) return;
+    // "end", not "start": the panel sits at the bottom of the view (html's scroll-padding-bottom keeps it above the
+    // phone rail), so the countdown and the confirmed price the band promised stay on screen above it (round 4).
+    // A panel taller than half the view lands at its top instead, so its head is never cut.
     const land = () => {
       const el = stakeRef.current;
       if (!el) return;
-      el.scrollIntoView({ block: "start" });
+      el.scrollIntoView({ block: el.offsetHeight > window.innerHeight / 2 ? "start" : "end" });
       if (document.activeElement !== el) el.focus({ preventScroll: true });
     };
     let raf = requestAnimationFrame(() => { raf = requestAnimationFrame(land); });
     const settle = window.setTimeout(() => {
       const top = stakeRef.current?.getBoundingClientRect().top;
-      if (top != null && (top < 0 || top > window.innerHeight / 2)) land();
+      const r = stakeRef.current?.getBoundingClientRect();
+      if (r && (r.top < 0 || r.bottom > window.innerHeight)) land();
     }, 400);
     return () => { cancelAnimationFrame(raf); window.clearTimeout(settle); };
   }, [bettable]);

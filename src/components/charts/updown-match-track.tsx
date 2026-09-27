@@ -76,7 +76,7 @@ export function UpdownMatchTrack({ round, label, openLabel, anchorMs }: {
           {g.kick && <circle className="kp-udtrack__kick" cx="0" cy="50%" r={MATCH.kick} />}
         </svg>
         <UpdownMatchNow opensAtMs={round.opensAtMs} closesAtMs={round.closesAtMs} anchorMs={anchorMs}
-          markX={mark?.x ?? null} markKind={mark?.kind ?? null} />
+          markX={mark?.x ?? null} markKind={mark?.kind ?? null} gatePct={g.gatePct} />
         <svg className="kp-udtrack__svg" width="100%" height="100%" focusable="false">
           {g.ties.map((tie) => (
             <line key={`t${tie.x}`} className="kp-udtrack__tie"
