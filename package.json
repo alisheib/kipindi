@@ -772,6 +772,7 @@
     "qa:landing-v3:og-prod": "node scripts/qa/landing-v3/og-prod.mjs",
     "qa:landing-v3:share-drive": "node scripts/qa/landing-v3/share-drive.mjs",
     "qa:landing-v3:wp14b": "bash scripts/qa/landing-v3/verify-wp14b.sh",
+    "qa:landing-v3:c1": "bash scripts/qa/landing-v3/verify-c1.sh",
     "test:time-left": "tsx scripts/time-left-contract.test.mts",
     "red:backup-order": "node scripts/red-backup-order.mjs",
     "red:wallet-reach": "node scripts/red-wallet-reach.mjs",

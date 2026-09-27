@@ -13,12 +13,18 @@
  * block would otherwise reject them). Returns 404 in production. UNCOMMITTED dev
  * tool — delete at cleanup.
  *
- *   POST { markets?: number, bettors?: number, stake?: number, outcome?: "YES"|"NO" }
+ *   POST { markets?: number, bettors?: number, stake?: number, outcome?: "YES"|"NO",
+ *          side?: "YES"|"NO", settle?: boolean, stage?: "bets"|"stage1"|"complete" }
+ *
+ * Landing v3 C1 (2026-09-27): `side` puts EVERY bettor on one side (a ONE-SIDED pool — the state C1's drive
+ * reads: settled, and resolved against its money); `settle` runs the real `settleMarket` (forced past the
+ * objection window) once the verdict is complete, so a SETTLED one-sided market exists locally. Omit both and
+ * the route behaves exactly as before.
  */
 import { NextResponse } from "next/server";
 import { db, type StoredWallet, type StoredUser } from "@/lib/server/store";
 import {
-  seedDemoMarkets, listMarkets, buyPosition, resolveMarket, isDemoMarket, type Side,
+  seedDemoMarkets, listMarkets, buyPosition, resolveMarket, settleMarket, isDemoMarket, type Side,
 } from "@/lib/server/market-service";
 import { randomId } from "@/lib/server/crypto";
 
@@ -45,8 +51,9 @@ async function makeUser(prefix: string, i: number, balance: number): Promise<str
 export async function POST(req: Request) {
   if (process.env.NODE_ENV === "production") return NextResponse.json({ ok: false }, { status: 404 });
   const body = (await req.json().catch(() => ({}))) as {
-    markets?: number; bettors?: number; stake?: number; outcome?: Side;
+    markets?: number; bettors?: number; stake?: number; outcome?: Side; side?: Side; settle?: boolean;
   };
+  const ONE_SIDE: Side | null = body.side === "YES" || body.side === "NO" ? body.side : null;
   const MARKETS = Math.max(1, Math.min(6, body.markets ?? 3));
   const BETTORS = Math.max(2, Math.min(40, body.bettors ?? 8));
   const STAKE = body.stake ?? 5000;
@@ -79,7 +86,7 @@ export async function POST(req: Request) {
     // Both sides get action so the winning side has an opposing pool to be paid from.
     for (let i = 0; i < BETTORS; i++) {
       const uid = await makeUser("bet", userIdx++, STAKE * 3);
-      const side: Side = i % 2 === 0 ? "YES" : "NO";
+      const side: Side = ONE_SIDE ?? (i % 2 === 0 ? "YES" : "NO");
       const r = await buyPosition(uid, { marketId: m.id, side, stake: STAKE });
       if (r.ok) stakes += STAKE;
     }
@@ -89,6 +96,8 @@ export async function POST(req: Request) {
     }
     if (state === "complete") {
       await resolveMarket({ marketId: m.id, outcome: OUTCOME, officerId: officerB });
+      // C1 · settle now (the precedent is seed-player-portfolio): the money moves, `settledAt` is stamped.
+      if (body.settle) await settleMarket(m.id, { force: true, actorId: officerB });
     }
     results.push({ id: m.id, title: m.titleEn.slice(0, 48), stakes, bettors: BETTORS, state });
   }
