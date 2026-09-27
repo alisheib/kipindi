@@ -249,9 +249,21 @@ export function Select({
 
   // Keyboard on trigger. ⭐ `ArrowUp` opens too (APG): a keyboard user reaching a closed
   // combobox and pressing Up expects the list, not nothing — the same gap Home/End were.
+  /* ⛔ ONLY WHILE CLOSED, AND THE OPENING KEY STOPS HERE (2026-09-27). Measured locally and on
+   * production: a keyboard could not choose ANY option. Focus stays on this trigger while the list is
+   * open (aria-activedescendant), so every key reached this handler AND the list's window listener:
+   *   · each arrow and Enter first RE-OPENED the list here, resetting the highlight to the current
+   *     value, and React commits that before the key reaches `window` — so the listener moved from,
+   *     or committed, the reset row, and Enter always chose the value already there;
+   *   · the opening key itself also reached the listener (attached by that same commit), so ArrowDown
+   *     opened the list AND moved one row.
+   * While the list is open the listener owns every key; the opening key never reaches it.
+   * Guards: `npm run test:select-keyboard` (the contract) and `npm run qa:select-keyboard` (the keys). */
   const onTriggerKey = (e: React.KeyboardEvent) => {
+    if (open) return;
     if (e.key === "Enter" || e.key === " " || e.key === "ArrowDown" || e.key === "ArrowUp") {
       e.preventDefault();
+      e.stopPropagation();
       openDropdown();
     }
   };
@@ -292,12 +304,13 @@ export function Select({
       // ⚠️ Closing does NOT commit the highlighted option: a keystroke whose job is "leave
       // this control" must not be able to change a value on the way out. Enter commits.
       if (e.key === "Tab") { setOpen(false); }
-      if (e.key === "Enter") {
+      // ⭐ Space commits like Enter (APG, select-only combobox) — and it is never a type-to-search key.
+      if (e.key === "Enter" || e.key === " ") {
         e.preventDefault();
         if (focusIdx >= 0 && !options[focusIdx]?.disabled) pick(options[focusIdx]!.value);
       }
       // Type-to-search: jump to first option starting with typed char
-      if (e.key.length === 1 && !e.ctrlKey && !e.metaKey) {
+      if (e.key !== " " && e.key.length === 1 && !e.ctrlKey && !e.metaKey) {
         const char = e.key.toLowerCase();
         // Skips disabled ones for the same reason the arrows do — typing "g" and landing on a
         // gold option Enter will not take is the same dead end by another route.
