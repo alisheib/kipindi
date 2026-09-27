@@ -477,8 +477,6 @@ export type InvitePayableDialog = {
   title: string;
   /** Paragraphs, in order. */
   body: string[];
-  /** ON only: the regulated-inducement line, shown as a warning. */
-  regulated: string | null;
   /** ON only: "What pays from now". `defaultChoice` is always NOTHING. */
   start: null | {
     legend: string;
@@ -523,8 +521,9 @@ export type InvitePayableCopy = {
   /** Payable only: the priced summary. */
   priceHeadline: string | null;
   priceLines: string[];
-  /** Always shown: the Gaming Board line and the enforced 50% ceiling. */
-  regulated: string;
+  /** Always shown: the enforced 50% commission ceiling. ⛔ No Gaming Board line — the Owner ruled on 2026-09-27 that 50pick's licence covers invite rewards
+   *  (docs/COMPLIANCE-DECISIONS.md), so no clearance is asked for on the card or in either dialog. */
+  terms: string;
   /** Every reward setting read-only. */
   locked: boolean;
   lockedCaption: string | null;
@@ -537,7 +536,7 @@ export type InvitePayableCopy = {
   stopPaying: InvitePayableDialog | null;
 };
 
-const REGULATED_LINE = "Rewarding referrals is a regulated inducement — the Gaming Board of Tanzania must clear this reward structure before it is paid. Commission ≤ 50% of margin is enforced.";
+const TERMS_LINE = "Referrer commission is capped at 50% of margin — enforced on every Save and again on every payment.";
 
 function provenanceFor(view: InvitePayableView): string | null {
   const s = view.stored;
@@ -603,7 +602,7 @@ export function invitePayableDialogs(view: InvitePayableView, price: InviteRewar
   if (!view.viewerIsOwner && view.ceiling === "OWNER") {
     notes.push(paying
       ? "You can change the amounts; only the Owner can stop payment."
-      : "Only the Owner can make invites payable, after Gaming Board clearance.");
+      : "Only the Owner can make invites payable.");
   }
 
   const reasonBase = { reasonCountLabel: "characters left", reasonMin: INVITE_REASON_MIN, reasonMax: INVITE_REASON_MAX, cancelLabel: "Cancel", expectSeq: view.seq };
@@ -614,7 +613,6 @@ export function invitePayableDialogs(view: InvitePayableView, price: InviteRewar
     trigger: "Make payable…",
     title: "Make invites payable",
     body: ["From the moment you confirm, 50pick pays referrers with its own money."],
-    regulated: "⚖ Regulated inducement: confirm only if the Gaming Board of Tanzania has cleared this structure.",
     start: {
       legend: "What pays from now",
       defaultChoice: "NOTHING",
@@ -668,7 +666,6 @@ export function invitePayableDialogs(view: InvitePayableView, price: InviteRewar
     trigger: "Stop paying…",
     title: "Stop paying for invites",
     body: [stopFirst, "Paid rewards stay paid; the settings are kept, and locked."],
-    regulated: null,
     start: null,
     effects: [],
     reasonLabel: "Why are you stopping payment? (required)",
@@ -693,7 +690,7 @@ export function invitePayableDialogs(view: InvitePayableView, price: InviteRewar
     notes,
     priceHeadline: paying ? price.headline : null,
     priceLines: paying ? price.lines : [],
-    regulated: REGULATED_LINE,
+    terms: TERMS_LINE,
     locked: !paying,
     lockedCaption: paying ? null : "Locked — Not payable",
     destination: price.destination,

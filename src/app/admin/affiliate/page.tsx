@@ -146,21 +146,17 @@ async function AdminAffiliateContent({ searchParams }: AffiliateProps) {
               <p className="font-bold text-no-300 mb-1">Compliance note · Kumbuka</p>
               {paid ? (
                 <>
-                  This is a regulated inducement. Stop paying, or limit the rewards, until the reward structure is cleared
-                  with the Gaming Board of Tanzania. Referrer commission is capped at 50% of margin; review caps quarterly per
-                  GBT guidance.
+                  Invites are payable: 50pick pays the rewards switched on above from its own money. Referrer commission is
+                  capped at 50% of margin.
                 </>
               ) : (
                 <>
-                  {/* ⭐ THE NOTE CHANGES BECAUSE THE FACT CHANGED. A reward for bringing gamblers is a regulated
-                      inducement; a share link that pays nothing is not one, and leaving the inducement warning up
-                      would misdescribe what is live — while deleting it would lose the warning the day the switch
-                      flips. So it states both: what is running, and what turning it on would make it. */}
+                  {/* ⭐ THE NOTE CHANGES BECAUSE THE FACT CHANGED: it says what is running (a share link that pays
+                      nothing) and what the Owner's switch would change. ⛔ No Gaming Board clearance line —
+                      the Owner ruled on 2026-09-27 that 50pick's licence covers invite rewards. */}
                   The player invite is <strong className="text-text">Not payable</strong> — the platform credits nothing for
-                  a referral, and every reward setting above stays locked until the Owner makes invites payable. Rewarding
-                  referrals is a regulated inducement: the Gaming Board of Tanzania must clear the structure before it is
-                  paid, and referrer commission is capped at 50% of margin. Cash paid to an inviter outside the platform is
-                  not recorded here.
+                  a referral, and every reward setting above stays locked until the Owner makes invites payable. Referrer
+                  commission is capped at 50% of margin. Cash paid to an inviter outside the platform is not recorded here.
                 </>
               )}
               {/* ⭐ 2026-09-26 — THE OWNER HAD TO ASK WHERE PLAYERS FIND IT, from inside this console on a

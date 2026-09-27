@@ -6,6 +6,37 @@
 
 ---
 
+## 2026-09-27 · Invite rewards need no separate Gaming Board clearance — 50pick's licence covers them (owner ruling)
+
+**Owner instruction (Ali, 2026-09-27), as typed:** *"np no gbt dens haveot do with this our license covers thi
+sfreedom done towery they done thave talk nit"* — answering the closing note of the Owner-switch release, which said
+that making invites payable waited on the Gaming Board of Tanzania's clearance. Read as: the Gaming Board has no part
+in this; 50pick's licence covers paying referral rewards, so no clearance is sought or awaited, and the product does
+not ask for one.
+
+**What changed, in the same commit:**
+- `/admin/affiliate`'s state card no longer says *"Rewarding referrals is a regulated inducement — the Gaming Board of
+  Tanzania must clear this reward structure before it is paid."* It states the rule the code enforces: *"Referrer
+  commission is capped at 50% of margin — enforced on every Save and again on every payment."* The page's compliance
+  note drops the same requirement.
+- The Make-payable dialog no longer carries *"Regulated inducement: confirm only if the Gaming Board of Tanzania has
+  cleared this structure."* The ceremony itself is unchanged: the Owner only, a written reason of 5–300 characters,
+  the typed words MAKE PAYABLE, and "Nothing yet" by default.
+- A growth officer reads *"Only the Owner can make invites payable."* (was "…, after Gaming Board clearance.").
+- Guards: `npm run test:player-invite-unpaid` (8.dialogs.noboard) fails if the card, the Make-payable dialog or a
+  growth officer's notes ask for Gaming Board clearance again, and `npm run qa:invite-admin` checks the page and the
+  dialog for it.
+
+**What does not change:** the Owner's switch is still the one control, and Not payable is still the default and every
+failure mode. No reward is tied to a deposit (the RG policy's promise). Commission is capped at 50% of margin, enforced.
+A player on a cooling-off break or with a frozen wallet is held, and every change is on the compliance record.
+
+**Supersedes:** ruling 11 of § 2026-09-26 · Invite payment becomes an Owner switch ("Gaming Board of Tanzania clearance
+is still required before switching on"), the same requirement in `docs/RULES.md` §2.10a and
+`docs/PLAYER-INVITE-UNPAID.md`, and "The Gaming Board clearance stands" in § 2026-09-25. Each carries a pointer here.
+
+---
+
 ## 2026-09-26 · Deposit-tied invite rewards retired — the RG policy's 'No bonus offers tied to deposit increases' stays true
 
 **Owner decision (Ali, 2026-09-26).** Invite rewards triggered by a deposit are retired, so that the
@@ -70,7 +101,7 @@ the one-curl check of whether it is live.
 | 8 | **Commission ≤ 50% of margin is ENFORCED; the window is 1–60 months, with no lifetime term.** | The 50% was printed guidance while the validator accepted rates up to 100%. It is now refused on save, repaired on load (a mode with any unreadable field, the rate included, loads switched OFF) and clamped again at accrual. The window was already held to 1–60 on save, but a stored row reached the payer unchecked, and a window of 0 means lifetime to `commissionWindowEnd`; it is now also repaired on load and clamped to 1–60 at accrual. |
 | 9 | **While Not payable every reward setting is locked, and the server refuses the Save.** | The refusal is decided on a fresh read of the switch under its lock, so a Save cannot land between a Stop and the page noticing. A Save that is allowed merges onto the settings re-read from their row, not onto a container's boot-time copy, and only if they are still the settings the page loaded (it posts only the changed fields, with the fingerprint of the settings the page loaded), so a stale tab cannot re-arm a reward the Owner switched off ("These settings changed since this page loaded — reload to see them."). A draft the server would refuse is not sent: the Save is disabled and the reason sits at the field (the rate is a whole percent). A Save that RAISES what the invite pays also writes a COMPLIANCE `affiliate.reward.terms` row (every money field moved, before and after, and who); if that row cannot be written the Save still lands, with a warning. A throw after the write began answers "Outcome unknown — reload to see the current state." `enabled` is dropped from every Save: the two states are the master. |
 | 10 | **Make payable defaults to "Nothing yet — switch every reward off".** | The shipped config has the prize ON at TZS 10,000 a head, so without this default switching on would pay it at once. The alternative, "The settings on this page", is accepted only while the settings are still the ones the Owner saw priced. |
-| 11 | ⛔ **Gaming Board of Tanzania clearance is still required before switching on.** | Paying referrers is a regulated inducement. The page and the Make-payable dialog both say so. No code checks the clearance, so the Owner's confirmation is where it is asserted. |
+| 11 | ~~Gaming Board of Tanzania clearance is still required before switching on.~~ ⚠️ **Superseded 2026-09-27** (§ 2026-09-27, above): 50pick's licence covers invite rewards, and no clearance is asked for. | *Was:* paying referrers is a regulated inducement, and the page and the Make-payable dialog both said so. Both lines are removed. |
 
 **How it is stored.** One `SystemConfig` row, `invite.rewards.switch`, holding an HMAC-sealed record
 (payable, seq, when, who, reason), with no schema change. It is not a field of `affiliate.config`,
@@ -398,7 +429,8 @@ verification (`docs/PLAYER-INVITE-UNPAID.md` §13).
    `/admin/affiliate` counts friends joined and nothing else, and the platform itself still credits a
    player referrer nothing (`inviteRewards` WITHDRAWN, § 2026-09-25 below). ⚠️ The regulatory status of
    the owner's own cash payments is not changed by where they are recorded; that question sits with the
-   Gaming Board of Tanzania, and this entry records only that he was told.
+   Gaming Board of Tanzania, and this entry records only that he was told. ⚠️ *2026-09-27: the owner has since
+   ruled that 50pick's licence covers referral rewards (§ 2026-09-27, at the top).*
 2. **Card share icon.** The compact share icon on market cards keeps carrying no `?ref=` (**"Keep as
    is"**): wiring it would change AGENT commission attribution and put an account-minting write on the
    busiest pages (`PLAYER-INVITE-UNPAID.md` §11).
@@ -500,7 +532,8 @@ the agent branch, so a player link would be one that could never bind).
 **Turning payment on later is one word** — `inviteRewards: "ACTIVE"` — and ⛔ **it needs Gaming Board clearance first**,
 because at that moment it becomes an inducement again. The paid path is kept executable while it sleeps.
 ⚠️ *Superseded 2026-09-26 as to "one word": payment is turned on by the Owner's ceremony on `/admin/affiliate`
-(§ 2026-09-26 · Invite payment becomes an Owner switch). The Gaming Board clearance stands.*
+(§ 2026-09-26 · Invite payment becomes an Owner switch). The Gaming Board clearance stood until 2026-09-27, when
+the owner ruled that 50pick's licence covers invite rewards (§ 2026-09-27).*
 
 Enforced by `npm run test:player-invite-unpaid` (44 assertions at the time) with `npm run red:player-invite-unpaid` (6/6 mutations
 proven to turn it red). ⚠️ *Corrected 2026-09-26:* this said both run in `predeploy`. Only the test does. The red

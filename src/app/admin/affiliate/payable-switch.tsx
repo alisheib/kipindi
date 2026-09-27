@@ -84,7 +84,7 @@ export function payableCeremonyArmed(
 
 /**
  * The state card. ⭐ Not payable is amber and Payable is royal — the header chip's own two tones, so the
- * page states one fact in one colour. The Gaming Board line is painted in BOTH states, as the server asks.
+ * page states one fact in one colour. The terms line (the enforced 50% ceiling) is painted in BOTH states.
  */
 export function PayableSwitch({ copy, act }: { copy: InvitePayableCopy; act: PayableAct }) {
   const titleId = useId();
@@ -143,8 +143,8 @@ export function PayableSwitch({ copy, act }: { copy: InvitePayableCopy; act: Pay
       )}
 
       <p className="mt-3 flex items-start gap-2 text-body-sm text-text-muted">
-        <span aria-hidden className="mt-0.5 shrink-0 text-warning-fg"><I.tippingScales s={16} /></span>
-        <span>{copy.regulated}</span>
+        <span aria-hidden className="mt-0.5 shrink-0"><I.shieldcheck s={16} /></span>
+        <span>{copy.terms}</span>
       </p>
     </section>
   );
@@ -265,11 +265,6 @@ function SwitchCeremony({ dialog, act }: { dialog: InvitePayableDialog; act: Pay
           {dialog.body.map((para, i) => (
             <p key={i} className="text-body-sm text-text-secondary">{para}</p>
           ))}
-          {dialog.regulated !== null && (
-            <p className="rounded-md border border-warning-border bg-warning-bg px-3 py-2.5 text-body-sm font-semibold text-text">
-              {dialog.regulated}
-            </p>
-          )}
 
           {dialog.start !== null && (
             <fieldset className="space-y-2" data-field="start" disabled={pending}>

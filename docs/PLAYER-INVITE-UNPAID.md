@@ -147,7 +147,7 @@ from one fresh read of the switch (`invitePayableView`):
 
 | State | What it says | The Owner | Anyone else |
 |---|---|---|---|
-| **Not payable** (the default) | *"Not payable · Hazilipwi"*: *"Invites are tracked; 50pick pays nothing. Every reward setting below is locked."* Then where the state came from: *"Since ‹when› · ‹who› · “‹reason›” · record #‹N›"*, *"Never switched on."*, *"Stored switch unreadable — treated as Not payable."* or, when the read failed, *"The stored switch could not be read just now — treated as Not payable. Reload to try again."* | **Make payable…** (§12), under the Owner's ceiling | *"Only the Owner can make invites payable, after Gaming Board clearance."* |
+| **Not payable** (the default) | *"Not payable · Hazilipwi"*: *"Invites are tracked; 50pick pays nothing. Every reward setting below is locked."* Then where the state came from: *"Since ‹when› · ‹who› · “‹reason›” · record #‹N›"*, *"Never switched on."*, *"Stored switch unreadable — treated as Not payable."* or, when the read failed, *"The stored switch could not be read just now — treated as Not payable. Reload to try again."* | **Make payable…** (§12), under the Owner's ceiling | *"Only the Owner can make invites payable."* |
 | **Payable** | *"Payable · Zinalipwa"*: *"50pick pays the rewards switched on below, as CASH, from each qualifying event."* Then the priced list of what pays, or *"No reward is switched on — nothing is paid yet."* | **Stop paying…** (§12) | *"You can change the amounts; only the Owner can stop payment."* |
 
 ‹who› is the display name the Owner chose, or *"the Owner"* when there is none; never a generated
@@ -174,8 +174,10 @@ payment waiting to resume can always be recorded as Not payable.
   been restored — check the database, then set the switch again."* (the replay note in §6).
 - **When the settings row could not be re-read**, the card says *"The reward settings could not be
   re-read just now — this page shows this server's last copy. Reload to try again."*
-- **Always:** *"Rewarding referrals is a regulated inducement — the Gaming Board of Tanzania must
-  clear this reward structure before it is paid. Commission ≤ 50% of margin is enforced."*
+- **Always:** *"Referrer commission is capped at 50% of margin — enforced on every Save and again on
+  every payment."* ⛔ No Gaming Board line: the Owner ruled on 2026-09-27 that 50pick's licence covers
+  invite rewards (`COMPLIANCE-DECISIONS.md` § 2026-09-27), so neither the card nor a dialog asks for
+  clearance (`test:player-invite-unpaid` 8.dialogs.noboard).
 
 ⛔ **Cash paid to an inviter outside the platform is recorded nowhere in 50pick** — by Ali's decision
 of 2026-09-26 (`COMPLIANCE-DECISIONS.md` § 2026-09-26 · Cash paid to inviters stays OFF-platform),
@@ -333,8 +335,8 @@ drive the ON branch under `FEATURE_INVITEREWARDS=ACTIVE` (the FORCED ceiling), w
 not have rotted. Every one of them runs in `predeploy` except `test:house-bot-money`, which needs a
 scratch database.
 
-⛔ **It becomes a regulated inducement at that moment.** The Gaming Board of Tanzania must clear the
-reward structure first (§2.10a); the page and the Make-payable dialog both say so. ⭐ Since 2026-09-26
+**No separate Gaming Board clearance is needed:** the Owner ruled on 2026-09-27 that 50pick's licence
+covers invite rewards (`COMPLIANCE-DECISIONS.md` § 2026-09-27), so the switch is the one step. ⭐ Since 2026-09-26
 referrer commission ≤ **50% of margin is a RULE, enforced** in three places: refused on save
 (`validateAffiliateConfig`, in whole percent), repaired on load (a mode with any out-of-rule field,
 the rate included, loads switched OFF) and clamped again at accrual (`effectivePlayerTerms`). On
@@ -540,8 +542,9 @@ sharer believes they are being counted.
 `/admin/affiliate` could not start payments, and the only levers were a one-word code change or the
 `FEATURE_INVITEREWARDS` variable, both needing a deploy. Ali replaced that with a control of his own
 on the page (`COMPLIANCE-DECISIONS.md` § 2026-09-26 · Invite payment becomes an Owner switch). What
-stays true: it cannot be a misclick, it leaves a trail, and the Gaming Board must clear the reward
-structure first.*
+stays true: it cannot be a misclick, and it leaves a trail. (Until 2026-09-27 this also said the Gaming
+Board must clear the reward structure first; that day the Owner ruled that 50pick's licence covers
+invite rewards.)*
 
 **Make payable** belongs to the Owner alone. The viewer's STORED role must be `ADMIN`; the role a
 session cookie carries is never asked. Any other signed-in role is refused (*"Only the Owner can
@@ -682,7 +685,8 @@ values were "stored, not applied". Since 2026-09-26 the server refuses the Save 
 ### 2026-09-26/27 · This release: the Owner's switch, the retired deposit modes, the fix round
 
 ✅ **DONE — LIVE `ec2f3253` (2026-09-27), verified on production.** Development of this lane is complete:
-nothing is pending but the Owner's own decision to make invites payable (Gaming Board clearance first).
+nothing is pending but the Owner's own decision to make invites payable — his alone: 50pick's licence
+covers invite rewards (Owner ruling 2026-09-27).
 - `/api/health` → `inviteRewards { payable: false, paying: false, ceiling: "OWNER" }`; the served commit
   (`?dpl=`) is `ec2f3253`, and the state was the same after every drive below.
 - Railway (production, service `50pick`): no `FEATURE_*` variable at all — names listed, nothing changed —
@@ -774,3 +778,6 @@ was "at least one bettable market exists" on an unseeded in-memory board, unrela
 4. (Later the same day.) Deposit-tied invite rewards are retired, so the published Responsible
    Gambling policy's "No bonus offers tied to deposit increases" stays true (§7); recorded in
    `COMPLIANCE-DECISIONS.md` § 2026-09-26 · Deposit-tied invite rewards retired.
+5. (2026-09-27.) **No separate Gaming Board clearance:** 50pick's licence covers invite rewards, so the
+   page and the Make-payable dialog no longer ask for one (§3, §12); recorded in
+   `COMPLIANCE-DECISIONS.md` § 2026-09-27 · Invite rewards need no separate Gaming Board clearance.

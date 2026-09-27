@@ -8,8 +8,8 @@
  * ADMIN `{ before, after, changes }` audit as bonus/proposals). The affiliate-specific pieces are the
  * deep `merge` for its nested modes and the rules in `@/lib/affiliate-rules`.
  *
- * Brand/compliance note: referral rewards are a regulated inducement under Gaming Board of
- * Tanzania guidance — the Owner switches payment on only after the structure is cleared.
+ * Compliance: referral rewards are paid under 50pick's licence — no separate Gaming Board clearance (the
+ * Owner's ruling of 2026-09-27, docs/COMPLIANCE-DECISIONS.md). The Owner's switch is the one control.
  *
  * ⛔ THIS IS NOT WHAT DECIDES WHETHER A PLAYER IS PAID (since 2026-09-25, and since 2026-09-26 by the
  * Owner's switch). `policyFor` asks the OWNER'S "Payable / Not payable" switch first
