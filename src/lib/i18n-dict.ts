@@ -612,7 +612,7 @@ export const dict = {
       heroConvEyebrow: "The whole board, right now",
       heroConvRead: "{yesPct}% {yesWord} · {noPct}% {noWord} — every open market, weighted by the money on it",
       heroConvEmpty: "Nothing staked yet — there is no crowd price to show",
-      heroBoardEyebrow: "Closing soonest",
+
       heroBoardCloseToday: "{n} close today",
       heroBrowseAll: "Browse all {n} markets",
       heroCta: "Browse markets",
@@ -700,12 +700,16 @@ export const dict = {
       // 2026-09-13 · no speed promise and no single brand: a payout lands when the mobile-money network confirms it, and several networks pay out.
       howStep3B: "The pool is shared between everyone who was right, minus a {pct}% commission taken only from the losing side. Winnings land in your 50pick balance, ready to withdraw to mobile money.",
 
-      /* ── §1c THE GRID'S LENS ───────────────────────────────────────────────────────────
-         The eyebrow NAMES THE ORDERING, so the grid is a claim rather than a sample (kit
-         §1c). Two lenses, because "biggest pools" is meaningless on a book where every pool
-         is zero — see `gridLensFor` in `lib/markets/landing.ts`. */
-      gridEyebrowPool: "Biggest pools first",
-      gridEyebrowNew: "Just opened",
+      /* ── §1c THE BOARD'S LENS ──────────────────────────────────────────────────────────
+         ⚠️ THREE KEYS WERE RETIRED HERE ON 2026-09-28 (WP9 · R16), in all three locales: the grid
+         band's two ordering eyebrows and the board's own. The ordering is still NAMED — that rule
+         has not moved, and a list under a heading that states its order is a claim rather than a
+         sample — but it is named ONCE now, by the selected pill of the board's ordering rail, in
+         `/markets`' own words (`market.sortClosing` / `sortPool` / `sortNew`). Two surfaces naming
+         one ordering with two different Swahili nouns was the drift this removes, and the landing's
+         own strings also did not FIT: 182px + 176px against a 328px rail at 360 wrapped the control
+         onto two lines. Which of the two money lenses is offered is still a decision, and it still
+         lives in code — `boardMoneyLens` in `lib/markets/hero.ts`. */
       gridSeeAll: "All {n} markets",
 
       /* ── §1d BROWSE BY TOPIC ── real count + real pool per tile, folded from ONE board read. */
@@ -3376,7 +3380,7 @@ export const dict = {
       heroConvEyebrow: "Bodi yote, sasa hivi",
       heroConvRead: "{yesPct}% {yesWord} · {noPct}% {noWord} — kila soko lililo wazi, kwa uzito wa fedha zilizowekwa",
       heroConvEmpty: "Hakuna fedha iliyowekwa bado — hakuna bei ya umati ya kuonyesha",
-      heroBoardEyebrow: "Yanayofungwa karibuni",
+
       heroBoardCloseToday: "{n} yanafunga leo",
       heroBrowseAll: "Tazama masoko yote {n}",
       heroCta: "Tazama masoko",
@@ -3439,8 +3443,7 @@ export const dict = {
       // drafted, marked for native review; English is binding.
       howStep3B: "Bwawa linagawanywa kati ya wote waliokuwa sahihi, kasoro kamisheni ya {pct}% inayotozwa kwenye upande ulioshindwa pekee. Ushindi wako huingia kwenye salio lako la 50pick, tayari kutolewa kwa pesa ya simu.",
 
-      gridEyebrowPool: "Bwawa kubwa kwanza",
-      gridEyebrowNew: "Yamefunguliwa hivi punde",
+
       gridSeeAll: "Masoko yote {n}",
 
       topicLive: "{n} hai",
@@ -5646,7 +5649,7 @@ export const dict = {
       heroConvEyebrow: "全部市场，此刻",
       heroConvRead: "{yesPct}% {yesWord} · {noPct}% {noWord}——所有开放市场，按投注金额加权",
       heroConvEmpty: "尚无投注，暂无群众价格",
-      heroBoardEyebrow: "最快结束",
+
       heroBoardCloseToday: "今天 {n} 个结束",
       heroBrowseAll: "浏览全部 {n} 个市场",
       heroCta: "浏览市场",
@@ -5709,8 +5712,7 @@ export const dict = {
       // drafted, marked for native review; English is binding.
       howStep3B: "奖池由所有判断正确的人分享，扣除仅从失败一方收取的 {pct}% 佣金。奖金存入您的 50pick 余额，可提现到移动支付账户。",
 
-      gridEyebrowPool: "奖池最大优先",
-      gridEyebrowNew: "刚刚开放",
+
       gridSeeAll: "全部 {n} 个市场",
 
       topicLive: "{n} 进行中",

@@ -704,10 +704,25 @@ export function QuestionBoard({ figures, t, locale, nowMs }: {
   if (figures.board.length === 0) return null;
   // ⭐ ONE VARIABLE FEEDS THE PILL'S WORDS, so the rail and the ordering cannot drift: `figures.lens`
   // is what `boardOrdering` actually ran, narrowed in `heroFigures` against this same offered pair.
+  //
+  // 🔴 THESE ARE `/markets`' OWN SORT WORDS, AND THE FIRST BUILD USED THE LANDING'S INSTEAD.
+  // Measured on production at 360 in Swahili: the landing's own strings rendered pills of 182px and
+  // 176px against a 328px rail, so the rail wrapped — and an unselected pill is text on transparent
+  // (the governing rule in `filter-pill.tsx`), so the second option sat alone on line two and read as a
+  // caption rather than a control. At 1280 the identical idiom reads correctly on one line, which is how
+  // we know the idiom was right and the LABELS were wrong. `market.sortClosing` / `sortPool` / `sortNew`
+  // measure about 160 + 112, which fits.
+  // ⭐ AND IT COSTS NOTHING IN CONSISTENCY — IT BUYS SOME. The landing used to name its ordering twice
+  // (the grid band's eyebrow AND, now, this rail), so borrowing `/markets`' words would have put two
+  // different Swahili names for one ordering on one page. WP9 moved the eyebrow onto the board's live
+  // fact instead, so the rail is the ONLY place the ordering is named — and naming it with the same
+  // words `/markets`, `/positions`, `/proposals` and `/watchlist` use is B9 (one state, one wording).
+  // The three landing-only strings this replaced are RETIRED from the dictionary in the same commit,
+  // keys and values, in all three locales — `hero-copy` §5b asserts both halves.
   const LABEL: Record<BoardLens, string> = {
-    closing: t.home.heroBoardEyebrow,
-    pool: t.home.gridEyebrowPool,
-    new: t.home.gridEyebrowNew,
+    closing: t.market.sortClosing,
+    pool: t.market.sortPool,
+    new: t.market.sortNew,
   };
   return (
     <section className="kp-band kp-band--tight" data-band="board">

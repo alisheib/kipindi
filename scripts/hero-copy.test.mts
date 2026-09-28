@@ -137,9 +137,23 @@ type Check = { id: string; label: string; run: (w: World) => string[] };
 /** The hero's first-screen code: Claim → Ask → TrustLines, and LandingHero itself (not the player's
  *  block, the board rows or the proof section, which have their own guards). */
 function firstScreen(hero: string): string {
-  const a = hero.slice(hero.indexOf("function Claim("), hero.indexOf("function QuestionRow("));
-  const b = hero.slice(hero.indexOf("export function LandingHero("), hero.indexOf("function SignedInAct("));
-  return a + "\n" + b;
+  /* ⛔ THE BOUNDARIES ARE FUNCTION NAMES, AND A MISSING ONE SILENTLY WIDENS THE POPULATION.
+     `indexOf` returns -1 when a name stops resolving, and `slice(a, -1)` then returns the whole rest of
+     the file minus one character — which would pull `LandingProof` and `QuestionBoard` into a check that
+     is only about the FIRST SCREEN, and §5a would then report `home.heroConvEmpty`'s "crowd" as an
+     overclaim on a correct tree. The `keys.size < 8` floor in §5a only catches the OPPOSITE failure, a
+     slice that collapsed to nothing. ⭐ So a boundary that stopped resolving throws: a guard that cannot
+     establish what it is looking at must stop, not measure something else. Four names are pinned here,
+     and a rename must fix them in the same commit — which is the whole point. */
+  const at = (needle: string) => {
+    const i = hero.indexOf(needle);
+    if (i < 0) throw new Error(`hero-copy: the first-screen boundary ${JSON.stringify(needle)} no longer resolves in landing-hero.tsx — re-point it in the same commit as the rename`);
+    return i;
+  };
+  const a0 = at("function Claim("), a1 = at("function QuestionRow(");
+  const b0 = at("export function LandingHero("), b1 = at("function SignedInAct(");
+  if (a0 >= a1 || b0 >= b1) throw new Error(`hero-copy: the first-screen boundaries are out of order (${a0}, ${a1}, ${b0}, ${b1}) — landing-hero.tsx was reordered`);
+  return hero.slice(a0, a1) + "\n" + hero.slice(b0, b1);
 }
 
 const CHECKS: Check[] = [
@@ -292,6 +306,33 @@ const CHECKS: Check[] = [
     }
     return d;
   } },
+
+  /* §5b · the keys WP9 retired — absent from the dictionary AND unread in src/ ─────────────────
+     ⭐ TWO LAYERS, BECAUSE A HALF-RETIREMENT SHIPS SILENTLY. Drop the readers and the strings are
+     orphaned with nothing detecting it; drop the strings and a surviving reader renders `undefined`.
+     The repo has paid for both (`one-sided` §8.9, `failure-reasons` §8c), and the pattern is theirs.
+     ⚠️ `w.src` is DECOMMENTED, which is what lets the retirement note in `i18n-dict.ts` name these keys
+     without the check convicting its own explanation — the trap that reddened `landing-mine` the same
+     day this was written. */
+  { id: "5b", label: "the three landing ordering-eyebrow keys are retired in all three locales, and nothing reads them", run: (w) => {
+    const d: string[] = [];
+    const RETIRED = ["heroBoardEyebrow", "gridEyebrowPool", "gridEyebrowNew"];
+    for (const loc of LOCALES) for (const k of RETIRED) {
+      if (w.dict[loc].has(`home.${k}`)) d.push(`${loc} still carries home.${k}`);
+    }
+    for (const [f, s] of w.src) {
+      if (f === DICT) continue;
+      for (const k of RETIRED) if (new RegExp(`\\b${k}\\b`).test(s)) d.push(`${f} still reads ${k}`);
+    }
+    return d;
+  } },
+  { id: "5b-control", label: "CONTROL: the same two walks DO find a key that is still alive and still read", run: (w) => {
+    const d: string[] = [];
+    if (!w.dict.sw.has("home.pickASideNow")) d.push("home.pickASideNow is gone from sw — 5b's dictionary walk has no live subject");
+    if (![...w.src].some(([f, s]) => f !== DICT && /\bpickASideNow\b/.test(s))) d.push("nothing in src/ reads pickASideNow — 5b's reader walk is blind");
+    if (!w.dict.sw.has("home.heroBoardCloseToday")) d.push("home.heroBoardCloseToday is gone — the board's eyebrow lost the fact it states");
+    return d;
+  } },
 ];
 
 /* ── §6 · the plants — one per check, each on a COPY of the world ─────────────────────────── */
@@ -334,6 +375,18 @@ const PLANTS: Record<string, { note: string; plant: (w: World) => World }[]> = {
   "5a": [
     { note: "官方 in the zh lede", plant: (w) => withDict(w, "zh", "home.heroLedePay", "官方结算，即获赔付。") },
     { note: "\"rasmi\" in the sw wallet row (a first-screen key)", plant: (w) => withDict(w, "sw", "home.heroRails", "Weka na toa pesa kwa {rails} rasmi.") },
+  ],
+  /* ⭐ BOTH DIRECTIONS OF THE RETIREMENT, because a half-retirement is the failure mode: the strings can
+     come back without a reader, or a reader can come back without the strings. One plant each. */
+  "5b": [
+    { note: "a retired ordering string is back in the sw dictionary, with nothing reading it", plant: (w) => withDict(w, "sw", "home.gridEyebrowPool", "Bwawa kubwa kwanza") },
+    { note: "the board's rail reads the retired landing key again instead of /markets' own sort word", plant: (w) => withHero(w, w.hero.replace("closing: t.market.sortClosing,", "closing: t.home.heroBoardEyebrow,")) },
+  ],
+  /* ⛔ THE CONTROL'S OWN CONTROL. §5b-control exists to prove the two walks in §5b are not simply blind,
+     so it has to be able to fail: delete the live key it watches and it must say so. A control nobody
+     can break is the thing it was written to prevent. */
+  "5b-control": [
+    { note: "the live key the control watches is deleted, so §5b's dictionary walk loses its subject", plant: (w) => { const dd = cloneDict(w); dd.sw.delete("home.pickASideNow"); return { ...w, dict: dd }; } },
   ],
 };
 
