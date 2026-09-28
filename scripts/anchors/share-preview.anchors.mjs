@@ -42,4 +42,19 @@ export const MUTATIONS = [
     to: `    ogRemoved: {\n      ...ROOT_OPEN_GRAPH,`,
     expect: "1.2",
   },
+  // ── landing v3 C1 · commit E — the settled preview ────────────────────────────────────────────
+  {
+    name: "C1-E · the og image forgets the settled rule (a settled market's card leans like an open one)",
+    file: "src/app/api/og/market/[id]/route.tsx",
+    from: `  const settled = sharePreviewSettled(m.status, m.resolvedOutcome, m.productLine);`,
+    to: `  const settled = null;`,
+    expect: "4.8",
+  },
+  {
+    name: "C1-E · a RESOLVED market with no recorded verdict is previewed as a YES win",
+    file: "src/lib/markets/share-preview.ts",
+    from: `  if (!outcome) return { ...base, tone: null, word: dict.en.market.statusResolved };`,
+    to: `  if (!outcome) return { ...base, tone: "YES", word: dict.en.common.yes };`,
+    expect: "4.4",
+  },
 ];

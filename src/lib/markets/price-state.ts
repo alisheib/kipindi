@@ -31,6 +31,19 @@ export type PriceState =
   | { kind: "oneSided"; emptySide: Side }
   | { kind: "priced"; yesPct: number };
 
+/**
+ * ⭐ R6(2) (Ali, 2026-09-27) · ONE "tipping" rule: a two-sided price within 3 points of an even split,
+ * |YES − 50| ≤ 3. Before C1 four surfaces each kept their own threshold — the bar's lean word `< 3`, the
+ * card badge `≤ 3`, the share preview `< 4` and /live's header count `< 8` — so one market could be
+ * "tipping" on one screen and "leans yes" on the next. Every surface reads `isTipping`; none compares.
+ * ⚠️ Only ever called with a PRINTED price (1–99): an empty or one-sided pool has no price to tip.
+ */
+export const TIPPING_BAND = 3;
+
+export function isTipping(yesPct: number): boolean {
+  return Math.abs(yesPct - 50) <= TIPPING_BAND;
+}
+
 export function priceState(yesPool: number, noPool: number): PriceState {
   const yes = Math.max(0, yesPool);
   const no = Math.max(0, noPool);

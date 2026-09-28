@@ -507,6 +507,52 @@ export function poolFee(yesPool: number, noPool: number, rates: Partial<FeeRates
 }
 
 /**
+ * THE FEE SETTLEMENT ACTUALLY DEBITS — for READERS only (landing v3 C1, the spec's §9 "phantom fee").
+ *
+ * 🔴 WHY THIS EXISTS. `poolFee(yes, no, rates, winner)` answers "what would the fee be on these pools if
+ * `winner` won" — and it cannot know that `settleMarket` never gets that far on two shapes of pool:
+ *   · ONE SIDE ONLY (exactly one pool holds money, the verdict is YES or NO): settlement refunds every open
+ *     stake in full at ZERO fee, whatever the verdict — its one-sided branch, rules §7. Under loser-share a
+ *     YES-only pool resolved NO has a "losing pool" of YES money, so `poolFee` prices a positive fee off the
+ *     funded side that nobody was ever charged.
+ *   · VOID: every stake is refunded at zero fee; under capped-commission `poolFee` with no winner still
+ *     returns min(commission, ceiling) > 0 on a two-sided pool.
+ * Readers that called `poolFee(…, resolvedOutcome)` — the finance per-poll fee view, the landing's settled
+ * strip, the house book's recompute, the officer's market page — therefore counted or printed fee revenue
+ * settlement never took.
+ *
+ * ⛔ IT MIRRORS `settleMarket` EXACTLY, IN ITS ORDER: (1) the one-sided predicate, character for character
+ * (`opts.outcome !== "VOID" && ((yes > 0 && no === 0) || (yes === 0 && no > 0))`) → refund, fee 0;
+ * (2) VOID → refund, fee 0; (3) otherwise the very call settlement debits, `poolFee(yes, no, rates, winner)`.
+ * `test:charged-fee` drives the REAL settlement on every branch and pins this equal to what it debited.
+ * ⛔ It is NOT on any money path: `poolFee` and settlement are untouched, and nothing may pay, book or
+ * refund from this. On a refund every charge field is 0 and `netPool` is the whole pool (it all went back).
+ */
+export interface ChargedFee extends FeeBreakdown {
+  /** Settlement's refund branch (VOID, or one side only): every open stake returned in full, no fee. */
+  refunded: boolean;
+}
+
+export function chargedFee(
+  m: { yesPool: number; noPool: number; resolvedOutcome: Side | "VOID" },
+  rates: Partial<FeeRates>,
+): ChargedFee {
+  const isOneSided = m.resolvedOutcome !== "VOID"
+    && ((m.yesPool > 0 && m.noPool === 0) || (m.yesPool === 0 && m.noPool > 0));
+  if (isOneSided || m.resolvedOutcome === "VOID") {
+    const yes = Math.max(0, m.yesPool);
+    const no = Math.max(0, m.noPool);
+    const pool = yes + no;
+    return {
+      pool, smaller: Math.min(yes, no), larger: Math.max(yes, no),
+      commission: 0, ceiling: 0, fee: 0, netPool: pool, capped: false, shareOfLosers: 0,
+      refunded: true,
+    };
+  }
+  return { ...poolFee(m.yesPool, m.noPool, rates, m.resolvedOutcome), refunded: false };
+}
+
+/**
  * The withdrawal fee a player is charged: `round(amount * rate)`, floored at 0.
  * Isomorphic — the confirm modal (client) and wallet-service (server) both call
  * this, so what the player is shown before confirming equals what leaves the

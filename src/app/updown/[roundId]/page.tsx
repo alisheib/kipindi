@@ -37,6 +37,7 @@ import { fill, formatTzs } from "@/lib/utils";
 import { decideOutcomeByTargets } from "@/lib/server/updown-service";
 // ⭐ The kit's ONE pool-split bar, and the home of the cold-start rail (§B9) — PV-06.
 import { TippingBar } from "@/components/brand";
+import { priceState } from "@/lib/markets/price-state";
 import { RoundCountdownPod } from "@/components/updown/round-countdown";
 import { PriceHero } from "@/components/updown/price-hero";
 import { RoundActionPanel } from "@/components/updown/round-action-panel";
@@ -194,12 +195,12 @@ export default async function UpDownRoundPage({
   // TZS 400, so a round with one real bet on the thin side printed the thin side as empty, and
   // an empty side printed as 500. D2 makes "is this side empty" the load-bearing question on
   // this page, so the page now reads the raw shillings the server already sends.
-  // ⛔ NULL WHEN THE POOL IS EMPTY, and it must stay null all the way to the paint — PV-06.
-  // `round.upPct` used to arrive as a hardcoded 50 from `impliedYesPct`; it now arrives as
-  // `pricedYesPct`'s honest null, and this page renders the kit's cold-start rail instead of
-  // a fabricated half-and-half. ⛔ Never `?? 50` on the way past.
-  const upPct = round.upPct === null ? null : Math.round(round.upPct);
-  const downPct = upPct === null ? null : Math.max(0, 100 - upPct);
+  // ⭐ C1 · THE CARD'S PRICE RULE, from the same raw pools (`priceState`): a split only where both sides
+  // hold money (1–99); an empty round draws the kit's cold-start rail (PV-06) and a one-sided one the rail
+  // named "One side only" — never "Up 100% · 0% Down" above the warning that one side is empty.
+  const price = priceState(round.pricing.upPool, round.pricing.downPool);
+  const upPct = price.kind === "priced" ? price.yesPct : null;
+  const downPct = upPct === null ? null : 100 - upPct;
   const upTzs = round.pricing.upPool;
   const downTzs = round.pricing.downPool;
 
@@ -727,23 +728,25 @@ export default async function UpDownRoundPage({
                   component"). So an empty round advertised "Up 50% · 50% Down" on both.
                   One bar now, at `.mcardp`'s own height. */}
               <div className="mt-3.5">
-                {upPct !== null && downPct !== null && (
+                {upPct !== null && downPct !== null ? (
                   <div className="flex items-baseline justify-between gap-2 font-mono text-[9.5px] font-bold tracking-[0.06em]">
                     <span style={{ color: "var(--yes-300)" }}>{t.market.udUp} {upPct}%</span>
                     <span style={{ color: "var(--no-300)" }}>{downPct}% {t.market.udDown}</span>
                   </div>
-                )}
+                ) : price.kind === "oneSided" ? (
+                  <div className="flex"><span className="mcardp-oneside">{t.market.oneSideOnly}</span></div>
+                ) : null}
                 {upPct === null ? (
                   <TippingBar className="mt-1.5" height={7} showLabels={false} recastOnHover={false}
-                    empty emptyLabel={t.market.noBetsYet} />
+                    empty emptyLabel={price.kind === "oneSided" ? t.market.oneSideOnly : round.players === 0 ? t.market.noBetsYet : t.market.noPoolYet} />
                 ) : (
                   <TippingBar className="mt-1.5" yesPct={upPct} height={7} showLabels={false}
                     recastOnHover={false} resolved={round.state === "resolved"}
                     probabilityLabel={t.market.probBarAria.replace("{side}", t.market.udUp)} />
                 )}
                 <div className="mt-1.5 flex items-baseline justify-between gap-2 font-mono text-[10.5px] tabular-nums text-text-muted">
-                  <span>{formatTzs(upTzs)}</span>
-                  <span>{formatTzs(downTzs)}</span>
+                  <span data-pool-up={upTzs}>{formatTzs(upTzs)}</span>
+                  <span data-pool-down={downTzs}>{formatTzs(downTzs)}</span>
                 </div>
               </div>
             </section>

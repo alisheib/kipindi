@@ -17,6 +17,7 @@ import { ConvictionDial } from "./conviction-dial";
 import { NotifyPrompt } from "./notify-prompt";
 import { useT } from "@/lib/i18n";
 import { sideWord } from "@/lib/side-label";
+import { priceState } from "@/lib/markets/price-state";
 import type { PollRates } from "@/lib/payout";
 
 type Props = {
@@ -24,7 +25,6 @@ type Props = {
   marketTitle: string;
   yesPool: number;
   noPool: number;
-  yesPct: number;
   resolutionAt: string;
   /** B-10 — the instant BETTING shuts (`selectionClosedAt ?? resolutionAt`),
    *  which is earlier than resolution. The dial flips itself on this one. */
@@ -50,17 +50,15 @@ type Props = {
 };
 
 export function SidePicker({
-  marketId, marketTitle, yesPool, noPool, yesPct, resolutionAt, closesAt, serverNow, balance, initialSide, rates, minStake, maxStake, boardHref,
+  marketId, marketTitle, yesPool, noPool, resolutionAt, closesAt, serverNow, balance, initialSide, rates, minStake, maxStake, boardHref,
 }: Props) {
   const { t } = useT();
   const [side, setSide] = useState<"YES" | "NO" | null>(initialSide ?? null);
-  // A crowd price exists only when money is in the pool — `impliedYesPct` returns a
-  // hardcoded 50 otherwise. Hoisted out of the JSX deliberately: inline, the pool test
-  // and the side test share a line, and `test:outcome` (rightly) flags any line that
-  // compares a pool to a number and then yields a YES/NO literal — that is the shape of
-  // inferring a settled OUTCOME from the crowd's money. This code does not do that, but
-  // it should not have to be told apart from code that does.
-  const hasPool = yesPool + noPool > 0;
+  // ⭐ C1 · the card's rule: a figure only where both pools hold money (1–99, L14); bare side words on an
+  // empty or one-sided pool (ruling 13). The picker takes NO price prop, so no caller can hand it one that
+  // disagrees with the pools. Display only — the dial below prices from the raw pools it is handed.
+  const price = priceState(yesPool, noPool);
+  const yesPct = price.kind === "priced" ? price.yesPct : null;
 
   if (side) {
     return (
@@ -68,11 +66,11 @@ export function SidePicker({
         {/* Side indicator + switch button */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            {/* Same rule as the pick buttons: no percentage exists on an empty pool. */}
+            {/* Same rule as the pick buttons: no percentage without two funded sides. */}
             <Chip variant={side === "YES" ? "yes" : "no"} size="lg">
               {/* §L2 — the word comes from the lexicon, never the stored token. This picker
                   is poll-only; `/markets/[id]` redirects an Up & Down round to `/updown`. */}
-              {sideWord(t, side, "MARKET")}{hasPool ? ` ${side === "YES" ? yesPct : 100 - yesPct}%` : ""}
+              {sideWord(t, side, "MARKET")}{yesPct !== null ? ` ${side === "YES" ? yesPct : 100 - yesPct}%` : ""}
             </Chip>
             <span className="font-mono text-micro uppercase eyebrow text-text-subtle">{t.common.yourPick}</span>
           </div>
@@ -121,21 +119,17 @@ export function SidePicker({
       <h3 className="mt-1.5 mb-4 font-display text-[17px] font-bold text-text leading-tight text-center">
         {t.market.whichWay}
       </h3>
-      {/* 🔴 NO PRICE ON AN EMPTY POOL — the same rule the card obeys.
-          `impliedYesPct` returns a hardcoded 50 when both pools are zero
-          (market-service.ts:223), so on a market nobody has bet these buttons read
-          "YES @ 50% · NO @ 50%" and presented the default as a crowd price.
-          ⛔ It was visible ON THIS PAGE that the two disagreed: the "Similar markets"
-          rail below correctly showed "— · No bets yet · Be the first to predict" for
-          markets in exactly the same state, while the primary money control above it
-          quoted 50%. Found by driving the page, not by a suite.
-          RULES law 5 — real data or nothing. */}
+      {/* 🔴 NO PRICE WITHOUT TWO SIDES — the same rule the card obeys (`priceState`).
+          On an EMPTY pool these buttons once read "YES @ 50% · NO @ 50%" (the default of the
+          old `impliedYesPct`), and until C1 a ONE-SIDED pool read "@ 100%" / "@ 0%" here while
+          every card on the board said "One side only". ⛔ Both were visible ON THIS PAGE beside
+          the "Similar markets" rail, which already stated the truth. RULES law 5. */}
       <div className="grid grid-cols-2 gap-2.5">
         <button
           type="button"
           onClick={() => setSide("YES")}
           className="btn btn-yes btn-lg"
-          aria-label={hasPool ? t.market.backYesAria.replace("{pct}", String(yesPct)) : t.market.backYesAriaNoPrice}
+          aria-label={yesPct !== null ? t.market.backYesAria.replace("{pct}", String(yesPct)) : t.market.backYesAriaNoPrice}
         >
           {/* §L2 — the WORD comes from the lexicon, exactly as the chip at :75 and the
               board cards already do. It read the raw `YES` until 2026-09-03 (PV-04), so a
@@ -144,15 +138,15 @@ export function SidePicker({
               on one screen. The aria-label was always translated; only the visible word lied.
               PV-10 (same day) — the `@pct%` suffix WAS `opacity-85`, ~3.5:1 on production,
               under AA 4.5. Dropped, not re-hued; see market-card.tsx's PV-10 note. */}
-          {sideWord(t, "YES", "MARKET")} {hasPool && <span className="font-mono text-[12.5px]">@ {yesPct}%</span>}
+          {sideWord(t, "YES", "MARKET")} {yesPct !== null && <span className="font-mono text-[12.5px]">@ {yesPct}%</span>}
         </button>
         <button
           type="button"
           onClick={() => setSide("NO")}
           className="btn btn-no btn-lg"
-          aria-label={hasPool ? t.market.backNoAria.replace("{pct}", String(100 - yesPct)) : t.market.backNoAriaNoPrice}
+          aria-label={yesPct !== null ? t.market.backNoAria.replace("{pct}", String(100 - yesPct)) : t.market.backNoAriaNoPrice}
         >
-          {sideWord(t, "NO", "MARKET")} {hasPool && <span className="font-mono text-[12.5px]">@ {100 - yesPct}%</span>}
+          {sideWord(t, "NO", "MARKET")} {yesPct !== null && <span className="font-mono text-[12.5px]">@ {100 - yesPct}%</span>}
         </button>
       </div>
       <p className="mt-3 text-center text-body-sm text-text-subtle leading-snug">

@@ -223,8 +223,10 @@ check(
   check("D29 the empty rail is named by what is KNOWN — the outcome, else one side only, else 'no bets yet' only where nobody ever bet",
     /emptyLabel=\{outcomeLabel \?\? \(oneSided \? t\.market\.oneSideOnly : neverBet \? t\.market\.noBetsYet : t\.market\.noPoolYet\)\}/.test(card),
     "`\"\"` would leave a role=progressbar with no name at all on every voided card; a bare noBetsYet names a one-sided rail falsely");
-  check("D29 the visible 'no bets yet' caption is gated on the history test too",
-    /\{noPrice && neverBet && <div className="mcardp-nobets">/.test(card),
+  // ⚠️ AMENDED (landing v3 C1 review): and only while UNSETTLED — "yet" is false of a finished market, which
+  //    shows its verdict. The detail page's rail caption and the share image keep the same gate.
+  check("D29 the visible 'no bets yet' caption is gated on the history test too, and leaves a settled card",
+    /\{noPrice && neverBet && !settled && <div className="mcardp-nobets">/.test(card),
     "the caption is the one claim a sighted player can check — it must be true");
 
   // ⭐ CONTROLS — each matcher shown able to say no, against the pre-fix spelling.
@@ -234,8 +236,11 @@ check(
     !/neverBet \? \{ "aria-label": t\.market\.noBetsYet \} : \{\}/
       .test('<div className="mcardp-pct mcardp-pct--empty" aria-label={t.market.noBetsYet}>—</div>'));
   check("D29 control · an ungated caption IS detected",
-    !/\{noPrice && neverBet && <div className="mcardp-nobets">/
+    !/\{noPrice && neverBet && !settled && <div className="mcardp-nobets">/
       .test('{noPrice && <div className="mcardp-nobets">{t.market.noBetsYet}</div>}'));
+  check("D29 control · the pre-review caption ('No bets yet' under a settled card's verdict) IS detected",
+    !/\{noPrice && neverBet && !settled && <div className="mcardp-nobets">/
+      .test('{noPrice && neverBet && <div className="mcardp-nobets">{t.market.noBetsYet}</div>}'));
   check("D29 control · a one-sided rail named 'no bets yet' IS detected",
     !/emptyLabel=\{outcomeLabel \?\? \(oneSided \? t\.market\.oneSideOnly : neverBet \? t\.market\.noBetsYet : t\.market\.noPoolYet\)\}/
       .test("empty={noPrice || oneSided} emptyLabel={outcomeLabel ?? (oneSided ? t.market.oneSideOnly : t.market.noBetsYet)}"));

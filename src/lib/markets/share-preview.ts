@@ -15,8 +15,9 @@
  *
  * No server imports, no "use client" — the nodejs og route and the page's `generateMetadata` both call it.
  */
-import { priceState } from "./price-state";
+import { isTipping, priceState } from "./price-state";
 import { dict } from "../i18n-dict";
+import { outcomeWordIn, type LabelProductLine, type StoredOutcome } from "../side-label";
 
 export type SharePreviewPrice =
   | { kind: "priced"; yesPct: number; noPct: number; lean: "tipping" | "leans yes" | "leans no" }
@@ -26,7 +27,7 @@ export type SharePreviewPrice =
 export function sharePreviewPrice(yesPool: number, noPool: number, predictorCount: number): SharePreviewPrice {
   const p = priceState(yesPool, noPool);
   if (p.kind === "priced") {
-    const lean = Math.abs(p.yesPct - 50) < 4 ? "tipping" : p.yesPct > 50 ? "leans yes" : "leans no";
+    const lean = isTipping(p.yesPct) ? "tipping" : p.yesPct > 50 ? "leans yes" : "leans no";
     return { kind: "priced", yesPct: p.yesPct, noPct: 100 - p.yesPct, lean };
   }
   if (p.kind === "oneSided") return { kind: "oneSided", label: dict.en.market.oneSideOnly };
@@ -34,8 +35,30 @@ export function sharePreviewPrice(yesPool: number, noPool: number, predictorCoun
   return { kind: "none", label: predictorCount === 0 ? dict.en.market.noBetsYet : dict.en.market.noPoolYet };
 }
 
-/** og:description for a market that is not a win card. */
-export function sharePreviewDescription(p: SharePreviewPrice): string {
+/**
+ * ⭐ C1 · A SETTLED market's preview leads with its RESULT — the verdict word in the market's own product
+ * vocabulary (Up / Down for a round) — and reads its split as the FINAL POOL, never a lean: a finished market
+ * does not "lean". `null` while the market is open or closed-but-unresolved.
+ * ⛔ A RESOLVED market with no recorded verdict gets the word "Resolved" and NO tone: no side is better than a
+ * wrong side (the card's own rule).
+ */
+export type SharePreviewSettled = { tone: StoredOutcome | null; caption: string; word: string; poolCaption: string };
+
+export function sharePreviewSettled(
+  status: string,
+  resolvedOutcome: StoredOutcome | null | undefined,
+  productLine: LabelProductLine,
+): SharePreviewSettled | null {
+  if (status !== "RESOLVED" && status !== "VOIDED") return null;
+  const base = { caption: dict.en.market.result, poolCaption: dict.en.market.resFinalPool };
+  const outcome: StoredOutcome | null = resolvedOutcome ?? (status === "VOIDED" ? "VOID" : null);
+  if (!outcome) return { ...base, tone: null, word: dict.en.market.statusResolved };
+  return { ...base, tone: outcome, word: outcomeWordIn("en", outcome, productLine) };
+}
+
+/** og:description for a market that is not a win card. Settled: the result first, and no price at all. */
+export function sharePreviewDescription(p: SharePreviewPrice, settled: SharePreviewSettled | null = null): string {
+  if (settled) return `${settled.caption}: ${settled.word}.${p.kind === "oneSided" ? ` ${p.label}.` : ""} Predict on 50pick.`;
   if (p.kind === "priced") return `YES ${p.yesPct}% · NO ${p.noPct}%. Predict on 50pick.`;
   return `${p.label}. Predict on 50pick.`;
 }

@@ -173,10 +173,12 @@ console.log("\n§6 · ⭐ the check may not invent the thing it is checking for"
   const d = src[DRILL];
   /* ⚠️ THIS CHECK SHIPPED AS A TERNARY THAT COULD NOT FAIL, and `red:house-page` is what found
    * that — the VOID mutation ran clean through it. Two plain assertions instead. */
-  ok("6.1 · ⛔ the outcome is narrowed to a WINNING SIDE before poolFee is called",
+  // ⭐ landing v3 C1: the recompute is `chargedFee` (payout.ts), which mirrors settlement's refund branches —
+  // `poolFee(…, winner)` priced a loser-share fee off the funded side of a ONE-SIDED pool that booked nothing.
+  ok("6.1 · ⛔ the outcome is narrowed to a WINNING SIDE before the fee is recomputed, through settlement's own branches",
     /const winner = outcome === "YES" \|\| outcome === "NO" \? outcome : null;/.test(d)
-    && /winner &&[\s\S]{0,80}poolFee\(/.test(d),
-    "a VOID priced by capped-commission returns a fee for a market that charged none");
+    && /winner &&[\s\S]{0,80}chargedFee\(/.test(d) && !/\bpoolFee\(/.test(d),
+    "a VOID priced by capped-commission, or a one-sided pool priced by loser-share, returns a fee for a market that charged none");
   ok("6.2 · ⛔ the reconciliation uses the SETTLEMENT slice, not the whole fee",
     /reconcile\(totals\.settlementFee,/.test(d) && !/reconcile\(totals\.feeBooked,/.test(d),
     "feeBooked also holds CASHOUT_FEE, which poolFee does not model");
@@ -185,8 +187,8 @@ console.log("\n§6 · ⭐ the check may not invent the thing it is checking for"
   ok("6.4 · ⛔ no tolerance is applied to the variance",
     !/Math\.abs\(rec\.variance\)\s*[<>]=?\s*[1-9]/.test(d) && !/EPSILON|tolerance\s*=/.test(d),
     "an epsilon is how seven production pools finished negative unnoticed");
-  ok("6.control · the drill-down really does call poolFee (6.1 is not vacuous)",
-    /poolFee\(/.test(d));
+  ok("6.control · the drill-down really does call chargedFee (6.1 is not vacuous)",
+    /chargedFee\(/.test(d));
 }
 
 /* ═══ §7 · ⭐ RATE PROVENANCE IS NOT READ OFF `stampedAt` ══════════════════════════════

@@ -4872,6 +4872,14 @@ html[data-sheet-open] .route-enter { animation: none; }
    These are classes, not inline styles, precisely because the delivered bundle
    shipped them inline and law 15 names that as the failure mode by example. */
 .mcardp-pct--empty { color: var(--text-faint); font-size: 22px; }
+/* ── A settled card's RESULT word wears its own side's ink (landing v3 C1 §10) ──
+   `.mcardp-pct` is the YES ink because the slot usually holds the YES price. A
+   result is a verdict, so a NO result takes the no ink and a void the neutral
+   muted ink; the "Result" caption above it is not a side at all, so it is
+   neutral too. Up and Down follow YES and NO (stored outcome). */
+.mcardp-pct--no { color: var(--no-400); }
+.mcardp-pct--void { color: var(--text-muted); }
+.mcardp-pctcap--result { color: var(--text-subtle); }
 .mcardp-nobets {
   font-family: var(--font-mono);
   font-size: 10px;
@@ -4893,7 +4901,10 @@ html[data-sheet-open] .route-enter { animation: none; }
    on a closed or settled one-sided card the row is new). The NOTE is
    the refund rule, a sentence, so it reads at the §T4 floor (--type-small, 13px,
    L6) in the muted body ink, never as a micro-label; it takes the slot the 24h
-   band would, which a one-sided card never draws. */
+   band would, which a one-sided card never draws.
+   ⭐ C1: both classes are ALSO read outside a `.mcardp` (neither needs the
+   parent) — the market detail page (the rail's label row and the refund note),
+   the /live pulse card, the /results spotlight and the Up & Down label row. */
 .mcardp-oneside {
   font-family: var(--font-mono);
   font-size: var(--type-label);

@@ -27,9 +27,12 @@ const get = (url, ua = UA) => fetch(url, { headers: { "user-agent": ua }, redire
 // ── the markets to read, and the state each card shows ────────────────────────────────────────
 const home = await (await get(`${BASE}/`, "Mozilla/5.0")).text();
 const results = await (await get(`${BASE}/results`, "Mozilla/5.0")).text();
+// ⚠️ The slice ends at the NEXT card (landing v3 C1): a fixed 6,000 characters ran into the neighbouring card on
+// a dense page, so a priced card beside a one-sided one was read as one-sided.
 const stateOf = (html, id) => {
   const at = html.indexOf(`data-row-id="${id}"`);
-  const slice = at >= 0 ? html.slice(at, at + 6000) : "";
+  const next = at >= 0 ? html.indexOf("data-row-id=", at + 12) : -1;
+  const slice = at >= 0 ? html.slice(at, next > at ? next : at + 6000) : "";
   return slice.includes("mcardp-oneside") ? "oneSided" : slice.includes("mcardp-pct--empty") ? "none" : "priced";
 };
 const ids = new Map();

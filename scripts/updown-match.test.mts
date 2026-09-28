@@ -454,7 +454,8 @@ for (const [name, byLoc] of Object.entries(WANT)) {
   ok("12.nbsp the rule's margin is held to its phrase by a no-break space (en, sw, zh)", nb.length === 0, nb.join(","));
   ok("12.aria no reads ⇒ 'none yet'", matchWords(dict.en as Dict, "en", S4).aria.endsWith("since the open: none yet."));
   const all = (["en", "sw", "zh"] as const).map((l) => html([matchWords(dict[l] as Dict, l, S1).verdict, matchWords(dict[l] as Dict, l, S1).detail, matchWords(dict[l] as Dict, l, S1).rule])).join("");
-  ok("12.law no absolute price, no 'live', no pool on the band's words", !/85,0\d\d\.\d\d|\blive\b|\bhai\b|pool|dimbwi|奖池/i.test(all));
+  // ⚠️ `bwawa` joined 2026-09-27: landing v3 C1 unified the Swahili pool word on it (it had been "dimbwi" here).
+  ok("12.law no absolute price, no 'live', no pool on the band's words", !/85,0\d\d\.\d\d|\blive\b|\bhai\b|pool|dimbwi|bwawa|奖池/i.test(all));
 }
 
 // ── §13 · the band, rendered ────────────────────────────────────────────────────────────────────

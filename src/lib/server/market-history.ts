@@ -33,6 +33,7 @@
  * container mid-bet is not. Reads may throw — every caller already guards.
  */
 import { prisma, hasDatabase } from "./prisma";
+import { priceState } from "@/lib/markets/price-state";
 
 /** Prisma Decimal | number → number. Chart values are display-only. */
 function num(d: unknown): number {
@@ -257,6 +258,17 @@ function compress<T>(arr: T[], n: number): T[] {
   return out;
 }
 
+/**
+ * A chart point needs a PRICE (`price-state.ts`, landing v3 C1). An empty or one-sided snapshot is not
+ * plotted: it would draw an invented 50 or a 100/0 certainty nobody's money stated (ruling 13, D29), and a
+ * two-sided 99.6% plots 99 (L14). Dropping the point is the only option — the stored `yes` of an old row is
+ * left as written (`recordSnapshot` keeps its write; this READ rule covers every row, old and new), and a
+ * gap in the series draws no fake segment.
+ */
+function pricedPoints<T extends { yesPool: number; noPool: number }>(snaps: readonly T[]): { s: T; pct: number }[] {
+  return snaps.flatMap((s) => { const p = priceState(s.yesPool, s.noPool); return p.kind === "priced" ? [{ s, pct: p.yesPct }] : []; });
+}
+
 function labelFor(iso: string): string {
   const d = new Date(iso);
   return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
@@ -268,17 +280,17 @@ export async function getProbabilityChart(marketId: string): Promise<{
   series: Partial<Record<ProbRange, { t: string; p: number }[]>>;
   ranges: ProbRange[];
 }> {
-  const all = await getHistory(marketId);
+  const all = pricedPoints(await getHistory(marketId));
   if (all.length < 2) return { series: {}, ranges: [] };
   const now = Date.now();
   const series: Partial<Record<ProbRange, { t: string; p: number }[]>> = {};
   const ranges: ProbRange[] = [];
   for (const w of RANGE_WINDOWS) {
-    const slice = w.ms == null ? all : all.filter((s) => now - Date.parse(s.t) <= w.ms!);
+    const slice = w.ms == null ? all : all.filter((x) => now - Date.parse(x.s.t) <= w.ms!);
     if (slice.length < 2) continue;
     // CHART-SPRINT-2 final · epoch ms travels WITH the label: the pro curve
     // renders a real time axis (the hand-rolled chart consumed labels only).
-    const pts = compress(slice, 24).map((s) => ({ t: labelFor(s.t), ts: Date.parse(s.t), p: Math.round(s.yes * 100) }));
+    const pts = compress(slice, 24).map(({ s, pct }) => ({ t: labelFor(s.t), ts: Date.parse(s.t), p: pct }));
     pts[pts.length - 1] = { ...pts[pts.length - 1], t: "now" };
     series[w.id] = pts;
     ranges.push(w.id);
@@ -297,9 +309,13 @@ const EMPTY_CARD: CardChart = { spark: [] };
 
 /** Shared by the single and batched readers so a card can never disagree with
  *  itself depending on which path rendered it. */
-function cardChartFrom(points: { t: string; yes: number }[]): CardChart {
-  if (points.length < 2) return EMPTY_CARD;
-  const spark = compress(points, 16).map((s) => Math.round(s.yes * 100));
+function cardChartFrom(points: { t: string; yes: number; yesPool: number; noPool: number }[]): CardChart {
+  // ⭐ C1 · no price NOW means no line and no move: the card states no price on an empty or one-sided pool.
+  const last = points.at(-1);
+  if (!last || priceState(last.yesPool, last.noPool).kind !== "priced") return EMPTY_CARD;
+  const priced = pricedPoints(points);
+  if (priced.length < 2) return EMPTY_CARD;
+  const spark = compress(priced, 16).map((x) => x.pct);
   const now = Date.now();
   // 🔴 THE FALLBACK MADE "24h MOVE" A LIE ON EVERY QUIET MARKET.
   //
@@ -319,8 +335,11 @@ function cardChartFrom(points: { t: string; yes: number }[]): CardChart {
   // 24h (a market younger than a day measures its whole life), never longer.
   const dayAgo = points.find((s) => now - Date.parse(s.t) <= 24 * 3600_000);
   if (!dayAgo) return { spark };
-  const cur = Math.round(points[points.length - 1].yes * 100);
-  return { spark, move24h: cur - Math.round(dayAgo.yes * 100) };
+  // ⭐ C1 · AND NO MOVE FROM A BASELINE THAT HAD NO PRICE. A one-sided baseline read 100 (or 0), so a market
+  // whose second side arrived today printed a "−38" 24h move measured from a certainty nobody's money stated.
+  const base = priceState(dayAgo.yesPool, dayAgo.noPool);
+  if (base.kind !== "priced") return { spark };
+  return { spark, move24h: priced[priced.length - 1].pct - base.yesPct };
 }
 
 /** A card only ever needs enough history to draw 16 points and a 24h delta, so
@@ -353,12 +372,12 @@ export async function getCardCharts(marketIds: string[]): Promise<Map<string, Ca
     const rows = await db.marketSnapshot.findMany({
       where: { marketId: { in: marketIds }, t: { gte: new Date(Date.now() - CARD_WINDOW_MS) } },
       orderBy: { t: "asc" },
-      select: { marketId: true, t: true, yes: true },
+      select: { marketId: true, t: true, yes: true, yesPool: true, noPool: true },
     });
-    const grouped = new Map<string, { t: string; yes: number }[]>();
+    const grouped = new Map<string, { t: string; yes: number; yesPool: number; noPool: number }[]>();
     for (const r of rows) {
       const arr = grouped.get(r.marketId);
-      const pt = { t: r.t.toISOString(), yes: r.yes };
+      const pt = { t: r.t.toISOString(), yes: r.yes, yesPool: num(r.yesPool), noPool: num(r.noPool) };
       if (arr) arr.push(pt);
       else grouped.set(r.marketId, [pt]);
     }

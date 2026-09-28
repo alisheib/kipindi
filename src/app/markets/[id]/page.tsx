@@ -19,9 +19,9 @@ import { SellButton } from "@/components/markets/sell-button";
 import { ResolutionPanel } from "@/components/markets/resolution-panel";
 import { Chip } from "@/components/ui/chip";
 import { Stat } from "@/components/ui/stat";
-import { cashOutValue, getMarket, impliedYesPct, isClosedByTime, isSelectionClosed, listPositionsForUser, ratesFor } from "@/lib/server/market-service";
-import { shownYesPct } from "@/lib/markets/price-state";
-import { sharePreviewDescription, sharePreviewPrice } from "@/lib/markets/share-preview";
+import { cashOutValue, getMarket, isClosedByTime, isSelectionClosed, listPositionsForUser, ratesFor } from "@/lib/server/market-service";
+import { priceState } from "@/lib/markets/price-state";
+import { sharePreviewDescription, sharePreviewPrice, sharePreviewSettled } from "@/lib/markets/share-preview";
 import { ROOT_OPEN_GRAPH } from "../../layout";
 import { timeLeftLabel } from "@/lib/markets/time-left";
 import { poolFee } from "@/lib/payout";
@@ -69,6 +69,9 @@ export async function generateMetadata(
   // WP14b): "YES 62% · NO 38%" only where both sides hold money; "One side only." / "No bets yet." where
   // there is no price. It used to print "YES 100% · NO 0%" and an invented "YES 50% · NO 50%".
   const preview = sharePreviewPrice(m.yesPool, m.noPool, m.predictorCount);
+  // ⭐ C1 · a settled market's preview leads with its result ("Result: NO."), never a price or a lean.
+  // "MARKET" is safe: an UPDOWN market is redirected by the page body, and its round page has its own metadata.
+  const settled = sharePreviewSettled(m.status, m.resolvedOutcome, "MARKET");
 
   // F5 — a shared WIN link carries a signed token. When it validates, the share
   // preview becomes the win card. The token only names the position; the amount
@@ -80,7 +83,7 @@ export async function generateMetadata(
 
   const desc = isWin
     ? `Won ${formatTzs(win!.payout)} on ${win!.side} · ${m.titleEn}`
-    : sharePreviewDescription(preview);
+    : sharePreviewDescription(preview, settled);
   const ogImage = isWin
     ? `/api/og/market/${id}?w=${encodeURIComponent(w!)}`
     : `/api/og/market/${id}`;
@@ -150,12 +153,16 @@ export default async function MarketDetail({
     redirect(round ? `/updown/${round.id}${lockedSide ? `?side=${lockedSide}` : ""}` : "/updown");
   }
 
-  // ⭐ WP6 · the SAME printable price as the card that linked here (`shownYesPct`, 1–99 when both pools
-  // hold money), so a 200,000-vs-1,000 market no longer reads 99 on the card and 100 one tap later
-  // (B6). ⚠️ A ONE-SIDED pool still falls back to `impliedYesPct` (100/0) here: this page's price for
-  // it is MOBILE-VISUAL U32's (ruling 13), recorded in `docs/LANDING-TEN.md` §2.1 WP6. Display only —
-  // SidePicker, the bar and the JSON-LD read it; no money path does.
-  const yesPct = shownYesPct(m.yesPool, m.noPool) ?? impliedYesPct(m);
+  // ⭐ C1 · the card's price rule on the page the card links to (`price-state.ts`; ruling 13, L14, D29):
+  // a figure only where both pools hold money (1–99), none on an empty or one-sided pool — so the page
+  // can no longer print the 100/0 or the invented 50/50 the card stopped printing in WP6.
+  // Display only: the dial prices from the raw pools; `cashOutValue` and `poolFee` read the pools.
+  const price = priceState(m.yesPool, m.noPool);
+  const yesPct = price.kind === "priced" ? price.yesPct : null;
+  const emptySide = price.kind === "oneSided" ? price.emptySide : null;
+  const neverBet = m.predictorCount === 0;
+  const outcomeLabel = m.resolvedOutcome ? outcomeWord(t, m.resolvedOutcome, "MARKET") : null;
+  const sharePrice = sharePreviewPrice(m.yesPool, m.noPool, m.predictorCount);
 
   // The resolution criterion FOR THIS READER, and the fact of whether we had it.
   // ⛔ Not `pickLocalized`: that helper discards the fallback, which is right for a
@@ -220,6 +227,8 @@ export default async function MarketDetail({
   let watching = false;
   if (session) { try { watching = await isWatching(m.id, session.userId); } catch { /* graceful */ } }
   const isResolved = m.status === "RESOLVED" || m.status === "VOIDED";
+  // The card's expression (`market-card.tsx`): a stamped verdict, or a resolved or void status.
+  const settled = !!m.resolvedOutcome || isResolved;
 
   // "Similar markets" rail — other genuinely bettable markets so a confirmed bet
   // flows into another instead of a dead end. This page is MARKET-only (Up & Down was
@@ -265,10 +274,9 @@ export default async function MarketDetail({
   // automatic resolution, which claims neither line.
   const singleOfficer = signoff === "one";
   const correctedOnObjection = signoff === "objection";
-  // One-sided: all bets are on the same side — winners would win their own money.
-  // Platform rule: full refund at 0% fee at resolution. Surface a disclaimer so
-  // players know before they place or hold a bet.
-  const isOneSided = !isResolved && ((m.yesPool > 0 && m.noPool === 0) || (m.yesPool === 0 && m.noPool > 0));
+  // The refund rule (WP6 · L22): ONE conditional sentence in every UNSETTLED phase, the card's own words.
+  // Once settled, the resolution panel says what was paid; nothing here claims it.
+  const oneSidedNote = emptySide && !settled ? t.market.oneSidedNote.replace("{side}", sideWord(t, emptySide, "MARKET")) : null;
   // closed-by-time = the resolutionAt clock has elapsed but no resolver
   // has run yet. The dial cannot accept a bet here (server enforces),
   // so the page swaps it out for an "awaiting settlement" card.
@@ -288,16 +296,25 @@ export default async function MarketDetail({
   const freshMarket =
     m.status === "LIVE" && !selectionClosed && !closedByTime && !isResolved &&
     m.yesPool + m.noPool === 0 && m.predictorCount === 0;
-  // ⚠️ "Nobody has touched this" (freshMarket) and "there is no crowd price"
-  // (noPriceMarket) are DIFFERENT questions, and the card splits them the same way.
-  // A price is a statement about the POOL alone: `impliedYesPct` returns a hardcoded
-  // 50 when both pools are zero, and a market whose only bettor cashed out sits at
-  // pool 0 with predictorCount 1 (the count is never decremented), so ANDing the two
-  // let the default 50 render as a real price. Keeping the two definitions in step
-  // across the card, the bar and the side-picker is what the comment above demands.
-  const noPriceMarket =
-    m.status === "LIVE" && !selectionClosed && !closedByTime && !isResolved &&
-    m.yesPool + m.noPool === 0;
+  // The empty rail's words (the card's caption rule): "No bets yet" only where nobody EVER bet (a pool
+  // emptied by a cash-out has no pool, but somebody did bet); "Be the first" only while it is open.
+  // ⛔ And only while UNSETTLED: "yet" is false of a finished market, whose rail already names its verdict —
+  // the card's caption and the share image (the OG route) drop it for the same reason.
+  const railCaption = price.kind === "none" && neverBet && !settled ? (freshMarket ? `${t.market.noBetsYet} · ${t.market.beFirst}` : t.market.noBetsYet) : null;
+  // A settled split is the pool's FINAL shape, not a lean (the /results spotlight and the settled share
+  // image say the same).
+  const leanWords = isResolved
+    ? { tipping: t.market.resFinalPool, leansYes: t.market.resFinalPool, leansNo: t.market.resFinalPool }
+    : { tipping: t.market.tipping, leansYes: t.market.leansYes, leansNo: t.market.leansNo };
+  // ⭐ R6(1) · the note is information, not an alarm (the card's note, and the Up & Down G5 rule), and it
+  // has no heading: "One side only" names the state under the rail. Built ONCE and placed in ONE of two
+  // mutually exclusive spots — the money control while betting is open (on a phone the bet panel paints
+  // first), under the rail once betting has closed and before the market is settled.
+  const oneSidedCallout = oneSidedNote ? (
+    <p data-one-sided-note="" className="mcardp-onesided-note flex items-start gap-1.5">
+      <I.info s={13} className="mt-0.5 shrink-0 text-text-subtle" /><span>{oneSidedNote}</span>
+    </p>
+  ) : null;
 
   // ── C1a hero lifecycle state — open · closing · waiting · resolved ──
   // Server-computed (page is force-dynamic + RefreshPoller re-fetches every 15s,
@@ -435,7 +452,9 @@ export default async function MarketDetail({
     "@context": "https://schema.org",
     "@type": "Event",
     name: m.titleEn,
-    description: `YES ${yesPct}% · NO ${100 - yesPct}%. Prediction market on 50pick.`,
+    // ⭐ C1 · og:description, twitter and JSON-LD come from ONE string (`share-preview.ts`): no invented
+    // "YES 50% · NO 50%" on an empty pool, no 100/0 on a one-sided one.
+    description: sharePreviewDescription(sharePrice, sharePreviewSettled(m.status, m.resolvedOutcome, "MARKET")),
     startDate: m.createdAt,
     endDate: m.resolutionAt,
     eventStatus: isResolved ? "https://schema.org/EventCompleted" : "https://schema.org/EventScheduled",
@@ -588,6 +607,7 @@ export default async function MarketDetail({
                   visible on this very page for a guest — `src/lib/i18n*` belongs to another
                   session today, so nothing here mints a new string. */}
               <h2 id={BET_PANEL_HEADING} className="sr-only">{t.market.placeYourStake}</h2>
+              {oneSidedCallout}
               {/* Hedge warning — shown when player already has a position */}
               {openPositions.length > 0 && (
                 <div className="rounded-lg border border-warning-border bg-warning-bg px-3.5 py-2.5">
@@ -633,7 +653,6 @@ export default async function MarketDetail({
                 marketTitle={pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh)}
                 yesPool={m.yesPool}
                 noPool={m.noPool}
-                yesPct={yesPct}
                 resolutionAt={m.resolutionAt}
                 closesAt={m.selectionClosedAt ?? m.resolutionAt}
                 serverNow={Date.now()}
@@ -646,7 +665,9 @@ export default async function MarketDetail({
               />
               </>
             ) : (
-              /* Sign-in CTA — styled to invite prediction */
+              <>
+              {oneSidedCallout}
+              {/* Sign-in CTA — styled to invite prediction */}
               <div
                 className="rounded-xl border border-border bg-bg-elevated p-6 text-center"
                 style={{
@@ -699,6 +720,7 @@ export default async function MarketDetail({
                   );
                 })()}
               </div>
+              </>
             )
           ) : selectionClosed && !closedByTime ? (
             <div className="rounded-xl border border-border bg-bg-elevated p-6 text-center">
@@ -737,30 +759,27 @@ export default async function MarketDetail({
             order-2 on mobile (below the bet widget), order-1 on desktop (left col) */}
         <section className="order-2 lg:order-1 lg:col-start-1 lg:row-start-1 min-w-0 space-y-5">
 
-          {/* 1. Probability bar — current crowd signal, or an honest empty rail.
-              COLD-START (2026-07-29): with an empty pool `impliedYesPct()` returns
-              the DEFAULT 50, and this bar rendered it as a real, fully-coloured
-              50/50 split with a centred needle and the word "TIPPING" — on a
-              market with TZS 0 and zero predictors. Step 2 removed that lie from
-              the card; it was still here, on the page where a player is actually
-              about to stake. Same law (RULES 5), bigger surface. */}
+          {/* 1. Probability bar — the card's rule (C1): a price only where both pools hold money, else the
+              dashed rail NAMED for its state — the verdict once settled, "One side only" where money sits
+              on one side, "No bets yet" only where nobody ever bet, "No pool yet" where a cash-out emptied
+              it. A printed price is 1–99, so the full pill can no longer draw here. */}
           <TippingBar
-            yesPct={yesPct}
+            yesPct={yesPct ?? undefined}
             height={28}
             showLabels
             resolved={isResolved}
-            empty={noPriceMarket}
-            emptyLabel={t.market.noBetsYet}
+            empty={yesPct === null}
+            emptyLabel={outcomeLabel ?? (emptySide ? t.market.oneSideOnly : neverBet ? t.market.noBetsYet : t.market.noPoolYet)}
             // "MARKET" is safe here and only here: an UPDOWN row never reaches this render —
-            // it is redirected to /updown at :117, ~330 lines above.
+            // it is redirected to /updown near the top of this function.
             probabilityLabel={t.market.probBarAria.replace("{side}", sideWord(t, "YES", "MARKET"))}
-            labels={{ yes: sideWord(t, "YES", "MARKET"), no: sideWord(t, "NO", "MARKET"), tipping: t.market.tipping, leansYes: t.market.leansYes, leansNo: t.market.leansNo }}
+            labels={{ yes: sideWord(t, "YES", "MARKET"), no: sideWord(t, "NO", "MARKET"), ...leanWords }}
           />
-          {freshMarket && (
-            <p className="-mt-3 text-center font-mono text-[11px] tracking-[0.06em] text-text-faint">
-              {t.market.noBetsYet} · {t.market.beFirst}
-            </p>
+          {railCaption && (
+            <p className="-mt-3 text-center font-mono text-[11px] tracking-[0.06em] text-text-faint">{railCaption}</p>
           )}
+          {emptySide && <p className="-mt-3 flex justify-center"><span className="mcardp-oneside">{t.market.oneSideOnly}</span></p>}
+          {!bettingOpen && oneSidedCallout}
 
           {/* 2. KPI strip — volume, participation, timing at a glance.
               2026-09-13 — two columns on a phone with the date tile spanning both: three across
@@ -801,21 +820,6 @@ export default async function MarketDetail({
               settledAt={m.settledAt}
               objection={objectionState}
             />
-          )}
-
-          {/* 3a. One-sided disclaimer — shown when all bets are on one side */}
-          {isOneSided && (
-            <div className="rounded-lg border border-warning-border bg-warning-bg px-4 py-3 flex items-start gap-2.5">
-              <I.warning s={15} className="shrink-0 mt-0.5 text-warning-fg" />
-              <div>
-                <p className="font-mono text-micro font-bold uppercase eyebrow text-warning-fg mb-1">
-                  {t.market.oneSidedMarket}
-                </p>
-                <p className="text-body-sm leading-relaxed text-text-muted">
-                  {t.market.oneSidedBody}
-                </p>
-              </div>
-            </div>
           )}
 
           {/* 3b. Countdown — selection close + resolution (live only) */}

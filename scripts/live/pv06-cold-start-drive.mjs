@@ -12,7 +12,13 @@
  * (standards §5b#9). "Every card shows the empty rail" is FALSE about a funded round, and "every
  * card shows a split" is false about an empty one. The claim that is true of both is:
  *
- *      a split bar with percentages  ⟺  volumeTzs > 0
+ *      a split bar with percentages  ⟺  BOTH sides hold money
+ *
+ * ⭐ landing v3 C1 (2026-09-27) narrowed it from "⟸ volumeTzs > 0": a round funded on ONE side has no
+ * price either (ruling 13), so it shows the dashed rail named "One side only" and no split — it used to
+ * print "Up 100% · 0% Down" right above "Nobody has backed Down yet". The card prints only its total
+ * volume, so on the BOARD a funded card must be EITHER a split OR the labelled one-sided rail; the ROUND
+ * page prints each side's pool (`data-pool-up` / `data-pool-down`), and there the rule is checked exactly.
  *
  * so the drive checks each card against ITS OWN volume, and REFUSES to report green unless it
  * saw at least one of each kind. A board of only-funded rounds proves nothing about cold start,
@@ -68,6 +74,8 @@ try {
               (d) => d.children.length === 2
                 && [...d.children].every((s) => s.tagName === "SPAN" && s.style.width)).length,
             pcts: (txt.match(/\d+%/g) || []).length,
+            oneSided: !!c.querySelector(".mcardp-oneside"),
+            splitPcts: ((c.querySelector(".ud-split")?.innerText || "").match(/\d+%/g) || []).length,
             text: txt.slice(0, 90),
             _n: num,
           };
@@ -80,13 +88,17 @@ try {
         continue;
       }
 
-      let empties = 0, funded = 0;
+      let empties = 0, funded = 0, oneSidedCards = 0;
       for (const c of cards) {
         if (c.volume === null) { r.check(`${loc}@${w} · a card printed a readable volume`, false, c.text); continue; }
         if (c.volume === 0) {
           empties++;
           r.check(`${loc}@${w} · VOL 0 → the honest empty rail, no split`,
             c.emptyRail === 1 && c.filledRail === 0, `empty=${c.emptyRail} filled=${c.filledRail} · ${c.text}`);
+        } else if (c.oneSided) {
+          oneSidedCards++;
+          r.check(`${loc}@${w} · VOL ${c.volume.toLocaleString()} on ONE side → the dashed rail, no split (C1)`,
+            c.emptyRail === 1 && c.filledRail === 0 && c.splitPcts === 0, `empty=${c.emptyRail} filled=${c.filledRail} pcts=${c.splitPcts} · ${c.text}`);
         } else {
           funded++;
           r.check(`${loc}@${w} · VOL ${c.volume.toLocaleString()} → a real split, not the empty rail`,
@@ -97,7 +109,8 @@ try {
 
       // ⛔ THE PREMISE, STATED. Without both kinds on the board this run has tested one arm of an
       //    "iff" and must say so — a green half-invariant is the shape §5b#9 warns about.
-      r.note(`${loc}@${w}: ${cards.length} card(s) — ${empties} empty, ${funded} funded`);
+      r.note(`${loc}@${w}: ${cards.length} card(s) — ${empties} empty, ${oneSidedCards} one-sided, ${funded} two-sided`);
+      if (oneSidedCards === 0) r.note(`  ⚠️ NO ONE-SIDED ROUND ON THE BOARD — the C1 arm was not exercised here (fund one side with stress-bulk-bet yesRatio 1).`);
       if (empties === 0) r.note(`  ⚠️ NO EMPTY ROUND ON THE BOARD — the cold-start arm was not exercised here.`);
       if (funded === 0) r.note(`  ⚠️ NO FUNDED ROUND ON THE BOARD — the positive control was not exercised here.`);
 
@@ -121,8 +134,12 @@ try {
         const d = await page.evaluate(() => {
           const txt = (document.querySelector("main")?.innerText || "").replace(/\s+/g, " ");
           const vol = /TZS\s*([\d,]+)/.exec(txt);
+          const pool = (a) => { const v = document.querySelector(`[${a}]`)?.getAttribute(a); return v == null ? null : Number(v); };
           return {
             volume: vol ? Number(vol[1].replace(/,/g, "")) : null,
+            up: pool("data-pool-up"),
+            down: pool("data-pool-down"),
+            oneSidedLabel: !!document.querySelector("main .mcardp-oneside"),
             emptyRail: document.querySelectorAll(".tipbar-empty").length,
             filledRail: document.querySelectorAll(".tipbar-rail").length,
             handRolled: [...document.querySelectorAll("main div")].filter(
@@ -133,12 +150,18 @@ try {
         });
         r.check(`${loc}@${w} · round detail ${roundHref.slice(-8)} · the bar is the kit's`,
           d.handRolled === 0, d.text);
-        if (d.volume === 0) {
+        const sides = d.up === null || d.down === null ? null : (d.up > 0 ? 1 : 0) + (d.down > 0 ? 1 : 0);
+        if (sides === null) {
+          r.check(`${loc}@${w} · round detail · the page publishes each side's pool (data-pool-up / data-pool-down)`, false, d.text);
+        } else if (sides === 0) {
           r.check(`${loc}@${w} · round detail · VOL 0 → the honest empty rail`,
             d.emptyRail === 1 && d.filledRail === 0, `empty=${d.emptyRail} filled=${d.filledRail} · ${d.text}`);
-        } else if (d.volume !== null) {
-          r.check(`${loc}@${w} · round detail · VOL ${d.volume.toLocaleString()} → a real split`,
-            d.filledRail === 1 && d.emptyRail === 0, `empty=${d.emptyRail} filled=${d.filledRail} · ${d.text}`);
+        } else if (sides === 1) {
+          r.check(`${loc}@${w} · round detail · money on ONE side (${d.up}/${d.down}) → the dashed rail named "One side only", no split`,
+            d.emptyRail === 1 && d.filledRail === 0 && d.oneSidedLabel, `empty=${d.emptyRail} filled=${d.filledRail} label=${d.oneSidedLabel} · ${d.text}`);
+        } else {
+          r.check(`${loc}@${w} · round detail · both sides funded (${d.up}/${d.down}) → a real split`,
+            d.filledRail === 1 && d.emptyRail === 0 && !d.oneSidedLabel, `empty=${d.emptyRail} filled=${d.filledRail} · ${d.text}`);
         }
         await page.screenshot({ path: `${SHOTS}/round-${loc}-${w}.png`, fullPage: true });
         // ⛔ PROVE THE SHOT IS OF A PAGE WITH CONTENT ON IT. Measured 2026-09-03: a round can

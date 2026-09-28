@@ -7,8 +7,8 @@ import { Chip } from "@/components/ui/chip";
 import { FilterPill, FilterGroupKey } from "@/components/ui/filter-pill";
 import { TippingBar } from "@/components/brand";
 import { listMarkets, MARKET_CATEGORIES, listTerminalMarkets } from "@/lib/server/market-service";
-// ⛔ THE ONE COLD-START RULE (§C2) — see the `yesPct` note in FeaturedResult.
-import { pricedYesPct } from "@/lib/markets/discovery";
+// ⭐ C1 · the card's price rule on the notable spotlight (see FeaturedResult).
+import { priceState } from "@/lib/markets/price-state";
 import { categoryOptions } from "@/lib/markets/category-label";
 import { getCardCharts } from "@/lib/server/market-history";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -22,6 +22,7 @@ import {
   archiveExits,
   buildArchiveHref,
   filterArchive,
+  isNotableResult,
   parseArchiveParams,
   sortArchive,
   type ArchiveRow,
@@ -32,7 +33,7 @@ import { NotableCarousel } from "./notable-carousel";
 import { RefreshPoller } from "@/components/ui/refresh-poller";
 import { formatTzsCompact } from "@/lib/utils";
 import { Ring } from "@/components/charts/ring";
-import { pickLocalized } from "@/lib/localized";
+import { pickLocalized, marketCategoryLabel } from "@/lib/localized";
 import { getServerT } from "@/lib/i18n-server";
 import { outcomeWord, sideWord, type LabelProductLine } from "@/lib/side-label";
 import { PageContainer } from "@/components/layout/page-container";
@@ -289,8 +290,11 @@ async function ResultsContent({
    * archive's top by volume, so the two definitions coincide exactly where it matters.
    */
   const showFeatured = !searching && safePage === 1 && all.length > 0;
+  // ⭐ C1 · the crown goes only to a verdict over a TWO-SIDED pool (`isNotableResult`): a one-sided market
+  // and a void refunded every stake, so neither is a notable result. When nothing qualifies there is no
+  // carousel; the grid below still shows every row, so `data-result-count` is unchanged.
   const notableList = showFeatured
-    ? [...paged].sort((a, b) => (b.yesPool + b.noPool) - (a.yesPool + a.noPool)).slice(0, all.length >= 8 ? 3 : 1)
+    ? paged.filter(isNotableResult).sort((a, b) => (b.yesPool + b.noPool) - (a.yesPool + a.noPool)).slice(0, all.length >= 8 ? 3 : 1)
     : [];
   const notableIds = new Set(notableList.map((m) => m.id));
 
@@ -571,12 +575,14 @@ function OutcomeDonut({ yes, no, voided, size = 38 }: { yes: number; no: number;
  *  the grid, carrying the resolved gilt seal chip. */
 function FeaturedResult({ m, t, locale }: { m: Awaited<ReturnType<typeof listMarkets>>[number]; t: Awaited<ReturnType<typeof getServerT>>["t"]; locale: Awaited<ReturnType<typeof getServerT>>["locale"] }) {
   const isVoid = m.resolvedOutcome === "VOID" || m.status === "VOIDED";
-  // ⛔ `pricedYesPct`, not `impliedYesPct` — PV-06 sweep, 2026-09-03. This card is chosen as the
-  // HIGHEST-VOLUME settled market, so an empty pool is close to unreachable here — and "close to
-  // unreachable" is not a gate. It is reachable on a young platform, or one where everything
-  // settled VOID, and the cost of being wrong is a fabricated crowd price under a gilt seal.
-  // Every player-facing bar answers cold start the same way; this one was the last that did not.
-  const yesPct = pricedYesPct(m.yesPool, m.noPool);
+  // ⭐ C1 · TWO DECISIONS, KEPT APART. WHICH market is spotlighted is `isNotableResult` (a verdict over a
+  // two-sided pool); HOW it is drawn is the card's rule, and it stays honest for EVERY shape in case the
+  // pick ever widens: a price only where both pools hold money, the final split read as "Final pool" (a
+  // settled split is not a lean), and otherwise the dashed rail named by the verdict first, then
+  // "One side only" / "No bets yet". PV-06 (2026-09-03) stopped an invented 50; C1 stops the 100/0.
+  const price = priceState(m.yesPool, m.noPool);
+  const outcomeLabel = m.resolvedOutcome ? outcomeWord(t, m.resolvedOutcome, m.productLine) : null;
+  const railWords = price.kind === "oneSided" ? t.market.oneSideOnly : m.predictorCount === 0 ? t.market.noBetsYet : null;
   return (
     <Link
       /* ⚠️ THE NOTABLE CARD IS A SECOND CODE PATH FROM THE GRID and needs the row identity for
@@ -590,7 +596,8 @@ function FeaturedResult({ m, t, locale }: { m: Awaited<ReturnType<typeof listMar
       style={{ background: "radial-gradient(120% 140% at 100% 0%, oklch(40% 0.10 80 / 0.10), transparent 55%), var(--bg-elevated)" }}
     >
       <div className="mb-3 flex flex-wrap items-center gap-2">
-        <Chip variant="cat" size="sm">{m.category}</Chip>
+        {/* §L3 · the translated topic, never the stored enum ("SPORTS" on a Swahili page) — as the grid card. */}
+        <Chip variant="cat" size="sm">{marketCategoryLabel(t, m.category)}</Chip>
         {/* §L3 — the featured card is a SECOND code path from the grid above, and it kept
             the raw enum: "Imetatuliwa · NO" / "已结算 · NO" on production. */}
         {isVoid
@@ -603,13 +610,16 @@ function FeaturedResult({ m, t, locale }: { m: Awaited<ReturnType<typeof listMar
       <h2 className="mb-4 max-w-[70ch] font-display text-[18px] lg:text-[22px] font-semibold leading-tight text-text group-hover:text-gold-100">
         {pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh)}
       </h2>
-      {yesPct === null ? (
-        <TippingBar height={28} showLabels={false} recastOnHover={false}
-          empty emptyLabel={t.market.noBetsYet} />
-      ) : (
-        <TippingBar yesPct={yesPct} height={28} showLabels resolved={!isVoid} recastOnHover={false}
+      {price.kind === "priced" ? (
+        <TippingBar yesPct={price.yesPct} height={28} showLabels resolved={!isVoid} recastOnHover={false}
           probabilityLabel={t.market.probBarAria.replace("{side}", sideWord(t, "YES", m.productLine))}
-          labels={{ yes: sideWord(t, "YES", m.productLine), no: sideWord(t, "NO", m.productLine), tipping: t.market.tipping, leansYes: t.market.leansYes, leansNo: t.market.leansNo }} />
+          labels={{ yes: sideWord(t, "YES", m.productLine), no: sideWord(t, "NO", m.productLine), tipping: t.market.resFinalPool, leansYes: t.market.resFinalPool, leansNo: t.market.resFinalPool }} />
+      ) : (
+        <>
+          <TippingBar height={28} showLabels={false} recastOnHover={false}
+            empty emptyLabel={outcomeLabel ?? railWords ?? t.market.noPoolYet} />
+          {railWords && <p className="mt-1.5 flex justify-center"><span className="mcardp-oneside">{railWords}</span></p>}
+        </>
       )}
       <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-[11px] tabular-nums text-text-muted">
         <span>{formatTzsCompact(m.yesPool + m.noPool)} {t.common.settled}</span>

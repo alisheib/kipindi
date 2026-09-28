@@ -13,17 +13,18 @@ import { Chip } from "@/components/ui/chip";
 import { Sensitive } from "@/components/ui/sensitive";
 import { Stat } from "@/components/ui/stat";
 import { Callout } from "@/components/ui/callout";
-import { poolFee, payoutViewFor } from "@/lib/payout";
+import { chargedFee, poolFee, payoutViewFor } from "@/lib/payout";
 import { ratesFor } from "@/lib/server/market-service";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { Select } from "@/components/ui/select";
 import { I } from "@/components/ui/glyphs";
 import { ProbabilityBar } from "@/components/markets/probability-bar";
-import { getMarket, listPositionsForMarket, impliedYesPct } from "@/lib/server/market-service";
+import { getMarket, listPositionsForMarket } from "@/lib/server/market-service";
+import { priceState } from "@/lib/markets/price-state";
 import { db } from "@/lib/server/store";
 import { displayLabel, displayInitials } from "@/lib/display-label";
 import { formatTzs, formatBalancePill, formatDateTime } from "@/lib/utils";
-import { SELECTION } from "@/lib/admin-status-lexicon";
+import { REFUND, SELECTION } from "@/lib/admin-status-lexicon";
 import { MarketStatusBadge } from "@/components/admin/status-badge";
 import { AdminBody } from "@/components/admin/admin-body";
 import { KpiGrid } from "@/components/admin/admin-body";
@@ -134,10 +135,9 @@ async function MarketPredictorsContent({
   const outcome = m.resolvedOutcome === "YES" || m.resolvedOutcome === "NO" || m.resolvedOutcome === "VOID"
     ? m.resolvedOutcome
     : undefined;
-  // ⚠️ The FEE needs the winning side, and a void has none. `poolFee` prices loser-share
-  // off whichever side lost, so "VOID" must not reach it — these are two different
-  // questions and collapsing them into one variable is what made E-56 possible.
-  const resolvedSide = outcome === "VOID" ? undefined : outcome;
+  // ⚠️ The FEE is read through `chargedFee` once there is a verdict (landing v3 C1): it mirrors settlement,
+  // so a VOID and a one-sided pool show the zero fee settlement takes — `poolFee` priced a loser-share fee off
+  // the funded side of a one-sided pool, and a capped-commission fee on a void. E-56 is why VOID is kept apart.
 
   // Sort
   const { sort, dir } = parseSort(sp, ["stake", "payout", "placed", "side", "status"] as const, "placed", "desc");
@@ -156,7 +156,10 @@ async function MarketPredictorsContent({
   const hasFilter = !!query || !!sideFilter || !!statusFilter;
 
   // KPIs
-  const yes = impliedYesPct(m);
+  // ⭐ C1 · the player surfaces' price rule: a figure only where both pools hold money. The ONE-SIDED callout
+  // below no longer sits under a 100/0 bar that contradicts it.
+  const price = priceState(m.yesPool, m.noPool);
+  const noPriceLabel = price.kind === "oneSided" ? "One side only" : m.predictorCount > 0 ? "No pool" : "No bets";
   const yesPositions = allPositions.filter((p) => p.side === "YES");
   const noPositions  = allPositions.filter((p) => p.side === "NO");
   const yesStaked    = yesPositions.reduce((s, p) => s + p.stake, 0);
@@ -171,10 +174,21 @@ async function MarketPredictorsContent({
   const isLoserShare = marketRates.feeModel === "loser-share";
   // capped-commission is outcome-neutral (one fee). loser-share depends on the
   // winner, so show BOTH scenarios (and, once resolved, the fee actually charged).
-  const marketFee = poolFee(m.yesPool, m.noPool, marketRates, resolvedSide);
-  const feeIfYes = poolFee(m.yesPool, m.noPool, marketRates, "YES");
-  const feeIfNo = poolFee(m.yesPool, m.noPool, marketRates, "NO");
+  // Before a verdict: the outcome-neutral projection (capped-commission). After: what settlement debits.
+  const marketFee = outcome
+    ? chargedFee({ yesPool: m.yesPool, noPool: m.noPool, resolvedOutcome: outcome }, marketRates)
+    : poolFee(m.yesPool, m.noPool, marketRates);
+  // Each scenario is what settlement WOULD debit if that side won — 0 on a one-sided pool, which the
+  // ONE-SIDED callout below says is refunded (it used to sit beside a "Fee if NO wins" nobody would pay).
+  const feeIfYes = chargedFee({ yesPool: m.yesPool, noPool: m.noPool, resolvedOutcome: "YES" }, marketRates);
+  const feeIfNo = chargedFee({ yesPool: m.yesPool, noPool: m.noPool, resolvedOutcome: "NO" }, marketRates);
   const smallerSide = Math.min(m.yesPool, m.noPool);
+  // ⭐ C1 review · A REFUND (a void, or one side only) is ONE line, not fee stats: "Fee charged", "Fee if NO wins"
+  // and "13% of the YES pool" beside a zero describe a charge nobody pays, and a refund has no winners, so no
+  // winner ratio either. Any of the three says so — the verdict's own (void included), or either scenario
+  // (a one-sided pool refunds whichever side wins). The words are the lexicon's, in the tense the money is in.
+  const feeRefunded = ("refunded" in marketFee && marketFee.refunded) || feeIfYes.refunded || feeIfNo.refunded;
+  const refundLine = m.settledAt ? REFUND.done.en : outcome ? REFUND.atSettlement.en : REFUND.ifOneSided.en;
 
   return (
     <>
@@ -227,8 +241,8 @@ async function MarketPredictorsContent({
             </a>
           </div>
           <div className="mt-3">
-            <ProbabilityBar yesPct={yes} size="micro" resolved={m.status === "RESOLVED"} />
-            <p className="mt-1 font-mono text-[10px] text-text-subtle">{yes}% YES · {100 - yes}% NO</p>
+            <ProbabilityBar yesPct={price.kind === "priced" ? price.yesPct : undefined} empty={price.kind !== "priced"} emptyLabel={noPriceLabel} size="micro" resolved={m.status === "RESOLVED"} />
+            <p className="mt-1 font-mono text-[10px] text-text-subtle">{price.kind === "priced" ? `${price.yesPct}% YES · ${100 - price.yesPct}% NO` : noPriceLabel}</p>
           </div>
           {/* Pool breakdown — YES/NO/total player volume */}
           <div className="mt-3 pt-3 border-t border-border/60 grid grid-cols-1 sm:grid-cols-3 gap-x-4 gap-y-1 font-mono text-[10.5px]">
@@ -259,24 +273,30 @@ async function MarketPredictorsContent({
                 money
                 hint={totalPool > 0 ? `${((smallerSide / totalPool) * 100).toFixed(1)}% of pool` : "—"}
               />
-              <Stat
-                label={`Loser-share rate`}
-                value={`${((marketRates.platformFeeRate + marketRates.operatorFeeRate) * 100).toFixed(1)}%`}
-                tone="gold"
-                hint="of whichever side loses"
-              />
-              <Stat
-                label="Fee if YES wins"
-                value={formatTzs(Math.round(feeIfYes.fee))}
-                money
-                hint={`${((marketRates.platformFeeRate + marketRates.operatorFeeRate) * 100).toFixed(0)}% of the NO pool`}
-              />
-              <Stat
-                label="Fee if NO wins"
-                value={formatTzs(Math.round(feeIfNo.fee))}
-                money
-                hint={`${((marketRates.platformFeeRate + marketRates.operatorFeeRate) * 100).toFixed(0)}% of the YES pool`}
-              />
+              {feeRefunded ? (
+                <p data-fee-refunded="" className="col-span-1 sm:col-span-3 self-center font-mono text-body-sm font-semibold text-text-muted">{refundLine}</p>
+              ) : (
+                <>
+                  <Stat
+                    label={`Loser-share rate`}
+                    value={`${((marketRates.platformFeeRate + marketRates.operatorFeeRate) * 100).toFixed(1)}%`}
+                    tone="gold"
+                    hint="of whichever side loses"
+                  />
+                  <Stat
+                    label="Fee if YES wins"
+                    value={formatTzs(Math.round(feeIfYes.fee))}
+                    money
+                    hint={`${((marketRates.platformFeeRate + marketRates.operatorFeeRate) * 100).toFixed(0)}% of the NO pool`}
+                  />
+                  <Stat
+                    label="Fee if NO wins"
+                    value={formatTzs(Math.round(feeIfNo.fee))}
+                    money
+                    hint={`${((marketRates.platformFeeRate + marketRates.operatorFeeRate) * 100).toFixed(0)}% of the YES pool`}
+                  />
+                </>
+              )}
             </div>
           ) : (
             <div className="mt-3 pt-3 border-t border-border/60 grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -286,35 +306,43 @@ async function MarketPredictorsContent({
                 money
                 hint={totalPool > 0 ? `${((marketFee.smaller / totalPool) * 100).toFixed(1)}% of pool` : "—"}
               />
-              <Stat
-                label={`Commission (${(marketRates.commissionRate * 100).toFixed(0)}% of pool)`}
-                value={formatTzs(Math.round(marketFee.commission))}
-                tone={marketFee.capped ? "muted" : "default"}
-                money
-                hint={marketFee.capped ? "capped — not charged" : "charged"}
-              />
-              <Stat
-                label="Fee charged"
-                value={formatTzs(Math.round(marketFee.fee))}
-                tone="gold"
-                money
-                hint={marketFee.capped ? `capped at ${(marketRates.feeCeilingRate * 100).toFixed(0)}% of the smaller side` : "the full commission"}
-              />
+              {feeRefunded ? (
+                <p data-fee-refunded="" className="col-span-1 sm:col-span-2 self-center font-mono text-body-sm font-semibold text-text-muted">{refundLine}</p>
+              ) : (
+                <>
+                  <Stat
+                    label={`Commission (${(marketRates.commissionRate * 100).toFixed(0)}% of pool)`}
+                    value={formatTzs(Math.round(marketFee.commission))}
+                    tone={marketFee.capped ? "muted" : "default"}
+                    money
+                    hint={marketFee.capped ? "capped — not charged" : "charged"}
+                  />
+                  <Stat
+                    label="Fee charged"
+                    value={formatTzs(Math.round(marketFee.fee))}
+                    tone="gold"
+                    money
+                    hint={marketFee.capped ? `capped at ${(marketRates.feeCeilingRate * 100).toFixed(0)}% of the smaller side` : "the full commission"}
+                  />
+                </>
+              )}
               <Stat
                 label="Worst winner ratio"
-                value={marketFee.larger > 0 ? `${(marketFee.netPool / marketFee.larger).toFixed(3)}×` : "—"}
-                tone={marketFee.larger > 0 && marketFee.netPool / marketFee.larger >= 1 ? "yes" : "muted"}
-                hint="never below 1.000×"
+                value={!feeRefunded && marketFee.larger > 0 ? `${(marketFee.netPool / marketFee.larger).toFixed(3)}×` : "—"}
+                tone={!feeRefunded && marketFee.larger > 0 && marketFee.netPool / marketFee.larger >= 1 ? "yes" : "muted"}
+                hint={feeRefunded ? "no winners on a refund" : "never below 1.000×"}
               />
             </div>
           )}
 
-          {smallerSide === 0 && totalPool > 0 ? (
+          {/* The ONE-SIDED advice is for before a verdict ("promote the other side"); after one, the refund line
+              above says it. And on any refund the fee callouts would quote a charge nobody pays. */}
+          {!outcome && smallerSide === 0 && totalPool > 0 ? (
             <Callout tone="warning" className="mt-3" title="ONE-SIDED — this poll will refund everyone and earn nothing">
               Every stake is on the same side. There is no opposing pool to pay winnings from, so at settlement
               every player is refunded in full at zero fee. Consider promoting the other side before betting closes.
             </Callout>
-          ) : isLoserShare ? (
+          ) : feeRefunded ? null : isLoserShare ? (
             <Callout tone="info" className="mt-3" title="LOSER-SHARE — the fee is a slice of the losing side">
               We take {((marketRates.platformFeeRate + marketRates.operatorFeeRate) * 100).toFixed(0)}% of whichever side
               loses: {formatTzs(Math.round(feeIfYes.fee))} if YES wins, {formatTzs(Math.round(feeIfNo.fee))} if NO wins.

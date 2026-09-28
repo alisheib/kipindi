@@ -32,6 +32,7 @@ import { I } from "@/components/ui/glyphs";
 import { Chip } from "@/components/ui/chip";
 import { Dot } from "@/components/ui/dot";
 import { cn, formatTzs } from "@/lib/utils";
+import { priceState } from "@/lib/markets/price-state";
 import { usd } from "@/lib/usd-price";
 import { useT } from "@/lib/i18n";
 import { useUpDownQuickBet, usePlacePulse } from "./use-quick-bet";
@@ -111,15 +112,6 @@ export type UpDownCardProps = {
   myPayoutIfDown?: number | null;
   volumeTzs: number;
   players: number;
-  /**
-   * 0..100, or **null** when the pool is empty. Down is derived — one number, one source.
-   *
-   * ⛔ NULL IS NOT "UNKNOWN, SO SHOW 50". It is *there is no crowd price*, and it is the whole
-   * point of the type (PV-06). Until 2026-09-03 this was a bare `number` fed by
-   * `impliedYesPct`, which hands out a hardcoded 50 on an empty pool — so a live round with
-   * `VOL TZS 0` and no predictors painted a confident "Up 50% · 50% Down". ⛔ Never `?? 50`.
-   */
-  upPct: number | null;
   /**
    * ⭐ D2 · THE ROUND'S REAL POOL + ITS FROZEN RATES, so the two buttons can quote what a
    * player would ACTUALLY be paid instead of a config constant. See `@/lib/updown-pricing`.
@@ -424,7 +416,7 @@ function CardCountdownDigits({
 export function UpDownCard(props: UpDownCardProps) {
   const {
     roundId, assetName, assetTicker, assetIcon, durationMinutes, decimals,
-    livePrice, openPrice, upTarget, downTarget, movePct, closesAtMs, volumeTzs, players, upPct,
+    livePrice, openPrice, upTarget, downTarget, movePct, closesAtMs, volumeTzs, players,
     pricing, state, outcome, closePrice, voidReason,
     sourceClass, sourceQuotedAt, className,
     selectionClosesAtMs, serverNowMs, myExactPayout, myPayoutIfUp, myPayoutIfDown, myRefundedStake,
@@ -598,9 +590,13 @@ export function UpDownCard(props: UpDownCardProps) {
   // with nothing returned gets the round's neutral void note, never a claim about money.
   const refundCopy = viewerRefundCopy(refundReason, myRefundedStake ?? 0);
   const refundCopyText = refundCopy ? (t.market as Record<string, string>)[refundCopy.key] : undefined;
-  // ⛔ Both null together, or both numbers. A `downPct` that stayed a number while `upPct` went
-  // null would put the cold-start branch and the paint back out of step, which is the defect.
-  const downPct = upPct === null ? null : Math.max(0, 100 - upPct);
+  // ⭐ C1 · THE CARD'S PRICE RULE, from the round's RAW pools (`priceState`): a split only where both sides
+  // hold money (1–99). A one-sided round draws the dashed rail named "One side only" — it used to print
+  // "Up 100% · 0% Down" directly above "Nobody has backed Down yet" on the same card. PV-06 (2026-09-03)
+  // had already stopped an EMPTY round painting "Up 50% · 50% Down". ⛔ Both null together, or both numbers.
+  const price = priceState(pricing.upPool, pricing.downPool);
+  const upPct = price.kind === "priced" ? price.yesPct : null;
+  const downPct = upPct === null ? null : 100 - upPct;
   const dir = movePct == null ? null : movePct > 0 ? "up" : movePct < 0 ? "down" : "flat";
   const priceColor = dir === "up" ? "var(--yes-300)" : dir === "down" ? "var(--no-300)" : "var(--text-muted)";
   /**
@@ -854,19 +850,21 @@ export function UpDownCard(props: UpDownCardProps) {
           families sit in the same `.mcardp` shell; a 5px bar here and a 7px bar there was one
           idea drawn two ways on one board. */}
       <div className="ud-split">
-        {upPct !== null && downPct !== null && (
+        {upPct !== null && downPct !== null ? (
           <div className="flex items-center justify-between font-mono text-[9.5px] font-bold tracking-[0.06em]">
-            <span style={{ color: "var(--yes-300)" }}>{t.market.udUp} {Math.round(upPct)}%</span>
-            <span style={{ color: "var(--no-300)" }}>{Math.round(downPct)}% {t.market.udDown}</span>
+            <span style={{ color: "var(--yes-300)" }}>{t.market.udUp} {upPct}%</span>
+            <span style={{ color: "var(--no-300)" }}>{downPct}% {t.market.udDown}</span>
           </div>
-        )}
+        ) : price.kind === "oneSided" ? (
+          <div className="flex"><span className="mcardp-oneside">{t.market.oneSideOnly}</span></div>
+        ) : null}
         {/* ⛔ TWO CALLS, NO `?? 50`. A single call would need a numeric fallback for `yesPct`
             on the empty branch, and writing `upPct ?? 50` here — three lines under a prop doc
             that forbids exactly that — is how the fabricated 50 walks back in the moment
             someone deletes the `empty` prop. The branch makes the contract unforgeable. */}
         {upPct === null ? (
           <TippingBar className="mt-1" height={7} showLabels={false} recastOnHover={false}
-            empty emptyLabel={t.market.noBetsYet} />
+            empty emptyLabel={price.kind === "oneSided" ? t.market.oneSideOnly : players === 0 ? t.market.noBetsYet : t.market.noPoolYet} />
         ) : (
           <TippingBar className="mt-1" yesPct={upPct} height={7} showLabels={false}
             recastOnHover={false} resolved={state === "resolved"}

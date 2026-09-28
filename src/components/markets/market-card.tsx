@@ -15,7 +15,7 @@ import { useT } from "@/lib/i18n";
 import { pickLocalized, marketCategoryLabel } from "@/lib/localized";
 import { outcomeWord, sideWord, type LabelProductLine } from "@/lib/side-label";
 import { MicroSpark } from "@/components/charts/micro-spark";
-import { priceState } from "@/lib/markets/price-state";
+import { isTipping, priceState } from "@/lib/markets/price-state";
 
 type Props = {
   id: string;
@@ -138,7 +138,8 @@ function getSignalBadge(
   // most contested market on the board.
   // ⚠️ `yesPct` is null wherever the card states no price — an empty pool AND a one-sided one
   // (WP6): a pool with one side is not a contest either, whatever number it rounds to.
-  if (volume > 0 && yesPct !== null && Math.abs(yesPct - 50) <= 3) return { kind: "tipping", label: labels.tipping };
+  // R6(2) · the ONE tipping rule (`isTipping`, |YES − 50| ≤ 3), the same the bar, the share preview and /live read.
+  if (volume > 0 && yesPct !== null && isTipping(yesPct)) return { kind: "tipping", label: labels.tipping };
   return null;
 }
 
@@ -336,6 +337,12 @@ export function MarketCard({
   // that no side is better than a wrong side. `outcomeWord` cannot express "no side" — it
   // always returns a word — so the absence has to be decided here.
   const outcomeLabel = resolvedOutcome ? outcomeWord(t, resolvedOutcome, productLine) : null;
+  /* ⭐ C1 §10 · THE RESULT WEARS ITS OWN SIDE'S INK. The word used to inherit the price slot's YES ink, so a
+     NO result ("HAPANA") and a void ("Batili") were painted YES-green on /results, /watchlist and the
+     /markets resolved strip. A NO verdict takes the no ink, a void the neutral muted ink; a YES verdict keeps
+     the slot's own. The stored outcome is the key, so UP and DOWN follow YES and NO (the lexicon's one
+     mapping, `toStoredSide`). ⛔ Never keyed on the pools: a result is the verdict, not the crowd. */
+  const resultInk = resolvedOutcome === "NO" ? "mcardp-pct--no" : resolvedOutcome === "VOID" ? "mcardp-pct--void" : null;
   // Real YES% history only, ≥4 points (else hide — A-5 no-fabrication rule).
   // A fresh market has no history, so never draw the spark on one.
   // ⛔ Nor on a one-sided one (WP6): its history is a line pinned at 100 or 0, which draws the very
@@ -427,8 +434,8 @@ export function MarketCard({
               AND money changed hands is a void, and a void now takes this branch. */}
           {resolvedOutcome ? (
             <>
-              <div className="mcardp-pctcap">{t.market.result}</div>
-              <div className="mcardp-pct">{outcomeLabel}</div>
+              <div className="mcardp-pctcap mcardp-pctcap--result">{t.market.result}</div>
+              <div className={cn("mcardp-pct", resultInk)}>{outcomeLabel}</div>
             </>
           ) : noPrice ? (
             /* No crowd price — an honest em-dash, never a fabricated 50%.
@@ -487,7 +494,9 @@ export function MarketCard({
       {/* ⚠️ And "No bets yet" only where nobody EVER bet: a market whose only bettor cashed out has an
           empty pool and a predictor — its rail is "No pool yet", the D29 rule the caption already keeps. */}
       <TippingBar yesPct={yesPct} height={7} resolved={isResolved} showLabels={false} recastOnHover={false} empty={noPrice || oneSided} emptyLabel={outcomeLabel ?? (oneSided ? t.market.oneSideOnly : neverBet ? t.market.noBetsYet : t.market.noPoolYet)} probabilityLabel={t.market.probBarAria.replace("{side}", sideWord(t, "YES", productLine))} />
-      {noPrice && neverBet && <div className="mcardp-nobets">{t.market.noBetsYet}</div>}
+      {/* ⛔ …and only while UNSETTLED: "yet" is false of a finished market. A settled card shows its verdict
+          (the result slot, and the rail named by the outcome); the detail page and the share image agree. */}
+      {noPrice && neverBet && !settled && <div className="mcardp-nobets">{t.market.noBetsYet}</div>}
       {/* The refund rule, read at the reading floor (a sentence, not a micro-label: L6). It takes the
           slot the 24h band would, which a one-sided card never draws, so the card grows only by the
           note's own lines. */}
