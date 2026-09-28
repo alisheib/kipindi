@@ -44,12 +44,14 @@ import {
 } from "@/lib/house-bot/rules";
 import {
   houseBotControlStore,
+  houseBotEventStore,
   houseBotStore,
   HouseSchemaNotReady,
   type HouseBotLimitsPatch,
   type StoredHouseBot,
   type StoredHouseBotControl,
 } from "../house-bot-dal";
+import { announceRoster } from "./emitters";
 
 /** One field that moved, for the audit row. ⛔ Numbers or null only — the R7 allowlist refuses anything else. */
 export type LimitChange = { field: string; before: number | null; after: number | null };
@@ -85,7 +87,8 @@ const limitsOf = (control: StoredHouseBotControl): HouseBotLimits =>
  *
  * The order is deliberate: the control row FIRST (so a missing schema and an unreadable row are told apart
  * before anything else is read), then the reads the validator needs, then the validation, then the one
- * conditional write, then the audit row. Nothing is written before the validator has passed, so a refused
+ * conditional write, then the desk's history row, then the audit row, then — only when a limit moved — every
+ * admin's alert (FS-09). Nothing is written before the validator has passed, so a refused
  * save leaves the row byte for byte as it was.
  */
 export async function saveHouseBotLimits(input: {
@@ -146,6 +149,25 @@ export async function saveHouseBotLimits(input: {
   const cas = await houseBotControlStore.saveLimits(input.baseVersion, patch);
   if (!cas.ok) return { ok: false, code: "CONFLICT" };
 
+  /**
+   * ⭐ THE DESK'S OWN HISTORY ROW — `LIMITS_SAVED`, which had a kind, a history word ("Desk limits saved") and a
+   * place in the desk-wide history reader, and no writer (FS-09, 2026-09-27; 02 §3.8 "LIMITS_SAVED and awaited
+   * COMPLIANCE"). ⛔ IT BELONGS TO NO ACCOUNT: `houseBotId` and `userId` are null, like the switch's own events, so
+   * the desk's history carries it and no account's history or holder's data-rights file ever can.
+   * ⛔ ITS FAILURE MAY NOT FAIL THE SAVE: the limits have already moved by this line (the rules save's own rule), so
+   * it is logged and the alert below links to the history's top instead of to an event that does not exist.
+   */
+  let savedEventId: string | null = null;
+  try {
+    savedEventId = (await houseBotEventStore.append({
+      houseBotId: null, userId: null, marketId: null, kind: "LIMITS_SAVED", fromStatus: null, toStatus: null,
+      reason: null, actorId: input.actorId, payload: { limitsVersion: cas.row.limitsVersion },
+    })).id;
+  } catch (err) {
+    console.error("[house-bot] the LIMITS_SAVED history row could not be written (the limits DID change):",
+      err instanceof Error ? err.message : String(err));
+  }
+
   const payload = { limitsVersion: cas.row.limitsVersion, changes };
   if (!isAllowedHouseAuditPayload(payload)) {
     throw new Error("house audit house_bot.limits_saved: payload keys outside the R7 allowlist");
@@ -153,30 +175,36 @@ export async function saveHouseBotLimits(input: {
   /**
    * ⛔ THE WRITE HAS ALREADY LANDED BY THIS LINE, SO A FAILURE HERE MAY NOT BE REPORTED AS "NOTHING WAS SAVED".
    *
-   * MEASURED 2026-09-18 on a SERVED build, which is the only place it could have been: the audit module is
-   * documented as never rejecting and it fails OPEN on a database outage — but `chainSecret()` throws outright
-   * under `NODE_ENV=production` without a distinct `AUDIT_CHAIN_SECRET`, and that throw escapes the in-memory
+   * MEASURED 2026-09-18 on a SERVED build, which is the only place it could have been: the audit module was
+   * documented as never rejecting and it failed OPEN on a database outage — but `chainSecret()` threw outright
+   * under `NODE_ENV=production` without a distinct `AUDIT_CHAIN_SECRET`, and that throw escaped the in-memory
    * fallback too. The officer was told "Nothing was saved. Reload the page and try again." while the control row
    * HAD moved and the page still showed the old figures. A save that landed and says it did not is the most
    * expensive sentence this console can print: the next thing an officer does is type it again.
    * ⛔ SO THE OUTCOME IS THE TRUTH, AND THE GAP IS NAMED: the save is `ok`, `recorded` is false, and the console
    * says BOTH. It is never swallowed — a COMPLIANCE row that quietly did not write is the other half of the same
    * defect, and the caller renders a warning rather than a success.
+   * ⭐ AND SINCE REPLAN RULING 543 (2026-09-26) THE FLAG IS READ, NOT CAUGHT. `audit()` now RESOLVES an entry it
+   * cannot sign (and one the database refused) with `recorded` false instead of rejecting past its own fail-open,
+   * so the try this used to be would never reach its catch — and would report a record that was never written.
    */
-  let recorded = true;
-  try {
-    await audit({
-      category: HOUSE_AUDIT["house_bot.limits_saved"],
-      action: "house_bot.limits_saved",
-      actorId: input.actorId,
-      targetType: "HouseBotControl",
-      targetId: HOUSE_CONTROL_ID,
-      payload,
-    });
-  } catch (err) {
-    recorded = false;
-    console.error("[house-bot] the limits_saved compliance row could not be written (the limits DID change):",
-      err instanceof Error ? err.message : String(err));
+  const logged = await audit({
+    category: HOUSE_AUDIT["house_bot.limits_saved"],
+    action: "house_bot.limits_saved",
+    actorId: input.actorId,
+    targetType: "HouseBotControl",
+    targetId: HOUSE_CONTROL_ID,
+    payload,
+  });
+  const recorded = logged.recorded;
+  if (!recorded) {
+    console.error(`[house-bot] the limits_saved compliance row could not be written (the limits DID change): ${logged.unrecorded}`);
+  }
+  /* ⭐ FS-09 · every admin is told what moved, once, after the history row — the DESK's alert (no account: `botId`
+     null), linking to that row on the desk's own history. ⛔ A save that moved nothing tells nobody: it landed (the
+     version advanced) and there is nothing to say. */
+  if (changes.length > 0) {
+    await announceRoster({ botId: null, label: null, event: "LIMITS_SAVED", eventId: savedEventId, actorId: input.actorId, changes });
   }
   return { ok: true, limitsVersion: cas.row.limitsVersion, changes, recorded, conflicts: checked.conflicts };
 }

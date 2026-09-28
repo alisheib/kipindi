@@ -40,7 +40,7 @@
 | AI poll payloads (`rawResponse`, `generation`) | **30 days** | Generation date | Operational only | ✅ **Code** — `retention.purge.daily`. ⛔ **Blanks two COLUMNS; deletes no row** — the decision record (state, title, reviewer, cost, published market) is kept. `rawResponse` gets a tombstone sentence rather than a NULL so a reviewer can tell *pruned* from *never existed*. ⚠️ There is no `trace` column on `AIPoll` — `trace` is on **`MarketCandidate`** and is a decision trail, not a payload; it is NOT pruned | `AIPoll` |
 | Self-exclusion register | **5 years** | End of exclusion | LCCP SR Code 3.4.4 | 📋 Policy | `ResponsibleGambling` |
 | Behavioural-marker logs (RG) | **5 years** | Event date | LCCP SR Code 3.4.1 | 📋 Policy | `ResponsibleGambling` |
-| Marketing-consent records | **2 years** | Last sign-in (account creation if none) | PDPA 2022 §15 | ✅ **Code** (2026-09-14, E-409) — `retention.purge.daily` clears the flag (`MARKETING_CONSENT_LAPSE_DAYS`), one `privacy.marketing_consent.lapsed` audit row per account; also cleared on closure and erasure; the player withdraws it at any time on `/profile/notifications` | `User.marketingOptIn` |
+| Marketing-consent records | **2 years** | Last sign-in (account creation if none) | PDPA 2022 §15 | ✅ **Code** (2026-09-14, E-409) — `retention.purge.daily` clears the flag (`MARKETING_CONSENT_LAPSE_DAYS`), one `privacy.marketing_consent.lapsed` audit row per account; also cleared on closure and erasure; the player withdraws it at any time on `/profile/notifications`, and the `/s/<token>` opt-out page also clears it. ⚠️ **Covers the boolean only** (corrected 2026-09-25). Since 2026-09-25 (marketing U6/U8) consent also lives in `MessagingConsent` (append-only, never deleted), `Suppression` (never deleted, OD11) and `MarketingOptOutToken`. None of the three is on this schedule or reached by erasure yet; that is owed by D16/U16 of [`MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md`](MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md) | `User.marketingOptIn` (+ `MessagingConsent`, `Suppression`, `MarketingOptOutToken`, unscheduled until U16) |
 | Customer-support tickets | ⛔ **N/A — no ticket store exists** | Ticket close, once built | PDPA 2022 §22 | ⛔ Nothing to enforce against; revisit with Unit K | — |
 | Backup artifacts | **90 days** rolling | Snapshot date | DR/BCP | 📋 Policy — operator action | R2 `50pick-backups` |
 | Session records | — | — | — | ⛔ **N/A** — the `Session` model has never been written to; the platform uses a signed cookie plus `ActiveSession`. A prune here would be a permanent no-op dressed as a control. | — |
@@ -326,7 +326,10 @@ unit test.
 **Production reality when this was written (2026-08-20):** `Notification` 2,450 rows, oldest
 2026-05-30 — *82 days old, so the first live run of this chore will delete nothing.* That is
 expected and is not evidence the chore is broken; the first deletions land once rows cross 180
-days. `Otp` is empty and will stay empty while `SMS_PROVIDER=console`.
+days. `Otp` is empty and will stay empty while `SMS_PROVIDER=console`. *(Corrected 2026-09-25: that
+condition ended on 2026-09-16, when production switched to `SMS_PROVIDER=blackball`, and production
+issued a real OTP on 2026-09-23 ([`BLACKBALL-SMS.md`](BLACKBALL-SMS.md) §4.8). Whether `Otp` holds
+rows today is a production query, not this line.)*
 
 ---
 

@@ -210,6 +210,8 @@ the WHY, the kit pieces to reuse, the infra that already exists, and acceptance 
 - Notes a **`HousePoolLedger` table + `SEED_OUT`/`LOSS_ABSORBED` enum already in the prod DB
   with zero code touching them**, and a **3× tax-base discrepancy** (ledger levies on the 3%
   commission; the statutory return levies on ~9% GGR) that needs a **tax ruling, not code**.
+  (✅ superseded — ruled 2026-07-15, tax on the fee we keep; since 2026-09-25 every report READS
+  the booked `HOUSE:TRA_LEVY` / `HOUSE:GBT_LEVY`.)
 - **What:** transparent house-backed minimum liquidity (or a guaranteed-floor mechanic)
   so fresh markets aren't thin/one-sided → ugly payouts → bounce.
 - **Why (liquidity):** the pari-mutuel cold-start is the ceiling on volume; solving it

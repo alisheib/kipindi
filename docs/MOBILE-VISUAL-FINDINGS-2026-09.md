@@ -3421,6 +3421,8 @@ The recovery link, the RG helpline, the legal documents at the consent point, an
 ### S09-auth-code-1 · 🟠 high · 🕓 unverified · state
 **Register referral/invite binding after any failed sign-up** — `/auth/register?ref=…/?invite=…`
 
+✅ **FIXED 2026-09-25 (`1e49b3b9`)** — `register/actions.ts` now re-sets `ref` and `invite` on the retry URL (`ref` normalised first, so a malformed code stays dropped).
+
 A player who arrives on an agent or invite link and hits any refusal (duplicate email, common password, rate limit, DOB) is returned to a register page with no referral ribbon and no hidden ref/invite field. The retry creates an unbound account, and the referral or welcome bonus is silently lost with no message.
 
 *Evidence:* src/app/auth/register/actions.ts:36-49 rebuilds the retry URL from phone, email, error, message and next only; `ref` and `invite` are never set. register/page.tsx:73-75 resolves the banners only from sp.ref / sp.invite, and :207-208 render the hidden `ref`/`invite` inputs only when those resolve. No cookie fallback exists (grep of affiliate-service, auth-service and proxy found none).

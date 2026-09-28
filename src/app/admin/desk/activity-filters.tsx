@@ -15,9 +15,11 @@
  * the measured half of owner ruling D19 that survives minification. `/admin/house` already ships a server-rendered
  * rail with server-built hrefs; this is that idiom, one directory over.
  *
- * ⛔ **ONE `data-filter-rail`, AND IT IS NOT ON THE `<Tabs>`** (`test:filter-language` §0.4, §6.1-§6.8, and the
- * console's own rail case), with `replace`, because a filter is not a navigation and a rail that stacks history
- * buries the page an officer arrived from under twenty of its own states.
+ * ⛔ **THIS IS THE SECTION'S ONE filter-rail FILE, carrying `data-filter-rail` once, AND NO RAIL HOOK IS ON THE
+ * `<Tabs>`** (`test:filter-language` §0.4, §6.1-§6.8, and the console's own rail case), with `replace`, because a
+ * filter is not a navigation and a rail that stacks history buries the page an officer arrived from under twenty of
+ * its own states. ⚠️ Ruling 410 as amended 2026-09-27: an activity panel with rows ALSO renders the kit's phone sort
+ * rail (`components/admin/card-sort-control.tsx`, shown below `sm` only) — one of each, pinned by the console's 1.410.
  *
  * 🔴 **THE CONTROLS ARE NO LONGER `rank="dense"`, AND THAT IS A MEASUREMENT AND NOT A PREFERENCE (2026-09-23).**
  * The dense rank's floor is 32px — `--h-control-xs`, the documented admin exception — and this section's own
@@ -27,6 +29,13 @@
  * it is a defect with a name. The chips take the shared 44px rank, which clears the floor with room.
  * ⚠️ THE DENSE RANK ITSELF IS UNTOUCHED — other admin rails still use it, and this changes only the rail whose
  * gate was red.
+ *
+ * ⭐ **THE WINDOW IS OPTIONAL SINCE 2026-09-26, AND THIS FILE IS STILL THE SECTION'S ONLY RAIL** (RESUME-HERE §0c
+ * decision 4). The designate wizard's find step gained a list of every account, filtered on two axes that are not
+ * dates — and this section may hold exactly ONE `data-filter-rail` file, so that list renders THIS rail, handed no
+ * presets, rather than a second rail of its own. A date window means one thing on a stake log and nothing on an
+ * account list, so a rail given no presets draws no window at all; both activity panels still pass theirs, and
+ * nothing they render changed.
  *
  * @see src/lib/server/house-console-read.ts · scripts/filter-language.test.mts
  */
@@ -45,8 +54,9 @@ export function ActivityFilters({
   presetDefault,
 }: {
   groups: RailGroup[];
-  presets: readonly string[];
-  presetDefault: string;
+  /** The window's presets and the one a bare visit is on — both, or neither: a rail with no window draws none. */
+  presets?: readonly string[];
+  presetDefault?: string;
 }) {
   return (
     <div data-filter-rail="desk-activity" className="flex flex-col gap-2">
@@ -66,9 +76,11 @@ export function ActivityFilters({
         * ⚠️ AN OFFICER WHO HAS CHOSEN A LANGUAGE STILL GETS IT: the provider's own effect reads the cookie and
         * overrides this seed. What changes is the DEFAULT, which is the state that was measured.
         */}
-      <I18nProvider initial="en">
+      {/* ⛔ THE CONTROL'S OWN LINE IS KEPT BYTE FOR BYTE: two declared red anchors (`410-rail-rank` and
+          `red:filter-language`'s `desk-rail-redensified`) plant the dense rank into exactly that line. */}
+      {presets !== undefined && presetDefault !== undefined && (<I18nProvider initial="en">
         <DateTimeRangeFilter replace presetIds={presets} defaultPreset={presetDefault} />
-      </I18nProvider>
+      </I18nProvider>)}
       {groups.map((g) => (
         <div key={g.param} className="flex items-center gap-1 flex-wrap gap-y-1.5">
           {/* ⛔ THE GROUP KEY IS LOAD-BEARING, NOT DECORATION. Three axes each open with an "Any …" option; without

@@ -1045,13 +1045,31 @@ section("§11 · review fixes — consent that lands mid-check, repeat episodes,
     const dy = await desig(hy, { label: "Shared Desk" });
     await N.notify({ userId: OFFICER, kind: "HOUSE_BOT", titleEn: `House bot "Shared Desk" paused · Y`, titleSw: "y", titleZh: "机器人", bodyEn: "y", bodySw: "y sw", bodyZh: "固定", href: `/admin/desk/${dy.bot.id}` });
     await w.setUserFields(hx, { status: "CLOSED", closedAt: new Date().toISOString() });
+    /* ⭐ FS-09 (2026-09-27) · each designation above now ALSO rang every admin with a DESIGNATED alert that quotes the
+       label and links to its own account, so the rows erasure must rename are this fixture's one PLUS X's real alerts —
+       counted here across every recipient's inbox, never assumed to be one. Y's alerts carry the same freed label and
+       must keep it. */
+    const linkedTo = async (botId: string): Promise<Any[]> => {
+      const out: Any[] = [];
+      for (const u of await A.houseBotAlertRecipients()) {
+        out.push(...((await w.db.notification.findByUser(u.id, 1000)) as Any[]).filter((n) => n.kind === "HOUSE_BOT" && String(n.href ?? "").includes(botId)));
+      }
+      return out;
+    };
+    const xNamed = (await linkedTo(dx.bot.id)).filter((n) => String(n.titleEn).includes(`"Shared Desk"`)).length;
     const { anonymizeClosedAccount }: Any = await import("../../src/lib/server/erasure.ts");
     const res = await anonymizeClosedAccount(hx);
     const rows = (await w.db.notification.findByUser(OFFICER, 1000)) as Any[];
     const x = rows.find((n) => n.href === `/admin/desk/${dx.bot.id}`);
     const y = rows.find((n) => n.href === `/admin/desk/${dy.bot.id}`);
-    ok("11.11 · the erased bot's notice is renamed; the live bot with the freed label keeps its name; one row counted",
-      res.ok === true && x?.titleEn.includes("Erased bot") && y?.titleEn === `House bot "Shared Desk" paused · Y` && res.counts.houseBotNotificationsRedacted === 1, j({ x: x?.titleEn, y: y?.titleEn, n: res.counts?.houseBotNotificationsRedacted }));
+    const xAfter = await linkedTo(dx.bot.id);
+    const yAfter = await linkedTo(dy.bot.id);
+    ok("11.11 · the erased bot's notices are renamed — the fixture's AND its real DESIGNATED alerts, every one counted; the live bot with the freed label keeps its name on every row",
+      res.ok === true && x?.titleEn.includes("Erased bot") && y?.titleEn === `House bot "Shared Desk" paused · Y`
+        && xNamed >= 2 && res.counts.houseBotNotificationsRedacted === xNamed
+        && xAfter.every((n) => !JSON.stringify(n).includes("Shared Desk"))
+        && yAfter.length >= 2 && yAfter.every((n) => String(n.titleEn).includes(`"Shared Desk"`)),
+      j({ x: x?.titleEn, y: y?.titleEn, n: res.counts?.houseBotNotificationsRedacted, xNamed, yRows: yAfter.length }));
   }
 
   // D19c, C4 ruling 149 (replaces UX-1 and UX-2, which tuned the holder's notices): the whole life of a bot — designate,

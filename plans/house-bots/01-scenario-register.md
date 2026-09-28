@@ -2201,7 +2201,7 @@ Forbidden phrases: 'independent', 'cannot influence', 'never bets against you', 
 
 ### CRA-24 [partial] The Board disclosure draft, and the switch being turned ON before it is sent.
 - **Trigger:** ~~The owner switches the master ON while BOARD-DISCLOSURE-HOUSE-BOTS.md is still 'DRAFT FOR ALI'.~~ ⛔ **STRUCK 2026-09-20 (owner ruling D21):** there is no such draft and none is owed, so this trigger cannot occur.
-- **Expected:** The draft follows the KYC-at-withdrawal format and covers:
+- **Expected:** ~~The draft follows the KYC-at-withdrawal format and covers:~~ ⛔ STRUCK 2026-09-20 (owner ruling D21): no draft is written, so nothing in the list below is built.
 - what 50pick does
 - an explicit request for written confirmation of the licence class
 - levy treatment (house stakes are inside GGR)
@@ -2213,13 +2213,13 @@ Forbidden phrases: 'independent', 'cannot influence', 'never bets against you', 
 ~~The ON modal shows a non-blocking amber line, 'Board disclosure not recorded as sent', until the owner records the date (HouseBotControl.boardDisclosureSentAt, COMPLIANCE-audited).~~
 - **Plan:** §10 Docs (plan:486); D1 (plan:19)
 - **Evidence:** docs/BOARD-DISCLOSURE-KYC-AT-WITHDRAWAL.md:1-45 (format precedent); docs/F6-LIQUIDITY-DESIGN.md:249-251 (written GBT approval condition)
-- **Fix:** - §10: list the required sections of the draft.
+- **Fix:** - ~~§10: list the required sections of the draft.~~ ⛔ STRUCK 2026-09-20 (owner ruling D21).
 - ~~§2: add the boardDisclosureSentAt column.~~
 - ~~§8: add the ON modal line and a 'Record disclosure sent' owner action.~~
 - **Test:** - test:docs passes.
 - ~~test:house-bot-console: the ON modal fixture shows the line when the date is null and hides it once set; the record action writes one COMPLIANCE row.~~
-- ⛔ **Superseded by D20 (Ali, 2026-09-17):** the draft points to no house report: Commit 6's private Board draft must say that reports and filings treat house accounts as ordinary player accounts and carry no house memo (C5-D20-REPLAN §4). Coverage gate: partly struck by D20.
-- ⛔ **Superseded by D19 (Ali, 2026-09-16):** the Board draft stays private and Ali decides if and when it is sent (D19b); D19 struck P1's disclosure tracking (PROGRESS.md "What D19 supersedes"), so there is no ON-modal "not recorded as sent" line and no record action. The rulebooks and Terms are not amended (D19a reverses D2/D7), so the draft has no rules-changed-without-notice section. Coverage gate: partly struck by D19; the rest counts through the Board draft (docs).
+- ⛔ **Superseded by D20 (Ali, 2026-09-17):** the draft points to no house report: ~~Commit 6's private Board draft must say that reports and filings treat house accounts as ordinary player accounts and carry no house memo~~ (the draft itself STRUCK 2026-09-20 by owner ruling D21) (C5-D20-REPLAN §4). Coverage gate: partly struck by D20.
+- ⛔ **Superseded by D19 (Ali, 2026-09-16):** ~~the Board draft stays private and Ali decides if and when it is sent (D19b)~~ (STRUCK 2026-09-20 by owner ruling D21: no draft); D19 struck P1's disclosure tracking (PROGRESS.md "What D19 supersedes"), so there is no ON-modal "not recorded as sent" line and no record action. The rulebooks and Terms are not amended (D19a reverses D2/D7), so the draft has no rules-changed-without-notice section. Coverage gate: partly struck by D19; the rest counts through the Board draft (docs) — a draft STRUCK 2026-09-20 by owner ruling D21.
 
 ### CRA-25 [partial] The COMPLIANCE-DECISIONS entry: heading format and what it supersedes.
 - **Trigger:** Commit 1 writes the decision of record.
@@ -2281,8 +2281,8 @@ Forbidden phrases: 'independent', 'cannot influence', 'never bets against you', 
 
 ### CRA-30 [covered] The TRA/GBT levy identity holds with house money.
 - **Trigger:** The daily ops report or monthly pack for a day with house wins and losses.
-- **Expected:** - GGR = stakes − payouts − refunds over all rows = Σ commission.
-- TRA and GBT are the rate × GGR.
+- **Expected:** - GGR = stakes − payouts − refunds over all rows (a turnover measure; house rows are inside it like any player's).
+- TRA and GBT are READ from the booked `HOUSE:TRA_LEVY` / `HOUSE:GBT_LEVY` movement, never computed as rate × GGR (corrected 2026-09-26 after `8acf067c`; authority `docs/SESSION-PROMPT-FINANCE-SEAL.md` §5).
 - The house net result is never added to or subtracted from GGR or NGR.
 - **Plan:** §9 header (plan:456); test:house-bot-money (plan:514)
 - **Evidence:** src/lib/server/report-money.ts:155-159; src/lib/server/reports/catalogue.ts:620, :640-641
@@ -2470,6 +2470,8 @@ After retirement:
 - ⛔ **Superseded by D19 (Ali, 2026-09-16):** the holder receives no notice when his bot pauses (D19c; C4 ruling 149). Coverage gate: partly struck by D19.
 
 ### FS-09 [gap] Ali adds a second ADMIN (an ops manager), or later splits out an OWNER role. requireOwner accepts any ADMIN. That admin could designate his own alt PLAYER account (whose password he knows), switch the master ON, raise caps and remove bots. The plan sends admins no alert on designation, verify, Start, rules or limits saves, or Remove, so Ali wouldn't learn of it. If an OWNER role appears, the hard-coded `listByRoles(['ADMIN', …])` recipient lists may miss him.
+- **⚠️ 2026-09-26 (delegated, `docs/COMPLIANCE-DECISIONS.md` entry `2026-09-26 · D1 READ AS THE OWNER ROLE`):** D1 is enforced as the ADMIN role — the platform's owner tier — so a second ADMIN switching the desk ON is within D1, audited with its actor and alerted to every admin. ~~⛔ The alerts this scenario planned on designation, verify, Start, rules and limits saves are still NOT sent (only pause, remove and the switch); that build remains open.~~
+- **✅ 2026-09-27 · the roster alerts are BUILT (checked against the code):** every designation, re-verify, Start, Pause, Remove, rules save and limits save that lands tells every admin once, by bell and email, naming the officer (their display name, else their account id), after its history event and linking to it; a save's alert gives every moved number before → after; switches, lists and choices by name; the limits save writes its own desk-wide `LIMITS_SAVED` event for the link. The switch-ON alert names no one (ruling 420 keeps its actor an id, on its event and audit row). A refused act and a save that moved nothing tell nobody. The target codes stay unsent because nothing under `src/` adds, changes, removes or vetoes a target; `test:house-bot-console` 2.fs09.8 holds the first file that does, under any name it binds the store to, to an alert carrying a TARGET_* code. Record: `docs/HOUSE-BOTS.md` §9.2 and accepted risk 12 (c); proof `test:house-bot-console` §2j.
 - **Trigger:** A second ADMIN account (bootstrap phones are a set), or a role enum change.
 - **Expected:** Every house action passes one `requireHouseOwner()`. Today it equals requireOwner; after a role split it follows the owner predicate in one place.
 - **Roster alerts:** DESIGNATED, VERIFIED, STARTED, RULES_SAVED, LIMITS_SAVED, SWITCH_ON/OFF and REMOVED each send all house-owner recipients a bell and email, never capped. Each carries actor, bot and before→after values, e.g. "Bot A: daily loss cap raised 50,000 → 200,000 by Juma M. at 14:02 EAT".
@@ -3783,7 +3785,7 @@ test:house-bot-seam: stakeBoundsForMarket equals the old inline result for a pol
   - ~~The resolver card, ceremony, emergency-void confirm and objection panel show "of which chosen by you: TZS 9,000" to A. C sees only the R2 line.~~
   - (a)–(e) One AlertOnce `staff-stake-self-decided:<marketId>:<action>` per market and action, bell + email to every `houseBotAlertRecipients()`. (b)/(c) also send `staff-stake-voided:<marketId>`, a separate key.
   - (f) No self-decided alert.
-  - ~~R1 "markets decided by the officer who chose a house stake on them" lists P for each action and R once.~~ The Board draft names risk 20.
+  - ~~R1 "markets decided by the officer who chose a house stake on them" lists P for each action and R once.~~ ~~The Board draft names risk 20.~~ ⛔ STRUCK 2026-09-20 (owner ruling D21): no Board draft is written.
 - **Plan:** N1 §4.5 and N1 §7 (`staff-stake-self-decided`); ~~N1 §9 (R9 shape, R1 section (e));~~ PLAN §16b risk 20; ~~04 R9~~.
 - **Evidence:** `docs/COMPLIANCE-DECISIONS.md:2263-2271` (a single admin resolves even with a position; the conflict block was deleted from `resolveMarket` and `emergencyVoidMarket`), `:2289-2291` (guardrail); `market-service.ts:2966`, `:4000`, `:4061`; `objections-service.ts:386`, `:467`; 04-amendments.md:1316-1335 (R9).
 - **Fix:** ~~R9 `staffChosen.requestedBy`;~~ the N1 §4.5 planner alert; ~~the R1 section~~.

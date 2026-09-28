@@ -177,7 +177,9 @@ async function appendLedgerRow(identifier: string, status: "GIVEN" | "WITHDRAWN"
     status,
     source: "OPT_OUT_PAGE",
     // ⛔ VERBATIM (§5.7) — the sentence THIS person read, in the language they read it in,
-    // handed in by the page rather than re-rendered from today's copy inside here.
+    // resolved once by `optOutWording()` at the moment of the act from the server-read locale
+    // (never passed in by the page), and stored as text so the record does not change when the
+    // copy is reworded later.
     wording,
     locale,
     evidence: `optout:${token}`,

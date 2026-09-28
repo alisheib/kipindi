@@ -66,14 +66,62 @@ page.on("pageerror", (e) => consoleErrors.push(`pageerror: ${String(e).slice(0, 
 const soft = async (what, fn, fallback = undefined) => {
   try { return await fn(); } catch (e) { consoleErrors.push(`soft(${what}): ${String(e).slice(0, 120)}`); return fallback; }
 };
+/**
+ * ⛔ A CLICK THAT TIMES OUT SAYS WHY (2026-09-27). Playwright's "Timeout 5000ms exceeded" names the locator and not
+ * the reason, and the 2026-09-27 run lost two checks (9d.3's Custom chip, 10.1's Remove) to exactly that line with
+ * nothing to act on. On a failed click this records the control's box, whether it is disabled, and which element
+ * answers at its centre — "COVERS IT" when something else is on top.
+ */
+const clickWhy = async (what, locator, timeout) => {
+  try { await locator.click({ timeout }); return true; } catch (e) {
+    const why = await locator.first().evaluate((el) => {
+      const r = el.getBoundingClientRect();
+      const at = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+      const d = (n) => (n ? `${n.tagName.toLowerCase()}.${String(n.className || "").split(" ").slice(0, 3).join(".")} "${(n.textContent || "").trim().slice(0, 40)}"` : "nothing");
+      return `box ${Math.round(r.left)},${Math.round(r.top)} ${Math.round(r.width)}x${Math.round(r.height)} · viewport ${innerWidth}x${innerHeight} · disabled ${el.disabled === true} · aria-disabled ${el.getAttribute("aria-disabled")} · at centre: ${d(at)}${at && at !== el && !el.contains(at) ? " (COVERS IT)" : ""}`;
+    }).catch((x) => `no element (${String(x).slice(0, 80)})`);
+    consoleErrors.push(`soft(${what}): ${String(e).split("\n")[0].slice(0, 90)} · ${why}`);
+    return false;
+  }
+};
 const clickIfThere = (name) =>
   soft(`click ${name}`, () => page.getByRole("button", { name }).click({ timeout: 4000 }));
 
 const post = (path, data) => page.request.post(`${BASE}${path}`, { data });
+/**
+ * ⛔ THE BAR HAS TWO STATES ON ONE ELEMENT (2026-09-26): "dirty" (unsaved work, Discard, maybe Save) and, for
+ * 2.5 s after a save lands, "saved" (a word and no button). `bar()` reads ONLY the dirty state, so "the bar is
+ * up" (5.2, 8.5) cannot pass on a Saved bar and "the bar went away" (7.2) is not failed by one.
+ */
 const bar = () => page.evaluate(() => {
-  const el = document.querySelector(".kp-rail.fixed");
+  const el = document.querySelector('.kp-rail.fixed[data-pending-state="dirty"]');
   return el ? el.innerText.replace(/\s+/g, " ").trim() : null;
 });
+const savedBar = () => page.evaluate(() => {
+  const el = document.querySelector('.kp-rail.fixed[data-pending-state="saved"]');
+  return el ? { text: el.innerText.replace(/\s+/g, " ").trim(), buttons: el.querySelectorAll("button").length } : null;
+});
+/**
+ * ⚠️ THE SAVED STATE DWELLS 2.5 s AND `submitForm` SPENDS OVER 1 s SETTLING, so a read after it can race the
+ * dwell. This records the FIRST saved state the page paints; `savedSeen()` hands it back and stops recording.
+ */
+const watchSaved = () => page.evaluate(() => {
+  window.__kpSavedSeen = null;
+  const read = () => {
+    const el = document.querySelector('.kp-rail.fixed[data-pending-state="saved"]');
+    if (!el || window.__kpSavedSeen) return;
+    window.__kpSavedSeen = {
+      text: el.innerText.replace(/\s+/g, " ").trim(),
+      buttons: el.querySelectorAll("button").length,
+      role: el.getAttribute("role"),
+      live: el.getAttribute("aria-live"),
+    };
+  };
+  const mo = new MutationObserver(read);
+  mo.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["data-pending-state"] });
+  window.__kpSavedStop = () => mo.disconnect();
+});
+const savedSeen = () => page.evaluate(() => { window.__kpSavedStop?.(); return window.__kpSavedSeen ?? null; });
 const toasts = () => page.evaluate(() =>
   [...document.querySelectorAll("[role=region] [role=status], [role=region] [role=alert]")]
     .map((e) => e.innerText.replace(/\s+/g, " ").trim()).filter(Boolean));
@@ -101,18 +149,23 @@ const invalidFields = () => page.evaluate(() =>
   [...document.querySelectorAll('main form input[aria-invalid="true"]')].map((i) => i.name));
 /**
  * ⛔ SUBMIT, THEN WAIT FOR THE TRANSITION TO END — NEVER A FIXED DELAY (2026-09-22). The form's Save is the kit's
- * Button with `loading={pending}`, which sets `aria-busy` and `disabled` for exactly as long as the server action is
- * in flight. A fixed 3–4 s wait raced it: on a dev server compiling the action's chunk on its first call — measured
+ * Button with `loading={pending}`, which sets `aria-busy` for exactly as long as the server action is in flight
+ * (`disabled` too — but since 2026-09-26 it also stays disabled once nothing is left to save, so it is NOT the
+ * end-of-flight signal; see below). A fixed 3–4 s wait raced it: on a dev server compiling the action's chunk on its first call — measured
  * at 24.5 s under load — every check after the submit read the form MID-FLIGHT (no toast yet, every control
  * disabled), and the failures cascaded through the next four sections. A gate that fails for a reason that has
  * nothing to do with the product teaches people to ignore it.
  */
 const submitForm = async (maxMs = 120_000) => {
-  await soft("submit", () => page.locator("main form button[type=submit]").click({ timeout: 4000 }));
+  await clickWhy("submit", page.locator("main form button[type=submit]"), 4000);
   await page.waitForTimeout(250);
+  /* ⛔ SETTLED = NOT BUSY, NEVER "ENABLED AGAIN". Since 2026-09-26 (one Save on screen) the form's Save is
+     DISABLED once nothing is left to save — so after a save that LANDS it never re-enables, and waiting for
+     it did the full timeout, by which time the 4.5 s toast was gone and §7 read "no toast" over a save that
+     had landed. `aria-busy` is the kit Button's in-flight mark (button.tsx), set only while loading. */
   await page.waitForFunction(() => {
     const b = document.querySelector("main form button[type=submit]");
-    return !!b && !b.disabled && b.getAttribute("aria-busy") !== "true";
+    return !!b && b.getAttribute("aria-busy") !== "true";
   }, null, { timeout: maxMs }).catch(() => consoleErrors.push("soft(submit settle): the Save button stayed busy"));
   /* the toast paints on the next frame after the transition; the router refresh that follows a landed save may
      take a moment more, and the checks below read the toast first */
@@ -283,6 +336,8 @@ await clickIfThere("Discard");
 await page.waitForTimeout(700);
 const afterDiscard = await boxState("product-updown");
 ok("4.1 Discard clears the pending bar", (await bar()) === null);
+/* ⛔ Discard is not a save, and a bar that said "Saved" here would be a lie about the officer's money rules. */
+ok("4.1b …and it does not claim a save", (await savedBar()) === null, JSON.stringify(await savedBar()));
 ok("4.2 …and puts the switch back, in the DOM AND in the paint",
   afterDiscard && afterDiscard.checked === false && afterDiscard.painted === false, JSON.stringify(afterDiscard));
 
@@ -333,6 +388,8 @@ await submitForm();
 const refusal = (await toasts()).join(" ~~ ");
 const marked = await invalidFields();
 ok("6.1 the save is refused and says so", /Couldn't save/.test(refusal), refusal.slice(0, 160));
+ok("6.1b …and the bar stays on the unsaved work — never \"Saved\" over a refusal",
+  (await bar()) !== null && (await savedBar()) === null, JSON.stringify({ bar: await bar(), saved: await savedBar() }));
 ok("6.2 EVERY wrong field is marked, not just the first", marked.length >= 2, JSON.stringify(marked));
 ok("6.3 …and the message says how many", /\d+ fields need fixing/.test(refusal) || marked.length === 1, refusal.slice(0, 160));
 ok("6.4 …and focus is taken to a marked field",
@@ -397,10 +454,15 @@ console.log("\n§7 · a save that lands");
 await clearToasts();
 await soft("switch poll-categories.sports", () => clickSwitch("poll-categories.sports"));
 await page.waitForTimeout(400);
+await soft("watch for Saved", () => watchSaved());
 await submitForm();
 const saved = (await toasts()).join(" ~~ ");
+const seenSaved = await soft("read Saved", () => savedSeen(), null);
 ok("7.1 the save lands once a category is chosen", /Saved/.test(saved) && !/Couldn't save/.test(saved), saved.slice(0, 160));
 ok("7.2 …and the pending bar goes away", (await bar()) === null);
+ok("7.2a …and in its place the bar says Saved, with no button, as the same polite status",
+  !!seenSaved && /^saved$/i.test(seenSaved.text) && seenSaved.buttons === 0 && seenSaved.role === "status" && seenSaved.live === "polite",
+  JSON.stringify(seenSaved));
 ok("7.2b …and the group's mark is gone", (await invalidFields()).length === 0, JSON.stringify(await invalidFields()));
 
 // a SECOND save straight after the first must not meet a version conflict
@@ -529,10 +591,13 @@ ok("8.6a the offer is STILL there after a second visit — a draft is not consum
   (await page.locator("main").getByText(/Unsaved changes from earlier/).count()) > 0,
   "the entry was deleted on mount; the work is gone");
 
-/* ⛔ IGNORE the offer — fill and save around it. That is the owner's own path. */
+/* ⛔ IGNORE the offer — fill and save around it. That is the owner's own path.
+   ⚠️ A REAL EDIT, NOT "Use starting values" (2026-09-26). That button fills EMPTY boxes only, and on this
+   form every box was filled by §7 — so the form stayed clean, and since the one-Save change a clean form's
+   Save is disabled: nothing was saved and 8.6b/8.6 read the draft offer that correctly survived. */
 await clearToasts();
-await clickIfThere("Use starting values");
-await page.waitForTimeout(800);
+await soft("fill bets-per-hour", () => page.locator('main form input[name="bets-per-hour"]').fill("19", { timeout: 4000 }));
+await page.waitForTimeout(400);
 await submitForm();
 ok("8.6b a clean save clears the offer ON SCREEN, with no reload",
   (await page.locator("main").getByText(/Unsaved changes from earlier/).count()) === 0,
@@ -858,6 +923,11 @@ const pickerIn = async (zone) => {
 
 const far = await soft("picker in UTC+14", () => pickerIn("Pacific/Kiritimati"), null);
 const near = await soft("picker in UTC-11", () => pickerIn("Pacific/Niue"), null);
+/* 🔴 SIGN THE DRIVE'S OWN PAGE BACK IN (2026-09-27). Each `pickerIn` context signs the same admin in, and the console
+   keeps ONE live session per account — so the main page came back from 9d.1/9d.2 signed OUT, and 9d.3 and 10.1 then
+   looked for the Custom chip and the Remove button on a page that had neither (the 2026-09-27 run: "no element" for
+   both). Another lane had reported exactly those two as failing; they were this drive's own doing, not the desk's. */
+await post("/api/dev-test/seed-admin", {});
 const eatDay = eatDayNow();
 const eatDom = Number(eatDay.slice(8, 10));
 ok("9d.1 the calendar's last selectable day is the EAT day in BOTH extreme zones - the bound is the platform's clock, not the machine the officer is sitting at",
@@ -872,14 +942,18 @@ await page.setViewportSize({ width: 1440, height: 1100 });
 await page.goto(ACTIVITY, { waitUntil: "load" });
 await page.waitForTimeout(2400);
 const applied = await soft("apply a custom window", async () => {
-  await page.getByRole("button", { name: /^Custom$/ }).first().click({ timeout: 6000 });
+  if (!(await clickWhy("custom chip", page.getByRole("button", { name: /^Custom$/ }).first(), 6000))) throw new Error("the Custom chip could not be pressed");
   await page.waitForTimeout(500);
-  const segs = page.locator("main input[inputmode=numeric]");
+  /* 🔴 THE "TO" DATE STARTS HALF-WAY ALONG, NOT AT A FIXED 6 (2026-09-27). Each side of the panel is its date's three
+     segments then its time's two — ten in all — and the old `nSeg >= 12 ? i + 6 : i` therefore typed the FROM date
+     twice and left `to` empty, so Apply stayed disabled and 9d.3 could never be measured. Read off the panel's own
+     hook (`data-range-panel`), the second side begins at half the count, whatever each side holds. */
+  const segs = page.locator("[data-range-panel] input[inputmode=numeric]");
   const nSeg = await segs.count();
-  if (nSeg >= 6) {
-    const d = eatDay.split("-");
+  if (nSeg >= 6 && nSeg % 2 === 0) {
+    const d = eatDay.split("-"), half = nSeg / 2;
     for (const [i, v] of [[0, d[2]], [1, d[1]], [2, d[0]]]) await segs.nth(i).fill(v);
-    for (const [i, v] of [[0, d[2]], [1, d[1]], [2, d[0]]]) await segs.nth(nSeg >= 12 ? i + 6 : i).fill(v);
+    for (const [i, v] of [[0, d[2]], [1, d[1]], [2, d[0]]]) await segs.nth(half + i).fill(v);
   }
   await page.waitForTimeout(400);
   await page.getByRole("button", { name: /^Apply$/ }).first().click({ timeout: 6000 });
@@ -896,7 +970,7 @@ const removed = await soft("remove the drive's account", async () => {
   await page.setViewportSize({ width: 1440, height: 1100 });
   await page.goto(`${BASE}/admin/desk/${ACCOUNT}`, { waitUntil: "load" });
   await page.waitForTimeout(2200);
-  await page.getByRole("button", { name: /Remove/ }).first().click({ timeout: 5000 });
+  if (!(await clickWhy("remove", page.getByRole("button", { name: /Remove/ }).first(), 5000))) throw new Error("Remove could not be pressed");
   await page.waitForTimeout(800);
   /* ⚠️ Remove is a HARD ceremony — a required reason AND the word typed out. That is correct for an act that
      cancels every queued stake and ends every target, and it is why this cleanup drives the real controls

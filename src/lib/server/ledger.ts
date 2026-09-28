@@ -993,6 +993,19 @@ export async function houseAccountMovement(
   return moved;
 }
 
+/**
+ * The statutory levies BOOKED over `[start, end)` — `HOUSE:TRA_LEVY` and `HOUSE:GBT_LEVY` exactly as
+ * each settlement posted them. Read, never computed (SESSION-PROMPT-FINANCE-SEAL §5).
+ * ⛔ `null` when the ledger cannot be read: the caller OMITS its levy line, never prints 0.
+ * ⚠️ Exists so a console page can show the levy without importing a `house<Capital>` name — the
+ * house-bots D19 guard (`test:house-bot-surfaces` 2.ids.1) reads that SHAPE on every admin surface.
+ */
+export async function leviesBooked(start: number, end: number): Promise<{ tra: number; gbt: number } | null> {
+  const moved = await houseAccountMovement(start, end);
+  if (moved === null) return null;
+  return { tra: Math.round(moved["HOUSE:TRA_LEVY"] ?? 0), gbt: Math.round(moved["HOUSE:GBT_LEVY"] ?? 0) };
+}
+
 export async function houseAccountBalances(): Promise<Record<string, number>> {
   const pc = prisma();
   if (!pc) return {};

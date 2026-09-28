@@ -52,7 +52,9 @@ those is missing, it stays silent — and that is by design.</p></div>
 
 <div class="steps">
   <div><b>Designate an account.</b> Pick an existing player account the desk will stake from, and confirm you have
-    the holder's permission. The desk never creates accounts of its own.</div>
+    the holder's permission. The desk never creates accounts of its own. Search for it by handle, phone number or
+    account ID — or, if you have none of those, pick it from the list of every account underneath the search:
+    twenty to a page, sortable by account, joined and signed in, and it says why an account cannot be chosen.</div>
   <div><b>Fill in the money limits.</b> On the <b>Limits</b> tab. Every limit must have a number — an empty limit
     is treated as "refuse", not as "no limit", so a blank box stops the account betting.</div>
   <div><b>Choose the markets.</b> On the <b>Rules</b> tab, under Markets: tick <b>Up &amp; Down</b> and/or
@@ -219,8 +221,9 @@ roster, and the panel beside the Rules form, will usually name the reason too.</
 </table>
 
 <h2>6 · Did it win or lose?</h2>
-<p>Every bet an account places ends in one of four states. You can see them on the market itself, and in the
-ordinary money reports — house accounts appear there as normal players, which is deliberate.</p>
+<p>Every bet an account places ends in one of four states. You can see them on the market itself and on the desk's
+<b>Activity</b> tab; what they came to in money over the last 7 days is on the desk's <b>Results</b> tab (below); and
+the ordinary money reports count house accounts as normal players, which is deliberate.</p>
 <table>
   <thead><tr><th style="width:18%">Result</th><th>What happened</th><th style="width:30%">The money</th></tr></thead>
   <tbody>
@@ -230,23 +233,34 @@ ordinary money reports — house accounts appear there as normal players, which 
       its winnings, less the platform's usual charges.</td></tr>
     <tr><td><b>Lost</b></td><td>The market finished on the other side.</td><td>The stake is gone. This is what the
       daily loss limit counts.</td></tr>
-    <tr><td><b>Refunded</b></td><td>Nobody took the other side, so there was no real contest.</td><td>The whole
-      stake comes back. Neither a win nor a loss.</td></tr>
+    <tr><td><b>Void</b></td><td>Nobody took the other side, so there was no real contest.</td><td>The whole
+      stake comes back as a refund. Neither a win nor a loss.</td></tr>
   </tbody>
 </table>
+<p>The desk's <b>Activity</b> tab shows the same word in its <b>Outcome</b> column. Each row there is one round:
+<b>Opening</b> is what the account held before that stake left, <b>Stake</b> is the bet, and <b>Closing</b> is what
+it held right after — so Opening less Stake is always Closing. A later payout or refund does not change that row.</p>
 <div class="box"><b class="lead">Expect refunds on quiet markets — they are not a fault</b>
 <p>An Opener places the first bet on an empty market. If no player joins before it closes, the market is one-sided
 and everyone is refunded. That is the system working correctly: the account risked nothing and lost nothing. A run
 of refunds means the markets were quiet, not that anything is broken.</p></div>
 
-<div class="box good"><b class="lead">Where to read today's result</b>
+<div class="box good"><b class="lead">Where to read the result</b>
+<p>The desk's <b>Results</b> tab shows what the desk's finished stakes came to over the <b>last 7 days</b> (EAT), in
+words — <i>Profit TZS 12,600</i>, <i>Loss TZS 12,600</i> or <i>Even</i>, never a plus or minus sign. <b>By day</b>
+has one line per day for the whole desk, with how many stakes were placed; <b>By account</b> has each account's
+result today and over the 7 days. A stake counts on the day it was <b>placed</b> — the same day the daily loss limit
+counts it on — and a refund counts as nothing. A stake still running counts nothing until it finishes, so its day
+reads <b>Still running</b>, and can still change after midnight, until the last stake finishes and the day reads
+<b>Final</b>.</p>
 <p>On the <b>Limits</b> tab, and on each account's own page, the daily loss limit has <b>two</b> rows against one
 cap. <b>Projected</b> is what could still be lost — your open stakes counted as though they all lost, which is what
 decides whether a new bet is allowed. <b>Settled</b> is what has actually finished: it reads
 <i>used TZS 4,000 of TZS 100,000</i> when the day is down, and <b><i>ahead by TZS 186 · limit TZS 100,000</i></b>
-when it is up.</p>
+when it is up. It is the same figure the Results tab shows for today — the whole desk's on the Limits tab, the
+account's own on its page.</p>
 <p>The rest of the desk shows <b>risk</b> on purpose — staked today, what may still be lost, how close each limit
-is. For full results over time, use the ordinary money reports, where house accounts are counted exactly like any
+is. For anything older than 7 days, use the ordinary money reports, where house accounts are counted exactly like any
 other player.</p></div>
 
 <h2>7 · Money limits</h2>
@@ -262,6 +276,26 @@ settle normally. Turning it on or off is recorded with who did it and why.</p>
 <div class="box good"><b class="lead">Safe to use</b>
 <p>Turning the switch off is the safest thing you can do if anything looks wrong. It stops new bets at once and
 changes nothing that has already happened.</p></div>
+
+<h2>9 · Reading the desk's tables</h2>
+<p>Every table on the desk works the same way.</p>
+<div class="steps">
+  <div><b>Sort by pressing a column's heading.</b> Press it to order the table by that column; press it again to
+    reverse the order. The heading in force shows an arrow (↑ or ↓). Running figures — Opening, Closing and Left
+    today — and a few descriptive columns do not sort, because their order only makes sense in time.</div>
+  <div><b>Twenty rows to a page.</b> Every list that can grow — activity, history, targets, the list of accounts —
+    shows twenty rows with a pager under it. The roster has one too, but it only appears if the maximum number of
+    accounts is ever raised above twenty; until then every account is on one screen.</div>
+  <div><b>A press that is loading says so.</b> When you press a tab, a heading, a page number or a filter, a thin
+    moving bar appears under what you pressed and the part of the page it will replace fades, until the new page
+    arrives. On a slow connection, wait for it — nothing is stuck.</div>
+</div>
+<div class="box"><b class="lead">On a phone</b>
+<p>The two activity tables show each stake as a stacked card with no heading row, so on a phone they carry a
+<b>Sort · Panga</b> row above the first card instead: one button for each column you can sort by, the one in use
+marked with its arrow (↑ or ↓). Press a button to sort by that column; press the marked one again to reverse the
+order. It does exactly what pressing that column's heading does on a computer, and the line above it still says which
+order you are looking at. Every other table keeps its heading row on a phone and sorts from it.</p></div>
 
 <footer>50pick · House Desk — Admin Guide. The settings table is generated from the console's own field list, so it
 cannot disagree with the screen. If this guide and the screen ever differ, the screen is correct.</footer>

@@ -5,7 +5,8 @@
  *
  * Dark glass dropdown panel, brand-500 focus ring, mono font.
  * Keyboard navigable (arrows, Home/End, enter, escape, Tab-to-close, type-to-search).
- * Hidden input for form submission.
+ * Hidden input for form submission — a pick raises `input`/`change` on it, and a form reset puts an
+ * uncontrolled choice back to its default (see `pick`), so the form's dirty tracking sees this control.
  *
  * ⭐ A5 · IT IS AN APG SELECT-ONLY COMBOBOX, not a button that looks like one. The trigger
  * names the listbox it owns (`aria-controls`), names the row it is on
@@ -137,12 +138,65 @@ export function Select({
 
   useEffect(() => { setMounted(true); }, []);
 
+  /**
+   * ⛔ A PICK MUST REACH THE FORM, AND IT DID NOT (2026-09-26). The console's forms learn they are dirty
+   * from bubbling `input`/`change` events (`useFormDirty`), and a pick moved the hidden input by a React
+   * re-render alone — which fires nothing. So a Select-only change never raised the pending bar, and a Save
+   * that stays disabled while nothing has changed could never have been pressed for it.
+   * ⭐ ONE `input` AND ONE `change`, raised on the hidden input AFTER the commit: by then the input already
+   * holds the new value, and any field the same pick reveals is already in the form, so a listener reading
+   * `FormData` reads the truth. ⚠️ A PICK ONLY, and only when the value moves — a reset, or a parent moving a
+   * controlled value, is not a person choosing, and a native `<select>` fires nothing for either.
+   * ⛔ The caller's `onChange` is still called ONCE, in `pick`; React raises no `onChange` for a hidden input,
+   * so a controlled caller never hears the same pick twice.
+   * ⚠️ `announce` holds the VALUE picked, not a flag, and only a commit that lands on that value announces. A
+   * controlled parent may refuse or remap a pick; a flag would then stay set, and the parent's next move (a
+   * Discard) would be announced as if the person had chosen it. The next commit that moves `selected` clears it.
+   */
+  const hiddenRef = useRef<HTMLInputElement>(null);
+  const announce = useRef<string | null>(null);
+
   const pick = useCallback((val: string) => {
+    if (val !== selected) announce.current = val;
     if (!controlled) setInternal(val);
     onChange?.(val);
     setOpen(false);
     triggerRef.current?.focus();
-  }, [controlled, onChange]);
+  }, [controlled, onChange, selected]);
+
+  useEffect(() => {
+    const asked = announce.current;
+    announce.current = null;
+    if (asked === null || asked !== selected) return;
+    const el = hiddenRef.current;
+    if (!el) return;
+    el.dispatchEvent(new Event("input", { bubbles: true }));
+    el.dispatchEvent(new Event("change", { bubbles: true }));
+  }, [selected]);
+
+  /**
+   * ⛔ A FORM RESET PUTS THE CHOICE BACK (2026-09-26). Every Discard in the console is `form.reset()`, which
+   * restores native fields from their defaults and knows nothing about this control's state — so the trigger
+   * kept showing the discarded choice and the hidden input kept posting it. The kit Checkbox's rule, applied
+   * here: UNCONTROLLED ONLY (a controlled value is its parent's to put back) and NO `onChange` (a reset is not
+   * a pick).
+   * ⚠️ The hidden input is written IN the handler, not after a render: callers run `markSaved()` on the line
+   * after `reset()`, and that snapshot must already read the default.
+   */
+  useEffect(() => {
+    if (controlled) return undefined;
+    const form = triggerRef.current?.form;
+    if (!form) return undefined;
+    const restore = (e: Event) => {
+      if (e.defaultPrevented) return;
+      const back = defaultValue ?? "";
+      announce.current = null;
+      setInternal(back);
+      if (hiddenRef.current) hiddenRef.current.value = back;
+    };
+    form.addEventListener("reset", restore);
+    return () => form.removeEventListener("reset", restore);
+  }, [controlled, defaultValue]);
 
   /**
    * ⛔ G-8 (2026-08-02) — THE "OPEN ABOVE" BRANCH NEVER OPENED ABOVE.
@@ -195,9 +249,21 @@ export function Select({
 
   // Keyboard on trigger. ⭐ `ArrowUp` opens too (APG): a keyboard user reaching a closed
   // combobox and pressing Up expects the list, not nothing — the same gap Home/End were.
+  /* ⛔ ONLY WHILE CLOSED, AND THE OPENING KEY STOPS HERE (2026-09-27). Measured locally and on
+   * production: a keyboard could not choose ANY option. Focus stays on this trigger while the list is
+   * open (aria-activedescendant), so every key reached this handler AND the list's window listener:
+   *   · each arrow and Enter first RE-OPENED the list here, resetting the highlight to the current
+   *     value, and React commits that before the key reaches `window` — so the listener moved from,
+   *     or committed, the reset row, and Enter always chose the value already there;
+   *   · the opening key itself also reached the listener (attached by that same commit), so ArrowDown
+   *     opened the list AND moved one row.
+   * While the list is open the listener owns every key; the opening key never reaches it.
+   * Guards: `npm run test:select-keyboard` (the contract) and `npm run qa:select-keyboard` (the keys). */
   const onTriggerKey = (e: React.KeyboardEvent) => {
+    if (open) return;
     if (e.key === "Enter" || e.key === " " || e.key === "ArrowDown" || e.key === "ArrowUp") {
       e.preventDefault();
+      e.stopPropagation();
       openDropdown();
     }
   };
@@ -238,12 +304,13 @@ export function Select({
       // ⚠️ Closing does NOT commit the highlighted option: a keystroke whose job is "leave
       // this control" must not be able to change a value on the way out. Enter commits.
       if (e.key === "Tab") { setOpen(false); }
-      if (e.key === "Enter") {
+      // ⭐ Space commits like Enter (APG, select-only combobox) — and it is never a type-to-search key.
+      if (e.key === "Enter" || e.key === " ") {
         e.preventDefault();
         if (focusIdx >= 0 && !options[focusIdx]?.disabled) pick(options[focusIdx]!.value);
       }
       // Type-to-search: jump to first option starting with typed char
-      if (e.key.length === 1 && !e.ctrlKey && !e.metaKey) {
+      if (e.key !== " " && e.key.length === 1 && !e.ctrlKey && !e.metaKey) {
         const char = e.key.toLowerCase();
         // Skips disabled ones for the same reason the arrows do — typing "g" and landing on a
         // gold option Enter will not take is the same dead end by another route.
@@ -367,7 +434,7 @@ export function Select({
         </svg>
       </button>
 
-      {name && <input type="hidden" name={name} value={selected} />}
+      {name && <input ref={hiddenRef} type="hidden" name={name} value={selected} />}
 
       {mounted && present && createPortal(
         <div

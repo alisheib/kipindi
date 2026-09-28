@@ -266,12 +266,18 @@ session re-derives it.
 | **D** | **Jay unit M** · per-bet UD notifications | Jay §1 | ❌ **DROPPED.** It reverses a dated owner ruling in order to add a receipt **E-178 already delivers**. Closed by one email and two doc corrections, not by code | ❌ |
 | **E** | 🔴 **E-227** · the certificate gate that has never run | **NEW — found by this audit** (absorbs **E-195**) | ✅ **SHRUNK to ~45 min of YAML.** The certificate is fine for **49 days**. The defect is that **three tracked documents call `qa:live` §[F] "a gate and not a reminder" — and it has never executed once** ✅ **SHIPPED 2026-08-27 (session 69): `qa:cert-expiry` 5/5 live · `red:cert-expiry` 3/3 · `test:red-anchors` 799/0 · `.github/workflows/cert-expiry.yml` twice weekly · §[F] DELETED.** ⛔ **It was FOUR documents, not three — and a fifth place was worse: `CLAUDE.md`'s single documented prod invocation used a hostname absent from §[F]'s own `ORIGIN_OF`, so the one way anyone could exercise the gate could not exercise it.** ⛔ **Named `qa:cert-expiry`, NOT `test:cert-expiry` as this row prescribed** — `test-all.mjs` enumerates `test:*` structurally and `ci.yml` runs it on every push and PR, so a `test:` prefix puts a live TLS call into every merge. | ☑️ |
 
-⚠️ **AND THE LARGEST THING MEASURED IS NOT ON THIS LEDGER AT ALL.** Lifetime deposits are
+⚠️ **AND THE LARGEST THING MEASURED IS NOT ON THIS LEDGER AT ALL.** Measured 2026-08-27 (a
+point-in-time reading; re-derive before quoting): lifetime deposits were
 **52 CONFIRMED (TZS 646,000) against 38 FAILED (TZS 630,500)** — 42% by count, **49% by value**.
 Last 7 days: **1 confirmed against 4 failed.** Nine genuine player accounts are affected; one
-player alone carries 4 failures totalling **TZS 311,000**. Separately `/api/health` reports
-`sms.provider: "console"` — **no real SMS has ever been sent.** ⛔ **This was not audited and is
+player alone carries 4 failures totalling **TZS 311,000**. ⛔ **This was not audited and is
 not ruled on here — it is flagged because it outranks all five units above.**
+
+Separately, on 2026-08-27 `/api/health` reported `sms.provider: "console"`, meaning no real SMS had
+yet been sent (later filed as E-330). ✅ **RESOLVED (corrected 2026-09-25) — it no longer outranks
+anything here:** E-330 was fixed 2026-09-16 in `src/lib/server/sms.ts` (`df91994b`), SMS has been
+live on Blackball since 2026-09-16, and delivery receipts were proven end to end on 2026-09-23 (see
+the status table in [`BLACKBALL-SMS.md`](BLACKBALL-SMS.md)).
 
 ---
 

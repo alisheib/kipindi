@@ -8,8 +8,8 @@
  * users × 100 transactions (`scripts/load/s13-scale-ceilings.mts`) that cost 3,321 ms and
  * **385 MB of heap** — on a container with 512 MB. They now ask SQL for the window.
  *
- * These are the numbers on the statutory pack. GGR feeds the TRA and GBT levies, so a
- * boundary that moved by one row would move money between two filings. The risk is not
+ * These are the numbers on the statutory pack (GGR, NGR), so a boundary that moved by one
+ * row would move money between two filings. The risk is not
  * "slower" or "faster" — it is an off-by-one at a month boundary, which is exactly what a
  * `>=` / `>` slip produces and exactly what no eyeball catches.
  *
@@ -268,6 +268,9 @@ for (const [name, src] of [
   ["report-money", read("../src/lib/server/report-money.ts")],
   ["analytics", read("../src/lib/server/analytics.ts")],
   ["kyc-risk", read("../src/lib/server/kyc-risk.ts")],
+  // The catalogue's one `windowed: true` builder. `reports/catalogue.ts` is scanned PER FUNCTION,
+  // behaviourally, by `test:report-window-reads` — its all-time match-integrity read is legitimate.
+  ["finance-window", read("../src/lib/server/reports/finance-window.ts")],
 ] as const) {
   const walks = (src.match(/db\.txn\.listAll\(\)/g) ?? []).length;
   ok(`${name}: no whole-table walk on a windowed path`, walks === 0, `${walks} remaining`);

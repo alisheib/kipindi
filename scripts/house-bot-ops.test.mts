@@ -47,8 +47,9 @@
  *     positions held by DIFFERENT bots, so "it wrote a bot id" cannot pass for "it wrote the RIGHT one".
  *   · memory 58, postgres 69 — steps 6 and 7: §5, the SUNSET. ⭐ THE TWO CHILDREN SPLIT THE TWO AUDIT
  *     OUTCOMES and each says which half it measured: the memory child FORCES the compliance row to fail
- *     (production without a distinct AUDIT_CHAIN_SECRET — the only way `audit()` can reject, since with a
- *     database it fails OPEN) and proves the desk still moved with `recorded: false`; the Postgres child
+ *     (production without a distinct AUDIT_CHAIN_SECRET — the one refusal the memory twin can meet; since
+ *     replan ruling 543 `audit()` resolves it unrecorded instead of rejecting, and the service reads the
+ *     flag) and proves the desk still moved with `recorded: false`; the Postgres child
  *     runs the real script and counts ONE global event, ONE compliance row and ONE alert, with controls
  *     for an account already REMOVED, a target already ENDED, and a QUEUED press that the sunset must not
  *     touch and the planner's own sweep then moves — so "untouched" is a measured difference.
@@ -95,7 +96,13 @@
  *     gate is scoped to what decides whether the container boots), and an unresolvable ref (exit 3 NOT
  *     MEASURED, never GO). ⛔ The cases never name `origin/main`: this suite is discovered by
  *     `test:all`, and a remote-tracking ref is a property of the machine, not of the tree.
+ *   · memory 100, postgres 104 — house-bots build step 7 (2026-09-26), the counts that run PRINTED:
+ *     `red:house-bot-ops` got its own write-free entry, and §0's `ops.red.*` guard (11 cases, memory
+ *     child only) pins it. ⚠️ The same run found `ops.pop.0p` RED ON MAIN before this step: its known
+ *     string was `const PORT = 5433;`, and `db-scratch.mts` had since made the port overridable, so the
+ *     positive control (and the red proof's `ops.pop.walk`, 49/50) failed for a reason nobody read. Both
+ *     now name the line the file really has; the red proof prints 50/50.
  */
 import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 
-await runTwoStores({ suite: "test:house-bot-ops", casesFile: "scripts/lib/house-bot-ops-cases.mts", minPass: { memory: 89, postgres: 104 }, dbPrefix: "hb_ops" });
+await runTwoStores({ suite: "test:house-bot-ops", casesFile: "scripts/lib/house-bot-ops-cases.mts", minPass: { memory: 100, postgres: 104 }, dbPrefix: "hb_ops" });

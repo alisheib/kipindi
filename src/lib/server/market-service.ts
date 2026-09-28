@@ -405,11 +405,16 @@ export async function listMarkets(filter?: {
   category?: MarketCategory;
   /** Defaults to `"MARKET"`. Pass `"ALL"` for money/regulator reads. */
   productLine?: ProductLineFilter;
+  /** `settledAt` in `[settledFrom, settledTo)`, pushed into the query (a windowed money read). */
+  settledFrom?: number;
+  settledTo?: number;
 }) {
   return (await marketStore.listBoard({
     status: filter?.status,
     category: filter?.category,
     productLine: filter?.productLine ?? DEFAULT_PRODUCT_LINE,
+    settledFrom: filter?.settledFrom,
+    settledTo: filter?.settledTo,
   })).filter((m) => !isDemoMarket(m));
 }
 

@@ -360,14 +360,66 @@ export type IntentFeedFilter = {
    */
   offset?: number;
   limit: number;
+  /**
+   * ⭐ STEP 9 (2026-09-26, Ali: "all desk tables and grids got the paging … and sorting") · THE ORDER A NUMBERED PAGE
+   * IS CUT FROM. Absent is the feed's own `("createdAt","id") DESC`, byte for byte the order every caller had before
+   * this word existed — so the default address, the engine's cursor walkers and every anchor count are unchanged.
+   * ⛔ A PAGE ONLY: a keyset `cursor` is a position in the DEFAULT order, so the two together are refused, never guessed.
+   * ⛔ ONE NAMED ORDER PER TWIN (`memFeedOrder` / `feedOrderSql`), shared by this member and by `rankInFeed`, so the
+   * page a row is served on and the rank a bell is resolved by can never be two different orders.
+   */
+  order?: IntentFeedOrder;
 };
 
 /**
  * What `countFeed` takes: the feed's population WITHOUT any of the three paging words (ruling 345).
  * ⛔ Stated as an `Omit` of the filter itself, deliberately — a hand-copied twin of the facet list is how a badge
  * ends up counting a different population from the rows beside it, which is the whole defect 344 and 345 exist for.
+ * ⭐ AND WITHOUT THE ORDER (step 9): a count has no order, and a population that moved when a header was clicked would be
+ * a pager drawn over a different set from the rows beside it.
  */
-export type IntentFeedCount = Omit<IntentFeedFilter, "cursor" | "limit" | "offset">;
+export type IntentFeedCount = Omit<IntentFeedFilter, "cursor" | "limit" | "offset" | "order">;
+
+/** A sort direction, as a closed pair. ⛔ Never interpolated from an address: each twin maps it to its own words. */
+export type ListSortDir = "asc" | "desc";
+
+/**
+ * ⭐ STEP 9 · THE ORDERS A NUMBERED ACTIVITY PAGE MAY BE CUT FROM, and nothing else — a closed union, so no caller can
+ * hand either twin a column name.
+ * · `when` — the instant, the id breaking a tie in the SAME direction: `desc` IS the default order.
+ * · `stake` and `outcome` — the key, then the default order (newest first, the id last) for every tie, in both
+ *   directions, so the order is TOTAL on either store.
+ * · `outcome` ranks each row by the chip the console paints for it: the position's own RESULT when it has one
+ *   (`FEED_RESULT_STATUSES`), otherwise the intent's status — both placed in `FEED_OUTCOME_ORDER`, the one table the
+ *   two twins read. A key outside the table sorts LAST in both directions.
+ * · `account` carries its own direction: `accountIds` IS the order (the console ranks the roster by label and hands the
+ *   ids over), and a row whose account is not in it — removed, or no account at all — sorts LAST in both directions.
+ */
+export type IntentFeedOrder =
+  | { key: "when" | "stake" | "outcome"; dir: ListSortDir }
+  | { key: "account"; accountIds: readonly string[] };
+
+/**
+ * The lifecycle a row's Outcome chip runs through: queued → in flight → placed → how it ended — and then the four ways a
+ * stake ends without being placed. ⛔ ONE TABLE FOR BOTH TWINS: the memory comparator indexes it and the SQL receives it as
+ * a bound array, so the two can never rank one row two ways.
+ */
+export const FEED_OUTCOME_ORDER = ["PENDING", "CLAIMED", "PLACED", "WIN", "LOSS", "VOID", "CASHED_OUT", "SKIPPED", "EXPIRED", "FAILED", "CANCELLED"] as const;
+/** The position statuses that ARE a result — the console's own `CONSOLE_POSITION_RESULT` paints a word for exactly these. */
+export const FEED_RESULT_STATUSES = ["WIN", "LOSS", "VOID", "CASHED_OUT"] as const;
+
+/** ⭐ STEP 9 · the history's orders: the instant (the default is `desc`), or the account ranking the console hands over. */
+export type EventListOrder =
+  | { key: "when"; dir: ListSortDir }
+  | { key: "account"; accountIds: readonly string[] };
+
+/**
+ * ⭐ STEP 9 · the Targets grid's orders. `poll` is the target's own stored title (A–Z ignoring the case of A–Z, then
+ * code point, which is Postgres's `COLLATE "C"`), `status` the lifecycle ACTIVE → ENDED → REMOVED, `lastChange` the
+ * instant the grid paints (`endedAt`, else `createdAt`). Every tie falls to the default order, newest first, the id last;
+ * a title that is not a string sorts LAST in both directions.
+ */
+export type TargetListOrder = { key: "poll" | "status" | "lastChange"; dir: ListSortDir };
 
 export type PressRegisterFilter = {
   fromIso: string;
@@ -1488,7 +1540,7 @@ export interface HouseBotEventStore {
    * condition from the rows is the 317 defect wearing a different hat. `>=`, matching `feedWhere`'s own `fromIso`
    * so the two panels resolve an anchor by one rule.
    */
-  listAll(opts: { limit: number; offset?: number; kinds?: readonly HouseBotEventKind[]; houseBotId?: string; fromIso?: string }, tx?: HouseTx): Promise<StoredHouseBotEvent[]>;
+  listAll(opts: { limit: number; offset?: number; kinds?: readonly HouseBotEventKind[]; houseBotId?: string; fromIso?: string; order?: EventListOrder }, tx?: HouseTx): Promise<StoredHouseBotEvent[]>;
   /**
    * That list's population, from ONE named predicate shared with `listAll` in each twin — `memEventMatches` in
    * memory, `eventWhere` on Postgres (ruling 317, pinned by `test:dal-parity` 16.eventsShared).
@@ -1496,6 +1548,13 @@ export interface HouseBotEventStore {
    * clamped with it (ruling 344).
    */
   countAll(opts: { kinds?: readonly HouseBotEventKind[]; houseBotId?: string; fromIso?: string }, tx?: HouseTx): Promise<number>;
+  /**
+   * ⭐ STEP 9 · WHERE ONE EVENT STANDS in that population under a given order — its 1-based position, or `null` when it
+   * is not in it. It is how a bell's `&event=` lands on the right page of a SORTED history: the default order keeps its
+   * counting rank (`countAll` with `fromIso`), and any other order is ranked here, over the SAME predicate
+   * (`memEventMatches` / `eventWhere`) and the SAME named order (`memEventOrder` / `eventOrderSql`) `listAll` pages by.
+   */
+  rankInAll(opts: { kinds?: readonly HouseBotEventKind[]; houseBotId?: string; fromIso?: string }, order: EventListOrder, id: string, tx?: HouseTx): Promise<number | null>;
 }
 
 export interface HouseBotIntentStore {
@@ -1605,6 +1664,13 @@ export interface HouseBotIntentStore {
    * total assembled from `listFeed` rows is a confident wrong number that links a pager at pages nothing serves.
    */
   countFeed(filter: IntentFeedCount, tx?: HouseTx): Promise<number>;
+  /**
+   * ⭐ STEP 9 · WHERE ONE INTENT STANDS in the feed's population under a given order — its 1-based position, or `null`
+   * when it is not in it. A bell's `&intent=` on a SORTED activity panel lands by this; the default order keeps its
+   * counting rank. ⛔ SAME predicate (`memFeedMatches` / `feedWhere`) and SAME named order (`memFeedOrder` /
+   * `feedOrderSql`) as `listFeed`, so the rank and the page it names cannot be measured over two different things.
+   */
+  rankInFeed(filter: IntentFeedCount, order: IntentFeedOrder, id: string, tx?: HouseTx): Promise<number | null>;
 }
 
 export interface HouseBotTargetStore {
@@ -1629,7 +1695,7 @@ export interface HouseBotTargetStore {
    */
   veto(targetId: string, tx?: HouseTx): Promise<{ row: StoredHouseBotTarget; previousEndCause: TargetEndCause | null } | null>;
   /** The Targets tab: newest first, 20 by default, keyset-paged — or `offset`-skipped for a numbered pager. */
-  listForBot(botId: string, status: TargetListStatus, cursor: KeysetCursor | null, opts?: { limit?: number; offset?: number }, tx?: HouseTx): Promise<Page<StoredHouseBotTarget>>;
+  listForBot(botId: string, status: TargetListStatus, cursor: KeysetCursor | null, opts?: { limit?: number; offset?: number; order?: TargetListOrder }, tx?: HouseTx): Promise<Page<StoredHouseBotTarget>>;
   /**
    * ⛔ THE COUNTING READER THE TARGETS PAGER NEEDS, AND WHY IT IS A SECOND MEMBER RATHER THAN A FIELD ON THE PAGE.
    * `AdminPagination` needs a REAL total to draw "page 3 of 9", and `pageLimit` clamps every list reader in this
@@ -2105,6 +2171,111 @@ function memPage<R extends { createdAt: string; id: string }>(rows: R[], cursor:
   return { rows: out, nextCursor: more && last ? { createdAt: last.createdAt, id: last.id } : null };
 }
 
+/* ═══ STEP 9 (2026-09-26) · A SORTED NUMBERED PAGE, AND THE ORDERS IT MAY BE CUT FROM — MEMORY SIDE ═══════════════
+ * Ali, as typed: "all desk tbale sand grid sgot th erug tpaging pleas enad sroting etc.. to prveent vey rlong grids".
+ * ⛔ THE DEFAULT ORDER NEVER COMES THROUGH HERE. A caller that passes no `order` gets `memPage` above, unchanged, so the
+ * default address, the engine's keyset walkers and every anchor count read exactly what they read before.
+ * ⛔ EVERY ORDER IS TOTAL: the key, then the default order (newest first, the id last) for every tie, in BOTH directions
+ * — the Postgres twin writes the same tail — so two renders, and the two twins, cannot page one population two ways.
+ * ⛔ A MISSING KEY SORTS LAST IN BOTH DIRECTIONS, which is Postgres's `NULLS LAST` written out on this side. */
+
+/** The refusal both twins raise for a keyset cursor handed to a SORTED page — a cursor is a position in the default order. */
+const SORTED_CURSOR_REFUSAL = "house-bot-dal: a keyset cursor is a position in the default order and cannot page a sorted list";
+
+/** Newest first by `(createdAt, id)` — the default order, and the tail every other order falls back to on a tie. */
+const memNewestFirst = <R extends { createdAt: string; id: string }>(a: R, b: R): number =>
+  ms(b.createdAt) - ms(a.createdAt) || (a.id < b.id ? 1 : a.id > b.id ? -1 : 0);
+
+/** A key that may be missing, then the default order: a missing key sorts LAST in both directions (`NULLS LAST`). */
+function memKeyed<R extends { createdAt: string; id: string }>(key: (r: R) => number | null, dir: ListSortDir): (a: R, b: R) => number {
+  return (a, b) => {
+    const ka = key(a), kb = key(b);
+    if (ka === null || kb === null) return ka === kb ? memNewestFirst(a, b) : ka === null ? 1 : -1;
+    return (dir === "asc" ? ka - kb : kb - ka) || memNewestFirst(a, b);
+  };
+}
+
+/**
+ * ⭐ ONE TEXT ORDER FOR THE WHOLE CONSOLE: A–Z ignoring the case of A–Z, then CODE POINT for everything else — which is
+ * Postgres's `translate(…) COLLATE "C"` and then `COLLATE "C"` (UTF-8 byte order IS code-point order). Written ONCE,
+ * exported, and read by the console for the labels it ranks in memory, so a title sorted in SQL and a label sorted in
+ * the reader follow one rule. ⛔ Never `localeCompare`: its answer depends on the runtime's locale data, and a sort the
+ * two twins could disagree on is not a sort.
+ */
+export function foldedCodePointOrder(a: string, b: string): number {
+  const fold = (s: string) => s.replace(/[A-Z]/g, (c) => c.toLowerCase());
+  return codePointOrder(fold(a), fold(b)) || codePointOrder(a, b);
+}
+function codePointOrder(a: string, b: string): number {
+  const x = [...a], y = [...b];
+  for (let i = 0; i < Math.min(x.length, y.length); i++) {
+    const d = (x[i].codePointAt(0) ?? 0) - (y[i].codePointAt(0) ?? 0);
+    if (d !== 0) return d < 0 ? -1 : 1;
+  }
+  return x.length === y.length ? 0 : x.length < y.length ? -1 : 1;
+}
+
+/** One sorted numbered page. ⛔ No cursor — see `SORTED_CURSOR_REFUSAL` — and no `nextCursor` out of it either. */
+function memOrderedPage<R extends { createdAt: string; id: string }>(rows: R[], order: (a: R, b: R) => number, cursor: KeysetCursor | null | undefined, limit: number, offset = 0): Page<R> {
+  if (cursor) throw new Error(SORTED_CURSOR_REFUSAL);
+  const n = pageLimit(limit);
+  const skip = wholeArg("offset", offset);
+  return { rows: rows.sort(order).slice(skip, skip + n).map(clone), nextCursor: null };
+}
+
+/**
+ * ⭐ THE ACTIVITY FEED'S ONE ORDER, MEMORY SIDE — read by `listFeed` and by `rankInFeed`, so the page a row is served on
+ * and the rank a bell lands by are one order. `outcome` reads each row's POSITION for the chip the console paints (the
+ * position's result when it has one, else the intent's status); it is the only key that needs a read, and it reads only
+ * the positions of the rows it was handed.
+ */
+async function memFeedOrder(order: IntentFeedOrder, rows: readonly StoredHouseBotIntent[]): Promise<(a: StoredHouseBotIntent, b: StoredHouseBotIntent) => number> {
+  if (order.key === "when") return order.dir === "desc" ? memNewestFirst : (a, b) => -memNewestFirst(a, b);
+  if (order.key === "stake") return memKeyed((r) => r.stakeTzs, order.dir);
+  if (order.key === "account") {
+    const at = new Map(order.accountIds.map((id, k) => [id, k] as const));
+    return memKeyed((r) => at.get(r.houseBotId) ?? null, "asc");
+  }
+  const positionIds = [...new Set(rows.map((r) => r.positionId).filter((v): v is string => v != null))];
+  const statuses = new Map<string, string>();
+  for (const [k, p] of (await Promise.all(positionIds.map((id) => positionStore.get(id)))).entries()) {
+    if (p != null) statuses.set(positionIds[k], String(p.status));
+  }
+  const results: readonly string[] = FEED_RESULT_STATUSES;
+  const lifecycle: readonly string[] = FEED_OUTCOME_ORDER;
+  const chip = (r: StoredHouseBotIntent): string => {
+    const st = r.positionId == null ? undefined : statuses.get(r.positionId);
+    return st !== undefined && results.includes(st) ? st : r.status;
+  };
+  return memKeyed((r) => { const k = lifecycle.indexOf(chip(r)); return k < 0 ? null : k; }, order.dir);
+}
+
+/** ⭐ THE HISTORY'S ONE ORDER, MEMORY SIDE — `listAll` and `rankInAll` both. Absent is the default, newest first. */
+function memEventOrder(order: EventListOrder | undefined): (a: StoredHouseBotEvent, b: StoredHouseBotEvent) => number {
+  if (order === undefined || (order.key === "when" && order.dir === "desc")) return memNewestFirst;
+  if (order.key === "when") return (a, b) => -memNewestFirst(a, b);
+  const at = new Map(order.accountIds.map((id, k) => [id, k] as const));
+  return memKeyed((e) => (e.houseBotId == null ? null : at.get(e.houseBotId) ?? null), "asc");
+}
+
+/** ⭐ THE TARGETS GRID'S ONE ORDER, MEMORY SIDE. A title that is not a string sorts LAST in both directions. */
+function memTargetOrder(order: TargetListOrder): (a: StoredHouseBotTarget, b: StoredHouseBotTarget) => number {
+  if (order.key === "status") {
+    const lifecycle: readonly string[] = TARGET_STATUSES;
+    return memKeyed((t) => { const k = lifecycle.indexOf(t.status); return k < 0 ? null : k; }, order.dir);
+  }
+  if (order.key === "lastChange") return memKeyed((t) => ms(t.endedAt ?? t.createdAt), order.dir);
+  const title = (t: StoredHouseBotTarget): string | null => {
+    const v: unknown = (t.snapshot as { titleEn?: unknown } | null)?.titleEn;
+    return typeof v === "string" ? v : null;
+  };
+  return (a, b) => {
+    const ta = title(a), tb = title(b);
+    if (ta === null || tb === null) return ta === tb ? memNewestFirst(a, b) : ta === null ? 1 : -1;
+    return (order.dir === "asc" ? foldedCodePointOrder(ta, tb) : foldedCodePointOrder(tb, ta)) || memNewestFirst(a, b);
+  };
+}
+
 const memoryHouseBotControl: HouseBotControlStore = {
   async get() {
     memSeed();
@@ -2433,12 +2604,16 @@ const memoryHouseBotEvents: HouseBotEventStore = {
   async listAll(opts) {
     return [...memEvents.values()]
       .filter(memEventMatches(opts))
-      .sort((a, b) => ms(b.createdAt) - ms(a.createdAt) || (a.id < b.id ? 1 : a.id > b.id ? -1 : 0))
+      .sort(memEventOrder(opts.order))
       .slice(wholeArg("offset", opts.offset ?? 0), wholeArg("offset", opts.offset ?? 0) + pageLimit(opts.limit))
       .map(clone);
   },
   async countAll(opts) {
     return [...memEvents.values()].filter(memEventMatches(opts)).length;
+  },
+  async rankInAll(opts, order, id) {
+    const at = [...memEvents.values()].filter(memEventMatches(opts)).sort(memEventOrder(order)).findIndex((e) => e.id === id);
+    return at < 0 ? null : at + 1;
   },
   async listByKinds(kinds, opts) {
     const want: readonly string[] = kinds;
@@ -2751,10 +2926,17 @@ const memoryHouseBotIntents: HouseBotIntentStore = {
     });
   },
   async listFeed(filter) {
-    return memPage([...memIntents.values()].filter(memFeedMatches(filter)), filter.cursor, filter.limit, filter.offset ?? 0);
+    const rows = [...memIntents.values()].filter(memFeedMatches(filter));
+    if (filter.order === undefined) return memPage(rows, filter.cursor, filter.limit, filter.offset ?? 0);
+    return memOrderedPage(rows, await memFeedOrder(filter.order, rows), filter.cursor, filter.limit, filter.offset ?? 0);
   },
   async countFeed(filter) {
     return [...memIntents.values()].filter(memFeedMatches(filter)).length;
+  },
+  async rankInFeed(filter, order, id) {
+    const rows = [...memIntents.values()].filter(memFeedMatches(filter));
+    const at = rows.sort(await memFeedOrder(order, rows)).findIndex((i) => i.id === id);
+    return at < 0 ? null : at + 1;
   },
 };
 
@@ -2833,8 +3015,9 @@ const memoryHouseBotTargets: HouseBotTargetStore = {
   },
   async listForBot(botId, status, cursor, opts) {
     const want = TARGET_LIST_STATUSES[status];
-    return memPage([...memTargets.values()].filter((t) => t.houseBotId === botId && want.includes(t.status)),
-      cursor, opts?.limit ?? TARGET_PAGE_SIZE, opts?.offset ?? 0);
+    const rows = [...memTargets.values()].filter((t) => t.houseBotId === botId && want.includes(t.status));
+    if (opts?.order === undefined) return memPage(rows, cursor, opts?.limit ?? TARGET_PAGE_SIZE, opts?.offset ?? 0);
+    return memOrderedPage(rows, memTargetOrder(opts.order), cursor, opts.limit ?? TARGET_PAGE_SIZE, opts.offset ?? 0);
   },
   async countForBot(botId, status) {
     const want = TARGET_LIST_STATUSES[status];
@@ -3294,6 +3477,29 @@ async function sqlPage<R extends { createdAt: string; id: string }>(
   return { rows, nextCursor: raws.length > n && last ? { createdAt: last.createdAt, id: last.id } : null };
 }
 
+/**
+ * ⭐ STEP 9 · ONE SORTED NUMBERED PAGE, POSTGRES SIDE — `memOrderedPage`'s twin. The order is a clause one of the named
+ * builders below wrote (`feedOrderSql`, `eventOrderSql`, `targetOrderSql`) out of a CLOSED union: no caller's text reaches
+ * it. ⛔ The DEFAULT order never comes through here — `sqlPage` above serves it, unchanged.
+ * ⛔ No cursor, for the reason `SORTED_CURSOR_REFUSAL` states, refused with the memory twin's own words.
+ */
+async function sqlOrderedPage<R extends { createdAt: string; id: string }>(
+  tx: HouseTx | undefined, table: HouseTable, where: string[], p: Params, orderSql: string,
+  cursor: KeysetCursor | null | undefined, limit: number, map: (r: RawRow) => R, offset = 0,
+): Promise<Page<R>> {
+  if (cursor) throw new Error(SORTED_CURSOR_REFUSAL);
+  const n = pageLimit(limit);
+  const skip = wholeArg("offset", offset);
+  const text = `SELECT * FROM "${table}" WHERE ${where.length ? where.join(" AND ") : "true"}`
+    + ` ORDER BY ${orderSql} LIMIT ${p.raw(n, "int")} OFFSET ${p.raw(skip, "int")}`;
+  return { rows: (await sql(tx, text, p.values)).map(map), nextCursor: null };
+}
+
+/** The Postgres words for a sort direction, from the closed pair and nothing else. */
+const sqlDir = (d: ListSortDir): string => (d === "asc" ? "ASC" : "DESC");
+/** The default order's clause — the tail every other order falls back to on a tie, exactly as `memNewestFirst`. */
+const SQL_NEWEST_FIRST = `"createdAt" DESC, "id" DESC`;
+
 /** An insert without the database-stamped times, so the column defaults write them. */
 function withoutStamps<R extends object>(row: R): Record<string, unknown> {
   const copy = { ...row } as Record<string, unknown>;
@@ -3651,6 +3857,18 @@ function eventWhere(opts: { kinds?: readonly HouseBotEventKind[]; houseBotId?: s
   return where;
 }
 
+/**
+ * ⭐ STEP 9 · THE HISTORY'S ONE ORDER, POSTGRES SIDE — `memEventOrder`'s twin, read by `listAll` and `rankInAll`. Absent
+ * is the default clause the list always had. `account` ranks by the position of the row's account in the array the
+ * console hands over; `array_position` of a NULL account (the desk's own events) or of one not in it is NULL, and
+ * `NULLS LAST` puts both after every named account — the memory twin's `memKeyed` null.
+ */
+function eventOrderSql(order: EventListOrder | undefined, p: Params): string {
+  if (order === undefined || (order.key === "when" && order.dir === "desc")) return SQL_NEWEST_FIRST;
+  if (order.key === "when") return `"createdAt" ASC, "id" ASC`;
+  return `array_position(${p.raw([...order.accountIds], "text[]")}, "houseBotId") ASC NULLS LAST, ${SQL_NEWEST_FIRST}`;
+}
+
 const prismaHouseBotEvents: HouseBotEventStore = {
   async append(e, tx) {
     const p = new Params();
@@ -3677,7 +3895,7 @@ const prismaHouseBotEvents: HouseBotEventStore = {
     const p = new Params();
     const where = eventWhere(opts, p);
     const text = `SELECT * FROM "HouseBotEvent" WHERE ${where.length ? where.join(" AND ") : "true"}`
-      + ` ORDER BY "createdAt" DESC, "id" DESC LIMIT ${p.raw(pageLimit(opts.limit), "int")}`
+      + ` ORDER BY ${eventOrderSql(opts.order, p)} LIMIT ${p.raw(pageLimit(opts.limit), "int")}`
       + ` OFFSET ${p.raw(wholeArg("offset", opts.offset ?? 0), "int")}`;
     return (await sql(tx, text, p.values)).map(toHouseBotEvent);
   },
@@ -3686,6 +3904,13 @@ const prismaHouseBotEvents: HouseBotEventStore = {
     const where = eventWhere(opts, p);
     const rows = await sql(tx, `SELECT count(*)::int AS "n" FROM "HouseBotEvent" WHERE ${where.length ? where.join(" AND ") : "true"}`, p.values);
     return Number(rows[0]?.n ?? 0);
+  },
+  async rankInAll(opts, order, id, tx) {
+    const p = new Params();
+    const where = eventWhere(opts, p);
+    const rows = await sql(tx, `SELECT r."n" FROM (SELECT "id", (row_number() OVER (ORDER BY ${eventOrderSql(order, p)}))::int AS "n"`
+      + ` FROM "HouseBotEvent" WHERE ${where.length ? where.join(" AND ") : "true"}) r WHERE r."id" = ${p.raw(id, "text")}`, p.values);
+    return rows[0] ? Number(rows[0].n) : null;
   },
   async listByKinds(kinds, opts, tx) {
     const p = new Params();
@@ -3762,6 +3987,21 @@ function feedWhere(filter: IntentFeedCount, p: Params): string[] {
   if (filter.fromIso !== undefined) where.push(`"createdAt" >= ${p.col("HouseBotIntent", "createdAt", filter.fromIso)}`);
   if (filter.toIso !== undefined) where.push(`"createdAt" < ${p.col("HouseBotIntent", "createdAt", filter.toIso)}`);
   return where;
+}
+
+/**
+ * ⭐ STEP 9 · THE ACTIVITY FEED'S ONE ORDER, POSTGRES SIDE — `memFeedOrder`'s twin, read by `listFeed` and `rankInFeed`.
+ * ⛔ `outcome` ranks the chip the console paints: the row's POSITION result when it is one of `FEED_RESULT_STATUSES`,
+ * otherwise the intent's own status, placed in `FEED_OUTCOME_ORDER` — both tables BOUND as arrays, so this clause and
+ * the memory comparator read the same two lists. A key outside the table is NULL and sorts last, as in memory.
+ */
+function feedOrderSql(order: IntentFeedOrder, p: Params): string {
+  if (order.key === "when") return order.dir === "desc" ? SQL_NEWEST_FIRST : `"createdAt" ASC, "id" ASC`;
+  if (order.key === "stake") return `"stakeTzs" ${sqlDir(order.dir)}, ${SQL_NEWEST_FIRST}`;
+  if (order.key === "account") return `array_position(${p.raw([...order.accountIds], "text[]")}, "houseBotId") ASC NULLS LAST, ${SQL_NEWEST_FIRST}`;
+  const result = `(SELECT pos."status"::text FROM "Position" pos WHERE pos."id" = "HouseBotIntent"."positionId"`
+    + ` AND pos."status"::text = ANY(${p.raw([...FEED_RESULT_STATUSES], "text[]")}))`;
+  return `array_position(${p.raw([...FEED_OUTCOME_ORDER], "text[]")}, COALESCE(${result}, "status")) ${sqlDir(order.dir)} NULLS LAST, ${SQL_NEWEST_FIRST}`;
 }
 
 const prismaHouseBotIntents: HouseBotIntentStore = {
@@ -4027,7 +4267,9 @@ const prismaHouseBotIntents: HouseBotIntentStore = {
   },
   async listFeed(filter, tx) {
     const p = new Params();
-    return sqlPage(tx, "HouseBotIntent", feedWhere(filter, p), p, filter.cursor, filter.limit, toHouseBotIntent, filter.offset ?? 0);
+    const where = feedWhere(filter, p);
+    if (filter.order === undefined) return sqlPage(tx, "HouseBotIntent", where, p, filter.cursor, filter.limit, toHouseBotIntent, filter.offset ?? 0);
+    return sqlOrderedPage(tx, "HouseBotIntent", where, p, feedOrderSql(filter.order, p), filter.cursor, filter.limit, toHouseBotIntent, filter.offset ?? 0);
   },
   async countFeed(filter, tx) {
     const p = new Params();
@@ -4035,9 +4277,31 @@ const prismaHouseBotIntents: HouseBotIntentStore = {
     const rows = await sql(tx, `SELECT count(*)::int AS "n" FROM "HouseBotIntent" WHERE ${where.length ? where.join(" AND ") : "true"}`, p.values);
     return Number(rows[0]?.n ?? 0);
   },
+  async rankInFeed(filter, order, id, tx) {
+    const p = new Params();
+    const where = feedWhere(filter, p);
+    const rows = await sql(tx, `SELECT r."n" FROM (SELECT "id", (row_number() OVER (ORDER BY ${feedOrderSql(order, p)}))::int AS "n"`
+      + ` FROM "HouseBotIntent" WHERE ${where.length ? where.join(" AND ") : "true"}) r WHERE r."id" = ${p.raw(id, "text")}`, p.values);
+    return rows[0] ? Number(rows[0].n) : null;
+  },
 };
 
 const STOPPED_SQL = `("status" = 'REMOVED' OR "endCause" = 'VETOED')`;
+
+/**
+ * ⭐ STEP 9 · THE TARGETS GRID'S ONE ORDER, POSTGRES SIDE — `memTargetOrder`'s twin. The title is the target's own
+ * stored snapshot, and only when it IS a JSON string (anything else is NULL and sorts last, as in memory); it is ordered
+ * A–Z ignoring the case of A–Z (`translate`, which unlike `lower()` does not depend on the database's locale), then by
+ * code point (`COLLATE "C"`) — `foldedCodePointOrder`, written in SQL.
+ */
+function targetOrderSql(order: TargetListOrder, p: Params): string {
+  const d = sqlDir(order.dir);
+  if (order.key === "status") return `array_position(${p.raw([...TARGET_STATUSES], "text[]")}, "status") ${d} NULLS LAST, ${SQL_NEWEST_FIRST}`;
+  if (order.key === "lastChange") return `COALESCE("endedAt", "createdAt") ${d}, ${SQL_NEWEST_FIRST}`;
+  const title = `(CASE WHEN jsonb_typeof("snapshot"->'titleEn') = 'string' THEN "snapshot"->>'titleEn' END)`;
+  return `translate(${title}, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz') COLLATE "C" ${d} NULLS LAST,`
+    + ` ${title} COLLATE "C" ${d} NULLS LAST, ${SQL_NEWEST_FIRST}`;
+}
 
 const prismaHouseBotTargets: HouseBotTargetStore = {
   async insert(row, tx) {
@@ -4114,7 +4378,8 @@ const prismaHouseBotTargets: HouseBotTargetStore = {
   async listForBot(botId, status, cursor, opts, tx) {
     const p = new Params();
     const where = [`"houseBotId" = ${p.raw(botId, "text")}`, `"status" = ANY(${p.raw([...TARGET_LIST_STATUSES[status]], "text[]")})`];
-    return sqlPage(tx, "HouseBotTarget", where, p, cursor, opts?.limit ?? TARGET_PAGE_SIZE, toHouseBotTarget, opts?.offset ?? 0);
+    if (opts?.order === undefined) return sqlPage(tx, "HouseBotTarget", where, p, cursor, opts?.limit ?? TARGET_PAGE_SIZE, toHouseBotTarget, opts?.offset ?? 0);
+    return sqlOrderedPage(tx, "HouseBotTarget", where, p, targetOrderSql(opts.order, p), cursor, opts.limit ?? TARGET_PAGE_SIZE, toHouseBotTarget, opts.offset ?? 0);
   },
   async countForBot(botId, status, tx) {
     const p = new Params();

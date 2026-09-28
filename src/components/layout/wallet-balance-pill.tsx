@@ -16,9 +16,10 @@ import { useT } from "@/lib/i18n";
  */
 
 import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
 import { cn, formatTzs, formatBalancePill, formatNumber } from "@/lib/utils";
 import { CashEye, useCashHidden } from "@/components/ui/cash";
+import { I } from "@/components/ui/glyphs";
+import { WalletSheet } from "@/components/layout/wallet-sheet";
 
 /**
  * 🔴 THE MASK IS A LAYOUT INPUT, NOT DECORATION — which is why it has a name now.
@@ -31,6 +32,36 @@ import { CashEye, useCashHidden } from "@/components/ui/cash";
  * ⛔ Change the glyph count here and the box follows, because both sizers below read this.
  */
 const BALANCE_MASK = "TZS •••••";
+
+/**
+ * "TZS 12,400" → ["TZS", "12,400"]. The chip drops the currency word below `sm` — the delivery's
+ * phone chip reads "12,400 ▾" — and keeps it in the aria-label, so nothing is lost to a listener.
+ * Anything that does not start with the currency word is returned whole.
+ */
+function splitCurrency(s: string): [string, string] {
+  return s.startsWith("TZS ") ? ["TZS", s.slice(4)] : ["", s];
+}
+
+/**
+ * The balance as it moves: the server's figure, replaced by every `wallet:balance` SSE event.
+ * ⭐ LIFTED OUT OF THE PILL (landing v3) because the BAR now decides with it: at zero the capsule
+ * gives way to a gold Deposit (R1), and a deposit arriving over SSE must bring the capsule back
+ * without a navigation — a decision taken on the server prop alone would show "Deposit" beside a
+ * balance, or two Deposits, until the next page.
+ */
+export function useLiveBalance(balance: number): number {
+  const [live, setLive] = useState(balance);
+  useEffect(() => { setLive(balance); }, [balance]);
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (typeof detail?.balance === "number") setLive(detail.balance);
+    };
+    window.addEventListener("50pick:sse:wallet-balance", handler);
+    return () => window.removeEventListener("50pick:sse:wallet-balance", handler);
+  }, []);
+  return live;
+}
 
 const TWEEN_DURATION = 600;     // ms — full rolling-counter run
 const FLASH_DURATION = 800;     // ms — gilt outline pulse decay
@@ -69,25 +100,19 @@ function motionOff(): boolean {
   );
 }
 
-export function WalletBalancePill({ balance }: { balance: number }) {
+/**
+ * `balance` is the LIVE figure — the bar reads it through `useLiveBalance` and hands it down, so
+ * the bar's zero/funded decision and this capsule can never disagree about the same number.
+ * `held` is the wallet's freeze (app-shell: `wallet.status !== "ACTIVE"`); the Wallet it opens
+ * then says so and offers no money buttons.
+ */
+export function WalletBalancePill({ balance, held = false }: { balance: number; held?: boolean }) {
   const { t } = useT();
-  // SSE-driven live balance — updates in real-time when wallet:balance
-  // events arrive, without waiting for a page refresh. Falls back to the
-  // server-rendered `balance` prop when no SSE event has fired yet.
-  const [liveBalance, setLiveBalance] = useState(balance);
-  // Sync with server-rendered prop when it changes (navigation, refresh)
-  useEffect(() => { setLiveBalance(balance); }, [balance]);
-  // Listen for SSE wallet:balance events
-  useEffect(() => {
-    const handler = (e: Event) => {
-      const detail = (e as CustomEvent).detail;
-      if (typeof detail?.balance === "number") setLiveBalance(detail.balance);
-    };
-    window.addEventListener("50pick:sse:wallet-balance", handler);
-    return () => window.removeEventListener("50pick:sse:wallet-balance", handler);
-  }, []);
-
-  const effectiveBalance = liveBalance;
+  const effectiveBalance = balance;
+  // ⭐ R1 · THE CAPSULE OPENS THE WALLET instead of navigating to it. The capsule is the anchor:
+  // from lg the panel hangs under it, right edges aligned.
+  const [open, setOpen] = useState(false);
+  const capsuleRef = useRef<HTMLDivElement>(null);
   const [display, setDisplay] = useState(effectiveBalance);
   const [flashing, setFlashing] = useState(false);
   const [delta, setDelta] = useState(0);
@@ -153,7 +178,9 @@ export function WalletBalancePill({ balance }: { balance: number }) {
        ⛔ The eye is a <button> and the number is an <a>, so they are SIBLINGS — a button
        nested inside a link is invalid HTML and neither control would be reliably
        operable. The capsule is a plain <div> precisely so both can be real elements. */
+    <>
     <div
+      ref={capsuleRef}
       className="inline-flex items-center rounded-pill transition-colors transition-shadow"
       style={{
         // ⚠️ PV-13a (2026-09-03) — WAS the bare literal `44`. Reading the rung means the
@@ -179,8 +206,14 @@ export function WalletBalancePill({ balance }: { balance: number }) {
       }}
       data-testid="wallet-balance-capsule"
     >
-    <Link
-      href="/wallet"
+    <button
+      type="button"
+      /* ⭐ R1 (2026-09-26) · A BUTTON NOW, NOT A LINK — the chip opens the Wallet (balance, Deposit and
+         Withdraw at equal size, Set limits, the full wallet page) instead of navigating to /wallet.
+         It is still the ONE wallet door; the door simply opens onto the Wallet rather than a page. */
+      aria-haspopup="dialog"
+      aria-expanded={open}
+      onClick={() => setOpen(true)}
       /* 🔴 D31 · `hideBalances`, NOT `hidePassword`. With balances masked this control announced
          "Pochi · Ficha nenosiri" — **"Wallet · Hide password"** — on the wallet button, to the only
          users who cannot see the mask and must rely on the name. The string was simply the wrong
@@ -211,7 +244,9 @@ export function WalletBalancePill({ balance }: { balance: number }) {
         // clipped, so a `right <= viewport` check passed it. The check was wrong, not the
         // layout: a bar must end where its container ends.
         "pl-1.5 pr-1 text-caption sm:pl-3 sm:pr-2.5 sm:text-label",
-        flashing ? "text-gold-300" : "hover:text-gold-300",
+        // ⭐ R1 · THE FIGURE IS GOLD — it is money (the delivery's law: gold only on money — pools,
+        // paid out, balance, Deposit). The currency word stays in muted ink, so the number carries the metal.
+        "cursor-pointer text-gold-300 hover:text-gold-200",
       )}
       style={{ gap: 7, transitionDuration: "260ms" }}
       data-testid="wallet-balance-pill"
@@ -252,12 +287,22 @@ export function WalletBalancePill({ balance }: { balance: number }) {
           out-of-flow element contributes no width, which is precisely how the old one failed.
           ⛔ It keeps the property the old code existed for: toggling the eye still moves
           NOTHING, because the box is now the max and therefore identical in both states. */}
+      {/* ⭐ R1 · THE CURRENCY WORD IS ITS OWN SPAN, IN MUTED INK, AND IT YIELDS BELOW `sm` — the
+          delivery's phone chip reads "12,400 ▾" (SPEC-VALUES, Header). It is in the aria-label at
+          every width. ⚠️ OUTSIDE the sizer grid on purpose: the three cells below measure the FIGURE
+          only, so the reserved box is the wider of figure and mask at every width, as before. */}
+      <span aria-hidden className="hidden font-medium text-text-muted sm:inline">{splitCurrency(formatBalancePill(effectiveBalance))[0] || "TZS"}</span>
       <span className="relative inline-grid items-center">
-        <span aria-hidden className="invisible [grid-row-start:1] [grid-column-start:1]">{formatBalancePill(effectiveBalance)}</span>
-        <span aria-hidden className="invisible [grid-row-start:1] [grid-column-start:1]">{BALANCE_MASK}</span>
+        <span aria-hidden className="invisible [grid-row-start:1] [grid-column-start:1]">{splitCurrency(formatBalancePill(effectiveBalance))[1]}</span>
+        <span aria-hidden className="invisible [grid-row-start:1] [grid-column-start:1]">{splitCurrency(BALANCE_MASK)[1]}</span>
         <span aria-hidden className="flex items-center [grid-row-start:1] [grid-column-start:1]">
-          {hidden ? BALANCE_MASK : formatBalancePill(display)}
+          {hidden ? splitCurrency(BALANCE_MASK)[1] : splitCurrency(formatBalancePill(display))[1]}
         </span>
+      </span>
+      {/* ▾ says the chip OPENS something (the delivery's "TZS 12,400 ▾"). Decorative: the button's
+          aria-haspopup + aria-expanded say the same thing to a listener. */}
+      <span aria-hidden className={cn("-ml-1 inline-flex shrink-0 text-text-subtle transition-transform", open && "rotate-180")}>
+        <I.chevronDown s={12} />
       </span>
       {/* Tiny delta indicator that fades out alongside the flash — the actual +/- amount for
           ~800ms. Suppressed while balances are masked. */}
@@ -313,7 +358,7 @@ export function WalletBalancePill({ balance }: { balance: number }) {
         html.kp-reduce-motion .wbp-delta { animation: none; opacity: 0; }
         [data-motion="minimal"] .wbp-delta { animation: none; opacity: 0; }
       `}</style>
-    </Link>
+    </button>
       {/* ⭐ THE EYE LIVES INSIDE THE CAPSULE, because it acts on the number beside it and
           nothing else. It is `bare` — the kit's borderless variant — so the capsule owns
           the one border and the pair never reads as two chips.
@@ -365,5 +410,7 @@ export function WalletBalancePill({ balance }: { balance: number }) {
         className="inline-flex h-full w-[var(--tap-min)] shrink-0 items-center justify-center rounded-r-pill text-[var(--gold-300)] transition-colors hover:bg-[color-mix(in_oklab,var(--gold-300)_10%,transparent)] hover:text-gold-200"
       />
     </div>
+    <WalletSheet open={open} onClose={() => setOpen(false)} balance={effectiveBalance} held={held} anchorRef={capsuleRef} />
+    </>
   );
 }

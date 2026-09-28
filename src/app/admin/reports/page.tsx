@@ -85,7 +85,7 @@ const TEMPLATES = [
     id: "daily-ops",
     title: "Daily operations report",
     sw: "Ripoti ya kila siku",
-    body: "Total sales (stakes), number of tickets, GGR (net of refunds), TRA 10% + GBT 5% levy on operator commission, operator margin, hourly breakdown, deposits/withdrawals. One-page operational snapshot.",
+    body: "Total sales (stakes), number of tickets, GGR (net of refunds — a turnover measure), the TRA and GBT levies as booked to the ledger, operator margin, hourly breakdown, deposits/withdrawals. Internal one-page snapshot of the EAT day — not a regulator filing.",
     cadence: "Daily",
     severity: "medium",
     target: "Internal · ops",
@@ -94,7 +94,7 @@ const TEMPLATES = [
     id: "gbt-monthly",
     title: "Monthly report",
     sw: "Ripoti ya kila mwezi",
-    body: "Tanzania Gaming Board · 12-sheet workbook covering player register changes, GGR, NGR, deposit/withdraw flows, AML triggers, self-exclusion roster, integrity alerts, audit-chain proof. Signed JSON + accompanying PDF.",
+    body: "Tanzania Gaming Board · the statutory pack for the previous complete calendar month (EAT): deposits, withdrawals, GGR and NGR and the mobile-money provider summary for that month, plus the KYC funnel and the responsible-gambling roster as at generation, with a Prepared / Reviewed / Approved attestation block. The regulator-pack card signs the rendered PDF.",
     cadence: "Monthly · 5th of each month",
     severity: "high",
     target: "Regulator",
@@ -102,8 +102,9 @@ const TEMPLATES = [
   // The per-player "TRA Withholding Tax Remittance" report was REMOVED (2026-07).
   // 50pick no longer withholds any tax from a player's winnings or withdrawals —
   // that 15% withholding was deleted (Ali's decision). Our real TRA obligation is
-  // the 10% levy on OUR commission, and it is filed in the Daily Operations report
-  // (which also carries the GBT 5% levy). Filing a per-player "we withheld nothing"
+  // the levy on OUR commission, booked per settlement to HOUSE:TRA_LEVY (GBT to
+  // HOUSE:GBT_LEVY); the Daily Operations report (internal, not a filing) prints what
+  // was booked. Filing a per-player "we withheld nothing"
   // return under Income Tax Act Cap 332 would misrepresent a scheme we abolished.
   {
     id: "fiu-sar",
@@ -275,7 +276,7 @@ async function AdminReportsContent({
         {/* Freshness stamp + normative money definitions (one source of truth) */}
         <div className="flex flex-wrap items-center justify-between gap-2 -mt-1">
           <p className="font-mono text-[10.5px] text-text-tertiary">generated {eatStamp(generatedAt)} EAT · {range.label}</p>
-          <p className="font-mono text-[10px] text-text-tertiary tracking-tight">GGR = Stakes − Payouts · NGR = GGR − Bonus − Fees · Hold % = GGR / Stakes</p>
+          <p className="font-mono text-[10px] text-text-tertiary tracking-tight">GGR = Stakes − Payouts − Refunds · NGR = GGR − Bonus − Agent comm. − Fees · Hold % = GGR / Stakes</p>
         </div>
 
         {/* KPI strip — 6 tiles, real aggregates, spark-fed (no gold in admin) */}
@@ -479,7 +480,7 @@ async function AdminReportsContent({
                 <tfoot>
                   <tr>
                     {/* ⭐ Combined includes the unattributed line. That money is real
-                        bet-derived revenue and IS levied, so leaving it out would make the
+                        bet-derived turnover, so leaving it out would make the
                         statutory total understate by exactly the amount F-03 moved off the
                         MARKET line. Combined is therefore unchanged by that fix — only the
                         per-game attribution above it became honest. */}
@@ -496,7 +497,7 @@ async function AdminReportsContent({
             </ScrollX>
             <p className="px-4 py-3 text-body-sm text-text-tertiary leading-snug">
               Bet-derived money only. Deposits, withdrawals, bonuses and payment fees belong to neither game and stay in
-              the platform totals above. The statutory pack and the TRA/GBT levy read the COMBINED commission.
+              the platform totals above. The statutory pack reports the COMBINED totals; TRA and GBT are booked per settlement on each poll&apos;s fee, whichever game.
               {(byGame.unattributed.stakes > 0 || byGame.unattributed.payouts > 0 || byGame.unattributed.refunds > 0) && (
                 <>
                   {" "}
@@ -593,7 +594,7 @@ async function AdminReportsContent({
             <EmptyState
               kind="audit"
               title="No reports generated yet"
-              body="Each generated report is logged here with its reviewer, timestamp, period covered, and a signed receipt the regulator can verify."
+              body="Each report generated here is logged with the officer who generated it and when — and, for a windowed report, the window it covered."
             />
           ) : (
             <ScrollX label="Report library">
@@ -620,17 +621,6 @@ async function AdminReportsContent({
           )}
         </AdminCard>
 
-        <AdminCard className="border-info-border bg-info-bg">
-          <div className="text-caption text-text-secondary space-y-1">
-            <p className="text-text font-bold">Generation pipeline (production)</p>
-            <p>
-              Each template runs against Postgres aggregations, signs the output with HMAC-chained envelopes
-              (matching the audit-chain scheme), and uploads to the regulator&apos;s endpoint via SFTP / mTLS.
-              Failed generations alert on-call. Every download is recorded under{" "}
-              <code>ADMIN</code>{" "}with the reviewer&apos;s user-id, IP, and reason.
-            </p>
-          </div>
-        </AdminCard>
         </>)}
 
       </AdminBody>

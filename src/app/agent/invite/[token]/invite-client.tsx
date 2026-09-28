@@ -15,8 +15,10 @@ import { requestInvitationOtpAction, acceptInvitationAction, declineInvitationAc
 /**
  * The invitee's three moves: get a code (to the BOUND address), accept with it, or decline.
  *
- * ⭐ THE ADDRESS IS AN EMAIL SINCE 2026-09-08 — the platform has no licensed SMS provider, so
- * both the invitation and its code go through Postmark. Invitations issued before then are
+ * ⭐ THE ADDRESS IS AN EMAIL SINCE 2026-09-08 — moved while no SMS provider was licensed, and
+ * kept on email by decision after Blackball went live on 2026-09-16 (see the UPDATE 2026-09-16
+ * note on `issueInvitation` in agent-application-service.ts; corrected 2026-09-25). Both the
+ * invitation and its code go through Postmark. Invitations issued before then are
  * phone-bound and still readable; the service refuses to send them a code and says why, since
  * arming a "text me a code" button that cannot deliver is the defect this change removed.
  *

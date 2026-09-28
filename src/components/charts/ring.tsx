@@ -1,14 +1,14 @@
 /**
  * Ring — the dash-circle primitive behind every circular data visual at user
- * level (the /results YES/NO/VOID outcome donut · the /profile/invite earnings
- * progress ring). Segments are fractions of one revolution, drawn clockwise
+ * level (the /results YES/NO/VOID outcome donut · the /profile/invite dial).
+ * Segments are fractions of one revolution, drawn clockwise
  * from 12 o'clock, later-listed segments painted underneath (the results donut
  * wants YES on top of NO on top of VOID at the shared paint edges).
  *
  * Colour is the CALLER's statement — this primitive imposes none, because its
- * two consumers are on opposite sides of the gold law: outcome counts wear
- * yes/no ink, while the invite ring is EARNED money and wears gold correctly
- * (§B4 — struck gold marks money that was earned).
+ * two consumers sit on both sides of the gold law: outcome counts wear yes/no ink; the invite dial
+ * wears ROYAL while it counts friends joined (the unpaid invite, since 2026-09-25) and gold only when
+ * the programme pays and it shows EARNED money (§B4 — struck gold marks money that was earned).
  *
  * Hook-free — server and client components both render it.
  */
@@ -21,7 +21,7 @@ export type RingSegment = {
   /** Rounded end caps — for single-segment progress rings. A multi-segment
    *  donut must NOT round its caps or neighbours overlap at every seam. */
   round?: boolean;
-  /** Optional style passthrough (e.g. the invite ring's gold glow). */
+  /** Optional style passthrough (e.g. the invite dial's glow — gold when paid, royal when not). */
   style?: React.CSSProperties;
 };
 

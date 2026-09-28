@@ -49,10 +49,12 @@
 - [ ] **VAPID keys** — only if enabling web-push at launch (else push stays stubbed).
 
 ## 4 · Decisions to confirm (👤 Ali, quick)
-- [ ] **Phone OTP / SMS at launch?** Auth today is phone + password; SMS-OTP paths
-      exist but need a **TCRA-licensed SMS sender** (`SMS_PROVIDER`/`SMS_API_KEY`/
-      `SMS_SENDER_ID`) to deliver. Without it: no SMS password-reset / phone
-      verification. Decide if that's required for day 1 (Selcom can also do SMS).
+- [x] **Phone OTP / SMS** — decided 2026-09-16 (corrected 2026-09-25). SMS is live on
+      Blackball (`SMS_PROVIDER=blackball`, `BLACKBALL_CLIENT_ID` / `BLACKBALL_CLIENT_SECRET`
+      / `BLACKBALL_WEBHOOK_SECRET`, `SMS_SENDER_ID=50pick`; `SMS_API_KEY` is read by
+      nothing). Phone-code login is deliberately NOT offered (`OTP_ENABLED` unset): offering
+      it is a product change on `/auth/login` first, not a variable. Sign-in is phone +
+      password. See `BLACKBALL-SMS.md` §7 step 6 and CLAUDE.md "Auth — current state".
 - [ ] **TRA tax base** — commission-slice vs GGR is intentionally unresolved in
       code; confirm the ruling for the finance reports (doesn't block betting).
 - [ ] **Geo-fencing / sanctions-PEP screening** — planned, not built. Confirm
@@ -119,5 +121,5 @@
 **Tomorrow:** payment keys → I wire + test the rail. **You provision:** DNS repoint
 50pick.tz→Railway, a Cloudflare R2 bucket + creds, and the env vars in §3.
 **I finish:** bet-stake atomicity + R2 activation + the go-live DB reset. **Then** we
-run §5 in order and you're live. Everything else (Redis, Sentry, pentest, SMS) is
+run §5 in order and you're live. Everything else (Redis, Sentry, pentest) is
 recommended/optional, not a hard gate for a single-instance launch.

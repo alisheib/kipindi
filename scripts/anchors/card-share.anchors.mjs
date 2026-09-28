@@ -113,4 +113,13 @@ export const MUTATIONS = [
     to: `     the same defect in the opposite direction. */`,
     expect: "6: ⚠️ `.mcardp-share` still declares its own positioning context",
   },
+  {
+    name: "card-body-back-in-a-link",
+    why: "🔴 landing v3 WP14b — the card's body goes back inside a <Link>, the shape every closed, resolved and void card had until 2026-09-27: the share button is then a control inside an anchor, and its dialog's clicks bubble to the Link and navigate away",
+    file: CARD,
+    suite: "card-share",
+    from: `      {body}\n    </article>`,
+    to: `      <Link href={\`/markets/\${id}\` as never}>{body}</Link>\n    </article>`,
+    expect: "7: ⛔ no <Link> wraps the card body",
+  },
 ];

@@ -11,8 +11,8 @@ export default function Loading() {
         <SkFormCard fields={4} titleW="w-52" />
         {/* Compliance note */}
         <SkCard lines={2} />
-        {/* Referral leaderboard */}
-        <SkTableCard cols={4} rows={5} minWidth={480} />
+        {/* The roster — "Invites by player" (2 columns) while unpaid; the 4-column leaderboard only when paid */}
+        <SkTableCard cols={2} rows={5} minWidth={480} />
         {/* Payout ledger */}
         <SkTableCard cols={6} rows={6} minWidth={640} />
       </SkBody>

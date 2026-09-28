@@ -1,8 +1,13 @@
 /**
  * /api/dev-test/affiliate-seed-recruits — dev-only. Binds N fresh recruits to
- * an existing referral code so a populated Invite & Earn page can be rendered
- * deterministically (no registration-form/rate-limit flakiness). Optionally
- * fires a first bet per recruit so the "Earning" status chip + commission show.
+ * an existing referral code so a populated /profile/invite page can be rendered
+ * deterministically (no registration-form/rate-limit flakiness). Optionally settles a position for
+ * every other recruit (`onRecruitSettlement`, operator net fee TZS 1,500). ⚠️ While invites are Not
+ * payable (the Owner's switch on /admin/affiliate since 2026-09-26, Not payable by default, under the
+ * `inviteRewards` ceiling) a PLAYER code's recruits are bound and counted and that settlement pays
+ * nothing, so the page shows who joined and no money — the "Earning" chip and money column need invites
+ * made payable (or FEATURE_INVITEREWARDS=ACTIVE) plus commission enabled in the affiliate config. An approved agent's
+ * code accrues commission on it and lands on the agent dashboard instead.
  *
  * 404 in production. POST { code, n?, activity? }.
  */

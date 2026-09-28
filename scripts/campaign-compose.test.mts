@@ -251,7 +251,7 @@ function checkEnvelope(compose: Composer, log: (l: string) => void): string[] {
     log(`       ${JSON.stringify(f)}`);
     ok("§9 the footer carries the sender identity", f.includes(SENDER_IDENTITY));
     ok("§9 …the age restriction, in the Swahili already shipped on the registration screen", f.includes("18+"));
-    ok("§9 …the Board's helpline", f.includes(STATUTORY_SMS_HELPLINE));
+    ok("§9 …the helpline (ours — OQ4)", f.includes(STATUTORY_SMS_HELPLINE));
     ok("§9 …and a working opt-out link", f.includes(`${shortDomain()}/s/${TOKEN}`), f);
     ok("§9 ⭐ it is 49 septets — and that number is COMPUTED, not typed",
       sizeSms(f).units === 49, `${sizeSms(f).units} septets`);
@@ -312,16 +312,19 @@ function checkEnvelope(compose: Composer, log: (l: string) => void): string[] {
       compose(over, TOKEN).problems.some((p) => p.includes(String(operatorBudget("SW")))), compose(over, TOKEN).problems.join(" | "));
   }
 
-  /* ── §12 · the helpline contradiction is deliberate ────────────────────── */
-  log("\n§12 · THE HELPLINE CONTRADICTION IS DELIBERATE, AND GUARDED AS SUCH");
+  /* ── §12 · ONE helpline — OQ4 answered ─────────────────────────────────── */
+  // ⭐ Until 2026-09-26 this section asserted the footer DIFFERED from the published helpline, because
+  // OQ4 (ours, or the Gaming Board Code's 0800110051?) was Ali's to answer. He answered: "the right
+  // helpline is ours." The section now pins the answer the other way round.
+  log("\n§12 · ONE HELPLINE — the footer carries the number support-config publishes (OQ4, answered 2026-09-26)");
   {
     const support = readFileSync(new URL("../src/lib/support-config.ts", import.meta.url), "utf8");
     const published = (support.match(/STATUTORY_HELPLINE\s*=\s*"([^"]+)"/) || [])[1] ?? "";
     ok("§12 control · support-config's published helpline was actually read", published.length > 5, `read "${published}"`);
-    ok("§12 ⭐ the marketing footer's helpline DIFFERS from the published one — OQ4, and it is Ali's to answer",
-      published.replace(/\s/g, "") !== STATUTORY_SMS_HELPLINE,
-      `both are now "${STATUTORY_SMS_HELPLINE}" — if OQ4 was answered, say so in §4a; if this was an "obvious cleanup", it is not one`);
-    ok("§12 …and the footer uses the Gaming Board's number", STATUTORY_SMS_HELPLINE === "0800110051");
+    ok("§12 ⭐ the marketing footer's helpline IS the published one — ours, not a second number",
+      published.replace(/\s/g, "") === STATUTORY_SMS_HELPLINE, `footer "${STATUTORY_SMS_HELPLINE}" · published "${published}"`);
+    ok("§12 …and the Gaming Board Code's 0800110051 appears nowhere in a composed footer",
+      !marketingFooter(TOKEN, "SW").includes("0800110051") && !marketingFooter(TOKEN, "EN").includes("0800110051"));
   }
 
   return failed;

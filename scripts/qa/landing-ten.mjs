@@ -48,6 +48,17 @@ const OUT = process.env.OUT || join(REPO, ".qa-shots", "landing-ten");
 const ONLY_PASS = (process.argv.find((a) => a.startsWith("--pass=")) || "").split("=")[1] || null;
 const RED = process.env.RED || null;
 const RED_MODE = process.argv.includes("--red");
+const ONLY_CELL = (process.argv.find((a) => a.startsWith("--cell=")) || "").split("=")[1] || null;
+// ⛔ A bare `--cell base-360-sw` (no "=") was silently ignored and the WHOLE matrix ran (landing v3 D2).
+for (const bare of ["--cell", "--pass"]) {
+  if (process.argv.includes(bare)) { console.error(`${bare} takes its value after "=" (${bare}=<id>); a bare ${bare} is ignored and the whole matrix would run`); process.exit(2); }
+}
+// V18's plant takes ONE part away from ONE surface; RED_PART names it (default "source"). One plant
+// proves only the branch it removes, so each part is its own run (scripts/qa/landing-v3/verify-*.sh).
+const RED_PARTS = ["source", "price", "time", "pool", "predictors", "order"];
+const RED_PART = process.env.RED_PART || "source";
+if (RED === "V18" && !RED_PARTS.includes(RED_PART)) { console.error(`RED_PART must be one of: ${RED_PARTS.join(" ")}`); process.exit(2); }
+const RED_TAG = RED === "V18" ? `V18-${RED_PART}` : RED;
 mkdirSync(OUT, { recursive: true });
 
 const UA_MOBILE = "Mozilla/5.0 (Linux; Android 13; SM-A145F) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.0.0 Mobile Safari/537.36";
@@ -105,7 +116,6 @@ function buildCells() {
   // finding there is unfixable by an outline offset: at 180 the info button sits 23px outside its
   // own card because .mcardp-timeleft is a fixed 155px in a 148px card.
   cells.push({ pass: "orientation", id: "zoom-200", w: 180, h: 780, mobile: true, locale: "sw", state: "returning", informational: true, note: "180 CSS px — BELOW WCAG 1.4.10 Reflow (320) and below the smallest supported phone; reported, not gated" });
-  const ONLY_CELL = (process.argv.find((a) => a.startsWith("--cell=")) || "").split("=")[1] || null;
   let out = ONLY_PASS ? cells.filter((c) => c.pass === ONLY_PASS) : cells;
   if (ONLY_CELL) out = out.filter((c) => c.id === ONLY_CELL);
   return out;
@@ -275,11 +285,23 @@ const CHECKS = /* js */ `(() => {
       overlays.push(el);
     }
     const TARGETS = ".kp-qrow__price, .kp-qrow__num, .kp-proof__num, .kp-topic__m, a.btn, button.btn, .mcardp-yes, .mcardp-no, .kp-shead__link";
+    /* ⚠️ THE SCREEN ENDS WHERE THE BOTTOM RAIL BEGINS — V15's own rule, applied here too (landing v3).
+       The rail is docked over the last ~64px and the page reserves that space, so a control whose
+       sampling line lies under it is BELOW THE FOLD, not buried: one scroll and it is clear. Counted
+       as occlusion, the first v3 run (2026-09-26) reported the proof figures, the CTAs and the
+       featured card's YES/NO peeking at the fold of the 320–768 frames as "buried". The rail is not exempted as an overlay; a target
+       whose centre is on the screen and still loses the hit test (the chat bubble) is still found. */
+    let fold = vh;
+    for (const o of overlays) {
+      const r = o.getBoundingClientRect();
+      if (r.width > vw * 0.6 && r.bottom >= vh - 1 && r.top > vh * 0.6) fold = Math.min(fold, r.top);
+    }
     const bad = [];
     for (const t of document.querySelectorAll(TARGETS)) {
       if (!vis(t)) continue;
       const r = t.getBoundingClientRect();
       if (r.bottom < 0 || r.top > vh) continue;
+      if (r.top + r.height / 2 >= fold) continue;             // below the fold: the rail's space, not an occlusion
       let buried = 0;
       for (let i = 0; i < 5; i++) {
         const x = r.left + (r.width * (i + 0.5)) / 5, y = r.top + r.height / 2;
@@ -686,9 +708,167 @@ const CHECKS = /* js */ `(() => {
     push("V14", bad);
   }
 
+  /* ── V15 the first screen shows a live market (landing v3) ───────────────────────────────────
+     The delivery's mobile reviewer: at 360 x 740 the first screen shows the pitch AND a live market
+     with its price and its YES/NO. So on every phone cell the featured card's price and its action
+     row must END by 740px of document, measured at the top of the page. 740 is a FIXED line, not the
+     viewport: the 360 cells are 780 tall, and a budget read off innerHeight would quietly grow with
+     the cell. A cell narrower than 360 is reported by V1/V2, not here — 740 is the delivery's frame.
+     No featured card at all is a finding, not a pass: a first screen without a market is the exact
+     state this class exists to catch. */
+  if (vw >= 360 && vw < 640) {
+    const bad = [];
+    /* ⚠️ THE FIRST SCREEN ENDS WHERE THE BOTTOM RAIL BEGINS. The delivery's frame has no rail; ours
+       keeps one (R1), fixed over the last ~64px of the viewport, and a button under it is not on the
+       screen. So the line is 740 or the top of any wide fixed bar pinned to the bottom, whichever is
+       higher on the page (found building v3: the budget read the 740 and ignored the rail). */
+    let line = 740;
+    for (const el of document.querySelectorAll("body *")) {
+      if (getComputedStyle(el).position !== "fixed" || !vis(el)) continue;
+      const r = el.getBoundingClientRect();
+      if (r.width > vw * 0.6 && r.bottom >= vh - 1 && r.top > vh * 0.6) line = Math.min(line, Math.round(r.top));
+    }
+    const card = [...document.querySelectorAll(".kp-hero__card .mcardp")].find(vis);
+    if (!card) bad.push({ what: "no featured market in the hero", measured: "0 visible .kp-hero__card .mcardp", where: "hero" });
+    else {
+      for (const [q, name] of [[".mcardp-prob", "its price"], [".mcardp-actions", "its YES/NO"]]) {
+        const el = card.querySelector(q);
+        if (!el || !vis(el)) { bad.push({ what: "the featured card shows no " + name, measured: "0 visible " + q, where: sel(card) }); continue; }
+        const bottom = Math.round(el.getBoundingClientRect().bottom + scrollY);
+        if (bottom > line) bad.push({ what: "the featured card's " + name.replace("its ", "") + " ends below the first screen", measured: bottom + "px > " + line + (line < 740 ? " (the bottom rail)" : ""), where: sel(el) });
+      }
+    }
+    push("V15", bad);
+  } else push("V15", []);
+
+  /* ── V16 no promised winnings (landing v3) ──────────────────────────────────────────────────
+     Law 1 of the delivery and LAWS §C3: no "win TZS X" on an open market, no stake-times-multiplier
+     sum, in any of the three languages. The estimate is off on the landing by ruling (R3), so ANY
+     multiplier-of-a-stake string here is a finding. Read from visible text only — a string a
+     screen reader hears but nobody sees is still a claim, but a hidden sizer is not. */
+  {
+    const bad = [];
+    const PROMISE = [
+      [/\\bwin\\s+(up\\s+to\\s+)?TZS\\b/i, "win TZS"],
+      [/\\butashinda\\b/i, "utashinda"],
+      [/赢得\\s*TZS/, "赢得 TZS"],
+      [/\\bTZS\\s?[\\d,.]+\\s*[×x]\\s*\\d/i, "a stake times a multiplier"],
+      [/\\b\\d+(?:\\.\\d+)?\\s*[×x]\\s+(?:your\\s+)?stake\\b/i, "a multiple of your stake"],
+    ];
+    const seen = new Set();
+    for (const el of textLeaves()) {
+      const t = (el.textContent || "").replace(/\\s+/g, " ").trim();
+      for (const [re, name] of PROMISE) {
+        if (re.test(t) && !seen.has(t)) { seen.add(t); bad.push({ what: "a promised return: " + name, measured: JSON.stringify(t.slice(0, 60)), where: sel(el) }); }
+      }
+    }
+    push("V16", bad);
+  }
+
+  /* ── V17 no degenerate price anywhere a market is priced (landing v3) ──────────────────────
+     V11 catches a 0% / 100% price LEADING the page; V17 catches one anywhere on a card or a board
+     row. A one-sided market has no price (a price needs two sides, MOBILE-VISUAL ruling 13) and a
+     lopsided two-sided one is shown within 1-99 (L14), so a rendered 0% or 100% is always a
+     statement of certainty nobody's money made. Read per market surface, never off the whole page:
+     the conviction bar's reading is an aggregate, not a price. */
+  {
+    const bad = [];
+    const DEGEN = /(?:^|[^\\d.])(0|100)\\s?%/;
+    for (const surface of document.querySelectorAll(".mcardp, .kp-qrow")) {
+      if (!vis(surface)) continue;
+      for (const el of surface.querySelectorAll("*")) {
+        if (!vis(el)) continue;
+        const own = [...el.childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent).join("");
+        const joined = (own + " " + (el.children.length ? "" : "")).trim();
+        const full = (el.textContent || "").replace(/\\s+/g, " ").trim();
+        // a price reads as NUMBER then "%" — test the element's full text when it is small (a button
+        // label, a price cell), its own text otherwise, so a long sentence is not searched twice.
+        const probe = full.length <= 24 ? full : joined;
+        if (probe && DEGEN.test(probe)) { bad.push({ what: "a 0% or 100% price", measured: JSON.stringify(probe.slice(0, 40)), where: sel(surface) + " > " + sel(el) }); break; }
+      }
+    }
+    push("V17", bad);
+  }
+
+  /* ── V18 every market shows its price or state, time, pool, predictors and source (landing v3) ─
+     The delivery's V18 and ACCEPTANCE K7, K36, K48: every market surface on the page (the featured
+     card, each grid card, each closing-soonest board row) shows (a) a price, or a LABELLED state
+     (No bets yet, One side only, No pool yet, the result word; the em-dash alone is not a label),
+     (b) the time left, (c) the pool, (d) the predictors (depth: K48, and section 2.1 WP4 names V18
+     for it) and (e) the named source; and the source and the price or state come BEFORE the pick
+     (K36), in the DOM and on the screen.
+     ⛔ READ PER SURFACE, NEVER OFF THE PAGE. The trust lines say "named sources", the settled strip
+     links a source on every row, the proof rail prints a pool and the LIVE strip prints times: a
+     page-level search finds all four while every card shows none of them. One card's source is not
+     another's, so nothing is deduplicated across surfaces.
+     ⭐ FOUND BY THE INSTRUMENTATION CONTRACT, NOT BY A CLASS OR A WORD. Each part carries
+     data-market-part (price, state, time, pool, predictors, source, pick) and each surface
+     data-market-surface (featured, card, board), so a WP3/WP4 rebuild that renames every class keeps
+     this check, and no visible word is read (three locales). The classes widen the POPULATION only:
+     .mcardp[data-row-id] and .kp-qrow are examined even when they lose the attribute, and named as
+     unmarked rather than skipped. (The Up and Down card wears the .mcardp shell with no data-row-id,
+     which is why the card fallback asks for one, as scripts/live/mobile-visual-drive.mjs does.)
+     A part counts only when it is visible, centred inside its own surface's box (the card clips),
+     and says something: a price holds a digit, a state or a source holds letters, the rest hold a
+     letter or a digit. Time, pool and predictors are PRESENCE only: where they sit is K49's and the
+     placement map's (V21), and the delivery's own grid card prints its pool below the pick.
+     No surface at all is a finding, not a pass. */
+  {
+    const bad = [];
+    const LETTER = /\\p{L}/u, NAME = /\\p{L}{2}/u, DIGIT = /\\d/;
+    const DASH = String.fromCharCode(8212);                  // the em-dash, without an escape to mangle
+    const LABEL = { featured: "the featured card", card: "a grid card", board: "a board row" };
+    const says = (el) => (el.innerText || "").replace(/\\s+/g, " ").trim();
+    const wordy = (t) => LETTER.test(t) || DIGIT.test(t);
+    const inside = (el, box) => {
+      const r = el.getBoundingClientRect(), b = box.getBoundingClientRect();
+      const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+      return cx >= b.left - 1 && cx <= b.right + 1 && cy >= b.top - 1 && cy <= b.bottom + 1;
+    };
+    const find = (s, names, test) => [...s.querySelectorAll(names.map((n) => '[data-market-part="' + n + '"]').join(","))]
+      .find((el) => vis(el) && inside(el, s) && test(says(el)));
+    // BEFORE = earlier in the DOM AND earlier on the screen: above the pick, or on its line and left of it.
+    const follows = (el, pick) => !!(el.compareDocumentPosition(pick) & Node.DOCUMENT_POSITION_FOLLOWING);
+    const before = (el, pick) => {
+      if (!follows(el, pick)) return false;
+      const a = el.getBoundingClientRect(), b = pick.getBoundingClientRect();
+      return a.bottom <= b.top + 2 || (a.top < b.bottom && a.bottom > b.top && a.right <= b.left + 2);
+    };
+    const surfaces = [...document.querySelectorAll("[data-market-surface], .mcardp[data-row-id], .kp-qrow")].filter(vis);
+    const examined = {};
+    for (const s of surfaces) {
+      const kind = s.getAttribute("data-market-surface") || "unmarked";
+      const who = LABEL[kind] || "an unmarked market surface";
+      examined[kind] = (examined[kind] || 0) + 1;
+      const where = kind + " " + (s.getAttribute("data-row-id") || sel(s)) + ' "' + textOf(s).slice(0, 40) + '"';
+      if (!LABEL[kind]) bad.push({ what: "a market surface carries no known data-market-surface", measured: JSON.stringify(kind) + " on " + sel(s), where });
+      const shown = find(s, ["price"], (t) => DIGIT.test(t)) || find(s, ["state"], (t) => LETTER.test(t));
+      if (!shown) {
+        const dash = [...s.querySelectorAll("*")].some((e) => !e.children.length && (e.textContent || "").trim() === DASH && vis(e));
+        bad.push({ what: who + " shows neither a price nor a labelled state", measured: dash ? "an em-dash with no label" : "0 visible price or state", where });
+      }
+      for (const [p, name] of [["time", "time left"], ["pool", "pool"], ["predictors", "predictor count"]]) {
+        if (!find(s, [p], wordy)) bad.push({ what: who + " shows no " + name, measured: "0 visible [data-market-part=" + p + "]", where });
+      }
+      const src = find(s, ["source"], (t) => NAME.test(t));
+      if (!src) bad.push({ what: who + " names no source", measured: "0 visible [data-market-part=source]", where });
+      const pick = [...s.querySelectorAll('[data-market-part="pick"], .btn-yes, .btn-no')].find(vis);
+      if (!pick) continue;                                   // a closed market takes no pick: nothing can follow one
+      for (const [el, name] of [[shown, "its price or state"], [src, "its source"]]) {
+        if (!el || before(el, pick)) continue;
+        const a = el.getBoundingClientRect(), b = pick.getBoundingClientRect();
+        bad.push({ what: who + " shows " + name + " after the pick",
+          measured: "top " + Math.round(a.top) + " vs the pick's " + Math.round(b.top) + (follows(el, pick) ? "" : ", and later in the DOM"), where });
+      }
+    }
+    if (!surfaces.length) bad.push({ what: "no market surface on the page", measured: "0 visible [data-market-surface], .mcardp[data-row-id], .kp-qrow", where: "document" });
+    push("V18", bad);
+    V[V.length - 1].examined = examined;
+  }
+
   /* ── the text map V8 needs, compared across locales AFTER the sweep ──────────────────────── */
   const textMap = {};
-  for (const s2 of [".kp-hero__headline", ".kp-hero__eyebrow", ".kp-lede", ".kp-shead__h", ".kp-step__h", ".kp-step__b", ".kp-trust__b", ".kp-rg__say", ".kp-proof__cap"]) {
+  for (const s2 of [".kp-hero__headline", ".kp-hero__eyebrow", ".kp-lede", ".kp-shead__h", ".kp-step__h", ".kp-step__b", ".kp-trust__b", ".kp-hero__trust", ".kp-proof__cap"]) {
     textMap[s2] = [...document.querySelectorAll(s2)].filter(vis).map((e) => (e.textContent || "").trim()).slice(0, 6);
   }
 
@@ -716,7 +896,7 @@ const REDS = {
         e.style.cssText += ";overflow:hidden !important;white-space:nowrap !important;text-overflow:clip !important;max-width:20px !important;display:block !important";
         return { applied: e.scrollWidth > e.clientWidth + 1, note: e.scrollWidth + " vs " + e.clientWidth }; })()`,
 
-  V3: `(() => { const t = [...document.querySelectorAll(".kp-qrow__price, a.btn, .kp-proof__num")].find((x) => { const r = x.getBoundingClientRect(); return r.width > 0 && r.top >= 0 && r.top < innerHeight; });
+  V3: `(() => { const t = [...document.querySelectorAll(".kp-qrow__price, a.btn, .kp-proof__num")].find((x) => { const r = x.getBoundingClientRect(); return r.width > 0 && r.top >= 0 && r.top + r.height / 2 < innerHeight * 0.6; });
         if (!t) return { applied: false, note: "no on-screen target" };
         const r = t.getBoundingClientRect(); const f = document.createElement("div");
         f.style.cssText = "position:fixed;z-index:99999;background:#f00;width:" + Math.max(24, r.width) + "px;height:" + Math.max(24, r.height) + "px;left:" + r.left + "px;top:" + r.top + "px";
@@ -829,7 +1009,61 @@ const REDS = {
         if (!m) return { applied: false, note: "no topic meta" };
         m.textContent = "4 hai · TZS 0";
         return { applied: /TZS\\s*0/.test(m.textContent), note: m.textContent }; })()`,
+  // landing v3 — push the featured card down past the first screen. A margin, not an inserted node:
+  // the hero is a grid of NAMED areas, and a new child would be auto-placed into a row of its own
+  // at the end rather than in front of the card.
+  V15: `(() => { const c = document.querySelector(".kp-hero__card");
+        if (!c) return { applied: false, note: "no .kp-hero__card" };
+        const before = Math.round(c.getBoundingClientRect().top + scrollY);
+        c.style.marginTop = "800px";
+        const after = Math.round(c.getBoundingClientRect().top + scrollY);
+        return { applied: after - before >= 700, note: "card top " + before + " -> " + after }; })()`,
+  V16: `(() => { const host = document.querySelector("main") || document.body;
+        const p = document.createElement("p"); p.textContent = "Win TZS 50,000 today";
+        p.style.cssText = "font-size:16px;color:#fff;position:relative";
+        host.prepend(p);
+        return { applied: p.getBoundingClientRect().height > 0, note: "planted a promised return" }; })()`,
+  V17: `(() => { const b = [...document.querySelectorAll(".mcardp .btn-yes, .mcardp-yes")].find((x) => x.getBoundingClientRect().width > 0);
+        if (!b) return { applied: false, note: "no visible YES button on a card" };
+        b.textContent = "YES @ 100%";
+        return { applied: b.textContent === "YES @ 100%", note: "a card button now reads 100%" }; })()`,
+  // landing v3 — V18: take ONE part away from ONE surface, the featured card first (it is on every cell
+  // with a market). RED_PART picks the part: source (default) · price (price AND state, since either
+  // passes) · time · pool · predictors · order (every source part moved after the pick). EVERY element
+  // of that part in the surface goes: WP3 gives the featured card a top-right time AND keeps the meta
+  // row's, and hiding one copy would leave the part on screen and read as BLIND when the check is not.
+  V18: `(() => { const PART = ${JSON.stringify(RED_PART)};
+        const vis = (el) => { const r = el.getBoundingClientRect(); const s = getComputedStyle(el);
+          return r.width > 0 && r.height > 0 && s.visibility !== "hidden" && s.display !== "none" && +s.opacity > 0.05; };
+        const names = PART === "price" ? ["price", "state"] : [PART === "order" ? "source" : PART];
+        const q = names.map((n) => '[data-market-part="' + n + '"]').join(",");
+        const surfaces = [...new Set(document.querySelectorAll("[data-market-surface], .mcardp[data-row-id], .kp-qrow"))].filter(vis);
+        surfaces.sort((a, b) => (b.getAttribute("data-market-surface") === "featured") - (a.getAttribute("data-market-surface") === "featured"));
+        for (const s of surfaces) {
+          const parts = [...s.querySelectorAll(q)].filter((el) => vis(el) && (el.innerText || "").trim());
+          if (!parts.length) continue;
+          const on = (s.getAttribute("data-market-surface") || "unmarked") + " " + (s.getAttribute("data-row-id") || "");
+          if (PART === "order") {
+            const pick = [...s.querySelectorAll('[data-market-part="pick"], .btn-yes, .btn-no')].find(vis);
+            if (!pick) continue;
+            for (const el of parts) pick.after(el);
+            return { applied: parts.every((el) => !!(pick.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING)),
+              note: "moved " + parts.length + " source part(s) after the pick on " + on };
+          }
+          for (const el of parts) el.style.setProperty("display", "none", "important");
+          return { applied: parts.every((el) => !vis(el)), note: "hid " + parts.length + " [data-market-part=" + names.join("|") + "] on " + on };
+        }
+        return { applied: false, note: "no visible surface shows a " + names.join("/") + " part" + (PART === "order" ? " and a pick" : "") }; })()`,
 };
+
+// A no-browser self-test (landing v3 D2): every check and every plant compiles. Cheap on a machine whose
+// RAM fails under load — run it before a browser pass: `node scripts/qa/landing-ten.mjs --compile`.
+if (process.argv.includes("--compile")) {
+  new Function("return " + CHECKS);
+  for (const v of Object.values(REDS)) new Function("return " + v);
+  console.log(`compiled CHECKS (${CHECKS.length} chars) and ${Object.keys(REDS).length} RED plants`);
+  process.exit(0);
+}
 
 /* ══════════════════════════════════════════════════════════════════════════════════════════════ */
 async function runCell(browser, cell, plantKey = null, signedInState = null) {
@@ -930,8 +1164,27 @@ async function runCell(browser, cell, plantKey = null, signedInState = null) {
 }
 
 const cells = buildCells();
-console.log(`gate: ${cells.length} cells against ${BASE}${RED_MODE ? `  [RED CONTROL: ${RED}]` : ""}`);
-const browser = await chromium.launch({ headless: true });
+// ⛔ A FILTER THAT MATCHES NOTHING MEASURES NOTHING, AND NOTHING IS NOT GREEN. With zero cells the
+//    summary read TOTAL 0, 0 unmeasured, "GATE GREEN", exit 0 — a typo'd --cell certified the page.
+if (!cells.length) {
+  console.error(`⛔ no cell matches${ONLY_CELL ? ` --cell=${ONLY_CELL}` : ""}${ONLY_PASS ? ` --pass=${ONLY_PASS}` : ""}. Nothing was measured.`);
+  process.exit(2);
+}
+if (RED_MODE && cells.length !== 1) { console.error(`--red measures ONE cell: pass --cell=<id> (${cells.length} selected)`); process.exit(2); }
+console.log(`gate: ${cells.length} cells against ${BASE}${RED_MODE ? `  [RED CONTROL: ${RED_TAG}]` : ""}`);
+/* ⛔ AN INSTRUMENT THAT DID NOT START IS NOT A RED GATE. 2026-09-27: the WP6 drive's phase-1 gate died in
+   browserType.launch with a SyntaxError thrown inside Playwright; the same launch worked in the captures
+   either side of it and the machine bugchecked 0x1A four minutes later (failing RAM). Uncaught, that is
+   exit 1, the code a driver reads as GATE RED. One retry, then exit 2, the gate's "could not measure". */
+let browser = null;
+for (let attempt = 1; !browser; attempt++) {
+  try { browser = await chromium.launch({ headless: true }); }
+  catch (e) {
+    const why = String((e && e.message) || e).split(String.fromCharCode(10))[0];
+    if (attempt >= 2) { console.error(`⛔ INSTRUMENT: chromium did not launch (${why}). Nothing was measured; this is not a gate result.`); process.exit(2); }
+    console.error(`⚠️ chromium launch failed (${why}); one retry`);
+  }
+}
 
 /* ══════════════════════════════════════════════════════════════════════════════════════════════
    RED MODE — a DELTA, not a count.
@@ -957,7 +1210,7 @@ if (RED_MODE) {
   const classes = [...new Set([...clean.V, ...planted.V].map((v) => v.cls))];
   const deltas = classes.map((cls) => ({ cls, clean: countOf(clean, cls), planted: countOf(planted, cls) }))
     .map((d) => ({ ...d, delta: d.planted - d.clean }));
-  console.log(`\nRED ${RED} on ${c.id}`);
+  console.log(`\nRED ${RED_TAG} on ${c.id}`);
   for (const d of deltas) console.log(`  ${d.cls.padEnd(4)} ${String(d.clean).padStart(3)} → ${String(d.planted).padStart(3)}  ${d.delta > 0 ? "+" + d.delta : d.delta === 0 ? "" : String(d.delta)}`);
   const target = deltas.find((d) => d.cls === RED);
   const collateral = deltas.filter((d) => d.cls !== RED && d.delta !== 0);
@@ -973,7 +1226,7 @@ if (RED_MODE) {
       ? `✅ ${RED} PROVED: its own defect raised it by ${target.delta}.`
       : `⛔ ${RED} BLIND: the plant landed and the class did not move (${target ? target.delta : "n/a"}). The check is decoration until this passes.`);
   if (collateral.length) console.log(`   ⚠️ plant also moved: ${collateral.map((d) => `${d.cls}${d.delta > 0 ? "+" : ""}${d.delta}`).join(" ")}`);
-  writeFileSync(join(OUT, `red-${RED}.json`), JSON.stringify({ cell: c.id, deltas, pass }, null, 1));
+  writeFileSync(join(OUT, `red-${RED_TAG}.json`), JSON.stringify({ cell: c.id, deltas, pass }, null, 1));
   process.exit(pass ? 0 : 1);
 }
 
@@ -1077,7 +1330,7 @@ for (const r of results) for (const v of r.V || []) {
 }
 summary.byClass.V8 = { count: v8.length, cells: [], examples: v8.slice(0, 8) };
 
-writeFileSync(join(OUT, RED_MODE ? `red-${RED}.json` : "gate.json"), JSON.stringify({ summary, results }, null, 1));
+writeFileSync(join(OUT, RED_MODE ? `red-${RED_TAG}.json` : "gate.json"), JSON.stringify({ summary, results }, null, 1));
 
 console.log("\n──────── SUMMARY ────────");
 for (const [cls, v] of Object.entries(summary.byClass)) {

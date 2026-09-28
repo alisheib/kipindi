@@ -29,7 +29,7 @@ const code = await approveFixtureAgent("el_agent", { commissionPct: 20 });
 ok("1.control · approved + active + ACTIVE → the invite surface is LIVE for them", await live("el_agent"));
 ok("1.standing · agentStandingFor says ok", (await standing("el_agent")).ok === true, JSON.stringify(await standing("el_agent")));
 ok("1.bind · their code binds", (await tryBind(code)).bound === true);
-ok("1.state · inviteStateFor reads ACTIVE, not the withdrawn product state", inviteStateFor(await inviteViewerFor("el_agent")) === "ACTIVE");
+ok("1.state · inviteStateFor reads ACTIVE for an agent in good standing", inviteStateFor(await inviteViewerFor("el_agent")) === "ACTIVE");
 
 // ── §2 · THE TRAP — a role with no approval is nobody ──────────────────────────────────
 await mkFixtureUser("el_roleonly", { role: "AGENT" });

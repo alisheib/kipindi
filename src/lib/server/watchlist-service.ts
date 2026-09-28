@@ -59,6 +59,20 @@ export async function alertableWatcherIds(marketId: string, exclude: Set<string>
       });
       continue;
     }
+    // D10's sibling · the STATUS decides (Ali, 2026-08-27): a self-excluder whose chosen period has
+    // elapsed is still SELF_EXCLUDED until an officer reopens the account, and "a market you follow
+    // closes soon" is the most engagement-shaped message this platform sends. Same rule as the push
+    // gate and the bet path; `isLockedOut` untouched (marketing S7, on delegation 2026-09-26).
+    const holder = await Promise.resolve(db.user.findById(userId));
+    if (holder?.status === "SELF_EXCLUDED") {
+      audit({
+        category: "COMPLIANCE",
+        action: "watchlist.alert_suppressed.rg_lockout",
+        actorId: userId, targetType: "Market", targetId: marketId,
+        payload: { reason: "self_exclusion", until: lock.exclusionUntil },
+      });
+      continue;
+    }
     out.push(userId);
   }
   return out;

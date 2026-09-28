@@ -16,7 +16,7 @@
 |---|---|
 | [`docs/SETUP.md`](docs/SETUP.md) | **Getting this running on a machine that has never seen it.** Prerequisites, install, how to boot with no database, and the eight symptoms that waste an afternoon. |
 | [`docs/README.md`](docs/README.md) | **The doc index** — every doc at that level, each with a status. From the outside a snapshot of a Tuesday in May looks identical to a law. ⚠️ This row used to say "42 docs" and the index itself said 45; the real number was **59**, and eleven were unindexed. A count restated in two places is a count that will disagree with itself — so neither states one now. |
-| [`docs/NEXT-PLAN.md`](docs/NEXT-PLAN.md) | ⭐ **START HERE FOR WORK. It opens with THE BOARD: there are exactly TWO ongoing programmes** — `MASWALI-BUILD` (the third product) and `DESIGN-GATE-2026-08-28` (render consistency). Each names its state, its next move and what blocks it. ⛔ **Everything else under `docs/` is a RECORD of finished work, whatever its own header says.** Do not start a third thing — ask Ali which of the two to proceed with. |
+| [`docs/NEXT-PLAN.md`](docs/NEXT-PLAN.md) | ⭐ **START HERE FOR WORK. It opens with THE BOARD** — the ▶-numbered rows at its top (▶ 0, ▶ 0a, ▶ 0b, …) are the live programmes, each with its state, next move and blocker. Read them there; this row deliberately does not count them, because a count here goes stale (it said "exactly TWO" long after there were more — corrected 2026-09-25). ⛔ **A doc that is not on the board is a RECORD of finished work, whatever its own header says.** Do not start a new programme — ask Ali. |
 | [`docs/PLAYER-QUERY-CAMPAIGN.md`](docs/PLAYER-QUERY-CAMPAIGN.md) | 🔵 **ACTIVE, opened 2026-09-07 on Ali's instruction — the THIRD programme, so the row above is now out of date by one.** One query language (lens · sort · search · window) on every client-facing page that needs one. **Its §0 is the RESUME AT block**; its §4 is a census of EVERY non-admin route, each with a ruling, so a page that needs nothing was *read and decided* rather than skipped. Branch `player-query-campaign`. ⛔ Admin is deliberately out of scope (§11). |
 | [`docs/MODULE-CERTIFICATION-PROGRAM.md`](docs/MODULE-CERTIFICATION-PROGRAM.md) | **The programme that finishes the platform** — 52 modules, 8 gates, the 12 laws, the status board. |
 
@@ -318,7 +318,7 @@ clear counter → admin bootstrap check → createSession → redirect
 - 7-day absolute expiry + 24h idle timeout + 5-min refresh throttle.
 - Every session event audited (create, expire, idle, revoke, destroy).
 
-### OTP verification (for future SMS)
+### OTP verification (server path live; phone-code login not offered in the UI — `OTP_ENABLED` unset, see above)
 - Checks ALL active OTPs for a phone+purpose, not just the newest.
   Fixes SMS delivery-order mismatch (user receives OTP #1 after #2).
 - On match: consumes ALL active OTPs for that phone+purpose.
@@ -374,9 +374,12 @@ unrecognised status token is recorded raw rather than guessed. Observed so far:
 ⚠️ **Cloudflare's Browser Integrity Check answers `403 error 1010` to `Java/1.x` user
 agents.** A Configuration Rule (2026-09-16) turns it off for `/api/webhooks/*` only — keep
 it, or every server-to-server webhook from a Java 8 caller is refused before the app sees
-it. 🔴 Even with it, no Blackball delivery callback has reached production yet; the cause
-is on their side. Railway keeps HTTP logs only for the CURRENT deployment. Live state, the
-go-live order and the open vendor questions: `docs/BLACKBALL-SMS.md`.
+it. ✅ Delivery receipts WORK end to end since 2026-09-23: the gateway fires them by itself,
+echoes our `sms_…` reference, and settles the real `SmsMessage` row (11 s on the first
+production send). Railway keeps HTTP logs only for the CURRENT deployment — the audit chain
+is the durable record. Live state, the go-live order and the open vendor questions:
+`docs/BLACKBALL-SMS.md`. Marketing/broadcast SMS is a separate programme, in build:
+`docs/MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md` (no Gaming Board approval needed — Ali, 2026-09-26).
 
 ## Persistence
 
@@ -531,7 +534,8 @@ table, for anything not listed here.
 | `visibility-states-test.mjs` | Top-bar / nav / CTAs per actor (public · player · admin). 44/44. |
 | `responsive-overflow-test.mjs` | 393/768/1024/1280/1440 across all public + auth routes. 70/70. |
 | `i18n-toggle-e2e.mjs` | EN/SW/ZH cookie + localStorage + `<html lang>` round trip + persistence. 13/13. |
-| `report-renderers-smoke.mjs` | Renders every catalogue entry (5 reports × PDF + XLSX) and checks magic bytes. 11/11. |
+| `npm run qa:report-renderers` | Every catalogue report × PDF/XLSX through the real `/api/admin/reports/[id]` route (status, content-type, magic bytes, filename) + the 400/404/anonymous refusals; the seed is checked. Needs `DISABLE_ADMIN_TOTP=true next dev` with no DATABASE_URL; localhost only. |
+| `npm run verify:reports-live` | Every catalogue report built READ-ONLY against PRODUCTION: totals vs rows, numeric tiles, the daily-ops levy tiles vs an independent ledger read. Run as `railway run --service Postgres npm run verify:reports-live` from a deployed checkout — never a `test:*` script. |
 | `break-it-player.mjs` | 23 manipulator scenarios — auth bypass, cookie tampering, stake validation, race, KYC, XSS, privilege escalation. |
 | `break-it-admin.mjs` | 10 admin-portal QA scenarios — anon + player gating, TOTP cookie spoofing, forged Server Actions, CSV gating. |
 | `multi-viewport-audit.mjs` | 99 routes × 4 viewports for layout overflow. |
@@ -579,18 +583,24 @@ full set (36 routes, all double-gated out of production).
   [`docs/DESIGN_AUTHORITY.md`](docs/DESIGN_AUTHORITY.md) first, then
   [`src/app/globals.css`](src/app/globals.css)** (the authoritative
   implementation). Historical note: the `--hero-grad-warm` token was once
-  misnamed but is now correctly a deep royal radial (`globals.css`). Lesson
-  retained: **trust the tokens, not the name** — and never the superseded teal
+  misnamed; it was later corrected to a deep royal radial, and on 2026-09-26 it
+  was DELETED with its only consumer when landing v3 flattened the hero (Ali's
+  ruling R4(1), `docs/design-system/v4-2026-09-26-landing-ten/INHERIT-MANIFEST.md`).
+  Lesson retained: **trust the tokens, not the name** — and never the superseded teal
   kit, which would revert the brand to teal 215 and resurrect the killed light
   theme (audit C9).
-- The Tanzania licensing path (Gaming Board of Tanzania) and the Selcom
-  payment + SMS aggregator are real prerequisites. Don't ship paid flows
-  before both are signed.
+- The Tanzania licensing path (Gaming Board of Tanzania) and the payment
+  aggregator (Selcom) are real prerequisites. SMS is a separate vendor —
+  Blackball, live since 2026-09-16 (`docs/BLACKBALL-SMS.md`).
 
 ## Open hard blockers before public launch
 
-1. **SMS contract** (no OTP delivery in production right now — currently
-   on `console` provider so OTP codes print to stdout).
+1. ~~**SMS contract**~~ — ✅ DONE 2026-09-16/23: Blackball is live
+   (`SMS_PROVIDER=blackball`) and delivery receipts settle real rows. *(This
+   line said OTP was still on `console`, corrected 2026-09-25.)* Marketing
+   SMS needs no Gaming Board approval (Ali, 2026-09-26 — the Board says it is
+   not part of its approval); it waits only on the campaign engine
+   (`docs/MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md`).
 2. **GBT pre-application meeting** (regulator confirmation that the
    pari-mutuel pool model classifies as betting under their license).
 3. **Mobile-money aggregator agreement** — deposit / withdrawal flows
@@ -877,11 +887,14 @@ code comment called itself *"naïve"*. It is gone.
 
 Nothing else. If you find yourself adding a deduction to a player's money, stop.
 
-**✅ RESOLVED 2026-07-15 — tax on what we KEEP.** The ledger and the statutory report
-now levy TRA/GBT on the same base: our actual commission. GGR is computed net of
-refunds (`stakes − payouts − refunds`) so a voided/one-sided poll — where we keep
-nothing — is taxed on nothing. Report == ledger, verified end-to-end. Rates live in
-admin config. See `docs/F6-LIQUIDITY-DESIGN.md` §6.1 and the decision doc.
+**✅ RESOLVED 2026-07-15 — tax on what we KEEP; ⚠️ CORRECTED 2026-09-25.** TRA and GBT
+are levied on our settlement FEE (`levySplit`, payout.ts) and BOOKED per settlement to
+`HOUSE:TRA_LEVY` / `HOUSE:GBT_LEVY`. Every report and the /admin/finance tile READ those
+accounts (`ledger.leviesBooked`); nothing multiplies a rate by GGR. GGR
+(`stakes − payouts − refunds`) is a TURNOVER measure — it still holds stakes on open
+positions — NOT our commission and NOT the levy base. ⛔ The "Report == ledger" line that
+used to stand here was false, and it is how the levy was over-stated ~14× on the finance tile.
+Rates live in admin config. Authority: `docs/SESSION-PROMPT-FINANCE-SEAL.md` §5.
 
 ## Gold budget (June 2026 design authority)
 

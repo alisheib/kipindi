@@ -19,6 +19,7 @@
  * verdict still wins when it already says locked. The belt under this braces is in
  * the hook itself, which refuses `place()` past the lock on every surface.
  */
+import { useEffect, useRef } from "react";
 import { Chip } from "@/components/ui/chip";
 import { useServerNow } from "./round-countdown";
 import { roundPhase, type RoundPhaseState } from "@/lib/updown-card-phase";
@@ -75,9 +76,37 @@ export function RoundActionPanel(props: {
   const nowMs = now ?? serverNowMs;
   const { bettable, locked } = roundPhase({ state, selectionClosesAtMs, closesAtMs: Date.parse(closesAt), nowMs });
 
+  // A pick from the landing band links here with #stake: the player lands ON the stake panel — the bet slip, the side
+  // locked — not two screens above it. The App Router does not scroll to a hash whose element renders after the
+  // navigation commits, so the panel does it once, and takes focus for keyboard and screen-reader users
+  // (frame panel round 3, 2026-09-27: the tap landed on the page's top).
+  // ⚠️ AFTER the router's own scroll: on a client navigation Next scrolls the new segment into view once it has
+  // committed — after this effect — so an immediate scrollIntoView was undone (drive 6: focus moved, the page stayed
+  // at its top). Two frames later the router is done; one settle check covers a slow commit.
+  const stakeRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (!bettable || window.location.hash !== "#stake" || !stakeRef.current) return;
+    // "end", not "start": the panel sits at the bottom of the view (html's scroll-padding-bottom keeps it above the
+    // phone rail), so the countdown and the confirmed price the band promised stay on screen above it (round 4).
+    // A panel taller than half the view lands at its top instead, so its head is never cut.
+    const land = () => {
+      const el = stakeRef.current;
+      if (!el) return;
+      el.scrollIntoView({ block: el.offsetHeight > window.innerHeight / 2 ? "start" : "end" });
+      if (document.activeElement !== el) el.focus({ preventScroll: true });
+    };
+    let raf = requestAnimationFrame(() => { raf = requestAnimationFrame(land); });
+    const settle = window.setTimeout(() => {
+      const top = stakeRef.current?.getBoundingClientRect().top;
+      const r = stakeRef.current?.getBoundingClientRect();
+      if (r && (r.top < 0 || r.bottom > window.innerHeight)) land();
+    }, 400);
+    return () => { cancelAnimationFrame(raf); window.clearTimeout(settle); };
+  }, [bettable]);
+
   if (bettable) {
     return (
-      <section aria-label={props.ariaStake} style={{ ...cardStyle, padding: "14px 16px 16px" }}>
+      <section id="stake" ref={stakeRef} tabIndex={-1} aria-label={props.ariaStake} className="scroll-mt-24" style={{ ...cardStyle, padding: "14px 16px 16px" }}>
         <RoundStakePanel
           {...stakePanel}
           selectionClosesAtMs={selectionClosesAtMs}

@@ -11,6 +11,13 @@
  *   - cross-referrer attribution integrity (recruit of A can't pay B)
  *   - privacy: masked names never leak full displayName / phone
  *
+ * ⚠️ SINCE 2026-09-25 THE PLAYER PROGRAMME PAYS NOTHING WHILE INVITES ARE NOT PAYABLE — since 2026-09-26
+ * the Owner's switch on /admin/affiliate, Not payable by default, under the `inviteRewards` ceiling: every
+ * money assertion here uses a PLAYER referrer and is refused (`player_rewards_withdrawn`) unless the Owner
+ * has made invites payable, or the dev server runs with FEATURE_INVITEREWARDS=ACTIVE (which forces the
+ * switch on). The maintained guards are `test:player-invite-unpaid`
+ * and `test:referral` (docs/PLAYER-INVITE-UNPAID.md §7-§8).
+ *
  * 404 in production. POST, no body.
  */
 import { NextResponse } from "next/server";
@@ -48,8 +55,10 @@ export async function POST() {
     setAffiliateConfig({
       enabled: true,
       commission: { enabled: true, rate: 0.5, windowMonths: 24, capPerRecruitTzs: 3_000 },
-      bonus: { enabled: true, recipient: "BOTH", newAmountTzs: 2_000, referrerAmountTzs: 1_000, trigger: "FIRST_DEPOSIT" },
-      prize: { enabled: true, milestone: "FIRST_BET", depositThresholdTzs: 10_000, amountTzs: 5_000, capPerReferrer: 9_000 },
+      // ⛔ SIGN-UP, never FIRST_DEPOSIT (retired 2026-09-26 — the RG policy: "No bonus offers tied to deposit
+      // increases"). The bonus is paid at bind, so the deposit replay below must add NO bonus row.
+      bonus: { enabled: true, recipient: "BOTH", newAmountTzs: 2_000, referrerAmountTzs: 1_000, trigger: "SIGNUP" },
+      prize: { enabled: true, milestone: "FIRST_BET", amountTzs: 5_000, capPerReferrer: 9_000 },
     } as Partial<AffiliateConfig>, OFFICER);
 
     const A = await mkUser({ displayName: "Alpha One" });

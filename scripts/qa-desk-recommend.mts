@@ -320,7 +320,7 @@ await page.getByRole("button", { name: /^Save · Hifadhi$/ }).first().click();
 await page.waitForTimeout(4500);
 const goLive = await limitsOf();
 const goLiveMissing = EIGHT.filter((e) => String(goLive[e.field]) !== EXPECT.get(e.name));
-ok("9.c · ⭐ SAVE LANDS — on a fresh desk the whole eight go in on one click and one Save, which is the sequence the switch-on sheet asks an officer to perform",
+ok("9.c · ⭐ SAVE LANDS — on a fresh desk the whole eight go in on one click and one Save, which is the sequence the switch-on sheet (deleted 2026-09-26) asked an officer to perform",
   goLiveMissing.length === 0 && goLive.limitsVersion !== freshVersion,
   goLiveMissing.length === 0
     ? `version ${freshVersion} → ${goLive.limitsVersion}; eight=[${EIGHT.map((e) => String(goLive[e.field])).join(",")}]`

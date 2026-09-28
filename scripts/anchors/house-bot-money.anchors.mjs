@@ -353,8 +353,9 @@ export const MUTATIONS = [
   {
     name: "D19-5 · the holder is told about designation again, under another notification kind",
     file: "src/lib/server/house-bot/designation.ts",
-    from: "  await houseAudit(\"house_bot.designated\", officerId, { type: \"HouseBot\", id: written.bot.id }, { botId: written.bot.id, holderUserId: userId });",
-    to: "  await houseAudit(\"house_bot.designated\", officerId, { type: \"HouseBot\", id: written.bot.id }, { botId: written.bot.id, holderUserId: userId });\n  await (await import(\"../notification-service\")).notifyWin(userId, 0, { en: \"x\", sw: \"x\", zh: \"x\" }, \"/positions\");",
+    /* ⚠️ RE-POINTED 2026-09-26: the line now keeps `houseAudit`'s answer (replan ruling 543); the plant is unchanged. */
+    from: "  const designated = await houseAudit(\"house_bot.designated\", officerId, { type: \"HouseBot\", id: written.bot.id }, { botId: written.bot.id, holderUserId: userId });",
+    to: "  const designated = await houseAudit(\"house_bot.designated\", officerId, { type: \"HouseBot\", id: written.bot.id }, { botId: written.bot.id, holderUserId: userId });\n  await (await import(\"../notification-service\")).notifyWin(userId, 0, { en: \"x\", sw: \"x\", zh: \"x\" }, \"/positions\");",
     expect: "4.1d · D19c · designation tells the holder NOTHING",
     suite: "designation-mem",
   },

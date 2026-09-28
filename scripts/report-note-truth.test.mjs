@@ -9,7 +9,8 @@
  * The code has never done that. `src/lib/server/report-money.ts` computes
  *     const ggr = stakes - payouts - refunds;
  * and that file's own header explains why: a refunded stake is still counted in Stakes, so without subtracting it
- * GGR is overstated by the whole refunded amount — AND SO IS THE TRA/GBT LEVY BASE DERIVED FROM IT.
+ * GGR is overstated by the whole refunded amount. (No levy is derived from GGR any more — every
+ * report READS the booked HOUSE:TRA_LEVY / HOUSE:GBT_LEVY; SESSION-PROMPT-FINANCE-SEAL §5.)
  *
  * ⭐ THE PACK WAS ALSO INCONSISTENT WITH ITSELF: two other notes in the same file already said
  * "Sales − Payouts − Refunds" and "− refunded stakes". So the wrong one was not a considered position, it was a

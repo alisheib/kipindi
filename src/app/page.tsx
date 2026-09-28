@@ -13,17 +13,25 @@ import {
 import { getCardCharts } from "@/lib/server/market-history";
 import { getSession } from "@/lib/server/session";
 import { getPlatformStats } from "@/lib/server/platform-stats";
-import { LandingHero } from "@/components/home/landing-hero";
+import { LandingHero, LandingProof } from "@/components/home/landing-hero";
 import { HowItWorks } from "@/components/home/how-it-works";
 import { TopicTiles } from "@/components/home/topic-tiles";
 import { TrustBand } from "@/components/home/trust-band";
-import { RgLine } from "@/components/home/rg-line";
+import { UpdownBand } from "@/components/home/updown-band";
+import { roundStore } from "@/lib/server/updown-dal";
+import { getRoundDetail } from "@/lib/server/updown-board";
+import { pickBandCandidates, walkBandCandidates, toUpdownBandRound } from "@/lib/server/updown-band-round";
 import { Reveal } from "@/components/layout/reveal";
-import { pricedYesPct } from "@/lib/markets/discovery";
+import { shownYesPct } from "@/lib/markets/price-state";
 import { heroFigures, type HeroRow } from "@/lib/markets/hero";
 import { landingComposition, LANDING_GRID_SIZE } from "@/lib/markets/landing";
 import { timeLeftLabel } from "@/lib/markets/time-left";
 import { getServerT } from "@/lib/i18n-server";
+import { getGlobalConfig } from "@/lib/server/market-config";
+import { ratesFrom } from "@/app/legal/rules/_shared";
+import { landingPicks } from "@/lib/server/landing-picks";
+import { db } from "@/lib/server/store";
+import type { LandingMine } from "@/components/home/landing-hero";
 
 export const dynamic = "force-dynamic";
 
@@ -54,7 +62,8 @@ export const metadata: Metadata = {
  *
  * ── THE COMPOSITION, AND WHY IT IS IN THIS ORDER ──────────────────────────────────────────────
  * hero → how it works → pick a side (grid) → browse by topic → Up & Down → why it can be trusted
- * (+ the settled strip and the RG line inside that last act) → footer.
+ * (+ the settled strip inside that last act) → footer. The RG line that closed the act is gone since
+ * landing v3 (R4(5)): the 18+ roundel and the RG motto sit in the hero's trust lines and the footer.
  *
  * The purpose is a funnel: show what Tanzania is actually predicting today, THEN teach the
  * mechanic, THEN prove the results are trustworthy. Up & Down moves BELOW the grid — it was
@@ -85,7 +94,7 @@ export const metadata: Metadata = {
  * NAMES the lens, so the grid is a claim rather than a sample (kit §1c).
  */
 export default async function LandingPage() {
-  const [{ t, locale }, liveRaw, updownLiveRaw, session, stats] = await Promise.all([
+  const [{ t, locale }, liveRaw, updownLiveRaw, session, stats, rules] = await Promise.all([
     getServerT(),
     listMarkets({ status: "LIVE" }).catch(() => [] as Awaited<ReturnType<typeof listMarkets>>),
     // The fast game is its own product line, so it never appears in the poll list above.
@@ -93,6 +102,9 @@ export default async function LandingPage() {
     listMarkets({ status: "LIVE", productLine: "UPDOWN" }).catch(() => [] as Awaited<ReturnType<typeof listMarkets>>),
     getSession(),
     getPlatformStats(),
+    // The rates every rule on this page quotes — the fee in "how it works" — from the SAME function
+    // the binding /legal/rules page reads them through (landing v3, WP11). Never a literal.
+    getGlobalConfig().then(ratesFrom),
   ]);
   const nowMs = Date.now();
   const liveAll = liveRaw.filter((m) => !isClosedByTime(m));
@@ -110,7 +122,8 @@ export default async function LandingPage() {
   // being dropped for a reason not visible from any public surface, and that needs a database read
   // this change cannot make. What is fixed here is the contradiction the page could see about
   // itself; the residual is recorded, not papered over.
-  const updownLiveCount = updownLiveRaw.filter((m) => !isSelectionClosed(m)).length;
+  const updownOpen = updownLiveRaw.filter((m) => !isSelectionClosed(m));
+  const updownLiveCount = updownOpen.length;
 
   // ── ONE decorated board read, four consumers ────────────────────────────────────────────────
   // The hero's figures, the grid, the topic tiles and the cards all fold over THIS array. Every
@@ -121,9 +134,10 @@ export default async function LandingPage() {
     category: m.category,
     pool: m.yesPool + m.noPool,
     predictors: m.predictorCount,
-    yesPct: pricedYesPct(m.yesPool, m.noPool),
-    // The hero sorts by `closing` only, which never reads move24h — and we have no 24h baseline
-    // at this point in the render. A-5: absent, not invented.
+    // The printable price, or null — the same rule as the card and `/markets` (`price-state.ts`, WP6).
+    yesPct: shownYesPct(m.yesPool, m.noPool),
+    // The hero's lens (price tier, then `close` / `closing`) never reads move24h — and we have no
+    // 24h baseline at this point in the render. A-5: absent, not invented.
     move24h: undefined,
     createdAtMs: Date.parse(m.createdAt),
     bettableUntilMs: Date.parse(m.selectionClosedAt ?? m.resolutionAt),
@@ -160,15 +174,41 @@ export default async function LandingPage() {
   // the landing page would draw — so it read the ENTIRE Position table, every render.
   // Waiting one round-trip to learn the ids buys an indexed lookup instead of an
   // unbounded scan that grows forever (positions are never pruned).
-  // ⛔ The hero's featured market is chosen by "closing soonest" across the whole open book, so
+  // ⛔ The hero's featured market is chosen by the hero's own lens across the whole open book, so
   // it is not necessarily one of the grid's — it joins the id list explicitly rather than being
   // fetched separately, which would be a second unbounded read.
   const drawnIds = [...new Set([...comp.grid.map((r) => r.id), ...heroIds])];
-  const traderMap = await traderSeedsByMarket(drawnIds)
-    .catch(() => new Map() as Awaited<ReturnType<typeof traderSeedsByMarket>>);
-  // One query for the whole board — never map getCardChart across a list.
-  const cardCharts = await getCardCharts(drawnIds).catch(() => new Map());
+  // ── The Up & Down band's live round (landing v3, WP12 · R5, the Match) ─────────────────────────
+  // A round a reader can still ACT on (≥ 2 minutes of betting left — the band is five sections down)
+  // that has something to SHOW (a confirmed read after its open); the shortest duration wins, the kick-off
+  // state is the fallback. The rule and the walk live in `updown-band-round.ts` (`test:updown-match` §9).
+  // Each read goes through the same `getRoundDetail` the round page renders from, so the band and
+  // /updown/[id] cannot describe one round two ways — usually one read, never more than three. A failed
+  // read is not a zero: with no readable round the band keeps its copy and its link to /updown.
+  // ⭐ Started beside the cards' reads rather than after them — it depends on nothing they return.
+  const readUdRound = () => walkBandCandidates(pickBandCandidates(updownOpen, nowMs), nowMs, (m) =>
+    roundStore.getByMarketId(m.id).then((r) => (r ? getRoundDetail(r.id) : null)));
+  const [traderMap, cardCharts, udDetail] = await Promise.all([
+    traderSeedsByMarket(drawnIds).catch(() => new Map() as Awaited<ReturnType<typeof traderSeedsByMarket>>),
+    // One query for the whole board — never map getCardChart across a list.
+    getCardCharts(drawnIds).catch(() => new Map()),
+    readUdRound().catch(() => null),
+  ]);
+  const udRound = udDetail ? toUpdownBandRound(udDetail, locale) : null;
   const isAuthed = !!session;
+  // ⭐ WP14 part 2 · the signed-in hero's own reads, in parallel. Each fails to NULL on its own, and a
+  // null part renders nothing (B-1: a failed read is not a zero). The wallet row is the same one the
+  // header reads (app-shell), so the hero's balance and the chip cannot disagree.
+  const mine: LandingMine | null = session
+    ? await Promise.all([
+        landingPicks(session.userId, nowMs).catch(() => null),
+        Promise.resolve().then(() => db.wallet.findByUserId(session.userId)).catch(() => undefined),
+      ]).then(([picks, wallet]) => ({
+        picks,
+        balance: wallet === undefined ? null : (wallet?.balance ?? 0),
+        held: !!wallet && wallet.status !== "ACTIVE",
+      }))
+    : null;
 
   // ONE definition, shared with the hero and /markets — this was a fifth copy of the same nine
   // lines, and the copies had drifted (three could render "0m left" on a market still taking
@@ -191,13 +231,18 @@ export default async function LandingPage() {
         t={t}
         locale={locale}
         isAuthed={isAuthed}
-        paidOutTzs={stats.paidOutTzs}
         nowMs={nowMs}
         cards={{ charts: cardCharts, traders: traderMap }}
+        mine={mine}
       />
 
+      {/* ── §1a′ THE PROOF — the three figures, the whole board's conviction, the closing-soonest
+          board. Directly under the hero since v3, so the hero's first screen is the pitch and a
+          live market (WP2 / V15). */}
+      <LandingProof figures={figures} t={t} locale={locale} paidOutTzs={stats.paidOutTzs} />
+
       {/* ── §1b HOW IT WORKS — chapter break: tinted band, 144 from the hero ───────────────── */}
-      <HowItWorks t={t} />
+      <HowItWorks t={t} feePct={rules.commissionPct} />
 
       {/* ── §1c PICK A SIDE NOW + §1d BROWSE BY TOPIC — one section, one surface, 48 between ── */}
       {/* 2026-09-13 — threshold 0: on a phone this band is so tall that 12% of it never fits the
@@ -263,17 +308,14 @@ export default async function LandingPage() {
                     titleSw={r.titleSw}
                     titleZh={r.titleZh}
                     category={r.category}
-                    /* The card owns its own cold-start gate (`noPrice = volume === 0`), so the
-                       fallback here is unreachable — and it is 0 rather than 50 deliberately: a
-                       50 would look like a price and ship, a 0 is visibly absurd and gets caught.
-                       🔴 THE COMMENT WAS TRUE AND THE CODE WAS NOT (fixed 2026-09-03, PV-06
-                       sweep). This read `?? impliedYesPct({…})`, which returns exactly the
-                       hardcoded **50** the sentence above says it deliberately avoids — so the
-                       one safeguard here was a stale note describing code that had drifted out
-                       from under it. `?? 0` is now what it claims to be, and this file no longer
-                       reaches for the fabricating function at all. */
-                    yesPct={r.yesPct ?? 0}
-                    volume={r.pool}
+                    /* 🔴 THE POOLS, NOT `yesPct ?? 0` (landing v3 WP6). The fallback was meant as a
+                       tripwire — "a 0 is visibly absurd and gets caught" — and it was not: on this
+                       card a 0 renders as "NDIO 0% · HAPANA @ 100%", exactly what a one-sided market
+                       produces naturally, so the tripwire and the defect were the same number
+                       (MOBILE-VISUAL ruling 13). The card now derives its price state from the
+                       pools itself; there is nothing left here to fall back from. */
+                    yesPool={r.yesPool}
+                    noPool={r.noPool}
                     predictors={r.predictors}
                     timeLeft={r.selectionClosed ? t.home.waitingForResults : timeLeftStr(r.bettableUntilMs)}
                     status="LIVE"
@@ -290,73 +332,22 @@ export default async function LandingPage() {
 
             {/* 48px below the grid, same surface — it belongs to this section (kit §1d). */}
             <div style={{ marginTop: "var(--rh-close)" }}>
-              <TopicTiles topics={comp.topics} t={t} openCount={figures.openCount} />
+              <TopicTiles topics={comp.topics} t={t} />
             </div>
           </div>
         </Reveal>
       )}
 
-      {/* ── §1e UP & DOWN — 920 centred inside the 1280 column ────────────────────────────────
-          The fast game is a separate product line and never appears in the poll lists, so the
-          landing promotes it explicitly (it was otherwise invisible to a new visitor). Its
-          max-width is the whole fix for the ~500px hole a full-width two-item flex row left
-          at 1440. */}
-      <Reveal band="updown" className="kp-band kp-band--tight kp-band--closes">
-        <div className="kp-band__inner">
-          <Link href={"/updown" as never} className="kp-updown group">
-            <div className="kp-updown__row">
-              <div className="min-w-0">
-                <p className="kp-hero__eyebrow text-balance" style={{ marginBottom: "var(--sp-1)" }}>
-                  <span className="live-dot" /> {t.home.updownEyebrow}
-                </p>
-                <h2 className="kp-shead__h text-balance" style={{ marginTop: 0 }}>{t.market.udTitle}</h2>
-                <p className="kp-trust__b" style={{ maxWidth: "52ch" }}>{t.market.udTagline}</p>
-                <p className="kp-topic__m" style={{ paddingLeft: 0, marginTop: "var(--sp-2)" }}>
-                  {updownLiveCount > 0
-                    ? <span className="kp-topic__live">{fill(t.home.updownRoundsLive, { n: updownLiveCount })}</span>
-                    : t.home.updownStartsSoon}
-                </p>
-              </div>
-              {/* `max-w-full whitespace-normal`: the button is nowrap by its own class AND `shrink-0`,
-                  so at a 180px viewport (200% zoom) it stayed 229px wide and was the single widest
-                  thing on the document. It keeps `shrink-0` so it does not compress beside the copy
-                  at ordinary widths — it simply stops being allowed to exceed its container, and
-                  wraps to a second line only when it truly cannot fit. */}
-              {/* 🔴 `whitespace-normal` NEVER TOOK EFFECT. Re-measured on production: computed
-                  white-space stayed `nowrap` with the class present. The utility lives in
-                  `@layer utilities` and `.btn` is unlayered — and a cascade layer loses to unlayered
-                  CSS outright, regardless of specificity. The class was in the markup, the diff read
-                  correct, and the button was still 229px.
-                  An inline style is the one mechanism that cannot lose here, and it is scoped to this
-                  call site rather than changing `.btn` for every button on the platform. */}
-              <span className="btn btn-primary btn-lg shrink-0 max-w-full" style={{ whiteSpace: "normal" }}>
-                <I.trendingUp s={16} /> {t.home.updownCta}
-                <I.chevronRight s={14} />
-              </span>
-            </div>
-          </Link>
-        </div>
-      </Reveal>
+      {/* ── §1e UP & DOWN — one live round as a match, full width (landing v3, WP12; R4(6), R5) ── */}
+      <UpdownBand t={t} locale={locale} liveCount={updownLiveCount} round={udRound} />
 
-      {/* ── §1f WHY THE RESULT CAN BE TRUSTED + §1g SETTLED + §1h RG ──────────────────────────
+      {/* ── §1f WHY THE RESULT CAN BE TRUSTED + §1g SETTLED ────────────────────────────────────
           Chapter break: tinted band, 144 from Up & Down, and it runs continuously into the
-          footer's own claret rule (hence `--seam`). The settled strip and the RG line are parts
-          of this act, not two more sections. */}
-      <TrustBand t={t} locale={locale} settlements={stats.recentSettlements.slice(0, 5)} />
-
-      {/* The RG line sits inside the trust surface, above the footer. Rendered in its own
-          container so the band above can close its own padding.
-          ⭐ NO `paddingBottom` HERE — batch 4. `<PublicFooter>` (rendered by `app-shell.tsx`,
-          outside this page) opens with `mt-12`, and on THIS project's spacing scale that is
-          **128px**, not the 48px the Tailwind default would suggest (`tailwind.config.ts:200-215`,
-          where `"12": "128px"` is the last row — this citation said `:176` and had drifted).
-          A `--rh-close` here stacked on top of it, giving 176px of measured blank below a
-          one-line strip. The gap into the footer is the footer's own margin, on every page. */}
-      <div className="kp-band kp-band--overlay kp-band--seam" style={{ paddingBlock: 0, borderTop: 0 }}>
-        <div className="kp-band__inner">
-          <RgLine />
-        </div>
-      </div>
+          footer's own claret rule (hence `--seam`). The settled strip is part of this act, not
+          another section. */}
+      <TrustBand t={t} locale={locale} settlements={stats.recentSettlements.slice(0, 5)} nowMs={nowMs} />
+      {/* ⛔ NO RG LINE HERE ANY MORE (landing v3, R4(5)). The 18+ roundel and the RG motto sit in the
+          hero's trust lines — on the first screen — and in the footer, which follows directly. */}
     </div>
   );
 }

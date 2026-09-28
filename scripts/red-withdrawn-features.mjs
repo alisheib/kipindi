@@ -5,9 +5,9 @@
  *
  * ⛔ BUILD THE CONTROL BEFORE BELIEVING THE GATE. The coverage rule sits at ZERO offenders at
  * HEAD, and a gate at zero is indistinguishable from a gate that cannot find anything. Each
- * mutation is a realistic half-shipping of this withdrawal — one entry point left behind, or the
- * page checking too late — and the gate must catch it BY THE NAMED SECTION, never merely by
- * exiting non-zero. ⚠️ A crash and a catch both exit 1.
+ * mutation is a realistic way an invite entry point ships ungated (one surface that stops asking the
+ * eligibility seam, or a page that asks too late), and the gate must catch it BY THE NAMED SECTION,
+ * never merely by exiting non-zero. ⚠️ A crash and a catch both exit 1.
  *
  * ⭐ SUCCESSOR TO `red-invite-coming-soon.mjs`, retired with its suite. Its anchors quoted source
  * lines this withdrawal deleted, so it could no longer inject at all — and a red harness that

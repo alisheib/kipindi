@@ -30,6 +30,7 @@
  *
  * @see src/lib/server/house-console-read.ts · src/lib/house-bot/console-routes.ts · plans/house-bots/C7-SPEC.md
  */
+import { Fragment } from "react";
 import type { Route } from "next";
 import { WayOutLink } from "../way-out-link";
 import Link from "next/link";
@@ -39,6 +40,8 @@ import { AdminPageGate } from "@/components/admin/admin-section-gate";
 import { AdminBody } from "@/components/admin/admin-body";
 import { AdminTableEmpty } from "@/components/admin/admin-table-empty";
 import { AdminPagination, buildBaseHref } from "@/components/admin/admin-pagination";
+import { SortTh } from "@/components/admin/admin-sort";
+import { CardSortControl } from "@/components/admin/card-sort-control";
 import { Callout } from "@/components/ui/callout";
 import { Chip } from "@/components/ui/chip";
 import { FormColumn } from "@/components/ui/form-column";
@@ -48,7 +51,7 @@ import { currentSession } from "@/lib/server/auth-service";
 import { CONSOLE_REFUSAL_TITLE, houseDetailForConsole, houseWhyIdleForConsole, type ConsoleDetailView, type ConsoleQuery, type ConsoleRuleRow } from "@/lib/server/house-console-read";
 import { ActivityFilters } from "../activity-filters";
 import { CONSOLE_DETAIL_TABS, CONSOLE_LIMITS_FIRST_UNSET_HREF, CONSOLE_ROUTE, consoleBotTabHref, consoleDetailTab, consoleWhyHref } from "@/lib/house-bot/console-routes";
-import { UsageBar } from "../page";
+import { NOTED_ROW, NOTE_ROW, UsageBar } from "../page";
 /* ⛔ THE PAGE OWNS THE IMPORT OF THE ACTION AND HANDS IT DOWN (ruling 422): a client component under
  * `src/app/admin` that imports an actions module is in `test:admin-act-gate`'s population and must consult the
  * act gate — and on an Owner-only route `mayAct` IS `mayView`, so that consultation would be a branch that can
@@ -56,6 +59,7 @@ import { UsageBar } from "../page";
 import { runDeskAccountAction, saveBotRulesAction } from "../actions";
 import { DeskRulesForm } from "./rules-form";
 import { DeskAccountActions } from "./account-actions";
+import { AccountWhyPanel } from "./why-panel";
 
 /** ⛔ A static neutral title (ruling 402). The account's own label is a GATED value and never reaches the tab. */
 export const metadata = { title: "Admin · Desk" };
@@ -360,33 +364,10 @@ async function AdminDeskAccountContent({
           )}
         </AdminCard>
 
-        {/* ⭐ THE ANSWER, IN THE CONSOLE'S OWN SENTENCES. Every line here is `CONSOLE_SKIP_SENTENCE` — the
-            engine's outcomes in the officer's words, from the one copy home (rulings 370(c), 453) — so a screen
-            and a feed never describe the same refusal two ways. ⛔ The count column is `shrink-0` beside a
-            `min-w-0` sentence (432(b)): a long reason wraps, the number never does. */}
-        {!view.removed && (
-          /* ⛔ THE GUARD IS THE PANEL'S OWN FIRST TERM, IN THE FORM 1.435 COUNTS (433(e)) — and the fragment
-             is what keeps it there. `{!view.removed && why && (` guards this card just as truly, but the pin
-             reads a literal shape, and a guard the instrument cannot see is a guard nobody will notice the
-             loss of. ⚠️ `why` is ALSO null on a removed account, because the door refuses one; that is a
-             second, independent answer, not this one. */
-          <>{why && (
-            <Callout tone="neutral" title="Why is it not staking?">
-              {why.headline}
-              {why.reasons.length > 0 && (
-                <ul className="mt-3 space-y-1">
-                  {why.reasons.map((r) => (
-                    <li key={r.text} className="flex items-baseline justify-between gap-4">
-                      <span className="min-w-0">{r.text}</span>
-                      <span className="tabular-nums shrink-0">{r.markets}</span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-              {why.scanned && <p className="text-caption mt-3">{why.scanned}</p>}
-            </Callout>
-          )}</>
-        )}
+        {/* ⭐ THE ANSWER, AND ITS `removed` GUARD, LIVE IN `AccountWhyPanel` (2026-09-26) — where the suite can
+            RENDER it (1.435b). As a bare wrapper here the guard could never fail: the door already refuses a
+            removed account, so deleting it changed nothing any instrument could see. */}
+        <AccountWhyPanel removed={view.removed} why={why} />
 
         {/* 358 · A REMOVED ACCOUNT IS READ-ONLY, AND THE CALLOUT IS THE STATE — not a failure and not an empty page.
             No action row is rendered here at all, because there is no action left to take. */}
@@ -575,7 +556,11 @@ async function AdminDeskAccountContent({
           {/* ⭐ C7 STEP 5 · WHAT THIS ACCOUNT HAS TRIED TO STAKE, NEWEST FIRST, WITH WHAT HAPPENED TO EACH.
               ⛔ THE RAIL IS A DUMB RENDERER AND EVERY LINK IN IT IS SERVER-BUILT (319, 453): it types no route,
               no closed list and no label, so the control an officer clicks is built from the SAME parse the read
-              is taken with. ⛔ ONE `data-filter-rail` under this section and it is NOT on the `<Tabs>`.
+              is taken with. ⛔ ONE filter-rail FILE under this section (`activity-filters.tsx`), and no rail
+              hook on the `<Tabs>`. With rows, the panel renders TWO `data-filter-rail`s, by design (ruling 410 as
+              amended 2026-09-27): this one, and the kit's phone sort rail inside the card below (in the page at
+              every width, shown below `sm` only, not drawn over an empty ledger) — exactly one of each, pinned
+              by the console suite's 1.410.
               ⛔ THE MONEY IS ONE INTENT'S OWN STAKE, SECOND COLUMN, NEVER A SUM (266, 360 role C, 373) — and no
               row carries `why`, `decision` or a trigger player's id, for the reasons the reader states by name. */}
           {!view.removed && (<>
@@ -595,21 +580,32 @@ async function AdminDeskAccountContent({
                 <div className="px-4 pt-4">
                   <p className="text-body-sm text-text-tertiary">{view.feedOrderNote}</p>
                 </div>
+                {/* ⭐ THE PHONE'S SORT CONTROL (Ali, 2026-09-27) — the desk-wide ledger's own decision, which carries the
+                    full argument: below `sm` the header row is not drawn, so the kit's card sort rail stands in its
+                    place, fed from the SAME sort view, parameters and route as the `SortTh` headers below (one address
+                    per column); drawn below `sm` only, never on an empty table, its breakpoint on the wrapper so a press
+                    fades the rows exactly as a header's does, at the non-dense rank the 40px tap floor needs. */}
+                {feedRows.length > 0 && (
+                  <div className="sm:hidden">
+                    <CardSortControl basePath={`${CONSOLE_ROUTE}/${view.id}`} railId="account-activity-sort" prefix={view.feedSort.prefix} current={view.feedSort.current} dir={view.feedSort.dir} sp={view.feedParams} options={Object.values(view.feedSort.columns)} rank="secondary" />
+                  </div>
+                )}
                 <ScrollX label="Account activity">
                   {/* ⭐ THE MONEY ANSWERS FIT ON A PHONE, AND THE LEVER IS PADDING — the whole argument is at the
                       desk-wide table's own activity table, which carries the same two classes for the same reason:
                       `.admin-tbl td`/`th` are (0,1,1) with 16px gutters, so the `p-3` below is DEAD, and halving
-                      the gutter at phone width buys back more strip than the type could. `sm:` restores the kit's
-                      own 16px, so every width that already read well is unchanged. */}
-                  <table className="admin-tbl [&_td]:!px-1.5 [&_th]:!px-1.5 sm:[&_td]:!px-2 sm:[&_th]:!px-2 max-sm:!text-caption">
+                      the gutter at phone width buys back more strip than the type could. Since 2026-09-26 the same
+                      8px gutter holds at every width, with Type and Note out of their columns — one ledger shape on
+                      both pages (RESUME-HERE §0c decision 2). */}
+                  <table className="admin-tbl [&_td]:!px-1.5 [&_th]:!px-1.5 max-sm:!text-caption">
                     <thead className="max-sm:hidden font-mono text-micro eyebrow uppercase text-text-tertiary border-b border-border-subtle bg-bg-sunken/50">
                       <tr>
                         {/* ⭐ LOWERED AT PHONE WIDTH ONLY so the second money answer reaches the strip. The
                             timestamp keeps its nowrap either way — 432(b) forbids clipping a time, and the
                             due sub-line under it is the one part allowed to wrap. */}
-                        <th scope="col" className="text-left p-3 min-w-[104px] sm:min-w-[128px]">When (EAT)</th>
+                        <SortTh field={view.feedSort.columns.when.field} label={view.feedSort.columns.when.label} current={view.feedSort.current} dir={view.feedSort.dir} sp={view.feedParams} baseHref={`${CONSOLE_ROUTE}/${view.id}`} prefix={view.feedSort.prefix} className="p-3 min-w-[104px] sm:min-w-[128px]" />
                         <th scope="col" className="text-right p-3 !whitespace-normal">Opening</th>
-                        <th scope="col" className="text-right p-3 !whitespace-normal">Stake</th>
+                        <SortTh field={view.feedSort.columns.stake.field} label={view.feedSort.columns.stake.label} current={view.feedSort.current} dir={view.feedSort.dir} sp={view.feedParams} baseHref={`${CONSOLE_ROUTE}/${view.id}`} prefix={view.feedSort.prefix} align="right" className="p-3 !whitespace-normal" />
                         {/* ⭐ THE DAY'S BUDGET, FALLING (owner, 2026-09-24). The CEILING is named here and not in
                             the cell — ruling 373's own named fallback for a third money cell, and the reason it
                             exists: two figures in one narrow cell is what put the money off a 360 screen before.
@@ -621,8 +617,9 @@ async function AdminDeskAccountContent({
                             paints a STATE, the roster still carries no balance, and no player surface carries it. */}
                         <th scope="col" className="text-right p-3 !whitespace-normal">Closing</th>
                         <th scope="col" className="text-right p-3 !whitespace-normal">Left today</th>
-                        <th scope="col" className="text-left p-3 min-w-[110px]">Outcome</th>
-                        <th scope="col" className="text-left p-3">Type</th>
+                        {/* ⭐ THE STAKE'S TYPE IS THIS CELL'S SECOND LINE, IN PLAIN WORDS — the desk-wide table's
+                            own decision (2026-09-26), so the two ledgers keep one shape. */}
+                        <SortTh field={view.feedSort.columns.outcome.field} label={view.feedSort.columns.outcome.label} current={view.feedSort.current} dir={view.feedSort.dir} sp={view.feedParams} baseHref={`${CONSOLE_ROUTE}/${view.id}`} prefix={view.feedSort.prefix} className="p-3 min-w-[110px]" />
                         {/* ⛔ BESIDE PRODUCT, NOT FIRST. The visual gate's §5.2 contract measures the first
                             THREE cells — today When · Stake · Outcome — and asserts the subject and the first
                             money answer are in the 360 strip without scrolling. Putting the game there would
@@ -630,18 +627,21 @@ async function AdminDeskAccountContent({
                             glance. Here it reads with Product, the other fact about what was played on. */}
                         <th scope="col" className="text-left p-3">Round</th>
                         <th scope="col" className="text-left p-3 !whitespace-normal">Game</th>
-                        <th scope="col" className="text-left p-3 !whitespace-normal">Note</th>
+                        {/* ⭐ NO `Note` COLUMN — a row that carries a note gets its own full-width line beneath it. */}
                       </tr>
                     </thead>
                     <tbody>
                       {feedRows.length === 0 ? (
-                        <AdminTableEmpty colSpan={10} title={view.feedEmpty.title} body={view.feedEmpty.body} />
+                        <AdminTableEmpty colSpan={8} title={view.feedEmpty.title} body={view.feedEmpty.body} />
                       ) : (
                         feedRows.map((r, i) => (
                           /* ⛔ THE BELL'S OWN ROW IS MARKED BY A FLAG, NEVER BY ITS ID. An id in an attribute is
                              served markup, and a bounded record id is the one thing D19 says this section may
-                             never put in a response. */
-                          <tr key={`${r.whenTitle}-${i}`} className={`border-b border-border-subtle${r.anchored ? " bg-bg-overlay" : ""}`}>
+                             never put in a response.
+                             ⭐ ONE RECORD, UP TO TWO ROWS — the row and its note's own line; the classes that make
+                             the pair read as one live beside the desk-wide table, which renders the same shape. */
+                          <Fragment key={`${r.whenTitle}-${i}`}>
+                          <tr className={`border-b border-border-subtle${r.note !== null ? NOTED_ROW : ""}${r.anchored ? " bg-bg-overlay" : ""}`}>
                             {/* ⭐ THE PHONE'S OWN ROW SHAPE (owner, 2026-09-25). MEASURED, not preferred: with three
                                 money columns the third cell ended at 357 against a 339px strip — and that was with an
                                 em dash in it. A 9-column table cannot be read on a 360px phone by narrowing columns,
@@ -650,7 +650,7 @@ async function AdminDeskAccountContent({
                                 ⛔ ONE VIEW MODEL, TWO LAYOUTS — every string here is the same painted field the
                                 cells above use. Nothing is re-derived, re-formatted or re-worded for the phone, so
                                 the two shapes cannot drift into saying different things about one row. */}
-                            <td className="sm:hidden p-3" colSpan={10}>
+                            <td className="sm:hidden p-3" colSpan={8}>
                               <div className="flex items-start justify-between gap-2">
                                 {/* ⛔ THE SAME THREE BRANCHES THE WIDE TABLE PAINTS, in the same order and with the
                                     same words — a row with no stored title still gets its DOOR, because the market is
@@ -735,8 +735,11 @@ async function AdminDeskAccountContent({
                                 ended the officer wants the next fact, so the same chip becomes Won / Lost / Void.
                                 ⛔ ONE CHIP, NOT TWO — a second badge beside the first is how two states come to
                                 disagree about one row. A stake still running has no result and keeps "Placed". */}
-                            <td className="hidden sm:table-cell p-3"><Chip size="sm" variant={r.resultChip ?? r.statusChip}>{r.resultWord ?? r.statusWord}</Chip></td>
-                            <td className="hidden sm:table-cell p-3 text-text">{r.typeWord}</td>
+                            <td className="hidden sm:table-cell p-3">
+                              <Chip size="sm" variant={r.resultChip ?? r.statusChip}>{r.resultWord ?? r.statusWord}</Chip>
+                              {/* The stake's type, as the chip's second line in plain words — never a second chip. */}
+                              <span className="block mt-1 text-body-sm text-text-secondary">{r.typeWord}</span>
+                            </td>
                             {/* ⚠️ BESIDE THE GAME, because a round number is not unique on its own — each Up & Down chain counts its
                                 own, so `#1524` exists once per chain and identifies a round only with its game next to it. */}
                             <td className="hidden sm:table-cell p-3 tabular text-text-secondary">{r.roundNo ?? <span className="text-text-tertiary">—</span>}</td>
@@ -754,8 +757,17 @@ async function AdminDeskAccountContent({
                                 </Link>
                               )}
                             </td>
-                            <td className="hidden sm:table-cell p-3 text-text-secondary">{r.note ?? "—"}</td>
                           </tr>
+                          {/* ⭐ THE NOTE'S OWN LINE, from `sm` up and only on a row that carries one — the desk-wide
+                              table's shape, held to a reading measure beneath its row. */}
+                          {r.note !== null && (
+                            <tr className={`${NOTE_ROW}${r.anchored ? " bg-bg-overlay" : ""}`}>
+                              <td colSpan={8} className="!pt-0">
+                                <div className="max-w-[min(80ch,calc(100vw_-_4rem))] whitespace-normal text-body-sm text-text-secondary">{r.note}</div>
+                              </td>
+                            </tr>
+                          )}
+                          </Fragment>
                         ))
                       )}
                     </tbody>
@@ -835,9 +847,9 @@ async function AdminDeskAccountContent({
                 <table className="admin-tbl">
                   <thead className="font-mono text-micro eyebrow uppercase text-text-tertiary border-b border-border-subtle bg-bg-sunken/50">
                     <tr>
-                      <th scope="col" className="text-left p-3 min-w-[150px]">Poll</th>
-                      <th scope="col" className="text-left p-3 min-w-[128px]">Status</th>
-                      <th scope="col" className="text-left p-3 !whitespace-normal">Last change</th>
+                      <SortTh field={view.targetsSort.columns.poll.field} label={view.targetsSort.columns.poll.label} current={view.targetsSort.current} dir={view.targetsSort.dir} sp={view.targetsParams} baseHref={`${CONSOLE_ROUTE}/${view.id}`} prefix={view.targetsSort.prefix} className="p-3 min-w-[150px]" />
+                      <SortTh field={view.targetsSort.columns.status.field} label={view.targetsSort.columns.status.label} current={view.targetsSort.current} dir={view.targetsSort.dir} sp={view.targetsParams} baseHref={`${CONSOLE_ROUTE}/${view.id}`} prefix={view.targetsSort.prefix} className="p-3 min-w-[128px]" />
+                      <SortTh field={view.targetsSort.columns.lastChange.field} label={view.targetsSort.columns.lastChange.label} current={view.targetsSort.current} dir={view.targetsSort.dir} sp={view.targetsParams} baseHref={`${CONSOLE_ROUTE}/${view.id}`} prefix={view.targetsSort.prefix} className="p-3 !whitespace-normal" />
                     </tr>
                   </thead>
                   <tbody>
@@ -883,7 +895,7 @@ async function AdminDeskAccountContent({
                   page={view.targetsPage}
                   perPage={view.targetsPerPage}
                   param="tpage"
-                  baseHref={buildBaseHref(`${CONSOLE_ROUTE}/${view.id}`, { tab: "targets" }, "tpage")}
+                  baseHref={buildBaseHref(`${CONSOLE_ROUTE}/${view.id}`, view.targetsParams, "tpage")}
                 />
               </div>
             )}
@@ -911,7 +923,7 @@ async function AdminDeskAccountContent({
                   <table className="admin-tbl">
                     <thead className="font-mono text-micro eyebrow uppercase text-text-tertiary border-b border-border-subtle bg-bg-sunken/50">
                       <tr>
-                        <th scope="col" className="text-left p-3 min-w-[128px]">When (EAT)</th>
+                        <SortTh field={view.historySort.columns.when.field} label={view.historySort.columns.when.label} current={view.historySort.current} dir={view.historySort.dir} sp={view.historyParams} baseHref={`${CONSOLE_ROUTE}/${view.id}`} prefix={view.historySort.prefix} className="p-3 min-w-[128px]" />
                         <th scope="col" className="text-left p-3 !whitespace-normal">Event</th>
                         <th scope="col" className="text-left p-3">Change</th>
                         <th scope="col" className="text-left p-3 !whitespace-normal">Who</th>

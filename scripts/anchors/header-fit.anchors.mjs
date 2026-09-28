@@ -50,7 +50,7 @@ export const MUTATIONS = [
     why: "the Deposit label renders at the lg–xl band again — 108px in EN, 103px in SW — and pushes the account menu off the right edge on every page",
     file: BAR,
     suite: "header-fit",
-    from: `<span className="hidden xl:inline">`,
-    to: `<span className="inline">`,
+    from: `<span className={funded ? "hidden xl:inline" : "inline"}>`,
+    to: `<span className={funded ? "hidden lg:inline" : "inline"}>`,
   },
 ];

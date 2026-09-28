@@ -1,7 +1,11 @@
 /**
  * WITHDRAWN FEATURES — the guard that makes the withdrawal REAL rather than merely invisible.
  *
- * Invite and the bonus wallet are withdrawn from the player product (`src/lib/feature-state.ts`).
+ * The bonus wallet is withdrawn from the player product (`src/lib/feature-state.ts`), and the MONEY
+ * half of the player invite pays nothing by default: `inviteRewards` was WITHDRAWN from 2026-09-25 and
+ * since 2026-09-26 is the Owner's Payable / Not payable switch, Not payable until he acts, with
+ * `FEATURE_INVITEREWARDS` as its outer ceiling (§4 drives both directions). The invite SURFACE (`invite`)
+ * has been ACTIVE since 2026-09-25; see docs/PLAYER-INVITE-UNPAID.md.
  * Hiding surfaces is the easy half. This suite measures the two halves that actually matter:
  *
  *   LAW 1 — GATE THE OFFER, NEVER THE REFUSAL.  A feature flag may hide something we GIVE.
@@ -29,7 +33,10 @@ import { join } from "node:path";
 // ⛔ ONE HOME FOR COMMENT-STRIPPING — `test:decomment` §2.1 exists because two suites shipped
 // private four-line strippers. A note ABOUT a link must never be read as a link.
 import { decomment } from "./lib/decomment.mts";
-import { inviteIsLiveFor, bonusIsLiveFor, inviteStateFor, playerInviteRewardsLive } from "../src/lib/feature-state.ts";
+import { inviteIsLiveFor, bonusIsLiveFor, inviteStateFor, inviteRewardsCeiling } from "../src/lib/feature-state.ts";
+// ⭐ 2026-09-26 — the invite's MONEY is the Owner's switch under the `inviteRewards` ceiling;
+// `playerInviteRewardsLive()` was DELETED so every caller had to name the composition it means.
+import { playerInvitePayable, writeStoredSwitchVerified, __setInviteSwitchStoreForTests } from "../src/lib/server/invite-rewards-switch.ts";
 import { cashOutValue } from "../src/lib/server/market-service.ts";
 import { db } from "../src/lib/server/store.ts";
 import { bindRecruit, ensureAffiliateAccount, resolveReferralPreview, onRecruitBet, onRecruitSettlement } from "../src/lib/server/affiliate-service.ts";
@@ -65,7 +72,7 @@ function ok(label: string, cond: boolean, extra?: string) {
   ok("§1 invite is live for a player in good standing", inviteIsLiveFor(player));
   // ⛔ AND IT PAYS THEM NOTHING. The surface being live is not the programme being paid; these are
   // two switches now, and this is the line that says a page cannot infer one from the other.
-  ok("§1 ⛔ the PLAYER programme pays nothing — inviteRewards is WITHDRAWN", !playerInviteRewardsLive());
+  ok("§1 ⛔ the PLAYER programme pays nothing — invites are Not payable (no Owner record is stored)", !playerInvitePayable());
   ok("§1 invite is not live for a signed-out viewer", !inviteIsLiveFor(null));
   // ⭐ THE CONTROL IN THE CLOSED DIRECTION. Without it the section would pass by opening the seam
   // for everybody, which is indistinguishable from a seam that no longer decides anything.
@@ -84,12 +91,9 @@ function ok(label: string, cond: boolean, extra?: string) {
   // refuses everyone is indistinguishable from a seam that is simply broken.
   ok("§1 CONTROL · invite IS live for an agent IN GOOD STANDING", inviteIsLiveFor(approvedAgent));
   ok("§1 bonus is not live for anyone", !bonusIsLiveFor("PLAYER") && !bonusIsLiveFor("AGENT") && !bonusIsLiveFor(null));
-  // ⛔ WITHDRAWN, NOT COMING_SOON. A gilt "coming soon" badge is a PROMISE, and we are not
-  // promising players this programme. If someone softens the constant back to COMING_SOON,
-  // every entry point starts advertising again and this is the line that says so.
-  // ⚠️ The LABEL said "the state is WITHDRAWN" — 26 lines after this section asserts it is ACTIVE.
-  // What the assertion actually pins is that the retired third state is unreachable, which is true
-  // whichever way the switch is set, so only the words were wrong.
+  // ⛔ NEVER COMING_SOON. A gilt "coming soon" badge is a PROMISE. `invite` was WITHDRAWN from
+  // 2026-09-06 and has been ACTIVE (unpaid) since 2026-09-25; the retired third state must stay
+  // unreachable either way. If someone brings it back, this is the line that says so.
   ok("§1 the state is never COMING_SOON — the retired third state stays unreachable", inviteStateFor(player) !== "COMING_SOON");
 }
 
@@ -177,12 +181,33 @@ function ok(label: string, cond: boolean, extra?: string) {
   process.env.FEATURE_INVITEREWARDS = "ACTIVE";
   process.env.FEATURE_BONUS = "ACTIVE";
   try {
-    ok("§4 the PAID player promo re-enables", playerInviteRewardsLive());
+    ok("§4 the PAID player promo re-enables — FEATURE_INVITEREWARDS=ACTIVE is the FORCED ceiling",
+      playerInvitePayable() && inviteRewardsCeiling().ceiling === "FORCED", JSON.stringify(inviteRewardsCeiling()));
     ok("§4 …and the surface is unaffected by the money switch", inviteIsLiveFor(player));
     ok("§4 bonus re-enables", bonusIsLiveFor("PLAYER"));
   } finally {
     delete process.env.FEATURE_INVITEREWARDS;
     delete process.env.FEATURE_BONUS;
+  }
+  // ⛔ THE HARD KILL, DRIVEN (2026-09-26). Since the Owner's switch arrived, the env override has a
+  // second job: `FEATURE_INVITEREWARDS=WITHDRAWN` must refuse a STORED ON record — the one thing the
+  // page itself can produce — or the kill is a word that stops nothing the Owner has started. So a
+  // sealed ON record is written to the switch's in-memory row, the CONTROL shows it pays under the
+  // shipped ceiling, and the kill must then refuse the very same row. ⭐ Restored before §5, whose
+  // legacy attribution must still be measured against the default (no row, Not payable).
+  __setInviteSwitchStoreForTests(null);
+  const storedOn = await writeStoredSwitchVerified({
+    payable: true, seq: 1, changedAt: new Date().toISOString(), changedBy: "usr_wf_owner", reason: "withdrawn-features §4 kill control",
+  });
+  try {
+    ok("§4 CONTROL · a stored ON record pays under the shipped ceiling (OWNER) — so the refusal below is the kill's",
+      storedOn.ok === true && playerInvitePayable() && inviteRewardsCeiling().ceiling === "OWNER", JSON.stringify(storedOn));
+    process.env.FEATURE_INVITEREWARDS = "WITHDRAWN";
+    ok("§4 ⛔ FEATURE_INVITEREWARDS=WITHDRAWN is the hard kill — the same stored ON record pays NOTHING",
+      !playerInvitePayable() && inviteRewardsCeiling().ceiling === "CLOSED" && inviteRewardsCeiling().source === "ENV", JSON.stringify(inviteRewardsCeiling()));
+  } finally {
+    delete process.env.FEATURE_INVITEREWARDS;
+    __setInviteSwitchStoreForTests(null); // ⭐ also empties the in-memory row: back to "never switched on"
   }
   process.env.FEATURE_INVITE = "WITHDRAWN";
   try {
@@ -194,21 +219,20 @@ function ok(label: string, cond: boolean, extra?: string) {
   // ⛔ And the override must not leak past this block, or every later assertion in any suite
   // that imports this module would be measuring the wrong state.
   ok("§4 the override is restored, not leaked",
-    inviteIsLiveFor(player) && !playerInviteRewardsLive() && !bonusIsLiveFor("PLAYER"));
+    inviteIsLiveFor(player) && !playerInvitePayable() && !bonusIsLiveFor("PLAYER"));
 }
 
 // ── §5 · ATTRIBUTION — A CODE ONLY RECRUITS IF ITS OWNER MAY REFER ─────────
-// 🔴 THE LIABILITY THIS CLOSES. Every player was auto-minted a code, and until this
-// programme every shared market/position link carried one. Those links are already out there
-// and they never expire. `bindRecruit` writes `recruitedBy` ONCE and `already_bound` means it
-// is never re-attributed — so a bind made today is permanent.
-// ⛔ "It pays nothing right now" is not a defence: nothing pays today because the reward modes
-// are gated, but the ROW is still written, and it becomes a live attribution nobody chose the
-// moment the programme returns.
+// (From 2026-09-06 to 2026-09-25 this section REFUSED every ordinary player's bind. A bind is
+// permanent (`already_bound`), and each one would start paying the day the programme returned.
+// Since 2026-09-25 the unpaid invite accepts that bind ON PURPOSE; docs/PLAYER-INVITE-UNPAID.md §12,
+// "What happens the moment it IS switched on", says what these attributions do once the Owner makes
+// invites payable.)
 //
-// ⛔ §5c IS THE CONTROL AND IT CARRIES THIS WHOLE SECTION. A gate that refused EVERYONE would
-// pass §5a and §5b while having silently broken the agent programme. The control is what makes
-// the two refusals mean something.
+// ⛔ THE REFUSAL THAT REMAINS is §5a2 (a SELF_EXCLUDED referrer binds nobody); §5c2 pins that a
+// role alone binds as PLAYER, never AGENT. §5c IS THE CONTROL: an approved agent's code still binds
+// and is stamped AGENT. A gate that refused everyone would fail §5a and §5c; a gate that admitted
+// everyone would fail §5a2.
 {
   const stamp = () => new Date().toISOString();
   let n = 0;
@@ -301,8 +325,8 @@ function ok(label: string, cond: boolean, extra?: string) {
 }
 
 // ── §5d · THE LEGACY ATTRIBUTION — bound BEFORE the gate existed ───────────
-// 🔴 THE HARDER HALF TO NOTICE. §5a stops NEW attributions, but `User.recruitedBy` rows
-// written before that gate are still on the table and are PERMANENT (`already_bound` means
+// 🔴 THE HARDER HALF TO NOTICE. `User.recruitedBy` rows written before the programme stamp existed
+// (no `recruitedProgramme`, which `programmeOf` reads as PLAYER) are still on the table and are PERMANENT (`already_bound` means
 // they are never re-attributed). Every one of those pairs would keep accruing on the
 // recruit's next bet/deposit/settlement — the prize mode is enabled by default, and with the
 // bonus wallet withdrawn the reward now lands as REAL, WITHDRAWABLE CASH rather than a
@@ -346,7 +370,7 @@ function ok(label: string, cond: boolean, extra?: string) {
     await ensureAffiliateAccount(`${n}_ref`);
   };
 
-  // §5d · the withdrawn referrer — a legacy attribution that must now pay nothing
+  // §5d · a legacy PLAYER attribution — it must pay nothing while `inviteRewards` is WITHDRAWN
   await mkPair("w5d", "PLAYER");
   ok("§5d PRECONDITION · the legacy attribution really is on the row",
      (await db.user.findById("w5d_rec"))?.recruitedBy === "w5d_ref");
@@ -622,7 +646,7 @@ function ok(label: string, cond: boolean, extra?: string) {
 
   // §9a · the state itself
   active();
-  ok("§9a the desk feature is ACTIVE as shipped — it is the one feature in this table that is live", houseBotsLive());
+  ok("§9a the desk feature is ACTIVE as shipped", houseBotsLive());
   withdrawn();
   ok("§9a FEATURE_DESK=WITHDRAWN is read", !houseBotsLive());
   process.env.FEATURE_DESK = "SOMETHING";

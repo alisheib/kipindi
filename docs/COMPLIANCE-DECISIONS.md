@@ -6,7 +6,498 @@
 
 ---
 
+## 2026-09-27 · Invite rewards need no separate Gaming Board clearance — 50pick's licence covers them (owner ruling)
+
+**Owner instruction (Ali, 2026-09-27), as typed:** *"np no gbt dens haveot do with this our license covers thi
+sfreedom done towery they done thave talk nit"* — answering the closing note of the Owner-switch release, which said
+that making invites payable waited on the Gaming Board of Tanzania's clearance. Read as: the Gaming Board has no part
+in this; 50pick's licence covers paying referral rewards, so no clearance is sought or awaited, and the product does
+not ask for one.
+
+**What changed, in the same commit:**
+- `/admin/affiliate`'s state card no longer says *"Rewarding referrals is a regulated inducement — the Gaming Board of
+  Tanzania must clear this reward structure before it is paid."* It states the rule the code enforces: *"Referrer
+  commission is capped at 50% of margin — enforced on every Save and again on every payment."* The page's compliance
+  note drops the same requirement.
+- The Make-payable dialog no longer carries *"Regulated inducement: confirm only if the Gaming Board of Tanzania has
+  cleared this structure."* The ceremony itself is unchanged: the Owner only, a written reason of 5–300 characters,
+  the typed words MAKE PAYABLE, and "Nothing yet" by default.
+- A growth officer reads *"Only the Owner can make invites payable."* (was "…, after Gaming Board clearance.").
+- Guards: `npm run test:player-invite-unpaid` (8.dialogs.noboard) fails if the card, the Make-payable dialog or a
+  growth officer's notes ask for Gaming Board clearance again, and `npm run qa:invite-admin` checks the page and the
+  dialog for it.
+
+**What does not change:** the Owner's switch is still the one control, and Not payable is still the default and every
+failure mode. No reward is tied to a deposit (the RG policy's promise). Commission is capped at 50% of margin, enforced.
+A player on a cooling-off break or with a frozen wallet is held, and every change is on the compliance record.
+
+**Supersedes:** ruling 11 of § 2026-09-26 · Invite payment becomes an Owner switch ("Gaming Board of Tanzania clearance
+is still required before switching on"), the same requirement in `docs/RULES.md` §2.10a and
+`docs/PLAYER-INVITE-UNPAID.md`, and "The Gaming Board clearance stands" in § 2026-09-25. Each carries a pointer here.
+
+---
+
+## 2026-09-26 · Deposit-tied invite rewards retired — the RG policy's 'No bonus offers tied to deposit increases' stays true
+
+**Owner decision (Ali, 2026-09-26).** Invite rewards triggered by a deposit are retired, so that the
+published Responsible Gambling policy stays true. `/legal/responsible-gambling` §4, "Operator
+responsibilities" (v2026-09-26), promises *"No bonus offers tied to deposit increases"*. Two reward
+modes of the player invite were exactly that: the `FIRST_DEPOSIT` bonus (a bonus for depositing) and
+the `DEPOSIT_THRESHOLD` prize (a prize for depositing enough). Once invites can be made payable
+(§ 2026-09-26 · Invite payment becomes an Owner switch, below), arming either would make the
+published promise false.
+
+**What is retired, and where it is enforced.**
+- The bonus is paid on **sign-up** only (`BonusTrigger` is `SIGNUP` alone) and the prize on a
+  friend's **first bet** only (`PrizeMilestone` is `FIRST_BET` alone). `depositThresholdTzs` is gone.
+- A Save naming `FIRST_DEPOSIT` or `DEPOSIT_THRESHOLD` is refused, with a sentence that names the
+  policy (`DEPOSIT_TRIGGER_RETIRED_REASON`, `DEPOSIT_MILESTONE_RETIRED_REASON` in
+  `src/lib/affiliate-rules.ts`).
+- A stored row naming one loads with that mode switched OFF. It is never re-pointed at another
+  choice, because that would start paying a reward nobody armed.
+- The price the Owner confirms never quotes a retired mode.
+- A deposit pays no referral reward: the deposit hook (`onRecruitDeposit`) calls no payer, whatever
+  any config says. While invites are payable, a retired mode still armed (by the stored row or by
+  the config in hand) is refused out loud, with the audited refusal `player_deposit_trigger_retired`,
+  and the bonus and prize payers refuse anything but a SIGNUP bonus or a FIRST_BET prize the same way.
+- `/admin/affiliate` prints fixed lines naming the policy where the Trigger and Milestone choices
+  were. The register page's first-deposit offer is removed, with its `getOnFirstDeposit` key in
+  en/sw/zh, so the ribbon carries a sign-up offer only.
+
+**What stays.** The sign-up bonus, the first-bet prize and commission at settlement. `requireDeposit`
+on the first-bet prize stays too. It is an anti-fraud precondition (an account that never funded
+itself cannot farm prizes with free sign-ups), not a reward for depositing: the prize grows with
+nothing deposited. Its read now fails closed: a failed read pays nothing on that bet, and the friend's
+next qualifying bet re-checks.
+
+**What it does not change.** The RG policy's text and version are untouched; the code now keeps the
+promise. `test:rg-policy`'s control for that bullet still watches only the `bonus` feature state. The
+invite's half is held by `test:player-invite-unpaid` (`8.retired.*`), `test:invite-payable-db` §4 and
+their red controls. ⏳ Built 2026-09-26; not deployed or driven on production when this entry was
+written.
+
+---
+
+## 2026-09-26 · Invite payment becomes an Owner switch on /admin/affiliate — Not payable by default
+
+**Owner instruction (Ali, 2026-09-26)**, on `/admin/affiliate`, as the code records it
+(`invite-rewards-switch.ts`): *"when is this paid and when unpaid, what switch is responsible? … let's
+have 2 options, payable and not payable; if not payable keep everything locked."* He then ruled on
+each point below. ⏳ **Built 2026-09-26; not deployed or driven on production when this entry was
+written.** The build adds `inviteRewards` (`payable`, `paying`, `ceiling`) to `/api/health`, which is
+the one-curl check of whether it is live.
+
+**The rulings (binding), each with its reason:**
+
+| # | Ruling | Why |
+|---|---|---|
+| 1 | **Payable is an OWNER switch on `/admin/affiliate`.** Only the stored role `ADMIN` (the Owner) makes invites payable, with a written reason of 5–300 characters (measured after invisible characters are cleaned out and the rest is trimmed) and the typed words `MAKE PAYABLE`, compared exactly after trimming (no case folding). | The role is read from the user row, never from the session cookie, which is a photograph of a role at sign-in. A signed-in non-Owner's attempt writes a SECURITY `privilege_escalation_blocked` row; no session at all is answered "Your session ended — sign in again. Nothing changed.", with no SECURITY row. The words are exact because a control that starts 50pick's own money must not be armable by habit; the reason is cleaned because five zero-width spaces are not a reason. |
+| 2 | **No authenticator code in the ceremony.** Ali's explicit choice. | ⚠️ **Recorded with its cost.** The ceremony still checks the console's two-step status, but production runs with `DISABLE_ADMIN_TOTP=true` (`/api/health` → `security.adminTotp: "DISABLED"`, read 2026-09-26), so that check passes for any ADMIN session. On production the switch is protected by the Owner's signed-in session, the stored role, the reason and the typed words. |
+| 3 | **Only the Owner stops payment:** a reason only, one step, offered whenever the STORED record says Payable, whatever the ceiling. | Stopping is the safe direction, so it needs no typed words and does not consult the ceiling; a stored Payable under a kill, under FORCED or under the service-level pause is a payment waiting to resume, so it can always be recorded Not payable. The dialog promises exactly what the code does: "No new referral reward starts from the moment you confirm; a reward already being paid at that instant can still land." Every PLAYER credit (the prize, the bonus for each recipient, PLAYER commission) re-reads the switch inside its payer's lock immediately before crediting, so only a credit already past that read can land. The reward settings are kept, and locked; rewards already paid stay paid. |
+| 4 | **Not payable is the default and every failure mode.** | Inducement money fails closed. No row, a read that failed, a row that is not a correctly sealed, well-formed record, and a `SESSION_SECRET` rotation all read Not payable (`docs/PLAYER-INVITE-UNPAID.md` §6). |
+| 5 | **`FEATURE_INVITEREWARDS=WITHDRAWN` is the hard kill; `=ACTIVE` forces payment** (tests and infrastructure). | The kill outranks the page: under it the page cannot turn payment on, and says so. It still states the stored position (a stored Payable reads as suspended by the server, under the env or the code kill), the Owner can still stop, and lifting the kill resumes payment unless he has. Under FORCED the page states the stored position too, and what removing the setting would do. The forced ceiling keeps the paid path executed by the suites (`PLAYER-INVITE-UNPAID.md` §7); it bypasses the ceremony, and the page says "Forced on by the server" while it is set. Any other value falls back to the code, so a typo can neither force payment nor lift the kill. |
+| 6 | **The money path re-reads the switch fresh, and, while the switch says payable, the reward settings too.** | Config loads at container boot and is not propagated between containers, and a deploy runs the old and new containers side by side for about a minute (`railway.json` `overlapSeconds: 60`). A Stop pressed on one container must be obeyed by the accruals on the other, and an older container must not pay from settings it loaded at boot. A failed read refuses the accrual, and so does a missing settings row while invites are payable. |
+| 7 | **Rewards land as CASH while the bonus wallet is withdrawn.** | `referralRewardDestination()` answers CASH while the bonus wallet is withdrawn, so a player reward is credited as real, withdrawable balance (booked `BONUS_CREDIT`), with no wagering and no expiry. It is not withdrawable at once: a player's first withdrawal still needs their identity check (KYC is asked at withdrawal), and the Make-payable dialog says so. The dialog and the page say CASH. |
+| 8 | **Commission ≤ 50% of margin is ENFORCED; the window is 1–60 months, with no lifetime term.** | The 50% was printed guidance while the validator accepted rates up to 100%. It is now refused on save, repaired on load (a mode with any unreadable field, the rate included, loads switched OFF) and clamped again at accrual. The window was already held to 1–60 on save, but a stored row reached the payer unchecked, and a window of 0 means lifetime to `commissionWindowEnd`; it is now also repaired on load and clamped to 1–60 at accrual. |
+| 9 | **While Not payable every reward setting is locked, and the server refuses the Save.** | The refusal is decided on a fresh read of the switch under its lock, so a Save cannot land between a Stop and the page noticing. A Save that is allowed merges onto the settings re-read from their row, not onto a container's boot-time copy, and only if they are still the settings the page loaded (it posts only the changed fields, with the fingerprint of the settings the page loaded), so a stale tab cannot re-arm a reward the Owner switched off ("These settings changed since this page loaded — reload to see them."). A draft the server would refuse is not sent: the Save is disabled and the reason sits at the field (the rate is a whole percent). A Save that RAISES what the invite pays also writes a COMPLIANCE `affiliate.reward.terms` row (every money field moved, before and after, and who); if that row cannot be written the Save still lands, with a warning. A throw after the write began answers "Outcome unknown — reload to see the current state." `enabled` is dropped from every Save: the two states are the master. |
+| 10 | **Make payable defaults to "Nothing yet — switch every reward off".** | The shipped config has the prize ON at TZS 10,000 a head, so without this default switching on would pay it at once. The alternative, "The settings on this page", is accepted only while the settings are still the ones the Owner saw priced. |
+| 11 | ~~Gaming Board of Tanzania clearance is still required before switching on.~~ ⚠️ **Superseded 2026-09-27** (§ 2026-09-27, above): 50pick's licence covers invite rewards, and no clearance is asked for. | *Was:* paying referrers is a regulated inducement, and the page and the Make-payable dialog both said so. Both lines are removed. |
+
+**How it is stored.** One `SystemConfig` row, `invite.rewards.switch`, holding an HMAC-sealed record
+(payable, seq, when, who, reason), with no schema change. It is not a field of `affiliate.config`,
+because that row is what the reward-settings Save writes and it is merged at load. A record cannot be
+FORGED: without `SESSION_SECRET` a hand-edited row does not parse, and reads Not payable. ⚠️ **But an
+older GENUINE record can be REPLAYED, and this is a known, accepted limit:** the seal proves who
+wrote a record, not that it is the latest, so someone with database write access who puts back an
+earlier genuine record has it read as stored, and a restored Payable record pays. It is FLAGGED, not
+blocked. The card's provenance ends "· record #N", and when the stored number is below the highest
+one confirmed in the switch's COMPLIANCE trail the card says "The stored switch is older than its
+last recorded change…" and tells the Owner to check the database and set the switch again. Database
+write access is the boundary. ⚠️ **A `SESSION_SECRET` rotation fails CLOSED:** every stored record
+stops verifying, invites read Not payable, and the Owner redoes the ceremony to seal a new record.
+
+**The record each change leaves.** Before any write, every ceremony (Make payable and Stop paying
+alike) must have a COMPLIANCE `affiliate.payable.attempt` row naming who, which way, why and the
+record number DURABLY on file (`audit()` answers `recorded`, replan ruling 543); a database that
+refuses it changes nothing. After the
+writes, what now holds is READ BACK, and the answer is what the reads say. If the outcome cannot be read, or anything throws once a
+write has begun, the Owner is told "Outcome unknown — reload to see the current state." and the
+outcome row is written with `confirmed: false`. A change that lands leaves one COMPLIANCE row,
+`affiliate.payable.on` or `affiliate.payable.off` (target `InviteRewardsSwitch` ·
+`invite.rewards.switch`), carrying from, the stored position before, to, reason, seq, ceiling, start,
+the price and `confirmed: true`. A re-arm from the service-level pause (the stored record already
+Payable) is audited as the act (`rearmed: true`), even when the switch's own record could not be
+updated. The config write is audited separately, as every `affiliate.config` save already was
+(`affiliate.config.updated`), and a Save that raises what the invite pays adds `affiliate.reward.terms`.
+
+**What a player sees.** The paid wording on the player's surfaces ("Invite & Earn", the earnings
+dial, the requirements) shows only while invites actually pay (`invitePaysPlayers`): the switch
+composes Payable, the programme is on, AND at least one reward is armed, on the settings as last read
+from their row. `/api/health`'s `paying` answers the same question.
+
+**What this supersedes, and what it does not.**
+- ⚠️ **§ 2026-09-25 · The player invite is re-opened UNPAID** (below) put the zero in the code
+  constant (`inviteRewards` WITHDRAWN) and said *"Turning payment on later is one word"*. Both are
+  superseded here: the constant now reads ACTIVE and means only that the Owner's switch decides, and
+  payment is turned on by the Owner's ceremony, not by a code change or a deploy. Its companion,
+  `docs/PLAYER-INVITE-UNPAID.md` §12 ("There is no button"), is rewritten as "The one control — the
+  Owner's ceremony". That entry stays as history, with a dated pointer here.
+- **Unchanged.** The invite is still a tracked link that pays nothing by default, and "Paid by 50pick"
+  still sums only what 50pick actually paid. ⛔ **Cash to inviters stays off-platform and
+  unrecorded:** § 2026-09-26 · Cash paid to inviters stays OFF-platform (below) stands in full. Where
+  it says the platform credits a player referrer nothing because `inviteRewards` is WITHDRAWN, that
+  described the day it was written; the same zero is now the Not payable default. The card share icon
+  still carries no code. The agent programme is untouched: `policyFor`'s AGENT branch never reads the
+  switch. Who may hold a link is unchanged.
+
+**Where it is enforced.** `src/lib/feature-state.ts` (`inviteRewardsCeiling`),
+`src/lib/server/invite-rewards-switch.ts` (the sealed row, the strict parser, the composition, the
+fresh reads), `src/lib/server/invite-rewards-ceremony.ts` (the ceremony, the locked Save, every
+sentence of the state card and both dialogs), `src/lib/affiliate-rules.ts` (the 50% ceiling, the
+1–60 month window, validation, load repair, the clamp), `src/lib/server/affiliate-service.ts`
+(`policyFor` and the money path) and `src/app/admin/affiliate/actions.ts`. **Guards:** `npm run
+test:player-invite-unpaid` and `npm run test:invite-payable-db` (both in `predeploy`), with their red
+controls `npm run red:player-invite-unpaid` and `npm run red:invite-payable-db`. No count is quoted
+here; re-derive it by running them. Rule: `docs/RULES.md` §2.10a. Spec:
+`docs/PLAYER-INVITE-UNPAID.md` §3, §6, §12.
+
+---
+
+## 2026-09-26 · D20b AMENDED — decided by the session under the owner's delegation of 2026-09-26
+
+**Authority.** Ali, 2026-09-26, delegating, as typed:
+*"please proceed for all other questions tkaing th eirght decison that suit 50pick more aesthically, perfeclty, profesinally and clenaly and based on our overlal architecture and standards of work. then giv em new prmot to finlize in another session"*.
+**Ali did not approve this entry and has not read it. The house-bots session decided it on that delegation**
+(`plans/house-bots/RESUME-HERE.md` §0c decision 1, build step 3), and rests it on his own earlier decisions, each named
+below. The same message released the ISO 27001 exclusion; that entry, just below, said this amendment would be
+entered here in the commit that builds it.
+
+**What the owner himself decided before the delegation.** These are recorded in commit messages, not in his own words:
+- 2026-09-23 (`735712b0`): the settled daily-loss row states a profit (recorded below, because it never was).
+- 2026-09-25 (`8018653b`): he was offered the amount won or lost beside the activity row's Won/Lost word, and shown
+  that it would need rulings 266 and 361 amended. He chose the word alone.
+- 2026-09-25 (`3859118f`, C7 373(g)): no profit/loss column on the activity row. He chose to build the desk's P&L
+  **once, as its own surface, with one amendment**, rather than add it a column at a time. That refusal stands.
+
+**What the session weighed.** Five texts forbid a result figure on the console in terms:
+- D20b ("no house lines on admin screens");
+- replan 266 ("money only as usage against a configured limit", striking "Today's net" and the "Book" card);
+- the replan's §4 Commit 7 default ("no results/P&L report … in the console beyond what a control needs");
+- C7 360 ("Struck … any net, profit, return, won/lost … any signed money");
+- C7 408 ("NO console surface renders a sum, total row, net … P&L").
+
+The alternative that needs no amendment is today's desk-wide figure alone, which the Limits tab's settled row has
+stated since 2026-09-23. The session chose one view, built once, under this one amendment, because:
+- it carries out the shape the owner chose on 2026-09-25 — one surface, one amendment;
+- its figure is `book.ts`'s own settled figure, the one both automatic loss stops act on, so the screen and the stop
+  cannot disagree;
+- words keep C7 361's ban on signed money;
+- a Polls / Up & Down split would be a second arithmetic, and a split by stake type is the staff scorecard D20 struck,
+  so neither is built.
+
+⛔ **THE AMENDMENT IS NARROW, AND THE NARROWNESS IS THE POINT.** D20's reasoning is not withdrawn.
+- A desk account is still an ordinary player in every report, statutory figure, admin count and detector (D20a,
+  unchanged).
+- Every other admin-only tool that D20b lists stays struck.
+
+⚠️ **WHO SEES IT: THE ADMIN ROLE, NOT ONE PERSON.** The view sits behind `houseConsoleAudience`
+(`src/lib/server/house-console-read.ts`), which on the desk's own route admits a viewer only when the STORED role is
+ADMIN (`isAdmin`, `src/lib/server/roles.ts`).
+- `roles.ts` calls that role "Owner" and `/admin/desk` an "Owner-only" route. The role is held by more than one
+  account (measured 2026-09-26, `RESUME-HERE.md` §0c decision 3), so "Owner-only" here means every ADMIN — the
+  audience the desk already has.
+- A grant edit on `/admin/roles` cannot widen it: the console answers its own route before the grant matrix (C7 341).
+- A holder who is also an ADMIN sees their own account's line (C7 458, X13, already accepted).
+- Who may switch the desk ON is a separate question with its own entry (`2026-09-26 · D1 READ AS THE OWNER ROLE`,
+  below), and it neither widens nor narrows who may read this.
+
+**Permitted, from this date, written by ROLE.** The desk's RESULT: for the stakes the desk placed, the money each FINISHED stake brought back to its account, less that stake. It is:
+- totalled by the EAT day each stake was PLACED, over a fixed window of the last 7 EAT days, today included — for the
+  whole desk one line per day, and for each account today and the whole window;
+- shown beside how many stakes were placed that day and whether any are still running;
+- written in words ("Profit TZS X", "Loss TZS X", "Even"), never as a signed amount;
+- shown on ONE view of `/admin/desk`, for the desk's ADMIN audience behind `houseConsoleAudience`, read only through
+  the gated console reader, and nowhere else.
+
+The view's current form is the desk's Results tab (`/admin/desk?tab=results`). The permission names the ROLE, not the
+tab, so a rename cannot leave it permitting something that no longer exists (the 2026-09-25 D3 lesson).
+
+**Recorded here, because it was never written down.** Ali's 2026-09-23 ruling (`735712b0`): the SETTLED daily-loss
+row states a profit as `ahead by X · limit Y`, on the Limits tab and on each account's overview. It is the view's own
+figure for today, stated against the same limit. This entry covers it by role and does not widen it.
+
+**Still forbidden, and the guards stay pointed at all of it:**
+- any REPORT or record: the Board pack, FIU SAR, match integrity, daily ops, finance, insights, analytics, the harm and
+  AML detectors, the ISO 27001 export and the reports catalogue (D20a unchanged);
+- any EXPORT: CSV, print view, PDF or download (D14, and D20b's per-account CSV);
+- any bell, email, digest or alert that carries the figure or links to the view;
+- `/admin/house`: no line of this figure, and no read in either direction;
+- any split by stake type, entry mode or who chose the stake. That is the entry split and staff scorecard D20 struck
+  (C7 349; replan 265, 267);
+- per-market, per-counterparty-player or per-officer money (C7 365);
+- a lifetime, month-to-date or wider window; fee withheld; a "net to 50pick" figure (replan 183 stays un-built); any
+  "Book" card;
+- the figure anywhere else on the console: the band (C7 303), the roster, the activity row (the chip stays a word),
+  and the Limits tab and each account's page beyond their 2026-09-23 settled rows;
+- any statement of what is owed to or settled with a holder (C7 375, 457);
+- the holder's balance beyond the 2026-09-25 D3 amendment;
+- every player-reachable surface and the holder, without exception (D19, untouched);
+- any house word on the view (C7 453).
+
+⚠️ **WHAT THE FIGURE IS.** Per stake:
+- A win counts its payout less its stake. The payout is already after the platform's fee.
+- A loss counts minus its stake. A loss writes no ledger row; the outcome is read from the position.
+- A refund counts nothing.
+- A stake still running counts nothing until it finishes, and its day says so.
+
+Which day:
+- A stake belongs to the EAT day it was PLACED, so a day's figure can move after midnight until its last stake
+  finishes.
+- A past line may differ from the figure a loss limit acted on at the time, because that figure is not kept.
+
+Where the number comes from:
+- It is the day book's own settled figure with the sign turned (`book.ts`: minus `realisedLossTzs`). The daily loss
+  limit's settled row and both automatic loss stops act on that same function.
+- A manual adjustment to a holder's wallet is not counted: only confirmed payout, refund and cash-out rows on the
+  desk's own stakes are.
+
+⚠️ **AND IT IS NOT THE PLATFORM'S WHOLE RESULT.** The platform's fee on those pools is ordinary commission on
+`/admin/house`, counted there as player activity (D20a). The two are never added together or netted against each
+other.
+
+⚠️ **IF ALI REVERSES THIS.** It binds as a delegated decision until he rules on it. One commit removes the tab, its
+reader and the pointers named below, and D20b reads as it did; nothing else in the product depends on it.
+
+**Amends** (each marked in place as "(delegated)", except C7 366's note, which writes down the owner's own 2026-09-23
+ruling and is marked as his):
+- D20b (here and in `plans/house-bots/PROGRESS.md`), and in `PROGRESS.md` the D20c row's "no results report" clause
+  and the Commit 7 bullet;
+- replan 266 and §4's Commit 7 default (`plans/house-bots/C5-D20-REPLAN.md`);
+- C7 303 (Why only), 305 (title), 312, 360, 361 (pointer), 366, 372, 374, 408, 453, 459 and 461, and new C7 437
+  (`plans/house-bots/C7-SPEC.md`);
+- `docs/HOUSE-BOTS.md`'s D20 banner, §7.1, §8 and §10, and the source docblocks that stated the old rule.
+
+**Does not amend:**
+- D1, D19, D20a, D20c as this log states it, D20d, D3 and its 2026-09-25 amendment, D6, D14;
+- replan 183, 265, 267;
+- C7 347, 348, 349, 350, 365, 368, 369, 371, 373(g), 375, 404, 406, 456, 458.
+
+**Enforced by:** `test:house-bot-console` 1.437a–n and 1.360 (memory and Postgres), with declared mutations in `red:house-bot-console`; the register pins (1.437m); and `qa:house-bot-console-probe`'s result canary.
+
+---
+
+## 2026-09-26 · The LIVE strip: signed out, a person on a break sees the lobby like any visitor — no device-marker cookie (owner ruling)
+
+**Owner instruction (Ali, 2026-09-26), as typed:** *"leve at is"* — the answer to: *should a phone that started a
+break also hide the moving settlement strip while signed out? That needs a small device cookie, i.e. a
+Privacy-notice change* (the session's recommendation was to leave it).
+
+**What is true, and stays true:**
+- The LIVE settlement strip — re-sited the same day to `/`, `/markets`, `/live` and `/results` only (`2ab8830e`) —
+  is neither read nor painted for a SIGNED-IN player whose cooling-off or self-exclusion timer is running
+  (`promoSuppressed` in `app-shell.tsx`).
+- A self-excluded person cannot sign in, and starting a break signs the player out. Signed out, they see the lobby,
+  strip included, like any visitor — exactly as they already see `/results` and the landing's settled strip. The
+  strip is on-site content showing already-public settlements; it is not one of the "marketing messages" that RG
+  Policy §4 governs (SMS, email, push).
+- ⛔ **No device marker or cookie is set to recognise a signed-out person on a break.** Adding one is a
+  Privacy-notice change (`test:privacy-notice` pins the cookie census) and needs a NEW owner ruling. Do not "fix"
+  this as a gap.
+
+Guard: `test:ticker-honesty` 11.4 (the signed-in gate). Record: `docs/MOBILE-VISUAL-PLAN.md` D32 / U33.
+
+---
+
+## 2026-09-26 · D1 READ AS THE OWNER ROLE — decided by the session under the owner's delegation of 2026-09-26
+
+**Authority.** Ali, 2026-09-26, asked which ADMIN accounts are his and whether the second account that switched the
+desk ON had his authority, answered, as typed: *"for my asnwer u decide base don overlal platomfr arcgitecture and
+what make sense"*. **Ali did not approve this entry and has not read it; the house-bots session decided it on that
+delegation** (`plans/house-bots/RESUME-HERE.md` §0c decision 3, build step 2).
+
+**The question.** D1 says the master switch "ships OFF … and Ali alone turns it on", and the Accountability list says
+"Ali alone switches house bots ON". The code enforces the ADMIN role: `houseConsoleAudience` admits a viewer to the
+desk's door only when the STORED role is ADMIN. Measured SELECT-only on 2026-09-26: more than one account holds ADMIN,
+and the ON the desk is in now was thrown by a different ADMIN account from the one that made every designation.
+
+**Decided: on this platform "the owner" IS the ADMIN role, and D1 is enforced at that tier.**
+- `src/lib/server/roles.ts` calls ADMIN "Owner", and the same tier alone runs every owner-only surface: staff
+  (`/admin/staff`), roles (`/admin/roles`) and the desk. Who holds it is the owner's own choice, on the owner-only staff
+  page. A desk that named its owner by account id in a server setting would be a second, invisible notion of "owner"
+  that exists nowhere else on the platform.
+- That setting would also carry a lockout: the build step designed for it refuses switch-on when the setting is missing
+  or empty, so after an automatic loss stop nobody could switch the desk back on until someone edited the hosting
+  configuration. The managers who operate the desk would lose the one lever they use after a stop.
+- What keeps the ON lever accountable already exists and is kept: every switch-on writes a `SWITCH_ON` event and a
+  COMPLIANCE audit row, each naming the ACTOR by id (`src/lib/server/house-bot/switch-on.ts`), and alerts every admin
+  (`announceSwitchedOn`). Switching OFF stays open to every ADMIN — a stop lever anyone who sees a problem can reach.
+- ~~⚠️ **Stated, not implied: FS-09's other alerts are NOT wired.**~~ `plans/house-bots/01-scenario-register.md` FS-09
+  planned an alert to every admin on each designation, start, rules save and limits save; ~~only pause, remove and the
+  switch itself send one today (`announceRoster` has two callers). That gap exists whoever may switch the desk on, and
+  it is a separate build with its own cases, recorded in the house-bots handover — not closed by this entry.~~
+  ✅ **Built 2026-09-27 by that separate build, not by this entry (checked against the code):** a designation, a
+  re-verify, a Start, a rules save and a limits save that land now alert every admin, as Pause, Remove and the switch
+  do — `announceRoster` has seven callers (`docs/HOUSE-BOTS.md` §9.2, accepted risk 12 (c); `test:house-bot-console`
+  §2j). Those five alerts and the Pause and Remove alerts name the officer who acted (their display name, else their
+  account id); the switch-ON alert names no one — ruling 420 keeps its actor an id, on its `SWITCH_ON` event and
+  audit row. A save's alert gives every moved number before → after; switches, lists and choices by name. Only the
+  four target codes stay unsent, because nothing under `src/` adds, changes, removes or vetoes a target yet.
+
+**What this does NOT change.** D1's switch still ships and stays owner-tier only: no staff role below ADMIN (finance,
+compliance, operations, support, audit) can open the desk or switch it, and a grant edit on `/admin/roles` cannot widen
+that (C7 341). D19, D20 and every other ruling are untouched. The measured second switcher is an ADMIN account — an
+owner-tier account — so the current ON is within D1 as read here.
+
+⚠️ **IF ALI REVERSES THIS.** It binds as a delegated decision until he rules. The narrower design is recorded and ready:
+a server-side check on SWITCH_ON only, the owner's account id(s) in a server setting never in this public repo, switch
+OFF open to every ADMIN (RESUME-HERE §0c decision 3's original row). One build step, with the lockout above stated to him.
+
+**Amends:** D1's "Ali alone turns it on" and the Accountability list's "Ali alone switches house bots ON" — each marked in
+place. **Does not amend:** D19, D20 and every amendment of them, D3, the switch's own ceremony, reasons and audit.
+
+---
+
+## 2026-09-26 · House bots: ruling 501 WITHDRAWN — the ISO 27001 export stays unfiltered (owner: the exclusion is not required; the session kept it unfiltered)
+
+**Owner instruction (Ali, 2026-09-26), as typed:** *"this we dot cre gbt said it sok we need nothign we can decide
+anything Regulator audit export (ISO 27001)"*. Read as: the owner does not require the exclusion — Ali reports that
+the Gaming Board told him it needs nothing (a verbal report, as D21 is; **no document is on file**) — and he leaves
+the choice open ("we can decide anything"). **The basis is the owner's instruction, not D21**: D21 speaks to what the
+Board needs, and the ISO 27001 export goes to an ISO auditor.
+
+Build ruling 501 (`plans/house-bots/C5-D20-REPLAN.md`, a session's ruling implementing D20) said the ISO 27001
+hand-off must EXCLUDE `house_bot.*` audit rows and state the excluded count. It was never built, and it is now
+**withdrawn** (replan ruling 557 records the reversal). `buildIsoAudit` (`src/lib/server/reports/catalogue.ts`) stays
+**unfiltered**: no row is removed by action. It still holds only the OLDEST 25,000 rows, so whether a given export
+contains any house row depends on the live row count — NOT MEASURED. The session chose unfiltered over excluding
+because an audit-log export with rows withheld is weaker evidence than one without; the owner released the
+requirement, and the choice between the two was the session's.
+
+⛔ **D21c IS NOT BREACHED, AND WHY.** D21c forbids treating the Board's indifference as a licence to drop a guard.
+Nothing built is dropped here — 501 was never built — and the requirement was released by the owner himself, for
+this one document.
+
+⚠️ **THE CONSEQUENCE, stated so nobody later reads it as an oversight.** An export whose 25,000-row window reaches
+house rows shows its recipients — the ISO 27001 auditor, and the ADMIN or accounting-view staff who can generate it
+(`src/app/api/admin/reports/[id]/route.ts`) — the `house_bot.*` action names, the `HouseBot` / `HouseBotControl` /
+`User` targets (as id prefixes) and **full actor ids**: the officer who acted, and on a consent-withdrawal row the
+holder's own user id. That makes it **the one regulator-facing artefact that may name the feature**; it is marked as
+D20's one exception in `docs/HOUSE-BOTS.md`'s D20 banner. D19 is untouched for players: the export is generated only
+behind the platform's report gate and never reaches a player-role account — a holder who is also staff can see it,
+which is the risk C7 ruling 458 (X13) already accepts for the console itself. D20a is untouched (house stakes still
+count in GGR and the levies as ordinary player activity; no statutory figure gains a house line, memo or column).
+
+The same message delegated the programme's other open questions to the session ("please proceed for all other
+questions tkaing th eirght decison that suit 50pick …"); they are recorded with their reasons in
+`plans/house-bots/RESUME-HERE.md` §0c. Two touch a ruling here, and neither is recorded as permitted before it exists:
+the desk's Results view amends D20b and is entered in this log in the commit that builds it; and enforcing D1 ("Ali
+alone turns it on") on the switch — measured 2026-09-26: the code accepts ANY of 3 ADMIN accounts, and a second
+account has switched the desk ON — changes no ruling, it makes the code keep one.
+
+---
+
+## 2026-09-26 · Marketing SMS rulings — no Gaming Board approval, no PDPA registration, and the helpline is OURS (owner rulings on OQ1, OQ2, OQ4)
+
+**Owner instruction (Ali, 2026-09-26), as typed:** *"gaming board said they done tcar eit snor part of their approbla we
+cans end anythgina s logn as we have sms gaetway. pdf is not needed as well . the right helpline is ours."* Read as:
+the Gaming Board told him marketing SMS is not part of their approval — 50pick may send as long as it has an SMS
+gateway; PDPA registration is not needed; and the right helpline is 50pick's own. These are the three legal
+questions the marketing plan (`MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md` §4a) reserved for the owner.
+
+| Question | Safe default that had shipped | Owner ruling | What changes |
+|---|---|---|---|
+| **OQ1** — does SMS marketing need the Board's (prior written) approval? | the broadcast surface built CLOSED, dispatch refusing until an approval record exists (OD17, U41) | **No** — the Board says it is not within their approval | OD17's approval gate is withdrawn: no `gbt.advertising_approval` record is required and U41 does not build one |
+| **OQ2** — must 50pick be registered with the Personal Data Protection Commission first? | a registration reference recorded before the first bulk import of non-account contacts | **Not needed** | the contacts import (U23–U33) does not wait on a registration reference |
+| **OQ4** — which helpline: ours (`0800 11 0011`) or the Board Code's (`0800110051`)? | the marketing footer carried the Board's number, and a guard asserted the two DIFFER | **Ours** | the footer now reads the one published number from `support-config.ts`; the guard asserts they are the SAME; D6 closed |
+
+⛔ **What these rulings do NOT change, stated so nobody reads more into them.** The Board's position removes an
+APPROVAL step; it does not remove the law every marketing SMS is under, which comes from elsewhere:
+- **Consent** — ETA Cap 442 s.32 and EPOCA GN 61 reg 7(4) (communications law, TCRA's field, not the Board's):
+  a marketing SMS still needs the recipient's consent, an identified sender and an opt-out in every message.
+- **Self-excluded players** — GN 478T reg 49(3) forbids promotional material to them during the exclusion, and
+  50pick's own published RG Policy §4 (v2026-09-26) promises more. Every responsible-gambling gate stays.
+- The engine still refuses minors, unknown ages and anyone suppressed, and the footer still carries the sender,
+  `18+`, the helpline and the stop link.
+
+**Where it is enforced:** `src/lib/marketing/footer.ts` (`STATUTORY_SMS_HELPLINE` = `support-config.ts`'s
+`HELPLINE_TEL()`), guarded by `test:campaign-compose` §12. The approval gate was never built, so withdrawing it
+removes no code.
+
+---
+
+## 2026-09-26 · Cash paid to inviters stays OFF-platform and unrecorded; the card share icon carries no code
+
+**Authority.** Ali, 2026-09-26, answering two direct questions at the close of the invite's production
+verification (`docs/PLAYER-INVITE-UNPAID.md` §13).
+
+1. **Cash to inviters.** Asked *"should the cash you pay inviters outside 50pick be recorded in 50pick?"*,
+   with the note in the question itself that **paying for referrals is a regulated inducement even
+   off-platform**, Ali chose **"No, keep it off-platform."** 50pick therefore records no such payment:
+   `/admin/affiliate` counts friends joined and nothing else, and the platform itself still credits a
+   player referrer nothing (`inviteRewards` WITHDRAWN, § 2026-09-25 below). ⚠️ The regulatory status of
+   the owner's own cash payments is not changed by where they are recorded; that question sits with the
+   Gaming Board of Tanzania, and this entry records only that he was told. ⚠️ *2026-09-27: the owner has since
+   ruled that 50pick's licence covers referral rewards (§ 2026-09-27, at the top).*
+2. **Card share icon.** The compact share icon on market cards keeps carrying no `?ref=` (**"Keep as
+   is"**): wiring it would change AGENT commission attribution and put an account-minting write on the
+   busiest pages (`PLAYER-INVITE-UNPAID.md` §11).
+
+⛔ Do not add a cash-payment log, and do not wire the card icon, without a new dated decision here.
+
+---
+
+## 2026-09-26 · RG Policy v2026-09-26 — §4 says only what the code does; the under-25 promise is BUILT, the late-night bullet CUT
+
+**Authority.** Ali, 2026-09-26, delegating: *"take any decision needed based on overall decisions I took ever and
+architecture of platform, keep going until live."* Taken on that delegation in marketing session S7, resting on his
+own precedents, each named below. `/legal/responsible-gambling` §4 had not changed since the baseline commit
+(`678960c1`, 2026-06-05) and had never been checked against the code — the 2026-09-14 (third) entry below says so
+itself, and the 2026-09-12 (third) entry lists what it could not honour.
+
+**What §4 promised, and what was true.**
+
+| Promise (v2026-09-14.3) | Truth before S7 | Ruling |
+|---|---|---|
+| "No marketing to self-excluded players or players under 25 in vulnerability segments" | Self-excluded: the marketing gate refused them (U7/U10). "Under 25 in vulnerability segments": **no code** — nothing computed an age band or defined a segment | **BUILT** the cheap protective half and **RE-WORDED** to name exactly the exclusions that run |
+| "No bonus offers tied to deposit increases" | True — the bonus feature is WITHDRAWN (`feature-state.ts`) | kept; `test:rg-policy` goes red if the bonus returns, forcing a re-check |
+| "No sign-up nudges in the late-night window" | **No such window exists in code** | **CUT** — ⛔ do not restore until the control exists |
+| "Free helpline displayed on every page footer" | True (`PublicFooter` → `HELPLINE()`) | kept |
+
+**The precedents this rests on.** *2026-09-14 (third), this page:* "Do not restore … until the control exists: build it
+first, then write it here and re-version the policy." *2026-09-05, ruling ④:* "A public promise the code refuses is
+worse than a shorter one it keeps." *2026-08-20 (privacy):* correct the policy to actual behaviour rather than build
+to an overclaim. *2026-09-14 (fifth, eighth):* player protections that are cheap are BUILT, overclaims REWORDED.
+
+**The segment, defined rather than invented.** "Under 25 in a vulnerability segment" = the account's date of birth
+gives under 25 **and** a self-exclusion or a break has ever been on record (`ResponsibleGambling.selfExclusionUntil`
+/ `coolingOffUntil`, neither ever cleared). ⛔ It **excludes, never selects** — Privacy v2026-09-22 §6 says "we do not
+profile you for marketing", and a behavioural field used to CHOOSE who is messaged would make that false. Nothing
+lifts it: U10's re-consent lifts do not reach it; turning 25 does.
+
+**v2026-09-26 §4, English (binding):** (1) no marketing messages to a self-excluded player, to a player on a break
+until they opt in again after it ends, to a player showing a sign of harm (section 3), or to anyone under 18 or whose
+age we cannot confirm; (2) no marketing messages, ever, to a player under 25 who has self-excluded or taken a break;
+(3) no bonus offers tied to deposit increases; (4) free helpline displayed on every page footer.
+
+**Where it is enforced.** `src/lib/server/marketing/consent.ts` (`mayReceiveMarketingSms`: age U11,
+`MARKETING_YOUNG_ADULT_AGE` U12) and `src/lib/server/marketing/rg.ts` (self-exclusion, break, harm markers, U10).
+**Guard:** `test:rg-policy` — the version, a hash of the binding English, this heading, and every §4 bullet mapped to a
+named control in code; a bullet with no control is refused. **Red:** `red:rg-policy`.
+
+⚠️ **What this does NOT claim.** No marketing SMS is sent today — the campaign engine is not built yet. (This line
+also said broadcast waits on the Gaming Board's written approval; the owner ruled the same day that it does not —
+see 2026-09-26 · Marketing SMS rulings, above.) §4 describes the
+rules every marketing message will pass; it is true now because nothing is sent, and it stays true because every send
+must go through that gate (U9's dispatch step).
+
+---
+
 ## 2026-09-25 · The player invite is re-opened UNPAID — a tracked link that is not an inducement
+
+> ⚠️ **Amended 2026-09-26: see § 2026-09-26 · Invite payment becomes an Owner switch, above.** What
+> this entry says about where the zero lives and how payment is turned on
+> (`inviteRewards` WITHDRAWN in code; "one word") is superseded there: payment is now the Owner's
+> switch on `/admin/affiliate`, Not payable by default. Everything else in this entry stands.
 
 **Owner instruction (Ali, 2026-09-25), in his own words:** *"we have a way for people to share our links but we won't
 give them profit"* … *"no we don't want to pay anything on affiliate"* … *"we want sometimes unpaid affiliate but i
@@ -14,10 +505,13 @@ want to track how many people he got with this link, i'll pay him cash not throu
 if needed"* … *"lets add it so users can start inviting each other."*
 
 **What changed.** `PRODUCT_STATE.invite` goes `WITHDRAWN → ACTIVE`, so every player in good standing again holds a
-referral code, link and QR, shares them from `/profile/invite` and from any market or position share sheet, and has the
+referral code, link and QR, shares them from `/profile/invite` and from the share sheet on a market's detail page or on
+a position (⚠️ *Corrected 2026-09-26:* this said "any market or position share sheet"; the compact share icon on market
+cards carries no code, `PLAYER-INVITE-UNPAID.md` §11), and has the
 people who sign up on that link attributed to them. A new, separate product state `inviteRewards` is **WITHDRAWN**:
 `policyFor`'s PLAYER branch refuses every accrual with `player_rewards_withdrawn`, so **the platform credits an
-ordinary player nothing for a referral**.
+ordinary player nothing for a referral**. This supersedes the 2026-09-07 control row "the player invite programme stays
+withdrawn" as to the invite only; that row carries an inline pointer back here. *(Added 2026-09-26.)*
 
 **Why this is not a regulated inducement.** A reward for bringing gamblers is an inducement under Gaming Board of
 Tanzania guidance, and that is the thing the previous withdrawal removed. What is live now offers the inviter nothing
@@ -44,9 +538,17 @@ the agent branch, so a player link would be one that could never bind).
 
 **Turning payment on later is one word** — `inviteRewards: "ACTIVE"` — and ⛔ **it needs Gaming Board clearance first**,
 because at that moment it becomes an inducement again. The paid path is kept executable while it sleeps.
+⚠️ *Superseded 2026-09-26 as to "one word": payment is turned on by the Owner's ceremony on `/admin/affiliate`
+(§ 2026-09-26 · Invite payment becomes an Owner switch). The Gaming Board clearance stood until 2026-09-27, when
+the owner ruled that 50pick's licence covers invite rewards (§ 2026-09-27).*
 
-Enforced by `npm run test:player-invite-unpaid` (44 assertions) with `npm run red:player-invite-unpaid` (6/6 mutations
-proven to turn it red), in `predeploy`. Rule: `docs/RULES.md` §2.10a. Spec: `docs/PLAYER-INVITE-UNPAID.md`.
+Enforced by `npm run test:player-invite-unpaid` (44 assertions at the time) with `npm run red:player-invite-unpaid` (6/6 mutations
+proven to turn it red). ⚠️ *Corrected 2026-09-26:* this said both run in `predeploy`. Only the test does. The red
+control mutates the working tree, so it is run by hand, alone or through `npm run red:all`; CI's `test:red-anchors`
+checks only that its anchors still resolve. Rule: `docs/RULES.md` §2.10a. Spec: `docs/PLAYER-INVITE-UNPAID.md`.
+⚠️ *2026-09-26:* the "44 assertions" and "6/6 mutations" above are this entry's own. The suite and its
+control have grown since (§ 2026-09-26 · Invite payment becomes an Owner switch, and § 2026-09-26 ·
+Deposit-tied invite rewards retired, both above), so re-derive the counts rather than quote these.
 
 ---
 
@@ -333,11 +835,11 @@ struck rather than deleted because it was true when it was written.
 
 ---
 
-## 2026-09-18 · D20's consequence for the ISO 27001 export — the regulator hand-off EXCLUDES house audit rows by category, and SAYS SO with the count
+## 2026-09-18 · D20's consequence for the ISO 27001 export — the regulator hand-off EXCLUDES house audit rows by category, and SAYS SO with the count — ⛔ WITHDRAWN 2026-09-26 (entry `2026-09-26 · House bots: ruling 501 WITHDRAWN`)
 
-**Status:** decided on branch `house-bots` (build ruling 501), to be built **before Commit 8**. ⚠️ **Prospective, not live:** the
+**Status:** decided on branch `house-bots` (build ruling 501), to be built **before Commit 8**. 🔴 **NOT BUILT, AND NO LONGER PROSPECTIVE (checked 2026-09-26 at `91c672c1`):** `buildIsoAudit` (`src/lib/server/reports/catalogue.ts`) still calls `getAuditPageDurable({ limit: ISO_EXPORT_LIMIT })` with no action filter. Every designation, switch event and engine switch-off writes a `house_bot.*` audit row (`HOUSE_AUDIT`, `src/lib/house-bot/constants.ts`), and the desk was first designated and switched on, on production, on 2026-09-21 — every switch event since, the engine's own switch-offs included, writes such a row — so such rows exist there. Whether a given export contains any is NOT MEASURED: it takes the OLDEST 25,000 rows, so the answer depends on the live row count. ⛔ **WITHDRAWN 2026-09-26** — the owner released it and the session kept the export unfiltered (entry `2026-09-26 · House bots: ruling 501 WITHDRAWN`, above): nothing is built and the export stays unfiltered. (Was:) ~~Prospective, not live: the
 master switch ships OFF, so no `house_bot.*` row exists on production today — which is precisely why it is settled before the
-release commit rather than after. ⚠️ **Flagged to Ali as the one build decision here with a regulatory consequence:** he may want
+release commit rather than after.~~ ⚠️ **Flagged to Ali as the one build decision here with a regulatory consequence:** he may want
 his compliance advisor's eye on the wording of the exclusion note.
 
 **The gap, measured at `a1aa2e69`.** D20 already ruled the general case — no report, CSV, memo, column, line, chip, tag or record
@@ -362,7 +864,7 @@ behind, and it is the one artefact that physically leaves the company:
 So the document that goes to a regulator would name the feature and its record ids. This is a conformance gap against a decision
 already taken, not a new question of principle.
 
-**The decision: EXCLUDE, not neutralise, and not leave.**
+**The decision: EXCLUDE, not neutralise, and not leave.** ⛔ **Withdrawn 2026-09-26** — never built; the owner released it and the session kept the export unfiltered (entry `2026-09-26 · House bots: ruling 501 WITHDRAWN`).
 1. `getAuditPageDurable` gains the `excludeActions` parameter its sibling `getAuditForActorDurable` already carries
    (`src/lib/server/audit.ts:758`); the ISO builder passes `Object.keys(HOUSE_AUDIT)`.
 2. **The report's own notes state that rows were excluded, and how many.** Renaming house actions into a neutral form would
@@ -554,9 +1056,9 @@ moving the notice first.
 
 | # | Ruling |
 |---|---|
-| D1 | Build everything. A global **master switch ships OFF** on production, and Ali alone turns it on. |
+| D1 | Build everything. A global **master switch ships OFF** on production, and Ali alone turns it on. ⚠️ **Read as the OWNER ROLE (ADMIN) since 2026-09-26 (delegated)** — see the dated entry `2026-09-26 · D1 READ AS THE OWNER ROLE` near the head of this log. |
 | D2/D7 | ⛔ **REVERSED by D19a (2026-09-16): no public text at all.** (Superseded text:) Amend the published Rules and Terms (en/sw/zh): a carve-out from the prohibited-conduct list for accounts 50pick operates, plus one disclosure line. **Effective on deploy, with no 14-day notice** (owner ruling; 50pick reports to GBT). |
-| D3 | The bot account belongs to a real person. **They may use it and withdraw normally.** The console reads the **live wallet balance** (no shadow balance) ⛔ **— but it never RENDERS it (corrected 2026-09-18; a consequence of D20 through replan ruling 266, sharpened by C7 ruling 459, that the marking passes missed).** The wallet read exists and is used to derive a funded **STATE**; **no console surface paints a bare balance anywhere**, because it is a real person's money figure, it is the one number on these screens belonging to someone other than 50pick, and it is the one most likely to sit in a screenshot.  ⚠️ **AMENDED 2026-09-25 (owner): the desk’s ACTIVITY rows may paint it — see the dated entry at the head of this log. Everywhere else, including the designate wizard, the roster and every player surface, the prohibition stands.** |
+| D3 | The bot account belongs to a real person. **They may use it and withdraw normally.** The console reads the **live wallet balance** (no shadow balance) ⛔ **— but it never RENDERS it (corrected 2026-09-18; a consequence of D20 through replan ruling 266, sharpened by C7 ruling 459, that the marking passes missed).** The wallet read exists and is used to derive a funded **STATE**; **no console surface paints a bare balance anywhere**, because it is a real person's money figure, it is the one number on these screens belonging to someone other than 50pick, and it is the one most likely to sit in a screenshot.  ⚠️ **AMENDED 2026-09-25 (owner): the desk’s ACTIVITY rows may paint it — see the dated entry `2026-09-25 · D3 AMENDED` near the head of this log. Everywhere else, including the designate wizard, the roster and every player surface, the prohibition stands.** |
 | D3b | **No payment feature.** The holder tops up through the normal deposit flow and is reimbursed out of band. While their bot is **ACTIVE**, every deposit or withdrawal on the account alerts admins. While inactive, nothing is watched. |
 | D4 | A **roster** of bots, each with its own rules. One master switch plus global limits. |
 | D5 | Consent = the owner types the account's **password** (only). |
@@ -632,7 +1134,7 @@ players" — "normal players everywhere" for reports, and "drop them all" for th
 | # | Ruling |
 |---|---|
 | D20a | **Reports treat a house account exactly like any player's account.** The Gaming Board monthly pack, the FIU SAR, the match-integrity report, daily ops, every admin count (active and unique players, predictors, top contributors), the finance and insights figures and the harm and AML detectors carry no house memo, column, split, exclusion or line. |
-| D20b | **No admin-only house tools:** no house-liquidity report or house-market statement, no house filter or `house_bot_id` column on the transactions CSV, no per-bot CSV, no staff-edge alert, no house lines on admin screens, no house stake in decision audits, no house share in the emergency-void notice, no KYC house line, no internal record and no staff chip or row tag. This reverses D19b's report half; the private Board draft stays. |
+| D20b | **No admin-only house tools:** no house-liquidity report or house-market statement, no house filter or `house_bot_id` column on the transactions CSV, no per-bot CSV, no staff-edge alert, no house lines on admin screens, no house stake in decision audits, no house share in the emergency-void notice, no KYC house line, no internal record and no staff chip or row tag. This reverses D19b's report half; ~~the private Board draft stays~~ ⛔ struck by D21 (2026-09-20): there is no Board draft. ⚠️ **AMENDED 2026-09-26 (delegated): the desk may show what its own finished stakes won or lost, on ONE view of `/admin/desk` for the desk's ADMIN audience — see the dated entry `2026-09-26 · D20b AMENDED` near the head of this log. Every other tool in this row stays struck, and D20a is untouched.** |
 | D20c | **Unchanged:** D19 in full (nothing about house bots reaches a player or the holder), the console's gate that keeps house audit rows from any non-staff session, report completeness under house audit volume, erasure safety, marker integrity, the money rules (house stakes are cash only, never cashed out, and earn no wagering progress, commission or reward), the engine, consent, caps, the kill switch, admin alerts about a bot's state, and the console that controls the bots. |
 | D20d | **Accepted consequences:** statutory figures (GGR, levies, player counts) include 50pick's own house stakes as player activity; the harm and AML detectors can flag a house account like any player's. |
 
@@ -645,6 +1147,12 @@ Nothing of the struck work ever reached production.
 and it is written here so that a stranger reading it in a year cannot mistake it for a paper the Gaming Board of
 Tanzania issued. **Ali reports** that the Board does not need a disclosure about house bots and would not act on one;
 **no document is on file**, none was requested and none is expected.
+
+**Ali's own words, verbatim** (2026-09-20; moved here 2026-09-26 from the 2026-09-21 handover, since deleted — spelling
+as he typed it): *"gaming board sai dhtey dont need any of fhtis"* / *"they dpnt need any documebnts"* / *"its not
+somehting againt their law they dont care"* / *"dont wast etime on gtbt hings as the monrey yo them is coming as a rel
+user so the dont car emuch"* / *"who plays"*. His instruction with them: no Board draft, no Board documents — strike the
+citations, do not rebuild it.
 
 | # | Ruling |
 |---|---|
@@ -684,14 +1192,14 @@ Tanzania issued. **Ali reports** that the Board does not need a disclosure about
 - No prize, cashback, tournament or rank reward on house stakes (R4).
 
 ### The closeness rule, and why
-- **Up & Down closeness rule, all modes, at decision and at fire:** `|livePrice − openPrice| ≤ closenessPct × (upTarget − openPrice)` (default 25%). A missing price → skip `UD_NO_PRICE`.
+- **Up & Down closeness rule, all modes, at decision and at fire:** `|livePrice − openPrice| ≤ closenessPct × (upTarget − openPrice)` (default 25%). ⚠️ **As built since 2026-09-23** (`docs/HOUSE-BOTS.md` §12.2): for this test only, the band (the smaller of `upTarget − openPrice` and `openPrice − downTarget`, `udCloseness` in `src/lib/server/house-bot/decide.ts`) is floored at `openPrice × UD_CLOSENESS_FLOOR_BPS / 10 000` (5 bps), because a tick-floor margin had made the rule refuse every Up & Down stake; the player game still reads the round's own margin. A missing price → skip `UD_NO_PRICE`.
   - It is symmetric by design: the bot enters only while the round is still a coin flip. Momentum bettors can't farm it, and the house never cherry-picks the side that is already winning.
 
 ### Terms §10 notice
 ⛔ **Superseded by D19a (Ali, 2026-09-16):** no rulebook or Terms text changes, so no notice is due and nothing is waived. (Was:) Terms §10 (v2026-09-14, in all three languages) promises written notice in the app at least 14 days before a material change. This change is material and changes what the platform does, so neither the 2026-09-07 correction reasoning nor the 2026-09-13 "favourable to players" reasoning applies. The notice is waived on Ali's ruling alone (D2/D7), effective on deploy. Nothing is broadcast: the platform has no trilingual in-app notice channel (the `/admin/system` banner is one untranslated, dismissible string), and SMS cannot deliver in production either (`smsConfigured()` is false), so no other channel could stand in. ⚠️ Open defect, not fixed in this build: §10's in-app notice promise cannot be kept for any future change until a localised in-app notice exists — owner to decide. Existing players keep `acceptedTermsVersion`; no re-acceptance.
 
 ### Migration exception
-The two house migrations are applied to production from the build machine with `prisma migrate deploy` before the release merge (release step REL-2). This is an explicit exception to the 50pick-audit skill's "migrations reach production only through the deploy". It is needed because the start script applies DDL while the old container still serves. Ali's release "go" must name it.
+The two house migrations are applied to production from the build machine with `prisma migrate deploy` before the release merge (release step REL-2). This is an explicit exception to the 50pick-audit skill's "migrations reach production only through the deploy". It is needed because the start script applies DDL while the old container still serves. Ali's release "go" must name it. ⛔ **Never used (noted 2026-09-26):** both house migrations reached production through ordinary deploys of `main` before the release, so R2 was struck and no exception was taken (`docs/HOUSE-BOTS.md` §11).
 
 ### Not in this build
 - A password change or reset does not sign out the holder's other sessions (risk 7 below; owner default W5).
@@ -722,8 +1230,8 @@ place stakes" and "Multiple accounts, **shared accounts** and account sales are 
 names no house-liquidity processing. Under D19 none of that text changes, so the platform operates accounts in a way
 its own published rules prohibit and its notice does not describe. A player who learns of it, or a regulator, could
 call that misleading. Ali accepted this on 2026-09-16 after being shown the sentences and an alternative neutral
-wording, and reports that the Gaming Board told him his answers are legally valid (no document on file; REL-4 asks for
-one). The holder's own consent is unaffected: they agree privately and give the owner their password (D5). ⚠️ **Corrected 2026-09-18 (ruling 503).** This sentence read "and type their own password", which the built code contradicts: `src/lib/server/house-bot/designation.ts` addresses the OFFICER throughout — `:79` `empty: "Enter their password."`, `:102` "That isn't their current password.", `:109` "Check the holder's password for an owner" — and **no field anywhere lets the holder type it**. D5 is the OWNER typing the HOLDER's account password, verified like a sign-in and never creating a session; `:158` and `:201` stand as written. ⛔ **The consent itself does not change** — the holder still agrees privately and still supplies the password; what the record stops saying is that the holder types it into a wizard, because no such wizard field exists.
+wording, and reports that the Gaming Board told him his answers are legally valid (no document on file, and by owner ruling D21 of 2026-09-20 none is owed:
+the Board needs nothing). The holder's own consent is unaffected: they agree privately and give the owner their password (D5). ⚠️ **Corrected 2026-09-18 (ruling 503).** This sentence read "and type their own password", which the built code contradicts: `src/lib/server/house-bot/designation.ts` addresses the OFFICER throughout — `:79` `empty: "Enter their password."`, `:102` "That isn't their current password.", `:109` "Check the holder's password for an owner" — and **no field anywhere lets the holder type it**. D5 is the OWNER typing the HOLDER's account password, verified like a sign-in and never creating a session; `:158` and `:201` stand as written. ⛔ **The consent itself does not change** — the holder still agrees privately and still supplies the password; what the record stops saying is that the holder types it into a wizard, because no such wizard field exists.
 1. **Licence class and levies.** House stakes are taxed within the fee, and the pool becomes a "book" (F6 §3). Ali reports to GBT.
 2. **Consent is knowledge, not proof.** Password-only (D5). Officer resets are blocked, but resets before the 2026-09-11 audit genesis are invisible.
 3. **Exploitation is bounded, not eliminated.** Alt accounts farming counters are capped per account, and G4 still applies. Caps, penalty box, closeness rule and exit-window hold are the controls.
@@ -731,9 +1239,11 @@ one). The holder's own consent is unaffected: they agree privately and give the 
 5. **Throughput.** Bot bets serialise on `house:control` (ms-long), and the holder shares the `bet.place` rate bucket (min gap ≥ 20s).
 6. **Delivery.** Merge conflicts with the parallel session are likely. `overlapSeconds` in production is unverified; the design is correct either way. ~~sw/zh legal text needs native review.~~ ⛔ **MOOT by D19a (2026-09-16); marked 2026-09-18, a line the D19a pass missed:** no rulebook, Terms, privacy, FAQ or chatbot text changes at all, so this build produces **no** sw/zh legal text to review. The leaderboard shows the holder's display name.
 7. A password change or reset does not sign out the holder's other sessions (owner ruling 2026-09-13). Recommended hardening, as a separate platform commit: revoke at the three writers, re-mint the session of the device that made the change, and add login copy `kp_revoked=pw`. House consent is unaffected either way, because consent is the fingerprint, never a session. (also recorded as hardening H1, C9)
-
-Risks 8–12 (release and verification) are appended to this entry in build commit 8.
-
+8. **Rollback window:** unmarked payouts, possible cash-outs, wagering and commission on house positions. Repaired or recorded per S3. ⚠️ **Checked against the code 2026-09-26.** The window opens only while production runs a build with no house marker in its data layer — a revert of the house code, or a redeploy of an older image (`docs/HOUSE-BOTS.md` §11, "Rollback levers"); today's code refuses a house cash-out outright (`cashOutPosition`), so a cash-out on a marked position can only come from such a build. The repair is built: `npm run ops:house-bots-status -- --drift` measures S3's three legs inside a `--since` bound and refuses an unbounded run; `npm run ops:house-bots-remark -- --apply` fills leg (a) on ledger rows only and is refused while the master switch is ON; legs (b) and (c), a cash-out or a commission on a marked position, go into a `docs/COMPLIANCE-DECISIONS.md` note with their amounts, and nothing is clawed back automatically. The remark writes no compliance row (D-OPS-3) and the status read writes nothing, so the officer files the note with their output. ⛔ **Two limits the sealed sentence does not state.** Wagering accrued in the window cannot be measured on this schema — it is a counter on `BonusGrant`, which carries no position — so the drift read prints NOT MEASURABLE, never a 0. And until leg (a) is filled, the desk's own book (`src/lib/server/house-bot/book.ts`, which counts returned money only from MARKED rows, and on whose settled loss both automatic loss stops act) sees those stakes return nothing, so its loss figures overstate the loss for the days they were placed: it errs toward stopping, never toward staking.
+9. **Per-process state (F7):** the maintenance latch, the vendor price cache ~~and the verify bucket~~ are per container. Production stays at 1 replica (~~`RAILWAY-LIVE.md:353`~~). ⚠️ **Checked against the code 2026-09-26.** The latch is `getPlatformConfig`'s first read (`src/lib/server/platform-config.ts`), and it is what the bet path's own maintenance check reads (`isMaintenanceMode`) — but a house fire re-reads maintenance from the stored config row before it reaches the bet (`maintenanceOn`, `src/lib/server/house-bot/control.ts`; `test:house-bot-engine` 16.15), so maintenance stops a house stake on every container, while a player's bet on another container still reads that container's latch. The price cache is the in-process store behind `peekVendorBar` (`src/lib/server/updown-terminal-vendor.ts`) — the chart's cached one-minute bars and, since 2026-09-23, the oracle's last boundary reading — and a container holding no fresh bar skips with UD_STALE_PRICE (risk 10). ⛔ The verify bucket is NOT per container: `desk.verify` is taken through `rateCheckAsync` (`src/lib/server/rate-limit.ts`), one budget for every container in Redis, falling back to the in-process bucket only while Redis is unconfigured or failing; `docs/RAILWAY-LIVE.md` §6 records Redis as armed across containers in production — a record, not re-measured here — and the holder's failed-password count in the database, with its reserve, binds either way. The one replica is likewise a record: `docs/RAILWAY-LIVE.md` §2 (measured there 2026-09-04) and its §13 row 6, as is its trap 13, which records that Railway ignored the repository's `railway.json` and with it the 60 s `overlapSeconds` that file declares; neither is re-measured here. More than one container, or an overlap that takes effect, is a house release event (`docs/HOUSE-BOTS.md` §14, F7).
+10. **Up & Down with no fresh vendor bar:** modes ~~mostly~~ skip with UD_STALE_PRICE (A15). This fails closed. ⚠️ **Checked against the code 2026-09-26.** Every mode, not most: COUNTER, FILL and OPENER each judge closeness on a price when the stake is decided and again when it fires (`udCloseness`, `src/lib/server/house-bot/decide.ts`, re-run by `src/lib/server/house-bot/fire.ts`), and with no price fresh enough each skips with UD_STALE_PRICE; nothing falls back to an older price (`udPriceForDecision`, `src/lib/server/house-bot/ud-price.ts`). Fresh means a bar this container holds (`peekVendorBar`: a chart's cached one-minute vendor bar or, since 2026-09-23, the oracle's own boundary reading) younger than `UD_VENDOR_BAR_MAX_AGE_SEC` (180 s), or a confirmed observation younger than `UD_OBSERVATION_MAX_AGE_SEC` (60 s), both in `src/lib/house-bot/constants.ts`. ⚠️ The bar window was 120 s until 2026-09-23 (`636e173b`), which refused the desk's first live Up & Down stakes: a bar is published well after its own boundary, and an opener then waits out its drawn delay before it fires. 180 s is a deliberate widening — closeness may be judged on a price up to three minutes old — bounded because the provider publishes nothing fresher. The observation window sits below the provider's publish lag on purpose, so in practice the bar decides; the constant's own docblock gives the reason.
+11. **Sunset can't unwind open stakes:** emergency void works on a whole market only (~~`market-service.ts:4061`~~). Open stakes settle normally. ⚠️ **Checked against the code 2026-09-26 — true, and on both products.** `emergencyVoidMarket` (`src/lib/server/market-service.ts`) refunds EVERY open stake in its market, and an Up & Down round's operator void (`voidRoundByOperator`, `src/lib/server/updown-service.ts`) refunds every stake in its round, so a void used to unwind the house would cancel every player's stake beside it; nothing voids one position, and a house position cannot be cashed out — it gets the ordinary closed-exit refusal (`cashOutPosition`; D19c, C4 ruling 147). A sunset (`npm run ops:house-bots-sunset`, `src/lib/server/house-bot/sunset.ts`) therefore removes every account, ends every target and cancels every queued stake, and leaves the open stakes to settle into the holders' wallets; its one admin alert carries the open amount, so "withdrawn" is never read as "nothing left on the table".
+12. **Until the F2 code-state flip is deployed:** OFF and Remove are database states that any ADMIN can reverse (~~`rbac-guard.ts:208-225`~~). ~~A22 alerts every recipient when that happens.~~ ⚠️ **Checked against the code 2026-09-26.** The flip is built and not thrown — `desk` ships ACTIVE in `src/lib/feature-state.ts` (read by `houseBotsLive()`; the key was `houseBots` until 2026-09-21) — so this risk is live. The desk's door is `houseConsoleAudience` (`src/lib/server/house-console-read.ts`), never `requireOwner`, and it answers the same: the ADMIN role. (a) Any ADMIN may switch the desk back ON after any OFF — an officer's, or one the engine wrote itself (`GLOBAL_LOSS_STOP`, `ENGINE_FAULT`, `ENGINE_ERRORS`): while the code state is ACTIVE, `switchOnHouseBots` refuses an OFF desk only for a SUNSET or an unset required limit. ⚠️ That is D1 as it is read since 2026-09-26 (delegated): the owner is the ADMIN role, the tier that alone runs staff, roles and the desk, so no per-account switch list is built, and every switch-on writes a `SWITCH_ON` event and a COMPLIANCE audit row naming its actor and alerts every admin (`docs/COMPLIANCE-DECISIONS.md`, entry `2026-09-26 · D1 READ AS THE OWNER ROLE`). (b) A removed account's record never runs again, but any ADMIN who has the holder's password may designate the same player account as a new record and start it (`designateHouseBot`; `test:house-bot-designation` 4.7). (c) A22's one resolver, `houseBotAlertRecipients` (`src/lib/server/house-bot/alerts.ts`), names every ADMIN, and each is told by bell and email of every switch ON, of every OFF the console, the engine or a sunset throws (the terminal fallback `npm run ops:house-bots-off` sends none; its SWITCH_OFF event is the record), of a Pause or Remove by hand, and — ✅ since 2026-09-27 (checked against the code; FS-09's build, which the D1 entry named as separate) — of every designation, re-verify, Start, rules save and limits save that lands, each alert linking to the act's history event (`announceRoster`, `src/lib/server/house-bot/emitters.ts`; `test:house-bot-console` §2j). Those five alerts and the Pause and Remove alerts name the officer who acted (their display name, else their account id); the switch-ON alert names no one — ruling 420 keeps its actor an id, on its `SWITCH_ON` event and audit row. A save's alert gives every moved number before → after; switches, lists and choices by name. So a re-designated account is recorded — its COMPLIANCE audit rows, its history events and the roster itself — AND every other admin is told who did it. ⚠️ A target add, change, removal or veto is not announced, because no such act exists yet: nothing under `src/` calls the target store's four officer writers (`insert`, `casUpdate`, `remove`, `veto`; the system's own ends — by the planner, a void consent, a Remove or the sunset — send no alert by design). `test:house-bot-console` 2.fs09.8 holds the first file that does to an `announceRoster` call with a TARGET_* event, whatever name it binds the DAL's `targetStore` to (its own, an import alias, a namespace or a dynamic import); it reports the store passed on as a value or re-exported, where it could not follow it, and a new member of the store until it is classified. (d) The sunset's database half alone (`offCause = SUNSET`) refuses the switch but not a designation, a re-verify or a Start, which read only the code half; nothing can stake while the switch is refused, and the code half closes the rest (`docs/HOUSE-BOTS.md` §11, "Sunset").
 13. **Selection edge, bounded not eliminated.** Staff choose the poll and the moment, and can decline after seeing the computed side. They can also see what players cannot: positions with owner names and phones on the admin market page, AML views, and AI poll data (reasoning, confidence, reviewer). The side can't be typed, but it can be matched by waiting until the thinner side is the side they favour. Bounds: the blackout (AI result check recorded, or market reopened), the formula side and amount, staff-chosen caps inside the locks, the counterparty share limit and pro-rata counterparty caps, a durable record of every press (placed or refused), previews per officer, ~~the vetoes register~~ (⛔ **corrected 2026-09-18:** the presses-and-vetoes REGISTER surface was struck with R1 by D20 and never built; its DAL reader `listRegister` / `PressRegisterFilter` survives, and is KEPT: replan ruling 504 scheduled it for deletion on the ground that it had no consumer, and ruling 517 (2026-09-18) reversed that on measurement — `scripts/erasure.test.mts:711` reads the presses table through it to prove an erased holder leaves no trace there, so deleting it would have deleted a proof rather than a dead reader. It is held to that one caller by `test:dal-parity` 16.504. What bounds this risk is the durable audit row named just before, not a register anyone can open), ~~and the monthly staff-edge scorecard with its alert (W16)~~ — ⛔ **D20** (2026-09-17, entry above): the scorecard and the staff-edge alert are struck and un-built (replan rulings 265, 267); risk 13 has no report or alert measure, which Ali accepted knowingly (D20d).
 14. New with D17: a person chooses the moment of an opener stake and of any stake; opening empty markets is already superseded (UPDOWN D3, automated OPENER).
 15. **Void after a staff-chosen stake.** A single admin can still void or reopen a market holding one (no officer lock: I10 and the 2026-07-24 guardrail). ~~Mitigation is display, the R9 `houseStake.staffChosen` payload,~~ ⛔ **D20** (2026-09-17): the display, the R9 payload and the R1 row are struck and un-built (C5-5b). The mitigation is the `staff-stake-voided` admin alert (replan ruling 264) and the press's own audit row.
@@ -744,10 +1254,10 @@ Risks 8–12 (release and verification) are appended to this entry in build comm
 20. **An officer may decide a market holding a stake they chose** (resolve, void, reopen or an objection ruling). There is no refusal (2026-07-24 guardrail, I10). ~~The mitigations are display, audit and alert only: the viewer sees "of which chosen by you", the decision audit records `requestedBy`,~~ ⛔ **D20** (2026-09-17): the admin line and the `requestedBy` key in the decision audit are struck and un-built (C5-5b, replan ruling 270 — no decision control, refusal or page condition reads a requester). The remaining mitigation is that `staff-stake-self-decided` alerts every admin (replan ruling 264).
 
 ### Accountability
-- Ali alone switches house bots ON.
+- Ali alone switches house bots ON. ⚠️ *Read as the owner ROLE — ADMIN, the tier that alone runs staff, roles and the desk — since 2026-09-26 (delegated; entry `2026-09-26 · D1 READ AS THE OWNER ROLE`). Every switch-on is audited with its actor and alerts every admin.*
 - Every owner action writes an audit row in its `HOUSE_AUDIT` category: COMPLIANCE for designation, the switch, limits, rules, Enter now, targets and vetoes.
 - ~~The house-liquidity regulator report and CSV (R1) list house stakes, the Enter now register, targets and vetoes.~~ ⛔ **D20** (2026-09-17, D20b): there is no house report and no house CSV — never built. Every owner action's audit row stands (the line above), and reports treat a house account like any player's.
-- ~~The Board disclosure draft is tracked by `boardDisclosureSections`.~~ ⛔ **D20** (replan ruling 273 (a)): P1's disclosure tracking is struck, so `boardDisclosureSentAt` / `boardDisclosureSections` and `recordDisclosure` were un-built in C5-5b. The private draft is tracked by the draft document alone.
+- ~~The Board disclosure draft is tracked by `boardDisclosureSections`.~~ ⛔ **D20** (replan ruling 273 (a)): P1's disclosure tracking is struck, so `boardDisclosureSentAt` / `boardDisclosureSections` and `recordDisclosure` were un-built in C5-5b. ~~The private draft is tracked by the draft document alone.~~ ⛔ **D21** (2026-09-20): there is no draft and none is owed.
 
 ---
 
@@ -2007,7 +2517,7 @@ into reversing the 2026-07-24 decision or breaking every developer machine).
 | Staff are refused as agents (approval would strip admin access) | `approveAgent` · `issueInvitation` |
 | `/admin/agents*` is the **compliance** domain with step-up 2FA; `/admin/affiliate` stays growth and shows the PLAYER promo only | `roles.ts` · `softRequireStaff("compliance")` · `getAdminAffiliateStats` |
 | Officer invitation requires the invitee's acceptance with an OTP to the officer-entered number; token hashed at rest, single-use, 14-day expiry, revocable | `issueInvitation` / `acceptInvitation` |
-| Public `/agent` reachable from the footer only — it explains and does not solicit ordinary players; the player invite programme stays **withdrawn** (`PRODUCT_STATE`) | `public-footer.tsx` · `inviteStateFor(viewer)` keyed on agent STANDING, not role · `test:withdrawn-features` |
+| Public `/agent` reachable from the footer only — it explains and does not solicit ordinary players; the player invite programme stays **withdrawn** (`PRODUCT_STATE`) ⚠️ *Superseded 2026-09-25 as to the PLAYER INVITE only: it is ACTIVE and UNPAID (`invite` ACTIVE, `inviteRewards` WITHDRAWN) — see § 2026-09-25. The rule that `/agent` is reached from the footer and does not solicit ordinary players stands.* | `public-footer.tsx` · `inviteStateFor(viewer)` keyed on agent STANDING, not role · `test:withdrawn-features` |
 | Referee national-ID scans are third-party data: 90-day hold from the decision, destroyed immediately on rejection, DSAR via the DPO without an account | `DATA-RETENTION.md` rows · `/legal/privacy` §9 · `retention.purge.daily` |
 | Agent terms (`/legal/agent-terms`, EN binding) accepted at submission with a version stamp on `AgentApplication` | `AGENT_TERMS_VERSION` · `submitForReview` |
 

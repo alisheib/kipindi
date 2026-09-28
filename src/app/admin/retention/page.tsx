@@ -52,9 +52,14 @@ const SCHEDULE: Row[] = [
   // kept longer than they were previously told — a change requiring notice, and the only one
   // of the two options carrying exposure. Lowering this one requires notice to nobody.
   //
-  // The business case for 3 years was weak in any event: what is actually stored is
-  // `User.marketingOptIn`, a boolean, plus the audit trail of consent changes. There is no
-  // rich marketing dataset here being preserved.
+  // The business case for 3 years was weak in any event: what was stored on 2026-08-21 was
+  // `User.marketingOptIn`, a boolean, plus the audit trail of consent changes.
+  // ⚠️ NO LONGER THE WHOLE PICTURE (corrected 2026-09-25). Since marketing U6/U8 went live on
+  // 2026-09-25, registration and /profile/notifications also append to the MessagingConsent
+  // ledger (the exact wording shown, locale, evidence), and Suppression and
+  // MarketingOptOutToken hold opt-outs. Those rows are append-only and sit outside this row
+  // until U16 (D16) brings them under the schedule; account closure, erasure and the 730-day
+  // lapse still clear only the boolean (docs/MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md, U6).
   { category: "Marketing-consent records", swahili: "Idhini ya matangazo", retentionYears: 2, legalBasis: "Tanzania PDPA §15", trigger: "From last sign-in — cleared by the daily retention pass; withdrawable by the player at any time", storage: "Postgres (flag cleared nightly)" },
   { category: "OTP code hashes", swahili: "Misimbo ya OTP", retentionYears: "30 days", legalBasis: "Operational only", trigger: "From issue", storage: "Postgres (purged nightly)" },
   { category: "Session cookies", swahili: "Vidakuzi vya kikao", retentionYears: "7 days max TTL", legalBasis: "Operational only", trigger: "Per cookie expiry", storage: "Browser only (HMAC-signed)" },

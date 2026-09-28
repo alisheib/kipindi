@@ -36,6 +36,7 @@ const REFUSED = "src/app/admin/kyc/refused/page.tsx";
 const DAL = "src/lib/server/house-bot-dal.ts";
 /* ⭐ C7 step 4 · the account page. */
 const DETAIL = "src/app/admin/desk/[id]/page.tsx";
+const WHY_PANEL = "src/app/admin/desk/[id]/why-panel.tsx";
 /* ⭐ C7 step 4b · the master-switch ceremony's client half. */
 const CEREMONY = "src/app/admin/desk/switch-ceremony.tsx";
 /* ⭐ C7 step 4b · the officer's two roster acts, which had no service under src/ at all before this step. */
@@ -49,6 +50,9 @@ const NOTIF = "src/lib/server/notification-service.ts";
 const NEW_ACTIONS = "src/app/admin/desk/new/actions.ts";
 const NEW_PAGE = "src/app/admin/desk/new/page.tsx";
 const NEW_CLIENT = "src/app/admin/desk/new/designate-wizard.tsx";
+/* ⭐ RESUME-HERE §0c decision 4 · the find step's list of every account, and the wizard's loader that ghosts it. */
+const LIST = "src/app/admin/desk/new/account-list.tsx";
+const NEW_LOADING = "src/app/admin/desk/new/loading.tsx";
 
 /* ⭐ C7 step 7 · the closing gates. The last four are GUARD files: the only way to show that an assertion whose
  * subject IS a guard can fail is to mutate the guard, and `318-expect-drift` on this very file is the precedent. */
@@ -73,6 +77,11 @@ const DECOMMENT = "scripts/lib/decomment.mts";
 const VISUAL = "scripts/qa-house-bots-visual.mjs";
 const SHELL = "src/components/admin/admin-shell.tsx";
 const CLOCK = "src/lib/house-bot/clock.ts";
+/* ⭐ FS-09 (2026-09-27) · the roster alerts every landed act now sends: the rules save, the one emitter they all go
+   through, and a file that reads targets (the planted-writer control of 2.fs09.8). */
+const RULES_SAVE = "src/lib/server/house-bot/rules-save.ts";
+const EMITTERS = "src/lib/server/house-bot/emitters.ts";
+const ENTER_NOW = "src/lib/server/house-bot/enter-now.ts";
 
 export const MUTATIONS = [
   /* ── C7 step 6 · THE DESIGNATE WIZARD (rulings 356, 359, 368/459, 382, 383, 385, 387, 388) ─────────────────────
@@ -567,10 +576,14 @@ export const MUTATIONS = [
     /* ⚠️ RE-ANCHORED 2026-09-18 (B2, ruling 348): `readDeskCore` now takes a FACTORY, so the second quoted
        line moved. THE DEFECT IS UNCHANGED — the verdict is resolved and then not acted on, and every read
        below runs for a viewer outside the audience. */
+    /* ⚠️ RE-ANCHORED 2026-09-26 (step 9): the roster reader now parses its address between the verdict and the reads.
+       THE DEFECT IS UNCHANGED. */
     from: `  if (!(await houseConsoleAudience(viewerUserId, route))) return null;
+  const q = parseConsoleQuery(query, Date.now(), consoleTab, CONSOLE_DESK_SORT_TABLES);
 
   const { core, extra: parseCtx, extraB: rates } = await readDeskCore(`,
     to: `  const mayView = await houseConsoleAudience(viewerUserId, route);
+  const q = parseConsoleQuery(query, Date.now(), consoleTab, CONSOLE_DESK_SORT_TABLES);
 
   const { core, extra: parseCtx, extraB: rates } = await readDeskCore(`,
     expect: "1.300 · the reader refuses a PLAYER with `null` and performs ZERO store calls",
@@ -700,9 +713,16 @@ export const MUTATIONS = [
        anchor that stops resolving is a mutation that silently stops being driven. RE-ANCHORED AGAIN 2026-09-24:
        a NINTH, the activity panel's "Left today" scan, which takes `readDeskCore`'s third caller slot. THE DEFECT
        IS UNCHANGED — one failed read blanks the whole page instead of its own cell. */
+    /* 🔴 RE-AIMED 2026-09-26 — THE WHOLE-FLEET DRIVE CAUGHT IT AS WRONG-ASSERTION. The plain `Promise.all` swap
+       returns RAW values, and since the ninth slot (09-24) some callers pass `null` there, so `extraCR.status`
+       threw on EVERY render: the suite died in its first behavioural case, `0.throw` fired, and §4 — where 1.355's
+       source pin lives — never ran. That was a crash of the mutation's own making, not the defect. The defect is
+       an ALL-OR-NOTHING combinator: this one keeps the settled SHAPE, so nothing changes until a read rejects,
+       and then the whole reader rejects with it — which is exactly "one failure blanks the page". Driven: it is
+       caught by the BEHAVIOURAL half of 1.355 (a failed roster read must resolve), which is the stronger catch. */
     from: `  const [controlR, rosterR, dayR, exposureR, instancesR, pendingR, extraR, extraBR, extraCR] = await Promise.allSettled([`,
-    to: `  const [controlR, rosterR, dayR, exposureR, instancesR, pendingR, extraR, extraBR, extraCR] = await Promise.all([`,
-    expect: "1.355 · the gated readers combine their reads with a SETTLING combinator",
+    to: `  const [controlR, rosterR, dayR, exposureR, instancesR, pendingR, extraR, extraBR, extraCR] = await ((ps: readonly unknown[]) => Promise.all(ps).then((vs) => vs.map((value) => ({ status: "fulfilled" as const, value }))))([`,
+    expect: "1.355 · a failed ROSTER read RESOLVES",
     suite: "console-mem",
   },
   {
@@ -747,8 +767,8 @@ export const MUTATIONS = [
        the new `to` is a FIFTH key nothing renders. */
     name: "312-rail · a tab key is added to the closed list with no panel behind it",
     file: ROUTES,
-    from: `export const CONSOLE_TABS = ["roster", "activity", "limits", "history"] as const;`,
-    to: `export const CONSOLE_TABS = ["roster", "activity", "limits", "history", "money"] as const;`,
+    from: `export const CONSOLE_TABS = ["roster", "activity", "limits", "history", "results"] as const;`,
+    to: `export const CONSOLE_TABS = ["roster", "activity", "limits", "history", "results", "money"] as const;`,
     expect: "1.312 · the rail's options come from the closed list",
     suite: "console-mem",
   },
@@ -797,7 +817,7 @@ export const MUTATIONS = [
     file: PAGE,
     from: `  const figure = cell.money ? "amount tabular-nums" : "font-mono tabular-nums";`,
     to: `  const figure = cell.money ? "amount" : "font-mono";`,
-    expect: "1.407 / 1.409 · every `<th>` carries `scope=\"col\"`",
+    expect: "1.407 / 1.409 · every plain `<th>` carries `scope=\"col\"`",
     suite: "console-mem",
   },
   {
@@ -811,8 +831,10 @@ export const MUTATIONS = [
     /* ⚠️ RE-ANCHORED AGAIN 2026-09-25: the desktop gutter dropped from `px-4` to `px-2`. At 1280 the
        desk-wide table measured 1519px inside a 998px strip, so four of its twelve columns — Round, Game,
        Note and the STOP CONTROL — were reachable only by dragging sideways. THE DEFECT IS UNCHANGED. */
-    from: `                  <table className="admin-tbl [&_td]:!px-1.5 [&_th]:!px-1.5 sm:[&_td]:!px-2 sm:[&_th]:!px-2 max-sm:!text-caption">`,
-    to: `                  <table className="admin-tbl min-w-[720px] [&_td]:!px-1.5 [&_th]:!px-1.5 sm:[&_td]:!px-2 sm:[&_th]:!px-2 max-sm:!text-caption">`,
+    /* ⚠️ RE-ANCHORED AGAIN 2026-09-26: the `sm:` gutter left with RESUME-HERE §0c decision 2 — one 8px gutter at
+       every width, Type and Note out of their columns, so the ledger fits the 1280 strip. THE DEFECT IS UNCHANGED. */
+    from: `                  <table className="admin-tbl [&_td]:!px-1.5 [&_th]:!px-1.5 max-sm:!text-caption">`,
+    to: `                  <table className="admin-tbl min-w-[720px] [&_td]:!px-1.5 [&_th]:!px-1.5 max-sm:!text-caption">`,
     expect: "1.373 · the money-bearing TABLE carries no `min-w-*` of its own",
     suite: "console-mem",
   },
@@ -822,9 +844,14 @@ export const MUTATIONS = [
     /* ⚠️ RE-ANCHORED at C7 step 5's landing half, same rot and same finding: three panels paint this header, so
        the anchor matched 3×. ⚠️ RE-ANCHORED AGAIN 2026-09-24: the floor is now responsive
        (`min-w-[104px] sm:min-w-[150px]`), which makes this header unique without the `Stake` line beneath it.
-       THE DEFECT IS UNCHANGED: the subject column loses its floor and absorbs the whole shortfall at 360. */
-    from: `                        <th scope="col" className="text-left p-3 min-w-[104px] sm:min-w-[150px]">Account</th>`,
-    to: `                        <th scope="col" className="text-left p-3">Account</th>`,
+       THE DEFECT IS UNCHANGED: the subject column loses its floor and absorbs the whole shortfall at 360.
+       ⚠️ RE-ANCHORED AGAIN 2026-09-26 (C7 437): the Results panel's By account table opens on the same responsive
+       Account header, so the line matched 2×; it is held with the `Opening` header beneath it, which is the activity
+       ledger's alone. */
+    /* ⚠️ RE-ANCHORED 2026-09-26 (step 9): the header is the kit's `SortTh` now, its word the reader's and its class
+       `align` + `className`. THE DEFECT IS UNCHANGED. */
+    from: `                        <SortTh field={feedView.feedSort.columns.account.field} label={feedView.feedSort.columns.account.label} current={feedView.feedSort.current} dir={feedView.feedSort.dir} sp={feedView.feedParams} baseHref={CONSOLE_ROUTE} prefix={feedView.feedSort.prefix} className="p-3 min-w-[104px] sm:min-w-[150px]" />`,
+    to: `                        <SortTh field={feedView.feedSort.columns.account.field} label={feedView.feedSort.columns.account.label} current={feedView.feedSort.current} dir={feedView.feedSort.dir} sp={feedView.feedParams} baseHref={CONSOLE_ROUTE} prefix={feedView.feedSort.prefix} className="p-3" />`,
     expect: "1.373 · EVERY panel that paints the subject column carries the SAME floor",
     suite: "console-mem",
   },
@@ -839,8 +866,10 @@ export const MUTATIONS = [
   {
     name: "373-order · the money columns move out of the answer position",
     file: PAGE,
-    from: `                      <th scope="col" className="text-left p-3 min-w-[128px]">Status</th>`,
-    to: `                      <th scope="col" className="text-left p-3 min-w-[128px]">State</th>`,
+    /* ⚠️ RE-ANCHORED 2026-09-26 (step 9): the header is the kit's `SortTh` now, its word the reader's and its class
+       `align` + `className`. THE DEFECT IS UNCHANGED. */
+    from: `                      <SortTh field={rosterView.rosterSort.columns.status.field} label={rosterView.rosterSort.columns.status.label} current={rosterView.rosterSort.current} dir={rosterView.rosterSort.dir} sp={rosterView.rosterParams} baseHref={CONSOLE_ROUTE} prefix={rosterView.rosterSort.prefix} className="p-3 min-w-[128px]" />`,
+    to: `                      <SortTh field={rosterView.rosterSort.columns.status.field} label="State" current={rosterView.rosterSort.current} dir={rosterView.rosterSort.dir} sp={rosterView.rosterParams} baseHref={CONSOLE_ROUTE} prefix={rosterView.rosterSort.prefix} className="p-3 min-w-[128px]" />`,
     expect: "1.310 / 1.373 · the roster's headers are the control facts, in order",
     suite: "console-mem",
   },
@@ -1421,10 +1450,13 @@ import type { ConsoleTab } from "@/lib/house-bot/console-routes";`,
     suite: "console-mem",
   },
   {
+    /* ⚠️ RE-POINTED 2026-09-26 (replan ruling 543), SAME DEFECT, SAME EXPECT. It planted `recorded = true` in the catch
+       around `audit()` — a catch that, once the audit contract stopped rejecting, could never run. The save now READS
+       the flag, so the lie is planted in that read. */
     name: "537-recorded · a compliance row that did not write is reported as written — the officer is told the record is safe when it is not",
     file: SAVE,
-    from: `    recorded = false;`,
-    to: `    recorded = true;`,
+    from: `  const recorded = logged.recorded;`,
+    to: `  const recorded = true;`,
     expect: "2.537 · a save whose COMPLIANCE ROW cannot be written still reports the truth",
     suite: "console-mem",
   },
@@ -1573,8 +1605,10 @@ import { formatEat } from "@/lib/utils";`,
   {
     name: "432o-nowrap-header · the money header is nowrap again, which pins its figure off a 360 screen",
     file: PAGE,
-    from: `                      <th scope="col" className="text-right p-3 !whitespace-normal">Loss today (projected)</th>`,
-    to: `                      <th scope="col" className="text-right p-3 whitespace-normal">Loss today (projected)</th>`,
+    /* ⚠️ RE-ANCHORED 2026-09-26 (step 9): the header is the kit's `SortTh` now, its word the reader's and its class
+       `align` + `className`. THE DEFECT IS UNCHANGED. */
+    from: `                      <SortTh field={rosterView.rosterSort.columns.loss.field} label={rosterView.rosterSort.columns.loss.label} current={rosterView.rosterSort.current} dir={rosterView.rosterSort.dir} sp={rosterView.rosterParams} baseHref={CONSOLE_ROUTE} prefix={rosterView.rosterSort.prefix} align="right" className="p-3 !whitespace-normal" />`,
+    to: `                      <SortTh field={rosterView.rosterSort.columns.loss.field} label={rosterView.rosterSort.columns.loss.label} current={rosterView.rosterSort.current} dir={rosterView.rosterSort.dir} sp={rosterView.rosterParams} baseHref={CONSOLE_ROUTE} prefix={rosterView.rosterSort.prefix} align="right" className="p-3 whitespace-normal" />`,
     /* ⚠️ RE-AIMED 2026-09-25: the assertion was renamed to say ON THE ROSTER, because it reads the FIRST thead on
        the page and never governed the activity table's money headers, whose own pin now sits beside that panel. */
     expect: "1.373 · 432(o) · every money-bearing header ON THE ROSTER may WRAP",
@@ -1588,24 +1622,30 @@ import { formatEat } from "@/lib/utils";`,
      * batch drive; the `expect` quoted the first, so the drive reported WRONG-ASSERTION on a guard that worked. */
     name: "432o-status-floor · the status column loses its floor, so the AUTO-PAUSED chip is a two-line pill again",
     file: PAGE,
-    from: `                      <th scope="col" className="text-left p-3 min-w-[128px]">Status</th>`,
-    to: `                      <th scope="col" className="text-left p-3">Status</th>`,
+    /* ⚠️ RE-ANCHORED 2026-09-26 (step 9): the header is the kit's `SortTh` now, its word the reader's and its class
+       `align` + `className`. THE DEFECT IS UNCHANGED. */
+    from: `                      <SortTh field={rosterView.rosterSort.columns.status.field} label={rosterView.rosterSort.columns.status.label} current={rosterView.rosterSort.current} dir={rosterView.rosterSort.dir} sp={rosterView.rosterParams} baseHref={CONSOLE_ROUTE} prefix={rosterView.rosterSort.prefix} className="p-3 min-w-[128px]" />`,
+    to: `                      <SortTh field={rosterView.rosterSort.columns.status.field} label={rosterView.rosterSort.columns.status.label} current={rosterView.rosterSort.current} dir={rosterView.rosterSort.dir} sp={rosterView.rosterParams} baseHref={CONSOLE_ROUTE} prefix={rosterView.rosterSort.prefix} className="p-3" />`,
     expect: "1.373 · …and only the SUBJECT and STATUS columns carry a floor",
     suite: "console-mem",
   },
   {
     name: "432o-exposure-name · the column and the tile call the same figure two different things",
-    file: PAGE,
-    from: `                      <th scope="col" className="text-right p-3 !whitespace-normal">Open exposure</th>`,
-    to: `                      <th scope="col" className="text-right p-3 !whitespace-normal">Exposure</th>`,
+    /* ⚠️ RE-ANCHORED 2026-09-26 (step 9): a sortable header's WORD has one home, the reader's `CONSOLE_SORT_LABEL`,
+       which the page renders and the token is slugged from — so the rename is planted there. THE DEFECT IS UNCHANGED. */
+    file: GATE,
+    from: `  exposure: "Open exposure",`,
+    to: `  exposure: "Exposure",`,
     expect: "1.310 / 1.373 · the roster's headers are the control facts, in order",
     suite: "console-mem",
   },
   {
     name: "432o-bets-axis · the count usage is left-aligned again, on a different axis from the money beside it",
     file: PAGE,
-    from: `                      <th scope="col" className="text-right p-3 !whitespace-normal">Bets today</th>`,
-    to: `                      <th scope="col" className="text-left p-3">Bets today</th>`,
+    /* ⚠️ RE-ANCHORED 2026-09-26 (step 9): the header is the kit's `SortTh` now, its word the reader's and its class
+       `align` + `className`. THE DEFECT IS UNCHANGED. */
+    from: `                      <SortTh field={rosterView.rosterSort.columns.bets.field} label={rosterView.rosterSort.columns.bets.label} current={rosterView.rosterSort.current} dir={rosterView.rosterSort.dir} sp={rosterView.rosterParams} baseHref={CONSOLE_ROUTE} prefix={rosterView.rosterSort.prefix} align="right" className="p-3 !whitespace-normal" />`,
+    to: `                      <SortTh field={rosterView.rosterSort.columns.bets.field} label={rosterView.rosterSort.columns.bets.label} current={rosterView.rosterSort.current} dir={rosterView.rosterSort.dir} sp={rosterView.rosterParams} baseHref={CONSOLE_ROUTE} prefix={rosterView.rosterSort.prefix} className="p-3" />`,
     expect: "1.407 · 432(o) · every usage column is right-aligned",
     suite: "console-mem",
   },
@@ -1918,6 +1958,24 @@ import { formatEat } from "@/lib/utils";`,
     to: `        {true && (
         <Tabs`,
     expect: "1.435 · 358 · every card of the account page is guarded",
+    suite: "console-mem",
+  },
+  {
+    name: "435b-why-panel-guard-dropped · the why-panel stops checking `removed`, so the moment the door answers for a removed account, that account is told why it is not staking",
+    file: WHY_PANEL,
+    /* ⭐ THE RED CONTROL THIS GUARD NEVER HAD (2026-09-26). As a page wrapper it could not fail — the door already
+       refuses a removed account — so it existed only to make 1.435's literal count reach twelve. */
+    from: `  if (removed || why == null) return null;`,
+    to: `  if (why == null) return null;`,
+    expect: "1.435b · a REMOVED account is told nothing, even when handed a live answer",
+    suite: "console-mem",
+  },
+  {
+    name: "541-why-explains-removed · the idle door stops refusing a REMOVED account and walks the planner for an account with nothing left to stake on",
+    file: GATE,
+    from: `  if (!bot || bot.status === "REMOVED") return null;`,
+    to: `  if (!bot) return null;`,
+    expect: "1.541 · a REMOVED account is not explained",
     suite: "console-mem",
   },
   /* ── C7 step 7 · THE CLOSING GATES (rulings 320, 370, 371, 375, 390, 391, 395, 397, 398) ────────────────────────
@@ -2299,7 +2357,7 @@ import { formatEat } from "@/lib/utils";`,
     file: PAGE,
     from: `        {tab === "history" && (<>`,
     to: `        {false && tab === "history" && (<>`,
-    expect: "1.312 · CONTROL · each of the four panels is found and non-empty in the page's own source",
+    expect: "1.312 · CONTROL · each of the five panels is found and non-empty in the page's own source",
     suite: "console-mem",
   },
   {
@@ -2309,8 +2367,8 @@ import { formatEat } from "@/lib/utils";`,
        hour summary's own link is the one this fires on. */
     name: "320-tab-key-gone · the landing rail loses a key while a delivered alert still links to it, so the bell lands on a screen that silently repaints the roster",
     file: ROUTES,
-    from: `export const CONSOLE_TABS = ["roster", "activity", "limits", "history"] as const;`,
-    to: `export const CONSOLE_TABS = ["roster", "limits", "history"] as const;`,
+    from: `export const CONSOLE_TABS = ["roster", "activity", "limits", "history", "results"] as const;`,
+    to: `export const CONSOLE_TABS = ["roster", "limits", "history", "results"] as const;`,
     expect: "7.2c · every `?tab=` a house alert produces names a panel that is BUILT for its own SHAPE",
     suite: "comms-mem",
   },
@@ -2593,10 +2651,284 @@ import { formatEat } from "@/lib/utils";`,
   {
     name: "373-activity-colspan-stale · a column is added to the activity table and the spans are left behind, which every gate reads as healthy because a spanning cell renders as one cell whatever it says",
     file: DETAIL,
-    from: `                        <th scope="col" className="text-left p-3">Type</th>`,
-    to: `                        <th scope="col" className="text-left p-3">Type</th>
+    /* ⚠️ RE-ANCHORED 2026-09-26: the `Type` header it stood on left with RESUME-HERE §0c decision 2 (the type is the
+       Outcome cell's second line now). `Round` is the next header that exists once in this file. */
+    from: `                        <th scope="col" className="text-left p-3">Round</th>`,
+    to: `                        <th scope="col" className="text-left p-3">Round</th>
                         <th scope="col" className="text-left p-3">Extra</th>`,
     expect: "1.373 · every `colSpan` in the activity panel equals that panel's own header count",
+    suite: "console-mem",
+  },
+  /* ═══ RESUME-HERE §0c decision 2 · the ledger at 1280 (2026-09-26) — one mutation per new placement, each aimed at
+     the assertion in §2e3b that owns it. ═══ */
+  {
+    name: "373-type-dropped · the stake's type line leaves the Outcome cell, so a column the owner named disappears from the wide ledger",
+    file: PAGE,
+    from: `                              <span className="block mt-1 text-body-sm text-text-secondary">{r.typeWord}</span>`,
+    to: ``,
+    expect: "1.373 · decision 2 · the stake's TYPE is the Outcome cell's second line on both ledgers",
+    suite: "console-mem",
+  },
+  {
+    name: "373-type-as-chip · the stake's type is painted as a SECOND chip beside the outcome, so one row states two badges",
+    file: DETAIL,
+    from: `                              <span className="block mt-1 text-body-sm text-text-secondary">{r.typeWord}</span>`,
+    to: `                              <Chip size="sm">{r.typeWord}</Chip>`,
+    expect: "1.373 · decision 2 · the stake's TYPE is the Outcome cell's second line on both ledgers",
+    suite: "console-mem",
+  },
+  {
+    name: "373-note-never-drawn · the note's own line is never rendered, so a row's note vanishes from the wide ledger",
+    file: PAGE,
+    from: `                          {r.note !== null && (`,
+    to: `                          {r.note === "never" && (`,
+    expect: "1.373 · decision 2 · the NOTE is a full-width line of its own under its row on both ledgers",
+    suite: "console-mem",
+  },
+  {
+    name: "373-note-line-short · the note line spans one column fewer than its row, so it stops short of the ledger's edge",
+    file: DETAIL,
+    from: `                              <td colSpan={8} className="!pt-0">`,
+    to: `                              <td colSpan={7} className="!pt-0">`,
+    expect: "1.373 · decision 2 · the NOTE is a full-width line of its own under its row on both ledgers",
+    suite: "console-mem",
+  },
+  {
+    name: "373-note-on-the-phone · the note line is shown below `sm` too, so a phone reads every note twice — once in its stack and once beneath it",
+    file: PAGE,
+    from: `export const NOTE_ROW = "hidden sm:table-row `,
+    to: `export const NOTE_ROW = "table-row `,
+    expect: "1.373 · decision 2 · a row and its note line read as ONE record",
+    suite: "console-mem",
+  },
+  {
+    name: "373-divider-splits-the-record · the row keeps its divider above its own note, so one record reads as two",
+    file: PAGE,
+    from: `export const NOTED_ROW = " sm:!border-b-0 `,
+    to: `export const NOTED_ROW = " `,
+    expect: "1.373 · decision 2 · a row and its note line read as ONE record",
+    suite: "console-mem",
+  },
+  {
+    name: "373-desktop-gutter-back · the 12px desktop gutter returns on the account ledger, and the row no longer fits the strip it is read in",
+    file: DETAIL,
+    from: `                  <table className="admin-tbl [&_td]:!px-1.5 [&_th]:!px-1.5 max-sm:!text-caption">`,
+    to: `                  <table className="admin-tbl [&_td]:!px-1.5 [&_th]:!px-1.5 sm:[&_td]:!px-2 sm:[&_th]:!px-2 max-sm:!text-caption">`,
+    expect: "1.373 · decision 2 · both activity ledgers open with the kit class and ONE 8px gutter",
+    suite: "console-mem",
+  },
+  {
+    name: "373-desk-span-stale · the desk-wide ledger's empty state keeps a span from before the column change, which only the both-ledgers span rule can see",
+    file: PAGE,
+    from: `                        <AdminTableEmpty colSpan={10} title={feedView.feedEmpty.title} body={feedView.feedEmpty.body} />`,
+    to: `                        <AdminTableEmpty colSpan={12} title={feedView.feedEmpty.title} body={feedView.feedEmpty.body} />`,
+    expect: "1.373 · decision 2 · every `colSpan` on BOTH ledgers",
+    suite: "console-mem",
+  },
+  /* ═══ C7 437 · the Results tab (D20b amended under the owner's delegation of 2026-09-26) — each mutation aimed at the
+     assertion that owns it, and each RUNTIME-SAFE: tsx runs the mutated file without type-checking, so a mutation that
+     named an unimported symbol would crash the suite before its own assertion ran (the `355-all` lesson above). ═══ */
+  {
+    name: "312-results-panel-gone · the Results panel is deleted while its key stays on the rail, so the tab repaints nothing an officer asked for",
+    file: PAGE,
+    from: `        {tab === "results" && (<>`,
+    to: `        {false && tab === "results" && (<>`,
+    expect: "1.312 · CONTROL · each of the five panels is found and non-empty in the page's own source",
+    suite: "console-mem",
+  },
+  {
+    name: "312-results-badge · the Results tab grows a count badge, so a tab that controls nothing carries a number nothing on the page can act on",
+    file: PAGE,
+    from: `k === "activity" ? view.pendingIntents ?? undefined : undefined`,
+    to: `k === "activity" ? view.pendingIntents ?? undefined : k === "results" ? 0 : undefined`,
+    expect: "1.312 · C7 437 · `results` is the LAST key on the rail",
+    suite: "console-mem",
+  },
+  {
+    name: "306-results-second-read · the Results reader takes a second look at the control row after building its shell, so its strip could disagree with the badge beside it",
+    file: GATE,
+    from: `  const view = deskShell(core);`,
+    to: `  const view = deskShell(core); await houseBotControlStore.get();`,
+    expect: "1.306 · 1.312 · each render pass reads the control row EXACTLY ONCE",
+    suite: "console-mem",
+  },
+  {
+    name: "360-result-in-roster · the desk's result is painted on the ROSTER, outside the one view D20b's amendment permits",
+    file: PAGE,
+    from: `        {tab === "roster" && (<>`,
+    to: `        {tab === "roster" && (<><ResultWords result={{ text: "Profit TZS 1", word: "Profit", figure: "TZS 1", unreadable: false, muted: false }} />`,
+    expect: "1.360 · role E — what the desk's stakes came to — is painted by ONE component",
+    suite: "console-mem",
+  },
+  {
+    name: "437-gone-word-collides · the removed-accounts line is worded as the removal EVENT, so the subject column and the event column can print the same sentence",
+    file: GATE,
+    from: `  goneMany: "Accounts no longer on the desk",`,
+    to: `  goneMany: "Removed from the desk",`,
+    expect: "1.317 · 432(n) · M6 · not one of the console's four ACCOUNT words is also one of its event words",
+    suite: "console-mem",
+  },
+  {
+    name: "437-signed-formatter · the result figure is painted with a plus or minus sign, which 361 refuses in every console file",
+    file: GATE,
+    from: `    const figure = formatTzs(Math.abs(t.result));`,
+    to: `    const figure = (function formatTzsSigned(n: number) { return (n > 0 ? "+" : "") + formatTzs(n); })(t.result);`,
+    expect: "1.361 · no console file or gated reader calls a banned money formatter",
+    suite: "console-mem",
+  },
+  {
+    name: "437-sign · the result's sign is turned the wrong way, so a winning day reads as a loss and the screen disagrees with the stop",
+    file: GATE,
+    from: `  return -b.realisedLossTzs;`,
+    to: `  return b.realisedLossTzs;`,
+    expect: "1.437b · ONE ARITHMETIC — today's desk result equals minus the day book's realised loss, the sum of the account lines' Today",
+    suite: "console-mem",
+  },
+  {
+    name: "437-projected · the result counts stakes still running as lost, which is the band's PROJECTED figure and not what finished",
+    file: GATE,
+    from: `  return -b.realisedLossTzs;`,
+    to: `  return -b.projectedLossTzs;`,
+    expect: "1.437c · OUTCOMES",
+    suite: "console-mem",
+  },
+  {
+    name: "437-stake-only · the result forgets the money that came back, so every finished stake reads as lost in full",
+    file: GATE,
+    from: `  return -b.realisedLossTzs;`,
+    to: `  return -b.settledStakeTzs;`,
+    expect: "1.437b · ONE ARITHMETIC — today's desk result equals minus the day book's realised loss, the sum of the account lines' Today",
+    suite: "console-mem",
+  },
+  {
+    name: "437-second-today · the reader reads today's day book a second time, so two reads of one question can disagree inside one render",
+    file: GATE,
+    from: `    const keys = priorEatDays(dayKey, RESULT_DAYS - 1);`,
+    to: `    const keys = priorEatDays(dayKey, RESULT_DAYS - 1); await houseDayBooks(dayKey);`,
+    expect: "1.437f · ONE READ PER DAY",
+    suite: "console-mem",
+  },
+  {
+    name: "437-route-belt · the route belt is gone, so the audience question admits the accounting roles on /admin/house to the desk's result",
+    file: GATE,
+    from: `  if (route !== CONSOLE_ROUTE) return null;`,
+    to: ``,
+    expect: "1.437a · AUDIENCE",
+    suite: "console-mem",
+  },
+  {
+    name: "437-audience · the audience question is gone, so any signed-in viewer on the desk's route reads the desk's result",
+    file: GATE,
+    from: `  if (route !== CONSOLE_ROUTE) return null;
+  if (!(await houseConsoleAudience(viewerUserId, route))) return null;`,
+    to: `  if (route !== CONSOLE_ROUTE) return null;`,
+    expect: "1.437a · AUDIENCE",
+    suite: "console-mem",
+  },
+  {
+    name: "437-fail-as-empty · a day whose read FAILED becomes an empty day, so a read nobody could take paints as a quiet day",
+    file: GATE,
+    from: `        return { key, books: r.status === "fulfilled" ? r.value : null };`,
+    to: `        return { key, books: r.status === "fulfilled" ? r.value : new Map() };`,
+    expect: "1.437g · ONE FAILED DAY",
+    suite: "console-mem",
+  },
+  {
+    name: "437-partial-total · a seven-day total skips the day it could not read, so a partial sum is painted as the whole",
+    file: GATE,
+    from: `    if (t === null) return null;`,
+    to: `    if (t === null) continue;`,
+    expect: "1.437g · ONE FAILED DAY",
+    suite: "console-mem",
+  },
+  {
+    name: "437-roster-fold · accounts no longer on the desk are dropped from By account, so their stakes vanish from the lines while staying in the days",
+    file: GATE,
+    from: `    for (const d of days) for (const id of d.books?.keys() ?? []) if (!byId.has(id)) goneIds.add(id);`,
+    to: `    for (const d of days) for (const id of d.books?.keys() ?? []) if (id === "never") goneIds.add(id);`,
+    expect: "1.437h · REMOVED",
+    suite: "console-mem",
+  },
+  {
+    name: "437-window-8 · the window grows to eight days, which is wider than the one view D20b's amendment permits",
+    file: GATE,
+    from: `    const keys = priorEatDays(dayKey, RESULT_DAYS - 1);`,
+    to: `    const keys = priorEatDays(dayKey, RESULT_DAYS);`,
+    expect: "1.437e · WINDOW",
+    suite: "console-mem",
+  },
+  {
+    name: "437-days-from-clock · the earlier days are walked back from a second clock instead of the render's own key, so a render near midnight straddles two todays",
+    file: GATE,
+    from: `    const keys = priorEatDays(dayKey, RESULT_DAYS - 1);`,
+    to: `    const keys = priorEatDays(new Date().toISOString().slice(0, 10), RESULT_DAYS - 1);`,
+    expect: "1.437e · SOURCE",
+    suite: "console-mem",
+  },
+  {
+    name: "437-even-painted-as-money · an exactly even day is painted as money — a signed-looking zero — instead of the word Even",
+    file: GATE,
+    from: `  if (t.result > 0 || t.result < 0) {`,
+    to: `  if (t.result >= 0 || t.result < 0) {`,
+    expect: "1.437c · WORDS",
+    suite: "console-mem",
+  },
+  {
+    name: "437-open-is-even · a day with nothing finished reads Even, so a day still running looks settled level",
+    file: GATE,
+    from: `  if (t.settledStake === 0) return plain(RESULT_WORD.unsettled, true);`,
+    to: ``,
+    expect: "1.437c · WORDS",
+    suite: "console-mem",
+  },
+  {
+    name: "437-leak-activity · a result phrase reaches the activity feed, outside the one view D20b's amendment permits",
+    file: GATE,
+    from: `    typeWord: CONSOLE_INTENT_KIND_WORD[i.kind],`,
+    to: `    typeWord: "Profit TZS 1",`,
+    expect: "1.437j · CONTAINMENT",
+    suite: "console-mem",
+  },
+  {
+    name: "437-label · the tab is named with the feature's own word, on the one surface a screenshot of the result would carry",
+    file: PAGE,
+    from: `results: "Results" };`,
+    to: `results: "Bot results" };`,
+    expect: "1.405 · the rail's labels are the PAGE's own `TAB_LABEL`",
+    suite: "console-mem",
+  },
+  {
+    name: "437-alert-link · an alert links to the Results tab, so the desk's result is carried by a bell and an email",
+    file: "src/lib/house-bot/alert-copy.ts",
+    from: "    bodyZh: `限额版本 ${num(c.detail?.version)} 比本容器所能理解的更新。在所有容器升级前不会下任何平台投注。`,\n    href: CONSOLE_LIMITS_HREF,",
+    to: "    bodyZh: `限额版本 ${num(c.detail?.version)} 比本容器所能理解的更新。在所有容器升级前不会下任何平台投注。`,\n    href: \"/admin/desk?tab=results\",",
+    expect: "1.437l · NO CHANNEL",
+    suite: "console-mem",
+  },
+  {
+    name: "437-clock · the walk-back returns the key it started from, so the seven days repeat today and lose the oldest",
+    file: CLOCK,
+    from: `  return Array.from({ length: n }, (_, k) => eatDayKey(w.fromMs - (k + 1) * DAY_MS));`,
+    to: `  return Array.from({ length: n }, (_, k) => eatDayKey(w.fromMs - k * DAY_MS));`,
+    expect: "1.437e · `priorEatDays` walks back across a month end",
+    suite: "console-mem",
+  },
+  {
+    name: "437-money-third · a column is pushed in front of the Result, so the answer is no longer the second column",
+    file: PAGE,
+    /* ⚠️ RE-ANCHORED 2026-09-26 (step 9): the header is the kit's `SortTh` now, its word the reader's and its class
+       `align` + `className`. THE DEFECT IS UNCHANGED. */
+    from: `<SortTh field={resultsView.daySort.columns.result.field} label={resultsView.daySort.columns.result.label} current={resultsView.daySort.current} dir={resultsView.daySort.dir} sp={resultsView.resultsParams} baseHref={CONSOLE_ROUTE} prefix={resultsView.daySort.prefix} align="right" className="p-3 !whitespace-normal" />`,
+    to: `<th scope="col" className="text-left p-3">Kind</th><SortTh field={resultsView.daySort.columns.result.field} label={resultsView.daySort.columns.result.label} current={resultsView.daySort.current} dir={resultsView.daySort.dir} sp={resultsView.resultsParams} baseHref={CONSOLE_ROUTE} prefix={resultsView.daySort.prefix} align="right" className="p-3 !whitespace-normal" />`,
+    expect: "1.437n · LAYOUT",
+    suite: "console-mem",
+  },
+  {
+    name: "437-fold-field · the phone's folded line paints a different field from the column it replaces, so the two layouts say different things",
+    file: PAGE,
+    from: `<span className="block sm:hidden text-text-tertiary">{r.stateText}</span>`,
+    to: `<span className="block sm:hidden text-text-tertiary">{r.dayText}</span>`,
+    expect: "1.437n · LAYOUT",
     suite: "console-mem",
   },
   {
@@ -2631,9 +2963,39 @@ import { formatEat } from "@/lib/utils";`,
     file: GATE,
     /* ⚠️ An intent's `createdAt` is when the engine DECIDED and the money moves when it FIRES, so the carried
        figure is the balance BEFORE this row's own stake — plausible, adjacent, and wrong on every placed row. */
-    from: `    const own = row.positionId == null ? undefined : rows.find((t) => t.positionId === row.positionId);`,
+    /* ⚠️ RE-AIMED 2026-09-26: the one-line `find` it quoted was split by the settlement fix below, and an anchor
+       that no longer resolves plants nothing. */
+    from: `    const own = row.positionId == null ? undefined\n      : rows.find((t) => t.positionId === row.positionId && t.type === "BET_PLACED");`,
     to: `    const own = undefined;`,
     expect: "1.626d · every placed row says what the account had left AFTER IT",
+    suite: "console-mem",
+  },
+  {
+    name: "368b-balance-leaks-into-the-budget-title · the wallet balance lands in the day-budget cell's title beside it, so a real person's money is painted outside the two cells D3's amendment permits",
+    file: GATE,
+    /* ⭐ 1.368b's own mutation (2026-09-26): the guard's needles are the balances the rows paint, so the leak is
+       caught whatever the figure is — two money cells side by side is exactly where a swapped field goes unnoticed. */
+    from: `    leftTodayTitle: left(i)?.title ?? null,`,
+    to: `    leftTodayTitle: closingCell?.text ?? left(i)?.title ?? null,`,
+    expect: "1.368b · 459 · D3 · on the activity view the holder's balance appears",
+    suite: "console-mem",
+  },
+  {
+    name: "626h-settlement-read-as-the-stake · the stake's own movement is matched on the position ALONE, so a settled stake's newest movement — its payout or refund — is read as the stake and Opening/Closing bracket the settlement",
+    file: GATE,
+    /* 🔴 THE SHIPPED DEFECT (found 2026-09-26 by an adversarial read, on three live rows in four): `BET_PAYOUT` and
+       `BET_REFUND` carry the stake's `positionId`, the scan is newest-first, and a bare `find` takes the settlement. */
+    from: `      : rows.find((t) => t.positionId === row.positionId && t.type === "BET_PLACED");`,
+    to: `      : rows.find((t) => t.positionId === row.positionId);`,
+    expect: "1.626h · a SETTLED stake's Opening and Closing still bracket THAT stake",
+    suite: "console-mem",
+  },
+  {
+    name: "626h-placed-row-borrows · a placed row whose own debit is out of view borrows the carried balance from BEFORE its stake left, so it paints a figure that still holds its own stake",
+    file: GATE,
+    from: `    if (row.positionId != null) return null;`,
+    to: `    if (false) return null;`,
+    expect: "1.626h · a PLACED row whose own stake movement is not in view answers NOTHING",
     suite: "console-mem",
   },
   {
@@ -2707,8 +3069,9 @@ import { formatEat } from "@/lib/utils";`,
   {
     name: "302-anchor-ignored · a bell's `&intent=` stops resolving its row's page, so an officer who followed an alert lands on page 1 and the row the alert is about is nowhere on the screen",
     file: GATE,
+    /* ⚠️ RE-ANCHORED 2026-09-26 (step 9): the call now hands the order in force (`undefined` on a bare address). */
     from: `  const wantFeedPage = wantFeed && q.intentId && !q.pageAsked
-    ? await consoleFeedAnchorPage(q.intentId, feedFilter, q.page) : q.page;`,
+    ? await consoleFeedAnchorPage(q.intentId, feedFilter, q.page, feedOrder) : q.page;`,
     to: `  const wantFeedPage = q.page;`,
     expect: "1.302 · a bell's `&intent=` resolves the row's page SERVER-SIDE",
     suite: "console-mem",
@@ -2807,10 +3170,10 @@ import { formatEat } from "@/lib/utils";`,
    * An anchor that RESOLVES is not an assertion that went red (ruling 275). One declaration per new assertion,
    * each with the label a green run printed — copied out of the run's own output, never written by hand. */
   {
-    name: "312-rail-order · the four keys are kept but the rail order is scrambled, so an officer reads the desk's own sequence in the wrong order",
+    name: "312-rail-order · the five keys are kept but the rail order is scrambled, so an officer reads the desk's own sequence in the wrong order",
     file: ROUTES,
-    from: `export const CONSOLE_TABS = ["roster", "activity", "limits", "history"] as const;`,
-    to: `export const CONSOLE_TABS = ["roster", "limits", "activity", "history"] as const;`,
+    from: `export const CONSOLE_TABS = ["roster", "activity", "limits", "history", "results"] as const;`,
+    to: `export const CONSOLE_TABS = ["roster", "limits", "activity", "history", "results"] as const;`,
     expect: "1.312 · the rail's options come from the closed list",
     suite: "console-mem",
   },
@@ -2827,7 +3190,7 @@ import { formatEat } from "@/lib/utils";`,
     file: PAGE,
     from: `                  total={feedView.feedTotal}`,
     to: `                  total={feedRows.length}`,
-    expect: "1.411 · both landing panels draw the shared `AdminPagination`, each total is a COUNTING field of its view, and neither is a rendered array's length",
+    expect: "1.411 · the three paged landing panels draw the shared `AdminPagination`, each total is a COUNTING field of its view",
     suite: "console-mem",
   },
   {
@@ -3275,8 +3638,9 @@ import { formatEat } from "@/lib/utils";`,
   {
     name: "start-drops-its-warnings · Start goes back to reporting `Started` for an account whose every enabled mode can never enter",
     file: DESIG,
-    from: `  return { ok: true, alreadyRunning: false, masterOn: (await houseBotControlStore.get()).enabled, warnings: problems.warnings };`,
-    to: `  return { ok: true, alreadyRunning: false, masterOn: (await houseBotControlStore.get()).enabled, warnings: [] };`,
+    /* ⚠️ RE-POINTED 2026-09-26: the line gained `recorded` (replan ruling 543); the plant still drops only the warnings. */
+    from: `  return { ok: true, alreadyRunning: false, masterOn: (await houseBotControlStore.get()).enabled, warnings: problems.warnings, recorded: startRecorded };`,
+    to: `  return { ok: true, alreadyRunning: false, masterOn: (await houseBotControlStore.get()).enabled, warnings: [], recorded: startRecorded };`,
     expect: "2g.start · ⛔ REGISTER A3 · an account whose only enabled mode can NEVER enter",
     suite: "console-mem",
   },
@@ -3334,7 +3698,7 @@ import { formatEat } from "@/lib/utils";`,
     file: GATE,
     from: `  gone: "An account no longer on the desk",`,
     to: `  gone: "Removed from the desk",`,
-    expect: "1.317 · 432(n) · M6 · not one of the console's three ACCOUNT words is also one of its event words",
+    expect: "1.317 · 432(n) · M6 · not one of the console's four ACCOUNT words is also one of its event words",
     suite: "console-mem",
   },
   {
@@ -3425,6 +3789,968 @@ import { formatEat } from "@/lib/utils";`,
     from: '    marketHref: i.marketId.length > 0 ? `/admin/markets/${encodeURIComponent(i.marketId)}` : null,',
     to: '    marketHref: i.marketId.length > 0 ? `${HOUSE_CONSOLE_PREFIX}/${encodeURIComponent(i.marketId)}` : null,',
     expect: "1.626b " + String.fromCharCode(0xB7) + " every activity row names the GAME",
+    suite: "console-mem",
+  },
+
+  /* ── 2026-09-26 · RESUME-HERE §0c DECISION 4 · THE FIND STEP'S ACCOUNT LIST ─────────────────────────────────────
+   * Each puts back a shape the list could plausibly have shipped in: a door that reads for anyone, or for any route;
+   * a person's field or a wallet read on a directory of real players; a pager that lies about how many there are; an
+   * order that is not total; a filter that says the opposite of its chip; a refusal that is silent or that travels
+   * into the next link; a way in on a row that can only be refused; a failed roster painted as an empty desk; and a
+   * loader that no longer ghosts the card the page gained. Every `from` resolves exactly once in its own file. */
+  {
+    name: "list-gate-open · the account list stops asking its audience, so any signed-in account can read the whole directory with who is on the desk",
+    file: GATE,
+    from: `  if (!(await houseConsoleAudience(viewerUserId, route)) || typeof viewerUserId !== "string") return null;
+  const p = parseAccountListQuery(query);`,
+    to: `  const p = parseAccountListQuery(query);`,
+    expect: "1.387L · audience · all eight non-owner roles",
+    suite: "console-mem",
+  },
+  {
+    name: "list-route-belt · the list's route belt is dropped, so a caller naming another section's route is answered by that route's domain",
+    file: GATE,
+    from: `  if (!isHouseConsoleRoute(route)) return null;
+  if (!(await houseConsoleAudience(viewerUserId, route)) || typeof viewerUserId !== "string") return null;
+  const p = parseAccountListQuery(query);`,
+    to: `  if (!(await houseConsoleAudience(viewerUserId, route)) || typeof viewerUserId !== "string") return null;
+  const p = parseAccountListQuery(query);`,
+    expect: "1.387L · audience · the route belt",
+    suite: "console-mem",
+  },
+  {
+    name: "list-email-on-row · a list row carries the holder's email beside the handle, on the screen most likely to end up in a screenshot",
+    file: GATE,
+    from: `    handle: playerHandle(u.id),
+    reason: pickerReason(u, onDesk.has(u.id), u.id === viewerUserId),`,
+    to: `    handle: \`\${playerHandle(u.id)} \${u.email ?? ""}\`,
+    reason: pickerReason(u, onDesk.has(u.id), u.id === viewerUserId),`,
+    expect: "1.387L · no name, phone or email · a holder with all three set",
+    suite: "console-mem",
+  },
+  {
+    name: "list-holder-arg · the list names every row by the OFFICER's handle, putting a staff account behind a player's mask",
+    file: GATE,
+    from: `    handle: playerHandle(u.id),
+    reason: pickerReason(u, onDesk.has(u.id), u.id === viewerUserId),`,
+    to: `    handle: playerHandle(viewerUserId),
+    reason: pickerReason(u, onDesk.has(u.id), u.id === viewerUserId),`,
+    expect: "1.420 · `playerHandle` is used for the HOLDER only",
+    suite: "console-mem",
+  },
+  {
+    name: "list-wallet-read · the list reads every wallet on the platform, on a page ruling 459 keeps free of money",
+    file: GATE,
+    from: `    (async () => db.user.list())(),
+    (async () => houseBotStore.listNonRemoved())(),
+  ]);`,
+    to: `    (async () => db.user.list())(),
+    (async () => houseBotStore.listNonRemoved())(),
+    (async () => db.wallet.listAll())(),
+  ]);`,
+    expect: "1.387L · no money · the list reads NO wallet at all",
+    suite: "console-mem",
+  },
+  {
+    name: "list-amount-cell · a date cell is dressed as money, so the moneyless page grows an amount element",
+    file: LIST,
+    from: `                    <td className="tabular text-text-secondary" title={r.joinedTitle ?? undefined}>{r.joined}</td>`,
+    to: `                    <td className="tabular text-text-secondary" title={r.joinedTitle ?? undefined}><span className="amount">{r.joined}</span></td>`,
+    expect: "1.387L · RENDERED · the list as served",
+    suite: "console-mem",
+  },
+  {
+    name: "list-goes-client · the list becomes a client file, publishing its prop names and every string it holds in a public chunk",
+    file: LIST,
+    from: `import type { Route } from "next";
+import Link from "next/link";`,
+    to: `"use client";
+import type { Route } from "next";
+import Link from "next/link";`,
+    expect: "1.388 · decision 4 · the find step's account list is a SERVER file",
+    suite: "console-mem",
+  },
+  {
+    name: "list-total-from-page · the list's total is the page's own length, so the pager never offers a second page",
+    file: GATE,
+    from: `    total: matched.length,`,
+    to: `    total: slice.length,`,
+    expect: "1.387L · paging · twenty to a page",
+    suite: "console-mem",
+  },
+  {
+    name: "list-past-end-empty · a page past the end is served empty under a pager that says there are more",
+    file: GATE,
+    from: `  const page = consoleLastPage(matched.length, p.page, CONSOLE_LIST_PER_PAGE);`,
+    to: `  const page = p.page;`,
+    expect: "1.387L · paging · a page past the end is served as the LAST page",
+    suite: "console-mem",
+  },
+  {
+    name: "list-page-size · the page size becomes two hundred, so the find step paints the whole directory at once",
+    file: GATE,
+    from: `const CONSOLE_LIST_PER_PAGE = 20;`,
+    to: `const CONSOLE_LIST_PER_PAGE = 200;`,
+    expect: "1.387L · paging · twenty to a page",
+    suite: "console-mem",
+  },
+  {
+    name: "list-no-tiebreak · the order loses its id tie-break, so accounts that share a key come back in whatever order the store holds them",
+    file: GATE,
+    from: `    return key || listCodeUnitOrder(a.u.id, b.u.id);`,
+    to: `    return key;`,
+    expect: "1.387L · sorting · Joined",
+    suite: "console-mem",
+  },
+  {
+    name: "list-never-first · accounts that never signed in sort FIRST when the newest sign-ins are asked for",
+    file: GATE,
+    from: `    if (!xs || !ys) return xs === ys ? 0 : xs ? -1 : 1;`,
+    to: `    if (!xs || !ys) return (xs === ys ? 0 : xs ? -1 : 1) * sign;`,
+    expect: "1.387L · sorting · Signed in",
+    suite: "console-mem",
+  },
+  {
+    name: "list-sort-ignored · the Account header's sort is ignored and the list stays in joining order under it",
+    file: GATE,
+    from: `    const key = sort === "account" ? sign * listCodeUnitOrder(a.handle, b.handle)`,
+    to: `    const key = sort === "no-such-column" ? sign * listCodeUnitOrder(a.handle, b.handle)`,
+    expect: "1.387L · sorting · Account",
+    suite: "console-mem",
+  },
+  {
+    name: "list-show-inverted · the Can-be-chosen chip shows exactly the accounts that cannot be",
+    file: GATE,
+    from: `  if (show === "can") return reason === null;`,
+    to: `  if (show === "can") return reason !== null;`,
+    expect: '1.387L · filtering · Show · "Can be chosen" holds only rows with no reason',
+    suite: "console-mem",
+  },
+  {
+    name: "list-window-unbounded · the sign-in windows lose their upper bound, so a stamp in the future counts as a recent sign-in",
+    file: GATE,
+    from: `  return signedMs > nowMs - span && signedMs <= nowMs;`,
+    to: `  return signedMs > nowMs - span;`,
+    expect: "1.387L · filtering · Signed in · the window is bounded at BOTH ends",
+    suite: "console-mem",
+  },
+  {
+    name: "list-never-means-any · the Never chip keeps every account, whatever its last sign-in",
+    file: GATE,
+    from: `  if (signed === "never") return signedMs === null;`,
+    to: `  if (signed === "never") return true;`,
+    expect: "1.387L · filtering · Signed in · the window is bounded at BOTH ends",
+    suite: "console-mem",
+  },
+  {
+    name: "list-refusal-silent · a sort the list cannot honour is dropped in silence, and the officer is shown an order nobody asked for",
+    file: GATE,
+    from: `  if (sortOne.repeated || (sortAsked != null && sortHit == null)) say("sort");`,
+    to: ``,
+    expect: "1.387L · validation · every parameter the list takes",
+    suite: "console-mem",
+  },
+  {
+    name: "list-refused-travels · a refused sort value rides into every link the list builds, so the next read is asked the same unanswerable question",
+    file: GATE,
+    from: `  const sort: ListSortKey = sortHit ?? CONSOLE_LIST_SORT_DEFAULT;`,
+    to: `  const sort: ListSortKey = (sortHit ?? sortAsked ?? CONSOLE_LIST_SORT_DEFAULT) as ListSortKey;`,
+    expect: "1.387L · validation · a refused value travels NOWHERE",
+    suite: "console-mem",
+  },
+  {
+    name: "list-blocked-link · a row that cannot be chosen is a way in anyway, to a check card that can only refuse it",
+    file: GATE,
+    from: `    href: e.reason === null ? consoleNewHref({ userId: e.u.id }) : null,`,
+    to: `    href: consoleNewHref({ userId: e.u.id }),`,
+    expect: "1.387L · links · a row that can be chosen opens",
+    suite: "console-mem",
+  },
+  {
+    name: "list-filter-keeps-page · every rail chip keeps the page, so narrowing the list lands on a page it no longer has",
+    file: GATE,
+    from: `  const params = consoleListParams(p);`,
+    to: `  const params = { ...consoleListParams(p), page: String(p.page) };`,
+    expect: "1.387L · links · every rail link stays on the wizard's own route",
+    suite: "console-mem",
+  },
+  {
+    name: "list-roster-fail-open · a failed roster read is painted as an empty desk, offering accounts already on it as choosable",
+    file: GATE,
+    from: `    : liveR.reason instanceof HouseSchemaNotReady ? [] : null;`,
+    to: `    : [];`,
+    expect: "1.387L · failed reads · 355 · a failed ROSTER read",
+    suite: "console-mem",
+  },
+  {
+    name: "list-find-only · the list is read on every step, so the check card's page pulls the whole directory for one account",
+    file: NEW_PAGE,
+    from: `  const list = step === "find" ? await houseAccountListForConsole(session?.userId ?? null, "/admin/desk", sp) : null;`,
+    to: `  const list = await houseAccountListForConsole(session?.userId ?? null, "/admin/desk", sp);`,
+    expect: "1.387L · the page · the list is read ONLY on the find step",
+    suite: "console-mem",
+  },
+  {
+    name: "list-pager-total-rows · the pager is drawn from the rows on screen, so it can never reach a second page",
+    file: LIST,
+    from: `            total={view.total}`,
+    to: `            total={rows.length}`,
+    expect: "1.387L · the list file · it spends the view as painted",
+    suite: "console-mem",
+  },
+  {
+    name: "list-rail-window · the shared rail draws its date window whatever it is handed, so the account list grows a window that filters nothing",
+    file: RAIL,
+    from: `      {presets !== undefined && presetDefault !== undefined && (<I18nProvider initial="en">`,
+    to: `      {true && (<I18nProvider initial="en">`,
+    expect: "1.410 · decision 4 · the section's ONE rail draws its window only when it is handed one",
+    suite: "console-mem",
+  },
+  {
+    name: "list-loader-no-ghost · the wizard's loader stops ghosting the list's card, so the page drops by a whole table on the swap",
+    file: NEW_LOADING,
+    from: `          <SkTableCard cols={3} rows={20} minWidth={0} headW="w-[96px]" sw={false} sortable pager rowMinH={65}
+            beforeBody={
+              <div className="px-4 pb-3 space-y-3">
+                <div className="flex flex-col gap-2">
+                  <SkChip className="h-[44px] w-full max-w-[440px]" />
+                  <SkChip className="h-[44px] w-full max-w-[480px]" />
+                </div>
+                <SkBar className="h-[18px] w-[208px]" />
+              </div>
+            }
+          />`,
+    to: ``,
+    expect: "1.417 · the wizard loader's ghost sequence",
+    suite: "console-mem",
+  },
+  {
+    name: "list-ghost-rows-short · the list's ghost rows go back to a text row's height, twenty rows short of the tap-floor rows the page paints",
+    file: NEW_LOADING,
+    from: ` sortable pager rowMinH={65}`,
+    to: ` sortable pager`,
+    expect: "1.417 · decision 4 · the account list's ghost states the list's real facts",
+    suite: "console-mem",
+  },
+  {
+    name: "list-gate-unlisted · the list reader leaves the gate table, so no arity, viewer or own-route pin measures it",
+    file: REPORTS,
+    from: `houseAccountListForConsole: 3, `,
+    to: ``,
+    expect: "0.512 · ⛔ D19 · CONSOLE_GATES and the gate module's own exports agree",
+    suite: "reports-mem",
+  },
+  /* ── 2026-09-26 · REPLAN RULING 543 — an audit that cannot be SIGNED no longer reports a landed write as failed ──
+   * Three plants in the audit CONTRACT (it rejects again; its flag lies; the unsigned entry joins the chain), and one
+   * per surface that used to lie or had no case: the kill switch (service and console), Start, designate, the rules
+   * save, Pause/Remove, switch-on and the staff cancel — plus the source law's own plant, the catch that can never run.
+   * Each fails its own `2.543.*` assertion in §2i of the console cases; `537-recorded` above was re-pointed with it. */
+  {
+    name: "543-contract-rejects · an entry that cannot be signed makes audit() REJECT again, past the fail-open its docblock promises",
+    file: "src/lib/server/audit.ts",
+    from: `  } catch (signErr) {`,
+    to: `  } catch (signErr) { throw signErr;`,
+    expect: "2.543.1 · ⭐ an append that cannot be SIGNED",
+    suite: "console-mem",
+  },
+  {
+    name: "543-flag-lies · an entry that could not be signed is reported RECORDED — a record the officer is told is safe when nothing was written",
+    file: "src/lib/server/audit.ts",
+    from: `recorded: false, unrecorded: "UNSIGNED"`,
+    to: `recorded: true, unrecorded: "UNSIGNED"`,
+    expect: "2.543.1 · ⭐ an append that cannot be SIGNED",
+    suite: "console-mem",
+  },
+  {
+    name: "543-unsigned-chained · the unsigned entry is pushed into the ring, so every later reader of the chain finds a hash that is not a hash",
+    file: "src/lib/server/audit.ts",
+    from: `      if (stamped === null) return unsignedResult(entry, id);`,
+    to: `      if (stamped === null) { const unsigned = unsignedResult(entry, id); ring.push(unsigned); return unsigned; }`,
+    expect: "2.543.3 · CONTROL · with the secret back the SAME append is recorded",
+    suite: "console-mem",
+  },
+  {
+    name: "543-kill-switch-silent · the kill switch reports its compliance row written when it did not land",
+    file: KILL,
+    from: `    recorded: auditId !== null,`,
+    to: `    recorded: true,`,
+    expect: "2.543.4a · ⭐ the kill switch while its compliance record cannot be signed",
+    suite: "console-mem",
+  },
+  {
+    name: "543-off-note-dropped · the console's stop drops the missing-record sentence, so a desk that IS off reads as a clean stop",
+    file: GATE,
+    from: `  const recordNote = off.recorded ? null : SWITCH_COPY.offNotRecorded;`,
+    to: `  const recordNote: string | null = null;`,
+    expect: "2.543.4b · ",
+    suite: "console-mem",
+  },
+  {
+    name: "543-start-silent · Start reports its compliance row written when it did not land",
+    file: DESIG,
+    from: `recorded: startRecorded`,
+    to: `recorded: true`,
+    expect: "2.543.5 · ⭐ Start while its compliance record cannot be signed",
+    suite: "console-mem",
+  },
+  {
+    name: "543-designate-silent · a designation reports its compliance row written when it did not land",
+    file: DESIG,
+    from: `recorded: designated`,
+    to: `recorded: true`,
+    expect: "2.543.6 · ⭐ a designation while its compliance record cannot be signed",
+    suite: "console-mem",
+  },
+  {
+    name: "543-rules-save-silent · the rules save takes `recorded` as a constant instead of reading the audit's answer",
+    file: "src/lib/server/house-bot/rules-save.ts",
+    from: `  const recorded = logged.recorded;`,
+    to: `  const recorded = true;`,
+    expect: "2.543.7 · a rules save while its compliance record cannot be signed",
+    suite: "console-mem",
+  },
+  {
+    name: "543-writer-catches · a house writer wraps an audit( call in a try again — a catch that can never run, and a flag it never reads",
+    file: "src/lib/server/house-bot/switch-on.ts",
+    from: `  const entry = await audit({`,
+    to: `  try { await audit({ category: "SYSTEM", action: "planted.543", actorId: null, targetType: null, targetId: null }); } catch { /* planted */ }\n  const entry = await audit({`,
+    expect: "2.543.8 · ⛔ every house writer READS the flag",
+    suite: "console-mem",
+  },
+  {
+    name: "543-roster-silent · Pause and Remove report their compliance rows written, and stamp their events with the id of an entry that never landed",
+    file: ROSTER,
+    from: `  return { recorded: entry.recorded, auditId: entry.recorded ? entry.id : null };`,
+    to: `  return { recorded: true, auditId: entry.id };`,
+    expect: "2.543.9 · Pause and Remove while their compliance records cannot be signed",
+    suite: "console-mem",
+  },
+  {
+    name: "543-switch-on-silent · switch-on takes `recorded` as a constant, and stamps its event with the id of an entry that never landed",
+    file: "src/lib/server/house-bot/switch-on.ts",
+    from: `  const recorded = entry.recorded;`,
+    to: `  const recorded = true;`,
+    expect: "2.543.10 · switching the desk ON while its compliance record cannot be signed",
+    suite: "console-mem",
+  },
+  {
+    name: "543-press-cancel-phantom · the press audit answers the id of an entry that never landed, so the staff cancel reports its record written",
+    file: "src/lib/server/house-bot/press-audit.ts",
+    from: `  return row.recorded ? row.id : null;`,
+    to: `  return row.id;`,
+    expect: "2.543.11 · the staff cancel while its decision record cannot be signed",
+    suite: "console-mem",
+  },
+  {
+    name: "nav-tab-mark-dropped · the section rail's link loses its pending mark, so a pressed desk tab sits unchanged until the server answers",
+    file: "src/components/ui/tabs.tsx",
+    from: "        <LinkPending />",
+    to: "",
+    expect: "1.nav.1a · ⭐ the section rail",
+    suite: "console-mem",
+  },
+  {
+    name: "nav-sort-mark-dropped · the sortable header's link loses its pending mark",
+    file: "src/components/admin/admin-sort.tsx",
+    from: "        <LinkPending />",
+    to: "",
+    expect: "1.nav.1b · ⭐ the sortable header",
+    suite: "console-mem",
+  },
+  {
+    name: "nav-pager-mark-dropped · the pager's link loses its pending mark",
+    file: "src/components/ui/pagination.tsx",
+    from: "        <LinkPending />",
+    to: "",
+    expect: "1.nav.1c · ⭐ the pager",
+    suite: "console-mem",
+  },
+  {
+    name: "nav-chip-mark-dropped · the filter chip's link loses its pending mark",
+    file: "src/components/ui/filter-pill.tsx",
+    from: "      <LinkPending />",
+    to: "",
+    expect: "1.nav.1d · ⭐ the filter chip",
+    suite: "console-mem",
+  },
+  {
+    name: "nav-custom-mark-dropped · the date filter's Custom chip loses its mark, so an applied custom window sits unchanged until the server answers",
+    file: "src/components/ui/datetime-range-filter.tsx",
+    from: "            <PendingMark on={navPending} />",
+    to: "",
+    expect: "1.nav.1e · ⭐ the date filter's Custom window",
+    suite: "console-mem",
+  },
+  {
+    name: "nav-mark-always · the mark stops asking the router and paints at rest, so every link on the page looks busy",
+    file: "src/components/ui/link-pending.tsx",
+    from: "return on ? <span",
+    to: "return true ? <span",
+    expect: "1.nav.2 · the mark is the ROUTER's own answer",
+    suite: "console-mem",
+  },
+  {
+    name: "nav-rows-never-dim · a pressed header, pager or chip no longer dims the rows it is about to replace",
+    file: "src/app/globals.css",
+    from: ".glass-panel:has(.link-pending) tbody {",
+    to: ".glass-panel:has(.link-pending) tfoot {",
+    expect: "1.nav.3 · the CSS draws it",
+    suite: "console-mem",
+  },
+  {
+    name: "nav-loop-runs-on · the mark's travelling light is no longer stopped at the low-end tier",
+    file: "src/app/globals.css",
+    from: "[data-motion=\"reduced\"] .link-pending::after,",
+    to: "[data-motion=\"reduced\"] .link-pending-x::after,",
+    expect: "1.nav.3 · the CSS draws it",
+    suite: "console-mem",
+  },
+  /* ── 2026-09-26 · STEP 9 · EVERY DESK TABLE SORTS, AND NONE CAN GROW PAST A PAGE ────────────────────────────────
+   * Each puts back a shape step 9 could plausibly have shipped in: a direction that does nothing, a missing value that
+   * sorts first, an order with no tie-break, a chip ranked without its result, a text order that is case-blind or
+   * missing-blind, a cursor handed to a sorted page, a roster page that is the whole roster or a page past the end
+   * served empty, a sort word dropped in silence or a refused one carried into a link, a bell that lands in the wrong
+   * order, a note that still says "Newest first.", a rail or a pager that loses the sort, the desk's Account order
+   * quietly served as time, the Results sort ignored or its folded line ranked first, a header handed the raw address,
+   * a pager base typed at the call site, a refusal with no Callout, and three Postgres twins that part company with
+   * memory. Every `from` resolves exactly once in its own file (`test:red-anchors` §3). */
+  {
+    name: "sort-dal-dir-ignored · the memory twin's sorted page ignores the direction, so Stake descending comes back ascending",
+    file: DAL,
+    from: `    return (dir === "asc" ? ka - kb : kb - ka) || memNewestFirst(a, b);`,
+    to: `    return (ka - kb) || memNewestFirst(a, b);`,
+    expect: "1.s9 · ledger · Stake · every page, concatenated, is in stake order BOTH ways",
+    suite: "console-mem",
+  },
+  {
+    name: "sort-dal-nulls-first · a row whose key is missing sorts FIRST, so every stake of an account no longer on the desk heads the Account order",
+    file: DAL,
+    from: `    if (ka === null || kb === null) return ka === kb ? memNewestFirst(a, b) : ka === null ? 1 : -1;`,
+    to: `    if (ka === null || kb === null) return ka === kb ? memNewestFirst(a, b) : ka === null ? -1 : 1;`,
+    expect: "1.s9 · desk ledger · Account · every page, concatenated, is in the ROSTER's label order both ways",
+    suite: "console-mem",
+  },
+  {
+    name: "sort-dal-no-tiebreak · the default tail loses its id, so two stakes of one amount at one instant come back in whatever order the store holds them",
+    file: DAL,
+    from: `  ms(b.createdAt) - ms(a.createdAt) || (a.id < b.id ? 1 : a.id > b.id ? -1 : 0);`,
+    to: `  ms(b.createdAt) - ms(a.createdAt);`,
+    expect: "1.s9 · ledger · ties · two stakes of one amount at ONE instant",
+    suite: "console-mem",
+  },
+  {
+    name: "sort-dal-outcome-status-only · the Outcome order ranks the intent's status alone, so a stake that WON sorts among the ones still placed",
+    file: DAL,
+    from: `    return st !== undefined && results.includes(st) ? st : r.status;`,
+    to: `    return r.status;`,
+    expect: "1.s9 · ledger · Outcome · the chip in lifecycle order",
+    suite: "console-mem",
+  },
+  {
+    name: "sort-text-case-blind · the one text order compares code points alone, so \"Banana\" sorts before \"apple\" and a title list reads unsorted",
+    file: DAL,
+    from: `  return codePointOrder(fold(a), fold(b)) || codePointOrder(a, b);`,
+    to: `  return codePointOrder(a, b);`,
+    expect: "1.s9 · targets · Poll · every page in title order both ways",
+    suite: "console-mem",
+  },
+  {
+    name: "sort-dal-title-nulls-first · a stored title that is not a string sorts FIRST, ahead of every poll with a name",
+    file: DAL,
+    from: `    if (ta === null || tb === null) return ta === tb ? memNewestFirst(a, b) : ta === null ? 1 : -1;`,
+    to: `    if (ta === null || tb === null) return ta === tb ? memNewestFirst(a, b) : ta === null ? -1 : 1;`,
+    expect: "1.s9 · targets · DAL · a stored title that is not a string sorts LAST",
+    suite: "console-mem",
+  },
+  {
+    name: "sort-dal-cursor · a keyset cursor is taken by a sorted page, so the engine's walker could page a list in an order its cursor does not name",
+    file: DAL,
+    from: `function memOrderedPage<R extends { createdAt: string; id: string }>(rows: R[], order: (a: R, b: R) => number, cursor: KeysetCursor | null | undefined, limit: number, offset = 0): Page<R> {
+  if (cursor) throw new Error(SORTED_CURSOR_REFUSAL);`,
+    to: `function memOrderedPage<R extends { createdAt: string; id: string }>(rows: R[], order: (a: R, b: R) => number, cursor: KeysetCursor | null | undefined, limit: number, offset = 0): Page<R> {`,
+    expect: "1.s9 · DAL · a keyset cursor is a position in the DEFAULT order",
+    suite: "console-mem",
+  },
+  {
+    name: "sort-reader-nulls-first · the in-memory tables put a cell that paints no figure FIRST, so an unset limit heads the Loss order",
+    file: GATE,
+    from: `    if (a === null || b === null) return a === b ? tie(i, j) : a === null ? 1 : -1;`,
+    to: `    if (a === null || b === null) return a === b ? tie(i, j) : a === null ? -1 : 1;`,
+    expect: "1.s9 · roster · missing · an account whose limit is not set paints no figure and sorts LAST in BOTH directions",
+    suite: "console-mem",
+  },
+  {
+    name: "sort-reader-no-tie · the in-memory tables drop their tie-break, so two accounts that tie come back in whatever order the roster read returned",
+    file: GATE,
+    from: `    return sign * by || tie(i, j);`,
+    to: `    return sign * by;`,
+    expect: "1.s9 · roster · ties · two accounts designated in the SAME millisecond",
+    suite: "console-mem",
+  },
+  {
+    name: "sort-reader-dir-ignored · the in-memory tables ignore the direction, so every roster column clicked twice reads the same",
+    file: GATE,
+    from: `  const sign = dir === "asc" ? 1 : -1;
+  const idx = rows.map((_, i) => i).sort((i, j) => {`,
+    to: `  const sign = 1;
+  const idx = rows.map((_, i) => i).sort((i, j) => {`,
+    expect: "1.s9 · roster · every one of its six sortable columns orders every page both ways",
+    suite: "console-mem",
+  },
+  {
+    name: "sort-roster-page-size · the roster's page is two hundred rows, so the pager Ali asked for never pages anything",
+    file: GATE,
+    from: `const CONSOLE_ROSTER_PER_PAGE = 20;`,
+    to: `const CONSOLE_ROSTER_PER_PAGE = 200;`,
+    expect: "1.s9 · roster pager · twenty to a page",
+    suite: "console-mem",
+  },
+  {
+    name: "sort-roster-total-from-page · the roster pager's total is the page's own length, so it can never offer a second page",
+    file: GATE,
+    from: `  const rosterTotal = ordered === null ? null : ordered.length;`,
+    to: `  const rosterTotal = ordered === null ? null : Math.min(ordered.length, CONSOLE_ROSTER_PER_PAGE);`,
+    expect: "1.s9 · roster pager · twenty to a page",
+    suite: "console-mem",
+  },
+  {
+    name: "sort-roster-past-end-empty · a roster page past the end is served empty under a pager that says there are more",
+    file: GATE,
+    from: `  const rosterPage = consoleLastPage(rosterTotal, q.rpage, CONSOLE_ROSTER_PER_PAGE);`,
+    to: `  const rosterPage = q.rpage;`,
+    expect: "1.s9 · roster pager · twenty to a page",
+    suite: "console-mem",
+  },
+  {
+    name: "sort-refusal-silent · a sort word that is no column is dropped in silence, so the officer is shown an order nobody asked for",
+    file: GATE,
+    from: `    if (sortOne.repeated || (asked != null && hit == null)) say("sort");`,
+    to: `    if (sortOne.repeated) say("sort");`,
+    expect: "1.s9 · validation · a sort word that is no column of THIS table",
+    suite: "console-mem",
+  },
+  {
+    name: "sort-dir-without-column · a direction with nothing to reverse is taken at its word and silently ignored",
+    file: GATE,
+    from: `    if (dirOne.repeated || (dirAsked != null && dirHit == null) || (dirHit != null && key == null)) say("sort direction");`,
+    to: `    if (dirOne.repeated || (dirAsked != null && dirHit == null)) say("sort direction");`,
+    expect: "1.s9 · validation · a DIRECTION with no column to reverse",
+    suite: "console-mem",
+  },
+  {
+    name: "sort-refused-travels · a refused direction rides into every link the panel builds, so the next read is asked the same unanswerable question",
+    file: GATE,
+    from: `    sorts[table] = { table, key, dir: key == null ? "desc" : dirHit ?? "desc" };`,
+    to: `    sorts[table] = { table, key, dir: key == null ? "desc" : (dirHit ?? dirAsked ?? "desc") as "asc" | "desc" };`,
+    expect: "1.s9 · validation · refused sort words travel NOWHERE",
+    suite: "console-mem",
+  },
+  {
+    name: "sort-anchor-default-rank · a bell followed onto a SORTED ledger is ranked in the default order, so it lands on a page its row is not on",
+    file: GATE,
+    from: `  if (order !== undefined) return consoleRankedPage(() => houseBotIntentStore.rankInFeed(filter, order, anchorId), CONSOLE_FEED_PER_PAGE, fallback);`,
+    to: ``,
+    expect: "1.s9 · anchored · a bell's row followed onto a SORTED address lands on the page the row holds IN THAT ORDER",
+    suite: "console-mem",
+  },
+  {
+    name: "sort-note-stale · the order note says \"Newest first.\" whatever the address asked, so a phone reads a false order under a sorted ledger",
+    file: GATE,
+    from: `  if (consoleSortIsDefault(s) || s.key === null) return CONSOLE_ORDER_NOTE;`,
+    to: `  if (s.table.length > 0) return CONSOLE_ORDER_NOTE;`,
+    expect: "1.s9 · notes · the order note says the order IN FORCE",
+    suite: "console-mem",
+  },
+  {
+    name: "sort-rail-drops-sort · the activity panel's parameters leave the sort out, so every rail chip and the pager's page 2 fall back to newest first",
+    file: GATE,
+    from: `    ...consoleSortParams(consoleSortOf(p, "feedDesk", "feedAccount")),`,
+    to: ``,
+    expect: "1.s9 · links · the sort rides every rail link and the pager's base",
+    suite: "console-mem",
+  },
+  {
+    name: "sort-history-params-drop · the history's parameters leave the sort out, so its pager's page 2 is page 2 of a different order",
+    file: GATE,
+    from: `    historyParams: { tab: "history", ...consoleSortParams(consoleSortOf(p, "historyDesk", "historyAccount")) },`,
+    to: `    historyParams: { tab: "history" },`,
+    expect: "1.s9 · desk history · When · oldest first is the EXACT reverse of the bare address",
+    suite: "console-mem",
+  },
+  {
+    name: "sort-desk-account-as-time · the desk ledger's Account order is served as the default one, so the header is in force over rows that are not in its order",
+    file: GATE,
+    from: `function consoleFeedOrder(s: ConsoleSortParsed, roster: readonly StoredHouseBot[] | null): IntentFeedOrder | undefined {
+  if (s.key === null || consoleSortIsDefault(s)) return undefined;
+  if (s.key === "account") return { key: "account", accountIds: consoleAccountRanking(roster, s.dir) };`,
+    to: `function consoleFeedOrder(s: ConsoleSortParsed, roster: readonly StoredHouseBot[] | null): IntentFeedOrder | undefined {
+  if (s.key === null || consoleSortIsDefault(s)) return undefined;`,
+    expect: "1.s9 · desk ledger · Account · every page, concatenated, is in the ROSTER's label order both ways",
+    suite: "console-mem",
+  },
+  {
+    name: "sort-results-days-ignored · By day's sort is read and never applied, so the header is in force over the table's own order",
+    file: GATE,
+    from: `  const sortedDays = consoleSortIsDefault(daySort) || daySort.key === null ? resultDays`,
+    to: `  const sortedDays = daySort.table.length > 0 ? resultDays`,
+    expect: "1.s9 · results · By day oldest first is the EXACT reverse of its own order",
+    suite: "console-mem",
+  },
+  {
+    name: "sort-results-fold-first · the line folding the accounts no longer on the desk is given an empty label, so it heads the Account order instead of ending it",
+    file: GATE,
+    from: `      ...(gone.size > 0 ? [{ label: null, set: gone as ReadonlySet<string> }] : [])];`,
+    to: `      ...(gone.size > 0 ? [{ label: "", set: gone as ReadonlySet<string> }] : [])];`,
+    expect: "1.s9 · results · By account orders by the account's label",
+    suite: "console-mem",
+  },
+  {
+    name: "sort-header-raw-address · a sortable header is handed the raw address instead of the panel's validated parameters, so a refused value rides its link",
+    file: PAGE,
+    from: `                        <SortTh field={feedView.feedSort.columns.account.field} label={feedView.feedSort.columns.account.label} current={feedView.feedSort.current} dir={feedView.feedSort.dir} sp={feedView.feedParams} baseHref={CONSOLE_ROUTE} prefix={feedView.feedSort.prefix} className="p-3 min-w-[104px] sm:min-w-[150px]" />`,
+    to: `                        <SortTh field={feedView.feedSort.columns.account.field} label={feedView.feedSort.columns.account.label} current={feedView.feedSort.current} dir={feedView.feedSort.dir} sp={sp} baseHref={CONSOLE_ROUTE} prefix={feedView.feedSort.prefix} className="p-3 min-w-[104px] sm:min-w-[150px]" />`,
+    expect: "1.s9 · the pages · every sortable header on both pages is the kit's `SortTh`",
+    suite: "console-mem",
+  },
+  {
+    name: "sort-targets-base-typed · the Targets pager's base is typed at the call site again, so page 2 of a sorted grid is page 2 of the unsorted one",
+    file: DETAIL,
+    from: `                  baseHref={buildBaseHref(\`\${CONSOLE_ROUTE}/\${view.id}\`, view.targetsParams, "tpage")}`,
+    to: `                  baseHref={buildBaseHref(\`\${CONSOLE_ROUTE}/\${view.id}\`, { tab: "targets" }, "tpage")}`,
+    expect: "1.s9 · the pages · the roster draws the kit pager over its reader's own count",
+    suite: "console-mem",
+  },
+  {
+    name: "sort-roster-refusal-unpainted · the roster reads a refusal and paints no Callout, so an address that was not taken at its word looks as though it was",
+    file: PAGE,
+    from: `          {rosterView.queryRefusal && (`,
+    to: `          {false && rosterView.queryRefusal && (`,
+    expect: "1.s9 · the pages · the roster draws the kit pager over its reader's own count",
+    suite: "console-mem",
+  },
+  {
+    name: "sort-roster-arity · the roster reader's arity pin falls back to two, so a caller could drop the address and the gate's own pin would call that correct",
+    file: REPORTS,
+    from: `houseRosterForConsole: 3, houseUsageForConsole: 3,`,
+    to: `houseRosterForConsole: 2, houseUsageForConsole: 3,`,
+    expect: "0.260.1 · ⛔ D19 · every audit row a console file reads",
+    suite: "reports-mem",
+  },
+  /* ⭐ THE POSTGRES TWIN'S OWN THREE — each names `console-pg`, because the memory child never runs this SQL: a clause
+     that parts company with the memory comparator is caught only by the same case failing on Postgres. */
+  {
+    name: "sort-pg-title-nulls-first · the Postgres title order loses NULLS LAST on its first key, so descending puts a title that is no string FIRST",
+    file: DAL,
+    from: "  return `translate(${title}, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz') COLLATE \"C\" ${d} NULLS LAST,`",
+    to: "  return `translate(${title}, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz') COLLATE \"C\" ${d},`",
+    expect: "1.s9 · targets · DAL · a stored title that is not a string sorts LAST",
+    suite: "console-pg",
+  },
+  {
+    name: "sort-pg-outcome-status-only · the Postgres Outcome order ranks the intent's status alone, parting company with the memory twin on every settled stake",
+    file: DAL,
+    from: "COALESCE(${result}, \"status\")) ${sqlDir(order.dir)} NULLS LAST, ${SQL_NEWEST_FIRST}`;",
+    to: "COALESCE(NULL, \"status\")) ${sqlDir(order.dir)} NULLS LAST, ${SQL_NEWEST_FIRST}`;",
+    expect: "1.s9 · ledger · Outcome · the chip in lifecycle order",
+    suite: "console-pg",
+  },
+  {
+    name: "sort-pg-history-account-reversed · the Postgres history's Account order reads the ranking backwards, so the desk history sorts Z to A under an A-to-Z header",
+    file: DAL,
+    from: "  return `array_position(${p.raw([...order.accountIds], \"text[]\")}, \"houseBotId\") ASC NULLS LAST, ${SQL_NEWEST_FIRST}`;",
+    to: "  return `array_position(${p.raw([...order.accountIds], \"text[]\")}, \"houseBotId\") DESC NULLS LAST, ${SQL_NEWEST_FIRST}`;",
+    expect: "1.s9 · desk history · Account · every page in the roster's label order both ways",
+    suite: "console-pg",
+  },
+  /* ── 2026-09-27 · THE PHONE'S SORT RAIL — Ali: "on a phone, the two activity lists can't be re-sorted … a phone sort
+   * button". Each puts back a shape the rail could plausibly have shipped in: handed the raw address, options typed at the
+   * call site, drawn at every width beside the header row, drawn over an empty table, the dense rank under the phone's tap
+   * floor, the account's rail answering to the desk's name, a kit rail that reads its next direction its own way, and a
+   * kit default that is no longer the dense rank the kit's two other consoles draw. Every `from` resolves exactly once in
+   * its own file (`test:red-anchors` §3). */
+  {
+    name: "phone-sort-raw-address · the desk ledger's phone rail is handed the raw address instead of the panel's validated parameters, so a word the reader refused rides every chip",
+    file: PAGE,
+    from: `sp={feedView.feedParams} options={Object.values(feedView.feedSort.columns)}`,
+    to: `sp={sp} options={Object.values(feedView.feedSort.columns)}`,
+    expect: "1.s9p · phone · each activity ledger draws the kit's card sort rail in its header row's place",
+    suite: "console-mem",
+  },
+  {
+    name: "phone-sort-typed-options · the account ledger's phone rail types its own options, so a chip can name a column its header row does not sort",
+    file: DETAIL,
+    from: `options={Object.values(view.feedSort.columns)}`,
+    to: `options={[{ field: "stake", label: "Stake" }]}`,
+    expect: "1.s9p · phone · each activity ledger draws the kit's card sort rail in its header row's place",
+    suite: "console-mem",
+  },
+  {
+    name: "phone-sort-every-width · the desk ledger's phone rail loses its breakpoint, so from `sm` up two controls sort one table on one screen",
+    file: PAGE,
+    from: `                  <div className="sm:hidden">`,
+    to: `                  <div>`,
+    expect: "1.s9p · phone · each activity ledger draws the kit's card sort rail in its header row's place",
+    suite: "console-mem",
+  },
+  {
+    name: "phone-sort-over-empty · the account ledger's phone rail is drawn over an empty table, whose header row the kit hides at every width",
+    file: DETAIL,
+    from: `{feedRows.length > 0 && (`,
+    to: `{(`,
+    expect: "1.s9p · phone · each activity ledger draws the kit's card sort rail in its header row's place",
+    suite: "console-mem",
+  },
+  {
+    name: "phone-sort-dense · the desk ledger's phone rail takes the 32px dense rank on a phone, under the section's 40px tap floor",
+    file: PAGE,
+    from: `options={Object.values(feedView.feedSort.columns)} rank="secondary"`,
+    to: `options={Object.values(feedView.feedSort.columns)} rank="dense"`,
+    expect: "1.s9p · phone · each activity ledger draws the kit's card sort rail in its header row's place",
+    suite: "console-mem",
+  },
+  {
+    name: "phone-sort-shared-id · the account ledger's phone rail answers to the desk's id, so a driver cannot tell the two rails apart",
+    file: DETAIL,
+    from: `railId="account-activity-sort"`,
+    to: `railId="desk-activity-sort"`,
+    expect: "1.s9p · phone · every card sort rail in the product answers to its OWN id",
+    suite: "console-mem",
+  },
+  {
+    name: "phone-sort-kit-direction · the kit rail reads its next direction its own way, so a chip and the header of the same column are two addresses",
+    file: "src/components/admin/card-sort-control.tsx",
+    from: `    const nextDir: SortDir = isActive && dir === "desc" ? "asc" : "desc";`,
+    to: `    const nextDir: SortDir = isActive && dir === "asc" ? "desc" : "asc";`,
+    expect: "1.s9p · phone · RENDERED · on every address — sorted with a filter and a page asked for",
+    suite: "console-mem",
+  },
+  {
+    name: "phone-sort-kit-default · the kit rail's default leaves the dense rank, so the rails of the kit's two other consoles silently grow to 44px",
+    file: "src/components/admin/card-sort-control.tsx",
+    from: `  rank = "dense",`,
+    to: `  rank = "secondary",`,
+    expect: "1.s9p · phone · RENDERED · at the desk's rank every chip of the rail stands on the 44px rung",
+    suite: "console-mem",
+  },
+  /* ── 2026-09-27 · the review of the phone sort rail: the page clause could not fail (no view carried a page), and a
+   * screen reader on a phone was never told the direction. Each `from` resolves exactly once in the kit rail's file. */
+  {
+    name: "phone-sort-kit-keeps-page · the kit rail stops dropping its table's page, so a chip pressed on page 2 lands on page 2 of a new order while the header of the same column starts it from the top",
+    file: "src/components/admin/card-sort-control.tsx",
+    from: `if (v && k !== sortKey && k !== dirKey && k !== pageKey) params.set(k, v);`,
+    to: `if (v && k !== sortKey && k !== dirKey) params.set(k, v);`,
+    expect: "1.s9p · phone · RENDERED · on every address — sorted with a filter and a page asked for",
+    suite: "console-mem",
+  },
+  {
+    name: "phone-sort-kit-says-wrong-way · the chip in force tells a screen reader the OPPOSITE direction from its arrow and its column's header",
+    file: "src/components/admin/card-sort-control.tsx",
+    from: `{dir === "asc" ? " ascending" : " descending"}`,
+    to: `{dir === "asc" ? " descending" : " ascending"}`,
+    expect: "1.s9p · phone · RENDERED · on every address the chip in force — and no other chip — SAYS its direction",
+    suite: "console-mem",
+  },
+  /* ━━ FS-09 (2026-09-27) · EVERY LANDED ACT TELLS EVERY ADMIN ONCE — one declaration per wired call, each dropping
+     that call and going red on its own act's case in §2j; then the guards that keep the alert honest (a save that
+     moves nothing, a refusal, the officer's name, the desk's own link, the diff's shape, every recipient) and the
+     target law's planted writer. `§2j` runs on both stores; these name the memory child, where the harness drives. ━━ */
+  {
+    name: "fs09-designated · adding an account tells no admin again — the DESIGNATED alert's call is dropped",
+    file: DESIG,
+    from: `  await announceRoster({\n    botId: written.bot.id, label: written.bot.label, event: "DESIGNATED",`,
+    to: `  void ({\n    botId: written.bot.id, label: written.bot.label, event: "DESIGNATED",`,
+    expect: "2.fs09.1 · DESIGNATED · adding an account tells EVERY admin once",
+    suite: "console-mem",
+  },
+  {
+    name: "fs09-verified · a confirmed permission tells no admin again — the VERIFIED alert's call is dropped",
+    file: DESIG,
+    from: `  await announceRoster({ botId, label: bot.label, event: "VERIFIED", eventId: written.eventId, actorId: officerId });`,
+    to: `  void written.eventId;`,
+    expect: "2.fs09.2 · VERIFIED · confirming the holder's permission tells EVERY admin once",
+    suite: "console-mem",
+  },
+  {
+    name: "fs09-started · a Start tells no admin again — the STARTED alert's call is dropped",
+    file: DESIG,
+    from: `  await announceRoster({ botId, label: bot.label, event: "STARTED", eventId: written.eventId, actorId: officerId });`,
+    to: `  void written.eventId;`,
+    expect: "2.fs09.3 · STARTED · a Start that lands tells EVERY admin once",
+    suite: "console-mem",
+  },
+  {
+    name: "fs09-rules · a rules save tells no admin again — the RULES_SAVED alert's call is never reached",
+    file: RULES_SAVE,
+    from: `  if (moved.length > 0) {`,
+    to: `  if (false) {`,
+    expect: "2.fs09.4 · RULES_SAVED · a rules save that moves several fields tells EVERY admin once",
+    suite: "console-mem",
+  },
+  {
+    name: "fs09-rules-nochange · a rules save that moved NOTHING still rings every admin with \"its rules changed\"",
+    file: RULES_SAVE,
+    from: `  if (moved.length > 0) {`,
+    to: `  if (true) {`,
+    expect: "2.fs09.4n · CONTROL · a rules save that moves NOTHING still lands",
+    suite: "console-mem",
+  },
+  {
+    name: "fs09-limits · a limits save tells no admin again — the LIMITS_SAVED alert's call is never reached",
+    file: SAVE,
+    from: `  if (changes.length > 0) {`,
+    to: `  if (false) {`,
+    expect: "2.fs09.5b · LIMITS_SAVED · and it tells EVERY admin once, as the DESK's change",
+    suite: "console-mem",
+  },
+  {
+    name: "fs09-limits-nochange · a limits save that moved NOTHING still rings every admin",
+    file: SAVE,
+    from: `  if (changes.length > 0) {`,
+    to: `  if (true) {`,
+    expect: "2.fs09.5n · CONTROL · a limits save that moves NOTHING still lands",
+    suite: "console-mem",
+  },
+  {
+    name: "fs09-limits-event · the limits save writes no history row again, so the desk's history never shows it and the alert has no event to open",
+    file: SAVE,
+    from: `    savedEventId = (await houseBotEventStore.append({`,
+    to: `    savedEventId = (await (async (_e) => ({ id: null }))({`,
+    expect: "2.fs09.5 · LIMITS_SAVED · the desk's limits save writes its OWN history row",
+    suite: "console-mem",
+  },
+  {
+    name: "fs09-limits-refused · a limits save REFUSED as stale rings every admin anyway",
+    file: SAVE,
+    from: `  if (!Number.isInteger(input.baseVersion) || control.limitsVersion !== input.baseVersion) {`,
+    to: `  if (!Number.isInteger(input.baseVersion) || control.limitsVersion !== input.baseVersion) {\n    await announceRoster({ botId: null, label: null, event: "LIMITS_SAVED", eventId: null, actorId: input.actorId, changes: [] });`,
+    expect: "2.fs09.5c · CONTROL · a limits save REFUSED as stale tells nobody",
+    suite: "console-mem",
+  },
+  {
+    name: "fs09-paused · a Pause by hand tells no admin again — the PAUSED alert's call is dropped",
+    file: ROSTER,
+    from: `  await announceRoster({ botId: bot.id, label: bot.label, event: "PAUSED", eventId: event.id, actorId: input.actorId, detail: { cancelled } });`,
+    to: `  void event.id;`,
+    expect: "2.fs09.6 · PAUSED · a Pause by hand tells EVERY admin once",
+    suite: "console-mem",
+  },
+  {
+    name: "fs09-removed · a Remove tells no admin again — the REMOVED alert's call is dropped",
+    file: ROSTER,
+    from: `  await announceRoster({ botId: bot.id, label: bot.label, event: "REMOVED", eventId: event.id, actorId: input.actorId, detail: { cancelled } });`,
+    to: `  void event.id;`,
+    expect: "2.fs09.7 · REMOVED · a Remove tells EVERY admin once",
+    suite: "console-mem",
+  },
+  {
+    name: "fs09-officer-as-player · the officer is named the way a PLAYER is (\"Player #…\") instead of by their own name",
+    file: EMITTERS,
+    from: `    const byName = o.detail?.byName ?? (o.actorId ? await officerName(o.actorId) : null);`,
+    to: `    const byName = o.detail?.byName ?? (o.actorId ? displayLabel({ id: o.actorId, displayName: null }) : null);`,
+    expect: "2.fs09.3 · STARTED · a Start that lands tells EVERY admin once",
+    suite: "console-mem",
+  },
+  {
+    name: "fs09-section · a rule leaf loses its section, so the Counter's \"Delay minimum\" reads as either of the Opener's",
+    file: EMITTERS,
+    from: "    const name = meta.group === \"rules\" && !meta.label.startsWith(meta.section) ? `${meta.section} · ${meta.label}` : meta.label;",
+    to: `    const name = meta.label;`,
+    expect: "2.fs09.4b · RULES_SAVED · a save that moves ONE field says exactly that field",
+    suite: "console-mem",
+  },
+  {
+    name: "fs09-desk-link · the desk's own alert links to the history's top instead of the row it is about",
+    file: NOTIF,
+    from: `    : (opts.eventId ? consoleDeskEventHref(opts.eventId) : consoleTabHref("history"));`,
+    to: `    : (opts.eventId ? consoleTabHref("history") : consoleTabHref("history"));`,
+    expect: "2.fs09.5b · LIMITS_SAVED · and it tells EVERY admin once, as the DESK's change",
+    suite: "console-mem",
+  },
+  {
+    name: "fs09-reason-tail · every roster alert says \"Reason recorded\", pointing a designation at a reason nobody was asked for",
+    file: NOTIF,
+    from: `  const reasoned = ["PAUSED", "REMOVED", "TARGET_ADDED", "TARGET_CHANGED", "TARGET_REMOVED", "TARGET_STOPPED"].includes(opts.event);`,
+    to: `  const reasoned = true;`,
+    expect: "2.fs09.1 · DESIGNATED · adding an account tells EVERY admin once",
+    suite: "console-mem",
+  },
+  {
+    name: "fs09-one-recipient · the roster alert reaches only the FIRST admin found, not every one (A22)",
+    file: NOTIF,
+    from: `  const recipients = await houseBotAlertRecipients();\n  const { ROSTER_SENTENCE, isRosterEventCode } = await import("@/lib/house-bot/alert-copy");`,
+    to: `  const recipients = (await houseBotAlertRecipients()).slice(0, 1);\n  const { ROSTER_SENTENCE, isRosterEventCode } = await import("@/lib/house-bot/alert-copy");`,
+    expect: "2.fs09.2 · VERIFIED · confirming the holder's permission tells EVERY admin once",
+    suite: "console-mem",
+  },
+  /* ── 2.fs09.8 · THE TARGET LAW (rewritten 2026-09-27 after the adversarial review found the first scan held nothing:
+     it looked for an `update` the store does not have, only on a receiver spelled `targetStore`, and any
+     `announceRoster(` satisfied it). Each writer is planted where a real file reaches the store — by its own name, by
+     the alias `house-console-read.ts` imports it under, beside a non-target alert — and the scanner's own three
+     rules are each put back wrong once, so its controls are proved to bite. ─────────────────────────────────── */
+  {
+    name: "fs09-target-writer · a target writer arrives under src/ with no alert beside it",
+    file: ENTER_NOW,
+    from: `  const target = await targetStore.activeForMarket(marketId);`,
+    to: `  const target = await targetStore.activeForMarket(marketId);\n  if (Date.now() < 0) await targetStore.veto(target?.id ?? "");`,
+    expect: "2.fs09.8a · THE LAW · every file under src/ that reaches the DAL's targetStore",
+    suite: "console-mem",
+  },
+  {
+    name: "fs09-target-writer-announced · a target writer arrives WITH its alert, and the record that none exists goes stale",
+    file: ENTER_NOW,
+    from: `  const target = await targetStore.activeForMarket(marketId);`,
+    /* The plant BINDS its announcer (a dynamic import of the emitters module), as the scan now requires — a bare call
+       with no import announces nothing, so this plant keeps proving "a writer that does announce" (2026-09-27). */
+    to: `  const target = await targetStore.activeForMarket(marketId);\n  if (Date.now() < 0) { const { announceRoster } = await import("./emitters"); await targetStore.veto(target?.id ?? ""); await announceRoster({ botId: null, label: null, event: "TARGET_STOPPED", eventId: null }); }`,
+    expect: "2.fs09.8 · the four target codes have no writer to announce them YET",
+    suite: "console-mem",
+  },
+  {
+    name: "fs09-target-writer-alias · a change writer arrives on the ALIASED receiver (targetStore as houseBotTargetStore)",
+    file: GATE,
+    from: `  const [holderR, dayR, exposureR, staffR, rateR, targetsR, targetsCountR, targetsActiveR, parseR, boundsR,`,
+    to: `  if (Date.now() < 0) await houseBotTargetStore.casUpdate(bot.id, 0, {}, bot.id);\n  const [holderR, dayR, exposureR, staffR, rateR, targetsR, targetsCountR, targetsActiveR, parseR, boundsR,`,
+    expect: "2.fs09.8a · THE LAW · every file under src/ that reaches the DAL's targetStore",
+    suite: "console-mem",
+  },
+  {
+    name: "fs09-target-writer-nontarget · a target removal arrives in a file whose only alerts are PAUSED and REMOVED",
+    file: ROSTER,
+    from: `      const ended = await targetStore.endAllForBot(bot.id, "BOT_REMOVED", t);`,
+    to: `      const ended = await targetStore.endAllForBot(bot.id, "BOT_REMOVED", t);\n      if (Date.now() < 0) await targetStore.remove(bot.id, input.actorId, t);`,
+    expect: "2.fs09.8a · THE LAW · every file under src/ that reaches the DAL's targetStore",
+    suite: "console-mem",
+  },
+  {
+    name: "fs09-target-member · the target store gains a member nobody has classified as a writer or a reader",
+    file: DAL,
+    from: `  veto(targetId: string, tx?: HouseTx): Promise<{ row: StoredHouseBotTarget; previousEndCause: TargetEndCause | null } | null>;`,
+    to: `  veto(targetId: string, tx?: HouseTx): Promise<{ row: StoredHouseBotTarget; previousEndCause: TargetEndCause | null } | null>;\n  retime(targetId: string, delaySec: number, tx?: HouseTx): Promise<StoredHouseBotTarget | null>;`,
+    expect: "2.fs09.8i · the target store's interface is exactly the fourteen members this law classifies",
+    suite: "console-mem",
+  },
+  {
+    name: "fs09-target-scan-writer-as-reader · the scan files casUpdate among the READERS, so a change writer plants nothing",
+    file: CASES,
+    from: `    const OFFICER_WRITERS = ["casUpdate", "insert", "remove", "veto"];\n    const SYSTEM_ENDS = ["endActive", "endAllForBot"];\n    const READERS = ["activeForMarket",`,
+    to: `    const OFFICER_WRITERS = ["insert", "remove", "veto"];\n    const SYSTEM_ENDS = ["endActive", "endAllForBot"];\n    const READERS = ["casUpdate", "activeForMarket",`,
+    expect: "2.fs09.8c1 · CONTROL · a planted writer with no alert IS reported for each of the four officer writers",
+    suite: "console-mem",
+  },
+  {
+    name: "fs09-target-scan-no-alias · the scan reads only the bare name out of a file's DAL import, so an aliased store is invisible",
+    file: CASES,
+    from: `        (m) => pick(m[1], /^(targetStore)(?:\\s+as\\s+([\\w$]+))?$/));`,
+    to: `        (m) => pick(m[1], /^(targetStore)$/));`,
+    expect: "2.fs09.8c2 · CONTROL · a writer on an ALIASED receiver IS reported",
+    suite: "console-mem",
+  },
+  {
+    name: "fs09-target-scan-any-alert · the scan accepts ANY announceRoster call as a writer's alert, as the first version did",
+    file: CASES,
+    from: `          if (ev && TARGET_CODES.includes(ev)) announced.push(ev);`,
+    to: `          announced.push(ev ?? "any");`,
+    expect: "2.fs09.8c3 · CONTROL · a writer whose file announces only a NON-target code IS reported",
     suite: "console-mem",
   },
 ];

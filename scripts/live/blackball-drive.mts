@@ -1,6 +1,13 @@
 /**
  * blackball-drive — the LIVE verification of the SMS rail. ⚠️ STEPS WITH --confirm SPEND REAL MONEY.
  *
+ * ✅ THE RAIL IS CLOSED as of 2026-09-23 (docs/BLACKBALL-SMS.md, Status and §4.8): the platform
+ * sends, the handset receives, and the receipt settles the real row by itself. All four steps below
+ * have run, and the send ceiling was spent by 2026-09-22 (`npm run live:blackball` prints the
+ * ledger's count). A further send is Ali's call, recorded at `TOTAL_SEND_CEILING`. ⚠️ The ledger is
+ * gitignored and lives only on the machine that ran the drive, so a checkout without it counts
+ * from zero.
+ *
  *   npm run live:blackball                        list the steps and the budget used
  *   npm run live:blackball -- --step 2            dry run: reads the balance (free), sends nothing
  *   npm run live:blackball -- --step 2 --confirm  SENDS
@@ -16,8 +23,9 @@
  * ── THE BUDGET IS ENFORCED, NOT DESCRIBED ────────────────────────────────────
  * The account opened with TZS 250 and a delivered SMS costs TZS 6 (measured on the first live
  * send, 2026-09-16: Tigo Tz, balance 250 → 244). So: ONE hard-coded destination, `--confirm`
- * required on every run, and a ceiling of SIX chargeable sends across the whole drive, COUNTED in
- * a gitignored ledger (`.blackball-drive-ledger.json`) and refused past. Nothing here loops.
+ * required on every run, and a ceiling of `TOTAL_SEND_CEILING` chargeable sends across the whole
+ * drive (six at the start, raised only on Ali's recorded instructions, listed at the constant),
+ * COUNTED in a gitignored ledger (`.blackball-drive-ledger.json`) and refused past. Nothing here loops.
  *
  * ── THE BALANCE, AND THE TWO WAYS OF READING IT THAT DO NOT WORK ─────────────
  *  ⛔ A request that fails validation is NOT a free balance probe. Blackball validates BEFORE it
@@ -33,17 +41,32 @@
  *  1  one send          · the wire and the credentials; the UNDOCUMENTED success body.
  *                         ✅ DONE 2026-09-16: ACCEPTED, `data: null`, DELIVRD / Success in 2 seconds
  *  2  batch of two      · one envelope covering several messages (the invite path)
- *  3  one bad msisdn    · ⭐ the vendor's open question: does a per-message fault fail only that
- *                         message, or the whole batch?
- *  4  final end-to-end  · only AFTER a receipt from an earlier step was seen on production
+ *                         ✅ DONE 2026-09-16 14:30 UTC: both accepted in one request
+ *  3  one bad msisdn    · does a per-message fault fail only that message, or the whole batch?
+ *                         ✅ ANSWERED 2026-09-17 09:30 UTC: the batch is ACCEPTED WHOLE
+ *                         ("Successfully submitted 2 message(s)")
+ *  4  final end-to-end  · a send whose receipt must reach production by itself
+ *                         ✅ DONE: run five times (2026-09-21 08:58 and 13:58, 2026-09-22 06:55,
+ *                         08:28 and 09:12 UTC). The receipts arrived on their own on 2026-09-23
+ *                         (docs/BLACKBALL-SMS.md §4.7), and a production-issued row settled in 11 s
+ *                         the same day (§4.8)
  *
  * ── WHERE THE RECEIPTS GO ────────────────────────────────────────────────────
  * To PRODUCTION, via the Status callback registered in the portal — not here. This drive writes
  * NO production SmsMessage row (a local process writing production audit rows would fork the HMAC
  * chain), so its receipts land as `sms.dlr.unknown_reference`, carrying the vendor's raw status and
  * description verbatim; read them with `node scripts/live/ops/sms-receipts.cjs <reference>`.
- * ⚠️ If NOTHING arrives, check Cloudflare before anything else: on 2026-09-16 the zone answered
- * `403 error 1010` to any `Java/1.x` User-Agent, which blocks the request before the app sees it.
+ * ⚠️ If NOTHING arrives, read the audit chain before anything else. Every POST carrying a receipt
+ * line writes `sms.dlr.received`, and one with a wrong or missing token writes
+ * `webhook.blackball.rejected` — so no row at all means no receipt-bearing POST reached the app (an
+ * authorised EMPTY callback writes nothing, and a repeated malformed one is deduped): ask the vendor
+ * for their attempt log. A `rejected` row means the
+ * URL saved in their portal lacks the right `?token=`, the fault they fixed on 2026-09-22
+ * (docs/BLACKBALL-SMS.md §4.5–§4.7). Receipts can lag: the first automatic batch arrived hours after
+ * that fix (§4.7). History, not the usual cause (corrected 2026-09-25): on 2026-09-16 Cloudflare
+ * answered `403 error 1010` to any `Java/1.x` User-Agent, and a Configuration Rule has kept Browser
+ * Integrity Check off for `/api/webhooks/*` since that day (§4.1). Suspect it only if that rule was
+ * changed.
  *
  * ⛔ NO `process.exit()`. On Windows, exiting while an HTTP keep-alive socket is still closing
  * crashes Node with a libuv assertion (`UV_HANDLE_CLOSING`) and a wrong exit code. The script sets
@@ -140,13 +163,13 @@ const PLAN: Record<number, { label: string; sends: number; build: () => Blackbal
       // network, and Blackball does not validate msisdn, so this still reaches its router.
       { msisdn: "25577", text: body("3x"), reference: ref() },
     ],
-    note: "⭐ The vendor's open question: does a per-message fault fail only that message, or the whole batch?",
+    note: "Does a per-message fault fail only that message, or the whole batch? Answered 2026-09-17: the gateway accepted the batch whole.",
   },
   4: {
     label: "final end-to-end",
     sends: 1,
     build: () => [{ msisdn: TO, text: body("4"), reference: ref() }],
-    note: "Run only AFTER a delivery receipt from an earlier step has been seen on production.",
+    note: "Receipts are proven (docs/BLACKBALL-SMS.md §4.7-§4.8); re-send only to re-test the receipt path, on Ali's instruction.",
   },
 };
 
@@ -253,7 +276,8 @@ async function main(): Promise<number> {
     `\n▶ NEXT: the delivery receipt goes to PRODUCTION. Read it with\n` +
       `  node scripts/live/ops/sms-receipts.cjs <reference>\n` +
       `  It lands as sms.dlr.unknown_reference (raw status + description). webhook.blackball.rejected means\n` +
-      `  the callback token is wrong; NOTHING at all usually means Cloudflare blocked the callback (error 1010).\n`,
+      `  the callback token is wrong; NOTHING at all means no receipt-bearing POST reached the app: receipts can lag by hours,\n` +
+      `  then ask the vendor for their attempt log (docs/BLACKBALL-SMS.md §4.5-§4.8).\n`,
   );
   if (balanceAfter < STOP_BELOW_TZS) {
     console.log(`⛔ STOP: balance TZS ${balanceAfter} is under TZS ${STOP_BELOW_TZS}. Top up before any further step.\n`);

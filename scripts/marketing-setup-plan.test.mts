@@ -46,7 +46,12 @@ import { readFileSync, existsSync, readdirSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 
 const ROOT = new URL("..", import.meta.url);
-const read = (rel: string) => readFileSync(new URL(rel, ROOT), "utf8");
+/* ⚠️ LINE ENDINGS ARE NORMALISED ON READ (S6, 2026-09-25). A checkout with `core.autocrlf=true` (the
+ * Ali-Blade15 PC) holds every file as CRLF on disk while the index is LF, so two plants anchored on
+ * "\n---\n\n## §10 —" found nothing and the red control scored 26/28 on CLEAN main there — it said so
+ * ("PLANT DID NOT APPLY", exit 1), but it could not prove the tracker on that machine at all. A guard
+ * whose verdict depends on which PC ran it is two guards. */
+const read = (rel: string) => readFileSync(new URL(rel, ROOT), "utf8").replace(/\r\n/g, "\n");
 const PLAN_FILE = "MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md";
 const TOKEN = "MARKETING-CAMPAIGN-AND-CONTACTS-SETUP";
 

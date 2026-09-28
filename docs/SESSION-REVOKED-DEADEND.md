@@ -1,6 +1,8 @@
 # The revoked-session dead end — why a returning player saw a blank blue page
 
 **Status:** ✅ §6 items 0–14 FIXED 2026-09-14 (session 97) — §5b (0–3, 5–9) and §5c (4, 10–14).
+🔴 **REGRESSED 2026-09-23 → FIXED 2026-09-26 — see §5d:** a hook-after-return in `NavMore` turned every soft
+sign-in or sign-out (and the mid-visit refresh this file exists for) into the ROOT error screen.
 **Authority:** this file, for everything about `?revoked=1`.
 **Reported:** 2026-09-12 by Ali, from player reports: *"they were logged in, closed the browser,
 came back later, opened a 50pick link, and got stuck on a blue screen with nothing."*
@@ -291,6 +293,48 @@ document load — the notice now appears on the next refresh), items 10–14.
 - **Item 14 — the anchor.** `NextHashField` puts `location.hash` into the sign-in form; the action re-attaches a
   validated `#[A-Za-z0-9_-]{1,80}` to `next`. `SessionPresence` carries the fragment too. Driven:
   `/positions#pos_…` signed out → sign in → `/positions#pos_…`.
+
+---
+
+## 5d. The regression — 2026-09-23 → 2026-09-26: a hook after an early return in `NavMore`
+
+**What a player saw.** Started a break on `/profile/responsible-gambling` → the ROOT error screen,
+*"Kitu kimevunjika kabla hata ya kuanza"*, instead of the sign-in page. The same for self-excluding,
+closing the account, signing out from `/profile/sessions`, signing in through the password form, and —
+the one this file exists for — a player whose session ended elsewhere, on the next `router.refresh()`
+(§1's mid-visit path). `test:revoked-deadend` went red on clean main and was logged by other lanes as
+"another lane's red suite" (e.g. `docs/MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md`, S7's predeploy).
+
+**Why.** `src/components/layout/nav-more.tsx` returned `null` for an empty list and THEN ran a
+`useEffect` — the D30 rail-stacking effect, added by `2c9380e0` on 2026-09-23. The top bar hands
+`NavMore` an EMPTY list signed out and a full list signed in, at a fixed position with no key. A Server
+Action that changes the session re-renders the whole tree from the ROOT (the root layout is re-run, as
+§1 explains it is NOT on a plain soft navigation), so the same `NavMore` fiber rendered one hook fewer
+(or more) and React threw "Rendered fewer hooks than expected" (#300 / #310) — above `app/error.tsx`,
+so `global-error.tsx` took the page. A full-page sign-out (the avatar menu's form POST) and `/auth/demo`
+remount the tree, which is why ordinary sign-out and every test harness missed it.
+
+**Fixed.** The effect runs above the early return and marks the rail only while the menu has items.
+Verified locally on the fixed tree: the break flow lands on `/auth/login?cooled=1` ("Karibu tena") with
+no page error (before: the root error screen, reproduced identically on clean main); `tsc` clean;
+`test:revoked-deadend` **46 passed, 0 failed** (§3 mid-visit refresh and §6 password sign-in included).
+
+**Why it was invisible for three days, and what now stops both halves:**
+- The repo has no `react-hooks/rules-of-hooks` (`lint` is `tsc --noEmit`). ⭐ **`test:hooks-order`**
+  (new, in `predeploy`) scans every component for a top-level hook after an early return, proves itself
+  on planted controls, and went red on the planted shape naming `nav-more.tsx:107`.
+- `global-error.tsx` only wrote to the browser console; `RouteError` has beaconed to `/api/client-error`
+  since 2026-09-18, the ROOT boundary never did. ⭐ It now sends the same scrubbed report
+  (`test:client-error-report` §4i–§4l).
+- It was found by a drive, not a gate: the LIVE-strip session's cooling-off case (2026-09-26).
+
+**✅ Verified on production `bcf6ed7b` (2026-09-26 ~15:45 EAT, `?dpl=` confirmed)**, as the QA player `mobile01`,
+one attempt each: signing in through the real password form landed on `/?welcome=back`; signing out through
+`/profile/sessions` (a Server Action) landed on `/` as a guest — **0 page errors, no root boundary, no crash
+report** in both directions (the account was left signed out). ⭐ And the new report was proven to fire: with
+the old `NavMore` shape planted on a local dev server (restored byte-identical after), the soft sign-out threw
+"Rendered fewer hooks than expected", the root boundary took the page ("Something broke too early to
+recover"), and the boundary posted to `/api/client-error`.
 
 ---
 

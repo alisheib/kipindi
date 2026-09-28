@@ -533,10 +533,20 @@ export function AdminKpi({
          * human looking at the screenshot finds it. So the component truncates instead —
          * `title` keeps the full string reachable on hover and to a screen reader.
          */
-        <div className="mt-auto flex items-end gap-2 min-w-0">
-          {/* A8 spark slot — royal mini-series, aqua reserved for live feeds. */}
+        <div className="mt-auto flex items-end gap-2 min-w-0 flex-wrap">
+          {/* A8 spark slot — royal mini-series, aqua reserved for live feeds.
+              🔴 A LONG CAPTION USED TO DELETE THE TREND LINE, SILENTLY. The slot could shrink to
+              nothing beside a delta whose basis is its full text width, so a caption long enough
+              to fill the row took the spark to ZERO width — no clip, no overflow, nothing any scan
+              reports; the tile just lost its line. Found 2026-09-25 when NGR's caption became
+              truthful ("net of bonus, agent commission + fees") and the NGR sparkline vanished on
+              /admin and /admin/finance.
+              ⭐ The spark now keeps a 64px floor (a LITERAL: this repo's spacing scale is
+              overridden, so a numeric key renders another size) and the row WRAPS: a caption that
+              fits beside the spark stays inline exactly as before; one that does not drops to its
+              own line below it (where it wraps as designed above) instead of starving it. */}
           {series && series.length >= 2 && (
-            <div className="flex-1 min-w-0 self-center">
+            <div className="flex-1 basis-[64px] min-w-[64px] self-center">
               <AdminSpark series={series} height={24} />
             </div>
           )}

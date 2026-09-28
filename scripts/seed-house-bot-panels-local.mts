@@ -5,7 +5,8 @@
  *   export DATABASE_URL='postgresql://postgres:scratch@127.0.0.1:5433/<your own database>'
  *   npx prisma migrate deploy
  *   npm run db:seed-house-bots-local     # the roster, the markets, the admin
- *   npm run db:seed-house-bot-panels     # THIS — the rows the two new panels read
+ *   npm run db:seed-house-bot-panels     # THIS — the rows the two new panels read, and the RESULTS tab's stakes
+ *   npm run db:seed-house-bot-panels -- --skip-results   # a re-run: the two panels again, the results left alone
  *
  * ── WHY IT IS SEPARATE FROM `seed-house-bots-local.mts` ────────────────────────────────────────
  * That seed's whole point is a desk with a roster and NO house money in it: 0 marked rows, so a human can
@@ -28,6 +29,29 @@
  * row of each kind per market), a COUNTER anchors on the trigger POSITION and is unique on it, a MANUAL
  * anchors on `manual:<officer>:<uuid>`, may only be a Polls stake, and only ONE may be live per market.
  * So the volume here is COUNTER and finished MANUAL rows, which is also what a real desk's feed looks like.
+ *
+ * ── THE RESULTS TAB (C7 437, 2026-09-26) — THE OPPOSITE RULE, AND WHY ────────────────────────────────
+ * The activity and history panels project two tables of RECORDS, so inserted records are a faithful picture of
+ * them. The Results tab projects MONEY — the day book reads `Position` rows carrying the account's marker and the
+ * marked payout and refund `Transaction`s — and this script's inserted intents point at positions that do not exist,
+ * so on them the tab painted "—" on all seven days. Worse, a status written onto a position without its money is
+ * the 2026-09-26 Opening/Closing defect's class: a WIN with no payout reads as a loss. So the results half is
+ * EARNED, through the real services and nothing else:
+ *   · a second account is designated and started through `designation.ts`, exactly as `seed-house-bots-local.mts`
+ *     does it, and at the end paused and removed through `roster-actions.ts`, so the tab's line for accounts no
+ *     longer on the desk paints;
+ *   · every stake is a real FILL through the real seam, against a real player's opposite stake, and every finished
+ *     one is settled for real — `resolveMarket` then `settleMarket` — WIN, LOSS and VOID, with one left OPEN;
+ *   · only TIME is moved: each position's `placedAt` and its intent's `createdAt`, onto the EAT day it stands for,
+ *     so the seven days differ. It is the same declared fixture of time as `house-bot-world.mts`' `backdate`.
+ * ⛔ THE MASTER SWITCH IS TURNED ON ONLY WHILE THE STAKES ARE PLACED, AND OFF AGAIN IN A `finally` — on this
+ * loopback database only, and only if this script was the one that turned it on. The seam refuses every stake
+ * while it is off, which is the whole reason it moves at all. ⛔ And it REFUSES to move it while an engine is
+ * beating on this database: a server running beside it would stake on its own for as long as the switch is on.
+ * ⛔ IT CANNOT BE RE-RUN, AND IT SAYS SO. Real positions, payouts and ledger rows cannot be swept the way this
+ * script sweeps its marked intents and events, so a second run would stack a second set of days on the first. The
+ * markets' own TITLES are the marker: a database that already carries them is refused before anything is written.
+ * `--skip-results` re-runs the two panels and leaves the results alone.
  *
  * ⛔ LOOPBACK ONLY, and it refuses anything else — the refusal is `seed-house-bots-local.mts`'s, copied
  * rather than invented, for the reason that file states.
@@ -54,6 +78,7 @@ if (process.env.NODE_ENV === "production") {
   process.exit(2);
 }
 process.env.USE_PRISMA_DAL = "true";
+const SKIP_RESULTS = process.argv.slice(2).includes("--skip-results");
 
 const { houseBotSchemaReady }: Any = await import("../src/lib/server/house-bot/schema-ready.ts");
 const schema = await houseBotSchemaReady();
@@ -77,7 +102,74 @@ const others = bots.filter((b) => b.id !== active.id);
 
 const pg = new pgLib.Client({ connectionString: url });
 await pg.connect();
-const mk: string[] = (await pg.query(`select id from "PredictionMarket" order by id limit 4`)).rows.map((r: Any) => r.id);
+
+/* ── THE RESULTS TAB'S PLAN (C7 437), declared FIRST: its checks can refuse the whole run, before anything is written ── */
+/**
+ * One row per stake: the EAT day it stands for (0 = today, 6 = six days back), whose account, how it ends, and a
+ * market TITLE that is also this fixture's marker (see the header). ⭐ Chosen so the tab paints every state it has:
+ * a day with only an open stake ("Nothing settled", "Still running"), a win, a refund alone ("Even"), a day on which
+ * two accounts net to a loss, a day with no stakes at all, and seven-digit stakes on both sides of the ledger.
+ * ⛔ The titles name no feature and no person; they are ordinary polls.
+ */
+type ResultStake = { day: number; on: "running" | "second"; outcome: "WIN" | "LOSS" | "VOID" | "OPEN"; stakeTzs: number; title: string };
+const RESULT_STAKES: readonly ResultStake[] = [
+  { day: 0, on: "running", outcome: "OPEN", stakeTzs: 48_000, title: "Will the harbour crane be back in service by Friday?" },
+  { day: 1, on: "running", outcome: "WIN", stakeTzs: 1_000_000, title: "Will the coastal ferry keep its new timetable this week?" },
+  { day: 2, on: "second", outcome: "VOID", stakeTzs: 12_600, title: "Will the stadium lights be repaired before the derby?" },
+  { day: 3, on: "running", outcome: "WIN", stakeTzs: 40_000, title: "Will the water board lift the evening rationing?" },
+  { day: 3, on: "second", outcome: "LOSS", stakeTzs: 250_000, title: "Will the new flyover open to traffic this month?" },
+  { day: 5, on: "second", outcome: "WIN", stakeTzs: 125_000, title: "Will the national team name an unchanged squad?" },
+  { day: 6, on: "second", outcome: "LOSS", stakeTzs: 1_000_000, title: "Will the cotton auction clear its first lot by noon?" },
+];
+const RESULT_TITLES = RESULT_STAKES.map((s) => s.title);
+/** The second account: a neutral label and a neutral holder name — never a person's — funded for its stakes. */
+const SECOND = { label: "Afternoon desk - removed", holderName: "Desk Holder · afternoon", balance: 3_000_000 };
+const stakedOn = (on: ResultStake["on"]) => RESULT_STAKES.filter((s) => s.on === on).reduce((a, s) => a + s.stakeTzs, 0);
+
+let resultsWorld: { w: Any; running: Any; officer: string } | null = null;
+if (!SKIP_RESULTS) {
+  const carried = (await pg.query(`select count(*)::int n from "PredictionMarket" where "titleEn" = any($1::text[])`, [RESULT_TITLES])).rows[0].n as number;
+  if (carried > 0) {
+    console.error(`REFUSED — this database already carries the results fixture (${carried} of its ${RESULT_TITLES.length} markets, by title).`);
+    console.error("Its stakes are REAL positions, settled for real, with payouts and refunds in the ledger — nothing this script can sweep —");
+    console.error("so a second run would stack a second set of days on the first and every figure on the Results tab would be wrong.");
+    console.error("Re-run with --skip-results to redo the two panels only, or drop the database and seed it again.");
+    process.exit(2);
+  }
+  const running = bots.find((b) => b.status === "ACTIVE");
+  if (!running) {
+    console.error("REFUSED — no ACTIVE account to stake through. `npm run db:seed-house-bots-local` starts one (or pass --skip-results).");
+    process.exit(2);
+  }
+  /* The officer every service below names: the database's first ADMIN, read here — never an id typed into this file. */
+  const officerRow = (await pg.query(`select id from "User" where role::text = 'ADMIN' order by "createdAt" asc, id asc limit 1`)).rows[0];
+  if (!officerRow) {
+    console.error("REFUSED — no ADMIN account on this database to act as the officer. Run `npm run db:seed-house-bots-local` first.");
+    process.exit(2);
+  }
+  /* ⛔ AN ENGINE BEATING ON THIS DATABASE WOULD STAKE ON ITS OWN for as long as the switch below is on, and its
+     stakes would land on today's row beside this fixture's. Two minutes is many planner beats: a beat that recent
+     means a server is running against this database now. */
+  const planner = ((await dal.houseBotRuntimeStore.listInstances()) as Any[]).find((r) => r.key === constants.RUNTIME_KEY.plannerBeat);
+  const beatAgeMs = planner?.beatAt ? Date.now() - Date.parse(planner.beatAt) : null;
+  if (beatAgeMs !== null && beatAgeMs < 2 * 60_000) {
+    console.error(`REFUSED — an engine beat on this database ${Math.round(beatAgeMs / 1000)}s ago. Stop the server (or start it with HOUSE_BOT_ENGINE=false) and run this again:`);
+    console.error("the master switch goes on while the results stakes are placed, and a running engine would stake beside them.");
+    process.exit(2);
+  }
+  const { loadWorld }: Any = await import("./lib/house-bot-world.mts");
+  const w: Any = await loadWorld();
+  const wallet = await w.bal(running.userId);
+  if (!wallet || Number(wallet.balance) < stakedOn("running")) {
+    console.error(`REFUSED — the ACTIVE account's holder holds ${wallet?.balance ?? "no wallet"}, and its results stakes need ${stakedOn("running")}. Seed a fresh database.`);
+    process.exit(2);
+  }
+  resultsWorld = { w, running, officer: officerRow.id as string };
+}
+
+/* ⛔ NOT the results fixture's markets: this half plants FILL intents on the markets it picks, and the database allows
+   ONE live FILL per market — a `--skip-results` re-run that picked one of them would collide with its real stake. */
+const mk: string[] = (await pg.query(`select id from "PredictionMarket" where "titleEn" <> all($1::text[]) order by id limit 4`, [RESULT_TITLES])).rows.map((r: Any) => r.id);
 if (mk.length === 0) {
   console.error("REFUSED — no markets. Run `npm run db:seed-house-bots-local` first.");
   process.exit(2);
@@ -129,7 +221,12 @@ async function intent(bot: Any, kind: string, status: string, product: string, a
     stakeTzs: STAKES[i % STAKES.length],
     dueAt: iso(-ageMs), deadlineAt: iso(-ageMs + HOUR), staleAt: iso(-ageMs + 10 * MIN),
     status,
-    reasonCode: status === "FAILED" ? "SEAM_REFUSED" : status === "SKIPPED" ? "MARKET_CLOSED"
+    /* ⭐ REAL OUTCOME CODES WHERE THE CONSOLE PAINTS A SENTENCE (2026-09-26). This wrote `MARKET_CLOSED` (a TARGET's end
+       cause, never an intent's outcome) and `SEAM_REFUSED`, neither of which `CONSOLE_SKIP_SENTENCE` knows — so no row
+       this fixture made ever carried a note, and the activity ledger's note line (RESUME-HERE §0c decision 2) could not
+       be seen in any served run. A skip is now production's most common one, a stale price; a failure is the one that
+       failed three times, which is what `attempts: 3` below already says. */
+    reasonCode: status === "FAILED" ? "POISON" : status === "SKIPPED" ? "UD_STALE_PRICE"
       : status === "EXPIRED" ? "DEADLINE_PASSED" : status === "CANCELLED" ? "STAFF_CANCELLED" : null,
     /* ⭐ THE SNAPSHOT THE ENGINE REALLY WRITES (2026-09-24). `decide.ts` puts `{ titleEn, category, cutoff,
        roundNumber }` on every intent it plans, and the Activity row now lifts the title out of it to name WHICH
@@ -224,6 +321,149 @@ for (const r of evMade) {
     [String(r.ageMs), r.id]);
 }
 
+/* ═══ THE RESULTS TAB (C7 437) — real stakes, settled for real, on six of the seven EAT days and two accounts ═══
+ * Everything here goes through the services the product itself uses; only TIME is moved (see the header). */
+type DayRead = { day: string; bets: number; open: number; settled: number; result: number };
+let resultsRead: { days: DayRead[]; secondStatus: string; switchedOnHere: boolean; switchOnNow: boolean } | null = null;
+if (resultsWorld) {
+  const { w, running, officer } = resultsWorld;
+  let switchedOnHere = false;
+  let secondId: string | null = null;
+  try {
+    const D: Any = await import("../src/lib/server/house-bot/designation.ts");
+    const ROSTER: Any = await import("../src/lib/server/house-bot/roster-actions.ts");
+    const RULES: Any = await import("../src/lib/house-bot/rules.ts");
+    const CRYPTO: Any = await import("../src/lib/server/crypto.ts");
+    const CLOCK: Any = await import("../src/lib/house-bot/clock.ts");
+    const BOOK: Any = await import("../src/lib/server/house-bot/book.ts");
+    const { MARKET_CATEGORIES }: Any = await import("../src/lib/server/market-service.ts");
+    const { ALLOWED_DURATIONS }: Any = await import("../src/lib/updown-durations.ts");
+    /* The same rules context `seed-house-bots-local.mts` starts its running account with. */
+    const CTX = {
+      stakeBounds: { minTzs: 1_000, maxTzs: 1_000_000 }, betPlaceRefillPerMin: 10, chains: [],
+      categories: MARKET_CATEGORIES, durations: ALLOWED_DURATIONS,
+      exitRates: { polls: { freeExitGraceMinutes: 5, paidExitWindowMinutes: 0 }, updown: {} },
+      pollMinLifetimeMin: 120, limits: null, bots: [],
+    };
+
+    /* ── the second account, designated and started through the services, as `seed-house-bots-local.mts` does ──
+       ⭐ ITS HOLDER'S PASSWORD IS MADE HERE AND NEVER WRITTEN DOWN: designation verifies the holder's own password,
+       nobody signs in as this holder, and the account is off the desk before the script ends. */
+    const secondPassword = `Fx-${randomUUID()}`;
+    const secondHolder = await w.user({ balance: SECOND.balance });
+    const salt = CRYPTO.randomId(16);
+    await w.setUserFields(secondHolder, {
+      displayName: SECOND.holderName, passwordHash: await CRYPTO.hashPassword(secondPassword, salt), passwordSalt: salt,
+      passwordSetAt: new Date().toISOString(), passwordSetVia: "SELF_CHANGE",
+    });
+    const designated = await D.designateHouseBot({ officerId: officer, userId: secondHolder, label: SECOND.label, note: null, password: secondPassword, submitId: null });
+    if (!designated?.ok) throw new Error(`the second account could not be designated: ${JSON.stringify(designated)}`);
+    secondId = designated.bot.id as string;
+    {
+      const b = await w.dal.houseBotStore.get(secondId);
+      const rules = structuredClone(RULES.DEFAULT_RULES_V1(CTX));
+      rules.scope.products.polls = true;
+      rules.scope.categories = ["macro"];
+      rules.modes.polls.fill = true;
+      const saved = await w.dal.houseBotStore.saveRules(secondId, b.rulesVersion, { rules, ...w.OPEN_CAPS, freqMinGapSec: 20 });
+      if (!saved.ok) throw new Error("the second account's rules could not be saved (CAS)");
+      const started = await D.startHouseBot({ officerId: officer, botId: secondId, rulesContext: CTX });
+      if (!started?.ok) throw new Error(`the second account could not be started: ${JSON.stringify(started)}`);
+    }
+    const accounts = { running: { botId: running.id as string, userId: running.userId as string }, second: { botId: secondId, userId: secondHolder } };
+
+    /* ── the days, from ONE key taken once — never a second clock, the rule the tab's own reader keeps (348) ── */
+    const today = CLOCK.eatDayKey(Date.now()) as string;
+    const days = [today, ...(CLOCK.priorEatDays(today, 6) as string[])];
+    const MIN_MS = 60_000;
+    /** Where a stake lands: midday of a past day, a few minutes apart; today's ten minutes ago, never before today began. */
+    const landAt = (s: ResultStake, k: number): number => {
+      const from = CLOCK.eatDayWindow(days[s.day]).fromMs as number;
+      return s.day === 0 ? Math.max(from + MIN_MS, Date.now() - 10 * MIN_MS) : from + 12 * 60 * MIN_MS + k * 7 * MIN_MS;
+    };
+
+    /* ── the switch: ON only for the placing, and only if it was off; OFF again in the `finally` below ── */
+    switchedOnHere = (await w.dal.houseBotControlStore.switchOn({ byId: officer, reason: null })) !== null;
+    try {
+      for (const [k, s] of RESULT_STAKES.entries()) {
+        const m = await w.poll({ graceMin: 0 });
+        await w.prisma().$executeRawUnsafe('UPDATE "PredictionMarket" SET "titleEn" = $1, "titleSw" = $1 WHERE id = $2', s.title, m.id);
+        /* A REAL player on the other side, first, and locked: a FILL may only take up money already locked against it. */
+        const player = await w.user({ balance: 2_000_000 });
+        const opposite = await w.svc.buyPosition(player, { marketId: m.id, side: "NO", stake: s.stakeTzs, idempotencyKey: randomUUID() });
+        if (!opposite.ok) throw new Error(`the player's stake on "${s.title}" was refused: ${JSON.stringify(opposite)}`);
+        await w.backdate(opposite.data.positionId, 30_000);
+        await w.ageHouseMinute();
+        const acct = accounts[s.on];
+        const i = await w.intent(acct, m.id, {
+          kind: "FILL", side: "YES", stakeTzs: s.stakeTzs,
+          decision: { snapshot: { titleEn: s.title, category: "macro", cutoff: w.iso(3_600_000), roundNumber: null } },
+        });
+        const placed = await w.place(acct, i);
+        if (!placed.ok) throw new Error(`the seam refused the stake on "${s.title}": ${JSON.stringify(placed)}`);
+        const positionId = placed.data.positionId as string;
+        if (s.outcome !== "OPEN") {
+          /* ⛔ SETTLED FOR REAL — the verdict, then the money. A WIN pays out and a VOID refunds through the same
+             code every market uses; a LOSS writes nothing, exactly as it does in production. */
+          const verdict = s.outcome === "WIN" ? "YES" : s.outcome === "LOSS" ? "NO" : "VOID";
+          const resolved = await w.svc.resolveMarket({ marketId: m.id, outcome: verdict, officerId: officer });
+          if (!resolved.ok || resolved.data?.stage !== "complete") {
+            throw new Error(`"${s.title}" did not resolve in one step (${JSON.stringify(resolved)}) — is two-officer resolution on for this database?`);
+          }
+          const settled = await w.svc.settleMarket(m.id, { force: true });
+          if (!settled.ok) throw new Error(`"${s.title}" did not settle: ${JSON.stringify(settled)}`);
+        }
+        const byMs = Date.now() - landAt(s, k);
+        await w.backdate(positionId, byMs);
+        await w.backdateIntent(i.id, byMs);
+        const ended = (await w.mdal.positionStore.get(positionId))?.status as string | undefined;
+        if (ended !== s.outcome) throw new Error(`the stake on "${s.title}" reads ${ended ?? "missing"}, not ${s.outcome}`);
+      }
+    } finally {
+      if (switchedOnHere) {
+        const off = await w.dal.houseBotControlStore.switchOff({ cause: "MANUAL", byId: officer, reason: null }).catch(() => null);
+        if (!off) console.error("⛔ THE MASTER SWITCH THIS SCRIPT TURNED ON COULD NOT BE TURNED OFF — turn it off on /admin/desk before anything else.");
+      }
+    }
+
+    /* ── then the second account leaves the desk, through the officer's own two acts, so its stakes fold into the
+       tab's one line for accounts no longer on the desk ── */
+    const paused = await ROSTER.pauseHouseBot({ actorId: officer, botId: secondId, reason: null });
+    const removed = await ROSTER.removeHouseBot({ actorId: officer, botId: secondId, reason: null });
+    if (!paused?.ok || !removed?.ok || removed.status !== "REMOVED") {
+      throw new Error(`the second account could not be paused and removed: ${JSON.stringify({ paused, removed })}`);
+    }
+
+    /* ── READ BACK from the day book the tab reads, never from what this script believes it wrote ── */
+    const read: DayRead[] = [];
+    for (const day of days) {
+      const books = [...((await BOOK.houseDayBooks(day)) as Map<string, Any>).values()];
+      read.push({
+        day,
+        bets: books.reduce((a, b) => a + b.bets, 0),
+        open: books.reduce((a, b) => a + b.openStakeTzs, 0),
+        settled: books.reduce((a, b) => a + b.settledStakeTzs, 0),
+        result: -books.reduce((a, b) => a + b.realisedLossTzs, 0),
+      });
+    }
+    const short = RESULT_STAKES.map((s) => s.day).filter((d, k, all) => all.indexOf(d) === k)
+      .filter((d) => read[d].bets < RESULT_STAKES.filter((s) => s.day === d).length);
+    if (short.length > 0) throw new Error(`the day book does not hold this fixture's stakes on ${short.map((d) => days[d]).join(", ")}: ${JSON.stringify(read)}`);
+    resultsRead = {
+      days: read,
+      secondStatus: String((await w.dal.houseBotStore.get(secondId))?.status),
+      switchedOnHere,
+      switchOnNow: !!(await w.dal.houseBotControlStore.get())?.enabled,
+    };
+  } catch (err) {
+    console.error(`\n⛔ THE RESULTS HALF FAILED PART-WAY: ${String((err as Error)?.stack ?? err).split("\n").slice(0, 3).join(" | ")}`);
+    console.error(`   The two panels are seeded. Whatever the results half wrote stays${secondId ? ` (the second account is ${secondId})` : ""}, and its markets`);
+    console.error("   carry the marker titles, so a plain re-run is refused: drop the database and seed it again, or re-run with --skip-results.");
+    await pg.end();
+    process.exit(1);
+  }
+}
+
 const q = async (sql: string) => (await pg.query(sql)).rows[0].n as number;
 const iCount = await q(`select count(*)::int n from "HouseBotIntent"`);
 const eCount = await q(`select count(*)::int n from "HouseBotEvent"`);
@@ -236,3 +476,20 @@ console.log(`   intents   ${iCount} desk-wide · ${onActive} on the ACTIVE accou
 console.log(`   events    ${eCount}`);
 console.log(`   account   ${active.id}  ${active.label ?? ""}`);
 console.log("   ages      2h · 5h · 9h · 30h · 40h · 9d · 20d, so today / 24h / 7d / all differ\n");
+
+if (resultsRead) {
+  /* The tab's own words for a day, from the numbers read back — so a human can check the served page against this. */
+  const says = (d: DayRead) => (d.bets === 0 ? "No stakes" : d.settled === 0 ? "Nothing settled"
+    : d.result > 0 ? `Profit TZS ${d.result.toLocaleString("en-US")}` : d.result < 0 ? `Loss TZS ${(-d.result).toLocaleString("en-US")}` : "Even");
+  console.log("══ the Results tab now has seven days to paint (read back from the day book) ══");
+  for (const d of resultsRead.days) {
+    console.log(`   ${d.day}   ${String(d.bets).padStart(2)} stake(s) · ${says(d).padEnd(24)} ${d.bets === 0 ? "" : d.open > 0 ? "Still running" : "Final"}`);
+  }
+  console.log(`   second account  ${resultsRead.secondStatus} — its stakes fold into the tab's line for accounts no longer on the desk`);
+  console.log(`   master switch   ${resultsRead.switchOnNow ? "⛔ ON" : "OFF"}${resultsRead.switchedOnHere ? " (this script turned it on to place the stakes, and off again)" : " (this script did not move it)"}`);
+  console.log("   open            /admin/desk?tab=results\n");
+} else if (SKIP_RESULTS) {
+  console.log("══ the Results tab was left alone (--skip-results) ══\n");
+}
+/* ⛔ AN EXPLICIT EXIT: resolving a market arms its settle timer in this process, which would otherwise keep it alive. */
+process.exit(0);

@@ -47,17 +47,15 @@ const errMessage = (e: unknown) => String((e as Error)?.message ?? e).replace(/\
  * ⛔ A payload outside the allowlist is a programming error and THROWS: a label or a holder's name written into a
  * chain kept seven years cannot be erased afterwards.
  * ⛔ A FAILURE TO WRITE IT IS NOT A FAILURE OF THE ACT (543): it is returned, and the caller says both.
+ * ⭐ READ FROM THE ANSWER, NOT CAUGHT (replan ruling 543, 2026-09-26): `audit()` resolves an entry it could not sign
+ * or persist with `recorded` false, so a catch here would never run — and the id of an entry that did not land is
+ * never handed on, or the event would be stamped with a reference to a row that does not exist.
  */
 async function actAudit(action: HouseAuditAction, officerId: string, botId: string, payload: Record<string, unknown>): Promise<{ recorded: boolean; auditId: string | null }> {
   if (!isAllowedHouseAuditPayload(payload)) throw new Error(`house audit ${action}: payload keys outside the R7 allowlist`);
-  try {
-    const entry = (await audit({ category: HOUSE_AUDIT[action], action, actorId: officerId, targetType: "HouseBot", targetId: botId, payload })) as unknown;
-    const id = entry && typeof entry === "object" && typeof (entry as { id?: unknown }).id === "string" ? (entry as { id: string }).id : null;
-    return { recorded: true, auditId: id };
-  } catch (err) {
-    console.error(`[house-bot] the ${action} compliance row could not be written (the account DID move):`, errMessage(err));
-    return { recorded: false, auditId: null };
-  }
+  const entry = await audit({ category: HOUSE_AUDIT[action], action, actorId: officerId, targetType: "HouseBot", targetId: botId, payload });
+  if (!entry.recorded) console.error(`[house-bot] the ${action} compliance row could not be written (the account DID move): ${entry.unrecorded}`);
+  return { recorded: entry.recorded, auditId: entry.recorded ? entry.id : null };
 }
 
 /** Read the row, telling a missing SCHEMA (a state, 421) from a failed read and from a record that is not there. */
@@ -106,7 +104,7 @@ export async function pauseHouseBot(input: { actorId: string; botId: string; rea
     botId: bot.id, holderUserId: bot.userId, from: bot.status, to: "PAUSED", cause: "MANUAL", counts: { cancelled }, eventId: event.id,
   });
   if (auditId) await houseBotEventStore.setAuditId(event.id, auditId);
-  await announceRoster({ botId: bot.id, label: bot.label, event: "PAUSED", eventId: event.id, detail: { cancelled } });
+  await announceRoster({ botId: bot.id, label: bot.label, event: "PAUSED", eventId: event.id, actorId: input.actorId, detail: { cancelled } });
 
   return { ok: true, changed: true, status: "PAUSED", cancelled, targetsEnded: 0, recorded };
 }
@@ -154,7 +152,7 @@ export async function removeHouseBot(input: { actorId: string; botId: string; re
     counts: { cancelled, targetsEnded: written.targetsEnded }, eventId: event.id,
   });
   if (auditId) await houseBotEventStore.setAuditId(event.id, auditId);
-  await announceRoster({ botId: bot.id, label: bot.label, event: "REMOVED", eventId: event.id, detail: { cancelled } });
+  await announceRoster({ botId: bot.id, label: bot.label, event: "REMOVED", eventId: event.id, actorId: input.actorId, detail: { cancelled } });
 
   return { ok: true, changed: true, status: "REMOVED", cancelled, targetsEnded: written.targetsEnded, recorded };
 }

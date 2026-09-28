@@ -85,7 +85,7 @@ section("2 · no console line prints an identifier raw");
  */
 const ALLOWED = new Set<string>([
   // Masks inline: `${to.slice(0, 4)}***${to.slice(-2)}`, and the body — which carries the
-  // OTP — is NEVER printed in production. See the NODE_ENV branch in consoleSms.
+  // OTP — is NEVER printed in production. See the NODE_ENV branch in consoleTransport.
   "src/lib/server/sms.ts",
 ]);
 
@@ -204,7 +204,7 @@ ok(`CONTROL: the scan actually looked at files (${scriptDir.length} found)`, scr
 section("4 · the OTP-bearing SMS body stays out of production logs");
 
 const smsSrc = stripComments(read("src/lib/server/sms.ts"));
-ok("consoleSms branches on NODE_ENV before printing anything",
+ok("consoleTransport branches on NODE_ENV before printing anything",
   /NODE_ENV\s*===\s*["'`]production["'`]/.test(smsSrc),
   "Without the branch, the console provider prints the message body — which contains the OTP.");
 ok("the production branch masks the destination and does NOT include the body",

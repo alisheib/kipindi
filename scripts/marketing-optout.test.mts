@@ -173,7 +173,6 @@ async function runAssertions(page: OptOutPage, f: Fixtures, tag: string): Promis
   const p = (n: string) => `${tag}${n}`;
   const SW: MessagingLocale = "SW";
   /** ⭐ THE QUESTION THAT MATTERS — not what the page returned, but what the SEND LOOP will do. */
-  const marketable = async (phone: string): Promise<boolean> => (await mayReceiveMarketingSms(phone)).ok;
   /**
    * 🔴 AND *WHY* THE LOOP REFUSES, WHICH IS NOT THE SAME QUESTION — this distinction was found
    * by the red control and it is the sharpest thing in this file.
@@ -193,7 +192,12 @@ async function runAssertions(page: OptOutPage, f: Fixtures, tag: string): Promis
   const rows = async (phone: string) => Promise.resolve(db.suppression.listFor(toMsisdn255(phone)));
 
   // ── 1 · ONE CLICK, AND THE GATE AGREES ──────────────────────────────────────────────────
-  ok(p("1 · before anything, a consented contact may be marketed"), await marketable(f.contactPhone));
+  // ⚠️ Since U11 (S7) a contact-only number is refused on AGE until U33 records an 18+ attestation, so
+  // "may be marketed" is no longer the pre-stop state. What this suite needs is the pre-stop VERDICT, to
+  // prove that a stop changes it to `suppressed` and a resume gives it back — the lift's real property.
+  const preStop = await refusedBy(f.contactPhone);
+  ok(p("1 · before anything, a consented contact is refused ONLY on age (U11) — never on suppression"),
+    preStop === "age_unknown", `refused by ${preStop}`);
   const stopped = await page.stop(f.contactToken, SW);
   ok(p("2 · the stop reports success"), stopped.ok && stopped.state === "stopped", JSON.stringify(stopped));
   ok(p("3 · ⭐ …and the GATE now refuses the number, ON ITS SUPPRESSION — the success is a claim about the database, not about the request"),
@@ -224,8 +228,8 @@ async function runAssertions(page: OptOutPage, f: Fixtures, tag: string): Promis
   const firstRow = (await rows(f.contactPhone))[0];
   const resumed = await page.resume(f.contactToken, SW);
   ok(p("11 · the resubscribe reports success"), resumed.ok && resumed.state === "resumed", JSON.stringify(resumed));
-  ok(p("12 · 🔴 …and the GATE LETS THE NUMBER THROUGH AGAIN — without this, 'start them again' is a false success"),
-    await marketable(f.contactPhone));
+  ok(p("12 · 🔴 …and the GATE GIVES BACK ITS PRE-STOP ANSWER, not `suppressed` — without this, 'start them again' is a false success"),
+    (await refusedBy(f.contactPhone)) === preStop, `refused by ${await refusedBy(f.contactPhone)}, before the stop ${preStop}`);
   ok(p("13 · ⛔ A LIFT NEVER REMOVES A ROW (OD11) — the evidence that they once said no survives"),
     (await rows(f.contactPhone)).length === 1, `${(await rows(f.contactPhone)).length} rows`);
   const lifted = (await rows(f.contactPhone))[0];
@@ -557,7 +561,7 @@ if (!PROVE_RED) {
     {
       name: "the GATE cannot see the lift — 'start them again' reports a success the send loop will not honour",
       defect: { ignoresLift: true },
-      expect: "12 · 🔴 …and the GATE LETS THE NUMBER THROUGH AGAIN — without this, 'start them again' is a false success",
+      expect: "12 · 🔴 …and the GATE GIVES BACK ITS PRE-STOP ANSWER, not `suppressed` — without this, 'start them again' is a false success",
     },
     {
       name: "re-suppression returns the LIFTED row (`update: {}`) — told they will never be marketed again while the lift stands",

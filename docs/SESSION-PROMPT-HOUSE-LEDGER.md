@@ -134,11 +134,11 @@ states its definition; no tile is labelled merely "revenue" or "profit".
 | Term | Definition | Source |
 |---|---|---|
 | **Handle** | Total staked in the period. Not revenue. | `STAKE_DEBIT` |
-| **GGR** | Handle − player winnings. The gaming result. | `report-money` |
+| **GGR** | Handle − player winnings (incl. cash-outs) − refunded stakes. A TURNOVER measure — NOT the house fee and NOT the levy base. | `report-money` |
 | **House fee earned** | `SETTLEMENT_COMMISSION` + `CASHOUT_FEE` + `WITHDRAWAL_FEE` | ledger |
 | **Levies payable** | `SETTLEMENT_TRA_LEVY` + `SETTLEMENT_GBT_LEVY` — ⛔ **ours to remit, never ours to keep** | ledger |
 | **Aggregator share** | `HOUSE:AGGREGATOR` — the gateway's, passing through us | ledger |
-| **NGR** | GGR − bonus cost − processing fees (pre-tax bottom line) | `report-money` |
+| **NGR** | GGR − bonus cost − agent commission − processing fees (pre-tax bottom line) | `report-money` |
 | **Net retained** | House fee − levies − aggregator. **What the owner actually keeps.** | ledger |
 | **Player liability** | Σ ACTIVE wallet `balance + hold`. **Owed to players; not ours.** | `walletLiabilityTotal()` |
 | **Free house cash** | Cash held − player liability − levies payable | derived, ⚠️ see below |

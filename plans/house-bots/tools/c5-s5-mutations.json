@@ -986,7 +986,7 @@
   "from": "[...Object.keys(HOUSE_AUDIT), ...HOUSE_REPORT_AUDIT_ACTIONS];",
   "to": "[...Object.keys(HOUSE_AUDIT)];",
   "suite": "test:house-bot-reports",
-  "red": "4.260.1 [memory, postgres] (the house report row's \"liquidity\"); also 3.x per mutate-c5-s12 M13",
+  "red": "4.260.1 [memory, postgres] (the house report row's \"liquidity\"); also 3.x per mutate-c5-s12 M13 (that harness deleted 2026-09-26 as spent; git history keeps it)",
   "note": "same from-text as step 1-2's M13: the shared list now also feeds the console gate"
  },
  {

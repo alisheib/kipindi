@@ -58,8 +58,9 @@ export const MUTATIONS = [
   },
   {
     // 🔴 THE WORST ONE. An unrecognised token becoming DELIVERED reports delivery we have no
-    // evidence for, on the rail that carries login codes — and the vendor has NOT published its
-    // vocabulary, so unrecognised tokens are the expected case, not the edge case.
+    // evidence for, on the rail that carries login codes. The vendor's written list (2026-09-17,
+    // docs/BLACKBALL-SMS.md §3) all maps, but only DELIVRD has ever arrived live — so any token
+    // outside that list must stay null and be audited, never guessed as delivered.
     name: "route.ts — an unrecognised status token defaults to DELIVERED",
     file: "src/app/api/webhooks/blackball/route.ts",
     from: `  return null;

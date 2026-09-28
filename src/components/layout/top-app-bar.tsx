@@ -7,7 +7,7 @@ import { LanguageMenu } from "@/components/ui/language-menu";
 import { NotificationsPanel } from "@/components/layout/notifications-panel";
 import { AvatarMenu } from "@/components/layout/avatar-menu";
 import { NavMore } from "@/components/layout/nav-more";
-import { WalletBalancePill } from "@/components/layout/wallet-balance-pill";
+import { WalletBalancePill, useLiveBalance } from "@/components/layout/wallet-balance-pill";
 import { ProposalsStateBadge } from "@/components/ui/proposals-state-badge";
 import { I } from "@/components/ui/glyphs";
 import { useT } from "@/lib/i18n";
@@ -89,6 +89,10 @@ export type TopAppBarUser = {
 export function TopAppBar({ user, proposalsState, inviteVisible = false, invitePaid = false }: { user: TopAppBarUser; proposalsState: ProposalsState; inviteVisible?: boolean; invitePaid?: boolean }) {
   const pathname = usePathname();
   const { t } = useT();
+  // ⭐ R1 (landing v3, 2026-09-26) · the bar decides with the LIVE balance, so a deposit landing over
+  // SSE brings the capsule back and a bet that empties the wallet brings Deposit — no navigation.
+  const liveBalance = useLiveBalance(user.balance ?? 0);
+  const funded = liveBalance > 0;
 
   // Core links render inline from `lg`; overflow links fold into the "More"
   // menu at lg and render inline only at `xl` (IA review R1 — no primary
@@ -132,11 +136,13 @@ export function TopAppBar({ user, proposalsState, inviteVisible = false, inviteP
            Proposals gets when DISABLED, three lines above, and it never wears a badge.
            ⭐ 2026-09-25: `inviteVisible` is TRUE for every player in good standing now (the unpaid
            invite), and FALSE for a closed/suspended/self-excluded account and for an agent out of
-           standing. ⛔ The label is `t.common.invite` — the neutral word — and must stay neutral:
-           `invitePaid` decides the wording in the avatar menu, and this rail has no room for a
-           promise it would have to retract. */
+           standing. ⛔ The label is `t.profile.inviteFriends` — the page's own name, the same words
+           the avatar menu, the /profile row, the bottom rail and the footer use (2026-09-26: the
+           bare verb "Invite" was not recognised as the invite on a phone) — and it must stay
+           neutral: `invitePaid` decides the wording in the avatar menu, and this menu has no room
+           for a promise it would have to retract. */
         ...(inviteVisible
-          ? [{ href: "/profile/invite", label: t.common.invite } as NavItem]
+          ? [{ href: "/profile/invite", label: t.profile.inviteFriends } as NavItem]
           : []),
         { href: "/leaderboard",    label: t.nav.leaderboard },
       ]
@@ -229,7 +235,10 @@ export function TopAppBar({ user, proposalsState, inviteVisible = false, inviteP
               present, no duplicate. */}
           <LanguageMenu />
 
-          {user.isAuthed && user.balance !== null && user.balance !== undefined && (
+          {/* ⭐ R1 · AT ZERO THE CAPSULE GIVES WAY TO A GOLD DEPOSIT (below) — never "TZS 0" in the
+              header (the delivery's V11). A FROZEN wallet keeps its capsule at any balance: the Wallet
+              it opens is where the freeze is explained, and Deposit is refused to it anyway. */}
+          {user.isAuthed && user.balance !== null && user.balance !== undefined && (funded || user.walletHeld) && (
             // ⭐ THE BALANCE IS VISIBLE AT EVERY WIDTH — Ali, 2026-08-25, after players
             // voted DOWN the phone-only wallet icon that used to stand in for it.
             //
@@ -252,7 +261,7 @@ export function TopAppBar({ user, proposalsState, inviteVisible = false, inviteP
             // ⛔ AND THE PILL IS NOW THE WALLET DOOR AT EVERY WIDTH — it has always been a
             // `<Link href="/wallet">`. That is why removing the icon costs nothing: the
             // door did not go away, the DUPLICATE did.
-            <WalletBalancePill balance={user.balance} />
+            <WalletBalancePill balance={liveBalance} held={!!user.walletHeld} />
           )}
 
           {/* ⛔ THE WRAPPER SPAN IS LOAD-BEARING — `hidden lg:inline-flex` ON the button
@@ -311,6 +320,13 @@ export function TopAppBar({ user, proposalsState, inviteVisible = false, inviteP
                profile and sign-out (`E-190` severed it once); the bell carries the unread count; the
                language control is the one a trilingual product cannot do without.
                ⚠️ ONE CLASS REVERSES THIS if the commercial call goes the other way. */
+            /* ⭐ R1 (2026-09-26), REWRITTEN 2026-09-28 · "AT ZERO THIS IS THE WALLET'S DOOR AT EVERY
+               WIDTH" IS STILL TRUE — IT IS JUST NO LONGER THIS CONTROL THAT CARRIES IT EVERYWHERE.
+               Below 1024 the rail shows (`lg:hidden`) and its centre COIN is that door; at 1024 and up
+               there is no rail, so this pill is. One Deposit per screen (UPDATE-2026-09-28 §1), and
+               R1's ternary goes with it: both cases now yield at the same width, because what decides
+               this pill's PRESENCE is the rail's presence, not the balance.
+               ⚠️ R1's reasoning is intact where it still buys something — see the LABEL below. */
             <span className="hidden lg:inline-flex">
             <Link
               href="/wallet/deposit"
@@ -332,31 +348,16 @@ export function TopAppBar({ user, proposalsState, inviteVisible = false, inviteP
                   `aria-label` stay, exactly as they do on a phone, so nothing becomes
                   unnameable or unreachable. Measured, not assumed: the label is 108px in EN,
                   103px in SW, 84px in ZH. */}
-              {/* 🔴 THE ONE LINE OF UPDATE-2026-09-28 §1 THIS COMMIT DOES NOT IMPLEMENT, AND THE
-                  REASON IS E-190. §1 asks the label to STAND at 1024–1279 when the balance is zero
-                  (`funded ? "hidden xl:inline" : "inline"`). Its premise is its own table: at zero
-                  there is "no capsule", so the room is free. In THIS repo the capsule renders at
-                  EVERY width whenever the balance is non-null — Ali's 2026-08-25 call, "the money
-                  wins", zero included (see the note above `WalletBalancePill`). The room the spec
-                  spends has not been freed here.
-                  ⛔ AND THE BAND IT WOULD SPEND IT IN IS E-190's OWN. At 1024 signed in, the right
-                  cluster ran 31px past in EN and 65px in SW, and what fell off the end was the
-                  ACCOUNT MENU — the only desktop path to profile and sign-out. The label is 108px
-                  in EN and 103px in SW. That is not a margin to spend on an unmeasured premise,
-                  and it could not be measured here: the local host has no signed-in zero-balance
-                  session to put a tape against.
-                  ⭐ SO THE LABEL STILL YIELDS, WHICH IS EXACTLY TODAY'S SHIPPED RULE AT ≥1024. What
-                  this commit changes is the pill's PRESENCE (it now yields below `lg`, because the
-                  rail's centre coin is the wallet's door there), not its label rule — so it cannot
-                  regress what it leaves alone. `hidden xl:inline` is the old
-                  `hidden sm:inline lg:hidden xl:inline` with the bands the pill no longer reaches
-                  removed; it is the same rule, not a new one.
-                  ⚠️ WHAT WOULD MAKE §1 SAFE: WP14 hiding the capsule at zero. When that lands,
-                  measure the cluster at 1024 signed in with a zero balance in sw/en/zh, and if it
-                  fits, restore `funded` (`user.balance > 0`) and the ternary. Raised with Ali,
-                  2026-09-28. ⛔ Do NOT ship it as `funded ? x : x` to "keep the shape": a branch
-                  that cannot differ is the `? true : true` this repo already caught once. */}
-              <span className="hidden xl:inline">
+              {/* ⭐ AT ZERO THE LABEL STANDS AT lg–xl, AND R1 IS WHAT PAYS FOR IT. The band the note
+                  above describes is E-190's: with a capsule beside it, the label's 108px (EN) / 103px
+                  (SW) is what pushed the account menu off the end. R1 (2026-09-26) made the capsule
+                  GIVE WAY at zero — `(funded || user.walletHeld)` on its guard, above — so in the zero
+                  case the room this label needs is room the capsule has stopped taking. With a balance
+                  the capsule is back and the yield stands. Same measurement, not a new rule.
+                  ⛔ THE TWO ARE COUPLED. If the capsule is ever shown at zero again, this must yield
+                  again, and nothing here would notice on its own. `red:header-fit` mutates this exact
+                  line so that the suite, not a reader, is what catches it. */}
+              <span className={funded ? "hidden xl:inline" : "inline"}>
                 {t.common.deposit}
               </span>
             </Link>

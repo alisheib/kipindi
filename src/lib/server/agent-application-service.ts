@@ -1671,10 +1671,11 @@ export async function requestInvitationOtp(token: string): Promise<ServiceResult
   const ch = invitationChannel(inv);
   if (!ch) return { ok: false, error: "This invitation is no longer valid.", code: "INVALID" };
   /**
-   * ⛔ A PHONE-ERA INVITATION CANNOT BE SENT A CODE, AND SAYS SO PLAINLY. There is no
-   * licensed SMS provider, so offering to "text me a code" would arm a button that cannot
-   * deliver — the defect this whole change exists to remove. The honest answer names the
-   * remedy: an officer withdraws it and issues a new one by email.
+   * ⛔ A PHONE-ERA INVITATION CANNOT BE SENT A CODE, AND SAYS SO PLAINLY. When this was written
+   * there was no licensed SMS provider, so "text me a code" would have armed a button that could
+   * not deliver. Blackball has been live since 2026-09-16, but this flow stays on email BY
+   * DECISION (the UPDATE 2026-09-16 note on `issueInvitation`), so the answer is unchanged: an
+   * officer withdraws it and issues a new one by email. (Corrected 2026-09-25.)
    */
   if (ch.kind === "PHONE") {
     return { ok: false, error: "This invitation was sent by text, and we can no longer deliver codes that way. Ask the officer who invited you to withdraw it and send a new invitation to your email address.", code: "INVALID" };

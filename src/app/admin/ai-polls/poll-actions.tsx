@@ -6,6 +6,7 @@ import { isKnownRefusal, refusalFigures, ADMIN_REFUSALS, type OperatorRefusal } 
 import { useRouter } from "next/navigation";
 import { useDeferredToast } from "@/components/ui/toast";
 import { focusFirstInvalid } from "@/lib/client/focus-first-invalid";
+import { runAdminAction } from "@/lib/client/run-admin-action";
 import { AiProgress, AiOverlayShell, type AiPhase } from "@/components/ui/ai-progress";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Select } from "@/components/ui/select";
@@ -875,7 +876,12 @@ export function ConfigPanel({ config }: { config: AIPollConfig }) {
     Object.fromEntries(LEAD_TIME_CATEGORIES.map((c) => [c, config.selectionLeadTimeHours?.[c] ?? 1440]));
   const [leadTimes, setLeadTimes] = useState<Record<string, number>>(freshLeadTimes);
   const router = useRouter();
-  const { deferToast } = useDeferredToast(pending);
+  const { deferToast, toast } = useDeferredToast(pending);
+  /* ⭐ The inline "Save settings" — the bar draws its own Save only while this one is out of reach. */
+  const saveRef = useRef<HTMLButtonElement>(null);
+  /* ⛔ A refused web-search toggle is REVERTED, and the revert makes the panel clean mid-save —
+     the exact edge the bar reads as "Saved". This names the refusal so the bar never says it. */
+  const [refused, setRefused] = useState(false);
 
   /* The settings that govern how many markets the AI writes and how confident it must be —
      held here until Save. An owner who retuned them and left kept the old generator running. */
@@ -896,9 +902,12 @@ export function ConfigPanel({ config }: { config: AIPollConfig }) {
   };
 
   const save = (override?: Partial<{ webSearchEnabled: boolean }>) => {
+    setRefused(false);
+    const sentWeb = override?.webSearchEnabled ?? webSearch;
+    const sentLead = JSON.stringify(leadTimes);
     start(async () => {
       const fd = new FormData();
-      fd.set("webSearchEnabled", String(override?.webSearchEnabled ?? webSearch));
+      fd.set("webSearchEnabled", String(sentWeb));
       fd.set("dailyTarget", dailyTarget);
       fd.set("minLeadTimeHours", minLead);
       fd.set("minConfidence", minConf);
@@ -906,18 +915,24 @@ export function ConfigPanel({ config }: { config: AIPollConfig }) {
       for (const [cat, mins] of Object.entries(leadTimes)) {
         fd.set(`selectionLead.${cat}`, String(mins));
       }
-      const r = await updatePollConfigAction(fd);
+      /* ⛔ Wrapped: a THROWN action (an expired session, a server fault) used to end the spinner
+         with no word at all. It now lands in the refusal branch below; a redirect still redirects. */
+      const r = await runAdminAction(() => updatePollConfigAction(fd));
       router.refresh();
       if (r.ok) {
         // Re-seed from the server's CLAMPED values so an out-of-range entry
         // (e.g. confidence 200) snaps back to what was actually saved (100).
-        setWebSearch(r.config.webSearchEnabled);
-        setDailyTarget(String(r.config.dailyTarget));
-        setMinLead(String(r.config.minLeadTimeHours));
-        setMinConf(String(r.config.minConfidence));
-        setMaxBatch(String(r.config.maxBatchPerRun));
+        /* ⛔ Field by field, and only where it still holds what was SENT: the inputs stay
+           editable while the save runs, and an edit made meanwhile must stay on screen and
+           dirty, not be overwritten and called "Saved". */
+        setWebSearch((cur) => (cur === sentWeb ? r.config.webSearchEnabled : cur));
+        setDailyTarget((cur) => (cur === dailyTarget ? String(r.config.dailyTarget) : cur));
+        setMinLead((cur) => (cur === minLead ? String(r.config.minLeadTimeHours) : cur));
+        setMinConf((cur) => (cur === minConf ? String(r.config.minConfidence) : cur));
+        setMaxBatch((cur) => (cur === maxBatch ? String(r.config.maxBatchPerRun) : cur));
         if (r.config.selectionLeadTimeHours) {
-          setLeadTimes(Object.fromEntries(LEAD_TIME_CATEGORIES.map((c) => [c, r.config.selectionLeadTimeHours[c] ?? 1440])));
+          const stored = Object.fromEntries(LEAD_TIME_CATEGORIES.map((c) => [c, r.config.selectionLeadTimeHours[c] ?? 1440]));
+          setLeadTimes((cur) => (JSON.stringify(cur) === sentLead ? stored : cur));
         }
         deferToast({ title: "Settings saved", variant: "success" });
       } else {
@@ -927,8 +942,10 @@ export function ConfigPanel({ config }: { config: AIPollConfig }) {
         // so the switch never lies about the persisted setting.
         if (override && typeof override.webSearchEnabled === "boolean") {
           setWebSearch(!override.webSearchEnabled);
+          setRefused(true);
         }
-        deferToast({ title: "Couldn't save settings", description: r.error, variant: "danger" });
+        /* A failure speaks NOW, not after the refresh settles — `useDeferredToast`'s own rule. */
+        toast({ title: "Couldn't save settings", description: r.error, variant: "danger" });
       }
     });
   };
@@ -991,18 +1008,24 @@ export function ConfigPanel({ config }: { config: AIPollConfig }) {
         </div>
       </div>
 
-      <button type="button" onClick={() => save()} disabled={pending} className="btn btn-primary btn-sm rounded-pill min-w-[140px]">
+      {/* ⛔ Disabled while nothing has changed — a live Save over a clean panel invites a press
+          that saves nothing and then says "saved". */}
+      <button ref={saveRef} type="button" onClick={() => save()} disabled={pending || !configDirty} className="btn btn-primary btn-sm rounded-pill min-w-[140px]">
         {pending ? "Saving…" : "Save settings"}
       </button>
 
-      {/* One signal, two surfaces — the bar states it, the guard catches the exits. */}
+      {/* One signal, two surfaces — the bar states it, the guard catches the exits.
+          ⭐ ONE Save on screen: `saveAnchor` hides the bar's while the button above is in reach,
+          and both are the same `save()` under the same words. */}
       <PendingChangesBar
         dirty={configDirty}
         saving={pending}
         detail="The generator keeps running on the saved settings until this is saved."
+        saveAnchor={saveRef}
         saveLabel="Save settings"
         onSave={() => save()}
         onDiscard={discardConfig}
+        savedLabel={refused ? false : undefined}
       />
       <UnsavedChangesGuard dirty={configDirty} body="The AI poll settings have been changed but not saved. Leaving now discards the change." />
     </div>
@@ -1514,13 +1537,14 @@ function RejectForm({ pollId, onClose, overlay }: { pollId: string; onClose: () 
 
       {/* ⛔ An inline panel with a Cancel is NOT a modal — nothing blocks a sidebar click
           through it, so a typed rejection note is exposed to navigation. Same shape as the
-          candidates reject popover, guarded the same way. */}
+          candidates reject popover, guarded the same way.
+          ⛔ AND THE BAR CARRIES NO REJECT. A primary button in a window-wide bar that rejects a
+          poll without naming it is a decision taken out of sight of its record — the bar warns
+          and offers Discard; the Reject stays in this panel, beside the poll it acts on. */}
       <PendingChangesBar
         dirty={rejectDirty}
         label="Rejection not recorded"
-        detail="The reason and note are held in this panel only."
-        saveLabel="Reject"
-        onSave={submit}
+        detail="The reason and note are held in this panel only. Press Reject in the panel to record it."
         onDiscard={onClose}
       />
       <UnsavedChangesGuard
@@ -1565,6 +1589,8 @@ function EditForm({ poll, onClose, overlay }: { poll: StoredAIPoll; onClose: () 
   const [selError, setSelError] = useState("");
   const router = useRouter();
   const todayIso = new Date().toISOString().slice(0, 10);
+  /* ⭐ The panel's own "Save & re-validate" — the bar draws its Save only while this one is out of reach. */
+  const saveRef = useRef<HTMLButtonElement>(null);
 
   /**
    * ⛔ NINE FIELDS SEEDED OFF THE POLL, INCLUDING TWO HAND-WRITTEN TRANSLATIONS. This is the
@@ -1624,25 +1650,24 @@ function EditForm({ poll, onClose, overlay }: { poll: StoredAIPoll; onClose: () 
     onClose();
     overlay.run("Saving changes…", "Re-validating poll through the quality pipeline.");
     start(async () => {
-      try {
-        const fd = new FormData();
-        fd.set("id", poll.id);
-        fd.set("titleEn", titleEn);
-        fd.set("titleSw", titleSw);
-        fd.set("titleZh", titleZh);
-        fd.set("category", category);
-        fd.set("resolutionCriterion", criterion);
-        fd.set("resolutionCriterionSw", criterionSw);
-        fd.set("resolutionCriterionZh", criterionZh);
-        fd.set("resolutionAt", resIso.toISOString());
-        fd.set("selectionClosedAt", selIsoStr ?? "");
-        const r = await editPollAction(fd);
-        router.refresh();
-        if (!r.ok) overlay.fail("Edit failed", r.error);
-        else overlay.succeed("Poll updated", "Changes saved and poll re-validated.");
-      } catch {
-        overlay.fail("Edit failed", "Server error — please try again.");
-      }
+      const fd = new FormData();
+      fd.set("id", poll.id);
+      fd.set("titleEn", titleEn);
+      fd.set("titleSw", titleSw);
+      fd.set("titleZh", titleZh);
+      fd.set("category", category);
+      fd.set("resolutionCriterion", criterion);
+      fd.set("resolutionCriterionSw", criterionSw);
+      fd.set("resolutionCriterionZh", criterionZh);
+      fd.set("resolutionAt", resIso.toISOString());
+      fd.set("selectionClosedAt", selIsoStr ?? "");
+      /* ⛔ Wrapped, not a bare try/catch: that swallowed the redirect an expired session throws,
+         so the officer read "Edit failed" instead of being taken to sign in. A thrown action
+         now lands in the `!r.ok` branch below; a redirect still redirects. */
+      const r = await runAdminAction(() => editPollAction(fd));
+      router.refresh();
+      if (!r.ok) overlay.fail("Edit failed", r.error);
+      else overlay.succeed("Poll updated", "Changes saved and poll re-validated.");
     });
   };
 
@@ -1714,17 +1739,21 @@ function EditForm({ poll, onClose, overlay }: { poll: StoredAIPoll; onClose: () 
         {dateError && <p className="mt-1 text-body-sm text-no-300">{dateError}</p>}
       </div>
       <div className="flex flex-col gap-2 pt-1">
-        <button type="button" onClick={submit} disabled={pending} className="btn btn-primary btn-md w-full">
+        {/* ⚠️ STAYS ENABLED on an unedited poll, on purpose: re-validating through the quality
+            pipeline is a real action even when no field changed. */}
+        <button ref={saveRef} type="button" onClick={submit} disabled={pending} className="btn btn-primary btn-md w-full">
           {pending ? "Saving…" : "Save & re-validate"}
         </button>
         <button type="button" onClick={onClose} className="btn btn-ghost btn-sm w-full">Cancel</button>
       </div>
 
-      {/* One signal, two surfaces — the bar states it, the guard catches the exits. */}
+      {/* One signal, two surfaces — the bar states it, the guard catches the exits.
+          ⭐ ONE Save on screen: `saveAnchor` hides the bar's while the panel's own is in reach. */}
       <PendingChangesBar
         dirty={editDirty}
         saving={pending}
         detail="Edits to the question, its translations and its dates are held in this panel only."
+        saveAnchor={saveRef}
         saveLabel="Save & re-validate"
         onSave={submit}
         onDiscard={onClose}

@@ -20,6 +20,9 @@
 import { db, type StoredWallet, type StoredResponsibleGambling } from "../src/lib/server/store.ts";
 import { buyPosition, createMarket } from "../src/lib/server/market-service.ts";
 import { selfExclusionStanding, checkSessionTimeLimit, setLimits } from "../src/lib/server/responsible-gambling.ts";
+import type { HarmFlag } from "../src/lib/server/responsible-gambling.ts";
+import { marketingRgStanding, sixMonthFloor, MARKETING_RG_DEPS } from "../src/lib/server/marketing/rg.ts";
+import type { MarketingRgDeps, MarketingRgStanding } from "../src/lib/server/marketing/rg.ts";
 import { readFileSync } from "node:fs";
 import { decomment } from "./lib/decomment.mts";
 
@@ -446,10 +449,11 @@ console.log("\n§6 · the screen shows the refusal the server computed (E-240, m
  * a detector that never reads an outcome-bearing signal may not use outcome vocabulary in
  * the string an officer reads.
  *
- * ⚠️ The MARKER ID is exempt by rule, not by oversight. `CHASING_LOSSES` is persisted on
- * existing flags and on the Board-facing RG report; renaming an enum to fix a sentence
- * would rewrite history officers have already acted on. The id may lie about the past;
- * the sentence may not lie to the reader today.
+ * ⚠️ The MARKER ID is exempt by rule, not by oversight. Officers have acted on flags by the
+ * name `CHASING_LOSSES`, and renaming an id to fix a sentence would break that record. The id
+ * may lie about the past; the sentence may not lie to the reader today. (Corrected 2026-09-25:
+ * this said the id is "persisted on existing flags and on the Board-facing RG report" — nothing
+ * persists a harm flag; every flag is recomputed per call. §8 builds on that fact.)
  */
 {
   const rgSrc = readFileSync("src/lib/server/responsible-gambling.ts", "utf8");
@@ -488,6 +492,317 @@ console.log("\n§6 · the screen shows the refusal the server computed (E-240, m
   // ⭐ CONTROL — and it must NOT fire on the replacement, or it would demand the fix back.
   ok("7.5 ⚠️ CONTROL — …and does NOT fire on the corrected sentence",
     !OUTCOME_CLAIM.test("`${chases} deposits within 30 min of placing a bet over the last 7 days`"));
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// §8 — the MARKETING predicate is a STANDING, never a lockout  (marketing U10 · D9 · OD12 · OD13)
+// ────────────────────────────────────────────────────────────────────────────
+/**
+ * 🔴 `isLockedOut` answers "may they bet NOW?" and lifts itself when the period elapses. A marketing
+ * gate built on it would text a 24-hour self-excluder 25 hours later and a player on a one-hour break
+ * the minute it ended. `marketingRgStanding` (`src/lib/server/marketing/rg.ts`) is the answer, and the
+ * rule it is held to here is one sentence: THE PERIOD ENDING IS NOT THE PERSON ASKING.
+ *
+ * ⭐ Each lift is proven to EXIST as well as to be refused without its conditions (8.6, 8.9) — a
+ * predicate that refuses everybody passes every "is refused" line in this section and is wrong.
+ * ⛔ And deciding must not WRITE (8.1b, 8.13): the predicate is asked once per recipient.
+ */
+console.log("\n§8 · the marketing predicate is a STANDING, never a lockout (marketing U10, D9)\n");
+{
+  const DAY = 864e5;
+  const T = Date.now();
+  const at = (days: number) => new Date(T + days * DAY).toISOString();
+  let mseq = 0;
+  /** A player stored the way registration stores one (`+255…`); returns the bare marketing key. */
+  async function mplayer(id: string, status: string = "ACTIVE"): Promise<string> {
+    const phone = `+2556${String(++mseq).padStart(8, "0")}`;
+    await db.user.create({
+      id, phoneE164: phone, passwordHash: null, passwordSalt: null,
+      failedLoginCount: 0, lockedUntil: null, role: "PLAYER", status, locale: "SW",
+      displayName: null, dob: "1990-01-01", region: null, acceptedTermsVersion: null, acceptedTermsAt: null,
+      marketingOptIn: true, twoFactorEnabled: false, avatarDataUrl: null,
+      email: `${id}@t.tz`, emailVerifiedAt: now(),
+      createdAt: now(), updatedAt: now(), lastLoginAt: null, closedAt: null,
+    } as never);
+    return phone.slice(1);
+  }
+  const said = async (identifier: string, status: "GIVEN" | "WITHDRAWN", days: number) =>
+    Promise.resolve(db.messagingConsent.create({
+      id: `mc_${identifier}_${status}_${days}`, channel: "SMS", identifier, category: "MARKETING",
+      status, source: "PROFILE", wording: "Ninakubali kupokea matangazo kwa SMS.", locale: "SW",
+      evidence: "rg-doors §8", recordedBy: null, createdAt: at(days),
+    }));
+  const deps = (restoredDays: number | null, activatedDays: number | null, harm: HarmFlag[] = []): MarketingRgDeps => ({
+    harmFlags: async () => harm,
+    exclusionRecord: async () => ({
+      restoredAt: restoredDays === null ? null : at(restoredDays),
+      lastActivatedAt: activatedDays === null ? null : at(activatedDays),
+    }),
+  });
+  const NONE = deps(null, null);
+  const verdict = (s: MarketingRgStanding) => (s.ok ? "ALLOWED" : s.skipReason);
+  const ask = async (id: string, identifier: string, d: MarketingRgDeps = NONE, status = "ACTIVE") =>
+    marketingRgStanding({ id, status: status as never }, identifier, T, d);
+  const seen = new Set<string>();
+  const expect = async (label: string, s: Promise<MarketingRgStanding>, want: string) => {
+    const v = await s;
+    seen.add(verdict(v));
+    ok(label, verdict(v) === want, `got ${verdict(v)}${v.ok ? "" : ` — ${v.detail}`}`);
+    return v;
+  };
+
+  // ── self-exclusion ─────────────────────────────────────────────────────────────────────
+  const idNone = await mplayer("mk_none");
+  await expect("8.1 a player with no RG row at all is ALLOWED", ask("mk_none", idNone), "ALLOWED");
+  ok("8.1b 🔴 …and asking created NO ResponsibleGambling row — deciding must not write (150k recipients = 150k rows)",
+    (await db.responsible.get("mk_none")) === null);
+
+  const idServing = await mplayer("mk_serving");
+  await rg("mk_serving", { selfExclusionUntil: at(30) });
+  await expect("8.2 a player SERVING a self-exclusion is refused", ask("mk_serving", idServing), "rg_self_excluded");
+
+  const idServed = await mplayer("mk_served");
+  await rg("mk_served", { selfExclusionUntil: at(-365) });
+  await expect("8.3 ⭐ a 24-hour exclusion that ELAPSED A YEAR AGO, never reopened by an officer, is still refused (D9 — minimum_served is not over)",
+    ask("mk_served", idServed), "rg_self_excluded");
+
+  const idStillSe = await mplayer("mk_still_se", "SELF_EXCLUDED");
+  await rg("mk_still_se", { selfExclusionUntil: at(-10) });
+  await expect("8.3b a SELF_EXCLUDED status refuses whatever the timer says — the status is standing evidence",
+    ask("mk_still_se", idStillSe, deps(-5, -20), "SELF_EXCLUDED"), "rg_self_excluded");
+  // ⭐ The case that ONLY the status can refuse: no RG row at all, so every timer reads "none". Without
+  // it, deleting the status check would be caught by nothing — 8.3b is also refused by the six-month floor.
+  const idSeNoRow = await mplayer("mk_se_norow", "SELF_EXCLUDED");
+  await expect("8.3c a SELF_EXCLUDED account with NO RG row (diverged) is refused — the status alone decides",
+    ask("mk_se_norow", idSeNoRow, NONE, "SELF_EXCLUDED"), "rg_self_excluded");
+
+  const idNoFresh = await mplayer("mk_nofresh");
+  await rg("mk_nofresh", { selfExclusionUntil: at(-399) });
+  await said(idNoFresh, "GIVEN", -500);
+  await expect("8.4 reopened by an officer, but the only consent PREDATES the exclusion — refused (OD12: a fresh consent after restoration)",
+    ask("mk_nofresh", idNoFresh, deps(-300, -400)), "rg_self_excluded");
+
+  const idInside = await mplayer("mk_inside");
+  await rg("mk_inside", { selfExclusionUntil: at(-29) });
+  await said(idInside, "GIVEN", -10);
+  await expect("8.5 ⭐ reopened and re-consented, but INSIDE six months of the exclusion starting — refused (GN 478T reg 48(3))",
+    ask("mk_inside", idInside, deps(-20, -30)), "rg_self_excluded");
+
+  const idLifted = await mplayer("mk_lifted");
+  await rg("mk_lifted", { selfExclusionUntil: at(-399) });
+  await said(idLifted, "GIVEN", -100);
+  await expect("8.6 ⭐ CONTROL — reopened, re-consented AFTER the restore, more than six months on: ALLOWED (the lift must exist)",
+    ask("mk_lifted", idLifted, deps(-300, -400)), "ALLOWED");
+
+  const idOldYes = await mplayer("mk_oldyes");
+  await rg("mk_oldyes", { selfExclusionUntil: at(-399) });
+  await said(idOldYes, "GIVEN", -200);
+  await expect("8.6b ⛔ a consent given BEFORE the restore (an old opt-out link tapped while still excluded) does not count",
+    ask("mk_oldyes", idOldYes, deps(-100, -400)), "rg_self_excluded");
+
+  const idReexcl = await mplayer("mk_reexcl");
+  await rg("mk_reexcl", { selfExclusionUntil: at(-50) });
+  await said(idReexcl, "GIVEN", -10);
+  await expect("8.6c a restore OLDER than the latest exclusion does not reopen it — status reads open with no restore after it = divergence, refused",
+    ask("mk_reexcl", idReexcl, deps(-300, -60)), "rg_self_excluded");
+
+  const idNoStart = await mplayer("mk_nostart");
+  await rg("mk_nostart", { selfExclusionUntil: at(-100) });
+  await said(idNoStart, "GIVEN", -10);
+  await expect("8.6d with no activation on record the six months count from the END date — the safe direction, refused at day 100",
+    ask("mk_nostart", idNoStart, deps(-50, null)), "rg_self_excluded");
+
+  // ── cooling-off ────────────────────────────────────────────────────────────────────────
+  const idBreak = await mplayer("mk_break", "COOLED_OFF");
+  await rg("mk_break", { coolingOffUntil: at(2) });
+  await expect("8.7 a player ON a break is refused, with its own reason", ask("mk_break", idBreak, NONE, "COOLED_OFF"), "rg_cooling_off");
+
+  const idBreakOver = await mplayer("mk_breakover", "COOLED_OFF");
+  await rg("mk_breakover", { coolingOffUntil: at(-1) });
+  await said(idBreakOver, "GIVEN", -30);
+  await expect("8.8 ⭐ a break that ENDED yesterday does not reopen marketing by itself — the consent on file predates it (D9's shape, for breaks)",
+    ask("mk_breakover", idBreakOver, NONE, "COOLED_OFF"), "rg_cooling_off");
+
+  const idBack = await mplayer("mk_back", "COOLED_OFF");
+  await rg("mk_back", { coolingOffUntil: at(-10) });
+  await said(idBack, "GIVEN", -5);
+  const back = await expect("8.9 ⭐ CONTROL — a break that ended, then a consent given AFTER it: ALLOWED (the lift must exist)",
+    ask("mk_back", idBack, NONE, "COOLED_OFF"), "ALLOWED");
+  ok("8.9a …and it says so, so the gate may admit the COOLED_OFF status nothing ever clears", back.ok && back.coolingOffEnded === true);
+
+  const idYesNo = await mplayer("mk_yesno", "COOLED_OFF");
+  await rg("mk_yesno", { coolingOffUntil: at(-10) });
+  await said(idYesNo, "GIVEN", -5);
+  await said(idYesNo, "WITHDRAWN", -2);
+  await expect("8.9b a yes after the break followed by a NO is a no — the LATEST ledger row decides",
+    ask("mk_yesno", idYesNo, NONE, "COOLED_OFF"), "rg_cooling_off");
+
+  const idDiverged = await mplayer("mk_diverged", "COOLED_OFF");
+  await expect("8.10 a COOLED_OFF status with no break on record is a divergence, and a divergence refuses",
+    ask("mk_diverged", idDiverged, NONE, "COOLED_OFF"), "rg_cooling_off");
+
+  // ── harm markers ───────────────────────────────────────────────────────────────────────
+  const idHarm = await mplayer("mk_harm");
+  const flagged: HarmFlag[] = [{ userId: "mk_harm", marker: "RAPID_DEPOSIT_ESCALATION", detectedAt: now(), severity: "warn", detail: "fixture" }];
+  await expect("8.11 a player carrying a harm marker is refused, with its own reason",
+    ask("mk_harm", idHarm, deps(null, null, flagged)), "rg_harm_marker");
+
+  const idHarmReal = await mplayer("mk_harm_real");
+  await db.wallet.create({ id: "wal_mk_harm_real", userId: "mk_harm_real", balance: 0, pending: 0, hold: 0, currency: "TZS", status: "ACTIVE", createdAt: now(), updatedAt: now() } as StoredWallet);
+  for (let i = 0; i < 3; i++) {
+    await db.txn.create({
+      id: `tx_mk_harm_${i}`, walletId: "wal_mk_harm_real", userId: "mk_harm_real", type: "DEPOSIT", status: "CONFIRMED",
+      amount: 10_000, fee: 0, taxWithheld: 0, balanceAfter: null, currency: "TZS", provider: "MPESA", providerRef: null,
+      createdAt: new Date(T - (i + 1) * 60_000).toISOString(), updatedAt: now(),
+    } as never);
+  }
+  await expect("8.11b the DEFAULT dependency is the real detector — three deposits inside an hour refuse through it",
+    marketingRgStanding({ id: "mk_harm_real", status: "ACTIVE" }, idHarmReal, T), "rg_harm_marker");
+
+  const idHarmDown = await mplayer("mk_harm_down");
+  const broken: MarketingRgDeps = { ...NONE, harmFlags: async () => { throw new Error("db down"); } };
+  await expect("8.12 ⛔ a harm check that cannot be READ refuses — never the `.catch(() => [])` of the compliance panel",
+    ask("mk_harm_down", idHarmDown, broken), "rg_harm_marker");
+
+  // ── deciding must not write ────────────────────────────────────────────────────────────
+  const matured = { dailyDepositLimit: 1_000, pendingIncreaseTo: 5_000, pendingIncreaseEffectiveAt: at(-1) };
+  const idMatured = await mplayer("mk_matured");
+  await rg("mk_matured", { ...matured });
+  await ask("mk_matured", idMatured);
+  const after = await db.responsible.get("mk_matured");
+  ok("8.13 🔴 a row whose pending limit change has come due is NOT rewritten by the marketing predicate (the write U7's fix missed)",
+    after?.pendingIncreaseTo === 5_000 && after?.dailyDepositLimit === 1_000,
+    `pending=${after?.pendingIncreaseTo} daily=${after?.dailyDepositLimit}`);
+  await player("mk_matured_twin");
+  await rg("mk_matured_twin", { ...matured });
+  await selfExclusionStanding("mk_matured_twin");
+  const twin = await db.responsible.get("mk_matured_twin");
+  ok("8.13b ⚠️ CONTROL — the same row IS rewritten by `selfExclusionStanding`, so 8.13's fixture really exercises the write path",
+    twin?.pendingIncreaseTo === null && twin?.dailyDepositLimit === 5_000,
+    `pending=${twin?.pendingIncreaseTo} daily=${twin?.dailyDepositLimit}`);
+
+  // ── the default restore reader, end to end through the audit chain ────────────────────
+  const { audit } = await import("../src/lib/server/audit.ts");
+  const idChain = await mplayer("mk_chain");
+  await rg("mk_chain", { selfExclusionUntil: at(-1) });
+  await audit({ category: "COMPLIANCE", action: "rg.self_exclusion.activated", actorId: "mk_chain", targetType: "User", targetId: "mk_chain", payload: { period: "24h" } });
+  // ⚠️ MEASURED: written back to back, the two rows carried the SAME millisecond, and a restore that is
+  // not strictly after the exclusion refuses — the safe reading of a tie, and one reality never produces
+  // (a restore follows an activation by at least the 24-hour minimum). So the fixture spaces them.
+  await new Promise((r) => setTimeout(r, 5));
+  await audit({ category: "COMPLIANCE", action: "rg.self_exclusion.reopened", actorId: "officer", targetType: "User", targetId: "mk_chain", payload: { reason: "fixture" } });
+  // ⚠️ Stamped from the moment AFTER the audit rows exist, not from T: the chain stamps its own
+  // `createdAt` at write time, and a consent dated before the restore is exactly what 8.6b refuses.
+  const tRestored = Date.now();
+  await Promise.resolve(db.messagingConsent.create({
+    id: "mc_chain", channel: "SMS", identifier: idChain, category: "MARKETING", status: "GIVEN", source: "PROFILE",
+    wording: "Ninakubali kupokea matangazo kwa SMS.", locale: "SW", evidence: "rg-doors §8", recordedBy: null,
+    createdAt: new Date(tRestored + 1_000).toISOString(),
+  }));
+  const chainNow = await marketingRgStanding({ id: "mk_chain", status: "ACTIVE" }, idChain, tRestored + 2_000);
+  const chainRec = await MARKETING_RG_DEPS.exclusionRecord("mk_chain");
+  ok("8.14 the default reader FINDS the restore in the audit chain — the refusal is the six-month floor, not \"no restore on record\"",
+    !chainNow.ok && /six-month/.test(chainNow.detail),
+    `${chainNow.ok ? "ALLOWED" : chainNow.detail} · record ${JSON.stringify(chainRec)}`);
+  const chainLater = await marketingRgStanding({ id: "mk_chain", status: "ACTIVE" }, idChain, tRestored + 200 * DAY);
+  ok("8.14b …and 200 days on, the same record lifts it: ALLOWED", chainLater.ok, chainLater.ok ? "" : chainLater.detail);
+
+  // ── the arithmetic and the property ────────────────────────────────────────────────────
+  const mar1 = "2026-03-01T00:00:00.000Z";
+  ok("8.15 the six-month floor is six CALENDAR months (1 Mar → 1 Sep) — 182 days alone would release on 30 Aug",
+    sixMonthFloor(mar1) >= Date.parse("2026-09-01T00:00:00.000Z"));
+  ok("8.15b …and never fewer than 182 days", sixMonthFloor(mar1) >= Date.parse(mar1) + 182 * DAY);
+  ok(`8.16 ⭐ PROPERTY — four mutually exclusive outcomes in this section (${[...seen].sort().join(", ")})`,
+    ["ALLOWED", "rg_self_excluded", "rg_cooling_off", "rg_harm_marker"].every((r) => seen.has(r)));
+
+  // ── structural: the file cannot reach a predicate that lifts itself or writes ──────────
+  const rgSrc = decomment(readFileSync("src/lib/server/marketing/rg.ts", "utf8"));
+  ok("8.17 ⚠️ CONTROL — marketing/rg.ts was found and is not empty", rgSrc.length > 1_000, `${rgSrc.length} chars`);
+  ok("8.17a ⛔ marketing/rg.ts never calls isLockedOut (it lifts itself — D9)", !/\bisLockedOut\s*\(/.test(rgSrc));
+  ok("8.17b ⛔ …nor getRgSettings or selfExclusionStanding (they WRITE — create or effectivize)",
+    !/\bgetRgSettings\s*\(/.test(rgSrc) && !/\bselfExclusionStanding\s*\(/.test(rgSrc));
+  ok("8.17c ⛔ …nor audit() — a refusal is returned, and the loop writes the line when it acts on it", !/\baudit\s*\(/.test(rgSrc));
+  ok("8.17d it reads the raw row (db.responsible.get) and the ONE standing definition (selfExclusionStandingOf)",
+    /db\.responsible\.get\s*\(/.test(rgSrc) && /selfExclusionStandingOf\s*\(/.test(rgSrc));
+  ok("8.17e detectHarmMarkers is asked with NO options — `sessionStartedAt` switches on the detector that writes",
+    /detectHarmMarkers\(\s*\w+\s*\)/.test(rgSrc) && !/detectHarmMarkers\([^)]*,/.test(rgSrc));
+  const gateSrc = decomment(readFileSync("src/lib/server/marketing/consent.ts", "utf8"));
+  const iConsent = gateSrc.indexOf("user.marketingOptIn !== true");
+  const iRg = gateSrc.search(/\bmarketingRgStanding\s*\(/);
+  ok("8.18 ⭐ the gate CALLS marketingRgStanding — a missing call is the E-240 defect, invisible to every test of the predicate",
+    iRg !== -1, "no call found");
+  ok("8.18a …and asks it AFTER consent (§5.6 order — and the harm scan must not run on non-consenting players)",
+    iConsent !== -1 && iRg !== -1 && iConsent < iRg, `consent@${iConsent} rg@${iRg}`);
+  ok("8.18b ⛔ the gate calls neither isLockedOut nor selfExclusionStanding directly",
+    !/\bisLockedOut\s*\(/.test(gateSrc) && !/\bselfExclusionStanding\s*\(/.test(gateSrc));
+  void MARKETING_RG_DEPS;
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// §9 — PUSH and WATCHLIST ALERTS respect the ruling too  (D10, marketing S7)
+// ────────────────────────────────────────────────────────────────────────────
+/**
+ * 🔴 D10. `push-service` and `watchlist-service` gated on `isLockedOut` alone, which lifts the moment the
+ * chosen period elapses — so a 24-hour self-excluder was pushed at, and sent "a market you follow closes
+ * soon", from hour 25, while sign-in and betting still refused them. Ali's 2026-08-27 ruling (the period
+ * is a MINIMUM; the account is not reinstated by itself) is enforced on those two doors the way the bet
+ * path enforces it: the STATUS decides. Closed on Ali's delegation of 2026-09-26.
+ * ⭐ A push in stub mode returns 0 whether it was suppressed or delivered, so "returned 0" proves nothing;
+ * the discriminator is the `[push-stub]` delivery line, caught with a console spy. Each suppression is
+ * paired with a DELIVERED control (restored; a cooled-off player whose break is over), or a door that
+ * pushed nobody would pass.
+ */
+console.log("\n§9 · push and watchlist alerts: the STATUS decides, not the timer (D10)\n");
+{
+  const { sendPushToUser, savePushSubscription } = await import("../src/lib/server/push-service.ts");
+  const { alertableWatcherIds } = await import("../src/lib/server/watchlist-service.ts");
+  const { getAuditForTargetsDurable } = await import("../src/lib/server/audit.ts");
+  const DAY = 864e5;
+  const ago = (days: number) => new Date(Date.now() - days * DAY).toISOString();
+  const lines: string[] = [];
+  const realLog = console.log;
+  const delivered = async (userId: string): Promise<boolean> => {
+    lines.length = 0;
+    console.log = (...a: unknown[]) => { lines.push(a.map(String).join(" ")); };
+    try { await sendPushToUser(userId, { title: "t", body: "b" }); } finally { console.log = realLog; }
+    return lines.some((l) => l.startsWith(`[push-stub] To: ${userId} `));
+  };
+  const mk = async (id: string, status: string, patch?: Partial<StoredResponsibleGambling>) => {
+    await player(id);
+    await db.user.update(id, { status } as never);
+    if (patch) await rg(id, patch);
+    await savePushSubscription(id, { endpoint: `https://push.example/${id}`, p256dh: "k", auth: "a" });
+  };
+
+  await mk("d10_served", "SELF_EXCLUDED", { selfExclusionUntil: ago(365) });
+  ok("9.1 ⭐ a self-excluder whose 24 h ELAPSED A YEAR AGO, never reopened, is NOT pushed at (D10)", !(await delivered("d10_served")),
+    "a [push-stub] delivery line was printed");
+  // `push-service` fires its audit without awaiting it (the push must never wait on the chain), so the
+  // row lands a moment later — poll for it rather than sleep a guess.
+  let rows: Awaited<ReturnType<typeof getAuditForTargetsDurable>>["entries"] = [];
+  for (let i = 0; i < 40 && rows.length === 0; i++) {
+    rows = (await getAuditForTargetsDurable({ targetType: "User", targetIds: ["d10_served"], actions: ["push.suppressed.rg_lockout"], sinceIso: ago(1) })).entries;
+    if (rows.length === 0) await new Promise((r) => setTimeout(r, 50));
+  }
+  ok("9.1b …and the suppression is audited with the standing it rests on (minimum_served)",
+    rows.some((r) => (r.payload as { standing?: string } | undefined)?.standing === "minimum_served"), JSON.stringify(rows.map((r) => r.payload)));
+
+  await mk("d10_diverged", "SELF_EXCLUDED");
+  ok("9.2 a SELF_EXCLUDED account with no timer at all (diverged) is not pushed at", !(await delivered("d10_diverged")));
+
+  await mk("d10_restored", "ACTIVE", { selfExclusionUntil: ago(365) });
+  ok("9.3 ⚠️ CONTROL — a player an officer REOPENED (ACTIVE, the same past end date) IS pushed at", await delivered("d10_restored"),
+    "no [push-stub] line — the door pushes nobody");
+  await mk("d10_cooled", "COOLED_OFF", { coolingOffUntil: ago(2) });
+  ok("9.4 ⚠️ CONTROL — a cooled-off player whose break is OVER is pushed at: cooling-off keeps its timer (nothing clears COOLED_OFF)",
+    await delivered("d10_cooled"));
+
+  await db.watchlist.add("mkt_d10", "d10_served");
+  await db.watchlist.add("mkt_d10", "d10_restored");
+  const watchers = await alertableWatcherIds("mkt_d10");
+  ok("9.5 ⭐ the watchlist alert set drops the self-excluder whose period elapsed — \"a market you follow closes soon\" is engagement",
+    !watchers.includes("d10_served"), watchers.join(","));
+  ok("9.6 ⚠️ CONTROL — …and keeps the reopened player", watchers.includes("d10_restored"), watchers.join(","));
 }
 
 console.log(`\nrg-doors: ${pass} passed, ${fail} failed`);

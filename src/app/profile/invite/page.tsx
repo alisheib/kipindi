@@ -15,13 +15,14 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Stat } from "@/components/ui/stat";
 import { ReferralShare } from "./invite-client";
-import { fill, formatCompactNumber } from "@/lib/utils";
+import { fill, formatCompactNumber, formatTzs } from "@/lib/utils";
 import { Ring } from "@/components/charts/ring";
 import { getBonusConfig } from "@/lib/server/bonus-config";
 import { formatDateShort as fmtDate, formatNumber } from "@/lib/utils";
 import { getServerT } from "@/lib/i18n-server";
 import { PageContainer } from "@/components/layout/page-container";
-import { inviteIsLiveFor, playerInviteRewardsLive } from "@/lib/feature-state";
+import { inviteIsLiveFor } from "@/lib/feature-state";
+import { invitePaysPlayersNow } from "@/lib/server/invite-rewards-switch";
 
 // Localised tab title (POLISH-BACKLOG §1.7) — was the hard-coded English
 // "Invite & Earn", which a Swahili player saw in their browser tab and history.
@@ -31,16 +32,22 @@ export async function generateMetadata() {
   // reading "Invite & Earn" is a promise of money made outside the page, where no conditional in
   // the body can reach it — and it is the surface a player sees when the page is not even open.
   //
-  // 🔴 AND IT IS VIEWER-AWARE, BECAUSE THIS ROUTE SERVES TWO PROGRAMMES. `playerInviteRewardsLive()`
-  // alone titled an APPROVED AGENT's commission dashboard "Invite friends" — the body renders
+  // 🔴 AND IT IS VIEWER-AWARE, BECAUSE THIS ROUTE SERVES TWO PROGRAMMES. The player switch alone
+  // titled an APPROVED AGENT's commission dashboard "Invite friends" — the body renders
   // `<AgentDashboard>` with their recruits and their earnings, so the tab was describing the wrong
   // product to the one viewer who IS paid. ⚠️ The session read costs one extra round trip on one
   // low-traffic route, and a title that contradicts its own page is the thing it buys off.
+  // ⭐ The player half is the one player-facing "paid" (`invitePaysPlayersNow`: the Owner's switch through
+  // the screens' ≤ 10 s read, the service-level pause off and a reward armed), fetched alongside the viewer
+  // rather than after it. "Make payable → Nothing yet" titles the tab "Invite friends" (review P8).
   // ⛔ It fails CLOSED: no session, a failed read, or anyone not in agent standing gets the
-  // unpaid words, never the promise.
+  // unpaid words, never the promise — and so does a switch that is Not payable or unreadable.
   const session = await currentSession();
-  const agent = session ? (await inviteViewerFor(session.userId)).agentInGoodStanding : false;
-  return { title: (playerInviteRewardsLive() || agent) ? t.profile.inviteEarn : t.profile.inviteFriends };
+  const [payable, agent] = await Promise.all([
+    invitePaysPlayersNow(),
+    session ? inviteViewerFor(session.userId).then((v) => v.agentInGoodStanding) : Promise.resolve(false),
+  ]);
+  return { title: (payable || agent) ? t.profile.inviteEarn : t.profile.inviteFriends };
 }
 export const dynamic = "force-dynamic";
 
@@ -157,8 +164,9 @@ export default async function InvitePage({
    * This segment has a `loading.tsx`, which is a Suspense boundary, so Next flushes the
    * shell (and commits the status) BEFORE this async component throws. The player sees the
    * not-found view; the response line says 200. Verified on a running server, not reasoned
-   * about: role PLAYER → gate false → `notFound()` called → body is the not-found UI, and
-   * **no code, link or QR is rendered** — the referral read below never runs.
+   * about (measured while `invite` was WITHDRAWN, on a role-PLAYER account; since 2026-09-25 the same
+   * path is a CLOSED / SUSPENDED / SELF_EXCLUDED account): gate false → `notFound()` called → body is
+   * the not-found UI, and **no code, link or QR is rendered** — the referral read below never runs.
    * ⛔ DO NOT "FIX" THE STATUS BY DELETING `loading.tsx`. Every async route in this app has
    * one (CLAUDE.md), and the status is cosmetic here: nothing leaks either way. If a true
    * 404 is ever required, the gate has to move ahead of the render — `proxy.ts` — not be
@@ -191,10 +199,10 @@ export default async function InvitePage({
   const s = await getPlayerReferralSummary(session.userId);
   /**
    * ⭐ THE ONE DISCRIMINATOR FOR EVERY MONEY WORD ON THIS PAGE, and it is READ FROM THE SUMMARY
-   * rather than asked again here. The server already resolved it to decide whether `promises` may
-   * contain a sentence; a second `playerInviteRewardsLive()` call in the render is how a page and
-   * its read model start disagreeing — which is exactly how the requirements list below came to
-   * describe a bonus wallet the payer had stopped using.
+   * rather than asked again here. The server already resolved it (the Owner's Payable switch) to
+   * decide whether `promises` may contain a sentence; a second read of the switch in the render is
+   * how a page and its read model start disagreeing — which is exactly how the requirements list
+   * below came to describe a bonus wallet the payer had stopped using.
    *
    * ⛔ WHAT IT GATES IS NOT DECORATION. Under `paid === false` the page shows no earnings ring, no
    * earned tile, no promise rows, no bonus-requirements list, no per-friend money column and no
@@ -227,8 +235,8 @@ export default async function InvitePage({
 
   // Build the referral link from the ACTUAL request host so it always matches
   // the URL the player is on (the live deploy) rather than a possibly-stale
-  // NEXT_PUBLIC_APP_URL. On Railway now → railway link; on 50pick.tz when the
-  // domain goes live → 50pick.tz link, automatically. Falls back to the
+  // NEXT_PUBLIC_APP_URL. On production that is whichever 50pick.tz host the player is on (apex or
+  // www); on any other deploy (the railway.app URL, localhost) it follows that host. Falls back to the
   // service-built link when headers are unavailable.
   const hdrs = await headers();
   const host = hdrs.get("x-forwarded-host") ?? hdrs.get("host");
@@ -259,13 +267,12 @@ export default async function InvitePage({
           </p>
         </div>
         {/* ⛔ THE CHIP IS THE PAID PROGRAMME'S STATUS AND IT IS HIDDEN WHEN THERE IS NO PROGRAMME.
-            `programEnabled` is the operator's master switch over commission / bonus / prize; with
-            `inviteRewards` WITHDRAWN it answers a question nobody asked, and "Active" beside a
-            share link reads as "you are earning". An Active/Paused pair where neither state means
-            anything is the flag-worse-than-dead-code shape `feature-state.ts` records deleting
-            twice — so under the unpaid invite it does not render at all. */}
+            "Active" beside a share link reads as "you are earning", so under the unpaid invite it does
+            not render at all. ⭐ Since 2026-09-26 (review P8) `paid` already means the service-level
+            pause is OFF — a paused programme is not paid to a player — so the chip has one state, and
+            its old Paused arm (with the "rewards resume" banner that sat below) is gone. */}
         {paid && (
-          <Chip variant={s.programEnabled ? "active" : "paused"}>{s.programEnabled ? t.common.active : t.common.paused}</Chip>
+          <Chip variant="active">{t.common.active}</Chip>
         )}
       </div>
 
@@ -323,22 +330,6 @@ export default async function InvitePage({
         )}
       </section>
 
-      {/* Paused banner. ⛔ PAID PROGRAMME ONLY — it says "rewards resume when it's back on", which
-          is a promise, and there is nothing to resume while `inviteRewards` is WITHDRAWN. */}
-      {paid && !s.programEnabled && (
-        <div
-          className="flex gap-2.5 rounded-xl border p-3"
-          style={{
-            background: "color-mix(in oklab, var(--warning-500) 12%, transparent)",
-            borderColor: "color-mix(in oklab, var(--warning-500) 30%, transparent)",
-          }}
-        >
-          <span className="shrink-0" style={{ color: "var(--gold-300)" }}><I.info s={16} /></span>
-          <p className="text-body-sm leading-relaxed text-text-muted">
-            {t.profile.programPaused}
-          </p>
-        </div>
-      )}
 
       {/* A9 share-card — the visual a referrer sends: FiftyMark, headline, the
           CODE in a frame, QR bottom-right. Shows the code, never a balance.
@@ -473,8 +464,18 @@ export default async function InvitePage({
         </p>
         <ul className="space-y-1.5 text-body-sm text-text-muted leading-snug list-disc pl-4">
           <li>{t.profile.inviteReqRegister}</li>
-          <li>{t.profile.inviteReqDeposit}</li>
-          <li>{t.profile.inviteReqBet}</li>
+          {/* ⛔ THE PRIZE'S CONDITIONS COME FROM THE PRIZE'S CONFIG (review P8, 2026-09-26) — `s.prizeTerms`, the
+              same settings the promise above was priced from. These lines were fixed sentences: a deposit
+              asked for whether or not the prize required one, and "TZS 20,000" whatever the minimum bet was.
+              No promised prize, no prize conditions. */}
+          {s.prizeTerms?.requireDeposit && <li>{t.profile.inviteReqDeposit}</li>}
+          {s.prizeTerms && (
+            <li>
+              {s.prizeTerms.minBetTzs > 0
+                ? fill(t.profile.inviteReqBet, { amount: formatTzs(s.prizeTerms.minBetTzs) })
+                : t.profile.inviteReqBetAny}
+            </li>
+          )}
           {/*
             🔴 THESE THREE LINES ARE A PROMISE ABOUT MONEY, AND THEY WERE FALSE.
             They stated the reward lands in the Bonus Wallet under a wagering requirement, with an

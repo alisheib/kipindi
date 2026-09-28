@@ -46,8 +46,9 @@ import type { HouseAccounts } from "@/lib/house-book";
  * same mistake as enumerating entry types and is refuted by the same sentence twenty lines
  * above: *an account balance cannot forget a type it has never heard of* — but a NAMED LIST
  * forgets an ACCOUNT it has never heard of, and `acct` in `ledger.ts` mints three the list did
- * not contain: `HOUSE:RG_SUSPENSE` (live, money we owe a self-excluded player) and the retired
- * `HOUSE:TAX` / `HOUSE:RESERVE` (historical rows only). `ledger.ts → houseAccountBalances()`
+ * not contain: `HOUSE:RG_SUSPENSE` (live, money we owe a self-excluded player), `HOUSE:TAX` (LIVE —
+ * statutory tax we hold and owe the state; `LEAD-F.1`/`F.2`, §7.15) and the retired `HOUSE:RESERVE`
+ * (historical rows only). `ledger.ts → houseAccountBalances()`
  * already reads `LIKE 'HOUSE:%'`, so the named list could also make `/admin/house` disagree with
  * `/admin/finance` about the same books with nothing going red.
  *

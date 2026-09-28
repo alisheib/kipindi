@@ -1,13 +1,13 @@
 # F6 · Seeded / guaranteed liquidity — compliance & risk design
 
-> ⛔ **SUPERSEDED — house-backed liquidity is being built as "house bots" (owner decision D1, 2026-09-13).**
+> ⛔ **SUPERSEDED — house-backed liquidity was built as "house bots" (owner decision D1, 2026-09-13), and is live.**
 > The recommendation below ("do NOT build") no longer governs, and neither do the §5 conditions. The ruling of record is
 > the House bots entry in [`COMPLIANCE-DECISIONS.md`](COMPLIANCE-DECISIONS.md); the design authority is
 > [`HOUSE-BOTS.md`](HOUSE-BOTS.md). This file is kept unchanged as the record of the risks that design answers.
 
 > ⛔ **Owner ruling D19 (Ali, 2026-09-16): house bots are never public.** No rulebook, Terms, privacy, FAQ or chatbot
 > text names them, and the holder sees nothing, so nothing public stands in for §5's condition 6 (marked in place below).
-> The ruling: `plans/house-bots/PROGRESS.md` "OWNER RULING D19".
+> The ruling of record: [`COMPLIANCE-DECISIONS.md`](COMPLIANCE-DECISIONS.md) "Owner ruling D19".
 
 > ⚠️ **FEE ARITHMETIC IN THIS FILE IS THE RETIRED MODEL.** It reasons in
 > `min(commissionRate × pool, feeCeilingRate × smaller side)`, which since 2026-08-14 describes
@@ -297,13 +297,22 @@ These are live today and I did not go looking for them:
    > two-sided + one-sided + voided workload (report TRA/GBT == ledger
    > HOUSE:TRA_LEVY / HOUSE:GBT_LEVY). The rates (10% TRA + 5% GBT = 15% of
    > commission) live in admin config and are the single source of truth.
+   >
+   > ⛔ **CORRECTED 2026-09-25 (Finance Seal):** the equality above was false on production —
+   > GGR is a turnover measure that still holds stakes on open positions, not the fee. Every
+   > report now READS the booked `HOUSE:TRA_LEVY` / `HOUSE:GBT_LEVY` and computes no levy
+   > (`SESSION-PROMPT-FINANCE-SEAL.md` §5).
 
 2. **✅ FIXED (verified against the code 2026-08-08) — `/admin/finance` showed a FABRICATED
    tax number.** It computed `taxAccrued = ggr × 0.05` with a *"placeholder formula"*
    comment and presented it to the owner as real. Today `admin/finance/page.tsx` derives
    the figure from the live admin-config rates on the real commission base and renders
    "—" with *"rates unavailable"* when it cannot — the never-fabricate rule holds; its own
-   comment records the history.
+   comment records the history. ⚠️ **Superseded 2026-09-25:** that "config rates on the
+   commission base" formula was itself wrong (it read ~14× the booked levy on GGR, then 15%
+   low on the net commission). The "Statutory levies" tile now reads `HOUSE:TRA_LEVY` +
+   `HOUSE:GBT_LEVY` movement over the window, applies no rate, and omits the figure when the
+   ledger cannot be read (`SESSION-PROMPT-FINANCE-SEAL.md` §0, §5).
 
 3. **✅ FIXED 2026-07-14 — The cash-out fee is documented as revenue but is not.**
    `market-config.ts` said the cash-out fee was *"booked to the house reserve as

@@ -284,7 +284,39 @@ await runTwoStores({
    * movements is what makes the steps visible, which is the whole of what was asked for.
    * ⚠️ AND THE FIXTURE GIVES ITS ROSTER SLOTS BACK. Its two accounts took the roster to 20 of 20 and broke
    * 1.359, 1.383 and 1.412 — four failures nowhere near this block. The repair is REMOVED accounts, never a
-   * raised ceiling: that ceiling is the very thing 1.359 and 1.412 measure. */
-  minPass: { memory: 845, postgres: 604 },
+   * raised ceiling: that ceiling is the very thing 1.359 and 1.412 measure.
+   * ⭐ 845/604 → 854/613 (2026-09-26), the counts that run PRINTED: 1.626h (a settled stake still brackets itself,
+   * with real BET_PAYOUT/BET_REFUND rows — four assertions), 1.368b (the D3 scan moved onto a ledger that paints
+   * balances — three, replacing 1.368's vacuous activity assertion and its control), 1.435b (the why-panel's
+   * guard, RENDERED — two) and 1.541's removed-account door (two): +11 −2 = +9 on each store.
+   * ⭐ 854/613 → 864/623 (2026-09-26), the counts that run PRINTED: RESUME-HERE §0c decision 2, the ledger at 1280 —
+   * §2e3b's ten source assertions on both ledgers (type placement, note line, phone stack, the two-row record, one
+   * gutter, derived spans — each with its control), +10 on each store.
+   * ⭐ 864/623 → 923/669 (2026-09-26), the counts that run PRINTED: C7 437, the Results tab — §2h's behavioural block on
+   * both stores (audience, one arithmetic with the stop, outcomes and words, cohort, window, one read per day, a failed
+   * day, removed accounts, grammar, containment, lexicon, layout) and, on the memory child, the source pins it
+   * brought (1.360 built, 1.361 widened, 1.437m's register pins, the five-tab rail).
+   * ⭐ 923/669 → 972/706 (2026-09-26), the counts that run PRINTED: RESUME-HERE §0c decision 4, the find step's list of
+   * every account — §2f2 on both stores (audience and route belt, the one parse and its refusal, sort and its total
+   * order, the two filters, paging past the end, links built from the validated parameters, the three walls, both
+   * empty states and the failed read) and, on the memory child, the source pins it brought (a server component, the
+   * shared rail with no window, the phone gutter).
+   * ⭐ 972/706 → 1007/728 (2026-09-26), the counts that run PRINTED on the integrated tree: build step 6 (replan ruling
+   * 543) — §2i, an audit that cannot be signed no longer reports a landed write as failed, on both stores except the
+   * writer source law 2.543.8/8c — and build step 10, §4c on the memory child: a pressed link says it is loading (the
+   * mark inside each kit link and on the date filter's Custom chip, its shape, the CSS — each with a control).
+   * ⭐ 972/706 → 1028/760 (2026-09-27), the counts that run PRINTED: build step 9, every desk table sorts and none can
+   * grow past a page — §2k on both stores (every key and direction against orders computed from stored facts, ties,
+   * missing-last, the anchored row, per-row figures, validation, links, the roster pager) and 1.318pg, the Postgres
+   * child's own roll-call over the first `console-pg` declarations; on the memory child, the source pins that every
+   * sortable header is `SortTh` fed from the reader. (Measured on its own tree, at `c3c3b4a5` plus step 9.)
+   * ⭐ → 1063/782 (2026-09-27), the counts the INTEGRATED tree printed — steps 4, 6, 7, 9 and 10 together.
+   * ⭐ 1063/782 → 1093/804 (2026-09-27), the counts this run PRINTED: FS-09's roster alerts — §2j on both stores
+   * (every landed act through the officer's own door, its refused and nothing-moved controls, the limits net
+   * 2.fs09.5z) and, on the memory child, the target law 2.fs09.8 with its interface pin and five planted controls:
+   * `0.mem · exit 0 · 1093 passed` and `0.pg · exit 0 · 804 passed`, ALL PASS on both stores.
+   * ⭐ → 1105/804 (2026-09-27), the counts the INTEGRATED tree printed — the phone sort rail's 1.s9p and the lead's
+   * tightened 2.fs09.8 controls (a spread, a .js specifier, an unfollowable binding, an unbound announcer) together. */
+  minPass: { memory: 1105, postgres: 804 },
   dbPrefix: "hb_console",
 });

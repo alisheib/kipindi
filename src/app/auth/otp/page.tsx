@@ -17,9 +17,13 @@ export async function generateMetadata() {
 }
 
 export default async function OtpPage({ searchParams }: { searchParams: Promise<{ purpose?: string; phone?: string; error?: string; sent?: string; next?: string; retry?: string; exp?: string }> }) {
-  // SMS OTP is not wired yet — the live auth flow is password-based. Until the
-  // licensed SMS provider is live (OTP_ENABLED=1), this page is dormant and would
-  // only confuse a player who lands here via a stale link, so bounce to login.
+  // Phone-code login is deliberately NOT offered: the live auth flow is password-based.
+  // SMS itself is live (Blackball, since 2026-09-16); keeping this off is a product
+  // decision, not a missing provider (docs/BLACKBALL-SMS.md §7 step 6; corrected 2026-09-25).
+  // Without OTP_ENABLED=1 this page is dormant and would only confuse a player who lands
+  // here via a stale link, so bounce to login. ⛔ Setting OTP_ENABLED=1 alone only exposes
+  // an orphan page, because no login or register form links here. ⚠️ The flag gates this
+  // PAGE only; requestLoginOtp itself is not gated (BLACKBALL-SMS.md §4.8).
   if (process.env.OTP_ENABLED !== "1") redirect("/auth/login");
 
   const { t } = await getServerT();

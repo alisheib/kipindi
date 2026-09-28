@@ -23,9 +23,9 @@ export const MUTATIONS = [
   },
   {
     name: "an exemption whose site vanished must be pruned, not left as a hole",
-    file: "src/components/updown/round-stake-panel.tsx",
-    from: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={arrow} /></svg>',
-    to: "",
+    file: "src/app/updown/[roundId]/page.tsx",
+    from: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={outcomeArrow} /></svg>',
+    to: "null",
     expect: "3.2 every exemption still matches a detector",
   },
   {
@@ -55,5 +55,20 @@ export const MUTATIONS = [
     from: 'import { OutcomeCubes } from "@/components/charts/outcome-cubes";',
     to: "",
     expect: "4.x components/charts/outcome-cubes.tsx has an import site",
+  },
+  {
+    name: "D5 · a stem placed by a computed x outside the home (the match track copied into a page, R5)",
+    file: "src/app/results/page.tsx",
+    from: "function OutcomeDonut({ yes, no, voided, size = 38 }",
+    to: "function StrayStem({ x }: { x: string }) { return <svg><line x1={x} x2={x} y1=\"0\" y2=\"10\" /></svg>; }\n" +
+        "function OutcomeDonut({ yes, no, voided, size = 38 }",
+    expect: "3.1 zero chart-shaped files outside the system",
+  },
+  {
+    name: "the match track's playhead losing its import site is a dead member (R5)",
+    file: "src/components/charts/updown-match-track.tsx",
+    from: 'import { UpdownMatchNow } from "./updown-match-now";',
+    to: "",
+    expect: "4.x components/charts/updown-match-now.tsx has an import site",
   },
 ];

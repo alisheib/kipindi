@@ -125,7 +125,8 @@ node scripts/visibility-states-test.mjs
 node scripts/responsive-overflow-test.mjs
 node scripts/demo-auto-resolve-test.mjs
 node scripts/i18n-toggle-e2e.mjs
-node scripts/report-renderers-smoke.mjs
+# every catalogue report × PDF/XLSX through the real route — needs `DISABLE_ADMIN_TOTP=true npx next dev` with NO DATABASE_URL
+BASE=http://localhost:3000 npm run qa:report-renderers
 
 # Capture operator manual screenshots + regenerate PDFs
 node scripts/capture-manual-screenshots.mjs

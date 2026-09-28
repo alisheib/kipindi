@@ -9,7 +9,9 @@
  *   - Idempotency: a recruit can only be bound once, prize paid once per recruit
  *
  * 🔴 WHY §1–§5 RUN UNDER `FEATURE_INVITEREWARDS=ACTIVE` (2026-09-25). The SURFACE is ACTIVE now —
- * a player binds with no override at all — and what sleeps is the MONEY. ⛔ NOT A RENAME of the
+ * a player binds with no override at all — and what sleeps is the MONEY: since 2026-09-26 invites
+ * are Not payable until the Owner's switch on `/admin/affiliate` says otherwise, and no suite stores
+ * that record, so the override is the FORCED ceiling (payable, the switch not consulted). ⛔ NOT A RENAME of the
  * old `FEATURE_INVITE` line: that one would leave `policyFor` refusing every accrual with
  * `player_rewards_withdrawn`, and §1–§5 would assert TZS 0 everywhere while looking like they had
  * tested the promo. The paragraph below is the original reasoning, kept because it is still why
@@ -25,7 +27,8 @@
  *
  * ⭐ The honest population for player-promo mechanics is a PLAYER referrer with the promo ON —
  * the same env override `withdrawn-features` §4 uses to keep the dormant ON path executable,
- * restored in a `finally`. §6 then proves the refusal with the override OFF, and §7 proves an
+ * restored in a `finally`. §6 then measures the SHIPPED state with the override OFF (the bind lands and
+ * pays NOTHING), and §7 proves an
  * approved AGENT on the identical path earns NO prize at all.
  */
 // ⚠️ THE BONUS WALLET IS WITHDRAWN FROM THE PRODUCT (`src/lib/feature-state.ts`), and since

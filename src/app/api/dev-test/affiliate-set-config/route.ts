@@ -2,6 +2,11 @@
  * /api/dev-test/affiliate-set-config — dev-only. Applies a (partial) affiliate
  * config so UI tests can drive every program state (active/paused, reward-mode
  * on/off combos) without clicking through the admin form each time.
+ * ⚠️ The config is not consulted for players while invites are Not payable (the Owner's switch on
+ * /admin/affiliate since 2026-09-26, Not payable by default, under the `inviteRewards` ceiling) — the
+ * player page and payouts ignore every value set here until invites are made payable, or the server runs
+ * with FEATURE_INVITEREWARDS=ACTIVE (docs/PLAYER-INVITE-UNPAID.md §4). ⛔ It bypasses the console's lock
+ * and its compliance rows — dev only.
  *
  * 404 in production. POST with a JSON body = DeepPartial<AffiliateConfig>.
  * Returns the resulting config (or a validation error).

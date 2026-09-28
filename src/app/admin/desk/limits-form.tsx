@@ -360,14 +360,15 @@ export function DeskLimitsForm({
           ⛔ `items-start` on the stacked axis, not `items-center`: a centred one-line sentence under a
           left-aligned button is the second look for one control this section has already been pulled up for. */}
       <div className="flex flex-col items-start sm:flex-row sm:items-center gap-2 pt-1">
-        <Button ref={saveRef} type="submit" size="md" variant="primary" loading={pending}>
+        {/* Disabled while nothing has changed — the same `armed` the bar and the guard read. */}
+        <Button ref={saveRef} type="submit" size="md" variant="primary" loading={pending} disabled={!armed}>
           Save · Hifadhi
         </Button>
         {/**
          * ⭐ "USE RECOMMENDED VALUES" — THE CONTROL THE PLAN WROTE AND NOBODY WIRED (2026-09-21).
          *
          * `recommendedLimits()` has existed since the plan, its docblock says "Use recommended values fills
-         * these into the form and saves nothing", the switch-on sheet describes it and the operator guide
+         * these into the form and saves nothing", the switch-on sheet (deleted 2026-09-26) described it and the operator guide
          * documents it — and NOTHING in `src/app/admin/desk` ever called it. So the control was described in
          * three places and on the screen in none, and an officer had to type all eight required limits by hand
          * before the master switch could be offered at all.

@@ -206,30 +206,26 @@ export async function sunsetHouseBots(input: { actorId: string | null; reason: s
   if (!isAllowedHouseAuditPayload(payload)) {
     throw new Error("house audit house_bot.sunset: payload keys outside the R7 allowlist");
   }
-  let recorded = true;
-  let auditId: string | null = null;
-  try {
-    const entry = (await audit({
-      category: HOUSE_AUDIT["house_bot.sunset"],
-      action: "house_bot.sunset",
-      /* 🔴 WAS `input.actorId ?? "system"`, AND THAT WAS A FABRICATED ACTOR. `audit()` takes `string | null` and its
-       * own comment says "null for system events", so the `??` bought nothing and invented an id no user has —
-       * while ruling 170's closed actor list (officer, forwarded officer, engine, nobody) does not contain it.
-       * `test:house-bot-reports` 0.170.1 reported it by name the first time this lane ran that suite. An audit row
-       * whose actor is a word rather than an account is the shape that makes a chain unreadable later. */
-      actorId: input.actorId,
-      targetType: "HouseBotControl",
-      targetId: HOUSE_CONTROL_ID,
-      payload,
-    })) as unknown;
-    auditId = entry && typeof entry === "object" && typeof (entry as { id?: unknown }).id === "string" ? (entry as { id: string }).id : null;
-  } catch (err) {
-    // ⛔ THE DESK HAS ALREADY MOVED BY THIS LINE. A failed compliance row is NAMED, never reported as a
-    // failed sunset: `audit()` promises never to reject and `chainSecret()` throws past that promise in
-    // production without a distinct AUDIT_CHAIN_SECRET.
-    recorded = false;
-    console.error("[house-bot] the sunset compliance row could not be written (the desk IS retired):", errMessage(err));
-  }
+  const entry = await audit({
+    category: HOUSE_AUDIT["house_bot.sunset"],
+    action: "house_bot.sunset",
+    /* 🔴 WAS `input.actorId ?? "system"`, AND THAT WAS A FABRICATED ACTOR. `audit()` takes `string | null` and its
+     * own comment says "null for system events", so the `??` bought nothing and invented an id no user has —
+     * while ruling 170's closed actor list (officer, forwarded officer, engine, nobody) does not contain it.
+     * `test:house-bot-reports` 0.170.1 reported it by name the first time this lane ran that suite. An audit row
+     * whose actor is a word rather than an account is the shape that makes a chain unreadable later. */
+    actorId: input.actorId,
+    targetType: "HouseBotControl",
+    targetId: HOUSE_CONTROL_ID,
+    payload,
+  });
+  /* ⛔ THE DESK HAS ALREADY MOVED BY THIS LINE. A compliance row that did not land is NAMED — `recorded` false and no
+     audit id — never reported as a failed sunset. ⭐ READ FROM THE ANSWER, NOT CAUGHT (replan ruling 543): `audit()`
+     used to throw past its own fail-open in production without a distinct AUDIT_CHAIN_SECRET; it now RESOLVES such
+     an entry unrecorded, so a catch here would never run, and the id of an entry that did not land is never kept. */
+  const recorded = entry.recorded;
+  const auditId = recorded ? entry.id : null;
+  if (!recorded) console.error(`[house-bot] the sunset compliance row could not be written (the desk IS retired): ${entry.unrecorded}`);
   if (auditId) await houseBotEventStore.setAuditId(event.id, auditId);
 
   /* ── 6 · ONE alert for the whole wind-down, last, and it never fails the act. */

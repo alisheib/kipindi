@@ -10,25 +10,27 @@
 > reward walker. Passages below that describe them are marked "⛔ Superseded by D20" in place, never deleted. **Unchanged:**
 > the engine, the money rules (cash only, never cashed out, no wagering progress, commission or reward), consent,
 > designation, caps and limits, the kill switch, the admin alerts about bot status, D19's absence proofs, the console gate
-> on house audit rows, erasure, and commit 7's console for CONTROLLING bots. **Accepted for Ali:** statutory figures
+> on house audit rows, erasure, and commit 7's console for CONTROLLING bots. ⚠️ **D20b AMENDED 2026-09-26
+> (delegated):** one Results view on the desk, for its ADMIN audience — what the desk's finished stakes won or lost, in
+> words; not a report, no CSV, no export (`COMPLIANCE-DECISIONS.md`, entry `2026-09-26 · D20b AMENDED`). **Accepted for Ali:** statutory figures
 > include 50pick's own house stakes as player activity, and the harm and AML detectors can flag a bot account like any
-> player's. The ruling: [`PROGRESS.md`](../plans/house-bots/PROGRESS.md) "OWNER RULING D20" and
+> player's. The ruling of record: [`COMPLIANCE-DECISIONS.md`](COMPLIANCE-DECISIONS.md) "Owner ruling D20", and
 > [`C5-D20-REPLAN.md`](../plans/house-bots/C5-D20-REPLAN.md).
 
 > ⛔ **Owner ruling D19 (Ali, 2026-09-16): house bots are never public.** No rulebook, Terms, privacy, FAQ, home or chatbot
 > text names them, and the holder sees nothing: a house stake looks exactly like the holder's own bet, no refusal carries
 > house wording, and the holder receives no house-bot notice or email of any kind. Every alert goes to admins only.
 > Passages below that said otherwise are marked ⛔ with D19 in place, never deleted. The ruling:
-> [`PROGRESS.md`](../plans/house-bots/PROGRESS.md) "OWNER RULING D19".
+> [`COMPLIANCE-DECISIONS.md`](COMPLIANCE-DECISIONS.md) "Owner ruling D19".
 
-> 🟠 Being built on branch `house-bots`: commits 1–4 of 8 are closed, and commit 5 is in progress under owner rulings D19 and D20.
-> ⛔ ~~Nothing is on production.~~ **CORRECTED 2026-09-21 (C5-8): THE CODE IS IN PRODUCTION, THE BEHAVIOUR IS NOT.** `origin/main` carries the `HouseBot*` models, both house
-> migrations (applied) and the engine modules, because the platform lane merges this branch's platform-safe work forward. **No house bot has ever staked on production**, and
-> the master switch ships OFF (D1). ⚠️ The posture is **ONE money lock plus a kill switch**, not two locks: `HouseBotControl.enabled` is `BOOLEAN NOT NULL DEFAULT false` and is
+> 🟢 **LIVE ON PRODUCTION.** The build branch `house-bots` is fully merged into `main` and is no longer worked on. The owner first switched the desk on on 2026-09-21; the last production read found it ON continuously since 2026-09-24 21:56:11 EAT, and it has placed real stakes since 2026-09-23 (§12.2 is why not sooner). Turning the switch ON is the owner's act alone; the engine can switch it OFF by itself (`engineSwitchOff`, `src/lib/server/house-bot/outcomes.ts`: `ENGINE_FAULT`, `ENGINE_ERRORS`, `GLOBAL_LOSS_STOP`), and the trail shows it has — it did on 2026-09-24 21:52:26 EAT with cause `GLOBAL_LOSS_STOP`. ⛔ Never quote the switch or any live figure from this file: the measured state, how to re-read it SELECT-only, the working branch and what is open are in [`RESUME-HERE.md`](../plans/house-bots/RESUME-HERE.md), this programme's one entry point.
+> The code reached production before the switch-on, with the platform lane's merges to `main`: the `HouseBot*` models, both house
+> migrations (applied) and the engine modules.
+> ⚠️ The posture is **ONE money lock plus a kill switch**, not two locks: `HouseBotControl.enabled` is `BOOLEAN NOT NULL DEFAULT false` and is
 > the thing every staking path reads (`fire.ts`, `seam.ts` ×2, `planner.ts`, `trigger.ts`); `HOUSE_BOT_ENGINE` is a KILL SWITCH — `houseBotEngineEnabled` returns `env !== "false"`,
 > so **unset means the engine starts**. The live Railway service config is **NOT MEASURED** and stays so (ruling 553). Only Ali turns the switch on.
 
-**Authority, in order:** [`04-amendments.md`](../plans/house-bots/04-amendments.md) (its last section, "House bots: amendments N1–N2", is the sealed text) > [`02-sealed-flows.md`](../plans/house-bots/02-sealed-flows.md) / [`03-design-spec.md`](../plans/house-bots/03-design-spec.md) > [`PLAN.md`](../plans/house-bots/PLAN.md). Where any of them disagrees with the code, the code is checked and the document is corrected in the same commit. Where the build stands is [`PROGRESS.md`](../plans/house-bots/PROGRESS.md). The ruling of record is the House bots entry in [`COMPLIANCE-DECISIONS.md`](COMPLIANCE-DECISIONS.md).
+**Authority, in order:** [`04-amendments.md`](../plans/house-bots/04-amendments.md) (its last section, "House bots: amendments N1–N2", is the sealed text) > [`02-sealed-flows.md`](../plans/house-bots/02-sealed-flows.md) / [`03-design-spec.md`](../plans/house-bots/03-design-spec.md) > [`PLAN.md`](../plans/house-bots/PLAN.md). Where any of them disagrees with the code, the code is checked and the document is corrected in the same commit. Where the programme stands, and its live state, is [`RESUME-HERE.md`](../plans/house-bots/RESUME-HERE.md) — the one entry point; the build record is [`PROGRESS.md`](../plans/house-bots/PROGRESS.md). The ruling of record is the House bots entry in [`COMPLIANCE-DECISIONS.md`](COMPLIANCE-DECISIONS.md).
 
 **How to read this file**
 - A section whose code lands in a later build commit says so: "⏳ Written in commit N", or a "⏳ lands in build commit N" marker. That commit replaces the marker with the text.
@@ -55,7 +57,7 @@
 
 ## 1. Invariants → guards
 
-The invariant column is PLAN's wording (I2 with its PLAN §18 amendment). "Guard today" names only keys that exist; the other guards arrive with their commit. A commit-1 key is part of this build's first commit, and §12 records whether it has run.
+The invariant column is PLAN's wording (I2 with its PLAN §18 amendment). "Guard today" names only keys that exist; the other guards arrive with their commit. ⚠️ **Noted 2026-09-26:** every suite the right-hand column names for commits 4 and 5 now exists (`test:house-bot-engine`, `test:house-bot-info-edge`, `test:house-bot-holder-lifecycle`, `test:house-bot-comms`, `test:house-bot-reports`), so read that column as the record of which commit was to bring each guard, not as work still owed. A commit-1 key is part of this build's first commit, and §12 records whether it has run.
 
 | # | Invariant | Guard today | Guard to come |
 |---|---|---|---|
@@ -78,17 +80,17 @@ The invariant column is PLAN's wording (I2 with its PLAN §18 amendment). "Guard
 - **Two migrations**, hand-written, re-runnable and expand-only (S1, A23), both timestamped after `20260913120000_kyc_at_withdrawal`, and touching no KYC table. The floor moves with `main`: on 2026-09-14 `main` added `20260914120000_rg_pending_limits_play_clock`, which shared the first house folder's old timestamp and sorted between the two, so both house folders were renamed from `20260914120000`/`20260914120100` to `20260914150000`/`20260914150100`; on 2026-09-15 `main` added `20260915120000_site_visits`, which sorted after both, so they were renamed again to `20260916150000`/`20260916150100` (never applied anywhere but scratch databases). REL-0's migrations diff re-checks that they are still the newest:
   - `20260916150000_house_bot_tables` creates the eight tables below and seeds `HouseBotControl` `global` and `HouseBotRuntime` `global` (`ON CONFLICT DO NOTHING`);
   - `20260916150100_house_bot_markers` adds the `houseBotId` markers, the `User` password-history columns and `PredictionMarket.reopenedAt` / `reopenCount`, all nullable with no default.
-- **A23 hand step.** Above 500,000 positions or 1,000,000 transactions, the marker indexes are built `CONCURRENTLY` by hand before the deploy. The markers migration's header holds the exact statements; the preflight and its runbook land in commit 8 (§11).
+- **A23 hand step.** Above 500,000 positions or 1,000,000 transactions, the marker indexes are built `CONCURRENTLY` by hand before the deploy. The markers migration's header holds the exact statements; the preflight and its runbook are in §11.
 - **Ids** are minted by the DAL with the prefixes in `HOUSE_ID_PREFIX`: `hb_` bot, `hbi_` intent, `hbe_` event, `hbt_` target, `hbp_` press.
 
 ### 2.1 Tables
 
 | Table | Key | What it holds | Retention (A20, DATA-RETENTION §1) |
 |---|---|---|---|
-| `HouseBot` | `hb_…` | One designation of one account. Label and `labelKey`, note, `status`, `pauseReason` (history only) and `pauseDetail`, `pausedFromStatus`. Consent: `passwordFingerprint`, `verifiedAt/ById`, `consentVoidAt/Cause`, `credentialChangedAt/Via`. Designation and removal: `designatedAt/ById`, `removedAt/ById/Cause/Reason`. Behaviour: `rules` JSON and `rulesVersion`. The typed caps (§5, NULL = not set). Designating the same account again makes a new row. | 7 years from removal, never deleted. Label, note and free-text reasons are pseudonymised on erasure (⏳ lands in build commit 3). |
+| `HouseBot` | `hb_…` | One designation of one account. Label and `labelKey`, note, `status`, `pauseReason` (history only) and `pauseDetail`, `pausedFromStatus`. Consent: `passwordFingerprint`, `verifiedAt/ById`, `consentVoidAt/Cause`, `credentialChangedAt/Via`. Designation and removal: `designatedAt/ById`, `removedAt/ById/Cause/Reason`. Behaviour: `rules` JSON and `rulesVersion`. The typed caps (§5, NULL = not set). Designating the same account again makes a new row. | 7 years from removal, never deleted. Label, note and free-text reasons are pseudonymised on erasure. |
 | `HouseBotControl` | `global` only | The master switch (`enabled`, `switchedAt/ById/Reason`, `offCause`), the global limits (§5), `limitsVersion` and `limitsSchemaVersion`. ~~and `boardDisclosureSentAt` / `boardDisclosureSections`~~ ⛔ **Un-built in C5-5b** (owner ruling D20, `C5-D20-REPLAN.md` ruling 273 (a)): the two Board-disclosure columns and the `recordDisclosure` writer had no reader and no caller, so they are gone from the migration, the schema and both DAL twins. | One fixed row. |
-| `HouseBotRuntime` | `global`, `beat:planner`, `bot:<id>`, `engine:<instance>`, `beat:poller:<instance>` | Hot counters kept off the control row and written with `INSERT … ON CONFLICT DO UPDATE`: the hour counter, the rate-limited counter, the sweep watermark and `scopeFrom`, error streaks, bounds and exit-config hashes, beats and clock skew. | Fixed rows overwritten in place. Per-instance rows (`engine:*`, `beat:poller:*`) are deleted after 24 h, because the instance id is random per boot (⏳ lands in build commit 4). |
-| `HouseBotAlertOnce` | the throttle key | One row per throttle key (§9.3). An alert is sent only when the claim's `INSERT … ON CONFLICT DO NOTHING RETURNING` returns a row, so two replicas send it once. | 30 days, purged by `retention.purge.daily` in batches of 5,000 (⏳ lands in build commit 4). |
+| `HouseBotRuntime` | `global`, `beat:planner`, `bot:<id>`, `engine:<instance>`, `beat:poller:<instance>` | Hot counters kept off the control row and written with `INSERT … ON CONFLICT DO UPDATE`: the hour counter, the rate-limited counter, the sweep watermark and `scopeFrom`, error streaks, bounds and exit-config hashes, beats and clock skew. | Fixed rows overwritten in place. Per-instance rows (`engine:*`, `beat:poller:*`) are deleted after 24 h, because the instance id is random per boot. |
+| `HouseBotAlertOnce` | the throttle key | One row per throttle key (§9.3). An alert is sent only when the claim's `INSERT … ON CONFLICT DO NOTHING RETURNING` returns a row, so two replicas send it once. | 30 days, purged by `retention.purge.daily` in batches of 5,000. |
 | `HouseBotEvent` | `hbe_…` | The append-only history of every bot and of the control row: `kind` (§2.4), `fromStatus` / `toStatus`, `reason`, `actorId` (null = `system_house_bot`), `marketId`, `payload`, `auditId`. | 7 years, never deleted. `reason` is pseudonymised on erasure (`erasure.ts`, commit 3). |
 | `HouseBotIntent` | `hbi_…` | Every decision, placed or not: `kind`, `anchorKey`, market and product line, trigger, side, `stakeTzs`, `dueAt` / `deadlineAt` / `staleAt`, `status` and `reasonCode`, `why` and `decision`, the claim and attempt columns, `positionId`, `idempotencyKey`, `finishedAt`, `alertedAt`. Staff-chosen rows add `requestedById` and `entryCondition` (Enter now) or `targetId` (a targeted COUNTER). | 7 years, never deleted, skipped and expired rows included (PROGRESS W4). |
 | `HouseBotTarget` | `hbt_…` | A poll one bot reacts to (N2): `delayMinSec` / `delayMaxSec`, `timingFrom`, `reactTo`, `effectiveFrom` (= `createdAt` + `TARGET_ARMING_SEC`, written from DB `now()` in the insert), `version`, the end and removal columns, and a `snapshot`. Officer ids and public poll fields only. | 7 years, never deleted. Never in the holder's data-rights export. |
@@ -102,10 +104,10 @@ Every house table is on the chain purge's NEVER list (`src/lib/server/chain-purg
 
 | Column | Written | Rule |
 |---|---|---|
-| `Position.houseBotId` | At create only (⏳ lands in build commit 2) | A soft reference with no foreign key. Every update skips it; it never reaches a public payload. |
-| `Transaction.houseBotId` | At create only, on every transaction of a marked position (⏳ lands in build commit 2) | As above. ~~Reports filter on it (I8).~~ ⛔ **Superseded by D20 (Ali, 2026-09-17):** no report filters on it (I8). |
+| `Position.houseBotId` | At create only | A soft reference with no foreign key. Every update skips it; it never reaches a public payload. |
+| `Transaction.houseBotId` | At create only, on every transaction of a marked position | As above. ~~Reports filter on it (I8).~~ ⛔ **Superseded by D20 (Ali, 2026-09-17):** no report filters on it (I8). |
 | `User.passwordSetAt`, `User.passwordSetVia`, `User.emailSetByOfficerAt` | In the same update as the password hash (registration, the settings change, the reset link, the officer's temporary password), or the officer's email edit (`setUserEmail(…, {byOfficer: true})`). Commit 3; a source pin in `test:house-bot-designation` refuses a new hash writer that sets no history. | `passwordSetVia` is one of `PASSWORD_SET_VIA`. NULL on accounts older than the column; eligibility then falls back to an awaited audit read that fails closed (A4). |
-| `PredictionMarket.reopenedAt`, `PredictionMarket.reopenCount` | By `adminReopenMarket`, sanctioned change (r) (⏳ lands in build commit 2) | Read by the information blackout and by A16's reopen detection. |
+| `PredictionMarket.reopenedAt`, `PredictionMarket.reopenCount` | By `adminReopenMarket`, sanctioned change (r) | Read by the information blackout and by A16's reopen detection. |
 
 **Foreign keys**
 - There are exactly two, both `ON DELETE RESTRICT`: `HouseBot.userId` → `User`, and `HouseBotTarget.houseBotId` → `HouseBot`. Every other house reference is soft: markets can be purged, and a press naming a missing bot is still recorded, then refused.
@@ -242,7 +244,7 @@ With a null marker, each gives a player exactly what they had before; the letter
 | (r) | `adminReopenMarket` stamps `reopenedAt` (never cleared) and `reopenCount`. | `market-service.ts` |
 | Propagation | The marker is copied onto WIN payouts, one-sided, VOID, emergency-void and orphan refunds, and cash-out transactions. | `market-service.ts` |
 
-⏳ Moved to commit 4, recorded in PROGRESS: (a) the post-commit hook call site (its only reader is the engine), ~~the Up & Down daily digest's house split (no Up & Down house stake can exist before the engine; Enter now is polls only),~~ and the per-bot and global usage EXPLAIN pins (A24). ⛔ **Superseded by D19 (Ali, 2026-09-16):** the digest's house split is struck and was never built (C5-SPEC ruling 235, L40): the Up & Down digest carries no house line or label; what remains is F6's email rule, under which a digest day whose rounds are all house-marked sends no email (checkpoint C5-7). ~~⏳ Commit 5: (i) the holder chip and (o) the activity-feed chip.~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** neither chip is built; a house stake looks exactly like the holder's own bet on every screen and in the activity feed (C4 rulings 143–158, C5-SPEC ruling 253).
+✅ Built in commit 4 (§12): (a) the post-commit hook call site (its only reader is the engine), ~~the Up & Down daily digest's house split (no Up & Down house stake can exist before the engine; Enter now is polls only),~~ and the per-bot and global usage EXPLAIN pins (A24). ⛔ **Superseded by D19 (Ali, 2026-09-16):** the digest's house split is struck and was never built (C5-SPEC ruling 235, L40): the Up & Down digest carries no house line or label; what remains is F6's email rule, under which a digest day whose rounds are all house-marked sends no email (checkpoint C5-7). ~~⏳ Commit 5: (i) the holder chip and (o) the activity-feed chip.~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** neither chip is built; a house stake looks exactly like the holder's own bet on every screen and in the activity feed (C4 rulings 143–158, C5-SPEC ruling 253).
 
 ### 3.6 Registries
 - **`BET_PATH_REASONS`** (`src/lib/house-bot/bet-path.ts`) lists every refusal the bet path can return to a house stake; `test:house-bot-seam` reads the bet-path sources and fails in both directions.
@@ -467,12 +469,11 @@ Lowering `maxDesignatedBots` below the number of designated bots is allowed and 
   - ⛔ **every reason the rules cannot reach a market** — one refusal per `rulesInertReasons` cause, on the field that fixes it, with the Rules tab href (prod finding 2026-09-22; the console passes these sentences through to the Start dialog, framed "This account can't start yet. … Open Rules, change that, save, then start.", with an "Open Rules →" link):
     - `NO_PRODUCT` — "Choose at least one product.";
     - `NO_MODE` — "Turn on at least one entry mode.";
-    - `PRODUCT_NO_LIST` — "Polls is on but no poll category is chosen." / "Up & Down is on but no chain is chosen." A ticked product that reaches nothing is refused **even while the other product is live**: "Active · Up & Down · Polls" with an Up & Down that can never fire is the finding itself;
+    - `PRODUCT_NO_LIST` — "Polls is on but no poll category is chosen." / "Up & Down is on but no chain is chosen." A ticked product that reaches nothing is refused **even while the other product is live**: "Active · Up & Down · Polls" with an Up & Down that can never fire is the finding itself. ✅ **Decided 2026-09-26** (put to Ali 2026-09-22; he delegated it on 2026-09-26 — `plans/house-bots/RESUME-HERE.md` §0c, decision 5): a half-configured account IS treated as mis-configured, not partly configured — a product ticked on that can never fire is the dead-control class of C7 ruling 432(a), and the refusal names the gap and links to the fix. If "any reachable member OR a by-hand mode with a screen" were ever wanted instead, `rulesInertReasons` and the `2g`/`10.class` cases would change together;
     - `PRODUCT_NO_MODE` — "Polls is on but no entry mode is on for polls." / "Up & Down is on but no entry mode is on for Up & Down.";
     - `MODE_WITHOUT_PRODUCT` — "{mode} is on for {product}, but {Product} is off.", one per orphan mode;
     - `BY_HAND_NO_SCREEN` — "Enter now is the only entry mode on for polls, and no screen on this build can press it." (and the Targeted-stakes and both forms). Enter now or targets alone count as an entry mode **only once a screen exists that can press them** (`BY_HAND_SCREENS` in `console-routes.ts`, tied by existence to the page at each route);
   - a saved value that a live bound now breaks: "Can't start: the platform minimum stake is now TZS {m}; Stake min is TZS {x}." The same check covers a stake min above the live maximum and a min gap below the live floor, and, while Enter now is on, both Enter now stakes and the staff-chosen daily cap. ⭐ **One home (review finding 2026-09-22):** these four checks are `rulesLiveBoundProblems`, which Start pushes as its BELOW_MIN/ABOVE_MAX refusals (now with the Rules href, which they never carried) and the account page's why-panel reads too — until then the panel printed "Nothing in the rules stops this account from betting." on the page whose Start dialog refused the account on a moved platform minimum. The panel composes its own sentence from the entry's `value` and `bound`, under the limit's own label ("Stake min · Saved as TZS 500; the platform minimum is now TZS 1,000."), because Start's own names one field in the engine's vocabulary. `revalidateLive` (planner.ts) auto-pauses a RUNNING account on the same stake minimum and gap floor, so the panel's item is honest in every lifecycle state.
-- **Production follow-up (owner-side, no code):** an ACTIVE account whose stored rules are the production shape keeps running unchanged (the engine's semantics are identical — it matched nothing before and matches nothing now) and is refused at its next Start until a chain or category is chosen or the product is turned off. A Pause → Start cycle surfaces the refusal safely; the roster now names the reason on the row without it.
 - **Start warnings:** "{label} has no automatic mode: it bets only when you press Enter now." (or "… when you press Enter now or a target reacts.", or "… when a target reacts."), and "Every enabled mode is currently impossible." when every enabled counter is "never" and nothing else is on.
 
 ### 5.5 Clearing a cap while bots run (MON-14)
@@ -647,7 +648,7 @@ lookup no longer depends on the labels being distinct.
 
 ## 6. Eligibility, causes and the auto-pause matrix
 
-The pure half — every reason, cause and way out — is `src/lib/house-bot/pause-reasons.ts` and `consent.ts`. The services are `src/lib/server/house-bot/eligibility.ts` and `designation.ts` (commit 3); the console actions that call them land in commit 7, and the holder hook and sweep that detect each change in commit 4.
+The pure half — every reason, cause and way out — is `src/lib/house-bot/pause-reasons.ts` and `consent.ts`. The services are `src/lib/server/house-bot/eligibility.ts` and `designation.ts` (commit 3); the console actions that call them were built in commit 7, and the holder hook and sweep that detect each change in commit 4.
 
 ### 6.1 Reasons are history; causes are live (A3)
 - `pauseReason` is the reason a bot stopped, written once and shown in History. It never gates anything.
@@ -752,13 +753,209 @@ Warnings: EMAIL_UNVERIFIED · IDENTITY_NOT_APPROVED · RECRUITED · OPEN_POSITIO
 
 | Route | What it is |
 |---|---|
-| `/admin/desk` | The landing page. Tabs: `roster` · `activity` · `limits` · `history`. Owner-only. |
-| `/admin/desk/new` | The designate wizard: find the account → check what the platform already knows → consent and name it → confirm with the holder's password. |
-| `/admin/desk/[id]` | One account. Tabs: `overview` · `activity` · `rules` · `targets` · `history`. |
+| `/admin/desk` | The landing page. Tabs: `roster` · `activity` · `limits` · `history` · `results` (what the desk's finished stakes came to over the last 7 EAT days, by day and by account, in words — C7 437, D20b amended 2026-09-26). Every table on it sorts and every one that can grow pages at twenty (§7.1b). Owner-only, which in code is the ADMIN role. |
+| `/admin/desk/new` | The designate wizard: find the account (search it, or pick it from the list of every account — paged, sortable, filterable; §7.1a) → check what the platform already knows → consent and name it → confirm with the holder's password. |
+| `/admin/desk/[id]` | One account. Tabs: `overview` · `activity` · `rules` · `targets` · `history`. Its three grids sort (§7.1b). |
 
 ⛔ Every tab key lives in `src/lib/house-bot/console-routes.ts` and the list holds **only keys whose panel is
 built** — a rail option with no panel is a dead control, and an unrecognised `?tab=` resolves to the default
 rather than 404-ing.
+
+### 7.1a The find step — the picker, and the list of every account (2026-09-26, RESUME-HERE §0c decision 4)
+
+With no account in the address the wizard is on its FIND step, and it paints two cards, one above the other in
+the wizard's one form column at every width (never side by side — at the form measure two columns would leave
+each half too narrow to read at 1280):
+
+1. **The picker** (`DeskAccountPicker`, unchanged): type a handle, a phone number or an account ID; at least two
+   characters, at most ten answers, each a handle with a reason when it cannot be chosen.
+2. **Every account** (`src/app/admin/desk/new/account-list.tsx`, served by `houseAccountListForConsole`): for an
+   officer who does not already hold a handle, a phone or an id. Twenty to a page (`AdminPagination`), three
+   sortable columns (`SortTh`) — **Account** (the handle), **Joined**, **Signed in** — opening on Joined, newest
+   first, and two filters on the section's one rail (`activity-filters.tsx`, handed no date window): **Show** —
+   Every account · Can be chosen · Cannot be chosen — and **Signed in** — Any time · Past 7 days · Past 30 days ·
+   Never. A count line says how many accounts there are, how many the filter kept, and how many of those cannot be
+   chosen. A row that can be chosen IS the way in (the handle, at the tap floor, opens the check step for that
+   account); a row that cannot opens nothing and says why beneath its handle, in the picker's own words
+   ("Already on the desk", "A staff account", "Your own account", …).
+
+**What the list will not do, and why.**
+- ⛔ **No money anywhere** (459): it reads no wallet — the same two reads the picker takes, the account rows and
+  the one roster read, and nothing else. The visual gate's inverted money control covers the whole find step.
+- ⛔ **No name, phone or email on a row** (346, 420): every row names its account by its handle alone — and so
+  **there is no text search on the list**, no sort by a person's field, and none is accepted from the address
+  (`?sort=name` is refused like any other value it does not know). Searching stays in the picker, which also keeps a
+  typed phone number out of the address bar.
+- ⛔ **No sentence in a client file** (388): the list is a SERVER component; every word it paints is the gated
+  reader's (`CONSOLE_LIST_COPY` and the view model), handed down finished.
+
+**The address is validated part by part.** `show`, `signed`, `sort`, `dir` and `page` are each checked against
+their closed list or shape; a value that fails is refused BY ITS SCREEN WORD in the console's one refusal Callout
+("This address was not used in full"), falls back to its default, and never travels into a link — while every
+valid part beside it stays in force. A repeated parameter is a refusal; a page must be written as a whole number
+from 1 (`1e3` and `0x10` are refused); a page past the end is served as the last page, never an empty one. The
+sort ends every tie on the account id, ascending, so both stores and every render agree on one order; an account
+that never signed in sorts last in both directions. The sign-in windows are bounded at BOTH ends: a sign-in stamp
+in the future (clock skew) is in no window and shows only under Any time.
+
+**The reads.** A failed account read, or a failed roster read, is a failed LIST — the kit's failure treatment, never
+an empty table and never an empty desk. (⚠️ The picker still reads a failed roster as nobody on the desk and offers
+such an account as choosable; the check card refuses it, so nothing wrong can land, but the picker paints a state it
+does not know. Recorded, not fixed here.) A database with no house tables is a desk nobody is on (421).
+⚠️ **It scales with the account table.** Filtering, sorting and paging are done in memory on purpose — "can be
+chosen" IS the picker's rule, and pushing it into SQL would be a second copy of it; `/admin/players` renders from the
+same full read — so every render of the find step reads every account row once. The production account count was
+NOT MEASURED when this was built; read it SELECT-only before the directory grows by an order of magnitude.
+
+**Seeing it locally.** A served local desk holds too few accounts for a second page. `npx tsx
+scripts/seed-desk-accounts-local.mts` (loopback only, safe to re-run) adds forty-five plain player accounts spread
+over half a year and across every chip, three of them opened in the same millisecond and four that cannot be chosen.
+**The gates:** `test:house-bot-console` §2f2 (both stores; the three walls, paging, sorting, filtering, validation,
+links, failed reads, the rendered markup), 1.417 (the loader ghosts the list's card), and `qa:house-bots-visual`
+§5.9 on the find step at every width (three sortable headers with one in force, the tap floor, no sideways scroll).
+
+### 7.1b A press that is still loading says so (2026-09-26, RESUME-HERE §0c build step 10)
+
+Every tab on the desk and on an account page, every sortable header, every pager and every filter chip changes only
+the address's query. The page's own `loading.tsx` does not take over for that, so until the server answered, the old
+panel sat on screen unchanged and nothing said the press had landed. The owner asked, as typed: *"when jumoing from
+tba to anothe rmake sur eu ahve th erigh tloading states and etc toamke percet and user to not to think it sstucl"*.
+
+**What an officer now sees, at every width:**
+- **The pressed control marks itself** with a thin travelling bar along its bottom edge — under a tab's label (where
+  its underline will land), under a header's label, inside a chip, at the foot of a page number. A tab's label takes
+  the selected ink at once and the underline it is replacing fades.
+- **What the press will replace dims**: the panels below the tabs for a tab, the rows of the table for a header, a page
+  or a chip. What it will not replace stays at full strength, and the cursor reads "working".
+- **Nothing flickers on a fast answer**: the mark and the dimming wait a moment (`--t-quick`) before they show, and the
+  new content arrives at full strength, never fading up out of the old grey.
+- **The date filter's Custom window** marks its chip while its Apply or Clear is on the way.
+- **On a low-end phone** (the reduced motion tier) the bar stops travelling but stays, so it still says "loading".
+
+**How.** One kit mark (`src/components/ui/link-pending.tsx`): `LinkPending` sits inside the section rail's links
+(`ui/tabs.tsx`), the sortable header (`admin/admin-sort.tsx`), the pager (`ui/pagination.tsx`) and the filter chip
+(`ui/filter-pill.tsx`), and reads the router's own pending flag (`useLinkStatus`); `PendingMark` is the same mark for
+the one navigation made in code. Its look and the dimming are one block of `globals.css` beside `.prog-sweep`,
+reusing the kit's own `progSweep` and `kp-fade`. It renders nothing at rest, so every control's markup is unchanged
+until it is pressed — which is also why it serves every admin table and player list that uses those kit controls,
+not only the desk.
+**The gates:** `test:house-bot-console` §4c (the mark inside each link, the Custom chip, its shape, the CSS — each with
+a control) and 8 declared `nav-` mutations; `qa:nav-pending` on a served build presses a real tab, chip, header, page
+and account tab at 1280 and 360 — and, at 360 only, a chip of the desk ledger's phone sort rail (§7.1c; NOT MEASURED,
+with the reason, when the ledger is empty and the rail is therefore not drawn) — with the server's answer held, and
+measures the mark, the dimming, that `loading.tsx` did not take over, and the landing.
+
+### 7.1c Every desk table sorts, and none can grow past a page (2026-09-26, build step 9)
+
+Ali, as typed: *"before finsihing amke su relaso all desk tbale sand grid sgot th erug tpaging pleas enad sroting etc..
+to prveent vey rlong grids"*. Every table on `/admin/desk` and `/admin/desk/[id]` now sorts on the server, and every one
+that can grow pages at twenty. The model is the find list (§7.1a): the reader parses the address once and hands the page
+every header's token and word, the header in force, its direction and the panel's own validated parameters; the page
+draws the kit's `SortTh` (which keeps `aria-sort` and the 44px tap floor) and the kit's `AdminPagination`.
+
+| Table | Sortable columns | A bare address | Address words |
+|---|---|---|---|
+| Roster (`/admin/desk`) | Account · Loss today (projected) · Open exposure · Status · Bets today · Last bet | designation order, oldest first — no header in force | `rsort` `rdir` · pages at 20 on `rpage` |
+| Desk activity | Account · Stake · When (EAT) · Outcome | When, newest first | `sort` `dir` (pages on `page`) |
+| Desk history | Account · When (EAT) | When, newest first | `hsort` `hdir` (pages on `hpage`) |
+| Results · By day | Day (EAT) · Result · Stakes placed · State | the day, newest first | `daysort` `daydir` |
+| Results · By account | Account · Today · Last 7 days | the roster's order, the folded line last — no header in force | `acctsort` `acctdir` |
+| Account activity (`/admin/desk/[id]`) | When (EAT) · Stake · Outcome | When, newest first | `sort` `dir` (pages on `page`) |
+| Account targets | Poll · Status · Last change | newest target first — no header in force | `tsort` `tdir` (pages on `tpage`) |
+| Account history | When (EAT) | When, newest first | `hsort` `hdir` (pages on `hpage`) |
+
+A token is the column's own header word, slugged (`stake`, `when-eat`, `loss-today-projected`, `last-7-days`, …) —
+453's rule, so the address can never carry a word its header does not. Each table's words wear the prefix its page
+number already wore, so `SortTh` resets exactly its own table's page; the Results tab's two tables sort independently on
+one address. A header click keeps every filter and the other table's sort, and drops only the page.
+
+**How each order works.**
+- **A bare address is exactly the order the table had before step 9** — the same statement on the same store, the same
+  anchor arithmetic, the same pages. Where that order is a column (When, the day) the header shows in force; where no
+  column shows it (designation, newest target, roster order) no header is in force until one is clicked.
+- **Every order is total**: the key, then the table's own order for a tie (newest first on the ledgers, the grids and the
+  histories; designation on the roster and By account; the table's own day order on By day), ending on the row's id —
+  so two renders, and the memory and Postgres stores, cannot page one population two ways. A **missing value sorts last
+  in both directions**: an unset limit (its cell says "Not set" and paints no figure), a failed read ("—"), an account
+  that never bet, a day or an account with no result, a title that is not text, and on the desk-wide Account order every
+  row of an account no longer on the desk and the desk's own changes.
+- **Money and counts** order by the figure the cell paints (the roster's used amounts, not a ratio); **Status** and
+  **Outcome** by lifecycle — Active → Paused → Auto-paused; Queued → In flight → Placed → Won → Lost → Void →
+  Cashed out → Skipped → Expired → Failed → Cancelled, where a placed stake that has ended is ranked by its result, as its
+  chip reads; Active → Ended → Removed for a target. **Text** (an account's label, a poll's title) is A–Z ignoring the
+  case of A–Z, then code point — one order, `foldedCodePointOrder` in the DAL, written again in SQL as `translate(…)
+  COLLATE "C"`, and never `localeCompare`, whose answer depends on the runtime's locale data. The ledgers' Account order
+  ranks the roster by label in the reader and hands the ranking to the DAL, which cannot join a label itself.
+- **The order note says the order in force.** "Newest first." on a bare address; "Largest stake first, then newest
+  first.", "Oldest first.", "By outcome, queued first, then newest first.", "By account, A to Z, …" under a sort. On a
+  phone the ledgers' header row is hidden (the row is a stack), so the note is where a phone reads the order.
+- **A phone sorts the two ledgers too — the phone sort rail (2026-09-27).** Ali: *"on a phone, the two activity lists
+  can't be re-sorted … a phone sort button"*. Below `sm`, between the order note and the first row — where the header
+  row sits on a wider screen — each activity ledger draws **Sort · Panga** and one chip per sortable column (desk:
+  Account · Stake · When (EAT) · Outcome; account: When (EAT) · Stake · Outcome), the one in force marked with its arrow
+  — and, for a screen reader, with the direction in visually hidden words ("Stake ascending"), because the arrow is
+  hidden from it and the header row whose `aria-sort` says the direction is not drawn below `sm`;
+  pressing a chip does exactly what pressing that column's header does, and pressing the one in force reverses it.
+  With rows, the panel therefore renders TWO `data-filter-rail`s, by design — its filter rail and this one, in the page
+  at every width and shown below `sm` only; over an empty ledger there is no rail (ruling 410 as amended, §12.15).
+  - It is the kit's own card sort rail (`CardSortControl`, `/admin/ai-polls` and `/admin/candidates`), the platform's
+    answer for sorting where there is no header row — never a second sort control. Its links are built by the same
+    lines as `SortTh`'s (the same prefixed words, the same page reset, the same next-direction rule), and both pages feed
+    it ONLY from the reader's sort view: its columns in header order, the column in force, the direction, the prefix,
+    the panel's **validated** parameters and the headers' own route. So a chip and its column's header are one address
+    and a sort word the reader refused never rides into a chip.
+  - **One control per screen.** The rail is drawn below `sm` only (the header row is the control from `sm` up), and not
+    at all over an empty table, whose header row the kit hides at every width. Its breakpoint sits on a wrapper, so the
+    rail has no sibling in the card: a pressed chip fades the rows exactly as a pressed header does (the console fades
+    whatever follows a pressed filter rail, which inside the card would have faded the rows twice over).
+  - **At the tap floor.** The kit rail takes its rank as one prop, defaulting to the dense rank its two other consoles
+    draw; the desk passes the shared 44px rank because its visual gate holds every control to `--tap-min` (40px) and
+    the dense rank's 32px floor is the mouse-only admin exception. `test:filter-language` §6.6 follows the prop to its
+    dense default and §6.6c–e walk every call site: each call parsed (6.6d), a spread counted as lifting the rank
+    (6.6c), and the only call sites allowed to lift it named — these two, each rail id a spec literal of
+    `qa:house-bots-visual` §5.10 (6.6e).
+  - Proven by `test:house-bot-console` `1.s9p` (memory child): the source pins on both pages, the chip and header
+    rendered side by side over the reader's own views (sorted with a filter and a page, desk-wide, refused, bare — and
+    each again with the table's own page handed in, which both must drop) and compared link for link, the direction
+    words, the tap-floor rank, a unique rail id, and exactly one of each rail per panel — each with a control, and ten
+    declared mutations `phone-sort-*`. `qa:house-bots-visual` §5.10 now requires, at 360, the rail shown with exactly
+    one chip in force naming the column the address asked for, its arrow and its hidden words both saying the direction
+    asked, and every chip at the tap floor; from `sm` up, the rail in the page but not shown; over an empty table, no
+    rail. `qa:nav-pending` presses one of its chips at 360 (`desk-phone-sort`) and holds the press's pending state.
+
+**A bell's row under a sort — decided: it lands where it IS in the order in force.** `&intent=` and `&event=` are a
+landing instruction in the same address as the sort, and both are honoured: dropping the sort would throw away a valid
+part of the address, and ranking the row in the default order would land on a page the row is not on. The rank comes
+from the DAL's own `rankInFeed` / `rankInAll`, over the SAME predicate and the SAME named order the page is cut from, so
+it is exact. A bare address keeps the counting rank it always had (and its tie step-back, which only that rank needs).
+
+**The address is validated part by part**, in the one parse every desk reader shares: a token that is no column of THAT
+table (the desk's Account column on the account page, a person's field, a repeat) is refused as "sort", a direction that
+is not `asc`/`desc` — or one with no column to reverse — as "sort direction", a roster page that is not a whole number as
+"page"; each falls back to the table's own order and never rides into a link. The roster and Results panels gained the
+console's one refusal Callout for this.
+
+**What does not sort, and why.**
+- **Opening, Closing and Left today** (both ledgers) are running figures, read from bounded scans *after* the page is
+  cut; an order over them would need every row of the population priced first. Every row's figures are its own under
+  any order — `test:house-bot-console` 1.s9 compares them row by row across every sort.
+- **Round** identifies a round only beside its Game, and **Game**'s name is read defensively out of an untyped stored
+  snapshot per row; ordering the population by it would need a second reading of that blob in SQL, matched to the first
+  on every hostile shape.
+- **Event, Change and Who** (the histories) are words, relations and ids with no order anyone reads.
+- **Products** (the roster) is a list of lines, and the **control columns** (the way out, Stop) have nothing to order.
+
+**The roster pages at twenty.** It is bounded by the configured maximum (1–20), so the pager draws nothing today — the
+kit pager renders nothing on one page, which is ruling 411's reason the loader draws no pager ghost for it — and it is
+there so the roster cannot outgrow a page if that ceiling ever moves. ⚠️ `scripts/grid-paging.test.mts` still lists the
+desk page in `FIXED_GRIDS` with the argument that every account must be visible at once to be controlled; at a ceiling of
+twenty that stays true (every account is on page 1), and the entry is the place to revisit if the ceiling is raised.
+**Results are not paged**: By day is always seven rows and By account at most the roster's ceiling plus one folded line.
+
+**The gates:** `test:house-bot-console` §2i (both stores: every key and direction against orders computed from the stored
+facts, ties, missing-last, the anchored row, per-row figures, validation, links, the roster pager, and the source pins
+that every sortable header is `SortTh` fed from the reader), `test:dal-parity` 16.feedOrder (one named order per twin,
+shared by each list and its rank member), and `qa:house-bots-visual` §5.10 on a sorted address of every desk table.
 
 ### 7.2 Configuring an account, end to end
 
@@ -961,7 +1158,7 @@ the dotted form loads a page that **never hydrates**: every control is inert and
 
 ## 8. Reporting
 
-⛔ **Superseded by D20 (Ali, 2026-09-17):** there is no house report. Struck from what this section was to hold: the house-liquidity report, the house-market statement, the R7 audit index, the month picker, the transactions CSV's `house` filter and `house_bot_id` column, and the owner-only per-bot CSV (C5-SPEC rulings 199–213; 211 and 212 stay recorded only as platform defects L26/L27, no longer release preconditions); PLAN §9's house lines and exclusions — `MoneySummary.house`, the Gaming Board pack's house memo, the FIU SAR's Context column, match integrity's house parts, daily ops' house rows, the finance "House bots net" tile and margin delta, the `/admin/house` marker card, the compliance holder chip, and the active-player, unique-player, top-contributor, insights, harm and AML exclusions (224–231); and the per-bot fee figure's reporting use (below). What stands: every report, statutory filing, admin count and detector treats a house bot's account exactly like any player's; R8's durable audit reads for the report pack and RG engagement (214–216); and C5-8 writes this section to say so.
+⛔ **Superseded by D20 (Ali, 2026-09-17):** there is no house report. ⚠️ *2026-09-26 (delegated, D20b amended): the desk's Results tab states what its finished stakes won or lost, for the ADMIN audience — a VIEW, not a report: no CSV, no export, no filing (`COMPLIANCE-DECISIONS.md`, entry `2026-09-26 · D20b AMENDED`).* Struck from what this section was to hold: the house-liquidity report, the house-market statement, the R7 audit index, the month picker, the transactions CSV's `house` filter and `house_bot_id` column, and the owner-only per-bot CSV (C5-SPEC rulings 199–213; 211 and 212 stay recorded only as platform defects L26/L27, no longer release preconditions); PLAN §9's house lines and exclusions — `MoneySummary.house`, the Gaming Board pack's house memo, the FIU SAR's Context column, match integrity's house parts, daily ops' house rows, the finance "House bots net" tile and margin delta, the `/admin/house` marker card, the compliance holder chip, and the active-player, unique-player, top-contributor, insights, harm and AML exclusions (224–231); and the per-bot fee figure's reporting use (below). What stands: every report, statutory filing, admin count and detector treats a house bot's account exactly like any player's; R8's durable audit reads for the report pack and RG engagement (214–216); and C5-8 writes this section to say so.
 
 **Written in commit 5 (C5-8, 2026-09-21) — and what it says is that there is nothing special to say.**
 
@@ -995,7 +1192,7 @@ regulator-facing list). Two readers, deliberately different, each pinned by `tes
 in-memory twin, or unmask the RG subject, and a named assertion goes red. All three were driven by hand in C5-8 and each
 turned its own assertion red (`8.216.1`, `8.216.3`, `8.216.5`).
 
-- ~~**Fee withheld per bot is derived, and proven against the ledger**~~ (C5-SPEC ruling 183). ⛔ **UN-BUILT in C5-5b** (owner ruling D20, Ali 2026-09-17; replan ruling 266): its only planned consumer, R1 section 3, is struck, and commit 7's console shows money only as usage against a configured limit — so the derivation had no caller, and a reader with no consumer is not kept. Removed from `src/lib/server/house-bot/book.ts`: `derivedFeeShares`, `foldEntryBook`, `houseStaffScorecard` and the widened `houseBotBook`; removed from the DAL twins: `houseBookStore.feeInputs` and `ledgerRows`; removed from `test:house-bot-reports`: §2 (the ledger cross-check) and §1. `HouseBotBook.feeWithheldTzs` is null again, as it was in commit 1, and `houseBotBook` itself has no caller — Commit 7's rulings give it one or delete it. PLAN §18's row "R3 fee withheld per bot" is superseded in place.
+- ~~**Fee withheld per bot is derived, and proven against the ledger**~~ (C5-SPEC ruling 183). ⛔ **UN-BUILT in C5-5b** (owner ruling D20, Ali 2026-09-17; replan ruling 266): its only planned consumer, R1 section 3, is struck, and commit 7's console shows money only as usage against a configured limit — so the derivation had no caller, and a reader with no consumer is not kept. Removed from `src/lib/server/house-bot/book.ts`: `derivedFeeShares`, `foldEntryBook`, `houseStaffScorecard` and the widened `houseBotBook`; removed from the DAL twins: `houseBookStore.feeInputs` and `ledgerRows`; removed from `test:house-bot-reports`: §2 (the ledger cross-check) and §1. ~~`HouseBotBook.feeWithheldTzs` is null again, as it was in commit 1, and `houseBotBook` itself has no caller — Commit 7's rulings give it one or delete it.~~ ⛔ *Corrected 2026-09-26:* both were deleted at C7 step 7 (`fb189e7d`, ruling 371; `book.ts`'s header), and `test:house-bot-console` 1.371 is the standing grep that they stay gone. The desk's Results tab (C7 437) reads `houseDayBooks` only, through the gate module. PLAN §18's row "R3 fee withheld per bot" is superseded in place.
 
 ---
 
@@ -1034,7 +1231,7 @@ The throttle keys are fixed in `ALERT_KEY`. Proven by `test:house-bot-comms` (39
 | The holder stakes against their own bot (A21) | C13 matrix | Admins | Bell + email | Once per bot and market (`holderAgainst`). Writes event HOLDER_AGAINST_BOT. The bet is never refused and the bot never paused. | `/admin/markets/<marketId>` |
 | The master switch goes ON or OFF, by hand or automatically | `notifyAdminsHouseBotSwitch` | Admins | Bell + email | Every one | `/admin/desk` |
 | Money moves on an ACTIVE bot's account (deposit credited, withdrawal requested, AML hold, paid, failed or AML-rejected, officer adjustment) | `notifyAdminsHouseBotMoneyEvent` | Admins | Bell + email | Never capped; two identical events are two rows | `/admin/transactions?q=<txnId>` |
-| Roster changes: DESIGNATED, VERIFIED, STARTED, a manual PAUSED, REMOVED, RULES_SAVED and LIMITS_SAVED with a before → after diff, TARGET_ADDED, TARGET_UPDATED, TARGET_REMOVED, and TARGET_ENDED from a staff veto | `notifyAdminsHouseBotRoster` | Every recipient | Bell + email | Uncapped; the title ends HH:MM:SS | `/admin/desk/<botId>?tab=history&event=<eventId>` |
+| Roster changes: DESIGNATED, VERIFIED, STARTED, a manual PAUSED, REMOVED, RULES_SAVED and LIMITS_SAVED with a before → after diff, TARGET_ADDED, TARGET_UPDATED, TARGET_REMOVED, and TARGET_ENDED from a staff veto. ✅ **Sent since 2026-09-27 (FS-09's planned mitigation, built and checked against the code; it replaces the 2026-09-26 correction that only a manual PAUSED and REMOVED were sent).** Every act that LANDS calls `announceRoster` (`src/lib/server/house-bot/emitters.ts`) once, after its history event is written, and the alert links to that event: `designateHouseBot`, `reverifyHouseBot` and `startHouseBot` (`src/lib/server/house-bot/designation.ts`), `pauseHouseBot` and `removeHouseBot` (`roster-actions.ts`), `saveHouseBotRules` (`rules-save.ts`) and `saveHouseBotLimits` (`limits-save.ts`). Each names the officer who acted — "by {name}", read after the act by `officerLabel` (their display name, else their account id; never a "Player #" handle). A refused act sends nothing; a rules or limits save that moved no field still lands and sends nothing; a send that fails never fails the act. RULES_SAVED and LIMITS_SAVED carry every field that moved as `label: before → after` in the sentence's one diff slot (money as TZS, times with the symbols `s` and `min`, a rule leaf with its section — a switch, a list or a choice is named, not valued, because its values are words the Swahili and Chinese sentences cannot carry). LIMITS_SAVED is the DESK's change: the limits save now writes its own `LIMITS_SAVED` history event with no account and no holder (it wrote none before), the alert's title names no bot, and it links to the desk's own history row. ⚠️ The four target codes (`ROSTER_EVENT_CODES` names them TARGET_ADDED, TARGET_CHANGED, TARGET_REMOVED and TARGET_STOPPED) are still sent by nothing because no act exists to send them: nothing under `src/` adds, changes, removes or vetoes a target (the targeting screen is not built). `test:house-bot-console` 2.fs09.8 holds the first act that does to its alert: a file under `src/` that calls one of the target store's four officer writers (`insert`, `casUpdate`, `remove`, `veto`) on the DAL's `targetStore` — under its own name or an import alias, through a namespace or a dynamic import — must also call `announceRoster` with a literal TARGET_* event (2.fs09.8a); the store passed on as a value or re-exported is reported, because the scan cannot follow it there; and the store's interface must hold exactly the fourteen members the check classifies, so a new writer is red until it is classified (2.fs09.8i). The store's two system ends (`endActive`, `endAllForBot`) are not officer acts and send no alert (the next row). Each rule has a planted control that must be reported (2.fs09.8c1–c5). Proof: `test:house-bot-console` §2j, through the officer's own door on both stores — every act gives each admin exactly one row linking to its event, the holder and a player nothing, and every act has a refused or nothing-moved control that tells nobody | `notifyAdminsHouseBotRoster` | Every recipient | Bell + email | Uncapped; the title ends HH:MM:SS | `/admin/desk/<botId>?tab=history&event=<eventId>`; the desk's LIMITS_SAVED: `/admin/desk?tab=history&event=<eventId>` |
 | A target ended by the planner, by Remove or by the sunset | — | — | No alert | History and the targets tab record it. | — |
 | An engine alert (a failed intent, a poison row, a stake not whole, a balance or cash-only skip, and the other keys in §9.3) | `notifyAdminsHouseBotAlert` | Admins | Bell + email | Once per bot, code and EAT day, unless §9.3 gives the key | `/admin/desk/<botId>?tab=activity&range=all&outcome=failed&intent=<intentId>` |
 | A market holding a staff-chosen stake is voided or reopened | `notifyAdminsHouseBotAlert` | Every recipient | Bell + email | Once per market (`staffStakeVoided`) | `/admin/markets/<marketId>` |
@@ -1086,7 +1283,7 @@ The throttle keys are fixed in `ALERT_KEY`. Proven by `test:house-bot-comms` (39
 
 ⛔ **There are none, and that is the ruling** (owner ruling D19, 2026-09-16 — `COMPLIANCE-DECISIONS.md`).
 
-⛔ **Owner ruling D20 (Ali, 2026-09-17), just below D19:** the admin console and the regulator's paper carry no house split either. Every report and statutory filing — the Gaming Board monthly pack and the FIU SAR included — treats a house bot's account as an ordinary player's account, with no house memo, column or line, and the private Board draft (commit 6) says so.
+⛔ **Owner ruling D20 (Ali, 2026-09-17), just below D19:** the admin console and the regulator's paper carry no house split either. ⚠️ **Two exceptions since 2026-09-26.** The first: the ISO 27001 audit-chain export stays unfiltered (ruling 501 withdrawn — `COMPLIANCE-DECISIONS.md`, entry `2026-09-26 · House bots: ruling 501 WITHDRAWN`), so when its 25,000-row window reaches house rows it names `house_bot.*` actions and prints full actor ids to its recipients (the ISO auditor, ADMIN or accounting-view staff); every statutory figure is unchanged. The second: the desk's Results tab (D20b amended 2026-09-26 under the owner's delegation — `COMPLIANCE-DECISIONS.md`, entry `2026-09-26 · D20b AMENDED`), which states to the desk's ADMIN audience what the desk's finished stakes won or lost — a view on the console, never a report, a CSV or a filing, and never on a player-reachable surface. Every report and statutory filing — the Gaming Board monthly pack and the FIU SAR included — treats a house bot's account as an ordinary player's account, with no house memo, column or line. ~~The private Board draft (commit 6) says so.~~ There is no Board draft: owner ruling D21 (2026-09-20), the Gaming Board row below.
 
 | Surface | What it says about house bots |
 |---|---|
@@ -1112,9 +1309,17 @@ asserts the ORDER, not just the presence. A gate not in the pipeline is not a ga
 
 ### Release (R0–R6)
 
-Seven steps. ⛔ **Ali's "go" sits between R0 and R1 and nothing may be done ahead of it.** His words, recorded
+⚠️ **The first release is past (noted 2026-09-26):** the code reached `main` with the platform lane's merges and the owner first switched the desk on on 2026-09-21. R0–R6 below are the record of that release, not a to-do. R5's five figures (OFF · 0 accounts · 0 marked rows) cannot hold again while the desk has accounts, so a future house migration needs its own ladder; R2 is its standing procedure (below). Seven steps. ⛔ **Ali's "go" sits between R0 and R1 and nothing may be done ahead of it.** His words, recorded
 2026-09-19: *he will not turn the switch on until a session tells him, in writing and on evidence, that it is
 ready.* So the sequence is fixed — a session states readiness, Ali decides — and a green gate is never permission.
+
+⚠️ **Who may switch the desk ON (decided 2026-09-26 under the owner's delegation):** D1's "Ali alone turns it on" is
+enforced as the platform's OWNER ROLE — ADMIN, the tier that alone runs staff, roles and the desk; who holds it is the
+owner's choice on `/admin/staff`. There is no per-account list (it would be a second, hidden notion of "owner" and would
+lock the desk off after an automatic stop). Every switch-on writes an event and a compliance audit row naming its actor
+and alerts every admin; switching OFF stays open to every ADMIN. The record is `docs/COMPLIANCE-DECISIONS.md`, entry
+`2026-09-26 · D1 READ AS THE OWNER ROLE`. ✅ FS-09's other alerts (designation, verify, Start, rules and limits saves)
+are sent since 2026-09-27, each naming the officer (§9.2).
 
 | Step | What it is | How it is proved |
 |---|---|---|
@@ -1253,9 +1458,18 @@ is ever voided automatically. ⛔ It tells no holder anything (D19).
    ⛔ Your `--reason` is on the event row and on the account, never in the audit payload: the chain cannot be
    rewritten, and an erasure can reach the first two.
    ⚠️ If it prints `recorded: false`, **the desk IS retired** and only the compliance row failed — file it by hand.
-2. Set `houseBots: "WITHDRAWN"` in `src/lib/feature-state.ts`, commit and deploy. Act 1 is a database marker that
-   survives a redeploy of an older image; act 2 is a code constant that survives a database someone edits by hand.
-   ⛔ Neither may become the only one that holds: each alone refuses the master switch, the roster and the engine.
+2. Set `desk: "WITHDRAWN"` in `src/lib/feature-state.ts`, commit and deploy. ⚠️ **Corrected 2026-09-26:** this step
+   named `houseBots`, the key's name until 2026-09-21; `PRODUCT_STATE`'s key is `desk` (and the override
+   `FEATURE_DESK`). Act 1 is a database marker that survives a redeploy of an older image; act 2 is a code constant
+   that survives a database someone edits by hand.
+   ⛔ Neither may become the only one that holds: ~~each alone refuses the master switch, the roster and the engine.~~
+   ⚠️ **Corrected 2026-09-26 (checked against the code): the two halves do not refuse the same things.** The code
+   half alone refuses the master switch, the roster (designate, re-verify, Start) and the engine's start
+   (`test:withdrawn-features` §9b, §9c). The database half alone (`offCause = SUNSET`) refuses the master switch
+   only (`switchOnHouseBots`; §9d asserts exactly that): `designateHouseBot`, `reverifyHouseBot`, `startHouseBot`
+   and the engine's start read the code half alone. Nothing can stake while the switch is refused, and act 1 has
+   already removed every account, but a new designation and its Start stay possible until act 2 is deployed
+   (accepted risk 12 (d)).
 3. Then run `npm run ops:house-bots-status` until the open marked positions reach **0**. They settle on their own.
    ⛔ Never void, refund or cash one out to make that number fall faster.
 
@@ -1265,7 +1479,7 @@ exits 0 — so a half-finished run is safe to repeat. Sunset is also structurall
 
 ### First switch-on
 
-⛔ **This is Ali's action and his alone.** A session never turns the switch on, never asks him to turn it on
+The first switch-on was the owner's, on 2026-09-21; this guide stands for any later one. ⛔ **This is Ali's action and his alone.** A session never turns the switch on, never asks him to turn it on
 early, and never treats a green gate as permission. What follows is the guide he is handed at R6 — nothing in it
 is a step a session performs on his behalf.
 
@@ -1299,6 +1513,15 @@ report 0 on all three legs before house bots go near production again.
 the rollback runbook owns — open house positions, live intents, exposure per market, and whether any settlement is
 blocked. Every figure names the population it counts. ⛔ A figure with no population named is not a measurement.
 
+**The officers' guide.** `docs/house-bots-desk-guide.html` and its PDF `docs/50pick-house-bots-desk-guide.pdf`,
+generated from the console's own field metadata and sentences by `npm run docs:house-bots-guide`
+(`scripts/generate-house-bots-guide.mts`), are the admins' walk-through of this section and the console. ⛔ **Ali ruled
+on the guide's tone on 2026-09-21**, about the operator guide delivered that day (the generated guide is its successor
+and carries none of the three): the confidentiality preamble, the page footer's "not for players" line and the closing
+"what must never be said" section are removed at his instruction — his words, verbatim: *"its only us the management
+and admins"*. That is a decision about a document he owns and distributes; it weakens no control. D19 itself is
+untouched: it lives in the code, in its guards and in `COMPLIANCE-DECISIONS.md`.
+
 ---
 
 ## 12. Verification record
@@ -1320,10 +1543,10 @@ blocked. Every figure names the population it counts. ⛔ A figure with no popul
 | 3 | `test:all` (`--skip responsive,motion`) against clean `origin/main` | The build machine | 340/357 · 2026-09-15 · OMEGA-COMPILE01 · `624f6038`: the 17 reds fail identically on clean `origin/main` `3eb192e9` (14 compared line for line; 3 hard-code port 3009: NOT MEASURED); `responsive` and `motion` NOT MEASURED. Review `wf_2208135b-079`: 15 confirmed, all fixed |
 | 4 · engine | `test:house-bot-engine`: the case file runs on a scratch Postgres (`db-scratch`) and on the memory store — the lock exit and strict lease, the pure decisions, the schema gate and `/api/health`, engine boot and back-pressure, the market view, `applyOutcome`, the A15 price read, the Enter now loader and holding rule, and fire and the poller (§1–§16) | A machine with the embedded Postgres; in CI `db-scratch` exits 2 (a FAIL, never a green) | 🟡 interim: memory 398/0 · PostgreSQL 389/0 · 2026-09-15 · OMEGA-COMPILE01 · `d60fba39`; in-place mutations on the steps built so far all caught or recorded equivalent (PROGRESS code log). The info-edge, comms and holder-lifecycle suites and `red:house-bot-engine` are NOT MEASURED: they land with build steps 5–11 |
 | 5 | `test:house-bot-reports` (both stores), and the house cases in `test:erasure` and `test:dsar-secrets` | A machine with the embedded Postgres (the reports suite is `db-scratch`-wrapped; the other two are source-and-memory and run anywhere) | ✅ **BUILT AND GREEN · re-derived 2026-09-21 (C5-8, Ali-Blade15), not quoted from an earlier run:** `test:house-bot-reports` **memory 203/0 · Postgres 64/0** (wrapper 3/0); `test:erasure` **226/0**; `test:dsar-secrets` **43/0**. ⚠️ Green is not clearance: what makes these three a measurement rather than a pass count is that C5-8 drove mutations through them by hand — three against §8.216's durable readers (pack-ring, rg-ring, rg-unmasked) and three against the dsar §6–§7 assertions (`X86-A`/`B`/`C`), each of which turned its own named assertion red and was then restored byte-identically. |
-| 6 | The disclosure suite, which also pins risks 13–20 and the do-not-restore lines in §13 | — | Lands in commit 6 |
-| 7 | The console suite, its RED harness and the visual pass | — | Land in commit 7 |
-| 8 | The local end-to-end drive, the S4 rehearsals and the scenario coverage gate | `npm run qa:house-bots-local` 21/0 · `npm run test:scenario-coverage` 18/0 — all 281 register ids measured 2026-09-20: 24 proven by name, 230 carried by an owning suite that exists, 9 struck by D19/D20, 7 deferred, **11 unresolved and named** | Drive ✅ · coverage gate ✅ · S4 rehearsals land in commit 8 |
-| Production | ~~Nothing is deployed.~~ ⛔ **Corrected 2026-09-21 (C5-8):** the house-bot CODE is on production (the models, both applied migrations and the engine modules travelled with the platform lane's merges to `main`); the BEHAVIOUR is not — no house bot has ever staked there, held off by `HouseBotControl.enabled` (`DEFAULT false`, read at every staking path). | — | **NOT MEASURED** on the live service config, and it stays that way: ruling 553 forbids this programme reading it. The posture above is proven from the migration and the code only. |
+| 6 | The disclosure suite, which also pins risks 13–20 and the do-not-restore lines in §13 | — | ✅ Built — its runs are the `4 · D19` and `6 · …` rows below |
+| 7 | The console suite, its RED harness and the visual pass | — | ✅ Built (`test:house-bot-console`, `red:house-bot-console`, `qa:house-bots-visual`) — their runs are the dated rows below |
+| 8 | The local end-to-end drive, the S4 rehearsals and the scenario coverage gate | `npm run qa:house-bots-local` 21/0 · `npm run test:scenario-coverage` 18/0 — all 281 register ids measured 2026-09-20: 24 proven by name, 230 carried by an owning suite that exists, 9 struck by D19/D20, 7 deferred, **11 unresolved and named** | Drive ✅ · coverage gate ✅ · S4 rehearsals registered in `scripts/rehearsals/registry.mts` (`npm run rehearse` prints each drill's status; drill 2 is `partial`, its procedure `RELEASE-LADDER.md` §10) — build commit 8 never ran as a commit |
+| Production | ~~Nothing is deployed.~~ ⛔ **Corrected 2026-09-26:** LIVE. The code reached production with the platform lane's merges to `main` (the models, both applied migrations, the engine modules); the owner first switched the desk on on 2026-09-21 and it has placed real stakes since 2026-09-23 (§12.2). The live state is re-read SELECT-only, never quoted from here: [`RESUME-HERE.md`](../plans/house-bots/RESUME-HERE.md) "THE LIVE STATE". | — | The live Railway service config is **NOT MEASURED**, and it stays that way: ruling 553 forbids this programme reading it. |
 
 | 4 | `red:house-bot-engine`: 29 declared mutations over the engine, the DAL, the trigger call site and the COUNTER migration — each must turn ITS OWN assertion red, and every file is restored byte for byte | The build machine (a temporary worktree with a `node_modules` junction) | 2026-09-16 · OMEGA-COMPILE01: **22 caught, 0 missed, 0 not measured, 0 files left dirty**, then 5 more (L1–L4 and the pins) and L6's 2, each caught on its own line |
 | 4 · D19 | `test:house-bot-disclosure` (the client import graph), `verify:house-bot-bundle` (a real `next build`, then every chunk scanned) and `qa:house-bot-holder-view` (ten pages served to a holder, RSC payloads included, six screenshots at 1280 and 360 opened and read) | The build machine | 2026-09-16 · OMEGA-COMPILE01: **320 house words in the public JavaScript before the un-build, 0 after**; disclosure 15/0; holder view 27/0. Found and fixed while proving it: the holder's data export carried `houseBotId` (ruling 154) and the payout-held box invited an objection the panel refuses (158) |
@@ -1641,18 +1864,702 @@ commit adversarially, not by any suite — which is the only way this class is e
 REMOVED accounts giving the slots back, **never a raised ceiling**: that ceiling is the very thing those cases
 measure. A bounded shared resource consumed by a fixture is a defect class worth remembering.
 
+### 12.4 What the ledger row cost to prove, and the five instruments that lied on the way — 2026-09-25
+
+The activity row became a betting ledger — `Round · Opening · Stake · Closing` beside the outcome chip, the game
+link and the note, with `Product` dropped. The reader work is in §12.3's siblings; this section exists for the next
+session **on any machine**, because the expensive part was not the feature. It was that a green gate and a green
+suite both sat on top of a screen that was wrong, and five separate instruments had to be repaired before the
+screen could be trusted at all.
+
+**THE COLUMN LOOKED BROKEN AND WAS NOT.** `Opening` painted an em dash on every row of both tables while SQL
+insisted the pairing existed — a `positionId` on the intent, a `BET_PLACED` transaction carrying it, a
+`balanceAfter`, the same holder. The cause was not in the product. ⛔ **`Transaction.createdAt` is a NAIVE
+`timestamp`** (`prisma/schema.prisma`: `createdAt DateTime @default(now())`, no `@db.Timestamptz`), unlike
+`HouseBotIntent.createdAt`, which IS `@db.Timestamptz(3)`. Hand `pg` a JS `Date` and it sends an offset-bearing
+literal, which Postgres resolves against the SESSION zone before dropping the zone — and the scratch cluster runs
+`Asia/Beirut`, which the server announces at boot in its own words (`[house-bot] database TimeZone is Asia/Beirut,
+not UTC`). Every fixture movement landed **three hours in the future**; `findByUserWindow` bounds its scan at
+`nowMs + 1` and filtered them straight back out, so the reader fell through to the older, unpositioned rows and
+painted their balance as a CARRIED figure. Anything writing transactions with raw SQL must write the UTC wall time
+with no zone at all. ⛔ **And the check that was supposed to catch it could not:** it read
+`createdAt > now() - interval '30 days'` — a LOWER bound only, which a future timestamp passes. Both bounds, or the
+question was never asked.
+
+**PROVED, NOT ASSERTED.** With the stamps fixed the page paints `withOpening: 5, identityHolds: 5` — five rows
+carry an opening and `Opening − Stake = Closing` holds on every one (1,247,500 − 7,500 = 1,240,000). SQL predicted
+exactly five on page one and the page painted exactly five; prediction and paint agree, which is the only form of
+this proof worth having.
+
+**THE FIVE INSTRUMENTS, each of which was returning a confident answer about something it never measured:**
+
+| what it claimed | what it did |
+|---|---|
+| the visual harness's step results | every step ended `\| tail -N`, and a pipeline's status is its LAST command — a failed `migrate deploy` or a crashed seed exited 0 through `tail` and the run carried on to serve a half-built database. `set -eo pipefail`. |
+| "the Round column reads #1,570" | matched `#` + digits anywhere in the table HTML and was reading `Player #8480_3`, the ACCOUNT reference, as a round number. Read the cell by its column index. |
+| "the account table has no ledger" | the probe hardcoded a bot id, and a reset cluster mints new ones — an ABSENT page read exactly like a broken one. Find the id the desk itself links to, and say so when there is none. |
+| the gate's own cleanup | `kill` does not stop `next start` on Windows. The survivor held :3021, the next run aborted, and — worse — a stale server serves the OLD build. Clear the port, never trust it. |
+| `373-minw` and `1.373`'s allowlist | both quoted the table opener VERBATIM, so changing a gutter rots them. Re-aim in the same commit. |
+
+**THE WIDTH, STATED RATHER THAN CLOSED.** At 1280 the desk-wide strip is 998px and the table measured **1519px**:
+`Round`, `Game`, `Note` and the STOP CONTROL were reachable only by dragging. Halving the desktop gutter
+(`sm:!px-4` → `!px-2`) and dropping the `Game` floor (`22ch` → `16ch`, which WAS its 180px) returned 144px →
+**1375px**. ⚠️ *(Superseded 2026-09-26 by `plans/house-bots/RESUME-HERE.md` §0c decision 2: re-measured on a different seed at 1251px worst case, and decided — Note and Type relocated rather than dropped, then the gutter; the paragraph below is the 2026-09-25 record.)* It still exceeds the strip, and that is reported, not hidden: **twelve discrete columns do not fit
+998px at any honest type size** — collapsing `Round`, `Note` and `Type` into their neighbours AND dropping money to
+the caption rung still lands near 1050px. What it falls back to is the scroll 432(b) and `qa-house-bots-visual`
+§5.2 already licence, and that rule holds: the subject and the first two money answers stay inside the strip and
+the region really scrolls. Closing the remainder costs a column the owner asked for by name, so it is his call.
+
+⛔ **`db:scratch` DOES NOT GIVE YOU A FRESH DATABASE.** `DATA_DIR` is `<checkout>/.pgscratch` — one directory per
+CHECKOUT, not per port — so `KP_SCRATCH_PORT=5474` boots the PREVIOUS run's data (110 intents accumulated across
+runs here, and a long recovery that reads as a hang). `--reset` is what gives you a clean one, and it fails `EPERM`
+while an orphaned postmaster still holds the directory: stop those first. `seed-house-bots-local.mts` is **not
+idempotent** — it places a real bet at line 170 and throws `the player's stake was refused` against an
+already-seeded database.
+
+### 12.5 The ledger bracketed the settlement, and three guards that could not fail — 2026-09-26
+
+Found by putting the rewritten `RESUME-HERE.md` to five adversarial refuters before committing it — not by any suite,
+and not by the visual gate. Each claim they could not confirm was checked against the code; three were defects.
+
+🔴 **OPENING AND CLOSING BRACKETED THE SETTLEMENT, NOT THE STAKE, on every settled Won or Void row.**
+`feedRemainingLookup` found the row's own movement with `rows.find((t) => t.positionId === row.positionId)`. But
+`positionId` is not unique on `Transaction`: the refund (`BET_REFUND`) and the payout (`BET_PAYOUT`) carry the stake's
+position too (`market-service.ts`), and `findByUserWindow` returns rows NEWEST-FIRST on both stores — so the match was
+the settlement. `Closing` painted the balance after the payout or refund, and `Opening` that plus the stake: a bracket
+the wallet never held. Read SELECT-only from production: **598 of 694 placed rows** carry a settlement movement (534
+Void, 64 Won); only Lost rows (no transaction) and the one open stake were right.
+⭐ **Why nothing saw it:** every fixture settled a stake by flipping `Position.status` and wrote no money, so the
+settlement row the reader tripped on never existed in any test. **1.626h** now writes the settlement the product
+writes — newest, same position, a balance no stake row holds — with a control proving it IS the newest movement.
+⛔ **And a placed row whose own debit is out of the scan now answers nothing**, rather than borrowing the balance from
+the instant the engine decided — which is before its stake left (the reader's own docstring said so).
+
+🔴 **1.368's D3 GUARD WAS VACUOUS TWICE.** `3859118f` renamed the balance cells to `opening`/`closing`/`closingTitle`
+and rewrote the compliance register by ROLE so a rename could not rot it — and left the guard's exemption naming
+`remaining`/`remainingTitle`, so it exempted nothing. ⭐ **The control written to close that found the second hole at
+once:** the account 1.368 scans has **no activity rows at all** — its "the balance appears nowhere else on the
+activity tab" was a scan of nothing. It is now **1.368b**, inside the ledger block where three real bets leave real
+balances, and its needles are the Opening/Closing figures the rows actually paint — not a typed amount — so a rename,
+a new balance field or a different fixture balance cannot slide past. Its population control requires at least three
+distinct painted balances and every exempted field present on the row; its mutation plants the wallet balance in the
+day-budget cell's `title` beside it.
+
+🔴 **`reports-mem` WAS RED ON CLEAN `main`, AND EVERY RED DRIVE REFUSED TO START ON IT.** Another lane's `8acf067c`
+deleted `"today"` from `analytics.Period` (it meant a rolling 24 h there and the EAT day everywhere else). 14.3 called
+`AN.activePlayers("today")` through an `Any`, so no compiler objected: `periodToMs("today")` returned `undefined`, the
+window began at `NaN`, and every count was 0 before and after the fixture. 14.3/14.3b caught it; nobody ran them
+between that commit and this session. The case now asks `resolveRange({ range: "today" })` — the repo's one
+definition — and reads 3 → 4 on both stores.
+
+⭐ **THE WHY-PANEL'S `removed` GUARD GOT A RED CONTROL.** As `{!view.removed && (` on the page it could not fail: the
+door (`houseWhyIdleForConsole`) already refuses a removed account, so deleting the wrapper changed nothing any
+instrument could see — it existed only so 1.435's literal count reached twelve. It now lives in `AccountWhyPanel`
+(`src/app/admin/desk/[id]/why-panel.tsx`); **1.435b** RENDERS it with a live answer and `removed: true` — the one
+input on which it is the only thing standing — with the same answer on a live account as its control. The door's own
+refusal, asserted nowhere before, is a new 1.541 case. 1.435's count is eleven, with a pin that the page hands
+`removed` down.
+
+| Instrument | Result |
+|---|---|
+| `test:house-bot-console` | **854 memory / 613 Postgres, 0 failed** (floor raised from 845/604 — +11 −2 on each store) |
+| `test:house-bot-reports` | both stores, 0 failed; 14.3 reads 3 → 4 |
+| `typecheck` | 0 errors |
+| `test:red-anchors` §3 | all 340 console anchors resolve exactly once (the re-aimed `626d-own-movement-ignored` included) |
+| Mutations | `red:house-bot-console --only` at `5f1737af`, in a tree nobody edited: **6 caught, 0 missed, 0 files left dirty** — `626h-settlement-read-as-the-stake`, `626h-placed-row-borrows`, `368b-balance-leaks-into-the-budget-title`, `435b-why-panel-guard-dropped`, `541-why-explains-removed`, and the re-aimed `626d-own-movement-ignored` |
+| **The four fleets, WHOLE** (2026-09-26 EAT) | **579 of 579 caught · 0 missed · 0 wrong-assertion · 0 stale · 0 files left dirty.** Console **340** (8 slices), engine **80** (Postgres halves included), money + seam **63**, all at `2b8ba0a2`; c5 **96** primaries (97 declarations, one combined pair): 35 at `2b8ba0a2` and 61 at `cf5dd07b` — the slices holding disclosure mutations cannot baseline green on an older commit, because 5.1 pins the published text to the LIVE `origin/main` by design. Driven in a dedicated detached tree, launched as an independent process, in slices under the lock. The first attempt (at `754a7fe3`) found `355-all` WRONG-ASSERTION — re-aimed in `1656d3b1` — and was then killed mid-mutation by a session ending (RESUME-HERE §1's trap) |
+
+### 12.6 The ledger fits the 1280 strip — built 2026-09-26 (RESUME-HERE §0c decision 2, build step 1)
+
+**What changed, on BOTH activity ledgers** (the desk-wide one and each account's): `Type` left its column and is the
+`Outcome` cell's second line — plain words under the one chip (`8018653b`'s one-chip rule); `Note` left its column and
+is a full-width line of its own under its row, from `sm` up and only on a row that carries one, held to an 80ch reading measure that never runs past the viewport (at 640 an 80ch line was wider than the strip —
+the first served run caught it); and the gutter is ONE `!px-1.5` at every width. ⚠️ **On this project's spacing scale `px-1.5` is 8px and `px-2`
+is 12px** (`tailwind.config.ts` `spacing`) — so the desktop gutter went 12px → 8px, and phones were already 8px. The first
+draft of this record and of the code comments said "6px", which the compiled CSS disproved before anything shipped.
+Round, Opening, Stake, Closing, Left today, Outcome, Game, When and Account keep their columns; below `sm` the stacked
+phone cell is unchanged. The desk-wide table is ten columns, the account's eight.
+
+**One record, two rows.** A row and its note line read as one: the row drops the kit's divider above its note (and, on a
+phone where the note line is hidden, whenever that line is the table's last), each lights with the other in the kit's
+own hover colour, and the note line refuses the kit's hover bar, which the row itself never shows (its first cell is the
+phone's hidden stack). The classes live once, as `NOTED_ROW` / `NOTE_ROW` in `src/app/admin/desk/page.tsx`.
+
+**Found on the way — each would have shipped red or wrong:**
+- 🔴 **The desk-wide table's `colSpan`s were pinned by NOTHING.** The derived span rule read the account page only, so
+  the landing page's typed `12` would have survived this change unreported. §2e3b now holds every span on both ledgers
+  to that ledger's own header count, with a control on the desk-wide table.
+- ⛔ **`test:type-scale` §3 would have gone red.** The first draft put the type line and the note in `text-caption` —
+  11px prose under the 12.5px reading floor, on a shrink-only ratchet. Both are `text-body-sm`, the platform's shape for
+  a second line under a name.
+- ⛔ **`qa-house-bots-visual` §5.5 would have measured the wrong box.** It measures a spanning cell's first `<div>`, else
+  the whole cell — and a note cell spans a table that legitimately scrolls at 640–1024. The note's text is a `<div>`, so
+  the gate measures the sentence, not the strip under it.
+
+**What guards it now.** `test:house-bot-console` §2e3b (both ledgers, each assertion with a control): the type is the
+Outcome cell's second line and never a chip or a column; the note is its own spanning line only on a noted row and in no
+column; the phone stack still carries both; the pair reads as one record, the hover colour read from `globals.css`; one
+gutter on both openers and no `sm:` gutter anywhere in the section; every span equals its ledger's header count.
+`qa:house-bots-visual` **§5.7**: from 1280 up, on both activity routes, every money cell is filled to seven digits AFTER
+the tile is written and the ledger must not scroll sideways — with a control column that must make the same region
+scroll. Declared mutations: 8 new (`373-type-dropped`, `373-type-as-chip`, `373-note-never-drawn`,
+`373-note-line-short`, `373-note-on-the-phone`, `373-divider-splits-the-record`, `373-desktop-gutter-back`,
+`373-desk-span-stale`) and 2 re-aimed (`373-minw`, `373-activity-colspan-stale`); console anchors 340 → 348.
+
+**The width, MEASURED on a served `next start` build at the seven-digit worst case** (every money cell filled to
+`TZS 8,888,888` after the tile is written):
+
+| Ledger | 1280 (strip 998px) | 1440 (strip 1158px) |
+|---|---|---|
+| Account page (8 columns) | **998 — fits exactly** | 1158 — fits |
+| Desk-wide (10 columns) | **1133 — 135px over** (as seeded, 1045) | 1158 — fits |
+
+Per column at 1280, worst case, desk-wide: Account 150 · Opening 117 · Stake 117 · Closing 117 · Left today 117 ·
+When 128 · Outcome 110 · Round 51 · Game 131 · stop 93. ⚠️ **So decision 2 took the desk-wide ledger from 1251px to
+1133px and did NOT close it.** Its next lever, the Account column's 150px floor, can return at most 46px of the 135,
+so by the decision's own rule the 432(b) scroll is KEPT on the desk-wide ledger below 1440 — the subject and the first
+two money answers stay in the strip (§5.2 passes at every width) and the stop control is one short scroll away — and
+closing the rest is **the owner's call, put to him with the choices** (RESUME-HERE §0c decision 2). It is held by a
+RATCHET, not waved through: §5.7 fails if that overflow ever grows past 135px, and the account ledger and every width
+from 1440 up must still fit exactly. The seed's rows on page 1 carry no note, so the two-row record was not on screen
+in this run; its CSS was verified compiled (below) and its render is re-read on the next served run.
+
+**The gates** (under the heavy-node lock, on the tree that was committed, before the push):
+
+| Instrument | Result |
+|---|---|
+| `typecheck` | 0 errors |
+| `test:house-bot-console` | **864 memory / 623 Postgres, 0 failed** (floor raised from 854/613 — the printed counts) |
+| `test:house-bot-surfaces`, `test:tab-anchors`, `npm run build`, `verify:house-bot-bundle` | green |
+| `test:red-anchors` §3 | all 348 console anchors resolve exactly once; the only failures are the four that fail on clean `main` in other lanes' files (RESUME-HERE §0b) |
+| `test:type-scale` | RED — **and red identically on a clean copy of `origin/main` without this step** (§3 759 vs ratchet 744, §6 239 vs 235): other lanes' prose and tracking, not this step's, which adds only `text-body-sm` |
+| `qa:house-bots-visual` at 360/640/1024/1280/1440 | 394 passed, 1 failed — the desk-wide 1280 fit above, now held by its ratchet; tiles read at 360 and 1280 (both ledgers) |
+| CSS, checked without the lock | the step's classes compiled with the project's own Tailwind config and parsed by the build's PostCSS: every new selector generated as intended, and the 12px `sm:` gutter no longer generated |
+
+The owner said to go live once sure (RESUME-HERE §5 quotes him). The ten mutations were driven after the push, in a
+detached tree at the live commit `5d1e8abf`, on a green baseline: **10 caught, 0 missed, 0 files left dirty.**
+
+### 12.7 The Results tab — built 2026-09-26 (C7 437; D20b amended under the owner's delegation; build step 3)
+
+**What shipped.** A fifth tab, `/admin/desk?tab=results`, appended last and unbadged, behind the desk's own audience
+(the ADMIN role). **By day**: the last seven EAT days, newest first — Today, Yesterday, then weekday and date — each
+with its result in words (`Profit TZS X` / `Loss TZS X` / `Even` / `Nothing settled` / `—`), the stakes placed that
+day, and its state (`Still running` / `Final` / `No stakes`). **By account**: every account on the roster, today and
+over the seven days, then ONE line folding the accounts no longer on the desk. The figure is `book.ts`'s own settled
+loss with the sign turned — the function the settled daily-loss row and both automatic loss stops act on — so the
+screen and the stop cannot disagree; a stake counts on the EAT day it was PLACED. The reader is
+`houseResultsForConsole` (route belt before the audience question; today is the core's own day book, the six before it
+walked back from the render's key by `priorEatDays`; every read settled on its own, so a failed day is a row that says
+`couldn't read — this is not zero` and a seven-day total over it is refused). The amendment, its reasons and
+everything it does not permit are `docs/COMPLIANCE-DECISIONS.md` `2026-09-26 · D20b AMENDED`, with in-place pointers.
+
+**Found on the way — each would have shipped red or wrong** (the first full gate run, before the push):
+- 🔴 **1.360's money walk was blind to most of the page.** Its literal scanner read a template with `${…}` as if its
+  closing backtick opened a new literal, and swallowed whole table rows — step 1's row classes hid Left today, the
+  stake and the limit values, so it reported 11 sites of 29. It now pairs templates across their expressions and
+  scans the strings inside them too.
+- 🔴 **`test:house-bot-reports` 0.232 had been RED on clean `main` since `0f1f9dd9`** (another lane's single 5-line
+  hunk above all seven marked money-write sites in `market-service.ts`). Re-derived from the tree — the same seven
+  writes, each +5 — and re-pinned; nobody had run the suite since that commit.
+- ⛔ **The probe's result canary was also a transaction amount.** One lost stake of the canary made its digits a
+  `BET_PLACED` row, which the compliance officer's transactions export correctly carries (D20a), so 4.2b went red on a
+  correct page. The canary is now two losses that SUM to it, neither equal to it: its digits exist only as a result.
+- ⛔ **At 640 the activity ledger's note line ran past the viewport** (an 80ch line is 656px there); it is now
+  `min(80ch, 100vw − 4rem)`. **At 1024 both Results tables overflowed their half-width cards** (390px and 368px in 360px
+  strips); the cards stack below 1280 and sit side by side from it, on the ledger's compact gutter, with days, states
+  and results that never break mid-phrase.
+- ⚠️ 1.343's list of gate readers and one mutation's `expect` (the fourth account word) had to learn the new reader.
+- ⭐ **The visual seed now writes the outcome codes production writes** (`UD_STALE_PRICE`, `POISON`) instead of codes no
+  sentence exists for — so the activity note line was photographed for the first time — and it settles a Results week
+  for real (WIN, LOSS and VOID, one left running, two accounts, one removed).
+
+**The gates, on the committed tree:**
+
+| Instrument | Result |
+|---|---|
+| `typecheck`, `npm run build`, `verify:house-bot-bundle`, `test:tab-anchors`, `test:house-bot-surfaces` | green |
+| `test:house-bot-console` | **923 memory / 669 Postgres, 0 failed** (floor raised from 864/623) |
+| `test:house-bot-reports` | **249 / 80, 0 failed** (floor 248 → 249) |
+| `test:house-bot-comms` | **52 / 50, 0 failed** (floor raised from 48/46) |
+| `test:house-bot-disclosure` | 115 passed, 0 failed |
+| `qa:house-bot-console-probe` | 37 passed, 0 failed (its 142 NOT MEASURED are the non-owner-staff reports ruling 260 reads by design) — the canary absent before it is planted, carried by the ADMIN's Results document, and in no other viewer's 3,353 responses |
+| `qa:house-bots-visual` at 360/640/1024/1280/1440 | **499 passed, 0 failed** — §5.8 holds both Results tables at every width, as painted and at seven digits; tiles read at 360, 1024 and 1280 |
+| `test:red-anchors` §3 | all 373 console anchors resolve exactly once; only the four failures already on clean `main` in other lanes' files |
+| `test:type-scale` | red identically on clean `main` (§3 759, §6 239) — this step adds no sub-floor prose |
+
+Declared mutations for this step: 25 new — `437-sign`, `437-projected`, `437-stake-only`, `437-second-today`,
+`437-route-belt`, `437-audience`, `437-fail-as-empty`, `437-partial-total`, `437-roster-fold`, `437-window-8`,
+`437-days-from-clock`, `437-even-painted-as-money`, `437-open-is-even`, `437-leak-activity`, `437-label`,
+`437-alert-link`, `437-clock`, `437-money-third`, `437-fold-field`, `437-gone-word-collides`, `437-signed-formatter`,
+`312-results-panel-gone`, `312-results-badge`, `306-results-second-read`, `360-result-in-roster` — and five re-aimed
+(`312-rail`, `320-tab-key-gone`, `312-rail-order`, `320-tab-panel-gone`, `373-subject`, plus `account-word-is-the-event-word`'s
+expect). Driven after the push in a detached tree at the live commit `4da8ccd4`, with `320-tab-key-gone`'s comms half:
+**31 caught, 0 missed, 0 files left dirty**, on green console-mem and comms-mem baselines.
+
+⚠️ **Noted, not changed (not this step's):** `usageRow` paints ANY negative figure as `ahead by X`, so the PROJECTED
+daily-loss row can also read "ahead by" on a day whose settled profit exceeds its open stake; the owner's 2026-09-23
+ruling covered the SETTLED row only (C7 366 records it as not ruled on).
+
+### 12.8 The fire path's two unasserted behaviours — asserted 2026-09-26 (RESUME-HERE §0c decision 6, build step 5)
+
+**Why "two" is right.** Register B7 (`plans/house-bots/NEXT-SESSION-2026-09-22.md` item 7, readable at `9ec72e0d`)
+named THREE fire-path limbs with no assertion: the DAL claim-reclaim branch, the fire heartbeat and the fire-time RG
+pre-check. The carry-over into RESUME-HERE said two and never said why. Re-derived: the claim-reclaim limb had been
+asserted two days BEFORE the register — c13.d–g in `scripts/lib/house-bot-dal-cases.mts` (`8c6d6ccb`, 2026-09-20),
+with its mutations in `scripts/anchors/house-bot-dal-claim.anchors.mjs` (suites `dal-mem`/`dal-pg`, which no red
+harness drives — the anchor-rot guard covers them, and `ROLL_CALL_OWED` records why). The other two had nothing:
+- **The heartbeat** (`fire.ts` `fireClaimedIntent`, and `heartbeat` in both DAL twins): no script named
+  `FIRE_HEARTBEAT_MS` or called `.heartbeat(`, and no declared mutation touched it.
+- **The holder check at fire** (`fire.ts` step 4, through `readBotAndHolder`): only 16.17 reached it, and it could not
+  fail on it — a password change on a poll with locked money, where the seam refuses the same holder anyway.
+
+**What asserts them now** — `test:house-bot-engine` §16, on BOTH stores (step 5 is test-only; no `src` line changed):
+
+| Cases | What they hold |
+|---|---|
+| 16.69a | ONE timer, every `FIRE_HEARTBEAT_MS`, unref'd; a claim's TTL is more than three beats long |
+| 16.69b | a tick while the fire is still in flight extends THIS worker's claim to ≈ now + `CLAIM_TTL_SEC` |
+| 16.69c | the fire then places, and its timer is cleared only when it returns |
+| 16.69d · 16.69e | a heartbeat writes nothing on a row no longer CLAIMED (the placed row, which still carries the worker's id), and never extends another worker's claim |
+| 16.69f0 · 16.69f | a THROW out of fire still clears the timer and the in-flight entry (ruling 69's "a throw included"); 16.69f0 proves the throw really happens |
+| 16.69g · 16.69h | a heartbeat whose store fails is swallowed and the fire still places (ENG-33); 16.69h proves the listener hears a rejection at all |
+| 16.63a–c | a self-excluded holder, a cooling-off TIMER alone, and the holder's own daily loss limit asked about the row's stake each stop the bot AT FIRE: `botStopped` with that cause, the row CANCELLED(BOT_NOT_ACTIVE) — the loss limit never a requeue |
+| 16.63d–f | controls: a limit exactly equal to the stake, no RG state, and a break that has ended all go on to SKIPPED(CONDITION_GONE) with the bot ACTIVE |
+| 16.63g · 16.69i | fixture: every account those blocks made is REMOVED again |
+
+⭐ **How, without waiting 30 s:** the interval is captured at the fire's synchronous start (`setInterval` patched for
+that instant only; `clearInterval` hands every foreign handle to the real one) and the fire is parked at its first read,
+so a tick lands while the row is CLAIMED and in flight. ⭐ **Why an EMPTY poll for the RG cases:** the seam would refuse
+the same holder with the same row, so on a poll with money the only observable is WHERE fire stops; with nothing locked,
+a fire past step 4 ends SKIPPED(CONDITION_GONE) at the amount step, so only fire's own check can pause the account. The
+RG state is written directly — never through `selfExclude`/`coolOff`/`setLimits`, which fire the in-app holder hook
+asynchronously (the §19 race behind ruling 156) and would let a case pass for the wrong reason.
+
+⚠️ **Found on the way, not changed:** the only throw route out of `fire()` is `return finish(…)` inside its `try`, which
+is not awaited — so a store failure while writing a terminal row escapes as a throw (the poller records `threw` and the
+claim waits out `CLAIM_TTL_SEC`) instead of a quiet requeue. Harmless to money. 16.69f depends on it; 16.69f0 goes red,
+never vacuous, if that line ever becomes `return await`.
+
+**Declared mutations: 21**, in `scripts/anchors/house-bot-engine.anchors.mjs`, every id starting `69` or `63` (18
+`engine-mem`, 3 `engine-pg` on the Postgres twin's own SQL). Three edit shared modules (`constants.ts`, `consent.ts`,
+and the holder read in `control.ts`). **Run 2026-09-26 on the committed tree:** `test:house-bot-engine` **825 memory /
+804 Postgres, 0 failed** — +17 on each store, the floor raised from 808/787 to those printed counts; `test:red-anchors`
+§3: all 21 resolve exactly once. The 21 mutations are driven after the push (`red:house-bot-engine --only 69,63`, in a
+detached tree at the live commit) and their result is recorded with the next commit. **Driven 2026-09-26 at the live
+commit `d1ccdb2f`: 21 caught, 0 missed, 0 not measured, 0 files left dirty.**
+
+### 12.9 The find step's list of every account — built 2026-09-26 (RESUME-HERE §0c decision 4, build step 4)
+
+What it is and what it refuses to do is §7.1a. This is what proving it took.
+
+| Gate, on the committed tree | Printed |
+|---|---|
+| `test:house-bot-console` | **972 memory / 706 Postgres, 0 failed** — §2f2 on both stores; floor 923/669 → 972/706 |
+| `test:house-bot-reports` | **251 / 80, 0 failed** — floor 249 → 251 (below) |
+| `qa:house-bots-visual`, the desk's routes, 360–1440 | **519 passed, 0 failed, 0 NOT MEASURED** |
+| the same, on the list's own addresses (page 2; `page=0&sort=name`, both refused; the cannot-be-chosen view sorted by sign-in, ascending) | **112 passed, 0 failed, 2 NOT MEASURED** — the cannot-be-chosen view has no choosable handle, so the tap-floor measure of one has nothing to measure |
+| `test:filter-language` · `test:house-bot-surfaces` · `next build` · `verify:house-bot-bundle` · `qa:house-bot-console-probe` | green · green · compiled · green · 37/0 |
+
+**Found by the gate run, before the push:**
+- **The phone strip was 3px short.** Measured on a served 360: a handle and two dates came to 321px in the 318px
+  strip at the section's 8px gutter, so the list — and only the list — takes a 4px gutter below `sm`
+  (`max-sm:[&_td]:!px-1`). Step 1's one-gutter source check now reads `sm:` gutters with a look-behind for `max-`, so
+  it still refuses a gutter WIDENED by a breakpoint while allowing this one to narrow.
+- **The loader's table skeleton** gained an optional row height and the prop was never destructured — `tsc` red.
+- **`test:house-bot-reports` was red on `main`**, from the finance lane's `c6c637c1`: `censusUnverifiable` now returns
+  a bounded `sample` of `UnverifiableRow`, and the type was exported. 0.260.1 classifies it (a shape, not a reader);
+  0.260.2's pin names the sample and asserts its row carries identity only and its cap stays ≤ 50; a new control,
+  0.260.c4b, proves the pin still bites.
+
+**Declared mutations: 27**, every id starting `list-` in `scripts/anchors/house-bot-console.anchors.mjs` (26
+`console-mem`, 1 `reports-mem`); the console total is 400. They are driven after the push, in a detached tree at the
+live commit, and their result is recorded with the next commit.
+
+### 12.10 `red:house-bot-ops` gets its own entry file — built 2026-09-26 (RESUME-HERE §0c step 7)
+
+**What changed.** `npm run red:house-bot-ops` used to run `scripts/lib/house-bot-ops-cases.mts --prove-red`: one file
+with two entry points, whose §9 cleans up a temporary git index with a file-writing call. `test:red-anchors` §4 reads
+the WHOLE source of the script a `red:*` command names, comments included, so from `48c1c959` (2026-09-20) the
+in-memory red proof counted as a harness whose disk anchors nobody audits. The pure half of the case list (the
+detectors, both exemption lists, the planted region and `redCases()`) moved VERBATIM into
+`scripts/lib/house-bot-ops-detectors.mts`. Only `export` was added, and `SELF` now names the file that holds the
+planted region. The key now runs `scripts/red-house-bot-ops.mts`, which imports that module and writes nothing, and the
+case list refuses `--prove-red` with exit 2. ⛔ Nothing was declared: this harness injects no string into any file, so
+an anchors file would invent mutations (ruling 505). `isInProcess` was not widened, and `UNDECLARED_CEILING` stays 65.
+
+**Pinned so it cannot drift back.** `test:house-bot-ops` §0 (memory child), `ops.red.*`:
+- §4's rule is READ out of `red-anchors.test.mts`, never re-typed.
+- The key carries the flag and runs its own entry.
+- The entry's raw source, and its whole import closure (5 files), hold no file-writing call and import no child process.
+- A planted tree proves the walk follows imports and skips `import type`.
+- As the positive control, the same predicate convicts the case list's §9.
+- The refusals are DRIVEN. The old command exits 2. The entry exits 2 without its flag, and with it exits 0 with a tally
+  equal to the in-process plant count.
+
+| Instrument | Result |
+|---|---|
+| `test:red-anchors` §4, replayed statically (Perl, with §4's own rule) | before, at `ac631c35`: 186 `red:*`, 95 declaration files, 19 in-process, **68 undeclared** · after: 20 in-process, **67 undeclared**. The only key to leave the list is `red:house-bot-ops`, and no other key changed class |
+| `test:red-anchors`, run once on the changed tree (2026-09-26 · Ali-Blade15 · `ac631c35` plus this step, uncommitted) | **3278 passed, 4 failed**: 20 in-process with `red:house-bot-ops` among them, **67 undeclared**, both printed lists identical name for name to the replay's. The four failures are 4.1 and 4.2 (67 vs 65) and two §3 anchors in other lanes' files (`bar-geometry` → `query-bar.tsx`, `updown-handover` → `updown-card-phase.ts`); none is this step's |
+| The move | the moved body diffs against the pristine case list with exactly 7 changed lines (six `export`s and `SELF`); the case list keeps exactly one file-writing call, at §9 |
+| `test:house-bot-ops` (both stores), `red:house-bot-ops`, `test:deferred-register` — run 2026-09-26 on the integrated tree (`c3c3b4a5` + this step) | **memory 100 / Postgres 104, 0 failed** (floor 89 → 100) · **50/50 caught**, exit 0 · **14 passed, 0 failed**. ⚠️ The first run was red, and not because of this step: `ops.pop.0p` failed on `main` without it too (its known string `const PORT = 5433;` no longer exists — `db-scratch.mts` made the port overridable), and so the red proof missed `ops.pop.walk` (49/50) and the new `ops.red.1e` inherited that miss. Both controls now name the real line. |
+| The walkers that read `scripts/` | `test:guards-exist`, `test:orphans`, `test:pii-logs`, `test:support-contact`, `test:dead-schema`, `test:house-bot-reports`: green. `test:house-bot-holder-lifecycle` 2.2 (28 vs 25), `test:decomment` 2.1 (22 vs 20) and `test:live-target-safe` §1b are red **identically at `c3c3b4a5` without this step** — other lanes' scripts grew those populations; NOT OURS, recorded, not widened. |
+
+Declared mutations, each driven by hand in a detached tree nobody edits, and each restored byte-identically. There is
+deliberately no anchors file. They are driven after the push, at the live commit, and their result is recorded with the
+next commit:
+- `ops-red-entry-writes`: a file-writing call added to the entry. Must fail `ops.red.1c` and `ops.red.1d`, and put the
+  key back among §4's undeclared.
+- `ops-red-key-back-on-cases`: the key pointed back at the case list. Must fail `ops.red.1b`, and the key then exits 2.
+- `ops-red-flag-dropped`: the key without `--prove-red`. Must fail `ops.red.1a`, and the entry exits 2.
+- `ops-red-closure-writes`: a file-writing call added to the detectors module. Must fail `ops.red.1d` ONLY, while §4
+  stays at its count. §4 reads one file; `ops.red.1d` reads the closure.
+
+**Driven 2026-09-26 at the live commit `5b82a079`**, in a detached tree, each plant a never-called function holding a
+real `writeFileSync(` call, the memory child and §4 run after each, and each file restored (content-identical: an empty
+diff) before the next. Unplanted control: no `ops.red.*` failure, §4 at 67.
+- `ops-red-entry-writes` → **`ops.red.1c` and `ops.red.1d` fail, and §4 counts 68** — the key is back among the undeclared.
+- `ops-red-key-back-on-cases` → **`ops.red.1b` fails**, and `npm run red:house-bot-ops` **exits 2**.
+- `ops-red-flag-dropped` → **`ops.red.1a` fails**, and the entry **exits 2**.
+- `ops-red-closure-writes` → **`ops.red.1d` fails and nothing else, and §4 stays at 67** — the closure walk is the only guard
+  that can see a write one import away, which is why it exists.
+
+### 12.11 Ruling 543 — an audit that cannot be signed no longer reports a landed write as failed — built 2026-09-26 (RESUME-HERE §0c step 6)
+
+**What was wrong.** `audit()` promised it never rejects, but `chainSecret()` throws under `NODE_ENV=production` when
+`AUDIT_CHAIN_SECRET` is absent or equal to `SESSION_SECRET` — during SIGNING, past the fail-open fallback, because that
+fallback signs too. Every desk act that writes its compliance row after its own write had landed therefore reported the
+landed write as a failure. The worst was the kill switch: the desk WAS off and the officer read *"Nothing changed.
+Reload the page and try again."*, with no alert sent. Designate and Start said *"That could not be written. Nothing
+changed"*. Latent in production, where the secret is set and distinct (`docs/CLOUDFLARE-SETUP-GUIDE.md:123`), which is
+documentation rather than a measurement.
+
+**What changed.** `audit()` now always resolves, with a COPY of the entry carrying `recorded` and, when false, why:
+`UNSIGNED` (nothing written, nothing chained — the ring is never handed a hash that is not a hash) or `PERSIST_FAILED`
+(the database refused it; a signed copy is in this process's ring only). The ticket is spent either way, so on Postgres
+the loss is a countable hole, and the server log carries one `[audit] NOT RECORDED` line naming the action and ticket,
+never the payload. Every house writer reads the flag instead of catching a rejection. Five had built ruling 537's
+`recorded: false` on the rejection (limits save, rules save, Pause/Remove, sunset, switch-on), so fixing the contract
+alone would have flipped all five to `recorded: true`. `engineAudit` and `writePressAudit` answer null for an entry that
+did not land, so no event or press is stamped with the id of a row that does not exist, and the press repair still
+writes it. On the console, the kill switch, Start and designate now say both halves as a warning. The kill switch uses
+*"The desk is off. ⚠️ Its compliance record could not be written — tell whoever keeps the records."*; the other two use
+the acts' own one sentence. The designate toast turns amber on that warning.
+
+**Held by:** `test:house-bot-console` §2i, 2.543.0–11 on both stores, each with a control in the untouched env, plus
+2.543.8, the source law over every writer under `src/lib/server/house-bot/`: awaited into a name, `.recorded` read in
+the same block, no `try {` around the call. `test:house-bot-engine` 13.35b/c and 17.14b/c, plus 17.14d/e on Postgres,
+where a BEFORE INSERT trigger stands in for the outage. And `test:audit` 543.1–3, so the platform's own suite stops a
+lane that edits `audit.ts` without running a house suite. Declared mutations: fifteen new `543-*` (12 console, 3
+engine), plus `537-recorded`, `start-drops-its-warnings` and the money suite's `D19-5`, re-pointed at the lines they
+quote.
+
+⚠️ **Known siblings, not in this ruling:** `verifyChain()`, `verifyChainFull()` and the census call `chainSecret()`
+too, and still throw under the same misconfiguration, so the admin "verify chain" action and the ISO integrity report
+would error. Those are read paths. The password check and the consent void ignore their row's answer, since neither
+is reported to an officer as a landed act.
+
+**Run 2026-09-26 on the integrated tree** (`5b82a079` + steps 6 and 10, one lock acquisition, never piped):
+`test:house-bot-console` **1007 memory / 728 Postgres, 0 failed** (floor 972/706 → 1007/728, with step 10's §4c);
+`test:house-bot-engine` **829 / 810, 0 failed** (floor 825/804 → 829/810); `test:audit`, `test:audit-drain`,
+`test:audit-gap`, `test:audit-attest`, `test:ops-audit-flush`: exit 0; `test:dal-parity` 1482/0; ops 100/104,
+caps, money 132/150, reports 251/80, comms 52/50, disclosure 118/0: all pass; `typecheck`, `next build` and
+`verify:house-bot-bundle` green; `test:red-anchors` 3420 passed, the four known failures of other lanes only.
+`test:house-bot-designation` failed ONCE on Postgres at 6.9 — the recorded intermittent (its own note: Postgres only,
+always a refusal, green on re-run twice before) — and was **169 / 161, 0 failed** on the re-run twenty minutes later.
+⚠️ **NOT RENDERED:** the three warnings (designate's amber toast, Start's and the kill switch's warning) reuse the kit's
+existing warning toast and callout, and the suite proves each answer on both stores; showing them on a served page needs
+a build whose chain cannot sign (`AUDIT_CHAIN_SECRET` equal to `SESSION_SECRET`), which this pass did not stand up.
+**LIVE at `f03f8566`** (deploy verified). Its 18 mutations, driven at that commit in a detached tree: console **14 of
+14 caught** (the 12 `543-*`, `537-recorded`, `start-drops-its-warnings`), engine **3 of 3** (one on the Postgres twin),
+money `D19-5` **1 of 1** — 0 missed, 0 files left dirty.
+
+### 12.12 A press that is still loading says so — built 2026-09-26 (RESUME-HERE §0c build step 10)
+
+What an officer sees and how it is built is §7.1b. This is what proving it took.
+
+**The premise was MEASURED, not assumed.** `qa:nav-pending` holds the server's answer to every client navigation and
+presses the app's own links. On every case at 1280 and 360 the old page was still on screen during the hold, with the
+address unchanged: the page's `loading.tsx` does not take over for a query-only change, so before this step nothing
+at all moved between the press and the answer.
+
+| Gate, on the integrated tree | Printed |
+|---|---|
+| `qa:nav-pending` — desk tab, desk filter chip, find-list header, pager and chip, account tab; 1280 and 360; plus the low-end tier | **111 passed, 0 failed, 0 NOT MEASURED** |
+| `qa:house-bots-visual` at 360 and 1280 (nothing at rest may change) | **208 passed, 0 failed, 0 NOT MEASURED** |
+| `test:house-bot-console` §4c (8 pins, each with a control) | inside the 1007 / 728 above |
+| `test:reduce-motion` · `test:keyframes` · `test:motion-ladder` · `test:filter-language` · `test:design-frozen` · `test:pager-reach` · `test:grid-paging` · `test:section-rail` · `test:ui-consistency` · `test:chip-contract` · `test:hooks-order` · `test:shell-boundary` | all exit 0 |
+| `test:tap-target` · `test:type-scale` | red with the SAME failures on `5b82a079` without this step (another lane's `generate-button.tsx`, the date filter's pre-existing `btn-xs`; type-scale 759 / 239) — NOT OURS |
+| `test:motion` | needs a served page on `BASE` (default `localhost:3000`); NOT MEASURED in the gate run (it needs a served page); **run against production at `f03f8566` after the deploy: 43 passed, 0 failed** |
+
+**Found by the first served run, before the push:**
+- **The desk's filter chips marked themselves but dimmed nothing**: the desk's rail sits ABOVE its table's card, not
+  inside it, so "the rows of the pressed card" was an empty set. A console-scoped rule now dims what follows a pressed
+  filter rail; the probe's "after-filter" case measures it.
+- **The probe itself**: it waited for a tab rail on the find step, which has none (six cases NOT MEASURED rather than
+  passed), and its "not dimmed" control on the find step measured nothing and passed vacuously. It now waits for each
+  page's own data element, and the control must measure at least one element.
+- **Two account-tab landings stalled** on the first run and landed on the second, with RSC diagnostics now recorded on
+  any stall; the stall did not recur, so its cause is NOT established.
+
+**Declared mutations: 8**, every id starting `nav-` in `scripts/anchors/house-bot-console.anchors.mjs` (`console-mem`):
+the mark dropped from each of the four kit links and from the Custom chip, a mark painted at rest, rows that never dim,
+and a loop that runs on at the low-end tier. The console total is 420. **LIVE at `f03f8566`** (deploy verified; the
+served stylesheet carries the rules); driven at that commit together with step 6's console plants: **all 8 caught**,
+0 files left dirty (the console drive's 22 of 22).
+
+### 12.13 Every desk table sorts, and none can grow past a page — built 2026-09-26/27 (build step 9)
+
+What it does and what it refuses is §7.1c. This is what proving it took, on a tree at `c3c3b4a5` plus this change (a
+patch, integrated by the main session).
+
+| Gate, on the patched tree | Printed |
+|---|---|
+| `tsc --noEmit` | exit 0 |
+| `test:red-anchors` | `red-anchors: 3434 passed, 4 failed` — the four known before this step (bar-geometry `sort-summary-unbound`, updown-handover `no-handover-at-all`, 4.1/4.2 `68 vs 65`); all 430 console anchors resolve exactly once |
+| `test:house-bot-console` | **1028 memory / 760 Postgres, 0 failed** — §2i on both stores, 1.318pg; floor 972/706 → 1028/760 |
+| `test:house-bot-reports` | **251 / 80, 0 failed** — floor unchanged (the run printed the floor) |
+| `test:dal-parity` | `dal-parity: 1488 passed, 0 failed` — 16.feedOrder and its control |
+| `test:tab-anchors` · `test:house-bot-surfaces` · `test:filter-language` | green · 74 passed, 0 failed · 254 assertions passed |
+| `qa:house-bots-visual` §5.10 | **NOT RUN here** — written, and run by the main session on a served build at integration (a junctioned tree cannot serve one) |
+
+**Found by the first gate run, before the patch:**
+- **The roster outgrew its own page inside the suite.** The console world designates far more than twenty accounts, so
+  case 2g's row finder threw on an account that had moved to page 2 — and §3's lexicon scan was reading page 1 only.
+  Every case that FINDS a roster row or scans every row now reads every page through the door (`rosterEvery`).
+- **The Results reader parsed its address on `Date.now()`**, which 437(e) forbids in that block (the reader has no clock
+  of its own). It now parses once the core is read, on the core's own day.
+- **The account ledger's column list was in the wrong order** — Stake, When, Outcome in the reader against When, Stake,
+  Outcome on the page. The source pin that every header is `SortTh` in the reader's order caught it.
+- **`console-pg` was a new suite key audited by nobody** (`test:house-bot-reports` 0.505) — step 9 declared its first
+  three entries. It now has its own roll-call, 1.318pg, in the Postgres child, and a `ROLL_CALL_SITES` entry.
+- **Seven new exports of the gate module were unclassified** (0.512) — the sort copy, the table list, the token helper
+  and four types. They are declared non-readers, and 0.512b checks the three values really are.
+
+**Pins re-pointed, each to prove the same thing on the new markup** (every sortable header is the kit's `SortTh` now,
+its word the reader's `CONSOLE_SORT_LABEL` and its rendered class `align` + `className`; `theadHeaders` in the console
+cases reads a header row the way the render resolves it):
+- the header-word equalities of both ledgers and both histories (1.373), the per-panel `colSpan` rule (decision 2) and
+  the loader's column count (1.417) — read through `theadHeaders`;
+- the roster's header order (1.310/1.373), its wrapping money headers and their exact class (432(o), now also read off
+  every header's RENDERED class, so a `SortTh` carrying a bare `whitespace-normal` is caught), its three right-aligned
+  usage headers (1.407), its two floors and "no floor on a right-aligned header" (1.373, now also on rendered classes),
+  and the subject floor on every panel (1.373);
+- 1.407/1.409: "every `<th>` carries `scope="col"`" became "every PLAIN `<th>` carries it and every sortable one is the
+  kit's `SortTh`, one per roster column" — ruling 407's own two clauses. ⚠️ The kit's `SortTh` renders no `scope`
+  attribute; adding `scope="col"` to it is a one-line kit change this step could not make (`admin-sort.tsx` was being
+  edited by the main session);
+- the Results layout (1.437n) reads `SortTh` headers and resolves the folded column's word through the reader;
+- 1.411: the roster left the "draws no pager" list (it pages now, over its reader's count, and draws nothing at the
+  ceiling of twenty) and the landing page draws three pagers, not two;
+- 1.308's named expression-bodied Callouts: three — the roster's and the Results tab's refusals joined the activity
+  panel's; the list stays named and the count an equality;
+- 1.300: the gate-before-reader order is found at the roster reader's new three-argument call (the literal route is
+  unchanged);
+- 4.453's JSX-prose population names "Opening" and "Change" in place of "Account" and "Status", which are the reader's
+  words now (the reader is inside the same scan);
+- 2g's row finder and the roster states §3 scans read every roster page (above);
+- `test:house-bot-reports`: `houseRosterForConsole` and `houseResultsForConsole` 2 → 3 in `CONSOLE_GATES`, and 0.260.c5
+  now plants the address DROPPED and a FOURTH argument (the third is the real call now).
+
+**Anchors re-pointed** (same defect, new markup): `340-null`, `373-subject`, `373-order`, `432o-nowrap-header`,
+`432o-status-floor`, `432o-bets-axis`, `437-money-third`, `302-anchor-ignored`; `432o-exposure-name` moved to the
+reader's `CONSOLE_SORT_LABEL`, where the word now lives; `407-tabular` and `344-landing-total-from-rows` re-quote their
+re-labelled assertions.
+
+**Declared mutations: 30**, every id starting `sort-` in `scripts/anchors/house-bot-console.anchors.mjs` (26
+`console-mem`, 1 `reports-mem`, 3 `console-pg` on the Postgres twin's SQL); the console total is 430.
+They were driven on 2026-09-27 in a THROWAWAY CLONE — a `git clone --shared` of this tree at `c3c3b4a5` with the
+patch applied and committed in the clone only (the harness refuses a target that differs from HEAD), deleted after,
+its `node_modules` junction first. `node scripts/red-house-bot-console.mjs --only sort-` printed `baseline green` for
+`console-mem`, `reports-mem` and `console-pg`, then **`house-bot-console RED: 30 caught, 0 missed, 0 files left
+dirty`**, and the clone's `git status` showed 0 changed paths afterwards. The console floor was then re-measured at
+its raised value: `exit 0 · 1028 passed (at least 1028)` and `exit 0 · 760 passed (at least 760)`.
+
+**Integrated 2026-09-27 on top of steps 6 and 10** (`f03f8566` + this step; one lock acquisition, never piped):
+`test:house-bot-console` **1063 memory / 782 Postgres, 0 failed** (floor → 1063/782); engine 829/810, ops 100/104, caps
+89/96, designation 169/161, money 132/150, reports 251/80, comms 52/50, disclosure: all pass; `test:dal-parity`
+**1488/0**; `test:grid-paging` **41/0**; `typecheck`, `next build`, `verify:house-bot-bundle`, `test:tab-anchors`,
+`test:house-bot-surfaces`, `test:filter-language`, `test:pager-reach`, `test:section-rail`, `test:ui-consistency`: green;
+`test:red-anchors` 3480 passed, only the four known failures of other lanes; `test:tap-target` and `test:type-scale`
+carry exactly `main`'s known failures. `qa:nav-pending` **111/0/0**.
+**The first served run of §5.10 found three defects in the GATE, not in the product**, fixed before the push:
+- its "the page does not scroll sideways" check read `document.scrollWidth`, which cannot fail on the console (it clips
+  horizontal overflow) — its own control went red at every route and width. It now measures the rightmost edge of
+  anything under `<main>`, not entering a box that scrolls, and its control plants an over-wide element there;
+- an EMPTY table hides its own header row (the kit's `data-table-empty` rule), which it misread as a ledger's phone
+  stack — the targets table on the served account is empty (no seed writes targets), so its header controls are now
+  reported NOT MEASURED with that reason; the targets order is held on both stores by `test:house-bot-console`;
+- §5.7's control (one extra 160px column must make the ledger's strip scroll) could not fire on the narrower account
+  ledger at 1440 — a min-width on a table cell is not honoured and the other columns gave way. Its extra cell now holds
+  content wider than the whole strip.
+Also: the kit `SortTh` now carries `scope="col"` (it was the one header on the desk without it), and
+`scripts/grid-paging.test.mts` records why the roster's entry in `FIXED_GRIDS` still holds with a pager at twenty.
+With those fixes, `qa:house-bots-visual` on the served desk at 360, 640, 1024, 1280 and 1440, every tab and every sorted
+address: **1262 passed, 0 failed, 5 NOT MEASURED** — the five are the empty targets table's header controls, one per width.
+The sorted tiles were read at 360 and 1280: one header in force with its arrow, the order note in the table's card.
+
+
+### 12.14 The four fleets driven whole at the close — 2026-09-27 (RESUME-HERE §0c build step 11)
+
+Driven in a detached tree at `9a647397` — the commit that carries every step of the build order — with the driver that
+`plans/house-bots/tools/fleet.sh` was then made from (its `--dry` prints the same 18 slices), c5 first while that tree
+still equalled `main`. `test:red-anchors` ran first: 3480 passed, only the four known failures of other lanes, so every
+declared mutation resolved.
+
+| Fleet | Slices | Printed |
+|---|---|---|
+| c5 (99 primaries; a partner rides with its primary) | 3 | 45 + 45 + 9 caught · 0 wrong-assertion · 0 missed · 0 stale · 0 broken-injection |
+| console (450) | 10 | 45 × 10 caught · 0 missed |
+| engine (104, three on the Postgres twin) | 3 | 45 + 45 + 14 caught · 0 missed · 0 not measured |
+| money + seam (56 + 7) | 2 | 45 + 18 caught · 0 missed · 0 not measured |
+
+**716 of 716 caught, and no slice left a file dirty**; the drive tree was removed at the end. A session restart cut slice 8
+off mid-drive: the tree was found clean, and the resumed run drove slice 8 again from its start (a slice is skipped only
+once its log ends in `EXIT=`). Other lanes held the lock between slices for much of the day, so the 18 slices ran from
+22:42 UTC on 09-26 to 15:15 UTC on 09-27.
+
+**The desk rules drive (`qa:desk-rules-flow`), checked at the close because another lane reported two of its checks as
+this lane's:** `qa:desk-rules-flow` printed **81/89** at `9a647397` on a local `next dev`, and **89/89** after three repairs to the drive itself (pushed at `fe12e905`, re-run on the merged tree). None of the eight failures was the desk: (1) since `3e94bf2f` a clean form's Save stays disabled, so the drive's wait for it to re-enable ran out on every landed save and the checks read an empty toast list — the lane that made that change had fixed the wait and 8.6b on `main` the same day, and the merge kept its version; (2) §9d's two extra browser contexts signed the same admin in, and with one live session per account the drive's own page was signed OUT — which is why 9d.3 and 10.1 found no Custom chip and no Remove button (the two another lane reported as this lane's); the page is now signed back in; (3) the Custom panel has ten numeric fields and the drive typed the from-date twice, leaving Apply disabled; it now starts `to` half-way along. A click that times out now records what answers at the control's centre.
+
+### 12.15 The phone sort rail — built 2026-09-27 (Ali: "on a phone, the two activity lists can't be re-sorted … a phone sort button")
+
+What it does is §7.1c. What proving it took, on a worktree at `ffc0b63c` plus this change (a patch, integrated by the
+main session; one lock acquisition per batch, every gate on its own log, never piped):
+
+| Check, on the patched tree | Printed |
+|---|---|
+| console memory child (`house-bot-console-cases.mts`, `HB_MONEY_STORE=memory`) | first run **1070 passed, 1 failed** — the moved control below; after its re-point **1071 passed, 0 failed** (1063 + the eight `1.s9p` cases); 1.318's roll-call: 429 `console-mem` declarations, none stale |
+| `test:filter-language` | `255 assertions passed … all green` |
+| the three new `red:filter-language` cases, driven alone | `3/3 caught · 0 files left dirty · gate after restore exit 0` |
+| `test:red-anchors` | `3759 passed, 2 failed` — the two known anchors of other lanes (bar-geometry `sort-summary-unbound`, updown-handover `no-handover-at-all`); all eight `phone-sort-*` resolve exactly once |
+| focused `tsc` (the two pages, the kit rail, both other call sites; 1613 files read) | exit 0, and its CONTROL — a probe handing the rail `rank="bogus"` — exit 2, `TS2322` |
+| `docs:house-bots-guide`'s generator | its HTML equals the hand edit character for character (line endings aside) |
+| the Postgres child, `qa:house-bots-visual` §5.10, the declared mutations | **NOT RUN here** — the floor (1063/782) is left for the two-store run to raise; §5.10's new phone branch needs a served build |
+
+**Found by the first run:** `1.s9 · the pages · CONTROL` planted a raw address with `replace("sp={feedView.feedParams}", …)`,
+which takes the FIRST occurrence — now the phone rail's, drawn above the table — so the plant landed on the rail and the
+header pin rightly stayed whole. It now plants `sp={feedView.feedParams} baseHref={CONSOLE_ROUTE}`, a header's own
+parameters, as it always meant to; the rail's own raw-address plant is `1.s9p`'s.
+
+**Guards widened, never loosened:** `test:filter-language` §6.6 counted `rank="dense"` literally, so the kit rail's
+`rank={rank}` would have read "0 dense of 1". A rank passed through the rail's one prop now counts as dense only where
+that prop DEFAULTS to dense (`RANK_PROP_RAILS`), and the new §6.6c walks every call site of the component: one that lifts
+the rank must be named and must carry a rail id the visual gate drives; everything else takes the default.
+**Declared mutations: 8** `phone-sort-*` in `scripts/anchors/house-bot-console.anchors.mjs` (all `console-mem`), plus
+three new `red:filter-language` cases — **10 and 7 after the review below.**
+
+#### 12.15a The review's five fixes (2026-09-27, the same day)
+
+An adversarial review of the patch found five minor defects; each is fixed properly, none by weakening a check.
+
+1. **⭐ RULING 410, AMENDED — the "ONE `data-filter-rail`" law was false in the served page.** Each activity panel
+   whose ledger has rows now renders TWO `[data-filter-rail]`s at every width: the section's filter rail
+   (`activity-filters.tsx`) and the kit's phone sort rail, in the DOM at every width, shown below `sm` only, and not
+   drawn over an empty ledger. **The amendment: ruling 410's "ONE rail"
+   means ONE rail FILE under the section** (§K5 — never two copies of one control; still exactly `activity-filters.tsx`),
+   **and the kit's phone sort rail is the one other RENDERED `data-filter-rail` on an activity panel, by design.** The
+   two page comments and `1.410`'s rationale and label now say that, and a new pin holds the rendered pair: each
+   activity panel renders exactly one `<ActivityFilters` and exactly one `<CardSortControl`, neither page renders
+   either anywhere else, and the kit rail's file carries its hook once — with a control that plants a second filter
+   rail, a second sort rail, a sort rail after the table and a panel without its sort rail. Ruling 410 in
+   `plans/house-bots/C7-SPEC.md` points here.
+2. **The RENDERED "no link keeps the page" clause could not fail** — every view fed to it was the reader's, and the
+   reader's validated parameters never carry the page. Each address is now rendered again, headers and rail alike,
+   with the table's own page parameter handed in; both must drop it and stay one address. Its control renders a rail
+   that keeps the page, and the new declared mutation `phone-sort-kit-keeps-page` removes the kit's page reset.
+3. **`test:filter-language` §6.6c's call-site walk had three holes**, each a way to lift the rank unseen, each now its
+   own assertion: **6.6d** — every `<CardSortControl` opening must be a tag the walk parsed (a `<X …>…</X>` call was
+   invisible), and every importer must name the component only in its import and those tags (an alias or a
+   `createElement` call is refused); **6.6c** — a `{...spread}` in the tag counts as lifting the rank (refused off the
+   list, and refused on it, since a named call site must lift the rank where it can be read); **6.6e** — a named call
+   site's rail id must be the visual gate's SPEC literal `rail: "<id>"` in its code, not any quoted string or a comment.
+   Four new `red:filter-language` plants (non-self-closing call, spread, id only in a comment, id as another string).
+4. **`qa:nav-pending` had no phone case.** `desk-phone-sort` presses a not-in-force chip of the desk ledger's phone
+   sort rail on `/admin/desk?tab=activity`, must land on a `sort=` address and dims the card's rows; it runs only at
+   widths under 640 (a per-case `below`, NOT MEASURED with a reason when no such width is driven), is NOT MEASURED
+   with the page's own reason when the ledger is empty or failed (the rail is then not drawn), and FAILS — never
+   skips — when the ledger has rows and the rail is missing or hidden.
+5. **A screen reader on a phone was never told the sort direction** — the chip's arrow is `aria-hidden`, `FilterPill`
+   says only `aria-current`, and the header row carrying `aria-sort` is `display: none` below `sm`. The kit rail's chip
+   in force now carries the direction as visually hidden words (the kit's `sr-only`, " ascending" / " descending",
+   English like the rest of this admin-only rail) — so `/admin/ai-polls` and `/admin/candidates` get the fix too.
+   `1.s9p` reads the chip's visible text without them and pins the words on their own (the very word `aria-sort` gives
+   that column's header, on the chip in force and no other), with a control and the declared mutation
+   `phone-sort-kit-says-wrong-way`; `qa:house-bots-visual` §5.10 reads the word and arrow without them and requires the
+   words to be the direction the address asked for.
+
+| Check, on the patched tree (one lock acquisition, every gate on its own log) | Printed |
+|---|---|
+| console memory child | **1075 passed, 0 failed** (1071 + the four new cases); 1.318's roll-call: 431 `console-mem` declarations, none stale |
+| the three kit mutations, each injected, run and restored (`phone-sort-kit-direction`, `-keeps-page`, `-says-wrong-way`) | `3 caught, 0 missed, 0 files left dirty` — each red on its own `1.s9p · phone · RENDERED` label |
+| `test:filter-language` | `257 assertions passed … all green` (255 + 6.6d + 6.6e) |
+| the seven phone-sort `red:filter-language` cases, driven alone (the build's three and the review's four) | `7/7 caught · 0 files left dirty · gate after restore exit 0`; the review's four were first shown to be real holes by running a copy of the build's walk over each planted text in memory — GREEN on all four |
+| `test:red-anchors` | `3763 passed, 2 failed` — the same two known anchors of other lanes |
+| focused `tsc` (the kit rail, both desk pages, both other call sites) | exit 0; CONTROL `rank: "bogus"` exit 2, `TS2322` |
+| the Postgres child, `qa:house-bots-visual` §5.10, `qa:nav-pending` | **NOT RUN here** — both probes need a served build; the floor (1063/782) is left for the two-store run to raise |
+
+**Integrated and served 2026-09-27** (with FS-09, below; one lock acquisition, never piped): `test:house-bot-console`
+**1105 / 804, 0 failed** (floor → 1105/804); `test:filter-language` 257, all green, after the lead closed the verifier's
+last hole — a rank written `rank='x'` or `rank = "x"` read as "no rank"; §6.6c now reads any spelling JSX accepts, and two
+new red cases (`card-sort-rank-single-quoted`, `card-sort-rank-spaced`) prove it. On a served build: `qa:house-bots-visual`
+at 360, 640 and 1280 **762 passed, 0 failed, 3 NOT MEASURED** (the empty targets table's header, one per width);
+`qa:nav-pending` **112 passed, 0 failed** — the new phone case presses a chip at 360, sees the mark and the rows dimmed,
+and lands sorted. Its 4 NOT MEASURED ("the mark was still up 30s after release", a different four each run) were the
+PROBE's hold, measured on the served build of the pushed commit `994d2f0d` (2026-09-28): the probe PAUSED the pressed
+link's request and continued it on release, and a continued request's body was aborted 7 ms after its headers, so the
+router never committed. Four cases × 1280 and 360 × three presses: request paused, **13 of 24 never landed**; no hold at
+all, **24 of 24 landed**; request sent and its response held, **24 of 24 landed**. The probe now holds the response
+(`holdNavigation`, which is what a slow network does), and two runs printed **120 passed, 0 failed, 0 NOT MEASURED**
+each. ⚠️ The first explanation written here — the hold caught Next 16's header-less sidebar prefetches — was REFUTED
+by the re-run: holding only the pressed href still stalled four. The tiles were read at 360: the rail sits under the order note, the pressed chip
+carries its bar, and "Account ↓" lands with "By account, Z to A" above the re-sorted rows.
+
+### 12.16 FS-09 — every landed roster act tells every admin, once — built 2026-09-27 (Ali: "some desk actions … still don't send the admin alerts they were planned to send")
+
+**What changed.** `announceRoster` had two callers (Pause, Remove). Now every act that LANDS calls it once, after its
+history event is written and after its compliance row, inside the emitter's own `safe()` so an alert can never turn a
+landed act into a reported failure: **designate, re-verify (confirm permission), Start, Pause, Remove, the rules save,
+and the desk-wide limits save**. Each names the officer (`officerLabel`: the display name, else the account id); a
+rules or limits save carries every moved field as `label: before → after` (money through `formatTzs`; a switch, list or
+choice named but not valued); a save that moves nothing, and every refused act, announces nothing. The limits save now
+writes the desk-wide `LIMITS_SAVED` history event 02 §3.8 always described, so its alert has a row to link to
+(`/admin/desk?tab=history&event=<id>`). Recipients stay `houseBotAlertRecipients()` — every ADMIN, never the holder (D19).
+**The four target codes** have no writer to send them: nothing under `src/` calls an officer writer on the DAL's
+`targetStore`, and the targeting screen is not built. 2.fs09.8a is the law that makes the first writer announce: it reads
+the store's interface (fourteen members, classified), follows every binding of the store (name, alias, namespace, dynamic
+import, `.js`/`.mjs` specifiers), reports a spread, a value escape, a re-export and any binding it cannot follow, and
+accepts only an `announceRoster` the file itself imports from the emitters module with a literal `TARGET_*` event.
+
+| Gate, on the integrated tree | Printed |
+|---|---|
+| `test:house-bot-console` §2j (both stores) and 2.fs09.8 (memory) | inside the **1105 / 804, 0 failed** above |
+| `test:house-bot-designation` · `comms` · `ops` · `caps` · `money` · `reports` · `engine` · `disclosure` | 169/161 · 52/50 · 100/104 · 89/96 · 133/151 (floor → 133/151) · 251/80 · 829/810 · 118 — all 0 failed |
+| `qa:desk-rules-flow` on `next dev` (designates, saves rules, Starts through the real screens) | **89/89** |
+| `typecheck` · `next build` · `verify:house-bot-bundle` · `test:red-anchors` | exit 0 · compiled · green · 3811 passed, only the two rotted anchors of other lanes |
+
+**Found on the way, by the adversarial reviews and the lead:** the first target law matched `update` where the DAL's
+writer is `casUpdate`, never followed an import alias, and accepted any `announceRoster(` in a file — the reviewer's
+plants each passed it; a later verifier found a spread, a `.js` specifier, an unfollowable binding and an unbound
+announcer still passed — all closed, each with a planted control. The compliance register's D1 entry, which said both
+"NOT wired" and "Built", now strikes the stale half. **Declared mutations: 24 `fs09-*`** (console-mem); the one whose plant
+leaned on the unbound-announcer hole now binds its announcer with a dynamic import, so it still proves "a writer that
+does announce". **Both builds' mutations, driven after the push at the live commit `994d2f0d`** in a dedicated detached
+tree (2026-09-28): `red:house-bot-console --only phone-sort,fs09` **34 caught, 0 missed, 0 files left dirty**, and
+`red:filter-language` **37/37 caught**, each on its own assertion.
+
 ---
 
 ## 13. Accepted risks
 
-Risks 1–6 are PLAN §13, risk 7 is amendment A1, and risks 13–20 are PLAN §16b, each verbatim.
+Risks 1–6 are PLAN §13, risk 7 is amendment A1 and risks 13–20 are PLAN §16b, each verbatim. Risks 8–12 are amendment S5 (`plans/house-bots/04-amendments.md`), written in on 2026-09-26 with their sealed words kept: each was checked against the code first, and every correction it needed is struck in place and dated beside it.
 
 ⚠️ **THE TWIN IN `COMPLIANCE-DECISIONS.md` IS NOT WORD FOR WORD, AND SAYING SO IS THE POINT.** This line used to read
 "carries the same text", which was false and hid a real gap for four days: risk **21** was in that register in full and
 in this one not at all, and a reader who trusted the sentence never looked. Measured 2026-09-20, and held by
 `test:house-bot-disclosure` §docs:
 - **Risk 21 is now verbatim in both** (d.1 asserts text equality, not presence, so a paraphrase in either copy is red).
-- **Risks 13–20 are present by number in both** (d.2), but **13, 15 and 20 carry different supersede prose**: only the
+- **Risks 8–12 are verbatim in both** (added 2026-09-26): d.7 asserts text equality risk by risk, as d.1 does for 21, and that each is one line of one unbroken list 7 → 13; d.7b asserts that the "⏳ never added" placeholder they replaced is gone from both.
+- **Risks 13–20 are present by number in both** (d.2, which since 2026-09-26 counts all of 1–20), but **13, 15 and 20 carry different supersede prose**: only the
   `COMPLIANCE-DECISIONS.md` copy has the `listRegister` / ruling-517 correction. Reconciling those three is a docs job
   nobody has been given; it is recorded in `plans/house-bots/DEFERRED-TESTS.md` §1L as NOT MEASURED with that reason,
   never quietly dropped.
@@ -1664,9 +2571,11 @@ in this one not at all, and a reader who trusted the sentence never looked. Meas
 5. **Throughput.** Bot bets serialise on `house:control` (ms-long), and the holder shares the `bet.place` rate bucket (min gap ≥ 20s).
 6. **Delivery.** Merge conflicts with the parallel session are likely. `overlapSeconds` in production is unverified; the design is correct either way. ~~sw/zh legal text needs native review.~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** no legal text changes, so there is none to review (D19a). The leaderboard shows the holder's display name.
 7. A password change or reset does not sign out the holder's other sessions (owner ruling 2026-09-13). Recommended hardening, as a separate platform commit: revoke at the three writers, re-mint the session of the device that made the change, and add login copy `kp_revoked=pw`. House consent is unaffected either way, because consent is the fingerprint, never a session. (also recorded as hardening H1, C9)
-
-Risks 8–12: ⏳ added in commit 8 (S5).
-
+8. **Rollback window:** unmarked payouts, possible cash-outs, wagering and commission on house positions. Repaired or recorded per S3. ⚠️ **Checked against the code 2026-09-26.** The window opens only while production runs a build with no house marker in its data layer — a revert of the house code, or a redeploy of an older image (`docs/HOUSE-BOTS.md` §11, "Rollback levers"); today's code refuses a house cash-out outright (`cashOutPosition`), so a cash-out on a marked position can only come from such a build. The repair is built: `npm run ops:house-bots-status -- --drift` measures S3's three legs inside a `--since` bound and refuses an unbounded run; `npm run ops:house-bots-remark -- --apply` fills leg (a) on ledger rows only and is refused while the master switch is ON; legs (b) and (c), a cash-out or a commission on a marked position, go into a `docs/COMPLIANCE-DECISIONS.md` note with their amounts, and nothing is clawed back automatically. The remark writes no compliance row (D-OPS-3) and the status read writes nothing, so the officer files the note with their output. ⛔ **Two limits the sealed sentence does not state.** Wagering accrued in the window cannot be measured on this schema — it is a counter on `BonusGrant`, which carries no position — so the drift read prints NOT MEASURABLE, never a 0. And until leg (a) is filled, the desk's own book (`src/lib/server/house-bot/book.ts`, which counts returned money only from MARKED rows, and on whose settled loss both automatic loss stops act) sees those stakes return nothing, so its loss figures overstate the loss for the days they were placed: it errs toward stopping, never toward staking.
+9. **Per-process state (F7):** the maintenance latch, the vendor price cache ~~and the verify bucket~~ are per container. Production stays at 1 replica (~~`RAILWAY-LIVE.md:353`~~). ⚠️ **Checked against the code 2026-09-26.** The latch is `getPlatformConfig`'s first read (`src/lib/server/platform-config.ts`), and it is what the bet path's own maintenance check reads (`isMaintenanceMode`) — but a house fire re-reads maintenance from the stored config row before it reaches the bet (`maintenanceOn`, `src/lib/server/house-bot/control.ts`; `test:house-bot-engine` 16.15), so maintenance stops a house stake on every container, while a player's bet on another container still reads that container's latch. The price cache is the in-process store behind `peekVendorBar` (`src/lib/server/updown-terminal-vendor.ts`) — the chart's cached one-minute bars and, since 2026-09-23, the oracle's last boundary reading — and a container holding no fresh bar skips with UD_STALE_PRICE (risk 10). ⛔ The verify bucket is NOT per container: `desk.verify` is taken through `rateCheckAsync` (`src/lib/server/rate-limit.ts`), one budget for every container in Redis, falling back to the in-process bucket only while Redis is unconfigured or failing; `docs/RAILWAY-LIVE.md` §6 records Redis as armed across containers in production — a record, not re-measured here — and the holder's failed-password count in the database, with its reserve, binds either way. The one replica is likewise a record: `docs/RAILWAY-LIVE.md` §2 (measured there 2026-09-04) and its §13 row 6, as is its trap 13, which records that Railway ignored the repository's `railway.json` and with it the 60 s `overlapSeconds` that file declares; neither is re-measured here. More than one container, or an overlap that takes effect, is a house release event (`docs/HOUSE-BOTS.md` §14, F7).
+10. **Up & Down with no fresh vendor bar:** modes ~~mostly~~ skip with UD_STALE_PRICE (A15). This fails closed. ⚠️ **Checked against the code 2026-09-26.** Every mode, not most: COUNTER, FILL and OPENER each judge closeness on a price when the stake is decided and again when it fires (`udCloseness`, `src/lib/server/house-bot/decide.ts`, re-run by `src/lib/server/house-bot/fire.ts`), and with no price fresh enough each skips with UD_STALE_PRICE; nothing falls back to an older price (`udPriceForDecision`, `src/lib/server/house-bot/ud-price.ts`). Fresh means a bar this container holds (`peekVendorBar`: a chart's cached one-minute vendor bar or, since 2026-09-23, the oracle's own boundary reading) younger than `UD_VENDOR_BAR_MAX_AGE_SEC` (180 s), or a confirmed observation younger than `UD_OBSERVATION_MAX_AGE_SEC` (60 s), both in `src/lib/house-bot/constants.ts`. ⚠️ The bar window was 120 s until 2026-09-23 (`636e173b`), which refused the desk's first live Up & Down stakes: a bar is published well after its own boundary, and an opener then waits out its drawn delay before it fires. 180 s is a deliberate widening — closeness may be judged on a price up to three minutes old — bounded because the provider publishes nothing fresher. The observation window sits below the provider's publish lag on purpose, so in practice the bar decides; the constant's own docblock gives the reason.
+11. **Sunset can't unwind open stakes:** emergency void works on a whole market only (~~`market-service.ts:4061`~~). Open stakes settle normally. ⚠️ **Checked against the code 2026-09-26 — true, and on both products.** `emergencyVoidMarket` (`src/lib/server/market-service.ts`) refunds EVERY open stake in its market, and an Up & Down round's operator void (`voidRoundByOperator`, `src/lib/server/updown-service.ts`) refunds every stake in its round, so a void used to unwind the house would cancel every player's stake beside it; nothing voids one position, and a house position cannot be cashed out — it gets the ordinary closed-exit refusal (`cashOutPosition`; D19c, C4 ruling 147). A sunset (`npm run ops:house-bots-sunset`, `src/lib/server/house-bot/sunset.ts`) therefore removes every account, ends every target and cancels every queued stake, and leaves the open stakes to settle into the holders' wallets; its one admin alert carries the open amount, so "withdrawn" is never read as "nothing left on the table".
+12. **Until the F2 code-state flip is deployed:** OFF and Remove are database states that any ADMIN can reverse (~~`rbac-guard.ts:208-225`~~). ~~A22 alerts every recipient when that happens.~~ ⚠️ **Checked against the code 2026-09-26.** The flip is built and not thrown — `desk` ships ACTIVE in `src/lib/feature-state.ts` (read by `houseBotsLive()`; the key was `houseBots` until 2026-09-21) — so this risk is live. The desk's door is `houseConsoleAudience` (`src/lib/server/house-console-read.ts`), never `requireOwner`, and it answers the same: the ADMIN role. (a) Any ADMIN may switch the desk back ON after any OFF — an officer's, or one the engine wrote itself (`GLOBAL_LOSS_STOP`, `ENGINE_FAULT`, `ENGINE_ERRORS`): while the code state is ACTIVE, `switchOnHouseBots` refuses an OFF desk only for a SUNSET or an unset required limit. ⚠️ That is D1 as it is read since 2026-09-26 (delegated): the owner is the ADMIN role, the tier that alone runs staff, roles and the desk, so no per-account switch list is built, and every switch-on writes a `SWITCH_ON` event and a COMPLIANCE audit row naming its actor and alerts every admin (`docs/COMPLIANCE-DECISIONS.md`, entry `2026-09-26 · D1 READ AS THE OWNER ROLE`). (b) A removed account's record never runs again, but any ADMIN who has the holder's password may designate the same player account as a new record and start it (`designateHouseBot`; `test:house-bot-designation` 4.7). (c) A22's one resolver, `houseBotAlertRecipients` (`src/lib/server/house-bot/alerts.ts`), names every ADMIN, and each is told by bell and email of every switch ON, of every OFF the console, the engine or a sunset throws (the terminal fallback `npm run ops:house-bots-off` sends none; its SWITCH_OFF event is the record), of a Pause or Remove by hand, and — ✅ since 2026-09-27 (checked against the code; FS-09's build, which the D1 entry named as separate) — of every designation, re-verify, Start, rules save and limits save that lands, each alert linking to the act's history event (`announceRoster`, `src/lib/server/house-bot/emitters.ts`; `test:house-bot-console` §2j). Those five alerts and the Pause and Remove alerts name the officer who acted (their display name, else their account id); the switch-ON alert names no one — ruling 420 keeps its actor an id, on its `SWITCH_ON` event and audit row. A save's alert gives every moved number before → after; switches, lists and choices by name. So a re-designated account is recorded — its COMPLIANCE audit rows, its history events and the roster itself — AND every other admin is told who did it. ⚠️ A target add, change, removal or veto is not announced, because no such act exists yet: nothing under `src/` calls the target store's four officer writers (`insert`, `casUpdate`, `remove`, `veto`; the system's own ends — by the planner, a void consent, a Remove or the sunset — send no alert by design). `test:house-bot-console` 2.fs09.8 holds the first file that does to an `announceRoster` call with a TARGET_* event, whatever name it binds the DAL's `targetStore` to (its own, an import alias, a namespace or a dynamic import); it reports the store passed on as a value or re-exported, where it could not follow it, and a new member of the store until it is classified. (d) The sunset's database half alone (`offCause = SUNSET`) refuses the switch but not a designation, a re-verify or a Start, which read only the code half; nothing can stake while the switch is refused, and the code half closes the rest (`docs/HOUSE-BOTS.md` §11, "Sunset").
 13. **Selection edge, bounded not eliminated.** Staff choose the poll and the moment, and can decline after seeing the computed side. They can also see what players cannot: positions with owner names and phones on the admin market page, AML views, and AI poll data (reasoning, confidence, reviewer). The side can't be typed, but it can be matched by waiting until the thinner side is the side they favour. Bounds: the blackout (AI result check recorded, or market reopened), the formula side and amount, staff-chosen caps inside the locks, the counterparty share limit and pro-rata counterparty caps, a durable record of every press (placed or refused), ~~previews per officer, the vetoes register, and the monthly staff-edge scorecard with its alert (W16)~~. ⛔ **Superseded by D20 (Ali, 2026-09-17):** those three are R1's report sections (c) previews without a stake, (h) vetoes and (f) the staff-chosen scorecard, plus the staff-edge alert, all struck (C5-SPEC rulings 202, 218–223); D20 does not strike the durable rows beneath them (`ENTER_NOW_PREVIEWED` and `STAFF_INTENT_CANCELLED` events, VETOED targets).
 14. New with D17: a person chooses the moment of an opener stake and of any stake; opening empty markets is already superseded (UPDOWN D3, automated OPENER).
 15. **Void after a staff-chosen stake.** A single admin can still void or reopen a market holding one (no officer lock: I10 and the 2026-07-24 guardrail). ~~Mitigation is display, the R9 `houseStake.staffChosen` payload, the `staff-stake-voided` alert and an R1 row only.~~ ⛔ **Superseded by D20 (Ali, 2026-09-17):** the display, the R9 payload and the R1 row are struck (C5-SPEC rulings 187–194, 199–213); of that list only the `staff-stake-voided` alert (commit 4) is untouched by D20.
@@ -1681,8 +2590,8 @@ place stakes" and "Multiple accounts, **shared accounts** and account sales are 
 names no house-liquidity processing. Under D19 none of that text changes, so the platform operates accounts in a way
 its own published rules prohibit and its notice does not describe. A player who learns of it, or a regulator, could
 call that misleading. Ali accepted this on 2026-09-16 after being shown the sentences and an alternative neutral
-wording, and reports that the Gaming Board told him his answers are legally valid (no document on file; REL-4 asks for
-one). The holder's own consent is unaffected: they agree privately and give the owner their password (D5). ⚠️ **Corrected 2026-09-18 (ruling 503).** This sentence read "and type their own password", which the built code contradicts: `src/lib/server/house-bot/designation.ts` addresses the OFFICER throughout — `:79` `empty: "Enter their password."`, `:102` "That isn't their current password.", `:109` "Check the holder's password for an owner" — and **no field anywhere lets the holder type it**. D5 is the OWNER typing the HOLDER's account password, verified like a sign-in and never creating a session; `:158` and `:201` stand as written. ⛔ **The consent itself does not change** — the holder still agrees privately and still supplies the password; what the record stops saying is that the holder types it into a wizard, because no such wizard field exists.
+wording, and reports that the Gaming Board told him his answers are legally valid (no document on file, and by owner ruling D21 of 2026-09-20 none is owed:
+the Board needs nothing). The holder's own consent is unaffected: they agree privately and give the owner their password (D5). ⚠️ **Corrected 2026-09-18 (ruling 503).** This sentence read "and type their own password", which the built code contradicts: `src/lib/server/house-bot/designation.ts` addresses the OFFICER throughout — `:79` `empty: "Enter their password."`, `:102` "That isn't their current password.", `:109` "Check the holder's password for an owner" — and **no field anywhere lets the holder type it**. D5 is the OWNER typing the HOLDER's account password, verified like a sign-in and never creating a session; `:158` and `:201` stand as written. ⛔ **The consent itself does not change** — the holder still agrees privately and still supplies the password; what the record stops saying is that the holder types it into a wizard, because no such wizard field exists.
 
 ### Risk 21's premise, read out of the published rulebooks
 
@@ -1727,65 +2636,12 @@ Each rule is quoted verbatim from the amendment that sets it. A change that brea
   | Claims, caps, throttles, AlertOnce, summaries, beats, scopeFrom, hashes | DB | correct |
   | 5 s soft cache | process | stale intents CANCELLED at fire |
   | ≤2 fires, hook semaphore, admission | process | throughput only |
-  | `desk.verify` bucket | process | N× tries; C4's database reserve still binds |
+  | `desk.verify` bucket | ~~process~~ Redis, one budget for every container; this process only while Redis fails | ~~N× tries;~~ ⚠️ **corrected 2026-09-26 (checked against the code):** one budget across containers — `desk.verify` is taken through `rateCheckAsync` (`src/lib/server/rate-limit.ts`), which falls back to the in-process bucket only while Redis is unconfigured or failing, and `docs/RAILWAY-LIVE.md` §6 records Redis as armed across containers (a record, not re-measured here). C4's database reserve still binds either way |
   | Holder's `bet.place` bucket (`rate-limit.ts`) | process | holder gets more headroom |
   | Vendor 1-minute bar cache (`updown-terminal-vendor.ts`) | process | a cold container skips with UD_STALE_PRICE (fails closed) |
-  | Maintenance flag, loaded once (`platform-config.ts`) | process | the other container's bet path misses it, so A9's maintenance fallback isn't binding |
+  | Maintenance flag, loaded once (`platform-config.ts`) | process | the other container's bet path misses it~~, so A9's maintenance fallback isn't binding~~ ⚠️ **corrected 2026-09-26 (checked against the code):** F7's own build step 2 is built — a house fire re-reads maintenance from the stored config row before it reaches the bet (`maintenanceOn`, `src/lib/server/house-bot/control.ts`; `test:house-bot-engine` 16.15) — so A9's fallback binds every house stake on every container, and only a player's bet on another container misses it |
 
 - **R4 — no rewards on house stakes:** "No prize, cashback, tournament or rank reward may be computed on house-marked positions; public display may include them (D6)."
 - **A10 — every refusal is mapped:** "A new bet refusal = a BET_PATH_REASONS entry + a mapper row in the same commit."
 - **FS-07 — rules schema bumps:** "A rules schema bump may never widen scope or caps by default."
 - **A7 — the session clock:** "A house bet neither advances nor is refused by the holder's session clock."
-
-### 12.4 What the ledger row cost to prove, and the five instruments that lied on the way — 2026-09-25
-
-The activity row became a betting ledger — `Round · Opening · Stake · Closing` beside the outcome chip, the game
-link and the note, with `Product` dropped. The reader work is in §12.3's siblings; this section exists for the next
-session **on any machine**, because the expensive part was not the feature. It was that a green gate and a green
-suite both sat on top of a screen that was wrong, and five separate instruments had to be repaired before the
-screen could be trusted at all.
-
-**THE COLUMN LOOKED BROKEN AND WAS NOT.** `Opening` painted an em dash on every row of both tables while SQL
-insisted the pairing existed — a `positionId` on the intent, a `BET_PLACED` transaction carrying it, a
-`balanceAfter`, the same holder. The cause was not in the product. ⛔ **`Transaction.createdAt` is a NAIVE
-`timestamp`** (`prisma/schema.prisma`: `createdAt DateTime @default(now())`, no `@db.Timestamptz`), unlike
-`HouseBotIntent.createdAt`, which IS `@db.Timestamptz(3)`. Hand `pg` a JS `Date` and it sends an offset-bearing
-literal, which Postgres resolves against the SESSION zone before dropping the zone — and the scratch cluster runs
-`Asia/Beirut`, which the server announces at boot in its own words (`[house-bot] database TimeZone is Asia/Beirut,
-not UTC`). Every fixture movement landed **three hours in the future**; `findByUserWindow` bounds its scan at
-`nowMs + 1` and filtered them straight back out, so the reader fell through to the older, unpositioned rows and
-painted their balance as a CARRIED figure. Anything writing transactions with raw SQL must write the UTC wall time
-with no zone at all. ⛔ **And the check that was supposed to catch it could not:** it read
-`createdAt > now() - interval '30 days'` — a LOWER bound only, which a future timestamp passes. Both bounds, or the
-question was never asked.
-
-**PROVED, NOT ASSERTED.** With the stamps fixed the page paints `withOpening: 5, identityHolds: 5` — five rows
-carry an opening and `Opening − Stake = Closing` holds on every one (1,247,500 − 7,500 = 1,240,000). SQL predicted
-exactly five on page one and the page painted exactly five; prediction and paint agree, which is the only form of
-this proof worth having.
-
-**THE FIVE INSTRUMENTS, each of which was returning a confident answer about something it never measured:**
-
-| what it claimed | what it did |
-|---|---|
-| the visual harness's step results | every step ended `\| tail -N`, and a pipeline's status is its LAST command — a failed `migrate deploy` or a crashed seed exited 0 through `tail` and the run carried on to serve a half-built database. `set -eo pipefail`. |
-| "the Round column reads #1,570" | matched `#` + digits anywhere in the table HTML and was reading `Player #8480_3`, the ACCOUNT reference, as a round number. Read the cell by its column index. |
-| "the account table has no ledger" | the probe hardcoded a bot id, and a reset cluster mints new ones — an ABSENT page read exactly like a broken one. Find the id the desk itself links to, and say so when there is none. |
-| the gate's own cleanup | `kill` does not stop `next start` on Windows. The survivor held :3021, the next run aborted, and — worse — a stale server serves the OLD build. Clear the port, never trust it. |
-| `373-minw` and `1.373`'s allowlist | both quoted the table opener VERBATIM, so changing a gutter rots them. Re-aim in the same commit. |
-
-**THE WIDTH, STATED RATHER THAN CLOSED.** At 1280 the desk-wide strip is 998px and the table measured **1519px**:
-`Round`, `Game`, `Note` and the STOP CONTROL were reachable only by dragging. Halving the desktop gutter
-(`sm:!px-4` → `!px-2`) and dropping the `Game` floor (`22ch` → `16ch`, which WAS its 180px) returned 144px →
-**1375px**. ⚠️ It still exceeds the strip, and that is reported, not hidden: **twelve discrete columns do not fit
-998px at any honest type size** — collapsing `Round`, `Note` and `Type` into their neighbours AND dropping money to
-the caption rung still lands near 1050px. What it falls back to is the scroll 432(b) and `qa-house-bots-visual`
-§5.2 already licence, and that rule holds: the subject and the first two money answers stay inside the strip and
-the region really scrolls. Closing the remainder costs a column the owner asked for by name, so it is his call.
-
-⛔ **`db:scratch` DOES NOT GIVE YOU A FRESH DATABASE.** `DATA_DIR` is `<checkout>/.pgscratch` — one directory per
-CHECKOUT, not per port — so `KP_SCRATCH_PORT=5474` boots the PREVIOUS run's data (110 intents accumulated across
-runs here, and a long recovery that reads as a hang). `--reset` is what gives you a clean one, and it fails `EPERM`
-while an orphaned postmaster still holds the directory: stop those first. `seed-house-bots-local.mts` is **not
-idempotent** — it places a real bet at line 170 and throws `the player's stake was refused` against an
-already-seeded database.

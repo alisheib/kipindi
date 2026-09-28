@@ -5,7 +5,8 @@
 > the "what & why & acceptance criteria"; the tracker is the "done / not done."
 > Standards: GLI-33 v1.1 (Event Wagering) + GLI-19 v3.0 (Interactive Gaming) + GLI-27 (network
 > security). GLI-13 N/A. RNG N/A for outcomes (human two-officer resolution); CSPRNG still applies
-> to security tokens. **Do not spend engineering time on Appendix D (contract-blocked).**
+> to security tokens. **Do not spend engineering time on the contract-blocked items in Appendix D**
+> (D2 SMS is live since 2026-09-16 — see D2).
 
 Context: Tanzania-licensed (GBT, license in progress) pari-mutuel prediction market. Players stake
 YES/NO into a shared pool per market; after a combined 9% operator margin (tax + commission from the
@@ -228,12 +229,14 @@ job within tolerance; timestamps UTC. 30) PITR drill: restore yesterday's DB wit
 31) kill -9 settlement worker mid-market → resume → exactly-once payouts. 32) Hourly reconciliation
 shows zero diffs, ledger vs legacy balances.
 
-**Deferred (do not attempt now):** OTP to a real phone, live deposit/withdraw rails, forged/replayed
-provider webhook signatures, withdrawal-to-different-number closed loop, authoritative NIDA match.
+**Deferred (do not attempt now):** live deposit/withdraw rails, forged/replayed provider webhook
+signatures, authoritative NIDA match. *(Corrected 2026-09-25: "OTP to a real phone" and the
+"withdrawal-to-different-number closed loop" are no longer contract-deferred — SMS is
+live since 2026-09-16 and the closed loop is built (E-215); see D2.)*
 
 ---
 
-## D. APPENDIX — DEFERRED, BLOCKED ON THIRD-PARTY CONTRACTS (no engineering now)
+## D. APPENDIX — DEFERRED, BLOCKED ON THIRD-PARTY CONTRACTS (no engineering now; D2 excepted — live 2026-09-16)
 
 Commercial action only; keep interfaces clean so each plugs in without reopening certified paths.
 
@@ -241,9 +244,21 @@ Commercial action only; keep interfaces clean so each plugs in without reopening
   rails; provider HMAC + replay window on `/api/webhooks/payments`; idempotent on `providerRef`
   (constraint exists); daily provider-statement vs ledger reconciliation; segregated player-funds
   account + daily player-liability report.
-- **D2. SMS provider (Beem/AT/Twilio)** — High. On signing: re-enable OTP at registration + on
-  withdrawal-destination change; closed-loop withdrawals (payout only to verified registered number;
-  change = OTP + 24h hold + KYC recheck); strip console SMS from prod; keep password as second factor.
+- **D2. SMS provider** — High. ✅ **LIVE: Blackball, since 2026-09-16**
+  ([`BLACKBALL-SMS.md`](BLACKBALL-SMS.md)); delivery receipts settle real rows since 2026-09-23.
+  No longer contract-blocked (corrected 2026-09-25; the vendors named here before — Beem, Africa's
+  Talking, Twilio — were never signed, and the Beem / Africa's Talking / Selcom SMS adapters were
+  deleted 2026-09-16). The on-signing criteria, now ordinary work
+  (done / not done lives in the tracker):
+  - Console SMS must not deliver in prod — DONE: the console provider throws in production
+    (`src/lib/server/sms.ts`).
+  - Closed-loop withdrawals (payout only to the verified registered number) — DONE:
+    `src/lib/payout-destination.ts` (E-215). There is no self-service phone change (the player is
+    sent to support), so the "change = OTP + 24h hold + KYC recheck" flow has no surface yet.
+  - OTP at registration and on a withdrawal-destination change — NOT offered: the server path
+    exists, but phone-code login is deliberately off (`OTP_ENABLED` unset; `BLACKBALL-SMS.md` §7
+    step 6, decided 2026-09-16). A product decision, not a missing provider.
+  - Keep the password as a factor — holds: sign-in is phone + password.
 - **D3. Authoritative NIDA (mTLS) or interim IDV vendor** — Blocker for full identity sign-off. Verify
   NIN vs NIDA; enforce NIDA-DOB≥18; mismatch flags; batch re-verify all `FORMAT` users. Section B is
   the fallback until then.

@@ -2,6 +2,12 @@
  * Affiliate / referral E2E — drives /api/dev-test/affiliate-e2e against the
  * running dev server (:3000) and prints a per-assertion report.
  *
+ * ⚠️ SINCE 2026-09-25 (docs/PLAYER-INVITE-UNPAID.md) the platform pays a PLAYER referrer nothing, and the
+ * route this drives asserts a paid player prize with no override — so on the shipped state it is RED by
+ * design. FEATURE_INVITEREWARDS=ACTIVE on the dev server is the MINIMUM to reach the paid path; nothing has
+ * run this since it was orphaned, so it may be red for other reasons too. The shipped unpaid behaviour is
+ * guarded by `npm run test:player-invite-unpaid`.
+ *
  *   1. npm run dev   (in another terminal)
  *   2. node scripts/affiliate-e2e.mjs
  */

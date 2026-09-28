@@ -433,15 +433,33 @@ export type SelfExclusionStanding =
 
 export async function selfExclusionStanding(userId: string): Promise<SelfExclusionStanding> {
   const r = await getRgSettings(userId);
-  if (!r.selfExclusionUntil) return { state: "none" };
-  const until = r.selfExclusionUntil;
+  return selfExclusionStandingOf(r.selfExclusionUntil);
+}
+
+/**
+ * ⭐ THE STANDING ITSELF, AS A PURE FUNCTION OF THE STORED END DATE — reads nothing, writes nothing.
+ *
+ * Split out 2026-09-25 (marketing U10) so there is ONE definition of "serving / minimum served" and a
+ * caller that must not write can still use it. `selfExclusionStanding` above goes through
+ * `getRgSettings`, which CREATES a row for a user who has none and REWRITES an existing row whenever a
+ * pending limit change has come due (`effectivize`) — correct for the player's own screens, and wrong
+ * for a marketing gate asked once per recipient (`marketing/rg.ts` reads `db.responsible.get` and
+ * calls this). ⛔ Do not give the gate its own copy of these comparisons: two definitions of "has the
+ * exclusion ended" only have to disagree once.
+ */
+export function selfExclusionStandingOf(
+  selfExclusionUntil: string | null | undefined,
+  now: number = Date.now(),
+): SelfExclusionStanding {
+  if (!selfExclusionUntil) return { state: "none" };
+  const until = selfExclusionUntil;
   const untilMs = new Date(until).getTime();
   if (Number.isNaN(untilMs)) return { state: "none" };
-  if (untilMs > Date.now()) {
+  if (untilMs > now) {
     // "perm" is stored as now + 100 years rather than as a null, so a far-future end date is
     // how a permanent exclusion is represented. Ten years is well past the longest real period
     // offered (6 months) and well short of the 100 stored.
-    const permanent = untilMs - Date.now() > 10 * 365 * 24 * 3600_000;
+    const permanent = untilMs - now > 10 * 365 * 24 * 3600_000;
     return { state: "serving", until, permanent };
   }
   return { state: "minimum_served", until };
@@ -720,9 +738,14 @@ const DETECTORS: Detector[] = [
   // detector runs for EVERY user in batches — so fetching it per user turns an existing
   // walk into a timeout. That is ledger row 10.8 and it is still OPEN.
   //
-  // ⛔ The marker id stays `CHASING_LOSSES`: it is persisted on existing flags and on the
-  // Board-facing RG report, and renaming an enum to fix a sentence would rewrite history
-  // that officers have already acted on.
+  // ⛔ The marker id stays `CHASING_LOSSES`: officers have already acted on flags by that
+  // name, and renaming an id to fix a sentence would break that record.
+  // ⚠️ Corrected 2026-09-25 (marketing U10): this said the id "is persisted on existing flags
+  // and on the Board-facing RG report". NOTHING persists a harm flag — no table, no `db.*`
+  // namespace, no audit action, nothing in `reports/catalogue.ts`. Every flag is recomputed on
+  // each call and `detectedAt` is the time of the computation, so a marker lasts exactly as
+  // long as its detector's window (≤ 8 days). `marketing/rg.ts` states that limit rather than
+  // pretending the refusal it builds on these flags is standing.
   (ctx) => {
     const betsPlaced = ctx.recent7d.filter((t) => t.type === "BET_PLACED" && t.status === "CONFIRMED");
     const recentDeposits = ctx.recent7d.filter((t) => t.type === "DEPOSIT" && t.status === "CONFIRMED");

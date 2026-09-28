@@ -1,27 +1,14 @@
 /**
  * The agent recruit book's query contract — lens · sort · paging.
  *
- * 🔴 IT IS ON THE AGENT DASHBOARD, NOT THE PLAYER PROMO BODY, AND THAT IS THE WHOLE FINDING OF
- * TASK 4.11. The board named the player body's `RecruitRow["status"]` (`Signed up · First bet ·
- * Earning`). That body cannot be reached by any live viewer, and the proof is three lines of
- * shipped code rather than an argument:
- *
- *   · `feature-state.ts` — `PRODUCT_STATE = { invite: "WITHDRAWN", … }`, so `inviteIsLiveFor` is
- *     true only when the viewer is an agent in good standing, which requires `approvedAt`;
- *   · `getAgentDashboard` returns non-null on exactly that same condition (`isApprovedAgent` is
- *     `!!account?.approvedAt`);
- *   · and it is consulted FIRST — `if (agentDash) return <AgentDashboard/>; if
- *     (!inviteIsLiveFor(viewer)) notFound();`
- *
- * ⇒ `approvedAt` set means the agent dashboard; unset means the player body.
- * ⛔ So the list this filter rail serves is `dash.recruits` — the AGENT's book, unbounded and
- * unpaged, exactly as the board describes, on the other component.
- *
- * ⚠️ 2026-09-25 — THE OTHER BRANCH IS NO LONGER `notFound()`. `PRODUCT_STATE.invite` is ACTIVE and
- * an ordinary player lands on the UNPAID share body (`docs/PLAYER-INVITE-UNPAID.md`). ⭐ THE
- * RULING HERE IS UNCHANGED AND FOR A BETTER REASON THAN BEFORE: the player body still gets no
- * filter rail, because the list it shows is the player's own friends — a handful of rows with a
- * name and a date, and nothing to filter BY once the money columns are gone.
+ * 🔴 IT IS ON THE AGENT DASHBOARD, NOT THE PLAYER BODY — TASK 4.11's FINDING, AND ITS REASON CHANGED
+ * ON 2026-09-25. The board named the player body's `RecruitRow["status"]` (`Signed up · First bet ·
+ * Earning`). When 4.11 was decided `PRODUCT_STATE.invite` was WITHDRAWN, so no live viewer could reach
+ * the player body and the list this rail serves had to be `dash.recruits` — the AGENT's book
+ * (`profile/invite/page.tsx` still asks `getAgentDashboard` FIRST).
+ * ⚠️ Since 2026-09-25 `invite` is ACTIVE and every player in good standing lands on the UNPAID body
+ * (`docs/PLAYER-INVITE-UNPAID.md`). The ruling stands for a better reason: the player's list is their own
+ * friends — name and date, capped at 50 — and there is nothing to filter BY once the money columns are gone.
  *
  * ⚠️ THE OLD NOTE HERE RECORDED A DISAGREEMENT BETWEEN TWO GATES — `qa:live` asserting
  * `/profile/invite` SHOWS a 10,000 reward, `qa:agent-drive` §6 asserting the opposite — and ruled

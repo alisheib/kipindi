@@ -207,6 +207,7 @@ export function TippingBar({
   emptyLabel = "No bets yet",
   probabilityLabel = "YES probability {pct}%",
   labels = { yes: "YES", no: "NO", tipping: "tipping", leansYes: "leans yes", leansNo: "leans no" },
+  as = "progressbar",
 }: {
   yesPct?: number;
   height?: number;
@@ -219,9 +220,11 @@ export function TippingBar({
    *  sweeps across, leading side bolds. Disable on order books, depth
    *  charts, and any list of > 10 bars in view. */
   recastOnHover?: boolean;
-  /** No activity yet — render a neutral dashed track (no split, no needle,
+  /** No crowd price — render a neutral dashed track (no split, no needle,
    *  no labels). An empty market has no crowd price, so a centred 50/50 would
-   *  be a fabricated one (RULES law 5). A STATE OF THIS BAR, not a second
+   *  be a fabricated one (RULES law 5); nor does a pool with money on ONE side
+   *  (MOBILE-VISUAL ruling 13, landing v3 WP6), where a full pill would be a
+   *  100% nobody's money stated. A STATE OF THIS BAR, not a second
    *  component — DESIGN_AUTHORITY B9. */
   empty?: boolean;
   /** Accessible name for the empty rail. Pass the caller's localised string —
@@ -234,6 +237,10 @@ export function TippingBar({
   probabilityLabel?: string;
   /** The five words under the bar when `showLabels`. Same rule as `probabilityLabel`. */
   labels?: { yes: string; no: string; tipping: string; leansYes: string; leansNo: string };
+  /** How the bar is ANNOUNCED. `progressbar` (the default, every existing caller) exposes the value;
+   *  `img` names the bar by its label alone — for a bar that is a SPLIT of the money, not progress
+   *  towards anything, where "progress bar, 70 percent" misdescribes it (landing v3, WP8/WP3). */
+  as?: "progressbar" | "img";
 }) {
   const target = Math.max(0, Math.min(100, yesPct));
   const [animYes, setAnimYes] = React.useState(target);
@@ -290,9 +297,8 @@ export function TippingBar({
       <div className={cn("w-full", className)} style={railVars}>
         <div
           className="tipbar-empty"
-          role="progressbar"
-          aria-valuemin={0}
-          aria-valuemax={100}
+          role={as}
+          {...(as === "progressbar" ? { "aria-valuemin": 0, "aria-valuemax": 100 } : {})}
           aria-label={emptyLabel}
         />
       </div>
@@ -304,10 +310,8 @@ export function TippingBar({
       <div
         className={cn("tipbar-rail", animate && "tipbar-anim", recastOnHover && "tipbar-recast")}
         onMouseEnter={handleEnter}
-        role="progressbar"
-        aria-valuenow={target}
-        aria-valuemin={0}
-        aria-valuemax={100}
+        role={as}
+        {...(as === "progressbar" ? { "aria-valuenow": target, "aria-valuemin": 0, "aria-valuemax": 100 } : {})}
         /* ⛔ THIS WAS A HARDCODED ENGLISH STRING — `YES probability ${target}%` — and it
            never went through the dictionary at all, so a Chinese screen-reader user HEARD
            "YES probability 100 percent" on a page whose every visible word was Chinese.

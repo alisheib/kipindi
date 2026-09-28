@@ -83,9 +83,11 @@ export function normalizeTzLocalDigits(raw: string): string {
  *
  * 🔴 THE TWO RAILS DISAGREED, AND NOTHING CAUGHT IT BECAUSE ONE OF THEM HAD
  * NEVER RUN. `selcom.ts` normalised its payment MSISDNs to this shape from the
- * start; `sms.ts:71` posted the stored `+255…` through untouched. No SMS has ever
- * left this platform, so the mismatch was latent — the first real send is what
- * would have found it. Both rails now come through here.
+ * start; `sms.ts` posted the stored `+255…` through untouched. No SMS had yet left
+ * this platform, so the mismatch was latent. It was fixed in the same change that
+ * wired the Blackball gateway (2026-09-16), before the first real send. Both rails
+ * now come through here: `sendBatch` in `sms.ts`, and `selcom.ts`.
+ * (corrected 2026-09-25 — this said no SMS had ever left the platform)
  *
  * Lives in this module because it is pure and imports nothing, so a client
  * component can reach it — see the boundary note on `maskPhone` below.

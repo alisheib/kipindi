@@ -48,7 +48,7 @@ memo or column (W21, W22 moot).
 | 261–262 | R2 bulk words; 196's proof substitution | **STRIKE** with the display | recorded only |
 | 263 | The three R2 phrasings in the absence vocabulary | **KEEP** (the words stay needles: absence protection only widens) | ✅ |
 
-## 3. The new checkpoints (each: one `c5-step-fast` run, build → review lenses → fix, record in RESUME AT, push)
+## 3. The new checkpoints (each: one `c5-step-fast` run [script deleted 2026-09-26 as spent; git history keeps it], build → review lenses → fix, record in RESUME AT, push)
 
 - **C5-5 close** — 🟡 the running fixer (`wf_c2cd11aa-ef0`), told D20 at 15:02 UTC: finish the gate findings, skip the
   display polish, write `plans/house-bots/tools/c5-s5-mutations.json` with only surviving code's mutations.
@@ -95,17 +95,19 @@ memo or column (W21, W22 moot).
     written in `PROGRESS.md` at REL-4 step 2** (`git worktree add --detach <repo>-rel4 …` → work → push →
     `git worktree remove`), never the main checkout another session may be inside, and never a rebase or a force. On a
     conflict: stop, remove the temporary worktree, and resolve on the branch — never at the gate. ⛔ Read rulings 471
-    and 450 in §5 before any cross-branch step, and confirm with Ali.
+    and 450 in §5 before any cross-branch step, and confirm with Ali. [⚠️ Spent, noted 2026-09-26: that recipe was measured wrong (`PROGRESS.md` RESUME AT item 3); `main` is pushed per `RESUME-HERE.md` §0.]
 
 ## 4. What D20 changes in later commits (for their spec sessions)
 
-- **Commit 6 (non-disclosure):** unchanged in shape (private Board draft, chatbot guard D19d, docs, absence suite). The
-  draft must say reports and filings treat house accounts as ordinary player accounts and carry no house memo.
+- **Commit 6 (non-disclosure):** unchanged in shape (chatbot guard D19d, docs, absence suite). ~~The private Board draft~~
+  ⛔ STRUCK 2026-09-20 by owner ruling D21 (`docs/COMPLIANCE-DECISIONS.md`): the Gaming Board needs nothing; no draft is written.
 - **Commit 7 (console, the navbar link)** — see also rulings 264–266, 271 below: the console CONTROLS bots — designate, rules and limits, Start/pause, kill
   switch, Enter now and targets, engine health, the action feed, cap usage. **Struck:** the R2 overview exposure split
   (L39), the staff-edge href test (L38), R1 (e)'s two-admin flag (L35), the per-bot CSV and internal-record writers (L48).
   **Default for its rulings:** no results/P&L report, CSV or per-market house line in the console beyond what a control
-  needs (cap usage against its limit, the kill switch's held amount if 254's CAP_EXPOSURE is kept). L34 is closed as not a
+  needs (cap usage against its limit, the kill switch's held amount if 254's CAP_EXPOSURE is kept). ⚠️ *Amended
+  2026-09-26 (delegated, D20b): except ONE results view on the desk, for its ADMIN audience — not a report, with no
+  CSV, no export and no per-market line (C7 437).* L34 is closed as not a
   defect (bots are players in admin counts by D20).
 - **Commit 8 (release):** L26/L27 stay platform defects for Ali but are no longer release preconditions (no house column
   ships); final docs (RULES §2.11, FLOWS §9, DATA-RETENTION, FAILURE-INVENTORY §7.1) follow D20.
@@ -125,7 +127,7 @@ bots and what keeps D19 true").
      CHECKs, the schema, both DAL twins, `rules.ts` fields, `FIELD_META`, `CLEAR_EXEMPT`, the rules-suite pins and fixtures),
      `ALERT_KEY.staffEdge`, `STAFF_EDGE_MIN_SETTLED` and `houseStaffScorecard`. Re-run `test:house-bot-migrations`,
      `test:dal-parity` and `test:house-bot-rules`. **W16 is moot.**
-266. **Commit 7's console shows money only as usage against a configured limit.** A figure the bot's own controls need
+266. **Commit 7's console shows money only as usage against a configured limit.** ⚠️ *Amended 2026-09-25 by the owner (D3, `docs/COMPLIANCE-DECISIONS.md`): the desk's activity-table `Opening`/`Closing` cells carry the holder's ledger balance — one exception (C7-SPEC 373(f)/(g)).* ⚠️ *Amended 2026-09-26 under the owner's delegation (D20b, `docs/COMPLIANCE-DECISIONS.md`, the entry `2026-09-26 · D20b AMENDED`): ONE exception by role — the desk's results view may state what its finished stakes came to (C7 360(E), 437). The Book card, "Today's net", fee withheld and the money tab's house chip stay struck.* A figure the bot's own controls need
      stays — today's loss against the daily loss cap, open exposure against the exposure cap, the kill switch's held amount
      if ruling 254's CAP_EXPOSURE figure is kept — written as "used X of Y". Struck from `03-design-spec.md` S1/S3 and PLAN
      §8: the lifetime and today "Book" card, "Today's net" as a results KPI, fee withheld, and the money tab's house chip on
@@ -472,7 +474,7 @@ bots and what keeps D19 true").
      **(e) A decision that turns out wrong is reversed by a new numbered ruling** that says what was believed, what was
      measured, and what changed. A ruling is a record of reasoning, not a position to defend.
 
-501. **The ISO 27001 regulator hand-off EXCLUDES house audit rows by category, and SAYS SO with the excluded count.**
+501. **The ISO 27001 regulator hand-off EXCLUDES house audit rows by category, and SAYS SO with the excluded count.** ⛔ **WITHDRAWN 2026-09-26** — the owner released it and the session kept the export unfiltered (`docs/COMPLIANCE-DECISIONS.md`, entry `2026-09-26 · House bots: ruling 501 WITHDRAWN`; ruling 557). Never built.
      Measured: `catalogue.ts:474` reads the whole durable audit table unfiltered (`getAuditPageDurable({limit:
      ISO_EXPORT_LIMIT})` — the reader offers only `limit` and `category`, never an action filter) and prints
      `action: e.action` at `:553` and `target: ${e.targetType}:…` at `:555` verbatim. House rows carry 31 literal
@@ -634,7 +636,7 @@ bots and what keeps D19 true").
      450's bolded prohibition carried no supersede banner. A session obeying RESUME AT — the block the plan itself
      names as the truth source — would have refused the C5-8 merge Ali explicitly delegated, and would have allocated
      465 as its next free ruling number against ten already recorded. **So the rule, and it binds this session first:**
-     a ruling is not taken until (i) `PROGRESS.md`'s RESUME AT, standing list and affected register rows carry it,
+     a ruling is not taken until (i) `PROGRESS.md`'s RESUME AT (⚠️ retired 2026-09-23 — read `RESUME-HERE.md`), standing list and affected register rows carry it,
      (ii) every ruling it supersedes carries a supersede banner in place, (iii) the next-free-ruling number is
      corrected wherever it is written, and (iv) any generator that would re-raise the closed matter — the autonomous
      run prompt's Phase 0 among them — is edited, not just the copies it generates.
@@ -1273,9 +1275,50 @@ bots and what keeps D19 true").
        never to reject — with its own planted control. Ruling 537's limits save already carries the
        operator-facing half (`recorded: false` → a WARNING, the save still reported as landed), and that is
        the shape the other three adopt.
-     - **Scheduled: before Commit 8**, with ruling 501's ISO work, because both touch the audit export and
+     - **Scheduled: before Commit 8**, with ruling 501's ISO work (⚠️ 501 withdrawn 2026-09-26 — 543 now stands alone: `plans/house-bots/RESUME-HERE.md` §0c step 6), because both touch the audit export and
        both are regulator-facing. ⛔ Not at C7 step 4 — the ceremony step must not also be re-writing the
        platform's audit contract underneath itself.
+     - ⭐ **BUILT 2026-09-26 (RESUME-HERE §0c step 6; `docs/HOUSE-BOTS.md` §12.11), and the remedy above was WRONG
+       AS WRITTEN, so it was re-derived before it was built.** Every line number this ruling cites had rotted
+       (the promise sat in `appendPersisted`'s docblock, not at `:345`), and five other things it said were wrong
+       or incomplete:
+       · ⛔ **"Fail open to the in-memory entry … eight lines away" was impossible.** `appendInMemory` SIGNS too
+         (`hashEntry` → `chainSecret()`); that fallback was exactly where the throw escaped, and the no-database
+         branch threw the same way. An entry that cannot be signed cannot be kept in the ring either: the ring is
+         the memory store's chain and Postgres's read cache, and a fake hash in it breaks `verifyChain()` for every
+         later reader. So the fix DEFINES a third outcome: `audit()` resolves an **UNSIGNED** copy that is returned
+         and NEVER chained. Its ticket is spent, which on Postgres is a countable hole. The server log carries one
+         `[audit] NOT RECORDED` line with the action and ticket, never the payload.
+       · **"Three house writers" undercounted.** `engineAudit` has five callers, among them the CONSOLE's kill
+         switch, the worst case: the desk WAS off while `actions.ts` told the officer *"Nothing changed. Reload the
+         page and try again."* and the switched-off alert was never sent. The planner's poison pass, a money duty,
+         also failed. `houseAudit` has ten call sites and `writePressAudit` two.
+       · ⛔ **"The contract moves, not the callers" could not hold literally.** Five writers had adopted ruling
+         537's `recorded: false` by CATCHING the rejection: limits save, rules save, Pause/Remove, sunset and
+         switch-on (press-cancel caught too). Once `audit()` stopped rejecting, every one would have reported
+         `recorded: true`. Each now READS the returned flag, in the same change.
+       · **The database-outage fail-open had the same defect in the other direction.** It returned a ring-only
+         entry with a real ticketed id, which callers stamped on events (`setAuditId`) and on presses (marking a
+         press audited, so the lease repair never wrote the row that was lost), and `recorded` read true. It now
+         resolves **PERSIST_FAILED** with `recorded` false. `engineAudit` and `writePressAudit` answer null for
+         any entry that did not land.
+       · "NOT LIVE" still rests on the two documents, not on a measurement. This lane had no production access
+         and did not re-derive it.
+       **What was built:** `audit()` resolves a COPY carrying `recorded`/`unrecorded`, and the ring object is
+       untouched; `stampLocally` is the one stamp allowed to fail; every house writer reads the flag. Designate,
+       Start and the kill switch say both halves as a WARNING (the kill switch adds `SWITCH_COPY.offNotRecorded`;
+       the other two reuse `ACT_COPY.notRecorded`), and the designate toast turns amber on it. **Held by:**
+       `test:house-bot-console` §2i (2.543.0–11 on both stores, each with a control; 2.543.8 is the source law over
+       every writer under `src/lib/server/house-bot/`). Also `test:house-bot-engine` 13.35b/c, 17.14b/c and, on
+       Postgres, 17.14d/e (a BEFORE INSERT trigger stands in for the outage), and `test:audit` 543.1–3 in the
+       platform's own suite. There are fifteen new declared mutations (twelve `console-mem`, two `engine-mem`, one
+       `engine-pg`), and `537-recorded`, `start-drops-its-warnings` and the money suite's `D19-5` were re-pointed
+       at the lines they quote. ⛔ The PERSIST_FAILED mutation is `engine-pg`, not `console-pg`, because
+       `console-pg` has no expect-drift roll-call and `test:house-bot-reports` 0.505 would go red on it.
+       ⚠️ **Known siblings, deliberately not widened into this step:** `verifyChain()`, `verifyChainFull()` and the
+       census call `chainSecret()` too, and still throw under the same misconfiguration, so the admin "verify
+       chain" action and the ISO integrity report would error. Those are read paths, and their own ruling if
+       ever wanted.
 
 ### Rulings of C7 step 3's VISUAL pass (544-546, 2026-09-19, OMEGA-COMPILE01)
 
@@ -1528,7 +1571,7 @@ bots and what keeps D19 true").
      so nothing prepared a reader to treat them as new.
      - ⛔ **A list of excuses must be re-derived from a run, not inherited from a document.** The list is
        corrected to what the gate printed, with the baseline sha it was measured at written beside it, and
-       the correction is carried into `BRIEFING.md` **and** `plans/house-bots/tools/c7-step.js`, the
+       the correction is carried into `BRIEFING.md` **and** `plans/house-bots/tools/c7-step.js` [deleted 2026-09-26 as spent; git history keeps it], the
        GENERATOR that hands it to every future step (ruling 516(iv): a ruling that does not reach the
        generator re-raises the closed matter).
      - ⚠️ **`test:popup-fit`'s unreviewed population grew 66 → 68**, and the two additions are exactly the
@@ -1699,3 +1742,19 @@ bots and what keeps D19 true").
        exactly one caller in `src/`, inside the gated writer) and no account is designated.
      - **Numbering, reconciled with the peer:** 555 is the peer's and stands; this is **556**; the peer
        takes **557+**. No renumbering is owed.
+
+557. **RULING 501 IS WITHDRAWN (2026-09-26): the ISO 27001 export stays unfiltered.** Written per rule 500(e) —
+     what was believed, what was measured, what changed. *(557 was checked free across the tree before it was taken.)*
+     - **Believed (501, 2026-09-18):** D20's "no report names house bots" reaches the ISO 27001 hand-off, so it must
+       exclude `house_bot.*` rows by category and say how many it excluded; scheduled before Commit 8.
+     - **Measured (2026-09-26):** 501 was never built — `buildIsoAudit` (`src/lib/server/reports/catalogue.ts`) still
+       reads `getAuditPageDurable({ limit: ISO_EXPORT_LIMIT })` with no action filter — and the export holds only the
+       OLDEST 25,000 rows, so whether any given export reaches a house row depends on the live count (NOT MEASURED).
+     - **What changed:** the owner's instruction, as typed — *"this we dot cre gbt said it sok we need nothign we can
+       decide anything Regulator audit export (ISO 27001)"* — does not require the exclusion (Ali reports the Board
+       needs nothing; no document is on file) and leaves the choice open. The session kept the export unfiltered: an
+       audit-log export with rows withheld is weaker evidence than one without, and nothing built is dropped, so
+       D21c is not breached. The consequence — an export reaching house rows names `house_bot.*` actions and prints
+       full actor ids (an officer's, and a holder's own on a consent-withdrawal row) to its recipients — is recorded in `docs/COMPLIANCE-DECISIONS.md` (entry `2026-09-26 · House bots: ruling 501
+       WITHDRAWN`) and as D20's one exception in `docs/HOUSE-BOTS.md`. Ruling 543, scheduled "with 501's ISO work",
+       now stands alone (`plans/house-bots/RESUME-HERE.md` §0c step 6).

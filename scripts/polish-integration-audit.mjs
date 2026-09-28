@@ -31,7 +31,7 @@ async function authed(browser) {
 const overflow = (p) => p.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
 
 const PAGES = [
-  ["/profile/invite", "Invite & Earn"],
+  ["/profile/invite", "Invite friends"],
   ["/profile", "profile"],
   ["/proposals", "proposals board"],
   ["/proposals/new", "create proposal"],
@@ -121,15 +121,18 @@ try {
     const card = p.locator('div:has(> a[href^="/proposals/prp_"])').first();
     const trans = await card.evaluate((el) => getComputedStyle(el).transitionProperty).catch(() => "");
     log("D.proposal card has a transition (hover anim defined)", /all|transform|color|box-shadow/.test(trans), trans.slice(0, 40));
-    // Toggle animates: aria-checked flips + has transition
-    await p.goto(`${BASE}/admin/affiliate`, { waitUntil: "networkidle" });
-    const master = p.locator('button[role="switch"][aria-label="Program master switch"]');
-    const before = await master.getAttribute("aria-checked");
-    const tdur = await master.evaluate((el) => getComputedStyle(el).transitionDuration);
-    await master.click(); await p.waitForTimeout(150);
-    const after = await master.getAttribute("aria-checked");
-    log("D.toggle flips state + has transition", before !== after && tdur !== "0s", `${before}→${after} dur=${tdur}`);
-    await master.click(); // restore
+    // Toggle animates: aria-checked flips + has transition.
+    // 2026-09-26 — RETARGETED: /admin/affiliate's "Program master switch" is gone (the Owner's Payable / Not payable
+    // ceremony replaced it, and its reward toggles are locked while Not payable). /admin/system's "Publish banner" is
+    // the same kit <Toggle> holding local state until its card's Save — which this step never presses.
+    await p.goto(`${BASE}/admin/system?tab=platform`, { waitUntil: "networkidle" });
+    const toggle = p.locator('button[role="switch"][aria-label="Publish banner"]');
+    const before = await toggle.getAttribute("aria-checked");
+    const tdur = await toggle.evaluate((el) => getComputedStyle(el).transitionDuration);
+    await toggle.click(); await p.waitForTimeout(150);
+    const after = await toggle.getAttribute("aria-checked");
+    log("D.toggle flips state + has transition", before !== after && tdur !== "0s", `/admin/system "Publish banner" ${before}→${after} dur=${tdur}`);
+    await toggle.click(); // restore — unsaved, so nothing is stored
     // OperationResultModal animates in on proposal submit.
     // Raise the rate limit first so the (heavily-reused) demo account isn't at
     // its open-proposal cap — which would correctly keep Submit disabled.
@@ -177,16 +180,16 @@ try {
     log("E.trigger: paused → player board read-only banner", /paused/i.test(await pp.evaluate(() => document.body.innerText)));
     await pp.close();
     await setP({ reset: true });
-    // E3 · admin affiliate: change commission rate + save persists
+    // E3 · admin affiliate while invites are NOT PAYABLE (2026-09-26, the Owner's switch; the default on a server run
+    // without FEATURE_INVITEREWARDS): the chip says so and the reward cards cannot be switched on
     await p.goto(`${BASE}/admin/affiliate`, { waitUntil: "networkidle" });
-    const sw2 = p.locator('button[role="switch"][aria-label="Program master switch"]');
-    if ((await sw2.getAttribute("aria-checked")) === "false") await sw2.click();
-    const commField = p.locator("input.input.input-mono").first();
-    await commField.fill("42");
-    await p.locator(".btn.btn-gold", { hasText: "Save" }).first().click();
-    await p.waitForTimeout(800);
-    await p.reload({ waitUntil: "networkidle" });
-    log("E.admin affiliate commission edit persists (42)", (await p.locator("input.input.input-mono").first().inputValue()) === "42");
+    // In the page head only: the compliance note prints <strong>Not payable</strong>, which would answer for a missing chip.
+    const head = p.locator("main header").filter({ has: p.locator("h1") }).first();
+    const chipOff = await head.getByText("Not payable", { exact: true }).first().isVisible().catch(() => false);
+    const chipOn = await head.getByText("Payable", { exact: true }).first().isVisible().catch(() => false);
+    log("E.admin affiliate chip reads 'Not payable'", chipOff && !chipOn,
+      chipOn ? "the chip reads 'Payable' — is this server run with FEATURE_INVITEREWARDS=ACTIVE?" : chipOff ? "" : "neither chip word is on the page");
+    log("E.admin affiliate commission toggle is disabled while Not payable", await p.locator('button[role="switch"][aria-label="Commission enabled"]').isDisabled());
     await setA({ reset: true });
     await p.close(); await ctx.close();
   }

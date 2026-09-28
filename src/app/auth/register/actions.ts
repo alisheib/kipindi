@@ -5,9 +5,11 @@ import { registerWithPassword, requestRegisterOtp } from "@/lib/server/auth-serv
 import { normalizeReferralCode } from "@/lib/server/affiliate-service";
 
 /**
- * Phone + password registration. The OTP-only path
- * `requestRegisterOtp` is preserved below — flip back when the SMS
- * provider contract is signed by routing the form to it again.
+ * Phone + password registration. The OTP-only path (`requestRegisterOtp` via
+ * `startRegisterOtpAction`) is preserved below but wired to no form. SMS is live
+ * (Blackball, since 2026-09-16), so offering phone-code sign-up is a product change
+ * (a UI option in EN/SW/ZH, its visual drives, then OTP_ENABLED=1), not a provider
+ * wait. See docs/BLACKBALL-SMS.md §7 step 6 (corrected 2026-09-25).
  */
 export async function startRegisterAction(formData: FormData) {
   const phone = String(formData.get("phone") ?? "");
@@ -88,7 +90,7 @@ export async function startRegisterAction(formData: FormData) {
   redirect("/wallet/deposit?welcome=new" as never);
 }
 
-/** Legacy OTP-driven registration — re-enable once SMS provider goes live. */
+/** OTP-driven registration: built, and the SMS rail is live (Blackball), but wired to no form. Offering it is a product change (docs/BLACKBALL-SMS.md §7 step 6). */
 export async function startRegisterOtpAction(formData: FormData) {
   const phone = String(formData.get("phone") ?? "");
   const dob = String(formData.get("dob") ?? "");

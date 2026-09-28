@@ -26,7 +26,7 @@ import { getGlobalConfig } from "../market-config";
 // The levies this report states are READ from the double-entry ledger, never re-derived.
 import { houseAccountMovement } from "../ledger";
 import type { Report, Row, SignatureRow, SummaryItem } from "./types";
-import { formatDateTime, formatTzs } from "@/lib/utils";
+import { adminCount, formatDateTime, formatTzs } from "@/lib/utils";
 import { buildFinanceWindow, type FinanceWindowArg } from "./finance-window";
 
 /** Standard regulator attestation block — three roles at the foot of every
@@ -107,10 +107,10 @@ export async function buildGbtMonthly(generatorId: string, packPeriod: string = 
       classification: "Regulator hand-off",
     },
     summary: [
-      { label: "Deposits (TZS)", value: dep.amount.toLocaleString("en-US"), tone: "neutral", delta: `${dep.count.toLocaleString()} txns` },
-      { label: "Withdrawals (TZS)", value: wd.amount.toLocaleString("en-US"), tone: "neutral", delta: `${wd.count.toLocaleString()} txns` },
-      { label: "Gross gaming revenue", value: ggr.toLocaleString("en-US"), tone: "good" },
-      { label: "Net gaming revenue", value: ngr.toLocaleString("en-US"), tone: ngr >= 0 ? "good" : "bad" },
+      { label: "Deposits (TZS)", num: dep.amount, format: "tzs", tone: "neutral", delta: adminCount(dep.count, "txn") },
+      { label: "Withdrawals (TZS)", num: wd.amount, format: "tzs", tone: "neutral", delta: adminCount(wd.count, "txn") },
+      { label: "Gross gaming revenue", num: ggr, format: "tzs", tone: "good" },
+      { label: "Net gaming revenue", num: ngr, format: "tzs", tone: ngr >= 0 ? "good" : "bad" },
     ],
     sections: [
       {
@@ -188,13 +188,12 @@ export async function buildGbtMonthly(generatorId: string, packPeriod: string = 
     ],
     notes: [
       // 🔴 L57 (C5-D20-REPLAN ruling 268), corrected 2026-09-20. This note went to the GAMING BOARD saying
-      // "voids/refunds excluded from both sides". The code has never done that: `report-money.ts:155` is
-      // `const ggr = stakes - payouts - refunds`, and that file's own header (:19-21) states the reason —
-      // a refunded stake was still counted in Stakes, so without subtracting it GGR is overstated by the whole
-      // refunded amount AND SO IS THE TRA/GBT LEVY BASE COMPUTED FROM IT. Two other notes in this same file
-      // already say it correctly (:723 "Sales − Payouts − Refunds", :763 "…− refunded stakes"), so the pack was
-      // internally inconsistent as well as wrong. A regulator note is a statement about our own arithmetic; it is
-      // re-derived from the function that computes the figure, never written from memory of the definition.
+      // "voids/refunds excluded from both sides". The code has never done that: report-money's `summarise`
+      // computes `stakes - payouts - refunds`, and that file's header states the reason — a refunded stake is
+      // still counted in Stakes, so without subtracting it GGR is overstated by the whole refunded amount. The
+      // daily-ops notes in this file already said it correctly, so the pack was internally inconsistent as well
+      // as wrong. A regulator note is a statement about our own arithmetic; it is re-derived from the function
+      // that computes the figure, never written from memory of the definition.
       "GGR = total stakes − total payouts − refunded stakes. A refunded stake is returned in full and earns the operator nothing, so it is removed from the base.",
       "NGR = GGR − bonus cost − agent commission − payment-processing fees (pre-tax operator bottom line).",
       "Agent commission is contracted income paid to vetted agents out of the operator fee AFTER TRA and GBT levies; it does not reduce the levy base.",
@@ -254,13 +253,13 @@ export async function buildFiuSar(generatorId: string, packPeriod: string = curr
     playerId: string; phone: string; triggerKind: string; amount: number;
     txnId: string; triggerAt: string; reviewStatus: string;
   };
-  // Single-pass over all transactions — no per-user loop.
+  // One pass over the PERIOD's transactions, windowed in the store (`listInRange`: >= start,
+  // < end — the bounds the skip below used to apply in JavaScript to the whole table), with no
+  // per-user loop. `test:report-window-reads`.
   const rows: Row[] = [];
   // Cache user lookups to avoid repeated findById for the same user.
   const userCache = new Map<string, { phone: string } | null>();
-  for (const t of await db.txn.listAll()) {
-    const at = new Date(t.createdAt).getTime();
-    if (at < bounds.start || at >= bounds.end) continue;
+  for (const t of await db.txn.listInRange(bounds.start, bounds.end)) {
 
     // An explicit AML hold is reportable whatever its type. Since 2026-09-13 only a legacy
     // withdrawal or a deposit owed back to an excluded player sits in AML_REVIEW.
@@ -286,8 +285,10 @@ export async function buildFiuSar(generatorId: string, packPeriod: string = curr
       reviewStatus: t.status,
     });
   }
-  // Largest first — an FIU reviewer reads top-down.
-  rows.sort((a, b) => b.amount - a.amount);
+  // Largest first — an FIU reviewer reads top-down. Ties by time, then id, so the order is fixed by
+  // the DATA: the store returns rows in its own order, and two equal amounts must not swap between
+  // two renders of the same filing.
+  rows.sort((a, b) => b.amount - a.amount || a.triggerAt.localeCompare(b.triggerAt) || a.txnId.localeCompare(b.txnId));
   return {
     title: "Financial Intelligence Unit · Suspicious-Activity Report",
     subtitle: `Transactions at or above the ${formatTzs(cutoff)} threshold, or paused for AML review`,
@@ -302,9 +303,9 @@ export async function buildFiuSar(generatorId: string, packPeriod: string = curr
       classification: "Confidential",
     },
     summary: [
-      { label: "Triggered entries", value: rows.length.toLocaleString(), tone: rows.length > 0 ? "bad" : "good" },
-      { label: "Total flagged volume (TZS)", value: rows.reduce((s, r) => s + r.amount, 0).toLocaleString(), tone: "neutral" },
-      { label: "Threshold (TZS)", value: cutoff.toLocaleString(), tone: "neutral" },
+      { label: "Triggered entries", num: rows.length, format: "integer", tone: rows.length > 0 ? "bad" : "good" },
+      { label: "Total flagged volume (TZS)", num: rows.reduce((s, r) => s + r.amount, 0), format: "tzs", tone: "neutral" },
+      { label: "Threshold (TZS)", num: cutoff, format: "tzs", tone: "neutral" },
     ],
     sections: [
       {
@@ -415,7 +416,7 @@ export async function buildSxRegister(generatorId: string): Promise<Report> {
       classification: "Regulator hand-off",
     },
     summary: [
-      { label: "Active entries", value: rows.length.toLocaleString(), tone: "neutral" },
+      { label: "Active entries", num: rows.length, format: "integer", tone: "neutral" },
       { label: "Hash algorithm", value: "SHA-256(salt:idType:idNumber)", tone: "neutral" },
       { label: "Schema version", value: "GBT-v1", tone: "neutral" },
     ],
@@ -503,8 +504,8 @@ export async function buildIsoAudit(generatorId: string): Promise<Report> {
     summary: [
       // Rows IN THIS FILE vs rows in the log — two different numbers, both stated,
       // so they can never appear to contradict each other again.
-      { label: "Entries in this export", value: entries.length.toLocaleString(), tone: "neutral" },
-      { label: "Entries in the log", value: total.toLocaleString(), tone: "neutral" },
+      { label: "Entries in this export", num: entries.length, format: "integer", tone: "neutral" },
+      { label: "Entries in the log", num: total, format: "integer", tone: "neutral" },
       // Full-chain verification against the persisted DB — not just the in-memory
       // 10k ring. Falls back to in-memory when no DB is available.
       // Two DIFFERENT facts, stated separately, because collapsing them into one
@@ -621,20 +622,19 @@ export async function buildDailyOps(generatorId: string): Promise<Report> {
   // The day MUST be the Tanzanian calendar day. This previously used
   // `new Date().getFullYear()/getMonth()/getDate()`, which is SERVER-LOCAL — and the
   // Railway container runs UTC, so the window was 03:00 → 03:00 EAT. Since this report
-  // computes the TRA and GBT levies below, the tax was assessed on the wrong 24 hours,
-  // the hourly breakdown was shifted three hours end to end, and consecutive daily
-  // filings could not be reconciled against the (EAT-correct) monthly pack.
+  // reads the TRA and GBT levies booked over its window, they were summed over the wrong 24
+  // hours, the hourly breakdown was shifted three hours end to end, and consecutive daily
+  // reports could not be reconciled against the (EAT-correct) monthly pack.
   const nowMs = Date.now();
   const dayStart = startOfEatDay(nowMs);
   const dayEnd = dayStart + 24 * 3600_000;
   const dateLabel = eatDateLabel(dayStart);
 
-  // All confirmed transactions today
-  const allTxns = await db.txn.listAll();
-  const todayTxns = allTxns.filter((t) => {
-    const at = new Date(t.createdAt).getTime();
-    return at >= dayStart && at < dayEnd && t.status === "CONFIRMED";
-  });
+  /* All confirmed transactions today — the DAY, read in the store (`listInRange`: >= start, < end,
+     the exact bounds of the filter it replaces). This read the WHOLE Transaction table and kept one
+     day of it in JavaScript: every transaction ever recorded, pulled into a 512 MB container, and it
+     threw once against production (SESSION-PROMPT-FINANCE-SEAL §2). `test:report-window-reads`. */
+  const todayTxns = (await db.txn.listInRange(dayStart, dayEnd)).filter((t) => t.status === "CONFIRMED");
 
   // --- Core metrics ---
   const bets = todayTxns.filter((t) => t.type === "BET_PLACED");
@@ -702,10 +702,21 @@ export async function buildDailyOps(generatorId: string): Promise<Report> {
   // understates margin every time a market voids.
   const retainedSales = totalSales - totalRefunds;
   const marginPct = retainedSales > 0 ? ((ggr / retainedSales) * 100) : 0;
+  /* ⚠️ ROUNDED ONCE, HERE, TO THE ONE DECIMAL EVERY SURFACE PRINTS. The glance cell hands Excel the
+     raw fraction and Excel rounds it half-up in DECIMAL, while `toFixed` rounds the BINARY double —
+     so GGR 23,000 on 80,000 retained read 28.8% in the workbook and 28.7% in the PDF and in the
+     "Operator margin" row of the same file. `toPrecision(12)` strips the binary tail first. */
+  //   Half AWAY FROM ZERO, as Excel does: `Math.round(-287.5)` is −287, so a losing day's −28.75%
+  //   would read −28.7 here and −28.8% in the workbook.
+  const marginDec = Number(marginPct.toPrecision(12));
+  const marginShown = (Math.sign(marginDec) * Math.round(Math.abs(marginDec) * 10)) / 10;
 
-  /* Net after taxes = GGR less what we hand over. All three printed values are integers read
-     off (or derived from) the ledger, so the arithmetic on the face still closes exactly. */
-  const netAfterTax = traTax === null || gbtLevy === null ? null : ggr - traTax - gbtLevy;
+  /* GGR less the booked levies. GGR comes from the Transaction table and the two levies from the
+     ledger; all three are whole shillings, so the arithmetic on the face closes exactly.
+     ⛔ IT IS NOT PROFIT AFTER TAX, and it used to be labelled "Net after tax": it subtracts a tax
+     charged on the settlement FEE from a TURNOVER figure, two different bases. Ali's ruling
+     2026-09-26: relabel, do not re-base — the line keeps its arithmetic and says what it is. */
+  const ggrLessLevies = traTax === null || gbtLevy === null ? null : ggr - traTax - gbtLevy;
 
   // --- Hourly breakdown ---
   type HourRow = {
@@ -753,15 +764,15 @@ export async function buildDailyOps(generatorId: string): Promise<Report> {
       classification: "Internal",
     },
     summary: [
-      { label: "Total sales (TZS)", value: totalSales.toLocaleString("en-US"), tone: "good", delta: `${ticketCount} tickets` },
-      { label: "GGR (TZS)", value: ggr.toLocaleString("en-US"), tone: ggr >= 0 ? "good" : "bad" },
-      { label: "Margin", value: `${marginPct.toFixed(1)}%`, tone: marginPct >= 5 ? "good" : "bad" },
+      { label: "Total sales (TZS)", num: totalSales, format: "tzs", tone: "good", delta: adminCount(ticketCount, "ticket") },
+      { label: "GGR (TZS)", num: ggr, format: "tzs", tone: ggr >= 0 ? "good" : "bad" },
+      { label: "Margin", num: marginShown / 100, format: "percent", tone: marginPct >= 5 ? "good" : "bad" },
       /* ⛔ OMITTED, NOT ZEROED, when the ledger could not be read — see the levy note above.
          A tax tile reading "0" is indistinguishable from a day that owed nothing. */
-      ...(traTax === null || gbtLevy === null || netAfterTax === null ? [] : [
-        { label: `TRA ${(TRA_RATE * 100).toFixed(0)}% (booked)`, value: traTax.toLocaleString("en-US"), tone: "neutral" as const },
-        { label: `GBT ${(GBT_RATE * 100).toFixed(0)}% (booked)`, value: gbtLevy.toLocaleString("en-US"), tone: "neutral" as const },
-        { label: "Net after tax (TZS)", value: netAfterTax.toLocaleString("en-US"), tone: (netAfterTax >= 0 ? "good" : "bad") as "good" | "bad" },
+      ...(traTax === null || gbtLevy === null || ggrLessLevies === null ? [] : [
+        { label: `TRA ${(TRA_RATE * 100).toFixed(0)}% (booked)`, num: traTax, format: "tzs" as const, tone: "neutral" as const },
+        { label: `GBT ${(GBT_RATE * 100).toFixed(0)}% (booked)`, num: gbtLevy, format: "tzs" as const, tone: "neutral" as const },
+        { label: "GGR less levies booked (TZS)", num: ggrLessLevies, format: "tzs" as const, tone: (ggrLessLevies >= 0 ? "good" : "bad") as "good" | "bad" },
       ]),
     ],
     sections: [
@@ -778,17 +789,17 @@ export async function buildDailyOps(generatorId: string): Promise<Report> {
           { metric: "Total sales (stakes placed)", value: totalSales, count: ticketCount, note: "Tickets" },
           { metric: "Total payouts", value: totalPayouts, count: payouts.length, note: "" },
           { metric: "Gross gaming revenue (GGR)", value: ggr, count: null, note: "Sales − Payouts − Refunds" },
-          { metric: "Operator margin", value: null, count: null, note: `${marginPct.toFixed(1)}%` },
+          { metric: "Operator margin", value: null, count: null, note: `${marginShown.toFixed(1)}%` },
           /* ⭐ THE LEVY BASE IS PRINTED BESIDE THE LEVIES, so an auditor can see the 15% close
              on the face instead of taking it on trust — and so nobody re-derives the base from
              GGR again. It is the gross settlement fee: `HOUSE:COMMISSION` movement plus the two
              levies that were debited out of it. ⛔ All four lines vanish together on a failed
              ledger read; a partial tax block is worse than none. */
-          ...(traTax === null || gbtLevy === null || netAfterTax === null || commissionGross === null ? [] : [
+          ...(traTax === null || gbtLevy === null || ggrLessLevies === null || commissionGross === null ? [] : [
             { metric: "Commission booked (levy base)", value: commissionGross, count: null, note: "Gross settlement fee" },
             { metric: `TRA tax (${(TRA_RATE * 100).toFixed(0)}% of commission)`, value: traTax, count: null, note: "As booked to the ledger" },
             { metric: `GBT levy (${(GBT_RATE * 100).toFixed(0)}% of commission)`, value: gbtLevy, count: null, note: "As booked to the ledger" },
-            { metric: "Net after tax", value: netAfterTax, count: null, note: "GGR - TRA - GBT" },
+            { metric: "GGR less levies booked", value: ggrLessLevies, count: null, note: "GGR - TRA - GBT (not profit after tax)" },
           ]),
           { metric: "Deposits", value: totalDeposits, count: deposits.length, note: "" },
           { metric: "Withdrawals", value: totalWithdrawals, count: withdrawals.length, note: "" },
@@ -823,11 +834,14 @@ export async function buildDailyOps(generatorId: string): Promise<Report> {
     notes: [
       // The stated methodology MUST match the computed one. This note previously read
       // "total stakes placed − total payouts", omitting the refund subtraction the code
-      // performs — so an auditor recomputing the tax from the printed formula derived a
-      // HIGHER GGR and a HIGHER liability than the document reports.
-      "GGR = total stakes placed − total payouts − refunded stakes. This is the operator's " +
-        "commission from the pool. Refunds are subtracted because a voided or one-sided " +
-        "market returns every stake in full, so no commission is earned on it.",
+      // performs — so an auditor recomputing from the printed formula derived a HIGHER GGR than
+      // the document reports.
+      // ⛔ AND IT CALLED GGR "the operator's commission from the pool" — false, and contradicted two
+      // notes lower by this same document's levy note. (The leading sentence is parsed verbatim by
+      // `test:report-note-truth`; keep it.)
+      "GGR = total stakes placed − total payouts − refunded stakes. It is a turnover measure, NOT " +
+        "the commission the operator keeps: it still contains stakes on positions that have not " +
+        "settled. Refunds are subtracted because a voided or one-sided market returns every stake in full.",
       /* 🔴 THESE TWO SENTENCES WERE ALREADY TRUE WHILE THE CODE ABOVE WAS NOT. They have said
          "of operator commission" all along; the arithmetic multiplied GGR, which is ~14× larger.
          The code now matches the prose, and the prose now says where the figure comes from. */
@@ -843,7 +857,7 @@ export async function buildDailyOps(generatorId: string): Promise<Report> {
           "a turnover measure and is NOT the levy base: it still contains stakes on open positions.",
       ]),
       "Total tax = TRA + GBT, deducted from the operator's commission — does NOT affect player payouts.",
-      "Each levy is rounded to the nearest shilling before the net is derived, so the " +
+      "Each levy is rounded to the nearest shilling before \"GGR less levies booked\" is derived, so the " +
         "figures on this page add up exactly as printed.",
       "Margin = GGR / (total sales − refunded stakes) × 100.",
       `Reporting day: ${dateLabel} 00:00–24:00 East Africa Time (UTC+3).`,
@@ -900,9 +914,9 @@ export async function buildKycReverify(generatorId: string): Promise<Report> {
     reference: makeReference("KYCREV", generatorId),
     meta: { generatedAt: new Date().toISOString(), generatedBy: generatorId, period: `As of ${new Date().toISOString().slice(0, 10)}`, classification: "Internal" },
     summary: [
-      { label: "Approved identities", value: approved.length.toLocaleString("en-US") },
-      { label: "Due now", value: dueNow.toLocaleString("en-US"), tone: dueNow > 0 ? "bad" : "good" },
-      { label: "Due within 90 days", value: dueSoon.toLocaleString("en-US"), tone: dueSoon > 0 ? "neutral" : "good" },
+      { label: "Approved identities", num: approved.length, format: "integer" },
+      { label: "Due now", num: dueNow, format: "integer", tone: dueNow > 0 ? "bad" : "good" },
+      { label: "Due within 90 days", num: dueSoon, format: "integer", tone: dueSoon > 0 ? "neutral" : "good" },
     ],
     sections: [{
       title: "Re-verification roster",
@@ -1016,10 +1030,10 @@ export async function buildRgEngagement(generatorId: string): Promise<Report> {
     reference: makeReference("RGENG", generatorId),
     meta: { generatedAt: new Date().toISOString(), generatedBy: generatorId, period: `As of ${new Date().toISOString().slice(0, 10)}`, classification: "Internal" },
     summary: [
-      { label: "Players with active limits", value: withAnyLimit.toLocaleString("en-US") },
-      { label: "Self-excluded", value: roster.selfExcluded.toLocaleString("en-US"), tone: "neutral" },
-      { label: "Cooled-off", value: roster.cooledOff.toLocaleString("en-US"), tone: "neutral" },
-      { label: "Pending limit increases", value: roster.pendingLimitIncrease.toLocaleString("en-US"), tone: roster.pendingLimitIncrease > 0 ? "neutral" : "good" },
+      { label: "Players with active limits", num: withAnyLimit, format: "integer" },
+      { label: "Self-excluded", num: roster.selfExcluded, format: "integer", tone: "neutral" },
+      { label: "Cooled-off", num: roster.cooledOff, format: "integer", tone: "neutral" },
+      { label: "Pending limit increases", num: roster.pendingLimitIncrease, format: "integer", tone: roster.pendingLimitIncrease > 0 ? "neutral" : "good" },
     ],
     sections: [
       {
@@ -1077,8 +1091,16 @@ export async function buildMatchIntegrity(generatorId: string): Promise<Report> 
   // voided Up & Down round refunds real money, so leaving it out would show refunds
   // with no market to explain them — the exact discrepancy an inspector looks for.
   const voidedMarkets = await listMarkets({ status: "VOIDED", productLine: "ALL" });
-  const refunds = (await db.txn.listAll()).filter((t) => t.type === "BET_REFUND");
-  const refundTotal = refunds.reduce((s, t) => s + Math.abs(t.amount), 0);
+  /* ⭐ NO WHOLE-TABLE READ (2026-09-26). This walked every transaction ever recorded to find the
+     refunds. The count and total are now SQL aggregates and the section's rows are the newest 200,
+     read in order. ⚠️ CONFIRMED only — the same basis as every other money figure (report-money's
+     `summarise`). It used to count every status; measured on production 2026-09-26, every
+     BET_REFUND row is CONFIRMED (806 of 806), so no printed figure moves. `test:report-window-reads`. */
+  const REFUND_ROWS = 200;
+  const refundAgg = (await db.txn.totalsByType(["BET_REFUND"])).BET_REFUND ?? { amount: 0, count: 0 };
+  const refundCount = refundAgg.count;
+  const refundTotal = refundAgg.amount;
+  const newestRefunds = await db.txn.newestConfirmedOfType("BET_REFUND", REFUND_ROWS);
 
   /**
    * 🔴 L57's third item — the missing "Resolution path" column, added 2026-09-20.
@@ -1117,8 +1139,10 @@ export async function buildMatchIntegrity(generatorId: string): Promise<Report> 
     predictors: m.predictorCount,
   }));
 
-  // Refunds grouped by market (a refund txn carries positionId; group by description/positionId tail).
-  const refundRows: Row[] = refunds.slice(0, 200).map((t) => ({
+  /* 🔴 NEWEST FIRST, THEN CAPPED. The section below tells the Gaming Board it shows "the most recent
+     200 of N" — and until 2026-09-25 it took the FIRST 200 of an UNORDERED read, i.e. roughly the
+     OLDEST. The store now returns them newest-first (`createdAt`, then `id`). `test:report-window-reads` §4. */
+  const refundRows: Row[] = newestRefunds.map((t) => ({
     when: t.createdAt.slice(0, 10),
     player: maskUserId(t.userId),
     amount: Math.abs(t.amount),
@@ -1139,9 +1163,9 @@ export async function buildMatchIntegrity(generatorId: string): Promise<Report> 
       classification: "Regulator hand-off",
     },
     summary: [
-      { label: "Voided markets", value: voidedMarkets.length.toLocaleString("en-US"), tone: voidedMarkets.length > 0 ? "neutral" : "good" },
-      { label: "Refund transactions", value: refunds.length.toLocaleString("en-US"), tone: "neutral" },
-      { label: "Stakes refunded (TZS)", value: Math.round(refundTotal).toLocaleString("en-US"), tone: "neutral" },
+      { label: "Voided markets", num: voidedMarkets.length, format: "integer", tone: voidedMarkets.length > 0 ? "neutral" : "good" },
+      { label: "Refund transactions", num: refundCount, format: "integer", tone: "neutral" },
+      { label: "Stakes refunded (TZS)", num: Math.round(refundTotal), format: "tzs", tone: "neutral" },
     ],
     sections: [
       {
@@ -1168,9 +1192,9 @@ export async function buildMatchIntegrity(generatorId: string): Promise<Report> 
         // confidence in the document. Same discipline as the X-Export-Truncated header
         // on the transactions CSV.
         description:
-          refunds.length > refundRows.length
+          refundCount > refundRows.length
             ? `Individual stake refunds posted to player wallets. Showing the most recent ` +
-              `${refundRows.length} of ${refunds.length}; the total below covers all ${refunds.length}.`
+              `${refundRows.length} of ${refundCount}; the total below covers all ${refundCount}.`
             : "Individual stake refunds posted to player wallets.",
         columns: [
           { header: "Date", key: "when", format: "date", width: 14 },
@@ -1180,10 +1204,10 @@ export async function buildMatchIntegrity(generatorId: string): Promise<Report> 
         ],
         rows: refundRows,
         totals: {
-          when: refunds.length > refundRows.length ? "Total (all)" : "Total",
+          when: refundCount > refundRows.length ? "Total (all)" : "Total",
           player: "",
           amount: refundTotal,
-          ref: `${refunds.length} refunds`,
+          ref: `${refundCount} refunds`,
         },
       },
     ],

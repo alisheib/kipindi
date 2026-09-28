@@ -105,6 +105,7 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { centredScrollLeft } from "@/lib/strip-scroll";
 import { CountBadge } from "@/components/ui/count-badge";
+import { LinkPending } from "@/components/ui/link-pending";
 
 export type TabItem = {
   value: string;
@@ -225,6 +226,8 @@ function TabControl({
         style={style}
       >
         {body}
+        {/* ⭐ A pressed section that is still loading says so — see `link-pending.tsx`. Nothing at rest. */}
+        <LinkPending />
       </Link>
     );
   }

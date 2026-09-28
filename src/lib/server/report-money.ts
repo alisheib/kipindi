@@ -4,33 +4,36 @@
  * confirmed transactions; nothing is fabricated, and an empty store yields
  * honest zeros (the console hides sections that have no rows).
  *
- * Definitions (normative — match the statutory catalogue prose + industry
- * standard; see docs/50pick-admin-reporting-spec.md §1):
- *   Stakes  = Σ|BET_PLACED (CONFIRMED)|                — gross wagered in period
- *   Payouts = Σ|BET_PAYOUT + CASHOUT (CONFIRMED)|      — winner distributions
- *   Refunds = Σ|BET_REFUND (CONFIRMED)|                — voided/one-sided stakes returned
- *   GGR     = Stakes − Payouts − Refunds               — operator commission (= what we KEEP)
- *   Bonus   = Σ|BONUS_CREDIT (CONFIRMED)|              — bonus-wallet cost
- *   Fees    = Σ fee on DEPOSIT + WITHDRAWAL (CONFIRMED)— payment-processing fees
- *   NGR     = GGR − Bonus − Fees                       — bottom line before tax
- *   Hold %  = GGR / Stakes × 100                       — near-constant; drift = alarm
+ * Definitions (normative — every report note must match them; `test:report-note-truth`):
+ *   Stakes      = Σ|BET_PLACED (CONFIRMED)|                 — gross wagered in period
+ *   Payouts     = Σ|BET_PAYOUT + CASHOUT (CONFIRMED)|       — winner distributions
+ *   Refunds     = Σ|BET_REFUND (CONFIRMED)|                 — voided/one-sided stakes returned
+ *   GGR         = Stakes − Payouts − Refunds                — a TURNOVER measure (see below)
+ *   Bonus       = Σ|BONUS_CREDIT (CONFIRMED)|               — bonus-wallet cost
+ *   Agent comm. = Σ AGENT_COMMISSION − Σ …_REVERSAL (CONF.)  — paid to agents, net of clawbacks
+ *   Fees        = Σ fee on DEPOSIT + WITHDRAWAL (CONFIRMED) — payment-processing fees
+ *   NGR         = GGR − Bonus − Agent comm. − Fees          — bottom line before tax
+ *   Hold %      = GGR / Stakes × 100                        — near-constant; drift = alarm
+ *   Active      = distinct players with a CONFIRMED txn     — money that actually moved
  *
- * ⚠️ GGR nets out REFUNDS (2026-07). A voided or one-sided poll returns every
- * stake and we earn NOTHING on it — but a refunded stake was still counted in
- * `Stakes`, and the refund is a BET_REFUND, not a payout. Without subtracting it,
- * GGR was overstated by the whole refunded amount, and the TRA/GBT levy (which is
- * 15% of GGR = 15% of our commission) was charged on money we never made. Under
- * the capped-fee model one-sided polls are common, so this was a live over-tax.
- * GGR now equals the actual commission we keep, which is the base the ledger
- * already levies TRA/GBT on (levySplit in payout.ts) — so the report and the
- * ledger finally agree, per Ali's decision (tax on what we keep).
+ * ⚠️ GGR nets out REFUNDS (2026-07). A voided or one-sided poll returns every stake and we earn
+ * NOTHING on it — but a refunded stake was still counted in `Stakes`, and the refund is a
+ * BET_REFUND, not a payout. Without subtracting it, GGR was overstated by the whole refunded
+ * amount.
  *
- * SINGLE SOURCE OF TRUTH: `analytics.grossGamingRevenue()` / `netGamingRevenue()`
- * now delegate to `moneyForWindow()` below, so /admin/finance, /admin/live, the
- * admin overview and the GBT-monthly statutory report all read GGR = Stakes −
- * Payouts and NGR = GGR − Bonus − Fees from this one module. (Historically the
- * legacy analytics functions returned Stakes/turnover mislabelled "GGR"; that is
- * reconciled — see the batch log entry that flags the changed displayed numbers.)
+ * ⛔ GGR IS NOT OUR COMMISSION, AND NO LEVY IS DERIVED FROM ANYTHING IN THIS MODULE. This header
+ * used to say GGR "equals the actual commission we keep", that the TRA/GBT levy is "15% of GGR",
+ * and that "the report and the ledger finally agree". All three were false, and stating them
+ * here is how the same over-tax was re-derived twice: GGR still contains stakes on positions that
+ * have not settled (production, Sept 2026: GGR 803,675 against a booked fee of 62,985). TRA and GBT
+ * are booked PER SETTLEMENT on that poll's fee (`levySplit`, payout.ts), and every report READS
+ * them from `HOUSE:TRA_LEVY` / `HOUSE:GBT_LEVY` — see `ledger.leviesBooked` and
+ * SESSION-PROMPT-FINANCE-SEAL §5.
+ *
+ * SINGLE SOURCE OF TRUTH: `analytics.grossGamingRevenue()` / `netGamingRevenue()` /
+ * `activePlayers()` delegate to `moneyForWindow()` below, so /admin/finance, /admin/live, the admin
+ * overview and the GBT-monthly statutory report all read GGR, NGR and active players from this one
+ * module, on the definitions above.
  */
 import { EAT_OFFSET_MS } from "@/lib/eat-day";
 import { db } from "./store";
@@ -39,8 +42,17 @@ import { isDemoMarket } from "./market-service";
 import type { MarketCategory } from "./market-service";
 import { positionStore, marketStore } from "./market-dal";
 
-export type ReportPeriod = "today" | "7d" | "30d" | "mtd";
-export const REPORT_PERIODS: ReportPeriod[] = ["today", "7d", "30d", "mtd"];
+/**
+ * The ONE preset still passed by name — `categoryBreakdown("30d")` on /admin/insights, whose card
+ * is captioned "30d". Every other caller hands over resolved `{start,end}` bounds, from
+ * `resolveRange` (date-range.ts, which owns the full preset vocabulary) or `lastEatDays`.
+ * ⛔ DELETED 2026-09-25, all with no reader: `REPORT_PERIODS`, and the `"today"`, `"mtd"` and
+ * `"7d"` arms. A private second definition of "today" is exactly the word-that-means-two-things
+ * this module keeps paying for (SESSION-PROMPT-FINANCE-SEAL §0); and `"7d"` survived only as
+ * `dailyKpiSeries`' DEFAULT, which is the rolling window that returned EIGHT daily points with a
+ * short first bar (see `lastEatDays`) — every caller had already moved off it.
+ */
+export type ReportPeriod = "30d";
 
 /**
  * East Africa Time = UTC+3, no DST — IMPORTED, never re-declared.
@@ -49,9 +61,10 @@ export const REPORT_PERIODS: ReportPeriod[] = ["today", "7d", "30d", "mtd"];
  * `lib/eat-day.ts` (whose header calls itself "the one place the platform decides
  * what a day is" and forbids copying the offset) agreed about the offset only by
  * coincidence. The two literals happened to be equal; nothing made them stay equal,
- * and the report that computes the TRA and GBT levies is the last place that should
- * hold a private opinion about when a Tanzanian day starts. Re-exported because
- * `date-range.ts` and `scripts/date-range.test.mts` already import it from here.
+ * and a module whose EAT day decides which day's levies a report reads is the last
+ * place that should hold a private opinion about when a Tanzanian day starts.
+ * Re-exported because `date-range.ts` and `scripts/date-range.test.mts` already
+ * import it from here.
  */
 export { EAT_OFFSET_MS };
 const DAY_MS = 24 * 3600_000;
@@ -63,8 +76,8 @@ const DAY_MS = 24 * 3600_000;
  * every report. `buildDailyOps` used to derive its own window from
  * `new Date().getFullYear()/getMonth()/getDate()`, which is SERVER-LOCAL; the
  * Railway container runs UTC, so its "day" ran 03:00 → 03:00 EAT. That report
- * computes the TRA and GBT levies, so the tax was assessed on the wrong 24
- * hours, and consecutive daily filings could not be reconciled against the
+ * states the day's TRA and GBT levies, so they were summed over the wrong 24
+ * hours, and consecutive daily reports could not be reconciled against the
  * (EAT-correct) monthly pack. Import this — do not re-derive a day anywhere.
  */
 export function startOfEatDay(ms: number): number {
@@ -78,7 +91,6 @@ export function eatDateLabel(ms: number): string {
   return new Date(ms + EAT_OFFSET_MS).toISOString().slice(0, 10);
 }
 
-/** Midnight EAT of the first day of the month containing `ms`. */
 /**
  * ⭐ THE LAST `n` WHOLE EAT DAYS, ENDING NOW — the window a DAILY series actually wants.
  *
@@ -97,18 +109,16 @@ export function lastEatDays(n: number, now = Date.now()): { start: number; end: 
   return { start: startOfEatDay(now) - (days - 1) * DAY_MS, end: now };
 }
 
+/** Midnight EAT of the first day of the month containing `ms`. (`resolveRange`'s "mtd".) */
 export function startOfEatMonth(ms: number): number {
   const d = new Date(ms + EAT_OFFSET_MS);
   return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1) - EAT_OFFSET_MS;
 }
 
-/** [start, end] epoch-ms bounds for a report period, anchored to `now`. */
+/** [start, end] epoch-ms bounds for a rolling preset, anchored to `now`. */
 export function periodBounds(period: ReportPeriod, now = Date.now()): { start: number; end: number } {
   switch (period) {
-    case "today": return { start: startOfEatDay(now), end: now };
-    case "7d":    return { start: now - 7 * DAY_MS, end: now };
-    case "30d":   return { start: now - 30 * DAY_MS, end: now };
-    case "mtd":   return { start: startOfEatMonth(now), end: now };
+    case "30d": return { start: now - 30 * DAY_MS, end: now };
   }
 }
 
@@ -119,7 +129,7 @@ export function priorBounds(bounds: { start: number; end: number }): { start: nu
 }
 
 /**
- * A reporting window — either a legacy preset id (dashboards/sparklines) OR an already-
+ * A reporting window — either a rolling preset id (`ReportPeriod`) OR an already-
  * resolved `{start,end}` (from `resolveRange`, which supports the full preset set + a
  * custom date+hour+minute range). `boundsOf` normalises either to epoch-ms bounds, so
  * every report function accepts both and custom windows flow through unchanged.
@@ -160,7 +170,7 @@ function summarise(txns: StoredTxn[]): MoneySummary {
   const stakes = conf.filter((t) => t.type === "BET_PLACED").reduce((s, t) => s + Math.abs(t.amount), 0);
   const payouts = conf.filter((t) => t.type === "BET_PAYOUT" || t.type === "CASHOUT").reduce((s, t) => s + Math.abs(t.amount), 0);
   // Refunds return the whole stake and earn us nothing — they MUST net out of GGR,
-  // or a voided/one-sided poll is taxed on money we never kept.
+  // or GGR is overstated by every refunded stake.
   const refunds = conf.filter((t) => t.type === "BET_REFUND").reduce((s, t) => s + Math.abs(t.amount), 0);
   const bonusCost = conf.filter((t) => t.type === "BONUS_CREDIT").reduce((s, t) => s + Math.abs(t.amount), 0);
   // ⭐ Net: the reversal leg is its own type with a negative amount, so `paid − reversed`.
@@ -171,8 +181,8 @@ function summarise(txns: StoredTxn[]): MoneySummary {
   const deposits = conf.filter((t) => t.type === "DEPOSIT");
   const withdrawals = conf.filter((t) => t.type === "WITHDRAWAL");
   const ggr = stakes - payouts - refunds;
-  // ⛔ Agent commission does NOT reduce the levy base — TRA and GBT are computed on the fee we
-  // earned, and commission is paid out of what is left AFTER them. It reduces NGR (the
+  // ⛔ Agent commission does NOT reduce the levy base — TRA and GBT are booked on the settlement
+  // fee, and commission is paid out of what is left AFTER them. It reduces NGR (the
   // operator's bottom line), never GGR.
   const ngr = ggr - bonusCost - agentCommissionCost - fees;
   return {
@@ -320,11 +330,24 @@ export type ReportWindow = {
 };
 
 export async function loadReportWindow(start: number, end: number): Promise<ReportWindow> {
-  const [txns, attribution] = await Promise.all([
-    db.txn.listInRange(start, end),
-    loadMoneyAttribution(),
-  ]);
-  return { start, end, txns, attribution };
+  const txns = await db.txn.listInRange(start, end);
+  // The window's own transactions name the positions it needs — attribute exactly those.
+  return { start, end, txns, attribution: await loadMoneyAttribution(positionIdsOf(txns)) };
+}
+
+/** Every position a window's transactions name — the only ones its money can be attributed to. */
+function positionIdsOf(txns: readonly StoredTxn[]): string[] {
+  const ids = new Set<string>();
+  for (const t of txns) if (t.positionId) ids.add(t.positionId);
+  return [...ids];
+}
+
+/** The shared snapshot's attribution ONLY when it is the SAME window — it is now scoped to that
+ *  window's positions, so a snapshot of a different window would silently fail to attribute the
+ *  caller's money. Otherwise, a scoped load over the caller's own transactions. */
+async function windowAttribution(ctx: ReportWindow | undefined, start: number, end: number, txns: readonly StoredTxn[]): Promise<MoneyAttribution> {
+  if (ctx && ctx.start === start && ctx.end === end) return ctx.attribution;
+  return loadMoneyAttribution(positionIdsOf(txns));
 }
 
 /** Use the shared snapshot only when it is the SAME window. ⛔ Never "close enough": a
@@ -335,11 +358,20 @@ async function windowTxns(ctx: ReportWindow | undefined, start: number, end: num
   return db.txn.listInRange(start, end);
 }
 
-export async function loadMoneyAttribution(): Promise<MoneyAttribution> {
-  const [marketRows, positionRows] = await Promise.all([
-    marketStore.attribution(),
-    positionStore.attribution(),
-  ]);
+/**
+ * ⭐ SCOPED BY DEFAULT FOR EVERY WINDOWED CALLER (2026-09-26). This read BOTH whole tables —
+ * every market (~13,000, one per Up & Down round) and every position — on every render of
+ * `/admin/reports` and `/admin/insights`, to attribute a window that names a few hundred
+ * positions. Given `positionIds`, it reads exactly those positions and then exactly their
+ * markets; the maps it returns answer every lookup the window can make, so every figure is
+ * unchanged (`test:report-window-reads` §6 proves it against the whole-table load).
+ * Omitted = the whole-table load, kept for a caller with no window (and for
+ * `test:product-line` B9, which proves the unscoped read sees both product lines).
+ */
+export async function loadMoneyAttribution(positionIds?: readonly string[]): Promise<MoneyAttribution> {
+  const positionRows = await positionStore.attribution(positionIds);
+  const marketIds = positionIds === undefined ? undefined : [...new Set(positionRows.map((p) => p.marketId))];
+  const marketRows = await marketStore.attribution(marketIds);
   const catByMarket = new Map<string, MarketCategory>();
   const plByMarket = new Map<string, GameLine>();
   for (const m of marketRows) {
@@ -363,8 +395,8 @@ export async function loadMoneyAttribution(): Promise<MoneyAttribution> {
 // are platform-level and are NOT attributed to a game — they belong to neither.
 //
 // ⚠️ The combined `MoneySummary`/`summarise` above is UNCHANGED and stays the base for
-// every existing reader and the statutory pack — TRA/GBT is levied on TOTAL commission
-// across both games. This is additive.
+// every existing reader and the statutory pack. TRA/GBT are booked per settlement on each
+// poll's fee, whichever game — never computed from these figures. This is additive.
 
 /**
  * The two games — plus the honest third bucket for bet money whose game cannot be
@@ -378,7 +410,7 @@ export type GameMoney = {
   stakes: number;
   payouts: number;
   refunds: number;
-  /** stakes − payouts − refunds — this game's commission (what we keep on it). */
+  /** stakes − payouts − refunds — this game's GGR (a turnover measure, NOT the fee we keep on it). */
   ggr: number;
   /** ggr / stakes × 100 — this game's hold. */
   holdPct: number;
@@ -430,10 +462,8 @@ export async function moneyByGame(
    *  `categoryBreakdown` — see the DG-A-01 notes above. Omit and it reads its own. */
   ctx?: ReportWindow,
 ): Promise<{ market: GameMoney; updown: GameMoney; unattributed: GameMoney }> {
-  const [allTxn, attr] = await Promise.all([
-    windowTxns(ctx, start, end),
-    ctx ? Promise.resolve(ctx.attribution) : loadMoneyAttribution(),
-  ]);
+  const allTxn = await windowTxns(ctx, start, end);
+  const attr = await windowAttribution(ctx, start, end, allTxn);
   // ⛔ `?? "MARKET"` here is UNCHANGED and is not the F-03 defect below: this resolves a
   // market that exists but carries no readable product line, which the DAL already coerces
   // to MARKET at the row level. The defect was defaulting an unresolvable POSITION.
@@ -489,7 +519,7 @@ export type DailyPnlRow = {
 };
 
 /** One row per EAT calendar day in the period, oldest→newest, + totals.
- *  "today" collapses to a single row; longer periods give the daily P&L grid. */
+ *  A window inside one EAT day collapses to a single row; longer ones give the daily P&L grid. */
 export async function dailyPnl(period: Window, now = Date.now(), ctx?: ReportWindow): Promise<{ rows: DailyPnlRow[]; totals: DailyPnlRow }> {
   const { start, end } = boundsOf(period, now);
   // The window comes from SQL now; `within` kept only where a per-DAY slice is taken
@@ -529,13 +559,14 @@ export type KpiTrends = { ggr: number[]; ngr: number[]; active: number[] };
  * point is that day's REAL metric via the canonical `summarise()` — the SAME
  * function the scalar GGR/NGR/active read — so a spark can never imply a trend
  * that isn't the tile's own metric (the reason net-flow was rejected as a GGR
- * spark). `active` is the day's distinct-txn-user count = `activePlayers`.
- * Pure read (one `listAll` + in-memory day buckets); mutates nothing.
+ * spark). `active` is the day's distinct players whose money moved (CONFIRMED) = `activePlayers`.
+ * Pure read (one windowed `listInRange` + in-memory day buckets); mutates nothing.
  *
- * Default "7d" = a 7-point recent daily trend; the money tiles show a "today"/
- * period scalar with this as the recent history leading up to it.
+ * ⛔ NO DEFAULT WINDOW. It used to default to the rolling `"7d"` preset, which is not aligned to
+ * an EAT midnight and so returns EIGHT points with a short first bar. Pass `lastEatDays(n)` for
+ * an n-point daily trend (every caller does).
  */
-export async function dailyKpiSeries(period: Window = "7d", now = Date.now()): Promise<KpiTrends> {
+export async function dailyKpiSeries(period: Window, now = Date.now()): Promise<KpiTrends> {
   const { start, end } = boundsOf(period, now);
   // The window comes from SQL now; `within` kept only where a per-DAY slice is taken
   // below. Same bounds, so every figure is unchanged — measured 66x faster, 333 MB less.
@@ -603,7 +634,8 @@ export async function categoryBreakdown(
   // no `productLine` parameter, so it cannot exclude Up & Down. `test:product-line` was updated
   // in the same commit to assert exactly that, behaviourally, rather than by grepping for a
   // string this file no longer contains.
-  const attr = ctx?.attribution ?? (await loadMoneyAttribution());
+  const windowRows = await windowTxns(ctx, start, end);
+  const attr = await windowAttribution(ctx, start, end, windowRows);
   const posCat = new Map<string, MarketCategory>();
   for (const [positionId, marketId] of attr.marketOfPosition) {
     const c = attr.catByMarket.get(marketId);
@@ -618,7 +650,7 @@ export async function categoryBreakdown(
   const acc = new Map<MarketCategory, { stakes: number; payouts: number }>();
   // The window is the WHERE clause now; the per-row `within` below is therefore
   // redundant but harmless, and kept so the bounds stay stated at the point of use.
-  for (const t of await windowTxns(ctx, start, end)) {
+  for (const t of windowRows) {
     if (t.status !== "CONFIRMED" || !t.positionId) continue;
     const isStake = t.type === "BET_PLACED";
     // A refund is payout-like for GGR: it returns a stake we keep nothing from.

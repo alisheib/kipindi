@@ -16,11 +16,13 @@
  * hands them here, which is what lets `test:hero-contract` prove the licence conditions with no
  * database and no browser.
  *
- * The cold-start rule (DESIGN_AUTHORITY §B6 / law 81) has FOUR consumers now: the board, the
- * market card, the detail page, and this file. The rule is `pricedYesPct` — one function, and it
- * returns null rather than a number when nobody has staked.
+ * The cold-start rule (DESIGN_AUTHORITY §B6 / law 81): a market's printable price is `shownYesPct` /
+ * `priceState` (`price-state.ts`) — null when nobody has staked OR money sits on one side only, and a
+ * two-sided price within 1–99 — read by the board, the market card, the detail page and this file's
+ * rows. The AGGREGATE share below is `pricedYesPct` over summed pools, which is not a market's price.
  */
 import { matchesStatus, pricedYesPct, sortRows, type DiscoveryRow } from "./discovery";
+import { priceTier } from "./price-state";
 
 /** Rows in the hero's question board. Four fits the kit's grid at every width we ship. */
 export const QUESTION_BOARD_SIZE = 4;
@@ -115,15 +117,17 @@ export function heroFigures(rows: readonly HeroRow[], nowMs: number): HeroFigure
   // walked back in through the branch the lens added.
   //
   // ⭐ QUALITY IS A PARTITION, NOT A SORT KEY, and it is applied BEFORE position. A market with no
-  // price and a market priced 0 or 100 are not "slightly worse" than a contested one — they are a
+  // price and a market with one side of its pool empty are not "slightly worse" than a contested one — they are a
   // different kind of thing to put in front of a first-time visitor, and no amount of closing
   // sooner should promote them past a real question.
   // ⛔ TIERED RATHER THAN FILTERED, so the board is never SHORT either. Within each tier the
   // original lens still applies: closing today by distance from even, then the rest by closing
   // time. A degenerate row can therefore still appear — but only once every contested market in
   // the entire open book is already on screen, which is the honest ordering of a thin day.
-  const degeneracy = (r: HeroRow): number =>
-    r.yesPct == null ? 2 : (r.yesPct === 0 || r.yesPct === 100) ? 1 : 0;
+  // ⭐ WP6 (2026-09-27): THE TIER IS READ FROM THE POOLS (`priceTier`), no longer from the rounded
+  // `yesPct === 0 || === 100`. The rounded test put a two-sided 199-vs-1 market with the one-sided
+  // ones and its mirror image 1-vs-199 with the contested ones; and ruling 13 forbids inferring
+  // one-sidedness from a rounded figure at all. A two-sided market is tier 0 now, shown within 1–99.
   const lens = (rows: readonly HeroRow[]): HeroRow[] => {
     const today = rows.filter((r) => matchesStatus(r, "today", nowMs));
     const todayIds = new Set(today.map((r) => r.id));
@@ -132,7 +136,7 @@ export function heroFigures(rows: readonly HeroRow[], nowMs: number): HeroFigure
       ...sortRows(rows.filter((r) => !todayIds.has(r.id)), { sort: "closing", dir: null }),
     ];
   };
-  const ordered = [0, 1, 2].flatMap((tier) => lens(open.filter((r) => degeneracy(r) === tier)));
+  const ordered = [0, 1, 2].flatMap((tier) => lens(open.filter((r) => priceTier(r) === tier)));
 
   return {
     openCount: open.length,

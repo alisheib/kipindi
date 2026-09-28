@@ -48,7 +48,7 @@ import { FormColumn } from "@/components/ui/form-column";
 import { ProgressBar } from "@/components/ui/progress-bar";
 import { Sensitive } from "@/components/ui/sensitive";
 import { currentSession } from "@/lib/server/auth-service";
-import { houseCheckForConsole, houseConsoleAudience, CONSOLE_WIZARD_COPY, type ConsoleCheckRow } from "@/lib/server/house-console-read";
+import { houseAccountListForConsole, houseCheckForConsole, houseConsoleAudience, CONSOLE_WIZARD_COPY, type ConsoleAccountListQuery, type ConsoleCheckRow } from "@/lib/server/house-console-read";
 import { CONSOLE_ROUTE, CONSOLE_WIZARD_STEPS, consoleWizardStep } from "@/lib/house-bot/console-routes";
 /* ⛔ THE PAGE OWNS THE IMPORT OF THE ACTIONS AND HANDS THEM DOWN (ruling 422): a client component under
  * `src/app/admin` that imports an actions module joins `test:admin-act-gate`'s population and must consult the act
@@ -56,6 +56,7 @@ import { CONSOLE_ROUTE, CONSOLE_WIZARD_STEPS, consoleWizardStep } from "@/lib/ho
  * false, which 1.422 refuses under this section by name. */
 import { findDeskAccountsAction, designateDeskAccountAction } from "./actions";
 import { DeskAccountPicker, DeskDesignateForm } from "./designate-wizard";
+import { DeskAccountList } from "./account-list";
 
 /** ⛔ A static neutral title (ruling 402). No route here exports a `generateMetadata` that reads a record. */
 export const metadata = { title: "Admin · Desk" };
@@ -68,8 +69,10 @@ export const dynamic = "force-dynamic";
    The review's reasoning — one shared treatment, because the section had shipped two looks for one control — was
    right; only its home was wrong. */
 
+/* ⭐ RESUME-HERE §0c decision 4 · the find step's list reads its own five parameters — the gated reader validates
+   every one of them, so the page hands the address over untouched and reads none of them itself. */
 type DeskNewProps = {
-  searchParams: Promise<{ u?: string | string[]; step?: string | string[] }>;
+  searchParams: Promise<{ u?: string | string[]; step?: string | string[] } & ConsoleAccountListQuery>;
 };
 
 /**
@@ -99,11 +102,15 @@ async function AdminDeskNewContent({ searchParams }: DeskNewProps) {
      form with nothing to designate — a control that could only ever refuse. */
   const step = consoleWizardStep(sp.step, chosen.length > 0);
 
-  /* ⛔ THE VERDICT IS AWAITED FIRST, BEFORE ANY READ (300, 380), and it is the READER that awaits it: the find
-     step performs no account read at all, so its own gate is the picker action's, which carries the identical
-     verdict on the identical stored row. */
+  /* ⛔ THE VERDICT IS AWAITED FIRST, BEFORE ANY READ (300, 380), and it is each READER that awaits it again: the
+     check card's, the find step's account list's, and the picker action's — every one the identical verdict on the
+     identical stored row. */
   const view = chosen.length > 0 ? await houseCheckForConsole(session?.userId ?? null, "/admin/desk", chosen) : null;
   if (chosen.length > 0 && !view) return null;
+  /* ⭐ RESUME-HERE §0c decision 4 · EVERY ACCOUNT, BELOW THE PICKER — read on the FIND step and on no other. With an
+     account in the address the step is the check, so a crafted `?u=…&sort=…` reads no list at all: the wizard's
+     later steps are about ONE account, and a directory beside them would be a read nobody asked for. */
+  const list = step === "find" ? await houseAccountListForConsole(session?.userId ?? null, "/admin/desk", sp) : null;
 
   const stepIndex = CONSOLE_WIZARD_STEPS.indexOf(step) + 1;
 
@@ -146,6 +153,11 @@ async function AdminDeskNewContent({ searchParams }: DeskNewProps) {
               />
             </AdminCard>
           )}
+
+          {/* ⭐ RESUME-HERE §0c decision 4 · THE FULL LIST, UNDER THE PICKER AND NEVER BESIDE IT: the wizard is held to
+              the form measure, so two columns would leave each half too narrow to read at 1280 — one column, at
+              every width. ⛔ A SERVER component: every word, link and row is the gated reader's, painted. */}
+          {step === "find" && list !== null && <DeskAccountList view={list} />}
 
           {/* ⭐ NO ACCOUNT BEHIND THE `?u=` AT ALL — A STATE, NOT A CARD OF FACTS ABOUT NOTHING (355, 416). Read off
               the first render: the card painted a handle built out of the typed id, an EMPTY "Phone" term, and

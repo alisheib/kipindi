@@ -73,7 +73,7 @@ export const dict = {
       browseAll: "Browse all markets →",
       changingLanguage: "Changing language…",
       readAll: "Read all", clearAll: "Clear all",
-      verifyId: "Verify ID", inviteEarn: "Invite & Earn",
+      verifyId: "Verify ID",
       proposeEarn: "Propose & earn", comingSoon: "Coming soon",
       copied: "Copied", copy: "Copy", share: "Share",
       copyLink: "Copy link", now: "now",
@@ -327,6 +327,10 @@ export const dict = {
       //    officers signed — never who they were.
       twoOfficerSealed: "Two officers",
       oneOfficerSealed: "One officer",
+      // landing v3 (WP13): the third honest answer — the automatic resolver, which is not a person.
+      autoSealed: "Automatic",
+      // An upheld objection REVERSED the verdict: the stamps name who signed the overturned one.
+      correctedOnObjection: "Corrected on objection",
       attestationPublishHint: "Resolution attestations publish here automatically the moment a market settles.",
       thMarket: "Market",
       thOutcome: "Outcome",
@@ -473,6 +477,7 @@ export const dict = {
          three English words at the one field that decides whether they are allowed an account. */
       dateDay: "Day", dateMonth: "Month", dateYear: "Year",
       liveTickerLabel: "Live settlement activity",
+      liveTickerPause: "Pause live feed",
       weekdaysShort: ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"],
     },
     nav: {
@@ -560,7 +565,6 @@ export const dict = {
       claimBonus: "Claim your welcome bonus",
       bonusWalletHint: "Added to your bonus wallet — play it through to turn it into cash.",
       signUpAndGet: "Sign up & get",
-      getOnFirstDeposit: "Get on your first deposit",
       toStart: "to start",
       wrongCode: "Wrong code \u2014 try again.",
       codeExpired: "Code expired \u2014 request a new one.",
@@ -600,15 +604,58 @@ export const dict = {
       heroBoardCloseToday: "{n} close today",
       heroNoPrice: "No bets yet",
       heroBrowseAll: "Browse all {n} markets",
-      heroBody: "Trade questions about Tanzania's weather, markets, sport and culture — settled by official sources.",
+      // landing v3: "Trade" was trading jargon on a pick-a-side product (the delivery's first-time-visitor reviewer).
+      heroBody: "Pick a side on questions about Tanzania's weather, markets, sport and culture, settled by official sources.",
       heroCta: "Browse markets",
       myPositions: "My positions",
+      // landing v3 · WP14 part 2 — the signed-in hero (the delivery's wallet scenario §4a/§4c).
+      yourPicks: "Your picks",
+      picksOpen: "open",
+      picksAwaiting: "awaiting result",
+      picksPaidWeek: "paid to you this week",
+      picksNone: "No picks yet. Choose a side on a market to make your first.",
+      // ⚠️ "by mobile money OR CARD": deposits take cards (wallet.mobileMoney); the concept's "with
+      // mobile money" alone was a false statement (INHERIT-MANIFEST L19).
+      emptyBalance: "Your balance is empty. Add funds by mobile money or card to make your next pick.",
       browsFirst: "Browse markets first →",
       liveSection: "Live",
       updownEyebrow: "Fast game · live",
       updownCta: "Play Up & Down",
       // 2026-09-14 · `{n}` is filled, never concatenated: Swahili puts the number after the noun. Callers: fill(t.home.updownRoundsLive, { n }).
       updownRoundsLive: "{n} rounds live now",
+      // landing v3 (WP12): the singular. The page printed "1 rounds live now" (production, 2026-09-26).
+      updownRoundsLiveOne: "1 round live now",
+      // landing v3, R5 (2026-09-27) · the Up & Down band as a match — spec updown-band-v2 §7. The verdict
+      // is present tense while its confirmed read is fresh and past tense ("…Led", "…Was") once it ages.
+      // Level lines never name a side; the refund is always stated; "{time}" is 24-hour HH:MM, no zone.
+      udMatchUpLeads: "Up leads",
+      udMatchDownLeads: "Down leads",
+      udMatchUpLed: "Up led",
+      udMatchDownLed: "Down led",
+      udMatchNobody: "Nobody leads",
+      udMatchNobodyWas: "Nobody led",
+      udMatchKickoff: "Kick-off",
+      udMatchPickSide: "Pick a side",
+      udMatchAt: "at {time}",
+      udMatchNoNewPrice: "No new price since the open at {time}",
+      udMatchOpenedAt: "Opened at {time}",
+      udMatchLevelExact: "Exactly at the opening price",
+      udMatchLevelNote: "If it closes here, every stake comes back.",
+      udMatchDecides: "The price at {close} decides.",
+      // After the deciding instant the rule speaks in the past; the band itself never states the result.
+      udMatchDecided: "The price at {close} decided.",
+      // Under a verdict gone past tense while betting is still open: why it turned grey.
+      udMatchAgedNote: "No newer price yet.",
+      udMatchRefund: "Under\u00A0{margin} from the open, every stake comes back.",
+      udMatchRefundRange: "{upWord} at {up} or higher, {downWord} at {down} or lower — in between, every stake comes back.",
+      udMatchAllRounds: "All rounds",
+      udMatchNextRound: "Play the next round",
+      udMatchAria: "Round timeline (EAT): open {open}, betting close {lock}, deciding price {close}. Confirmed prices since the open: {reads}.",
+      // The timer's spoken name — a duration, never a clock time ("closes in 8:56" can be heard as 8:56 o'clock).
+      udMatchTimerAria: "Betting closes in {m} min {s} sec",
+      udMatchTimerAriaSec: "Betting closes in {s} sec",
+      udMatchAriaNone: "none yet",
+      udMatchAriaRead: "{time}: {move}",
       updownStartsSoon: "New rounds every few minutes",
       pickASideNow: "Pick a side now",
       pickASideStake: "Pick a side, stake TZS",
@@ -637,11 +684,12 @@ export const dict = {
       howEyebrow: "How 50pick works",
       howStep1H: "Pick a side",
       howStep1B: "Every market is one question with two answers. Stake what you want in shillings — the conviction needle shows where the crowd's money already sits.",
-      howStep2H: "Every result has a named source",
+      // landing v3 (WP11): short enough that the three step titles each hold one line at 1280.
+      howStep2H: "A named source",
       howStep2B: "Every market settles against a named public source: the meteorological agency, the league table, the Bank of Tanzania mid-rate. An officer signs it off — two, when two-officer authorisation is enabled.",
       howStep3H: "Winners split the pool",
       // 2026-09-13 · no speed promise and no single brand: a payout lands when the mobile-money network confirms it, and several networks pay out.
-      howStep3B: "The pool is shared between everyone who was right, minus a commission taken only from the losing side. Winnings land in your 50pick balance, ready to withdraw to mobile money.",
+      howStep3B: "The pool is shared between everyone who was right, minus a {pct}% commission taken only from the losing side. Winnings land in your 50pick balance, ready to withdraw to mobile money.",
 
       /* ── §1c THE GRID'S LENS ───────────────────────────────────────────────────────────
          The eyebrow NAMES THE ORDERING, so the grid is a claim rather than a sample (kit
@@ -677,6 +725,9 @@ export const dict = {
       settledPaid: "paid",
       settledVoid: "refunded",
       settledSeeAll: "All results",
+      // landing v3 (WP13): each settled row states when it settled, beside who signed it off.
+      settledOn: "Settled {date}",
+      settledSourceNewTab: "opens the settling source in a new tab",
     },
     market: {
       title: "Markets",
@@ -732,6 +783,14 @@ export const dict = {
       noBetsYet: "No bets yet",
       beFirst: "Be the first to predict",
       noPoolYet: "No pool yet",
+      // landing v3 · WP6 — a market with money on ONE side has no price (MOBILE-VISUAL ruling 13).
+      // The refund sentences restate rules §7 (`_content-yes-no.tsx`) and `settleMarket`'s one-sided
+      // branch: every stake back in full, whatever the verdict. "No stake on {side}", not "no one
+      // picked": a cash-out empties a side somebody did pick. ONE conditional sentence for every
+      // unsettled phase — a closed-phase "will be refunded" was withdrawn, because `adminReopenMarket`
+      // can put a sentinel-CLOSED market back to LIVE. ⛔ No digits here (`test:rate-copy`).
+      oneSideOnly: "One side only",
+      oneSidedNote: "No stake on {side} yet. If betting closes one-sided, every stake is refunded in full.",
       closed: "closed",
       // Time-left. The NUMBER is inside the string so each locale owns its own
       // spacing and word order. They used to be bare suffixes concatenated as
@@ -767,6 +826,8 @@ export const dict = {
       resVoided: "Market voided",
       resTwoOfficer: "Confirmed under the two-officer review rule",
       resSingleOfficer: "Resolved by an officer against the declared public source",
+      // landing v3 review: an upheld objection REVERSED or VOIDED the recorded verdict (lib/markets/signoff.ts).
+      resCorrectedOnObjection: "Corrected on objection: an officer upheld an objection to the recorded verdict",
       resProvisional: "Provisional — becomes final on",
       resFinal: "Resolution is final",
       resFinalPool: "Final pool",
@@ -895,7 +956,7 @@ export const dict = {
       // state, not an error, and VOID is neutral — a refund, not a failure.
       udTitle: "Up & Down",
       gameKey: "Game",
-      udTagline: "Will the price be higher or lower when the clock runs out?",
+      udTagline: "Will the price be higher\u00A0or\u00A0lower when the clock runs out?",
       udUp: "Up", udDown: "Down",
       udMin: "min",
       udClosesIn: "Closes in",
@@ -1044,7 +1105,12 @@ export const dict = {
       // UD-4 key families from the two 2026-08 sessions were merged 2026-08-08 into ONE
       // set (the block above), keyed by updown-bet-errors.ts.
       // ── Up & Down · D3 round detail ──────────────────────────────────────
-      udLivePrice: "Live price", udAboveOpenBy: "Above open by", udBelowOpenBy: "Below open by", udPool: "Pool",
+      // R5 (2026-09-27): "Confirmed price", not "Live price" — the figure is the newest CONFIRMED read, dated
+      // by its stamp, and may be minutes old. The landing band and this page now say one thing (spec §12).
+      udConfirmedPrice: "Confirmed price",
+      // R5: a read strictly between the two targets — the band's and the round page's one level line.
+      udLevelBy: "Only {amount} from the open — not enough to decide",
+      udAboveOpenBy: "Above open by", udBelowOpenBy: "Below open by", udPool: "Pool",
       udPickLocked: "Locked from your pick on the board. To switch sides, leave this round.",
       udConfirm: "Confirm", udYourResult: "Your result", udPaidOut: "Paid out", udOpenInPositions: "Open in Positions",
       // ── Up & Down · EVERY POSITION, ITEMISED (2026-08-15) ────────────────
@@ -1161,6 +1227,8 @@ export const dict = {
       // Withdraw only: payouts go to mobile money and never to a bank (2026-09-13).
       mobileMoneyOnly: "Mobile money",
       available: "Available",
+      // landing v3 · R1 · the Wallet sheet's link to the full wallet page (history, statements).
+      openWallet: "Open wallet",
       holdWarning: "hold",
       withdrawFailed: "Withdrawal didn't go through",
       // ⛔ `verifyFirst` / `verifyFirstBody` / `continueKyc` were DELETED 2026-08-20 with
@@ -1380,9 +1448,10 @@ export const dict = {
       badgesHint: "More badges unlock as you predict, win and propose.",
       account: "Account",
       inviteEarn: "Invite & Earn", inviteEarnSub: "Refer friends · earn rewards",
-      // ⭐ THE UNPAID INVITE'S OWN WORDS (2026-09-25). ⛔ NOT a rewording of the four keys above:
-      // those are the PAID promo's, they stay exactly as they are, and `inviteRewards` ACTIVE
-      // brings them back. A page that pays nothing may not borrow a sentence that promises
+      // ⭐ THE UNPAID INVITE'S OWN WORDS (2026-09-25). ⛔ NOT a rewording of the paid promo's keys
+      // (`inviteEarn`/`inviteEarnSub` above; `yourReferrals`, `noReferralsYet/Body`, `rewardsDisclaimer`, `inviteReq*` below):
+      // those are the PAID promo's, they stay exactly as they are, and the Owner's Payable switch
+      // (with a reward armed) brings them back. A page that pays nothing may not borrow a sentence that promises
       // something — which is what re-pointing `inviteEarn` at neutral copy would have quietly done
       // to every other reader of that key.
       inviteFriends: "Invite friends", inviteFriendsSub: "Share your link · see who joins",
@@ -1439,12 +1508,12 @@ export const dict = {
       sessionSecurity: "Session security",
       sessionSecurityBody: "Your session is tied to this browser. Sign out above to end it. Each sign-in requires a fresh OTP.",
       shareText: "Join me on 50pick — predict and win. Use my link:",
-      programPaused: "The program is paused right now. Your link still works — rewards resume when it's back on.",
       howItWorks: "How it works", yourReferrals: "Your referrals",
       bonusRequirements: "Bonus requirements",
       inviteReqRegister: "Your friend must register using your referral link.",
       inviteReqDeposit: "They must deposit funds into their account.",
-      inviteReqBet: "They must place at least one position worth TZS 20,000 or more.",
+      inviteReqBet: "They must place at least one position worth {amount} or more.",
+      inviteReqBetAny: "They must place at least one position.",
       inviteReqCash: "Reward credited to your main balance as withdrawable cash — no wagering requirement.",
       inviteReqWager: "Bonus credited to your Bonus Wallet — {wager}\u00d7 wagering required before withdrawal.",
       inviteReqExpiry: "Bonuses expire 30 days after being credited if not played through.",
@@ -2784,7 +2853,7 @@ export const dict = {
       browseAll: "Tazama masoko yote →",
       changingLanguage: "Inabadilisha lugha…",
       readAll: "Soma zote", clearAll: "Futa zote",
-      verifyId: "Thibitisha ID", inviteEarn: "Alika na upate zawadi",
+      verifyId: "Thibitisha ID",
       proposeEarn: "Pendekeza na upate zawadi", comingSoon: "Inakuja hivi karibuni",
       copied: "Imenakiliwa", copy: "Nakili", share: "Shiriki",
       copyLink: "Nakili kiungo", now: "sasa",
@@ -3012,6 +3081,10 @@ export const dict = {
       noVoidedSettlementsBody: "Kila soko kwenye rekodi hii lilitatuliwa kwa uamuzi. Soko lililobatilishwa litaonekana hapa iwapo dau zitarudishwa.",
       twoOfficerSealed: "Maafisa wawili",
       oneOfficerSealed: "Afisa mmoja",
+      // drafted, marked for native review; English is binding.
+      autoSealed: "Kiotomatiki",
+      // drafted, marked for native review; English is binding.
+      correctedOnObjection: "Imerekebishwa baada ya pingamizi",
       attestationPublishHint: "Uthibitisho wa utatuzi unachapishwa hapa moja kwa moja soko linapokamilika.",
       thMarket: "Soko",
       thOutcome: "Matokeo",
@@ -3143,6 +3216,7 @@ export const dict = {
       monthsShort: ["Jan", "Feb", "Mac", "Apr", "Mei", "Jun", "Jul", "Ago", "Sep", "Okt", "Nov", "Des"],
       dateDay: "Siku", dateMonth: "Mwezi", dateYear: "Mwaka",
       liveTickerLabel: "Shughuli za utatuzi mubashara",
+      liveTickerPause: "Sitisha mubashara",
       weekdaysShort: ["Jtt", "Jnn", "Jtn", "Alh", "Iju", "Jms", "Jpl"],
     },
     nav: {
@@ -3220,7 +3294,6 @@ export const dict = {
       claimBonus: "Pata bonasi yako ya kukukaribisha",
       bonusWalletHint: "Imeongezwa kwenye pochi yako ya bonasi — cheza ili kuibadilisha kuwa pesa.",
       signUpAndGet: "Jisajili na upate",
-      getOnFirstDeposit: "Pata kwenye amana yako ya kwanza",
       toStart: "kuanza",
       wrongCode: "Msimbo si sahihi \u2014 jaribu tena.",
       codeExpired: "Msimbo umeisha muda \u2014 omba mpya.",
@@ -3252,12 +3325,45 @@ export const dict = {
       heroBody: "Shiriki katika utabiri wa hali ya hewa, masoko, michezo na utamaduni wa Tanzania — kila tukio likithibitishwa kwa mujibu wa vyanzo rasmi.",
       heroCta: "Tazama masoko",
       myPositions: "Nafasi zangu",
+      // drafted, marked for native review; English is binding.
+      yourPicks: "Chaguo zako",
+      picksOpen: "wazi",
+      picksAwaiting: "yanasubiri matokeo",
+      picksPaidWeek: "ulizolipwa wiki hii",
+      picksNone: "Bado huna chaguo. Chagua upande kwenye soko ili ufanye chaguo lako la kwanza.",
+      emptyBalance: "Salio lako ni tupu. Weka pesa kwa pesa ya simu au kadi ili ufanye chaguo lako lijalo.",
       browsFirst: "Tazama masoko kwanza →",
       liveSection: "Hai",
       updownEyebrow: "Mchezo wa kasi · hai",
       updownCta: "Cheza Juu na Chini",
       updownRoundsLive: "raundi {n} hai sasa",
-      updownStartsSoon: "Raundi mpya kila baada ya dakika chache",
+      updownRoundsLiveOne: "raundi 1 hai sasa",
+      udMatchUpLeads: "Juu inaongoza",
+      udMatchDownLeads: "Chini inaongoza",
+      udMatchUpLed: "Juu iliongoza",
+      udMatchDownLed: "Chini iliongoza",
+      udMatchNobody: "Hakuna anayeongoza",
+      udMatchNobodyWas: "Hakuna aliyeongoza",
+      udMatchKickoff: "Mwanzo",
+      udMatchPickSide: "Chagua upande",
+      udMatchAt: "saa {time}",
+      udMatchNoNewPrice: "Bado hakuna bei mpya tangu ufunguzi saa {time}",
+      udMatchOpenedAt: "Ilifunguliwa saa {time}",
+      udMatchLevelExact: "Sawa kabisa na bei ya ufunguzi",
+      udMatchLevelNote: "Ikifunga hapa, kila dau linarudi.",
+      udMatchDecides: "Bei ya saa {close} inaamua.",
+      udMatchDecided: "Bei ya saa {close} iliamua.",
+      udMatchAgedNote: "Bado hakuna bei mpya.",
+      udMatchRefund: "Tofauti na ufunguzi isipofika\u00A0{margin}, kila dau linarudi.",
+      udMatchRefundRange: "{upWord} kwa {up} au zaidi, {downWord} kwa {down} au pungufu — katikati, kila dau linarudi.",
+      udMatchAllRounds: "Raundi zote",
+      udMatchNextRound: "Cheza raundi ijayo",
+      udMatchAria: "Ratiba ya raundi (EAT): ufunguzi {open}, mwisho wa dau {lock}, bei ya kuamua saa {close}. Bei zilizothibitishwa tangu ufunguzi: {reads}.",
+      udMatchTimerAria: "Dau linafungwa baada ya dakika {m} na sekunde {s}",
+      udMatchTimerAriaSec: "Dau linafungwa baada ya sekunde {s}",
+      udMatchAriaNone: "bado hakuna",
+      udMatchAriaRead: "saa {time}: {move}",
+      updownStartsSoon: "Raundi mpya kila\u00A0baada\u00A0ya\u00A0dakika\u00A0chache",
       pickASideNow: "Chagua upande sasa",
       pickASideStake: "Chagua upande, weka dau kwa TZS",
       priceCompetitionPool: "Mashindano ya bei. Sogeza sindano ya imani kwenye soko lolote.",
@@ -3270,10 +3376,12 @@ export const dict = {
       howEyebrow: "50pick inafanya kazi vipi",
       howStep1H: "Chagua upande",
       howStep1B: "Kila soko ni swali moja lenye majibu mawili. Weka dau unalotaka kwa shilingi — sindano ya imani inaonyesha pesa za umati zilipo tayari.",
-      howStep2H: "Kila matokeo yana chanzo kilichotajwa",
+      // drafted, marked for native review; English is binding.
+      howStep2H: "Chanzo kilichotajwa",
       howStep2B: "Kila soko linatatuliwa kwa chanzo rasmi cha umma kilichotajwa: wakala wa hali ya hewa, jedwali la ligi, kiwango cha kati cha Benki Kuu ya Tanzania. Afisa anathibitisha — wawili, pale idhini ya maafisa wawili inapowashwa.",
       howStep3H: "Washindi wanagawana bwawa",
-      howStep3B: "Bwawa linagawanywa kati ya wote waliokuwa sahihi, kasoro kamisheni inayotozwa kwenye upande ulioshindwa pekee. Ushindi wako huingia kwenye salio lako la 50pick, tayari kutolewa kwa pesa ya simu.",
+      // drafted, marked for native review; English is binding.
+      howStep3B: "Bwawa linagawanywa kati ya wote waliokuwa sahihi, kasoro kamisheni ya {pct}% inayotozwa kwenye upande ulioshindwa pekee. Ushindi wako huingia kwenye salio lako la 50pick, tayari kutolewa kwa pesa ya simu.",
 
       gridEyebrowPool: "Bwawa kubwa kwanza",
       gridEyebrowNew: "Yamefunguliwa hivi punde",
@@ -3297,6 +3405,12 @@ export const dict = {
       settledPaid: "yalilipwa",
       settledVoid: "yalirejeshwa",
       settledSeeAll: "Matokeo yote",
+      // drafted, marked for native review; English is binding.
+      // "Lilikamilika" (it was completed — the verb of this strip's own head, "Yaliyokamilika hivi karibuni"),
+      // never "Imelipwa" (was paid): a VOID row was refunded and a silent row paid nothing.
+      settledOn: "Lilikamilika {date}",
+      // drafted, marked for native review; English is binding.
+      settledSourceNewTab: "hufungua chanzo cha matokeo katika kichupo kipya",
     },
     market: {
       title: "Masoko",
@@ -3345,9 +3459,13 @@ export const dict = {
       noBetsYet: "Bila dau bado",
       beFirst: "Kuwa wa kwanza kutabiri",
       noPoolYet: "Hakuna bwawa bado",
+      // drafted, marked for native review; English is binding.
+      oneSideOnly: "Upande mmoja tu",
+      // drafted, marked for native review; English is binding. The second sentence is rules §7's own.
+      oneSidedNote: "Hakuna dau upande wa {side} bado. Kama upande mmoja tu una dau wakati wa kufunga, kila dau hurudishwa kamili.",
       closed: "imefungwa",
       timeLeftD: "siku {n} zimebaki", timeLeftH: "masaa {n} yamebaki", timeLeftM: "dakika {n} zimebaki",
-      showMarketN: "Onyesha soko {n}", prevMarket: "Soko lililopita", nextMarket: "Soko linalofuata", showResultN: "Onyesha tokeo maarufu {n}",
+      showMarketN: "Onyesha soko {n}", prevMarket: "Soko lililopita", nextMarket: "Soko linalofuata", showResultN: "Onyesha matokeo maarufu {n}",
       similarMarkets: "Masoko yanayofanana", similarMarketsBody: "Hai sasa — weka utabiri mwingine bila kurudi nyuma.",
       twentyFourHourMove: "Mwenendo wa saa 24",
       noLiveMatch: "Hakuna soko hai linalolingana",
@@ -3367,6 +3485,8 @@ export const dict = {
       resVoided: "Soko limebatilishwa",
       resTwoOfficer: "Imethibitishwa kwa kanuni ya maofisa wawili",
       resSingleOfficer: "Imetatuliwa na afisa kwa kutumia chanzo rasmi kilichotangazwa",
+      // drafted, marked for native review; English is binding.
+      resCorrectedOnObjection: "Imerekebishwa baada ya pingamizi: afisa alikubali pingamizi dhidi ya uamuzi uliorekodiwa",
       resProvisional: "Ya muda — inakuwa ya mwisho tarehe",
       resFinal: "Utatuzi ni wa mwisho",
       resFinalPool: "Jumla ya dimbwi",
@@ -3453,7 +3573,7 @@ export const dict = {
       // ── Juu na Chini (Up & Down) ─────────────────────────────────────────
       udTitle: "Juu na Chini",
       gameKey: "Mchezo",
-      udTagline: "Je, bei itakuwa juu au chini saa itakapoisha?",
+      udTagline: "Je, bei itakuwa juu\u00A0au\u00A0chini muda ukiisha?",
       udUp: "Juu", udDown: "Chini",
       udMin: "dakika",
       udClosesIn: "Inafunga baada ya",
@@ -3470,7 +3590,7 @@ export const dict = {
       udIfUp: "ikiwa JUU",
       udIfDown: "ikiwa CHINI",
       udSettlingTitle: "Tunasoma bei ya kufunga…",
-      udAwaitingResult: "Inasubiri tokeo",
+      udAwaitingResult: "Inasubiri matokeo",
       udConfirmingPrice: "Inathibitisha bei",
       udConfirmingBody: "Tunasoma bei ya kufunga kutoka chanzo. Inaweza kuchukua muda — hatutumii makadirio kamwe.",
       udRoundSettled: "Raundi imekamilika",
@@ -3528,7 +3648,7 @@ export const dict = {
       udShowingDay: "Inaonyesha",
       udNoRoundsThatDay: "Hakuna raundi iliyokamilika siku hiyo.",
       udAllDays: "Siku zote",
-      udWon: "Umeshinda", udLost: "Umeshindwa", udStakedLabel: "Uliweka", udResultLabel: "Tokeo",
+      udWon: "Umeshinda", udLost: "Umeshindwa", udStakedLabel: "Uliweka", udResultLabel: "Matokeo",
       udUpDown: "Juu na Chini", udStakeReturnedTitle: "Dau limerudishwa", udLostTitle: "Umeshindwa raundi",
       udOpenLabel: "Wazi", udBackToBoard: "Rudi Juu na Chini",
       udNetReturn: "Faida halisi", udRoundsPlayed: "Raundi", udWinRate: "Kiwango cha ushindi", udBets: "dau", udInPlay: "Inaendelea",
@@ -3560,11 +3680,15 @@ export const dict = {
       udNextMatchNoneBody: "Hakuna raundi nyingine iliyopangwa hapa kwa sasa.",
       udNextMatchGo: "Nenda",
       udLastRound: "Raundi iliyopita",
-      udLastRoundView: "Ona tokeo kamili",
+      udLastRoundView: "Ona matokeo kamili",
       udSignInToBet: "Ingia ili kuweka dau", udTapToBet: "Gusa Juu au Chini kuweka dau",
       udCustom: "Maalum", udCustomAmount: "Kiasi maalum cha dau", udStakeRange: "Nje ya kiwango kinachoruhusiwa", udEnterStake: "Weka kiasi kucheza",
       // ── Up & Down · D3 round detail ──────────────────────────────────────
-      udLivePrice: "Bei ya sasa", udAboveOpenBy: "Juu ya ufunguzi kwa", udBelowOpenBy: "Chini ya ufunguzi kwa", udPool: "Dimbwi",
+      // drafted, marked for native review; English is binding.
+      udConfirmedPrice: "Bei iliyothibitishwa",
+      // drafted, marked for native review; English is binding.
+      udLevelBy: "Tofauti na ufunguzi {amount} tu — haitoshi kuamua",
+      udAboveOpenBy: "Juu ya ufunguzi kwa", udBelowOpenBy: "Chini ya ufunguzi kwa", udPool: "Dimbwi",
       udPickLocked: "Imefungwa kutoka chaguo lako kwenye ubao. Kubadili upande, ondoka kwenye raundi hii.",
       udConfirm: "Thibitisha", udYourResult: "Matokeo yako", udPaidOut: "Kilicholipwa", udOpenInPositions: "Fungua kwenye Nafasi",
       udPositionsOnRound: "Nafasi zako", udBothSides: "Umeweka pande zote mbili",
@@ -3582,7 +3706,7 @@ export const dict = {
       udRuleTextBanded: "Juu ikiwa bei ya kufunga iko kwenye au juu ya lengo la Juu · Chini ikiwa iko kwenye au chini ya lengo la Chini · Batili ikiwa iko katikati, na kila dau hurejeshwa kikamilifu",
       udEvidenceExcerpt: "Dondoo la ushahidi",
       udProofClosingNote: "Bei zote mbili husomwa kutoka chanzo kilichotajwa kwenye mpaka wa raundi. Ikiwa usomaji hauwezi kuthibitishwa, raundi hubatilishwa na kila dau hurejeshwa kikamilifu — hakuna kinachokadiriwa baadaye.",
-      details: "Maelezo", result: "Tokeo",
+      details: "Maelezo", result: "Matokeo",
       marketResolvedToast: "Soko limekamilika", marketLostTitle: "Umeshindwa soko", marketStakeReturnedTitle: "Dau limerudishwa",
       resolvedWin: "Imekamilika · Ushindi", resolvedLoss: "Imekamilika · Hasara",
       posWon: "Umeshinda", posLost: "Umeshindwa",
@@ -3642,6 +3766,8 @@ export const dict = {
       // Withdraw only: payouts go to mobile money and never to a bank (2026-09-13).
       mobileMoneyOnly: "Pesa ya simu",
       available: "Inapatikana",
+      // drafted, marked for native review; English is binding.
+      openWallet: "Fungua pochi",
       holdWarning: "zinatolewa",
       withdrawFailed: "Kutoa hakujafanikiwa",
       // Deleted 2026-08-20 with the EN keys above — see the note there.
@@ -3812,8 +3938,8 @@ export const dict = {
       account: "Akaunti",
       inviteEarn: "Alika na upate zawadi", inviteEarnSub: "Alika marafiki · pata zawadi",
       // ⭐ SWAHILI IS THE DEFAULT LOCALE, so this is the copy the platform actually speaks — it is
-      // written, not translated from the English above. ⛔ `zawadi` (reward) appears nowhere in it:
-      // that word is the paid promo's, and the whole point of these keys is that there is none.
+      // written, not translated from the English above. ⛔ `zawadi` (reward) is never OFFERED here —
+      // it appears once, negated, in `inviteNoRewardNote` ("hailipi zawadi" — pays no reward).
       inviteFriends: "Alika marafiki", inviteFriendsSub: "Shiriki kiungo chako · uone wanaojiunga",
       friendsJoined: "Marafiki waliojiunga",
       yourFriends: "Marafiki zako",
@@ -3862,12 +3988,12 @@ export const dict = {
       sessionSecurity: "Usalama wa kikao",
       sessionSecurityBody: "Kikao chako kimefungwa kwenye kivinjari hiki. Toka hapo juu kukimaliza.",
       shareText: "Jiunge nami kwenye 50pick — tabiri na ushinde. Tumia kiungo changu:",
-      programPaused: "Mpango umesimama kwa sasa. Kiungo chako kinafanya kazi — zawadi zitaendelea ukiwashwa.",
       howItWorks: "Inavyofanya kazi", yourReferrals: "Marafiki wako",
       bonusRequirements: "Masharti ya bonasi",
       inviteReqRegister: "Rafiki yako lazima ajisajili kwa kutumia kiungo chako.",
       inviteReqDeposit: "Lazima aweke fedha kwenye akaunti yake.",
-      inviteReqBet: "Lazima aweke angalau dau moja la TZS 20,000 au zaidi.",
+      inviteReqBet: "Lazima aweke angalau dau moja la {amount} au zaidi.",
+      inviteReqBetAny: "Lazima aweke angalau dau moja.",
       inviteReqCash: "Zawadi inapokelewa kwenye salio lako kuu kama fedha inayoweza kutolewa — hakuna sharti la mchezo.",
       inviteReqWager: "Bonasi inapokelewa kwenye Pochi ya Bonasi \u2014 mchezo {wager}\u00d7 unahitajika kabla ya kutoa.",
       inviteReqExpiry: "Bonasi zinaisha siku 30 baada ya kupokelewa zisipochezwa.",
@@ -4165,7 +4291,7 @@ export const dict = {
       yesOutcome: "NDIO", noOutcome: "HAPANA", voidOutcome: "Batili", notableResult: "Matokeo mashuhuri",
       noResultsMatch: "Hakuna matokeo yanayolingana",
       resultsMatch: "matokeo yanalingana",
-      resultMatch: "tokeo linaingana",
+      resultMatch: "matokeo yanalingana",
       noResolvedYet: "Bado hakuna soko lililotatuliwa",
       noResolvedBody: "Masoko yaliyotatuliwa yataonekana hapa matokeo yanapothibitishwa.",
       tryDifferentKeywords: "Jaribu maneno mengine au futa utafutaji.",
@@ -4955,7 +5081,7 @@ export const dict = {
       browseAll: "浏览全部市场 →",
       changingLanguage: "正在切换语言…",
       readAll: "全部已读", clearAll: "全部清除",
-      verifyId: "身份验证", inviteEarn: "邀请赚钱",
+      verifyId: "身份验证",
       proposeEarn: "提议赚钱", comingSoon: "即将推出",
       copied: "已复制", copy: "复制", share: "分享",
       copyLink: "复制链接", now: "刚刚",
@@ -5183,6 +5309,10 @@ export const dict = {
       noVoidedSettlementsBody: "此记录中的每个市场都已给出裁定。若曾退回本金，被作废的市场会显示在这里。",
       twoOfficerSealed: "两位审核员",
       oneOfficerSealed: "一位审核员",
+      // drafted, marked for native review; English is binding.
+      autoSealed: "自动结算",
+      // drafted, marked for native review; English is binding.
+      correctedOnObjection: "经异议更正",
       attestationPublishHint: "市场结算后结算证明会自动发布在此。",
       thMarket: "市场",
       thOutcome: "结果",
@@ -5315,6 +5445,7 @@ export const dict = {
       monthsShort: ["1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"],
       dateDay: "日", dateMonth: "月", dateYear: "年",
       liveTickerLabel: "实时结算动态",
+      liveTickerPause: "暂停实时动态",
       weekdaysShort: ["一", "二", "三", "四", "五", "六", "日"],
     },
     nav: {
@@ -5390,7 +5521,6 @@ export const dict = {
       claimBonus: "领取您的欢迎奖金",
       bonusWalletHint: "已添加到您的奖金钱包——完成打码即可提现。",
       signUpAndGet: "注册即得",
-      getOnFirstDeposit: "首充即得",
       toStart: "开始",
       codeExpiresIn: "验证码将在以下时间后过期",
       blockedContactSupport: "如果您认为这是错误，请联系 {email}。",
@@ -5421,11 +5551,44 @@ export const dict = {
       heroBody: "参与坦桑尼亚天气、市场、体育和文化方面的问题竞猜——由官方来源验证结算。",
       heroCta: "浏览市场",
       myPositions: "我的持仓",
+      // drafted, marked for native review; English is binding.
+      yourPicks: "您的选择",
+      picksOpen: "进行中",
+      picksAwaiting: "等待结果",
+      picksPaidWeek: "本周已支付给您",
+      picksNone: "您还没有选择。在任一市场选择一方，完成您的第一次选择。",
+      emptyBalance: "您的余额为空。通过手机钱包或银行卡充值，即可进行下一次选择。",
       browsFirst: "先浏览市场 →",
       liveSection: "直播",
       updownEyebrow: "快速游戏 · 进行中",
       updownCta: "玩涨跌",
       updownRoundsLive: "{n} 个回合进行中",
+      updownRoundsLiveOne: "1 个回合进行中",
+      udMatchUpLeads: "涨方领先",
+      udMatchDownLeads: "跌方领先",
+      udMatchUpLed: "涨方曾领先",
+      udMatchDownLed: "跌方曾领先",
+      udMatchNobody: "暂无领先方",
+      udMatchNobodyWas: "当时无领先方",
+      udMatchKickoff: "开局",
+      udMatchPickSide: "选择一方",
+      udMatchAt: "{time} 时",
+      udMatchNoNewPrice: "自 {time} 开盘以来暂无新价格",
+      udMatchOpenedAt: "{time} 开盘",
+      udMatchLevelExact: "与开盘价完全相同",
+      udMatchLevelNote: "若以此价收盘，所有投注全额退还。",
+      udMatchDecides: "以 {close} 的价格判定。",
+      udMatchDecided: "已以 {close} 的价格判定。",
+      udMatchAgedNote: "暂无更新的价格。",
+      udMatchRefund: "与开盘价相差不足\u00A0{margin}，所有投注均退还。",
+      udMatchRefundRange: "{up} 或以上为{upWord}，{down} 或以下为{downWord}；介于两者之间，所有投注全额退还。",
+      udMatchAllRounds: "全部回合",
+      udMatchNextRound: "玩下一回合",
+      udMatchAria: "回合时间线（EAT）：{open} 开盘，{lock} 停止下注，判定价格时间 {close}。开盘后的确认价格：{reads}。",
+      udMatchTimerAria: "距停止下注 {m} 分 {s} 秒",
+      udMatchTimerAriaSec: "距停止下注 {s} 秒",
+      udMatchAriaNone: "暂无",
+      udMatchAriaRead: "{time}：{move}",
       updownStartsSoon: "每隔几分钟就有新回合",
       pickASideNow: "立即选择一方",
       pickASideStake: "选择一方，用TZS投注",
@@ -5439,10 +5602,12 @@ export const dict = {
       howEyebrow: "50pick 如何运作",
       howStep1H: "选择一方",
       howStep1B: "每个市场都是一个问题、两个答案。用先令投注您想要的金额——信念指针显示大众资金目前所在的位置。",
-      howStep2H: "每个结果都有指定来源",
+      // drafted, marked for native review; English is binding.
+      howStep2H: "指定来源",
       howStep2B: "每个市场都以指定的官方公开来源结算：气象局、联赛积分榜、坦桑尼亚银行中间价。由一名审核员签核——启用双审核员授权时为两名。",
       howStep3H: "赢家分享奖池",
-      howStep3B: "奖池由所有判断正确的人分享，扣除仅从失败一方收取的佣金。奖金存入您的 50pick 余额，可提现到移动支付账户。",
+      // drafted, marked for native review; English is binding.
+      howStep3B: "奖池由所有判断正确的人分享，扣除仅从失败一方收取的 {pct}% 佣金。奖金存入您的 50pick 余额，可提现到移动支付账户。",
 
       gridEyebrowPool: "奖池最大优先",
       gridEyebrowNew: "刚刚开放",
@@ -5466,6 +5631,10 @@ export const dict = {
       settledPaid: "已支付",
       settledVoid: "已退还",
       settledSeeAll: "全部结果",
+      // drafted, marked for native review; English is binding.
+      settledOn: "{date} 结算",
+      // drafted, marked for native review; English is binding.
+      settledSourceNewTab: "在新标签页中打开结算来源",
     },
     market: {
       title: "市场",
@@ -5514,6 +5683,10 @@ export const dict = {
       noBetsYet: "暂无投注",
       beFirst: "成为第一个预测者",
       noPoolYet: "暂无奖池",
+      // drafted, marked for native review; English is binding. 单边 is rules §7's term (单边市场).
+      oneSideOnly: "仅单边有投注",
+      // drafted, marked for native review; English is binding.
+      oneSidedNote: "「{side}」方尚无投注。若截止时仅有一方持有下注，全部下注将全额退还。",
       closed: "已关闭",
       timeLeftD: "{n}天后", timeLeftH: "{n}小时后", timeLeftM: "{n}分钟后",
       showMarketN: "显示市场 {n}", prevMarket: "上一个市场", nextMarket: "下一个市场", showResultN: "显示精选结果 {n}",
@@ -5536,6 +5709,8 @@ export const dict = {
       resVoided: "市场已作废",
       resTwoOfficer: "已通过双审核员规则确认",
       resSingleOfficer: "已由审核员依据公布的官方来源结算",
+      // drafted, marked for native review; English is binding.
+      resCorrectedOnObjection: "经异议更正：审核员支持了对原裁定的异议",
       resProvisional: "临时结果——最终生效日期",
       resFinal: "结算为最终结果",
       resFinalPool: "最终奖池",
@@ -5731,7 +5906,11 @@ export const dict = {
       udSignInToBet: "登录后下注", udTapToBet: "点击涨或跌下注",
       udCustom: "自定义", udCustomAmount: "自定义投注额", udStakeRange: "超出允许范围", udEnterStake: "输入投注额",
       // ── Up & Down · D3 round detail ──────────────────────────────────────
-      udLivePrice: "实时价格", udAboveOpenBy: "高于开盘", udBelowOpenBy: "低于开盘", udPool: "奖池",
+      // drafted, marked for native review; English is binding.
+      udConfirmedPrice: "确认价格",
+      // drafted, marked for native review; English is binding.
+      udLevelBy: "与开盘价仅差 {amount}，不足以判定",
+      udAboveOpenBy: "高于开盘", udBelowOpenBy: "低于开盘", udPool: "奖池",
       udPickLocked: "已根据您在面板上的选择锁定。若要切换方向，请离开本轮。",
       udConfirm: "确认", udYourResult: "您的结果", udPaidOut: "已支付", udOpenInPositions: "在持仓中打开",
       udPositionsOnRound: "您的持仓", udBothSides: "您同时押了涨和跌",
@@ -5813,6 +5992,8 @@ export const dict = {
       // Withdraw only: payouts go to mobile money and never to a bank (2026-09-13).
       mobileMoneyOnly: "移动支付",
       available: "可用余额",
+      // drafted, marked for native review; English is binding.
+      openWallet: "打开钱包",
       holdWarning: "处理中",
       withdrawFailed: "提现未成功",
       // Deleted 2026-08-20 with the EN keys above — see the note there.
@@ -5982,8 +6163,8 @@ export const dict = {
       badgesHint: "随着您的预测、获胜和提议，更多徽章将解锁。",
       account: "账户",
       inviteEarn: "邀请赚钱", inviteEarnSub: "推荐好友 · 赢取奖励",
-      // ⭐ The unpaid invite. ⛔ 赚钱 / 奖励 (earn money / reward) are the paid promo's words and do
-      // not appear below — the surface pays nothing, in every locale it speaks.
+      // ⭐ The unpaid invite. ⛔ 赚钱 / 奖励 (earn money / reward) are never OFFERED below — 奖励 appears
+      // once, negated, in `inviteNoRewardNote` (不为邀请支付任何奖励). The surface pays nothing.
       inviteFriends: "邀请朋友", inviteFriendsSub: "分享你的链接 · 查看谁加入",
       friendsJoined: "已加入的朋友",
       yourFriends: "你的朋友",
@@ -6031,12 +6212,12 @@ export const dict = {
       sessionSecurity: "会话安全",
       sessionSecurityBody: "您的会话绑定到此浏览器。点击上方退出结束会话。",
       shareText: "加入50pick——预测赢奖。使用我的链接：",
-      programPaused: "计划目前已暂停。您的链接仍然有效——恢复后奖励继续。",
       howItWorks: "使用方法", yourReferrals: "您的推荐",
       bonusRequirements: "奖金要求",
       inviteReqRegister: "您的朋友必须使用您的推荐链接注册。",
       inviteReqDeposit: "他们必须向账户充值。",
-      inviteReqBet: "他们必须至少投注一次，金额不低于 TZS 20,000。",
+      inviteReqBet: "他们必须至少投注一次，金额不低于 {amount}。",
+      inviteReqBetAny: "他们必须至少投注一次。",
       inviteReqCash: "奖励以可提现现金形式计入您的主余额——无打码要求。",
       inviteReqWager: "奖金到账奖金钱包 \u2014 提现前需完成{wager}\u00d7打码要求。",
       inviteReqExpiry: "奖金在到账后30天内未完成打码将过期。",

@@ -1,8 +1,19 @@
 # SESSION PROMPT — the Finance tab seal
 
+> ## ✅ STATUS: COMPLETE — LANE CLOSED 2026-09-26. NOTHING HERE IS FOR A SESSION TO PICK UP.
+> Every development item below is done, pushed to `main` and verified on production. The one thing
+> left is an OWNER action, not development: **Ali rotates the production DB password** (steps in §2,
+> including the GitHub backup secret). This file stays as the RECORD — §0 (the defect shape) and §5
+> (decisions not to be re-litigated) are cited as authority by CLAUDE.md, MONEY-GATE-REMEDIATION,
+> FEE-MODEL-DECISION and F6-LIQUIDITY. ⛔ Do not reopen it: a new finance question gets a NEW brief.
+> Worktree `C:\kipindi-finance` and branch `finance-seal-2` are deleted. The GitHub branch
+> `finance-seal` (session 1) is fully merged into `main` and holds no work of its own.
+
 > **Written to be picked up on ANOTHER MACHINE.** Everything a next session needs is in this
 > file and in git; nothing here depends on the local memory of the machine that wrote it.
-> Branch `finance-seal`, merged to `main` and deployed live on 2026-09-25.
+> Branch `finance-seal` (§1), merged to `main` and deployed live on 2026-09-25; follow-up branch
+> `finance-seal-2` (the §2 strikes below) pushed to `main` step by step the same night, each step
+> verified on production.
 
 ---
 
@@ -42,21 +53,221 @@ is a second implementation that will drift.
 
 ---
 
-## §2 · 🔴 STILL OPEN — pick these up
+## §2 · ✅ DONE — the queue as it was worked (history, not a to-do list)
 
-- **`LEAD-A.2`** (`docs/MONEY-GATE-REMEDIATION.md`): the `market.resolved` audit payload records a
-  levy figure the ledger never booked — **the third site of the levy defect**, untouched here.
-  Same fix shape: read the ledger, do not recompute.
-- **`buildDailyOps` walks the WHOLE `Transaction` table** (`db.txn.listAll()`), which threw once
-  against production during verification and passed on retry. It is the exact pattern
-  `report-parity` exists because of. Latent scale risk; not a correctness bug.
-- **The XLSX headline "At a glance" block writes money as fused strings** (`"158,000   (11 txns)"`)
-  — unsummable in Excel. Needs `SummaryItem` widened to carry a raw number + format.
-- **`REPORT_PERIODS` and the `"today"`/`"mtd"` arms of `report-money.periodBounds` have NO
-  readers** — dead vocabulary, safe to delete in a tidy-up.
-- **`reports-verify-live.mts` and `report-renderers-smoke.mjs` are NOT npm-wired**, so they never
-  run in `test:all`. They are the only instruments that read real money and the real route.
-- ⚠️ **Rotate the production DB password.** It was echoed into a session transcript on 2026-09-25.
+- ~~**`LEAD-A.2`** (`docs/MONEY-GATE-REMEDIATION.md`): the `market.resolved` audit payload records a
+  levy figure the ledger never booked — the third site of the levy defect.~~ ❌ **NOT A DEFECT —
+  already REFUTED 3/3** in `MONEY-GATE-REMEDIATION.md` §7.5; only its row in the findings table
+  had never been annotated (done 2026-09-25). The payload's `levies` and the ledger's levy lines
+  come from ONE `levySplit` since §6.1. Re-confirmed at `360935a3`: `test:levy-allocation` 26/0,
+  `red:levy-allocation` 7/7. ⛔ This bullet sent a session to "fix" a closed finding — do not
+  reopen it.
+- ✅ **The neighbouring `LEAD-F.1` / `LEAD-F.2` are ALSO already fixed** (`781f397e`,
+  `MONEY-GATE-REMEDIATION.md` §7.15: `HOUSE:TAX` is subtracted from free cash and captioned
+  "Statutory tax held — owed to the state, NOT ours"; `test:house-solvency` 21/0). Their rows
+  still read 🟠 with no marker — the same stale-row shape as `LEAD-A.2`. Annotated 2026-09-25,
+  and the two code comments that still called `HOUSE:TAX` "retired" (`house-book.ts`,
+  `house-ledger.ts`) corrected. ⭐ **Before working a 🟠 row in that table, search the file for
+  its id: a later section may already have closed it.**
+- ~~**`buildDailyOps` walks the WHOLE `Transaction` table** (`db.txn.listAll()`), which threw once
+  against production during verification and passed on retry.~~ ✅ **FIXED 2026-09-25 — and it
+  was TWO builders, not one.** `buildFiuSar` (one pack month) walked the table the same way. Both
+  now read `db.txn.listInRange(start, end)` — the exact `>= start, < end` bounds of the JS filters
+  they replace. Guard **`npm run test:report-window-reads`** (in `test:all`): every `db.txn` read
+  method is instrumented and the real builders run on the in-memory store, so it sees a
+  whole-table walk by ANY route; figures are checked against the fixture's own arithmetic with a
+  row ON each boundary; §3 drives all nine builders. On the pre-fix code it fails 8 checks; RED
+  7/7 on mutations. Found by the same review and fixed in the same pass:
+  - 🔴 **match-integrity told the Gaming Board it shows "the most recent 200 of N" and showed
+    roughly the OLDEST 200** — the first 200 of an unordered read. Now newest-first, then capped.
+  - the SAR's equal-amount rows are ordered by time then id (they followed the store's order);
+  - `packPeriodBounds` refuses a malformed period (it returned NaN bounds: nothing in memory, an
+    opaque throw in Prisma — on the filing an officer signs; the prepare action takes it from a
+    form field);
+  - `report-parity` §4 now also scans `reports/finance-window.ts`, the one `windowed` builder.
+- ~~🟡 `buildMatchIntegrity` reads the whole table; `settlementFeesByPoll` reads every RESOLVED
+  market; `loadMoneyAttribution` reads every market and position.~~ ✅ **ALL THREE FIXED
+  2026-09-26 — no report read walks a whole table any more.**
+  - **match-integrity** stays ALL-TIME (that is its meaning) but no longer needs the walk: count and
+    total are SQL aggregates (`totalsByType`), the rows are `newestConfirmedOfType("BET_REFUND",
+    200)`. ⚠️ Now CONFIRMED-only, the basis of every other money figure; it counted every status
+    before — measured on production, all 806 refund rows are CONFIRMED, so nothing printed moved.
+  - **settlement fees** pass their window into the query (`listBoard`'s new `settledFrom/settledTo`,
+    `[from, to)` on `settledAt`); the rows are identical to the old JS filter.
+  - **attribution** reads only the positions the window's transactions name, then only their
+    markets (`attribution(ids)`, chunked 5,000 ids per query). It still cannot filter by product
+    line, so `test:product-line` holds. A shared snapshot is now used only for its OWN window — a
+    snapshot of another window would have silently dropped money.
+  - Guards: `test:report-window-reads` 41/0 (§3 no builder walks the table · §4 newest 200 +
+    CONFIRMED aggregates · §5 settled window, including the store read itself · §6 scoped attribution
+    IDENTICAL to the whole-table load, and a foreign snapshot refused), RED **7/7**. ⭐ And the
+    PRISMA twins, which no memory test executes, on a real Postgres: **`npm run e2e:report-reads`**
+    13/0 (loopback-only — it writes fixtures; run on a throwaway local database).
+- ~~**The XLSX headline "At a glance" block writes money as fused strings**
+  (`"158,000   (11 txns)"`) — unsummable in Excel.~~ ✅ **FIXED 2026-09-25.** `SummaryItem` is
+  now EITHER `{ num, format }` OR `{ value }` — never both, and the display words come only from
+  `summaryText()` so a tile cannot carry two figures. 32 numeric tiles moved (29 always present,
+  plus daily-ops' three levy tiles, which exist only when the ledger is readable); the workbook
+  writes B as a number cell with the table's own number format, the delta in C, sizes A/B itself
+  (a number wider than its column prints `#####`; text only spills), and writes a non-finite
+  figure as "—" (never `<v>NaN</v>`, which Excel refuses to open).
+  **Proven in real Excel** (COM, the rendered `finance-window.xlsx`): all six glance cells are
+  `Double`, `SUM()` = 273,000 and `COUNT()` = 6 — both were 0 on the old text cells.
+  ⚠️ **And the daily-ops Margin is rounded ONCE in the builder** (`marginShown`): Excel rounds the
+  raw fraction half-up in decimal while `toFixed` rounds the binary double, so GGR 23,000 on
+  80,000 retained read 28.8% in the workbook and 28.7% in the PDF and the same file's "Operator
+  margin" row — rounded half AWAY from zero, as Excel does, so a losing day's −28.75% agrees too.
+  `test:report-cells` 23/0 (per-report tile counts pinned, a declared text-tile allowlist, exact
+  number formats, the tie case on both signs, a negative and a NaN tile, and every report through
+  `renderPdf` — nothing in `test:all` rendered a PDF before), RED **11/11**.
+  **And on production** (`6427ef64`): the real "This view → Excel" download from 50pick.tz, opened
+  in Excel over COM — six `Double` cells, `COUNT()` 6, `SUM()` working, "8 txns" in C. The count deltas
+  now use the repo's `adminCount()` (utils.ts) — "1 txns" is gone.
+- ~~**`REPORT_PERIODS` and the `"today"`/`"mtd"` arms of `report-money.periodBounds` have NO
+  readers**~~ ✅ **DELETED 2026-09-25**, and `"7d"` with them: it survived only as
+  `dailyKpiSeries`' DEFAULT, the rolling window that returned eight daily points with a short
+  first bar, and no caller used it. `ReportPeriod` is now `"30d"` alone (`/admin/insights`'
+  `categoryBreakdown("30d")`); `dailyKpiSeries` takes no default. In the same pass the module's
+  header — its "normative definitions" — stopped saying GGR is "the commission we keep", that the
+  levy is "15% of GGR" and that "the report and the ledger finally agree": all three false, and the
+  reason the over-tax was re-derived twice. NGR now names agent commission; analytics.ts' GGR/NGR
+  docs and its dangling `periodBounds("today")` pointer corrected.
+- ~~**`reports-verify-live.mts` and `report-renderers-smoke.mjs` are NOT npm-wired**~~ ✅ **WIRED
+  2026-09-25**, neither as `test:*` (`test:all` runs every `test:*`, so it would then need a server
+  or production credentials):
+  - **`npm run verify:reports-live`** — every catalogue report built READ-ONLY against production.
+    Run `railway run --service Postgres npm run verify:reports-live` from a Railway-linked,
+    DEPLOYED checkout: Railway injects `DATABASE_PUBLIC_URL`, so the password never reaches a
+    command line (the old `DATABASE_URL=<url> npx tsx …` usage is how it reached a transcript).
+    It REFUSES with no `--prod`/URL (it used to print "all checks passed" about an EMPTY in-memory
+    store), on an internal host, with uncommitted `src/`, or when HEAD is not deployed —
+    `getGlobalConfig()`'s first hydration re-persists the config when the code's `CONFIG_VERSION`
+    is ahead of production's, the one write any builder can make. Its checks were vacuous in four
+    places and are now real: the totals-vs-rows block ran `check(…, true)`; the daily-ops levy
+    check was circular (net vs the builder's own three figures — it passed on the computed-levy
+    code too) and now compares the TRA/GBT tiles with an INDEPENDENT ledger read, before and after
+    the build; chain integrity was never asserted (now asserted, or SKIPPED and said so without
+    `AUDIT_CHAIN_SECRET`, never counted as a pass); only "(TZS)" tiles were checked for numbers.
+  - **`npm run qa:report-renderers`** — the download smoke through the real route. Needs
+    `rm -rf .next && DISABLE_ADMIN_TOTP=true npx next dev -p <port>` with NO DATABASE_URL; refuses
+    any host but localhost (it seeds an ADMIN and bets); its seed is now CHECKED (a refused seed
+    left an empty store and every download still passed); no browser binary, API context only.
+- ✅ **STALE-TEXT SWEEP, 2026-09-25** (an adversarial review lane over docs + comments + on-screen
+  copy, every change re-read against the code). The ones a reader actually saw:
+  - the **Daily Operations document** called GGR "the operator's commission" two notes above its
+    own levy note saying it is not;
+  - **/admin/reports** printed `GGR = Stakes − Payouts · NGR = GGR − Bonus − Fees` (both missing a
+    term), a **"Generation pipeline (production)" card** promising HMAC envelopes, SFTP/mTLS upload,
+    on-call alerts and IP/reason logging that do not exist (deleted, with its skeleton), a Monthly
+    card describing a "12-sheet workbook … Signed JSON" the builder never made, and an empty-state
+    promising "a signed receipt the regulator can verify";
+  - the **NGR tiles** on /admin/finance and /admin said "net of bonus + fees" — NGR also nets agent
+    commission; the House-accounts panel now says `HOUSE:COMMISSION` is already net of the levies.
+  - Docs presenting the false "report == ledger" as current truth corrected with dated notes (never
+    rewritten history): `CLAUDE.md` tax section, `FEE-MODEL-DECISION` §3, `F6-LIQUIDITY` §6,
+    `MONEY-GATE-REMEDIATION` (two §3.3 leads, the §7.16 LEAD-F.3 row, and LEAD-F.3's guard claim —
+    it named two guards and neither guards it), `SESSION-PROMPT-HOUSE-LEDGER` glossary, `NEXT-PLAN`,
+    `perfection-plan`, `feature-backlog`, `FLOWS` (a "placeholder formula" row), `MODULE-CERTIFICATION`
+    K5/K7. `scripts/reports-retest.mjs` — a July orphan that could not pass on today's page — deleted.
+  - ⚠️ Left for its owner: `plans/house-bots/01-scenario-register.md` CRA-30 still expects levies =
+    rate × GGR (house-bots lane; told).
+- ✅ **VERIFIED ON PRODUCTION, 2026-09-25 (`754a7fe3`).** `verify:reports-live` against the live
+  database: every check passed across all nine reports, one honest SKIP (chain integrity —
+  `AUDIT_CHAIN_SECRET` is an app variable, absent under `railway run --service Postgres`, and the
+  tile then reads UNVERIFIED, which is not evidence). /admin/reports: the "Generation pipeline"
+  card is gone, the GGR/NGR definitions name refunds and agent commission; /admin and
+  /admin/finance at 360/1280: no NaN, no sideways scroll.
+  - 🔴 **AND THE SCREENSHOT CAUGHT WHAT THE CHECKS COULD NOT: the NGR SPARKLINE HAD VANISHED.**
+    `AdminKpi` put the spark (`flex-1`, no floor) and the caption chip on one row, so the truthful —
+    longer — NGR caption took the whole row and shrank the trend line to ZERO width: no clip, no
+    overflow, invisible to every scan. The component now gives the spark a 64px floor and lets the
+    row WRAP (a caption that does not fit drops below the spark). `test:admin-clip` 1.5/1.6, each
+    proven red. ⚠️ The probe that was meant to measure it returned `null` — it never found the
+    tile — and only the photograph showed the defect.
+  - `test:ui-consistency` was RED on main since `24dca6aa`: `finance/loading.tsx` sized six
+    skeleton chips `w-12`, which on this repo's OVERRIDDEN spacing scale is 128px, not 48px. Now
+    `w-[48px]`; the new spark floor is a literal for the same reason.
+  - ⚠️ Two Railway builds (`c928b870`, `6d7561ce`) FAILED on a Google-Fonts fetch for Inter
+    (`next/font/google … Can't resolve '@vercel/turbopack-next/internal/font/google/font'`); the
+    next build of the same code passed. §4's "a transient build failure is not a defect" held —
+    but read the deployment list after every push: a failed build leaves production on the OLD
+    commit with nothing on the site to say so.
+- ✅ **RULED BY ALI 2026-09-26 — "Net after tax" RELABELLED "GGR less levies booked"** on the Daily
+  Operations report (tile, table row, note, and the `verify:reports-live` lookup). It is
+  `GGR − booked TRA − booked GBT`: a tax on the settlement FEE subtracted from a TURNOVER figure,
+  so it was never profit after tax. Relabel only — the arithmetic is unchanged, not re-based.
+  ✅ Ali also confirmed the name `verify:reports-live` for the production-reading script.
+- ✅ **`test:orphans` GREEN AGAIN (2026-09-26)** — it was red on main on 20 other lanes' scripts. The
+  allowlist is SHRINK-ONLY by design, so every one was ADOPTED or DELETED, never declared:
+  - **the gate learned to see real execution.** Seven files were run on every pass of a wired suite
+    and still reported as orphans: spawned by a `*-cases.mts` file (the house-bot two-process child
+    and its `--import` clock-skew preload), launched from `rehearsals/run.mts`'s registry
+    (`audit-burst`, `rollback`, and the lib they import), loaded by `red-anchors`' `readdirSync` walk,
+    or imported two hops down (`player-surface-text`). `orphan-scripts.mjs` now follows LOADS and
+    LAUNCHES to a fixpoint — never a path merely held in a string, so `delete-seed-markets.mjs` stays
+    declared (8 mutation controls + 1 positive control on the gate itself).
+  - **12 wired**, never as `test:*`: `db:seed-kyc-stages-local`; `live:kyc-at-withdrawal` (signed-out,
+    now reads the privacy version from the page source — it was red on a pin that moved on
+    2026-09-22 — and shoots into `.qa-shots/`); `live:marketing-u1-phone-key`, `-u2-formatter`,
+    `-u5-helpline`, `-u6-consent-ledger`; `qa:marketing-u8-optout`; `qa:d36-d37-remeasure` (its
+    `/s+/g` was missing the backslash and stripped every letter "s"), `qa:d37-tile-fit`,
+    `qa:d42-ring-legend`, `qa:d45-d52-remeasure`, `qa:u34-wallet-pill`. ⚠️ The mobile/ops drives sign in
+    as the shared `mobile01` persona on production — run them only when that lane is not driving.
+  - **1 deleted:** `live/revoked-deadend-prod.mjs` — E-381 is closed and verified on production
+    (LIVE-QA-CAMPAIGN), and the drive works by DISPLACING a session, so re-running it on the shared
+    persona would sign other lanes out.
+- ⚠️ **Pre-existing, other lanes: `test:red-anchors` is red on main** — two declared mutation anchors
+  no longer resolve (`bar-geometry` → `query-bar.tsx`, `updown-handover` → `updown-card-phase.ts`) and
+  68 harnesses exceed the undeclared-anchor ceiling of 65. Not caused by this lane.
+- ✅ **THE AUDIT CHAIN'S "UNVERIFIED" — ROOT CAUSE FOUND, FIXED, AND THE 9 ROWS DECLARED 2026-09-26.** Production verified ITSELF through the real admin route (it holds `AUDIT_CHAIN_SECRET`; the
+  laptop never did): **all 40,939 entries link** — nothing inserted, removed or reordered — but **9
+  hashes recompute under no key**, so the ISO 27001 export a regulator would receive read UNVERIFIED.
+  - **Which rows** (the census now PRINTS them — the tool's header promised the declaring officer would
+    see the rows, and it never did): all 9 are `payouts.unavailable_derived`, written 2026-09-24
+    09:25–14:22 UTC, the day the outage alert shipped (`2a9b1ef5`). The first 30,000 entries of the log
+    (2026-09-11 → 09-23) have ZERO — so ⛔ NOT "legacy early days": my first guess was wrong, and the
+    census by era is what caught it. (The log's first surviving row is seq 266,304, not 1; the tool's
+    "seq 1 .." line said otherwise and is corrected.)
+  - **Why — no tampering.** The same production process wrote the rows beside each one (a sweep, Up &
+    Down rounds, settlements) and those verify. The alert's payload carries `oldestStuckHours`, a double
+    needing 17 significant digits; the Prisma → Postgres `jsonb` round trip stores 16 (signed
+    `54.744926944444444`, stored `54.74492694444444` — the production row verbatim). A local-Postgres
+    probe dropped the last digit of 26 of 48 such floats.
+  - **Fixed:** `normalizePayload` now signs every FRACTION at 15 significant digits (which any double
+    round trip keeps exactly); integers pass untouched. Guards: `test:audit` 10b (the store's 16-digit
+    loss simulated; red on the old code) and **`npm run e2e:audit-roundtrip`** on a real local Postgres
+    — 26 awkward entries, all re-verify; on the old code 15 fail with every link intact, i.e. production's
+    symptom reproduced. Loopback-only (it writes audit rows).
+  - ✅ **DECLARED, on Ali's explicit yes (2026-09-26), after the fix was live (`b4440d99`).** The census
+    immediately before showed the same 9 rows and the same digest he approved; the declaration is chain
+    entry `aud_bmuikthvb46c92c_000000001` (2026-09-26 16:01 UTC), `--by usr_1b3e6fd5048b1d873e931715`
+    (Ali's officer account), digest `17c01bd31e4367948dfb998723a7304408b809f2e40542f0758531ce7d82a0f3`.
+    Production's own verifier then read **valid=true · baselined 9 · unattested 0 · linkBroken false**,
+    so the ISO 27001 export reads Intact, and ANY future row that fails to recompute is now an EDIT.
+    ⭐ `audit:baseline` now also REQUIRES `--by` and `--expect-digest <the reviewed digest>` for a
+    production declaration, and refuses when the census at write time differs from the one reviewed.
+    ⚠️ The first declare attempt hung on a dead Railway-proxy socket with no query running (nothing was
+    written); the retry added `connect_timeout/pool_timeout/socket_timeout` to the URL.
+- 🔴 **ALI'S ACTION — rotate the production DB password** (it was echoed into a session transcript on
+  2026-09-25; a session must never rotate it itself). The steps, checked against this project's
+  variables on 2026-09-26 (Postgres service: `POSTGRES_PASSWORD` is the source, `PGPASSWORD`,
+  `DATABASE_URL` and `DATABASE_PUBLIC_URL` are built from it; the app's `DATABASE_URL` references it):
+  1. At a quiet hour: Railway → **Postgres** → Backups → **Back up now** (or
+     `railway postgres pitr backup create --service Postgres --name pre-password-rotation`).
+  2. Make a new password: 32+ characters, **letters and digits only** (no `@ : / ? #`, which break
+     the URL).
+  3. Railway → Postgres → **Database → Query**, run: `ALTER USER postgres WITH PASSWORD '<new>';`
+     (the user is `POSTGRES_USER`, `postgres` on this template). From here, NEW connections with the
+     old password fail; the app's already-open connections keep working.
+  4. Railway → Postgres → **Variables** → set `POSTGRES_PASSWORD` (and `PGPASSWORD`, if it is a plain
+     value rather than a `${{…}}` reference) to the same new value. Confirm `DATABASE_URL` and
+     `DATABASE_PUBLIC_URL` now show it.
+  5. Railway → **50pick** → deploy/restart, so the app reconnects with the new URL.
+  6. ⛔ **GitHub → the repo → Settings → Secrets → `BACKUP_SOURCE_DATABASE_URL`** → paste the NEW
+     `DATABASE_PUBLIC_URL`. The nightly backup (`backup-nightly.yml`) keeps its own copy; forgetting
+     this step silently stops backups.
+  7. Check: https://50pick.tz/api/health shows `database.reachable: true`; the next nightly backup
+     run is green. It was echoed into a session transcript on 2026-09-25.
 
 ---
 
@@ -67,7 +278,11 @@ Every one has a red control; a guard without one is a claim on trust.
 | Command | What it holds | Proven by |
 |---|---|---|
 | `npm run test:finance-window` | legend == bars, EAT labels, day-aligned series, bucket grain, active-player basis | §5's controls: a FAILED-only player moves the count by 0, a CONFIRMED one by exactly 1, and the all-status count really is higher |
-| `npm run test:report-cells` | renders the real documents and reads CELLS back with ExcelJS | reverting the fixes reproduces the documented symptoms: an EMPTY totals cell, and "width 10 vs 27 chars" |
+| `npm run test:report-cells` | renders the real documents and reads CELLS back with ExcelJS; §5 — every "At a glance" figure is a formatted NUMBER cell with its delta beside it, the money tiles SUM to the builder's figures, and a ten-figure sum is never `#####` | reverting the fixes reproduces the documented symptoms: an EMPTY totals cell, and "width 10 vs 27 chars"; §5 caught 11/11 mutations (2026-09-25) |
+| `npm run verify:reports-live` | PRODUCTION, read-only: every report builds; totals equal their rows (or a cap sentence says so); every non-text tile is a number; the daily-ops TRA/GBT tiles equal an INDEPENDENT ledger read | the refusals (no `--prod`, no URL, internal host, undeployed HEAD) each exit 2; run from `railway run --service Postgres` |
+| `npm run qa:report-renderers` | every report × PDF/XLSX through the real route, the seed checked, the 400/404/anonymous refusals | needs `DISABLE_ADMIN_TOTP=true next dev`, no DATABASE_URL, localhost only |
+| `npm run test:report-window-reads` | a windowed report reads its WINDOW: daily-ops and fiu-sar make exactly one `listInRange` of exactly their day/month and no other `db.txn` read; NO builder walks the Transaction table; match-integrity's "most recent 200" are the newest 200 and its count/total are CONFIRMED aggregates; settlement fees read only markets settled in `[from, to)`; attribution reads only the window's positions/markets with every figure identical; a malformed pack period is refused | 8 failures on the 2026-09-25 pre-fix code; RED 7/7 (09-25) and 7/7 (09-26) |
+| `npm run e2e:report-reads` | the PRISMA twins of those reads on a real Postgres: the `settledAt` range, `attribution(ids)` across 5,000-id chunks, `newestConfirmedOfType`'s ordering, `totalsByType`, match-integrity on them | 13/0 on a throwaway local database; refuses any non-loopback host (it writes fixtures) |
 | `npm run test:brand-assets` | every report/brand asset is pixel-identical to `src/lib/brand-mark.ts` | decoded-pixel compare, 0 differing samples of 1,048,576 |
 | `npm run qa:finance-alignment` | 63 rectangle measurements at 360/768/1280 | **fails 15 assertions on the pre-fix code** |
 

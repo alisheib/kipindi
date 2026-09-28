@@ -20,6 +20,9 @@ import { ResolutionPanel } from "@/components/markets/resolution-panel";
 import { Chip } from "@/components/ui/chip";
 import { Stat } from "@/components/ui/stat";
 import { cashOutValue, getMarket, impliedYesPct, isClosedByTime, isSelectionClosed, listPositionsForUser, ratesFor } from "@/lib/server/market-service";
+import { shownYesPct } from "@/lib/markets/price-state";
+import { sharePreviewDescription, sharePreviewPrice } from "@/lib/markets/share-preview";
+import { ROOT_OPEN_GRAPH } from "../../layout";
 import { timeLeftLabel } from "@/lib/markets/time-left";
 import { poolFee } from "@/lib/payout";
 import { getEffectiveConfig } from "@/lib/server/market-config";
@@ -48,6 +51,8 @@ import { renderFailure } from "@/lib/failure-reasons";
 import { getBonusSummary } from "@/lib/server/bonus-service";
 import { pickLocalized, pickCriterion, marketCategoryLabel } from "@/lib/localized";
 import { PageContainer } from "@/components/layout/page-container";
+import { signoffOf } from "@/lib/markets/signoff";
+import { objectionRulings } from "@/lib/server/reversals";
 
 
 export const dynamic = "force-dynamic";
@@ -60,7 +65,10 @@ export async function generateMetadata(
   try { m = await getMarket(id); } catch { /* graceful */ }
   if (!m) notFound();
   const { locale } = await getServerT();
-  const yes = impliedYesPct(m);
+  // ⭐ The share preview's words come from the SAME rule as its image (`share-preview.ts`, landing v3
+  // WP14b): "YES 62% · NO 38%" only where both sides hold money; "One side only." / "No bets yet." where
+  // there is no price. It used to print "YES 100% · NO 0%" and an invented "YES 50% · NO 50%".
+  const preview = sharePreviewPrice(m.yesPool, m.noPool, m.predictorCount);
 
   // F5 — a shared WIN link carries a signed token. When it validates, the share
   // preview becomes the win card. The token only names the position; the amount
@@ -72,7 +80,7 @@ export async function generateMetadata(
 
   const desc = isWin
     ? `Won ${formatTzs(win!.payout)} on ${win!.side} · ${m.titleEn}`
-    : `YES ${yes}% · NO ${100 - yes}%. Predict on 50pick.`;
+    : sharePreviewDescription(preview);
   const ogImage = isWin
     ? `/api/og/market/${id}?w=${encodeURIComponent(w!)}`
     : `/api/og/market/${id}`;
@@ -82,7 +90,12 @@ export async function generateMetadata(
     // English (canonical — crawlers/share previews carry no locale cookie).
     title: pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh),
     description: desc,
+    // ⛔ Never write a bare `openGraph` object here: Next merges metadata per FIELD, so a partial object
+    // replaces the root's whole — this page, the one every share links to, emitted no og:type, og:site_name
+    // or og:locale until WP14b. ⛔ And no `url`: a win link carries `?w=`, and a scraper that follows
+    // og:url would fetch the plain market page and lose the win card.
     openGraph: {
+      ...ROOT_OPEN_GRAPH,
       title: isWin ? `Won ${formatTzs(win!.payout)} on 50pick` : m.titleEn,
       description: desc,
       images: [{ url: ogImage, width: 1200, height: 630 }],
@@ -137,7 +150,12 @@ export default async function MarketDetail({
     redirect(round ? `/updown/${round.id}${lockedSide ? `?side=${lockedSide}` : ""}` : "/updown");
   }
 
-  const yesPct = impliedYesPct(m);
+  // ⭐ WP6 · the SAME printable price as the card that linked here (`shownYesPct`, 1–99 when both pools
+  // hold money), so a 200,000-vs-1,000 market no longer reads 99 on the card and 100 one tap later
+  // (B6). ⚠️ A ONE-SIDED pool still falls back to `impliedYesPct` (100/0) here: this page's price for
+  // it is MOBILE-VISUAL U32's (ruling 13), recorded in `docs/LANDING-TEN.md` §2.1 WP6. Display only —
+  // SidePicker, the bar and the JSON-LD read it; no money path does.
+  const yesPct = shownYesPct(m.yesPool, m.noPool) ?? impliedYesPct(m);
 
   // The resolution criterion FOR THIS READER, and the fact of whether we had it.
   // ⛔ Not `pickLocalized`: that helper discards the fallback, which is right for a
@@ -187,6 +205,11 @@ export default async function MarketDetail({
    * ⭐ A code is now minted only for an account the programme belongs to; everyone else
    * shares the plain link they always believed they were sharing. Same fix in
    * `positions/page.tsx`, which had the identical line.
+   * ⚠️ 2026-09-25 — THE PROGRAMME RETURNED, UNPAID. `invite` is ACTIVE, so every player in good
+   * standing now gets their code on this link BY DESIGN, and a friend who signs up through it is bound
+   * and counted (`docs/PLAYER-INVITE-UNPAID.md` §2). "Paying nothing" holds only while the Owner's
+   * switch on `/admin/affiliate` says Not payable (under the `inviteRewards` ceiling, 2026-09-26) — make
+   * invites payable and every bind already written earns on the recruit's next event (§12).
    */
   // ⭐ Standing, not role: a deactivated agent's code leaves the share link in the same instant
   // it leaves the bind (`inviteViewerFor` reads the same predicate the bind gate does).
@@ -230,14 +253,18 @@ export default async function MarketDetail({
     }
   }
 
-  // Two-officer attestation is claimed ONLY for genuinely distinct human officers
-  // — never synthetic/auto (demo, sentinel) resolution whose ids are "system_*".
-  const _s1 = m.resolutionStage1By, _s2 = m.resolutionStage2By;
-  const twoOfficer = !!(_s1 && _s2 && _s1 !== _s2 && !_s1.startsWith("system") && !_s2.startsWith("system"));
-  // Single-admin (the default authorization): ONE genuine human officer sealed it
-  // (s1===s2, both real). Distinct from auto/system resolution (ids "system_*"),
-  // which claims neither line. Lets the panel state honestly how it resolved.
-  const singleOfficer = !twoOfficer && !!(_s1 && !_s1.startsWith("system"));
+  // ⭐ WHO SIGNED IT OFF — THE ONE RULE (lib/markets/signoff.ts), the same the landing's settled strip,
+  // /fairness and /api/fairness/recent read, so a reader who follows a settled row here reads the same
+  // answer. Two-officer attestation is claimed ONLY for genuinely distinct human officers — never the
+  // automatic resolver ("system_*") — and a verdict an upheld objection REVERSED or VOIDED is said to be
+  // corrected on objection, never credited to whoever signed the verdict that was thrown out (v3 review:
+  // this page derived it inline and did not know objections existed).
+  const signoff = isResolved ? signoffOf(m, (await objectionRulings()).get(m.id)) : null;
+  const twoOfficer = signoff === "two";
+  // Single-admin (the default authorization): ONE genuine human officer sealed it. Distinct from
+  // automatic resolution, which claims neither line.
+  const singleOfficer = signoff === "one";
+  const correctedOnObjection = signoff === "objection";
   // One-sided: all bets are on the same side — winners would win their own money.
   // Platform rule: full refund at 0% fee at resolution. Surface a disclaimer so
   // players know before they place or hold a bet.
@@ -762,6 +789,7 @@ export default async function MarketDetail({
               resolvedAt={m.resolutionStage2At ?? m.updatedAt}
               twoOfficer={twoOfficer}
               singleOfficer={singleOfficer}
+              correctedOnObjection={correctedOnObjection}
               sourceUrl={m.sourceUrl}
               objectionsClosedAt={m.objectionsClosedAt}
               serverNow={Date.now()}
@@ -1017,8 +1045,8 @@ export default async function MarketDetail({
                   titleSw={s.titleSw}
                   titleZh={s.titleZh}
                   category={s.category}
-                  yesPct={impliedYesPct(s)}
-                  volume={s.yesPool + s.noPool}
+                  yesPool={s.yesPool}
+                  noPool={s.noPool}
                   predictors={s.predictorCount}
                   // ⚠️ Counts down to BETTING CLOSE, not to resolution. This rail is a
                   // "place another prediction" invitation, so a countdown to the

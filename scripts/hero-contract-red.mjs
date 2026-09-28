@@ -23,66 +23,10 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { injectDefect } from "./red-anchor.mjs";
 
-const DISCOVERY = "src/lib/markets/discovery.ts";
-const HERO = "src/lib/markets/hero.ts";
 
 /** Each case: the file, the exact code to replace, the defect, and the assertion that must break. */
-const CASES = [
-  {
-    name: "an empty pool is priced at 50 again (the licence-condition-1 defect itself)",
-    file: DISCOVERY,
-    from: "  if (pool <= 0) return null;",
-    to: "  if (pool <= 0) return 50;",
-    expect: "an empty pool has NO price",
-  },
-  {
-    name: "NOTHING is ever priced — must be caught by the POSITIVE CONTROL, not the null checks",
-    file: DISCOVERY,
-    from: "  if (pool <= 0) return null;\n  return Math.round((yesPool / pool) * 100);",
-    to: "  if (pool <= 0) return null;\n  return null;",
-    expect: "a staked market IS priced (positive control)",
-  },
-  {
-    name: "the aggregate share becomes the MEAN of the per-market percentages",
-    file: HERO,
-    from: "    yesShare: pricedYesPct(sumYes, sumNo),",
-    to: "    yesShare: open.length === 0 ? null : Math.round(open.reduce((s, r) => s + (r.yesPct ?? 0), 0) / open.length),",
-    expect: "weights by the money on each market",
-  },
-  {
-    name: "the pool total counts shut, closed and settled markets as 'in play'",
-    file: HERO,
-    from: "  const open = rows.filter((r) => matchesStatus(r, \"open\", nowMs));",
-    to: "  const open = rows.slice();",
-    expect: "counts only markets a player can bet on now",
-  },
-  {
-    name: "the question board stops ordering by closing-soonest",
-    file: HERO,
-    from: "  const ordered = sortRows(open, { sort: \"closing\", dir: null });",
-    to: "  const ordered = open.slice();",
-    expect: "soonest first",
-  },
-  {
-    name: "the card is pinned to the LAST market instead of coming from the ordering",
-    file: HERO,
-    from: "    featured: ordered[0] ?? null,",
-    to: "    featured: ordered[ordered.length - 1] ?? null,",
-    expect: "the featured card is the soonest-closing market",
-  },
-  {
-    // 🔴 THE DUPLICATION DEFECT, REINTRODUCED. This is precisely what shipped in `1de3b38d`: the
-    // board started at [0], so the hero stated its lead market TWICE — row 1 and the featured card,
-    // same title and same price, 400px apart. Every gate was green over it and the per-band clips
-    // could not show it; it was found by reading a whole-page frame. Now it cannot come back
-    // silently.
-    name: "the board starts at the featured market again (the hero states its lead twice)",
-    file: HERO,
-    from: "    board: ordered.slice(1, 1 + QUESTION_BOARD_SIZE),",
-    to: "    board: ordered.slice(0, QUESTION_BOARD_SIZE),",
-    expect: "the featured market is NEVER also a board row",
-  },
-];
+// ⭐ The cases are DATA in `scripts/anchors/hero-contract.anchors.mjs`, audited by `test:red-anchors` §3.
+import { MUTATIONS as CASES } from "./anchors/hero-contract.anchors.mjs";
 
 function runGate() {
   const r = spawnSync("npx", ["tsx", "scripts/hero-contract.test.mts"], {

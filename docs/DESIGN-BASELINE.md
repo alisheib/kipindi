@@ -68,6 +68,8 @@ plants the defect on a COPY of the tree and proves the gate fails **on its own a
 | `test:cn-collision` | `cn()` cannot delete a class it does not recognise | `red:cn-collision` |
 | `test:validation-focus` | a refusal can name its field; the helper goes to the right place; **§4 every literal address a refusal names is actually rendered** | `red:validation-focus` |
 | `test:unsaved-changes` | **every admin component that renders a control someone can TYPE INTO** either guards its three exits or is NAMED exempt with a reason. ⭐ Rebuilt 2026-09-02: it used to select files that already computed a `dirty`, so a form was invisible to it **precisely because it was unprotected** — a true measurement of the wrong set. Lands at **zero**, not a ratchet of debt. | `red:unsaved-changes` (6 cases) |
+| `test:single-save` | **ONE SAVE ON SCREEN, NEVER TWO** (§3b "Pending changes" below; Ali 2026-09-22 and 2026-09-26). §1 the kit hides the bar's Save only while the form's own is REALLY in reach, read for what the code does and not its shape — EVERY element wired to the Save sits behind `!anchorOnScreen`, `intersectionRatio ≥` its threshold is an `&&` term on the latest record, the band `rootMargin` cuts off is the height the page reserves, the PAINTED entry's anchor is observed · §2 every `<PendingChangesBar onSave>` in `src/` passes `saveAnchor` and `saving`, the ref is attached in the bar's OWN component (three files hold two forms that both name it `saveRef`), no spread, no alias; a bar with no Save carries no Save wiring; floors of 25 bars / 15 with a Save · §3 allowlist EMPTY, ceiling 0 · §4 the bar's Save says the form's Save's words wherever both are plain strings. ⚠️ Source-only: the geometry is `qa:single-save` (1440 + 390). | `red:single-save` (18 cases, incl. vacuity) |
+| `test:select-keyboard` · `qa:select-keyboard` (local) | **THE KEYBOARD CHOOSES** (2026-09-27): the kit `<Select>` — every Select in the app, one component — opens on ArrowDown / ArrowUp / Enter / Space WITHOUT moving, moves one row per arrow, chooses on Enter or Space and closes on Escape with no change. 🔴 Measured broken on production that day: the trigger re-opened the list on every key and reset the highlight, so a keyboard could choose NOTHING (the RG break length among them). §0 the population (one trigger handler, one window listener) · §1–§3 the contract, at zero · `qa:select-keyboard` presses the real keys on a local server | §4: each defect planted back into the source goes red on its own check, and only there |
 | `test:section-rail` | every rail of destinations names the one in force | `red:section-rail` |
 | `test:tab-anchors` | **§K 7d ③ ACROSS PAGES** — an `#anchor` link into an admin route must land on the tab that renders that id. ⚠️ It cannot hold an UNANCHORED link's INTENT; that is the human audit step in §3b, and `/admin/system` was broken for a whole wave by exactly that. | `red:tab-anchors` (3 cases) |
 | `test:contrast` | §A1, scored on the RENDERED ink (`token × alpha × opacity`), composited in gamma sRGB. **§P-u2 (2026-09-03, PV-10)** a call-site `opacity-NN` on a label inside a SOLID money button (`btn-yes`/`btn-no`/`btn-danger`/`btn-gold`), composited against that family's own known (ink, fill) pair — closes the gap that let a `@pct%`/`×N` suffix ship at `opacity-85` (~3.5:1) with `§P-u` (which only ever matched `text-text-subtle/NN`) green. Scoped to the four SOLID families on purpose; `btn-primary`/`btn-claret` are gradients and out of scope until an unconditional (non-`disabled:`) opacity appears inside one. | `red:contrast`, `red:contrast-rendered`, `red:contrast-callsite` |
@@ -77,10 +79,10 @@ plants the defect on a COPY of the tree and proves the gate fails **on its own a
 | `test:eyebrow-roles` | every uppercase-and-tracked site is `.eyebrow` or has its role written down | census must total exactly |
 | `test:chip-contract` · `test:reduce-motion` · `test:stacking` · `test:dead-css` | chips, §M6, z-order, unused CSS | `red:chip-one-home` |
 | `test:motion-ladder` | the motion ladder, and **the guard PV-10 had to repair before it could use it**. §1.1 no hardcoded duration/easing · **§2 (2026-09-03) THE CORPUS, pinned by EXTENSION** — for its whole life `walk()` took only `.tsx`/`.ts`, so all six `.css` files under `src/` (including `motion.css`, the ladder it enforces) were invisible, while §1.3's directory pin passed throughout · **§3 only `motion.css` may DECLARE a curve or a duration** — a namespace may alias the ladder, never re-value it (Authority §E9) · **§4 `--m-pivot` is reserved for the needle and dials** (§M8), a rule that had **no guard anywhere** and lived in a `motion.css` comment naming its own breach | **`red:motion-ladder` (6/6) — the guard had NO control until 2026-09-03.** Carries the pattern worth copying: a **CORPUS mutation** (strip every `.css` from a copied tree; §2 must go RED **while §1.1 stays GREEN**) |
-| `test:invite-coming-soon` | a feature flag reaches **every** entry point. §2.1 judges a **POSITION** — each `/profile/invite` link must sit within 8 lines of the switch being consulted, because its first version asked only *"does this file mention `inviteIsLive`?"* and passed over two surfaces gone silently live with the import still present · §3.3 the page consults the switch **BEFORE** minting a referral code | `red:invite-coming-soon` (4/4) |
+| `test:withdrawn-features` §6–§8 *(ported 2026-09-06 from the retired invite-coming-soon suite)* | a product state reaches **every** entry point. §6 one home for `PRODUCT_STATE` · §7 judges a **POSITION**: each `/profile/invite` link must sit within 8 lines of the gate being consulted, because the retired suite's first version asked only *"does this file mention `inviteIsLive`?"* and passed over two surfaces gone silently live with the import still present · §8 the page consults the gate **BEFORE** it reads the referral summary | `red:withdrawn-features` |
 | `responsive-audit.mjs` **B7's LOWER bound** | B7 had only an UPPER bound (no column exceeds its tier). PV-03 lived in the missing half: `/positions` got its 1080 tier **correctly** and still floated an empty state 328px from its own section heading, passing every width, clip and overflow check. Keys on `data-empty-state`, a **contract**, never `border-dashed` | the fix measured 328px → 0 at 1280 and 390 |
 | `qa:fit` (live) · `test:popup-fit` | **§M4a — text fits its container, and a clipped NUMBER is a wrong number.** ⚠️ Added by a parallel programme on 2026-09-01, after this file was first written; listed here so the table stays the one place that answers *"what holds this rule?"* | `red:header-fit` |
-| `test:chart-one-home` | **§B12 — the chart system's one home** (CHART-SPRINT, 2026-09-04). §0 proves the four detectors on fixtures · §3 zero chart-shaped files outside `components/charts/` + the named member + 9 reasoned exemptions, and a STALE exemption fails (the list may only shrink) · §4 every member has an import site (the dead-`Sparkline` class) · §5 no charting dependency, in package.json or an import — the §8 decision, enforced | `red:chart-one-home` (5/5: two planted strays, a stale exemption, a banned dep, a killed import) |
+| `test:chart-one-home` | **§B12 — the chart system's one home** (CHART-SPRINT, 2026-09-04). §0 proves the five detectors on fixtures (D5 since 2026-09-27, R5: a `<line>`/`<circle>` placed by a computed coordinate — the landing match track's stems) · §3 zero chart-shaped files outside `components/charts/` + the named member + the reasoned exemptions, and a STALE exemption fails (the list may only shrink); §3.4–3.6 the band's retired price line and ring stay deleted and the match track + playhead are members · §4 every member has an import site (the dead-`Sparkline` class) · §5 no charting dependency, in package.json or an import — the §8 decision, enforced | `red:chart-one-home` (planted strays incl. a D5 stem, a stale exemption, a banned dep, killed imports incl. the match playhead's) |
 
 ### ⛔ If you add a guard, it must state three things or it is not a guard
 1. its **re-derived population** (what the FULL set is, and how you know your matcher reaches it),
@@ -215,6 +217,54 @@ three, and two dirty forms painted two bars in the same pixels while the page re
 height of one. The lowest-id instance paints, showing the most recently dirtied entry and a
 count of the rest. `qa:pending-bar` ⑥ counts bars in the DOM, because two bars at identical
 coordinates look exactly like one in a screenshot.
+
+⛔ **ONE SAVE ON SCREEN, NEVER TWO.**
+
+> Ali, 2026-09-22: *"we have 2 save buttons, one pending changes and one always there, I don't
+> know when should both be visible"*
+> Ali, 2026-09-26: *"there are multiple save buttons — when I change something the pending-changes
+> bar appears but I also have a Save button; users are confused whether the save worked or not."*
+
+The first sentence was answered in the kit on 2026-09-22 (`saveAnchor`) — as an OPTION, so 14 bars
+in 12 admin files never took it, and the second sentence followed. Of those 14, four were
+record-specific decisions and lost their bar button (rule 3), and the other ten, the affiliate
+console's included, now name their form's Save. The rule is now a gate, green with its allowlist EMPTY:
+
+1. **The bar's Save is a shortcut to a form Save you cannot see.** While the form's own Save is in
+   reach, the bar paints warning + Discard only; when that Save scrolls away or sits behind the bar,
+   the bar's Save appears. Never both — and never none.
+2. **When a form has its own Save, `saveAnchor` is REQUIRED** (`ref={saveRef}` on the form's Save,
+   `saveAnchor={saveRef}` on the bar). The bar's Save goes through the SAME path with the SAME words:
+   `saveLabel` is the button's text, and a Save gated by a confirm routes the bar through that same
+   confirm (`onSave={() => saveRef.current?.click()}` — `/admin/ai-usage` cycle settings).
+3. **A record-specific decision gets no bar button** — reject a poll or a candidate, sign a
+   resolution stage, purge a chain. A primary Save-looking button that rejects, signs or purges
+   without naming the record is the wrong instrument: the bar's `detail` names the panel button
+   that records it, and it offers Discard only, like every other Discard-only bar.
+4. **Save is disabled while nothing has changed**, on the form and therefore on the bar, which only
+   appears once something has. Two exceptions, both on purpose: the poll queue's Edit panel keeps
+   *Save & re-validate* enabled on a clean form, because re-validating through the quality pipeline
+   is a real action; and in the staff role form a typed reason with the same role is unsaved WORK
+   (the bar stays up, so the reason cannot be lost to a click away) but not a saveable change — the
+   form's Save stays disabled, and the bar's Save takes the same submit and is refused with a
+   *No change* warning.
+5. **"Saved" answers "did it work?"** The same bar shows ✓ *Saved* (or the form's `savedLabel`,
+   e.g. *Staff added*) for 2.5 s after a save LANDS — judged when the save ENDS: the bar was dirty
+   and offered a Save when it began, nothing was edited on the page meanwhile, and the form is clean
+   at the end or within 1.5 s (refreshed props). A form that goes clean mid-save keeps its bar,
+   spinner and all, until the answer; typing the old values back mid-save earns no Saved. A refusal
+   stays dirty and raises a danger toast; Discard never says Saved. Enforced by `test:save-cycle`. Same element, same
+   `role="status" aria-live="polite"`, no new motion; `data-pending-state="dirty|saved"` is the hook
+   drives read. Where the bar is gone before the answer arrives, the answer is told elsewhere:
+   `/admin/invites` navigates to the new campaign, so its toast says it, and the poll Edit panel and
+   the poll and candidate Reject panels close before acting, so the ActionOverlay says it.
+6. 🔴 **The kit's on-screen test was wrong at both edges until 2026-09-26.** One pixel of the form's
+   Save counted as in reach (now `intersectionRatio ≥ 0.75` on the latest record), and the bar's own
+   band counted as screen, so a Save sitting BEHIND the bar hid the bar's Save and the page showed
+   NONE (now `rootMargin` takes the measured bar height off the bottom).
+
+Enforced by **`test:single-save`** (on `predeploy`); control **`red:single-save`**; the rendered
+proof at 1440 and 390 is `qa:single-save`.
 
 ⛔ **A POPOVER IS NOT A MODAL.** A `Modal` earns its exemption by painting a `fixed inset-0`
 scrim, so a click aimed at the sidebar hits the scrim. A bare `absolute` panel with a Cancel
@@ -506,6 +556,12 @@ bounded read (`currentRoundChart`), the same `priceSeriesFor` the detail hero us
 `updown-chart.test.mts` imports it, `updown-chart-red.mjs` anchors it CRLF-sensitively, and
 `design-frozen`/`eyebrow-roles` pin the path. Moving it would churn three guards and a RED
 harness for zero player value — the guard names it instead.
+
+⭐ **2026-09-27 (R5):** the landing's Up & Down band draws a MATCH TRACK (`charts/updown-match-track.tsx`
++ its playhead `updown-match-now.tsx`) — a timeline of confirmed-read stems on a fixed open → close
+domain, not a price chart and not the round price chart removed on 2026-09-04; the band's old price
+line and countdown ring (`updown-price-line.tsx`, `updown-ring.tsx`) are deleted. `test:chart-one-home`
+gained D5 (a line or dot placed by a computed coordinate) so a copy of the track outside the home is seen.
 
 ### 8b. CHART ROUND 2 — the four-lens review, its verdicts and its parks (2026-09-04, session 80)
 

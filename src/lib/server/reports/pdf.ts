@@ -3,7 +3,7 @@ import PDFDocument from "pdfkit";
 import { readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { BRAND, COMPANY, fmtDate, fmtDateTime, fmtTzs, toAnsiSafe } from "./brand";
-import type { Report, Section, Column, SummaryItem, SignatureRow } from "./types";
+import { summaryText, type Report, type Section, type Column, type SummaryItem, type SignatureRow } from "./types";
 
 /* ── Asset loading ────────────────────────────────────────────────── */
 
@@ -215,7 +215,7 @@ function drawSummary(ctx: DocCtx, summary: SummaryItem[], startY: number): numbe
   doc.font(FN.bold).fontSize(S.kpiValue);
   let valueH = VLINE_H;
   for (const k of summary) {
-    const h = doc.heightOfString(toAnsiSafe(k.value), { width: cardW - 20 });
+    const h = doc.heightOfString(toAnsiSafe(summaryText(k)), { width: cardW - 20 });
     if (h > valueH) valueH = h;
   }
   valueH = Math.min(valueH, VLINE_H * 2);
@@ -240,7 +240,7 @@ function drawSummary(ctx: DocCtx, summary: SummaryItem[], startY: number): numbe
        .text(toAnsiSafe(k.label.toUpperCase()), x + 12, yy + PAD_TOP, { width: labelW, height: labelH, ellipsis: true });
     const tone = k.tone === "good" ? BRAND.yes : k.tone === "bad" ? BRAND.no : BRAND.royalDeep;
     doc.fillColor(tone).font(FN.bold).fontSize(S.kpiValue)
-       .text(toAnsiSafe(k.value), x + 12, yy + valueY, { width: cardW - 20, height: valueH, ellipsis: true });
+       .text(toAnsiSafe(summaryText(k)), x + 12, yy + valueY, { width: cardW - 20, height: valueH, ellipsis: true });
     if (k.delta) {
       doc.fillColor(BRAND.inkSubtle).font(FN.regular).fontSize(S.kpiDelta)
          .text(toAnsiSafe(k.delta), x + 12, yy + valueY + valueH + 2, { width: cardW - 20, lineBreak: false });

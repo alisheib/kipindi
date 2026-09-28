@@ -77,6 +77,13 @@ console.log("\n── 1 · AdminKpi's delta cannot be clipped by a long string �
   ok("1.4 · the row that holds it can shrink too",
      /mt-auto flex items-end gap-2 min-w-0/.test(shell),
      "min-w-0 on the child alone is not enough — the parent flex item must shrink as well");
+  /* 🔴 AND A LONG DELTA MUST NOT STARVE THE SPARK (2026-09-25). With the spark slot at
+     `flex-1 min-w-0`, NGR's truthful caption shrank its sparkline to zero width on /admin and
+     /admin/finance — a deleted trend line that no clip or overflow scan can see. */
+  ok("1.5 · ⛔ the spark slot keeps a floor, so a long delta cannot shrink it to nothing",
+     shell.includes("flex-1 basis-[64px] min-w-[64px] self-center"), "the spark slot must not be min-w-0");
+  ok("1.6 · …and the row wraps, so a delta that does not fit drops BELOW the spark",
+     /mt-auto flex items-end gap-2 min-w-0 flex-wrap/.test(shell));
 }
 
 // ── 2 · The breadcrumb ───────────────────────────────────────────────────────

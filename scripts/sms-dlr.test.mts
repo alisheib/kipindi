@@ -8,8 +8,10 @@
  * machine. Every one of those is asserted below, because each is the kind of
  * control that keeps working when it has quietly stopped working.
  *
- * ⛔ THE VENDOR HAS NOT PUBLISHED ITS STATUS VOCABULARY. So the mapper's real
- * contract is not "recognise these tokens" — it is "NEVER guess". §6 is the
+ * ⛔ EVERY TOKEN ON THE VENDOR'S OFFICIAL LIST MAPS (by email 2026-09-17,
+ * docs/BLACKBALL-SMS.md §3) — but a list received by email is not a guarantee of
+ * what the gateway will send, and only DELIVRD has ever arrived live. So the mapper's
+ * real contract is not "recognise these tokens" — it is "NEVER guess". §6 is the
  * assertion that an unrecognised token leaves the row alone and records itself,
  * and it is the one that matters most: a token silently read as DELIVERED is a
  * login code reported as received that never arrived.

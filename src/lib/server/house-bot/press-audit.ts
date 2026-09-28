@@ -108,10 +108,15 @@ export function pressAuditEntry(
   return entry && isAllowedHouseAuditPayload(entry.payload) ? entry : null;
 }
 
-/** Append the entry as the officer who pressed; the audit row's id, or null when the audit store returned none. */
+/**
+ * Append the entry as the officer who pressed; the audit row's id, or null when the row is NOT in the log.
+ * ⛔ NEVER THE ID OF AN ENTRY THAT DID NOT LAND (replan ruling 543). The id is what marks a press AUDITED
+ * (`pressStore.setAuditId`), so a phantom one would tell the planner's lease repair the row exists and it would never
+ * write the row that was lost. Null leaves the press unaudited, and the repair writes it once the store can.
+ */
 export async function writePressAudit(press: StoredHouseBotPress, entry: PressAuditEntry): Promise<string | null> {
-  const row = (await audit({
+  const row = await audit({
     category: HOUSE_AUDIT[entry.action], action: entry.action, actorId: press.actorId, targetType: entry.targetType, targetId: entry.targetId, payload: entry.payload,
-  })) as unknown;
-  return row && typeof row === "object" && typeof (row as { id?: unknown }).id === "string" ? (row as { id: string }).id : null;
+  });
+  return row.recorded ? row.id : null;
 }

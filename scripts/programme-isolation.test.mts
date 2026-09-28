@@ -41,7 +41,7 @@ const armed = setAffiliateConfig({
   enabled: true,
   commission: { enabled: true, rate: 0.5, windowMonths: 24, capPerRecruitTzs: 250_000 },
   bonus: { enabled: true, recipient: "REFERRER", newAmountTzs: 2_000, referrerAmountTzs: 10_000, trigger: "SIGNUP" },
-  prize: { enabled: true, milestone: "FIRST_BET", depositThresholdTzs: 10_000, amountTzs: 10_000, capPerReferrer: 20, minBetAmountTzs: 1_000, requireDeposit: false },
+  prize: { enabled: true, milestone: "FIRST_BET", amountTzs: 10_000, capPerReferrer: 20, minBetAmountTzs: 1_000, requireDeposit: false },
 }, "test-officer");
 ok("0.setup · every player-promo reward is armed", armed.ok === true, JSON.stringify(armed));
 
@@ -106,10 +106,12 @@ try {
     // Attribution is SHARED (one system, always) — a pause is an ECONOMIC switch, so the bind
     // still records who recruited whom; what stops is the money.
     // 🔴 AND THE REWARDS OVERRIDE IS LOAD-BEARING IN *THIS* BLOCK, NOT A COPY-PASTE. §3.control
-    // claims the OPERATOR PAUSE (`cfg.enabled = false`) is what stops a player referrer being
-    // paid. With `inviteRewards` WITHDRAWN globally, the money is already off — so the assertion
-    // would read 0 with the pause REMOVED and still pass, which is a control proving nothing.
-    // Switching the product state ON here leaves the pause as the only thing under test.
+    // claims the SERVICE-LEVEL PAUSE (`cfg.enabled = false` — off the page since 2026-09-26, where the
+    // Owner's Payable / Not payable switch is the control) is what stops a player referrer being
+    // paid. With invites Not payable by default (no Owner record stored), the money is already off —
+    // so the assertion would read 0 with the pause REMOVED and still pass, which is a control proving
+    // nothing. Forcing payment on here (`FEATURE_INVITEREWARDS=ACTIVE`, the FORCED ceiling) leaves
+    // the pause as the only thing under test.
     process.env.FEATURE_INVITEREWARDS = "ACTIVE";
     process.env.FEATURE_INVITE = "ACTIVE";
     try {

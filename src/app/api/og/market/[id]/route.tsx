@@ -15,7 +15,11 @@
  *   - The "Share" button on each market detail page
  */
 import { ImageResponse } from "next/og";
-import { getMarket, impliedYesPct } from "@/lib/server/market-service";
+import { getMarket } from "@/lib/server/market-service";
+// ⭐ The card's price rule (landing v3 WP14b): no price on an empty or one-sided pool, a two-sided one
+// within 1–99. It used to read `impliedYesPct` directly — "YES 100% · 0% NO" on a one-sided market and
+// an invented "YES 50% · tipping" on one nobody had bet on, in every WhatsApp preview.
+import { sharePreviewPrice } from "@/lib/markets/share-preview";
 import { resolveWinShareToken } from "@/lib/server/share-token";
 
 export const runtime = "nodejs";
@@ -46,7 +50,7 @@ export async function GET(
   const { id } = await params;
   const m = await getMarket(id);
   if (!m) return new Response("Not found", { status: 404 });
-  const yes = impliedYesPct(m);
+  const price = sharePreviewPrice(m.yesPool, m.noPool, m.predictorCount);
 
   // ── WIN VARIANT (F5) ──────────────────────────────────────────────────────
   // Addressed ONLY by an HMAC-signed token we minted for the position's owner.
@@ -157,35 +161,55 @@ export async function GET(
 
         {/* Tipping bar */}
         <div style={{ marginTop: "auto", display: "flex", flexDirection: "column", gap: 16 }}>
-          <div style={{
-            position: "relative",
-            height: 36,
-            background: C.track,
-            borderRadius: 18,
-            overflow: "hidden",
-            display: "flex",
-          }}>
-            <div style={{
-              width: `${yes}%`,
-              background: `linear-gradient(90deg, ${C.yesDark}, ${C.yes})`,
-              boxShadow: "0 0 18px rgba(31,158,91,0.4)",
-              display: "flex",
-            }} />
-            <div style={{
-              width: `${100 - yes}%`,
-              background: `linear-gradient(270deg, ${C.noDark}, ${C.no})`,
-              boxShadow: "0 0 18px rgba(224,86,80,0.4)",
-              display: "flex",
-            }} />
-          </div>
+          {price.kind === "priced" ? (
+            <>
+              <div style={{
+                position: "relative",
+                height: 36,
+                background: C.track,
+                borderRadius: 18,
+                overflow: "hidden",
+                display: "flex",
+              }}>
+                <div style={{
+                  width: `${price.yesPct}%`,
+                  background: `linear-gradient(90deg, ${C.yesDark}, ${C.yes})`,
+                  boxShadow: "0 0 18px rgba(31,158,91,0.4)",
+                  display: "flex",
+                }} />
+                <div style={{
+                  width: `${price.noPct}%`,
+                  background: `linear-gradient(270deg, ${C.noDark}, ${C.no})`,
+                  boxShadow: "0 0 18px rgba(224,86,80,0.4)",
+                  display: "flex",
+                }} />
+              </div>
 
-          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 22, fontFamily: "JetBrains Mono, monospace" }}>
-            <span style={{ color: C.yesLabel, fontWeight: 700 }}>YES {yes}%</span>
-            <span style={{ color: C.tipLabel, opacity: 0.6, fontStyle: "italic", textTransform: "uppercase", fontSize: 14 }}>
-              {Math.abs(yes - 50) < 4 ? "tipping" : yes > 50 ? "leans yes" : "leans no"}
-            </span>
-            <span style={{ color: C.noLabel, fontWeight: 700 }}>{100 - yes}% NO</span>
-          </div>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 22, fontFamily: "JetBrains Mono, monospace" }}>
+                <span style={{ color: C.yesLabel, fontWeight: 700 }}>YES {price.yesPct}%</span>
+                <span style={{ color: C.tipLabel, opacity: 0.6, fontStyle: "italic", textTransform: "uppercase", fontSize: 14 }}>
+                  {price.lean}
+                </span>
+                <span style={{ color: C.noLabel, fontWeight: 700 }}>{price.noPct}% NO</span>
+              </div>
+            </>
+          ) : (
+            <>
+              {/* No price to draw (an empty or one-sided pool): the neutral track, and the state in words —
+                  never a split, a lean or a percentage (MOBILE-VISUAL ruling 13; D29). */}
+              <div style={{
+                height: 36,
+                background: C.track,
+                borderRadius: 18,
+                border: `2px dashed ${C.tipLabel}`,
+                opacity: 0.55,
+                display: "flex",
+              }} />
+              <div style={{ display: "flex", justifyContent: "center", fontSize: 22, fontFamily: "JetBrains Mono, monospace" }}>
+                <span style={{ color: C.tipLabel, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em" }}>{price.label}</span>
+              </div>
+            </>
+          )}
 
           <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, fontSize: 14, opacity: 0.6, fontFamily: "JetBrains Mono, monospace" }}>
             <span>Predict events. Not chance.</span>

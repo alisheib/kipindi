@@ -11,7 +11,8 @@
  *
  * ⛔ IT IS THE FIRST OF TWO ACTS, AND THE ORDER IS THE POINT:
  *   1. this, with --apply: seconds, no deploy needed, and the desk is terminal the moment it commits;
- *   2. then set `houseBots: "WITHDRAWN"` in `src/lib/feature-state.ts`, commit and deploy.
+ *   2. then set `desk: "WITHDRAWN"` in `src/lib/feature-state.ts`, commit and deploy. ⚠️ The key is `desk`
+ *      since 2026-09-21 (it was `houseBots`); this line and the print below named the old key until 2026-09-26.
  * Act 1 is a DATABASE marker (it survives a redeploy of an older image); act 2 is a CODE constant (it
  * survives a database someone edits by hand). Each refuses the switch on its own; neither is allowed to
  * become the only one anyone maintains.
@@ -98,7 +99,7 @@ console.log(`   4  global event    → ${done.eventId}`);
 console.log(`   5  compliance      → ${done.recorded ? done.auditId ?? "written" : "recorded: false — THE DESK IS RETIRED but the compliance row did not land; file the note by hand"}`);
 console.log(`   6  alert           → one, carrying ${tzs(done.census.openExposureTzs)} still open across ${done.census.markets} market(s)`);
 console.log(`\n   NEXT, and it is not optional:`);
-console.log(`     · set houseBots: "WITHDRAWN" in src/lib/feature-state.ts, commit and deploy — the code half of this state;`);
+console.log(`     · set desk: "WITHDRAWN" in src/lib/feature-state.ts, commit and deploy — the code half of this state;`);
 console.log(`     · then run npm run ops:house-bots-status until the open marked positions reach 0. They settle on their own.`);
 console.log(`   See docs/HOUSE-BOTS.md §11 "Sunset".\n`);
 process.exit(0);
