@@ -11,7 +11,7 @@
 
 import { createHash } from "node:crypto";
 import { db } from "../store";
-import { getAuditByActionsDurable, getAuditPageDurable, verifyChain, verifyChainFull } from "../audit";
+import { getAuditByActionsDurable, getAuditPageDurable, verifyChainFull } from "../audit";
 import {
   providerSummary, depositsTotal, withdrawalsTotal,
   grossGamingRevenue, netGamingRevenue, kycFunnel, rgRosterCounts,

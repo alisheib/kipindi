@@ -1,4 +1,9 @@
-# Reports window truth — running state
+# Reports window truth — ✅ DONE, LIVE ON MAIN
+
+> **STATUS: CLOSED 2026-09-28.** Merged to `main` and deployed; production verified serving the
+> exact commit SHA (read off `?dpl=` on a live asset, not assumed). Everything below is the record.
+> The one item deliberately left open is named under **Owner items**.
+
 
 > **Branch `reports-window-truth`, off `origin/main` @ `d3379fef`.** Worktree `F:\kipindi-reports`.
 > Commissioned 2026-09-28 after users reported that `/admin/reports` "gets the date ranges for
@@ -235,10 +240,51 @@ date-range **30** · report-window-truth **39** + red **8/8** · report-parity *
 report-window-reads **41** · finance-window **20** · report-cells **23** · report-note-truth **11** ·
 report-formats **8** · money-invariants **88** · filter-language green · i18n en=sw=zh=**2540**.
 
-### ▶ Next
+### ✅ Close-out — final verification, 2026-09-28
 
-- Storing the prepared pack artifact so Download re-serves the hashed bytes instead of re-rendering
-  (the month half is closed; this is the sha256 half).
+Run on the clean merged tree that is now live. **Every suite run three times with identical
+results** (the "run the same check 3×" rule — a single green run has lied on this repo before):
+
+```
+                            run 1        run 2        run 3
+test:date-range             30 / 0       30 / 0       30 / 0
+test:report-window-truth    39 / 0       39 / 0       39 / 0
+test:report-parity          50 / 0       50 / 0       50 / 0
+test:report-window-reads    41 / 0       41 / 0       41 / 0
+test:finance-window         20 / 0       20 / 0       20 / 0
+test:report-cells           23 / 0       23 / 0       23 / 0
+test:report-note-truth      11 / 0       11 / 0       11 / 0
+test:report-formats          8 / 0        8 / 0        8 / 0
+test:money-invariants       88 / 0       88 / 0       88 / 0
+red:report-window-truth     8/8 caught   8/8 caught   8/8 caught
+```
+
+Also green: `test:filter-language` (257 assertions) · `test:i18n` en=sw=zh=2540 · `test:docs` ·
+`test:tracker-hygiene` 14/0 · `typecheck` exit 0 · **`npm run build` exit 0**.
+
+Live, against a server built from this exact tree: `report-renderers-smoke` **23/23** ·
+`qa:reports-window-artifacts` **ALL 9 REPORTS STATE A PERIOD · THE PACK PERIOD IS HONOURED** ·
+`qa:reports-window-drive` **DRIVE CLEAN**.
+
+Code cleanliness: no unused imports across the changed files (one genuinely dead one found and
+removed — `verifyChain` in `catalogue.ts`, which uses `verifyChainFull`; `verifyChain` itself stays
+live in four other modules), no `TODO`/`FIXME`/`console.log`/`debugger` left behind, working tree
+clean, build artifacts removed, no stray dev servers.
+
+Production after the push: health `ok`, uptime reset (new process), database reachable + migrated,
+`/admin/reports` 307 and the report API 401 for anonymous — the gate is intact.
+
+## Owner items (→ Ali)
+
+1. **Storing the prepared pack artifact**, so the pack card's Download re-serves the hashed bytes
+   instead of re-rendering. The MONTH half is closed — the link can no longer hand over a different
+   month than the label beside it — but a fresh `generatedAt` still means the downloaded file's
+   sha256 differs from the stored one. The tooltip says so.
+2. **`test:report-parity` and `test:report-window-reads` are not in `predeploy`.**
+   `test:report-window-truth` and its red proof now are.
+
+### Notes kept for whoever picks this up
+
 - The EAT stamps are proven in the suite at a pinned instant (2026-09-28T21:30Z, where the EAT day
   and the UTC day differ). A live generation between 21:00 and 24:00 EAT would confirm filename +
   reference + period agree on one day end-to-end in production.
