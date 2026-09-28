@@ -41,7 +41,14 @@ const ACCEPTANCE = "docs/design-system/v4-2026-09-26-landing-ten/ACCEPTANCE.md";
 const IDS = [
   "D0", "WP1", "WP2", "WP3", "WP4", "WP5", "WP6", "WP7", "WP8", "WP9", "WP10", "WP11", "WP12",
   "WP13", "WP14", "WP14b", "WP15", "WP16", "WP17", "RG",
-  "V15", "V16", "V17", "V18", "V19", "V20", "V21", "GATE", "PANEL", "FUNNEL", "SW", "ZH", "DEV",
+  "V15", "V16", "V17", "V18", "V19", "V20", "V21",
+  // V22 and V25 arrive with UPDATE-2026-09-28 (the rail's centre Deposit coin and "one Deposit
+  // per screen"). They are numbered by the update, not by this board, which is why the run is
+  // V21 -> V22 -> V25 with no V23/V24 yet: those are WP15b's motion audit and WP20's benchmark,
+  // neither built. A gap in the numbers is the delivery's, and inventing V23/V24 rows to close it
+  // would claim two gates nobody has written.
+  "V22", "V25",
+  "GATE", "PANEL", "FUNNEL", "SW", "ZH", "DEV",
 ];
 const STATUSES = ["⬜", "🔨", "🔵", "✅", "⛔", "⏳"];
 const SHA = /\b[0-9a-f]{7,40}\b/;
