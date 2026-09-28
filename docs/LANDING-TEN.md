@@ -48,9 +48,16 @@ WP13 ✅ · WP14 ✅ · WP14b ✅ · **WP1b ✅** (the rail's centre Deposit coi
 its `data-market-*` attributes. Only V3 (×12, the chat bubble — Ali's call) and V4 (×36,
 `.ticker-pause` — the LIVE strip lane's, §0 trap 11) remain, neither this programme's to fix.
 
-**Next:** the production frame review for WP3, WP4 and WP12, then WP9. In order:
-1. **The production frame review for WP3, WP4 and WP12** — 360/768/1280 × sw/en/zh, looked at, not
-   only the gate read. That is all three rows need to turn ✅. Cheapest real progress on the board.
+**⚠️ ONE PRODUCT QUESTION THE FRAME REVIEW RAISED, AND IT IS ALI'S.** WP3's depth floor withholds the
+predictor count below 10. The book is thin enough today that it is withheld on very nearly every market
+— the featured card measured `predictors=2` against `floor=10` — so nearly every card shows the footer
+shape that floor leaves: the pool figure alone on one line, the info button opposite it, and air between
+them. Nothing is broken and no gate objects; the floor is doing exactly what R7 asked. The question is
+whether a floor of 10 is right for a book this size, or whether the card should close the space when it
+withholds. Not a defect to fix quietly — a number to rule on.
+
+**Next:** WP9, then the small R7 build. In order:
+1. ~~The production frame review for WP3, WP4 and WP12~~ — **DONE 2026-09-28**; all three rows ✅.
 2. **WP9** — one board: delete the `.market-grid` and `TopicTiles` from `/`, add the Closing soon /
    Biggest pools toggle (the lens is server-chosen and non-interactive today), the topic chips and
    the search. Reuse `discovery-bar.tsx`'s `FilterPill` and `ui/search-box.tsx`; do not write new
@@ -103,6 +110,13 @@ once, on different things.
 10. The gate's V3 treats the top of the bottom rail as the fold. What it still reports on production is
     the chat bubble — Ali's open call.
 11. V4 on production reports `.ticker-pause` at 40×31 on every cell. The LIVE strip lane's, on purpose.
+13. 🔴 **A COMPONENT BELOW THE FOLD PHOTOGRAPHS BLANK.** The first production frame review captured the
+    Up & Down band as a solid dark rectangle at every width and locale, and a blank frame reads as an
+    empty component rather than as a broken photograph. The page reveals sections on first intersection
+    (`.js [data-reveal]:not([data-revealed]) { opacity: 0 }`), so a camera that never scrolls shoots a
+    component that has not been told to appear. Measured both ways: before scrolling `opacity=0`,
+    `data-revealed` absent; after `scrollIntoView({block:"center"})` and 1.8s, `opacity=1` and revealed,
+    in 9 of 9 cells. ⚠️ Scroll the element into view and WAIT before any capture below the fold.
 12. **`red:landing-ten-plan` had three controls proving nothing**, all for the same reason: they pinned
     a value that later became true. Two hard-coded "56 K rows" / "58 checkboxes" and went blind the day
     the delivery grew to 86; one planted **R9**, which the hero unit MADE REAL. A control pinned to
@@ -162,8 +176,8 @@ once, on different things.
 | D0 | File the delivery, its acceptance record, this tracker; delete the dropped folder | ✅ | 1173dc2b | live 2026-09-26; the dropped folder deleted, `C:\kipindi-main` fast-forwarded |
 | WP1 | Header collapse below 1100, Menu button, segmented language | ⛔ | | R1 kept the header; L4 |
 | WP2 | Hero order, trust lines, headline clamp, backdrop drawing removed | ✅ | 54f8199b | measured on production 2026-09-26 (360/768/1280 × sw/en/zh frames looked at); R4(1), L18 |
-| WP3 | Featured card: full question, meta + source, time top-right, 24h mark and delta | 🔵 | ec28dd4e | production 2026-09-28 after `03cf7df9`, 33 of 33 base cells measured (11 widths × sw/en/zh): **V18 0** — it read **1,584** before this merge. The featured card names its source, its time sits top-right, and the board row's frame was looked at on production at 1280. ⚠️ 🔵 NOT ✅: the production frame review at 360/768/1280 × sw/en/zh is not done — nine LOCAL frames were looked at on a seeded host, and one production frame. That review is all that stands between this row and ✅ |
-| WP4 | Question board rows: title link + YES@/NO@ buttons + time left | 🔵 | ec28dd4e | production 2026-09-28 after `03cf7df9`, 33 of 33 base cells measured (11 widths × sw/en/zh): **V18 0** — it read **1,584** before this merge. Every board row carries `data-market-part` for source, pool, predictors, time and pick. ⚠️ 🔵 NOT ✅, for the same reason as WP3 — the production frame review is outstanding |
+| WP3 | Featured card: full question, meta + source, time top-right, 24h mark and delta | ✅ | ec28dd4e | **Production frame review done 2026-09-28** (`03cf7df9`): 27 element captures, 3 components × 360/768/1280 × sw/en/zh, measured for clipping and overflow AND looked at as contact sheets (three locales stacked per component and width). No clipping, nothing past the right edge, every `data-market-part` present in all 27. The card reads right in all three languages: time top-right, the question clamped to 3 lines below 640 and WHOLE from 640, the source under the YES/NO row below 640 and above it from 640, the 24h mark and its delta on the bar. ⚠️ The footer is airy, and it is the DEPTH FLOOR doing its job — the card carries `data-market-predictors=2` against `data-market-depth-floor=10`, so the count is withheld and V18's exception (1) allows it. Measured: no gap ≥20px between leaves, so this is the floor's shape, not a layout defect. ⚠️ BUT see §0: with the book as thin as it is, the floor withholds the count on nearly every market, so nearly every card shows that shape. Ali's to rule on |
+| WP4 | Question board rows: title link + YES@/NO@ buttons + time left | ✅ | ec28dd4e | **Production frame review done 2026-09-28** (`03cf7df9`): 27 element captures, 3 components × 360/768/1280 × sw/en/zh, measured for clipping and overflow AND looked at as contact sheets (three locales stacked per component and width). No clipping, nothing past the right edge, every `data-market-part` present in all 27. Rows carry close date · source · pool · predictors in every locale, at 360 (stacked, meta wrapping to two lines) and at 1280 (one line per row, three columns). The source is before the pick in reading order at every width — V18 0 on 33 production cells |
 | WP5 | Pick slip: sheet below 1024, inline from 1024, after-placing share | ⬜ | | R2 |
 | WP6 | One-sided state on every card + the grid's degeneracy floor | ✅ | 31662831 | measured on production 2026-09-27: V17 0 in 33/33 cells (was 66), RED V17 PROVED; `/`, `/markets`, `/results` at 360/768/1280 × sw/en/zh, frames looked at — no card reads 0% or 100%, one-sided cards read "One side only" + the rule in all three. The one-sided FEATURED card measured locally (production's featured is contested). L14, L22, L23; delivers MOBILE-VISUAL ruling 13 on the card |
 | WP7 | Estimate line on cards | ⛔ | | R3 |
@@ -171,7 +185,7 @@ once, on different things.
 | WP9 | Pick-a-side grid: phone snap rail with a peek, 2 and 3 columns | ⬜ | | |
 | WP10 | Topics: six tiles, Other last, "All topics" as the section link | ✅ | 54f8199b | measured on production 2026-09-26 (360/768/1280 × sw/en/zh frames looked at) |
 | WP11 | How it works: "A named source", the fee from config, h3 steps | ✅ | 54f8199b | measured on production 2026-09-26 (360/768/1280 × sw/en/zh frames looked at); the fee reads 13% through `ratesFrom`; L3 |
-| WP12 | Up & Down band: R5 — the Match (spec v2) | 🔵 | 2acefc9d | live 2026-09-28: the scoreboard, the match track and the one-line clock, the 60-second refresh (R5(a)), the round page agreeing (§12); eight local drives (`verify-band.sh`: 19 checks incl. the agreement drive, the RED-controlled numeric gate, the #stake landing, one pick position across states) and five rounds of the four-expert frame panel (45/52 at 10 in round 5; record in §2.1 WP12). Production 2026-09-27: `band-metrics` CLEAN on 11 cells, `band-agree` 3 compared / 0 disagree, the 360 sw frame looked at; the landing gate on production still to run (§0 (1)). The price-line band it replaces was ✅ `54f8199b` |
+| WP12 | Up & Down band: R5 — the Match (spec v2) | ✅ | ec28dd4e | **Production frame review done 2026-09-28** (`03cf7df9`): 27 element captures, 3 components × 360/768/1280 × sw/en/zh, measured for clipping and overflow AND looked at as contact sheets (three locales stacked per component and width). No clipping, nothing past the right edge, every `data-market-part` present in all 27. The Match reads right at 1280 (two columns: the copy left, the scoreboard and timeline right) and reflows at 360 to heading → asset → countdown → scoreboard with the Up/Down pair below it → timeline → rule → All rounds. The Swahili rule line holds its two lines at 360, as R5's panel required. 🔴 AND THE FIRST PASS PHOTOGRAPHED IT BLANK IN ALL NINE CELLS — see §0 trap 13 |
 | WP13 | Results: date, the market's own sign-off, source link, paid | ✅ | e9b4056c | measured on production 2026-09-27: date, the market's own sign-off (a reversed market reads "Corrected on objection"), source, paid; below 640 the amount and the source each take a line, so the host reads whole. L2 |
 | WP14 | Wallet: chip opens sheet/panel, equal Deposit/Withdraw, gold Deposit at zero, signed-in hero | ✅ | e9b4056c | measured on production 2026-09-27 with `mobile01` (zero balance, no picks: header Deposit, hero empty-balance line + Deposit, no Withdraw, Set limits; pages render at 360/1280 sw/en). Funded Wallet + hero measured locally (Wallet 17 cells, hero 15 cells; 360–1280 × sw/en/zh). `test:wallet-reach` 48/48, `test:landing-mine` 22/22, both mutation-proved. R1, L19–L21 |
 | WP14b | Share on every card footer, in every phase; the WhatsApp preview card (og tags spread from `ROOT_OPEN_GRAPH`, no 0/100 in the preview) | ✅ | 541a9e76 | measured on production 2026-09-27: `qa:landing-v3:og-prod` CLEAN on 15 markets (og:type/site_name/locale present, one-sided markets preview "One side only.", images 1200×630 PNG) — its baseline before the push failed on all 15; `/results` captured 360/768/1280 × sw/en/zh, settled cards one `<article>`, looked at; the share drive (26/26: Copy, WhatsApp, Esc, backdrop stay on `/results`) ran locally. "Share on WhatsApp" after placing is WP5's; K50 closes with both |
