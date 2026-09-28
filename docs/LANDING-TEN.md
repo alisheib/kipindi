@@ -130,46 +130,62 @@ once, on different things.
 
 ## §0a · The paste-in prompt for the next session
 
-> Continue the 50pick landing v3 build, end to end, sealed — visual and logical. The build moved to this PC on
-> 2026-09-28; everything is on GitHub (alisheib/kipindi) and nothing needs the old laptop.
+> Continue the 50pick **landing** build. You are one of several sessions working this repo at once,
+> on different things, so **push to `main` as you finish each piece** — another PC picks up from there.
 >
-> Setup: find the repo on this machine (or clone it) and work in your own checkout of branch `landing-v3` (it
-> holds the live Up & Down band + the hero merged but NOT live and NOT yet verified + the docs). `git fetch`,
-> `npm ci`, merge `origin/main` (never rebase or force). The other built units wait on their own branches:
-> `landing-v3-c1` (`cc6fc5bd`), `landing-v3-wp34` (`3312082f`, built on C1), `landing-v3-f1` (`a8ad92a0`, built on C1).
+> **⭐ ALI'S STANDING INSTRUCTION, 2026-09-28: TAKE THE DECISIONS YOURSELF.** *"Take all decisions
+> yourself based on what suits the architecture more and makes the platform more perfect."* When the
+> delivery and this repo disagree, or a spec is silent, **decide it on architectural grounds, record it
+> as the next R-number in `INHERIT-MANIFEST.md`, and say in the ruling what it unblocks.** Do not park a
+> row waiting for an answer. Ask Ali only for things code cannot settle: money moving, production data,
+> a new account, or a brand/commercial call. ⛔ And when a ruling overturns an older one, DELETE or
+> strike the old line where it lives — a stale rule beside the code it contradicts is read under
+> pressure and believed.
 >
-> Read `docs/LANDING-TEN.md` §0 first — its **Next:** list (0)–(7) is the exact resume point and says what is and is
-> not verified for each unit. Then `docs/design-system/v4-2026-09-26-landing-ten/INHERIT-MANIFEST.md` (rulings R1–R9;
-> laws L1–L23, with L24–L29 arriving with WP3+WP4; and "R8 applied — WP12", the decisions the build already took) and
-> the unit's spec in that folder's `specs/`. Every recorded decision is final. Take any new decision yourself (R8) and
-> record it in the manifest. Act as the Tanzanian native Swahili reviewer for every Swahili line; give Chinese the same
-> care.
+> **Also standing (Ali, 2026-09-28):** *"nothing could be created or fixed outside our set of
+> consistency and responsiveness rules"* and *"any new components should align with our theme UI kit"*.
+> Build from `globals.css` tokens and existing components; if no token fits, stop and ask.
 >
-> Work the Next list in order:
-> 1. Finish WP12: the landing gate on production (`verify-prod.sh`, `FIRST_EXPECTED=0` while the hero is not live),
->    tick ✅, delete `specs/updown-band-v2.md` with a pointer.
-> 2. The hero: re-run its drive here (`verify-hero.sh` — the frames are not on GitHub), the gate + REDs
->    V15–V17/V21/V22, the four-expert panel to 10, then ship it and measure it with `FIRST_EXPECTED=1`.
-> 3. C1: typecheck first, then its RED baseline and drive (report the production `PROD-S1-FEE` count to me), panel,
->    ship.
-> 4. WP3 + WP4 (re-measure the first-screen budget with the hero in). 5. F1 (typecheck + guards first — its build report
->    never arrived). 6. WP9. 7. The small R7 build (retire "Tabiri matukio. Si bahati." on all five surfaces). Then D3 and
->    D5.
+> **START HERE**
+> 1. `hostname && git rev-parse --show-toplevel && git worktree list` — find your OWN checkout. Never
+>    copy a path from a document; the sessions before you were on different machines.
+> 2. `git fetch && git merge origin/main`. Read `docs/LANDING-TEN.md` §−0, §0 and §1, then
+>    `docs/design-system/v4-2026-09-26-landing-ten/INHERIT-MANIFEST.md` (rulings **R1–R15**, laws L1–L29),
+>    then §2 (how each row is built) and §3 (every delivery item and the row that delivers it).
+> 3. `UPDATE-2026-09-28.md` in that folder **supersedes** the handover where they conflict — but its §0
+>    ("what the repo has now") is a TARGET STATE, not an inventory. Read §0 as spec.
 >
-> How to build and verify:
-> - Build every component from the kit: `globals.css` tokens, the type ladder, existing components. Fix the same
->   defect platform-wide whenever you find it, mobile first.
-> - Heavy Node (dev server, build, tsc, Playwright) one job at a time; if this machine has `~/heavy-node-lock.sh`, run
->   through it. Dev on localhost (never 127.0.0.1), `rm -rf .next` before every drive, viewport tiles never full-page,
->   check the served HTML for eaten spaces. A green build is not a render.
-> - Every unit gets the four-expert frame panel — UI/UX lead, graphic designer, gambling-industry designer,
->   accessibility/RG — as agents that READ the real PNGs (`scripts/qa/landing-v3/panels/`, README). Brief each round
->   with what changed and what was declined with its recorded reason; fix and re-shoot until every frame is 10. The
->   panel agents run no Node; you run the test battery yourself, one suite at a time.
-> - Ship: merge `origin/main`, push to `main`, confirm the deployed sha (`?dpl=` or `/api/health` — if another session
->   pushed on top, accept a sha that contains yours), re-measure on production, tick the row and rewrite §0 in the same
->   commit. Push each verified unit.
-> - Tell me when the next session is needed.
+> **WHAT IS ALREADY DECIDED — do not re-open these**
+> · **R10** the header shows the balance at EVERY value, "TZS 0" included; the Deposit label yields at
+>   lg–xl in every balance state (E-190 travels with it).
+> · **R11** the 7-day line: Ali's D49 stands over the delivery — TRIMMED below 640, never removed.
+> · **R12** V23 forbids animating LAYOUT; `filter` is allowed (the delivery's wording convicts the coin).
+> · **R13** the repo's 12.5px ratchet is the enforcement, not "12 with no exceptions"; no NEW sub-floor site.
+> · **R14** the depth floor stays at 10; the `--mcard-h` skeleton over-reserves 24px — WP19 owns it.
+> · **R15** WP9 deletes the grid and KEEPS the topic tiles; the board grows 4 → 7; the toggle is
+>   SERVER-computed.
+>
+> **▶ NEXT: WP9 · ONE BOARD.** §2.1's WP9 row is the full spec and R15 is its scope. It names the five
+> guards that move with it. Then the small R7 build (retire "Tabiri matukio. Si bahati." on five
+> surfaces), then D3 (WP5 the pick slip, V20, the chat bubble under sheets), then WP15/V23, WP19,
+> WP20/V24, D5.
+>
+> **HOW TO WORK A ROW**
+> · Build it with existing tokens and components. Run the suites §2.1 names, plus
+>   `npm run test:landing-ten-plan` and `npm run red:landing-ten-plan`.
+> · Drive it on a LOCAL host: `PORT=3031 npm run dev`, seed with `POST /api/dev-test/seed-markets` and
+>   `POST /api/dev-test/updown-seed`, sign in with **`/auth/demo?deposit=0|1`** (that is how the funded
+>   and zero-balance header states are driven without touching production).
+> · **Look at the frames** at 360/768/1280 × sw/en/zh — a green gate is not a 10. ⚠️ Anything below the
+>   fold must be `scrollIntoView`n and given ~1.8s first, or it photographs BLANK (§0 trap 13).
+> · `git fetch`, **merge** `origin/main` (never rebase, never force), `git push origin HEAD:main`, then
+>   confirm production serves your sha (`?dpl=<sha>` on the asset URLs).
+> · Re-measure on production with `node scripts/qa/landing-ten.mjs --pass=base`, then tick the row and
+>   rewrite §0 **in the same commit**. A row is ✅ only when it is measured on production AND its frames
+>   have been looked at.
+>
+> **The repo's laws win every conflict with the delivery.** Report the conflict in the ruling you write;
+> never resolve one silently.
 
 ## §1 · Status board — the v3 build
 
