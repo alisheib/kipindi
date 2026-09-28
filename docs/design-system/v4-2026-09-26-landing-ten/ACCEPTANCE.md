@@ -8,14 +8,16 @@
 | Language | inside Menu | inside Menu | header |
 | Join / Create account | header + full-width button after the featured card | header + after the card | header + hero left column |
 | Balance chip → Wallet | header right → bottom sheet | header right → bottom sheet | header right → panel |
-| Deposit | header (gold), Wallet, hero | same | same |
+| Bottom rail (`bottom-nav.tsx`) | Markets · Up & Down · **centre Deposit** · Live · More | same | none (`lg:hidden`) |
+| Deposit | the rail coin (/wallet/deposit), Wallet; no header pill; no hero Deposit below 640 | the rail coin, Wallet, hero; no header pill | header pill (gilt-metal), Wallet, hero |
+| Results | inside More (both branches) | same | header nav (unchanged) |
+| Positions, Wallet, Leaderboard, Invite, Propose | inside More (player) | same | header / avatar menu |
 | Withdraw | Wallet + hero, same size as Deposit; hidden at zero | same | same |
 | Featured market | right after the lede, in the first screen | after the lede | hero right column |
 | Pick slip | bottom sheet | bottom sheet | inline |
 | Proof figures | ledger rows | 3 columns | 3 columns |
-| Closing-soonest board | stacked, full-width YES/NO | title and bar, buttons wrap | one line |
-| Pick-a-side cards | snap rail, 86% cards with a peek | 2 columns | 3 columns |
-| Share | card footer + after placing (WhatsApp) | same | same |
+| Board (one list) | toggle Closing soon / Biggest pools + topic-chip row + stacked rows | same | one line per row |
+| Share | featured card + after every placed pick (WhatsApp) | same | same |
 | Set limits / Take a break | pick sheet, Wallet, Menu, footer | same | slip, Wallet, footer |
 | Licence · 18+ · helpline | first screen + footer | same | hero + footer |
 
@@ -46,8 +48,8 @@
 **3. Motion & data-viz**
 - [ ] Needles move only on real pool changes
 - [ ] 24h mark and delta on the featured card
-- [ ] Up & Down: match scoreboard from the last confirmed price, dated, with the Up/Down buttons in it; open→finish match track (a stem per confirmed read, lock at bets close, flag at the deciding price, playhead); one-line countdown *(amended by ruling R5, 2026-09-27 — was "dashed open-price line, live line, ring countdown")*
-- [ ] At most two loops *(amended by R5 — was "Only two loops, both opacity fades (live dot, final 30s)"; the landing band has no final-30s pulse, so the page keeps one loop, the live dot)*
+- [ ] Up & Down: dashed open-price line, live line, ring countdown
+- [ ] Only two loops, both opacity fades (live dot, final 30s)
 - [ ] Reduced motion and Save-Data honoured
 - [ ] Every bar and chart has a text description
 
@@ -87,8 +89,58 @@
 - [ ] Line movement is shown (24h mark and delta)
 - [ ] Depth is shown (pool and predictors) on every market
 - [ ] Closing time sits next to every price
-- [ ] Share on cards; "Share on WhatsApp" after placing; the WhatsApp preview card works
+- [ ] Share on the featured card; "Share on WhatsApp" after every placed pick; the WhatsApp preview card works
+- [ ] The predictor count is on every row
 - [ ] The visitor → sign-up → first-pick funnel is measured before and after launch
+
+## C2. Specialist panel (Review Board §3g)
+**UI/UX engineer**
+- [ ] Sheets animate in and out; Esc, backdrop and Cancel use the exit
+- [ ] Closed markets show "Betting closed · awaiting result", with no tappable YES/NO
+
+**Creativity engineer**
+- [ ] The coin is the 50pick mark as a control
+- [ ] The "▲ You" mark shows where the player joined the split
+
+**Visual motion engineer**
+- [ ] Every row of the SPEC §5 motion table is implemented
+- [ ] The price line slides continuously; the ring drains smoothly
+- [ ] Every press gives feedback
+
+**Software motion engineer**
+- [ ] V23: transform/opacity only, no per-second page re-render, timers pause when hidden or off-screen
+- [ ] The INP, long-task and CLS budgets are met
+
+**Palette engineer**
+- [ ] One gold; the contrast table in §5b is re-verified on the real tokens
+- [ ] The closed and disabled states use the muted palette
+
+**Software architect**
+- [ ] One `MarketRow` and one `ConvictionBar`; no other bar markup exists
+- [ ] The rail is `bottom-nav.tsx`, with no second nav component
+
+**Brand engineer**
+- [ ] The wordmark matches `lockup-horizontal.svg`
+- [ ] The mark's split, orientation, needle and hub are respected in the coin
+- [ ] The one verb "pick" is used throughout
+- [ ] Every needle carries the mark's hub
+
+## C3. Nine-reviewer panel (Review Board §3i)
+- [ ] **UI/UX specialist:** the whole centre slot is tappable, at 56px
+- [ ] **Size & dimensions engineer:** only the SPEC §8 values are used (five radii, the type scale, the hit targets)
+- [ ] **Gamer:** Confirm gives a 12ms haptic; press feedback on every control; Up & Down is one tap from every page
+- [ ] **Platform manager:** WP19 events fire with the right `source`; every empty state renders; flags work
+- [ ] **Player, creativity, palette, software motion, branding:** their C2/C checklists are still green
+
+## C4. World benchmark (Review Board §3j)
+- [ ] Search on the board (16px text), with its empty state
+- [ ] The 7-day line on the featured card at 640px and wider; the bar only on phones
+- [ ] Static loading skeletons at the final heights, CLS 0
+
+## C5. Update 2026-09-28
+- [ ] V25: one Deposit per screen, in every state (guest, funded, zero, held)
+- [ ] A held wallet: the centre slot is Wallet (/wallet), with no "+"
+- [ ] Results is in More on phones and stays in the desktop header
 
 ## D. Gates and tests
 - [ ] `qa:landing-ten`: V1–V21 clean at all 61 cells plus the signed-in and sheet cells (except Ali's open decisions)

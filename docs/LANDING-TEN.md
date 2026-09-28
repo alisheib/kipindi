@@ -7,6 +7,28 @@
 >
 > **Read this before touching the landing page, and before trusting a green gate.**
 
+## §−0 · ⚠️ A SECOND LANE SHIPPED THE DEPOSIT CHANGE, AND THE BRIEF HAS BEEN REVISED (2026-09-28)
+
+**A v4 revision of the handover is now installed**, over the v3 one that was in
+[`design-system/v4-2026-09-26-landing-ten/`](design-system/v4-2026-09-26-landing-ten/README.md).
+Read its **`UPDATE-2026-09-28.md` first** — it supersedes any line it conflicts with, including in
+`HANDOVER-LANDING-10.md`, which is itself a longer revision now (15k → 24k). `SPEC-VALUES.md` and
+`ACCEPTANCE.md` were revised too. The v3 concept and `INHERIT-MANIFEST.md` are untouched; the v4
+concept is self-contained in `design/v4/` because the two need different runtimes.
+
+**§1–§3 of that update are BUILT AND LIVE** (`37bde8a5`), with gates V22 and V25 (`ccfa54f0`):
+the header's gold pill yields below 1024, the rail carries a centre **Deposit coin**, and Results
+moved into `More` (it stays in the desktop header). **One Deposit per screen** is now a gate, not a
+convention.
+
+⛔ **THE TWO LANES COLLIDE, AND IT IS NOT HYPOTHETICAL.** That work merged origin/main mid-build and
+hit three conflicts — `top-app-bar.tsx`, `bottom-nav.tsx` and this lane's own
+`header-fit.anchors.mjs`. R1 landing first is what made §1's zero-balance label rule correct: it
+added `funded` and made the capsule give way at zero, which is the premise §1 spends.
+⚠️ **Most of UPDATE §4's remaining items overlap this lane's work packages** (one board, the shared
+`ConvictionBar`, the closed-market state, "▲ You", analytics, skeletons). **Reconcile before
+starting any of them**, or both lanes will build the same thing twice in the same files.
+
 ## §0 · RESUME AT — the v3 build (reopened 2026-09-26)
 
 **State (2026-09-27):** D0 ✅, D1 ✅ (`54f8199b`), WP14 ✅ (the Wallet, `e9b4056c`), WP6 ✅ (`31662831`), WP14b ✅

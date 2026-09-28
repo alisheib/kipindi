@@ -2,12 +2,14 @@ Paste everything below the line into Claude Code, opened on `alisheib/kipindi` (
 
 ---
 
+If `docs/design-brief/landing-10/UPDATE-*.md` exists, read it first; it supersedes conflicting lines.
+
 You are rebuilding the 50pick landing page (`/`) to a signed-off 10/10. The complete brief is in `docs/design-brief/landing-10/`. It is the only evidence of what was agreed, so follow it exactly. Where it is silent, ask; do not guess.
 
 **Before writing any code**
 1. Read, in order: `CLAUDE.md`, `docs/LANDING-TEN.md`, `docs/design-brief/handover-2026-08/LAWS.md`, `docs/DESIGN_AUTHORITY.md` (§B6, §B11, §C5), `docs/RULES.md`.
 2. Then read the brief: `README.md`, `HANDOVER-LANDING-10.md`, `SPEC-VALUES.md`, `ACCEPTANCE.md`, `i18n-draft.json`.
-3. Open `design/50pick Home Concept v3.dc.html` in a browser at 360, 768 and 1280 wide, in each URL state listed in the README. Save screenshots to `.qa-shots/landing-10/concept/`.
+3. Open `design/50pick Home Concept v4.dc.html` in a browser at 360, 768 and 1280 wide, in each URL state listed in the README. Save screenshots to `.qa-shots/landing-10/concept/`.
 4. Run `npm run qa:landing-ten` on production and save its output as the baseline.
 5. Write back a short plan: the PR list (WP1–WP17 plus WP14b), what each PR touches, and any conflict you found between the brief and the repo's rules. **The repo's laws win every conflict.** Report the conflict; don't resolve it quietly.
 
