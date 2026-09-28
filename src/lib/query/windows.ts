@@ -40,6 +40,35 @@ export const PLAYER_PRESETS = ["today", "yesterday", "7d", "30d", "all"] as cons
 export type FullPresetId = (typeof FULL_PRESETS)[number];
 export type PlayerPresetId = (typeof PLAYER_PRESETS)[number];
 
+/**
+ * ⭐ EVERY PRESET `resolveRange` CAN RESOLVE — the vocabulary itself, of which the two lists above
+ * are the DISPLAY subsets a given surface chooses to offer.
+ *
+ * 🔴 WHY IT IS HERE AND NOT BESIDE THE RESOLVER (2026-09-28). `lib/server/date-range.ts` carried its
+ * own `RANGE_PRESETS` + `RangePresetId` — a second vocabulary, in a file whose neighbour states
+ * "one definition". It had **zero readers** anywhere in the repo (only its own two lines and a
+ * doc-comment pointing at itself), it was missing `28d`, `qtd` and `all` — three ids the resolver
+ * genuinely resolves and which live callers genuinely pass as defaults — and nothing compared it to
+ * anything. A list nobody reads cannot drift loudly; it drifts silently and then gets believed. It
+ * is deleted, and this is the one home.
+ *
+ * ⛔ THE ORDER IS THE DISPLAY ORDER and the set is CLOSED. Adding an id here without adding an arm
+ * to the resolver's switch makes `test:date-range` go red, because a preset that does not resolve
+ * silently becomes the caller's default — a window nobody chose, under a label that names one.
+ */
+export const RESOLVABLE_PRESETS = [
+  "1h", "6h", "24h", "today", "yesterday", "7d", "28d", "30d", "mtd", "qtd", "all",
+] as const;
+
+export type ResolvablePresetId = (typeof RESOLVABLE_PRESETS)[number];
+
+/* ⭐ COMPILE-TIME PROOF THAT THE DISPLAY SETS ARE SUBSETS OF THE VOCABULARY. A pill offering an id
+   the resolver cannot resolve is the exact silent-substitution defect above, and it would otherwise
+   be caught only by someone clicking it. These two lines cost nothing and cannot be forgotten. */
+const _fullIsResolvable: readonly ResolvablePresetId[] = FULL_PRESETS;
+const _playerIsResolvable: readonly ResolvablePresetId[] = PLAYER_PRESETS;
+void _fullIsResolvable; void _playerIsResolvable;
+
 export const DAY_MS = 24 * 3600_000;
 
 /**

@@ -87,8 +87,25 @@ export function currentPackPeriod(now = Date.now()): string {
   return `${py}-${pm}`;
 }
 
-export function packPeriodLabel(period: string): string {
+/**
+ * "August 2026" for a `YYYY-MM` pack period.
+ *
+ * 🔴 THE MONTH NAME WAS ALWAYS ENGLISH, INCLUDING INSIDE SWAHILI SENTENCES. This was a bare
+ * `toLocaleString("en-US", …)`, and `report-pack-card.tsx` splices the result straight into its
+ * Swahili subtitle — so the regulator-pack card read *"Kifurushi cha mdhibiti · August 2026"*: a
+ * Swahili sentence ending in an English month, on the card an officer uses to file with the
+ * Gaming Board. The platform has had `common.monthsLong` in all three locales the whole time.
+ *
+ * ⭐ THE CALLER PASSES ITS OWN DICTIONARY SECTION, exactly as `eat-day.formatEatDay(dayKey,
+ * monthsShort, locale)` already does — this module stays free of an i18n import, and no fourth
+ * copy of the month names is created.
+ * ⛔ THE DEFAULT STAYS ENGLISH ON PURPOSE. This label also reaches `meta.period` on the rendered
+ * PDF/XLSX through `reports/coverage.ts`, and those are English-primary regulator artifacts; a
+ * filing must not change language because of who happened to generate it.
+ */
+export function packPeriodLabel(period: string, monthsLong?: readonly string[]): string {
   const [y, m] = period.split("-").map(Number);
+  if (monthsLong && monthsLong[m - 1]) return `${monthsLong[m - 1]} ${y}`;
   return new Date(Date.UTC(y, m - 1, 1)).toLocaleString("en-US", { month: "long", year: "numeric", timeZone: "UTC" });
 }
 

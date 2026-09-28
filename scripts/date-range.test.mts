@@ -12,6 +12,7 @@ process.env.SESSION_SECRET ??= "test-only-session-secret-32chars-min-aaaa";
 
 import { resolveRange, parseEatLocal, MAX_RANGE_MS } from "../src/lib/server/date-range.ts";
 import { startOfEatDay, startOfEatMonth, EAT_OFFSET_MS } from "../src/lib/server/report-money.ts";
+import { RESOLVABLE_PRESETS } from "../src/lib/query/windows.ts";
 
 let pass = 0, fail = 0;
 const ok = (l: string, c: boolean, x = "") => { c ? pass++ : fail++; console.log(`${c ? "PASS" : "FAIL"} ${l}${x ? ` — ${x}` : ""}`); };
@@ -104,6 +105,48 @@ const NOW = Date.UTC(2026, 6, 26, 9, 30);
   ok("23 · 'all' is the one deliberately-unbounded window (from epoch to now)", (() => {
     const x = resolveRange({ range: "all" }, NOW);
     return x.start === 0 && x.end === NOW;
+  })());
+}
+
+/* ══ 24–29 · the gaps this suite had, closed 2026-09-28 ═══════════════════════════════════════
+ * ⭐ `qtd` and `28d` appeared ONLY in assertion 22's sanity sweep, which asks for a "sane, capped"
+ * window — a `qtd` that opened on a UTC quarter boundary, or on the WRONG quarter, satisfies that
+ * and would have shipped. Assertions 9 and 12 pin `today` and `mtd` to exact EAT instants; these
+ * do the same for the two that were only ever swept. */
+{
+  ok("24 · qtd opens on the EAT first-of-quarter, not a UTC one", (() => {
+    const x = resolveRange({ range: "qtd" }, NOW);            // NOW is 26 Jul 2026 → Q3 starts 1 Jul
+    return x.start === Date.UTC(2026, 6, 1, 0, 0) - EAT_OFFSET_MS && x.end === NOW;
+  })(), new Date(resolveRange({ range: "qtd" }, NOW).start).toISOString());
+  ok("25 · CONTROL · the UTC first-of-quarter is a DIFFERENT instant, so 24 discriminates",
+    Date.UTC(2026, 6, 1, 0, 0) !== Date.UTC(2026, 6, 1, 0, 0) - EAT_OFFSET_MS);
+  ok("26 · 28d is exactly 28 rolling days", (() => {
+    const x = resolveRange({ range: "28d" }, NOW);
+    return x.start === NOW - 28 * DAY && x.end === NOW;
+  })());
+
+  /* ⭐ THE VOCABULARY AND THE RESOLVER ARE THE SAME SET. An id offered by a picker that the
+     resolver cannot resolve silently becomes the caller's DEFAULT — a window nobody chose, under a
+     label that names one. `date-range.ts` threw a second, zero-reader preset list until this date;
+     `lib/query/windows.ts` is the one home now, and this proves the two halves agree. */
+  ok("27 · every RESOLVABLE_PRESETS id actually resolves to its own preset",
+    RESOLVABLE_PRESETS.every((id) => resolveRange({ range: id }, NOW).preset === id),
+    RESOLVABLE_PRESETS.filter((id) => resolveRange({ range: id }, NOW).preset !== id).join(", ") || "all resolve");
+  ok("28 · CONTROL · an id OUTSIDE the vocabulary falls back to the default, so 27 is not vacuous",
+    resolveRange({ range: "90d" }, NOW, "30d").preset === "30d",
+    resolveRange({ range: "90d" }, NOW, "30d").preset);
+
+  /* 🔴 A REPEATED QUERY PARAM IS AN ARRAY AT RUNTIME. Seven pages hand raw Next `searchParams`
+     straight in; `?from=a&from=b` arrives as `string[]` and `parseEatLocal` called `.trim()` on it,
+     taking out the whole server component from a URL anyone can type. */
+  ok("29 · a repeated from/to param takes the FIRST value instead of throwing", (() => {
+    try {
+      const x = resolveRange({ range: "custom", from: ["2026-07-15T06:00", "2026-07-01"], to: "2026-07-16T18:30" } as never, NOW);
+      return x.start === parseEatLocal("2026-07-15T06:00")!.ms && x.from === "2026-07-15T06:00";
+    } catch { return false; }
+  })());
+  ok("30 · a repeated RANGE param resolves the first value too", (() => {
+    try { return resolveRange({ range: ["today", "all"] } as never, NOW).preset === "today"; } catch { return false; }
   })());
 }
 

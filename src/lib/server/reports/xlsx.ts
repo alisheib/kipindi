@@ -169,7 +169,11 @@ export async function renderXlsx(report: Report): Promise<Buffer> {
 
   sheet.mergeCells(`A7:${MERGE_END}7`);
   const meta = sheet.getCell("A7");
+  /* ⭐ `Period:` IS THE POINT OF THIS LINE. `meta.period` names the window the figures cover and was
+     rendered by neither renderer — a workbook whose period existed only in the URL that produced it.
+     It leads, because a reader scanning one merged cell reads the first field. */
   meta.value =
+    `Period: ${report.meta.period}      ` +
     `Generated: ${fmtDateTime(report.meta.generatedAt)}      ` +
     `By: ${report.meta.generatedBy}      ` +
     `Reference: ${report.reference}      ` +

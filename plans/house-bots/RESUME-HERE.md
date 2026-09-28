@@ -255,9 +255,35 @@ D20, the master switch is never touched, a refusal or a no-change save announces
 hardcoded string), mobile first, forms at most 960 px, and the repository is PUBLIC (no account id, label, holder name,
 note text or credential in any file).
 
+👉 **The spec, and EVERY decision behind it, is `plans/house-bots/TARGETS-SCREEN.md`** (written 2026-09-28,
+step 0). 80 numbered decisions with their reasons and sources, 10 owner questions each with a safe default,
+6 build steps each with what proves it, and the traps. Read it before touching any step below.
+
+⚠️ **Four owner questions were ANSWERED by Ali on 2026-09-28 and are no longer open** — he took the safe
+default on all four: **OQ-2** land the flag with the page but read the live roster first, leave those
+accounts paused and record the count; **OQ-3** a REMOVE stays permanent and the dialog says so; **OQ-4**
+ship both target ceilings UNSET; **OQ-5** the engine is unchanged and both screens state that targets
+survive a pause. The other six run on their safe defaults (TARGETS-SCREEN.md §6).
+
 | # | Step | Status | Where recorded | Live at |
 |---|---|---|---|---|
-| 0 | Map the five areas; write `TARGETS-SCREEN.md` (spec, decisions, owner questions with defaults, the step list) | ⬜ next | — | — |
+| 0 | Map the five areas; write `TARGETS-SCREEN.md` (spec, decisions, owner questions with defaults, the step list) | ✅ **done 2026-09-28** | `TARGETS-SCREEN.md` (new) | `9e1b581c`, live inside `52839c89` |
+| S1 | The fixture and the instrument's reach — the panels seed plants targets; §5.9's population becomes an exact route match *(no product change)* | ✅ **done 2026-09-28** — gate **496/0/8** with the rows against **494/0/10** without them, twice | `TARGETS-SCREEN.md` §7 S1 · `docs/HOUSE-BOTS.md` §12.17 · `DEFERRED-TESTS.md` row 48 (half) | ✅ `0ae4d0f5` — verified serving |
+| S2 | The grid delta and the two links, read-only — Timing and Reacts-to columns, the `status` filter (one value feeds list, count AND the last-page clamp), the `target=` anchor, the third empty state, "Active targets: {n} →" | ⬜ | `TARGETS-SCREEN.md` §7 S2 | — |
+| S3 | **ADD** — the page, the poll picker, the timing preview, the first target writer and its literal `TARGET_ADDED` announce; `BY_HAND_SCREENS.targeting` flips here with its two riders; `2.fs09.8` rewritten to pin the writer set at ONE path | ⬜ | `TARGETS-SCREEN.md` §7 S3 | — |
+| S4 | **CHANGE TIMING** — the Edit modal, `casUpdate`, the EVERY→FIRST warning, `TARGET_CHANGED`; the pinned writer set WIDENS to two paths | ⬜ | `TARGETS-SCREEN.md` §7 S4 | — |
+| S5 | **REMOVE / VETO** — the Remove modal, `remove` or `veto` + `cancelLive`, `TARGET_REMOVED` and `TARGET_STOPPED`; the set WIDENS to three paths | ⬜ | `TARGETS-SCREEN.md` §7 S5 | — |
+| S6 | **The record** — `docs/HOUSE-BOTS.md` §12.17, the compliance entries, the officers' guide and its PDF | ⬜ | `TARGETS-SCREEN.md` §7 S6 | — |
+
+⛔ **Three things the spec establishes that a builder will otherwise get wrong** (each cost a review round
+to find; the detail and the citations are in the file): (1) the **timing preview and the engine are two
+separate implementations** of the due-time rule with nothing comparing them today — the preview uses
+`rules.ts:effectiveTargetTiming`, the engine `decide.ts:targetDueAt`, and S3 must reconcile them or carry a
+case that drives both; (2) `2.fs09.8`'s replacement pins the writer set **per step and as an EXACT
+comparison** — a three-path string written in S3 is false on arrival, leaves the suite red at its own
+baseline and stops the red drive before it starts; (3) flipping `BY_HAND_SCREENS.targeting` also turns
+`10.start` red and **silently disarms the `scope-byhand-flag-without-screen` mutation**, whose `from`
+quotes that line byte-for-byte — both move in the same commit as the flag.
 
 ## 1 · Traps that cost a run each — all still live
 
@@ -362,6 +388,45 @@ KP_BASE=http://localhost:3031 KP_WIDTHS=360,1280 npm run -s qa:house-bots-visual
   row whose own debit is not in view answers nothing). A width measurement must fill them with a 7-digit figure.
 
 ## 5 · Handover log
+
+- **2026-09-28 · asheib (F: machine) — the targeting screen: step 0 and S1 are LIVE on `main`; ▶ NEXT = S2.**
+  - **Step 0** (`9e1b581c`): `plans/house-bots/TARGETS-SCREEN.md` — the spec, 80 numbered decisions with their reasons
+    and sources, 10 owner questions, 6 steps, the traps. Written from twelve read-only mapping passes, then two
+    adversarial reviews and two verification passes against the code; six defects in the drafts were found that way
+    and each is recorded where it was fixed. ⭐ The one worth carrying: **the timing preview and the engine are TWO
+    implementations of the due-time rule with nothing comparing them** — the preview would use
+    `rules.ts:effectiveTargetTiming`, the engine uses `decide.ts:targetDueAt` (`:485-488`), and the only `src/` caller
+    of the former is `planner.ts:337`. S3 must reconcile them or carry a case that drives both.
+  - **Ali answered four owner questions on 2026-09-28, all on the safe default** — OQ-2 land the flag with the page but
+    read the live roster first, leave those accounts paused and record the count; OQ-3 a REMOVE stays permanent and the
+    dialog says so; OQ-4 ship both target ceilings UNSET; OQ-5 the engine is unchanged and both screens say targets
+    survive a pause. They are decisions now, not assumptions (`TARGETS-SCREEN.md` §6).
+  - **S1** (this commit): the fixture and the instrument's reach, no product change. `docs/HOUSE-BOTS.md` §12.17 has
+    the whole record and both numbers.
+  - ⚠️ **ONE BUILD WAS SILENTLY SKIPPED, AND IT RESOLVED ITSELF — the lesson is to verify by `dpl`, not to assume.**
+    Railway created NO build for `9e1b581c`: 40 minutes on, the newest deployment was still `637c6fdd`, while every
+    neighbouring commit deployed within ~2 minutes. It was NOT path filtering — `143456bb` touched only `plans/` and
+    did deploy. It went live anyway inside another lane's `52839c89` (14:11 UTC), because a later push carries every
+    earlier commit with it, and **S1's own push built normally**, so the pipeline is healthy and nothing is owed.
+    ⛔ The standing rule this cost: a push is not a deploy. Read
+    `curl -sSD - -o /dev/null https://50pick.tz/ | grep -o 'dpl=[0-9a-f]*'` and compare it with your own SHA before
+    calling a step live. If a build really is missing, `railway deployment redeploy --from-source` pulls main's latest
+    (a plain `redeploy` re-runs the OLD one) — and it needs the owner, because a production deploy is refused to a
+    session.
+  - ⚠️ **A tagged stash entry is still on the shared stack: `hb-ff-recovery-20260928`.** It holds a half-applied
+    checkout this session parked to recover a wedged worktree; everything in it is recoverable from `origin/main` and
+    nothing is owed to it. `git stash drop` is refused to this session, so it is left labelled. ⛔ Never `git stash pop`
+    in any worktree — it would dump 127 files of that snapshot into whichever tree popped it.
+  - ⚠️ **`test:red-anchors` exits 1 on TWO anchors that are NOT ours** and were already rotten:
+    `bar-geometry.anchors.mjs:sort-summary-unbound` (`src/components/ui/query-bar.tsx`) and
+    `updown-handover.anchors.mjs:no-handover-at-all` (`src/lib/updown-card-phase.ts`). §4.1/§4.2 now PASS at 65/65.
+  - ⚠️ **`scripts/**/*.mts` IS NOT TYPECHECKED** — `tsconfig.json` includes `scripts/**/*.ts` only. A `ReferenceError`
+    in the seed survived a green `npm run typecheck` here. Parse an edited `.mts` with esbuild and RUN it.
+  - ⚠️ **Port 3031 belongs to `F:/kipindi-main`'s dev server** (another session). This lane used **3041**. A gate run
+    against a port another tree is serving measures that tree, and says nothing about yours.
+  - ⚠️ **`db:scratch --reset` dies EPERM while its own postgres is alive**, and a `db:scratch` started as a session
+    background task leaves postgres running after the wrapper is killed. Start it with `Start-Process … -WindowStyle
+    Hidden` and check `postmaster.pid` before assuming the port is free.
 
 - **2026-09-28 · Ali-Blade15 — session END; the next session continues on ANOTHER PC.** Live and verified: `6d915723`
   (the phone sort rail and FS-09 at `994d2f0d`; the navigation probe now holds the RESPONSE, `6d915723`). The 34 new

@@ -28,6 +28,8 @@ import { formatEatLocal } from "../date-range";
 import { getGlobalConfig } from "../market-config";
 import { adminCount, formatTzs } from "@/lib/utils";
 
+import { selectedWindow } from "./coverage";
+
 const DAY_MS = 86_400_000;
 
 export type FinanceWindowArg = { start: number; end: number; label?: string };
@@ -281,7 +283,11 @@ export async function buildFinanceWindow(
     meta: {
       generatedAt: new Date(now).toISOString(),
       generatedBy: generatorId,
-      period: periodLabel,
+      // Through the same declaration every other entry uses, so ALL nine artifacts state their
+      // window by one route. `selectedWindow()` carries no bounds of its own by design — the
+      // caller's window IS the window, and inventing a fallback here would hand the guard a
+      // second answer to compare against.
+      period: selectedWindow().statement(now, periodLabel),
       classification: "Internal",
     },
     summary,

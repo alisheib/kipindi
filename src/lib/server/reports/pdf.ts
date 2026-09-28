@@ -168,15 +168,53 @@ function drawHeader(ctx: DocCtx, report: Report): number {
     ["Reference", report.reference],
     ["Classification", report.meta.classification ?? "Internal"],
   ];
+  const META_GAP = 18;
+  const metaLineH = S.meta + 4;
   let mx = contentX;
+  let my = y;
   for (const [label, value] of metaParts) {
+    const l = toAnsiSafe(label);
+    const v = toAnsiSafe("  " + value);
+    doc.font(FN.medium).fontSize(S.metaLabel);
+    const lw = doc.widthOfString(l);
+    doc.font(FN.regular).fontSize(S.meta);
+    const vw = doc.widthOfString(v);
+    /* ⚠️ THIS ROW USED TO RUN OFF THE PAGE RATHER THAN WRAP. Every pair is drawn with
+       `lineBreak: false` at an accumulated `mx`, so pdfkit will not wrap it for us — a long
+       `generatedBy` (the `Generator · usr_…` fallback, when the officer has no displayName) already
+       pushed "Classification" toward the right margin on portrait. Measure the pair and break the
+       LINE, never the pair: a label stranded on one line with its value on the next is unreadable. */
+    if (mx > contentX && mx + lw + vw > contentX + contentW) {
+      mx = contentX;
+      my += metaLineH;
+    }
     doc.fillColor(BRAND.inkSubtle).font(FN.medium).fontSize(S.metaLabel)
-       .text(toAnsiSafe(label), mx, y, { lineBreak: false });
-    const lw = doc.widthOfString(toAnsiSafe(label));
+       .text(l, mx, my, { lineBreak: false });
     doc.fillColor(BRAND.inkMuted).font(FN.regular).fontSize(S.meta)
-       .text(toAnsiSafe("  " + value), mx + lw, y, { lineBreak: false });
-    mx += lw + doc.widthOfString(toAnsiSafe("  " + value)) + 18;
+       .text(v, mx + lw, my, { lineBreak: false });
+    mx += lw + vw + META_GAP;
   }
+  y = my + metaLineH + 2;
+
+  /**
+   * ⭐ THE PERIOD, ON ITS OWN WRAPPED LINE. `meta.period` is the one field on `Report` that names
+   * the window the figures cover, and until now NEITHER renderer printed it — so `fiu-sar`,
+   * `sx-register`, `kyc-reverify` and `rg-engagement` reached a regulator with no stated coverage
+   * at all, while `fiu-sar`'s own notes said "within the period above" pointing at nothing.
+   *
+   * ⛔ Its own line, with wrapping ON, rather than a fifth pair in the row above. A point-in-time
+   * statement runs past 120 characters; squeezed into the measured row it would either wrap to a
+   * ragged second line mid-statement or be ellipsized, and an ellipsized window is worse than none
+   * — REP-05b is the same defect one tile over. Letting pdfkit flow it full-width is the only
+   * option here that cannot truncate.
+   */
+  doc.fillColor(BRAND.inkSubtle).font(FN.medium).fontSize(S.metaLabel)
+     .text(toAnsiSafe("Period"), contentX, y, { lineBreak: false });
+  const periodLabelW = doc.widthOfString(toAnsiSafe("Period"));
+  doc.fillColor(BRAND.royalDeep).font(FN.regular).fontSize(S.meta)
+     .text(toAnsiSafe("  " + report.meta.period), contentX + periodLabelW, y, {
+       width: contentW - periodLabelW,
+     });
   y = doc.y + 10;
   // Gilt divider
   doc.save();

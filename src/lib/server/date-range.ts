@@ -14,11 +14,15 @@
  * EAT-safe helpers in report-money.ts so this file has ONE source of truth for the zone.
  *
  * URL contract:
- *   ?range=<preset>                      preset window (see RANGE_PRESETS)
+ *   ?range=<preset>                      preset window (ids: lib/query/windows.ts RESOLVABLE_PRESETS)
  *   ?range=custom&from=<iso>&to=<iso>    custom window; from/to are EAT wall-clock,
  *                                        "YYYY-MM-DD" (whole day) or "YYYY-MM-DDTHH:MM"
  */
 import { EAT_OFFSET_MS, startOfEatDay, startOfEatMonth } from "./report-money";
+// ⛔ THE PRESET VOCABULARY HAS ONE HOME, AND IT IS NOT THIS FILE. `lib/query/windows.ts` owns the
+// ids; this file owns the arithmetic that turns one into a window. A `RANGE_PRESETS` used to live
+// here too — a zero-reader second list, missing three ids this resolver actually resolves.
+import { RESOLVABLE_PRESETS, type ResolvablePresetId } from "@/lib/query/windows";
 
 const HOUR_MS = 3_600_000;
 const DAY_MS = 86_400_000;
@@ -31,7 +35,22 @@ const DAY_MS = 86_400_000;
  */
 export const MAX_RANGE_MS = 400 * DAY_MS;
 
-export type RangeParams = { range?: string | null; from?: string | null; to?: string | null };
+/**
+ * ⚠️ `string[]` IS A REAL RUNTIME SHAPE HERE, NOT A DEFENSIVE FLOURISH. Seven pages hand their raw
+ * Next `searchParams` straight to `resolveRange(sp, …)`, and Next delivers a REPEATED query param
+ * (`?from=a&from=b`) as an array. The page types declare `string`, so nothing caught it and
+ * `parseEatLocal` called `.trim()` on an array — a TypeError that takes out the whole server
+ * component, from a URL anyone can type. The resolver normalises to the FIRST value instead.
+ */
+export type RangeParams = {
+  range?: string | string[] | null;
+  from?: string | string[] | null;
+  to?: string | string[] | null;
+};
+
+/** First value wins for a repeated param — see the note on RangeParams. */
+const one = (v: string | string[] | null | undefined): string | undefined =>
+  (Array.isArray(v) ? v[0] : v) ?? undefined;
 
 export type ResolvedRange = {
   start: number;
@@ -56,20 +75,6 @@ export type ResolvedRange = {
    */
   unreadable?: Array<"from" | "to">;
 };
-
-/** Preset ids offered by the UI, in display order. `custom` is handled separately. */
-export const RANGE_PRESETS = [
-  { id: "1h", label: "Last hour" },
-  { id: "6h", label: "Last 6 hours" },
-  { id: "24h", label: "Last 24 hours" },
-  { id: "today", label: "Today" },
-  { id: "yesterday", label: "Yesterday" },
-  { id: "7d", label: "Last 7 days" },
-  { id: "30d", label: "Last 30 days" },
-  { id: "mtd", label: "Month to date" },
-] as const;
-
-export type RangePresetId = (typeof RANGE_PRESETS)[number]["id"];
 
 /**
  * Parse an EAT wall-clock string to an epoch ms instant.
@@ -129,18 +134,26 @@ const win = (start: number, end: number, preset: string, label: string): Resolve
  * preset; else the default (7d). Always returns a sane, bounded, non-inverted window with
  * `end` never in the future.
  */
-export function resolveRange(sp: RangeParams, now = Date.now(), defaultPreset: string = "7d"): ResolvedRange {
-  const range = sp.range ?? undefined;
+export function resolveRange(
+  sp: RangeParams,
+  now = Date.now(),
+  /* ⭐ TYPED AGAINST THE VOCABULARY, so a default this resolver cannot resolve is a COMPILE error
+     rather than a window nobody chose. */
+  defaultPreset: ResolvablePresetId = "7d",
+): ResolvedRange {
+  const range = one(sp.range);
+  const rawFrom = one(sp.from);
+  const rawTo = one(sp.to);
 
   // ── Custom window ──────────────────────────────────────────────────────────
-  if (range === "custom" || sp.from || sp.to) {
-    const f = parseEatLocal(sp.from);
-    const t = parseEatLocal(sp.to);
+  if (range === "custom" || rawFrom || rawTo) {
+    const f = parseEatLocal(rawFrom);
+    const t = parseEatLocal(rawTo);
     /* Present in the URL but unparseable - see `unreadable` on ResolvedRange. An ABSENT param is
        not unreadable; only one the caller supplied and this resolver could not read. */
     const unreadable: Array<"from" | "to"> = [];
-    if (sp.from && !f) unreadable.push("from");
-    if (sp.to && !t) unreadable.push("to");
+    if (rawFrom && !f) unreadable.push("from");
+    if (rawTo && !t) unreadable.push("to");
     // A date-only "to" is inclusive of that whole EAT day.
     let start = f?.ms ?? (t ? t.ms - DAY_MS : now - DAY_MS);
     let end = t ? (t.hasTime ? t.ms : t.ms + DAY_MS) : now;
@@ -151,13 +164,23 @@ export function resolveRange(sp: RangeParams, now = Date.now(), defaultPreset: s
     return {
       start, end, preset: "custom",
       label: `${fmtEat(start)} → ${fmtEat(end)}`,
-      from: sp.from ?? undefined,
-      to: sp.to ?? undefined,
+      from: rawFrom,
+      to: rawTo,
       ...(unreadable.length ? { unreadable } : {}),
     };
   }
 
-  // ── Presets ────────────────────────────────────────────────────────────────
+  /* ⛔ NO SELF-RECURSION ON THE DEFAULT. This used to end `default: return resolveRange({ range:
+     defaultPreset }, now, defaultPreset)` — which re-enters `default` and recurses forever for any
+     `defaultPreset` the switch does not handle, taking the request out with a stack overflow
+     instead of a window. It was latent only because all thirteen call sites happened to pass a
+     valid id. The arms are a pure lookup now, so an unresolvable id falls through to `7d` in one
+     step and the failure mode is a wrong-but-bounded window, never a crash. */
+  return presetWindow(range, now) ?? presetWindow(defaultPreset, now) ?? presetWindow("7d", now)!;
+}
+
+/** One preset id → its window, or null when the id is not in the vocabulary. Never recurses. */
+function presetWindow(range: string | undefined, now: number): ResolvedRange | null {
   switch (range) {
     case "1h":  return win(now - HOUR_MS, now, "1h", "Last hour");
     case "6h":  return win(now - 6 * HOUR_MS, now, "6h", "Last 6 hours");
@@ -175,6 +198,18 @@ export function resolveRange(sp: RangeParams, now = Date.now(), defaultPreset: s
       return win(start, now, "qtd", "Quarter to date");
     }
     case "all": return win(0, now, "all", "All time");
-    default:    return resolveRange({ range: defaultPreset }, now, defaultPreset);
+    default:    return null;
+  }
+}
+
+/* ⭐ THE SWITCH ABOVE HANDLES EXACTLY THE VOCABULARY — proven here, at module load, rather than
+   trusted. An id added to `RESOLVABLE_PRESETS` without an arm silently becomes the caller's
+   default; an arm with no id is dead code. Both are the same defect seen from two sides, and this
+   throws on the spot instead of shipping either. `test:date-range` asserts the same thing with a
+   red control, so the property is checked by a guard as well as guarded at the boundary. */
+{
+  const unresolvable = RESOLVABLE_PRESETS.filter((id) => presetWindow(id, 0) === null);
+  if (unresolvable.length) {
+    throw new Error(`date-range.ts: RESOLVABLE_PRESETS names ${unresolvable.join(", ")} but the resolver has no arm for it`);
   }
 }
