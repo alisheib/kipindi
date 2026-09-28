@@ -487,8 +487,12 @@ went blind once (drive 5: the fixed-height clock row hid a wrapped caption) and 
   withdrawable since the bonus wallet went; "can be withdrawn now" is not always true, L19) · Deposit and
   Withdraw side by side at the same size, each with its own channel under it ("Mobile money or card" /
   "Mobile money", L19) · Set limits · Open wallet · Close. A frozen wallet says so and gets no money buttons.
-- At zero: no capsule, no Withdraw — a labelled gold Deposit at every width. Never "TZS 0". The bar decides
-  with the LIVE balance (`useLiveBalance`), so an SSE deposit brings the capsule back without a navigation.
+- At zero: **the capsule stays and reads TZS 0** (R10, Ali 2026-09-28 — *"user should know he's 0"*), no
+  Withdraw. ⛔ This REVERSES R1's "a gold Deposit takes the chip's place instead of TZS 0", which was live
+  2026-09-26 → 09-28; the old line is struck in the manifest rather than deleted, because the pair is the
+  record. The Deposit LABEL yields at lg–xl in every balance state now, for the same reason it always did
+  — the capsule is beside it again (E-190). The bar decides with the LIVE balance (`useLiveBalance`), so an
+  SSE deposit moves the figure without a navigation.
 - Phone header with a balance (scenario 4a) — MEASURED, L20: the chip drops "TZS" below 640 (its aria-label
   keeps it) and the right cluster is 251 of its 278px at 360; a Deposit beside it needs ~48px, so the header
   Deposit keeps its yield below 640 and the pair is one tap away in the Wallet (and in the signed-in hero).
@@ -570,7 +574,7 @@ drift from that file or a row names an id §1 does not have. An item is done whe
 | P3 | Language: inside the Menu, header on desktop | WP1 | R1, L4: the header's language menu at every width |
 | P4 | Join / Create account: header + after the featured card; hero left column on desktop | WP2 | The hero CTAs follow the featured card below 1024 and sit in the left column from 1024; the header keeps Sign in + Sign up (R1) |
 | P5 | Balance chip → Wallet: sheet below 1024, panel from 1024 | WP14 | R1 |
-| P6 | Deposit: header (gold), Wallet, hero | WP14 | R1, including the gold Deposit that replaces the capsule at zero |
+| P6 | Deposit: header (gold), Wallet, hero | WP14 | R1 — but **not** its zero clause: R10 (2026-09-28) keeps the capsule at zero, so the header carries BOTH the figure and the Deposit there. Below 1024 the Deposit is the rail's centre coin (UPDATE-2026-09-28 §1) |
 | P7 | Withdraw: Wallet + hero, same size as Deposit; hidden at zero | WP14, V19 | R1 |
 | P8 | Featured market: right after the lede; hero right column on desktop | WP2, WP3 | |
 | P9 | Pick slip: bottom sheet below 1024, inline from 1024 | WP5 | R2 |
@@ -583,7 +587,7 @@ drift from that file or a row names an id §1 does not have. An item is done whe
 | K1 | Every placement row verified at 360, 768, 1280 in sw, en, zh | V21, PANEL | |
 | K2 | 4a: phone, balance — chip + gold Deposit in the header; hero balance with equal Deposit/Withdraw | WP14 | The phone fit is measured (§2.1 WP14) |
 | K3 | 4b: chip opens the Wallet sheet — balance, withdrawable, equal pair, Set limits; Esc and backdrop close | WP14, V20 | |
-| K4 | 4c: zero — no chip, no Withdraw, header Deposit, empty-balance prompt, never "TZS 0" | WP14 | |
+| K4 | 4c: zero — no chip, no Withdraw, header Deposit, empty-balance prompt, never "TZS 0" | WP14 | ⛔ **The delivery is overruled on half of this row.** R10 (Ali, 2026-09-28): the chip STAYS at zero and reads "TZS 0" — *"user should know he's 0"*. No Withdraw and the header Deposit still hold |
 | K5 | 4d: desktop Wallet panel under the chip | WP14 | |
 | K6 | Order: what it is → a live market → how it works → more markets → proof | WP2 | |
 | K7 | Every market shows price (or labelled state), time left, pool, source | WP3, WP4, WP6, V18 | |
