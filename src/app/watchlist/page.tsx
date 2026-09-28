@@ -257,6 +257,9 @@ export default async function WatchlistPage({
                   noPool={m.noPool}
                   predictors={m.predictorCount}
                   timeLeft={timeLeft}
+                  // SOON from the milliseconds of betting left (landing v3 WP3, L17). This page prints a DATE
+                  // rather than a countdown, so the label never matched the old English test in any locale.
+                  msLeft={resolved ? undefined : Date.parse(m.selectionClosedAt ?? m.resolutionAt) - Date.now()}
                   status={m.status === "VOIDED" ? "VOIDED" : m.status === "RESOLVED" ? "RESOLVED" : m.status}
                   resolvedOutcome={m.resolvedOutcome}
                   // ⭐ THE SAME BOOLEAN THE LENS PREDICATE READ — see `rows` above.

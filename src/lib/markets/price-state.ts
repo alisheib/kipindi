@@ -81,3 +81,16 @@ export function priceTier(r: { yesPool: number; noPool: number }): 0 | 1 | 2 {
   if (kind === "oneSided") return 1;
   return 2;
 }
+
+/**
+ * Where the price stood a day ago on the card's own bar (landing v3 WP3, the featured card's 24h mark):
+ * the PRINTED price minus the measured move, or **null** — no two-sided price now, or no move measured.
+ * `move24h` is only ever measured between two prices (`cardChartFrom`, C1), so a one-sided or empty
+ * reading can never place the mark. Kept within 1–99 like every printed price (L14), so the mark and the
+ * "▲n" beside it (which is `yesPct − dayAgo`) state one number.
+ */
+export function dayAgoYesPct(yesPool: number, noPool: number, move24h: number | undefined): number | null {
+  const p = priceState(yesPool, noPool);
+  if (p.kind !== "priced" || move24h === undefined || !Number.isFinite(move24h)) return null;
+  return Math.min(99, Math.max(1, p.yesPct - move24h));
+}

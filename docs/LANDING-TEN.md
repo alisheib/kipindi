@@ -312,35 +312,72 @@ feature (a plant against a feature that does not exist yet cannot prove anything
 - ⚠️ First-screen budget: spec §7 MODELS the sw 360 × 740 YES/NO bottom at ≈610 against a rail at ≈675 (65px
   clear). A model, not a render — V15 and V21 on the 360 × 740 cells decide.
 
-**WP3 · Featured card** — `src/components/markets/market-card.tsx` (`featured` variant only), `TippingBar` in `src/components/brand.tsx`
-- Full question with no clamp (`.mcardp--featured .mcardp-q`).
-- Meta line: close date · "Settles on {source}". The source name comes from `listSources()`
-  (`src/lib/server/source-registry.ts`) matched on the market's `sourceUrl` host, falling back to the host.
-  `sourceUrl` is already passed to the card and currently unused.
-- Time left in the top-right corner, in `--text`, through `timeLeftLabel` (`src/lib/markets/time-left.ts`).
-- The 24h mark: a tick at `yesPct − move24h` on the bar plus "▲n · 24h ago" / "▼n · 24h ago". `move24h`
-  comes from `getCardCharts` (`src/lib/server/market-history.ts`), already fetched for the featured card;
-  **no mark when it is undefined**.
-- The bar gets `role="img"` and the full reading ("31% YES, 69% NO") as its label.
-- The landing's **grid cards** name their source too (V18: every market shows its source before the pick),
-  through a landing-only prop so `/markets` card geometry is untouched.
-- SOON (L17): `getSignalBadge` tests the English label `/^\d+m left$/`, so it never fires in sw or zh. Test the
-  milliseconds left instead.
-- Guards at risk: `MARKET_CARD_H` / `--mcard-h` size the `/markets` skeletons; keep these changes on the
-  featured variant or re-derive the height (`qa:card-geometry`).
-- ⚠️ **2026-09-27 — what hero v3 leaves WP3 (spec §7, a model to be measured):** ≈65px between the featured
-  card's YES/NO row and the bottom rail at 360 × 740 in Swahili. So below 640 the featured question clamps at
-  **3 lines or fewer in every language** (≈ +22px over today's 2), and the "Settles on {source}" line goes
-  **below** the YES/NO row — about 632, 43px clear. This amends "no clamp" above for phones only.
+**WP3 · Featured card** — BUILT on branch `landing-v3-wp34` (2026-09-27, not live). `market-card.tsx` (the `featured`
+variant; landing-only `sourceName` / `closesOn`; sitewide `msLeft`), `TippingBar` `mark` (`brand.tsx`),
+`lib/markets/featured.ts`, `lib/markets/source-host.ts`, `price-state.ts` (`dayAgoYesPct`), `time-left.ts`
+(`closesWithinTheHour`, `HOUR_MS`), `eat-day.ts` (`formatEatDate`), `source-registry.ts` (`sourceNameFor`),
+`market-history.ts` (`cardChartFrom`), `hero.ts` (`HeroRow.sourceName`), `page.tsx`, `landing-hero.tsx`
+- Time left top-right (`.mcardp-closes`: the meta row's rung, `--text` — time is not a side); the meta row keeps
+  only the info button there.
+- The question is whole from 640 (h4, h3 from 1024) and **clamps at 3 lines below 640 in every language** — the
+  hero v3 unit leaves WP3 about 65px at 360 × 740 in Swahili (`specs/hero-v3.md` §7). L25.
+- The meta line "Closes 27 Sep · Settles on {source}" (`market.closesOn` over `formatEatDate`; `market.settlesOn`)
+  is a sentence at the reading floor in body type (L24). The NAME is `sourceNameFor`: the registry's label
+  through the ONE host rule (`sourceMatchesAny` — `evilkitco.com` never borrows "Kitco"), the most specific
+  registered domain first, a disabled or re-categorised source still named, else the bare host (`sourceHost`,
+  moved out of `trust-band.tsx`); resolved on the server, the registry read once per page (a failed read falls
+  back to the host). Text, never a link (L27). From 640 it sits under the question; **below 640 it is SHOWN under
+  the YES/NO row** (CSS `order`, the V15 budget) and stays before the pick in the reading order (K36, L28).
+- The landing's grid cards name their source too, in the question column (`sourceName` — landing only, so the
+  `/markets` card and its skeleton do not move; `test:featured-card` §3.1).
+- The 24h mark: `TippingBar mark={dayAgo}`, a still 2px `--text` hairline (≥ 3:1 on both fills' worst stops,
+  `test:contrast`) at `dayAgoYesPct` = the printed price − `move24h` on the needle's 6–94 scale, and "▲n · 24h ago"
+  (`market.h24Ago`, led by a key in the mark's shape) on the move-line row the card always had — no new row.
+  Featured, live and priced only. `move24h` is measured between two PRICES (C1) and, since WP3, two READINGS
+  (L26) — sitewide, so `/markets`' 24h move and its "move" sort follow.
+- The featured bar is `role="img"` named by the whole split (`market.barReading`, "62% YES, 38% NO" in the card's
+  own side words); every other card keeps its `progressbar`.
+- SOON (L17): `closesWithinTheHour(msLeft)` — the milliseconds of betting left, from the label's own deadline
+  and clock, passed by every live call site (`/` featured and grid, `/markets`, the detail page's similar cards,
+  `/watchlist`). It now fires in sw and zh.
+- The predictor floor (R7): `FEATURED_PREDICTOR_FLOOR` = 10. Below it the featured card withholds its count and
+  its crest row — the pool still states depth — and says so to the gate (`data-market-predictors` below
+  `data-market-depth-floor`). Every other surface states its count (K48). L29.
+- V18's instrumentation (`data-market-surface`, `data-market-part`) on the card, and the defect V18 named: a live
+  card whose only bettor cashed out now reads "No pool yet" under its rail (the D29 word, never "No bets yet").
+- Not adopted, to keep the first screen (V15): the concept's 21–26px question below 640, the 10px bar, the 20px
+  "24h ago" row under the bar, the separate YES | delta | NO price row.
+- Guards: `test:featured-card` (predeploy, after `test:one-sided`) + `red:featured-card` (9 cases, declared in
+  `scripts/anchors/featured-card.anchors.mjs`); `test:contrast` (the mark on both fills); `test:betting-ink`
+  (`.mcardp-closes`); `test:one-sided` 3.6 and `test:outcome` D29 amended for the attributes. Local drive:
+  `scripts/qa/landing-v3/verify-wp34.sh` (+ `featured-budget.mjs`, `wp34-seed.mjs`; the dev-only
+  `/api/dev-test/backdate-history` and `fast-forward-market`'s `selectionSeconds` exist for it).
 
-**WP4 · Question board rows** — `QuestionRow` in `landing-hero.tsx`, `.kp-qrow` in `globals.css`
-- The row stops being one `<Link>`: the title is its own link; the time left, the bar and the YES@/NO@
-  buttons are siblings (no interactive element inside another). Buttons at least 44px (`--h-control-md`).
-- Phone: title → meta → full-width bar row → full-width YES/NO pair. Tablet: title and bar side by side,
-  buttons wrap. Desktop: one line. The title keeps its 44ch measure.
-- Before D3 the buttons open `/markets/{id}?side=`; from D3 they open the pick slip.
-- An unpriced row shows no price (`pricedYesPct` returns null), never a 50.
-- Meta line: close date · "Settles on {source}" · pool · predictors (depth on every market, V18).
+**WP4 · Question board rows** — BUILT on branch `landing-v3-wp34` (2026-09-27, not live). `QuestionRow` and
+`LandingProof` (now given `nowMs`) in `landing-hero.tsx`, `.kp-qboard` / `.kp-qrow*` in `globals.css`
+- The row is an `<li>` (the board a `<ul role="list">`) of three SIBLING zones, never one link (WP17): the head
+  link (question + meta, at least `--h-control-md` tall), the reading (price or state · time left · a 6px
+  `TippingBar`, `aria-hidden` beside the line that says it), and the pick — YES@ / NO@ as two `btn-md` links to
+  `/markets/{id}?side=YES|NO` (`prefetch={false}`). Until D3 one href serves both: a player lands with the side
+  locked, a visitor keeps it through sign-up (`next=`); from D3 they open the pick slip.
+- Phone: title → meta → reading → the full-width pair; from 640 the title and the reading side by side and the
+  pair below at its own width; from 1024 one line. Written mobile-first — the old 821 / 560.98 blocks, the hover
+  indent (D25) and the lean rule are deleted. The title keeps its 44ch measure (now in CSS) and its 3-line phone
+  bound (U6).
+- The price state from the pools (`priceState`, WP6), with ONE label for the slot and the rail: one side → "One
+  side only", the dashed rail, bare YES/NO and the refund note (`.kp-qrow__note` shares the card note's rule);
+  empty → "No bets yet" only where nobody ever bet, else "No pool yet" (the D29 rule — a cash-out never
+  decrements `predictorCount`). The price reads `--yes-300` (it names the YES side, §B2a), never gilt; the time
+  left `--text` (`test:betting-ink`).
+- Meta line: `market.closesOn` ("Closes 27 Sep", `formatEatDate`) · `market.settlesOn` (the SAME `sourceNameFor`
+  name the cards print — one resolver, carried on `HeroRow.sourceName`) · `common.pool` + the pool · the predictor
+  count; body type, the money and the count mono (L24). The close date stands in for the concept's competition
+  (no such field; SPEC-VALUES §6). The category glyph is gone (the concept has none). No 24h mark on a row, no
+  share (WP14b).
+- Guards: `test:one-sided` 4.3 amended (the D29 label) and 4.6–4.9 added, each with a control; `red:one-sided`
+  +2 cases (the rail, the gated "@ n%"); `test:betting-ink` (`.kp-qrow__left`); `test:featured-card` §6 (every
+  V18 part on the row). Local drive: `scripts/qa/landing-v3/rows.mjs` (+ its RED); the gate's V8 text map reads
+  `.kp-qrow__meta` / `.kp-qrow__note`; `scripts/live/mobile-visual-drive.mjs` reads `.kp-qboard > .kp-qrow`.
 
 **WP5 · Pick slip** (R2) — new `src/components/markets/pick-slip.tsx` (client)
 - Below 1024: `Modal` from `src/components/ui/modal.tsx` with `sheet` — which today docks only below 640,
@@ -388,8 +425,8 @@ feature (a plant against a feature that does not exist yet cannot prove anything
   `adminReopenMarket`, and one stake on the empty side ends the refund. Its truth is pinned:
   `test:one-sided` §6 reads `settleMarket`'s one-sided branch and rules §7. sw is rules §7's own sentence;
   zh names the state with the rules' 单边.
-- The hero board row reads the same helper: "— One side only", no lean rule; its refund note and dashed
-  rail arrive with WP4's rebuilt row.
+- The hero board row reads the same helper: "— One side only", no lean rule — and since WP4's rebuilt row, the
+  dashed rail, bare YES/NO links and the refund note too.
 - Orderings: the hero's floor tiers by `priceTier` (pools). `landingGrid` gives the seats to priced markets
   first and then SHOWS the seated cards in the lens order its heading states ("Biggest pools first") — a
   partition, never a filter (`test:landing-contract` §4, L23).
@@ -614,7 +651,10 @@ template string: escape backslashes, no backticks), a `REDS.Vn` plant, a row in 
   pick) on each part; the part table is the V18 block's own comment. `.mcardp[data-row-id]` and `.kp-qrow`
   widen the population, so a surface that loses its attribute is reported "unmarked", never skipped. Each
   part is its own RED run: `RED_PART=<part> RED=V18 … --red --cell=…` (source · price · time · pool ·
-  predictors · order). `source` and `order` can only PROVE once WP3 draws a source.
+  predictors · order). Since WP3 + WP4 every surface on `/` draws every part. TWO RULED EXCEPTIONS, the featured
+  card only, each read off the page: a count withheld below the floor the card states (R7, L29), and below 640
+  the source SHOWN under the pick while it stays before it in the DOM (L28) — `RED_PART=order` plants against
+  the DOM half, so it still proves at 360. `test:featured-card` §7 pins both as narrow as ruled.
 - The gate itself (D2 step 0, 2026-09-27): a `--cell`/`--pass` that matches nothing exits 2 ("nothing was
   measured"), never GATE GREEN; a bare `--cell` (no "=") is refused; `--red` needs exactly one cell; a
   chromium that does not launch is retried once, then exit 2 — an instrument failure, not a red gate.
@@ -656,7 +696,7 @@ drift from that file or a row names an id §1 does not have. An item is done whe
 | K4 | 4c: zero — no chip, no Withdraw, header Deposit, empty-balance prompt, never "TZS 0" | WP14 | |
 | K5 | 4d: desktop Wallet panel under the chip | WP14 | |
 | K6 | Order: what it is → a live market → how it works → more markets → proof | WP2 | |
-| K7 | Every market shows price (or labelled state), time left, pool, source | WP3, WP4, WP6, V18 | |
+| K7 | Every market shows price (or labelled state), time left, pool, source | WP3, WP4, WP6, V18 | WP3/WP4 (branch): every market on `/` names its source (`sourceNameFor`); V18 reads each part |
 | K8 | A confirm step before any money moves | WP5 | |
 | K9 | Headings h1 → h2 → h3; no interactive element inside another | WP17 | |
 | K10 | Visible focus on every control; Esc closes every sheet and panel | WP17, V20 | |
@@ -667,11 +707,11 @@ drift from that file or a row names an id §1 does not have. An item is done whe
 | K15 | Equal card slots; bars align across a row (V6) | WP9, GATE | |
 | K16 | No decorative gradients or illustrations | WP2 | R4(1), L16 |
 | K17 | Needles move only on real pool changes | WP15 | |
-| K18 | 24h mark and delta on the featured card | WP3 | |
+| K18 | 24h mark and delta on the featured card | WP3 | `TippingBar mark` + "▲n · 24h ago"; featured, live and priced only; a move only between two prices and two readings (L26) |
 | K19 | Up & Down: match scoreboard from the last confirmed price, dated, with the Up/Down buttons in it; open→finish match track (a stem per confirmed read, lock at bets close, flag at the deciding price, playhead); one-line countdown | WP12 | R5 |
 | K20 | At most two loops | WP15 | R5 |
 | K21 | Reduced motion and Save-Data honoured | WP15 | |
-| K22 | Every bar and chart has a text description | WP3, WP8, WP12, WP17 | |
+| K22 | Every bar and chart has a text description | WP3, WP8, WP12, WP17 | WP3: the featured bar is an image named by the whole split (`market.barReading`); a board row's bar is `aria-hidden` beside the reading it repeats (WP4) |
 | K23 | Pick from the home page: two taps plus confirm | WP5 | R2 |
 | K24 | Stake chips, the minimum stake and the rule line in the slip | WP5 | Minimum and fee from config (L3) |
 | K25 | After placing: "You're with X% of the money on {side}" | WP5 | |
@@ -685,7 +725,7 @@ drift from that file or a row names an id §1 does not have. An item is done whe
 | K33 | No promised returns; the estimate is marked and qualified (V16) | V16, WP7 | No estimate on cards (R3) |
 | K34 | The only urgency is a real countdown | WP15 | L17 |
 | K35 | One-sided refund rule shown; no 0% / 100% price (V17) | WP6, V17 | L14 |
-| K36 | The fee is a number; the source is named before the pick | WP11, WP3, WP4, WP5 | |
+| K36 | The fee is a number; the source is named before the pick | WP11, WP3, WP4, WP5, V18 | V18's order rule. The featured card below 640 SHOWS its source under the pick and names it first in the reading order (L28) |
 | K37 | Set limits and Take a break one tap from any stake | WP5 | |
 | K38 | Withdraw as easy to find as Deposit (V19) | WP14, V19 | |
 | K39 | Licence number and helpline on the page | WP2 | |
@@ -696,9 +736,9 @@ drift from that file or a row names an id §1 does not have. An item is done whe
 | K44 | Snap rail with a peek; topics in two columns | WP9, WP10 | |
 | K45 | No text under 12px; ledger rows for the proof figures | WP8, GATE | L6 |
 | K46 | The price reads as a line ("YES @ 31%"), with "est. ×" where allowed | WP4, WP7 | No estimate on cards (R3) |
-| K47 | Line movement shown (24h mark and delta) | WP3 | |
-| K48 | Depth (pool and predictors) on every market | WP3, WP4, V18 | |
-| K49 | Closing time next to every price | WP3, WP4, WP9 | |
+| K47 | Line movement shown (24h mark and delta) | WP3 | As K18; the board rows draw none (the concept's rows have none) |
+| K48 | Depth (pool and predictors) on every market | WP3, WP4, V18 | Every market except the featured card below `FEATURED_PREDICTOR_FLOOR` (R7, L29) — it states its pool, and tells the gate why the count is withheld |
+| K49 | Closing time next to every price | WP3, WP4, WP9 | WP3: time left top-right of the featured card, and its close date on the meta line; WP4: time left on the row's price line and the close date in its meta |
 | K50 | Share on cards; WhatsApp after placing; the WhatsApp preview card works | WP14b, WP5 | Card share + the preview card: WP14b (D2), each market's og tags and og:image read on production by `qa:landing-v3:og-prod`; after placing: WP5 (D3); ticks when both are ✅ |
 | K51 | Visitor → sign-up → first-pick funnel measured before and after | FUNNEL | |
 | K52 | `qa:landing-ten` V1–V21 clean at every cell (except Ali's open decisions) | GATE, V15, V16, V17, V18, V19, V20, V21 | |
@@ -716,6 +756,7 @@ node scripts/qa/landing-ten.mjs --cell=<id>   # one cell
 RED=V7 node scripts/qa/landing-ten.mjs --red --cell=base-1280-sw   # prove a class can fail
 RED_PART=time RED=V18 node scripts/qa/landing-ten.mjs --red --cell=base-360-sw   # V18: one part per run
 node scripts/qa/landing-ten.mjs --compile                     # every check and plant compiles; no browser
+bash ~/heavy-node-lock.sh run landing bash scripts/qa/landing-v3/verify-wp34.sh <label>   # WP3 + WP4 local drive (3 phases)
 ```
 
 It measures **production**, deliberately. The local tree has no settlements, no resolved markets
@@ -775,7 +816,7 @@ This codebase has been burned by every one of these:
 | V15 | First screen (v3) | on phone cells 360–639 wide, the featured card's price and YES/NO end by a FIXED 740px of document, measured at the top of the page — not the viewport, which is 780 on the 360 cells — or by the top of the fixed bottom rail when that is higher (a control under the rail is not on the screen) |
 | V16 | No promised winnings (v3) | visible text naming "win TZS", "utashinda", "赢得 TZS", or a stake times a multiplier |
 | V17 | No degenerate price (v3) | a 0% or 100% read inside any card or board row — the conviction bar's aggregate is not a price and is not read |
-| V18 | Market completeness (v3) | per market surface on `/` — the featured card, each grid card, each closing-soonest board row (`[data-market-surface]`; `.mcardp[data-row-id]` and `.kp-qrow` widen the population so an unmarked surface is named, never skipped): a visible price holding a digit, or a labelled state holding words (the em-dash alone fails), the time left, the pool, the predictor count and the named source, each a `[data-market-part]` centred inside its own surface; the source and the price or state before the pick (`[data-market-part="pick"]`) in the DOM and on the screen. Read per surface, never off the page — the trust lines, the settled strip and the proof rail carry every part too. No surface at all is a finding. RED removes one part (`RED_PART` = source · price · time · pool · predictors · order) |
+| V18 | Market completeness (v3) | per market surface on `/` — the featured card, each grid card, each closing-soonest board row (`[data-market-surface]`; `.mcardp[data-row-id]` and `.kp-qrow` widen the population so an unmarked surface is named, never skipped): a visible price holding a digit, or a labelled state holding words (the em-dash alone fails), the time left, the pool, the predictor count and the named source, each a `[data-market-part]` centred inside its own surface; the source and the price or state before the pick (`[data-market-part="pick"]`) in the DOM and on the screen. Read per surface, never off the page — the trust lines, the settled strip and the proof rail carry every part too. No surface at all is a finding. RED removes one part (`RED_PART` = source · price · time · pool · predictors · order). Two ruled exceptions, featured card only: a predictor count withheld below the floor the card states (`data-market-predictors` < `data-market-depth-floor`, R7), and below 640 the source SHOWN under the pick while it stays before it in the DOM (L28) |
 
 ## Known gaps — stated, not implied
 

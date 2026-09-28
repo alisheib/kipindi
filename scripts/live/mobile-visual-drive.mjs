@@ -209,7 +209,7 @@ function staticGeometry(route) {
     const lede = document.querySelector(".kp-hero__lede"); if (lede) out.hero.ledePx = parseFloat(getComputedStyle(lede).fontSize);
     const ctas = [...document.querySelectorAll(".kp-hero__ctas .btn")].filter(vis); if (ctas.length) out.hero.ctaH = ctas.map(H);
   }
-  const qrows = [...document.querySelectorAll(".kp-qboard > a.kp-qrow")].filter(vis).map(H);
+  const qrows = [...document.querySelectorAll(".kp-qboard > .kp-qrow")].filter(vis).map(H);
   if (qrows.length) out.closingRows = { n: qrows.length, med: med(qrows), max: Math.max(...qrows) };
 
   // Market detail: the countdown panel (U8) — its box and how many tiles it shows.

@@ -144,7 +144,7 @@ log("\n── 3 · the card's one-sided state");
     /empty=\{noPrice \|\| oneSided\}/.test(card));
   check("3.6 the rail and the label say 'One side only', never 'No bets yet' (money IS on it)",
     /emptyLabel=\{outcomeLabel \?\? \(oneSided \? t\.market\.oneSideOnly : neverBet \? t\.market\.noBetsYet : t\.market\.noPoolYet\)\}/.test(card)
-    && /<span className="mcardp-oneside">\{t\.market\.oneSideOnly\}<\/span>/.test(card));
+    && /<span className="mcardp-oneside"[^>]*>\{t\.market\.oneSideOnly\}<\/span>/.test(card));
   // ⛔ THE HEADLINE SLOT (WP6 review): without its own one-sided arm a one-sided card falls through to
   // the priced arm and prints `{yesPct}%` — 0 there, "YES 0%" on a market whose money is all on YES.
   const armAt = card.search(/\) : oneSided \? \(\s*<div className="mcardp-pct mcardp-pct--empty" aria-hidden>—<\/div>/);
@@ -184,8 +184,41 @@ log("\n── 4 · the hero board row and the landing tiers");
   const qrow = hero.slice(hero.indexOf("function QuestionRow("), hero.indexOf("export function LandingHero("));
   check("4.1 the board row reads its state from its pools", /const price = priceState\(row\.yesPool, row\.noPool\);/.test(qrow));
   check("4.2 ⛔ the row never prints or draws the rounded share (`row.yesPct`)", !/row\.yesPct/.test(qrow), "row.yesPct reads 100 on a one-sided pool");
-  check("4.3 a one-sided row is labelled 'One side only', not 'No bets yet'",
-    /price\.kind === "oneSided" \? t\.market\.oneSideOnly : t\.home\.heroNoPrice/.test(qrow));
+  // ⚠️ AMENDED 2026-09-27 (landing v3 WP4): the row's label is the card's D29 rule too — "No bets yet" only
+  //    where nobody ever bet; a pool a cash-out emptied is "No pool yet" (predictorCount never decrements).
+  // ⚠️ AMENDED AGAIN 2026-09-27 (WP3+WP4 review, B9): in the CARDS' keys. The row's own `home.heroNoPrice` said
+  //    the never-bet state in other words than every card on the same page (sw "Hakuna" vs "Bila").
+  const ROW_LABEL = /const emptyLabel = price\.kind === "oneSided" \? t\.market\.oneSideOnly : row\.predictors === 0 \? t\.market\.noBetsYet : t\.market\.noPoolYet;/;
+  check("4.3 a one-sided row is labelled 'One side only', and 'No bets yet' only where nobody ever bet — in the cards' keys",
+    ROW_LABEL.test(qrow));
+  const walkTs = (dir: string): string[] => readdirSync(dir).flatMap((e) => {
+    const p = join(dir, e);
+    return statSync(p).isDirectory() ? walkTs(p) : /\.tsx?$/.test(e) ? [p] : [];
+  });
+  const heroNoPriceReaders = walkTs(SRC).filter((f) => /\bheroNoPrice\b/.test(decomment(readFileSync(f, "utf8"))));
+  check("4.3b ⛔ ONE key for the never-bet state: `home.heroNoPrice` is gone from every locale and nothing reads it",
+    heroNoPriceReaders.length === 0 && (["en", "sw", "zh"] as const).every((l) => !("heroNoPrice" in (dict[l].home as object))),
+    heroNoPriceReaders.map((f) => rel(f)).join(", "));
+  // ⭐ WP4 · the rebuilt row: the rail, the note, the gated figures, and three sibling zones (never one link).
+  check("4.6 an unpriced row draws the dashed rail named by that label; a priced row draws the price",
+    /<TippingBar empty emptyLabel=\{emptyLabel\}/.test(qrow) && /<TippingBar yesPct=\{price\.yesPct\}/.test(qrow));
+  check("4.7 the refund rule is the card's one conditional sentence, in the row's own side words",
+    /price\.kind === "oneSided" \? t\.market\.oneSidedNote\.replace\("\{side\}", sideWord\(t, price\.emptySide, "MARKET"\)\) : null/.test(qrow));
+  const atSuffixes = qrow.match(/\{price\.kind === "priced" && <span className="kp-qrow__at">/g) ?? [];
+  check("4.8 ⛔ neither side link carries '@ n%' without a price (both suffixes gated)", atSuffixes.length === 2, `${atSuffixes.length} gated suffixes`);
+  check("4.9 the row is an <li> of sibling zones, never one <Link className=\"kp-qrow\">",
+    /<li className="kp-qrow"/.test(qrow) && !/<Link[^>]*className="kp-qrow"/.test(qrow));
+  // ⭐ CONTROLS — each matcher shown refusing the pre-WP4 spelling.
+  check("4.3-control the pre-WP4 label (a cashed-out pool read 'No bets yet') IS detected",
+    !ROW_LABEL.test('{price.kind === "oneSided" ? t.market.oneSideOnly : t.home.heroNoPrice}'));
+  check("4.3-control the row's own never-bet key (the WP4 spelling) IS detected",
+    !ROW_LABEL.test('const emptyLabel = price.kind === "oneSided" ? t.market.oneSideOnly : row.predictors === 0 ? t.home.heroNoPrice : t.market.noPoolYet;'));
+  check("4.6-control a 50/50 rail on an unpriced row IS detected",
+    !/<TippingBar empty emptyLabel=\{emptyLabel\}/.test('<TippingBar yesPct={50} height={6} />'));
+  check("4.8-control an ungated suffix IS counted out",
+    ('{true && <span className="kp-qrow__at">{" @ "}{price.yesPct}%</span>}'.match(/\{price\.kind === "priced" && <span className="kp-qrow__at">/g) ?? []).length === 0);
+  check("4.9-control the pre-WP4 row (one link) IS detected",
+    /<Link[^>]*className="kp-qrow"/.test('<Link href={`/markets/${row.id}` as never} className="kp-qrow">'));
   check("4.2-control the slice is the real row (it renders .kp-qrow)", /className="kp-qrow"/.test(qrow));
 
   const heroTs = decomment(read("src/lib/markets/hero.ts"));
@@ -215,6 +248,10 @@ log("\n── 5 · the dictionary");
   // ⛔ "No one has picked {side}" (the delivery's wording) is false after a cash-out empties a side a
   // player DID pick; the note speaks about the pool.
   check("5.5 the note speaks about stakes, not about who picked", /^No stake on \{side\} yet\./.test(en.oneSidedNote), en.oneSidedNote);
+  // R8 (2026-09-27): the never-bet state in the "Hakuna … bado" form of its neighbour `noPoolYet`, never "Bila …".
+  const sw = dict.sw.market as Record<string, string>;
+  check("5.6 sw names the never-bet state as a Tanzanian says it, in the form of `noPoolYet`",
+    sw.noBetsYet === "Hakuna dau bado" && /^Hakuna .* bado$/.test(sw.noPoolYet), JSON.stringify({ b: sw.noBetsYet, p: sw.noPoolYet }));
 }
 
 // ── 6 · the claim is TRUE: the settlement branch and the published rule it restates ───────────────

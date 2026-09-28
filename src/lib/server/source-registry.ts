@@ -15,6 +15,7 @@ import { randomId } from "./crypto";
 import { prisma, hasDatabase } from "./prisma";
 import { loadConfigResult, saveConfig } from "./config-store";
 import { MARKET_CATEGORIES, type MarketCategory } from "./market-service";
+import { sourceHost } from "@/lib/markets/source-host";
 
 const DISABLED_CATEGORIES_KEY = "sources.disabled_categories";
 
@@ -361,6 +362,29 @@ export function sourceMatchesAny(sources: TrustedSource[], url: string, category
   return sources.some(
     (s) => s.enabled && s.category === category && (host === s.domain || host.endsWith(`.${s.domain}`)),
   );
+}
+
+/**
+ * The NAME a player reads for the source a market settles on (landing v3 WP3/WP4, gate V18): the
+ * registry's label when the URL's host is a registered source, else the bare host (`sourceHost`), else
+ * null. DISPLAY ONLY — never a trust decision (`isSourceTrusted` is the gate).
+ *
+ * ⛔ THROUGH `sourceMatchesAny`, ONE SOURCE AT A TIME — the host rule keeps its ONE definition site
+ * (`test:bulk-resolve` 4.7 counts `host.endsWith(`), so a look-alike domain can never borrow a name:
+ * `evilkitco.com` prints as itself, never as "Kitco".
+ * · `enabled: true` for the match: a source switched off after publishing is still the one this market
+ *   settles on, and naming it is not trusting it.
+ * · The market's own category first, then any category (a market re-categorised after publishing).
+ * · The MOST SPECIFIC registered domain wins (`bot.go.tz` over `go.tz`), so a nested registration names
+ *   the body the market actually cites, whatever order the registry lists them in.
+ * Pure and synchronous: the page reads the registry ONCE and resolves every row with this.
+ */
+export function sourceNameFor(sources: TrustedSource[], url: string | null | undefined, category: MarketCategory): string | null {
+  if (!url) return null;
+  const named = (s: TrustedSource, cat: MarketCategory) => sourceMatchesAny([{ ...s, enabled: true }], url, cat);
+  const best = (hits: TrustedSource[]) => hits.sort((a, b) => b.domain.length - a.domain.length)[0];
+  const hit = best(sources.filter((s) => named(s, category))) ?? best(sources.filter((s) => named(s, s.category)));
+  return hit?.label.trim() || sourceHost(url);
 }
 
 /**

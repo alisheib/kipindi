@@ -613,7 +613,6 @@ export const dict = {
       heroConvEmpty: "Nothing staked yet — there is no crowd price to show",
       heroBoardEyebrow: "Closing soonest",
       heroBoardCloseToday: "{n} close today",
-      heroNoPrice: "No bets yet",
       heroBrowseAll: "Browse all {n} markets",
       heroCta: "Browse markets",
       myPositions: "My positions",
@@ -811,7 +810,14 @@ export const dict = {
       // V-7 — carousel SR labels, previously hardcoded English.
       showMarketN: "Show market {n}", prevMarket: "Previous market", nextMarket: "Next market", showResultN: "Show notable result {n}",
       similarMarkets: "Similar markets", similarMarketsBody: "Live now — place another prediction without going back.",
-      twentyFourHourMove: "24h move",
+      // landing v3 · WP3/WP4 — a market's meta line and the 24h move ("▲5 · 24h ago": every priced card since the
+      // WP3 review, R8 2026-09-27 — the featured card keys it to the mark on its bar). The source NAME is a
+      // proper name (a registry label, else a host) and is never translated. `barReading` is the featured
+      // bar's accessible name: the whole split, in the same side words as the buttons.
+      closesOn: "Closes {date}",
+      settlesOn: "Settles on {source}",
+      h24Ago: "24h ago",
+      barReading: "{yesPct}% {yesWord}, {noPct}% {noWord}",
       noLiveMatch: "No live markets match",
       // Market detail page
       closedAwaitingSettlement: "Closed · Awaiting settlement",
@@ -3339,7 +3345,6 @@ export const dict = {
       heroConvEmpty: "Hakuna fedha iliyowekwa bado — hakuna bei ya umati ya kuonyesha",
       heroBoardEyebrow: "Yanayofungwa karibuni",
       heroBoardCloseToday: "{n} yanafunga leo",
-      heroNoPrice: "Hakuna dau bado",
       heroBrowseAll: "Tazama masoko yote {n}",
       heroCta: "Tazama masoko",
       myPositions: "Nafasi zangu",
@@ -3474,7 +3479,10 @@ export const dict = {
       allResults: "Matokeo yote →",
       resolvedOutcome: "Imetatuliwa",
       tipping: "inasogea",
-      noBetsYet: "Bila dau bado",
+      // R8 native review (2026-09-27): "Hakuna … bado", the form `noPoolYet` and `udNobodyBackedEither` use.
+      // "Bila dau bado" ("without a bet yet") is not how it is said here, and the landing's board row printed
+      // "Hakuna dau bado" for the same state on the same page. ONE key for the never-bet state (B9).
+      noBetsYet: "Hakuna dau bado",
       beFirst: "Kuwa wa kwanza kutabiri",
       noPoolYet: "Hakuna bwawa bado",
       // drafted, marked for native review; English is binding.
@@ -3485,7 +3493,15 @@ export const dict = {
       timeLeftD: "siku {n} zimebaki", timeLeftH: "masaa {n} yamebaki", timeLeftM: "dakika {n} zimebaki",
       showMarketN: "Onyesha soko {n}", prevMarket: "Soko lililopita", nextMarket: "Soko linalofuata", showResultN: "Onyesha matokeo maarufu {n}",
       similarMarkets: "Masoko yanayofanana", similarMarketsBody: "Hai sasa — weka utabiri mwingine bila kurudi nyuma.",
-      twentyFourHourMove: "Mwenendo wa saa 24",
+      // landing v3 · WP3/WP4 — R8 native review (Tanzanian usage, the dictionary's own words): the subject is
+      // "soko" (li-), so both halves of one meta line agree — "Litafungwa 27 Sep · Linatatuliwa kwa …".
+      // "Litafungwa" is the notice form for a scheduled close (future); "linatatuliwa kwa" is the settling
+      // phrase `howStep2B` / `twoOfficerBody` already use; "saa 24" as in `time24`. "saa 24 zilizopita" (the past 24 hours)
+      // reads right both as the mark's legend and as a grid card's move ("▲5 · saa 24 zilizopita").
+      closesOn: "Litafungwa {date}",
+      settlesOn: "Linatatuliwa kwa {source}",
+      h24Ago: "saa 24 zilizopita",
+      barReading: "{yesWord} {yesPct}%, {noWord} {noPct}%",
       noLiveMatch: "Hakuna soko hai linalolingana",
       closedAwaitingSettlement: "Imefungwa · Inasubiri utatuzi",
       volume: "Kiasi", predictors: "Watabiri", resolves: "Inaisha",
@@ -5579,7 +5595,6 @@ export const dict = {
       heroConvEmpty: "尚无投注，暂无群众价格",
       heroBoardEyebrow: "最快结束",
       heroBoardCloseToday: "今天 {n} 个结束",
-      heroNoPrice: "尚无投注",
       heroBrowseAll: "浏览全部 {n} 个市场",
       heroCta: "浏览市场",
       myPositions: "我的持仓",
@@ -5723,7 +5738,12 @@ export const dict = {
       timeLeftD: "{n}天后", timeLeftH: "{n}小时后", timeLeftM: "{n}分钟后",
       showMarketN: "显示市场 {n}", prevMarket: "上一个市场", nextMarket: "下一个市场", showResultN: "显示精选结果 {n}",
       similarMarkets: "相似市场", similarMarketsBody: "正在进行——无需返回即可再下一注。",
-      twentyFourHourMove: "24小时变动",
+      // landing v3 · WP3/WP4 — reviewed (R8): 截止 as in `closingSoon`; 结算来源 as in `settledSourceNewTab`;
+      // the side words in 「」 as in `probBarAria`; "{date} 截止" follows `home.settledOn`'s "{date} 结算".
+      closesOn: "{date} 截止",
+      settlesOn: "结算来源：{source}",
+      h24Ago: "24小时前",
+      barReading: "「{yesWord}」{yesPct}%，「{noWord}」{noPct}%",
       noLiveMatch: "没有匹配的直播市场",
       closedAwaitingSettlement: "已关闭 · 等待结算",
       volume: "成交量", predictors: "预测者", resolves: "结算时间",
@@ -5968,9 +5988,11 @@ export const dict = {
       payoutIfWin: "若您所选一方获胜",
       payoutExactNote: "确切金额——投注已关闭，奖池已最终确定。",
       payoutAtClose: "投注关闭时",
-      predictorsCount: "预测者",
-      // Chinese does not inflect for number — the same noun serves both counts.
-      predictorsCountOne: "预测者",
+      // A count takes its measure word — "5 位预测者", the classifier form `boardCapped` already writes
+      // ("前 {n} 位预测者"); "5 预测者" had none (review, 2026-09-27). Chinese does not inflect for number, so
+      // the same form serves both counts.
+      predictorsCount: "位预测者",
+      predictorsCountOne: "位预测者",
       tickerSettled: "已结算", tickerOn: "在",
       tickerVoided: "已作废 · 投注已退还",
       // === i18n coverage pass ===

@@ -900,6 +900,12 @@ const CHECKS = /* js */ `(() => {
      and says something: a price holds a digit, a state or a source holds letters, the rest hold a
      letter or a digit. Time, pool and predictors are PRESENCE only: where they sit is K49's and the
      placement map's (V21), and the delivery's own grid card prints its pool below the pick.
+     TWO RULED EXCEPTIONS, each on the FEATURED card only and each read off the page, never assumed
+     (landing v3 WP3): (1) R7, the predictor floor: a featured card may withhold its count when it states
+     data-market-predictors below data-market-depth-floor (lib/markets/featured.ts), and for no other
+     reason; (2) hero v3, the first screen at 360: below 640 the featured card SHOWS its source line under
+     the pick, so the SCREEN half of the order rule is waived for that one part there, while the DOM half
+     (the reading order, K36) still holds, which is what RED_PART=order plants against.
      No surface at all is a finding, not a pass. */
   {
     const bad = [];
@@ -935,15 +941,21 @@ const CHECKS = /* js */ `(() => {
         const dash = [...s.querySelectorAll("*")].some((e) => !e.children.length && (e.textContent || "").trim() === DASH && vis(e));
         bad.push({ what: who + " shows neither a price nor a labelled state", measured: dash ? "an em-dash with no label" : "0 visible price or state", where });
       }
+      const heldN = +s.getAttribute("data-market-predictors"), heldFloor = +s.getAttribute("data-market-depth-floor");
+      const withheld = kind === "featured" && s.hasAttribute("data-market-predictors") && s.hasAttribute("data-market-depth-floor")
+        && Number.isFinite(heldN) && Number.isFinite(heldFloor) && heldN < heldFloor;
       for (const [p, name] of [["time", "time left"], ["pool", "pool"], ["predictors", "predictor count"]]) {
+        if (p === "predictors" && withheld) continue;          // exception (1): R7's floor, stated by the card
         if (!find(s, [p], wordy)) bad.push({ what: who + " shows no " + name, measured: "0 visible [data-market-part=" + p + "]", where });
       }
       const src = find(s, ["source"], (t) => NAME.test(t));
       if (!src) bad.push({ what: who + " names no source", measured: "0 visible [data-market-part=source]", where });
       const pick = [...s.querySelectorAll('[data-market-part="pick"], .btn-yes, .btn-no')].find(vis);
       if (!pick) continue;                                   // a closed market takes no pick: nothing can follow one
+      const srcUnder = kind === "featured" && vw < 640;       // exception (2): hero v3's first screen
       for (const [el, name] of [[shown, "its price or state"], [src, "its source"]]) {
         if (!el || before(el, pick)) continue;
+        if (el === src && srcUnder && follows(el, pick)) continue;
         const a = el.getBoundingClientRect(), b = pick.getBoundingClientRect();
         bad.push({ what: who + " shows " + name + " after the pick",
           measured: "top " + Math.round(a.top) + " vs the pick's " + Math.round(b.top) + (follows(el, pick) ? "" : ", and later in the DOM"), where });
@@ -1107,7 +1119,7 @@ const CHECKS = /* js */ `(() => {
      "50pick" wordmark, and V8 skips any string containing a brand word — so mapping the paragraph
      would have made V8 blind to an untranslated claim. */
   const textMap = {};
-  for (const s2 of [".kp-hero__headline", ".kp-hero__claim-text", ".kp-hero__eyebrow", ".kp-lede", ".kp-shead__h", ".kp-step__h", ".kp-step__b", ".kp-trust__b", ".kp-hero__trust", ".kp-proof__cap"]) {
+  for (const s2 of [".kp-hero__headline", ".kp-hero__claim-text", ".kp-hero__eyebrow", ".kp-lede", ".kp-shead__h", ".kp-step__h", ".kp-step__b", ".kp-trust__b", ".kp-hero__trust", ".kp-proof__cap", ".kp-qrow__meta", ".kp-qrow__note", ".mcardp-src"]) {
     textMap[s2] = [...document.querySelectorAll(s2)].filter(vis).map((e) => (e.textContent || "").trim()).slice(0, 6);
   }
 

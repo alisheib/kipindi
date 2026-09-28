@@ -210,6 +210,7 @@ export function TippingBar({
   probabilityLabel = "YES probability {pct}%",
   labels = { yes: "YES", no: "NO", tipping: "tipping", leansYes: "leans yes", leansNo: "leans no" },
   as = "progressbar",
+  mark = null,
 }: {
   yesPct?: number;
   height?: number;
@@ -243,6 +244,12 @@ export function TippingBar({
    *  `img` names the bar by its label alone — for a bar that is a SPLIT of the money, not progress
    *  towards anything, where "progress bar, 70 percent" misdescribes it (landing v3, WP8/WP3). */
   as?: "progressbar" | "img";
+  /** Where the price stood 24 hours ago, 0–100: a still hairline on the rail (landing v3 WP3, the featured
+   *  card's 24h mark), drawn on the needle's own 6–94 scale so the two marks order truthfully. null or
+   *  absent → none. Never on the empty rail: a pool with no price has nothing to have moved from. It
+   *  changes only with a new render — no transition (motion law L12). A state of this bar, not a second
+   *  component (B9). */
+  mark?: number | null;
 }) {
   const target = Math.max(0, Math.min(100, yesPct));
   const [animYes, setAnimYes] = React.useState(target);
@@ -324,6 +331,11 @@ export function TippingBar({
       >
         <div className="tipbar-fill tipbar-yes" data-full={yesFull} style={{ width: `${yes}%` }} />
         <div className="tipbar-fill tipbar-no" data-full={noFull} style={{ width: `${no}%` }} />
+        {/* The 24h mark, painted BEFORE the needle so the needle wins where they coincide. Its `left` is
+            live data (like the fills' widths); the look is `.tipbar-mark` in globals.css. */}
+        {mark != null && Number.isFinite(mark) && (
+          <div className="tipbar-mark" style={{ left: `${Math.max(6, Math.min(94, mark))}%` }} aria-hidden />
+        )}
         {/* Tipping needle — gilt champagne, sits on the boundary, tilts with
             lean. At extremes the position is clamped to the inner 6..94
             range so the needle never clips the rounded corner. */}

@@ -7,8 +7,9 @@ import { MarketCard } from "@/components/markets/market-card";
 
 import {
   listMarkets, isClosedByTime, isSelectionClosed, traderSeedsByMarket,
-  MARKET_CATEGORIES,
+  MARKET_CATEGORIES, resolvePublishCategory,
 } from "@/lib/server/market-service";
+import { listSources, sourceNameFor, type TrustedSource } from "@/lib/server/source-registry";
 
 import { getCardCharts } from "@/lib/server/market-history";
 import { getSession } from "@/lib/server/session";
@@ -97,7 +98,7 @@ export const metadata: Metadata = {
  * NAMES the lens, so the grid is a claim rather than a sample (kit §1c).
  */
 export default async function LandingPage() {
-  const [{ t, locale }, liveRaw, updownLiveRaw, session, stats, rules, railPauses] = await Promise.all([
+  const [{ t, locale }, liveRaw, updownLiveRaw, session, stats, rules, railPauses, sources] = await Promise.all([
     getServerT(),
     listMarkets({ status: "LIVE" }).catch(() => [] as Awaited<ReturnType<typeof listMarkets>>),
     // The fast game is its own product line, so it never appears in the poll list above.
@@ -113,6 +114,10 @@ export default async function LandingPage() {
     // memory; a failed read is null, and null names the static list — the money path's own
     // fail-open direction, so the hero and the withdraw form cannot disagree about a rail.
     getKillSwitches().catch(() => null),
+    // The source registry, read ONCE for every market on the page (landing v3 WP3/WP4, gate V18): each card
+    // and board row NAMES the source it settles on. All sources, not `enabledOnly` — naming a source is not
+    // trusting it. A failed read falls back to the host, which is still a true name.
+    listSources().catch(() => [] as TrustedSource[]),
   ]);
   const nowMs = Date.now();
   const liveAll = liveRaw.filter((m) => !isClosedByTime(m));
@@ -163,6 +168,8 @@ export default async function LandingPage() {
     yesPool: m.yesPool,
     noPool: m.noPool,
     sourceUrl: m.sourceUrl,
+    // The registry's label for the source's host, else the host (`sourceNameFor` — the one host rule).
+    sourceName: sourceNameFor(sources, m.sourceUrl, resolvePublishCategory(m.category)) ?? undefined,
   }));
   const figures = heroFigures(heroRows, nowMs);
 
@@ -248,7 +255,7 @@ export default async function LandingPage() {
       {/* ── §1a′ THE PROOF — the three figures, the whole board's conviction, the closing-soonest
           board. Directly under the hero since v3, so the hero's first screen is the pitch and a
           live market (WP2 / V15). */}
-      <LandingProof figures={figures} t={t} locale={locale} paidOutTzs={stats.paidOutTzs} />
+      <LandingProof figures={figures} t={t} locale={locale} nowMs={nowMs} paidOutTzs={stats.paidOutTzs} />
 
       {/* ── §1b HOW IT WORKS — chapter break: tinted band, 144 from the hero ───────────────── */}
       <HowItWorks t={t} feePct={rules.commissionPct} />
@@ -327,9 +334,13 @@ export default async function LandingPage() {
                     noPool={r.noPool}
                     predictors={r.predictors}
                     timeLeft={r.selectionClosed ? t.home.waitingForResults : timeLeftStr(r.bettableUntilMs)}
+                    // SOON reads the milliseconds, from the label's own deadline and clock (L17).
+                    msLeft={r.selectionClosed ? undefined : r.bettableUntilMs - nowMs}
                     status="LIVE"
                     selectionClosed={r.selectionClosed}
                     sourceUrl={r.sourceUrl}
+                    // LANDING ONLY: the card names its source before the pick (V18, K36).
+                    sourceName={r.sourceName}
                     spark={cc.spark}
                     move24h={cc.move24h}
                     traders={traderMap.get(r.id)}

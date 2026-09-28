@@ -237,6 +237,8 @@ export default async function MarketDetail({
   // 3 fills one clean row at desktop (the detail-page grid is 3-across); a 4th would
   // strand a single card on a second row.
   const similar = await getSimilarMarkets(m, 3).catch(() => []);
+  // The similar cards' ONE clock: each card's time-left label and its SOON milliseconds read this instant.
+  const simNow = Date.now();
 
   // F11 — decide the viewer's objection standing HERE, on the server, so the panel
   // never dangles a control the service would refuse. The same rules are re-checked
@@ -1041,6 +1043,7 @@ export default async function MarketDetail({
                 also why the titles truncated mid-word. Full width, each card gets ~470px. */}
             <div className="market-grid">
               {similar.map((s) => (
+                /* ONE clock per card: the label and SOON's milliseconds read the same instant (L17). */
                 <MarketCard
                   productLine={"MARKET"}
                   key={s.id}
@@ -1057,7 +1060,8 @@ export default async function MarketDetail({
                   // settlement instant promises betting time the market will not
                   // accept — on a sports poll, hours of it. Matches the board and the
                   // card, which both show `selectionClosedAt ?? resolutionAt`.
-                  timeLeft={isSelectionClosed(s) ? t.market.waitingForResults : similarTimeLeft(s.selectionClosedAt ?? s.resolutionAt, t)}
+                  timeLeft={isSelectionClosed(s) ? t.market.waitingForResults : similarTimeLeft(s.selectionClosedAt ?? s.resolutionAt, t, simNow)}
+                  msLeft={isSelectionClosed(s) ? undefined : Date.parse(s.selectionClosedAt ?? s.resolutionAt) - simNow}
                   status="LIVE"
                   selectionClosed={isSelectionClosed(s)}
                   sourceUrl={s.sourceUrl}
@@ -1088,8 +1092,8 @@ export default async function MarketDetail({
  *  This copy already floored at `Math.max(1, …)`, i.e. it was the CORRECT one of the four and the
  *  reason the drift was visible at all: it disagreed with three boards that rendered "0m left".
  *  Pointed at `src/lib/markets/time-left.ts` in batch 4 — behaviour-identical, one definition. */
-function similarTimeLeft(iso: string, t: Awaited<ReturnType<typeof getServerT>>["t"]): string {
-  return timeLeftLabel(Date.parse(iso), Date.now(), {
+function similarTimeLeft(iso: string, t: Awaited<ReturnType<typeof getServerT>>["t"], nowMs: number): string {
+  return timeLeftLabel(Date.parse(iso), nowMs, {
     closed: t.market.closed,
     days: t.market.timeLeftD,
     hours: t.market.timeLeftH,

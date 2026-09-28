@@ -334,7 +334,11 @@ function cardChartFrom(points: { t: string; yes: number; yesPool: number; noPool
   // honest answer costs nothing. The remaining window can only ever be SHORTER than
   // 24h (a market younger than a day measures its whole life), never longer.
   const dayAgo = points.find((s) => now - Date.parse(s.t) <= 24 * 3600_000);
-  if (!dayAgo) return { spark };
+  // ⭐ WP3 · AND A MOVE NEEDS TWO READINGS. When the only reading inside the window is the current one, the
+  // price moved from a reading OLDER than the window to this one — measuring it against itself printed a
+  // "±0" (and the featured card would have drawn its 24h mark under the needle) where the real move is
+  // unknown here. Absent, not invented.
+  if (!dayAgo || dayAgo === points[points.length - 1]) return { spark };
   // ⭐ C1 · AND NO MOVE FROM A BASELINE THAT HAD NO PRICE. A one-sided baseline read 100 (or 0), so a market
   // whose second side arrived today printed a "−38" 24h move measured from a certainty nobody's money stated.
   const base = priceState(dayAgo.yesPool, dayAgo.noPool);
