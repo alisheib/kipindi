@@ -122,17 +122,46 @@ row; this section does not repeat it.
 
 ## §0a · The paste-in prompt for the next session
 
-> Continue the 50pick landing v3 build, end to end, sealed — visual and logical. Work in `C:\kipindi-landing-v3`
-> (branch `landing-v3`). Read `docs/LANDING-TEN.md` §0 first — its **Next:** paragraph is the exact resume point and
-> names the branch each built unit waits on. Then `docs/design-system/v4-2026-09-26-landing-ten/INHERIT-MANIFEST.md`
-> (rulings R1–R9, laws L1–L29, and the R8 decisions the build already took) and the unit's spec in that folder's
-> `specs/`. Every recorded decision is final; take any new decision yourself (R8), record it in the manifest, and act
-> as the Tanzanian native Swahili reviewer for every sw line. For each unit: merge its branch into `landing-v3`, run
-> its `scripts/qa/landing-v3/verify-*.sh` drive under `~/heavy-node-lock.sh` (detached; never `timeout`), look at every
-> frame, run the four-expert frame panel (UI/UX lead, graphic designer, gambling-industry designer, accessibility/RG —
-> agents that READ the PNGs; brief each round with what changed and what was declined, with the recorded reason) and
-> fix until every score is 10; then merge `origin/main`, push to `main`, confirm the deployed sha (`?dpl=`), re-measure
-> on production, tick the row and rewrite §0 in the same commit. Fix the same defect platform-wide, mobile first.
+> Continue the 50pick landing v3 build, end to end, sealed — visual and logical. The build moved to this PC on
+> 2026-09-28; everything is on GitHub (alisheib/kipindi) and nothing needs the old laptop.
+>
+> Setup: find the repo on this machine (or clone it) and work in your own checkout of branch `landing-v3` (tip
+> `9c18f33c`: the live Up & Down band + the hero merged but NOT live and NOT yet verified + the docs). `git fetch`,
+> `npm ci`, merge `origin/main` (never rebase or force). The other built units wait on their own branches:
+> `landing-v3-c1` (`cc6fc5bd`), `landing-v3-wp34` (`3312082f`, built on C1), `landing-v3-f1` (`a8ad92a0`, built on C1).
+>
+> Read `docs/LANDING-TEN.md` §0 first — its **Next:** list (0)–(7) is the exact resume point and says what is and is
+> not verified for each unit. Then `docs/design-system/v4-2026-09-26-landing-ten/INHERIT-MANIFEST.md` (rulings R1–R9;
+> laws L1–L23, with L24–L29 arriving with WP3+WP4; and "R8 applied — WP12", the decisions the build already took) and
+> the unit's spec in that folder's `specs/`. Every recorded decision is final. Take any new decision yourself (R8) and
+> record it in the manifest. Act as the Tanzanian native Swahili reviewer for every Swahili line; give Chinese the same
+> care.
+>
+> Work the Next list in order:
+> 1. Finish WP12: the landing gate on production (`verify-prod.sh`, `FIRST_EXPECTED=0` while the hero is not live),
+>    tick ✅, delete `specs/updown-band-v2.md` with a pointer.
+> 2. The hero: re-run its drive here (`verify-hero.sh` — the frames are not on GitHub), the gate + REDs
+>    V15–V17/V21/V22, the four-expert panel to 10, then ship it and measure it with `FIRST_EXPECTED=1`.
+> 3. C1: typecheck first, then its RED baseline and drive (report the production `PROD-S1-FEE` count to me), panel,
+>    ship.
+> 4. WP3 + WP4 (re-measure the first-screen budget with the hero in). 5. F1 (typecheck + guards first — its build report
+>    never arrived). 6. WP9. 7. The small R7 build (retire "Tabiri matukio. Si bahati." on all five surfaces). Then D3 and
+>    D5.
+>
+> How to build and verify:
+> - Build every component from the kit: `globals.css` tokens, the type ladder, existing components. Fix the same
+>   defect platform-wide whenever you find it, mobile first.
+> - Heavy Node (dev server, build, tsc, Playwright) one job at a time; if this machine has `~/heavy-node-lock.sh`, run
+>   through it. Dev on localhost (never 127.0.0.1), `rm -rf .next` before every drive, viewport tiles never full-page,
+>   check the served HTML for eaten spaces. A green build is not a render.
+> - Every unit gets the four-expert frame panel — UI/UX lead, graphic designer, gambling-industry designer,
+>   accessibility/RG — as agents that READ the real PNGs (`scripts/qa/landing-v3/panels/`, README). Brief each round
+>   with what changed and what was declined with its recorded reason; fix and re-shoot until every frame is 10. The
+>   panel agents run no Node; you run the test battery yourself, one suite at a time.
+> - Ship: merge `origin/main`, push to `main`, confirm the deployed sha (`?dpl=` or `/api/health` — if another session
+>   pushed on top, accept a sha that contains yours), re-measure on production, tick the row and rewrite §0 in the same
+>   commit. Push each verified unit.
+> - Tell me when the next session is needed.
 
 ## §1 · Status board — the v3 build
 
