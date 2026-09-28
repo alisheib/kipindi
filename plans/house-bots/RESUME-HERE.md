@@ -255,9 +255,35 @@ D20, the master switch is never touched, a refusal or a no-change save announces
 hardcoded string), mobile first, forms at most 960 px, and the repository is PUBLIC (no account id, label, holder name,
 note text or credential in any file).
 
+👉 **The spec, and EVERY decision behind it, is `plans/house-bots/TARGETS-SCREEN.md`** (written 2026-09-28,
+step 0). 80 numbered decisions with their reasons and sources, 10 owner questions each with a safe default,
+6 build steps each with what proves it, and the traps. Read it before touching any step below.
+
+⚠️ **Four owner questions were ANSWERED by Ali on 2026-09-28 and are no longer open** — he took the safe
+default on all four: **OQ-2** land the flag with the page but read the live roster first, leave those
+accounts paused and record the count; **OQ-3** a REMOVE stays permanent and the dialog says so; **OQ-4**
+ship both target ceilings UNSET; **OQ-5** the engine is unchanged and both screens state that targets
+survive a pause. The other six run on their safe defaults (TARGETS-SCREEN.md §6).
+
 | # | Step | Status | Where recorded | Live at |
 |---|---|---|---|---|
-| 0 | Map the five areas; write `TARGETS-SCREEN.md` (spec, decisions, owner questions with defaults, the step list) | ⬜ next | — | — |
+| 0 | Map the five areas; write `TARGETS-SCREEN.md` (spec, decisions, owner questions with defaults, the step list) | ✅ **done 2026-09-28** | `TARGETS-SCREEN.md` (new) | docs only |
+| S1 | The fixture and the instrument's reach — the panels seed plants targets; the visual gate can reach the account-bound route *(no product change)* | ⬜ next | `TARGETS-SCREEN.md` §7 S1 | — |
+| S2 | The grid delta and the two links, read-only — Timing and Reacts-to columns, the `status` filter (one value feeds list, count AND the last-page clamp), the `target=` anchor, the third empty state, "Active targets: {n} →" | ⬜ | `TARGETS-SCREEN.md` §7 S2 | — |
+| S3 | **ADD** — the page, the poll picker, the timing preview, the first target writer and its literal `TARGET_ADDED` announce; `BY_HAND_SCREENS.targeting` flips here with its two riders; `2.fs09.8` rewritten to pin the writer set at ONE path | ⬜ | `TARGETS-SCREEN.md` §7 S3 | — |
+| S4 | **CHANGE TIMING** — the Edit modal, `casUpdate`, the EVERY→FIRST warning, `TARGET_CHANGED`; the pinned writer set WIDENS to two paths | ⬜ | `TARGETS-SCREEN.md` §7 S4 | — |
+| S5 | **REMOVE / VETO** — the Remove modal, `remove` or `veto` + `cancelLive`, `TARGET_REMOVED` and `TARGET_STOPPED`; the set WIDENS to three paths | ⬜ | `TARGETS-SCREEN.md` §7 S5 | — |
+| S6 | **The record** — `docs/HOUSE-BOTS.md` §12.17, the compliance entries, the officers' guide and its PDF | ⬜ | `TARGETS-SCREEN.md` §7 S6 | — |
+
+⛔ **Three things the spec establishes that a builder will otherwise get wrong** (each cost a review round
+to find; the detail and the citations are in the file): (1) the **timing preview and the engine are two
+separate implementations** of the due-time rule with nothing comparing them today — the preview uses
+`rules.ts:effectiveTargetTiming`, the engine `decide.ts:targetDueAt`, and S3 must reconcile them or carry a
+case that drives both; (2) `2.fs09.8`'s replacement pins the writer set **per step and as an EXACT
+comparison** — a three-path string written in S3 is false on arrival, leaves the suite red at its own
+baseline and stops the red drive before it starts; (3) flipping `BY_HAND_SCREENS.targeting` also turns
+`10.start` red and **silently disarms the `scope-byhand-flag-without-screen` mutation**, whose `from`
+quotes that line byte-for-byte — both move in the same commit as the flag.
 
 ## 1 · Traps that cost a run each — all still live
 

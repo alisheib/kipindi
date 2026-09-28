@@ -1,7 +1,8 @@
 # MARKETING CAMPAIGN & CONTACTS SETUP — work order and tracker
 
 **STATUS — 🟢 BUILDING. 12/52 units ✅ LIVE (U1–U12), 12/25 defects. 52 units · defects D1–D25 · 46 owner decisions taken on
-Ali's delegation · 11 legal questions, each shipping with a safe default that IS built. NEXT: the contacts book (§10 reordered 2026-09-27).**
+Ali's delegation · 11 legal questions, each shipping with a safe default that IS built. S7c went LIVE 2026-09-28 (`d3379fef`).
+NEXT: the contacts book, U17+U18 — ⛔ but read ◐ HALF-DONE first: the consent ledger's `latestFor` breaks a same-millisecond tie at RANDOM, and U18's contacts are the population it decides for.**
 
 > ⚠️ **THIS FILE IS BOTH THE PLAN AND THE PROGRESS TRACKER.** Any session, on any machine, learns where
 > the programme stands by reading §0 (RESUME AT) and §1 (status board) — and nothing else. `npm run
@@ -33,25 +34,11 @@ Ali's delegation · 11 legal questions, each shipping with a safe default that I
 4. Work per §11. Close per §0a step 6.
 
 ```
-⛔ FIRST, BEFORE ▶ NEXT — SHIP S7c. IT IS COMMITTED BUT NOT LIVE (handed over 2026-09-28 to another PC,
-  on Ali's word: "end here, another session will continue on a new PC"). The whole S7c batch is on the
-  REMOTE BRANCH `marketing-s7c`, NOT on main; production still serves S7b's build. On the new PC:
-  1. `git fetch origin`, then your OWN worktree off `origin/marketing-s7c` with a real `npm ci` (⛔ never a
-     junctioned node_modules — Turbopack refuses it).
-  2. `git merge --no-edit origin/main` — main moved ~17 commits (landing v3 went live). Expect conflicts only
-     in `src/lib/i18n-dict.ts` (keep BOTH sides' keys), `package.json` (main's `predeploy` chain, plus
-     `test:sms-cost-guard` right after `test:pii-logs`) and `docs/NEXT-PLAN.md`.
-  3. Through the lock, one at a time: typecheck, `test:i18n`, the marketing / SMS / DAL / RG / comms suites and
-     the red controls the §2 S7c row names, then `npm run build`. Compare any red against clean `origin/main`
-     by LABEL before calling it yours (§2 S7c lists the ones that were not).
-  4. `rm -rf .next`, then `node scripts/live/marketing-e2e-capture.mjs local` through the lock, and OPEN AND
-     READ the shots — above all the /admin/system SMS credit tile, never photographed on the final tree
-     (refused, pending, healthy, seven figures, low, below floor, unconfirmed, stale), plus the /s error and
-     busy states, the consent HELD states and /help FAQ 5, at 1280 and 360.
-  5. Push `HEAD:main`, confirm production serves it (`?dpl=`), then run the U6 drive on production (its 3e
-     checks the served `shownLocale`) and the U8 drive on production. Only then read ▶ NEXT.
-  ⚠️ The `since` dates in `src/lib/marketing/consent-wording.ts` say 2026-09-27; if this ships later, correct
-     `since` AND the pinned hash in the deploying commit, before any production row is written (TRAPS).
+✅ S7c IS LIVE — shipped 2026-09-28 as `d3379fef` (session S8, office PC OMEGA-COMPILE01, worktree
+  `F:/kipindi-s8`, branch `marketing-s8`). PROVED BY DISCRIMINATION, never by a build id alone: before the
+  push /auth/register served the OLD sentence ("Nipe matangazo" 2 hits, the new one 0); after it, the NEW
+  one ("Nitumie ofa na habari za 50pick kwa SMS" 2 hits, the old one 0), on `?dpl=d3379fef…`. A check that
+  reads the same before and after proves nothing — this one reverses.
 
 ▶ NEXT: U17 and U18 — S8's pair: THE CONTACTS BOOK COMES FIRST. §10 was reordered 2026-09-27 on Ali's
   approval ("keep going with your plan") so the admin console shows something next session: Contacts in
@@ -76,50 +63,79 @@ Ali's delegation · 11 legal questions, each shipping with a safe default that I
   the schedule and U16 (S20) adds the structural guard.
   ⚠️ VERIFY EACH PREMISE BEFORE BUILDING — this plan's text has been wrong at the start of most sessions.
 
-✔ LAST SESSION: S7c, 2026-09-26 → 27 (Ali-Blade15, worktree `C:/kipindi-marketing`, branch `marketing-s7`) —
-  **THE END-TO-END REVIEW OF EVERYTHING LIVE (U1–U12 + S7b), AND ITS FIXES. No unit ticked: 12/52 units,
-  12/25 defects.** Ali: *"make sure it's all end to end perfect, visually, logically, no screen is weak,
-  nothing lacking."* An adversarial review (8 lenses over screenshots, code and docs, each finding sent
-  to a second agent told to refute it) confirmed 99 of 105 findings; a second review of the fixes
-  confirmed 42 of 54 more (no blockers), and a final visual pass over 191 fresh screenshots 31 of 43. All
-  fixed; on the committed tree typecheck, the build, every marketing / SMS / DAL / RG / comms suite and the
-  red controls are green, and the opt-out, consent and public screens were re-photographed and read —
-  ⚠️ BUT NOT SHIPPED, and the admin SMS tile's states were never photographed on the final tree: see
-  "⛔ FIRST" above. The rulings are ? 7–12 below; the headline fixes:
-  ⭐ CONSENT NAMES SMS — one name everywhere ("Offers and news by SMS"), the ledger stores the sentence in
-  the language the person SAW, OQ11's safe default (an old "product updates" yes no longer counts), the
-  toggle shows EFFECTIVE consent and is held during a break or self-exclusion.
-  ⭐ KYC IN THE GATE — a final UNDERAGE / SANCTIONED / DUPLICATE_IDENTITY refusal refuses; the younger of
-  the declared and document age governs.
-  ⭐ THE OPT-OUT PAGE — minimal shell (no upsell, nav, chat, primer), headings follow the state, resume
-  records its own consent sentence, lower-case tokens work, a busy/failed read says so with a retry.
-  ⭐ A STRONGER STOP TAKES OVER A PERSON'S OWN (both DALs, `dal-parity` §17.supersede + red): an officer's or
-  a complaint's stop can no longer be lifted by the person's old SMS link.
-  ⭐ ADMIN → SYSTEM "SMS CREDIT" — the credit is the headline, the state in words (and WHY a read failed),
-  never "Healthy" on a dead rail or while sends fail; floor and alert crossings alarm the Owner by bell +
-  email (never SMS); `test:sms-cost-guard` is in `predeploy`.
-  🔴 Instrument lessons: a stale `.next` made EVERY `/api/dev-test/*` route 404 on `next dev` (the capture
-  silently photographed the admin sign-in page) — ⛔ `rm -rf .next` before every dev-server run; and
-  `red:marketing-optout`'s baseline raced a fire-and-forget audit write (S22 now polls).
+✔ LAST SESSION: S8, 2026-09-28 (office PC OMEGA-COMPILE01, worktree `F:/kipindi-s8`, branch `marketing-s8`)
+  — **S7c WENT LIVE. No unit ticked and none attempted: 12/52 units, 12/25 defects.** Ali: "ship it first",
+  then "end session here, mark progress, clean stales". The whole session was the ship: merge, gates, shots,
+  push, prove. On the merged tree typecheck and `npm run build` are green, every marketing / SMS / DAL / RG /
+  comms suite is green, all ten red controls catch every plant, the capture wrote 90 screenshots at 0px
+  overflow, and the shots were OPENED AND READ — all ten SMS-credit states at 1280 and 360, the /s error and
+  busy screens, the consent HELD card in three languages, /help FAQ 5, the register consent box.
+  ⭐ THREE THINGS WERE FIXED BEFORE THE PUSH, none of them optional:
+  1. `since` WOULD HAVE LIED. The nine D1 sentences said they first faced a player on 2026-09-27; the batch
+     did not ship that day. Measured first — production still served "Nipe matangazo" — so no ledger row
+     existed under them and the date was still free. Corrected to 2026-09-28, re-pinned the append-only hash
+     (9b041893ec43a670 → 718250ee6e8280ed), and ⭐ PROVED THE GUARD STILL FAILS on an EDIT and on a REMOVAL
+     before trusting the new pin. "Never update the hash to make this pass" is that file's own rule; the one
+     thing that makes this legal is that the date had never faced a person.
+  2. THREE GUARDS CITED BY THE WRONG NAME — a guard named by its SCRIPT FILE, not by the `package.json` key
+     that runs it, which `test:guards-exist` counts as a guard that does not exist. Two were S7c's, one was
+     already on main, so that repo-wide gate was RED for every lane. `scripts/dev-route-guard.test.mts` runs
+     as `test:cert-devroutes`; `scripts/stacking-contract.test.mts` runs as `test:stacking` (its line 161
+     really does read the skip link's focus z-index that the app-shell comment describes). Cited by key, green.
+  3. 🔴 A MERGE THAT SILENTLY DROPPED MAIN'S WORK. The first `git merge origin/main` ran against a STALE ref:
+     a parallel session's `git fetch` moved `refs/remotes/origin/main` mid-command (every worktree shares one
+     `.git`), so MERGE_HEAD was two commits behind the `origin/main` that the same shell had just printed.
+     The merge was clean, silent, and quietly lost the landing lane's `FIRST_LICENSED_EVIDENCE` block. Caught
+     only by diffing BOTH sides against the merge base, per file. ⛔ AFTER ANY MERGE HERE, VERIFY IT: for every
+     file both sides touched, `main→merged` must equal `base→ours` AND `ours→merged` must equal `base→theirs`.
+     The i18n dictionary was then checked leaf by leaf (98 of ours kept, 158 of main's kept, 30 of main's
+     deletions honoured, 0 wrong) with a PLANTED defect first, to prove the checker could fail at all.
+  ⚠️ Red elsewhere, NOT ours, each proven by three independent facts (byte-identical to `origin/main`, S7c
+  never touched the file, and the failing label names another lane): `test:stacking` 6.1 (`z-index: 11` on
+  `.ticker-viewport:focus-visible`, the LIVE strip) and `test:red-anchors` (two rotted anchors, in
+  `query-bar.tsx` and `updown-card-phase.ts`).
+  🔴 INSTRUMENT LESSONS: (1) `test:marketing-consent-ledger` §2c/§2d FLAKE — red once, then green on three
+  straight re-runs; the cause is the consent-tie defect in ◐ HALF-DONE, not the suite. (2) The U8 drive fails
+  its BUSY case when the capture runs it NESTED (1 of 266) and passes 266/266 standalone, twice: the opt-out
+  budget refills one token every 6 s and the drain loses that race on a loaded machine. The drive's own
+  comment predicted exactly this. ⛔ Never call a nested-drive failure a product defect without re-running it
+  alone. (3) A viewport TILE is not a verdict on legibility: the consent HELD card looked covered by the chat
+  bubble and cut off by the bottom rail, and measuring it per PAINTED LINE (Range rects + `elementFromPoint`,
+  scrolled into view) showed every line clear in all three languages. The tile had merely frozen a scroll
+  position. ⛔ Measure the rectangle before reporting a visual defect.
 
-✔ BEFORE IT: S7b (Ali's OQ1/OQ2/OQ4 rulings, the live SMS balance on Admin → System), S7 (U11, U12 ✅, D10 ✅,
+✔ BEFORE IT: S7c (the end-to-end review of everything live and its fixes — built on Ali-Blade15, SHIPPED by
+  S8), S7b (Ali's OQ1/OQ2/OQ4 rulings, the live SMS balance on Admin → System), S7 (U11, U12 ✅, D10 ✅,
   the U6 index repair), S6 (U9, U10 ✅), S5 (U8 ✅), S4 (U7 ✅), S3/S3b (U5, U6 ✅), S2 (U3, U4 ✅), S1 (U1, U2 ✅),
   S0b, S0 — each in §2, newest first. ⭐ The habit that found most of it: audit the INSTRUMENT, not only
   the code.
 
-◐ HALF-DONE: one S7b item, plus three answers only people can give. U1–U12 are ✅ LIVE, but S7b's SMS balance read on Admin → System is proven
-  against a local stand-in only (`.qa-shots/e2e/local-admin-sms-tile-*`): nobody has seen it on production,
-  because that needs Ali's own admin session (⛔ never log in as him). Close it by asking Ali to open
-  Admin → System and compare the "SMS credit" figure (the tile's headline since the 2026-09-26 audit-fix
-  pass) with the Blackball portal; right after that render, `/api/health` → `sms.balanceTzs` on that
-  container shows the same figure. Record the date here and in §2.
-  ⚠️ Also open, none of it this lane's code: a native Swahili (and Chinese) speaker's read of the audit-fix
-  copy — the D1 consent sentences and the new `/s/<token>` headings, bodies and refusals (a changed consent
-  sentence is APPENDED to `consent-wording.ts`, never edited); where Blackball stores SMS data (Privacy
-  v2026-09-26 §4 says only "in Tanzania" of the gateway — BLACKBALL-SMS.md §8); and Ali's one line on OQ4:
-  is 0800 11 0011 answered by (1) 50pick staff, or (2) the independent national service the site says it
-  is? Recorded as (2), which changes no public label; (1) would need RG §5 relabelled in three languages,
-  a new RG version and the Help chat's "independent of 50pick" line corrected.
+◐ HALF-DONE — ⛔ READ THIS BEFORE U18. Three items, one of them a live defect this lane is about to inherit.
+  1. 🔴 `latestFor` ANSWERS BY COIN FLIP UNDER A TIE — and U18's contacts are the population it decides for.
+     `db.messagingConsent.latestFor` orders `createdAt desc, id desc` in BOTH twins, but the id is
+     `randomUUID()` (`consent-ledger.ts`, `optout-service.ts`), so a tie is broken at random. MEASURED on the
+     shipped tree: **396 of 400 back-to-back appends shared a millisecond, and 46% of those answered GIVEN
+     when the person's latest word was WITHDRAWN.** Both twins agree — and are wrong together, which is why
+     `test:dal-parity` cannot see it. ⚠️ NOT S7c's: `randomUUID()`, the sort and the two failing test labels
+     are byte-identical on `origin/main`, so it is LIVE today. For a PLAYER the send gate is saved by two
+     records ahead of the ledger (`marketingOptIn`, then the suppression row), so nobody is texted after
+     saying stop. ⛔ BUT FOR A NON-PLAYER THE LEDGER IS THE ONLY RECORD — which is exactly what U18's
+     `MarketingContact` creates. Ali was asked on 2026-09-28 whether to fix it inside S8 or leave it; ⛔ do
+     not let U18 write a contact before that is answered. The fix is a monotonic, sortable ledger id (or an
+     ordering that does not lean on the id at all), in BOTH twins, with its own `dal-parity` control.
+  2. THE PRODUCTION DRIVES ARE OWED. §0 step 5 asked for the U6 and U8 drives on production AFTER the push;
+     the session was ended before them. Everything else in that step is done — pushed, and production proved
+     to serve `d3379fef` by discrimination. ⚠️ Both drives mint tokens through `/api/dev-test/*`, which 404s
+     in production BY DESIGN, so establish whether either can run against `LIVE_BASE=https://www.50pick.tz`
+     at all before trusting a green exit. `node scripts/live/marketing-e2e-capture.mjs prod` is the
+     read-only public-pages pass and needs no dev route.
+  3. Unchanged from S7c, all of it needing a person, none of it this lane's code: S7b's SMS balance read on
+     Admin → System is still proven against a local stand-in only — ask Ali to open Admin → System and compare
+     the "SMS credit" figure with the Blackball portal (⛔ never log in as him), then record the date here and
+     in §2. Also open: a native Swahili (and Chinese) speaker's read of the D1 consent sentences and the new
+     `/s/<token>` copy; where Blackball stores SMS data (BLACKBALL-SMS.md §8); and Ali's one line on OQ4 —
+     is 0800 11 0011 answered by 50pick staff, or by the independent national service the site says it is?
+     Recorded as the latter, which changes no public label.
 
 ? RULINGS TAKEN ON ALI'S DELEGATION OF 2026-09-26 (recorded here so no session re-asks them):
   1. OQ6 — answered: build the under-25 segment AND re-version §4 to what runs (COMPLIANCE-DECISIONS
@@ -544,6 +560,7 @@ a Guard key that resolves to a script on disk, `yes` plus the backticked `red:` 
 
 | Session | Date | What happened |
 |---|---|---|
+| S8 | 2026-09-28 | **S7c WENT LIVE — `d3379fef`. No unit ticked (12/52 units, 12/25 defects); the session was the ship itself.** Ali: *"ship it first"*, then *"end session here, mark progress, clean stales"*. Own worktree `F:/kipindi-s8` off `origin/marketing-s7c`, real `npm ci` (⛔ no junction), merged `origin/main` — which moved **three times** during the session, 23 → 54 → 4 commits, because the landing lane was pushing in parallel. ⭐ **Proven by:** typecheck; `npm run build`; every marketing / SMS / DAL / RG / comms suite; all ten red controls (`red:dal-parity`, `red:rg-doors`, `red:marketing-consent`, `red:marketing-consent-ledger`, `red:marketing-optout`, `red:campaign-compose`, `red:sms-cost-guard`, `red:rg-policy`, `red:support-contact`, `red:marketing-setup-plan`); 90 screenshots at 0px overflow, OPENED AND READ (ten SMS-credit states × two widths, /s error + busy, consent HELD ×3 languages, /help FAQ 5, register consent); and the live proof by DISCRIMINATION — /auth/register served "Nipe matangazo" before the push and "Nitumie ofa na habari za 50pick kwa SMS" after, on `?dpl=d3379fef…`. ⭐ **Fixed before the push:** (1) the nine `since` dates said 2026-09-27 for a batch shipping on the 28th — corrected and the append-only hash re-pinned (`9b041893ec43a670` → `718250ee6e8280ed`) only after proving production had never shown those sentences AND that the guard still fails on an EDIT and a REMOVAL; (2) three guards cited by SCRIPT FILE instead of `package.json` key (`test:dev-route-guard` → `test:cert-devroutes`, `test:stacking-contract` → `test:stacking`), which had `test:guards-exist` RED for every lane, one of them already on main. 🔴 **The trap that nearly shipped a regression:** the first `git merge origin/main` took a STALE ref — a parallel session's fetch moved `refs/remotes/origin/main` mid-command — and silently dropped the landing lane's `FIRST_LICENSED_EVIDENCE`; the redone merge was verified per file against the merge base, and the i18n dictionary leaf by leaf (98 ours / 158 main's / 30 deletions honoured / 0 wrong) with a planted defect to prove the checker could fail. ⚠️ Red elsewhere, not ours: `test:stacking` 6.1 (LIVE strip `z-index: 11`) and `test:red-anchors` (two rotted anchors in other lanes) — each byte-identical to `origin/main`. 🔴 **Instrument lessons:** a suite that flakes once and passes 3× is pointing at a real race (here the `latestFor` tie — see ◐ HALF-DONE); a nested drive's failure (U8 BUSY, 1/266) vanished at 266/266 standalone twice, because the opt-out budget refills 1 per 6 s; and a viewport TILE froze a scroll position that made the consent HELD card look obstructed, while a per-painted-line measurement showed it clear in all three languages. |
 | S7c | 2026-09-26 → 27 | **THE END-TO-END REVIEW OF EVERYTHING LIVE, AND ITS FIXES — no unit ticked (12/52 units, 12/25 defects); §10 reordered on Ali's approval so the contacts book is next.** Ali: *"make sure it's all end to end perfect, visually, logically, no screen is weak, nothing lacking."* ⭐ **The method:** every marketing screen photographed on production and on a local build (1280 and 360, three languages), then an adversarial review — eight lenses (three visual, four logic, one docs/prompt), each finding handed to a second agent told to REFUTE it: 99 of 105 survived. The fixes were written by parallel agents on disjoint files that ran NO Node (this laptop's RAM fails under load and other sessions hold the heavy-node lock for long stretches), then one copy pass wrote every string in en/sw/zh, then the suites ran serially on the merged tree. A SECOND review of the fixes (four visual lenses over fresh captures, two code lenses over the diff) confirmed 42 of 54 more, no blockers; fixed the same way. ⭐ **What changed for a person:** the consent names SMS in one noun everywhere and the ledger stores the sentence in the language actually shown (rows written 2026-09-25 → 27 say SW whatever was seen — append-only, so they stay); OQ11's safe default (an old "product updates" yes no longer counts; no backfill); the toggle shows EFFECTIVE consent and is held during a break or self-exclusion; the gate refuses a KYC final refusal (an UNDERAGE refusal used to pass on the self-typed date of birth); the opt-out page is a minimal shell whose heading follows the state and whose resume records its own consent sentence; a stronger stop now takes over a person's own and `lift` lifts only a person's own (both DALs — U16's owed half, done); Admin → System's card headlines the SMS CREDIT with the state and the reason in words and alarms the Owner at the alert line AND the floor (bell + email, never SMS). ⭐ **Proven by:** typecheck; every marketing, RG, SMS, DAL and comms suite; the red controls (`red:dal-parity`, `red:rg-doors`, `red:marketing-consent`, `red:marketing-consent-ledger`, `red:marketing-optout`, `red:campaign-compose`, `red:sms-cost-guard`, `red:rg-policy`, `red:support-contact`, `red:marketing-setup-plan`), each catching every plant; and the screens re-photographed and read. 🔴 **Instrument lessons:** (1) a stale `.next` made every `/api/dev-test/*` route 404 on `next dev`, so a capture photographed the admin SIGN-IN page as "the SMS card" with a green exit — ⛔ `rm -rf .next` before every dev run; (2) `red:marketing-optout`'s baseline raced a fire-and-forget audit write (S22 now polls); (3) the stopped first fix run's agents were waiting on another session's lock for an hour — static-only agents plus one serial battery is the shape that works here. ⚠️ Red elsewhere, not ours: `test:stacking` 6.1 (z-index 11 from the landing lane's LIVE strip), two rotted `test:red-anchors` anchors in other lanes, and `red:feedback-law`'s updown anchor. |
 | S7b | 2026-09-26 | **Ali answered OQ1, OQ2 and OQ4 himself — D6 ✅, 12/25 defects.** *"gaming board said they don't care — it's not part of their approval, we can send anything as long as we have SMS gateway · PDPA is not needed · the right helpline is ours."* Recorded verbatim in `COMPLIANCE-DECISIONS.md` 2026-09-26 · Marketing SMS rulings with what the rulings do NOT change (consent under ETA s.32 / EPOCA reg 7(4), no promotion to the self-excluded under GN 478T reg 49(3), every RG/age gate). OD17 and §5.3 withdrawn, U41 re-scoped to the officer authorisation (and flagged to reconcile with Ali's single-admin precedent), OQ2's registration hold dropped. ⭐ **OQ4 implemented:** the marketing footer now reads `support-config.ts`'s helpline — one number — and `test:campaign-compose` §12, which ASSERTED the two helplines differ, now asserts they are the same and that the Board's number appears nowhere; still 49 septets. ⭐ **And Ali asked how much SMS balance we have:** the app could not say — the reading is in-process and empty after every restart, and nothing but a send refreshed it. `refreshSmsBalance` (the same free, authenticated endpoint `sendBatch` already used) now feeds `/admin/system`'s SMS card on render, reused for a minute; `test:sms-cost-guard` §7 proves it reads, records into the one snapshot, SENDS nothing, reuses a fresh reading and never records a refusal's 0.0 (red 7/7). ⛔ Not read by logging in as Ali — the QA admin password is his own login and one session per account would have signed him out. The stale-text sweep for "closed until the Board approves" ran across BLACKBALL-SMS, LIVE-HOSTING-STATUS, RAILWAY-LIVE, README, NEXT-PLAN, CLAUDE.md, COMPLIANCE-DECISIONS and two code comments. |
 | S7 | 2026-09-26 | **U11 ✅ and U12 ✅ LIVE (`40b83931`), D10 ✅ (`aa98f383`), the U6 repair LIVE (`2b8ba0a2`) — 12/52 units, 11/25 defects.** Run on Ali's delegation of 2026-09-26 (*"take any decision needed based on overall decisions I took ever and architecture of platform, keep going until live"*), every ruling recorded with its precedent. ⭐ **The repair:** the eight trigram indexes U6's migration dropped are restored with byte-identical SQL, proven from EMPTY on PostgreSQL 18.3 (85 migrations) and applied on production (`/api/health` migrated at `2b8ba0a2`); the same run proved the trap is live — a fresh `migrate diff` still wants to drop all eight. So `test:migration-ownership` (in `predeploy`) keeps a registry of which migration created every object and refuses a drop of another migration's object unless its owner document authorises it by name; ten pre-rule files grandfathered by literal content pins; red 9/9 with a control that a declared drop is ACCEPTED — and it caught its own first parser registering no enum-typed column. `test:dead-schema` is green again (a dated, sha-pinned exemption, waived not weakened) and `red:dead-schema`, which could not start while it was red, catches 7/7. ⭐ **D10 closed** on Ali's 2026-08-27 ruling: push and watchlist alerts refuse a SELF_EXCLUDED account until an officer reopens it — the bet path's own rule; `isLockedOut` untouched; guarded by a console spy on the real `[push-stub]` line, because "returned 0" is true of a delivered stub push too. ⭐ **U11** on the platform's one age definition, three answers; a contact is `age_unknown` until U33 — nothing inferred — which changed U8's suite to pin what labels 1 and 12 always meant (a resume gives back EXACTLY the pre-stop answer). ⭐ **U12** — OQ6 answered on delegation: the under-25 segment defined and built, §4 re-versioned v2026-09-26 in three languages from the page's own vocabulary, the late-night bullet cut, and `test:rg-policy` maps every §4 promise by its words to a named control (red 7/7); verified live by discrimination and by screenshots opened and read. 🔴 **The machine crashed mid-`red:rg-doors`:** the two files it was writing — `market-service.ts` and `marketing/rg.ts` — came back 100% NUL; neither had uncommitted edits, both restored from HEAD, `git fsck` clean, all 12 worktrees NUL-scanned clean, the harness re-run through the lock, nothing reached main. ⚠️ **Two instrument defects of this lane's own:** a first launch of an agent workflow was passed a placeholder instead of its data (stopped within seconds, before any write), and 9.1b first read the push audit row before the fire-and-forget write had landed (now polled, not slept). |
