@@ -103,6 +103,22 @@ export function currentPackPeriod(now = Date.now()): string {
  * PDF/XLSX through `reports/coverage.ts`, and those are English-primary regulator artifacts; a
  * filing must not change language because of who happened to generate it.
  */
+/**
+ * The EAT month that is RUNNING RIGHT NOW, as `YYYY-MM`.
+ *
+ * ⛔ NOT A PACK PERIOD, AND THE NAME SAYS SO. `currentPackPeriod` is the statutory one — the
+ * previous COMPLETE month, the only month that can be filed. This is the month in progress, offered
+ * so an operator can see where it stands before it closes. Anything built from it is a partial
+ * preview and every surface that renders it must say so; `reports/coverage.ts` `calendarMonth()`
+ * is what makes that automatic.
+ */
+export function currentEatMonth(now = Date.now()): string {
+  const parts = new Intl.DateTimeFormat("en-GB", { timeZone: "Africa/Dar_es_Salaam", year: "numeric", month: "2-digit" }).formatToParts(new Date(now));
+  const y = parts.find((p) => p.type === "year")!.value;
+  const m = parts.find((p) => p.type === "month")!.value;
+  return `${y}-${m}`;
+}
+
 export function packPeriodLabel(period: string, monthsLong?: readonly string[]): string {
   const [y, m] = period.split("-").map(Number);
   if (monthsLong && monthsLong[m - 1]) return `${monthsLong[m - 1]} ${y}`;

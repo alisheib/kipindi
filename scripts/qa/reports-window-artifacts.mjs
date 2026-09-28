@@ -63,11 +63,11 @@ console.log("\n── the explicit pack period ──");
 
   const read = async (q) => {
     const res = await ctx.get(`${BASE}/api/admin/reports/gbt-monthly?format=xlsx${q}`);
-    if (!res.ok()) return { status: res.status(), period: null };
+    if (!res.ok()) return { status: res.status(), period: null, meta: null };
     const wb = new ExcelJS.Workbook();
     await wb.xlsx.load(Buffer.from(await res.body()));
     const a7 = String(wb.worksheets[0].getCell("A7").value ?? "");
-    return { status: res.status(), period: /^Period:\s*(.*?)\s{3,}Generated:/.exec(a7)?.[1] ?? null };
+    return { status: res.status(), period: /^Period:\s*(.*?)\s{3,}Generated:/.exec(a7)?.[1] ?? null, meta: a7 };
   };
 
   const base = await read("");
@@ -77,12 +77,28 @@ console.log("\n── the explicit pack period ──");
     picked.period?.includes(`${asked}-01`) === true && !picked.period?.includes(`${deflt}-01`), picked.period ?? `HTTP ${picked.status}`);
   say("CONTROL · the asked month is not the default, so the line above is a real delta", asked !== deflt, `${asked} vs ${deflt}`);
 
+  /* ── The CURRENT month: allowed, and unmistakably a preview ──────────────────────────────
+     ⭐ Asked for deliberately, because a month-to-date total under a bare "September 2026"
+     heading reads exactly like September's statutory return. Four things must change together. */
+  const cur = d(0);
+  const partial = await read(`&period=${cur}`);
+  say(`the RUNNING month (${cur}) is allowed, not refused`, partial.status === 200, `HTTP ${partial.status}`);
+  say("…and its period says PARTIAL and names the days remaining",
+    /PARTIAL/.test(partial.period ?? "") && /still to run/.test(partial.period ?? ""), partial.period ?? "(none)");
+  say("…and it is classified Internal, not a regulator hand-off",
+    /Classification:\s*Internal/.test(partial.meta ?? ""), (partial.meta ?? "").slice(-40));
+  say("CONTROL · the COMPLETE month is NOT marked partial, so the check discriminates",
+    !/PARTIAL/.test(base.period ?? ""), base.period ?? "(none)");
+
   const bad1 = await read("&period=2026-13");
   say("a malformed period is REFUSED, not coerced", bad1.status === 400, `HTTP ${bad1.status}`);
   const future = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
   const futureP = `${future.getUTCFullYear()}-${String(future.getUTCMonth() + 1).padStart(2, "0")}`;
   const bad2 = await read(`&period=${futureP}`);
-  say(`an unfinished month (${futureP}) is REFUSED — it has no complete figures to file`, bad2.status === 400, `HTTP ${bad2.status}`);
+  /* ⚠️ The rule changed on 2026-09-28 and this label changed with it. An UNFINISHED month is now
+     allowed (and marked PARTIAL, asserted above); a month that has not BEGUN is refused, because
+     it has no figures at all and an empty document titled with next month is a fabricated zero. */
+  say(`a month that has not BEGUN (${futureP}) is REFUSED — nothing to report`, bad2.status === 400, `HTTP ${bad2.status}`);
 
   /* A report whose coverage is not calendar-month must IGNORE the param rather than half-honour it. */
   const other = await ctx.get(`${BASE}/api/admin/reports/daily-ops?format=xlsx&period=${asked}`);
