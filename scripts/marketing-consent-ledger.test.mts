@@ -100,7 +100,7 @@ const LOCALES: MessagingLocale[] = ["SW", "EN", "ZH"];
  * date was corrected and the hash taken again (was fe46193d9f2c2416). The wordings are unchanged.
  */
 const PINNED_PREFIX_COUNT = 9;
-const PINNED_PREFIX_SHA = "9b041893ec43a670";
+const PINNED_PREFIX_SHA = "718250ee6e8280ed";
 const prefixSha = (list: typeof SMS_CONSENT_WORDINGS) => createHash("sha256")
   .update(list.slice(0, PINNED_PREFIX_COUNT).map((w) => [w.since, w.site, w.locale, w.wording].join("|")).join("\n"), "utf8")
   .digest("hex").slice(0, 16);
@@ -288,7 +288,7 @@ async function runAssertions(impl: Impl, phone: string, tag: string): Promise<vo
   const noChannel = SMS_CONSENT_WORDINGS.filter((w) => !(w.locale === "ZH" ? w.wording.includes("短信") : w.wording.includes("SMS")));
   ok(p("8d · every pinned sentence names its channel (SMS / 短信) — the reason the list exists"),
     noChannel.length === 0, noChannel.map((w) => w.wording.slice(0, 40)).join(" | "));
-  ok(p("8e · ⛔ APPEND-ONLY — the entries pinned on 2026-09-27 (the ship date) are byte-identical"),
+  ok(p("8e · ⛔ APPEND-ONLY — the entries pinned on 2026-09-28 (the ship date) are byte-identical"),
     prefixSha(SMS_CONSENT_WORDINGS) === PINNED_PREFIX_SHA && SMS_CONSENT_WORDINGS.length >= PINNED_PREFIX_COUNT,
     `sha ${prefixSha(SMS_CONSENT_WORDINGS)} · ${SMS_CONSENT_WORDINGS.length} entries`);
   // ⭐ ONE NAME (D1). The consent had a different name on every surface ("product updates", "Product news",

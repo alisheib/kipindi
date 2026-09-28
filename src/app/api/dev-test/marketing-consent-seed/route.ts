@@ -2,7 +2,7 @@
  * /api/dev-test/marketing-consent-seed — put the SIGNED-IN player on a real break, for the visual drive of the
  * SMS consent card on /profile/notifications (its HELD and PAUSED states).
  *
- * ⛔ 404 IN PRODUCTION, before anything else, like every route under `dev-test/` (`test:dev-route-guard`).
+ * ⛔ 404 IN PRODUCTION, before anything else, like every route under `dev-test/` (`test:cert-devroutes`).
  *
  * ⭐ THE BREAK IS TAKEN, NOT WRITTEN. `?do=break` calls `coolOff` — the function the player's own Take a break
  * form calls — so the row, the COOLED_OFF status, the house-bot holder hook, the audit row, the email and the

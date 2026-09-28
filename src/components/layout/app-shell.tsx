@@ -507,7 +507,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
 }
 
 /**
- * ⛔ ONE SKIP LINK, RENDERED BY BOTH SHELLS FROM HERE. `test:stacking-contract` reads its focus z-index
+ * ⛔ ONE SKIP LINK, RENDERED BY BOTH SHELLS FROM HERE. `test:stacking` reads its focus z-index
  * as a SOLE declaration in this file, so a second copy for the opt-out shell would break the contract.
  */
 function SkipToContent({ label }: { label: string }) {
