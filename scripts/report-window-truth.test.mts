@@ -57,7 +57,7 @@ const { db } = await import("../src/lib/server/store.ts");
 type StoredTxn = import("../src/lib/server/store.ts").StoredTxn;
 const { startOfEatDay, eatDateLabel, EAT_OFFSET_MS } = await import("../src/lib/server/report-money.ts");
 const { currentPackPeriod, packPeriodBounds } = await import("../src/lib/server/report-pack.ts");
-const { REPORT_CATALOGUE, reportCoverage, buildDailyOps, buildFiuSar, buildSxRegister, buildKycReverify } =
+const { REPORT_CATALOGUE, reportCoverage, isWindowedReport, buildDailyOps, buildFiuSar, buildSxRegister, buildKycReverify } =
   await import("../src/lib/server/reports/catalogue.ts");
 const { asOf, calendarMonth, cumulative, eatDay, selectedWindow, sinceGenesis } =
   await import("../src/lib/server/reports/coverage.ts");
@@ -272,6 +272,55 @@ console.log("\n── 4 · the window read IS the window declared IS the window 
   await assertReadMatchesDeclared("fiu-sar", () => buildFiuSar(GEN), declaredMonth, [`${p}-01`]);
 }
 
+/* ══ §4b · A CALENDAR-MONTH REPORT CAN BE ASKED FOR **WHICH** MONTH ══════════════════════════
+ * 🔴 `buildGbtMonthly` and `buildFiuSar` always took a `packPeriod` and NO caller ever passed one,
+ * so the route could only ever serve `currentPackPeriod()`. The pack card's Download sat beside
+ * that card's own `periodLabel` and sha256 and, once the EAT month rolled over, handed over a
+ * DIFFERENT MONTH than the heading above it.
+ * ⭐ The assertion is a DELTA: ask for a month that is NOT the default and require the printed
+ * period AND the bounds read from SQL to BOTH move to it. "It accepted a period param" would pass
+ * against a builder that ignored it. */
+function assertKindsAreDisjoint(tag = "") {
+  /* ⛔ THE ROUTE PASSES `win ?? packPeriod` INTO ONE ARGUMENT, so a report that was both windowed
+     and calendar-month would receive whichever happened to be set — a `{start,end}` object where a
+     `YYYY-MM` string was expected.
+     ⭐ THE TWO SIDES ARE DIFFERENT MECHANISMS, which is exactly why this can drift: `windowed` is a
+     FLAG on the registry entry and `calendar-month` is a KIND on its coverage. Nothing but this
+     assertion stops one entry carrying both. Testing kind-vs-kind instead would be vacuous — a
+     single field cannot hold two values, so it could never fail. */
+  const ids = Object.keys(REPORT_CATALOGUE);
+  const windowed = ids.filter((id) => isWindowedReport(id));
+  const monthly = ids.filter((id) => reportCoverage(id as never).kind === "calendar-month");
+  const both = ids.filter((id) => isWindowedReport(id) && reportCoverage(id as never).kind === "calendar-month");
+  ok(`${tag}🔴 no report is BOTH windowed and calendar-month — the route's single build argument depends on it`,
+    both.length === 0,
+    both.length ? `BOTH: ${both.join(", ")}` : `windowed: ${windowed.join(", ")} · calendar-month: ${monthly.join(", ")}`);
+  ok(`${tag}CONTROL · both populations are non-empty, so the disjointness above is not vacuous`,
+    windowed.length > 0 && monthly.length > 0, `${windowed.length} windowed, ${monthly.length} monthly`);
+}
+console.log("\n── 4b · a calendar-month report honours an explicit period ──");
+{
+  assertKindsAreDisjoint();
+  const now = Date.now();
+  const deflt = currentPackPeriod(now);
+  // The month BEFORE the default — complete, in the past, and provably not what the default gives.
+  const [dy, dm] = deflt.split("-").map(Number);
+  const prev = new Date(Date.UTC(dy, dm - 2, 1));
+  const asked = `${prev.getUTCFullYear()}-${String(prev.getUTCMonth() + 1).padStart(2, "0")}`;
+  ok("CONTROL · the month asked for is NOT the builder's default, so the delta below is real",
+    asked !== deflt, `asked ${asked} · default ${deflt}`);
+
+  reset();
+  const r = await buildFiuSar(GEN, asked);
+  const want = packPeriodBounds(asked);
+  ok("🔴 an explicit pack period moves the bounds the builder reads",
+    ranges.length > 0 && ranges.every(([s, e]) => s === want.start && e === want.end),
+    `asked ${asked} → read ${ranges.map(([s, e]) => `${iso(s)} → ${iso(e)}`).join(" ; ") || "(nothing)"}`);
+  ok("🔴 …and moves the period the document PRINTS",
+    r.meta.period.includes(`${asked}-01`) && !r.meta.period.includes(`${deflt}-01`),
+    r.meta.period);
+}
+
 /* ══ §5 · BOTH RENDERERS CARRY THE PERIOD ════════════════════════════════════════════════════
  * 🔴 `meta.period` was set by all nine builders and printed by neither renderer. A grep for
  * `meta.period` in pdf.ts would "prove" the fix and prove nothing about the page.
@@ -425,6 +474,41 @@ if (!PROVE_RED) {
       run: (tag) => {
         const invented = withDefect(asOf(), { bounds: (n) => ({ start: n - 30 * DAY, end: n }) });
         assertNoBounds([["as-of", invented]], tag);
+      },
+    },
+    {
+      name: "a calendar-month builder ignores the period handed to it (the state every caller shipped in)",
+      expect: "🔴 an explicit pack period moves the bounds the builder reads",
+      run: async (tag) => {
+        /* The defect is planted at the CALL: drop the period argument, which is exactly what every
+           caller did until 2026-09-28, and require the delta assertion to notice that the bounds
+           never left the default month. */
+        const deflt = currentPackPeriod(Date.now());
+        const [dy, dm] = deflt.split("-").map(Number);
+        const prev = new Date(Date.UTC(dy, dm - 2, 1));
+        const asked = `${prev.getUTCFullYear()}-${String(prev.getUTCMonth() + 1).padStart(2, "0")}`;
+        reset();
+        const r = await buildFiuSar(GEN); // ⛔ the period is NOT passed
+        const want = packPeriodBounds(asked);
+        ok(`${tag}🔴 an explicit pack period moves the bounds the builder reads`,
+          ranges.length > 0 && ranges.every(([s, e]) => s === want.start && e === want.end),
+          `asked ${asked} · read ${ranges.map(([s, e]) => `${iso(s)} → ${iso(e)}`).join(" ; ") || "(nothing)"}`);
+        ok(`${tag}🔴 …and moves the period the document PRINTS`,
+          r.meta.period.includes(`${asked}-01`) && !r.meta.period.includes(`${deflt}-01`), r.meta.period);
+      },
+    },
+    {
+      name: "a report is declared BOTH windowed and calendar-month (the route would hand a builder the wrong argument shape)",
+      expect: "🔴 no report is BOTH windowed and calendar-month — the route's single build argument depends on it",
+      run: (tag) => {
+        /* ⭐ THE PLANT ADDS THE FLAG, IT DOES NOT MOVE THE KIND. A first version flipped
+           `finance-window`'s kind to calendar-month, which EMPTIED the windowed population — the
+           disjointness then passed trivially and the vacuity control fired instead. A plant that
+           removes the population is not a plant on the property; it has to produce the exact
+           overlap the assertion looks for. */
+        const reg = REPORT_CATALOGUE as unknown as Record<string, { windowed?: boolean }>;
+        reg["gbt-monthly"].windowed = true; // now calendar-month AND windowed
+        try { assertKindsAreDisjoint(tag); } finally { delete reg["gbt-monthly"].windowed; }
       },
     },
     {

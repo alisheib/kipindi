@@ -179,8 +179,66 @@ client-side `Link` rewrites the URL, so the assertion read the old address and c
 page. The committed script waits for the URL instead. Same class as the notes already in memory
 about soft navigation — a red result is a claim about the instrument until the instrument is checked.
 
+### ✅ Commit 4 — the stale removed, and the last divergence closed
+
+**Stale removed (it was dead code, not documentation).**
+
+- `date-range.ts` carried its own `RANGE_PRESETS` + `RangePresetId` — a **second preset
+  vocabulary with ZERO readers** (only its own two lines and a doc-comment pointing at itself),
+  missing `28d`, `qtd` and `all`, three ids the resolver genuinely resolves and which live callers
+  genuinely pass as defaults. It contradicted `lib/query/windows.ts`, which was created in
+  September expressly to be the ONE home of these ids. **Deleted.**
+- `windows.ts` now also owns `RESOLVABLE_PRESETS` — the closed set the resolver understands — with
+  `FULL_PRESETS`/`PLAYER_PRESETS` proven at compile time to be subsets of it, and `resolveRange`'s
+  `defaultPreset` typed against it so an unresolvable default is a **compile error**. A module-load
+  check throws if the vocabulary and the resolver's arms ever disagree.
+- 🔴 **The `default:` arm self-recursed.** `default: return resolveRange({ range: defaultPreset },
+  now, defaultPreset)` re-enters `default` for any id the switch does not handle and recurses until
+  the stack dies — a crash, not a window. Latent only because all thirteen call sites happened to
+  pass a valid id. The arms are a pure non-recursive lookup now.
+- 🔴 **A repeated query param was a crash.** Seven pages hand raw Next `searchParams` straight in;
+  `?from=a&from=b` arrives as `string[]` and `parseEatLocal` called `.trim()` on it, taking out the
+  whole server component from a URL anyone can type. The resolver normalises to the first value.
+- `test:date-range` **23 → 30**: `qtd` and `28d` were only ever in a "sane and capped" sanity sweep
+  that a UTC-quarter `qtd` would have satisfied; both are now pinned to exact EAT instants with a
+  discriminating control, plus vocabulary↔resolver agreement and the two crash cases.
+
+**The last divergence closed.** The route now honours `?period=YYYY-MM` for entries whose declared
+coverage kind is `calendar-month` — read off the registry, not a second list of ids. Malformed and
+unfinished months are **refused with 400**, never coerced. The pack card links its own period, so
+the Download beside a card's `periodLabel` and sha256 can no longer serve a different month.
+⚠️ It still re-renders rather than re-serving the hashed bytes (a fresh `generatedAt` alone means
+the sha256 differs); that is stated in the tooltip and the remaining half is below.
+
+**Guard grew 34 → 39** with a §4b: an explicit period must move BOTH the bounds read from SQL and
+the period printed; and no entry may be both `windowed` and `calendar-month`, because the route
+passes `win ?? packPeriod` into one argument. Red proof **8/8**.
+
+⚠️ **The disjointness red case caught the wrong assertion first.** Flipping `finance-window`'s kind
+to `calendar-month` **emptied** the windowed population, so disjointness passed trivially and the
+vacuity control fired instead. A plant that removes a population is not a plant on the property —
+it has to produce the exact overlap the assertion looks for. It now sets the `windowed` flag on a
+calendar-month entry. (Also why the assertion compares the FLAG against the KIND: two different
+mechanisms that can genuinely disagree. Kind-vs-kind would be vacuous — one field cannot hold two
+values, so it could never fail.)
+
+⚠️ **`networkidle` is the wrong wait for this app, and it hid behind a warm cache.** The drive
+threw `TimeoutError` before a single assertion on a cold dev server: a 15s payment poll, a 60s
+lifecycle ticker and SSE heartbeats mean the network never goes idle. It "worked" the first time
+only because a warm `.next` answered before the pollers started. Every wait in the drive is now on
+the element the assertion is about.
+
+Verified this round: `typecheck` clean · **`npm run build` exit 0** · smoke **23/23** · artifacts
+**ALL 9 + the pack period honoured** (`?period=2026-06` produced a June document; malformed → 400;
+unfinished month → 400; a non-monthly report ignores it) · drive **CLEAN** on a cold server ·
+date-range **30** · report-window-truth **39** + red **8/8** · report-parity **50** ·
+report-window-reads **41** · finance-window **20** · report-cells **23** · report-note-truth **11** ·
+report-formats **8** · money-invariants **88** · filter-language green · i18n en=sw=zh=**2540**.
+
 ### ▶ Next
 
+- Storing the prepared pack artifact so Download re-serves the hashed bytes instead of re-rendering
+  (the month half is closed; this is the sha256 half).
 - The EAT stamps are proven in the suite at a pinned instant (2026-09-28T21:30Z, where the EAT day
   and the UTC day differ). A live generation between 21:00 and 24:00 EAT would confirm filename +
   reference + period agree on one day end-to-end in production.
@@ -206,9 +264,14 @@ about soft navigation — a red result is a claim about the instrument until the
   through Prisma with JS `Date`s and no raw SQL does date math on it — but any future
   `now()`/`current_date`/`AT TIME ZONE` on that column reads the DB session zone. Needs a migration;
   raise separately.
-- `date-range.ts` latent items: unguarded self-recursion on an unknown `defaultPreset` (`:178`),
-  `s.trim()` on a param Next can deliver as `string[]` (`:81`), and `RANGE_PRESETS` / `RangePresetId`
-  having **zero readers** while `datetime-range-filter.tsx:112-117` keeps a second, fuller list.
-- `docs/REPORTS-CHECK-2026-09.md` (untracked in `F:\kipindi-main`) is a prior session's audit and is
-  **stale in at least one place**: its REP-02, the console caption omitting `− Refunds`, is fixed —
-  the page prints `GGR = Stakes − Payouts − Refunds`. Re-verify before citing it.
+- ⛔ **`docs/REPORTS-CHECK-2026-09.md` IS DELIBERATELY UNTRACKED — DO NOT DELETE IT.**
+  `docs/PLAYER-QUERY-CAMPAIGN.md:1272` states that decision in as many words, and three separate
+  session close-outs in `LIVE-QA-CAMPAIGN.md` record leaving it (and `Ocean Logo/`) untouched
+  because they belong to another session. It was considered for deletion in the 2026-09-28 stale
+  sweep and **deliberately kept** on finding that rule.
+  ⚠️ **Two of its filed defects are already fixed on `main`, so do not act on it without
+  re-verifying.** REP-01 (the GGR matcher parsing 0): `reports-verify-live.mts` now matches
+  `/^GGR\b|gross gaming/i` **and** carries a "the GGR label was actually FOUND" control. REP-02
+  (the console caption omitting `− Refunds`): the page prints
+  `GGR = Stakes − Payouts − Refunds`. Its §2 technical-architecture drift register is a separate
+  subject whose figures are themselves now weeks old — re-derive, never quote.

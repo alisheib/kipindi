@@ -133,21 +133,23 @@ export async function ReportPackCard() {
           </span>
           <span className="font-mono text-[11px] text-text-tertiary">{kb(pack.artifact.sizeBytes)}</span>
           <CopyHash sha256={pack.artifact.sha256} />
-          {/* ⚠️ THIS LINK RE-RENDERS; IT DOES NOT RE-SERVE THE HASHED BYTES. The route builds a
-              fresh `buildGbtMonthly(userId, currentPackPeriod())` on every hit, so the download's
-              own sha256 cannot equal the one displayed beside it (a new `generatedAt` alone
-              guarantees that) — and once the EAT month rolls over, `currentPackPeriod()` moves and
-              the link serves a DIFFERENT MONTH than the `{pack.periodLabel}` printed above it.
-              Said here because the officer comparing a hash needs to know which of the two facts
-              the bytes answer to. ⛔ The real repair is for the route to accept the pack's
-              `?period=` and for prepare to store the artifact — both builders already take a pack
-              period and no caller passes one. Owner call, filed in
-              docs/REPORTS-WINDOW-TRUTH.md; not taken here. */}
+          {/* 🔴 THIS LINK USED TO NAME NO MONTH AT ALL. It was a bare
+              `/api/admin/reports/gbt-monthly?format=pdf`, and the route could only ever serve
+              `currentPackPeriod()` — so the moment the EAT month rolled over, the Download beside
+              this card's own `periodLabel` and sha256 served a DIFFERENT MONTH than the heading
+              directly above it. It now names the period THIS card is about, which the route
+              honours because `gbt-monthly`'s declared coverage kind is `calendar-month`.
+              ⚠️ It still RE-RENDERS rather than re-serving the hashed bytes — a fresh
+              `generatedAt` alone means the download's sha256 cannot equal the stored one. That is
+              said in the tooltip, because the officer comparing a hash has to know which of the
+              two facts the bytes answer to. Storing the prepared artifact is the remaining half
+              and is filed in docs/REPORTS-WINDOW-TRUTH.md; the month, which was the part that
+              could hand over the WRONG DOCUMENT, is closed here. */}
           <a
-            href="/api/admin/reports/gbt-monthly?format=pdf"
+            href={`/api/admin/reports/gbt-monthly?format=pdf&period=${encodeURIComponent(period)}`}
             target="_blank"
             rel="noopener noreferrer"
-            title={`Re-renders the monthly pack for ${period} from live data. The file you receive is a fresh render, so its sha256 will differ from the hash shown here.`}
+            title={`Monthly pack for ${pack.periodLabel} — the month this card is about. It is re-rendered from live data, so its sha256 will differ from the hash shown here.`}
             className="row-link ml-auto inline-flex items-center gap-1 font-mono text-caption text-royal-300 hover:underline"
           >
             <I.download s={12} /> Download

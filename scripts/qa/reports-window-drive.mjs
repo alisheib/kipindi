@@ -23,7 +23,13 @@ let bad = 0;
 const ok = (l, c, x = "") => { if (!c) bad++; console.log(`${c ? "PASS" : "FAIL"} ${l}${x ? ` — ${x}` : ""}`); };
 
 // ── 1 · the head button names the month it produces ──
-await page.goto(`${BASE}/admin/reports?range=today`, { waitUntil: "networkidle" });
+/* ⛔ NOT `networkidle`. This app holds a 15s payment poll, a 60s lifecycle ticker and SSE
+   heartbeats, so the network NEVER goes idle and the wait burns its whole timeout instead of
+   returning. It appeared to work once only because a warm `.next` answered before the pollers
+   started — on a cold dev server it threw TimeoutError before a single assertion ran. Wait for the
+   thing the assertion is actually about. */
+await page.goto(`${BASE}/admin/reports?range=today`, { waitUntil: "domcontentloaded" });
+await page.getByRole("heading", { name: "Reports" }).first().waitFor({ timeout: 120_000 });
 const head = await page.locator("body").innerText();
 ok("head names the pack's month, beside the rail", /Monthly pack · \w+ \d{4}/.test(head),
   head.match(/Monthly pack · \w+ \d{4}/)?.[0] ?? "(not found)");
@@ -35,8 +41,8 @@ await page.screenshot({ path: resolve(OUT, "01-head-today.png"), clip: { x: 0, y
 /* The tab is a client-side Link: networkidle resolves BEFORE the RSC navigation rewrites the
    URL, so a read taken there sees the old address and convicts a working link. Wait for the URL. */
 await page.locator('a[href*="tab=library"]').first().click();
-await page.waitForURL(/tab=library/, { timeout: 15000 });
-await page.waitForLoadState("networkidle");
+await page.waitForURL(/tab=library/, { timeout: 60_000 });
+await page.getByText("Maktaba ya ripoti", { exact: false }).first().waitFor({ timeout: 60_000 });
 ok("clicking 'Report library' KEEPS range=today AND tab=library",
   page.url().includes("range=today") && page.url().includes("tab=library"), page.url());
 
@@ -50,7 +56,8 @@ ok("the cadence chip now reads as a FILING cadence, not a window", /Filed (Daily
 await page.screenshot({ path: resolve(OUT, "02-library-cards.png"), fullPage: true });
 
 // ── 4 · an unreadable custom bound is SAID, not swallowed ──
-await page.goto(`${BASE}/admin/reports?range=custom&from=2026-09-20T13:00:00.000Z`, { waitUntil: "networkidle" });
+await page.goto(`${BASE}/admin/reports?range=custom&from=2026-09-20T13:00:00.000Z`, { waitUntil: "domcontentloaded" });
+await page.getByText(/could not be read as a date/i).first().waitFor({ timeout: 60_000 }).catch(() => { /* asserted below */ });
 const warned = await page.locator("body").innerText();
 ok("a pasted ISO instant in ?from is reported as unreadable", /could not be read as a date/i.test(warned));
 ok("…and it says the substituted window reaches the report too", /windowed report/i.test(warned));
