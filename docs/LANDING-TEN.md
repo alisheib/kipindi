@@ -66,16 +66,21 @@ withholds. Not a defect to fix quietly — a number to rule on.
 3. **The small R7 build** — retire "Tabiri matukio. Si bahati." on all five surfaces it reaches.
 4. **D3** — WP5 the pick slip, V20, the chat bubble under sheets. Then WP15/V23, WP19, WP20/V24, D5.
 
-**🔴 THREE CONTRADICTIONS ARE ALI'S, AND THEY BLOCK ROWS:**
-1. **WP20's 7-day line** says "640px and wider only". `globals.css` records the opposite AS ALI'S OWN
-   RULING (D49, §4 decision 11, 2026-09-23): the band stays wherever real history exists and is only
-   trimmed below 640. One must give. V24 is blocked behind it.
-2. **A literal V23 would convict the coin.** The delivery allows transform/opacity only; this repo's
-   shipped policy is transform/opacity/**filter** (`motion.css`), and `.gilt-metal:hover` uses
-   `filter: brightness` — which is the centre coin's own fill.
-3. **The 12px type floor does not exist** and cannot be adopted as written: the repo's floor is 12.5px
-   as a RATCHET with 744 licensed sub-floor sites, `test:type-scale` is not in `predeploy`, and the
-   18+ roundel is 11px in a 28px circle, not 12 in 30.
+**✅ THE THREE CONTRADICTIONS ARE ANSWERED — Ali, 2026-09-28: *"take all decisions yourself based on what
+suits the architecture more and makes the platform more perfect."* Recorded as R11–R14 in the manifest:**
+1. **R11 · the 7-day line: D49 STANDS**, the delivery is overruled. The band is TRIMMED below 640, never
+   removed. The delivery's clause protects the first-screen budget, and V15 measures that budget directly —
+   0 on 33 production cells with the band present. V24 asserts the trim, not the absence. **WP20/V24 unblocked.**
+2. **R12 · V23 forbids animating LAYOUT; `filter` is allowed.** Read literally the delivery's rule convicts
+   the platform's own money control (`.gilt-metal:hover` animates `filter: brightness`, the coin's fill).
+   The reason behind "transform and opacity" is that neither invalidates layout, and `filter` satisfies it.
+   **V23 unblocked**, written against the reason rather than the wording.
+3. **R13 · the repo's 12.5px RATCHET is the enforcement**, not the delivery's "12 with no exceptions" — which
+   would be either unenforced prose or a 744-site change. The binding rule is that **no NEW sub-floor site may
+   be added**; the ratchet may only shrink.
+4. **R14 · the depth floor stays at 10; the SKELETON is what is wrong.** `.mcardp-traders` is not rendered
+   when the count is withheld, but `--mcard-h` still sums `--mcard-traders-h: 24px` into every card — so the
+   `/markets` skeleton over-reserves 24px on nearly every market. **WP19 owns it**, with its CLS-0 requirement.
 
 **⭐ R10 (Ali, 2026-09-28) reversed R1's zero clause** — the header shows the balance at EVERY value,
 "TZS 0" included, because *"user should know he's 0"*. It travels with a second half: the Deposit
@@ -194,7 +199,7 @@ once, on different things.
 | WP16 | i18n: every new key in en, sw and zh | 🔨 | 54f8199b | D1's keys in all three (`test:i18n`); sw/zh drafts carry the native-review marker (rows SW, ZH) |
 | WP17 | Accessibility: heading order, no nested controls, dialog semantics | 🔨 | 54f8199b | heading order and split row links live; dialog semantics arrive with the Wallet (WP14) and the slip (WP5) |
 | WP19 | Platform: analytics events with their `source`, empty states, static skeletons, landing flags | ⬜ | | ⛔ No client event emitter exists: the only events in `src/` are a `page_view` and the `/api/pv` beacon, and `gtag` is not exported. Any `deposit_tap` must respect `gaExcluded` and consent |
-| WP20 | World-benchmark: board search (16px so iOS does not zoom), the 7-day line at 640+, loading skeletons at final heights | ⬜ | | ⚠️ The 7-day clause CONTRADICTS Ali's own D49 ruling (2026-09-23, `globals.css`): the band stays wherever real history exists and is only trimmed below 640. One of the two must give — Ali's call |
+| WP20 | World-benchmark: board search (16px so iOS does not zoom), the 7-day line at 640+, loading skeletons at final heights | ⬜ |  | ✅ **R11 UNBLOCKS THIS**: the 7-day line is TRIMMED below 640, not removed (D49 stands over the delivery). Still to build: the board search (16px so iOS does not zoom) and its empty state, and the loading skeletons at final heights — which is also where **R14's 24px skeleton over-reserve** is fixed |
 | RG | Drop the RG line above the footer; chat bubble hides under a sheet | 🔨 | 54f8199b | RG line dropped, live 2026-09-26 (R4(5)); the chat bubble under a sheet ships with D3 (R4(7)) |
 | V15 | Gate: first screen at 360 × 740 | ✅ | 54f8199b | production 2026-09-26: 0 findings; RED PROVED on production |
 | V16 | Gate: no promised winnings | ✅ | 54f8199b | production 2026-09-26: 0 findings; RED PROVED on production |
@@ -204,8 +209,8 @@ once, on different things.
 | V20 | Gate: sheets trap focus, close on Esc, respect the safe area | ⬜ | | |
 | V21 | Gate: the placement map, by bounding box | ⬜ | | |
 | V22 | Gate: the bottom rail and its centre coin — centred ±1px, a 14px rise, the coin's rect inside a needle keep-out, the rail's row height unchanged, the footer's reserve still clearing it, no English rail label ellipsised | ✅ | 37bde8a5 | production 2026-09-28: 0 findings; **RED PROVED** on production (`RED=V22 --cell=base-360-sw`, plant moved the coin 154→174, V22 0→1, no collateral). ⚠️ Asserts the RISE rather than the CSS value: the concept's rail has 56px slots and ours has 64px, and `margin-top:-14px` — the obvious reading — measured a **7px** rise. ⚠️ Not applicable at ≥1024 (`lg:hidden`) and says so rather than passing. ⚠️ "/results marks More as current" is NOT in it — a different route, and More's items are not in the DOM until it opens; it belongs with `test:section-rail` |
-| V23 | Gate: motion audit — transform/opacity only, no per-second page re-render, timers pause when hidden | ⬜ | | ⚠️ A LITERAL V23 WOULD CONVICT THE COIN. The repo's shipped policy is transform/opacity/**filter** (`motion.css`), and `.gilt-metal:hover` uses `filter: brightness` — which is the coin's own fill. Ali's call before it is built |
-| V24 | Gate: board search filters within one frame; the empty state renders; the 7-day chart's presence follows its width rule | ⬜ | | Blocked behind WP20, and behind the D49 contradiction above |
+| V23 | Gate: motion audit — transform/opacity only, no per-second page re-render, timers pause when hidden | ⬜ |  | ✅ **R12 UNBLOCKS THIS**: it forbids animating anything that triggers LAYOUT — width, height, top, left, margin, padding — and allows transform, opacity and `filter`. Written against the reason behind the delivery's wording, because the wording as written convicts `.gilt-metal:hover`, the coin's own fill |
+| V24 | Gate: board search filters within one frame; the empty state renders; the 7-day chart's presence follows its width rule | ⬜ |  | ✅ **R11 UNBLOCKS THIS**: it asserts the 7-day line is TRIMMED below 640 and full from 640, not that it is absent. Still behind WP20's search |
 | V25 | Gate: one Deposit per screen (UPDATE-2026-09-28 §5) — below 1024 none in the header, exactly one in the rail, none in the hero below 640; at 1024 and up no rail, at most one header pill, none for a visitor | ✅ | 37bde8a5 | production 2026-09-28: 0 findings; **RED PROVED** on production (`RED=V25 --cell=base-768-sw`, plant injected a second header Deposit, V25 0→1, no collateral). ⛔ Population is scoped by REGION, never page-wide — `cashback-promo.tsx` is a legitimate second `/wallet/deposit` CTA. ⛔ Counts what is RENDERED, not the DOM. ⚠️ The signed-in FLOOR at ≥1024 is not asserted: "exactly one" cannot tell a held wallet (correctly none) from a missing pill, because the rail that reveals held is gone at that width. Measured on a local seeded host instead (Ali's ruling, 2026-09-28) |
 | GATE | `qa:landing-ten` V1–V14 clean on production (V3, V14 open by R4); `npm run test:all` + typecheck green | ⬜ |  | **Production 2026-09-28 after `03cf7df9`, 33 of 33 base cells measured — 20 of 22 classes CLEAN**: V1, V2, V5–V18, V21, V22, V25 and V8 all 0. **V12 0** (it read 36 for one day — see below) and **V18 0** (it read 1,584). Two classes remain, each with a named owner that is not this programme's: **V3 ×12** the chat bubble over a price on phones — Ali's open call; **V4 ×36** `.ticker-pause` at 40×31, the LIVE strip's own control, sized to the strip on purpose by that lane (§0 trap 11). ⭐ V12's 36 were the gate being WRONG and the product being right: C1 made a one-sided settlement report "refunded", which is true — every stake goes back at zero fee when one pool is empty — and V12's rule predated that state. The strip now emits `data-settled-reason` and V12 is narrowed to the dishonesty it was born for (a decided market NOBODY STAKED), with a missing reason still treated as the finding. `test:all` is red on OTHER lanes' ratchets (type-scale, stacking, tap-target, decomment, eyebrow-roles, two red-anchors §3 anchors) — each red on clean `origin/main` too. R4 |
 
