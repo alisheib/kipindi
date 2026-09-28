@@ -1,14 +1,31 @@
 /**
- * The landing hero — v3 (docs/design-system/v4-2026-09-26-landing-ten, WP2 + WP8).
+ * The landing hero — v3 (docs/design-system/v4-2026-09-26-landing-ten, WP2 + WP8), rebuilt
+ * 2026-09-27 from `specs/hero-v3.md` under the owner's rulings R7, R8 and R9 (INHERIT-MANIFEST).
  *
- * ── WHAT v3 CHANGED, AND WHY ──────────────────────────────────────────────────────────────────
- * The hero used to open with the brand line and then the proof rail, the conviction bar and a
- * four-row board — so on a phone the first screen held three figures and a list, and the lede, the
- * two CTAs and the one live card all sat below it. A first-time visitor learnt the size of the book
- * before learning what the book IS. v3 puts the order a reader needs first: what 50pick is (eyebrow,
- * brand line, lede) → a live market (the featured card) → what to do (CTAs) → why to trust it (the
- * trust lines). The proof rail, the conviction bar and the closing-soonest board keep every rule
- * they had and move into their own section directly below (`LandingProof`).
+ * ── THE ORDER, AND WHY ───────────────────────────────────────────────────────────────────────
+ * claim → h1 → lede → trust rows → featured card → CTAs → sign-off. What 50pick is (the claim,
+ * "Tanzania's first licensed prediction market"), the question it asks in the reader's own
+ * language (the h1, "NDIO au HAPANA?"), what you do and what happens (the lede, two designed
+ * lines), why to trust it (18+ · the Board's licence · the helpline; the wallets that pay out),
+ * then a live market, then what to press, then the brand line as a sign-off. The trust rows sit
+ * ABOVE the card since R7: after the card and the CTAs they never reached a phone's first screen
+ * (ACCEPTANCE K29). They are the same rows for a visitor and a player. The proof rail, the
+ * conviction bar and the closing-soonest board keep every rule they had in their own section
+ * directly below (`LandingProof`).
+ *
+ * ⛔ THE GAMBLING-WARNING SENTENCE IS NOT IN THE HERO (R7(2)). The footer carries it, with the
+ * helpline and the limit links, on every page; the hero keeps one quiet row — 18+, the licence line,
+ * the helpline number. `npm run test:hero-copy` §4 fails if `stopGambling` comes back in here.
+ *
+ * ⛔ "FIRST" IS GATED. The claim reads `home.heroClaimFirst` only while `FIRST_LICENSED_EVIDENCE()`
+ * (support-config.ts, its one home) returns a record — set 2026-09-27 by R9, the owner's attestation.
+ * Setting it to null returns every language to "Licensed prediction market · Tanzania" in one change.
+ *
+ * ⚠️ SPACES. Every space between two elements is an explicit `{" "}` or sits inside a dict string:
+ * SWC has dropped the whitespace around JSX expressions on production before.
+ * ⚠️ `brand.tsx` is a "use client" module. `FiftyWordmark` and `FiftyMark` are rendered here as JSX
+ * only — calling a helper exported by a client module from this server component once took every
+ * page down while the typecheck and the build stayed green.
  *
  * ⭐ ONE DOM, PLACED BY GRID AREAS — never a second copy. Below 1024 the three blocks stack in
  * source order (intro → card → act); from 1024 the intro and the act share the left column and the
@@ -33,11 +50,12 @@
 import Link from "next/link";
 import { I, categoryGlyph } from "@/components/ui/glyphs";
 import { MarketCard } from "@/components/markets/market-card";
-import { TippingBar } from "@/components/brand";
+import { FiftyMark, FiftyWordmark, TippingBar } from "@/components/brand";
 import { fill, formatNumber, formatTzs, formatTzsCompact } from "@/lib/utils";
 import { pickLocalized } from "@/lib/localized";
 import { timeLeftLabel } from "@/lib/markets/time-left";
-import { HELPLINE, HELPLINE_TEL } from "@/lib/support-config";
+import { FIRST_LICENSED_EVIDENCE, HELPLINE, HELPLINE_TEL } from "@/lib/support-config";
+import { railListParts } from "@/lib/rail-list";
 import type { Dict, Locale } from "@/lib/i18n-dict";
 import type { HeroFigures, HeroRow } from "@/lib/markets/hero";
 import { sideWord } from "@/lib/side-label";
@@ -65,19 +83,23 @@ type Props = {
   cards: HeroCardData;
   /** Signed in only — see LandingMine. */
   mine?: LandingMine | null;
+  /**
+   * The wallet names the second trust row may print — `heroRailNames()` (server/payout-rails.ts):
+   * only rails whose payout path is live and that no officer has paused (R8(6)). Empty → no row.
+   */
+  rails: readonly string[];
 };
 
 /** Escape a word for use inside a RegExp — the side words are data, not patterns. */
 const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 /**
- * A line whose YES and NO words wear the outcome accents.
+ * A line whose YES and NO words wear the outcome accents — the sign-off, "The wisdom of YES & NO."
  *
  * The brand line is one dict string, identical in all three locales, and its words are the English
- * YES/NO. ⭐ The sub-line under it (sw and zh only — MOBILE-VISUAL ruling 12) is the reader's own
- * reading and carries the reader's own side words, so it is inked with the SAME words the buttons
- * and the conviction bar use (`sideWord`), not with a second list typed here. Tokenising the shipped
- * sentence keeps each word in ONE home while still colouring it.
+ * YES/NO, so it is inked with those two words. Tokenising the shipped sentence keeps each word in
+ * ONE home while still colouring it. (Until 2026-09-27 this also inked the sw/zh sub-line under the
+ * English h1; R7(3) retired both — the h1 is now the question in the reader's language, `Ask`.)
  * ⚠️ The boundaries are Unicode letter lookarounds, not `\b`: `\b` knows only ASCII, so it could
  * never isolate 是 or 否, and an ASCII-only matcher is exactly how a translated line silently loses
  * its inks. A word inside a longer word ("NOTE") is still not repainted.
@@ -100,50 +122,117 @@ function Inked({ text, yes, no }: { text: string; yes: string; no: string }) {
 }
 
 /**
- * The trust lines — licence and 18+, mobile money, the RG line with the helpline, named sources.
+ * The claim — "50pick │ Tanzania's first licensed prediction market" (spec §4; R9).
  *
- * ⭐ NOT ONE NEW REGULATED SENTENCE. Every string is read from the key the footer or the trust band
- * already ships (`footer.licensedByGbt`, `footer.stopGambling`, `footer.helpline`, `home.trustCell3H`,
- * `home.trustCell1H`), and the helpline comes from `support-config.ts`, its one home. RG and licence
- * wording is assessed, so a paraphrase would be a new claim to assess.
- * ⭐ THE ORDER IS THE FIRST SCREEN'S. The delivery wants licence, 18+, mobile money AND the helpline on
- * a phone's first screen (its ACCEPTANCE K29 and placement map P15), while its own phone order puts
- * these lines after the CTAs — below 740px. So they come BEFORE the CTAs, in the SOURCE and therefore
- * on screen, at every width: a CSS `order` would have made keyboard and screen-reader order disagree
- * with what is seen (WCAG 1.3.2 / 2.4.3 — the v3 review). Within the list: what a first-time visitor
- * must see first, "named sources" last because the featured card already states its source.
- * INHERIT-MANIFEST L18.
- * ⚠️ The licence NUMBER is not repeated here — the footer carries it on every page (K39), as the
- * delivery's own hero omits it; the line stays short enough for the first screen.
+ * ⭐ A CLASS OF ITS OWN, NOT THE SHARED EYEBROW: `.kp-hero__eyebrow` also styles the section labels
+ * further down the page, and the claim is the brightest small text on the first screen (`--text`,
+ * mono 600), where those are quiet labels. Its tracking joins the one 0.14em list in globals.css.
+ * ⭐ THE WORDMARK IS THE LOGO USED AS A LOGO — below 1280 the header shows only the mark, so the name
+ * "50pick" reaches the first screen here. From 1280 the header carries the wordmark and this one is
+ * hidden (CSS), with its rule.
+ * ⛔ "FIRST" IS READ ONLY INSIDE THE EVIDENCE BRANCH BELOW. `test:hero-copy` §1 fails if
+ * `heroClaimFirst` is read anywhere else, or if any other string claims a first.
+ * The text is stored in sentence case; CSS does the capitals.
+ */
+function Claim({ t }: { t: Dict }) {
+  return (
+    <p className="kp-hero__claim">
+      <span className="kp-hero__claim-mark"><FiftyWordmark size={15} tz={false} /></span>{" "}
+      <span className="kp-hero__claim-rule" aria-hidden />{" "}
+      <span className="kp-hero__claim-text">{FIRST_LICENSED_EVIDENCE() ? t.home.heroClaimFirst : t.home.heroClaim}</span>
+    </p>
+  );
+}
+
+/**
+ * The h1 — the question in the reader's language: "NDIO au HAPANA?" · "YES or NO?" · "是还是否？"
+ * (INHERIT-MANIFEST R7(3)).
+ *
+ * ⭐ THE SIDE WORDS ARE THE BUTTONS' OWN WORDS BY CONSTRUCTION: `sideWord(t, …, "MARKET")` fills them,
+ * so the headline cannot say "NDIYO" while the buttons say "NDIO". Each wears its outcome ink (§B2);
+ * the connective ("au" / "or" / "还是") is the quiet word, one weight of the same face.
+ * ⭐ TWO GROUPS THAT DO NOT BREAK INSIDE: "NDIO au" and "HAPANA?". The only break is the dict string's
+ * own space after the connective (none in zh, which fits one line), so a narrow screen reads two
+ * designed lines, never "NDIO" alone over "au HAPANA?".
+ * ⛔ No `lang` attribute: since R7(3) the h1 IS in the page's language.
+ * `test:hero-copy` §2 pins `{yes}` before `{no}`, each exactly once, in every locale; the fallback
+ * below only keeps a malformed string readable.
+ */
+function Ask({ t }: { t: Dict }) {
+  const yes = sideWord(t, "YES", "MARKET");
+  const no = sideWord(t, "NO", "MARKET");
+  const s = t.home.heroAsk;
+  const a = s.indexOf("{yes}");
+  const b = s.indexOf("{no}");
+  if (a < 0 || b < a) return <h1 className="kp-hero__headline">{fill(s, { yes, no })}</h1>;
+  const between = s.slice(a + "{yes}".length, b);
+  const conn = between.trimEnd();
+  const gap = between.slice(conn.length);
+  return (
+    <h1 className="kp-hero__headline">
+      {s.slice(0, a)}
+      <span className="kp-hero__grp">
+        <span className="kp-hero__side" data-side="yes">{yes}</span>
+        <span className="kp-hero__conn">{conn}</span>
+      </span>
+      {gap}
+      <span className="kp-hero__grp">
+        <span className="kp-hero__side" data-side="no">{no}</span>
+        <span className="kp-hero__q">{s.slice(b + "{no}".length)}</span>
+      </span>
+    </h1>
+  );
+}
+
+/**
+ * The trust rows — ONE list, the same for a visitor and a player, above the featured card.
+ *
+ *   row 1 · 18+ · "Licensed by the Gaming Board of Tanzania." · the helpline, a `tel:` link
+ *   row 2 · "Deposit and withdraw with M-Pesa, Airtel Money, HaloPesa or Mixx by Yas."
+ *
+ * ⭐ ROW 1 IS THE FOOTER'S OWN WORDS. `footer.eighteenPlus`, `footer.licensedByGbt` and
+ * `footer.helpline` are assessed keys, reused verbatim, and the number is `HELPLINE()` from
+ * `support-config.ts`, its one home. The gambling-warning SENTENCE is not here (R7(2)): the footer
+ * keeps it on every page. The licence NUMBER stays in the footer too (K39).
+ * ⭐ ROW 2 NAMES ONLY WALLETS THAT PAY OUT (R8(6)). `rails` is computed on the server from the money
+ * path's own definitions (`server/payout-rails.ts`) and joined by `Intl.ListFormat` in the reader's
+ * language (`rail-list.ts`): the names are never typed into the dictionary, and a rail an officer has
+ * paused is not named while it is paused. No rails → no row, never "Deposit and withdraw with ."
+ * ⭐ WHY ABOVE THE CARD: on a phone the rows after the card and the CTAs began below the first screen,
+ * so 18+, the licence and the helpline never reached it (K29, P15). In the SOURCE, not by CSS
+ * `order` — keyboard and screen-reader order must match the screen (WCAG 1.3.2).
+ * ⚠️ Label and number are separate unbreakable runs, so under large text the line breaks BETWEEN
+ * them and never inside "0800 11 0011" (the footer's own shape).
  * ⛔ No `aria-label` on the roundel: "18+" is its text, and ARIA prohibits a label on a generic span.
  * `role="list"`: WebKit drops the list role from a `ul` styled `list-style: none` (VoiceOver on iPhone).
+ * ⚠️ `ul.kp-hero__trust` is read by the landing gate (V8's text map, V21) and by capture.mjs.
  */
-function TrustLines({ t }: { t: Dict }) {
+function TrustLines({ t, locale, rails }: { t: Dict; locale: Locale; rails: readonly string[] }) {
+  const parts = railListParts(locale, rails);
+  const at = t.home.heroRails.indexOf("{rails}");
+  const before = at < 0 ? t.home.heroRails : t.home.heroRails.slice(0, at);
+  const after = at < 0 ? "" : t.home.heroRails.slice(at + "{rails}".length);
   return (
     <ul className="kp-hero__trust" role="list">
       <li>
         <span className="kp-rg__18">{t.footer.eighteenPlus}</span>
-        <span>{t.footer.licensedByGbt}</span>
-      </li>
-      <li>
-        <span className="kp-hero__trust-glyph" aria-hidden><I.phone s={16} /></span>
-        <span>{t.home.trustCell3H}</span>
-      </li>
-      <li>
-        <span className="kp-hero__trust-glyph" aria-hidden><I.headset s={16} /></span>
         <span>
-          {t.footer.stopGambling}{" "}
-          {/* Label and number are separate unbreakable runs, so under large text the line breaks
-              BETWEEN them and never inside the number (the footer's own shape). */}
+          {t.footer.licensedByGbt}{" "}
           <a className="kp-hero__tel" href={`tel:${HELPLINE_TEL()}`}>
-            <span>{t.footer.helpline}</span> <span>{HELPLINE()}</span>
+            <span>{t.footer.helpline}</span>{" "}<span>{HELPLINE()}</span>
           </a>
         </span>
       </li>
-      <li>
-        <span className="kp-hero__trust-glyph" aria-hidden><I.shieldcheck s={16} /></span>
-        <span>{t.home.trustCell1H}</span>
-      </li>
+      {parts.length > 0 && (
+        <li>
+          <span className="kp-hero__trust-glyph" aria-hidden><I.mobileMoney s={16} /></span>
+          <span>
+            {before}
+            {parts.map((p, i) => (p.rail ? <span key={i} className="kp-hero__rail">{p.text}</span> : p.text))}
+            {after}
+          </span>
+        </li>
+      )}
     </ul>
   );
 }
@@ -201,11 +290,9 @@ function QuestionRow({ row, t, locale }: { row: HeroRow; t: Dict; locale: Locale
   );
 }
 
-export function LandingHero({ figures, t, locale, isAuthed, nowMs, cards, mine }: Props) {
+export function LandingHero({ figures, t, locale, isAuthed, nowMs, cards, mine, rails }: Props) {
   const { featured } = figures;
   const chart = featured ? cards.charts.get(featured.id) : undefined;
-  const yes = sideWord(t, "YES", "MARKET");
-  const no = sideWord(t, "NO", "MARKET");
 
   return (
     <section className="kp-hero" data-band="hero">
@@ -213,34 +300,20 @@ export function LandingHero({ figures, t, locale, isAuthed, nowMs, cards, mine }
           half blank (and a doubled gap on a phone) — the pitch and the CTAs take the whole width. */}
       <div className={featured ? "kp-hero__inner" : "kp-hero__inner kp-hero__inner--solo"}>
         <div className="kp-hero__intro">
-          {/* 🔴 `text-balance` ON EVERY EYEBROW. These are short uppercase mono labels, and when one
-              wraps it drops its last token alone ("TANZANIA · DAR ES SALAAM · TANGU / 2026" at 320).
-              A one-word second line under a letter-spaced label reads as a mistake rather than a
-              wrap. V8b in the landing gate found them. */}
-          <p className="kp-hero__eyebrow text-balance">
-            <span className="kp-hero__tick" aria-hidden />
-            {t.home.heroLocation} · {t.home.heroEst}
+          {/* The claim and the h1 are one heading group: the claim names what 50pick is, the h1 asks
+              the question it exists for. `hgroup` allows a paragraph before its heading. */}
+          <hgroup className="kp-hero__lockup">
+            <Claim t={t} />
+            <Ask t={t} />
+          </hgroup>
+          {/* Two designed lines, each short enough never to wrap at 360 in any language: the product's
+              own verbs ("weka dau" is the stake button's word), then what happens. Two spans, one
+              sentence pair: the explicit space keeps the text whole for a screen reader. */}
+          <p className="kp-hero__lede">
+            <span className="kp-hero__lede-l">{t.home.heroLedeAct}</span>{" "}
+            <span className="kp-hero__lede-l kp-hero__lede-l--pay">{t.home.heroLedePay}</span>
           </p>
-          {/* The brand line stays English in every locale; its accents are the English words. */}
-          {/* `lang="en"`: the brand line is English in every locale (ruling 12), so a Swahili or Chinese
-              screen reader must pronounce it as English (WCAG 3.1.2). */}
-          <h1 className="kp-hero__headline" lang="en">
-            <Inked text={t.home.heroHeadline} yes="YES" no="NO" />
-          </h1>
-          {/* ⭐ THE BRAND LINE STAYS ENGLISH AND GETS A READING UNDERNEATH IT (owner decision,
-              2026-09-24; MOBILE-VISUAL ruling 12). Rendered only where it says something new: in
-              English the two strings are identical by design, and repeating a sentence directly
-              under itself is worse than not translating it. Comparing the strings rather than
-              testing the locale means a new locale gets the sub-line by filling the key. */}
-          {t.home.heroHeadlineSub !== t.home.heroHeadline && (
-            <p className="kp-hero__sub">
-              <Inked text={t.home.heroHeadlineSub} yes={yes} no={no} />
-            </p>
-          )}
-          {/* Same `break-keep` exception as the trust bodies, for the same measured reason: in zh it
-              forbids breaking between characters, so the lede rendered three ragged lines where two
-              would do. See the note in trust-band.tsx. */}
-          <p className={`kp-hero__lede [overflow-wrap:anywhere]${locale === "zh" ? "" : " break-keep"}`}>{t.home.heroBody}</p>
+          <TrustLines t={t} locale={locale} rails={rails} />
         </div>
 
         {/* THE SAME MARKET THAT LEADS THE BOARD'S ORDERING — the most contested open market, never an
@@ -284,22 +357,32 @@ export function LandingHero({ figures, t, locale, isAuthed, nowMs, cards, mine }
         )}
 
         <div className="kp-hero__act">
-          <TrustLines t={t} />
           {/* TWO CTAs, not three — `Sign in` lives in the header at every width. Below 1024 they
-              follow the card and its trust lines (the delivery's placement map P4, and L18); from 1024
-              they sit under the lede and the trust lines. */}
+              follow the card (the delivery's placement map P4); from 1024 they sit in the left column
+              under the intro. A player gets their own block instead, with Set limits (WP14 part 2). */}
           {isAuthed ? (
             <SignedInAct t={t} mine={mine ?? null} />
           ) : (
-            <div className="kp-hero__ctas">
-              <Link href={"/auth/register" as never} className="btn btn-primary btn-xl rounded-pill kp-hero__cta">
-                {t.common.createAccount}
-                <I.arrowRight s={16} />
-              </Link>
-              <Link href={"/markets" as never} className="btn btn-ghost btn-xl rounded-pill kp-hero__cta">
-                {fill(t.home.heroBrowseAll, { n: figures.openCount })}
-              </Link>
-            </div>
+            <>
+              <div className="kp-hero__ctas">
+                <Link href={"/auth/register" as never} className="btn btn-primary btn-xl rounded-pill kp-hero__cta">
+                  {t.home.heroStart}
+                  <I.arrowRight s={16} />
+                </Link>
+                <Link href={"/markets" as never} className="btn btn-ghost btn-xl rounded-pill kp-hero__cta">
+                  {fill(t.home.heroBrowseAll, { n: figures.openCount })}
+                </Link>
+              </div>
+              {/* THE SIGN-OFF — the brand line, which was the h1 until R7(3) (2026-09-27). The mark is
+                  the logo used as a logo, not decoration (R4(1) untouched), and it is aria-hidden: the
+                  line is the sign-off's text. `lang="en"`: the brand line is English in every locale,
+                  so a Swahili or Chinese screen reader must pronounce it as English (WCAG 3.1.2) — the
+                  only `lang` in the hero (`test:hero-copy` §4). */}
+              <p className="kp-hero__signoff">
+                <span className="kp-hero__signoff-mark" aria-hidden><FiftyMark size={20} simplified /></span>{" "}
+                <span lang="en"><Inked text={t.home.heroHeadline} yes="YES" no="NO" /></span>
+              </p>
+            </>
           )}
         </div>
       </div>

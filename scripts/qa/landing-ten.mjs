@@ -31,9 +31,21 @@
  * ⛔ The UA keeps its HeadlessChrome marker: a spoofed Android UA once had /api/pv counting QA
  *    sweeps as real players.
  * ⛔ A failed read is not a zero. A cell that did not load is reported as ERROR, never as clean.
+ *
+ * ── HERO v3 (2026-09-27, specs/hero-v3.md §9) ─────────────────────────────────────────────────
+ * · 360 × 740 cells (sw/en/zh): the delivery's own phone frame. V15's line there is the real
+ *   bottom-rail top (≈675), not the 740 the 780-tall cells can afford.
+ * · V21 — below 640, the hero's trust rows 1–2 and its helpline `tel:` link end above V15's line
+ *   (ACCEPTANCE K29 + placement map P15: 18+, the licence, the helpline and the wallets on the
+ *   first screen). RED: move the trust list after the card.
+ * · V22 — the hero claim says "first" ONLY while `FIRST_LICENSED_EVIDENCE()` is set, never drops
+ *   "licensed", and no other text on the page (nor the title / share tags) claims a first. The
+ *   evidence state is read from `src/lib/support-config.ts` in THIS tree — the gate is run from the
+ *   commit it measures; override with FIRST_EXPECTED=1|0 when measuring a deploy built from another
+ *   commit. RED: plant a first-claim outside the gated claim.
  */
 import { pathToFileURL } from "node:url";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync, readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -61,6 +73,19 @@ if (RED === "V18" && !RED_PARTS.includes(RED_PART)) { console.error(`RED_PART mu
 const RED_TAG = RED === "V18" ? `V18-${RED_PART}` : RED;
 mkdirSync(OUT, { recursive: true });
 
+/* ── V22's expectation: is the "first" evidence set in this tree? ───────────────────────────
+   Read from the constant's one home rather than typed here. ⛔ An unreadable answer is not a
+   guess: the gate stops (exit 2) instead of measuring against an assumed state. */
+const FIRST_EXPECTED = (() => {
+  if (process.env.FIRST_EXPECTED === "1") return true;
+  if (process.env.FIRST_EXPECTED === "0") return false;
+  const src = readFileSync(join(REPO, "src/lib/support-config.ts"), "utf8");
+  if (/const FIRST_LICENSED_EVIDENCE_VALUE[^=]*=\s*null\s*;/.test(src)) return false;
+  if (/const FIRST_LICENSED_EVIDENCE_VALUE[^=]*=\s*\{/.test(src)) return true;
+  console.error("⛔ V22: cannot read FIRST_LICENSED_EVIDENCE_VALUE from src/lib/support-config.ts; set FIRST_EXPECTED=1|0");
+  process.exit(2);
+})();
+
 const UA_MOBILE = "Mozilla/5.0 (Linux; Android 13; SM-A145F) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.0.0 Mobile Safari/537.36";
 const UA_DESK = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.0.0 Safari/537.36";
 for (const ua of [UA_MOBILE, UA_DESK]) {
@@ -68,7 +93,9 @@ for (const ua of [UA_MOBILE, UA_DESK]) {
 }
 
 const WIDTHS = [
-  { w: 320, h: 640, mobile: true }, { w: 360, h: 780, mobile: true }, { w: 393, h: 852, mobile: true },
+  { w: 320, h: 640, mobile: true }, { w: 360, h: 780, mobile: true },
+  // hero v3: the delivery's own 360 x 740 frame — V15 and V21 measure against its real bottom rail.
+  { w: 360, h: 740, mobile: true, tag: "x740" }, { w: 393, h: 852, mobile: true },
   { w: 412, h: 915, mobile: true }, { w: 430, h: 932, mobile: true }, { w: 560, h: 900, mobile: true },
   { w: 768, h: 1024, mobile: false }, { w: 1024, h: 900, mobile: false }, { w: 1280, h: 860, mobile: false },
   { w: 1440, h: 900, mobile: false }, { w: 1920, h: 1080, mobile: false },
@@ -83,7 +110,7 @@ const STATE_WIDTHS = [{ w: 320, h: 640, mobile: true }, { w: 360, h: 780, mobile
 function buildCells() {
   const cells = [];
   for (const d of WIDTHS) for (const loc of LOCALES) {
-    cells.push({ pass: "base", id: `base-${d.w}-${loc}`, ...d, locale: loc, state: "returning" });
+    cells.push({ pass: "base", id: `base-${d.w}${d.tag || ""}-${loc}`, ...d, locale: loc, state: "returning" });
   }
   for (const d of STATE_WIDTHS) {
     // ⛔ `clienthop` EXISTS BECAUSE A HARD `goto` NEVER PAINTS `loading.tsx`. Next's route-level
@@ -514,7 +541,7 @@ const CHECKS = /* js */ `(() => {
        A single word on the last line is only a defect when the word is SHORT — a heading ending
        on "bwawa" is ordinary typography; one ending on "ok" is a widow. */
     const bad = [];
-    for (const el of document.querySelectorAll("h1, h2, h3, .kp-shead__h, .kp-hero__headline, .kp-step__h, .kp-hero__eyebrow")) {
+    for (const el of document.querySelectorAll("h1, h2, h3, .kp-shead__h, .kp-hero__headline, .kp-step__h, .kp-hero__eyebrow, .kp-hero__claim-text")) {
       if (!vis(el)) continue;
       // ⛔ A CLAMPED HEADING IS NOT A WIDOW. The card question wears a 3-line clamp with an
       // ellipsis; word ranges still resolve for the clipped remainder, so it reported "8 lines,
@@ -716,18 +743,23 @@ const CHECKS = /* js */ `(() => {
      the cell. A cell narrower than 360 is reported by V1/V2, not here — 740 is the delivery's frame.
      No featured card at all is a finding, not a pass: a first screen without a market is the exact
      state this class exists to catch. */
-  if (vw >= 360 && vw < 640) {
-    const bad = [];
-    /* ⚠️ THE FIRST SCREEN ENDS WHERE THE BOTTOM RAIL BEGINS. The delivery's frame has no rail; ours
-       keeps one (R1), fixed over the last ~64px of the viewport, and a button under it is not on the
-       screen. So the line is 740 or the top of any wide fixed bar pinned to the bottom, whichever is
-       higher on the page (found building v3: the budget read the 740 and ignored the rail). */
+  /* ⚠️ THE FIRST SCREEN ENDS WHERE THE BOTTOM RAIL BEGINS. The delivery's frame has no rail; ours
+     keeps one (R1), fixed over the last ~64px of the viewport, and a button under it is not on the
+     screen. So the line is 740 or the top of any wide fixed bar pinned to the bottom, whichever is
+     higher on the page (found building v3: the budget read the 740 and ignored the rail). Shared by
+     V15 and V21 (hero v3), so the two measure against ONE line. */
+  const firstScreenLine = () => {
     let line = 740;
     for (const el of document.querySelectorAll("body *")) {
       if (getComputedStyle(el).position !== "fixed" || !vis(el)) continue;
       const r = el.getBoundingClientRect();
       if (r.width > vw * 0.6 && r.bottom >= vh - 1 && r.top > vh * 0.6) line = Math.min(line, Math.round(r.top));
     }
+    return line;
+  };
+  if (vw >= 360 && vw < 640) {
+    const bad = [];
+    const line = firstScreenLine();
     const card = [...document.querySelectorAll(".kp-hero__card .mcardp")].find(vis);
     if (!card) bad.push({ what: "no featured market in the hero", measured: "0 visible .kp-hero__card .mcardp", where: "hero" });
     else {
@@ -740,6 +772,62 @@ const CHECKS = /* js */ `(() => {
     }
     push("V15", bad);
   } else push("V15", []);
+
+  /* ── V21 the trust rows reach the first screen (hero v3 · K29 + P15) ─────────────────────────
+     Below 640 the hero's trust rows — 18+ · the licence · the helpline, then the wallets — and the
+     helpline's own tel: link must END above V15's line. They sit above the card since R7 precisely
+     so that they do; before it, on a phone, they began under the bottom rail. Row 1 and the link
+     must exist; row 2 is measured when present (a rail an officer paused is not named, R8(6), so a
+     hero with every rail paused has no row 2 — true, not a defect). */
+  if (vw >= 360 && vw < 640) {
+    const bad = [];
+    const line = firstScreenLine();
+    const rows = [...document.querySelectorAll(".kp-hero .kp-hero__trust > li")].filter(vis);
+    if (!rows.length) bad.push({ what: "the hero shows no trust row", measured: "0 visible .kp-hero__trust > li", where: "hero" });
+    rows.slice(0, 2).forEach((li, i) => {
+      const b = Math.round(li.getBoundingClientRect().bottom + scrollY);
+      if (b > line) bad.push({ what: "trust row " + (i + 1) + " ends below the first screen", measured: b + "px > " + line + (line < 740 ? " (the bottom rail)" : ""), where: sel(li) + ' "' + textOf(li) + '"' });
+    });
+    const tel = [...document.querySelectorAll('.kp-hero a[href^="tel:"]')].find(vis);
+    if (!tel) bad.push({ what: "no helpline tel: link in the hero", measured: "0 visible .kp-hero a[href^=tel:]", where: "hero" });
+    else {
+      const b = Math.round(tel.getBoundingClientRect().bottom + scrollY);
+      if (b > line) bad.push({ what: "the helpline link ends below the first screen", measured: b + "px > " + line, where: sel(tel) + ' "' + textOf(tel) + '"' });
+    }
+    push("V21", bad);
+  } else push("V21", []);
+
+  /* ── V22 "first" only with its evidence, and never without "licensed" (hero v3 · R9) ─────────
+     The claim says "first" exactly when FIRST_LICENSED_EVIDENCE() is set in the tree this gate
+     runs from; it always says "licensed"; and no other visible text, the document title or the
+     share tags claim a first unless the evidence is set AND "licensed" rides with it. */
+  {
+    const bad = [];
+    const EXPECT_FIRST = ${JSON.stringify(FIRST_EXPECTED)};
+    const FIRST = /first licen[cs]ed|la kwanza (?:la utabiri )?lenye leseni|首家持牌|首个持牌/i;
+    const FIRST_ANY = /\\bfirst\\b[^.]{0,40}\\bprediction market|\\bsoko la kwanza\\b|首家|首个[^。]{0,12}预测/i;
+    const LICENSED = /licen[cs]ed|\\bleseni\\b|持牌/i;
+    const claim = [...document.querySelectorAll(".kp-hero__claim-text")].find(vis);
+    if (!claim) bad.push({ what: "no hero claim", measured: "0 visible .kp-hero__claim-text", where: "hero" });
+    else {
+      const t = (claim.textContent || "").trim();
+      const says = FIRST.test(t) || FIRST_ANY.test(t);
+      if (EXPECT_FIRST && !FIRST.test(t)) bad.push({ what: "the evidence is set but the claim does not say first", measured: JSON.stringify(t), where: sel(claim) });
+      if (!EXPECT_FIRST && says) bad.push({ what: "the claim says first with no evidence set", measured: JSON.stringify(t), where: sel(claim) });
+      if (!LICENSED.test(t)) bad.push({ what: "the claim dropped \\"licensed\\"", measured: JSON.stringify(t), where: sel(claim) });
+    }
+    for (const el of document.querySelectorAll("body *")) {
+      if (el.closest(".kp-hero__claim") || !vis(el)) continue;
+      const own = [...el.childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent).join(" ").trim();
+      if (own && (FIRST.test(own) || FIRST_ANY.test(own))) bad.push({ what: "a first-claim outside the gated hero claim", measured: JSON.stringify(own.slice(0, 60)), where: sel(el) });
+    }
+    const metas = [["<title>", document.title]].concat([...document.querySelectorAll('meta[property="og:title"], meta[property="og:description"], meta[name="description"], meta[name="twitter:title"]')]
+      .map((m) => [m.getAttribute("property") || m.getAttribute("name"), m.getAttribute("content") || ""]));
+    for (const [k, v] of metas) {
+      if ((FIRST.test(v) || FIRST_ANY.test(v)) && (!EXPECT_FIRST || !LICENSED.test(v))) bad.push({ what: "a first-claim in " + k + (EXPECT_FIRST ? " without \\"licensed\\"" : " with no evidence set"), measured: JSON.stringify(v.slice(0, 60)), where: k });
+    }
+    push("V22", bad);
+  }
 
   /* ── V16 no promised winnings (landing v3) ──────────────────────────────────────────────────
      Law 1 of the delivery and LAWS §C3: no "win TZS X" on an open market, no stake-times-multiplier
@@ -1015,8 +1103,11 @@ const CHECKS = /* js */ `(() => {
   }
 
   /* ── the text map V8 needs, compared across locales AFTER the sweep ──────────────────────── */
+  /* hero v3: the claim is mapped by its TEXT span. The whole \`.kp-hero__claim\` also holds the
+     "50pick" wordmark, and V8 skips any string containing a brand word — so mapping the paragraph
+     would have made V8 blind to an untranslated claim. */
   const textMap = {};
-  for (const s2 of [".kp-hero__headline", ".kp-hero__eyebrow", ".kp-lede", ".kp-shead__h", ".kp-step__h", ".kp-step__b", ".kp-trust__b", ".kp-hero__trust", ".kp-proof__cap"]) {
+  for (const s2 of [".kp-hero__headline", ".kp-hero__claim-text", ".kp-hero__eyebrow", ".kp-lede", ".kp-shead__h", ".kp-step__h", ".kp-step__b", ".kp-trust__b", ".kp-hero__trust", ".kp-proof__cap"]) {
     textMap[s2] = [...document.querySelectorAll(s2)].filter(vis).map((e) => (e.textContent || "").trim()).slice(0, 6);
   }
 
@@ -1198,6 +1289,21 @@ const REDS = {
         c.style.marginTop = "800px";
         const after = Math.round(c.getBoundingClientRect().top + scrollY);
         return { applied: after - before >= 700, note: "card top " + before + " -> " + after }; })()`,
+  // hero v3 — V21: the trust list goes back where it sat before R7, after the card (into the act
+  // block), which on a phone is below the first screen. The move itself is the plant.
+  V21: `(() => { const ul = document.querySelector(".kp-hero__trust"); const act = document.querySelector(".kp-hero__act");
+        if (!ul || !act) return { applied: false, note: "no .kp-hero__trust or .kp-hero__act" };
+        const before = Math.round(ul.getBoundingClientRect().bottom + scrollY);
+        act.prepend(ul);
+        const after = Math.round(ul.getBoundingClientRect().bottom + scrollY);
+        return { applied: act.contains(ul) && after > before, note: "trust list bottom " + before + " -> " + after }; })()`,
+  // hero v3 — V22: a first-claim OUTSIDE the gated claim. It fails in either evidence state, so one
+  // plant proves the check on any tree.
+  V22: `(() => { const host = document.querySelector("main") || document.body;
+        const p = document.createElement("p"); p.textContent = "Tanzania\u2019s first licensed prediction market";
+        p.style.cssText = "font-size:16px;color:#fff;position:relative";
+        host.prepend(p);
+        return { applied: p.getBoundingClientRect().height > 0, note: "planted a first-claim outside the hero claim" }; })()`,
   V16: `(() => { const host = document.querySelector("main") || document.body;
         const p = document.createElement("p"); p.textContent = "Win TZS 50,000 today";
         p.style.cssText = "font-size:16px;color:#fff;position:relative";
@@ -1478,7 +1584,8 @@ await browser.close();
 /* ── V8: a string identical across locales that is not a deliberate brand line ──────────────── */
 const BRAND_OK = ["The wisdom of YES & NO.", "50pick", "Juu na Chini"];
 const byLocale = {};
-for (const r of results) if (r.ok && r.pass === "base") { byLocale[r.locale] ??= {}; byLocale[r.locale][r.w] = r.textMap; }
+// Keyed by the cell id without its locale ("base-360x740"), not by width: two 360 cells exist since hero v3.
+for (const r of results) if (r.ok && r.pass === "base") { byLocale[r.locale] ??= {}; byLocale[r.locale][r.cell.replace(/-(?:sw|en|zh)$/, "")] = r.textMap; }
 const v8 = [];
 if (byLocale.sw && byLocale.en) {
   for (const w of Object.keys(byLocale.sw)) {

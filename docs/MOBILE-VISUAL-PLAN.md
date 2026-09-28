@@ -1363,6 +1363,12 @@ sub-claims turned out to be FALSE**, and a ruling made on the summary alone woul
 
 **12. Item 5 — the English hero headline on a Swahili-default page. RULED: keep the brand line, add the reader's
 own words beneath it.**
+> ⚠️ **SUPERSEDED IN PART 2026-09-27 — Ali's ruling R7(3)** (`docs/design-system/v4-2026-09-26-landing-ten/INHERIT-MANIFEST.md`;
+> spec `specs/hero-v3.md`): the hero's h1 is now the question in the reader's own language — *"NDIO au HAPANA?"* /
+> *"YES or NO?"* / *"是还是否？"*, its side words from `sideWord` — and the brand line *"The wisdom of YES & NO."* moves,
+> VERBATIM and still `lang="en"`, to the hero's sign-off (and stays the share-image line). The sub-line this ruling
+> added (`home.heroHeadlineSub`, `.kp-hero__sub`) is deleted. What stands: the brand line is never translated
+> (`IDENTICAL_OK`), and its YES/NO keep the outcome inks. Built on branch `landing-v3-hero`.
 - ⛔ **It is LAW, not drift.** `DESIGN_AUTHORITY.md:1491-1492` — *"`home.heroHeadline` is the brand line, verbatim
   in all three locales by Ali's call (PLAN-OF-RECORD §7b)"* — with a type spec built around it
   (`design-system/v3…/README.md:76`: `--type-display-1`, `YES` → `--hero-yes-accent`, `NO` → `--hero-no-accent`)

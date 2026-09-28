@@ -31,36 +31,51 @@ starting any of them**, or both lanes will build the same thing twice in the sam
 
 ## §0 · RESUME AT — the v3 build (reopened 2026-09-26)
 
-**State (2026-09-27):** D0 ✅, D1 ✅ (`54f8199b`), WP14 ✅ (the Wallet, `e9b4056c`), WP6 ✅ (`31662831`), WP14b ✅
-(`541a9e76`), and **WP12 — the Up & Down band, R5 "the Match" — pushed live 2026-09-28 on the owner's word ("push live what you have now") after five rounds of the four-expert
-frame panel on eight local drives** — 45 of 52 frames at 10 in round 5, the last four small fixes (the slip lands with
-the countdown in view, the Watch link's ring, a 12px floor on the playhead's window, S8's phrase) in this push and
-measured on production, not locally (record: §2.1 WP12 "Frame rating"). D2 step 0 (V18 + the gate's hardening) is live in the
-scripts; V18 reads 1,584 on production until WP3/WP4 add the attributes it reads (GATE row).
-**Next:** RESUME HERE (handover 2026-09-27 evening) — three more units are BUILT on their own branches (each by a build
-agent in its own worktree, code + unit guards only, NEVER rendered): render each in `C:\kipindi-landing-v3` after merging
-it, run its frame panel to 10, ship it, measure it on production — in this order:
-(1) **The hero (R7 + R9)** — branch `landing-v3-hero` (worktree `C:\kipindi-hero`, tip `751780f6`): "Tanzania's first
-licensed prediction market" (state P, `FIRST_LICENSED_EVIDENCE()` = 2026-09-27 citing R9), "NDIO au HAPANA?", the trust
-rows above the card, all four wallets named from the money path's own config, the neutral 18+ ink site-wide,
-`test:hero-copy` 13/0 + `red:hero-copy` 18/18; plus the native-review batch "official" → "public" claims (sw/zh/en) and
-"Machaguo yako"; the branch review's three findings fixed (one rail source for the hero and the trust band; `red:hero-copy` 20 caught, MISSED 0). Drive: `scripts/qa/landing-v3/verify-hero.sh` (served HTML per locale, six frame sizes × sw/en/zh,
-signed in, 130% text, focus/hover, the gate + REDs V15–V17/V21/V22). Merges into `landing-v3` without conflicts (trial).
-(2) **C1 · one price rule everywhere** — branch `landing-v3-c1` (`C:\kipindi-c1`, 10 commits to `c166f774` + the branch review's four fixes): R6(1) "One side
-only" everywhere, R6(2) `TIPPING_BAND = 3`, the phantom fee gone from the resolution panel AND four finance/admin readers
-(`chargedFee`, `test:charged-fee` 53/0 against real settlement), the result word's own ink, the sw pool word "bwawa".
-Drive: `verify-c1.sh` — its RED baseline first (the build report's steps 1–4, incl. the production `PROD-S1-FEE` count to
-report to Ali). One dictionary conflict with the band (adjacent sw lines) to resolve at merge.
-(3) **WP3 + WP4** — branch `landing-v3-wp34` (`C:\kipindi-wp34`, `4a42358a` + tooling `b9fb4c87` + review fixes `3312082f`, built ON C1: one neutral 24h-move component platform-wide, "Hakuna dau bado", "5 位预测者"): the featured
-card (time top-right, question clamped ≤ 3 lines below 640, source under YES/NO below 640, 24h mark, predictor floor 10 —
-L24–L29 in the manifest) and the board rows; the `data-market-*` attributes V18 reads. Drive: `verify-wp34.sh` (P1–P3).
-Re-run its first-screen budget after the hero merges (trust rows move above the card).
-(4) **F1 (R5(c))** — branch `landing-v3-f1` (`C:\kipindi-f1`, built ON C1): the `/updown` card and terminal take the band's
-wording ("Confirmed price") and its targets-based ink; the card's 9.5px trust footer and its truncated "HIGHER OR
-LOWER THAN $…" heading go to the 13px floor / never clip (found by the band's panel). (5) **WP9** alone. (6) The small R7 build: retire "Tabiri matukio. Si
-bahati." on all FIVE surfaces it reaches (the English-only tab title, the primer, the landing's How-it-works heading, the
-auth rail + register preview, the yes/no rules subtitle). Then D3 (WP5 the pick slip, V20, the chat bubble under sheets)
-and D5.
+**State (2026-09-28):** D0 ✅, D1 ✅ (`54f8199b`), WP14 ✅ (the Wallet, `e9b4056c`), WP6 ✅ (`31662831`), WP14b ✅
+(`541a9e76`), and **WP12 — the Up & Down band, R5 "the Match" — 🔵 LIVE since 2026-09-27 22:26 UTC (`5ba4f727`;
+production then served `6d915723`, a house-bots merge on top of it)**, pushed on the owner's word ("push live what you
+have now") after five rounds of the four-expert frame panel on eight local drives (45 of 52 frames at 10 in round 5;
+round 5's four small fixes shipped without a local re-drive). **Measured on production 2026-09-27:** `band-metrics`
+CLEAN on all 11 cells (the band showed Down leads on BTC: 360 sw card 587px ≤ 600, clock→pick 166px ≤ 170, rule on
+2 lines; 1280 card 357px ≤ 380); `band-agree` 3 compared, 0 disagree (sw/en/zh — the band's "saa 01:39 · Chini ya
+ufunguzi kwa $43.17" = the round page's stamp and ink); the 360 sw frame looked at. **Not yet run on production: the
+landing gate** (`verify-prod.sh` waited for the exact sha while production served `6d915723`). D2 step 0 (V18 + the
+gate's hardening) is live in the scripts; V18 reads 1,584 on production until WP3/WP4 add the attributes it reads.
+**Next:** RESUME HERE (handover 2026-09-28 — the build moves to ANOTHER PC; nothing below needs the old laptop: every
+branch is on `origin`, but the frames in `.qa-shots/` are not, so every drive is re-run on the new machine).
+(0) **Set up.** Fetch; check out branch `landing-v3` in your own checkout — it is the live band + **the hero merged, NOT
+live, NOT yet verified** + docs — `npm ci`, and merge `origin/main` (house bots moved it: `6d915723` and later). Heavy
+Node one job at a time (the old laptop used `~/heavy-node-lock.sh`; use the new machine's equivalent or none). The
+four-expert panel scripts and how a round works: `scripts/qa/landing-v3/panels/` (README).
+(1) **Finish WP12.** `bash scripts/qa/landing-v3/verify-prod.sh band-prod2 <the live sha>` with `FIRST_EXPECTED=0` while
+the hero is not live; read the gate + REDs; tick WP12 ✅; delete `specs/updown-band-v2.md` with a one-line pointer in
+§2.1 WP12 ("read it at `5ba4f727`" — 23 code comments cite it as provenance). A sixth panel round on production frames
+of round 5's four fixes is optional.
+(2) **The hero (R7 + R9)** — merged into `landing-v3` (`bc852744`; branch `landing-v3-hero` is the same tip). On the
+merged tree: tsc clean, `test:hero-copy` 14/0, `red:hero-copy` 20 caught / 0 missed, the band's 95/0. First local drive
+(`verify-hero.sh hero1`, 2026-09-27): **served HTML CLEAN** in sw/en/zh (the h1's spaces, the "first licensed" claim,
+one `lang="en"`, a `tel:` link, four wallets, no "official"); all 47 frames captured (320, 360×780, 360×740, 768,
+1024×768, 1280×800 × sw/en/zh; signed in with zero and funded balance; 130% text without overflow; focus visible on the
+helpline and both CTAs) — the 360×740 sw YES/NO row sits above the rail. **Not done:** the gate + REDs V15–V17/V21/V22
+(the session ended mid-gate — `ONLY_GATE=1 bash scripts/qa/landing-v3/verify-hero.sh <label>` reruns just that) and the
+frame panel (`panels/hero-panel.js`; round 1 never completed). Then ship: merge `origin/main`, push, confirm `?dpl=`,
+the production gate with `FIRST_EXPECTED=1`.
+(3) **C1 · one price rule everywhere** — branch `landing-v3-c1`, tip `cc6fc5bd` (10 commits + the branch review's four
+fixes; its guards green, run serially; ⚠️ its typecheck NOT yet run after the fix commit). Drive `verify-c1.sh` — RED
+baseline first, then the branch drive (its build report's steps, incl. the production `PROD-S1-FEE` count to report
+to Ali). At merge, one adjacent-line conflict in `i18n-dict.ts` (sw `udPool` "Dimbwi" → "Bwawa" beside the band's
+`udLevelBy`).
+(4) **WP3 + WP4** — branch `landing-v3-wp34`, tip `3312082f` (built ON C1; tsc clean; `test:featured-card` 72/0,
+`red:featured-card` 9/9; one neutral 24h move platform-wide, "Hakuna dau bado", "5 位预测者"; L24–L29 in its
+manifest). Drive `verify-wp34.sh` (P1–P3); re-run its first-screen budget with the hero merged (the trust rows sit
+above the featured card).
+(5) **F1 (R5(c))** — branch `landing-v3-f1`, tip `a8ad92a0` (built ON C1): the `/updown` card and terminal say
+"Confirmed price" and take the band's targets-based ink; the card's 9.5px trust footer and its truncating "HIGHER OR
+LOWER THAN $…" heading reach the 13px floor / never clip. ⚠️ Its build report never arrived (the session ended): run
+its typecheck and guards before rendering.
+(6) **WP9** alone. (7) The small R7 build: retire "Tabiri matukio. Si bahati." on all FIVE surfaces it reaches (the
+English-only tab title, the primer, the landing's How-it-works heading, the auth rail + register preview, the yes/no
+rules subtitle). Then D3 (WP5 the pick slip, V20, the chat bubble under sheets) and D5.
 **⭐ Ali, 2026-09-27: "make sure everything in the plan is applied, every decision, every design component perfectly made,
 new components built all consistent with our theme design kit."** Every unit is checked against R1–R7, L1–L23 and the kit
 before it ships — frames looked at, never only a green gate.
@@ -129,18 +144,46 @@ row; this section does not repeat it.
 
 ## §0a · The paste-in prompt for the next session
 
-> Continue the 50pick landing v3 build. Read `docs/LANDING-TEN.md` §0 and §1 first, then
-> `docs/design-system/v4-2026-09-26-landing-ten/INHERIT-MANIFEST.md` (Ali's rulings R1–R4 and laws
-> L1–L21), then §2 (how each row is built) and §3 (every delivery item and the row that delivers it).
-> Verify with the scripts in `scripts/qa/landing-v3/` (§0 trap 6), always under the heavy-node lock.
-> Open the concept (`npx serve docs/design-system/v4-2026-09-26-landing-ten/design`, then
-> `50pick Home Concept v3.dc.html`, with `?signedIn=1&balance=1&wallet=1&locale=sw` as needed) at 360,
-> 768 and 1280 beside the build. Work the next ⬜ batch of §2.0 in order, in your own worktree off
-> `origin/main`. For each row: build it within `globals.css` tokens and existing components, run the
-> suites §2.1 names plus `npm run test:landing-ten-plan`, drive it locally at 360/768/1280 in sw/en/zh
-> and look at the frames, push to `main`, confirm the deployed sha, re-measure on production, then tick
-> the row and rewrite §0 in the same commit. The repo's laws win every conflict with the delivery;
-> a conflict nobody has ruled on goes to Ali as a numbered one-line choice, and into the manifest.
+> Continue the 50pick landing v3 build, end to end, sealed — visual and logical. The build moved to this PC on
+> 2026-09-28; everything is on GitHub (alisheib/kipindi) and nothing needs the old laptop.
+>
+> Setup: find the repo on this machine (or clone it) and work in your own checkout of branch `landing-v3` (it
+> holds the live Up & Down band + the hero merged but NOT live and NOT yet verified + the docs). `git fetch`,
+> `npm ci`, merge `origin/main` (never rebase or force). The other built units wait on their own branches:
+> `landing-v3-c1` (`cc6fc5bd`), `landing-v3-wp34` (`3312082f`, built on C1), `landing-v3-f1` (`a8ad92a0`, built on C1).
+>
+> Read `docs/LANDING-TEN.md` §0 first — its **Next:** list (0)–(7) is the exact resume point and says what is and is
+> not verified for each unit. Then `docs/design-system/v4-2026-09-26-landing-ten/INHERIT-MANIFEST.md` (rulings R1–R9;
+> laws L1–L23, with L24–L29 arriving with WP3+WP4; and "R8 applied — WP12", the decisions the build already took) and
+> the unit's spec in that folder's `specs/`. Every recorded decision is final. Take any new decision yourself (R8) and
+> record it in the manifest. Act as the Tanzanian native Swahili reviewer for every Swahili line; give Chinese the same
+> care.
+>
+> Work the Next list in order:
+> 1. Finish WP12: the landing gate on production (`verify-prod.sh`, `FIRST_EXPECTED=0` while the hero is not live),
+>    tick ✅, delete `specs/updown-band-v2.md` with a pointer.
+> 2. The hero: re-run its drive here (`verify-hero.sh` — the frames are not on GitHub), the gate + REDs
+>    V15–V17/V21/V22, the four-expert panel to 10, then ship it and measure it with `FIRST_EXPECTED=1`.
+> 3. C1: typecheck first, then its RED baseline and drive (report the production `PROD-S1-FEE` count to me), panel,
+>    ship.
+> 4. WP3 + WP4 (re-measure the first-screen budget with the hero in). 5. F1 (typecheck + guards first — its build report
+>    never arrived). 6. WP9. 7. The small R7 build (retire "Tabiri matukio. Si bahati." on all five surfaces). Then D3 and
+>    D5.
+>
+> How to build and verify:
+> - Build every component from the kit: `globals.css` tokens, the type ladder, existing components. Fix the same
+>   defect platform-wide whenever you find it, mobile first.
+> - Heavy Node (dev server, build, tsc, Playwright) one job at a time; if this machine has `~/heavy-node-lock.sh`, run
+>   through it. Dev on localhost (never 127.0.0.1), `rm -rf .next` before every drive, viewport tiles never full-page,
+>   check the served HTML for eaten spaces. A green build is not a render.
+> - Every unit gets the four-expert frame panel — UI/UX lead, graphic designer, gambling-industry designer,
+>   accessibility/RG — as agents that READ the real PNGs (`scripts/qa/landing-v3/panels/`, README). Brief each round
+>   with what changed and what was declined with its recorded reason; fix and re-shoot until every frame is 10. The
+>   panel agents run no Node; you run the test battery yourself, one suite at a time.
+> - Ship: merge `origin/main`, push to `main`, confirm the deployed sha (`?dpl=` or `/api/health` — if another session
+>   pushed on top, accept a sha that contains yours), re-measure on production, tick the row and rewrite §0 in the same
+>   commit. Push each verified unit.
+> - Tell me when the next session is needed.
 
 ## §1 · Status board — the v3 build
 
@@ -161,7 +204,7 @@ row; this section does not repeat it.
 | WP9 | Pick-a-side grid: phone snap rail with a peek, 2 and 3 columns | ⬜ | | |
 | WP10 | Topics: six tiles, Other last, "All topics" as the section link | ✅ | 54f8199b | measured on production 2026-09-26 (360/768/1280 × sw/en/zh frames looked at) |
 | WP11 | How it works: "A named source", the fee from config, h3 steps | ✅ | 54f8199b | measured on production 2026-09-26 (360/768/1280 × sw/en/zh frames looked at); the fee reads 13% through `ratesFrom`; L3 |
-| WP12 | Up & Down band: R5 — the Match (spec v2) | 🔵 | 2acefc9d | live 2026-09-28: the scoreboard, the match track and the one-line clock, the 60-second refresh (R5(a)), the round page agreeing (§12); eight local drives (`verify-band.sh`: 19 checks incl. the agreement drive, the RED-controlled numeric gate, the #stake landing, one pick position across states) and five rounds of the four-expert frame panel (45/52 at 10 in round 5; record in §2.1 WP12). Production re-measure next (`verify-band-prod.sh`). The price-line band it replaces was ✅ `54f8199b` |
+| WP12 | Up & Down band: R5 — the Match (spec v2) | 🔵 | 2acefc9d | live 2026-09-28: the scoreboard, the match track and the one-line clock, the 60-second refresh (R5(a)), the round page agreeing (§12); eight local drives (`verify-band.sh`: 19 checks incl. the agreement drive, the RED-controlled numeric gate, the #stake landing, one pick position across states) and five rounds of the four-expert frame panel (45/52 at 10 in round 5; record in §2.1 WP12). Production 2026-09-27: `band-metrics` CLEAN on 11 cells, `band-agree` 3 compared / 0 disagree, the 360 sw frame looked at; the landing gate on production still to run (§0 (1)). The price-line band it replaces was ✅ `54f8199b` |
 | WP13 | Results: date, the market's own sign-off, source link, paid | ✅ | e9b4056c | measured on production 2026-09-27: date, the market's own sign-off (a reversed market reads "Corrected on objection"), source, paid; below 640 the amount and the source each take a line, so the host reads whole. L2 |
 | WP14 | Wallet: chip opens sheet/panel, equal Deposit/Withdraw, gold Deposit at zero, signed-in hero | ✅ | e9b4056c | measured on production 2026-09-27 with `mobile01` (zero balance, no picks: header Deposit, hero empty-balance line + Deposit, no Withdraw, Set limits; pages render at 360/1280 sw/en). Funded Wallet + hero measured locally (Wallet 17 cells, hero 15 cells; 360–1280 × sw/en/zh). `test:wallet-reach` 48/48, `test:landing-mine` 22/22, both mutation-proved. R1, L19–L21 |
 | WP14b | Share on every card footer, in every phase; the WhatsApp preview card (og tags spread from `ROOT_OPEN_GRAPH`, no 0/100 in the preview) | ✅ | 541a9e76 | measured on production 2026-09-27: `qa:landing-v3:og-prod` CLEAN on 15 markets (og:type/site_name/locale present, one-sided markets preview "One side only.", images 1200×630 PNG) — its baseline before the push failed on all 15; `/results` captured 360/768/1280 × sw/en/zh, settled cards one `<article>`, looked at; the share drive (26/26: Copy, WhatsApp, Esc, backdrop stay on `/results`) ran locally. "Share on WhatsApp" after placing is WP5's; K50 closes with both |
@@ -220,31 +263,54 @@ feature (a plant against a feature that does not exist yet cannot prove anything
 
 ### §2.1 · The rows
 
-**WP2 · Hero order** — `src/components/home/landing-hero.tsx`, `.kp-hero*` in `globals.css`, `src/app/page.tsx`
-- One DOM, ordered: eyebrow → `<h1 lang="en">` → sw/zh sub-line (`home.heroHeadlineSub`, shown only when it
-  differs from the headline) → lede → **featured card** → trust lines → CTAs. From 1024 the block is two
-  columns — copy, trust lines and CTAs on the left, the featured card on the right — by CSS grid areas,
-  never a second copy of the DOM. ⚠️ Trust lines BEFORE the CTAs, in the source (L18): the delivery's phone
-  order put them after the CTAs, below the first screen its own placement map requires; a CSS `order`
-  was tried and removed because keyboard order then disagreed with the screen.
-- Headline on the locked ladder — 44 below 1024, 60 from 1024, 72 from 1280 (the delivery's
-  `clamp(40px, 6.2vw, 88px)` mapped onto §T1 steps), Sora 800, `text-wrap: balance`. The YES/NO inks come
-  from `Inked` over the English words; the sub-line is inked with the reader's own side words
-  (`sideWord`), MOBILE-VISUAL ruling 12.
-- Trust lines, in this order: 18+ roundel + `footer.licensedByGbt` · `home.trustCell3H` (mobile money) ·
-  `footer.stopGambling` + the helpline (`HELPLINE()` / `HELPLINE_TEL()`, a `tel:` link at the tap floor) ·
-  `home.trustCell1H` (named sources). Every string is an existing key — no new regulated copy. The licence
-  NUMBER stays in the footer on every page (K39), as in the delivery's own hero.
-- The lede drops the jargon word the before state used ("Trade questions…" → "Pick a side on questions…").
-- The proof rail, the conviction bar and the closing-soonest board move **below** the hero block.
-- Remove the faint dial drawing behind the hero (R4(1)).
-- Guards at risk: `test:betting-ink` §1 pins the proof-rail figure markup exactly; `test:hero-contract`
-  (the featured market is never also a board row); `scripts/qa/landing-ten.mjs` V14 landmarks and the
-  V8 text map name `.kp-hero` — keep the class or re-point the gate in the same commit. The hero's entrance
-  stagger is keyed to `.kp-hero__inner > *:nth-child(n)`; reordering children re-orders the animation.
-- ⚠️ First-screen budget (V15): header 56 + the LIVE strip (back on `/` since 2026-09-26) + the hero must
-  leave the featured card's price and YES/NO above 740px at 360 wide, **in sw**, whose sub-line and lede
-  are the longest. Measure it; if it does not fit, shorten spacing on the `--rh-*` phone rungs, never the text.
+**WP2 · Hero** — `src/components/home/landing-hero.tsx`, `.kp-hero*` in `globals.css`, `src/app/page.tsx`,
+`src/lib/server/payout-rails.ts`, `src/lib/rail-list.ts`, `FIRST_LICENSED_EVIDENCE()` in `src/lib/support-config.ts`
+- ⭐ **HERO v3 — rebuilt 2026-09-27 from `specs/hero-v3.md` under R7, R8 and R9** (branch `landing-v3-hero`; not
+  live until it is merged, rendered and measured). This note describes the v3 hero. The first build (`54f8199b`,
+  measured on production 2026-09-26) had an English `<h1 lang="en">` over a sw/zh sub-line and its trust lines
+  after the card; both are gone.
+- **One DOM, source order = screen order: claim → h1 → lede → trust rows → featured card → CTAs → sign-off.**
+  From 1024 the intro (claim, h1, lede, trust rows) and the act (CTAs, sign-off) share the left column and the
+  card takes the right, by grid areas — never a second DOM, never a CSS `order` (keyboard order = screen order).
+- **Claim** — `p.kp-hero__claim`, a class of its own (the shared eyebrow also dresses the section labels):
+  `FiftyWordmark` 15 + a 1px `--border-strong` rule below 1280, then the text in JetBrains Mono 600, 13px,
+  capitals by CSS, `--text`, 0.14em (the shared list). State P — *"Tanzania’s first licensed prediction
+  market"* / *"Soko la kwanza la utabiri lenye leseni Tanzania"* / *"坦桑尼亚首家持牌预测市场"* — renders only while
+  `FIRST_LICENSED_EVIDENCE()` is set (R9, 2026-09-27); `null` returns every language to state N, *"Licensed
+  prediction market · Tanzania"*. "Licensed" is in both.
+- **h1** — `home.heroAsk` filled by `sideWord(t, …, "MARKET")`: *"NDIO au HAPANA?"* / *"YES or NO?"* /
+  *"是还是否？"*, with NO `lang` (R7(3)). Side words Sora 800 in the buttons' inks (`--hero-yes/no-accent`,
+  re-pointed 300 → 400), the connective Sora 400 `--text-muted`, "?" `--hero-text-strong`; 44 · **60 from 640**
+  · 72 from 1280; line-height 1.0; tracking −0.030 / −0.038 / −0.045em (zh 0 at 1.1). "NDIO au" and "HAPANA?"
+  never break inside. Claim + h1 are one `hgroup.kp-hero__lockup`.
+- **Lede** — two designed lines: `home.heroLedeAct` (Inter 500, `--text`) and `home.heroLedePay` (Inter 400,
+  muted); 17 below 561, 20 above.
+- **Trust rows** — `ul.kp-hero__trust` (class kept: V8, V21, capture.mjs), in the intro, the same for a visitor
+  and a player: row 1 = `.kp-rg__18` + `footer.licensedByGbt` + the helpline `tel:` (`footer.helpline` +
+  `HELPLINE()`, Inter 400 tabular, 1px underline, ±13px reach); row 2 = `I.mobileMoney` + `home.heroRails`,
+  whose `{rails}` is `railListParts(locale, heroRailNames(killSwitches))` — `Intl.ListFormat` disjunction over
+  the rails whose payout path is live (catalogue ∩ `WithdrawSchema` ∩ `DepositSchema` ∩ a wallet-cashin code,
+  less any paused rail; R8(6)). Today: M-Pesa, Airtel Money, HaloPesa, Mixx by Yas. No rails → no row.
+  ⛔ Not in the hero any more: the RG sentence (R7(2) — the footer keeps it on every page) and "named sources"
+  (the card names its own source).
+- **Act** — visitor: `home.heroStart` + arrow · `home.heroBrowseAll`, then the sign-off `p.kp-hero__signoff`
+  (`FiftyMark` 20 simplified, aria-hidden, + `home.heroHeadline` inked, `lang="en"` — the hero's only `lang`).
+  Player: `SignedInAct`, unchanged.
+- **Keys:** NEW `home.heroClaim`, `heroClaimFirst`, `heroAsk`, `heroLedeAct`, `heroLedePay`, `heroRails`,
+  `heroStart`. DELETED `home.heroLocation`, `heroEst`, `heroHeadlineSub`, `heroBody` (the hero was their only
+  reader). `home.heroHeadline` keeps its value and becomes the sign-off. sw `footer.licensedByGbt` and
+  `footer.stopGambling` corrected (COMPLIANCE-DECISIONS 2026-09-27).
+- The 18+ roundel takes a neutral ink site-wide (R7(5)). Phone spacing: padding `--sp-5 --sp-4 --sp-8`, grid gap
+  20, lockup 8, intro 12, +4 above the rows (8 / 12 / 16 / 20); from 768 lockup 12, intro 16.
+- The proof rail, the conviction bar and the closing-soonest board stay **below** the hero (`LandingProof`).
+  The faint dial drawing stays removed (R4(1)). The entrance stagger (`.kp-hero__inner > *`) is untouched.
+- **Guards:** `test:hero-copy` + `red:hero-copy` (NEW — the "first" gate, the question, the wallets, no warning
+  sentence / one `lang`, no over-claim; 18 plants, MISSED 0); `test:landing-mine` §3 re-pointed at the intro;
+  `test:i18n`; `test:contrast` (hero pairs on `--bg-overlay`). Live gate: 360 × 740 cells, **V21** (trust rows
+  and `tel:` above the rail below 640), **V22** ("first" only with its evidence), `.kp-hero__claim-text` in the
+  V8 text map and V8b; capture.mjs records claim / h1 / lede / rows / `tel:` / sign-off rects.
+- ⚠️ First-screen budget: spec §7 MODELS the sw 360 × 740 YES/NO bottom at ≈610 against a rail at ≈675 (65px
+  clear). A model, not a render — V15 and V21 on the 360 × 740 cells decide.
 
 **WP3 · Featured card** — `src/components/markets/market-card.tsx` (`featured` variant only), `TippingBar` in `src/components/brand.tsx`
 - Full question with no clamp (`.mcardp--featured .mcardp-q`).
@@ -262,6 +328,10 @@ feature (a plant against a feature that does not exist yet cannot prove anything
   milliseconds left instead.
 - Guards at risk: `MARKET_CARD_H` / `--mcard-h` size the `/markets` skeletons; keep these changes on the
   featured variant or re-derive the height (`qa:card-geometry`).
+- ⚠️ **2026-09-27 — what hero v3 leaves WP3 (spec §7, a model to be measured):** ≈65px between the featured
+  card's YES/NO row and the bottom rail at 360 × 740 in Swahili. So below 640 the featured question clamps at
+  **3 lines or fewer in every language** (≈ +22px over today's 2), and the "Settles on {source}" line goes
+  **below** the YES/NO row — about 632, 43px clear. This amends "no clamp" above for phones only.
 
 **WP4 · Question board rows** — `QuestionRow` in `landing-hero.tsx`, `.kp-qrow` in `globals.css`
 - The row stops being one `<Link>`: the title is its own link; the time left, the bar and the YES@/NO@
@@ -572,14 +642,14 @@ drift from that file or a row names an id §1 does not have. An item is done whe
 | P5 | Balance chip → Wallet: sheet below 1024, panel from 1024 | WP14 | R1 |
 | P6 | Deposit: header (gold), Wallet, hero | WP14 | R1, including the gold Deposit that replaces the capsule at zero |
 | P7 | Withdraw: Wallet + hero, same size as Deposit; hidden at zero | WP14, V19 | R1 |
-| P8 | Featured market: right after the lede; hero right column on desktop | WP2, WP3 | |
+| P8 | Featured market: right after the lede; hero right column on desktop | WP2, WP3 | Hero v3 (R7, 2026-09-27): the card follows the trust ROWS — claim → h1 → lede → trust rows → card — so 18+, the licence and the helpline reach a phone's first screen; right column from 1024 |
 | P9 | Pick slip: bottom sheet below 1024, inline from 1024 | WP5 | R2 |
 | P10 | Proof figures: ledger rows on phones, three columns above | WP8 | |
 | P11 | Closing-soonest board: stacked · title + bar · one line | WP4 | |
 | P12 | Pick-a-side cards: snap rail with a peek · two columns · three | WP9 | |
 | P13 | Share: card footer + after placing (WhatsApp) | WP14b, WP5 | |
 | P14 | Set limits / Take a break: pick sheet, Wallet, Menu, footer | WP5, WP14 | No Menu (R1); the footer already carries both |
-| P15 | Licence · 18+ · helpline: first screen + footer | WP2 | Trust lines (licence + 18+, mobile money, helpline, sources) before the CTAs — L18; the licence number and all three stay in the footer |
+| P15 | Licence · 18+ · helpline: first screen + footer | WP2 | ~~Trust lines before the CTAs — L18~~ ⚠️ 2026-09-27, hero v3 (R7(2)): one quiet row — 18+ · the licence line · the helpline `tel:` — plus the payout-live wallets, in the intro ABOVE the card (V21 measures them on the first screen); the RG sentence, the licence number and the helpline stay in the footer |
 | K1 | Every placement row verified at 360, 768, 1280 in sw, en, zh | V21, PANEL | |
 | K2 | 4a: phone, balance — chip + gold Deposit in the header; hero balance with equal Deposit/Withdraw | WP14 | The phone fit is measured (§2.1 WP14) |
 | K3 | 4b: chip opens the Wallet sheet — balance, withdrawable, equal pair, Set limits; Esc and backdrop close | WP14, V20 | |
@@ -607,10 +677,10 @@ drift from that file or a row names an id §1 does not have. An item is done whe
 | K25 | After placing: "You're with X% of the money on {side}" | WP5 | |
 | K26 | Settled rows show source, date, sign-off, amount paid | WP13 | The market's own sign-off (L2) |
 | K27 | Deposit and Withdraw are where section A says | WP14 | |
-| K28 | One sentence says what 50pick is, above the fold | WP2 | |
-| K29 | Licence, 18+ and mobile money on the first screen | WP2, V15 | |
+| K28 | One sentence says what 50pick is, above the fold | WP2 | Hero v3: the claim, "Tanzania’s first licensed prediction market" (R9), gated by `FIRST_LICENSED_EVIDENCE()` (`test:hero-copy` §1, V22) |
+| K29 | Licence, 18+ and mobile money on the first screen | WP2, V15, V21 | Hero v3 (2026-09-27): the trust rows sit above the card; V21 measures rows 1–2 and the helpline `tel:` above the bottom rail below 640, on 360 × 740 cells |
 | K30 | Three steps, including the fee as a number | WP11 | From config, never a literal (L3) |
-| K31 | EN / SW / 中文, with the sub-line under the brand headline | WP2 | The language menu stays (R1) |
+| K31 | EN / SW / 中文, with the sub-line under the brand headline | WP2 | The language menu stays (R1). ⚠️ 2026-09-27 (R7(3)): no sub-line — the h1 IS the reader's language ("NDIO au HAPANA?" / "YES or NO?" / "是还是否？"), and the English brand line is the hero's sign-off |
 | K32 | No jargon | WP16 | |
 | K33 | No promised returns; the estimate is marked and qualified (V16) | V16, WP7 | No estimate on cards (R3) |
 | K34 | The only urgency is a real countdown | WP15 | L17 |

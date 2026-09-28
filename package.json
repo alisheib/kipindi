@@ -676,6 +676,8 @@
     "test:health-readiness": "tsx scripts/health-readiness.test.mts",
     "test:hero-contract": "tsx scripts/hero-contract.test.mts",
     "red:hero-contract": "node scripts/hero-contract-red.mjs",
+    "test:hero-copy": "tsx scripts/hero-copy.test.mts",
+    "red:hero-copy": "tsx scripts/hero-copy.test.mts --prove-red",
     "red:discovery-contract": "node scripts/discovery-contract-red.mjs",
     "qa:poll-board": "node scripts/live-poll-board.mjs",
     "qa:discovery-probe": "node scripts/discovery-board-probe.mjs",

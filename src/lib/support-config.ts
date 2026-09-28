@@ -139,3 +139,40 @@ export function HELPLINE_TEL() { return STATUTORY_HELPLINE_TEL; }
 const LICENCE_NUMBER_VALUE = "OUS00000202602";
 
 export function LICENCE_NUMBER() { return LICENCE_NUMBER_VALUE; }
+
+/**
+ * THE EVIDENCE BEHIND THE WORD "FIRST" — the landing hero's claim gate (specs/hero-v3.md §8).
+ *
+ * The hero's claim has two states. State N, "Licensed prediction market · Tanzania", needs only
+ * the licence above. State P, "Tanzania's first licensed prediction market", is a comparative
+ * claim about every other operator, and it renders ONLY while this returns a record. Statutory
+ * like the licence number: a constant, no setter, no persisted field, no admin control — a
+ * "first" an operator could switch on from a form would be evidence of nothing.
+ *
+ * ⭐ SET 2026-09-27 BY THE OWNER'S RULING, INHERIT-MANIFEST R9 ("please say we're the first —
+ * I'm the owner and we're the first"). What it rests on: the owner's attestation, plus the Gaming
+ * Board of Tanzania's acknowledgement of the licence fee for operations under Sec. 51(2) of the
+ * Gaming Act, paid 2026-09-05 (R8(1); the owner holds the document — it is not committed, it
+ * carries a personal e-mail). Recorded in `docs/COMPLIANCE-DECISIONS.md` under 2026-09-27.
+ * ⭐ "Licensed" is never dropped from the claim: it is what makes "first" true against offshore
+ * sites that reach Tanzanians without a Board licence.
+ * ⛔ IF THE BOARD OR A COMPETITOR EVER DISPUTES IT, set this to `null`. That one change returns
+ * the hero to state N in every language — the claim key is read nowhere else
+ * (`npm run test:hero-copy` §1 fails if it is).
+ */
+export type FirstLicensedEvidence = {
+  /** The day the evidence was recorded (YYYY-MM-DD) — the COMPLIANCE-DECISIONS entry's date. */
+  date: string;
+  /** The ruling that recorded it — cited verbatim by that COMPLIANCE-DECISIONS entry. */
+  ruling: string;
+  /** What the claim rests on, in one line. */
+  basis: string;
+};
+
+const FIRST_LICENSED_EVIDENCE_VALUE: FirstLicensedEvidence | null = {
+  date: "2026-09-27",
+  ruling: "INHERIT-MANIFEST R9",
+  basis: "Owner's attestation (R9) + the Gaming Board of Tanzania's licence-fee acknowledgement, Gaming Act Sec. 51(2), paid 2026-09-05",
+};
+
+export function FIRST_LICENSED_EVIDENCE(): FirstLicensedEvidence | null { return FIRST_LICENSED_EVIDENCE_VALUE; }

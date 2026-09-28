@@ -1501,6 +1501,11 @@ adds the marks; a chip must not wear them.
 `scripts/i18n-parity.test.mts` — e.g. `home.heroHeadline` (*"The wisdom of YES & NO."*) is
 the brand line, verbatim in all three locales by Ali's call (PLAN-OF-RECORD §7b).
 ⛔ Do not "fix" an allowlisted string.
+⚠️ **2026-09-27 (INHERIT-MANIFEST R7(3), hero v3):** the brand line is no longer the hero's h1 — it is the
+hero's SIGN-OFF, verbatim and `lang="en"`, and the share-image line. The h1 is `home.heroAsk`, the question
+in the reader's language, filled with the side words (`{yes}` / `{no}` → NDIO / HAPANA, 是 / 否). The zh h1
+*"是还是否？"* carries no 「」: each side word is its own coloured span, so neither can read as a function word —
+the bracket rule above is for a side word inside running prose.
 
 ---
 

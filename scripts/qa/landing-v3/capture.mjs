@@ -15,7 +15,10 @@ const OUT = process.env.OUT || ".qa-shots/landing-v3/out";
 const AUTH = process.env.AUTH || "";
 const W = (process.env.WIDTHS || "360,768,1280").split(",").map(Number);
 const LOCALES = (process.env.LOCALES || "sw,en,zh").split(",");
-const H = { 360: 780, 768: 1024, 1280: 860, 1024: 900, 320: 640, 414: 896 };
+const H0 = { 360: 780, 768: 1024, 1280: 860, 1024: 900, 320: 640, 414: 896 };
+const H = { ...H0 };
+// hero v3: HEIGHTS=360:740 overrides a width's height — the delivery's own 360 x 740 frame.
+for (const pair of (process.env.HEIGHTS || "").split(",").filter(Boolean)) { const [w, h] = pair.split(":").map(Number); if (w && h) H[w] = h; }
 const MAX_TILES = Number(process.env.MAX_TILES || 14);
 const PAGE = (process.env.PAGE || "").replace(/^\/+/, "");
 const CONCEPT = pathToFileURL(resolve("docs/design-system/v4-2026-09-26-landing-ten/design/50pick Home Concept v3.dc.html")).href;
@@ -37,6 +40,15 @@ const MEASURE = () => {
     hero: r(document.querySelector(".kp-hero")),
     featuredCard: r(card), featuredPrice: r(price), featuredActions: r(actions),
     ctas: r(document.querySelector(".kp-hero__ctas")), trust: r(document.querySelector(".kp-hero__trust")),
+    // hero v3 — the claim, the h1, the lede, each trust row and the helpline link, top to bottom; the
+    // measured YES/NO bottom is `featuredActions.bottom` above.
+    claim: r(document.querySelector(".kp-hero__claim")),
+    claimText: (document.querySelector(".kp-hero__claim-text")?.textContent || "").trim(),
+    headline: r(document.querySelector(".kp-hero__headline")),
+    lede: r(document.querySelector(".kp-hero__lede")),
+    trustRows: [...document.querySelectorAll(".kp-hero__trust > li")].map(r),
+    tel: r(document.querySelector('.kp-hero a[href^="tel:"]')),
+    signoff: r(document.querySelector(".kp-hero__signoff")),
     // landing v3 · WP6 — every visible market card's price state, as the reader sees it.
     cards: [...document.querySelectorAll(".mcardp")].filter(vis).slice(0, 16).map((c) => {
       const note = c.querySelector(".mcardp-onesided-note");
@@ -68,7 +80,7 @@ const report = [];
 for (const w of W) for (const loc of LOCALES) {
   const h = H[w] || 900;
   const ctx = await browser.newContext({ viewport: { width: w, height: h }, deviceScaleFactor: 1 });
-  const id = `${MODE}${PAGE ? "-" + PAGE.replace(/\W+/g, "_") : ""}-${w}-${loc}${AUTH ? "-" + AUTH : ""}`;
+  const id = `${MODE}${PAGE ? "-" + PAGE.replace(/\W+/g, "_") : ""}-${w}${h !== H0[w] ? "x" + h : ""}-${loc}${AUTH ? "-" + AUTH : ""}`;
   try {
     let url;
     if (MODE === "concept") {

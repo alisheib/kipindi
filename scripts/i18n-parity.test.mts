@@ -46,12 +46,15 @@ const IDENTICAL_OK = new Set<string>([
   "agent.refNameExample",       // "Asha Juma Mwinyi" — a specimen name, not prose
   "agent.refContactExample",    // "0712 345 678" — the TZ mobile format, identical everywhere
   "agent.payReferenceExample",  // "FT25090812345" — a bank reference format, not language
-  "home.heroLocation",          // "Tanzania · Dar es Salaam" — place names
-  // The hero headline is verbatim in all three locales — a DECIDED CALL, not an omission
+  // (`home.heroLocation` left this list 2026-09-27 with the key itself: hero v3 deleted the eyebrow
+  // that read it — specs/hero-v3.md §3 "Deleted".)
+  // The brand line is verbatim in all three locales — a DECIDED CALL, not an omission
   // (PLAN-OF-RECORD §7b): YES and NO are product terms and the sentence is the brand line.
   // It is keyed rather than hardcoded so the string has one home; before the round-2 hero it
   // lived as English JSX in page.tsx with no key, which is why nothing could check it at all.
-  "home.heroHeadline",          // "The wisdom of YES & NO." — brand line, intentionally untranslated
+  // ⭐ Since 2026-09-27 (INHERIT-MANIFEST R7(3)) it is the hero's SIGN-OFF, not its h1: the h1 is
+  // `home.heroAsk`, the question in the reader's own language. The value did not change.
+  "home.heroHeadline",          // "The wisdom of YES & NO." — brand line / sign-off, intentionally untranslated
   "profile.nida",               // NIDA — national-ID acronym
   // ⛔ NIDA IS THE AUTHORITY'S OWN NAME, NOT A WORD. It is the chooser's label for
   // one of the four documents, and it is "NIDA" in Swahili and in Chinese exactly as

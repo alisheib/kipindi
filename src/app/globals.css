@@ -806,8 +806,10 @@
      tinted bands. The v3-2026-08-11 archive still names both tokens; it is a frozen record. */
   --hero-text-strong:  var(--pearl-50);
   --hero-text-muted:   var(--pearl-300);
-  --hero-yes-accent:   var(--yes-300);
-  --hero-no-accent:    var(--no-300);
+  /* 2026-09-27 (hero v3, spec §5): 300 → 400, the deeper shade the YES/NO buttons wear, so the h1's
+     side words are the buttons' own colour as well as their own words. Hero-only tokens. */
+  --hero-yes-accent:   var(--yes-400);
+  --hero-no-accent:    var(--no-400);
   --hero-tag-yes:      var(--yes-300);
 
   /* TippingBar — kit royal track + gilt needle.
@@ -1057,6 +1059,9 @@ body {
 .gilt-eyebrow,
 .admin-tbl thead,
 .kp-hero__eyebrow,
+/* landing v3 · the hero's claim ("Tanzania's first licensed prediction market") — a class of its own
+   (spec §4), the eyebrow's tracking. */
+.kp-hero__claim-text,
 .kp-proof__cap,
 .mcardp-cat,
 /* The filter FIELD's key ("FILTER"), which is a section eyebrow in every sense §T3 uses: it
@@ -3999,24 +4004,32 @@ html[data-sheet-open] .route-enter { animation: none; }
    the intro and the act share the left column and the card takes the right one, vertically centred
    against the pair, which is the delivery's desktop composition. No `order`, no second copy.
    ⚠️ THE PHONE RUNG IS SET HERE, NOT IN A MEDIA QUERY — the 768 block overrides both values. U6
-   stepped it 48/32 → 32/24 (measured −64px at 360). It is padded, not rhythm-scaled: this element
-   deliberately does not consume --rh-* (§Spacing). */
+   stepped it 48/32 → 32/24 (measured −64px at 360); hero v3 (2026-09-27, spec §5) takes the top to
+   20 and the gap to 20, keeping 32 at the foot: the trust rows now sit above the card, and the
+   budget that puts the card's YES/NO above the bottom rail at 360 × 740 in Swahili is spec §7's
+   (V15 and V21 measure it). It is padded, not rhythm-scaled: this element deliberately does not
+   consume --rh-* (§Spacing).
+   ⭐ THE INTRO IS FOUR ROLES WITH ONE RHYTHM: the lockup (claim + h1, 8 apart), then the lede and
+   the trust rows, 12 apart (16 before the rows, their own 4 of margin) — 8 / 12 / 16 / 20 up to the
+   card, where the old intro was a flat 12. From 768: 12 inside the lockup, 16 between the roles. */
 .kp-hero__inner {
   position: relative;
   max-width: var(--w-board);
   margin-inline: auto;
-  padding: var(--sp-8) var(--sp-4);
+  padding: var(--sp-5) var(--sp-4) var(--sp-8);
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   grid-template-areas: "intro" "card" "act";
-  gap: var(--sp-6);
+  gap: var(--sp-5);
 }
 .kp-hero__intro { grid-area: intro; display: flex; flex-direction: column; gap: var(--sp-3); min-width: 0; }
+.kp-hero__lockup { display: flex; flex-direction: column; gap: var(--sp-2); margin: 0; min-width: 0; }
 .kp-hero__card { grid-area: card; min-width: 0; }
 .kp-hero__act { grid-area: act; display: flex; flex-direction: column; gap: var(--sp-5); min-width: 0; }
 @media (min-width: 768px) {
   .kp-hero__inner { padding: var(--sp-16) var(--sp-6); gap: var(--sp-10); }
   .kp-hero__intro { gap: var(--sp-4); }
+  .kp-hero__lockup { gap: var(--sp-3); }
 }
 @media (min-width: 1024px) {
   .kp-hero__inner {
@@ -4041,26 +4054,55 @@ html[data-sheet-open] .route-enter { animation: none; }
    wants licence, 18+, mobile money and the helpline on a phone's first screen, and a CSS reorder would
    make keyboard order disagree with the screen (WCAG 1.3.2 — v3 review). INHERIT-MANIFEST L18. */
 
-/* The reader's own reading of the brand line (sw, zh), under it — MOBILE-VISUAL ruling 12. Sora,
-   one weight under the headline, on the h3 rung (h2 from 1024): a translation, not a second
-   headline. Its NDIO/HAPANA (是/否) carry the outcome inks through `Inked` in landing-hero.tsx. */
-.kp-hero__sub {
-  font-family: var(--font-display);
-  font-weight: 600;
-  font-size: var(--type-h3);
-  line-height: 1.25;
-  color: var(--text-muted);
+/* ⛔ `.kp-hero__sub` (the sw/zh reading under the English h1, MOBILE-VISUAL ruling 12) was DELETED
+   2026-09-27 with its key: R7(3) made the h1 itself the question in the reader's language, and the
+   English brand line became the sign-off (`.kp-hero__signoff`, below). */
+
+/* THE CLAIM — "50pick │ SOKO LA KWANZA LA UTABIRI LENYE LESENI TANZANIA" (spec §4–§5, R9).
+   A class of its own, not `.kp-hero__eyebrow` (which also dresses seven section labels further down):
+   the claim is the brightest small text on the first screen — `--text`, JetBrains Mono at a REAL
+   600 (the weight is loaded, `layout.tsx`), 13px, capitals by CSS over sentence-case copy, the
+   eyebrow's 0.14em (the shared list beside `.amount`). Balanced, so a wrap never leaves one word.
+   The wordmark and a 1px rule lead it below 1280, where the header shows the mark alone; the rule
+   runs the claim's full height, and the wordmark is centred on the claim's FIRST line (its box is
+   one line of the claim tall). From 1280 the header carries the wordmark and both are hidden. */
+.kp-hero__claim {
+  display: flex;
+  align-items: stretch;
+  gap: var(--sp-2);
   margin: 0;
+  color: var(--text);
+  min-width: 0;
+}
+.kp-hero__claim-mark {
+  flex: none;
+  display: flex;
+  align-items: center;
+  height: calc(var(--type-small) * 1.35);
+}
+.kp-hero__claim-rule { flex: none; width: 1px; background: var(--border-strong); }
+.kp-hero__claim-text {
+  min-width: 0;
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-size: var(--type-small);
+  line-height: 1.35;
+  text-transform: uppercase;
   text-wrap: balance;
 }
-@media (min-width: 1024px) { .kp-hero__sub { font-size: var(--type-h2); } }
+@media (min-width: 1280px) {
+  .kp-hero__claim-mark,
+  .kp-hero__claim-rule { display: none; }
+}
 
-/* The trust lines: licence and 18+, mobile money, named sources, the RG line with the helpline.
-   Each line is a 28px marker column (the 18+ roundel is 28 — `.kp-rg__18`) and the words, so the
-   four lines share one left edge whatever marks them. */
+/* The trust rows (hero v3, 2026-09-27): 18+ · the licence line · the helpline, then the wallets that
+   pay out — in the intro, above the card (spec §4, R7(2)). Each row is a 28px marker column (the 18+
+   roundel is 28 — `.kp-rg__18`) and the words, so the rows share one left edge whatever marks them.
+   Two quiet 13px rows: nothing in them is louder than the claim. 4px of their own above them, so the
+   lede-to-rows seam reads 16 against the intro's 12. */
 .kp-hero__trust {
   list-style: none;
-  margin: 0;
+  margin: var(--sp-1) 0 0;
   padding: 0;
   display: grid;
   gap: var(--sp-2);
@@ -4070,23 +4112,33 @@ html[data-sheet-open] .route-enter { animation: none; }
 }
 .kp-hero__trust > li { display: grid; grid-template-columns: 28px minmax(0, 1fr); column-gap: var(--sp-3); align-items: center; }
 .kp-hero__trust-glyph { display: flex; justify-content: center; color: var(--text-subtle); }
+/* The wallet names are the row's emphasis — brand spellings from the payment catalogue, in the
+   reader's own list form (`rail-list.ts`); the joiners and the sentence stay muted. */
+.kp-hero__rail { color: var(--text); font-weight: 500; }
 /* The helpline is a call a player can make from here, at the tap floor (§A2). ⭐ The REACH is an
    out-of-flow `::after` (13px above and below the ~16px CONTENT box of an inline link — not its line
    height, which V4 caught measuring 36px at ±10 — reaching 42px, over the 40px `--tap-min`), the platform's
    own pattern for a small link (see `.mcardp-share`): a 40px line box made the last trust line
    visibly taller than the three above it, which read as a stray gap. */
+/* ⭐ QUIET SINCE HERO v3 (spec §5): Inter 400 (was 600 white) with tabular figures and a 1px
+   `--border-strong` underline — a call a player can make, not the loudest thing on the screen. */
 .kp-hero__tel {
   position: relative;
   display: inline-block;
   max-width: 100%;
   color: var(--text);
-  font-weight: 600;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
   text-decoration: underline;
+  text-decoration-color: var(--border-strong);
+  text-decoration-thickness: 1px;
   text-underline-offset: 3px;
 }
 /* Label and number are each unbreakable, the space between them is not: under large text the line
    breaks BETWEEN them and never inside "0800 11 0011". */
 .kp-hero__tel > span { white-space: nowrap; }
+/* The hover answers on the underline, the link's own mark: it takes the text's ink. */
+.kp-hero__tel:hover { text-decoration-color: currentColor; }
 /* inline-block: the link is ONE box of its own line height (19.5px at --type-small), so ±13px reaches
    45.5px — past the preferred 44, since this platform allows exactly 40 or 44+ and "41, 42 and 43 are
    not nearly 44" (V4, tap-target §1) — whether it sits on one line or, under large text, wraps between
@@ -4108,6 +4160,10 @@ html[data-sheet-open] .route-enter { animation: none; }
   color: var(--text-subtle);
   margin: 0;
 }
+/* THE LEDE — two designed lines since hero v3 (spec §3/§5): what you do, in the product's own verbs
+   ("Chagua upande, weka dau."), in Inter 500 and `--text`; then what happens ("Ukiwa sahihi,
+   unalipwa."), in Inter 400 and `--text-muted`. Each is its own line and short enough never to wrap
+   at 360 in any language, so the lede is two lines by design rather than by measure. */
 .kp-hero__lede {
   font-size: var(--type-h3);
   line-height: 1.5;
@@ -4115,11 +4171,13 @@ html[data-sheet-open] .route-enter { animation: none; }
   max-width: 52ch;
   margin: 0;
 }
-/* At 360 the lede is the page's longest unbroken run of prose and it was set at --type-h3 (20px),
-   one rung under the H1 — five lines and 150px of a hero that is already 22% of the page. The
-   rung below (17px) is where the question rows are set, and a lede that explains the board should
-   not out-type the board. ⛔ It does NOT go to --type-body: that is the rung of ordinary page copy,
-   and this sentence is the hero's only sentence. */
+.kp-hero__lede-l { display: block; color: var(--text); font-weight: 500; }
+.kp-hero__lede-l--pay { color: var(--text-muted); font-weight: 400; }
+/* At 360 the lede was once the page's longest unbroken run of prose, set at --type-h3 (20px), one
+   rung under the H1 — five lines and 150px of a hero already 22% of the page. The rung below (17px)
+   is where the question rows are set, and a lede that explains the board should not out-type the
+   board. ⛔ It does NOT go to --type-body: that is the rung of ordinary page copy, and these two
+   lines are the hero's only sentences. */
 @media (max-width: 560.98px) {
   /* density: general — the home hero's lede, not the board; both card-spacing settings. */
   .kp-hero__lede { font-size: var(--type-h4); }
@@ -4150,24 +4208,57 @@ html[data-sheet-open] .route-enter { animation: none; }
   flex: none;
 }
 
+/* THE h1 — "NDIO au HAPANA?" (hero v3, R7(3); spec §5). Sora 800 at line-height 1.0, and the
+   tracking tightens as the size grows (−0.030 → −0.038 → −0.045em) so Sora reads as display type.
+   The side words wear the buttons' own inks (`--hero-yes-accent` / `--hero-no-accent`, re-pointed to
+   the 400 shades); the connective is the one quiet word, Sora 400 in `--text-muted` — weight contrast
+   from the same variable file, no new font byte (R7(4)); the "?" stays `--hero-text-strong`.
+   Each `.kp-hero__grp` ("NDIO au" · "HAPANA?") never breaks inside, so the only break is the string's
+   own space after the connective. zh sets untracked, at 1.1, where CJK needs the air. */
 .kp-hero__headline {
   font-family: var(--font-display);
   font-weight: 800;
   font-size: var(--type-display-2);
-  line-height: 1.02;
-  letter-spacing: -0.022em;
+  line-height: 1;
+  letter-spacing: -0.030em;
   color: var(--hero-text-strong);
   margin: 0;
   text-wrap: balance;
 }
+.kp-hero__headline:lang(zh) { letter-spacing: 0; line-height: 1.1; }
+.kp-hero__grp { white-space: nowrap; }
+.kp-hero__side[data-side="yes"] { color: var(--hero-yes-accent); }
+.kp-hero__side[data-side="no"] { color: var(--hero-no-accent); }
+.kp-hero__conn { font-weight: 400; color: var(--text-muted); }
+.kp-hero__q { color: var(--hero-text-strong); }
 /* ⭐ THE v3 CURVE ON THE LOCKED LADDER (WP2, L6). The delivery asks for `clamp(40px, 6.2vw, 88px)`;
    §T1 closes the type ladder, so the curve is mapped onto its nearest steps instead of typed:
    44 (`--type-display-2`) below 1024 — the delivery's 40 at a phone and 47.6 at 768 both land
    nearest it — then 60 (`--type-display-1`) from 1024 and 72 (`--type-hero`) from 1280, where 6.2vw
    is 63 and 79. The 2026-09 phone rung was 32 (the kit's own contradiction 12, ruled for the old
-   hero); whether 44 still leaves v3's featured card inside the first screen is V15's to answer. */
-@media (min-width: 1024px) { .kp-hero__headline { font-size: var(--type-display-1); } }
-@media (min-width: 1280px) { .kp-hero__headline { font-size: var(--type-hero); } }
+   hero); whether 44 still leaves v3's featured card inside the first screen is V15's to answer.
+   ⭐ 2026-09-27 (hero v3, spec §5): the 60 step moves from 1024 to 640 — "NDIO au HAPANA?" fits one
+   line at 768 at 60, and a 44px headline at 768 read as a phone layout stretched ("flat 768"). */
+@media (min-width: 640px) { .kp-hero__headline { font-size: var(--type-display-1); letter-spacing: -0.038em; } }
+@media (min-width: 1280px) { .kp-hero__headline { font-size: var(--type-hero); letter-spacing: -0.045em; } }
+/* (The zh rule above outranks both steps on specificity, so zh stays untracked at every width.) */
+
+/* THE SIGN-OFF — the brand line "The wisdom of YES & NO." with the mark (hero v3, R7(3)): the h1
+   until 2026-09-27, now the line that closes the hero for a visitor, and the share-image line. The
+   mark at 20 is the simplified variant (required at or below 20, `brand.tsx`); Sora 600 on the body
+   rung, quiet, with YES and NO in the outcome inks (`Inked`). */
+.kp-hero__signoff {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: var(--type-body);
+  letter-spacing: -0.01em;
+  color: var(--text-muted);
+}
+.kp-hero__signoff-mark { flex: none; display: flex; }
 
 /* Proof rail — three REAL figures, separated by hairlines.
    ⛔ The kit hides the third figure at 390. We keep all three and reflow instead: each one is a
@@ -5857,7 +5948,11 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
    the footer's own keys, so no RG sentence was written or paraphrased. `.kp-settled`'s band now
    runs straight into the footer's claret rule.
    The roundel itself stays here, ONE definition: the footer's identity column and the hero's
-   trust lines both wear `.kp-rg__18`, so the two marks cannot drift to different sizes again. */
+   trust lines both wear `.kp-rg__18`, so the two marks cannot drift to different sizes again.
+   ⭐ NEUTRAL INK SINCE 2026-09-27 (INHERIT-MANIFEST R7(5), Ali): ring `--text-subtle`, numerals
+   `--text` — a seal, not a stop sign. It was the NO rose (`--no-700` ring, `--no-300` numerals),
+   which borrowed the betting pair for a meaning that is not money (§B2/B2a). One definition, so the
+   footer's badge changed with the hero's. */
 .kp-rg__18 {
   flex: none;
   display: inline-flex;
@@ -5865,12 +5960,12 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
   justify-content: center;
   width: 28px;
   height: 28px;
-  border: 2px solid var(--no-700);
+  border: 2px solid var(--text-subtle);
   border-radius: var(--r-pill);
   font-family: var(--font-display);
   font-weight: 700;
   font-size: var(--type-micro);
-  color: var(--no-300);
+  color: var(--text);
 }
 
 
