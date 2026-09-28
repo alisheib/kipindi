@@ -28,6 +28,9 @@ import { houseAccountMovement } from "../ledger";
 import type { Report, Row, SignatureRow, SummaryItem } from "./types";
 import { adminCount, formatDateTime, formatTzs } from "@/lib/utils";
 import { buildFinanceWindow, type FinanceWindowArg } from "./finance-window";
+// ⭐ The window each report covers, declared once. Every `meta.period` below is one of these
+// rendered — never a fresh hand-typed period string. See ./coverage.ts.
+import { asOf, calendarMonth, cumulative, eatDay, selectedWindow, sinceGenesis, type Coverage } from "./coverage";
 
 /** Standard regulator attestation block — three roles at the foot of every
  *  hand-off-grade report. Only "Prepared by" is filled (the real generator, who
@@ -66,7 +69,16 @@ function hashIdentifier(value: string): string {
 }
 
 function makeReference(acronym: string, generatorId: string): string {
-  const today = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+  /**
+   * 🔴 THE STAMP WAS UTC WHILE EVERY FIGURE IN THE DOCUMENT IS EAT — the same defect
+   * `reportFilename` was already fixed for in brand.ts, left standing in its sibling.
+   * `toISOString().slice(0, 10)` is the UTC calendar day, so between 21:00 and midnight EAT —
+   * three hours of every day, INCLUDING THE END OF EVERY MONTH — the reference printed on every
+   * page of a statutory filing, and stored in the audit row beside it, named YESTERDAY. An auditor
+   * reconciling a pack by its reference against the day it was generated found two different days.
+   * ⛔ The EAT day, from the one definition of a Tanzanian day this file already imports.
+   */
+  const today = eatDateLabel(Date.now()).replace(/-/g, "");
   const tail = generatorId.replace(/^usr_/, "").slice(-6).toUpperCase();
   return `${acronym}-${today}-${tail}`;
 }
@@ -89,12 +101,10 @@ export async function buildGbtMonthly(generatorId: string, packPeriod: string = 
   const rg = await rgRosterCounts();
   const provs = await providerSummary(bounds);
 
-  const periodLabel = packPeriodLabel(packPeriod);
-  // Display the EAT calendar dates (not the UTC instant, which would read as the
-  // last day of the prior month since EAT midnight is 21:00 UTC the day before).
-  const [py, pm] = packPeriod.split("-").map(Number);
-  const lastDay = new Date(Date.UTC(py, pm, 0)).getUTCDate();
-  const period = `${periodLabel} · ${packPeriod}-01 → ${packPeriod}-${String(lastDay).padStart(2, "0")} (EAT)`;
+  // The EAT calendar dates (not the UTC instant, which would read as the last day of the prior
+  // month since EAT midnight is 21:00 UTC the day before) — now from the coverage declaration this
+  // entry carries in the registry, so the card, the tooltip and this heading cannot drift apart.
+  const period = calendarMonth(packPeriod).statement(Date.now());
 
   return {
     title: "Monthly report",
@@ -291,7 +301,12 @@ export async function buildFiuSar(generatorId: string, packPeriod: string = curr
   rows.sort((a, b) => b.amount - a.amount || a.triggerAt.localeCompare(b.triggerAt) || a.txnId.localeCompare(b.txnId));
   return {
     title: "Financial Intelligence Unit · Suspicious-Activity Report",
-    subtitle: `Transactions at or above the ${formatTzs(cutoff)} threshold, or paused for AML review`,
+    // ⭐ THE MONTH IS IN THE SUBTITLE, not only in `meta.period`. This subtitle stated the
+    // THRESHOLD and no window, while two notes below it said "within the period above" — pointing
+    // at a `meta.period` that neither renderer printed. An FIU reviewer holding the page could not
+    // tell which month the line-items belonged to. Both halves are fixed: the renderers now print
+    // the period, and the heading names the month on its own.
+    subtitle: `${packPeriodLabel(packPeriod)} · transactions at or above the ${formatTzs(cutoff)} threshold, or paused for AML review`,
     // Landscape: the line-items carry two ~18-char IDs (player + transaction) plus
     // a datetime — they wrap mid-token in portrait.
     orientation: "landscape",
@@ -299,7 +314,7 @@ export async function buildFiuSar(generatorId: string, packPeriod: string = curr
     meta: {
       generatedAt: new Date().toISOString(),
       generatedBy: generatorId,
-      period: `${packPeriodLabel(packPeriod)} · ${packPeriod} (EAT)`,
+      period: calendarMonth(packPeriod).statement(Date.now()),
       classification: "Confidential",
     },
     summary: [
@@ -412,7 +427,9 @@ export async function buildSxRegister(generatorId: string): Promise<Report> {
     meta: {
       generatedAt: new Date().toISOString(),
       generatedBy: generatorId,
-      period: "Active register",
+      // Was the undated string "Active register" — a register with no as-at instant is not a
+      // point-in-time claim, it is an unfalsifiable one. Now the declaration, which says so.
+      period: asOf().statement(now, "active self-exclusion and cooling-off periods only"),
       classification: "Regulator hand-off",
     },
     summary: [
@@ -496,9 +513,12 @@ export async function buildIsoAudit(generatorId: string): Promise<Report> {
     meta: {
       generatedAt: new Date().toISOString(),
       generatedBy: generatorId,
-      period: truncated
-        ? `Genesis → entry ${entries.length.toLocaleString()} of ${total.toLocaleString()} (export capped)`
-        : "Lifetime (genesis → now)",
+      period: sinceGenesis(ISO_EXPORT_LIMIT).statement(
+        Date.now(),
+        truncated
+          ? `entry 1 → ${entries.length.toLocaleString()} of ${total.toLocaleString()} (export capped)`
+          : `all ${total.toLocaleString()} entries`,
+      ),
       classification: "Regulator hand-off",
     },
     summary: [
@@ -760,7 +780,7 @@ export async function buildDailyOps(generatorId: string): Promise<Report> {
     meta: {
       generatedAt: new Date(nowMs).toISOString(),
       generatedBy: generatorId,
-      period: `${dateLabel} (EAT)`,
+      period: eatDay().statement(nowMs),
       classification: "Internal",
     },
     summary: [
@@ -912,7 +932,9 @@ export async function buildKycReverify(generatorId: string): Promise<Report> {
     title: "KYC re-verification roster",
     subtitle: `Re-verify every ${REVERIFY_MONTHS} months · ${approved.length} approved identities`,
     reference: makeReference("KYCREV", generatorId),
-    meta: { generatedAt: new Date().toISOString(), generatedBy: generatorId, period: `As of ${new Date().toISOString().slice(0, 10)}`, classification: "Internal" },
+    // `As of ${toISOString().slice(0,10)}` was the UTC day — yesterday for the last three hours of
+    // every EAT day — on a roster whose "days to due" column is measured from this same instant.
+    meta: { generatedAt: new Date(now).toISOString(), generatedBy: generatorId, period: asOf().statement(now, `all-time approved roster, due dates measured from this instant`), classification: "Internal" },
     summary: [
       { label: "Approved identities", num: approved.length, format: "integer" },
       { label: "Due now", num: dueNow, format: "integer", tone: dueNow > 0 ? "bad" : "good" },
@@ -1028,7 +1050,8 @@ export async function buildRgEngagement(generatorId: string): Promise<Report> {
     // sub-heads and wraps money values mid-number.
     orientation: "landscape",
     reference: makeReference("RGENG", generatorId),
-    meta: { generatedAt: new Date().toISOString(), generatedBy: generatorId, period: `As of ${new Date().toISOString().slice(0, 10)}`, classification: "Internal" },
+    // Same UTC-day defect as kyc-reverify, on a report whose limits grid is a point-in-time walk.
+    meta: { generatedAt: new Date(now).toISOString(), generatedBy: generatorId, period: asOf().statement(now, `newest ${RG_EVENT_LIMIT} engagement events, no date filter`), classification: "Internal" },
     summary: [
       { label: "Players with active limits", num: withAnyLimit, format: "integer" },
       { label: "Self-excluded", num: roster.selfExcluded, format: "integer", tone: "neutral" },
@@ -1159,7 +1182,7 @@ export async function buildMatchIntegrity(generatorId: string): Promise<Report> 
     meta: {
       generatedAt: new Date().toISOString(),
       generatedBy: generatorId,
-      period: `Cumulative to ${eatDateLabel(Date.now())} (EAT) — not a single quarter`,
+      period: cumulative().statement(Date.now(), "filed quarterly; computed over all history"),
       classification: "Regulator hand-off",
     },
     summary: [
@@ -1233,15 +1256,21 @@ export async function buildMatchIntegrity(generatorId: string): Promise<Report> 
 // CATALOGUE (id → builder)
 // ─────────────────────────────────────────────────────────────────────
 
+/**
+ * ⭐ EVERY ENTRY DECLARES ITS COVERAGE — the window the document actually spans, read off this
+ * registry by the library card, the button tooltip AND the builder's own `meta.period`. See
+ * ./coverage.ts for why one declaration rather than a string on each surface. `satisfies` below is
+ * what makes a new entry without a `coverage` a compile error instead of a blank on the card.
+ */
 export const REPORT_CATALOGUE = {
-  "daily-ops":   { name: "Daily Operations Report", build: buildDailyOps },
-  "gbt-monthly": { name: "Monthly report", build: buildGbtMonthly },
-  "fiu-sar":     { name: "FIU SAR",             build: buildFiuSar },
-  "sx-register": { name: "Self-exclusion Register", build: buildSxRegister },
-  "iso-audit":   { name: "ISO 27001 Audit Log", build: buildIsoAudit },
-  "kyc-reverify":   { name: "KYC re-verification roster", build: buildKycReverify },
-  "rg-engagement":  { name: "Responsible-gambling engagement", build: buildRgEngagement },
-  "match-integrity":{ name: "Match-integrity quarterly review", build: buildMatchIntegrity },
+  "daily-ops":   { name: "Daily Operations Report", coverage: eatDay(), build: buildDailyOps },
+  "gbt-monthly": { name: "Monthly report", coverage: calendarMonth(), build: buildGbtMonthly },
+  "fiu-sar":     { name: "FIU SAR",             coverage: calendarMonth(), build: buildFiuSar },
+  "sx-register": { name: "Self-exclusion Register", coverage: asOf(), build: buildSxRegister },
+  "iso-audit":   { name: "ISO 27001 Audit Log", coverage: sinceGenesis(ISO_EXPORT_LIMIT), build: buildIsoAudit },
+  "kyc-reverify":   { name: "KYC re-verification roster", coverage: asOf(), build: buildKycReverify },
+  "rg-engagement":  { name: "Responsible-gambling engagement", coverage: asOf(), build: buildRgEngagement },
+  "match-integrity":{ name: "Match-integrity quarterly review", coverage: cumulative(), build: buildMatchIntegrity },
   /**
    * ⭐ THE ONLY WINDOWED ENTRY, AND THE FLAG IS HOW THE ROUTE KNOWS. `windowed` tells
    * `/api/admin/reports/[id]` to resolve `?range/from/to` through the SAME `resolveRange` the
@@ -1256,12 +1285,23 @@ export const REPORT_CATALOGUE = {
   "finance-window": {
     name: "Finance — selected window",
     windowed: true,
+    coverage: selectedWindow(),
     build: (generatorId: string, win?: FinanceWindowArg) =>
       buildFinanceWindow(generatorId, makeReference, win),
   },
-} as const;
+} as const satisfies Record<string, { name: string; coverage: Coverage; [k: string]: unknown }>;
 
 export type ReportId = keyof typeof REPORT_CATALOGUE;
+
+/**
+ * ⭐ ONE ANSWER TO "WHAT WINDOW DOES THIS REPORT COVER?", read off the registry rather than
+ * re-typed by each surface — the same discipline `isWindowedReport` applies below. The reports
+ * library uses it for the card's coverage line and the head button's tooltip; each builder uses it
+ * for `meta.period`, which both renderers now print on the artifact face.
+ */
+export function reportCoverage(id: ReportId): Coverage {
+  return REPORT_CATALOGUE[id].coverage;
+}
 
 /**
  * ⭐ ONE ANSWER TO "DOES THIS REPORT TAKE A WINDOW?", read off the registry itself rather than
