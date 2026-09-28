@@ -88,25 +88,70 @@ Verified: `typecheck` clean · `test:report-parity` 50 · `test:report-cells` 23
 `test:report-note-truth` 11 · `test:report-formats` 8 · `test:report-window-reads` 41 ·
 `test:finance-window` 20 · `test:date-range` 23 — all 0 failed.
 
+### ✅ Commit 2 — the page stops lying, and a guard makes it stay fixed
+
+- **`page.tsx`** — the head button now carries a group label reading `Monthly pack · August 2026`
+  plus a tooltip naming the full coverage and saying it does **not** follow the rail. ⛔ The button
+  text stays "Excel"/"PDF": `generate-button.tsx` carries a dated ruling that the format belongs on
+  the button and *which document* on the group label the caller renders beside the pair. That ruling
+  is why `Coverage` gained `short()` rather than the page gaining a label prop.
+- Each library card now prints a **Covers …** line from `reportCoverage(id).describe()`, and the
+  cadence chip reads **"Filed weekly"** so it can no longer be mistaken for a window.
+- `withWindow()` carries `range`/`from`/`to`/`cmp` through **both tab links**, and `buildBaseHref`
+  now carries them plus `tab` through the generation-log pagination.
+- The `range.unreadable` warning from `/admin/finance` is rendered here too, extended to say the
+  substituted window also reaches any windowed report generated from it.
+- `report-pack-card.tsx` — the Download link beside the artifact's sha256 now states that it
+  **re-renders** and so cannot byte-match that hash (see the owner item below).
+- **NEW `scripts/report-window-truth.test.mts`** — `test:report-window-truth` **34 passed, 0 failed**
+  and `red:report-window-truth` **6/6 caught**, both run 3× with identical results. Registered in
+  `predeploy`. Six sections: every entry declares a contract (and each kind describes itself in
+  exactly one way, no two kinds sharing a phrase) · bounded kinds are EAT-aligned and half-open ·
+  unbounded kinds declare **no** bounds · **the bounds the builder handed to SQL == the bounds its
+  declaration claims == the EAT dates the document prints** · both renderers carry the period · every
+  stamp is the EAT day.
+
+Two things the suite taught while being written, both recorded in its comments:
+
+- The PDF assertion first read *"grew by more than 500 bytes"* and **failed on correct code**: 2,441
+  characters of repetitive padding compressed to +443 bytes, so the threshold was measuring zlib.
+  The control then showed the real property — `renderPdf` is **byte-deterministic** for identical
+  input (42,936 vs 42,936 exactly) — so the assertion is now "the bytes differ at all", with no
+  tolerance to blind it.
+- Red case 6 first "caught" its defect by pinning the clock to an hour where the EAT day and the UTC
+  day coincide. That is not a red control — it proves only that the assertion is unsatisfiable when
+  the two days are the same string. Its own vacuity control went red to say so. It now plants the
+  **actual pre-fix line** (`toISOString().slice(0,10)`) at an instant where the two days differ.
+
+**REP-01 from the 2026-09-02 audit is already fixed on main** — the matcher is `/^GGR\b|gross
+gaming/i` and a "the GGR label was actually FOUND" control sits beside it. Another reason to
+re-verify that doc rather than cite it.
+
+⚠️ Noticed while registering: **`test:report-parity` and `test:report-window-reads` are not in
+`predeploy`** at all. Out of scope here; worth a decision.
+
 ### ▶ Next
 
-1. `page.tsx` — card coverage line from `reportCoverage()` (delete nothing hand-typed in), head
-   button names its month, tab + pagination hrefs carry `range`/`from`/`to`/`cmp`, render the
-   `range.unreadable` warning `/admin/finance/page.tsx:286-291` already has.
-2. `generate-button.tsx` — minimal prop for the label/title.
-3. **NEW `scripts/report-window-truth.test.mts`** + `test:` and `red:` scripts in `predeploy`:
-   every entry declares a contract; the printed period equals the bounds the builder actually read
-   (hook `db.txn` the way `report-window-reads.test.mts:54-70` does); a red control per assertion,
-   each measuring a **delta**; run under a non-UTC `TZ` and refuse to print green if the zone cannot
-   discriminate.
-4. Fix REP-01 in `scripts/reports-verify-live.mts:85` — it matches GGR with `/gross gaming/i` but
-   daily-ops' label is `"GGR (TZS)"`, so it has parsed `g=0` since birth. Match the real label **and**
-   add a control that the label was found.
-5. Drive the page + **read every rendered artifact** (rasterise the PDFs, read XLSX back with
+1. Drive the page + **read every rendered artifact** (rasterise the PDFs, read XLSX back with
    exceljs). ⚠️ Chromium treats `#page=N` on an open PDF as a same-document nav and stays on page 1
-   — go `about:blank` between loads and check the toolbar page number in the shot.
-6. Generate once **between 21:00 and 24:00 EAT**: reference, filename and stated period must all name
-   the same EAT day.
+   — go `about:blank` between loads and check the toolbar page number in the shot. ⚠️ `rm -rf .next`
+   first: a stale production `.next` makes `next dev` 404 every route.
+2. Confirm the head button's group label, each card's **Covers …** line, that the window survives a
+   tab switch and a pagination click, and that a pasted ISO instant in `?from` shows the warning.
+3. The EAT stamps are proven in the suite at a pinned instant; a live generation between 21:00 and
+   24:00 EAT would confirm filename + reference + period agree on one day end-to-end.
+
+## Owner items (→ Ali)
+
+- **The pack card's Download link re-renders rather than re-serves.** `/api/admin/reports/gbt-monthly`
+  builds a fresh `buildGbtMonthly(userId, currentPackPeriod())` on every hit, so the bytes the
+  officer receives cannot match the sha256 displayed beside the link — and once the EAT month rolls
+  over, `currentPackPeriod()` moves and the link serves a **different month** than the
+  `pack.periodLabel` printed above it. The link now says so. The real repair is for the route to
+  accept the pack's `?period=` and for prepare to STORE the artifact; both `buildGbtMonthly` and
+  `buildFiuSar` already take a pack period and no caller passes one. Not taken here — it is the
+  month-selector work that was explicitly deferred.
+- **`test:report-parity` and `test:report-window-reads` are absent from `predeploy`.**
 
 ## Flagged, deliberately not changed
 

@@ -58,8 +58,18 @@ export type CoverageBounds = { start: number; end: number };
 
 export type Coverage = {
   kind: CoverageKind;
-  /** Short coverage phrase for a library card or a button tooltip. Pure — no DB, no I/O. */
+  /** Coverage phrase for a library card or a button tooltip. Pure — no DB, no I/O. */
   describe: (now: number) => string;
+  /**
+   * The badge-length form — what fits in a group label beside a pair of download buttons.
+   *
+   * ⛔ IT EXISTS SO A CALLER NEVER RE-DERIVES ONE. `generate-button.tsx` carries a dated ruling
+   * that the button text stays "Excel"/"PDF" and *which document* belongs on the group label the
+   * caller renders beside the pair. Without `short`, that caller would reach for
+   * `packPeriodLabel(currentPackPeriod(now))` itself — correct today, and silently wrong the day
+   * an entry's coverage kind changes under it.
+   */
+  short: (now: number) => string;
   /** The statement printed on the artifact face (`Report.meta.period`, which BOTH renderers now
    *  print). `detail` is the builder's own qualifier — an entry count, a chosen month. */
   statement: (now: number, detail?: string) => string;
@@ -80,6 +90,7 @@ export function selectedWindow(): Coverage {
   return {
     kind: "selected-window",
     describe: () => "Follows the window selected above",
+    short: () => "Selected window",
     statement: (_now, detail) => detail ?? "Selected window",
   };
 }
@@ -89,6 +100,7 @@ export function eatDay(): Coverage {
   return {
     kind: "eat-day",
     describe: () => "The EAT day of generation · 00:00–24:00",
+    short: (now) => eatDateLabel(startOfEatDay(now)),
     statement: (now, detail) => join(`${eatDateLabel(startOfEatDay(now))} · 00:00–24:00 EAT`, detail),
     bounds: (now) => {
       const start = startOfEatDay(now);
@@ -108,6 +120,7 @@ export function calendarMonth(period?: string): Coverage {
   return {
     kind: "calendar-month",
     describe: (now) => `${lead} — ${packPeriodLabel(at(now))}`,
+    short: (now) => packPeriodLabel(at(now)),
     statement: (now, detail) => {
       const p = at(now);
       const [y, m] = p.split("-").map(Number);
@@ -130,6 +143,7 @@ export function asOf(): Coverage {
   return {
     kind: "as-of",
     describe: () => "Point-in-time as at generation — not a period total",
+    short: () => "As at generation",
     statement: (now, detail) => join(`Point-in-time as at ${eatStampLocal(now)} EAT — not a period total`, detail),
   };
 }
@@ -147,6 +161,7 @@ export function sinceGenesis(cap: number): Coverage {
   return {
     kind: "since-genesis",
     describe: () => `Since genesis — oldest ${cap.toLocaleString()} entries at most`,
+    short: () => "Since genesis",
     statement: (_now, detail) => join("Since genesis, oldest first (no date filter)", detail),
   };
 }
@@ -156,6 +171,7 @@ export function cumulative(): Coverage {
   return {
     kind: "cumulative",
     describe: () => "Cumulative to date — not one filing period",
+    short: () => "Cumulative to date",
     statement: (now, detail) => join(`Cumulative to ${eatDateLabel(now)} (EAT) — not one filing period`, detail),
   };
 }
