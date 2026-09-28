@@ -267,8 +267,8 @@ survive a pause. The other six run on their safe defaults (TARGETS-SCREEN.md §6
 
 | # | Step | Status | Where recorded | Live at |
 |---|---|---|---|---|
-| 0 | Map the five areas; write `TARGETS-SCREEN.md` (spec, decisions, owner questions with defaults, the step list) | ✅ **done 2026-09-28** | `TARGETS-SCREEN.md` (new) | docs only |
-| S1 | The fixture and the instrument's reach — the panels seed plants targets; §5.9's population becomes an exact route match *(no product change)* | ✅ **done 2026-09-28** — gate **496/0/8** with the rows against **494/0/10** without them, twice | `TARGETS-SCREEN.md` §7 S1 · `docs/HOUSE-BOTS.md` §12.17 · `DEFERRED-TESTS.md` row 48 (half) | see §5 |
+| 0 | Map the five areas; write `TARGETS-SCREEN.md` (spec, decisions, owner questions with defaults, the step list) | ✅ **done 2026-09-28** | `TARGETS-SCREEN.md` (new) | `9e1b581c`, live inside `52839c89` |
+| S1 | The fixture and the instrument's reach — the panels seed plants targets; §5.9's population becomes an exact route match *(no product change)* | ✅ **done 2026-09-28** — gate **496/0/8** with the rows against **494/0/10** without them, twice | `TARGETS-SCREEN.md` §7 S1 · `docs/HOUSE-BOTS.md` §12.17 · `DEFERRED-TESTS.md` row 48 (half) | ✅ `0ae4d0f5` — verified serving |
 | S2 | The grid delta and the two links, read-only — Timing and Reacts-to columns, the `status` filter (one value feeds list, count AND the last-page clamp), the `target=` anchor, the third empty state, "Active targets: {n} →" | ⬜ | `TARGETS-SCREEN.md` §7 S2 | — |
 | S3 | **ADD** — the page, the poll picker, the timing preview, the first target writer and its literal `TARGET_ADDED` announce; `BY_HAND_SCREENS.targeting` flips here with its two riders; `2.fs09.8` rewritten to pin the writer set at ONE path | ⬜ | `TARGETS-SCREEN.md` §7 S3 | — |
 | S4 | **CHANGE TIMING** — the Edit modal, `casUpdate`, the EVERY→FIRST warning, `TARGET_CHANGED`; the pinned writer set WIDENS to two paths | ⬜ | `TARGETS-SCREEN.md` §7 S4 | — |
@@ -403,12 +403,16 @@ KP_BASE=http://localhost:3031 KP_WIDTHS=360,1280 npm run -s qa:house-bots-visual
     survive a pause. They are decisions now, not assumptions (`TARGETS-SCREEN.md` §6).
   - **S1** (this commit): the fixture and the instrument's reach, no product change. `docs/HOUSE-BOTS.md` §12.17 has
     the whole record and both numbers.
-  - ⛔ **THE DEPLOY OF `9e1b581c` NEVER FIRED, AND IT IS STILL NOT LIVE.** `main` on GitHub IS that commit, but Railway
-    created no build for it: 40+ minutes later the newest deployment was still `637c6fdd`, while every neighbouring
-    commit deployed within ~2 minutes. It is NOT path filtering — `143456bb` touched only `plans/` and did deploy.
-    `railway deployment redeploy --from-source` is the remedy (it pulls main's latest rather than redeploying the old
-    one) and it needs the owner: a production deploy is refused to this session. **Check `curl -sSD - -o /dev/null
-    https://50pick.tz/ | grep -o 'dpl=[0-9a-f]*'` before trusting that anything since then is live.**
+  - ⚠️ **ONE BUILD WAS SILENTLY SKIPPED, AND IT RESOLVED ITSELF — the lesson is to verify by `dpl`, not to assume.**
+    Railway created NO build for `9e1b581c`: 40 minutes on, the newest deployment was still `637c6fdd`, while every
+    neighbouring commit deployed within ~2 minutes. It was NOT path filtering — `143456bb` touched only `plans/` and
+    did deploy. It went live anyway inside another lane's `52839c89` (14:11 UTC), because a later push carries every
+    earlier commit with it, and **S1's own push built normally**, so the pipeline is healthy and nothing is owed.
+    ⛔ The standing rule this cost: a push is not a deploy. Read
+    `curl -sSD - -o /dev/null https://50pick.tz/ | grep -o 'dpl=[0-9a-f]*'` and compare it with your own SHA before
+    calling a step live. If a build really is missing, `railway deployment redeploy --from-source` pulls main's latest
+    (a plain `redeploy` re-runs the OLD one) — and it needs the owner, because a production deploy is refused to a
+    session.
   - ⚠️ **A tagged stash entry is still on the shared stack: `hb-ff-recovery-20260928`.** It holds a half-applied
     checkout this session parked to recover a wedged worktree; everything in it is recoverable from `origin/main` and
     nothing is owed to it. `git stash drop` is refused to this session, so it is left labelled. ⛔ Never `git stash pop`
