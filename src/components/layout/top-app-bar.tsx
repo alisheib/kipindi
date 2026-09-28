@@ -92,7 +92,6 @@ export function TopAppBar({ user, proposalsState, inviteVisible = false, inviteP
   // ⭐ R1 (landing v3, 2026-09-26) · the bar decides with the LIVE balance, so a deposit landing over
   // SSE brings the capsule back and a bet that empties the wallet brings Deposit — no navigation.
   const liveBalance = useLiveBalance(user.balance ?? 0);
-  const funded = liveBalance > 0;
 
   // Core links render inline from `lg`; overflow links fold into the "More"
   // menu at lg and render inline only at `xl` (IA review R1 — no primary
@@ -235,10 +234,20 @@ export function TopAppBar({ user, proposalsState, inviteVisible = false, inviteP
               present, no duplicate. */}
           <LanguageMenu />
 
-          {/* ⭐ R1 · AT ZERO THE CAPSULE GIVES WAY TO A GOLD DEPOSIT (below) — never "TZS 0" in the
-              header (the delivery's V11). A FROZEN wallet keeps its capsule at any balance: the Wallet
-              it opens is where the freeze is explained, and Deposit is refused to it anyway. */}
-          {user.isAuthed && user.balance !== null && user.balance !== undefined && (funded || user.walletHeld) && (
+          {/* 🔴 THE CAPSULE SHOWS AT EVERY BALANCE, ZERO INCLUDED — ALI, 2026-09-28: "have balance
+              always visible please, because user should know he's 0."
+              ⛔ THIS OVERTURNS R1, WHICH IS DELETED RATHER THAN ARGUED WITH. R1 read: "at zero the
+              capsule gives way to a gold Deposit — never 'TZS 0' in the header (the delivery's V11)".
+              It was live for two days. The owner's reason beats the delivery's: a player whose balance
+              is zero is exactly the player who needs to be told so, and a header that simply omits the
+              figure leaves him to infer it from the absence of a control.
+              ⚠️ AND THE DELIVERY'S V11 DOES NOT COVER THIS. Its population is the topic tiles
+              (`.kp-topic__m`, `.kp-topic__pool`) and the hero board's price — a tile ADVERTISING an
+              empty book, which is a different claim from a player reading his own wallet. Checked in
+              `scripts/qa/landing-ten.mjs`, not assumed.
+              A FROZEN wallet keeps its capsule too: the Wallet it opens is where the freeze is
+              explained, and Deposit is refused to it anyway. */}
+          {user.isAuthed && user.balance !== null && user.balance !== undefined && (
             // ⭐ THE BALANCE IS VISIBLE AT EVERY WIDTH — Ali, 2026-08-25, after players
             // voted DOWN the phone-only wallet icon that used to stand in for it.
             //
@@ -348,16 +357,17 @@ export function TopAppBar({ user, proposalsState, inviteVisible = false, inviteP
                   `aria-label` stay, exactly as they do on a phone, so nothing becomes
                   unnameable or unreachable. Measured, not assumed: the label is 108px in EN,
                   103px in SW, 84px in ZH. */}
-              {/* ⭐ AT ZERO THE LABEL STANDS AT lg–xl, AND R1 IS WHAT PAYS FOR IT. The band the note
-                  above describes is E-190's: with a capsule beside it, the label's 108px (EN) / 103px
-                  (SW) is what pushed the account menu off the end. R1 (2026-09-26) made the capsule
-                  GIVE WAY at zero — `(funded || user.walletHeld)` on its guard, above — so in the zero
-                  case the room this label needs is room the capsule has stopped taking. With a balance
-                  the capsule is back and the yield stands. Same measurement, not a new rule.
-                  ⛔ THE TWO ARE COUPLED. If the capsule is ever shown at zero again, this must yield
-                  again, and nothing here would notice on its own. `red:header-fit` mutates this exact
-                  line so that the suite, not a reader, is what catches it. */}
-              <span className={funded ? "hidden xl:inline" : "inline"}>
+              {/* ⛔ THE LABEL YIELDS AT THE lg–xl BAND, IN EVERY BALANCE STATE, AND THAT FOLLOWS FROM
+                  THE LINE ABOVE. It briefly did not: while R1 hid the capsule at zero, the zero case had
+                  room for the label and took it. Ali's 2026-09-28 ruling puts the capsule back at zero,
+                  so the room is taken again and the label must yield again — the two are one decision,
+                  not two, and changing one without the other is how E-190 happened.
+                  🔴 E-190, measured: at 1024 signed in with a capsule beside it, the right cluster ran
+                  31px past in EN and 65px in SW, and what fell off the end was the ACCOUNT MENU — the
+                  only desktop path to profile and sign-out. The label is 108px in EN, 103px in SW.
+                  ⚠️ `hidden xl:inline` is the old `hidden sm:inline lg:hidden xl:inline` with the bands
+                  this pill no longer reaches removed. Same rule, fewer words. */}
+              <span className="hidden xl:inline">
                 {t.common.deposit}
               </span>
             </Link>

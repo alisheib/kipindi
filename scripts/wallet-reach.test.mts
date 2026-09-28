@@ -140,8 +140,14 @@ const { formatBalancePill, formatTzs, formatTzsCompact, BALANCE_COMPACT_ABOVE } 
   // still rendered at 360, 33px past the edge. The hide must be on a WRAPPER.
   const at = bar.indexOf('href="/wallet/deposit"');
   const dep = bar.slice(Math.max(0, at - 400), at + 400);
-  ok("4: the Deposit CTA is hidden by a WRAPPER, not by classes on the .btn (funded only — R1)",
-     /<span className=\{funded \? "hidden sm:inline-flex" : "inline-flex"\}>\s*<Link/.test(dep));
+  // ⚠️ THE WIDTH MOVED TWICE AND THE POINT DID NOT. `sm` → a `funded` ternary (R1) → plain `lg`
+  //    (UPDATE-2026-09-28 §1: below 1024 the rail's centre coin is the wallet's door, so a second
+  //    gold Deposit in the header would be the same control twice on one screen; R10 then removed
+  //    `funded` entirely). What this line guards is unchanged: the hide is on a WRAPPER.
+  ok("4: the Deposit CTA is hidden by a WRAPPER, not by classes on the .btn (yields below `lg`)",
+     /<span className="hidden lg:inline-flex">\s*<Link/.test(dep));
+  ok("4: ⛔ …and its presence does not depend on the BALANCE any more — it depends on the RAIL",
+     !/className=\{funded \? "hidden sm:inline-flex"/.test(bar) && !/const funded = /.test(bar));
   ok("4: ⛔ and the hide is NOT on the button itself, where `.btn` would beat it",
      !/className="btn[^"]*\bhidden\b/.test(bar));
   ok("4: the mark carries the brand below xl", /mark-flip-i inline-flex xl:hidden/.test(bar));
@@ -221,14 +227,27 @@ const { formatBalancePill, formatTzs, formatTzsCompact, BALANCE_COMPACT_ABOVE } 
      formatBalancePill(-999_999).length <= 12, formatBalancePill(-999_999));
 }
 
-// ── 6 · The bottom rail is untouched — Ali ruled it out of scope ─────────────
+// ── 6 · The bottom rail — FIVE tracks, and the centre one is the wallet's door ─────
+// ⛔ THIS SECTION ONCE READ "the bottom rail is untouched — Ali ruled it out of scope". That
+//    ruling was superseded by Ali's own override in UPDATE-2026-09-28 §2: the centre slot is a
+//    DESTINATION (`/wallet/deposit`), which is why "the rail is destinations only" survives it.
+//    Results moved into `More` to free the middle track. The assertions below are rewritten to
+//    the new shape rather than deleted — the rail still has a fixed number of tracks, and Wallet
+//    is still reachable by name on a phone; both are just reached differently.
 {
   const items = rail.slice(rail.indexOf("const items = ["), rail.indexOf("];", rail.indexOf("const items = [")));
   const hrefs = [...items.matchAll(/href: "([^"]+)"/g)].map((m) => m[1]);
-  ok("6: the bottom rail still has exactly four primary slots", hrefs.length === 4, hrefs.join(", "));
+  ok("6: three flanking destinations, because the centre track is the coin", hrefs.length === 3, hrefs.join(", "));
   ok("6: …and Live still holds one of them", hrefs.includes("/live"), hrefs.join(", "));
+  ok("6: …and the rail is STILL five equal tracks — the coin took a track, it did not add one",
+     /repeat\(5, minmax\(0, 1fr\)\)/.test(rail) && /kp-rail__item--coin/.test(rail));
+  ok("6: ⭐ Results did not vanish when it left the rail — it is a named row under More",
+     /href: "\/results",\s*label: t\.common\.results/.test(rail));
   const more = rail.slice(rail.indexOf("moreItems"), rail.indexOf("moreActive"));
-  ok("6: Wallet is STILL the named text entry under More on phones", /href: "\/wallet"/.test(more));
+  ok("6: Wallet is STILL reachable by name on phones — under More when the wallet is usable…",
+     /walletHeld \? \[\] : \[\{ href: "\/wallet"/.test(rail) && /\.\.\.walletRow/.test(more));
+  ok("6: ⛔ …and when it is HELD the centre coin becomes that door, so it is never neither and never both",
+     /const coinHref = walletHeld \? "\/wallet" : "\/wallet\/deposit"/.test(rail));
 }
 
 // ── 7 · R1 · THE WALLET — what the door opens (landing v3, 2026-09-26) ─────
@@ -260,11 +279,19 @@ const { formatBalancePill, formatTzs, formatTzsCompact, BALANCE_COMPACT_ABOVE } 
      heldAt > 0 && heldAt < sheet.indexOf('href="/wallet/deposit"') && /t\.kycGate\.frozenTitle/.test(sheet));
   ok("7: the balance obeys the eye — the Wallet masks through <Cash>, with its own eye",
      /<Cash>\{formatTzs\(balance\)\}<\/Cash>/.test(sheet) && /<CashEye\b/.test(sheet));
-  // ⭐ ZERO: never "TZS 0" in the header — the capsule yields to a gold Deposit at every width.
-  ok("7: ⭐ at zero the capsule is not rendered (unless the wallet is frozen)",
-     /\(funded \|\| user\.walletHeld\) && \(\s*<WalletBalancePill/.test(bar) && /const funded = liveBalance > 0/.test(bar));
-  ok("7: ⭐ …and Deposit shows at EVERY width, labelled, when there is no balance",
-     /funded \? "hidden sm:inline-flex" : "inline-flex"/.test(bar) && /funded \? "hidden sm:inline lg:hidden xl:inline" : "inline"/.test(bar));
+  // ⭐ R10 (Ali, 2026-09-28): "have balance always visible please because user should know he is 0".
+  //    This REVERSES R1's zero clause, which these two lines used to assert — they asserted that the
+  //    capsule YIELDS at zero and that Deposit stands "labelled at every width" in its place. Both were
+  //    live 2026-09-26 → 09-28. Rewritten, not removed: the pair is still a real guard, now pointing
+  //    the other way, and each still fails against the code it replaced.
+  ok("7: ⭐ R10 · the capsule renders at EVERY balance — a player is told his zero, not left to infer it",
+     /user\.isAuthed && user\.balance !== null && user\.balance !== undefined && \(/.test(bar)
+     && !/\(funded \|\| user\.walletHeld\) && \(\s*<WalletBalancePill/.test(bar));
+  ok("7: ⛔ …and no `funded` survives to make the header depend on the balance again",
+     !/const funded = /.test(bar));
+  ok("7: ⭐ …and the Deposit LABEL yields at lg–xl in EVERY balance state (E-190 travels with R10)",
+     /<span className="hidden xl:inline">/.test(bar)
+     && !/funded \? "hidden sm:inline lg:hidden xl:inline" : "inline"/.test(bar));
 }
 
 console.log(`\nwallet-reach: ${pass} passed, ${fail} failed`);

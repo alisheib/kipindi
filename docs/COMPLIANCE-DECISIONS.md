@@ -6,6 +6,32 @@
 
 ---
 
+
+## 2026-09-28 · The header shows the balance at every value, "TZS 0" included (owner ruling R10; reverses R1's zero clause)
+
+**Owner decision:** Ali, 2026-09-28, unprompted, on seeing the live header — *"but now i dont see my balance on
+top why?"*, then *"let revert this and have balance always visible please because user should know he is 0"*.
+Recorded as INHERIT-MANIFEST **R10**.
+
+**What changed.** The balance capsule's guard drops `&& (funded || user.walletHeld)`: a signed-in player sees
+the figure at every balance and every width. R1 (2026-09-26) had hidden it at zero and put a gold Deposit in
+its place, on the delivery's "never TZS 0 in the header". That was live for two days.
+
+**Why it is the right call for a licensed product, not merely the owner's taste.** A zero balance is a fact
+about the player's own money, and the player is entitled to read it without inferring it from the absence of
+a control. Hiding a zero is the same class of omission as rounding one away: the figure a player checks
+before deciding whether to stake is the one that must never be ambiguous. Responsible-gambling guidance runs
+the same direction — a player should always be able to see what they have.
+
+**Scope checked, not assumed.** The delivery's V11 ("dead states") polices `.kp-topic__m` / `.kp-topic__pool`
+and the hero board's price — tiles ADVERTISING an empty book. A player reading his own wallet is a different
+claim, and the header is not in V11's population (`scripts/qa/landing-ten.mjs`).
+
+**The half that travels with it.** With the capsule beside it again, the Deposit label yields at the lg–xl
+band in every balance state. That band is E-190's: 31px over in EN, 65px in SW, and the ACCOUNT MENU — the
+only desktop path to profile and sign-out — fell off the end. Measured after the change at 360/768/1024/1279/
+1280/1440 signed in, at both balances: row overflow 0 everywhere, worst control 12–104px inside the viewport.
+
 ## 2026-09-27 · The landing hero says "Tanzania's first licensed prediction market"; the RG sentence leaves the hero for the footer; two Swahili footer lines corrected (owner rulings R7, R8, R9)
 
 **Owner instructions (Ali, 2026-09-27), recorded verbatim in `docs/design-system/v4-2026-09-26-landing-ten/INHERIT-MANIFEST.md`:**
