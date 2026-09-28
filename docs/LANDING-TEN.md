@@ -46,12 +46,20 @@ WP13 ✅ · WP14 ✅ · WP14b ✅ · **WP1b ✅** (the rail's centre Deposit coi
 **2026-09-28, this session: WP9 🔵 (ONE BOARD — the grid band is gone from `/`, the board is 7 rows with an
 ordering rail) and R17 🔵 (the signed-in hero's Deposit/Withdraw pair is CUT).** Both are built, green on
 every suite named below and driven locally; production is what turns them ✅.
-🔴 **AND A GATE CLASS WAS FOUND UNPROVEN.** Two different classes were both called **V22** — the hero's
-first-claim check and WP1b's bottom-rail/coin check — so `REDS.V22` resolved to the LATER literal and the
-coin's plant was unreachable dead code, `countOf` read the first-claim check's count, and `byClass.V22`
-summed two unrelated classes. The rail/coin class is **V26** now; `--compile` went from 21 RED plants to 22
-on the rename alone, which is the defect's own evidence. ⛔ **WP1b's "V22 RED PROVED … the plant moved the
-coin 154 → 174" cannot be what ran**, so V26 is UNPROVEN until `RED=V26` is measured on production.
+🔴 **AND A MERGE HAD SILENTLY DISARMED A GATE CLASS.** Two classes were both numbered **V22** — the hero
+lane's first-claim check (`36c26893`) and WP1b's bottom-rail/coin check (`ccfa54f0`). ⭐ **Neither lane was
+wrong, which is why nothing caught it:** `git show` either commit and `REDS` holds exactly ONE `V22`. The
+MERGE put both in one object literal, and a duplicate key there is not an error in JavaScript — the later
+literal simply wins. From the merge onward `RED=V22` planted a first-claim and never touched the coin,
+`countOf` returned the first-claim check's count, and `byClass.V22` summed two unrelated classes.
+⛔ So WP1b's "plant moved the coin 154 → 174" was TRUE WHEN TAKEN and unreproducible afterwards.
+✅ **The class is V26 now and is PROVED on production** (2026-09-28, `RED=V26 --cell=base-360-sw`: plant
+APPLIED "coin left 154 → 174", V26 0 → 1, no collateral). `--compile` went 21 → 22 plants on the rename
+alone, and that count is the only signal the collision ever produced.
+⚠️ **The lesson is about MERGES.** Two sessions numbering a new gate class from one sequence cannot see
+each other, and nothing here reads the class list for duplicates. ▶ A cheap guard for the next session:
+assert in `--compile` that `CHECKS` pushes no class name twice and that `REDS` has as many keys as the
+source has `Vnn:` literals.
 
 **Production, 33 of 33 base cells: 20 of 22 classes clean.** V18 went **1,584 → 0** when WP3+WP4 landed
 its `data-market-*` attributes. Only V3 (×12, the chat bubble — Ali's call) and V4 (×36,
@@ -73,7 +81,58 @@ withholds. Not a defect to fix quietly — a number to rule on.
    `.kp-qrow__lean` and `.kp-topic__lean` do not exist anywhere in the tree and had already been deleted
    by WP4 and WP10, so K64's ConvictionBar half was ALREADY TRUE and what it needed was a proof, not a
    consolidation. The search is **WP20's**, not this row's, and "topic chips" are the tiles R15 kept.
-3. ▶ **NEXT — THE HERO PANEL, ASKED FOR AND NOT YET DECIDED (Ali, 2026-09-28: "evaluate this before applying").**
+3. ✅ **THE HERO PANEL RAN (2026-09-28) — FIVE LENSES, SCORED /10 AGAINST WHAT SHIPS. TWO OF THREE ARE REJECTED.**
+   **(A) a `/live`-style hottest-market BANNER replacing the featured card — REJECTED 5/5** (today 8 → proposed
+   2–3 on every lens). Not built. The card carries a real question, a price, a countdown and two betting
+   links; a banner carries an image and a claim, and the gambling-industry lens reads "hottest" as
+   manufactured urgency, which L17 forbids ("the only urgency is a real countdown").
+   **(B) trust row 1 out, the proof figures up into its slot — REJECTED AS SPECIFIED (3 reject, 2
+   adopt-with-changes), AND THE ARITHMETIC IS THE REASON.** Three lenses measured it independently from the
+   CSS and agreed: removing row 1 frees **47px** (two lines at `--type-small` × 1.5 = 39, plus the list's
+   8px `--sp-2` gap), while the proof rail below 640 is **three 44px ledger rows = 133–139px** (the sw
+   "Yaliyolipwa kwa wachezaji" caption sits on the wrap boundary), plus an 8–12px seam. **Net +94 to +98px**
+   — the Swahili YES/NO moves from 610 to ~708 against V15's real line of **675** (the bottom rail's top,
+   not 740), so **V15 goes RED in the DEFAULT LOCALE and both 40px betting links land under the fixed rail.**
+   EN survives by ~12px, ZH by ~24px. ⛔ Do not build B as written.
+   ⭐ **THE COUNTER-BUILD THREE LENSES CONVERGED ON, WHICH GIVES ALI WHAT HE ASKED FOR:** row 1 SHRINKS to
+   one line instead of vanishing — keep the 18+ roundel and the helpline `tel:` (Ali's own words were "i
+   want just the payout and the 18+ … keep those"), drop only the Board SENTENCE, which the owner's
+   attestation is exactly the authority for and which the claim already covers with "LENYE LESENI"; the
+   platform already ships assessed compact wording for it (`t.auth.licensedByGbt`). If figures go up at all,
+   ONE 44px line with at most TWO of them — net about +9px, which V15 can carry. ⚠️ Measure any B variant on
+   the 360 × 740 sw/en/zh cells BEFORE it ships: the numbers above are CSS-derived plus `specs/hero-v3.md`
+   §7's capture anchors, and that spec says in writing "this is a MODEL, not a render".
+   **(C) drop "Paid out to players" — SPLIT 2 adopt / 3 reject, and the split is not about layout.** Three
+   lenses call it the page's only OUTCOME-side figure and the one answer to the question a Tanzanian visitor
+   actually has ("wanalipa?" — do they pay), noting `globals.css` already refused the kit's own instruction
+   to hide it. Two lenses want it gone. ⚠️ It also buys no first-screen budget: on production the rail's top
+   is 977 and the figure runs 1066–1116, entirely below the 675 line, where pixels are free.
+   ▶ **DECIDE C ONLY AFTER THE FINDING BELOW**, because it changes what C is about.
+
+   🔴 **AND THE PANEL FOUND A MONEY-TRUTH DEFECT THAT IS NOT A LAYOUT QUESTION — VERIFIED IN THE CODE.**
+   "Paid out to players" / "Yaliyolipwa kwa wachezaji" is `platform-stats.ts:186` →
+   `db.txn.sumConfirmedByTypes(["BET_PAYOUT","CASHOUT"])`, and that aggregate
+   (`prisma-dal.ts:1870-1877`) is `where: { status: "CONFIRMED", type: { in: types } }` — **with NO wallet,
+   user or house filter of any kind.** The HOUSE BOTS bet on production and their winnings settle as
+   `BET_PAYOUT` / `CASHOUT` rows, so the house's own money is being counted in a caption that says it went
+   *to players*. ⛔ A money sentence must be literally true (RULES law 5; A-5). ⭐ The platform has already
+   ruled the same way elsewhere: `affiliate-service.ts:1349/1454` skips commission accounting outright when
+   `houseBotId != null` — bots are not players for money. And `Transaction.houseBotId` exists and is INDEXED
+   (`schema.prisma:660-662`, a partial index WHERE houseBotId IS NOT NULL), so the fix is one clause:
+   `houseBotId: null`. ⚠️ **NOT APPLIED HERE, DELIBERATELY.** This changes a public money figure, and what it
+   becomes must be MEASURED on production first — a caption that is true and a number nobody expected are
+   two different problems, and Ali should see the new figure before it ships. ▶ Next session: measure the
+   filtered total, then either ship the filter or, if the honest number is too thin to publish, ship C with
+   the reason recorded in `COMPLIANCE-DECISIONS.md` as an RG/advertising decision rather than a layout tidy.
+4. ▶ **AND A CHEAP GUARD THE V22 COLLISION EARNED** — now built: `--compile` refuses a duplicate key in
+   `REDS` (counted in the SOURCE, because `Object.keys` has already collapsed it) and the runner refuses a
+   cell whose `V` array carries one class name twice.
+5. ▶ **STILL OPEN FROM THIS SESSION:** WP9 is 🔨 — it is LIVE and production-measured (33 base cells: only
+   V3 ×12 and V4 ×36, both pre-existing owners; `qa:landing-v3:rows` 63 rows over 9 cells, 0 findings) and
+   needs its sha and a ✅ tick. R17 needs a SIGNED-IN frame review: `mobile01` on production is unfunded, so
+   the funded block must be driven locally through `/auth/demo?deposit=1`. ⚠️ `next dev` on this checkout is
+   panicking in Turbopack ("node process exited … 0xc0000142") — `.next` may need clearing.
+6. ▶ **THE HERO PANEL, ASKED FOR AND NOT YET DECIDED (Ali, 2026-09-28: "evaluate this before applying").**
    Five lenses (UI/UX, marketing, gambling-industry, player/gamer, accessibility + RG) score each proposal /10
    against what ships today, and only what beats the current page is built. The three on the table:
    (a) replace the hero's featured MARKET CARD with a `/live`-style banner leading on the hottest market;
@@ -252,7 +311,7 @@ once, on different things.
 | V20 | Gate: sheets trap focus, close on Esc, respect the safe area | ⬜ | | |
 | V21 | Gate: the placement map, by bounding box | ⬜ | | |
 | V22 | Gate: the hero claim says "first" ONLY while `FIRST_LICENSED_EVIDENCE()` is set, never drops "licensed", and no other text, title or share tag on the page claims a first | ✅ | 54f8199b | production 2026-09-26 onward: 0 findings, and `RED=V22` PROVED — ⭐ **this is the class that `RED=V22` has always actually planted.** It had no row of its own until 2026-09-28: WP1b's rail/coin class was numbered V22 too, so one row on this board stood for TWO classes and the board could not tell their counts apart. The check reads the evidence state out of `src/lib/support-config.ts` in the tree the gate runs from, and exits 2 rather than guessing when it cannot |
-| V26 | Gate: the bottom rail and its centre coin — centred ±1px, a 14px rise, the coin's rect inside a needle keep-out, the rail's row height unchanged, the footer's reserve still clearing it, no English rail label ellipsised | 🔵 | 37bde8a5 | 🔴 **RENAMED FROM V22 AND UNPROVEN, 2026-09-28 (found while building WP9).** The name V22 was taken by the hero's first-claim class, and `REDS` declared the key twice in ONE object literal — so the later literal won, this class's plant was unreachable, `countOf` returned the OTHER check's count, and `byClass.V22` summed two unrelated classes into one row. `--compile` reports 22 plants after the rename where it reported 21 before, which is the defect's own evidence. ⛔ So the evidence below is evidence for the hero-claim plant, not for the coin, and this class must be re-proved with `RED=V26` on production before it is ✅ again. The CHECK itself is unchanged and read 0 findings; only its RED control was dead. ·· Original record: production 2026-09-28: 0 findings; **RED PROVED** on production (`RED=V22 --cell=base-360-sw`, plant moved the coin 154→174, V22 0→1, no collateral). ⚠️ Asserts the RISE rather than the CSS value: the concept's rail has 56px slots and ours has 64px, and `margin-top:-14px` — the obvious reading — measured a **7px** rise. ⚠️ Not applicable at ≥1024 (`lg:hidden`) and says so rather than passing. ⚠️ "/results marks More as current" is NOT in it — a different route, and More's items are not in the DOM until it opens; it belongs with `test:section-rail` |
+| V26 | Gate: the bottom rail and its centre coin — centred ±1px, a 14px rise, the coin's rect inside a needle keep-out, the rail's row height unchanged, the footer's reserve still clearing it, no English rail label ellipsised | ✅ | 37bde8a5 | ⭐ **RENAMED FROM V22 AND RE-PROVED ON PRODUCTION, 2026-09-28** (`RED=V26 --cell=base-360-sw`: plant APPLIED "coin left 154 → 174", V26 0 → 1, no other class moved). It shared the number V22 with the hero's first-claim class — not by either lane's mistake, but because two BRANCHES each added a class with that number and the merge put two `V22` keys in one object literal, where the later one silently wins. From the merge until today `RED=V22` planted a first-claim and never touched the coin. ⚠️ The CHECK was always sound and read 0 on production; only its red control was unreachable. ·· Original record: 🔴 **RENAMED FROM V22, 2026-09-28 (found while building WP9).** The name V22 was taken by the hero's first-claim class, and `REDS` declared the key twice in ONE object literal — so the later literal won, this class's plant was unreachable, `countOf` returned the OTHER check's count, and `byClass.V22` summed two unrelated classes into one row. `--compile` reports 22 plants after the rename where it reported 21 before, which is the defect's own evidence. ⛔ So the evidence below is evidence for the hero-claim plant, not for the coin, and this class must be re-proved with `RED=V26` on production before it is ✅ again. The CHECK itself is unchanged and read 0 findings; only its RED control was dead. ·· Original record: production 2026-09-28: 0 findings; **RED PROVED** on production (`RED=V22 --cell=base-360-sw`, plant moved the coin 154→174, V22 0→1, no collateral). ⚠️ Asserts the RISE rather than the CSS value: the concept's rail has 56px slots and ours has 64px, and `margin-top:-14px` — the obvious reading — measured a **7px** rise. ⚠️ Not applicable at ≥1024 (`lg:hidden`) and says so rather than passing. ⚠️ "/results marks More as current" is NOT in it — a different route, and More's items are not in the DOM until it opens; it belongs with `test:section-rail` |
 | V23 | Gate: motion audit — transform/opacity only, no per-second page re-render, timers pause when hidden | ⬜ |  | ✅ **R12 UNBLOCKS THIS**: it forbids animating anything that triggers LAYOUT — width, height, top, left, margin, padding — and allows transform, opacity and `filter`. Written against the reason behind the delivery's wording, because the wording as written convicts `.gilt-metal:hover`, the coin's own fill |
 | V24 | Gate: board search filters within one frame; the empty state renders; the 7-day chart's presence follows its width rule | ⬜ |  | ✅ **R11 UNBLOCKS THIS**: it asserts the 7-day line is TRIMMED below 640 and full from 640, not that it is absent. Still behind WP20's search |
 | V25 | Gate: one Deposit per screen (UPDATE-2026-09-28 §5) — below 1024 none in the header, exactly one in the rail, none in the hero below 640; at 1024 and up no rail, at most one header pill, none for a visitor | ✅ | 37bde8a5 | production 2026-09-28: 0 findings; **RED PROVED** on production (`RED=V25 --cell=base-768-sw`, plant injected a second header Deposit, V25 0→1, no collateral). ⛔ Population is scoped by REGION, never page-wide — `cashback-promo.tsx` is a legitimate second `/wallet/deposit` CTA. ⛔ Counts what is RENDERED, not the DOM. ⚠️ The signed-in FLOOR at ≥1024 is not asserted: "exactly one" cannot tell a held wallet (correctly none) from a missing pill, because the rail that reveals held is gone at that width. Measured on a local seeded host instead (Ali's ruling, 2026-09-28) |

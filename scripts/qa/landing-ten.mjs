@@ -42,14 +42,21 @@
  *   14px rise, the coin's rect inside a needle keep-out, the rail's row height unchanged, the footer's
  *   reserve still clearing it, no English rail label ellipsised. Not applicable at ≥ 1024 (`lg:hidden`)
  *   and it says so. RED: move the coin sideways.
- *   🔴 IT WAS CALLED V22 UNTIL 2026-09-28, AND V22 WAS ALREADY TAKEN — found while building WP9.
- *   `CHECKS` pushed the name "V22" twice (the hero claim below, and this) and `REDS` declared the key
- *   `V22` twice in ONE object literal, so the LATER literal won and the coin's plant at the top of
- *   `REDS` was unreachable. Three consequences, all silent: `RED=V22` planted a first-claim and never
- *   touched the coin; `countOf` reads `V.find(v => v.cls === cls)`, which returned the hero-claim
- *   check's count; and `summary.byClass.V22` summed two unrelated classes into one row. ⛔ WP1b's
- *   "V22 RED PROVED … plant moved the coin 154 → 174" therefore cannot be what ran, and the coin class
- *   is UNPROVEN until `RED=V26` is measured. Two classes under one name is a population that lies.
+ *   🔴 IT WAS CALLED V22 UNTIL 2026-09-28, AND A MERGE MADE THAT A COLLISION — found while building WP9.
+ *   ⭐ NEITHER LANE WAS WRONG, WHICH IS WHY NOTHING CAUGHT IT. Two branches each added a class numbered
+ *   V22: the hero lane's first-claim check (`36c26893`) and WP1b's rail-and-coin check (`ccfa54f0`).
+ *   `git show` each commit and `REDS` holds exactly ONE `V22` key — each lane's run was valid, and each
+ *   recorded a real PROVED against its own plant. The MERGE put both in one object literal, and a
+ *   duplicate key in an object literal is not an error in JavaScript: the LATER literal simply wins.
+ *   From the merge onward, silently: `RED=V22` planted a first-claim and never touched the coin, because
+ *   the coin's plant sits EARLIER in `REDS` and was shadowed; `countOf` reads
+ *   `V.find(v => v.cls === cls)` and returned the hero-claim check's count; and `summary.byClass.V22`
+ *   summed two unrelated classes into one row. ⛔ So WP1b's evidence was TRUE WHEN TAKEN and
+ *   unreproducible afterwards — the class had to be re-proved on main, which is what V26 is.
+ *   ⚠️ THE LESSON IS ABOUT MERGES, NOT ABOUT EITHER LANE: two sessions numbering a new gate class from
+ *   the same sequence cannot see each other, and no gate here reads its own class list for duplicates.
+ *   `--compile` reports the plant COUNT (21 before the rename, 22 after) and that number is the only
+ *   thing that ever showed it.
  * · V22 — the hero claim says "first" ONLY while `FIRST_LICENSED_EVIDENCE()` is set, never drops
  *   "licensed", and no other text on the page (nor the title / share tags) claims a first. The
  *   evidence state is read from `src/lib/support-config.ts` in THIS tree — the gate is run from the
@@ -1476,7 +1483,35 @@ const REDS = {
 if (process.argv.includes("--compile")) {
   new Function("return " + CHECKS);
   for (const v of Object.values(REDS)) new Function("return " + v);
-  console.log(`compiled CHECKS (${CHECKS.length} chars) and ${Object.keys(REDS).length} RED plants`);
+  /* ⭐ NO CLASS NAME MAY BE USED TWICE, AND THIS IS THE GUARD THE V22 COLLISION NEEDED (2026-09-28).
+     Two branches each numbered a new class V22 — the hero's first-claim check and WP1b's rail-and-coin
+     check — and each was correct alone. The MERGE put two `V22` keys in one object literal, where a
+     duplicate is not a JavaScript error: the later literal silently wins. For the whole time it stood,
+     `RED=V22` planted the wrong defect, `countOf` returned the wrong check's count, and `byClass.V22`
+     summed two classes into one row. ⛔ Nothing in this file could see it, because the only symptom was
+     a plant count one lower than the source shows — the number printed on the line below.
+     ⚠️ MEASURED FROM THE SOURCE, NOT FROM THE OBJECT. `Object.keys(REDS)` has ALREADY collapsed a
+     duplicate, so counting it can never disagree with itself; the literals have to be counted in the
+     text. Same for CHECKS: `push("Vnn", …)` is what a class name IS here. */
+  /* ⛔ THE FIRST DRAFT OF THIS GUARD CONVICTED V15, V21 AND V26, AND IT WAS WRONG. Each of those pushes
+     its own name from two MUTUALLY EXCLUSIVE branches — "not applicable at this width" and the real
+     measurement — so exactly one runs per cell, which is the opposite of a collision. Counting `push`
+     sites in the source cannot tell an exclusive branch from a second class, so it does not try.
+     ⭐ WHAT CAN TELL, AND IS THE ACTUAL V22 DEFECT: a duplicate key in the `REDS` object literal. There
+     the later literal silently wins and the earlier plant becomes unreachable — no error, no warning,
+     and `Object.keys(REDS)` has ALREADY collapsed it, so the object can never disagree with itself.
+     The literals have to be counted in the TEXT, which is what this does.
+     ⚠️ The other half — two different CHECKS both pushing one name in the SAME pass — is caught at
+     runtime below, where the `V` array of one cell is the only place it can be seen honestly. */
+  const redSrc = readFileSync(fileURLToPath(import.meta.url), "utf8");
+  const redLits = [...redSrc.matchAll(/^\s{2}(V[0-9]+[a-z]?):\s/gm)].map((m) => m[1]);
+  const dupReds = [...new Set(redLits.filter((c, i) => redLits.indexOf(c) !== i))];
+  if (dupReds.length) {
+    console.error(`⛔ REDS declares a plant key twice — the LATER literal silently wins and the earlier plant is unreachable: ${dupReds.join(", ")}`);
+    console.error(`   This is how V22 lost its coin plant on 2026-09-28: two branches each numbered a new class V22 and the merge put both keys in one literal.`);
+    process.exit(2);
+  }
+  console.log(`compiled CHECKS (${CHECKS.length} chars) and ${Object.keys(REDS).length} RED plants · ${redLits.length} plant literals, no duplicate keys`);
   process.exit(0);
 }
 
@@ -1568,6 +1603,17 @@ async function runCell(browser, cell, plantKey = null, signedInState = null) {
     if (plantKey && REDS[plantKey]) plantResult = await page.evaluate(REDS[plantKey]);
 
     const r = await page.evaluate(CHECKS);
+    const names = r.V.map((v) => v.cls);
+    const collided = [...new Set(names.filter((c, i2) => names.indexOf(c) !== i2))];
+    if (collided.length) {
+      console.error(`⛔ TWO CLASSES UNDER ONE NAME in ${c.id}: ${collided.join(", ")}. From here countOf() reads only the FIRST and byClass sums two classes into one row. This is the V22 defect (2026-09-28): a class may push its name from two EXCLUSIVE branches, so the source cannot see it — one cell's V array can.`);
+      process.exit(2);
+    }
+    /* ⭐ TWO CLASSES UNDER ONE NAME, CAUGHT WHERE IT IS VISIBLE (2026-09-28). A class may push its own
+       name from two exclusive branches, so the source cannot tell a collision from a branch — but ONE
+       cell's `V` array can: if a name appears twice there, two different checks both ran under it, and
+       from that moment `countOf` (a `.find`) reads the first and `byClass` sums them into one row.
+       ⛔ An instrument failure, not a product finding: it exits rather than reporting a violation. */
     if (plantResult) r.plant = plantResult;
     await page.screenshot({ path: join(OUT, `${cell.id}.png`) }).catch(() => {});
     await ctx.close();

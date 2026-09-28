@@ -274,6 +274,56 @@ clean, build artifacts removed, no stray dev servers.
 Production after the push: health `ok`, uptime reset (new process), database reachable + migrated,
 `/admin/reports` 307 and the report API 401 for anonymous — the gate is intact.
 
+### ✅ Commit 6 — the month in progress, offered honestly
+
+Ali asked for a current-month option on the monthly report, with the click telling the officer how
+much of the month is still to run. The risk IS the feature: a month-to-date total under a bare
+"September 2026" heading reads exactly like September's statutory return.
+
+**One place decides.** `monthCompleteness(period, now)` answers "has this month ended, and how much
+is left"; `calendarMonth()` renders every form from it, so the card, the dialog and the printed
+document cannot disagree about the days remaining.
+
+**The window is clamped to `now` while partial.** Reading to the month's nominal end would read the
+FUTURE and return a complete-month total quietly missing its last days — on the page,
+indistinguishable from a finished month with poor trade. Clamping is a no-op for a finished month,
+so one expression is right for both.
+
+**Four things change together on a partial run**, because any one left in filing dress is enough to
+get an unfinished month signed: the **title** says `PARTIAL (month in progress)`; the **period** says
+`PARTIAL, THE MONTH HAS NOT FINISHED … 3 days still to run · NOT a statutory filing`; the
+**classification** drops to `Internal`; and the **attestation block is omitted** — its absence is the
+strongest statement on the page. A note names the days remaining and says it must not be submitted.
+
+**The route** allows the running month and refuses only a month that has not **begun** (an empty
+document titled with next month is a fabricated zero). **The dialog** states the days remaining
+before anything is built, names the format pressed, and Cancel generates nothing.
+
+Two faults found by **reading the rendered PDF**, not by any suite — both now asserted by §4c:
+
+- two section descriptions still said *"TZS totals for the **statutory calendar month**"* on a
+  document covering part of one;
+- the Source note said *"aggregated for the named EAT calendar month"*; it now points at "the period
+  stated above", true on both runs.
+
+⚠️ `tone="warning"` is the semantic choice and matches every other admin confirm — but
+`ConfirmModal`'s `TONE_BTN` maps `warning` and `claret` to the **same** `btn-claret`, so the
+three-tone type paints only two. Not repaired here: a real warning variant is a new token in a FROZEN
+design system and would restyle a dozen dialogs at once.
+
+⚠️ The visual took three passes and each fault was real: the month and days-remaining were stated
+**twice** (chip line + Covers line); then the caption, sharing a row with the buttons, wrapped onto a
+third line inside the two-column grid and made the subordinate row **taller** than the primary one.
+It now mirrors the primary row — full-width caption, buttons right-aligned beneath.
+
+Verified: `typecheck` 0 · `next build` 0 (twice; one `npm run build` exit 1 was a wrapper artifact —
+`npx next build` and a re-run both 0) · every suite **3× identical**: date-range 30,
+report-window-truth **50**, report-parity 50, report-window-reads 41, finance-window 20,
+report-cells 23, note-truth 11, formats 8, money-invariants 88, red **10/10** · smoke 23/23 ·
+artifacts ALL 9 + the running month allowed/PARTIAL/Internal and a not-begun month refused 400 ·
+drive CLEAN including the new row, the dialog and Cancel · partial PDF rasterised and read — page 2
+confirms **no attestation block**.
+
 ## Owner items (→ Ali)
 
 1. **Storing the prepared pack artifact**, so the pack card's Download re-serves the hashed bytes
@@ -289,18 +339,6 @@ Production after the push: health `ok`, uptime reset (new process), database rea
   and the UTC day differ). A live generation between 21:00 and 24:00 EAT would confirm filename +
   reference + period agree on one day end-to-end in production.
 - Merge decision for `reports-window-truth` → `main`.
-
-## Owner items (→ Ali)
-
-- **The pack card's Download link re-renders rather than re-serves.** `/api/admin/reports/gbt-monthly`
-  builds a fresh `buildGbtMonthly(userId, currentPackPeriod())` on every hit, so the bytes the
-  officer receives cannot match the sha256 displayed beside the link — and once the EAT month rolls
-  over, `currentPackPeriod()` moves and the link serves a **different month** than the
-  `pack.periodLabel` printed above it. The link now says so. The real repair is for the route to
-  accept the pack's `?period=` and for prepare to STORE the artifact; both `buildGbtMonthly` and
-  `buildFiuSar` already take a pack period and no caller passes one. Not taken here — it is the
-  month-selector work that was explicitly deferred.
-- **`test:report-parity` and `test:report-window-reads` are absent from `predeploy`.**
 
 ## Flagged, deliberately not changed
 

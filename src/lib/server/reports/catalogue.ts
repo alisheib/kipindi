@@ -30,7 +30,7 @@ import { adminCount, formatDateTime, formatTzs } from "@/lib/utils";
 import { buildFinanceWindow, type FinanceWindowArg } from "./finance-window";
 // ⭐ The window each report covers, declared once. Every `meta.period` below is one of these
 // rendered — never a fresh hand-typed period string. See ./coverage.ts.
-import { asOf, calendarMonth, cumulative, eatDay, selectedWindow, sinceGenesis, type Coverage } from "./coverage";
+import { asOf, calendarMonth, cumulative, eatDay, monthCompleteness, selectedWindow, sinceGenesis, type Coverage } from "./coverage";
 
 /** Standard regulator attestation block — three roles at the foot of every
  *  hand-off-grade report. Only "Prepared by" is filled (the real generator, who
@@ -92,7 +92,15 @@ export async function buildGbtMonthly(generatorId: string, packPeriod: string = 
   // named by `packPeriod` (YYYY-MM), not a rolling 28-day window — otherwise the
   // numbers in the signed artifact don't match its "June 2026" heading (and the
   // maker-checker sha256 would be over a mislabelled document).
-  const bounds = packPeriodBounds(packPeriod);
+  /* ⭐ BOUNDS FROM THE COVERAGE DECLARATION, NOT A SECOND CALL TO `packPeriodBounds`. The
+     declaration clamps a still-running month to `now`; reading to the month's nominal end would
+     read the FUTURE and return a complete-month total quietly missing its last days. Clamping is a
+     no-op for a finished month, so this one expression is right for both — and it is the same
+     object `test:report-window-truth` compares against what the builder actually hands to SQL. */
+  const coverage = calendarMonth(packPeriod);
+  const nowMs = Date.now();
+  const bounds = coverage.bounds!(nowMs);
+  const { partial, daysRemaining } = monthCompleteness(packPeriod, nowMs);
   const dep = await depositsTotal(bounds);
   const wd = await withdrawalsTotal(bounds);
   const ggr = await grossGamingRevenue(bounds);
@@ -104,17 +112,23 @@ export async function buildGbtMonthly(generatorId: string, packPeriod: string = 
   // The EAT calendar dates (not the UTC instant, which would read as the last day of the prior
   // month since EAT midnight is 21:00 UTC the day before) — now from the coverage declaration this
   // entry carries in the registry, so the card, the tooltip and this heading cannot drift apart.
-  const period = calendarMonth(packPeriod).statement(Date.now());
+  const period = coverage.statement(nowMs);
 
   return {
-    title: "Monthly report",
+    /* ⛔ A PARTIAL MONTH IS NOT THE SAME DOCUMENT, AND ITS TITLE SAYS SO FIRST. Everything below
+       — title, classification, attestation — changes together, because any one of them left in
+       filing dress is enough for a month-to-date total to be read as a statutory return. */
+    title: partial ? "Monthly report — PARTIAL (month in progress)" : "Monthly report",
     subtitle: period,
     reference: makeReference("MONTHLY", generatorId),
     meta: {
-      generatedAt: new Date().toISOString(),
+      generatedAt: new Date(nowMs).toISOString(),
       generatedBy: generatorId,
       period,
-      classification: "Regulator hand-off",
+      /* ⛔ "Regulator hand-off" IS A CLAIM ABOUT WHERE THE DOCUMENT MAY GO. An unfinished month
+         may not go to the Gaming Board, so it is Internal — the same classification
+         `finance-window` carries for the same reason. */
+      classification: partial ? "Internal" : "Regulator hand-off",
     },
     summary: [
       { label: "Deposits (TZS)", num: dep.amount, format: "tzs", tone: "neutral", delta: adminCount(dep.count, "txn") },
@@ -125,7 +139,13 @@ export async function buildGbtMonthly(generatorId: string, packPeriod: string = 
     sections: [
       {
         title: "Aggregate financials",
-        description: "TZS totals for the statutory calendar month. Counts reflect confirmed transactions only.",
+        /* ⛔ THE DESCRIPTION MUST NAME THE WINDOW THAT WAS ACTUALLY READ. "the statutory calendar
+           month" is false on a partial run — the figures cover part of one — and a stated
+           methodology that contradicts the computed one is the exact defect class this report
+           already carries two rulings about. */
+        description: partial
+          ? `TZS totals for ${packPeriodLabel(packPeriod)} UP TO THE GENERATION TIMESTAMP — a part-month, not the statutory period. Counts reflect confirmed transactions only.`
+          : "TZS totals for the statutory calendar month. Counts reflect confirmed transactions only.",
         columns: [
           { header: "Metric", key: "metric", width: 55 },
           { header: "Value", sub: "TZS", key: "value", format: "tzs", align: "right", width: 25 },
@@ -169,7 +189,9 @@ export async function buildGbtMonthly(generatorId: string, packPeriod: string = 
       },
       {
         title: "Mobile-money provider summary",
-        description: "Volume by aggregator over the statutory calendar month. Negative net = aggregator paid out more than it took in.",
+        description: partial
+          ? `Volume by aggregator over ${packPeriodLabel(packPeriod)} UP TO THE GENERATION TIMESTAMP — a part-month. Negative net = aggregator paid out more than it took in.`
+          : "Volume by aggregator over the statutory calendar month. Negative net = aggregator paid out more than it took in.",
         columns: [
           { header: "Provider", key: "provider", width: 18 },
           { header: "Deposits", sub: "TZS", key: "deposits", format: "tzs", align: "right", width: 18 },
@@ -215,8 +237,12 @@ export async function buildGbtMonthly(generatorId: string, packPeriod: string = 
       // from the audit log, and no row count is reconciled against the audit chain. It
       // was printed on the artifact that passes through the two-officer signing chain to
       // the Gaming Board. Never state a provenance this builder does not exercise.
-      "Source: the Transaction, User and KYC tables, aggregated for the named EAT calendar " +
-        "month. Financial figures are computed by the shared money module used by the " +
+      /* ⛔ "THE PERIOD STATED ABOVE", not "the named EAT calendar month". The heading already
+         states the window — a whole month, or part of one on a partial run — and this sentence
+         must point AT it rather than assert a shape of its own that a part-month run contradicts.
+         Found by reading the rendered PDF of a partial month, not by a suite. */
+      "Source: the Transaction, User and KYC tables, aggregated for the period stated above. " +
+        "Financial figures are computed by the shared money module used by the " +
         "operator console, so the console and this pack cannot disagree.",
       // Scope caveat — the honest disclosure of §1.9. kycFunnel() and rgRosterCounts()
       // take no window; they are as-of-generation snapshots sitting beside period-bounded
@@ -225,8 +251,24 @@ export async function buildGbtMonthly(generatorId: string, packPeriod: string = 
       "Scope: deposits, withdrawals, GGR, NGR and the provider summary are bounded to the " +
         "period above. The KYC funnel and responsible-gambling roster are point-in-time " +
         "counts as at the generation timestamp, not period totals.",
+      /* ⭐ THE PARTIAL DISCLOSURE LEADS WITH WHAT IS MISSING, not with what is present. A reader
+         who takes one line from this document must take the one that stops them filing it. */
+      ...(partial
+        ? [
+            `INCOMPLETE MONTH. ${packPeriodLabel(packPeriod)} is still running — ${daysRemaining} ` +
+              `${daysRemaining === 1 ? "day" : "days"} remain. Every figure above covers only the part of the ` +
+              "month elapsed at the generation timestamp, and WILL CHANGE before the month closes. " +
+              "This is an operating preview: it is not a statutory return, it carries no attestation " +
+              "block, and it must not be submitted to the Gaming Board. File the pack for this month " +
+              "once the month has ended.",
+          ]
+        : []),
     ],
-    signatures: await regulatorSignatures(generatorId),
+    /* ⛔ NO ATTESTATION ON AN UNFINISHED MONTH. The three-role signature panel is what makes this
+       document a filing an officer signs; printing blank "Reviewed by / Approved by" rules under
+       figures that are still moving invites exactly the signature that must not be given.
+       Its ABSENCE is the strongest statement on the page. */
+    ...(partial ? {} : { signatures: await regulatorSignatures(generatorId) }),
   };
 }
 

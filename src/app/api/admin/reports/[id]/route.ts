@@ -106,10 +106,18 @@ export async function GET(
           error: `Unreadable period "${raw}" — expected YYYY-MM (East Africa Time calendar month).`,
         }, { status: 400 });
       }
-      if (packPeriodBounds(raw).end > Date.now()) {
+      /* ⭐ THE RUNNING MONTH IS ALLOWED; A MONTH THAT HAS NOT STARTED IS NOT. An operator asking
+         for the current month wants to see where it stands before it closes — a real need, and the
+         document answers it honestly: `calendarMonth()` clamps the window to `now`, the title says
+         PARTIAL, the classification drops to Internal and the attestation block is omitted, so a
+         month-to-date total cannot be mistaken for a statutory return.
+         ⛔ A FUTURE month has no figures at all — not "few", none. Returning an empty document
+         titled with next month would be a fabricated zero, which is the one thing a regulator
+         artifact may never print. Refused. */
+      if (packPeriodBounds(raw).start > Date.now()) {
         return NextResponse.json({
           ok: false,
-          error: `The month ${raw} has not finished, so it has no complete figures to file.`,
+          error: `The month ${raw} has not begun, so there is nothing to report.`,
         }, { status: 400 });
       }
       packPeriod = raw;
