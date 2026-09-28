@@ -125,8 +125,8 @@ row; this section does not repeat it.
 > Continue the 50pick landing v3 build, end to end, sealed — visual and logical. The build moved to this PC on
 > 2026-09-28; everything is on GitHub (alisheib/kipindi) and nothing needs the old laptop.
 >
-> Setup: find the repo on this machine (or clone it) and work in your own checkout of branch `landing-v3` (tip
-> `9c18f33c`: the live Up & Down band + the hero merged but NOT live and NOT yet verified + the docs). `git fetch`,
+> Setup: find the repo on this machine (or clone it) and work in your own checkout of branch `landing-v3` (it
+> holds the live Up & Down band + the hero merged but NOT live and NOT yet verified + the docs). `git fetch`,
 > `npm ci`, merge `origin/main` (never rebase or force). The other built units wait on their own branches:
 > `landing-v3-c1` (`cc6fc5bd`), `landing-v3-wp34` (`3312082f`, built on C1), `landing-v3-f1` (`a8ad92a0`, built on C1).
 >
