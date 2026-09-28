@@ -9,9 +9,15 @@
  * lines), why to trust it (18+ · the Board's licence · the helpline; the wallets that pay out),
  * then a live market, then what to press, then the brand line as a sign-off. The trust rows sit
  * ABOVE the card since R7: after the card and the CTAs they never reached a phone's first screen
- * (ACCEPTANCE K29). They are the same rows for a visitor and a player. The proof rail, the
- * conviction bar and the closing-soonest board keep every rule they had in their own section
- * directly below (`LandingProof`).
+ * (ACCEPTANCE K29). They are the same rows for a visitor and a player. The proof rail and the
+ * conviction bar keep every rule they had in their own section directly below (`LandingProof`), and
+ * the board is a section of its own after it (`QuestionBoard`, WP9).
+ *
+ * ⭐ THIS FILE IS A DECLARED FILTER SURFACE (WP9 · R16). `QuestionBoard` renders the board's ordering
+ * rail out of `FilterPill`, the product's one filter control language, and is named in
+ * `scripts/filter-language.test.mts`'s `SURFACES` so §3.1–§3.5 police the idiom here too. ⛔ The hook
+ * `data-filter-rail` must stay on the rail in this file: §0.4 fails on an undeclared hook and §0.5 on
+ * a declared surface that has stopped emitting one.
  *
  * ⛔ THE GAMBLING-WARNING SENTENCE IS NOT IN THE HERO (R7(2)). The footer carries it, with the
  * helpline and the limit links, on every page; the hero keeps one quiet row — 18+, the licence line,
@@ -50,6 +56,10 @@
 import Link from "next/link";
 import { I } from "@/components/ui/glyphs";
 import { MarketCard } from "@/components/markets/market-card";
+// ⭐ THE ONE FILTER CONTROL LANGUAGE (WP9 · R16). The board's ordering rail is `FilterPill`, not a
+// bespoke toggle, and this file is declared to `test:filter-language` because of it — §3.1/§3.2 assert
+// that every declared surface imports the primitive and renders it IN ITS OWN SOURCE.
+import { FilterPill } from "@/components/ui/filter-pill";
 import { FiftyMark, FiftyWordmark, TippingBar } from "@/components/brand";
 import { fill, formatNumber, formatTzs, formatTzsCompact } from "@/lib/utils";
 import { pickLocalized } from "@/lib/localized";
@@ -58,7 +68,8 @@ import { formatEatDate } from "@/lib/eat-day";
 import { FIRST_LICENSED_EVIDENCE, HELPLINE, HELPLINE_TEL } from "@/lib/support-config";
 import { railListParts } from "@/lib/rail-list";
 import type { Dict, Locale } from "@/lib/i18n-dict";
-import type { HeroFigures, HeroRow } from "@/lib/markets/hero";
+import { boardLenses, QUESTION_BOARD_SIZE } from "@/lib/markets/hero";
+import type { BoardLens, HeroFigures, HeroRow } from "@/lib/markets/hero";
 import { sideWord } from "@/lib/side-label";
 import { priceState } from "@/lib/markets/price-state";
 import { Cash } from "@/components/ui/cash";
@@ -456,16 +467,34 @@ export function LandingHero({ figures, t, locale, isAuthed, nowMs, cards, mine, 
 /**
  * THE SIGNED-IN HERO (landing v3 · WP14 part 2 — the delivery's wallet scenario §4a and §4c).
  *
- * Where a visitor is offered "Create account", a player sees their own position: Your picks (open ·
- * awaiting result · paid this week), then the balance with Deposit and Withdraw side by side at the
- * SAME size (the Wallet's pair, V19) — or, at zero, the empty-balance prompt with Deposit and My
- * positions. Then Set limits.
- * ⛔ A FAILED READ SHOWS NOTHING, NEVER ZEROS (B-1): null `picks` hides the figures, null `balance`
- * hides the wallet box. A player with no picks at all gets one sentence, not three zeros — a row of
- * zeros is advertised emptiness, the dead state the gate's V11 exists for.
+ * Where a visitor is offered "Create account", a player sees their own POSITION: Your picks (open ·
+ * awaiting result · paid this week), then My positions and Set limits.
+ *
+ * ⭐ R17 (Ali, 2026-09-28) · THE DEPOSIT/WITHDRAW PAIR IS CUT, AND SO IS THE BALANCE BESIDE IT.
+ * Counted on one signed-in phone viewport before this: the header capsule (which opens a Wallet holding
+ * Deposit and Withdraw side by side at equal size), the bottom rail's centre coin, AND this block's own
+ * gilt pair — THREE money-in routes on the page whose job is the book, against the delivery's own "one
+ * Deposit per screen" (V25, which exempted the hero from 640 up). ⛔ The pair was also the only one of
+ * the three that SCROLLS AWAY, so it was the least reachable and the most repetitive; and three gilt
+ * controls in one viewport dilute the one signal that means money (`test:gold-is-money`).
+ * ⭐ REACHABILITY IS UNCHANGED, WHICH IS WHY THIS COSTS NOTHING. Money IN is still one tap — the rail's
+ * coin, permanent, in thumb reach on every page. Money OUT is still two — the capsule, then Withdraw —
+ * exactly as before, because a control that has scrolled off the screen was never the shorter path.
+ * V19's rule ("Withdraw as reachable and as large as Deposit") is satisfied where R1 put it: inside the
+ * Wallet, where the two are literally the same size.
+ * ⛔ THE BALANCE WENT WITH IT because the header states it at EVERY value, zero included (R10) — two
+ * statements of one figure on one screen is what R10's own reasoning is against. What this block says
+ * that nothing else on the page says is the player's picks, so that is what it keeps.
+ * ⚠️ SUPERSEDES the "then the balance with Deposit and Withdraw side by side" half of L21/R1 for THIS
+ * surface only; the Wallet sheet's pair is untouched and is still the pair V19 measures.
+ *
+ * ⛔ A FAILED READ SHOWS NOTHING, NEVER ZEROS (B-1): null `picks` hides the figures. A player with no
+ * picks at all gets one sentence, not three zeros — a row of zeros is advertised emptiness, the dead
+ * state the gate's V11 exists for.
  * ⚠️ The trust lines stay above it for a player too: R4(5) puts the RG line in the hero's trust lines,
  * and a player holding money is who it is for (INHERIT-MANIFEST L21).
- * ⛔ A frozen wallet is offered no money buttons — the same rule as the Wallet (`wallet-sheet.tsx`).
+ * ⛔ A frozen wallet still says so, and still gets no money control — the same rule as the Wallet
+ * (`wallet-sheet.tsx`), now trivially true because this block has none at all.
  */
 function SignedInAct({ t, mine }: { t: Dict; mine: LandingMine | null }) {
   const picks = mine?.picks ?? null;
@@ -497,63 +526,50 @@ function SignedInAct({ t, mine }: { t: Dict; mine: LandingMine | null }) {
           </ul>
         </div>
       ))}
+      {/* ⛔ NO MONEY CONTROL AND NO BALANCE IN HERE SINCE R17 — see the header. A frozen wallet still
+          says so, and an empty one still says what to do; both are SENTENCES, and the controls they
+          point at are the header capsule and the rail's coin, which are on the screen at every scroll
+          position. ⚠️ `emptyBalance` names the METHOD and not a location on purpose: the control is the
+          rail's coin below 1024 and the header's pill from 1024, so a sentence saying "below" would be
+          false at one of the two widths. */}
       {held ? (
         <div className="kp-mine__held" role="status">
           <p className="kp-mine__held-t">{t.kycGate.frozenTitle}</p>
           <p className="kp-mine__held-b">{t.kycGate.frozenBody}</p>
         </div>
-      ) : balance !== null && balance > 0 ? (
-        <div className="kp-mine__wallet">
-          <div className="kp-mine__bal">
-            <p className="kp-mine__eyebrow">{t.wallet.available}</p>
-            <p className="kp-mine__amt"><Cash>{formatTzs(balance)}</Cash></p>
-          </div>
-          <div className="kp-mine__pair">
-            <Link href="/wallet/deposit" className="btn gilt-metal btn-lg kp-mine__act" data-testid="hero-deposit">
-              <I.plus s={16} />
-              {t.common.deposit}
-            </Link>
-            <Link href="/wallet/withdraw" className="btn btn-ghost btn-lg kp-mine__act" data-testid="hero-withdraw">
-              <I.arrowUpFromLine s={16} />
-              {t.common.withdraw}
-            </Link>
-          </div>
-        </div>
-      ) : balance !== null ? (
-        <div className="kp-mine__empty">
-          <p className="kp-mine__lead">{t.home.emptyBalance}</p>
-          <div className="kp-hero__ctas">
-            <Link href="/wallet/deposit" className="btn gilt-metal btn-xl rounded-pill kp-hero__cta" data-testid="hero-deposit">
-              <I.plus s={16} />
-              {t.common.deposit}
-            </Link>
-            <Link href={"/positions" as never} className="btn btn-ghost btn-xl rounded-pill kp-hero__cta">
-              {t.home.myPositions}
-            </Link>
-          </div>
-        </div>
+      ) : emptyWallet ? (
+        <p className="kp-mine__lead">{t.home.emptyBalance}</p>
       ) : null}
-      <Link href="/profile/responsible-gambling" className="kp-mine__limits">
-        {t.footer.setLimits}
-        <I.arrowRight s={14} />
-      </Link>
+      {/* The block's two doors, and neither is money: the player's own positions — which is what the
+          figures above are ABOUT — and the RG limits, one tap from the first screen (K37). */}
+      <div className="kp-mine__links">
+        <Link href={"/positions" as never} className="kp-mine__limits">
+          {t.home.myPositions}
+          <I.arrowRight s={14} />
+        </Link>
+        <Link href="/profile/responsible-gambling" className="kp-mine__limits">
+          {t.footer.setLimits}
+          <I.arrowRight s={14} />
+        </Link>
+      </div>
     </div>
   );
 }
 
 /**
- * The proof section — the three measured figures, the whole board's conviction, and the
- * closing-soonest board. It used to live INSIDE the hero, above the lede; v3 moves it directly below
- * the hero so the first screen shows the pitch and a live market (V15). The figures and the conviction
- * bar are unchanged; the board's rows are rebuilt by WP4 (`QuestionRow`): a list of rows with a title
- * link, a reading and a YES@/NO@ pair, each reading its time left from `nowMs`.
+ * The proof section — the three measured figures and the whole book's conviction. It used to live
+ * INSIDE the hero, above the lede; v3 moved it directly below the hero so the first screen shows the
+ * pitch and a live market (V15).
+ *
+ * ⚠️ THE BOARD LEFT THIS SECTION IN WP9, and it is not a tidy-up. The board took the deleted grid
+ * band's section header — an eyebrow, an h2 and an "All N markets" link — and a section header inside
+ * a section whose own `aria-label` is "The whole board, right now" announced a market list as part of
+ * a conviction reading. It is `QuestionBoard` below, with its own `data-band`. `locale` and `nowMs`
+ * left with it: nothing else here reads a clock or a localised title.
  */
-export function LandingProof({ figures, t, locale, nowMs, paidOutTzs }: {
+export function LandingProof({ figures, t, paidOutTzs }: {
   figures: HeroFigures;
   t: Dict;
-  locale: Locale;
-  /** The page's one clock — the rows' time left and close dates read it, as the hero's card does. */
-  nowMs: number;
   /**
    * Σ CONFIRMED payouts + cashouts, TZS — the third proof figure.
    * **null means the read failed**, and the slot is withheld rather than printed as a zero.
@@ -626,26 +642,137 @@ export function LandingProof({ figures, t, locale, nowMs, paidOutTzs }: {
           )}
           <p className="kp-conv__read">{convRead}</p>
         </div>
+        {/* ⛔ NO MARKET LIST HERE SINCE WP9 — it is `QuestionBoard`, the next section. */}
+      </div>
+    </section>
+  );
+}
 
-        {/* ── the question board ───────────────────────────────────────────────────────────── */}
-        {figures.board.length > 0 && (
-          <div>
-            {/* An h2: it names the board, which is a section. The class styles it as an eyebrow —
-                a heading may look like one, and `test:eyebrow-roles` governs tracking, not tags. */}
-            <h2 className="kp-hero__eyebrow text-balance">
-              {t.home.heroBoardEyebrow}
-              {figures.closingToday > 0 && (
-                <> · {fill(t.home.heroBoardCloseToday, { n: figures.closingToday })}</>
-              )}
-            </h2>
-            {/* `role="list"`: WebKit drops the list role from a `ul` styled `list-style: none`. */}
-            <ul className="kp-qboard" role="list">
-              {figures.board.map((row) => (
-                <QuestionRow key={row.id} row={row} t={t} locale={locale} nowMs={nowMs} />
-              ))}
-            </ul>
+/**
+ * THE BOARD — the landing's ONE market list (landing v3 · WP9, ruling R15).
+ *
+ * ⭐ WHAT CHANGED, AND WHY IT IS ONE LIST NOW. `/` used to state the same open book in three shapes:
+ * the featured card, this board at four rows, and a `.market-grid` of three cards under its own
+ * heading. R15 deletes the grid — `landingGrid` and the hero's board were the same book in two shapes,
+ * and the delivery's reason ("three lists of one thing") is true of them — and KEEPS the topic tiles,
+ * which list TOPICS, a different axis, and repeat no market. The board grows 4 → 7, so the page still
+ * shows exactly EIGHT markets (1 featured + 7), the budget `landing.ts` chose deliberately.
+ *
+ * ⭐ IT TAKES THE DELETED BAND'S SECTION HEADER, because that header is the one part of the band worth
+ * keeping: a list under a heading that states its ordering is a CLAIM, and a list under nothing is a
+ * sample. So the section carries `.kp-shead` — the live fact ("{n} close today"), the h2, and "All N
+ * markets" — and the ordering is stated by the rail below it.
+ *
+ * ⭐ THE ORDERING IS STATED EXACTLY ONCE, BY THE RAIL. The grid band printed its lens in the eyebrow
+ * (`home.gridEyebrowPool` / `gridEyebrowNew`); the board's pills print the same three strings, so the
+ * page gained a control and did not gain a second copy of the sentence. ⛔ Two statements of one
+ * ordering 8px apart is how they start disagreeing — and they would have, in Swahili: `market.sortPool`
+ * reads "Pesa nyingi" where the landing's own key reads "Bwawa kubwa kwanza". The landing's reviewed
+ * words are kept and NO new key is minted.
+ *
+ * ⭐ R16 · THE RAIL IS `FilterPill`, NOT A `role="tablist"`. The v4 delivery and R15 ask for a tablist.
+ * This repo has none, deliberately: ruling A5 (`ui/tabs.tsx`) stripped `role="tablist"`/`role="tab"`/
+ * `aria-selected` from all three Tabs variants because the ARIA tab pattern needs a roving tabindex and
+ * an `aria-controls` naming a `role="tabpanel"` the primitive does not own — "the fix is to STOP
+ * CLAIMING THE WIDGET". And DESIGN_AUTHORITY §K rule 7c settles which language a rail speaks: "the
+ * underline is the section language; the capsule is the filter language". This rail orders a list, so
+ * it is the capsule — `FilterPill`, 44px (above the 40 the delivery asks for, because that is this
+ * product's chip floor), `semantics="tab"` so the pill in force says `aria-current="page"` rather than
+ * lying about being a toggle a reader can un-press.
+ *
+ * ⭐ AND IT IS A URL, WHICH IS R15'S BINDING HALF KEPT AND ITS SHAPE OVERRULED. R15 says the orderings
+ * are computed on the SERVER and "never re-sorted in the browser", because `boardOrdering` picks by
+ * price tier with a degeneracy floor and a client-side re-sort would be a second, quietly different
+ * implementation of a rule about money. A `<Link replace scroll={false}>` is exactly the mechanism the
+ * discovery bar's own header prescribes for this — *"a filter is not a navigation"* — and it keeps
+ * three properties a client switcher costs: the ordering is a real shareable URL, the control needs no
+ * JavaScript, and the DOM holds ONE ordering, so source order still equals screen order (the WCAG 1.3.2
+ * reason L18 removed a CSS `order` for) and the row anchors `red:one-sided` injects into still resolve
+ * exactly once. A client switcher holding both orderings would have doubled every one of them.
+ *
+ * ⛔ NOT A `<Reveal>`, unlike the band it replaces. The grid band rose on first intersection, which is
+ * why §0 trap 13 exists — a component below the fold photographs BLANK if the camera never scrolls, and
+ * this is now the only market list on the page. A list of live markets is not an entrance.
+ */
+export function QuestionBoard({ figures, t, locale, nowMs }: {
+  figures: HeroFigures;
+  t: Dict;
+  locale: Locale;
+  /** The page's one clock — the rows' time left and close dates read it, as the hero's card does. */
+  nowMs: number;
+}) {
+  if (figures.board.length === 0) return null;
+  // ⭐ ONE VARIABLE FEEDS THE PILL'S WORDS, so the rail and the ordering cannot drift: `figures.lens`
+  // is what `boardOrdering` actually ran, narrowed in `heroFigures` against this same offered pair.
+  const LABEL: Record<BoardLens, string> = {
+    closing: t.home.heroBoardEyebrow,
+    pool: t.home.gridEyebrowPool,
+    new: t.home.gridEyebrowNew,
+  };
+  return (
+    <section className="kp-band kp-band--tight" data-band="board">
+      <div className="kp-band__inner">
+        <div className="kp-shead">
+          <div className="min-w-0">
+            {/* The board's own live fact, not its ordering — the rail states that. No eyebrow when
+                nothing closes today, rather than an eyebrow reading "0". */}
+            {figures.closingToday > 0 && (
+              <p className="kp-hero__eyebrow text-balance">
+                <span className="kp-hero__tick" aria-hidden />
+                {fill(t.home.heroBoardCloseToday, { n: figures.closingToday })}
+              </p>
+            )}
+            {/* `text-balance` for the reason every `.kp-shead__h` carries it: without it "Chagua
+                upande / sasa" drops its last word onto line two at 360 sw (measured on production). */}
+            <h2 className="kp-shead__h text-balance">{t.home.pickASideNow}</h2>
           </div>
-        )}
+          {/* The board's ordering travels to /markets, so "all of them" arrives sorted as here. */}
+          <Link href={`/markets?sort=${figures.lens}` as never} className="kp-shead__link">
+            {fill(t.home.gridSeeAll, { n: figures.openCount })}
+            <I.chevronRight s={14} />
+          </Link>
+        </div>
+
+        {/* ⛔ `data-filter-rail` IS THE DECLARATION, NOT DECORATION — `test:filter-language` §0.4 fails
+            on a hook it does not know about and §0.5 on a declared surface that has dropped one.
+            ⚠️ The default lens links to `/` rather than `?sort=closing`: one state, one URL, and the
+            canonical stays the clean one. ⚠️ No `count` on either pill — both orderings show the same
+            seven rows of the same book, so a count would be the same number twice, and FilterPill's
+            rule is to omit a count where no honest one exists rather than invent one. */}
+        <nav data-filter-rail aria-label={t.market.sortAria} className="kp-qboard__lens">
+          {boardLenses(figures.poolTzs).map((l) => (
+            <FilterPill
+              key={l}
+              href={l === "closing" ? "/" : `/?sort=${l}`}
+              label={LABEL[l]}
+              on={figures.lens === l}
+              semantics="tab"
+              testId={`sort:${l}`}
+              replace
+              scroll={false}
+            />
+          ))}
+        </nav>
+
+        {/* `role="list"`: WebKit drops the list role from a `ul` styled `list-style: none`.
+            ⭐ THE PROMISE IS PUBLISHED SO AN INSTRUMENT CAN CHECK IT AGAINST THE DELIVERY — the same
+            reason `data-result-count` exists on the shared query bar ("a board once printed '40 live'
+            above ZERO cards at nine of nine viewport × locale combinations; the number was true and the
+            board was still a lie"). `data-board-size` is the row count this page INTENDS
+            (`QUESTION_BOARD_SIZE`), `data-board-open` the size of the open book it is drawing from; the
+            gate's V18 asserts the rendered rows equal min(size, open − 1 for the featured card). ⛔
+            Without it a board that quietly fell back to four rows on a full book would read as normal:
+            the row count was reported by every instrument and asserted by none. */}
+        <ul
+          className="kp-qboard"
+          role="list"
+          data-board-size={QUESTION_BOARD_SIZE}
+          data-board-open={figures.openCount}
+        >
+          {figures.board.map((row) => (
+            <QuestionRow key={row.id} row={row} t={t} locale={locale} nowMs={nowMs} />
+          ))}
+        </ul>
       </div>
     </section>
   );

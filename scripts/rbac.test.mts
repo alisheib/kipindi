@@ -132,6 +132,34 @@ ok("/admin/desk → ops", domainForPath("/admin/desk") === "ops", domainForPath(
   ok("every admin route maps to a domain (no unmapped / shadowed)", problems.length === 0);
 }
 
+// ── 7b. THE TWO MAPS MUST AGREE ───────────────────────────────────────────────
+// ⛔ WHY THIS EXISTS, measured not supposed. A route→domain answer is stored TWICE: `ROUTE_DOMAINS`
+// (read by `domainForPath`, which gates the PAGE) and the `domain` literal on each `NavItem` (read by
+// `filterNavGroups`, which decides whether the SIDEBAR shows the link). Nothing compared them. So a
+// section could be mapped one way for its page and another for its menu entry, and the split is silent:
+// measured on U17's own RED control — delete `["/admin/contacts", "growth"]` from ROUTE_DOMAINS and the
+// page correctly refuses GROWTH (fail-closed to `ops`), while the sidebar STILL renders "Contacts" to
+// GROWTH, because `filterNavGroups` only asks `set.has(it.domain)` and never calls `domainForPath(it.href)`.
+// The operator gets a live link to a Restricted panel. Whichever of the two an author edits, this fails
+// until the other follows. `ownerOnly`/`allStaff` items are exempt because those flags deliberately
+// override the domain check (see `filterNavGroups`), so their literal need not match.
+{
+  const EXEMPT = ["/admin/2fa", "/admin/totp-verify"];
+  const split: string[] = [];
+  for (const g of NAV_GROUPS) {
+    for (const it of g.items) {
+      if (it.ownerOnly || it.allStaff) continue;
+      if (EXEMPT.some((e) => it.href === e || it.href.startsWith(e + "/"))) continue;
+      const resolved = domainForPath(it.href);
+      if (resolved !== it.domain) {
+        split.push(`${it.href} — nav says "${it.domain}", ROUTE_DOMAINS says "${resolved}"`);
+      }
+    }
+  }
+  if (split.length) console.log(split.map((p) => "  · " + p).join("\n"));
+  ok("every nav item's domain equals domainForPath(its href) — the menu and the page agree", split.length === 0);
+}
+
 // ── 8. getGrantMatrix — all editable roles × all domains; ADMIN absent ────────
 {
   const m = await getGrantMatrix();

@@ -204,6 +204,7 @@ export const NAV_GROUPS: ReadonlyArray<NavGroup> = [
     items: [
       { href: "/admin/affiliate", label: "Affiliate", key: "affiliate", domain: "growth" },
       { href: "/admin/bonuses",   label: "Bonuses",   key: "bonuses", domain: "growth" },
+      { href: "/admin/contacts",  label: "Contacts",  key: "contacts", domain: "growth" },
       { href: "/admin/invites",   label: "Invites",   key: "invites", domain: "growth" },
       { href: "/admin/traffic",   label: "Traffic",   key: "traffic", domain: "growth" },
     ],
@@ -313,6 +314,12 @@ const ROUTE_KEYS: ReadonlyArray<readonly [prefix: string, key: string]> = [
   ["/admin/agents", "agents"],
   ["/admin/affiliate", "affiliate"],
   ["/admin/bonuses", "bonuses"],
+  // ⚠️ The BARE prefix. Free to sit here today — nothing in this table is a prefix of
+  // "/admin/contacts" and it is a prefix of nothing ("/admin/config" and "/admin/compliance"
+  // diverge at the segment's 4th character). ⛔ The day a sub-route needs its own key, the
+  // LONGER prefix must go ABOVE this line — `activeKeyFromPath` takes the FIRST startsWith
+  // match, so ["/admin/contacts/import", …] below this row would never be reached.
+  ["/admin/contacts", "contacts"],
   ["/admin/invites", "invites"],
   ["/admin/traffic", "traffic"],
   ["/admin/moderation", "moderation"],

@@ -181,20 +181,40 @@ log("\n── 5 · the lens: closing today, most contested first ─────
   // through to the tie-break. It could not have told the contested lens from a coin toss.
   //
   // ⛔ AND THE DEADLINES ARE ARRANGED SO A REVERT IS VISIBLE. The most contested market closes
-  // LAST of the six and the unpriced one closes FIRST, so restoring a plain `closing` sort moves
+  // LAST of the ten and the unpriced one closes FIRST, so restoring a plain `closing` sort moves
   // the featured card — see the CONTROL at the end of this block. A fixture where both lenses
   // agree would pass either way and prove nothing.
-  const even     = heroRow({ yesPool: 10_000, noPool: 10_000, bettableUntilMs: NOW + 9 * H }); // 50%
-  const near     = heroRow({ yesPool: 13_000, noPool: 12_000, bettableUntilMs: NOW + 7 * H }); // 52%
-  const lopsided = heroRow({ yesPool: 15_000, noPool:  5_000, bettableUntilMs: NOW + 5 * H }); // 75%
-  const allYes   = heroRow({ yesPool: 20_000, noPool:      0, bettableUntilMs: NOW + 3 * H }); // 100%
-  const allNo    = heroRow({ yesPool:      0, noPool: 20_000, bettableUntilMs: NOW + 2 * H }); // 0%
-  const unpriced = heroRow({ yesPool:      0, noPool:      0, bettableUntilMs: NOW + 1 * H }); // no price
-  const rows = [even, near, lopsided, allYes, allNo, unpriced];
+  //
+  // ⚠️ GREW FROM SIX ROWS TO TEN WITH WP9, AND THE COUNT IS LOAD-BEARING TWICE OVER. The board is
+  // `QUESTION_BOARD_SIZE` (7) rows now, so a six-row fixture could only ever return five and "the
+  // board is capped" would have become a test that the fixture is big enough — the cheap repair for
+  // which is loosening `===` to `<=`, retiring the assertion silently. And the SHAPE matters as much
+  // as the size: there are SEVEN two-sided rows, so the eight surfaces shown (1 card + 7 rows) hold
+  // exactly one degenerate row and NO unpriced one — which is what keeps "no collapsed price
+  // outranks a contested one" and "an unpriced market never takes a seat" both non-vacuous. Add rows
+  // here only at the tier that preserves that.
+  const even     = heroRow({ yesPool: 10_000, noPool: 10_000, bettableUntilMs: NOW + 10 * H }); // 50%  d=0
+  const near     = heroRow({ yesPool: 13_000, noPool: 12_000, bettableUntilMs: NOW +  9 * H }); // 52%  d=2
+  const c55      = heroRow({ yesPool: 11_000, noPool:  9_000, bettableUntilMs: NOW +  8 * H }); // 55%  d=5
+  const c70      = heroRow({ yesPool: 14_000, noPool:  6_000, bettableUntilMs: NOW +  7 * H }); // 70%  d=20
+  const c65      = heroRow({ yesPool: 13_000, noPool:  7_000, bettableUntilMs: NOW +  6 * H }); // 65%  d=15
+  const c60      = heroRow({ yesPool: 12_000, noPool:  8_000, bettableUntilMs: NOW +  5 * H }); // 60%  d=10
+  const lopsided = heroRow({ yesPool: 15_000, noPool:  5_000, bettableUntilMs: NOW +  4 * H }); // 75%  d=25
+  const allYes   = heroRow({ yesPool: 20_000, noPool:      0, bettableUntilMs: NOW +  3 * H }); // 100% one-sided
+  const allNo    = heroRow({ yesPool:      0, noPool: 20_000, bettableUntilMs: NOW +  2 * H }); // 0%   one-sided
+  const unpriced = heroRow({ yesPool:      0, noPool:      0, bettableUntilMs: NOW +  1 * H }); // no price
+  const rows = [even, near, c55, c70, c65, c60, lopsided, allYes, allNo, unpriced];
   const f = heroFigures(rows, NOW);
   const shown = [f.featured!, ...f.board];
 
   ok("the board is capped", f.board.length === QUESTION_BOARD_SIZE, String(f.board.length));
+  // ⭐ A SECOND CAP ASSERTION THAT DOES NOT READ THE CONSTANT. The one above is built from the value
+  // it checks, so 4, 7 and 0 are all equally green the moment `hero.ts` changes — the whole point of
+  // R15 is that the number is EIGHT markets on the page, and that is typed here on purpose. Moving
+  // the board's size is then a deliberate two-file edit rather than a silent one.
+  ok("⛔ WP9 · the board is SEVEN rows and the page's market budget is EIGHT",
+    f.board.length === 7 && new Set(shown.map((r) => r.id)).size === 8,
+    `${f.board.length} rows + 1 card = ${new Set(shown.map((r) => r.id)).size} distinct markets`);
   ok("the most contested market leads the hero", f.featured?.id === even.id,
     `featured=${f.featured?.yesPct}%`);
   ok("the board follows it by distance from even", f.board[0]?.id === near.id,
@@ -227,6 +247,20 @@ log("\n── 5 · the lens: closing today, most contested first ─────
     f.board.every((r) => Math.abs(50 - (f.featured!.yesPct ?? -999)) <= Math.abs(50 - (r.yesPct ?? 999))),
     shown.map((r) => String(r.yesPct)).join(","));
 
+  // ⭐ WP9 · THE CARD DOES NOT FOLLOW THE TOGGLE. The featured market is the most contested OPEN market
+  // (R4(4)) — a fact about the book, not about the order a reader chose for the list below it. So the
+  // board is re-ordered by `pool` here and the card must not move. ⛔ Without this, nothing in the repo
+  // exercised `heroFigures` at a non-default lens, and the plant for it could not bite.
+  const byPool = heroFigures(rows, NOW, "pool");
+  ok("⛔ WP9 · the featured card is the same market at every lens",
+    !!byPool.featured && byPool.featured.id === f.featured?.id,
+    `closing=${f.featured?.id} pool=${byPool.featured?.id}`);
+  ok("CONTROL: the pool lens really does reorder the board, so the line above is not vacuous",
+    JSON.stringify(byPool.board.map((r) => r.id)) !== JSON.stringify(f.board.map((r) => r.id)),
+    `pool=${byPool.board.map((r) => r.id).join(",")} vs closing=${f.board.map((r) => r.id).join(",")}`);
+  ok("CONTROL: and the pool lens is the one that ran, not silently narrowed away",
+    byPool.lens === "pool", byPool.lens);
+
   // ⭐ THE CONTROL. Under the old `closing` order the card was whichever market closed soonest —
   // here the UNPRICED one at +1h. If this ever passes trivially the fixture has stopped telling
   // the two lenses apart, and everything above it proves nothing.
@@ -234,13 +268,16 @@ log("\n── 5 · the lens: closing today, most contested first ─────
   ok("CONTROL: the lens is not plain closing-soonest", f.featured?.id !== soonest.id,
     `soonest=${soonest.id} featured=${f.featured?.id}`);
 
-  ok("closing-today counts the 24h window", f.closingToday === 6, String(f.closingToday));
+  ok("closing-today counts the 24h window", f.closingToday === 10, String(f.closingToday));
 }
 
 log("\n── 5b · fewer than a boardful close today ─────────────");
 {
-  // Two markets close today, four close days out. The board must not go short, and the tail must
+  // Two markets close today, SIX close days out. The board must not go short, and the tail must
   // arrive in the old closing order — the fallback is STATED here, not left to emerge.
+  // ⚠️ The today set stays at exactly TWO while the tail grew from four rows to six (WP9). That is
+  // deliberate: a full board of `QUESTION_BOARD_SIZE` rows is then only reachable if five of its
+  // seven seats came from OUTSIDE the today set, which is the whole point of this section.
   const t1 = heroRow({ yesPool: 10_000, noPool: 10_000, bettableUntilMs: NOW + 4 * H });
   const t2 = heroRow({ yesPool: 15_000, noPool:  5_000, bettableUntilMs: NOW + 6 * H });
   // 🔴 THE TAIL IS UNPRICED, AND IT USED TO BE THE HELPER’S 10k/10k DEFAULT — a perfectly
@@ -248,7 +285,7 @@ log("\n── 5b · fewer than a boardful close today ────────�
   // fallback did, every row it returned was already good. The lens then shipped with no price
   // floor on that branch and the live board read 79 · 0 — · — while nine contested markets sat
   // unshown. A fallback test whose fallback rows are all healthy tests nothing about a fallback.
-  const later = [5, 3, 4, 6].map((d) => heroRow({
+  const later = [5, 3, 4, 6, 8, 7].map((d) => heroRow({
     yesPool: 0, noPool: 0,
     bettableUntilMs: NOW + d * 24 * H, resolvesAtMs: NOW + (d + 1) * 24 * H }));
   const f = heroFigures([...later, t2, t1], NOW);
@@ -263,14 +300,20 @@ log("\n── 5b · fewer than a boardful close today ────────�
   // ⭐ THE CONTROL FOR THIS WHOLE SECTION. §5b is the only place the FALLBACK branch runs, and the
   // fallback is the one branch where the lens can quietly regress — if it ever stopped topping the
   // board up, a reader would see a short board and no assertion above would notice, because they
-  // all describe rows that ARE there. Only 2 markets close today against a board of 5, so a FULL
-  // board is only possible if the tail came from outside the today set. Stated rather than implied.
+  // all describe rows that ARE there. Two markets close today against 1 card + `QUESTION_BOARD_SIZE`
+  // rows, so a FULL board is only possible if the tail came from outside the today set.
   ok("⛔ the two priced markets still lead the unpriced tail",
       shown[0]?.yesPct != null && shown[1]?.yesPct != null,
       shown.map((r) => String(r.yesPct)).join(","));
-    ok("CONTROL: a full board here is only reachable through the fallback",
-    f.closingToday < QUESTION_BOARD_SIZE + 1 && f.board.length === QUESTION_BOARD_SIZE,
-    `today=${f.closingToday} board=${f.board.length} of ${QUESTION_BOARD_SIZE}`);
+  // ⚠️ REWRITTEN BY WP9, BECAUSE THE OLD FORM WENT TRIVIAL THE MOMENT THE BOARD GREW. It read
+  // `f.closingToday < QUESTION_BOARD_SIZE + 1` — "2 < 5" when the board was 4, and "2 < 8" now —
+  // which is a true statement about the FIXTURE, not evidence that the fallback ran. The question it
+  // was asking is "did seats come from outside the today set", so that is what it counts: every
+  // today-market is shown, AND the shown set is strictly larger than the today set.
+  const fromToday = shown.filter((r) => matchesStatus(r, "today", NOW)).length;
+  ok("CONTROL: a full board here is only reachable through the fallback",
+    f.board.length === QUESTION_BOARD_SIZE && fromToday === f.closingToday && fromToday < shown.length,
+    `today=${f.closingToday} shownFromToday=${fromToday} shown=${shown.length} board=${f.board.length} of ${QUESTION_BOARD_SIZE}`);
 }
 
 log("\n── 5c · the price-quality floor ───────────────────────");

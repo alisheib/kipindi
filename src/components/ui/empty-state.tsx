@@ -16,10 +16,12 @@
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
+import { EMPTY_STATE_BOX, EMPTY_STATE_TITLE, EMPTY_STATE_BODY } from "./empty-state-classes";
 
 type Kind =
   | "markets" | "positions" | "leaderboard" | "notifications" | "audit" | "sources"
   | "proposals" | "kyc" | "fairness" | "rg" | "admin" | "default";
+
 
 export function EmptyState({
   kind = "default",
@@ -66,7 +68,7 @@ export function EmptyState({
          bare failure. */
       data-empty-state={fill ? "fill" : "boxed"}
       className={cn(
-        "rounded-xl border border-dashed border-border-strong bg-bg-elevated px-8 py-8 text-center",
+        EMPTY_STATE_BOX,
         fill ? "w-full" : "max-w-[360px] mx-auto",
         className,
       )}
@@ -75,8 +77,8 @@ export function EmptyState({
       <div className="mx-auto mb-4 inline-flex items-center justify-center text-text-faint" aria-hidden>
         {illustration ?? <DefaultIllustration kind={kind} />}
       </div>
-      <p className="font-display text-[15.5px] font-semibold text-text text-balance">{title}</p>
-      {body && <p className="mt-2 text-body-sm leading-relaxed text-text-subtle">{body}</p>}
+      <p className={cn(EMPTY_STATE_TITLE, "text-text")}>{title}</p>
+      {body && <p className={cn(EMPTY_STATE_BODY, "text-text-subtle")}>{body}</p>}
       {action && <div className="mt-4">{action}</div>}
     </div>
   );

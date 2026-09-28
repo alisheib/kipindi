@@ -1,9 +1,5 @@
 import type { Metadata } from "next";
 import { ROOT_OPEN_GRAPH } from "./layout";
-import Link from "next/link";
-import { fill } from "@/lib/utils";
-import { I } from "@/components/ui/glyphs";
-import { MarketCard } from "@/components/markets/market-card";
 
 import {
   listMarkets, isClosedByTime, isSelectionClosed, traderSeedsByMarket,
@@ -14,7 +10,7 @@ import { listSources, sourceNameFor, type TrustedSource } from "@/lib/server/sou
 import { getCardCharts } from "@/lib/server/market-history";
 import { getSession } from "@/lib/server/session";
 import { getPlatformStats } from "@/lib/server/platform-stats";
-import { LandingHero, LandingProof } from "@/components/home/landing-hero";
+import { LandingHero, LandingProof, QuestionBoard } from "@/components/home/landing-hero";
 import { HowItWorks } from "@/components/home/how-it-works";
 import { TopicTiles } from "@/components/home/topic-tiles";
 import { TrustBand } from "@/components/home/trust-band";
@@ -24,9 +20,8 @@ import { getRoundDetail } from "@/lib/server/updown-board";
 import { pickBandCandidates, walkBandCandidates, toUpdownBandRound } from "@/lib/server/updown-band-round";
 import { Reveal } from "@/components/layout/reveal";
 import { shownYesPct } from "@/lib/markets/price-state";
-import { heroFigures, type HeroRow } from "@/lib/markets/hero";
-import { landingComposition, LANDING_GRID_SIZE } from "@/lib/markets/landing";
-import { timeLeftLabel } from "@/lib/markets/time-left";
+import { BOARD_LENSES, heroFigures, type BoardLens, type HeroRow } from "@/lib/markets/hero";
+import { landingComposition } from "@/lib/markets/landing";
 import { getServerT } from "@/lib/i18n-server";
 import { getGlobalConfig } from "@/lib/server/market-config";
 import { ratesFrom } from "@/app/legal/rules/_shared";
@@ -64,15 +59,31 @@ export const metadata: Metadata = {
  * THE LANDING PAGE — round-2 kit README §1 / SPEC §1 + §3, applied in batch 3.
  *
  * ── THE COMPOSITION, AND WHY IT IS IN THIS ORDER ──────────────────────────────────────────────
- * hero → how it works → pick a side (grid) → browse by topic → Up & Down → why it can be trusted
- * (+ the settled strip inside that last act) → footer. The RG line that closed the act is gone since
- * landing v3 (R4(5)); since 2026-09-27 (R7(2)) the hero keeps the 18+ roundel, the licence line and
- * the helpline in its trust rows, and the RG motto itself lives in the footer, on every page.
+ * hero → the proof rail + conviction → THE BOARD → how it works → browse by topic → Up & Down →
+ * why it can be trusted (+ the settled strip inside that last act) → footer. The RG line that closed
+ * the act is gone since landing v3 (R4(5)); since 2026-09-27 (R7(2)) the hero keeps the 18+ roundel,
+ * the licence line and the helpline in its trust rows, and the RG motto itself lives in the footer,
+ * on every page.
  *
  * The purpose is a funnel: show what Tanzania is actually predicting today, THEN teach the
- * mechanic, THEN prove the results are trustworthy. Up & Down moves BELOW the grid — it was
+ * mechanic, THEN prove the results are trustworthy. Up & Down moves BELOW the board — it was
  * directly under the hero, which put a second product line in front of a visitor who had not yet
  * seen a single market of the first one.
+ *
+ * ── 🔴 WP9 · ONE BOARD (ruling R15, 2026-09-28) ────────────────────────────────────────────────
+ * This page used to state the same open book in THREE shapes: the hero's featured card, a four-row
+ * board, and a `.market-grid` of three cards under "Pick a side now". The grid band is GONE — the
+ * class stays, because `/markets`, `/results`, `/watchlist` and `/live` all use it; only the
+ * landing's use goes — and the board grew 4 → 7, so the page still draws exactly EIGHT markets
+ * (1 featured + 7 rows), the budget `landing.ts` chose deliberately. The board took the band's
+ * section header and gained an ordering rail; it is `QuestionBoard` in `landing-hero.tsx`.
+ * ⭐ THE TOPIC TILES STAY (R15) and now hold the band the grid used to share with them. They list
+ * TOPICS, a different axis, and repeat no market, so the delivery's own reason for deleting them
+ * with the grid ("three lists of one thing") does not reach them.
+ * 🔴 AND THEIR RENDER CONDITION WAS A FACT ABOUT THE GRID. Both surfaces sat inside one
+ * `comp.grid.length > 0 &&`, so with 1–5 open markets the grid was empty and the tiles disappeared
+ * with it although `comp.topics` was full (MOBILE-VISUAL-FINDINGS-2026-09 §444). The tiles now gate
+ * on their own population, which also keeps the landing gate's V14 landmark `.kp-topic` alive.
  *
  * Section gaps come from PAIRS OF PADDING, never a margin — see the `.kp-band` block in
  * `globals.css` and the `--rh-*` comment in §Spacing, which now carry the measured per-band and
@@ -89,16 +100,26 @@ export const metadata: Metadata = {
  * rail carries the live figures, and the settled strip proves the platform finishes what it starts.
  * A number whose purpose is to show the platform is alive is worthless 4,900px down the page.
  *
- * ── 🔴 THE REPETITION THIS FIXES ──────────────────────────────────────────────────────────────
+ * ── 🔴 THE REPETITION THIS PAGE WAS BUILT AROUND, AND WHY IT IS NOW STRUCTURAL ────────────────
  * Batch 2's re-validation pass recorded that the hero no longer repeated itself but the PAGE still
- * did: the hero's four questions were also the first four cards of this grid, because both were
- * closing-soonest over the same book — the same markets twice within two screens. The grid now has
- * a DIFFERENT LENS and is disjoint from the hero by construction (`landingGrid`), so a visitor
- * scrolling two screens reads ten different markets instead of five markets twice. The eyebrow
- * NAMES the lens, so the grid is a claim rather than a sample (kit §1c).
+ * did: the hero's four questions were also the first four cards of the grid, because both were
+ * closing-soonest over the same book. Batch 3 answered it by giving the grid a different lens and
+ * subtracting the hero's ids from it. WP9 answers it by ARITHMETIC — there is one list, so there is
+ * nothing to repeat — and the law survives inside it: `HeroFigures.board` excludes the featured
+ * card by id, at every lens (`hero.ts`).
  */
-export default async function LandingPage() {
-  const [{ t, locale }, liveRaw, updownLiveRaw, session, stats, rules, railPauses, sources] = await Promise.all([
+export default async function LandingPage({ searchParams }: {
+  /**
+   * `?sort=` — which of the two orderings the board is in (WP9). ⛔ NARROWED, NEVER TRUSTED: an
+   * unknown value falls back to the default rather than ordering the list by nothing, and
+   * `heroFigures` narrows a second time against what THIS book can honestly offer (a money lens on a
+   * cold book is a superlative about zeros). `/profile/account` shipped the other way once — `?act=lol`
+   * emptied the table and drew no control that could clear it.
+   * ⚠️ `alternates.canonical` above stays "/" , so a sorted board is not a second page to a crawler.
+   */
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const [{ t, locale }, liveRaw, updownLiveRaw, session, stats, rules, railPauses, sources, sp] = await Promise.all([
     getServerT(),
     listMarkets({ status: "LIVE" }).catch(() => [] as Awaited<ReturnType<typeof listMarkets>>),
     // The fast game is its own product line, so it never appears in the poll list above.
@@ -118,8 +139,14 @@ export default async function LandingPage() {
     // and board row NAMES the source it settles on. All sources, not `enabledOnly` — naming a source is not
     // trusting it. A failed read falls back to the host, which is still a true name.
     listSources().catch(() => [] as TrustedSource[]),
+    // ⭐ Awaited BESIDE the reads, not before them: it depends on nothing they return, and awaiting it
+    // first would make every database read wait on a value that was already in hand.
+    searchParams,
   ]);
   const nowMs = Date.now();
+  const rawSort = Array.isArray(sp.sort) ? sp.sort[0] : sp.sort;
+  const requestedLens: BoardLens =
+    (BOARD_LENSES as readonly string[]).includes(rawSort ?? "") ? (rawSort as BoardLens) : "closing";
   const liveAll = liveRaw.filter((m) => !isClosedByTime(m));
   // 🔴 ONE PAGE WAS CARRYING TWO DEFINITIONS OF "LIVE". This counted `!isClosedByTime`, which is
   // the RESOLUTION clock, while every other figure on this page — the open-markets count, the pool,
@@ -171,28 +198,25 @@ export default async function LandingPage() {
     // The registry's label for the source's host, else the host (`sourceNameFor` — the one host rule).
     sourceName: sourceNameFor(sources, m.sourceUrl, resolvePublishCategory(m.category)) ?? undefined,
   }));
-  const figures = heroFigures(heroRows, nowMs);
+  const figures = heroFigures(heroRows, nowMs, requestedLens);
 
-  // The hero draws the featured card plus its question board; the grid must show none of them.
+  // The eight markets this page draws: the featured card plus the board's rows.
   const heroIds = [
     ...(figures.featured ? [figures.featured.id] : []),
     ...figures.board.map((r) => r.id),
   ];
-  const comp = landingComposition(heroRows, nowMs, {
-    openPoolTzs: figures.poolTzs,
-    heroIds,
-    categories: MARKET_CATEGORIES,
-  });
+  const comp = landingComposition(heroRows, nowMs, { categories: MARKET_CATEGORIES });
 
   // ⚠️ Deliberately sequential, and it is cheaper this way. The crest-stack lookup used
   // to run inside the Promise.all above, which meant it could not know which markets
   // the landing page would draw — so it read the ENTIRE Position table, every render.
   // Waiting one round-trip to learn the ids buys an indexed lookup instead of an
   // unbounded scan that grows forever (positions are never pruned).
-  // ⛔ The hero's featured market is chosen by the hero's own lens across the whole open book, so
-  // it is not necessarily one of the grid's — it joins the id list explicitly rather than being
-  // fetched separately, which would be a second unbounded read.
-  const drawnIds = [...new Set([...comp.grid.map((r) => r.id), ...heroIds])];
+  // ⚠️ Since WP9 this IS `heroIds` — one list, so one id set. Only the featured card draws a chart
+  // and a crest stack today; the board's rows carry neither. The whole set is still passed rather
+  // than the featured id alone, because the reads are indexed by id either way and a row that later
+  // gains a sparkline must not need a second query to get one.
+  const drawnIds = [...new Set(heroIds)];
   // ── The Up & Down band's live round (landing v3, WP12 · R5, the Match) ─────────────────────────
   // A round a reader can still ACT on (≥ 2 minutes of betting left — the band is five sections down)
   // that has something to SHOW (a confirmed read after its open); the shortest duration wins, the kick-off
@@ -225,16 +249,10 @@ export default async function LandingPage() {
       }))
     : null;
 
-  // ONE definition, shared with the hero and /markets — this was a fifth copy of the same nine
-  // lines, and the copies had drifted (three could render "0m left" on a market still taking
-  // bets). See src/lib/markets/time-left.ts.
-  const timeLeftStr = (ms: number): string =>
-    timeLeftLabel(ms, nowMs, {
-      closed: t.market.closed,
-      days: t.market.timeLeftD,
-      hours: t.market.timeLeftH,
-      minutes: t.market.timeLeftM,
-    }, fill);
+  // ⚠️ `timeLeftStr` LEFT THIS FILE WITH THE GRID (WP9). It was the shared wrapper around
+  // `timeLeftLabel` for the grid cards; the featured card and the board rows each build their own
+  // from the same one definition in `src/lib/markets/time-left.ts`, so nothing was duplicated by
+  // its removal and this page now reads no dictionary key of its own.
 
   return (
     <div>
@@ -255,105 +273,36 @@ export default async function LandingPage() {
       {/* ── §1a′ THE PROOF — the three figures, the whole board's conviction, the closing-soonest
           board. Directly under the hero since v3, so the hero's first screen is the pitch and a
           live market (WP2 / V15). */}
-      <LandingProof figures={figures} t={t} locale={locale} nowMs={nowMs} paidOutTzs={stats.paidOutTzs} />
+      <LandingProof figures={figures} t={t} paidOutTzs={stats.paidOutTzs} />
+
+      {/* ── §1a″ THE BOARD — the landing's ONE market list (WP9 · R15). Its section header and its
+          ordering rail are `QuestionBoard`'s; the rail's two lenses are computed on the server from
+          the same board read these figures came from. */}
+      <QuestionBoard figures={figures} t={t} locale={locale} nowMs={nowMs} />
 
       {/* ── §1b HOW IT WORKS — chapter break: tinted band, 144 from the hero ───────────────── */}
       <HowItWorks t={t} feePct={rules.commissionPct} />
 
-      {/* ── §1c PICK A SIDE NOW + §1d BROWSE BY TOPIC — one section, one surface, 48 between ── */}
-      {/* 2026-09-13 — threshold 0: on a phone this band is so tall that 12% of it never fits the
-          viewport, so it never revealed and the landing showed a blank band. Same rise, and it
-          fires once the band's top is 10% above the viewport bottom. */}
-      {comp.grid.length > 0 && (
-        <Reveal band="board" className="kp-band kp-band--tight" threshold={0} rootMargin="0px 0px -10% 0px">
+      {/* ── §1d BROWSE BY TOPIC ────────────────────────────────────────────────────────────────
+          ⭐ THE TILES NOW HOLD THIS BAND ALONE (WP9 · R15). They shared it with the `.market-grid`
+          of "Pick a side now", which is deleted: the grid and the board were the same open book in
+          two shapes, while the tiles list TOPICS and repeat no market, so the delivery's reason for
+          removing both reaches only one of them. The tiles keep their own `.kp-shead` and their own
+          "All topics" link, so nothing of the band's header is lost with the grid's.
+          🔴 THE CONDITION IS THE TILES' OWN NOW, AND IT WAS THE GRID'S BEFORE. One
+          `comp.grid.length > 0` gated both, so a book of 1–5 open markets emptied the grid and took
+          the populated tiles down with it — and with them the landing gate's V14 landmark
+          `.kp-topic`, which asserts the page rendered its topics at all.
+          2026-09-13 — threshold 0: on a phone this band was so tall that 12% of it never fits the
+          viewport, so it never revealed and the landing showed a blank band. Same rise, and it fires
+          once the band's top is 10% above the viewport bottom. ⚠️ The band is much shorter now that
+          it holds six tiles instead of three cards AND six tiles; the threshold stays 0 rather than
+          returning to the kit's 0.12, because 0 is correct at every height and 0.12 is only correct
+          below ~7.7 viewports. */}
+      {comp.topics.length > 0 && (
+        <Reveal band="topics" className="kp-band kp-band--tight" threshold={0} rootMargin="0px 0px -10% 0px">
           <div className="kp-band__inner">
-            <div className="kp-shead">
-              <div>
-                <p className="kp-hero__eyebrow text-balance">
-                  <span className="kp-hero__tick" aria-hidden />
-                  {/* The eyebrow NAMES THE ORDERING. `pool` when there is money on the book,
-                      `new` when there is not — because "biggest pools" over a book of empty pools
-                      is a claim about a number nobody produced, and it would also order the grid
-                      identically to the hero. See `gridLensFor`. */}
-                  {comp.lens === "pool" ? t.home.gridEyebrowPool : t.home.gridEyebrowNew}
-                </p>
-                {/* `text-balance` for the same reason how-it-works.tsx carries it: without it this heading
-                    breaks with its last word alone on line two ("Chagua upande / sasa" at 360 sw,
-                    measured on production 2026-09-24). A one-word last line under a 32px display
-                    face is the most visible raggedness on the page. */}
-                <h2 className="kp-shead__h text-balance">{t.home.pickASideNow}</h2>
-              </div>
-              <Link href={`/markets?sort=${comp.lens}` as never} className="kp-shead__link">
-                {fill(t.home.gridSeeAll, { n: figures.openCount })}
-                <I.chevronRight s={14} />
-              </Link>
-            </div>
-
-            {/* Same orphan-row fix as the topic tiles, for the same measured reason: at 768 the
-                grid is two columns with three cards, and the lone card in the final row came out
-                320px against its neighbours’ 354px. Scoped to the landing page by being written
-                here rather than on `.market-grid`, which /markets also uses.
-                🔴 IT SHIPPED UNCONDITIONALLY AND COST 44px ON EVERY PHONE. Equal row heights are
-                worth having when cards sit BESIDE each other; in one column they sit BELOW each
-                other and there are no row-mates to match, so `1fr` only stretches the short cards
-                into dead space. Measured on production 2026-09-24 by removing the rule and
-                re-reading the same three cards:
-                    320 / 360 / 412 / 560   with 1fr [302,302,302]   without [280,302,280]   +22,0,+22
-                    768                     with 1fr [354,354,354]   without [354,354,320]   the fix earning its keep
-                    1024 / 1280             identical either way
-                ⭐ THE CONDITION IS WRITTEN IN THE SAME TERMS AS THE RULE THAT CREATES IT. The grid is
-                `repeat(auto-fill, minmax(min(300px,100%), 1fr))` with a 14px gap, so a second column
-                appears at exactly 300+14+300 = 614px OF GRID WIDTH — measured: 608px wide is one
-                column, 618px is two. A viewport media query would encode 646px instead, which is
-                that same 614 plus today’s 32px of page padding, and would silently drift the day
-                the padding changes. A container query asks the question the grid actually answers.
-                ⚠️ Where @container is unsupported the query never matches, so the rule simply does
-                not apply and the board renders as it did before this fix — the orphan row returns,
-                nothing breaks. */}
-            <style>{`.kp-lgw{container-type:inline-size}@container (min-width:614px){.kp-lgw .market-grid{grid-auto-rows:1fr}}`}</style>
-            <div className="kp-lgw">
-            <div className="market-grid">
-              {comp.grid.slice(0, LANDING_GRID_SIZE).map((r) => {
-                const cc = cardCharts.get(r.id) ?? { spark: [] };
-                return (
-                  <MarketCard
-                    productLine={"MARKET"}
-                    key={r.id}
-                    id={r.id}
-                    titleEn={r.titleEn}
-                    titleSw={r.titleSw}
-                    titleZh={r.titleZh}
-                    category={r.category}
-                    /* 🔴 THE POOLS, NOT `yesPct ?? 0` (landing v3 WP6). The fallback was meant as a
-                       tripwire — "a 0 is visibly absurd and gets caught" — and it was not: on this
-                       card a 0 renders as "NDIO 0% · HAPANA @ 100%", exactly what a one-sided market
-                       produces naturally, so the tripwire and the defect were the same number
-                       (MOBILE-VISUAL ruling 13). The card now derives its price state from the
-                       pools itself; there is nothing left here to fall back from. */
-                    yesPool={r.yesPool}
-                    noPool={r.noPool}
-                    predictors={r.predictors}
-                    timeLeft={r.selectionClosed ? t.home.waitingForResults : timeLeftStr(r.bettableUntilMs)}
-                    // SOON reads the milliseconds, from the label's own deadline and clock (L17).
-                    msLeft={r.selectionClosed ? undefined : r.bettableUntilMs - nowMs}
-                    status="LIVE"
-                    selectionClosed={r.selectionClosed}
-                    sourceUrl={r.sourceUrl}
-                    // LANDING ONLY: the card names its source before the pick (V18, K36).
-                    sourceName={r.sourceName}
-                    spark={cc.spark}
-                    move24h={cc.move24h}
-                    traders={traderMap.get(r.id)}
-                  />
-                );
-              })}
-            </div>
-            </div>
-
-            {/* 48px below the grid, same surface — it belongs to this section (kit §1d). */}
-            <div style={{ marginTop: "var(--rh-close)" }}>
-              <TopicTiles topics={comp.topics} t={t} />
-            </div>
+            <TopicTiles topics={comp.topics} t={t} />
           </div>
         </Reveal>
       )}

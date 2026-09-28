@@ -10,7 +10,17 @@
 //   · by `data-price`: priced → two "@ n%" suffixes and the priced rail; oneSided → no suffix, the dashed rail
 //     and a note naming the empty side; none → the dashed rail and no note;
 //   · V18's parts all present: price|state, time, pool, predictors, source, pick.
-// Exit 1 on any finding (RED inverts it: exit 0 only when the plant is caught); exit 2 when no row was measured.
+// Exit 1 on any finding (RED inverts it: exit 0 only when the plant is caught); exit 2 when no row was
+// measured, or when the row COUNT is not the one the page promises.
+//
+// 🔴 THIS FILE WAS WIRED TO NO NPM SCRIPT UNTIL 2026-09-28 (WP9). Eight assertions per row over nine
+// width × locale cells, and the only way to run it was to type the path — so its exit 2 ("no board row
+// was measured") was a silence nobody could hear. It is `npm run qa:landing-v3:rows` now.
+// ⛔ AND "AT LEAST ONE ROW" BECAME TOO WEAK THE DAY THE BOARD GREW. It went from four rows to seven, and
+// a bad slice that quietly returned four would have measured four rows and reported no finding at all.
+// The page publishes the count it intends ON the board — `data-board-size`, with `data-board-open` for
+// the book it drew from, the same promise-and-delivery idiom as `data-result-count` — so the expected
+// count is READ from the page rather than typed here, where it would rot the next time the board moves.
 import { chromium } from "playwright";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -100,11 +110,19 @@ for (const w of W) for (const loc of LOCALES) {
     if (await board.count()) await board.scrollIntoViewIfNeeded().catch(() => {});
     await page.waitForTimeout(700);
     const rows = await page.evaluate(PROBE, RED);
+    // The board's own promise: min(the rows it intends, the open book minus the featured card).
+    const promise = await page.evaluate(() => {
+      const b = document.querySelector("ul.kp-qboard");
+      if (!b) return null;
+      const size = Number(b.getAttribute("data-board-size"));
+      const open = Number(b.getAttribute("data-board-open"));
+      return Number.isFinite(size) && Number.isFinite(open) ? Math.min(size, Math.max(0, open - 1)) : null;
+    });
     if (await board.count()) await board.screenshot({ path: join(OUT, `${TAG}-${id}${RED ? "-red" : ""}.png`) }).catch(() => {});
     measured += rows.length;
     for (const r of rows) findings += r.bad.length;
-    report.push({ id, rows });
-    console.log(`${id}: ${rows.length} rows · ${rows.map((r) => `${r.kind}${r.bad.length ? " ✗ " + r.bad.join("; ") : " ok"}`).join(" | ")}`);
+    report.push({ id, promise, rows });
+    console.log(`${id}: ${rows.length}/${promise ?? "?"} rows · ${rows.map((r) => `${r.kind}${r.bad.length ? " ✗ " + r.bad.join("; ") : " ok"}`).join(" | ")}`);
   } catch (e) {
     report.push({ id, error: String(e.message).split("\n")[0] });
     console.log(`FAIL ${id}: ${String(e.message).split("\n")[0]}`);
@@ -114,6 +132,14 @@ for (const w of W) for (const loc of LOCALES) {
 await browser.close();
 writeFileSync(join(OUT, `${TAG}${RED ? "-red" : ""}.json`), JSON.stringify(report, null, 2));
 if (!measured) { console.error("⛔ no board row was measured"); process.exit(2); }
+/* ⭐ THE COUNT IS AN ASSERTION, NOT A TALLY (WP9). A cell that renders fewer rows than the board itself
+   promised is a finding even when every row it DID render is perfect. ⛔ And a promise the page did not
+   publish is reported too: an unreadable expectation is not a licence to accept whatever arrived. */
+const countBad = report.filter((c) => c.promise != null && c.rows && c.rows.length !== c.promise);
+const noPromise = report.filter((c) => !c.error && c.promise == null);
+for (const c of countBad) console.error(`⛔ ${c.id}: ${c.rows.length} row(s) against a promised ${c.promise}`);
+for (const c of noPromise) console.error(`⛔ ${c.id}: the board published no readable data-board-size / data-board-open`);
+if (!RED && (countBad.length || noPromise.length)) { console.error("⛔ the board's row count does not match its own promise"); process.exit(2); }
 if (RED) {
   const caught = report.some((c) => (c.rows || []).some((r) => r.bad.some((b) => b.startsWith("desktop:"))));
   console.log(caught ? "RED PROVED — a row set as one block fails the one-line check" : "RED BLIND — the plant went unseen");
