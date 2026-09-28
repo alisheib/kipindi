@@ -130,16 +130,61 @@ re-verify that doc rather than cite it.
 ⚠️ Noticed while registering: **`test:report-parity` and `test:report-window-reads` are not in
 `predeploy`** at all. Out of scope here; worth a decision.
 
+### ✅ Commit 3 — driven and READ, not just green
+
+Reproduce with: `rm -rf .next` → `DISABLE_ADMIN_TOTP=true npx next dev -p 3010` → then
+`BASE=http://localhost:3010 npm run qa:reports-window-drive <shotDir>` and
+`BASE=http://localhost:3010 npm run qa:reports-window-artifacts <outDir>`.
+⚠️ A stale production `.next` makes `next dev` 404 every route — clear it first.
+
+| Step | Instrument | Result |
+|---|---|---|
+| Production path | `BASE=… node scripts/report-renderers-smoke.mjs` (regulator-grade seed: 20 markets, 12 users, 150 bets) | **23/23 PASS** — all 9 × pdf+xlsx through the real route |
+| **What the documents SAY** | `qa:reports-window-artifacts` — downloads all 9 × both formats, reads XLSX `A7` back with exceljs | **ALL 9 REPORTS STATE A PERIOD** (they stated four fewer before this branch) |
+| **What the page says** | `qa:reports-window-drive` — 8 assertions | **DRIVE CLEAN** |
+| **LOOK at the PDF** | `scripts/rasterise-pdf.mjs`, every frame read by eye | kyc-reverify (longest period, portrait) and gbt-monthly pp.1–2 |
+
+What the artifacts print, read off the real files:
+
+```
+daily-ops        2026-09-28 · 00:00–24:00 EAT
+gbt-monthly      August 2026 · 2026-08-01 → 2026-08-31 (EAT)
+fiu-sar          August 2026 · 2026-08-01 → 2026-08-31 (EAT)
+sx-register      Point-in-time as at 2026-09-28 16:23 EAT — not a period total · active …
+iso-audit        Since genesis, oldest first (no date filter) · all 208 entries
+kyc-reverify     Point-in-time as at 2026-09-28 16:23 EAT — not a period total · all-time …
+rg-engagement    Point-in-time as at 2026-09-28 16:23 EAT — not a period total · newest 200 …
+match-integrity  Cumulative to 2026-09-28 (EAT) — not one filing period · filed quarterly …
+finance-window   1 Sep 08:15 → 4 Sep 17:45 · 2026-09-01T08:15 → 2026-09-04T17:45 EAT
+```
+
+⭐ The `finance-window` row is the end-to-end proof: the drive asked the route for
+`range=custom&from=2026-09-01T08:15&to=2026-09-04T17:45`, and the workbook prints exactly that
+window to the minute.
+
+**Read off the rendered PDF** (not inferred): the meta row **wraps** — `Generated · By · Reference`
+on line one, `Classification` on line two — and `Period` sits on its own full-width line below the
+divider, unellipsized, even for kyc-reverify's 122-character point-in-time statement on **portrait**.
+gbt-monthly's attestation panel is uncollided and the notes render intact.
+
+**Read off the page**: the rail on "Leo" (Today) with `Monthly pack · August 2026` beside the
+Excel/PDF pair — the exact confusion users reported is now impossible to walk into; all 9 cards show
+a `Covers …` line across 6 distinct phrases; the cadence chip reads `Filed Quarterly` beside
+`Covers Cumulative to date — not one filing period`; `?tab=library` keeps `range=today`; and a pasted
+ISO instant in `?from` raises the substitution warning.
+
+⚠️ **An instrument lied first, and it was mine.** The drive initially reported "0 of 9 cards print a
+Covers line" and a lost tab. Both were false: `waitForLoadState("networkidle")` resolves *before* a
+client-side `Link` rewrites the URL, so the assertion read the old address and convicted a working
+page. The committed script waits for the URL instead. Same class as the notes already in memory
+about soft navigation — a red result is a claim about the instrument until the instrument is checked.
+
 ### ▶ Next
 
-1. Drive the page + **read every rendered artifact** (rasterise the PDFs, read XLSX back with
-   exceljs). ⚠️ Chromium treats `#page=N` on an open PDF as a same-document nav and stays on page 1
-   — go `about:blank` between loads and check the toolbar page number in the shot. ⚠️ `rm -rf .next`
-   first: a stale production `.next` makes `next dev` 404 every route.
-2. Confirm the head button's group label, each card's **Covers …** line, that the window survives a
-   tab switch and a pagination click, and that a pasted ISO instant in `?from` shows the warning.
-3. The EAT stamps are proven in the suite at a pinned instant; a live generation between 21:00 and
-   24:00 EAT would confirm filename + reference + period agree on one day end-to-end.
+- The EAT stamps are proven in the suite at a pinned instant (2026-09-28T21:30Z, where the EAT day
+  and the UTC day differ). A live generation between 21:00 and 24:00 EAT would confirm filename +
+  reference + period agree on one day end-to-end in production.
+- Merge decision for `reports-window-truth` → `main`.
 
 ## Owner items (→ Ali)
 
