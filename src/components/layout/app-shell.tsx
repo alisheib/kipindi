@@ -438,7 +438,11 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       {/* DG-P-11 — the rail's `More` needs the feature state for the same two reasons the bar
           and the footer already take it: DISABLED hides every proposals entry point, and the
           state flag (coming-soon / maintenance) must read the same on a phone as on a laptop. */}
-      <BottomNav isAuthed={!!session} proposalsState={proposalsState} inviteVisible={inviteVisible} />
+      {/* ⛔ `walletHeld` IS THE RAIL'S BUSINESS NOW, for the same reason it is the header's:
+          the centre slot is a money-in control and `/wallet/deposit` REFUSES a held wallet, so
+          that slot becomes the Wallet door instead. Same input, same rule, two surfaces — read
+          from the one place the wallet's status is resolved (`topUser` above). */}
+      <BottomNav isAuthed={!!session} proposalsState={proposalsState} inviteVisible={inviteVisible} walletHeld={!!topUser.walletHeld} />
       <RealityCheckHost enabled={!!session} intervalMin={realityCheckMin} userId={session?.userId ?? null} />
       {/* 🔴 SESSION-GATED, like its neighbours on the lines above and below (audit F-08).
           It was the only one of the three that was not, and the omission had no upper bound.

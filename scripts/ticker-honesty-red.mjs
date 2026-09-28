@@ -94,8 +94,9 @@ const CASES = [
   {
     name: "the fee is priced from LIVE admin config instead of the poll's frozen snapshot",
     file: STATS,
-    from: `  return poolFee(m.yesPool, m.noPool, ratesFor(m), m.resolvedOutcome).netPool;`,
-    to: `  return poolFee(m.yesPool, m.noPool, {}, m.resolvedOutcome).netPool;`,
+    // ⚠️ RE-PINNED 2026-09-27 (landing v3 C1): the fee call is `chargedFee` now.
+    from: `  const c = chargedFee({ yesPool: m.yesPool, noPool: m.noPool, resolvedOutcome: m.resolvedOutcome }, ratesFor(m));`,
+    to: `  const c = chargedFee({ yesPool: m.yesPool, noPool: m.noPool, resolvedOutcome: m.resolvedOutcome }, {});`,
     expect: "9.9",
   },
   {

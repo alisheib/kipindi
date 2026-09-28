@@ -9,7 +9,8 @@ import { Chip } from "@/components/ui/chip";
 import { I } from "@/components/ui/glyphs";
 import { ProbabilityBar } from "@/components/markets/probability-bar";
 import { CountdownRing } from "@/components/positions/countdown-ring";
-import { getMarket, impliedYesPct, listPositionsForMarket } from "@/lib/server/market-service";
+import { getMarket, listPositionsForMarket } from "@/lib/server/market-service";
+import { priceState } from "@/lib/markets/price-state";
 import { getRequireTwoOfficerResolution } from "@/lib/server/resolution-policy";
 import { getGlobalConfig } from "@/lib/server/market-config";
 import { getAuditPage } from "@/lib/server/audit";
@@ -40,7 +41,8 @@ async function ResolutionCeremonyContent({ params }: ResolutionCeremonyPageProps
   const session = await currentSession();
   const currentOfficerId = session?.userId ?? "";
 
-  const yes = impliedYesPct(m);
+  // ⭐ C1 · the player surfaces' price rule: a figure only where both pools hold money.
+  const price = priceState(m.yesPool, m.noPool);
   // A-5: distinguish a failed positions read from a genuine 0-open so the ceremony
   // header shows "— open" rather than a fabricated "0 open".
   let positionsFailed = false;
@@ -164,9 +166,21 @@ async function ResolutionCeremonyContent({ params }: ResolutionCeremonyPageProps
 
             {/* Final tipping bar, frozen at close — numerals only, no animation. */}
             <AdminCard title="Final tipping bar · frozen at close" sw="Baa la mwisho">
-              <ProbabilityBar yesPct={yes} size="large" resolved={settled} showLabels />
+              <ProbabilityBar
+                yesPct={price.kind === "priced" ? price.yesPct : undefined}
+                empty={price.kind !== "priced"}
+                emptyLabel={price.kind === "oneSided" ? "One side only" : m.predictorCount > 0 ? "No pool" : "No bets"}
+                size="large" resolved={settled} showLabels={price.kind === "priced"}
+              />
+              {/* A pool with one empty side is refunded in full at settlement WHATEVER the verdict (`settleMarket`'s
+                  one-sided branch, rules §7) — the officer is told before choosing one. */}
+              {price.kind === "oneSided" && (
+                <p className="mt-2 text-body-sm leading-relaxed text-text-muted">One side only — this verdict moves no money: every stake is refunded in full at settlement.</p>
+              )}
               <p className="mt-2 amount text-caption text-text-subtle">
-                YES {yes}% · {formatTzs(m.yesPool)} &nbsp;|&nbsp; NO {100 - yes}% · {formatTzs(m.noPool)}
+                {price.kind === "priced"
+                  ? `YES ${price.yesPct}% · ${formatTzs(m.yesPool)} \u00a0|\u00a0 NO ${100 - price.yesPct}% · ${formatTzs(m.noPool)}`
+                  : `YES ${formatTzs(m.yesPool)} \u00a0|\u00a0 NO ${formatTzs(m.noPool)}`}
               </p>
             </AdminCard>
 

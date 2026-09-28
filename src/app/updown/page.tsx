@@ -27,7 +27,7 @@ import { BoardViz } from "@/components/charts/board-viz";
 import { OutcomeCubes } from "@/components/charts/outcome-cubes";
 import { UpDownChartLab } from "@/components/charts/updown-chart-lab";
 import { SOURCE_CLASS_KEY } from "@/lib/updown-source-label";
-import { heroMovePct, heroPrice, msOrNull } from "@/lib/updown-card-phase";
+import { heroMovePct, heroPrice, msOrNull, roundIsSettled } from "@/lib/updown-card-phase";
 import { usd } from "@/lib/usd-price";
 
 export const dynamic = "force-dynamic";
@@ -81,6 +81,10 @@ export default async function UpDownPage({
 
   const { assets, activeAsset, activeDuration, rounds, recent, chainPaused, stakeBounds, walletBalance } = board;
   const href = (assetKey: string, d?: number) => `/updown?asset=${assetKey}${d ? `&d=${d}` : ""}`;
+  // ⭐ R5(c) · F1 (2026-09-27) · the round IN PLAY — the board's first unsettled round with frozen targets. The terminal's
+  // live line is read against its targets, so the chart and the card under it paint one confirmed read one way.
+  // ⛔ Only the two targets travel: the terminal charts history, never the round's frame (§B12.6).
+  const inPlay = rounds.find((r) => !roundIsSettled(r.state) && r.upTarget != null && r.downTarget != null) ?? null;
   const isAuthed = !!session;
   // ⛔ NO IDENTITY READ ON THE BOARD SINCE 2026-09-13 — a stake asks no identity question
   // (`kyc-gate.ts`), so quick-bet is armed for every signed-in player. The `kycBlocked` read and prop
@@ -230,7 +234,9 @@ export default async function UpDownPage({
                 // market, never the vendor; the quote time is per-poll client data.
                 sourceLabel: t.market[SOURCE_CLASS_KEY[activeAsset.sourceClass]],
                 quotedWord: t.market.udQuoted,
+                confirmedPrice: t.market.udConfirmedPrice,
               }}
+              round={inPlay ? { upTarget: inPlay.upTarget, downTarget: inPlay.downTarget } : null}
             />
           ) : null}
         />
@@ -322,7 +328,6 @@ export default async function UpDownPage({
                 myPayoutIfDown={r.myPayoutIfDown}
                 volumeTzs={r.volumeTzs}
                 players={r.players}
-                upPct={r.upPct}
                 pricing={r.pricing}
                 state={r.state}
                 outcome={r.outcome === "VOID" ? null : r.outcome}

@@ -548,6 +548,15 @@ const T = {
   pearl50: token("pearl-50"),
   bg: token("bg"),
   bgElevated: token("bg-elevated"),
+  // ── The landing hero's surface and its own inks (hero v3, 2026-09-27, spec §9) ──────────
+  // The hero stands on `--bg-overlay` (the sunken surface), and since hero v3 it sets its
+  // text there in five inks: the claim and the lede's first line in `--text`, the lede's
+  // second line, the trust rows and the h1's connective in `--text-muted`, the 18+ ring in
+  // `--text-subtle`, and the h1's side words in the hero-only accents, re-pointed 300 → 400.
+  bgOverlay: token("bg-overlay"),
+  heroYes: token("hero-yes-accent"),
+  heroNo: token("hero-no-accent"),
+  heroStrong: token("hero-text-strong"),
   // The button FILLS, read off the rules that paint them — not re-typed.
   btnNoBg: ruleValue(".btn-no", "background"),
   btnYesBg: ruleValue(".btn-yes", "background"),
@@ -645,6 +654,9 @@ const T = {
      the toast sits on `.mat-toast` (--wash-float) and both remaining consumers took
      the float wash. The two pairs it anchored moved to the wash stops below. */
   washFloatStops: tokenGradient("wash-float"),
+  /** The tipping bar's two fills (`.tipbar-yes` / `.tipbar-no`), read as ramps — the 24h mark sits on one of them. */
+  barFillYesStops: tokenGradient("bar-fill-yes"),
+  barFillNoStops: tokenGradient("bar-fill-no"),
 };
 
 /**
@@ -755,6 +767,18 @@ const CHECKS: Check[] = [
   { name: "--text-subtle on --bg-inset", fg: T.textSubtle, bg: T.bgInset, min: 4.5 },
   { name: "--text-faint on --bg", fg: T.textFaint, bg: T.bg, min: 4.5 },
   { name: "--text-faint on --bg-elevated", fg: T.textFaint, bg: T.bgElevated, min: 4.5 },
+
+  // ── The landing hero (hero v3, 2026-09-27) — every ink it sets on its own surface ────────
+  // Body-size text (the 13px claim and trust rows, the 17–20px lede, the helpline link) is held
+  // to 4.5. The h1 is 44–72px Sora 800 — WCAG-large — so its side words need 3.0; they are held
+  // to 4.5 anyway, because they are the product's YES/NO words and the 400 shades must carry them
+  // as text, not just as colour. The 18+ ring is a non-text mark beside its own "18+" text: 3.0.
+  { name: "hero · --text on --bg-overlay (claim, lede line 1, helpline, wallet names)", fg: T.text, bg: T.bgOverlay, min: 4.5 },
+  { name: "hero · --text-muted on --bg-overlay (lede line 2, trust rows, the h1's connective)", fg: T.textMuted, bg: T.bgOverlay, min: 4.5 },
+  { name: "hero · --text-subtle on --bg-overlay (the 18+ ring, the wallet glyph)", fg: T.textSubtle, bg: T.bgOverlay, min: 3.0 },
+  { name: "hero · --hero-yes-accent on --bg-overlay (the h1's YES word)", fg: T.heroYes, bg: T.bgOverlay, min: 4.5 },
+  { name: "hero · --hero-no-accent on --bg-overlay (the h1's NO word)", fg: T.heroNo, bg: T.bgOverlay, min: 4.5 },
+  { name: "hero · --hero-text-strong on --bg-overlay (the h1's question mark)", fg: T.heroStrong, bg: T.bgOverlay, min: 4.5 },
   /**
    * ── THE WASH, SCORED (2026-08-07, ATOM D) ─────────────────────────────────
    * ⛔ ADDED BEFORE THE CARD WAS ALLOWED TO ADOPT IT, not after. `.mcardp` moves from
@@ -772,6 +796,14 @@ const CHECKS: Check[] = [
   { name: "--text-subtle on --wash-raised (worst stop)", fg: T.textSubtle, bg: worstStop(T.textSubtle, T.washRaisedStops), min: 4.5 },
   { name: "--text-muted on --wash-raised (worst stop)", fg: T.textMuted, bg: worstStop(T.textMuted, T.washRaisedStops), min: 4.5 },
   { name: "--text on --wash-raised (worst stop)", fg: T.text, bg: worstStop(T.text, T.washRaisedStops), min: 4.5 },
+  /**
+   * landing v3 · WP3 — THE 24h MARK (`.tipbar-mark`, `--text`) is a 2px GRAPHIC drawn over whichever fill sits
+   * under "where the price stood a day ago" — the YES fill when the price rose, the NO fill when it fell. A
+   * graphic that carries information is WCAG 1.4.11's 3:1, against each fill's WORST stop. The WP3 spec read
+   * `--text-muted` at about 2.8 against the YES fill, which is why the mark is `--text`.
+   */
+  { name: "24h mark (--text) on the YES fill (worst stop)", fg: T.text, bg: worstStop(T.text, T.barFillYesStops), min: 3.0 },
+  { name: "24h mark (--text) on the NO fill (worst stop)", fg: T.text, bg: worstStop(T.text, T.barFillNoStops), min: 3.0 },
   /**
    * The card's own edge, and a FORM CONTROL's edge on a card — two different rules,
    * which the gate already encodes and my first version of these two lines did not.
@@ -935,6 +967,99 @@ const PLACEHOLDER_CHECKS: Check[] = [
   { name: "§P textarea::placeholder AS RENDERED", fg: T.textSubtle, bg: T.bgInset, min: 4.5, alpha: ruleOpacity("textarea::placeholder") },
 ];
 CHECKS.push(...PLACEHOLDER_CHECKS);
+
+/* ⭐ R5(c) · F1 (2026-09-27) · THE /updown TERMINAL NAMES ITS LIVE LINE — "Confirmed price $63,590.62" under the pane,
+   on the chart lab's `--bg-elevated` panel, in the line's own ink (`liveLineToken`: the in-play round's side by its
+   targets, gilt with no round). Level and gilt already have their pairs on this surface (`--text-muted on
+   --bg-elevated`, `--gilt money ink on --bg-elevated`); the two side inks are new here. The drawn line itself is
+   non-text (3.0), so these 4.5 rows cover it too. The card's figure and level words sit on `--wash-raised`, whose
+   pairs (`--yes-300` / `--no-300` as text, `--text-muted`, `--text-faint`) the R5 block below already holds. */
+CHECKS.push(
+  { name: "F1 · the terminal's named live line, Up leads (--yes-300 on --bg-elevated)", fg: token("yes-300"), bg: T.bgElevated, min: 4.5 },
+  { name: "F1 · the terminal's named live line, Down leads (--no-300 on --bg-elevated)", fg: token("no-300"), bg: T.bgElevated, min: 4.5 },
+);
+
+/* ⭐ R5 · THE LANDING'S UP & DOWN MATCH (2026-09-27, spec updown-band-v2 §5.4 / §15.1).
+   The band's scoreboard sits on a `--bg-inset` plate inside a `--wash-raised` panel, and its timeline
+   draws straight on the panel. Every ink below is READ OFF THE RULE THAT PAINTS IT (`matchInk`), never
+   typed here, so moving a mark to another token moves its number. Text is held to 4.5; the timeline's
+   marks — rail, posts, glyphs, stems, bead, playhead, played stretch — are non-text and held to WCAG
+   1.4.11's 3.0 against the wash's WORST stop (its lighter end, for light ink). The earlier stems are
+   `color-mix(… 70%, transparent)`, i.e. the ink at 70% alpha, composited as §A1 requires
+   (`contrastAlpha`), with the 70 read from the rule. C11: the review asked for `--border-control` and
+   `--border-strong` on the rail and posts, and both miss 3.0 on this wash — they take `--text-faint`,
+   and these rows are the proof. */
+function matchInk(selector: string, prop: "color" | "stroke" | "fill" | "background"): Oklch {
+  const m = new RegExp(`(?:^|;)\\s*${prop}\\s*:\\s*var\\(--([\\w-]+)\\)`).exec(ruleBody(selector));
+  if (!m) throw new Error(`contrast-audit: "${selector} { ${prop} }" is not one colour token`);
+  return token(m[1]);
+}
+function matchMix(selector: string, prop: "stroke" | "fill"): { ink: Oklch; alpha: number } {
+  const m = new RegExp(`${prop}\\s*:\\s*color-mix\\(in oklab, var\\(--([\\w-]+)\\) (\\d+(?:\\.\\d+)?)%, transparent\\)`).exec(ruleBody(selector));
+  if (!m) throw new Error(`contrast-audit: "${selector} { ${prop} }" is not a token faded with transparent`);
+  return { ink: token(m[1]), alpha: Number(m[2]) / 100 };
+}
+const onPlate = (name: string, fg: Oklch): Check => ({ name: `R5 · ${name} on the plate (--bg-inset)`, fg, bg: T.bgInset, min: 4.5 });
+const onPanel = (name: string, fg: Oklch, min: number, alpha?: number): Check =>
+  ({ name: `R5 · ${name} on --wash-raised (worst stop)`, fg, bg: worstStop(fg, T.washRaisedStops), min, ...(alpha !== undefined ? { alpha } : {}) });
+const stemUp = matchMix(".kp-udtrack__stem--up", "stroke");
+const stemDown = matchMix(".kp-udtrack__stem--down", "stroke");
+// Frame panel 2026-09-27: once the verdict is past tense or betting has closed, the newest read steps down to the
+// earlier stems' 70% ink — still a mark that must read (1.4.11).
+const AGED = ".kp-updown:is([data-aged], [data-closed])";
+const agedStemUp = matchMix(`${AGED} .kp-udtrack__stem--latest.kp-udtrack__stem--up`, "stroke");
+const agedStemDown = matchMix(`${AGED} .kp-udtrack__stem--latest.kp-udtrack__stem--down`, "stroke");
+const agedBeadUp = matchMix(`${AGED} .kp-udtrack__bead--up`, "fill");
+const agedBeadDown = matchMix(`${AGED} .kp-udtrack__bead--down`, "fill");
+const voidBand = matchMix(".kp-udtrack__void", "fill");
+CHECKS.push(
+  // ── text on the plate ──
+  onPlate("verdict, level/kick-off (--text)", matchInk(".kp-udbug__verdict", "color")),
+  onPlate("verdict, Up leads", matchInk('.kp-udbug[data-lead="up"] .kp-udbug__verdict', "color")),
+  onPlate("verdict, Down leads", matchInk('.kp-udbug[data-lead="down"] .kp-udbug__verdict', "color")),
+  onPlate("verdict, awaiting", matchInk('.kp-udbug[data-lead="awaiting"] .kp-udbug__verdict', "color")),
+  onPlate("verdict, aged (past tense)", matchInk(".kp-updown[data-aged] .kp-udbug__verdict", "color")),
+  onPlate("detail words", matchInk(".kp-udbug__detail", "color")),
+  onPlate("detail amount", matchInk(".kp-udbug__detail .amount", "color")),
+  onPlate("level note", matchInk(".kp-udbug__note", "color")),
+  onPlate("closed side label", matchInk(".kp-udbug__side", "color")),
+  // ── text on the panel ──
+  onPanel("asset name", matchInk(".kp-udmatch__name", "color"), 4.5),
+  onPanel("clock caption", matchInk(".kp-udclock__cap", "color"), 4.5),
+  onPanel("clock digits", matchInk(".kp-udclock__digits", "color"), 4.5),
+  onPanel("Watch this round link (closed)", matchInk(".kp-udclock__watch", "color"), 4.5),
+  onPanel("lane label (Ufunguzi)", matchInk(".kp-udtrack__open", "color"), 4.5),
+  onPanel("rule, sentence 1", matchInk(".kp-udrule__decides", "color"), 4.5),
+  onPanel("rule, sentence 2", matchInk(".kp-udrule__refund", "color"), 4.5),
+  onPanel("--yes-300 as text", token("yes-300"), 4.5),
+  onPanel("--no-300 as text", token("no-300"), 4.5),
+  // ── the timeline's marks (non-text, 1.4.11) ──
+  onPanel("rail", matchInk(".kp-udtrack__rail", "stroke"), 3.0),
+  onPanel("posts (lock, flag)", matchInk(".kp-udtrack__post", "stroke"), 3.0),
+  onPanel("gutter arrows", matchInk(".kp-udtrack__gutter", "color"), 3.0),
+  onPanel("clock / lock glyph", matchInk(".kp-udclock__glyph", "color"), 3.0),
+  onPanel("lane lock and flag", matchInk(".kp-udtrack__mark", "color"), 3.0),
+  onPanel("newest Up stem", matchInk(".kp-udtrack__stem--latest.kp-udtrack__stem--up", "stroke"), 3.0),
+  onPanel("newest Down stem", matchInk(".kp-udtrack__stem--latest.kp-udtrack__stem--down", "stroke"), 3.0),
+  onPanel(`earlier Up stems (${stemUp.alpha * 100}% alpha)`, stemUp.ink, 3.0, stemUp.alpha),
+  onPanel(`earlier Down stems (${stemDown.alpha * 100}% alpha)`, stemDown.ink, 3.0, stemDown.alpha),
+  onPanel("Up bead", matchInk(".kp-udtrack__bead--up", "fill"), 3.0),
+  onPanel("Down bead", matchInk(".kp-udtrack__bead--down", "fill"), 3.0),
+  onPanel("tie tick", matchInk(".kp-udtrack__tie", "stroke"), 3.0),
+  onPanel("opening dot", matchInk(".kp-udtrack__kick", "fill"), 3.0),
+  onPanel("playhead", matchInk(".kp-udtrack__now", "background"), 3.0),
+  onPanel("played stretch", matchInk(".kp-udtrack__elapsed", "background"), 3.0),
+  // The locked stretch is the quiet dialect (B12.2: 1px, dashed, 0.55) and never the sole sign of the
+  // lock — the lock post and its glyph are. Measured and printed, not gated.
+  { ...onPanel("locked stretch (quiet dialect, decorative — exempt)", matchInk(".kp-udtrack__locked", "stroke"), 3.0, ruleOpacity(".kp-udtrack__locked")), decorative: true },
+  onPanel(`aged/closed newest Up stem (${agedStemUp.alpha * 100}% alpha)`, agedStemUp.ink, 3.0, agedStemUp.alpha),
+  onPanel(`aged/closed newest Down stem (${agedStemDown.alpha * 100}% alpha)`, agedStemDown.ink, 3.0, agedStemDown.alpha),
+  onPanel(`aged/closed Up bead (${agedBeadUp.alpha * 100}% alpha)`, agedBeadUp.ink, 3.0, agedBeadUp.alpha),
+  onPanel(`aged/closed Down bead (${agedBeadDown.alpha * 100}% alpha)`, agedBeadDown.ink, 3.0, agedBeadDown.alpha),
+  // The void band is the refund zone drawn as a faint field; the rule's second sentence and the level note state
+  // it in words, so it is never the sole sign. Measured and printed, not gated.
+  { ...onPanel(`void band (${voidBand.alpha * 100}% field, decorative — exempt; stated in words)`, voidBand.ink, 3.0, voidBand.alpha), decorative: true },
+);
 
 /* ⛔ §P-u — AND THE CALL-SITE ALPHAS ARE BANNED OUTRIGHT ON INK, because no stylesheet rule
    exists for this file to read them from. `text-text-subtle/40` renders 2.02:1 and

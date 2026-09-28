@@ -19,14 +19,6 @@ import { publicSourceClassFor, type PublicSourceClass } from "./updown-symbols";
 // CHART-SPRINT-2 · the terminal chart's vendor-bars tier (real market OHLC; E-53-safe proxying).
 import { vendorBarsFor, VENDOR_PLAN } from "./updown-terminal-vendor";
 import { ratesFor, listPositionsForUser, listPositionsForMarket, projectedPayout } from "./market-service";
-// 🔴 `pricedYesPct`, NOT `impliedYesPct` — PV-06, 2026-09-03. Two functions answer "what share
-// of the pool is on UP", and they disagree about the only case that matters: `impliedYesPct`
-// returns a hardcoded **50** on an empty pool (`market-service.ts:315`), `pricedYesPct` returns
-// **null**. This board took the fabricating one, so a round with `VOL TZS 0` and ZERO predictors
-// rendered a filled "Up 50% · 50% Down" bar on production — a crowd price invented for a crowd
-// that does not exist (RULES law 5 / §C2). Five surfaces already consume the honest rule; this
-// was the sixth that was never wired to it.
-import { pricedYesPct } from "@/lib/markets/discovery";
 // ⭐ D2 · the shape the player surfaces price a bet from. Isomorphic by design — the card is a
 // client component, this is the server, and one definition of "what would I be paid" is the
 // point (same reasoning as `updown-refund-reason.ts`).
@@ -37,6 +29,9 @@ import type { UpDownReceiptInfo } from "@/lib/updown-receipt";
 // E-99 · the result clock is driven by an asset's OWN measured record, never by a constant.
 import { feedHistoryFor } from "./updown-feed-history";
 import { MIN_SAMPLES_FOR_ADVICE } from "./updown-feed-advice";
+// ⭐ R5 (2026-09-27) · ONE stale rule for a confirmed quote, shared with the landing's Up & Down band,
+// so the band and the terminal cannot call one quote "live" and "stale" at the same minute.
+import { QUOTE_GAP_FACTOR, medianCadenceMs, isQuoteStale } from "@/lib/updown-quote-age";
 
 /**
  * ⭐ E-99 · How many seconds after its boundary this asset's reading TYPICALLY arrives — or
@@ -95,9 +90,6 @@ export type BoardRound = {
   voidReason: string | null;
   volumeTzs: number;
   players: number;
-  /** The UP share of the pool, or **null** when no money is in it — see the `pricedYesPct`
-   *  import note. ⛔ Never coalesce this to 50 at a call site; that is the defect, relocated. */
-  upPct: number | null;
   /**
    * ⭐ D2 · THE ROUND'S REAL MONEY, so a player can be told what they would ACTUALLY be paid
    * before they bet — see `@/lib/updown-pricing`.
@@ -110,7 +102,12 @@ export type BoardRound = {
    * on a real one-sided round: the fat side returns exactly 1.00× and the empty side 16.66×.
    * Both buttons printed 1.5.
    *
-   * ⛔ RAW SHILLINGS, NOT `upPct`. The percentage is rounded to an integer for the bar, and
+   * ⭐ C1 · AND THE ONLY PRICE A SURFACE MAY DRAW COMES FROM THESE POOLS, through `priceState`: the
+   * board used to ship a finished `upPct` as well (PV-06 had made it null on an EMPTY pool, but a
+   * one-sided round still arrived as 100 or 0 and printed "Up 100% · 0% Down" directly above
+   * "Nobody has backed Down yet"). The field is gone, so no surface can draw a price the pools deny.
+   *
+   * ⛔ RAW SHILLINGS, NOT A PERCENTAGE. A percentage is rounded to an integer for the bar, and
    * "is this side empty" — the whole question the copy answers — cannot be read off a rounded
    * percentage: 0 and 400 on a 100,000 pool are both `0%`.
    *
@@ -436,7 +433,6 @@ async function toBoardRound(
     voidReason: r.voidReason,
     volumeTzs: m.yesPool + m.noPool,
     players: m.predictorCount,
-    upPct: pricedYesPct(m.yesPool, m.noPool),
     // ⭐ D2 · the pool itself, so every player surface can price a bet through the SAME
     // `payoutFor` settlement pays with. See the field comment for what this replaced.
     pricing: {
@@ -930,7 +926,7 @@ export async function getMyUpDownHistory(userId: string, limit = 200): Promise<M
 // minutes apart per chain, interleaved when an asset runs several chains, and
 // the reader's own test had seeded the assumption back to itself. Everything
 // below therefore DERIVES from the window's observed median inter-read delta:
-//  · the gap threshold (a hole > GAP_FACTOR × median becomes a MARKER — the
+//  · the gap threshold (a hole > QUOTE_GAP_FACTOR × median becomes a MARKER — the
 //    client renders it as a real break, never a bridge),
 //  · the candle bucket (smallest rung holding ≥ READS_PER_CANDLE medians),
 //  · the per-bucket floor (a HISTORICAL bucket under half its expected reads
@@ -969,8 +965,8 @@ const TERMINAL_WINDOWS: Record<TerminalRange, { windowMs: number; wantCandles: b
 const BUCKET_RUNGS_MIN = [5, 10, 15, 30, 60, 120, 240];
 /** A candle wants at least this many median inter-read gaps of width. */
 const READS_PER_CANDLE = 4;
-/** A hole wider than this many medians is a gap marker. */
-const GAP_FACTOR = 2.5;
+// A hole wider than QUOTE_GAP_FACTOR medians is a gap marker. The factor is the stale rule's own,
+// one number in `@/lib/updown-quote-age` (hoisted 2026-09-27 for the landing band, R5).
 
 export type TerminalPoint = { t: number; price: number | null }; // price null = gap marker
 export type TerminalCandle = { t: number; o: number; h: number; l: number; c: number; n?: number; v?: number | null; forming?: boolean };
@@ -990,7 +986,7 @@ export type TerminalFeed = {
   series: TerminalSeries;
   livePrice: number | null;
   sourceQuotedAt: string | null;
-  /** True when the newest confirmed read is older than GAP_FACTOR × the window's
+  /** True when the newest confirmed read is older than QUOTE_GAP_FACTOR × the window's
    *  median cadence — the client dims the live reference line and the receipt
    *  line carries the quote time, so a stalled feed cannot wear a flat market's
    *  face (review finding F20). Null when the window cannot measure a cadence. */
@@ -1048,10 +1044,9 @@ export async function getAssetTerminalSeries(
         .list({ assetId: asset.id, state: "CONFIRMED", limit: 8 })
         .catch(() => []);
       const qTimes = recentQuotes.map((o) => Date.parse(o.boundaryAt)).filter(Number.isFinite).sort((a, b) => a - b);
-      const qDeltas = qTimes.slice(1).map((t, i) => t - qTimes[i]).sort((a, b) => a - b);
-      const quoteCadence = qDeltas.length >= 2 ? qDeltas[Math.floor(qDeltas.length / 2)] : null;
+      const quoteCadence = medianCadenceMs(qTimes);
       const vLiveStale = liveForBase?.quotedAt != null
-        ? now - Date.parse(liveForBase.quotedAt) > Math.max(quoteCadence != null ? GAP_FACTOR * quoteCadence : 0, 5 * 60_000)
+        ? isQuoteStale(Date.parse(liveForBase.quotedAt), now, quoteCadence)
         : null;
       const vBase = {
         livePrice: liveForBase?.price ?? null,
@@ -1101,9 +1096,8 @@ export async function getAssetTerminalSeries(
 
   // The window's own cadence — the median inter-read delta. Needs ≥3 reads to
   // mean anything; below that everything degrades to the sparse line.
-  const deltas = reads.slice(1).map((r, i) => r.t - reads[i].t).sort((a, b) => a - b);
-  const medianDeltaMs = deltas.length >= 2 ? deltas[Math.floor(deltas.length / 2)] : null;
-  const gapMs = medianDeltaMs != null ? Math.max(3 * 60_000, GAP_FACTOR * medianDeltaMs) : null;
+  const medianDeltaMs = medianCadenceMs(reads.map((r) => r.t));
+  const gapMs = medianDeltaMs != null ? Math.max(3 * 60_000, QUOTE_GAP_FACTOR * medianDeltaMs) : null;
   // ⛔ The stale gate must not FAIL OPEN on an unmeasurable window (judge panel,
   // finance + data lenses): during the first minutes of a real outage a 15M/30M
   // window can hold 1–2 reads, cadence unmeasurable — exactly when a dead feed
@@ -1111,7 +1105,7 @@ export async function getAssetTerminalSeries(
   // applies; null only when there is no quote at all.
   const liveStale =
     live?.quotedAt != null
-      ? now - Date.parse(live.quotedAt) > Math.max(medianDeltaMs != null ? GAP_FACTOR * medianDeltaMs : 0, 5 * 60_000)
+      ? isQuoteStale(Date.parse(live.quotedAt), now, medianDeltaMs)
       : null;
 
   const base = {
@@ -1240,21 +1234,42 @@ export async function getAssetTerminalSeries(
   return { series: { mode: "candles", candles, bucketMs, gaps }, ...base };
 }
 
+type WindowRead = { t: string; price: number; ms: number };
+
+/**
+ * The asset's CONFIRMED reads, read ONCE for the round-page hero AND the landing's Up & Down band
+ * (R5, 2026-09-27 — one read, two consumers; it was `priceSeriesFor`, whose body lives on here and in
+ * `seriesFromReads`). `reads` is the round window [open, end], oldest first; `cadenceMs` is the asset's
+ * median confirmed-read cadence over everything fetched, for the shared stale rule (`updown-quote-age.ts`).
+ *
+ * ⛔ A STORE ERROR IS `reads: null` — never an empty list, which the band would print as "no new price
+ * since the open", a statement about the market made out of a database blip (B-1).
+ */
+async function roundReadWindow(assetId: string, opensAtMs: number, endMs: number): Promise<{
+  reads: WindowRead[] | null; cadenceMs: number | null;
+}> {
+  let rows: Awaited<ReturnType<typeof observationStore.list>>;
+  try { rows = await observationStore.list({ assetId, state: "CONFIRMED", limit: 120 }); }
+  catch { return { reads: null, cadenceMs: null }; }
+  const all = rows
+    .filter((o) => o.price != null && o.boundaryAt != null)
+    .map((o) => ({ t: o.boundaryAt, price: o.price as number, ms: Date.parse(o.boundaryAt) }))
+    .filter((o) => Number.isFinite(o.ms))
+    .sort((a, b) => a.ms - b.ms);
+  return {
+    reads: all.filter((o) => o.ms >= opensAtMs && o.ms <= endMs),
+    cadenceMs: medianCadenceMs(all.map((o) => o.ms)),
+  };
+}
+
 /** Real intra-round price points for the D3 hero — CONFIRMED observations only, inside
  *  the round window, oldest→newest, capped at ~60. NOTHING is sampled or simulated: the
  *  oracle reads at grid boundaries, so a short round yields few real points and a long
  *  one more; we hand the hero exactly the real reads (A-5, "real data or nothing"). Null
- *  when fewer than two real points exist — the hero then draws the open line alone. */
-async function priceSeriesFor(
-  assetId: string, opensAtMs: number, endMs: number,
-): Promise<{ t: string; price: number }[] | null> {
-  const rows = await observationStore.list({ assetId, state: "CONFIRMED", limit: 120 }).catch(() => []);
-  const pts = rows
-    .filter((o) => o.price != null && o.boundaryAt != null)
-    .map((o) => ({ t: o.boundaryAt, price: o.price as number, ms: Date.parse(o.boundaryAt) }))
-    .filter((o) => Number.isFinite(o.ms) && o.ms >= opensAtMs && o.ms <= endMs)
-    .sort((a, b) => a.ms - b.ms);
-  if (pts.length < 2) return null;
+ *  when fewer than two real points exist — the hero then draws the open line alone.
+ *  (The old rule unchanged; a failed read is null here too, as it always rendered.) */
+function seriesFromReads(pts: WindowRead[] | null): { t: string; price: number }[] | null {
+  if (pts == null || pts.length < 2) return null;
   // Never hand the hero more than ~60 points; even-step downsample if a finer feed ever
   // produces more (mirrors market-history.getCompressedHistory). No point is invented.
   const N = 60;
@@ -1349,6 +1364,11 @@ export async function getRoundDetail(roundId: string, userId?: string): Promise<
   titleEn: string;
   /** Real confirmed price points inside the round window; null ⇒ hero draws open line only. */
   priceSeries: { t: string; price: number }[] | null;
+  /** EVERY confirmed read inside the round window [open, end], oldest first, not downsampled —
+   *  the landing band's stems (R5). null = the read FAILED, never "no reads". */
+  roundReads: { t: string; price: number }[] | null;
+  /** The asset's median confirmed-read cadence (ms), for the shared stale rule; null when unmeasurable. */
+  readCadenceMs: number | null;
   /** The viewer's own stake/result on this round, or null when they did not play it.
    *  `ids` are the positions it aggregates — E-101's anchors are rendered from them.
    *  `items` is every one of those positions, itemised and never truncated. */
@@ -1409,8 +1429,8 @@ export async function getRoundDetail(roundId: string, userId?: string): Promise<
   // reads so far and a resolved one the full window up to close.
   const decided = board.state === "resolved" || board.state === "void";
   const endMs = decided ? Date.parse(r.closesAt) : Date.now();
-  const [priceSeries, myPosition, walletBalance, detailBounds] = await Promise.all([
-    priceSeriesFor(a.id, Date.parse(r.opensAt), endMs),
+  const [win, myPosition, walletBalance, detailBounds] = await Promise.all([
+    roundReadWindow(a.id, Date.parse(r.opensAt), endMs),
     myPositionFor(userId, r.marketId),
     walletBalanceOf(userId),
     stakeBoundsFor(chain),
@@ -1425,7 +1445,9 @@ export async function getRoundDetail(roundId: string, userId?: string): Promise<
       durations: [chain.durationMinutes],
     },
     titleEn: m.titleEn,
-    priceSeries,
+    priceSeries: seriesFromReads(win.reads),
+    roundReads: win.reads?.map(({ t, price }) => ({ t, price })) ?? null,
+    readCadenceMs: win.cadenceMs,
     myPosition,
     // The proof panel renders ONLY once the round is decided — showing a half-filled
     // receipt mid-round would imply a result that does not exist yet.
@@ -1450,3 +1472,6 @@ export async function getRoundDetail(roundId: string, userId?: string): Promise<
     walletBalance,
   };
 }
+
+/** One readable round, as `getRoundDetail` returns it — the round page's and the landing band's input. */
+export type RoundDetail = NonNullable<Awaited<ReturnType<typeof getRoundDetail>>>;

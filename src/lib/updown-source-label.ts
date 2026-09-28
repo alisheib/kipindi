@@ -45,3 +45,21 @@ export const fmtEAT = (iso: string | null): string | null => {
   const s = new Intl.DateTimeFormat("en-GB", { timeZone: "Africa/Nairobi", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false }).format(d);
   return `${s} EAT`;
 };
+
+/** Built once: an `Intl.DateTimeFormat` is the expensive part, and only the instant varies. */
+let EAT_CLOCK: Intl.DateTimeFormat | null = null;
+
+/**
+ * An instant as the EAT wall clock, "14:26" — 24-hour, HH:MM, no zone suffix (landing v3, R5).
+ *
+ * The landing's Up & Down band stamps every verdict with the minute of its confirmed read ("saa 14:26").
+ * ⛔ NO "EAT" ON THE BAND (the review's I-9): the zone is stated in the band's track description and on
+ * the round page, which keeps `fmtEAT` above. The same zone as `fmtEAT`, so the band's "14:26" and the
+ * round page's "14:26:00 EAT" are one reading. Null for an instant that is not a number.
+ */
+export const fmtEATClock = (ms: number): string | null => {
+  if (!Number.isFinite(ms)) return null;
+  // `hourCycle: "h23"`, not `hour12: false`: the latter lets some engines print a midnight minute "24:05".
+  EAT_CLOCK ??= new Intl.DateTimeFormat("en-GB", { timeZone: "Africa/Nairobi", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+  return EAT_CLOCK.format(new Date(ms));
+};

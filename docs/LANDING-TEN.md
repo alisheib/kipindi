@@ -7,27 +7,83 @@
 >
 > **Read this before touching the landing page, and before trusting a green gate.**
 
+## §−0 · ⚠️ A SECOND LANE SHIPPED THE DEPOSIT CHANGE, AND THE BRIEF HAS BEEN REVISED (2026-09-28)
+
+**A v4 revision of the handover is now installed**, over the v3 one that was in
+[`design-system/v4-2026-09-26-landing-ten/`](design-system/v4-2026-09-26-landing-ten/README.md).
+Read its **`UPDATE-2026-09-28.md` first** — it supersedes any line it conflicts with, including in
+`HANDOVER-LANDING-10.md`, which is itself a longer revision now (15k → 24k). `SPEC-VALUES.md` and
+`ACCEPTANCE.md` were revised too. The v3 concept and `INHERIT-MANIFEST.md` are untouched; the v4
+concept is self-contained in `design/v4/` because the two need different runtimes.
+
+**§1–§3 of that update are BUILT AND LIVE** (`37bde8a5`), with gates V22 and V25 (`ccfa54f0`):
+the header's gold pill yields below 1024, the rail carries a centre **Deposit coin**, and Results
+moved into `More` (it stays in the desktop header). **One Deposit per screen** is now a gate, not a
+convention.
+
+⛔ **THE TWO LANES COLLIDE, AND IT IS NOT HYPOTHETICAL.** That work merged origin/main mid-build and
+hit three conflicts — `top-app-bar.tsx`, `bottom-nav.tsx` and this lane's own
+`header-fit.anchors.mjs`. R1 landing first is what made §1's zero-balance label rule correct: it
+added `funded` and made the capsule give way at zero, which is the premise §1 spends.
+⚠️ **Most of UPDATE §4's remaining items overlap this lane's work packages** (one board, the shared
+`ConvictionBar`, the closed-market state, "▲ You", analytics, skeletons). **Reconcile before
+starting any of them**, or both lanes will build the same thing twice in the same files.
+
 ## §0 · RESUME AT — the v3 build (reopened 2026-09-26)
 
-**State (2026-09-27):** D0 ✅, D1 ✅ (`54f8199b`), WP14 ✅ (the Wallet, `e9b4056c`), **WP6 ✅** (`31662831` — a
-market with money on one side states no price, on every card; V17 0 on production) and **WP14b ✅** (`541a9e76` —
-share works on every card in every phase; the WhatsApp preview reads the card's price rule and carries the site's
-og tags; `qa:landing-v3:og-prod` CLEAN on 15 production markets). D2 step 0 (the gate's V18 + its own hardening) is
-live in the scripts; V18 reads 1,584 on production until WP3/WP4 add the attributes it reads (GATE row).
-**Next:** (1) **the Up & Down band (R5)** — being built in the landing worktree from
-`docs/design-system/v4-2026-09-26-landing-ten/specs/updown-band-v2.md`; then its local drive and a four-expert
-rating of the real frames until every score is 10, then push; (2) **the hero** — in design (marketing specialists +
-a four-judge panel), with Ali's rulings on the 'first' claim and the RG line to come; (3) **C1 · one price rule
-everywhere** — spec `specs/c1-one-price-rule.md`, both rulings made (R6); it also fixes a live false money
-statement (a settled one-sided market's resolution panel states a fee never charged) and the result word's ink
-(a NO or void result is painted YES-green on every settled card); (4) **WP3 + WP4** as one deploy (they add V18's
-attributes) — spec `specs/d2-wp3-wp4-wp9-v18-wp14b.md`; (5) **WP9** alone. Then D3 (WP5 the pick slip + WhatsApp
-after placing, V20, the chat bubble under sheets) and D5. The specs are build inputs: delete each when its unit ships.
-**Ali's asks of 2026-09-27, open:** (a) the Up & Down band's chart "nobody understands" — a redesign, to be rated
-10/10 by a UI/UX + gambling-industry panel on real frames before it ships (WP12 note; ruling R5: 60s refresh, no
-pool on the band, `/updown` card to follow); (b) the HERO's first screen — "first prediction market in Tanzania",
-no gambling warning, better type — in design by marketing specialists + a four-judge panel, with the claim's
-proof and the RG line to be ruled by him; (c) where the "Follow 50pick" panel may appear (manifest Q2).
+**State (2026-09-28):** D0 ✅, D1 ✅ (`54f8199b`), WP14 ✅ (the Wallet, `e9b4056c`), WP6 ✅ (`31662831`), WP14b ✅
+(`541a9e76`), and **WP12 — the Up & Down band, R5 "the Match" — 🔵 LIVE since 2026-09-27 22:26 UTC (`5ba4f727`;
+production then served `6d915723`, a house-bots merge on top of it)**, pushed on the owner's word ("push live what you
+have now") after five rounds of the four-expert frame panel on eight local drives (45 of 52 frames at 10 in round 5;
+round 5's four small fixes shipped without a local re-drive). **Measured on production 2026-09-27:** `band-metrics`
+CLEAN on all 11 cells (the band showed Down leads on BTC: 360 sw card 587px ≤ 600, clock→pick 166px ≤ 170, rule on
+2 lines; 1280 card 357px ≤ 380); `band-agree` 3 compared, 0 disagree (sw/en/zh — the band's "saa 01:39 · Chini ya
+ufunguzi kwa $43.17" = the round page's stamp and ink); the 360 sw frame looked at. **Not yet run on production: the
+landing gate** (`verify-prod.sh` waited for the exact sha while production served `6d915723`). D2 step 0 (V18 + the
+gate's hardening) is live in the scripts; V18 reads 1,584 on production until WP3/WP4 add the attributes it reads.
+**Next:** RESUME HERE (handover 2026-09-28 — the build moves to ANOTHER PC; nothing below needs the old laptop: every
+branch is on `origin`, but the frames in `.qa-shots/` are not, so every drive is re-run on the new machine).
+(0) **Set up.** Fetch; check out branch `landing-v3` in your own checkout — it is the live band + **the hero merged, NOT
+live, NOT yet verified** + docs — `npm ci`, and merge `origin/main` (house bots moved it: `6d915723` and later). Heavy
+Node one job at a time (the old laptop used `~/heavy-node-lock.sh`; use the new machine's equivalent or none). The
+four-expert panel scripts and how a round works: `scripts/qa/landing-v3/panels/` (README).
+(1) **Finish WP12.** `bash scripts/qa/landing-v3/verify-prod.sh band-prod2 <the live sha>` with `FIRST_EXPECTED=0` while
+the hero is not live; read the gate + REDs; tick WP12 ✅; delete `specs/updown-band-v2.md` with a one-line pointer in
+§2.1 WP12 ("read it at `5ba4f727`" — 23 code comments cite it as provenance). A sixth panel round on production frames
+of round 5's four fixes is optional.
+(2) **The hero (R7 + R9)** — merged into `landing-v3` (`bc852744`; branch `landing-v3-hero` is the same tip). On the
+merged tree: tsc clean, `test:hero-copy` 14/0, `red:hero-copy` 20 caught / 0 missed, the band's 95/0. First local drive
+(`verify-hero.sh hero1`, 2026-09-27): **served HTML CLEAN** in sw/en/zh (the h1's spaces, the "first licensed" claim,
+one `lang="en"`, a `tel:` link, four wallets, no "official"); all 47 frames captured (320, 360×780, 360×740, 768,
+1024×768, 1280×800 × sw/en/zh; signed in with zero and funded balance; 130% text without overflow; focus visible on the
+helpline and both CTAs) — the 360×740 sw YES/NO row sits above the rail. **Not done:** the gate + REDs V15–V17/V21/V22
+(the session ended mid-gate — `ONLY_GATE=1 bash scripts/qa/landing-v3/verify-hero.sh <label>` reruns just that) and the
+frame panel (`panels/hero-panel.js`; round 1 never completed). Then ship: merge `origin/main`, push, confirm `?dpl=`,
+the production gate with `FIRST_EXPECTED=1`.
+(3) **C1 · one price rule everywhere** — branch `landing-v3-c1`, tip `cc6fc5bd` (10 commits + the branch review's four
+fixes; its guards green, run serially; ⚠️ its typecheck NOT yet run after the fix commit). Drive `verify-c1.sh` — RED
+baseline first, then the branch drive (its build report's steps, incl. the production `PROD-S1-FEE` count to report
+to Ali). At merge, one adjacent-line conflict in `i18n-dict.ts` (sw `udPool` "Dimbwi" → "Bwawa" beside the band's
+`udLevelBy`).
+(4) **WP3 + WP4** — branch `landing-v3-wp34`, tip `3312082f` (built ON C1; tsc clean; `test:featured-card` 72/0,
+`red:featured-card` 9/9; one neutral 24h move platform-wide, "Hakuna dau bado", "5 位预测者"; L24–L29 in its
+manifest). Drive `verify-wp34.sh` (P1–P3); re-run its first-screen budget with the hero merged (the trust rows sit
+above the featured card).
+(5) **F1 (R5(c))** — branch `landing-v3-f1`, tip `a8ad92a0` (built ON C1): the `/updown` card and terminal say
+"Confirmed price" and take the band's targets-based ink; the card's 9.5px trust footer and its truncating "HIGHER OR
+LOWER THAN $…" heading reach the 13px floor / never clip. ⚠️ Its build report never arrived (the session ended): run
+its typecheck and guards before rendering.
+(6) **WP9** alone. (7) The small R7 build: retire "Tabiri matukio. Si bahati." on all FIVE surfaces it reaches (the
+English-only tab title, the primer, the landing's How-it-works heading, the auth rail + register preview, the yes/no
+rules subtitle). Then D3 (WP5 the pick slip, V20, the chat bubble under sheets) and D5.
+**⭐ Ali, 2026-09-27: "make sure everything in the plan is applied, every decision, every design component perfectly made,
+new components built all consistent with our theme design kit."** Every unit is checked against R1–R7, L1–L23 and the kit
+before it ships — frames looked at, never only a green gate.
+**⭐ R8 (Ali, 2026-09-27): the build takes every remaining decision and IS the Tanzanian native Swahili reviewer** — no
+human reviewer or hallway test is waited for; "licensed" is substantiated by the Board's licence-fee acknowledgement
+(2026-09-05, Sec. 51(2)); "first licensed" ships on the owner's attestation (R9); the Follow panel stays; the share preview speaks Swahili (a WP14b
+follow-up for this batch); the hero names only wallets whose payout path is live. "Full perfection, end to end,
+sealed — visual and logical."
 **⭐ STANDING (Ali, 2026-09-27): platform-wide consistency, mobile-first, whatever the session count.** When a
 landing row shows the same rule broken on another surface, fix it there too — do not park it with another lane.
 First such batch, **C1 · one price rule everywhere**: the detail page's bar, side picker and JSON-LD, and its
@@ -88,18 +144,46 @@ row; this section does not repeat it.
 
 ## §0a · The paste-in prompt for the next session
 
-> Continue the 50pick landing v3 build. Read `docs/LANDING-TEN.md` §0 and §1 first, then
-> `docs/design-system/v4-2026-09-26-landing-ten/INHERIT-MANIFEST.md` (Ali's rulings R1–R4 and laws
-> L1–L21), then §2 (how each row is built) and §3 (every delivery item and the row that delivers it).
-> Verify with the scripts in `scripts/qa/landing-v3/` (§0 trap 6), always under the heavy-node lock.
-> Open the concept (`npx serve docs/design-system/v4-2026-09-26-landing-ten/design`, then
-> `50pick Home Concept v3.dc.html`, with `?signedIn=1&balance=1&wallet=1&locale=sw` as needed) at 360,
-> 768 and 1280 beside the build. Work the next ⬜ batch of §2.0 in order, in your own worktree off
-> `origin/main`. For each row: build it within `globals.css` tokens and existing components, run the
-> suites §2.1 names plus `npm run test:landing-ten-plan`, drive it locally at 360/768/1280 in sw/en/zh
-> and look at the frames, push to `main`, confirm the deployed sha, re-measure on production, then tick
-> the row and rewrite §0 in the same commit. The repo's laws win every conflict with the delivery;
-> a conflict nobody has ruled on goes to Ali as a numbered one-line choice, and into the manifest.
+> Continue the 50pick landing v3 build, end to end, sealed — visual and logical. The build moved to this PC on
+> 2026-09-28; everything is on GitHub (alisheib/kipindi) and nothing needs the old laptop.
+>
+> Setup: find the repo on this machine (or clone it) and work in your own checkout of branch `landing-v3` (it
+> holds the live Up & Down band + the hero merged but NOT live and NOT yet verified + the docs). `git fetch`,
+> `npm ci`, merge `origin/main` (never rebase or force). The other built units wait on their own branches:
+> `landing-v3-c1` (`cc6fc5bd`), `landing-v3-wp34` (`3312082f`, built on C1), `landing-v3-f1` (`a8ad92a0`, built on C1).
+>
+> Read `docs/LANDING-TEN.md` §0 first — its **Next:** list (0)–(7) is the exact resume point and says what is and is
+> not verified for each unit. Then `docs/design-system/v4-2026-09-26-landing-ten/INHERIT-MANIFEST.md` (rulings R1–R9;
+> laws L1–L23, with L24–L29 arriving with WP3+WP4; and "R8 applied — WP12", the decisions the build already took) and
+> the unit's spec in that folder's `specs/`. Every recorded decision is final. Take any new decision yourself (R8) and
+> record it in the manifest. Act as the Tanzanian native Swahili reviewer for every Swahili line; give Chinese the same
+> care.
+>
+> Work the Next list in order:
+> 1. Finish WP12: the landing gate on production (`verify-prod.sh`, `FIRST_EXPECTED=0` while the hero is not live),
+>    tick ✅, delete `specs/updown-band-v2.md` with a pointer.
+> 2. The hero: re-run its drive here (`verify-hero.sh` — the frames are not on GitHub), the gate + REDs
+>    V15–V17/V21/V22, the four-expert panel to 10, then ship it and measure it with `FIRST_EXPECTED=1`.
+> 3. C1: typecheck first, then its RED baseline and drive (report the production `PROD-S1-FEE` count to me), panel,
+>    ship.
+> 4. WP3 + WP4 (re-measure the first-screen budget with the hero in). 5. F1 (typecheck + guards first — its build report
+>    never arrived). 6. WP9. 7. The small R7 build (retire "Tabiri matukio. Si bahati." on all five surfaces). Then D3 and
+>    D5.
+>
+> How to build and verify:
+> - Build every component from the kit: `globals.css` tokens, the type ladder, existing components. Fix the same
+>   defect platform-wide whenever you find it, mobile first.
+> - Heavy Node (dev server, build, tsc, Playwright) one job at a time; if this machine has `~/heavy-node-lock.sh`, run
+>   through it. Dev on localhost (never 127.0.0.1), `rm -rf .next` before every drive, viewport tiles never full-page,
+>   check the served HTML for eaten spaces. A green build is not a render.
+> - Every unit gets the four-expert frame panel — UI/UX lead, graphic designer, gambling-industry designer,
+>   accessibility/RG — as agents that READ the real PNGs (`scripts/qa/landing-v3/panels/`, README). Brief each round
+>   with what changed and what was declined with its recorded reason; fix and re-shoot until every frame is 10. The
+>   panel agents run no Node; you run the test battery yourself, one suite at a time.
+> - Ship: merge `origin/main`, push to `main`, confirm the deployed sha (`?dpl=` or `/api/health` — if another session
+>   pushed on top, accept a sha that contains yours), re-measure on production, tick the row and rewrite §0 in the same
+>   commit. Push each verified unit.
+> - Tell me when the next session is needed.
 
 ## §1 · Status board — the v3 build
 
@@ -120,7 +204,7 @@ row; this section does not repeat it.
 | WP9 | Pick-a-side grid: phone snap rail with a peek, 2 and 3 columns | ⬜ | | |
 | WP10 | Topics: six tiles, Other last, "All topics" as the section link | ✅ | 54f8199b | measured on production 2026-09-26 (360/768/1280 × sw/en/zh frames looked at) |
 | WP11 | How it works: "A named source", the fee from config, h3 steps | ✅ | 54f8199b | measured on production 2026-09-26 (360/768/1280 × sw/en/zh frames looked at); the fee reads 13% through `ratesFrom`; L3 |
-| WP12 | Up & Down band: the soonest round, price line, ring, UP/DOWN, plural fixed | ✅ | 54f8199b | measured on production 2026-09-26 (360/768/1280 × sw/en/zh frames looked at); full width, R4(6). ⚠️ Ali 2026-09-27: the price-line chart is not understood — a redesign is in design (§0); the chart moved into `components/charts/` meanwhile |
+| WP12 | Up & Down band: R5 — the Match (spec v2) | 🔵 | 2acefc9d | live 2026-09-28: the scoreboard, the match track and the one-line clock, the 60-second refresh (R5(a)), the round page agreeing (§12); eight local drives (`verify-band.sh`: 19 checks incl. the agreement drive, the RED-controlled numeric gate, the #stake landing, one pick position across states) and five rounds of the four-expert frame panel (45/52 at 10 in round 5; record in §2.1 WP12). Production 2026-09-27: `band-metrics` CLEAN on 11 cells, `band-agree` 3 compared / 0 disagree, the 360 sw frame looked at; the landing gate on production still to run (§0 (1)). The price-line band it replaces was ✅ `54f8199b` |
 | WP13 | Results: date, the market's own sign-off, source link, paid | ✅ | e9b4056c | measured on production 2026-09-27: date, the market's own sign-off (a reversed market reads "Corrected on objection"), source, paid; below 640 the amount and the source each take a line, so the host reads whole. L2 |
 | WP14 | Wallet: chip opens sheet/panel, equal Deposit/Withdraw, gold Deposit at zero, signed-in hero | ✅ | e9b4056c | measured on production 2026-09-27 with `mobile01` (zero balance, no picks: header Deposit, hero empty-balance line + Deposit, no Withdraw, Set limits; pages render at 360/1280 sw/en). Funded Wallet + hero measured locally (Wallet 17 cells, hero 15 cells; 360–1280 × sw/en/zh). `test:wallet-reach` 48/48, `test:landing-mine` 22/22, both mutation-proved. R1, L19–L21 |
 | WP14b | Share on every card footer, in every phase; the WhatsApp preview card (og tags spread from `ROOT_OPEN_GRAPH`, no 0/100 in the preview) | ✅ | 541a9e76 | measured on production 2026-09-27: `qa:landing-v3:og-prod` CLEAN on 15 markets (og:type/site_name/locale present, one-sided markets preview "One side only.", images 1200×630 PNG) — its baseline before the push failed on all 15; `/results` captured 360/768/1280 × sw/en/zh, settled cards one `<article>`, looked at; the share drive (26/26: Copy, WhatsApp, Esc, backdrop stay on `/results`) ran locally. "Share on WhatsApp" after placing is WP5's; K50 closes with both |
@@ -135,7 +219,19 @@ row; this section does not repeat it.
 | V19 | Gate: Withdraw as reachable and as large as Deposit | ⬜ | | |
 | V20 | Gate: sheets trap focus, close on Esc, respect the safe area | ⬜ | | |
 | V21 | Gate: the placement map, by bounding box | ⬜ | | |
+| V22 | Gate: the bottom rail and its centre coin — centred ±1px, a 14px rise, the coin's rect inside a needle keep-out, the rail's row height unchanged, the footer's reserve still clearing it, no English rail label ellipsised | ✅ | 37bde8a5 | production 2026-09-28: 0 findings; **RED PROVED** on production (`RED=V22 --cell=base-360-sw`, plant moved the coin 154→174, V22 0→1, no collateral). ⚠️ Asserts the RISE rather than the CSS value: the concept's rail has 56px slots and ours has 64px, and `margin-top:-14px` — the obvious reading — measured a **7px** rise. ⚠️ Not applicable at ≥1024 (`lg:hidden`) and says so rather than passing. ⚠️ "/results marks More as current" is NOT in it — a different route, and More's items are not in the DOM until it opens; it belongs with `test:section-rail` |
+| V25 | Gate: one Deposit per screen (UPDATE-2026-09-28 §5) — below 1024 none in the header, exactly one in the rail, none in the hero below 640; at 1024 and up no rail, at most one header pill, none for a visitor | ✅ | 37bde8a5 | production 2026-09-28: 0 findings; **RED PROVED** on production (`RED=V25 --cell=base-768-sw`, plant injected a second header Deposit, V25 0→1, no collateral). ⛔ Population is scoped by REGION, never page-wide — `cashback-promo.tsx` is a legitimate second `/wallet/deposit` CTA. ⛔ Counts what is RENDERED, not the DOM. ⚠️ The signed-in FLOOR at ≥1024 is not asserted: "exactly one" cannot tell a held wallet (correctly none) from a missing pill, because the rail that reveals held is gone at that width. Measured on a local seeded host instead (Ali's ruling, 2026-09-28) |
 | GATE | `qa:landing-ten` V1–V14 clean on production (V3, V14 open by R4); `npm run test:all` + typecheck green | ⬜ | | Production 2026-09-27 after `541a9e76` (33 of 33 cells measured): V1, V2, V5–V17 clean. Still reported, each with its owner: V3 ×12 (the chat bubble, Ali's call), V4 ×33 (`.ticker-pause` 40×31, the LIVE-strip lane's, §0 trap 11), V18 ×1,584 (48 per cell: every surface unmarked until WP3 + WP4 add `data-market-*`; its RED runs are INCONCLUSIVE until then — correct). `test:all` is red on OTHER lanes' ratchets (type-scale, stacking, tap-target, decomment, eyebrow-roles, two red-anchors §3 anchors) — each red on clean `origin/main` too. R4 |
+
+> **Instrument defect found and fixed, 2026-09-28 (with V22/V25).** `--red` returned BEFORE the sign-in
+> block, so **no `signedin` cell could ever be red-tested**. V25's own control is specified as "restore the
+> old wrapper and catch it at 768", and the pill it restores renders only for a signed-in player — so the
+> control for the class could not reach the state the class is about. Sign-in now runs first and both runs
+> take the session; a signedin cell with no session exits **INCONCLUSIVE with its reason**, never a verdict.
+> Proven on production the same day: `RED=V25 --cell=state-signedin-768` reached the attempt and reported
+> INCONCLUSIVE (`mobile01` sign-in is failing there), where before it would have silently measured a
+> signed-out page and called the answer PROVED or BLIND.
+
 | PANEL | The eight-reviewer re-score, recorded below | ⬜ | | |
 | FUNNEL | Visitors → sign-ups → first pick, measured before and after launch | ⬜ | | |
 | SW | Native Swahili sign-off of every new sw string | ⏳ | | Ali |
@@ -167,57 +263,121 @@ feature (a plant against a feature that does not exist yet cannot prove anything
 
 ### §2.1 · The rows
 
-**WP2 · Hero order** — `src/components/home/landing-hero.tsx`, `.kp-hero*` in `globals.css`, `src/app/page.tsx`
-- One DOM, ordered: eyebrow → `<h1 lang="en">` → sw/zh sub-line (`home.heroHeadlineSub`, shown only when it
-  differs from the headline) → lede → **featured card** → trust lines → CTAs. From 1024 the block is two
-  columns — copy, trust lines and CTAs on the left, the featured card on the right — by CSS grid areas,
-  never a second copy of the DOM. ⚠️ Trust lines BEFORE the CTAs, in the source (L18): the delivery's phone
-  order put them after the CTAs, below the first screen its own placement map requires; a CSS `order`
-  was tried and removed because keyboard order then disagreed with the screen.
-- Headline on the locked ladder — 44 below 1024, 60 from 1024, 72 from 1280 (the delivery's
-  `clamp(40px, 6.2vw, 88px)` mapped onto §T1 steps), Sora 800, `text-wrap: balance`. The YES/NO inks come
-  from `Inked` over the English words; the sub-line is inked with the reader's own side words
-  (`sideWord`), MOBILE-VISUAL ruling 12.
-- Trust lines, in this order: 18+ roundel + `footer.licensedByGbt` · `home.trustCell3H` (mobile money) ·
-  `footer.stopGambling` + the helpline (`HELPLINE()` / `HELPLINE_TEL()`, a `tel:` link at the tap floor) ·
-  `home.trustCell1H` (named sources). Every string is an existing key — no new regulated copy. The licence
-  NUMBER stays in the footer on every page (K39), as in the delivery's own hero.
-- The lede drops the jargon word the before state used ("Trade questions…" → "Pick a side on questions…").
-- The proof rail, the conviction bar and the closing-soonest board move **below** the hero block.
-- Remove the faint dial drawing behind the hero (R4(1)).
-- Guards at risk: `test:betting-ink` §1 pins the proof-rail figure markup exactly; `test:hero-contract`
-  (the featured market is never also a board row); `scripts/qa/landing-ten.mjs` V14 landmarks and the
-  V8 text map name `.kp-hero` — keep the class or re-point the gate in the same commit. The hero's entrance
-  stagger is keyed to `.kp-hero__inner > *:nth-child(n)`; reordering children re-orders the animation.
-- ⚠️ First-screen budget (V15): header 56 + the LIVE strip (back on `/` since 2026-09-26) + the hero must
-  leave the featured card's price and YES/NO above 740px at 360 wide, **in sw**, whose sub-line and lede
-  are the longest. Measure it; if it does not fit, shorten spacing on the `--rh-*` phone rungs, never the text.
+**WP2 · Hero** — `src/components/home/landing-hero.tsx`, `.kp-hero*` in `globals.css`, `src/app/page.tsx`,
+`src/lib/server/payout-rails.ts`, `src/lib/rail-list.ts`, `FIRST_LICENSED_EVIDENCE()` in `src/lib/support-config.ts`
+- ⭐ **HERO v3 — rebuilt 2026-09-27 from `specs/hero-v3.md` under R7, R8 and R9** (branch `landing-v3-hero`; not
+  live until it is merged, rendered and measured). This note describes the v3 hero. The first build (`54f8199b`,
+  measured on production 2026-09-26) had an English `<h1 lang="en">` over a sw/zh sub-line and its trust lines
+  after the card; both are gone.
+- **One DOM, source order = screen order: claim → h1 → lede → trust rows → featured card → CTAs → sign-off.**
+  From 1024 the intro (claim, h1, lede, trust rows) and the act (CTAs, sign-off) share the left column and the
+  card takes the right, by grid areas — never a second DOM, never a CSS `order` (keyboard order = screen order).
+- **Claim** — `p.kp-hero__claim`, a class of its own (the shared eyebrow also dresses the section labels):
+  `FiftyWordmark` 15 + a 1px `--border-strong` rule below 1280, then the text in JetBrains Mono 600, 13px,
+  capitals by CSS, `--text`, 0.14em (the shared list). State P — *"Tanzania’s first licensed prediction
+  market"* / *"Soko la kwanza la utabiri lenye leseni Tanzania"* / *"坦桑尼亚首家持牌预测市场"* — renders only while
+  `FIRST_LICENSED_EVIDENCE()` is set (R9, 2026-09-27); `null` returns every language to state N, *"Licensed
+  prediction market · Tanzania"*. "Licensed" is in both.
+- **h1** — `home.heroAsk` filled by `sideWord(t, …, "MARKET")`: *"NDIO au HAPANA?"* / *"YES or NO?"* /
+  *"是还是否？"*, with NO `lang` (R7(3)). Side words Sora 800 in the buttons' inks (`--hero-yes/no-accent`,
+  re-pointed 300 → 400), the connective Sora 400 `--text-muted`, "?" `--hero-text-strong`; 44 · **60 from 640**
+  · 72 from 1280; line-height 1.0; tracking −0.030 / −0.038 / −0.045em (zh 0 at 1.1). "NDIO au" and "HAPANA?"
+  never break inside. Claim + h1 are one `hgroup.kp-hero__lockup`.
+- **Lede** — two designed lines: `home.heroLedeAct` (Inter 500, `--text`) and `home.heroLedePay` (Inter 400,
+  muted); 17 below 561, 20 above.
+- **Trust rows** — `ul.kp-hero__trust` (class kept: V8, V21, capture.mjs), in the intro, the same for a visitor
+  and a player: row 1 = `.kp-rg__18` + `footer.licensedByGbt` + the helpline `tel:` (`footer.helpline` +
+  `HELPLINE()`, Inter 400 tabular, 1px underline, ±13px reach); row 2 = `I.mobileMoney` + `home.heroRails`,
+  whose `{rails}` is `railListParts(locale, heroRailNames(killSwitches))` — `Intl.ListFormat` disjunction over
+  the rails whose payout path is live (catalogue ∩ `WithdrawSchema` ∩ `DepositSchema` ∩ a wallet-cashin code,
+  less any paused rail; R8(6)). Today: M-Pesa, Airtel Money, HaloPesa, Mixx by Yas. No rails → no row.
+  ⛔ Not in the hero any more: the RG sentence (R7(2) — the footer keeps it on every page) and "named sources"
+  (the card names its own source).
+- **Act** — visitor: `home.heroStart` + arrow · `home.heroBrowseAll`, then the sign-off `p.kp-hero__signoff`
+  (`FiftyMark` 20 simplified, aria-hidden, + `home.heroHeadline` inked, `lang="en"` — the hero's only `lang`).
+  Player: `SignedInAct`, unchanged.
+- **Keys:** NEW `home.heroClaim`, `heroClaimFirst`, `heroAsk`, `heroLedeAct`, `heroLedePay`, `heroRails`,
+  `heroStart`. DELETED `home.heroLocation`, `heroEst`, `heroHeadlineSub`, `heroBody` (the hero was their only
+  reader). `home.heroHeadline` keeps its value and becomes the sign-off. sw `footer.licensedByGbt` and
+  `footer.stopGambling` corrected (COMPLIANCE-DECISIONS 2026-09-27).
+- The 18+ roundel takes a neutral ink site-wide (R7(5)). Phone spacing: padding `--sp-5 --sp-4 --sp-8`, grid gap
+  20, lockup 8, intro 12, +4 above the rows (8 / 12 / 16 / 20); from 768 lockup 12, intro 16.
+- The proof rail, the conviction bar and the closing-soonest board stay **below** the hero (`LandingProof`).
+  The faint dial drawing stays removed (R4(1)). The entrance stagger (`.kp-hero__inner > *`) is untouched.
+- **Guards:** `test:hero-copy` + `red:hero-copy` (NEW — the "first" gate, the question, the wallets, no warning
+  sentence / one `lang`, no over-claim; 18 plants, MISSED 0); `test:landing-mine` §3 re-pointed at the intro;
+  `test:i18n`; `test:contrast` (hero pairs on `--bg-overlay`). Live gate: 360 × 740 cells, **V21** (trust rows
+  and `tel:` above the rail below 640), **V22** ("first" only with its evidence), `.kp-hero__claim-text` in the
+  V8 text map and V8b; capture.mjs records claim / h1 / lede / rows / `tel:` / sign-off rects.
+- ⚠️ First-screen budget: spec §7 MODELS the sw 360 × 740 YES/NO bottom at ≈610 against a rail at ≈675 (65px
+  clear). A model, not a render — V15 and V21 on the 360 × 740 cells decide.
 
-**WP3 · Featured card** — `src/components/markets/market-card.tsx` (`featured` variant only), `TippingBar` in `src/components/brand.tsx`
-- Full question with no clamp (`.mcardp--featured .mcardp-q`).
-- Meta line: close date · "Settles on {source}". The source name comes from `listSources()`
-  (`src/lib/server/source-registry.ts`) matched on the market's `sourceUrl` host, falling back to the host.
-  `sourceUrl` is already passed to the card and currently unused.
-- Time left in the top-right corner, in `--text`, through `timeLeftLabel` (`src/lib/markets/time-left.ts`).
-- The 24h mark: a tick at `yesPct − move24h` on the bar plus "▲n · 24h ago" / "▼n · 24h ago". `move24h`
-  comes from `getCardCharts` (`src/lib/server/market-history.ts`), already fetched for the featured card;
-  **no mark when it is undefined**.
-- The bar gets `role="img"` and the full reading ("31% YES, 69% NO") as its label.
-- The landing's **grid cards** name their source too (V18: every market shows its source before the pick),
-  through a landing-only prop so `/markets` card geometry is untouched.
-- SOON (L17): `getSignalBadge` tests the English label `/^\d+m left$/`, so it never fires in sw or zh. Test the
-  milliseconds left instead.
-- Guards at risk: `MARKET_CARD_H` / `--mcard-h` size the `/markets` skeletons; keep these changes on the
-  featured variant or re-derive the height (`qa:card-geometry`).
+**WP3 · Featured card** — BUILT on branch `landing-v3-wp34` (2026-09-27, not live). `market-card.tsx` (the `featured`
+variant; landing-only `sourceName` / `closesOn`; sitewide `msLeft`), `TippingBar` `mark` (`brand.tsx`),
+`lib/markets/featured.ts`, `lib/markets/source-host.ts`, `price-state.ts` (`dayAgoYesPct`), `time-left.ts`
+(`closesWithinTheHour`, `HOUR_MS`), `eat-day.ts` (`formatEatDate`), `source-registry.ts` (`sourceNameFor`),
+`market-history.ts` (`cardChartFrom`), `hero.ts` (`HeroRow.sourceName`), `page.tsx`, `landing-hero.tsx`
+- Time left top-right (`.mcardp-closes`: the meta row's rung, `--text` — time is not a side); the meta row keeps
+  only the info button there.
+- The question is whole from 640 (h4, h3 from 1024) and **clamps at 3 lines below 640 in every language** — the
+  hero v3 unit leaves WP3 about 65px at 360 × 740 in Swahili (`specs/hero-v3.md` §7). L25.
+- The meta line "Closes 27 Sep · Settles on {source}" (`market.closesOn` over `formatEatDate`; `market.settlesOn`)
+  is a sentence at the reading floor in body type (L24). The NAME is `sourceNameFor`: the registry's label
+  through the ONE host rule (`sourceMatchesAny` — `evilkitco.com` never borrows "Kitco"), the most specific
+  registered domain first, a disabled or re-categorised source still named, else the bare host (`sourceHost`,
+  moved out of `trust-band.tsx`); resolved on the server, the registry read once per page (a failed read falls
+  back to the host). Text, never a link (L27). From 640 it sits under the question; **below 640 it is SHOWN under
+  the YES/NO row** (CSS `order`, the V15 budget) and stays before the pick in the reading order (K36, L28).
+- The landing's grid cards name their source too, in the question column (`sourceName` — landing only, so the
+  `/markets` card and its skeleton do not move; `test:featured-card` §3.1).
+- The 24h mark: `TippingBar mark={dayAgo}`, a still 2px `--text` hairline (≥ 3:1 on both fills' worst stops,
+  `test:contrast`) at `dayAgoYesPct` = the printed price − `move24h` on the needle's 6–94 scale, and "▲n · 24h ago"
+  (`market.h24Ago`, led by a key in the mark's shape) on the move-line row the card always had — no new row.
+  Featured, live and priced only. `move24h` is measured between two PRICES (C1) and, since WP3, two READINGS
+  (L26) — sitewide, so `/markets`' 24h move and its "move" sort follow.
+- The featured bar is `role="img"` named by the whole split (`market.barReading`, "62% YES, 38% NO" in the card's
+  own side words); every other card keeps its `progressbar`.
+- SOON (L17): `closesWithinTheHour(msLeft)` — the milliseconds of betting left, from the label's own deadline
+  and clock, passed by every live call site (`/` featured and grid, `/markets`, the detail page's similar cards,
+  `/watchlist`). It now fires in sw and zh.
+- The predictor floor (R7): `FEATURED_PREDICTOR_FLOOR` = 10. Below it the featured card withholds its count and
+  its crest row — the pool still states depth — and says so to the gate (`data-market-predictors` below
+  `data-market-depth-floor`). Every other surface states its count (K48). L29.
+- V18's instrumentation (`data-market-surface`, `data-market-part`) on the card, and the defect V18 named: a live
+  card whose only bettor cashed out now reads "No pool yet" under its rail (the D29 word, never "No bets yet").
+- Not adopted, to keep the first screen (V15): the concept's 21–26px question below 640, the 10px bar, the 20px
+  "24h ago" row under the bar, the separate YES | delta | NO price row.
+- Guards: `test:featured-card` (predeploy, after `test:one-sided`) + `red:featured-card` (9 cases, declared in
+  `scripts/anchors/featured-card.anchors.mjs`); `test:contrast` (the mark on both fills); `test:betting-ink`
+  (`.mcardp-closes`); `test:one-sided` 3.6 and `test:outcome` D29 amended for the attributes. Local drive:
+  `scripts/qa/landing-v3/verify-wp34.sh` (+ `featured-budget.mjs`, `wp34-seed.mjs`; the dev-only
+  `/api/dev-test/backdate-history` and `fast-forward-market`'s `selectionSeconds` exist for it).
 
-**WP4 · Question board rows** — `QuestionRow` in `landing-hero.tsx`, `.kp-qrow` in `globals.css`
-- The row stops being one `<Link>`: the title is its own link; the time left, the bar and the YES@/NO@
-  buttons are siblings (no interactive element inside another). Buttons at least 44px (`--h-control-md`).
-- Phone: title → meta → full-width bar row → full-width YES/NO pair. Tablet: title and bar side by side,
-  buttons wrap. Desktop: one line. The title keeps its 44ch measure.
-- Before D3 the buttons open `/markets/{id}?side=`; from D3 they open the pick slip.
-- An unpriced row shows no price (`pricedYesPct` returns null), never a 50.
-- Meta line: close date · "Settles on {source}" · pool · predictors (depth on every market, V18).
+**WP4 · Question board rows** — BUILT on branch `landing-v3-wp34` (2026-09-27, not live). `QuestionRow` and
+`LandingProof` (now given `nowMs`) in `landing-hero.tsx`, `.kp-qboard` / `.kp-qrow*` in `globals.css`
+- The row is an `<li>` (the board a `<ul role="list">`) of three SIBLING zones, never one link (WP17): the head
+  link (question + meta, at least `--h-control-md` tall), the reading (price or state · time left · a 6px
+  `TippingBar`, `aria-hidden` beside the line that says it), and the pick — YES@ / NO@ as two `btn-md` links to
+  `/markets/{id}?side=YES|NO` (`prefetch={false}`). Until D3 one href serves both: a player lands with the side
+  locked, a visitor keeps it through sign-up (`next=`); from D3 they open the pick slip.
+- Phone: title → meta → reading → the full-width pair; from 640 the title and the reading side by side and the
+  pair below at its own width; from 1024 one line. Written mobile-first — the old 821 / 560.98 blocks, the hover
+  indent (D25) and the lean rule are deleted. The title keeps its 44ch measure (now in CSS) and its 3-line phone
+  bound (U6).
+- The price state from the pools (`priceState`, WP6), with ONE label for the slot and the rail: one side → "One
+  side only", the dashed rail, bare YES/NO and the refund note (`.kp-qrow__note` shares the card note's rule);
+  empty → "No bets yet" only where nobody ever bet, else "No pool yet" (the D29 rule — a cash-out never
+  decrements `predictorCount`). The price reads `--yes-300` (it names the YES side, §B2a), never gilt; the time
+  left `--text` (`test:betting-ink`).
+- Meta line: `market.closesOn` ("Closes 27 Sep", `formatEatDate`) · `market.settlesOn` (the SAME `sourceNameFor`
+  name the cards print — one resolver, carried on `HeroRow.sourceName`) · `common.pool` + the pool · the predictor
+  count; body type, the money and the count mono (L24). The close date stands in for the concept's competition
+  (no such field; SPEC-VALUES §6). The category glyph is gone (the concept has none). No 24h mark on a row, no
+  share (WP14b).
+- Guards: `test:one-sided` 4.3 amended (the D29 label) and 4.6–4.9 added, each with a control; `red:one-sided`
+  +2 cases (the rail, the gated "@ n%"); `test:betting-ink` (`.kp-qrow__left`); `test:featured-card` §6 (every
+  V18 part on the row). Local drive: `scripts/qa/landing-v3/rows.mjs` (+ its RED); the gate's V8 text map reads
+  `.kp-qrow__meta` / `.kp-qrow__note`; `scripts/live/mobile-visual-drive.mjs` reads `.kp-qboard > .kp-qrow`.
 
 **WP5 · Pick slip** (R2) — new `src/components/markets/pick-slip.tsx` (client)
 - Below 1024: `Modal` from `src/components/ui/modal.tsx` with `sheet` — which today docks only below 640,
@@ -265,8 +425,8 @@ feature (a plant against a feature that does not exist yet cannot prove anything
   `adminReopenMarket`, and one stake on the empty side ends the refund. Its truth is pinned:
   `test:one-sided` §6 reads `settleMarket`'s one-sided branch and rules §7. sw is rules §7's own sentence;
   zh names the state with the rules' 单边.
-- The hero board row reads the same helper: "— One side only", no lean rule; its refund note and dashed
-  rail arrive with WP4's rebuilt row.
+- The hero board row reads the same helper: "— One side only", no lean rule — and since WP4's rebuilt row, the
+  dashed rail, bare YES/NO links and the refund note too.
 - Orderings: the hero's floor tiers by `priceTier` (pools). `landingGrid` gives the seats to priced markets
   first and then SHOWS the seated cards in the lens order its heading states ("Biggest pools first") — a
   partition, never a filter (`test:landing-contract` §4, L23).
@@ -309,16 +469,120 @@ feature (a plant against a feature that does not exist yet cannot prove anything
   config (`getEffectiveConfig` → `describeFeeModel`), passed in as a prop; the string carries `{pct}`.
 - The step-2 body keeps the dictionary's two-officer clause verbatim (MOBILE-VISUAL ruling 15).
 
-**WP12 · Up & Down band** — `src/app/page.tsx`, a new client ring component
-- The soonest open round among the live Up & Down markets: `roundStore.getByMarketId`
-  (`src/lib/server/updown-dal.ts`) then `getRoundDetail` (`src/lib/server/updown-board.ts`), which returns
-  the asset's names, `durationMinutes`, `openPrice`, `closesAt`, `serverNowMs` and `priceSeries`.
-- Shows: asset and duration · a mini price line with a dashed opening-price line · a countdown ring with
-  `role="timer"`, ticking on `subscribeSecond` (`src/lib/use-shared-second.ts`), `ud-count-pulse` only in
-  the final 30s · UP and DOWN links into the round with the side kept · "All rounds".
-- The band is one `<Link>` today; it becomes a container so its buttons are not nested in a link.
-- The plural: a new `…One` sibling key beside `updownRoundsLive` (the repo's plural convention).
-- Full width (R4(6)). With no live round, today's band.
+**WP12 · Up & Down band — R5, "the Match"** — spec
+[`specs/updown-band-v2.md`](design-system/v4-2026-09-26-landing-ten/specs/updown-band-v2.md) (the design, its
+states, sketches and verification; this row is its summary). The price-line chart and countdown ring (✅
+`54f8199b`) were replaced by ruling R5 (Ali, 2026-09-27: the chart was not understood).
+- **Data, zero new queries.** `getRoundDetail` reads the asset's confirmed reads ONCE (`roundReadWindow`) for
+  the round-page hero (`seriesFromReads`, unchanged) and the band (`roundReads`, `readCadenceMs`); a store error
+  is `null`, never "no reads". The picker (`src/lib/server/updown-band-round.ts`): ≥ 2 min of betting left ·
+  seasoned (≥ 3 min old) first · the shortest duration · the most time left · three candidates; the first with a
+  confirmed read after its open wins, a kick-off round is the fallback, and the walk stops at the first young
+  candidate — usually one `getRoundDetail`, never more than three. `toUpdownBandRound` reduces it to the band's
+  type (`src/lib/updown-match.ts`), which carries NO money field (law 40).
+- **Shows (sw, 360):** the fixture (`AssetMark`, name, the kit Chip "15 DAKIKA") and ONE clock line "Dau linafungwa
+  baada ya 07:42" (baseline-aligned, a fixed 20px row open and closed); the plate — the verdict ("↑ Juu inaongoza",
+  settlement's own `decideOutcomeByTargets` on the newest confirmed read), its dated detail as two no-break clauses
+  ("saa 14:26" · "Juu ya ufunguzi kwa $18.52"; below 360 they stack and the "·" hides) and the Up/Down links IN the
+  plate, solid and equal, never lit. The words block has ONE height in every state (verdict + two lines; below 360
+  sized for kick-off's two verdict lines), words centred, so no refresh, aging or first read moves the picks (the drive
+  checks it per width). The match track: a stem per confirmed read on a fixed open → close domain, the lock post at
+  bets-close, the flag at the deciding price; three layers (neutral time → playhead → marks); beside a fresh read the
+  playhead line is not drawn and "now" is the bright end of the played stretch; just past the lock it parks on the post;
+  the void band only in the level state. The rule in two sentences ("Bei ya saa 14:32 inaamua. Tofauti na ufunguzi
+  isipofika $0.40, kila dau linarudi." — the margin held to its phrase by a no-break space in all three languages);
+  "Raundi zote ›". Level: "Hakuna anayeongoza · saa 14:26 · Tofauti na ufunguzi $0.20 tu" + "Ikifunga hapa, kila dau
+  linarudi." (the "— haitoshi kuamua" tail restates the verdict and is not shown on the band). Aged (betting open):
+  "Juu iliongoza" muted + "Bado hakuna bei mpya.", the newest stem and bead at the 70% ink. Closed: "Dau limefungwa"
+  + "Tazama raundi hii" (focus moves there from a pick, and to "Cheza raundi ijayo" from "Raundi zote"), padlocked sides,
+  "Cheza raundi ijayo ›". Past the deciding instant: the headline "Inasubiri matokeo" (never the last lead), the rule
+  in the past ("iliamua"). The picks link to `/updown/<id>?side=UP#stake`: the round page's stake panel scrolls itself
+  into view (after the router's own scroll) with the side Chip, the countdown and the confirmed price above it.
+- **Honesty.** Every verdict is dated and turns past tense ("Juu iliongoza") when its read goes stale by the
+  terminal's own rule (`src/lib/updown-quote-age.ts`, shared) or at the deciding instant — on the server and on the
+  client wrapper's `data-aged` (no `:has()`). No absolute price, no pool, no "live" beside a number. Level lines
+  never name a side. At bets-close: "Dau limefungwa" + "Tazama raundi hii ›" in the clock row, padlocked inert
+  sides in the picks' box, "Cheza raundi ijayo ›" as the primary; focus moves off a pick.
+- **R5(a) · the 60-second refresh**, built in: while the tab is visible the band's wrapper
+  (`updown-match-state.tsx`) re-reads the asset's newest CONFIRMED read from the public
+  `GET /api/updown/history?asset=…&range=15M` (no new route) and folds it in with `mergeConfirmedRead` — the same
+  round type, stale rule and target comparison (pinned equal to settlement's); a failed read changes nothing; it
+  stops at the deciding instant. A read that landed while the tab was hidden and was superseded is not drawn (the
+  verdict always reads the newest).
+- **The round page (spec §12 and the panel's continuity fixes):** "Confirmed price"; the band's dated move line under
+  the price at 13px ("Juu ya ufunguzi kwa $18.52" · "imenukuliwa 18:55:02 EAT", stacking below 400); the stats stack
+  left below 400; the title wraps with the game's name whole; a signed-out player who tapped a side sees it in the
+  stake panel (the band's arrow in the kit Chip).
+- **The round page agrees (spec §12):** "Confirmed price" (was "Live price"); while open the quote stamp joins the
+  move line; the hero's ink follows the targets (`price-hero.tsx` `tone`, `data-tone`); a level read says the band's
+  own "Only $0.20 from the open — not enough to decide". The `/updown` card and terminal follow in F1 (R5(c)).
+- **F1 · the `/updown` card and terminal agree (R5(c), branch `landing-v3-f1`, 2026-09-27):** the card names its figure
+  "Confirmed price" / "Close" on its own row and inks it by the targets (`valueTone`), muted with the band's level
+  words between them; the terminal's live line wears the in-play round's side (`liveLineToken`, gilt with none) and is
+  named under the pane; the card's trust line, win-target heading and quick-bet sentences reach 13px. Guard:
+  `test:updown-match` §11b (a planted by-the-open ink must fail) · `test:contrast` F1 pairs.
+- **Platform-wide, found by this unit:** the solid buttons' hover lift only where a pointer hovers (touch :hover lit
+  the tapped side after Back — a lit leader); "tokeo" → "matokeo" (6 keys); "juu au chini" / "higher or lower" never
+  split.
+- **Motion:** the digits (1/s) and the playhead (on quarter-percent moves) ride the page's one shared second; no
+  pulse on the band (the page keeps one loop, the live dot); the verdict's ink fades on the tense swap only.
+- With no readable round: today's band, unchanged (S8). Full width (R4(6)).
+- **Guards:** `test:updown-match` (in predeploy) · `test:chart-one-home` D5 + members · `test:betting-ink` §4 ·
+  `test:contrast` R5 pairs · `red:chart-one-home`.
+- **The local drive** (`scripts/qa/landing-v3/verify-band.sh` → `band-drive.mjs`, under the lock): one BTC chain of
+  15-minute rounds with ±$0.40 targets; S8 → S4 → S3 → S2 → S1 with a confirmed read planted every two minutes
+  through the dev-only `/api/dev-test/updown-observe` (the confirmed grid's own spacing); S5 and S7 by Playwright's
+  clock; frames as viewport tiles. It runs the numeric frame gate `band-metrics.mjs` (spec §15.4; its RED control
+  must report a wrapped caption AND a long band) and the agreement drive `band-agree.mjs` (§15.6) in S3, S2 and S1 ×
+  sw/en/zh, plus: served-HTML spacing, the click-through, Back re-anchoring the clock, the focus move at close, the
+  playhead parking on the flag, the void band drawn, and the R5(a) refresh bringing a newer read in without a reload.
+- ⚠️ **S6 ("Awaiting price") is not producible by the engine** (found by the drive, 2026-09-27): E-83 — `advanceChain`
+  never opens a round without its open price, so a refused open creates NO round and the band stays S8. The spec's
+  "S6 before the open confirms" (§15.3) cannot happen; S6 appears only when the store read fails (`reads: null`) and
+  is pinned by `test:updown-match` §8, not by a fault hook in a money store.
+- ⚠️ **V18:** the band shows no pool and no source by ruling (R5(b)) and is outside V18's population (the
+  featured card, the grid cards, the board rows). If Ali reverses R5(b), the band joins V18 with
+  `data-market-part` tags.
+
+**WP12 · Hallway test** (spec §15.7 — a ship gate). 8–10 adult Swahili speakers who follow football and do not
+work in crypto; one mid-range Android at 360, default brightness; frames A (S1 sw), B (S4 sw), C (S1 sw without
+the track) for 3 seconds each; Q1–Q4 asked in Swahili, answers verbatim. Pass: ≥ 80% on Q1, Q2, Q4 for A and on
+Q2, Q4 for B; Q3 under 60% forces a rewrite of the refund sentence. Native review: one sw and one zh reviewer
+(the strings the spec lists). **Replaced by R8 (Ali, 2026-09-27):** the build performs the native Swahili (and zh)
+review and no human hallway test is waited for. **Record:** every band string passed the Tanzanian-usage review
+2026-09-27 and lost its "drafted" marker (sw + zh); one change — the tagline "…saa itakapoisha?" (reads as "when the
+hour ends") became the idiom "…muda ukiisha?". Checked on purpose: "saa 14:26" with 24-hour digits reads as clock
+time (Swahili time never passes 12); "ndogo kuliko" (not "chini ya", which would collide with the side name Chini).
+
+**WP12 · Frame rating** (spec §15.8 — every score 10 before shipping). Real local viewport tiles
+(`scripts/qa/landing-v3/capture.mjs`): S1 at 360/768/1280 × sw/en/zh, S2–S7 at 360 sw and 1280 en, S3 and S4
+at 360 zh, and the band → round-page click-through pair at 360 sw; four reviewers (UI/UX lead, graphic
+designer, gambling-industry designer, accessibility + RG); a frame's score is its lowest; any score under 10
+names the defect, is fixed, and the WHOLE panel re-scores. **Record (2026-09-27):** four reviewers as a workflow of agents that READ the real PNGs (UI/UX lead, graphic designer,
+gambling-industry designer, accessibility + RG), 52 frames a round — S1 at 360/768/1280 × sw/en/zh + 320 sw + 1024 en;
+S2–S5, S7 and S7 after the deciding instant at 360 sw, 320 sw, 768 en and 1280 en; S3/S4 at 360 zh; S8; the
+click-through pair; Back; the R5(a) refresh. A frame's score is its lowest; each round was briefed with what changed and
+what was declined (with the recorded reason), and the whole panel re-scored every frame.
+- Round 1 (drive 2): 1 frame at 10, lowest 6 — the playhead painted over the newest stem, the detail broke
+  mid-phrase, the plate jumped between states, the past-the-deciding-instant band read as a result, touch :hover lit
+  the tapped side after Back (fixed platform-wide), the round page truncated its title and printed the band's answer
+  at 9.5px.
+- Round 2 (drive 3): most frames 8–9 — the playhead still fused with a fresh read, a dangling "·" at 320, the sw rule
+  did not name the open, the timer's spoken name could be heard as a clock time.
+- Round 3 (drive 4): 11 frames at 10, most 9, PAIR-2-b 4 — the #stake landing did not scroll, the level tail leaked
+  back at 320, the picks moved between states at 320, "tokeo" → "matokeo" (native review, platform-wide).
+- Round 4 (drive 7): 18 at 10, 34 at 9 — beside a fresh read any part of the playhead still read as a data mark,
+  the landing hid the countdown and price, the Watch link's focus ring overran the Chip and plate.
+- Round 5 (drive 8): 45 at 10, 7 at 8–9 — the landed slip still had no clock (the pool card sat between), the ring
+  left the Watch link's chevron outside, "near" was only ~5.5px at 320.
+- Shipped 2026-09-28 on the owner's word ("push live what you have now") with round 5's four fixes in (`2acefc9d`):
+  they were not re-driven locally — the production re-measure (`verify-band-prod.sh`) is their check, and any
+  finding it or a sixth round raises is the next band commit.
+Declined, each with its recorded reason: stretching the picks to the plate's height (48px centred ±1px, §15.4);
+moving the playhead out of the plot ("the playhead drawn as a line", §0); spending the section link's tap box (C13 —
+the drive measured S7 +32px); dropping the S3 refund note (I-2); a content-length container query (not expressible).
+The drive's own checks (`band-drive.mjs`, 19 of them) and the gate's RED control ran on every drive; the RED control
+went blind once (drive 5: the fixed-height clock row hid a wrapped caption) and was fixed to count the caption.
 
 **WP13 · Results strip** — `src/components/home/trust-band.tsx`, `toSettlementRow` in `src/lib/server/platform-stats.ts`
 - Each row: outcome pill · question (a link) · settled date · **the market's own sign-off** · source (its own
@@ -338,8 +602,12 @@ feature (a plant against a feature that does not exist yet cannot prove anything
   withdrawable since the bonus wallet went; "can be withdrawn now" is not always true, L19) · Deposit and
   Withdraw side by side at the same size, each with its own channel under it ("Mobile money or card" /
   "Mobile money", L19) · Set limits · Open wallet · Close. A frozen wallet says so and gets no money buttons.
-- At zero: no capsule, no Withdraw — a labelled gold Deposit at every width. Never "TZS 0". The bar decides
-  with the LIVE balance (`useLiveBalance`), so an SSE deposit brings the capsule back without a navigation.
+- At zero: **the capsule stays and reads TZS 0** (R10, Ali 2026-09-28 — *"user should know he's 0"*), no
+  Withdraw. ⛔ This REVERSES R1's "a gold Deposit takes the chip's place instead of TZS 0", which was live
+  2026-09-26 → 09-28; the old line is struck in the manifest rather than deleted, because the pair is the
+  record. The Deposit LABEL yields at lg–xl in every balance state now, for the same reason it always did
+  — the capsule is beside it again (E-190). The bar decides with the LIVE balance (`useLiveBalance`), so an
+  SSE deposit moves the figure without a navigation.
 - Phone header with a balance (scenario 4a) — MEASURED, L20: the chip drops "TZS" below 640 (its aria-label
   keeps it) and the right cluster is 251 of its 278px at 360; a Deposit beside it needs ~48px, so the header
   Deposit keeps its yield below 640 and the pair is one tap away in the Wallet (and in the signed-in hero).
@@ -371,8 +639,10 @@ pins it). What D2 adds:
   stream first — V14's cause, R4(8)); the preview check asserts no preview is minted for it, not the status.
 
 **WP15 · Motion and performance** — needles move only when a pool changes (`TippingBar` already starts at
-its target); per-second work only inside the ring and countdowns; reduced motion and Save-Data (mapped to
-`data-motion="reduced"`) turn off the price-line animation. No loops beyond the live dot and the final-30s pulse.
+its target); per-second work only inside the countdowns and the Up & Down playhead (server-anchored, no
+transition); the Up & Down band's confirmed price refreshes once a minute while the tab is visible (R5(a)) and
+nothing about a price animates; reduced motion and Save-Data (mapped to `data-motion="reduced"`) are honoured.
+At most two loops (R5 amended K20: the band has no final-30s pulse, so the page keeps one, the live dot).
 
 **WP16 · i18n** — every new key in en, sw and zh in `src/lib/i18n-dict.ts`; `npm run test:i18n` forbids
 an sw or zh value equal to its en value unless listed in `IDENTICAL_OK`. New sw/zh strings carry the
@@ -393,7 +663,10 @@ template string: escape backslashes, no backticks), a `REDS.Vn` plant, a row in 
   pick) on each part; the part table is the V18 block's own comment. `.mcardp[data-row-id]` and `.kp-qrow`
   widen the population, so a surface that loses its attribute is reported "unmarked", never skipped. Each
   part is its own RED run: `RED_PART=<part> RED=V18 … --red --cell=…` (source · price · time · pool ·
-  predictors · order). `source` and `order` can only PROVE once WP3 draws a source.
+  predictors · order). Since WP3 + WP4 every surface on `/` draws every part. TWO RULED EXCEPTIONS, the featured
+  card only, each read off the page: a count withheld below the floor the card states (R7, L29), and below 640
+  the source SHOWN under the pick while it stays before it in the DOM (L28) — `RED_PART=order` plants against
+  the DOM half, so it still proves at 360. `test:featured-card` §7 pins both as narrow as ruled.
 - The gate itself (D2 step 0, 2026-09-27): a `--cell`/`--pass` that matches nothing exits 2 ("nothing was
   measured"), never GATE GREEN; a bare `--cell` (no "=") is refused; `--red` needs exactly one cell; a
   chromium that does not launch is retried once, then exit 2 — an instrument failure, not a red gate.
@@ -419,23 +692,23 @@ drift from that file or a row names an id §1 does not have. An item is done whe
 | P3 | Language: inside the Menu, header on desktop | WP1 | R1, L4: the header's language menu at every width |
 | P4 | Join / Create account: header + after the featured card; hero left column on desktop | WP2 | The hero CTAs follow the featured card below 1024 and sit in the left column from 1024; the header keeps Sign in + Sign up (R1) |
 | P5 | Balance chip → Wallet: sheet below 1024, panel from 1024 | WP14 | R1 |
-| P6 | Deposit: header (gold), Wallet, hero | WP14 | R1, including the gold Deposit that replaces the capsule at zero |
+| P6 | Deposit: header (gold), Wallet, hero | WP14 | R1 — but **not** its zero clause: R10 (2026-09-28) keeps the capsule at zero, so the header carries BOTH the figure and the Deposit there. Below 1024 the Deposit is the rail's centre coin (UPDATE-2026-09-28 §1) |
 | P7 | Withdraw: Wallet + hero, same size as Deposit; hidden at zero | WP14, V19 | R1 |
-| P8 | Featured market: right after the lede; hero right column on desktop | WP2, WP3 | |
+| P8 | Featured market: right after the lede; hero right column on desktop | WP2, WP3 | Hero v3 (R7, 2026-09-27): the card follows the trust ROWS — claim → h1 → lede → trust rows → card — so 18+, the licence and the helpline reach a phone's first screen; right column from 1024 |
 | P9 | Pick slip: bottom sheet below 1024, inline from 1024 | WP5 | R2 |
 | P10 | Proof figures: ledger rows on phones, three columns above | WP8 | |
 | P11 | Closing-soonest board: stacked · title + bar · one line | WP4 | |
 | P12 | Pick-a-side cards: snap rail with a peek · two columns · three | WP9 | |
 | P13 | Share: card footer + after placing (WhatsApp) | WP14b, WP5 | |
 | P14 | Set limits / Take a break: pick sheet, Wallet, Menu, footer | WP5, WP14 | No Menu (R1); the footer already carries both |
-| P15 | Licence · 18+ · helpline: first screen + footer | WP2 | Trust lines (licence + 18+, mobile money, helpline, sources) before the CTAs — L18; the licence number and all three stay in the footer |
+| P15 | Licence · 18+ · helpline: first screen + footer | WP2 | ~~Trust lines before the CTAs — L18~~ ⚠️ 2026-09-27, hero v3 (R7(2)): one quiet row — 18+ · the licence line · the helpline `tel:` — plus the payout-live wallets, in the intro ABOVE the card (V21 measures them on the first screen); the RG sentence, the licence number and the helpline stay in the footer |
 | K1 | Every placement row verified at 360, 768, 1280 in sw, en, zh | V21, PANEL | |
 | K2 | 4a: phone, balance — chip + gold Deposit in the header; hero balance with equal Deposit/Withdraw | WP14 | The phone fit is measured (§2.1 WP14) |
 | K3 | 4b: chip opens the Wallet sheet — balance, withdrawable, equal pair, Set limits; Esc and backdrop close | WP14, V20 | |
-| K4 | 4c: zero — no chip, no Withdraw, header Deposit, empty-balance prompt, never "TZS 0" | WP14 | |
+| K4 | 4c: zero — no chip, no Withdraw, header Deposit, empty-balance prompt, never "TZS 0" | WP14 | ⛔ **The delivery is overruled on half of this row.** R10 (Ali, 2026-09-28): the chip STAYS at zero and reads "TZS 0" — *"user should know he's 0"*. No Withdraw and the header Deposit still hold |
 | K5 | 4d: desktop Wallet panel under the chip | WP14 | |
 | K6 | Order: what it is → a live market → how it works → more markets → proof | WP2 | |
-| K7 | Every market shows price (or labelled state), time left, pool, source | WP3, WP4, WP6, V18 | |
+| K7 | Every market shows price (or labelled state), time left, pool, source | WP3, WP4, WP6, V18 | WP3/WP4 (branch): every market on `/` names its source (`sourceNameFor`); V18 reads each part |
 | K8 | A confirm step before any money moves | WP5 | |
 | K9 | Headings h1 → h2 → h3; no interactive element inside another | WP17 | |
 | K10 | Visible focus on every control; Esc closes every sheet and panel | WP17, V20 | |
@@ -446,25 +719,25 @@ drift from that file or a row names an id §1 does not have. An item is done whe
 | K15 | Equal card slots; bars align across a row (V6) | WP9, GATE | |
 | K16 | No decorative gradients or illustrations | WP2 | R4(1), L16 |
 | K17 | Needles move only on real pool changes | WP15 | |
-| K18 | 24h mark and delta on the featured card | WP3 | |
-| K19 | Up & Down: dashed open-price line, live line, ring countdown | WP12 | |
-| K20 | Only two loops, both opacity fades | WP15 | |
+| K18 | 24h mark and delta on the featured card | WP3 | `TippingBar mark` + "▲n · 24h ago"; featured, live and priced only; a move only between two prices and two readings (L26) |
+| K19 | Up & Down: match scoreboard from the last confirmed price, dated, with the Up/Down buttons in it; open→finish match track (a stem per confirmed read, lock at bets close, flag at the deciding price, playhead); one-line countdown | WP12 | R5 |
+| K20 | At most two loops | WP15 | R5 |
 | K21 | Reduced motion and Save-Data honoured | WP15 | |
-| K22 | Every bar and chart has a text description | WP3, WP8, WP12, WP17 | |
+| K22 | Every bar and chart has a text description | WP3, WP8, WP12, WP17 | WP3: the featured bar is an image named by the whole split (`market.barReading`); a board row's bar is `aria-hidden` beside the reading it repeats (WP4) |
 | K23 | Pick from the home page: two taps plus confirm | WP5 | R2 |
 | K24 | Stake chips, the minimum stake and the rule line in the slip | WP5 | Minimum and fee from config (L3) |
 | K25 | After placing: "You're with X% of the money on {side}" | WP5 | |
 | K26 | Settled rows show source, date, sign-off, amount paid | WP13 | The market's own sign-off (L2) |
 | K27 | Deposit and Withdraw are where section A says | WP14 | |
-| K28 | One sentence says what 50pick is, above the fold | WP2 | |
-| K29 | Licence, 18+ and mobile money on the first screen | WP2, V15 | |
+| K28 | One sentence says what 50pick is, above the fold | WP2 | Hero v3: the claim, "Tanzania’s first licensed prediction market" (R9), gated by `FIRST_LICENSED_EVIDENCE()` (`test:hero-copy` §1, V22) |
+| K29 | Licence, 18+ and mobile money on the first screen | WP2, V15, V21 | Hero v3 (2026-09-27): the trust rows sit above the card; V21 measures rows 1–2 and the helpline `tel:` above the bottom rail below 640, on 360 × 740 cells |
 | K30 | Three steps, including the fee as a number | WP11 | From config, never a literal (L3) |
-| K31 | EN / SW / 中文, with the sub-line under the brand headline | WP2 | The language menu stays (R1) |
+| K31 | EN / SW / 中文, with the sub-line under the brand headline | WP2 | The language menu stays (R1). ⚠️ 2026-09-27 (R7(3)): no sub-line — the h1 IS the reader's language ("NDIO au HAPANA?" / "YES or NO?" / "是还是否？"), and the English brand line is the hero's sign-off |
 | K32 | No jargon | WP16 | |
 | K33 | No promised returns; the estimate is marked and qualified (V16) | V16, WP7 | No estimate on cards (R3) |
 | K34 | The only urgency is a real countdown | WP15 | L17 |
 | K35 | One-sided refund rule shown; no 0% / 100% price (V17) | WP6, V17 | L14 |
-| K36 | The fee is a number; the source is named before the pick | WP11, WP3, WP4, WP5 | |
+| K36 | The fee is a number; the source is named before the pick | WP11, WP3, WP4, WP5, V18 | V18's order rule. The featured card below 640 SHOWS its source under the pick and names it first in the reading order (L28) |
 | K37 | Set limits and Take a break one tap from any stake | WP5 | |
 | K38 | Withdraw as easy to find as Deposit (V19) | WP14, V19 | |
 | K39 | Licence number and helpline on the page | WP2 | |
@@ -475,9 +748,9 @@ drift from that file or a row names an id §1 does not have. An item is done whe
 | K44 | Snap rail with a peek; topics in two columns | WP9, WP10 | |
 | K45 | No text under 12px; ledger rows for the proof figures | WP8, GATE | L6 |
 | K46 | The price reads as a line ("YES @ 31%"), with "est. ×" where allowed | WP4, WP7 | No estimate on cards (R3) |
-| K47 | Line movement shown (24h mark and delta) | WP3 | |
-| K48 | Depth (pool and predictors) on every market | WP3, WP4, V18 | |
-| K49 | Closing time next to every price | WP3, WP4, WP9 | |
+| K47 | Line movement shown (24h mark and delta) | WP3 | As K18; the board rows draw none (the concept's rows have none) |
+| K48 | Depth (pool and predictors) on every market | WP3, WP4, V18 | Every market except the featured card below `FEATURED_PREDICTOR_FLOOR` (R7, L29) — it states its pool, and tells the gate why the count is withheld |
+| K49 | Closing time next to every price | WP3, WP4, WP9 | WP3: time left top-right of the featured card, and its close date on the meta line; WP4: time left on the row's price line and the close date in its meta |
 | K50 | Share on cards; WhatsApp after placing; the WhatsApp preview card works | WP14b, WP5 | Card share + the preview card: WP14b (D2), each market's og tags and og:image read on production by `qa:landing-v3:og-prod`; after placing: WP5 (D3); ticks when both are ✅ |
 | K51 | Visitor → sign-up → first-pick funnel measured before and after | FUNNEL | |
 | K52 | `qa:landing-ten` V1–V21 clean at every cell (except Ali's open decisions) | GATE, V15, V16, V17, V18, V19, V20, V21 | |
@@ -495,6 +768,7 @@ node scripts/qa/landing-ten.mjs --cell=<id>   # one cell
 RED=V7 node scripts/qa/landing-ten.mjs --red --cell=base-1280-sw   # prove a class can fail
 RED_PART=time RED=V18 node scripts/qa/landing-ten.mjs --red --cell=base-360-sw   # V18: one part per run
 node scripts/qa/landing-ten.mjs --compile                     # every check and plant compiles; no browser
+bash ~/heavy-node-lock.sh run landing bash scripts/qa/landing-v3/verify-wp34.sh <label>   # WP3 + WP4 local drive (3 phases)
 ```
 
 It measures **production**, deliberately. The local tree has no settlements, no resolved markets
@@ -554,7 +828,7 @@ This codebase has been burned by every one of these:
 | V15 | First screen (v3) | on phone cells 360–639 wide, the featured card's price and YES/NO end by a FIXED 740px of document, measured at the top of the page — not the viewport, which is 780 on the 360 cells — or by the top of the fixed bottom rail when that is higher (a control under the rail is not on the screen) |
 | V16 | No promised winnings (v3) | visible text naming "win TZS", "utashinda", "赢得 TZS", or a stake times a multiplier |
 | V17 | No degenerate price (v3) | a 0% or 100% read inside any card or board row — the conviction bar's aggregate is not a price and is not read |
-| V18 | Market completeness (v3) | per market surface on `/` — the featured card, each grid card, each closing-soonest board row (`[data-market-surface]`; `.mcardp[data-row-id]` and `.kp-qrow` widen the population so an unmarked surface is named, never skipped): a visible price holding a digit, or a labelled state holding words (the em-dash alone fails), the time left, the pool, the predictor count and the named source, each a `[data-market-part]` centred inside its own surface; the source and the price or state before the pick (`[data-market-part="pick"]`) in the DOM and on the screen. Read per surface, never off the page — the trust lines, the settled strip and the proof rail carry every part too. No surface at all is a finding. RED removes one part (`RED_PART` = source · price · time · pool · predictors · order) |
+| V18 | Market completeness (v3) | per market surface on `/` — the featured card, each grid card, each closing-soonest board row (`[data-market-surface]`; `.mcardp[data-row-id]` and `.kp-qrow` widen the population so an unmarked surface is named, never skipped): a visible price holding a digit, or a labelled state holding words (the em-dash alone fails), the time left, the pool, the predictor count and the named source, each a `[data-market-part]` centred inside its own surface; the source and the price or state before the pick (`[data-market-part="pick"]`) in the DOM and on the screen. Read per surface, never off the page — the trust lines, the settled strip and the proof rail carry every part too. No surface at all is a finding. RED removes one part (`RED_PART` = source · price · time · pool · predictors · order). Two ruled exceptions, featured card only: a predictor count withheld below the floor the card states (`data-market-predictors` < `data-market-depth-floor`, R7), and below 640 the source SHOWN under the pick while it stays before it in the DOM (L28) |
 
 ## Known gaps — stated, not implied
 

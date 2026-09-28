@@ -77,8 +77,15 @@ const { tallyPicks, eatWeekStartMs } = await import("../src/lib/server/landing-p
   const act = hero.slice(hero.indexOf("function SignedInAct"), hero.indexOf("function", hero.indexOf("function SignedInAct") + 10));
   ok("3: a signed-in player gets SignedInAct where a visitor gets the CTAs",
      /\{isAuthed \? \(\s*<SignedInAct t=\{t\} mine=\{mine \?\? null\} \/>/.test(hero));
-  ok("3: ⭐ the trust lines stay ABOVE it for a player too (R4(5), L21)",
-     hero.indexOf("<TrustLines t={t} />") > 0 && hero.indexOf("<TrustLines t={t} />") < hero.indexOf("<SignedInAct"));
+  // ⭐ Re-pointed 2026-09-27 (hero v3, spec §9): the trust rows moved from the act block into the
+  // INTRO, above the featured card (R7). Same intent — one list, rendered for a visitor AND a player,
+  // before the player's block — now asserted where the list actually lives.
+  const intro = hero.slice(hero.indexOf('<div className="kp-hero__intro">'), hero.indexOf("{featured && ("));
+  const trustAt = hero.indexOf("<TrustLines t={t} locale={locale} rails={rails} />");
+  ok("3: ⭐ the trust lines stay ABOVE it for a player too — one list, inside .kp-hero__intro, for everyone (R7, L21)",
+     /<TrustLines t=\{t\} locale=\{locale\} rails=\{rails\} \/>/.test(intro) &&
+     (hero.match(/<TrustLines /g) ?? []).length === 1 &&
+     trustAt > 0 && trustAt < hero.indexOf("<SignedInAct"));
   ok("3: ⛔ a failed picks read renders nothing — the figures are gated on `picks`, not defaulted",
      /\{picks && \(noPicks \?/.test(act));
   ok("3: no picks at all is ONE sentence, not three zeros", /<p className="kp-mine__lead">\{t\.home\.picksNone\}<\/p>/.test(act));

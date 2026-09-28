@@ -618,6 +618,14 @@ full set (36 routes, all double-gated out of production).
    (`docs/MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md`).
 2. **GBT pre-application meeting** (regulator confirmation that the
    pari-mutuel pool model classifies as betting under their license).
+   ⚠️ 2026-09-27: the licence itself is on file — `LICENCE_NUMBER()`
+   (OUS00000202602) and the Board's acknowledgement of the licence fee
+   for operations under Sec. 51(2) of the Gaming Act, paid 2026-09-05
+   (INHERIT-MANIFEST R8(1)) — and the landing hero says "licensed" and,
+   on the owner's attestation, "first licensed" (R9; `FIRST_LICENSED_EVIDENCE()`,
+   COMPLIANCE-DECISIONS 2026-09-27). The classification question this line
+   names was asked again (hero-v3 spec Q1) and not answered in words, so it
+   stays listed; it does not gate the hero's claim.
 3. **Mobile-money aggregator agreement** — deposit / withdrawal flows
    are wired against a stub `INTERNAL` provider; need a licensed
    Tanzanian aggregator (Selcom / Pesapal / etc.) before paid traffic.

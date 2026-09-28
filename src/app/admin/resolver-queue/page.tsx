@@ -10,7 +10,8 @@ import { Chip } from "@/components/ui/chip";
 import { EmptyState } from "@/components/ui/empty-state";
 import { I } from "@/components/ui/glyphs";
 import { Select } from "@/components/ui/select";
-import { listMarkets, impliedYesPct, type MarketCategory } from "@/lib/server/market-service";
+import { listMarkets, type MarketCategory } from "@/lib/server/market-service";
+import { priceState } from "@/lib/markets/price-state";
 import { formatTzs } from "@/lib/utils";
 import { ProbabilityBar } from "@/components/markets/probability-bar";
 import { CircularProgress } from "@/components/markets/circular-progress";
@@ -30,7 +31,7 @@ import { RowCheck, RowVerdict } from "./row-select";
 import type { BulkRow } from "./bulk-resolve-types";
 import { ControlLocked } from "@/components/admin/control-locked";
 import { formatDateTime } from "@/lib/utils";
-import { CEREMONY, SELECTION } from "@/lib/admin-status-lexicon";
+import { CEREMONY, REFUND, SELECTION } from "@/lib/admin-status-lexicon";
 import { AdminBody } from "@/components/admin/admin-body";
 import { SORT_OPTIONS, parseSort, compareBy } from "./queue-order";
 
@@ -377,7 +378,10 @@ async function ResolverQueueContent({
           <div className="grid grid-cols-1 items-start gap-3 lg:grid-cols-2">
             {paged.map((m) => {
               const t = timeUntil(m.resolutionAt);
-              const yes = impliedYesPct(m);
+              // ⭐ C1 · a crowd reading only where both pools hold money; otherwise the dial is a dash and the bar
+              // the named empty rail (a one-sided pool refunds whatever the verdict).
+              const price = priceState(m.yesPool, m.noPool);
+              const crowdWord = price.kind === "oneSided" ? "one side only" : m.predictorCount > 0 ? "no pool" : "no bets";
               const stage1 = !!m.resolutionStage1By;
               return (
                 <AdminCard key={m.id} padding="p-0" data-market-id={m.id}>
@@ -400,10 +404,14 @@ async function ResolverQueueContent({
                         ConfidenceDial, so a 90%-NO market rendered a YES-leaning needle labelled
                         "80%" — a false directional signal on the resolution surface. The verdict
                         is decided from the source, never from crowd sentiment. */}
+                    {/* No price (an empty or one-sided pool): the SAME dial in its own empty state — its diameter,
+                        a dashed ring like the empty rail's, its label — never a second ring drawn beside it. */}
                     <CircularProgress
-                      value={yes}
+                      value={price.kind === "priced" ? price.yesPct : undefined}
+                      empty={price.kind !== "priced"}
                       size={64}
-                      label="crowd"
+                      label={price.kind === "priced" ? "crowd" : "no price"}
+                      className="shrink-0"
                     />
                     <div className="flex-1 min-w-0">
                       {/* ⛔ G-6 (2026-08-02). Measured at 360 on production: the three
@@ -441,7 +449,7 @@ async function ResolverQueueContent({
                   )}
 
                   <div className="px-4 py-3 border-b border-border">
-                    <ProbabilityBar yesPct={yes} size="micro" />
+                    <ProbabilityBar yesPct={price.kind === "priced" ? price.yesPct : undefined} empty={price.kind !== "priced"} emptyLabel={crowdWord} size="micro" />
                     {/* ⛔ `flex-wrap` — MEASURED AT 360 ON PRODUCTION 2026-08-28, and it is the
                         MONEY that was being clipped. Three `whitespace-nowrap` items (the crowd
                         split, the predictor link, the pool chip) in a 320px card: the pool chip
@@ -453,7 +461,7 @@ async function ResolverQueueContent({
                         returns the full string whatever the paint does. Same remedy as G-6 two
                         blocks up — wrapping costs nothing at any width where it already fits. */}
                     <div className="mt-1 flex flex-wrap items-center justify-between gap-2">
-                      <p className="font-mono text-[10px] text-text-subtle">Crowd: {yes}% YES · {100 - yes}% NO</p>
+                      <p className="font-mono text-[10px] text-text-subtle">{price.kind === "priced" ? `Crowd: ${price.yesPct}% YES · ${100 - price.yesPct}% NO` : `Crowd: ${crowdWord}`}</p>
                       <Link
                         href={`/admin/markets/${m.id}` as never}
                         className="inline-flex min-h-[var(--tap-min)] items-center gap-1 rounded-md border border-border bg-bg-overlay px-2 py-0.5 font-mono text-[10.5px] text-text-muted hover:border-brand-500 hover:text-text transition-colors whitespace-nowrap"
@@ -477,6 +485,11 @@ async function ResolverQueueContent({
                         </span>
                       )}
                     </div>
+                    {/* The crowd line is a LABEL; the refund is a sentence, so it reads at the floor on its own line —
+                        what the resolver page tells this officer before a verdict (any verdict refunds). */}
+                    {price.kind === "oneSided" && (
+                      <p className="mt-1 text-body-sm text-text-muted">{REFUND.atSettlement.en}</p>
+                    )}
                   </div>
 
                   {/* AI Sentinel recommendation (if this market was closed by AI) */}

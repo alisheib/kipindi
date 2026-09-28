@@ -8,6 +8,141 @@
 
 ---
 
+
+## 2026-09-28 · The header shows the balance at every value, "TZS 0" included (owner ruling R10; reverses R1's zero clause)
+
+**Owner decision:** Ali, 2026-09-28, unprompted, on seeing the live header — *"but now i dont see my balance on
+top why?"*, then *"let revert this and have balance always visible please because user should know he is 0"*.
+Recorded as INHERIT-MANIFEST **R10**.
+
+**What changed.** The balance capsule's guard drops `&& (funded || user.walletHeld)`: a signed-in player sees
+the figure at every balance and every width. R1 (2026-09-26) had hidden it at zero and put a gold Deposit in
+its place, on the delivery's "never TZS 0 in the header". That was live for two days.
+
+**Why it is the right call for a licensed product, not merely the owner's taste.** A zero balance is a fact
+about the player's own money, and the player is entitled to read it without inferring it from the absence of
+a control. Hiding a zero is the same class of omission as rounding one away: the figure a player checks
+before deciding whether to stake is the one that must never be ambiguous. Responsible-gambling guidance runs
+the same direction — a player should always be able to see what they have.
+
+**Scope checked, not assumed.** The delivery's V11 ("dead states") polices `.kp-topic__m` / `.kp-topic__pool`
+and the hero board's price — tiles ADVERTISING an empty book. A player reading his own wallet is a different
+claim, and the header is not in V11's population (`scripts/qa/landing-ten.mjs`).
+
+**The half that travels with it.** With the capsule beside it again, the Deposit label yields at the lg–xl
+band in every balance state. That band is E-190's: 31px over in EN, 65px in SW, and the ACCOUNT MENU — the
+only desktop path to profile and sign-out — fell off the end. Measured after the change at 360/768/1024/1279/
+1280/1440 signed in, at both balances: row overflow 0 everywhere, worst control 12–104px inside the viewport.
+
+## 2026-09-27 · The landing hero says "Tanzania's first licensed prediction market"; the RG sentence leaves the hero for the footer; two Swahili footer lines corrected (owner rulings R7, R8, R9)
+
+**Owner instructions (Ali, 2026-09-27), recorded verbatim in `docs/design-system/v4-2026-09-26-landing-ten/INHERIT-MANIFEST.md`:**
+R7 — *"say first prediction market in Tanzania, no need for this warning about gambling … the fonts are nice but
+basic"* (asked in session, answered); R8 — *"all other decisions you take them, and you act as a Tanzania native
+speaker … full perfection, end to end, sealed — visual and logical"*; R9 — *"please say we're the first — I'm the
+owner and we're the first"*. Build spec: `specs/hero-v3.md` (branch `landing-v3-hero`).
+
+**What changed:**
+1. **"First" is claimed — and gated in code.** The hero's claim reads *"Tanzania’s first licensed prediction market"* /
+   *"Soko la kwanza la utabiri lenye leseni Tanzania"* / *"坦桑尼亚首家持牌预测市场"* (the spec's state P). Evidence on
+   record: the OWNER'S ATTESTATION (INHERIT-MANIFEST R9) and the Gaming Board of Tanzania's acknowledgement of the licence
+   fee for operations under Sec. 51(2) of the Gaming Act, paid 2026-09-05 (R8(1); the owner holds the document — it is
+   not committed, it carries a personal e-mail). `FIRST_LICENSED_EVIDENCE()` in `src/lib/support-config.ts` — its only
+   home, a constant like `LICENCE_NUMBER()`, with no setter and no admin control — is set to **2026-09-27, citing
+   INHERIT-MANIFEST R9**. ⭐ "Licensed" stays in every form of the claim: it is what makes "first" true against offshore
+   sites that reach Tanzanians without a Board licence; the claim is never an unqualified "first prediction market".
+   The risk was put to the owner before he ruled (Fair Competition Act s.15/16; the Board's "misleading" rule).
+   **Rollback, if the Board or a competitor ever disputes it:** set the constant to `null` — every language returns to
+   state N, *"Licensed prediction market · Tanzania"* / *"Soko la utabiri lenye leseni Tanzania"* / *"坦桑尼亚持牌预测市场"*,
+   in one change. Guards: `npm run test:hero-copy` §1 (the "first" key is read in one place, inside that branch; no
+   other string anywhere claims a first; "licensed" is in both states in all three languages; THIS entry must exist
+   while the constant is set) and the live gate's V22 (`scripts/qa/landing-ten.mjs`).
+2. **The gambling-warning SENTENCE leaves the hero (R7(2)) — an override of the hero half of INHERIT-MANIFEST R4(5).**
+   The hero keeps one quiet row: the 18+ roundel, the licence line and the helpline number (`HELPLINE()`, 0800 11 0011,
+   ruled "ours" 2026-09-26) as a tap-to-call link — above the featured card, on a phone's first screen (the live gate's
+   V21 measures it). The full sentence (*"If gambling stops being fun, stop."*), the helpline and the limit links stay
+   in the footer on every page, unchanged (`test:rg-policy`). `test:hero-copy` §4 fails if the hero reads the sentence
+   again. The 18+ roundel takes a neutral ink site-wide (R7(5)) — a seal rather than a stop sign; its size, place and
+   text are unchanged.
+3. **Swahili licence line — the Board's own name (native review, R8(3)).** `footer.licensedByGbt` (sw), shown in the
+   footer and the hero: *"Imepata leseni kutoka Bodi ya Michezo ya Kubahatisha ya Tanzania."* → *"Leseni ya Bodi ya
+   Michezo ya Kubahatisha Tanzania."* The Board's Swahili name has no "ya" before "Tanzania", and the line is set as a
+   seal beside the 18+ roundel. Same assessed statement; the English (*"Licensed by the Gaming Board of Tanzania."*) is
+   binding and unchanged.
+4. **Swahili RG sentence — grammar only (R7(7)).** `footer.stopGambling` (sw): *"Kama kucheza kamari imekuwa sio
+   burudani, acha."* → *"Kama kucheza kamari kumekuwa si burudani, acha."* ("kucheza" is a ku- noun, so "kumekuwa"; the
+   negative copula is "si"). Same meaning; the English is binding and unchanged.
+5. **"Official" is no longer claimed on the landing's first screen.** The hero's old lede (*"…settled by official
+   sources"*) and its "named public sources" row are gone from the hero: the sources include CoinGecko and ITV, which are
+   not official bodies, and each market's own card names its source. `test:hero-copy` §5 fails if official / rasmi /
+   官方, machine / mashine, crowd / umati or chance / bahati appear in any string the hero's first screen reads, in any
+   language. The same day's native review (R8, commit a204ad81) brought the rest of the platform's player-facing
+   copy in line with the English "public / named public": the trust band's heading (`home.trustCell1H`, sw "Vyanzo
+   vya umma vilivyotajwa"), how-it-works step 2, /fairness, the two-officer and single-officer lines and the primer
+   card (whose English also said "an official public source") — in sw, zh and en. Kept on purpose, consistent across
+   the three languages: the objection and proposal flows, where "the official source" is a procedural instruction
+   about the market's declared source, not a claim about it.
+6. **"Ukiwa sahihi, unalipwa" / "Be right, get paid" / "预测正确，即获赔付" — why it is literally true.** A correct pick
+   is never paid less than its stake, in every product: the fee is a share of the LOSING pool only, so the winners' net
+   pool is at least their own stakes (the winner floor in `src/lib/payout.ts`; `market-config.ts` refuses a fee over
+   100% of the losing pool), Up & Down settles through the same `settleMarket()` (`updown-service.ts`), and a one-sided
+   or void market refunds every stake in full. The copy states no amount and no multiplier (the gate's V16). Ready
+   fallback if the Board objects to "unalipwa": *"Ukiwa sahihi, unagawana dau la upande mwingine."* / *"Be right, share
+   the other side's stakes."* / *"预测正确，分享对方的投注。"* — a one-key swap per language; ⛔ never "mgao".
+7. **Wallet names (R8(6)).** *"Deposit and withdraw with M-Pesa, Airtel Money, HaloPesa or Mixx by Yas"* names only the
+   rails whose PAYOUT path is live in the platform's own configuration (`src/lib/server/payout-rails.ts`: the payment
+   catalogue ∩ `WithdrawSchema` ∩ `DepositSchema` ∩ a wallet-cashin code, less any rail an officer has paused for
+   deposits or withdrawals). The names are never typed into the dictionary. `test:hero-copy` §3 pins the output and
+   cross-checks the withdraw page and the withdraw action.
+
+**Supersedes (each keeps a dated pointer here):** the hero half of INHERIT-MANIFEST R4(5) and its L18/L21 placement
+notes (item 2); R7(1) and R8(1)'s "first stays off" (item 1, by R9 itself); R7(6)'s "all four after a test payout each"
+(item 7, by R8(6)); the English-headline placement of MOBILE-VISUAL-PLAN ruling 12 (the brand line is now the hero's
+sign-off, verbatim).
+
+## 2026-09-27 · "One-sided win" retired — the state is "One side only" everywhere (owner ruling R6(1); supersedes 2026-07-21)
+
+**Owner decision:** Ali, 2026-09-27, asked in session as a numbered choice (landing v3 C1 spec
+`docs/design-system/v4-2026-09-26-landing-ten/specs/c1-one-price-rule.md`, ruling 1) and answered as recommended
+(1a). Recorded as INHERIT-MANIFEST **R6(1)**.
+
+**Why:** the 2026-07-21 label named an OPEN market's state after a result — a "win" — that has not happened and, on a
+refund, never happens. Since landing v3 WP6 every market card names the same state **"One side only"**, so the detail
+page's callout was the last place the old label survived, and it put two names on one state on one page. The 07-21
+guardrail itself forbids implying a cash win; "One side only" states the pool's shape and nothing more.
+
+**What changed (landing v3 C1, commit A, branch `landing-v3-c1`):**
+- `/markets/[id]`: the callout headed "One-sided win", whose body promised a refund "before resolution", is deleted.
+  The rail's label row reads the card's `market.oneSideOnly` — EN "One side only" · SW "Upande mmoja tu" · ZH
+  "仅单边有投注" — and the refund rule is the card's ONE conditional sentence, `market.oneSidedNote` (INHERIT-MANIFEST
+  L22): at the money control while betting is open, under the rail once betting has closed, and nothing once the
+  market is settled (the resolution panel then states the refund).
+- The keys `market.oneSidedMarket` (EN "One-sided win" · SW "Ushindi wa upande mmoja" · ZH "单边获胜") and
+  `market.oneSidedBody` are deleted from all three locales. The callout was their only reader.
+- Guard: `npm run test:one-sided` 8.9 fails if either key returns to any locale or any file in `src/` reads it, and
+  8.5 pins where the note sits; `npm run red:one-sided` proves both can fail.
+
+**What did NOT change (deliberate scope):**
+- The mechanic. A pool with one empty side is refunded in full at zero fee at settlement, whatever the verdict
+  (`settleMarket`'s one-sided branch, rules §7, pinned by `test:one-sided` §6).
+- The published rules keep their legal wording "One-sided market:" (`src/app/legal/rules/_content-yes-no.tsx`). That is
+  legal text defining the mechanic, not the product's state label.
+- Machine identifiers and internal strings: the audit action `market.resolved.one_sided_refund`, its internal `reason`
+  string ("One-sided win — all bets on same side, …") and the comment above the branch inside `settleMarket` are left
+  as they are. Settlement code is outside this batch, and an audit reason is read by an auditor, not shown to a
+  player. `isOneSided`, `notifyOneSidedRefund` and `oneSidedRefundHtml` keep their names.
+- Historical design documents that quote "one-sided win" (`F6-LIQUIDITY-DESIGN.md`, `perfection-plan.md`) are records
+  and are not rewritten.
+
+**Supersedes:** § 2026-07-21 · Player terminology: "one-sided market" → "one-sided win" (licence). It is kept below as
+the record, with a pointer here; the two entries together are the history. Its guardrail against implying a cash win
+stands and is now met more strictly.
+
+**Guardrail (⛔):** do not restore "One-sided win" (or "one-sided market") as a player-facing state label. The state is
+"One side only", and the refund sentence stays the one conditional sentence of L22.
+
+---
+
 ## 2026-09-27 · Invite rewards need no separate Gaming Board clearance — 50pick's licence covers them (owner ruling)
 
 **Owner instruction (Ali, 2026-09-27), as typed:** *"np no gbt dens haveot do with this our license covers thi
@@ -4617,6 +4752,9 @@ not delete the `capped-commission` model (existing polls settle on it).
 ---
 
 ## 2026-07-21 · Player terminology: "one-sided market" → "one-sided win" (licence)
+
+> ⚠️ **SUPERSEDED 2026-09-27** by § 2026-09-27 · "One-sided win" retired — the state is "One side only" everywhere
+> (owner ruling R6(1)). Kept as the record; do not apply the label below.
 
 **Owner decision:** Ali, explicit, 2026-07-21 (authorised in-session). **Critical for the
 GBT licence — apply everywhere.**

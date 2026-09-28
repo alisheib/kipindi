@@ -806,8 +806,10 @@
      tinted bands. The v3-2026-08-11 archive still names both tokens; it is a frozen record. */
   --hero-text-strong:  var(--pearl-50);
   --hero-text-muted:   var(--pearl-300);
-  --hero-yes-accent:   var(--yes-300);
-  --hero-no-accent:    var(--no-300);
+  /* 2026-09-27 (hero v3, spec §5): 300 → 400, the deeper shade the YES/NO buttons wear, so the h1's
+     side words are the buttons' own colour as well as their own words. Hero-only tokens. */
+  --hero-yes-accent:   var(--yes-400);
+  --hero-no-accent:    var(--no-400);
   --hero-tag-yes:      var(--yes-300);
 
   /* TippingBar — kit royal track + gilt needle.
@@ -1057,6 +1059,9 @@ body {
 .gilt-eyebrow,
 .admin-tbl thead,
 .kp-hero__eyebrow,
+/* landing v3 · the hero's claim ("Tanzania's first licensed prediction market") — a class of its own
+   (spec §4), the eyebrow's tracking. */
+.kp-hero__claim-text,
 .kp-proof__cap,
 .mcardp-cat,
 /* The filter FIELD's key ("FILTER"), which is a section eyebrow in every sense §T3 uses: it
@@ -1202,7 +1207,12 @@ body {
   letter-spacing: 0.005em;
   text-shadow: 0 1px 0 oklch(20% 0.10 268 / 0.40);
 }
+/* The solid buttons' hover lift is gated to pointers that hover (here and on the four fills below). On touch a
+   :hover sticks to the last-tapped element, so the side a player tapped stayed lit after Back — on the landing's
+   Up & Down plate that is a lit leader (L17). Found in the band's frame panel, 2026-09-27; applied platform-wide. */
+@media (hover: hover) {
 .btn-primary:hover:not(:disabled) { filter: brightness(var(--btn-hover-gain)) saturate(1.04) drop-shadow(0 6px 16px color-mix(in oklab, var(--royal-400) 30%, transparent)); }
+}
 
 /* v2 kit: one flat-solid family — YES/NO/gold are SOLID fills (not gradients),
    with an EVEN 1px inset ring + soft shadow. (primary keeps its gradient.)
@@ -1223,7 +1233,9 @@ body {
   box-shadow: inset 0 0 0 1px oklch(80% 0.14 152 / 0.4), 0 1px 2px oklch(10% 0.05 264 / 0.35);
   text-shadow: 0 1px 1px oklch(20% 0.1 264 / 0.32);
 }
+@media (hover: hover) {
 .btn-yes:hover:not(:disabled) { filter: brightness(var(--btn-hover-gain)); box-shadow: inset 0 0 0 1px oklch(80% 0.14 152 / 0.4), 0 5px 16px oklch(60% 0.16 150 / 0.5); }
+}
 
 .btn-no {
   background: oklch(56% 0.200 25);
@@ -1234,7 +1246,9 @@ body {
   box-shadow: inset 0 0 0 1px oklch(80% 0.15 25 / 0.4), 0 1px 2px oklch(10% 0.05 264 / 0.35);
   text-shadow: 0 1px 1px oklch(20% 0.1 264 / 0.32);
 }
+@media (hover: hover) {
 .btn-no:hover:not(:disabled) { filter: brightness(var(--btn-hover-gain)); box-shadow: inset 0 0 0 1px oklch(80% 0.15 25 / 0.4), 0 5px 16px oklch(57% 0.20 25 / 0.5); }
+}
 
 .btn-ghost {
   background: transparent;
@@ -1252,9 +1266,11 @@ body {
   border-color: transparent;
   box-shadow: inset 0 0 0 1px oklch(80% 0.15 25 / 0.3), 0 1px 2px oklch(10% 0.05 264 / 0.35);
 }
+@media (hover: hover) {
 .btn-danger:hover:not(:disabled) {
   filter: brightness(var(--btn-hover-gain));
   box-shadow: inset 0 0 0 1px oklch(80% 0.15 25 / 0.3), 0 5px 16px oklch(60% 0.22 25 / 0.4);
+}
 }
 
 .btn-gold {
@@ -1265,7 +1281,9 @@ body {
   box-shadow: inset 0 0 0 1px oklch(95% 0.054 84 / 0.55), 0 1px 2px oklch(10% 0.05 262 / 0.35);
   letter-spacing: 0.02em;
 }
+@media (hover: hover) {
 .btn-gold:hover:not(:disabled) { filter: brightness(var(--btn-hover-gain)); box-shadow: inset 0 0 0 1px oklch(95% 0.054 84 / 0.55), 0 5px 16px oklch(80% 0.114 84 / 0.5); }
+}
 
 .btn-claret {
   background: linear-gradient(180deg, var(--claret-500) 0%, var(--claret-700) 100%);
@@ -1685,6 +1703,20 @@ html.kp-reduce-motion .ticker-pause,
   background: var(--bar-needle);
   box-shadow: 0 0 12px var(--bar-needle-glow);
   transform-origin: 50% 100%;
+}
+/* landing v3 · WP3 — the 24h mark: where the price stood a day ago (the featured card only, `mark` on
+   TippingBar). A still hairline, shorter than the needle so the two never read as one object, in `--text`
+   because it is a graphic that must read against BOTH fills at >= 3:1 (WCAG 1.4.11; `test:contrast` pairs it
+   with each fill's worst stop). Never animated (motion law L12): it changes only with a new render. */
+.tipbar-mark {
+  position: absolute;
+  top: -4px;
+  bottom: -4px;
+  width: 2px;
+  margin-left: -1px;
+  border-radius: var(--r-pill);
+  background: var(--text);
+  pointer-events: none;
 }
 .tipbar-shimmer {
   position: absolute;
@@ -3986,24 +4018,32 @@ html[data-sheet-open] .route-enter { animation: none; }
    the intro and the act share the left column and the card takes the right one, vertically centred
    against the pair, which is the delivery's desktop composition. No `order`, no second copy.
    ⚠️ THE PHONE RUNG IS SET HERE, NOT IN A MEDIA QUERY — the 768 block overrides both values. U6
-   stepped it 48/32 → 32/24 (measured −64px at 360). It is padded, not rhythm-scaled: this element
-   deliberately does not consume --rh-* (§Spacing). */
+   stepped it 48/32 → 32/24 (measured −64px at 360); hero v3 (2026-09-27, spec §5) takes the top to
+   20 and the gap to 20, keeping 32 at the foot: the trust rows now sit above the card, and the
+   budget that puts the card's YES/NO above the bottom rail at 360 × 740 in Swahili is spec §7's
+   (V15 and V21 measure it). It is padded, not rhythm-scaled: this element deliberately does not
+   consume --rh-* (§Spacing).
+   ⭐ THE INTRO IS FOUR ROLES WITH ONE RHYTHM: the lockup (claim + h1, 8 apart), then the lede and
+   the trust rows, 12 apart (16 before the rows, their own 4 of margin) — 8 / 12 / 16 / 20 up to the
+   card, where the old intro was a flat 12. From 768: 12 inside the lockup, 16 between the roles. */
 .kp-hero__inner {
   position: relative;
   max-width: var(--w-board);
   margin-inline: auto;
-  padding: var(--sp-8) var(--sp-4);
+  padding: var(--sp-5) var(--sp-4) var(--sp-8);
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   grid-template-areas: "intro" "card" "act";
-  gap: var(--sp-6);
+  gap: var(--sp-5);
 }
 .kp-hero__intro { grid-area: intro; display: flex; flex-direction: column; gap: var(--sp-3); min-width: 0; }
+.kp-hero__lockup { display: flex; flex-direction: column; gap: var(--sp-2); margin: 0; min-width: 0; }
 .kp-hero__card { grid-area: card; min-width: 0; }
 .kp-hero__act { grid-area: act; display: flex; flex-direction: column; gap: var(--sp-5); min-width: 0; }
 @media (min-width: 768px) {
   .kp-hero__inner { padding: var(--sp-16) var(--sp-6); gap: var(--sp-10); }
   .kp-hero__intro { gap: var(--sp-4); }
+  .kp-hero__lockup { gap: var(--sp-3); }
 }
 @media (min-width: 1024px) {
   .kp-hero__inner {
@@ -4028,26 +4068,55 @@ html[data-sheet-open] .route-enter { animation: none; }
    wants licence, 18+, mobile money and the helpline on a phone's first screen, and a CSS reorder would
    make keyboard order disagree with the screen (WCAG 1.3.2 — v3 review). INHERIT-MANIFEST L18. */
 
-/* The reader's own reading of the brand line (sw, zh), under it — MOBILE-VISUAL ruling 12. Sora,
-   one weight under the headline, on the h3 rung (h2 from 1024): a translation, not a second
-   headline. Its NDIO/HAPANA (是/否) carry the outcome inks through `Inked` in landing-hero.tsx. */
-.kp-hero__sub {
-  font-family: var(--font-display);
-  font-weight: 600;
-  font-size: var(--type-h3);
-  line-height: 1.25;
-  color: var(--text-muted);
+/* ⛔ `.kp-hero__sub` (the sw/zh reading under the English h1, MOBILE-VISUAL ruling 12) was DELETED
+   2026-09-27 with its key: R7(3) made the h1 itself the question in the reader's language, and the
+   English brand line became the sign-off (`.kp-hero__signoff`, below). */
+
+/* THE CLAIM — "50pick │ SOKO LA KWANZA LA UTABIRI LENYE LESENI TANZANIA" (spec §4–§5, R9).
+   A class of its own, not `.kp-hero__eyebrow` (which also dresses seven section labels further down):
+   the claim is the brightest small text on the first screen — `--text`, JetBrains Mono at a REAL
+   600 (the weight is loaded, `layout.tsx`), 13px, capitals by CSS over sentence-case copy, the
+   eyebrow's 0.14em (the shared list beside `.amount`). Balanced, so a wrap never leaves one word.
+   The wordmark and a 1px rule lead it below 1280, where the header shows the mark alone; the rule
+   runs the claim's full height, and the wordmark is centred on the claim's FIRST line (its box is
+   one line of the claim tall). From 1280 the header carries the wordmark and both are hidden. */
+.kp-hero__claim {
+  display: flex;
+  align-items: stretch;
+  gap: var(--sp-2);
   margin: 0;
+  color: var(--text);
+  min-width: 0;
+}
+.kp-hero__claim-mark {
+  flex: none;
+  display: flex;
+  align-items: center;
+  height: calc(var(--type-small) * 1.35);
+}
+.kp-hero__claim-rule { flex: none; width: 1px; background: var(--border-strong); }
+.kp-hero__claim-text {
+  min-width: 0;
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-size: var(--type-small);
+  line-height: 1.35;
+  text-transform: uppercase;
   text-wrap: balance;
 }
-@media (min-width: 1024px) { .kp-hero__sub { font-size: var(--type-h2); } }
+@media (min-width: 1280px) {
+  .kp-hero__claim-mark,
+  .kp-hero__claim-rule { display: none; }
+}
 
-/* The trust lines: licence and 18+, mobile money, named sources, the RG line with the helpline.
-   Each line is a 28px marker column (the 18+ roundel is 28 — `.kp-rg__18`) and the words, so the
-   four lines share one left edge whatever marks them. */
+/* The trust rows (hero v3, 2026-09-27): 18+ · the licence line · the helpline, then the wallets that
+   pay out — in the intro, above the card (spec §4, R7(2)). Each row is a 28px marker column (the 18+
+   roundel is 28 — `.kp-rg__18`) and the words, so the rows share one left edge whatever marks them.
+   Two quiet 13px rows: nothing in them is louder than the claim. 4px of their own above them, so the
+   lede-to-rows seam reads 16 against the intro's 12. */
 .kp-hero__trust {
   list-style: none;
-  margin: 0;
+  margin: var(--sp-1) 0 0;
   padding: 0;
   display: grid;
   gap: var(--sp-2);
@@ -4057,23 +4126,33 @@ html[data-sheet-open] .route-enter { animation: none; }
 }
 .kp-hero__trust > li { display: grid; grid-template-columns: 28px minmax(0, 1fr); column-gap: var(--sp-3); align-items: center; }
 .kp-hero__trust-glyph { display: flex; justify-content: center; color: var(--text-subtle); }
+/* The wallet names are the row's emphasis — brand spellings from the payment catalogue, in the
+   reader's own list form (`rail-list.ts`); the joiners and the sentence stay muted. */
+.kp-hero__rail { color: var(--text); font-weight: 500; }
 /* The helpline is a call a player can make from here, at the tap floor (§A2). ⭐ The REACH is an
    out-of-flow `::after` (13px above and below the ~16px CONTENT box of an inline link — not its line
    height, which V4 caught measuring 36px at ±10 — reaching 42px, over the 40px `--tap-min`), the platform's
    own pattern for a small link (see `.mcardp-share`): a 40px line box made the last trust line
    visibly taller than the three above it, which read as a stray gap. */
+/* ⭐ QUIET SINCE HERO v3 (spec §5): Inter 400 (was 600 white) with tabular figures and a 1px
+   `--border-strong` underline — a call a player can make, not the loudest thing on the screen. */
 .kp-hero__tel {
   position: relative;
   display: inline-block;
   max-width: 100%;
   color: var(--text);
-  font-weight: 600;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
   text-decoration: underline;
+  text-decoration-color: var(--border-strong);
+  text-decoration-thickness: 1px;
   text-underline-offset: 3px;
 }
 /* Label and number are each unbreakable, the space between them is not: under large text the line
    breaks BETWEEN them and never inside "0800 11 0011". */
 .kp-hero__tel > span { white-space: nowrap; }
+/* The hover answers on the underline, the link's own mark: it takes the text's ink. */
+.kp-hero__tel:hover { text-decoration-color: currentColor; }
 /* inline-block: the link is ONE box of its own line height (19.5px at --type-small), so ±13px reaches
    45.5px — past the preferred 44, since this platform allows exactly 40 or 44+ and "41, 42 and 43 are
    not nearly 44" (V4, tap-target §1) — whether it sits on one line or, under large text, wraps between
@@ -4095,6 +4174,10 @@ html[data-sheet-open] .route-enter { animation: none; }
   color: var(--text-subtle);
   margin: 0;
 }
+/* THE LEDE — two designed lines since hero v3 (spec §3/§5): what you do, in the product's own verbs
+   ("Chagua upande, weka dau."), in Inter 500 and `--text`; then what happens ("Ukiwa sahihi,
+   unalipwa."), in Inter 400 and `--text-muted`. Each is its own line and short enough never to wrap
+   at 360 in any language, so the lede is two lines by design rather than by measure. */
 .kp-hero__lede {
   font-size: var(--type-h3);
   line-height: 1.5;
@@ -4102,11 +4185,13 @@ html[data-sheet-open] .route-enter { animation: none; }
   max-width: 52ch;
   margin: 0;
 }
-/* At 360 the lede is the page's longest unbroken run of prose and it was set at --type-h3 (20px),
-   one rung under the H1 — five lines and 150px of a hero that is already 22% of the page. The
-   rung below (17px) is where the question rows are set, and a lede that explains the board should
-   not out-type the board. ⛔ It does NOT go to --type-body: that is the rung of ordinary page copy,
-   and this sentence is the hero's only sentence. */
+.kp-hero__lede-l { display: block; color: var(--text); font-weight: 500; }
+.kp-hero__lede-l--pay { color: var(--text-muted); font-weight: 400; }
+/* At 360 the lede was once the page's longest unbroken run of prose, set at --type-h3 (20px), one
+   rung under the H1 — five lines and 150px of a hero already 22% of the page. The rung below (17px)
+   is where the question rows are set, and a lede that explains the board should not out-type the
+   board. ⛔ It does NOT go to --type-body: that is the rung of ordinary page copy, and these two
+   lines are the hero's only sentences. */
 @media (max-width: 560.98px) {
   /* density: general — the home hero's lede, not the board; both card-spacing settings. */
   .kp-hero__lede { font-size: var(--type-h4); }
@@ -4137,24 +4222,57 @@ html[data-sheet-open] .route-enter { animation: none; }
   flex: none;
 }
 
+/* THE h1 — "NDIO au HAPANA?" (hero v3, R7(3); spec §5). Sora 800 at line-height 1.0, and the
+   tracking tightens as the size grows (−0.030 → −0.038 → −0.045em) so Sora reads as display type.
+   The side words wear the buttons' own inks (`--hero-yes-accent` / `--hero-no-accent`, re-pointed to
+   the 400 shades); the connective is the one quiet word, Sora 400 in `--text-muted` — weight contrast
+   from the same variable file, no new font byte (R7(4)); the "?" stays `--hero-text-strong`.
+   Each `.kp-hero__grp` ("NDIO au" · "HAPANA?") never breaks inside, so the only break is the string's
+   own space after the connective. zh sets untracked, at 1.1, where CJK needs the air. */
 .kp-hero__headline {
   font-family: var(--font-display);
   font-weight: 800;
   font-size: var(--type-display-2);
-  line-height: 1.02;
-  letter-spacing: -0.022em;
+  line-height: 1;
+  letter-spacing: -0.030em;
   color: var(--hero-text-strong);
   margin: 0;
   text-wrap: balance;
 }
+.kp-hero__headline:lang(zh) { letter-spacing: 0; line-height: 1.1; }
+.kp-hero__grp { white-space: nowrap; }
+.kp-hero__side[data-side="yes"] { color: var(--hero-yes-accent); }
+.kp-hero__side[data-side="no"] { color: var(--hero-no-accent); }
+.kp-hero__conn { font-weight: 400; color: var(--text-muted); }
+.kp-hero__q { color: var(--hero-text-strong); }
 /* ⭐ THE v3 CURVE ON THE LOCKED LADDER (WP2, L6). The delivery asks for `clamp(40px, 6.2vw, 88px)`;
    §T1 closes the type ladder, so the curve is mapped onto its nearest steps instead of typed:
    44 (`--type-display-2`) below 1024 — the delivery's 40 at a phone and 47.6 at 768 both land
    nearest it — then 60 (`--type-display-1`) from 1024 and 72 (`--type-hero`) from 1280, where 6.2vw
    is 63 and 79. The 2026-09 phone rung was 32 (the kit's own contradiction 12, ruled for the old
-   hero); whether 44 still leaves v3's featured card inside the first screen is V15's to answer. */
-@media (min-width: 1024px) { .kp-hero__headline { font-size: var(--type-display-1); } }
-@media (min-width: 1280px) { .kp-hero__headline { font-size: var(--type-hero); } }
+   hero); whether 44 still leaves v3's featured card inside the first screen is V15's to answer.
+   ⭐ 2026-09-27 (hero v3, spec §5): the 60 step moves from 1024 to 640 — "NDIO au HAPANA?" fits one
+   line at 768 at 60, and a 44px headline at 768 read as a phone layout stretched ("flat 768"). */
+@media (min-width: 640px) { .kp-hero__headline { font-size: var(--type-display-1); letter-spacing: -0.038em; } }
+@media (min-width: 1280px) { .kp-hero__headline { font-size: var(--type-hero); letter-spacing: -0.045em; } }
+/* (The zh rule above outranks both steps on specificity, so zh stays untracked at every width.) */
+
+/* THE SIGN-OFF — the brand line "The wisdom of YES & NO." with the mark (hero v3, R7(3)): the h1
+   until 2026-09-27, now the line that closes the hero for a visitor, and the share-image line. The
+   mark at 20 is the simplified variant (required at or below 20, `brand.tsx`); Sora 600 on the body
+   rung, quiet, with YES and NO in the outcome inks (`Inked`). */
+.kp-hero__signoff {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: var(--type-body);
+  letter-spacing: -0.01em;
+  color: var(--text-muted);
+}
+.kp-hero__signoff-mark { flex: none; display: flex; }
 
 /* Proof rail — three REAL figures, separated by hairlines.
    ⛔ The kit hides the third figure at 390. We keep all three and reflow instead: each one is a
@@ -4320,138 +4438,120 @@ html[data-sheet-open] .route-enter { animation: none; }
   .fairness-tbl td[data-th] .line-clamp-2 { -webkit-line-clamp: 4; }
 }
 
-/* The question board — the hero's substance. Four real open markets, closing soonest. */
+/* ── The question board (landing v3 · WP4) ─────────────────────────────────────────────────────────
+   A LIST of rows, each three SIBLING zones — the title link, the reading (price · time left · 6px bar), the
+   two side links — never one link (WP17). Written mobile-first: phone = title, meta, reading, then the
+   full-width YES/NO pair; from 640 the title and the reading sit side by side and the pair wraps below at
+   its own width; from 1024 one line — title · reading · pair. No phone-only query, so the Compact fence has
+   nothing to police. The old 821/560.98 blocks, the hover indent (D25) and the lean rule are gone. */
 .kp-qboard { border-top: 1px solid var(--border-royal); }
 .kp-qrow {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  grid-template-areas: "i q p" ". s p";
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: "head" "read" "act";
   align-items: center;
-  column-gap: var(--sp-4);
-  min-height: 76px;
-  padding: var(--sp-3) 0;
+  row-gap: var(--sp-3);
+  padding-block: var(--sp-4);
   border-bottom: 1px solid var(--border);
-  position: relative;
-  /* ⚠️ `padding-inline` IS A LAYOUT PROPERTY and it animates on hover — a reflow of
-     a three-column grid row, four rows deep, every time a pointer crosses the hero
-     board. Kept, and said out loud, because the alternative is worse than the cost:
-     the gesture is the row's CONTENT indenting inside a fixed rail, and a
-     `translateX` on the row would slide its background and its bottom border with
-     it, which is a different effect wearing the same name. `--t-quick` over 8px is
-     one short reflow, not a scroll-linked one.
-     `ease-out` → `linear` on the background: a colour crossfade travels nowhere. */
-  transition: background var(--t-quick) linear, padding-inline var(--t-quick) var(--m-glide);
 }
-.kp-qrow:hover { background: var(--bg-overlay); padding-inline: var(--sp-4); }
-.kp-qrow__glyph { grid-area: i; color: var(--text-faint); display: flex; }
+/* The note is NOT an area: an empty named row would still take a row-gap. It auto-places below. */
+.kp-qrow__note { grid-column: 1 / -1; }
+.kp-qrow__head {
+  grid-area: head;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--sp-1);
+  min-width: 0;
+  min-height: var(--h-control-md);   /* V4: a one-line title link is never a 21px target */
+  color: var(--text);
+  text-decoration: none;
+}
+/* ⛔ A MEASURE CEILING, NOT A WIDTH — 44ch, calibrated rather than chosen. `ch` is the advance of the digit
+   ZERO, which in Sora at 17px is 12.97px, while the average advance in running text is about 8.9px: a 68ch
+   cap resolved to 882px and still set 99 characters a line. 44ch is about 571px, about 64 characters in this
+   face (measured on production 2026-09-24). If the question ever changes typeface this number is wrong
+   again — V7 in the landing gate is what re-catches it. Below 640 it clamps at three lines (U6's bound: the
+   board takes whatever four markets close soonest, and one long title would otherwise run seven lines); the
+   ellipsis says the question continues, and the link — whose name is the whole question — opens it. */
 .kp-qrow__q {
-  grid-area: q;
   font-family: var(--font-display);
   font-weight: 700;
   font-size: var(--type-h4);
   letter-spacing: -0.01em;
   line-height: 1.25;
   color: var(--text);
+  max-inline-size: 44ch;
+  text-wrap: pretty;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
 }
-.kp-qrow__sub {
-  grid-area: s;
+/* The meta line — "Closes 27 Sep · Settles on {source} · Pool TZS n · n predictors" — is a sentence in body
+   type at the reading floor, the same voice as the featured card's line and the settled strip's (one design
+   for one kind of line); the MONEY and the count inside it are mono (§M4, §T5). */
+.kp-qrow__meta {
+  font-size: var(--type-small);
+  line-height: 1.5;
+  color: var(--text-subtle);
+  overflow-wrap: anywhere;
+}
+.kp-qrow__close, .kp-qrow__pool, .kp-qrow__depth { white-space: nowrap; }
+.kp-qrow__pool, .kp-qrow__depth { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.kp-qrow__srcname { color: var(--text-muted); }
+.kp-qrow__read { grid-area: read; display: grid; gap: var(--sp-2); min-width: 0; }
+.kp-qrow__line { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: var(--sp-3); row-gap: var(--sp-1); }
+.kp-qrow__price {
   font-family: var(--font-mono);
   font-size: var(--type-small);
-  font-variant-numeric: tabular-nums;
-  color: var(--text-faint);
-}
-.kp-qrow__price { grid-area: p; text-align: right; white-space: nowrap; }
-/* The price is NOT gilt. ACCEPTANCE.md §6 resolves the kit's gold-on-prices against the system
-   law (Q5, gold is money and nothing else) and says to default to non-gold: a crowd price is
-   odds, not money anybody has earned. */
-.kp-qrow__num {
-  font-family: var(--font-mono);
   font-weight: 700;
-  font-size: var(--type-h2);
   font-variant-numeric: tabular-nums;
-  color: var(--text);
-  line-height: 1.1;
+  min-width: 0;
 }
-.kp-qrow__unit {
-  display: block;
+/* The price is NOT gilt: a crowd price is odds, not money anybody earned (ACCEPTANCE §6, Q5). It names the
+   YES side, so it takes the YES ink (§B2a allows the betting pair on a side); the dash and the state label
+   stay neutral. */
+.kp-qrow__num { color: var(--text-faint); }
+.kp-qrow__unit { color: var(--text-subtle); }
+.kp-qrow__unit--label { margin-left: 0.35em; font-weight: 600; }  /* the phrase needs the space a "%" must not have */
+.kp-qrow[data-price="priced"] .kp-qrow__price { white-space: nowrap; }
+.kp-qrow[data-price="priced"] .kp-qrow__num,
+.kp-qrow[data-price="priced"] .kp-qrow__unit { color: var(--yes-300); }
+/* Time is not a side: the neutral ink, never the betting pair (`test:betting-ink`). */
+.kp-qrow__left {
+  margin-inline-start: auto;
   font-family: var(--font-mono);
-  font-size: var(--type-micro);
-  letter-spacing: 0.1em;
-  color: var(--text-subtle);
+  font-size: var(--type-small);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--text);
 }
-/* The row's own crowd lean, as a 2px rule on its bottom edge. Width is DATA (bound at the call
-   site) — and it is not drawn at all on a market nobody has staked.
-   `grid-area: 1/1/-1/-1` keeps this absolutely-positioned child from being auto-placed into a
-   cell of its own and opening an implicit row that would add height to every question. */
-.kp-qrow__lean {
-  position: absolute;
-  grid-area: 1 / 1 / -1 / -1;
-  left: 0;
-  bottom: -1px;
-  height: 2px;
-  background: var(--bar-fill-yes);
-  pointer-events: none;
+.kp-qrow__act { grid-area: act; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-2); }
+.kp-qrow__btn { padding-inline: var(--sp-2); }   /* sw "HAPANA @ 29%" fits a 140px half at 320 */
+.kp-qrow__at { font-family: var(--font-mono); font-size: var(--type-small); }
+@media (hover: hover) {
+  .kp-qrow__head:hover .kp-qrow__q { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 0.18em; }
 }
-@media (min-width: 821px) {
+/* Tablet: the title and the reading side by side; the pair wraps below at its own width. */
+@media (min-width: 640px) {
   .kp-qrow {
-    grid-template-columns: auto minmax(0, 1fr) auto auto;
-    grid-template-areas: "i q s p";
-    min-height: 88px;
-    column-gap: var(--sp-5);
+    grid-template-columns: minmax(0, 1fr) minmax(190px, 230px);
+    grid-template-areas: "head read" "act act";
+    column-gap: var(--sp-6);
   }
+  .kp-qrow__q { display: block; -webkit-line-clamp: unset; overflow: visible; }
+  .kp-qrow__act { justify-self: start; grid-template-columns: repeat(2, minmax(104px, 1fr)); }
 }
-/* ⭐ AT 360 THE QUESTION TAKES THE WHOLE LINE — measured, in Swahili, on the cold-start board.
-   With the price in its own column the question had ~150px and "Hakuna dau bado" had ~105px of
-   the 328px content width, so a three-line title sat jammed against the label. Nothing truncated
-   and no overflow, which is exactly why only LOOKING at it found this. The question now spans the
-   full width and the pool and price share the line below it — same DOM, same three fields, and
-   the longest label in the longest language stops competing with the sentence it belongs to. */
-@media (max-width: 560.98px) {
-  /* density: general — the home Closing-soonest rows (U6 owns them), not the board; both settings. */
+/* Desktop: one line — the title, the reading, the pair. */
+@media (min-width: 1024px) {
   .kp-qrow {
-    grid-template-columns: auto minmax(0, 1fr) auto;
-    grid-template-areas:
-      "i q q"
-      ". s p";
-    row-gap: var(--sp-2);
+    grid-template-columns: minmax(0, 1fr) minmax(190px, 230px) auto;
+    grid-template-areas: "head read act";
+    column-gap: var(--sp-8);
   }
-  /* On the meta line the value reads as a phrase — "— No bets yet", "71% YES" — rather than as
-     a stacked figure, which at this size looked like two unrelated fields. */
-  .kp-qrow__num { font-size: var(--type-h3); }
-  .kp-qrow__unit { display: inline; }
-  /* 🔴 A BOUND, AND IT DOES CROP — CORRECTED 2026-09-23, HAVING FIRST BEEN WRITTEN THE OTHER WAY.
-     This comment said "today it crops nothing", measured on a LOCAL server whose four markets had
-     short titles and ran 2 lines. Production's four do not: re-measured live, the questions run
-     4–7 lines at 320 SW, 4–5 at 360 SW and EN, 3 at 360 ZH, so the clamp engages on 4 of 4 rows at
-     320 and 360 and on 3 of 4 at 412. ⛔ A CLAIM ABOUT WHAT A PAGE SHOWS IS A CLAIM ABOUT ITS
-     CONTENT, AND THE TWO TREES HOLD DIFFERENT CONTENT. The rule is unchanged; the sentence about it
-     was wrong and is the thing that got fixed.
-     WHY IT STAYS. The board takes whatever four markets close soonest, so without a ceiling one long
-     title runs seven lines and takes a row past 180px — four of those are most of a hero. §9 U6
-     ordered this clamp for exactly that reason, at exactly this number. Live it holds every row to
-     121.3px against a 110 budget, from a ragged 164/143/164/164 before.
-     ⭐ AND THE CUT IS BOTH SIGNALLED AND RECOVERABLE. `-webkit-line-clamp` paints an ellipsis, so a
-     sighted reader is TOLD the question continues rather than shown a sentence that stops; and it
-     hides overflow without removing the text node, so the link's accessible name is still the whole
-     question — verified on production, where the full 120-character title reads back off the row.
-     The rest of it is one tap away, which is what a teaser board is for.
-     ⭐ AND IT IS THE PLATFORM'S OWN PATTERN, NOT A NEW ONE — checked against the law rather than
-     assumed. DESIGN_AUTHORITY's fit law says truncation is legitimate PAIRED WITH `title`, which
-     keeps the full string reachable (DG-A-10). `.mcardp-q` — the player-facing market card, shipped
-     and design-frozen — already clamps the SAME content type, a market question inside a link, to
-     `-webkit-line-clamp: 2` with no `title`; `admin/markets` and the resolver queue do the same.
-     This row is ONE LINE MORE GENEROUS than the card, and on a touch surface the link to the full
-     market is a stronger affordance than a `title` tooltip a finger can never summon. */
-  .kp-qrow__q {
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 3;
-    overflow: hidden;
-  }
-  /* ⚠️ The unpriced label is a PHRASE and needs the word space that a "%" must never have. Set
-     inline it rendered "—Hakuna dau bado". A `gap` on the cell would have fixed this one and
-     broken the other, turning "71% YES" into "71 % YES". */
-  .kp-qrow__unit--label { margin-left: 0.35em; }
+  .kp-qrow__act { justify-self: end; }
 }
 
 /* `.kp-hero__foot` (the lede + CTAs beside the card, under the board) was DELETED with landing v3:
@@ -4609,11 +4709,9 @@ html[data-sheet-open] .route-enter { animation: none; }
 .mcardp-traders { margin-top: -2px; min-height: var(--mcard-traders-h); }
 .mcardp-traders .t-txt { font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); }
 .mcardp-traders .t-txt b { color: var(--text); font-weight:600; }
-/* A1 · demoted 24h move — mono micro-text, right-aligned just above the bar. */
+/* A1 · the move-line row, right-aligned just above the bar: the 24h move (`.mcardp-h24`, every priced card)
+   or "One side only". */
 .mcardp-moveline { display:flex; justify-content:flex-end; align-items:center; min-height:12px; margin:-3px 0 -5px; }
-.mcardp-move { display:inline-flex; align-items:center; gap:3px; font-family:var(--font-mono); font-size:10px; font-weight:600; letter-spacing:0.02em; line-height:1; font-variant-numeric:tabular-nums; white-space:nowrap; }
-.mcardp-move svg { width:10px; height:10px; }
-.mcardp-move .u { opacity:0.6; margin-left:1px; }
 /* A1 · 24h YES% sparkline directly under the bar; draws in on mount.
    pathLength=1 normalizes the dash regardless of the rendered card width. */
 .mcardp-spark { margin-top:-4px; height: var(--mcard-spark-h); }
@@ -4768,6 +4866,14 @@ html[data-sheet-open] .route-enter { animation: none; }
    These are classes, not inline styles, precisely because the delivered bundle
    shipped them inline and law 15 names that as the failure mode by example. */
 .mcardp-pct--empty { color: var(--text-faint); font-size: 22px; }
+/* ── A settled card's RESULT word wears its own side's ink (landing v3 C1 §10) ──
+   `.mcardp-pct` is the YES ink because the slot usually holds the YES price. A
+   result is a verdict, so a NO result takes the no ink and a void the neutral
+   muted ink; the "Result" caption above it is not a side at all, so it is
+   neutral too. Up and Down follow YES and NO (stored outcome). */
+.mcardp-pct--no { color: var(--no-400); }
+.mcardp-pct--void { color: var(--text-muted); }
+.mcardp-pctcap--result { color: var(--text-subtle); }
 .mcardp-nobets {
   font-family: var(--font-mono);
   font-size: 10px;
@@ -4789,7 +4895,10 @@ html[data-sheet-open] .route-enter { animation: none; }
    on a closed or settled one-sided card the row is new). The NOTE is
    the refund rule, a sentence, so it reads at the §T4 floor (--type-small, 13px,
    L6) in the muted body ink, never as a micro-label; it takes the slot the 24h
-   band would, which a one-sided card never draws. */
+   band would, which a one-sided card never draws.
+   ⭐ C1: both classes are ALSO read outside a `.mcardp` (neither needs the
+   parent) — the market detail page (the rail's label row and the refund note),
+   the /live pulse card, the /results spotlight and the Up & Down label row. */
 .mcardp-oneside {
   font-family: var(--font-mono);
   font-size: var(--type-label);
@@ -4799,15 +4908,84 @@ html[data-sheet-open] .route-enter { animation: none; }
   white-space: nowrap;
   color: var(--text-subtle);
 }
-.mcardp-onesided-note {
+.mcardp-onesided-note,
+.kp-qrow__note {
   font-size: var(--type-small);
   line-height: 1.4;
   color: var(--text-muted);
   text-wrap: pretty;
   /* A reading measure: on the full-width featured card at 768–1023 the sw note set as ONE ~104-
-     character line (V7). Every card narrower than ~560px is untouched. */
+     character line (V7). Every card narrower than ~560px is untouched. The board row's note (WP4)
+     shares this ONE rule, so a full-width desktop row holds the same measure. */
   max-inline-size: 60ch;
 }
+
+/* ── The featured card, and the landing's source line (landing v3 · WP3) ─────────────────────────
+   Written mobile-first: the base rules are the phone's, and every wider rule is a `min-width` block —
+   no phone-only query, so the Compact fence (`test:density-contract` §2) has nothing to police. None of
+   these selectors is one a guard reads by first match. */
+/* The question. Whole from 640 — h4, then h3 from 1024 (the concept's 21–26px mapped onto the locked
+   ladder). Below 640 it keeps the card's 15px and clamps at THREE lines in every language: at 360 the
+   hero's first screen has ~65px left for everything WP3 adds (hero v3 §7), and the clamp paints an
+   ellipsis while the h2 keeps the whole question for a screen reader and the card's link names it. */
+.mcardp--featured .mcardp-q { -webkit-line-clamp: 3; min-height: 0; overflow-wrap: break-word; text-wrap: pretty; }
+@media (min-width: 640px) {
+  .mcardp--featured .mcardp-q { display: block; -webkit-line-clamp: unset; overflow: visible; font-size: var(--type-h4); font-weight: 700; }
+}
+@media (min-width: 1024px) {
+  .mcardp--featured .mcardp-q { font-size: var(--type-h3); line-height: 1.25; }
+}
+/* The time left, top-right: the meta row's rung, in `--text` (the tracker's ink; a countdown never takes
+   the betting pair, `test:betting-ink`). `margin-left: auto` keeps it right-aligned on whichever line it
+   lands when the chip row wraps (D65: chips wrap, never cut). */
+.mcardp-closes {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: var(--type-micro);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--text);
+}
+/* "Closes 27 Sep · Settles on {source}" is a SENTENCE, so it reads at the reading floor in body type (L6,
+   the settled strip's `.kp-settled__meta` precedent), never as 12px mono caps. It wraps and is never
+   ellipsised (V2); a long host breaks rather than overflows. A data line, so no eyebrow tracking. */
+.mcardp-src {
+  margin-top: var(--sp-1);
+  font-size: var(--type-small);
+  line-height: 1.4;
+  color: var(--text-subtle);
+  overflow-wrap: anywhere;
+  text-wrap: pretty;
+}
+.mcardp-srcname { color: var(--text-muted); }
+/* The featured card's line is a child of the CARD, after the question and before the pick in the
+   reading order (K36). Below 640 it is SHOWN under the YES/NO row — the first screen at 360 has no room
+   above it (V15, hero v3 §7) — by `order`, which moves no focusable thing (it is text). From 640 it sits
+   where it reads. */
+.mcardp-src--featured { margin-top: 0; order: 1; }
+.mcardp--featured > .mcardp-meta,
+.mcardp--featured > .mcardp-foot { order: 2; }
+@media (min-width: 640px) {
+  .mcardp-src--featured { order: 0; max-inline-size: 60ch; }
+  .mcardp--featured > .mcardp-meta,
+  .mcardp--featured > .mcardp-foot { order: 0; }
+}
+/* The 24h move — ONE reading on every priced card ("▲5 · 24h ago"): the meta row's rung, neutral ink (a move
+   of the YES price is not a side, §B2a; `test:betting-ink` §5). The featured card keys it to the mark on its
+   bar. It rides the move-line row the card always had, so it costs no height. */
+.mcardp-h24 {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  font-family: var(--font-mono);
+  font-size: var(--type-micro);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--text-subtle);
+}
+/* The legend key: the mark's own shape and ink, so "▲5 · 24h ago" names the hairline on the bar. */
+.mcardp-h24-key { width: 2px; height: 10px; border-radius: var(--r-pill); background: var(--text); }
 @media (hover: hover) {
   .mcardp-details:hover { text-decoration: underline; }
 }
@@ -5404,69 +5582,237 @@ textarea::-webkit-resizer {
 .kp-topic__pool { white-space: nowrap; }
 .kp-topic__live { color: var(--text-muted); }
 
-/* ── §1e UP AND DOWN — a live round, full width (landing v3, WP12) ────────────────────────────
-   It was a 920px link-card with a count and a button, centred to close a hole at 1440 that a
-   two-item flex row left. v3 has content on both sides — the copy and its actions, then the round:
-   its price line, its ring — so it takes the board column (Ali, R4(6)), and it is a CONTAINER, not
-   a link, because it now holds links of its own (WP17). Two columns once each can hold 360px,
-   stacked below that. Same raised material as the market cards (`--wash-raised`), not a poster wash. */
+/* ── §1e UP AND DOWN — the match (landing v3, WP12 · R5, 2026-09-27) ─────────────────────────────
+   A scoreboard and a match timeline for one live round (spec updown-band-v2 §6). The round's state
+   (aged, closed) is a data attribute on the band's client wrapper (UpdownMatchState), so nothing here
+   needs :has() — a browser without it would otherwise keep a present-tense verdict for ever.
+   Same raised material as the market cards (`--wash-raised`); full width of the board column (R4(6)).
+   Four type roles in the round panel: display (the verdict only), title (the asset name only), body
+   (13px Inter) and figures (mono). Nothing new in the panel is tracked or uppercase. */
 .kp-updown {
-  position: relative;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr));
-  align-items: center;
-  gap: var(--sp-6);
-  padding: var(--sp-5);
-  border: 1px solid var(--border);
-  border-radius: var(--r-xl);
-  background: var(--wash-raised);
-  box-shadow: var(--elev-raised);
+  position: relative; display: grid; grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: "copy" "round" "acts"; align-items: start; row-gap: var(--sp-4);
+  /* Below 768 the card's inset is the market cards' (--sp-4), not --sp-5: the 8px it returns is what keeps
+     the plate's dated detail on ONE line at 360 ("saa 18:38 · Chini ya ufunguzi kwa $12.40", measured
+     2026-09-27 — it wrapped at --sp-5). */
+  padding: var(--sp-4); border: 1px solid var(--border); border-radius: var(--r-xl);
+  background: var(--wash-raised); box-shadow: var(--elev-raised);
 }
-@media (min-width: 768px) { .kp-updown { padding: var(--sp-6); } }
-.kp-updown__copy { min-width: 0; display: flex; flex-direction: column; gap: var(--sp-2); }
-.kp-updown__acts { display: flex; flex-wrap: wrap; gap: var(--sp-3); margin-top: var(--sp-3); }
-/* UP and DOWN share a phone's width equally; from 640 they keep their own. */
-@media (max-width: 639.98px) {
-  /* density: general — the home Up & Down band, not the board; both card-spacing settings. */
-  .kp-updown__bet { flex: 1 1 0; justify-content: center; }
+.kp-updown--solo { grid-template-areas: "copy" "acts"; }
+@media (min-width: 768px) { .kp-updown { padding: var(--sp-6); row-gap: var(--sp-5); } }
+@media (min-width: 1024px) {
+  .kp-updown:not(.kp-updown--solo) { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+    grid-template-areas: "copy round" "acts round"; column-gap: var(--sp-8); }
+  .kp-updown:not(.kp-updown--solo) > .kp-updown__copy { align-self: end; }
+  .kp-updown:not(.kp-updown--solo) > .kp-updown__acts { align-self: start; }
+  .kp-updown:not(.kp-updown--solo) > .kp-udmatch { align-self: center; padding-top: 0; border-top: 0;
+    padding-left: var(--sp-6); border-left: 1px solid var(--border); }
 }
-/* When betting on the round has closed the ring says so, and UP/DOWN leave with it: a button into
-   a round that takes no bets is an invitation the page cannot honour. Where `:has()` is unsupported
-   they stay, and the round page states the closed round itself. */
-.kp-updown:has(.kp-udring[data-closed]) .kp-updown__bet { display: none; }
-.kp-updown__round { min-width: 0; display: flex; flex-direction: column; gap: var(--sp-3); }
-.kp-updown__head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-3); flex-wrap: wrap; }
-.kp-updown__open { font-family: var(--font-mono); font-weight: 700; font-size: var(--type-small); font-variant-numeric: tabular-nums; color: var(--text); }
-/* The round's rule, as the round page states it: UP at or above one price, DOWN at or below the other. */
-.kp-updown__rules { margin: 0; display: flex; flex-wrap: wrap; gap: var(--sp-1) var(--sp-4); font-family: var(--font-mono); font-weight: 700; font-size: var(--type-small); font-variant-numeric: tabular-nums; }
-.kp-updown__rule--up { color: var(--yes-300); }
-.kp-updown__rule--down { color: var(--no-300); }
-.kp-updown__viz { display: flex; align-items: center; gap: var(--sp-4); }
-.kp-updown__note { margin: 0; font-size: var(--type-small); color: var(--text-subtle); }
+.kp-updown__copy { grid-area: copy; min-width: 0; display: flex; flex-direction: column; gap: var(--sp-2); }
+.kp-updown__copy > p { text-wrap: balance; }
+/* The S8 line ("raundi 2 hai sasa | Raundi mpya …") is a sentence: the 13px floor, not the topic tiles' micro. */
+.kp-updown .kp-topic__m { font-size: var(--type-small); }
+.kp-updown__acts { grid-area: acts; display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-3); }
+/* (0,2,0) and (0,3,0): they beat the unlayered .btn and .kp-shead__link display rules. At close the
+   quiet "all rounds" link gives way to the primary "play the next round" — the path forward. */
+.kp-updown .kp-updown__next { display: none; }
+.kp-updown[data-closed] .kp-updown__all { display: none; }
+.kp-updown[data-closed] .kp-updown__next { display: inline-flex; }
 
-/* The price line: the round's real reads since it opened, the opening price dashed across. Strokes
-   keep their width however the box stretches (`vector-effect` on the elements). */
-.kp-udchart { flex: 1 1 auto; min-width: 0; height: 112px; display: block; overflow: visible; }
-.kp-udchart__open { stroke: var(--text-subtle); stroke-width: 1; stroke-dasharray: 6 4; }
-/* The line is NEUTRAL: the round is not decided by "above or below the open" but by the two targets,
-   which carry the outcome inks. */
-.kp-udchart__line { fill: none; stroke: var(--text); stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; }
-/* DOTTED, so the caption can name them apart from the dashed opening line by pattern, not by colour
-   alone (WCAG 1.4.1). */
-.kp-udchart__target { stroke-width: 1.5; stroke-dasharray: 0.5 4; stroke-linecap: round; opacity: 0.9; }
-.kp-udchart__target--up { stroke: var(--yes-300); }
-.kp-udchart__target--down { stroke: var(--no-300); }
+.kp-udmatch { grid-area: round; min-width: 0; display: flex; flex-direction: column; gap: var(--sp-4);
+  padding-top: var(--sp-4); border-top: 1px solid var(--border); }
+@media (min-width: 768px) { .kp-udmatch { gap: var(--sp-5); padding-top: var(--sp-5); } }
 
-/* The ring: time left to bet as an arc with the digits inside (96px, the delivery's size), and its
-   caption under it on the eyebrow rung, free to wrap. The digits are the only thing on the page
-   that change every second. */
-.kp-udring { flex: none; width: 128px; display: flex; flex-direction: column; align-items: center; gap: var(--sp-2); text-align: center; }
-.kp-udring__dial { position: relative; width: 96px; height: 96px; display: flex; align-items: center; justify-content: center; }
-.kp-udring__svg { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); }
-.kp-udring__track { fill: none; stroke: var(--border); stroke-width: 3; }
-.kp-udring__arc { fill: none; stroke: var(--brand-400); stroke-width: 3; stroke-linecap: round; }
-.kp-udring__digits { position: relative; font-family: var(--font-mono); font-weight: 700; font-size: var(--type-h3); font-variant-numeric: tabular-nums; line-height: 1; color: var(--text); }
-.kp-udring__cap { font-family: var(--font-mono); font-weight: 700; font-size: var(--type-micro); text-transform: uppercase; letter-spacing: 0.08em; line-height: 1.3; color: var(--text-subtle); overflow-wrap: anywhere; text-wrap: balance; }
+/* G1 — identity and clock. Below 768 two rows; from 768 one row, clock on the right. */
+.kp-udmatch__head { display: flex; flex-direction: column; gap: var(--sp-2); }
+@media (min-width: 768px) { .kp-udmatch__head { flex-direction: row; align-items: center; justify-content: space-between; gap: var(--sp-4); } }
+.kp-udmatch__fixture { margin: 0; display: flex; align-items: center; gap: var(--sp-2); min-width: 0; }
+.kp-udmatch__mark { --mark: var(--sp-8); }
+@media (min-width: 768px) { .kp-udmatch__mark { --mark: var(--sp-10); } }
+.kp-udmatch__name { font-family: var(--font-display); font-weight: 600; font-size: var(--type-body); line-height: 1.25; color: var(--text); }
+
+/* Baseline, not centre: the 13px caption and the mono digits read as one sentence ("Betting closes in 08:25"), and
+   centring stepped the caption's baseline 3–4px above the digits' (frame panel round 2). */
+.kp-udclock__row { margin: 0; display: flex; align-items: baseline; gap: var(--sp-2); height: var(--sp-5); }
+.kp-udclock__row--closed { display: none; }
+.kp-updown[data-closed] .kp-udclock__row--open { display: none; }
+.kp-updown[data-closed] .kp-udclock__row--closed { display: flex; }
+.kp-udclock__glyph { flex: none; align-self: center; color: var(--text-faint); }
+@media (max-width: 359px) {
+  /* density: general — the band's closed clock row fitting 320, not card spacing; both card-spacing settings. */
+  /* "Dau limefungwa" + "Tazama raundi hii ›" is 256px and the row has 254 at 320: the link's chevron gives way (the
+     link keeps its ink and weight), so the lock and the text column stay put and the row keeps one line. */
+  .kp-udclock__watch svg { display: none; }
+  /* One plate height for every state below 360, sized for the tallest (kick-off: two verdict lines + two lines),
+     so no refresh, aging or first read moves the picks (frame panel round 3). */
+  /* (0,2,0) on purpose: the <640 rule below is (0,1,0) and later in the file, and it won at 320 (drive 6). */
+  .kp-udbug .kp-udbug__mid { min-height: calc(var(--sp-1) * 3 + var(--vd) * 1.15 * 2 + var(--type-small) * 2.9); }
+  /* The clauses stack instead of breaking after a dangling "·": the time on one line, the move on the next. */
+  .kp-udbug__detail .kp-udbug__sep, .kp-udbug__verdict .kp-udbug__sep { display: none; }
+  .kp-udbug__detail .kp-udbug__chunk, .kp-udbug__kick, .kp-udbug__pick-side { display: block; }
+}
+.kp-udclock__cap { font-size: var(--type-small); line-height: 1.35; color: var(--text-subtle); white-space: nowrap; }
+/* line-height 1: the digits' line box never outgrows the row's --sp-5, so the row is the same height open and
+   closed (measured 2026-09-27: 23px open vs 20px closed at 768+, the band jumped at close). */
+.kp-udclock__digits { margin-left: auto; font-family: var(--font-mono); font-weight: 700; font-size: var(--type-h4);
+  font-variant-numeric: tabular-nums; line-height: 1; color: var(--text); }
+/* The Watch link: a 44px tap box inside a 20px row — the negative margin spends the box in the gaps around
+   the row, so the row does not grow at close (44 = --h-control-md). Sentence case in the body face, like the
+   caption beside it (I-17: C8 keeps only the Chip and the section link tracked); it never wraps — in tracked
+   caps "TAZAMA RAUNDI HII" broke onto two lines at 360 (measured 2026-09-27). */
+.kp-udclock__watch { display: inline-flex; align-items: center; gap: var(--sp-1); min-height: var(--h-control-md);
+  margin-left: auto; margin-block: calc((var(--sp-5) - var(--h-control-md)) / 2); white-space: nowrap;
+  font-size: var(--type-small); font-weight: 600; color: var(--brand-300); transition: color var(--t-quick) ease-out; }
+.kp-udclock__watch:hover { color: var(--brand-200); }
+/* The ring hugs the LABEL: around the 44px tap box (spent in the gaps above and below the 20px row) the kit's ring
+   ran over the fixture Chip and onto the plate (frame panel round 4). */
+.kp-udclock__watch:focus-visible { outline: none; }
+.kp-udclock__watch-label { display: inline-flex; align-items: center; gap: var(--sp-1); }
+.kp-udclock__watch:focus-visible .kp-udclock__watch-label { outline: 2px solid var(--brand-500); outline-offset: 2px; border-radius: var(--r-sm); }
+@media (min-width: 768px) {
+  .kp-udclock__digits { margin-left: 0; font-size: var(--type-h3); }
+  .kp-udclock__watch { margin-left: var(--sp-2); }
+}
+
+/* G2 — the score: one plate holding the verdict and the two sides. The sides ARE the Up/Down links,
+   always solid and equal — the leader is never lit (L17); it is told by the verdict's words, arrow and ink.
+   Concentric radii: plate --r-lg (16) − 4px inset = the buttons' --r-md (12). */
+.kp-udbug { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-areas: "mid mid" "up down";
+  gap: var(--sp-1); padding: var(--sp-1); background: var(--bg-inset); border: 1px solid var(--border); border-radius: var(--r-lg); }
+@media (min-width: 640px) {
+  .kp-udbug { grid-template-columns: minmax(112px, 1fr) minmax(0, 2fr) minmax(112px, 1fr);
+    grid-template-areas: "up mid down"; align-items: center; }
+}
+/* The words block has ONE height in every state — the verdict line plus two lines of detail/note — and its words
+   centre in it: the picks never move when the 60-second refresh changes the state (a one-row plate from 640 moved
+   ~10px between S1 and S3/S5), and a one-line detail leaves no empty strip under it (frame panel round 2). */
+.kp-udbug { --vd: var(--type-h3); }
+@media (min-width: 768px) { .kp-udbug { --vd: var(--type-h2); } }
+.kp-udbug__mid { grid-area: mid; min-width: 0; display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: var(--sp-1); padding: var(--sp-2); text-align: center;
+  min-height: calc(var(--sp-2) * 2 + var(--vd) * 1.15 + var(--sp-1) + var(--type-small) * 2.9); }
+.kp-udbug__verdict { margin: 0; font-family: var(--font-display); font-weight: 700; font-size: var(--vd);
+  line-height: 1.15; letter-spacing: -0.01em; color: var(--text); text-wrap: balance; word-break: keep-all;
+  transition: color var(--t-base) var(--m-glide); }
+/* inline-block: Tailwind's preflight makes every svg display:block, which put the arrow on a line of its own
+   above the words (measured 2026-09-27 — the verdict ran to two lines at every width). */
+.kp-udbug__arrow { display: inline-block; width: 0.8em; height: 0.8em; margin-inline-end: var(--sp-1); vertical-align: -0.05em; }
+/* The verdict's words never split; the kick-off line may break only after its dot, keeping "pick a side" whole.
+   (Scoped to the verdict: the kick-off DETAIL reuses the tense spans and must wrap at 360.) */
+.kp-udbug__verdict :is(.kp-udbug__now, .kp-udbug__was, .kp-udbug__kick), .kp-udbug__cta > span { white-space: nowrap; }
+.kp-udbug__was { display: none; }
+.kp-udbug[data-lead="up"] .kp-udbug__verdict { color: var(--yes-300); }
+.kp-udbug[data-lead="down"] .kp-udbug__verdict { color: var(--no-300); }
+.kp-udbug[data-lead="awaiting"] .kp-udbug__verdict { color: var(--text-subtle); }
+/* AGED — after the lead rules on purpose: equal specificity, so source order decides. */
+.kp-updown[data-aged] .kp-udbug__verdict { color: var(--text-muted); }
+.kp-updown[data-aged] .kp-udbug__now { display: none; }
+.kp-updown[data-aged] .kp-udbug__was { display: inline; }
+.kp-updown[data-closed] .kp-udbug__cta { display: none; }
+/* DECIDED — past the deciding instant the headline is "Inasubiri tokeo" in neutral ink, never the last lead. */
+.kp-udbug__decided { display: none; }
+.kp-updown[data-decided] .kp-udbug__verdict { color: var(--text); }
+.kp-updown[data-decided] .kp-udbug__verdict > :not(.kp-udbug__decided) { display: none; }
+.kp-updown[data-decided] .kp-udbug__decided { display: inline; }
+.kp-udbug__sub { display: flex; flex-direction: column; align-items: center; font-size: var(--type-small); }
+@media (max-width: 639px) {
+  /* density: general — the plate's two-tier layout below its one-row width, not card spacing; both settings. */
+  /* The words' insets step down to --sp-1 (8px with the plate's own, above and below alike), so the clock, the
+     answer and both picks sit within the spec's 170px at 360 (§15.4). */
+  .kp-udbug__mid { padding-block: var(--sp-1);
+    min-height: calc(var(--sp-1) * 3 + var(--vd) * 1.15 + var(--type-small) * 2.9); }
+  /* Below 640 the words keep a --sp-1 inline inset too: the dated detail then has room for its longest spec'd
+     one-line form, "saa 20:16 · Chini ya ufunguzi kwa $999.99", at 360 (§15.4). */
+  .kp-udbug__mid { padding-inline: var(--sp-1); }
+}
+/* The level line's tail ("— haitoshi kuamua" / "— not enough to decide") restates the verdict "Hakuna anayeongoza",
+   so the band shows the line without it at every width (the round page keeps the full sentence). Selected through the
+   detail so no stacking rule can re-show it (frame panel round 3: it leaked back at 320). */
+.kp-udbug__detail .kp-udbug__sep--tail, .kp-udbug__detail .kp-udbug__chunk--tail { display: none; }
+.kp-udbug__detail, .kp-udbug__note, .kp-udbug__agednote { margin: 0; font-size: var(--type-small); line-height: 1.45; text-wrap: balance; }
+.kp-udbug__chunk { white-space: nowrap; }
+.kp-udbug__agednote { display: none; color: var(--text-subtle); }
+.kp-updown[data-aged]:not([data-closed]) .kp-udbug__agednote { display: block; }
+.kp-udbug__detail { color: var(--text-muted); }
+.kp-udbug__detail .amount { font-weight: 700; color: var(--text); }
+.kp-udbug__note { color: var(--text-subtle); }
+.kp-udnum { white-space: nowrap; }
+.kp-udbug__pick--up, .kp-udbug__side--up { grid-area: up; }
+.kp-udbug__pick--down, .kp-udbug__side--down { grid-area: down; }
+/* CLOSED — the picks leave; inert, neutral sides with the suspended-selection padlock take their exact box. */
+.kp-udbug__side { display: none; align-items: center; justify-content: center; gap: var(--sp-2);
+  height: var(--h-control-lg); border: 1px solid var(--border); border-radius: var(--r-md);
+  font-weight: 600; font-size: var(--type-body); color: var(--text-subtle); }
+.kp-udbug__side > svg { color: var(--text-faint); }
+.kp-updown[data-closed] .kp-udbug__pick { display: none; }
+.kp-updown[data-closed] .kp-udbug__side { display: flex; }
+
+/* G3 — the match timeline (components/charts/updown-match-track.tsx). Plot 56 · 64 from 768 · 72 from 1024.
+   Neutral time: the rail, posts, played stretch and playhead never take a side's ink (§B2a) or gilt (L8). */
+.kp-udtrack { --trk-h: calc(var(--sp-12) + var(--sp-2)); display: grid; grid-template-columns: var(--sp-3) minmax(0, 1fr);
+  grid-template-rows: var(--sp-5) var(--trk-h); column-gap: var(--sp-2); padding-inline-end: var(--sp-2); }
+@media (min-width: 768px) { .kp-udtrack { --trk-h: var(--sp-16); } }
+@media (min-width: 1024px) { .kp-udtrack { --trk-h: calc(var(--sp-16) + var(--sp-2)); } }
+.kp-udtrack__gutter { grid-area: 2 / 1; display: flex; flex-direction: column; justify-content: space-around;
+  align-items: center; color: var(--text-faint); }
+.kp-udtrack__lane { grid-area: 1 / 2; position: relative; }
+.kp-udtrack__open { position: absolute; left: 0; bottom: var(--sp-1); font-size: var(--type-small); line-height: 1;
+  white-space: nowrap; color: var(--text-subtle); }
+.kp-udtrack__mark { position: absolute; left: var(--x); bottom: var(--sp-1); transform: translateX(-50%); line-height: 0; color: var(--text-subtle); }
+.kp-udtrack__mark--end { transform: translateX(-23%); }          /* the flag's pole sits on the finish post */
+.kp-udtrack__plot { grid-area: 2 / 2; position: relative; }
+.kp-udtrack__svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.kp-udtrack__rail { stroke: var(--text-faint); stroke-width: 2; stroke-linecap: round; }
+.kp-udtrack__locked { stroke: var(--text-subtle); stroke-width: 1; stroke-dasharray: 2 5; opacity: 0.55; }
+.kp-udtrack__post { stroke: var(--text-faint); stroke-width: 1; }
+.kp-udtrack__void { fill: color-mix(in oklab, var(--text-subtle) 22%, transparent); }
+.kp-udtrack__kick { fill: var(--text-subtle); }
+.kp-udtrack__tie { stroke: var(--text-subtle); stroke-width: 2; stroke-linecap: round; }
+.kp-udtrack__stem { stroke-width: 2; stroke-linecap: round; }
+.kp-udtrack__stem--up { stroke: color-mix(in oklab, var(--yes-400) 70%, transparent); }
+.kp-udtrack__stem--down { stroke: color-mix(in oklab, var(--no-400) 70%, transparent); }
+.kp-udtrack__stem--latest { stroke-width: 3; }
+.kp-udtrack__stem--latest.kp-udtrack__stem--up { stroke: var(--yes-400); }
+.kp-udtrack__stem--latest.kp-udtrack__stem--down { stroke: var(--no-400); }
+.kp-udtrack__bead--up { fill: var(--yes-300); transform: translateY(-4px); }
+.kp-udtrack__bead--down { fill: var(--no-300); transform: translateY(4px); }
+/* Emphasis follows the tense: a stale or closed verdict is muted, so its read no longer shouts either. The hue
+   still names the side; only the full-strength emphasis leaves (frame panel, 2026-09-27). */
+.kp-updown:is([data-aged], [data-closed]) .kp-udtrack__stem--latest.kp-udtrack__stem--up { stroke: color-mix(in oklab, var(--yes-400) 70%, transparent); }
+.kp-updown:is([data-aged], [data-closed]) .kp-udtrack__stem--latest.kp-udtrack__stem--down { stroke: color-mix(in oklab, var(--no-400) 70%, transparent); }
+.kp-updown:is([data-aged], [data-closed]) .kp-udtrack__bead--up { fill: color-mix(in oklab, var(--yes-300) 70%, transparent); }
+.kp-updown:is([data-aged], [data-closed]) .kp-udtrack__bead--down { fill: color-mix(in oklab, var(--no-300) 70%, transparent); }
+/* --text-muted (was --text-subtle): the played stretch carries "now" by itself beside a fresh read (round 4). */
+.kp-udtrack__elapsed { position: absolute; left: 0; top: calc(50% - 1px); height: 2px; width: var(--x);
+  background: var(--text-muted); border-radius: var(--r-pill); pointer-events: none; }
+.kp-udtrack__now { position: absolute; top: 20%; bottom: 20%; left: var(--x); width: 2px; margin-left: -1px;
+  background: var(--text-muted); border-radius: var(--r-pill); pointer-events: none; }
+/* Within 2.5% of the newest read (UpdownMatchNow's NOW_NEAR_PCT) the playhead draws only on the half away from it:
+   below the rail beside an Up stem, above it beside a Down stem, clear of a tie tick's 10.7% half-height —
+   so "now" and "the last read" never fuse into one two-tone line (frame panel round 2). */
+/* Round 4: any part of the line beside a fresh read still read as a data mark (a white stem on the other side), so
+   inside the window the line is not drawn at all — "now" is the bright END of the played stretch on the rail, which
+   ends at the same x. The line returns once "now" is clear of the read. */
+.kp-udtrack__now[data-near] { display: none; }
+
+/* G4 — the terms: one glyph column, hanging indent, two sentences in two inks. */
+.kp-udrule { margin: 0; display: grid; grid-template-columns: var(--sp-3) minmax(0, 1fr); column-gap: var(--sp-2);
+  font-size: var(--type-small); line-height: 1.45; text-wrap: balance; }
+.kp-udrule__glyph { display: flex; align-items: center; height: 1.45em; color: var(--text-subtle); }
+.kp-udrule__decides { color: var(--text-muted); }
+.kp-udrule__was { display: none; }
+.kp-updown[data-decided] .kp-udrule__now { display: none; }
+.kp-updown[data-decided] .kp-udrule__was { display: inline; }
+.kp-udrule__refund { color: var(--text-subtle); }
+/* From 640 the second sentence moves as one unit: it stays on one line wherever the rule fits and otherwise breaks
+   at the full stop — at 1024 it split "from / the open" (round 4). Below 640 the two-line budget rules. */
+@media (min-width: 640px) { .kp-udrule__refund { display: inline-block; } }
+/* keep-all everywhere EXCEPT zh — the trust band's measured rule (trust-band.tsx): in Chinese it forbids
+   a break between characters and leaves a paragraph ending after seven glyphs. */
+html:not([lang="zh"]) :is(.kp-udbug__detail, .kp-udbug__note, .kp-udbug__agednote, .kp-udrule) { word-break: keep-all; overflow-wrap: break-word; }
+/* The rule's two short Chinese sentences are the exception: keep-all there breaks only at 。，and spaces, so no word
+   (相差) is split at a line end — the long trust-band paragraphs keep the general rule. */
+html[lang="zh"] .kp-udrule { word-break: keep-all; }
 
 /* ── WP14 THE WALLET (landing v3 · Ali's ruling R1, 2026-09-26) ─────────────────────────────────
    The balance chip opens it: a bottom sheet below 1024, a panel under the chip from 1024 (`<Modal
@@ -5676,7 +6022,11 @@ textarea::-webkit-resizer {
    the footer's own keys, so no RG sentence was written or paraphrased. `.kp-settled`'s band now
    runs straight into the footer's claret rule.
    The roundel itself stays here, ONE definition: the footer's identity column and the hero's
-   trust lines both wear `.kp-rg__18`, so the two marks cannot drift to different sizes again. */
+   trust lines both wear `.kp-rg__18`, so the two marks cannot drift to different sizes again.
+   ⭐ NEUTRAL INK SINCE 2026-09-27 (INHERIT-MANIFEST R7(5), Ali): ring `--text-subtle`, numerals
+   `--text` — a seal, not a stop sign. It was the NO rose (`--no-700` ring, `--no-300` numerals),
+   which borrowed the betting pair for a meaning that is not money (§B2/B2a). One definition, so the
+   footer's badge changed with the hero's. */
 .kp-rg__18 {
   flex: none;
   display: inline-flex;
@@ -5684,12 +6034,12 @@ textarea::-webkit-resizer {
   justify-content: center;
   width: 28px;
   height: 28px;
-  border: 2px solid var(--no-700);
+  border: 2px solid var(--text-subtle);
   border-radius: var(--r-pill);
   font-family: var(--font-display);
   font-weight: 700;
   font-size: var(--type-micro);
-  color: var(--no-300);
+  color: var(--text);
 }
 
 
@@ -5829,6 +6179,125 @@ textarea::-webkit-resizer {
   height: 5px;
   border-radius: var(--r-pill);
   background: var(--gilt);
+}
+
+/* ── THE CENTRE COIN — UPDATE-2026-09-28 §2 ───────────────────────────────────────
+   The rail's middle slot is the wallet's door, and the coin is the 50pick mark AS a control: the
+   ring follows the mark's split at its own −14°, the needle rides that split and shows past the
+   rim, and the hub's centre is the mark's navy.
+
+   ⭐ THE COLOURS ARE PASSED IN, NOT TYPED HERE. `bottom-nav.tsx` hands them over as
+   `--kp-coin-green/red/gold/pivot` out of `src/lib/brand-mark.ts`, which is the ONE definition of
+   the mark (audit C11) — so the in-app mark, the exported assets and this coin cannot drift apart.
+   They are brand identity rather than theme tokens, per DESIGN_AUTHORITY B1.
+
+   ⭐ THE FILL IS THE HEADER PILL'S OWN STRUCK RAMP (`--gilt-metal` + `--gilt-sheen`), so money
+   reads as ONE material across the product. ⛔ NOT the `.gilt-metal` CLASS: that class also owns
+   a hover lift and a press scale, and putting it on the inner disc would slide the fill out of
+   its own ring. The material is shared; the interaction belongs to the whole slot.
+
+   ⛔ FINAL SIZE: 52px, rising 14px, no notch. A 68px coin raised 42px and a flush 42px coin were
+   both built and both rejected — the first outweighed YES/NO and covered the first screen, the
+   second was too timid for the brand's centre.
+
+   ⚠️ THE KNOB IS THE PULL, AND THE RISE IS WHAT IT MEASURES — THE TWO ARE NOT THE SAME NUMBER.
+   `margin-top: -14px` was tried first, on the reading that the pull IS the rise. It measured a 7px
+   rise in every cell. The reason is one line up: `.kp-rail__item` sets `justify-content: center`, so
+   a negative margin shrinks the slot's content block and the centring hands HALF of it straight
+   back. Three measurements, 320–414 × sw/en/zh on a dev host, fix the line:
+     pull 14 → rise  7.0 · rail 66  ✗ (the rail grew 1px: the slot was content-driven, not at its floor)
+     pull 28 → rise 14.5 · rail 65  ✗ (half a pixel over the spec)
+     pull 27 → rise 14.0 · rail 65  ✓ slots 64/64/64/64/64, off-centre ≤ 0.02px
+   ⭐ THE RAIL'S HEIGHT IS PART OF THE PASS. At 27 the centre slot sits exactly on `min-height: 64`,
+   so the coin rises without the row growing — which matters because the <ul> is `items-stretch` and
+   a taller rail eats the footer's reserve.
+   ⛔ DO NOT "TIDY" THIS BY RENAMING THE KNOB `--rise`. The concept's rail has 56px slots and this
+   one has 64px, so the concept's own construction (`margin-top:-14px` + `translateY(-6px)`) does
+   not transfer; what transfers is the 14px of daylight, and `qa:landing-ten` V22 asserts THAT
+   rather than trusting any number written here.
+
+   ⚠️ NOTHING HERE MAY INFLATE THE ROW. The <ul> is `items-stretch`, so one taller slot makes the
+   WHOLE rail taller and eats into the footer's 88px reserve. The negative margin is what lifts
+   the coin without adding to the slot's flow height. */
+.kp-rail__item--coin {
+  /* Measured, not reasoned: see the pull-vs-rise note above. */
+  --kp-coin-pull: 27px;
+}
+.kp-coin {
+  position: relative;
+  flex: 0 0 auto;
+  width: 52px;
+  height: 52px;
+  margin-top: calc(-1 * var(--kp-coin-pull));
+  border-radius: var(--r-pill);
+  /* The ring IS the mark's split. `from -14deg` starts the sweep where the mark's chord meets the
+     rim, so 0–50% paints the RIGHT half red and 50–100% the LEFT half green — the mark's own
+     orientation, not a mirror of it. */
+  background: conic-gradient(from -14deg,
+      var(--kp-coin-red) 0 50%,
+      var(--kp-coin-green) 50% 100%);
+  /* The halo separates the coin from page content WITHOUT a notch; the drop shadow lifts it. */
+  box-shadow: 0 0 0 4px var(--panel), 0 6px 14px oklch(6% 0.06 268 / 0.45);
+  transition: transform var(--t-quick) var(--m-glide);
+}
+/* The needle sits BETWEEN the ring and the face, which is what makes it read as one continuous
+   line: hidden under the disc, visible across the 3.5px ring, and 5px past the rim at each end.
+   ⚠️ It is painted by DOM order, not z-index — face after needle. */
+.kp-coin__needle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 3px;
+  height: 62px;
+  border-radius: 2px;
+  background: var(--kp-coin-gold);
+  transform: translate(-50%, -50%) rotate(-14deg);
+}
+/* The struck disc, inset by the ring's 3.5px. */
+.kp-coin__face {
+  position: absolute;
+  inset: 3.5px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r-pill);
+  background-image: var(--gilt-sheen), var(--gilt-metal);
+  background-size: 250% 100%, 100% 100%;
+  background-position: 200% 0, 0 0;
+  box-shadow: var(--gilt-metal-edge), inset 0 -3px 0 oklch(6% 0.06 268 / 0.18);
+  color: var(--gold-fg);
+}
+/* The "+" is the mark's navy, so the money-in verb is painted in the mark's own ink. */
+.kp-coin__plus {
+  display: block;
+  color: var(--kp-coin-pivot);
+}
+/* A HELD wallet gets the mark's HUB instead of a "+": `/wallet/deposit` refuses a held wallet, so
+   the coin stops offering money-in and the slot becomes the Wallet door. Same disc, different
+   verb — and the hub is the mark's own, a gilt disc with a navy pivot. */
+.kp-coin__hub {
+  width: 14px;
+  height: 14px;
+  border-radius: var(--r-pill);
+  background: radial-gradient(var(--kp-coin-pivot) 0 28%, var(--kp-coin-gold) 31%);
+}
+/* Press feedback on the COIN, driven from the slot, because the whole slot is the button. */
+.kp-rail__item--coin:active .kp-coin {
+  transform: scale(0.95);
+}
+@media (prefers-reduced-motion: reduce) {
+  .kp-coin { transition: none; }
+  .kp-rail__item--coin:active .kp-coin { transform: none; }
+}
+/* The label keeps its siblings' size and baseline and takes the money colour.
+   ⚠️ 11px is `--type-micro`, the size EVERY rail label already uses. The concept asks for 12px
+   across the whole rail; that is a rail-wide change and Ali's call, not a lone exception here,
+   because a single 12px label among four 11px ones breaks the shared baseline it asks for. */
+.kp-rail__item--coin .kp-rail__label {
+  font-weight: 800;
+  color: var(--gilt);
+}
+.kp-rail__item--coin[data-on] .kp-rail__label {
+  color: var(--text);
 }
 
 /* =====================================================================
@@ -6116,6 +6585,29 @@ textarea::-webkit-resizer {
 .ud-prices { margin-top: var(--ud-gap-sm); }
 .ud-act { margin-top: auto; padding-top: var(--ud-act-pt); }
 .ud-foot { margin-top: var(--ud-gap-lg); padding-top: var(--ud-gap-sm); }
+/* The round page's open + targets: beside the confirmed price where there is room; below 400 they wrap under it
+   and read as a left-aligned list, not a column floating at the right (frame panel, 2026-09-27). */
+.ud-hero-chunk { white-space: nowrap; }
+@media (max-width: 399px) {
+  /* density: general — the round page's figures wrapping under the price, not card spacing; both settings. */
+  .ud-hero-stats { flex-basis: 100%; text-align: left; }
+  /* The move and its quote stamp stack, the "·" between them hidden — the band's own rule (round 3). */
+  .ud-hero-sep { display: none; }
+  .ud-hero-chunk { display: block; }
+}
+
+/* ── THE ASSET MARK (`asset-mark.tsx`, hoisted from the card 2026-09-27 · landing v3, R5) ─────────
+   One round glyph chip on the board card, the round page and the landing band. Its size is `--mark`:
+   from the caller's class, or set inline when a size is passed; the card's 40px otherwise. A precious
+   metal takes a brighter NEUTRAL chip — lightness and rim weight, never hue: gold is money, and nothing
+   else (Q5, 2026-08-10). `[data-lg]` keeps the card's 14px figure at 44px and up. */
+.ud-mark { display: inline-flex; flex: none; align-items: center; justify-content: center;
+  width: var(--mark, var(--sp-10)); height: var(--mark, var(--sp-10)); border-radius: 50%;
+  font-family: var(--font-mono); font-weight: 700; font-size: var(--type-small);
+  background: var(--bg-inset); border: 1px solid var(--border); color: var(--text-subtle); }
+.ud-mark--metal { background: color-mix(in oklab, var(--text-subtle) 12%, var(--bg-inset));
+  border-color: color-mix(in oklab, var(--text-muted) 42%, transparent); color: var(--text-secondary); }
+.ud-mark[data-lg] { font-size: 14px; }
 
 /* ─────────────────────────────────────────────────────────────────────────────
    [COMPACT] THE MARKET CARD ON A PHONE — U3, docs/MOBILE-VISUAL-PLAN.md.

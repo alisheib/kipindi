@@ -32,10 +32,15 @@ import { I } from "@/components/ui/glyphs";
 import { Chip } from "@/components/ui/chip";
 import { Dot } from "@/components/ui/dot";
 import { cn, formatTzs } from "@/lib/utils";
+import { priceState } from "@/lib/markets/price-state";
 import { usd } from "@/lib/usd-price";
+import { fillNodes } from "@/lib/fill-nodes";
+// ⭐ R5(c) · F1 — the figure's ink is the round's TARGETS, the rule the round page and the landing band read.
+import { valueTone, READ_TONE_TOKEN } from "@/lib/updown-match";
 import { useT } from "@/lib/i18n";
 import { useUpDownQuickBet, usePlacePulse } from "./use-quick-bet";
 import { UpDownStakeControls, GLYPH_NO_SHRINK } from "./updown-stake-controls";
+import { AssetMark } from "./asset-mark";
 import { Button } from "@/components/ui/button";
 // ⭐ The kit's ONE pool-split bar, and the home of the cold-start rail (§B9). See the pool-split
 // block below for why this card stopped drawing its own — PV-06.
@@ -110,15 +115,6 @@ export type UpDownCardProps = {
   myPayoutIfDown?: number | null;
   volumeTzs: number;
   players: number;
-  /**
-   * 0..100, or **null** when the pool is empty. Down is derived — one number, one source.
-   *
-   * ⛔ NULL IS NOT "UNKNOWN, SO SHOW 50". It is *there is no crowd price*, and it is the whole
-   * point of the type (PV-06). Until 2026-09-03 this was a bare `number` fed by
-   * `impliedYesPct`, which hands out a hardcoded 50 on an empty pool — so a live round with
-   * `VOL TZS 0` and no predictors painted a confident "Up 50% · 50% Down". ⛔ Never `?? 50`.
-   */
-  upPct: number | null;
   /**
    * ⭐ D2 · THE ROUND'S REAL POOL + ITS FROZEN RATES, so the two buttons can quote what a
    * player would ACTUALLY be paid instead of a config constant. See `@/lib/updown-pricing`.
@@ -246,56 +242,11 @@ function formatClock(ms: number): string | null {
 }
 
 /**
- * The two-character mark for an asset.
- *
- * ⚠️ NOT `ticker.slice(0, 2)` — XAU and XAG both start "XA", so every metal rendered an
- * identical chip and Gold was visually indistinguishable from Silver on the board.
- * These are the real element symbols, which is also what the design spec asked for.
+ * The asset mark lives in `./asset-mark` since 2026-09-27 (landing v3, R5): the landing's server-side
+ * Up & Down band renders it too, and a server component must not import a helper from this `"use client"`
+ * module. Re-exported so every existing importer of `AssetMark` from here is unchanged.
  */
-const ASSET_MARKS: Record<string, string> = {
-  gold: "Au", silver: "Ag", platinum: "Pt", copper: "Cu", oil: "Oil", fx: "FX", crypto: "₿",
-};
-function markFor(icon: string, ticker: string): string {
-  return ASSET_MARKS[icon] ?? ticker.slice(-2).toUpperCase();
-}
-
-/**
- * The asset mark — a glyph chip carrying which asset this is.
- *
- * ⭐ Q5, RESOLVED 2026-08-10: **GOLD IS MONEY, AND NOTHING ELSE.** This chip used to tint
- * itself with `--gold-500` / `--gold-400` / `--gold-300` when the asset happened to be gold,
- * and its own comment conceded that was "the one place gold is not earned money". M3 says
- * struck gold appears only where money was **earned** — so the product was spending its most
- * meaningful ink on a label, and a player learning "gold = I won something" had to unlearn it
- * on the board.
- *
- * ⛔ The escape hatch closed with Q7. The standing answer was *"accept it — real artwork
- * replaces the tint anyway"*, and Ali ruled 2026-08-10 that the `Au`/`Ag` lettermarks are
- * FINAL. There is no artwork coming, so the tint is not temporary and had to be decided on
- * its merits. It loses: a law with an exception for the one case that tempted us is not a law.
- *
- * ⚠️ Identity still has to be visible — the fix is not "make gold look like everything else".
- * XAU keeps a distinct **neutral metallic** treatment (a brighter rim and ink than the base
- * chip), so the asset is still instantly recognisable without borrowing the money ink.
- */
-export function AssetMark({ icon, ticker, size = 40 }: { icon: string; ticker: string; size?: number }) {
-  // A precious-metal asset earns a brighter METALLIC chip — lightness and rim weight, never hue.
-  const metal = icon === "gold" || icon === "silver" || icon === "platinum";
-  return (
-    <span
-      aria-hidden
-      className="inline-flex shrink-0 items-center justify-center rounded-full font-mono font-bold"
-      style={{
-        width: size, height: size, fontSize: size >= 44 ? 14 : 13,
-        background: metal ? "color-mix(in oklab, var(--text-subtle) 12%, var(--bg-inset))" : "var(--bg-inset)",
-        border: `1px solid ${metal ? "color-mix(in oklab, var(--text-muted) 42%, transparent)" : "var(--border)"}`,
-        color: metal ? "var(--text-secondary)" : "var(--text-subtle)",
-      }}
-    >
-      {markFor(icon, ticker)}
-    </span>
-  );
-}
+export { AssetMark };
 
 /**
  * ⭐ EVERYTHING THIS CARD DERIVES FROM THE CLOCK, IN ONE PURE CALL.
@@ -468,7 +419,7 @@ function CardCountdownDigits({
 export function UpDownCard(props: UpDownCardProps) {
   const {
     roundId, assetName, assetTicker, assetIcon, durationMinutes, decimals,
-    livePrice, openPrice, upTarget, downTarget, movePct, closesAtMs, volumeTzs, players, upPct,
+    livePrice, openPrice, upTarget, downTarget, movePct, closesAtMs, volumeTzs, players,
     pricing, state, outcome, closePrice, voidReason,
     sourceClass, sourceQuotedAt, className,
     selectionClosesAtMs, serverNowMs, myExactPayout, myPayoutIfUp, myPayoutIfDown, myRefundedStake,
@@ -642,11 +593,34 @@ export function UpDownCard(props: UpDownCardProps) {
   // with nothing returned gets the round's neutral void note, never a claim about money.
   const refundCopy = viewerRefundCopy(refundReason, myRefundedStake ?? 0);
   const refundCopyText = refundCopy ? (t.market as Record<string, string>)[refundCopy.key] : undefined;
-  // ⛔ Both null together, or both numbers. A `downPct` that stayed a number while `upPct` went
-  // null would put the cold-start branch and the paint back out of step, which is the defect.
-  const downPct = upPct === null ? null : Math.max(0, 100 - upPct);
-  const dir = movePct == null ? null : movePct > 0 ? "up" : movePct < 0 ? "down" : "flat";
-  const priceColor = dir === "up" ? "var(--yes-300)" : dir === "down" ? "var(--no-300)" : "var(--text-muted)";
+  // ⭐ C1 · THE CARD'S PRICE RULE, from the round's RAW pools (`priceState`): a split only where both sides
+  // hold money (1–99). A one-sided round draws the dashed rail named "One side only" — it used to print
+  // "Up 100% · 0% Down" directly above "Nobody has backed Down yet" on the same card. PV-06 (2026-09-03)
+  // had already stopped an EMPTY round painting "Up 50% · 50% Down". ⛔ Both null together, or both numbers.
+  const price = priceState(pricing.upPool, pricing.downPool);
+  const upPct = price.kind === "priced" ? price.yesPct : null;
+  const downPct = upPct === null ? null : 100 - upPct;
+  /**
+   * ⭐ R5(c) · F1 (2026-09-27) · THE FIGURE WEARS THE ROUND'S TARGETS — the round page's `tone`, the landing band's lead.
+   *
+   * 🔴 It wore the SIGN OF THE MOVE FROM THE OPEN. A read one cent above the open painted green with an up-arrow while
+   * settlement, which needs the UP target reached, would refund every stake there: the band one screen away said
+   * "Nobody leads" and the round page one tap away painted the same read muted. Three surfaces, one read, two answers.
+   * ⭐ `valueTone` is `sideByTargets`, pinned equal to `decideOutcomeByTargets` (`test:updown-match` §1 and §11b): UP at or
+   * above `upTarget`, DOWN at or below `downTarget`, muted strictly between. The open decides only for a round that has
+   * no targets (legacy), exactly the fallback `price-hero.tsx` keeps.
+   * ⛔ The arrow follows the same tone: a level read carries no direction glyph.
+   */
+  const tone = valueTone(livePrice, openPrice, upTarget, downTarget);
+  const priceColor = tone ? `var(${READ_TONE_TOKEN[tone]})` : "var(--text-muted)";
+  // Strictly between the targets the muted figure says WHY, in the band's own words ("Only $0.20 from the open — not
+  // enough to decide"; exactly at the open, the band's "Exactly at the opening price"). Present tense, so only while the
+  // round is undecided — a settled card states its result below, never a verdict on a price that no longer decides.
+  const levelAmount = !settledNow && tone === "level" && livePrice != null && openPrice != null
+    ? usd(Math.abs(livePrice - openPrice), decimals) : null;
+  const levelWords = levelAmount == null ? null
+    : levelAmount === usd(0, decimals) ? t.home.udMatchLevelExact
+    : fillNodes(t.market.udLevelBy, { amount: <span className="amount">{levelAmount}</span> });
   /**
    * ⭐ EVERY FORMATTED STRING ON THIS CARD, COMPUTED ONCE PER CHANGE — not once per render.
    *
@@ -796,27 +770,40 @@ export function UpDownCard(props: UpDownCardProps) {
               : t.market.statusClosed} · {assetTicker}
           </div>
         </div>
-        <div className="shrink-0 text-right">
+      </div>
+
+      {/* ── The confirmed price (R5(c) · F1, 2026-09-27) ─────────────────────
+          ⭐ NAMED, as the round page and the landing band name it: "Confirmed price" while the round runs (the read is a
+          dated confirmed quote, never a live tick — the footer carries its time), "Close" once the figure IS the close.
+          ⛔ IT LEFT THE HEADER TO GET A NAME. Beside the title there was no room for one: the Swahili label alone is
+          wider than the figure, and a squeezed title clamps the game's own name. On its own row the label sits left,
+          the figure and its move right, held together; when the two do not fit one line the figure wraps under the
+          label and stays right-aligned (`ml-auto`), never split and never clipped (M4a). `data-tone` names the ink for
+          the frame drive. */}
+      <div className="ud-read" data-tone={tone ?? "none"}>
+        <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
+          <span className="font-mono text-micro font-semibold uppercase eyebrow text-text-faint">
+            {settledNow ? t.market.udClosePrice : t.market.udConfirmedPrice}
+          </span>
           {livePrice == null ? (
-            <>
-              <div className="font-mono text-[15.5px] font-bold tabular-nums" style={{ color: "var(--text-faint)" }}>—</div>
-              <div className="font-mono text-micro uppercase tracking-[0.10em] text-text-faint">{t.market.udAwaitingRead}</div>
-            </>
+            <span className="ml-auto inline-flex items-baseline gap-2 whitespace-nowrap">
+              <span className="font-mono text-[15.5px] font-bold tabular-nums" style={{ color: "var(--text-faint)" }}>—</span>
+              <span className="font-mono text-micro uppercase tracking-[0.10em] text-text-faint">{t.market.udAwaitingRead}</span>
+            </span>
           ) : (
-            <>
-              <div className="flex items-center justify-end gap-1 font-mono text-[15.5px] font-bold tabular-nums" style={{ color: priceColor }}>
-                {dir === "up" && <I.trendingUp s={11} />}
-                {dir === "down" && <I.trendingDown s={11} />}
+            <span className="ml-auto inline-flex items-baseline gap-2 whitespace-nowrap" style={{ color: priceColor }}>
+              <span className="inline-flex items-center gap-1 self-center font-mono text-[15.5px] font-bold tabular-nums">
+                {tone === "up" && <I.trendingUp s={11} />}
+                {tone === "down" && <I.trendingDown s={11} />}
                 {priceText.live}
-              </div>
+              </span>
               {priceText.move != null && (
-                <div className="font-mono text-[11px] font-semibold tabular-nums" style={{ color: priceColor }}>
-                  {priceText.move}
-                </div>
+                <span className="font-mono text-[11px] font-semibold tabular-nums">{priceText.move}</span>
               )}
-            </>
+            </span>
           )}
         </div>
+        {levelWords && <p className="mt-1 mb-0 text-body-sm leading-[1.45] text-text-muted">{levelWords}</p>}
       </div>
 
       {/* ── Countdown (mandatory: TIMER) ───────────────────────────────── */}
@@ -898,19 +885,21 @@ export function UpDownCard(props: UpDownCardProps) {
           families sit in the same `.mcardp` shell; a 5px bar here and a 7px bar there was one
           idea drawn two ways on one board. */}
       <div className="ud-split">
-        {upPct !== null && downPct !== null && (
+        {upPct !== null && downPct !== null ? (
           <div className="flex items-center justify-between font-mono text-[9.5px] font-bold tracking-[0.06em]">
-            <span style={{ color: "var(--yes-300)" }}>{t.market.udUp} {Math.round(upPct)}%</span>
-            <span style={{ color: "var(--no-300)" }}>{Math.round(downPct)}% {t.market.udDown}</span>
+            <span style={{ color: "var(--yes-300)" }}>{t.market.udUp} {upPct}%</span>
+            <span style={{ color: "var(--no-300)" }}>{downPct}% {t.market.udDown}</span>
           </div>
-        )}
+        ) : price.kind === "oneSided" ? (
+          <div className="flex"><span className="mcardp-oneside">{t.market.oneSideOnly}</span></div>
+        ) : null}
         {/* ⛔ TWO CALLS, NO `?? 50`. A single call would need a numeric fallback for `yesPct`
             on the empty branch, and writing `upPct ?? 50` here — three lines under a prop doc
             that forbids exactly that — is how the fabricated 50 walks back in the moment
             someone deletes the `empty` prop. The branch makes the contract unforgeable. */}
         {upPct === null ? (
           <TippingBar className="mt-1" height={7} showLabels={false} recastOnHover={false}
-            empty emptyLabel={t.market.noBetsYet} />
+            empty emptyLabel={price.kind === "oneSided" ? t.market.oneSideOnly : players === 0 ? t.market.noBetsYet : t.market.noPoolYet} />
         ) : (
           <TippingBar className="mt-1" yesPct={upPct} height={7} showLabels={false}
             recastOnHover={false} resolved={state === "resolved"}
@@ -944,11 +933,16 @@ export function UpDownCard(props: UpDownCardProps) {
           {/* "Higher or lower than $63,572.10" — the OPEN price is the thing being compared
               against, so it is what the heading names. The ± figure stays because it is the
               honest size of the band, and at the tick floor it is reassuringly tiny. */}
-          <div className="flex items-center justify-between gap-2 font-mono text-micro font-semibold uppercase eyebrow text-text-faint">
-            <span className="truncate">
-              {t.market.udWinTarget}{openPrice != null ? ` ${priceText.open ?? ""}` : ""}
+          {/* 🔴 F1 (2026-09-27, the band's frame panel) · THIS HEADING TRUNCATED A MONEY FIGURE. It was one `truncate`
+              run, so at 360 in Swahili "JUU AU CHINI YA $63,572.10" could end "$63,57…" — a clipped number is a wrong
+              number (M4a). Now the words wrap between themselves, the open price is held whole, and the margin keeps
+              the right edge on whichever line it lands. */}
+          <div className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5 font-mono text-micro font-semibold uppercase eyebrow text-text-faint">
+            <span className="min-w-0">
+              {t.market.udWinTarget}
+              {openPrice != null && <>{" "}<span className="whitespace-nowrap tabular-nums">{priceText.open}</span></>}
             </span>
-            {openPrice != null && <span className="shrink-0 tabular-nums">± {priceText.margin}</span>}
+            {openPrice != null && <span className="ml-auto whitespace-nowrap tabular-nums">± {priceText.margin}</span>}
           </div>
           {/* ⚠️ STAGE 9b — these two tiles were examined for the <Stat> consolidation and
               KEPT. They are label-over-value pairs, but not one of them lands on a rung:
@@ -1039,14 +1033,17 @@ export function UpDownCard(props: UpDownCardProps) {
               {/* ⭐ D2 · the empty-side state — the same sentence the signed-in control shows,
                   because a visitor deciding whether to sign up deserves the same fact. Faint
                   informational ink + the `info` glyph: not gold, not an alarm (G5). */}
+              {/* F1 (2026-09-27) · both are SENTENCES — a refund promise and what the multiplier means — and they sat
+                  at 10px, under §T4's 12.5px reading floor. They take the kit's 13px, the size the round page already
+                  prints them at, and the authed card's copy moved with them (`updown-stake-controls.tsx`). */}
               {outEmptyCopy && (
-                <p className="mt-1.5 flex items-start gap-1 text-[10px] leading-[1.45] text-text-faint">
-                  <I.info s={10} className="mt-[2px] shrink-0" />
+                <p className="mt-1.5 flex items-start gap-1 text-body-sm leading-[1.45] text-text-faint break-keep [overflow-wrap:anywhere]">
+                  <I.info s={11} className="mt-[2px] shrink-0" />
                   <span>{outEmptyCopy}</span>
                 </p>
               )}
               {(outMultUp != null || outMultDown != null) && (
-                <p className="mt-1 text-[10px] leading-[1.45] text-text-faint">{t.market.udEstimateNote}</p>
+                <p className="mt-1 text-body-sm leading-[1.45] text-text-faint break-keep [overflow-wrap:anywhere]">{t.market.udEstimateNote}</p>
               )}
             </>
           )
@@ -1224,14 +1221,21 @@ export function UpDownCard(props: UpDownCardProps) {
           ⛔ Do not "fix" this by dropping the seconds. E-47b's whole finding was a source that
           had quoted 14 minutes before we read it; second-level precision is the evidence.
           ⚠️ Found by LOOKING, at a width a suite had no reason to visit — `document.scrollWidth`
-          cannot see clipping INSIDE a card, which is why `qa:asset-board` measures elements. */}
-      <div className="ud-foot flex flex-wrap items-center justify-between gap-x-2 gap-y-1 font-mono text-[9.5px] text-text-faint"
+          cannot see clipping INSIDE a card, which is why `qa:asset-board` measures elements.
+          🔴 F1 (2026-09-27, the band's frame panel) · AND IT WAS A SENTENCE AT 9.5px — "Soko la metali · imenukuliwa
+          17:52:03 EAT", 3px under §T4's reading floor, on the one line that says where the price came from and when.
+          It takes the kit's 13px. The words set in the body face, the figures in mono (§T5); "· imenukuliwa 17:52:03 EAT"
+          and "Ufunguzi $63,572.10" are each held whole, so the line wraps BETWEEN them — never inside a time or a
+          price, and never leaving the dot stranded at a line's end (the stamp carries it onto its own line). The
+          seconds stay (E-47b). */}
+      <div className="ud-foot flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 text-body-sm text-text-faint"
            style={{ borderTop: "1px solid color-mix(in oklab, var(--border) 55%, transparent)" }}>
         <span className="min-w-0">
-          {t.market[SOURCE_CLASS_KEY[sourceClass]]}{quoted ? ` · ${t.market.udQuoted} ${quoted}` : ""}
+          {t.market[SOURCE_CLASS_KEY[sourceClass]]}
+          {quoted && <>{" "}<span className="whitespace-nowrap">{"· "}{t.market.udQuoted}{" "}<span className="font-mono tabular-nums">{quoted}</span></span></>}
         </span>
         {openPrice != null && (
-          <span className="shrink-0 tabular-nums">{t.market.udOpenPrice} {priceText.open}</span>
+          <span className="ml-auto whitespace-nowrap">{t.market.udOpenPrice}{" "}<span className="font-mono tabular-nums">{priceText.open}</span></span>
         )}
       </div>
     </article>

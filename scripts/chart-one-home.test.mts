@@ -49,8 +49,13 @@ const D1_DATA_PATH = /<(?:path|polyline|polygon)\b[\s\S]{0,600}?\b(?:d|points)=\
 const D2_DASH_RING = /\bstrokeDash(?:array|offset)=\{/;
 const D3_ROT_GAUGE = /<(?:line|g)\b[\s\S]{0,400}?\btransform=\{/;
 const D4_CANVAS = /<canvas\b/;
+// ⭐ D5 (2026-09-27, landing v3 R5) · a line or dot PLACED by a computed coordinate — the landing's match
+// track draws its stems and beads this way (`x1={…}`, `cx={…}`), and D1–D4 could not see it: a stem is a
+// `<line>`, not a path, and nothing about it is a dash or a rotation. Without D5 a copy of the track
+// dropped into a landing section would be a second chart home no detector names.
+const D5_PLACED_MARK = /<(?:line|circle)\b[\s\S]{0,300}?\b(?:x1|x2|cx)=\{/;
 const isChartShaped = (body: string) =>
-  D1_DATA_PATH.test(body) || D2_DASH_RING.test(body) || D3_ROT_GAUGE.test(body) || D4_CANVAS.test(body);
+  D1_DATA_PATH.test(body) || D2_DASH_RING.test(body) || D3_ROT_GAUGE.test(body) || D4_CANVAS.test(body) || D5_PLACED_MARK.test(body);
 
 // ── The system ──────────────────────────────────────────────────────────────
 /** The one home. A file under here is a member by address. */
@@ -81,7 +86,6 @@ const EXEMPT = new Map<string, string>([
   // in a constant beside its gradient id; nothing reads a series. ⛔ §3.2 keeps this honest: if
   // the file ever stops matching a detector this entry fails and must be deleted.
   ["components/ui/social-marks.tsx", "Instagram/TikTok vendor logos — a static brand outline in a `d={}` constant, the marks half of brand.tsx's documented exception; no data series"],
-  ["components/updown/round-stake-panel.tsx", "a glyph chosen by variable (an arrow constant), not computed from a series"],
   ["app/updown/[roundId]/page.tsx", "a glyph chosen by variable (outcomeArrow constant), not computed from a series"],
 ]);
 
@@ -93,6 +97,10 @@ ok("0.3 a computed dash ring IS chart-shaped", D2_DASH_RING.test("<circle stroke
 ok("0.4 a computed rotation across a line break IS chart-shaped",
    D3_ROT_GAUGE.test('<line\n  x1="22" y1="34"\n  transform={`rotate(${t} 22 34)`}\n/>'));
 ok("0.5 a canvas IS chart-shaped", D4_CANVAS.test("<canvas ref={ref} />"));
+ok("0.6 a stem placed by a computed x, across a line break, IS chart-shaped",
+   D5_PLACED_MARK.test('<line className="kp-udtrack__stem"\n  x1={pct(s.x)} x2={pct(s.x)} y1="50%" y2={pct(s.tip)} />'));
+ok("0.7 a literal-coordinate glyph line or dot is NOT chart-shaped",
+   !isChartShaped('<svg><line x1="4" y1="12" x2="20" y2="12" /><circle cx="12" cy="8" r="3.4" /></svg>'));
 
 // ── §1 · the corpus ─────────────────────────────────────────────────────────
 function walk(dir: string, out: string[] = []): string[] {
@@ -124,6 +132,18 @@ ok("3.2 every exemption still matches a detector (the list may only shrink)",
 const staleNamed = [...NAMED_MEMBERS.keys()].filter((p) => !all.includes(p));
 ok("3.3 every named member still exists at its pinned address",
    staleNamed.length === 0, staleNamed.length ? `gone: ${staleNamed.join(", ")}` : "");
+
+// ⭐ R5 (2026-09-27) · the landing's Up & Down band: its price line and countdown ring were DELETED with
+// the chart (spec updown-band-v2 §13), and the match track and its playhead are members of the home.
+const R5_GONE = ["components/charts/updown-price-line.tsx", "components/charts/updown-ring.tsx"];
+const R5_MEMBERS = ["components/charts/updown-match-track.tsx", "components/charts/updown-match-now.tsx"];
+const r5Back = R5_GONE.filter((p) => all.includes(p));
+ok("3.4 the band's retired price line and ring stay deleted", r5Back.length === 0, r5Back.length ? `back: ${r5Back.join(", ")}` : "");
+const r5Missing = R5_MEMBERS.filter((p) => !all.includes(p));
+ok("3.5 the match track and its playhead are members of the home", r5Missing.length === 0,
+   r5Missing.length ? `missing: ${r5Missing.join(", ")}` : "");
+ok("3.6 …and the track is chart-shaped by D5 (the detector sees what it was added for)",
+   !r5Missing.length && D5_PLACED_MARK.test(decomment(readFileSync(join(SRC, R5_MEMBERS[0]), "utf8"))));
 
 // ── §4 · every member is ALIVE — imported from outside its own file ─────────
 console.log("\n§4 · no dead members (the Sparkline/PriceChart class)");

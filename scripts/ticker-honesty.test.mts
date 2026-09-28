@@ -214,11 +214,13 @@ const row = (over: Partial<TickerRow> & { id: string }): TickerRow => ({
   // rule is enforced in TWO places on purpose, because this is the one that computes money.
   ok(/resolvedOutcome\s*!==\s*"YES"\s*&&\s*m\.resolvedOutcome\s*!==\s*"NO"\)\s*return null/.test(stats),
     "9.8 settledAmount returns null for anything that is not a YES/NO settlement");
-  // ⭐ ASSERT THE VALUE THE CALL CARRIES, NOT THE SYMBOL. `poolFee(..., ratesFor(m), ...)` is the
-  // whole rule: a bare `ratesFor(m)` anywhere in the file passed while the poolFee call had been
+  // ⭐ ASSERT THE VALUE THE CALL CARRIES, NOT THE SYMBOL. `chargedFee(..., ratesFor(m))` is the
+  // whole rule: a bare `ratesFor(m)` anywhere in the file passed while the fee call had been
   // rewritten to `{}` (live config). `red:ticker-honesty` case 10 is the proof of this assertion.
-  ok(/poolFee\s*\([^)]*ratesFor\s*\(\s*m\s*\)[^)]*\)/.test(stats),
-    "9.9 the fee poolFee is GIVEN is the poll's FROZEN snapshot, never live config");
+  // ⚠️ landing v3 C1: the call is `chargedFee` (payout.ts), which mirrors settlement's refund branches —
+  // `poolFee(…, resolvedOutcome)` subtracted a phantom loser-share fee from a one-sided refund.
+  ok(/chargedFee\s*\([^)]*ratesFor\s*\(\s*m\s*\)[^)]*\)/.test(stats),
+    "9.9 the fee chargedFee is GIVEN is the poll's FROZEN snapshot, never live config");
 }
 
 /* ══════════════ 10 · THE TYPE HAS EXACTLY ONE DECLARATION ══════════════

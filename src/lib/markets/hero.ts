@@ -42,6 +42,13 @@ export type HeroRow = DiscoveryRow & {
   yesPool: number;
   noPool: number;
   sourceUrl?: string;
+  /**
+   * The NAME of the source this market settles on — the registry's label, else the host — resolved on
+   * the server by `sourceNameFor` (landing v3 WP3/WP4, gate V18). Absent when the URL does not parse.
+   * Optional on purpose: `fixtureIsComplete` checks `DiscoveryRow` keys only, and a market with no
+   * `sourceUrl` has no name to state (the gate reports it; nothing invents one).
+   */
+  sourceName?: string;
 };
 
 export type HeroFigures = {

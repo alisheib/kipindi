@@ -24,7 +24,7 @@ import { listMarkets, ratesFor, type StoredMarket } from "./market-service";
 import { signoffOf, type Signoff, type Ruling } from "@/lib/markets/signoff";
 import { objectionRulings } from "./reversals";
 import { db } from "./store";
-import { poolFee } from "@/lib/payout";
+import { chargedFee } from "@/lib/payout";
 import type { TickerRow } from "@/lib/markets/ticker";
 
 /** A settled market, ready for the ticker or the landing strip. `title*` stay unlocalised here —
@@ -89,10 +89,15 @@ declare global {
  *
  * Returns **null for a VOID** — we kept nothing and every stake was refunded, so `netPool` is not
  * a description of what happened. Licence condition 4.
+ * ⭐ landing v3 C1 · AND NULL FOR A ONE-SIDED REFUND, for the same reason: `settleMarket` refunds every stake
+ * at zero fee when one pool is empty, whatever the verdict. It read `poolFee(…, resolvedOutcome)`, which on a
+ * YES-only pool resolved NO subtracted a loser-share fee nobody was charged, and on one resolved YES called a
+ * refund "paid". `chargedFee` mirrors settlement's branches; the strip then says "refunded", which is true.
  */
 function settledAmount(m: StoredMarket): number | null {
   if (m.resolvedOutcome !== "YES" && m.resolvedOutcome !== "NO") return null;
-  return poolFee(m.yesPool, m.noPool, ratesFor(m), m.resolvedOutcome).netPool;
+  const c = chargedFee({ yesPool: m.yesPool, noPool: m.noPool, resolvedOutcome: m.resolvedOutcome }, ratesFor(m));
+  return c.refunded ? null : c.netPool;
 }
 
 function toSettlementRow(m: StoredMarket, rulings: ReadonlyMap<string, Ruling[]>): SettlementRow {

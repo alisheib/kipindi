@@ -1,14 +1,31 @@
 /**
- * The landing hero — v3 (docs/design-system/v4-2026-09-26-landing-ten, WP2 + WP8).
+ * The landing hero — v3 (docs/design-system/v4-2026-09-26-landing-ten, WP2 + WP8), rebuilt
+ * 2026-09-27 from `specs/hero-v3.md` under the owner's rulings R7, R8 and R9 (INHERIT-MANIFEST).
  *
- * ── WHAT v3 CHANGED, AND WHY ──────────────────────────────────────────────────────────────────
- * The hero used to open with the brand line and then the proof rail, the conviction bar and a
- * four-row board — so on a phone the first screen held three figures and a list, and the lede, the
- * two CTAs and the one live card all sat below it. A first-time visitor learnt the size of the book
- * before learning what the book IS. v3 puts the order a reader needs first: what 50pick is (eyebrow,
- * brand line, lede) → a live market (the featured card) → what to do (CTAs) → why to trust it (the
- * trust lines). The proof rail, the conviction bar and the closing-soonest board keep every rule
- * they had and move into their own section directly below (`LandingProof`).
+ * ── THE ORDER, AND WHY ───────────────────────────────────────────────────────────────────────
+ * claim → h1 → lede → trust rows → featured card → CTAs → sign-off. What 50pick is (the claim,
+ * "Tanzania's first licensed prediction market"), the question it asks in the reader's own
+ * language (the h1, "NDIO au HAPANA?"), what you do and what happens (the lede, two designed
+ * lines), why to trust it (18+ · the Board's licence · the helpline; the wallets that pay out),
+ * then a live market, then what to press, then the brand line as a sign-off. The trust rows sit
+ * ABOVE the card since R7: after the card and the CTAs they never reached a phone's first screen
+ * (ACCEPTANCE K29). They are the same rows for a visitor and a player. The proof rail, the
+ * conviction bar and the closing-soonest board keep every rule they had in their own section
+ * directly below (`LandingProof`).
+ *
+ * ⛔ THE GAMBLING-WARNING SENTENCE IS NOT IN THE HERO (R7(2)). The footer carries it, with the
+ * helpline and the limit links, on every page; the hero keeps one quiet row — 18+, the licence line,
+ * the helpline number. `npm run test:hero-copy` §4 fails if `stopGambling` comes back in here.
+ *
+ * ⛔ "FIRST" IS GATED. The claim reads `home.heroClaimFirst` only while `FIRST_LICENSED_EVIDENCE()`
+ * (support-config.ts, its one home) returns a record — set 2026-09-27 by R9, the owner's attestation.
+ * Setting it to null returns every language to "Licensed prediction market · Tanzania" in one change.
+ *
+ * ⚠️ SPACES. Every space between two elements is an explicit `{" "}` or sits inside a dict string:
+ * SWC has dropped the whitespace around JSX expressions on production before.
+ * ⚠️ `brand.tsx` is a "use client" module. `FiftyWordmark` and `FiftyMark` are rendered here as JSX
+ * only — calling a helper exported by a client module from this server component once took every
+ * page down while the typecheck and the build stayed green.
  *
  * ⭐ ONE DOM, PLACED BY GRID AREAS — never a second copy. Below 1024 the three blocks stack in
  * source order (intro → card → act); from 1024 the intro and the act share the left column and the
@@ -31,13 +48,15 @@
  * Every value comes from a token via a class in `globals.css` — see the `.kp-hero*` block there.
  */
 import Link from "next/link";
-import { I, categoryGlyph } from "@/components/ui/glyphs";
+import { I } from "@/components/ui/glyphs";
 import { MarketCard } from "@/components/markets/market-card";
-import { TippingBar } from "@/components/brand";
+import { FiftyMark, FiftyWordmark, TippingBar } from "@/components/brand";
 import { fill, formatNumber, formatTzs, formatTzsCompact } from "@/lib/utils";
 import { pickLocalized } from "@/lib/localized";
 import { timeLeftLabel } from "@/lib/markets/time-left";
-import { HELPLINE, HELPLINE_TEL } from "@/lib/support-config";
+import { formatEatDate } from "@/lib/eat-day";
+import { FIRST_LICENSED_EVIDENCE, HELPLINE, HELPLINE_TEL } from "@/lib/support-config";
+import { railListParts } from "@/lib/rail-list";
 import type { Dict, Locale } from "@/lib/i18n-dict";
 import type { HeroFigures, HeroRow } from "@/lib/markets/hero";
 import { sideWord } from "@/lib/side-label";
@@ -65,19 +84,23 @@ type Props = {
   cards: HeroCardData;
   /** Signed in only — see LandingMine. */
   mine?: LandingMine | null;
+  /**
+   * The wallet names the second trust row may print — `heroRailNames()` (server/payout-rails.ts):
+   * only rails whose payout path is live and that no officer has paused (R8(6)). Empty → no row.
+   */
+  rails: readonly string[];
 };
 
 /** Escape a word for use inside a RegExp — the side words are data, not patterns. */
 const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 /**
- * A line whose YES and NO words wear the outcome accents.
+ * A line whose YES and NO words wear the outcome accents — the sign-off, "The wisdom of YES & NO."
  *
  * The brand line is one dict string, identical in all three locales, and its words are the English
- * YES/NO. ⭐ The sub-line under it (sw and zh only — MOBILE-VISUAL ruling 12) is the reader's own
- * reading and carries the reader's own side words, so it is inked with the SAME words the buttons
- * and the conviction bar use (`sideWord`), not with a second list typed here. Tokenising the shipped
- * sentence keeps each word in ONE home while still colouring it.
+ * YES/NO, so it is inked with those two words. Tokenising the shipped sentence keeps each word in
+ * ONE home while still colouring it. (Until 2026-09-27 this also inked the sw/zh sub-line under the
+ * English h1; R7(3) retired both — the h1 is now the question in the reader's language, `Ask`.)
  * ⚠️ The boundaries are Unicode letter lookarounds, not `\b`: `\b` knows only ASCII, so it could
  * never isolate 是 or 否, and an ASCII-only matcher is exactly how a translated line silently loses
  * its inks. A word inside a longer word ("NOTE") is still not repainted.
@@ -100,112 +123,234 @@ function Inked({ text, yes, no }: { text: string; yes: string; no: string }) {
 }
 
 /**
- * The trust lines — licence and 18+, mobile money, the RG line with the helpline, named sources.
+ * The claim — "50pick │ Tanzania's first licensed prediction market" (spec §4; R9).
  *
- * ⭐ NOT ONE NEW REGULATED SENTENCE. Every string is read from the key the footer or the trust band
- * already ships (`footer.licensedByGbt`, `footer.stopGambling`, `footer.helpline`, `home.trustCell3H`,
- * `home.trustCell1H`), and the helpline comes from `support-config.ts`, its one home. RG and licence
- * wording is assessed, so a paraphrase would be a new claim to assess.
- * ⭐ THE ORDER IS THE FIRST SCREEN'S. The delivery wants licence, 18+, mobile money AND the helpline on
- * a phone's first screen (its ACCEPTANCE K29 and placement map P15), while its own phone order puts
- * these lines after the CTAs — below 740px. So they come BEFORE the CTAs, in the SOURCE and therefore
- * on screen, at every width: a CSS `order` would have made keyboard and screen-reader order disagree
- * with what is seen (WCAG 1.3.2 / 2.4.3 — the v3 review). Within the list: what a first-time visitor
- * must see first, "named sources" last because the featured card already states its source.
- * INHERIT-MANIFEST L18.
- * ⚠️ The licence NUMBER is not repeated here — the footer carries it on every page (K39), as the
- * delivery's own hero omits it; the line stays short enough for the first screen.
+ * ⭐ A CLASS OF ITS OWN, NOT THE SHARED EYEBROW: `.kp-hero__eyebrow` also styles the section labels
+ * further down the page, and the claim is the brightest small text on the first screen (`--text`,
+ * mono 600), where those are quiet labels. Its tracking joins the one 0.14em list in globals.css.
+ * ⭐ THE WORDMARK IS THE LOGO USED AS A LOGO — below 1280 the header shows only the mark, so the name
+ * "50pick" reaches the first screen here. From 1280 the header carries the wordmark and this one is
+ * hidden (CSS), with its rule.
+ * ⛔ "FIRST" IS READ ONLY INSIDE THE EVIDENCE BRANCH BELOW. `test:hero-copy` §1 fails if
+ * `heroClaimFirst` is read anywhere else, or if any other string claims a first.
+ * The text is stored in sentence case; CSS does the capitals.
+ */
+function Claim({ t }: { t: Dict }) {
+  return (
+    <p className="kp-hero__claim">
+      <span className="kp-hero__claim-mark"><FiftyWordmark size={15} tz={false} /></span>{" "}
+      <span className="kp-hero__claim-rule" aria-hidden />{" "}
+      <span className="kp-hero__claim-text">{FIRST_LICENSED_EVIDENCE() ? t.home.heroClaimFirst : t.home.heroClaim}</span>
+    </p>
+  );
+}
+
+/**
+ * The h1 — the question in the reader's language: "NDIO au HAPANA?" · "YES or NO?" · "是还是否？"
+ * (INHERIT-MANIFEST R7(3)).
+ *
+ * ⭐ THE SIDE WORDS ARE THE BUTTONS' OWN WORDS BY CONSTRUCTION: `sideWord(t, …, "MARKET")` fills them,
+ * so the headline cannot say "NDIYO" while the buttons say "NDIO". Each wears its outcome ink (§B2);
+ * the connective ("au" / "or" / "还是") is the quiet word, one weight of the same face.
+ * ⭐ TWO GROUPS THAT DO NOT BREAK INSIDE: "NDIO au" and "HAPANA?". The only break is the dict string's
+ * own space after the connective (none in zh, which fits one line), so a narrow screen reads two
+ * designed lines, never "NDIO" alone over "au HAPANA?".
+ * ⛔ No `lang` attribute: since R7(3) the h1 IS in the page's language.
+ * `test:hero-copy` §2 pins `{yes}` before `{no}`, each exactly once, in every locale; the fallback
+ * below only keeps a malformed string readable.
+ */
+function Ask({ t }: { t: Dict }) {
+  const yes = sideWord(t, "YES", "MARKET");
+  const no = sideWord(t, "NO", "MARKET");
+  const s = t.home.heroAsk;
+  const a = s.indexOf("{yes}");
+  const b = s.indexOf("{no}");
+  if (a < 0 || b < a) return <h1 className="kp-hero__headline">{fill(s, { yes, no })}</h1>;
+  const between = s.slice(a + "{yes}".length, b);
+  const conn = between.trimEnd();
+  const gap = between.slice(conn.length);
+  return (
+    <h1 className="kp-hero__headline">
+      {s.slice(0, a)}
+      <span className="kp-hero__grp">
+        <span className="kp-hero__side" data-side="yes">{yes}</span>
+        <span className="kp-hero__conn">{conn}</span>
+      </span>
+      {gap}
+      <span className="kp-hero__grp">
+        <span className="kp-hero__side" data-side="no">{no}</span>
+        <span className="kp-hero__q">{s.slice(b + "{no}".length)}</span>
+      </span>
+    </h1>
+  );
+}
+
+/**
+ * The trust rows — ONE list, the same for a visitor and a player, above the featured card.
+ *
+ *   row 1 · 18+ · "Licensed by the Gaming Board of Tanzania." · the helpline, a `tel:` link
+ *   row 2 · "Deposit and withdraw with M-Pesa, Airtel Money, HaloPesa or Mixx by Yas."
+ *
+ * ⭐ ROW 1 IS THE FOOTER'S OWN WORDS. `footer.eighteenPlus`, `footer.licensedByGbt` and
+ * `footer.helpline` are assessed keys, reused verbatim, and the number is `HELPLINE()` from
+ * `support-config.ts`, its one home. The gambling-warning SENTENCE is not here (R7(2)): the footer
+ * keeps it on every page. The licence NUMBER stays in the footer too (K39).
+ * ⭐ ROW 2 NAMES ONLY WALLETS THAT PAY OUT (R8(6)). `rails` is computed on the server from the money
+ * path's own definitions (`server/payout-rails.ts`) and joined by `Intl.ListFormat` in the reader's
+ * language (`rail-list.ts`): the names are never typed into the dictionary, and a rail an officer has
+ * paused is not named while it is paused. No rails → no row, never "Deposit and withdraw with ."
+ * ⭐ WHY ABOVE THE CARD: on a phone the rows after the card and the CTAs began below the first screen,
+ * so 18+, the licence and the helpline never reached it (K29, P15). In the SOURCE, not by CSS
+ * `order` — keyboard and screen-reader order must match the screen (WCAG 1.3.2).
+ * ⚠️ Label and number are separate unbreakable runs, so under large text the line breaks BETWEEN
+ * them and never inside "0800 11 0011" (the footer's own shape).
  * ⛔ No `aria-label` on the roundel: "18+" is its text, and ARIA prohibits a label on a generic span.
  * `role="list"`: WebKit drops the list role from a `ul` styled `list-style: none` (VoiceOver on iPhone).
+ * ⚠️ `ul.kp-hero__trust` is read by the landing gate (V8's text map, V21) and by capture.mjs.
  */
-function TrustLines({ t }: { t: Dict }) {
+function TrustLines({ t, locale, rails }: { t: Dict; locale: Locale; rails: readonly string[] }) {
+  const parts = railListParts(locale, rails);
+  const at = t.home.heroRails.indexOf("{rails}");
+  const before = at < 0 ? t.home.heroRails : t.home.heroRails.slice(0, at);
+  const after = at < 0 ? "" : t.home.heroRails.slice(at + "{rails}".length);
   return (
     <ul className="kp-hero__trust" role="list">
       <li>
         <span className="kp-rg__18">{t.footer.eighteenPlus}</span>
-        <span>{t.footer.licensedByGbt}</span>
-      </li>
-      <li>
-        <span className="kp-hero__trust-glyph" aria-hidden><I.phone s={16} /></span>
-        <span>{t.home.trustCell3H}</span>
-      </li>
-      <li>
-        <span className="kp-hero__trust-glyph" aria-hidden><I.headset s={16} /></span>
         <span>
-          {t.footer.stopGambling}{" "}
-          {/* Label and number are separate unbreakable runs, so under large text the line breaks
-              BETWEEN them and never inside the number (the footer's own shape). */}
+          {t.footer.licensedByGbt}{" "}
           <a className="kp-hero__tel" href={`tel:${HELPLINE_TEL()}`}>
-            <span>{t.footer.helpline}</span> <span>{HELPLINE()}</span>
+            <span>{t.footer.helpline}</span>{" "}<span>{HELPLINE()}</span>
           </a>
         </span>
       </li>
-      <li>
-        <span className="kp-hero__trust-glyph" aria-hidden><I.shieldcheck s={16} /></span>
-        <span>{t.home.trustCell1H}</span>
-      </li>
+      {parts.length > 0 && (
+        <li>
+          <span className="kp-hero__trust-glyph" aria-hidden><I.mobileMoney s={16} /></span>
+          <span>
+            {before}
+            {parts.map((p, i) => (p.rail ? <span key={i} className="kp-hero__rail">{p.text}</span> : p.text))}
+            {after}
+          </span>
+        </li>
+      )}
     </ul>
   );
 }
 
-function QuestionRow({ row, t, locale }: { row: HeroRow; t: Dict; locale: Locale }) {
-  const Glyph = I[categoryGlyph(row.category)];
-  /* ⭐ WP6 · the row's price state comes from its POOLS, exactly as the market card's does
-     (`price-state.ts`): empty → "No bets yet"; one side only → "One side only" (ruling 13 — never
-     "no bets", money is on it); both sides → the price within 1–99 (L14), and the lean rule drawn
-     from that same figure. `row.yesPct` is the rounded share, which reads 100 on a one-sided pool. */
+/**
+ * ONE ROW OF THE CLOSING-SOONEST BOARD (landing v3 · WP4).
+ *
+ * ⭐ AN `<li>` HOLDING THREE SIBLING ZONES, NEVER ONE LINK (WP17). The row used to BE a `<Link>`, which
+ * left no room for a side to be picked from it: an `<a>` may not hold another control. Now:
+ *   · the head link — the question and its meta line ("Closes 27 Sep · Settles on {source} · Pool TZS n ·
+ *     n predictors"), the concept's tap target, at least `--h-control-md` tall so a one-line question is
+ *     never a 21px target (V4);
+ *   · the reading — the price or the labelled state, the time left, and the 6px bar (not interactive);
+ *   · the pick — YES@ / NO@ as two real links to `/markets/{id}?side=…`, which locks the side for a player
+ *     and keeps it through sign-up for a visitor, until D3's pick slip takes the tap (WP5).
+ * ⭐ THE ROW'S PRICE STATE COMES FROM ITS POOLS, exactly as the card's does (`price-state.ts`, WP6): both
+ *   sides → the price within 1–99 (L14) and the figures on the buttons; one side → "One side only", the
+ *   dashed rail, bare buttons and the refund rule; empty → "No bets yet" only where nobody ever bet, else
+ *   "No pool yet" (the D29 rule: `predictorCount` is never decremented, so a cashed-out market has a pool
+ *   of 0 and a predictor). ONE label, read by the price slot and the rail alike, and in the CARDS' own keys
+ *   (`market.noBetsYet` / `market.noPoolYet`): one state has one wording on the page (B9). The row's own
+ *   `home.heroNoPrice` said the never-bet state in other words than the cards and was retired 2026-09-27.
+ * ⭐ NO 24h MARK ON A ROW (the concept draws none) and no share (WP14b: the footer share is the cards').
+ * ⛔ `row.yesPct` is the rounded share — 100 on a one-sided pool — and is never read here.
+ * The gate's V18 reads the row through `data-market-surface` / `data-market-part`, never through a word.
+ */
+function QuestionRow({ row, t, locale, nowMs }: { row: HeroRow; t: Dict; locale: Locale; nowMs: number }) {
   const price = priceState(row.yesPool, row.noPool);
+  const title = pickLocalized(locale, row.titleEn, row.titleSw, row.titleZh);
+  const yesWord = sideWord(t, "YES", "MARKET");
+  const noWord = sideWord(t, "NO", "MARKET");
+  const timeLeft = row.selectionClosed ? t.home.waitingForResults : timeLeftLabel(row.bettableUntilMs, nowMs, {
+    closed: t.market.closed, days: t.market.timeLeftD, hours: t.market.timeLeftH, minutes: t.market.timeLeftM,
+  }, fill);
+  // The instant the countdown counts to, as a day (the Gaming Board's "a timer names its instant").
+  const closes = fill(t.market.closesOn, { date: formatEatDate(row.bettableUntilMs, nowMs, t.common.monthsShort, locale) });
+  const [settlesPre = "", settlesPost = ""] = t.market.settlesOn.split("{source}");
+  const emptyLabel = price.kind === "oneSided" ? t.market.oneSideOnly : row.predictors === 0 ? t.market.noBetsYet : t.market.noPoolYet;
+  const oneSidedNote = price.kind === "oneSided" ? t.market.oneSidedNote.replace("{side}", sideWord(t, price.emptySide, "MARKET")) : null;
+  // The card's own names for the pair, so one control has one vocabulary: no figure without a price.
+  const yesAria = (price.kind === "priced" ? t.market.backSideAria.replace("{pct}", String(price.yesPct)) : t.market.backSideAriaNoPrice).replace("{side}", yesWord);
+  const noAria = (price.kind === "priced" ? t.market.backSideAria.replace("{pct}", String(100 - price.yesPct)) : t.market.backSideAriaNoPrice).replace("{side}", noWord);
   return (
-    <Link href={`/markets/${row.id}` as never} className="kp-qrow">
-      <span className="kp-qrow__glyph" aria-hidden>
-        <Glyph s={20} />
-      </span>
-      {/* ⛔ A MEASURE CEILING, NOT A WIDTH. The row is a grid whose middle track is 1fr, so the
-          question grew with the viewport and nothing stopped it: 77 characters per line at 1024
-          and 116 at 1280, against a comfortable 45–75 (measured on production 2026-09-24). At 360
-          the column is 292px ≈ 44 characters, so this cap cannot touch a phone — it only stops the
-          line running away on a desktop.
-          🔴 44ch, NOT 68ch, AND THE NUMBER IS CALIBRATED RATHER THAN CHOSEN. `ch` is the advance of
-          the digit ZERO, which in Sora at 17px is 12.97px — while the average character advance in
-          running text is about 8.9px. A 68ch cap resolved to 882px and still produced 99 characters
-          per line. 44ch ≈ 571px ≈ 64 characters in this face. ⚠️ If the question ever changes
-          typeface this number is wrong again — V7 in the landing gate is what re-catches it. */}
-      <span className="kp-qrow__q" style={{ maxWidth: "44ch" }}>{pickLocalized(locale, row.titleEn, row.titleSw, row.titleZh)}</span>
-      {/* The pool is REAL even when it is zero, so it is always stated. Only the PRICE is
-          withheld — that is the distinction `market-card.tsx` draws between `fresh` and
-          `noPrice`, and the two surfaces have to draw it the same way. */}
-      <span className="kp-qrow__sub">{formatTzs(row.pool)}</span>
-      <span className="kp-qrow__price">
-        {price.kind === "priced" ? (
-          <>
-            <span className="kp-qrow__num">{price.yesPct}</span>
-            <span className="kp-qrow__unit">% {t.common.yes}</span>
-          </>
-        ) : (
-          <>
-            {/* Em-dash PLUS a labelled state — licence condition 1's exact prescription for an
-                unknown. The dash alone would read to a screen reader as nothing at all. */}
-            <span className="kp-qrow__num" aria-hidden>—</span>
-            <span className="kp-qrow__unit kp-qrow__unit--label">
-              {price.kind === "oneSided" ? t.market.oneSideOnly : t.home.heroNoPrice}
-            </span>
-          </>
-        )}
-      </span>
-      {/* No lean rule without a price: a 50%-wide bar over an empty pool, or a full-width one over a
-          one-sided pool, would be the same fabricated claim drawn instead of written. */}
-      {price.kind === "priced" && (
-        <span className="kp-qrow__lean" style={{ width: `${price.yesPct}%` }} aria-hidden />
-      )}
-    </Link>
+    <li className="kp-qrow" data-price={price.kind} data-market-surface="board" data-row-id={row.id}>
+      <Link href={`/markets/${row.id}` as never} className="kp-qrow__head">
+        <span className="kp-qrow__q">{title}</span>
+        <span className="kp-qrow__meta">
+          <span className="kp-qrow__close">{closes}</span>
+          {row.sourceName && (
+            <>
+              {" · "}
+              <span className="kp-qrow__src">
+                {settlesPre}
+                <span className="kp-qrow__srcname" data-market-part="source">{row.sourceName}</span>
+                {settlesPost}
+              </span>
+            </>
+          )}
+          {" · "}
+          {/* The pool is REAL even when it is zero, so it is always stated (V18, K48). */}
+          <span className="kp-qrow__pool" data-market-part="pool">{t.common.pool}{" "}{formatTzs(row.pool)}</span>
+          {" · "}
+          <span className="kp-qrow__depth" data-market-part="predictors">
+            {formatNumber(row.predictors)}{" "}{row.predictors === 1 ? t.market.predictorsCountOne : t.market.predictorsCount}
+          </span>
+        </span>
+      </Link>
+      <div className="kp-qrow__read">
+        <div className="kp-qrow__line">
+          <span className="kp-qrow__price" data-market-part={price.kind === "priced" ? "price" : undefined}>
+            {price.kind === "priced" ? (
+              <>
+                <span className="kp-qrow__num">{price.yesPct}</span>
+                <span className="kp-qrow__unit">{"% "}{t.common.yes}</span>
+              </>
+            ) : (
+              <>
+                {/* Em-dash PLUS a labelled state — licence condition 1's exact prescription for an
+                    unknown. The dash alone would read to a screen reader as nothing at all. */}
+                <span className="kp-qrow__num" aria-hidden>—</span>
+                <span className="kp-qrow__unit kp-qrow__unit--label" data-market-part="state">{emptyLabel}</span>
+              </>
+            )}
+          </span>
+          {/* Time is not a side: the neutral ink, never the betting pair (`test:betting-ink`). */}
+          <span className="kp-qrow__left" data-market-part="time">{timeLeft}</span>
+        </div>
+        {/* The bar repeats the line above it, so it is hidden from a screen reader rather than named twice
+            on four rows. No price → the dashed rail, named by the same label (one-sided or empty). */}
+        <div className="kp-qrow__bar" aria-hidden>
+          {price.kind === "priced" ? (
+            <TippingBar yesPct={price.yesPct} height={6} showLabels={false} recastOnHover={false} />
+          ) : (
+            <TippingBar empty emptyLabel={emptyLabel} height={6} />
+          )}
+        </div>
+      </div>
+      {/* Two real links until D3 (WP5's slip). `prefetch={false}`: four rows × two query variants would
+          otherwise prefetch eight detail pages. A one-sided or empty row keeps both — taking the empty
+          side is exactly what gives it a price — but neither carries a figure. */}
+      <div className="kp-qrow__act" data-market-part="pick">
+        <Link href={`/markets/${row.id}?side=YES` as never} prefetch={false} className="btn btn-yes btn-md kp-qrow__btn" aria-label={yesAria}>
+          {yesWord}{price.kind === "priced" && <span className="kp-qrow__at">{" @ "}{price.yesPct}%</span>}
+        </Link>
+        <Link href={`/markets/${row.id}?side=NO` as never} prefetch={false} className="btn btn-no btn-md kp-qrow__btn" aria-label={noAria}>
+          {noWord}{price.kind === "priced" && <span className="kp-qrow__at">{" @ "}{100 - price.yesPct}%</span>}
+        </Link>
+      </div>
+      {/* The refund rule (L22), the card's one conditional sentence, at the reading floor. */}
+      {oneSidedNote && <p className="kp-qrow__note">{oneSidedNote}</p>}
+    </li>
   );
 }
 
-export function LandingHero({ figures, t, locale, isAuthed, nowMs, cards, mine }: Props) {
+export function LandingHero({ figures, t, locale, isAuthed, nowMs, cards, mine, rails }: Props) {
   const { featured } = figures;
   const chart = featured ? cards.charts.get(featured.id) : undefined;
-  const yes = sideWord(t, "YES", "MARKET");
-  const no = sideWord(t, "NO", "MARKET");
 
   return (
     <section className="kp-hero" data-band="hero">
@@ -213,34 +358,20 @@ export function LandingHero({ figures, t, locale, isAuthed, nowMs, cards, mine }
           half blank (and a doubled gap on a phone) — the pitch and the CTAs take the whole width. */}
       <div className={featured ? "kp-hero__inner" : "kp-hero__inner kp-hero__inner--solo"}>
         <div className="kp-hero__intro">
-          {/* 🔴 `text-balance` ON EVERY EYEBROW. These are short uppercase mono labels, and when one
-              wraps it drops its last token alone ("TANZANIA · DAR ES SALAAM · TANGU / 2026" at 320).
-              A one-word second line under a letter-spaced label reads as a mistake rather than a
-              wrap. V8b in the landing gate found them. */}
-          <p className="kp-hero__eyebrow text-balance">
-            <span className="kp-hero__tick" aria-hidden />
-            {t.home.heroLocation} · {t.home.heroEst}
+          {/* The claim and the h1 are one heading group: the claim names what 50pick is, the h1 asks
+              the question it exists for. `hgroup` allows a paragraph before its heading. */}
+          <hgroup className="kp-hero__lockup">
+            <Claim t={t} />
+            <Ask t={t} />
+          </hgroup>
+          {/* Two designed lines, each short enough never to wrap at 360 in any language: the product's
+              own verbs ("weka dau" is the stake button's word), then what happens. Two spans, one
+              sentence pair: the explicit space keeps the text whole for a screen reader. */}
+          <p className="kp-hero__lede">
+            <span className="kp-hero__lede-l">{t.home.heroLedeAct}</span>{" "}
+            <span className="kp-hero__lede-l kp-hero__lede-l--pay">{t.home.heroLedePay}</span>
           </p>
-          {/* The brand line stays English in every locale; its accents are the English words. */}
-          {/* `lang="en"`: the brand line is English in every locale (ruling 12), so a Swahili or Chinese
-              screen reader must pronounce it as English (WCAG 3.1.2). */}
-          <h1 className="kp-hero__headline" lang="en">
-            <Inked text={t.home.heroHeadline} yes="YES" no="NO" />
-          </h1>
-          {/* ⭐ THE BRAND LINE STAYS ENGLISH AND GETS A READING UNDERNEATH IT (owner decision,
-              2026-09-24; MOBILE-VISUAL ruling 12). Rendered only where it says something new: in
-              English the two strings are identical by design, and repeating a sentence directly
-              under itself is worse than not translating it. Comparing the strings rather than
-              testing the locale means a new locale gets the sub-line by filling the key. */}
-          {t.home.heroHeadlineSub !== t.home.heroHeadline && (
-            <p className="kp-hero__sub">
-              <Inked text={t.home.heroHeadlineSub} yes={yes} no={no} />
-            </p>
-          )}
-          {/* Same `break-keep` exception as the trust bodies, for the same measured reason: in zh it
-              forbids breaking between characters, so the lede rendered three ragged lines where two
-              would do. See the note in trust-band.tsx. */}
-          <p className={`kp-hero__lede [overflow-wrap:anywhere]${locale === "zh" ? "" : " break-keep"}`}>{t.home.heroBody}</p>
+          <TrustLines t={t} locale={locale} rails={rails} />
         </div>
 
         {/* THE SAME MARKET THAT LEADS THE BOARD'S ORDERING — the most contested open market, never an
@@ -273,9 +404,14 @@ export function LandingHero({ figures, t, locale, isAuthed, nowMs, cards, mine }
                       minutes: t.market.timeLeftM,
                     }, fill)
               }
+              // The same deadline and clock as the label, so SOON fires in every locale (L17).
+              msLeft={featured.selectionClosed ? undefined : featured.bettableUntilMs - nowMs}
               status="LIVE"
               selectionClosed={featured.selectionClosed}
               sourceUrl={featured.sourceUrl}
+              // WP3 · the meta line: the close as a day, and the NAMED source (resolved on the server).
+              closesOn={fill(t.market.closesOn, { date: formatEatDate(featured.bettableUntilMs, nowMs, t.common.monthsShort, locale) })}
+              sourceName={featured.sourceName}
               spark={chart?.spark}
               move24h={chart?.move24h}
               traders={cards.traders.get(featured.id)}
@@ -284,22 +420,32 @@ export function LandingHero({ figures, t, locale, isAuthed, nowMs, cards, mine }
         )}
 
         <div className="kp-hero__act">
-          <TrustLines t={t} />
           {/* TWO CTAs, not three — `Sign in` lives in the header at every width. Below 1024 they
-              follow the card and its trust lines (the delivery's placement map P4, and L18); from 1024
-              they sit under the lede and the trust lines. */}
+              follow the card (the delivery's placement map P4); from 1024 they sit in the left column
+              under the intro. A player gets their own block instead, with Set limits (WP14 part 2). */}
           {isAuthed ? (
             <SignedInAct t={t} mine={mine ?? null} />
           ) : (
-            <div className="kp-hero__ctas">
-              <Link href={"/auth/register" as never} className="btn btn-primary btn-xl rounded-pill kp-hero__cta">
-                {t.common.createAccount}
-                <I.arrowRight s={16} />
-              </Link>
-              <Link href={"/markets" as never} className="btn btn-ghost btn-xl rounded-pill kp-hero__cta">
-                {fill(t.home.heroBrowseAll, { n: figures.openCount })}
-              </Link>
-            </div>
+            <>
+              <div className="kp-hero__ctas">
+                <Link href={"/auth/register" as never} className="btn btn-primary btn-xl rounded-pill kp-hero__cta">
+                  {t.home.heroStart}
+                  <I.arrowRight s={16} />
+                </Link>
+                <Link href={"/markets" as never} className="btn btn-ghost btn-xl rounded-pill kp-hero__cta">
+                  {fill(t.home.heroBrowseAll, { n: figures.openCount })}
+                </Link>
+              </div>
+              {/* THE SIGN-OFF — the brand line, which was the h1 until R7(3) (2026-09-27). The mark is
+                  the logo used as a logo, not decoration (R4(1) untouched), and it is aria-hidden: the
+                  line is the sign-off's text. `lang="en"`: the brand line is English in every locale,
+                  so a Swahili or Chinese screen reader must pronounce it as English (WCAG 3.1.2) — the
+                  only `lang` in the hero (`test:hero-copy` §4). */}
+              <p className="kp-hero__signoff">
+                <span className="kp-hero__signoff-mark" aria-hidden><FiftyMark size={20} simplified /></span>{" "}
+                <span lang="en"><Inked text={t.home.heroHeadline} yes="YES" no="NO" /></span>
+              </p>
+            </>
           )}
         </div>
       </div>
@@ -398,12 +544,16 @@ function SignedInAct({ t, mine }: { t: Dict; mine: LandingMine | null }) {
 /**
  * The proof section — the three measured figures, the whole board's conviction, and the
  * closing-soonest board. It used to live INSIDE the hero, above the lede; v3 moves it directly below
- * the hero so the first screen shows the pitch and a live market (V15). Nothing in it changed meaning.
+ * the hero so the first screen shows the pitch and a live market (V15). The figures and the conviction
+ * bar are unchanged; the board's rows are rebuilt by WP4 (`QuestionRow`): a list of rows with a title
+ * link, a reading and a YES@/NO@ pair, each reading its time left from `nowMs`.
  */
-export function LandingProof({ figures, t, locale, paidOutTzs }: {
+export function LandingProof({ figures, t, locale, nowMs, paidOutTzs }: {
   figures: HeroFigures;
   t: Dict;
   locale: Locale;
+  /** The page's one clock — the rows' time left and close dates read it, as the hero's card does. */
+  nowMs: number;
   /**
    * Σ CONFIRMED payouts + cashouts, TZS — the third proof figure.
    * **null means the read failed**, and the slot is withheld rather than printed as a zero.
@@ -488,11 +638,12 @@ export function LandingProof({ figures, t, locale, paidOutTzs }: {
                 <> · {fill(t.home.heroBoardCloseToday, { n: figures.closingToday })}</>
               )}
             </h2>
-            <div className="kp-qboard">
+            {/* `role="list"`: WebKit drops the list role from a `ul` styled `list-style: none`. */}
+            <ul className="kp-qboard" role="list">
               {figures.board.map((row) => (
-                <QuestionRow key={row.id} row={row} t={t} locale={locale} />
+                <QuestionRow key={row.id} row={row} t={t} locale={locale} nowMs={nowMs} />
               ))}
-            </div>
+            </ul>
           </div>
         )}
       </div>

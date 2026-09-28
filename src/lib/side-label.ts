@@ -106,6 +106,16 @@ export function outcomeWord(t: Dict, outcome: StoredOutcome | Direction, product
  * hard-wrote the ASCII token `YES` into its Swahili and Chinese sentences, and a
  * Chinese player read *"若 YES 获胜"* in a product whose dictionary says `是`.
  */
+/**
+ * The bar's two LEAN words in a product's own vocabulary (landing v3 C1). An Up & Down round leans up or
+ * down, never "yes" — the /live carousel read "inaelekea ndiyo" over a round whose sides are Juu and Chini.
+ */
+export function leanWords(t: Dict, productLine: LabelProductLine): { leansYes: string; leansNo: string } {
+  return productLine === "UPDOWN"
+    ? { leansYes: t.market.udLeansUp, leansNo: t.market.udLeansDown }
+    : { leansYes: t.market.leansYes, leansNo: t.market.leansNo };
+}
+
 export function sideWordIn(locale: Locale, side: StoredSide | Direction, productLine: LabelProductLine): string {
   return sideWord(dict[locale] as Dict, side, productLine);
 }

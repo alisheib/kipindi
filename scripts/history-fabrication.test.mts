@@ -179,6 +179,53 @@ try {
 check("recordSnapshot never rejects", !threw);
 
 // ---------------------------------------------------------------------------
+// 5. ⭐ landing v3 C1 · A CHART POINT NEEDS A PRICE. An empty or one-sided snapshot is not plotted (it would
+// draw an invented 50 or a 100/0 certainty), a two-sided 99.6% plots 99, and no 24h move is measured from a
+// baseline that had no price. Each refusal carries a control.
+// ---------------------------------------------------------------------------
+log("\nC1 · a chart point needs a price:");
+{
+  const PRICED = `mkt_guard_c1_priced_${Date.now()}`;
+  const VOIDED = `mkt_guard_c1_void_${Date.now()}`;
+  const LOPSIDED = `mkt_guard_c1_lopsided_${Date.now()}`;
+  const TWO = `mkt_guard_c1_two_${Date.now()}`;
+  const series = (c: Awaited<ReturnType<typeof getProbabilityChart>>) => (c.series.ALL ?? []).map((p) => p.p);
+
+  await recordSnapshot(PRICED, 1000, 0);
+  await recordSnapshot(PRICED, 1000, 0);
+  await recordSnapshot(PRICED, 600, 400);
+  await recordSnapshot(PRICED, 700, 300);
+  const c51 = await getProbabilityChart(PRICED);
+  check("5.1 one-sided snapshots are not plotted: (1000,0)×2, (600,400), (700,300) → {60, 70}",
+    JSON.stringify(series(c51)) === "[60,70]", JSON.stringify(series(c51)));
+  const s55 = await getCardChart(PRICED);
+  check("5.5 ⛔ no 24h move is measured from a one-sided baseline (it read 100, so the card printed −30)",
+    s55.move24h === undefined && JSON.stringify(s55.spark) === "[60,70]", JSON.stringify(s55));
+
+  await recordSnapshot(VOIDED, 600, 400);
+  await recordSnapshot(VOIDED, 700, 300);
+  await recordSnapshot(VOIDED, 0, 0);
+  const c52 = await getProbabilityChart(VOIDED);
+  const s52 = await getCardChart(VOIDED);
+  check("5.2 a final (0,0) point (a void) is not plotted as 50, and the card draws no line and no move",
+    JSON.stringify(series(c52)) === "[60,70]" && s52.spark.length === 0 && s52.move24h === undefined,
+    JSON.stringify({ chart: series(c52), card: s52 }));
+
+  await recordSnapshot(LOPSIDED, 25_000, 100);
+  await recordSnapshot(LOPSIDED, 25_000, 100);
+  const c53 = await getProbabilityChart(LOPSIDED);
+  check("5.3 a lopsided two-sided pool (25,000 v 100) plots 99, never 100", JSON.stringify(series(c53)) === "[99,99]", JSON.stringify(series(c53)));
+
+  await recordSnapshot(TWO, 500, 500);
+  await recordSnapshot(TWO, 600, 400);
+  const c54 = await getProbabilityChart(TWO);
+  const s54 = await getCardChart(TWO);
+  check("5.4-control two priced points DO give a 2-point series, a line and a real move (+10)",
+    JSON.stringify(series(c54)) === "[50,60]" && JSON.stringify(s54.spark) === "[50,60]" && s54.move24h === 10,
+    JSON.stringify({ chart: series(c54), card: s54 }));
+}
+
+// ---------------------------------------------------------------------------
 log("");
 if (fail) {
   log(`market-history guard: ${fail} FAILED`);

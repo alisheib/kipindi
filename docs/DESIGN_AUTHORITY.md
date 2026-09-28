@@ -258,6 +258,12 @@ be mistaken for one:
 in `--yes-*`. Urgency is carried by motion (`ud-count-pulse`) and the player's LIVE signal by the broadcast red of §B11;
 the text keeps its neutral ink. `test:betting-ink` pins the sites.
 
+⛔ **Nor to express a price MOVE** (2026-09-27, the landing v3 WP3+WP4 review, R8). A market card's 24h move
+of the YES price is not a side, and a green-up / rose-down move invites chasing. The grid card printed "+5pt" in
+`--yes-400` / `--no-400` while the featured card on the same page printed the same move "▲5 · 24h ago" in neutral
+ink: ONE reading on every card now — `DayAgoMove` in `market-card.tsx`, `.mcardp-h24`, `--text-subtle`, ▲/▼, bare
+points — printed only where a price exists now. `test:betting-ink` §5 pins it, with planted inked moves.
+
 ⛔ Never reach for the betting pair to express an app state: a surface that says *saved* in
 the YES ink has spent the money vocabulary on chrome, and the next player to see that green
 has one less reason to read it as their side. ⛔ And never re-hue a state token toward the
@@ -535,6 +541,24 @@ been written down, which is exactly how the never-imported `Sparkline` came to c
      cap 0.12em/0.9). A recorded split, not a rule: a NEW svg chart takes the quiet dialect
      unless its plot is as dense as the hero's; the ENGINE charts draw their own reference
      lines (§B12.6's vendor tier) and are out of this dialect note's scope.
+     ⭐ *Recorded 2026-09-27 (R5, the landing's Up & Down match — `charts/updown-match-track.tsx`):*
+     the match track's rail is a NEUTRAL TIME RAIL that doubles as the open (`--text-faint`, 2px),
+     never gilt (landing L8): the stems read against it, but it is time first. A recorded split from
+     the round-page hero's gilt dashed open, not a precedent against it; its locked stretch takes the
+     quiet dialect exactly (1px · "2 5" · 0.55).
+     ⭐ *Since R5 (2026-09-27):* the round-page hero's value ink follows the round's TARGETS — UP ink at
+     or above `upTarget`, DOWN ink at or below `downTarget`, `--text-muted` strictly between
+     (settlement's `decideOutcomeByTargets`, computed by the page; `price-hero.tsx` `tone`). E-261
+     generalised: a banded round voids anywhere inside its band, not only at exactly flat. The
+     `/updown` card and terminal follow (F1, 2026-09-27; R5(c)): the card's figure, its move and its
+     arrow take the same three inks from `valueTone` (`src/lib/updown-match.ts` — `sideByTargets`, pinned
+     equal to settlement; the open decides only a round with no targets), under the label "Confirmed
+     price" ("Close" once settled), and a read strictly between the targets says the band's own
+     `udLevelBy`. The terminal's one live line takes `liveLineToken` — the in-play round's side by its
+     targets, the gilt reference when no round with targets is in play — and is named "Confirmed price
+     $…" under the pane. Its candles and curve keep the bar's and the window's own direction (history,
+     §B12.6): only the line that states NOW reads a round. `test:updown-match` §11b pins all of it
+     against a planted by-the-open ink.
    - **Live ink** — aqua is the heartbeat: every MICRO spark (card, wallet, leaderboard) and
      the live end-point dot **on charts whose price path is not itself direction ink** (the
      P&L walk — its aqua dot + halo). ⭐ *Ruled 2026-09-04 (round 2), by
@@ -593,7 +617,9 @@ been written down, which is exactly how the never-imported `Sparkline` came to c
    1h vendor bars, candles default), style rail
    **Curve | Candles** on history ranges, both on the `.pchart-range` vocabulary; the
    pane is 300px (380px ≥1024); panel chrome `px-3 pt-2 pb-1.5` on the elevated-card
-   recipe; the gilt dashed line is the ONE live-price statement (no series value labels);
+   recipe; the dashed line is the ONE live-price statement (no series value labels) —
+   gilt, or ⭐ *since R5(c) (Ali, 2026-09-27; built as F1)* the in-play round's side by its
+   targets (§B12.2), named "Confirmed price" under the pane: an owner ruling, not a session's;
    the receipt footer carries the E-53 source grammar. **The chart's FORM changes only by
    the player's own tap** — never by data shape, never by a poll, never by a session's
    taste: untouched ranges keep their natural default (15M/30M/1H curve · 6H/12H/24H candles), a
@@ -1490,6 +1516,11 @@ adds the marks; a chip must not wear them.
 `scripts/i18n-parity.test.mts` — e.g. `home.heroHeadline` (*"The wisdom of YES & NO."*) is
 the brand line, verbatim in all three locales by Ali's call (PLAN-OF-RECORD §7b).
 ⛔ Do not "fix" an allowlisted string.
+⚠️ **2026-09-27 (INHERIT-MANIFEST R7(3), hero v3):** the brand line is no longer the hero's h1 — it is the
+hero's SIGN-OFF, verbatim and `lang="en"`, and the share-image line. The h1 is `home.heroAsk`, the question
+in the reader's language, filled with the side words (`{yes}` / `{no}` → NDIO / HAPANA, 是 / 否). The zh h1
+*"是还是否？"* carries no 「」: each side word is its own coloured span, so neither can read as a function word —
+the bracket rule above is for a side word inside running prose.
 
 ---
 

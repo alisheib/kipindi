@@ -24,7 +24,7 @@ import { canView } from "@/lib/server/rbac";
 import { formatTzs, formatTzsCompact, formatNumber, adminCount } from "@/lib/utils";
 import { eatDayKey } from "@/lib/eat-day";
 import { outcomeWordIn } from "@/lib/side-label";
-import { describeFeeModel, poolFee } from "@/lib/payout";
+import { describeFeeModel, chargedFee } from "@/lib/payout";
 import { ratesFor } from "@/lib/server/market-service";
 import { hasOwnSnapshot } from "@/lib/server/market-config";
 import { officerLabel } from "@/lib/server/actor-label";
@@ -129,8 +129,11 @@ async function HouseGameContent({
    * manufacture a variance on a correct book. `analytics.ts` guards this the same way. */
   const winner = outcome === "YES" || outcome === "NO" ? outcome : null;
   const settled = meta?.settledAt != null;
+  /* ⭐ landing v3 C1 · `chargedFee`, not `poolFee`: settlement books NOTHING on a one-sided pool (every stake is
+   * refunded whatever the verdict), and `poolFee(…, winner)` priced a loser-share fee off the funded side there —
+   * a variance manufactured on a correct book. `chargedFee` mirrors settlement's own branches. */
   const computed = rates && meta && winner && settled
-    ? Math.round(poolFee(meta.yesPool, meta.noPool, rates, winner).fee)
+    ? Math.round(chargedFee({ yesPool: meta.yesPool, noPool: meta.noPool, resolvedOutcome: winner }, rates).fee)
     : null;
   /* ⛔ THE SETTLEMENT SLICE ONLY. `poolFee` does not model an early exit, and the early-exit fee
    * is booked per exit against the pool as it stood then — including it would report a variance

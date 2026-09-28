@@ -48,14 +48,16 @@ export const MUTATIONS = [
     name: "the live wall renders the kit bar with no cold-start branch (PV-06, second pass)",
     file: "src/app/live/pulse-grid.tsx",
     expect: "tipping-bar-without-cold-start in src/app/live/pulse-grid.tsx",
-    from: `        {yes === null ? (
+    // ⚠️ RE-PINNED 2026-09-27 (landing v3 C1): the card branches on `price.kind` (priceState) now, and its empty
+    // rail is named for its state (`noPriceWord`). The mutation still deletes the empty arm outright.
+    from: `        {price.kind !== "priced" ? (
           <TippingBar height={9} showLabels={false} recastOnHover={false}
-            empty emptyLabel={t.market.noBetsYet} />
+            empty emptyLabel={noPriceWord} />
         ) : (
-          <TippingBar yesPct={yes} height={9} showLabels={false} recastOnHover={false}
-            probabilityLabel={t.market.probBarAria.replace("{side}", sideWord(t, "YES", isUpDown ? "UPDOWN" : "MARKET"))} />
+          <TippingBar yesPct={price.yesPct} height={9} showLabels={false} recastOnHover={false}
+            probabilityLabel={t.market.probBarAria.replace("{side}", sideWord(t, "YES", productLine))} />
         )}`,
-    to: `        <TippingBar yesPct={yes} height={9} showLabels={false} recastOnHover={false}
-          probabilityLabel={t.market.probBarAria.replace("{side}", sideWord(t, "YES", isUpDown ? "UPDOWN" : "MARKET"))} />`,
+    to: `        <TippingBar yesPct={price.yesPct} height={9} showLabels={false} recastOnHover={false}
+          probabilityLabel={t.market.probBarAria.replace("{side}", sideWord(t, "YES", productLine))} />`,
   },
 ];

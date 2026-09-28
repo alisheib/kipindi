@@ -9,6 +9,7 @@ import { useT } from "@/lib/i18n";
 import { SearchBox } from "@/components/ui/search-box";
 import { fieldNames, MARKET_SEARCH } from "@/lib/search";
 import { sideWord } from "@/lib/side-label";
+import { priceState } from "@/lib/markets/price-state";
 
 type Market = {
   id: string;
@@ -16,8 +17,9 @@ type Market = {
   titleSw: string;
   titleZh?: string | null;
   category: string;
-  /** 0..100, or **null** when the pool is empty — there is no crowd price to state (PV-06). */
-  yesPct: number | null;
+  /** The two POOLS, never a finished price: the card decides its state from them (`priceState`, C1). */
+  yesPool: number;
+  noPool: number;
   volume: number;
   predictors: number;
   timeLeft: string;
@@ -35,9 +37,6 @@ type Market = {
  * The signature 50pick "wall of bars". Each card reveals on intersection-
  * observer with a 60ms stagger so scrolling feels like the wall waking up
  * one bar at a time.
- *
- * Tipping markets (within 8 of 50/50) get a subtle warning-amber border
- * because they're the most contested — the most interesting stories.
  */
 const BATCH = 24;
 
@@ -164,13 +163,20 @@ function PulseCard({ market, index }: { market: Market; index: number }) {
   const { t, locale } = useT();
   const title = pickLocalized(locale, market.titleEn, market.titleSw, market.titleZh);
   const Cat = I[categoryGlyph(market.category)];
-  const yes = market.yesPct;
   const isUpDown = market.productLine === "UPDOWN";
+  const productLine = isUpDown ? "UPDOWN" : "MARKET";
+  // ⭐ C1 · the card's rule: a price only where both pools hold money; otherwise the dashed rail NAMED for
+  // its state — "One side only" where money sits on one side, "No bets yet" only where nobody ever bet,
+  // "No pool yet" where a cash-out emptied it.
+  const price = priceState(market.yesPool, market.noPool);
+  const noPriceWord = price.kind === "oneSided" ? t.market.oneSideOnly
+    : market.predictors === 0 ? t.market.noBetsYet : t.market.noPoolYet;
   // Up & Down rounds link to their OWN page (via roundId), never the poll detail.
   const href = isUpDown ? (market.roundId ? `/updown/${market.roundId}` : "/updown") : `/markets/${market.id}`;
   return (
     <Link
       href={href as never}
+      data-price-state={price.kind}
       className="kp-rise group flex flex-col rounded-xl border border-border bg-bg-elevated p-4 transition-colors hover:border-border-strong"
       style={{ animationDelay: `${Math.min(index, 10) * 45}ms` }}
     >
@@ -208,19 +214,16 @@ function PulseCard({ market, index }: { market: Market; index: number }) {
       >
         <KeepHyphenated text={title} />
       </h3>
-      {/* 🔴 PV-06, second pass · 2026-09-03. This bar carried NO `empty` prop, so the kit's
-          cold-start rail was structurally UNREACHABLE on this wall no matter what the pool
-          held — and `yesPct` arrived from `impliedYesPct`, which hands out a hardcoded 50 on
-          an empty one. An untouched market therefore advertised "@ 50% · @ 50%" here as a
-          crowd price, on the board whose entire purpose is to show where the crowd is.
-          ⛔ The percentages go with it: a price nobody set must not be printed either. */}
+      {/* 🔴 PV-06, second pass · 2026-09-03: this bar carried NO `empty` prop, so an untouched market
+          advertised "@ 50% · @ 50%" here as a crowd price. ⛔ C1: nor may a one-sided pool print
+          "@ 100% · @ 0%" — a price needs two sides (ruling 13). The percentages go with the bar. */}
       <div className="mt-3">
-        {yes === null ? (
+        {price.kind !== "priced" ? (
           <TippingBar height={9} showLabels={false} recastOnHover={false}
-            empty emptyLabel={t.market.noBetsYet} />
+            empty emptyLabel={noPriceWord} />
         ) : (
-          <TippingBar yesPct={yes} height={9} showLabels={false} recastOnHover={false}
-            probabilityLabel={t.market.probBarAria.replace("{side}", sideWord(t, "YES", isUpDown ? "UPDOWN" : "MARKET"))} />
+          <TippingBar yesPct={price.yesPct} height={9} showLabels={false} recastOnHover={false}
+            probabilityLabel={t.market.probBarAria.replace("{side}", sideWord(t, "YES", productLine))} />
         )}
       </div>
       {/* ⚠️ THE `mt-2.5` IS HOISTED ONTO THE WRAPPER, NOT REPEATED IN BOTH ARMS — caught by
@@ -229,15 +232,20 @@ function PulseCard({ market, index }: { market: Market; index: number }) {
           that reads bigger and paints smaller. Writing it in each branch added a 562nd usage
           against a ceiling of 561. One wrapper is also simply the right structure. */}
       <div className="mt-2.5">
-        {yes === null ? (
-          <div className="text-center font-mono text-[12px] text-text-subtle">{t.market.noBetsYet}</div>
+        {price.kind !== "priced" ? (
+          <div className="text-center font-mono text-[12px] text-text-subtle">{noPriceWord}</div>
         ) : (
           <div className="flex items-center justify-between font-mono text-[12px] tabular-nums">
-            <span className="font-bold text-yes-300">{isUpDown ? t.market.udUp : t.common.yes} <span className="opacity-75">@ {yes}%</span></span>
-            <span className="font-bold text-no-300">{isUpDown ? t.market.udDown : t.common.no} <span className="opacity-75">@ {100 - yes}%</span></span>
+            <span className="font-bold text-yes-300">{sideWord(t, "YES", productLine)} <span className="opacity-75">@ {price.yesPct}%</span></span>
+            <span className="font-bold text-no-300">{sideWord(t, "NO", productLine)} <span className="opacity-75">@ {100 - price.yesPct}%</span></span>
           </div>
         )}
       </div>
+      {/* L22 · the refund rule on every unsettled one-sided card (/live shows no settled row). Up & Down tiles
+          read the same sentence in their own side words: `udNobodyBacked` addresses a stake-holder. */}
+      {price.kind === "oneSided" && (
+        <p className="mcardp-onesided-note mt-2">{t.market.oneSidedNote.replace("{side}", sideWord(t, price.emptySide, productLine))}</p>
+      )}
     </Link>
   );
 }

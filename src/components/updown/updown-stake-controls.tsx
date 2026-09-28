@@ -273,9 +273,12 @@ export function UpDownStakeControls({
           over; the balance shortfall with its deposit route (UD-1 — same faint factual
           register as the empty-side note: a fact about the wallet, not an alarm); else the
           prompt + the amount. */}
+      {/* F1 (2026-09-27, the landing band's frame panel) · every line below is a SENTENCE, and on the board card
+          (`compact`) all four sat at 10px — under §T4's 12.5px reading floor, on the surface most bets are placed
+          from. They take the kit's 13px on both sizes, the size the round page already reads them at. */}
       {bet.insufficient && !bet.locallyLocked ? (
-        <p className={cn("mt-1.5 flex items-start gap-1 leading-[1.45] text-text-faint break-keep [overflow-wrap:anywhere]", compact ? "text-[10px]" : "text-body-sm")}>
-          <I.info s={compact ? 10 : 11} className="mt-[2px] shrink-0" />
+        <p className="mt-1.5 flex items-start gap-1 text-body-sm leading-[1.45] text-text-faint break-keep [overflow-wrap:anywhere]">
+          <I.info s={11} className="mt-[2px] shrink-0" />
           <span>
             {t.market.udInsufficientBalance}{" "}
             <Link
@@ -288,7 +291,7 @@ export function UpDownStakeControls({
           </span>
         </p>
       ) : (
-        <p className={cn("mt-1.5 flex items-center gap-1 leading-[1.45] text-text-faint", compact ? "text-[10px]" : "text-body-sm")}>
+        <p className="mt-1.5 flex items-center gap-1 text-body-sm leading-[1.45] text-text-faint">
           {bet.pending
             // UD-9 · staged: past ~2.5s in flight the line escalates to the queued
             // message — the admission queue can legitimately hold a bet for seconds,
@@ -311,8 +314,8 @@ export function UpDownStakeControls({
           register the `factual` toast variant was added for. Not gold (gold is earned money on
           this platform), not an alarm (a refund is not a failure). */}
       {emptyCopy && (
-        <p className={cn("mt-1.5 flex items-start gap-1 leading-[1.45] text-text-faint break-keep [overflow-wrap:anywhere]", compact ? "text-[10px]" : "text-body-sm")}>
-          <I.info s={compact ? 10 : 11} className="mt-[2px] shrink-0" />
+        <p className="mt-1.5 flex items-start gap-1 text-body-sm leading-[1.45] text-text-faint break-keep [overflow-wrap:anywhere]">
+          <I.info s={11} className="mt-[2px] shrink-0" />
           <span>{emptyCopy}</span>
         </p>
       )}
@@ -321,7 +324,7 @@ export function UpDownStakeControls({
           nothing saying what the figure was. Now that the number moves with every later bet
           (G3), the sentence that says so has to travel with it. */}
       {(multUp != null || multDown != null) && (
-        <p className={cn("mt-1 leading-[1.45] text-text-faint break-keep [overflow-wrap:anywhere]", compact ? "text-[10px]" : "text-body-sm")}>{t.market.udEstimateNote}</p>
+        <p className="mt-1 text-body-sm leading-[1.45] text-text-faint break-keep [overflow-wrap:anywhere]">{t.market.udEstimateNote}</p>
       )}
 
       {/* Screen-reader confirmation. ⛔ NOT a replacement for the toast — both, always: a

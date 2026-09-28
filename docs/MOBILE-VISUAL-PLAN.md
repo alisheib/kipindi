@@ -1363,6 +1363,12 @@ sub-claims turned out to be FALSE**, and a ruling made on the summary alone woul
 
 **12. Item 5 — the English hero headline on a Swahili-default page. RULED: keep the brand line, add the reader's
 own words beneath it.**
+> ⚠️ **SUPERSEDED IN PART 2026-09-27 — Ali's ruling R7(3)** (`docs/design-system/v4-2026-09-26-landing-ten/INHERIT-MANIFEST.md`;
+> spec `specs/hero-v3.md`): the hero's h1 is now the question in the reader's own language — *"NDIO au HAPANA?"* /
+> *"YES or NO?"* / *"是还是否？"*, its side words from `sideWord` — and the brand line *"The wisdom of YES & NO."* moves,
+> VERBATIM and still `lang="en"`, to the hero's sign-off (and stays the share-image line). The sub-line this ruling
+> added (`home.heroHeadlineSub`, `.kp-hero__sub`) is deleted. What stands: the brand line is never translated
+> (`IDENTICAL_OK`), and its YES/NO keep the outcome inks. Built on branch `landing-v3-hero`.
 - ⛔ **It is LAW, not drift.** `DESIGN_AUTHORITY.md:1491-1492` — *"`home.heroHeadline` is the brand line, verbatim
   in all three locales by Ali's call (PLAN-OF-RECORD §7b)"* — with a type spec built around it
   (`design-system/v3…/README.md:76`: `--type-display-1`, `YES` → `--hero-yes-accent`, `NO` → `--hero-no-accent`)
@@ -1436,10 +1442,33 @@ own words beneath it.**
   one count: `markets/[id]/page.tsx` has ONE call site, so the seven are 2+1+1+1+1+1.
   The `/markets` rows read the same rule (`shownYesPct`), so the odds filters no longer file a NO-only market
   under long shots at 0%, and the detail page prints a TWO-sided price as the card does (99, never 100).
-  ⚠️ **Still U32's, not the card's** — each still prints 0/100 on a ONE-sided market: the detail page's bar,
-  side picker and JSON-LD, and its callout still reads "One-sided win" / "before resolution" where rules §7
-  says a refund "at closing"; `/live`'s pulse grid and featured contest; `/results`' featured result. (Its
-  metadata and `/api/og/market` read the rule since landing v3 WP14b.) ⭐ S07-results-01 and the nested half of
+  ⚠️ **Was U32's, not the card's** — each printed 0/100 on a ONE-sided market until landing v3 C1, all built on
+  branch `landing-v3-c1` 2026-09-27 and NOT live (the page's metadata and `/api/og/market` read the rule since
+  WP14b). ✅ **Built by landing v3 C1 commit A** (branch `landing-v3-c1`, 2026-09-27, not live): the detail
+  page's bar, caption, side picker and JSON-LD read `priceState`; its "One-sided win" / "before resolution"
+  callout is retired for the card's own label and conditional refund note (R6(1), COMPLIANCE-DECISIONS
+  2026-09-27); its resolution panel no longer prints a fee on a one-sided refund (E-419); and a settled card's
+  result word wears its own side's ink (NO, void). `test:one-sided` §8. ✅ **C1 commit B** (same branch):
+  `/live`'s pulse cards take the pools and name their empty rail ("One side only" · "No bets yet" · "No pool
+  yet") with the refund note on a one-sided card; its "n tipping" count and "Most contested" carousel count
+  and feature priced markets only (`live-contest.ts`), and "tipping" is ONE rule platform-wide, |YES − 50| ≤ 3
+  (R6(2), `isTipping` in `price-state.ts`). `test:one-sided` §9. ✅ **C1 commit C**: `/results`' notable
+  spotlight is crowned only for a verdict over a TWO-sided pool (`isNotableResult` — a one-sided refund and a
+  void earned nothing), draws a price only where both pools hold money (the final split reads "Final pool"),
+  names its empty rail by the verdict first, and translates its topic chip. `test:one-sided` §10. ✅ **C1
+  commit D**: the detail chart, the card sparkline and the 24h move (and so `/markets`' "Biggest move") plot
+  priced snapshots only — no one-sided 100 or empty 50 on a line, 99 not 100 on a lopsided pool, no move from a
+  baseline that had no price. `test:history` §5 (proven red on the pre-C1 module), `test:one-sided` §11. ✅ **C1
+  commit E**: a SETTLED market's share preview (og image, og:description, JSON-LD) leads with its result in its
+  own side's ink ("Result: NO."), reads its split as the final pool, and states no price. `test:share-preview` §4.
+  ✅ **C1 commit F**: the `/updown` card and the round page draw a split only where both sides hold money (from
+  the round's raw pools; the board ships no finished `upPct` any more); a one-sided round shows the dashed rail
+  named "One side only" and the label row — no more "Up 100% · 0% Down" above "Nobody has backed Down yet".
+  `test:one-sided` §13; `qa:cold-start`'s invariant is now "a split ⟺ both sides funded". ✅ **C1 commit G**
+  (officer console, English only): `/admin/markets`, `/admin/markets/[id]`, `/admin/resolver-queue` and
+  `/admin/resolver/[id]` read the same rule — the named empty rail ("One side only" / "No pool" / "No bets"), no
+  crowd dial without a price, and the resolver told that a one-sided verdict moves no money. With that no page or
+  component calls `impliedYesPct`/`pricedYesPct` any more (`test:one-sided` §14's list is empty). ⭐ S07-results-01 and the nested half of
   S07-results-26 (share on a settled card navigating away) are delivered by landing v3 WP14b.
 
 **14. Item 7 — the leaderboard ranks raw ROI. RULED: rank by the law its own tiers already state.**

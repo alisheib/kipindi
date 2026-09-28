@@ -17,13 +17,14 @@
 import Link from "next/link";
 import { I } from "@/components/ui/glyphs";
 import { PaymentLogo } from "@/components/wallet/payment-logo";
-import { MOBILE_MONEY_METHODS } from "@/lib/payment-providers";
+import type { PaymentMethodSpec } from "@/lib/payment-providers";
 import { Chip } from "@/components/ui/chip";
 import { STATUS_TONE, TONE_CHIP } from "@/lib/status-tone";
 import { pickLocalized } from "@/lib/localized";
 import { outcomeWord } from "@/lib/side-label";
 import { fill, formatTzs } from "@/lib/utils";
-import { eatDayKey, formatEatDay } from "@/lib/eat-day";
+import { formatEatDate } from "@/lib/eat-day";
+import { sourceHost } from "@/lib/markets/source-host";
 import { signoffWord } from "@/lib/markets/signoff";
 import type { Dict, Locale } from "@/lib/i18n-dict";
 import { Reveal } from "@/components/layout/reveal";
@@ -55,8 +56,10 @@ function Claim({ text, accent }: { text: string; accent: string }) {
 }
 
 export function TrustBand({
-  t, locale, settlements, nowMs,
+  t, locale, settlements, nowMs, rails,
 }: {
+  /** The rails the landing shows — `heroRails` (server/payout-rails.ts), the same list the hero names. */
+  rails: readonly PaymentMethodSpec[];
   t: Dict;
   locale: Locale;
   /** Already ordered `settledAt` DESC by `getPlatformStats`; only rows whose money has moved. */
@@ -105,7 +108,7 @@ export function TrustBand({
                   className={`kp-trust__b text-balance [overflow-wrap:anywhere]${locale === "zh" ? "" : " break-keep"}`}
                   style={{ maxWidth: "50ch" }}
                 >{c.b}</p>
-              {c.marks && (
+              {c.marks && rails.length > 0 && (
                 /* All four rails (2026-09-13). The cell says "mobile money in and out", and one
                    M-Pesa mark was left over from the old M-Pesa-only copy. The list and its order
                    come from the catalogue the deposit and withdraw pickers use. Four 40px tiles
@@ -114,7 +117,7 @@ export function TrustBand({
                 <span className="kp-trust__marks flex-wrap">
                   {/* Each official mark sits on its own white tile. `hue` is not used for a
                       delivered logo; it only colours the initials placeholder. */}
-                  {MOBILE_MONEY_METHODS.map((m) => (
+                  {rails.map((m) => (
                     <PaymentLogo key={m.id} id={m.id} name={m.name} hue={m.hue ?? 0} size={40} />
                   ))}
                 </span>
@@ -248,12 +251,11 @@ function SettledRow({ row, t, locale, nowMs }: { row: SettlementRow; t: Dict; lo
   // from `signoffOf` (lib/markets/signoff.ts) — never a fixed "two officers", which single-admin
   // resolution would make false (INHERIT-MANIFEST L2). `/fairness` renders the same rule and the same
   // words, so a reader who follows a row there reads the same answer.
-  const when = row.settledAtMs != null ? (() => {
-    const key = eatDayKey(row.settledAtMs);
-    const day = formatEatDay(key, t.common.monthsShort, locale);
-    const thisYear = key.slice(0, 4) === eatDayKey(nowMs).slice(0, 4);
-    return fill(t.home.settledOn, { date: locale === "zh" || thisYear ? day : `${day} ${key.slice(0, 4)}` });
-  })() : null;
+  // The date rule (the reader's month words, the year only when it is not this one) has ONE home since
+  // landing v3 WP3: `formatEatDate`, which a market's "Closes {date}" line reads too.
+  const when = row.settledAtMs != null
+    ? fill(t.home.settledOn, { date: formatEatDate(row.settledAtMs, nowMs, t.common.monthsShort, locale) })
+    : null;
   const who = row.signoff ? signoffWord(t.common, row.signoff) : null;
   const meta = [when, who].filter(Boolean).join(" · ");
   const host = sourceHost(row.sourceUrl);
@@ -306,11 +308,6 @@ function SettledRow({ row, t, locale, nowMs }: { row: SettlementRow; t: Dict; lo
   );
 }
 
-/** The source's host, uppercased by CSS. Falls back to nothing rather than to a raw URL. */
-function sourceHost(url: string): string {
-  try {
-    return new URL(url).hostname.replace(/^www\./, "");
-  } catch {
-    return "";
-  }
-}
+/* The source's host (uppercased by CSS) is `sourceHost` from `lib/markets/source-host.ts` since landing
+   v3 WP3 — the one display rule, shared with the markets' "Settles on" line. It returns null, never the
+   raw URL, when the URL does not parse. */

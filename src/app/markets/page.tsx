@@ -365,6 +365,9 @@ async function DiscoveryBoard({ searchParams }: { searchParams: Promise<SP> }) {
               timeLeft={
                 r.selectionClosed ? t.market.waitingForResults : timeLeftStr(m.selectionClosedAt ?? m.resolutionAt)
               }
+              // SOON reads the milliseconds from the label's own deadline and clock — so it fires in sw and
+              // zh too (landing v3 WP3, L17); the label was only ever tested in English.
+              msLeft={r.selectionClosed ? undefined : Date.parse(m.selectionClosedAt ?? m.resolutionAt) - nowMs}
               status={m.status === "CLOSED" ? "CLOSED" : "LIVE"}
               selectionClosed={r.selectionClosed}
               sourceUrl={m.sourceUrl}

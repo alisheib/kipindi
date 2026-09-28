@@ -32,9 +32,12 @@ import { refundReasonFor, REFUND_REASON_KEY, viewerRefundCopy } from "@/lib/updo
 import { pickLocalized } from "@/lib/localized";
 // ⛔ ONE lexicon for side words across both products — never a local ternary (test:labels §4).
 import { outcomeWord } from "@/lib/side-label";
-import { formatTzs } from "@/lib/utils";
+import { fill, formatTzs } from "@/lib/utils";
+// R5 · the page's tone is settlement's own target rule — the landing band reads the same function.
+import { decideOutcomeByTargets } from "@/lib/server/updown-service";
 // ⭐ The kit's ONE pool-split bar, and the home of the cold-start rail (§B9) — PV-06.
 import { TippingBar } from "@/components/brand";
+import { priceState } from "@/lib/markets/price-state";
 import { RoundCountdownPod } from "@/components/updown/round-countdown";
 import { PriceHero } from "@/components/updown/price-hero";
 import { RoundActionPanel } from "@/components/updown/round-action-panel";
@@ -153,10 +156,37 @@ export default async function UpDownRoundPage({
      rather than something a comment asserts. */
   const heroLive = heroPrice({ state: round.state, closePrice: round.closePrice, livePrice: asset.livePrice });
   const move = heroLive != null && round.openPrice != null ? heroLive - round.openPrice : null;
+  /* ⭐ R5 (2026-09-27, spec updown-band-v2 §12) · THIS PAGE AGREES WITH THE LANDING BAND.
+     The band says "Juu iliongoza saa 14:26" from settlement's own target rule; a player who taps
+     through must meet the same answer here, in the same ink, at the same minute.
+     · TONE BY THE TARGETS, computed on the server: UP at or above `upTarget`, DOWN at or below
+       `downTarget`, level strictly between — E-261 generalised (a banded round voids anywhere inside
+       its band, not only at exactly flat). No tone when the read is unknown.
+     · While the round is open the price stamp joins the MOVE line ("… · imenukuliwa 14:26:00 EAT"),
+       beside the figure it dates, and the source line names the market's class alone. Decided rounds
+       keep today's strings. */
+  const tone = (() => {
+    if (heroLive == null) return null;
+    const o = decideOutcomeByTargets(heroLive, round.upTarget, round.downTarget);
+    return o.voidReason === "source-failed" ? null : o.outcome === "UP" ? "up" as const : o.outcome === "DOWN" ? "down" as const : "level" as const;
+  })();
+  // No-break spaces: "imenukuliwa 18:55:02 EAT" is one unit and never splits at a line end.
+  const quotedAt = asset.sourceQuotedAt ? fmtEAT(asset.sourceQuotedAt) : null;
+  const stamp = quotedAt ? `${t.market.udQuoted}\u00A0${quotedAt.replace(/ /g, "\u00A0")}` : null;
+  const moveText = move == null || move === 0 ? null
+    : !decided && tone === "level" ? fill(t.market.udLevelBy, { amount: `$${Math.abs(move).toFixed(dec)}` })
+      : `${move > 0 ? t.market.udAboveOpenBy : t.market.udBelowOpenBy} $${Math.abs(move).toFixed(dec)}`;
   // E-53 · the KIND of market, never the vendor. The class arrives already resolved from
   // the server (`publicSourceClassFor`), so the domain is not in this payload to leak.
-  const source =
-    `${t.market[SOURCE_CLASS_KEY[asset.sourceClass]]}${asset.sourceQuotedAt ? ` · ${t.market.udQuoted} ${fmtEAT(asset.sourceQuotedAt)}` : ""}`;
+  const source = decided
+    ? `${t.market[SOURCE_CLASS_KEY[asset.sourceClass]]}${stamp ? ` · ${stamp}` : ""}`
+    : t.market[SOURCE_CLASS_KEY[asset.sourceClass]];
+  // Two clauses, never split inside: the move and its quote stamp. Below 400 they stack and the "·" hides, so no
+  // line ends on a dangling dot — the landing band's own rule (frame panel round 3, 2026-09-27).
+  const aboveBelow = decided ? moveText
+    : moveText && stamp
+      ? <><span className="ud-hero-chunk">{moveText}</span><span className="ud-hero-sep">{" · "}</span><span className="ud-hero-chunk">{stamp}</span></>
+      : (moveText ?? stamp);
 
   // The BAR is a percentage and rounds; the MONEY beside it is not.
   //
@@ -165,12 +195,12 @@ export default async function UpDownRoundPage({
   // TZS 400, so a round with one real bet on the thin side printed the thin side as empty, and
   // an empty side printed as 500. D2 makes "is this side empty" the load-bearing question on
   // this page, so the page now reads the raw shillings the server already sends.
-  // ⛔ NULL WHEN THE POOL IS EMPTY, and it must stay null all the way to the paint — PV-06.
-  // `round.upPct` used to arrive as a hardcoded 50 from `impliedYesPct`; it now arrives as
-  // `pricedYesPct`'s honest null, and this page renders the kit's cold-start rail instead of
-  // a fabricated half-and-half. ⛔ Never `?? 50` on the way past.
-  const upPct = round.upPct === null ? null : Math.round(round.upPct);
-  const downPct = upPct === null ? null : Math.max(0, 100 - upPct);
+  // ⭐ C1 · THE CARD'S PRICE RULE, from the same raw pools (`priceState`): a split only where both sides
+  // hold money (1–99); an empty round draws the kit's cold-start rail (PV-06) and a one-sided one the rail
+  // named "One side only" — never "Up 100% · 0% Down" above the warning that one side is empty.
+  const price = priceState(round.pricing.upPool, round.pricing.downPool);
+  const upPct = price.kind === "priced" ? price.yesPct : null;
+  const downPct = upPct === null ? null : 100 - upPct;
   const upTzs = round.pricing.upPool;
   const downTzs = round.pricing.downPool;
 
@@ -370,8 +400,12 @@ export default async function UpDownRoundPage({
             <AssetMark icon={asset.iconKey} ticker={ticker} size={44} />
             <div className="min-w-0">
               <h1 className="m-0 flex flex-wrap items-center gap-2">
-                <span className="overflow-hidden text-ellipsis whitespace-nowrap font-display text-title-lg font-bold leading-tight text-text">
-                  {name} {t.market.udTitle}
+                {/* Wraps, balanced — never an ellipsis: at 360 in Swahili the one-line title printed "Bitcoin Juu na
+                    Ch…", the game's own name cut, on the page the landing band's picks land on (M4a; seen in the band's
+                    click-through frame, 2026-09-27). */}
+                <span className="font-display text-title-lg font-bold leading-tight text-text text-balance">
+                  {/* The game's name never splits ("Bitcoin Juu / na Chini" at 360): the break falls after the asset. */}
+                  {name}{" "}<span className="whitespace-nowrap">{t.market.udTitle}</span>
                 </span>
                 {/* PV-13c (2026-09-03) — was a raw `<span className="chip">`. */}
                 <Chip>{round.durationMinutes} {t.market.udMin}</Chip>
@@ -477,74 +511,20 @@ export default async function UpDownRoundPage({
             livePrice={heroLive}
             priceSeries={priceSeries}
             decimals={dec}
+            tone={tone}
             copy={{
-              priceLabel: decided ? t.market.udClosePrice : t.market.udLivePrice,
+              priceLabel: decided ? t.market.udClosePrice : t.market.udConfirmedPrice,
               openLabel: t.market.udOpenPrice,
               upLabel: t.market.udUp,
               downLabel: t.market.udDown,
               awaitingRead: t.market.udAwaitingRead,
-              aboveBelow: move != null && move !== 0 ? `${move > 0 ? t.market.udAboveOpenBy : t.market.udBelowOpenBy} $${Math.abs(move).toFixed(dec)}` : null,
+              aboveBelow,
               source,
               chartAlt: `${name} ${t.market.udTitle}`,
             }}
           />
 
           <div className="flex min-w-0 flex-col gap-4">
-            {/* Pool */}
-            <section aria-label={t.market.udPool} style={{ ...card, padding: "14px 16px 16px" }}>
-              <p className={eyebrow}>{t.market.udPool}</p>
-              <div className="mt-2.5 flex items-baseline justify-between gap-3">
-                <div>
-                  {/* ⭐ DG-A-12 · §M4 + §T1 — THE POOL FIGURE AND THE COUNT BESIDE IT MOVE TOGETHER.
-                      `volumeTzs` is an amount, so §M4 gives it `.amount` (mono + tabular-nums +
-                      letter-spacing 0) in place of `font-mono … tabular-nums`. 17px is on
-                      neither ladder (§T1); `text-title-sm` (18) is the nearest rung, +1px.
-                      ⛔ The predictor count at L465 is the SAME 17px and sits in the same
-                      `items-baseline justify-between` row — it moves in this edit too, or the
-                      pool's two headline figures end up a pixel apart on one baseline. It is a
-                      COUNT, not an amount, so it keeps `font-mono tabular-nums` and does NOT
-                      take `.amount` (§M4 governs amounts only). `leading-[1.1]` stays on both:
-                      the rung would otherwise impose 24px and open the pair up. */}
-                  <p className="m-0 amount text-title-sm font-bold leading-[1.1] text-text">{formatTzs(round.volumeTzs)}</p>
-                  <p className="mt-1 font-mono text-micro uppercase eyebrow text-text-faint">{t.market.udVolume}</p>
-                </div>
-                <div className="text-right">
-                  <p className="m-0 flex items-center justify-end gap-1.5 font-mono text-title-sm font-bold leading-[1.1] tabular-nums text-text">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3.4" /><path d="M5.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6" /></svg>
-                    {round.players.toLocaleString()}
-                  </p>
-                  <p className="mt-1 font-mono text-micro uppercase eyebrow text-text-faint">{t.market.udPlayers}</p>
-                </div>
-              </div>
-              {/* 🔴 PV-06 · THE THIRD HAND-ROLLED SPLIT BAR, and the third different drawing of
-                  one idea. `market-card.tsx` used the kit's `TippingBar`; this page and
-                  `updown-card.tsx` each drew their own two-span strip — 6px with a 0.5 gap
-                  here, 5px with a 2px gap there — and neither could inherit the cold-start
-                  rail the primitive already owns (§B9: "A STATE OF THIS BAR, not a second
-                  component"). So an empty round advertised "Up 50% · 50% Down" on both.
-                  One bar now, at `.mcardp`'s own height. */}
-              <div className="mt-3.5">
-                {upPct !== null && downPct !== null && (
-                  <div className="flex items-baseline justify-between gap-2 font-mono text-[9.5px] font-bold tracking-[0.06em]">
-                    <span style={{ color: "var(--yes-300)" }}>{t.market.udUp} {upPct}%</span>
-                    <span style={{ color: "var(--no-300)" }}>{downPct}% {t.market.udDown}</span>
-                  </div>
-                )}
-                {upPct === null ? (
-                  <TippingBar className="mt-1.5" height={7} showLabels={false} recastOnHover={false}
-                    empty emptyLabel={t.market.noBetsYet} />
-                ) : (
-                  <TippingBar className="mt-1.5" yesPct={upPct} height={7} showLabels={false}
-                    recastOnHover={false} resolved={round.state === "resolved"}
-                    probabilityLabel={t.market.probBarAria.replace("{side}", t.market.udUp)} />
-                )}
-                <div className="mt-1.5 flex items-baseline justify-between gap-2 font-mono text-[10.5px] tabular-nums text-text-muted">
-                  <span>{formatTzs(upTzs)}</span>
-                  <span>{formatTzs(downTzs)}</span>
-                </div>
-              </div>
-            </section>
-
             {/* Stake (open) · Result (resolved & played) · calm panels otherwise.
                 ⭐ UD-2 · the open/locked pair is ONE client component that derives its
                 phase from the instants (`roundPhase` + the server-anchored clock), so
@@ -712,6 +692,64 @@ export default async function UpDownRoundPage({
                 )}
               </section>
             ) : null}
+            {/* Pool — AFTER the stake panel (frame panel round 5, 2026-09-27): a pick from the landing band lands
+                on #stake at the bottom of the view, and with the pool between them the round's countdown fell off
+                the top. Countdown → confirmed price → the slip now fit one phone screen; the pool follows. */}
+            <section aria-label={t.market.udPool} style={{ ...card, padding: "14px 16px 16px" }}>
+              <p className={eyebrow}>{t.market.udPool}</p>
+              <div className="mt-2.5 flex items-baseline justify-between gap-3">
+                <div>
+                  {/* ⭐ DG-A-12 · §M4 + §T1 — THE POOL FIGURE AND THE COUNT BESIDE IT MOVE TOGETHER.
+                      `volumeTzs` is an amount, so §M4 gives it `.amount` (mono + tabular-nums +
+                      letter-spacing 0) in place of `font-mono … tabular-nums`. 17px is on
+                      neither ladder (§T1); `text-title-sm` (18) is the nearest rung, +1px.
+                      ⛔ The predictor count at L465 is the SAME 17px and sits in the same
+                      `items-baseline justify-between` row — it moves in this edit too, or the
+                      pool's two headline figures end up a pixel apart on one baseline. It is a
+                      COUNT, not an amount, so it keeps `font-mono tabular-nums` and does NOT
+                      take `.amount` (§M4 governs amounts only). `leading-[1.1]` stays on both:
+                      the rung would otherwise impose 24px and open the pair up. */}
+                  <p className="m-0 amount text-title-sm font-bold leading-[1.1] text-text">{formatTzs(round.volumeTzs)}</p>
+                  <p className="mt-1 font-mono text-micro uppercase eyebrow text-text-faint">{t.market.udVolume}</p>
+                </div>
+                <div className="text-right">
+                  <p className="m-0 flex items-center justify-end gap-1.5 font-mono text-title-sm font-bold leading-[1.1] tabular-nums text-text">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3.4" /><path d="M5.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6" /></svg>
+                    {round.players.toLocaleString()}
+                  </p>
+                  <p className="mt-1 font-mono text-micro uppercase eyebrow text-text-faint">{t.market.udPlayers}</p>
+                </div>
+              </div>
+              {/* 🔴 PV-06 · THE THIRD HAND-ROLLED SPLIT BAR, and the third different drawing of
+                  one idea. `market-card.tsx` used the kit's `TippingBar`; this page and
+                  `updown-card.tsx` each drew their own two-span strip — 6px with a 0.5 gap
+                  here, 5px with a 2px gap there — and neither could inherit the cold-start
+                  rail the primitive already owns (§B9: "A STATE OF THIS BAR, not a second
+                  component"). So an empty round advertised "Up 50% · 50% Down" on both.
+                  One bar now, at `.mcardp`'s own height. */}
+              <div className="mt-3.5">
+                {upPct !== null && downPct !== null ? (
+                  <div className="flex items-baseline justify-between gap-2 font-mono text-[9.5px] font-bold tracking-[0.06em]">
+                    <span style={{ color: "var(--yes-300)" }}>{t.market.udUp} {upPct}%</span>
+                    <span style={{ color: "var(--no-300)" }}>{downPct}% {t.market.udDown}</span>
+                  </div>
+                ) : price.kind === "oneSided" ? (
+                  <div className="flex"><span className="mcardp-oneside">{t.market.oneSideOnly}</span></div>
+                ) : null}
+                {upPct === null ? (
+                  <TippingBar className="mt-1.5" height={7} showLabels={false} recastOnHover={false}
+                    empty emptyLabel={price.kind === "oneSided" ? t.market.oneSideOnly : round.players === 0 ? t.market.noBetsYet : t.market.noPoolYet} />
+                ) : (
+                  <TippingBar className="mt-1.5" yesPct={upPct} height={7} showLabels={false}
+                    recastOnHover={false} resolved={round.state === "resolved"}
+                    probabilityLabel={t.market.probBarAria.replace("{side}", t.market.udUp)} />
+                )}
+                <div className="mt-1.5 flex items-baseline justify-between gap-2 font-mono text-[10.5px] tabular-nums text-text-muted">
+                  <span data-pool-up={upTzs}>{formatTzs(upTzs)}</span>
+                  <span data-pool-down={downTzs}>{formatTzs(downTzs)}</span>
+                </div>
+              </div>
+            </section>
           </div>
         </div>
 

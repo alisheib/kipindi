@@ -1,16 +1,36 @@
 "use client";
 
+import type { CSSProperties } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
 import { useT } from "@/lib/i18n";
 import { NavMore } from "@/components/layout/nav-more";
+import { MARK } from "@/lib/brand-mark";
 import type { ProposalsState } from "@/lib/server/proposals-config";
 
 /**
  * THE BOTTOM RAIL — round-2 kit §2 / COMPONENTS §14, rebuilt in batch 3.
  *
- * FIVE SLOTS: Markets · Up & Down · Live · Results · More.
+ * FIVE SLOTS: Markets · Up & Down · **Deposit** · Live · More.
+ *
+ * ⭐ THE CENTRE IS THE WALLET'S DOOR — UPDATE-2026-09-28 §2, AND IT IS ALI'S RECORDED OVERRIDE
+ * OF "THE RAIL IS DESTINATIONS ONLY" (defect 2 below). The override costs the rule nothing: the
+ * centre is the `/wallet/deposit` ROUTE, not an action, and it is the SAME route for a guest as
+ * for a player — "a destination does not depend on having an account" — so a visitor who taps it
+ * meets the normal auth gate with `next=`. There is no "Join" in the rail; auth stays in the
+ * header. ⛔ A HELD wallet gets no money-in control: `/wallet/deposit` refuses it, so that slot
+ * becomes the Wallet door instead, which is the header's own rule and not a new one.
+ *
+ * ⭐ AND RESULTS MOVED INTO `More` TO FREE THE CENTRE — it did NOT disappear. Defect 1 below is
+ * precisely "Results unreachable on a phone", so putting it back out of reach would re-open a
+ * structural defect this file exists to record. `moreActive` marks `More` on /results with no
+ * extra code. It also STAYS in the desktop header's `CORE_ITEMS` (§3 of the same update): the
+ * phone toolbar was the request, and no primary destination is hidden on a tablet or a laptop.
+ *
+ * ⚠️ ONE DEPOSIT PER SCREEN. Below 1024 this coin is the only one and the header's gold pill
+ * yields (`top-app-bar.tsx`, `hidden lg:inline-flex`); at 1024 and up this rail is absent
+ * (`lg:hidden`) and the pill is the only one. `qa:landing-ten` V25 is what holds that true.
  *
  * ── 🔴 WHAT WAS WRONG, AND ALL THREE WERE STRUCTURAL ─────────────────────────────────────────
  * 1. **`Results` and `Top` were unreachable on a phone.** The guest rail carried four items and
@@ -36,12 +56,14 @@ import type { ProposalsState } from "@/lib/server/proposals-config";
  * tap meant for Markets could grab the toy instead. The physics is vendored and do-not-edit; its
  * RESTING POSITION is not. See `needle-rest.css`, loaded beside this component's own layer.
  */
-export function BottomNav({ isAuthed = false, proposalsState, inviteVisible = false }: { isAuthed?: boolean; proposalsState: ProposalsState; inviteVisible?: boolean }) {
+export function BottomNav({ isAuthed = false, proposalsState, inviteVisible = false, walletHeld = false }: { isAuthed?: boolean; proposalsState: ProposalsState; inviteVisible?: boolean; walletHeld?: boolean }) {
   const pathname = usePathname();
   const { t } = useT();
 
-  /** The five destinations — identical for guest and player, because a destination does not
-   *  depend on having an account. What changes is what `More` carries. */
+  /** The destinations FLANKING the centre — identical for guest and player, because a destination
+   *  does not depend on having an account. What changes is what `More` carries.
+   *  ⚠️ Three, not four: Results moved into `More` (see the header note) and the centre coin took
+   *  the middle track. The grid below is still five equal tracks. */
   const items = [
     { href: "/markets", glyph: "markets" as const,    label: t.common.markets },
     /* 2026-09-14 — the rail has its own short label (`nav.updown`): the product title "Juu na Chini"
@@ -49,8 +71,15 @@ export function BottomNav({ isAuthed = false, proposalsState, inviteVisible = fa
        name stays the VISIBLE label (WCAG 2.5.3 label-in-name: a voice user says what they see). */
     { href: "/updown",  glyph: "trendingUp" as const, label: t.nav.updown, accent: true },
     { href: "/live",    glyph: "bolt" as const,       label: t.nav.live },
-    { href: "/results", glyph: "resolved" as const,   label: t.common.results },
   ];
+
+  /** THE CENTRE SLOT. `/wallet/deposit` for everyone; a guest meets the auth gate on arrival.
+   *  ⛔ A HELD WALLET IS THE ONE BRANCH, and it is not a styling choice: `/wallet/deposit` REFUSES
+   *  a held wallet, so a coin offering money-in there would be a door that cannot open. The slot
+   *  becomes the Wallet door and the coin drops its "+" for the mark's hub. Identical reasoning,
+   *  and identical `walletHeld` input, to the header pill's own guard. */
+  const coinHref = walletHeld ? "/wallet" : "/wallet/deposit";
+  const coinLabel = walletHeld ? t.nav.wallet : t.common.deposit;
 
   /** `More` carries the rest. Positions / Wallet / Top / Invite / Propose for a player; the
    *  public destinations for a visitor, who has no positions or wallet to reach. */
@@ -94,15 +123,24 @@ export function BottomNav({ isAuthed = false, proposalsState, inviteVisible = fa
      one destination, and it is as neutral as the old one: it names the act, not a reward. */
   const inviteRow: { href: string; label: string }[] =
     inviteVisible ? [{ href: "/profile/invite", label: t.profile.inviteFriends }] : [];
+  /* ⛔ WALLET LEAVES `More` EXACTLY WHEN THE CENTRE SLOT BECOMES IT. Two rows to one destination
+     would also make `moreActive` and the coin BOTH read as current on /wallet — two "you are here"
+     marks on one bar, which is the same class of defect as defect 3 below (two active languages for
+     one idea). When the wallet is not held, the coin points at /wallet/deposit and this row is the
+     only way to /wallet, so it stays. */
+  const walletRow: { href: string; label: string }[] =
+    walletHeld ? [] : [{ href: "/wallet", label: t.nav.wallet }];
   const moreItems: { href: string; label: string; proposalsBadge?: ProposalsState }[] = isAuthed
     ? [
+        { href: "/results",        label: t.common.results },
         { href: "/positions",      label: t.common.positions },
-        { href: "/wallet",         label: t.nav.wallet },
+        ...walletRow,
         { href: "/leaderboard",    label: t.nav.leaderboard },
         ...inviteRow,
         ...proposalsRow,
       ]
     : [
+        { href: "/results",     label: t.common.results },
         { href: "/leaderboard", label: t.nav.leaderboard },
         { href: "/fairness",    label: t.footer.resolutionAttestation },
         ...proposalsRow,
@@ -111,9 +149,14 @@ export function BottomNav({ isAuthed = false, proposalsState, inviteVisible = fa
   const isActive = (href: string) => {
     if (href === "/markets") return pathname === "/" || pathname.startsWith("/markets");
     if (href === "/updown") return pathname.startsWith("/updown");
-    if (href === "/results") return pathname.startsWith("/results");
+    /* ⚠️ THE `/results` BRANCH IS GONE BECAUSE THE SLOT IS. It is `More`'s now, and `moreActive`
+       below already does prefix matching over every `More` row — a dead branch here would read
+       like a slot that still exists. */
     return pathname === href;
   };
+  /** The coin reads as current on its own route — prefix, because /wallet/deposit has a
+   *  `/return` child the player lands on coming back from the provider. */
+  const coinOn = pathname.startsWith(coinHref);
   /** `More` reads as current when the page behind it is one of its own. */
   const moreActive = moreItems.some((m) => pathname.startsWith(m.href));
 
@@ -131,36 +174,84 @@ export function BottomNav({ isAuthed = false, proposalsState, inviteVisible = fa
          used it. One attribute is the whole fix: no z-index change, and not one line of the
          vendored do-not-edit physics touched. */
       data-needle-keepout=""
+      /* ⭐ THE MARK'S COLOURS, FROM THE ONE PLACE THEY ARE DEFINED (`lib/brand-mark.ts`, audit C11).
+         They are brand identity, not theme tokens (DESIGN_AUTHORITY B1), so they are not in
+         `globals.css` — and handing them over as custom properties keeps the coin's geometry in the
+         stylesheet while its colours stay downstream of the one definition the exported assets and
+         the in-app mark also read. ⚠️ Set on the NAV so the whole coin subtree inherits them. */
+      style={{
+        "--kp-coin-green": MARK.green,
+        "--kp-coin-red": MARK.red,
+        "--kp-coin-gold": MARK.gold,
+        "--kp-coin-pivot": MARK.pivot,
+      } as CSSProperties}
     >
       {/* 2026-09-13 — `minmax(0, 1fr)`, not `1fr`: a bare `1fr` track has an `auto` minimum, so a
           long Swahili label ("Juu na Chini", "Mubashara") widened its slot into its neighbour instead
           of ellipsising. `min-w-0` on the link is the other half — a flex item's minimum is
           otherwise its own nowrap label. */}
       <ul className="grid items-stretch" style={{ gridTemplateColumns: "repeat(5, minmax(0, 1fr))" }}>
-        {items.map((it) => {
-          const on = isActive(it.href);
-          const Ico = I[it.glyph];
-          return (
-            <li key={it.href} className="flex">
-              <Link
-                href={it.href as never}
-                aria-label={it.label}
-                aria-current={on ? "page" : undefined}
-                className="kp-rail__item min-w-0"
-                data-on={on ? "1" : undefined}
-              >
-                {/* The 44×26 pip carries the active state — `--pill-active`, the same fill the
-                    desktop bar uses behind a current destination. */}
-                <span className="kp-rail__pip">
-                  <Ico s={20} />
-                  {/* The product-line dot, same 5px gilt mark as the desktop nav. */}
-                  {it.accent && <span className="kp-rail__dot" aria-hidden />}
-                </span>
-                <span className="kp-rail__label">{it.label}</span>
-              </Link>
-            </li>
-          );
-        })}
+        {items.slice(0, 2).map((it) => (
+          <RailDest key={it.href} {...it} on={isActive(it.href)} />
+        ))}
+
+        {/* ── THE CENTRE ── the whole 64px slot is ONE link, named by its visible label. */}
+        <li className="flex">
+          <Link
+            href={coinHref as never}
+            aria-label={coinLabel}
+            aria-current={coinOn ? "page" : undefined}
+            data-testid="deposit-rail"
+            className="kp-rail__item kp-rail__item--coin min-w-0"
+            data-on={coinOn ? "1" : undefined}
+          >
+            {/* ⭐ THE KEEP-OUT IS ON THE COIN ITSELF, NOT ON THE SLOT OR THE NAV — AND THAT IS A
+                MEASURED CORRECTION, NOT A PREFERENCE. It was first put on this slot's <Link>, and
+                the drive read `keepout=FALSE` in every cell: the disc RISES OUT of its slot, so the
+                slot's rect does not contain the coin's, and the rect the needle engine received did
+                not describe where the product's money control actually is. The nav's own keep-out
+                (above) has the same blind spot for the same reason. `needle.tsx` reads
+                `getBoundingClientRect()`, which includes the lift, so the rect it gets HERE is the
+                painted one. Both keep-outs stand; they are different rectangles. V22 asserts the
+                coin's rect sits inside one of them, because reasoning about it got it wrong once. */}
+            <span className="kp-coin" aria-hidden data-needle-keepout="">
+              {/* Painted by DOM order: ring (the element's own background) → needle → face → verb.
+                  That order is what lets one gold line cross the ring and show past the rim while
+                  staying hidden under the struck disc. */}
+              <span className="kp-coin__needle" />
+              <span className="kp-coin__face">
+                {walletHeld ? (
+                  <span className="kp-coin__hub" />
+                ) : (
+                  /* A BARE "+", DRAWN HERE RATHER THAN TAKEN FROM THE GLYPH SET. `I.plus` is a
+                     plus inside a CIRCLE, and the coin is already the disc — two rings would
+                     read as a button on a button. 24px at stroke 2.8 is the coin's own geometry
+                     (SPEC-VALUES §7), like the ring and the needle, so it lives beside them.
+                     ⚠️ `currentColor` is the point: `.kp-coin__plus` sets the mark's navy. */
+                  <svg
+                    className="kp-coin__plus"
+                    width="24"
+                    height="24"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={2.8}
+                    strokeLinecap="round"
+                    aria-hidden
+                  >
+                    <path d="M12 6v12M6 12h12" />
+                  </svg>
+                )}
+              </span>
+            </span>
+            <span className="kp-rail__label">{coinLabel}</span>
+          </Link>
+        </li>
+
+        {items.slice(2).map((it) => (
+          <RailDest key={it.href} {...it} on={isActive(it.href)} />
+        ))}
+
         <li className="flex">
           {/* `More` opens upward — it is the last slot on a bar pinned to the bottom edge. */}
           <NavMore
@@ -173,5 +264,47 @@ export function BottomNav({ isAuthed = false, proposalsState, inviteVisible = fa
         </li>
       </ul>
     </nav>
+  );
+}
+
+/**
+ * ONE FLANKING SLOT. Extracted only so the centre coin can sit between tracks 2 and 3 without this
+ * markup existing twice — the rail is still ONE component, which `ACCEPTANCE` §C2 requires in so
+ * many words: "the rail is `bottom-nav.tsx`, with no second nav component". Nothing about a slot
+ * changed in the move; this is the same markup the map used before.
+ */
+function RailDest({
+  href,
+  glyph,
+  label,
+  accent,
+  on,
+}: {
+  href: string;
+  glyph: keyof typeof I;
+  label: string;
+  accent?: boolean;
+  on: boolean;
+}) {
+  const Ico = I[glyph];
+  return (
+    <li className="flex">
+      <Link
+        href={href as never}
+        aria-label={label}
+        aria-current={on ? "page" : undefined}
+        className="kp-rail__item min-w-0"
+        data-on={on ? "1" : undefined}
+      >
+        {/* The 44×26 pip carries the active state — `--pill-active`, the same fill the
+            desktop bar uses behind a current destination. */}
+        <span className="kp-rail__pip">
+          <Ico s={20} />
+          {/* The product-line dot, same 5px gilt mark as the desktop nav. */}
+          {accent && <span className="kp-rail__dot" aria-hidden />}
+        </span>
+        <span className="kp-rail__label">{label}</span>
+      </Link>
+    </li>
   );
 }

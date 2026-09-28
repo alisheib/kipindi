@@ -19,7 +19,7 @@
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import { decomment } from "./lib/decomment.mts";
-import { sharePreviewPrice, sharePreviewDescription } from "../src/lib/markets/share-preview.ts";
+import { sharePreviewPrice, sharePreviewDescription, sharePreviewSettled } from "../src/lib/markets/share-preview.ts";
 
 const ROOT = new URL("..", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1");
 const APP = join(ROOT, "src", "app");
@@ -86,10 +86,36 @@ console.log("\n── 3 · the image and the description read the one rule");
   const page = decomment(readFileSync(join(APP, "markets/[id]/page.tsx"), "utf8"));
   check("3.1 the og image reads sharePreviewPrice", /sharePreviewPrice\(m\.yesPool, m\.noPool, m\.predictorCount\)/.test(route));
   check("3.2 ⛔ …and no longer reads impliedYesPct", !/impliedYesPct/.test(route));
-  check("3.3 og:description comes from the same rule", /sharePreviewDescription\(preview\)/.test(page)
+  check("3.3 og:description comes from the same rule (and the settled one, C1)", /sharePreviewDescription\(preview, settled\)/.test(page)
     && /const preview = sharePreviewPrice\(m\.yesPool, m\.noPool, m\.predictorCount\);/.test(page));
   check("3.4 the image draws no split on a market without a price", /price\.kind === "priced" \?/.test(route));
   check("3.2-control the route scan is the real file (it renders an ImageResponse)", /new ImageResponse\(/.test(route));
+}
+
+// ── 4 · a SETTLED market's preview: the result first, the final pool, no price (landing v3 C1, commit E) ──
+console.log("\n── 4 · the settled preview");
+{
+  check("4.1 an open or closed-but-unresolved market gets no settled preview",
+    sharePreviewSettled("LIVE", null, "MARKET") === null && sharePreviewSettled("CLOSED", null, "MARKET") === null);
+  const no = sharePreviewSettled("RESOLVED", "NO", "MARKET");
+  check("4.2 a NO result leads with NO, in the NO tone, and reads its split as the final pool",
+    no?.tone === "NO" && no.word === "NO" && no.caption === "Result" && no.poolCaption === "Final pool", JSON.stringify(no));
+  const v = sharePreviewSettled("VOIDED", null, "MARKET");
+  check("4.3 a VOIDED market with no stored verdict reads 'Void'", v?.tone === "VOID" && v.word === "Void", JSON.stringify(v));
+  const unknown = sharePreviewSettled("RESOLVED", null, "MARKET");
+  check("4.4 ⛔ RESOLVED with no recorded verdict: the word 'Resolved' and NO tone (no side beats a wrong side)",
+    unknown?.tone === null && unknown.word === "Resolved", JSON.stringify(unknown));
+  const up = sharePreviewSettled("RESOLVED", "YES", "UPDOWN");
+  check("4.5 an Up & Down round speaks its own vocabulary: YES is 'Up'", up?.word === "Up" && up.tone === "YES", JSON.stringify(up));
+  const oneSided = sharePreviewDescription(sharePreviewPrice(35_000, 0, 2), sharePreviewSettled("RESOLVED", "YES", "MARKET"));
+  check("4.6 a settled one-sided market: 'Result: YES. One side only. Predict on 50pick.' — and no percentage",
+    oneSided === "Result: YES. One side only. Predict on 50pick." && !/%/.test(oneSided), oneSided);
+  const priced = sharePreviewDescription(sharePreviewPrice(20_000, 5_000, 4), sharePreviewSettled("RESOLVED", "NO", "MARKET"));
+  check("4.7 a settled priced market: 'Result: NO. Predict on 50pick.' — the result, never a price", priced === "Result: NO. Predict on 50pick.", priced);
+  check("4.7-control an OPEN priced market still states its price", sharePreviewDescription(sharePreviewPrice(20_000, 5_000, 4)) === "YES 80% · NO 20%. Predict on 50pick.");
+  const route = decomment(readFileSync(join(APP, "api/og/market/[id]/route.tsx"), "utf8"));
+  check("4.8 the og image reads the settled rule and draws the final pool, not a lean, once settled",
+    /sharePreviewSettled\(m\.status, m\.resolvedOutcome, m\.productLine\)/.test(route) && /settled \? settled\.poolCaption : price\.lean/.test(route));
 }
 
 console.log(`\n${fail === 0 ? "ALL PASS" : `${fail} FAILED`} — share preview`);

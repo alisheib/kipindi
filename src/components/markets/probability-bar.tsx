@@ -6,7 +6,12 @@
 import { TippingBar } from "@/components/brand";
 
 type Props = {
-  yesPct: number;
+  /** Omitted when there is no price — pass `empty` instead (landing v3 C1). */
+  yesPct?: number;
+  /** The kit's cold-start rail: no pool, or money on one side only (`priceState`). */
+  empty?: boolean;
+  /** What the empty rail is — "No bets", "No pool", "One side only". Its accessible name. */
+  emptyLabel?: string;
   size?: "micro" | "large";
   variant?: "split" | "segmented" | "minimal";
   resolved?: boolean;
@@ -14,7 +19,7 @@ type Props = {
   className?: string;
 };
 
-export function ProbabilityBar({ yesPct, size = "micro", resolved, showLabels, className }: Props) {
+export function ProbabilityBar({ yesPct, size = "micro", resolved, showLabels, className, empty, emptyLabel }: Props) {
   const height = size === "large" ? 28 : 14;
-  return <TippingBar yesPct={yesPct} height={height} resolved={!!resolved} showLabels={!!showLabels} className={className} />;
+  return <TippingBar yesPct={yesPct} height={height} resolved={!!resolved} showLabels={!!showLabels} className={className} empty={!!empty} emptyLabel={emptyLabel} />;
 }

@@ -82,7 +82,7 @@ plants the defect on a COPY of the tree and proves the gate fails **on its own a
 | `test:withdrawn-features` §6–§8 *(ported 2026-09-06 from the retired invite-coming-soon suite)* | a product state reaches **every** entry point. §6 one home for `PRODUCT_STATE` · §7 judges a **POSITION**: each `/profile/invite` link must sit within 8 lines of the gate being consulted, because the retired suite's first version asked only *"does this file mention `inviteIsLive`?"* and passed over two surfaces gone silently live with the import still present · §8 the page consults the gate **BEFORE** it reads the referral summary | `red:withdrawn-features` |
 | `responsive-audit.mjs` **B7's LOWER bound** | B7 had only an UPPER bound (no column exceeds its tier). PV-03 lived in the missing half: `/positions` got its 1080 tier **correctly** and still floated an empty state 328px from its own section heading, passing every width, clip and overflow check. Keys on `data-empty-state`, a **contract**, never `border-dashed` | the fix measured 328px → 0 at 1280 and 390 |
 | `qa:fit` (live) · `test:popup-fit` | **§M4a — text fits its container, and a clipped NUMBER is a wrong number.** ⚠️ Added by a parallel programme on 2026-09-01, after this file was first written; listed here so the table stays the one place that answers *"what holds this rule?"* | `red:header-fit` |
-| `test:chart-one-home` | **§B12 — the chart system's one home** (CHART-SPRINT, 2026-09-04). §0 proves the four detectors on fixtures · §3 zero chart-shaped files outside `components/charts/` + the named member + 9 reasoned exemptions, and a STALE exemption fails (the list may only shrink) · §4 every member has an import site (the dead-`Sparkline` class) · §5 no charting dependency, in package.json or an import — the §8 decision, enforced | `red:chart-one-home` (5/5: two planted strays, a stale exemption, a banned dep, a killed import) |
+| `test:chart-one-home` | **§B12 — the chart system's one home** (CHART-SPRINT, 2026-09-04). §0 proves the five detectors on fixtures (D5 since 2026-09-27, R5: a `<line>`/`<circle>` placed by a computed coordinate — the landing match track's stems) · §3 zero chart-shaped files outside `components/charts/` + the named member + the reasoned exemptions, and a STALE exemption fails (the list may only shrink); §3.4–3.6 the band's retired price line and ring stay deleted and the match track + playhead are members · §4 every member has an import site (the dead-`Sparkline` class) · §5 no charting dependency, in package.json or an import — the §8 decision, enforced | `red:chart-one-home` (planted strays incl. a D5 stem, a stale exemption, a banned dep, killed imports incl. the match playhead's) |
 
 ### ⛔ If you add a guard, it must state three things or it is not a guard
 1. its **re-derived population** (what the FULL set is, and how you know your matcher reaches it),
@@ -556,6 +556,12 @@ bounded read (`currentRoundChart`), the same `priceSeriesFor` the detail hero us
 `updown-chart.test.mts` imports it, `updown-chart-red.mjs` anchors it CRLF-sensitively, and
 `design-frozen`/`eyebrow-roles` pin the path. Moving it would churn three guards and a RED
 harness for zero player value — the guard names it instead.
+
+⭐ **2026-09-27 (R5):** the landing's Up & Down band draws a MATCH TRACK (`charts/updown-match-track.tsx`
++ its playhead `updown-match-now.tsx`) — a timeline of confirmed-read stems on a fixed open → close
+domain, not a price chart and not the round price chart removed on 2026-09-04; the band's old price
+line and countdown ring (`updown-price-line.tsx`, `updown-ring.tsx`) are deleted. `test:chart-one-home`
+gained D5 (a line or dot placed by a computed coordinate) so a copy of the track outside the home is seen.
 
 ### 8b. CHART ROUND 2 — the four-lens review, its verdicts and its parks (2026-09-04, session 80)
 

@@ -23,6 +23,8 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
 import { MARK, markColors, type FiftyMarkVariant } from "@/lib/brand-mark";
+// R6(2) · the ONE tipping rule the card badge, the share preview and /live read too (a pure module, no directive).
+import { isTipping } from "@/lib/markets/price-state";
 
 export type { FiftyMarkVariant };
 
@@ -208,6 +210,7 @@ export function TippingBar({
   probabilityLabel = "YES probability {pct}%",
   labels = { yes: "YES", no: "NO", tipping: "tipping", leansYes: "leans yes", leansNo: "leans no" },
   as = "progressbar",
+  mark = null,
 }: {
   yesPct?: number;
   height?: number;
@@ -241,6 +244,12 @@ export function TippingBar({
    *  `img` names the bar by its label alone — for a bar that is a SPLIT of the money, not progress
    *  towards anything, where "progress bar, 70 percent" misdescribes it (landing v3, WP8/WP3). */
   as?: "progressbar" | "img";
+  /** Where the price stood 24 hours ago, 0–100: a still hairline on the rail (landing v3 WP3, the featured
+   *  card's 24h mark), drawn on the needle's own 6–94 scale so the two marks order truthfully. null or
+   *  absent → none. Never on the empty rail: a pool with no price has nothing to have moved from. It
+   *  changes only with a new render — no transition (motion law L12). A state of this bar, not a second
+   *  component (B9). */
+  mark?: number | null;
 }) {
   const target = Math.max(0, Math.min(100, yesPct));
   const [animYes, setAnimYes] = React.useState(target);
@@ -322,6 +331,11 @@ export function TippingBar({
       >
         <div className="tipbar-fill tipbar-yes" data-full={yesFull} style={{ width: `${yes}%` }} />
         <div className="tipbar-fill tipbar-no" data-full={noFull} style={{ width: `${no}%` }} />
+        {/* The 24h mark, painted BEFORE the needle so the needle wins where they coincide. Its `left` is
+            live data (like the fills' widths); the look is `.tipbar-mark` in globals.css. */}
+        {mark != null && Number.isFinite(mark) && (
+          <div className="tipbar-mark" style={{ left: `${Math.max(6, Math.min(94, mark))}%` }} aria-hidden />
+        )}
         {/* Tipping needle — gilt champagne, sits on the boundary, tilts with
             lean. At extremes the position is clamped to the inner 6..94
             range so the needle never clips the rounded corner. */}
@@ -344,7 +358,7 @@ export function TippingBar({
             {labels.yes} <strong data-lead={target >= 50 || undefined}>{target}%</strong>
           </span>
           <span className="tipbar-lean">
-            {Math.abs(target - 50) < 3 ? labels.tipping : target > 50 ? labels.leansYes : labels.leansNo}
+            {isTipping(target) ? labels.tipping : target > 50 ? labels.leansYes : labels.leansNo}
           </span>
           <span className="tb-no">
             <strong data-lead={target < 50 || undefined}>{100 - target}%</strong> {labels.no}
@@ -362,11 +376,19 @@ export function ConfidenceDial({
   size = 92,
   label,
   className,
+  empty,
 }: {
   yesPct?: number;
   size?: number;
   label?: string;
   className?: string;
+  /** No crowd price (an empty pool, or money on one side only) — the dial's OWN empty state, the
+   *  counterpart of the TippingBar's `empty` rail: the same ring at the same diameter, dashed and faded
+   *  like that rail, an em-dash where the figure sits, and no split and no needle (a 62 or a 100 would be
+   *  a price nobody's money stated). A STATE OF THIS DIAL, not a placeholder drawn beside it
+   *  (DESIGN_AUTHORITY B9): the resolver queue used to draw a second, larger ring with its own label type.
+   *  The label below is untouched, so an empty dial and a priced one wear one label. */
+  empty?: boolean;
 }) {
   const yes = Math.max(0, Math.min(100, yesPct));
   const tilt = ((yes - 50) / 50) * 22;
@@ -381,19 +403,29 @@ export function ConfidenceDial({
 
   return (
     <div className={cn("inline-flex flex-col items-center gap-1.5", className)}>
-      <svg viewBox="0 0 100 100" width={size} height={size}>
-        <defs>
-          <clipPath id={`cd-${id}`}>
-            <circle cx={cx} cy={cy} r={r} />
-          </clipPath>
-        </defs>
-        <circle cx={cx} cy={cy} r={r} fill="var(--bar-track)" />
-        <g clipPath={`url(#cd-${id})`}>
-          <path d={`M ${top.x} ${top.y} A ${r} ${r} 0 0 0 ${bot.x} ${bot.y} L ${top.x} ${top.y} Z`} fill="oklch(50% 0.14 152)" opacity={0.92} />
-          <path d={`M ${top.x} ${top.y} A ${r} ${r} 0 0 1 ${bot.x} ${bot.y} L ${top.x} ${top.y} Z`} fill="oklch(52% 0.16 22)" opacity={0.92} />
-          <line x1={top.x} y1={top.y} x2={bot.x} y2={bot.y} stroke="var(--bar-needle)" strokeWidth="2.2" strokeLinecap="round" />
-        </g>
-        <circle cx={cx} cy={cy} r={r} fill="none" stroke="var(--bar-track-border)" strokeWidth="1.5" />
+      {/* Empty: the dash is not a figure, so the ring is hidden from a screen reader and the label names it. */}
+      <svg viewBox="0 0 100 100" width={size} height={size} aria-hidden={empty || undefined}>
+        {!empty && (
+          <>
+            <defs>
+              <clipPath id={`cd-${id}`}>
+                <circle cx={cx} cy={cy} r={r} />
+              </clipPath>
+            </defs>
+            <circle cx={cx} cy={cy} r={r} fill="var(--bar-track)" />
+            <g clipPath={`url(#cd-${id})`}>
+              <path d={`M ${top.x} ${top.y} A ${r} ${r} 0 0 0 ${bot.x} ${bot.y} L ${top.x} ${top.y} Z`} fill="oklch(50% 0.14 152)" opacity={0.92} />
+              <path d={`M ${top.x} ${top.y} A ${r} ${r} 0 0 1 ${bot.x} ${bot.y} L ${top.x} ${top.y} Z`} fill="oklch(52% 0.16 22)" opacity={0.92} />
+              <line x1={top.x} y1={top.y} x2={bot.x} y2={bot.y} stroke="var(--bar-needle)" strokeWidth="2.2" strokeLinecap="round" />
+            </g>
+          </>
+        )}
+        {empty ? (
+          // The empty rail's dash, bent round: its ink, its fade; twelve even dashes, so no seam at the top.
+          <circle cx={cx} cy={cy} r={r} fill="none" stroke="var(--border-strong)" strokeWidth="3" pathLength={120} strokeDasharray="5.5 4.5" opacity={0.55} />
+        ) : (
+          <circle cx={cx} cy={cy} r={r} fill="none" stroke="var(--bar-track-border)" strokeWidth="1.5" />
+        )}
         <text
           x={cx}
           y={cy + 1.5}
@@ -402,10 +434,10 @@ export function ConfidenceDial({
           fontFamily="'JetBrains Mono', ui-monospace, monospace"
           fontWeight={700}
           fontSize="22"
-          fill="var(--text)"
+          fill={empty ? "var(--text-subtle)" : "var(--text)"}
           style={{ letterSpacing: "-0.04em" }}
         >
-          {yes}
+          {empty ? "—" : yes}
         </text>
       </svg>
       {label && (

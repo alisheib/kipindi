@@ -21,8 +21,16 @@ export const MUTATIONS = [
     name: "the player's bottom nav stops saying which tab is current",
     file: "src/components/layout/bottom-nav.tsx",
     expect: "every rail of destinations names the one in force",
-    from: `                aria-current={on ? "page" : undefined}`,
-    to: `                data-was-current={on ? "page" : undefined}`,
+    /* ⚠️ RE-INDENTED 2026-09-28, not re-aimed: the line is unchanged, but the slot markup moved
+       into a `RailDest` component so the centre Deposit coin could take the middle track
+       (UPDATE-2026-09-28 §2). Anchors match literal text, so an indentation change is a MISS —
+       the same silent-stop this sidecar exists to prevent.
+       ⭐ THE COIN HAS ITS OWN `aria-current` (on `coinOn`) AND IS NOT MUTATED HERE. It is a
+       destination too, so it deserves a control — but an undeclared mutation the suite cannot
+       catch would report "missed", and a mutation nothing proves is worse than none. Add it
+       with the assertion that convicts it, not before. */
+    from: `        aria-current={on ? "page" : undefined}`,
+    to: `        data-was-current={on ? "page" : undefined}`,
   },
   {
     name: "the legal sidebar stops saying which document is open",

@@ -60,7 +60,9 @@ export const MUTATIONS = [
      * the overlap always occurs. The class under test — "notables chosen from a population wider
      * than the page that renders them" — is identical; only the luck is removed.
      */
-    from: "    ? [...paged].sort((a, b) => (b.yesPool + b.noPool) - (a.yesPool + a.noPool)).slice(0, all.length >= 8 ? 3 : 1)",
+    // ⚠️ RE-PINNED 2026-09-27 (landing v3 C1): the notables are filtered through `isNotableResult` (a verdict over
+    // a two-sided pool) before the sort. The mutation still widens the population past the page.
+    from: "    ? paged.filter(isNotableResult).sort((a, b) => (b.yesPool + b.noPool) - (a.yesPool + a.noPool)).slice(0, all.length >= 8 ? 3 : 1)",
     to: "    ? [...all].slice(-3).sort((a, b) => (b.yesPool + b.noPool) - (a.yesPool + a.noPool)).slice(0, all.length >= 8 ? 3 : 1)",
     expect: "DUPLICATE",
     /**
