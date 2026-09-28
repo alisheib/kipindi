@@ -291,6 +291,9 @@ scripts/.refused-funds-race-red.lock
 # and their SIGINT/SIGTERM handlers release the lock WITHOUT restoring. A run killed mid-flight therefore leaves
 # an untracked lock behind — and a parallel session's `git add -A` would COMMIT it, after which that harness
 # refuses to start for everyone, permanently, on every checkout. Ignored so a killed run leaves nothing to sweep.
+# A local seed's handoff to a local gate: the account id `seed-house-bot-panels-local.mts` seeded, so
+# the browser gate can drive account-bound routes. Local-only and never committed.
+scripts/.out/
 scripts/.red-house-bot-console.lock
 scripts/.red-house-bot-money.lock
 scripts/.red-house-bot-engine.lock

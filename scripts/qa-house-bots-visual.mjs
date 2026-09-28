@@ -98,6 +98,35 @@ function consoleRoutesFromSource() {
 }
 const DERIVED_ROUTES = consoleRoutesFromSource();
 /**
+ * ⛔ THE FIND STEP'S WIZARD ROUTE, DERIVED ON ITS OWN — §5.9's population is an EXACT match on it, and
+ * `DERIVED_ROUTES` is null on every run driven by `KP_ROUTES`, which is exactly how the account-bound
+ * routes arrive. Read from the same two constants the wizard is built from, and REFUSED, never defaulted:
+ * a population that falls back to a typed route is the typed route with a comment claiming otherwise.
+ *
+ * ⭐ WHY §5.9 NEEDED AN EXACT MATCH (targeting screen S1, `plans/house-bots/TARGETS-SCREEN.md` D-62).
+ * `MONEYLESS` is `route.split("?")[0].endsWith("/new")` and it gates THREE different things:
+ *   · the ZERO-MONEY assertions (`:505`, `:529`, `:667`, `:714`, `:717`) — "this route paints no money";
+ *   · the §5.6 ATTRIBUTE-COUNT FLOOR (`:608`) — being `MONEYLESS` closes the `railCount === 0` escape to
+ *     2, so such a route must paint at least FIVE scanned attributes;
+ *   · the §5.9 POPULATION here — which then asserts a three-header sortable ACCOUNT table.
+ * The targeting screen adds `/admin/desk/<id>/targets/new`, which also ends in `/new`. The first two are
+ * RIGHT for it — it must paint no money (ruling 365) and it easily clears five attributes — but the third
+ * is not: it would assert the designate wizard's account list against a poll picker, a true measurement of
+ * the wrong subject. So ONLY this site moves, and the other two keep reading `MONEYLESS` unchanged. In
+ * particular the floor at `:608` is NOT lowered for the new route: it only ever rises.
+ */
+function consoleNewRouteFromSource() {
+  const src = readFileSync("src/lib/house-bot/console-routes.ts", "utf8");
+  const route = /export const CONSOLE_ROUTE = "([^"]+)"/.exec(src)?.[1] ?? "";
+  if (!route) return null;
+  return /export const CONSOLE_NEW_ROUTE = `\$\{CONSOLE_ROUTE\}\/new`/.test(src) ? `${route}/new` : null;
+}
+const CONSOLE_NEW_ROUTE = consoleNewRouteFromSource();
+if (!CONSOLE_NEW_ROUTE) {
+  console.error("REFUSED — qa:house-bots-visual could not read CONSOLE_ROUTE/CONSOLE_NEW_ROUTE out of src/lib/house-bot/console-routes.ts, and §5.9's population is an exact match on it.");
+  process.exit(2);
+}
+/**
  * ⭐ STEP 9 · ONE SORTED ADDRESS PER DESK TABLE, and what each must show. Keyed by the QUERY, so the account page's three
  * match whichever account id is read off the served roster (or handed in through `KP_ROUTES`). Each names the region
  * (`ScrollX`'s own label) of every table the address sorts, the header word that must be the ONE in force, its
@@ -986,7 +1015,10 @@ try {
          ⛔ POPULATION: the find step only (no `?u=`); a find step that paints no table — a failed read paints its error
          in place of the list — is NOT MEASURED, a report and never a pass, and so is a list with no choosable row, for
          the tap half. Seed a served desk with `scripts/seed-desk-accounts-local.mts` so the pager is really drawn. */
-      if (MONEYLESS && !/[?&]u=/.test(route)) {
+      /* ⛔ THE FIND STEP ITSELF, BY EXACT ROUTE — never "any route ending /new" (S1, D-62). The targeting
+         screen's Add page also ends in `/new` and carries a POLL picker, not the account list this block
+         asserts; `MONEYLESS` would have pointed §5.9 at it and measured the wrong subject truthfully. */
+      if (route.split("?")[0] === CONSOLE_NEW_ROUTE && !/[?&]u=/.test(route)) {
         const finder = await p.evaluate(() => {
           const tables = [...document.querySelectorAll("table.admin-tbl")];
           const table = tables[0] ?? null;
