@@ -81,7 +81,58 @@ withholds. Not a defect to fix quietly — a number to rule on.
    `.kp-qrow__lean` and `.kp-topic__lean` do not exist anywhere in the tree and had already been deleted
    by WP4 and WP10, so K64's ConvictionBar half was ALREADY TRUE and what it needed was a proof, not a
    consolidation. The search is **WP20's**, not this row's, and "topic chips" are the tiles R15 kept.
-3. ▶ **NEXT — THE HERO PANEL, ASKED FOR AND NOT YET DECIDED (Ali, 2026-09-28: "evaluate this before applying").**
+3. ✅ **THE HERO PANEL RAN (2026-09-28) — FIVE LENSES, SCORED /10 AGAINST WHAT SHIPS. TWO OF THREE ARE REJECTED.**
+   **(A) a `/live`-style hottest-market BANNER replacing the featured card — REJECTED 5/5** (today 8 → proposed
+   2–3 on every lens). Not built. The card carries a real question, a price, a countdown and two betting
+   links; a banner carries an image and a claim, and the gambling-industry lens reads "hottest" as
+   manufactured urgency, which L17 forbids ("the only urgency is a real countdown").
+   **(B) trust row 1 out, the proof figures up into its slot — REJECTED AS SPECIFIED (3 reject, 2
+   adopt-with-changes), AND THE ARITHMETIC IS THE REASON.** Three lenses measured it independently from the
+   CSS and agreed: removing row 1 frees **47px** (two lines at `--type-small` × 1.5 = 39, plus the list's
+   8px `--sp-2` gap), while the proof rail below 640 is **three 44px ledger rows = 133–139px** (the sw
+   "Yaliyolipwa kwa wachezaji" caption sits on the wrap boundary), plus an 8–12px seam. **Net +94 to +98px**
+   — the Swahili YES/NO moves from 610 to ~708 against V15's real line of **675** (the bottom rail's top,
+   not 740), so **V15 goes RED in the DEFAULT LOCALE and both 40px betting links land under the fixed rail.**
+   EN survives by ~12px, ZH by ~24px. ⛔ Do not build B as written.
+   ⭐ **THE COUNTER-BUILD THREE LENSES CONVERGED ON, WHICH GIVES ALI WHAT HE ASKED FOR:** row 1 SHRINKS to
+   one line instead of vanishing — keep the 18+ roundel and the helpline `tel:` (Ali's own words were "i
+   want just the payout and the 18+ … keep those"), drop only the Board SENTENCE, which the owner's
+   attestation is exactly the authority for and which the claim already covers with "LENYE LESENI"; the
+   platform already ships assessed compact wording for it (`t.auth.licensedByGbt`). If figures go up at all,
+   ONE 44px line with at most TWO of them — net about +9px, which V15 can carry. ⚠️ Measure any B variant on
+   the 360 × 740 sw/en/zh cells BEFORE it ships: the numbers above are CSS-derived plus `specs/hero-v3.md`
+   §7's capture anchors, and that spec says in writing "this is a MODEL, not a render".
+   **(C) drop "Paid out to players" — SPLIT 2 adopt / 3 reject, and the split is not about layout.** Three
+   lenses call it the page's only OUTCOME-side figure and the one answer to the question a Tanzanian visitor
+   actually has ("wanalipa?" — do they pay), noting `globals.css` already refused the kit's own instruction
+   to hide it. Two lenses want it gone. ⚠️ It also buys no first-screen budget: on production the rail's top
+   is 977 and the figure runs 1066–1116, entirely below the 675 line, where pixels are free.
+   ▶ **DECIDE C ONLY AFTER THE FINDING BELOW**, because it changes what C is about.
+
+   🔴 **AND THE PANEL FOUND A MONEY-TRUTH DEFECT THAT IS NOT A LAYOUT QUESTION — VERIFIED IN THE CODE.**
+   "Paid out to players" / "Yaliyolipwa kwa wachezaji" is `platform-stats.ts:186` →
+   `db.txn.sumConfirmedByTypes(["BET_PAYOUT","CASHOUT"])`, and that aggregate
+   (`prisma-dal.ts:1870-1877`) is `where: { status: "CONFIRMED", type: { in: types } }` — **with NO wallet,
+   user or house filter of any kind.** The HOUSE BOTS bet on production and their winnings settle as
+   `BET_PAYOUT` / `CASHOUT` rows, so the house's own money is being counted in a caption that says it went
+   *to players*. ⛔ A money sentence must be literally true (RULES law 5; A-5). ⭐ The platform has already
+   ruled the same way elsewhere: `affiliate-service.ts:1349/1454` skips commission accounting outright when
+   `houseBotId != null` — bots are not players for money. And `Transaction.houseBotId` exists and is INDEXED
+   (`schema.prisma:660-662`, a partial index WHERE houseBotId IS NOT NULL), so the fix is one clause:
+   `houseBotId: null`. ⚠️ **NOT APPLIED HERE, DELIBERATELY.** This changes a public money figure, and what it
+   becomes must be MEASURED on production first — a caption that is true and a number nobody expected are
+   two different problems, and Ali should see the new figure before it ships. ▶ Next session: measure the
+   filtered total, then either ship the filter or, if the honest number is too thin to publish, ship C with
+   the reason recorded in `COMPLIANCE-DECISIONS.md` as an RG/advertising decision rather than a layout tidy.
+4. ▶ **AND A CHEAP GUARD THE V22 COLLISION EARNED** — now built: `--compile` refuses a duplicate key in
+   `REDS` (counted in the SOURCE, because `Object.keys` has already collapsed it) and the runner refuses a
+   cell whose `V` array carries one class name twice.
+5. ▶ **STILL OPEN FROM THIS SESSION:** WP9 is 🔨 — it is LIVE and production-measured (33 base cells: only
+   V3 ×12 and V4 ×36, both pre-existing owners; `qa:landing-v3:rows` 63 rows over 9 cells, 0 findings) and
+   needs its sha and a ✅ tick. R17 needs a SIGNED-IN frame review: `mobile01` on production is unfunded, so
+   the funded block must be driven locally through `/auth/demo?deposit=1`. ⚠️ `next dev` on this checkout is
+   panicking in Turbopack ("node process exited … 0xc0000142") — `.next` may need clearing.
+6. ▶ **THE HERO PANEL, ASKED FOR AND NOT YET DECIDED (Ali, 2026-09-28: "evaluate this before applying").**
    Five lenses (UI/UX, marketing, gambling-industry, player/gamer, accessibility + RG) score each proposal /10
    against what ships today, and only what beats the current page is built. The three on the table:
    (a) replace the hero's featured MARKET CARD with a `/live`-style banner leading on the hottest market;
