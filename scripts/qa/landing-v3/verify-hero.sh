@@ -59,6 +59,7 @@ curl -s -X POST "$BASE/api/dev-test/updown-advance" -o "$OUT/updown-advance.json
 curl -s -X POST -H "content-type: application/json" -d '{"markets":3,"bettors":4,"stake":1000}' "$BASE/api/dev-test/resolve-seed-markets" -o "$OUT/resolve-seed.json" -w "resolve-seed-markets %{http_code}\n" | tee -a "$LOG"
 curl -s -o /dev/null -w "warm / %{http_code} %{time_total}s\n" "$BASE/" | tee -a "$LOG"
 
+if [ "${ONLY_GATE:-0}" != "1" ]; then
 say "served HTML (spec §11.2)"
 BASE="$BASE" OUT="$OUT" node scripts/qa/landing-v3/hero-served.mjs 2>&1 | tee -a "$LOG"
 
@@ -74,6 +75,7 @@ MODE=build BASE="$BASE" OUT="$OUT/player" AUTH=demo1 WIDTHS=360,1280 MAX_TILES=2
 say "frames — 360 sw at 130% root text, and focus/hover on both CTAs and the helpline"
 BASE="$BASE" OUT="$OUT/states" node scripts/qa/landing-v3/hero-states.mjs 2>&1 | tee -a "$LOG"
 
+fi   # ONLY_GATE=1 skips the served-HTML check and every frame (a gate-only rerun)
 if [ "${SKIP_GATE:-0}" != "1" ]; then
   say "gate: base pass (every cell, incl. 360x740) against local"
   BASE="$BASE" node scripts/qa/landing-ten.mjs --pass=base > "$OUT/gate-base.txt" 2>&1
