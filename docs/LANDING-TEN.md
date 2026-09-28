@@ -29,118 +29,85 @@ added `funded` and made the capsule give way at zero, which is the premise §1 s
 `ConvictionBar`, the closed-market state, "▲ You", analytics, skeletons). **Reconcile before
 starting any of them**, or both lanes will build the same thing twice in the same files.
 
-## §0 · RESUME AT — the v3 build (reopened 2026-09-26)
+## §0 · RESUME AT — the v3 build (rewritten 2026-09-28)
 
-**State (2026-09-28):** D0 ✅, D1 ✅ (`54f8199b`), WP14 ✅ (the Wallet, `e9b4056c`), WP6 ✅ (`31662831`), WP14b ✅
-(`541a9e76`), and **WP12 — the Up & Down band, R5 "the Match" — 🔵 LIVE since 2026-09-27 22:26 UTC (`5ba4f727`;
-production then served `6d915723`, a house-bots merge on top of it)**, pushed on the owner's word ("push live what you
-have now") after five rounds of the four-expert frame panel on eight local drives (45 of 52 frames at 10 in round 5;
-round 5's four small fixes shipped without a local re-drive). **Measured on production 2026-09-27:** `band-metrics`
-CLEAN on all 11 cells (the band showed Down leads on BTC: 360 sw card 587px ≤ 600, clock→pick 166px ≤ 170, rule on
-2 lines; 1280 card 357px ≤ 380); `band-agree` 3 compared, 0 disagree (sw/en/zh — the band's "saa 01:39 · Chini ya
-ufunguzi kwa $43.17" = the round page's stamp and ink); the 360 sw frame looked at. **Not yet run on production: the
-landing gate** (`verify-prod.sh` waited for the exact sha while production served `6d915723`). D2 step 0 (V18 + the
-gate's hardening) is live in the scripts; V18 reads 1,584 on production until WP3/WP4 add the attributes it reads.
-**Next:** RESUME HERE (handover 2026-09-28 — the build moves to ANOTHER PC; nothing below needs the old laptop: every
-branch is on `origin`, but the frames in `.qa-shots/` are not, so every drive is re-run on the new machine).
-(0) **Set up.** Fetch; check out branch `landing-v3` in your own checkout — it is the live band + **the hero merged, NOT
-live, NOT yet verified** + docs — `npm ci`, and merge `origin/main` (house bots moved it: `6d915723` and later). Heavy
-Node one job at a time (the old laptop used `~/heavy-node-lock.sh`; use the new machine's equivalent or none). The
-four-expert panel scripts and how a round works: `scripts/qa/landing-v3/panels/` (README).
-(1) **Finish WP12.** `bash scripts/qa/landing-v3/verify-prod.sh band-prod2 <the live sha>` with `FIRST_EXPECTED=0` while
-the hero is not live; read the gate + REDs; tick WP12 ✅; delete `specs/updown-band-v2.md` with a one-line pointer in
-§2.1 WP12 ("read it at `5ba4f727`" — 23 code comments cite it as provenance). A sixth panel round on production frames
-of round 5's four fixes is optional.
-(2) **The hero (R7 + R9)** — merged into `landing-v3` (`bc852744`; branch `landing-v3-hero` is the same tip). On the
-merged tree: tsc clean, `test:hero-copy` 14/0, `red:hero-copy` 20 caught / 0 missed, the band's 95/0. First local drive
-(`verify-hero.sh hero1`, 2026-09-27): **served HTML CLEAN** in sw/en/zh (the h1's spaces, the "first licensed" claim,
-one `lang="en"`, a `tel:` link, four wallets, no "official"); all 47 frames captured (320, 360×780, 360×740, 768,
-1024×768, 1280×800 × sw/en/zh; signed in with zero and funded balance; 130% text without overflow; focus visible on the
-helpline and both CTAs) — the 360×740 sw YES/NO row sits above the rail. **Not done:** the gate + REDs V15–V17/V21/V22
-(the session ended mid-gate — `ONLY_GATE=1 bash scripts/qa/landing-v3/verify-hero.sh <label>` reruns just that) and the
-frame panel (`panels/hero-panel.js`; round 1 never completed). Then ship: merge `origin/main`, push, confirm `?dpl=`,
-the production gate with `FIRST_EXPECTED=1`.
-(3) **C1 · one price rule everywhere** — branch `landing-v3-c1`, tip `cc6fc5bd` (10 commits + the branch review's four
-fixes; its guards green, run serially; ⚠️ its typecheck NOT yet run after the fix commit). Drive `verify-c1.sh` — RED
-baseline first, then the branch drive (its build report's steps, incl. the production `PROD-S1-FEE` count to report
-to Ali). At merge, one adjacent-line conflict in `i18n-dict.ts` (sw `udPool` "Dimbwi" → "Bwawa" beside the band's
-`udLevelBy`).
-(4) **WP3 + WP4** — branch `landing-v3-wp34`, tip `3312082f` (built ON C1; tsc clean; `test:featured-card` 72/0,
-`red:featured-card` 9/9; one neutral 24h move platform-wide, "Hakuna dau bado", "5 位预测者"; L24–L29 in its
-manifest). Drive `verify-wp34.sh` (P1–P3); re-run its first-screen budget with the hero merged (the trust rows sit
-above the featured card).
-(5) **F1 (R5(c))** — branch `landing-v3-f1`, tip `a8ad92a0` (built ON C1): the `/updown` card and terminal say
-"Confirmed price" and take the band's targets-based ink; the card's 9.5px trust footer and its truncating "HIGHER OR
-LOWER THAN $…" heading reach the 13px floor / never clip. ⚠️ Its build report never arrived (the session ended): run
-its typecheck and guards before rendering.
-(6) **WP9** alone. (7) The small R7 build: retire "Tabiri matukio. Si bahati." on all FIVE surfaces it reaches (the
-English-only tab title, the primer, the landing's How-it-works heading, the auth rail + register preview, the yes/no
-rules subtitle). Then D3 (WP5 the pick slip, V20, the chat bubble under sheets) and D5.
-**⭐ Ali, 2026-09-27: "make sure everything in the plan is applied, every decision, every design component perfectly made,
-new components built all consistent with our theme design kit."** Every unit is checked against R1–R7, L1–L23 and the kit
-before it ships — frames looked at, never only a green gate.
-**⭐ R8 (Ali, 2026-09-27): the build takes every remaining decision and IS the Tanzanian native Swahili reviewer** — no
-human reviewer or hallway test is waited for; "licensed" is substantiated by the Board's licence-fee acknowledgement
-(2026-09-05, Sec. 51(2)); "first licensed" ships on the owner's attestation (R9); the Follow panel stays; the share preview speaks Swahili (a WP14b
-follow-up for this batch); the hero names only wallets whose payout path is live. "Full perfection, end to end,
-sealed — visual and logical."
-**⭐ STANDING (Ali, 2026-09-27): platform-wide consistency, mobile-first, whatever the session count.** When a
-landing row shows the same rule broken on another surface, fix it there too — do not park it with another lane.
-First such batch, **C1 · one price rule everywhere**: the detail page's bar, side picker and JSON-LD, and its
-one-sided callout ("One-sided win" / "before resolution" → the card's words and rules §7's "at closing");
-`/live`'s pulse grid and featured contest; `/results`' featured result — all onto `price-state.ts`.
+**⚠️ THE MACHINE CHANGED.** The session that ran this programme worked on **ALI-BLADE15**, with worktrees
+at `C:\kipindi-hero`, `C:\kipindi-c1`, `C:\kipindi-wp34`, `C:\kipindi-f1` and a `~/heavy-node-lock.sh`.
+That session ended. This one is **OMEGA-COMPILE01**, checkout `F:\kipindi-main` — those paths and that
+lock do not exist here. **Find your own checkout** (`hostname && git rev-parse --show-toplevel &&
+git worktree list`) and never copy a path from this document. ⭐ All four of that session's built
+branches were PUSHED before it ended, so nothing was lost: `landing-v3`, `landing-v3-c1`,
+`landing-v3-wp34`, `landing-v3-f1` are on origin, and **all four are now merged into `main`.**
 
-Ali, 2026-09-26, handing over the v3 concept: *"proceed perfecting it … we can't come back until
-pushed live and validated visually and logically."* The delivery is filed raw at
-[`docs/design-system/v4-2026-09-26-landing-ten/`](design-system/v4-2026-09-26-landing-ten/). Its
-[`INHERIT-MANIFEST.md`](design-system/v4-2026-09-26-landing-ten/INHERIT-MANIFEST.md) holds **Ali's four
-rulings (R1–R4)** and **every place our laws beat the delivery (L1–L21)**. Read it before building a
-row; this section does not repeat it.
+**State (2026-09-28):** everything in this line is LIVE — D0 ✅ · WP2 ✅ · WP6 ✅ · WP8 ✅ · WP10 ✅ · WP11 ✅ ·
+WP13 ✅ · WP14 ✅ · WP14b ✅ · **WP1b ✅** (the rail's centre Deposit coin) · WP12 🔵 · **WP3 🔵 · WP4 🔵**
+(live and gate-measured; their production frame review is what stands between them and ✅) · the hero
+(R7/R9) and C1 (one price rule) live inside those rows · gates **V15, V16, V17, V18, V22, V25 ✅**.
 
-**How a session works this programme**
-- Find your checkout with `hostname && git rev-parse --show-toplevel && git worktree list`; never
-  copy a path from a doc. Work in your **own worktree off `origin/main`** (branch `landing-v3` is the
-  resume point), never in a tree another session holds. Stage files by name.
-- Heavy Node (dev server, build, tsc, Playwright) through `bash ~/heavy-node-lock.sh run landing <cmd>`
-  on ALI-BLADE15. Dev on `localhost` (never `127.0.0.1`), seeded with `POST /api/dev-test/seed-markets`
-  and `POST /api/dev-test/updown-seed`; sign in with `/auth/demo?deposit=0|1`.
-- Ship: `git fetch`, **merge** `origin/main` (never rebase, never force), `git push origin HEAD:main`,
-  then confirm production serves your sha (`?dpl=<sha>` on the asset URLs) before a row turns ✅.
-- A row turns 🔵 when its commit is live and ✅ only after it is **measured on production** at 360,
-  768 and 1280 in sw, en and zh — the frames looked at, not only the gate read.
+**Production, 33 of 33 base cells: 20 of 22 classes clean.** V18 went **1,584 → 0** when WP3+WP4 landed
+its `data-market-*` attributes. Only V3 (×12, the chat bubble — Ali's call) and V4 (×36,
+`.ticker-pause` — the LIVE strip lane's, §0 trap 11) remain, neither this programme's to fix.
+
+**Next:** the production frame review for WP3, WP4 and WP12, then WP9. In order:
+1. **The production frame review for WP3, WP4 and WP12** — 360/768/1280 × sw/en/zh, looked at, not
+   only the gate read. That is all three rows need to turn ✅. Cheapest real progress on the board.
+2. **WP9** — one board: delete the `.market-grid` and `TopicTiles` from `/`, add the Closing soon /
+   Biggest pools toggle (the lens is server-chosen and non-interactive today), the topic chips and
+   the search. Reuse `discovery-bar.tsx`'s `FilterPill` and `ui/search-box.tsx`; do not write new
+   controls. It also delivers K64 (one `ConvictionBar`) — bar markup is triplicated on `/` today:
+   `TippingBar`, `.kp-qrow__lean` and `.kp-topic__lean`.
+3. **The small R7 build** — retire "Tabiri matukio. Si bahati." on all five surfaces it reaches.
+4. **D3** — WP5 the pick slip, V20, the chat bubble under sheets. Then WP15/V23, WP19, WP20/V24, D5.
+
+**🔴 THREE CONTRADICTIONS ARE ALI'S, AND THEY BLOCK ROWS:**
+1. **WP20's 7-day line** says "640px and wider only". `globals.css` records the opposite AS ALI'S OWN
+   RULING (D49, §4 decision 11, 2026-09-23): the band stays wherever real history exists and is only
+   trimmed below 640. One must give. V24 is blocked behind it.
+2. **A literal V23 would convict the coin.** The delivery allows transform/opacity only; this repo's
+   shipped policy is transform/opacity/**filter** (`motion.css`), and `.gilt-metal:hover` uses
+   `filter: brightness` — which is the centre coin's own fill.
+3. **The 12px type floor does not exist** and cannot be adopted as written: the repo's floor is 12.5px
+   as a RATCHET with 744 licensed sub-floor sites, `test:type-scale` is not in `predeploy`, and the
+   18+ roundel is 11px in a 28px circle, not 12 in 30.
+
+**⭐ R10 (Ali, 2026-09-28) reversed R1's zero clause** — the header shows the balance at EVERY value,
+"TZS 0" included, because *"user should know he's 0"*. It travels with a second half: the Deposit
+label yields at lg–xl in every balance state, because the capsule is beside it again (E-190).
+
+**⭐ Ali, 2026-09-28, standing:** *"nothing could be created or fixed outside our set of consistency
+and responsiveness rules"* and *"any new components should align with our theme UI kit"*. And:
+**push progress as you go, so another session on another PC can continue** — several sessions run at
+once, on different things.
 
 **Traps already met on this programme**
-1. `C:\kipindi-main` was 1,092 commits behind `origin/main` when the delivery landed in it. Never
-   build there.
-2. The delivery states numbers the platform does not: minimum stake TZS 100 (config says otherwise),
-   a hard-coded 13%, and a licence number starting with the digit **zero** (ours starts with the
-   letter **O**). Read every number from config or `support-config.ts` (L3).
-3. `pricedYesPct` rounds a lopsided two-sided pool (25,000 vs 100) to 100% — V17's defect in a
-   market that is not one-sided (L14).
+1. Never build in a checkout that is behind `origin/main`; fetch and check before you start.
+2. The delivery states numbers the platform does not: minimum stake TZS 100, a hard-coded 13%, and a
+   licence number starting with the digit **zero** (ours starts with the letter **O**). Read every
+   number from config or `support-config.ts` (L3).
+3. `pricedYesPct` rounds a lopsided two-sided pool (25,000 vs 100) to 100% — V17's defect in a market
+   that is not one-sided (L14).
 4. The concept re-renders the whole page every second and fakes a bet every 6s (`sim()`). Neither is
    ported (L12).
-5. The gate's landmark selectors (V14's `.kp-hero`, `.kp-qrow`, `.kp-topic`, `.kp-settled__row`, the
-   V8 text map, the RED targets) are tied to class names. A rebuild re-points them in the same commit.
-6. `.qa-shots/` is gitignored, so the verification scripts live in **`scripts/qa/landing-v3/`**:
-   `verify-local.sh <label>` (boot, seed, capture, gate, RED V15–V17), `verify-prod.sh <label> <sha>`
-   (waits for the sha, captures production, gate, RED V3/V14–V17), `verify-wallet.sh <label>` (tsc, boot,
-   the Wallet drive `wallet.mjs`, signed-in captures) and `capture.mjs` (viewport tiles; `MODE=concept`
-   captures the delivery beside the build). Each runs under the lock:
-   `bash ~/heavy-node-lock.sh run landing bash scripts/qa/landing-v3/verify-local.sh d2a`. Frames and
-   reports land in `.qa-shots/landing-v3/<label>/`.
-7. Git Bash eats backslashes in heredocs, `node -e` and `sed` replacements (a regex became an
-   alternation; `\r\n` became a raw newline). Write patch scripts with the Write tool. Working-tree files
-   are CRLF on this machine (autocrlf), so a patch script normalises `\r\n` and restores it.
-8. The heavy-node lock is shared by every session: never `rm -rf` it on an earlier reading. Re-read the
-   owner immediately before and remove it only if it still names you.
-9. V14 is red on a LOCAL run: the in-memory seed produces no settled row the strip will show, so the
-   results strip (WP13) and V14 are measured on production only.
-10. The gate's V3 treats the top of the bottom rail as the fold (V15's rule, fixed in `54f8199b`): a
-    control under the rail at the fold is below the screen, not occluded. What V3 still reports on
-    production is the chat bubble — Ali's open call ("Landing page to a 10").
-11. V4 on production reports `.ticker-pause` at 40×31 on every cell. It is the LIVE strip's pause, sized
-    to the strip on purpose by that lane (`globals.css`, the note above `.ticker-pause`: the whole running
-    strip is the finger target). Not this programme's to change; it stays named on the GATE row.
+5. The gate's landmark selectors are tied to class names. A rebuild re-points them in the same commit.
+6. The verification scripts live in `scripts/qa/landing-v3/`; `.qa-shots/` is gitignored. On a host
+   with no shared lock, run them directly. Seed a local host with `POST /api/dev-test/seed-markets`
+   and `POST /api/dev-test/updown-seed`, and sign in with **`/auth/demo?deposit=0|1`** — that is how
+   the funded and zero-balance header states are driven without touching production.
+7. **Git Bash eats backslashes in heredocs, `node -e` and `sed`.** Write patch scripts with the Write
+   tool. Working-tree files are CRLF (autocrlf), so a patch script normalises `\r\n` and restores it.
+8. **`scripts/qa/landing-ten.mjs`'s `CHECKS` is itself a TEMPLATE LITERAL.** A raw backtick in a
+   comment you add ENDS it, and `node --check` then reports "Invalid left-hand side expression in
+   postfix operation" hundreds of lines away. Escape them, as the file already does.
+9. V14 is red on a LOCAL run: the in-memory seed produces no settled row, so WP13 and V14 are measured
+   on production only.
+10. The gate's V3 treats the top of the bottom rail as the fold. What it still reports on production is
+    the chat bubble — Ali's open call.
+11. V4 on production reports `.ticker-pause` at 40×31 on every cell. The LIVE strip lane's, on purpose.
+12. **`red:landing-ten-plan` had three controls proving nothing**, all for the same reason: they pinned
+    a value that later became true. Two hard-coded "56 K rows" / "58 checkboxes" and went blind the day
+    the delivery grew to 86; one planted **R9**, which the hero unit MADE REAL. A control pinned to
+    today's count cannot survive the event it exists to catch. All three derive or use an impossible
+    value now (16/16 proved).
 
 ## §0a · The paste-in prompt for the next session
 
@@ -195,8 +162,8 @@ row; this section does not repeat it.
 | D0 | File the delivery, its acceptance record, this tracker; delete the dropped folder | ✅ | 1173dc2b | live 2026-09-26; the dropped folder deleted, `C:\kipindi-main` fast-forwarded |
 | WP1 | Header collapse below 1100, Menu button, segmented language | ⛔ | | R1 kept the header; L4 |
 | WP2 | Hero order, trust lines, headline clamp, backdrop drawing removed | ✅ | 54f8199b | measured on production 2026-09-26 (360/768/1280 × sw/en/zh frames looked at); R4(1), L18 |
-| WP3 | Featured card: full question, meta + source, time top-right, 24h mark and delta | ⬜ | | |
-| WP4 | Question board rows: title link + YES@/NO@ buttons + time left | ⬜ | | |
+| WP3 | Featured card: full question, meta + source, time top-right, 24h mark and delta | 🔵 | ec28dd4e | production 2026-09-28 after `03cf7df9`, 33 of 33 base cells measured (11 widths × sw/en/zh): **V18 0** — it read **1,584** before this merge. The featured card names its source, its time sits top-right, and the board row's frame was looked at on production at 1280. ⚠️ 🔵 NOT ✅: the production frame review at 360/768/1280 × sw/en/zh is not done — nine LOCAL frames were looked at on a seeded host, and one production frame. That review is all that stands between this row and ✅ |
+| WP4 | Question board rows: title link + YES@/NO@ buttons + time left | 🔵 | ec28dd4e | production 2026-09-28 after `03cf7df9`, 33 of 33 base cells measured (11 widths × sw/en/zh): **V18 0** — it read **1,584** before this merge. Every board row carries `data-market-part` for source, pool, predictors, time and pick. ⚠️ 🔵 NOT ✅, for the same reason as WP3 — the production frame review is outstanding |
 | WP5 | Pick slip: sheet below 1024, inline from 1024, after-placing share | ⬜ | | R2 |
 | WP6 | One-sided state on every card + the grid's degeneracy floor | ✅ | 31662831 | measured on production 2026-09-27: V17 0 in 33/33 cells (was 66), RED V17 PROVED; `/`, `/markets`, `/results` at 360/768/1280 × sw/en/zh, frames looked at — no card reads 0% or 100%, one-sided cards read "One side only" + the rule in all three. The one-sided FEATURED card measured locally (production's featured is contested). L14, L22, L23; delivers MOBILE-VISUAL ruling 13 on the card |
 | WP7 | Estimate line on cards | ⛔ | | R3 |
@@ -218,7 +185,7 @@ row; this section does not repeat it.
 | V15 | Gate: first screen at 360 × 740 | ✅ | 54f8199b | production 2026-09-26: 0 findings; RED PROVED on production |
 | V16 | Gate: no promised winnings | ✅ | 54f8199b | production 2026-09-26: 0 findings; RED PROVED on production |
 | V17 | Gate: no 0% or 100% price | ✅ | 54f8199b | production 2026-09-26: RED PROVED; its findings were WP6's — 0 on production 2026-09-27 after `31662831` |
-| V18 | Gate: every market shows price or state, time, pool, source | 🔨 | | the gate block, `REDS.V18` (one RED run per part, `RED_PART`) and the gate's own hardening are built (D2 step 0, `--compile` clean); the `data-market-surface` / `data-market-part` attributes it reads land with WP3 + WP4, which bring it to 0 |
+| V18 | Gate: every market shows price or state, time, pool, source | ✅ | 03cf7df9 | **0 on production** 2026-09-28 across 33 base cells, from 1,584 the day before — WP3 + WP4 landed the `data-market-*` attributes it reads. **RED PROVED on production** (`RED=V18 RED_PART=order --cell=base-1280-sw`: the plant moved the source after the pick, V18 0→1, no collateral). ⚠️ Its `before()` was RELAXED the same day and the product was right: it demanded the two rects OVERLAP vertically before accepting "on its line and left of it", which is 3px too strict on a three-column row with a tall left column. Measured at 1280: source y 1277–1293 x 24–685, pick y 1230–1274 x 979–1256 — three pixels of vertical miss, three hundred of horizontal clearance, and the frame looked at. Teeth unchanged: later in the DOM still caught, and BELOW the pick while horizontally overlapping it still caught (the phone layout, the defect it was built for) |
 | V19 | Gate: Withdraw as reachable and as large as Deposit | ⬜ | | |
 | V20 | Gate: sheets trap focus, close on Esc, respect the safe area | ⬜ | | |
 | V21 | Gate: the placement map, by bounding box | ⬜ | | |
@@ -226,7 +193,7 @@ row; this section does not repeat it.
 | V23 | Gate: motion audit — transform/opacity only, no per-second page re-render, timers pause when hidden | ⬜ | | ⚠️ A LITERAL V23 WOULD CONVICT THE COIN. The repo's shipped policy is transform/opacity/**filter** (`motion.css`), and `.gilt-metal:hover` uses `filter: brightness` — which is the coin's own fill. Ali's call before it is built |
 | V24 | Gate: board search filters within one frame; the empty state renders; the 7-day chart's presence follows its width rule | ⬜ | | Blocked behind WP20, and behind the D49 contradiction above |
 | V25 | Gate: one Deposit per screen (UPDATE-2026-09-28 §5) — below 1024 none in the header, exactly one in the rail, none in the hero below 640; at 1024 and up no rail, at most one header pill, none for a visitor | ✅ | 37bde8a5 | production 2026-09-28: 0 findings; **RED PROVED** on production (`RED=V25 --cell=base-768-sw`, plant injected a second header Deposit, V25 0→1, no collateral). ⛔ Population is scoped by REGION, never page-wide — `cashback-promo.tsx` is a legitimate second `/wallet/deposit` CTA. ⛔ Counts what is RENDERED, not the DOM. ⚠️ The signed-in FLOOR at ≥1024 is not asserted: "exactly one" cannot tell a held wallet (correctly none) from a missing pill, because the rail that reveals held is gone at that width. Measured on a local seeded host instead (Ali's ruling, 2026-09-28) |
-| GATE | `qa:landing-ten` V1–V14 clean on production (V3, V14 open by R4); `npm run test:all` + typecheck green | ⬜ | | Production 2026-09-27 after `541a9e76` (33 of 33 cells measured): V1, V2, V5–V17 clean. Still reported, each with its owner: V3 ×12 (the chat bubble, Ali's call), V4 ×33 (`.ticker-pause` 40×31, the LIVE-strip lane's, §0 trap 11), V18 ×1,584 (48 per cell: every surface unmarked until WP3 + WP4 add `data-market-*`; its RED runs are INCONCLUSIVE until then — correct). `test:all` is red on OTHER lanes' ratchets (type-scale, stacking, tap-target, decomment, eyebrow-roles, two red-anchors §3 anchors) — each red on clean `origin/main` too. R4 |
+| GATE | `qa:landing-ten` V1–V14 clean on production (V3, V14 open by R4); `npm run test:all` + typecheck green | ⬜ |  | **Production 2026-09-28 after `03cf7df9`, 33 of 33 base cells measured — 20 of 22 classes CLEAN**: V1, V2, V5–V18, V21, V22, V25 and V8 all 0. **V12 0** (it read 36 for one day — see below) and **V18 0** (it read 1,584). Two classes remain, each with a named owner that is not this programme's: **V3 ×12** the chat bubble over a price on phones — Ali's open call; **V4 ×36** `.ticker-pause` at 40×31, the LIVE strip's own control, sized to the strip on purpose by that lane (§0 trap 11). ⭐ V12's 36 were the gate being WRONG and the product being right: C1 made a one-sided settlement report "refunded", which is true — every stake goes back at zero fee when one pool is empty — and V12's rule predated that state. The strip now emits `data-settled-reason` and V12 is narrowed to the dishonesty it was born for (a decided market NOBODY STAKED), with a missing reason still treated as the finding. `test:all` is red on OTHER lanes' ratchets (type-scale, stacking, tap-target, decomment, eyebrow-roles, two red-anchors §3 anchors) — each red on clean `origin/main` too. R4 |
 
 > **Instrument defect found and fixed, 2026-09-28 (with V22/V25).** `--red` returned BEFORE the sign-in
 > block, so **no `signedin` cell could ever be red-tested**. V25's own control is specified as "restore the

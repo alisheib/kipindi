@@ -936,12 +936,24 @@ const CHECKS = /* js */ `(() => {
     };
     const find = (s, names, test) => [...s.querySelectorAll(names.map((n) => '[data-market-part="' + n + '"]').join(","))]
       .find((el) => vis(el) && inside(el, s) && test(says(el)));
-    // BEFORE = earlier in the DOM AND earlier on the screen: above the pick, or on its line and left of it.
+    // BEFORE = earlier in the DOM AND earlier in READING ORDER WITHIN THIS ONE SURFACE: above the
+    // pick, or entirely to its left.
+    // ⚠️ RELAXED 2026-09-28, AND THE PRODUCT WAS RIGHT. The left arm used to demand that the two
+    //    rects OVERLAP vertically before it would accept "on its line". On a three-column board row
+    //    whose left column is taller than the buttons, that is a few pixels too strict: measured on
+    //    production at 1280, the KRA row's source sat at y 1277-1293 and x 24-685 while the pick sat
+    //    at y 1230-1274 and x 979-1256. Three pixels of vertical miss, three hundred of horizontal
+    //    clearance — and the frame was looked at: a reader meets the source long before the buttons.
+    //    It reported 4 cells, sw only, on one long title.
+    // ⛔ THE TEETH ARE UNCHANGED, and that is what makes this a correction rather than a licence:
+    //    later in the DOM is still caught by the line above; and BELOW the pick while horizontally
+    //    OVERLAPPING it is still caught, which is the phone layout where the buttons run full width
+    //    — the original defect this class was built for, and the one exception (2) still names.
     const follows = (el, pick) => !!(el.compareDocumentPosition(pick) & Node.DOCUMENT_POSITION_FOLLOWING);
     const before = (el, pick) => {
       if (!follows(el, pick)) return false;
       const a = el.getBoundingClientRect(), b = pick.getBoundingClientRect();
-      return a.bottom <= b.top + 2 || (a.top < b.bottom && a.bottom > b.top && a.right <= b.left + 2);
+      return a.bottom <= b.top + 2 || a.right <= b.left + 2;
     };
     const surfaces = [...document.querySelectorAll("[data-market-surface], .mcardp[data-row-id], .kp-qrow")].filter(vis);
     const examined = {};
