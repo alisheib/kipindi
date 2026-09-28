@@ -108,7 +108,8 @@ c5 100 (99 primaries; step 8 added 3) — all resolve exactly once (`test:red-an
 
 ## 0b · ▶ WHAT IS OPEN
 
-Nothing here blocks betting, and nothing is in development — §0c's build order is DONE. What was found and fixed on
+Nothing here blocks betting. §0c's build order is DONE; **the one build in development is the targeting screen
+(§0d, approved 2026-09-28)**. What was found and fixed on
 2026-09-26 is `docs/HOUSE-BOTS.md` §12.5; (a)–(e) of the old list are done or decided (§0c, §5).
 
 - **To drive the four fleets whole again:** `bash plans/house-bots/tools/fleet.sh <sha>` (`--dry` prints the slices and
@@ -168,7 +169,8 @@ from Ali before its build step.
 
 **THE BUILD ORDER — ✅ DONE 2026-09-27, every step LIVE on `main` and verified serving (`dpl`).** Its per-step detail —
 what was built, the gates and their printed counts, what each first run found — is `docs/HOUSE-BOTS.md` §12.6–§12.14, and
-the step instructions are in git (this file at `9a647397`). ⛔ Nothing here is in development.
+the step instructions are in git (this file at `9a647397`). ⛔ Nothing in THIS order is in development (the next build
+is §0d).
 
 | # | Step | Where recorded | Live at |
 |---|---|---|---|
@@ -189,7 +191,8 @@ the step instructions are in git (this file at `9a647397`). ⛔ Nothing here is 
 
 **Not built, each by decision or out of this programme — none of them stops the desk:**
 - **The four target alerts** (TARGET_ADDED/CHANGED/REMOVED/STOPPED) have no act to send them: the targeting screen is not
-  built. The law 2.fs09.8a makes the first target writer announce (§12.16).
+  built. The law 2.fs09.8a makes the first target writer announce (§12.16). ▶ **The targeting screen is the NEXT BUILD,
+  approved by Ali 2026-09-28 — §0d.**
 - **Ruling 543's read-path siblings**: `verifyChain()`, `verifyChainFull()` and the census still throw when the chain
   secret is misconfigured (read paths only); its three warnings are proven by the suite but were not rendered on a
   served page (that needs a build whose chain cannot sign).
@@ -199,6 +202,62 @@ the step instructions are in git (this file at `9a647397`). ⛔ Nothing here is 
   `updown-handover`; §4's ratchet is green again since another lane's fix — measured 2026-09-27: 3811 passed, 2 failed),
   `test:tap-target` 2.1/5.1, `test:type-scale` §3/§6, `test:house-bot-holder-lifecycle` 2.2, `test:decomment` 2.1,
   `test:live-target-safe` §1b.
+
+## 0d · ▶ NEXT BUILD — THE TARGETING SCREEN (approved by Ali 2026-09-28) · 🟡 IN DEVELOPMENT, NOTHING BUILT YET
+
+**Ali's words, verbatim:** *"build this screen is it ok proceed with it but also keep progress of it and all other
+decisions take them based on the architecture of platform"* — and the session was to continue on another PC.
+- **What it is:** the officer's screen to ADD a target (point one house bot at one market), CHANGE its timing, REMOVE it
+  and VETO it. Today the account page has a read-only **Targets** tab (`src/app/admin/desk/[id]/page.tsx`, `tab ===
+  "targets"`, ruling 508; no money on it, 365), and nothing under `src/` calls the target store's officer writers.
+- **The delegation:** every technical and design question is decided by the session from the sealed flows, the rulings
+  and the platform's existing patterns, each decision written down with its reason and sources. Only an owner
+  reservation (money-exposure policy, legal or compliance, anything a ruling reserves to the owner) goes to Ali, as a
+  numbered one-line choice with a SAFE DEFAULT the build uses meanwhile. Never block on him.
+- **Tracking — ONE place each:** the spec and every decision in **`plans/house-bots/TARGETS-SCREEN.md`** (new; ⛔ not
+  "C8-SPEC": C8 is an amendment id in `04-amendments.md`), the step table with status HERE in §0d (updated in the same
+  commit as each step), and the `Development` row of `PROGRESS.md`.
+- **Status 2026-09-28:** approved, NOT yet planned. Two mapping runs were started on Ali-Blade15 and both died with the
+  session before returning anything — so no plan exists yet and nothing is half-built. Start with the mapping.
+
+**Step 0 — map, then write `TARGETS-SCREEN.md` (one commit, docs only).** Five read-only areas (on Ali-Blade15 agents
+run NO Node — Read/Grep/Glob only; research first, write once):
+1. **Requirements:** `plans/house-bots/04-amendments.md` (N2 — ~470 mentions of "target"; N2 §2 the row, §4 system ends,
+   §6 add/change/remove and the timing preview), `01-scenario-register.md` (~170 target mentions: every scenario id),
+   `PLAN.md`, `02-sealed-flows.md`, `03-design-spec.md`, `C4/C5/C7-SPEC.md`, `C5-D20-REPLAN.md`, `DEFERRED-TESTS.md`.
+2. **Data and engine:** `prisma/schema.prisma` `model HouseBotTarget`; `src/lib/server/house-bot-dal.ts`
+   `HouseBotTargetStore` (`insert` — ACTIVE, version 1, times from DB `now()`, the unique index `hbt_active_market_uq`
+   rethrows; `casUpdate` — timing fields only, CAS on `version`; `remove` — only with no live reaction; `veto`;
+   `endActive`; `endAllForBot`; `listForBot`; the counting reader); `src/lib/house-bot/constants.ts`
+   (`TARGET_ARMING_SEC = 12`, `TARGET_PREVIEW_DEBOUNCE_MS = 250`, `TARGET_END_CAUSES`, `TARGET_PRODUCT_LINES` = MARKET
+   only); the engine's use in `planner.ts`, `trigger.ts`, `fire.ts`, `enter-now.ts`, `oversight.ts`, `sunset.ts`,
+   `designation.ts`, `roster-actions.ts` — so the MONEY consequence of each target act is explicit.
+3. **The console pattern to copy:** `rules-save.ts`, `limits-save.ts`, `designation.ts`, `roster-actions.ts` (door,
+   CAS, compliance audit row, history event, then `announceRoster`), `house-console-read.ts` (the reader builds every
+   word and link), `console-routes.ts`, `emitters.ts`, `src/lib/house-bot/alert-copy.ts` (the four TARGET_* sentences
+   already exist), the kit (`card-sort-control`, `admin-sort`, `pagination`, `filter-pill`, `link-pending`, `tabs`, the
+   Input atom), and the en/sw/zh dictionaries.
+4. **Gates to extend or flip:** `scripts/lib/house-bot-console-cases.mts` 2.fs09.8 (the target-writer law — the first
+   writer must call `announceRoster` imported from the emitters module with a literal `TARGET_*` event, AFTER its
+   history event; its record that no writer exists must flip, see the declared mutation `fs09-target-writer-announced`),
+   the dal/engine/designation/ops/reports cases, `scripts/anchors/house-bot-console.anchors.mjs`,
+   `qa-house-bots-visual.mjs` (its 3 NOT MEASURED are the EMPTY targets table — the served seeds must create targets),
+   `qa-nav-pending.mjs`, `qa-desk-rules-flow.mjs` (the served drive through the real UI), `filter-language.test.mts`,
+   the c5 disclosure gate (D19/D20).
+5. **The record:** `docs/HOUSE-BOTS.md` (target lifecycle, §9.2, §12.16, §13 risk 12(c)), `docs/COMPLIANCE-DECISIONS.md`,
+   the officers' guide (`scripts/generate-house-bots-guide.mts` → `docs/house-bots-desk-guide.html` and the PDF).
+
+**Then build it step by step, each step ONE commit** (code + two-store cases + declared mutations + this §0d row + the
+`docs/HOUSE-BOTS.md` record), pushed to `main` and the deploy verified (`dpl`) before the next; UI drawn at 360 / 640 /
+1280 and the PNGs READ; a served drive through the real screens; declared mutations driven in a DEDICATED detached tree
+after each push; the fleets whole at the close (`plans/house-bots/tools/fleet.sh <sha>`). Binding throughout: D19 and
+D20, the master switch is never touched, a refusal or a no-change save announces nothing, i18n en/sw/zh (never a
+hardcoded string), mobile first, forms at most 960 px, and the repository is PUBLIC (no account id, label, holder name,
+note text or credential in any file).
+
+| # | Step | Status | Where recorded | Live at |
+|---|---|---|---|---|
+| 0 | Map the five areas; write `TARGETS-SCREEN.md` (spec, decisions, owner questions with defaults, the step list) | ⬜ next | — | — |
 
 ## 1 · Traps that cost a run each — all still live
 
@@ -304,6 +363,13 @@ KP_BASE=http://localhost:3031 KP_WIDTHS=360,1280 npm run -s qa:house-bots-visual
 
 ## 5 · Handover log
 
+- **2026-09-28 · Ali-Blade15 — session END; the next session continues on ANOTHER PC.** Live and verified: `6d915723`
+  (the phone sort rail and FS-09 at `994d2f0d`; the navigation probe now holds the RESPONSE, `6d915723`). The 34 new
+  console mutations and `red:filter-language` 37/37 were driven at `994d2f0d` (HOUSE-BOTS §12.15–§12.16). Ali then
+  approved **the targeting screen** as the next build and delegated its decisions to the platform's architecture —
+  **§0d**, where step 0 (map, then write `TARGETS-SCREEN.md`) is next. Nothing is half-built: the tree was clean and
+  equal to `main` at the end. ⚠️ This laptop's memory (`C:/Users/Ali/.claude/`) does not travel — everything the next
+  session needs is in this file.
 - **2026-09-27 evening · Ali-Blade15 — Ali's three follow-ups, decided and built.** His words: *"proceed doing those as the
   session is up, decide as per what the architecture of the platform requires and as per perfection"*.
   - **The phone sort rail** (§7.1c, §12.15): the kit's own `CardSortControl`, fed only from the reader's sort view, below
