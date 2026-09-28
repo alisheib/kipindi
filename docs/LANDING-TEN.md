@@ -208,9 +208,12 @@ row; this section does not repeat it.
 | WP13 | Results: date, the market's own sign-off, source link, paid | ✅ | e9b4056c | measured on production 2026-09-27: date, the market's own sign-off (a reversed market reads "Corrected on objection"), source, paid; below 640 the amount and the source each take a line, so the host reads whole. L2 |
 | WP14 | Wallet: chip opens sheet/panel, equal Deposit/Withdraw, gold Deposit at zero, signed-in hero | ✅ | e9b4056c | measured on production 2026-09-27 with `mobile01` (zero balance, no picks: header Deposit, hero empty-balance line + Deposit, no Withdraw, Set limits; pages render at 360/1280 sw/en). Funded Wallet + hero measured locally (Wallet 17 cells, hero 15 cells; 360–1280 × sw/en/zh). `test:wallet-reach` 48/48, `test:landing-mine` 22/22, both mutation-proved. R1, L19–L21 |
 | WP14b | Share on every card footer, in every phase; the WhatsApp preview card (og tags spread from `ROOT_OPEN_GRAPH`, no 0/100 in the preview) | ✅ | 541a9e76 | measured on production 2026-09-27: `qa:landing-v3:og-prod` CLEAN on 15 markets (og:type/site_name/locale present, one-sided markets preview "One side only.", images 1200×630 PNG) — its baseline before the push failed on all 15; `/results` captured 360/768/1280 × sw/en/zh, settled cards one `<article>`, looked at; the share drive (26/26: Copy, WhatsApp, Esc, backdrop stay on `/results`) ran locally. "Share on WhatsApp" after placing is WP5's; K50 closes with both |
+| WP1b | Bottom rail with a centre Deposit: Markets · Up & Down · **Deposit** · Live · More; Results into More; the coin is the mark as a control | ✅ | 37bde8a5 | production 2026-09-28: rise 14.0px, rail 65px unchanged, five slots at 64, off-centre ≤ 0.02px, coin's rect inside a keep-out, 57px reserve clearance, frames looked at at 360/414 × sw/en/zh. Ali's override of "the rail is destinations only" is recorded in the component's header comment — the centre is a ROUTE. Gates V22 + V25 |
 | WP15 | Motion and performance | ⬜ | | L12 |
 | WP16 | i18n: every new key in en, sw and zh | 🔨 | 54f8199b | D1's keys in all three (`test:i18n`); sw/zh drafts carry the native-review marker (rows SW, ZH) |
 | WP17 | Accessibility: heading order, no nested controls, dialog semantics | 🔨 | 54f8199b | heading order and split row links live; dialog semantics arrive with the Wallet (WP14) and the slip (WP5) |
+| WP19 | Platform: analytics events with their `source`, empty states, static skeletons, landing flags | ⬜ | | ⛔ No client event emitter exists: the only events in `src/` are a `page_view` and the `/api/pv` beacon, and `gtag` is not exported. Any `deposit_tap` must respect `gaExcluded` and consent |
+| WP20 | World-benchmark: board search (16px so iOS does not zoom), the 7-day line at 640+, loading skeletons at final heights | ⬜ | | ⚠️ The 7-day clause CONTRADICTS Ali's own D49 ruling (2026-09-23, `globals.css`): the band stays wherever real history exists and is only trimmed below 640. One of the two must give — Ali's call |
 | RG | Drop the RG line above the footer; chat bubble hides under a sheet | 🔨 | 54f8199b | RG line dropped, live 2026-09-26 (R4(5)); the chat bubble under a sheet ships with D3 (R4(7)) |
 | V15 | Gate: first screen at 360 × 740 | ✅ | 54f8199b | production 2026-09-26: 0 findings; RED PROVED on production |
 | V16 | Gate: no promised winnings | ✅ | 54f8199b | production 2026-09-26: 0 findings; RED PROVED on production |
@@ -220,6 +223,8 @@ row; this section does not repeat it.
 | V20 | Gate: sheets trap focus, close on Esc, respect the safe area | ⬜ | | |
 | V21 | Gate: the placement map, by bounding box | ⬜ | | |
 | V22 | Gate: the bottom rail and its centre coin — centred ±1px, a 14px rise, the coin's rect inside a needle keep-out, the rail's row height unchanged, the footer's reserve still clearing it, no English rail label ellipsised | ✅ | 37bde8a5 | production 2026-09-28: 0 findings; **RED PROVED** on production (`RED=V22 --cell=base-360-sw`, plant moved the coin 154→174, V22 0→1, no collateral). ⚠️ Asserts the RISE rather than the CSS value: the concept's rail has 56px slots and ours has 64px, and `margin-top:-14px` — the obvious reading — measured a **7px** rise. ⚠️ Not applicable at ≥1024 (`lg:hidden`) and says so rather than passing. ⚠️ "/results marks More as current" is NOT in it — a different route, and More's items are not in the DOM until it opens; it belongs with `test:section-rail` |
+| V23 | Gate: motion audit — transform/opacity only, no per-second page re-render, timers pause when hidden | ⬜ | | ⚠️ A LITERAL V23 WOULD CONVICT THE COIN. The repo's shipped policy is transform/opacity/**filter** (`motion.css`), and `.gilt-metal:hover` uses `filter: brightness` — which is the coin's own fill. Ali's call before it is built |
+| V24 | Gate: board search filters within one frame; the empty state renders; the 7-day chart's presence follows its width rule | ⬜ | | Blocked behind WP20, and behind the D49 contradiction above |
 | V25 | Gate: one Deposit per screen (UPDATE-2026-09-28 §5) — below 1024 none in the header, exactly one in the rail, none in the hero below 640; at 1024 and up no rail, at most one header pill, none for a visitor | ✅ | 37bde8a5 | production 2026-09-28: 0 findings; **RED PROVED** on production (`RED=V25 --cell=base-768-sw`, plant injected a second header Deposit, V25 0→1, no collateral). ⛔ Population is scoped by REGION, never page-wide — `cashback-promo.tsx` is a legitimate second `/wallet/deposit` CTA. ⛔ Counts what is RENDERED, not the DOM. ⚠️ The signed-in FLOOR at ≥1024 is not asserted: "exactly one" cannot tell a held wallet (correctly none) from a missing pill, because the rail that reveals held is gone at that width. Measured on a local seeded host instead (Ali's ruling, 2026-09-28) |
 | GATE | `qa:landing-ten` V1–V14 clean on production (V3, V14 open by R4); `npm run test:all` + typecheck green | ⬜ | | Production 2026-09-27 after `541a9e76` (33 of 33 cells measured): V1, V2, V5–V17 clean. Still reported, each with its owner: V3 ×12 (the chat bubble, Ali's call), V4 ×33 (`.ticker-pause` 40×31, the LIVE-strip lane's, §0 trap 11), V18 ×1,584 (48 per cell: every surface unmarked until WP3 + WP4 add `data-market-*`; its RED runs are INCONCLUSIVE until then — correct). `test:all` is red on OTHER lanes' ratchets (type-scale, stacking, tap-target, decomment, eyebrow-roles, two red-anchors §3 anchors) — each red on clean `origin/main` too. R4 |
 
@@ -692,16 +697,18 @@ drift from that file or a row names an id §1 does not have. An item is done whe
 | P3 | Language: inside the Menu, header on desktop | WP1 | R1, L4: the header's language menu at every width |
 | P4 | Join / Create account: header + after the featured card; hero left column on desktop | WP2 | The hero CTAs follow the featured card below 1024 and sit in the left column from 1024; the header keeps Sign in + Sign up (R1) |
 | P5 | Balance chip → Wallet: sheet below 1024, panel from 1024 | WP14 | R1 |
-| P6 | Deposit: header (gold), Wallet, hero | WP14 | R1 — but **not** its zero clause: R10 (2026-09-28) keeps the capsule at zero, so the header carries BOTH the figure and the Deposit there. Below 1024 the Deposit is the rail's centre coin (UPDATE-2026-09-28 §1) |
-| P7 | Withdraw: Wallet + hero, same size as Deposit; hidden at zero | WP14, V19 | R1 |
-| P8 | Featured market: right after the lede; hero right column on desktop | WP2, WP3 | Hero v3 (R7, 2026-09-27): the card follows the trust ROWS — claim → h1 → lede → trust rows → card — so 18+, the licence and the helpline reach a phone's first screen; right column from 1024 |
-| P9 | Pick slip: bottom sheet below 1024, inline from 1024 | WP5 | R2 |
-| P10 | Proof figures: ledger rows on phones, three columns above | WP8 | |
-| P11 | Closing-soonest board: stacked · title + bar · one line | WP4 | |
-| P12 | Pick-a-side cards: snap rail with a peek · two columns · three | WP9 | |
-| P13 | Share: card footer + after placing (WhatsApp) | WP14b, WP5 | |
-| P14 | Set limits / Take a break: pick sheet, Wallet, Menu, footer | WP5, WP14 | No Menu (R1); the footer already carries both |
-| P15 | Licence · 18+ · helpline: first screen + footer | WP2 | ~~Trust lines before the CTAs — L18~~ ⚠️ 2026-09-27, hero v3 (R7(2)): one quiet row — 18+ · the licence line · the helpline `tel:` — plus the payout-live wallets, in the intro ABOVE the card (V21 measures them on the first screen); the RG sentence, the licence number and the helpline stay in the footer |
+| P6 | Bottom rail (`bottom-nav.tsx`): Markets · Up & Down · **centre Deposit** · Live · More; none at ≥ 1024 | WP1b | ⭐ NEW IN v4 (UPDATE-2026-09-28 §2). Live `37bde8a5`; V22 measures the coin's geometry |
+| P7 | Deposit: header (gold), Wallet, hero | WP14 | R1 — but **not** its zero clause: R10 (2026-09-28) keeps the capsule at zero, so the header carries BOTH the figure and the Deposit there. Below 1024 the Deposit is the rail's centre coin (UPDATE-2026-09-28 §1) |
+| P8 | Results: inside More on phones and tablets, header nav on desktop | WP1b | ⭐ NEW IN v4. §3 of the update corrects the earlier plan: Results STAYS in `CORE_ITEMS`. ⚠️ "/results marks More as current" is not in V22 — a different route; `test:section-rail` owns it |
+| P9 | Positions, Wallet, Leaderboard, Invite, Propose: inside More (player), header / avatar menu on desktop | WP1b | ⭐ NEW IN v4. Wallet leaves More exactly when the centre slot becomes it, so the destination is reachable once and never marked twice |
+| P10 | Withdraw: Wallet + hero, same size as Deposit; hidden at zero | WP14, V19 | R1 |
+| P11 | Featured market: right after the lede; hero right column on desktop | WP2, WP3 | Hero v3 (R7, 2026-09-27): the card follows the trust ROWS — claim → h1 → lede → trust rows → card — so 18+, the licence and the helpline reach a phone's first screen; right column from 1024 |
+| P12 | Pick slip: bottom sheet below 1024, inline from 1024 | WP5 | R2 |
+| P13 | Proof figures: ledger rows on phones, three columns above | WP8 | |
+| P14 | Board (ONE list): toggle + topic chips + stacked rows; one line per row at ≥ 1024 | WP9 | ⚠️ v4 MERGES the v3 map's two rows ("Closing-soonest board" and "Pick-a-side cards") into one — WP9 deletes the grid and the tiles from `/`. The two old rows' notes are kept here rather than dropped: WP4 | ·· WP9 | |
+| P15 | Share: card footer + after placing (WhatsApp) | WP14b, WP5 | |
+| P16 | Set limits / Take a break: pick sheet, Wallet, Menu, footer | WP5, WP14 | No Menu (R1); the footer already carries both |
+| P17 | Licence · 18+ · helpline: first screen + footer | WP2 | ~~Trust lines before the CTAs — L18~~ ⚠️ 2026-09-27, hero v3 (R7(2)): one quiet row — 18+ · the licence line · the helpline `tel:` — plus the payout-live wallets, in the intro ABOVE the card (V21 measures them on the first screen); the RG sentence, the licence number and the helpline stay in the footer |
 | K1 | Every placement row verified at 360, 768, 1280 in sw, en, zh | V21, PANEL | |
 | K2 | 4a: phone, balance — chip + gold Deposit in the header; hero balance with equal Deposit/Withdraw | WP14 | The phone fit is measured (§2.1 WP14) |
 | K3 | 4b: chip opens the Wallet sheet — balance, withdrawable, equal pair, Set limits; Esc and backdrop close | WP14, V20 | |
@@ -752,13 +759,42 @@ drift from that file or a row names an id §1 does not have. An item is done whe
 | K48 | Depth (pool and predictors) on every market | WP3, WP4, V18 | Every market except the featured card below `FEATURED_PREDICTOR_FLOOR` (R7, L29) — it states its pool, and tells the gate why the count is withheld |
 | K49 | Closing time next to every price | WP3, WP4, WP9 | WP3: time left top-right of the featured card, and its close date on the meta line; WP4: time left on the row's price line and the close date in its meta |
 | K50 | Share on cards; WhatsApp after placing; the WhatsApp preview card works | WP14b, WP5 | Card share + the preview card: WP14b (D2), each market's og tags and og:image read on production by `qa:landing-v3:og-prod`; after placing: WP5 (D3); ticks when both are ✅ |
-| K51 | Visitor → sign-up → first-pick funnel measured before and after | FUNNEL | |
-| K52 | `qa:landing-ten` V1–V21 clean at every cell (except Ali's open decisions) | GATE, V15, V16, V17, V18, V19, V20, V21 | |
-| K53 | Every new check (V15–V21) has a RED control reporting PROVED | V15, V16, V17, V18, V19, V20, V21 | |
-| K54 | `npm run test:all` + typecheck pass | GATE | |
-| K55 | Real devices | DEV | |
-| K56 | Native Swahili sign-off; native zh review | SW, ZH | |
-| K57 | The eight-reviewer scores recorded here | PANEL | |
+| K51 | The predictor count is on every row | WP4 | ⭐ NEW IN v4 |
+| K52 | Visitor → sign-up → first-pick funnel measured before and after | FUNNEL | |
+| K53 | Sheets animate in and out; Esc, backdrop and Cancel use the exit | WP5 | ⭐ NEW IN v4 |
+| K54 | Closed markets show "Betting closed · awaiting result", with no tappable YES/NO | WP15 | ⭐ NEW IN v4 |
+| K55 | The coin is the 50pick mark as a control | WP1b | ⭐ NEW IN v4 · C2 |
+| K56 | The "▲ You" mark shows where the player joined the split | WP15 | ⭐ NEW IN v4 |
+| K57 | Every row of the SPEC §5 motion table is implemented | WP15 | ⭐ NEW IN v4 |
+| K58 | The price line slides continuously; the ring drains smoothly | WP12 | ⭐ NEW IN v4 |
+| K59 | Every press gives feedback | WP15 | ⭐ NEW IN v4 |
+| K60 | V23: transform/opacity only, no per-second re-render, timers pause when hidden | V23 | ⭐ NEW IN v4 |
+| K61 | The INP, long-task and CLS budgets are met | WP15 | ⭐ NEW IN v4 |
+| K62 | One gold; the contrast table in §5b re-verified on the real tokens | WP15 | ⭐ NEW IN v4 |
+| K63 | The closed and disabled states use the muted palette | WP15 | ⭐ NEW IN v4 |
+| K64 | One `MarketRow` and one `ConvictionBar`; no other bar markup exists | WP9 | ⭐ NEW IN v4 |
+| K65 | The rail is `bottom-nav.tsx`, with no second nav component | WP1b | ⭐ NEW IN v4 |
+| K66 | The wordmark matches `lockup-horizontal.svg` | WP2 | ⭐ NEW IN v4 |
+| K67 | The mark's split, orientation, needle and hub are respected in the coin | WP1b | ⭐ NEW IN v4 |
+| K68 | The one verb "pick" is used throughout | WP16 | ⭐ NEW IN v4 |
+| K69 | Every needle carries the mark's hub | WP9 | ⭐ NEW IN v4 |
+| K70 | UI/UX specialist: the whole centre slot is tappable | WP1b, V22 | ⭐ NEW IN v4 |
+| K71 | Size & dimensions engineer: only the SPEC §8 values | WP15 | ⭐ NEW IN v4 |
+| K72 | Gamer: a 12ms haptic on Confirm; press feedback; Up & Down one tap away | WP5 | ⭐ NEW IN v4 |
+| K73 | Platform manager: WP19 events fire with the right `source`; empty states; flags | WP19 | ⭐ NEW IN v4 · C3 |
+| K74 | Player, creativity, palette, software motion, branding: C2/C still green | PANEL | ⭐ NEW IN v4 |
+| K75 | Search on the board (16px text), with its empty state | WP20 | ⭐ NEW IN v4 |
+| K76 | The 7-day line at 640px and wider; the bar only on phones | WP20 | ⭐ NEW IN v4 |
+| K77 | Static loading skeletons at the final heights, CLS 0 | WP19 | ⭐ NEW IN v4 |
+| K78 | V25: one Deposit per screen, in every state (guest, funded, zero, held) | V25 | ⭐ NEW IN v4 · C5 (the 2026-09-28 update) |
+| K79 | A held wallet: the centre slot is Wallet (/wallet), with no "+" | WP1b, V25 | ⭐ NEW IN v4 |
+| K80 | Results is in More on phones and stays in the desktop header | WP1b | ⭐ NEW IN v4 |
+| K81 | `qa:landing-ten` V1–V21 clean at every cell (except Ali's open decisions) | GATE, V15, V16, V17, V18, V19, V20, V21 | |
+| K82 | Every new check (V15–V21) has a RED control reporting PROVED | V15, V16, V17, V18, V19, V20, V21 | |
+| K83 | `npm run test:all` + typecheck pass | GATE | |
+| K84 | Real devices | DEV | |
+| K85 | Native Swahili sign-off; native zh review | SW, ZH | |
+| K86 | The eight-reviewer scores recorded here | PANEL | |
 
 ## Running it
 
