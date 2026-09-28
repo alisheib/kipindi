@@ -255,8 +255,8 @@ export function TopAppBar({ user, proposalsState, inviteVisible = false, inviteP
             <WalletBalancePill balance={user.balance} />
           )}
 
-          {/* ⛔ THE WRAPPER SPAN IS LOAD-BEARING — `hidden sm:inline-flex` ON the button
-              DOES NOT WORK. `.btn` sets `display: inline-flex` at globals.css:911, which is
+          {/* ⛔ THE WRAPPER SPAN IS LOAD-BEARING — `hidden lg:inline-flex` ON the button
+              DOES NOT WORK. `.btn` sets `display: inline-flex` at globals.css:1118, which is
               AFTER `@tailwind utilities` (line 19), so at equal specificity the component
               class wins and `.hidden` is simply ignored. Measured, not reasoned: the first
               attempt put the classes on the <Link> and the CTA still rendered at 360, 33px
@@ -287,29 +287,38 @@ export function TopAppBar({ user, proposalsState, inviteVisible = false, inviteP
             // Measured, not assumed: `--gold-fg` on the struck ramp's worst stop reads
             // 7.25 against a 4.5 floor (`test:contrast`), so the change costs nothing in
             // legibility. Pill shape; label hidden < sm.
-            /* 🔴 THE DEPOSIT CTA YIELDS BELOW `sm`, AND IT IS FORCED BY MEASUREMENT, NOT
-               PREFERENCE. Production, 2026-08-25: at 360 the row's content box is 328px,
-               and after the logo (26) and two 12px row gaps the whole right cluster gets
-               exactly **278px** — which is precisely what the cluster measured, i.e. the
-               bar was already at 100% capacity with ZERO slack, in all three locales.
-               With the balance capsule present the five controls need 321px. Three ways
-               out were costed and only one survives:
+            /* 🔴 THE DEPOSIT CTA YIELDS BELOW `lg`, AND THE RULE IS **ONE DEPOSIT PER SCREEN**.
+               UPDATE-2026-09-28 §1: below 1024 the bottom rail shows (`lg:hidden`) and its CENTRE
+               COIN is the wallet's door, so a second gold Deposit in this header would be the same
+               control twice on one screen. At 1024 and up there is no rail, so this pill is the
+               only one and it stays exactly as E-190 left it. `bottom-nav.tsx` is where the coin
+               and this hand-off are written down.
+               ⭐ THE EARLIER RULE WAS `sm`, AND IT WAS FORCED BY MEASUREMENT — the numbers are kept
+               because they still describe this bar, and because they say what the new rule INHERITS.
+               Production, 2026-08-25: at 360 the row's content box is 328px, and after the logo (26)
+               and two 12px row gaps the whole right cluster gets exactly **278px**, which is what it
+               measured — 100% capacity, ZERO slack, in all three locales. With the balance capsule
+               present the five controls needed 321px. Three remedies were costed:
                  · K/M compact always ................ 301px  ✗ still over, and it kills
                                                               the rolling counter
                  · compact AND no eye ................ 273px  ✗ fits, but drops the eye
-                 · Deposit yields below `sm` ......... 269px  ✓ 9px slack
-               ⭐ It is also the only one of the five with a near alternative: the capsule
-               beside it IS a link to `/wallet`, where Deposit is the primary action — one
-               extra tap, against a balance a player can finally see at a glance.
-               ⛔ The other four have none. The avatar menu is the only path to profile and
-               sign-out (`E-190` severed it once); the bell carries the unread count; the
-               language control is the one a trilingual product cannot do without, and it
-               was deliberately made always-present after living in two places.
+                 · Deposit yields .................... 269px  ✓ 9px slack
+               ⭐ `lg` is strictly wider than `sm`, so every width the old rule protected is still
+               protected, and 640–1023 gains back the widest control in the row.
+               ⚠️ THE CONTROL IS NOT LOST BELOW 1024 — it MOVED, which is why this is a yield and
+               not a deletion. The capsule beside it is also still a `<Link href="/wallet">`.
+               ⛔ The other four controls have no alternative. The avatar menu is the only path to
+               profile and sign-out (`E-190` severed it once); the bell carries the unread count; the
+               language control is the one a trilingual product cannot do without.
                ⚠️ ONE CLASS REVERSES THIS if the commercial call goes the other way. */
-            <span className="hidden sm:inline-flex">
+            <span className="hidden lg:inline-flex">
             <Link
               href="/wallet/deposit"
               aria-label={t.common.deposit}
+              /* V25 counts Deposit controls per REGION, and it may identify them neither by a
+                 visible word (three locales) nor by `href` alone — `cashback-promo.tsx` is a
+                 legitimate second /wallet/deposit CTA. The testid is the identity. */
+              data-testid="deposit-header"
               className="btn gilt-metal btn-md btn-pill"
             >
               <I.plus s={14} />
@@ -323,7 +332,31 @@ export function TopAppBar({ user, proposalsState, inviteVisible = false, inviteP
                   `aria-label` stay, exactly as they do on a phone, so nothing becomes
                   unnameable or unreachable. Measured, not assumed: the label is 108px in EN,
                   103px in SW, 84px in ZH. */}
-              <span className="hidden sm:inline lg:hidden xl:inline">
+              {/* 🔴 THE ONE LINE OF UPDATE-2026-09-28 §1 THIS COMMIT DOES NOT IMPLEMENT, AND THE
+                  REASON IS E-190. §1 asks the label to STAND at 1024–1279 when the balance is zero
+                  (`funded ? "hidden xl:inline" : "inline"`). Its premise is its own table: at zero
+                  there is "no capsule", so the room is free. In THIS repo the capsule renders at
+                  EVERY width whenever the balance is non-null — Ali's 2026-08-25 call, "the money
+                  wins", zero included (see the note above `WalletBalancePill`). The room the spec
+                  spends has not been freed here.
+                  ⛔ AND THE BAND IT WOULD SPEND IT IN IS E-190's OWN. At 1024 signed in, the right
+                  cluster ran 31px past in EN and 65px in SW, and what fell off the end was the
+                  ACCOUNT MENU — the only desktop path to profile and sign-out. The label is 108px
+                  in EN and 103px in SW. That is not a margin to spend on an unmeasured premise,
+                  and it could not be measured here: the local host has no signed-in zero-balance
+                  session to put a tape against.
+                  ⭐ SO THE LABEL STILL YIELDS, WHICH IS EXACTLY TODAY'S SHIPPED RULE AT ≥1024. What
+                  this commit changes is the pill's PRESENCE (it now yields below `lg`, because the
+                  rail's centre coin is the wallet's door there), not its label rule — so it cannot
+                  regress what it leaves alone. `hidden xl:inline` is the old
+                  `hidden sm:inline lg:hidden xl:inline` with the bands the pill no longer reaches
+                  removed; it is the same rule, not a new one.
+                  ⚠️ WHAT WOULD MAKE §1 SAFE: WP14 hiding the capsule at zero. When that lands,
+                  measure the cluster at 1024 signed in with a zero balance in sw/en/zh, and if it
+                  fits, restore `funded` (`user.balance > 0`) and the ternary. Raised with Ali,
+                  2026-09-28. ⛔ Do NOT ship it as `funded ? x : x` to "keep the shape": a branch
+                  that cannot differ is the `? true : true` this repo already caught once. */}
+              <span className="hidden xl:inline">
                 {t.common.deposit}
               </span>
             </Link>

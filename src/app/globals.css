@@ -5551,6 +5551,125 @@ textarea::-webkit-resizer {
   background: var(--gilt);
 }
 
+/* ── THE CENTRE COIN — UPDATE-2026-09-28 §2 ───────────────────────────────────────
+   The rail's middle slot is the wallet's door, and the coin is the 50pick mark AS a control: the
+   ring follows the mark's split at its own −14°, the needle rides that split and shows past the
+   rim, and the hub's centre is the mark's navy.
+
+   ⭐ THE COLOURS ARE PASSED IN, NOT TYPED HERE. `bottom-nav.tsx` hands them over as
+   `--kp-coin-green/red/gold/pivot` out of `src/lib/brand-mark.ts`, which is the ONE definition of
+   the mark (audit C11) — so the in-app mark, the exported assets and this coin cannot drift apart.
+   They are brand identity rather than theme tokens, per DESIGN_AUTHORITY B1.
+
+   ⭐ THE FILL IS THE HEADER PILL'S OWN STRUCK RAMP (`--gilt-metal` + `--gilt-sheen`), so money
+   reads as ONE material across the product. ⛔ NOT the `.gilt-metal` CLASS: that class also owns
+   a hover lift and a press scale, and putting it on the inner disc would slide the fill out of
+   its own ring. The material is shared; the interaction belongs to the whole slot.
+
+   ⛔ FINAL SIZE: 52px, rising 14px, no notch. A 68px coin raised 42px and a flush 42px coin were
+   both built and both rejected — the first outweighed YES/NO and covered the first screen, the
+   second was too timid for the brand's centre.
+
+   ⚠️ THE KNOB IS THE PULL, AND THE RISE IS WHAT IT MEASURES — THE TWO ARE NOT THE SAME NUMBER.
+   `margin-top: -14px` was tried first, on the reading that the pull IS the rise. It measured a 7px
+   rise in every cell. The reason is one line up: `.kp-rail__item` sets `justify-content: center`, so
+   a negative margin shrinks the slot's content block and the centring hands HALF of it straight
+   back. Three measurements, 320–414 × sw/en/zh on a dev host, fix the line:
+     pull 14 → rise  7.0 · rail 66  ✗ (the rail grew 1px: the slot was content-driven, not at its floor)
+     pull 28 → rise 14.5 · rail 65  ✗ (half a pixel over the spec)
+     pull 27 → rise 14.0 · rail 65  ✓ slots 64/64/64/64/64, off-centre ≤ 0.02px
+   ⭐ THE RAIL'S HEIGHT IS PART OF THE PASS. At 27 the centre slot sits exactly on `min-height: 64`,
+   so the coin rises without the row growing — which matters because the <ul> is `items-stretch` and
+   a taller rail eats the footer's reserve.
+   ⛔ DO NOT "TIDY" THIS BY RENAMING THE KNOB `--rise`. The concept's rail has 56px slots and this
+   one has 64px, so the concept's own construction (`margin-top:-14px` + `translateY(-6px)`) does
+   not transfer; what transfers is the 14px of daylight, and `qa:landing-ten` V22 asserts THAT
+   rather than trusting any number written here.
+
+   ⚠️ NOTHING HERE MAY INFLATE THE ROW. The <ul> is `items-stretch`, so one taller slot makes the
+   WHOLE rail taller and eats into the footer's 88px reserve. The negative margin is what lifts
+   the coin without adding to the slot's flow height. */
+.kp-rail__item--coin {
+  /* Measured, not reasoned: see the pull-vs-rise note above. */
+  --kp-coin-pull: 27px;
+}
+.kp-coin {
+  position: relative;
+  flex: 0 0 auto;
+  width: 52px;
+  height: 52px;
+  margin-top: calc(-1 * var(--kp-coin-pull));
+  border-radius: var(--r-pill);
+  /* The ring IS the mark's split. `from -14deg` starts the sweep where the mark's chord meets the
+     rim, so 0–50% paints the RIGHT half red and 50–100% the LEFT half green — the mark's own
+     orientation, not a mirror of it. */
+  background: conic-gradient(from -14deg,
+      var(--kp-coin-red) 0 50%,
+      var(--kp-coin-green) 50% 100%);
+  /* The halo separates the coin from page content WITHOUT a notch; the drop shadow lifts it. */
+  box-shadow: 0 0 0 4px var(--panel), 0 6px 14px oklch(6% 0.06 268 / 0.45);
+  transition: transform var(--t-quick) var(--m-glide);
+}
+/* The needle sits BETWEEN the ring and the face, which is what makes it read as one continuous
+   line: hidden under the disc, visible across the 3.5px ring, and 5px past the rim at each end.
+   ⚠️ It is painted by DOM order, not z-index — face after needle. */
+.kp-coin__needle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 3px;
+  height: 62px;
+  border-radius: 2px;
+  background: var(--kp-coin-gold);
+  transform: translate(-50%, -50%) rotate(-14deg);
+}
+/* The struck disc, inset by the ring's 3.5px. */
+.kp-coin__face {
+  position: absolute;
+  inset: 3.5px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r-pill);
+  background-image: var(--gilt-sheen), var(--gilt-metal);
+  background-size: 250% 100%, 100% 100%;
+  background-position: 200% 0, 0 0;
+  box-shadow: var(--gilt-metal-edge), inset 0 -3px 0 oklch(6% 0.06 268 / 0.18);
+  color: var(--gold-fg);
+}
+/* The "+" is the mark's navy, so the money-in verb is painted in the mark's own ink. */
+.kp-coin__plus {
+  display: block;
+  color: var(--kp-coin-pivot);
+}
+/* A HELD wallet gets the mark's HUB instead of a "+": `/wallet/deposit` refuses a held wallet, so
+   the coin stops offering money-in and the slot becomes the Wallet door. Same disc, different
+   verb — and the hub is the mark's own, a gilt disc with a navy pivot. */
+.kp-coin__hub {
+  width: 14px;
+  height: 14px;
+  border-radius: var(--r-pill);
+  background: radial-gradient(var(--kp-coin-pivot) 0 28%, var(--kp-coin-gold) 31%);
+}
+/* Press feedback on the COIN, driven from the slot, because the whole slot is the button. */
+.kp-rail__item--coin:active .kp-coin {
+  transform: scale(0.95);
+}
+@media (prefers-reduced-motion: reduce) {
+  .kp-coin { transition: none; }
+  .kp-rail__item--coin:active .kp-coin { transform: none; }
+}
+/* The label keeps its siblings' size and baseline and takes the money colour.
+   ⚠️ 11px is `--type-micro`, the size EVERY rail label already uses. The concept asks for 12px
+   across the whole rail; that is a rail-wide change and Ali's call, not a lone exception here,
+   because a single 12px label among four 11px ones breaks the shared baseline it asks for. */
+.kp-rail__item--coin .kp-rail__label {
+  font-weight: 800;
+  color: var(--gilt);
+}
+.kp-rail__item--coin[data-on] .kp-rail__label {
+  color: var(--text);
+}
+
 /* =====================================================================
    ENTRY MOTION — kit MOTION.md + README §Interactions (batch 3)
    =====================================================================

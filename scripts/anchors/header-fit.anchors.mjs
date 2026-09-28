@@ -24,6 +24,15 @@
  * correctly reported it "broken: the witness never moved". A case the product survives proves nothing, so it is
  * removed rather than re-aimed at a defect that no longer exists. The `lg:gap-2` yield stays in the bar as slack.
  *
+ * ⚠️ RE-POINTED 2026-09-28 (UPDATE-2026-09-28 §1, "one Deposit per screen"). The pill's WRAPPER
+ * now yields at `lg` rather than `sm`, because below 1024 the bottom rail's centre coin is the
+ * wallet's door and a second gold Deposit would be the same control twice on one screen. So the
+ * pill renders ONLY at 1024 and up — which is exactly the band this mutation attacks, making it
+ * more load-bearing than before, not less. The label's yield moved into a ternary on `funded`
+ * The label's own rule is UNCHANGED at the band this mutation attacks — `hidden xl:inline` is the
+ * old `hidden sm:inline lg:hidden xl:inline` with the bands the pill no longer reaches removed —
+ * so the anchor simply follows it, and the measurements above still describe the case it breaks.
+ *
  * ⭐ THE SECOND ONE IS THE INTERESTING MUTATION. It is GREEN in English and RED in Swahili
  * only — so a harness that ran one locale would report it MISSED and quietly certify a repair
  * that was 9px short for the language most of this platform's players read. A red fleet is only
@@ -41,7 +50,7 @@ export const MUTATIONS = [
     why: "the Deposit label renders at the lg–xl band again — 108px in EN, 103px in SW — and pushes the account menu off the right edge on every page",
     file: BAR,
     suite: "header-fit",
-    from: `<span className="hidden sm:inline lg:hidden xl:inline">`,
-    to: `<span className="hidden sm:inline">`,
+    from: `<span className="hidden xl:inline">`,
+    to: `<span className="inline">`,
   },
 ];
