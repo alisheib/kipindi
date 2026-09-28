@@ -448,6 +448,72 @@ export type StoredMarketingOptOutToken = {
   createdAt: string;
 };
 
+/* ═══ THE CONTACT BOOK (marketing U18) ═════════════════════════════════════════════════════
+ * ⛔ THE FIRST STORE ON THIS PLATFORM THAT HOLDS PEOPLE WHO MAY HAVE NO `User` ROW. Every
+ * rule it depends on is therefore written down here rather than inherited from the player
+ * tables beside it. */
+
+/** Mirrors `ContactSource` in `schema.prisma`. */
+export type ContactSource = "IMPORT" | "REGISTRATION" | "OPERATOR" | "AGENT";
+/** Mirrors `ContactConsentState`. ⛔ A CACHE of the ledger's answer for filtering and
+ *  counting — never the answer. The send gate (U7) asks the consent ledger, never this. */
+export type ContactConsentState = "UNKNOWN" | "GIVEN" | "WITHDRAWN";
+
+/** ⭐ ONE ROW PER PERSON IN THE BOOK. `msisdn` is the ONE key — bare `255…`, exactly as
+ *  `toMsisdn255` produces it. ⛔ `userId` is a LINK, never a copy: an erased player must not
+ *  survive inside a marketing row. */
+export type StoredMarketingContact = {
+  id: string;
+  /** ⛔ UNIQUE. The database enforces it; this twin fakes it with a secondary map. */
+  msisdn: string;
+  rawInput: string;
+  displayName: string | null;
+  email: string | null;
+  ndc: string;
+  operator: string | null;
+  source: ContactSource;
+  sourceRef: string | null;
+  userId: string | null;
+  consentState: ContactConsentState;
+  suppressedAt: string | null;
+  tags: string[];
+  notes: string | null;
+  importId: string | null;
+  createdAt: string;
+  createdBy: string | null;
+  updatedAt: string;
+  updatedBy: string | null;
+};
+
+export type StoredContactList = {
+  id: string;
+  /** ⛔ UNIQUE, for the same reason `msisdn` is: two lists of one name is two audiences. */
+  name: string;
+  description: string | null;
+  createdAt: string;
+  createdBy: string | null;
+  updatedAt: string;
+  updatedBy: string | null;
+};
+
+export type StoredContactListMember = {
+  listId: string;
+  contactId: string;
+  addedAt: string;
+  addedBy: string | null;
+};
+
+/** A DAL parameter, named for the same reason `MessagingKey` is. */
+export type ContactListKey = { listId: string; contactId: string };
+
+/** ⛔ `id`, `msisdn`, `createdAt` and `createdBy` are NOT patchable: the key and the
+ *  provenance of a row are not editable facts. A number that changed is a different person's
+ *  row, created and (if need be) the old one suppressed. */
+export type MarketingContactPatch = Partial<
+  Omit<StoredMarketingContact, "id" | "msisdn" | "createdAt" | "createdBy">
+>;
+
+
 
 
 /**
@@ -1034,6 +1100,12 @@ declare global {
     messagingConsents: Map<string, StoredMessagingConsent>;
     suppressions: Map<string, StoredSuppression>;
     optOutTokens: Map<string, StoredMarketingOptOutToken>;
+    marketingContacts: Map<string, StoredMarketingContact>;
+    /** ⭐ THE @unique, FAKED — msisdn -> contact id, exactly as `usersByPhone` does it. */
+    contactsByMsisdn: Map<string, string>;
+    contactLists: Map<string, StoredContactList>;
+    /** Keyed `${listId}|${contactId}` — the compound primary key. */
+    contactListMembers: Map<string, StoredContactListMember>;
   } | undefined;
 }
 
@@ -1066,6 +1138,10 @@ const store = globalThis.__50PICK_STORE ?? (globalThis.__50PICK_STORE = {
   messagingConsents: new Map(),
   suppressions: new Map(),
   optOutTokens: new Map(),
+  marketingContacts: new Map(),
+  contactsByMsisdn: new Map(),
+  contactLists: new Map(),
+  contactListMembers: new Map(),
 });
 
 // Hot-reload safety: if a previous build created the global without the newer maps,
@@ -1092,6 +1168,10 @@ if (!store.smsMessages)     store.smsMessages = new Map();
 if (!store.messagingConsents) store.messagingConsents = new Map();
 if (!store.suppressions)    store.suppressions = new Map();
 if (!store.optOutTokens)    store.optOutTokens = new Map();
+if (!store.marketingContacts)  store.marketingContacts = new Map();
+if (!store.contactsByMsisdn)   store.contactsByMsisdn = new Map();
+if (!store.contactLists)       store.contactLists = new Map();
+if (!store.contactListMembers) store.contactListMembers = new Map();
 
 const memoryDb = {
   // USER
@@ -2454,6 +2534,80 @@ const memoryDb = {
       Array.from(store.optOutTokens.values())
         .filter((r) => r.identifier === identifier)
         .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.token.localeCompare(a.token)),
+  },
+
+  /* ═══ THE CONTACT BOOK (marketing U18) ═══════════════════════════════════════════════════
+   * ⛔ `msisdn` IS UNIQUE AND THE DATABASE ENFORCES IT; this twin fakes it with a secondary
+   * map, exactly as `usersByPhone` does. A re-import must get the row already there back,
+   * never a second person — `create` therefore REFUSES rather than overwrites, and returns
+   * null, which is the same answer the Prisma twin gives when Postgres raises P2002.
+   * `test:dal-parity` §19 asserts both halves. */
+  marketingContact: {
+    create: (row: StoredMarketingContact): StoredMarketingContact | null => {
+      if (store.contactsByMsisdn.has(row.msisdn)) return null;
+      store.marketingContacts.set(row.id, row);
+      store.contactsByMsisdn.set(row.msisdn, row.id);
+      return row;
+    },
+    find: (id: string): StoredMarketingContact | null => store.marketingContacts.get(id) ?? null,
+    /** ⭐ THE LOOKUP THE IMPORTER AND THE GATE BOTH NEED — by the ONE key, never by name. */
+    findByMsisdn: (msisdn: string): StoredMarketingContact | null => {
+      const id = store.contactsByMsisdn.get(msisdn);
+      return id ? store.marketingContacts.get(id) ?? null : null;
+    },
+    /** ⛔ `msisdn` is not patchable (see `MarketingContactPatch`), so the unique index can
+     *  never need re-pointing here — which is why this does not touch `contactsByMsisdn`. */
+    update: (id: string, patch: MarketingContactPatch, at: string): StoredMarketingContact | null => {
+      const row = store.marketingContacts.get(id);
+      if (!row) return null;
+      const next = { ...row, ...patch, updatedAt: at };
+      store.marketingContacts.set(id, next);
+      return next;
+    },
+    listAll: (): StoredMarketingContact[] =>
+      Array.from(store.marketingContacts.values())
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id)),
+    count: (): number => store.marketingContacts.size,
+  },
+
+  contactList: {
+    create: (row: StoredContactList): StoredContactList | null => {
+      for (const l of store.contactLists.values()) if (l.name === row.name) return null;
+      store.contactLists.set(row.id, row);
+      return row;
+    },
+    find: (id: string): StoredContactList | null => store.contactLists.get(id) ?? null,
+    findByName: (name: string): StoredContactList | null => {
+      for (const l of store.contactLists.values()) if (l.name === name) return l;
+      return null;
+    },
+    listAll: (): StoredContactList[] =>
+      Array.from(store.contactLists.values())
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id)),
+  },
+
+  contactListMember: {
+    /** ⭐ THE COMPOUND KEY IS THE DEDUPLICATION. "Add these 4,000" run twice must not make
+     *  anybody a member twice, or a campaign resolving this list counts and texts them twice.
+     *  ⛔ Re-adding keeps the ORIGINAL `addedAt`: when somebody joined a list is evidence,
+     *  not a status flag — the same rule `Suppression.createdAt` follows. */
+    add: (row: StoredContactListMember): StoredContactListMember => {
+      const k = `${row.listId}|${row.contactId}`;
+      const existing = store.contactListMembers.get(k);
+      if (existing) return existing;
+      store.contactListMembers.set(k, row);
+      return row;
+    },
+    remove: (key: ContactListKey): boolean =>
+      store.contactListMembers.delete(`${key.listId}|${key.contactId}`),
+    listMembers: (listId: string): StoredContactListMember[] =>
+      Array.from(store.contactListMembers.values())
+        .filter((m) => m.listId === listId)
+        .sort((a, b) => b.addedAt.localeCompare(a.addedAt) || b.contactId.localeCompare(a.contactId)),
+    listMemberships: (contactId: string): StoredContactListMember[] =>
+      Array.from(store.contactListMembers.values())
+        .filter((m) => m.contactId === contactId)
+        .sort((a, b) => b.addedAt.localeCompare(a.addedAt) || b.listId.localeCompare(a.listId)),
   },
 };
 

@@ -1361,5 +1361,113 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
     !/return null/.test("      const created = await pc().marketingOptOutToken.create({ data });"));
 }
 
+/* ═══ §19 · The contact book — MarketingContact / ContactList / ContactListMember (U18) ═══ */
+{
+  // ⭐ WHY THE BOOK NEEDS THIS GUARD AS BADLY AS A MONEY ROW. It is the first store on this
+  // platform holding people who may have NO `User` row, so nothing upstream re-checks what it
+  // says: there is no account to fall back on, no wallet to reconcile against. If one twin
+  // carries a field the other drops, the difference shows up as a person who is marketable on
+  // one backend and not the other — and the memory twin is what every marketing suite runs on.
+  //
+  // ⛔ AND WHY `@unique` IS ASSERTED IN THE TWINS, NOT THE SCHEMA. `schema.prisma` is read from
+  // ROOT, not through `KP_SRC`, so the red harness cannot mutate it: a declaration about the
+  // schema here would report NOT CAUGHT (`scripts/anchors/` has already paid for this once and
+  // wrote it down in DEFERRED-TESTS.md). The uniqueness claim is therefore expressed as the two
+  // BEHAVIOURS that implement it — the memory twin's secondary map, and the Prisma twin's
+  // P2002-to-null branch — which are real code the harness can plant a defect in.
+
+  const cKeys = storedKeys("StoredMarketingContact");
+  const cRead = region(dalSrc, "function toStoredMarketingContact(");
+  const cCreate = delegateMethod("marketingContact", "create");
+
+  ok("19.0 · the parser sees StoredMarketingContact's fields", cKeys.length >= 18, `saw ${cKeys.length}: ${cKeys.join(",")}`);
+  ok("19.0b · the read mapper region resolves", cRead.length > 300, `${cRead.length} chars`);
+  ok("19.0c · the create delegate resolves", cCreate.length > 300, `${cCreate.length} chars`);
+  for (const k of cKeys) {
+    ok(`19.read · toStoredMarketingContact maps "${k}" from the row`, readsFrom(cRead, k, "c"));
+    ok(`19.create · marketingContact.create writes "${k}"`, writesKey(cCreate, k) || mentions(cCreate, k));
+  }
+
+  const lKeys = storedKeys("StoredContactList");
+  const lRead = region(dalSrc, "function toStoredContactList(");
+  const lCreate = delegateMethod("contactList", "create");
+  ok("19.1 · the parser sees StoredContactList's fields", lKeys.length >= 7, `saw ${lKeys.length}`);
+  for (const k of lKeys) {
+    ok(`19.read.list · toStoredContactList maps "${k}"`, readsFrom(lRead, k, "l"));
+    ok(`19.create.list · contactList.create writes "${k}"`, writesKey(lCreate, k) || mentions(lCreate, k));
+  }
+
+  const mKeys = storedKeys("StoredContactListMember");
+  const mRead = region(dalSrc, "function toStoredContactListMember(");
+  const mAdd = delegateMethod("contactListMember", "add");
+  ok("19.2 · the parser sees StoredContactListMember's fields", mKeys.length >= 4, `saw ${mKeys.length}`);
+  for (const k of mKeys) {
+    ok(`19.read.member · toStoredContactListMember maps "${k}"`, readsFrom(mRead, k, "m"));
+    ok(`19.add.member · contactListMember.add writes "${k}"`, writesKey(mAdd, k) || mentions(mAdd, k));
+  }
+
+  // ── THE @unique, EXPRESSED AS THE BEHAVIOUR THAT IMPLEMENTS IT ───────────────────────
+  const cCreateMem = region(region(storeSrc, "\n  marketingContact: {"), "create: (");
+  // ⛔ SCOPED TO THE CREATE BODY ON PURPOSE. A guard that reads the whole namespace would pass
+  // on a `return null` belonging to `find`, and a guard that reads the wrong region is a guard
+  // that cannot fail.
+  ok("19.unique.prisma · the Prisma create turns P2002 into null, and does NOT upsert",
+    /P2002/.test(cCreate) && /return null/.test(cCreate) && !mentions(cCreate, "upsert"), "P2002 → null");
+  ok("19.unique.memory · the memory create refuses an msisdn already in the book, and does not overwrite",
+    /contactsByMsisdn\.has\(row\.msisdn\)/.test(cCreateMem) && /return null/.test(cCreateMem),
+    `${cCreateMem.length} chars`);
+  ok("19.unique.memory.index · the memory create MAINTAINS the secondary index it refuses on",
+    /contactsByMsisdn\.set\(row\.msisdn/.test(cCreateMem),
+    "a create that does not set the index makes the next duplicate pass");
+
+  // ── RE-ADDING A MEMBER KEEPS THE ORIGINAL addedAt ───────────────────────────────────
+  // ⭐ When somebody joined a list is EVIDENCE, not a status flag — the rule
+  // `Suppression.createdAt` already follows. An upsert here would walk the date forward on
+  // every re-import and quietly destroy the only record of when a list was built.
+  const mAddMem = region(region(storeSrc, "\n  contactListMember: {"), "add: (");
+  ok("19.readd.prisma · the Prisma add reads first and returns the existing row, never upserting",
+    /findUnique/.test(mAdd) && /return toStoredContactListMember\(existing\)/.test(mAdd) && !mentions(mAdd, "upsert"));
+  ok("19.readd.memory · the memory add returns the existing member rather than replacing it",
+    /return existing/.test(mAddMem) && !/\.set\(k, row\);[\s\S]{0,40}return row;[\s\S]{0,10}\}\s*,?\s*$/.test(mAddMem.split("if (existing)")[0] ?? ""),
+    `${mAddMem.length} chars`);
+
+  // ── userId IS A LINK, NEVER A COPY ──────────────────────────────────────────────────
+  // ⛔ The one rule that makes erasure possible at all (D16). If the book ever carried its own
+  // copy of a player's name or number keyed to the account, erasing the account would leave
+  // that copy marketable. `displayName` and `email` are the contact's OWN details, supplied
+  // with the contact; nothing here is read across the `user` relation into a stored column.
+  ok("19.link · StoredMarketingContact carries userId and NO copied account column",
+    cKeys.includes("userId") && !cKeys.some((k) => /^(userPhone|userEmail|userName|phoneE164)$/.test(k)),
+    cKeys.join(","));
+  ok("19.link.mapper · the read mapper never reaches through a `user` relation",
+    !/c\.user\./.test(cRead), "a mapper reading c.user.* would copy the account into the book");
+
+  // ── BOTH TWINS EXPOSE THE SAME MEMBERS, ON ALL THREE NAMESPACES ─────────────────────
+  const members = (block: string): string[] =>
+    Array.from(block.matchAll(/^\s{4}(\w+)\s*:/gm)).map((m) => m[1]).sort();
+  for (const ns of ["marketingContact", "contactList", "contactListMember"]) {
+    const pri = region(dalSrc, `\n  ${ns}: {`);
+    const mem = region(storeSrc, `\n  ${ns}: {`);
+    ok(`19.parity.${ns} · both twins expose the same members`,
+      members(pri).length >= 4 && members(pri).join(",") === members(mem).join(","),
+      `prisma=[${members(pri)}] memory=[${members(mem)}]`);
+  }
+
+  // ── CONTROLS ─────────────────────────────────────────────────────────────────────────
+  // ⛔ Each proves the ASSERTION ABOVE IT can reject, on a literal that would otherwise pass.
+  ok("19.c1 · CONTROL · `msisdn: null,` in a read mapper does NOT count as carrying it",
+    !readsFrom("    id: c.id,\n    msisdn: null,", "msisdn", "c"));
+  ok("19.c2 · CONTROL · an upsert IS detected, so a silent overwrite cannot pass as a create",
+    mentions("const x = await pc().marketingContact.upsert({", "upsert"));
+  ok("19.c3 · CONTROL · a create that lets P2002 escape is reported",
+    !/return null/.test("      const created = await pc().marketingContact.create({ data });"));
+  ok("19.c4 · CONTROL · a memory create that SETS without checking the index is reported",
+    !/contactsByMsisdn\.has\(row\.msisdn\)/.test("      store.marketingContacts.set(row.id, row);"));
+  ok("19.c5 · CONTROL · a copied account column WOULD be caught by 19.link",
+    ["id", "msisdn", "userPhone"].some((k) => /^(userPhone|userEmail|userName|phoneE164)$/.test(k)));
+  ok("19.c6 · CONTROL · a mapper reaching through the relation WOULD be caught by 19.link.mapper",
+    /c\.user\./.test("    displayName: c.user.name,"));
+}
+
 console.log(`\ndal-parity: ${pass} passed, ${fail} failed`);
 if (fail > 0) process.exit(1);

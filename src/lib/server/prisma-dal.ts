@@ -64,7 +64,12 @@ import type {
   AgentApplicationStatus,
   AgentDocType, StoredKycStageRow, NotificationRedactScope,
   StoredMessagingConsent, StoredSuppression, MessagingKey,
-  StoredMarketingOptOutToken } from "./store";
+  StoredMarketingOptOutToken,
+  StoredMarketingContact,
+  StoredContactList,
+  StoredContactListMember,
+  ContactListKey,
+  MarketingContactPatch } from "./store";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -205,6 +210,68 @@ function toStoredMarketingOptOutToken(t: MarketingOptOutTokenRow): StoredMarketi
     identifier: t.identifier,
     category: t.category as StoredMarketingOptOutToken["category"],
     createdAt: iso(t.createdAt),
+  };
+}
+
+/** MarketingContact row -> StoredMarketingContact (marketing U18). */
+type MarketingContactRow = {
+  id: string; msisdn: string; rawInput: string; displayName: string | null; email: string | null;
+  ndc: string; operator: string | null; source: string; sourceRef: string | null;
+  userId: string | null; consentState: string; suppressedAt: Date | null; tags: string[];
+  notes: string | null; importId: string | null; createdAt: Date; createdBy: string | null;
+  updatedAt: Date; updatedBy: string | null;
+};
+function toStoredMarketingContact(c: MarketingContactRow): StoredMarketingContact {
+  return {
+    id: c.id,
+    msisdn: c.msisdn,
+    rawInput: c.rawInput,
+    displayName: c.displayName,
+    email: c.email,
+    ndc: c.ndc,
+    operator: c.operator,
+    source: c.source as StoredMarketingContact["source"],
+    sourceRef: c.sourceRef,
+    userId: c.userId,
+    consentState: c.consentState as StoredMarketingContact["consentState"],
+    suppressedAt: iso(c.suppressedAt),
+    tags: c.tags,
+    notes: c.notes,
+    importId: c.importId,
+    createdAt: iso(c.createdAt),
+    createdBy: c.createdBy,
+    updatedAt: iso(c.updatedAt),
+    updatedBy: c.updatedBy,
+  };
+}
+
+/** ContactList row -> StoredContactList (marketing U18). */
+type ContactListRow = {
+  id: string; name: string; description: string | null;
+  createdAt: Date; createdBy: string | null; updatedAt: Date; updatedBy: string | null;
+};
+function toStoredContactList(l: ContactListRow): StoredContactList {
+  return {
+    id: l.id,
+    name: l.name,
+    description: l.description,
+    createdAt: iso(l.createdAt),
+    createdBy: l.createdBy,
+    updatedAt: iso(l.updatedAt),
+    updatedBy: l.updatedBy,
+  };
+}
+
+/** ContactListMember row -> StoredContactListMember (marketing U18). */
+type ContactListMemberRow = {
+  listId: string; contactId: string; addedAt: Date; addedBy: string | null;
+};
+function toStoredContactListMember(m: ContactListMemberRow): StoredContactListMember {
+  return {
+    listId: m.listId,
+    contactId: m.contactId,
+    addedAt: iso(m.addedAt),
+    addedBy: m.addedBy,
   };
 }
 
@@ -3456,6 +3523,160 @@ export const prismaDb = {
         orderBy: [{ createdAt: "desc" }, { token: "desc" }],
       });
       return rows.map(toStoredMarketingOptOutToken);
+    },
+  },
+
+  /* ═══ THE CONTACT BOOK (marketing U18) ═══════════════════════════════════════════════════
+   * ⛔ `msisdn` IS UNIQUE AND POSTGRES ENFORCES IT. `create` turns the P2002 into null rather
+   * than letting it escape or papering over it with an `upsert` — an upsert would silently
+   * re-point an existing person's row at whatever the importer happened to be holding. The
+   * memory twin refuses the same way and returns the same null, so an importer's
+   * already-in-the-book branch is one piece of code on both backends. `test:dal-parity` §19
+   * asserts both halves. */
+  marketingContact: {
+    create: async (row: StoredMarketingContact): Promise<StoredMarketingContact | null> => {
+      try {
+        const created = await pc().marketingContact.create({
+          data: {
+            id: row.id, msisdn: row.msisdn, rawInput: row.rawInput,
+            displayName: row.displayName, email: row.email, ndc: row.ndc,
+            operator: row.operator, source: row.source as never, sourceRef: row.sourceRef,
+            userId: row.userId, consentState: row.consentState as never,
+            suppressedAt: row.suppressedAt ? new Date(row.suppressedAt) : null,
+            tags: row.tags, notes: row.notes, importId: row.importId,
+            createdAt: new Date(row.createdAt), createdBy: row.createdBy,
+            updatedAt: new Date(row.updatedAt), updatedBy: row.updatedBy,
+          },
+        });
+        return toStoredMarketingContact(created);
+      } catch (err) {
+        if ((err as { code?: string })?.code === "P2002") return null;
+        throw err;
+      }
+    },
+    find: async (id: string): Promise<StoredMarketingContact | null> => {
+      const row = await pc().marketingContact.findUnique({ where: { id } });
+      return row ? toStoredMarketingContact(row) : null;
+    },
+    /** ⭐ BY THE ONE KEY. `msisdn` is `@unique`, so this is an index lookup, not a scan. */
+    findByMsisdn: async (msisdn: string): Promise<StoredMarketingContact | null> => {
+      const row = await pc().marketingContact.findUnique({ where: { msisdn } });
+      return row ? toStoredMarketingContact(row) : null;
+    },
+    /** ⛔ `msisdn` is not patchable (see `MarketingContactPatch`), so the unique index can
+     *  never need re-pointing here. `updatedAt` is passed EXPLICITLY rather than left to
+     *  `@updatedAt`, so both twins stamp the same value from the same caller. */
+    update: async (id: string, patch: MarketingContactPatch, at: string): Promise<StoredMarketingContact | null> => {
+      try {
+        const updated = await pc().marketingContact.update({
+          where: { id },
+          data: {
+            ...(patch.rawInput !== undefined ? { rawInput: patch.rawInput } : {}),
+            ...(patch.displayName !== undefined ? { displayName: patch.displayName } : {}),
+            ...(patch.email !== undefined ? { email: patch.email } : {}),
+            ...(patch.ndc !== undefined ? { ndc: patch.ndc } : {}),
+            ...(patch.operator !== undefined ? { operator: patch.operator } : {}),
+            ...(patch.source !== undefined ? { source: patch.source as never } : {}),
+            ...(patch.sourceRef !== undefined ? { sourceRef: patch.sourceRef } : {}),
+            ...(patch.userId !== undefined ? { userId: patch.userId } : {}),
+            ...(patch.consentState !== undefined ? { consentState: patch.consentState as never } : {}),
+            ...(patch.suppressedAt !== undefined ? { suppressedAt: patch.suppressedAt ? new Date(patch.suppressedAt) : null } : {}),
+            ...(patch.tags !== undefined ? { tags: patch.tags } : {}),
+            ...(patch.notes !== undefined ? { notes: patch.notes } : {}),
+            ...(patch.importId !== undefined ? { importId: patch.importId } : {}),
+            ...(patch.updatedBy !== undefined ? { updatedBy: patch.updatedBy } : {}),
+            updatedAt: new Date(at),
+          },
+        });
+        return toStoredMarketingContact(updated);
+      } catch (err) {
+        if ((err as { code?: string })?.code === "P2025") return null;
+        throw err;
+      }
+    },
+    listAll: async (): Promise<StoredMarketingContact[]> => {
+      const rows = await pc().marketingContact.findMany({
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      });
+      return rows.map(toStoredMarketingContact);
+    },
+    count: async (): Promise<number> => pc().marketingContact.count(),
+  },
+
+  contactList: {
+    create: async (row: StoredContactList): Promise<StoredContactList | null> => {
+      try {
+        const created = await pc().contactList.create({
+          data: {
+            id: row.id, name: row.name, description: row.description,
+            createdAt: new Date(row.createdAt), createdBy: row.createdBy,
+            updatedAt: new Date(row.updatedAt), updatedBy: row.updatedBy,
+          },
+        });
+        return toStoredContactList(created);
+      } catch (err) {
+        if ((err as { code?: string })?.code === "P2002") return null;
+        throw err;
+      }
+    },
+    find: async (id: string): Promise<StoredContactList | null> => {
+      const row = await pc().contactList.findUnique({ where: { id } });
+      return row ? toStoredContactList(row) : null;
+    },
+    findByName: async (name: string): Promise<StoredContactList | null> => {
+      const row = await pc().contactList.findUnique({ where: { name } });
+      return row ? toStoredContactList(row) : null;
+    },
+    listAll: async (): Promise<StoredContactList[]> => {
+      const rows = await pc().contactList.findMany({
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      });
+      return rows.map(toStoredContactList);
+    },
+  },
+
+  contactListMember: {
+    /** ⭐ THE COMPOUND KEY IS THE DEDUPLICATION, and re-adding keeps the ORIGINAL `addedAt`:
+     *  when somebody joined a list is evidence, not a status flag. That is why this reads
+     *  first and returns the existing row rather than upserting the timestamp forward — the
+     *  memory twin does the same, and §19 asserts it on both. */
+    add: async (row: StoredContactListMember): Promise<StoredContactListMember> => {
+      const existing = await pc().contactListMember.findUnique({
+        where: { listId_contactId: { listId: row.listId, contactId: row.contactId } },
+      });
+      if (existing) return toStoredContactListMember(existing);
+      const created = await pc().contactListMember.create({
+        data: {
+          listId: row.listId, contactId: row.contactId,
+          addedAt: new Date(row.addedAt), addedBy: row.addedBy,
+        },
+      });
+      return toStoredContactListMember(created);
+    },
+    remove: async (key: ContactListKey): Promise<boolean> => {
+      try {
+        await pc().contactListMember.delete({
+          where: { listId_contactId: { listId: key.listId, contactId: key.contactId } },
+        });
+        return true;
+      } catch (err) {
+        if ((err as { code?: string })?.code === "P2025") return false;
+        throw err;
+      }
+    },
+    listMembers: async (listId: string): Promise<StoredContactListMember[]> => {
+      const rows = await pc().contactListMember.findMany({
+        where: { listId },
+        orderBy: [{ addedAt: "desc" }, { contactId: "desc" }],
+      });
+      return rows.map(toStoredContactListMember);
+    },
+    listMemberships: async (contactId: string): Promise<StoredContactListMember[]> => {
+      const rows = await pc().contactListMember.findMany({
+        where: { contactId },
+        orderBy: [{ addedAt: "desc" }, { listId: "desc" }],
+      });
+      return rows.map(toStoredContactListMember);
     },
   },
 };

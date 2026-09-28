@@ -329,6 +329,11 @@ model User {
   agentApplications       AgentApplication[]
   /// Every house-bot designation of this account, REMOVED ones included (04 A20: kept 7 years).
   houseBots               HouseBot[]
+  /// ⛔ THE BACK-REFERENCE OF A LINK, NOT A COPY (U18). A marketing contact may point at this
+  /// account; deleting the account sets that pointer NULL (`onDelete: SetNull`) rather than
+  /// deleting the book row, and `erasure` then suppresses the number — a row left pointing at
+  /// nobody while still looking marketable is exactly D16.
+  marketingContacts       MarketingContact[]
 
   @@index([role, status])
   @@index([createdAt])
@@ -3223,4 +3228,138 @@ model MarketingOptOutToken {
   /// A person can hold several links over several campaigns; every one of them keeps working.
   @@index([identifier])
   @@index([createdAt])
+}
+
+/// Where a contact came from. This is evidence, not decoration: ETA s.31(c) obliges us to be
+/// able to say where a person's details came from, and `MarketingContact` is the first store
+/// that holds people who are NOT players.
+enum ContactSource {
+  /// A bulk import carrying an operator attestation of consent (OQ10). U25-U28 own it.
+  IMPORT
+  /// The person signed up and their number came with the account.
+  REGISTRATION
+  /// Added by a member of staff, who is named in `createdBy`.
+  OPERATOR
+  /// Added by an agent through the agent programme.
+  AGENT
+}
+
+/// ⭐ A NEW TYPE, NOT A VALUE ADDED TO `MessagingConsentStatus`. That enum is the consent
+/// LEDGER's vocabulary — {GIVEN, WITHDRAWN} — and it cannot express the state this column is
+/// created in, which is "nobody has asked this person yet". Widening the ledger's enum to carry
+/// an UNKNOWN would change what an append-only evidence table is able to say, and would need its
+/// own migration one commit ahead of any writer (`MessagingConsentSource.RETENTION_LAPSE` records
+/// why). A new type ships in the same commit as its first writer and costs neither.
+///
+/// ⛔ THIS COLUMN IS A CACHE, NEVER THE ANSWER. The consent ledger is the record; the send gate
+/// (U7) asks the ledger, never this. It exists so the book can be FILTERED and COUNTED without
+/// a per-row ledger read at 150k contacts (§3c). U24's one resolver is what keeps the two
+/// agreeing; a screen that reads this to decide whether to SEND would be reading a copy.
+enum ContactConsentState {
+  /// The default, and the only state a newly imported number may be created in (U22/U33).
+  UNKNOWN
+  GIVEN
+  WITHDRAWN
+}
+
+/// ⭐ ONE ROW PER PERSON IN THE MARKETING ADDRESS BOOK (U18). The first store in this platform
+/// that holds people who may have no `User` row at all — which is exactly why every rule below
+/// is written down rather than inherited.
+///
+/// ⛔ `userId` IS A LINK, NEVER A COPY. An erased player must not survive inside a marketing
+/// row: nothing here duplicates a name, a number or an e-mail that the `User` row owns, and the
+/// erasure path sets this to NULL and suppresses the number rather than leaving it marketable
+/// (U18's Accept; D16).
+///
+/// ⚠️ `createdAt` carries `@db.Timestamptz(3)`, unlike `MessagingConsent.createdAt` beside it.
+/// That column is a NAIVE `TIMESTAMP(3)` — the divergence behind the consent-tie defect, where a
+/// same-millisecond tie is broken by `randomUUID()` and answers at random. 39 columns in this
+/// schema already carry `Timestamptz(3)`; a store created in 2026 joins them rather than
+/// inheriting the defect it is being built next to.
+model MarketingContact {
+  id           String              @id @default(cuid())
+  /// The ONE phone key — bare `255XXXXXXXXX`, exactly as `toMsisdn255` produces it (U1), and
+  /// the same spelling as `MessagingConsent.identifier` so the two can be joined at all.
+  /// ⛔ UNIQUE: two spellings of one person is two verdicts, and an importer that creates a
+  /// second row for a number already in the book is an importer that texts somebody twice.
+  msisdn       String              @unique
+  /// What the operator or the file actually typed, kept for the one question a normalisation
+  /// bug raises: "what did we read this from?". ⛔ Never used as a key, never sent to.
+  rawInput     String
+  displayName  String?
+  email        String?
+  /// Denormalised from `msisdn` so the operator filter (U21) is an index scan rather than a
+  /// per-row prefix match over 150k rows. ⛔ Derived by the ONE table (U2), never hand-typed.
+  ndc          String
+  operator     String?
+  source       ContactSource
+  /// What proves the source: the import id, the agent's user id, the attestation reference.
+  /// ⛔ Never a raw phone number (§5.14) — `msisdn` is the only place one belongs.
+  sourceRef    String?
+  /// ⛔ A LINK, NEVER A COPY. NULL for a contact who is not a player. `onDelete: SetNull` so a
+  /// deleted player breaks the link without deleting the book row, and `erasure` is what then
+  /// suppresses the number — a dangling row that still looked marketable is the D16 defect.
+  userId       String?
+  user         User?               @relation(fields: [userId], references: [id], onDelete: SetNull)
+  /// ⛔ A CACHE OF THE LEDGER'S ANSWER, never the answer itself — see `ContactConsentState`.
+  consentState ContactConsentState @default(UNKNOWN)
+  /// Mirrors an ACTIVE `Suppression` row for this number, for filtering and counting only.
+  /// ⛔ The send gate asks `Suppression`, never this.
+  suppressedAt DateTime?           @db.Timestamptz(3)
+  tags         String[]            @default([])
+  notes        String?
+  importId     String?
+  createdAt    DateTime            @default(now()) @db.Timestamptz(3)
+  createdBy    String?
+  updatedAt    DateTime            @default(now()) @updatedAt @db.Timestamptz(3)
+  updatedBy    String?
+
+  lists        ContactListMember[]
+
+  /// The operator filter (U21) and the send resolver (U24) both read these.
+  @@index([ndc])
+  @@index([consentState])
+  @@index([createdAt])
+  @@index([userId])
+  @@index([importId])
+  /// ⭐ THE REPO'S FIRST ARRAY GIN INDEX. The eight existing GIN indexes are all `gin_trgm_ops`
+  /// on TEXT and live only in raw SQL; this one is declared HERE on purpose, because an index
+  /// that `schema.prisma` does not declare is an index `prisma migrate diff` proposes to DROP
+  /// every time — which is precisely how the trigram indexes keep being swept into other
+  /// people's migrations (§0 TRAPS).
+  @@index([tags], type: Gin)
+}
+
+/// A named list an operator can send to. ⛔ The list is not an audience: membership is a stored
+/// fact, while an audience is resolved at send time by the ONE resolver (U24).
+model ContactList {
+  id          String              @id @default(cuid())
+  name        String              @unique
+  description String?
+  createdAt   DateTime            @default(now()) @db.Timestamptz(3)
+  createdBy   String?
+  updatedAt   DateTime            @default(now()) @updatedAt @db.Timestamptz(3)
+  updatedBy   String?
+
+  members     ContactListMember[]
+
+  @@index([createdAt])
+}
+
+/// Membership, as its own row so that adding and removing are ordinary writes with their own
+/// audit columns rather than an array rewrite that loses who did it and when.
+model ContactListMember {
+  listId    String
+  contactId String
+  addedAt   DateTime         @default(now()) @db.Timestamptz(3)
+  addedBy   String?
+
+  list      ContactList      @relation(fields: [listId], references: [id], onDelete: Cascade)
+  contact   MarketingContact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  /// ⭐ THE COMPOUND KEY IS THE DEDUPLICATION. "Add these 4,000 to the list" run twice must not
+  /// make anybody a member twice, because a campaign that resolves this list would then count
+  /// and text them twice.
+  @@id([listId, contactId])
+  @@index([contactId])
 }

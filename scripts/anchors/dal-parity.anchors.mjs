@@ -406,4 +406,79 @@ export const MUTATIONS = [
     to: `          // (reason filter removed)`,
     expect: `17.liftreason · ⛔ \`lift\` lifts ONLY a WITHDRAWN row, in BOTH twins — the store refuses a complaint, an officer's stop or a self-exclusion even if a caller forgets to check`,
   },
+  /* ── §19 · the contact book (marketing U18) ──────────────────────────────────────────── */
+  {
+    // 🔴 The unique violation escapes as a Prisma error, or is papered over — the importer's
+    // "already in the book" branch stops existing and every caller has to know P2002.
+    name: "prisma-dal.ts — marketingContact.create stops turning the duplicate into null",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `        return toStoredMarketingContact(created);
+      } catch (err) {
+        if ((err as { code?: string })?.code === "P2002") return null;`,
+    to: `        return toStoredMarketingContact(created);
+      } catch (err) {
+        if (false) return null;`,
+    expect: `19.unique.prisma · the Prisma create turns P2002 into null, and does NOT upsert`,
+  },
+  {
+    // 🔴 The memory twin stops faking the @unique: a re-import OVERWRITES the person already
+    // in the book, which is how one number becomes two verdicts.
+    name: "store.ts — the memory contact create no longer refuses a duplicate msisdn",
+    file: "src/lib/server/store.ts",
+    from: `      if (store.contactsByMsisdn.has(row.msisdn)) return null;`,
+    to: `      // (the duplicate check removed)`,
+    expect: `19.unique.memory · the memory create refuses an msisdn already in the book, and does not overwrite`,
+  },
+  {
+    // 🔴 SUBTLER, AND WORSE: the check stays but the index it reads is never written, so the
+    // FIRST duplicate passes and the guard above still looks satisfied.
+    name: "store.ts — the memory contact create stops maintaining the secondary index",
+    file: "src/lib/server/store.ts",
+    from: `      store.contactsByMsisdn.set(row.msisdn, row.id);`,
+    to: `      // (secondary index not maintained)`,
+    expect: `19.unique.memory.index · the memory create MAINTAINS the secondary index it refuses on`,
+  },
+  {
+    // 🔴 The silent-production-no-op in its original shape: the column is written but never
+    // read back, so one twin answers with a field the other has lost.
+    name: "prisma-dal.ts — the contact read mapper drops suppressedAt",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `    suppressedAt: iso(c.suppressedAt),`,
+    to: `    suppressedAt: null,`,
+    expect: `19.read · toStoredMarketingContact maps "suppressedAt" from the row`,
+  },
+  {
+    // 🔴 Re-adding walks `addedAt` forward, destroying the only record of when a list was built.
+    name: "prisma-dal.ts — contactListMember.add stops returning the row already there",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `      if (existing) return toStoredContactListMember(existing);`,
+    to: `      // (always create, walking addedAt forward)`,
+    expect: `19.readd.prisma · the Prisma add reads first and returns the existing row, never upserting`,
+  },
+  {
+    name: "store.ts — the memory add replaces an existing membership instead of keeping it",
+    file: "src/lib/server/store.ts",
+    from: `      const existing = store.contactListMembers.get(k);
+      if (existing) return existing;`,
+    to: `      const existing = store.contactListMembers.get(k);`,
+    expect: `19.readd.memory · the memory add returns the existing member rather than replacing it`,
+  },
+  {
+    // 🔴 D16 ITSELF: the book starts carrying a COPY of the account, so erasing the player
+    // leaves a marketable row behind.
+    name: "prisma-dal.ts — the contact mapper copies the account's name through the relation",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `    displayName: c.displayName,`,
+    to: `    displayName: c.user.name,`,
+    expect: `19.link.mapper · the read mapper never reaches through a \`user\` relation`,
+  },
+  {
+    // 🔴 One twin loses a member — the exact asymmetry every marketing suite would then run
+    // against without noticing, because they all run on the memory twin.
+    name: "prisma-dal.ts — the Prisma contact namespace loses count()",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `    count: async (): Promise<number> => pc().marketingContact.count(),`,
+    to: `    // (count removed from the Prisma twin only)`,
+    expect: `19.parity.marketingContact · both twins expose the same members`,
+  },
 ];
