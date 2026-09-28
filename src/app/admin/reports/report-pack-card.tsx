@@ -4,7 +4,9 @@ import { Chip } from "@/components/ui/chip";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { I } from "@/components/ui/glyphs";
 import { formatDateTime } from "@/lib/utils";
-import { getReportPack, PACK_STEPS, PACK_HISTORY_INCOMPLETE_LINE, currentPackPeriod, type ReportPack } from "@/lib/server/report-pack";
+import { getReportPack, PACK_STEPS, PACK_HISTORY_INCOMPLETE_LINE, currentPackPeriod, packPeriodLabel, type ReportPack } from "@/lib/server/report-pack";
+// The Swahili subtitle takes Swahili month names; this card is a fixed EN/SW pair, not a locale switch.
+import { dict } from "@/lib/i18n-dict";
 import { currentSession } from "@/lib/server/auth-service";
 import { ReportPackControls, CopyHash } from "./report-pack-controls";
 
@@ -45,7 +47,12 @@ export async function ReportPackCard() {
   return (
     <AdminCard
       title="Regulator pack · Gaming Board monthly"
-      sw={`Kifurushi cha mdhibiti · ${pack.periodLabel}`}
+      /* ⛔ A SWAHILI SENTENCE TAKES A SWAHILI MONTH. `pack.periodLabel` is the ENGLISH label
+         (it is also what the regulator artifact prints), so splicing it here produced
+         "Kifurushi cha mdhibiti · August 2026". The `sw` line is always Swahili regardless of
+         the viewer's locale — this card is a fixed EN/SW pair, not a locale switch — so it reads
+         `dict.sw`, never `getServerT()`. */
+      sw={`Kifurushi cha mdhibiti · ${packPeriodLabel(pack.period, dict.sw.common.monthsLong)}`}
       action={
         <Chip size="sm" variant={sealed ? "resolved" : pack.state === "draft" ? "neutral" : "brand"}>
           {sealed ? "ACKNOWLEDGED" : pack.state.toUpperCase()}
