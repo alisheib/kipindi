@@ -187,8 +187,8 @@ once, on different things.
 | WP6 | One-sided state on every card + the grid's degeneracy floor | ✅ | 31662831 | measured on production 2026-09-27: V17 0 in 33/33 cells (was 66), RED V17 PROVED; `/`, `/markets`, `/results` at 360/768/1280 × sw/en/zh, frames looked at — no card reads 0% or 100%, one-sided cards read "One side only" + the rule in all three. The one-sided FEATURED card measured locally (production's featured is contested). L14, L22, L23; delivers MOBILE-VISUAL ruling 13 on the card |
 | WP7 | Estimate line on cards | ⛔ | | R3 |
 | WP8 | Proof rail: phone ledger rows, conviction reading as the bar's label | ✅ | 54f8199b | measured on production 2026-09-26 (360/768/1280 × sw/en/zh frames looked at) |
-| WP9 | Pick-a-side grid: phone snap rail with a peek, 2 and 3 columns | ⬜ | | |
-| WP10 | Topics: six tiles, Other last, "All topics" as the section link | ✅ | 54f8199b | measured on production 2026-09-26 (360/768/1280 × sw/en/zh frames looked at) |
+| WP9 | ONE BOARD: the `.market-grid` band leaves `/`, the board grows 4 → 7 rows and takes the grid's header and its Closing soon / Biggest pools toggle | ⬜ |  | ⭐ **Scope is R15**, which keeps the topic tiles the delivery would have deleted with the grid: they list TOPICS, not markets, so the delivery's own reason ("three lists of one thing") does not reach them. The 8-market budget is preserved exactly — 1 featured + 7 rows. ⚠️ This row carried the v3 "Pick-a-side grid" spec until 2026-09-28; §2.1 is rewritten |
+| WP10 | Topics: six tiles, Other last, "All topics" as the section link | ✅ | 54f8199b | measured on production 2026-09-26 (360/768/1280 × sw/en/zh frames looked at) ·· ⭐ **KEPT, 2026-09-28 (R15).** The v4 delivery would have deleted the tiles with the grid; they list TOPICS and repeat no market, so the reason it gives does not reach them. They also carry V14's `.kp-topic` landmark |
 | WP11 | How it works: "A named source", the fee from config, h3 steps | ✅ | 54f8199b | measured on production 2026-09-26 (360/768/1280 × sw/en/zh frames looked at); the fee reads 13% through `ratesFrom`; L3 |
 | WP12 | Up & Down band: R5 — the Match (spec v2) | ✅ | ec28dd4e | **Production frame review done 2026-09-28** (`03cf7df9`): 27 element captures, 3 components × 360/768/1280 × sw/en/zh, measured for clipping and overflow AND looked at as contact sheets (three locales stacked per component and width). No clipping, nothing past the right edge, every `data-market-part` present in all 27. The Match reads right at 1280 (two columns: the copy left, the scoreboard and timeline right) and reflows at 360 to heading → asset → countdown → scoreboard with the Up/Down pair below it → timeline → rule → All rounds. The Swahili rule line holds its two lines at 360, as R5's panel required. 🔴 AND THE FIRST PASS PHOTOGRAPHED IT BLANK IN ALL NINE CELLS — see §0 trap 13 |
 | WP13 | Results: date, the market's own sign-off, source link, paid | ✅ | e9b4056c | measured on production 2026-09-27: date, the market's own sign-off (a reversed market reads "Corrected on objection"), source, paid; below 640 the amount and the source each take a line, so the host reads whole. L2 |
@@ -443,12 +443,30 @@ variant; landing-only `sourceName` / `closesOn`; sitewide `msLeft`), `TippingBar
 - The conviction bar's accessible label is the full `home.heroConvRead` reading, not "YES probability".
 - The live pip stays on the open-markets figure only. `test:betting-ink` §1 pins that markup.
 
-**WP9 · Pick-a-side grid** — the grid band in `src/app/page.tsx`, `.market-grid` scoped to the landing
-- Below 640: `grid-auto-flow: column; grid-auto-columns: 86%; overflow-x: auto;
-  scroll-snap-type: x mandatory`, cards `scroll-snap-align: start`; the page itself never scrolls sideways
-  (V1). 640–1023: two columns. From 1024: three.
-- Every card keeps the same slots so bars line up across a row (V6).
-- Guard at risk: `test:needle-rest` §4 sweeps `/` at 360 and 768 for the parked Needle resting on a control.
+**WP9 · ONE BOARD** — `src/app/page.tsx` (the grid band), `src/components/home/landing-hero.tsx`
+(`LandingProof`), `src/lib/markets/hero.ts`, `src/lib/markets/landing.ts`
+⚠️ **THIS ROW WAS THE v3 SPEC ("Pick-a-side grid" — a phone snap rail) UNTIL 2026-09-28.** The v4
+delivery replaces it: the grid and the hero's board are the same open book in two shapes, and one of
+them goes. Scope is **R15**, which departs from the delivery in one place — read it first.
+- **Delete the `.market-grid` band from `/`.** The CLASS stays: `/markets`, `/results`, `/watchlist`
+  and `/live` use it too. Only the landing's use goes.
+- **Keep the topic tiles (WP10, ✅ and measured).** They list TOPICS, not markets, and repeat nothing.
+  R15 explains why the delivery's own reason does not reach them.
+- **The board grows 4 → 7 rows** (`QUESTION_BOARD_SIZE`), which is exactly the 3 the grid gave up. The
+  page still shows 8 markets — `landing.ts`'s header records that 8 was chosen deliberately.
+- **The board takes the grid band's header**: the eyebrow that NAMES the ordering, the h2, and
+  "All N markets →". A heading that states the sort order is what makes the list a claim rather than
+  a sample — `landing.ts` says so, and it is the one part of that band worth keeping.
+- **The toggle (Closing soon | Biggest pools)** switches between orderings COMPUTED ON THE SERVER from
+  the one board read. ⛔ Never re-sorted in the browser: `landingGrid` picks by price tier and displays
+  by lens with a degeneracy floor, and a client-side re-sort would be a second, quietly different
+  implementation of a rule about money. `role="tablist"`, 40px, no new query.
+- **Guards that move with it** — each is a real edit, not a rename: `landing-contract.test.mts` §4 ("the
+  grid is never short"), `count-truth.anchors.mjs`, `betting-ink.test.mts`, and the two drives
+  `c1-drive.mjs` and `mobile-visual-drive.mjs`. `test:needle-rest` §4 sweeps `/` at 360 and 768 for the
+  parked Needle resting on a control, so the new row heights are its business too.
+- **V14's landmarks are SAFE** because the tiles stay (`.kp-topic`). Had they gone, §0 trap 5 applies:
+  the gate's landmark selectors are class names and a rebuild re-points them in the SAME commit.
 
 **WP10 · Topics** — `src/components/home/topic-tiles.tsx`, `.kp-topics`
 - "All topics" becomes the section header link. Six tiles, ordered by live count, **Other last**; two
