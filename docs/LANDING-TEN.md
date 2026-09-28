@@ -513,6 +513,14 @@ states, sketches and verification; this row is its summary). The price-line char
   the price at 13px ("Juu ya ufunguzi kwa $18.52" · "imenukuliwa 18:55:02 EAT", stacking below 400); the stats stack
   left below 400; the title wraps with the game's name whole; a signed-out player who tapped a side sees it in the
   stake panel (the band's arrow in the kit Chip).
+- **The round page agrees (spec §12):** "Confirmed price" (was "Live price"); while open the quote stamp joins the
+  move line; the hero's ink follows the targets (`price-hero.tsx` `tone`, `data-tone`); a level read says the band's
+  own "Only $0.20 from the open — not enough to decide". The `/updown` card and terminal follow in F1 (R5(c)).
+- **F1 · the `/updown` card and terminal agree (R5(c), branch `landing-v3-f1`, 2026-09-27):** the card names its figure
+  "Confirmed price" / "Close" on its own row and inks it by the targets (`valueTone`), muted with the band's level
+  words between them; the terminal's live line wears the in-play round's side (`liveLineToken`, gilt with none) and is
+  named under the pane; the card's trust line, win-target heading and quick-bet sentences reach 13px. Guard:
+  `test:updown-match` §11b (a planted by-the-open ink must fail) · `test:contrast` F1 pairs.
 - **Platform-wide, found by this unit:** the solid buttons' hover lift only where a pointer hovers (touch :hover lit
   the tapped side after Back — a lit leader); "tokeo" → "matokeo" (6 keys); "juu au chini" / "higher or lower" never
   split.

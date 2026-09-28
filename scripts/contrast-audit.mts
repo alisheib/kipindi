@@ -968,6 +968,17 @@ const PLACEHOLDER_CHECKS: Check[] = [
 ];
 CHECKS.push(...PLACEHOLDER_CHECKS);
 
+/* ⭐ R5(c) · F1 (2026-09-27) · THE /updown TERMINAL NAMES ITS LIVE LINE — "Confirmed price $63,590.62" under the pane,
+   on the chart lab's `--bg-elevated` panel, in the line's own ink (`liveLineToken`: the in-play round's side by its
+   targets, gilt with no round). Level and gilt already have their pairs on this surface (`--text-muted on
+   --bg-elevated`, `--gilt money ink on --bg-elevated`); the two side inks are new here. The drawn line itself is
+   non-text (3.0), so these 4.5 rows cover it too. The card's figure and level words sit on `--wash-raised`, whose
+   pairs (`--yes-300` / `--no-300` as text, `--text-muted`, `--text-faint`) the R5 block below already holds. */
+CHECKS.push(
+  { name: "F1 · the terminal's named live line, Up leads (--yes-300 on --bg-elevated)", fg: token("yes-300"), bg: T.bgElevated, min: 4.5 },
+  { name: "F1 · the terminal's named live line, Down leads (--no-300 on --bg-elevated)", fg: token("no-300"), bg: T.bgElevated, min: 4.5 },
+);
+
 /* ⭐ R5 · THE LANDING'S UP & DOWN MATCH (2026-09-27, spec updown-band-v2 §5.4 / §15.1).
    The band's scoreboard sits on a `--bg-inset` plate inside a `--wash-raised` panel, and its timeline
    draws straight on the panel. Every ink below is READ OFF THE RULE THAT PAINTS IT (`matchInk`), never

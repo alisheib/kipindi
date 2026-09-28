@@ -35,6 +35,7 @@ export function UpDownChartLab({
   assetKey,
   locale,
   labels,
+  round = null,
 }: {
   assetKey: string;
   /** Platform locale — the chart chrome follows the page, not the browser. */
@@ -51,7 +52,11 @@ export function UpDownChartLab({
     chartAria: string;
     sourceLabel: string;
     quotedWord: string;
+    /** R5(c) · F1 — the terminal's live line is named with the band's word. */
+    confirmedPrice: string;
   };
+  /** R5(c) · F1 — the targets of the board's in-play round; the terminal's live line wears their verdict ink. */
+  round?: { upTarget: number | null; downTarget: number | null } | null;
 }) {
   const [range, setRange] = useState<TerminalRange>("1H");
   const [pinnedStyle, setPinnedStyle] = useState<TerminalStyle | null>(null);
@@ -168,7 +173,9 @@ export function UpDownChartLab({
               sourceLabel: labels.sourceLabel,
               quotedWord: labels.quotedWord,
               noCandles: labels.noCandles,
+              confirmedPrice: labels.confirmedPrice,
             }}
+            round={round}
           />
         ) : (
           <div className="grid place-items-center" style={{ height: 300 }}>

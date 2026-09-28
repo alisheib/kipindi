@@ -80,6 +80,64 @@ export function sideByTargets(price: number, upTarget: number, downTarget: numbe
   return "LEVEL";
 }
 
+/**
+ * ⭐ R5(c) · F1 (2026-09-27) — THE INK OF A CONFIRMED PRICE, BY THE ROUND'S TARGETS.
+ *
+ * The round page paints its hero figure by settlement's own rule (`decideOutcomeByTargets`, on the server, handed to
+ * `price-hero.tsx` as `tone`). The `/updown` card and the terminal's live line are CLIENT code and cannot import that
+ * server-only module, so they read this — `sideByTargets` above, pinned equal to settlement by `test:updown-match` §1 —
+ * and §11b pins that both of them do, against a planted by-the-open copy that must fail.
+ * UP ink at or above `upTarget`, DOWN ink at or below `downTarget`, muted strictly between: a banded round voids
+ * anywhere inside its band, so a read there leads nobody (E-261 generalised — the band says "Nobody leads" there).
+ * ⛔ Null when the price or either target is unknown or not a number; the caller decides what an unbanded round wears.
+ */
+export type ReadTone = "up" | "down" | "level";
+export function readTone(
+  price: number | null | undefined,
+  upTarget: number | null | undefined,
+  downTarget: number | null | undefined,
+): ReadTone | null {
+  if (price == null || upTarget == null || downTarget == null) return null;
+  if (!Number.isFinite(price) || !Number.isFinite(upTarget) || !Number.isFinite(downTarget)) return null;
+  const side = sideByTargets(price, upTarget, downTarget);
+  return side === "UP" ? "up" : side === "DOWN" ? "down" : "level";
+}
+
+/** The token each tone paints with — `price-hero.tsx`'s own three inks, named once for the card (as `var()`) and for
+ *  the terminal, whose canvas resolves a token NAME through `charts/ink-bridge.ts`. */
+export const READ_TONE_TOKEN = { up: "--yes-300", down: "--no-300", level: "--text-muted" } as const satisfies Record<ReadTone, string>;
+
+/**
+ * The `/updown` card's value tone. By the TARGETS whenever the round has them; E-261's by-the-open rule ONLY for a
+ * round that has none (a legacy round, or one whose targets are not frozen yet) — the same fallback `price-hero.tsx`
+ * keeps when the page hands it no `tone`. Null when there is no price, or nothing to read it against.
+ */
+export function valueTone(
+  price: number | null | undefined,
+  openPrice: number | null | undefined,
+  upTarget: number | null | undefined,
+  downTarget: number | null | undefined,
+): ReadTone | null {
+  const byTargets = readTone(price, upTarget, downTarget);
+  if (byTargets || price == null || !Number.isFinite(price)) return byTargets;
+  if (openPrice == null || !Number.isFinite(openPrice)) return null;
+  return price > openPrice ? "up" : price < openPrice ? "down" : "level";
+}
+
+/**
+ * The terminal's ONE live-price line (§B12.6), in the ink of the round IN PLAY on the board (R5(c) · F1): the board's
+ * first unsettled round with frozen targets, so the line and the card under it cannot disagree about one read.
+ * ⛔ The gilt reference when no such round is in play, or its read has no tone — the terminal charts HISTORY, and a
+ * line with no round to be read against states the price, not a side.
+ */
+export function liveLineToken(
+  livePrice: number | null | undefined,
+  round: { upTarget: number | null; downTarget: number | null } | null | undefined,
+): (typeof READ_TONE_TOKEN)[ReadTone] | "--gilt" {
+  const tone = round ? readTone(livePrice, round.upTarget, round.downTarget) : null;
+  return tone ? READ_TONE_TOKEN[tone] : "--gilt";
+}
+
 /** Two confirmed reads are grid boundaries at least a minute apart, so anything closer than this to the
  *  newest read the band holds is that same observation seen again (a quote stamped a few seconds off its
  *  boundary), never a new one. */

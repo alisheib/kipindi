@@ -34,6 +34,9 @@ import { Dot } from "@/components/ui/dot";
 import { cn, formatTzs } from "@/lib/utils";
 import { priceState } from "@/lib/markets/price-state";
 import { usd } from "@/lib/usd-price";
+import { fillNodes } from "@/lib/fill-nodes";
+// ⭐ R5(c) · F1 — the figure's ink is the round's TARGETS, the rule the round page and the landing band read.
+import { valueTone, READ_TONE_TOKEN } from "@/lib/updown-match";
 import { useT } from "@/lib/i18n";
 import { useUpDownQuickBet, usePlacePulse } from "./use-quick-bet";
 import { UpDownStakeControls, GLYPH_NO_SHRINK } from "./updown-stake-controls";
@@ -597,8 +600,27 @@ export function UpDownCard(props: UpDownCardProps) {
   const price = priceState(pricing.upPool, pricing.downPool);
   const upPct = price.kind === "priced" ? price.yesPct : null;
   const downPct = upPct === null ? null : 100 - upPct;
-  const dir = movePct == null ? null : movePct > 0 ? "up" : movePct < 0 ? "down" : "flat";
-  const priceColor = dir === "up" ? "var(--yes-300)" : dir === "down" ? "var(--no-300)" : "var(--text-muted)";
+  /**
+   * ⭐ R5(c) · F1 (2026-09-27) · THE FIGURE WEARS THE ROUND'S TARGETS — the round page's `tone`, the landing band's lead.
+   *
+   * 🔴 It wore the SIGN OF THE MOVE FROM THE OPEN. A read one cent above the open painted green with an up-arrow while
+   * settlement, which needs the UP target reached, would refund every stake there: the band one screen away said
+   * "Nobody leads" and the round page one tap away painted the same read muted. Three surfaces, one read, two answers.
+   * ⭐ `valueTone` is `sideByTargets`, pinned equal to `decideOutcomeByTargets` (`test:updown-match` §1 and §11b): UP at or
+   * above `upTarget`, DOWN at or below `downTarget`, muted strictly between. The open decides only for a round that has
+   * no targets (legacy), exactly the fallback `price-hero.tsx` keeps.
+   * ⛔ The arrow follows the same tone: a level read carries no direction glyph.
+   */
+  const tone = valueTone(livePrice, openPrice, upTarget, downTarget);
+  const priceColor = tone ? `var(${READ_TONE_TOKEN[tone]})` : "var(--text-muted)";
+  // Strictly between the targets the muted figure says WHY, in the band's own words ("Only $0.20 from the open — not
+  // enough to decide"; exactly at the open, the band's "Exactly at the opening price"). Present tense, so only while the
+  // round is undecided — a settled card states its result below, never a verdict on a price that no longer decides.
+  const levelAmount = !settledNow && tone === "level" && livePrice != null && openPrice != null
+    ? usd(Math.abs(livePrice - openPrice), decimals) : null;
+  const levelWords = levelAmount == null ? null
+    : levelAmount === usd(0, decimals) ? t.home.udMatchLevelExact
+    : fillNodes(t.market.udLevelBy, { amount: <span className="amount">{levelAmount}</span> });
   /**
    * ⭐ EVERY FORMATTED STRING ON THIS CARD, COMPUTED ONCE PER CHANGE — not once per render.
    *
@@ -748,27 +770,40 @@ export function UpDownCard(props: UpDownCardProps) {
               : t.market.statusClosed} · {assetTicker}
           </div>
         </div>
-        <div className="shrink-0 text-right">
+      </div>
+
+      {/* ── The confirmed price (R5(c) · F1, 2026-09-27) ─────────────────────
+          ⭐ NAMED, as the round page and the landing band name it: "Confirmed price" while the round runs (the read is a
+          dated confirmed quote, never a live tick — the footer carries its time), "Close" once the figure IS the close.
+          ⛔ IT LEFT THE HEADER TO GET A NAME. Beside the title there was no room for one: the Swahili label alone is
+          wider than the figure, and a squeezed title clamps the game's own name. On its own row the label sits left,
+          the figure and its move right, held together; when the two do not fit one line the figure wraps under the
+          label and stays right-aligned (`ml-auto`), never split and never clipped (M4a). `data-tone` names the ink for
+          the frame drive. */}
+      <div className="ud-read" data-tone={tone ?? "none"}>
+        <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
+          <span className="font-mono text-micro font-semibold uppercase eyebrow text-text-faint">
+            {settledNow ? t.market.udClosePrice : t.market.udConfirmedPrice}
+          </span>
           {livePrice == null ? (
-            <>
-              <div className="font-mono text-[15.5px] font-bold tabular-nums" style={{ color: "var(--text-faint)" }}>—</div>
-              <div className="font-mono text-micro uppercase tracking-[0.10em] text-text-faint">{t.market.udAwaitingRead}</div>
-            </>
+            <span className="ml-auto inline-flex items-baseline gap-2 whitespace-nowrap">
+              <span className="font-mono text-[15.5px] font-bold tabular-nums" style={{ color: "var(--text-faint)" }}>—</span>
+              <span className="font-mono text-micro uppercase tracking-[0.10em] text-text-faint">{t.market.udAwaitingRead}</span>
+            </span>
           ) : (
-            <>
-              <div className="flex items-center justify-end gap-1 font-mono text-[15.5px] font-bold tabular-nums" style={{ color: priceColor }}>
-                {dir === "up" && <I.trendingUp s={11} />}
-                {dir === "down" && <I.trendingDown s={11} />}
+            <span className="ml-auto inline-flex items-baseline gap-2 whitespace-nowrap" style={{ color: priceColor }}>
+              <span className="inline-flex items-center gap-1 self-center font-mono text-[15.5px] font-bold tabular-nums">
+                {tone === "up" && <I.trendingUp s={11} />}
+                {tone === "down" && <I.trendingDown s={11} />}
                 {priceText.live}
-              </div>
+              </span>
               {priceText.move != null && (
-                <div className="font-mono text-[11px] font-semibold tabular-nums" style={{ color: priceColor }}>
-                  {priceText.move}
-                </div>
+                <span className="font-mono text-[11px] font-semibold tabular-nums">{priceText.move}</span>
               )}
-            </>
+            </span>
           )}
         </div>
+        {levelWords && <p className="mt-1 mb-0 text-body-sm leading-[1.45] text-text-muted">{levelWords}</p>}
       </div>
 
       {/* ── Countdown (mandatory: TIMER) ───────────────────────────────── */}
@@ -898,11 +933,16 @@ export function UpDownCard(props: UpDownCardProps) {
           {/* "Higher or lower than $63,572.10" — the OPEN price is the thing being compared
               against, so it is what the heading names. The ± figure stays because it is the
               honest size of the band, and at the tick floor it is reassuringly tiny. */}
-          <div className="flex items-center justify-between gap-2 font-mono text-micro font-semibold uppercase eyebrow text-text-faint">
-            <span className="truncate">
-              {t.market.udWinTarget}{openPrice != null ? ` ${priceText.open ?? ""}` : ""}
+          {/* 🔴 F1 (2026-09-27, the band's frame panel) · THIS HEADING TRUNCATED A MONEY FIGURE. It was one `truncate`
+              run, so at 360 in Swahili "JUU AU CHINI YA $63,572.10" could end "$63,57…" — a clipped number is a wrong
+              number (M4a). Now the words wrap between themselves, the open price is held whole, and the margin keeps
+              the right edge on whichever line it lands. */}
+          <div className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5 font-mono text-micro font-semibold uppercase eyebrow text-text-faint">
+            <span className="min-w-0">
+              {t.market.udWinTarget}
+              {openPrice != null && <>{" "}<span className="whitespace-nowrap tabular-nums">{priceText.open}</span></>}
             </span>
-            {openPrice != null && <span className="shrink-0 tabular-nums">± {priceText.margin}</span>}
+            {openPrice != null && <span className="ml-auto whitespace-nowrap tabular-nums">± {priceText.margin}</span>}
           </div>
           {/* ⚠️ STAGE 9b — these two tiles were examined for the <Stat> consolidation and
               KEPT. They are label-over-value pairs, but not one of them lands on a rung:
@@ -993,14 +1033,17 @@ export function UpDownCard(props: UpDownCardProps) {
               {/* ⭐ D2 · the empty-side state — the same sentence the signed-in control shows,
                   because a visitor deciding whether to sign up deserves the same fact. Faint
                   informational ink + the `info` glyph: not gold, not an alarm (G5). */}
+              {/* F1 (2026-09-27) · both are SENTENCES — a refund promise and what the multiplier means — and they sat
+                  at 10px, under §T4's 12.5px reading floor. They take the kit's 13px, the size the round page already
+                  prints them at, and the authed card's copy moved with them (`updown-stake-controls.tsx`). */}
               {outEmptyCopy && (
-                <p className="mt-1.5 flex items-start gap-1 text-[10px] leading-[1.45] text-text-faint">
-                  <I.info s={10} className="mt-[2px] shrink-0" />
+                <p className="mt-1.5 flex items-start gap-1 text-body-sm leading-[1.45] text-text-faint break-keep [overflow-wrap:anywhere]">
+                  <I.info s={11} className="mt-[2px] shrink-0" />
                   <span>{outEmptyCopy}</span>
                 </p>
               )}
               {(outMultUp != null || outMultDown != null) && (
-                <p className="mt-1 text-[10px] leading-[1.45] text-text-faint">{t.market.udEstimateNote}</p>
+                <p className="mt-1 text-body-sm leading-[1.45] text-text-faint break-keep [overflow-wrap:anywhere]">{t.market.udEstimateNote}</p>
               )}
             </>
           )
@@ -1178,14 +1221,21 @@ export function UpDownCard(props: UpDownCardProps) {
           ⛔ Do not "fix" this by dropping the seconds. E-47b's whole finding was a source that
           had quoted 14 minutes before we read it; second-level precision is the evidence.
           ⚠️ Found by LOOKING, at a width a suite had no reason to visit — `document.scrollWidth`
-          cannot see clipping INSIDE a card, which is why `qa:asset-board` measures elements. */}
-      <div className="ud-foot flex flex-wrap items-center justify-between gap-x-2 gap-y-1 font-mono text-[9.5px] text-text-faint"
+          cannot see clipping INSIDE a card, which is why `qa:asset-board` measures elements.
+          🔴 F1 (2026-09-27, the band's frame panel) · AND IT WAS A SENTENCE AT 9.5px — "Soko la metali · imenukuliwa
+          17:52:03 EAT", 3px under §T4's reading floor, on the one line that says where the price came from and when.
+          It takes the kit's 13px. The words set in the body face, the figures in mono (§T5); "· imenukuliwa 17:52:03 EAT"
+          and "Ufunguzi $63,572.10" are each held whole, so the line wraps BETWEEN them — never inside a time or a
+          price, and never leaving the dot stranded at a line's end (the stamp carries it onto its own line). The
+          seconds stay (E-47b). */}
+      <div className="ud-foot flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 text-body-sm text-text-faint"
            style={{ borderTop: "1px solid color-mix(in oklab, var(--border) 55%, transparent)" }}>
         <span className="min-w-0">
-          {t.market[SOURCE_CLASS_KEY[sourceClass]]}{quoted ? ` · ${t.market.udQuoted} ${quoted}` : ""}
+          {t.market[SOURCE_CLASS_KEY[sourceClass]]}
+          {quoted && <>{" "}<span className="whitespace-nowrap">{"· "}{t.market.udQuoted}{" "}<span className="font-mono tabular-nums">{quoted}</span></span></>}
         </span>
         {openPrice != null && (
-          <span className="shrink-0 tabular-nums">{t.market.udOpenPrice} {priceText.open}</span>
+          <span className="ml-auto whitespace-nowrap">{t.market.udOpenPrice}{" "}<span className="font-mono tabular-nums">{priceText.open}</span></span>
         )}
       </div>
     </article>

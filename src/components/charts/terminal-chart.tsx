@@ -41,6 +41,9 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import type { IChartApi, ISeriesApi, IPriceLine, UTCTimestamp } from "lightweight-charts";
 import { fmtEAT } from "@/lib/updown-source-label";
+import { usd } from "@/lib/usd-price";
+// ⭐ R5(c) · F1 — the live line's ink is the in-play round's TARGETS, the rule the card and the round page read.
+import { liveLineToken } from "@/lib/updown-match";
 import { makeInkResolver, tokRaw } from "./ink-bridge";
 import { ascUnique } from "./chart-series";
 
@@ -70,6 +73,7 @@ export function TerminalChart({
   height = 300,
   labels,
   pollMs = 30_000,
+  round = null,
 }: {
   assetKey: string;
   /** Pane watermark — the instrument's public name (never the vendor, E-53). */
@@ -91,8 +95,16 @@ export function TerminalChart({
     quotedWord: string;
     /** Shown when the player chose candles and the window is too thin for honest ones. */
     noCandles: string;
+    /** R5(c) · F1 — the live line's name, the band's and the round page's own: "Confirmed price". */
+    confirmedPrice: string;
   };
   pollMs?: number;
+  /**
+   * R5(c) · F1 (2026-09-27) · the targets of the round IN PLAY on the board (its first unsettled round that has them),
+   * so the live line wears that round's verdict ink — the card under the chart paints the same read the same way.
+   * ⛔ ONLY the targets: the terminal still charts history, never the round's frame (§B12.6). Null ⇒ the gilt reference.
+   */
+  round?: { upTarget: number | null; downTarget: number | null } | null;
 }) {
   const [feed, setFeed] = useState<Feed | null>(null);
   const [status, setStatus] = useState<"loading" | "ok" | "empty" | "error">("loading");
@@ -111,6 +123,9 @@ export function TerminalChart({
   const rangeRef = useRef<TerminalRange>(range);
   const decimalsRef = useRef<number>(2);
   const latestBarRef = useRef<{ o: number; h: number; l: number; c: number; t: number } | null>(null);
+  // Read by `draw` at paint time, so a new round's targets never force a series rebuild (the effect below recolours).
+  const roundRef = useRef(round);
+  roundRef.current = round;
 
   // ── data: fetch the window; poll while visible; refresh on tab reveal ─────
   useEffect(() => {
@@ -415,13 +430,15 @@ export function TerminalChart({
       // tags carrying one number is the candle-mode duplication again.
     }
 
-    // The live price as ONE gilt reference line — hidden when the feed is
+    // The live price as ONE reference line — hidden when the feed is
     // STALE, because a reference line from a dead feed wears a live market's
     // face (F20); the receipt footer still carries the quote's own time.
+    // ⭐ R5(c) · F1 (2026-09-27): its ink is the in-play round's verdict by the TARGETS (`liveLineToken` —
+    // settlement's rule, pinned by test:updown-match §11b), gilt only when no round with targets is in play.
     if (lastSeries && data.livePrice != null && data.liveStale !== true) {
       priceLineRef.current = lastSeries.createPriceLine({
         price: data.livePrice,
-        color: ink("--gilt"),
+        color: ink(liveLineToken(data.livePrice, roundRef.current)),
         lineWidth: 1,
         lineStyle: lib.LineStyle.Dashed,
         axisLabelVisible: true,
@@ -442,6 +459,14 @@ export function TerminalChart({
   // effect keys on BOTH, so whichever arrives second triggers the paint — a
   // state dependency, not a polling shim.
   useEffect(() => { if (feed && engineReady) draw(feed); }, [feed, engineReady, draw]);
+
+  // ⭐ R5(c) · F1 · the ONE token the live line and its named figure below both wear. A new round (the board polls every
+  // 20 s) or a read crossing a target recolours the drawn line in place — never a rebuild, never a viewport yank (F2).
+  const lineToken = liveLineToken(feed?.livePrice ?? null, round);
+  useEffect(() => {
+    priceLineRef.current?.applyOptions({ color: makeInkResolver()(lineToken) });
+  }, [lineToken]);
+  const showLine = feed != null && feed.livePrice != null && feed.liveStale !== true;
 
   const receipt = feed?.sourceQuotedAt
     ? `${labels.sourceLabel} · ${labels.quotedWord} ${fmtEAT(feed.sourceQuotedAt)}`
@@ -481,10 +506,18 @@ export function TerminalChart({
         <p className="mt-1 mb-0 font-mono text-body-sm text-text-subtle">{labels.noCandles}</p>
       )}
       {feed && (
-        <p className="mt-1 mb-0 text-right font-mono text-body-sm" style={{ color: feed.liveStale ? "var(--no-300)" : "var(--text-faint)" }}>
+        <p className="mt-1 mb-0 flex flex-wrap items-baseline justify-end gap-x-3 gap-y-0.5 text-right font-mono text-body-sm" style={{ color: feed.liveStale ? "var(--no-300)" : "var(--text-faint)" }}>
+          {/* ⭐ R5(c) · F1 (2026-09-27) · THE LINE IS NAMED, in its own ink: "Confirmed price $63,590.62" — the band's and the
+              round page's word for the newest confirmed read, which a dashed line on a canvas could not say (and which a
+              screen reader never heard). Held whole; it drops with the line when the feed is stale (F20). */}
+          {showLine && (
+            <span className="whitespace-nowrap" data-line-ink={lineToken} style={{ color: `var(${lineToken})` }}>
+              {labels.confirmedPrice}{" "}<span className="tabular-nums">{usd(feed.livePrice, feed.decimals)}</span>
+            </span>
+          )}
           {/* No vendor attribution by the owner's explicit, informed decision —
               §B12.6 records it. */}
-          {receipt}
+          <span>{receipt}</span>
         </p>
       )}
     </div>
