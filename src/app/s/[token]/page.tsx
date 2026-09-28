@@ -1,10 +1,11 @@
 import { PageContainer } from "@/components/layout/page-container";
-import { PageHeader } from "@/components/ui/page-header";
-import { EmptyState } from "@/components/ui/empty-state";
 import { getServerT } from "@/lib/i18n-server";
 import { SENDER_IDENTITY } from "@/lib/marketing/footer";
-import { resolveOptOutToken } from "@/lib/server/marketing/optout-service";
+import { resolveOptOutTokenWithinBudget, refusalKindFor } from "@/lib/server/marketing/optout-service";
+import type { OptOutPageResolution } from "@/lib/server/marketing/optout-service";
+import { OptOutRefusal, ContactLines } from "../optout-refusal";
 import { OptOutClient } from "./optout-client";
+import { optOutClientKey } from "./client-key";
 
 /**
  * `/s/[token]` — THE WAY OUT OF A MARKETING SMS. No login, one click, and a distinct sentence
@@ -28,6 +29,11 @@ import { OptOutClient } from "./optout-client";
  * would send `50pick.tz/s/<token>` to Google with every hit, which is a live opt-out
  * credential for a named person handed to a third party. That file already names this exact
  * hazard for `/agent/invite`.
+ *
+ * ⭐ D6 (2026-09-26) · A MINIMAL SHELL. `app-shell.tsx` gives `/s` the logo, the language menu and the
+ * footer's licence and helpline lines only — no sign-in or sign-up, no nav, no rail, no chat, no
+ * first-visit primer, no "propose markets and get paid". Somebody who came to leave is not sold to.
+ * Bare `/s` (a link that lost its token) has its own page, the same refusal (`../page.tsx`).
  */
 export const dynamic = "force-dynamic";
 
@@ -41,38 +47,77 @@ export async function generateMetadata() {
   };
 }
 
-export default async function OptOutPage({ params }: { params: Promise<{ token: string }> }) {
-  const { token } = await params;
-  const { t } = await getServerT();
-  const r = await resolveOptOutToken(token);
+/**
+ * ⚠️ DEV-ONLY HOOKS, SO STATES A FAST LOCAL STORE NEVER SHOWS CAN BE PHOTOGRAPHED
+ * (`marketing-u8-optout-drive.mjs`). `?qa_hold_ms` holds the render, so `loading.tsx` stays on screen
+ * long enough to capture; `?qa_fail_read=1` makes the read throw, so the "did not go through" refusal
+ * can be seen. ⛔ BOTH ARE NO-OPS IN PRODUCTION, whatever the query says — the same rule as every
+ * `api/dev-test` route — and the hold is capped, so a typo cannot hang a local server.
+ */
+const QA_HOLD_MAX_MS = 5000;
+type Query = Record<string, string | string[] | undefined>;
+const qaParam = (sp: Query, key: string): string | undefined => {
+  const v = sp[key];
+  return Array.isArray(v) ? v[0] : v;
+};
+async function qaHold(sp: Query): Promise<void> {
+  if (process.env.NODE_ENV === "production") return;
+  const ms = Number(qaParam(sp, "qa_hold_ms"));
+  if (Number.isFinite(ms) && ms > 0) await new Promise((res) => setTimeout(res, Math.min(ms, QA_HOLD_MAX_MS)));
+}
+function qaFailRead(sp: Query): boolean {
+  if (process.env.NODE_ENV === "production") return false;
+  return qaParam(sp, "qa_fail_read") === "1";
+}
 
-  // ⛔ ONE SENTENCE FOR BOTH FAILURES. `malformed` and `unknown` are different to the service
-  // and identical to the reader: telling a stranger which of the two they hit turns `/s/` into
-  // an oracle for guessing live tokens. ⛔ And it is a REFUSAL, never a quiet success — the
-  // copy says plainly that nothing has changed.
-  if (!r.ok) {
-    return (
-      <PageContainer tier="receipt" className="space-y-5">
-        <PageHeader eyebrow={SENDER_IDENTITY} title={t.optout.title} />
-        {/* ⛔ NO `body` HERE, AND THAT IS THE POINT. The first version passed `optout.body` —
-            "tap once to stop marketing messages" — onto a page that renders NO BUTTON TO TAP.
-            Caught by reading the screenshot rather than by any assertion: instructing an action
-            the page does not offer is a small false promise, on the one page whose whole job is
-            never to make one. The refusal sentence stands alone. */}
-        <EmptyState kind="default" title={t.optout.invalid} />
-      </PageContainer>
-    );
+export default async function OptOutPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ token: string }>;
+  searchParams: Promise<Query>;
+}) {
+  const { token } = await params;
+  const sp = await searchParams;
+  await qaHold(sp);
+  const { t } = await getServerT();
+  // ⭐ WITHIN A BUDGET ONLY A MISS SPENDS (D6) — see the service. ⛔ A read that FAILED is not an
+  // invalid link: it gets the "did not go through" sentence, never "this link does not work".
+  let r: OptOutPageResolution | null;
+  try {
+    if (qaFailRead(sp)) throw new Error("qa_fail_read (dev only)");
+    r = await resolveOptOutTokenWithinBudget(token, await optOutClientKey());
+  } catch (err) {
+    console.error("[optout] page read failed:", (err as Error)?.message ?? err);
+    r = null;
+  }
+
+  // ⛔ ONE SENTENCE PER THING THE READER CAN ACT ON, never one per cause the service knows
+  // (`refusalKindFor`): `malformed` and `unknown` are one sentence, or `/s/` becomes an oracle for
+  // guessing live tokens; a dry budget is "busy, try again" (no lookup was made, so it reveals nothing);
+  // a failed read is "did not go through". ⛔ Each is a REFUSAL, never a quiet success — the copy says
+  // plainly that nothing has changed, and (F4) it names the next step. The retry is the same address.
+  if (!r || !r.ok) {
+    return <OptOutRefusal t={t} kind={refusalKindFor(r) ?? "invalid"} retryHref={`/s/${encodeURIComponent(token)}`} />;
   }
 
   return (
     <PageContainer tier="receipt" className="space-y-5">
-      <PageHeader eyebrow={SENDER_IDENTITY} title={t.optout.title} subtitle={t.optout.body} />
-      <section className="rounded-xl glass-panel p-4">
-        {/* `tabular-nums` because it is a phone number, and masked because §5.14 allows nothing
-            else: whoever is holding this phone can open this page. */}
-        <p className="font-mono text-title-sm font-bold tabular-nums text-text">{r.masked}</p>
-      </section>
-      <OptOutClient token={token} suppressed={r.suppressed} />
+      {/* ⭐ THE HEADING, THE NUMBER AND THE ONE ACTION ALL LIVE IN THE CLIENT NOW (D6), because the
+          heading must follow the state: a fresh load of a stopped number used to show "Stop marketing
+          messages / tap once to stop…" directly above a button that RE-SUBSCRIBES. `r.masked` only —
+          §5.14 allows nothing else, and the raw number never leaves the server (`test:marketing-optout`
+          S5 greps this file for the identifier field, comments included). `r.token` is the
+          NORMALISED token, so a lower-case link acts on the same row it resolved.
+          `contact` is our desk, read here on the server (E-226), shown under a failed tap. */}
+      <OptOutClient
+        token={r.token}
+        masked={r.masked}
+        suppressed={r.suppressed}
+        resumable={r.resumable}
+        eyebrow={SENDER_IDENTITY}
+        contact={<ContactLines t={t} align="start" />}
+      />
     </PageContainer>
   );
 }

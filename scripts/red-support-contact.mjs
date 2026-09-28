@@ -8,7 +8,7 @@
  * duplication it was written to remove had already been removed by the support-and-care campaign,
  * and what was actually missing was the control.
  *
- * ⛔ TWO OF THE FOUR MUTATIONS ARE CONTROLS ON THE SUITE'S OWN CONTROLS. §15.1 passes perfectly over
+ * ⛔ SOME OF THE MUTATIONS ARE CONTROLS ON THE SUITE'S OWN CONTROLS. §15.1 passes perfectly over
  * a file that has stopped printing the helpline at all, so one mutation deletes a copy rather than
  * drifting it and requires §15.2 to be the thing that fires.
  *

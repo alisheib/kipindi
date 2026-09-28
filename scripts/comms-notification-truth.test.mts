@@ -158,7 +158,7 @@ ok("every registered emitter exists", registeredFns.every((f) => exportedFns.inc
   `phantom: ${registeredFns.filter((f) => !exportedFns.includes(f)).join(", ") || "-"}`);
 ok("every registered kind is a real kind", NOTIFICATION_EMITTERS.every((e) => NOTIFICATION_KINDS.includes(e.kind)));
 // The fan-out emitters return void, so they are exercised in §5 instead.
-const FANOUT = ["notifyAdminObjectionFiled", "notifyAdminsAmlReview", "notifyAdminsSentinelDown", "notifyAdminsAiCreditLimit", "notifyAdminsBackupUnhealthy", "notifyAdminsKycReviewOverdue", "notifyAdminsHouseBotErasureBlocked",
+const FANOUT = ["notifyAdminObjectionFiled", "notifyAdminsAmlReview", "notifyAdminsSentinelDown", "notifyAdminsAiCreditLimit", "notifyAdminsBackupUnhealthy", "notifyAdminsSmsCreditLow", "notifyAdminsKycReviewOverdue", "notifyAdminsHouseBotErasureBlocked",
   // House bots (build commit 4, step 9): eight admin fan-outs, each driven in §5.
   "notifyAdminsHouseBotBet", "notifyAdminsHouseBotStaffChosen", "notifyAdminsHouseBotHourSummary", "notifyAdminsHouseBotPaused",
   "notifyAdminsHouseBotSwitch", "notifyAdminsHouseBotMoneyEvent", "notifyAdminsHouseBotAlert", "notifyAdminsHouseBotRoster"];
@@ -247,6 +247,9 @@ section("5 · fan-out — officer alerts reach officers, complete in 3 locales")
   // The backup watchdog (E-256) — driven with the real "stale" shape from
   // watchdog.ts §describeBackupAlert, not a minimal string.
   await N.notifyAdminsBackupUnhealthy({ kind: "stale", reason: "The last verified backup is 49 hours old — the nightly has not completed since. GitHub may be delaying, failing, or silently no longer running the schedule.", ageHours: 49, destination: "github-artifact" });
+  // 2026-09-26 · SMS credit at the alert line, then below the floor — both copy branches.
+  await N.notifyAdminsSmsCreditLow({ tzs: 144, alertTzs: 150, floorTzs: 50 });
+  await N.notifyAdminsSmsCreditLow({ tzs: 30, alertTzs: 150, floorTzs: 50 });
   await N.notifyAdminObjectionFiled("obj_1", "A disputed poll");
   // 2026-09-13 · an identity review past its target — driven with the shape the SLA chore passes.
   await N.notifyAdminsKycReviewOverdue({ kycId: "kyc_c3", userId: U, playerLabel: "Asha M.", submittedAt: "2026-09-12T08:00:00.000Z", hoursWaiting: 26 });
@@ -262,7 +265,7 @@ section("5 · fan-out — officer alerts reach officers, complete in 3 locales")
   await N.notifyAdminsHouseBotAlert({ code: "SETTLE_BLOCKED", botId: "hb_c3bot01", label: "Bot A", holder: "Player #A3F2K8", detail: { openStakeTzs: 240_000 }, at: "14:07:45" });
   await N.notifyAdminsHouseBotRoster({ botId: "hb_c3bot01", label: "Bot A", event: "RULES_SAVED", eventId: "hbe_c3roster01", at: "14:08:11", detail: { byName: "Juma M.", field: "daily loss cap", from: "TZS 50,000", to: "TZS 200,000" } });
   const rows = await db.notification.findByUser("c3_officer", 500);
-  ok("officer received the fan-out alerts", rows.length >= before + 15, `before=${before} after=${rows.length}`);
+  ok("officer received the fan-out alerts", rows.length >= before + 17, `before=${before} after=${rows.length}`);
   const fresh = rows.slice(0, rows.length - before);
   for (const r of fresh) {
     ok(`fan-out "${r.titleEn.slice(0, 34)}": has Chinese`, !!r.titleZh && !!r.bodyZh && /[一-鿿]/.test(r.titleZh));

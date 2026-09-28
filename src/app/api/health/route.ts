@@ -6,7 +6,7 @@
  */
 import { NextResponse } from "next/server";
 import { db } from "@/lib/server/store";
-import { sms, smsHealthSnapshot, smsBalanceSnapshot, smsConfigured } from "@/lib/server/sms";
+import { sms, smsHealthSnapshot, smsBalanceSnapshot, smsConfigured, refreshSmsBalance, SMS_BALANCE_HEALTH_BUDGET_MS } from "@/lib/server/sms";
 import { listMarkets } from "@/lib/server/market-service";
 import { auditRingSize } from "@/lib/server/audit";
 import { LIFECYCLE_TASK, lifecycleTickerHealth } from "@/lib/server/lifecycle";
@@ -38,6 +38,12 @@ const publicLeadership = () => Object.fromEntries(Object.entries(leadershipSnaps
 export async function GET() {
   try {
     const uptimeSec = Math.floor((Date.now() - BOOT_AT) / 1000);
+    // ⭐ THE SMS BALANCE IS REFRESHED HERE TOO (2026-09-26), started first so it overlaps the database ping. It used
+    // to publish whatever the process last saw: null after every deploy until someone opened /admin/system, then that
+    // figure forever with no time. Bounded by SMS_BALANCE_HEALTH_BUDGET_MS (a deploy gate waits on this route), a
+    // reading under a minute old is reused, one request is shared, and a failed read is not retried for 30 s — so a
+    // visitor cannot turn this public route into a stream of vendor calls. ⛔ It never fails the probe.
+    const smsRead = refreshSmsBalance({ maxAgeMs: 60_000, budgetMs: SMS_BALANCE_HEALTH_BUDGET_MS }).catch(() => null);
 
     // 🔴 READINESS, NOT JUST LIVENESS. This endpoint used to answer `ok: true` with HTTP 200
     // while Postgres was unreachable: `db.user.count()` was wrapped in a bare `catch {}` and
@@ -77,6 +83,7 @@ export async function GET() {
     try { userCount = await db.user.count(); } catch { /* graceful */ } // audit H4 — COUNT(*), not a full scan every probe
     const auditCount = auditRingSize();
     const smsHealth = smsHealthSnapshot();
+    await smsRead;
     const smsBalance = smsBalanceSnapshot();
     // OPS READ → productLine "ALL". A health probe reports what the platform is
     // actually running; a stalled Up & Down chain must show up here as a live-market
@@ -125,6 +132,10 @@ export async function GET() {
           sent: smsHealth.sent,
           failed: smsHealth.failed,
           balanceTzs: smsBalance.tzs,
+          // When that figure was read, and whether it is past the 15-minute TTL (stale = unknown, never low — so a
+          // stale low figure reads `balanceBelowFloor: false`). A figure without its time can be hours old.
+          balanceAt: smsBalance.at === null ? null : new Date(smsBalance.at).toISOString(),
+          balanceStale: smsBalance.stale,
           balanceBelowFloor: smsBalance.belowFloor,
           webhookSecretSet: !!process.env.BLACKBALL_WEBHOOK_SECRET,
         },

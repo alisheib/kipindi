@@ -5,7 +5,7 @@
  * 🔴 D5: NO SMS THIS PLATFORM SENDS CARRIES A SENDER IDENTITY OR A RESPONSIBLE-GAMING FOOTER, and
  * both are required. ETA Cap 442 s.32(1)(b)–(c) requires the sender to be identified and an opt-out
  * to be given IN EVERY MESSAGE; s.32(2)(d) and GBT Code cl. 3.7.1–3.7.2 require the condensed
- * responsible-gaming message and the Board's helpline. A campaign body typed by an officer cannot be
+ * responsible-gaming message and a helpline — the one 50pick publishes (Ali, OQ4). A campaign body typed by an officer cannot be
  * trusted to carry them, so the engine appends them and the arithmetic counts them.
  *
  * ── WHY THE FOOTER IS COUNTED, NOT JUST ADDED ────────────────────────────────
@@ -37,7 +37,7 @@
  * Guard: `npm run test:campaign-compose`.
  */
 import { appUrl } from "@/lib/app-url";
-import { sizeSms, SMS_LIMITS, type SmsSize } from "@/lib/sms-compose";
+import { sizeSms, unitsIn, capUnits, SMS_MAX_SEGMENTS, type SmsEncoding, type SmsSize } from "@/lib/sms-compose";
 import { HELPLINE_TEL } from "@/lib/support-config";
 
 /** The opt-out path's token length. ⛔ The route itself is plan U8; this is the length it must mint. */
@@ -97,12 +97,17 @@ export function footerMeasurementToken(): string {
  * ⚠️ `sourcePhrase` is OQ3's shadow. If the lawyer's answer to "how must ETA s.31(c)'s source of the
  * personal information be given inside a 160-character SMS" is "in the body", that phrase comes out
  * of the same 160 and the budget drops accordingly. Passing it here prices that answer instead of
- * arguing about it.
+ * arguing about it. It is counted with the space `composeMarketing` puts after it.
+ *
+ * 🔴 ENCODING-AWARE SINCE 2026-09-26. It always subtracted from the GSM-7 limit, so a UCS-2 message was
+ * told "you have 111 characters" when 70 − 49 = 21 fit. `encoding` is the MESSAGE's, and the footer is
+ * sized in it (`unitsIn`). The cap is `SMS_MAX_SEGMENTS` — the one the composer refuses at.
  */
-export function operatorBudget(locale: MarketingLocale = "SW", sourcePhrase = ""): number {
+export function operatorBudget(locale: MarketingLocale = "SW", sourcePhrase = "", encoding: SmsEncoding = "GSM7"): number {
   const footer = marketingFooter(footerMeasurementToken(), locale);
-  const overhead = sizeSms(footer).units + (sourcePhrase ? sizeSms(sourcePhrase).units : 0);
-  return SMS_LIMITS.GSM7.single - overhead;
+  const source = sourcePhrase ? `${sourcePhrase.trim()} ` : "";
+  const overhead = unitsIn(footer, encoding) + unitsIn(source, encoding);
+  return capUnits(encoding) - overhead;
 }
 
 export type MarketingCompose = {
@@ -133,7 +138,8 @@ export function composeMarketing(
   const source = sourcePhrase ? `${sourcePhrase.trim()} ` : "";
   const text = `${source}${trimmed}${marketingFooter(token, locale)}`;
   const size = sizeSms(text);
-  const budget = operatorBudget(locale, sourcePhrase);
+  // ⭐ The budget in the encoding this message will actually go out in — a single ’ makes it UCS-2.
+  const budget = operatorBudget(locale, sourcePhrase, size.encoding);
   const problems: string[] = [];
 
   // ETA s.32(1)(b) — identity at the START, not somewhere in the middle.
@@ -146,10 +152,11 @@ export function composeMarketing(
   if (token.length !== OPTOUT_TOKEN_CHARS) {
     problems.push(`The opt-out link is missing or the wrong length, so this message would give no way to stop.`);
   }
-  if (size.segments > 1) {
+  // ⛔ THE ONE CAP (`SMS_MAX_SEGMENTS`), never a second literal here — the two disagreed until 2026-09-26.
+  if (size.segments > SMS_MAX_SEGMENTS) {
     problems.push(
-      `This is ${size.segments} messages, not one — you have ${budget} characters before the required footer, ` +
-        `and this uses ${sizeSms(`${source}${trimmed}`).units}.`,
+      `This is ${size.segments} messages, and the limit is ${SMS_MAX_SEGMENTS} — you have ${budget} characters before the required footer, ` +
+        `and this uses ${unitsIn(`${source}${trimmed}`, size.encoding)}.`,
     );
   }
   if (size.encoding === "UCS2" && size.offending.length > 0) {

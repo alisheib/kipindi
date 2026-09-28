@@ -282,6 +282,11 @@ const RENDERS: Rendered[] = [
   { template: "backupUnhealthyAdminHtml",
     benign:  E.backupUnhealthyAdminHtml({ kind: "stale", reason: "The last verified backup is 49 hours old — the nightly has not completed since. GitHub may be delaying, failing, or silently no longer running the schedule.", ageHours: 49, destination: "github-artifact" }),
     hostile: E.backupUnhealthyAdminHtml({ kind: HOSTILE, reason: HOSTILE, ageHours: null, destination: HOSTILE }) },
+  // 2026-09-26 · SMS credit at the alert line. Numbers only — no caller text reaches it — so the hostile render
+  // drives the other branch (below the floor) and a zero.
+  { template: "smsCreditLowAdminHtml",
+    benign:  E.smsCreditLowAdminHtml({ tzs: 144, alertTzs: 150, floorTzs: 50 }),
+    hostile: E.smsCreditLowAdminHtml({ tzs: 0, alertTzs: 150, floorTzs: 50 }) },
   // 2026-09-13 · an identity review past its target. The player's LABEL is the one caller string an
   // officer's alert carries (a display name is player-controlled), so the hostile render puts the payload
   // there and in every other free-text position.
@@ -342,7 +347,9 @@ ok("every template is rendered by this suite",
 // same way after the edit (`grep -c "^export function [a-zA-Z]*Html" src/lib/server/email.ts`) = 67.
 // ⚠️ 67 → 66 on 2026-09-16 (branch house-bots, eighth session): `houseBotOwnerHtml` REMOVED by owner ruling D19c
 // (C4 ruling 149) — the holder receives no house-bot email at all. Measured the same way after the edit = 66.
-ok(`the inventory is 66 templates (found ${exported.length})`, exported.length === 66);
+// ⚠️ 66 → 67 on 2026-09-26 (branch marketing-s7): `smsCreditLowAdminHtml`, the officer alert when the SMS credit
+// reaches the alert line. Measured the same way after the edit = 67.
+ok(`the inventory is 67 templates (found ${exported.length})`, exported.length === 67);
 
 // ── 2 · Every template has a real sender ───────────────────────────────────────
 section("2 · wiring — a template with no sender is a template nobody gets");

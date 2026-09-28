@@ -2989,6 +2989,10 @@ On a phone, the free statutory helpline given in answer to 'I have a problem wit
 
 *Evidence:* Opened FAQ 5 reads 'Open Profile → Responsible gambling. … self-exclude. 0800 11 0011 (free).' In SW: '… kujizuia. 0800 11 0011 (bure).' The number is plain text appended at help/page.tsx:136, not a tel: link. The footer has it as a tel:0800110011 link; the FAQ answer does not (help-faq5-open-360-sw.png).
 
+*2026-09-26 — fixed in code by the marketing lane's audit-fix pass (with S08-info-H02): FAQ 5 now shows the helpline label ("Simu ya msaada" / "Helpline" / "求助热线") and the number as a `tel:` link, then "(bure)." / "(free)." / "（免费）。". Guards: `test:support-contact` §14.5–§14.7 and a fifth `red:support-contact` mutation. Closes when the sw 360 capture with FAQ 5 open is taken on the deployed build.*
+
+*2026-09-27 — still 🕓 unverified: the local capture of this date never showed the fix.* The capture script (`.qa-shots/e2e/capture.mjs`, gitignored) aimed `getByText(/0800/).first()` at the number inside FAQ 5's CLOSED `<details>`, recorded its text as `""` and swallowed the failed scroll in a `.catch` — and it would do the same on production. ⛔ A closing shot must click the FAQ 5 `<summary>` first and target `details[open] a[href="tel:0800110011"]`. This finding (with S08-info-H02) closes only on the deployed sw 360 capture reading *"…au kujizuia. Simu ya msaada 0800 11 0011 (bure)."*
+
 ### S08-06 · 🟡 medium · 🕓 unverified · filter
 **Leaderboard product lens rail (All / Markets / Up & Down)** — `/leaderboard`
 
@@ -3121,6 +3125,10 @@ On phones the five steps are listed twice in a row (icon list, then text list), 
 The one answer for a player at risk gives the free national helpline as untappable text with no lead-in, while the legal page makes it a tel: link.
 
 *Evidence:* src/app/help/page.tsx:136 `{key === "faq5" && ` ${HELPLINE()} (${t.common.free}).`}` — plain text. Live (details opened in-page): EN "…or self-exclude. 0800 11 0011 (free)." links: 0; SW "…au kujizuia. 0800 11 0011 (bure)." links: 0. The legal RG page renders the same number as `<a href={`tel:${HELPLINE_TEL()}`}>` (legal/responsible-gambling/page.tsx:93).
+
+*2026-09-26 — fixed in code with S08-05 (see there): a labelled `tel:` link, guarded by `test:support-contact` §14.7. Closes with the same deployed capture.*
+
+*2026-09-27 — still 🕓 unverified: the local capture of this date targeted the number inside the CLOSED FAQ 5 `<details>` and never showed the fix (see S08-05 for how a closing shot must be taken). Closes only on the deployed sw 360 capture reading "…au kujizuia. Simu ya msaada 0800 11 0011 (bure)."*
 
 ### S08-info-L03 · 🟡 medium · 🕓 unverified · state
 **Tier badge tooltip (Tooltip around TierBadge)** — `/leaderboard`
@@ -3303,6 +3311,8 @@ One rail mixes title case and all caps, and the same state is 'Voided' on the pi
 On a phone the word LEGAL is printed twice in two bordered boxes before the document title.
 
 *Evidence:* src/app/legal/layout.tsx:36-50 aside box prints EYEBROW[locale]; responsible-gambling/page.tsx:212 LegalHeader eyebrow={EYEBROW[locale]} again (_components.tsx:291). Live 360: 'LEGAL' at y≈148 and again at y≈500 (screenshot).
+
+*2026-09-27 — seen again by the marketing lane's final visual pass and NOT fixed there; carried with the other public-copy items (sw FAQ questions, the sw AML nav label, Privacy §4 FIU/TRA, RG §2 wording, the sw help-card subtitles, the three sw names for the RG settings page) in `MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md` §0 ◐ CARRIED (f).*
 
 ### S08-info-CP03 · ⚪ low · 🕓 unverified · a11y
 **Hardcoded English region names** — `/leaderboard, /fairness`
@@ -3692,6 +3702,8 @@ Two verbs for the same action in the same view, in both locales.
 The consent sentence names documents that don't match the links beside it. SW wording changes the meaning of an opt-in and makes a routine sign-out sound punitive.
 
 *Evidence:* - "I accept the Terms and Privacy." (i18n :490) sits directly above links named "Terms of service" and "Privacy". SW: "Ninakubali Sheria na Faragha." (:3104) vs links "Masharti ya huduma" / "Faragha"; "Sheria" (laws) is not "Masharti" (terms). - SW marketing opt-in "Nipe matangazo (hiari)." (:3105) reads as "send me advertisements", while EN says "product updates". - SW session-ended title "Umetolewa" (:3121) reads as "you have been removed", vs EN "Signed out". - Trust strip "18+ · Licensed by GBT" (:494) uses an unexpanded acronym.
+
+*2026-09-26 — two of the four bullets addressed by the marketing lane's audit-fix pass. The opt-in: the box now names sender, content and channel in every language — sw "Nitumie ofa na habari za 50pick kwa SMS (hiari)." (consent law, `COMPLIANCE-DECISIONS.md` § "2026-09-26 · Marketing consent names SMS"). The terms label: sw reworded to "Masharti ya huduma" to match its link (`auth.termsAccept`) — confirm both on the deployed build. "Umetolewa" and the "GBT" acronym are untouched.*
 
 ### S09-auth-19 · ⚪ low · 🕓 unverified · number
 **Self-exclusion panel date and support phone** — `/auth/login?excluded=serving&until=2026-12-01`
@@ -4981,6 +4993,8 @@ Counts beside figures that DO go through the platform grammar are grouped by the
 Two date grammars in one product: /updown/history renders "11 Ago" (SW) or "2026年8月11日" (ZH) through formatEatDay, while every deadline, receipt and audit line on the same account renders the English "11 Aug" / "11 Aug, 14:30". ZH is the worst case — a Latin month abbreviation inside a Chinese sentence.
 
 *Evidence:* utils.ts:268-298 and :330-341 all pass the fixed locale "en-GB" (`new Date(iso).toLocaleString("en-GB", { day: "numeric", month: "short", … })`). The platform's localized month names exist and are used elsewhere: eat-day.ts:72-76 `formatEatDay(dayKey, monthsShort, locale)` with i18n-dict.ts:454 (EN), :3073 (SW `"Mac","Mei","Ago","Okt","Des"`), :5210 (ZH `"8月"`). Executed: the en-GB call renders "11 Jun, 14:30" for every locale; the ZH-correct form is "6月11日 14:30".
+
+*2026-09-27 — fixed in code ONLY on the SMS consent card (marketing lane; closes on a deployed capture):* the held note on `/profile/notifications` writes its end date with `formatHeldUntil` (`src/app/profile/notifications/held-until.ts`, a wrapper over `formatEatDay`) in the page's language — "2 Dec" / "2 Des" / "2026年12月2日". The RG page's two banners (`src/app/profile/responsible-gambling/page.tsx:107/109`) still render `formatDate` ("28 Sept 2026"), so for now the two surfaces show different formats. Carried in `MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md` §0 ◐ CARRIED (e); the rest of this finding (every other date helper) is unchanged.
 
 ### S13-16 · 🟡 medium · 🕓 unverified · state
 **<Cash> masked state** — `/wallet, /positions, /markets/[id], /profile/invite (every b`

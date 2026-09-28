@@ -141,7 +141,6 @@ async function AdminAuditContent({ searchParams }: AdminAuditProps) {
             value={chain.valid ? "Valid" : "BROKEN"}
             tone={chain.valid ? "success" : "danger"}
             delta={chain.valid ? "HMAC-chained" : "tampering detected"}
-            deltaDir={chain.valid ? "up" : "down"}
             spark={false}
           />
         </KpiGrid>

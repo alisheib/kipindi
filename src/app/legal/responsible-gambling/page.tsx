@@ -21,7 +21,7 @@ const TITLE: Record<Locale, string> = {
  * one date takes a `.2` suffix, as Privacy does.
  * ⭐ 2026-09-14.3 — every limit (not only deposit limits) waits 24 hours to loosen, and the session limit survives a new
  * sign-in (COMPLIANCE-DECISIONS 2026-09-14, eighth).
- * ⭐ 2026-09-26 — §4 says only what the code does (COMPLIANCE-DECISIONS 2026-09-26). The marketing promise names the
+ * ⭐ 2026-09-26 — §4 says only what the code does (COMPLIANCE-DECISIONS § "2026-09-26 · RG Policy v2026-09-26"). The marketing promise names the
  * exclusions the marketing gate actually runs, the under-25 promise is BUILT (a self-exclusion or a break ever on
  * record), and "no sign-up nudges in the late-night window" is CUT — no such window exists in code. ⛔ Do not restore
  * it until one does; `test:rg-policy` refuses a §4 bullet with no control behind it.
@@ -115,7 +115,7 @@ function content(): Record<Locale, React.ReactNode> { return {
           <li><strong className="text-text">Mipaka ya kuweka fedha</strong> — ya kila siku, kila wiki, kila mwezi.</li>
           <li><strong className="text-text">Mpaka wa hasara</strong> — wa kila siku.</li>
           <li><strong className="text-text">Mpaka wa muda wa kipindi</strong> — kipindi chako cha kucheza kikifikia muda uliouchagua <span className="whitespace-nowrap">(dakika&nbsp;15–480)</span>, dau mpya hukataliwa. Unabaki umeingia, na bado unaweza kuweka na kutoa fedha. Kutoka na kuingia tena hakuanzishi muda upya.</li>
-          <li><strong className="text-text">Ukaguzi wa uhalisia (reality check)</strong> — ukumbusho kila baada ya dakika&nbsp;30 (unaweza kupangwa dakika&nbsp;5–120) unaoonyesha muda uliocheza, pamoja na njia wazi ya kuweka mipaka, kupumzika au kujizuia.</li>
+          <li><strong className="text-text">Ukaguzi wa uhalisia (reality check)</strong> — ukumbusho kila baada ya dakika&nbsp;30 (unaweza kupangwa <span className="whitespace-nowrap">dakika&nbsp;5–120</span>) unaoonyesha muda uliocheza, pamoja na njia wazi ya kuweka mipaka, kupumzika au kujizuia.</li>
           <li><strong className="text-text">Chukua mapumziko</strong> (cooling-off): saa&nbsp;1, saa&nbsp;24, au wiki&nbsp;1. Ni ya njia moja hadi muda utakapoisha.</li>
           <li><strong className="text-text">Kujizuia mwenyewe</strong>: saa&nbsp;24, wiki&nbsp;1, mwezi&nbsp;1, miezi&nbsp;6, au ya kudumu. Hakuwezi kufupishwa wala kufutwa, na akaunti haifunguki yenyewe: kipindi kikiisha, lazima utuombe tuifungue. Kujizuia kwa kudumu hakuwezi kufunguliwa.</li>
         </ul>
@@ -132,16 +132,16 @@ function content(): Record<Locale, React.ReactNode> { return {
         <p>
           Mifumo yetu hutafuta dalili tatu za madhara katika jinsi akaunti inavyotumika: kuweka fedha mara kadhaa ndani ya
           saa moja, au fedha zilizowekwa kwa siku moja kuzidi sana wastani wa kila siku wa hivi karibuni wa akaunti; kuweka
-          fedha mara kwa mara muda mfupi baada ya kuweka dau; na kuweka dau mara kwa mara usiku wa manane (00:00–06:00 EAT).
+          fedha mara kwa mara muda mfupi baada ya kuweka dau; na kuweka dau mara kwa mara usiku wa manane <span className="whitespace-nowrap">(00:00–06:00&nbsp;EAT)</span>.
           Akaunti inayoonyesha mojawapo ya dalili hizi huorodheshwa kwa timu yetu ya uzingatiaji. Mipaka, mapumziko na
-          kujizuia vilivyo katika sehemu ya 2 ni vyako kutumia wakati wowote, iwe dalili imeonekana au la.
+          kujizuia vilivyo katika sehemu ya&nbsp;2 ni vyako kutumia wakati wowote, iwe dalili imeonekana au la.
         </p>
       </LegalSection>
 
       <LegalSection n="4" title="Wajibu wa mwendeshaji">
         <ul className="list-disc pl-5 space-y-1">
-          <li>Hakuna matangazo kwa mchezaji aliyejizuia, kwa mchezaji aliye kwenye mapumziko hadi atakapokubali tena baada ya mapumziko kuisha, kwa mchezaji anayeonyesha dalili ya madhara (sehemu ya 3), wala kwa mtu yeyote aliye chini ya umri wa miaka 18 au ambaye umri wake hatuwezi kuuthibitisha</li>
-          <li>Kamwe hakuna matangazo kwa mchezaji aliye chini ya umri wa miaka 25 aliyewahi kujizuia au kuchukua mapumziko</li>
+          <li>Hakuna matangazo kwa mchezaji aliyejizuia, kwa mchezaji aliye kwenye mapumziko hadi atakapokubali tena baada ya mapumziko kuisha, kwa mchezaji anayeonyesha dalili ya madhara (sehemu ya&nbsp;3), wala kwa mtu yeyote aliye chini ya umri wa miaka&nbsp;18 au ambaye umri wake hatuwezi kuuthibitisha</li>
+          <li>Kamwe hakuna matangazo kwa mchezaji aliye chini ya umri wa miaka&nbsp;25 aliyewahi kujizuia au kuchukua mapumziko</li>
           <li>Hakuna ofa za bonasi zinazohusishwa na ongezeko la fedha zinazowekwa</li>
           <li>Namba ya msaada ya bure inaonyeshwa kwenye sehemu ya chini ya kila ukurasa</li>
         </ul>
@@ -168,30 +168,35 @@ function content(): Record<Locale, React.ReactNode> { return {
         <ul className="list-disc pl-5 space-y-1">
           <li><strong className="text-text">充值限额</strong>：每日、每周、每月。</li>
           <li><strong className="text-text">亏损限额</strong>：每日。</li>
-          <li><strong className="text-text">会话时长限制</strong>：本次游戏会话达到您所选的时长<span className="whitespace-nowrap">（15–480 分钟）</span>后，将拒绝新的投注。您仍保持登录，仍可充值和提现。退出后重新登录不会重新计时。</li>
-          <li><strong className="text-text">现实核查（reality check）</strong>：每 30 分钟（可在 5–120 分钟之间设置）弹出提醒，显示您已游戏的时长，并提供设置限额、暂停或自我排除的清晰入口。</li>
-          <li><strong className="text-text">暂停一下</strong>（冷静期）：1 小时、24 小时或 1 周。到期前不可撤销。</li>
-          <li><strong className="text-text">自我排除</strong>：24 小时、1 周、1 个月、6 个月或永久。不可缩短或撤销，账户也不会自动恢复：期满后须向我们申请重新开通。永久自我排除不可重新开通。</li>
+          <li><strong className="text-text">会话时长限制</strong>：本次游戏会话达到您所选的时长<span className="whitespace-nowrap">（15–480&nbsp;分钟）</span>后，将拒绝新的投注。您仍保持登录，仍可充值和提现。退出后重新登录不会重新计时。</li>
+          <li><strong className="text-text">现实核查（reality check）</strong>：每 30&nbsp;分钟（可在 <span className="whitespace-nowrap">5–120&nbsp;分钟</span>之间设置）弹出提醒，显示您已游戏的时长，并提供设置限额、暂停或自我排除的清晰入口。</li>
+          <li><strong className="text-text">暂停一下</strong>（冷静期）：1&nbsp;小时、24&nbsp;小时或 1&nbsp;周。到期前不可撤销。</li>
+          <li><strong className="text-text">自我排除</strong>：24&nbsp;小时、1&nbsp;周、1&nbsp;个月、6&nbsp;个月或永久。不可缩短或撤销，账户也不会自动恢复：期满后须向我们申请重新开通。永久自我排除不可重新开通。</li>
         </ul>
+        {/* zh: a number keeps its unit (&nbsp;), and the two sentences sit on ONE source line — a JSX line break
+            is a space, and it printed "生效。 所有控制项". No {" "} before the link either: Chinese takes no space there.
+            The link names one settings page, so it stays on one line (whitespace-nowrap, 7 characters): at 360 it
+            broke "负责任博彩设" / "置" (2026-09-27). `test:rg-policy` §3.4. */}
         <p>
-          以上每项限额：设置或下调立即生效；上调或取消 24 小时后生效。
-          所有控制项均可在您的{" "}
-          <a href="/profile/responsible-gambling" className="text-gold-300 hover:text-gold-200 underline-offset-2 hover:underline">
+          以上每项限额：设置或下调立即生效；上调或取消 24&nbsp;小时后生效。所有控制项均可在您的
+          <a href="/profile/responsible-gambling" className="whitespace-nowrap text-gold-300 hover:text-gold-200 underline-offset-2 hover:underline">
             负责任博彩设置
           </a>中访问。
         </p>
       </LegalSection>
 
       <LegalSection n="3" title="伤害的标志">
+        {/* zh + sw: a number range sits whole in a whitespace-nowrap span. The en dash is a break point, and at 360 the
+            line broke "（00:00–" / "06:00 EAT）" (2026-09-27). `test:rg-policy` §3.3. */}
         <p>
-          我们的系统会留意账户使用中的三种伤害迹象：一小时内多次充值，或单日充值额远高于该账户近期的日均水平；下注后不久反复充值；以及在深夜（00:00–06:00 EAT）反复下注。出现其中任一迹象的账户，会列示给我们的合规团队。无论是否出现迹象，您随时都可以使用第 2 节中的限额、暂停和自我排除工具。
+          我们的系统会留意账户使用中的三种伤害迹象：一小时内多次充值，或单日充值额远高于该账户近期的日均水平；下注后不久反复充值；以及在深夜<span className="whitespace-nowrap">（00:00–06:00&nbsp;EAT）</span>反复下注。出现其中任一迹象的账户，会列示给我们的合规团队。无论是否出现迹象，您随时都可以使用第&nbsp;2&nbsp;节中的限额、暂停和自我排除工具。
         </p>
       </LegalSection>
 
       <LegalSection n="4" title="运营方责任">
         <ul className="list-disc pl-5 space-y-1">
-          <li>不向已自我排除的玩家、处于冷静期的玩家（直至其在冷静期结束后重新同意）、出现伤害迹象的玩家（见第 3 节），以及未满 18 岁或无法确认年龄的人发送营销信息</li>
-          <li>绝不向曾经自我排除或进入冷静期、且年龄低于 25 岁的玩家发送营销信息</li>
+          <li>不向已自我排除的玩家、处于冷静期的玩家（直至其在冷静期结束后重新同意）、出现伤害迹象的玩家（见第&nbsp;3&nbsp;节），以及未满 18&nbsp;岁或无法确认年龄的人发送营销信息</li>
+          <li>绝不向曾经自我排除或进入冷静期、且年龄低于 25&nbsp;岁的玩家发送营销信息</li>
           <li>不提供与提高充值挂钩的奖金优惠</li>
           <li>在每个页面的页脚显示免费求助热线</li>
         </ul>

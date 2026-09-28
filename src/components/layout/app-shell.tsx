@@ -61,6 +61,11 @@ import { EmailVerifyBanner } from "./email-verify-banner";
 import { AwaySummaryBar } from "./away-summary-bar";
 import { Needle } from "./needle";
 import { HeaderScrollCast } from "./scroll-cast";
+import { LanguageMenu } from "@/components/ui/language-menu";
+import { FiftyLockup } from "@/components/brand";
+import { HELPLINE, HELPLINE_TEL, LICENCE_NUMBER } from "@/lib/support-config";
+import { isOptOutPath } from "@/lib/marketing/optout";
+import type { Dict } from "@/lib/i18n-server";
 
 export async function AppShell({ children }: { children: React.ReactNode }) {
   const { t, locale } = await getServerT();
@@ -70,6 +75,12 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = h.get("x-pathname") ?? "";
   if (pathname.startsWith("/admin")) {
     return <>{children}</>;
+  }
+  // ⭐ D6 · THE OPT-OUT PAGE GETS A MINIMAL SHELL — see `OptOutShell` below. Decided BEFORE the session
+  // read on purpose: an ended session's document redirect (E-381, below) would otherwise send somebody
+  // trying to stop marketing to the SIGN-IN page, which is an opt-out behind a login (ETA s.32(1)(c)).
+  if (isOptOutPath(pathname)) {
+    return <OptOutShell t={t}>{children}</OptOutShell>;
   }
 
   /* ⭐ THE PLAYER INVITE'S "PAID" IS READ HERE, STARTED NOW AND AWAITED AT `invitePaid` BELOW, so it
@@ -343,12 +354,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       {/* Skip-to-content — WCAG 2.4.1. Visually hidden until focused,
           then overlays the top-left so keyboard/screen-reader users can
           bypass the nav on every page load. */}
-      <a
-        href="#main-content"
-        className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[9999] focus:rounded-md focus:bg-brand-500 focus:px-4 focus:py-2 focus:text-white focus:text-sm focus:font-semibold focus:outline-none focus:shadow-lg"
-      >
-        {t.common.skipToContent}
-      </a>
+      <SkipToContent label={t.common.skipToContent} />
       {/* The header's scroll cast: `--shadow-2` once the page has moved (kit §2). One attribute
           write per crossing of scrollY 0 — never per frame — and it lands on `<html>` rather than
           on the header element React owns. Renders null.
@@ -422,9 +428,9 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
           ⭐ 2026-09-14 — main GROWS (the shell is a flex column), so on a page shorter than the window
           the footer sits at the window's bottom edge instead of leaving a bare darker band under it
           (/wallet/deposit/return at 1280). Same pattern as admin/layout.tsx. */}
-      <main id="main-content" className="flex-1">
+      <MainLandmark>
         <RouteTransition>{children}</RouteTransition>
-      </main>
+      </MainLandmark>
       {/* `supportEmail` is resolved HERE for the third time on this line's own logic (E-226):
           the footer is `"use client"`, so a `SUPPORT_EMAIL()` call inside it reads the browser
           bundle's module default and can never show the address an officer saved. */}
@@ -496,6 +502,90 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
           See `docs/COMPLIANCE-DECISIONS.md` (2026-09-12, second entry) for the override that
           permits an interstitial at all. */}
       <Suspense fallback={null}><LazyChannelsPanel promoSuppressed={promoSuppressed} /></Suspense>
+    </div>
+  );
+}
+
+/**
+ * ⛔ ONE SKIP LINK, RENDERED BY BOTH SHELLS FROM HERE. `test:stacking` reads its focus z-index
+ * as a SOLE declaration in this file, so a second copy for the opt-out shell would break the contract.
+ */
+function SkipToContent({ label }: { label: string }) {
+  return (
+    <a
+      href="#main-content"
+      className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[9999] focus:rounded-md focus:bg-brand-500 focus:px-4 focus:py-2 focus:text-white focus:text-sm focus:font-semibold focus:outline-none focus:shadow-lg"
+    >
+      {label}
+    </a>
+  );
+}
+
+/**
+ * ⛔ ONE DEFINITION OF THE `main-content` LANDMARK FOR BOTH SHELLS — the skip link's target, and the tag
+ * `measure.anchors.mjs` mutates (its `from` must resolve exactly once in this file, so ⛔ do not spell
+ * the opening tag out in a comment either). Each shell renders exactly one.
+ * `flex-1` plus `#main-content { min-height: 100svh }` (globals.css, D26): main is always at least one
+ * viewport tall, so the footer starts BELOW the fold on every page, short ones included, and never
+ * shifts inside the viewport as content arrives. On `/s` that is ~520px of scroll above the licence
+ * lines, by design.
+ */
+function MainLandmark({ children }: { children: React.ReactNode }) {
+  return <main id="main-content" className="flex-1">{children}</main>;
+}
+
+/**
+ * ⭐ D6 (2026-09-26) · THE SHELL FOR `/s/<token>` (and bare `/s`), THE WAY OUT OF A MARKETING SMS.
+ *
+ * The person on this page came to STOP. The player shell put the whole betting product around that one
+ * tap: a filled "Jisajili" in the page's own button colour, the market nav, the bottom rail, the chat
+ * bubble and "Pendekeza masoko upate pesa" — and on the invalid-link state, sign-in and sign-up were the
+ * ONLY actions on the page. Ruling 5: no upsell here. So this renders the brand, the language menu, the
+ * page, and the footer's regulator lines (18+, the Gaming Board licence, the independent helpline) —
+ * nothing that sells, and nothing that navigates.
+ *
+ * ⛔ THE LOGO IS NOT A LINK, AND NOTHING HERE IS A `<Link>`. This branch is decided in the ROOT layout,
+ * which a soft navigation does not re-run (E-70): a `<Link href="/">` from here would render the landing
+ * page inside this stripped shell. The page's own exit (`/profile/notifications`) is a plain `<a>`.
+ * ⛔ The chat bubble and the first-visit primer are mounted from the root layout, outside this shell, so
+ * they stay off `/s` through their own `HIDE_ON` (`ChatRoot.tsx`, `first-visit-primer.tsx`);
+ * `test:marketing-optout` reads all three together.
+ * ⭐ 2026-09-27 · THE HELPLINE KEEPS ITS CONTEXT. Alone, "Simu ya msaada · 0800 11 0011" ("help phone") read
+ * as 50pick's own line — on a page for stopping marketing, often the only number on screen. The full
+ * footer's responsible-gambling line now sits above it, as it does there, so it reads as what it is.
+ */
+function OptOutShell({ t, children }: { t: Dict; children: React.ReactNode }) {
+  return (
+    <div className="min-h-screen flex flex-col bg-bg-base text-text">
+      <SkipToContent label={t.common.skipToContent} />
+      <header style={{ height: 56, background: "var(--panel)", borderBottom: "1px solid var(--border)" }}>
+        <div className="mx-auto max-w-board flex items-center justify-between h-full gap-2 px-3 sm:px-5">
+          <span className="inline-flex min-h-[44px] items-center">
+            <FiftyLockup size={22} />
+          </span>
+          <LanguageMenu />
+        </div>
+      </header>
+      <MainLandmark>{children}</MainLandmark>
+      <footer className="mt-8 lg:mt-12 bg-bg-elevated/40" data-testid="optout-footer">
+        <div aria-hidden className="claret-rule mx-auto max-w-board" />
+        <div className="mx-auto max-w-board px-3 lg:px-6 pt-4 pb-7 space-y-2">
+          <div className="flex items-center gap-2.5">
+            {/* No aria-label: "18+" is the text, and ARIA prohibits a label on a generic span (public-footer.tsx). */}
+            <span className="kp-rg__18">{t.footer.eighteenPlus}</span>
+            {/* zh keeps its words whole (break-keep); the zh string carries zero-width break hints. */}
+            <p className="text-text-muted leading-relaxed text-body-sm text-balance break-keep">{t.footer.licensedByGbt}</p>
+          </div>
+          {/* 13px, not the full footer's 11px: a licence line is read, and 11px is under the reading floor (type-scale §3). */}
+          <p className="font-mono text-body-sm text-text-subtle tabular-nums">{t.footer.license}: {LICENCE_NUMBER()}</p>
+          {/* The INDEPENDENT problem-gambling helpline (a pinned constant, not ours) — the regulator line,
+              under the same responsible-gambling sentence that introduces it in the full footer. */}
+          <p className="italic text-text-subtle text-body-sm text-balance break-keep">{t.footer.stopGambling}</p>
+          <a href={`tel:${HELPLINE_TEL()}`} className="text-body-sm text-text-muted hover:text-text transition-colors inline-flex flex-wrap items-center gap-x-[0.28em] min-h-[44px]">
+            <span className="whitespace-nowrap">{t.footer.helpline} ·</span>{" "}<span className="whitespace-nowrap">{HELPLINE()}</span>
+          </a>
+        </div>
+      </footer>
     </div>
   );
 }

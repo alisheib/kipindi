@@ -28,7 +28,8 @@ export function PageHeader({
   className,
 }: {
   eyebrow: string;
-  title: string;
+  /** A node, so a loading skeleton can render the SAME heading with its text as a placeholder bar. */
+  title: ReactNode;
   subtitle?: ReactNode;
   icon?: ReactNode;
   tone?: Tone;

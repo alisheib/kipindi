@@ -1,12 +1,13 @@
-import { randomUUID } from "crypto";
+import { randomUUID, createHash } from "crypto";
 import { db } from "@/lib/server/store";
-import type { MessagingKey, MessagingLocale } from "@/lib/server/store";
+import type { MessagingKey, MessagingLocale, SuppressionReason } from "@/lib/server/store";
 import { randomId } from "@/lib/server/crypto";
 import { audit } from "@/lib/server/audit";
-import { maskPhone } from "@/lib/phone-normalize";
+import { maskPhone, toMsisdn255 } from "@/lib/phone-normalize";
 import { OPTOUT_TOKEN_CHARS } from "@/lib/marketing/footer";
-import { optOutTokenFromHex, isOptOutTokenShape } from "@/lib/marketing/optout";
+import { optOutTokenFromHex, isOptOutTokenShape, normalizeOptOutToken, optOutTokenRef } from "@/lib/marketing/optout";
 import { userPhoneKeyFor } from "@/lib/server/marketing/consent";
+import { rateCheckAsync, rateRefundAsync } from "@/lib/server/rate-limit";
 import { dict } from "@/lib/i18n-dict";
 
 /**
@@ -43,17 +44,46 @@ export type OptOutAct = "STOP" | "RESUME";
  *
  * ⚠️ Swahili is the DEFAULT (§5.13), so an unrecognised locale falls to `sw` and never to
  * English: a record saying the person read English copy they were never shown is a false one.
+ *
+ * 🔴 D6 (2026-09-26) · RESUME USED TO STORE THE STOP INSTRUCTION. It was `resubscribeButton — body`,
+ * and `body` is "tap once to stop marketing messages" — so every GIVEN row this page wrote recorded
+ * an instruction to STOP as the sentence somebody consented under, and never named what they were
+ * agreeing to. It now stores the consent sentence the page shows BESIDE the resume button,
+ * `push.marketingBody` — the same one the profile toggle uses, which names sender, content and
+ * channel (D1). ⛔ `consent-wording.ts` pins this composition literally (OQ11); a copy change to
+ * either half must be appended there or the gate stops counting it.
+ * ⚠️ The STOP sentence is never pinned: a withdrawal is never consent (`test:marketing-consent-ledger`
+ * 8b). Rewording it (2026-09-27: the page now names "offers and news by SMS", the consent's own noun)
+ * only changes the sentence recorded from then on.
  */
 export function optOutWording(act: OptOutAct, locale: MessagingLocale): string {
   const d = locale === "EN" ? dict.en : locale === "ZH" ? dict.zh : dict.sw;
   return act === "STOP"
     ? `${d.optout.stopButton} — ${d.optout.body}`
-    : `${d.optout.resubscribeButton} — ${d.optout.body}`;
+    : `${d.optout.resubscribeButton} — ${d.push.marketingBody}`;
 }
 
-/** Named because these are DAL-shaped parameters — see `store.ts` on `region()`. */
+/**
+ * ⛔ D6 · WHICH STOPS "START THEM AGAIN" MAY LIFT — ONLY ONE THE PERSON MADE.
+ *
+ * `/s/` is unauthenticated: whoever holds an old SMS can tap it. A `WITHDRAWN` row is the person's own
+ * "stop" (this page, or their own toggle), so their own link may take it back. ⛔ A `COMPLAINT`,
+ * `OPERATOR` or `SELF_EXCLUSION` row was put there by somebody else for a reason the link-holder does
+ * not get to overrule — one tap on an old message must never undo an officer's, an erasure's or a
+ * responsible-gambling suppression. Such a number is shown as stopped, with no way back offered.
+ */
+export const PERSON_LIFTABLE_REASONS: readonly SuppressionReason[] = ["WITHDRAWN"];
+export function personMayLift(reason: SuppressionReason | null | undefined): boolean {
+  return !!reason && PERSON_LIFTABLE_REASONS.includes(reason);
+}
+
+/** Named because these are DAL-shaped parameters — see `store.ts` on `region()`.
+ *  ⭐ `token` is the NORMALISED token (D6: case-insensitive), and every act writes from it rather
+ *  than from what the caller passed. `resumable` is "the page may offer start-them-again": the
+ *  number is stopped AND the stop is one the person made (`personMayLift`). ⛔ The REASON itself is
+ *  never handed to the page — a stranger holding the link learns "stopped", not why. */
 export type OptOutResolution =
-  | { ok: true; identifier: string; masked: string; suppressed: boolean }
+  | { ok: true; token: string; identifier: string; masked: string; suppressed: boolean; resumable: boolean }
   | { ok: false; reason: "malformed" | "unknown" };
 
 export type OptOutActResult =
@@ -73,7 +103,10 @@ const keyFor = (identifier: string): MessagingKey =>
  * the page never reveals which of the two it was, or `/s/` becomes an oracle for guessing live
  * tokens.
  */
-export async function resolveOptOutToken(token: string): Promise<OptOutResolution> {
+export async function resolveOptOutToken(raw: string): Promise<OptOutResolution> {
+  // ⭐ D6 · CASE-INSENSITIVE. Folded BEFORE the shape check, because a lower-case token typed off a
+  // phone screen is the right shape in the wrong case — and was answered "this link does not work".
+  const token = normalizeOptOutToken(raw);
   if (!isOptOutTokenShape(token)) return { ok: false, reason: "malformed" };
   const row = await Promise.resolve(db.marketingOptOutToken.find(token));
   // ⛔ OD43 · THE LINK NEVER EXPIRES. There is deliberately no age comparison here: somebody
@@ -83,13 +116,98 @@ export async function resolveOptOutToken(token: string): Promise<OptOutResolutio
   const active = await Promise.resolve(db.suppression.find(keyFor(row.identifier)));
   return {
     ok: true,
+    token,
     identifier: row.identifier,
     // §5.14 — the page shows the number so the person knows WHICH one they are stopping, and
     // it shows it masked. ⛔ A raw number on a page anybody holding the link can open is a
     // number disclosed to whoever the phone was handed to.
-    masked: maskPhone(row.identifier),
+    // ⭐ D6 · masked in the `+255…` form (`userPhoneKeyFor`), so it reads `+255••••21` like every
+    // other shared mask. The bare marketing key gave `2557••••21`: the operator digit leaked and
+    // the form was one nobody writes their number in.
+    masked: maskPhone(userPhoneKeyFor(row.identifier)),
     suppressed: active !== null,
+    resumable: active !== null && personMayLift(active.reason),
   };
+}
+
+/**
+ * ⭐ THE PAGE'S READ, WITHIN A BUDGET THAT ONLY A MISS SPENDS (D6).
+ *
+ * 🔴 THE LIMIT THAT "STOPS A SCRIPT WALKING THE TOKEN SPACE" USED TO GUARD ONLY THE TWO POSTS. The walk
+ * happens over GET — a valid token renders a number and a button, an invalid one the refusal, so every
+ * GET was a free yes/no. Now each lookup is charged up front and REFUNDED when the token resolves:
+ * a person opening their own link never spends anything, and a walker — whose every guess is a miss —
+ * runs the bucket dry. ⛔ Once it is dry the lookup is not made at all (`throttled`).
+ * 🔴 Corrected 2026-09-27 · the page then said "this link does not work" about a GENUINE link, and the
+ * person, told their link was broken, had no reason to try again. A dry bucket now reads as BUSY:
+ * nothing has changed, try again shortly (`refusalKindFor`). That is not an oracle: no lookup was made,
+ * so the answer is the same for every token, live or not.
+ * ⚠️ The trade-off, stated: a genuine link opened behind the SAME address as an active walker is
+ * refused until the bucket refills (10/min). The refusal names two other ways to stop.
+ */
+/** The suite's handle on the same bucket. ⛔ Every call below types the literal `"optout.ip"` instead:
+ *  `RATE_RULES` is `Record<string, RateRule>`, so tsc cannot see a stale name, and `test:house-bot-reports`
+ *  0.L52.3 reads each call's action from the syntax tree and fails one it cannot read as a declared rule. */
+export const OPTOUT_BUDGET = "optout.ip" as const;
+export type OptOutPageResolution = OptOutResolution | { ok: false; reason: "throttled" };
+
+/**
+ * ⭐ WHICH REFUSAL THE PAGE SHOWS — one answer per cause the READER can act on, never per cause the
+ * service knows. `malformed` and `unknown` stay ONE sentence ("this link does not work"): telling a
+ * stranger which one they hit makes `/s/` an oracle for live tokens. `throttled` is `busy` (no lookup
+ * was made — see above), and a read that threw (passed in as `null`) is `failed` ("did not go through").
+ * It RETURNS null when the token resolved: no refusal, the page renders its button.
+ */
+export type OptOutRefusalKind = "invalid" | "busy" | "failed";
+export function refusalKindFor(r: OptOutPageResolution | null): OptOutRefusalKind | null {
+  if (!r) return "failed";
+  if (r.ok) return null;
+  return r.reason === "throttled" ? "busy" : "invalid";
+}
+
+export async function resolveOptOutTokenWithinBudget(raw: string, clientKey: string): Promise<OptOutPageResolution> {
+  const gate = await rateCheckAsync(clientKey, "optout.ip");
+  if (!gate.allowed) return { ok: false, reason: "throttled" };
+  const r = await resolveOptOutToken(raw);
+  if (r.ok) await rateRefundAsync(clientKey, "optout.ip");
+  return r;
+}
+
+/**
+ * The two acts, within the same budget. ⭐ A MISS spends the address's allowance and a hit is refunded,
+ * so a burst of genuine STOPs through one carrier-NAT address after a large send is never refused for
+ * sharing it. ⛔ And a hit is capped PER LINK instead — 30 burst, 10/min, the same rule — because an
+ * uncapped holder of one valid token could flip stop/start at request speed and append ledger rows
+ * without limit. No person taps their own link thirty times in a minute. The link's bucket is keyed
+ * by a hash, so `/admin/system`'s bucket table never prints a live token.
+ * ⚠️ A refused act reports `error` ("did not go through, try again"), never a success.
+ */
+const linkBucketKey = (token: string): string =>
+  `link:${createHash("sha256").update(`optout-link:${token}`).digest("hex").slice(0, 16)}`;
+
+async function actWithinBudget(clientKey: string, raw: string, act: () => Promise<OptOutActResult>): Promise<OptOutActResult> {
+  const gate = await rateCheckAsync(clientKey, "optout.ip");
+  if (!gate.allowed) return { ok: false, reason: "error" };
+  const token = normalizeOptOutToken(raw);
+  if (isOptOutTokenShape(token)) {
+    const perLink = await rateCheckAsync(linkBucketKey(token), "optout.ip");
+    if (!perLink.allowed) {
+      await rateRefundAsync(clientKey, "optout.ip");
+      return { ok: false, reason: "error" };
+    }
+  }
+  const r = await act();
+  // `error` means the token RESOLVED and a write failed — a hit, so it is refunded like a success.
+  if (r.ok || r.reason === "error") await rateRefundAsync(clientKey, "optout.ip");
+  return r;
+}
+
+export function stopMarketingWithinBudget(raw: string, locale: MessagingLocale, clientKey: string): Promise<OptOutActResult> {
+  return actWithinBudget(clientKey, raw, () => stopMarketing(raw, locale));
+}
+
+export function resumeMarketingWithinBudget(raw: string, locale: MessagingLocale, clientKey: string): Promise<OptOutActResult> {
+  return actWithinBudget(clientKey, raw, () => resumeMarketing(raw, locale));
 }
 
 /**
@@ -107,28 +225,41 @@ export async function resolveOptOutToken(token: string): Promise<OptOutResolutio
  * ⛔ THE PLAYER LOOKUP GOES THROUGH `userPhoneKeyFor` (U7). `User.phoneE164` is `+255…` and the
  * marketing key is bare `255…`; they are unequal for every input, so a bare lookup finds NO
  * player, leaves every profile toggle untouched, and never errors.
+ *
+ * 🔴 THE THREE WRITES ARE NOT ONE TRANSACTION, SO "ALREADY" REPAIRS. If the ledger write failed after
+ * the suppression row landed, the page said "try again" — and the retry used to return `already`
+ * before either missing write was made, leaving the ledger's latest row GIVEN (no evidence of the
+ * withdrawal) and the player's toggle ON for ever. Now `already` finishes the job: a missing
+ * WITHDRAWN row is appended and the toggle is synced before it answers.
  */
-export async function stopMarketing(token: string, locale: MessagingLocale): Promise<OptOutActResult> {
+export async function stopMarketing(raw: string, locale: MessagingLocale): Promise<OptOutActResult> {
   const wording = optOutWording("STOP", locale);
-  const r = await resolveOptOutToken(token);
-  if (!r.ok) return { ok: false, reason: r.reason };
-  if (r.suppressed) return { ok: true, state: "already" };
   try {
+    const r = await resolveOptOutToken(raw);
+    if (!r.ok) return { ok: false, reason: r.reason };
+    const ref = optOutTokenRef(r.token);
+    if (r.suppressed) {
+      const latest = await Promise.resolve(db.messagingConsent.latestFor(keyFor(r.identifier)));
+      if (latest?.status !== "WITHDRAWN") await appendLedgerRow(r.identifier, "WITHDRAWN", wording, locale, ref);
+      await syncPlayerToggle(r.identifier, false, ref);
+      return { ok: true, state: "already" };
+    }
     await Promise.resolve(db.suppression.create({
       id: randomUUID(),
       channel: "SMS",
       identifier: r.identifier,
       category: "MARKETING",
       reason: "WITHDRAWN",
-      // ⛔ The token, not the number — `identifier` is the only place a number belongs (§5.14).
-      evidence: `optout:${token}`,
+      // ⛔ The token REFERENCE, not the number — `identifier` is the only place a number belongs
+      // (§5.14) — and not the live token either (`optOutTokenRef`).
+      evidence: `optout:${ref}`,
       recordedBy: null,
       createdAt: new Date().toISOString(),
       liftedAt: null,
       liftedReason: null,
     }));
-    await appendLedgerRow(r.identifier, "WITHDRAWN", wording, locale, token);
-    await syncPlayerToggle(r.identifier, false, token);
+    await appendLedgerRow(r.identifier, "WITHDRAWN", wording, locale, ref);
+    await syncPlayerToggle(r.identifier, false, ref);
     return { ok: true, state: "stopped" };
   } catch (err) {
     console.error("[optout] stop failed:", (err as Error)?.message ?? err);
@@ -145,21 +276,30 @@ export async function stopMarketing(token: string, locale: MessagingLocale): Pro
  * "when did this person first say no" is still answerable — while the gate stops refusing them.
  * A delete would satisfy this function identically and destroy that answer, which is why
  * `dal-parity` §17 asserts there is no delete to call in either twin.
+ *
+ * ⛔ D6 · IT LIFTS ONLY A STOP THE PERSON MADE (`personMayLift`). On any other active reason it
+ * writes NOTHING and answers `already` — the number stays stopped, which is the truth.
+ * ⚠️ AND THE PAGE NEVER PROMISES DELIVERY AFTER IT. The gate may still refuse the number (a contact
+ * is `age_unknown` until U33; a player's RG standing), so the sentence says what was DONE — the stop
+ * is lifted and the choice recorded — and is the same for everybody. ⛔ Branching it on the gate's
+ * verdict would tell whoever holds the link that the number is refused, e.g. self-excluded.
  */
-export async function resumeMarketing(token: string, locale: MessagingLocale): Promise<OptOutActResult> {
+export async function resumeMarketing(raw: string, locale: MessagingLocale): Promise<OptOutActResult> {
   const wording = optOutWording("RESUME", locale);
-  const r = await resolveOptOutToken(token);
-  if (!r.ok) return { ok: false, reason: r.reason };
   try {
-    await Promise.resolve(db.suppression.lift(keyFor(r.identifier), `optout:${token}`, new Date().toISOString()));
+    const r = await resolveOptOutToken(raw);
+    if (!r.ok) return { ok: false, reason: r.reason };
+    if (r.suppressed && !r.resumable) return { ok: true, state: "already" };
+    const ref = optOutTokenRef(r.token);
+    await Promise.resolve(db.suppression.lift(keyFor(r.identifier), `optout:${ref}`, new Date().toISOString()));
     // ⛔ THE LEDGER ROW IS WRITTEN WHETHER OR NOT THERE WAS A ROW TO LIFT. Somebody who was
     // never suppressed and taps "start them again" has still stated a consent, and the ledger
     // is the only place that statement can live — the gate reads it for every non-player.
     // ⚠️ Without this the button would be a no-op for a stranger with no suppression row: the
-    // page would say "you will get 50pick texts again" while the gate still refused them for
-    // want of consent, which is the same false success in a different costume.
-    await appendLedgerRow(r.identifier, "GIVEN", wording, locale, token);
-    await syncPlayerToggle(r.identifier, true, token);
+    // page would report the stop lifted while the gate still refused them for want of consent,
+    // which is the same false success in a different costume.
+    await appendLedgerRow(r.identifier, "GIVEN", wording, locale, ref);
+    await syncPlayerToggle(r.identifier, true, ref);
     return { ok: true, state: "resumed" };
   } catch (err) {
     console.error("[optout] resume failed:", (err as Error)?.message ?? err);
@@ -167,8 +307,9 @@ export async function resumeMarketing(token: string, locale: MessagingLocale): P
   }
 }
 
-/** ⛔ One writer, so the two acts cannot capture the wording differently (§5.7, U6). */
-async function appendLedgerRow(identifier: string, status: "GIVEN" | "WITHDRAWN", wording: string, locale: MessagingLocale, token: string): Promise<void> {
+/** ⛔ One writer, so the two acts cannot capture the wording differently (§5.7, U6).
+ *  `ref` is `optOutTokenRef(token)` — never the live token. */
+async function appendLedgerRow(identifier: string, status: "GIVEN" | "WITHDRAWN", wording: string, locale: MessagingLocale, ref: string): Promise<void> {
   await Promise.resolve(db.messagingConsent.create({
     id: randomUUID(),
     channel: "SMS",
@@ -182,7 +323,7 @@ async function appendLedgerRow(identifier: string, status: "GIVEN" | "WITHDRAWN"
     // copy is reworded later.
     wording,
     locale,
-    evidence: `optout:${token}`,
+    evidence: `optout:${ref}`,
     recordedBy: null,
     createdAt: new Date().toISOString(),
   }));
@@ -196,20 +337,27 @@ async function appendLedgerRow(identifier: string, status: "GIVEN" | "WITHDRAWN"
  * ⛔ `userPhoneKeyFor` OR THIS FINDS NOBODY (U7). A bare `findByPhone(identifier)` returns null
  * for every player on the platform and this function would silently do nothing, for everyone,
  * for ever — the page would report success and the player's own toggle would still say yes.
+ *
+ * ⛔ A SELF-EXCLUDED ACCOUNT IS NEVER SWITCHED BACK ON FROM AN UNAUTHENTICATED LINK. Switching OFF
+ * always happens; switching ON skips `SELF_EXCLUDED` — the ledger still records what the person
+ * tapped, but their own toggle stays off until they consent again after an officer restores them
+ * (rg.ts ③). The page's sentence does not change, so the link-holder learns nothing about RG standing.
  */
-async function syncPlayerToggle(identifier: string, on: boolean, token: string): Promise<void> {
+async function syncPlayerToggle(identifier: string, on: boolean, ref: string): Promise<void> {
   const user = await Promise.resolve(db.user.findByPhone(userPhoneKeyFor(identifier)));
   if (!user || user.marketingOptIn === on) return;
+  if (on && user.status === "SELF_EXCLUDED") return;
   await db.user.update(user.id, { marketingOptIn: on });
   audit({
     category: "COMPLIANCE",
     action: on ? "privacy.marketing_consent.given" : "privacy.marketing_consent.withdrawn",
     // ⛔ NULL, not the player's own id. They acted without signing in, so the platform cannot
-    // claim the session did it — the token is the evidence and it is named in the payload.
+    // claim the session did it — the token REFERENCE is the evidence (never the live token:
+    // `/admin/audit` prints this payload, and the token would let any reader act as the person).
     actorId: null,
     targetType: "User",
     targetId: user.id,
-    payload: { marketingOptIn: on, via: "optout", token },
+    payload: { marketingOptIn: on, via: "optout", tokenRef: ref },
   });
 }
 
@@ -228,7 +376,17 @@ async function syncPlayerToggle(identifier: string, on: boolean, token: string):
  */
 export const OPTOUT_MINT_ATTEMPTS = 6;
 
-export async function mintOptOutToken(identifier: string): Promise<string | null> {
+export async function mintOptOutToken(raw: string): Promise<string | null> {
+  // 🔴 THE TWO-FORMAT TRAP, CLOSED AT THE BOUNDARY (D6). A caller handing `User.phoneE164` (`+255…`)
+  // would mint a link whose STOP writes a suppression keyed `+255…` that the gate — which keys on
+  // `toMsisdn255` — never finds, while the page says "done". Normalised here exactly as
+  // `appendMarketingConsent` does, and ⛔ an unusable number mints nothing: a caller that gets null
+  // must refuse to enqueue rather than send a message with no way out.
+  const identifier = toMsisdn255(raw);
+  if (!identifier || identifier.length < 12) {
+    console.error("[optout] refused a mint with an unusable identifier");
+    return null;
+  }
   for (let attempt = 0; attempt < OPTOUT_MINT_ATTEMPTS; attempt++) {
     // ⛔ Two hex characters per output character — `optOutTokenFromHex` folds a byte into the
     // 32-character alphabet, and 256 is exactly 8 × 32, so the fold carries no modulo bias.

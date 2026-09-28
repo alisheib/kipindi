@@ -3346,8 +3346,20 @@ export const prismaDb = {
      *  would hand back the LIFTED row untouched: the page would tell the person they will
      *  never be marketed again while the suppression stayed lifted and the next campaign
      *  sent to them. ⛔ So the update clears the lift and touches NOTHING else — above all
-     *  not `createdAt`, which is why this is not a plain overwrite. */
+     *  not `createdAt`, which is why this is not a plain overwrite.
+     *
+     *  🔴 AND THE REASON FOLLOWS THE STOP NOW IN FORCE (see the memory twin): a row being re-armed
+     *  takes the new refusal's reason and evidence, and a non-`WITHDRAWN` refusal over an active
+     *  `WITHDRAWN` row takes it over — otherwise a person's old stop hides a complaint or an
+     *  officer's stop from `personMayLift`. Two conditional updates BEFORE the upsert, so the
+     *  upsert's own update block still touches nothing but the lift. */
     create: async (row: StoredSuppression): Promise<StoredSuppression> => {
+      const triple = { channel: row.channel, identifier: row.identifier, category: row.category };
+      const takeOver = { reason: row.reason, evidence: row.evidence, recordedBy: row.recordedBy };
+      await pc().suppression.updateMany({ where: { ...triple, liftedAt: { not: null } }, data: takeOver });
+      if (row.reason !== "WITHDRAWN") {
+        await pc().suppression.updateMany({ where: { ...triple, reason: "WITHDRAWN", liftedAt: null }, data: takeOver });
+      }
       const created = await pc().suppression.upsert({
         where: {
           channel_identifier_category: {
@@ -3389,6 +3401,8 @@ export const prismaDb = {
         where: {
           channel: key.channel, identifier: key.identifier, category: key.category,
           liftedAt: null,
+          // ⛔ Only a person's own stop is liftable — see the memory twin.
+          reason: "WITHDRAWN",
         },
         data: { liftedAt: new Date(at), liftedReason: reason },
       });

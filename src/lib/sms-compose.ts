@@ -78,14 +78,17 @@ export const SMS_LIMITS = {
 export const SMS_ARITHMETIC_VERIFIED_AGAINST_BILLER = false;
 
 /**
- * The hardest ceiling a marketing body may reach, in SEGMENTS.
+ * The hardest ceiling a marketing message may reach, in SEGMENTS — THE ONE CAP. `planSms` and the
+ * composer (`composeMarketing`) both read it.
  *
  * ⭐ COMPUTED FROM MONEY, NOT TASTE. One segment to the ~150,000-contact list this platform is being
- * built for is 150,000 × TZS 6 = **TZS 900,000**. Two is TZS 1.8m. A campaign that needs three is a
- * campaign that needs an owner's signature, not a longer text box — so the composer stops here and
- * U49's budget gate is what may raise it.
+ * built for is 150,000 × TZS 6 = **TZS 900,000**; two is TZS 1.8m. A campaign that needs more is a
+ * campaign that needs an owner's signature, not a longer text box — U49's budget gate is what may raise it.
+ * 🔴 RECONCILED 2026-09-26: this said 2 ("the composer stops here") while the composer refused anything
+ * over 1, so a screen reading `withinCap` and the composer disagreed about a two-segment message. The
+ * stricter, shipped refusal won — the single-segment budget (160 − footer) is what the plan prices.
  */
-export const SMS_MAX_SEGMENTS = 2;
+export const SMS_MAX_SEGMENTS = 1;
 
 /* ══ SIZING ══════════════════════════════════════════════════════════════════ */
 
@@ -158,6 +161,26 @@ function costsOf(text: string, encoding: SmsEncoding): number[] {
     else out.push(EXTENDED.has(ch) ? 2 : 1);
   }
   return out;
+}
+
+/**
+ * The units `text` occupies when sent in `encoding` — for sizing a fixed part (the footer) inside a
+ * message whose encoding the REST of the text decides. ⭐ A GSM-7 footer inside a UCS-2 message costs
+ * its UTF-16 length, not its septets: that is why a single curly quote shrinks the body's room to 21.
+ */
+export function unitsIn(text: string, encoding: SmsEncoding): number {
+  let units = 0;
+  for (const c of costsOf(text ?? "", encoding)) units += c;
+  return units;
+}
+
+/**
+ * How many units fit under `SMS_MAX_SEGMENTS` in `encoding` — the single limit at one segment, the
+ * concatenated limit per segment beyond it (packing aside, which only ever lowers it).
+ */
+export function capUnits(encoding: SmsEncoding): number {
+  const l = SMS_LIMITS[encoding];
+  return SMS_MAX_SEGMENTS === 1 ? l.single : l.concatenated * SMS_MAX_SEGMENTS;
 }
 
 /** What a message costs. ⛔ The one function anything may price from. */

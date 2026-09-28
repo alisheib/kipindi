@@ -1,7 +1,8 @@
 # MARKETING CAMPAIGN & CONTACTS SETUP — work order and tracker
 
 **STATUS — 🟢 BUILDING. 12/52 units ✅ LIVE (U1–U12), 12/25 defects. 52 units · defects D1–D25 · 46 owner decisions taken on
-Ali's delegation · 10 legal questions, each shipping with a safe default that IS built.**
+Ali's delegation · 11 legal questions, each shipping with a safe default that IS built. S7c went LIVE 2026-09-28 (`d3379fef`).
+NEXT: the contacts book, U17+U18 — ⛔ but read ◐ HALF-DONE first: the consent ledger's `latestFor` breaks a same-millisecond tie at RANDOM, and U18's contacts are the population it decides for.**
 
 > ⚠️ **THIS FILE IS BOTH THE PLAN AND THE PROGRESS TRACKER.** Any session, on any machine, learns where
 > the programme stands by reading §0 (RESUME AT) and §1 (status board) — and nothing else. `npm run
@@ -14,7 +15,7 @@ Ali's delegation · 10 legal questions, each shipping with a safe default that I
 | **Owner instruction** | Ali, 2026-09-16: *"a page for contacts, with all its features, bulk and normal contact import, duplication detection, everything perfect, progress bars, loading systems, rendering perfection. Also campaign for broadcast SMS sending page… for Tanzanian numbers, the right formats, input validation"* · *"take decisions based on what you think is perfect and compatible with our platform… make it fully functional, a perfect version, you decide"* · *"save the plan and the prompt and push it, naming it the marketing campaign and contacts setup"* · *"make it perfectly working for 50pick, perfect design and logic"* |
 | **Scope** | `/admin/contacts` (the address book: single + bulk import, duplicate detection, pre-flight, determinate progress, export) and `/admin/campaigns` (broadcast SMS: compose, audience, confirm, send, results) — plus the permission layer neither can lawfully exist without |
 | **Repo / branch** | Your 50pick checkout — find it with `hostname && git rev-parse --show-toplevel && git worktree list`; ⛔ never copy a path from a doc (the office PC uses `F:\`, Ali-Blade15 `C:\`, and each has worktrees). Work lands on `main`: a checkout on another branch, or carrying another session's edits, means your own worktree off `origin/main`, pushed with `HEAD:main`. ⛔ Push to `main` is a LIVE deploy. ⛔ Never the House Bots checkout, which runs its own programme in parallel |
-| **Live state rule** | ✅ **No Gaming Board approval gate** — Ali, 2026-09-26: the Board says marketing SMS is not part of its approval (OQ1, `COMPLIANCE-DECISIONS.md` 2026-09-26 second). Broadcast opens as soon as the engine is BUILT and every message passes the consent/suppression/RG/age gate; the law that remains is consent (ETA s.32, EPOCA reg 7(4)) and no promotion to the self-excluded (GN 478T reg 49(3)) |
+| **Live state rule** | ✅ **No Gaming Board approval gate** — Ali, 2026-09-26: the Board says marketing SMS is not part of its approval (OQ1, `COMPLIANCE-DECISIONS.md` § "2026-09-26 · Marketing SMS rulings"). Broadcast opens as soon as the engine is BUILT and every message passes the consent/suppression/RG/age gate; the law that remains is consent (ETA s.32, EPOCA reg 7(4)) and no promotion to the self-excluded (GN 478T reg 49(3)) |
 | **Evidence** | `.qa-shots/marketing-setup/<unit>/…` (gitignored). ⛔ A `shots/…png` path may only be written into a doc in the commit that also commits the PNG |
 | **Tracker guard** | `npm run test:marketing-setup-plan` · red control `npm run red:marketing-setup-plan` (the same file, `--prove-red`, plants in memory) |
 | **Cadence** | **TWO units per session** (Ali's standing cadence). 52 units → 27 sessions (S5 closed U8's carried-over half, §10) |
@@ -26,70 +27,249 @@ Ali's delegation · 10 legal questions, each shipping with a safe default that I
 
 1. Run `npm run test:marketing-setup-plan`. If it fails, the board is lying — fix the board before any code.
 2. Read the fenced block below, then §1 (status board), then the two units named in ▶ NEXT (§9).
-3. `git log --oneline -8` — a commit newer than ✔ LAST SESSION means another session is IN FLIGHT. Stop and ask.
+3. `git log --oneline -5 -- docs/MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md` — every marketing session commits this
+   file, so a commit HERE newer than the commits ✔ LAST SESSION names (other than that session's own closing docs
+   commit) means another MARKETING session is in flight: stop and ask. Commits from other programmes on `main`
+   (house bots, finance, mobile, invite) are normal and are not a stop.
 4. Work per §11. Close per §0a step 6.
 
 ```
-▶ NEXT: U13 and U14 — S8's pair. The previous units are closed; see ✔ LAST SESSION.
+✅ S7c IS LIVE — shipped 2026-09-28 as `d3379fef` (session S8, office PC OMEGA-COMPILE01, worktree
+  `F:/kipindi-s8`, branch `marketing-s8`). PROVED BY DISCRIMINATION, never by a build id alone: before the
+  push /auth/register served the OLD sentence ("Nipe matangazo" 2 hits, the new one 0); after it, the NEW
+  one ("Nitumie ofa na habari za 50pick kwa SMS" 2 hits, the old one 0), on `?dpl=d3379fef…`. A check that
+  reads the same before and after proves nothing — this one reverses.
 
-  U13 · THE SEND WINDOW (D13, OQ5). ⚠️ VERIFY THE PREMISE FIRST — this plan has been wrong about it three
-  sessions running. "The campaign pauses with `quiet_hours` and resumes by itself" needs a CAMPAIGN (U35)
-  and a PUMP (U44), neither of which exists. What does exist is U9's `dispatchSlice`, whose `held`
-  outcome means "nothing about this person was decided" — outside the window EVERY row of a slice is
-  held, never skipped and never failed. Build `src/lib/marketing/window.ts` (pure, EAT, both candidate
-  windows as named constants) and the hold in `dispatchSlice`; leave the pause/resume to U43/U44 and
-  write that into their §9 text. ⭐ And once the window exists in code, §4 of /legal/responsible-gambling
-  MAY promise it again — `test:rg-policy` will accept a late-night bullet the moment `window.ts` exists.
-  U14 · FREQUENCY CAP (D14). ⚠️ ITS PREMISE FAILS AS WRITTEN: it counts `SmsMessage` rows with purpose
-  MARKETING, and `SmsPurpose` has no MARKETING until U35 (D22). Decide at the start: build the cap as a
-  predicate over an injected send-history source (the gate then asks it, U43 wires the real source), or
-  move U14 behind U35 and pull U15 forward. Do not count INVITE or OPS rows as marketing — that is D22's
-  defect.
+▶ NEXT: U17 and U18 — S8's pair: THE CONTACTS BOOK COMES FIRST. §10 was reordered 2026-09-27 on Ali's
+  approval ("keep going with your plan") so the admin console shows something next session: Contacts in
+  the menu at S8, the list at S9; Campaigns in the menu at S17. U13/U14 moved beside the engine (S21, where
+  a campaign exists to pause and `SmsPurpose.MARKETING` exists to count — both premises were false as
+  written); U15/U16 moved to S20. The previous units are closed; see ✔ LAST SESSION.
 
-✔ LAST SESSION: S7, 2026-09-26 (Ali-Blade15, worktree `C:/kipindi-marketing`, branch `marketing-s7`) —
-  **U11 ✅ and U12 ✅ LIVE on `40b83931`; D10 ✅ (`aa98f383`); the U6 repair LIVE (`2b8ba0a2`).
-  12/52 units, 11/25 defects.** Run on Ali's delegation of 2026-09-26 — *"take any decision needed based
-  on overall decisions I took ever and architecture of platform, keep going until live"* — every ruling
-  recorded where it was taken, with its precedent.
-  ⭐ THE U6 REPAIR: the eight trigram indexes restored (byte-identical SQL, proven from EMPTY on
-  PostgreSQL 18.3; production migrated), and `test:migration-ownership` so no lane's migration can
-  silently drop another's objects again — it caught a gap in its own first parser. `test:dead-schema`
-  green again with a dated, sha-pinned exemption for the applied file; `red:dead-schema` runs again.
-  ⭐ D10 CLOSED: push and watchlist alerts refuse a SELF_EXCLUDED account until an officer reopens it —
-  Ali's 2026-08-27 ruling, enforced the way the bet path enforces it. `isLockedOut` untouched.
-  ⭐ U11: age on the platform's ONE definition; a contact is `age_unknown` until U33 — nothing inferred.
-  ⭐ U12: the under-25 promise DEFINED and BUILT (a self-exclusion or break ever on record, no lift until
-  25), §4 re-versioned v2026-09-26 in three languages, the late-night bullet CUT, and `test:rg-policy`
-  maps every §4 promise to a named control. Verified live by discrimination and by screenshots read.
-  🔴 AND THE MACHINE CRASHED MID-RED-HARNESS: the two files `red:rg-doors` was writing —
-  `market-service.ts` (the bet path) and `marketing/rg.ts` — came back 100% NUL. Neither had uncommitted
-  edits; restored from HEAD, `git fsck` clean, all 12 worktrees NUL-scanned clean, harness re-run
-  through the lock. Nothing reached main.
+  U17 · FIVE DOORS (D17) — `/admin/contacts` in the Growth group, exactly as §9 U17: `NAV_GROUPS` +
+  `ROUTE_KEYS` (label "Contacts"; ⚠️ prefix order is load-bearing), `ROUTE_DOMAINS` `["/admin/contacts",
+  "growth"]`, `layout.tsx` with `AdminSectionGate`, `loading.tsx`, the `filter-language` entry. States:
+  loading · empty · refused · error at 1280 AND 360, screenshots OPENED AND READ. ⛔ The skeleton's height
+  must equal the real block — build it from the real components (the `/s` skeleton needed that fix on
+  2026-09-27: a guessed third text line moved the button 24 px).
+  U18 · THE BOOK — `MarketingContact`, `ContactList`, `ContactListMember` in BOTH DALs with NAMED types and
+  a new `dal-parity` section (next free number — read the file, don't trust a doc), extending
+  `red:dal-parity`. The migration is expand-only and HAND-WRITTEN (⛔ never paste `prisma migrate diff`
+  wholesale — `test:migration-ownership`), proven from EMPTY on embedded PostgreSQL 18.3 before the push.
+  ⛔ THE BOOK SHIPS INSIDE ERASURE AND RETENTION FROM DAY ONE — U16 moved later, so its rule for the NEW
+  store is part of U18's Accept: `userId` is a LINK never a copy, the DSAR export and the retention
+  schedule name `MarketingContact`, and an erased player's number is not left marketable through it. Check
+  whether `test:retention` already discovers phone/e-mail columns structurally; if not, U18 adds the row to
+  the schedule and U16 (S20) adds the structural guard.
+  ⚠️ VERIFY EACH PREMISE BEFORE BUILDING — this plan's text has been wrong at the start of most sessions.
 
-✔ BEFORE IT: S6 (U9, U10 ✅), S5 (U8 ✅), S4 (U7 ✅), S3/S3b (U5, U6 ✅), S2 (U3, U4 ✅), S1 (U1, U2 ✅),
+✔ LAST SESSION: S8, 2026-09-28 (office PC OMEGA-COMPILE01, worktree `F:/kipindi-s8`, branch `marketing-s8`)
+  — **S7c WENT LIVE. No unit ticked and none attempted: 12/52 units, 12/25 defects.** Ali: "ship it first",
+  then "end session here, mark progress, clean stales". The whole session was the ship: merge, gates, shots,
+  push, prove. On the merged tree typecheck and `npm run build` are green, every marketing / SMS / DAL / RG /
+  comms suite is green, all ten red controls catch every plant, the capture wrote 90 screenshots at 0px
+  overflow, and the shots were OPENED AND READ — all ten SMS-credit states at 1280 and 360, the /s error and
+  busy screens, the consent HELD card in three languages, /help FAQ 5, the register consent box.
+  ⭐ THREE THINGS WERE FIXED BEFORE THE PUSH, none of them optional:
+  1. `since` WOULD HAVE LIED. The nine D1 sentences said they first faced a player on 2026-09-27; the batch
+     did not ship that day. Measured first — production still served "Nipe matangazo" — so no ledger row
+     existed under them and the date was still free. Corrected to 2026-09-28, re-pinned the append-only hash
+     (9b041893ec43a670 → 718250ee6e8280ed), and ⭐ PROVED THE GUARD STILL FAILS on an EDIT and on a REMOVAL
+     before trusting the new pin. "Never update the hash to make this pass" is that file's own rule; the one
+     thing that makes this legal is that the date had never faced a person.
+  2. THREE GUARDS CITED BY THE WRONG NAME — a guard named by its SCRIPT FILE, not by the `package.json` key
+     that runs it, which `test:guards-exist` counts as a guard that does not exist. Two were S7c's, one was
+     already on main, so that repo-wide gate was RED for every lane. `scripts/dev-route-guard.test.mts` runs
+     as `test:cert-devroutes`; `scripts/stacking-contract.test.mts` runs as `test:stacking` (its line 161
+     really does read the skip link's focus z-index that the app-shell comment describes). Cited by key, green.
+  3. 🔴 A MERGE THAT SILENTLY DROPPED MAIN'S WORK. The first `git merge origin/main` ran against a STALE ref:
+     a parallel session's `git fetch` moved `refs/remotes/origin/main` mid-command (every worktree shares one
+     `.git`), so MERGE_HEAD was two commits behind the `origin/main` that the same shell had just printed.
+     The merge was clean, silent, and quietly lost the landing lane's `FIRST_LICENSED_EVIDENCE` block. Caught
+     only by diffing BOTH sides against the merge base, per file. ⛔ AFTER ANY MERGE HERE, VERIFY IT: for every
+     file both sides touched, `main→merged` must equal `base→ours` AND `ours→merged` must equal `base→theirs`.
+     The i18n dictionary was then checked leaf by leaf (98 of ours kept, 158 of main's kept, 30 of main's
+     deletions honoured, 0 wrong) with a PLANTED defect first, to prove the checker could fail at all.
+  ⚠️ Red elsewhere, NOT ours, each proven by three independent facts (byte-identical to `origin/main`, S7c
+  never touched the file, and the failing label names another lane): `test:stacking` 6.1 (`z-index: 11` on
+  `.ticker-viewport:focus-visible`, the LIVE strip) and `test:red-anchors` (two rotted anchors, in
+  `query-bar.tsx` and `updown-card-phase.ts`).
+  🔴 INSTRUMENT LESSONS: (1) `test:marketing-consent-ledger` §2c/§2d FLAKE — red once, then green on three
+  straight re-runs; the cause is the consent-tie defect in ◐ HALF-DONE, not the suite. (2) The U8 drive fails
+  its BUSY case when the capture runs it NESTED (1 of 266) and passes 266/266 standalone, twice: the opt-out
+  budget refills one token every 6 s and the drain loses that race on a loaded machine. The drive's own
+  comment predicted exactly this. ⛔ Never call a nested-drive failure a product defect without re-running it
+  alone. (3) A viewport TILE is not a verdict on legibility: the consent HELD card looked covered by the chat
+  bubble and cut off by the bottom rail, and measuring it per PAINTED LINE (Range rects + `elementFromPoint`,
+  scrolled into view) showed every line clear in all three languages. The tile had merely frozen a scroll
+  position. ⛔ Measure the rectangle before reporting a visual defect.
+
+✔ BEFORE IT: S7c (the end-to-end review of everything live and its fixes — built on Ali-Blade15, SHIPPED by
+  S8), S7b (Ali's OQ1/OQ2/OQ4 rulings, the live SMS balance on Admin → System), S7 (U11, U12 ✅, D10 ✅,
+  the U6 index repair), S6 (U9, U10 ✅), S5 (U8 ✅), S4 (U7 ✅), S3/S3b (U5, U6 ✅), S2 (U3, U4 ✅), S1 (U1, U2 ✅),
   S0b, S0 — each in §2, newest first. ⭐ The habit that found most of it: audit the INSTRUMENT, not only
   the code.
 
-◐ HALF-DONE: nothing. U1–U12 are ✅ LIVE.
+◐ HALF-DONE — ⛔ READ THIS BEFORE U18. Three items, one of them a live defect this lane is about to inherit.
+  1. 🔴 `latestFor` ANSWERS BY COIN FLIP UNDER A TIE — and U18's contacts are the population it decides for.
+     `db.messagingConsent.latestFor` orders `createdAt desc, id desc` in BOTH twins, but the id is
+     `randomUUID()` (`consent-ledger.ts`, `optout-service.ts`), so a tie is broken at random. MEASURED on the
+     shipped tree: **396 of 400 back-to-back appends shared a millisecond, and 46% of those answered GIVEN
+     when the person's latest word was WITHDRAWN.** Both twins agree — and are wrong together, which is why
+     `test:dal-parity` cannot see it. ⚠️ NOT S7c's: `randomUUID()`, the sort and the two failing test labels
+     are byte-identical on `origin/main`, so it is LIVE today. For a PLAYER the send gate is saved by two
+     records ahead of the ledger (`marketingOptIn`, then the suppression row), so nobody is texted after
+     saying stop. ⛔ BUT FOR A NON-PLAYER THE LEDGER IS THE ONLY RECORD — which is exactly what U18's
+     `MarketingContact` creates. Ali was asked on 2026-09-28 whether to fix it inside S8 or leave it; ⛔ do
+     not let U18 write a contact before that is answered. The fix is a monotonic, sortable ledger id (or an
+     ordering that does not lean on the id at all), in BOTH twins, with its own `dal-parity` control.
+  2. THE PRODUCTION DRIVES ARE OWED. §0 step 5 asked for the U6 and U8 drives on production AFTER the push;
+     the session was ended before them. Everything else in that step is done — pushed, and production proved
+     to serve `d3379fef` by discrimination. ⚠️ Both drives mint tokens through `/api/dev-test/*`, which 404s
+     in production BY DESIGN, so establish whether either can run against `LIVE_BASE=https://www.50pick.tz`
+     at all before trusting a green exit. `node scripts/live/marketing-e2e-capture.mjs prod` is the
+     read-only public-pages pass and needs no dev route.
+  3. Unchanged from S7c, all of it needing a person, none of it this lane's code: S7b's SMS balance read on
+     Admin → System is still proven against a local stand-in only — ask Ali to open Admin → System and compare
+     the "SMS credit" figure with the Blackball portal (⛔ never log in as him), then record the date here and
+     in §2. Also open: a native Swahili (and Chinese) speaker's read of the D1 consent sentences and the new
+     `/s/<token>` copy; where Blackball stores SMS data (BLACKBALL-SMS.md §8); and Ali's one line on OQ4 —
+     is 0800 11 0011 answered by 50pick staff, or by the independent national service the site says it is?
+     Recorded as the latter, which changes no public label.
 
 ? RULINGS TAKEN ON ALI'S DELEGATION OF 2026-09-26 (recorded here so no session re-asks them):
   1. OQ6 — answered: build the under-25 segment AND re-version §4 to what runs (COMPLIANCE-DECISIONS
-     2026-09-26). §4a's OQ6 row says so.
+     § "2026-09-26 · RG Policy v2026-09-26"). §4a's OQ6 row says so.
   2. D10 — closed (§8 D10).
   3. HARM MARKERS STAY WINDOW-BASED for marketing, the same live-computed standard the Board-facing
      /admin/compliance panel uses; a persisted, officer-reviewed flag store is a Player Safety programme,
      not this one. The gate refuses while a marker shows and when the check cannot be read.
   4. RE-CONSENT UX: the rule stands (a consent must post-date the break or the restore); showing a player
      WHY their toggle is on but inactive is the composer era's (U37) profile wording — ⛔ no new Swahili
-     sentence is invented for it before then.
+     sentence is invented for it before then. ⚠️ Superseded in part 2026-09-26 (ruling 8): the toggle now
+     shows the EFFECTIVE consent, so a lapsed consent reads OFF (not "on but inactive"), with one line
+     (`push.marketingPaused`). Reworded 2026-09-27 to a neutral statement, never a nudge to switch gambling
+     offers back on: "Turned off when your break or self-exclusion ended. It stays off unless you switch it
+     on." / "Ilizimwa baada ya mapumziko yako au kipindi chako cha kujitenga kuisha. Itabaki imezimwa
+     usipoiwasha." / "您的冷静期或自我排除期结束时，此项已关闭。除非您重新开启，否则将保持关闭。" — the words "Paused",
+     "Imesitishwa" and "已暂停" are no longer used. While the break or self-exclusion is still IN FORCE the
+     switch is held (ruling 8). Since 2026-09-27 the zh source string carries invisible U+200B phrase hints
+     for `break-keep`; the text shown is unchanged.
   5. THE OPT-OUT PAGE's "Ingia"/"Jisajili": ruled — a page somebody reaches to LEAVE should not upsell
-     them. The shared top bar is under active edit by the mobile lane, so it is done by that lane's rules
-     or at U47 (the live campaign page's shell work) — filed, not forced into another lane's file today.
-  6. ✅ ANSWERED BY ALI HIMSELF, 2026-09-26 (COMPLIANCE-DECISIONS 2026-09-26 second): OQ1 — the Gaming
-     Board says marketing SMS is not part of its approval, so there is NO approval gate (OD17/§5.3
-     withdrawn, U41 re-scoped); OQ2 — PDPA registration not needed; OQ4 — the helpline is OURS: the footer
-     now reads `support-config.ts` and §12 asserts one helpline (D6 ✅). Consent and every RG/age gate stay.
+     them. ✅ DONE 2026-09-26 by the audit-fix pass (ruling 10): `/s/<token>` (and, since 2026-09-27, bare
+     `/s`) renders in its own minimal shell — logo, language menu, the content, and a footer of the licence
+     lines, the responsible-gambling sentence and the helpline only; no Ingia/Jisajili, no nav, no bottom
+     rail, no chat, no first-visit primer, no "Pendekeza masoko upate pesa".
+  6. ✅ ANSWERED BY ALI HIMSELF, 2026-09-26 (COMPLIANCE-DECISIONS § "2026-09-26 · Marketing SMS rulings"):
+     OQ1 — the Gaming Board says marketing SMS is not part of its approval, so there is NO approval gate
+     (OD17/§5.3 withdrawn, U41 re-scoped); OQ2 — PDPA registration not needed; OQ4 — "the right helpline is
+     ours", recorded as: the helpline 50pick already publishes, 0800 11 0011, is the right one. ⛔ Not a
+     claim that 50pick runs it — the site labels it the NATIONAL helpline. The footer now reads
+     `support-config.ts` and §12 asserts one helpline (D6 ✅). Consent and every RG/age gate stay.
      Still his alone: any real spend beyond the live-drive ledger cap.
+  7. ONE CONSENT, ONE NAME (audit-fix pass, 2026-09-26 — COMPLIANCE-DECISIONS § "2026-09-26 · Marketing
+     consent names SMS"): the register box reads "Send me 50pick offers and news by SMS (optional)." /
+     "Nitumie ofa na habari za 50pick kwa SMS (hiari)." and the profile toggle "Offers and news by SMS" /
+     "Ofa na habari kwa SMS" (OD8 rewritten). Every ledger write — register (password and OTP), profile,
+     opt-out stop and resume — stores the sentence in the language the person SAW, with that locale, and
+     registration stores it on `User.locale` (OD42 amended). Since 2026-09-27 the register form and the
+     profile switch POST the language they were DRAWN in (the form's hidden `shownLocale`; the switch's
+     `useT().locale`), accepted only as exactly en/sw/zh by `renderedLocaleOf`, with the `kp-locale` cookie
+     as the fallback; the opt-out acts read the cookie on the server. The posted value only chooses which
+     dictionary sentence is stored — no client text reaches the ledger. ⚠️ Rows written 2026-09-25 → this
+     pass say SW whatever the person saw; append-only, so they stay and are not evidence of language.
+  8. OQ11's SAFE DEFAULT IS BUILT: a PLAYER is marketable only with `marketingOptIn` AND a latest GIVEN
+     ledger row whose wording is one of the pinned SMS-naming sentences (`src/lib/marketing/consent-wording.ts`,
+     append-only). A "yes" under "product updates / Product news / Nipe matangazo" is `no_consent`
+     ("consent predates the SMS wording"). No backfill; only Ali may relax it (§4a OQ11). The profile toggle
+     shows the EFFECTIVE consent, and turning it ON lifts only a suppression the person created (their stop
+     link) — never COMPLAINT, OPERATOR or SELF_EXCLUSION.
+     ⭐ HELD (2026-09-27; the code calls it D4b, an audit label, not this plan's §8 D4): while a break
+     or self-exclusion is IN FORCE the switch reads OFF and is locked, for every player, consenting or
+     not — a "yes" counts only if given after it ends, so an ON
+     shown mid-break was a consent the gate would never honour. The line under it reads "Off during your
+     break or self-exclusion, until {date}. It stays off after that unless you switch it on." ({date} = the
+     end of the break or exclusion on EAT days, in the page's own language since 2026-09-27 —
+     `formatHeldUntil`, `src/app/profile/notifications/held-until.ts`: "2 Dec" / "2 Des" / "2026年12月2日",
+     en/sw add the year when it falls in a later year, an end under a day away adds the EAT 24-hour clock
+     rounded up to the minute ("27 Sep, 13:01"), and the date never wraps; it was `formatDate`, English on
+     every page; no date for a permanent or diverged hold). An ON is
+     refused on the server with reason `held` and nothing is written; an OFF is still recorded.
+     `marketingToggleState` asks the RG standing FIRST, then consent, then the person's own suppression,
+     then the lapse (`paused`).
+  9. KYC IN THE GATE (§9 U11): a final KYC refusal refuses — UNDERAGE → `age_minor`, SANCTIONED /
+     DUPLICATE_IDENTITY → `account_status` — and a KYC document date of birth makes the YOUNGER age govern.
+     A re-opened case is marketable again.
+  10. THE OPT-OUT PAGE (§9 U8, ruling 5): minimal shell; the heading and body follow the state; resume shows
+     and records its OWN consent sentence; the token is case-insensitive; resume lifts only person-created
+     reasons (any other stop answers "already", writes nothing and never says why); a bad link gives a next
+     step and never says "this link is not ours"; only a MISS spends the per-address budget. Since
+     2026-09-27 a dry budget reads as BUSY and a failed read as "did not go through", each with a retry, and
+     bare `/s` is the same refusal as a bad link (§9 U8).
+  11. THE ADMIN SMS CARD HEADLINES THE CREDIT (§9 U49, BLACKBALL-SMS.md §5): "SMS credit" (gloss "Salio"),
+     the state in words — and, when the read fails, WHY ("Blackball refused our keys", no answer, a reply we
+     couldn't read, keys not set; the refused and unset fixes name BOTH `BLACKBALL_CLIENT_ID` and
+     `BLACKBALL_CLIENT_SECRET`, whole, one per mono line), including after a first reading (2026-09-27) — a
+     figure past the 15-minute TTL shown as "—", the old value in the note and its time on the provenance
+     line under the dash, a ~2.5 s render budget, one read in flight, a short pause after a failed read.
+     ⛔ It never says "Healthy" on a rail that cannot send (no sender ID, keys unset or refused, an unknown
+     provider) or while sends are failing (2026-09-27), and a confirmed healthy figure names its alert line
+     ("Healthy · alert at TZS 150");
+     `sendBatch` re-checks a stale or low reading before refusing at the floor; crossing the alert line,
+     and since 2026-09-27 the floor, alarms by bell and email (never by SMS) the officers who can open
+     Admin → System — by default the Owner only (BLACKBALL-SMS.md §5).
+  12. INBOUND STOP IS NOT BUILT. A reply to a marketing SMS reaches nothing today; the only opt-out is the
+     `/s/` link. §9 U46 owns it, and ⛔ no reply keyword is printed in any message until it is live (OQ8).
+
+◐ CARRIED — THE PLATFORM CONSISTENCY BATCH (Ali's standing rule, 2026-09-27; a parallel session may take it)
+  S7c's final visual review fixed these on marketing's own screens only; the rule is to fix the same defect
+  everywhere, in this batch or the next. One item each: the fix · its file · the guard that should pin it.
+  (a) PULSE AS AN ALARM — `AdminKpi`'s `pulse` draws the aqua "live" badge, used as an alarm on non-live
+      tiles: `admin/page.tsx` (AML pending), `admin/approvals/page.tsx` (AML pending, SOF declarations),
+      `admin/aml/page.tsx` (Pending review), `admin/compliance/page.tsx` (Pending), `admin/moderation/page.tsx`
+      (In queue), `admin/bonuses/page.tsx` (Outstanding bonus), `admin/system/page.tsx` (Audit chain BROKEN).
+      Add an additive alarm/attention variant to `components/admin/admin-shell.tsx` (words + tone, rose/amber);
+      keep `pulse` only on `admin/live/page.tsx`'s real feeds; audit the other `pulse=` callers under
+      `src/app/admin` too (`test:kyc-stage` pins the approvals KYC tile's). Guard: `test:ui-consistency`.
+  (b) ARROW AS STATUS (DG-A-10) — ▲/▼ `deltaDir` as a status: `admin/players/page.tsx` and
+      `admin/players/cohorts/page.tsx` (Active %), `admin/page.tsx` (AML pending), `admin/config/page.tsx:104`,
+      `admin/finance/page.tsx` (the trial-balance tiles). The word and the tone carry it. Guard: `test:admin-clip`.
+  (c) BUSY LABEL — a `.btn[aria-busy="true"]:disabled` rule in `src/app/globals.css` (opacity .85, cursor
+      progress); then delete `BUSY_LEGIBLE` in `src/app/s/[token]/optout-client.tsx` and point
+      `test:marketing-optout` S18j at the CSS. Guard: `test:marketing-optout` S18j.
+  (d) CALLOUT + HEADING WRAP — `components/ui/callout.tsx`: stack title `text-balance`, body and row
+      `text-pretty`; `components/ui/page-header.tsx`: zh `break-keep`, only on titles that carry U+200B hints
+      (keep-all without hints breaks only at punctuation, `trust-band.tsx`). Then delete the /s call-site
+      wrappers (`optout-refusal.tsx`'s title span, `optout-classes.ts`). Guard: `test:marketing-optout` S18k/S7h.
+  (e) RG DATES — `profile/responsible-gambling/page.tsx:107/109` still `formatDate` (en-GB "28 Sept 2026")
+      while the consent card says "28 Sep" in the page's language: use `formatHeldUntil` (or move it into
+      `src/lib/eat-day.ts`). MOBILE-VISUAL-FINDINGS S13-15. Guard: `test:marketing-consent` C9's rule on that page.
+  (f) PUBLIC COPY (the final visual pass) — one line each:
+      · sw FAQ questions (`faq1q`–`faq8q`, e.g. `faq8q` "Mfumo huu uko sawa?") · `i18n-dict.ts` · `test:i18n`
+      · sw AML nav label "Kuzuia Uoshaji" · `src/app/legal/layout.tsx` · `test:translation-safety`
+      · Privacy §4 "FIU" unexpanded, "Tanzania Revenue Authority" left in English in zh · `legal/privacy/page.tsx`
+        — en text, so a new Privacy version and a COMPLIANCE-DECISIONS entry · `test:privacy-notice`
+      · the doubled "Legal" eyebrow at 360 (MOBILE-VISUAL-FINDINGS S08-info-CP02) · `legal/layout.tsx` +
+        `legal/_components.tsx` · `test:eyebrow-roles`
+      · en FAQ "Will my odds change after I place?" (`faq2q`) · `src/lib/i18n-dict.ts` · `test:i18n`
+      · RG §2 "One-way until expiry" jargon and the "24h" style · `legal/responsible-gambling/page.tsx` en block
+        — a new RG version, `RG_EN_SHA` re-pinned, a COMPLIANCE-DECISIONS entry · `test:rg-policy`
+      · sw help-card subtitles' "kutoa" (`help.depositWithdrawHolds`, `help.openSettledCashOut`) · `i18n-dict.ts`
+      · three sw names for the RG settings page ("Kucheza kwa busara" · "Vikomo" · "Mchezo Salama") · dict +
+        `legal/responsible-gambling/page.tsx` · `test:rg-policy`
+  (g) SMS GLOSS — `admin/system/page.tsx` "SMS credit" `sw="Salio"` → "Salio la SMS" once that wording has
+      shipped (today only in this batch's unpushed officer-alarm copy, `notification-service.ts`); bare "Salio"
+      reads as the player's wallet balance. Guard: `test:sms-cost-guard` §8.
+  (h) TYPE-SCALE REDS THAT ARE NOT MARKETING'S — `origin/main` is itself red on `test:type-scale` §3/§6 (a
+      static count, 2026-09-27): `admin/desk/page.tsx`, `admin/desk/[id]/page.tsx`, `admin/desk/[id]/why-panel.tsx`
+      (sentences in `text-caption` → `text-body-sm`; owner: house bots) and `admin/finance/page.tsx` (a
+      `text-caption` sentence, and the hand-typed `tracking-[0.10em]` labels at :253, :262, :650, :668,
+      undeclared in `scripts/design-gate/eyebrow-roles.mjs`; owner: finance). Also: `RATCHET_MONEY`'s responsible-gambling
+      entry is hidden, not fixed (`profile/responsible-gambling/page.tsx:160` still sets `font-display` over
+      `formatTzs`), and `components/layout/public-footer.tsx`'s licence and copyright lines are still 11px
+      (the /s shell's is 13px). Re-derive the ratchets in `scripts/type-scale.test.mts` from a run after the
+      lifts; they only fall. Guards: `test:type-scale`, `test:eyebrow-roles` (it runs in `test:all`; add it to
+      the lane's serial battery).
 
 ⚠ RECORDED, NOT OURS TO CHANGE: `selfExclude` keeps the FIRST `selfExclusionStartedAt` across a restore
   and a new exclusion (U10 does not trust that stamp). ERASURE CAN RE-OPEN MARKETING on Postgres — U16's,
@@ -98,17 +278,51 @@ Ali's delegation · 10 legal questions, each shipping with a safe default that I
   marketing file — `test:betting-ink` (the landing hero's open-markets figure), `qa:live` (its card-body
   click is intercepted by the market card's own `a.mcardp-open` overlay — selector drift after the
   market-card change, the overlay leads to the same page), and `test:revoked-deadend` (E-381, mid-visit).
+  ✅ `test:sms-cost-guard` — the proof of the balance read U49 will lean on — is in `predeploy` since the
+  2026-09-26 audit-fix pass (after `test:pii-logs`), and its own §8 asserts it stays there. *(It had run only
+  inside CI's `test-all`, never all green on clean main, so until then it gated nothing.)*
+  ✅ DONE 2026-09-27 (S7c, both DALs, `test:dal-parity` §17.supersede / §17.liftreason + `red:dal-parity`):
+  a re-armed suppression takes the NEW stop's reason, evidence and recorder, a non-`WITHDRAWN` stop takes
+  over an active `WITHDRAWN` one (`createdAt` untouched), and `lift` lifts only a `WITHDRAWN` row — so an
+  erasure or officer stop can never be lifted by the person's old SMS link (§9 U16's owed half).
+  `test:marketing-optout` 32b drives it. ⚠️ `prisma/schema.prisma`'s note on `SuppressionReason.WITHDRAWN` names "a keyword" and
+  "the profile toggle" as writers; neither writes a suppression (inbound STOP is not built, U46; the profile
+  OFF writes the boolean and a ledger row only).
+  ⚠️ PLATFORM-WIDE, OUTSIDE THIS LANE (found 2026-09-27): `src/lib/i18n.tsx`'s mount effect restores a
+  stored language by writing the `kp-locale` cookie WITHOUT `router.refresh()`, so a first load after the
+  cookie expires paints the server's text in one language and the client's in another. The consent ledger
+  is immune (the register form and the profile switch post the language they were drawn in, ruling 7);
+  the mixed page is not.
+  ⚠️ `test:house-bot-holder-lifecycle` 2.2 (the script writer population over its ceiling) is red on main,
+  recorded in `HOUSE-BOTS.md` (the walkers' row) and never widened by us: this lane's
+  `scripts/marketing-consent.test.mts` (U7) is one of that population, having joined after the ceiling was
+  set on 2026-09-21. S7c's dev-only seed route briefly added three src writers (1.2); since 2026-09-27 it
+  takes a real break through `coolOff`, and the src writer set is the same as main's, at its ceiling.
 
 ⚠ TRAPS — each cost someone a session somewhere:
   ⛔ `prisma migrate diff` SWEEPS IN every object `schema.prisma` does not declare — the eight trigram
      indexes and the Transaction unique every time. A unit's migration holds ONLY its own statements;
      `test:migration-ownership` refuses an undeclared drop of another migration's object.
-  ⛔ THIS PC's RAM FAILS UNDER LOAD. A crash mid-`red:*` harness zero-fills the files it is writing — or
-     worse, flushes a DEFECT-INJECTED file that greps fine. After any unexplained session death: `git
-     status` lists only files you meant to edit, NUL-scan, then grep the harness's `to:` strings. Run
-     file-mutating harnesses through `~/heavy-node-lock.sh`.
-  ⛔ `test:red-anchors` is RED ON CLEAN MAIN with 4 failures that are not ours (the 68 vs 65 ceiling
-     and two rotted anchors in other lanes). ⛔ Do not bump the ceiling.
+  ⛔ ALI-BLADE15's RAM FAILS UNDER LOAD (two heavy jobs at once bluescreen it). A crash mid-`red:*` harness
+     zero-fills the files it is writing — or worse, flushes a DEFECT-INJECTED file that greps fine. After
+     any unexplained session death: `git status` lists only files you meant to edit, NUL-scan, then grep
+     the harness's `to:` strings. Run every heavy job (build, dev server, tsc, Playwright, predeploy,
+     test-all, file-mutating `red:*`) through `bash ~/heavy-node-lock.sh run <who> <cmd>` (§0a step 4).
+  ⛔ `test:red-anchors` has been red on clean main (S7b saw 4 failures, all in other lanes). Do not trust
+     that number: run it on clean `origin/main` in the SAME session and diff the failing LABELS, not the
+     count, against your tree. ⛔ Do not bump the ceiling.
+  ⛔ SAME-DATE COMPLIANCE ENTRIES CARRY NO ORDINAL. Cite a `COMPLIANCE-DECISIONS.md` entry by its heading
+     title (§ "2026-09-26 · Marketing SMS rulings"), never "second": other lanes' merges interleave them.
+  ⛔ A CONSENT SENTENCE IS EVIDENCE. Rewording `auth.optionalUpdates`, `push.marketingTitle`,
+     `push.marketingBody` or `optout.resubscribeButton` without APPENDING the new sentences to
+     `src/lib/marketing/consent-wording.ts` turns every new opt-in into `no_consent`;
+     `test:marketing-consent-ledger` fails until they are appended (it prints the sentence to append), pins a
+     hash of the existing entries, and checks that the register, profile and resume sentences name 50pick,
+     the same noun and SMS in each language. ⛔ Never edit or remove an entry there. ⚠️ The one exception,
+     taken 2026-09-27 BEFORE any row existed: the first nine entries' `since` moved from 2026-09-26 (the
+     decision day) to 2026-09-27 (the ship date the field means) and the hash was taken again; no wording
+     changed. ⛔ If the deploy that first ships them slips past 2026-09-27, `since` AND the hash must both be
+     corrected in the deploying commit, before any production row is written under them.
   ⛔ EDITING A FILE IS EXACTLY WHEN A RED ANCHOR ROTS — `npm run test:red-anchors` after touching any
      file an anchor quotes (`responsible-gambling.ts`, `marketing/rg.ts`, the gate, push, watchlist).
   ⛔ Ali-Blade15 checks out CRLF (`core.autocrlf=true`); a guard anchored on "\n" text sees nothing —
@@ -116,9 +330,15 @@ Ali's delegation · 10 legal questions, each shipping with a safe default that I
   ⛔ `test:docs` fails on any `npm run <name>` or `scripts/<file>.<ext>` in `docs/*.md` that does not
      exist. THIS DOCUMENT NAMES SUITES BY KEY ONLY.
   ⛔ A `curl` 200 is not proof a BROWSER reaches a page, and a client crash is also a 200.
+  ⛔ A STALE `.next` MAKES EVERY `/api/dev-test/*` ROUTE 404 ON `next dev` (S7c, 2026-09-27): the seed route
+     never ran, the admin capture photographed the SIGN-IN page, and the run still exited 0. `rm -rf .next`
+     before every dev-server run, and have every capture assert what it photographed (a heading, a label).
+  ⛔ AGENTS IN A WORKFLOW RUN NO NODE HERE. Five fix agents told to run tests "through the lock" spent an
+     hour queued behind another session's job. Static agents on disjoint files, ONE serial battery after.
   ⛔ `git commit --only <paths>`, new files `git add`ed BY NAME first. ⛔ Never `git add -A`.
-  ⛔ THE TRUNK MOVES UNDER YOU. Pull before you start and before every push, and re-run your suites
-     AFTER the merge.
+  ⛔ THE TRUNK MOVES UNDER YOU. `git fetch origin && git merge --no-edit origin/main` before you start and
+     before every push (`git pull --ff-only` refuses on a detached worktree and once you have a commit),
+     and re-run your suites AFTER the merge.
 ```
 
 ---
@@ -135,18 +355,24 @@ You are continuing the **MARKETING CAMPAIGN & CONTACTS SETUP** programme for 50p
 ```
 hostname && git rev-parse --show-toplevel && git worktree list   # find YOUR checkout; never copy a path from a doc
 git status --short
-git branch --show-current          # expect: main
-git pull --ff-only
-git log --oneline -8
+git branch --show-current          # expect: main, or this lane's own marketing-sN branch named in ✔ LAST SESSION
+git fetch origin && git merge --no-edit origin/main   # works on a branch or a detached worktree
+git log --oneline -5 -- docs/MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md
 npm run test:marketing-setup-plan   # the tracker cannot lie; if it fails, fix the board first
 ```
 ⚠️ **OTHER SESSIONS ARE WORKING IN THIS REPO AT THE SAME TIME, ON THEIR OWN PROGRAMMES.** So:
-`git pull --ff-only` before you start and again before every push; `git commit --only <paths>` and ⛔
+`git fetch origin && git merge --no-edit origin/main` before you start and again before every push (⛔ not
+`git pull --ff-only`: it refuses on a detached worktree, and as soon as you have a commit and `main` has
+moved — exactly when you need it); `git commit --only <paths>` and ⛔
 **never `git add -A`** — files you did not touch belong to someone else; and ⚠️ **the checkout may be on
 another branch, or carry their uncommitted work.** Check `git branch --show-current` and
 `git status --short` FIRST. If it is not on `main`, or their edits are in the tree, ⛔ do not switch the
 branch and do not stash — work in your own worktree instead (`git worktree add <dir> origin/main
---detach`), commit there and push `HEAD:main`. ⛔ Do not remove a worktree with `--force` in this repo: it
+--detach`), commit there and push `HEAD:main`. ⭐ If ✔ LAST SESSION names this lane's OWN worktree and
+`git status --short` is empty there, reuse it rather than making a new one: `git switch -c marketing-sN
+--track origin/main` (N = your session) — it already has real `node_modules`. A NEW worktree has none: run
+`npm ci` in it through the heavy-node lock (step 4), ⛔ never a junction — `next dev`/`next build` refuse
+one (§2 S2, S5). ⛔ Do not remove a worktree with `--force` in this repo: it
 has deleted `node_modules/.bin` through the junction before (if `npm run` then says *"tsx is not
 recognized"*, run `npm install`; `node scripts/<file>.mts` works meanwhile).
 
@@ -157,8 +383,10 @@ pushed is not done.
 
 The planner and the progress tracker are ONE file: `docs/MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md`.
 §0 is where we are, §1 is the board, §9 is the work, §10 is the order. Nothing else — not your memory,
-not a summary, not another document — decides what is done. If `git log` shows a commit newer than §0's
-✔ LAST SESSION, another session is in flight: **stop and ask Ali**.
+not a summary, not another document — decides what is done. If the path-scoped `git log` above shows a
+commit to THIS FILE newer than the commits §0's ✔ LAST SESSION names (other than that session's own
+closing docs commit), another marketing session is in flight: **stop and ask Ali**. Commits from other
+programmes on `main` are normal and are not a stop.
 
 **2 · Read, in this order.** `docs/MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md` §0 → §1 → **§3a and §3b
 (what the SMS rail actually does now, and what the vendor is — these replace premises the plan was
@@ -186,18 +414,30 @@ session, SPLIT IT FIRST and write the split into §2 — do not start and leave 
   text already shipped — never invented.
 - Run the unit's own suites, then `npm run predeploy`. New suites are NOT auto-added to `predeploy` —
   add the key to the chain in `package.json` in the same commit, or it never gates anything.
+- ⛔ **HEAVY NODE GOES THROUGH THE LOCK.** On Ali-Blade15 (its RAM bluescreens under two heavy jobs) every
+  `next build` / `next dev` / `next start`, `npm run typecheck`, Playwright drive, `npm run predeploy`,
+  `node scripts/test-all.mjs` and every file-mutating `red:*` harness runs as
+  `bash ~/heavy-node-lock.sh run marketing-sN <command>`. Check `bash ~/heavy-node-lock.sh status` first;
+  it waits for the holder by itself. One `tsx` suite is light. On a PC without that script, run heavy jobs
+  one at a time. ⛔ Never pipe a gate into `tail` (`… | tail` exits 0 while the runner exited 1): redirect
+  to a file and read `$?`.
 - Visual units: drive the states listed on the unit at **1280×800** and **360×780**, plus
   `prefers-reduced-motion: reduce`, keep `HeadlessChrome` in the UA, and **open the screenshots and read
   them**. A green assertion is not a picture.
-- Commit with `git commit --only <paths>` (⛔ never `git add -A`). The commit that ships a unit ALSO
-  rewrites §0, ticks §1, appends §2, and updates the `docs/NEXT-PLAN.md` ▶ 0a counts.
-- Push, wait for the deploy, then re-measure on `www.50pick.tz` and confirm you are on the new build via
-  `data-dpl-id`. ⭐ Prove it by DISCRIMINATION — a check that passes before and after proves nothing.
-  Only then may the row read ✅ with today's date.
+- Commit with `git commit --only <paths>` (⛔ never `git add -A`). The commit that ships a unit sets its
+  §1 row to 🔵 with the SHA (no date) and rewrites §0. After the live re-measure below, a docs-only commit
+  sets ✅ with the date, appends §2, and updates the `docs/NEXT-PLAN.md` ▶ 0a counts and its Next cell.
+- Push, wait for the deploy, then re-measure on `www.50pick.tz` and confirm you are on the new build by
+  `?dpl=<sha>` on any `_next/static` asset or the preload `Link` header
+  (`curl -sI https://www.50pick.tz/ | grep -o 'dpl=[0-9a-f]*'`). ⚠️ `<html data-dpl-id>` is absent on some
+  routes (measured 2026-09-25 on `/auth/register`); it is a fallback only. ⭐ Prove it by DISCRIMINATION —
+  a check that passes before and after proves nothing. Only then may the row read ✅ with today's date.
 
 **5 · Stop and ask Ali ONLY for these.** Everything else is already decided in §4 — decide and proceed.
 - Any of the legal questions in §4a still open moving from "safe default" to "we may now do X". (OQ1, OQ2
-  and OQ4 were answered by Ali on 2026-09-26 and OQ6 on his delegation the same day — see §4a.)
+  and OQ4 were answered by Ali on 2026-09-26 and OQ6 on his delegation the same day — see §4a.) ⛔ This
+  includes OQ11: counting a "yes" given under the old "product updates / Product news / Nipe matangazo"
+  wording as SMS-marketing consent is Ali's call alone; the built default refuses it.
 - Spending real money: any live send beyond the ledger cap in §11.4, or a balance top-up.
 - Anything that would send a real marketing SMS to a real player for the first time.
 - A change to `tzPhone`, `isLockedOut`, the money rails, or anything in §6's must-not-change column.
@@ -223,14 +463,14 @@ a Guard key that resolves to a script on disk, `yes` plus the backticked `red:` 
 | U2 | pure | ✅ | S1 | db44ebf3 | no operator map at all, and the table drafted for it had 5 of 19 rows wrong → TCRA v1.16, seven verdicts, 064 refused, two formatter copies collapsed to one | `test:tz-msisdn` | yes · `red:tz-msisdn` | 2026-09-25 · live on `db44ebf3`: the moved formatter groups 3-3-3 from its new home at 1280 and 360, and the deploy building at all is the client-graph proof |
 | U3 | pure | ✅ | S2 | ccc32526 | no segment arithmetic anywhere and the only GSM-7 table locked inside a server module → one pure table, PACKED segments, the gateway delegating to it | `test:campaign-compose` | yes · `red:campaign-compose` | 2026-09-25 · live on `ccc32526`. The delegation is proven by EXECUTION — `test:otp-delivery` and `test:sms-cost-guard` drive the real send path through `smsCodingFor`. ⛔ Biller reconciliation is U52 |
 | U4 | pure | ✅ | S2 | b760fefe | no sender identity and no RG footer in any SMS, and a body-only quote would be 49 septets short → footer computed, counted and un-removable; operator budget 111, not 160 | `test:campaign-compose` | yes · `red:campaign-compose` | 2026-09-25 · live on `b760fefe`; the U2 drive re-run green on it, so the new modules did not break the client bundle |
-| U5 | guard | ✅ | S3 | 64d6bc05 | a 15-section helpline guard with NO red control at all, and a product half already built → 4/4 mutations caught each on its own assertion | `test:support-contact` | yes · `red:support-contact` | 2026-09-25 · live on `64d6bc05`: every helpline-LABELLED link on /legal/responsible-gambling dials the pinned 0800110011, while the support desk legitimately differs. D6 stayed ⬜ until its substance (OQ4) was answered — ✅ closed 2026-09-26: "the right helpline is ours" |
-| U6 | data | ✅ | S3b | 6429f86f | no consent ledger and no SMS suppression list anywhere, and `marketingOptIn` a bare boolean with no channel, wording, evidence or history → two append-only stores in BOTH DALs with named types, the 82nd migration generated offline and APPLIED on real PostgreSQL 18.3 (10/10, two controls), dal-parity 1380 → 1440 | `test:dal-parity` · `test:marketing-consent-ledger` | yes · `red:dal-parity` (24/24) · `red:marketing-consent-ledger` (4/4) | 2026-09-25 · live on `32067c92`: production starts `prisma migrate deploy && next start`, so serving AT that SHA is the migration having applied to the live database. 7/7 on the drive, three of them controls — and ⭐ the Swahili sentence the ledger stores VERBATIM is the sentence /auth/register really shows. 🔴 **Found at S6:** its migration also dropped other lanes' retired schema and the eight trigram search indexes — no consequential data lost, repair first in S7 (§0) |
+| U5 | guard | ✅ | S3 | 64d6bc05 | a 15-section helpline guard with NO red control at all, and a product half already built → 4/4 mutations caught each on its own assertion | `test:support-contact` | yes · `red:support-contact` | 2026-09-25 · live on `64d6bc05`: every helpline-LABELLED link on /legal/responsible-gambling dials the pinned 0800110011, while the support desk legitimately differs. D6 stayed ⬜ until its substance (OQ4) was answered — ✅ closed 2026-09-26: "the right helpline is ours", i.e. the number 50pick already publishes (which the site labels the national helpline) |
+| U6 | data | ✅ | S3b | 6429f86f | no consent ledger and no SMS suppression list anywhere, and `marketingOptIn` a bare boolean with no channel, wording, evidence or history → two append-only stores in BOTH DALs with named types, the 82nd migration generated offline and APPLIED on real PostgreSQL 18.3 (10/10, two controls), dal-parity 1380 → 1440 | `test:dal-parity` · `test:marketing-consent-ledger` | yes · `red:dal-parity` (24/24) · `red:marketing-consent-ledger` (4/4) | 2026-09-25 · live on `32067c92`: production starts `prisma migrate deploy && next start`, so serving AT that SHA is the migration having applied to the live database. 7/7 on the drive, three of them controls — and ⭐ the Swahili sentence the ledger stores VERBATIM is the sentence /auth/register really shows. ⚠️ **Corrected 2026-09-26 (audit):** true for a SWAHILI viewer only — every REGISTRATION and PROFILE row from this unit until the audit-fix pass stored the Swahili sentence and locale `SW` whatever language the player saw (append-only, so those rows stay; COMPLIANCE-DECISIONS § "2026-09-26 · Marketing consent names SMS"). 🔴 **Found at S6:** its migration also dropped other lanes' retired schema and the eight trigram search indexes — no consequential data lost, repair first in S7 (§0) |
 | U7 | engine | ✅ | S4 | e14e4204 + b60dc492 | nothing asked whether a number may be marketed at all, and a gate written the obvious way would have found NO player: `User.phoneE164` is `+255…` while the marketing key is bare `255…`, unequal for every input → one ordered gate, suppression first, with the bridge pinned in both directions and four mutually exclusive outcomes in one run | `test:marketing-consent` | yes · `red:marketing-consent` (4/4) | 2026-09-25 · live on `b60dc492`. ⚠️ The gate has no HTTP surface until U42, so its behaviour is proven by EXECUTION (15 assertions, 5/5 red) rather than by a live drive — stated plainly rather than dressed up as one. The deploy landing IS the build proof, and the U6 drive re-ran green on it |
-| U8 | visual | ✅ | S4 + S5 | 5942332f + 80a8b0a4 | the resubscribe button U8 promises COULD NOT HAVE WORKED — suppression rows are never deleted and U7's gate asks suppression FIRST, so "start them again" would have reported a success while the row refused for ever → a row is never DELETED but may be SUPERSEDED (`liftedAt`), one expand-only migration proven from an EMPTY database on real PostgreSQL 18.3, and stop → start → stop proven in one run with the GATE asked after every step | `test:marketing-optout` · `test:dal-parity` §17/§18 | yes · `red:marketing-optout` (8/8) · `red:dal-parity` (35/35) | 2026-09-25 · live on `80a8b0a4`: production starts `prisma migrate deploy && next start`, so serving AT that SHA is the 84th migration having applied to the live database. The production drive is 14/14 and REFUSED to report until it reached the SHA — `noindex` proven by DISCRIMINATION (`/s/<token>` answers `noindex, nofollow` while `/legal/responsible-gambling` answers `index, follow`), and a real signed-out browser LANDS on `/s/` while `/wallet` is sent to `/auth/login`, so the no-login check can fail. ⭐ Six states driven at **1280 and 360**, plus `prefers-reduced-motion: reduce`, and the screenshots OPENED AND READ — 47/47, and reading them found a defect no assertion had: the refusal told the reader to "tap once to stop" on a page that renders NO BUTTON. ⚠️ **The token-bearing states are driven against a local `next dev`, not production, and that is stated rather than dressed up:** nothing mints a token until U42, and the dev-test seed route correctly 404s in production. What production proves is that the page serves, refuses a bad token with no false success, and is NOT sent to sign in. |
+| U8 | visual | ✅ | S4 + S5 | 5942332f + 80a8b0a4 | the resubscribe button U8 promises COULD NOT HAVE WORKED — suppression rows are never deleted and U7's gate asks suppression FIRST, so "start them again" would have reported a success while the row refused for ever → a row is never DELETED but may be SUPERSEDED (`liftedAt`), one expand-only migration proven from an EMPTY database on real PostgreSQL 18.3, and stop → start → stop proven in one run with the GATE asked after every step | `test:marketing-optout` · `test:dal-parity` §17/§18 | yes · `red:marketing-optout` (8/8) · `red:dal-parity` (35/35) | 2026-09-25 · live on `80a8b0a4`: production starts `prisma migrate deploy && next start`, so serving AT that SHA is the 84th migration having applied to the live database. The production drive is 14/14 and REFUSED to report until it reached the SHA — `noindex` proven by DISCRIMINATION (`/s/<token>` answers `noindex, nofollow` while `/legal/responsible-gambling` answers `index, follow`), and a real signed-out browser LANDS on `/s/` while `/wallet` is sent to `/auth/login`, so the no-login check can fail. ⭐ Six states driven at **1280 and 360**, plus `prefers-reduced-motion: reduce`, and the screenshots OPENED AND READ — 47/47, and reading them found a defect no assertion had: the refusal told the reader to "tap once to stop" on a page that renders NO BUTTON. ⚠️ **The token-bearing states are driven against a local `next dev`, not production, and that is stated rather than dressed up:** nothing mints a token until U42, and the dev-test seed route correctly 404s in production. What production proves is that the page serves, refuses a bad token with no false success, and is NOT sent to sign in. ⚠️ **Corrected 2026-09-26 (audit):** S5 photographed FIVE states (invalid, valid, stopped, resumed, already), as full-page shots; loading and error were never driven. The audit-fix pass extended the drive (loading, error, a forced first-visit primer, a lower-case link, viewport tiles at 1280×800 and 360×780) — §9 U8 |
 | U9 | guard | ✅ | S6 | 4dfea77e | there was NO send loop to put the gate in — nothing looped over recipients and U7's gate had no caller → `dispatchSlice`, the loop's innermost step: the gate asked per recipient immediately before the one send, a refusal `skipped` never `failed`, settled by key; and a two-slice contract in which an opt-out, a self-exclusion and a break between the slices never reach the wire — the gate hoisted to list-build time SENDS the opted-out number | `test:marketing-consent` | yes · `red:marketing-consent` (13/13 — 8 gate + 5 loop, each on its own assertion) | 2026-09-25 · live on `4dfea77e` (production served it at 21:38 UTC). ⚠️ **RE-SCOPED, stated rather than dressed up:** there is no production loop until U43, and `send` has no default until U35 gives the wire a purpose, so the behaviour is proven by EXECUTION (36 assertions, a real opt-out through `stopMarketing`, a real `selfExclude` and `coolOff` between slices, a wire answering in reverse). U43 joins the contract as a second driver (§9 U43). What production proves is that the changed module chain LOADS: `/s/<token>` imports optout-service → consent → rg, and at `4dfea77e` it renders the Swahili invalid-link refusal with `noindex` |
 | U10 | engine | ✅ | S6 | f1ad4417 | a player who took a one-hour break was refused for ever as `account_status`, a restored self-excluder for ever, harm markers were never asked, and U7's "deciding must not write" fix still REWROTE any RG row whose pending limit had come due → one read-only standing predicate: an exclusion lifts only on an officer restore + six calendar months + a consent after the restore, a break only on a consent after it ended, a harm marker refuses for its window and an unreadable check refuses | `test:rg-doors` · `test:marketing-consent` | yes · `red:rg-doors` (19/19 real-file mutations, 8 of them on `marketing/rg.ts` and the gate) · `red:marketing-consent` | 2026-09-25 · live on `12c37673` then `4dfea77e`. ⚠️ No HTTP surface until U42, so proven by EXECUTION (`test:rg-doors` §8, 37 assertions, both lifts proven to EXIST, a control proving the no-write fixture really exercises the write path) — not by a live drive. ⚠️ Harm markers are NOT standing (nothing persists a flag) — an owner item in §0, not a hidden gap. D10 stays ⬜: an owner ruling |
-| U11 | engine | ✅ | S7 | 40b83931 | nothing asked age before a marketing message → one age definition (`ageOnPlatformDate`) in the gate after harm markers: under 18 `age_minor`, missing `age_unknown`, a contact `age_unknown` until U33 records an attestation (none is inferred) | `test:marketing-consent` | yes · `red:marketing-consent` (16/16 — incl. a null date of birth treated as adult, a contact marketed with no attestation) | 2026-09-26 · live on `40b83931`. ⚠️ No HTTP surface until U42, so proven by EXECUTION (adult / minor / unknown as a three-outcome property) — the deploy is the build proof |
-| U12 | docs | ✅ | S7 | 40b83931 | §4 of /legal/responsible-gambling promised "no marketing to players under 25 in vulnerability segments" and "no sign-up nudges in the late-night window" with NO code behind either, and the page had no version pin → the under-25 segment DEFINED and BUILT (under 25 + a self-exclusion or break ever on record, no lift until 25), §4 re-versioned v2026-09-26 to name exactly what the gate runs, the late-night bullet CUT; ruled on Ali's delegation (COMPLIANCE-DECISIONS 2026-09-26) | `test:rg-policy` | yes · `red:rg-policy` (7/7) | 2026-09-26 · live on `40b83931`, proven by DISCRIMINATION in all three languages: each locale serves its OWN new §4 (and none of the other two), the new version, and neither the old version nor the late-night promise; screenshots at 360 (sw, zh) and 1280 (en) OPENED AND READ — 0px horizontal overflow, the bullets wrap inside the column |
+| U11 | engine | ✅ | S7 | 40b83931 | nothing asked age before a marketing message → one age definition (`ageOnPlatformDate`) in the gate after harm markers: under 18 `age_minor`, missing `age_unknown`, a contact `age_unknown` until U33 records an attestation (none is inferred) | `test:marketing-consent` | yes · `red:marketing-consent` (16/16 — incl. a null date of birth treated as adult, a contact marketed with no attestation) | 2026-09-26 · live on `40b83931`. ⚠️ No HTTP surface until U42, so proven by EXECUTION (adult / minor / unknown as a three-outcome property) — the deploy is the build proof. ⚠️ The 2026-09-26 audit found the gate clearing a player KYC had refused as UNDERAGE; the audit-fix pass asks the identity check too (§9 U11) |
+| U12 | docs | ✅ | S7 | 40b83931 | §4 of /legal/responsible-gambling promised "no marketing to players under 25 in vulnerability segments" and "no sign-up nudges in the late-night window" with NO code behind either, and the page had no version pin → the under-25 segment DEFINED and BUILT (under 25 + a self-exclusion or break ever on record, no lift until 25), §4 re-versioned v2026-09-26 to name exactly what the gate runs, the late-night bullet CUT; ruled on Ali's delegation (COMPLIANCE-DECISIONS § "2026-09-26 · RG Policy v2026-09-26") | `test:rg-policy` | yes · `red:rg-policy` (7/7) | 2026-09-26 · live on `40b83931`, proven by DISCRIMINATION in all three languages: each locale serves its OWN new §4 (and none of the other two), the new version, and neither the old version nor the late-night promise; screenshots at 360 (sw, zh) and 1280 (en) OPENED AND READ — 0px horizontal overflow, the bullets wrap inside the column |
 | U13 | engine | ⬜ | — | — | — | `test:marketing-window` | — | quiet hours |
 | U14 | engine | ⬜ | — | — | — | `test:marketing-consent` | — | frequency cap |
 | U15 | guard | ⬜ | — | — | — | `test:marketing-engine` | — | D15 one send path |
@@ -259,12 +499,12 @@ a Guard key that resolves to a script on disk, `yes` plus the backticked `red:` 
 | U38 | visual | ⬜ | — | — | — | `test:campaign-audience` | — | audience |
 | U39 | visual | ⬜ | — | — | — | `test:read-tiers` | — | estimate |
 | U40 | guard | ⬜ | — | — | — | `test:campaign-gates` | — | confirm |
-| U41 | guard | ⬜ | — | — | — | `test:campaign-gates` | — | approval + 2 officers |
+| U41 | guard | ⬜ | — | — | — | `test:campaign-gates` | — | officer authorisation (reconcile with the single-admin ruling first, §9 U41) |
 | U42 | engine | ⬜ | — | — | — | `test:marketing-engine` | — | enqueue |
 | U43 | engine | ⬜ | — | — | — | `test:marketing-engine` | — | the slice |
 | U44 | engine | ⬜ | — | — | — | `test:marketing-engine` | — | the pump |
 | U45 | engine | ⬜ | — | — | — | `test:dal-parity` | — | D20 scale |
-| U46 | engine | ⬜ | — | — | — | `test:sms-dlr` | — | D21 receipts |
+| U46 | engine | ⬜ | — | — | — | `test:sms-dlr` | — | D21 receipts · also owns inbound STOP (NOT built, §9 U46) |
 | U47 | visual | ⬜ | — | — | — | `test:campaign-visuals` | — | live page |
 | U48 | visual | ⬜ | — | — | — | `test:campaign-visuals` | — | results |
 | U49 | engine | ⬜ | — | — | — | `test:sms-cost-guard` | — | D24 budget |
@@ -281,7 +521,7 @@ a Guard key that resolves to a script on disk, `yes` plus the backticked `red:` 
 | D3 | U2 | ✅ | no operator map; `tzPhone` accepts NDCs no licensee holds — ⚠️ re-scored at S1: **60 only**, not "60 and 70" (§3d), and the sharper case is 064, allocated on paper and dead on the wire |
 | D4 | U3 | ✅ | no segment arithmetic anywhere; the only GSM-7 table is inside a server module |
 | D5 | U4 | ✅ | no statutory RG footer and no sender identity in any SMS body |
-| D6 | U5 | ✅ | the helpline we publish (0800 11 0011) is not the one the Gaming Board's code names — closed 2026-09-26: Ali ruled ours is right (OQ4) and the marketing footer now reads it |
+| D6 | U5 | ✅ | the helpline we publish (0800 11 0011) is not the one the Gaming Board's code names — closed 2026-09-26: Ali ruled the number 50pick already publishes is the right one (OQ4) and the marketing footer now reads it |
 | D7 | U6 | ✅ | there is no SMS suppression list at all |
 | D8 | U6 | ✅ | `marketingOptIn` is a boolean with no channel, no wording and no ledger |
 | D9 | U10 | ✅ | `isLockedOut` lifts itself when the chosen period elapses — marketing must not use it |
@@ -310,7 +550,7 @@ a Guard key that resolves to a script on disk, `yes` plus the backticked `red:` 
 4. A real campaign has been sent on production to the ledger-capped test number and **read on a handset**.
 5. The provider's own `COUNT` (portal export) equals this platform's segment arithmetic for that send.
 6. Opt-out has been exercised end-to-end from the handset, and the number is suppressed on production.
-7. Every one of the ten questions in §4a is either answered by Ali or carries a default he has confirmed.
+7. Every one of the eleven questions in §4a is either answered by Ali or carries a default he has confirmed.
 8. `/legal/responsible-gambling` §4 and `/legal/privacy` are re-read and agree with what the engine does.
 9. `HOW-TO-SEND-A-CAMPAIGN.md` exists and an operator who is not its author has followed it once.
 
@@ -320,6 +560,8 @@ a Guard key that resolves to a script on disk, `yes` plus the backticked `red:` 
 
 | Session | Date | What happened |
 |---|---|---|
+| S8 | 2026-09-28 | **S7c WENT LIVE — `d3379fef`. No unit ticked (12/52 units, 12/25 defects); the session was the ship itself.** Ali: *"ship it first"*, then *"end session here, mark progress, clean stales"*. Own worktree `F:/kipindi-s8` off `origin/marketing-s7c`, real `npm ci` (⛔ no junction), merged `origin/main` — which moved **three times** during the session, 23 → 54 → 4 commits, because the landing lane was pushing in parallel. ⭐ **Proven by:** typecheck; `npm run build`; every marketing / SMS / DAL / RG / comms suite; all ten red controls (`red:dal-parity`, `red:rg-doors`, `red:marketing-consent`, `red:marketing-consent-ledger`, `red:marketing-optout`, `red:campaign-compose`, `red:sms-cost-guard`, `red:rg-policy`, `red:support-contact`, `red:marketing-setup-plan`); 90 screenshots at 0px overflow, OPENED AND READ (ten SMS-credit states × two widths, /s error + busy, consent HELD ×3 languages, /help FAQ 5, register consent); and the live proof by DISCRIMINATION — /auth/register served "Nipe matangazo" before the push and "Nitumie ofa na habari za 50pick kwa SMS" after, on `?dpl=d3379fef…`. ⭐ **Fixed before the push:** (1) the nine `since` dates said 2026-09-27 for a batch shipping on the 28th — corrected and the append-only hash re-pinned (`9b041893ec43a670` → `718250ee6e8280ed`) only after proving production had never shown those sentences AND that the guard still fails on an EDIT and a REMOVAL; (2) three guards cited by SCRIPT FILE instead of `package.json` key (`test:dev-route-guard` → `test:cert-devroutes`, `test:stacking-contract` → `test:stacking`), which had `test:guards-exist` RED for every lane, one of them already on main. 🔴 **The trap that nearly shipped a regression:** the first `git merge origin/main` took a STALE ref — a parallel session's fetch moved `refs/remotes/origin/main` mid-command — and silently dropped the landing lane's `FIRST_LICENSED_EVIDENCE`; the redone merge was verified per file against the merge base, and the i18n dictionary leaf by leaf (98 ours / 158 main's / 30 deletions honoured / 0 wrong) with a planted defect to prove the checker could fail. ⚠️ Red elsewhere, not ours: `test:stacking` 6.1 (LIVE strip `z-index: 11`) and `test:red-anchors` (two rotted anchors in other lanes) — each byte-identical to `origin/main`. 🔴 **Instrument lessons:** a suite that flakes once and passes 3× is pointing at a real race (here the `latestFor` tie — see ◐ HALF-DONE); a nested drive's failure (U8 BUSY, 1/266) vanished at 266/266 standalone twice, because the opt-out budget refills 1 per 6 s; and a viewport TILE froze a scroll position that made the consent HELD card look obstructed, while a per-painted-line measurement showed it clear in all three languages. |
+| S7c | 2026-09-26 → 27 | **THE END-TO-END REVIEW OF EVERYTHING LIVE, AND ITS FIXES — no unit ticked (12/52 units, 12/25 defects); §10 reordered on Ali's approval so the contacts book is next.** Ali: *"make sure it's all end to end perfect, visually, logically, no screen is weak, nothing lacking."* ⭐ **The method:** every marketing screen photographed on production and on a local build (1280 and 360, three languages), then an adversarial review — eight lenses (three visual, four logic, one docs/prompt), each finding handed to a second agent told to REFUTE it: 99 of 105 survived. The fixes were written by parallel agents on disjoint files that ran NO Node (this laptop's RAM fails under load and other sessions hold the heavy-node lock for long stretches), then one copy pass wrote every string in en/sw/zh, then the suites ran serially on the merged tree. A SECOND review of the fixes (four visual lenses over fresh captures, two code lenses over the diff) confirmed 42 of 54 more, no blockers; fixed the same way. ⭐ **What changed for a person:** the consent names SMS in one noun everywhere and the ledger stores the sentence in the language actually shown (rows written 2026-09-25 → 27 say SW whatever was seen — append-only, so they stay); OQ11's safe default (an old "product updates" yes no longer counts; no backfill); the toggle shows EFFECTIVE consent and is held during a break or self-exclusion; the gate refuses a KYC final refusal (an UNDERAGE refusal used to pass on the self-typed date of birth); the opt-out page is a minimal shell whose heading follows the state and whose resume records its own consent sentence; a stronger stop now takes over a person's own and `lift` lifts only a person's own (both DALs — U16's owed half, done); Admin → System's card headlines the SMS CREDIT with the state and the reason in words and alarms the Owner at the alert line AND the floor (bell + email, never SMS). ⭐ **Proven by:** typecheck; every marketing, RG, SMS, DAL and comms suite; the red controls (`red:dal-parity`, `red:rg-doors`, `red:marketing-consent`, `red:marketing-consent-ledger`, `red:marketing-optout`, `red:campaign-compose`, `red:sms-cost-guard`, `red:rg-policy`, `red:support-contact`, `red:marketing-setup-plan`), each catching every plant; and the screens re-photographed and read. 🔴 **Instrument lessons:** (1) a stale `.next` made every `/api/dev-test/*` route 404 on `next dev`, so a capture photographed the admin SIGN-IN page as "the SMS card" with a green exit — ⛔ `rm -rf .next` before every dev run; (2) `red:marketing-optout`'s baseline raced a fire-and-forget audit write (S22 now polls); (3) the stopped first fix run's agents were waiting on another session's lock for an hour — static-only agents plus one serial battery is the shape that works here. ⚠️ Red elsewhere, not ours: `test:stacking` 6.1 (z-index 11 from the landing lane's LIVE strip), two rotted `test:red-anchors` anchors in other lanes, and `red:feedback-law`'s updown anchor. |
 | S7b | 2026-09-26 | **Ali answered OQ1, OQ2 and OQ4 himself — D6 ✅, 12/25 defects.** *"gaming board said they don't care — it's not part of their approval, we can send anything as long as we have SMS gateway · PDPA is not needed · the right helpline is ours."* Recorded verbatim in `COMPLIANCE-DECISIONS.md` 2026-09-26 · Marketing SMS rulings with what the rulings do NOT change (consent under ETA s.32 / EPOCA reg 7(4), no promotion to the self-excluded under GN 478T reg 49(3), every RG/age gate). OD17 and §5.3 withdrawn, U41 re-scoped to the officer authorisation (and flagged to reconcile with Ali's single-admin precedent), OQ2's registration hold dropped. ⭐ **OQ4 implemented:** the marketing footer now reads `support-config.ts`'s helpline — one number — and `test:campaign-compose` §12, which ASSERTED the two helplines differ, now asserts they are the same and that the Board's number appears nowhere; still 49 septets. ⭐ **And Ali asked how much SMS balance we have:** the app could not say — the reading is in-process and empty after every restart, and nothing but a send refreshed it. `refreshSmsBalance` (the same free, authenticated endpoint `sendBatch` already used) now feeds `/admin/system`'s SMS card on render, reused for a minute; `test:sms-cost-guard` §7 proves it reads, records into the one snapshot, SENDS nothing, reuses a fresh reading and never records a refusal's 0.0 (red 7/7). ⛔ Not read by logging in as Ali — the QA admin password is his own login and one session per account would have signed him out. The stale-text sweep for "closed until the Board approves" ran across BLACKBALL-SMS, LIVE-HOSTING-STATUS, RAILWAY-LIVE, README, NEXT-PLAN, CLAUDE.md, COMPLIANCE-DECISIONS and two code comments. |
 | S7 | 2026-09-26 | **U11 ✅ and U12 ✅ LIVE (`40b83931`), D10 ✅ (`aa98f383`), the U6 repair LIVE (`2b8ba0a2`) — 12/52 units, 11/25 defects.** Run on Ali's delegation of 2026-09-26 (*"take any decision needed based on overall decisions I took ever and architecture of platform, keep going until live"*), every ruling recorded with its precedent. ⭐ **The repair:** the eight trigram indexes U6's migration dropped are restored with byte-identical SQL, proven from EMPTY on PostgreSQL 18.3 (85 migrations) and applied on production (`/api/health` migrated at `2b8ba0a2`); the same run proved the trap is live — a fresh `migrate diff` still wants to drop all eight. So `test:migration-ownership` (in `predeploy`) keeps a registry of which migration created every object and refuses a drop of another migration's object unless its owner document authorises it by name; ten pre-rule files grandfathered by literal content pins; red 9/9 with a control that a declared drop is ACCEPTED — and it caught its own first parser registering no enum-typed column. `test:dead-schema` is green again (a dated, sha-pinned exemption, waived not weakened) and `red:dead-schema`, which could not start while it was red, catches 7/7. ⭐ **D10 closed** on Ali's 2026-08-27 ruling: push and watchlist alerts refuse a SELF_EXCLUDED account until an officer reopens it — the bet path's own rule; `isLockedOut` untouched; guarded by a console spy on the real `[push-stub]` line, because "returned 0" is true of a delivered stub push too. ⭐ **U11** on the platform's one age definition, three answers; a contact is `age_unknown` until U33 — nothing inferred — which changed U8's suite to pin what labels 1 and 12 always meant (a resume gives back EXACTLY the pre-stop answer). ⭐ **U12** — OQ6 answered on delegation: the under-25 segment defined and built, §4 re-versioned v2026-09-26 in three languages from the page's own vocabulary, the late-night bullet cut, and `test:rg-policy` maps every §4 promise by its words to a named control (red 7/7); verified live by discrimination and by screenshots opened and read. 🔴 **The machine crashed mid-`red:rg-doors`:** the two files it was writing — `market-service.ts` and `marketing/rg.ts` — came back 100% NUL; neither had uncommitted edits, both restored from HEAD, `git fsck` clean, all 12 worktrees NUL-scanned clean, the harness re-run through the lock, nothing reached main. ⚠️ **Two instrument defects of this lane's own:** a first launch of an agent workflow was passed a placeholder instead of its data (stopped within seconds, before any write), and 9.1b first read the push audit row before the fire-and-forget write had landed (now polled, not slept). |
 | S6 | 2026-09-25 | **U9 ✅ LIVE (`4dfea77e`) and U10 ✅ LIVE (`f1ad4417`) — 10/52 units, 8/25 defects (D9).** Run on Ali-Blade15 in its own worktree (`marketing-s6`) with a real `npm ci`, pushed `HEAD:main` unit by unit. ⭐ **U9's premise failed, and the plan had even named the wrong unit:** there was no send loop, and the loop is U43, not U35. Rather than wrap a gate round nothing, U9 shipped the loop's innermost step (`dispatchSlice`) and a two-slice contract that U43 must join as a driver; the gate hoisted to list-build time sends the opted-out number, and that is the red control. 🔴 **U10 found U7's no-write fix was half a fix** — an EXISTING row is still rewritten by `effectivize` — and three premises false: cooling-off was already refused for ever under the wrong reason (nothing clears `COOLED_OFF`), a restore leaves no column (only an audit row, which is what is now read), and harm markers cannot be standing (nothing persists a flag — owner item). The gate's order was not §5.6's; now it is. **Measured:** `test:rg-doors` 54 → 91, `red:rg-doors` 11 → 19 real-file mutations, `test:marketing-consent` 15 → 36, `red:marketing-consent` 5 → 13; typecheck clean; both deploys confirmed by `?dpl=`. ⚠️ **Two instrument defects of this lane's own, caught before they cost anything:** the tracker's red control scored 26/28 on CLEAN main on this PC — `core.autocrlf=true` puts CRLF on disk and two plants anchored on `"\n---\n\n## §10 —"` found nothing (it said so, loudly; the reader now normalises line endings, 28/28); and a first launch of the stale-text fixers passed a placeholder instead of the findings — stopped within seconds, before any agent had written, and relaunched reading the findings from disk. ⭐ **And Ali's standing instruction, applied repo-wide:** a find-and-refute sweep of stale SMS/Blackball/marketing text — 89 candidates, 74 confirmed by a second agent told to refute each — fixed in docs, code comments and schema notes, plus §10's off-by-one, the NEXT-PLAN "Next" cell stuck at S1, and BLACKBALL-SMS.md's pre-fix claims that the callback never fires. 🔴 **And the finding the next session must act on first, surfaced by the sweep's verifier running `test:dead-schema`:** U6's migration (S3b) was generated with `prisma migrate diff` and dropped other lanes' retired schema — F-05's four empty tables, three columns and three enums, AGENT-PROGRAMME's `AffiliateAgent.tier` — and the eight trigram search indexes, all without `IF EXISTS`, on production. Checked before concluding: the tables/columns were measured empty and already scheduled for dropping by their own lanes (whose SQL uses `IF EXISTS`, so no boot hazard — both docs now say the step is done), and the indexes were a bet on growth the planner ignores at today's size, so nothing is broken NOW. The repair (restore the indexes, a guard against a migration dropping another lane's objects, a dated `dead-schema` exemption for the applied file) is §0's first S7 item. |
@@ -387,7 +629,8 @@ PRIOR WRITTEN approval** (GN 478T reg 56(1); GBT Advertising Code 2023 cl. 2.2.6
 2026-09-16; on 2026-09-26 Ali reported the Board's own position, that marketing SMS is not part of its
 approval (OQ1, withdrawn gate)*; every marketing SMS
 must **end** with the condensed responsible-gaming message, plus the Board's toll-free number above 160
-characters (Code cl. 3.7.1–3.7.2); **no promotional material to a self-excluded player** (GN 478T reg
+characters (Code cl. 3.7.1–3.7.2) — *(OQ4, 2026-09-26: Ali ruled the right helpline is the one 50pick
+already publishes, so the footer carries 0800 11 0011, not the Code's 0800110051)*; **no promotional material to a self-excluded player** (GN 478T reg
 49(3)); penalties are criminal — not less than TZS 5,000,000 or 12 months (GN 61 reg 15(1)), TZS
 10,000,000 or a year (ETA s.32(3)), and licence suspension or revocation (GN 478T reg 64).
 
@@ -560,15 +803,82 @@ is decided, with what it rules out. They are not questions.
 - **OD5 · An unallocated NDC (60, 70) WARNS in the contacts book and REFUSES at dispatch.** An allocated
   but unlaunched NDC (62, 63, 64, 72) is valid and counted on its own line — refusing a real number
   because a regulator's PDF says a licensee has not launched is refusing a number off a business card.
+  ⚠️ *Superseded by U2 (S1, TCRA v1.16, §3d) — the codes above are the 2020 edition's.* `parseTzNumber`
+  (`tz-msisdn.ts`) is the one verdict: **60 is ACCEPTED and flagged** (TCRA reserved, the operator's own
+  IR21 filing says Airtel), **70 is valid** (Honora/Yas), **064 is REFUSED** (allocated to Telxer, no live
+  network — billed and never delivered). Since 2026-09-26 the gate's `bad_msisdn` step uses the same verdict.
 - **OD6 · No new contact model for players.** A player is not copied into the book; the audience unions
   the book and the player table on the one key, and the `User` row always governs.
 
 **Permission (the part the law writes)**
 
 - **OD7 · A marketing SMS is sent only on CONSENT.** There is no other lawful basis in Tanzania.
-- **OD8 · `User.marketingOptIn = true` is consent for a player**, because the profile screen says so in
-  the shipped wording; from the day U6 ships, every change to it ALSO appends a ledger row, so the ledger
-  becomes complete going forward. ⛔ No backfill — a ledger row nobody was shown is a fabricated record.
+- **OD8 · A player's consent is `User.marketingOptIn = true` AND a GIVEN ledger row in a sentence that
+  names SMS** — ⚠️ **REWRITTEN 2026-09-26 (audit, on Ali's delegation; COMPLIANCE-DECISIONS § "2026-09-26 ·
+  Marketing consent names SMS").** This said the boolean alone was consent "because the profile screen
+  says so in the shipped wording". The screens never said so. **What was actually shown:**
+  - **2026-06-05 → 06-29** — the register box, one bilingual line for everyone: "Send me product updates
+    (optional). *Nipe matangazo (hiari).*"
+  - **2026-06-29 → the audit-fix pass** — the same box per language: en "Send me product updates
+    (optional).", sw "Nipe matangazo (hiari).", zh "向我发送产品更新（可选）。" (`auth.optionalUpdates`).
+  - **2026-09-14 → the audit-fix pass** — the first way to change it after sign-up (E-409), the profile
+    toggle "Product news — Occasional news about 50pick. Turn it off at any time …" / "Habari za bidhaa —
+    Habari za mara kwa mara kuhusu 50pick …" / "产品动态 — 不定期接收 50pick 的动态 …", on a page framed as
+    device notifications.
+  - None names SMS or a phone number; only the Swahili register line says "matangazo" (promotions). From
+    U6 (2026-09-25) the register and profile acts appended ledger rows — but stamped Swahili and `SW`
+    for every player whatever they saw.
+
+  **The wording now (§0 ruling 7 — one name for the one consent, naming sender, content and channel):**
+  register "Send me 50pick offers and news by SMS (optional)." / "Nitumie ofa na habari za 50pick
+  kwa SMS (hiari)." / "通过短信向我发送 50pick 的优惠和资讯（可选）。"; profile "Offers and news by SMS — Occasional
+  50pick offers and news by SMS to your phone number. Turn it off at any time — messages about your account,
+  bets and money still reach you." / "Ofa na habari kwa SMS — Ofa na habari za 50pick mara kwa mara kwa SMS
+  kwenye namba yako. Zima wakati wowote — ujumbe kuhusu akaunti yako, dau na fedha bado utakufikia." / zh
+  "短信优惠与资讯 — …". Every ledger write stores the sentence in the language the person SAW, with that locale.
+  **The gate (OQ11's safe default, BUILT):** a player is marketable only when `marketingOptIn === true`
+  AND the latest `(SMS, identifier, MARKETING)` row is GIVEN AND its wording is one of the pinned sentences
+  in `src/lib/marketing/consent-wording.ts` (append-only literals, never a read of today's dictionary);
+  otherwise `no_consent`, detail "consent predates the SMS wording". **The toggle shows EFFECTIVE consent**
+  — ON only when the consent part of the gate would pass (the above, no suppression the person created, a
+  consent that post-dates any ended break or restore, `rg.ts`). Turning it ON writes `true` + a GIVEN row
+  in the shown sentence and lifts a suppression the PERSON created (their stop link) — ⛔ never COMPLAINT,
+  OPERATOR or SELF_EXCLUSION; OFF writes `false` + WITHDRAWN. ⛔ No backfill, still — a ledger row nobody
+  was shown is a fabricated record, and a "yes" to "product updates" is not a yes to SMS promotions.
+  **The card, since 2026-09-27:** a break or self-exclusion in force HOLDS the switch OFF and locked (§0
+  ruling 8). The consent sentence always stays on screen. The card answers like the push switch above it: a
+  success toast ("Offers and news by SMS turned on" / "… turned off") and, on a failure, a factual toast
+  with a title and the next step. A lapsed session answers `signed_out` with nothing written, and the card
+  says "Your session has ended. Sign in again, then try the switch." with a Sign in link; when the saved
+  state is unknown the page is re-read (`router.refresh`). `recordPlayerMarketingChoice` never guesses: a
+  throw after the writes re-reads the state, so `on` is the state READ (or null when even that read fails)
+  and `ok` means the re-read matches what was asked. When the account or consent read fails, the card no
+  longer disappears: it shows without a switch, with "We couldn't load this setting. Reload the page, or
+  contact us to stop offers." and our own support phone and email (`support-config`) — ⛔ never the
+  helpline. **From the final visual review (2026-09-27):** the held note's `{date}` is `formatHeldUntil`
+  (`src/app/profile/notifications/held-until.ts`) — the page's own language on EAT days, "2 Dec" / "2 Des" /
+  "2026年12月2日", the year in en/sw when the end falls in a later year, the EAT 24-hour clock rounded up to
+  the minute when the end is under a day away ("27 Sep, 13:01"; zh "2026年9月27日 13:01"), in a
+  `whitespace-nowrap` span so it never wraps; the page no longer uses `formatDate` there (the RG page's
+  banners still do — §0 ◐ CARRIED (e)). Under zh the held, paused and unreadable-card lines and the
+  watchlist hint are `break-keep [overflow-wrap:anywhere]` with `text-pretty`, and their zh strings
+  (`push.marketingPaused`, `marketingHeld`, `marketingHeldNoDate`, `marketingUnavailable`,
+  `watchlist.alertsHint`) carry U+200B phrase hints; `push.marketingBody` is deliberately left without
+  hints or `break-keep`, because it is fixed consent evidence. The push card no longer shows its own
+  "Notifications" eyebrow (the page header carries it), and the watchlist block is one whole-row link to
+  `/watchlist` (`data-testid="notifications-watchlist"`) with its count at 13px (`text-body-sm`, was 11px).
+  Dev-only capture aids, both no-ops in production: `POST /api/dev-test/marketing-consent-seed?do=break`
+  (`&period=1h|24h|1w`, default `1h`) takes a REAL break through `coolOff` — the row, the COOLED_OFF status,
+  the holder hook, the audit row, the email and the in-app notice — without signing the player out, so the
+  HELD card shows at once; `?do=end-break` is gone and answers 410 (a break cannot be ended early, and the
+  direct RG write it made was a state production never reaches). The PAUSED card is photographed after a
+  `1h` break has really ended, with consent given before the break. And
+  `/profile/notifications?qa_consent=unreadable` renders the read-failure card. Guards:
+  `test:marketing-consent` T8–T8g (held), T9–T9b (the re-read), C0–C11 (the card's source rules, RG copy,
+  the held date in the page's language, `break-keep` only where hints are) and H1–H5 (the date formatter on
+  a fixed clock), with the toggle, card and held plants in `red:marketing-consent` (its summary reads
+  `gate · loop · toggle · card · held`; toggle case 2 now plants the defect in both the service and the
+  store's lift filter, beside control T2c: the store refuses on its own); re-derive the counts from a run.
 - **OD9 · An imported contact is marketable only when BOTH hold**: a `MessagingConsent{GIVEN}` row with
   the **verbatim wording** the person was shown, **and** a first-party basis (our own form, our own
   event, our own agent roster — the person gave us the number). ⛔ A bought or third-party list is
@@ -578,26 +888,33 @@ is decided, with what it rules out. They are not questions.
   defaulted off.
 - **OD11 · Suppression is checked BEFORE consent**, and a suppression row is never deleted — not by
   contact deletion, not by re-import, not by an officer. Deleting one re-permits marketing to someone who
-  said stop.
+  said stop. *(Since U8/S5 a row may be SUPERSEDED — `liftedAt` — and since 2026-09-26 only by the person's
+  own act on a stop the person made, reason `WITHDRAWN`: the `/s/` resume or the profile toggle ON. A
+  COMPLAINT, OPERATOR or SELF_EXCLUSION row is never lifted by the person. ⚠️ The DAL half — re-arm
+  precedence and a reason filter on `lift` — is owed before U16/U23, §0 ⚠ RECORDED.)*
 - **OD12 · Marketing suppression on self-exclusion uses `selfExclusionStanding`, never `isLockedOut`**,
   and treats any self-exclusion as lasting at least six months (GN 478T reg 48(3)), lifted only by an
   officer restore **plus** a fresh consent after restoration. ⛔ `isLockedOut` itself is not modified.
 - **OD13 · Cooling-off and `detectHarmMarkers` also suppress marketing**, with their own skip reasons.
 - **OD14 · 18+ is enforced in the loop.** An account's `dob` must yield ≥18; a contact with no account
   is marketable only when the import recorded an explicit 18+ attestation with the consent. Unknown age
-  is `skipped`, never sent.
+  is `skipped`, never sent. *(Since 2026-09-26 the identity check is asked too: a final KYC refusal
+  refuses, and a KYC document date of birth makes the YOUNGER age govern — §9 U11.)*
 - **OD15 · One message per number per 72 hours, four per 30 days**, counted from `SmsMessage` rows with
   purpose MARKETING, enforced inside the loop.
 - **OD16 · The send window is 08:00–20:00 EAT**, self-imposed, server-evaluated in the loop. ⛔ The
-  document states plainly that no statute imposes it; the two candidate windows are named constants so
-  the answer to OQ5 is a one-line change. Outside the window rows are **HELD**, never failed.
+  document states plainly that no statute imposes it; the window is ONE named constant (`SEND_WINDOW_EAT`),
+  so the answer to OQ5 is a one-line change. Outside the window rows are **HELD**, never failed. *(This
+  said "the two candidate windows"; only one was ever named anywhere — corrected 2026-09-26.)*
 - **OD17 · ~~Dispatch is closed until a Gaming Board advertising approval is on file~~** — ⛔ **WITHDRAWN
   2026-09-26 on Ali's ruling (OQ1): the Board says marketing SMS is not part of its approval.** No approval
   record is built or required. What stays checked at Start and in the loop is the gate itself (consent,
   suppression, RG, age) and, when U41 lands, the officer authorisation.
 - **OD18 · Two officers above 50 recipients or TZS 10,000**, reusing `twoOfficerGate`; the approver may
   not be the composer; the authorisation carries an id, expires in 60 minutes, and is re-checked in the
-  loop. ⛔ Not sixteen TOTP prompts for sixteen slices.
+  loop. ⛔ Not sixteen TOTP prompts for sixteen slices. ⚠️ Reconcile before U41 builds it (§9 U41): Ali's
+  2026-07-24 single-admin ruling (`test:two-admin` asserts there is no two-officer hard-lock) may make this
+  one officer's typed confirmation.
 
 **Engine**
 
@@ -667,10 +984,21 @@ is decided, with what it rules out. They are not questions.
   message to the gateway is not delivery, and only a receipt earns the delivered count.
 - **OD42 · One campaign carries a required Swahili body and an optional English one**; per-recipient
   selection from `User.locale`, defaulting to Swahili; an empty English body means everyone gets Swahili,
-  stated on screen. ⛔ No machine translation, ever. Exactly one placeholder, `{jina}`.
+  stated on screen. ⛔ No machine translation, ever. Exactly one placeholder, `{jina}`. ⚠️ **Amended
+  2026-09-26 (audit):** `User.locale` was written `"SW"` for EVERY account registered before the audit-fix
+  pass, whatever language the player used; from that pass registration stores the language the sign-up
+  form was shown in (since 2026-09-27 the form's own hidden `shownLocale`, the `kp-locale` cookie only as
+  the fallback — §5.7). The language menu still writes only the cookie, so
+  a later switch never reaches the column, and the profile's basics form accepts `EN` or `SW` only (no
+  `ZH`) — U37/U43 must not treat `User.locale` as a live language signal until something writes it on a
+  switch.
 - **OD43 · The opt-out link is a per-recipient 8-character token at `/s/<token>`**, never expiring, no
   login, one click out with resubscribe beside it. Its length is pinned by a guard against a real minted
-  token, and the footer is composed BEFORE the message is sized.
+  token, and the footer is composed BEFORE the message is sized. ⚠️ **Shipped as ONE action at a time**
+  (`optout-client.tsx`, the "EXACTLY ONE ACTION" comment): two opposite buttons side by side invite a
+  mis-tap on a one-tap page, so the way back is offered after a stop and on an already-stopped load, and
+  "stop" after a resume. Since 2026-09-26 the resume shows and records its OWN consent sentence (§9 U8),
+  and the token is matched case-insensitively.
 - **OD44 · The statutory footer is appended by the engine and cannot be removed by any control**, and the
   body must BEGIN with `50pick` (ETA s.32(1)(b)). Both are counted in the segment arithmetic.
 - **OD45 · The sender ID is a server constant.** ⛔ Never operator-editable — a spoofed header is a
@@ -678,20 +1006,21 @@ is decided, with what it rules out. They are not questions.
 - **OD46 · `HOW-TO-SEND-A-CAMPAIGN.md` is written for Ali in plain words**, by the session that ships the
   live page, and an operator who did not write it follows it once before the Seal.
 
-### §4a — The ten legal questions (each with the safe default that is BUILT)
+### §4a — The eleven legal questions (each with the safe default that is BUILT)
 
 | Id | Question for Ali + a lawyer | Safe default shipping meanwhile |
 |---|---|---|
-| OQ1 | Does 50pick hold a Gaming Board advertising approval, does it cover SMS (Code cl. 2.2.6 requires PRIOR WRITTEN approval), and has our own advertising code of practice been submitted (GN 478T reg 56(2))? | ✅ **ANSWERED by Ali, 2026-09-26: the Board says marketing SMS is not part of its approval — "we can send … as long as we have SMS gateway."** No approval record is required; OD17 and §5.3 are withdrawn. Consent and the RG gates stay (they are other law) — `COMPLIANCE-DECISIONS.md` 2026-09-26 · Marketing SMS rulings |
-| OQ2 | Is 50pick registered with the Personal Data Protection Commission (PDPA s.14(1))? | ✅ **ANSWERED by Ali, 2026-09-26: "not needed."** The contacts import does not wait on a registration reference |
-| OQ3 | How must ETA s.31(c)'s "source of the personal information" be given inside a 160-character SMS? | For any non-account source the footer carries a short source phrase and the opt-out page states the particulars in full. If the answer is "in the body", it costs a second segment — priced in §9 U4 |
-| OQ4 | Which helpline is correct — our `0800 11 0011` or the Gaming Board code's `0800110051`? | ✅ **ANSWERED by Ali, 2026-09-26: "the right helpline is ours."** The marketing footer reads `support-config.ts`'s number; `test:campaign-compose` §12 asserts ONE helpline; D6 closed |
-| OQ5 | Are there lawful quiet hours for promotional SMS? (Nothing found imposes any; the 6am–2pm blackout is radio/TV only) | 08:00–20:00 EAT, self-imposed, documented AS ours, both candidate windows named constants |
-| OQ6 | `/legal/responsible-gambling` §4 promises no marketing to "players under 25 in vulnerability segments" — build the segment, or re-version the page? | ✅ **ANSWERED 2026-09-26 on Ali's delegation (U12, COMPLIANCE-DECISIONS 2026-09-26):** BOTH — the segment is defined and built (under 25 + a self-exclusion or break ever on record, refused until 25), and §4 re-versioned v2026-09-26 to name only what the gate runs; the late-night bullet cut |
+| OQ1 | Does 50pick hold a Gaming Board advertising approval, does it cover SMS (Code cl. 2.2.6 requires PRIOR WRITTEN approval), and has our own advertising code of practice been submitted (GN 478T reg 56(2))? | ✅ **ANSWERED by Ali, 2026-09-26: the Board says marketing SMS is not part of its approval** — read as "we can send … as long as we have [an] SMS gateway" (his words as typed are in `COMPLIANCE-DECISIONS.md` § "2026-09-26 · Marketing SMS rulings"). No approval record is required; OD17 and §5.3 are withdrawn. Consent and the RG gates stay (they are other law) |
+| OQ2 | Is 50pick registered with the Personal Data Protection Commission (PDPA s.14(1))? | ✅ **ANSWERED by Ali, 2026-09-26: not needed.** He typed "pdf is not needed", read as PDPA registration (the only open question it could answer; `COMPLIANCE-DECISIONS.md` § "2026-09-26 · Marketing SMS rulings" keeps the words as typed apart from the reading). The contacts import does not wait on a registration reference |
+| OQ3 | How must ETA s.31(c)'s "source of the personal information" be given inside a 160-character SMS? | For any non-account source the footer carries a short source phrase and the opt-out page states the particulars in full. If the answer is "in the body", it costs a second segment — priced in §9 U4. *(Since 2026-09-26 the cap is ONE segment (`SMS_MAX_SEGMENTS` = 1, §9 U3), so the phrase costs operator budget instead — 111 → about 85 GSM-7 characters with a realistic phrase, counted with its trailing space.)* |
+| OQ4 | Which helpline is correct — our `0800 11 0011` or the Gaming Board code's `0800110051`? | ✅ **ANSWERED by Ali, 2026-09-26: "the right helpline is ours"** — recorded as: the helpline 50pick already publishes, `0800 11 0011`, is the right one. ⛔ Not a claim that 50pick runs it: the site labels it the national helpline (RG §5, `support-config.ts`). The marketing footer reads `support-config.ts`'s number; `test:campaign-compose` §12 asserts ONE helpline, and since 2026-09-26 `red:campaign-compose` carries a plant that puts the Board's number back into the footer (§12 had none); D6 closed |
+| OQ5 | Are there lawful quiet hours for promotional SMS? (Nothing found imposes any; the 6am–2pm blackout is radio/TV only) | 08:00–20:00 EAT, self-imposed, documented AS ours, ONE named constant (`SEND_WINDOW_EAT`) — the answer is a one-line change to it |
+| OQ6 | `/legal/responsible-gambling` §4 promises no marketing to "players under 25 in vulnerability segments" — build the segment, or re-version the page? | ✅ **ANSWERED 2026-09-26 on Ali's delegation (U12, COMPLIANCE-DECISIONS § "2026-09-26 · RG Policy v2026-09-26"):** BOTH — the segment is defined and built (under 25 + a self-exclusion or break ever on record, refused until 25), and §4 re-versioned v2026-09-26 to name only what the gate runs; the late-night bullet cut |
 | OQ7 | Does marketing suppression follow the player's chosen self-exclusion period or GN 478T reg 48(3)'s six months? | Six months minimum, and permanent absent a fresh post-restoration consent |
-| OQ8 | Does the Blackball account have an inbound number for STOP keywords, and what is the payload? | Link-based opt-out only. Inbound STOP is specified and built behind a guard, and ⛔ no reply keyword is printed in any message until inbound is proven live |
-| OQ9 | What is the authorised wording of the "condensed responsible gaming message"? (The Code uses the term four times and defines it nowhere) | The wording 50pick already ships to players, compressed, plus `18+` and the Board's number. ⛔ No new Swahili sentence is invented |
+| OQ8 | Does the Blackball account have an inbound number for STOP keywords, and what is the payload? | Link-based opt-out only (`/s/<token>`, U8 — built). ⚠️ Inbound STOP is **NOT built**: a reply reaches nothing today and the person stays marketable. §9 U46 owns it. ⛔ No reply keyword is printed in any message until it is live. *(This cell said inbound STOP was "specified and built behind a guard"; nothing inbound existed — corrected 2026-09-26.)* |
+| OQ9 | What is the authorised wording of the "condensed responsible gaming message"? (The Code uses the term four times and defines it nowhere) | Shipped: `18+` and the published helpline (OQ4) — no compressed RG sentence is carried; adding one re-prices the 49-septet footer (§9 U4). ⛔ No new Swahili sentence is invented |
 | OQ10 | Is an operator attestation ("collected on our form, holder is 18+") sufficient evidence of consent for an imported contact? | Yes, recorded verbatim with a proof note, and marketable only on a first-party basis — everything else is stored and never marketed |
+| OQ11 | Do opt-ins given before the SMS-naming wording shipped (the 2026-09-26 audit-fix pass) under "Send me product updates" / "Product news" / "Nipe matangazo" / "Habari za bidhaa" — none of which names SMS — cover promotional SMS, or must those players consent again under the SMS-naming wording? (Raised by the 2026-09-26 audit; OD8) | **Not covered — BUILT.** A player is marketable only with `marketingOptIn === true` AND a latest GIVEN ledger row whose wording is one of the pinned SMS-naming sentences (`src/lib/marketing/consent-wording.ts`, append-only); an older "yes" is `no_consent`, detail "consent predates the SMS wording". No backfill: the player is asked again (register box, profile toggle, or the opt-out page's resume). ⛔ Only Ali may relax it |
 
 ---
 
@@ -704,8 +1033,10 @@ ground** (50pick's own recorded position, `docs/COMPLIANCE-DECISIONS.md`, 2026-0
 audience is built anywhere.
 
 **5.2 · Every marketing SMS: identity and purpose at the START, opt-out in EVERY message, the condensed
-responsible-gaming message and the Board's number at the END.** ETA s.32(1)(b)–(c), s.32(2)(d); GBT Code
-cl. 3.7.1–3.7.2. Engine-composed, un-removable, counted in the segment arithmetic.
+responsible-gaming message (`18+` plus the published helpline) at the END.** ETA s.32(1)(b)–(c), s.32(2)(d);
+GBT Code cl. 3.7.1–3.7.2 (the Code names `0800110051`; on 2026-09-26 Ali ruled the right helpline is the
+one 50pick already publishes, `0800 11 0011` from `support-config.ts` — OQ4). Engine-composed,
+un-removable, counted in the segment arithmetic; `test:campaign-compose` §12 refuses a second number.
 
 **5.3 · ~~A gaming advertisement needs the Board's approval; unsolicited SMS needs its PRIOR WRITTEN
 approval.~~** ⛔ **Withdrawn 2026-09-26 on Ali's ruling (OQ1):** the Board told him marketing SMS is not part of
@@ -717,12 +1048,27 @@ question was asked; the Board's own reading is the one 50pick acts on. §5.1, §
 
 **5.5 · Never a lock across a send or an import.** `locks.ts:142` — 30 s transaction timeout.
 
-**5.6 · The consent, suppression, RG, age, window and approval gates run INSIDE the send loop,
-immediately before dispatch**, in this order: `suppression → consent → self-exclusion → cooling-off →
-harm markers → age → frequency cap → window → approval → dispatch`. A refusal is `skipped`, never
-`failed`. Somebody who opts out in minute two must not receive minute four's message.
+**5.6 · The gates run INSIDE the send loop, immediately before dispatch.** SLICE-WIDE first: campaign
+status, the send window (U13) and, when U41 lands, the officer authorisation. If any refuses, EVERY row of
+the slice is `held`, because nothing about any person was decided. Then PER RECIPIENT: `suppression →
+consent (the toggle AND an SMS-naming GIVEN row, OQ11) → self-exclusion → cooling-off → harm markers → age
+(the account's date of birth and the identity check, U11) → under-25 history → account status (incl. a
+final identity refusal) → frequency cap → dispatch`. A per-person refusal is `skipped`, never `failed`.
+Somebody who opts out in minute two must not receive minute four's message. *(Rewritten 2026-09-26: this
+put the window after the per-person gates and still listed the withdrawn Board approval, while ▶ NEXT and
+U43 need the window slice-wide, and it omitted the shipped under-25 and account-status steps.)*
 
-**5.7 · Consent wording is stored VERBATIM and never re-rendered from current strings.**
+**5.7 · Consent wording is stored VERBATIM, in the language the person SAW, and never re-rendered from
+current strings.** The register form and the profile switch post the language they were DRAWN in (the
+form's hidden `shownLocale`; the switch's `useT().locale`), accepted only as exactly `en`, `sw` or `zh`
+(`renderedLocaleOf`); anything else, or nothing, falls back to the `kp-locale` cookie read on the server,
+which is also what the opt-out acts use. ⛔ The posted value only CHOOSES which of the dictionary's own
+sentences is stored (`marketingConsentWording`) — no text from the client ever reaches the ledger — and the
+locale is never a literal (a literal `"SW"` stamped every English and Chinese registrant as having read the
+Swahili sentence, 2026-09-25 → the audit-fix pass). *(Until 2026-09-27 this read "the cookie, ⛔ never taken
+from the form". The cookie alone was wrong whenever it changed between drawing and submitting — the language
+provider rewrites it on mount, and another tab can switch language — so a Swahili tick was stored as the
+English sentence.)*
 
 **5.8 · Records are kept per recipient per campaign**: the wording shown, the source, every check that
 ran and its verdict, the body, the provider reference, the status, the receipt, and the cost the
@@ -815,9 +1161,10 @@ text. The one-line summaries are in §1; what follows is what each one actually 
 - **D6 · The helpline has two values and six print sites.** `support-config.ts:120` pins `0800 11 0011`;
   the Gaming Board's Advertising Code names `0800110051` three times. ⚠️ `global-error.tsx` keeps its own
   hand-written copies **by design** (it must not import), so the guard asserts they EQUAL the constant
-  rather than removing them. ✅ **Closed 2026-09-26 on Ali's ruling (OQ4): "the right helpline is ours."**
-  The marketing footer now reads `support-config.ts`'s `HELPLINE_TEL()`, and `test:campaign-compose` §12
-  asserts ONE helpline where it used to assert two. **U5**
+  rather than removing them. ✅ **Closed 2026-09-26 on Ali's ruling (OQ4): "the right helpline is ours"**
+  — recorded as: the number 50pick already publishes, which the site labels the national helpline (⛔ not
+  a line 50pick runs). The marketing footer now reads `support-config.ts`'s `HELPLINE_TEL()`, and
+  `test:campaign-compose` §12 asserts ONE helpline where it used to assert two. **U5**
 - **D7 · There is no SMS suppression list.** **U6**
 - **D8 · `marketingOptIn` carries no channel, no wording, no evidence and no history.** **U6**
 - **D9 · `isLockedOut` lifts itself** when the chosen period elapses (`responsible-gambling.ts`,
@@ -971,7 +1318,12 @@ never from a reading of the standard.
 ⭐ `planSms` returns **quantity, never currency** — the rate is the provider's and belongs with the ledger
 (U49), not in a pure module that would go stale the day it changes and would then be a fabricated promise
 about money (§7.5). `SMS_MAX_SEGMENTS` is 2, computed from money: one segment to 150,000 contacts is
-TZS 900,000, so a third needs an owner's signature rather than a longer text box.
+TZS 900,000, so a third needs an owner's signature rather than a longer text box. ⚠️ **Reconciled
+2026-09-26 (audit-fix pass): it is now 1.** It said 2 while `composeMarketing` refused anything over one
+segment, so a screen reading `withinCap` and the composer disagreed; the stricter, shipped refusal won and
+both now read the one constant. The operator budget is also ENCODING-AWARE now — a single `’` makes the
+message UCS-2, where 70 − 49 = **21** characters fit, and the refusal quotes 21, not 111
+(`test:campaign-compose` §13).
 **Guard:** `test:campaign-compose`. **Also:** `test:client-graph-safe`, whose pinned set this unit adds
 `sms-compose.ts` to — from the commit that MOVES the table, not the one that first imports it.
 **RED:** `red:campaign-compose`, 15 proofs — priced from `String.length`; UCS-2 counted by code point
@@ -984,7 +1336,8 @@ is never used to price; the moved table is asserted byte-for-byte against a copy
 
 **U4 · The statutory envelope** — `src/lib/marketing/footer.ts`, `src/lib/sms-compose.ts` (D5) — ✅ SHIPPED S2
 The engine-appended footer, per locale, un-removable and counted:
-`\n50pick 18+ 0800110051 Acha: 50pick.tz/s/<8>` — **49 septets, computed and asserted, never typed**.
+`\n50pick 18+ 0800110011 Acha: 50pick.tz/s/<8>` — **49 septets, computed and asserted, never typed**.
+*(Shipped at S2 with the Board Code's `0800110051`; the published helpline since S7b, OQ4 — same length.)*
 A compose-time gate that the body **begins** with `50pick` (ETA s.32(1)(b)), one that the opt-out token
 is present and the right length (a message with no way to stop is unlawful), and one that names the
 character that pushed a body out of GSM-7. The single-segment operator budget is therefore **111**
@@ -1000,19 +1353,20 @@ link that no longer resolves. Deriving it makes a domain change a failing assert
 invoice. Measured 2026-09-25: the apex `https://50pick.tz/` answers 200, so the `www.` is dropped and
 four septets are returned to the officer — ⚠️ but §3b says a `curl` 200 is not proof a BROWSER reaches
 a page, so U8's live drive confirms the opt-out link before any message carries it.
-🔴 **THE HELPLINE HERE IS DELIBERATELY NOT THE ONE `support-config.ts` PUBLISHES**, and §12 of the
-guard asserts that they DIFFER. `support-config.ts` pins `0800 11 0011`; the Board's Advertising Code
-names `0800110051` three times. That is OQ4, Ali's to answer — ⛔ not a thing to resolve by quietly
-making the two agree, which is exactly what an "obvious cleanup" would do. The footer carries the
-regulator's number because a statutory footer citing a helpline the regulator does not recognise is the
-failure that matters, and no published page is changed silently.
+✅ **SUPERSEDED 2026-09-26 (S7b, OQ4 answered by Ali):** the footer reads `support-config.ts`'s
+`HELPLINE_TEL()` — the number 50pick already publishes; §12 asserts ONE helpline and that `0800110051`
+appears nowhere, and since the audit-fix pass `red:campaign-compose` carries a plant that puts the Board's
+number back; still 49 septets. *(Was, at S2: "the helpline here is deliberately NOT the one
+`support-config.ts` publishes, and §12 asserts that they DIFFER" — correct while OQ4 was open, and ⛔ no
+longer a rule: making the two differ again is now the defect.)*
 ⚠️ **OQ3 is priced rather than argued about:** `operatorBudget(locale, sourcePhrase)` takes the source
 phrase, and with a realistic one the budget falls from 111 to **85**. If the lawyer's answer is "in the
 body", that is the number the composer will show.
 **Guard:** `test:campaign-compose` §9–§12. **RED:** `red:campaign-compose` — the composer sizing the
 BODY while the engine sends body + footer (every quote short by 49 septets: a 147-character body reads
 as one message and sends as two); the identity check dropped; the footer made optional; the opt-out
-token unchecked.
+token unchecked; and (since 2026-09-26) the Board's `0800110051` back in the footer in place of the
+published helpline, which must fire both §12 assertions.
 **Accept:** no marketing body can be composed without the footer — there is no call shape that
 produces one, which is the only way "un-removable" is true of software rather than of a policy
 document; the footer's length is asserted against a token of the real minted length; the 111 is
@@ -1048,6 +1402,9 @@ statutory helpline operator-settable first used the operator's REAL desk number 
 literal, and §8 — "no support contact is a literal outside `support-config.ts`", whose sweep includes
 `scripts/` — refused the whole harness because the tree was already red. A red harness that seeds a
 real contact number into the tree is a red harness that leaks one. The replacement is now plainly fake.
+✅ *(Closed 2026-09-26 by Ali's OQ4 ruling, §8 D6: the right helpline is the one 50pick already publishes;
+`test:campaign-compose` §12 now asserts the footer's number is the SAME as the published one. The paragraph
+below is the S3 record, kept as it was written.)*
 ⛔ **D6 IS NOT CLOSED BY THIS UNIT AND STAYS ⬜.** Its engineering half is done — one home, every copy
 pinned, drift now impossible and PROVEN impossible. Its substance is **which number is correct**, and
 that is OQ4: we publish `0800 11 0011`, the Board's own Advertising Code names `0800110051`. ⛔ Not a
@@ -1056,7 +1413,16 @@ number still DIFFERS from the published one, precisely so an "obvious cleanup" f
 turning an open owner question into a silent product decision. When Ali answers, the constant moves
 and §15 forces all four copies to move with it.
 **Guard:** `test:support-contact` (already on `predeploy`; §13.1 asserts that).
-**RED:** `red:support-contact` — 4/4, declared anchors.
+**RED:** `red:support-contact` — 4/4, declared anchors. *(2026-09-26 audit-fix pass: /help's at-risk answer
+(FAQ 5) printed the helpline as untappable text with no label — MOBILE-VISUAL-FINDINGS S08-05 / S08-info-H02.
+It now shows the helpline label and a `tel:` link; §14.5–§14.7 refuse a contact shown as plain text and pin
+FAQ 5's link, and a fifth `red:support-contact` mutation plants the old text back.)* *(2026-09-27, the
+final visual review: every open FAQ answer on /help carries `pb-3` — 16px on this repo's override scale,
+the summary's own bottom padding — so it no longer sits about 6px off the next row's divider; the faq5
+answer alone is `break-keep [overflow-wrap:anywhere]` (`WHOLE_WORD_ANSWERS` in `src/app/help/page.tsx`),
+so zh no longer splits 充值, while the paragraph answers keep ordinary CJK breaking on purpose — keep-all
+half-empties their lines at 360, the `trust-band.tsx` rule. §14.8 pins both, with control §14.9. The /help
+disclaimer is 13px (was 11px), balanced and `break-keep`. Re-derive the counts from a run.)*
 **Accept:** `grep` finds the number in exactly the declared places, all equal — and, added here, the
 guard that says so is now proven able to fail.
 
@@ -1091,6 +1457,28 @@ toggle now append; the 730-day retention lapse (U16 owns it, explicitly), accoun
 (`user-service.ts:147`) and erasure (`erasure.ts:476`) do not. Until they do, the ledger and the boolean
 disagree after any of those three. ⛔ Not absorbed into U6 — closure and erasure are currently unowned.
 
+🔴 **FOUND BY THE 2026-09-26 AUDIT — THE LEDGER RECORDED A LANGUAGE NOBODY CHECKED.** Both registration
+paths passed a literal `"SW"`, and the profile toggle `User.locale` (itself `"SW"` for every account), so
+every REGISTRATION and PROFILE row from this unit until the audit-fix pass says the player read the
+Swahili sentence — an English or Chinese registrant included. §5.7's own rule, broken by its writer. The
+fix (§0 ruling 7): every writer — register password and OTP paths, the profile toggle, the opt-out stop
+and resume — resolves the sentence from the `kp-locale` cookie on the server, the way `/s/[token]` already
+did, and stores that locale; registration also stores it on `User.locale` (OD42). ⚠️ Narrowed 2026-09-27
+(§5.7): the register form and the profile switch now post the language they were DRAWN in, and the cookie
+is only the fallback; the opt-out acts still read the cookie. ⛔ The earlier rows are
+not edited (append-only) and are not evidence of language; COMPLIANCE-DECISIONS § "2026-09-26 · Marketing
+consent names SMS" records the window. ⭐ The sentences that count as SMS consent are pinned in
+`src/lib/marketing/consent-wording.ts` (OQ11), and `test:marketing-consent-ledger` asserts every sentence
+the dictionary shows TODAY is in that list, so a copy change cannot silently disqualify new opt-ins.
+The first nine entries carry `since` 2026-09-27, the ship date (re-dated once before any row existed — §0
+⚠ TRAPS). The posted language is guarded by `test:marketing-consent-ledger` §7 (7, 7a, 7b, 7d, and 7e,
+which EXECUTES `renderedLocaleOf` against case variants, padding and free text) with its red cases, and by
+the live U6 drive's 3e (each sign-up page posts `shownLocale` beside its own sentence).
+⚠️ **"Latest" has a tie.** `latestFor` orders by `createdAt`, then by id — and ids are random UUIDs, so two
+rows for one number stamped in the same millisecond have a random "latest". Real acts are separate
+requests, so the production risk is negligible; the suites step the clock between a stop and the next act
+so they stay deterministic. A monotonic tie-break in both DALs would remove it.
+
 **U7 · The ONE gate** — `src/lib/server/marketing/consent.ts` — ✅ LIVE S4 (order and RG step reworked at U10)
 `mayReceiveMarketingSms(msisdn) → { ok } | { ok:false, skipReason, detail }`, ordered exactly as §5.6.
 Suppression first; then, if the number belongs to a `User`, that user governs (RG standing → account
@@ -1124,13 +1512,27 @@ consent, self-exclusion standing and account status.
 ⭐ `minimum_served` is refused, not only `serving` — a 24-hour self-exclusion that elapsed a year ago is
 still a refusal (D9, OD12). U10 adds the rest ON TOP of this; it does not replace it.
 
+⚠️ **CHANGED BY THE 2026-09-26 AUDIT-FIX PASS (§0 rulings 8–9), so read the code, not only the text above:**
+① a player's consent is the toggle AND a latest GIVEN ledger row in a pinned SMS-naming sentence (OD8,
+OQ11) — the ledger is now read for a player too, but only as a SECOND condition the toggle must also meet,
+never as a grant (OD10 stands); an older "yes" is `no_consent` ("consent predates the SMS wording").
+② The profile toggle reads the same consent step (`marketingToggleState`) and its writer
+(`recordPlayerMarketingChoice`) lifts only a suppression the person created (`isPersonCreatedSuppression`:
+reason `WITHDRAWN`) — never COMPLAINT, OPERATOR or SELF_EXCLUSION; `/s/`'s `personMayLift`
+(`optout-service.ts`) is the same rule, and `test:marketing-consent` pins that the two agree on all four
+reasons (one could delegate to the other with no import cycle). ③ `bad_msisdn` is judged by the
+numbering plan (`parseTzNumber`, U2), not by length: a Kenyan `+254…`, a landline or a dead NDC is
+twelve-plus digits and undeliverable. ④ Age and account status also ask the identity check (§9 U11).
+
 **U8 · Opt-out that works** — `src/app/s/[token]/{page,actions}.tsx`, `src/lib/marketing/optout.ts` — ✅ LIVE S4 + S5
 An 8-character token minted per recipient at enqueue (unique index), never expiring, no login. One click
 writes: the suppression row, a `WITHDRAWN` ledger row carrying the page's exact wording, and — when the
 number belongs to a player — `marketingOptIn = false` through the **existing** `privacy.
 marketing_consent.withdrawn` audit action. Resubscribe is the second button on the same page, never a
 condition of the first. Rate-limited per IP; `noindex`; a bad token says so plainly and ⛔ never shows a
-false success.
+false success. ⚠️ *Shipped as ONE action at a time (`optout-client.tsx`, the "EXACTLY ONE ACTION"
+comment): two opposite buttons side by side invite a mis-tap on a one-tap page, so the way back is offered
+after a stop and on an already-stopped load, and "stop" after a resume (OD43).*
 **Guard:** `test:marketing-optout`. **RED:** make the token expire; make the click require a confirmation.
 **States:** loading · valid token · already suppressed · resubscribed · invalid token · error.
 **Accept:** a minted token suppresses on production in the U52 drive, and the number is refused at the
@@ -1144,7 +1546,8 @@ field list in this plan names no opt-out token column at all (the `claimToken` t
 token). So U8 ships **its own** token store, keyed by token and mirroring `Suppression`'s triple, which
 U42 later writes into at enqueue.
 ② **Nothing mints one yet, so the production half of Accept cannot be met in S4.** `marketingFooter()`
-(`footer.ts:86`) builds the string `50pick 18+ 0800110051 Acha: 50pick.tz/s/<token>`, but `composeMarketing`
+(`footer.ts`) builds the string `50pick 18+ 0800110011 Acha: 50pick.tz/s/<token>` (the S4 string carried
+the Board Code's `0800110051`; the published helpline since S7b, OQ4), but `composeMarketing`
 and `marketingFooter` have **no callers outside `campaign-compose.test.mts`** — no message carries a `/s/`
 link today. ⭐ The production half therefore moves to **U42 (minting) and U52 (the Seal drive)**, and is
 NOT claimed here. What U8 proves on production is that the page serves, answers `noindex`, refuses a
@@ -1166,6 +1569,160 @@ recipient row — a person who is never messaged and never appears as a failure.
 (`google-tag.ts:32-41` already names this exact hazard for the invite token, so a token would otherwise be
 sent to Google in a page path); `/s` must stay OUT of `PROTECTED_PREFIXES` (`proxy.ts:40`) or the no-login
 promise breaks; and every player lookup goes through `userPhoneKeyFor` (U7), never a bare `findByPhone`.
+
+⚠️ **REWORKED BY THE 2026-09-26 AUDIT-FIX PASS (§0 rulings 5 and 10):**
+① **A minimal shell** — `app-shell.tsx` gives `/s` the logo, the language menu, the content and a footer
+of the licence lines, the responsible-gambling sentence and the helpline only (the sentence added
+2026-09-27, below): no Ingia/Jisajili, nav, bottom rail, chat, first-visit primer or
+"Pendekeza masoko upate pesa". A page somebody reaches to leave does not sell to them (ruling 5, done).
+② **The heading and body follow the state** (valid, already stopped, stopped, resumed, error), so the
+headline never contradicts the one button under it.
+③ **Resume is a consent, so it shows and records its OWN sentence:** `push.marketingBody` sits next to the
+resume button, and the ledger stores "<`optout.resubscribeButton`> — <`push.marketingBody`>" in the
+language shown (pinned in `consent-wording.ts`, OQ11). The resumed copy says what happened — the stop is
+lifted — and ⛔ never promises that messages will arrive (the gate still decides).
+④ **Resume lifts only a suppression the person created** (`WITHDRAWN`) — never COMPLAINT, OPERATOR or
+SELF_EXCLUSION.
+⑤ **The token is case-insensitive** — the alphabet is uppercase-only, and somebody TYPING the link from
+the SMS on a phone keyboard usually types lowercase; folding it cannot collide and does not widen the
+guessing space.
+⑥ **A bad link gives a next step** — sign in → Profile → Notifications, or contact support
+(`support-config.ts`) — and ⛔ never says "this link is not ours", which read as a phishing warning to
+somebody holding a genuine, truncated 50pick link. A read that FAILED says "did not go through", not
+"this link does not work" — and since 2026-09-27 it offers a retry, as the BUSY refusal does (below).
+⑦ Confirmations are announced (`role=status` / `aria-live`) with focus moved to them, at a readable size
+and contrast, and the number is masked the way `/profile` masks a phone (`+255••••21`, not `2557••••21`).
+**What the code now does, in detail (read it before touching the page):**
+- **The shell** (`OptOutShell`) is chosen from the request path BEFORE the session is read, so an ended
+  session can never redirect somebody who is trying to stop onto the sign-in page (an opt-out behind a
+  login, ETA s.32(1)(c)). It renders the 50pick lockup (not a link), the language menu, a skip link and the
+  page, then only the regulator lines: 18+, the GBT licence number (13px mono, `text-body-sm`, since
+  2026-09-27 — the full footer's is still 11px, §0 ◐ CARRIED (h)), the full footer's italic
+  responsible-gambling line (`footer.stopGambling`) and the helpline. ⭐ Since 2026-09-27 that sentence sits
+  directly above the helpline, as in the full footer — alone, "Simu ya msaada · 0800 11 0011" read as
+  50pick's own number, often the only number on the page — and the 18+ roundel carries no `aria-label`
+  (ARIA prohibits one on a generic span; "18+" is its text). The chat bubble, the first-visit primer and
+  the socials panel keep off `/s` through their own hide lists.
+  ⚠️ **Which paths get this shell** (`isOptOutPath`, 2026-09-27): only `/s`, `/s/` and `/s/<one segment>`
+  — a segment match, so `/settings` and `/support` never do. It used to match any `/s/…` path, and
+  `/s/<token>/<more>` has no route, so the root 404 rendered inside the stripped shell and its soft links
+  opened the landing page with no nav until a hard reload; a deeper path now renders the full player
+  shell's 404. The overlays' own hide lists still hide chat, primer and socials on any `/s` path, which is
+  harmless.
+- **One heading per state:** idle "Acha ofa na habari kwa SMS" (en "Stop offers and news by SMS", zh
+  "停止接收短信优惠与资讯"); stopped or already stopped `optout.stoppedTitle` ("Ofa na habari kwa SMS
+  zimesimamishwa"); resumed `optout.resumedTitle` ("Umechagua kupokea ofa na habari kwa SMS tena"). Since
+  2026-09-27 every opt-out sentence names what it stops with the consent's own noun (`push.marketingTitle`).
+  Exactly one action is on screen. The ledger stores STOP as
+  "<`optout.stopButton`> — <`optout.body`>" and RESUME as "<`optout.resubscribeButton`> — <`push.marketingBody`>"
+  (pinned as the `OPT_OUT_RESUME` entries), in the language shown. The STOP sentence changed with the
+  rename and stays UNPINNED by design — a withdrawal is never consent (`test:marketing-consent-ledger` 8b) —
+  and the RESUME sentence did not change. ⛔ `optout.resubscribeButton` cannot be reworded without appending
+  the new sentences there.
+  **Wrapping (final visual review, 2026-09-27):** the sw headings hold a no-break space in "kwa SMS" and
+  the en headings in "by SMS"; the zh headings and notices carry U+200B phrase hints and render
+  `break-keep`. The shared classes `KEEP_WORDS`, `TITLE_TEXT` and `NOTICE_TEXT` live in
+  `src/app/s/[token]/optout-classes.ts`. The ledger evidence strings (`optout.body`, `optout.stopButton`,
+  `optout.resubscribeButton`, `push.marketingBody`) carry neither mark (`test:marketing-optout` S7h.<loc>),
+  and the act sentence under the button, which shows that evidence, gets `text-pretty` only.
+- **"Start them again" on a stop the person did not make** (OPERATOR, COMPLAINT, SELF_EXCLUSION) answers
+  "already", writes nothing, and offers no way back; the reason is never sent to the page. The resumed
+  sentence is the same for everybody, so it discloses no RG standing, and a SELF_EXCLUDED player's toggle
+  is never switched back on from a link.
+- **A STOP whose ledger write failed after the suppression landed is repaired by the retry:** the "already"
+  answer appends the missing `WITHDRAWN` row and switches the player's toggle off.
+- **Evidence never holds the live token.** The suppression's evidence, `liftedReason` and the audit payload
+  store a reference (`optout:` + the first two characters + six stars). `mintOptOutToken` normalises its
+  number with `toMsisdn255` and returns null for an unusable one — a caller that gets null must not send.
+- **Rate limit `optout.ip`** (30 burst, 10 a minute) is spent only by a MISS — a token that does not
+  resolve — on the page load and on both acts; a hit is refunded, so a genuine stop never spends it, and
+  each valid link's acts are also capped on their own hashed per-link key. An address that has run dry gets
+  the BUSY refusal (`optout.busy`: the page is busy, nothing has changed, try again in a few minutes) with a
+  "Try again" link, and no lookup is made — so the answer is identical for every token, live or not, and
+  is not an oracle. *(Until 2026-09-27 a dry address got the plain invalid-link refusal, which told a person
+  holding a GENUINE link that it did not work, so they had no reason to try again.)* Malformed and unknown
+  tokens still share the one invalid-link sentence, and a read that THROWS gets the "did not go through"
+  refusal (`optout.error`) with a retry; the mapping is `refusalKindFor` in `optout-service.ts`.
+  Trade-off: a genuine link opened behind the same
+  address as an active guesser is refused until the bucket refills. ⚠️ The key is the FIRST
+  `X-Forwarded-For` entry; whether Railway's edge appends to or replaces that header is unverified — probe
+  it before U42 mints real tokens. Every `rateCheckAsync` / `rateRefundAsync` call in `optout-service.ts`
+  types the literal `"optout.ip"` (since 2026-09-27): `test:house-bot-reports` 0.L52.3 reads each call's
+  action from the syntax tree, so a constant counted as an undeclared rule. `OPTOUT_BUDGET` stays exported
+  for the suite; the bucket and its numbers are unchanged.
+- **The invalid-link refusal** (`optout.invalid`, `optout.invalidNext`) says the link does not work — it may
+  be incomplete or mistyped — and that nothing has changed, and names the next step: sign in and switch off
+  the SMS toggle under Profile → Notifications, or contact the desk (phone and email from
+  `support-config.ts`; ⛔ never the helpline).
+  Support has NO tool to record a suppression by hand yet, so the page promises contact, not a manual stop
+  — a unit is owed for an officer-recorded suppression (U23's "suppress" is the nearest).
+- **The refusals, in one place** (`src/app/s/optout-refusal.tsx`, 2026-09-27), shared by `/s/<token>` and
+  bare `/s`. The BUSY refusal (warning) and the failed-read refusal (danger) lead with a primary "Try again"
+  (`optout.retry`) — a plain `<a>` back to the same `/s/<token>` — then "Open notification settings"; since
+  2026-09-27 those two are one group sharing one width with a 12px gap (`gap-2` on this repo's spacing
+  scale), and the desk's phone and email are a separate group below (`test:marketing-optout` S5e, and the
+  drive's read-failure check: same width, gap ≥ 8px). The invalid-link refusal (neutral) has no retry:
+  retrying a link that does not work changes nothing. The refusal's title is a block span with
+  `text-balance` and its body `text-pretty` — call-site wrappers until `callout.tsx` does it (§0 ◐ CARRIED (d)).
+- **Bare `/s`** (`src/app/s/page.tsx`, 2026-09-27) — an opt-out link that lost its token — renders the
+  invalid-link refusal, `noindex`, inside the opt-out shell. It used to be the root 404 inside the stripped
+  shell. No catch-all route was added for deeper paths (they get the full shell's 404, above).
+- **A failed Stop or Resume tap moves nothing under the thumb (2026-09-27):** the danger alert renders
+  BELOW the button, with the desk's phone and email INSIDE it, lined up with its sentence (read from
+  `support-config` on the SERVER and handed to the client as a rendered node, so the client never reads the
+  support config). Nothing above the button changes on a failure: the heading and the status message read
+  `said`, the last OK answer, which a failure never updates. The alert takes focus without scrolling
+  (`preventScroll`). The retry is still the same button. *(Before this the alert and the desk were inserted
+  ABOVE the button, which dropped it about 210px at 360 and put the desk's `tel:` row under the thumb, so a
+  retry opened the dialer.)* The U8 drive asserts the stop button's box is unchanged after a refused tap and
+  that the tapped point still hits the button, never a link.
+- **A pending tap stays readable (2026-09-27):** the tapped button renders at opacity 0.85
+  (`BUSY_LEGIBLE` in `optout-client.tsx`) instead of `.btn:disabled`'s 0.45; the drive asserts ≥ 0.8. A
+  platform-wide `.btn[aria-busy="true"]:disabled` rule in `globals.css` would make it redundant
+  (§0 ◐ CARRIED (c)).
+- **The loading skeleton is the page's own parts** (2026-09-27): the same `PageHeader` (its `title` prop is
+  now a node), the class names in `src/app/s/[token]/optout-classes.ts` (shared with `optout-client.tsx`) and
+  the same dictionary strings, with the data-dependent text made transparent on visible bars
+  (`bg-bg-elevated` with a `ring-border` ring, `box-decoration-clone`), so every line wraps where the real
+  one will in every language and width. The screen-reader line is the LAST child of the stack. 🔴 Root
+  cause of the old 24px drop at 360: that line was the FIRST child of the `space-y-5` stack, so every child
+  after it took the gap.
+- **Naming: CLOSED 2026-09-27.** The page's title, headings and buttons now say "ofa na habari kwa SMS" /
+  "offers and news by SMS" / "短信优惠与资讯" like the register box, the profile toggle and the resume
+  sentence. Guard: `test:marketing-optout` S7g.<loc> — the headings and the stop button contain
+  `push.marketingTitle`, and no "marketing messages/texts", "matangazo" or "营销" is left in the opt-out
+  copy. The Swahili and Chinese opt-out copy still awaits a native speaker's read (§0 ◐).
+- **For the camera — dev-only hooks, every one a no-op in production:** `?qa_hold_ms=N` holds the page
+  render (capped at 5 s) so the loading skeleton can be photographed; `?qa_fail_read=1` makes the page's
+  read throw, to show the failed-read refusal; the cookie `kp-qa-hold-act-ms=N` holds the Stop/Resume
+  server action (capped at 5 s) to photograph the pending button. The drive
+  `scripts/live/marketing-u8-optout-drive.mjs` (`qa:marketing-u8-optout`; local `next dev` with the
+  in-memory store) reads every expected sentence from `i18n-dict.ts` per language and refuses to run if a
+  key is missing. It photographs invalid, valid, stopped, resumed and already in Swahili at 1280×800,
+  360×780 and 360×780 reduced-motion, and in English and Chinese at 1280 and 360, as viewport tiles; then
+  loading in all three languages at 1280 and 360 (the stop button must land where the skeleton drew it),
+  pending (sw and zh), the read failure, bare `/s`, a deeper `/s/…/x`, a forced primer with a control on
+  `/?primer=1`, a lower-case link, and last the error tap and the busy refusal (an address drained by
+  misses). Swahili tiles keep their old names (`valid-360`); English and Chinese carry the language
+  (`valid-en-360`, `valid-zh-1280`, `loading-zh-360`). It asserts no sales chrome, `role=status`/`alert` with
+  focus moved, and the masked number. *(This bullet said the drive was "not an npm script"; it is.)* Since
+  2026-09-27 it also asserts the refused tap (the stop button's box unchanged, measured with the pointer
+  moved off first because `.btn:hover` lifts a button 2px, and the tapped point still the button, never an
+  `a[href]`), the pending opacity, the read-failure buttons (same width, gap ≥ 8px) and keep-all on the zh
+  H1; heading and text comparisons fold the no-break space and drop U+200B.
+**Guard since 2026-09-26:** `test:marketing-optout` also drives the acts' budget through the object under
+test; `red:marketing-optout` adds in-memory surface plants against the page, client, loading, actions,
+shell and overlay source and the dictionary — each anchor must resolve exactly once. Since 2026-09-27 it
+also has 37c (a dry budget reads BUSY, with its model and a red case), S5d (the refusal is chosen through
+`refusalKindFor`, and busy and failed offer a retry), S6b–S6d (the skeleton), S7g (the noun), S18h (the
+desk under a failed tap), S20d (the helpline under its RG sentence), S21b (rewritten: the segment match)
+and S23 (bare `/s`), each with a plant; S5b and S5c now read `optout-refusal.tsx`. From the final visual
+review (2026-09-27): S5e (the refusal's two buttons are their own group), S7h.<loc> (break hints where
+`break-keep` relies on them, none in ledger evidence), S18i (a failed tap moves nothing under the thumb),
+S18j (the pending label stays readable) and S18k (zh keeps its words whole on the headings and notices),
+each with in-memory red plants; S18c (the status and alert callouts, two refs), S18f (every client callout
+is `md`) and S18h (the desk inside the alert) were rewritten, and S6b now also requires the title span's
+class in the skeleton and the client. Re-derive the counts from a run; none is quoted here.
 
 **U9 · The gate runs in the loop, and the proof of it** — `test:marketing-consent` — BUILT S6, RE-SCOPED
 The unit is the guard: a fixture that opts out **between** slice one and slice two, and must not receive
@@ -1235,6 +1792,15 @@ scan off every non-consenting player.
 lifts proven to EXIST) · `red:rg-doors` 11 → 19 mutations, each caught by its own named check, tree restored
 · `test:marketing-consent` 15 → 20 · `red:marketing-consent` 5 → 8, three of the plants being U7's SHIPPED
 shapes (the half-fix that still wrote, RG before consent, the permanent break refusal).
+⚠️ *(2026-09-26 audit-fix pass)* An unreadable `selfExclusionUntil` on an account that is not SELF_EXCLUDED
+now refuses as `rg_self_excluded`, the same as the break branch already did (it read as "no exclusion").
+A refusal for "no consent given since" an ended break or an officer restore carries `consentLapsed`, which
+the profile toggle reads to show OFF with one neutral line (`push.marketingPaused`, reworded 2026-09-27:
+"Turned off when your break or self-exclusion ended. It stays off unless you switch it on."); a tap then
+writes a fresh GIVEN row even when the boolean already reads true. Guards `test:rg-doors` §8 and its red
+anchors. ⭐ *(2026-09-27)* A break or self-exclusion still IN FORCE holds the toggle OFF and locked
+for every player, and an ON is refused with `held` and writes nothing (§0 ruling 8); guarded by
+`test:marketing-consent` T8–T8g with `red:marketing-consent`'s `heldReadsOn` and `heldWrites`.
 
 **U11 · 18+** — the loop (D11)
 Account-linked: `dob` must yield ≥18 at send time. Contact-only: marketable solely when the import
@@ -1250,6 +1816,23 @@ or free-text `evidence` would be inventing it, so the contact path is SHUT until
 now pin the property they always meant — a stop turns the gate's answer into `suppressed`, and a resume gives
 back EXACTLY the pre-stop answer (the lift-ignored red case still fails it). ⚠️ Registration writes `User.dob`
 while KYC writes `KycSubmission.dob`; the gate reads the ACCOUNT's (OD14's wording).
+🔴 **FOUND BY THE 2026-09-26 AUDIT, FIXED IN ITS FIX PASS (§0 ruling 9) — THE GATE CLEARED A PLAYER KYC HAD
+REFUSED AS A MINOR.** When the date of birth on an identity document gives under 18, `kyc-service` freezes
+the wallet and writes `KycSubmission` REJECTED/UNDERAGE — it changes neither `User.status` (still ACTIVE)
+nor `User.dob` (still the adult date typed at sign-up), so reading only the account cleared a minor the
+platform itself had found, against RG §4's "no marketing … to anyone under 18". SANCTIONED and
+DUPLICATE_IDENTITY (possibly the second account of somebody self-excluded on the first, GN 478T reg 49(3))
+passed the same way. **Now:** a FINAL KYC refusal refuses — UNDERAGE → `age_minor`, SANCTIONED /
+DUPLICATE_IDENTITY → `account_status` ("identity refused (…)"); when the KYC row carries a document date of
+birth the YOUNGER of the two ages governs (so the under-25 step uses it too); a KYC record that cannot be
+read refuses as `age_unknown`; and a case an officer re-opens is marketable again with no extra code
+(`reopenFinalRefusal` restarts the row). Guard `test:marketing-consent` (fixtures: adult sign-up date +
+KYC UNDERAGE → `age_minor`; SANCTIONED → refused).
+⚠️ **What this does NOT make true:** KYC is asked only at withdrawal, so most players are still marketed on
+the date of birth they typed (and attested 18+) at sign-up. RG §4's "anyone under 18 or whose age we cannot
+confirm" is read as: no readable date of birth, or an identity record that cannot be read, is `age_unknown`
+— not "every player without a KYC check". The page was not re-versioned; a stricter reading is an owner
+call and a new RG version.
 
 **U12 · The published promise, reconciled** — `/legal/responsible-gambling` (D12, OQ6)
 Build what exists (U10 + U11 suppress self-excluded, cooling-off, harm-marked and under-18 recipients).
@@ -1258,31 +1841,63 @@ runs — Ali's call, recorded. ⛔ The engine does not go live while the page cl
 **Guard:** `test:rg-policy` (re-scoped at S7 — see below). **RED:** `red:rg-policy`.
 **Accept:** the page and the engine agree, and the guard can prove it.
 ⭐ **BUILT AND RULED S7 (2026-09-26), on Ali's delegation of that day** — the full record is
-`docs/COMPLIANCE-DECISIONS.md` 2026-09-26. Precedents: "build it first, then write it here" (2026-09-14, third)
+`docs/COMPLIANCE-DECISIONS.md` § "2026-09-26 · RG Policy v2026-09-26". Precedents: "build it first, then write it here" (2026-09-14, third)
 and "a public promise the code refuses is worse than a shorter one it keeps" (2026-09-05). So: the cheap
 protective half is **BUILT** — "under 25 in a vulnerability segment" is DEFINED as under 25 with a
 self-exclusion or a break ever on record, and refused as `rg_under25_history` with no lift until 25 (⛔ it
 excludes, never selects: Privacy §6 says "we do not profile you for marketing"); §4 is **RE-VERSIONED**
 (v2026-09-26) to name exactly the exclusions the gate runs; and "no sign-up nudges in the late-night window" is
-**CUT** — no window exists in code, and U13 may write a promise back when it builds one.
+**CUT** — no window exists in code, and U13 may write a promise back when it builds one — ⚠️ only on the
+three conditions in §9 U13 (the existence-only control strengthened first).
 ⚠️ **Why the guard moved.** The key named above, `test:privacy-notice`, reads only the PRIVACY page, and the
 "audience whitelist" it was to assert is U24's and does not exist. `test:rg-policy` pins this page's version, a
 hash of its binding English and a COMPLIANCE-DECISIONS heading (the page had none of the three), and maps
 every §4 promise BY ITS WORDS to a named control in code — a promise with no control is D12 exactly, and red.
+*(2026-09-26 audit-fix pass, translations only: in zh and sw every number now stays with its unit — "24 小时",
+"18 岁", "miaka 18", "sehemu ya 2" — and the zh §2 sentences are joined, so no space follows "。". The
+English is untouched, so the version and the pinned English hash do not move; `test:rg-policy` 3.1/3.2
+guard both, with three new `red:rg-policy` cases.)* *(2026-09-27, the final visual review, markup only: the
+zh §2 link "负责任博彩设置" is `whitespace-nowrap` — it broke "负责任博彩设" / "置" at 360 — pinned by
+`test:rg-policy` 3.4 with a new `red:rg-policy` case. The en block is untouched, so the policy stays
+v2026-09-26 with the same pinned English hash, and no COMPLIANCE-DECISIONS entry is needed. The other zh
+splits in legal body prose (RG §2 bullets, §3, §4; Privacy §1, §4) are left BY DESIGN: breaking between
+hanzi in long prose is conventional, keep-all on `LegalSection` was rejected (half-empty lines), and word
+joiners would change policy text. The shared legal chrome moved onto the reading floor on every /legal
+page: the `LegalHeader` version line and the `LegalSection` number are 13px (`text-body-sm`; were 11px and
+12px). Re-derive the suite counts from a run.)*
 
 **U13 · The send window** — `src/lib/marketing/window.ts` (D13, OQ5)
-`08:00–20:00 EAT`, evaluated server-side in the loop against `Africa/Dar_es_Salaam`; both candidate
-windows are named constants with the arithmetic written out; outside the window rows are **HELD**, the
+`08:00–20:00 EAT`, evaluated server-side in the loop against `Africa/Dar_es_Salaam`; the window is ONE
+named constant (`SEND_WINDOW_EAT`) with the arithmetic written out *(this said "both candidate windows";
+only one was ever named — corrected 2026-09-26)*; outside the window rows are **HELD**, the
 campaign pauses with `quiet_hours` and resumes by itself. ⛔ The document and the UI both say this is
 50pick's own rule, not a TCRA rule.
 **Guard:** `test:marketing-window`. **RED:** clock at 03:00 EAT → every dispatch must be held.
 **Accept:** a campaign started at 19:55 holds at 20:00 and resumes at 08:00, and the held rows are counted
 as outstanding, never as failures.
+⚠️ **What S8 can actually prove (2026-09-26 audit).** The Accept above needs a campaign (U35), a pump (U44)
+and a page (U47). Rewrite it, in the commit that builds this unit, to: `window.ts` answers open or closed
+at 07:59 / 08:00 / 19:59 / 20:00 and 03:00 EAT, and outside the window `dispatchSlice` holds EVERY row
+(reason `quiet_hours`) and asks no gate (§5.6: the window is slice-wide). Move "the UI says it is 50pick's
+own rule" to U47. Pin `lib/marketing/window.ts` in `test:client-graph-safe`'s set, as `footer.ts` is.
+⛔ **Do NOT restore the late-night bullet on `/legal/responsible-gambling` in the same breath.**
+`test:rg-policy`'s late-night control holds on `existsSync(window.ts)` alone, which an empty file passes.
+Restoring any §4 promise needs ALL of: (1) that control strengthened to require that
+`src/lib/server/marketing/dispatch.ts` imports the window AND calls it, with an in-memory red plant that
+removes the call — and ⚠️ creating `window.ts` turns `red:rg-policy`'s "late-night bullet restored with no
+window in code" case into a MISS (its world spreads the real one), so give that case `windowExists: false`
+in the same commit; (2) wording that names only what runs ("no marketing SMS outside 08:00–20:00 EAT"),
+not "sign-up nudges"; (3) a new policy version in en/sw/zh, a COMPLIANCE-DECISIONS entry and an owner
+ruling (§6).
 
 **U14 · Frequency cap** — the loop (D14)
 One message per number per 72 h, four per 30 days, counted from `SmsMessage` rows with purpose MARKETING;
 the skip carries the release date.
 **Guard:** `test:marketing-consent`. **RED:** two campaigns an hour apart → the second must skip.
+⚠️ *(2026-09-26 audit)* "Two campaigns an hour apart" needs campaigns (U35). If U14 is built as a
+predicate over an injected send-history source, rewrite its RED to that form (history says one send 71 h
+ago → the next is skipped with the release date). If U14 moves behind U35 instead, re-order §10 and the
+▶ NEXT pair in the same commit.
 
 **U15 · One send path** — `src/lib/server/invite-service.ts` (D15)
 Retire the phone half: delete the `sendBatch` block (unreachable today behind the withdrawn-bonus flag),
@@ -1314,6 +1929,18 @@ row (source `OPERATOR`, or a new erasure source) and a suppression row at erasur
 prove the erased number is refused on BOTH stores. ⚠️ The lapse and closure writers (`retention.ts`,
 `user-service.ts`) also clear the boolean with no ledger row — seven `marketingOptIn` writer sites now, three
 unwired.
+✅ **DONE 2026-09-27 (S7c) — the DAL half below is built and guarded (`dal-parity` §17.supersede and
+§17.liftreason, `red:dal-parity`, `test:marketing-optout` 32b). What U16 still owes is its own writes: the
+erasure ledger row and suppression, and the memory index fix.**
+🔴 **AND THE SUPPRESSION U16 WRITES MUST OUTRANK A PERSON'S OLD STOP (found 2026-09-26, both DALs).**
+Suppression is one row per (channel, identifier, category). `db.suppression.create` on an existing row only
+clears its lift and keeps the FIRST row's reason, evidence and recorder; `db.suppression.lift` has no reason
+filter. So if the person once stopped by link and resumed, an erasure (or U23's officer "suppress") layered
+on top still reads `WITHDRAWN` — and that old SMS link, or the profile toggle, could lift it. Before this
+unit or U23 writes a non-`WITHDRAWN` row: in `store.ts` AND `prisma-dal.ts`, a re-arm by SELF_EXCLUSION,
+COMPLAINT or OPERATOR overwrites reason, evidence and recorder (`createdAt` untouched); `lift` takes
+`reason: "WITHDRAWN"` in its where-clause; `test:dal-parity` cases for both. ⚠️ The profile OFF writes no
+suppression at all (the boolean and a WITHDRAWN ledger row), so erasure cannot lean on one being there.
 
 ### Phase B — the contacts book (U17–U34)
 
@@ -1382,6 +2009,10 @@ already had it").
 **Guard:** `test:contacts-page`. **RED:** confirm from a client-supplied count → the server must refuse.
 **States:** loading · none selected · selected (bar) · acting (overlay) · refused (act gate, with the
 reason in `title`, never hidden) · error.
+
+⚠️ **"Suppress" writes an OPERATOR row, and today the DAL would let a person's old stop link lift it** —
+the re-arm precedence and the reason filter on `lift` must land first (§9 U16). This is also the nearest
+thing to the officer-recorded suppression the `/s/` refusal's "contact us" needs (§9 U8).
 
 **U24 · One audience resolver** — `src/lib/server/marketing/audience.ts` (OD36)
 `contactAudience(filter)` — the ONE place a filter becomes a query, read by the list, the counts, every
@@ -1456,7 +2087,7 @@ suppressed collapse → red.
 
 **U32 · The commit loop and its bar** — `contacts-import-dialog.tsx` (OD34)
 Batch size **derived, not copied**: commit 1 ships a ping action; after deploy, 20 sequential calls from a
-browser on `www.50pick.tz` give p50/p95 recorded in §3 with the date and the `data-dpl-id`; Cloudflare
+browser on `www.50pick.tz` give p50/p95 recorded in §3 with the date and the build's `?dpl=` sha; Cloudflare
 kills a proxied request at 100 s, so the budget is 60 s (a stated 40 % margin); the per-row fallback is
 concurrency-bounded at **6–8**, because the bet admission gate is sized from the same pool.
 `<ProgressBar value={written} max={total}>` with `Batch 4 of 12 · 1,847 of 5,912 written` beneath. Stop is
@@ -1540,6 +2171,12 @@ per-container), and what that balance covers in recipients. A duration **floor**
 **States:** loading · no audience yet · segments only (GROWTH) · segments and money (accounting role) ·
 balance unreadable (says so, never guesses) · error.
 
+⭐ *(2026-09-26)* The fresh read exists now: `refreshSmsBalance` in `sms.ts` (S7b, reworked by the audit-fix
+pass — a render budget, one read in flight, a short pause after a failed read, and an answer that says
+fresh / reused / pending / failed / unavailable, `stale` when the figure could not be confirmed, and why a
+failed read failed). Use it; show "unreadable" for a stale, pending or failed answer rather than the kept
+figure, as Admin → System's tile does (§9 U49).
+
 **U40 · Confirm** — `ConfirmModal` (OD27, OD28)
 ≤5 recipients: **enumerate** every one. >5 or unfiltered: the filter in words, the four figures, the
 sample, and a **typed number**. 🔴 The server compares the typed value against the count **it** recomputes.
@@ -1565,6 +2202,12 @@ Two keyset walks (contacts by `msisdn`, players by `phoneE164`), a prefixed curs
 `createMany({ skipDuplicates: true })` against the unique index, chunks of 1,000, resumable, with a stated
 backstop of 200,000 recipients reported rather than silently truncated. The opt-out token is minted here.
 **Guard:** `test:marketing-engine`. **RED:** restart mid-walk → no duplicate row, no skipped row.
+⚠️ *(2026-09-26 audit, before this unit mints real tokens)* ① Mint ONE token per identifier and reuse it,
+rather than one per recipient per campaign, so the number of live never-expiring tokens stays near the
+number of distinct recipients (not built; the review's recommendation). ② `mintOptOutToken` returns null
+for a number `toMsisdn255` cannot use — a recipient with no token must not be sent to. ③ Probe whether
+Railway's edge appends to or replaces `X-Forwarded-For`: `/s/`'s per-address budget keys on its first
+entry (§9 U8).
 
 **U43 · The slice** — `src/lib/server/marketing/engine.ts` (D23, OD21, OD22, OD23)
 `reap stranded claims (→ UNCONFIRMED, ⛔ never back to PENDING) → check status and window → claim ≤50 with
@@ -1611,6 +2254,19 @@ DELIVERED must be discarded; an `UNCONFIRMED` row must still settle.
 campaign receipt moving a `SmsCampaignRecipient` row, not the first receipt of any kind. ⚠️ Receipts
 arrive in BATCHES (three lines in one POST, measured), so the fixtures use multi-line bodies, and only
 `DELIVRD` has ever been seen live — every failure fixture is synthetic until one arrives (§3b).
+🔴 **INBOUND STOP — NOT BUILT, AND OWNED HERE (assigned 2026-09-26 by the audit).** §4a OQ8 said inbound
+STOP was "specified and built behind a guard". Nothing inbound exists: no route receives a reply to an SMS,
+no unit owned one (the S0 review called it "specified-but-unclaimed", §13), and the schema's note that a
+"keyword" writes WITHDRAWN names a writer that does not exist. **A reply of STOP or ACHA to a marketing SMS
+reaches nothing today, and the person stays marketable.** The only opt-out is the `/s/` link (U8) — and
+the footer's `Acha: 50pick.tz/s/…` may read to a feature-phone user as "reply Acha". This unit owns the
+fix because it is the vendor's other inbound rail: answer OQ8 first (does the Blackball account have an
+inbound number, and what is the payload); then a receiver authenticated like the DLR route (secret token,
+refusals recorded, `srcIp` discriminated — §3b lessons 2–3) that maps STOP / ACHA, case-folded, by msisdn
+to the SAME path as `stopMarketing` (suppression reason `WITHDRAWN`, a WITHDRAWN ledger row carrying the
+keyword as its wording, the player's toggle off) and sends nothing chargeable back. **RED:** a STOP reply
+that leaves the number marketable must fail the suite. ⛔ No reply keyword is printed in any message until
+this is live and proven by a real reply.
 
 **U47 · The live campaign page** — `/admin/campaigns/[id]` (OD34, OD41)
 The standing facts first, because each changes what the numbers mean: the list is not finished · the rail
@@ -1647,6 +2303,29 @@ may spend money; and a refusal at **Start** when the projection exceeds the live
 40. ⛔ A refused reply's `balance: 0.0` is never recorded as the account's balance.
 **Guard:** `test:sms-cost-guard`. **RED:** projection above the live balance must refuse at Start; a
 MARKETING batch below the marketing floor must refuse while OTP still sends.
+⭐ **What this unit starts from (S7b + the 2026-09-26 audit-fix pass, §0 ruling 11):** `refreshSmsBalance`
+is the ONE balance read — the free, authenticated balance endpoint, reused for a minute, never recording a
+refusal's `0.0`. A caller may give it a budget (Admin → System waits ~2.5 s, `/api/health` ~1 s; the read
+carries on and records itself when it lands); concurrent callers share one read in flight; a failed read is
+remembered briefly (`SMS_BALANCE_RETRY_MS`, 30 s by default) so a dead vendor is not hammered; and the answer
+says fresh / reused / pending / failed / unavailable, with `stale` when the figure could not be confirmed and,
+on a failure, WHY — `refused` (the vendor turned our credentials down: only a `status:false` 400/401/403),
+`unreachable` (no answer, a timeout, a 429 or a 5xx), `unexpected` (any other reply, 2026-09-27) or
+`not-configured` — because this read is the platform's one free live credential check, and wrong keys must
+not look like an outage. A reading is stamped with when it was asked, and one that lands after a newer
+one never overwrites it. `sendBatch` uses the same function (no second inline copy) and
+re-checks a stale or below-floor reading before refusing at the floor, so a top-up is honoured within
+about a minute. Crossing the alert line — and, since 2026-09-27, the floor, with its own alarm and a
+`level` in the payload — writes the `sms.balance_low` audit row AND reaches, by bell and email (never by
+SMS), the officers who can open Admin → System (`rolesThatCanOpen`; by default the Owner only) — once per
+downward crossing, and at most once per low episode a day for a restart that finds the balance already low
+(an episode closes with `sms.balance_recovered`). Admin → System's tile headlines the credit ("SMS credit",
+gloss "Salio", value in TZS or "—" when unknown) with the state as a sentence under it, and never says
+"Healthy" on a rail that cannot send (`BLACKBALL-SMS.md` §5).
+✅ `test:sms-cost-guard` is in `predeploy` since the audit-fix pass (§0 ⚠ RECORDED), so what this unit leans
+on gates every deploy. A figure past the 15-minute TTL is headlined "—" on the tile (the old value in the
+note, its time on the provenance line under the dash), because the floor itself treats it as unknown — show
+"unreadable" in U39/U40 the same way.
 
 ### Phase D — registry, docs, proof (U50–U52)
 
@@ -1672,8 +2351,9 @@ stuck on is fixed in the doc.
 ledger file (gitignored), proving by **discrimination**: a suppressed number is refused while an eligible
 one is sent in the same run; the opt-out link is tapped on the handset and the next send to that number is
 refused; the provider's own portal `COUNT` is compared against `planSms`; the slice budget and batch size
-are re-derived from the measured latency; and the session confirms it is on the new build via
-`data-dpl-id`.
+are re-derived from the measured latency; and the session confirms it is on the new build by `?dpl=<sha>`
+on a `_next/static` asset or the preload `Link` header (⚠️ `<html data-dpl-id>` is absent on some routes —
+a fallback only).
 **Guard:** `test:marketing-engine` + the §1a closure list. **RED:** the drive must fail if the gate is
 removed — the refusal is the evidence, not the send.
 **Accept:** all nine closure conditions in §1a, ticked with dates.
@@ -1691,20 +2371,21 @@ removed — the refusal is the evidence, not the send.
 | S5 | U8 (second half) | carried over: S4 shipped U8's store and stopped rather than half-apply the `liftedAt` decision |
 | S6 | U9 · U10 | prove the gate runs in the loop; the RG predicate |
 | S7 | U11 · U12 | age, and the published promise reconciled |
-| S8 | U13 · U14 | the window and the cap |
-| S9 | U15 · U16 | one send path; erasure and retention reach the new stores |
-| S10 | U17 · U18 | the route exists; the book exists |
-| S11 | U19 · U20 | masked by construction, then the list |
-| S12 | U21 · U22 | filters, then one contact |
-| S13 | U23 · U24 | bulk, then the one resolver it proves |
-| S14 | U25 · U26 | CSV and vCard |
-| S15 | U27 · U28 | XLSX + the boundary guard; the field list |
-| S16 | U29 · U30 | staging, then the pre-flight it makes resumable |
-| S17 | U31 · U32 | `decide()`, then the loop that executes it |
-| S18 | U33 · U34 | consent basis; export (and the round trip that proves both) |
-| S19 | U35 · U36 | campaign models (enum migration first), then the list |
-| S20 | U37 · U38 | composer and audience — read together or not at all |
-| S21 | U39 · U40 | the estimate, then the confirmation that quotes it |
+| S7c | — | the end-to-end review of U1–U12 + S7b and its fixes (2026-09-26 → 27, §2) |
+| S8 | U17 · U18 | the route exists; the book exists — and ships inside erasure/retention from day one (U16's rule for the new store) |
+| S9 | U19 · U20 | masked by construction, then the list — the first contacts Ali sees |
+| S10 | U21 · U22 | filters, then one contact |
+| S11 | U23 · U24 | bulk, then the one resolver it proves |
+| S12 | U25 · U26 | CSV and vCard |
+| S13 | U27 · U28 | XLSX + the boundary guard; the field list |
+| S14 | U29 · U30 | staging, then the pre-flight it makes resumable |
+| S15 | U31 · U32 | `decide()`, then the loop that executes it |
+| S16 | U33 · U34 | consent basis; export (and the round trip that proves both) |
+| S17 | U35 · U36 | campaign models (enum migration first), then the list — Campaigns in the menu |
+| S18 | U37 · U38 | composer and audience — read together or not at all |
+| S19 | U39 · U40 | the estimate, then the confirmation that quotes it |
+| S20 | U15 · U16 | one send path before anything enqueues; erasure and retention reach every marketing store |
+| S21 | U13 · U14 | the window and the cap — now there is a campaign to pause and a MARKETING purpose to count |
 | S22 | U41 · U42 | authorisation, then the enqueue it guards |
 | S23 | U43 · U44 | the slice, then the pump that drives it |
 | S24 | U45 · U46 | scale, then receipts |
@@ -1712,6 +2393,13 @@ removed — the refusal is the evidence, not the send.
 | S26 | U49 · U50 | budget; declarations |
 | S27 | U51 · U52 | the guide, then the live drive and the Seal |
 
+⭐ **REORDERED 2026-09-27 (S7c), on Ali's approval** (*"keep going with your plan"* — the plan put to him: the
+contacts page next session). He asked when he would see something in the admin console; the old order had
+four invisible units first (S8–S9). The pairs are unchanged; only their order moved: the contacts book (U17–U34)
+now runs S8–S16, campaigns' visible half (U35–U40) S17–S19, then U15·U16 (one send path must precede U42's
+enqueue) and U13·U14 (whose premises needed U35's MARKETING purpose and a campaign to pause). ⛔ U16's rule
+for the NEW store — erasure and retention reach it — is part of U18's Accept; U16 at S20 covers every other
+marketing store. Still 27 sessions end to end.
 ⚠️ **Relabelled 2026-09-25 (S6).** This table said S5 = U9 · U10 while §0 called them S6's pair — off by one
 since S4 carried U8 into S5. Every row from S5 on moved down one; the pairings are unchanged. ⚠️ §2 rows
 written before this date are a log and keep the OLD labels (S4's row says "U35 (S18)", "U42 (S21)") —
@@ -1731,7 +2419,8 @@ and write the split into §2 — a half-built unit is worse than a smaller one.
    and diffed. ⚠️ Clean `main` is not all green and WHICH suites are red keeps changing — measure it, never
    compare against a written number; the only claim allowed is "no suite red that is not red on clean main". ⚠️ `predeploy` includes
    `qa:live` and `test:admin-section-gate`, which need a dev server on the expected port.
-4. **Live, by discrimination:** after the deploy, confirm the build via `data-dpl-id`, then run the check
+4. **Live, by discrimination:** after the deploy, confirm the build by `?dpl=<sha>` on a `_next/static` asset
+   or the preload `Link` header (`<html data-dpl-id>` is absent on some routes — a fallback only), then run the check
    that fails when the feature is absent. For U52, the evidence is the **refusal** (a suppressed number not
    sent) alongside a successful send in the same run, capped at **6 chargeable sends to +255772619619**
    with a gitignored ledger.
@@ -1762,7 +2451,7 @@ and write the split into §2 — a half-built unit is worse than a smaller one.
 
 | Risk | Why it is real here | What this plan does |
 |---|---|---|
-| A marketing send breaks the law before the lawyer answers | the penalties are criminal (≥ TZS 5m / 12 months; licence revocation) | every send passes the per-recipient gate (consent, suppression, RG, age — U7–U11) asked by the loop (U9), and every one of the ten questions has a built default or an answer (§4a; OQ1, OQ2, OQ4 answered by Ali 2026-09-26 — no Board approval gate) |
+| A marketing send breaks the law before the lawyer answers | the penalties are criminal (≥ TZS 5m / 12 months; licence revocation) | every send passes the per-recipient gate (consent, suppression, RG, age — U7–U11) asked by the loop (U9), and every one of the eleven questions has a built default or an answer (§4a; OQ1, OQ2, OQ4 answered by Ali 2026-09-26 — no Board approval gate) |
 | A GROWTH officer learns who gambles | a pre-flight that separates "already a player" from "new" is a membership oracle | U30 returns a COUNT for masked roles, rate-limits the run, audits it, and its RED control runs **as the masked role** |
 | The tracker reports progress that did not happen | a "yes" in a Guard column is free text | the guard **resolves** the key in `package.json`, the script on disk, and a sibling red control (WIRING §4, plants 10–13) |
 | A fix to `phone-normalize` breaks payouts | `selcom.ts` shares `toMsisdn255` | U1 runs the payout, OTP and prefill suites in the same gate list |
@@ -1777,7 +2466,7 @@ and write the split into §2 — a half-built unit is worse than a smaller one.
 
 | Lens | What it attacked | What changed |
 |---|---|---|
-| **Compliance & law** | a consent flag collected under three different promises; imported leads with no lawful basis; three published RG commitments with no code; self-exclusion that expires on its own timer; a mandatory safer-gambling suffix missing from the arithmetic; a URL-only opt-out in a feature-phone market; **and the one nobody had: a gaming advertisement needs the Board's approval, and unsolicited SMS needs its prior WRITTEN approval** | U6/U7's verbatim ledger · OD9's first-party-only rule · U11/U12/U13 · U10's standing predicate · U4's counted footer · U8 plus a specified-but-unclaimed inbound STOP · **U41 and OQ1: the surface ships closed** |
+| **Compliance & law** | a consent flag collected under three different promises; imported leads with no lawful basis; three published RG commitments with no code; self-exclusion that expires on its own timer; a mandatory safer-gambling suffix missing from the arithmetic; a URL-only opt-out in a feature-phone market; **and the one nobody had: a gaming advertisement needs the Board's approval, and unsolicited SMS needs its prior WRITTEN approval** | U6/U7's verbatim ledger · OD9's first-party-only rule · U11/U12/U13 · U10's standing predicate · U4's counted footer · U8 plus a specified-but-unclaimed inbound STOP (claimed by U46 on 2026-09-26; still not built) · **U41 and OQ1: the surface ships closed** |
 | **Money & cost** | a floor worth eight messages as the only spend control; per-segment billing costed per message; a 15-minute balance snapshot treated as current; `accepted` counted as delivered | U49's budget and the refusal at Start against a fresh balance read · U3's septets · U39's measured unit cost · U46's `UNCONFIRMED` |
 | **Code truth** | a red control that would have turned `test:red-anchors` red for both checkouts; an enum used in the transaction that added it; a 1 MB action carrying a 30k-row file; a segment counter that cannot import its own table; five code doors called three | in-memory `--prove-red` · U35's two migrations · OD29's browser parse · U3's pure module with `smsCodingFor` delegating · §5.9's five doors, repeated in §0 |
 | **Completeness & trackability** | 22 units for ~17,500 lines of precedent; a guard column nothing resolved; four owner requirements (progress bars, loading systems, rendering perfection, animations) with no acceptance | 52 units · the resolving Guard column · a six-state **States:** line on every `visual` unit, enforced by the tracker |

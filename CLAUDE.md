@@ -358,7 +358,15 @@ contract, which read as a working integration to anyone scanning the file.
 3. **`data` is an ARRAY** of `{field: message}` on a schema error and `null` on an
    auth error; the PDF types it "Object".
 4. **A reply's `balance` is only half-true**: `0.0` on a refusal (decided before
-   auth), pre-charge on a success. The true figure is `POST /api/account/balance`.
+   auth), pre-charge on a success. The true figure is `POST /api/account/balance` —
+   read through `refreshSmsBalance` (one path for the admin tile, `/api/health` and
+   `sendBatch`); operators read it on Admin → System's "SMS credit" tile. It is also the
+   one free live credential check, so a failed read says `refused` (a `status:false`
+   400/401/403 — wrong keys), `unreachable` (no answer, a 429 or a 5xx) or `unexpected` (any
+   other reply) — never "zero". Crossing `SMS_BALANCE_ALERT_TZS`, and since 2026-09-27
+   crossing `SMS_BALANCE_FLOOR_TZS`, alarms by bell and email, never by SMS, the officers who
+   can open Admin → System (`rolesThatCanOpen`: the Owner, plus any role holding an `ops` view
+   grant — by default the Owner only). `smsConfigured()` is exactly `smsRailProblem() === null`.
 
 Also not in the PDF: `coding` is `GSM7` | `UCS2` (GSM-7 cannot carry Chinese — chosen
 per message by `smsCodingFor`), and a success carries no per-message id (`data: null`).
@@ -380,6 +388,13 @@ production send). Railway keeps HTTP logs only for the CURRENT deployment — th
 is the durable record. Live state, the go-live order and the open vendor questions:
 `docs/BLACKBALL-SMS.md`. Marketing/broadcast SMS is a separate programme, in build:
 `docs/MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md` (no Gaming Board approval needed — Ali, 2026-09-26).
+⛔ **Its consent sentences are evidence.** The register box (`auth.optionalUpdates`), the profile
+toggle (`push.marketingTitle`/`marketingBody`) and the opt-out page's resume are pinned as literals in
+`src/lib/marketing/consent-wording.ts`: rewording one means APPENDING the new sentences there in the
+same commit (never editing an entry), or every new opt-in stops counting as consent (OQ11).
+⛔ No line-break hint ever goes into a ledger string (`optout.body`, `optout.stopButton`,
+`optout.resubscribeButton`, `push.marketingBody`): no U+200B, no no-break space — the ledger stores their
+bytes, so zh `break-keep` is only for strings that carry hints (`test:marketing-optout` S7h).
 
 ## Persistence
 

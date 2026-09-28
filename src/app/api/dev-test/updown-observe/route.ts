@@ -12,7 +12,7 @@
  * like a bar feed (the quoted time IS the boundary), so the band and the round page read it exactly as
  * they read a real one. `dryRun` returns the round's open and targets without writing anything.
  *
- * ⚠️ 404 in production, before anything else runs (`test:dev-route-guard`), and blocked at the edge by
+ * ⚠️ 404 in production, before anything else runs (`test:cert-devroutes`), and blocked at the edge by
  * proxy.ts. It moves no money: a read settles nothing until a round's own close boundary asks for it.
  */
 import { NextResponse } from "next/server";

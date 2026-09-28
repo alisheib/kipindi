@@ -39,7 +39,7 @@
  *  - Every attempt persists to `SmsMessage`; receipts land on it by reference
  *  - Rate-limited per phone by the CALLER (`rate-limit.ts`, `otp.send` / `otp.resend`)
  */
-import { audit } from "./audit";
+import { audit, getAuditByActionsDurable } from "./audit";
 import { db, type SmsPurpose, type StoredSmsMessage } from "./store";
 import { randomId } from "./crypto";
 import { toMsisdn255, isGatewayMsisdn, maskPhone } from "@/lib/phone-normalize";
@@ -90,14 +90,24 @@ export function smsProviderResolution(): SmsProviderResolution {
  * QUEUED. The env that is NOT read here is as load-bearing as the ones that are.
  */
 export function smsConfigured(): boolean {
+  return smsRailProblem() === null;
+}
+
+/** Why SMS cannot deliver on this box, or null when it can. `smsConfigured()` is exactly `smsRailProblem() === null`,
+ *  so the two can never disagree. ⭐ The admin tile names the one that applies (2026-09-27): the balance read needs only
+ *  the keys, so a box with no sender ID answered a balance and was captioned "Healthy" while every send was refused. */
+export type SmsRailProblem = "provider-unrecognised" | "console-in-production" | "keys-not-set" | "sender-id";
+
+export function smsRailProblem(): SmsRailProblem | null {
   switch (smsProviderResolution()) {
     case "blackball":
-      return blackballConfigured() && !senderIdProblem(process.env.SMS_SENDER_ID);
+      if (!blackballConfigured()) return "keys-not-set";
+      return senderIdProblem(process.env.SMS_SENDER_ID) ? "sender-id" : null;
     case "console":
       // The stub is a working channel in dev and a black hole in production.
-      return process.env.NODE_ENV !== "production";
+      return process.env.NODE_ENV === "production" ? "console-in-production" : null;
     case "unrecognised":
-      return false;
+      return "provider-unrecognised";
   }
 }
 
@@ -108,6 +118,8 @@ declare global {
   var __50PICK_SMS_HEALTH: { sent: number; failed: number } | undefined;
   // eslint-disable-next-line no-var
   var __50PICK_SMS_BALANCE: { tzs: number; at: number } | undefined;
+  // eslint-disable-next-line no-var
+  var __50PICK_SMS_BALANCE_READ: { inflight: Promise<boolean> | null; failedAt: number | null; error: SmsBalanceError | null } | undefined;
 }
 
 /** ⛔ ON `globalThis`, NOT A MODULE-SCOPE `let`. Every other counter in this repo is
@@ -118,11 +130,99 @@ const health = () => (globalThis.__50PICK_SMS_HEALTH ??= { sent: 0, failed: 0 })
 
 /** Below this, non-OTP traffic is refused. TZS. */
 const balanceFloor = () => Number(process.env.SMS_BALANCE_FLOOR_TZS) || 50;
-/** Below this, officers are alarmed once, on the crossing. TZS. */
+/** At or below this, ONE `sms.balance_low` audit row is written and every officer who can open Admin → System gets a
+ *  bell row and an email (`notifyAdminsSmsCreditLow`) — on a downward crossing of this line or of the floor, and once
+ *  for a balance a restart finds already low (see `recordBalance`). ⛔ Never an SMS: the rail it warns about is the one
+ *  running out. TZS. */
 const balanceAlert = () => Number(process.env.SMS_BALANCE_ALERT_TZS) || 150;
+
+/** The two lines the admin card names in words ("alert at TZS 150"). Read from the same env as the gate. */
+export function smsBalanceThresholds(): { floorTzs: number; alertTzs: number } {
+  return { floorTzs: balanceFloor(), alertTzs: balanceAlert() };
+}
 
 /** A balance reading older than this is treated as UNKNOWN, never as low. */
 const balanceTtlMs = () => Number(process.env.SMS_BALANCE_TTL_MS) || 15 * 60_000;
+
+/** After a FAILED balance read, callers are answered "failed" without a new request for this long, so a reload
+ *  or a burst of renders cannot re-pay a hanging vendor's timeout on every hit. */
+const balanceRetryMs = () => Number(process.env.SMS_BALANCE_RETRY_MS) || 30_000;
+
+/** How long `/admin/system` waits for a balance read before rendering what it has; the read carries on. */
+export const SMS_BALANCE_RENDER_BUDGET_MS = 2_500;
+/** The same for `/api/health`, which a deploy gate waits on — shorter. */
+export const SMS_BALANCE_HEALTH_BUDGET_MS = 1_000;
+/** A reading older than this is re-read before the floor may REFUSE on it (see `sendBatch`). */
+const LOW_READING_RECHECK_MS = 60_000;
+/** A restart that finds the balance already low alarms at most once in this window (see `recordBalance`). */
+const BOOT_ALARM_REPEAT_MS = 24 * 60 * 60_000;
+
+/** One low-balance alarm: the audit row, then the officers. ⛔ Best-effort; never throws into a send.
+ *  `level` names the line the reading is under: the floor's copy says "paused", the alert line's "top up soon". */
+function raiseLowBalance(from: number | null, tzs: number, threshold: number): void {
+  const floor = balanceFloor();
+  audit({
+    category: "SYSTEM",
+    action: "sms.balance_low",
+    actorId: null,
+    targetType: null,
+    targetId: null,
+    payload: { from, to: tzs, threshold, floor, level: tzs < floor ? "floor" : "alert" },
+  });
+  // ⭐ THE ALARM REACHES A PERSON (2026-09-26). It used to be the audit row alone, which nothing read, under a
+  // comment saying officers were alarmed. Lazy import: no static sms ↔ notification edge.
+  void import("./notification-service")
+    .then((m) => m.notifyAdminsSmsCreditLow({ tzs, alertTzs: threshold, floorTzs: floor }))
+    .catch(() => {});
+}
+
+/** A low episode opens with `sms.balance_low` and closes with `sms.balance_recovered`; the newer of the two says which
+ *  side of the alert line the account was last seen on. */
+const LOW_EPISODE_ACTIONS = ["sms.balance_low", "sms.balance_recovered"];
+
+/** The balance climbed back over the alert line: close the low episode, durably, so a restart can tell a NEW low spell
+ *  from the one already announced (the re-arm itself lives in the process and dies with it). One row per episode. */
+function recordRecovery(from: number | null, tzs: number, threshold: number): void {
+  audit({
+    category: "SYSTEM",
+    action: "sms.balance_recovered",
+    actorId: null,
+    targetType: null,
+    targetId: null,
+    payload: { from, to: tzs, threshold },
+  });
+}
+
+/** The first reading after a restart is already at or below the alert line. Alarm unless THIS low episode alarmed
+ *  within a day: a restart is not a crossing, and every push to main is a restart.
+ *  ⭐ ONE EPISODE, NOT ANY ROW (2026-09-27). It used to stay silent for any `sms.balance_low` under a day old, so a
+ *  second low spell after a top-up, found by a restart, was never announced. A newer `sms.balance_recovered` ends the
+ *  episode; and an episode that alarmed at the alert line and is now below the FLOOR alarms again, because invites
+ *  have paused since. ⚠️ Fails OPEN — a duplicate beats silence. */
+async function raiseLowBalanceFoundAtBoot(tzs: number, threshold: number): Promise<void> {
+  try {
+    const { entries } = await getAuditByActionsDurable(LOW_EPISODE_ACTIONS, { category: "SYSTEM", limit: 1 });
+    const last = entries[0];
+    const at = last ? Date.parse(last.createdAt) : NaN;
+    const sameEpisode = last?.action === "sms.balance_low" && Number.isFinite(at) && Date.now() - at < BOOT_ALARM_REPEAT_MS;
+    const floor = balanceFloor();
+    const lastTo = Number(last?.payload?.to);
+    const newlyBelowFloor = tzs < floor && !(Number.isFinite(lastTo) && lastTo < floor);
+    if (sameEpisode && !newlyBelowFloor) return;
+  } catch { /* fail open */ }
+  raiseLowBalance(null, tzs, threshold);
+}
+
+/** The first reading after a restart is ABOVE the alert line while the newest episode row still says low: the account
+ *  recovered while no process watched. Close the episode, or the next low reading's boot check would take a new low
+ *  spell for the old one and stay silent. One durable read per restart; a row only when an episode is open. */
+async function closeLowEpisodeFoundAtBoot(tzs: number, threshold: number): Promise<void> {
+  try {
+    const { entries } = await getAuditByActionsDurable(LOW_EPISODE_ACTIONS, { category: "SYSTEM", limit: 1 });
+    if (entries[0]?.action !== "sms.balance_low") return;
+  } catch { return; }
+  recordRecovery(null, tzs, threshold);
+}
 
 /**
  * Record the balance from an ACCEPTED reply. ⛔ ONLY an accepted one.
@@ -144,21 +244,38 @@ const balanceTtlMs = () => Number(process.env.SMS_BALANCE_TTL_MS) || 15 * 60_000
  * `sms.balance_low` row per send once the balance is low, burying the hash-chained
  * compliance log under precisely the condition that most needs reading. This audits
  * only on a downward crossing, and re-arms when the balance recovers.
+ *
+ * ⚠️ …AND A RESTART MUST NOT SWALLOW IT (2026-09-26). The reading lives in the process, so after every deploy
+ * `prev` is null, and a balance that crossed the line while no process was watching (a send reply is pre-charge,
+ * so the old process can record 154 while the account holds 148) never alarmed at all. A first reading at or below
+ * the line now alarms too, at most once per low episode a day.
+ *
+ * ⭐ THE FLOOR IS A CROSSING TOO (2026-09-27). Only the alert line alarmed, so the usual drain 160 → 140 → 40 told the
+ * officers "top up soon" once and then paused invites in silence. Crossing the floor now raises its own alarm (the
+ * "paused … top up now" copy), once per crossing; a single jump over both lines is one alarm, with the floor's copy.
+ *
+ * ⛔ A LATE READING NEVER OVERWRITES A NEWER ONE (2026-09-27). A balance read can land seconds after it was asked, and a
+ * send reply recorded meanwhile is newer. A reading is stamped with when it was ASKED (`readAt`) and dropped if the
+ * snapshot already holds a later one — otherwise an old figure re-armed the alarm, or undid a top-up.
  */
-function recordBalance(tzs: number | null): void {
+function recordBalance(tzs: number | null, readAt = Date.now()): void {
   if (tzs === null) return;
-  const prev = globalThis.__50PICK_SMS_BALANCE?.tzs ?? null;
-  globalThis.__50PICK_SMS_BALANCE = { tzs, at: Date.now() };
+  const cur = globalThis.__50PICK_SMS_BALANCE;
+  if (cur && cur.at > readAt) return;
+  const prev = cur?.tzs ?? null;
+  globalThis.__50PICK_SMS_BALANCE = { tzs, at: readAt };
   const threshold = balanceAlert();
+  const floor = balanceFloor();
   if (prev !== null && prev > threshold && tzs <= threshold) {
-    audit({
-      category: "SYSTEM",
-      action: "sms.balance_low",
-      actorId: null,
-      targetType: null,
-      targetId: null,
-      payload: { from: prev, to: tzs, threshold, floor: balanceFloor() },
-    });
+    raiseLowBalance(prev, tzs, threshold);
+  } else if (prev !== null && prev >= floor && tzs < floor) {
+    raiseLowBalance(prev, tzs, threshold);
+  } else if (prev === null && tzs <= threshold) {
+    void raiseLowBalanceFoundAtBoot(tzs, threshold);
+  } else if (prev !== null && prev <= threshold && tzs > threshold) {
+    recordRecovery(prev, tzs, threshold);
+  } else if (prev === null) {
+    void closeLowEpisodeFoundAtBoot(tzs, threshold);
   }
 }
 
@@ -187,24 +304,93 @@ export function smsBalanceSnapshot(): {
   };
 }
 
+/** Why a balance read produced no figure: `refused` — the vendor turned our CREDENTIALS down (a status:false
+ *  400/401/403; its measured bad-credentials reply is a 400); `unreachable` — no response, our timeout, a rate limit
+ *  (429) or the vendor's own 5xx; `unexpected` — any other reply (a moved endpoint's 404 page, a 200 whose balance we
+ *  cannot read), which says nothing about the keys; `not-configured` — the provider's keys are not set on this box. */
+export type SmsBalanceError = "refused" | "unreachable" | "unexpected" | "not-configured";
+
+/** What one `refreshSmsBalance` call knows. `tzs`/`at` are the ONE snapshot after the call.
+ *  · `fresh` — this call's read landed · `reused` — a reading younger than `maxAgeMs`, no request
+ *  · `pending` — the budget ran out first; the read carries on and records itself when it lands
+ *  · `failed` — the endpoint refused or did not answer (or did so under `SMS_BALANCE_RETRY_MS` ago); `error` says which
+ *  · `unavailable` — this provider has no balance endpoint (the console stub, an unrecognised provider).
+ *  ⛔ `stale` is true when `tzs` is a figure this call could NOT confirm — an earlier reading kept after a
+ *  failed or unfinished read, or one past the TTL. Show it with its time, never as today's credit. */
+export type SmsBalanceRead = {
+  tzs: number | null;
+  at: number | null;
+  outcome: "fresh" | "reused" | "pending" | "failed" | "unavailable";
+  stale: boolean;
+  /** Set only with `failed`. The read is the platform's one free live credential check, so its verdict is kept. */
+  error: SmsBalanceError | null;
+};
+
+const balanceReadState = () => (globalThis.__50PICK_SMS_BALANCE_READ ??= { inflight: null, failedAt: null, error: null });
+
+/** ONE request to the balance endpoint, shared by every concurrent caller (two tabs, a render and a send). It
+ *  records the figure ITSELF when it lands, so a caller that stopped waiting still gets it into the snapshot.
+ *  Resolves true when a figure was recorded. */
+function readBalanceShared(read: () => Promise<BalanceReply>): Promise<boolean> {
+  const st = balanceReadState();
+  if (st.inflight) return st.inflight;
+  // Stamped with when it was ASKED, so a reading that lands after a newer one cannot overwrite it (see recordBalance).
+  const askedAt = Date.now();
+  const p: Promise<boolean> = read()
+    .catch((): BalanceReply => ({ tzs: null, error: "unreachable" }))
+    .then((r) => {
+      if (r.tzs === null) { st.failedAt = Date.now(); st.error = r.error; return false; }
+      st.failedAt = null;
+      st.error = null;
+      recordBalance(r.tzs, askedAt);
+      return true;
+    })
+    .finally(() => { if (st.inflight === p) st.inflight = null; });
+  st.inflight = p;
+  return p;
+}
+
+/** Wait for `p` at most `budgetMs` (no budget = wait for it). The promise itself is never cancelled. */
+async function withinBudget<T>(p: Promise<T>, budgetMs: number | undefined): Promise<T | "pending"> {
+  if (budgetMs === undefined) return p;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const late = new Promise<"pending">((resolve) => { timer = setTimeout(() => resolve("pending"), budgetMs); });
+  try {
+    return await Promise.race([p, late]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 /**
  * ⭐ READ THE ACCOUNT BALANCE NOW — `POST /api/account/balance`: authenticated, sends nothing, costs
- * nothing — and record it in the ONE snapshot, so `/api/health`, the admin card and the low-balance
- * alarm all read the same figure. Exactly the refresh `sendBatch` already does before a floor decision,
- * lifted out so an operator can ask for it: the snapshot is in-process and empty after every restart, so
- * the admin System page showed no balance at all until something happened to send (Ali, 2026-09-26:
- * "check the app — you can know how much we have now"). A reading younger than `maxAgeMs` is reused,
- * so a page render cannot hammer the vendor. ⛔ Never throws; a failed or refused read leaves the
- * reading unknown, and unknown is never treated as low.
+ * nothing — and record it in the ONE snapshot. THE ONLY REFRESH PATH: the admin card, `/api/health` and
+ * `sendBatch`'s floor decision all call this (Ali, 2026-09-26: "check the app — you can know how much we
+ * have now"). A reading younger than `maxAgeMs` is reused, so a page render cannot hammer the vendor.
+ *
+ * 🔴 THE PAGE USED TO WAIT FOR THE VENDOR (2026-09-26). `/admin/system` — the page with the maintenance
+ * kill-switch — awaited this before rendering, a failed read was not remembered, and each render paid the
+ * vendor's full 8 s timeout again. Now: `budgetMs` bounds the wait (the read carries on), one request is
+ * shared by every concurrent caller, and a failure is remembered for `SMS_BALANCE_RETRY_MS`.
+ *
+ * ⛔ Never throws. A failed read records nothing; an earlier reading, if any, comes back with `stale: true`.
+ * Unknown is never treated as low.
  */
-export async function refreshSmsBalance(opts: { maxAgeMs?: number } = {}): Promise<number | null> {
+export async function refreshSmsBalance(opts: { maxAgeMs?: number; budgetMs?: number } = {}): Promise<SmsBalanceRead> {
+  const answer = (outcome: SmsBalanceRead["outcome"]): SmsBalanceRead => {
+    const s = smsBalanceSnapshot();
+    const confirmed = outcome === "fresh" || outcome === "reused";
+    const error = outcome === "failed" ? (balanceReadState().error ?? "unreachable") : null;
+    return { tzs: s.tzs, at: s.at, outcome, stale: s.tzs !== null && (s.stale || !confirmed), error };
+  };
   const before = smsBalanceSnapshot();
-  if (before.tzs !== null && before.at !== null && Date.now() - before.at < (opts.maxAgeMs ?? 60_000)) return before.tzs;
+  if (before.tzs !== null && before.at !== null && Date.now() - before.at < (opts.maxAgeMs ?? 60_000)) return answer("reused");
   const transport = pickTransport();
-  if (!transport?.balance) return before.tzs;
-  const fresh = await transport.balance().catch(() => null);
-  if (fresh !== null) recordBalance(fresh);
-  return smsBalanceSnapshot().tzs;
+  if (!transport?.balance) return answer("unavailable");
+  const st = balanceReadState();
+  if (!st.inflight && st.failedAt !== null && Date.now() - st.failedAt < balanceRetryMs()) return answer("failed");
+  const landed = await withinBudget(readBalanceShared(() => transport.balance!()), opts.budgetMs);
+  return answer(landed === "pending" ? "pending" : landed ? "fresh" : "failed");
 }
 
 export function smsHealthSnapshot(): { sent: number; failed: number; successRate: number | null } {
@@ -250,11 +436,13 @@ function recordTestSms(to: string, body: string) {
  *  silently become FAILED instead of UNKNOWN, and FAILED invites a retry: a second SMS at a
  *  second charge. The transport knows whether the request completed, so it says so. */
 type ChunkOutcome = { ok: boolean; ambiguous: boolean; detail: string; message: string; balance: number | null };
+/** A balance read: the account's figure, or why there is none. */
+type BalanceReply = { tzs: number; error: null } | { tzs: null; error: SmsBalanceError };
 type SmsTransport = {
   name: SmsProviderId;
   sendChunk(msgs: { msisdn: string; text: string; reference: string }[]): Promise<ChunkOutcome>;
-  /** The account's true balance, or null when it cannot be read. Optional: the console stub has none. */
-  balance?(): Promise<number | null>;
+  /** The account's true balance, or why it cannot be read. Optional: the console stub has none. */
+  balance?(): Promise<BalanceReply>;
 };
 
 const consoleTransport: SmsTransport = {
@@ -279,6 +467,9 @@ const consoleTransport: SmsTransport = {
   },
 };
 
+/** The HTTP statuses a credential refusal comes with. The measured bad-credentials reply is a 400. */
+const CREDENTIAL_REFUSALS = new Set([400, 401, 403]);
+
 const blackballTransport: SmsTransport = {
   name: "blackball",
   async sendChunk(msgs) {
@@ -291,12 +482,19 @@ const blackballTransport: SmsTransport = {
     // not know whether the gateway has this batch".
     return { ok: r.ok, ambiguous: r.transport !== null, detail: describeBlackball(r), message: r.message, balance: r.balance };
   },
-  async balance() {
+  async balance(): Promise<BalanceReply> {
     const env = blackballEnv();
-    if (!env) return null;
+    if (!env) return { tzs: null, error: "not-configured" };
     const r = await blackballBalance(env);
     // ⛔ Only an authenticated reply carries the account's balance; a refusal's 0.0 is not one.
-    return r.ok ? r.balance : null;
+    const tzs = r.ok ? r.balance : null;
+    if (tzs !== null) return { tzs, error: null };
+    // No response at all, a rate limit, or the vendor's own 5xx is "did not answer".
+    if (r.transport !== null || r.httpStatus >= 500 || r.httpStatus === 429) return { tzs: null, error: "unreachable" };
+    // ⛔ "refused" is a verdict on our KEYS, and the operator answers it by rotating them (2026-09-27): only a
+    // status:false 400/401/403 earns it. A moved endpoint's 404 page, or a 200 whose balance we cannot read, is not one.
+    if (!r.ok && CREDENTIAL_REFUSALS.has(r.httpStatus)) return { tzs: null, error: "refused" };
+    return { tzs: null, error: "unexpected" };
   },
 };
 
@@ -500,11 +698,13 @@ export async function sendBatch(messages: SmsOutbound[]): Promise<SmsBatchOutcom
     // refresh it. `POST /api/account/balance` is free and authenticated, so a missing or stale
     // reading is replaced with the account's true balance before the decision is made. If the
     // read fails the reading stays unknown, and unknown is never treated as low.
-    const before = smsBalanceSnapshot();
-    if ((before.tzs === null || before.stale) && transport.balance) {
-      const fresh = await transport.balance().catch(() => null);
-      if (fresh !== null) recordBalance(fresh);
-    }
+    // ⛔ THROUGH `refreshSmsBalance`, NOT A SECOND INLINE COPY (2026-09-26): one path, so the shared
+    // request and the remembered failure apply here too.
+    await refreshSmsBalance({ maxAgeMs: balanceTtlMs() });
+    // ⭐ A LOW READING IS RE-CHECKED BEFORE IT REFUSES (2026-09-26). The admin card now writes this snapshot,
+    // so "TZS 30 on the card → top up → send" was refused for up to 15 minutes on a figure the top-up had
+    // already made false. Refusing is the costly outcome and a read is free.
+    if (smsBalanceSnapshot().belowFloor) await refreshSmsBalance({ maxAgeMs: LOW_READING_RECHECK_MS });
     if (smsBalanceSnapshot().belowFloor) {
       // ⚠️ The whole batch is held, INCLUDING any message already refused BAD_MSISDN above. Nothing
       // was attempted either way, and `refuse()` reports one reason per batch by contract.
@@ -554,6 +754,8 @@ export async function sendBatch(messages: SmsOutbound[]): Promise<SmsBatchOutcom
 
   for (const group of chunk(prepared, BATCH_MAX)) {
     let outcome: ChunkOutcome;
+    // The reply's balance is as of this request, so it is stamped with when it was asked (see recordBalance).
+    const askedAt = Date.now();
     try {
       outcome = await transport.sendChunk(
         group.map((p) => ({ msisdn: p.msisdn, text: p.out.body, reference: p.reference })),
@@ -580,7 +782,7 @@ export async function sendBatch(messages: SmsOutbound[]): Promise<SmsBatchOutcom
     // Only an ACCEPTED reply identifies the account — see recordBalance for why a
     // refusal's `balance: 0.0` must never reach the floor.
     if (outcome.ok) {
-      recordBalance(outcome.balance);
+      recordBalance(outcome.balance, askedAt);
       if (outcome.balance !== null) balance = outcome.balance;
     }
     const settledAt = new Date().toISOString();

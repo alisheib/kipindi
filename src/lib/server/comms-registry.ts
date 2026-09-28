@@ -168,6 +168,8 @@ export const EMAIL_TEMPLATES: readonly EmailSpec[] = [
   { template: "sentinelDownAdminHtml",     trigger: "src/lib/server/notification-service.ts", audience: "officer", chrome: "royal", money: false },
   { template: "aiCreditLimitAdminHtml",    trigger: "src/lib/server/notification-service.ts", audience: "officer", chrome: "royal", money: false },
   { template: "backupUnhealthyAdminHtml",  trigger: "src/lib/server/notification-service.ts", audience: "officer", chrome: "royal", money: false },
+  // 2026-09-26 · the SMS credit reached the alert line — our operating balance, not a player's money.
+  { template: "smsCreditLowAdminHtml",     trigger: "src/lib/server/notification-service.ts", audience: "officer", chrome: "royal", money: false },
   // 2026-09-13 · the identity review queue became a MONEY queue — a player waits on it for their own
   // withdrawal. One alert per submission past `KYC_REVIEW_SLA_HOURS`, never one per tick.
   { template: "kycReviewOverdueAdminHtml", trigger: "src/lib/server/notification-service.ts", audience: "officer", chrome: "royal", money: false },
@@ -336,6 +338,8 @@ export const NOTIFICATION_EMITTERS: readonly EmitterSpec[] = [
   { fn: "notifyAdminsSentinelDown",    kind: "SECURITY",          audience: "officer" },
   { fn: "notifyAdminsAiCreditLimit",   kind: "SECURITY",          audience: "officer" },
   { fn: "notifyAdminsBackupUnhealthy", kind: "SECURITY",          audience: "officer" },
+  // 2026-09-26 · the SMS credit reached the alert line (`sms.ts` recordBalance), once per crossing.
+  { fn: "notifyAdminsSmsCreditLow",    kind: "SECURITY",          audience: "officer" },
   // 2026-09-13 · an identity review past `KYC_REVIEW_SLA_HOURS`. KYC, like `notifyAdminKycReview`: it is
   // the same queue, and the kind is what routes an officer's bell tint to it.
   { fn: "notifyAdminsKycReviewOverdue", kind: "KYC",              audience: "officer" },

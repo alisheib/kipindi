@@ -85,7 +85,8 @@ export function LegalHeader({
           <PageHeader eyebrow={eyebrow} title={title} subtitle={subtitle} />
           {meta && (
             // 2026-09-13: balanced so the zh line does not strand "布。" on its own row.
-            <p className="font-mono text-[11px] tabular-nums text-text-subtle text-balance">{meta}</p>
+            // 2026-09-27: 13px, not 11px. The version line is a sentence a reader reads, so it sits on the reading floor (§T4).
+            <p className="font-mono text-body-sm tabular-nums text-text-subtle text-balance">{meta}</p>
           )}
         </div>
       </div>
@@ -105,7 +106,7 @@ export function LegalSection({
   return (
     <section className="space-y-2 pt-2">
       <h2 className="font-display text-[17px] font-semibold text-text leading-tight text-balance">
-        <span className="font-mono text-[12px] text-text-subtle mr-2 tabular-nums">{n}.</span>
+        <span className="font-mono text-body-sm text-text-subtle mr-2 tabular-nums">{n}.</span>
         {title}
       </h2>
       {/* 2026-09-14: text-pretty, inherited by every paragraph and list item, so a zh paragraph does not end

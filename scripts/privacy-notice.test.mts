@@ -12,10 +12,12 @@
  *        COMPLIANCE-DECISIONS entry naming it — an English edit without a new version goes red.
  *   §2 · processors: every dependency that can carry personal data off the box is classified, and each one's
  *        processor is named in §4 of all three locales. A NEW dependency fails until someone classifies it.
+ *        §2e does the same for the SMS providers `sms.ts` can select — reached by `fetch`, so no dependency shows them.
  *   §3 · security (§8): each claim is tied to the code that performs it; the retired claims may not return; the
  *        ISO 27001 / pentest sentence stays, because it rests on the owner's recorded attestation (2026-08-20).
  *   §4 · cookies (§7): a census of every cookie name the code writes, pinned; each is described in all three
  *        locales, with the session cap and the sign-out note's lifetime read from the code, not retyped.
+ *   §4h · zh typography: no space after full-width punctuation (a {" "} after "：" printed a gap in §1).
  *
  * ⛔ The privacy page is inline JSX in one file, not dictionary-driven, so `test:i18n` sees none of it (the
  * 2026-08-20 COMPLIANCE-DECISIONS entry). `test:cert-d1` §2b keeps its older negatives; this suite is the gate.
@@ -39,9 +41,9 @@ const ok = (label: string, cond: boolean, why = "", evidence = "") => {
 const code = (src: string) => src.replace(/^[ \t]*\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "");
 
 /* ── The pinned facts. Moving any of these is a legal act: a dated COMPLIANCE-DECISIONS entry comes with it. ── */
-const PRIVACY_VERSION = "2026-09-22";
+const PRIVACY_VERSION = "2026-09-26";
 /** sha256 (first 12 hex) of the ENGLISH content block, whitespace-collapsed. The English text is the binding one. */
-const PRIVACY_EN_SHA = "e9dc3ffcbba4";
+const PRIVACY_EN_SHA = "8d28f6b02da9";
 /** Every cookie name the code writes, as of v2026-09-22. A new one must be described in §7 first. */
 const COOKIES = ["_ga", "_ga_W66WRL67MQ", "kp-density", "kp-kyc-notice", "kp-locale", "kp_admin_totp", "kp_pending_2fa", "kp_revoked", "kp_session"];
 // ⭐ `_ga` / `_ga_W66WRL67MQ` joined the census 2026-09-15.2: gtag.js SETS them, and our code EXPIRES them when consent is
@@ -153,6 +155,48 @@ ok("§2d the scrub removes what §4 says it removes — Tanzanian mobile numbers
   /\.replace\(\/\(\?:\\\+\?255\|0\)7\\d\{8\}\/g, "<msisdn>"\)/.test(monitoringSrc)
   && /\.replace\(\/\\b\\d\{12,\}\\b\/g, "<digits>"\)/.test(monitoringSrc)
   && /"<email>"\)/.test(monitoringSrc));
+
+/* ════════════════════════════════════════════════════════════════════════════
+ * §2e · THE SMS GATEWAY — v2026-09-26. Blackball is reached by `fetch`, not by an npm dependency, so §2a's census of
+ * `package.json` cannot see it: it carried every SMS from 2026-09-16 while §4 named it nowhere. The population is
+ * the provider union in `sms.ts`; every real provider (the `console` stub delivers nothing) must be named in §4.
+ * ══════════════════════════════════════════════════════════════════════════ */
+console.log("\n§2e · every SMS provider the code can select is named in §4, with what it receives");
+const SMS_STUBS = new Set(["console"]);
+/** provider id → the words §4 must carry in EACH locale: the name, the role, what it receives, and that marketing needs consent. */
+const SMS_WORDS: Record<string, Record<Loc, string[]>> = {
+  blackball: {
+    en: ["Blackball", "SMS gateway", "your phone number and the text of each message", "only if you agree to receive them"],
+    sw: ["Blackball", "lango letu la SMS", "namba yako ya simu na maandishi ya kila ujumbe", "ikiwa tu umekubali kuzipokea"],
+    zh: ["Blackball", "短信网关", "您的电话号码和每条短信的内容", "仅在您同意接收时"],
+  },
+};
+const smsProviders = (sms: string) =>
+  [...(sms.match(/export type SmsProviderId = ([^;]+);/)?.[1] ?? "").matchAll(/"([a-z0-9_-]+)"/g)].map((m) => m[1]);
+function smsDefects(src: string, sms: string, transport: string, receiptRoute: boolean): string[] {
+  const d: string[] = [];
+  const bl = blocks(src);
+  const ids = smsProviders(sms);
+  if (ids.length === 0) d.push("the SmsProviderId union in sms.ts was not read");
+  for (const id of ids) {
+    if (SMS_STUBS.has(id)) continue;
+    const words = SMS_WORDS[id];
+    if (!words) { d.push(`SMS provider "${id}" is unclassified: name its gateway in §4 (all three languages), then add it to SMS_WORDS`); continue; }
+    for (const l of LOCS) for (const w of words[l]) if (!section(bl[l], "4").includes(w)) d.push(`${l} §4 does not say "${w}" (SMS provider ${id})`);
+  }
+  // The witnesses behind the sentence: what the request carries, and the receipt that reports delivery.
+  if (ids.includes("blackball")) {
+    if (!/text: m\.text,/.test(transport) || !/msisdn: toMsisdn255\(m\.msisdn\),/.test(transport)) d.push("sms-blackball.ts no longer sends { text, msisdn } — §4 says the gateway receives the phone number and the message text");
+    if (!receiptRoute) d.push("the Blackball delivery-receipt route is gone — §4 says the gateway tells us whether each message was delivered");
+  }
+  return d;
+}
+const smsSrc = code(read("src/lib/server/sms.ts"));
+const smsTransportSrc = code(read("src/lib/server/sms-blackball.ts"));
+const smsReceiptRoute = existsSync(join(ROOT, "src/app/api/webhooks/blackball/route.ts"));
+ok("§2e every SMS provider sms.ts can select is named in en/sw/zh §4 with what it receives, and the transport sends exactly that",
+  smsDefects(pageSrc, smsSrc, smsTransportSrc, smsReceiptRoute).length === 0,
+  smsDefects(pageSrc, smsSrc, smsTransportSrc, smsReceiptRoute).join("; "), smsProviders(smsSrc).join(" "));
 
 /* ════════════════════════════════════════════════════════════════════════════
  * §3 · SECURITY (§8) — each claim tied to the code that performs it; the retired claims stay retired.
@@ -399,7 +443,7 @@ const plantTls = pageSrc.replace("Connections to our website and app are encrypt
 const plantProcessor = pageSrc.replace("<li>Postmark, nchini Marekani,", "<li>Huduma ya barua pepe, nchini Marekani,");
 const plantTheme = pageSrc.replace("your language, a note kept", "theme preference, your language, a note kept");
 const plantWord = pageSrc.replace("We never sell personal data.", "We do not sell personal data.");
-const plantVersion = pageSrc.replace('sw: "Toleo 2026-09-22 ·', 'sw: "Toleo 2026-09-15.3 ·');
+const plantVersion = pageSrc.replace('sw: "Toleo 2026-09-26 ·', 'sw: "Toleo 2026-09-22 ·');
 ok("§5a control · each planted copy found its target",
   [plantTls, plantProcessor, plantTheme, plantWord, plantVersion].every((p) => p !== pageSrc));
 ok("§5b control · a restored 'TLS 1.2+' is reported", securityDefects(plantTls).length > 0 && versionDefects(plantTls, decisionsSrc).length > 0,
@@ -573,6 +617,28 @@ ok("§5ag control · a fetch transport that no longer re-checks consent at send 
 ok("§5ad control · an ip column on the visit table is reported", visitDefects(pageSrc, plantIpField, visitsServer, beaconSrc, visitsClient).some((x) => x.includes("SiteVisitPage has fields")));
 ok("§5ae control · a beacon that touches localStorage is reported", visitDefects(pageSrc, schemaSrc, visitsServer, plantStorage, visitsClient).some((x) => x.includes("browser storage")));
 ok("§5af control · the visit-count sentence dropped from ONE locale (sw) is reported", visitDefects(plantVisitSw, schemaSrc, visitsServer, beaconSrc, visitsClient).some((x) => x.startsWith("sw §2")));
+
+// §2e's controls — the v2026-09-26 defect put back, a second provider wired, and the delivery receipt removed.
+const plantSmsZh = pageSrc.replace("<li>Blackball（坦桑尼亚），我们的短信网关", "<li>短信服务商（坦桑尼亚），我们的短信网关");
+const plantSmsProvider = smsSrc.replace('export type SmsProviderId = "blackball" | "console";', 'export type SmsProviderId = "blackball" | "africastalking" | "console";');
+ok("§5ai control · planted SMS-gateway copies found their targets", plantSmsZh !== pageSrc && plantSmsProvider !== smsSrc);
+ok("§5aj control · the SMS gateway dropped from ONE locale (zh) is reported",
+  smsDefects(plantSmsZh, smsSrc, smsTransportSrc, smsReceiptRoute).some((x) => x.startsWith("zh §4") && x.includes('"Blackball"')));
+ok("§5ak control · a new SMS provider in the union is reported until §4 names it",
+  smsDefects(pageSrc, plantSmsProvider, smsTransportSrc, smsReceiptRoute).some((x) => x.includes('"africastalking" is unclassified')));
+ok("§5al control · a gateway with no delivery receipt is reported (§4 says it tells us whether each message was delivered)",
+  smsDefects(pageSrc, smsSrc, smsTransportSrc, false).some((x) => x.includes("delivery-receipt")));
+
+/* ════════════════════════════════════════════════════════════════════════════
+ * §4h · zh TYPOGRAPHY — a full-width colon, stop, comma or closing bracket carries its own space, so a {" "} (or a
+ * typed space) after one prints a gap: §1 read "联系方式： msaada@…" (2026-09-27 re-review). Translation markup only,
+ * so the English hash and the version do not move.
+ * ══════════════════════════════════════════════════════════════════════════ */
+console.log("\n§4h · zh: no space after full-width punctuation");
+const zhGaps = (src: string) => [...code(blocks(src).zh).matchAll(/[：。，；、）](?:[ \t]*\{" "\}|[ \t]+(?=\S))/g)].map((m) => m[0]);
+ok("§4h zh puts no space after a full-width colon, stop, comma or closing bracket", zhGaps(pageSrc).length === 0, zhGaps(pageSrc).join(" | "));
+const plantZhGap = pageSrc.replace("达累斯萨拉姆。联系方式：", '达累斯萨拉姆。联系方式：{" "}');
+ok("§5am control · the §1 {\" \"} after \"联系方式：\" put back is reported", plantZhGap !== pageSrc && zhGaps(plantZhGap).length > 0);
 
 
 console.log(`\n${fail === 0 ? "ALL PASS" : "FAILURES"} — ${pass} passed, ${fail} failed`);

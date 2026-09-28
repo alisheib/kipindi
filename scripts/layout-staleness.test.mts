@@ -168,7 +168,10 @@ const REVIEWED: Record<string, string> = {
     "REVIEWED (added 2026-09-14, E-381 §6 item 11 — rendered by the ROOT layout on every request, and invisible to a "
     + "population of files named layout.tsx). (a) `/admin` early return: crossing between the two shells is a hard "
     + "navigation (`test:shell-boundary`). (b) the ended-session answer: a DOCUMENT load redirects; any other request "
-    + "renders the page in place with a notice, so nothing frozen can blank it (`test:revoked-deadend` §3).",
+    + "renders the page in place with a notice, so nothing frozen can blank it (`test:revoked-deadend` §3). "
+    + "(c) `/s` early return (2026-09-27, marketing D6): the opt-out page gets a minimal shell decided BEFORE the "
+    + "session read, so an ended session can never put the opt-out behind a login; crossing into or out of it is "
+    + "a hard navigation like `/admin` (`test:marketing-optout` S20).",
   "src/components/admin/admin-section-gate.tsx":
     "REVIEWED (added 2026-09-14) · rendered by each console SECTION layout, which is re-executed on every navigation "
     + "into the section — measured, and driven by `test:admin-section-gate`.",

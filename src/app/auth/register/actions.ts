@@ -3,6 +3,24 @@
 import { redirect } from "next/navigation";
 import { registerWithPassword, requestRegisterOtp } from "@/lib/server/auth-service";
 import { normalizeReferralCode } from "@/lib/server/affiliate-service";
+import { getServerT } from "@/lib/i18n-server";
+import { messagingLocaleOf, renderedLocaleOf } from "@/lib/server/marketing/consent-ledger";
+
+/**
+ * D2 · THE LANGUAGE THE FORM WAS SHOWN IN — it decides which sentence the consent ledger stores as
+ * evidence of what this person read, and it is the account's `User.locale` from the first day.
+ * 🔴 This read only the `kp-locale` cookie AT SUBMIT, and the cookie can change after the page is drawn:
+ * the language provider adopts a stored choice on mount and rewrites the cookie without redrawing the
+ * server's page (Safari drops script-set cookies after 7 days; localStorage survives), so a person who
+ * ticked the Swahili box was recorded as having read the English sentence.
+ * ⭐ So the form posts the language it was DRAWN in (the hidden `shownLocale` field, page.tsx), validated
+ * to exactly en/sw/zh by `renderedLocaleOf`; it only chooses which of the dictionary's own sentences is
+ * stored, never any text. The cookie remains the fallback for a form that posted none (a page served
+ * before this deploy).
+ */
+async function shownLocale(formData: FormData) {
+  return renderedLocaleOf(formData.get("shownLocale")) ?? messagingLocaleOf((await getServerT()).locale);
+}
 
 /**
  * Phone + password registration. The OTP-only path (`requestRegisterOtp` via
@@ -32,6 +50,7 @@ export async function startRegisterAction(formData: FormData) {
   const result = await registerWithPassword({
     phone, email, password, passwordConfirm, dob,
     acceptTerms, acceptAge, marketingOptIn, referralCode, inviteCode,
+    locale: await shownLocale(formData),
   });
 
   if (!result.ok) {
@@ -105,6 +124,7 @@ export async function startRegisterOtpAction(formData: FormData) {
     acceptTerms: acceptTerms as true,
     acceptAge: acceptAge as true,
     marketingOptIn,
+    locale: await shownLocale(formData),
   });
   if (!result.ok) return { ok: false as const, error: result.error, code: result.code };
   const otpParams = new URLSearchParams({ purpose: "register", phone: result.data!.phone });

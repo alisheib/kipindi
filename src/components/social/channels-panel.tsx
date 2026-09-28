@@ -80,7 +80,9 @@ const K_SESSION = "50pick-channels-shown";
 // search, tabs, sort, chip rows, pagination — and a fixed card top-right covered one of them at every
 // scroll position (the visual pass confirmed it at 360 and 1280, before and after the pinned-bar offset).
 // The panel still appears on every other eligible page.
-const HIDE_ON = /^\/(auth|admin)(\/|$)|^\/(legal|profile)\/responsible-gambling(\/|$)|^\/markets\/?$/;
+// ⛔ `^/s` = the marketing opt-out page (D6). The opt-out shell does not mount this panel at all; the
+// pattern is the second belt, and `test:marketing-optout` reads it.
+const HIDE_ON = /^\/s(\/|$)|^\/(auth|admin)(\/|$)|^\/(legal|profile)\/responsible-gambling(\/|$)|^\/markets\/?$/;
 
 function suppressedRoute(path: string | null): boolean {
   return HIDE_ON.test(path ?? "/") || isCommitSurface(path);

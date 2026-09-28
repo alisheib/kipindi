@@ -39,11 +39,37 @@ export type AppendMarketingConsentInput = {
 };
 
 /**
+ * D2 · THE LANGUAGE THE PERSON WAS SHOWN, as a ledger locale. The callers pass the language the form was
+ * drawn in (`renderedLocaleOf`, below) or, failing that, the `kp-locale` cookie (`getServerT().locale`,
+ * the resolution `/s/[token]/actions.ts` uses) — ⛔ never
+ * `User.locale`, which nothing wrote after sign-up, and never a literal "SW": from 2026-09-25 until this
+ * fix every REGISTRATION and PROFILE row said SW whatever the page showed. Unknown → SW, the default.
+ */
+export function messagingLocaleOf(raw: string | null | undefined): MessagingLocale {
+  const up = String(raw ?? "").toUpperCase();
+  return up === "EN" || up === "ZH" ? up : "SW";
+}
+
+/**
+ * D2 · THE LANGUAGE THE FORM WAS DRAWN IN, as the form itself posts it back (the sign-up form's hidden
+ * `shownLocale` field; the profile switch's own `useT().locale`). ⭐ It beats the cookie because the cookie
+ * can change between drawing and submitting — the language provider rewrites it on mount without
+ * redrawing the server's page, and another tab can switch language — so a Swahili tick was stored as the
+ * English sentence. ⛔ Exactly "en" | "sw" | "zh", nothing else (not "EN", not " sw"): anything else is
+ * null and the caller falls back to the cookie. ⛔ It only SELECTS which of the dictionary's sentences is
+ * stored (`marketingConsentWording`) — no text from the client ever reaches the ledger.
+ */
+export function renderedLocaleOf(posted: unknown): MessagingLocale | null {
+  return posted === "en" ? "EN" : posted === "sw" ? "SW" : posted === "zh" ? "ZH" : null;
+}
+
+/**
  * The exact sentence the person read, in the language they read it in.
  *
  * ⚠️ Swahili is the DEFAULT (`DEFAULT_LOCALE`), so an unrecognised locale falls to `sw` and
  * never to English — a record that says the player read English copy they were never shown
  * is a false record, not a harmless default.
+ * ⭐ OQ11: only the sentences pinned in `consent-wording.ts` count as SMS consent at the gate.
  */
 export function marketingConsentWording(site: MarketingConsentSite, locale: MessagingLocale): string {
   const d = locale === "EN" ? dict.en : locale === "ZH" ? dict.zh : dict.sw;
