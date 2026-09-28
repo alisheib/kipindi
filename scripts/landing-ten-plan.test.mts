@@ -39,15 +39,20 @@ const ACCEPTANCE = "docs/design-system/v4-2026-09-26-landing-ten/ACCEPTANCE.md";
 
 /** The full unit set. A split may ADD ids here; removing one needs a §0 note saying why. */
 const IDS = [
-  "D0", "WP1", "WP2", "WP3", "WP4", "WP5", "WP6", "WP7", "WP8", "WP9", "WP10", "WP11", "WP12",
-  "WP13", "WP14", "WP14b", "WP15", "WP16", "WP17", "RG",
+  "D0", "WP1", "WP1b", "WP2", "WP3", "WP4", "WP5", "WP6", "WP7", "WP8", "WP9", "WP10", "WP11", "WP12",
+  "WP13", "WP14", "WP14b", "WP15", "WP16", "WP17",
+  // WP19 and WP20 are the delivery's own numbers. They had NO board row until the v4 revision's
+  // §C3/§C4 cited them — mapping those checkboxes onto a neighbouring row would have been the
+  // quiet way to a green suite and a false record.
+  "WP19", "WP20", "RG",
   "V15", "V16", "V17", "V18", "V19", "V20", "V21",
   // V22 and V25 arrive with UPDATE-2026-09-28 (the rail's centre Deposit coin and "one Deposit
   // per screen"). They are numbered by the update, not by this board, which is why the run is
-  // V21 -> V22 -> V25 with no V23/V24 yet: those are WP15b's motion audit and WP20's benchmark,
-  // neither built. A gap in the numbers is the delivery's, and inventing V23/V24 rows to close it
-  // would claim two gates nobody has written.
-  "V22", "V25",
+  // V23 (WP15b's motion audit) and V24 (WP20's benchmark) now have rows of their own, both ⬜, each
+  // naming the conflict that blocks it — a literal V23 would convict the coin's own `filter:` fill,
+  // and V24 sits behind the 7-day rule that contradicts Ali's D49. A row that says why it is not
+  // built is a record; a missing row is a silence.
+  "V22", "V23", "V24", "V25",
   "GATE", "PANEL", "FUNNEL", "SW", "ZH", "DEV",
 ];
 const STATUSES = ["⬜", "🔨", "🔵", "✅", "⛔", "⏳"];
@@ -158,6 +163,8 @@ const commitExists = (sha: string) => {
   catch { return false; }
 };
 const world: World = { doc: read(DOC), manifest: read(MANIFEST), board: read(BOARD), acceptance: read(ACCEPTANCE), commitExists };
+/** Counted from the DELIVERY'S OWN FILE — the number this file must never write down. */
+const KCOUNT = (world.acceptance.match(/^- \[ \]/gm) ?? []).length;
 
 if (!process.argv.includes("--prove-red")) {
   const fails = check(world);
@@ -185,12 +192,25 @@ const plants: [string, RegExp, World][] = [
   ["✅ without a measure date", /§2 WP4: ✅ carries no production-measure date/, { ...world, doc: swapRow(world.doc, "WP4", (c) => [c[0], c[1], "✅", firstSha, "looked fine"]) }],
   ["⬜ claiming a commit", /§2 WP8: ⬜ yet cites commit/, { ...world, doc: swapRow(world.doc, "WP8", (c) => [c[0], c[1], "⬜", firstSha, c[4]]) }],
   ["⛔ with no ruling", /§2 WP7: ⛔ cites no ruling/, { ...world, doc: swapRow(world.doc, "WP7", (c) => [c[0], c[1], "⛔", "", "not wanted"]) }],
-  ["⛔ citing a ruling nobody made", /§2 WP7: cites R9/, { ...world, doc: swapRow(world.doc, "WP7", (c) => [c[0], c[1], "⛔", "", "R9"]) }],
+  // ⚠️ R9 USED TO BE THE PLANT HERE, AND THE HERO UNIT MADE IT REAL. R9 is now the owner's
+  //    attestation in the manifest, so citing it stopped being a lie and this control went BLIND.
+  //    The plant must name something no ruling will ever take — the same lesson as the two count
+  //    controls below: a control pinned to a value that can become true proves nothing the day it does.
+  ["⛔ citing a ruling nobody made", /§2 WP7: cites R99/, { ...world, doc: swapRow(world.doc, "WP7", (c) => [c[0], c[1], "⛔", "", "R99"]) }],
   ["§0 undated", /§3 §0 has no dated/, { ...world, doc: world.doc.replace(/\*\*State \(20\d{2}-\d{2}-\d{2}\):\*\*/, "**State:**") }],
   ["§0 Next names a finished row", /§3 §0 Next names WP1/, { ...world, doc: world.doc.replace(/\*\*Next:\*\*[^\n]*/, "**Next:** WP1, the header") }],
   ["the board row disagrees", /§4 ▶ 0b says 7 ✅/, { ...world, board: world.board.replace(/v3 build \d+\//, "v3 build 7/") }],
-  ["a delivery item is dropped", /§5 the crosswalk has 56 K rows/, { ...world, doc: world.doc.split("\n").filter((l) => !l.startsWith("| K57 |")).join("\n") }],
-  ["the delivery grows an item", /ACCEPTANCE has 58 checkboxes/, { ...world, acceptance: world.acceptance + "\n- [ ] a new item\n" }],
+  // 🔴 THESE TWO WENT BLIND THE DAY THE DELIVERY WAS REVISED, AND THAT IS THE WHOLE POINT OF THEM.
+  //    They planted `| K57 |` BY NAME and expected the literal strings "56 K rows" and "58 checkboxes".
+  //    The v4 revision took the delivery from 57 checkboxes to 86, so the plants still landed and the
+  //    expectations matched nothing: `red:landing-ten-plan` reported BLIND for the one class whose
+  //    whole job is to notice that the delivery changed size. A control that hard-codes TODAY'S COUNT
+  //    cannot survive the event it exists to catch — so both DERIVE what they expect now, and the
+  //    plant drops whichever K row is LAST rather than one named in 2026.
+  ["a delivery item is dropped", new RegExp(`§5 the crosswalk has ${KCOUNT - 1} K rows`),
+    { ...world, doc: world.doc.split("\n").filter((l) => !l.startsWith(`| K${KCOUNT} |`)).join("\n") }],
+  ["the delivery grows an item", new RegExp(`ACCEPTANCE has ${KCOUNT + 1} checkboxes`),
+    { ...world, acceptance: world.acceptance + "\n- [ ] a new item\n" }],
   ["an item names a row that does not exist", /§5 crosswalk K8 names WP99/, { ...world, doc: world.doc.replace(/^\| K8 \|([^|]*)\|[^|]*\|/m, "| K8 |$1| WP99 |") }],
   ["an item is renumbered", /§5 crosswalk row P9 is out of order/, { ...world, doc: world.doc.replace(/^\| P8 \|/m, "| P9 |") }],
 ];

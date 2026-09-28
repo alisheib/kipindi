@@ -658,9 +658,24 @@ const CHECKS = /* js */ `(() => {
       if (!vis(row)) continue;
       const pill = row.querySelector("[data-kit-chip-variant]");
       const v = pill && pill.getAttribute("data-kit-chip-variant");
-      const refundShown = !!row.querySelector(".kp-settled__amt--void");
-      if ((v === "yes" || v === "no") && refundShown) {
-        bad.push({ what: "a decided market is described as refunded", measured: "chip=" + v + " + refund word",
+      const amt = row.querySelector(".kp-settled__amt--void");
+      const refundShown = !!amt;
+      /* ⚠️ NARROWED 2026-09-28, AND THE PRODUCT WAS RIGHT. This fired 36× on production the day C1
+         shipped: \`settleMarket\` refunds every stake at zero fee when ONE POOL IS EMPTY, whatever the
+         verdict, so a market resolved NO on a one-sided pool truthfully says refunded beside a NO
+         pill. The rule was written before that state existed, when the only way to pair the refund
+         word with a side pill was a market NOBODY STAKED — which is still a false statement about
+         money, and is still caught below.
+         ⛔ THE READ IS STILL NEVER A WORD. \`data-settled-reason\` is the row's own machine-readable
+         answer; \`refunded\` is licit beside a side pill, \`empty\` is the original finding, and a
+         MISSING reason is treated as the finding too — a page that stops saying which refund it
+         means must not thereby stop being checked. */
+      const reason = amt && amt.getAttribute("data-settled-reason");
+      if ((v === "yes" || v === "no") && refundShown && reason !== "refunded") {
+        bad.push({ what: reason === "empty"
+            ? "a decided market NOBODY STAKED is described as refunded"
+            : "a decided market is described as refunded, and the row does not say which refund it means",
+          measured: "chip=" + v + " + refund word, reason=" + (reason || "(none)"),
           where: ".kp-settled__row " + JSON.stringify(textOf(row).slice(0, 44)) });
       }
     }
@@ -921,12 +936,24 @@ const CHECKS = /* js */ `(() => {
     };
     const find = (s, names, test) => [...s.querySelectorAll(names.map((n) => '[data-market-part="' + n + '"]').join(","))]
       .find((el) => vis(el) && inside(el, s) && test(says(el)));
-    // BEFORE = earlier in the DOM AND earlier on the screen: above the pick, or on its line and left of it.
+    // BEFORE = earlier in the DOM AND earlier in READING ORDER WITHIN THIS ONE SURFACE: above the
+    // pick, or entirely to its left.
+    // ⚠️ RELAXED 2026-09-28, AND THE PRODUCT WAS RIGHT. The left arm used to demand that the two
+    //    rects OVERLAP vertically before it would accept "on its line". On a three-column board row
+    //    whose left column is taller than the buttons, that is a few pixels too strict: measured on
+    //    production at 1280, the KRA row's source sat at y 1277-1293 and x 24-685 while the pick sat
+    //    at y 1230-1274 and x 979-1256. Three pixels of vertical miss, three hundred of horizontal
+    //    clearance — and the frame was looked at: a reader meets the source long before the buttons.
+    //    It reported 4 cells, sw only, on one long title.
+    // ⛔ THE TEETH ARE UNCHANGED, and that is what makes this a correction rather than a licence:
+    //    later in the DOM is still caught by the line above; and BELOW the pick while horizontally
+    //    OVERLAPPING it is still caught, which is the phone layout where the buttons run full width
+    //    — the original defect this class was built for, and the one exception (2) still names.
     const follows = (el, pick) => !!(el.compareDocumentPosition(pick) & Node.DOCUMENT_POSITION_FOLLOWING);
     const before = (el, pick) => {
       if (!follows(el, pick)) return false;
       const a = el.getBoundingClientRect(), b = pick.getBoundingClientRect();
-      return a.bottom <= b.top + 2 || (a.top < b.bottom && a.bottom > b.top && a.right <= b.left + 2);
+      return a.bottom <= b.top + 2 || a.right <= b.left + 2;
     };
     const surfaces = [...document.querySelectorAll("[data-market-surface], .mcardp[data-row-id], .kp-qrow")].filter(vis);
     const examined = {};
@@ -1252,6 +1279,8 @@ const REDS = {
         el.style.setProperty("opacity", "0.01", "important");
         return { applied: +getComputedStyle(el).opacity < 0.05, note: getComputedStyle(el).opacity }; })()`,
 
+  // The plant must now REMOVE the row's reason as well as force the refund word: with the reason
+  // present and licit, forcing the word alone is a plant V12 correctly ignores.
   V12: `(() => { const row = [...document.querySelectorAll(".kp-settled__row")].find((r) => {
           const p = r.querySelector("[data-kit-chip-variant]");
           const v = p && p.getAttribute("data-kit-chip-variant");
