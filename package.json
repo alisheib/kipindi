@@ -766,6 +766,7 @@
     "test:share-preview": "tsx scripts/share-preview.test.mts",
     "red:share-preview": "node scripts/share-preview-red.mjs",
     "qa:landing-v3:capture": "node scripts/qa/landing-v3/capture.mjs",
+    "qa:landing-v3:rows": "node scripts/qa/landing-v3/rows.mjs",
     "qa:landing-v3:hero-mine": "node scripts/qa/landing-v3/hero-mine.mjs",
     "qa:landing-v3:seed-onesided": "node scripts/qa/landing-v3/seed-onesided.mjs",
     "qa:landing-v3:wallet": "node scripts/qa/landing-v3/wallet.mjs",

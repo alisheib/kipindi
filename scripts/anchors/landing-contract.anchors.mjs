@@ -11,15 +11,24 @@
 
 export const MUTATIONS = [
   {
-    name: "the grid does not exclude the hero's ids (the exact batch-2 repetition)",
-    file: "src/lib/markets/landing.ts",
-    from: `  const open = rows.filter((r) => matchesStatus(r, "open", nowMs) && !excluded.has(r.id));`,
-    to: `  const open = rows.filter((r) => matchesStatus(r, "open", nowMs));`,
-    expect: "2.1",
+    // ⚠️ REPLACED 2026-09-28 (WP9). This case planted "the grid does not exclude the hero's ids" — the
+    // exact batch-2 repetition — against `landingGrid`, which is deleted with the landing grid. The
+    // rule survives as the board excluding the featured card by id, and its red control lives beside
+    // the code: `scripts/anchors/hero-contract.anchors.mjs`, "the board starts at the featured market
+    // again". ⛔ Not duplicated here: two harnesses planting one rule is how one of them rots.
+    // ⭐ WHAT THIS SLOT PLANTS NOW is the rule WP9 introduced and nothing else guarded — the board's
+    // lens arrives off a URL and must be narrowed against what the book can honestly offer.
+    name: "WP9 · the requested lens is trusted straight off the URL (a money lens on a cold book)",
+    file: "src/lib/markets/hero.ts",
+    from: `  const lens: BoardLens = boardLenses(sumYes + sumNo).includes(requested) ? requested : "closing";`,
+    to: `  const lens: BoardLens = requested;`,
+    expect: "2.2",
   },
   {
     name: "the cold-book lens picks the money lens on an empty book (states a number nobody produced)",
-    file: "src/lib/markets/landing.ts",
+    // ⚠️ MOVED WITH THE FUNCTION (WP9): `gridLensFor` in `landing.ts` became `boardMoneyLens` in
+    // `hero.ts`, because the surface it decides for is the board's toggle. Same line, new address.
+    file: "src/lib/markets/hero.ts",
     from: `  return openPoolTzs > 0 ? "pool" : "new";`,
     to: `  return "pool";`,
     expect: "1.1",
@@ -46,24 +55,38 @@ export const MUTATIONS = [
     expect: "3.8-control",
   },
   {
-    name: "the grid stops filtering by status (a RESOLVED market is offered live YES/NO buttons)",
-    file: "src/lib/markets/landing.ts",
-    from: `  const open = rows.filter((r) => matchesStatus(r, "open", nowMs) && !excluded.has(r.id));`,
-    to: `  const open = rows.filter((r) => !excluded.has(r.id));`,
-    expect: "2.5",
+    name: "the board stops filtering by status (a RESOLVED market is offered live YES/NO buttons)",
+    // ⚠️ RE-POINTED 2026-09-28 (WP9). The status filter was `landingGrid`'s own; it is now the one
+    // `heroFigures` already applied before it orders anything, so the plant moves to that line and the
+    // assertion it must break moves with it (§2.5 became §4.6, "a RESOLVED row never reaches the board
+    // or the card").
+    file: "src/lib/markets/hero.ts",
+    from: `  const open = rows.filter((r) => matchesStatus(r, "open", nowMs));`,
+    to: `  const open = rows.slice();`,
+    expect: "4.6",
   },
   {
-    name: "WP6 · the grid seats by the lens alone (a one-sided TZS 90,000 card takes a priced market's seat)",
-    file: "src/lib/markets/landing.ts",
-    from: `    [0, 1, 2].flatMap((tier) => byLens.filter((r) => priceTier(r) === tier)).slice(0, size).map((r) => r.id),`,
-    to: `    byLens.slice(0, size).map((r) => r.id),`,
+    name: "WP6 · the board orders by the lens alone (a one-sided TZS 90,000 market takes a priced market's place)",
+    // ⚠️ MOVED WITH THE RULE (WP9): the tier partition is `boardOrdering`'s now.
+    file: "src/lib/markets/hero.ts",
+    from: `  return [0, 1, 2].flatMap((tier) => order(open.filter((r) => priceTier(r) === tier)));`,
+    to: `  return order(open);`,
     expect: "4.1",
   },
   {
-    name: "WP6 · the seated cards are shown in tier order, so the heading's 'Biggest pools first' is false",
-    file: "src/lib/markets/landing.ts",
-    from: `  return byLens.filter((r) => seated.has(r.id));`,
-    to: `  return [0, 1, 2].flatMap((tier) => byLens.filter((r) => seated.has(r.id) && priceTier(r) === tier));`,
+    // ⚠️ REPLACED 2026-09-28 (WP9 · R16), AND THE REASON IS A RULING RATHER THAN A MOVE. This case
+    // planted "the seated cards are shown in TIER order, so the heading's 'Biggest pools first' is
+    // false" — because `landingGrid` deliberately displayed its three seats in pure lens order. The
+    // merged board displays in TIER order on purpose (R16 strikes R15's "displays by lens" clause: on
+    // a seven-row list that is the page's only market list, lens-across-tiers hands position 1 back to
+    // the one-sided row the floor exists to demote). So the defect that case guarded against is now
+    // the shipped behaviour, and planting it would convict the product.
+    // ⭐ WHAT IS WORTH GUARDING IS THE OTHER HALF: within a tier, the lens must still be the lens.
+    // Plant it away and the priced rows come back in input order instead of pool order.
+    name: "WP9 · the lens is ignored WITHIN a tier (the rows come back in input order)",
+    file: "src/lib/markets/hero.ts",
+    from: `    if (lens !== "closing") return sortRows(rows, { sort: lens, dir: null });`,
+    to: `    if (lens !== "closing") return rows.slice();`,
     expect: "4.4",
   },
 ];

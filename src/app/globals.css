@@ -4443,8 +4443,34 @@ html[data-sheet-open] .route-enter { animation: none; }
    two side links — never one link (WP17). Written mobile-first: phone = title, meta, reading, then the
    full-width YES/NO pair; from 640 the title and the reading sit side by side and the pair wraps below at
    its own width; from 1024 one line — title · reading · pair. No phone-only query, so the Compact fence has
-   nothing to police. The old 821/560.98 blocks, the hover indent (D25) and the lean rule are gone. */
+   nothing to police. The old 821/560.98 blocks, the hover indent (D25) and the lean rule are gone.
+   ⭐ SINCE WP9 (R15) THIS IS THE LANDING'S ONLY MARKET LIST — seven rows where there were four, with the
+   `.market-grid` band that used to follow it deleted from `/`. Nothing here is count-dependent (no
+   nth-child, no :last-child, no sibling combinator, no container query), so the growth needed no rule:
+   every row's rhythm is `.kp-qrow`'s own padding-block plus its 1px bottom border, and `.kp-qboard`
+   contributes one top rule and nothing else.
+   ⚠️ A LIST OF ROWS IS DENSITY-INVARIANT HERE, ON PURPOSE. `html:not([data-density="comfortable"])`
+   tightens `.market-grid`'s gap and the `--mcard-*` ladder, because Compact is a rule about CARD
+   spacing; these rows are not cards and take no rung. Stated rather than left as an absence, since a
+   missing rung is exactly what `density-contract` cannot see. */
 .kp-qboard { border-top: 1px solid var(--border-royal); }
+/* ── the board's ordering rail (WP9 · R16) ──────────────────────────────────────────────────────────
+   Two `FilterPill`s — the product's one filter control language (DESIGN_AUTHORITY §K rule 7c: "the
+   underline is the section language; the capsule is the filter language"), so the pills bring their own
+   44px box, their own selected outline and their own fill from `.kp-fchip[data-on]`. Nothing here
+   paints; it only places.
+   ⛔ `gap`, NEVER `column-gap`. This row WRAPS at 360 in Swahili, where the two labels run to about
+   300px, and a wrapping row of 44px tap targets with no ROW gap puts two of them edge to edge with 0px
+   between — a finger one pixel high applies the other ordering. That is the measured defect
+   `QUERY_BAR_ROW2_CLASS` records against the shared bar; this rail pays the same 8px for the same
+   reason, and pays it only when a second line exists. */
+.kp-qboard__lens {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-3);
+}
 .kp-qrow {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -4472,7 +4498,8 @@ html[data-sheet-open] .route-enter { animation: none; }
    cap resolved to 882px and still set 99 characters a line. 44ch is about 571px, about 64 characters in this
    face (measured on production 2026-09-24). If the question ever changes typeface this number is wrong
    again — V7 in the landing gate is what re-catches it. Below 640 it clamps at three lines (U6's bound: the
-   board takes whatever four markets close soonest, and one long title would otherwise run seven lines); the
+   board takes whatever seven markets its ordering puts first, and one long title would otherwise run seven
+   lines — a bound that matters MORE since WP9 grew the board from four rows to seven); the
    ellipsis says the question continues, and the link — whose name is the whole question — opens it. */
 .kp-qrow__q {
   font-family: var(--font-display);
@@ -5853,14 +5880,19 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
 .kp-mine__n--gold { color: var(--gold-300); }
 .kp-mine__l { font-size: var(--type-small); line-height: 1.35; color: var(--text-muted); }
 .kp-mine__lead { font-size: var(--type-h4); line-height: 1.5; color: var(--text-muted); max-width: 34em; }
-.kp-mine__wallet { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-4) var(--sp-5); padding: var(--sp-4); border: 1px solid var(--border); border-radius: var(--r-lg); max-width: 560px; }
-.kp-mine__bal { flex: 1 1 180px; min-width: 0; }
-.kp-mine__amt { margin-top: var(--sp-1); font-family: var(--font-mono); font-weight: 700; font-size: var(--type-h2); line-height: 1.15; font-variant-numeric: tabular-nums; color: var(--gold-300); overflow-wrap: anywhere; }
+/* ⭐ R17 (2026-09-28) · THE BLOCK'S TWO QUIET DOORS, SIDE BY SIDE — My positions and Set limits. It held
+   ONE link (`align-self: flex-start` inside the column), so a second would have stacked under it and read
+   as two separate rows rather than one footer to the block. ⛔ `gap`, never `column-gap`: in Swahili the
+   pair wraps at 360 and a wrapped row of 44px targets with no ROW gap puts two of them edge to edge.
+   ⚠️ WHAT LEFT THIS BLOCK WITH R17: `.kp-mine__wallet`, `__bal`, `__amt`, `__pair`, `__act` and `__empty`
+   — the balance box and the gilt Deposit/Withdraw pair. The header capsule states the balance at every
+   value (R10) and the rail's coin is money-in; the hero states the player's POSITION and owns no money
+   control. Deleted rather than left unused: an unreferenced rule is a rule the next reader restores. */
+.kp-mine__links { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-5); }
+
 /* ⚠️ minmax(0, 1fr), NOT 1fr: a bare 1fr is minmax(auto, 1fr), so a column grows to fit its label and the pair
    stops being equal — measured 134.9 vs 136.1px in English ("Withdraw" is the longer word). Equal by construction. */
-.kp-mine__pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-3); flex: 1 1 300px; }
-.kp-mine__act { width: 100%; }
-.kp-mine__empty { display: flex; flex-direction: column; gap: var(--sp-4); }
+
 .kp-mine__held { display: flex; flex-direction: column; gap: var(--sp-1); padding: var(--sp-4); border-radius: var(--r-lg); background: var(--bg-inset); max-width: 560px; }
 .kp-mine__held-t { font-family: var(--font-display); font-weight: 700; font-size: var(--type-h4); line-height: 1.25; color: var(--text); }
 .kp-mine__held-b { font-size: var(--type-small); line-height: 1.45; color: var(--text-muted); }

@@ -43,28 +43,47 @@ export const MUTATIONS = [
   // label ("the featured card is the soonest-closing market") that no longer exists, so both reported
   // an anchor or wrong-reason failure and nothing ran this file to notice. They now name the lens that
   // ships, and WP6 adds the case its tier change exists for.
+  // ⚠️ RE-ANCHORED 2026-09-28 (landing v3 WP9). The lens, its price-quality floor and the tier
+  // partition moved out of `heroFigures` into `boardOrdering` in the same file — one home, because the
+  // board's toggle switches between orderings and must never switch between implementations. These
+  // three cases name the lines at their new address; nothing about what they plant has changed.
   {
     name: "the hero drops its price-quality floor (orders the whole book by the lens alone)",
     file: "src/lib/markets/hero.ts",
-    from: "  const ordered = [0, 1, 2].flatMap((tier) => lens(open.filter((r) => priceTier(r) === tier)));",
-    to: "  const ordered = lens(open);",
+    from: "  return [0, 1, 2].flatMap((tier) => order(open.filter((r) => priceTier(r) === tier)));",
+    to: "  return order(open);",
     expect: "no degenerate market outranks a contested one, however soon it closes",
   },
   {
     name: "WP6 · the tier is read from the ROUNDED share again (a 25,000-vs-100 market filed as one-sided)",
     file: "src/lib/markets/hero.ts",
-    from: "  const ordered = [0, 1, 2].flatMap((tier) => lens(open.filter((r) => priceTier(r) === tier)));",
+    from: "  return [0, 1, 2].flatMap((tier) => order(open.filter((r) => priceTier(r) === tier)));",
     // The pre-WP6 rule exactly: the tier read from the ROUNDED raw share (a row's own yesPct is the
     // printable price since WP6, so the defect is re-planted from the pools it used to round).
-    to: "  const ordered = [0, 1, 2].flatMap((tier) => lens(open.filter((r) => { const s = pricedYesPct(r.yesPool, r.noPool); return (s == null ? 2 : s === 0 || s === 100 ? 1 : 0) === tier; })));",
+    to: "  return [0, 1, 2].flatMap((tier) => order(open.filter((r) => { const s = pricedYesPct(r.yesPool, r.noPool); return (s == null ? 2 : s === 0 || s === 100 ? 1 : 0) === tier; })));",
     expect: "both lopsided two-sided markets rank ahead of the one-sided one",
   },
   {
     name: "the card is pinned to the LAST market instead of coming from the ordering",
     file: "src/lib/markets/hero.ts",
-    from: "    featured: ordered[0] ?? null,",
-    to: "    featured: ordered[ordered.length - 1] ?? null,",
+    from: "  const featured = closing[0] ?? null;",
+    to: "  const featured = closing[closing.length - 1] ?? null;",
     expect: "the most contested market leads the hero",
+  },
+  {
+    // ⭐ NEW WITH WP9. The featured card is the CLOSING ordering's lead at every lens (R4(4): the most
+    // contested open market is a fact about the book, not about the order a reader chose). Plant it
+    // following the toggle instead, and the card changes identity when the board is re-ordered.
+    name: "WP9 · the featured card follows the toggle instead of staying the most contested market",
+    file: "src/lib/markets/hero.ts",
+    // ⚠️ THE FIRST VERSION OF THIS PLANT WAS AIMED AT NOTHING, and `red:hero-contract` said so ("the
+    // gate stayed GREEN with the defect in place"). It rewrote `closing` on the line AFTER `featured`
+    // had already been read out of it, so the mutation could not reach the value it was about. The
+    // defect is one character of intent: take the card from the ORDERING ON SCREEN instead of from the
+    // closing lens, and it changes identity the moment a reader re-orders the list under it.
+    from: "  const closing = boardOrdering(open, nowMs, \"closing\");",
+    to: "  const closing = boardOrdering(open, nowMs, lens);",
+    expect: "⛔ WP9 · the featured card is the same market at every lens",
   },
   {
     // 🔴 THE DUPLICATION DEFECT, REINTRODUCED. This is precisely what shipped in `1de3b38d`: the
@@ -74,7 +93,11 @@ export const MUTATIONS = [
     // silently.
     name: "the board starts at the featured market again (the hero states its lead twice)",
     file: "src/lib/markets/hero.ts",
-    from: "    board: ordered.slice(1, 1 + QUESTION_BOARD_SIZE),",
+    // ⚠️ RE-ANCHORED 2026-09-28 (WP9). The board subtracts the featured card BY ID now, because with a
+    // toggle the card is no longer guaranteed to be row 0 of the list the board slices — so the old
+    // `slice(1, …)` would have dropped an innocent row AND shown the card twice. The plant is the same
+    // defect: stop subtracting it.
+    from: "    board: ordered.filter((r) => r.id !== featured?.id).slice(0, QUESTION_BOARD_SIZE),",
     to: "    board: ordered.slice(0, QUESTION_BOARD_SIZE),",
     expect: "the featured market is NEVER also a board row",
   },

@@ -40,9 +40,14 @@ export const MUTATIONS = [
   },
   {
     name: "a call site hands the card a finished price again (the `?? 0` tripwire)",
-    file: "src/app/page.tsx",
-    from: `                    yesPool={r.yesPool}`,
-    to: `                    yesPct={r.yesPct ?? 0}\n                    yesPool={r.yesPool}`,
+    // ⚠️ RE-POINTED 2026-09-28 (WP9 · R15). It anchored the LANDING GRID card's `yesPool={r.yesPool}`
+    // in `src/app/page.tsx`, and that band is deleted — so the anchor resolved zero times, which
+    // `test:red-anchors` §3 reports and which left §2.3's `?? 0` tripwire (MOBILE-VISUAL ruling 13's
+    // own defect) with no red proof on any landing surface. It moves to the landing's SURVIVING call
+    // site, the hero's featured card, rather than to `/markets` — the defect shipped on this page.
+    file: "src/components/home/landing-hero.tsx",
+    from: `              yesPool={featured.yesPool}`,
+    to: `              yesPct={featured.yesPct ?? 0}\n              yesPool={featured.yesPool}`,
     expect: "2.3",
   },
   {

@@ -188,18 +188,34 @@ log("\n── §3 · the call sites");
     const body = decomment(readFileSync(f, "utf8"));
     for (const m of body.matchAll(/<MarketCard\b[\s\S]*?\/>/g)) sites.push({ at: rel(f), el: m[0] });
   }
-  check("3.0 fixture · every <MarketCard> call site was found (a scan that finds none proves nothing)", sites.length >= 7, String(sites.length));
-  const LANDING = new Set(["src/app/page.tsx", "src/components/home/landing-hero.tsx"]);
+  // ⚠️ SIX SINCE WP9 (2026-09-28, R15): the landing's `.market-grid` card in `src/app/page.tsx` is
+  // deleted, so this fixture precondition counts six. `scripts/one-sided.test.mts` §2.4 holds the
+  // NAMED census of the same six; this one stays a count because every assertion below it is about a
+  // property of the set rather than its membership.
+  check("3.0 fixture · every <MarketCard> call site was found (a scan that finds none proves nothing)", sites.length === 6, String(sites.length));
+  const LANDING = "src/components/home/landing-hero.tsx";
   const named = sites.filter((s) => /\bsourceName=\{/.test(s.el));
-  check("3.1 `sourceName` is passed by the landing only (the /markets card geometry is untouched)",
-    named.length >= 2 && named.every((s) => LANDING.has(s.at)), named.map((s) => s.at).join(", "));
+  // ⭐ POSITIVE AND NEGATIVE, BECAUSE ONE OF THEM IS NOW A SET OF SIZE ONE. `named.length >= 2` was the
+  // floor that kept `named.every(...)` from being an empty-filter pass; with the grid card gone only
+  // the featured card names a source, so the arm has to say WHICH site that is as well as which sites
+  // it must not be. Otherwise a landing that stopped naming its source at all would pass.
+  check("3.1 `sourceName` is passed by the landing's featured card ONLY (the /markets card geometry is untouched)",
+    named.length === 1 && named[0]?.at === LANDING, named.map((s) => s.at).join(", ") || "none");
   const closes = sites.filter((s) => /\bclosesOn=\{/.test(s.el));
   check("3.2 `closesOn` is the featured card's only", closes.length === 1 && closes[0].at === "src/components/home/landing-hero.tsx"
     && /\bfeatured\b/.test(closes[0].el), closes.map((s) => s.at).join(", "));
-  const live = sites.filter((s) => !/status="RESOLVED"|status=\{m\.status === "VOIDED" \? "VOIDED" : "RESOLVED"\}/.test(s.el));
+  const RESOLVED_ONLY = /status="RESOLVED"|status=\{m\.status === "VOIDED" \? "VOIDED" : "RESOLVED"\}/;
+  const live = sites.filter((s) => !RESOLVED_ONLY.test(s.el));
   const noMs = live.filter((s) => !/\bmsLeft=\{/.test(s.el));
-  check("3.3 every card that can be live passes `msLeft` (SOON in every locale)", live.length >= 5 && noMs.length === 0,
-    `${live.length} live-capable; missing: ${noMs.map((s) => s.at).join(", ")}`);
+  // ⚠️ FOUR SINCE WP9, AND THE EXCLUDED SET IS NAMED. `live.length >= 5` was the floor that kept
+  // `noMs.length === 0` from being a trivially-true empty filter; with the landing's grid card gone it
+  // is four. ⭐ Stating WHICH two sites are resolved-only is stronger than any count: a live site that
+  // silently became resolved-only would otherwise just lower the number.
+  const resolvedOnly = sites.filter((s) => RESOLVED_ONLY.test(s.el)).map((s) => s.at).sort();
+  check("3.3 every card that can be live passes `msLeft` (SOON in every locale)",
+    live.length === 4 && noMs.length === 0
+    && JSON.stringify(resolvedOnly) === JSON.stringify(["src/app/markets/page.tsx", "src/app/results/page.tsx"]),
+    `${live.length} live-capable; resolved-only: ${resolvedOnly.join(", ")}; missing msLeft: ${noMs.map((s) => s.at).join(", ")}`);
   check("3.3-control a live call site without `msLeft` IS detected",
     !/\bmsLeft=\{/.test('<MarketCard productLine={"MARKET"} timeLeft={timeLeftStr(x)} status="LIVE" yesPool={a} noPool={b} />'));
   const page = decomment(read("src/app/page.tsx"));

@@ -8,66 +8,44 @@
  * "closing soonest" returns. Two surfaces disagreeing about someone's money is the defect B6
  * exists for.
  *
- * The two things this file decides:
+ * ⚠️ WHAT THIS FILE USED TO DECIDE, AND WHERE IT WENT (WP9 · R15, 2026-09-28). It owned TWO things.
+ * The first — 🔴 **THE PAGE MUST NOT STATE THE SAME MARKETS TWICE** (batch 2 shipped a hero that
+ * named its lead market twice, and the re-validation pass then found the PAGE repeating: the hero's
+ * four questions were also the first four cards of the grid below, because both were closing-soonest
+ * over the same book) — was answered by giving the grid a different lens and subtracting the hero's
+ * ids from it. **WP9 deletes the grid from `/` entirely**, so there is nothing left to be disjoint
+ * FROM: the page has ONE list, and the law now lives where that list is built, as `boardOrdering` plus
+ * `HeroFigures.board`'s exclusion of the featured card (`hero.ts`). `landingGrid`, `LANDING_GRID_SIZE`,
+ * `GridLens` and `gridLensFor` left with it — the last as `boardMoneyLens`, with its reasoning intact.
+ * ⛔ Do not re-add a second market list here without re-reading that law first.
  *
- * 1. 🔴 **THE PAGE MUST NOT STATE THE SAME MARKETS TWICE.** Batch 2 shipped a hero that named its
- *    lead market twice and 30 gates were green over it; the re-validation pass fixed the hero and
- *    recorded that the PAGE still repeated — the hero's four questions were also the first four
- *    cards of the grid below, because both were closing-soonest over the same book. So the grid
- *    gets a DIFFERENT LENS and is disjoint from the hero by construction (see `landingGrid`).
+ * So this file now decides ONE thing:
  *
- * 2. **THE TOPIC TILES MUST RECONCILE TO THE HERO.** The kit is explicit that per-topic counts and
- *    pools "must reconcile to the header or the page contradicts itself". They do so BY
- *    CONSTRUCTION here — both are folds over the same `open` set — rather than by two queries that
- *    agree today. `landingTopicsReconcile` is the assertion, and the gate runs it.
+ * **THE TOPIC TILES MUST RECONCILE TO THE HERO.** The kit is explicit that per-topic counts and
+ * pools "must reconcile to the header or the page contradicts itself". They do so BY CONSTRUCTION
+ * here — both are folds over the same `open` set — rather than by two queries that agree today.
+ * `landingTopicsReconcile` is the assertion, and the gate runs it. ⭐ R15 KEPT THE TILES that the v4
+ * delivery would have deleted with the grid: they list TOPICS, a different axis, and repeat no
+ * market, so the delivery's own reason ("three lists of one thing") does not reach them.
  */
-import { matchesStatus, sortRows, pricedYesPct, type SortId } from "./discovery";
+import { matchesStatus, pricedYesPct } from "./discovery";
 import type { HeroRow } from "./hero";
-import { priceTier } from "./price-state";
 
 /**
- * Cards on the landing grid.
+ * ⛔ THE MARKET BUDGET, AND WHERE IT IS SPENT NOW (WP9 · R15, 2026-09-28).
  *
- * ⚠️ WAS 6, AND 6 WAS A DESKTOP NUMBER — the line this replaces said so: "two rows of three at
- * desktop, three rows of two at 768". On a phone it is six rows of ONE: 1815px, 22% of the whole
- * landing page, measured at 360 SW on production. The default visitor is on a phone and reads
- * Swahili since 8822b648, so the grid is sized from THAT screen now — three cards, ~940px, and
- * still one clean row at desktop.
+ * `LANDING_GRID_SIZE` lived here and was **3**, chosen from a phone screen: at 6 the grid was six
+ * rows of ONE on a phone — 1815px, 22% of the whole landing page, measured at 360 SW on production —
+ * and the six-card version also put ELEVEN markets in front of a visitor before the trust band, the
+ * same markets in two formats, under an eyebrow claiming "biggest pool first". A superlative shown
+ * six times stops being one. Ali delegated the number on 2026-09-23.
  *
- * ⭐ AND THE CONTENT WAS ALREADY DOUBLED. The hero draws HERO_MARKETS (5) of its own — a featured
- * card plus the Closing-soonest rows — so a six-card grid put ELEVEN markets in front of a visitor
- * before the trust band, the same markets in two formats. The band's own eyebrow is "biggest pool
- * first"; a superlative shown six times stops being one. Browsing is what /markets is for, and the
- * hero already carries the "Browse all {n} markets" link to it.
- *
- * ⛔ THIS IS A DESIGN DECISION, NOT TARGET-CHASING. The plan's ≤ 7.8-screen home is unreachable
- * whatever this is set to — see MOBILE-VISUAL-PLAN §11, where the arithmetic is written out. This
- * is set to what a landing SAMPLE should be; the home-length target is restated from measurement
- * rather than met by cutting content. Ali delegated the number on 2026-09-23.
+ * ⭐ WP9 SPENDS THE SAME BUDGET IN ONE SHAPE. `/` drew 1 featured card + 4 board rows + 3 grid cards
+ * = 8 markets; it now draws 1 featured card + `QUESTION_BOARD_SIZE` (7) rows = the same 8, in one
+ * list instead of three. The ceiling is unchanged and is not re-argued here — `hero.ts` carries it.
+ * ⛔ `HERO_MARKETS` went with them: it was exported, read by nothing in `src/` or `scripts/`, and at
+ * 1 + 7 its value (5) was about to become quietly wrong as well as unread.
  */
-export const LANDING_GRID_SIZE = 3;
-
-/** Markets the hero itself draws: the featured card plus the question board. */
-export const HERO_MARKETS = 5;
-
-/**
- * The lens the grid is ordered by — and it is STATED in the heading, per the kit's own rule that
- * "the heading states the sort order, so the grid is a claim rather than a sample".
- *
- * ⛔ `new` IS NOT A FALLBACK, IT IS THE HONEST LENS FOR A COLD BOOK. On a platform where nothing
- * has been staked every pool is 0, `pool` ties everywhere, and the documented tie-break
- * (`bettableUntil` asc) IS closing order — so a grid headed "Biggest pools" would be ordered by a
- * number that is zero on every row, and ordered *identically to the hero*. That exact trap was
- * paid for in batch 1: an assertion that `sort=closing` and `sort=pool` produce different lead
- * cards passed only while the fixture happened to have varied pools. So when there is no money on
- * the book, the grid says what a cold platform actually has to say — these markets just opened —
- * and orders by that. Same instinct as `pricedYesPct`: do not state a figure nobody produced.
- */
-export type GridLens = Extract<SortId, "pool" | "new">;
-
-export function gridLensFor(openPoolTzs: number): GridLens {
-  return openPoolTzs > 0 ? "pool" : "new";
-}
 
 export type TopicAggregate = {
   /** A `MarketCategory` id. */
@@ -86,10 +64,6 @@ export type TopicAggregate = {
 };
 
 export type LandingComposition = {
-  /** The `LANDING_GRID_SIZE` cards below the hero, disjoint from it — see `landingGrid`. */
-  grid: HeroRow[];
-  /** Which lens `grid` is ordered by. The heading must state this. */
-  lens: GridLens;
   /** Every category with at least one open market, biggest count first. */
   topics: TopicAggregate[];
   /** Open markets in no listed category — 0 unless a category id ever falls out of the enum. */
@@ -98,43 +72,6 @@ export type LandingComposition = {
    *  rather than a special case: money that cannot appear on a tile is not claimed by one. */
   uncategorisedPoolTzs: number;
 };
-
-/**
- * The grid: `LANDING_GRID_SIZE` open markets under `lens`, **excluding every market the hero
- * already drew**.
- *
- * ⛔ THE EXCLUSION IS THE POINT, AND IT IS NOT A SECOND QUERY. It is a set difference over the
- * same rows the hero ordered, so it costs nothing and makes the repetition defect structurally
- * impossible at EVERY data state — including the cold one, where a lens change alone would not
- * have been enough. A visitor scrolling two screens now reads ten different markets instead of
- * five markets twice.
- *
- * ⚠️ The trade, stated: if the single biggest pool on the platform is also the soonest to close,
- * the hero shows it and this grid does not. That is the lesser cost — the alternative is the
- * defect — and the section's "see all" link goes to the board sorted by the same lens, where it is
- * present and first. The same holds for a one-sided pool passed over for a priced one (WP6, below).
- */
-export function landingGrid(
-  rows: readonly HeroRow[],
-  nowMs: number,
-  opts: { lens: GridLens; excludeIds: readonly string[]; size?: number },
-): HeroRow[] {
-  const excluded = new Set(opts.excludeIds);
-  const open = rows.filter((r) => matchesStatus(r, "open", nowMs) && !excluded.has(r.id));
-  const byLens = sortRows(open, { sort: opts.lens, dir: null });
-  // ⭐ WP6 · THE SEATS GO TO PRICED MARKETS FIRST — then the chosen cards are SHOWN in lens order.
-  // The delivery wants contested markets ahead of one-sided and empty ones (the hero's floor, applied
-  // here too: production led this grid with two one-sided cards reading "YES 100%"). The heading
-  // states the lens ("Biggest pools first"), and a card order that broke it would make the heading
-  // false; picking by tier and DISPLAYING by lens keeps both true — the grid holds the biggest priced
-  // pools, in pool order. ⛔ A partition, never a filter: on a thin day one-sided and empty markets
-  // still fill the seats, so the grid is never short (`test:landing-contract` §4).
-  const size = opts.size ?? LANDING_GRID_SIZE;
-  const seated = new Set(
-    [0, 1, 2].flatMap((tier) => byLens.filter((r) => priceTier(r) === tier)).slice(0, size).map((r) => r.id),
-  );
-  return byLens.filter((r) => seated.has(r.id));
-}
 
 /** Per-topic counts and pools over the OPEN book — the same set the hero's figures describe. */
 export function landingTopics(rows: readonly HeroRow[], nowMs: number, categories: readonly string[]): {
@@ -184,17 +121,11 @@ export function landingTopics(rows: readonly HeroRow[], nowMs: number, categorie
 export function landingComposition(
   rows: readonly HeroRow[],
   nowMs: number,
-  opts: { openPoolTzs: number; heroIds: readonly string[]; categories: readonly string[] },
+  opts: { categories: readonly string[] },
 ): LandingComposition {
-  const lens = gridLensFor(opts.openPoolTzs);
-  const { topics, uncategorised, uncategorisedPoolTzs } = landingTopics(rows, nowMs, opts.categories);
-  return {
-    grid: landingGrid(rows, nowMs, { lens, excludeIds: opts.heroIds }),
-    lens,
-    topics,
-    uncategorised,
-    uncategorisedPoolTzs,
-  };
+  // ⚠️ It took `openPoolTzs` and `heroIds` until WP9, both only to build the grid. They are gone
+  // rather than kept "in case": an unread parameter is the shape a caller passes the wrong value to.
+  return landingTopics(rows, nowMs, opts.categories);
 }
 
 /**

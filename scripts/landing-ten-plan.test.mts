@@ -52,7 +52,13 @@ const IDS = [
   // naming the conflict that blocks it — a literal V23 would convict the coin's own `filter:` fill,
   // and V24 sits behind the 7-day rule that contradicts Ali's D49. A row that says why it is not
   // built is a record; a missing row is a silence.
-  "V22", "V23", "V24", "V25",
+  // ⭐ V26 ADDED 2026-09-28 (while building WP9), AND IT IS A CORRECTION RATHER THAN AN ADDITION. The
+  // bottom rail + centre coin class was ALSO called V22, so `CHECKS` pushed that name twice and `REDS`
+  // declared the key twice in one object literal — the later literal won, the coin's plant became
+  // unreachable, `countOf` returned the OTHER check's count, and this board carried ONE row for TWO
+  // classes. `--compile` reports 22 plants after the rename where it reported 21 before. The rail/coin
+  // class is V26; V22 keeps its own row, which is what makes the two countable apart.
+  "V22", "V23", "V24", "V25", "V26",
   "GATE", "PANEL", "FUNNEL", "SW", "ZH", "DEV",
 ];
 const STATUSES = ["⬜", "🔨", "🔵", "✅", "⛔", "⏳"];
