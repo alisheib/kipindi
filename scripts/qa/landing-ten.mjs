@@ -658,9 +658,24 @@ const CHECKS = /* js */ `(() => {
       if (!vis(row)) continue;
       const pill = row.querySelector("[data-kit-chip-variant]");
       const v = pill && pill.getAttribute("data-kit-chip-variant");
-      const refundShown = !!row.querySelector(".kp-settled__amt--void");
-      if ((v === "yes" || v === "no") && refundShown) {
-        bad.push({ what: "a decided market is described as refunded", measured: "chip=" + v + " + refund word",
+      const amt = row.querySelector(".kp-settled__amt--void");
+      const refundShown = !!amt;
+      /* ⚠️ NARROWED 2026-09-28, AND THE PRODUCT WAS RIGHT. This fired 36× on production the day C1
+         shipped: \`settleMarket\` refunds every stake at zero fee when ONE POOL IS EMPTY, whatever the
+         verdict, so a market resolved NO on a one-sided pool truthfully says refunded beside a NO
+         pill. The rule was written before that state existed, when the only way to pair the refund
+         word with a side pill was a market NOBODY STAKED — which is still a false statement about
+         money, and is still caught below.
+         ⛔ THE READ IS STILL NEVER A WORD. \`data-settled-reason\` is the row's own machine-readable
+         answer; \`refunded\` is licit beside a side pill, \`empty\` is the original finding, and a
+         MISSING reason is treated as the finding too — a page that stops saying which refund it
+         means must not thereby stop being checked. */
+      const reason = amt && amt.getAttribute("data-settled-reason");
+      if ((v === "yes" || v === "no") && refundShown && reason !== "refunded") {
+        bad.push({ what: reason === "empty"
+            ? "a decided market NOBODY STAKED is described as refunded"
+            : "a decided market is described as refunded, and the row does not say which refund it means",
+          measured: "chip=" + v + " + refund word, reason=" + (reason || "(none)"),
           where: ".kp-settled__row " + JSON.stringify(textOf(row).slice(0, 44)) });
       }
     }
@@ -1252,6 +1267,8 @@ const REDS = {
         el.style.setProperty("opacity", "0.01", "important");
         return { applied: +getComputedStyle(el).opacity < 0.05, note: getComputedStyle(el).opacity }; })()`,
 
+  // The plant must now REMOVE the row's reason as well as force the refund word: with the reason
+  // present and licit, forcing the word alone is a plant V12 correctly ignores.
   V12: `(() => { const row = [...document.querySelectorAll(".kp-settled__row")].find((r) => {
           const p = r.querySelector("[data-kit-chip-variant]");
           const v = p && p.getAttribute("data-kit-chip-variant");

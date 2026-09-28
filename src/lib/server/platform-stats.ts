@@ -36,6 +36,9 @@ export type SettlementRow = Omit<TickerRow, "title"> & {
   titleZh: string | null;
   /** The public source the outcome was judged against — the settled strip names it. */
   sourceUrl: string;
+  /** See `settledNoFigureReason`. The strip renders it as `data-settled-reason` so a driver can
+   *  tell a true refund from a market nobody staked WITHOUT reading a translated word. */
+  noFigureReason: "refunded" | "empty" | null;
   /**
    * Who signed THIS market off (landing v3, WP13) — two distinct officers, one officer, the automatic
    * resolver, or "corrected on objection" when an upheld objection REVERSED the verdict (its stamps
@@ -100,12 +103,30 @@ function settledAmount(m: StoredMarket): number | null {
   return c.refunded ? null : c.netPool;
 }
 
+/**
+ * WHY a decided market shows no paid figure — and the answer is not always the same one.
+ * `"refunded"`: settlement gave every stake back at zero fee because one pool was empty. The row
+ * truthfully says refunded beside a YES or NO pill, and that pairing is exactly what gate V12
+ * used to convict, because the page gave it no way to tell this from the case below.
+ * `"empty"`: a decided market nobody staked. Nothing was refunded because nothing was ever put
+ * in — V12's original finding, and still a false statement about money if the row claims one.
+ * `null`: a figure was paid, or the outcome is VOID (the row is a void, not a decided market).
+ */
+function settledNoFigureReason(m: StoredMarket): "refunded" | "empty" | null {
+  if (m.resolvedOutcome !== "YES" && m.resolvedOutcome !== "NO") return null;
+  const pool = Math.max(0, m.yesPool) + Math.max(0, m.noPool);
+  if (pool <= 0) return "empty";
+  const c = chargedFee({ yesPool: m.yesPool, noPool: m.noPool, resolvedOutcome: m.resolvedOutcome }, ratesFor(m));
+  return c.refunded ? "refunded" : null;
+}
+
 function toSettlementRow(m: StoredMarket, rulings: ReadonlyMap<string, Ruling[]>): SettlementRow {
   return {
     id: m.id,
     settledAtMs: m.settledAt ? Date.parse(m.settledAt) : null,
     outcome: m.resolvedOutcome,
     amountTzs: settledAmount(m),
+    noFigureReason: settledNoFigureReason(m),
     titleEn: m.titleEn,
     titleSw: m.titleSw,
     titleZh: m.titleZh,

@@ -294,7 +294,15 @@ function SettledRow({ row, t, locale, nowMs }: { row: SettlementRow; t: Dict; lo
           ⚠️ `amountTzs == null` stays WITH the void arm: `settledAmount` returns null exactly when the
           outcome is not YES or NO. */}
       {isVoid || row.amountTzs == null ? (
-        <span className="kp-settled__amt kp-settled__amt--void">{t.home.settledVoid}</span>
+        /* ⭐ `data-settled-reason` IS THE MACHINE-READABLE HALF OF THIS SENTENCE, and it exists
+           because gate V12 convicted a row that was telling the truth. C1 made a ONE-SIDED
+           settlement report refunded — correctly: every stake went back at zero fee, whatever the
+           verdict. V12's rule is "a decided market may not be described as refunded", written when
+           the only way to pair that word with a side pill was a market NOBODY STAKED. Both pairings
+           look identical from outside, so the row says which it is rather than leaving a driver to
+           read a translated word — V12's own law, applied to V12's own blind spot. */
+        <span className="kp-settled__amt kp-settled__amt--void"
+              data-settled-reason={isVoid ? "void" : (row.noFigureReason ?? "empty")}>{t.home.settledVoid}</span>
       ) : row.amountTzs > 0 ? (
         <span className="kp-settled__amt">{formatTzs(row.amountTzs)} {t.home.settledPaid}</span>
       ) : (
