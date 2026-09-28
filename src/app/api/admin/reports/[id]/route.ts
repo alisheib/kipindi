@@ -15,7 +15,8 @@ import { NextResponse } from "next/server";
 import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
 import { audit } from "@/lib/server/audit";
-import { REPORT_CATALOGUE, isWindowedReport, type ReportId } from "@/lib/server/reports/catalogue";
+import { REPORT_CATALOGUE, isWindowedReport, reportCoverage, type ReportId } from "@/lib/server/reports/catalogue";
+import { packPeriodBounds } from "@/lib/server/report-pack";
 import { renderXlsx } from "@/lib/server/reports/xlsx";
 import { renderPdf } from "@/lib/server/reports/pdf";
 import { resolveRange, MAX_RANGE_MS } from "@/lib/server/date-range";
@@ -76,6 +77,45 @@ export async function GET(
    * so, and is NOT survivable in a downloadable artifact that will be read months later with no
    * memory of the URL that made it. A document that cannot state its true window must not exist.
    */
+  /**
+   * ⭐ A CALENDAR-MONTH REPORT MAY BE ASKED FOR **WHICH** MONTH, and the coverage declaration is
+   * what says it may — `kind === "calendar-month"`, read off the registry, never a second
+   * hand-typed list of ids beside the one `isWindowedReport` already reads.
+   *
+   * 🔴 THE DEFECT THIS CLOSES. `buildGbtMonthly` and `buildFiuSar` have always taken a
+   * `packPeriod`, and NO caller ever passed one, so this route could only ever serve
+   * `currentPackPeriod()`. The pack card's Download link sits beside the artifact's stored
+   * sha256 and its `periodLabel` — and once the EAT month rolls over, `currentPackPeriod()` moves
+   * and that link served a DIFFERENT MONTH than the label printed directly above it. An officer
+   * reconciling a filing by its own card got last month's pack under this month's heading.
+   *
+   * ⛔ THIS IS NOT A PICKER ON THE CONSOLE. The statutory pack still defaults to the previous
+   * complete month and the date rail still cannot move it; the only thing that can now name a
+   * month is a caller that already knows which one it means — the pack card, naming its own.
+   * ⛔ A MALFORMED OR FUTURE PERIOD IS REFUSED, NOT COERCED, for the same reason an unreadable
+   * `from` is: a filing that cannot state its true month must not exist. `packPeriodBounds`
+   * throws on a non-`YYYY-MM` string, and a month that has not finished has no complete figures.
+   */
+  let packPeriod: string | undefined;
+  if (reportCoverage(id as ReportId).kind === "calendar-month") {
+    const raw = url.searchParams.get("period");
+    if (raw) {
+      if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(raw)) {
+        return NextResponse.json({
+          ok: false,
+          error: `Unreadable period "${raw}" — expected YYYY-MM (East Africa Time calendar month).`,
+        }, { status: 400 });
+      }
+      if (packPeriodBounds(raw).end > Date.now()) {
+        return NextResponse.json({
+          ok: false,
+          error: `The month ${raw} has not finished, so it has no complete figures to file.`,
+        }, { status: 400 });
+      }
+      packPeriod = raw;
+    }
+  }
+
   let win: { start: number; end: number; label?: string } | undefined;
   if (isWindowedReport(id)) {
     const asofRaw = Number(url.searchParams.get("asof"));
@@ -102,11 +142,13 @@ export async function GET(
   // itself. Previously this passed displayLabel(u) which broke the
   // db.user.findById() lookup inside every builder.
   /* The registry is `as const`, so `entry.build` narrows to a union of builder signatures and
-     TypeScript cannot see that only the windowed one takes a second argument. The cast names
-     exactly that fact; `win` is `undefined` for every other entry, so each builder receives
-     precisely what it received before. */
-  const build = entry.build as (uid: string, w?: { start: number; end: number; label?: string }) => Promise<Report>;
-  const report = await build(session.userId, win);
+     TypeScript cannot see which entries take a second argument. The cast names exactly that fact.
+     ⛔ AT MOST ONE OF THE TWO IS EVER SET: `win` only for `windowed: true` (kind
+     `selected-window`), `packPeriod` only for kind `calendar-month`. The kinds are disjoint by
+     construction, so no builder can receive the wrong shape — `test:report-window-truth` asserts
+     that disjointness rather than leaving it to this comment. */
+  const build = entry.build as (uid: string, w?: { start: number; end: number; label?: string } | string) => Promise<Report>;
+  const report = await build(session.userId, win ?? packPeriod);
 
   let body: Buffer;
   let mime: string;

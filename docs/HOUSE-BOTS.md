@@ -2547,6 +2547,65 @@ does announce". **Both builds' mutations, driven after the push at the live comm
 tree (2026-09-28): `red:house-bot-console --only phone-sort,fs09` **34 caught, 0 missed, 0 files left dirty**, and
 `red:filter-language` **37/37 caught**, each on its own assertion.
 
+### 12.17 The targeting screen — S1, the fixture and the instrument's reach — built 2026-09-28 (no product change)
+
+**Why a step with no product change.** The account page's Targets tab has shipped read-only since ruling 508, and the
+browser gate has never been able to measure it: the kit hides a table's header row when the table is empty, so
+`§5.10 … Account targets · the header row's sort controls` reported NOT MEASURED at every width, for want of a single
+row. An instrument that cannot see a surface is not evidence about it, and the four acts S3–S5 add all land on that
+surface.
+
+**What changed.** `scripts/seed-house-bot-panels-local.mts` gained a targets half, and
+`scripts/qa-house-bots-visual.mjs` had ONE flag site corrected.
+
+- The seed plants **8 targets** across the roster — 1 ACTIVE, 6 ENDED (one of them VETOED), 1 REMOVED — through the
+  DAL's sealed `targetStore`, never raw SQL, so every CHECK and the partial unique index judge the fixture exactly as
+  they judge the product. A status is not writable at insert (`insert` always makes an ACTIVE row, N2 §2), so every
+  other status is reached by calling the writer that reaches it: `endActive`, `remove`, `veto`.
+- ⛔ **The fixture obeys the never-retarget rule rather than merely looking full.** `hbt_active_market_uq` allows one
+  ACTIVE target per poll across EVERY account, and `everStopped` is true for a poll once any target on it was REMOVED
+  or VETOED. So one poll carries only ENDED rows and finishes with the single ACTIVE row; the other carries the stopped
+  ones and is never given an ACTIVE row afterwards, and both of its stops are the most recent events on it. Asserted
+  after seeding: **0 rows added to a poll after that poll was stopped**, and **0 rows stopped before they were added**.
+  ⚠️ A first draft failed the first of those — a removal sat five hours after its own poll had been vetoed.
+- ⛔ **A `veto` upgrades an ALREADY-ENDED row to VETOED, keeping its `endedAt`** — which is why the fourth status costs
+  no third poll. An earlier draft created five polls of its own through `createMarket`; the two polls the roster seed
+  makes already cover every status once the veto is used for what it is.
+- The seed writes the account id it seeded to an **artefact**, `scripts/.out/house-bot-visual-fixture.json`
+  (git-ignored), rather than to a terminal — a number a human reads off a screen is not a handoff a later step can
+  check. S3 reads it to compose `KP_ROUTES` for its own account-bound route.
+- In the gate, `MONEYLESS` (`route.split("?")[0].endsWith("/new")`) gates THREE things: the zero-money assertions, the
+  §5.6 attribute-count floor, and the §5.9 account-table population. The targeting screen's Add page also ends in
+  `/new`; the first two are right for it, the third is not — it would assert the designate wizard's ACCOUNT list
+  against a poll picker. **Only §5.9 moved**, to an exact match on a newly derived `CONSOLE_NEW_ROUTE` (refused, never
+  defaulted, because `DERIVED_ROUTES` is null on every `KP_ROUTES` run). The floor at `:608` is untouched and is NOT
+  lowered for the new route.
+
+**The proof, as a DELTA with both numbers, run twice with the same result.** Served `next dev` on a scratch Postgres,
+`KP_WIDTHS=360,1280`:
+
+| | passed | failed | NOT MEASURED |
+|---|---|---|---|
+| target rows deleted | 494 | 0 | 10 |
+| the fixture's 8 rows | **496** | **0** | **8** |
+
+The delta is exactly the two `§5.10 … Account targets · the header row's sort controls` lines becoming measurements —
+at 360 and at 1280, three of three sort controls reaching the 40px tap floor, exactly one header in force, and nothing
+past the viewport's right edge with its planted control. No new NOT MEASURED line appeared. ⛔ **Exit 0 is NOT claimed
+and was never available:** the gate exits 3 whenever `notMeasured > 0`, and the 8 that remain are the Results tab's
+`§5.8` day and account tables, which have no money figures because this run used `--skip-results` — nothing to do with
+targets. `DEFERRED-TESTS.md` row 48 is **half cleared**: the targets half is measured, the Products-cell half needs an
+account carrying both products and stays open.
+
+⚠️ **What the fixture found in the product, recorded rather than fixed here.** The Targets grid paints its Poll cell as
+`clampOperatorText(t.snapshot.titleEn, …)` (`house-console-read.ts:6371`), and `clampOperatorText` spreads its argument
+(`:541`). A target row whose snapshot carries no `titleEn` therefore throws `text is not iterable` inside
+`houseDetailForConsole` and takes the WHOLE account page down to its error boundary — every tab, not just Targets. The
+product's own ADD path always writes the title (N2 §2), so no row it creates can do this; but an A16 orphan repair or a
+row written before the field existed could. Found because a first draft of the fixture wrote `titleEn: null` and every
+account route came back NOT MEASURED with "the route's own landmark never painted" — which reads exactly like a blind
+gate rather than a broken fixture.
+
 ---
 
 ## 13. Accepted risks

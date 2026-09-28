@@ -18,7 +18,9 @@ import { ReportPackCard } from "./report-pack-card";
 import { formatDateTime, formatTzs, formatTzsCompact } from "@/lib/utils";
 import { reportSummary, dailyPnl, categoryBreakdown, moneyByGame, loadReportWindow } from "@/lib/server/report-money";
 import { resolveRange } from "@/lib/server/date-range";
-import { isWindowedReport } from "@/lib/server/reports/catalogue";
+// ⭐ `reportCoverage` is the ONE answer to "what window does this report cover?", read off the
+// catalogue registry — never a coverage string typed again on this page. See reports/coverage.ts.
+import { isWindowedReport, reportCoverage, type ReportId } from "@/lib/server/reports/catalogue";
 import { currentSession } from "@/lib/server/auth-service";
 import { canView } from "@/lib/server/rbac";
 import { AdminRestricted } from "@/components/admin/admin-restricted";
@@ -196,6 +198,21 @@ async function AdminReportsContent({
   // ONE platform-wide window resolver — presets + custom date+hour+minute, EAT-safe.
   const range = resolveRange(sp, generatedAt);
   const win = { start: range.start, end: range.end };
+  // What the head button actually produces, read off the registry rather than restated here.
+  const monthlyCoverage = reportCoverage("gbt-monthly");
+  /* ⭐ THE WINDOW MUST SURVIVE EVERY LINK OUT OF THIS PAGE. The tab hrefs were hardcoded
+     `/admin/reports?tab=…` and the generation log's pagination carried only sort+dir, so an officer
+     who set "Today" on Performance and clicked "Report library" to download landed back on the `7d`
+     default — and the tooltip and the workbook then both honestly said "Last 7 days". The rail
+     itself preserves `tab`, so the loss was one-directional and easy to miss. */
+  const windowKeys = { range: sp.range, from: sp.from, to: sp.to, cmp: sp.cmp };
+  const withWindow = (base: string) => {
+    const qs = Object.entries(windowKeys)
+      .filter(([, v]) => v)
+      .map(([k, v]) => `${k}=${encodeURIComponent(String(v))}`)
+      .join("&");
+    return (qs ? `${base}&${qs}` : base) as Route;
+  };
   // 🔴 DG-A-01. These four used to be four SEQUENTIAL awaits, and two of them each read the
   // whole market table and the whole position table for themselves — so this page did that
   // pair of whole-table reads TWICE per render. Measured on production 2026-08-29, best of
@@ -245,7 +262,9 @@ async function AdminReportsContent({
   });
   const page = parsePage(sp.page, sorted.length);
   const paged = sorted.slice((page - 1) * PER_PAGE, page * PER_PAGE);
-  const baseHref = buildBaseHref("/admin/reports", { sort: sp.sort, dir: sp.dir });
+  // `tab` and the window keys ride along, or paging the generation log throws the officer back to
+  // the Performance tab at the default preset — see `withWindow` above.
+  const baseHref = buildBaseHref("/admin/reports", { sort: sp.sort, dir: sp.dir, tab: sp.tab, ...windowKeys });
 
   return (
     <>
@@ -267,7 +286,22 @@ async function AdminReportsContent({
             >
               vs prior
             </Link>
-            <GenerateButton id="gbt-monthly" />
+            {/* 🔴 THIS BUTTON LIED BY ADJACENCY. It builds `gbt-monthly` — the statutory pack,
+                fixed to the previous complete calendar month — and it is drawn ~40px from the
+                date rail, with no window in its query and the generic tooltip "Download as
+                Excel (.xlsx)". An officer set the rail to "Today", pressed Excel, and received
+                LAST MONTH. Nothing on the control said which.
+                ⛔ The pack does NOT start following the rail — a filing bounded to "last six
+                hours" is not a filing. It says what it covers instead, from the coverage the
+                registry declares, so the page and the document agree without the officer
+                having to know the ruling. */}
+            <span className="font-mono text-[10px] tracking-wider text-text-tertiary self-center whitespace-nowrap">
+              Monthly pack · {monthlyCoverage.short(generatedAt)}
+            </span>
+            <GenerateButton
+              id="gbt-monthly"
+              title={`Monthly regulator pack — covers ${monthlyCoverage.describe(generatedAt)}. The statutory calendar month; it does NOT follow the window selected here.`}
+            />
           </>
         }
       />
@@ -276,8 +310,31 @@ async function AdminReportsContent({
         {/* Freshness stamp + normative money definitions (one source of truth) */}
         <div className="flex flex-wrap items-center justify-between gap-2 -mt-1">
           <p className="font-mono text-[10.5px] text-text-tertiary">generated {eatStamp(generatedAt)} EAT · {range.label}</p>
+
           <p className="font-mono text-[10px] text-text-tertiary tracking-tight">GGR = Stakes − Payouts − Refunds · NGR = GGR − Bonus − Agent comm. − Fees · Hold % = GGR / Stakes</p>
         </div>
+
+        {/* 🔴 A SUBSTITUTED WINDOW LOOKED LIKE A CHOSEN ONE. `parseEatLocal`'s pattern is anchored,
+            so a full ISO instant — exactly what someone pastes out of a log or an API response —
+            fails to parse and the resolver quietly falls back to the last 24 hours while STILL
+            labelling the window "custom". `/admin/finance` has said so since it was migrated; this
+            page, which also hands that same window to a downloadable document, never did. Worse
+            here: the screen showed figures for a window nobody chose, and the finance-window export
+            then refused with a 400 the officer had no way to connect to it. Same treatment as
+            finance — one warning, one vocabulary. */}
+        {range.unreadable && (
+          <div className="flex items-start gap-3 rounded-md border border-warning-border bg-warning-bg px-4 py-3">
+            <span aria-hidden className="mt-1 h-1.5 w-1.5 shrink-0 rounded-pill" style={{ background: "var(--warning-500)" }} />
+            <p className="text-caption text-text-secondary">
+              The <span className="font-mono">{range.unreadable.join(" and ")}</span>{" "}
+              {range.unreadable.length > 1 ? "values" : "value"} in this link could not be read as a date,
+              so the figures below — and any windowed report generated from them — cover{" "}
+              <strong className="text-text">{range.label}</strong> instead of the window that was asked for.
+              Dates are East Africa Time and must be written{" "}
+              <code className="font-mono">YYYY-MM-DD</code> or <code className="font-mono">YYYY-MM-DDTHH:MM</code>.
+            </p>
+          </div>
+        )}
 
         {/* KPI strip — 6 tiles, real aggregates, spark-fed (no gold in admin) */}
         <KpiGrid cols="lg3-xl6">
@@ -312,8 +369,8 @@ async function AdminReportsContent({
           ariaLabel="Reports sections"
           value={tab}
           tabs={[
-            { value: "performance", labelEn: "Performance", href: "/admin/reports?tab=performance" as Route },
-            { value: "library", labelEn: "Report library", href: "/admin/reports?tab=library" as Route },
+            { value: "performance", labelEn: "Performance", href: withWindow("/admin/reports?tab=performance") },
+            { value: "library", labelEn: "Report library", href: withWindow("/admin/reports?tab=library") },
           ]}
         />
 
@@ -556,8 +613,23 @@ async function AdminReportsContent({
                     >
                       {t.target}
                     </Chip>
-                    <span className="font-mono text-[10px] tracking-wider text-text-tertiary self-center">{t.cadence}</span>
+                    <span className="font-mono text-[10px] tracking-wider text-text-tertiary self-center">Filed {t.cadence}</span>
                   </div>
+                  {/* 🔴 CADENCE IS NOT COVERAGE, AND THIS CARD SHOWED ONLY CADENCE. The chip above
+                      says how often the report is FILED; an officer reads the one date-shaped
+                      string on a card as the window the figures span. So "Quarterly" sat on a
+                      document computed over all history, "Weekly" on a point-in-time register, and
+                      "Daily SFTP" on a genesis→oldest-25k export. `buildMatchIntegrity` already
+                      carried this distinction as a comment to itself — the card never got it.
+                      ⛔ The string is NOT typed here. It is the coverage the catalogue declares,
+                      the same one the builder prints as `meta.period` on the artifact. This page
+                      already deleted a per-template `format` field rather than correct it, for
+                      exactly this reason: eight copies of a fact that must equal one other fact is
+                      a drift generator. */}
+                  <p className="font-mono text-[10px] tracking-wider text-text-secondary">
+                    <span className="text-text-tertiary">Covers </span>
+                    {reportCoverage(t.id as ReportId).describe(generatedAt)}
+                  </p>
                   <p className="text-body-sm text-text-secondary leading-relaxed">{t.body}</p>
                   <div className="flex flex-wrap items-center justify-between gap-2 pt-2 mt-1 border-t border-border-subtle">
                     <div className="flex flex-wrap gap-1">

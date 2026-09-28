@@ -122,6 +122,7 @@ const RESULT_STAKES: readonly ResultStake[] = [
   { day: 6, on: "second", outcome: "LOSS", stakeTzs: 1_000_000, title: "Will the cotton auction clear its first lot by noon?" },
 ];
 const RESULT_TITLES = RESULT_STAKES.map((s) => s.title);
+
 /** The second account: a neutral label and a neutral holder name — never a person's — funded for its stakes. */
 const SECOND = { label: "Afternoon desk - removed", holderName: "Desk Holder · afternoon", balance: 3_000_000 };
 const stakedOn = (on: ResultStake["on"]) => RESULT_STAKES.filter((s) => s.on === on).reduce((a, s) => a + s.stakeTzs, 0);
@@ -185,8 +186,13 @@ if (mk.length === 0) {
 const FIXTURE_MARK = { opsVisualFixture: true } as const;
 const sweptI = await pg.query(`delete from "HouseBotIntent" where decision->>'opsVisualFixture' = 'true'`);
 const sweptE = await pg.query(`delete from "HouseBotEvent"  where payload->>'opsVisualFixture' = 'true'`);
-if (sweptI.rowCount || sweptE.rowCount) {
-  console.log(`swept a previous run of THIS script: ${sweptI.rowCount} intents, ${sweptE.rowCount} events`);
+/* The targets half's own rows (S1 of the targeting screen). Nothing holds a foreign key to
+   `HouseBotTarget` — every `targetId` in the schema is a soft reference — so a plain DELETE is the
+   whole sweep. The POLLS this half finds-or-creates are deliberately NOT swept: they are reused by
+   the next run, which is what keeps this script re-runnable. */
+const sweptT = await pg.query(`delete from "HouseBotTarget"  where snapshot->>'opsVisualFixture' = 'true'`);
+if (sweptI.rowCount || sweptE.rowCount || sweptT.rowCount) {
+  console.log(`swept a previous run of THIS script: ${sweptI.rowCount} intents, ${sweptE.rowCount} events, ${sweptT.rowCount} targets`);
 }
 
 const OFFICER = "usr_ops_visual_officer";
@@ -464,17 +470,142 @@ if (resultsWorld) {
   }
 }
 
+/* ── THE TARGETS TAB, GIVEN ROWS — S1 of the targeting screen (`plans/house-bots/TARGETS-SCREEN.md` §7 S1)
+ * The tab is a read-only projection of one table, so inserted rows are a faithful picture of it — the
+ * same reasoning that lets the activity and history panels be seeded (see this file's header). Rows go
+ * in through the DAL's sealed `targetStore`, never raw SQL, so every CHECK and the partial unique index
+ * judge this fixture exactly as they judge the product; only TIME is moved afterwards, by one UPDATE
+ * per row, which is the declared fixture of time the intents half already makes.
+ *
+ * ⚠️ A STATUS IS NOT WRITABLE AT INSERT, AND THAT IS THE POINT. `insert` always makes an ACTIVE row
+ * (N2 §2), so every other status here is reached by calling the writer that reaches it — `endActive`,
+ * `remove`, `veto`. A fixture that wrote `status: 'ENDED'` straight into the column could paint a row
+ * the product's own writers can never produce, and this fixture is read by a browser gate.
+ *
+ * ⛔ THE ORDER BELOW IS THE NEVER-RETARGET RULE, NOT A PREFERENCE. `hbt_active_market_uq` allows ONE
+ * ACTIVE target per poll across EVERY account (migration.sql:379), and `everStopped` is true for a poll
+ * once any target on it was REMOVED or VETOED — the product then refuses that poll for ever. An ENDED
+ * target does NOT stop its poll. So one poll (`mk[0]`) only ever carries ENDED rows and finishes with
+ * the single ACTIVE row, and the other (`mk[1]`) carries the stopped ones and is never given an ACTIVE
+ * row afterwards. Every row below is a state the product itself could have reached, in an order it
+ * could have reached it.
+ *
+ * ⚠️ AND THE VETO IS WHY NO NEW POLL IS NEEDED. `veto` upgrades an ALREADY-ENDED row to VETOED, keeping
+ * its `endedAt` — so the fourth status costs no third poll. An earlier draft of this half created five
+ * polls of its own through `createMarket`; that is what the two polls the roster seed makes
+ * (`seed-house-bots-local.mts:161-166`) already cover, once the veto is used for what it is.
+ * ⚠️ DEVIATION FROM THE SPEC, recorded rather than hidden: §7 S1 asks for an ACTIVE row on the ACTIVE
+ * account AND on the others. Two polls allow exactly one ACTIVE row in total, and the Targets tab is
+ * per-account — another account's ACTIVE row never appears on the page this fixture exists to
+ * photograph — so the others get ENDED rows and the single ACTIVE row goes to the ACTIVE account.
+ */
+if (mk.length < 2) {
+  console.error("REFUSED — the targets fixture needs two polls and found " + mk.length + ". Run `npm run db:seed-house-bots-local` first.");
+  process.exit(2);
+}
+const [T_KEEP, T_STOP] = mk;                       // T_KEEP is never stopped; T_STOP finishes stopped
+/* ⛔ THE SNAPSHOT CARRIES THE POLL'S REAL TITLE, AND A NULL THERE TAKES THE WHOLE ACCOUNT PAGE DOWN.
+   The Targets grid paints the Poll cell from the row's own snapshot —
+   `title: clampOperatorText(t.snapshot.titleEn, operatorBound("marketTitle"))`
+   (`src/lib/server/house-console-read.ts:6371`) — and `clampOperatorText` spreads its argument
+   (`:541-543`), so a snapshot with `titleEn: null` throws `text is not iterable` inside
+   `houseDetailForConsole` and the page renders its error boundary instead. Measured here on 2026-09-28:
+   a first draft of this fixture wrote `titleEn: null` and every account route came back NOT MEASURED
+   ("the route's own landmark never painted"), which reads exactly like a gate that cannot see the page
+   rather than a fixture that broke it. The product's own ADD path always writes the title (N2 §2), so
+   this is the fixture matching the product, not the product being lenient. */
+const titleOf: Record<string, string> = Object.fromEntries(
+  (await pg.query(`select id, "titleEn" from "PredictionMarket" where id = any($1::text[])`, [[T_KEEP, T_STOP]]))
+    .rows.map((r: Any) => [r.id as string, r.titleEn as string]));
+
+const madeT: Array<{ id: string; ageMs: number; endAgeMs: number | null }> = [];
+/** One target, inserted ACTIVE through the sealed store, then carried to `end` by the real writer. */
+async function target(bot: Any, marketId: string, ageMs: number,
+  end: null | { via: "end"; cause: string } | { via: "remove" } | { via: "veto-after"; cause: string }) {
+  const id = `${constants.HOUSE_ID_PREFIX.target}${randomUUID().replace(/-/g, "").slice(0, 18)}`;
+  const n = madeT.length;
+  await dal.targetStore.insert({
+    id, houseBotId: bot.id, marketId,
+    delayMinSec: [15, 30, 45, 120][n % 4],
+    delayMaxSec: [15, 90, 45, 300][n % 4],          // rows 0 and 2 are an EXACT delay (min === max)
+    timingFrom: n % 3 === 0 ? "EXIT_CLOSE" : "STAKE",
+    reactTo: n % 4 === 1 ? "EVERY" : "FIRST",
+    createdById: OFFICER,
+    snapshot: { ...FIXTURE_MARK, titleEn: titleOf[marketId], category: "macro", cutoff: iso(-ageMs + 3 * DAY), rawYes: null, rawNo: null } as Any,
+  });
+  let endAgeMs: number | null = null;
+  if (end) {
+    endAgeMs = Math.round(ageMs / 3);               // always stopped later than it was added
+    if (end.via === "remove") await dal.targetStore.remove(id, OFFICER);
+    else {
+      await dal.targetStore.endActive(id, end.cause as Any);
+      if (end.via === "veto-after") await dal.targetStore.veto(id);   // ENDED(cause) → ENDED(VETOED)
+    }
+  }
+  madeT.push({ id, ageMs, endAgeMs });
+}
+
+/* The ACTIVE account: every status the tab can paint, in an order the product could have produced. */
+await target(active, T_KEEP, 20 * DAY, { via: "end", cause: "DONE" });
+await target(active, T_STOP, 9 * DAY, { via: "end", cause: "MARKET_CLOSED" });
+await target(active, T_KEEP, 40 * HOUR, { via: "end", cause: "CUTOFF_PASSED" });
+for (let k = 0; k < others.length; k += 1) {       // the other accounts, so the desk-wide count is not one account's
+  await target(others[k], T_STOP, (24 + k * 5) * HOUR,
+    { via: "end", cause: ["MARKET_REOPENED", "INFO_BLACKOUT", "BOT_REMOVED"][k % 3] });
+}
+/* ⛔ THE TWO STOPS COME LAST IN TIME, AND BOTH ROWS WERE ADDED BEFORE EITHER OF THEM. `everStopped`
+   refuses a NEW target on a poll a removal or a veto has stopped, so a row ADDED after the first stop
+   would be a row the product could not have created. Both are added ~28 h ago and stopped ~9–10 h ago,
+   which is after every other row on this poll was already added. (Measured and corrected here on
+   2026-09-28: an earlier draft added the removal 5 h ago, five hours AFTER its own poll was vetoed.) */
+await target(active, T_STOP, 30 * HOUR, { via: "veto-after", cause: "OUT_OF_SCOPE" });  // ⛔ stops T_STOP
+await target(active, T_STOP, 28 * HOUR, { via: "remove" });                             // ⛔ and again
+await target(active, T_KEEP, 2 * HOUR, null);                                           // the one ACTIVE row
+
+/* The declared fixture of time: `createdAt` and `effectiveFrom` are stamped by the database on insert,
+   `endedAt`/`removedAt` by the writer that stopped the row. Move them together, so no row ever reads as
+   stopped before it was added. */
+for (const t of madeT) {
+  await pg.query(
+    `update "HouseBotTarget"
+        set "createdAt"     = now() - ($1 || ' milliseconds')::interval,
+            "effectiveFrom" = now() - ($1 || ' milliseconds')::interval + ($2 || ' seconds')::interval,
+            "updatedAt"     = now() - (coalesce($3, $1) || ' milliseconds')::interval,
+            "endedAt"       = case when "endedAt"   is null then null else now() - ($3 || ' milliseconds')::interval end,
+            "removedAt"     = case when "removedAt" is null then null else now() - ($3 || ' milliseconds')::interval end
+      where id = $4`,
+    [String(t.ageMs), String(constants.TARGET_ARMING_SEC), t.endAgeMs === null ? null : String(t.endAgeMs), t.id]);
+}
+
+/* ⛔ THE ACCOUNT ID GOES TO A FILE, NOT TO THE TERMINAL. The browser gate's account-bound routes need an
+ * id this script cannot otherwise hand it — `consoleRoutesFromSource()` can only derive id-free routes —
+ * and a number read off a terminal by a human is not a handoff a later step can check. Git-ignored, and
+ * it never leaves the machine. */
+const OUT_DIR = new URL("./.out/", import.meta.url);
+const fsp: Any = await import("node:fs/promises");
+await fsp.mkdir(OUT_DIR, { recursive: true });
+await fsp.writeFile(new URL("house-bot-visual-fixture.json", OUT_DIR),
+  `${JSON.stringify({ botId: active.id, targets: madeT.length, writtenAt: new Date().toISOString() }, null, 2)}
+`, "utf8");
+
 const q = async (sql: string) => (await pg.query(sql)).rows[0].n as number;
 const iCount = await q(`select count(*)::int n from "HouseBotIntent"`);
 const eCount = await q(`select count(*)::int n from "HouseBotEvent"`);
 const pending = await q(`select count(*)::int n from "HouseBotIntent" where status='PENDING'`);
 const onActive = await q(`select count(*)::int n from "HouseBotIntent" where "houseBotId"='${active.id}'`);
+const tCount = await q(`select count(*)::int n from "HouseBotTarget"`);
+const tActive = await q(`select count(*)::int n from "HouseBotTarget" where status='ACTIVE'`);
+const tEnded = await q(`select count(*)::int n from "HouseBotTarget" where status='ENDED'`);
+const tRemoved = await q(`select count(*)::int n from "HouseBotTarget" where status='REMOVED'`);
+const tVetoed = await q(`select count(*)::int n from "HouseBotTarget" where "endCause"='VETOED'`);
 await pg.end();
 
 console.log("\n══ the two panels now have something to paint ══");
 console.log(`   intents   ${iCount} desk-wide · ${onActive} on the ACTIVE account · ${pending} QUEUED (the cancel control's population)`);
 console.log(`   events    ${eCount}`);
+console.log(`   targets   ${tCount} desk-wide · ${tActive} ACTIVE · ${tEnded} ENDED (${tVetoed} of them VETOED) · ${tRemoved} REMOVED — on ${mk.length >= 2 ? 2 : mk.length} polls, one of which is stopped for ever`);
 console.log(`   account   ${active.id}  ${active.label ?? ""}`);
+console.log(`   fixture   scripts/.out/house-bot-visual-fixture.json  (the account id, for the browser gate's account-bound routes)`);
 console.log("   ages      2h · 5h · 9h · 30h · 40h · 9d · 20d, so today / 24h / 7d / all differ\n");
 
 if (resultsRead) {

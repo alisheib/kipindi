@@ -91,20 +91,42 @@ const { tallyPicks, eatWeekStartMs } = await import("../src/lib/server/landing-p
   ok("3: no picks at all is ONE sentence, not three zeros", /<p className="kp-mine__lead">\{t\.home\.picksNone\}<\/p>/.test(act));
   ok("3: …and at zero balance the empty-balance prompt says it alone (the two sentences said it twice)",
      /emptyWallet \? null : <p className="kp-mine__lead">\{t\.home\.picksNone\}/.test(act) && /const emptyWallet = !held && balance !== null && balance <= 0/.test(act));
-  const link = (href: string) => { const at = act.indexOf(`href="${href}"`); return at < 0 ? "" : act.slice(act.lastIndexOf("<Link", at), act.indexOf(">", at)); };
-  const dep = link("/wallet/deposit"), wd = link("/wallet/withdraw");
-  const geom = (s: string) => (s.match(/className="btn (?:gilt-metal|btn-ghost) ([^"]+)"/) ?? [])[1] ?? null;
-  ok("3: ⭐ Deposit and Withdraw at the SAME size — the Wallet's pair (V19)", !!dep && !!wd && geom(dep) === geom(wd), `${geom(dep)} vs ${geom(wd)}`);
   const css = readFileSync(join(ROOT, "src/app/globals.css"), "utf8");
-  ok("3: ⭐ …and equal columns BY CONSTRUCTION — minmax(0, 1fr); a bare 1fr grows to fit the longer label",
-     /\.kp-mine__pair \{[^}]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/.test(css));
-  ok("3: ⛔ a frozen wallet gets no money buttons — `held` is decided BEFORE the pair",
-     act.indexOf("{held ? (") > 0 && act.indexOf("{held ? (") < act.indexOf('href="/wallet/withdraw"'));
-  ok("3: at zero: the empty-balance prompt with Deposit, and no Withdraw", (() => {
-    const empty = act.slice(act.indexOf("kp-mine__empty"), act.indexOf("</div>\n      ) : null}"));
-    return /t\.home\.emptyBalance/.test(empty) && /href="\/wallet\/deposit"/.test(empty) && !/\/wallet\/withdraw/.test(empty);
-  })());
-  ok("3: the money figures obey the eye (<Cash>)", (act.match(/<Cash>/g) ?? []).length === 2);
+  const sheet = decomment(readFileSync(join(ROOT, "src/components/layout/wallet-sheet.tsx"), "utf8"));
+  /* ⭐ R17 (Ali, 2026-09-28) · THE SIGNED-IN HERO HOLDS NO MONEY CONTROL AND NO BALANCE, and the six
+     assertions below are that absence made checkable. They replace "Deposit and Withdraw at the SAME
+     size" and "equal columns BY CONSTRUCTION", which measured a gilt pair a funded player met on the same
+     viewport as the header capsule AND the rail's coin — three money-in routes on the page whose job is
+     the book, and the hero's was the only one that scrolls away.
+     ⛔ AN ABSENCE ASSERTION NEEDS A REACHABILITY ASSERTION BESIDE IT, or "no Deposit here" is just a
+     hole. So the control below proves the pair still EXISTS, at equal size, inside the Wallet the capsule
+     opens — which is where V19 measures it and where R1 put it — and `test:wallet-reach` §7 owns it. */
+  ok("3: ⛔ R17 · no money control in the signed-in hero — no Deposit, no Withdraw, at any width",
+     !/\/wallet\/deposit/.test(act) && !/\/wallet\/withdraw/.test(act) && !/hero-deposit|hero-withdraw/.test(act));
+  ok("3: ⛔ …and no balance figure either — the header capsule states it at every value, zero included (R10)",
+     !/t\.wallet\.available/.test(act) && !/kp-mine__amt|kp-mine__bal\b/.test(act));
+  ok("3-control: the pair it replaced IS still reachable — the Wallet the capsule opens keeps both sides",
+     /\/wallet\/deposit/.test(sheet) && /\/wallet\/withdraw/.test(sheet));
+  /* ⛔ CSS COMMENTS STRIPPED BEFORE MATCHING, AND THIS WENT RED FIRST. The retirement note in
+     globals.css deliberately NAMES the classes it retired — that note is the record — so a matcher over
+     raw text convicts its own explanation: red on a correct tree, while a real re-addition would slip
+     past unnoticed. `scripts/failure-reasons.test.mts` §8c records the same trap and the same fix
+     ("that exact defect has shipped here before"). */
+  const cssCode = css.replace(/\/\*[\s\S]*?\*\//g, "");
+  ok("3: ⛔ the retired hero-wallet rules are DELETED from globals.css, not left unreferenced",
+     !/\.kp-mine__(?:wallet|bal|amt|pair|act)\b/.test(cssCode) && /\.kp-mine__links \{/.test(cssCode));
+  ok("3-control: …and that matcher can still SEE such a rule, so the line above is not simply blind",
+     /\.kp-mine__(?:wallet|bal|amt|pair|act)\b/.test(".kp-mine__pair { display: grid; }")
+     && !/\.kp-mine__(?:wallet|bal|amt|pair|act)\b/.test("/* .kp-mine__pair left with R17 */".replace(/\/\*[\s\S]*?\*\//g, "")));
+  ok("3: ⛔ a frozen wallet still SAYS so, and is decided before the empty-balance prompt",
+     act.indexOf("{held ? (") > 0 && act.indexOf("{held ? (") < act.indexOf("t.home.emptyBalance")
+     && /kycGate\.frozenTitle/.test(act));
+  ok("3: at zero the empty-balance prompt is ONE sentence, and it names a METHOD rather than a location",
+     /emptyWallet \? \(/.test(act) && /<p className="kp-mine__lead">\{t\.home\.emptyBalance\}<\/p>/.test(act));
+  ok("3: the money figure obeys the eye (<Cash>) — ONE figure now, the week's payout",
+     (act.match(/<Cash>/g) ?? []).length === 1);
+  ok("3: the block's two doors are the player's own positions and the RG limits — neither is money",
+     /className="kp-mine__links"/.test(act) && /t\.home\.myPositions/.test(act) && /t\.footer\.setLimits/.test(act));
   ok("3: Set limits closes the block", /href="\/profile\/responsible-gambling"[\s\S]*t\.footer\.setLimits/.test(act));
   ok("3: ⛔ the page turns a FAILED read into null, never into a zero (B-1)",
      /landingPicks\(session\.userId, nowMs\)\.catch\(\(\) => null\)/.test(page) &&

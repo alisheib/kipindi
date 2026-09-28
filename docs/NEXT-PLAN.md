@@ -48,7 +48,12 @@ Ali, 2026-09-16: *"save the plan and the prompt and push it, naming it the marke
 | **Since it was written** | ✅ Delivery receipts now WORK end to end — a production message was DELIVERED and its receipt settled the real row in 11 seconds. The plan was drafted when none had ever arrived; §3a replaces that premise, §3b carries the vendor's measured behaviour and the seven lessons from the eleven days it took |
 | **Rule** | Every session rewrites the plan's §0 and ticks §1 in its own commits, and **updates this row's counts in the same commit**. The tracker guard asserts the two doors agree |
 
-## ▶ 0b · THE LANDING PAGE'S TEN — `LANDING-TEN` · 🔨 **REOPENED 2026-09-26 FOR THE v3 BUILD** · v3 build 19/40 ✅ · the 2026-09-24 gate work below stands
+## ▶ 0b · THE LANDING PAGE'S TEN — `LANDING-TEN` · 🔨 **REOPENED 2026-09-26 FOR THE v3 BUILD** · v3 build 19/41 ✅ · the 2026-09-24 gate work below stands
+<!-- 41, not 40, since 2026-09-28: the board gained a V22 row. It had none of its own — WP1b's bottom-rail
+     and centre-coin class was ALSO numbered V22, so ONE row stood for TWO gate classes and their counts
+     could not be told apart. The rail/coin class is V26 now and V22 keeps its own row. The ✅ count is
+     unchanged because the class that row always described was already proved; what was unproved, and now
+     says so, is V26's RED control. -->
 
 Ali, 2026-09-24: *"nothing less than 10 visually is accepted. not 9.99, only 10."*
 Ali, 2026-09-26, handing over the v3 concept: *"proceed perfecting it … we can't come back until pushed live and validated visually and logically."*

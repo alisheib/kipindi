@@ -38,6 +38,18 @@
  * · V21 — below 640, the hero's trust rows 1–2 and its helpline `tel:` link end above V15's line
  *   (ACCEPTANCE K29 + placement map P15: 18+, the licence, the helpline and the wallets on the
  *   first screen). RED: move the trust list after the card.
+ * · V26 — the bottom rail and its centre Deposit coin (UPDATE-2026-09-28 §2 / WP1b): centred ±1px, a
+ *   14px rise, the coin's rect inside a needle keep-out, the rail's row height unchanged, the footer's
+ *   reserve still clearing it, no English rail label ellipsised. Not applicable at ≥ 1024 (`lg:hidden`)
+ *   and it says so. RED: move the coin sideways.
+ *   🔴 IT WAS CALLED V22 UNTIL 2026-09-28, AND V22 WAS ALREADY TAKEN — found while building WP9.
+ *   `CHECKS` pushed the name "V22" twice (the hero claim below, and this) and `REDS` declared the key
+ *   `V22` twice in ONE object literal, so the LATER literal won and the coin's plant at the top of
+ *   `REDS` was unreachable. Three consequences, all silent: `RED=V22` planted a first-claim and never
+ *   touched the coin; `countOf` reads `V.find(v => v.cls === cls)`, which returned the hero-claim
+ *   check's count; and `summary.byClass.V22` summed two unrelated classes into one row. ⛔ WP1b's
+ *   "V22 RED PROVED … plant moved the coin 154 → 174" therefore cannot be what ran, and the coin class
+ *   is UNPROVEN until `RED=V26` is measured. Two classes under one name is a population that lies.
  * · V22 — the hero claim says "first" ONLY while `FIRST_LICENSED_EVIDENCE()` is set, never drops
  *   "licensed", and no other text on the page (nor the title / share tags) claims a first. The
  *   evidence state is read from `src/lib/support-config.ts` in THIS tree — the gate is run from the
@@ -311,7 +323,11 @@ const CHECKS = /* js */ `(() => {
       if (el.querySelector("[role=dialog], [aria-modal=true]")) continue;
       overlays.push(el);
     }
-    const TARGETS = ".kp-qrow__price, .kp-qrow__num, .kp-proof__num, .kp-topic__m, a.btn, button.btn, .mcardp-yes, .mcardp-no, .kp-shead__link";
+    /* ⚠️ ".mcardp-yes" AND ".mcardp-no" WERE DEAD STRINGS — zero occurrences in src/ and in globals.css.
+       The card's pick buttons are "btn btn-yes btn-md", so they were only ever reached through
+       "button.btn", and two of the nine selectors asserted about nothing. Corrected with WP9, which is
+       when the only remaining ".mcardp" on this page became the hero's featured card. */
+    const TARGETS = ".kp-qrow__price, .kp-qrow__num, .kp-proof__num, .kp-topic__m, a.btn, button.btn, .mcardp .btn-yes, .mcardp .btn-no, .kp-shead__link";
     /* ⚠️ THE SCREEN ENDS WHERE THE BOTTOM RAIL BEGINS — V15's own rule, applied here too (landing v3).
        The rail is docked over the last ~64px and the page reserves that space, so a control whose
        sampling line lies under it is BELOW THE FOLD, not buried: one scroll and it is clear. Counted
@@ -446,9 +462,25 @@ const CHECKS = /* js */ `(() => {
        them as defects in 25 cells. Raggedness is a statement about a ROW, so group by row top
        first. The cross-row comparison then only means something on a real grid (two or more items
        in a row), which is what catches the orphan tile sitting 15px shorter in a row of its own. */
+    /* ⚠️ THE POPULATION SHRANK WITH WP9, AND TWO OF ITS FIVE SELECTORS NEVER HAD A SUBJECT AT ALL.
+       ".market-grid" was the only member that held MARKET CARDS on this page and its landing band is
+       deleted (R15); ".kp-trust__grid" has ZERO occurrences anywhere in src/ or globals.css — the trust
+       band renders ".kp-trust" — so it has been carrying a selector that could never match. Both are
+       gone rather than left as decoration: a selector that cannot match is a population that lies about
+       its own size.
+       ⛔ AND THE BOARD IS DELIBERATELY NOT ADDED. ".kp-qboard" is a LIST — one full-width row per line —
+       so maxPerRow is 1 and both arms below are skipped by design; and its rows are MEANT to differ in
+       height (a one-sided row carries a refund note, a title clamps at three lines below 640 and not
+       above it), so scoring them against a median would be a guard that cries wolf. The board's own
+       shape is measured by V18's census, qa:landing-v3:rows and the frames.
+       ⚠️ SO ON / THIS CLASS NOW SCORES ".kp-topics" AND NOTHING ELSE — ".kp-steps" and ".kp-proof" are
+       both discarded by the "boxed" test below (".kp-step" declares one border-top, ".kp-proof__fig" one
+       border-left, neither a background). The count is therefore REPORTED and a zero SAYS SO: a cell
+       that measured nothing is not a clean cell. */
     const bad = [];
+    let scored = 0;
     const med = (xs) => [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)];
-    for (const c of document.querySelectorAll(".kp-topics, .market-grid, .kp-steps, .kp-proof, .kp-trust__grid")) {
+    for (const c of document.querySelectorAll(".kp-topics, .kp-steps, .kp-proof")) {
       if (!vis(c)) continue;
       const kids = [...c.children].filter(vis);
       if (kids.length < 3) continue;
@@ -499,6 +531,8 @@ const CHECKS = /* js */ `(() => {
       });
     }
     push("V6", bad);
+    V[V.length - 1].examined = scored;
+    if (!scored) V[V.length - 1].scope = "no boxed grid with a multi-item row on this page — NOTHING was measured, which is not the same as clean";
   }
 
   /* ── V7 measure: running prose above 75 characters per line ──────────────────────────────── */
@@ -637,10 +671,17 @@ const CHECKS = /* js */ `(() => {
       if (!vis(el)) continue;
       if (/TZS\\s*0(?!\\d)/.test(el.textContent || "")) bad.push({ what: "tile advertises an empty book", measured: textOf(el), where: sel(el) });
     }
+    /* ⚠️ THE LOCATOR WAS AN ORDINAL, AND AN ORDINAL STOPPED IDENTIFYING A MARKET WHEN THE BOARD GAINED A
+       TOGGLE (WP9). "hero row 3" is a different market under Closing soonest than under Biggest pool,
+       and a different one again in each locale — so a reported collapsed price could not be traced back
+       to the market that carried it. The row publishes its own identity (data-row-id); the active
+       ordering is read off the rail's selected pill. ⚠️ "hero" was also simply wrong: the board has been
+       a sibling of ".kp-hero", not a child, since v3 moved it into its own section. */
+    const lensNow = document.querySelector("[data-filter-rail] [data-chip][data-on]")?.getAttribute("data-chip") || "no lens marked";
     const rows = [...document.querySelectorAll(".kp-qrow")].filter(vis);
     rows.forEach((r, i) => {
       const n = (r.querySelector(".kp-qrow__num")?.textContent || "").trim();
-      if (n === "0" || n === "100") bad.push({ what: "collapsed price in the hero board", measured: n + "%", where: "hero row " + (i + 1) });
+      if (n === "0" || n === "100") bad.push({ what: "collapsed price in the board", measured: n + "%", where: "board row " + (i + 1) + " of " + rows.length + " (" + (r.getAttribute("data-row-id") || sel(r)) + ", " + lensNow + ")" });
     });
     push("V11", bad);
   }
@@ -989,12 +1030,34 @@ const CHECKS = /* js */ `(() => {
       }
     }
     if (!surfaces.length) bad.push({ what: "no market surface on the page", measured: "0 visible [data-market-surface], .mcardp[data-row-id], .kp-qrow", where: "document" });
+    /* ⭐ THE CENSUS, ASSERTED (WP9). "examined" has always been RECORDED and never checked, so the
+       per-kind counts could change without a word — and after WP9 they did: the "card" kind left this
+       page with the grid and the "board" kind went 4 to 7. A board that quietly fell back to four rows
+       on a full book, or seven rows of which one lost its data-market-surface, would both have read as
+       a clean page with a smaller population. ⛔ The promise comes from the PAGE, not from a number
+       typed here (which would be a gate pinned to today's count): the board publishes the row count it
+       intends and the size of the open book it drew from, and the delivery is measured against them. */
+    const boardEl = document.querySelector("ul.kp-qboard");
+    if (boardEl) {
+      const promise = Number(boardEl.getAttribute("data-board-size"));
+      const openN = Number(boardEl.getAttribute("data-board-open"));
+      const rendered = [...boardEl.children].filter(vis).length;
+      if (!Number.isFinite(promise) || !Number.isFinite(openN)) {
+        bad.push({ what: "the board does not publish the row count it promises", measured: JSON.stringify(boardEl.getAttribute("data-board-size")) + " / " + JSON.stringify(boardEl.getAttribute("data-board-open")), where: "ul.kp-qboard" });
+      } else {
+        const want = Math.min(promise, Math.max(0, openN - 1));
+        if (rendered !== want) bad.push({ what: "the board rendered fewer rows than its own promise", measured: rendered + " rows against min(" + promise + " promised, " + openN + " open - 1 featured) = " + want, where: "ul.kp-qboard" });
+        if ((examined.board || 0) !== rendered) bad.push({ what: "a board row is not marked as a market surface", measured: (examined.board || 0) + ' marked data-market-surface="board" of ' + rendered + " rendered rows", where: "ul.kp-qboard" });
+      }
+    }
     push("V18", bad);
     V[V.length - 1].examined = examined;
   }
 
 
-  /* ── V22 the bottom rail and its centre coin (UPDATE-2026-09-28 §2) ───────────────────────────
+  /* ── V26 the bottom rail and its centre coin (UPDATE-2026-09-28 §2) ───────────────────────────
+     ⚠️ RENAMED FROM V22 ON 2026-09-28 (WP9). It collided with the hero-claim class of the same name —
+     see this file's header for what that cost. Do not rename it back.
      The coin is the only control on this page that DELIBERATELY LEAVES ITS PARENT'S BOX: it rises
      14px above the rail's top edge so it reads as the brand's centre. Everything that makes that
      safe is geometry nothing else here measures — it is centred on the viewport, it did not make
@@ -1009,7 +1072,7 @@ const CHECKS = /* js */ `(() => {
   {
     const nav = document.querySelector("nav.kp-rail");
     if (vw >= 1024) {
-      push("V22", []);
+      push("V26", []);
       V[V.length - 1].scope = "not applicable at " + vw + "px — the rail is lg:hidden";
     } else {
       const bad = [];
@@ -1085,8 +1148,8 @@ const CHECKS = /* js */ `(() => {
           }
         }
       }
-      push("V22", bad);
-      /* ⚠️ STATED, NOT IMPLIED: "/results marks More as current" is part of WP1b's V22 and is NOT
+      push("V26", bad);
+      /* ⚠️ STATED, NOT IMPLIED: "/results marks More as current" is part of WP1b's V26 and is NOT
          in here. This gate only ever loads \`/\`, and More's items are not in the DOM until the menu
          opens, so neither half is measurable from this pass. It belongs with \`test:section-rail\`,
          which already asserts that every rail of destinations names the one in force. */
@@ -1118,11 +1181,19 @@ const CHECKS = /* js */ `(() => {
     // capsule, so the capsule cannot stand in for "signed in" any more.
     const guest = !!(header && header.querySelector(".kp-auth-cta"));
 
+    /* ⭐ R17 (2026-09-28) · THE HERO CARRIES NO DEPOSIT AT ANY WIDTH, so this is no longer width-gated.
+       It read "vw < 640 && inHero > 0", because the signed-in hero held a gilt Deposit/Withdraw pair that
+       was allowed to stay from 640 up — which meant a funded player met THREE money-in routes in one
+       viewport: the header capsule (whose Wallet holds both at equal size), the rail's coin, and the
+       hero's own pair. The pair is cut; the hero states the player's position and owns no money control.
+       ⛔ It stays a REGION count, not a page-wide one: cashback-promo.tsx is a legitimate deposit CTA in
+       page content and a naive sweep would convict it. */
+    if (inHero > 0) bad.push({ what: "a Deposit inside the hero — the capsule and the rail carry money, the hero states position (R17)", measured: inHero + " visible", where: ".kp-hero" });
     if (vw < 1024) {
       if (inHeader > 0) bad.push({ what: "a Deposit in the header below 1024, where the rail's coin already carries it", measured: inHeader + " visible", where: "header" });
       if (railSlot !== 1) bad.push({ what: "the rail does not carry exactly one centre slot", measured: railSlot + ' visible [data-testid="deposit-rail"]', where: "nav.kp-rail" });
       if (inRail > 1) bad.push({ what: "more than one Deposit inside the rail", measured: inRail + " visible", where: "nav.kp-rail" });
-      if (vw < 640 && inHero > 0) bad.push({ what: "a hero Deposit below 640, where the rail's coin already carries it", measured: inHero + " visible", where: ".kp-hero" });
+
       /* ⭐ AN ABSENCE ASSERTION NEEDS A REACHABILITY ASSERTION BESIDE IT, or "zero in the header" is
          just a hole. The header may only yield BECAUSE the rail has one. */
       if (inHeader === 0 && railSlot === 0) bad.push({ what: "no Deposit anywhere below 1024 — the header yielded to a rail slot that is not there", measured: "header 0 · rail 0", where: "document" });
@@ -1165,7 +1236,9 @@ const CHECKS = /* js */ `(() => {
  * Each returns { applied: boolean, note: string }.
  */
 const REDS = {
-  V22: `(() => { const c = document.querySelector(".kp-coin");
+  // ⚠️ V26, NOT V22 — this plant was shadowed by the first-claim plant further down for as long as both
+  // were called V22, and an unreachable plant reports nothing at all. See the file header.
+  V26: `(() => { const c = document.querySelector(".kp-coin");
         if (!c) return { applied: false, note: "no coin to move" };
         const before = c.getBoundingClientRect().left;
         c.style.setProperty("margin-left", "40px", "important");
@@ -1240,10 +1313,10 @@ const REDS = {
           }
           return [...m.values()];
         };
-        let full = null;
-        for (const g of document.querySelectorAll(".kp-topics, .market-grid")) {
+        let full = null, host = null;
+        for (const g of document.querySelectorAll(".kp-topics, .kp-steps, .kp-proof")) {
           const cand = rowsOf(g).find((r) => r.length > 1);
-          if (cand) { full = cand; break; }
+          if (cand) { full = cand; host = g; break; }
         }
         if (!full) return { applied: false, note: "no boxed grid has a row with more than one item at this width" };
         const victim = full[0];
@@ -1251,7 +1324,12 @@ const REDS = {
         victim.style.setProperty("align-self", "start", "important");
         victim.style.setProperty("height", String(Math.round(before / 2)) + "px", "important");
         const after = victim.getBoundingClientRect().height;
-        return { applied: Math.abs(after - before) > 1, note: Math.round(before) + " -> " + Math.round(after) + " beside a row-mate" }; })()`,
+        /* ⚠️ THE NOTE NAMES THE CONTAINER IT PROVED, and that is the point rather than politeness. Until
+           WP9 this walked ".kp-topics, .market-grid" in document order, so at 768 it landed on the
+           landing GRID and at 360 on the tiles — two different subjects reporting one word, "PROVED".
+           With the grid gone it can only ever be the tiles, and a reader must not take that as evidence
+           that the board is covered. */
+        return { applied: Math.abs(after - before) > 1, note: Math.round(before) + " -> " + Math.round(after) + " beside a row-mate in " + (host ? (host.className || host.tagName) : "?") }; })()`,
   V7: `(() => { const e = [...document.querySelectorAll(".kp-lede, .kp-step__b, .kp-trust__b")].find((x) => (x.textContent || "").trim().length > 60);
         if (!e) return { applied: false, note: "no long prose" };
         e.style.setProperty("max-width", "none", "important"); e.style.setProperty("font-size", "6px", "important");
@@ -1350,10 +1428,20 @@ const REDS = {
         p.style.cssText = "font-size:16px;color:#fff;position:relative";
         host.prepend(p);
         return { applied: p.getBoundingClientRect().height > 0, note: "planted a promised return" }; })()`,
-  V17: `(() => { const b = [...document.querySelectorAll(".mcardp .btn-yes, .mcardp-yes")].find((x) => x.getBoundingClientRect().width > 0);
-        if (!b) return { applied: false, note: "no visible YES button on a card" };
-        b.textContent = "YES @ 100%";
-        return { applied: b.textContent === "YES @ 100%", note: "a card button now reads 100%" }; })()`,
+  /* ⚠️ TWO ARMS SINCE WP9, AND THE SECOND ONE IS THE POPULATION THIS PAGE NOW MOSTLY IS. The plant only
+     ever rewrote a CARD's button label, and `.mcardp` is 1 of 8 market surfaces on `/` after the grid
+     went while `.kp-qrow` is 7. A board row states its price as TWO sibling spans (`.kp-qrow__num` plus
+     `.kp-qrow__unit`), a different markup shape from a single button string, and V17's 24-character
+     `probe` window is exactly what decides whether DEGEN sees it — so the row shape has to be planted
+     to be proved. ⛔ The dead `.mcardp-yes` alternative is gone: it has zero occurrences in `src/`, so
+     it could only ever have hidden a card arm that had stopped matching. */
+  V17: `(() => { const notes = [];
+        const b = [...document.querySelectorAll(".mcardp .btn-yes")].find((x) => x.getBoundingClientRect().width > 0);
+        if (b) { b.textContent = "YES @ 100%"; notes.push("a card button now reads 100%"); }
+        const n = [...document.querySelectorAll(".kp-qrow .kp-qrow__num")].find((x) => x.getBoundingClientRect().width > 0);
+        if (n) { n.textContent = "100"; notes.push("a board row price now reads 100"); }
+        if (!notes.length) return { applied: false, note: "no visible card YES button and no board row price" };
+        return { applied: true, note: notes.join(" + ") }; })()`,
   // landing v3 — V18: take ONE part away from ONE surface, the featured card first (it is on every cell
   // with a market). RED_PART picks the part: source (default) · price (price AND state, since either
   // passes) · time · pool · predictors · order (every source part moved after the pick). EVERY element

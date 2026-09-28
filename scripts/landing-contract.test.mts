@@ -4,22 +4,32 @@
  *
  * Two things this module exists to make structurally true, not merely usually true:
  *
- * 1. THE GRID IS DISJOINT FROM THE HERO. Batch 2's re-validation pass found the hero's four
- *    questions were ALSO the first four cards of "Pick a side now" — the same markets twice
- *    within two screens, invisible to every gate at the time. `landingGrid` takes the hero's own
- *    drawn ids and subtracts them from the set it orders, so the repeat is impossible by
- *    construction rather than by remembering to offset a slice.
+ * 1. THE BOARD'S ORDERING IS A RULE, NOT A SORT. A market with no price, or with one side of its
+ *    pool empty, is a different kind of thing to lead a page with, so quality is a PARTITION applied
+ *    before position — and within each tier the reader's chosen lens still decides. `boardOrdering`
+ *    is that rule and `boardMoneyLens` decides which money lens a book can honestly offer.
  * 2. THE TOPIC TILES RECONCILE TO THE HERO. The kit: per-topic counts and pools "must reconcile
  *    to the header or the page contradicts itself." `landingTopicsReconcile` is the assertion —
  *    both figures are folds over the SAME open set, so they agree by construction, and this test
  *    is what turns that from an argument into a proof.
  *
+ * ⚠️ WP9 · WHERE §1 AND §4'S SUBJECTS LIVE NOW, AND WHY §2 IS GONE (2026-09-28, ruling R15/R16).
+ * `gridLensFor` and `landingGrid` were this file's own; the landing grid they served is deleted, and
+ * the rule moved to `hero.ts` as `boardMoneyLens` and `boardOrdering` — ONE home, because the board's
+ * toggle switches between orderings and must never switch between implementations. §1 and §4 follow
+ * it there and keep every property they asserted.
+ * ⛔ §2 ("THE GRID IS DISJOINT FROM THE HERO") IS RETIRED, NOT DROPPED. Batch 2's defect — the hero's
+ * questions were also the first cards of the grid below, the same markets twice within two screens,
+ * invisible to every gate at the time — cannot recur on a page with ONE list. What survives of it is
+ * the board excluding the featured card by id, and that is asserted where the board is built:
+ * `scripts/hero-contract.test.mts` §5 "⛔ the featured market is NEVER also a board row", with its own
+ * red control in `scripts/anchors/hero-contract.anchors.mjs`. Two harnesses asserting one rule is how
+ * one of them rots unnoticed.
+ *
  * Run: npm run test:landing-contract     RED proof: npm run red:landing-contract
  */
-import {
-  gridLensFor, landingGrid, landingTopics, landingComposition, landingTopicsReconcile,
-  LANDING_GRID_SIZE,
-} from "../src/lib/markets/landing.ts";
+import { landingTopics, landingComposition, landingTopicsReconcile } from "../src/lib/markets/landing.ts";
+import { boardMoneyLens, boardOrdering, heroFigures } from "../src/lib/markets/hero.ts";
 import { pricedYesPct } from "../src/lib/markets/discovery.ts";
 import type { HeroRow } from "../src/lib/markets/hero.ts";
 import { shownYesPct } from "../src/lib/markets/price-state.ts";
@@ -60,40 +70,58 @@ const row = (over: Partial<HeroRow> & { id: string }): HeroRow => ({
   yesPct: shownYesPct(over.yesPool ?? 0, over.noPool ?? 0),
 });
 
-/* ══════════════ 1 · THE LENS ══════════════ */
+/* ══════════════ 1 · THE MONEY LENS ══════════════
+   ⚠️ `boardMoneyLens` in `hero.ts` since WP9 — `gridLensFor` in this file until 2026-09-28. Same rule,
+   same reasoning, new home: the surface it decides for is the board's toggle. */
 {
-  eq(gridLensFor(0), "new", "1.1 a cold book (Σ pool 0) uses the honest lens");
-  eq(gridLensFor(-1), "new", "1.2 a negative sum (should never happen) still falls to the safe lens");
-  eq(gridLensFor(1), "pool", "1.3 any real money on the book uses the pool lens");
-  eq(gridLensFor(1_000_000), "pool", "1.4-control a large pool also uses the pool lens");
+  eq(boardMoneyLens(0), "new", "1.1 a cold book (Σ pool 0) uses the honest lens");
+  eq(boardMoneyLens(-1), "new", "1.2 a negative sum (should never happen) still falls to the safe lens");
+  eq(boardMoneyLens(1), "pool", "1.3 any real money on the book uses the pool lens");
+  eq(boardMoneyLens(1_000_000), "pool", "1.4-control a large pool also uses the pool lens");
 }
 
-/* ══════════════ 2 · THE GRID IS DISJOINT FROM THE HERO, BY CONSTRUCTION ══════════════ */
+/* ══════════════ 2 · A LENS OFF THE URL IS NARROWED, NEVER TRUSTED (WP9 · R16) ══════════════
+   The board's ordering arrives as `?sort=`. ⛔ `?sort=pool` on a COLD book would head the list with a
+   superlative about zeros while the rail drew "Just opened" and "Closing soonest", neither of them
+   marked current — a rail that cannot say which order the list is in. `heroFigures` therefore narrows
+   the requested lens against `boardLenses`, and what it actually ran is published as `figures.lens`,
+   which is the one variable the rail's pills and the section's "see all" link both read.
+   ⚠️ THIS SECTION REPLACED §2's "the grid is disjoint from the hero" — see the header for where that
+   rule is asserted now. */
 {
-  const rows = Array.from({ length: 8 }, (_, i) =>
-    // ⚠️ The biggest pool closes LAST (WP6 review): with the deadlines in pool order a broken pool sort
-    // still led with m0 through the closing-time tie-break, and 2.3-control could not fail.
-    row({ id: `m${i}`, yesPool: (8 - i) * 1000, noPool: (8 - i) * 1000, bettableUntilMs: T0 + (8 - i) * 60_000 }));
-  const heroIds = ["m0", "m1"]; // the hero's featured + board, by id
-  const grid = landingGrid(rows, T0, { lens: "pool", excludeIds: heroIds });
-  ok(!grid.some((r) => heroIds.includes(r.id)), "2.1 the grid contains NONE of the hero's ids", JSON.stringify(grid.map((r) => r.id)));
-  // ⭐ POSITIVE CONTROL — 2.1 passes trivially on an empty grid. Prove real rows ARE returned.
-  ok(grid.length > 0, "2.1-control the grid is not empty", `length=${grid.length}`);
-  eq(grid.length, Math.min(LANDING_GRID_SIZE, rows.length - heroIds.length), "2.2 the grid is capped at LANDING_GRID_SIZE");
+  const cold = Array.from({ length: 9 }, (_, i) =>
+    row({ id: `c${i}`, yesPool: 0, noPool: 0, bettableUntilMs: T0 + (9 - i) * 60_000 }));
+  // 🔴 THE FIRST VERSION OF THIS FIXTURE WAS THE ONE SHAPE THAT COULD NOT FAIL, and 2.6 caught it.
+  // Every row was 10k/10k — a dead-even 50% — so the closing lens's `close` sort (distance from even)
+  // tied on all nine, fell through to input order, and input order WAS pool order. Both lenses
+  // returned the same list and "the two lenses order the board differently" failed for the right
+  // reason. ⭐ So the two keys are now deliberately ANTI-CORRELATED: the biggest pool is the FARTHEST
+  // from even and the smallest is exactly even, which makes the pool ordering the exact reverse of the
+  // closing one. A fixture where the two agree proves nothing about either.
+  const funded = [90, 85, 80, 75, 70, 65, 60, 55, 50].map((pct, i) => {
+    const pool = (9 - i) * 2000;
+    return row({
+      id: `f${i}`,
+      yesPool: (pool * pct) / 100,
+      noPool: (pool * (100 - pct)) / 100,
+      bettableUntilMs: T0 + (i + 1) * 60_000,
+    });
+  });
 
-  // The specific regression: if exclusion were a no-op, m0/m1 (the biggest pools) would lead.
-  const withoutExclusion = landingGrid(rows, T0, { lens: "pool", excludeIds: [] });
-  ok(withoutExclusion[0].id === "m0", "2.3-control without exclusion the biggest pool DOES lead (proves exclusion is doing the work)");
-  ok(grid[0].id !== "m0", "2.4 with exclusion the grid's own lead is not the hero's lead");
-
-  // A closed-by-status or selection-closed row is not "open" and must not appear either.
-  // ⚠️ TWO-SIDED and the BIGGEST pool (WP6 review): as a one-sided 999,999/0 row the price floor kept it
-  // out of the seats whether or not the grid filtered by status, so 2.5 could not fail.
-  const resolved = row({ id: "resolved", status: "RESOLVED", yesPool: 999_999, noPool: 999_999 });
-  const gridR = landingGrid([...rows, resolved], T0, { lens: "pool", excludeIds: [] });
-  ok(!gridR.some((r) => r.id === "resolved"), "2.5 a RESOLVED row never appears in the grid");
-  ok(rows.every((r) => r.pool < resolved.pool) && resolved.yesPct != null,
-    "2.5-control the resolved row is priced and holds the biggest pool, so without the status filter it would lead");
+  eq(heroFigures(funded, T0, "pool").lens, "pool", "2.1 a funded book honours the pool lens it was asked for");
+  eq(heroFigures(cold, T0, "pool").lens, "closing", "2.2 a COLD book refuses the pool lens and states the default instead");
+  eq(heroFigures(cold, T0, "new").lens, "new", "2.3 a cold book DOES honour its own honest lens");
+  eq(heroFigures(funded, T0, "new").lens, "closing", "2.4 a funded book refuses `new`, the lens it does not offer");
+  eq(heroFigures(funded, T0).lens, "closing", "2.5 the default is the closing lens");
+  // ⭐ POSITIVE CONTROL — every assertion above would pass if `lens` were hard-wired to "closing".
+  ok(heroFigures(funded, T0, "pool").lens !== heroFigures(funded, T0).lens,
+    "2.1-control the two lenses are actually different values, so 2.2 and 2.4 are not vacuous");
+  // ⭐ AND THE ORDERING MUST FOLLOW THE LENS, not merely the label. The biggest pool closes LAST here,
+  // so a pool ordering and a closing ordering cannot agree by accident.
+  const byPool = heroFigures(funded, T0, "pool").board.map((r) => r.id);
+  const byClose = heroFigures(funded, T0).board.map((r) => r.id);
+  ok(JSON.stringify(byPool) !== JSON.stringify(byClose),
+    "2.6 the two lenses order the board differently", `${byPool.join(",")} vs ${byClose.join(",")}`);
 }
 
 /* ══════════════ 3 · TOPICS FOLD OVER THE SAME OPEN SET, AND RECONCILE ══════════════ */
@@ -123,7 +151,7 @@ const row = (over: Partial<HeroRow> & { id: string }): HeroRow => ({
   eq(t2[0].leanYesPct, null, "3.7 a topic with pool 0 gets leanYesPct=null, never a guessed 50");
 
   // RECONCILIATION — the property `landingComposition` exists to make true by construction.
-  const comp = landingComposition(rows, T0, { openPoolTzs: 5000, heroIds: [], categories: ["sports", "weather", "macro"] });
+  const comp = landingComposition(rows, T0, { categories: ["sports", "weather", "macro"] });
   const openCount = rows.filter((r) => r.status === "LIVE").length; // s1, s2, w1 = 3 (closed excluded)
   // s1(4000)+s2(0)+w1(1000) = 5000 -- the SAME rows the hero itself would sum.
   const rec = landingTopicsReconcile(comp, { openCount, poolTzs: 5000 });
@@ -135,7 +163,7 @@ const row = (over: Partial<HeroRow> & { id: string }): HeroRow => ({
 
   // An uncategorised market is counted on BOTH sides, not silently excused from either.
   const withStray: HeroRow[] = [...rows.slice(0, 3), row({ id: "stray", category: "politics", yesPool: 700, noPool: 300 })];
-  const compStray = landingComposition(withStray, T0, { openPoolTzs: 6000, heroIds: [], categories: ["sports", "weather", "macro"] });
+  const compStray = landingComposition(withStray, T0, { categories: ["sports", "weather", "macro"] });
   eq(compStray.uncategorised, 1, "3.9 a category outside MARKET_CATEGORIES is counted as uncategorised");
   eq(compStray.uncategorisedPoolTzs, 1000, "3.10 and its pool is tracked, not dropped");
   // s1(4000)+s2(0)+w1(1000)+stray(1000) = 6000
@@ -143,10 +171,22 @@ const row = (over: Partial<HeroRow> & { id: string }): HeroRow => ({
   ok(recStray.ok, "3.11 reconciliation still holds WITH an uncategorised market present", JSON.stringify(recStray));
 }
 
-/* ══════════════ 4 · THE GRID'S PRICE FLOOR (landing v3 WP6) ══════════════
-   Production led "Pick a side now" with two ONE-SIDED cards reading "YES 100%" — the biggest pools
-   on the book were the ones with money on one side only. The seats now go to priced (two-sided)
-   markets first, and the seated cards are SHOWN in the lens order the heading states. */
+/* ══════════════ 4 · THE BOARD'S PRICE FLOOR (landing v3 WP6, moved by WP9) ══════════════
+   Production led "Pick a side now" with two ONE-SIDED cards reading "YES 100%" — the biggest pools on
+   the book were the ones with money on one side only. Quality is a PARTITION applied before position,
+   and within each tier the reader's own lens decides.
+
+   ⭐ R16 · THE DISPLAY RULE CHANGED WITH THE MERGE, AND THIS IS WHERE IT IS PINNED. `landingGrid`
+   seated by tier and then DISPLAYED in pure lens order, so a one-sided TZS 90,000 card — once seated —
+   sat FIRST, where its pool put it. R15 restated that as "picks by price tier and displays by lens".
+   ⛔ That was the weaker half of a compromise for a THREE-CARD SAMPLE, and it does not survive the
+   merge. The board is the page's ONE list and the first market list a visitor reads; `hero.ts`'s own
+   floor comment says why position is the thing that matters — "a market nobody can disagree about is
+   the worst possible advertisement for a prediction market, and it held the loudest position on the
+   site". Displaying by lens across tiers hands position 1 back to exactly that row on a thin day. So
+   the tiers are CONCATENATED: every priced market first, in the lens's order, then the one-sided ones,
+   then the unpriced — each row labelling its own state ("One side only", "No bets yet") so a reader
+   can see why it sits after a smaller pool. R15's "displays by lens" clause is struck in the manifest. */
 {
   const big1  = row({ id: "big1", yesPool: 90_000, noPool: 0 });        // one-sided, the biggest pool
   const empty = row({ id: "empty", yesPool: 0, noPool: 0 });            // nothing staked
@@ -154,19 +194,33 @@ const row = (over: Partial<HeroRow> & { id: string }): HeroRow => ({
   const c1    = row({ id: "c1", yesPool: 3_000, noPool: 2_000 });
   const c2    = row({ id: "c2", yesPool: 1_000, noPool: 1_000 });
   const rows = [empty, c2, big1, c1, lop];
-  const grid = landingGrid(rows, T0, { lens: "pool", excludeIds: [], size: 3 });
-  eq(grid.map((r) => r.id), ["lop", "c1", "c2"], "4.1 the three seats go to the priced markets — a one-sided pool never outranks a priced one");
-  ok(grid.some((r) => r.id === "lop"), "4.2 a lopsided but TWO-SIDED market (25,000 vs 100) is priced, not demoted with the one-sided ones");
-  // ⭐ CONTROL — the plain lens WOULD have seated the one-sided card first, so 4.1 is the floor at work.
+  const ordered = boardOrdering(rows, T0, "pool");
+  eq(ordered.slice(0, 3).map((r) => r.id), ["lop", "c1", "c2"],
+    "4.1 the first three places go to the priced markets — a one-sided pool never outranks a priced one");
+  ok(ordered.some((r) => r.id === "lop"), "4.2 a lopsided but TWO-SIDED market (25,000 vs 100) is priced, not demoted with the one-sided ones");
+  // ⭐ CONTROL — the plain lens WOULD have led with the one-sided card, so 4.1 is the floor at work.
   ok(big1.pool > lop.pool && big1.pool > c1.pool && pricedYesPct(lop.yesPool, lop.noPool) === 100,
     "4.1-control big1 has the biggest pool (the lens alone leads with it) and lop's rounded share IS 100",
     `big1=${big1.pool} lop=${lop.pool}/${lop.yesPct}%`);
-  // ⛔ A PARTITION, NEVER A FILTER: with more seats than priced markets the rest still fill them.
-  const wide = landingGrid(rows, T0, { lens: "pool", excludeIds: [], size: 5 });
-  eq(wide.length, 5, "4.3 the grid is never short — one-sided and empty markets still take the seats left over");
-  // ⭐ THE HEADING STAYS TRUE: the seated cards are displayed in lens order, so "Biggest pools first"
-  // describes the screen. The one-sided card, once seated, sits where its pool puts it.
-  eq(wide.map((r) => r.id), ["big1", "lop", "c1", "c2", "empty"], "4.4 seated cards are shown in the lens's own order (pool, biggest first)");
+  // ⛔ A PARTITION, NEVER A FILTER: every open row is returned, so the board is never SHORT.
+  eq(ordered.length, 5, "4.3 the board is never short — one-sided and empty markets still take the places left over");
+  eq(ordered.map((r) => r.id), ["lop", "c1", "c2", "big1", "empty"],
+    "4.4 the tiers are concatenated: priced (in pool order) → one-sided → unpriced");
+  // ⭐ AND WITHIN A TIER THE LENS IS STILL THE LENS — the half of the old 4.4 that survives. Ordered
+  // by `new` instead, the three priced rows come back in a DIFFERENT order, so 4.4 is not just the
+  // tier partition restated.
+  const byNew = boardOrdering(rows, T0, "new").map((r) => r.id);
+  ok(JSON.stringify(byNew.slice(0, 3)) !== JSON.stringify(["lop", "c1", "c2"])
+    || JSON.stringify(byNew) !== JSON.stringify(ordered.map((r) => r.id)),
+    "4.5 a different lens reorders WITHIN the tiers", byNew.join(","));
+  // A closed-by-status or selection-closed row is not "open" — `heroFigures` filters that before it
+  // calls this, so the guard belongs where the filter is (`hero-contract` §2), not here.
+  const resolved = row({ id: "resolved", status: "RESOLVED", yesPool: 999_999, noPool: 999_999 });
+  ok(heroFigures([...rows, resolved], T0, "pool").board.every((r) => r.id !== "resolved")
+    && heroFigures([...rows, resolved], T0, "pool").featured?.id !== "resolved",
+    "4.6 a RESOLVED row never reaches the board or the card");
+  ok(rows.every((r) => r.pool < resolved.pool) && resolved.yesPct != null,
+    "4.6-control the resolved row is priced and holds the biggest pool, so without the status filter it would lead");
 }
 
 console.log(`landing-contract: ${pass} assertions passed`);

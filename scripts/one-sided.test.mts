@@ -121,7 +121,23 @@ const card = decomment(cardRaw);
     }
   }
   check("2.3 every <MarketCard> passes both pools, and no price or `?? 0`", bad.length === 0, bad.join(", "));
-  check("2.4 all seven call sites were found (a scan that finds none proves nothing)", sites.length >= 7, `${sites.length}: ${sites.join(", ")}`);
+  /* ⚠️ SIX SINCE WP9, AND THE LIST IS WHY THE NUMBER CAN BE TRUSTED (2026-09-28, ruling R15). This was
+     `sites.length >= 7` over exactly seven call sites; the landing's `.market-grid` card in
+     `src/app/page.tsx` is deleted, so a floor of 7 would fail for the ONE reason a bare count cannot
+     tell from a broken scan — and lowering it to 6 alone would absorb the next disappearance silently.
+     ⭐ So the sites are NAMED. A path that goes missing is reported by name, and a path that appears
+     is reported too, which is what makes this a census rather than a threshold. */
+  const EXPECTED_CARD_SITES = [
+    "src/app/markets/[id]/page.tsx",        // the detail page's similar markets
+    "src/app/markets/page.tsx",             // TWICE — the board and its resolved-only tail
+    "src/app/results/page.tsx",
+    "src/app/watchlist/page.tsx",
+    "src/components/home/landing-hero.tsx", // the hero's featured card — the landing's only card since WP9
+  ];
+  const seenFiles = [...new Set(sites.map((s) => s.replace(/:\d+$/, "")))].sort();
+  check("2.4 every <MarketCard> call site was found, and they are the six this suite expects",
+    sites.length === 6 && JSON.stringify(seenFiles) === JSON.stringify([...EXPECTED_CARD_SITES].sort()),
+    `${sites.length} at ${sites.join(", ")}`);
   // ⭐ CONTROL — the site check can say no to the pre-fix shape.
   check("2.3-control the pre-fix call site IS flagged",
     siteProblem("<MarketCard productLine={\"MARKET\"} yesPct={r.yesPct ?? 0} volume={r.pool} />") === "no yesPool");
@@ -225,7 +241,15 @@ log("\n── 4 · the hero board row and the landing tiers");
   const landingTs = decomment(read("src/lib/markets/landing.ts"));
   check("4.4 the hero's floor is read from the pools (`priceTier`), not the rounded 0/100",
     /priceTier\(r\) === tier/.test(heroTs) && !/yesPct === 0 \|\| r\.yesPct === 100/.test(heroTs));
-  check("4.5 the landing grid seats priced markets first (`priceTier`)", /priceTier\(r\) === tier/.test(landingTs));
+  /* ⚠️ REWRITTEN BY WP9 (2026-09-28, ruling R15). It read `priceTier(r) === tier` out of `landing.ts` —
+     the landing GRID's own copy of the price floor, beside the hero's. The grid is deleted and the rule
+     has ONE home now (`hero.ts`'s `boardOrdering`), so the same grep against `landing.ts` would be a
+     duplicate of 4.4 asking a file that correctly no longer contains it.
+     ⭐ WHAT IS WORTH ASSERTING INSTEAD IS THAT IT STAYED ONE HOME. Two copies of a rule about money on
+     two surfaces of one page is how they started disagreeing — the defect this section exists for. */
+  check("4.5 the floor has ONE home — `landing.ts` holds no second copy of the tier partition",
+    !/priceTier/.test(landingTs) && (heroTs.match(/priceTier\(r\) === tier/g) ?? []).length === 1,
+    `landing.ts mentions priceTier: ${/priceTier/.test(landingTs)}; hero.ts copies: ${(heroTs.match(/priceTier\(r\) === tier/g) ?? []).length}`);
   check("4.4-control the rounded tier IS detected",
     /yesPct === 0 \|\| r\.yesPct === 100/.test("r.yesPct == null ? 2 : (r.yesPct === 0 || r.yesPct === 100) ? 1 : 0"));
 }

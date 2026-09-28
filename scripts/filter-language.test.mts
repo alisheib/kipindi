@@ -174,6 +174,26 @@ const SURFACES = [
      it there would report a fixture gap as a broken rail. See the note in
      `scripts/live/count-truth-drive.mjs`. */
   "src/app/profile/invite/recruits-bar.tsx",    // /profile/invite — the agent recruit book
+  /* DECLARED 2026-09-28 (landing v3 WP9 · ruling R16). ⭐ THE LANDING GAINED ITS FIRST FILTER RAIL: the
+     one board's ordering toggle, Closing soonest | Biggest pool. It is `<FilterPill semantics="tab">`
+     because DESIGN_AUTHORITY §K rule 7c settles which language a rail speaks — "the underline is the
+     section language; the capsule is the filter language" — and this rail orders a list; and because
+     `ui/tabs.tsx`'s ruling A5 forbids the `role="tablist"` the v4 delivery asked for, product-wide, as
+     a promise the markup cannot keep. So the landing speaks the same control language as the other
+     sixteen rails, and §3.1–§3.5 police it here too.
+     ⚠️ THE HOOK IS IN `landing-hero.tsx` BECAUSE THE CONTROLS ARE — the rule this list has followed
+     every time a bar moved house. `QuestionBoard` renders the section, the rail and the rows together;
+     splitting the rail into its own file would separate it from the list it orders.
+     ⛔ AND IT IS DELIBERATELY NOT ADDED TO THE THREE LIVE PROBES' OWN `SURFACES` LISTS
+     (`scripts/live/count-truth-drive.mjs`, `scripts/live/bar-geometry-drive.mjs`,
+     `scripts/filter-language-scan.mjs`), for one stated reason each: `qa:count-truth` measures a pill's
+     promised COUNT against the rows delivered, and these two pills carry NO count — both orderings show
+     the same seven rows of the same book, so a count would be the same number twice and FilterPill's own
+     rule is to omit one rather than invent it; `qa:bar-geometry` measures a STICKY bar's offset, and this
+     rail is not sticky (it sits under the section head, inside the band); and `/`'s frames at
+     360/768/1280 × sw/en/zh are already measured by `qa:landing-ten` and the landing drives, which is
+     what `qa:filter-scan` would be adding. If the rail ever gains a count or a sheet, it joins them. */
+  "src/components/home/landing-hero.tsx",       // / — the one board's ordering rail (WP9)
 ];
 
 /**

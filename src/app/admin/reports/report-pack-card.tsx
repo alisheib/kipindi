@@ -4,7 +4,9 @@ import { Chip } from "@/components/ui/chip";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { I } from "@/components/ui/glyphs";
 import { formatDateTime } from "@/lib/utils";
-import { getReportPack, PACK_STEPS, PACK_HISTORY_INCOMPLETE_LINE, currentPackPeriod, type ReportPack } from "@/lib/server/report-pack";
+import { getReportPack, PACK_STEPS, PACK_HISTORY_INCOMPLETE_LINE, currentPackPeriod, packPeriodLabel, type ReportPack } from "@/lib/server/report-pack";
+// The Swahili subtitle takes Swahili month names; this card is a fixed EN/SW pair, not a locale switch.
+import { dict } from "@/lib/i18n-dict";
 import { currentSession } from "@/lib/server/auth-service";
 import { ReportPackControls, CopyHash } from "./report-pack-controls";
 
@@ -45,7 +47,12 @@ export async function ReportPackCard() {
   return (
     <AdminCard
       title="Regulator pack · Gaming Board monthly"
-      sw={`Kifurushi cha mdhibiti · ${pack.periodLabel}`}
+      /* ⛔ A SWAHILI SENTENCE TAKES A SWAHILI MONTH. `pack.periodLabel` is the ENGLISH label
+         (it is also what the regulator artifact prints), so splicing it here produced
+         "Kifurushi cha mdhibiti · August 2026". The `sw` line is always Swahili regardless of
+         the viewer's locale — this card is a fixed EN/SW pair, not a locale switch — so it reads
+         `dict.sw`, never `getServerT()`. */
+      sw={`Kifurushi cha mdhibiti · ${packPeriodLabel(pack.period, dict.sw.common.monthsLong)}`}
       action={
         <Chip size="sm" variant={sealed ? "resolved" : pack.state === "draft" ? "neutral" : "brand"}>
           {sealed ? "ACKNOWLEDGED" : pack.state.toUpperCase()}
@@ -133,10 +140,23 @@ export async function ReportPackCard() {
           </span>
           <span className="font-mono text-[11px] text-text-tertiary">{kb(pack.artifact.sizeBytes)}</span>
           <CopyHash sha256={pack.artifact.sha256} />
+          {/* 🔴 THIS LINK USED TO NAME NO MONTH AT ALL. It was a bare
+              `/api/admin/reports/gbt-monthly?format=pdf`, and the route could only ever serve
+              `currentPackPeriod()` — so the moment the EAT month rolled over, the Download beside
+              this card's own `periodLabel` and sha256 served a DIFFERENT MONTH than the heading
+              directly above it. It now names the period THIS card is about, which the route
+              honours because `gbt-monthly`'s declared coverage kind is `calendar-month`.
+              ⚠️ It still RE-RENDERS rather than re-serving the hashed bytes — a fresh
+              `generatedAt` alone means the download's sha256 cannot equal the stored one. That is
+              said in the tooltip, because the officer comparing a hash has to know which of the
+              two facts the bytes answer to. Storing the prepared artifact is the remaining half
+              and is filed in docs/REPORTS-WINDOW-TRUTH.md; the month, which was the part that
+              could hand over the WRONG DOCUMENT, is closed here. */}
           <a
-            href="/api/admin/reports/gbt-monthly?format=pdf"
+            href={`/api/admin/reports/gbt-monthly?format=pdf&period=${encodeURIComponent(period)}`}
             target="_blank"
             rel="noopener noreferrer"
+            title={`Monthly pack for ${pack.periodLabel} — the month this card is about. It is re-rendered from live data, so its sha256 will differ from the hash shown here.`}
             className="row-link ml-auto inline-flex items-center gap-1 font-mono text-caption text-royal-300 hover:underline"
           >
             <I.download s={12} /> Download

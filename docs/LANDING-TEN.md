@@ -43,6 +43,15 @@ branches were PUSHED before it ended, so nothing was lost: `landing-v3`, `landin
 WP13 ✅ · WP14 ✅ · WP14b ✅ · **WP1b ✅** (the rail's centre Deposit coin) · WP12 🔵 · **WP3 🔵 · WP4 🔵**
 (live and gate-measured; their production frame review is what stands between them and ✅) · the hero
 (R7/R9) and C1 (one price rule) live inside those rows · gates **V15, V16, V17, V18, V22, V25 ✅**.
+**2026-09-28, this session: WP9 🔵 (ONE BOARD — the grid band is gone from `/`, the board is 7 rows with an
+ordering rail) and R17 🔵 (the signed-in hero's Deposit/Withdraw pair is CUT).** Both are built, green on
+every suite named below and driven locally; production is what turns them ✅.
+🔴 **AND A GATE CLASS WAS FOUND UNPROVEN.** Two different classes were both called **V22** — the hero's
+first-claim check and WP1b's bottom-rail/coin check — so `REDS.V22` resolved to the LATER literal and the
+coin's plant was unreachable dead code, `countOf` read the first-claim check's count, and `byClass.V22`
+summed two unrelated classes. The rail/coin class is **V26** now; `--compile` went from 21 RED plants to 22
+on the rename alone, which is the defect's own evidence. ⛔ **WP1b's "V22 RED PROVED … the plant moved the
+coin 154 → 174" cannot be what ran**, so V26 is UNPROVEN until `RED=V26` is measured on production.
 
 **Production, 33 of 33 base cells: 20 of 22 classes clean.** V18 went **1,584 → 0** when WP3+WP4 landed
 its `data-market-*` attributes. Only V3 (×12, the chat bubble — Ali's call) and V4 (×36,
@@ -58,13 +67,31 @@ withholds. Not a defect to fix quietly — a number to rule on.
 
 **Next:** WP9, then the small R7 build. In order:
 1. ~~The production frame review for WP3, WP4 and WP12~~ — **DONE 2026-09-28**; all three rows ✅.
-2. **WP9** — one board: delete the `.market-grid` and `TopicTiles` from `/`, add the Closing soon /
-   Biggest pools toggle (the lens is server-chosen and non-interactive today), the topic chips and
-   the search. Reuse `discovery-bar.tsx`'s `FilterPill` and `ui/search-box.tsx`; do not write new
-   controls. It also delivers K64 (one `ConvictionBar`) — bar markup is triplicated on `/` today:
-   `TippingBar`, `.kp-qrow__lean` and `.kp-topic__lean`.
-3. **The small R7 build** — retire "Tabiri matukio. Si bahati." on all five surfaces it reaches.
-4. **D3** — WP5 the pick slip, V20, the chat bubble under sheets. Then WP15/V23, WP19, WP20/V24, D5.
+2. ~~**WP9** — one board: delete the `.market-grid` and `TopicTiles` from `/`~~ — **BUILT 2026-09-28.**
+   ⛔ Two things this line said were wrong and are struck rather than quietly fixed: the **topic tiles
+   STAY** (R15 — they list TOPICS and repeat no market), and the bar markup was **not** triplicated —
+   `.kp-qrow__lean` and `.kp-topic__lean` do not exist anywhere in the tree and had already been deleted
+   by WP4 and WP10, so K64's ConvictionBar half was ALREADY TRUE and what it needed was a proof, not a
+   consolidation. The search is **WP20's**, not this row's, and "topic chips" are the tiles R15 kept.
+3. ▶ **NEXT — THE HERO PANEL, ASKED FOR AND NOT YET DECIDED (Ali, 2026-09-28: "evaluate this before applying").**
+   Five lenses (UI/UX, marketing, gambling-industry, player/gamer, accessibility + RG) score each proposal /10
+   against what ships today, and only what beats the current page is built. The three on the table:
+   (a) replace the hero's featured MARKET CARD with a `/live`-style banner leading on the hottest market;
+   (b) **the 18+ · licence · helpline trust ROW leaves the hero and the proof figures take its place** —
+   Ali: *"i want just the payout and the 18+ … keep those and put in its place the 18+ and etc in a nice way
+   the open markets section we have below"*. ⭐ The CLAIM ("Tanzania's first licensed prediction market",
+   R9) STAYS — it is `.kp-hero__claim`, a different element, and Ali corrected this explicitly. Authority
+   for moving the row is an **OWNER ATTESTATION of Gaming Board approval** (Ali, 2026-09-28: *"no need in
+   homepage landing page gbt approved … we have approval from them"*), recorded as an attestation the way
+   R9 recorded "first"; the footer already carries 18+, the RG sentence, the helpline and the licence
+   number on EVERY page (L9, R7(2)), so this moves them off a SCREEN, not off the site. ⚠️ It would retire
+   delivery item **K29** and leave gate class **V21** with no subject — both must be struck, never left
+   green over nothing. ⚠️ AND IT HAS A MEASURABLE COST TO WEIGH: below 640 the proof rail is THREE ledger
+   rows against the trust row's two lines, so moving it above the featured card spends first-screen budget
+   V15 measures at 360 × 740. Measure before deciding.
+   (c) drop the proof rail's "Paid out to players" figure, keeping open-markets and in-play.
+4. **The small R7 build** — retire "Tabiri matukio. Si bahati." on all five surfaces it reaches.
+5. **D3** — WP5 the pick slip, V20, the chat bubble under sheets. Then WP15/V23, WP19, WP20/V24, D5.
 
 **✅ THE THREE CONTRADICTIONS ARE ANSWERED — Ali, 2026-09-28: *"take all decisions yourself based on what
 suits the architecture more and makes the platform more perfect."* Recorded as R11–R14 in the manifest:**
@@ -130,46 +157,62 @@ once, on different things.
 
 ## §0a · The paste-in prompt for the next session
 
-> Continue the 50pick landing v3 build, end to end, sealed — visual and logical. The build moved to this PC on
-> 2026-09-28; everything is on GitHub (alisheib/kipindi) and nothing needs the old laptop.
+> Continue the 50pick **landing** build. You are one of several sessions working this repo at once,
+> on different things, so **push to `main` as you finish each piece** — another PC picks up from there.
 >
-> Setup: find the repo on this machine (or clone it) and work in your own checkout of branch `landing-v3` (it
-> holds the live Up & Down band + the hero merged but NOT live and NOT yet verified + the docs). `git fetch`,
-> `npm ci`, merge `origin/main` (never rebase or force). The other built units wait on their own branches:
-> `landing-v3-c1` (`cc6fc5bd`), `landing-v3-wp34` (`3312082f`, built on C1), `landing-v3-f1` (`a8ad92a0`, built on C1).
+> **⭐ ALI'S STANDING INSTRUCTION, 2026-09-28: TAKE THE DECISIONS YOURSELF.** *"Take all decisions
+> yourself based on what suits the architecture more and makes the platform more perfect."* When the
+> delivery and this repo disagree, or a spec is silent, **decide it on architectural grounds, record it
+> as the next R-number in `INHERIT-MANIFEST.md`, and say in the ruling what it unblocks.** Do not park a
+> row waiting for an answer. Ask Ali only for things code cannot settle: money moving, production data,
+> a new account, or a brand/commercial call. ⛔ And when a ruling overturns an older one, DELETE or
+> strike the old line where it lives — a stale rule beside the code it contradicts is read under
+> pressure and believed.
 >
-> Read `docs/LANDING-TEN.md` §0 first — its **Next:** list (0)–(7) is the exact resume point and says what is and is
-> not verified for each unit. Then `docs/design-system/v4-2026-09-26-landing-ten/INHERIT-MANIFEST.md` (rulings R1–R9;
-> laws L1–L23, with L24–L29 arriving with WP3+WP4; and "R8 applied — WP12", the decisions the build already took) and
-> the unit's spec in that folder's `specs/`. Every recorded decision is final. Take any new decision yourself (R8) and
-> record it in the manifest. Act as the Tanzanian native Swahili reviewer for every Swahili line; give Chinese the same
-> care.
+> **Also standing (Ali, 2026-09-28):** *"nothing could be created or fixed outside our set of
+> consistency and responsiveness rules"* and *"any new components should align with our theme UI kit"*.
+> Build from `globals.css` tokens and existing components; if no token fits, stop and ask.
 >
-> Work the Next list in order:
-> 1. Finish WP12: the landing gate on production (`verify-prod.sh`, `FIRST_EXPECTED=0` while the hero is not live),
->    tick ✅, delete `specs/updown-band-v2.md` with a pointer.
-> 2. The hero: re-run its drive here (`verify-hero.sh` — the frames are not on GitHub), the gate + REDs
->    V15–V17/V21/V22, the four-expert panel to 10, then ship it and measure it with `FIRST_EXPECTED=1`.
-> 3. C1: typecheck first, then its RED baseline and drive (report the production `PROD-S1-FEE` count to me), panel,
->    ship.
-> 4. WP3 + WP4 (re-measure the first-screen budget with the hero in). 5. F1 (typecheck + guards first — its build report
->    never arrived). 6. WP9. 7. The small R7 build (retire "Tabiri matukio. Si bahati." on all five surfaces). Then D3 and
->    D5.
+> **START HERE**
+> 1. `hostname && git rev-parse --show-toplevel && git worktree list` — find your OWN checkout. Never
+>    copy a path from a document; the sessions before you were on different machines.
+> 2. `git fetch && git merge origin/main`. Read `docs/LANDING-TEN.md` §−0, §0 and §1, then
+>    `docs/design-system/v4-2026-09-26-landing-ten/INHERIT-MANIFEST.md` (rulings **R1–R15**, laws L1–L29),
+>    then §2 (how each row is built) and §3 (every delivery item and the row that delivers it).
+> 3. `UPDATE-2026-09-28.md` in that folder **supersedes** the handover where they conflict — but its §0
+>    ("what the repo has now") is a TARGET STATE, not an inventory. Read §0 as spec.
 >
-> How to build and verify:
-> - Build every component from the kit: `globals.css` tokens, the type ladder, existing components. Fix the same
->   defect platform-wide whenever you find it, mobile first.
-> - Heavy Node (dev server, build, tsc, Playwright) one job at a time; if this machine has `~/heavy-node-lock.sh`, run
->   through it. Dev on localhost (never 127.0.0.1), `rm -rf .next` before every drive, viewport tiles never full-page,
->   check the served HTML for eaten spaces. A green build is not a render.
-> - Every unit gets the four-expert frame panel — UI/UX lead, graphic designer, gambling-industry designer,
->   accessibility/RG — as agents that READ the real PNGs (`scripts/qa/landing-v3/panels/`, README). Brief each round
->   with what changed and what was declined with its recorded reason; fix and re-shoot until every frame is 10. The
->   panel agents run no Node; you run the test battery yourself, one suite at a time.
-> - Ship: merge `origin/main`, push to `main`, confirm the deployed sha (`?dpl=` or `/api/health` — if another session
->   pushed on top, accept a sha that contains yours), re-measure on production, tick the row and rewrite §0 in the same
->   commit. Push each verified unit.
-> - Tell me when the next session is needed.
+> **WHAT IS ALREADY DECIDED — do not re-open these**
+> · **R10** the header shows the balance at EVERY value, "TZS 0" included; the Deposit label yields at
+>   lg–xl in every balance state (E-190 travels with it).
+> · **R11** the 7-day line: Ali's D49 stands over the delivery — TRIMMED below 640, never removed.
+> · **R12** V23 forbids animating LAYOUT; `filter` is allowed (the delivery's wording convicts the coin).
+> · **R13** the repo's 12.5px ratchet is the enforcement, not "12 with no exceptions"; no NEW sub-floor site.
+> · **R14** the depth floor stays at 10; the `--mcard-h` skeleton over-reserves 24px — WP19 owns it.
+> · **R15** WP9 deletes the grid and KEEPS the topic tiles; the board grows 4 → 7; the toggle is
+>   SERVER-computed.
+>
+> **▶ NEXT: WP9 · ONE BOARD.** §2.1's WP9 row is the full spec and R15 is its scope. It names the five
+> guards that move with it. Then the small R7 build (retire "Tabiri matukio. Si bahati." on five
+> surfaces), then D3 (WP5 the pick slip, V20, the chat bubble under sheets), then WP15/V23, WP19,
+> WP20/V24, D5.
+>
+> **HOW TO WORK A ROW**
+> · Build it with existing tokens and components. Run the suites §2.1 names, plus
+>   `npm run test:landing-ten-plan` and `npm run red:landing-ten-plan`.
+> · Drive it on a LOCAL host: `PORT=3031 npm run dev`, seed with `POST /api/dev-test/seed-markets` and
+>   `POST /api/dev-test/updown-seed`, sign in with **`/auth/demo?deposit=0|1`** (that is how the funded
+>   and zero-balance header states are driven without touching production).
+> · **Look at the frames** at 360/768/1280 × sw/en/zh — a green gate is not a 10. ⚠️ Anything below the
+>   fold must be `scrollIntoView`n and given ~1.8s first, or it photographs BLANK (§0 trap 13).
+> · `git fetch`, **merge** `origin/main` (never rebase, never force), `git push origin HEAD:main`, then
+>   confirm production serves your sha (`?dpl=<sha>` on the asset URLs).
+> · Re-measure on production with `node scripts/qa/landing-ten.mjs --pass=base`, then tick the row and
+>   rewrite §0 **in the same commit**. A row is ✅ only when it is measured on production AND its frames
+>   have been looked at.
+>
+> **The repo's laws win every conflict with the delivery.** Report the conflict in the ruling you write;
+> never resolve one silently.
 
 ## §1 · Status board — the v3 build
 
@@ -187,12 +230,12 @@ once, on different things.
 | WP6 | One-sided state on every card + the grid's degeneracy floor | ✅ | 31662831 | measured on production 2026-09-27: V17 0 in 33/33 cells (was 66), RED V17 PROVED; `/`, `/markets`, `/results` at 360/768/1280 × sw/en/zh, frames looked at — no card reads 0% or 100%, one-sided cards read "One side only" + the rule in all three. The one-sided FEATURED card measured locally (production's featured is contested). L14, L22, L23; delivers MOBILE-VISUAL ruling 13 on the card |
 | WP7 | Estimate line on cards | ⛔ | | R3 |
 | WP8 | Proof rail: phone ledger rows, conviction reading as the bar's label | ✅ | 54f8199b | measured on production 2026-09-26 (360/768/1280 × sw/en/zh frames looked at) |
-| WP9 | Pick-a-side grid: phone snap rail with a peek, 2 and 3 columns | ⬜ | | |
-| WP10 | Topics: six tiles, Other last, "All topics" as the section link | ✅ | 54f8199b | measured on production 2026-09-26 (360/768/1280 × sw/en/zh frames looked at) |
+| WP9 | ONE BOARD: the `.market-grid` band leaves `/`, the board grows 4 → 7 rows and takes the grid's header and its Closing soon / Biggest pools toggle | 🔨 |  | **BUILT 2026-09-28.** The landing's `.market-grid` band is deleted (the CLASS stays — `/markets`, `/results`, `/watchlist` and `/live` use it); `QUESTION_BOARD_SIZE` 4 → 7, so `/` draws the same EIGHT markets (1 featured + 7 rows) in one shape instead of three; the board is its own `<section data-band="board">` (`QuestionBoard` in `landing-hero.tsx`) with the deleted band's `.kp-shead` and an ordering rail of two `FilterPill`s. The topic tiles KEEP their band and now gate on their OWN population — they were gated on `comp.grid.length > 0`, so a book of 1–5 open markets emptied the grid and took the populated tiles down with it (MOBILE-VISUAL-FINDINGS §444), and with them the gate's V14 landmark. **R16 records the four departures from R15 and the delivery** (no `role="tablist"` — ruling A5 forbids it product-wide; the capsule not the underline — §K rule 7c; a URL not a client switcher; tier-order display). ⭐ **Zero new dictionary keys and zero new tokens.** ⚠️ **§2.1's "five guards that move with it" was wrong about four of them** — see that row. Suites green: `test:hero-contract` (+ `red:hero-contract` 9/9), `test:landing-contract` 32 (+ `red:landing-contract` 8/8), `test:one-sided`, `test:featured-card` 72, `test:filter-language` 262 (16 player rails), `test:landing-mine` 26, `test:wallet-reach` 53, `test:red-anchors`, `test:landing-ten-plan`, typecheck. Local drive: `/` and `/?sort=new` return genuinely different orderings and `?sort=lol` falls back to the default; the gate's V6/V11/V17/V18/V26 read 0 on `base-1280-sw` against localhost with `examined = {featured:1, board:7}`. ⬜ Production re-measure and the 360/768/1280 × sw/en/zh frames are what turn this ✅ ·· ⭐ **Scope is R15**, which keeps the topic tiles the delivery would have deleted with the grid: they list TOPICS, not markets, so the delivery's own reason ("three lists of one thing") does not reach them. The 8-market budget is preserved exactly — 1 featured + 7 rows. ⚠️ This row carried the v3 "Pick-a-side grid" spec until 2026-09-28; §2.1 is rewritten |
+| WP10 | Topics: six tiles, Other last, "All topics" as the section link | ✅ | 54f8199b | measured on production 2026-09-26 (360/768/1280 × sw/en/zh frames looked at) ·· ⭐ **KEPT, 2026-09-28 (R15).** The v4 delivery would have deleted the tiles with the grid; they list TOPICS and repeat no market, so the reason it gives does not reach them. They also carry V14's `.kp-topic` landmark |
 | WP11 | How it works: "A named source", the fee from config, h3 steps | ✅ | 54f8199b | measured on production 2026-09-26 (360/768/1280 × sw/en/zh frames looked at); the fee reads 13% through `ratesFrom`; L3 |
 | WP12 | Up & Down band: R5 — the Match (spec v2) | ✅ | ec28dd4e | **Production frame review done 2026-09-28** (`03cf7df9`): 27 element captures, 3 components × 360/768/1280 × sw/en/zh, measured for clipping and overflow AND looked at as contact sheets (three locales stacked per component and width). No clipping, nothing past the right edge, every `data-market-part` present in all 27. The Match reads right at 1280 (two columns: the copy left, the scoreboard and timeline right) and reflows at 360 to heading → asset → countdown → scoreboard with the Up/Down pair below it → timeline → rule → All rounds. The Swahili rule line holds its two lines at 360, as R5's panel required. 🔴 AND THE FIRST PASS PHOTOGRAPHED IT BLANK IN ALL NINE CELLS — see §0 trap 13 |
 | WP13 | Results: date, the market's own sign-off, source link, paid | ✅ | e9b4056c | measured on production 2026-09-27: date, the market's own sign-off (a reversed market reads "Corrected on objection"), source, paid; below 640 the amount and the source each take a line, so the host reads whole. L2 |
-| WP14 | Wallet: chip opens sheet/panel, equal Deposit/Withdraw, gold Deposit at zero, signed-in hero | ✅ | e9b4056c | measured on production 2026-09-27 with `mobile01` (zero balance, no picks: header Deposit, hero empty-balance line + Deposit, no Withdraw, Set limits; pages render at 360/1280 sw/en). Funded Wallet + hero measured locally (Wallet 17 cells, hero 15 cells; 360–1280 × sw/en/zh). `test:wallet-reach` 48/48, `test:landing-mine` 22/22, both mutation-proved. R1, L19–L21 |
+| WP14 | Wallet: chip opens sheet/panel, equal Deposit/Withdraw, gold Deposit at zero, signed-in hero | ✅ | e9b4056c | ⚠️ **PART 2's MONEY HALF IS SUPERSEDED BY R17 (Ali, 2026-09-28): the signed-in hero's Deposit/Withdraw pair and the balance beside it are CUT.** A funded player met three money-in routes on one viewport — the capsule (whose Wallet holds the pair at equal size), the rail's coin, and the hero's own pair, the only one that scrolls away. The hero keeps Your picks, the frozen notice, the empty-balance sentence, and two doors that are not money (My positions, Set limits). Reachability is unchanged: money in is still one tap (the coin), money out still two (capsule → Withdraw). The SHEET's pair — the one V19 measures — is untouched. `test:landing-mine` §3 re-pointed at the absence WITH a reachability control beside it; V25 strengthened to "no hero Deposit at ANY width". ·· Original record: measured on production 2026-09-27 with `mobile01` (zero balance, no picks: header Deposit, hero empty-balance line + Deposit, no Withdraw, Set limits; pages render at 360/1280 sw/en). Funded Wallet + hero measured locally (Wallet 17 cells, hero 15 cells; 360–1280 × sw/en/zh). `test:wallet-reach` 48/48, `test:landing-mine` 22/22, both mutation-proved. R1, L19–L21 |
 | WP14b | Share on every card footer, in every phase; the WhatsApp preview card (og tags spread from `ROOT_OPEN_GRAPH`, no 0/100 in the preview) | ✅ | 541a9e76 | measured on production 2026-09-27: `qa:landing-v3:og-prod` CLEAN on 15 markets (og:type/site_name/locale present, one-sided markets preview "One side only.", images 1200×630 PNG) — its baseline before the push failed on all 15; `/results` captured 360/768/1280 × sw/en/zh, settled cards one `<article>`, looked at; the share drive (26/26: Copy, WhatsApp, Esc, backdrop stay on `/results`) ran locally. "Share on WhatsApp" after placing is WP5's; K50 closes with both |
 | WP1b | Bottom rail with a centre Deposit: Markets · Up & Down · **Deposit** · Live · More; Results into More; the coin is the mark as a control | ✅ | 37bde8a5 | production 2026-09-28: rise 14.0px, rail 65px unchanged, five slots at 64, off-centre ≤ 0.02px, coin's rect inside a keep-out, 57px reserve clearance, frames looked at at 360/414 × sw/en/zh. Ali's override of "the rail is destinations only" is recorded in the component's header comment — the centre is a ROUTE. Gates V22 + V25 |
 | WP15 | Motion and performance | ⬜ | | L12 |
@@ -208,7 +251,8 @@ once, on different things.
 | V19 | Gate: Withdraw as reachable and as large as Deposit | ⬜ | | |
 | V20 | Gate: sheets trap focus, close on Esc, respect the safe area | ⬜ | | |
 | V21 | Gate: the placement map, by bounding box | ⬜ | | |
-| V22 | Gate: the bottom rail and its centre coin — centred ±1px, a 14px rise, the coin's rect inside a needle keep-out, the rail's row height unchanged, the footer's reserve still clearing it, no English rail label ellipsised | ✅ | 37bde8a5 | production 2026-09-28: 0 findings; **RED PROVED** on production (`RED=V22 --cell=base-360-sw`, plant moved the coin 154→174, V22 0→1, no collateral). ⚠️ Asserts the RISE rather than the CSS value: the concept's rail has 56px slots and ours has 64px, and `margin-top:-14px` — the obvious reading — measured a **7px** rise. ⚠️ Not applicable at ≥1024 (`lg:hidden`) and says so rather than passing. ⚠️ "/results marks More as current" is NOT in it — a different route, and More's items are not in the DOM until it opens; it belongs with `test:section-rail` |
+| V22 | Gate: the hero claim says "first" ONLY while `FIRST_LICENSED_EVIDENCE()` is set, never drops "licensed", and no other text, title or share tag on the page claims a first | ✅ | 54f8199b | production 2026-09-26 onward: 0 findings, and `RED=V22` PROVED — ⭐ **this is the class that `RED=V22` has always actually planted.** It had no row of its own until 2026-09-28: WP1b's rail/coin class was numbered V22 too, so one row on this board stood for TWO classes and the board could not tell their counts apart. The check reads the evidence state out of `src/lib/support-config.ts` in the tree the gate runs from, and exits 2 rather than guessing when it cannot |
+| V26 | Gate: the bottom rail and its centre coin — centred ±1px, a 14px rise, the coin's rect inside a needle keep-out, the rail's row height unchanged, the footer's reserve still clearing it, no English rail label ellipsised | 🔵 | 37bde8a5 | 🔴 **RENAMED FROM V22 AND UNPROVEN, 2026-09-28 (found while building WP9).** The name V22 was taken by the hero's first-claim class, and `REDS` declared the key twice in ONE object literal — so the later literal won, this class's plant was unreachable, `countOf` returned the OTHER check's count, and `byClass.V22` summed two unrelated classes into one row. `--compile` reports 22 plants after the rename where it reported 21 before, which is the defect's own evidence. ⛔ So the evidence below is evidence for the hero-claim plant, not for the coin, and this class must be re-proved with `RED=V26` on production before it is ✅ again. The CHECK itself is unchanged and read 0 findings; only its RED control was dead. ·· Original record: production 2026-09-28: 0 findings; **RED PROVED** on production (`RED=V22 --cell=base-360-sw`, plant moved the coin 154→174, V22 0→1, no collateral). ⚠️ Asserts the RISE rather than the CSS value: the concept's rail has 56px slots and ours has 64px, and `margin-top:-14px` — the obvious reading — measured a **7px** rise. ⚠️ Not applicable at ≥1024 (`lg:hidden`) and says so rather than passing. ⚠️ "/results marks More as current" is NOT in it — a different route, and More's items are not in the DOM until it opens; it belongs with `test:section-rail` |
 | V23 | Gate: motion audit — transform/opacity only, no per-second page re-render, timers pause when hidden | ⬜ |  | ✅ **R12 UNBLOCKS THIS**: it forbids animating anything that triggers LAYOUT — width, height, top, left, margin, padding — and allows transform, opacity and `filter`. Written against the reason behind the delivery's wording, because the wording as written convicts `.gilt-metal:hover`, the coin's own fill |
 | V24 | Gate: board search filters within one frame; the empty state renders; the 7-day chart's presence follows its width rule | ⬜ |  | ✅ **R11 UNBLOCKS THIS**: it asserts the 7-day line is TRIMMED below 640 and full from 640, not that it is absent. Still behind WP20's search |
 | V25 | Gate: one Deposit per screen (UPDATE-2026-09-28 §5) — below 1024 none in the header, exactly one in the rail, none in the hero below 640; at 1024 and up no rail, at most one header pill, none for a visitor | ✅ | 37bde8a5 | production 2026-09-28: 0 findings; **RED PROVED** on production (`RED=V25 --cell=base-768-sw`, plant injected a second header Deposit, V25 0→1, no collateral). ⛔ Population is scoped by REGION, never page-wide — `cashback-promo.tsx` is a legitimate second `/wallet/deposit` CTA. ⛔ Counts what is RENDERED, not the DOM. ⚠️ The signed-in FLOOR at ≥1024 is not asserted: "exactly one" cannot tell a held wallet (correctly none) from a missing pill, because the rail that reveals held is gone at that width. Measured on a local seeded host instead (Ali's ruling, 2026-09-28) |
@@ -443,12 +487,30 @@ variant; landing-only `sourceName` / `closesOn`; sitewide `msLeft`), `TippingBar
 - The conviction bar's accessible label is the full `home.heroConvRead` reading, not "YES probability".
 - The live pip stays on the open-markets figure only. `test:betting-ink` §1 pins that markup.
 
-**WP9 · Pick-a-side grid** — the grid band in `src/app/page.tsx`, `.market-grid` scoped to the landing
-- Below 640: `grid-auto-flow: column; grid-auto-columns: 86%; overflow-x: auto;
-  scroll-snap-type: x mandatory`, cards `scroll-snap-align: start`; the page itself never scrolls sideways
-  (V1). 640–1023: two columns. From 1024: three.
-- Every card keeps the same slots so bars line up across a row (V6).
-- Guard at risk: `test:needle-rest` §4 sweeps `/` at 360 and 768 for the parked Needle resting on a control.
+**WP9 · ONE BOARD** — `src/app/page.tsx` (the grid band), `src/components/home/landing-hero.tsx`
+(`LandingProof`), `src/lib/markets/hero.ts`, `src/lib/markets/landing.ts`
+⚠️ **THIS ROW WAS THE v3 SPEC ("Pick-a-side grid" — a phone snap rail) UNTIL 2026-09-28.** The v4
+delivery replaces it: the grid and the hero's board are the same open book in two shapes, and one of
+them goes. Scope is **R15**, which departs from the delivery in one place — read it first.
+- **Delete the `.market-grid` band from `/`.** The CLASS stays: `/markets`, `/results`, `/watchlist`
+  and `/live` use it too. Only the landing's use goes.
+- **Keep the topic tiles (WP10, ✅ and measured).** They list TOPICS, not markets, and repeat nothing.
+  R15 explains why the delivery's own reason does not reach them.
+- **The board grows 4 → 7 rows** (`QUESTION_BOARD_SIZE`), which is exactly the 3 the grid gave up. The
+  page still shows 8 markets — `landing.ts`'s header records that 8 was chosen deliberately.
+- **The board takes the grid band's header**: the eyebrow that NAMES the ordering, the h2, and
+  "All N markets →". A heading that states the sort order is what makes the list a claim rather than
+  a sample — `landing.ts` says so, and it is the one part of that band worth keeping.
+- **The toggle (Closing soon | Biggest pools)** switches between orderings COMPUTED ON THE SERVER from
+  the one board read. ⛔ Never re-sorted in the browser: `landingGrid` picks by price tier and displays
+  by lens with a degeneracy floor, and a client-side re-sort would be a second, quietly different
+  implementation of a rule about money. `role="tablist"`, 40px, no new query.
+- **Guards that move with it** — each is a real edit, not a rename: `landing-contract.test.mts` §4 ("the
+  grid is never short"), `count-truth.anchors.mjs`, `betting-ink.test.mts`, and the two drives
+  `c1-drive.mjs` and `mobile-visual-drive.mjs`. `test:needle-rest` §4 sweeps `/` at 360 and 768 for the
+  parked Needle resting on a control, so the new row heights are its business too.
+- **V14's landmarks are SAFE** because the tiles stay (`.kp-topic`). Had they gone, §0 trap 5 applies:
+  the gate's landmark selectors are class names and a rebuild re-points them in the SAME commit.
 
 **WP10 · Topics** — `src/components/home/topic-tiles.tsx`, `.kp-topics`
 - "All topics" becomes the section header link. Six tiles, ordered by live count, **Other last**; two
@@ -691,7 +753,7 @@ drift from that file or a row names an id §1 does not have. An item is done whe
 | P11 | Featured market: right after the lede; hero right column on desktop | WP2, WP3 | Hero v3 (R7, 2026-09-27): the card follows the trust ROWS — claim → h1 → lede → trust rows → card — so 18+, the licence and the helpline reach a phone's first screen; right column from 1024 |
 | P12 | Pick slip: bottom sheet below 1024, inline from 1024 | WP5 | R2 |
 | P13 | Proof figures: ledger rows on phones, three columns above | WP8 | |
-| P14 | Board (ONE list): toggle + topic chips + stacked rows; one line per row at ≥ 1024 | WP9 | ⚠️ v4 MERGES the v3 map's two rows ("Closing-soonest board" and "Pick-a-side cards") into one — WP9 deletes the grid and the tiles from `/`. The two old rows' notes are kept here rather than dropped: WP4 | ·· WP9 | |
+| P14 | Board (ONE list): toggle + topic chips + stacked rows; one line per row at ≥ 1024 | WP9 | ⚠️ v4 MERGES the v3 map's two rows ("Closing-soonest board" and "Pick-a-side cards") into one — WP9 deletes the grid from `/` and ~~the tiles~~ **KEEPS the tiles (R15)**: they list TOPICS, a different axis, and repeat no market, so the delivery's own reason does not reach them. The toggle is two `FilterPill`s, not a `role="tablist"` (R16). "Topic chips" are the tiles. The two old rows' notes are kept here rather than dropped: WP4 | ·· WP9 | |
 | P15 | Share: card footer + after placing (WhatsApp) | WP14b, WP5 | |
 | P16 | Set limits / Take a break: pick sheet, Wallet, Menu, footer | WP5, WP14 | No Menu (R1); the footer already carries both |
 | P17 | Licence · 18+ · helpline: first screen + footer | WP2 | ~~Trust lines before the CTAs — L18~~ ⚠️ 2026-09-27, hero v3 (R7(2)): one quiet row — 18+ · the licence line · the helpline `tel:` — plus the payout-live wallets, in the intro ABOVE the card (V21 measures them on the first screen); the RG sentence, the licence number and the helpline stay in the footer |
@@ -764,7 +826,7 @@ drift from that file or a row names an id §1 does not have. An item is done whe
 | K67 | The mark's split, orientation, needle and hub are respected in the coin | WP1b | ⭐ NEW IN v4 |
 | K68 | The one verb "pick" is used throughout | WP16 | ⭐ NEW IN v4 |
 | K69 | Every needle carries the mark's hub | WP9 | ⭐ NEW IN v4 |
-| K70 | UI/UX specialist: the whole centre slot is tappable | WP1b, V22 | ⭐ NEW IN v4 |
+| K70 | UI/UX specialist: the whole centre slot is tappable | WP1b, V26 | ⭐ NEW IN v4 · ⚠️ named V22 until 2026-09-28; two classes shared that name and the coin's plant was the unreachable one (R16's session) |
 | K71 | Size & dimensions engineer: only the SPEC §8 values | WP15 | ⭐ NEW IN v4 |
 | K72 | Gamer: a 12ms haptic on Confirm; press feedback; Up & Down one tap away | WP5 | ⭐ NEW IN v4 |
 | K73 | Platform manager: WP19 events fire with the right `source`; empty states; flags | WP19 | ⭐ NEW IN v4 · C3 |
