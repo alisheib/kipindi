@@ -33,6 +33,26 @@ Ali's delegation · 11 legal questions, each shipping with a safe default that I
 4. Work per §11. Close per §0a step 6.
 
 ```
+⛔ FIRST, BEFORE ▶ NEXT — SHIP S7c. IT IS COMMITTED BUT NOT LIVE (handed over 2026-09-28 to another PC,
+  on Ali's word: "end here, another session will continue on a new PC"). The whole S7c batch is on the
+  REMOTE BRANCH `marketing-s7c`, NOT on main; production still serves S7b's build. On the new PC:
+  1. `git fetch origin`, then your OWN worktree off `origin/marketing-s7c` with a real `npm ci` (⛔ never a
+     junctioned node_modules — Turbopack refuses it).
+  2. `git merge --no-edit origin/main` — main moved ~17 commits (landing v3 went live). Expect conflicts only
+     in `src/lib/i18n-dict.ts` (keep BOTH sides' keys), `package.json` (main's `predeploy` chain, plus
+     `test:sms-cost-guard` right after `test:pii-logs`) and `docs/NEXT-PLAN.md`.
+  3. Through the lock, one at a time: typecheck, `test:i18n`, the marketing / SMS / DAL / RG / comms suites and
+     the red controls the §2 S7c row names, then `npm run build`. Compare any red against clean `origin/main`
+     by LABEL before calling it yours (§2 S7c lists the ones that were not).
+  4. `rm -rf .next`, then `node scripts/live/marketing-e2e-capture.mjs local` through the lock, and OPEN AND
+     READ the shots — above all the /admin/system SMS credit tile, never photographed on the final tree
+     (refused, pending, healthy, seven figures, low, below floor, unconfirmed, stale), plus the /s error and
+     busy states, the consent HELD states and /help FAQ 5, at 1280 and 360.
+  5. Push `HEAD:main`, confirm production serves it (`?dpl=`), then run the U6 drive on production (its 3e
+     checks the served `shownLocale`) and the U8 drive on production. Only then read ▶ NEXT.
+  ⚠️ The `since` dates in `src/lib/marketing/consent-wording.ts` say 2026-09-27; if this ships later, correct
+     `since` AND the pinned hash in the deploying commit, before any production row is written (TRAPS).
+
 ▶ NEXT: U17 and U18 — S8's pair: THE CONTACTS BOOK COMES FIRST. §10 was reordered 2026-09-27 on Ali's
   approval ("keep going with your plan") so the admin console shows something next session: Contacts in
   the menu at S8, the list at S9; Campaigns in the menu at S17. U13/U14 moved beside the engine (S21, where
@@ -61,8 +81,11 @@ Ali's delegation · 11 legal questions, each shipping with a safe default that I
   12/25 defects.** Ali: *"make sure it's all end to end perfect, visually, logically, no screen is weak,
   nothing lacking."* An adversarial review (8 lenses over screenshots, code and docs, each finding sent
   to a second agent told to refute it) confirmed 99 of 105 findings; a second review of the fixes
-  confirmed 42 of 54 more (no blockers). All fixed, suites and red controls green, every screen
-  re-photographed at 1280 and 360 and read. The rulings are ? 7–12 below; the headline fixes:
+  confirmed 42 of 54 more (no blockers), and a final visual pass over 191 fresh screenshots 31 of 43. All
+  fixed; on the committed tree typecheck, the build, every marketing / SMS / DAL / RG / comms suite and the
+  red controls are green, and the opt-out, consent and public screens were re-photographed and read —
+  ⚠️ BUT NOT SHIPPED, and the admin SMS tile's states were never photographed on the final tree: see
+  "⛔ FIRST" above. The rulings are ? 7–12 below; the headline fixes:
   ⭐ CONSENT NAMES SMS — one name everywhere ("Offers and news by SMS"), the ledger stores the sentence in
   the language the person SAW, OQ11's safe default (an old "product updates" yes no longer counts), the
   toggle shows EFFECTIVE consent and is held during a break or self-exclusion.
