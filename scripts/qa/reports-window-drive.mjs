@@ -49,11 +49,45 @@ ok("clicking 'Report library' KEEPS range=today AND tab=library",
 // ── 3 · every card states its coverage ──
 const lib = await page.locator("body").innerText();
 const covers = [...lib.matchAll(/Covers (.+)/g)].map((m) => m[1].trim());
-ok("all 9 cards print a 'Covers …' line", covers.length === 9, `${covers.length} found`);
+/* ⚠️ NINE CARDS, PLUS ONE when the month is in progress: the Monthly report card carries a SECOND
+   Covers line for the running month. Hardcoding 9 convicted a correct page the day that row
+   shipped — the count has to be derived from the same condition the page renders on. */
+const monthInProgress = /MONTH IN PROGRESS/.test(lib);
+const expectedCovers = 9 + (monthInProgress ? 1 : 0);
+ok(`every card prints a 'Covers …' line (9 templates${monthInProgress ? " + the month in progress" : ""})`,
+  covers.length === expectedCovers, `${covers.length} found, expected ${expectedCovers}`);
 ok("no two coverage KINDS collapse to one phrase", new Set(covers).size >= 5, [...new Set(covers)].join(" | "));
 console.log(covers.map((c, i) => `      ${i + 1}. ${c}`).join("\n"));
 ok("the cadence chip now reads as a FILING cadence, not a window", /Filed (Daily|Monthly|Weekly|Quarterly|On demand)/i.test(lib));
 await page.screenshot({ path: resolve(OUT, "02-library-cards.png"), fullPage: true });
+
+// ── 3b · the month in progress: offered, and gated by a dialog that states what is missing ──
+/* 🔴 A month-to-date total under a bare "September 2026" heading reads exactly like September's
+   statutory return. The option is legitimate; receiving it SILENTLY is not. */
+if (monthInProgress) {
+  const row = page.getByText("MONTH IN PROGRESS").first()
+    .locator("xpath=ancestor::div[contains(@class,'border-dashed')]");
+  const rowText = (await row.innerText()).replace(/\s+/g, " ");
+  ok("the month-in-progress row states the month and the days still to run",
+    /so far/.test(rowText) && /still to run/.test(rowText), rowText);
+
+  await row.getByRole("button", { name: /Download Excel report/i }).click();
+  const dlg = page.locator('[role="alertdialog"]').first();
+  await dlg.waitFor({ timeout: 30_000 });
+  const dlgText = (await dlg.innerText()).replace(/\s+/g, " ");
+  ok("clicking it opens a confirmation FIRST, naming the days remaining",
+    /has not finished/i.test(dlgText) && /still to run/i.test(dlgText), dlgText.slice(0, 120));
+  ok("…and the dialog says it cannot be signed or submitted",
+    /cannot be signed or submitted/i.test(dlgText) && /PARTIAL/.test(dlgText));
+  ok("…and it names the FORMAT that was pressed, so the confirm runs what was clicked",
+    /Excel/.test(dlgText));
+
+  /* ⭐ CANCEL MUST CANCEL. A gate that generates anyway is worse than no gate. */
+  await dlg.getByRole("button", { name: /^Cancel$/ }).click();
+  await dlg.waitFor({ state: "hidden", timeout: 15_000 }).catch(() => {});
+  ok("Cancel closes the dialog and generates nothing",
+    !(await page.getByText(/Generating .* report/i).isVisible().catch(() => false)));
+}
 
 // ── 4 · an unreadable custom bound is SAID, not swallowed ──
 await page.goto(`${BASE}/admin/reports?range=custom&from=2026-09-20T13:00:00.000Z`, { waitUntil: "domcontentloaded" });

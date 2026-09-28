@@ -4,6 +4,7 @@ import { useState } from "react";
 import { I } from "@/components/ui/glyphs";
 import { useToast } from "@/components/ui/toast";
 import { ActionOverlay, useActionOverlay } from "@/components/admin/action-overlay";
+import { ConfirmModal } from "@/components/ui/modal";
 
 /**
  * Two kit-faithful action buttons per report — Excel + PDF.
@@ -19,6 +20,7 @@ export function GenerateButton({
   size = "sm",
   query,
   title,
+  confirmBefore,
 }: {
   id: string;
   /**
@@ -53,8 +55,31 @@ export function GenerateButton({
    * are not a filter rail and not mouse-only — keep the 40px `--tap-min` floor untouched.
    */
   size?: "sm" | "xs";
+  /**
+   * ⭐ ASK BEFORE BUILDING, when the document is not the one the officer probably expects.
+   *
+   * The only current caller is the CURRENT-month monthly report: an unfinished month is a
+   * legitimate thing to want and a dangerous thing to receive silently, because a month-to-date
+   * total under a "September 2026" heading reads exactly like September's statutory return. The
+   * dialog states how much of the month is still to run BEFORE anything is generated, so the
+   * choice is made with the number in front of the officer rather than discovered in the file.
+   *
+   * ⛔ `tone="warning"` — the SEMANTIC choice, and the one every other admin confirm makes for a
+   * reversible-but-notable action (agents, ai-polls, ai-usage, bonuses, config all pass it).
+   * ⚠️ MEASURED 2026-09-28: `ConfirmModal`'s `TONE_BTN` maps `warning` and `claret` to the SAME
+   * `btn-claret`, so the three-tone type currently paints only two. Passing `warning` here is
+   * therefore consistent with the platform rather than visually distinct from `claret` — worth
+   * knowing before someone "fixes" this call site. ⛔ Not repaired here: a real warning variant is
+   * a new button token in a FROZEN design system (`docs/DESIGN_AUTHORITY.md`) and would restyle a
+   * dozen admin dialogs at once. That is an owner decision, not a side-effect of a reports change.
+   * ⚠️ Undefined leaves every existing call site exactly as it was: one click, straight to the
+   * download.
+   */
+  confirmBefore?: { title: string; body: React.ReactNode; confirmLabel: string; eyebrow?: string };
 }) {
   const [busy, setBusy] = useState<Format | null>(null);
+  /** The format awaiting confirmation — also what keeps the dialog open. */
+  const [asking, setAsking] = useState<Format | null>(null);
   // Which format the failure card offers to retry — the last one attempted.
   const [lastFormat, setLastFormat] = useState<Format | null>(null);
   const overlay = useActionOverlay();
@@ -119,7 +144,7 @@ export function GenerateButton({
       <div className="inline-flex items-center gap-1.5">
         <button
           type="button"
-          onClick={() => handle("xlsx")}
+          onClick={() => (confirmBefore ? setAsking("xlsx") : handle("xlsx"))}
           disabled={busy !== null}
           title={title ? `${title} — Excel (.xlsx)` : "Download as Excel (.xlsx)"}
           aria-label="Download Excel report"
@@ -132,7 +157,7 @@ export function GenerateButton({
         </button>
         <button
           type="button"
-          onClick={() => handle("pdf")}
+          onClick={() => (confirmBefore ? setAsking("pdf") : handle("pdf"))}
           disabled={busy !== null}
           title={title ? `${title} — PDF` : "Download as PDF"}
           aria-label="Download PDF report"
@@ -144,6 +169,31 @@ export function GenerateButton({
           </span>
         </button>
       </div>
+      {/* ⭐ THE GATE, RENDERED ONLY WHEN A CALLER ASKED FOR ONE. `asking` holds the format, so the
+          officer's choice of Excel or PDF survives the dialog and the confirm runs the format they
+          actually pressed — a gate that dropped it and defaulted would hand over the wrong file
+          after an explicit confirmation, which is worse than no gate. */}
+      {confirmBefore && (
+        <ConfirmModal
+          open={asking !== null}
+          onClose={() => setAsking(null)}
+          onConfirm={() => {
+            const f = asking;
+            setAsking(null);
+            if (f) void handle(f);
+          }}
+          eyebrow={confirmBefore.eyebrow}
+          title={confirmBefore.title}
+          body={confirmBefore.body}
+          confirmLabel={`${confirmBefore.confirmLabel} · ${asking === "pdf" ? "PDF" : "Excel"}`}
+          cancelLabel="Cancel"
+          tone="warning"
+          /* The default 400px broke "September 2026 has not finished" across two lines mid-phrase
+             ("…has not / finished"). 460 holds a month-and-year title on one line without making
+             the panel wide enough to read as a page. */
+          maxWidth={460}
+        />
+      )}
       {/* A report build writes nothing and charges nothing, so a failed one is safely
           repeatable — the failure card offers the same format straight back. */}
       <ActionOverlay

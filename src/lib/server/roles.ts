@@ -254,6 +254,12 @@ export const ROUTE_DOMAINS: ReadonlyArray<readonly [prefix: string, domain: Admi
   ["/admin/invites", "growth"],
   // First-party website traffic (2026-09-15) — growth reads acquisition; no player data on the page.
   ["/admin/traffic", "growth"],
+  // The marketing address book (U17, 2026-09-28) — growth owns acquisition. ⛔ THIS ROW IS THE
+  // SECTION'S VISIBILITY: delete it and `domainForPath` falls closed to `ops` below, which no
+  // non-ADMIN role holds under `DEFAULT_GRANTS`, so the page refuses GROWTH — while the sidebar
+  // still shows the link, because `filterNavGroups` reads the nav item's own `domain` literal.
+  // §7b of `test:rbac` is the assertion that keeps those two copies agreeing.
+  ["/admin/contacts", "growth"],
   // support
   ["/admin/players", "support"],
   // trading

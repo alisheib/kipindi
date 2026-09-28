@@ -56,10 +56,10 @@ import ExcelJS from "exceljs";
 const { db } = await import("../src/lib/server/store.ts");
 type StoredTxn = import("../src/lib/server/store.ts").StoredTxn;
 const { startOfEatDay, eatDateLabel, EAT_OFFSET_MS } = await import("../src/lib/server/report-money.ts");
-const { currentPackPeriod, packPeriodBounds } = await import("../src/lib/server/report-pack.ts");
-const { REPORT_CATALOGUE, reportCoverage, isWindowedReport, buildDailyOps, buildFiuSar, buildSxRegister, buildKycReverify } =
+const { currentPackPeriod, currentEatMonth, packPeriodBounds } = await import("../src/lib/server/report-pack.ts");
+const { REPORT_CATALOGUE, reportCoverage, isWindowedReport, buildDailyOps, buildFiuSar, buildGbtMonthly, buildSxRegister, buildKycReverify } =
   await import("../src/lib/server/reports/catalogue.ts");
-const { asOf, calendarMonth, cumulative, eatDay, selectedWindow, sinceGenesis } =
+const { asOf, calendarMonth, cumulative, eatDay, monthCompleteness, selectedWindow, sinceGenesis } =
   await import("../src/lib/server/reports/coverage.ts");
 type Coverage = import("../src/lib/server/reports/coverage.ts").Coverage;
 type CoverageKind = import("../src/lib/server/reports/coverage.ts").CoverageKind;
@@ -321,6 +321,73 @@ console.log("\n── 4b · a calendar-month report honours an explicit period �
     r.meta.period);
 }
 
+/* ══ §4c · AN UNFINISHED MONTH IS A PREVIEW, NEVER A FILING ══════════════════════════════════
+ * 🔴 The current month is a legitimate thing to ask for and a dangerous thing to receive silently:
+ * a month-to-date total under a bare "September 2026" heading reads exactly like September's
+ * statutory return. Four things have to change together, and any one of them left in filing dress
+ * is enough to get an incomplete month signed and submitted.
+ * ⭐ Every assertion is a DELTA against the SAME builder run on a COMPLETE month, so "the partial
+ * document says PARTIAL" cannot pass by the complete one saying it too. */
+async function assertPartialIsNotAFiling(monthKey: string, tag = "") {
+  const c = monthCompleteness(monthKey, Date.now());
+  ok(`${tag}CONTROL · the month under test really is unfinished, so this section is not vacuous`,
+    c.partial && c.daysRemaining > 0, `${monthKey} · partial=${c.partial} daysRemaining=${c.daysRemaining}`);
+
+  /* ⚠️ TWO CLOCKS, AND THE FIRST DRAFT USED BOTH. A partial window is clamped to the builder's OWN
+     `now`; re-deriving `bounds(Date.now())` out here produces a later instant and the equality
+     fails on correct code — measured, and it cost a red run. `/admin/finance` carries the same
+     ruling for the same reason ("ONE now FOR THE PAGE AND FOR THE EXPORT"). Bracket the build
+     instead and assert the window ENDS INSIDE that bracket: clock-robust, and a stronger claim
+     than equality — it pins the start to the month, the end to this build's own present, and the
+     whole window strictly short of the month's nominal end. */
+  const monthStart = packPeriodBounds(monthKey).start;
+  reset();
+  const t0 = Date.now();
+  const partial = await buildGbtMonthly(GEN, monthKey);
+  const t1 = Date.now();
+  ok(`${tag}🔴 the window STOPS AT NOW, it does not read to the month's nominal end`,
+    ranges.length > 0 && ranges.every(([s, e]) => s === monthStart && e >= t0 && e <= t1 && e < c.monthEnd),
+    `read ${ranges.map(([s, e]) => `${iso(s)} → ${iso(e)}`).join(" ; ") || "(nothing)"} · month ends ${iso(c.monthEnd)}`);
+  ok(`${tag}🔴 the printed period says PARTIAL and names the days remaining`,
+    /PARTIAL/.test(partial.meta.period) && partial.meta.period.includes(String(c.daysRemaining)),
+    partial.meta.period);
+  ok(`${tag}🔴 the TITLE says partial — the first thing a reader sees`,
+    /PARTIAL/i.test(partial.title), partial.title);
+  ok(`${tag}🔴 it is classified Internal, not a regulator hand-off`,
+    partial.meta.classification === "Internal", String(partial.meta.classification));
+  ok(`${tag}🔴 it carries NO attestation block — nothing to sign`,
+    partial.signatures === undefined, `signatures: ${partial.signatures ? "PRESENT" : "absent"}`);
+  ok(`${tag}🔴 a note states the month is incomplete and must not be submitted`,
+    (partial.notes ?? []).some((n) => /INCOMPLETE MONTH/.test(n) && /not be submitted/i.test(n)));
+  /* 🔴 CAUGHT BY READING THE RENDERED PDF, NOT BY A SUITE. Two section descriptions still said
+     "TZS totals for the STATUTORY CALENDAR MONTH" on a document whose figures covered part of one.
+     A stated methodology that contradicts the computed one is the same class `test:report-note-truth`
+     exists for, one level down at the section. */
+  ok(`${tag}🔴 no section still calls a part-month "the statutory calendar month"`,
+    !(partial.sections ?? []).some((sec) => /statutory calendar month/i.test(sec.description ?? "")),
+    (partial.sections ?? []).filter((sec) => /statutory calendar month/i.test(sec.description ?? "")).map((sec) => sec.title).join(", ") || "none do");
+  return partial;
+}
+console.log("\n── 4c · an unfinished month is a preview, never a filing ──");
+{
+  const nowMs = Date.now();
+  const current = currentEatMonth(nowMs);
+  const partial = await assertPartialIsNotAFiling(current);
+
+  /* ⭐ THE COMPLETE MONTH IS THE CONTROL. Without it, every assertion above would also pass on a
+     builder that stamped PARTIAL on everything it produced. */
+  const done = currentPackPeriod(nowMs);
+  const complete = await buildGbtMonthly(GEN, done);
+  ok("CONTROL · the COMPLETE month is none of those things — no PARTIAL, hand-off, signed",
+    !/PARTIAL/i.test(complete.title) && !/PARTIAL/.test(complete.meta.period)
+      && complete.meta.classification === "Regulator hand-off" && complete.signatures !== undefined,
+    `title="${complete.title}" class=${complete.meta.classification} signatures=${complete.signatures ? "present" : "ABSENT"}`);
+  ok("CONTROL · and the two really are different months, so the pair discriminates",
+    current !== done && partial.meta.period !== complete.meta.period, `${current} vs ${done}`);
+  ok("a complete month's window is NOT clamped — it ends on the month's own EAT midnight",
+    calendarMonth(done).bounds!(nowMs).end === packPeriodBounds(done).end);
+}
+
 /* ══ §5 · BOTH RENDERERS CARRY THE PERIOD ════════════════════════════════════════════════════
  * 🔴 `meta.period` was set by all nine builders and printed by neither renderer. A grep for
  * `meta.period` in pdf.ts would "prove" the fix and prove nothing about the page.
@@ -495,6 +562,39 @@ if (!PROVE_RED) {
           `asked ${asked} · read ${ranges.map(([s, e]) => `${iso(s)} → ${iso(e)}`).join(" ; ") || "(nothing)"}`);
         ok(`${tag}🔴 …and moves the period the document PRINTS`,
           r.meta.period.includes(`${asked}-01`) && !r.meta.period.includes(`${deflt}-01`), r.meta.period);
+      },
+    },
+    {
+      name: "the partial-month guard is pointed at a FINISHED month (the month-in-progress check goes blind)",
+      expect: "CONTROL · the month under test really is unfinished, so this section is not vacuous",
+      run: async (tag) => {
+        /* ⭐ THE PLANT IS THE POPULATION, AND THAT IS THE RIGHT PLANT HERE. §4c's every claim is
+           about a month that has not ended; aimed at a finished one it would report "no PARTIAL in
+           the title" as a defect in correct code. Its vacuity control must fire FIRST and name the
+           reason, so a future session that changes `currentEatMonth` learns the section went blind
+           instead of reading six confident failures about nothing. */
+        await assertPartialIsNotAFiling(currentPackPeriod(Date.now()), tag);
+      },
+    },
+    {
+      name: "an unfinished month is built as a signable filing (no PARTIAL, hand-off class, attestation block)",
+      expect: "🔴 the TITLE says partial — the first thing a reader sees",
+      run: (tag) => {
+        /* The pre-2026-09-28 shape, planted as a document rather than by breaking the builder:
+           a month-to-date total wearing exactly the dress of a complete statutory return. */
+        const asIfFiling = {
+          title: "Monthly report",
+          meta: { period: "September 2026 · 2026-09-01 → 2026-09-30 (EAT)", classification: "Regulator hand-off" },
+          signatures: [{ role: "Prepared by", name: "Someone" }],
+          notes: ["Source: the Transaction, User and KYC tables."],
+        } as unknown as Report;
+        const c = monthCompleteness(currentEatMonth(Date.now()), Date.now());
+        ok(`${tag}CONTROL · the month under test really is unfinished, so this section is not vacuous`, c.partial && c.daysRemaining > 0);
+        ok(`${tag}🔴 the TITLE says partial — the first thing a reader sees`, /PARTIAL/i.test(asIfFiling.title), asIfFiling.title);
+        ok(`${tag}🔴 it is classified Internal, not a regulator hand-off`, asIfFiling.meta.classification === "Internal", String(asIfFiling.meta.classification));
+        ok(`${tag}🔴 it carries NO attestation block — nothing to sign`, asIfFiling.signatures === undefined);
+        ok(`${tag}🔴 a note states the month is incomplete and must not be submitted`,
+          (asIfFiling.notes ?? []).some((n) => /INCOMPLETE MONTH/.test(n) && /not be submitted/i.test(n)));
       },
     },
     {

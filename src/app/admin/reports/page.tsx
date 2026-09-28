@@ -21,6 +21,9 @@ import { resolveRange } from "@/lib/server/date-range";
 // ⭐ `reportCoverage` is the ONE answer to "what window does this report cover?", read off the
 // catalogue registry — never a coverage string typed again on this page. See reports/coverage.ts.
 import { isWindowedReport, reportCoverage, type ReportId } from "@/lib/server/reports/catalogue";
+// The month in progress: its key, its label, and the one function that says how much is left.
+import { currentEatMonth, packPeriodLabel } from "@/lib/server/report-pack";
+import { calendarMonth, monthCompleteness } from "@/lib/server/reports/coverage";
 import { currentSession } from "@/lib/server/auth-service";
 import { canView } from "@/lib/server/rbac";
 import { AdminRestricted } from "@/components/admin/admin-restricted";
@@ -200,6 +203,17 @@ async function AdminReportsContent({
   const win = { start: range.start, end: range.end };
   // What the head button actually produces, read off the registry rather than restated here.
   const monthlyCoverage = reportCoverage("gbt-monthly");
+  /* ⭐ THE MONTH IN PROGRESS, RESOLVED ONCE ON THE SERVER. Days-remaining is an EAT calendar
+     question and the browser's clock is not on EAT, so computing it client-side would put a
+     different number in the dialog than the one the document prints. `monthCompleteness` is the
+     same function the builder uses — one answer to "how much of this month is left". */
+  const currentMonthKey = currentEatMonth(generatedAt);
+  const currentMonth = {
+    key: currentMonthKey,
+    label: packPeriodLabel(currentMonthKey),
+    describe: calendarMonth(currentMonthKey).describe(generatedAt),
+    ...monthCompleteness(currentMonthKey, generatedAt),
+  };
   /* ⭐ THE WINDOW MUST SURVIVE EVERY LINK OUT OF THIS PAGE. The tab hrefs were hardcoded
      `/admin/reports?tab=…` and the generation log's pagination carried only sort+dir, so an officer
      who set "Today" on Performance and clicked "Report library" to download landed back on the `7d`
@@ -650,6 +664,62 @@ async function AdminReportsContent({
                       title={isWindowedReport(t.id) ? `Covers the window selected above — ${range.label}` : undefined}
                     />
                   </div>
+
+                  {/* ⭐ THE MONTH IN PROGRESS — a second, clearly subordinate option on the ONE
+                      report it makes sense for. An operator wants to see where the month stands
+                      before it closes; the statutory pack above cannot answer that, because it is
+                      fixed to the last COMPLETE month by law.
+                      ⛔ IT IS NOT A PEER OF THE ROW ABOVE, AND MUST NOT LOOK LIKE ONE. Dashed rule,
+                      muted type, a warning chip and the days remaining stated before the buttons —
+                      so the eye reads "caution, partial" before it reads "download". Two equal rows
+                      would make an unfinished month look like a second filing to choose from.
+                      ⛔ The card's own `Covers` line above stays the STATUTORY window; this row
+                      states its own, from the same declaration. */}
+                  {t.id === "gbt-monthly" && currentMonth.partial && (
+                    <div className="pt-2 mt-1 border-t border-dashed border-border-subtle">
+                      {/* ⛔ THE MONTH AND THE DAYS REMAINING ARE SAID ONCE. A first cut carried a
+                          chip line ("September 2026 · 3 days still to run") ABOVE a Covers line
+                          that said the same two facts again — read side by side on the rendered
+                          card, the row was two lines tall and repeated itself. The chip carries
+                          the STATE, the caption carries the WINDOW, and the caption is the shared
+                          declaration, so neither can drift from the document. */}
+                      {/* ⛔ THE CAPTION GETS THE FULL WIDTH, THE BUTTONS SIT BENEATH IT — the same
+                          rhythm as the statutory row above (a full-width line, then a footer row
+                          ending in the pair). Sharing ONE line with the buttons squeezed the
+                          caption into a ~280px column inside this two-column grid and wrapped
+                          "3 days still to run" onto a third line, which is how a subordinate row
+                          ends up TALLER than the primary one it sits under. */}
+                      <p className="font-mono text-[10px] tracking-wider text-text-secondary flex flex-wrap items-center gap-x-1.5 gap-y-1">
+                        <Chip size="sm" variant="warning">MONTH IN PROGRESS</Chip>
+                        <span><span className="text-text-tertiary">Covers </span>{currentMonth.describe}</span>
+                      </p>
+                      <div className="flex justify-end mt-1.5">
+                        <GenerateButton
+                          id="gbt-monthly"
+                          query={`period=${encodeURIComponent(currentMonth.key)}`}
+                          title={`${currentMonth.label} up to now — a partial, internal preview. Not a statutory filing.`}
+                          confirmBefore={{
+                            eyebrow: "Month in progress",
+                            title: `${currentMonth.label} has not finished`,
+                            confirmLabel: "Generate the partial report",
+                            body: (
+                              <>
+                                <strong className="text-text">{currentMonth.daysRemaining}</strong>{" "}
+                                {currentMonth.daysRemaining === 1 ? "day is" : "days are"} still to run in{" "}
+                                {currentMonth.label}. The report will cover{" "}
+                                <strong className="text-text">1 {currentMonth.label.split(" ")[0]} up to now</strong> only, and
+                                every figure in it will change before the month closes.
+                                <br /><br />
+                                It is an operating preview: marked <strong className="text-text">PARTIAL</strong>, classified
+                                Internal, and printed with no attestation block — so it cannot be signed or submitted to the
+                                Gaming Board. File {currentMonth.label} from the pack above once the month has ended.
+                              </>
+                            ),
+                          }}
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </AdminCard>
