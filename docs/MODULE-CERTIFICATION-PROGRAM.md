@@ -1159,14 +1159,14 @@ Existing commands to use rather than reinvent: `npm run test:all` · `npm run qa
 | A1 Registration & onboarding | `cert:a1` | ⬜ |
 | A2 Login & sessions | `cert:a2` | ⬜ no dedicated gate today |
 | A3 Password recovery | `cert:a3` | ⬜ |
-| A4 OTP & SMS | `cert:a4` | ⬜ gate not written (OTP localisation + send-failure honesty fixed 2026-09-16, `test:otp-delivery`) |
+| A4 OTP & SMS | `cert:a4` | ⬜ gate not written (OTP localisation + send-failure honesty fixed 2026-09-16, `test:otp-delivery`) ⚠️ **Changing under [VODACOM-PLAN](VODACOM-PLAN.md) until its S15 flip** (2026-09-29): certify against the journey, not today's surface. |
 | A5 Player 2FA | `cert:a5` | ⬜ |
 | A6 Admin TOTP | `test:cert-a6` | 🟨 **honesty DONE 2026-07-31** (16 assertions) — health + boot now report the state. 🔴 Still OFF in production: run `ops:admin-2fa-readiness` and enrol an admin **before** flipping |
 | B1 Roles & domain grants | `cert:b1` | ⬜ |
 | B2 Staff management | `cert:b2` | ⬜ |
 | B3 Two-officer control | `cert:b3` | ⬜ |
-| C1 Email delivery | `test:cert-c1` | 🟨 **template truth DONE 2026-07-31** (843 assertions). All 47 rendered + read; an unescaped `heading()`/`ctaButton` took a player-controlled name into the inbox as live markup, and 3 mails — incl. self-exclusion and every failed payout — showed the player raw HTML. Remaining: send-failure resilience (no timeout; a dead key is silent) |
-| C2 Email verification & suppression | `test:cert-c2` | 🟨 **resilience DONE 2026-07-31** (41 assertions, real HTTP server). No timeout existed and a dead key was one `console.error`; now bounded, counted, on `/api/health`, and audited once per outage. Remaining: forged-bounce attack, webhook replay |
+| C1 Email delivery | `test:cert-c1` | 🟨 **template truth DONE 2026-07-31** (843 assertions). All 47 rendered + read; an unescaped `heading()`/`ctaButton` took a player-controlled name into the inbox as live markup, and 3 mails — incl. self-exclusion and every failed payout — showed the player raw HTML. Remaining: send-failure resilience (no timeout; a dead key is silent) ⚠️ **Changing under [VODACOM-PLAN](VODACOM-PLAN.md) until its S15 flip** (2026-09-29): certify against the journey, not today's surface. |
+| C2 Email verification & suppression | `test:cert-c2` | 🟨 **resilience DONE 2026-07-31** (41 assertions, real HTTP server). No timeout existed and a dead key was one `console.error`; now bounded, counted, on `/api/health`, and audited once per outage. Remaining: forged-bounce attack, webhook replay ⚠️ **Changing under [VODACOM-PLAN](VODACOM-PLAN.md) until its S15 flip** (2026-09-29): certify against the journey, not today's surface. |
 | C3 Notifications & push | `test:cert-c3` | 🟨 **trilingual + dedupe DONE 2026-07-31** (853 assertions). 94% of rows had no Chinese (3 of 36 emitters set it); 28 byte-identical money notifications shipped inside 60s; `sentAt` was never written. All closed. Remaining: PII in push, cross-player leak |
 | C4 Realtime SSE & ticker | `cert:c4` | ⬜ ceiling ~125 unmeasured |
 | D1 KYC submissions | `test:cert-d1` `qa:cert-d1` | 🟩 **CERTIFIED 2026-07-31** — 28 + 19 assertions, 8/8 mutations red. Rejection was invisible (green "NIDA accepted" banner on a REJECTED submission); one NIDA could hold two accounts (proven with 2 OS processes, closed with a partial unique index, live on production); 3 legal docs × 3 locales claimed a NIDA authority check that has never existed |
@@ -1174,7 +1174,7 @@ Existing commands to use rather than reinvent: `npm run test:all` · `npm run qa
 | D3 Source of Funds | `test:cert-d3` | 🟩 **CERTIFIED 2026-07-31** — 25 assertions, 6/6 mutations red. Had ZERO automated coverage anywhere in the repo. A player could silently overwrite a declaration an officer had ACCEPTED, destroying the evidence and nulling the decision |
 | D4 Upload & R2 storage | `test:cert-d4` | 🟩 **CERTIFIED 2026-07-31** — 24 assertions, 3/3 mutations red. First gate this module has ever had. ⚠️ the live R2 token still reaches ALL buckets (owner decision) — reported, not guardable from code |
 | E1 Wallet & balances | `cert:e1` | ⬜ orphan TZS 100,000 |
-| E2 Deposits | `cert:e2` | ⬜ |
+| E2 Deposits | `cert:e2` | ⬜ ⚠️ **Changing under [VODACOM-PLAN](VODACOM-PLAN.md) until its S15 flip** (2026-09-29): certify against the journey, not today's surface. |
 | E3 Payment webhooks | `cert:e3` | ⬜ |
 | F1 Payouts & rails | `test:cert-f1` | 🟨 **G8 TRUTH DONE 2026-07-31** (69 assertions). Honest player messaging shipped in 3 locales + officer control. Remaining for full cert: G3 double-pay adversarial, G7 rail-failure resilience |
 | F2 Cash-out & locks | `cert:f2` | ⬜ |
@@ -1182,10 +1182,10 @@ Existing commands to use rather than reinvent: `npm run test:all` · `npm run qa
 | G2 Trial balance | `cert:g2` | ⬜ `ok:false` on production |
 | G3 House pool & fee model | `cert:g3` | ⬜ **fee basis undecided** |
 | G4 Audit chain | `cert:g4` | ⬜ link broken on production |
-| H1 Market creation & config | `cert:h1` | ⬜ close time 3 h wrong |
+| H1 Market creation & config | `cert:h1` | ⬜ close time 3 h wrong ⚠️ **Changing under [VODACOM-PLAN](VODACOM-PLAN.md) until its S15 flip** (2026-09-29): certify against the journey, not today's surface. |
 | H2 Candidates pipeline | `cert:h2` | ⬜ |
 | H3 Scheduling & ticker | `cert:h3` | ⬜ |
-| H4 Bet placement & admission | `cert:h4` | ⬜ 9 orphans to adopt |
+| H4 Bet placement & admission | `cert:h4` | ⬜ 9 orphans to adopt ⚠️ **Changing under [VODACOM-PLAN](VODACOM-PLAN.md) until its S15 flip** (2026-09-29): certify against the journey, not today's surface. |
 | H5 Positions & cash-out | `cert:h5` | ⬜ |
 | H6 Resolution & settlement | `cert:h6` | ⬜ ⛔ **premise corrected 2026-07-31** — single-admin resolution is a dated owner decision with no hard-lock **by design**; a lock needs Ali's ruling, not code |
 | H7 Sentinel & policy | `cert:h7` | ⬜ |
@@ -1193,7 +1193,7 @@ Existing commands to use rather than reinvent: `npm run test:all` · `npm run qa
 | I2 Trusted-source registry | `cert:i2` | ⬜ |
 | I3 AI resolution & oracle | `cert:i3` | ⬜ |
 | I4 Chatbot & spend | `cert:i4` | ⬜ |
-| J1 Up & Down | `cert:j1` | ⛔ **BLOCKED** — unmerged branch |
+| J1 Up & Down | `cert:j1` | ⛔ **BLOCKED** — unmerged branch ⚠️ **Changing under [VODACOM-PLAN](VODACOM-PLAN.md) until its S15 flip** (2026-09-29): certify against the journey, not today's surface. |
 | J2 Bonus wallet | `cert:j2` | ⬜ |
 | J3 Invites & campaigns | `cert:j3` | ⬜ |
 | J4 Affiliates & referrals | `cert:j4` | ⬜ 4 orphans |
@@ -1207,13 +1207,13 @@ Existing commands to use rather than reinvent: `npm run test:all` · `npm run qa
 | K4 Privacy & retention | `cert:k4` | ⬜ |
 | K5 Reporting & exports | `cert:k5` | ⬜ |
 | K6 Events calendar | `cert:k6` | ⬜ |
-| K7 Insights & cohorts | `cert:k7` | ⬜ |
+| K7 Insights & cohorts | `cert:k7` | ⬜ ⚠️ **Changing under [VODACOM-PLAN](VODACOM-PLAN.md) until its S15 flip** (2026-09-29): certify against the journey, not today's surface. |
 | L1 Admin shell & nav | `cert:l1` | ⬜ |
-| L2 System config & flags | `cert:l2` | ⬜ |
+| L2 System config & flags | `cert:l2` | ⬜ ⚠️ **Changing under [VODACOM-PLAN](VODACOM-PLAN.md) until its S15 flip** (2026-09-29): certify against the journey, not today's surface. |
 | L3 Ops & monitoring | `cert:l3` | ⬜ nobody is paged |
 | L4 Backups & DR | `cert:l4` | ⬜ **nothing off-box** |
 | L5 Rate limiting & resilience | `cert:l5` | ⬜ multi-container unsafe |
-| L6 Design, i18n, responsive | `cert:l6` | ⬜ most mature |
+| L6 Design, i18n, responsive | `cert:l6` | ⬜ most mature ⚠️ **Changing under [VODACOM-PLAN](VODACOM-PLAN.md) until its S15 flip** (2026-09-29): certify against the journey, not today's surface. |
 
 **Update this table in the same commit that certifies a module.** A status board that lags the code
 is worse than none.

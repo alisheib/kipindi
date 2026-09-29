@@ -69,6 +69,18 @@ Ali, 2026-09-26, handing over the v3 concept: *"proceed perfecting it … we can
 | **One bad record** | `mkt_ed8bf4f01932b46fa0be` is settled NDIO while its own officer evidence reads *"No… a total of 20 goals were scored"* — TZS 1,000 on NDIO against TZS 10,000 on HAPANA. One disagreement in 210 resolved markets. The landing page prints the record truthfully; the record is wrong |
 | **Rule** | The gate measures **production**, because a claim about what a page shows is a claim about its content. A failed read is reported unmeasured, never clean. And a green gate is not a 10 until the frames have been looked at |
 
+## ▶ 0c · THE VODACOM PLAN — the sponsor's "Simplified Journey" — `VODACOM-PLAN` · 🔨 **OPENED 2026-09-29 — S0 BEING FILED** · 0/18 sessions ✅ · supersedes landing v3 WP5, V21 and WP20 (R18)
+
+Ali, 2026-09-29: *"no matter what we need to cut off we need perfection and alignment with what they requested … we should match what they want for sponsorship"*; *"they care about functionality being identical but all our design system intact and consistent"*; *"name it vodacom plan. so in any new session when i say continue vodacom plan they should continue it perfectly, visually and logically"*.
+**▶ Work order and tracker: [`VODACOM-PLAN.md`](VODACOM-PLAN.md). Open it at §0 (RESUME AT), then §1 (board). "Continue Vodacom plan" means exactly that.**
+
+| | |
+|---|---|
+| **Why** | The sponsor agency sent a 5-screen journey (Home, Bet sheet, Balance too low, Deposit, How to Play). 50pick must behave exactly like it and look like 50pick |
+| **Shape** | 18 sessions (S0–S16 + S3b; S5 is ⛔ by R5), all behind the `simpleJourney` rollout until the S15 flip. Worktree `C:\kipindi-journey`, branch `simple-journey`. Rulings R1–R6 and SJ-1 … SJ-24 in [`INHERIT-MANIFEST.md`](design-system/v5-2026-09-29-simplified-journey/INHERIT-MANIFEST.md). What it takes out of use is shelved, never deleted: [`SHELVED.md`](SHELVED.md) |
+| **Next** | Read it from the tracker's §0 **Next:**, never from this cell |
+| **Rule** | Every session rewrites §0 and ticks §1 in its own commits, and **updates this row's count in the same commit** — `npm run test:vodacom-plan` asserts the two agree |
+
 ## 00 · PRE-LAUNCH DATA RESET — `PRELAUNCH-RESET` · 🏁 **DONE 2026-09-11, EXECUTED ON PRODUCTION**
 
 Ali's go-live instruction, 2026-09-11. **▶ Record and runbook:

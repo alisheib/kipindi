@@ -2116,7 +2116,7 @@ against the U1 baseline. **[General] control:** ≥ 640 shows a zero diff unless
 - Render order (`app-shell.tsx`): TopAppBar `:303` · Announcement `:304` · session-ended `:307` · EmailVerifyBanner `:333` (collapsible, never dismissible) ·
   AwaySummaryBar `:341` · LiveTicker `:351`. On phones the AwaySummaryBar waits while the email bar is expanded; nothing else changes order or dismissibility.
   Re-run `qa:social-panel`.
-- D4: extend `src/lib/invitation-slot.ts` (today `useInvitationSlot(id, zone, priority, eligible)`, zones `bottom`/`top-right`) with a blocker the primer
+- ↪ **RE-TARGETED TO [VODACOM-PLAN](VODACOM-PLAN.md) (Ali, 2026-09-29): the old primer is shelved, and the new How to Play sheet's first-visit order (Vodacom plan §3.8) replaces this bullet. Not built in this unit.** D4: extend `src/lib/invitation-slot.ts` (today `useInvitationSlot(id, zone, priority, eligible)`, zones `bottom`/`top-right`) with a blocker the primer
   registers while open. Every claimant's eligibility (consent, install, channels) requires no blocker, and consent's 1200ms timer starts after the primer closes.
 - Guards:
   - demo player (email unverified + away entries) at 360: the email bar shows while the away bar waits, then the away bar appears after collapse;
@@ -2139,7 +2139,7 @@ against the U1 baseline. **[General] control:** ≥ 640 shows a zero diff unless
   PageContainer route is measured before and after. Update `scripts/measure-system.test.mts` (`test:measure`), `scripts/measure-parity-check.mjs`
   (`qa:measure-parity`) and `scripts/anchors/measure.anchors.mjs:73` in the same commit. Pages with their own padding: `updown/[roundId]`, `fairness`, `legal`.
 - Wallet/profile section gaps one step down; `KycGatePanel` `p-6` (`:133`) and `Callout` `stack` `p-6 sm:p-8` (`callout.tsx:257`) one step down below 640.
-- Primer (`first-visit-primer.tsx:453-468`): body `pb` and illustration one step down; title 22 → 20 below 640.
+- ↪ **RE-TARGETED TO [VODACOM-PLAN](VODACOM-PLAN.md) (Ali, 2026-09-29): the old primer is shelved, and the new How to Play sheet's first-visit order (Vodacom plan §3.8) replaces this bullet. Not built in this unit.** Primer (`first-visit-primer.tsx:453-468`): body `pb` and illustration one step down; title 22 → 20 below 640.
 - `/updown/[roundId]` `pb-14` (`page.tsx:276`) → the measured rail clearance.
 - Kept: `PageHeader` `text-title-lg`, wallet 38px balance, UP/DOWN and stake `btn-lg`.
 - Guards: `qa:footer-reachable`, `test:revoked-deadend`, page-height driver. Accept: each touched page shorter at 360, 0 overflow, nothing below the floor.

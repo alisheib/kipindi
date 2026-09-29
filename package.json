@@ -492,6 +492,8 @@
     "red:marketing-setup-plan": "tsx scripts/marketing-setup-plan.test.mts --prove-red",
     "test:landing-ten-plan": "tsx scripts/landing-ten-plan.test.mts",
     "red:landing-ten-plan": "tsx scripts/landing-ten-plan.test.mts --prove-red",
+    "test:vodacom-plan": "tsx scripts/vodacom-plan.test.mts",
+    "red:vodacom-plan": "tsx scripts/vodacom-plan.test.mts --prove-red",
     "test:signoff": "tsx scripts/signoff.test.mts",
     "test:proposal-evidence-age": "tsx scripts/proposal-evidence-age.test.mts",
     "test:payout-view": "tsx scripts/payout-view.test.mts",

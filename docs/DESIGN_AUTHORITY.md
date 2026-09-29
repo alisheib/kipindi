@@ -1408,6 +1408,16 @@ The platform's hardest-won rules. Most were bought with an incident.
    ⛔ per-position potential payout stays hidden pre-resolution. "You will win TZS 140" on
    an open round is a promised return, which is a licensing problem, not a copy preference.
    (2026-05 licence review.)
+   ⚠️ **Amended 2026-09-29, effective at the Vodacom plan's S15 flip (owner ruling R1; SJ-1, SJ-4;
+   `docs/VODACOM-PLAN.md`, COMPLIANCE-DECISIONS § "2026-09-29 · The Vodacom plan …"):** on the journey
+   surfaces only, a PRE-BET estimate may be shown:
+   - **Cards:** "Shinda ≈{mult}× dau" per side. Here "≈" is the qualifier, and cards carry no qualifier line.
+   - **The bet sheet:** "Ukishinda, unapata takriban TZS {x}" + "≈{mult}× dau lako" at the entered stake, always with
+     the line "Makadirio. Kiasi halisi hutegemea bwawa soko likifungwa. Kamisheni ya {pct}% imeshatolewa."
+
+   Every such figure comes from the settlement function (`payoutFor`), never from a constant. The rest of this rule
+   stands unchanged: open positions say "if settled now", and ⛔ the per-position potential payout stays hidden
+   pre-resolution, on the post-bet receipt and in Tiketi zangu alike.
 4. **Losses are stated with dignity: calm, factual, final.** No punishment styling, no
    alarm panels. The closing line is *"Every figure here is final — nothing further is
    owed."* **VOID / refunded is NEUTRAL — never an error treatment**; the money came back.
@@ -2320,6 +2330,15 @@ involved"*, which is not the same claim:
   inducement** are not earned money. A card that says *you have TZS 0 in bonuses*, and a card
   whose whole purpose is to ask you to pay money in, must not wear the ink this platform uses
   to say *you won this* — on an inducement, a house colour becomes a marketing claim.
+
+⚠️ **Applied 2026-09-29 to the Simplified Journey (SJ-12; effective at the S15 flip):** the journey's two deposit
+buttons follow D1 and the header-pill precedent, not D5.
+- **The low-balance "Weka pesa TZS {x}"** is a deposit ENTRY. The player named the amount by choosing a stake, so it is
+  not an inducement card. It wears the deposit door's `gilt-metal`, like the header pill.
+- **"Lipa TZS {x}"** on the journey deposit screen is a deposit COMMIT, so it is **brand** (`btn-primary`), never gold.
+
+The bet commit "Weka dau · TZS {x}" keeps gold (bet and sell keep gold). The deck's gold "Nimeelewa, anza" and gold
+active tab are not adopted: they use `btn-primary` and `--pill-active` (owner ruling R5: 50pick's look, unchanged).
 
 
 ### M4 — Money is mono, and it never reflows

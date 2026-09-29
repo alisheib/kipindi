@@ -9,6 +9,166 @@
 ---
 
 
+## 2026-09-29 · The Vodacom plan — the sponsor's "Simplified Journey", built in 50pick's design system (owner rulings R1–R6; decisions SJ-1 … SJ-24)
+
+**Owner decision:** Ali, 2026-09-29, on the sponsor agency's deck "50pick Simplified Journey" (filed raw at
+`docs/design-system/v5-2026-09-29-simplified-journey/`) — *"no matter what we need to cut off we need perfection and
+alignment with what they requested … we have a full license from GBT so we can do anything but we should match what
+they want for sponsorship"*; then *"they care about functionality being identical but all our design system intact and
+consistent"*. Recorded as that folder's INHERIT-MANIFEST **R1–R6**; the build's delegated decisions are **SJ-1 … SJ-24**.
+Tracker: [`VODACOM-PLAN.md`](VODACOM-PLAN.md).
+
+**Status when written:** decided, and being built behind a staff-only preview on branch `simple-journey`. **Nothing
+below reaches a player until the S15 flip**, except the bug fixes listed in VODACOM-PLAN §2. Each item states what it
+changes at the flip.
+
+### 1 · A pre-bet estimate on cards and in the bet sheet (SJ-1 … SJ-5)
+
+Cards show "Shinda ≈{mult}× dau" per side, which is the current pool's payout multiple. The bet sheet shows "Ukishinda,
+unapata takriban TZS {x}" and "≈{mult}× dau lako" at the entered stake, with the deck's note: "Makadirio. Kiasi halisi
+hutegemea bwawa soko likifungwa. Kamisheni ya {pct}% imeshatolewa."
+
+**Why it is literally true.**
+- The sheet's TZS figure is `payoutFor()` — the settlement function itself — at the entered stake, and equals the
+  `potentialPayout` the server stores for the bet.
+- The fee is 13% of the LOSING side only (`src/lib/payout.ts`), so "commission already deducted" is exact for the
+  figure shown.
+- "≈" marks every estimate, and the sentence says the final amount depends on the pool at close.
+
+**What it reverses, for loser-share polls:**
+- the 2026-07-23 fixed "possible winnings" of 1.5× (§ "2026-07-23 · Fee model: 'loser-share' (Jay) + pre-bet estimate — new polls");
+- DESIGN_AUTHORITY §C3's "no pre-bet payout number" — **scoped to the cards and the pre-bet sheet only**.
+
+**What it keeps.**
+- The post-bet receipt and Tiketi zangu still show no per-position payout before resolution (§C3 clause 2).
+- Legacy capped-commission polls show no figure.
+
+### 2 · One-tap bet: BetConfirmModal and its 10-second quote hold are retired from the journey (SJ-10, SJ-11)
+
+**What changes.** The sheet's CTA "Weka dau · TZS {stake}" is the confirm step. It names the side (the locked chip),
+the question and the exact stake. "Weka dau la TZS {balance} badala yake" likewise names its amount.
+
+**Protections kept:**
+- The tapped quote is frozen: side and stake exactly as printed on the button.
+- One idempotency key per intent, reused only for a retry of that intent.
+- Nothing can be placed without a tap; Enter never submits.
+
+**Status of the old code.** BetConfirmModal is shelved, not deleted (`docs/SHELVED.md`).
+
+### 3 · One-tap "Lipa" on the journey deposit screen (SJ-12)
+
+**What changes.** The screen already shows the amount, the wallet, the number and "Lipa TZS {amount}". That is the
+confirmation, so the DepositConfirm dialog (Final Audit v8 **M9**) is not shown on this screen.
+
+**What stays.** The classic card form keeps its confirm.
+
+**Ink.** "Lipa" is a brand commit (§M3a D1), not gold.
+
+### 4 · The in-sheet shortfall deposit prompt (SJ-12; R1)
+
+**What it is.** When the stake exceeds the spendable balance, the sheet shows "Salio halitoshi — Una TZS {have}.
+Unahitaji TZS {short} zaidi." and a deposit button pre-filled with the exact shortfall (at least the TZS 500 minimum).
+
+**Why it is not an inducement.**
+- The player named the amount by choosing a stake.
+- The prompt offers no bonus and no urgency.
+- The bet is **never placed automatically**: after paying, the player returns to the sheet and taps again.
+
+**When it is suppressed.** The prompt does not appear when:
+- a deposit is already pending;
+- the deposit limit would be breached;
+- source of funds is required;
+- the wallet is held;
+- the player is self-excluded or cooling off;
+- the stake would breach the daily loss limit.
+
+The order mirrors `deposit()` and `placeBet`.
+
+**Watched after launch.** Small top-ups feed RAPID_DEPOSIT_ESCALATION and CHASING_LOSSES. Those markers are watched
+next to the "short balance → deposit" measure, and they still exclude a flagged player from marketing, as before.
+
+### 5 · "Tanzania's first licensed prediction market" and the slogan leave the home page (SJ-20, SJ-24)
+
+**The claim.** The hero that carried the claim (§ "2026-09-27 · The landing hero says …") is shelved with the old home.
+No journey surface or metadata claims "first". The negative half of gate V22 is kept.
+
+**The first-screen row moves:**
+- 18+ goes to the header;
+- the helpline is in How to Play and the footer;
+- the licence line stays in the footer.
+
+**The slogan.** "Tabiri matukio. Si bahati." is replaced on every surface by the deck's tagline "Pick. See what you win.
+Play." (sw and zh drafted).
+
+### 6 · Short titles and competition labels (SJ-8)
+
+**What cards show.** A short question and an optional competition label ("Ligi Kuu", "EPL").
+
+**Where the full wording stays.** The full question, the resolution criterion and the source stay on every market's page,
+unchanged.
+
+**Checks.** The market sentinel checks that each short title states the same proposition as the full question. An
+admin approves every backfilled short title.
+
+### 7 · The regulator
+
+The agency asked whether the Gaming Board must see the new payout wording.
+
+**Ali's ruling:** the licence covers this change, and no pre-approval is sought. This entry is the record.
+
+### 8 · The deposit number default, for journey mode only (SJ-13; amends E-210/E-215 of 2026-08-25)
+
+**The new default.** The journey deposit screen seeds the number from the player's latest **confirmed** mobile-money
+deposit. Without one, it uses the registered number.
+
+**What it amends.** The E-210/E-215 rule ("default = the registered number", recorded in `docs/LIVE-QA-CAMPAIGN.md`) is
+amended for this screen only.
+
+**What stays.** "Tumia namba nyingine" stays. Payout destination binding (withdrawals go only to the registered number)
+is untouched.
+
+### 9 · A player's own status read may fail a deposit — only on Selcom's signed terminal verdict (§3.5 of the plan)
+
+**Credits.** The waiting page's owner-only status read credits through `settlePaymentWebhook` (exactly-once).
+
+**Failures.** It may mark a deposit FAILED **only** on a signed CANCELLED / USERCANCELLED / REJECTED order-status. That
+is the same precedent as the card return leg (`settleDepositFromReturn`).
+
+**Unchanged.** The unattended 15-second lane stays confirm-only.
+
+### 10 · The LIVE strip leaves `/`
+
+**Where it stays.** The ticker stays on `/live` and `/results`. The 2026-09-26 lobby ruling is narrowed accordingly,
+because the deck's home has no ticker.
+
+### 11 · How to Play — why each step is literally true
+
+**Step 3** ("Washindi wanagawana bwawa. Ushindi unaingia kwenye salio, unatoa kwa pesa ya simu"):
+- Winners share the net pool: the fee comes from the losing side only.
+- A one-sided or void market refunds every stake.
+- Winnings are credited to the wallet balance, and withdrawals go by mobile money.
+- The step does not claim withdrawals are free: any withdrawal fee is disclosed on the withdrawal screen.
+
+**The MFANO example** is computed by the same estimate function from a fixed illustrative pool, never typed in.
+
+### 12 · What deliberately does NOT change
+
+- **The email check before a first deposit (R2).** It stays load-bearing (§ "2026-09-13 · Identity verification moves to
+  WITHDRAWAL ONLY") and is now an inline 6-digit code, with the emailed link still working.
+- **Identity before withdrawal.**
+- **Source of funds.**
+- **Deposit limits.**
+- **Payout destination binding.**
+- **Gaming Board item #6 (the absolute date beside every timer).** It is kept on the market page and Tiketi zangu.
+- **The design system (R5).** No colour, font or brand change.
+
+### Do not restore
+
+⛔ Nothing shelved by this programme is deleted (R6). "Removing" a shelved item means re-mounting it from
+`docs/SHELVED.md`, deliberately, with a new dated entry here.
+
+---
+
 ## 2026-09-28 · The header shows the balance at every value, "TZS 0" included (owner ruling R10; reverses R1's zero clause)
 
 **Owner decision:** Ali, 2026-09-28, unprompted, on seeing the live header — *"but now i dont see my balance on

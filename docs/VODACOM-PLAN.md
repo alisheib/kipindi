@@ -1,0 +1,1237 @@
+# VODACOM PLAN — the sponsor's "Simplified Journey", built in 50pick's design system
+
+> ⭐ **Say "continue Vodacom plan" in any session, on any machine.** Read §0 RESUME AT below, then do the session
+> it names, following the session law in §0. The approved plan is §5 onward; the rulings are the v5 INHERIT-MANIFEST.
+
+> **The one tracker for this programme.** Owner: Ali. Opened 2026-09-29.
+> - **Rulings:** [`docs/design-system/v5-2026-09-29-simplified-journey/INHERIT-MANIFEST.md`](design-system/v5-2026-09-29-simplified-journey/INHERIT-MANIFEST.md) (SJ-1 … SJ-24).
+> - **The agency's deck and frames:** the same folder (`50pick_Simplified_Journey.pptx`, `frames/1-home.png` … `frames/5-how-to-play.png`).
+> - **Reply to the agency:** [`AGENCY-REPLY.md`](design-system/v5-2026-09-29-simplified-journey/AGENCY-REPLY.md).
+> - **What the journey takes out of use:** [`docs/SHELVED.md`](SHELVED.md).
+>
+> **Guard:** `test:vodacom-plan` keeps §0 and §1 honest.
+>
+> Worktree `C:\kipindi-journey`, branch `simple-journey`. Merge to `main` = live, and every change stays behind the
+> `simpleJourney` rollout until the S15 flip.
+
+## §0 · RESUME AT
+
+**State (2026-09-29):** S0 filed. The deck and frames, the rulings, the reply to the agency, this tracker, SHELVED.md
+and the compliance record are all in. Nothing reaches players yet.
+
+**Next:** S1 — the switch and preview (plan §5, S1; the mechanics research for it is summarised under §0a below).
+
+Session law, the same for every session:
+- Code, two-store tests, and `red:*` twins reachable from `red:all`, with declared anchors.
+- `test:red-anchors` after any refactor.
+- `test:all` before each push.
+- Heavy Node only through `~/heavy-node-lock.sh`; red harnesses run detached, never piped.
+- Real-browser viewport tiles, read one by one.
+- Merge, push, verify the deploy commit.
+- This file, `SHELVED.md` and memory updated in the same pass.
+
+A gate is named as an `npm run` command only once its key exists in `package.json`.
+
+## §0a · S1 research (read-only, 2026-09-29): what to model the switch on
+
+**Where each piece goes**
+- **`src/lib/feature-state.ts` must stay pure.** It is client-reachable, and its only import is a type from `roles.ts`.
+  Put only the code/env ceiling there, e.g. `simpleJourneyCeiling()` returning `{ ceiling, source }` from
+  `FEATURE_SIMPLEJOURNEY`, modelled on `inviteRewardsCeiling()` (`feature-state.ts:302-332`).
+- Keep `FeatureState` at two members (the file's own COMING_SOON argument, lines 67-92). Key names are read by
+  `test:house-bot-surfaces`, so use neutral words.
+- **The DB half and the composition go in `src/lib/server/`**, modelled on `src/lib/server/invite-rewards-switch.ts`:
+  - one `SystemConfig` row holding `{ token }`, sealed with `signSession` plus a purpose tag and a version;
+  - strict verify (`ABSENT` / `UNREAD` / `MALFORMED` / `SET`);
+  - a `composeX(ceiling, stored)` truth table;
+  - a ≤10 s cached reader for screens and `/api/health`;
+  - `writeStoredSwitchVerified`, which seals, saves, reads back and compares;
+  - a test seam.
+  - The write ceremony is `invite-rewards-ceremony.ts` → `switchInvitePayable()`: stored-role check, TOTP, reason
+    5–300, `withLock`, an audit row BEFORE the write, then an outcome row.
+
+**Roles** (`src/lib/server/roles.ts`, pure)
+- `ADMIN_CONSOLE_ROLES` = ADMIN, COMPLIANCE, MODERATOR. `STAFF_ROLES` = those three plus FINANCE, GROWTH, AUDITOR,
+  SUPPORT. SJ-23 wants every staff role, so use `isStaffRole`.
+- ⛔ The session role is a photograph. For "the issuer must still be staff", re-read `db.user.findById(issuer)`, as the
+  desk action does.
+
+**Crypto and cookies**
+- `signSession` / `verifySession` are in `src/lib/server/crypto.ts:139-160`. `exp` is checked automatically; take the
+  nonce from `randomId()`.
+- Purpose-tagged tokens: `share-token.ts` (`p: "win-share"`).
+- Cookie write pattern: `src/app/admin/totp-verify/actions.ts:51-64` (httpOnly, sameSite lax, secure in prod, path /,
+  maxAge). Cookie constants are named `*_COOKIE*`, so `test:privacy-notice`'s census resolves them.
+
+**Privacy (same commit as the cookie)**
+- §7 wording in en/sw/zh inside `<LegalSection n="7">` (`src/app/legal/privacy/page.tsx`).
+- A version bump in `META`, plus a new `PRIVACY_EN_SHA`.
+- In `scripts/privacy-notice.test.mts`: add the name to the `COOKIES` pin and an entry to `COOKIE_WORDS`.
+- A COMPLIANCE-DECISIONS heading `## <date> · Privacy v<version> …`.
+
+**Admin action**
+- An exported `*Action` under `src/app/admin/**/…action*.ts` must have a caller in the same commit
+  (`test:orphan-actions`).
+- A gate on a domain literal must match the route's domain or be declared in `CONTROL_DOMAIN` (`test:control-gates`
+  §5). A new `CONTROL_DOMAIN` entry needs rows for all 9 roles (§2).
+- Toggle UI model: `src/app/admin/resolver-queue/two-admin-toggle.tsx` (kit `Toggle` + `ConfirmModal`,
+  `runAdminAction`, `useMayAct`).
+
+**Shell and navigation**
+- AppShell is in the root layout and is not re-run on soft navigation (`test:shell-boundary`, `test:layout-staleness`).
+- After setting or clearing the preview cookie, use `router.refresh()` (same shell) or a hard navigation (shell
+  changes).
+- `app-shell.tsx:206-230` shows how the viewer is built from the DB row.
+
+**Health and audit**
+- `/api/health` is public and has no commit field. Add a `simpleJourney: { ceiling, state }` block beside
+  `inviteRewards` (`route.ts:179-183`). `qa:live` (`scripts/pre-deploy-live-check.mjs:365-395`) shows the dual-mode
+  check.
+- `audit()` never rejects; read `.recorded`. Name the actions `journey.preview.on/off`,
+  `journey.rollout.attempt/set`.
+
+## §1 · Board
+
+Status: ⬜ not started · 🔨 in progress · ✅ done and verified live · ⛔ removed by ruling.
+
+| Session | Title | Status | Done when |
+|---|---|---|---|
+| S0 | File, rule, get ready | 🔨 | Deck, frames, rulings, reply, tracker, SHELVED.md and compliance records are filed. `test:docs` + `test:landing-ten-plan` are green. The worktree installs. |
+| S1 | The switch and preview | ⬜ | Staff see a "preview" marker on production and nobody else sees anything. The preview cookie is in Privacy §7 in the same commit. |
+| S2 | Short titles + competition | ⬜ | Every open market renders within 2 lines in sw/en/zh (`test:short-title-fit`). The backfill is approved in /admin. |
+| S3 | The engine (no UI) | ⬜ | Golden fixtures pass: Dodoma ≈2.8×/≈1.4×, 1,000 → TZS 2,700 ≈2.7×, 5,000 → TZS 12,360 ≈2.5×; Yanga ≈2.9×/≈1.4×. Client/server parity is proven. |
+| S3b | Measures baseline | ⬜ | Old-journey analogue counts appear daily, and the 14-day baseline clock is running. |
+| S4 | Claude Design pass | ⬜ | Frames for every new composition and undrawn state are filed and scored by the panel. Ali has reviewed the 5 re-drawn frames. |
+| S5 | ~~Colour foundation~~ | ⛔ | Removed by R5 (50pick's look stays unchanged): no palette, font or brand work. |
+| S6 | Shell (flagged) | ⬜ | Every route keeps an entrance (route census). The header fits at 320/360/390/1024/1150/1279 × sw/en/zh × guest/signed-in. |
+| S7 | Home and cards (flagged) | ⬜ | Staff see the deck's home on production. `test:journey-above-fold` is green. |
+| S8 | Bet sheet + low balance (flagged) | ⬜ | `test:bet-sheet`, V20 and the refusal matrix are green. A staff real bet works on production. |
+| S9 | Deposit, email code, waiting and return (flagged) | ⬜ | `test:deposit-return`, `test:deposit-status-read` (exactly-once while racing the webhook) and `test:email-code` are green. The card `order_id` fix is live. |
+| S10 | Visitor path | ⬜ | guest → sheet → register → deposit → back works. `test:post-register-landing` passes in both flag states. |
+| S11 | How to Play complete + copy ready for the flip | ⬜ | Auto-open rules are proven. FAQ, chat intents, Rules, Terms and tagline are ready for the flip. |
+| S12 | Consistency sweep | ⬜ | Juu/Chini uses the journey language, admin ink is fixed, short titles are used outside the site, NDIO is swept. |
+| S13 | Measures panel and reporting | ⬜ | The panel shows before vs after. The CSV/PDF export and its definitions are sent to the agency. |
+| S14 | Proof before the flip | ⬜ | `e2e:journey` is green. The identity checklist is ticked. A real TZS 1,000 journey works on production. The agency has signed off. |
+| S15 | Launch | ⬜ | The flip commit is live and re-measured as a real player. Rollback triggers are watched. |
+| S16 | Shelve (≥7 days after launch) | ⬜ | Old branches are unmounted and every SHELVED.md row is green under `test:shelved`. |
+
+## §2 · What players see before the flip
+
+Everything else ships behind `simpleJourneyFor` and changes nothing for players until S15. These are the only
+player-visible changes before the flip, and each ships early on purpose:
+
+| Change | Session | Why it ships early |
+|---|---|---|
+| Card deposit return URL carries `order_id` | S9 | A live money defect (MONEY-GATE §3.2). Today a charged card payer can land on "payment not found". |
+| The classic deposit page's phone field becomes the kit `PhoneInput` (accepts 07…, 7…, 255…, +255…) | S9 | Today `maxLength=9` cuts "0712…" to "071234567" and the server refuses it. |
+| "NDIYO" → "NDIO" in the 7 Swahili strings that still misspell it | S12 | A spelling defect; the side word is "NDIO" everywhere else. |
+| Privacy notice: the staff preview cookie, and later the funnel totals | S1, S3b | The notice must name every cookie and stored total when it ships. |
+| Admin Approve/Reject buttons move from `btn-no` to `btn-danger` | S12 | Admin only; NO ink is for betting sides (§B2a). |
+
+## §3 · Wording table: every deck string
+
+Rules for this table:
+- **sw** is deck-verbatim and binding for these keys.
+- **en** uses the deck's own English where the slides give it.
+- **zh** is drafted: formal 您, 充值 for deposit, `break-keep`.
+- Numbers, amounts and rates are always placeholders. `{amount}` renders as a nowrap money span.
+- Side words come from `sideWord()`.
+- New keys live in a `journey` namespace until the S15 convergence.
+
+| Key | sw (binding) | en | zh (draft) |
+|---|---|---|---|
+| `journey.balanceCaption` | Salio | Balance | 余额 |
+| `journey.depositAction` | Weka pesa | Deposit | 充值 |
+| `journey.howToCardTitle` | Jinsi ya kucheza | How to play | 玩法说明 |
+| `journey.howToCardMeta` | Hatua {steps} · dakika {minutes} | {steps} steps · {minutes} min | {steps} 步 · {minutes} 分钟 |
+| `journey.headlineAsk` | Jibu swali. | Answer the question. | 回答问题。 |
+| `journey.headlineSides` | {yes} au {no}. | {yes} or {no}. | {yes}还是{no}。 |
+| `journey.cardClosesToday` | Inafungwa leo | Closes today | 今天截止 |
+| `journey.cardDaysLeft` | Siku {n} | {n} days (n = 1: "1 day") | {n} 天 |
+| `journey.cardWin` | Shinda ≈{mult}× dau | Win ≈{mult}× your bet | 赢 ≈{mult}× 投注 |
+| `journey.cardWinOver` | Shinda zaidi ya {cap}× dau | Win over {cap}× your bet | 赢超过 {cap}× 投注 |
+| `journey.tabQuestions` | Maswali | Questions | 问题 |
+| `journey.tabTickets` | Tiketi zangu | My tickets | 我的注单 |
+| `journey.tabAccount` | Akaunti | Account | 账户 |
+| `journey.showMore` | Onyesha zaidi | Show more | 显示更多 |
+| `journey.sheetChosen` | Umechagua {side} | You picked {side} | 您选择了{side} |
+| `journey.stakeLabel` | Dau lako | Your bet | 您的投注 |
+| `journey.estimateLead` | Ukishinda, unapata takriban | If you win, you get about | 若您赢，约可获得 |
+| `journey.estimatePill` | ≈{mult}× dau lako | ≈{mult}× your bet | ≈{mult}× 您的投注 |
+| `journey.estimateNote` | Makadirio. Kiasi halisi hutegemea bwawa soko likifungwa. Kamisheni ya {pct}% imeshatolewa. | Estimate. The final amount depends on the pool when the market closes. Our {pct}% commission on the losing side is already deducted. | 预估。最终金额取决于市场关闭时的奖池。已扣除输方 {pct}% 的佣金。 |
+| `journey.balanceRow` | Salio lako | Your balance | 您的余额 |
+| `journey.placeCta` | Weka dau · {amount} | Place bet · {amount} | 投注 · {amount} |
+| `journey.placeCtaBare` | Weka dau | Place bet | 投注 |
+| `journey.estimateCompact` | Ukishinda ≈ {amount} | If you win ≈ {amount} | 若赢 ≈ {amount} |
+| `journey.lowTitle` | Salio halitoshi | Not enough balance | 余额不足 |
+| `journey.lowBody` | Una {have}. Unahitaji {short} zaidi. | You have {have}. You need {short} more. | 您有 {have}，还需 {short}。 |
+| `journey.lowChoose` | Chagua unachotaka kufanya | Choose what to do | 请选择操作 |
+| `journey.lowDeposit` | Weka pesa {amount} | Deposit {amount} | 充值 {amount} |
+| `journey.lowBetInstead` | Weka dau la {amount} badala yake | Bet {amount} instead | 改为投注 {amount} |
+| `journey.pendingBet` | Dau lako la {amount} linakusubiri | Your {amount} bet is waiting | 您的 {amount} 投注正在等待 |
+| `journey.amountLabel` | Kiasi | Amount | 金额 |
+| `journey.payWith` | Lipa kwa | Pay with | 支付方式 |
+| `journey.phoneLabel` | Namba ya simu | Phone number | 手机号码 |
+| `journey.pinNote` | Utapokea ombi la PIN kwenye simu. Ukimaliza, tunakurudisha kwenye dau lako ulithibitishe. | You'll get a PIN prompt on your phone. When you're done, we bring you back to your bet to confirm it. | 您的手机将收到 PIN 确认请求。完成后，我们会带您回到投注页面进行确认。 |
+| `journey.payCta` | Lipa {amount} | Pay {amount} | 支付 {amount} |
+| `journey.payByCard` | Lipa kwa kadi | Pay by card | 用银行卡支付 |
+| `journey.howToTitle` | Jinsi ya kucheza | How to play | 玩法说明 |
+| `journey.howStep1Title` | Chagua swali | Choose a question | 选择问题 |
+| `journey.howStep1Body` | Kila swali ni tukio halisi lenye jibu moja: {yes} au {no}. | Every question is a real event with one answer: {yes} or {no}. | 每个问题都是一个真实事件，只有一个答案：{yes}或{no}。 |
+| `journey.howStep2Title` | Bonyeza {yes} au {no} | Tap {yes} or {no} | 点击{yes}或{no} |
+| `journey.howStep2Body` | Utaona papo hapo unachoweza kushinda, mfano ≈{mult}× dau lako. | See immediately what you can win, e.g. ≈{mult}× your bet. | 立即看到您可赢取的金额，例如 ≈{mult}× 您的投注。 |
+| `journey.howStep3Title` | Weka dau, subiri matokeo | Place your bet, wait for the result | 投注，等待结果 |
+| `journey.howStep3Body` | Washindi wanagawana bwawa. Ushindi unaingia kwenye salio, unatoa kwa pesa ya simu. | Winners share the pool; winnings go to your balance and out via mobile money. | 赢家平分奖池。奖金进入您的余额，可通过手机钱包提现。 |
+| `journey.howExampleLabel` | Mfano | Example | 示例 |
+| `journey.howExampleBody` | Dau {stake} kwenye {side} inayoonyesha ≈{mult}× → ukishinda unapata takriban {payout}. Ukikosea, unapoteza dau lako. | A {stake} bet on {side} showing ≈{mult}× → if you win you get about {payout}. If you're wrong, you lose your bet. | 在显示 ≈{mult}× 的{side}上投注 {stake} → 若赢约可获得 {payout}。若猜错，您将失去投注金额。 |
+| `journey.howCta` | Nimeelewa, anza | Got it, let's start | 明白了，开始 |
+| `journey.howHelplineLabel` | Msaada | Helpline | 求助热线 |
+
+Existing keys reused, unchanged:
+- `rg.setLimits` "Weka mipaka"
+- `nav.updown` "Juu/Chini"
+- `market.catAll` / `catSports` / `catWeather` / `catMacro` "Zote / Michezo / Hali ya hewa / Uchumi"
+- `common.yes` / `common.no` "NDIO / HAPANA", read through `sideWord()`
+- `beFirst`, `oneSideOnly`
+
+## §4 · The audit behind this plan
+
+- **Scope:** on 2026-09-29, 15 read-only checkers audited the plan against the deck, the code, money, i18n and repo
+  law. They produced 370 findings.
+- **Skeptic checks:** 190 were re-checked by a skeptic: 184 confirmed, 5 wrong, 1 already covered.
+- **The rest:** the other 180 were reviewed by hand before being applied. A weekly usage limit stopped their skeptics.
+- **Folded in:** every applied finding is part of §5 onward.
+- **Raw record:** workflow run `wf_f73d94b2-a47` in the session's workflow journal.
+
+---
+
+# §5 onward · The plan (approved by Ali, 2026-09-29)
+
+
+## Context
+
+On 2026-09-28 the agency that will sponsor and market 50pick sent `Downloads\50pick_Simplified_Journey.pptx`
+(9 slides, author "fred muragwa").
+- **What it asks for:** a simpler player journey. Short YES/NO questions, winnings shown on the buttons, a bet sheet
+  that opens even before sign-up, a deposit offered at the moment of shortfall and then straight back to the bet, and
+  How to Play at the top.
+- **What it contains:** 5 phone frames (Home, Bet sheet, Balance too low, Deposit, How to Play), a Today→After table,
+  4 questions for us, and 5 success measures.
+
+**Ali's rulings (binding):**
+1. **Functionality must be identical to the deck:** the flow, element order, states and copy. "No matter what we need
+   to cut off." The Gaming Board licence covers it.
+2. **Keep the email check before a first deposit,** done as an **inline 6-digit email code** on the deposit screen.
+3. **Mixx by Yas is the 4th wallet row.** Card stays available through a "Lipa kwa kadi" link.
+4. **Build hidden behind a staff preview and launch at once.**
+5. ⭐ **The look is 50pick's own design system, unchanged:**
+   - Fonts: Sora, Inter, and JetBrains Mono for money figures.
+   - Colours: the `globals.css` tokens (YES green, NO red, royal primary, gold per DESIGN_AUTHORITY §M3).
+   - Components: the kit components and the brand mark.
+
+   The deck's colours, typeface and two-tone wordmark are **not** adopted. The deck's frames are templates for *what*
+   happens; 50pick decides *how it looks*.
+6. ⭐ **Remove from usage, never delete.** Everything the journey cuts is unmounted and **shelved in place**:
+   - It stays in the code at the same path, still compiles, and its unit tests stay wired.
+   - It is recorded in `docs/SHELVED.md` with how to re-mount it.
+   - Anything the journey needs that we don't have is added in full.
+
+**Outcome:**
+- 50pick.tz **behaves** exactly like the deck and **looks** like 50pick.
+- Every state the deck didn't draw is designed to the same standard.
+- The money path stays exactly-once.
+- The agency's five measures are live, with a before/after baseline.
+
+**This version folds in a read-only audit:**
+- 370 findings from 15 checkers; 190 were re-checked by a skeptic. Of those, 184 were confirmed, 5 were wrong, and 1
+  was already in the plan.
+- The 180 findings the skeptics could not check (the account hit its weekly limit) were reviewed by me before being
+  applied.
+- Raw record: the workflow journal `wf_f73d94b2-a47`. S0 files it into the repo.
+
+---
+
+## 0. Decisions taken under Ali's delegation (recorded as SJ rulings in S0)
+
+**Money display**
+- **SJ-1 Card figure.**
+  - The card shows the zero-stake pool multiple, 1 + (1 − loser-share)·opposite/own, rounded half-up to tenths with
+    integer arithmetic. This is exactly the deck: the card reads ≈2.8× while the sheet at TZS 1,000 reads ≈2.7×,
+    because the player's own stake dilutes their side.
+  - Empty own side → state words, never a figure: "Kuwa wa kwanza" (the existing `beFirst` key) or "Upande mmoja tu"
+    (the existing `oneSideOnly` key).
+  - Above the cap, it shows "Shinda zaidi ya {cap}× dau", where `{cap}` comes from `ESTIMATE_DISPLAY_CAP = 100` in
+    `estimate.ts`. The cap is never typed into the dictionary (`test:rate-copy`).
+- **SJ-2 Sheet figure.**
+  - The TZS figure is `payoutFor()` at the entered stake, which equals the server's stored `potentialPayout`.
+  - The "≈N.N×" is derived from that whole-TZS figure, half-up to tenths.
+  - This is a scoped exception to the platform's floor rule; Up & Down keeps its floor.
+- **SJ-3 Fee wording.** `{pct}` = the market's frozen loser-share total (`platformFeeRate + operatorFeeRate`, via
+  `resolveFeeModel`/`loserSharePct`), never `commissionRate`.
+  - sw is deck-verbatim: "Makadirio. Kiasi halisi hutegemea bwawa soko likifungwa. Kamisheni ya {pct}% imeshatolewa."
+  - en: "…Our {pct}% commission on the losing side is already deducted."
+  - Legacy capped-commission markets: no figure, and the `describeFeeModel` caption instead.
+- **SJ-4 Where estimates appear.**
+  - "≈" is the estimate marker on every figure.
+  - The Makadirio sentence appears only where the deck draws it: the sheet's estimate box and the How-to MFANO box.
+    It is not on cards and not on the low-balance compact row.
+  - DESIGN_AUTHORITY §C3 (licence law) is amended **only** for the cards and the pre-bet sheet.
+  - The post-bet receipt and Tiketi zangu keep §C3: no per-position payout before resolution.
+- **SJ-5** The fixed 1.5× "possible winnings" is retired on loser-share polls. `/admin/config` copy changes at the
+  flip.
+
+**Home and cards**
+- **SJ-6 Home = the question list.**
+  - It shows `LIVE && !selectionClosed` markets only.
+  - Order: soonest-closing first, ties by pool (the deck's order). This supersedes the 2026-09-12 pool-first ruling
+    and the 2026-09-06 "CLOSED rows stay" ruling **for `/` only**.
+  - Selection-closed markets live on `/live` and in Tiketi zangu.
+  - `PLAYER_PER_PAGE` (12) cards per page, then an "Onyesha zaidi" link to `?page=n+1`.
+  - No sort control and no search box on `/`. `?q` still filters; search lives in Akaunti.
+- **SJ-7 Category chips.**
+  - Order: "Zote" (no `?cat`), then only categories that have ≥1 open market. The deck's order Michezo · Hali ya hewa ·
+    Uchumi comes first, then the rest.
+  - Parameter `?cat=`, the same name `/results` and `/watchlist` use.
+- **SJ-8 Card meta row.**
+  - Left: `category · competition`, where competition is a new optional field such as "Ligi Kuu" or "EPL".
+  - Right: the close label. Same EAT day → "Inafungwa leo". Otherwise "Siku {n}", counting EAT calendar days.
+    Selection closed → the existing waiting label.
+  - The market page and Tiketi zangu keep absolute dates beside every timer (Gaming Board item #6, `test:timer-date`).
+- **SJ-9 Card taps.** The card body (stretched `.mcardp-open` link) goes to `/markets/[id]`. The two buttons open the
+  bet sheet **in place** and never navigate.
+
+**Bet sheet and deposit**
+- **SJ-10 Bet sheet.**
+  - Side locked ("Umechagua NDIO"), no side switch.
+  - Chips 1,000 / 2,000 / 5,000 / 10,000 in full figures (never "1K"). A tap **sets** the stake. Chips come from
+    `quickStakes(min, max)` and are filtered to the market's bounds, never to the balance.
+  - The CTA "Weka dau · TZS X" **is** the confirm step. BetConfirmModal and its 10-second quote hold are shelved.
+  - Enter never submits.
+  - Success: an in-sheet receipt (side, stake, ticket) with **no navigation**.
+- **SJ-11 "Weka dau la TZS {balance} badala yake"** places that bet directly. The button names the amount and the chip
+  names the side.
+- **SJ-12 Deposit-button ink.**
+  - The low-balance "Weka pesa TZS X" is a deposit *entry* in `gilt-metal`, the same family as the header pill.
+  - "Lipa TZS X" is a deposit *commit* in `btn-primary` (brand), per §M3a D1.
+  - One-tap Lipa (no DepositConfirm) on the journey screen only. This supersedes audit M9 there; the classic card form
+    keeps its confirm.
+- **SJ-13 Deposit number.**
+  - Journey mode seeds the phone number from the most recent **CONFIRMED** mobile-money deposit (reduced from its
+    stored E.164), else the registered number. "Tumia namba nyingine" stays.
+  - This amends Ali's E-210/E-215 (2026-08-25). `moneyFormMsisdn` gains an optional `lastDepositMsisdn`, and
+    `test:msisdn-prefill` is extended.
+- **SJ-13b Deposit wallet.** Preselect the last-used wallet. With no history, preselect nothing, and "Lipa" stays
+  disabled until a wallet is chosen. The phone prefix never picks the wallet (`tz-msisdn` rule).
+- **SJ-14 Phone field.**
+  - The deposit field becomes the kit `PhoneInput`, which accepts 07…, 7…, 255… and +255…, typed or pasted, in 50pick
+    look.
+  - It replaces today's `maxLength=9` bare input, which cuts off "0712…". This fixes the classic page too.
+
+**Header, tabs and Akaunti**
+- **SJ-15 Phone header.**
+  - `FiftyMark` (the lockup cannot fit at 360; measured), 18+ badge, then a **new captioned balance** ("Salio" over
+    "TZS 2,000", TZS shown at every width, no eye or caret in the capsule), then the gilt "+ Weka pesa" pill.
+  - Tapping the capsule opens WalletSheet, which holds the hide-balance eye and "Toa pesa". That makes Withdraw one tap
+    from the capsule (V19).
+  - Desktop ≥1024 keeps LanguageMenu, bell and avatar to the right of the 4 destinations.
+- **SJ-16 Four tabs.**
+  - Maswali (`/`) · Juu/Chini (`/updown`) · Tiketi zangu (`/positions`) · Akaunti (`/account`, new, public).
+  - Tabs keep 50pick's glyph + label and `--pill-active`. The Juu/Chini accent dot is shelved.
+  - One `activeTabFor(pathname)` function serves both the rail and the desktop nav.
+  - Guests who tap "Tiketi zangu" get a small sheet: "Ingia uone tiketi zako" with Jisajili / Ingia.
+- **SJ-17 Akaunti hub (`/account`, reading tier).**
+  - Signed-out view: sign in / sign up, language, results, live, leaderboard, fairness, help, limits, legal.
+  - Signed-in view:
+    - identity header (name + masked phone);
+    - Pochi, Toa pesa, Matokeo, Mubashara, Jedwali;
+    - Alika (only if `inviteIsLiveFor`) and Pendekeza (follows `proposalsState`);
+    - Wasifu, Kitambulisho (`/profile/kyc`), Weka mipaka, Uthibitisho;
+    - Msaada (`/help`; chat only when `isChatbotEnabled`);
+    - Arifa, with the unread badge (also on the tab);
+    - Lugha, card density, Needle drawer, Tafuta (search);
+    - Agent (when `agentDoorVisible`), and the staff console as a plain `<a href="/admin">` for staff only;
+    - Toka, through the existing ConfirmDialog → POST `/auth/logout`.
+
+**Chrome, words and records**
+- **SJ-18 Deposit chrome.** The journey deposit screen, its code step and `/wallet/deposit/waiting` use focused chrome:
+  no header, no tabs, no footer, no ticker. Instead: a round "‹", the title "Weka pesa", and a minimal 18+ and
+  helpline line.
+- **SJ-19 Words.**
+  - "Weka pesa" is the deposit **action** everywhere; the noun "Amana" stays on receipts, limits and legal pages.
+  - "Tiketi" replaces "Nafasi" on player surfaces; support "tiketi" becomes "Ombi la msaada".
+  - "NDIO" is the only spelling (7 "NDIYO" strings get fixed).
+  - "Maswali" replaces "Masoko" as the destination name.
+  - The Maswali Millionea name clash is accepted.
+- **SJ-20 Tagline.** The retired slogan "Tabiri matukio. Si bahati." is replaced by the deck's tagline:
+  - en "Pick. See what you win. Play."
+  - sw draft "Chagua. Ona unachoshinda. Cheza."
+  - zh draft
+  - It goes on all ~12 surfaces at the flip.
+- **SJ-21 Copy source.**
+  - sw: deck-verbatim, and binding for SJ keys.
+  - en: the deck's own English where the slides give it.
+  - zh and all undrawn states: drafted (R8, formal 您, 充值, break-keep).
+  - Exceptions:
+    - How-to steps render "1/2/3", as the deck.
+    - The How-to example figures are computed from a fixed illustrative pool that must render TZS 1,000 → ≈2.7× →
+      TZS 2,700 (`HOW_TO_EXAMPLE`).
+- **SJ-22 What is recorded as a deviation from the frames** (required by rules):
+  - the hedge / "Tayari una {side} hapa" holder line;
+  - the bonus-wager warning;
+  - the thin-upside notice;
+  - the capped-market caption;
+  - PayoutStatusNotice on deposit;
+  - a "Weka mipaka" link after the sheet CTA, **only if** `test:rg-doors` / RG policy requires it (checked in S8).
+- **SJ-23 Preview access.**
+  - All staff roles, SUPPORT included, see the journey.
+  - The agency gets a signed, 7-day, revocable visitor-preview link (no admin access).
+- **SJ-24 The "first licensed" claim** leaves `/` with the hero.
+  - V22's negative half stays: no "first" claim anywhere on journey surfaces or in metadata.
+  - The licence line stays in the footer; 18+ goes in the header; the helpline is in the How-to sheet and the footer.
+
+---
+
+## 1. Evaluation: deck vs 50pick today
+
+| Deck element | Today | Verdict |
+|---|---|---|
+| Header: brand, 18+, "Salio TZS 2,000", "+ Weka pesa" on phones | Mark only on phones. 18+ only in hero/footer. Balance capsule with no caption (TZS hidden on phones, ▾, eye). Deposit pill ≥1024 only, label "Amana" | Change content and placement, in 50pick look (SJ-15) |
+| "▶ Jinsi ya kucheza · Hatua 3 · dakika 1 ›" card on top | None. How-it-works is section 4 of 7 | **New** composition |
+| "Jibu swali. NDIO au HAPANA." | Hero "NDIO au HAPANA?" | Copy change; two lines exactly at 360 |
+| Chips Zote / Michezo / Hali ya hewa / Uchumi | Labels exist (`catAll` …). Home uses topic tiles | Reuse `FilterPill` (SJ-7) |
+| Card: meta row, short question, 2 buttons "Shinda ≈2.8× dau" | "NDIO @ 33%" (`market-card.tsx:633`). No short title, no competition field | New fields + estimate (SJ-1, SJ-8) |
+| Bottom tabs Maswali / Juu/Chini / Tiketi zangu / Akaunti | 5 slots with centre deposit coin and More | Change (SJ-16/17) |
+| Home without ticker, stats, gauge, board, tiles, band, trust | All live on `/` | Shelve (ruling 6) |
+| Bet sheet before sign-up, quick chips, live estimate | Inline ConvictionDial + BetConfirmModal. Guests go to sign-in. Fixed 1.5× estimate | **New** (reuse `Modal sheet`, `payoutFor`, `quickStakes`) |
+| Low balance → shortfall deposit / bet what you have | Dial disables its button; no path | **New** |
+| Deposit: bet strip, shortfall prefilled, last-used wallet/number, back to bet | `/wallet/deposit` (tiles, `?amount=`), always redirects to `/wallet`, no status read | Change + **new** waiting/return |
+| How to Play sheet with limits + helpline | `FirstVisitPrimer` (auto once, not reopenable). Helpline 0800 11 0011 is our real number | **New** component; old primer shelved |
+
+**Answers to the agency (sent in S0 as `AGENCY-REPLY.md`):**
+1. **Preview before sign-up:** yes.
+2. **Can the wallets return users to the bet?** Yes, with no operator work. The PIN prompt comes by USSD push while
+   the player stays on our page, and our app waits for the confirmed payment and brings them back.
+3. **Short titles:** yes. A short-title field per market in sw/en/zh, plus an optional competition label. The full
+   wording and the source stay on the market page.
+4. **Regulator review:** Ali's ruling is that the licence covers it; recorded.
+
+The reply also includes:
+- **Campaign-link spec:** `https://50pick.tz/markets/<id>?side=YES&utm_source=…&utm_campaign=…` opens the sheet on
+  that side at the minimum stake. A link never carries a stake.
+- A note that share images carry no multiplier.
+- The questions below.
+
+**Questions to the agency (non-blocking):**
+- Source files (Figma), if they exist.
+- What they expect on desktop.
+- Whether their campaign needs en/zh.
+- Any "presented by" placement.
+- A request that their creative be built from our real screens, which we send at S14.
+
+---
+
+## 2. Build map: deck element → 50pick kit ("NEW" = a kit addition designed in S4)
+
+| Deck element | Built with |
+|---|---|
+| Brand | `FiftyMark` 26px on phones (`top-app-bar.tsx:204`), lockup ≥1280. Never re-tinted |
+| 18+ | `.kp-rg__18` (neutral ink) |
+| Salio | **NEW** `WalletBalancePill variant="captioned"` ("Salio"/"Balance"/"余额" over "TZS 2,000"; mono gold figure, sizer grid and delta flash kept; no eye or caret; tap → WalletSheet). Hide-balance preference honoured via `<Cash>` |
+| + Weka pesa | existing `btn gilt-metal btn-pill`, now also on phones. States: guest → Ingia/Jisajili (no pill); held wallet → no pill; `/wallet/deposit*` → focused chrome |
+| How-to card | **NEW** full-width card on the 50pick card surface; `IconPlate` play glyph in brand/neutral ink (never gilt); Sora title, Inter meta |
+| Headline | `.kp-hero__headline` family, with a measured rung that keeps exactly 2 lines at 360 in sw/en/zh. Side words in neutral headline ink |
+| Chips | `FilterPill` / `.kp-fchip` with its own selected style |
+| Card | `MarketCard` **journey variant**: meta row + short title (≤2 lines) + `.btn-yes/.btn-no` with the side word and a "Shinda ≈{mult}× dau" line (figure in JetBrains Mono). **Settled variant** for `/results`/`/watchlist` (outcome row, same height). Own height tokens `--jcard-*`; density does not apply |
+| Tabs | `BottomNav` visual language, 4 equal tabs, `--rail-h` variable replacing every literal 88px, `data-needle-keepout` |
+| Sheets | `Modal sheet sheetUntil="lg"` (`.kp-wsheet`). **NEW** `dragToDismiss` on Modal. Desktop = centred dialog, maxWidth ≈440 (no `anchorRef`) |
+| "Umechagua NDIO" | `Chip variant="yes"` / `"no"`, side word from `sideWord()` |
+| Stake box | `Input size="lg"` with TZS prefix + **NEW** `grouped` display (thousands separators, stable caret, numeric keypad, 9-digit cap) + **NEW** `attention` state (neutral-strong border, `aria-describedby` → the warning; never `error`, gold or NO ink) |
+| Quick chips | `quickStakes` values; the Up & Down chip layout; full-figure labels; 44px floor; no "+ Maalum" |
+| Estimate box | Neutral inset panel (`--bg-inset` + `--border`). The TZS figure is the box's largest number (deck hierarchy), in `.amount` mono `--text` (not gold, not success, not side ink). "≈{mult}× dau lako" as a `Chip`. Makadirio line below |
+| Weka dau CTA | `btn-gold` (a bet commit keeps gold, §M3a) |
+| Low-balance warning | `Callout tone="neutral"` (UD-1 precedent) with the `alertCircle` glyph |
+| Low-balance eyebrow | microlabel, uppercase via CSS for Latin only |
+| Low-balance deposit | **NEW** 2-line action row (glyph + "Weka pesa TZS X" + wallet sub-line from `depositRails()` + "›") in `gilt-metal` (SJ-12) |
+| Bet instead | `btn-outline` |
+| Deposit wallets | `ProviderRadioGrid` **extended**: `layout="rows"` (radio in royal `--brand-500`, 32px logo, name, royal ring) + `noDefault`; kill-switch-disabled rows |
+| Pending-bet strip | card surface + side `Chip` + sentence, stake in `.amount` |
+| Lipa | `btn btn-primary btn-lg w-full` (brand commit, §M3a D1), live label "Lipa {amount}" |
+| How-to steps | **NEW** `.kp-howto__step`: round badge with "1/2/3" in mono (S4 rules the ink within `test:gold-is-money`; default is the sanctioned gilt step-numeral use; fallback neutral). `.kp-step__n` stays with the shelved band |
+| MFANO | `Callout tone="info"` with a microlabel title, body via `fillNodes` |
+| Nimeelewa, anza | `btn-primary` |
+| Footer links | the footer RG idiom (`public-footer.tsx:222`, `app-shell.tsx:584`). ⛔ `.kp-rg` was deleted 2026-09-26; do not revive it |
+
+`DESIGN_AUTHORITY.md` stays the law. `test:gold-is-money`, `test:betting-ink`, `test:design-frozen` and `test:contrast`
+stay as they are. New kit additions are recorded in DESIGN_AUTHORITY in S0, effective at the flip.
+
+---
+
+## 3. Behaviour specifications
+
+### 3.1 Engine (pure, isomorphic; `estimate.ts` is import-free and passes `test:client-graph-safe`)
+
+**`src/lib/markets/estimate.ts`**
+- `estimateFor({yesPool, noPool, rates, side, stake, bettable, bounds})` returns:
+  - `{state, payout, multTenths, multText, overCap, feePct, lean, emptySide}`
+- States: `priced | fillsEmptySide | oneSidedRefund | emptyPool | hidden (capped / show=false) | closed |
+  invalidStake`.
+- `cardEstimate` uses stake 0 (SJ-1).
+- UPDOWN markets → `null`.
+- `HOW_TO_EXAMPLE` fixture.
+- `pickEstimateRates`; `loserSharePct` added to `payout.ts`.
+
+**Golden fixtures (`test:journey-estimate`, plus a red twin)**
+
+| Market | Pools | Expected |
+|---|---|---|
+| Dodoma | YES 24,825 / NO 50,462 (solved exactly in S3) | card ≈2.8× / ≈1.4×; sheet 1,000 → TZS 2,700 ≈2.7×; 5,000 → TZS 12,360 ≈2.5× |
+| Yanga | YES 20,000 / NO 43,700 | card ≈2.9× / ≈1.4× |
+
+The test also covers:
+- client/server parity with `projectedPayout`;
+- the `{pct}` source;
+- the capped model;
+- UPDOWN → null.
+
+**`src/lib/markets/card-close-label.ts`**
+- Close instant = `selectionClosedAt ?? resolutionAt`.
+- Day comparison in EAT via `eatDayKey`.
+- New keys `cardClosesToday` and `cardDaysLeft` in en/sw/zh.
+- `test:card-close-label` + red twin covers:
+  - 23:59 → 00:01 crossing;
+  - tomorrow 01:00 with 3h left is **not** "leo";
+  - exactly 11 days;
+  - selection closed.
+
+**`src/lib/journey/shortfall.ts`: `shortfallPlan`**
+
+The checks run in this exact order, mirroring `placeBet` and then `deposit()`:
+1. maintenance
+2. self-excluded / cooling-off (with until-date)
+3. session limit
+4. account blocked
+5. market not LIVE / selection closed
+6. stake bounds (`stakeBoundsForMarket`)
+7. wallet not ACTIVE (paused-deposit notice + /help, and "bet instead" if balance ≥ min)
+8. loss-limit headroom
+9. **enough**
+10. deposit already pending → "Malipo yako ya TZS X yanasubiri" with a link to the waiting page, and no second
+    deposit
+11. deposit amount D = max(shortfall, `DEPOSIT_MIN_TZS`)
+12. email unconfirmed → still an ordinary deposit step (the code is the first step on the deposit screen)
+13. deposit-limit headroom
+14. source of funds
+15. deposit
+
+Other rules:
+- Unknown balance → no plan; show "Salio lako —" and let the server decide.
+- **Spendable** = `balance + (bonusBalance ?? 0)`, the same figure `buyPosition` checks.
+- `options[]` holds 0, 1 or 2 entries.
+- "Bet instead" requires balance ≥ `minStake`, read from config.
+- **Deposit chips:**
+  - D first and selected, then the next two amounts from the existing `QUICK_AMOUNTS` ladder strictly above D.
+  - All chips clamped to `depositCeilingFor` (DEPOSIT_MAX, RG day/week/month headroom counting PROCESSING deposits,
+    SoF headroom).
+  - Examples: 3,000 → [3,000, 5,000, 10,000]; 5,000 → [5,000, 10,000, 25,000]; 300 → [500, 1,000, 5,000] with
+    `belowDepositMin`.
+  - No per-rail ceiling (E-231).
+- `depositCeilingFor` and `lossHeadroomFor` are proven equal to the real gates (`test:deposit-ceiling`).
+
+**`src/lib/journey/pending-bet.ts` + shared `src/lib/safe-next.ts`** (the `sanitizeNext` logic moved there from
+`login/actions.ts:14`)
+- Grammar: `?bet=mkt_x.YES.5000`. Round form: `round_x.UP.5000`.
+- Legacy `?side=` still works: side locked, stake = minimum.
+- The URL is rebuilt from path + bet only.
+- A stake is prefilled from the URL only when a matching sessionStorage marker (<24h) exists, so a shared link can
+  never set someone's stake.
+- The marker also carries `ref`, `invite` and `utm_*`.
+
+**`GET /api/markets/[id]/sheet`**
+- GET only, `force-dynamic`, `nodejs` runtime, rate-limited.
+- The public half is cacheable (`s-maxage ≤ 5`): state, pools, rates, min/max, closesAt, serverNow, estimates.
+- The signed-in half is `private, no-store`: spendable, heldSides, bonus warning.
+- Returns 404 for UPDOWN or not-LIVE markets.
+
+### 3.2 Home `/` and cards (flagged)
+
+**First commit of S7:** move today's `src/app/page.tsx` body verbatim into the shelved
+`src/components/home/legacy-landing.tsx` (`<LegacyLanding/>`). Gates that regex `app/page.tsx` are re-pointed there.
+
+**Journey order at 360 (deck):**
+1. header
+2. transient system bars only: announcement, session-ended, away summary (no email-verify bar on journey)
+3. How-to card
+4. headline
+5. chips
+6. list
+7. "Onyesha zaidi"
+8. footer
+
+**Page setup**
+- `PageContainer tier="board"` (1280). Grid: 1 column <640, 2 at 640, 3 at ≥1024.
+- `RefreshPoller 30s` plus the SSE `market-odds` patch for visible cards.
+- Its own journey skeleton, a Suspense boundary inside `page.tsx`. The root `loading.tsx` stays generic.
+- The ticker leaves `/` and `/markets`: `tickerShowsOn(path, journeyOn)` at first, then `TICKER_ROUTES = ["/live",
+  "/results"]` at S16.
+- The Needle, channels panel and chat bubble are off journey surfaces (one `isJourneySurface()` list in
+  `src/lib/surfaces.ts`).
+
+**Card buttons**
+- `go()` is rewritten (`market-card.tsx:430`): it opens `BetSheetHost` in place, does **not** dispatch
+  `50pick:navigating`, and the press-pop animation replays on every tap.
+- Opening the sheet pushes `?bet=<id>.<side>` via `history.pushState`, so Back closes it and a reload reopens it.
+
+**Other routes**
+- `/markets` (list only): a **307** via `redirect()` while flagged, and a 308 only at S16.
+  - `topic` becomes `cat`.
+  - `q`, `utm_*`, `gclid`, `ref`, `invite`, `side` and `bet` are kept.
+  - `status=watch` goes to `/watchlist`.
+  - `status/sort/dir/odds/pool/page` are dropped and recorded in SHELVED.md.
+  - Covered by `test:markets-redirect`.
+- **The journey card also appears on** `/watchlist`, `/live` (replacing `LivePulseGrid` under the flag), and
+  similar-markets. `/results` gets the settled variant.
+  - The card-site census is updated in the same commit: `test:featured-card` 3.0 count, `test:one-sided` 2.4 + a new
+    §8.9, and `test:product-line` re-pointed at `/`.
+- **The market page** keeps:
+  - the full wording, source, pool and chart;
+  - both countdowns, each with its absolute EAT date;
+  - the holder's ticket block with SellButton and the 5-minute free exit (`page.tsx:843-918`);
+  - the Up & Down `?side` translation (`:149-153`), verbatim.
+
+  The two big buttons open the same sheet. `?side=` opens the sheet preset.
+
+### 3.3 Bet sheet (signed-in; flagged)
+
+**Opening**
+- Renders on the tap frame from the card's props, with no network wait (≤150 ms after tap at 4× CPU throttle, 360px).
+  The chunk is preloaded at idle.
+- `initialFocus` = the heading (never the input).
+- The heading is the short title (falls back to the full title) and is the dialog's `labelledBy`.
+
+**Order (deck frame 2)**
+1. chip "Umechagua NDIO" + X
+2. question
+3. "Dau lako" + stake
+4. 4 chips
+5. estimate box (the TZS figure largest, "≈{mult}× dau lako", Makadirio line)
+6. "Salio lako TZS X" (live via `useLiveBalance`, masked by `<Cash>`)
+7. CTA "Weka dau · TZS X"
+
+**Stake and CTA**
+- CTA is disabled and reads "Weka dau" (no amount) when the stake is empty or out of bounds.
+- The bounds line uses the F3 warning severity (never NO ink) and names the bound.
+
+**Live refresh**
+- Refetches `/sheet` on open, every 10s while visible, on SSE for this market, on focus, and on `wallet:balance`.
+- An aria-live "Makadirio yamesasishwa" line appears; it never blocks the tap.
+- Each keystroke recomputes locally in the same frame.
+
+**Placing**
+- At the tap the quote is frozen: `{marketId, side, stake}` exactly as printed on the tapped button.
+- A new `crypto.randomUUID()` is minted per intent. The same key is reused only for a Retry after
+  `system_busy`/`system_error` or a double tap while pending.
+- While placing: the field, chips and CTA are locked, `aria-busy` is set, and scrim / Esc / X / swipe / Back are
+  ignored.
+- An auth-loss redirect (`r == null`) is treated as navigation, not failure.
+
+**Refusals, all shown inside the sheet**
+- Mapped by `REASONS[].channel` (the `udBetErrorCopy` pattern):
+  - modal-channel (loss limit, self-exclusion, cooling-off, blocked, frozen) → a blocking in-sheet state the player
+    must acknowledge;
+  - other reasons → an inline line.
+- `balance_insufficient` never shows its sentence; it re-enters the low-balance plan with the server's
+  `{balance, needed}`.
+- The sheet flips to closed at `selectionClosesAt` on its own `serverNow`-offset tick (the dial's 200 ms `closedNow`).
+
+**Carried over from the dial**
+- the `50pick-notify-markets` localStorage write
+- `50pick:refresh` + `refresh-notifications` after success
+- the optimistic deduction until server truth (`insufficientFor`)
+- the holder / hedge lines and bonus warning, when applicable (SJ-22)
+- the thin-upside notice when `leanFor` says thin
+- the capped caption
+
+**Mechanics**
+- Keyboard-safe: the sheet lifts by `innerHeight − visualViewport.height`; `enterKeyHint="done"`.
+- The sheet is `role=dialog aria-modal` only while open, so the reality check defers correctly.
+- Pull-to-refresh ignores gestures that start inside the sheet.
+- Consent, install and channels invitations stand down while any sheet is open (`html[data-bet-sheet]`).
+
+**Accessibility**
+- One polite live region, written on entering the low-balance state and on estimate updates, not on every keystroke.
+- Reduced motion is respected; 44px targets.
+
+**Success:** the in-sheet receipt (side, stake, ticket id; no payout figure, per SJ-4). "Endelea kucheza" closes in
+place (scroll and `?cat` kept); "Tiketi zangu" opens tickets; auto-closes after 5s.
+
+**Deploy skew:** the sheet mirrors its state into `?bet=`. A "Failed to find Server Action" error triggers a reload
+that reopens the sheet. `test:deploy-skew` covers the sheet and the waiting page.
+
+### 3.4 Low balance (deck frame 3)
+
+**When it shows**
+- Derived on every render from stake vs spendable. Chip taps are instant; typing settles after about 250 ms.
+- Editing the stake back down restores the normal frame live; a landed deposit does the same.
+
+**Order**
+1. chip + X
+2. question
+3. "Dau lako" + stake in the `attention` state
+4. compact row "Ukishinda ≈ TZS {x}" … "≈{m}×" (new keys)
+5. warning callout "Salio halitoshi / Una TZS {have}. Unahitaji TZS {short} zaidi." (new keys)
+6. eyebrow "CHAGUA UNACHOTAKA KUFANYA"
+7. the 2-line deposit action (the amount is D; a clear note when D > shortfall because of the 500 minimum)
+8. "Weka dau la TZS {spendable} badala yake"
+9. the disabled "Weka dau · TZS {stake}" (`aria-describedby` → the warning)
+
+**Hidden in this state:** chips, the estimate box, the Makadirio line, the balance row.
+
+**Variants:** 0 options, 1 option, pending deposit, deposit limit, SoF, held wallet, loss limit.
+
+**Funnel:** "short_balance_shown" fires at most once per sheet open.
+
+### 3.5 Deposit and the return (flagged)
+
+**Always the deck's layout.** Under the journey, `/wallet/deposit` always uses the one-screen layout; the pending-bet
+strip appears only when `?bet=` is valid.
+- The classic 5-tile form, including Card with its billing fields, moves whole to `/wallet/deposit/card`.
+- "Lipa kwa kadi" links there, carrying `bet`.
+
+**Order (deck frame 4)**
+1. "‹" + title "Weka pesa"
+2. strip "[NDIO] Dau lako la TZS 5,000 linakusubiri"
+3. PayoutStatusNotice (only when payouts are delayed)
+4. "Kiasi" (`AmountField` with `onValueChange` and full-figure labels)
+5. chips
+6. "Lipa kwa:" with the 4 rows
+7. "Namba ya simu" (`PhoneInput`)
+8. the PIN note
+9. the inline code step, if unverified
+10. "Lipa TZS X"
+11. "Lipa kwa kadi"
+
+- The loading skeleton mirrors this order when the flag is on.
+- An amount typed below the shortfall shows the neutral line "Bado utapungukiwa TZS {gap} kwa dau lako"; Lipa stays
+  enabled.
+
+**Keeping the bet through every exit.** Hidden `bet` and `next` fields ride `carry`. Every `fail()` and the
+EMAIL_UNVERIFIED branch return to journey mode with the amount recomputed server-side.
+
+**"‹" back.** A deterministic `<a replace>` to the rebuilt pending-bet URL. The focused chrome is entered and left by
+document navigation.
+
+**Key lifetime.** A network retry reuses the key; a definitive failure mints a fresh one.
+
+**`depositAction` with a journey `next`**
+- CONFIRMED (mock) → redirect to `next`.
+- PROCESSING → `/wallet/deposit/waiting?txn=…&next=…`.
+- History uses `replace`.
+- After a CONFIRMED deposit, the same shortfall needs an explicit "Weka pesa tena".
+
+**Pending bet on the server.** A new nullable `Transaction.pendingBet Json?`, so notifications, the still-pending email
+and the receipt can link back to the bet.
+
+**`GET /api/wallet/deposits/[id]/status`**
+- Owner-only. Missing and not-yours both return `UNKNOWN`, and a SECURITY audit is written.
+- `private, no-store`, never prefetched, bypassed by the service worker.
+- Buckets: `deposit.status` per user and `deposit.probe` per txn.
+- **Selcom probe:** when PROCESSING, not CARD, and ≥20s old, it asks Selcom's signed order-status. It credits through
+  `settlePaymentWebhook` (exactly-once). It may FAIL a deposit only on a signed terminal CANCELLED / USERCANCELLED /
+  REJECTED, the same precedent as the card return leg (`wallet-service.ts:981`).
+- The 15-second background lane stays confirm-only.
+- The core is shared with `settleDepositFromReturn`.
+
+**Waiting page** (it listens to `wallet:balance`, and all timers stop at a terminal state)
+
+| State | Age / trigger | What the player sees |
+|---|---|---|
+| fresh | <1 min | "Weka PIN yako · usilipe tena" |
+| slow | 1–10 min | still waiting |
+| long | 10–30 min | the page polls itself (no background lane runs then); "hadi dakika 30 · usilipe tena"; receipt link |
+| paid | — | "Pesa zimeingia", then `location.replace` to the pending-bet URL (sheet reopened, side and stake kept, never auto-placed). Shows the first-deposit identity notice when `firstDepositNoticeDue` |
+| failed | — | "Hakuna pesa iliyotolewa", Jaribu tena (fresh key) / Rudi kwenye dau |
+| held | RG lock during payment | a neutral "held for return" message, never "failed" |
+
+Polling: every 3s for the first minute, then every 10s.
+
+**Return-time states**
+- Market closed or suspended → "Swali hili limefungwa", the funds are safe, 3 similar questions offered.
+- Stake now invalid → clamped, with the refusal line.
+- Still short → the low-balance state with the new shortfall.
+
+**Card return fix (first).** Append `order_id` to the Selcom card `redirectUrl`/`cancelUrl`, and carry `bet` through
+(MONEY-GATE §3.2, a live defect today).
+
+### 3.6 Inline email code (S9)
+
+**Storage and security**
+- A new `Otp` purpose `email_verify`: bound to `userId` + the exact address, hashed, 30-minute TTL, 5 attempts.
+- A wrong code charges an attempt on every live code.
+- Issuing a code, or changing the address, consumes older codes.
+- Rate limits are keyed by userId.
+
+**Verification path**
+- Extract `markEmailVerified(userId, email, via)` from `verifyEmailToken` (`email-verification.ts:243`). Both the link
+  and the code call it; the audit action is `user.email.verified` with `payload.via`.
+- The link carries a signed `next`, so "Rudi kwenye dau lako" works from the email.
+
+**Email:** code first ("expires in 30 minutes"), then the link (24h). en and sw. The subject never contains the code.
+
+**Placement**
+- The form stays visible and prefilled. The 6-box step sits above Lipa, and Lipa enables on success without
+  re-entering anything.
+- No email on file → an email input + "Tuma msimbo".
+- Covered states: wrong, expired, locked (countdown), resend cooldown.
+- If the email is verified in another tab, the step polls (≤5s) and unlocks.
+- On success, `router.refresh()` runs so the verify bar is gone app-wide.
+
+**Records and copy**
+- Erasure gets `otp.deleteAllForUser`.
+- Retention doc updated; schema purpose comment updated.
+- Copy keys `verifyGate*`, `verifyBannerText` and `errEmailUnverified` name the code.
+
+### 3.7 Visitor path (S10)
+
+**Guest sheet**
+- Same as §3.3 but with no balance row. CTAs: "Jisajili uweke dau" (primary) / "Ingia".
+- Links carry `next=<page>?bet=…` and `ref`/`invite`.
+
+**After registering**
+- Land on the origin page with `?bet=` and `welcome=new`.
+- Balance 0 → low-balance → deposit (shortfall = stake) → code → PIN → waiting → back → confirm.
+- With no `next` under the journey: `/?welcome=new`, not `/wallet/deposit`.
+
+**Other rules**
+- The deposit page's signed-out redirect keeps its full query.
+- Old `?side=` links work.
+
+### 3.8 How to Play (S7 static, S11 complete)
+
+**Component**
+- New `src/components/onboarding/how-to-play-sheet.tsx`.
+- `first-visit-primer.tsx` is shelved **intact**. The shared keys and opt-ins move to
+  `src/lib/onboarding/primer-keys.ts`, so `?primer=1` and `kp-primer-force` still work for the 24 QA drivers.
+- **Seen key:** the new `50pick-howto-seen`, so every browser sees it once after the flip.
+- **Order:** title + X (`showClose`) → steps 1/2/3 → MFANO → "Nimeelewa, anza" → "Weka mipaka · Msaada 0800 11 0011".
+
+**Links**
+- "Weka mipaka" → `/profile/responsible-gambling` when signed in, `/legal/responsible-gambling` when signed out.
+- The helpline is `<a href="tel:{HELPLINE_TEL()}">`, with the new label key `howTo.helplineLabel` = "Msaada".
+- Every exit persists the seen flag. Links close the sheet, then navigate.
+
+**Copy:** side words come from `sideWord()`. The MFANO text is built with `fillNodes` from `HOW_TO_EXAMPLE`.
+
+**Sizing:** height cap `max-h-[calc(100dvh-48px)] overflow-y-auto` (the proven 320×640 fix).
+
+**Auto-open**
+- Only on `/`, `/live`, `/results`, `/watchlist`.
+- Kept exclusions: HIDE_ON `/^\/(auth|admin|s)(\/|$)/` and SUPPRESS_ON.
+- Never on: `/wallet/**`, RG pages, `/updown/**`, `/markets/*`, a URL with `?bet=` or `?side=`, while any sheet is
+  open, or while the player is on a break (`promoSuppressed`).
+- The HeadlessChrome block is kept.
+- Consent waits until the sheet closes.
+- The deep link `/?howto=1` opens it.
+
+### 3.9 Words and i18n
+
+- A **string table** in VODACOM-PLAN.md: each deck string → key → sw (verbatim) → en → zh.
+- Numbers and rates are always placeholders.
+- `{amount}` renders inside a nowrap money span.
+- **Rename sweeps at the flip:** "Weka pesa" action keys (`common.deposit`, `depositCta`, `addFunds`, `depositNow`,
+  `udDepositCta`). **Before the flip, journey surfaces use new keys**, so players see no change.
+- **Tiketi keys:** `positions`, `myPositions`, `yourPositions`, … (listed in S6). Support copy becomes "Ombi la
+  msaada".
+- **NDIYO → NDIO** everywhere, with a `test:labels` assertion.
+- **"Maswali"** replaces the "masoko" destination wording on error, 404, email and verify surfaces, and on about 20
+  `href="/markets"` links (re-pointed to `/` at the flip).
+- **Rewritten for the flip (en/sw/zh):**
+  - `failBalanceInsufficient`, `noBetYet`, `positions.noOpenBody`, `headlineBody`
+  - `/help` FAQ `faq2a`, `faq3a`, `faq6a`
+  - the chat assistant intents in `send-message.ts`
+  - the Rules page (`_content-yes-no.tsx` §2/§3/§4 "Estimates shown before you bet")
+  - Terms §4, with a `TERMS_VERSION` bump
+- **Guard:** no live dictionary string contains dial / kidhibiti / 转盘 / conviction / imani.
+- **Glyphs:** check ≈ (U+2248) and → (U+2192) against the served font subsets. If the fallback is visible,
+  self-host a subset via `next/font/local`.
+
+### 3.10 The agency's measures
+
+**Counters (ship at S3b, so a baseline exists)**
+- `JourneyFunnelDay (day, step, origin, variant, utm_source, utm_campaign, count)`.
+- `POST /api/funnel` with an allow-list and no identifier or cookie. Automation user agents are skipped.
+- Server counters run fire-and-forget after the money calls (`r.ok && !replayed`), never inside locks.
+- House-bot rows are excluded per row (`houseBotId IS NULL`); staff, preview traffic and bots are excluded.
+
+**Definitions:** each measure is a nested pair of events, so no ratio can exceed 100%.
+
+| Measure | Numerator | Denominator |
+|---|---|---|
+| Home → sheet | sheet opens with origin=home | `/` views |
+| Sheet → bet | bets with origin=sheet | sheet opens |
+| Short → deposit | CONFIRMED deposits with origin=low-balance | low-balance states shown |
+| Deposit → bet | bets with origin=deposit-return within 30 min | journey deposits confirmed |
+| Time to first bet | median (first unmarked position − `createdAt`) | — |
+
+`origin` is persisted on the deposit row and the position (new nullable columns).
+
+**Old-journey analogues count from S3b** for ≥14 days before the flip. The flip cannot happen before the baseline is
+complete.
+
+**Reporting**
+- Panel on `/admin/insights`: before vs 7/14/28 days after, filterable by campaign, with a weekly CSV/PDF export.
+- Ali sends it to the agency every Monday for 8 weeks, then monthly.
+
+**Privacy §7/§2:** the preview cookie (S1), the pending-bet marker, the how-to seen key, and the funnel totals with
+campaign tags. Version bumps land in the same commit as each item.
+
+---
+
+## 4. Ripple map: where each change reflects (full per-file list goes in the tracker in S0)
+
+| Change | Main files | Gates (when) | Docs superseded / updated |
+|---|---|---|---|
+| Header | `top-app-bar.tsx`, `wallet-balance-pill.tsx` (captioned variant), `brand.tsx` untouched | `red:header-fit` + anchors, re-proven at 320/360/390/1024/1150/1279 × sw/en/zh × guest/signed-in (detached); `qa:landmark-seal`; `test:tap-target`; `test:wallet-reach` | R1, L4, L20; UPDATE-2026-09-28 §1 |
+| Tabs + Akaunti | `bottom-nav.tsx` (4 tabs), `nav-more.tsx` shelved, `src/lib/nav/active-tab.ts`, `app/account/page.tsx`, `manifest.json` shortcuts | **Same commit as the page**: `test:route-census` (PLAYER-QUERY-CAMPAIGN §4 row, bucket D), `test:measure` (tier), `scripts/responsive-audit.mjs` PLAYER list; `test:section-rail`, `test:stacking`, `test:shell-boundary` re-pointed to the hub (one plain `<a href=/admin>`), `test:withdrawn-features` Alika row + red anchor | WP1b, V26 |
+| Home | `app/page.tsx` → journey. Shelved: `legacy-landing.tsx`, `components/home/*`, `lib/markets/hero.ts`, `landing.ts`, `lib/server/landing-picks.ts`, `updown-band-round.ts`, `payout-rails` hero fns. `platform-stats.ts` **stays** (ticker) | `test:hero-contract`, `test:landing-contract`, `test:featured-card`, `test:one-sided` §7.2 re-pointed to `legacy-landing.tsx`; `test:ticker-honesty` §11; `test:landing-mine`, `qa:ghost-landing` §A; 13 `qa:landing-v3:*` split (park: capture, rows, hero-mine, seed-onesided, wp6, local; keep: share-drive, c1, wallet, …) | LANDING-TEN (via R18), manifest L1, R4, R5, R7, R9, R14–R17 |
+| Card estimate | `market-card.tsx` journey + settled variants, `live/pulse-grid.tsx`, similar-markets; `estimatedWinningsRate` retired on polls | `test:one-sided` §8.9 (new) + red; V16 rewritten at the flip (estimate only with ≈, and the Makadirio line only in the sheet); V17, V18; `test:share-preview` (no multiplier) | §C3 (scoped), R3, L11, COMPLIANCE 2026-07-23 D3, RULES §4 |
+| Bet sheet | new `components/journey/bet-sheet*.tsx`, `BetSheetHost`. Shelved **in place**: `conviction-dial.tsx`, `bet-confirm-modal.tsx`, `side-picker.tsx`, `lib/dial-stake.ts`, `house-lean-warning.tsx` | `test:dial-stake` **unchanged** (shelved dial's unit test). New `test:bet-sheet` (+ V20 focus / Esc / safe area / Back / keyboard / Enter). `test:market-result-announce` DIAL becomes a list [dial, sheet]; `test:feedback-law`, `test:failure-reasons`, `test:popup-fit`, `test:stacking`; `qa:live` §[F] and `live-place-bet.mjs`, `live-rg-break.mjs` rewritten dual-mode (read rollout from `/api/health`) | CLAUDE.md "Betting flow invariant", "UX commitments", "Conviction dial" (at the flip); RULES §2.1/§2.3; manifest R2 |
+| Deposit | `wallet/deposit/page.tsx` journey mode, `/wallet/deposit/card` (classic moved), `/waiting`, `actions.ts`, `provider-radio-grid.tsx` (+rows/noDefault), `phone-normalize.ts`, `wallet-service.ts` (status core, ceilings), `payments.ts` card `order_id` | `test:deposit-gate`, `test:msisdn-prefill` (extended), `test:payments`, `e2e:money`, `test:kyc-at-withdrawal`, `test:gold-is-money`; new `test:deposit-return`, `test:deposit-status-read`, `test:deposit-ceiling` | MONEY-GATE §3.2; audit M9 (journey only) |
+| Email code | `email-verification.ts`, `store.ts`/`prisma-dal.ts` Otp, `erasure.ts:443`, `email.ts` template, `profile/actions.ts` | new `test:email-code` + red; `test:dal-parity`; `test:privacy-notice` | DATA-RETENTION |
+| How to Play | new `how-to-play-sheet.tsx`, `primer-keys.ts`; `first-visit-primer.tsx` + `how-it-works.tsx` shelved intact; slogan on ~12 surfaces (auth rail, root metadata, manifest, OG routes, `reports/brand.ts`, legal subtitle, `public/og/*.png`) | `test:popup-fit`, `test:stacking`, `test:marketing-optout`, `test:hero-copy` §5 moved to new surfaces | MOBILE-VISUAL U16 (D4 bullet only) and U18 (primer bullet only); LANDING-TEN §0 item 4 |
+| Short titles + competition | `schema.prisma` + hand-written additive migration, 5 create paths, audited admin edit, `ai-poll-generation.ts`, `market-sentinel.ts` agreement check, `chain-purge.ts`, `backup/core.ts`, `lib/localized.ts`, search fields | `test:dal-parity`, `test:migration-ownership`, `test:dead-schema`, `verify:backup-schema`, `test:chain-purge`, `test:ai-polls`, `test:sentinel-guards`, `test:trilingual`, new `test:short-title-fit` | DATA-RETENTION §7 |
+| Measures | `JourneyFunnelDay`, `/api/funnel`, `journey-funnel.ts` (Prisma + memory twins), `retention.ts` prune, `insights.ts` | new `test:journey-funnel`; `test:funnel-share` (no ratio > 100%); `test:insights` | Privacy §2/§7; E-103 amended |
+| Certification | `MODULE-CERTIFICATION-PROGRAM.md` dossiers H4, E2, C1, C2, A4, H1, J1, K7, L2, L6 marked "changing under VODACOM-PLAN" | `test:cert-c1`, `test:cert-c2` stay green | still 52 modules |
+| ~~Palette / fonts / brand~~ | none (ruling 5) | colour laws unchanged | none |
+
+**Landing-v3 programme**
+- **R18** is added to the v4 INHERIT-MANIFEST: "superseded by the Simplified Journey". Only the unbuilt rows WP5, V21
+  and WP20 are set to ⛔ R18. `test:landing-ten-plan` stays green.
+- **Superseded:** PANEL, V21, V24, V26, hero verdicts.
+- **Kept:**
+  - V22's negative half (no "first" claim);
+  - V15, re-pointed (first card's buttons above the tab bar at 360×740);
+  - V19, redefined (Withdraw ≤1 tap from the Salio capsule and Akaunti);
+  - V20 (sheets);
+  - V23;
+  - FUNNEL, absorbed by §3.10.
+- **Carried over:** the "Paid out to players" house-bot money-truth defect (`platform-stats.ts:186`); check the
+  ticker's "won" rows for the same class.
+
+---
+
+## 5. Sessions
+
+Every session runs the same loop:
+1. **Worktree:** `C:\kipindi-journey`, branch `simple-journey`, with a **real** `node_modules` (never a junction).
+2. **Code:** two-store tests, `red:*` twins reachable from `red:all`, and declared anchors.
+3. **Red anchors:** `npm run test:red-anchors` after refactors.
+4. **Suite:** `test:all` before each push. Heavy Node only through `~/heavy-node-lock.sh`; red harnesses run detached,
+   never piped.
+5. **Visual check:** real-browser viewport tiles, read one by one.
+6. **Ship:** merge to main, push, and verify the deploy commit on 50pick.tz.
+7. **Records:** tracker row + SHELVED.md row for anything newly flag-hidden + memory, in the same pass.
+
+**Gate names:** write a gate with the npm-run prefix only once its key exists in `package.json` (the `test:docs` rule).
+
+**What players see before the flip:** nothing, except the pre-flip list in S0. That list covers the bug fixes that
+ship early on purpose: the card `order_id` fix, the PhoneInput on the classic page, the NDIYO sweep, the timer-date
+hardening. Everything else is behind `simpleJourneyFor`.
+
+**S0 — File, rule, get ready (docs + environment)**
+- **Filing**
+  - Deck + 5 PNGs → `docs/design-system/v5-2026-09-29-simplified-journey/`, with its `INHERIT-MANIFEST.md` (SJ-1…24)
+    and `AGENCY-REPLY.md`.
+  - This plan → `docs/VODACOM-PLAN.md`: §0 RESUME AT, the board S0–S16 with an S5 tombstone, the string table, the
+    pre-flip list and the full ripple map. Guard `test:vodacom-plan` + red. NEXT-PLAN ▶ row.
+  - `docs/SHELVED.md` skeleton: item, files, why, date, how to re-mount, test. Lines with paths never say
+    "removed/deleted".
+- **COMPLIANCE-DECISIONS entries:**
+  - pre-bet estimate (§C3 scope, law 40)
+  - one-tap bet (BetConfirmModal and its 10s hold retired)
+  - one-tap Lipa (M9, journey only)
+  - "bet what you have"
+  - in-sheet shortfall deposit prompt (RG record)
+  - claim, slogan and tagline
+  - the first-screen RG row moving to header/footer/How-to
+  - short titles
+  - the regulator answer
+  - the number default (E-210/E-215 amended)
+  - the status read failing on a signed terminal verdict
+  - ticker off `/`
+  - How-to copy truth (step 3)
+  - Jay #6 kept
+- **Rulings and laws**
+  - DESIGN_AUTHORITY: new laws dated, "effective at the S15 flip" (§C3 scoped amendment, kit additions from §2).
+  - v4 manifest R18; MOBILE-VISUAL U16/U18 bullets re-targeted; certification dossiers marked.
+  - A CLAUDE.md note listing the sections that change at the flip.
+- **Readiness**
+  - Create the worktree; `npm ci` in it under the lock; `npm i -D --no-save embedded-postgres@18.3.0-beta.17`;
+    `prisma generate`. The shared `C:\kipindi-main` currently lacks Prisma.
+  - Stop the office-PC landing lane, and record its unmerged branches in SHELVED.md.
+  - Memory: `project_kipindi_simple_journey.md` + index line; Landing v3 / Mobile Visual lines marked partly
+    superseded.
+- **Done when:** docs are pushed, `test:docs` and `test:landing-ten-plan` are green, and the reply is ready for Ali to
+  send.
+
+**S1 — The switch and preview**
+- `RolloutState = WITHDRAWN | STAFF_PREVIEW | ACTIVE` for `simpleJourney`, separate from `FeatureState`.
+- `simpleJourneyFor(role, previewCookie)` is resolved in AppShell **and** on each page. A test asserts they agree for
+  guest, player, staff, cookie and expired-cookie viewers.
+- **Instant kill:** a DB-backed /admin toggle (two halves, like `desk`). `FEATURE_SIMPLEJOURNEY` env is the hard
+  override (a Railway variable change = a redeploy).
+- **Preview cookie**
+  - HttpOnly, Secure, SameSite=Lax; HMAC with its own secret; `{issuer, exp ≤24h, nonce}`.
+  - The issuer must still be staff on each request. Set and clear are audited.
+  - Ignored on `/admin` and when WITHDRAWN. `Cache-Control: private, no-store`.
+  - Set, clear and sign-in/out are hard navigations.
+- **Agency link:** signed, 7-day, revocable, logged.
+- **Same commit:** Privacy §7 cookie entry (en/sw/zh) + the `test:privacy-notice` census; `test:orphan-actions`;
+  `test:control-gates`; `test:simple-journey-flag`.
+- **Done when:** staff see a "preview" marker on production and nobody else sees anything.
+
+**S2 — Short titles + competition**
+- Columns: `shortTitleEn/Sw/Zh` (nullable) and `competition` (key from `src/lib/markets/competitions.ts`: `ligi-kuu`,
+  `epl`, …, labels in the dictionary).
+- **Migration:** hand-written, additive (`ADD COLUMN IF NOT EXISTS`), timestamped after the latest migration on main.
+  Never `prisma migrate diff`.
+- **Writers:** all 5 create paths plus the audited admin edit (with a 2-line warning).
+- **AI generator:** "Je, …?" form, ≤2 lines at 360 (sw/en ≤56, zh ≤28 chars), GSM-7-safe normalisation. The sentinel
+  checks agreement with the full question.
+- **Backfill:** AI drafts for every open market, approved by an admin. Cards fall back to the full title clamped to 2
+  lines.
+- **Done when:** every open market renders within 2 lines in 3 languages (`test:short-title-fit`).
+
+**S3 — The engine (no UI):** §3.1 in full, with its tests and red twins.
+- **Done when:** the golden fixtures pass and parity is proven.
+
+**S3b — Measures baseline (moved up):** the §3.10 counters on the **old** journey's analogues, plus
+retention/backup/DAL and the privacy lines.
+- **Done when:** counts appear daily, and the 14-day baseline clock starts.
+
+**S4 — Claude Design pass** (see §6)
+- Frames for the new compositions and every undrawn state, in 50pick's system.
+- Four-expert panel. Brief filed as `design-brief/simple-journey-2026-09/BRIEF.md` (§0b outbound row, with a
+  `.gitignore` exception).
+- Ali reviews the 5 re-drawn frames side by side (one Artifact, numbered choices).
+- **No player-facing UI code before this is filed.**
+
+**S5 — tombstone:** removed by ruling 5 (no palette, font or brand work).
+
+**S6 — Shell (flagged)**
+- Header states (SJ-15); the 4 tabs, `activeTabFor`, `--rail-h`; the guest Tiketi sheet.
+- `useUnreadNotifications` feeding the tab badge and the hub row.
+- The Akaunti hub (SJ-17).
+- Tiketi zangu: rename, content, and a Maswali | Juu/Chini switch to `/updown/history`.
+- The `surfaces.ts` list; the EmailVerifyBanner rule; overlay stand-downs; the header-fit re-proof.
+- **Done when:** every route keeps an entrance (census) and the header fits in all cells.
+
+**S7 — Home and cards (flagged):** §3.2 in full, plus the How-to card wired to a **static** How-to sheet.
+- `test:journey-above-fold`: at 360×640 and 390×844 (sw/en/zh, guest and signed-in, with all bars up), the How-to card
+  sits above the fold and card 1's buttons end above the tab bar.
+- `qa:cls-budget`.
+- **Done when:** staff see the deck's home on production.
+
+**S8 — Bet sheet + low balance (flagged):** §3.3 and §3.4.
+- Checks whether `test:rg-doors` requires a limits link (SJ-22).
+- **Done when:** `test:bet-sheet`, V20 and the refusal matrix pass, and a staff real bet works on production.
+
+**S9 — Deposit, email code, waiting and return (flagged):** the card `order_id` fix first, then §3.5 and §3.6.
+- **Done when:** `test:deposit-return`, `test:deposit-status-read` (exactly-once while racing the webhook) and
+  `test:email-code` pass.
+
+**S10 — Visitor path:** §3.7, plus `test:post-register-landing` in both flag states, plus `ref` carried through.
+
+**S11 — How to Play complete:** §3.8 auto-open rules, plus the flip-ready copy: FAQ, chat intents, rules page, terms,
+tagline, OG re-renders.
+
+**S12 — Consistency sweep**
+- **Juu/Chini:**
+  - the stake panel in the journey language;
+  - the low-balance → deposit → back flow; a closed round goes to the next round with side and stake kept;
+  - the multiplier grammar "Shinda ≈{mult}× dau" with floor mode;
+  - `round-stake-panel.tsx:249` `text-no-300` → a state token.
+- **Admin:** Approve/Reject move off `btn-no` to `btn-danger`.
+- **Outside the site:**
+  - emails and notifications use short titles;
+  - OG/share images carry the short title with no multiplier;
+  - the manifest (Maswali shortcut, Tiketi shortcut, name, a screenshot re-captured after the flip);
+  - SMS: no titles today, and GSM-7 for any.
+- **Also:** the NDIYO sweep and the "Paid out" defect.
+
+**S13 — Measures panel and reporting:** the panel, CSV/PDF export, the definitions table and the agency cadence.
+
+**S14 — Proof before the flip**
+- `e2e:journey`: guest → sheet → register → low balance → deposit (mock rail, dev outbox code) → waiting → back →
+  manual confirm. Only then does a position exist.
+- Drives: 320/360/390/768/1024/1280/1440 × sw/en/zh × guest/signed-in, including keyboard-open (CDP) and short
+  heights.
+- A per-frame **identity checklist**: each deck element, in order, with its string, ticked against the 50pick
+  screenshot. The look is checked against DESIGN_AUTHORITY, not against the PNG. Shots go to
+  `.qa-shots/simple-journey/` (gitignored).
+- Adversarial refute plus mutation audit.
+- Staff run **one real TZS 1,000 journey** on production behind the preview.
+- The **predeploy gate census** with each flip-time rewrite, prepared on a branch. `qa:live` is dual-mode.
+- Agency preview link + a side-by-side PDF; their **written sign-off** is recorded (or Ali overrides).
+
+**S15 — Launch (one commit, after the baseline is complete and sign-off is in)**
+- `simpleJourney = ACTIVE`.
+- The rewritten ruling gates: V15, V16, V19, V22-negative, V25 ("one Deposit per non-inert region"), V26 → 4 tabs,
+  `test:rate-copy`, `test:one-sided` + red.
+- The dictionary action-key convergence; re-pointing bare `/markets` links; Rules + Terms (+`TERMS_VERSION`); CLAUDE.md
+  sections; the tagline on ~12 surfaces; the `/admin/config` copy.
+- `sw.js` `CACHE_NAME` bump + manifest.
+- `test:deploy-skew` with an open sheet and a waiting page.
+- Re-measure on production as `mobile01`, including one real deposit → back → bet.
+- **Rollback triggers:**
+  - any money-invariant alert;
+  - bets placed per day < 70% of baseline for 3 days;
+  - deposit-confirm rate down more than 20%;
+  - a P1 defect.
+
+  Response: the /admin kill (instant) or the env override. Record it.
+- Send the agency the real screenshots and the first report.
+
+**S16 — Shelve (≥7 days after launch; go only with no rollback, the measures in bounds, and the agency acknowledged)**
+- Unmount the old branches and remove the preview machinery (cookie signer and reader, toggle, env) **together**.
+- Components stay **in place**: no `_shelved` folder, no moves (about 90 guard pins name these paths).
+- **Guards:**
+  - No allow-list growth.
+  - `test:dead-css` counts classes named in `src/**` as live, so no baseline change.
+  - `test:chart-one-home` EXEMPT is shrink-only and still matches.
+  - `test:orphans` covers `scripts/` only, and shelved unit-test scripts stay wired.
+  - `test:i18n` has no unused-key check; shelved keys are listed in SHELVED.md.
+  - New `test:shelved` + red: every SHELVED.md row exists, compiles, is unmounted, and has its test wired.
+- The `/markets` redirect becomes 308; `TICKER_ROUTES = ["/live", "/results"]`.
+- The rollout test becomes a "state is gone" guard.
+- LANDING-TEN is closed with a pointer to SHELVED.md.
+- **Rollback after S16:** revert the S16 commit, or re-mount from SHELVED.md.
+
+---
+
+## 6. Claude Design: needed, in a focused form
+
+**Is it needed?** The deck's 5 frames need no new design. They are templates, built from 50pick's kit per §2. Claude
+Design **is** needed for:
+- **(a) 14 new compositions:**
+  - captioned balance pill;
+  - How-to card;
+  - How-to step list;
+  - compact estimate row;
+  - 2-line deposit action row;
+  - wallet radio rows;
+  - `Input` grouped + attention states;
+  - focused deposit chrome;
+  - pending-bet strip;
+  - email-code step;
+  - waiting states;
+  - Akaunti hub;
+  - guest Tiketi sheet;
+  - the journey card's settled variant.
+- **(b) About 30 undrawn states**, and **(c) the desktop layouts**.
+
+**Who runs it:**
+1. I create it as an Artifact of type Design in S4, using 50pick's design system if the account has one; otherwise I
+   attach DESIGN_AUTHORITY excerpts, token values and kit screenshots.
+2. The four-expert panel scores it.
+3. Ali reviews it.
+4. It is filed.
+
+**Paste-in brief**
+
+> Extend **50pick.tz** (licensed Tanzanian YES/NO prediction market; Swahili first, English and Chinese too;
+> mobile-first).
+>
+> **WHAT happens comes from the agency's 5 frames (attached).** Flow, element order and copy must be identical.
+>
+> **HOW it looks comes from 50pick's own system (attached):**
+> - `DESIGN_AUTHORITY.md`
+> - the `globals.css` tokens
+> - Sora / Inter / JetBrains Mono (money figures)
+> - the kit components mapped in plan §2
+>
+> **Never copy the agency's colours, typeface or wordmark.**
+>
+> **Deliver at 320, 360 and 412 px, plus 1280 px where ◆. Numbered choices where you are unsure.**
+> 1. **The 5 agency frames re-drawn** in 50pick's system, side by side with the originals, plus a component-mapping
+>    sheet.
+> 2. **Header.** Signed-in; guest (Ingia/Jisajili); held wallet; the 360 fit of mark + 18+ + captioned Salio +
+>    "Weka pesa". ◆ Desktop header with the 4 destinations plus language, bell and avatar.
+> 3. **Home.**
+>    - Loading skeleton; 7 chips scrolling; empty category.
+>    - Card states: priced / Kuwa wa kwanza / Upande mmoja tu / Inafungwa leo / Siku {n} / selection closed / with
+>      and without competition / longest sw title at 2 lines / settled variant.
+>    - "Onyesha zaidi".
+>    - ◆ Desktop grid.
+> 4. **Bet sheet.**
+>    - Guest; stake below min / above max; estimate updated; legacy (no figure); one-sided refund.
+>    - Holder / hedge line; bonus warning; thin-upside.
+>    - Placing; success receipt.
+>    - Closed; refusals as blocking in-sheet states: loss limit, self-excluded, cooling-off, blocked, frozen,
+>      session limit, rate-limited, busy / Jaribu tena, maintenance.
+>    - Keyboard open at 360×640.
+>    - ◆ Desktop centred dialog.
+> 5. **Balance too low.** 0 / 1 / 2 options; balance 0; below the 500 minimum; deposit pending; limit reached; SoF;
+>    held wallet; 4 wallets on the sub-line.
+> 6. **Deposit.**
+>    - Focused chrome.
+>    - Code step: no email on file / wrong / expired / locked / resend.
+>    - No history (nothing preselected, Lipa disabled); paused wallet; Mixx 4th row; "Lipa kwa kadi"; typed below
+>      the shortfall.
+>    - Payout-delayed notice.
+>    - Waiting: fresh / slow / long / paid / failed / held.
+>    - Return: closed market / clamped stake / still short.
+>    - ◆ Desktop.
+> 7. **How to Play.** en / zh lengths; 320×640 scroll. ◆ Desktop.
+> 8. **Akaunti.** Signed-in / guest, and the staff row.
+> 9. **Tiketi zangu.** Maswali | Juu/Chini switch; open / settled; cash-out terms; absolute dates.
+> 10. **Market page.** Full wording + source + pool + chart + both countdowns with absolute dates + the holder's ticket
+>     block above the two big buttons.
+> 11. **Juu/Chini.** Stake panel and low-balance state in the same language.
+>
+> **Rules.**
+> - Every colour, font, radius and motion comes from 50pick tokens.
+> - YES/NO ink only for sides.
+> - Warnings use the factual/neutral family; never gold, danger or NO for app state.
+> - Tap targets ≥44 px; contrast AA.
+> - "≈" on every estimate; the Makadirio line only in the sheet and MFANO.
+> - Helpline "0800 11 0011".
+
+---
+
+## 7. Verification
+
+**Local**
+- Worktree; `rm -rf .next`; `next dev` on **localhost** with the in-memory store and `DISABLE_ADMIN_TOTP=true`.
+- Playwright drives every state in §5 S14. Read the viewport tiles.
+
+**Money**
+- `e2e:money` + `e2e:journey` on embedded Postgres.
+- **Must stay green:** `test:deposit-gate`, `test:msisdn-prefill` (extended), `test:payments`,
+  `test:money-invariants`, `test:bet-admission`, `test:failure-reasons`, `test:rg-*`, `test:withdrawn-features`,
+  `test:client-graph-safe`, `test:house-bot-*`, `test:timer-date` (+ `red:timer-date` detached), `test:dial-stake`,
+  `test:deploy-skew`.
+- **Rewritten at the flip:** `test:one-sided`, `test:rate-copy`, V15/V16/V19/V22/V25/V26, `qa:live`.
+
+**Production**
+- The deploy commit via `/api/health` or `?dpl=`.
+- Staff QA behind the preview; the agency via their link.
+- After the flip, as `mobile01`: one real TZS 1,000 deposit → back → bet.
+
+**Final:** an adversarial refute audit + mutation proof. "Done" is claimed only after that.
+
+## 8. Risks
+
+- **The laptop (RAM crashes):** one lock job at a time, fleets in slices, short workflows. The audit's first run was
+  lost this way.
+- **Parallel lanes:**
+  - marketing-s9 writes `schema.prisma`, migrations, `prisma-dal.ts`, `store.ts`, admin nav, `roles.ts`,
+    `package.json`;
+  - house-bots targeting writes admin screens;
+  - landing-v3 (office PC) was writing `page.tsx`, `globals.css`, `i18n-dict.ts` and must stop.
+
+  Rebase the worktree daily, order migrations after main's latest, and re-run the journey suites whenever main moves.
+- **Harm markers:** journey top-ups feed RAPID_DEPOSIT_ESCALATION and CHASING_LOSSES, which also suppress marketing.
+  Watch them next to measure 3.
+- **M-Pesa has never confirmed above TZS 50,000 (E-231):** large shortfalls may sit pending. The waiting page's copy
+  covers it, with no guessed ceiling.
+- **The 360 header budget and the headline 2-line fit:** measured in S4/S6, not assumed.

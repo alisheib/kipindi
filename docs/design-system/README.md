@@ -27,6 +27,11 @@ the measured reference from that commission round lives at `docs/design-brief/ha
 **`v4-2026-09-26-landing-ten/`** is the landing v3 concept (concept, review board, spec, acceptance,
 i18n draft, before shots), filed raw 2026-09-26; its `INHERIT-MANIFEST.md` records the verdicts, Ali's
 rulings R1–R4 and every place our laws beat the delivery. The build is tracked in `docs/LANDING-TEN.md` §1.
+**`v5-2026-09-29-simplified-journey/`** is the sponsor agency's "Simplified Journey" deck and its five phone frames
+(Home, Bet sheet, Balance too low, Deposit, How to Play), filed raw 2026-09-29. Its `INHERIT-MANIFEST.md` records
+Ali's rulings R1–R6: the deck is the template for WHAT happens, and 50pick's own system decides how it looks. It also
+records the build's decisions SJ-1 … SJ-24 and every place our laws beat the deck. The build is tracked in
+`docs/VODACOM-PLAN.md` §1. It supersedes v4 for the home page (v4 manifest R18).
 
 ---
 

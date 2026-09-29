@@ -17,6 +17,7 @@
 | [`docs/SETUP.md`](docs/SETUP.md) | **Getting this running on a machine that has never seen it.** Prerequisites, install, how to boot with no database, and the eight symptoms that waste an afternoon. |
 | [`docs/README.md`](docs/README.md) | **The doc index** — every doc at that level, each with a status. From the outside a snapshot of a Tuesday in May looks identical to a law. ⚠️ This row used to say "42 docs" and the index itself said 45; the real number was **59**, and eleven were unindexed. A count restated in two places is a count that will disagree with itself — so neither states one now. |
 | [`docs/NEXT-PLAN.md`](docs/NEXT-PLAN.md) | ⭐ **START HERE FOR WORK. It opens with THE BOARD** — the ▶-numbered rows at its top (▶ 0, ▶ 0a, ▶ 0b, …) are the live programmes, each with its state, next move and blocker. Read them there; this row deliberately does not count them, because a count here goes stale (it said "exactly TWO" long after there were more — corrected 2026-09-25). ⛔ **A doc that is not on the board is a RECORD of finished work, whatever its own header says.** Do not start a new programme — ask Ali. |
+| [`docs/VODACOM-PLAN.md`](docs/VODACOM-PLAN.md) | ⭐ **"Continue Vodacom plan"** (Ali's phrase, 2026-09-29) **means: open this file at §0 RESUME AT and do the session it names.** It is the sponsor's "Simplified Journey": 5 screens whose FUNCTION is copied exactly while 50pick's design system stays unchanged, built behind a staff preview until its S15 flip. Worktree `C:\kipindi-journey`, branch `simple-journey`. Its board row is ▶ 0c in `docs/NEXT-PLAN.md`. |
 | [`docs/PLAYER-QUERY-CAMPAIGN.md`](docs/PLAYER-QUERY-CAMPAIGN.md) | 🔵 **ACTIVE, opened 2026-09-07 on Ali's instruction — the THIRD programme, so the row above is now out of date by one.** One query language (lens · sort · search · window) on every client-facing page that needs one. **Its §0 is the RESUME AT block**; its §4 is a census of EVERY non-admin route, each with a ruling, so a page that needs nothing was *read and decided* rather than skipped. Branch `player-query-campaign`. ⛔ Admin is deliberately out of scope (§11). |
 | [`docs/MODULE-CERTIFICATION-PROGRAM.md`](docs/MODULE-CERTIFICATION-PROGRAM.md) | **The programme that finishes the platform** — 52 modules, 8 gates, the 12 laws, the status board. |
 
@@ -664,6 +665,10 @@ Already shipped (was on this list before):
   detail rows, primary + ghost CTAs. Success auto-dismisses at 5 s;
   failures stay until dismissed (LCCP informed-consent pattern).
 - **Confirmations**: bet → `BetConfirmModal`, sell → `SellConfirmModal`.
+  ⚠️ **Changes at the Vodacom plan's S15 flip (2026-09-29, `docs/VODACOM-PLAN.md`, SJ-10):** the bet
+  confirmation becomes the bet sheet's named-amount CTA ("Weka dau · TZS {stake}" / "Weka dau la TZS {x} badala
+  yake"). `BetConfirmModal` is then shelved (`docs/SHELVED.md`), not deleted. Sell stays `SellConfirmModal`. Until
+  the flip, this line stands for every player.
   **Never use the native browser `confirm()`** — always portal a kit-
   styled modal. The toast at the corner is a *secondary* signal only.
 - **Bootstrap admin** registers / logs in → redirected to `/admin`,
@@ -672,6 +677,9 @@ Already shipped (was on this list before):
   true from 2026-09-05 to 2026-09-13, while identity gated depositing and play; identity is now
   asked before withdrawal only (`docs/COMPLIANCE-DECISIONS.md` 2026-09-13), and the welcome block
   on `/profile/kyc` is deleted.
+  ⚠️ **Changes at the Vodacom plan's S15 flip (`docs/VODACOM-PLAN.md` §3.7):** a player with no safe
+  `?next=` lands on `/?welcome=new` (the question list), not `/wallet/deposit?welcome=new`. A player who signed up
+  from the bet sheet lands back on that sheet (`?bet=`).
 - **Profile page** displays a yellow `ADMIN` (or `COMPLIANCE` /
   `MODERATOR`) pill so the operator can see at a glance that
   `ADMIN_BOOTSTRAP_PHONES` wired up.
@@ -680,6 +688,9 @@ Already shipped (was on this list before):
   active button). `effectiveSide` overrides geometric neutral when user
   has typed a value. Pre-click "Insufficient balance" warning when
   `stake > balance`.
+  ⚠️ **Shelved at the Vodacom plan's S15 flip:** the bet sheet (`docs/VODACOM-PLAN.md` §3.3–§3.4) replaces
+  the dial on every surface. The dial stays in the code, unmounted (`docs/SHELVED.md`), and `test:dial-stake` keeps
+  running.
 - **Viewport consistency — THE MEASURE.** See `docs/DESIGN_AUTHORITY.md` **B7**.
   Pages state their width through `<PageContainer tier>`; the numbers live in
   `src/app/globals.css` and nowhere else. This line used to restate them
@@ -862,6 +873,15 @@ The conviction dial must never be enterable in the unlocked both-ways state:
   choice is final from the card. The knob is confined to the backed half.
 - Logged-in user on the detail page **without** a side → show the "Pick your
   side" gate, never the bidirectional dial.
+
+⚠️ **Changes at the Vodacom plan's S15 flip (2026-09-29, SJ-9/SJ-10, `docs/VODACOM-PLAN.md`):**
+- The card BODY becomes a link to `/markets/<id>`.
+- NDIO/HAPANA open the bet sheet in place with the side LOCKED (the "Umechagua NDIO" chip; no switching inside).
+- `/markets/<id>?side=YES|NO` opens that sheet preset, at the minimum stake.
+- The "Pick your side" gate is shelved: the market page shows the two big buttons.
+
+The invariant itself survives: the stake surface is never enterable both ways. Until the flip, the rules above stand
+for every player.
 
 ## Brand Kit v2 "Needle" (June 2026)
 
