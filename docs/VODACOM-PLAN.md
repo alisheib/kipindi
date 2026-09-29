@@ -96,7 +96,7 @@ Status: ⬜ not started · 🔨 in progress · ✅ done and verified live · ⛔
 
 | Session | Title | Status | Done when |
 |---|---|---|---|
-| S0 | File, rule, get ready | 🔨 | Deck, frames, rulings, reply, tracker, SHELVED.md and compliance records are filed. `test:docs` + `test:landing-ten-plan` are green. The worktree installs. |
+| S0 | File, rule, get ready | ✅ | Filed `2ac17c36` on main, 2026-09-29. Deck, frames, rulings, reply, tracker, SHELVED.md and compliance records are filed. `test:docs` + `test:landing-ten-plan` are green. The worktree installs. |
 | S1 | The switch and preview | ⬜ | Staff see a "preview" marker on production and nobody else sees anything. The preview cookie is in Privacy §7 in the same commit. |
 | S2 | Short titles + competition | ⬜ | Every open market renders within 2 lines in sw/en/zh (`test:short-title-fit`). The backfill is approved in /admin. |
 | S3 | The engine (no UI) | ⬜ | Golden fixtures pass: Dodoma ≈2.8×/≈1.4×, 1,000 → TZS 2,700 ≈2.7×, 5,000 → TZS 12,360 ≈2.5×; Yanga ≈2.9×/≈1.4×. Client/server parity is proven. |
