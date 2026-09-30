@@ -21,7 +21,7 @@
 migrations finished on production. It waits on an officer drafting and approving the short titles (§0d). Nothing
 reaches players.
 
-**Next:** S3 is IN PROGRESS on `simple-journey` (§0e: piece 1 of 5 done). In parallel, an officer presses "Draft short
+**Next:** S3 is IN PROGRESS on `simple-journey` (§0e: pieces 1–2 of 5 done). In parallel, an officer presses "Draft short
 titles for open markets" on `/admin/ai-polls?tab=short-titles` and approves them (§0d "Left to do"), then S2 is ✅.
 
 Session law, the same for every session:
@@ -143,7 +143,7 @@ S3 is §3.1 in full, built as five pure pieces, each with its suite and an in-pr
 | # | Piece | State | Where |
 |---|---|---|---|
 | 1 | The estimate — `src/lib/markets/estimate.ts` (+ `loserShareRate`/`loserSharePct` in `payout.ts`) | ✅ `5070d1a7` | `test:journey-estimate` (predeploy) + red 14/14 |
-| 2 | The card's close label — `src/lib/markets/card-close-label.ts` + `cardClosesToday`/`cardDaysLeft` en/sw/zh | ⬜ | |
+| 2 | The card's close label — `src/lib/markets/card-close-label.ts` + `cardClosesToday`/`cardDaysLeft`/`cardDaysLeftOne` en/sw/zh | ✅ | `test:card-close-label` (predeploy) + red 7/7 |
 | 3 | The shortfall plan — `src/lib/journey/shortfall.ts` (+ `depositCeilingFor`, `lossHeadroomFor`) | ⬜ | |
 | 4 | The pending bet — `src/lib/journey/pending-bet.ts` + `src/lib/safe-next.ts` | ⬜ | |
 | 5 | The sheet API — `GET /api/markets/[id]/sheet` | ⬜ | |

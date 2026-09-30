@@ -2882,6 +2882,10 @@ export const dict = {
       compAfcon: "AFCON",
       compWorldCup: "World Cup",
       compNba: "NBA",
+      /** The card's close label (S3, `card-close-label.ts`): when BETTING closes, counted in East Africa days. */
+      cardClosesToday: "Closes today",
+      cardDaysLeft: "{n} days",
+      cardDaysLeftOne: "1 day",
     },
   },
 
@@ -5170,6 +5174,9 @@ export const dict = {
       compAfcon: "AFCON",
       compWorldCup: "Kombe la Dunia",
       compNba: "NBA",
+      cardClosesToday: "Inafungwa leo",
+      cardDaysLeft: "Siku {n}",
+      cardDaysLeftOne: "Siku 1",
     },
   },
 
@@ -7440,6 +7447,9 @@ export const dict = {
       compAfcon: "非洲杯",
       compWorldCup: "世界杯",
       compNba: "NBA",
+      cardClosesToday: "今天截止",
+      cardDaysLeft: "{n} 天",
+      cardDaysLeftOne: "1 天",
     },
   },
 } as const;
