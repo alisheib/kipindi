@@ -5,11 +5,19 @@
  * for open markets (the Vodacom plan S2; COMPLIANCE §6: "An admin approves every backfilled short title").
  *
  * ⛔ NOT ONE WORD OF A DRAFT IS DECIDED HERE. The server page hands every row over finished — the drafted words, the
- * rule sentences for each refused language, the sentinel's verdict in words — and this file decides WHEN, never
- * WHAT. The counters read the ONE budget (`SHORT_TITLE_MAX`); the server applies the rules again on every approval.
+ * rule sentences for each refused language, the sentinel's verdict in words — and the server action hands back every
+ * sentence the officer reads after an act. This file decides WHEN, never WHAT. The counters read the ONE budget
+ * (`SHORT_TITLE_MAX`) and count what the rule counts (`cleanShortTitle`, then code points); the server applies the
+ * rules again on every approval.
  *
  * ⛔ THE SENTINEL NEVER APPROVES. Its verdict is printed beside each language — "agrees", "does not agree: …" or
- * "not checked by the sentinel" — and the officer's press is the only approval there is.
+ * "not checked by the sentinel" — and the officer's press is the only approval there is. In the edit form a
+ * language whose words differ from the ones the sentinel read says so ("not checked — edited after the check"): an
+ * old verdict is never shown against new words.
+ *
+ * ⛔ A STALE PAGE NEVER OVERWRITES. "Edit, then approve" sends what this page SHOWED as the market's current value per
+ * field; the server refuses, naming the field, when the market has changed since. A plain "Approve" writes a drafted
+ * value only where the market still has none.
  */
 import { useState, useTransition } from "react";
 import Link from "next/link";
@@ -23,10 +31,12 @@ import { useDeferredToast } from "@/components/ui/toast";
 import { UnsavedChangesGuard } from "@/components/ui/unsaved-changes";
 import { useMayAct, ActReadOnly } from "@/components/admin/act-gate";
 import { runAdminAction } from "@/lib/client/run-admin-action";
-import { SHORT_TITLE_MAX, codePoints } from "@/lib/markets/short-title";
+import { SHORT_TITLE_MAX, cleanShortTitle, codePoints } from "@/lib/markets/short-title";
+import { cleanReason } from "@/lib/affiliate-rules";
 import { draftShortTitlesAction, approveShortTitleDraftAction, rejectShortTitleDraftAction } from "./short-title-actions";
 
 type Loc = "en" | "sw" | "zh";
+type Verdict = { kind: "agrees" | "disagrees" | "unchecked"; text: string };
 
 /** One language of one draft, as the server page words it. */
 export type ShortTitleDraftLanguageView = {
@@ -34,7 +44,7 @@ export type ShortTitleDraftLanguageView = {
   language: string;
   /** A short title already on the market. The draft leaves it as it is unless the officer edits it. */
   current: string | null;
-  /** The market lacked this language when drafted — approving writes `drafted`. */
+  /** The draft is for this language (the market lacks it) — approving writes `drafted`. */
   missing: boolean;
   /** What approving writes (null: nothing — the card keeps the full question). */
   drafted: string | null;
@@ -43,7 +53,7 @@ export type ShortTitleDraftLanguageView = {
   /** One sentence per rule the AI's words broke. */
   issues: string[];
   /** The sentinel's verdict on `drafted`, in words; null when nothing was drafted for this language. */
-  verdict: { kind: "agrees" | "disagrees" | "unchecked"; text: string } | null;
+  verdict: Verdict | null;
 };
 
 export type ShortTitleDraftView = {
@@ -56,9 +66,30 @@ export type ShortTitleDraftView = {
   competition: { current: string | null; currentLabel: string | null; drafted: string | null; draftedLabel: string | null };
   /** Why the sentinel did not check this draft, when it did not. */
   uncheckedReason: string | null;
+  /** The verdict line's words once a language is edited away from what the sentinel read. */
+  editedVerdictText: string;
 };
 
 export type CompetitionOption = { value: string; label: string };
+
+/** What the rule counts: the value as it would be stored (`cleanShortTitle`), in code points. */
+const shortTitleLength = (loc: Loc, value: string | null) => codePoints(cleanShortTitle(loc, value ?? ""));
+
+/**
+ * The verdict line in the edit form, for the words in the box NOW: the sentinel's verdict only while they are the
+ * words it read; once they differ, "not checked — edited after the check"; nothing for an empty box, or for an
+ * already-approved language left as it is.
+ */
+function editVerdict(l: ShortTitleDraftLanguageView, value: string, editedText: string): Verdict | null {
+  const v = cleanShortTitle(l.loc, value);
+  if (!v) return null;
+  if (l.missing && l.drafted !== null && v === l.drafted) return l.verdict;
+  if (!l.missing && v === (l.current ?? "")) return null;
+  return { kind: "unchecked", text: editedText };
+}
+
+const verdictClass = (v: Verdict) =>
+  v.kind === "agrees" ? "text-success-fg" : v.kind === "disagrees" ? "text-danger-fg" : "text-warning-fg";
 
 export function ShortTitleDraftsPanel({
   rows,
@@ -66,12 +97,17 @@ export function ShortTitleDraftsPanel({
   readError,
   batchCap,
   competitionOptions,
+  reasonMin,
+  reasonMax,
 }: {
   rows: ShortTitleDraftView[];
   needing: number;
   readError: string | null;
   batchCap: number;
   competitionOptions: CompetitionOption[];
+  /** The rejection reason's bounds, as the server measures them (after `cleanReason`). */
+  reasonMin: number;
+  reasonMax: number;
 }) {
   // A1 — read the gate as a hook at the top; the list stays readable for a view-only role, the buttons do not.
   const mayAct = useMayAct();
@@ -120,7 +156,7 @@ export function ShortTitleDraftsPanel({
           </p>
           <p className="mt-1 text-body-sm text-text-tertiary">
             {needing === 0
-              ? "Every open market has short titles or a draft waiting."
+              ? "Every open market has short titles, a draft waiting, or languages an officer declined."
               : `${needing} open market${needing === 1 ? "" : "s"} without a short title and without a draft. One run drafts up to ${batchCap}.`}
           </p>
         </div>
@@ -149,7 +185,9 @@ export function ShortTitleDraftsPanel({
           <p className="text-body-sm text-text-secondary">No drafts are waiting for review.</p>
         </div>
       ) : (
-        rows.map((v) => <DraftRow key={v.marketId} view={v} mayAct={mayAct} competitionOptions={competitionOptions} />)
+        rows.map((v) => (
+          <DraftRow key={v.marketId} view={v} mayAct={mayAct} competitionOptions={competitionOptions} reasonMin={reasonMin} reasonMax={reasonMax} />
+        ))
       )}
     </div>
   );
@@ -159,15 +197,35 @@ function counterClass(n: number, max: number): string {
   return n > max ? "text-danger-fg" : "text-text-subtle";
 }
 
-function DraftRow({ view, mayAct, competitionOptions }: { view: ShortTitleDraftView; mayAct: boolean; competitionOptions: CompetitionOption[] }) {
+function DraftRow({
+  view,
+  mayAct,
+  competitionOptions,
+  reasonMin,
+  reasonMax,
+}: {
+  view: ShortTitleDraftView;
+  mayAct: boolean;
+  competitionOptions: CompetitionOption[];
+  reasonMin: number;
+  reasonMax: number;
+}) {
   const [mode, setMode] = useState<"view" | "edit" | "reject">("view");
+  const lang = (loc: Loc) => view.languages.find((l) => l.loc === loc)!;
   /** The edit form opens on what approving would write: the drafted words, else what the market already has. */
   const seedFor = (l: ShortTitleDraftLanguageView) => (l.missing ? (l.drafted ?? "") : (l.current ?? ""));
   const seed = {
-    en: seedFor(view.languages.find((l) => l.loc === "en")!),
-    sw: seedFor(view.languages.find((l) => l.loc === "sw")!),
-    zh: seedFor(view.languages.find((l) => l.loc === "zh")!),
+    en: seedFor(lang("en")),
+    sw: seedFor(lang("sw")),
+    zh: seedFor(lang("zh")),
     competition: view.competition.drafted ?? view.competition.current ?? "",
+  };
+  /** What this page SHOWED as the market's current value per field — sent with an edit, so a stale page is refused. */
+  const baseline = {
+    shortTitleEn: lang("en").current,
+    shortTitleSw: lang("sw").current,
+    shortTitleZh: lang("zh").current,
+    competition: view.competition.current,
   };
   const [edit, setEdit] = useState(seed);
   const [reason, setReason] = useState("");
@@ -176,23 +234,33 @@ function DraftRow({ view, mayAct, competitionOptions }: { view: ShortTitleDraftV
   const router = useRouter();
   const { toast, deferToast } = useDeferredToast(pending);
 
+  /** Counted as the server counts it (`cleanReason`), so the figure the officer watches is the one applied. */
+  const reasonLength = cleanReason(reason).length;
+  const reasonOk = reasonLength >= reasonMin && reasonLength <= reasonMax;
   const editDirty = edit.en !== seed.en || edit.sw !== seed.sw || edit.zh !== seed.zh || edit.competition !== seed.competition;
   const dirty = (mode === "edit" && editDirty) || (mode === "reject" && reason.trim().length > 0);
   const hasDrafted = view.languages.some((l) => l.missing && l.drafted) || !!view.competition.drafted;
+  /** A stored competition this build no longer lists stays selectable as itself, never silently shown as "None". */
+  const competitionChoices = [
+    { value: "", label: "None" },
+    ...(view.competition.current && !competitionOptions.some((o) => o.value === view.competition.current)
+      ? [{ value: view.competition.current, label: view.competition.currentLabel ?? view.competition.current }]
+      : []),
+    ...competitionOptions,
+  ];
 
   const reset = () => { setEdit(seed); setReason(""); setRefusal(null); };
   const close = () => { if (pending) return; setMode("view"); reset(); };
 
-  const landed = (title: string, r: { changed: boolean; recorded: boolean; draftCleared: boolean }) => {
-    const notes = [
-      !r.changed ? "The market already had these words — nothing changed." : "",
-      !r.recorded ? "The change landed but its audit row was not written — tell the Owner." : "",
-      !r.draftCleared ? "The draft could not be cleared — reload the page." : "",
-    ].filter(Boolean);
+  const landed = (title: string, notes: Array<{ tone: "ok" | "warn"; text: string }>) => {
     setMode("view");
     reset();
     router.refresh();
-    deferToast({ title, description: notes.join(" ") || undefined, variant: notes.length ? "warning" : "success" });
+    deferToast({
+      title,
+      description: notes.map((n) => n.text).join(" ") || undefined,
+      variant: notes.some((n) => n.tone === "warn") ? "warning" : "success",
+    });
   };
 
   const approve = (withEdit: boolean) => {
@@ -206,18 +274,22 @@ function DraftRow({ view, mayAct, competitionOptions }: { view: ShortTitleDraftV
       if (edit.competition !== seed.competition) edited.competition = edit.competition;
     }
     start(async () => {
-      const r = await runAdminAction(() => approveShortTitleDraftAction({ marketId: view.marketId, edited: withEdit ? edited : undefined }));
+      const r = await runAdminAction(() => approveShortTitleDraftAction({
+        marketId: view.marketId,
+        edited: withEdit ? edited : undefined,
+        baseline: withEdit ? baseline : undefined,
+      }));
       if (!r.ok) {
         setRefusal({ field: "field" in r && typeof r.field === "string" ? r.field : null, message: r.error });
         toast({ title: "Not approved", description: r.error, variant: "danger" });
         return;
       }
-      landed("Short titles approved", r);
+      landed("Short titles approved", r.notes);
     });
   };
 
   const reject = () => {
-    if (!mayAct || pending) return;
+    if (!mayAct || pending || !reasonOk) return;
     setRefusal(null);
     start(async () => {
       const r = await runAdminAction(() => rejectShortTitleDraftAction({ marketId: view.marketId, reason }));
@@ -226,7 +298,7 @@ function DraftRow({ view, mayAct, competitionOptions }: { view: ShortTitleDraftV
         toast({ title: "Not rejected", description: r.error, variant: "danger" });
         return;
       }
-      landed("Draft rejected", r);
+      landed("Draft rejected", r.notes);
     });
   };
 
@@ -252,8 +324,8 @@ function DraftRow({ view, mayAct, competitionOptions }: { view: ShortTitleDraftV
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <span className="font-mono text-micro uppercase eyebrow text-text-subtle">{l.language}</span>
               {l.missing && l.drafted && (
-                <span className={`font-mono text-body-sm tabular-nums ${counterClass(codePoints(l.drafted), SHORT_TITLE_MAX[l.loc])}`}>
-                  {codePoints(l.drafted)} / {SHORT_TITLE_MAX[l.loc]}
+                <span className={`font-mono text-body-sm tabular-nums ${counterClass(shortTitleLength(l.loc, l.drafted), SHORT_TITLE_MAX[l.loc])}`}>
+                  {shortTitleLength(l.loc, l.drafted)} / {SHORT_TITLE_MAX[l.loc]}
                 </span>
               )}
             </div>
@@ -271,7 +343,7 @@ function DraftRow({ view, mayAct, competitionOptions }: { view: ShortTitleDraftV
               <p key={i} className="text-body-sm text-warning-fg">{s}</p>
             ))}
             {l.verdict && (
-              <p className={`text-body-sm ${l.verdict.kind === "agrees" ? "text-success-fg" : l.verdict.kind === "disagrees" ? "text-danger-fg" : "text-warning-fg"}`}>
+              <p className={`text-body-sm ${verdictClass(l.verdict)}`}>
                 Sentinel check: {l.verdict.text}
               </p>
             )}
@@ -312,24 +384,29 @@ function DraftRow({ view, mayAct, competitionOptions }: { view: ShortTitleDraftV
         <div className="space-y-3 border-t border-border pt-3">
           {view.languages.map((l) => {
             const value = edit[l.loc];
-            const n = codePoints(value);
+            const n = shortTitleLength(l.loc, value);
             const f = fieldFor[l.loc];
+            const verdict = editVerdict(l, value, view.editedVerdictText);
             return (
-              <Field
-                key={l.loc}
-                label={`${l.language} short title`}
-                dataField={f}
-                error={refusal?.field === f ? refusal.message : undefined}
-                hint={`${n} / ${SHORT_TITLE_MAX[l.loc]} characters. Leave it empty and the card shows the full question.`}
-              >
-                <Input
-                  size="sm"
-                  value={value}
-                  disabled={pending}
-                  aria-invalid={refusal?.field === f || n > SHORT_TITLE_MAX[l.loc] || undefined}
-                  onChange={(e) => { setEdit({ ...edit, [l.loc]: e.target.value }); if (refusal?.field === f) setRefusal(null); }}
-                />
-              </Field>
+              <div key={l.loc} className="space-y-1">
+                <Field
+                  label={`${l.language} short title`}
+                  dataField={f}
+                  error={refusal?.field === f ? refusal.message : undefined}
+                  hint={`${n} / ${SHORT_TITLE_MAX[l.loc]} characters. Leave it empty and the card shows the full question.`}
+                >
+                  <Input
+                    size="sm"
+                    value={value}
+                    disabled={pending}
+                    aria-invalid={refusal?.field === f || n > SHORT_TITLE_MAX[l.loc] || undefined}
+                    onChange={(e) => { setEdit({ ...edit, [l.loc]: e.target.value }); if (refusal?.field === f) setRefusal(null); }}
+                  />
+                </Field>
+                {verdict && (
+                  <p className={`text-body-sm ${verdictClass(verdict)}`}>Sentinel check: {verdict.text}</p>
+                )}
+              </div>
             );
           })}
           <Field label="Competition" dataField="competition" error={refusal?.field === "competition" ? refusal.message : undefined}>
@@ -338,7 +415,7 @@ function DraftRow({ view, mayAct, competitionOptions }: { view: ShortTitleDraftV
               value={edit.competition}
               ariaLabel="Competition"
               disabled={pending}
-              options={[{ value: "", label: "None" }, ...competitionOptions]}
+              options={competitionChoices}
               onChange={(v) => { setEdit({ ...edit, competition: v }); if (refusal?.field === "competition") setRefusal(null); }}
             />
           </Field>
@@ -358,21 +435,21 @@ function DraftRow({ view, mayAct, competitionOptions }: { view: ShortTitleDraftV
             label="Why — kept with the rejection"
             dataField="reason"
             error={refusal?.field === "reason" ? refusal.message : undefined}
-            hint="The market is not changed. A later run may draft it again."
+            hint={`${reasonLength} / ${reasonMax} characters. The market is not changed, and it will not be drafted again — its short titles can still be set by hand on the market's page.`}
           >
             <Textarea
               value={reason}
               rows={2}
-              maxLength={500}
+              maxLength={reasonMax}
               disabled={pending}
-              aria-invalid={refusal?.field === "reason" || undefined}
+              aria-invalid={refusal?.field === "reason" || reasonLength > reasonMax || undefined}
               onChange={(e) => { setReason(e.target.value); if (refusal?.field === "reason") setRefusal(null); }}
             />
           </Field>
           {refusal && refusal.field === null && <p role="alert" className="text-body-sm text-danger-fg">{refusal.message}</p>}
           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <Button type="button" size="md" variant="ghost" onClick={close} disabled={pending}>Cancel</Button>
-            <Button type="button" size="md" variant="primary" onClick={reject} loading={pending} disabled={pending || reason.trim().length < 3}>
+            <Button type="button" size="md" variant="primary" onClick={reject} loading={pending} disabled={pending || !reasonOk}>
               Reject this draft
             </Button>
           </div>

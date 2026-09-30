@@ -7,10 +7,14 @@
  * ⛔ THE GATE IS THE AI-POLLS GATE: `requireStaff("trading", …)` — act rights on the trading domain, audited on a
  * refusal, then step-up 2FA — exactly what every other action on this page runs. The draft run also takes the
  * per-officer "ai.batch" rate rule, because it is a batch of paid AI calls. The service functions hold their own
- * gates as well (the kill switch, the spend gate, the batch clamp): a gate on one of two doors is not a gate.
+ * gates as well (the kill switch, the spend gate, the batch clamp, one run at a time): a gate on one of two doors is
+ * not a gate.
  *
  * ⛔ A REFUSAL IS NOT A REVALIDATION. Only an act that landed invalidates the page, so a refused approval keeps the
  * officer's typed edit on screen.
+ *
+ * ⭐ EVERY SENTENCE THE OFFICER READS AFTER AN ACT IS DECIDED ON THE SERVER (`approvalNotes`, `rejectNotes`): a value
+ * someone else set meanwhile and kept, a language left empty and not drafted again, the sentinel's check of an edit.
  */
 import { revalidatePath } from "next/cache";
 import { requireStaff, scopeRefusalToViewer } from "@/lib/server/rbac-guard";
@@ -21,7 +25,11 @@ import {
   draftShortTitles,
   approveShortTitleDraft,
   rejectShortTitleDraft,
+  approvalNotes,
+  rejectNotes,
   type DraftEdit,
+  type DraftBaseline,
+  type DecisionNote,
 } from "@/lib/server/short-title-backfill";
 
 export type DraftRunActionResult =
@@ -52,8 +60,10 @@ export async function draftShortTitlesAction(): Promise<DraftRunActionResult> {
 }
 
 export type DraftDecisionResult =
-  | { ok: true; changed: boolean; recorded: boolean; draftCleared: boolean }
+  | { ok: true; notes: DecisionNote[] }
   | { ok: false; error: string; field?: string };
+
+const FIELDS = ["shortTitleEn", "shortTitleSw", "shortTitleZh", "competition"] as const;
 
 /** What the page posts for an edit — untrusted; each value is a string, null (clear) or absent (leave). */
 function readEdit(input: unknown): DraftEdit | undefined {
@@ -69,21 +79,37 @@ function readEdit(input: unknown): DraftEdit | undefined {
   return Object.values(out).some((v) => v !== undefined) ? out : undefined;
 }
 
-/** ⭐ APPROVE ONE DRAFT — as drafted, or with the officer's edit. Never throws. */
-export async function approveShortTitleDraftAction(input: { marketId: string; edited?: unknown }): Promise<DraftDecisionResult> {
+/** What the page SHOWED as the market's current value per field — untrusted; a string, null (none), or absent. */
+function readBaseline(input: unknown): DraftBaseline | undefined {
+  if (!input || typeof input !== "object") return undefined;
+  const e = input as Record<string, unknown>;
+  const out: DraftBaseline = {};
+  for (const k of FIELDS) {
+    if (!Object.prototype.hasOwnProperty.call(e, k)) continue;
+    const v = e[k];
+    if (v === null || typeof v === "string") out[k] = v;
+  }
+  return Object.keys(out).length ? out : undefined;
+}
+
+/**
+ * ⭐ APPROVE ONE DRAFT — as drafted, or with the officer's edit and the values their page showed (`baseline`), so a
+ * stale page is refused rather than overwriting what another officer set. Never throws.
+ */
+export async function approveShortTitleDraftAction(input: { marketId: string; edited?: unknown; baseline?: unknown }): Promise<DraftDecisionResult> {
   const { userId: officerId } = await requireStaff("trading", "approveShortTitleDraftAction");
   try {
     const marketId = typeof input?.marketId === "string" ? input.marketId : "";
-    const r = await approveShortTitleDraft({ officerId, marketId, edited: readEdit(input?.edited) });
+    const r = await approveShortTitleDraft({ officerId, marketId, edited: readEdit(input?.edited), baseline: readBaseline(input?.baseline) });
     if (!r.ok) return { ok: false, error: r.error, field: r.field };
     try { revalidatePath("/admin/ai-polls"); } catch { /* the market changed; a stale page is the smaller harm */ }
-    return { ok: true, changed: r.changed, recorded: r.recorded, draftCleared: r.draftCleared };
+    return { ok: true, notes: approvalNotes(r) };
   } catch (err) {
     return { ok: false, error: safeError(err, "The approval did not complete. Reload the page before trying again.") };
   }
 }
 
-/** ⭐ REJECT ONE DRAFT — with the officer's reason, on the record. Never throws. */
+/** ⭐ REJECT ONE DRAFT — with the officer's reason, on the record; the market is not drafted again. Never throws. */
 export async function rejectShortTitleDraftAction(input: { marketId: string; reason: string }): Promise<DraftDecisionResult> {
   const { userId: officerId } = await requireStaff("trading", "rejectShortTitleDraftAction");
   try {
@@ -92,7 +118,7 @@ export async function rejectShortTitleDraftAction(input: { marketId: string; rea
     const r = await rejectShortTitleDraft({ officerId, marketId, reason });
     if (!r.ok) return { ok: false, error: r.error, field: r.field };
     try { revalidatePath("/admin/ai-polls"); } catch { /* the draft is gone; a stale page is the smaller harm */ }
-    return { ok: true, changed: true, recorded: r.recorded, draftCleared: true };
+    return { ok: true, notes: rejectNotes(r) };
   } catch (err) {
     return { ok: false, error: safeError(err, "The rejection did not complete. Reload the page before trying again.") };
   }

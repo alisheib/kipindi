@@ -16,7 +16,7 @@ import {
   type CriterionTranslationIssue,
 } from "@/lib/localized";
 // The Vodacom plan S2 — the ONE short-title rule and the ONE competition list, the same the server refuses with.
-import { SHORT_TITLE_MAX, SHORT_TITLE_LOCALES, codePoints, normaliseShortTitleSet, type ShortTitleIssue } from "@/lib/markets/short-title";
+import { SHORT_TITLE_MAX, SHORT_TITLE_LOCALES, cleanShortTitle, codePoints, normaliseShortTitleSet, type ShortTitleIssue } from "@/lib/markets/short-title";
 import { COMPETITIONS } from "@/lib/markets/competitions";
 import { competitionLabel } from "@/lib/markets/competition-label";
 import { dict } from "@/lib/i18n-dict";
@@ -1585,7 +1585,7 @@ function EditForm({ poll, onClose, overlay }: { poll: StoredAIPoll; onClose: () 
     i === "too_long" ? `is longer than ${SHORT_TITLE_MAX[l]} characters`
       : i === "not_gsm7" ? "has characters a text message cannot carry"
         : i === "form" ? (l === "sw" ? "is not in the “Je, …?” form" : l === "en" ? "is not a question ending in “?”" : "is not a question ending in “？”")
-          : i === "copied_english" ? "is the English one — write it in its own language, or leave it blank"
+          : i === "copied_english" ? (l === "zh" ? "is not written in Chinese — write it in Chinese, or leave it blank" : "is the English one — write it in Swahili, or leave it blank")
             : "has a number the full question does not — check it says the same thing";
   // ⛔ THE SAME imported rule the wizard and the server action use — one policy, three
   // surfaces. Re-implementing it here is how a client comes to accept what the server
@@ -1732,10 +1732,12 @@ function EditForm({ poll, onClose, overlay }: { poll: StoredAIPoll; onClose: () 
       ] as const).map(([l, text, value, set]) => {
         const hardHere = shortSet.hard[l];
         const firstIssue = shortSet.issues[l][0];
+        // What the rule counts: the value as it would be stored (cleaned), in code points — never the raw box.
+        const n = codePoints(cleanShortTitle(l, value));
         return (
           <label key={l} className="block">
             <span className="text-body-sm text-text-subtle">
-              {text} · <span className={codePoints(value) > SHORT_TITLE_MAX[l] ? "text-danger-fg" : undefined}>{codePoints(value)} / {SHORT_TITLE_MAX[l]}</span> · blank = card shows the full question
+              {text} · <span className={n > SHORT_TITLE_MAX[l] ? "text-danger-fg" : undefined}>{n} / {SHORT_TITLE_MAX[l]}</span> · blank = card shows the full question
             </span>
             <Input value={value} onChange={(e) => set(e.target.value)} size="sm" aria-invalid={hardHere || undefined} />
             {firstIssue && (

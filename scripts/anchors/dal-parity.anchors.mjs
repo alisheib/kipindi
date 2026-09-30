@@ -162,7 +162,8 @@ export const MUTATIONS = [
     expect: "16.d20.aggregates · ⛔ D20 · neither player-facing aggregate excludes a house-marked row in either twin: top contributors (Prisma and memory) and the leaderboard (memory and SQL) name no marker and take no excludeHouse option",
   },
   /* ── §10 · short titles and competition (the Vodacom plan S2, 2026-09-30) ──────────────
-   * ⭐ FIVE MUTATIONS, one per way the silent no-op can come back for the four new columns. The schema half (§11)
+   * ⭐ SIX MUTATIONS, one per way the silent no-op can come back for the four new columns — the sixth (the S2 review,
+   * MS-4) is the competition read coercing again, which erases a key a later build dropped. The schema half (§11)
    * is read from ROOT and cannot be reached through KP_SRC, so it has no mutation here — `test:short-title-fit` (d)
    * holds the migrations instead. */
   {
@@ -236,9 +237,18 @@ export const MUTATIONS = [
     // The read half: the competition is written and never read back, so every card on Postgres says "no competition".
     name: "market-dal.ts — toStoredMarket stops reading competition",
     file: "src/lib/server/market-dal.ts",
-    from: `    competition: normaliseCompetition(r.competition),`,
+    from: `    competition: typeof r.competition === "string" ? r.competition : null,`,
     to: `    competition: null,`,
     expect: `10.s2.read · toStoredMarket maps "competition" from the row, on one line`,
+  },
+  {
+    // ⛔ MS-4 (the S2 review): the read COERCES again. A key a later build dropped reads as NULL, and the next edit of
+    // any other field hands that NULL to the narrow writer, which stores it — the key is silently erased.
+    name: "market-dal.ts — toStoredMarket coerces competition on read",
+    file: "src/lib/server/market-dal.ts",
+    from: `    competition: typeof r.competition === "string" ? r.competition : null,`,
+    to: `    competition: normaliseCompetition(r.competition),`,
+    expect: `10.s2.read.raw · toStoredMarket reads competition RAW — the stored string as it is, never through a coercer (MS-4)`,
   },
   {
     // ⛔ A title key made stampable: `stamp` is the writer the narrow method exists to avoid.

@@ -12,18 +12,26 @@
  *
  *   (a) THE ONE BUDGET — `SHORT_TITLE_MAX` is declared once in src/ and equals { en 56, sw 56, zh 28 }; no other src
  *       file carries a literal budget near short-title code.
- *   (b) THE NORMALISER — each language's form, code points not UTF-16, the fold onto GSM-7, the copied-English
- *       refusal, number drift as a WARNING that strict refuses, empty → null, and a hard issue never stored.
+ *   (b) THE NORMALISER — each language's form (Chinese: the full-width mark ONLY, a typed "?" cleaned into it when
+ *       the value is Chinese), code points not UTF-16, the fold onto GSM-7, the copied-English refusal on a KEY (case,
+ *       spacing, curly quotes, the closing mark and a Swahili "Je, " do not hide a copy; a Chinese value with no Chinese
+ *       character is refused the same way, and FIRST), number drift on WHOLE numbers as a WARNING that strict refuses
+ *       — except against an English title standing in for a missing one — empty → null, and a hard issue never stored.
  *   (c) WHAT A CARD SHOWS — `cardTitle` falls back to the reader's OWN full title, never to the English short one.
  *   (d) THE MIGRATIONS — additive only, exactly four nullable TEXT columns on "PredictionMarket" and on "AIPoll".
  *   (e) THE ONE FUNNEL — `createMarket` stores the four through the normalisers, and none for an Up & Down round.
  *   (f) THE SEED CATALOGUE — what every seeded LIVE market's card says today, per language. A REPORT: the fallbacks
  *       are the backfill's work, not a failure. Any seeded short title must itself be within budget.
+ *   (g) THE WORDS — the wizard's client wording names every issue and says what the rule now means (a Chinese value
+ *       must be written in Chinese; the Chinese form is the full-width mark).
  *
  * ⛔ IN-PROCESS BY CONSTRUCTION. `--prove-red` plants each defect IN MEMORY — a budget of 60, a second budget literal
  * in src, a card that falls back through `pickLocalized` over the SHORT titles, a fold that leaves an em dash, a
- * normaliser that stores a hard issue, and createMarket without its UPDOWN guard — and requires the check named for
- * it to fail. This file makes no file-writing call anywhere (comments included), so `test:red-anchors` §4 counts it
+ * normaliser that stores a hard issue, createMarket without its UPDOWN guard, a byte-exact copy check, a Chinese
+ * rule that lets a value with no Chinese through, the copy issue reported last, a set that compares only the STORED
+ * English short title, substring number drift, strict refusing a fallback drift, a set that never says the English
+ * title is standing in, a Chinese clean that keeps the ASCII "?", a Chinese form that accepts it, and the wizard's
+ * old wording — and requires the check named for it to fail. This file makes no file-writing call anywhere (comments included), so `test:red-anchors` §4 counts it
  * in the in-process class and the undeclared ceiling does not move.
  *
  * ⛔ Every non-ASCII character a check depends on is BUILT with String.fromCharCode / fromCodePoint: a pasted one can
@@ -35,7 +43,7 @@ import { fileURLToPath } from "node:url";
 import { decomment } from "./lib/decomment.mts";
 import {
   SHORT_TITLE_MAX, SHORT_TITLE_LOCALES, HARD_ISSUES, codePoints, cleanShortTitle, normaliseShortTitle,
-  normaliseShortTitleSet, shortTitleFor, cardTitle, type ShortTitleIssue,
+  normaliseShortTitleSet, shortTitleIssues, hasHan, shortTitleFor, cardTitle, type ShortTitleIssue,
 } from "../src/lib/markets/short-title.ts";
 import { foldToGsm7, encodingFor } from "../src/lib/sms-compose.ts";
 import { pickLocalized } from "../src/lib/localized.ts";
@@ -64,6 +72,8 @@ const ASTRAL = String.fromCodePoint(0x20000);     // a CJK ideograph OUTSIDE the
 const EMOJI = String.fromCodePoint(0x1F600);      // one code point, two UTF-16 units
 const LSQ = ch(0x2018), RSQ = ch(0x2019), LDQ = ch(0x201C), RDQ = ch(0x201D);
 const EN_DASH = ch(0x2013), EM_DASH = ch(0x2014), ELLIPSIS = ch(0x2026), NBSP = ch(0x00A0), ZWSP = ch(0x200B);
+const FW_SIMBA = ch(0xFF33, 0xFF49, 0xFF4D, 0xFF42, 0xFF41);   // "Simba" in full-width Latin letters: no Han in it
+const FW_12 = ch(0xFF11, 0xFF12), FW_13 = ch(0xFF11, 0xFF13); // "12" and "13" in full-width digits
 
 /* ══ FIXTURES ═══════════════════════════════════════════════════════════════ */
 const DERBY = {
@@ -73,13 +83,21 @@ const DERBY = {
 };
 const EN_SHORT = "Will Simba win the derby?";
 const SW_SHORT = "Je, Simba watashinda derby?";
-const ZH_SHORT = `辛巴会赢德比吗${FWQ}`;
+const ZH_BASE = "辛巴会赢德比吗";
+const ZH_SHORT = `${ZH_BASE}${FWQ}`;
 const BTC = "Will Bitcoin close above $80,000 at end of week?";
+/** A market whose translations write its numbers their own way — "15万" for "$150,000" — so they drift from the English. */
+const BTC150 = "Will Bitcoin top $150,000 by end of August 2026?";
+const ZH_BTC = `比特币8月底前能否破15万美元${FWQ}`;
+const SW_BTC = "Je, Bitcoin itapita dola 150 elfu?";
 const CTX = {
   en: { full: DERBY.titleEn, englishFull: DERBY.titleEn },
   sw: { full: DERBY.titleSw, englishFull: DERBY.titleEn },
   zh: { full: DERBY.titleZh, englishFull: DERBY.titleEn },
 };
+
+/** What a value is checked against — the rule's own context type. */
+type Ctx = Parameters<typeof shortTitleIssues>[2];
 
 const show = (v: unknown) => JSON.stringify(v);
 const sameSet = (a: readonly string[], b: readonly string[]) => {
@@ -102,6 +120,9 @@ const SRC_FILES: SrcFile[] = walk(SRC).map((p) => ({
   text: decomment(readFileSync(p, "utf8")),
 }));
 const SERVICE_SRC = SRC_FILES.find((f) => f.rel === "lib/server/market-service.ts")?.text ?? "";
+const WIZARD_SRC = SRC_FILES.find((f) => f.rel === "app/admin/markets/new/wizard.tsx")?.text ?? "";
+/** Every issue the rule can report — the four HARD ones and the warning. (g) holds the wizard's words to all five. */
+const ALL_ISSUES: readonly ShortTitleIssue[] = ["copied_english", "too_long", "not_gsm7", "form", "number_drift"];
 
 /**
  * (a)'s census. `declaredIn` — every src file that DECLARES `SHORT_TITLE_MAX`. `strays` — outside its home, the
@@ -128,9 +149,23 @@ function budgetCensus(files: readonly SrcFile[]): { declaredIn: string[]; strays
 /** (d)'s check: a migration that only ever ADDS nullable columns. Comments are stripped first. */
 type Additive = { ok: boolean; why: string[]; adds: Map<string, Map<string, string>> };
 const BANNED_SQL = /\b(?:NOT\s+NULL|DROP|UPDATE|RENAME|DELETE|TRUNCATE|DEFAULT|INSERT|CREATE|ALTER\s+COLUMN)\b/gi;
+/**
+ * ⭐ THE LOCK-RETRY WRAPPER (review S2-BOOT-1): a `DO $$ … $$` block that retries ONE `ALTER TABLE … ADD COLUMN` on
+ * `lock_not_available`. It is unwrapped to its inner statement ONLY when it is exactly that shape — any other DO block
+ * is refused — so the wrapper cannot become a place to hide a statement the rest of this check would refuse.
+ */
+const RETRY_WRAPPER = /^DO \$\$ DECLARE attempt int := 0; BEGIN LOOP BEGIN (ALTER TABLE "\w+" (?:ADD COLUMN IF NOT EXISTS "\w+" \w+, )*ADD COLUMN IF NOT EXISTS "\w+" \w+); EXIT; EXCEPTION WHEN lock_not_available THEN attempt := attempt \+ 1; IF attempt >= \d+ THEN RAISE; END IF; PERFORM pg_sleep\([\d.]+\); END; END LOOP; END \$\$$/;
+function unwrapRetry(body: string, why: string[]): string {
+  return body.replace(/DO\s+\$\$[\s\S]*?\$\$/g, (block) => {
+    const flat = block.replace(/\s+/g, " ").replace(/\s*;\s*/g, "; ").replace(/\s*,\s*/g, ", ").trim();
+    const m = RETRY_WRAPPER.exec(flat);
+    if (!m) { why.push(`a DO block that is not the one-statement lock-retry wrapper: ${flat.slice(0, 80)}`); return " "; }
+    return m[1];
+  });
+}
 function additive(sql: string): Additive {
-  const body = sql.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/--[^\n]*/g, " ");
   const why: string[] = [];
+  const body = unwrapRetry(sql.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/--[^\n]*/g, " "), why);
   const banned = body.match(BANNED_SQL) ?? [];
   if (banned.length) why.push(`names ${[...new Set(banned.map((b) => b.toUpperCase().replace(/\s+/g, " ")))].join(", ")}`);
   const adds = new Map<string, Map<string, string>>();
@@ -156,6 +191,21 @@ function createMarketBody(src: string): string {
   if (at < 0) return "";
   const next = src.indexOf("\nexport ", at + 1);
   return src.slice(at, next < 0 ? undefined : next);
+}
+
+/** (g)'s region: the wizard's `shortIssueText`, from its declaration to the closing brace at column 0. */
+function wizardWords(src: string): string {
+  const at = src.indexOf("function shortIssueText(");
+  if (at < 0) return "";
+  const end = src.indexOf("\n}", at);
+  return src.slice(at, end < 0 ? undefined : end);
+}
+/** One `case "<issue>":` of that switch, up to the next case (or the end). */
+function caseText(body: string, issue: string): string {
+  const at = body.indexOf(`case "${issue}"`);
+  if (at < 0) return "";
+  const next = body.indexOf("case \"", at + 6);
+  return body.slice(at, next < 0 ? undefined : next);
 }
 
 /** (f)'s parser: the object literals of `seedDemoMarkets`'s `seed` array, string-aware, and their string fields. */
@@ -198,9 +248,13 @@ function seedCatalogue(src: string): Seed[] {
 type Impl = {
   MAX: Readonly<Record<Locale, number>>;
   normalise: typeof normaliseShortTitle;
+  normaliseSet: typeof normaliseShortTitleSet;
+  issues: typeof shortTitleIssues;
+  clean: typeof cleanShortTitle;
   cardTitle: typeof cardTitle;
   fold: (text: string) => string;
   serviceSrc: string;
+  wizardSrc: string;
   srcFiles: readonly SrcFile[];
 };
 
@@ -244,11 +298,29 @@ function run(impl: Impl, log: (l: string) => void): string[] {
     ok('b.en-form · an English short title is a question ending in "?", and one that is not is refused as form',
       stored(enOk, EN_SHORT) && enNoQ.value === null && enNoQ.issues.includes("form"), show([enOk, enNoQ]));
     const zhFull = n("zh", ZH_SHORT, CTX.zh);
-    const zhAscii = n("zh", "辛巴会赢德比吗?", CTX.zh);
-    const zhNone = n("zh", "辛巴会赢德比吗", CTX.zh);
-    ok("b.zh-form · a Chinese short title ends in the full-width question mark or in \"?\", and one ending in neither is refused",
-      stored(zhFull, ZH_SHORT) && stored(zhAscii, "辛巴会赢德比吗?") && zhNone.value === null && zhNone.issues.includes("form"),
+    const zhAscii = n("zh", `${ZH_BASE}?`, CTX.zh);
+    const zhNone = n("zh", ZH_BASE, CTX.zh);
+    ok("b.zh-form · a Chinese short title ends in the full-width question mark; one typed with \"?\" is STORED with the full-width mark; one ending in neither is refused as form",
+      stored(zhFull, ZH_SHORT) && stored(zhAscii, ZH_SHORT) && zhNone.value === null && zhNone.issues.includes("form"),
       show([zhFull, zhAscii, zhNone]));
+    const ruleAscii = impl.issues("zh", `${ZH_BASE}?`, CTX.zh);
+    const ruleFull = impl.issues("zh", ZH_SHORT, CTX.zh);
+    ok("b.zh-form.rule · the RULE accepts the full-width mark only: an uncleaned Chinese value ending in the ASCII \"?\" is form (the store never sees one — the clean turns it)",
+      ruleAscii.includes("form") && ruleFull.length === 0, show({ ascii: ruleAscii, fullWidth: ruleFull }));
+    const closes: Array<[Locale, string, string]> = [
+      ["zh", `${ZH_BASE}?`, ZH_SHORT],
+      ["zh", `${ZH_BASE} ?`, ZH_SHORT],
+      ["zh", `${ZH_BASE}??`, ZH_SHORT],
+      ["zh", `${ZH_BASE}${FWQ}${FWQ}`, ZH_SHORT],
+      ["zh", `${ZH_BASE} ${FWQ}`, ZH_SHORT],
+      ["zh", `${HAN}?${HAN}`, `${HAN}?${HAN}`],
+      ["zh", "Simba SC?", "Simba SC?"],
+      ["en", EN_SHORT, EN_SHORT],
+      ["sw", SW_SHORT, SW_SHORT],
+    ];
+    const closeBad = closes.filter(([l, raw, want]) => impl.clean(l, raw) !== want).map(([l, raw]) => `${l} ${show(raw)} → ${show(impl.clean(l, raw))}`);
+    ok("b.zh-close.clean · the clean closes a CHINESE value with one full-width mark (from \"?\", a doubled mark, a space before it) — and touches no mark mid-text, no value without Chinese in it, and no English or Swahili \"?\"",
+      closeBad.length === 0, closeBad.join(" | "));
 
     // CODE POINTS, NOT UTF-16
     const zh28 = HAN.repeat(27) + FWQ, zh29 = HAN.repeat(28) + FWQ;
@@ -289,14 +361,47 @@ function run(impl: Impl, log: (l: string) => void): string[] {
     const copyFull = n("sw", DERBY.titleEn, CTX.sw);
     ok("b.copied-english.full · a Swahili short title equal to the English FULL title is refused as copied_english",
       copyFull.value === null && copyFull.issues.includes("copied_english"), show(copyFull));
-    const copies = normaliseShortTitleSet({ ...DERBY, shortTitleEn: EN_SHORT, shortTitleSw: EN_SHORT, shortTitleZh: EN_SHORT });
-    ok("b.copied-english.short · …and one equal to the English SHORT title is refused too (Swahili and Chinese), while the English one is kept",
-      copies.shortTitleEn === EN_SHORT && copies.shortTitleSw === null && copies.issues.sw.includes("copied_english")
-        && copies.shortTitleZh === null && show(copies.issues.zh) === show(["copied_english"]),
+    const copies = impl.normaliseSet({ ...DERBY, shortTitleEn: EN_SHORT, shortTitleSw: EN_SHORT, shortTitleZh: EN_SHORT });
+    ok("b.copied-english.short · …and one equal to the English SHORT title is refused too (Swahili and Chinese, copied_english first), while the English one is kept",
+      copies.shortTitleEn === EN_SHORT && copies.shortTitleSw === null && copies.issues.sw[0] === "copied_english"
+        && copies.shortTitleZh === null && copies.issues.zh[0] === "copied_english",
       show(copies));
-    const real = normaliseShortTitleSet({ ...DERBY, shortTitleEn: EN_SHORT, shortTitleSw: SW_SHORT, shortTitleZh: ZH_SHORT });
+    const real = impl.normaliseSet({ ...DERBY, shortTitleEn: EN_SHORT, shortTitleSw: SW_SHORT, shortTitleZh: ZH_SHORT });
     ok("b.copied-english.c · CONTROL · real Swahili and Chinese short titles beside it are kept",
       real.shortTitleSw === SW_SHORT && real.shortTitleZh === ZH_SHORT, show(real));
+
+    // …compared on a KEY, never the bytes: a copy in disguise is still a copy.
+    const SIDE = `Will Simba${RSQ}s side win the derby?`; // an English FULL title as typed, with a curly apostrophe
+    const disguises: Array<{ why: string; v: string; ctx: Ctx }> = [
+      { why: "\"Je, \" in front of the English full title", v: `Je, ${DERBY.titleEn}`, ctx: CTX.sw },
+      { why: "lower case, doubled spaces, a space before the mark", v: "je,  will simba   WIN the derby ?", ctx: { ...CTX.sw, englishShort: EN_SHORT } },
+      { why: "no closing mark", v: "Will Simba win the derby", ctx: { ...CTX.sw, englishShort: EN_SHORT } },
+      { why: "a straight apostrophe for the English title's curly one", v: "Je, Will Simba's side win the derby?", ctx: { ...CTX.sw, englishFull: SIDE } },
+    ];
+    const missed = disguises.filter((d) => !impl.issues("sw", cleanShortTitle("sw", d.v), d.ctx).includes("copied_english")).map((d) => d.why);
+    ok("b.copied-english.key · a Swahili copy of the English in disguise is still copied_english: \"Je, \" in front, case, spacing, no mark, a straight quote for a curly one",
+      missed.length === 0, `missed: ${missed.join(" | ")}`);
+    const genuine = ["Je, Simba SC itashinda derby ya Kariakoo?", SW_SHORT, "Je, Simba itashinda?"];
+    const flagged = genuine.filter((v) => impl.issues("sw", v, { ...CTX.sw, englishShort: EN_SHORT }).includes("copied_english"));
+    ok("b.copied-english.key.c · CONTROL · genuine Swahili sharing names and words with the English is no copy",
+      flagged.length === 0, `flagged: ${flagged.join(" | ")}`);
+
+    // …and a Chinese short title with no Chinese in it is refused the same way — whatever it copies, or nothing.
+    const notChinese = [`GDP 6%${FWQ}`, "Simba SC?", `${FW_SIMBA}${FWQ}`];
+    const nc = notChinese.map((v) => ({ v, issues: impl.issues("zh", cleanShortTitle("zh", v), CTX.zh), stored: n("zh", v, CTX.zh).value }));
+    ok("b.copied-english.not-chinese · a Chinese short title with no Chinese character in it — a copy of nothing — is refused as copied_english and stored as nothing",
+      nc.every((r) => r.issues.includes("copied_english") && r.stored === null), show(nc));
+    const mixed = `Simba SC能否赢得德比${FWQ}`;
+    const rm = n("zh", mixed, CTX.zh);
+    ok("b.copied-english.not-chinese.c · CONTROL · Chinese with a Latin name in it is Chinese and is stored; the detector sees a BMP and an astral ideograph, and no full-width Latin letter or mark",
+      stored(rm, mixed) && hasHan(HAN) && hasHan(ASTRAL) && !hasHan(FW_SIMBA) && !hasHan(FWQ), show(rm));
+    const zhEnglish = impl.issues("zh", DERBY.titleEn, CTX.zh);
+    ok("b.copied-english.first · copied_english is reported FIRST (every caller shows the first hard issue): English in the Chinese field is told to be Chinese, not to be shorter or to change its mark",
+      zhEnglish[0] === "copied_english" && zhEnglish.includes("too_long") && zhEnglish.includes("form"), show(zhEnglish));
+    const typed = impl.normaliseSet({ ...DERBY, shortTitleEn: "Will Simba win the derby", shortTitleSw: "Je, Will Simba win the derby?" });
+    ok("b.copied-english.typed · the copy rule compares with the English short title as TYPED: a Swahili copy of an English one that was itself refused (no \"?\") is still refused",
+      typed.shortTitleEn === null && typed.issues.en.includes("form") && typed.shortTitleSw === null && typed.issues.sw.includes("copied_english"),
+      show(typed));
 
     // NUMBER DRIFT — a warning
     const bctx = { full: BTC, englishFull: BTC };
@@ -309,6 +414,45 @@ function run(impl: Impl, log: (l: string) => void): string[] {
     ok("b.number-drift.strict · …and strict (the AI, the backfill) refuses it — a machine does not accept its own drift",
       strict.value === null && strict.hard === true && strict.issues.includes("number_drift"), show(strict));
     ok("b.number-drift.c · CONTROL · a number the full title DOES contain is no drift", stored(noDrift, "Will Bitcoin top $80,000 this week?"), show(noDrift));
+
+    // …on WHOLE numbers, never substrings — and a thousands separator does not make a different number.
+    const enCtx = (full: string): Ctx => ({ full, englishFull: full });
+    const zh12: Ctx = { full: `辛巴会进12球吗${FWQ}`, englishFull: "Will Simba score 12 goals?" };
+    const numberCases: Array<{ why: string; l: Locale; v: string; ctx: Ctx; drift: boolean }> = [
+      { why: "5 is not 2.5", l: "en", v: "Will Simba score over 5 goals?", ctx: enCtx("Will Simba score over 2.5 goals?"), drift: true },
+      { why: "10,000 is not 110,000", l: "en", v: "Will Bitcoin top $10,000?", ctx: enCtx("Will Bitcoin top $110,000?"), drift: true },
+      { why: "2 is not 12", l: "en", v: "Will Simba score 2 goals?", ctx: enCtx("Will Simba score 12 goals?"), drift: true },
+      { why: "2700 is 2,700", l: "en", v: "Will the fare top TZS 2700?", ctx: enCtx("Will the bus fare top TZS 2,700?"), drift: false },
+      { why: "2,700 is 2700", l: "en", v: "Will the fare top TZS 2,700?", ctx: enCtx("Will the bus fare top TZS 2700?"), drift: false },
+      { why: "2700 is 2.700 (a dot between thousands)", l: "en", v: "Will the fare top TZS 2700?", ctx: enCtx("Will the bus fare top TZS 2.700?"), drift: false },
+      { why: "2.5 stays 2.5 (a decimal point is kept)", l: "en", v: "Over 2.5 goals for Simba?", ctx: enCtx("Will Simba score over 2.5 goals?"), drift: false },
+      { why: "2,5 is 2.5 (a decimal comma)", l: "sw", v: "Je, magoli zaidi ya 2,5?", ctx: { full: "Je, Simba itafunga zaidi ya magoli 2.5?", englishFull: "Will Simba score over 2.5 goals?" }, drift: false },
+      { why: "05 is 5 and 2.50 is 2.5", l: "en", v: "Over 2.50 goals on 05 October?", ctx: enCtx("Will Simba score over 2.5 goals on 5 October?"), drift: false },
+      { why: "a date written with dots is its parts", l: "en", v: "Will it open on 12 October 2026?", ctx: enCtx("Will the line open on 12.10.2026?"), drift: false },
+      { why: "full-width 12 is 12", l: "zh", v: `辛巴会进${FW_12}球吗${FWQ}`, ctx: zh12, drift: false },
+      { why: "full-width 13 is not 12", l: "zh", v: `辛巴会进${FW_13}球吗${FWQ}`, ctx: zh12, drift: true },
+    ];
+    const numberWrong = numberCases
+      .filter((c) => impl.issues(c.l, cleanShortTitle(c.l, c.v), c.ctx).includes("number_drift") !== c.drift)
+      .map((c) => `${c.why} (expected ${c.drift ? "drift" : "none"})`);
+    ok("b.number-drift.whole · numbers are compared WHOLE, against the set of the full titles' numbers: 5 is not 2.5, 10,000 is not 110,000, 2 is not 12 — while 2,700 / 2.700 / 2700, 2,5 / 2.5, 05 / 5 and full-width digits are the same number",
+      numberWrong.length === 0, `wrong on: ${numberWrong.join(" | ")}`);
+
+    // …and strict keeps a drift measured against the ENGLISH title standing in for a missing one: a warning, not a refusal.
+    const fb = impl.normalise("zh", ZH_BTC, { full: BTC150, englishFull: BTC150, fullIsFallback: true }, { strict: true });
+    const own = impl.normalise("zh", ZH_BTC, { full: `比特币价格能否大涨${FWQ}`, englishFull: BTC150 }, { strict: true });
+    const fbHard = impl.normalise("zh", HAN.repeat(29) + FWQ, { full: BTC150, englishFull: BTC150, fullIsFallback: true }, { strict: true });
+    ok("b.number-drift.fallback · strict keeps a drift against an English title STANDING IN (fullIsFallback) — stored, number_drift still reported — refuses it against the language's own full title, and a hard issue stays hard",
+      fb.value === ZH_BTC && fb.hard === false && fb.issues.includes("number_drift")
+        && own.value === null && own.hard === true && own.issues.includes("number_drift")
+        && fbHard.value === null && fbHard.issues.includes("too_long"),
+      show({ fb, own, fbHard }));
+    const standIn = impl.normaliseSet({ titleEn: BTC150, titleSw: "   ", titleZh: null, shortTitleSw: SW_BTC, shortTitleZh: ZH_BTC }, { strict: true });
+    const ownFull = impl.normaliseSet({ titleEn: BTC150, titleSw: "Je, bei ya Bitcoin itapanda sana?", titleZh: `比特币价格能否大涨${FWQ}`, shortTitleSw: SW_BTC, shortTitleZh: ZH_BTC }, { strict: true });
+    ok("b.number-drift.fallback-set · the set says when the English title stands in (a blank titleSw, no titleZh): strict keeps those translations with their warning — and refuses them beside the language's own full title",
+      standIn.shortTitleSw === SW_BTC && standIn.shortTitleZh === ZH_BTC && standIn.issues.sw.includes("number_drift") && standIn.issues.zh.includes("number_drift")
+        && ownFull.shortTitleSw === null && ownFull.shortTitleZh === null && ownFull.hard.sw && ownFull.hard.zh,
+      show({ standIn, ownFull }));
 
     // EMPTY → NULL
     const empties: unknown[] = ["", "   ", ZWSP, `${ZWSP} ${NBSP}`, null, undefined, 42];
@@ -377,6 +521,14 @@ function run(impl: Impl, log: (l: string) => void): string[] {
     ok("d.census · every migration that names a short-title column is additive only (no NOT NULL, DROP, UPDATE, RENAME, DEFAULT …)",
       naming.length >= 2 && notAdditive.length === 0,
       `${naming.length} of ${all.length} migration(s) name one: ${naming.join(", ")}${notAdditive.length ? ` · NOT additive: ${notAdditive.join(", ")}` : ""}`);
+    // ⭐ The lock-retry wrapper (S2-BOOT-1) is unwrapped ONLY in its exact shape. A DROP smuggled inside it, or any other
+    // DO block, is refused — and the real file, wrapper and all, still passes.
+    const wrapped = market ?? "";
+    const smuggled = wrapped.replace('ADD COLUMN IF NOT EXISTS "competition" TEXT;', 'ADD COLUMN IF NOT EXISTS "competition" TEXT; DROP TABLE "AIPoll";');
+    const otherDo = `DO $$ BEGIN UPDATE "PredictionMarket" SET "competition" = 'epl'; END $$;`;
+    ok("d.retry.c · CONTROL · the lock-retry wrapper is accepted only in its exact shape: a DROP smuggled inside it, and any other DO block, are refused",
+      market !== null && smuggled !== wrapped && !additive(smuggled).ok && !additive(otherDo).ok && additive(wrapped).ok,
+      `smuggled ${additive(smuggled).ok} · other DO ${additive(otherDo).ok} · real ${additive(wrapped).ok}`);
     ok("d.c · CONTROL · the check refuses SET NOT NULL, a backfill UPDATE and a RENAME, and ignores a word inside a comment",
       !additive('ALTER TABLE "PredictionMarket" ALTER COLUMN "shortTitleEn" SET NOT NULL;').ok
         && !additive('UPDATE "PredictionMarket" SET "shortTitleSw" = "titleSw";').ok
@@ -456,6 +608,19 @@ function run(impl: Impl, log: (l: string) => void): string[] {
     log("       The fallbacks are the backfill's work, not a failure: a fallback card shows the full title, clamped to two lines.");
   }
 
+  /* ── (g) ─────────────────────────────────────────────────────────────── */
+  log("\n(g) THE WORDS — the wizard's client wording says what the rule means");
+  {
+    const body = wizardWords(impl.wizardSrc);
+    const missing = ALL_ISSUES.filter((i) => caseText(body, i) === "");
+    ok("g.wizard.cases · the wizard's shortIssueText has words for every issue the rule reports",
+      body.length > 0 && missing.length === 0, body ? `no words for: ${missing.join(", ") || "none"}` : "shortIssueText not found in wizard.tsx");
+    const copy = caseText(body, "copied_english"), form = caseText(body, "form");
+    ok("g.wizard.zh · its copied_english words tell a Chinese writer to write in CHINESE (the rule refuses a Chinese value with no Chinese character the same way) and a Swahili one to write in Swahili, and its form words name the full-width mark",
+      /Write it in Chinese/.test(copy) && /Write it in Swahili/.test(copy) && form.includes(FWQ),
+      show({ copy: copy.replace(/\s+/g, " ").slice(0, 240), formNamesFullWidthMark: form.includes(FWQ) }));
+  }
+
   return failed;
 }
 
@@ -464,9 +629,13 @@ function run(impl: Impl, log: (l: string) => void): string[] {
 const REAL: Impl = {
   MAX: SHORT_TITLE_MAX,
   normalise: normaliseShortTitle,
+  normaliseSet: normaliseShortTitleSet,
+  issues: shortTitleIssues,
+  clean: cleanShortTitle,
   cardTitle,
   fold: foldToGsm7,
   serviceSrc: SERVICE_SRC,
+  wizardSrc: WIZARD_SRC,
   srcFiles: SRC_FILES,
 };
 
@@ -508,6 +677,51 @@ if (!PROVE_RED) {
   const UNGUARDED = SERVICE_SRC.replace(/\b\w+\s*\?\s*null\s*:\s*(normaliseShortTitleSet|normaliseCompetition)\(/g, "$1(");
   /** A second budget, written beside an admin counter instead of read from SHORT_TITLE_MAX. */
   const SECOND_BUDGET: SrcFile = { rel: "app/admin/markets/short-title-counter.tsx", text: 'export const COUNTER = { field: "shortTitleSw", max: 56 };' };
+
+  /* The S2 review's rule defects (ST-1, ST-2, ST-5, ST-6), each planted as ONE layer around the real rule. */
+  const exactKey = (x: string) => x.replace(/\s+/g, " ").trim();
+  const isExactCopy = (v: string, c: Ctx) => [c.englishFull, c.englishShort ?? ""].map(exactKey).filter(Boolean).includes(v);
+  /** ST-1 as first shipped: the copy check compared the BYTES. */
+  const plantedExactCopy: typeof shortTitleIssues = (l, v, c) => {
+    const rest = shortTitleIssues(l, v, c).filter((i) => i !== "copied_english");
+    return l !== "en" && isExactCopy(v, c) ? ["copied_english", ...rest] : rest;
+  };
+  /** ST-1's Chinese half missing: a Chinese value with no Chinese character passes unless it is a byte copy. */
+  const plantedNoHanRule: typeof shortTitleIssues = (l, v, c) => {
+    const r = shortTitleIssues(l, v, c);
+    return l === "zh" && !hasHan(v) && !isExactCopy(v, c) ? r.filter((i) => i !== "copied_english") : r;
+  };
+  /** The copy issue reported LAST: English in the Chinese field would first be told to be shorter. */
+  const plantedCopyLast: typeof shortTitleIssues = (l, v, c) => {
+    const r = shortTitleIssues(l, v, c);
+    return r.includes("copied_english") ? [...r.filter((i) => i !== "copied_english"), "copied_english"] : r;
+  };
+  /** A set that compares only with the STORED English short title: a copy of a REFUSED English one slips through. */
+  const plantedStoredEnglish: typeof normaliseShortTitleSet = (m, o = {}) => {
+    const en = normaliseShortTitle("en", m.shortTitleEn, { full: m.titleEn, englishFull: m.titleEn }, o);
+    const r = normaliseShortTitleSet({ ...m, shortTitleEn: en.value }, o);
+    return { ...r, issues: { ...r.issues, en: en.issues }, hard: { ...r.hard, en: en.hard } };
+  };
+  /** ST-2 as first shipped: a digit run counts as present when it is a SUBSTRING of the full titles. */
+  const plantedSubstringDrift: typeof shortTitleIssues = (l, v, c) => {
+    const rest = shortTitleIssues(l, v, c).filter((i) => i !== "number_drift");
+    const full = `${c.full} ${c.englishFull}`;
+    return (v.match(/\d+(?:[.,]\d+)*/g) ?? []).some((d) => !full.includes(d)) ? [...rest, "number_drift"] : rest;
+  };
+  /** ST-5 as first shipped: strict refuses every warning, the English title standing in or not. */
+  const plantedStrictFallback: typeof normaliseShortTitle = (l, raw, c, o = {}) => normaliseShortTitle(l, raw, { ...c, fullIsFallback: false }, o);
+  /** ST-5's set half missing: the English title fed in as the language's OWN full title, so nothing says it stands in. */
+  const plantedSetNoFlag: typeof normaliseShortTitleSet = (m, o = {}) =>
+    normaliseShortTitleSet({ ...m, titleSw: m.titleSw?.trim() ? m.titleSw : m.titleEn, titleZh: m.titleZh?.trim() ? m.titleZh : m.titleEn }, o);
+  /** ST-6's clean missing: a Chinese value keeps the ASCII "?" it was typed with. */
+  const plantedZhClean: typeof cleanShortTitle = (l, raw) =>
+    l === "zh" && typeof raw === "string" ? raw.replace(/\s+/g, " ").trim() : cleanShortTitle(l, raw);
+  /** ST-6's form half missing: the Chinese form accepts the ASCII "?" again. */
+  const plantedZhFormAscii: typeof shortTitleIssues = (l, v, c) =>
+    shortTitleIssues(l, l === "zh" && v.endsWith("?") ? `${v.slice(0, -1)}${FWQ}` : v, c);
+  /** The wizard's words from before the fix — "write it in this language" to a Chinese writer — and one case lost. */
+  const OLD_WORDS = WIZARD_SRC.replace(/Write it in Chinese/g, "Write it in this language");
+  const LOST_CASE = WIZARD_SRC.replace('case "number_drift"', 'case "number_drift_old"');
 
   const tooLong = "Will " + "a".repeat(60) + "?";
   type Plant = { name: string; expect: RegExp; impl: Impl; landed: boolean; landedAs: string };
@@ -553,6 +767,83 @@ if (!PROVE_RED) {
       impl: { ...REAL, serviceSrc: UNGUARDED },
       landed: UNGUARDED !== SERVICE_SRC && !/\?\s*null\s*:\s*normaliseShortTitleSet\(/.test(UNGUARDED),
       landedAs: "the ternaries are gone from createMarket",
+    },
+    {
+      name: "a copy check that compares the bytes (ST-1)",
+      expect: /^b\.copied-english\.key · /,
+      impl: { ...REAL, issues: plantedExactCopy },
+      landed: !plantedExactCopy("sw", `Je, ${DERBY.titleEn}`, CTX.sw).includes("copied_english"),
+      landedAs: "\"Je, \" + the English full title passes as Swahili",
+    },
+    {
+      name: "a Chinese rule that lets a value with no Chinese character through (ST-1)",
+      expect: /^b\.copied-english\.not-chinese · /,
+      impl: { ...REAL, issues: plantedNoHanRule },
+      landed: !plantedNoHanRule("zh", `GDP 6%${FWQ}`, CTX.zh).includes("copied_english"),
+      landedAs: "\"GDP 6%\" + the full-width mark passes as Chinese",
+    },
+    {
+      name: "the copy issue reported last",
+      expect: /^b\.copied-english\.first · /,
+      impl: { ...REAL, issues: plantedCopyLast },
+      landed: plantedCopyLast("zh", DERBY.titleEn, CTX.zh)[0] !== "copied_english",
+      landedAs: "English in the Chinese field is told first that it is too long",
+    },
+    {
+      name: "a set that compares only with the STORED English short title",
+      expect: /^b\.copied-english\.typed · /,
+      impl: { ...REAL, normaliseSet: plantedStoredEnglish },
+      landed: plantedStoredEnglish({ ...DERBY, shortTitleEn: "Will Simba win the derby", shortTitleSw: "Je, Will Simba win the derby?" }).shortTitleSw !== null,
+      landedAs: "a Swahili copy of a refused English short title is stored",
+    },
+    {
+      name: "number drift by substring (ST-2)",
+      expect: /^b\.number-drift\.whole · /,
+      impl: { ...REAL, issues: plantedSubstringDrift },
+      landed: !plantedSubstringDrift("en", "Will Simba score over 5 goals?", { full: "Will Simba score over 2.5 goals?", englishFull: "Will Simba score over 2.5 goals?" }).includes("number_drift"),
+      landedAs: "\"5\" is found inside \"2.5\"",
+    },
+    {
+      name: "strict refusing a drift against the English title standing in (ST-5)",
+      expect: /^b\.number-drift\.fallback · /,
+      impl: { ...REAL, normalise: plantedStrictFallback },
+      landed: plantedStrictFallback("zh", ZH_BTC, { full: BTC150, englishFull: BTC150, fullIsFallback: true }, { strict: true }).value === null,
+      landedAs: "a correct Chinese title (15万 for $150,000) on a market with no Chinese title is dropped",
+    },
+    {
+      name: "a set that never says the English title stands in (ST-5)",
+      expect: /^b\.number-drift\.fallback-set · /,
+      impl: { ...REAL, normaliseSet: plantedSetNoFlag },
+      landed: plantedSetNoFlag({ titleEn: BTC150, titleSw: "   ", titleZh: null, shortTitleZh: ZH_BTC }, { strict: true }).shortTitleZh === null,
+      landedAs: "the same Chinese title is dropped through the set",
+    },
+    {
+      name: "a Chinese clean that keeps the ASCII \"?\" (ST-6)",
+      expect: /^b\.zh-close\.clean · /,
+      impl: { ...REAL, clean: plantedZhClean },
+      landed: plantedZhClean("zh", `${ZH_BASE}?`) === `${ZH_BASE}?`,
+      landedAs: "a Chinese value typed with \"?\" is stored with it",
+    },
+    {
+      name: "a Chinese form that accepts the ASCII \"?\" (ST-6)",
+      expect: /^b\.zh-form\.rule · /,
+      impl: { ...REAL, issues: plantedZhFormAscii },
+      landed: !plantedZhFormAscii("zh", `${ZH_BASE}?`, CTX.zh).includes("form"),
+      landedAs: "the rule passes a Chinese value ending in \"?\"",
+    },
+    {
+      name: "the wizard's old copied-English words",
+      expect: /^g\.wizard\.zh · /,
+      impl: { ...REAL, wizardSrc: OLD_WORDS },
+      landed: OLD_WORDS !== WIZARD_SRC && !OLD_WORDS.includes("Write it in Chinese"),
+      landedAs: "a Chinese writer is told to \"write it in this language\"",
+    },
+    {
+      name: "the wizard with no words for one issue",
+      expect: /^g\.wizard\.cases · /,
+      impl: { ...REAL, wizardSrc: LOST_CASE },
+      landed: LOST_CASE !== WIZARD_SRC,
+      landedAs: "number_drift has no case in shortIssueText",
     },
   ];
 

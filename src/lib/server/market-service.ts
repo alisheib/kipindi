@@ -35,7 +35,7 @@ import { getEffectiveConfig, getEffectiveResolutionMode, snapshotFromConfig, sna
 import { stakeBoundsForUpDownMarket } from "./updown-config";
 import { localizedText } from "@/lib/localized";
 import { normaliseShortTitleSet } from "@/lib/markets/short-title";
-import { normaliseCompetition, type Competition } from "@/lib/markets/competitions";
+import { normaliseCompetition } from "@/lib/markets/competitions";
 import { payoutFor, settledPayoutFor, allocateWinnerPayouts, allocateFeeShares, winnersForAllocation, poolFee, levySplit, leanFor, resolveFeeModel, THIN_SMALLER_SIDE_SHARE, type FeeSnapshot } from "@/lib/payout";
 import type { FailureReason } from "@/lib/failure-reasons";
 import { exitWindowFacts } from "@/lib/exit-window";
@@ -136,6 +136,12 @@ export function resolvePublishCategory(category: string): MarketCategory {
  *
  * ⚠️ It does not touch money, pools, status or resolution — only the label a market is filed
  * under. The audit row carries `before` and `after` so the correction is itself reviewable.
+ *
+ * 🔴 UNDER THE MARKET LOCK (the Vodacom plan S2 review, MS-1). The write is the full-row `set` of a row this function
+ * read, so the read and the write must not have anything land between them. Unlocked, a stake's pool increment or a
+ * short title applied in that gap (both are written under `withLock(market:<id>)`) was silently put back to what the
+ * read saw. So the read is INSIDE `withLock(market:<id>)` — the lock the bet path and `applyShortTitles` hold — and the
+ * write goes on the lock's own transaction; the audit row is written after the lock is released.
  */
 export async function recategoriseMarket(opts: {
   marketId: string;
@@ -153,12 +159,17 @@ export async function recategoriseMarket(opts: {
   }
   const after = raw as MarketCategory;
 
-  const m = await marketStore.get(opts.marketId);
-  if (!m) return { ok: false, error: "Market not found." };
-  const before = m.category as MarketCategory;
-  if (before === after) return { ok: true, data: { before, after } };
-
-  await marketStore.set({ ...m, category: after });
+  const done = await withLock(`market:${opts.marketId}`, async (tx) => {
+    const m = await marketStore.get(opts.marketId, tx);
+    if (!m) return null;
+    const before = m.category as MarketCategory;
+    if (before === after) return { m, before, changed: false };
+    await marketStore.set({ ...m, category: after }, tx);
+    return { m, before, changed: true };
+  });
+  if (!done) return { ok: false, error: "Market not found." };
+  const { m, before } = done;
+  if (!done.changed) return { ok: true, data: { before, after } };
 
   audit({
     category: "ADMIN",
@@ -309,11 +320,16 @@ export type StoredMarket = {
    * title (`cardTitle` in `lib/markets/short-title.ts`). Optional so rows read before the columns existed read as
    * none. ⛔ Written by `createMarket` and by `marketStore.setShortTitles` (narrow, under the market lock) — never
    * by `stamp`, and never a copy of the full or the English title.
+   *
+   * ⛔ `competition` is the RAW stored string, not a `Competition`: a key a later build dropped from the list reads back
+   * exactly as stored, so a write of another field never turns it into NULL. It is validated where a NEW value is
+   * written (the wizard, the admin edit, the AI output, a draft's approval) and coerced only where it is DISPLAYED —
+   * `normaliseCompetition` before `competitionLabel`, which then shows an unknown key as no competition.
    */
   shortTitleEn?: string | null;
   shortTitleSw?: string | null;
   shortTitleZh?: string | null;
-  competition?: Competition | null;
+  competition?: string | null;
   /** Which product this row belongs to — see `ProductLine`. Absent on rows read
    *  before the column existed; the DAL coerces those to `"MARKET"`, which is what
    *  every historical row is. */

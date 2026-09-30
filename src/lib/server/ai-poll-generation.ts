@@ -251,11 +251,12 @@ function toStoredAIPoll(r: any): StoredAIPoll {
     sources: (r.sources ?? []) as StoredAIPoll["sources"],
     confidence: r.confidence,
     reasoning: r.reasoning,
-    // The Vodacom plan S2. `competition` is coerced, not trusted: a key this build does not know reads as none.
+    // The Vodacom plan S2. `competition` is READ RAW (the S2 decision): a key a later build dropped survives the read
+    // and every save of other fields; it is validated only where NEW input is written, coerced only where displayed.
     shortTitleEn: r.shortTitleEn ?? null,
     shortTitleSw: r.shortTitleSw ?? null,
     shortTitleZh: r.shortTitleZh ?? null,
-    competition: normaliseCompetition(r.competition),
+    competition: r.competition ?? null,
     reviewedBy: r.reviewedBy ?? null,
     reviewedAt: r.reviewedAt instanceof Date ? r.reviewedAt.toISOString() : (r.reviewedAt ?? null),
     reviewNote: r.reviewNote ?? null,
@@ -410,6 +411,35 @@ function sanitise(s: unknown): string {
     .replace(/javascript:/gi, "")                     // strip JS protocol
     .replace(/[\r\n\t]+/g, " ")                       // normalise whitespace
     .trim();
+}
+
+/** Zero-width characters, BUILT from their code points (an escaped one in this file could be decoded by an editor
+ *  into the invisible character itself): U+200B–U+200D, U+2060, U+FEFF — the ones `cleanShortTitle` drops. */
+const SHORT_TITLE_INVISIBLE = new RegExp(
+  `[${String.fromCharCode(0x200b)}-${String.fromCharCode(0x200d)}${String.fromCharCode(0x2060)}${String.fromCharCode(0xfeff)}]`,
+  "g",
+);
+/** A short title with ONLY what storing it normalises anyway: zero-width characters out, whitespace collapsed. */
+const tidyShortTitle = (s: string) => s.replace(SHORT_TITLE_INVISIBLE, "").replace(/\s+/g, " ").trim();
+
+/**
+ * ⛔ WHAT `sanitise` WOULD STRIP FROM A SHORT TITLE beyond whitespace and zero-width characters — or null when it would
+ * strip nothing more (the Vodacom plan S2, review ST-4). A short title is stored EXACTLY as written: an officer's value
+ * that `sanitise` would change is REFUSED on its field (`editAIPoll`), and a model's becomes none with a warning chip
+ * (`validateAndFilter`) — never silently shortened into words nobody wrote. `sentence` is the refusal an officer reads;
+ * `words` finishes a chip ("… left empty — it had < … > text"). Exported for the suites.
+ */
+export function shortTitleStripProblem(raw: unknown): { sentence: string; words: string } | null {
+  if (typeof raw !== "string") return null;
+  const seen = tidyShortTitle(raw);
+  if (tidyShortTitle(sanitise(raw)) === seen) return null;
+  if (/<[^>]*>/.test(seen)) {
+    return { sentence: "Remove the < … > text — the short title must be stored exactly as written.", words: "it had < … > text" };
+  }
+  if (/javascript:/i.test(seen)) {
+    return { sentence: "Remove “javascript:” — the short title must be stored exactly as written.", words: "it had “javascript:”" };
+  }
+  return { sentence: "Remove the control characters — the short title must be stored exactly as written.", words: "it had control characters" };
 }
 
 function isValidUrl(url: string): boolean {
@@ -769,7 +799,19 @@ async function validateAndFilter(
   // STRICT: the model does not get to accept its own number drift — only an officer can, through the edit.
   let shortQuality: QualityIndicator[] = [];
   if (overrides?.shortTitles !== "skip") {
-    const raw = { en: sanitised.shortTitleEn, sw: sanitised.shortTitleSw, zh: sanitised.shortTitleZh };
+    // ⛔ ST-4: a model's short title that `sanitise` changed beyond whitespace is NONE, with a chip saying why — the
+    // stripped remainder is words the model never wrote, so it is never stored as though it were its answer.
+    const modelWrote: Record<Locale, unknown> = { en: gen.shortTitleEn, sw: gen.shortTitleSw, zh: gen.shortTitleZh };
+    const stripped: Partial<Record<Locale, string>> = {};
+    for (const loc of SHORT_TITLE_LOCALES) {
+      const p = shortTitleStripProblem(modelWrote[loc]);
+      if (p) stripped[loc] = p.words;
+    }
+    const raw = {
+      en: stripped.en ? undefined : sanitised.shortTitleEn,
+      sw: stripped.sw ? undefined : sanitised.shortTitleSw,
+      zh: stripped.zh ? undefined : sanitised.shortTitleZh,
+    };
     const set = normaliseShortTitleSet({
       titleEn: sanitised.titleEn, titleSw: sanitised.titleSw ?? null, titleZh: sanitised.titleZh ?? null,
       shortTitleEn: raw.en, shortTitleSw: raw.sw, shortTitleZh: raw.zh,
@@ -778,7 +820,12 @@ async function validateAndFilter(
     sanitised.shortTitleSw = set.shortTitleSw ?? undefined;
     sanitised.shortTitleZh = set.shortTitleZh ?? undefined;
     sanitised.competition = normaliseCompetition(sanitised.competition) ?? undefined;
-    shortQuality = shortTitleQuality(set);
+    shortQuality = [
+      ...shortTitleQuality(set),
+      ...SHORT_TITLE_LOCALES.filter((loc) => stripped[loc]).map((loc): QualityIndicator => ({
+        label: `${SHORT_TITLE_CHIP} · ${LANG_NAME[loc]} left empty — ${stripped[loc]}`, score: 0, status: "warning",
+      })),
+    ];
   }
 
   return { passes, reasons, quality: [...quality, ...shortQuality], overallQuality, sanitised };
@@ -799,7 +846,7 @@ function issueWords(loc: Locale, issue: ShortTitleIssue): string {
     case "too_long": return `over ${SHORT_TITLE_MAX[loc]} characters`;
     case "not_gsm7": return "characters a text message cannot carry";
     case "form": return loc === "sw" ? "not in the Je, …? form" : "not a question";
-    case "copied_english": return "a copy of the English";
+    case "copied_english": return loc === "zh" ? "not written in Chinese" : "a copy of the English";
     case "number_drift": return "a number the full question does not have";
   }
 }
@@ -1609,24 +1656,34 @@ export async function editAIPoll(id: string, opts: {
   const nextTitleEn = opts.titleEn !== undefined ? sanitise(opts.titleEn) : poll.titleEn;
   const nextTitleSw = opts.titleSw !== undefined ? sanitise(opts.titleSw) : poll.titleSw;
   const nextTitleZh = opts.titleZh !== undefined ? sanitise(opts.titleZh) : poll.titleZh;
+  const SHORT_FIELD = { en: "shortTitleEn", sw: "shortTitleSw", zh: "shortTitleZh" } as const;
+  // ⛔ ST-4 — A SHORT TITLE IS STORED EXACTLY AS WRITTEN. A typed value `sanitise` would change beyond whitespace and
+  // zero-width characters (markup, "javascript:", a control character) is REFUSED on its field, never silently
+  // stripped into words the officer did not write. Before anything is touched, like every refusal here.
+  for (const loc of SHORT_TITLE_LOCALES) {
+    const typed = opts[SHORT_FIELD[loc]];
+    const problem = typeof typed === "string" ? shortTitleStripProblem(typed) : null;
+    if (problem) throw new AIPollShortTitleRefused(`${problem.sentence} Nothing changed.`, SHORT_FIELD[loc]);
+  }
   const pickShort = (k: "shortTitleEn" | "shortTitleSw" | "shortTitleZh") =>
     opts[k] !== undefined ? sanitise(opts[k] ?? "") : (poll[k] ?? null);
   const shortSet = normaliseShortTitleSet({
     titleEn: nextTitleEn, titleSw: nextTitleSw, titleZh: nextTitleZh || null,
     shortTitleEn: pickShort("shortTitleEn"), shortTitleSw: pickShort("shortTitleSw"), shortTitleZh: pickShort("shortTitleZh"),
   });
-  const SHORT_FIELD = { en: "shortTitleEn", sw: "shortTitleSw", zh: "shortTitleZh" } as const;
   for (const loc of SHORT_TITLE_LOCALES) {
     if (!shortSet.hard[loc]) continue;
     const firstHard = shortSet.issues[loc].find((i) => i !== "number_drift") ?? shortSet.issues[loc][0];
     const raw = pickShort(SHORT_FIELD[loc]);
     throw new AIPollShortTitleRefused(`${shortTitleIssueSentence(loc, firstHard, typeof raw === "string" ? raw : "")} Nothing changed.`, SHORT_FIELD[loc]);
   }
-  let nextCompetition: string | null = normaliseCompetition(poll.competition);
+  // RAW, as stored (the S2 decision): an untouched competition is kept exactly, and re-sending the stored key is not a
+  // new value — only a NEW key is validated against this build's list.
+  let nextCompetition: string | null = poll.competition ?? null;
   if (opts.competition !== undefined) {
     const rawComp = (opts.competition ?? "").trim();
     if (rawComp === "") nextCompetition = null;
-    else if (isCompetition(rawComp)) nextCompetition = rawComp;
+    else if (isCompetition(rawComp) || rawComp === poll.competition) nextCompetition = rawComp;
     else throw new AIPollShortTitleRefused(`"${rawComp.slice(0, 40)}" is not a competition this build knows. Nothing changed.`, "competition");
   }
   const shortTouched = opts.shortTitleEn !== undefined || opts.shortTitleSw !== undefined || opts.shortTitleZh !== undefined;

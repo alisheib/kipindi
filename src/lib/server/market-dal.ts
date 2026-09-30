@@ -8,7 +8,6 @@
 import { prisma } from "./prisma";
 import { hasDatabase } from "./prisma";
 import type { Prisma } from "@prisma/client";
-import { normaliseCompetition, type Competition } from "@/lib/markets/competitions";
 import type { StoredMarket, StoredPosition, MarketStatus, MarketCategory, Side, ProductLine, ProductLineFilter } from "./market-service";
 
 /**
@@ -120,11 +119,14 @@ function toStoredMarket(r: any): StoredMarket {
     resolutionCriterion: r.resolutionCriterion,
     resolutionCriterionSw: r.resolutionCriterionSw ?? null,
     resolutionCriterionZh: r.resolutionCriterionZh ?? null,
-    // The Vodacom plan S2. `competition` is coerced, not trusted: a key this build does not know reads as none.
+    // The Vodacom plan S2. ⛔ `competition` is read RAW, never coerced: a key a later build dropped from the list must
+    // survive the next write of any other field (a coercing read turned it into NULL, and the narrow writer then stored
+    // the NULL). It is validated where a NEW value is written and coerced only where it is DISPLAYED
+    // (`normaliseCompetition` before `competitionLabel`).
     shortTitleEn: r.shortTitleEn ?? null,
     shortTitleSw: r.shortTitleSw ?? null,
     shortTitleZh: r.shortTitleZh ?? null,
-    competition: normaliseCompetition(r.competition),
+    competition: typeof r.competition === "string" ? r.competition : null,
     resolutionAt: iso(r.resolutionAt)!,
     selectionClosedAt: iso(r.selectionClosedAt) ?? null,
     status: r.status as MarketStatus,
@@ -195,12 +197,13 @@ function toStoredPosition(r: any): StoredPosition {
 // Market store interface
 // ---------------------------------------------------------------------------
 
-/** The four columns `setShortTitles` writes — all four, always, so a caller states what each one becomes. */
+/** The four columns `setShortTitles` writes — all four, always, so a caller states what each one becomes.
+ *  `competition` is the RAW stored string (see `toStoredMarket`): a key is checked where it is newly written. */
 export type MarketShortTitleFields = {
   shortTitleEn: string | null;
   shortTitleSw: string | null;
   shortTitleZh: string | null;
-  competition: Competition | null;
+  competition: string | null;
 };
 
 export interface MarketStore {

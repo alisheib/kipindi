@@ -16,9 +16,12 @@ import { criterionTranslationIssue } from "@/lib/localized";
 import { isHouseIntentKey } from "@/lib/house-bot/constants";
 import { commentSideFor } from "@/lib/comment-side";
 // The Vodacom plan S2 — the ONE rule module for short titles, read by the wizard (client) and here (server).
-import { HARD_ISSUES, normaliseShortTitleSet } from "@/lib/markets/short-title";
+import { HARD_ISSUES, SHORT_TITLE_LOCALES, normaliseShortTitleSet, shortTitleFor } from "@/lib/markets/short-title";
 import { isCompetition } from "@/lib/markets/competitions";
-import { applyShortTitles, shortTitleIssueSentence } from "@/lib/server/short-title-service";
+import {
+  SHORT_TITLE_FIELDS, agreementVerdictLines, applyShortTitles, changedShortTitleLocales, recordShortTitleAgreement,
+  shortTitleIssueSentence, type ShortTitleField,
+} from "@/lib/server/short-title-service";
 
 /**
  * F3 — toggle the watchlist star on a market. Returns the NEW state so the
@@ -222,6 +225,14 @@ export async function adminReopenMarketAction(formData: FormData) {
  * ⛔ NO 2FA STEP-UP, for recategorise's reason: this changes the wording a card shows — no pool, stake, status or
  * resolution moves, and the full question, the criterion and the source stay exactly as they were.
  *
+ * ⛔ ANOTHER OFFICER'S WORDS ARE NEVER SILENTLY OVERWRITTEN. For every field it sends, the control also sends
+ * `expected.<field>` — the value its page showed — and `applyShortTitles` refuses, naming the field, when the market
+ * holds something else by the time the lock is taken ("…was changed by someone else since this page loaded").
+ *
+ * ⭐ THE SENTINEL READS EVERY SAVED SHORT TITLE (COMPLIANCE-DECISIONS §6): `applyShortTitles` runs the check after the
+ * write has landed (its default, "changed"), and `sentinelLines` hands the officer its verdict per language —
+ * "agrees", "does not agree: …" or "not checked: …" — in the service's own words.
+ *
  * ⚠️ PLACED AFTER `adminReopenMarketAction` ON PURPOSE: `test:recategorise` §4 reads the text between
  * `recategoriseMarketAction` and `adminReopenMarketAction` as recategorise's own block.
  */
@@ -231,6 +242,11 @@ export async function setMarketShortTitlesAction(formData: FormData) {
   await requireAdminOrThrow(session.userId, "setMarketShortTitlesAction");
   const marketId = String(formData.get("marketId") ?? "");
   const field = (k: string): string | undefined => (formData.has(k) ? String(formData.get(k) ?? "") : undefined);
+  const expectedBefore: Partial<Record<ShortTitleField, string | null>> = {};
+  for (const k of SHORT_TITLE_FIELDS) {
+    const shown = field(`expected.${k}`);
+    if (shown !== undefined) expectedBefore[k] = shown;
+  }
   const r = await applyShortTitles({
     marketId,
     officerId: session.userId,
@@ -241,6 +257,7 @@ export async function setMarketShortTitlesAction(formData: FormData) {
       competition: field("competition"),
     },
     via: "edit",
+    expectedBefore,
   });
   if (!r.ok) return r;
   if (r.changed) {
@@ -254,7 +271,9 @@ export async function setMarketShortTitlesAction(formData: FormData) {
     const value = loc === "en" ? r.after.shortTitleEn : loc === "sw" ? r.after.shortTitleSw : r.after.shortTitleZh;
     return r.warnings[loc].map((issue) => shortTitleIssueSentence(loc, issue, value ?? ""));
   });
-  return { ...r, warningSentences };
+  // The sentinel's verdict, per language it read — the same languages the service chose ("changed").
+  const sentinelLines = agreementVerdictLines(r.agreement, r.changed ? changedShortTitleLocales(r.before, r.after) : []);
+  return { ...r, warningSentences, sentinelLines };
 }
 
 /**
@@ -405,6 +424,15 @@ export async function createMarketAction(formData: FormData) {
     return { ok: false as const, error: `Source not approved · ${trust.reason}. Add or enable it at /admin/sources.` };
   }
   const m = await createMarket(input);
+  // ⭐ EVERY OFFICER WRITE GETS THE SENTINEL'S CHECK (COMPLIANCE-DECISIONS §6) — the wizard's short titles too. Once the
+  // market EXISTS, the sentinel reads each short title it STORED against the full question, and the verdict is its own
+  // audit row (`market.short_title_checked`). ⛔ Never awaited: the market is published and the wizard does not wait on
+  // an AI call (a slow one must not leave an officer staring at a spinner over a market that already exists, and
+  // pressing Publish again). `recordShortTitleAgreement` never throws — every failure is a "not checked" row.
+  const storedShort = SHORT_TITLE_LOCALES.filter((loc) => shortTitleFor(loc, m) !== null);
+  if (storedShort.length > 0) {
+    void recordShortTitleAgreement({ marketId: m.id, officerId: session.userId, locales: storedShort, via: "create" });
+  }
   revalidatePath("/admin/markets");
   revalidatePath("/markets");
   return { ok: true as const, market: m };

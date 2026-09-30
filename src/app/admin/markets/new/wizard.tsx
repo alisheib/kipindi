@@ -57,8 +57,12 @@ function shortIssueText(locale: Locale, issue: ShortTitleIssue): string {
         : locale === "en"
           ? "Write it as a question ending in “?”."
           : "Write it as a question ending in “？”.";
+    // The rule compares on a key (case, spacing, curly quotes, the closing mark and a Swahili "Je, " do not hide a
+    // copy), and a Chinese value with no Chinese character in it is refused the same way — so say what to do.
     case "copied_english":
-      return "This is the English text. Write it in this language, or leave it empty so the card shows the full question.";
+      return locale === "zh"
+        ? "This is not written in Chinese. Write it in Chinese, or leave it empty so the card shows the full question."
+        : "This is the English text. Write it in Swahili, or leave it empty so the card shows the full question.";
     case "number_drift":
       return "It has a number the full question does not. Check it says the same thing.";
   }

@@ -11,15 +11,25 @@
  * ⭐ THE BUDGET IS READ, NEVER TYPED. The counters come from `SHORT_TITLE_MAX` and `codePoints` over the value
  * `cleanShortTitle` will store (trimmed, folded onto GSM-7), so the number the officer watches is the number the server
  * counts. The server refuses anything the rules refuse (`applyShortTitles`), and the refusal is shown beside the field
- * it names; a warning (a number the full question does not contain) is shown after the save, in the server's words.
+ * it names — and, once the save has settled, that field takes the focus; a warning (a number the full question does not
+ * contain) is shown after the save, in the server's words.
  *
  * ⛔ ONLY WHAT MOVED IS SENT. A field the form does not carry is "leave it as it is" on the server, so a stored value
  * the rules would now refuse can never block an edit to a different field — and an untouched field is never rewritten.
+ * Each field sent carries the value this page showed (`expected.<field>`): if another officer changed it meanwhile,
+ * the server refuses instead of overwriting their words.
+ *
+ * ⭐ THE SENTINEL'S VERDICT IS SHOWN BESIDE EACH LANGUAGE IT READ after a save — "agrees", "does not agree: …" or
+ * "not checked: …" (never "agrees" for a check that did not run). It describes the SAVED words, so typing into the
+ * field clears it.
+ *
+ * A competition key this build does not know (stored before a list change) is SHOWN as such rather than as a blank,
+ * and stays as it is unless the officer picks another.
  *
  * A1 · `/admin/markets` is the `trading` domain and the action gates on it; a role with VIEW but not ACT reads the
  * values and cannot change them. Admin copy is English only.
  */
-import { useId, useRef, useState, useTransition } from "react";
+import { useEffect, useId, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useDeferredToast } from "@/components/ui/toast";
 import { Input, Field } from "@/components/ui/input";
@@ -33,13 +43,14 @@ import { focusFirstInvalid } from "@/lib/client/focus-first-invalid";
 import { runAdminAction } from "@/lib/client/run-admin-action";
 import { setMarketShortTitlesAction } from "@/app/markets/actions";
 import { SHORT_TITLE_MAX, cleanShortTitle, codePoints } from "@/lib/markets/short-title";
-import { COMPETITIONS } from "@/lib/markets/competitions";
+import { COMPETITIONS, isCompetition } from "@/lib/markets/competitions";
 import { competitionLabel } from "@/lib/markets/competition-label";
 import { dict, type Locale } from "@/lib/i18n-dict";
 
 type TitleKey = "shortTitleEn" | "shortTitleSw" | "shortTitleZh";
 type Key = TitleKey | "competition";
 type Values = Record<Key, string>;
+type Verdict = { kind: "agrees" | "disagrees" | "unchecked"; text: string };
 
 const LANGS: ReadonlyArray<{ key: TitleKey; locale: Locale; label: string; placeholder: string }> = [
   { key: "shortTitleEn", locale: "en", label: "English short title", placeholder: "Will Simba beat Yanga on Saturday?" },
@@ -52,6 +63,16 @@ const COMPETITION_OPTIONS = [
   { value: "", label: "None" },
   ...COMPETITIONS.map((c) => ({ value: c, label: competitionLabel(dict.en, c) })),
 ];
+
+/** The choices for what the market STORES: the one list — plus, when it holds a key this build does not know, that key,
+ *  named as such, so the select shows what is stored instead of a blank. Picking anything else moves it off. */
+function competitionOptions(stored: string) {
+  if (!stored || isCompetition(stored)) return COMPETITION_OPTIONS;
+  return [COMPETITION_OPTIONS[0], { value: stored, label: `${stored} — not a competition this build knows` }, ...COMPETITION_OPTIONS.slice(1)];
+}
+
+/** The same three inks the draft review uses for the sentinel's verdict. */
+const VERDICT_INK: Record<Verdict["kind"], string> = { agrees: "text-success-fg", disagrees: "text-danger-fg", unchecked: "text-warning-fg" };
 
 const KEYS: readonly Key[] = ["shortTitleEn", "shortTitleSw", "shortTitleZh", "competition"];
 
@@ -81,27 +102,42 @@ export function ShortTitleControl({
   const [values, setValues] = useState<Values>(initial);
   const [errors, setErrors] = useState<Partial<Record<Key, string>>>({});
   const [warnings, setWarnings] = useState<string[]>([]);
+  const [verdicts, setVerdicts] = useState<Partial<Record<TitleKey, Verdict>>>({});
+  const [focusField, setFocusField] = useState<Key | null>(null);
   const moved = KEYS.filter((k) => values[k] !== saved[k]);
   const dirty = moved.length > 0;
+
+  /* ⭐ THE REFUSED FIELD TAKES THE FOCUS ONCE THE SAVE HAS SETTLED. While `pending` every input is disabled, and a
+     disabled control cannot take focus — a focus attempted inside the transition went nowhere. So the refusal only
+     names the field here, and this effect moves the focus when the inputs are live again, once. */
+  useEffect(() => {
+    if (pending || !focusField) return;
+    focusFirstInvalid(boxRef.current, [focusField]);
+    setFocusField(null);
+  }, [focusField, pending]);
 
   const edit = (k: Key, v: string) => {
     setValues((s) => ({ ...s, [k]: v }));
     setErrors((e) => ({ ...e, [k]: undefined }));
+    // A verdict describes the SAVED words; once the officer types, it no longer describes this field.
+    if (k !== "competition") setVerdicts((s) => ({ ...s, [k]: undefined }));
   };
 
   const save = () => {
-    const box = boxRef.current;
     const send = moved;
+    const shown = saved;
     start(async () => {
       const fd = new FormData();
       fd.set("marketId", marketId);
       for (const k of send) fd.set(k, values[k]);
+      // What this page showed for each field it sends — the server refuses if another officer has changed it since.
+      for (const k of send) fd.set(`expected.${k}`, shown[k]);
       const r = await runAdminAction(() => setMarketShortTitlesAction(fd));
       if (!r.ok) {
         // ⛔ The refusal is shown VERBATIM beside the field it names: it says what to change.
         if (r.field) {
           setErrors({ [r.field as Key]: r.error });
-          focusFirstInvalid(box, [r.field]);
+          setFocusField(r.field as Key);
         }
         toast({ title: "Couldn't save the short titles", description: r.error, variant: "danger" });
         return;
@@ -116,6 +152,14 @@ export function ShortTitleControl({
       setValues(next);
       setErrors({});
       setWarnings(r.warningSentences);
+      // The languages this save gave new words get the sentinel's fresh verdict; a language it did not touch keeps the
+      // verdict it had (its words did not change), and one the officer typed into had its verdict cleared by `edit`.
+      const lines: Partial<Record<TitleKey, Verdict>> = {};
+      for (const { key, locale } of LANGS) {
+        const line = r.sentinelLines[locale];
+        if (line) lines[key] = line;
+      }
+      setVerdicts((prev) => ({ ...prev, ...lines }));
       if (!r.changed) {
         toast({ title: "Nothing to save", description: "The short titles and the competition are already these.", variant: "default" });
         return;
@@ -141,6 +185,8 @@ export function ShortTitleControl({
           const n = codePoints(cleanShortTitle(locale, values[key]));
           const max = SHORT_TITLE_MAX[locale];
           const counterId = `stc-${uid}-${key}`;
+          const verdictId = `stc-${uid}-${key}-sentinel`;
+          const verdict = verdicts[key];
           return (
             <Field key={key} label={label} dataField={key} error={errors[key]}>
               <Input
@@ -149,11 +195,16 @@ export function ShortTitleControl({
                 disabled={pending || !mayAct}
                 placeholder={placeholder}
                 error={!!errors[key]}
-                aria-describedby={counterId}
+                aria-describedby={verdict ? `${counterId} ${verdictId}` : counterId}
               />
               <p id={counterId} className={`mt-1 text-body-sm tabular-nums ${n > max ? "text-danger-fg" : "text-text-subtle"}`}>
                 {n} / {max}
               </p>
+              {verdict && (
+                <p id={verdictId} role="status" className={`mt-1 text-body-sm break-words ${VERDICT_INK[verdict.kind]}`}>
+                  Sentinel check: {verdict.text}
+                </p>
+              )}
             </Field>
           );
         })}
@@ -166,7 +217,7 @@ export function ShortTitleControl({
             value={values.competition}
             onChange={(v) => edit("competition", v)}
             disabled={pending || !mayAct}
-            options={COMPETITION_OPTIONS}
+            options={competitionOptions(saved.competition)}
           />
         </Field>
         <div>

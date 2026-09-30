@@ -647,6 +647,14 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
       armCount(setBody, k) === 2 && fromM(s2CreateArm, k) && fromM(s2UpdateArm, k), `${armCount(setBody, k)} line(s) in set`);
     ok(`10.s2.notStamp · "${k}" is not in STAMPABLE`, !writesKey(stampable, k));
   }
+  /* ⛔ MS-4 (the S2 review) · THE COMPETITION IS READ RAW. A coercing read (`normaliseCompetition(r.competition)`) turned
+   * a key a later build dropped into NULL — and the narrow writer, handed that NULL back by the next edit of any other
+   * field, stored it. The key is validated where a NEW value is written and coerced only where it is DISPLAYED. */
+  const rawRead = /^\s*competition\s*:\s*typeof r\.competition === "string" \? r\.competition : null,\s*$/m;
+  ok("10.s2.read.raw · toStoredMarket reads competition RAW — the stored string as it is, never through a coercer (MS-4)",
+    rawRead.test(read) && !/normaliseCompetition|isCompetition/.test(read));
+  ok("10.s2.c5 · CONTROL · a coercing competition read is caught",
+    !rawRead.test("    competition: normaliseCompetition(r.competition),") && /normaliseCompetition|isCompetition/.test("    competition: normaliseCompetition(r.competition),"));
   const s2Mem = objectMethod(region(marketDalSrc, "const memoryMarkets:"), "setShortTitles");
   const s2Pri = objectMethod(region(marketDalSrc, "const prismaMarkets:"), "setShortTitles");
   const keysIn = (body: string) => [...body.matchAll(/^\s*(\w+)\s*:/gm)].map((x) => x[1]);

@@ -6,21 +6,37 @@
  * (no key, no network — `ANTHROPIC_API_KEY` is removed before a single module loads):
  *   §1  generation — valid short titles are stored as generated; a failing language is stored as NULL with a
  *       WARNING chip naming the language, and NEVER as a filter reason (the poll stays approvable); an unknown
- *       competition is none; the sentinel's "not checked" never reads as agreement.
+ *       competition is none; the sentinel's "not checked" never reads as agreement; a short title `sanitise` would
+ *       strip (< … > text) is NONE with a chip, never the stripped remainder.
  *   §2  publish — `publishApprovedPoll` carries all four fields into the market (a hand-copied field is a dropped one).
- *   §3  the officer's edit — a hard issue is refused BY FIELD and leaves the poll untouched; a warning is kept.
+ *   §3  the officer's edit — a hard issue is refused BY FIELD and leaves the poll untouched; a warning is kept; a
+ *       value `sanitise` would change beyond whitespace is REFUSED on its field; a stored competition is kept RAW.
  *   §4  the backfill — the kill switch, the budget refusal (up front and mid-run), the batch clamp, the meter, the
  *       drafts, and what it skips (markets that already have short titles, closed ones, ones with a draft waiting).
- *   §5  approve (through `applyShortTitles`, never overwriting a newer officer value) and reject (audited first).
+ *   §5  approve (through `applyShortTitles`: a drafted value only where the market still has none, and the officer
+ *       told; the audit carrying the draft's verdict and `editedByOfficer`; a fresh check for edited words only) and
+ *       reject (the reason cleaned before it is measured; audited first; the market declined).
+ *   §8  the run's money gates — ONE run at a time (a claim that stands refuses, a lapsed one does not, two runs
+ *       started together pay once); the kill switch read before EVERY paid call, the sentinel's included; declined
+ *       languages never drafted (or paid for) again, a partly-declined market drafted for the rest only; declines
+ *       pruned with their market; the page's count and the run use one filter.
+ *   §9  the approval's races — the market lock is never taken inside the drafts lock (proved by taking the drafts lock
+ *       while an approval waits on the market); a draft cleared meanwhile is success; a stale edited page is refused
+ *       by field; the prune re-checks under the lock (a reopened market, a replaced draft) and still prunes; the
+ *       page's count reads the index after the prune.
  *   §6  the sentinel's agreement check — no key, a blocked budget, a failed call and an unreadable answer are all
  *       "not checked"; a real verdict is read strictly; the call is forced and has no web tools.
  *   §7  the wiring, read from source: the mappers, the publish hand-copy, the prompt's budgets, the FilterReason
- *       union, the gates' order, the forced tools, the provider not double-metering.
- *   §12 database mode (its own process, a fake SystemConfig): drafts are SystemConfig rows, a failed read refuses,
- *       a write that does not land is reported.
- *   §13 the AIPoll Prisma mapper (its own process, a fake AIPoll table): all four columns on create, update, read.
+ *       union, the gates' order (and the kill switch inside the loop), the single-flight claim, the approval's three
+ *       steps, the audit plan, the cleaned reason, both counters, the stale-verdict label, the tab badge, the forced
+ *       tools, the provider not double-metering.
+ *   §12 database mode (its own process, a fake SystemConfig): drafts, the run's claim and the declines are
+ *       SystemConfig rows; a failed read of any of them refuses the run before a call; a write that does not land is
+ *       reported.
+ *   §13 the AIPoll Prisma mapper (its own process, a fake AIPoll table): all four columns on create, update, read —
+ *       the competition read RAW.
  *
- * ⭐ RED TWIN, IN PROCESS: `npm run red:short-title-ai` runs §1–§7 against planted defective implementations and
+ * ⭐ RED TWIN, IN PROCESS: `npm run red:short-title-ai` runs §1–§9 against planted defective implementations and
  * planted source text; every plant must be caught by the check named for it. It never touches a file.
  *
  *   npx tsx scripts/short-title-ai.test.mts             the suite
@@ -177,7 +193,8 @@ if (MODE === "aipoll") {
     !!bareRow && bareRow.shortTitleEn === null && bareRow.shortTitleSw === null && bareRow.shortTitleZh === null && bareRow.competition === null, j(four(bareRow)));
   POLLS.set("aip_sta_unknown", { ...(POLLS.get(base.id) ?? {}), id: "aip_sta_unknown", competition: "not-a-competition" });
   const unknown = await GEN.aiPollStore.get("aip_sta_unknown");
-  ok("13.read.unknown · a competition this build does not know reads back as none", unknown?.competition === null, j(unknown?.competition));
+  ok("13.read.raw · a competition this build does not know reads back RAW — never coerced to none on a read",
+    unknown?.competition === "not-a-competition", j(unknown?.competition));
   const fails = results.filter((r) => !r.ok);
   if (results.length === 0) { console.log("⛔ 0 checks — a zero-assertion run is a SKIPPED run."); process.exit(1); }
   process.exit(fails.length ? 1 : 0);
@@ -204,6 +221,8 @@ const USAGE = await import("../src/lib/server/ai-usage.ts");
 const { aiUsageDal } = await import("../src/lib/server/ai-usage-dal.ts");
 const CFG = await import("../src/lib/server/ai-poll-config.ts");
 const SVC = await import("../src/lib/server/short-title-service.ts");
+const LOCKS = await import("../src/lib/server/locks.ts");
+const VIEWS = await import("../src/app/admin/ai-polls/short-title-views.ts");
 const { getAuditPage, auditFlush } = await import("../src/lib/server/audit.ts");
 const ST = await import("../src/lib/markets/short-title.ts");
 const { decomment } = await import("./lib/decomment.mts");
@@ -246,13 +265,19 @@ const REAL: Impl = {
 
 // ── THE SOURCE WORLD — read as text (comments stripped), so the red twin can plant edits in memory ────────
 const src = (rel: string) => decomment(readFileSync(join(REPO, rel), "utf8").replace(/\r\n/g, "\n"));
-type World = { gen: string; publish: string; claude: string; sentinel: string; backfill: string };
+/** The client files and the page are read RAW (JSX text is not a comment stripper's input); every pattern read from
+ *  them is a line of code no comment in them repeats. */
+const raw = (rel: string) => readFileSync(join(REPO, rel), "utf8").replace(/\r\n/g, "\n");
+type World = { gen: string; publish: string; claude: string; sentinel: string; backfill: string; drafts: string; pollActions: string; page: string };
 const WORLD: World = {
   gen: src("src/lib/server/ai-poll-generation.ts"),
   publish: src("src/lib/server/ai-poll-publish.ts"),
   claude: src("src/lib/server/ai-provider-claude.ts"),
   sentinel: src("src/lib/server/market-sentinel.ts"),
   backfill: src("src/lib/server/short-title-backfill.ts"),
+  drafts: raw("src/app/admin/ai-polls/short-title-drafts.tsx"),
+  pollActions: raw("src/app/admin/ai-polls/poll-actions.tsx"),
+  page: raw("src/app/admin/ai-polls/page.tsx"),
 };
 /** From `anchor` to the first end marker after it (or the end of the text). "" when the anchor is gone. */
 function slice(text: string, anchor: string, ends: string[]): string {
@@ -273,6 +298,11 @@ const hasKeyLine = (body: string, key: string) => new RegExp(`^\\s*${key}:`, "m"
 const tagFor = (n: number) => `st${String.fromCharCode(97 + Math.floor(n / 26) % 26)}${String.fromCharCode(97 + (n % 26))}`;
 const SINCE = new Date(Date.now() - 60_000).toISOString();
 const INDEX_KEY = "shortTitle.draft.index";
+const RUN_KEY = "shortTitle.draft.run";
+const DECLINED_KEY = "shortTitle.draft.declined";
+/** A zero-width space, BUILT from its code point (never typed: an editor could turn an escape into the character). */
+const ZW = String.fromCharCode(0x200b);
+const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
 async function usageRows(ids: string[]) {
   return (await aiUsageDal.recent(SINCE, 1_000_000)).filter((e) => e.feature === "polls" && e.subjectType === "market" && !!e.subjectId && ids.includes(e.subjectId));
@@ -291,6 +321,36 @@ function clearDrafts() {
 function indexIds(): string[] {
   const v = (MODE === "db" ? TABLE.get(INDEX_KEY) : draftStore().get(INDEX_KEY)) as { marketIds?: string[] } | undefined;
   return Array.isArray(v?.marketIds) ? v!.marketIds! : [];
+}
+/** The languages recorded as declined for a market (in memory). */
+function declinedFor(marketId: string): string[] | null {
+  const v = draftStore().get(DECLINED_KEY) as { byMarket?: Record<string, { locales?: string[] }> } | undefined;
+  return v?.byMarket?.[marketId]?.locales ?? null;
+}
+/** A stored draft row, read straight from the store (in memory). */
+function storedDraft(marketId: string): Record<string, unknown> | null {
+  return (draftStore().get(`shortTitle.draft.${marketId}`) as Record<string, unknown> | undefined) ?? null;
+}
+/** Take a market off the waiting list by hand — what a prune landing at the same moment does. */
+function unlistDraft(marketId: string) {
+  const kv = draftStore();
+  const idx = (kv.get(INDEX_KEY) as { marketIds?: string[] } | undefined)?.marketIds ?? [];
+  kv.set(INDEX_KEY, { marketIds: idx.filter((x) => x !== marketId) });
+  kv.delete(`shortTitle.draft.${marketId}`);
+}
+/** A draft run's provider that switches AI generation OFF during its first call — the operator's hand, mid-run. */
+class SwitchingOffMock extends PROV.MockClaudeProvider {
+  calls: string[] = [];
+  refuseAll: boolean;
+  constructor(refuseAll: boolean) { super(); this.refuseAll = refuseAll; }
+  async draftShortTitles(req: import("../src/lib/server/ai-provider.ts").ShortTitleDraftRequest) {
+    this.calls.push(req.marketId);
+    if (this.calls.length === 1) await CTRL.setPollGenEnabled(false, OFFICER);
+    const r = await super.draftShortTitles(req);
+    // Every language breaks the form rule, so the rules leave nothing for the sentinel to read.
+    if (this.refuseAll && r.draft) r.draft = { en: { shortTitle: "no question mark here" }, sw: { shortTitle: "hakuna swali hapa" }, zh: { shortTitle: "没有问号" } };
+    return r;
+  }
 }
 async function refusalOf(fn: () => Promise<unknown>): Promise<unknown> {
   try { await fn(); return null; } catch (e) { return e; }
@@ -379,9 +439,34 @@ async function g1Generate(I: Impl, ctx: Ctx) {
     PROV.setAIProvider(new PROV.MockClaudeProvider());
   }
   ok("1.comp.unknown · an unknown competition from the model is stored as none", w.competition === null, j(w.competition));
-  ok("1.copied · a Chinese short title that copies the English is NULL, with a warning that says so",
-    w.shortTitleZh === null && w.qualityIndicators.some((q) => q.status === "warning" && q.label.includes("Chinese") && q.label.includes("copy of the English")),
+  // The Chinese slot refuses ANY value with no Chinese character (a copy of the English is one), and its chip says so.
+  ok("1.copied · a Chinese short title that copies the English is NULL, with a warning that says it is not written in Chinese",
+    w.shortTitleZh === null && w.qualityIndicators.some((q) => q.status === "warning" && q.label.includes("Chinese") && q.label.includes("not written in Chinese")),
     j({ zh: w.shortTitleZh, chips: w.qualityIndicators.map((q) => q.label) }));
+
+  // ST-4: the model wraps a word of its Swahili in markup. `sanitise` would strip the tag and leave a Swahili short title
+  // that PASSES every rule — words the model never wrote. It must be none, with a chip that says why.
+  PROV.setAIProvider(new ReshapingMock((g2) => ({ ...g2, shortTitleSw: `Je, <b>${(g2.shortTitleSw ?? "").replace(/^Je,\s*/, "")}` })));
+  let mk1;
+  try {
+    mk1 = await I.generate({ category: "macro", actorId: OFFICER, controlledTitle: `Will Tanzania GDP growth exceed 6% in Q3 2026? (${ctx.tag} markup)` });
+  } finally {
+    PROV.setAIProvider(new PROV.MockClaudeProvider());
+  }
+  const wroteSw = mk1.generation?.shortTitleSw ?? "";
+  ok("1.markup.fixture · the model's Swahili carries a < … > tag, and without it would pass the rules",
+    wroteSw.includes("<b>") && ST.normaliseShortTitleSet({ titleEn: mk1.titleEn, titleSw: mk1.titleSw, titleZh: mk1.titleZh, shortTitleSw: wroteSw.replace("<b>", "") }, { strict: true }).shortTitleSw !== null,
+    j(wroteSw));
+  ok("1.markup.null · a model's short title that sanitise would strip is NONE — never the stripped remainder",
+    mk1.shortTitleSw === null && GEN.shortTitleStripProblem(wroteSw) !== null, j({ stored: mk1.shortTitleSw }));
+  ok("1.markup.chip · …with a WARNING chip naming the language and the markup",
+    mk1.qualityIndicators.some((q) => q.status === "warning" && q.label === `${GEN.SHORT_TITLE_CHIP} · Swahili left empty — it had < … > text`),
+    j(mk1.qualityIndicators.map((q) => q.label)));
+  ok("1.markup.others · …while the other languages are stored and the poll stays approvable",
+    !!mk1.shortTitleEn && !!mk1.shortTitleZh && mk1.filterReasons.length === 0 && mk1.state === "PENDING_REVIEW", j({ en: mk1.shortTitleEn, zh: mk1.shortTitleZh, f: mk1.filterReasons }));
+  ok("1.markup.rule · only what sanitise would strip beyond whitespace counts: spaces and a zero-width character do not",
+    GEN.shortTitleStripProblem(`Je, uchumi  utakua${ZW} zaidi?`) === null && GEN.shortTitleStripProblem("Je, uchumi utakua javascript: zaidi?") !== null
+      && GEN.shortTitleStripProblem(`Je, uchumi utakua${String.fromCharCode(0)} zaidi?`) !== null && GEN.shortTitleStripProblem(42) === null);
 }
 
 // ═════════════════════════════════════════════════════════════════════════════════════════════════════════
@@ -426,7 +511,20 @@ async function g3Edit(I: Impl, ctx: Ctx) {
   const e4 = await refusalOf(() => I.edit(id, { officerId: OFFICER, competition: "premier-league-x" }));
   ok("3.hard.comp · an unknown competition is refused, never coerced", e4 instanceof GEN.AIPollShortTitleRefused && e4.field === "competition", String(e4));
 
-  const valid = await I.edit(id, { officerId: OFFICER, shortTitleSw: "Je, uchumi utakua zaidi ya 6% Q3 2026?", shortTitleZh: "" });
+  // ST-4: what `sanitise` would strip is REFUSED on its field — the officer's words are stored exactly, or not at all.
+  const e5 = await refusalOf(() => I.edit(id, { officerId: OFFICER, shortTitleSw: "Je, uchumi <b>utakua</b> zaidi ya 6% Q3 2026?" }));
+  ok("3.markup.refused · a typed short title with < … > text is REFUSED on its field, never stripped into other words",
+    e5 instanceof GEN.AIPollShortTitleRefused && e5.field === "shortTitleSw" && e5.message.startsWith("Remove the < … > text — the short title must be stored exactly as written."), String(e5));
+  const e6 = await refusalOf(() => I.edit(id, { officerId: OFFICER, shortTitleEn: "Will javascript: growth top 6% in Q3 2026?" }));
+  ok("3.markup.script · “javascript:” is refused the same way, on its own field", e6 instanceof GEN.AIPollShortTitleRefused && e6.field === "shortTitleEn" && /javascript:/.test(e6.message), String(e6));
+  const afterMarkup = await GEN.getAIPoll(id);
+  ok("3.markup.untouched · …and the refused edits changed nothing",
+    !!afterMarkup && !!b && afterMarkup.shortTitleSw === b.sw && afterMarkup.shortTitleEn === b.en, j(afterMarkup && { sw: afterMarkup.shortTitleSw, en: afterMarkup.shortTitleEn }));
+
+  // A zero-width character and a doubled space are what storing normalises anyway: accepted, and stored clean.
+  const valid = await I.edit(id, { officerId: OFFICER, shortTitleSw: `Je, uchumi utakua${ZW}  zaidi ya 6% Q3 2026?`, shortTitleZh: "" });
+  ok("3.markup.whitespace · a value that differs only by whitespace or a zero-width character is accepted, stored clean",
+    valid?.shortTitleSw === "Je, uchumi utakua zaidi ya 6% Q3 2026?", j(valid?.shortTitleSw));
   ok("3.valid · a valid Swahili short title is stored and an empty Chinese one clears it",
     valid?.shortTitleSw === "Je, uchumi utakua zaidi ya 6% Q3 2026?" && valid?.shortTitleZh === null && valid?.state === "PENDING_REVIEW", j(valid && { sw: valid.shortTitleSw, zh: valid.shortTitleZh, state: valid.state }));
   ok("3.valid.chips · the chips count two of three, and the sentinel's earlier verdict is marked stale",
@@ -437,6 +535,18 @@ async function g3Edit(I: Impl, ctx: Ctx) {
   ok("3.drift · a number the full question does not have is a WARNING the officer may keep",
     drift?.shortTitleEn === "Will Q3 2026 growth top 7%?" && drift.qualityIndicators.some((q) => q.status === "warning" && q.label.includes("English kept")),
     j(drift && { en: drift.shortTitleEn, chips: drift.qualityIndicators.map((q) => q.label) }));
+
+  // The S2 decision: a competition is stored and READ raw. A key a later build dropped survives every edit that does not
+  // touch it, and re-sending it is not a new value; only a NEW key is validated.
+  const legacy = await GEN.getAIPoll(id);
+  if (legacy) { legacy.competition = "legacy-cup"; await GEN.aiPollStore.set(legacy); }
+  const keep = await I.edit(id, { officerId: OFFICER, shortTitleSw: "Je, uchumi utakua zaidi ya 6% Q3 2026?" });
+  ok("3.comp.raw · an edit that does not touch the competition keeps a stored key this build does not know", keep?.competition === "legacy-cup", j(keep?.competition));
+  const resend = await refusalOf(() => I.edit(id, { officerId: OFFICER, competition: "legacy-cup" }));
+  const afterResend = await GEN.getAIPoll(id);
+  ok("3.comp.resend · re-sending the stored key is not a new value — kept, not refused", resend === null && afterResend?.competition === "legacy-cup", String(resend));
+  const cleared = await I.edit(id, { officerId: OFFICER, competition: "" });
+  ok("3.comp.clear · …and the officer can still clear it", cleared?.competition === null, j(cleared?.competition));
 }
 
 // ═════════════════════════════════════════════════════════════════════════════════════════════════════════
@@ -556,6 +666,19 @@ async function g5Decide(I: Impl, M: Record<string, StoredMarket>) {
   const mB = await MS.getMarket(B.id);
   ok("5.never.overwrite · approving a draft never overwrites a short title set since it was drafted",
     rbB.ok && mB?.shortTitleEn === officerEn && mB?.shortTitleSw === dB?.sw && mB?.shortTitleZh === null, j(mB && [mB.shortTitleEn, mB.shortTitleSw, mB.shortTitleZh]));
+  const notesB = rbB.ok ? BF.approvalNotes(rbB).map((n) => n.text) : [];
+  ok("5.never.told · …the kept value is reported to the officer, by language",
+    rbB.ok && j(rbB.skipped) === j(["shortTitleEn"]) && notesB.includes("English was already set by someone else — kept."), j({ skipped: rbB.ok && rbB.skipped, notesB }));
+  // B's Chinese was refused by the rules (a copy of the English), so the approval leaves it empty: an officer's decision.
+  ok("5.declined.approve · a language an approval leaves empty is recorded as declined, and the officer is told it is not drafted again",
+    rbB.ok && j(rbB.declined) === j(["zh"]) && rbB.declineSaved && j(declinedFor(B.id)) === j(["zh"])
+      && notesB.includes("Chinese was left empty and will not be drafted again — set it by hand on the market's page if you want one."),
+    j({ declined: rbB.ok && rbB.declined, stored: declinedFor(B.id), notesB }));
+  const bRow = (await auditRows("market.short_title_approved", B.id)).at(-1)?.payload as { leftEmptyNotDraftedAgain?: string[] } | undefined;
+  ok("5.declined.audit · …and that decision is on the approval's own record",
+    j(bRow?.leftEmptyNotDraftedAgain) === j(["zh"]), j(bRow));
+  ok("5.plain.nocheck · a plain approval pays for no second sentinel check (the draft's verdict is about these words)",
+    (await auditRows("market.short_title_checked", A.id)).length === 0 && ra.ok && ra.agreement === null);
 
   // Edit, then approve: a hard issue is refused by field and the draft keeps waiting; a valid edit lands.
   const bad = await I.approve({ officerId: OFFICER, marketId: F.id, edited: { shortTitleSw: `${"A".repeat(90)}?` } });
@@ -565,17 +688,249 @@ async function g5Decide(I: Impl, M: Record<string, StoredMarket>) {
   const good = await I.approve({ officerId: OFFICER, marketId: F.id, edited: { shortTitleSw: sw } });
   const mF = await MS.getMarket(F.id);
   ok("5.edit.ok · an edited value that passes the rules is what lands", good.ok && mF?.shortTitleSw === sw && !indexIds().includes(F.id), j(mF && mF.shortTitleSw));
+  const fRow = (await auditRows("market.short_title_approved", F.id)).at(-1)?.payload as
+    { editedByOfficer?: string[]; draftAgreement?: Record<string, { kind?: string }>; draftUncheckedReason?: string } | undefined;
+  ok("5.edit.audit · the approval's record carries the draft's verdict for the languages approved AS DRAFTED, and editedByOfficer for the rest",
+    j(fRow?.editedByOfficer) === j(["sw"]) && j(Object.keys(fRow?.draftAgreement ?? {}).sort()) === j(["en", "zh"])
+      && Object.values(fRow?.draftAgreement ?? {}).every((v) => v.kind === "unchecked") && typeof fRow?.draftUncheckedReason === "string",
+    j(fRow));
+  const fChecks = await auditRows("market.short_title_checked", F.id);
+  ok("5.edit.fresh · the edited language — and only it — gets its own sentinel check, on the record",
+    fChecks.some((e) => (e.payload as { via?: string; languages?: string[] })?.via === "backfill" && j((e.payload as { languages?: string[] }).languages) === j(["sw"])),
+    j(fChecks.map((e) => e.payload)));
+  const notesF = good.ok ? BF.approvalNotes(good).map((n) => n.text) : [];
+  ok("5.edit.told · …and the officer reads its verdict — here, that it could not check (no key) — never an agreement",
+    good.ok && good.agreement?.status === "unchecked" && notesF.some((t) => t.startsWith("The sentinel did not check your edit")) && !notesF.some((t) => t.includes("agrees")), j(notesF));
 
-  // Reject.
+  // Reject — the reason measured and stored AS CLEANED (invisible characters out), the market declined.
   const noReason = await I.reject({ officerId: OFFICER, marketId: G.id, reason: " " });
   ok("5.reject.reason · a rejection with no reason is refused, naming the field", !noReason.ok && noReason.field === "reason" && indexIds().includes(G.id), j(noReason));
-  const rj = await I.reject({ officerId: OFFICER, marketId: G.id, reason: "Names the wrong fixture" });
+  const invisible = await I.reject({ officerId: OFFICER, marketId: G.id, reason: `${ZW.repeat(6)}ok` });
+  ok("5.reject.invisible · a reason padded with invisible characters is measured as cleaned — too short, refused, the draft still waiting",
+    !invisible.ok && invisible.field === "reason" && indexIds().includes(G.id), j(invisible));
+  const rj = await I.reject({ officerId: OFFICER, marketId: G.id, reason: `Names the${ZW} wrong fixture` });
   ok("5.reject.ok · a rejection takes the draft off the waiting list", rj.ok && !indexIds().includes(G.id), j(rj));
   const rjRows = await auditRows("market.short_title_draft_rejected", G.id);
-  ok("5.reject.audit · the rejection is on the record with its reason and the draft it rejected",
+  ok("5.reject.audit · the rejection is on the record with its reason — CLEANED of invisible characters — and the draft it rejected",
     rjRows.some((e) => (e.payload as { reason?: string; draft?: unknown })?.reason === "Names the wrong fixture" && !!(e.payload as { draft?: unknown }).draft), String(rjRows.length));
+  ok("5.reject.declined · the rejected market is recorded as declined in every language the draft was for — no run drafts it again",
+    rj.ok && rj.declineSaved && j(declinedFor(G.id)) === j(["en", "sw", "zh"]) && BF.rejectNotes(rj).some((n) => n.text.includes("will not be drafted again")),
+    j({ stored: declinedFor(G.id) }));
   const mG = await MS.getMarket(G.id);
   ok("5.reject.untouched · the rejected market's card is untouched", !!mG && mG.shortTitleEn == null && mG.shortTitleSw == null && mG.shortTitleZh == null);
+
+  // The row the panel paints: a stored competition this build no longer lists is shown as itself, never as "none".
+  const vDraft = dA ?? draftOf(G.id);
+  const view = vDraft ? VIEWS.draftView({ draft: vDraft, market: { ...A, competition: "legacy-cup" } as StoredMarket }) : null;
+  ok("5.view.unknown · an unknown stored competition is shown as stored and said to be unknown; the draft proposes none over it",
+    !!view && view.competition.current === "legacy-cup" && /^legacy-cup \(not a competition this build knows\)$/.test(view.competition.currentLabel ?? "") && view.competition.drafted === null,
+    j(view?.competition));
+  ok("5.view.stale · the panel is handed the server's words for a verdict whose words were edited",
+    !!view && view.editedVerdictText === VIEWS.EDITED_AFTER_CHECK && VIEWS.EDITED_AFTER_CHECK === "not checked — edited after the check");
+}
+
+// ═════════════════════════════════════════════════════════════════════════════════════════════════════════
+// §8 · THE RUN'S MONEY GATES — one run at a time, the kill switch mid-run, declines honoured
+// ═════════════════════════════════════════════════════════════════════════════════════════════════════════
+async function g8Run(I: Impl, ctx: Ctx) {
+  await closeOpenMarkets();
+  clearDrafts();
+  const t = `${ctx.tag}r`;
+  const P = await mk(t, 3, { days: 10 });
+  const Q = await mk(t, 4, { days: 11 });
+  const R = await mk(t, 5, { days: 12 });
+  const S = await mk(t, 6, { days: 13 });
+  const U = await mk(t, 7, { days: 14 });
+  const V = await mk(t, 8, { days: 15 });
+  const ids = [P.id, Q.id, R.id, S.id, U.id, V.id];
+  const metered = async (id: string) => (await usageRows(ids)).filter((r) => r.subjectId === id).length;
+
+  // ── ONE RUN AT A TIME ──
+  draftStore().set(RUN_KEY, { by: "officer-other", at: new Date().toISOString(), token: "someone-elses-run" });
+  const held = await I.draft({ officerId: OFFICER });
+  ok("8.single.held · while another run's claim stands, a run is refused — saying when that run started — and nothing is called or stored",
+    !held.ok && /^A draft run is already in progress \(started /.test(held.error) && (await usageRows(ids)).length === 0 && indexIds().length === 0, j(held));
+  ok("8.single.theirs · …and the refused run leaves the other run's claim where it is",
+    (draftStore().get(RUN_KEY) as { token?: string } | undefined)?.token === "someone-elses-run", j(draftStore().get(RUN_KEY)));
+  draftStore().set(RUN_KEY, { by: "officer-other", at: new Date(Date.now() - BF.DRAFT_RUN_TTL_MS - 60_000).toISOString(), token: "a-run-that-died" });
+  const lapsed = await I.draft({ officerId: OFFICER, limit: 1 });
+  ok("8.single.lapsed · a claim older than the time limit (a run that died) does not block the next run", lapsed.ok && lapsed.drafted === 1, j(lapsed));
+  ok("8.single.released · a finished run releases its own claim", !draftStore().has(RUN_KEY), j(draftStore().get(RUN_KEY)));
+  const [a, b] = await Promise.all([I.draft({ officerId: OFFICER, limit: 1 }), I.draft({ officerId: OFFICER, limit: 1 })]);
+  const refusedPair = [a, b].filter((x) => !x.ok && /^A draft run is already in progress/.test(x.error));
+  const ranPair = [a, b].filter((x) => x.ok && x.drafted === 1);
+  const perMarket = await Promise.all(ids.map(metered));
+  ok("8.single.pair · of two runs started together one is refused as in progress — no market is paid for twice",
+    refusedPair.length === 1 && ranPair.length === 1 && perMarket.every((n) => n <= 1) && indexIds().length === 2, j({ a, b, perMarket }));
+
+  // ── THE KILL SWITCH, MID-RUN ──
+  // The operator switches AI off while the first market's draft is being written: the sentinel's paid check is not
+  // made, the draft already paid for is kept (unchecked), and the run stops.
+  const off1 = new SwitchingOffMock(false);
+  PROV.setAIProvider(off1);
+  let ks;
+  try { ks = await I.draft({ officerId: OFFICER }); } finally { PROV.setAIProvider(new PROV.MockClaudeProvider()); await CTRL.setPollGenEnabled(true, OFFICER); }
+  const dR = storedDraft(R.id) as { agreement?: { status?: string; reason?: string } } | null;
+  ok("8.kill.sentinel · switched off during a draft, the run makes NO further paid call — not even the sentinel's — and says so",
+    ks.ok && ks.drafted === 1 && ks.stopped === BF.DRAFT_RUN_SWITCHED_OFF && j(off1.calls) === j([R.id]) && (await metered(S.id)) === 0,
+    j({ ks, calls: off1.calls }));
+  ok("8.kill.kept · …the draft already paid for is kept, marked NOT CHECKED because AI was switched off",
+    dR?.agreement?.status === "unchecked" && /switched off/.test(dR.agreement.reason ?? ""), j(dR?.agreement));
+  // Switched off during a draft the rules refuse entirely (no sentinel call is due): the top of the next market stops it.
+  const off2 = new SwitchingOffMock(true);
+  PROV.setAIProvider(off2);
+  let kl;
+  try { kl = await I.draft({ officerId: OFFICER }); } finally { PROV.setAIProvider(new PROV.MockClaudeProvider()); await CTRL.setPollGenEnabled(true, OFFICER); }
+  ok("8.kill.loop · switched off mid-run, the next market's paid call is never made",
+    kl.ok && kl.drafted === 1 && kl.stopped === BF.DRAFT_RUN_SWITCHED_OFF && j(off2.calls) === j([S.id]) && (await metered(U.id)) === 0 && (await metered(V.id)) === 0,
+    j({ kl, calls: off2.calls }));
+
+  // ── DECLINES ──
+  const rest = await I.draft({ officerId: OFFICER });
+  ok("8.fixture · the rest are drafted (U and V)", rest.ok && rest.drafted === 2 && indexIds().includes(U.id) && indexIds().includes(V.id), j(rest));
+  const rjR = await I.reject({ officerId: OFFICER, marketId: R.id, reason: "Wrong fixture words" });
+  const nobody = { shortTitleEn: null, shortTitleSw: null, shortTitleZh: null, competition: null };
+  const apU = await I.approve({ officerId: OFFICER, marketId: U.id, edited: { shortTitleZh: "" }, baseline: nobody });
+  ok("8.declined.recorded · a rejection declines every language; an approval that clears one declines that one",
+    rjR.ok && apU.ok && j(declinedFor(R.id)) === j(["en", "sw", "zh"]) && j(declinedFor(U.id)) === j(["zh"]) && apU.ok && j(apU.declined) === j(["zh"]),
+    j({ R: declinedFor(R.id), U: declinedFor(U.id), apU }));
+  const before = [await metered(R.id), await metered(U.id)];
+  const skip = await I.draft({ officerId: OFFICER });
+  const after = [await metered(R.id), await metered(U.id)];
+  ok("8.declined.skip · a market whose missing languages are all declined is not drafted again — and not paid for again",
+    skip.ok && skip.considered === 0 && j(before) === j(after) && !indexIds().includes(R.id) && !indexIds().includes(U.id), j({ skip, before, after }));
+  // U loses its English: English was never declined, so U is drafted again — for English ONLY.
+  const lost = await SVC.applyShortTitles({ marketId: U.id, officerId: OFFICER, input: { shortTitleEn: "" }, via: "edit" });
+  const partial = await I.draft({ officerId: OFFICER });
+  const dU = storedDraft(U.id) as { missing?: string[] } | null;
+  ok("8.declined.partial · a market with a language nobody declined is drafted again, for THAT language only",
+    lost.ok && partial.ok && partial.considered === 1 && partial.drafted === 1 && j(dU?.missing) === j(["en"]), j({ partial, missing: dU?.missing }));
+  // R closes: its decline goes with it; U's stays.
+  await marketStore.stamp(R.id, { status: "CLOSED" });
+  const listedAfter = await I.list();
+  ok("8.declined.prune · the declines of a market that is no longer open are pruned; an open market's are kept",
+    declinedFor(R.id) === null && j(declinedFor(U.id)) === j(["zh"]), j(draftStore().get(DECLINED_KEY)));
+  ok("8.needing.declined · the page's still-to-draft count uses the run's own filter: nothing is left (drafts waiting, declines honoured)",
+    listedAfter.needing === 0, j({ needing: listedAfter.needing }));
+  await mk(t, 9, { days: 16 });
+  const listedNew = await I.list();
+  ok("8.needing.new · …and a new open market with no short title counts as one", listedNew.needing === 1, j({ needing: listedNew.needing }));
+}
+
+// ═════════════════════════════════════════════════════════════════════════════════════════════════════════
+// §9 · THE APPROVAL'S RACES — the two locks, a draft cleared meanwhile, a stale page, the prune's re-check
+// ═════════════════════════════════════════════════════════════════════════════════════════════════════════
+async function g9Race(I: Impl, ctx: Ctx) {
+  await closeOpenMarkets();
+  clearDrafts();
+  const t = `${ctx.tag}q`;
+  const X = await mk(t, 3, { days: 10 });
+  const Y = await mk(t, 4, { days: 11 });
+  const Z = await mk(t, 5, { days: 12 });
+  const V2 = await mk(t, 6, { days: 13 });
+  const W2 = await mk(t, 7, { days: 14 });
+  const r0 = await I.draft({ officerId: OFFICER });
+  ok("9.fixture · five drafts to decide", r0.ok && r0.drafted === 5, j(r0));
+
+  // ── THE MARKET LOCK IS NEVER TAKEN INSIDE THE DRAFTS LOCK ──
+  // Hold X's market lock; start an approval (it reads its draft, then waits for the market). While it waits, the drafts
+  // lock must be FREE — take it, and clear X's draft the way a prune landing at that moment would.
+  let releaseMarket!: () => void;
+  const marketHeld = new Promise<void>((r) => { releaseMarket = r; });
+  let marketTaken!: () => void;
+  const taken = new Promise<void>((r) => { marketTaken = r; });
+  const holder = LOCKS.runOutsideLock(() => LOCKS.withLock(`market:${X.id}`, async () => { marketTaken(); await marketHeld; }));
+  let free: boolean | string = "not tried";
+  let rx: Awaited<ReturnType<Impl["approve"]>> | null = null;
+  try {
+    await taken;
+    const approving = LOCKS.runOutsideLock(() => I.approve({ officerId: OFFICER, marketId: X.id }));
+    await sleep(60);
+    const draftsTry = LOCKS.runOutsideLock(() => LOCKS.withLock(BF.SHORT_TITLE_DRAFTS_LOCK, async () => { unlistDraft(X.id); return true as const; }));
+    free = await Promise.race([draftsTry, sleep(600).then(() => false)]);
+    releaseMarket();
+    rx = await approving;
+    await draftsTry;
+  } finally {
+    releaseMarket();
+    await holder;
+  }
+  const mX = await MS.getMarket(X.id);
+  ok("9.outside.free · while an approval waits for the MARKET lock, the DRAFTS lock is free — the market write is never nested inside it",
+    free === true, String(free));
+  ok("9.outside.cleared · a draft cleared while its approval wrote the market is success, not a failure — and the words landed",
+    !!rx && rx.ok && rx.draftCleared === true && !!mX?.shortTitleEn && !indexIds().includes(X.id), j(rx));
+
+  // ── A PLAIN APPROVE NEVER OVERWRITES ──
+  const theirSw = "Je, Simba SC itafunga zaidi ya magoli 4 leo?";
+  const theirs = await SVC.applyShortTitles({ marketId: Y.id, officerId: "officer-other", input: { shortTitleSw: theirSw }, via: "edit" });
+  const dY = storedDraft(Y.id) as { en?: string | null; zh?: string | null } | null;
+  const ry = await I.approve({ officerId: OFFICER, marketId: Y.id });
+  const mY = await MS.getMarket(Y.id);
+  ok("9.skip.kept · a plain Approve keeps the value another officer set meanwhile, and writes the rest",
+    theirs.ok && ry.ok && mY?.shortTitleSw === theirSw && mY?.shortTitleEn === dY?.en && mY?.shortTitleZh === dY?.zh, j({ ry, m: mY && [mY.shortTitleEn, mY.shortTitleSw, mY.shortTitleZh] }));
+  ok("9.skip.told · …and tells the officer which language was kept",
+    ry.ok && ry.skipped.includes("shortTitleSw") && BF.approvalNotes(ry).some((n) => n.text === "Swahili was already set by someone else — kept."), j(ry.ok && BF.approvalNotes(ry)));
+
+  // ── A STALE EDITED PAGE IS REFUSED, BY FIELD ──
+  const otherSw = "Je, Simba SC itafunga magoli zaidi ya 5?";
+  await SVC.applyShortTitles({ marketId: Z.id, officerId: "officer-other", input: { shortTitleSw: otherSw }, via: "edit" });
+  const mine = "Je, Simba SC itafunga zaidi ya magoli 5 leo?";
+  const stale = await I.approve({ officerId: OFFICER, marketId: Z.id, edited: { shortTitleSw: mine }, baseline: { shortTitleEn: null, shortTitleSw: null, shortTitleZh: null, competition: null } });
+  const mZ = await MS.getMarket(Z.id);
+  ok("9.stale.refused · an edited approval from a page that no longer matches the market is refused, naming the field",
+    !stale.ok && stale.field === "shortTitleSw" && /changed by someone else since this page loaded/.test(stale.error), j(stale));
+  ok("9.stale.untouched · …nothing changed, and the draft keeps waiting",
+    mZ?.shortTitleSw === otherSw && !mZ?.shortTitleEn && indexIds().includes(Z.id), j(mZ && [mZ.shortTitleEn, mZ.shortTitleSw]));
+  const fresh = await I.approve({ officerId: OFFICER, marketId: Z.id, edited: { shortTitleSw: mine }, baseline: { shortTitleEn: null, shortTitleSw: otherSw, shortTitleZh: null, competition: null } });
+  const mZ2 = await MS.getMarket(Z.id);
+  ok("9.stale.fresh · the same edit from a page that shows the market as it is lands",
+    fresh.ok && mZ2?.shortTitleSw === mine && !!mZ2?.shortTitleEn && !indexIds().includes(Z.id), j(fresh));
+
+  // ── THE PRUNE RE-CHECKS UNDER THE LOCK ──
+  // V2's market closes and W2's gets every short title: both drafts look stale on the list's unlocked read. While the
+  // list waits for the drafts lock, V2 reopens and W2's draft is replaced by a newer one. Neither may be pruned on the
+  // evidence of the old read.
+  await marketStore.stamp(V2.id, { status: "CLOSED" });
+  await SVC.applyShortTitles({
+    marketId: W2.id, officerId: OFFICER, via: "edit",
+    input: { shortTitleEn: "Will Simba SC score over 7 goals?", shortTitleSw: "Je, Simba SC itafunga zaidi ya magoli 7?", shortTitleZh: "Simba SC能否进7球以上？" },
+  });
+  let releaseDrafts!: () => void;
+  const draftsHeld = new Promise<void>((r) => { releaseDrafts = r; });
+  let draftsTaken!: () => void;
+  const takenD = new Promise<void>((r) => { draftsTaken = r; });
+  const holderD = LOCKS.runOutsideLock(() => LOCKS.withLock(BF.SHORT_TITLE_DRAFTS_LOCK, async () => { draftsTaken(); await draftsHeld; }));
+  try {
+    await takenD;
+    const listing = LOCKS.runOutsideLock(() => I.list());
+    await sleep(60);
+    await marketStore.stamp(V2.id, { status: "LIVE" });
+    const w2 = storedDraft(W2.id);
+    if (w2) draftStore().set(`shortTitle.draft.${W2.id}`, { ...w2, draftedAt: new Date(Date.now() + 1000).toISOString() });
+    releaseDrafts();
+    await listing;
+  } finally {
+    releaseDrafts();
+    await holderD;
+  }
+  ok("9.prune.reopened · a draft whose market reopened between the read and the lock is NOT pruned", indexIds().includes(V2.id), j(indexIds()));
+  ok("9.prune.replaced · a draft REPLACED between the read and the lock is not pruned on the old one's evidence", indexIds().includes(W2.id), j(indexIds()));
+  await I.list();
+  ok("9.prune.stale · with nothing changing under it, a stale draft IS pruned — the re-check is not a veto",
+    !indexIds().includes(W2.id) && indexIds().includes(V2.id), j(indexIds()));
+
+  // ── THE COUNT READS THE INDEX AFTER THE PRUNE ──
+  // N is open and lacks every short title, but the index names a draft for it that is not N's (a malformed row): the
+  // list prunes it, and N — now without a draft — counts as still to draft in the SAME read.
+  const N = await mk(t, 8, { days: 15 });
+  draftStore().set(INDEX_KEY, { marketIds: [...indexIds(), N.id] });
+  draftStore().set(`shortTitle.draft.${N.id}`, { marketId: "not-this-market" });
+  const ln = await I.list();
+  ok("9.needing.postprune · a market whose stale draft this read pruned counts as still to draft in the same read",
+    ln.needing === 1 && !indexIds().includes(N.id), j({ needing: ln.needing, index: indexIds() }));
+  ok("9.rows.rendered · the rows are exactly the drafts still waiting — the pruned one is not among them",
+    !ln.rows.some((r) => r.market.id === N.id) && j(ln.rows.map((r) => r.market.id).sort()) === j([...indexIds()].sort()), j({ rows: ln.rows.map((r) => r.market.id), index: indexIds() }));
 }
 
 // ═════════════════════════════════════════════════════════════════════════════════════════════════════════
@@ -685,8 +1040,57 @@ function g7Wiring(W: World) {
 
   const run = slice(W.backfill, "export async function draftShortTitles(", TOP);
   const iKill = run.indexOf("isPollGenEnabled()"), iBudget = run.indexOf("assertAiBudget("), iMeter = run.indexOf("recordAiUsage(");
-  ok("7.order · the kill switch, then the spend gate, then the meter — all inside the run",
-    iKill > 0 && iBudget > iKill && iMeter > iBudget && /maxBatchPerRun/.test(run) && /feature: "polls"/.test(run) && /subjectType: "market"/.test(run), j({ iKill, iBudget, iMeter }));
+  const iClaim = run.indexOf("claimDraftRun("), iLoop = run.indexOf("for (const m of batch) {");
+  ok("7.order · the kill switch (before the run's claim and its loop), then the spend gate, then the meter — all inside the run",
+    iKill > 0 && iClaim > iKill && iLoop > iClaim && iBudget > iLoop && iMeter > iBudget && /maxBatchPerRun/.test(run) && /feature: "polls"/.test(run) && /subjectType: "market"/.test(run),
+    j({ iKill, iClaim, iLoop, iBudget, iMeter }));
+  const loop = iLoop >= 0 ? run.slice(iLoop) : "";
+  const lKill = loop.indexOf("isPollGenEnabled()"), lBudget = loop.indexOf("assertAiBudget("), lDraft = loop.indexOf("draftFn(");
+  const lKill2 = lDraft >= 0 ? loop.indexOf("isPollGenEnabled()", lDraft) : -1, lSentinel = loop.indexOf("checkShortTitleAgreement(");
+  ok("7.kill.loop · inside the loop the kill switch is read before EACH market's spend gate, and again between the model's call and the sentinel's",
+    lKill > 0 && lBudget > lKill && lDraft > lBudget && lKill2 > lDraft && lSentinel > lKill2, j({ lKill, lBudget, lDraft, lKill2, lSentinel }));
+  ok("7.single · the run claims its one-at-a-time row before the loop, renews it per market, and releases it in finally",
+    iClaim > 0 && /\}\s*finally\s*\{\s*await releaseDraftRun\(claim\.token\);\s*\}/.test(run) && /renewDraftRun\(claim\.token\)/.test(loop)
+      && /const cur = liveClaim\(r\.value\);\s*if \(cur\)/.test(slice(W.backfill, "async function claimDraftRun(", TOP)),
+    j({ iClaim }));
+
+  // THE APPROVAL'S THREE STEPS, AS WRITTEN — the market lock is never taken inside the drafts lock.
+  const approve = slice(W.backfill, "export async function approveShortTitleDraft(", TOP);
+  const aRead = approve.indexOf("const seen = await withLock(DRAFTS_LOCK"), aSeen = approve.indexOf("if (!seen.ok) return seen;");
+  const aWrite = approve.indexOf("await runOutsideLock(() => applyShortTitles(");
+  const aClear = aWrite >= 0 ? approve.indexOf("withLock(DRAFTS_LOCK", aWrite) : -1;
+  ok("7.approve.outside · approve reads the draft under the drafts lock, writes the market OUTSIDE it (runOutsideLock), then clears under the lock again",
+    aRead > 0 && aSeen > aRead && aWrite > aSeen && aClear > aWrite && (approve.match(/applyShortTitles\(/g) ?? []).length === 1 && !/return withLock\(DRAFTS_LOCK/.test(approve)
+      && /await clearDraft\(marketId, draft\.draftedAt\);/.test(approve),
+    j({ aRead, aSeen, aWrite, aClear }));
+  const plan = slice(W.backfill, "export function approvalPlan(", TOP);
+  const extra = slice(plan, "auditExtra: {", ["\n    },"]);
+  ok("7.approve.audit · the plan: drafted values onlyIfEmpty, typed ones against the page's baseline, the draft's verdict and editedByOfficer in the audit, a fresh check for edited words only",
+    /if \(!typed\(f\)\) onlyIfEmpty\.push\(f\);/.test(plan) && /expectedBefore\[f\] = baseline\[f\] \?\? null;/.test(plan)
+      && /^\s*draftAgreement,$/m.test(extra) && /^\s*editedByOfficer,$/m.test(extra) && /sentinelLocales: fresh\.length \? fresh : "none",/.test(plan)
+      && ["onlyIfEmpty", "expectedBefore", "auditExtra", "sentinelLocales"].every((k) => new RegExp(`${k}: plan\\.${k},`).test(approve)),
+    extra.slice(0, 120));
+
+  // THE REASON, THE COUNTERS, THE STALE VERDICT, THE BADGE — each read where it is written.
+  const rej = slice(W.backfill, "export async function rejectShortTitleDraft(", TOP);
+  ok("7.reason.clean · the rejection measures and stores the reason AS CLEANED (cleanReason), and the panel counts exactly that",
+    /const why = cleanReason\(opts\.reason\);/.test(rej) && /why\.length < REJECT_REASON_MIN/.test(rej) && /reason: why,/.test(rej)
+      && /const reasonLength = cleanReason\(reason\)\.length;/.test(W.drafts) && /disabled=\{pending \|\| !reasonOk\}/.test(W.drafts)
+      && /reasonMin=\{REJECT_REASON_MIN\}/.test(W.page) && /reasonMax=\{REJECT_REASON_MAX\}/.test(W.page));
+  ok("7.counter.clean · both short-title counters count what the rule counts — codePoints(cleanShortTitle(…)) — never the raw box",
+    /const shortTitleLength = \(loc: Loc, value: string \| null\) => codePoints\(cleanShortTitle\(loc, value \?\? ""\)\);/.test(W.drafts)
+      && !/codePoints\((?!cleanShortTitle)/.test(W.drafts) && /const n = shortTitleLength\(l\.loc, value\);/.test(W.drafts)
+      && /const n = codePoints\(cleanShortTitle\(l, value\)\);/.test(W.pollActions) && !/codePoints\(value\)/.test(W.pollActions));
+  const ev = slice(W.drafts, "function editVerdict(", ["\n}\n"]);
+  ok("7.verdict.stale · in the edit form a verdict shows only while the words are the ones the sentinel read; edited, the line says so",
+    /const v = cleanShortTitle\(l\.loc, value\);/.test(ev) && /if \(l\.missing && l\.drafted !== null && v === l\.drafted\) return l\.verdict;/.test(ev)
+      && /return \{ kind: "unchecked", text: editedText \};/.test(ev) && /const verdict = editVerdict\(l, value, view\.editedVerdictText\);/.test(W.drafts),
+    ev.slice(0, 120));
+  ok("7.badge · on the short-titles tab the badge is the rows the list renders (after its prune); off it, the index alone",
+    /const shortTitles = tab === "short-titles" \? await listShortTitleDrafts\(\) : null;\s*const shortTitleDraftCount = shortTitles \? \(shortTitles\.readError \? null : shortTitles\.rows\.length\) : await countShortTitleDrafts\(\);/.test(W.page));
+  const readAIPoll = slice(W.gen, "function toStoredAIPoll(", TOP);
+  ok("7.aipoll.raw · the AIPoll mapper reads the competition RAW — coerced only where it is displayed",
+    /^\s*competition: r\.competition \?\? null,$/m.test(readAIPoll) && !/normaliseCompetition\(r\.competition\)/.test(readAIPoll));
 
   const agree = slice(W.sentinel, "export async function checkShortTitleAgreement(", ["\nexport "]);
   ok("7.sentinel.noweb · the agreement call is forced to report_agreement, budgeted as the sentinel, with no web tools",
@@ -707,17 +1111,37 @@ async function g12Database() {
   clearDrafts();
   const A = await mk(t, 3, { days: 10 });
   const B = await mk(t, 4, { days: 11 });
-  const ids = [A.id, B.id];
+  const C = await mk(t, 5, { days: 12 });
+  const ids = [A.id, B.id, C.id];
 
   FAIL_READ.add(INDEX_KEY);
   const r0 = await BF.draftShortTitles({ officerId: OFFICER, limit: 1 });
   FAIL_READ.delete(INDEX_KEY);
   ok("12.index.unread · when the waiting list cannot be read the run refuses before any call", !r0.ok && (await usageRows(ids)).length === 0, j(r0));
+  ok("12.run.released.refused · a run that refused still releases its claim", !TABLE.has(RUN_KEY), j(TABLE.get(RUN_KEY)));
+
+  // ⛔ The two new rows are money rows: a read of either that fails refuses the run BEFORE any paid call.
+  FAIL_READ.add(RUN_KEY);
+  const rr = await BF.draftShortTitles({ officerId: OFFICER, limit: 1 });
+  FAIL_READ.delete(RUN_KEY);
+  ok("12.run.unread · when the run's claim cannot be read the run refuses before any call (two runs would pay twice)",
+    !rr.ok && /another draft run/i.test(rr.error) && (await usageRows(ids)).length === 0, j(rr));
+  FAIL_SAVE.add(RUN_KEY);
+  const rs = await BF.draftShortTitles({ officerId: OFFICER, limit: 1 });
+  FAIL_SAVE.delete(RUN_KEY);
+  ok("12.run.unsaved · when the run's claim cannot be written the run refuses before any call",
+    !rs.ok && /could not be registered/.test(rs.error) && (await usageRows(ids)).length === 0, j(rs));
+  FAIL_READ.add(DECLINED_KEY);
+  const rd = await BF.draftShortTitles({ officerId: OFFICER, limit: 1 });
+  FAIL_READ.delete(DECLINED_KEY);
+  ok("12.declined.unread · when the declined languages cannot be read the run refuses before any call (it could pay for one again)",
+    !rd.ok && /declined could not be read/.test(rd.error) && (await usageRows(ids)).length === 0 && !TABLE.has(RUN_KEY), j(rd));
 
   const r1 = await BF.draftShortTitles({ officerId: OFFICER, limit: 1 });
   const keyA = `shortTitle.draft.${A.id}`;
   ok("12.store.rows · a draft is a SystemConfig row, and the index row names it",
     r1.ok && r1.drafted === 1 && TABLE.has(keyA) && indexIds().includes(A.id), j({ r1, keys: [...TABLE.keys()].filter((k) => k.startsWith("shortTitle.")) }));
+  ok("12.run.released · a finished run's claim row is gone", !TABLE.has(RUN_KEY), j(TABLE.get(RUN_KEY)));
 
   const keyB = `shortTitle.draft.${B.id}`;
   FAIL_SAVE.add(keyB);
@@ -742,6 +1166,16 @@ async function g12Database() {
   const mB = await MS.getMarket(B.id);
   ok("12.approve.index-fail · when the waiting list cannot be rewritten, the approval still lands and SAYS the draft was not cleared",
     r3.ok && r3.drafted === 1 && apB.ok && apB.draftCleared === false && !!mB?.shortTitleEn, j({ r3, apB }));
+
+  // A rejection's decline is a SystemConfig row, and the next run honours it — from the database.
+  const r4 = await BF.draftShortTitles({ officerId: OFFICER, limit: 1 });
+  const rjC = r4.ok && r4.drafted === 1 ? await BF.rejectShortTitleDraft({ officerId: OFFICER, marketId: C.id, reason: "Wrong words" }) : null;
+  const stored = TABLE.get(DECLINED_KEY) as { byMarket?: Record<string, { locales?: string[] }> } | undefined;
+  const cBefore = (await usageRows([C.id])).length;
+  const r5 = await BF.draftShortTitles({ officerId: OFFICER, limit: 5 });
+  ok("12.declined.row · a rejection's decline is a SystemConfig row, and the next run does not draft (or pay for) that market",
+    !!rjC && rjC.ok && rjC.declineSaved && j(stored?.byMarket?.[C.id]?.locales) === j(["en", "sw", "zh"]) && r5.ok && (await usageRows([C.id])).length === cBefore,
+    j({ rjC, stored, r5 }));
 }
 
 // ═════════════════════════════════════════════════════════════════════════════════════════════════════════
@@ -754,6 +1188,8 @@ async function runAll(I: Impl, W: World, n: number) {
   await g3Edit(I, CTX);
   const M = await g4Backfill(I, CTX);
   await g5Decide(I, M);
+  await g8Run(I, CTX);
+  await g9Race(I, CTX);
   await g6Sentinel(I, CTX.tag);
   g7Wiring(W);
 }
@@ -835,7 +1271,7 @@ const PLANTS: Plant[] = [
       const kv = draftStore(); kv.delete(`shortTitle.draft.${o.marketId}`);
       const idx = (kv.get(INDEX_KEY) as { marketIds?: string[] } | undefined)?.marketIds ?? [];
       kv.set(INDEX_KEY, { marketIds: idx.filter((x) => x !== o.marketId) });
-      return { ok: true, recorded: true };
+      return { ok: true, recorded: true, declineSaved: true };
     } } },
   { name: "\"not checked\" reads as agreement", expect: /^(6\.(nokey|none|unchecked)|4\.store\.unchecked)/,
     impl: { line: (a, loc) => (!a || a.status !== "checked" ? { kind: "agrees" as const, text: "agrees" } : SEN.agreementLine(a, loc)) } },
@@ -867,6 +1303,99 @@ const PLANTS: Plant[] = [
     world: (w) => ({ ...w, sentinel: w.sentinel.replace("tools: [agreementTool(prompt.languages)],", "tools: [agreementTool(prompt.languages), { type: ai.webSearchTool.type, name: ai.webSearchTool.name }],") }) },
   { name: "the sentinel module learns to approve a short title", expect: /^7\.sentinel\.never-approves/,
     world: (w) => ({ ...w, sentinel: `${w.sentinel}\nimport { applyShortTitles } from "./short-title-service";\n` }) },
+
+  // ── The review's fixes (2026-09-30): money, compliance, and the officer's screen ──
+  { name: "the run is not single-flight (another run's claim is ignored)", expect: /^8\.single\.(held|pair)/,
+    impl: { draft: async (o) => { draftStore().delete(RUN_KEY); return BF.draftShortTitles(o); } } },
+  { name: "declined languages are drafted — and paid for — again", expect: /^8\.declined\.(skip|partial)/,
+    impl: { draft: async (o) => { draftStore().delete(DECLINED_KEY); return BF.draftShortTitles(o); } } },
+  { name: "a run switched off mid-way carries on (the kill switch read only at the start)", expect: /^8\.kill\./,
+    impl: { draft: async (o) => {
+      const r = await BF.draftShortTitles(o);
+      if (!r.ok || r.stopped !== BF.DRAFT_RUN_SWITCHED_OFF) return r;
+      await CTRL.setPollGenEnabled(true, "plant");
+      const r2 = await BF.draftShortTitles(o);
+      return r2.ok ? { ...r2, drafted: r.drafted + r2.drafted, considered: r.considered + r2.considered, stopped: null } : r;
+    } } },
+  { name: "the kill switch is not read before the sentinel's call", expect: /^7\.kill\.loop/,
+    world: (w) => ({ ...w, backfill: w.backfill.replace("} else if (!(await isPollGenEnabled())) {", "} else if (false) {") }) },
+  { name: "the kill switch is not read at the top of each market", expect: /^7\.kill\.loop/,
+    world: (w) => ({ ...w, backfill: w.backfill.replace(/(for \(const m of batch\) \{[\s\S]*?)if \(!\(await isPollGenEnabled\(\)\)\) \{/, "$1if (false) {") }) },
+  { name: "the approval holds the drafts lock across the market write (the nested locks)", expect: /^9\.outside\.free/,
+    impl: { approve: (o) => LOCKS.withLock(BF.SHORT_TITLE_DRAFTS_LOCK, () => BF.approveShortTitleDraft(o)) } },
+  { name: "the approval takes the market write back inside the drafts lock (as written)", expect: /^7\.approve\.outside/,
+    world: (w) => ({ ...w, backfill: w.backfill.replace("await runOutsideLock(() => applyShortTitles(", "await withLock(DRAFTS_LOCK, () => applyShortTitles(") }) },
+  { name: "a plain Approve overwrites a value set since the draft (no onlyIfEmpty)", expect: /^(5\.never\.overwrite|9\.skip\.kept)/,
+    impl: { approve: async (o) => {
+      const d = storedDraft(o.marketId) as Record<string, string | null> | null;
+      const r = await BF.approveShortTitleDraft(o);
+      if (r.ok && d && !o.edited && r.skipped.length) {
+        const m = await MS.getMarket(o.marketId);
+        if (m) {
+          const put = (f: "shortTitleEn" | "shortTitleSw" | "shortTitleZh", loc: Loc) => (r.skipped.includes(f) ? (d[loc] ?? null) : (m[f] ?? null));
+          await marketStore.setShortTitles(o.marketId, { shortTitleEn: put("shortTitleEn", "en"), shortTitleSw: put("shortTitleSw", "sw"), shortTitleZh: put("shortTitleZh", "zh"), competition: m.competition ?? null });
+        }
+      }
+      return r;
+    } } },
+  { name: "an edited approval ignores the page's baseline (a stale page overwrites)", expect: /^9\.stale\.(refused|untouched)/,
+    impl: { approve: (o) => BF.approveShortTitleDraft({ ...o, baseline: undefined }) } },
+  { name: "the approval's record loses editedByOfficer", expect: /^7\.approve\.audit/,
+    world: (w) => ({ ...w, backfill: w.backfill.replace("      editedByOfficer,\n      draftedBy: draft.draftedBy,", "      draftedBy: draft.draftedBy,") }) },
+  { name: "a drafted value is written against the page's baseline instead of only-if-empty", expect: /^7\.approve\.audit/,
+    world: (w) => ({ ...w, backfill: w.backfill.replace("if (!typed(f)) onlyIfEmpty.push(f);", "if (false) onlyIfEmpty.push(f);") }) },
+  { name: "the rejection reason is measured raw (invisible characters count)", expect: /^5\.reject\.invisible/,
+    impl: { reject: async (o) => {
+      const r = await BF.rejectShortTitleDraft(o);
+      if (r.ok || r.field !== "reason" || (o.reason ?? "").trim().length < BF.REJECT_REASON_MIN) return r;
+      unlistDraft(o.marketId);
+      return { ok: true, recorded: true, declineSaved: true };
+    } } },
+  { name: "the rejection measures the reason raw (as written)", expect: /^7\.reason\.clean/,
+    world: (w) => ({ ...w, backfill: w.backfill.replace("const why = cleanReason(opts.reason);", "const why = typeof opts.reason === \"string\" ? opts.reason.trim() : \"\";") }) },
+  { name: "a model's short title with markup is stored stripped", expect: /^1\.markup\.null/,
+    impl: { generate: async (o) => {
+      const p = await GEN.generateAIPoll(o);
+      const wrote = p.generation?.shortTitleSw;
+      if (typeof wrote === "string" && wrote.includes("<") && p.shortTitleSw === null) { p.shortTitleSw = wrote.replace(/<[^>]*>/g, ""); await GEN.aiPollStore.set(p); }
+      return p;
+    } } },
+  { name: "an officer's short title with markup is stored stripped", expect: /^3\.markup\.refused/,
+    impl: { edit: async (id, o) => {
+      try { return await GEN.editAIPoll(id, o); } catch (e) {
+        if (!(e instanceof GEN.AIPollShortTitleRefused) || !e.message.startsWith("Remove")) throw e;
+        const strip = (v: string | null | undefined) => (typeof v === "string" ? v.replace(/<[^>]*>/g, "").replace(/javascript:/gi, "") : v);
+        return GEN.editAIPoll(id, { ...o, shortTitleEn: strip(o.shortTitleEn), shortTitleSw: strip(o.shortTitleSw), shortTitleZh: strip(o.shortTitleZh) });
+      }
+    } } },
+  { name: "the prune trusts its unlocked read", expect: /^9\.prune\.(reopened|replaced)/,
+    impl: { list: async () => {
+      const kv = draftStore();
+      const snap: string[] = [];
+      for (const id of indexIds()) {
+        const m = await MS.getMarket(id);
+        const d = storedDraft(id) as { missing?: Loc[] } | null;
+        if (!m || m.status !== "LIVE" || !(d?.missing ?? []).some((loc) => !ST.shortTitleFor(loc, m))) snap.push(id);
+      }
+      const r = await BF.listShortTitleDrafts();
+      for (const id of snap) { const idx = (kv.get(INDEX_KEY) as { marketIds?: string[] } | undefined)?.marketIds ?? []; kv.set(INDEX_KEY, { marketIds: idx.filter((x) => x !== id) }); }
+      return r;
+    } } },
+  { name: "the page's still-to-draft count reads the index from before the prune", expect: /^9\.needing\.postprune/,
+    impl: { list: async () => {
+      const before = new Set(indexIds());
+      const r = await BF.listShortTitleDrafts();
+      const open = (await MS.listMarkets({ status: "LIVE" })).filter(BF.isOpenLongForm);
+      return { ...r, needing: open.filter((m) => BF.missingShortTitles(m).length > 0 && !before.has(m.id)).length };
+    } } },
+  { name: "the panel counts the raw box, not the value the rule counts", expect: /^7\.counter\.clean/,
+    world: (w) => ({ ...w, drafts: w.drafts.replace('codePoints(cleanShortTitle(loc, value ?? ""))', 'codePoints(value ?? "")') }) },
+  { name: "the poll editor's counter counts the raw box", expect: /^7\.counter\.clean/,
+    world: (w) => ({ ...w, pollActions: w.pollActions.replace("const n = codePoints(cleanShortTitle(l, value));", "const n = codePoints(value);") }) },
+  { name: "the edit form shows the sentinel's old verdict against new words", expect: /^7\.verdict\.stale/,
+    world: (w) => ({ ...w, drafts: w.drafts.replace('return { kind: "unchecked", text: editedText };', "return l.verdict;") }) },
+  { name: "the tab badge reads the index, not the rows the list renders", expect: /^7\.badge/,
+    world: (w) => ({ ...w, page: w.page.replace("shortTitles ? (shortTitles.readError ? null : shortTitles.rows.length) : await countShortTitleDrafts()", "await countShortTitleDrafts()") }) },
 ];
 
 {

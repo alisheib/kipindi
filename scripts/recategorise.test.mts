@@ -128,9 +128,40 @@ async function seedMarket(category: string) {
   // re-filed. Reading a field to describe it is not writing it.
   const writes = fn.slice(fn.indexOf("marketStore.set("), fn.indexOf("marketStore.set(") + 120);
   ok("4: ⛔ the write is the spread plus the category, and nothing else",
-     /marketStore\.set\(\{ \.\.\.m, category: after \}\)/.test(writes), writes.slice(0, 90));
+     /marketStore\.set\(\{ \.\.\.m, category: after \}, tx\)/.test(writes), writes.slice(0, 90));
   ok("4: ⛔ …and there is exactly ONE write in the whole function",
      (fn.match(/marketStore\.set\(/g) ?? []).length === 1);
+  // 🔴 MS-1 (the Vodacom plan S2 review) · the write is a full-row `set` of a row this function read, so nothing may
+  // land between the read and the write: a stake's pool increment or a short title applied in that gap was put back.
+  // The read is INSIDE `withLock(market:<id>)` — the lock the bet path and `applyShortTitles` hold — on the lock's own
+  // transaction, and so is the write. §4b below drives the race itself.
+  const iLock = fn.indexOf("withLock(`market:${opts.marketId}`, async (tx) =>");
+  const iRead = fn.indexOf("marketStore.get(opts.marketId, tx)");
+  const iWrite = fn.indexOf("marketStore.set(");
+  ok("4: 🔴 the read and the write are under the market lock, both on the lock's transaction (MS-1)",
+     iLock >= 0 && iRead > iLock && iWrite > iRead && (fn.match(/marketStore\.get\(/g) ?? []).length === 1,
+     JSON.stringify({ iLock, iRead, iWrite }));
+}
+
+// ── 4b · 🔴 MS-1 · A WRITE THAT LANDS WHILE THE RE-FILE WAITS IS NOT UNDONE ─────────────────────
+{
+  // Hold the market's lock (as a bet or a short-title edit does), start the re-file OUTSIDE it (so it queues rather
+  // than re-enters), land a short title while it waits, then let go. Unlocked, the re-file read the row first and wrote
+  // that stale row back after the other write — the officer's short title (on Postgres, a stake's pool increment too)
+  // silently disappeared. ⚠️ The short title is the probe, not a pool: the memory twin's `addToPool` mutates the row
+  // object IN PLACE, so a stale read there still sees the new pool and could not show the defect.
+  const { withLock, runOutsideLock } = await import("../src/lib/server/locks.ts");
+  const id = await seedMarket("culture-race");
+  const shortEn = "Will it rain in Dar es Salaam?";
+  let refile: Promise<unknown> = Promise.resolve();
+  await withLock(`market:${id}`, async () => {
+    refile = runOutsideLock(() => recategoriseMarket({ marketId: id, category: "sports", officerId: OFFICER }));
+    await marketStore.setShortTitles(id, { shortTitleEn: shortEn, shortTitleSw: null, shortTitleZh: null, competition: null });
+  });
+  await refile;
+  const m = await marketStore.get(id);
+  ok("4b: 🔴 a short title that lands while the re-file waits for the lock survives it — and the re-file still lands (MS-1)",
+     m?.category === "sports" && m?.shortTitleEn === shortEn, JSON.stringify({ category: m?.category, shortTitleEn: m?.shortTitleEn ?? null }));
 }
 
 // ── 5 · A × H — `/results` GROUPS BY CATEGORY ─────────────────────────────
