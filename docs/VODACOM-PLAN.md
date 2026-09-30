@@ -16,13 +16,13 @@
 
 ## §0 · RESUME AT
 
-**State (2026-09-30):** S1 is LIVE (`41ec1703`) and waits on one press by Ali (§0b "Still open"). S2 is LIVE
-(`473807b1`, deployed 2026-09-30 20:52 UTC): the columns, the rules, the admin edit, the wizard fields and the drafts tab; both
-migrations finished on production. It waits on an officer drafting and approving the short titles (§0d). Nothing
-reaches players.
+**State (2026-10-01):** S3 (the engine, no UI) is ✅ — merged to main 2026-10-01 (§0e): the estimate, the card's close
+label, the low-balance plan, the pending-bet link and the sheet API, each with its suite and red twin. S2 is LIVE
+(`473807b1`) and waits on an officer approving the short titles (§0d). S1 is LIVE (`41ec1703`) and waits on one press by
+Ali (§0b "Still open"). Nothing reaches players.
 
-**Next:** S3 is BUILT on `simple-journey` (§0e: all 5 pieces); the battery, a live drive of the route, then the merge. In parallel, an officer presses "Draft short
-titles for open markets" on `/admin/ai-polls?tab=short-titles` and approves them (§0d "Left to do"), then S2 is ✅.
+**Next:** S3b — the measures baseline (§5): the §3.10 counters on the OLD journey's analogues, so the 14-day baseline
+clock starts before the flip. In parallel: an officer approves the S2 short titles; Ali presses S1's preview switch.
 
 Session law, the same for every session:
 - Code, two-store tests, and `red:*` twins reachable from `red:all`, with declared anchors.
@@ -135,10 +135,14 @@ drive (guest, SUPPORT officer, player, Owner Stop and Resume, a stranger on a li
 deploy verified, and a signed-out visitor sees nothing on production (`qa:live` 319/0 there, [E2] included). One
 press by Ali remains: `/admin/journey` → "Turn my preview on" → the bar on 50pick.tz. Then S1 is ✅.
 
-## §0e · S3 in progress (2026-10-01) — the engine, on branch `simple-journey`
+## §0e · S3 as built (2026-10-01) — ✅ merged to main
 
-S3 is §3.1 in full, built as five pure pieces, each with its suite and an in-process red twin, committed to
-`simple-journey` one at a time (the branch is merged to main when all five pass):
+S3 is §3.1 in full, built as five pieces, each with its suite and an in-process red twin (all in `predeploy`). Verified
+before the merge: the S3 battery (49 suites) green but for the reds that pre-date it (type-scale 749/239, red-anchors
+×2) and `test:house-bot-disclosure` 5.1, red on any branch that changes the dictionary by construction; and a live
+drive on a dev server — the route over real HTTP (public 200 `s-maxage=5`; `?me=1` 401 signed out, 200 `private,
+no-store` signed in; 404 for a missing or junk id; 405 for POST), `/wallet/deposit` showing the shared ladder (1K–100K)
+and `/auth/login` rendering, no page errors, the tiles read.
 
 | # | Piece | State | Where |
 |---|---|---|---|
@@ -297,7 +301,7 @@ Status: ⬜ not started · 🔨 in progress · ✅ done and verified live · ⛔
 | S0 | File, rule, get ready | ✅ | Filed `2ac17c36` on main, 2026-09-29. Deck, frames, rulings, reply, tracker, SHELVED.md and compliance records are filed. `test:docs` + `test:landing-ten-plan` are green. The worktree installs. |
 | S1 | The switch and preview | 🔨 | Built and verified locally 2026-09-30 (§0b). Done when staff see a "preview" marker on production and nobody else sees anything. The preview cookie is in Privacy §7 in the same commit. |
 | S2 | Short titles + competition | 🔨 | LIVE `473807b1` 2026-09-30 (§0d); the backfill waits on an officer's approval. Done when every open market renders within 2 lines in sw/en/zh (`test:short-title-fit`) and the backfill is approved in /admin. |
-| S3 | The engine (no UI) | ⬜ | Golden fixtures pass: Dodoma ≈2.8×/≈1.4×, 1,000 → TZS 2,700 ≈2.7×, 5,000 → TZS 12,360 ≈2.5×; Yanga ≈2.9×/≈1.4×. Client/server parity is proven. |
+| S3 | The engine (no UI) | ✅ | `6e7ee63b` 2026-10-01 (§0e). Golden fixtures pass: Dodoma ≈2.8×/≈1.4×, 1,000 → TZS 2,700 ≈2.7×, 5,000 → TZS 12,360 ≈2.5×; Yanga ≈2.9×/≈1.4×. Client/server parity is proven. |
 | S3b | Measures baseline | ⬜ | Old-journey analogue counts appear daily, and the 14-day baseline clock is running. |
 | S4 | Claude Design pass | ⬜ | Frames for every new composition and undrawn state are filed and scored by the panel. Ali has reviewed the 5 re-drawn frames. |
 | S5 | ~~Colour foundation~~ | ⛔ | Removed by R5 (50pick's look stays unchanged): no palette, font or brand work. |
