@@ -144,6 +144,12 @@ drive on a dev server — the route over real HTTP (public 200 `s-maxage=5`; `?m
 no-store` signed in; 404 for a missing or junk id; 405 for POST), `/wallet/deposit` showing the shared ladder (1K–100K)
 and `/auth/login` rendering, no page errors, the tiles read.
 
+**Verified on production (2026-10-01, `?dpl=1c3d2359`).** Read-only GETs of `/api/markets/<id>/sheet`: a LIVE market
+answers 200 `public, s-maxage=5, stale-while-revalidate=5`; `?me=1` signed out is 401; an unknown id is 404. Across the
+ids on `/markets`: 10 loser-share markets priced or in an empty-side state, 2 legacy capped-commission markets `hidden`
+(no figure, as SJ-3 rules), and the Up & Down rounds and settled markets 404, as they must. One priced read checked by
+hand: YES 20,000 / NO 2,000 at 13% reads ≈1.1× / ≈9.7×, YES "thin" under that market's frozen `thinProfitRatio` 1.1.
+
 | # | Piece | State | Where |
 |---|---|---|---|
 | 1 | The estimate — `src/lib/markets/estimate.ts` (+ `loserShareRate`/`loserSharePct` in `payout.ts`) | ✅ `5070d1a7` | `test:journey-estimate` (predeploy) + red 14/14 |
