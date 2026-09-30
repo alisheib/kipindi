@@ -188,6 +188,18 @@ shares it). ⭐ The canvas is the source of truth for S4's frames — no copy li
 
    With all three, the screen fits 390 × 844 only with 48-px wallet rows and 12-px gaps. At 360 × 640 it scrolls; S9
    measures this.
+10. **The phone header fit (brief item 2), measured in Chromium with the real fonts.** Cases: widths 320/360/390/412
+    × sw/en/zh × balances TZS 2,000 / 125,000 / 1,250,000 / 10,000,000.
+    - **As first drawn** (30-px mark in a 44-px box, 8-px gaps, 14/16-px pill padding), it overflows in 17 of 48 cases:
+      - Swahili at 360 from TZS 125,000;
+      - English at 360 at TZS 1,250,000;
+      - at 320 in every case except Chinese at TZS 2,000.
+    - **Rule from 360 up:** the product's own 26-px mark, its link still 44 px tall and widened to 44 px by a −9-px
+      margin into the gutter; 6-px gaps; 10-px balance-pill padding; 12/10-px padding on "+ Weka pesa". This fits
+      every case from 360 up.
+    - **Rule below 360:** 12-px side gutter, "Weka pesa" without the "+" glyph, and a 12-px balance figure. This fits
+      every case at 320, Swahili at TZS 10,000,000 included (exactly 320). The 390 frames now use the 360-up rule.
+    - S6's header-fit gate asserts both rules.
 
 **Verified:** each redraw was rendered locally at 390 × 844 in Chromium and read one screen at a time. Result: no
 overflow, all three fonts loaded, the logos loaded, and the B option of each choice rendered. Ali's standing rule
