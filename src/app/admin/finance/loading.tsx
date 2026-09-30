@@ -28,12 +28,12 @@ export default function Loading() {
         actions={
           <div className="flex items-center gap-1.5" aria-hidden>
             {/* The window rail: eight presets + Custom, at the dense 32px rung. */}
-            {["w-14", "w-20", "w-[48px]", "w-[48px]", "w-[48px]", "w-[48px]", "w-[48px]", "w-[48px]", "w-16"].map((w, i) => (
+            {["w-[56px]", "w-[80px]", "w-[48px]", "w-[48px]", "w-[48px]", "w-[48px]", "w-[48px]", "w-[48px]", "w-[64px]"].map((w, i) => (
               <SkChip key={i} className={`h-[32px] ${w}`} />
             ))}
             {/* Excel + PDF, also 32px since 2026-09-25. */}
-            <SkChip className="h-[32px] w-16" />
-            <SkChip className="h-[32px] w-14" />
+            <SkChip className="h-[32px] w-[64px]" />
+            <SkChip className="h-[32px] w-[56px]" />
           </div>
         }
       />
@@ -46,7 +46,7 @@ export default function Loading() {
         <SkKpiRow count={3} cols="grid-cols-2 lg:grid-cols-3" />
 
         {/* The rail itself — Ledger · Trends · Providers. */}
-        <SkTabs count={3} widths={["w-14", "w-14", "w-20"]} />
+        <SkTabs count={3} widths={["w-[56px]", "w-[56px]", "w-[80px]"]} />
 
         {/* ── the `ledger` tab, in its real order ── */}
         {/* House accounts: a grid of Stat tiles. */}

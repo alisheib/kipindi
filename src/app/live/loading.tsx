@@ -51,7 +51,7 @@ export default async function LiveLoading() {
                 <span className="kp-shimmer-track block h-[18px] w-[18px] rounded-full bg-bg-overlay" />
                 <p className="font-mono text-label uppercase eyebrow font-bold text-text">{t.home.liveSection}</p>
               </div>
-              <div className="kp-shimmer-track h-[13px] w-28 rounded bg-bg-overlay" />
+              <div className="kp-shimmer-track h-[13px] w-[112px] rounded bg-bg-overlay" />
             </div>
 
             <div className="mt-4">

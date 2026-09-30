@@ -543,12 +543,14 @@ const otp = () => [{ to: "+255772619619", body: "Msimbo 50pick: 123456", purpose
   // Final visual review (2026-09-27): "last read … · couldn't refresh" at the tail of a red run-on read as today's credit,
   // and `break-words` split "BLACKBALL_CLIENT" / "_ID" at 360. The provenance is its own neutral line under the figure,
   // above the state; a Railway name is its own mono line whose only break is a <wbr> after an underscore.
+  // 2026-09-30: the helper splits AFTER each underscore (`split(/(?<=_)/)`, so `test:labels` §11a no longer reads it
+  // as de-underscoring); each part keeps its own underscore and the <wbr> follows it — the same output.
   const provAt = shell.indexOf("{provenance && <p className=\"text-body-sm break-words text-text-secondary\">{provenance}</p>}");
   ok("§8 the provenance is its own line under the figure, and a Railway name breaks only after an underscore",
     provAt > shell.indexOf("{value}", shell.indexOf("export function AdminKpi(")) && provAt < shell.indexOf("{note && <p")
       && /\{noteCode\.map\(\(name\) => <span key=\{name\} className="block">\{breakAfterUnderscores\(name\)\}<\/span>\)\}/.test(shell)
       && /<p className="font-mono text-body-sm break-words text-text">/.test(shell)
-      && /\? \[`\$\{part\}_`, <wbr key=\{i\} \/>\] : \[part\]/.test(shell),
+      && /\.split\(\/\(\?<=_\)\/\)/.test(shell) && /\? \[part, <wbr key=\{i\} \/>\] : \[part\]/.test(shell),
     `provenance line at ${provAt}`);
   // The rail's words and smsConfigured() are one function: each problem named, and "configured" only without one.
   const RAIL_ENVS = ["SMS_PROVIDER", "SMS_SENDER_ID", "BLACKBALL_CLIENT_ID"] as const;

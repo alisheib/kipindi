@@ -51,12 +51,12 @@ export function SkChip({ className = "h-[26px] w-[80px]" }: { className?: string
  * (`ui/tabs.tsx`). The ghost reproduces the rail's border so the card below it does not shift
  * when the real border arrives.
  */
-export function SkTabs({ count = 3, widths = ["w-16", "w-16", "w-20"] }: { count?: number; widths?: string[] }) {
+export function SkTabs({ count = 3, widths = ["w-[64px]", "w-[64px]", "w-[80px]"] }: { count?: number; widths?: string[] }) {
   return (
     <div className="flex items-end gap-1 border-b border-border" aria-hidden>
       {Array.from({ length: count }).map((_, i) => (
         <div key={i} className="h-[44px] px-4 flex items-center">
-          <div className={`h-3 rounded bg-bg-overlay ${widths[i] ?? "w-16"}`} />
+          <div className={`h-3 rounded bg-bg-overlay ${widths[i] ?? "w-[64px]"}`} />
         </div>
       ))}
     </div>

@@ -356,7 +356,7 @@ function Choice({
 }) {
   return (
     <label
-      className={`flex cursor-pointer items-start gap-2.5 rounded-md border px-3 py-2.5 text-body-sm transition-colors ${
+      className={`flex cursor-pointer items-start gap-[10px] rounded-md border px-3 py-[10px] text-body-sm transition-colors ${
         checked ? "border-royal-700 bg-royal-500/10" : "border-border hover:border-border-strong"
       }`}
     >

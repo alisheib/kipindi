@@ -73,7 +73,7 @@ export function RoundStakePanel(props: {
     return (
       <>
         {tapped ? (
-          <div className="flex items-center justify-between gap-2.5">
+          <div className="flex items-center justify-between gap-[10px]">
             <p className="m-0 font-mono text-micro font-semibold uppercase eyebrow text-text-faint">{t.market.udYourPick}</p>
             <Chip variant={lockedSide === "UP" ? "yes" : "no"} style={{ gap: 5 }}>
               {lockedSide === "UP" ? <I.arrowUp s={12} strokeWidth={2.5} /> : <I.arrowDown s={12} strokeWidth={2.5} />}
@@ -133,7 +133,7 @@ export function RoundStakePanel(props: {
 
   return (
     <div data-testid="updown-stake-panel" className={cn(pulse && "ud-place-pulse")}>
-      <div className="flex items-center justify-between gap-2.5">
+      <div className="flex items-center justify-between gap-[10px]">
         <p className="m-0 font-mono text-micro font-semibold uppercase eyebrow text-text-faint">{t.market.udYourPick}</p>
         <Chip variant={isUp ? "yes" : "no"} style={{ gap: 5 }}>
           {isUp ? <I.arrowUp s={12} strokeWidth={2.5} /> : <I.arrowDown s={12} strokeWidth={2.5} />}
@@ -150,7 +150,7 @@ export function RoundStakePanel(props: {
           a fixed height would have spilled the projection outside its own border. Nothing
           moves at any ordinary stake. */}
       <div
-        className="mt-3.5 flex flex-wrap items-center justify-between gap-2.5"
+        className="mt-[14px] flex flex-wrap items-center justify-between gap-[10px]"
         style={{ minHeight: 46, background: "var(--bg-inset)", border: "1px solid var(--border)", borderRadius: "var(--r-md)", padding: "0 12px 0 14px" }}
       >
         <span className="flex min-w-0 items-baseline gap-[7px]">

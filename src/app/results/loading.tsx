@@ -74,7 +74,7 @@ export default async function ResultsLoading() {
 
         {/* The STICKY search band. ⛔ `py-2.5` is the band, not decoration: it is the 20px that
           turns a 71px `search-box-wrap` into the 91px the page actually reserves. */}
-        <div className="py-2.5" aria-hidden>
+        <div className="py-[10px]" aria-hidden>
           <div className="search-box-wrap">
             <div className="kp-shimmer-track h-[calc(var(--h-input)+2px)] rounded-lg border border-border bg-bg-inset" />
             <p className="mt-1.5 min-h-[17px]" />
@@ -151,7 +151,7 @@ export default async function ResultsLoading() {
               >
                 <div className="space-y-3">
                   <div className="flex items-center gap-2">
-                    <div className="h-4 w-14 rounded-pill bg-bg-overlay" />
+                    <div className="h-4 w-[56px] rounded-pill bg-bg-overlay" />
                     {/* ⚠️ WIDTH IS A LITERAL, not `w-10` — spacing is overridden
                     (tailwind.config.ts:200-215) so `w-10` is 80px, far wider than the tiny
                     label it stands for. The h-4 height is a default key and reads as written. */}

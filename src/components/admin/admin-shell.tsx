@@ -377,9 +377,11 @@ export function AdminPageHead({
 
 /* ===== KPI tile ===== */
 
-/** "BLACKBALL_CLIENT_SECRET" → BLACKBALL_<wbr>CLIENT_<wbr>SECRET: a break may fall only after an underscore. */
+/** "BLACKBALL_CLIENT_SECRET" → BLACKBALL_<wbr>CLIENT_<wbr>SECRET: a break may fall only after an underscore.
+ *  ⭐ Split AFTER each underscore (a lookbehind), so every underscore stays in the name — this is a line-break
+ *  hint, not a label, and `test:labels` §11a rightly flags the `split("_")` shape that would drop them. */
 function breakAfterUnderscores(name: string) {
-  return name.split("_").flatMap<React.ReactNode>((part, i, parts) => (i < parts.length - 1 ? [`${part}_`, <wbr key={i} />] : [part]));
+  return name.split(/(?<=_)/).flatMap<React.ReactNode>((part, i, parts) => (i < parts.length - 1 ? [part, <wbr key={i} />] : [part]));
 }
 
 export function AdminKpi({

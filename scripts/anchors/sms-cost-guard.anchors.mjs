@@ -437,8 +437,10 @@ export const MUTATIONS = [
     // `break-words` split "BLACKBALL_CLIENT" / "_ID / SECRET on" at 360 — easy to mis-copy into Railway's search.
     name: "admin-shell — a Railway name may break anywhere again",
     file: "src/components/admin/admin-shell.tsx",
-    from: "(i < parts.length - 1 ? [`${part}_`, <wbr key={i} />] : [part])",
-    to: "(i < parts.length - 1 ? [`${part}_`] : [part])",
+    // Re-anchored 2026-09-30: the helper now splits AFTER each underscore (`split(/(?<=_)/)`, labels §11a), so a part
+    // already ends in its underscore. The defect planted is unchanged: drop the break opportunity.
+    from: "(i < parts.length - 1 ? [part, <wbr key={i} />] : [part])",
+    to: "(i < parts.length - 1 ? [part] : [part])",
     expect: `§8 the provenance is its own line under the figure, and a Railway name breaks only after an underscore`,
   },
   {

@@ -106,7 +106,7 @@ export function RoundActionPanel(props: {
 
   if (bettable) {
     return (
-      <section id="stake" ref={stakeRef} tabIndex={-1} aria-label={props.ariaStake} className="scroll-mt-24" style={{ ...cardStyle, padding: "14px 16px 16px" }}>
+      <section id="stake" ref={stakeRef} tabIndex={-1} aria-label={props.ariaStake} className="scroll-mt-[96px]" style={{ ...cardStyle, padding: "14px 16px 16px" }}>
         <RoundStakePanel
           {...stakePanel}
           selectionClosesAtMs={selectionClosesAtMs}
@@ -134,7 +134,7 @@ export function RoundActionPanel(props: {
     return (
       <section aria-label={t.market.udLockedTitle} style={{ ...insetStyle, padding: 16 }}>
         <Chip variant="pending">{t.market.udLockedTitle}</Chip>
-        <p className="mt-2.5 m-0 text-body-sm leading-[1.55] text-text-muted">
+        <p className="mt-[10px] m-0 text-body-sm leading-[1.55] text-text-muted">
           {t.market.udLockedWhy.replace("{time}", lockClock ?? "—")}
         </p>
         {/* ⭐ UD-20 · BOTH OUTCOMES, QUOTED — Ali's decision, 2026-08-14.

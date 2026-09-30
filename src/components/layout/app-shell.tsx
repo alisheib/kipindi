@@ -584,7 +584,7 @@ function OptOutShell({ t, children }: { t: Dict; children: React.ReactNode }) {
       <footer className="mt-8 lg:mt-12 bg-bg-elevated/40" data-testid="optout-footer">
         <div aria-hidden className="claret-rule mx-auto max-w-board" />
         <div className="mx-auto max-w-board px-3 lg:px-6 pt-4 pb-7 space-y-2">
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-[10px]">
             {/* No aria-label: "18+" is the text, and ARIA prohibits a label on a generic span (public-footer.tsx). */}
             <span className="kp-rg__18">{t.footer.eighteenPlus}</span>
             {/* zh keeps its words whole (break-keep); the zh string carries zero-width break hints. */}
