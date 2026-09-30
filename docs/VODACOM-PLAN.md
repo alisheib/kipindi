@@ -21,7 +21,7 @@
 migrations finished on production. It waits on an officer drafting and approving the short titles (§0d). Nothing
 reaches players.
 
-**Next:** S3 is IN PROGRESS on `simple-journey` (§0e: pieces 1–4 of 5 done; the sheet API is next). In parallel, an officer presses "Draft short
+**Next:** S3 is BUILT on `simple-journey` (§0e: all 5 pieces); the battery, a live drive of the route, then the merge. In parallel, an officer presses "Draft short
 titles for open markets" on `/admin/ai-polls?tab=short-titles` and approves them (§0d "Left to do"), then S2 is ✅.
 
 Session law, the same for every session:
@@ -146,7 +146,7 @@ S3 is §3.1 in full, built as five pure pieces, each with its suite and an in-pr
 | 2 | The card's close label — `src/lib/markets/card-close-label.ts` + `cardClosesToday`/`cardDaysLeft`/`cardDaysLeftOne` en/sw/zh | ✅ | `test:card-close-label` (predeploy) + red 7/7 |
 | 3 | The shortfall plan — `src/lib/journey/shortfall.ts` (+ `depositCeilingFor`, `lossHeadroomFor`, `DEPOSIT_QUICK_AMOUNTS`) | ✅ | `test:shortfall` + red 12/12; `test:deposit-ceiling` (the REAL `deposit()` / `checkLossLimit`) + red 9/9 |
 | 4 | The pending bet — `src/lib/journey/pending-bet.ts` + `src/lib/safe-next.ts` (login's `sanitizeNext` moved there) | ✅ | `test:pending-bet` (predeploy) + red 10/10 |
-| 5 | The sheet API — `GET /api/markets/[id]/sheet` | ⬜ | |
+| 5 | The sheet API — `GET /api/markets/[id]/sheet` (reads in `lib/server/journey-sheet.ts`; rate rule `sheet.ip`) | ✅ | `test:journey-sheet` (predeploy) + red 12/12 |
 
 **Decisions taken in S3 (delegated):**
 - `estimate.ts` imports `payout.ts` (itself import-free) rather than being import-free as §3.1 says: the sheet's figure
@@ -169,6 +169,8 @@ S3 is §3.1 in full, built as five pure pieces, each with its suite and an in-pr
   - chips above the ceiling are DROPPED, never clamped to the ceiling's value (no nudge to deposit up to a limit);
   - the SoF thresholds are inputs: they stay declared in `wallet-service.ts`, where `test:kyc-cert-d3` requires them.
 - `/wallet/deposit` now reads its quick amounts from `DEPOSIT_QUICK_AMOUNTS` (the same values), so the ladder is one list.
+- The sheet API is ONE route with two halves: the public half is shared-cacheable (`s-maxage=5`); `?me=1` adds the
+  viewer's own (spendable, held sides, the bonus warning) as `private, no-store`, 401 without a session.
 
 ## §0d · S2 as built (2026-09-30) — LIVE on main since `473807b1`
 

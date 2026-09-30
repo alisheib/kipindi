@@ -115,6 +115,10 @@ export const RATE_RULES: Record<string, RateRule> = {
   // First-party visit counter (/api/pv), per IP. A real visitor sends one beacon per page; 60 burst and 30/min steady
   // covers fast browsing on a shared mobile-carrier IP, and stops one client from inflating the counts.
   "pv.ip":         { capacity: 60, refillPerMin: 30 },
+  // The journey's bet sheet read (`/api/markets/[id]/sheet`, Vodacom plan S3), per IP. A sheet opens per tap and may
+  // refresh its pools while open; the public half is also shared-cached for 5 s. ⚠️ Wide on purpose: many real phones
+  // sit behind one carrier NAT address, and a refused read only drops the sheet back to the card's figure.
+  "sheet.ip":      { capacity: 120, refillPerMin: 60 },
   // Client-side crash reports (/api/client-error), per IP. ⚠️ DELIBERATELY TIGHT: a page that
   // crashes in a render LOOP would otherwise beacon on every re-render, and the point of this
   // endpoint is to learn that a crash happened — the tenth copy teaches nothing. 5 burst,
