@@ -200,6 +200,35 @@ shares it). ⭐ The canvas is the source of truth for S4's frames — no copy li
     - **Rule below 360:** 12-px side gutter, "Weka pesa" without the "+" glyph, and a 12-px balance figure. This fits
       every case at 320, Swahili at TZS 10,000,000 included (exactly 320). The 390 frames now use the 360-up rule.
     - S6's header-fit gate asserts both rules.
+11. **Card buttons (brief item 3), measured the same way.** Labels were checked at 320/360/390/412 in sw/en/zh.
+    - The second line may wrap to two lines. Both buttons then grow together, from 64 to 74 px.
+    - At 320, even "Shinda ≈2.8× dau" wraps (so does the English). "Shinda zaidi ya 100× dau" wraps at every width.
+    - The card uses SJ-1's "Kuwa wa kwanza" as a NEW short key. The existing `beFirst` ("Kuwa wa kwanza kutabiri")
+      wraps at every width, and it stays for the market page.
+    - A figure never leaves its unit: a no-break space joins "≈2.8× dau", "1 Oktoba" and "10 Okt". So a break
+      reads "Shinda / ≈2.8× dau", never "…≈2.8× / dau".
+    - **Open, written on the canvas:** SJ-3's legacy caption has no player sentence. `describeFeeModel` returns
+      English admin text ("capped 13%/33.33%"). The card shows the side word alone; the sheet can reuse today's
+      `payoutCalcBody` sentence.
+
+**Found while collecting copy, and fixed: F1 (`4b6d9b59`, live and verified).**
+- On the deposit page, a DELAYED payout status paired the delayed title with the UNAVAILABLE deposit warning ("…you
+  will not be able to take money out again until payouts are restored"). That is false while withdrawals still work.
+- The words now come from one pure function, `payoutNoticeCopy`.
+- `test:cert-f1` §9 checks every status × page pairing by what the player reads. It also replays the old logic,
+  which must fail (the control).
+- The real component, rendered server-side, now shows:
+  - nothing when operational;
+  - the delayed title and body when delayed;
+  - the "cannot be paid" warning only when unavailable.
+
+**Progress on items 2–11 (2026-10-01):**
+- Item 2: the header fit is measured (call 10). Still to draw: the guest, held-wallet and desktop header frames.
+- Item 3: the card states are on the canvas (row "3 · The journey card in every state", ten frames).
+- Next: the home frames (skeleton, 7 chips scrolled, empty category, "Onyesha zaidi"); then items 4–11.
+- The copy researched for every state is filed in
+  [`S4-COPY-AUDIT.md`](design-system/v5-2026-09-29-simplified-journey/S4-COPY-AUDIT.md), a dated snapshot;
+  `i18n-dict.ts` stays the truth. Items marked "NO STRING" there need drafts (R8).
 
 **Verified:** each redraw was rendered locally at 390 × 844 in Chromium and read one screen at a time. Result: no
 overflow, all three fonts loaded, the logos loaded, and the B option of each choice rendered. Ali's standing rule
