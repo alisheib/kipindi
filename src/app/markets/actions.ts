@@ -14,6 +14,7 @@ import { requireAdminTotp } from "@/lib/server/admin-guard";
 // ⛔ The SAME rule the wizard applies client-side — imported, never re-implemented.
 import { criterionTranslationIssue } from "@/lib/localized";
 import { isHouseIntentKey } from "@/lib/house-bot/constants";
+import { countBetFunnel } from "@/lib/server/journey-funnel";
 import { commentSideFor } from "@/lib/comment-side";
 // The Vodacom plan S2 — the ONE rule module for short titles, read by the wizard (client) and here (server).
 import { HARD_ISSUES, SHORT_TITLE_LOCALES, normaliseShortTitleSet, shortTitleFor } from "@/lib/markets/short-title";
@@ -99,6 +100,9 @@ export async function buyPositionAction(formData: FormData) {
   // E-235 — the play clock rides on the signed session, so the limit cannot be reset by
   // clearing site data. `buyPosition` treats an absent value as "no opinion".
   const r = await buyPosition(session.userId, { marketId, side, stake, idempotencyKey, playStartedAt: session.playStartedAt });
+  // The journey funnel (Vodacom plan S3b, §0f): a NEW bet, counted once it has landed — never a replay, never inside a
+  // lock (the money call has returned), fire-and-forget.
+  if (r.ok && !r.data?.replayed) countBetFunnel(session, formData);
   if (r.ok) {
     revalidatePath("/markets");
     revalidatePath(`/markets/${marketId}`);

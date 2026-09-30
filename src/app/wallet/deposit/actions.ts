@@ -40,7 +40,10 @@ export async function depositAction(formData: FormData) {
 
   // Carry form values through the error redirect so the player doesn't
   // have to re-enter provider + amount + phone (+ billing) on a failure.
+  // The journey funnel (Vodacom plan S3b): a deposit started from a not-enough-money state says so. One value only.
+  const origin = formData.get("origin") === "low_balance" ? ("low_balance" as const) : undefined;
   const carry = new URLSearchParams();
+  if (origin) carry.set("from", "low-balance");
   carry.set("provider", provider);
   carry.set("amount", String(amount));
   if (msisdn) carry.set("msisdn", msisdn);
@@ -120,7 +123,7 @@ export async function depositAction(formData: FormData) {
   }
 
   const idempotencyKey = formData.get("idempotencyKey") ? String(formData.get("idempotencyKey")) : undefined;
-  const result = await deposit(session.userId, { provider, amount, msisdn }, idempotencyKey, card);
+  const result = await deposit(session.userId, { provider, amount, msisdn, ...(origin ? { origin } : {}) }, idempotencyKey, card);
   revalidatePath("/wallet");
 
   if (!result.ok) {

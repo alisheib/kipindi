@@ -49,7 +49,7 @@ const PROVIDERS = [
 const QUICK_AMOUNTS = [...DEPOSIT_QUICK_AMOUNTS];
 
 export default async function DepositPage({ searchParams }: { searchParams: Promise<{
-  error?: string; provider?: string; amount?: string; msisdn?: string;
+  error?: string; provider?: string; amount?: string; msisdn?: string; from?: string;
   bFirst?: string; bLast?: string; bAddr?: string; bCity?: string; bRegion?: string; bPost?: string;
 }> }) {
   const session = await currentSession();
@@ -189,6 +189,8 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
       ) : (
       <form action={depositAction} className="group/deposit rounded-xl glass-panel p-5 lg:p-6 space-y-5">
         <IdempotencyKeyField />
+        {/* The journey funnel (Vodacom plan S3b): a deposit started from a not-enough-money state says so. */}
+        {sp.from === "low-balance" && <input type="hidden" name="origin" value="low_balance" />}
         <fieldset>
           <FieldLegend as="legend" className="mb-2">
             {t.wallet.choosePaymentMethod}

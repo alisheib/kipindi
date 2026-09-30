@@ -25,6 +25,8 @@ import * as F from "../src/lib/journey/funnel.ts";
 import * as S from "../src/lib/server/journey-funnel.ts";
 import { POST as FUNNEL_POST } from "../src/app/api/funnel/route.ts";
 import { RATE_RULES } from "../src/lib/server/rate-limit.ts";
+import { db } from "../src/lib/server/store.ts";
+import { deposit } from "../src/lib/server/wallet-service.ts";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const read = (rel: string) => readFileSync(join(ROOT, rel), "utf8").replace(/\r\n/g, "\n");
@@ -39,6 +41,13 @@ const CALLERS = ["src/components/markets/side-picker.tsx", "src/components/marke
   .map((rel) => ({ rel, text: read(rel) }));
 const DEPOSIT_LINKS = ["src/components/updown/updown-stake-controls.tsx", "src/components/updown/round-stake-panel.tsx"].map((rel) => read(rel));
 const HOME = read("src/components/home/landing-hero.tsx");
+const ACTIONS = read("src/app/markets/actions.ts");
+const WALLET = read("src/lib/server/wallet-service.ts");
+const DEP_ACTION = read("src/app/wallet/deposit/actions.ts");
+const DEP_PAGE = read("src/app/wallet/deposit/page.tsx");
+const PRISMA_DAL = read("src/lib/server/prisma-dal.ts");
+const MEM_STORE = read("src/lib/server/store.ts");
+const TXN_MIGRATION = read("prisma/migrations/20261001120100_transaction_origin/migration.sql");
 const PROVE_RED = process.argv.includes("--prove-red");
 
 type Impl = {
@@ -47,12 +56,28 @@ type Impl = {
   utm: typeof F.utmFromSearch; readUtm: typeof F.readUtm; schema: string; migration: string; retention: string;
   post: typeof FUNNEL_POST; route: string; beacon: string; shell: string; callers: Array<{ rel: string; text: string }>;
   depositLinks: string[]; home: string;
+  countBet: typeof S.countBetFunnel; countDeposit: typeof S.countDepositFunnel; actions: string; wallet: string;
+  depAction: string; depPage: string; prismaDal: string; memStore: string; txnMigration: string;
 };
 const REAL: Impl = {
   parse: F.parseFunnelBody, body: F.funnelBody, norm: S.normaliseFunnelEvent, record: S.recordFunnel, rows: S.funnelRows,
   prune: S.pruneJourneyFunnel, utm: F.utmFromSearch, readUtm: F.readUtm, schema: SCHEMA, migration: MIGRATION, retention: RETENTION,
   post: FUNNEL_POST, route: ROUTE, beacon: BEACON, shell: SHELL, callers: CALLERS, depositLinks: DEPOSIT_LINKS, home: HOME,
+  countBet: S.countBetFunnel, countDeposit: S.countDepositFunnel, actions: ACTIONS, wallet: WALLET,
+  depAction: DEP_ACTION, depPage: DEP_PAGE, prismaDal: PRISMA_DAL, memStore: MEM_STORE, txnMigration: TXN_MIGRATION,
 };
+let userSeq = 0;
+async function mkUser(id: string, role = "PLAYER") {
+  const now = new Date().toISOString();
+  await db.user.create({
+    id, phoneE164: `+25579888${String(++userSeq).padStart(4, "0")}`, passwordHash: null, passwordSalt: null, failedLoginCount: 0, lockedUntil: null,
+    role, status: "ACTIVE", locale: "EN", displayName: "Funnel Player", dob: "1990-01-01", region: "TZ", acceptedTermsVersion: "v1",
+    acceptedTermsAt: now, marketingOptIn: false, twoFactorEnabled: false, avatarDataUrl: null, email: `${id}@t.tz`, emailVerifiedAt: now,
+    createdAt: now, updatedAt: now, lastLoginAt: now, closedAt: null,
+  } as never);
+  await db.wallet.create({ id: `wal_${id}`, userId: id, balance: 0, pending: 0, hold: 0, currency: "TZS", status: "ACTIVE", createdAt: now, updatedAt: now } as never);
+}
+const settle = () => new Promise((r) => setTimeout(r, 400));
 const CHROME = "Mozilla/5.0 (Linux; Android 13; TECNO) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Mobile Safari/537.36";
 let ipSeq = 0;
 /** Strip block and line comments, so a guard never matches the paragraph explaining a fix. */
@@ -195,6 +220,64 @@ async function run(impl: Impl, log: (l: string) => void, tag: string): Promise<s
   ok("8.links · the Up & Down deposit links carry from=low-balance; the home page's side links carry from=home",
     impl.depositLinks.every((t) => t.includes('"/wallet/deposit?from=low-balance"') && !t.includes('"/wallet/deposit"'))
       && (impl.home.match(/\?side=(?:YES|NO)&from=home` as never/g) ?? []).length === 2);
+
+  /* 9 · the server steps, driven on the in-memory store */
+  const day = new Date(Date.now() + 3 * 3600_000).toISOString().slice(0, 10);
+  const mine = async (m: string) => (await impl.rows(day, day)).filter((r) => r.utmSource === m || r.utmCampaign === m);
+  const bm = `bet${tag}`;
+  const form = (o: Record<string, string>) => ({ get: (k: string) => (k in o ? o[k] : null) });
+  impl.countBet({ role: "PLAYER" }, form({ funnelOrigin: "dial", funnelUtmSource: bm, funnelUtmCampaign: "" }));
+  impl.countBet({ role: "PLAYER" }, form({ funnelOrigin: "quick", funnelUtmSource: bm, funnelUtmCampaign: "" }));
+  impl.countBet({ role: "ADMIN" }, form({ funnelOrigin: "dial", funnelUtmSource: bm, funnelUtmCampaign: "" }));
+  impl.countBet({ role: "PLAYER" }, form({ funnelOrigin: "home", funnelUtmSource: bm, funnelUtmCampaign: "" }));
+  await settle();
+  const bets = (await mine(bm)).map((r) => `${r.step}/${r.origin}/${r.variant}=${r.count}`).sort();
+  ok("9.bet · a player's bet is counted with its origin (dial, quick) in the old journey; staff and an origin a bet may not have are not",
+    j(bets) === j(["bet/dial/old=1", "bet/quick/old=1"]), j(bets));
+
+  const player = `usr_fnl_${tag}_p`, staff = `usr_fnl_${tag}_s`;
+  await mkUser(player); await mkUser(staff, "FINANCE");
+  const beforeLow = (await impl.rows(day, day)).filter((r) => r.step === "deposit_confirmed" && r.origin === "low_balance").reduce((n, r) => n + r.count, 0);
+  const beforeDirect = (await impl.rows(day, day)).filter((r) => r.step === "deposit_confirmed" && r.origin === "direct").reduce((n, r) => n + r.count, 0);
+  const d1 = await deposit(player, { provider: "MPESA", amount: 5_000, msisdn: "712345678", origin: "low_balance" });
+  const d2 = await deposit(player, { provider: "MPESA", amount: 3_000, msisdn: "712345678" });
+  const d3 = await deposit(staff, { provider: "MPESA", amount: 4_000, msisdn: "712345678", origin: "low_balance" });
+  await settle();
+  const afterLow = (await impl.rows(day, day)).filter((r) => r.step === "deposit_confirmed" && r.origin === "low_balance").reduce((n, r) => n + r.count, 0);
+  const afterDirect = (await impl.rows(day, day)).filter((r) => r.step === "deposit_confirmed" && r.origin === "direct").reduce((n, r) => n + r.count, 0);
+  const rowsOf = (await db.txn.findByUser(player)).filter((t) => t.type === "DEPOSIT").map((t) => `${t.amount}:${t.origin ?? "null"}:${t.status}`).sort();
+  ok("9.deposit · the REAL deposit(): a low-balance deposit is counted as low_balance and a direct one as direct when CONFIRMED; a staff deposit is not counted; the row keeps its origin",
+    d1.ok && d2.ok && d3.ok && afterLow - beforeLow === 1 && afterDirect - beforeDirect === 1
+      && j(rowsOf) === j(["3000:null:CONFIRMED", "5000:low_balance:CONFIRMED"]), j({ d1: d1.ok, d2: d2.ok, d3: d3.ok, low: afterLow - beforeLow, direct: afterDirect - beforeDirect, rowsOf }));
+  const tally = async () => {
+    const r = (await impl.rows(day, day)).filter((x) => x.step === "deposit_confirmed");
+    return { low: r.filter((x) => x.origin === "low_balance").reduce((n, x) => n + x.count, 0), direct: r.filter((x) => x.origin === "direct").reduce((n, x) => n + x.count, 0) };
+  };
+  const t0 = await tally();
+  impl.countDeposit({ userId: player, origin: "low_balance" });
+  impl.countDeposit({ userId: player, origin: null });
+  impl.countDeposit({ userId: player, origin: "something_else" });
+  impl.countDeposit({ userId: player, origin: "low_balance", houseBotId: "hb_1" });
+  await settle();
+  const t1 = await tally();
+  ok("9.counter · the deposit counter maps the row's origin (low_balance stays, anything else is direct) and never counts a house row",
+    t1.low - t0.low === 1 && t1.direct - t0.direct === 2, j({ t0, t1 }));
+
+  const actions = code(impl.actions), wallet = code(impl.wallet);
+  ok("9.bet-wiring · the bet action counts only after buyPosition returned ok and NOT a replay, from the form the dial built",
+    /const r = await buyPosition\([^;]*\);\s*if \(r\.ok && !r\.data\?\.replayed\) countBetFunnel\(session, formData\);/.test(actions));
+  ok("9.deposit-wiring · the deposit is counted in settleDepositConfirmed's post-lock block, outside the lock, by a dynamic import — and its row is written with the origin",
+    /if \(outcome\.credited && outcome\.txn\) \{[\s\S]*?runOutsideLock\(\(\) => \{\s*void import\("\.\/journey-funnel"\)\.then\(\(m\) => m\.countDepositFunnel\(t\)\)/.test(wallet)
+      && /origin: \(parse\.data as \{ origin\?: "low_balance" \}\)\.origin \?\? null,/.test(wallet));
+  ok("9.form · the deposit page adds the origin only for from=low-balance; the action accepts only low_balance and carries it through a failure",
+    impl.depPage.includes('{sp.from === "low-balance" && <input type="hidden" name="origin" value="low_balance" />}')
+      && impl.depAction.includes('const origin = formData.get("origin") === "low_balance" ? ("low_balance" as const) : undefined;')
+      && impl.depAction.includes('if (origin) carry.set("from", "low-balance");'));
+  ok("9.create-only · the origin is written on create and skipped by BOTH update paths; its migration adds one nullable column under the lock-retry block",
+    /origin: t\.origin \?\? null,/.test(impl.prismaDal) && /k === "positionId" \|\| k === "origin"\) continue;/.test(impl.prismaDal)
+      && /origin: _origin, \.\.\.rest \} = patch;/.test(impl.memStore)
+      && /ALTER TABLE "Transaction"\s+ADD COLUMN IF NOT EXISTS "origin" TEXT;/.test(impl.txnMigration) && /EXCEPTION WHEN lock_not_available/.test(impl.txnMigration)
+      && !/\b(DROP|UPDATE|DELETE)\b/.test(impl.txnMigration.replace(/--[^\n]*/g, "")));
   return failed;
 }
 
@@ -239,6 +322,18 @@ if (!PROVE_RED) {
       impl: { ...REAL, callers: REAL.callers.map((c) => ({ ...c, text: c.text.replace('sendFunnel("low_balance", "dial")', 'sendFunnel("low_balance", "home")') })) } },
     { name: "the deposit link loses its origin", expect: /^8\.links /,
       impl: { ...REAL, depositLinks: REAL.depositLinks.map((t) => t.replace('"/wallet/deposit?from=low-balance"', '"/wallet/deposit"')) } },
+    { name: "staff bets counted", expect: /^9\.bet /,
+      impl: { ...REAL, countBet: (_s, f) => REAL.countBet({ role: "PLAYER" }, f) } },
+    { name: "a replayed bet counted (the replay guard dropped)", expect: /^9\.bet-wiring /,
+      impl: { ...REAL, actions: REAL.actions.replace("if (r.ok && !r.data?.replayed) countBetFunnel", "if (r.ok) countBetFunnel") } },
+    { name: "every deposit counted as direct (the row's origin ignored)", expect: /^9\.counter /,
+      impl: { ...REAL, countDeposit: (t) => REAL.countDeposit({ ...t, origin: null }) } },
+    { name: "a house row counted", expect: /^9\.counter /,
+      impl: { ...REAL, countDeposit: (t) => REAL.countDeposit({ ...t, houseBotId: null }) } },
+    { name: "the deposit counted inside the lock", expect: /^9\.deposit-wiring /,
+      impl: { ...REAL, wallet: REAL.wallet.replace('runOutsideLock(() => {\n      void import("./journey-funnel")', '(() => {\n      void import("./journey-funnel")') } },
+    { name: "the origin overwritable by an update", expect: /^9\.create-only /,
+      impl: { ...REAL, prismaDal: REAL.prismaDal.replace(' || k === "origin") continue;', ") continue;") } },
     { name: "an unsafe utm value kept", expect: /^6\.utm /,
       impl: { ...REAL, utm: (s) => ({ s: String(s.get("utm_source") ?? ""), c: String(s.get("utm_campaign") ?? "").toLowerCase() }) } },
   ];

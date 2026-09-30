@@ -665,6 +665,10 @@ model Transaction {
   /// SQL-only partial index "Transaction_createdAt_marked_idx" (createdAt) WHERE houseBotId IS NOT NULL
   /// (migration 20260916150100_house_bot_markers).
   houseBotId        String?
+  /// The journey funnel's origin of a DEPOSIT (Vodacom plan S3b, docs/VODACOM-PLAN.md §0f): "low_balance" when the
+  /// player came from a not-enough-money state, else NULL. Counted when the deposit is CONFIRMED. ⛔ Create-only (both
+  /// `txn.update` implementations skip it), like `houseBotId`.
+  origin            String?
   amlReviewedById   String?
   amlReviewedAt     DateTime?
   amlReason         String?

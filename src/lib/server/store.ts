@@ -592,6 +592,8 @@ export type StoredTxn = {
    * can move money between the house book and a player's.
    */
   houseBotId?: string | null;
+  /** The journey funnel's origin of a DEPOSIT (Vodacom plan S3b): "low_balance", else null. ⛔ Create-only. */
+  origin?: string | null;
 };
 
 export type StoredResponsibleGambling = {
@@ -1582,7 +1584,7 @@ const memoryDb = {
       // either (C5-7's review: `positionId` passed through here, and a row positioned by an update is permanently
       // unmarkable — visible in the holder's own wallet feed and missing from the house book's `returned`, with
       // ruling 232's `.txn.create(` pin blind to it). The pin is `test:house-bot-reports` 0.232.4.
-      const { houseBotId: _marker, positionId: _positioned, ...rest } = patch;
+      const { houseBotId: _marker, positionId: _positioned, origin: _origin, ...rest } = patch;
       const next = { ...t, ...rest, updatedAt: new Date().toISOString() };
       store.txns.set(id, next);
       return next;

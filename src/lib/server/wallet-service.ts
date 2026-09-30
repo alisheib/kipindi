@@ -285,6 +285,8 @@ export async function deposit(
         updatedAt: new Date().toISOString(),
         completedAt: null,
         idempotencyKey: idempotencyKey ?? null,
+        // The journey funnel's origin (S3b) — create-only; read when the deposit is confirmed.
+        origin: (parse.data as { origin?: "low_balance" }).origin ?? null,
       });
       return { ok: true, txn: created, reused: false };
     } catch (err) {
@@ -473,6 +475,11 @@ async function settleDepositConfirmed(txnId: string, providerRef?: string): Prom
     // F7 · the holder's own money moved: a live, ACTIVE house bot on this account tells every admin (02 §3.6).
     runOutsideLock(() => {
       void import("./house-bot/money-hook").then((m) => m.onHolderMoneyEvent(t.userId, { event: "deposited", amountTzs: Math.abs(t.amount), txnId: t.id })).catch(() => {});
+    });
+    // The journey funnel (Vodacom plan S3b): a confirmed deposit, counted with its origin — fire-and-forget, after the
+    // lock, and never able to touch the credit that has already landed.
+    runOutsideLock(() => {
+      void import("./journey-funnel").then((m) => m.countDepositFunnel(t)).catch(() => {});
     });
     // Ledger DEPOSIT was posted atomically with the credit inside the lock (C3).
     audit({ category: "WALLET", action: "deposit.confirmed", actorId: t.userId, targetType: "Transaction", targetId: t.id, payload: { providerRef: providerRef ?? t.providerRef, balanceAfter: outcome.balance } });

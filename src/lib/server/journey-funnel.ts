@@ -102,6 +102,54 @@ export function countFunnel(e: Partial<FunnelEvent>, now: number = Date.now()): 
   void recordFunnel(e, now).catch((err) => console.error("[journey-funnel] count failed", { step: e?.step, err: String(err) }));
 }
 
+/* ─── The two server steps — called by the money paths AFTER the money moved ─────────────────────────────────────── */
+
+/**
+ * ⭐ A NEW BET, counted from `buyPositionAction` once `buyPosition` returned ok and NOT a replay. Staff are not counted
+ * (the session's role); a preview pass is not counted; the origin and the visit's campaign tags come from the form the
+ * dial or the quick-bet built (`funnelBetFields`) and pass the one allow-list or are dropped. Fire-and-forget: the
+ * journey state is read inside the request (started before the action returns), the count after it.
+ */
+export function countBetFunnel(session: { role?: string | null }, form: { get(key: string): unknown }): void {
+  void (async () => {
+    const { isStaffRole } = await import("./roles");
+    if (isStaffRole(session.role)) return;
+    const { resolveSimpleJourney } = await import("./journey-preview");
+    const j = await resolveSimpleJourney();
+    if (j.preview) return;
+    await recordFunnel({
+      step: "bet",
+      origin: String(form.get("funnelOrigin") ?? ""),
+      variant: j.journey ? "new" : "old",
+      utmSource: String(form.get("funnelUtmSource") ?? ""),
+      utmCampaign: String(form.get("funnelUtmCampaign") ?? ""),
+    }, Date.now());
+  })().catch((err) => console.error("[journey-funnel] bet count failed", String(err)));
+}
+
+/**
+ * ⭐ A CONFIRMED DEPOSIT, counted from `settleDepositConfirmed` after the credit landed (a webhook, a return, a sweep —
+ * whoever confirmed it). Its origin is the one stamped on the row when it was started ("low_balance", else "direct").
+ * No browser is here, so the journey is the platform's: "new" only once the rollout is ACTIVE. Staff and house rows
+ * are not counted.
+ */
+export function countDepositFunnel(txn: { userId: string; origin?: string | null; houseBotId?: string | null }): void {
+  if (txn.houseBotId) return;
+  void (async () => {
+    const [{ isStaffRole }, { db }, { simpleJourneyStateNow }] = await Promise.all([
+      import("./roles"), import("./store"), import("./simple-journey-switch"),
+    ]);
+    const u = await db.user.findById(txn.userId);
+    if (!u || isStaffRole(u.role)) return;
+    const state = await simpleJourneyStateNow();
+    await recordFunnel({
+      step: "deposit_confirmed",
+      origin: txn.origin === "low_balance" ? "low_balance" : "direct",
+      variant: state === "ACTIVE" ? "new" : "old",
+    }, Date.now());
+  })().catch((err) => console.error("[journey-funnel] deposit count failed", String(err)));
+}
+
 /** Every total in an inclusive EAT-day range. */
 export async function funnelRows(fromDay: string, toDay: string): Promise<FunnelRow[]> {
   return dal.rows(fromDay, toDay);

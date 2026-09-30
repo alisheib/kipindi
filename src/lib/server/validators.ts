@@ -183,6 +183,8 @@ export const DepositSchema = z.object({
   provider: z.enum(["MPESA", "AIRTEL_MONEY", "HALO_PESA", "MIXX", "CARD"]),
   amount: depositAmount,
   msisdn: tzPhone.optional(),
+  /** The journey funnel's origin (Vodacom plan S3b): only "low_balance" is a value; absent = a direct deposit. */
+  origin: z.enum(["low_balance"]).optional(),
 });
 export type DepositInput = z.infer<typeof DepositSchema>;
 

@@ -543,6 +543,7 @@ function toStoredTxn(t: any): StoredTxn {
     idempotencyKey: t.idempotencyKey ?? null,
     pendingNotifiedAt: iso(t.pendingNotifiedAt),
     houseBotId: t.houseBotId ?? null,
+    origin: t.origin ?? null,
   };
 }
 
@@ -1690,6 +1691,8 @@ export const prismaDb = {
           idempotencyKey: t.idempotencyKey ?? null,
           // The house marker, written here and nowhere else (`update` skips it).
           houseBotId: t.houseBotId ?? null,
+          // The journey funnel's deposit origin (S3b) — create-only too.
+          origin: t.origin ?? null,
         },
       });
       return toStoredTxn(row);
@@ -1742,7 +1745,7 @@ export const prismaDb = {
           // `.txn.create(` sites only, so nothing would report it. The two keys are create-only together or neither
           // is. Measured when this landed: 28 `db.txn.update(` call sites in `src/`, none naming either key. The
           // memory twin drops both the same way; the pin is `test:house-bot-reports` 0.232.4.
-          if (k === "createdAt" || k === "updatedAt" || k === "houseBotId" || k === "positionId") continue;
+          if (k === "createdAt" || k === "updatedAt" || k === "houseBotId" || k === "positionId" || k === "origin") continue;
           if (k === "completedAt" || k === "pendingNotifiedAt") {
             data[k] = v ? new Date(v as string) : null;
           } else {
