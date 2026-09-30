@@ -233,7 +233,28 @@ shares it). ⭐ The canvas is the source of truth for S4's frames — no copy li
 - Item 3 ✅ on the canvas: the card row (ten frames) and the home row (loading, seven chips scrolled, an empty
   category, the end of the first page with "Onyesha zaidi", and desktop at 1280 in three columns).
   - The empty-category words are drafts, noted on the canvas.
-- Next: item 4 (bet-sheet states), then items 5–11.
+- Item 4 ✅ on the canvas (row "4 · The bet sheet in every state", 19 frames). They are:
+  - guest;
+  - below the minimum and above the maximum;
+  - the estimate updated;
+  - legacy fee, one-sided refund, already holding, thin upside (≈1.0×);
+  - placing, and the receipt;
+  - closed while open;
+  - the five blocking refusals, and the four inline ones;
+  - the keyboard open at 360×640;
+  - desktop, as a centred dialog.
+  Every figure comes from the payout formula on a stated pool.
+  - **Design calls** (on the canvas):
+    - Bounds use the first sentence of today's refusal, in the neutral family.
+    - An invalid stake shows "TZS —", and the button reads "Weka dau" with no amount.
+    - Blocking or inline follows `REASONS[].channel`.
+    - With the keyboard up, the estimate collapses to the compact row and the chips step aside.
+    - The bonus-wager warning is not drawn, because the bonus wallet is withdrawn.
+  - **Finding for S12 (words and i18n):** every date formatter in `lib/utils.ts` hard-codes `en-GB` and takes no
+    locale (`formatDeadline`, `formatDayTime`, `formatDateTime`, `formatDayShort`). Swahili and Chinese players
+    read English months: "8 Oct" and "11 May" where Swahili says "8 Okt" and "11 Mei". The frames show the Swahili.
+    Fixing it means threading a locale through every caller, and `test:timer-date` must hold. That is its own lane.
+- Next: items 5–11.
 - The copy researched for every state is filed in
   [`S4-COPY-AUDIT.md`](design-system/v5-2026-09-29-simplified-journey/S4-COPY-AUDIT.md), a dated snapshot;
   `i18n-dict.ts` stays the truth. Items marked "NO STRING" there need drafts (R8).
