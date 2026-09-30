@@ -36,6 +36,16 @@ import {
 } from "../src/lib/server/payout-status.ts";
 import { STUCK_PROCESSING_MS } from "../src/lib/server/txn-filters.ts";
 import { dict } from "../src/lib/i18n-dict.ts";
+import { payoutNoticeCopy, type PayoutNoticeLabels } from "../src/lib/payout-notice-copy.ts";
+
+/** The real Swahili labels, exactly as the deposit and withdraw pages pass them. */
+const F1_LABELS: PayoutNoticeLabels = {
+  delayedTitle: dict.sw.wallet.payoutsDelayedTitle,
+  delayedBody: dict.sw.wallet.payoutsDelayedBody,
+  unavailableTitle: dict.sw.wallet.payoutsUnavailableTitle,
+  unavailableBody: dict.sw.wallet.payoutsUnavailableBody,
+  depositWarning: dict.sw.wallet.payoutsUnavailableDepositWarning,
+};
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const read = (p: string) => readFileSync(join(root, p), "utf8");
@@ -187,7 +197,8 @@ const notice = read("src/components/wallet/payout-status-notice.tsx");
 const noticeCode = notice.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
 ok("the notice is not dismissible", !/dismiss|onClose|useState|onClick/i.test(noticeCode),
   "A notice a player can close is one they will not have read when it matters.");
-ok("the notice returns nothing when operational", notice.includes('status === "operational"') && notice.includes("return null"));
+ok("the notice returns nothing when operational",
+  payoutNoticeCopy("operational", "deposit", F1_LABELS) === null && notice.includes("payoutNoticeCopy(") && /if \(!copy\) return null/.test(notice));
 ok("the notice is announced to screen readers", notice.includes('role="alert"'));
 
 // ── 7 · The server action is the real gate ───────────────────────────────────────────────────
@@ -248,6 +259,51 @@ ok("8.5 · CONTROL · the escalation changed NOTHING about when payouts close �
    guard that exempts a class of the thing it polices is not a guard. */
 ok("8.6 · CONTROL · the derived query is not scoped to a subset of accounts — one stuck payout counts whoever owns it",
   !/userId|houseBotId|excludeUser|isBot/.test(payoutSrc.slice(payoutSrc.indexOf("derivePayoutStatus"), payoutSrc.indexOf("export async function getPayoutStatus"))));
+
+// ── 9 · The notice's words match its status ─────────────────────────────────────────────────
+/* 🔴 Found 2026-10-01. On the deposit page a DELAYED status showed the delayed title over the UNAVAILABLE deposit
+   warning — "you will not be able to take money out again until payouts are restored" — which is false while
+   withdrawals still work. Every pairing is checked by what the player reads, and the same checks are run against the
+   old logic, which must fail them (the control), so the section cannot pass by checking nothing. */
+section("9 · the notice's words match its status");
+type CopyFn = typeof payoutNoticeCopy;
+const f1Pairs = (fn: CopyFn): string[] => {
+  const bad: string[] = [];
+  const L = F1_LABELS;
+  const want: [Parameters<CopyFn>[0], "withdraw" | "deposit", string, string][] = [
+    ["delayed", "deposit", L.delayedTitle, L.delayedBody],
+    ["delayed", "withdraw", L.delayedTitle, L.delayedBody],
+    ["unavailable", "deposit", L.unavailableTitle, L.depositWarning],
+    ["unavailable", "withdraw", L.unavailableTitle, L.unavailableBody],
+  ];
+  for (const [s, v, title, body] of want) {
+    const got = fn(s, v, L);
+    if (!got || got.title !== title || got.body !== body) bad.push(`${s}/${v}`);
+  }
+  // An officer's note replaces the body, never the title.
+  const noted = fn("delayed", "deposit", L, "Officer note.");
+  if (!noted || noted.body !== "Officer note." || noted.title !== L.delayedTitle) bad.push("note");
+  for (const s of PAYOUT_STATUSES) if (s !== "operational" && !fn(s, "deposit", L)) bad.push(`${s} silent`);
+  return bad;
+};
+const pairsNow = f1Pairs(payoutNoticeCopy);
+ok("9.1 · each status shows its own title and body on both pages; a note replaces only the body", pairsNow.length === 0, pairsNow.join(", "));
+ok("9.2 · 🔴 a DELAYED deposit notice never says withdrawals cannot be paid",
+  payoutNoticeCopy("delayed", "deposit", F1_LABELS)?.body !== F1_LABELS.depositWarning);
+/* The pre-fix logic, verbatim in shape: the deposit variant always took the deposit warning. */
+const oldCopy: CopyFn = (status, variant, labels, note) => {
+  if (status === "operational") return null;
+  const unavailable = status === "unavailable";
+  return {
+    title: unavailable ? labels.unavailableTitle : labels.delayedTitle,
+    body: note ?? (variant === "deposit" ? labels.depositWarning : unavailable ? labels.unavailableBody : labels.delayedBody),
+  };
+};
+const pairsOld = f1Pairs(oldCopy);
+ok("9.3 · CONTROL · the old logic FAILS 9.1 (it pairs the delayed title with the unavailable warning)",
+  pairsOld.includes("delayed/deposit"), `old logic failures: ${pairsOld.join(", ") || "none"}`);
+ok("9.4 · the component takes its words from payoutNoticeCopy, not its own branches",
+  notice.includes("payoutNoticeCopy(status, variant, labels, note)") && !/labels\.depositWarning/.test(noticeCode));
 
 console.log("");
 console.log("─".repeat(64));

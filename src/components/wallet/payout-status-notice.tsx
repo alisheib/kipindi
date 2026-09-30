@@ -1,5 +1,6 @@
 import { Callout } from "@/components/ui/callout";
 import type { PayoutStatus } from "@/lib/server/payout-status";
+import { payoutNoticeCopy } from "@/lib/payout-notice-copy";
 
 /**
  * Tells a player the truth about taking money out — before they try.
@@ -37,17 +38,12 @@ export function PayoutStatusNotice({
   };
   variant?: "withdraw" | "deposit";
 }) {
-  if (status === "operational") return null;
+  // The words come from one pure function (`test:cert-f1` §9): the deposit warning is for `unavailable` only.
+  const copy = payoutNoticeCopy(status, variant, labels, note);
+  if (!copy) return null;
 
   const unavailable = status === "unavailable";
-  const title = unavailable ? labels.unavailableTitle : labels.delayedTitle;
-  const body =
-    note ??
-    (variant === "deposit"
-      ? labels.depositWarning
-      : unavailable
-        ? labels.unavailableBody
-        : labels.delayedBody);
+  const { title, body } = copy;
 
   // ⭐ STAGE 9b — THIS BOX IS <Callout size="md">, NOT A FOURTH HAND-ROLLED ONE.
   //
