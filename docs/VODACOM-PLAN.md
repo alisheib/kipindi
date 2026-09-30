@@ -21,7 +21,7 @@
 migrations finished on production. It waits on an officer drafting and approving the short titles (§0d). Nothing
 reaches players.
 
-**Next:** S3 is IN PROGRESS on `simple-journey` (§0e: pieces 1, 2 and 4 of 5 done). In parallel, an officer presses "Draft short
+**Next:** S3 is IN PROGRESS on `simple-journey` (§0e: pieces 1–4 of 5 done; the sheet API is next). In parallel, an officer presses "Draft short
 titles for open markets" on `/admin/ai-polls?tab=short-titles` and approves them (§0d "Left to do"), then S2 is ✅.
 
 Session law, the same for every session:
@@ -144,7 +144,7 @@ S3 is §3.1 in full, built as five pure pieces, each with its suite and an in-pr
 |---|---|---|---|
 | 1 | The estimate — `src/lib/markets/estimate.ts` (+ `loserShareRate`/`loserSharePct` in `payout.ts`) | ✅ `5070d1a7` | `test:journey-estimate` (predeploy) + red 14/14 |
 | 2 | The card's close label — `src/lib/markets/card-close-label.ts` + `cardClosesToday`/`cardDaysLeft`/`cardDaysLeftOne` en/sw/zh | ✅ | `test:card-close-label` (predeploy) + red 7/7 |
-| 3 | The shortfall plan — `src/lib/journey/shortfall.ts` (+ `depositCeilingFor`, `lossHeadroomFor`) | ⬜ | |
+| 3 | The shortfall plan — `src/lib/journey/shortfall.ts` (+ `depositCeilingFor`, `lossHeadroomFor`, `DEPOSIT_QUICK_AMOUNTS`) | ✅ | `test:shortfall` + red 12/12; `test:deposit-ceiling` (the REAL `deposit()` / `checkLossLimit`) + red 9/9 |
 | 4 | The pending bet — `src/lib/journey/pending-bet.ts` + `src/lib/safe-next.ts` (login's `sanitizeNext` moved there) | ✅ | `test:pending-bet` (predeploy) + red 10/10 |
 | 5 | The sheet API — `GET /api/markets/[id]/sheet` | ⬜ | |
 
@@ -161,6 +161,14 @@ S3 is §3.1 in full, built as five pure pieces, each with its suite and an in-pr
   the auth pages, register, 2FA, OTP, session-ended, the preview route and the app shell, with deliberate small
   differences (some also refuse `/auth`, `/auth?`); folding them in changes auth behaviour and needs its own drive —
   a follow-up, not S3.
+- The shortfall plan follows the REAL code where §3.1 and the code differ, and says so in its header:
+  - a wallet that is not ACTIVE is `blocked` with no "bet instead" (the bet path refuses such a wallet, so the offer
+    could only fail); the paused-deposit notice + "bet instead" is kept for the case where every deposit rail is paused;
+  - "a deposit already pending" is a plan rule only (`deposit()` does not refuse a second one) — the plan waits on it;
+  - the loss limit is the ONLY loss window the code has (`dailyLossLimit`, rolling 24 h);
+  - chips above the ceiling are DROPPED, never clamped to the ceiling's value (no nudge to deposit up to a limit);
+  - the SoF thresholds are inputs: they stay declared in `wallet-service.ts`, where `test:kyc-cert-d3` requires them.
+- `/wallet/deposit` now reads its quick amounts from `DEPOSIT_QUICK_AMOUNTS` (the same values), so the ladder is one list.
 
 ## §0d · S2 as built (2026-09-30) — LIVE on main since `473807b1`
 

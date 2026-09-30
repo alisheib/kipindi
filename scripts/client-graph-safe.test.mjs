@@ -120,6 +120,9 @@ console.log("\n[client-graph-safe] \u00a71 client-reachable modules stay clear o
     // `pending-bet.ts` imports only it.
     "lib/safe-next.ts",
     "lib/journey/pending-bet.ts",
+    // The bet sheet's low-balance plan: imports only the deposit bounds from `validators.ts` (zod + id-documents),
+    // which the deposit form already ships to the browser.
+    "lib/journey/shortfall.ts",
   ];
   const offenders = [];
   let checked = 0;

@@ -26,6 +26,7 @@ import { Callout } from "@/components/ui/callout";
 import { getPayoutStatus } from "@/lib/server/payout-status";
 import { PayoutStatusNotice } from "@/components/wallet/payout-status-notice";
 import { PageContainer } from "@/components/layout/page-container";
+import { DEPOSIT_QUICK_AMOUNTS } from "@/lib/journey/shortfall";
 
 // Localised tab title (POLISH-BACKLOG §1.7) — was the hard-coded English
 // "Deposit", which a Swahili player saw in their browser tab and history.
@@ -44,7 +45,8 @@ const PROVIDERS = [
   { id: "CARD",         name: "Card",          hue: 200 },
 ] as const;
 
-const QUICK_AMOUNTS = [1_000, 5_000, 10_000, 25_000, 50_000, 100_000];
+// ONE ladder: the bet sheet's low-balance chips read the same amounts (Vodacom plan S3, `lib/journey/shortfall.ts`).
+const QUICK_AMOUNTS = [...DEPOSIT_QUICK_AMOUNTS];
 
 export default async function DepositPage({ searchParams }: { searchParams: Promise<{
   error?: string; provider?: string; amount?: string; msisdn?: string;
