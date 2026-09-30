@@ -27,13 +27,17 @@
  * marks its answer `estimated`. ⛔ A confident number nobody has reconciled is worse than a hedged
  * one, and this is the exact shape of "right about the standard, wrong about the biller".
  *
+ * ⭐ §14 (the Vodacom plan S2, 2026-09-30) · THE FOLD. `foldToGsm7` swaps a pasted curly quote, dash,
+ * ellipsis or odd space for its plain GSM-7 twin — a market's short title travels in SMS as well as on
+ * cards — and it must never touch a character the table already has, nor invent a twin for one it lacks.
+ *
  * ⛔ IN-PROCESS BY CONSTRUCTION — `--prove-red` plants each defect IN MEMORY and requires the
  * MATCHING assertion to fire. No file-writing call, so it stays outside `test:red-anchors` §4.
  *
  * Run: `npm run test:campaign-compose` · Red: `npm run red:campaign-compose`
  */
 import {
-  sizeSms, planSms, encodingFor, offendingChars,
+  sizeSms, planSms, encodingFor, offendingChars, foldToGsm7,
   GSM7_BASIC, GSM7_EXTENDED, SMS_LIMITS, SMS_MAX_SEGMENTS,
   SMS_ARITHMETIC_VERIFIED_AGAINST_BILLER,
   type SmsSize,
@@ -367,10 +371,82 @@ function checkHelpline(
     !footer("a1b2c3d4", "SW").includes("0800110051") && !footer("a1b2c3d4", "EN").includes("0800110051"));
 }
 
+/* ══ §14 — THE FOLD (the Vodacom plan S2, 2026-09-30) ═══════════════════════
+ * Separate from `check` because it tests a different function — and `check(naiveDivide)` must keep breaking
+ * exactly ONE assertion (the §4b finding below), which a fold case inside `check` would disturb.
+ * ⛔ Every non-ASCII character here is BUILT with String.fromCharCode / fromCodePoint. A pasted one can silently
+ * become its plain twin in an editor, and the assertion would then compare a string with itself. */
+
+type Fold = (text: string) => string;
+const cc = (...codes: number[]) => String.fromCharCode(...codes);
+const FOLD_EM_DASH = cc(0x2014);
+const FOLD_ZERO_WIDTH = [0x200B, 0x200C, 0x200D, 0x2060, 0xFEFF].map((c) => cc(c));
+const FOLD_CJK = cc(0x6F22, 0x5B57);
+const FOLD_E_ACUTE = cc(0xE9);
+
+function checkFold(fold: Fold, log: (l: string) => void): string[] {
+  const failed: string[] = [];
+  const ok = (label: string, cond: boolean, extra = "") => {
+    if (cond) log(`  ok   ${label}`);
+    else { failed.push(label); log(`  FAIL ${label}${extra ? ` — ${extra}` : ""}`); }
+  };
+  log("\n§14 · THE FOLD — onto GSM-7 where a plain twin exists, and nowhere else");
+  {
+    const LSQ = cc(0x2018), RSQ = cc(0x2019), LDQ = cc(0x201C), RDQ = cc(0x201D);
+    const quotes = fold(`${LSQ}a${RSQ} ${LDQ}b${RDQ}`);
+    ok("§14 curly quotes fold to straight ones", quotes === `'a' "b"`, JSON.stringify(quotes));
+
+    // hyphen, non-breaking hyphen, figure dash, en dash, em dash, horizontal bar, minus sign
+    const dashes = [0x2010, 0x2011, 0x2012, 0x2013, 0x2014, 0x2015, 0x2212].map((c) => fold(`1${cc(c)}2`));
+    ok("§14 every dash (hyphen, non-breaking hyphen, figure, en, em, bar) and the minus sign fold to -",
+      dashes.every((s) => s === "1-2"), JSON.stringify(dashes));
+
+    ok("§14 the ellipsis folds to three full stops", fold(`leo${cc(0x2026)}`) === "leo...", JSON.stringify(fold(`leo${cc(0x2026)}`)));
+
+    // no-break, narrow no-break, thin, figure, hair, en and em spaces
+    const spaces = [0x00A0, 0x202F, 0x2009, 0x2007, 0x200A, 0x2002, 0x2003].map((c) => fold(`a${cc(c)}b`));
+    ok("§14 the no-break, narrow and thin spaces fold to a plain space", spaces.every((s) => s === "a b"), JSON.stringify(spaces));
+
+    const dots = fold(`a${cc(0x00B7)}b${cc(0x2022)}c 2${cc(0x00D7)}3`);
+    ok("§14 the middle dot and the bullet fold to -, and the multiplication sign to x", dots === "a-b-c 2x3", JSON.stringify(dots));
+
+    const zw = FOLD_ZERO_WIDTH.map((z) => fold(`a${z}b`));
+    ok("§14 zero-width characters are removed", zw.every((s) => s === "ab"), JSON.stringify(zw.map((s) => s.length)));
+
+    // a-acute, e-circumflex, c-cedilla, o-macron, i-acute: none is in GSM-7, each has a bare twin that is
+    const accented: Array<[number, string]> = [[0xE1, "a"], [0xEA, "e"], [0xE7, "c"], [0x14D, "o"], [0xED, "i"]];
+    const bare = accented.map(([c]) => fold(cc(c)));
+    ok("§14 an accented letter OUTSIDE GSM-7 loses its accent", accented.every(([, b], i) => bare[i] === b), JSON.stringify(bare));
+
+    // e-acute, E-acute, u-umlaut, n-tilde, a-grave, e-grave: all already in the basic table
+    const kept = [0xE9, 0xC9, 0xFC, 0xF1, 0xE0, 0xE8].map((c) => cc(c));
+    ok("§14 a letter ALREADY in GSM-7 is kept, accent and all (the e-acute stays)",
+      kept.every((k) => fold(k) === k) && encodingFor(FOLD_E_ACUTE) === "GSM7", JSON.stringify(kept.map((k) => fold(k))));
+    ok("§14 the fold is the identity on the whole GSM-7 table — it never touches a character the table has",
+      fold(GSM7_BASIC + GSM7_EXTENDED) === GSM7_BASIC + GSM7_EXTENDED);
+
+    ok("§14 a CJK character is left as it is, so encodingFor still reports UCS-2 (the fold never invents a twin)",
+      fold(FOLD_CJK) === FOLD_CJK && encodingFor(fold(FOLD_CJK)) === "UCS2", JSON.stringify(fold(FOLD_CJK)));
+    const emoji = `hi ${String.fromCodePoint(0x1F600)}`;
+    ok("§14 …and so is an emoji", fold(emoji) === emoji && encodingFor(fold(emoji)) === "UCS2");
+
+    const pasted = `Je, Simba ${LDQ}watashinda${RDQ} derby${FOLD_EM_DASH}leo${cc(0x2026)}?`;
+    ok("§14 a pasted title that was UCS-2 is GSM-7 after the fold, and is sized in septets again",
+      encodingFor(pasted) === "UCS2" && encodingFor(fold(pasted)) === "GSM7" && sizeSms(fold(pasted)).encoding === "GSM7",
+      JSON.stringify(fold(pasted)));
+    ok("§14 the fold is idempotent", fold(fold(pasted)) === fold(pasted));
+  }
+  return failed;
+}
+
 /* ══ THE RUN ════════════════════════════════════════════════════════════════ */
 
 if (!PROVE_RED) {
-  const failed = [...check(sizeSms, (l) => console.log(l)), ...checkEnvelope((body, token) => composeMarketing(body, token), (l) => console.log(l))];
+  const failed = [
+    ...check(sizeSms, (l) => console.log(l)),
+    ...checkEnvelope((body, token) => composeMarketing(body, token), (l) => console.log(l)),
+    ...checkFold(foldToGsm7, (l) => console.log(l)),
+  ];
   console.log(`\nCAMPAIGN COMPOSE — ${failed.length === 0 ? "all checks passed" : `${failed.length} failed`}\n`);
   for (const f of failed) console.log(`  · ${f}`);
   process.exitCode = failed.length === 0 ? 0 : 1;
@@ -383,7 +459,7 @@ if (!PROVE_RED) {
   };
   console.log("RED CONTROL — the real defects, planted in memory\n");
 
-  const baseline = [...check(sizeSms, quiet), ...checkEnvelope((body, token) => composeMarketing(body, token), quiet)];
+  const baseline = [...check(sizeSms, quiet), ...checkEnvelope((body, token) => composeMarketing(body, token), quiet), ...checkFold(foldToGsm7, quiet)];
   ok("§0 baseline · the shipped module passes every assertion before anything is planted",
     baseline.length === 0, baseline.join("; "));
 
@@ -560,6 +636,61 @@ if (!PROVE_RED) {
     const control: string[] = [];
     checkHelpline(published, STATUTORY_SMS_HELPLINE, marketingFooter, (label, cond) => { if (!cond) control.push(label); });
     ok("  └─ control: the same two assertions pass on the shipped footer", control.length === 0, control.join(" | "));
+  }
+
+  /* ── §14's plants: the fold (the Vodacom plan S2) ──────────────────────── */
+  {
+    /** The fold applied one character at a time, with ONE character's treatment replaced. */
+    const except = (target: string, treat: (c: string) => string): Fold => (t) => {
+      let out = "";
+      for (const c of t) out += c === target ? treat(c) : foldToGsm7(c);
+      return out;
+    };
+    type FoldPlant = { name: string; expect: RegExp; fold: Fold; landed: () => boolean; landedAs: string };
+    const foldPlants: FoldPlant[] = [
+      {
+        name: "a fold table that lost the em dash",
+        expect: /^§14 every dash/,
+        fold: except(FOLD_EM_DASH, (c) => c),
+        landed: () => except(FOLD_EM_DASH, (c) => c)(`1${FOLD_EM_DASH}2`) === `1${FOLD_EM_DASH}2`,
+        landedAs: "the em dash survives, so a pasted title stays UCS-2",
+      },
+      {
+        name: "a fold that strips the accent from a letter GSM-7 already has (e-acute to e)",
+        expect: /^§14 a letter ALREADY in GSM-7 is kept/,
+        fold: except(FOLD_E_ACUTE, () => "e"),
+        landed: () => except(FOLD_E_ACUTE, () => "e")(FOLD_E_ACUTE) === "e",
+        landedAs: "a Swahili or French name loses a letter the SMS could have carried",
+      },
+      {
+        name: "a fold that INVENTS a twin — ? for anything it cannot map",
+        expect: /^§14 a CJK character is left as it is/,
+        fold: (t) => [...foldToGsm7(t)].map((c) => (encodingFor(c) === "GSM7" ? c : "?")).join(""),
+        landed: () => [...foldToGsm7(FOLD_CJK)].map((c) => (encodingFor(c) === "GSM7" ? c : "?")).join("") === "??",
+        landedAs: "a Chinese title becomes question marks and reports GSM-7",
+      },
+      {
+        name: "a fold that keeps the zero-width space",
+        expect: /^§14 zero-width characters are removed/,
+        fold: except(FOLD_ZERO_WIDTH[0], (c) => c),
+        landed: () => except(FOLD_ZERO_WIDTH[0], (c) => c)(`a${FOLD_ZERO_WIDTH[0]}b`).length === 3,
+        landedAs: "an invisible character survives and forces UCS-2",
+      },
+      {
+        name: "control · a fold that does nothing",
+        expect: /^§14 curly quotes fold to straight ones/,
+        fold: (t) => t,
+        landed: () => true,
+        landedAs: "an identity fold needs no proof of landing",
+      },
+    ];
+    for (const p of foldPlants) {
+      ok(`PLANT LANDED · ${p.name}`, p.landed(), p.landedAs);
+      const failures = checkFold(p.fold, quiet);
+      const matched = failures.filter((f) => p.expect.test(f));
+      ok(`  └─ fires: ${p.expect.source.slice(0, 56)}`, matched.length > 0,
+        failures.length === 0 ? "NOTHING failed — the guard cannot see this defect" : `failed instead: ${failures.slice(0, 2).join(" | ")}`);
+    }
   }
 
   // ⭐ A FINDING ABOUT THE GUARD ITSELF, NOT ABOUT THE CODE — and it is the reason §4b exists.

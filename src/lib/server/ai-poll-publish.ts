@@ -155,6 +155,13 @@ export async function publishApprovedPoll(input: {
       resolutionCriterionZh: poll.resolutionCriterionZh,
       resolutionAt: poll.resolutionAt,
       selectionClosedAt: poll.selectionClosedAt,
+      // ⭐ THE VODACOM PLAN S2 — the same F6c lesson, for the card's short question. This function hand-copies every
+      // field, so a field it does not name is generated, validated, reviewed by an officer — and dropped here.
+      // `createMarket` re-normalises all four against the market's own titles (a hard issue is stored as NULL).
+      shortTitleEn: poll.shortTitleEn ?? null,
+      shortTitleSw: poll.shortTitleSw ?? null,
+      shortTitleZh: poll.shortTitleZh ?? null,
+      competition: poll.competition ?? null,
       proposedBy: officerId,
     });
 

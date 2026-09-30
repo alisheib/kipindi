@@ -34,6 +34,8 @@ import { normaliseCriterionTranslation } from "../localized";
 import { getEffectiveConfig, getEffectiveResolutionMode, snapshotFromConfig, snapshotOrLegacy, type RateConfig } from "./market-config";
 import { stakeBoundsForUpDownMarket } from "./updown-config";
 import { localizedText } from "@/lib/localized";
+import { normaliseShortTitleSet } from "@/lib/markets/short-title";
+import { normaliseCompetition, type Competition } from "@/lib/markets/competitions";
 import { payoutFor, settledPayoutFor, allocateWinnerPayouts, allocateFeeShares, winnersForAllocation, poolFee, levySplit, leanFor, resolveFeeModel, THIN_SMALLER_SIDE_SHARE, type FeeSnapshot } from "@/lib/payout";
 import type { FailureReason } from "@/lib/failure-reasons";
 import { exitWindowFacts } from "@/lib/exit-window";
@@ -302,6 +304,16 @@ export type StoredMarket = {
    */
   reopenedAt?: string | null;
   reopenCount?: number | null;
+  /**
+   * SHORT TITLES AND COMPETITION (the Vodacom plan S2, 2026-09-30). NULL = none: a card shows the reader's own full
+   * title (`cardTitle` in `lib/markets/short-title.ts`). Optional so rows read before the columns existed read as
+   * none. ⛔ Written by `createMarket` and by `marketStore.setShortTitles` (narrow, under the market lock) — never
+   * by `stamp`, and never a copy of the full or the English title.
+   */
+  shortTitleEn?: string | null;
+  shortTitleSw?: string | null;
+  shortTitleZh?: string | null;
+  competition?: Competition | null;
   /** Which product this row belongs to — see `ProductLine`. Absent on rows read
    *  before the column existed; the DAL coerces those to `"MARKET"`, which is what
    *  every historical row is. */
@@ -616,6 +628,13 @@ export type CreateMarketInput = {
   resolutionAt: string;
   selectionClosedAt?: string | null;
   proposedBy: string;
+  /** Optional short titles and competition (the Vodacom plan S2). Normalised here with the rules in
+   *  `lib/markets/short-title.ts`: a value with a hard issue is stored as NULL, never as something else. Ignored for
+   *  an Up & Down round — rounds are not cards and are out of S2. */
+  shortTitleEn?: string | null;
+  shortTitleSw?: string | null;
+  shortTitleZh?: string | null;
+  competition?: string | null;
   /** Which product this row belongs to. Defaults to `"MARKET"` — only the Up & Down
    *  engine passes `"UPDOWN"`. */
   productLine?: ProductLine;
@@ -699,6 +718,12 @@ export async function createMarket(input: CreateMarketInput) {
     ...(input.rateOverrides ?? {}),
   });
 
+  // The Vodacom plan S2: short titles and competition, normalised by the one rule module. ⛔ An Up & Down round
+  // gets none (it is never a card); a value with a HARD issue is stored as NULL, so a caller that skipped the check
+  // still cannot store a bad one.
+  const isRound = (input.productLine ?? DEFAULT_PRODUCT_LINE) === "UPDOWN";
+  const shorts = isRound ? null : normaliseShortTitleSet(input);
+
   const m: StoredMarket = {
     id,
     titleEn: input.titleEn,
@@ -726,6 +751,10 @@ export async function createMarket(input: CreateMarketInput) {
     resolutionStage2By: null, resolutionStage2At: null,
     objectionsClosedAt: null,
     settledAt: null,
+    shortTitleEn: shorts?.shortTitleEn ?? null,
+    shortTitleSw: shorts?.shortTitleSw ?? null,
+    shortTitleZh: shorts?.shortTitleZh ?? null,
+    competition: isRound ? null : normaliseCompetition(input.competition),
     productLine: input.productLine ?? DEFAULT_PRODUCT_LINE,
     proposedBy: input.proposedBy,
     createdAt: now,
@@ -762,7 +791,11 @@ export async function createMarket(input: CreateMarketInput) {
       targetId: m.id,
       // The frozen rates go into the tamper-evident chain too — so we can always
       // prove, to a player or an inspector, what this poll was priced at.
-      payload: { titleEn: m.titleEn, category: m.category, sourceUrl: m.sourceUrl, resolutionAt: m.resolutionAt, selectionClosedAt: m.selectionClosedAt, feeSnapshot },
+      payload: {
+        titleEn: m.titleEn, category: m.category, sourceUrl: m.sourceUrl, resolutionAt: m.resolutionAt, selectionClosedAt: m.selectionClosedAt, feeSnapshot,
+        // S2: what the card will say, on the record from the first moment (null = the full title).
+        shortTitleEn: m.shortTitleEn ?? null, shortTitleSw: m.shortTitleSw ?? null, shortTitleZh: m.shortTitleZh ?? null, competition: m.competition ?? null,
+      },
     });
   }
   // Arm this market's per-market timers (closing-soon → selection-closed → resolve).

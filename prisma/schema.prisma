@@ -1614,6 +1614,17 @@ model PredictionMarket {
   titleEn                   String
   titleSw                   String
   titleZh                   String?
+  /// SHORT TITLES (the Vodacom plan S2, 2026-09-30; SJ-8): the question a CARD shows, at most two lines at 360 px,
+  /// per language — the rules are `src/lib/markets/short-title.ts`. NULL = no short title: the card shows the
+  /// reader's own full title. ⛔ Never a copy of the full or the English title (F8). An aid to reading only — the
+  /// full titles and the English criterion stay canonical. Written at creation and by `setShortTitles` (a narrow,
+  /// locked write), never by `stamp`.
+  shortTitleEn              String?
+  shortTitleSw              String?
+  shortTitleZh              String?
+  /// A key from `src/lib/markets/competitions.ts` ("ligi-kuu", "epl", …) or NULL. A plain string validated in the
+  /// app — never a Postgres enum, so a new competition needs no migration.
+  competition               String?
   category                  String // sports, macro, weather, crypto, culture, tech, other
   sourceUrl                 String
   resolutionCriterion       String
@@ -2510,6 +2521,13 @@ model AIPoll {
   titleEn               String
   titleSw               String
   titleZh               String?
+  /// SHORT TITLES + COMPETITION as GENERATED (the Vodacom plan S2), officer-editable before publish and carried into
+  /// the market by `publishApprovedPoll`. NULL = the model gave none or it failed the rules (`short-title.ts`); never
+  /// a copy of a full title.
+  shortTitleEn          String?
+  shortTitleSw          String?
+  shortTitleZh          String?
+  competition           String?
   category              String
   resolutionCriterion   String
   /// SW / ZH translations of the criterion, as GENERATED (and officer-editable

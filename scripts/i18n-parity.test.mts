@@ -35,6 +35,11 @@ function flatten(o: Obj, prefix = ""): Map<string, string> {
 
 /** Key paths that are intentionally identical to English (proper nouns, codes, units). */
 const IDENTICAL_OK = new Set<string>([
+  // ⭐ COMPETITION NAMES (Vodacom plan S2, 2026-09-30) — proper nouns, written the same way in Swahili (and NBA in
+  // Chinese) because that is what the competition is called there: "EPL", "La Liga" and "AFCON" are how a Tanzanian
+  // fan reads them. The ones with a real local name ARE translated (Kombe la Dunia, Ligi ya Mabingwa Ulaya, 欧冠).
+  "journey.compLigiKuu", "journey.compEpl", "journey.compLaliga", "journey.compSerieA", "journey.compBundesliga",
+  "journey.compLigue1", "journey.compAfcon", "journey.compNba",
   // ⭐ THE THREE FIELD EXAMPLES ON /agent/apply. Each is a literal specimen of a FORMAT, not
   // a sentence — a Tanzanian personal name, a Tanzanian mobile number, and a bank receipt
   // reference. They are written the same way in Swahili and in Chinese because the FORMAT is

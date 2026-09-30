@@ -605,7 +605,7 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
     !keepsStoredMarkerOnly("positions.set(p.id, prev ? { ...p, houseBotId: prev.houseBotId ?? p.houseBotId ?? null } : p);"));
 }
 
-/* ═══ §10 · the market reopen stamp (house bots, N1 §2) ══════════════════════════════════ */
+/* ═══ §10 · the market reopen stamp (house bots, N1 §2) + short titles and competition (Vodacom plan S2) ═══ */
 {
   const mKeys = storedKeys("StoredMarket", marketSvcSrc);
   const read = region(marketDalSrc, "function toStoredMarket(");
@@ -623,9 +623,58 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
   }
   ok("10.c1 · CONTROL · a set body writing the key in one arm only is caught",
     armCount("create: {\n  reopenedAt: x,\n},\nupdate: {\n  status: s,\n}", "reopenedAt") !== 2);
+
+  /* ⭐ THE VODACOM PLAN S2 (2026-09-30) · SHORT TITLES AND COMPETITION. The reopen stamp's four facts, one key per line,
+   * plus the NARROW WRITER. After creation these columns are written ONLY by `setShortTitles`, an UPDATE of exactly
+   * four columns in BOTH twins: never the full-row `set` from a caller's earlier read (it would erase a stake that
+   * landed in between) and never `stamp` (its Prisma allow-list refuses title fields while the memory twin spreads
+   * anything — green in every suite, a throw in production). Written in `create` only, a short title would be wiped by
+   * the next resolve, settle, reopen or void, all of which go through the full-row `set`. */
+  const S2 = ["shortTitleEn", "shortTitleSw", "shortTitleZh", "competition"] as const;
+  const s2CreateAt = setBody.indexOf("create: {");
+  const s2UpdateAt = setBody.indexOf("update: {");
+  const s2CreateArm = s2CreateAt >= 0 && s2UpdateAt > s2CreateAt ? setBody.slice(s2CreateAt, s2UpdateAt) : "";
+  const s2UpdateArm = region(setBody, "update: {");
+  /** Written exactly once in the arm, and FROM the market (`k: m.k …`) — `k: null` keeps the key and drops the value. */
+  const fromM = (arm: string, k: string) => armCount(arm, k) === 1 && new RegExp(`^\\s*${k}\\s*:\\s*m\\.${k}\\b`, "m").test(arm);
+  ok("10.s2.0 · both upsert arms of marketStore.set resolve", s2CreateArm.length > 500 && s2UpdateArm.length > 500,
+    `create ${s2CreateArm.length} · update ${s2UpdateArm.length}`);
+  for (const k of S2) {
+    ok(`10.s2.type · StoredMarket declares "${k}"`, mKeys.includes(k));
+    ok(`10.s2.read · toStoredMarket maps "${k}" from the row, on one line`, readsFrom(read, k, "r") && armCount(read, k) === 1,
+      `${armCount(read, k)} line(s)`);
+    ok(`10.s2.both · marketStore.set writes "${k}" in BOTH upsert arms, once each, from m.${k}`,
+      armCount(setBody, k) === 2 && fromM(s2CreateArm, k) && fromM(s2UpdateArm, k), `${armCount(setBody, k)} line(s) in set`);
+    ok(`10.s2.notStamp · "${k}" is not in STAMPABLE`, !writesKey(stampable, k));
+  }
+  const s2Mem = objectMethod(region(marketDalSrc, "const memoryMarkets:"), "setShortTitles");
+  const s2Pri = objectMethod(region(marketDalSrc, "const prismaMarkets:"), "setShortTitles");
+  const keysIn = (body: string) => [...body.matchAll(/^\s*(\w+)\s*:/gm)].map((x) => x[1]);
+  const eachFromFields = (body: string) => S2.every((k) => new RegExp(`^\\s*${k}\\s*:\\s*fields\\.${k}\\b`, "m").test(body));
+  ok("10.s2.iface · MarketStore declares setShortTitles", interfaceMethods(marketDalSrc, "MarketStore").includes("setShortTitles"));
+  ok("10.s2.twins · setShortTitles is implemented in BOTH twins (memory + Prisma)",
+    objectMethods(marketDalSrc, "memoryMarkets").includes("setShortTitles") && objectMethods(marketDalSrc, "prismaMarkets").includes("setShortTitles"),
+    `memory ${s2Mem.length} chars · prisma ${s2Pri.length} chars`);
+  const s2PriData = region(s2Pri, "data: {");
+  const s2PriKeys = keysIn(s2PriData).filter((k) => k !== "data");
+  ok("10.s2.narrow.prisma · the Prisma setShortTitles is an UPDATE of exactly the four columns (+ updatedAt), each from the caller's fields",
+    /\.predictionMarket\.update\(/.test(s2Pri) && !/\.upsert\(|\bstamp\(|\bthis\.set\(/.test(s2Pri)
+      && sameSet(s2PriKeys, [...S2, "updatedAt"]) && eachFromFields(s2PriData),
+    `data keys: ${s2PriKeys.join(",") || "(none)"}`);
+  const s2MemKeys = keysIn(s2Mem);
+  ok("10.s2.narrow.memory · the memory setShortTitles keeps the row and writes exactly the four (+ updatedAt), never the caller's whole object",
+    /\.\.\.cur\b/.test(s2Mem) && !/\.\.\.fields\b/.test(s2Mem) && sameSet(s2MemKeys, [...S2, "updatedAt"]) && eachFromFields(s2Mem),
+    `keys: ${s2MemKeys.join(",") || "(none)"}`);
+  ok("10.s2.c1 · CONTROL · a read mapper that names the key and reads nothing is caught", !readsFrom("    competition: null,", "competition", "r"));
+  ok("10.s2.c2 · CONTROL · an update arm that lost a key, or writes it as null, is caught",
+    !fromM("update: {\n        shortTitleEn: m.shortTitleEn ?? null,\n}", "shortTitleSw")
+      && !fromM("update: {\n        shortTitleSw: null,\n}", "shortTitleSw"));
+  ok("10.s2.c3 · CONTROL · a narrow writer that spreads the caller's object is caught", /\.\.\.fields\b/.test("markets.set(id, { ...cur, ...fields });"));
+  ok("10.s2.c4 · CONTROL · a STAMPABLE carrying a title key is caught",
+    writesKey("const STAMPABLE = {\n  status: (v) => v,\n  shortTitleEn: (v) => v,\n};", "shortTitleEn"));
 }
 
-/* ═══ §11 · schema.prisma (house bots) ═══════════════════════════════════════════════════ */
+/* ═══ §11 · schema.prisma (house bots; + the S2 short-title columns) ══════════════════════ */
 {
   const models = HOUSE_PAIRS.map((p) => [p.model, schemaModel(prismaSchemaSrc, p.model)] as const);
   ok("11.models · all 8 house models exist", models.every(([, body]) => body.length > 0), models.filter(([, b]) => !b).map(([m]) => m).join(", "));
@@ -638,6 +687,16 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
   }
   ok("11.market · PredictionMarket declares reopenedAt DateTime? @db.Timestamptz(3) and reopenCount Int?",
     has("PredictionMarket", /^\s*reopenedAt\s+DateTime\?\s+@db\.Timestamptz\(3\)/m) && has("PredictionMarket", /^\s*reopenCount\s+Int\?\s*$/m));
+  // The Vodacom plan S2: four nullable strings on the market AND on the AI poll (`publishApprovedPoll` carries them
+  // across). ⛔ No @default — a default would be a short title nobody approved (F8). Read from ROOT, so `red:dal-parity`
+  // cannot mutate it; `test:short-title-fit` (d) holds the two migrations that create the columns.
+  const nullableString = (k: string) => new RegExp(`^\\s*${k}\\s+String\\?\\s*$`, "m");
+  for (const k of ["shortTitleEn", "shortTitleSw", "shortTitleZh", "competition"]) {
+    ok(`11.s2 · PredictionMarket declares ${k} String? with no @default`, has("PredictionMarket", nullableString(k)));
+    ok(`11.s2.ai · AIPoll declares ${k} String? with no @default`, has("AIPoll", nullableString(k)));
+  }
+  ok("11.s2.c1 · CONTROL · a short-title column with a @default is caught",
+    !nullableString("shortTitleEn").test("model X {\n  shortTitleEn String? @default(\"\")\n}"));
   const nakedTime = (body: string) => body.split("\n").filter((l) => /^\s*\w+\s+DateTime\??(\s|$)/.test(l) && !/@db\.Timestamptz\(3\)/.test(l));
   const naked = models.flatMap(([m, body]) => nakedTime(body).map((l) => `${m}.${l.trim().split(/\s+/)[0]}`));
   ok("11.ts · every DateTime in the 8 house models carries @db.Timestamptz(3) (04 A4)", naked.length === 0, naked.join(", "));

@@ -39,6 +39,10 @@ import {
   DeleteAllButton,
 } from "./poll-actions";
 import { PollFilterToolbar } from "./poll-filters";
+// The Vodacom plan S2 — the short-title backfill's review: drafts for open markets, approved here one by one.
+import { listShortTitleDrafts, countShortTitleDrafts } from "@/lib/server/short-title-backfill";
+import { ShortTitleDraftsPanel } from "./short-title-drafts";
+import { draftView, competitionOptions } from "./short-title-views";
 import { resolveRange } from "@/lib/server/date-range";
 import { AdminBody } from "@/components/admin/admin-body";
 import { KpiGrid } from "@/components/admin/admin-body";
@@ -157,9 +161,13 @@ async function AdminAIPollsContent({ searchParams }: AIPollsPageProps) {
    *  `pBase`/`aBase` above are built from `sp` wholesale, so those two pagers carry it free;
    *  this one names its params one by one, so a tab omitted here is a tab the activity
    *  filters would silently drop. */
-  const POLL_TABS = ["generate", "queue", "activity"] as const;
+  const POLL_TABS = ["generate", "queue", "activity", "short-titles"] as const;
   const tabRaw = sp.tab ?? "";
   const tab: (typeof POLL_TABS)[number] = (POLL_TABS as readonly string[]).includes(tabRaw) ? (tabRaw as (typeof POLL_TABS)[number]) : "generate";
+  /* The short-title drafts: the badge reads the index alone (cheap, no pruning); the full list — which prunes drafts
+     whose market has closed — is read only on its own tab. A failed read shows no count rather than a wrong one. */
+  const shortTitleDraftCount = await countShortTitleDrafts();
+  const shortTitles = tab === "short-titles" ? await listShortTitleDrafts() : null;
   const baseHref = buildBaseHref("/admin/ai-polls", {
     q: sp.q,
     state: sp.state,
@@ -227,8 +235,19 @@ async function AdminAIPollsContent({ searchParams }: AIPollsPageProps) {
             { value: "generate", labelEn: "Generate", href: tabHref("generate") },
             { value: "queue", labelEn: "Review queue", count: pendingSorted.length, href: tabHref("queue") },
             { value: "activity", labelEn: "All activity", href: tabHref("activity") },
+            { value: "short-titles", labelEn: "Short titles", ...(shortTitleDraftCount !== null ? { count: shortTitleDraftCount } : {}), href: tabHref("short-titles") },
           ]}
         />
+
+        {tab === "short-titles" && shortTitles && (
+          <ShortTitleDraftsPanel
+            rows={shortTitles.rows.map(draftView)}
+            needing={shortTitles.needing}
+            readError={shortTitles.readError}
+            batchCap={config.maxBatchPerRun}
+            competitionOptions={competitionOptions()}
+          />
+        )}
 
         {tab === "generate" && (<>
         {/* Info banner + generate form */}

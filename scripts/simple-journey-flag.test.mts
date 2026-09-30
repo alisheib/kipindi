@@ -470,7 +470,7 @@ async function g8Ceremony(tag: string) {
   ok("8.refuse.officer · a GROWTH officer is refused (Owner only, on the STORED role) and a SECURITY row says so", !r1.ok && after === before + 1, j({ r1, rows: after - before }));
   const r2 = await run(owner, { op: "CAP", to: "WITHDRAWN", reason: "stop it now", expectSeq: 0 }, "unverified");
   ok("8.refuse.totp · the Owner without the console's two-step check is refused", !r2.ok && /two-step/i.test(r2.error), j(r2));
-  const r3 = await run(owner, { op: "CAP", to: "WITHDRAWN", reason: "​​​​​", expectSeq: 0 });
+  const r3 = await run(owner, { op: "CAP", to: "WITHDRAWN", reason: "\u200b\u200b\u200b\u200b\u200b", expectSeq: 0 });
   ok("8.refuse.reason · five invisible characters are not a reason", !r3.ok && r3.field === "reason", j(r3));
   const r4 = await run(owner, { op: "CAP", to: "LIVE", reason: "stop it now", expectSeq: 0 });
   ok("8.refuse.to · a position that is not one of the three words is not understood", !r4.ok && r4.field === "to", j(r4));

@@ -231,3 +231,42 @@ export function planSms(text: string, recipients: number): SmsPlan {
     estimated: !SMS_ARITHMETIC_VERIFIED_AGAINST_BILLER,
   };
 }
+
+/* ══ THE FOLD ════════════════════════════════════════════════════════════════ */
+
+/**
+ * ⭐ FOLD A TEXT ONTO GSM-7 WHERE A PLAIN EQUIVALENT EXISTS (the Vodacom plan S2, 2026-09-30) — the ONE
+ * home for it, beside the table it folds onto. A market's short title is written for the SMS and the
+ * card alike, and a curly quote or an em dash pasted from a document would push it (and every message
+ * that quotes it) out of GSM-7 for nothing.
+ *
+ * What it maps: curly quotes to straight ones, the dash family and the minus sign to `-`, the ellipsis to
+ * `...`, the non-breaking and thin spaces to a space, the middle dot to `-`, `×` to `x`; zero-width
+ * characters are removed; and a letter outside the set loses its accent when that lands it inside
+ * (`á` → `a`, while `é` — already GSM-7 — is kept). Anything else is left as it was, so `encodingFor`
+ * still reports it: the fold never INVENTS a character, it only swaps one for its plain twin.
+ *
+ * ⛔ Not for Chinese: a CJK character is UCS-2 by definition and has no GSM-7 twin.
+ */
+const FOLD: Record<string, string> = {
+  "\u2018": "'", "\u2019": "'", "\u201A": "'", "\u201B": "'", "\u2032": "'",
+  "\u201C": '"', "\u201D": '"', "\u201E": '"', "\u201F": '"', "\u2033": '"',
+  "\u2010": "-", "\u2011": "-", "\u2012": "-", "\u2013": "-", "\u2014": "-", "\u2015": "-", "\u2212": "-",
+  "\u2026": "...",
+  "\u00A0": " ", "\u202F": " ", "\u2007": " ", "\u2009": " ", "\u200A": " ", "\u2002": " ", "\u2003": " ",
+  "\u00B7": "-", "\u2022": "-",
+  "\u00D7": "x",
+  "\u200B": "", "\u200C": "", "\u200D": "", "\u2060": "", "\uFEFF": "",
+};
+
+export function foldToGsm7(text: string): string {
+  let out = "";
+  for (const ch of text) {
+    if (BASIC.has(ch) || EXTENDED.has(ch)) { out += ch; continue; }
+    const mapped = FOLD[ch];
+    if (mapped !== undefined) { out += mapped; continue; }
+    const bare = ch.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    out += bare.length > 0 && [...bare].every((c) => BASIC.has(c) || EXTENDED.has(c)) ? bare : ch;
+  }
+  return out;
+}

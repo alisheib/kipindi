@@ -209,6 +209,14 @@ console.log("Chain purge\n");
   }
   ok("5: ⭐ …and it DOES stamp the tombstone", /purgedAt/.test(update) && /purgedBy/.test(update));
 
+  /* ⭐ THE VODACOM PLAN S2 · THE CARD WORDING GOES WITH THE TITLES IT SHORTENS. A tombstone whose full titles read
+     as the sentinel while its short titles still carried the question would keep exactly the player text the purge
+     exists to remove — and the card of a future journey would show it. Each column is named, so a failure says which. */
+  for (const col of ["shortTitleEn", "shortTitleSw", "shortTitleZh", "competition"]) {
+    ok(`5: 🔴 …and it nulls ${col}`, new RegExp(`\\b${col}:\\s*null\\b`).test(update),
+       "a purged market must keep no player-facing text — short titles and competition are nulled with the titles");
+  }
+
   /* A named sentinel, not "" or null — redacted must be distinguishable from never-existed,
      exactly as the retention engine's AIPOLL_PAYLOAD_PRUNED is. */
   ok("5: the blanked title is a NAMED sentinel that says where to read about it",

@@ -161,6 +161,112 @@ export const MUTATIONS = [
     to: "      if (opts?.excludeHouse && p.houseBotId != null) continue;\n      const e = acc.get(p.userId) ?? { resolved: 0, staked: 0, paidOut: 0 };",
     expect: "16.d20.aggregates · ⛔ D20 · neither player-facing aggregate excludes a house-marked row in either twin: top contributors (Prisma and memory) and the leaderboard (memory and SQL) name no marker and take no excludeHouse option",
   },
+  /* ── §10 · short titles and competition (the Vodacom plan S2, 2026-09-30) ──────────────
+   * ⭐ FIVE MUTATIONS, one per way the silent no-op can come back for the four new columns. The schema half (§11)
+   * is read from ROOT and cannot be reached through KP_SRC, so it has no mutation here — `test:short-title-fit` (d)
+   * holds the migrations instead. */
+  {
+    // ⭐ THE ONE-ARM DEFECT. The update arm forgets the Swahili short title, so the first resolve, settle, reopen or
+    // void (every one a full-row `set`) wipes it on Postgres while every memory suite stays green.
+    // ⚠️ A LONG ANCHOR, ON PURPOSE. Both arms carry the same block from `shortTitleSw` down to `resolveClaimedAt`; only
+    // the update arm goes straight on to `reopenedAt` (the create arm has a comment between), so the anchor runs to
+    // there to match exactly once.
+    name: "market-dal.ts — the upsert's UPDATE arm forgets shortTitleSw",
+    file: "src/lib/server/market-dal.ts",
+    from: `        shortTitleSw: m.shortTitleSw ?? null,
+        shortTitleZh: m.shortTitleZh ?? null,
+        competition: m.competition ?? null,
+        resolutionAt: new Date(m.resolutionAt),
+        selectionClosedAt: m.selectionClosedAt ? new Date(m.selectionClosedAt) : null,
+        status: m.status, yesPool: m.yesPool, noPool: m.noPool,
+        predictorCount: m.predictorCount,
+        feeSnapshot: (m.feeSnapshot ?? undefined) as never,
+        resolvedOutcome: m.resolvedOutcome,
+        resolutionStage1By: m.resolutionStage1By,
+        resolutionStage1At: m.resolutionStage1At ? new Date(m.resolutionStage1At) : null,
+        resolutionStage2By: m.resolutionStage2By,
+        resolutionStage2At: m.resolutionStage2At ? new Date(m.resolutionStage2At) : null,
+        objectionsClosedAt: m.objectionsClosedAt ? new Date(m.objectionsClosedAt) : null,
+        settledAt: m.settledAt ? new Date(m.settledAt) : null,
+        resolutionEvidence: m.resolutionEvidence ?? null,
+        resolutionNotifiedAt: m.resolutionNotifiedAt ? new Date(m.resolutionNotifiedAt) : null,
+        selectionClosedNotifiedAt: m.selectionClosedNotifiedAt ? new Date(m.selectionClosedNotifiedAt) : null,
+        closingSoonNotifiedAt: m.closingSoonNotifiedAt ? new Date(m.closingSoonNotifiedAt) : null,
+        sentinelOutcome: m.sentinelOutcome ?? null,
+        sentinelEvidence: m.sentinelEvidence ?? null,
+        sentinelReasoning: m.sentinelReasoning ?? null,
+        sentinelSourceUrl: m.sentinelSourceUrl ?? null,
+        sentinelConfidence: m.sentinelConfidence ?? null,
+        sentinelClosedAt: m.sentinelClosedAt ? new Date(m.sentinelClosedAt) : null,
+        sentinelDetermined: m.sentinelDetermined ?? null,
+        resolutionMode: m.resolutionMode ?? null,
+        resolveClaimedAt: m.resolveClaimedAt ? new Date(m.resolveClaimedAt) : null,
+        reopenedAt: m.reopenedAt ? new Date(m.reopenedAt) : null,`,
+    to: `        shortTitleZh: m.shortTitleZh ?? null,
+        competition: m.competition ?? null,
+        resolutionAt: new Date(m.resolutionAt),
+        selectionClosedAt: m.selectionClosedAt ? new Date(m.selectionClosedAt) : null,
+        status: m.status, yesPool: m.yesPool, noPool: m.noPool,
+        predictorCount: m.predictorCount,
+        feeSnapshot: (m.feeSnapshot ?? undefined) as never,
+        resolvedOutcome: m.resolvedOutcome,
+        resolutionStage1By: m.resolutionStage1By,
+        resolutionStage1At: m.resolutionStage1At ? new Date(m.resolutionStage1At) : null,
+        resolutionStage2By: m.resolutionStage2By,
+        resolutionStage2At: m.resolutionStage2At ? new Date(m.resolutionStage2At) : null,
+        objectionsClosedAt: m.objectionsClosedAt ? new Date(m.objectionsClosedAt) : null,
+        settledAt: m.settledAt ? new Date(m.settledAt) : null,
+        resolutionEvidence: m.resolutionEvidence ?? null,
+        resolutionNotifiedAt: m.resolutionNotifiedAt ? new Date(m.resolutionNotifiedAt) : null,
+        selectionClosedNotifiedAt: m.selectionClosedNotifiedAt ? new Date(m.selectionClosedNotifiedAt) : null,
+        closingSoonNotifiedAt: m.closingSoonNotifiedAt ? new Date(m.closingSoonNotifiedAt) : null,
+        sentinelOutcome: m.sentinelOutcome ?? null,
+        sentinelEvidence: m.sentinelEvidence ?? null,
+        sentinelReasoning: m.sentinelReasoning ?? null,
+        sentinelSourceUrl: m.sentinelSourceUrl ?? null,
+        sentinelConfidence: m.sentinelConfidence ?? null,
+        sentinelClosedAt: m.sentinelClosedAt ? new Date(m.sentinelClosedAt) : null,
+        sentinelDetermined: m.sentinelDetermined ?? null,
+        resolutionMode: m.resolutionMode ?? null,
+        resolveClaimedAt: m.resolveClaimedAt ? new Date(m.resolveClaimedAt) : null,
+        reopenedAt: m.reopenedAt ? new Date(m.reopenedAt) : null,`,
+    expect: `10.s2.both · marketStore.set writes "shortTitleSw" in BOTH upsert arms, once each, from m.shortTitleSw`,
+  },
+  {
+    // The read half: the competition is written and never read back, so every card on Postgres says "no competition".
+    name: "market-dal.ts — toStoredMarket stops reading competition",
+    file: "src/lib/server/market-dal.ts",
+    from: `    competition: normaliseCompetition(r.competition),`,
+    to: `    competition: null,`,
+    expect: `10.s2.read · toStoredMarket maps "competition" from the row, on one line`,
+  },
+  {
+    // ⛔ A title key made stampable: `stamp` is the writer the narrow method exists to avoid.
+    name: "market-dal.ts — STAMPABLE gains shortTitleEn",
+    file: "src/lib/server/market-dal.ts",
+    from: `  updatedAt: (v) => (v ? new Date(v as string) : new Date()),`,
+    to: `  shortTitleEn: (v) => v,
+  updatedAt: (v) => (v ? new Date(v as string) : new Date()),`,
+    expect: `10.s2.notStamp · "shortTitleEn" is not in STAMPABLE`,
+  },
+  {
+    // The MEMORY twin of the narrow writer drops a column — the twin every behavioural suite actually runs on.
+    // ⚠️ Two lines: `competition: fields.competition,` also sits in the Prisma twin (at a deeper indent).
+    name: "market-dal.ts — the memory setShortTitles stops writing competition",
+    file: "src/lib/server/market-dal.ts",
+    from: `      competition: fields.competition,
+      updatedAt: new Date().toISOString(),`,
+    to: `      updatedAt: new Date().toISOString(),`,
+    expect: `10.s2.narrow.memory · the memory setShortTitles keeps the row and writes exactly the four (+ updatedAt), never the caller's whole object`,
+  },
+  {
+    // The PRISMA twin drops the Swahili column: an officer's edit is audited, returned and never reaches Postgres.
+    name: "market-dal.ts — the Prisma setShortTitles stops writing shortTitleSw",
+    file: "src/lib/server/market-dal.ts",
+    from: `        shortTitleSw: fields.shortTitleSw,`,
+    to: `        // (shortTitleSw dropped)`,
+    expect: `10.s2.narrow.prisma · the Prisma setShortTitles is an UPDATE of exactly the four columns (+ updatedAt), each from the caller's fields`,
+  },
   /* ── §17 · the consent ledger and suppression (marketing U6) ────────────────────────
    * ⭐ EIGHT MUTATIONS, ONE PER RULE §17 EXISTS TO HOLD. Four of them break an ABSENCE —
    * the append-only and never-deleted rules — which is the half a guard usually cannot

@@ -18,6 +18,9 @@
  *   - Timeout / failure scenarios
  */
 
+import { SHORT_TITLE_MAX, codePoints } from "@/lib/markets/short-title";
+import { COMPETITIONS, type Competition } from "@/lib/markets/competitions";
+
 /* ─── Response schema (matches what production Claude will return) ─── */
 
 export type AIPollOption = {
@@ -44,6 +47,17 @@ export type AIPollGeneration = {
   sources: Array<{ url: string; publisher: string }>;
   confidence: number;       // 0..100 — model self-assessment
   reasoning: string;        // model chain-of-thought summary
+  /**
+   * SHORT TITLES + COMPETITION (the Vodacom plan S2, 2026-09-30) — the question a CARD shows, per language, and
+   * the competition key. OPTIONAL by design, like the criterion translations above: the tool tells the model to
+   * omit a language rather than guess. ⛔ Untrusted strings — `validateAndFilter` runs every value through the
+   * ONE rule module (`lib/markets/short-title.ts`, strict) and a failing language is stored as NULL with a
+   * warning, never as a filter reason.
+   */
+  shortTitleEn?: string;
+  shortTitleSw?: string;
+  shortTitleZh?: string;
+  competition?: string;
 };
 
 export type AIProviderResponse = {
@@ -177,6 +191,46 @@ export type ProposeUpDownResponse = {
   latencyMs: number;
 };
 
+/**
+ * THE SHORT-TITLE BACKFILL'S ASK (the Vodacom plan S2) — one open market's full wording, so the model can write the
+ * short question a card shows. ⛔ No web tools: the job is rewording a question the platform already holds, never
+ * researching one. The English criterion rides along because it is what the market is settled on — the short
+ * title must say the same thing, not a looser thing.
+ */
+export type ShortTitleDraftRequest = {
+  marketId: string;
+  titleEn: string;
+  titleSw: string;
+  titleZh: string | null;
+  category: string;
+  resolutionCriterion: string;
+};
+
+/** What the model proposes: per language `{ shortTitle }` (absent = it declined), plus a competition key. */
+export type ShortTitleDraftGeneration = {
+  en?: { shortTitle?: string };
+  sw?: { shortTitle?: string };
+  zh?: { shortTitle?: string };
+  competition?: string;
+};
+
+/**
+ * The answer, with what the backfill needs to METER it. ⛔ The provider does not record usage itself — the backfill
+ * does, once, on both the success and the failure path (`subjectType: "market"`), so the call is counted exactly once
+ * whichever provider answered.
+ */
+export type ShortTitleDraftResponse = {
+  ok: boolean;
+  draft?: ShortTitleDraftGeneration;
+  error?: string;
+  rawResponse?: string;
+  /** The model that answered — read from `getConfiguredModel()` by the real provider, never a literal. */
+  model: string;
+  inputTokens: number;
+  outputTokens: number;
+  latencyMs: number;
+};
+
 export interface AIProvider {
   name: string;
   generate(req: GenerateRequest): Promise<AIProviderResponse>;
@@ -189,6 +243,11 @@ export interface AIProvider {
    * it — `generateProposal` checks for the method and refuses by name rather than crashing.
    */
   proposeUpDown?(req: ProposeUpDownRequest): Promise<ProposeUpDownResponse>;
+  /**
+   * Draft short titles for ONE existing market (the Vodacom plan S2 backfill). OPTIONAL, on the `proposeUpDown?`
+   * precedent: `draftShortTitles` in `short-title-backfill.ts` checks for the method and refuses by name.
+   */
+  draftShortTitles?(req: ShortTitleDraftRequest): Promise<ShortTitleDraftResponse>;
 }
 
 /* ─── Mock data pools ─── */
@@ -212,6 +271,11 @@ const MOCK_POLLS: Record<string, AIPollGeneration[]> = {
       ],
       confidence: 88,
       reasoning: "High-profile domestic league question with clear binary outcome and official resolution source (TFF). Strong public interest in Tanzania.",
+      // S2 — valid in all three languages (the rules: lib/markets/short-title.ts).
+      shortTitleEn: "Will Simba SC win the 2026 league title?",
+      shortTitleSw: "Je, Simba SC itashinda Ligi Kuu 2026?",
+      shortTitleZh: "Simba SC能否赢得2026年坦超？",
+      competition: "ligi-kuu",
     },
     {
       titleEn: "Will Young Africans SC qualify for CAF Champions League group stage?",
@@ -229,6 +293,10 @@ const MOCK_POLLS: Record<string, AIPollGeneration[]> = {
       ],
       confidence: 82,
       reasoning: "Well-defined sporting event with clear qualification criteria. CAF publishes official results.",
+      shortTitleEn: "Will Young Africans reach the CAF CL group stage?",
+      shortTitleSw: "Je, Young Africans itafuzu makundi ya CAF CL?",
+      shortTitleZh: "Yanga能否晋级非洲冠军联赛小组赛？",
+      competition: "caf-cl",
     },
   ],
   macro: [
@@ -249,6 +317,10 @@ const MOCK_POLLS: Record<string, AIPollGeneration[]> = {
       ],
       confidence: 79,
       reasoning: "Macro-economic indicator with official government reporting. Clear threshold for resolution.",
+      // No competition: none on the list fits a GDP print, so the model leaves it out.
+      shortTitleEn: "Will Q3 2026 GDP growth top 6%?",
+      shortTitleSw: "Je, ukuaji wa GDP Q3 2026 utazidi 6%?",
+      shortTitleZh: "坦桑尼亚Q3 GDP增长能否超6%？",
     },
   ],
   weather: [
@@ -268,6 +340,9 @@ const MOCK_POLLS: Record<string, AIPollGeneration[]> = {
       ],
       confidence: 76,
       reasoning: "Weather prediction with official meteorological authority as resolution source. July is typically dry season — interesting market.",
+      shortTitleEn: "Over 200mm of rain in Dar in July 2026?",
+      shortTitleSw: "Je, Dar itapata mvua zaidi ya 200mm Julai 2026?",
+      shortTitleZh: "达市2026年7月降雨能否超200毫米？",
     },
   ],
   crypto: [
@@ -287,6 +362,11 @@ const MOCK_POLLS: Record<string, AIPollGeneration[]> = {
       ],
       confidence: 85,
       reasoning: "Clear price threshold with widely-accepted data source. High engagement topic globally.",
+      // ⛔ THE FAILING FIXTURE, on purpose: the Swahili short title runs past SHORT_TITLE_MAX.sw, so generation must
+      // store it as NULL with a WARNING naming Swahili — never a filter reason (`test:short-title-ai` §1).
+      shortTitleEn: "Will Bitcoin top $150,000 by end of August 2026?",
+      shortTitleSw: "Je, bei ya Bitcoin itazidi dola 150,000 za Marekani ifikapo mwisho wa mwezi Agosti 2026?",
+      shortTitleZh: "比特币8月底前能否破15万美元？",
     },
   ],
   culture: [
@@ -306,6 +386,9 @@ const MOCK_POLLS: Record<string, AIPollGeneration[]> = {
       ],
       confidence: 72,
       reasoning: "Entertainment prediction with verifiable outcome via streaming platforms. Popular artist in Tanzania.",
+      shortTitleEn: "New Diamond Platnumz album before October 2026?",
+      shortTitleSw: "Je, Diamond atatoa albamu mpya kabla ya Oktoba 2026?",
+      shortTitleZh: "Diamond 2026年10月前发新专辑吗？",
     },
   ],
   infrastructure: [
@@ -325,6 +408,9 @@ const MOCK_POLLS: Record<string, AIPollGeneration[]> = {
       ],
       confidence: 68,
       reasoning: "Infrastructure project with government oversight. Resolution depends on official government announcement.",
+      shortTitleEn: "Will SGR Dodoma-Singida open before December 2026?",
+      shortTitleSw: "Je, SGR Dodoma-Singida itaanza kabla ya Desemba 2026?",
+      shortTitleZh: "SGR多多马-辛吉达段2026年12月前通车？",
     },
   ],
 };
@@ -392,10 +478,60 @@ function simulateCost(tokens: number): number {
   return Math.round(tokens * 0.000015 * 100) / 100; // ~$0.015/1k tokens
 }
 
+/* ─── Mock short titles (the Vodacom plan S2 backfill) ─── */
+
+/** Words from `s` (its end mark dropped) that fit `max` code points once `end` is appended. Deterministic. */
+function mockShorten(s: string, max: number, end: string): string {
+  const body = s.trim().replace(/[?？]+$/u, "").trim();
+  if (codePoints(body) + codePoints(end) <= max) return body + end;
+  let out = "";
+  for (const w of body.split(/\s+/)) {
+    const next = out ? `${out} ${w}` : w;
+    if (codePoints(next) + codePoints(end) > max) break;
+    out = next;
+  }
+  // A single word longer than the budget (a Chinese title has no spaces): cut by code point.
+  if (!out) out = Array.from(body).slice(0, Math.max(1, max - codePoints(end))).join("");
+  return out + end;
+}
+
+/** A competition the mock recognises in the title, or none. Derived from the ONE list, never a second one. */
+function mockCompetition(text: string): Competition | undefined {
+  const t = text.toLowerCase();
+  const hints: Array<[RegExp, Competition]> = [
+    [/ligi kuu|tanzanian premier league|\bnbc premier league\b/, "ligi-kuu"],
+    [/\bepl\b|english premier league/, "epl"],
+    [/caf champions league/, "caf-cl"],
+    [/\bafcon\b/, "afcon"],
+    [/\bnba\b/, "nba"],
+  ];
+  for (const [re, c] of hints) if (re.test(t) && COMPETITIONS.includes(c)) return c;
+  return undefined;
+}
+
 /* ─── Mock provider ─── */
 
 export class MockClaudeProvider implements AIProvider {
   name = "mock-claude-opus";
+
+  /**
+   * DETERMINISTIC short titles for the backfill — no network, no randomness, so a suite can predict every value.
+   *
+   * ⭐ ONE REALISTIC FAILURE IS BUILT IN, on purpose: a market with NO Chinese full title gets the ENGLISH short
+   * title back as its "Chinese" one — exactly what a model that cannot translate does. The backfill must store
+   * that language as NULL with `copied_english` kept (strict normalisation), and a suite can make it happen by
+   * creating a market without `titleZh`, with no special switch in the provider.
+   */
+  async draftShortTitles(req: ShortTitleDraftRequest): Promise<ShortTitleDraftResponse> {
+    await new Promise((r) => setTimeout(r, 5));
+    const en = mockShorten(req.titleEn, SHORT_TITLE_MAX.en, "?");
+    const swBase = /^je,/i.test(req.titleSw.trim()) ? req.titleSw.trim().replace(/^je,\s*/i, "") : req.titleSw.trim();
+    const sw = mockShorten(`Je, ${swBase}`, SHORT_TITLE_MAX.sw, "?");
+    const zh = req.titleZh && req.titleZh.trim() ? mockShorten(req.titleZh, SHORT_TITLE_MAX.zh, "？") : en;
+    const competition = mockCompetition(`${req.titleEn} ${req.resolutionCriterion}`);
+    const draft: ShortTitleDraftGeneration = { en: { shortTitle: en }, sw: { shortTitle: sw }, zh: { shortTitle: zh }, ...(competition ? { competition } : {}) };
+    return { ok: true, draft, rawResponse: JSON.stringify(draft), model: this.name, inputTokens: 120, outputTokens: 40, latencyMs: 5 };
+  }
 
   /**
    * A mock proposal, deliberately WITHOUT readability evidence.

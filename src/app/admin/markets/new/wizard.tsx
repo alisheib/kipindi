@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -15,8 +15,54 @@ import { useToast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
 import { createMarketAction } from "@/app/markets/actions";
 import { wallClockToUtcIso } from "@/lib/zoned-time";
+// ⛔ The Vodacom plan S2: the SAME short-title rule `createMarketAction` refuses with — imported, never re-implemented.
+import {
+  HARD_ISSUES, SHORT_TITLE_MAX, cleanShortTitle, codePoints, normaliseShortTitleSet,
+  type ShortTitleIssue,
+} from "@/lib/markets/short-title";
+import { COMPETITIONS, isCompetition } from "@/lib/markets/competitions";
+import { competitionLabel } from "@/lib/markets/competition-label";
+import { focusFirstInvalid } from "@/lib/client/focus-first-invalid";
+import { dict, type Locale } from "@/lib/i18n-dict";
 
 const CATEGORIES = ["sports", "macro", "weather", "crypto", "culture", "tech", "other"] as const;
+
+type ShortKey = "shortTitleEn" | "shortTitleSw" | "shortTitleZh";
+const SHORT_FIELDS: ReadonlyArray<{ key: ShortKey; locale: Locale; label: string; placeholder: string }> = [
+  { key: "shortTitleEn", locale: "en", label: "Short title (EN)", placeholder: "Will the TZS strengthen by month-end?" },
+  { key: "shortTitleSw", locale: "sw", label: "Short title (SW)", placeholder: "Je, TZS itaimarika mwisho wa mwezi?" },
+  { key: "shortTitleZh", locale: "zh", label: "Short title (ZH) · 中文", placeholder: "先令月底会走强吗？" },
+];
+
+/** The one list, with the dictionary's English labels (admin copy is English). Empty = no competition. */
+const COMPETITION_OPTIONS = [
+  { value: "", label: "None" },
+  ...COMPETITIONS.map((c) => ({ value: c, label: competitionLabel(dict.en, c) })),
+];
+
+/**
+ * What the officer is told about a short-title issue while typing. The RULE is the shared one; this is only its
+ * wording on this screen (the criterion fields below do the same). `createMarketAction` refuses every hard issue in
+ * its own words, so a value this screen lets through cannot be published as something else.
+ */
+function shortIssueText(locale: Locale, issue: ShortTitleIssue): string {
+  switch (issue) {
+    case "too_long":
+      return `Too long for two lines on a card — keep it to ${SHORT_TITLE_MAX[locale]} characters.`;
+    case "not_gsm7":
+      return "It has a character a text message cannot carry. Use plain letters and punctuation.";
+    case "form":
+      return locale === "sw"
+        ? "Write it as a question in the form “Je, …?”."
+        : locale === "en"
+          ? "Write it as a question ending in “?”."
+          : "Write it as a question ending in “？”.";
+    case "copied_english":
+      return "This is the English text. Write it in this language, or leave it empty so the card shows the full question.";
+    case "number_drift":
+      return "It has a number the full question does not. Check it says the same thing.";
+  }
+}
 
 type FeeInfo =
   | { model: "loser-share"; feePct: string; estMult: string; showEstimate: boolean }
@@ -33,6 +79,13 @@ export function NewMarketWizard({ feeInfo, platformTz }: { feeInfo: FeeInfo; pla
   const [criterion, setCriterion] = useState("");
   const [criterionSw, setCriterionSw] = useState("");
   const [criterionZh, setCriterionZh] = useState("");
+  // The Vodacom plan S2 — optional. Empty means "no short title": the card shows the full question.
+  const [shortInput, setShortInput] = useState<Record<ShortKey, string>>({ shortTitleEn: "", shortTitleSw: "", shortTitleZh: "" });
+  const [competition, setCompetition] = useState("");
+  /* A refusal from the server that names a field on step 1: shown beside it, and focused once the step is on screen. */
+  const [serverField, setServerField] = useState<{ field: string; error: string } | null>(null);
+  const focusRequest = useRef<string | null>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
   /* ⛔ CLEARED BEFORE THE REDIRECT. The success path calls router.push(), and although the
      guard intercepts anchor CLICKS rather than programmatic navigation, leaving `dirty` true
      through a redirect would keep the bar painted over the page the officer lands on. */
@@ -80,8 +133,27 @@ export function NewMarketWizard({ feeInfo, platformTz }: { feeInfo: FeeInfo; pla
         ? `Too short to be a translation (minimum ${MIN_CRITERION_TRANSLATION} characters). Leave it blank instead.`
         : null;
 
+  // ⛔ ONE POLICY, BOTH SIDES, for the short titles too: the rule `createMarketAction` refuses with, run as the
+  // officer types, against the titles on this same step. A hard issue blocks Continue; a warning does not.
+  const shorts = normaliseShortTitleSet({ titleEn, titleSw, titleZh, ...shortInput });
+  const shortsHard = shorts.hard.en || shorts.hard.sw || shorts.hard.zh;
+  const shortNote = (locale: Locale): { text: string; hard: boolean } | null => {
+    const issues = shorts.issues[locale];
+    const hard = issues.find((i) => HARD_ISSUES.has(i));
+    if (hard) return { text: shortIssueText(locale, hard), hard: true };
+    return issues.length ? { text: shortIssueText(locale, issues[0]), hard: false } : null;
+  };
+
+  /* The step that owns the field is rendered first; only then can the field be focused (§K rule 7d). */
+  useEffect(() => {
+    const field = focusRequest.current;
+    if (!field || step !== 0) return;
+    focusRequest.current = null;
+    focusFirstInvalid(rootRef.current, [field]);
+  }, [step, serverField]);
+
   const canNext = (() => {
-    if (step === 0) return titleEn.length >= 10;
+    if (step === 0) return titleEn.length >= 10 && !shortsHard;
     if (step === 1) return /^https?:\/\//.test(sourceUrl) && resolutionAt;
     if (step === 2) return criterion.length >= 30 && !swIssue && !zhIssue;
     return true;
@@ -104,9 +176,19 @@ export function NewMarketWizard({ feeInfo, platformTz }: { feeInfo: FeeInfo; pla
       fd.set("resolutionCriterion", criterion);
       fd.set("resolutionCriterionSw", criterionSw);
       fd.set("resolutionCriterionZh", criterionZh);
+      fd.set("shortTitleEn", shortInput.shortTitleEn);
+      fd.set("shortTitleSw", shortInput.shortTitleSw);
+      fd.set("shortTitleZh", shortInput.shortTitleZh);
+      fd.set("competition", competition);
       const r = await createMarketAction(fd);
       if (!r.ok) {
         toast({ title: "Couldn't create", description: r.error, variant: "danger" });
+        // A short-title or competition refusal names its field: go back to the step that holds it, and focus it.
+        if ("field" in r && r.field) {
+          focusRequest.current = r.field;
+          setServerField({ field: r.field, error: r.error });
+          setStep(0);
+        }
       } else {
         setPublished(true);
         toast({ title: "Market published", description: titleEn.slice(0, 50), variant: "success" });
@@ -130,11 +212,18 @@ export function NewMarketWizard({ feeInfo, platformTz }: { feeInfo: FeeInfo; pla
     titleEn !== "" || titleSw !== "" || titleZh !== "" ||
     sourceUrl !== "" || resolutionAt !== "" ||
     criterion !== "" || criterionSw !== "" || criterionZh !== "" ||
+    shortInput.shortTitleEn !== "" || shortInput.shortTitleSw !== "" || shortInput.shortTitleZh !== "" ||
+    competition !== "" ||
     category !== "sports"
   );
 
+  const editShort = (key: ShortKey, v: string) => {
+    setShortInput((s) => ({ ...s, [key]: v }));
+    if (serverField?.field === key) setServerField(null);
+  };
+
   return (
-    <div className="space-y-6">
+    <div ref={rootRef} className="space-y-6">
       <UnsavedChangesGuard
         dirty={dirty}
         body="This market has been part-written and not published. Leaving now discards every step, including the Swahili and Chinese text."
@@ -173,9 +262,45 @@ export function NewMarketWizard({ feeInfo, platformTz }: { feeInfo: FeeInfo; pla
           <Field label="Title (ZH) · Chinese / 中文" hint="Optional Chinese translation.">
             <Input value={titleZh} onChange={(e) => setTitleZh(e.target.value)} disabled={pending} placeholder="坦桑尼亚先令会在月底前对美元走强吗？" />
           </Field>
+          {/* ⭐ The Vodacom plan S2 — the card's short question, OPTIONAL in every language. Empty is honest: the card
+              shows the full question. The counters read the one budget (`SHORT_TITLE_MAX`), in code points of the
+              value that will be stored, and the notes below each field come from the rule the server refuses with. */}
+          <p className="text-body-sm text-text-muted">
+            Cards show the short question instead of the full one. The full question, the criterion and the source stay unchanged on the market page — the short title must say exactly the same thing.
+          </p>
+          {SHORT_FIELDS.map(({ key, locale, label, placeholder }) => {
+            const n = codePoints(cleanShortTitle(locale, shortInput[key]));
+            const max = SHORT_TITLE_MAX[locale];
+            const note = shortNote(locale);
+            const refused = serverField?.field === key ? serverField.error : null;
+            return (
+              <Field key={key} label={label} dataField={key}>
+                <Input value={shortInput[key]} onChange={(e) => editShort(key, e.target.value)} disabled={pending}
+                  placeholder={placeholder} error={!!refused || !!note?.hard} />
+                <p className={`mt-1 text-body-sm tabular-nums ${n > max ? "text-danger-fg" : "text-text-subtle"}`}>
+                  {n} / {max} · optional
+                </p>
+                {refused
+                  ? <p role="alert" className="mt-1.5 text-body-sm leading-snug text-no-300">{refused}</p>
+                  : note && (
+                    <p role={note.hard ? "alert" : undefined} className={`mt-1.5 text-body-sm leading-snug ${note.hard ? "text-no-300" : "text-warning-fg"}`}>
+                      {note.text}
+                    </p>
+                  )}
+              </Field>
+            );
+          })}
           <Field label="Category">
             <Select value={category} onChange={(v) => setCategory(v as typeof CATEGORIES[number])}
               options={CATEGORIES.map((c) => ({ value: c, label: c }))} />
+          </Field>
+          <Field label="Competition" hint="Optional. Shown beside the category on the card." dataField="competition">
+            <Select ariaLabel="Competition" value={competition}
+              onChange={(v) => { setCompetition(v); if (serverField?.field === "competition") setServerField(null); }}
+              options={COMPETITION_OPTIONS} />
+            {serverField?.field === "competition" && (
+              <p role="alert" className="mt-1.5 text-body-sm leading-snug text-no-300">{serverField.error}</p>
+            )}
           </Field>
         </Section>
       )}
@@ -231,6 +356,11 @@ export function NewMarketWizard({ feeInfo, platformTz }: { feeInfo: FeeInfo; pla
             <Row label="Title (SW)" value={titleSw || "—"} mono />
             <Row label="Title (ZH)" value={titleZh || "—"} mono />
             <Row label="Category"   value={category} />
+            <Row label="Competition" value={isCompetition(competition) ? competitionLabel(dict.en, competition) : "—"} />
+            {/* S2 · "— none" says what the card will do, so leaving one empty is a decision, not an omission. */}
+            {SHORT_FIELDS.map(({ key, locale, label }) => (
+              <Row key={key} label={label} value={cleanShortTitle(locale, shortInput[key]) || "— none · the card shows the full question"} />
+            ))}
             <Row label="Source URL" value={sourceUrl} mono />
             {/* ⛔ THE ECHO NAMES ITS ZONE, AND SHOWS THE INSTANT THAT WILL BE STORED.
                 This row used to print the raw `datetime-local` string — `2026-08-15T14:30`,
@@ -292,9 +422,9 @@ function Section({ title, sw, children }: { title: string; sw: string; children:
   );
 }
 
-function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
+function Field({ label, hint, children, dataField }: { label: string; hint?: string; children: React.ReactNode; dataField?: string }) {
   return (
-    <label className="block">
+    <label className="block" data-field={dataField}>
       <span className="block font-mono text-micro uppercase eyebrow font-semibold text-text-muted mb-1.5">{label}</span>
       {children}
       {hint && <p className="mt-1 text-body-sm text-text-subtle">{hint}</p>}

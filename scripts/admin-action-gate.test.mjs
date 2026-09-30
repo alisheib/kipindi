@@ -230,6 +230,9 @@ const PINNED_GATED = [
   "markets/actions.ts::emergencyVoidMarketAction",
   "markets/actions.ts::createMarketAction",
   "markets/actions.ts::restoreCommentAction",
+  // Added deliberately 2026-09-30 (the Vodacom plan S2): the card short titles and competition of a market, gated by
+  // the same `requireAdminOrThrow` as recategoriseMarketAction and pinned so the gate cannot quietly go.
+  "markets/actions.ts::setMarketShortTitlesAction",
 ];
 
 console.log("\n[admin-action-gate] §4 an action that is admin-gated today may not quietly stop being");

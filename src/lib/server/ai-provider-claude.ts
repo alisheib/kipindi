@@ -29,12 +29,16 @@
  * where the model answers in prose instead of calling the tool.
  */
 import Anthropic from "@anthropic-ai/sdk";
-import type { AIProvider, AIProviderResponse, AIPollGeneration, GenerateRequest, IdeateRequest, IdeateResponse, PollIdea, AllowedSource, ProposeUpDownRequest, ProposeUpDownResponse, UpDownProposalGeneration } from "./ai-provider";
+import type { AIProvider, AIProviderResponse, AIPollGeneration, GenerateRequest, IdeateRequest, IdeateResponse, PollIdea, AllowedSource, ProposeUpDownRequest, ProposeUpDownResponse, UpDownProposalGeneration, ShortTitleDraftRequest, ShortTitleDraftResponse, ShortTitleDraftGeneration } from "./ai-provider";
 import { getAIPollConfig } from "./ai-poll-config";
 import { ai } from "./ai-config";
 import { recordAiUsage, costOf } from "./ai-usage";
 import { getPlatformTimezone } from "./platform-config";
 import { AI_POLL_CATEGORIES } from "@/lib/ai/poll-vocabulary";
+// The Vodacom plan S2: the ONE budget and the ONE competition list — the prompt and the tool enum read them, so a
+// change to either reaches the model without a second copy to forget.
+import { SHORT_TITLE_MAX } from "@/lib/markets/short-title";
+import { COMPETITIONS } from "@/lib/markets/competitions";
 
 /* ⭐ ONE LIST (S-08, scan #1, 2026-08-28). The eight ids were typed out here, again as a Set in
    ai-poll-generation.ts, and once more on each of the two admin rails — four copies, already
@@ -131,10 +135,45 @@ function buildSubmitPollTool(allowedCategories?: string[]) {
         },
         confidence: { type: "number", description: "0-100 self-assessment of how clear and resolvable this question is." },
         reasoning: { type: "string", description: "Brief reasoning for why this is a good market." },
+        // The Vodacom plan S2 — the card's short question. ⛔ OPTIONAL in `required` below, exactly as the criterion
+        // translations are: a short title that says something looser than the full question is worse than none (the
+        // card then shows the full question), so the model must be able to omit one.
+        ...shortTitleToolProperties(),
+        competition: { type: "string", enum: competitionEnum(), description: "The competition this question belongs to, from this list only. Omit it when none fits." },
       },
       required: ["titleEn", "titleSw", "titleZh", "category", "resolutionCriterion", "resolutionAt", "options", "sources", "confidence", "reasoning"],
     },
   };
+}
+
+/** The competition keys for a tool schema — derived from `COMPETITIONS`, like `categoryEnum`, never typed out. */
+function competitionEnum(): string[] {
+  return [...COMPETITIONS];
+}
+
+/** The three short-title fields of `submit_poll`, their budgets read from `SHORT_TITLE_MAX`. */
+function shortTitleToolProperties() {
+  return {
+    shortTitleEn: { type: "string", description: `The English short question a card shows: at most ${SHORT_TITLE_MAX.en} characters, ending in "?". Same proposition as titleEn. Omit rather than guess.` },
+    shortTitleSw: { type: "string", description: `The Kiswahili short question: "Je, …?", at most ${SHORT_TITLE_MAX.sw} characters. Same proposition as titleSw. Omit rather than guess; never copy the English.` },
+    shortTitleZh: { type: "string", description: `The Simplified Chinese short question: at most ${SHORT_TITLE_MAX.zh} characters, ending in "？". Same proposition as titleZh. Omit rather than guess; never copy the English.` },
+  };
+}
+
+/**
+ * THE SHORT-TITLE RULE, written ONCE for both prompts that ask for one (poll generation and the backfill).
+ * ⛔ Every number is READ from `SHORT_TITLE_MAX`, and the rule names no date: the generation prompt is pinned by
+ * `test:ai-polls` to name no time later than the earliest resolution.
+ */
+export function shortTitleRule(): string {
+  return `SHORT TITLES — the question a phone card shows in two lines. Write one per language when you can do it faithfully:
+- English: a question ending in "?", at most ${SHORT_TITLE_MAX.en} characters.
+- Kiswahili: the form "Je, …?", at most ${SHORT_TITLE_MAX.sw} characters.
+- Chinese (简体中文): a question ending in "？", at most ${SHORT_TITLE_MAX.zh} characters.
+- The short title must state EXACTLY the same proposition as the full question: the same subject, the same threshold, the same deadline and the same YES condition. Shorter wording, never a looser or different bet. Keep every number exactly as the full question has it.
+- English and Kiswahili use plain keyboard punctuation only (straight quotes, a plain hyphen, no emoji, no curly quotes or long dashes): these short titles also travel by text message.
+- Never copy the English into the Kiswahili or Chinese field. If you cannot write one faithfully, omit that field — the card then shows the full question, which is always correct.
+- competition: pick one from the list you are given only when the question clearly belongs to that competition; otherwise leave it out.`;
 }
 
 /** Per-category "hot topic" steering so every category yields strong, current,
@@ -215,6 +254,8 @@ HARD RULES:
 8. titleEn under 200 characters. Always include a natural, fluent titleSw (Kiswahili) AND titleZh (Simplified Chinese, 简体中文) — translate the MEANING in each, don't transliterate. Keep proper nouns, brand names, numbers and TZS amounts intact; English remains the official version used to settle the market.
 9. options MUST be exactly two — "YES" and "NO" — each with a short, concrete description of what that outcome means.
 10. Set confidence 0-100 honestly: how clean, unambiguous and well-sourced is the resolution? Lower it if the source or condition is fuzzy.
+11. Provide shortTitleEn, shortTitleSw and shortTitleZh, and competition, by these rules:
+${shortTitleRule()}
 
 Call submit_poll exactly once with the finished poll. Do not write any prose outside the tool call.`;
 }
@@ -531,6 +572,82 @@ ON THE MARGIN, which is the part that decides whether this product works at all.
         subjectType: "updown_proposal", subjectId: req.assetKey,
       });
       return { ok: false, error: `Proposal error: ${(err as Error).message}`, tokensUsed: 0, costUsd: 0, latencyMs };
+    }
+  }
+
+  /**
+   * DRAFT SHORT TITLES FOR ONE EXISTING MARKET (the Vodacom plan S2 backfill).
+   *
+   * ⛔ NO WEB TOOLS, so the tool CAN be forced (`tool_choice: { type: "tool" }`, the `proposeUpDown` precedent): the
+   * job is rewording a question the platform already holds, and a model given a search tool here would start
+   * researching the event instead. ⛔ The model is `getConfiguredModel()` — the operator's live choice — never a
+   * literal. ⛔ NOT METERED HERE: `short-title-backfill.ts` records the call once, on both paths, with the market
+   * as its subject; metering here too would count every draft twice.
+   */
+  async draftShortTitles(req: ShortTitleDraftRequest): Promise<ShortTitleDraftResponse> {
+    const start = Date.now();
+    const { getConfiguredModel } = await import("./ai-config");
+    const activeModel = await getConfiguredModel();
+
+    const lang = (o: { description: string }) => ({
+      type: "object",
+      properties: { shortTitle: { type: "string", description: o.description } },
+    });
+    const tool = {
+      name: "submit_short_titles",
+      description: "Submit the short card questions for this market. Call exactly once. Leave out any language you cannot write faithfully.",
+      input_schema: {
+        type: "object",
+        properties: {
+          en: lang({ description: `English: a question ending in "?", at most ${SHORT_TITLE_MAX.en} characters.` }),
+          sw: lang({ description: `Kiswahili: "Je, …?", at most ${SHORT_TITLE_MAX.sw} characters. Never the English.` }),
+          zh: lang({ description: `Simplified Chinese: a question ending in "？", at most ${SHORT_TITLE_MAX.zh} characters. Never the English.` }),
+          competition: { type: "string", enum: competitionEnum(), description: "The competition this market belongs to, from this list only. Omit it when none fits." },
+        },
+        required: [],
+      },
+    };
+
+    const system = `You write the short questions that 50pick's phone cards show for markets that already exist. 50pick is a GBT-licensed Tanzanian pari-mutuel platform; the full question and its resolution criterion stay on the market's own page and decide every payout, so the card's short question must never say anything the full question does not.
+
+${shortTitleRule()}`;
+
+    const userPrompt = `The market (category: ${req.category}).
+
+FULL QUESTION (English): ${req.titleEn}
+FULL QUESTION (Kiswahili): ${req.titleSw || "(none)"}
+FULL QUESTION (Chinese): ${req.titleZh || "(none — write the Chinese short question from the English, or leave it out)"}
+RESOLUTION CRITERION (English, binding): ${req.resolutionCriterion}
+
+Write the three short questions, then call submit_short_titles.`;
+
+    try {
+      const client = new Anthropic({ apiKey: this.apiKey });
+      const resp = await client.messages.create({
+        model: activeModel,
+        max_tokens: 600,
+        system,
+        tools: [tool] as unknown as Anthropic.Messages.ToolUnion[],
+        tool_choice: { type: "tool", name: "submit_short_titles" },
+        messages: [{ role: "user", content: userPrompt }],
+      });
+      const latencyMs = Date.now() - start;
+      const usage = resp.usage as { input_tokens?: number; output_tokens?: number } | undefined;
+      const inputTokens = usage?.input_tokens ?? 0;
+      const outputTokens = usage?.output_tokens ?? 0;
+      const content = resp.content as Array<{ type: string; name?: string; input?: unknown }>;
+      const rawResponse = JSON.stringify(content, null, 2).slice(0, 4000);
+      const call = content.find((b) => b.type === "tool_use" && b.name === "submit_short_titles");
+      if (!call?.input || typeof call.input !== "object") {
+        return { ok: false, error: "The AI did not submit short titles.", rawResponse, model: activeModel, inputTokens, outputTokens, latencyMs };
+      }
+      return { ok: true, draft: call.input as ShortTitleDraftGeneration, rawResponse, model: activeModel, inputTokens, outputTokens, latencyMs };
+    } catch (err) {
+      return {
+        ok: false,
+        error: `Short-title draft error: ${(err as Error).message}`,
+        model: activeModel, inputTokens: 0, outputTokens: 0, latencyMs: Date.now() - start,
+      };
     }
   }
 }

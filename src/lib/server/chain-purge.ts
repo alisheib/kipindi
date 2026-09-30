@@ -9,7 +9,8 @@
  *
  * DELETE   · UpDownRound (the price story), Comment, Watchlist, MarketSnapshot
  * REDACT   · PredictionMarket survives as a stamped tombstone — titles and resolution
- *            criterion blanked, pools / feeSnapshot / resolvedOutcome / settledAt KEPT
+ *            criterion blanked, short titles and competition nulled (S2), pools / feeSnapshot /
+ *            resolvedOutcome / settledAt KEPT
  * NEVER    · AuditLog, HouseBot, HouseBotAlertOnce, HouseBotControl, HouseBotEvent, HouseBotIntent, HouseBotPress, HouseBotRuntime, HouseBotTarget, HousePoolLedger, LedgerEntry, Position, Transaction, UpDownObservation
  *
  * ═══ ⛔ AND THE NEVER LINE ABOVE IS ENFORCED, WHICH UNTIL 2026-09-20 IT WAS NOT ═══
@@ -515,6 +516,12 @@ export async function advance(chainId: string): Promise<PurgeJob> {
               titleSw: PURGED_TITLE,
               titleZh: PURGED_TITLE,
               resolutionCriterion: PURGED_TITLE,
+              // The Vodacom plan S2: the card wording goes with the titles it shortens — a tombstone keeps no
+              // player-facing text. NULL, not the sentinel: null already means "no short title, no competition".
+              shortTitleEn: null,
+              shortTitleSw: null,
+              shortTitleZh: null,
+              competition: null,
               purgedAt: new Date(),
               purgedBy: job.officerB,
               purgeReason: job.reason,

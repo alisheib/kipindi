@@ -17,6 +17,7 @@ import {
   deleteAllAIPolls,
   seedAIPollFixtures,
   getAIPoll,
+  AIPollShortTitleRefused,
   type FilterReason,
 } from "@/lib/server/ai-poll-generation";
 import { updateAIPollConfig } from "@/lib/server/ai-poll-config";
@@ -232,6 +233,11 @@ export async function editPollAction(formData: FormData) {
   const selectionClosedAt = formData.has("selectionClosedAt")
     ? (formData.get("selectionClosedAt") === "" ? null : String(formData.get("selectionClosedAt")))
     : undefined;
+  // The Vodacom plan S2 — absent = leave as it is; "" = clear (the card then shows the full question).
+  const shortTitleEn = formData.has("shortTitleEn") ? String(formData.get("shortTitleEn")) : undefined;
+  const shortTitleSw = formData.has("shortTitleSw") ? String(formData.get("shortTitleSw")) : undefined;
+  const shortTitleZh = formData.has("shortTitleZh") ? String(formData.get("shortTitleZh")) : undefined;
+  const competition = formData.has("competition") ? String(formData.get("competition")) : undefined;
 
   try {
     const poll = await editAIPoll(id, {
@@ -245,6 +251,10 @@ export async function editPollAction(formData: FormData) {
       resolutionCriterionZh,
       resolutionAt,
       selectionClosedAt,
+      shortTitleEn,
+      shortTitleSw,
+      shortTitleZh,
+      competition,
     });
 
     if (!poll) return { ok: false as const, error: "Poll not found or not editable." };
@@ -252,7 +262,12 @@ export async function editPollAction(formData: FormData) {
     revalidatePath("/admin/ai-polls");
     return { ok: true as const, poll };
   } catch (err) {
-    return { ok: false as const, error: safeError(err, "Edit failed") };
+    // A short-title refusal names its field, so the form can point at the box to fix.
+    return {
+      ok: false as const,
+      error: safeError(err, "Edit failed"),
+      field: err instanceof AIPollShortTitleRefused ? err.field : undefined,
+    };
   }
 }
 

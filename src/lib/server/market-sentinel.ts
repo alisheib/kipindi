@@ -42,6 +42,8 @@ import { getPlatformTimezone } from "./platform-config";
 import { loadConfigResult, saveConfig } from "./config-store";
 import { audit } from "./audit";
 import type { StoredMarket } from "./market-service";
+import type { Locale } from "@/lib/i18n-dict";
+import type { AiSubjectType } from "../ai-cycle-rules";
 
 // --- Configuration -----------------------------------------------------------
 
@@ -526,4 +528,198 @@ export async function sentinelCheckOne(marketId: string, opts?: { model?: string
   if (!m) return null;
   const model = opts?.model ?? (await getSentinelModel());
   return deepCheckMarket(marketInputFromStored(m), model);
+}
+
+// =============================================================================
+// SHORT-TITLE AGREEMENT (the Vodacom plan S2, 2026-09-30; COMPLIANCE §6 "Short titles and competition labels":
+// "The market sentinel checks that each short title states the same proposition as the full question.")
+// =============================================================================
+//
+// ⛔ A SEPARATE CALL FROM THE DEEP CHECK, and it shares nothing with it but the model setting: its own tool
+// (`report_agreement`), its own budget gate, no web tools (so the tool is forced), and its own meter row. It reads
+// words against words — it never looks at the world, never touches a market, and NEVER APPROVES anything: its
+// verdict is shown to the officer who decides. `deepCheckMarket` and `report_outcome` are untouched.
+//
+// ⛔ "NOT CHECKED" IS A VERDICT OF ITS OWN, NEVER "AGREES". A blocked budget, a missing key, a disabled sentinel, a
+// failed call or an answer that does not cover every language all come back `{ status: "unchecked", reason }` — and
+// every reader (`agreementLine`, the poll chips) prints it as "not checked by the sentinel".
+
+const AGREEMENT_LOCALES: readonly Locale[] = ["en", "sw", "zh"];
+const AGREEMENT_LANG: Record<Locale, string> = { en: "English", sw: "Kiswahili", zh: "Chinese" };
+
+/** The market's words the short titles are checked against. `id` is null for a poll that is not a market yet. */
+export type AgreementMarket = {
+  id: string | null;
+  titleEn: string;
+  titleSw?: string | null;
+  titleZh?: string | null;
+  category?: string | null;
+  resolutionCriterion?: string | null;
+};
+
+export type ShortTitleVerdict = { agrees: boolean; issue: string | null };
+
+export type ShortTitleAgreement =
+  | { status: "checked"; model: string; checkedAt: string; languages: Partial<Record<Locale, ShortTitleVerdict>> }
+  | { status: "unchecked"; reason: string };
+
+/** The short titles actually present — the only languages the sentinel is asked about. */
+function presentShorts(shorts: Partial<Record<Locale, string | null | undefined>>): Array<[Locale, string]> {
+  const out: Array<[Locale, string]> = [];
+  for (const loc of AGREEMENT_LOCALES) {
+    const v = shorts[loc];
+    if (typeof v === "string" && v.trim()) out.push([loc, v.trim()]);
+  }
+  return out;
+}
+
+/** The forced tool — one object per language asked about, each `{ agrees, issue }`. */
+function agreementTool(langs: Locale[]) {
+  const props: Record<string, unknown> = {};
+  for (const loc of langs) {
+    props[loc] = {
+      type: "object",
+      properties: {
+        agrees: { type: "boolean", description: `true ONLY if the ${AGREEMENT_LANG[loc]} short title states exactly the same proposition as the full question.` },
+        issue: { type: ["string", "null"], description: "When agrees is false: one short English sentence naming what differs. Otherwise null." },
+      },
+      required: ["agrees", "issue"],
+    };
+  }
+  return {
+    name: "report_agreement",
+    description: "Report, per language, whether the short title states exactly the same proposition as the full question. Call exactly once.",
+    input_schema: { type: "object", properties: props, required: [...langs] },
+  };
+}
+
+/**
+ * THE PROMPT, PURE — exported so a suite can pin what the sentinel is asked without a network call.
+ * The same-language full title is the comparison (a Swahili card is read against the Swahili question), with the
+ * English question and criterion alongside because English is what settles the market.
+ */
+export function buildAgreementPrompt(input: { market: AgreementMarket; shorts: Partial<Record<Locale, string | null | undefined>> }): { system: string; user: string; languages: Locale[] } {
+  const present = presentShorts(input.shorts);
+  const m = input.market;
+  const fullFor = (loc: Locale) =>
+    loc === "sw" ? (m.titleSw?.trim() || m.titleEn) : loc === "zh" ? (m.titleZh?.trim() || m.titleEn) : m.titleEn;
+  const system = `You are the 50pick Market Sentinel, checking card wording for a LICENSED, REAL-MONEY prediction market in Tanzania. A phone card shows a SHORT question instead of the full one; the full question and its English resolution criterion decide every payout. A short question that says anything different — a different subject, threshold, number, deadline, side or condition, or a looser or stronger claim — misleads a player about the bet they are placing.
+
+For each language you are given, decide whether the short question states EXACTLY the same proposition as the full question. Shorter wording is fine; a different bet is not. Omitting a detail is a disagreement when the detail changes what YES means (a threshold, a date, which team, which competition). Be strict: when in doubt, report agrees=false and name the difference.
+
+Call report_agreement exactly once. Do not write prose outside the tool call.`;
+  const lines = present.map(([loc, short]) =>
+    `${AGREEMENT_LANG[loc].toUpperCase()}\n  full question: ${fullFor(loc)}\n  short question: ${short}`);
+  const user = `The market${m.category ? ` (category: ${m.category})` : ""}.
+
+FULL QUESTION (English, binding): ${m.titleEn}
+RESOLUTION CRITERION (English, binding): ${m.resolutionCriterion?.trim() || "not given"}
+
+${lines.join("\n\n")}
+
+Check each short question against its full question, then call report_agreement.`;
+  return { system, user, languages: present.map(([loc]) => loc) };
+}
+
+/**
+ * THE VERDICT PARSER, PURE — the tool input → per-language verdicts, or a reason it cannot be read.
+ * ⛔ STRICT: every language asked about must come back with a real boolean `agrees`. A missing language, a string
+ * "true", or an `issue` that is not text makes the WHOLE answer unreadable — which the caller reports as NOT CHECKED,
+ * never as agreement. A disagreement with no reason keeps its "false" and gets a stated placeholder.
+ */
+export function parseAgreementVerdict(
+  raw: unknown,
+  languages: readonly Locale[],
+): { ok: true; languages: Partial<Record<Locale, ShortTitleVerdict>> } | { ok: false; reason: string } {
+  if (!raw || typeof raw !== "object") return { ok: false, reason: "the sentinel's answer was empty" };
+  const r = raw as Record<string, unknown>;
+  const out: Partial<Record<Locale, ShortTitleVerdict>> = {};
+  for (const loc of languages) {
+    const v = r[loc];
+    if (!v || typeof v !== "object") return { ok: false, reason: `the sentinel's answer left out ${AGREEMENT_LANG[loc]}` };
+    const agrees = (v as Record<string, unknown>).agrees;
+    const issue = (v as Record<string, unknown>).issue;
+    if (typeof agrees !== "boolean") return { ok: false, reason: `the sentinel's answer for ${AGREEMENT_LANG[loc]} was not a yes or no` };
+    if (issue !== null && issue !== undefined && typeof issue !== "string") return { ok: false, reason: `the sentinel's reason for ${AGREEMENT_LANG[loc]} was not text` };
+    const text = typeof issue === "string" && issue.trim() ? issue.trim().slice(0, 300) : null;
+    out[loc] = { agrees, issue: agrees ? null : (text ?? "The sentinel gave no reason.") };
+  }
+  return { ok: true, languages: out };
+}
+
+/**
+ * ONE LANGUAGE'S VERDICT, IN WORDS — for the officer's review screen and the suites. ⛔ Three outcomes and only
+ * three: "agrees", "does not agree: <issue>", "not checked by the sentinel". Anything unreadable is the third.
+ */
+export function agreementLine(a: ShortTitleAgreement | null | undefined, loc: Locale): { kind: "agrees" | "disagrees" | "unchecked"; text: string } {
+  if (!a || a.status !== "checked") return { kind: "unchecked", text: "not checked by the sentinel" };
+  const v = a.languages[loc];
+  if (!v || typeof v.agrees !== "boolean") return { kind: "unchecked", text: "not checked by the sentinel" };
+  return v.agrees ? { kind: "agrees", text: "agrees" } : { kind: "disagrees", text: `does not agree: ${v.issue ?? "The sentinel gave no reason."}` };
+}
+
+/** The slice of the Anthropic client this check uses — injectable so a suite can drive every path offline. */
+type AgreementClient = { messages: { create: (body: Record<string, unknown>) => Promise<unknown> } };
+
+/**
+ * ⭐ DOES EACH SHORT TITLE SAY WHAT THE FULL QUESTION SAYS? A budgeted call on the sentinel's model, forced to
+ * `report_agreement`. Never throws; never writes; never approves.
+ * @param input.subject  what the spend is for — the market (backfill) or the poll being generated.
+ * @param deps.client    tests only: stands in for the Anthropic client (and so for the key).
+ */
+export async function checkShortTitleAgreement(
+  input: {
+    market: AgreementMarket;
+    shorts: Partial<Record<Locale, string | null | undefined>>;
+    subject?: { type: AiSubjectType; id: string | null };
+  },
+  deps?: { client?: AgreementClient | null },
+): Promise<ShortTitleAgreement> {
+  const prompt = buildAgreementPrompt(input);
+  if (prompt.languages.length === 0) return { status: "unchecked", reason: "there was no short title to check" };
+  if (process.env.SENTINEL_ENABLED === "false") return { status: "unchecked", reason: "the sentinel is switched off on this deployment" };
+  const client: AgreementClient | null = deps && deps.client !== undefined
+    ? deps.client
+    : (getClient() as unknown as AgreementClient | null);
+  if (!client) return { status: "unchecked", reason: "no ANTHROPIC_API_KEY on this deployment" };
+
+  // THE SPEND GATE, before the call — the same ceiling every sentinel call obeys. A blocked check is "not checked".
+  const budget = await assertAiBudget("sentinel");
+  if (!budget.ok) return { status: "unchecked", reason: describeAiBudgetBlock(budget) };
+
+  const model = await getSentinelModel();
+  const subjectType: AiSubjectType = input.subject?.type ?? "market";
+  const subjectId = input.subject ? input.subject.id : input.market.id;
+  const detail = `short-title agreement · ${input.market.titleEn.slice(0, 70)}`;
+  const started = Date.now();
+  try {
+    const response = await client.messages.create({
+      model,
+      max_tokens: 600,
+      system: prompt.system,
+      tools: [agreementTool(prompt.languages)],
+      // No server tools are armed, so the tool CAN be forced — a prose reply would be pure waste.
+      tool_choice: { type: "tool", name: "report_agreement" },
+      messages: [{ role: "user", content: prompt.user }],
+    }) as { usage?: { input_tokens?: number; output_tokens?: number }; content?: Array<{ type: string; name?: string; input?: unknown }> };
+    await recordAiUsage({
+      feature: "sentinel", model,
+      inputTokens: response.usage?.input_tokens ?? 0,
+      outputTokens: response.usage?.output_tokens ?? 0,
+      webSearches: 0, ok: true, latencyMs: Date.now() - started,
+      detail, subjectType, subjectId,
+    });
+    const call = (response.content ?? []).find((b) => b.type === "tool_use" && b.name === "report_agreement");
+    if (!call) return { status: "unchecked", reason: "the sentinel did not report a verdict" };
+    const parsed = parseAgreementVerdict(call.input, prompt.languages);
+    if (!parsed.ok) return { status: "unchecked", reason: parsed.reason };
+    return { status: "checked", model, checkedAt: new Date().toISOString(), languages: parsed.languages };
+  } catch (err) {
+    await recordAiUsage({
+      feature: "sentinel", model, ok: false, latencyMs: Date.now() - started,
+      errorType: String((err as Error)?.message ?? err).slice(0, 200),
+      detail, subjectType, subjectId,
+    });
+    return { status: "unchecked", reason: `the sentinel's call failed (${String((err as Error)?.message ?? err).slice(0, 160)})` };
+  }
 }

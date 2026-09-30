@@ -36,6 +36,14 @@ import { prisma, hasDatabase } from "./prisma";
 // ambiguous there — Prisma reads it as the JSON value `null`, which is a 4-byte payload rather
 // than an absent one, so the prune would report success and free nothing.
 import { Prisma } from "@prisma/client";
+// The Vodacom plan S2 — the ONE short-title rule module and the ONE competition list. The generator stores what they
+// allow and nothing else; an officer's edit goes through the same functions (non-strict), so the AI can never store
+// what an officer would be refused.
+import type { Locale } from "@/lib/i18n-dict";
+import { SHORT_TITLE_MAX, SHORT_TITLE_LOCALES, normaliseShortTitleSet, type ShortTitleIssue } from "@/lib/markets/short-title";
+import { isCompetition, normaliseCompetition } from "@/lib/markets/competitions";
+import { shortTitleIssueSentence } from "./short-title-service";
+import type { ShortTitleAgreement } from "./market-sentinel";
 
 /* ─── Types ─── */
 
@@ -114,6 +122,17 @@ export type StoredAIPoll = {
   sources: Array<{ url: string; publisher: string }>;
   confidence: number;
   reasoning: string;
+  /**
+   * SHORT TITLES + COMPETITION (the Vodacom plan S2) — as generated (strictly normalised) and officer-editable before
+   * approval; `publishApprovedPoll` carries them into the market. NULL = none: the model gave none, or the value
+   * failed the rules (`lib/markets/short-title.ts`) and a quality WARNING says which language and why. ⛔ Never a
+   * copy of a full title. OPTIONAL so every record written before the columns existed still type-checks.
+   */
+  shortTitleEn?: string | null;
+  shortTitleSw?: string | null;
+  shortTitleZh?: string | null;
+  /** A key from `lib/markets/competitions.ts`, or null. */
+  competition?: string | null;
   // Admin review
   reviewedBy: string | null;
   reviewedAt: string | null;
@@ -232,6 +251,11 @@ function toStoredAIPoll(r: any): StoredAIPoll {
     sources: (r.sources ?? []) as StoredAIPoll["sources"],
     confidence: r.confidence,
     reasoning: r.reasoning,
+    // The Vodacom plan S2. `competition` is coerced, not trusted: a key this build does not know reads as none.
+    shortTitleEn: r.shortTitleEn ?? null,
+    shortTitleSw: r.shortTitleSw ?? null,
+    shortTitleZh: r.shortTitleZh ?? null,
+    competition: normaliseCompetition(r.competition),
     reviewedBy: r.reviewedBy ?? null,
     reviewedAt: r.reviewedAt instanceof Date ? r.reviewedAt.toISOString() : (r.reviewedAt ?? null),
     reviewNote: r.reviewNote ?? null,
@@ -275,6 +299,11 @@ function toPrismaData(p: StoredAIPoll): any {
     sources: p.sources,
     confidence: p.confidence,
     reasoning: p.reasoning,
+    // The Vodacom plan S2 — one payload for create AND update (see the note above), so one line each.
+    shortTitleEn: p.shortTitleEn ?? null,
+    shortTitleSw: p.shortTitleSw ?? null,
+    shortTitleZh: p.shortTitleZh ?? null,
+    competition: p.competition ?? null,
     reviewedBy: p.reviewedBy,
     reviewedAt: p.reviewedAt ? new Date(p.reviewedAt) : null,
     reviewNote: p.reviewNote,
@@ -427,7 +456,12 @@ async function validateAndFilter(
    *  throwaway values) must be the ones the date-window / title checks run on.
    *  Without this, a controlled poll was validated against the AI's date and a
    *  bad operator date sailed through unchecked. */
-  overrides?: { resolutionAt?: string; titleEn?: string; excludeId?: string },
+  overrides?: {
+    resolutionAt?: string; titleEn?: string; excludeId?: string;
+    /** "skip" — an officer's EDIT re-validates the poll but checks its short titles itself (non-strict, refusing
+     *  a hard issue by field) in `editAIPoll`; only the MODEL's short titles are held to the strict rule here. */
+    shortTitles?: "skip";
+  },
 ): Promise<ValidationResult> {
   const reasons: FilterReason[] = [];
   const quality: QualityIndicator[] = [];
@@ -470,6 +504,12 @@ async function validateAndFilter(
     }),
     confidence: typeof gen.confidence === "number" ? Math.max(0, Math.min(100, Math.round(gen.confidence))) : 0,
     reasoning: sanitise(gen.reasoning ?? ""),
+    // The Vodacom plan S2 — sanitised like every other string; the RULES are applied after the titles are final
+    // (below), so a controlled-mode English title is the one the short titles are checked against.
+    shortTitleEn: gen.shortTitleEn != null ? sanitise(gen.shortTitleEn) : undefined,
+    shortTitleSw: gen.shortTitleSw != null ? sanitise(gen.shortTitleSw) : undefined,
+    shortTitleZh: gen.shortTitleZh != null ? sanitise(gen.shortTitleZh) : undefined,
+    competition: gen.competition != null ? sanitise(gen.competition) : undefined,
   };
 
   // Controlled-mode overrides take precedence over the AI's values for the
@@ -721,7 +761,125 @@ async function validateAndFilter(
   // Determine pass/fail
   const passes = hardFails.length === 0 && overallQuality >= 40;
 
-  return { passes, reasons, quality, overallQuality, sanitised };
+  // ── SHORT TITLES (the Vodacom plan S2) — AFTER pass/fail and the score, on purpose ─────────────────────────
+  // ⛔ A short-title problem is NEVER a FilterReason: `approveAIPoll` refuses a poll with any filter reason, so a
+  // too-long Swahili short title would make a perfectly good question unapprovable. A failing language is stored as
+  // NULL (the card then shows the full question) and a WARNING chip names the language and the issue. The chips are
+  // appended after `overallQuality` is computed, so a short title can neither pass nor fail a poll, nor move its score.
+  // STRICT: the model does not get to accept its own number drift — only an officer can, through the edit.
+  let shortQuality: QualityIndicator[] = [];
+  if (overrides?.shortTitles !== "skip") {
+    const raw = { en: sanitised.shortTitleEn, sw: sanitised.shortTitleSw, zh: sanitised.shortTitleZh };
+    const set = normaliseShortTitleSet({
+      titleEn: sanitised.titleEn, titleSw: sanitised.titleSw ?? null, titleZh: sanitised.titleZh ?? null,
+      shortTitleEn: raw.en, shortTitleSw: raw.sw, shortTitleZh: raw.zh,
+    }, { strict: true });
+    sanitised.shortTitleEn = set.shortTitleEn ?? undefined;
+    sanitised.shortTitleSw = set.shortTitleSw ?? undefined;
+    sanitised.shortTitleZh = set.shortTitleZh ?? undefined;
+    sanitised.competition = normaliseCompetition(sanitised.competition) ?? undefined;
+    shortQuality = shortTitleQuality(set);
+  }
+
+  return { passes, reasons, quality: [...quality, ...shortQuality], overallQuality, sanitised };
+}
+
+/* ─── Short titles: the quality chips (the Vodacom plan S2) ─── */
+
+/** Every short-title chip starts with this, and every sentinel-agreement chip with the next — so an officer's edit
+ *  can tell which chips it owns and which verdict it has made stale. */
+export const SHORT_TITLE_CHIP = "Short title";
+export const SENTINEL_AGREEMENT_CHIP = "Sentinel ·";
+
+const LANG_NAME: Record<Locale, string> = { en: "English", sw: "Swahili", zh: "Chinese" };
+
+/** Plain words per issue, short enough for a chip. The full sentence an officer reads is `shortTitleIssueSentence`. */
+function issueWords(loc: Locale, issue: ShortTitleIssue): string {
+  switch (issue) {
+    case "too_long": return `over ${SHORT_TITLE_MAX[loc]} characters`;
+    case "not_gsm7": return "characters a text message cannot carry";
+    case "form": return loc === "sw" ? "not in the Je, …? form" : "not a question";
+    case "copied_english": return "a copy of the English";
+    case "number_drift": return "a number the full question does not have";
+  }
+}
+
+/**
+ * The chips for one normalised set: how many languages are stored, and one chip per language with an issue —
+ * "left empty" when the issue refused the value (always, in strict mode), "kept — check" for a warning an officer
+ * accepted by saving it. ⛔ Status is never "bad": nothing here blocks an approval.
+ */
+function shortTitleQuality(set: ReturnType<typeof normaliseShortTitleSet>): QualityIndicator[] {
+  const stored = [set.shortTitleEn, set.shortTitleSw, set.shortTitleZh].filter((v) => v !== null).length;
+  const out: QualityIndicator[] = [{
+    label: `${SHORT_TITLE_CHIP}s · ${stored} of 3 languages`,
+    score: Math.round((stored / 3) * 100),
+    status: stored === 3 ? "good" : "warning",
+  }];
+  for (const loc of SHORT_TITLE_LOCALES) {
+    const issues = set.issues[loc];
+    if (issues.length === 0) continue;
+    const words = issues.map((i) => issueWords(loc, i)).join(", ");
+    out.push(set.hard[loc]
+      ? { label: `${SHORT_TITLE_CHIP} · ${LANG_NAME[loc]} left empty — ${words}`, score: 0, status: "warning" }
+      : { label: `${SHORT_TITLE_CHIP} · ${LANG_NAME[loc]} kept — check: ${words}`, score: 50, status: "warning" });
+  }
+  return out;
+}
+
+/**
+ * The sentinel's agreement verdict as chips. ⛔ "Not checked" is its own chip and never reads as agreement — a
+ * blocked, keyless or failed check says so, and the officer approves knowing it.
+ */
+function agreementQuality(a: ShortTitleAgreement, shorts: Record<Locale, string | null>): QualityIndicator[] {
+  if (a.status !== "checked") {
+    return [{ label: `${SENTINEL_AGREEMENT_CHIP} short titles not checked — ${a.reason.slice(0, 140)}`, score: 50, status: "warning" }];
+  }
+  const out: QualityIndicator[] = [];
+  for (const loc of SHORT_TITLE_LOCALES) {
+    if (!shorts[loc]) continue;
+    const v = a.languages[loc];
+    if (v && v.agrees === true) continue;
+    out.push({ label: `${SENTINEL_AGREEMENT_CHIP} ${LANG_NAME[loc]} short title does not agree — ${(v?.issue ?? "no reason given").slice(0, 140)}`, score: 0, status: "warning" });
+  }
+  return out.length ? out : [{ label: `${SENTINEL_AGREEMENT_CHIP} short titles agree with the question`, score: 100, status: "good" }];
+}
+
+/**
+ * Ask the sentinel whether the poll's short titles say what its full question says — a separate, budgeted call
+ * (`checkShortTitleAgreement`). Never throws and never blocks: the verdict is a chip for the officer, nothing more.
+ */
+async function sentinelAgreementChips(poll: StoredAIPoll): Promise<QualityIndicator[]> {
+  const shorts: Record<Locale, string | null> = { en: poll.shortTitleEn ?? null, sw: poll.shortTitleSw ?? null, zh: poll.shortTitleZh ?? null };
+  if (!shorts.en && !shorts.sw && !shorts.zh) return [];
+  try {
+    const { checkShortTitleAgreement } = await import("./market-sentinel");
+    const a = await checkShortTitleAgreement({
+      market: {
+        id: null, titleEn: poll.titleEn, titleSw: poll.titleSw, titleZh: poll.titleZh || null,
+        category: poll.category, resolutionCriterion: poll.resolutionCriterion,
+      },
+      shorts,
+      subject: { type: "poll_generation", id: poll.id },
+    });
+    return agreementQuality(a, shorts);
+  } catch (err) {
+    return agreementQuality({ status: "unchecked", reason: `the check failed (${String((err as Error)?.message ?? err)})` }, shorts);
+  }
+}
+
+/**
+ * An officer's short-title edit was refused — a value with a HARD issue, or a competition this build does not know.
+ * ⭐ An `OperatorError`, so `safeError` shows the officer the sentence rather than "Edit failed", and it carries the
+ * FIELD so the form can point at it. Thrown BEFORE the poll is touched: the in-memory store hands back the live
+ * object, so a refusal after a mutation would leave half an edit behind.
+ */
+export class AIPollShortTitleRefused extends OperatorError {
+  readonly field: "shortTitleEn" | "shortTitleSw" | "shortTitleZh" | "competition";
+  constructor(message: string, field: "shortTitleEn" | "shortTitleSw" | "shortTitleZh" | "competition") {
+    super(message);
+    this.field = field;
+  }
 }
 
 /* ─── Public API ─── */
@@ -865,6 +1023,10 @@ export async function generateAIPoll(opts: {
     sources: [],
     confidence: 0,
     reasoning: "",
+    shortTitleEn: null,
+    shortTitleSw: null,
+    shortTitleZh: null,
+    competition: null,
     reviewedBy: null,
     reviewedAt: null,
     reviewNote: null,
@@ -1057,6 +1219,10 @@ export async function generateAIPoll(opts: {
   // Passes validation — move to PENDING_REVIEW
   poll.state = "PENDING_REVIEW";
   copyGenerationToPoll(poll, validation.sanitised);
+  // The Vodacom plan S2: the sentinel reads the stored short titles against the full question — a separate,
+  // budgeted call whose verdict is a chip for the officer. ⛔ It never approves anything, and "not checked" is a
+  // chip of its own, never agreement. Only a poll that reached review is worth the call.
+  poll.qualityIndicators = [...poll.qualityIndicators, ...(await sentinelAgreementChips(poll))];
   poll.updatedAt = new Date().toISOString();
   await store.set(poll);
 
@@ -1106,6 +1272,12 @@ function copyGenerationToPoll(poll: StoredAIPoll, gen: AIPollGeneration) {
   poll.sources = gen.sources;
   poll.confidence = gen.confidence;
   poll.reasoning = gen.reasoning;
+  // The Vodacom plan S2 — `gen` is `validateAndFilter`'s output, so these are already the STRICT rule's verdicts:
+  // a value that failed is undefined here and is stored as NULL, never as what the model wrote.
+  poll.shortTitleEn = gen.shortTitleEn ?? null;
+  poll.shortTitleSw = gen.shortTitleSw ?? null;
+  poll.shortTitleZh = gen.shortTitleZh ?? null;
+  poll.competition = normaliseCompetition(gen.competition);
 }
 
 /**
@@ -1418,9 +1590,53 @@ export async function editAIPoll(id: string, opts: {
   resolutionAt?: string;
   selectionClosedAt?: string | null;
   options?: Array<{ label: string; descriptionEn?: string; descriptionSw?: string; descriptionZh?: string }>;
+  /** The Vodacom plan S2. `undefined` = leave as it is; `null` or "" = clear it (the card shows the full question). */
+  shortTitleEn?: string | null;
+  shortTitleSw?: string | null;
+  shortTitleZh?: string | null;
+  /** A key from `lib/markets/competitions.ts`; "" or null clears it; an unknown key is REFUSED, never coerced. */
+  competition?: string | null;
 }): Promise<StoredAIPoll | null> {
   const poll = await store.get(id);
   if (!poll || (poll.state !== "PENDING_REVIEW" && poll.state !== "EDITING")) return null;
+
+  // ── SHORT TITLES FIRST, AND BEFORE ANYTHING IS TOUCHED (the Vodacom plan S2) ─────────────────────────────────
+  // Checked against the titles as they WILL be after this edit (an officer rewriting the question and its short
+  // title in one submit is judged against the new question), through the same rule module the market edit uses —
+  // non-strict, because an officer may accept a number-drift warning a machine may not. A HARD issue refuses the
+  // whole edit and names the field; this runs before the first mutation because the in-memory store hands back the
+  // live object.
+  const nextTitleEn = opts.titleEn !== undefined ? sanitise(opts.titleEn) : poll.titleEn;
+  const nextTitleSw = opts.titleSw !== undefined ? sanitise(opts.titleSw) : poll.titleSw;
+  const nextTitleZh = opts.titleZh !== undefined ? sanitise(opts.titleZh) : poll.titleZh;
+  const pickShort = (k: "shortTitleEn" | "shortTitleSw" | "shortTitleZh") =>
+    opts[k] !== undefined ? sanitise(opts[k] ?? "") : (poll[k] ?? null);
+  const shortSet = normaliseShortTitleSet({
+    titleEn: nextTitleEn, titleSw: nextTitleSw, titleZh: nextTitleZh || null,
+    shortTitleEn: pickShort("shortTitleEn"), shortTitleSw: pickShort("shortTitleSw"), shortTitleZh: pickShort("shortTitleZh"),
+  });
+  const SHORT_FIELD = { en: "shortTitleEn", sw: "shortTitleSw", zh: "shortTitleZh" } as const;
+  for (const loc of SHORT_TITLE_LOCALES) {
+    if (!shortSet.hard[loc]) continue;
+    const firstHard = shortSet.issues[loc].find((i) => i !== "number_drift") ?? shortSet.issues[loc][0];
+    const raw = pickShort(SHORT_FIELD[loc]);
+    throw new AIPollShortTitleRefused(`${shortTitleIssueSentence(loc, firstHard, typeof raw === "string" ? raw : "")} Nothing changed.`, SHORT_FIELD[loc]);
+  }
+  let nextCompetition: string | null = normaliseCompetition(poll.competition);
+  if (opts.competition !== undefined) {
+    const rawComp = (opts.competition ?? "").trim();
+    if (rawComp === "") nextCompetition = null;
+    else if (isCompetition(rawComp)) nextCompetition = rawComp;
+    else throw new AIPollShortTitleRefused(`"${rawComp.slice(0, 40)}" is not a competition this build knows. Nothing changed.`, "competition");
+  }
+  const shortTouched = opts.shortTitleEn !== undefined || opts.shortTitleSw !== undefined || opts.shortTitleZh !== undefined;
+  const titlesTouched = (opts.titleEn !== undefined && nextTitleEn !== poll.titleEn)
+    || (opts.titleSw !== undefined && nextTitleSw !== poll.titleSw)
+    || (opts.titleZh !== undefined && nextTitleZh !== poll.titleZh);
+  const shortChanged = shortSet.shortTitleEn !== (poll.shortTitleEn ?? null)
+    || shortSet.shortTitleSw !== (poll.shortTitleSw ?? null)
+    || shortSet.shortTitleZh !== (poll.shortTitleZh ?? null);
+  const priorSentinel = poll.qualityIndicators.filter((q) => q.label.startsWith(SENTINEL_AGREEMENT_CHIP));
 
   if (opts.titleEn !== undefined) poll.titleEn = sanitise(opts.titleEn);
   if (opts.titleSw !== undefined) poll.titleSw = sanitise(opts.titleSw);
@@ -1472,9 +1688,26 @@ export async function editAIPoll(id: string, opts: {
     sources: poll.sources,
     confidence: poll.confidence,
     reasoning: poll.reasoning,
-  }, null, { excludeId: poll.id });
+  }, null, { excludeId: poll.id, shortTitles: "skip" });
 
-  poll.qualityIndicators = revalidation.quality;
+  poll.shortTitleEn = shortSet.shortTitleEn;
+  poll.shortTitleSw = shortSet.shortTitleSw;
+  poll.shortTitleZh = shortSet.shortTitleZh;
+  poll.competition = nextCompetition;
+  /* The chips: the re-validation's own, the short titles' (warnings the officer has now accepted by saving), and the
+     sentinel's earlier verdict ONLY while it still describes what is stored. ⛔ A verdict about words that have since
+     changed is replaced by a chip that says so, never carried forward as though it were about the new words. */
+  const anyShort = !!(shortSet.shortTitleEn || shortSet.shortTitleSw || shortSet.shortTitleZh);
+  const sentinelChips: QualityIndicator[] = !anyShort
+    ? []
+    : (shortChanged || titlesTouched)
+      ? [{ label: `${SENTINEL_AGREEMENT_CHIP} short titles not checked — edited after the check`, score: 50, status: "warning" }]
+      : priorSentinel;
+  poll.qualityIndicators = [
+    ...revalidation.quality,
+    ...(shortTouched || anyShort ? shortTitleQuality(shortSet) : []),
+    ...sentinelChips,
+  ];
   poll.overallQuality = revalidation.overallQuality;
   poll.filterReasons = revalidation.reasons;
   // Respect the re-validation verdict. Previously this ALWAYS set PENDING_REVIEW
@@ -1609,6 +1842,11 @@ export async function seedAIPollFixtures(): Promise<StoredAIPoll[]> {
       sources: [{ url: "https://www.tff.or.tz/", publisher: "TFF Official" }],
       confidence: 88,
       reasoning: "High-profile domestic league question with clear binary outcome.",
+      // The Vodacom plan S2 — one seeded poll carries short titles, so the review and publish paths have one to show.
+      shortTitleEn: "Will Simba SC win the 2026 league title?",
+      shortTitleSw: "Je, Simba SC itashinda Ligi Kuu 2026?",
+      shortTitleZh: "Simba SC能否赢得2026年坦超？",
+      competition: "ligi-kuu",
       overallQuality: 92,
       qualityIndicators: [
         { label: "Title", score: 95, status: "good" },
@@ -1732,6 +1970,10 @@ export async function seedAIPollFixtures(): Promise<StoredAIPoll[]> {
       sources: f.sources ?? [],
       confidence: f.confidence ?? 0,
       reasoning: f.reasoning ?? "",
+      shortTitleEn: f.shortTitleEn ?? null,
+      shortTitleSw: f.shortTitleSw ?? null,
+      shortTitleZh: f.shortTitleZh ?? null,
+      competition: f.competition ?? null,
       reviewedBy: f.reviewedBy ?? null,
       reviewedAt: f.reviewedAt ?? null,
       reviewNote: f.reviewNote ?? null,

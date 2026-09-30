@@ -15,6 +15,10 @@ import { requireAdminTotp } from "@/lib/server/admin-guard";
 import { criterionTranslationIssue } from "@/lib/localized";
 import { isHouseIntentKey } from "@/lib/house-bot/constants";
 import { commentSideFor } from "@/lib/comment-side";
+// The Vodacom plan S2 — the ONE rule module for short titles, read by the wizard (client) and here (server).
+import { HARD_ISSUES, normaliseShortTitleSet } from "@/lib/markets/short-title";
+import { isCompetition } from "@/lib/markets/competitions";
+import { applyShortTitles, shortTitleIssueSentence } from "@/lib/server/short-title-service";
 
 /**
  * F3 — toggle the watchlist star on a market. Returns the NEW state so the
@@ -204,6 +208,56 @@ export async function adminReopenMarketAction(formData: FormData) {
 }
 
 /**
+ * ⭐ SHORT TITLES AND COMPETITION — the Vodacom plan S2 (`docs/VODACOM-PLAN.md` §0c; COMPLIANCE-DECISIONS §6
+ * "Short titles and competition labels"). The admin edit on `/admin/markets/[id]`.
+ *
+ * Everything that matters is in `applyShortTitles` (`lib/server/short-title-service.ts`): the rules against the
+ * market's OWN full titles read inside `withLock(market:<id>)`, the narrow four-column write, and the audit row with
+ * the values before and after. This action only gates, reads the form and refreshes the pages.
+ *
+ * ⛔ ABSENT IS NOT EMPTY. A field the form does not carry is `undefined` — "leave it as it is"; a field present but
+ * empty clears it (the card then shows the full question). The control sends only the fields the officer changed, so
+ * a stored value that later rules would refuse can never block an edit to a different field.
+ *
+ * ⛔ NO 2FA STEP-UP, for recategorise's reason: this changes the wording a card shows — no pool, stake, status or
+ * resolution moves, and the full question, the criterion and the source stay exactly as they were.
+ *
+ * ⚠️ PLACED AFTER `adminReopenMarketAction` ON PURPOSE: `test:recategorise` §4 reads the text between
+ * `recategoriseMarketAction` and `adminReopenMarketAction` as recategorise's own block.
+ */
+export async function setMarketShortTitlesAction(formData: FormData) {
+  const session = await currentSession();
+  if (!session) redirect("/auth/login");
+  await requireAdminOrThrow(session.userId, "setMarketShortTitlesAction");
+  const marketId = String(formData.get("marketId") ?? "");
+  const field = (k: string): string | undefined => (formData.has(k) ? String(formData.get(k) ?? "") : undefined);
+  const r = await applyShortTitles({
+    marketId,
+    officerId: session.userId,
+    input: {
+      shortTitleEn: field("shortTitleEn"),
+      shortTitleSw: field("shortTitleSw"),
+      shortTitleZh: field("shortTitleZh"),
+      competition: field("competition"),
+    },
+    via: "edit",
+  });
+  if (!r.ok) return r;
+  if (r.changed) {
+    revalidatePath("/admin/markets");
+    revalidatePath(`/admin/markets/${marketId}`);
+    revalidatePath("/markets");
+    revalidatePath(`/markets/${marketId}`);
+  }
+  // A warning (a number the full question does not contain) never refuses; the officer reads it after the save.
+  const warningSentences = (["en", "sw", "zh"] as const).flatMap((loc) => {
+    const value = loc === "en" ? r.after.shortTitleEn : loc === "sw" ? r.after.shortTitleSw : r.after.shortTitleZh;
+    return r.warnings[loc].map((issue) => shortTitleIssueSentence(loc, issue, value ?? ""));
+  });
+  return { ...r, warningSentences };
+}
+
+/**
  * Emergency void / kill switch — pull a (possibly LIVE) market immediately and
  * refund every open stake in full. Tighter gate than other admin actions: only
  * ADMIN or COMPLIANCE (it moves money / closes a live pool — not a moderator job).
@@ -302,6 +356,25 @@ export async function createMarketAction(formData: FormData) {
   if (!VALID_CATEGORIES.has(rawCategory)) {
     return { ok: false as const, error: "Invalid category." };
   }
+  // ⭐ The Vodacom plan S2 · SHORT TITLES + COMPETITION, both OPTIONAL. The SAME rule the wizard runs as the officer
+  // types (`normaliseShortTitleSet`, imported on both sides — one policy, the E-145 lesson). A HARD issue is REFUSED
+  // with the field it belongs to, never stored as something else; a number the full question does not contain is a
+  // warning the wizard already showed, and is not a refusal. `createMarket` normalises again as the storage guarantee.
+  const shortRaw = {
+    shortTitleEn: String(formData.get("shortTitleEn") ?? ""),
+    shortTitleSw: String(formData.get("shortTitleSw") ?? ""),
+    shortTitleZh: String(formData.get("shortTitleZh") ?? ""),
+  };
+  const shorts = normaliseShortTitleSet({ titleEn, titleSw, titleZh, ...shortRaw });
+  for (const [loc, key] of [["en", "shortTitleEn"], ["sw", "shortTitleSw"], ["zh", "shortTitleZh"]] as const) {
+    if (!shorts.hard[loc]) continue;
+    const issue = shorts.issues[loc].find((i) => HARD_ISSUES.has(i)) ?? shorts.issues[loc][0];
+    return { ok: false as const, error: `${shortTitleIssueSentence(loc, issue, shortRaw[key])} Nothing was published.`, field: key };
+  }
+  const competitionRaw = String(formData.get("competition") ?? "").trim();
+  if (competitionRaw && !isCompetition(competitionRaw)) {
+    return { ok: false as const, error: `"${competitionRaw}" is not a competition this build knows. Nothing was published.`, field: "competition" };
+  }
   const { computeSelectionClosedAt } = await import("@/lib/server/ai-poll-config");
   // Same wall-clock treatment as resolutionAt — this field decides when BETTING shuts,
   // so a three-hour slip here is the same class of defect wearing a different name.
@@ -320,6 +393,10 @@ export async function createMarketAction(formData: FormData) {
       ? selectionClosedAtRaw
       : computeSelectionClosedAt(resolutionAt, rawCategory),
     proposedBy: session.userId,
+    shortTitleEn: shorts.shortTitleEn,
+    shortTitleSw: shorts.shortTitleSw,
+    shortTitleZh: shorts.shortTitleZh,
+    competition: competitionRaw || null,
   };
   // Source-trust gate — only enabled, on-registry sources can publish a market.
   await seedDefaultSources();

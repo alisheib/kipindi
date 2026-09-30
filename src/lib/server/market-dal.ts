@@ -8,6 +8,7 @@
 import { prisma } from "./prisma";
 import { hasDatabase } from "./prisma";
 import type { Prisma } from "@prisma/client";
+import { normaliseCompetition, type Competition } from "@/lib/markets/competitions";
 import type { StoredMarket, StoredPosition, MarketStatus, MarketCategory, Side, ProductLine, ProductLineFilter } from "./market-service";
 
 /**
@@ -119,6 +120,11 @@ function toStoredMarket(r: any): StoredMarket {
     resolutionCriterion: r.resolutionCriterion,
     resolutionCriterionSw: r.resolutionCriterionSw ?? null,
     resolutionCriterionZh: r.resolutionCriterionZh ?? null,
+    // The Vodacom plan S2. `competition` is coerced, not trusted: a key this build does not know reads as none.
+    shortTitleEn: r.shortTitleEn ?? null,
+    shortTitleSw: r.shortTitleSw ?? null,
+    shortTitleZh: r.shortTitleZh ?? null,
+    competition: normaliseCompetition(r.competition),
     resolutionAt: iso(r.resolutionAt)!,
     selectionClosedAt: iso(r.selectionClosedAt) ?? null,
     status: r.status as MarketStatus,
@@ -189,6 +195,14 @@ function toStoredPosition(r: any): StoredPosition {
 // Market store interface
 // ---------------------------------------------------------------------------
 
+/** The four columns `setShortTitles` writes — all four, always, so a caller states what each one becomes. */
+export type MarketShortTitleFields = {
+  shortTitleEn: string | null;
+  shortTitleSw: string | null;
+  shortTitleZh: string | null;
+  competition: Competition | null;
+};
+
 export interface MarketStore {
   // tx: read THROUGH the enclosing lock's transaction. The bet path holds one
   // transaction for the whole bet (see locks.ts); reading on a separate pool
@@ -212,6 +226,13 @@ export interface MarketStore {
    * makes it safe to stop taking the market lock on the bet path.
    */
   stamp(id: string, fields: Partial<StoredMarket>, tx?: Prisma.TransactionClient | null): Promise<void>;
+  /**
+   * ⭐ THE SHORT TITLES AND THE COMPETITION, AND NOTHING ELSE (the Vodacom plan S2). A narrow UPDATE of exactly four
+   * columns — never the full-row `set` (which rewrites the pools from the caller's read and would erase a stake that
+   * landed in between) and never `stamp` (whose Prisma allow-list refuses title fields while the memory twin spreads
+   * anything: green in every suite, a throw in production). Callers hold `withLock(market:<id>)` and pass its `tx`.
+   */
+  setShortTitles(id: string, fields: MarketShortTitleFields, tx?: Prisma.TransactionClient | null): Promise<void>;
   /**
    * Atomic pool delta — `yesPool`/`noPool`/`predictorCount` by increment, never
    * by read-modify-write. Mirrors db.wallet.adjust: the database computes the new
@@ -596,6 +617,18 @@ const memoryMarkets: MarketStore = {
     const cur = markets.get(id);
     if (cur) markets.set(id, { ...cur, ...fields });
   },
+  async setShortTitles(id, fields, _tx) {
+    const cur = markets.get(id);
+    if (!cur) return;
+    markets.set(id, {
+      ...cur,
+      shortTitleEn: fields.shortTitleEn,
+      shortTitleSw: fields.shortTitleSw,
+      shortTitleZh: fields.shortTitleZh,
+      competition: fields.competition,
+      updatedAt: new Date().toISOString(),
+    });
+  },
   async addToPool(id, deltas, _tx) {
     const cur = markets.get(id);
     if (!cur) return null;
@@ -966,6 +999,18 @@ const prismaMarkets: MarketStore = {
     if (!("updatedAt" in data)) data.updatedAt = new Date();
     await (tx ?? pc()).predictionMarket.update({ where: { id }, data });
   },
+  async setShortTitles(id, fields, tx) {
+    await (tx ?? pc()).predictionMarket.update({
+      where: { id },
+      data: {
+        shortTitleEn: fields.shortTitleEn,
+        shortTitleSw: fields.shortTitleSw,
+        shortTitleZh: fields.shortTitleZh,
+        competition: fields.competition,
+        updatedAt: new Date(),
+      },
+    });
+  },
   async addToPool(id, deltas, tx) {
     const data: Record<string, unknown> = { updatedAt: new Date() };
     if (deltas.yesPool !== undefined) data.yesPool = { increment: deltas.yesPool };
@@ -992,6 +1037,11 @@ const prismaMarkets: MarketStore = {
         // which reads as green everywhere because nothing ever errors.
         resolutionCriterionSw: m.resolutionCriterionSw,
         resolutionCriterionZh: m.resolutionCriterionZh,
+        // The Vodacom plan S2 — in BOTH arms, one key per line (see the warning above; dal-parity counts lines).
+        shortTitleEn: m.shortTitleEn ?? null,
+        shortTitleSw: m.shortTitleSw ?? null,
+        shortTitleZh: m.shortTitleZh ?? null,
+        competition: m.competition ?? null,
         resolutionAt: new Date(m.resolutionAt),
         selectionClosedAt: m.selectionClosedAt ? new Date(m.selectionClosedAt) : null,
         status: m.status, yesPool: m.yesPool, noPool: m.noPool,
@@ -1035,6 +1085,11 @@ const prismaMarkets: MarketStore = {
         // which reads as green everywhere because nothing ever errors.
         resolutionCriterionSw: m.resolutionCriterionSw,
         resolutionCriterionZh: m.resolutionCriterionZh,
+        // The Vodacom plan S2 — in BOTH arms, one key per line (see the warning above; dal-parity counts lines).
+        shortTitleEn: m.shortTitleEn ?? null,
+        shortTitleSw: m.shortTitleSw ?? null,
+        shortTitleZh: m.shortTitleZh ?? null,
+        competition: m.competition ?? null,
         resolutionAt: new Date(m.resolutionAt),
         selectionClosedAt: m.selectionClosedAt ? new Date(m.selectionClosedAt) : null,
         status: m.status, yesPool: m.yesPool, noPool: m.noPool,

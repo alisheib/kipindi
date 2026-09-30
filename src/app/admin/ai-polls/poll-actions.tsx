@@ -15,6 +15,11 @@ import {
   criterionTranslationIssue, MIN_CRITERION_TRANSLATION,
   type CriterionTranslationIssue,
 } from "@/lib/localized";
+// The Vodacom plan S2 — the ONE short-title rule and the ONE competition list, the same the server refuses with.
+import { SHORT_TITLE_MAX, SHORT_TITLE_LOCALES, codePoints, normaliseShortTitleSet, type ShortTitleIssue } from "@/lib/markets/short-title";
+import { COMPETITIONS } from "@/lib/markets/competitions";
+import { competitionLabel } from "@/lib/markets/competition-label";
+import { dict } from "@/lib/i18n-dict";
 import { DateSelect } from "@/components/ui/date-select";
 import { TimeSelect } from "@/components/ui/time-select";
 import { Toggle } from "@/components/ui/toggle";
@@ -1566,6 +1571,22 @@ function EditForm({ poll, onClose, overlay }: { poll: StoredAIPoll; onClose: () 
   const [criterion, setCriterion] = useState(poll.resolutionCriterion);
   const [criterionSw, setCriterionSw] = useState(poll.resolutionCriterionSw ?? "");
   const [criterionZh, setCriterionZh] = useState(poll.resolutionCriterionZh ?? "");
+  // The Vodacom plan S2 — the card's short question per language, and the competition. Blank = none.
+  const [shortEn, setShortEn] = useState(poll.shortTitleEn ?? "");
+  const [shortSw, setShortSw] = useState(poll.shortTitleSw ?? "");
+  const [shortZh, setShortZh] = useState(poll.shortTitleZh ?? "");
+  const [competition, setCompetition] = useState(poll.competition ?? "");
+  // ⛔ THE SAME imported rule the server's `editAIPoll` refuses with (non-strict: a number-drift WARNING is the
+  // officer's to accept), checked against the titles as edited in this panel.
+  const shortSet = normaliseShortTitleSet({ titleEn, titleSw, titleZh: titleZh || null, shortTitleEn: shortEn, shortTitleSw: shortSw, shortTitleZh: shortZh });
+  const shortHard = SHORT_TITLE_LOCALES.find((l) => shortSet.hard[l]) ?? null;
+  /** A predicate phrase: "The Swahili short title <phrase>." */
+  const shortIssueWords = (l: "en" | "sw" | "zh", i: ShortTitleIssue) =>
+    i === "too_long" ? `is longer than ${SHORT_TITLE_MAX[l]} characters`
+      : i === "not_gsm7" ? "has characters a text message cannot carry"
+        : i === "form" ? (l === "sw" ? "is not in the “Je, …?” form" : l === "en" ? "is not a question ending in “?”" : "is not a question ending in “？”")
+          : i === "copied_english" ? "is the English one — write it in its own language, or leave it blank"
+            : "has a number the full question does not — check it says the same thing";
   // ⛔ THE SAME imported rule the wizard and the server action use — one policy, three
   // surfaces. Re-implementing it here is how a client comes to accept what the server
   // refuses (E-145's shape).
@@ -1607,7 +1628,9 @@ function EditForm({ poll, onClose, overlay }: { poll: StoredAIPoll; onClose: () 
     editDate !== (validInit ? validInit.toISOString().slice(0, 10) : "") ||
     editTime !== (validInit ? validInit.toISOString().slice(11, 16) : "") ||
     selDate !== (validSel ? validSel.toISOString().slice(0, 10) : "") ||
-    selTime !== (validSel ? validSel.toISOString().slice(11, 16) : "");
+    selTime !== (validSel ? validSel.toISOString().slice(11, 16) : "") ||
+    shortEn !== (poll.shortTitleEn ?? "") || shortSw !== (poll.shortTitleSw ?? "") || shortZh !== (poll.shortTitleZh ?? "") ||
+    competition !== (poll.competition ?? "");
 
   /** Combine an ISO date (YYYY-MM-DD) + 24h time (HH:MM) into a UTC ISO string. */
   const combineDateTime = (isoDate: string, time: string): string | null => {
@@ -1627,6 +1650,13 @@ function EditForm({ poll, onClose, overlay }: { poll: StoredAIPoll; onClose: () 
     // its Continue button on the same rule; this panel had the rule and never used it.
     if (swIssue || zhIssue) {
       overlay.fail("Couldn't save", issueText(swIssue ?? zhIssue) ?? "Fix the criterion translation first.");
+      return;
+    }
+    // The same refusal for a short title the server would refuse — never a success toast over a dropped value.
+    if (shortHard) {
+      const issue = shortSet.issues[shortHard].find((i) => i !== "number_drift") ?? shortSet.issues[shortHard][0];
+      const language = shortHard === "sw" ? "Swahili" : shortHard === "zh" ? "Chinese" : "English";
+      overlay.fail("Couldn't save", `The ${language} short title ${shortIssueWords(shortHard, issue)}.`);
       return;
     }
     // A resolution date is mandatory on edit — guard the unsafe Date() parse.
@@ -1661,6 +1691,10 @@ function EditForm({ poll, onClose, overlay }: { poll: StoredAIPoll; onClose: () 
       fd.set("resolutionCriterionZh", criterionZh);
       fd.set("resolutionAt", resIso.toISOString());
       fd.set("selectionClosedAt", selIsoStr ?? "");
+      fd.set("shortTitleEn", shortEn);
+      fd.set("shortTitleSw", shortSw);
+      fd.set("shortTitleZh", shortZh);
+      fd.set("competition", competition);
       /* ⛔ Wrapped, not a bare try/catch: that swallowed the redirect an expired session throws,
          so the officer read "Edit failed" instead of being taken to sign in. A thrown action
          now lands in the `!r.ok` branch below; a redirect still redirects. */
@@ -1688,6 +1722,35 @@ function EditForm({ poll, onClose, overlay }: { poll: StoredAIPoll; onClose: () 
         <span className="text-[10px] text-text-subtle">Title (ZH) · Chinese</span>
         <Input value={titleZh} onChange={(e) => setTitleZh(e.target.value)} size="sm" />
       </label>
+      {/* ⭐ The Vodacom plan S2 — the question a phone card shows. The officer reads and fixes what the model wrote
+          before approval; blank is a legitimate answer (the card shows the full question). The counter reads the
+          one budget; a value the rules refuse is refused on Save, here and on the server. */}
+      {([
+        ["en", "Short title (EN)", shortEn, setShortEn],
+        ["sw", "Short title (SW) · “Je, …?”", shortSw, setShortSw],
+        ["zh", "Short title (ZH) · Chinese", shortZh, setShortZh],
+      ] as const).map(([l, text, value, set]) => {
+        const hardHere = shortSet.hard[l];
+        const firstIssue = shortSet.issues[l][0];
+        return (
+          <label key={l} className="block">
+            <span className="text-body-sm text-text-subtle">
+              {text} · <span className={codePoints(value) > SHORT_TITLE_MAX[l] ? "text-danger-fg" : undefined}>{codePoints(value)} / {SHORT_TITLE_MAX[l]}</span> · blank = card shows the full question
+            </span>
+            <Input value={value} onChange={(e) => set(e.target.value)} size="sm" aria-invalid={hardHere || undefined} />
+            {firstIssue && (
+              <p role={hardHere ? "alert" : undefined} className={`mt-1 text-body-sm leading-snug ${hardHere ? "text-danger-fg" : "text-warning-fg"}`}>
+                This short title {shortIssueWords(l, firstIssue)}.
+              </p>
+            )}
+          </label>
+        );
+      })}
+      <div>
+        <span className="text-body-sm text-text-subtle block mb-1">Competition</span>
+        <Select value={competition} onChange={setCompetition} size="sm" ariaLabel="Competition"
+          options={[{ value: "", label: "None" }, ...COMPETITIONS.map((c) => ({ value: c, label: competitionLabel(dict.en, c) }))]} />
+      </div>
       <div>
         <span className="text-[10px] text-text-subtle block mb-1">Category</span>
         <Select value={category} onChange={setCategory} size="sm"

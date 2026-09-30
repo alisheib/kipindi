@@ -235,6 +235,8 @@ await saveCycleConfig({ ...CYCLE_DEFAULTS, autoRoll: true });
     ["src/lib/server/updown-oracle.ts",      "src/lib/server/updown-oracle.ts"],
     ["src/lib/server/market-sentinel.ts",    "src/lib/server/market-sentinel.ts"],
     ["src/lib/server/ai-provider-claude.ts", "src/lib/server/ai-poll-generation.ts"],
+    // The Vodacom plan S2 (2026-09-30): the short-title backfill meters its drafts AND gates them (kill switch, budget).
+    ["src/lib/server/short-title-backfill.ts", "src/lib/server/short-title-backfill.ts"],
   ];
   const read = (f: string) => readFileSync(f, "utf8");
 

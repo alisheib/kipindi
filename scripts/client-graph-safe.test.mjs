@@ -104,6 +104,13 @@ console.log("\n[client-graph-safe] \u00a71 client-reachable modules stay clear o
     // The statutory footer a composer screen renders beside the body; it imports only app-url
     // and sms-compose, both zero-import, and must stay that way.
     "lib/marketing/footer.ts",
+    // ⭐ ADDED 2026-09-30 (Vodacom plan S2). The short-title rules and the competition list lead the same double life:
+    // the admin edit and the journey card (S7) render them in the browser, while `createMarket`, the narrow writer and
+    // the AI generator read them on the server. `short-title.ts` imports only `localized.ts` and `sms-compose.ts`;
+    // `competitions.ts` imports nothing; `competition-label.ts` is type-only. Pinned from the commit that adds them.
+    "lib/markets/short-title.ts",
+    "lib/markets/competitions.ts",
+    "lib/markets/competition-label.ts",
   ];
   const offenders = [];
   let checked = 0;

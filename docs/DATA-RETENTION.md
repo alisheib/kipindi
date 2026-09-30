@@ -345,7 +345,7 @@ the exception: archiving can be undone, this cannot.
 |---|---|---|
 | `UpDownRound` | **DELETED** | the price story. No money meaning — the money lives on the market. |
 | `Comment`, `Watchlist`, `MarketSnapshot` | **DELETED** | player-facing chaff, no statutory role |
-| `PredictionMarket` | **REDACTED, never deleted** | titles + criterion blanked to a named sentinel; `purgedAt` / `purgedBy` / `purgeReason` stamped. Pools, `feeSnapshot`, `resolvedOutcome` and `settledAt` are **kept** |
+| `PredictionMarket` | **REDACTED, never deleted** | titles + criterion blanked to a named sentinel; `shortTitleEn` / `shortTitleSw` / `shortTitleZh` / `competition` (the card wording, Vodacom plan S2, 2026-09-30) set to NULL; `purgedAt` / `purgedBy` / `purgeReason` stamped. Pools, `feeSnapshot`, `resolvedOutcome` and `settledAt` are **kept** |
 | `Position`, `Transaction`, `LedgerEntry`, `HousePoolLedger`, `AuditLog`, `UpDownObservation`, `HouseBot`, `HouseBotControl`, `HouseBotRuntime`, `HouseBotAlertOnce`, `HouseBotEvent`, `HouseBotIntent`, `HouseBotTarget`, `HouseBotPress` | **NEVER TOUCHED — and since 2026-09-20 that is ENFORCED, not merely written down (§7.7)** | the statutory record, the house record, and the shared price readings |
 
 ### 7.2 Why redact rather than delete — proven on production, 2026-08-28

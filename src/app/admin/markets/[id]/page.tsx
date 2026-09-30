@@ -1,5 +1,6 @@
 import { parseQuery, matchesQuery, fieldNames, USER_SEARCH } from "@/lib/search";
 import { RecategoriseControl } from "@/app/admin/markets/recategorise-control";
+import { ShortTitleControl } from "@/app/admin/markets/short-title-control";
 import { MARKET_CATEGORIES } from "@/lib/server/market-service";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -240,6 +241,22 @@ async function MarketPredictorsContent({
               Source <I.ext s={11} />
             </a>
           </div>
+          {/* ⭐ The Vodacom plan S2 — the card's short question and the competition, edited under the full titles
+              they must agree with. ⛔ Never on an Up & Down round: a round is not a card and is out of S2, and the
+              server refuses it anyway (`applyShortTitles`). */}
+          {m.productLine !== "UPDOWN" && (
+            <div className="mt-3 pt-3 border-t border-border/60">
+              <ShortTitleControl
+                marketId={m.id}
+                current={{
+                  shortTitleEn: m.shortTitleEn ?? null,
+                  shortTitleSw: m.shortTitleSw ?? null,
+                  shortTitleZh: m.shortTitleZh ?? null,
+                  competition: m.competition ?? null,
+                }}
+              />
+            </div>
+          )}
           <div className="mt-3">
             <ProbabilityBar yesPct={price.kind === "priced" ? price.yesPct : undefined} empty={price.kind !== "priced"} emptyLabel={noPriceLabel} size="micro" resolved={m.status === "RESOLVED"} />
             <p className="mt-1 font-mono text-[10px] text-text-subtle">{price.kind === "priced" ? `${price.yesPct}% YES · ${100 - price.yesPct}% NO` : noPriceLabel}</p>
