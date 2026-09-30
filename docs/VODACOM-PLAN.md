@@ -166,8 +166,11 @@ in-process red twins; `test:dal-parity` (+ `red:dal-parity`), `test:campaign-com
 BEFORE S2 and unchanged by it: recategorise (check 5, so `red:recategorise` cannot run), type-scale, tap-target,
 decomment, red-anchors ×2.
 
-**Left to do (S2 close-out)** — (1) the adversarial review (5 lenses + skeptics) was running at the time of this note:
-fix every confirmed finding; (2) re-run the battery and `qa:short-titles`; (3) merge to main, push, verify the deploy
+**Left to do (S2 close-out)** — (1) the adversarial review FINISHED (2026-09-30): 5 lenses, 26 findings, 4 refuted; the
+confirmed ones (a recategorise race, draft approval inside the drafts transaction, draft vs officer overwrite, raw
+competition keys, the copied-English and number rules, zh “？”, double-paid concurrent runs, re-drafting declined languages,
+the per-run kill switch, sentinel verdicts on approvals, officer-typed titles unchecked, and the boot-time migration
+lock) are being fixed; the migrations already retry their lock wait inside the SQL; (2) re-run the battery and `qa:short-titles`; (3) merge to main, push, verify the deploy
 (the migrations run on production at boot); (4) run the `qa:short-title-fit` read against production (read-only);
 (5) an officer presses "Draft short titles for open markets" and approves them; when every open market has short
 titles within budget, S2 is ✅. S2 changes NOTHING players see — the journey card (S7) is where short titles appear.
