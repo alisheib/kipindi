@@ -178,8 +178,13 @@ async function seedMarket(category: string) {
   const DYN = 'export const dynamic = "force-dynamic"';
   ok("5: ⭐ `/results` is force-dynamic -- it re-reads the category, so it cannot go stale",
      results.includes(DYN));
+  // ⚠️ RE-POINTED 2026-09-30 (found red on main by the Vodacom plan S2 battery): `/results` no longer filters inline —
+  // it maps every terminal market into an archive row carrying `category: m.category`, read fresh on each render, and
+  // `lib/results/archive.ts`'s category axis filters on THAT field. The property is unchanged — a re-filed market
+  // moves the next time the page renders — only its spelling moved, so the check follows it.
+  const archive = decomment(readFileSync(join(ROOT, "src/lib/results/archive.ts"), "utf8"));
   ok("5: …and it really does group off `m.category`, so a correction moves the market",
-     results.includes("m.category === activeCat") && results.includes("m.category === c"));
+     /category:\s*m\.category\b/.test(results) && /r\.category\s*===\s*s\.cat/.test(archive));
   ok("5: …and the action names `/results` anyway, so a static `/results` still refreshes",
      actions.includes('revalidatePath("/results")'));
   ok("5: …and `/markets` re-reads it too", markets.includes(DYN));
