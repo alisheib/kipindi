@@ -21,8 +21,8 @@
 migrations finished on production. It waits on an officer drafting and approving the short titles (§0d). Nothing
 reaches players.
 
-**Next:** an officer presses "Draft short titles for open markets" on `/admin/ai-polls?tab=short-titles` and approves
-them (§0d "Left to do"), then S2 is ✅ — or, while that waits, S3 (§5).
+**Next:** S3 is IN PROGRESS on `simple-journey` (§0e: piece 1 of 5 done). In parallel, an officer presses "Draft short
+titles for open markets" on `/admin/ai-polls?tab=short-titles` and approves them (§0d "Left to do"), then S2 is ✅.
 
 Session law, the same for every session:
 - Code, two-store tests, and `red:*` twins reachable from `red:all`, with declared anchors.
@@ -134,6 +134,27 @@ drive (guest, SUPPORT officer, player, Owner Stop and Resume, a stranger on a li
 **Still open (S1 close-out)** — pushed (`41ec1703`), `JOURNEY_PREVIEW_SECRET` set on Railway (48 characters),
 deploy verified, and a signed-out visitor sees nothing on production (`qa:live` 319/0 there, [E2] included). One
 press by Ali remains: `/admin/journey` → "Turn my preview on" → the bar on 50pick.tz. Then S1 is ✅.
+
+## §0e · S3 in progress (2026-10-01) — the engine, on branch `simple-journey`
+
+S3 is §3.1 in full, built as five pure pieces, each with its suite and an in-process red twin, committed to
+`simple-journey` one at a time (the branch is merged to main when all five pass):
+
+| # | Piece | State | Where |
+|---|---|---|---|
+| 1 | The estimate — `src/lib/markets/estimate.ts` (+ `loserShareRate`/`loserSharePct` in `payout.ts`) | ✅ `5070d1a7` | `test:journey-estimate` (predeploy) + red 14/14 |
+| 2 | The card's close label — `src/lib/markets/card-close-label.ts` + `cardClosesToday`/`cardDaysLeft` en/sw/zh | ⬜ | |
+| 3 | The shortfall plan — `src/lib/journey/shortfall.ts` (+ `depositCeilingFor`, `lossHeadroomFor`) | ⬜ | |
+| 4 | The pending bet — `src/lib/journey/pending-bet.ts` + `src/lib/safe-next.ts` | ⬜ | |
+| 5 | The sheet API — `GET /api/markets/[id]/sheet` | ⬜ | |
+
+**Decisions taken in S3 (delegated):**
+- `estimate.ts` imports `payout.ts` (itself import-free) rather than being import-free as §3.1 says: the sheet's figure
+  must BE `payoutFor`'s, not a second formula (the `updown-pricing.ts` precedent). It stays client-safe and is pinned.
+- The card's half-up is EXACT (BigInt over the rate in parts per million): at YES 3 / NO 65 and 13% the multiple is
+  19.85, which the natural float formula rounds to 19.8. `test:journey-estimate` §c holds the tie.
+- State precedence: closed → emptyPool → oneSidedRefund → fillsEmptySide → hidden → invalidStake → priced. The empty
+  side is a FACT and shows even with the display switch off; the sheet prints a figure for a side it fills.
 
 ## §0d · S2 as built (2026-09-30) — LIVE on main since `473807b1`
 
