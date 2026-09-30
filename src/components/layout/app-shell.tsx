@@ -54,6 +54,8 @@ import { agentStandingFor, playerInviteEligibleFor } from "@/lib/server/affiliat
 import { invitePaysPlayersNow } from "@/lib/server/invite-rewards-switch";
 import { resolveSimpleJourney } from "@/lib/server/journey-preview";
 import { PreviewMarker } from "./preview-marker";
+import { FunnelUtm } from "@/components/analytics/funnel-utm";
+import { isStaffRole } from "@/lib/server/roles";
 import { displayLabel, displayInitials } from "@/lib/display-label";
 import { getServerT } from "@/lib/i18n-server";
 import { getPlatformConfig, maintenanceMessage } from "@/lib/server/platform-config";
@@ -174,6 +176,8 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
   let emailVerifyState: { email: string | null } | null = null;
   /** Who is asking about Invite — standing, not role. See `feature-state.ts` → `InviteViewer`. */
   let inviteViewer: InviteViewer = NO_VIEWER;
+  /** The journey funnel's view of this reader (S3b): a signed-in account whose read failed is NOT counted. */
+  let funnelViewer: "guest" | "player" | "staff" | "unknown" = "guest";
   if (session) {
     // Batch the four queries in parallel — eliminates the sequential
     // waterfall. Promise.allSettled so one failing query can't crash
@@ -212,6 +216,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
      * returning no row) the viewer is closed entirely — the same safe direction the user read takes.
      */
     const affReadFailed = affResult.status !== "fulfilled";
+    funnelViewer = !u ? "unknown" : isStaffRole(u.role) ? "staff" : "player";
     inviteViewer = u && !affReadFailed
       ? { role: u.role, agentInGoodStanding: agentStandingFor(u, aff).ok, playerInviteEligible: playerInviteEligibleFor(u, aff) }
       : NO_VIEWER;
@@ -359,6 +364,12 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
 
   /** True only for a request whose preview pass counts (`simpleJourneyFor`). Everybody else gets no marker. */
   const journeyPreview = (await journeyRead).preview;
+  /** This request is shown the new journey (the funnel counts it as "new"). */
+  const journeyShown = (await journeyRead).journey;
+  /* ⭐ WHO THE JOURNEY FUNNEL COUNTS (Vodacom plan S3b, §0f) — decided HERE, on the server, and rendered as one
+     attribute the browser beacon reads before it sends anything: staff, a preview pass and an account whose read
+     failed are "off"; everybody else is counted in the journey they are shown. `/api/funnel` needs no cookie. */
+  const funnelScopeValue = journeyPreview || funnelViewer === "staff" || funnelViewer === "unknown" ? "off" : journeyShown ? "new" : "old";
 
   return (
     <div className="min-h-screen flex flex-col bg-bg-base text-text">
@@ -380,6 +391,8 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       {/* ⭐ THE PREVIEW MARKER — first under the bar, so whoever holds this browser knows at once that they are
           looking at pages players do not see yet, and has the way out on the same line. */}
       {journeyPreview && <PreviewMarker label={t.journey.previewMarker} exit={t.journey.previewExit} />}
+      <span hidden data-kp-funnel={funnelScopeValue} />
+      {funnelScopeValue !== "off" && <FunnelUtm />}
       <AnnouncementBanner maintenance={maintBanner} announcement={announcement} />
       {/* 🔴 E-381 · the in-place answer to a session that ended during a refresh — see the note at
           `endedReason`. Server-rendered, and its only action is a plain `<a>`. */}

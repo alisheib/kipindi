@@ -170,7 +170,11 @@ them. **Report:** a "Journey funnel" panel on `/admin/insights` (the four ratios
 **Pieces** — A: the store, schema, migration, retention, `test:journey-funnel` — ✅ (`lib/journey/funnel.ts` the one
 allow-list; `lib/server/journey-funnel.ts` the memory/Prisma twin; `JourneyFunnelDay` + migration
 `20261001120000_journey_funnel`; pruned by `retention.purge.daily`; red 10/10). B: `POST /api/funnel` + the beacon + the
-old-journey client wiring. C: the server counters + the `origin` columns. D: Privacy v2026-10-01. E: the insights
+old-journey client wiring — ✅ (`/api/funnel` = `/api/pv`'s rules, 204 always, no cookie; `lib/journey/funnel-beacon.ts`
+sends only under the shell's server-rendered `data-kp-funnel` scope; `FunnelUtm` keeps the first-touch tags;
+`sheet_open` from `SidePicker`, `low_balance` from the dial and the Up & Down quick-bet hook, the bet forms carry
+`funnelOrigin`; the Up & Down deposit links carry `from=low-balance`, the home side links `from=home`; the suite drives
+the real POST handler; red 16/16). C: the server counters + the `origin` columns. D: Privacy v2026-10-01. E: the insights
 panel. F: battery, drive, merge, deploy, and the first day's counts read on production.
 
 ## §0e · S3 as built (2026-10-01) — ✅ merged to main

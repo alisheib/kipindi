@@ -282,7 +282,7 @@ export function UpDownStakeControls({
           <span>
             {t.market.udInsufficientBalance}{" "}
             <Link
-              href="/wallet/deposit"
+              href="/wallet/deposit?from=low-balance"
               className="underline decoration-[color:var(--border-strong)] underline-offset-2 hover:text-text-muted"
               onClick={(e) => { if (stopPropagation) e.stopPropagation(); }}
             >

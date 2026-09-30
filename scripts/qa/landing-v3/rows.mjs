@@ -55,8 +55,10 @@ const PROBE = (plant) => {
     const [yes, no] = [...act.querySelectorAll("a")];
     if (!yes || !no) bad.push("the pair is not two links");
     else {
-      if (!(yes.getAttribute("href") || "").endsWith(`/markets/${id}?side=YES`)) bad.push(`YES href ${yes.getAttribute("href")}`);
-      if (!(no.getAttribute("href") || "").endsWith(`/markets/${id}?side=NO`)) bad.push(`NO href ${no.getAttribute("href")}`);
+      // The side links also carry `from=home` since the Vodacom plan S3b (the journey funnel's origin) — read the query.
+      const sideOf = (a) => { const u = new URL(a.getAttribute("href") || "", location.origin); return u.pathname === `/markets/${id}` ? u.searchParams.get("side") : null; };
+      if (sideOf(yes) !== "YES") bad.push(`YES href ${yes.getAttribute("href")}`);
+      if (sideOf(no) !== "NO") bad.push(`NO href ${no.getAttribute("href")}`);
       for (const b of [yes, no]) if (R(b).height < 44) bad.push(`a side link ${Math.round(R(b).height)}px tall`);
     }
     const h = R(head), r = R(read), a = R(act), rw = R(row);

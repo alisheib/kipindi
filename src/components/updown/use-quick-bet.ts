@@ -3,6 +3,7 @@
 import { useState, useTransition, useMemo, useEffect, useRef, useCallback } from "react";
 import { useToast } from "@/components/ui/toast";
 import { buyPositionAction } from "@/app/markets/actions";
+import { funnelBetFields, sendFunnel } from "@/lib/journey/funnel-beacon";
 import { formatTzs } from "@/lib/utils";
 import { haptics } from "@/lib/haptics";
 // §F8 · how long the success toast stands, from the ONE module that owns dwell times.
@@ -242,6 +243,13 @@ export function useUpDownQuickBet(opts: {
    *  in-flight spend, which a bare `stake > balance` misses on a rapid burst). Unknown
    *  balance (null) never gates — B-1: a failed read never invents "insufficient". */
   const insufficient = stakeReady && insufficientFor(opts.walletBalance, optUp + optDown, stake);
+  /* The journey funnel (Vodacom plan S3b, §0f) — the "not enough money" state, counted once per surface. */
+  const lowBalanceCounted = useRef(false);
+  useEffect(() => {
+    if (!insufficient || lowBalanceCounted.current) return;
+    lowBalanceCounted.current = true;
+    sendFunnel("low_balance", "updown");
+  }, [insufficient]);
   /** UD-3 · a compliance/account block the surface must present as an acknowledge-modal. */
   const [blocked, setBlocked] = useState<Extract<UdBetFailure, { kind: "blocked" }> | null>(null);
   const clearBlocked = useCallback(() => setBlocked(null), []);
@@ -327,6 +335,7 @@ export function useUpDownQuickBet(opts: {
       fd.set("side", side === "UP" ? "YES" : "NO");
       fd.set("stake", String(amount));
       fd.set("idempotencyKey", key);
+      funnelBetFields(fd, "quick"); // the server counts the bet with its origin once it lands (S3b)
       try {
         const r = await buyPositionAction(fd);
         // UD-7 · AUTH LOSS IS NOT A FAILED BET. A signed-out session makes the action

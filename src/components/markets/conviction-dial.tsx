@@ -22,6 +22,7 @@ import { useDeferredToast } from "@/components/ui/toast";
 import { useT } from "@/lib/i18n";
 import { sideWord } from "@/lib/side-label";
 import { buyPositionAction } from "@/app/markets/actions";
+import { funnelBetFields, sendFunnel } from "@/lib/journey/funnel-beacon";
 import { HouseLeanWarning } from "./house-lean-warning";
 import { BetConfirmModal } from "./bet-confirm-modal";
 import { OperationResultModal } from "./operation-result-modal";
@@ -777,6 +778,15 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
     return () => ro.disconnect();
   }, []);
 
+  /* The journey funnel (Vodacom plan S3b, §0f) — the old journey's "not enough money" state, counted once per dial. */
+  const lowBalanceShown = effectiveSide !== "NEUTRAL" && balance !== undefined && stake > balance;
+  const lowBalanceCounted = useRef(false);
+  useEffect(() => {
+    if (!lowBalanceShown || lowBalanceCounted.current) return;
+    lowBalanceCounted.current = true;
+    sendFunnel("low_balance", "dial");
+  }, [lowBalanceShown]);
+
   const height = 140;
   const trackH = 12;
   const trackY = height / 2 - trackH / 2;
@@ -936,6 +946,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
       fd.set("side", q.side);
       fd.set("stake", String(q.stake));
       fd.set("idempotencyKey", betIdempotencyKey.current);
+      funnelBetFields(fd, "dial"); // the server counts the bet with its origin once it lands (S3b)
       // 🔴 A THROW USED TO BE COMPLETELY SILENT. `buyPositionAction` returns a result
       // object for every refusal it ANTICIPATES, but the money path also re-throws
       // (market-service.ts:561-571), and a server action that throws — or a dropped

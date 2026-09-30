@@ -10,7 +10,7 @@
  * entire page just to pass the `?side` query parameter.
  */
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { I } from "@/components/ui/glyphs";
 import { Chip } from "@/components/ui/chip";
 import { ConvictionDial } from "./conviction-dial";
@@ -19,6 +19,7 @@ import { useT } from "@/lib/i18n";
 import { sideWord } from "@/lib/side-label";
 import { priceState } from "@/lib/markets/price-state";
 import type { PollRates } from "@/lib/payout";
+import { sendFunnel } from "@/lib/journey/funnel-beacon";
 
 type Props = {
   marketId: string;
@@ -54,6 +55,16 @@ export function SidePicker({
 }: Props) {
   const { t } = useT();
   const [side, setSide] = useState<"YES" | "NO" | null>(initialSide ?? null);
+  /* The journey funnel (Vodacom plan S3b, §0f) — the old journey's "sheet open": the dial revealed, once per page.
+     Its origin: a link from the home page (`from=home`), any other `?side=` link ("board"), or a tap here ("market"). */
+  const openCounted = useRef(false);
+  useEffect(() => {
+    if (!side || openCounted.current) return;
+    openCounted.current = true;
+    const fromUrl = !!initialSide && side === initialSide;
+    const home = new URLSearchParams(window.location.search).get("from") === "home";
+    sendFunnel("sheet_open", fromUrl ? (home ? "home" : "board") : "market");
+  }, [side, initialSide]);
   // ⭐ C1 · the card's rule: a figure only where both pools hold money (1–99, L14); bare side words on an
   // empty or one-sided pool (ruling 13). The picker takes NO price prop, so no caller can hand it one that
   // disagrees with the pools. Display only — the dial below prices from the raw pools it is handed.

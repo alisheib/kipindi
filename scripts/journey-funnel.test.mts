@@ -23,23 +23,40 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import * as F from "../src/lib/journey/funnel.ts";
 import * as S from "../src/lib/server/journey-funnel.ts";
+import { POST as FUNNEL_POST } from "../src/app/api/funnel/route.ts";
+import { RATE_RULES } from "../src/lib/server/rate-limit.ts";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const read = (rel: string) => readFileSync(join(ROOT, rel), "utf8").replace(/\r\n/g, "\n");
 const SCHEMA = read("prisma/schema.prisma");
 const MIGRATION = read("prisma/migrations/20261001120000_journey_funnel/migration.sql");
 const RETENTION = read("src/lib/server/retention.ts");
+const ROUTE = read("src/app/api/funnel/route.ts");
+const BEACON = read("src/lib/journey/funnel-beacon.ts");
+const SHELL = read("src/components/layout/app-shell.tsx");
+/** Every src file that calls the beacon, for the census (8). */
+const CALLERS = ["src/components/markets/side-picker.tsx", "src/components/markets/conviction-dial.tsx", "src/components/updown/use-quick-bet.ts"]
+  .map((rel) => ({ rel, text: read(rel) }));
+const DEPOSIT_LINKS = ["src/components/updown/updown-stake-controls.tsx", "src/components/updown/round-stake-panel.tsx"].map((rel) => read(rel));
+const HOME = read("src/components/home/landing-hero.tsx");
 const PROVE_RED = process.argv.includes("--prove-red");
 
 type Impl = {
   parse: typeof F.parseFunnelBody; body: typeof F.funnelBody; norm: typeof S.normaliseFunnelEvent;
   record: typeof S.recordFunnel; rows: typeof S.funnelRows; prune: typeof S.pruneJourneyFunnel;
   utm: typeof F.utmFromSearch; readUtm: typeof F.readUtm; schema: string; migration: string; retention: string;
+  post: typeof FUNNEL_POST; route: string; beacon: string; shell: string; callers: Array<{ rel: string; text: string }>;
+  depositLinks: string[]; home: string;
 };
 const REAL: Impl = {
   parse: F.parseFunnelBody, body: F.funnelBody, norm: S.normaliseFunnelEvent, record: S.recordFunnel, rows: S.funnelRows,
   prune: S.pruneJourneyFunnel, utm: F.utmFromSearch, readUtm: F.readUtm, schema: SCHEMA, migration: MIGRATION, retention: RETENTION,
+  post: FUNNEL_POST, route: ROUTE, beacon: BEACON, shell: SHELL, callers: CALLERS, depositLinks: DEPOSIT_LINKS, home: HOME,
 };
+const CHROME = "Mozilla/5.0 (Linux; Android 13; TECNO) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Mobile Safari/537.36";
+let ipSeq = 0;
+/** Strip block and line comments, so a guard never matches the paragraph explaining a fix. */
+const code = (t: string) => t.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
 const DAY = 86_400_000;
 /** An instant written in East Africa Time (UTC+3). */
 const eat = (y: number, mo: number, d: number, h: number, mi = 0) => Date.UTC(y, mo - 1, d, h - 3, mi);
@@ -130,6 +147,54 @@ async function run(impl: Impl, log: (l: string) => void, tag: string): Promise<s
   ok("6.utm · the first touch keeps utm_source and utm_campaign lowercased; an unsafe value is dropped; a stored value is read defensively",
     j(u1) === j({ s: "facebook", c: "vodacom launch" }) && u2 === null && j(r1) === j({ s: "facebook", c: "launch" }) && j(r2) === j({ s: "", c: "" }) && j(r3) === j({ s: "", c: "" }),
     j({ u1, u2, r1, r2, r3 }));
+
+  /* 7 · the endpoint, driven in-process */
+  const today = new Date(Date.now() + 3 * 3600_000).toISOString().slice(0, 10);
+  const post = async (body: string, h: Record<string, string> = {}) => {
+    const res = await impl.post(new Request("http://localhost/api/funnel", {
+      method: "POST", body,
+      headers: { "sec-fetch-site": "same-origin", "user-agent": CHROME, "x-forwarded-for": `10.9.${tag.length}.${++ipSeq}`, ...h },
+    }));
+    return res.status;
+  };
+  const mark = `ep${tag}`;
+  const beaconBody = impl.body({ step: "sheet_open", origin: "board", variant: "old", utmSource: mark, utmCampaign: "" });
+  const statuses = [
+    await post(beaconBody),
+    await post(beaconBody, { "sec-fetch-site": "cross-site" }),
+    await post(beaconBody, { "user-agent": "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)" }),
+    await post(JSON.stringify({ s: "bet", o: "dial", v: "old", us: mark, uc: "" })),
+    await post("{not json"),
+  ];
+  const counted = (await impl.rows(today, today)).filter((r) => r.utmSource === mark);
+  ok("7.endpoint · the real POST handler counts a same-origin browser beacon, and not a cross-site POST, a crawler, a browser claiming a bet, or junk; it always answers 204",
+    statuses.every((c) => c === 204) && counted.length === 1 && counted[0].count === 1 && counted[0].step === "sheet_open",
+    j({ statuses, counted: counted.map((r) => [r.step, r.origin, r.count]) }));
+  const route = code(impl.route);
+  ok("7.no-cookie · the endpoint reads no cookie or session and sets none; POST only; rate-limited on a real rule",
+    !/cookies\(|getSession|set-cookie|document\.cookie/i.test(route) && /export async function POST\(/.test(route) && !/export async function GET\(/.test(route)
+      && /rateCheckAsync\(ip, "funnel\.ip"\)/.test(route) && Object.prototype.hasOwnProperty.call(RATE_RULES, "funnel.ip"));
+
+  /* 8 · the wiring */
+  const beacon = code(impl.beacon);
+  ok("8.scope · the beacon sends only when the server-rendered scope is old or new, skips automation, and touches no cookie and no storage but the kp-utm session key",
+    /querySelector\("\[data-kp-funnel\]"\)/.test(beacon) && /if \(!variant \|\| isAutomation\(\)/.test(beacon) && !/document\.cookie|localStorage/.test(beacon)
+      && (beacon.match(/sessionStorage\.(?:getItem|setItem)\(([^)]*)\)/g) ?? []).every((c) => c.includes("FUNNEL_UTM_KEY")));
+  ok("8.shell · the shell renders the scope: off for a preview, staff, or an account it could not read; else the journey shown",
+    impl.shell.includes("<span hidden data-kp-funnel={funnelScopeValue} />")
+      && impl.shell.includes('const funnelScopeValue = journeyPreview || funnelViewer === "staff" || funnelViewer === "unknown" ? "off" : journeyShown ? "new" : "old";')
+      && impl.shell.includes('funnelViewer = !u ? "unknown" : isStaffRole(u.role) ? "staff" : "player";'));
+  const calls = impl.callers.flatMap((c) => [...c.text.matchAll(/sendFunnel\("(\w+)", ([^;]*)\);/g)].map((m) => ({ rel: c.rel, step: m[1], arg: m[2] })));
+  const literalOrigins = (arg: string) => [...arg.matchAll(/"(\w+)"/g)].map((m) => m[1]);
+  const badCalls = calls.filter((c) => !(c.step in F.FUNNEL_STEPS) || !(F.CLIENT_FUNNEL_STEPS as readonly string[]).includes(c.step as F.FunnelStep)
+    || literalOrigins(c.arg).length === 0 || literalOrigins(c.arg).some((o) => !F.isFunnelOrigin(c.step as F.FunnelStep, o)));
+  const betFields = impl.callers.flatMap((c) => [...c.text.matchAll(/funnelBetFields\(fd, "(\w+)"\)/g)].map((m) => m[1]));
+  ok("8.census · every sendFunnel call names a browser step and only origins its step allows; the bet forms carry allowed origins (dial, quick)",
+    calls.length === 3 && badCalls.length === 0 && betFields.length === 2 && betFields.every((o) => F.isFunnelOrigin("bet", o)),
+    j({ calls, badCalls, betFields }));
+  ok("8.links · the Up & Down deposit links carry from=low-balance; the home page's side links carry from=home",
+    impl.depositLinks.every((t) => t.includes('"/wallet/deposit?from=low-balance"') && !t.includes('"/wallet/deposit"'))
+      && (impl.home.match(/\?side=(?:YES|NO)&from=home` as never/g) ?? []).length === 2);
   return failed;
 }
 
@@ -159,6 +224,21 @@ if (!PROVE_RED) {
       impl: { ...REAL, migration: `${REAL.migration}\nALTER TABLE "User" ADD COLUMN "x" TEXT;` } },
     { name: "retention no longer prunes the funnel", expect: /^5\.retention /,
       impl: { ...REAL, retention: REAL.retention.replace("const journeyFunnelRows = await pruneJourneyFunnel(now)", "const journeyFunnelRows = await Promise.resolve(0)") } },
+    { name: "the endpoint counts a cross-site POST", expect: /^7\.endpoint /,
+      impl: { ...REAL, post: async (req) => {
+        const h = Object.fromEntries(req.headers);
+        return REAL.post(new Request(req.url, { method: "POST", body: await req.text(), headers: { ...h, "sec-fetch-site": "same-origin" } }));
+      } } },
+    { name: "the endpoint reads the session", expect: /^7\.no-cookie /,
+      impl: { ...REAL, route: REAL.route.replace("import { rateCheckAsync }", 'import { getSession } from "@/lib/server/session";\nimport { rateCheckAsync }') } },
+    { name: "the beacon ignores the server's scope", expect: /^8\.scope /,
+      impl: { ...REAL, beacon: REAL.beacon.replace("if (!variant || isAutomation()", "if (isAutomation()") } },
+    { name: "the shell counts staff", expect: /^8\.shell /,
+      impl: { ...REAL, shell: REAL.shell.replace('funnelViewer === "staff" || ', "") } },
+    { name: "a caller reports an origin its step does not allow", expect: /^8\.census /,
+      impl: { ...REAL, callers: REAL.callers.map((c) => ({ ...c, text: c.text.replace('sendFunnel("low_balance", "dial")', 'sendFunnel("low_balance", "home")') })) } },
+    { name: "the deposit link loses its origin", expect: /^8\.links /,
+      impl: { ...REAL, depositLinks: REAL.depositLinks.map((t) => t.replace('"/wallet/deposit?from=low-balance"', '"/wallet/deposit"')) } },
     { name: "an unsafe utm value kept", expect: /^6\.utm /,
       impl: { ...REAL, utm: (s) => ({ s: String(s.get("utm_source") ?? ""), c: String(s.get("utm_campaign") ?? "").toLowerCase() }) } },
   ];

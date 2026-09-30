@@ -119,6 +119,9 @@ export const RATE_RULES: Record<string, RateRule> = {
   // refresh its pools while open; the public half is also shared-cached for 5 s. ⚠️ Wide on purpose: many real phones
   // sit behind one carrier NAT address, and a refused read only drops the sheet back to the card's figure.
   "sheet.ip":      { capacity: 120, refillPerMin: 60 },
+  // The journey funnel's browser endpoint (`/api/funnel`, Vodacom plan S3b), per IP — the visit counter's own budget:
+  // a real visitor sends a handful of events a visit; this stops one client inflating the totals.
+  "funnel.ip":     { capacity: 60, refillPerMin: 30 },
   // Client-side crash reports (/api/client-error), per IP. ⚠️ DELIBERATELY TIGHT: a page that
   // crashes in a render LOOP would otherwise beacon on every re-render, and the point of this
   // endpoint is to learn that a crash happened — the tenth copy teaches nothing. 5 burst,

@@ -286,7 +286,7 @@ export function RoundStakePanel(props: {
           <I.info s={11} className="mt-[2px] shrink-0" />
           <span>
             {t.market.udInsufficientBalance}{" "}
-            <Link href="/wallet/deposit" className="underline decoration-[color:var(--border-strong)] underline-offset-2 hover:text-text-muted">
+            <Link href="/wallet/deposit?from=low-balance" className="underline decoration-[color:var(--border-strong)] underline-offset-2 hover:text-text-muted">
               {t.market.udDepositCta}
             </Link>
           </span>

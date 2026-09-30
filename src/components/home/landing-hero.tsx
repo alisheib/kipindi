@@ -346,10 +346,10 @@ function QuestionRow({ row, t, locale, nowMs }: { row: HeroRow; t: Dict; locale:
           otherwise prefetch eight detail pages. A one-sided or empty row keeps both — taking the empty
           side is exactly what gives it a price — but neither carries a figure. */}
       <div className="kp-qrow__act" data-market-part="pick">
-        <Link href={`/markets/${row.id}?side=YES` as never} prefetch={false} className="btn btn-yes btn-md kp-qrow__btn" aria-label={yesAria}>
+        <Link href={`/markets/${row.id}?side=YES&from=home` as never} prefetch={false} className="btn btn-yes btn-md kp-qrow__btn" aria-label={yesAria}>
           {yesWord}{price.kind === "priced" && <span className="kp-qrow__at">{" @ "}{price.yesPct}%</span>}
         </Link>
-        <Link href={`/markets/${row.id}?side=NO` as never} prefetch={false} className="btn btn-no btn-md kp-qrow__btn" aria-label={noAria}>
+        <Link href={`/markets/${row.id}?side=NO&from=home` as never} prefetch={false} className="btn btn-no btn-md kp-qrow__btn" aria-label={noAria}>
           {noWord}{price.kind === "priced" && <span className="kp-qrow__at">{" @ "}{100 - price.yesPct}%</span>}
         </Link>
       </div>
