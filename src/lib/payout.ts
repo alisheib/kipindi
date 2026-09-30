@@ -407,6 +407,28 @@ export function describeFeeModel(rates: Partial<FeeRates> | undefined): { model:
 }
 
 /**
+ * THE LOSER-SHARE TOTAL a set of rates charges — `platformFeeRate + operatorFeeRate`, clamped EXACTLY as `poolFee`
+ * clamps it — as a fraction; `null` under capped-commission, which has no loser-share (the Vodacom plan S3, SJ-3).
+ *
+ * ⛔ NEVER `commissionRate`. On a loser-share poll `commissionRate` is a dormant legacy field that no fee reads, so a
+ * sentence quoting it would name a rate the market does not charge.
+ */
+export function loserShareRate(rates: Partial<FeeRates> | undefined): number | null {
+  const r = readRates(rates);
+  return r.feeModel === "loser-share" ? clamp(r.platformFeeRate + r.operatorFeeRate, 0, MAX_LOSER_SHARE_RATE) : null;
+}
+
+/**
+ * `{pct}` — the loser-share total as the copy prints it ("Kamisheni ya 13% imeshatolewa"): a percentage, to one
+ * decimal at most (13 · 12.5); `null` under capped-commission, whose surfaces show the `describeFeeModel` caption
+ * instead of a figure (SJ-3).
+ */
+export function loserSharePct(rates: Partial<FeeRates> | undefined): number | null {
+  const rate = loserShareRate(rates);
+  return rate === null ? null : Math.round(rate * 1000) / 10;
+}
+
+/**
  * How many characters a fee caption may be. **MEASURED, not chosen.**
  *
  * 🔴 The first version of `describeFeeModel` returned `loser-share · 13% of losers` (27

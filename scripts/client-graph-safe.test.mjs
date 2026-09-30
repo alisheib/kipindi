@@ -111,6 +111,9 @@ console.log("\n[client-graph-safe] \u00a71 client-reachable modules stay clear o
     "lib/markets/short-title.ts",
     "lib/markets/competitions.ts",
     "lib/markets/competition-label.ts",
+    // ⭐ ADDED 2026-10-01 (Vodacom plan S3). The journey's estimate: the card and the sheet print it in the browser,
+    // the sheet API prices it on the server. It imports only `payout.ts`, which imports nothing.
+    "lib/markets/estimate.ts",
   ];
   const offenders = [];
   let checked = 0;
