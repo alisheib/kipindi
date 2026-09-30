@@ -123,6 +123,8 @@ console.log("\n[client-graph-safe] \u00a71 client-reachable modules stay clear o
     // The bet sheet's low-balance plan: imports only the deposit bounds from `validators.ts` (zod + id-documents),
     // which the deposit form already ships to the browser.
     "lib/journey/shortfall.ts",
+    // The journey funnel's allow-list and wire body (S3b): the beacon builds with it, `/api/funnel` re-checks with it.
+    "lib/journey/funnel.ts",
   ];
   const offenders = [];
   let checked = 0;

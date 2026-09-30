@@ -23,6 +23,7 @@ import { db } from "./store";
 import { audit } from "./audit";
 import { aiPollStore } from "./ai-poll-generation";
 import { pruneSiteVisits, SITE_VISIT_RETENTION_DAYS } from "./site-visits";
+import { pruneJourneyFunnel, JOURNEY_FUNNEL_RETENTION_DAYS } from "./journey-funnel";
 import { expireStaleAgentApplications, purgeAgedAgentDocuments, AGENT_REFEREE_DOC_HOLD_DAYS, AGENT_REJECTED_DOC_HOLD_DAYS, AGENT_APPROVED_DOC_HOLD_YEARS } from "./agent-application-service";
 import { houseBotAlertOnceStore } from "./house-bot-dal";
 import { HOUSEBOT_ALERT_ONCE_PURGE_BATCH, HOUSEBOT_ALERT_ONCE_PURGE_MAX_BATCHES, HOUSEBOT_ALERT_ONCE_RETENTION_DAYS } from "@/lib/house-bot/constants";
@@ -131,6 +132,9 @@ export type RetentionResult = {
   /** First-party visit counts (`SiteVisitPage` + `SiteVisitSource`) older than SITE_VISIT_RETENTION_DAYS. They identify
    *  no one; the period bounds size. */
   siteVisitRows: number;
+  /** The journey funnel's daily totals (`JourneyFunnelDay`, Vodacom plan S3b) older than JOURNEY_FUNNEL_RETENTION_DAYS.
+   *  They identify no one; the period bounds size. */
+  journeyFunnelRows: number;
   /** 04 P3 · `HouseBotAlertOnce` throttle rows older than HOUSEBOT_ALERT_ONCE_RETENTION_DAYS. Decisions and events are never deleted. */
   houseBotAlertOncePurged: number;
 };
@@ -207,6 +211,12 @@ export async function runRetentionPass(now = Date.now()): Promise<RetentionResul
       return 0;
     });
 
+  const journeyFunnelRows = await pruneJourneyFunnel(now)
+    .catch((err) => {
+      console.error("[retention] journey funnel prune failed:", (err as Error)?.message ?? err);
+      return 0;
+    });
+
   // 04 P3 · house-bot alert throttles. Best-effort like the classes above. A20 purges "in batches of 5,000": loop
   // until a batch comes back short, at most HOUSEBOT_ALERT_ONCE_PURGE_MAX_BATCHES a night (C4-SPEC ruling 86).
   let houseBotAlertOncePurged = 0;
@@ -221,7 +231,7 @@ export async function runRetentionPass(now = Date.now()): Promise<RetentionResul
   }
 
   const agentTouched = agentStale.drafts + agentStale.invitations + agentDocs.referee + agentDocs.applicant > 0;
-  if (notifications > 0 || otps > 0 || aiPolls.rawResponses > 0 || aiPolls.generations > 0 || agentTouched || lapsedIds.length > 0 || staleSessionRows > 0 || siteVisitRows > 0 || houseBotAlertOncePurged > 0) {
+  if (notifications > 0 || otps > 0 || aiPolls.rawResponses > 0 || aiPolls.generations > 0 || agentTouched || lapsedIds.length > 0 || staleSessionRows > 0 || siteVisitRows > 0 || journeyFunnelRows > 0 || houseBotAlertOncePurged > 0) {
     audit({
       category: "SYSTEM",
       action: "retention.purge.daily",
@@ -241,6 +251,7 @@ export async function runRetentionPass(now = Date.now()): Promise<RetentionResul
         marketingConsentsLapsed: lapsedIds.length, marketingConsentLapseDays: MARKETING_CONSENT_LAPSE_DAYS,
         staleSessionRows, activeSessionRowDays: ACTIVE_SESSION_ROW_DAYS,
         siteVisitRows, siteVisitRetentionDays: SITE_VISIT_RETENTION_DAYS,
+        journeyFunnelRows, journeyFunnelRetentionDays: JOURNEY_FUNNEL_RETENTION_DAYS,
         houseBotAlertOncePurged, houseBotAlertOnceRetentionDays: HOUSEBOT_ALERT_ONCE_RETENTION_DAYS,
       },
     });
@@ -256,6 +267,7 @@ export async function runRetentionPass(now = Date.now()): Promise<RetentionResul
     marketingConsentsLapsed: lapsedIds.length,
     staleSessionRows,
     siteVisitRows,
+    journeyFunnelRows,
     houseBotAlertOncePurged,
   };
 }

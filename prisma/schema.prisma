@@ -2996,6 +2996,24 @@ model SiteVisitSource {
   @@index([day])
 }
 
+/// THE JOURNEY FUNNEL — daily totals of the §3.10 measures (Vodacom plan S3b, docs/VODACOM-PLAN.md §0f). One row per
+/// (EAT day, step, origin, variant, utm_source, utm_campaign). Same no-identifier rule as SiteVisitPage: no user, no
+/// session, no IP, no market, no amount. Steps and origins come from ONE allow-list (src/lib/journey/funnel.ts). Pruned
+/// by `retention.purge.daily` after JOURNEY_FUNNEL_RETENTION_DAYS.
+model JourneyFunnelDay {
+  id          String @id @default(cuid())
+  day         String // EAT day, YYYY-MM-DD (src/lib/eat-day.ts)
+  step        String // sheet_open | low_balance | bet | deposit_confirmed
+  origin      String @default("")
+  variant     String @default("") // old | new
+  utmSource   String @default("")
+  utmCampaign String @default("")
+  count       Int    @default(0)
+
+  @@unique([day, step, origin, variant, utmSource, utmCampaign])
+  @@index([day])
+}
+
 // ============================================================================
 // SMS TRANSPORT LOG
 // ============================================================================

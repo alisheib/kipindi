@@ -167,9 +167,11 @@ viewer, decided by the server layout), preview traffic, automation user agents (
 totals with campaign tags, §5 their 400 days, §7 the `kp-utm` session key — one version bump, in the commit that ships
 them. **Report:** a "Journey funnel" panel on `/admin/insights` (the four ratios + time to first bet, by date range).
 
-**Pieces** — A: the store, schema, migration, retention, `test:journey-funnel`; B: `POST /api/funnel` + the beacon +
-the old-journey client wiring; C: the server counters + the `origin` columns; D: Privacy v2026-10-01; E: the insights
-panel; F: battery, drive, merge, deploy, and the first day's counts read on production.
+**Pieces** — A: the store, schema, migration, retention, `test:journey-funnel` — ✅ (`lib/journey/funnel.ts` the one
+allow-list; `lib/server/journey-funnel.ts` the memory/Prisma twin; `JourneyFunnelDay` + migration
+`20261001120000_journey_funnel`; pruned by `retention.purge.daily`; red 10/10). B: `POST /api/funnel` + the beacon + the
+old-journey client wiring. C: the server counters + the `origin` columns. D: Privacy v2026-10-01. E: the insights
+panel. F: battery, drive, merge, deploy, and the first day's counts read on production.
 
 ## §0e · S3 as built (2026-10-01) — ✅ merged to main
 
