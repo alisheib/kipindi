@@ -193,7 +193,7 @@ const MSVC = await import("../src/lib/server/market-service.ts");
 const { marketStore } = await import("../src/lib/server/market-dal.ts");
 const { audit, auditFlush, getAuditPage } = await import("../src/lib/server/audit.ts");
 const { inLock, withLock, runOutsideLock } = await import("../src/lib/server/locks.ts");
-const { normaliseShortTitleSet, cleanShortTitle, codePoints, shortTitleIssues, SHORT_TITLE_RULE_BODY } = await import("../src/lib/markets/short-title.ts");
+const { normaliseShortTitleSet, cleanShortTitle, codePoints, shortTitleIssues } = await import("../src/lib/markets/short-title.ts");
 const { isCompetition, normaliseCompetition } = await import("../src/lib/markets/competitions.ts");
 const { offendingChars } = await import("../src/lib/sms-compose.ts");
 const { decomment } = await import("./lib/decomment.mts");
@@ -845,7 +845,7 @@ function g18Words() {
 }
 
 // ── THE SOURCE WORLD — the wiring §13 reads, as text, so the red twin can plant edits in memory ───────────
-type World = { actions: string; control: string; page: string; wizard: string; gate: string; service: string };
+type World = { actions: string; control: string; page: string; wizard: string; gate: string; service: string; rules: string };
 const readSrc = (rel: string) => decomment(readFileSync(join(REPO, rel), "utf8").replace(/\r\n/g, "\n"));
 const WORLD: World = {
   actions: readSrc("src/app/markets/actions.ts"),
@@ -854,6 +854,7 @@ const WORLD: World = {
   wizard: readSrc("src/app/admin/markets/new/wizard.tsx"),
   gate: readSrc("scripts/admin-action-gate.test.mjs"),
   service: readSrc("src/lib/server/short-title-service.ts"),
+  rules: readSrc("src/lib/markets/short-title.ts"),
 };
 function fnBody(src: string, name: string): string {
   const i = src.indexOf(`export async function ${name}(`);
@@ -924,9 +925,11 @@ function g13Wiring(W: World) {
   ok("13.control.budget · the counters read SHORT_TITLE_MAX and codePoints — no budget typed by hand",
     /SHORT_TITLE_MAX\[locale\]/.test(c) && /codePoints\(cleanShortTitle\(/.test(c) && !/\b(?:56|28)\b/.test(c));
   const iWarn = c.indexOf("<Callout tone=\"info\" title={SHORT_TITLE_RULE_TITLE}>{SHORT_TITLE_RULE_BODY}</Callout>");
+  // The rule's words live in the rule module (one wording for every surface) — read there, as text, so a plant can move them.
+  const ruleBody = /export const SHORT_TITLE_RULE_BODY =\s*"([^"]*)"/.exec(W.rules)?.[1] ?? "";
   ok("13.control.warning · the rule is there, in the ONE shared wording, ABOVE the inputs — and it says the short title must say exactly the same thing",
-    iWarn > 0 && iWarn < c.indexOf("<Input") && SHORT_TITLE_RULE_BODY.includes("the short title must say exactly the same thing"),
-    j({ iWarn, iInput: c.indexOf("<Input") }));
+    iWarn > 0 && iWarn < c.indexOf("<Input") && ruleBody.includes("the short title must say exactly the same thing"),
+    j({ iWarn, iInput: c.indexOf("<Input"), ruleBody: ruleBody.slice(0, 90) }));
   ok("13.control.sends-moved · only the fields the officer changed are sent (absent = keep on the server)", /for \(const k of send\) fd\.set\(k, values\[k\]\)/.test(c));
   ok("13.control.expected · …and each one carries what the page showed, so another officer's change is refused, not overwritten",
     /const shown = saved;/.test(c) && /for \(const k of send\) fd\.set\(`expected\.\$\{k\}`, shown\[k\]\);/.test(c));
@@ -1125,8 +1128,10 @@ const MEMORY_PLANTS: Plant[] = [
     world: (w) => swap(w, "control", "useMayAct()", "true") },
   { name: "the control types the budget by hand", expect: /^13\.control\.budget/,
     world: (w) => swap(w, "control", "SHORT_TITLE_MAX[locale]", '(locale === "zh" ? 28 : 56)') },
-  { name: "the warning loses its second line", expect: /^13\.control\.warning/,
-    world: (w) => swap(w, "control", "the short title must say exactly the same thing.", "") },
+  { name: "the rule note loses \"the short title must say exactly the same thing\"", expect: /^13\.control\.warning/,
+    world: (w) => swap(w, "rules", "the short title must say exactly the same thing.", "") },
+  { name: "the control no longer shows the rule note", expect: /^13\.control\.warning/,
+    world: (w) => swap(w, "control", "<Callout tone=\"info\" title={SHORT_TITLE_RULE_TITLE}>{SHORT_TITLE_RULE_BODY}</Callout>", "") },
   { name: "the page shows the control on an Up & Down round", expect: /^13\.page\.updown/,
     world: (w) => swap(w, "page", 'm.productLine !== "UPDOWN" && (', "(") },
   { name: "the admin-action-gate pin is removed", expect: /^13\.gate\.pin/,

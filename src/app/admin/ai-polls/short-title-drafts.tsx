@@ -409,6 +409,7 @@ function DraftRow({
                     onChange={(e) => { setEdit({ ...edit, [l.loc]: e.target.value }); if (refusal?.field === f) setRefusal(null); }}
                   />
                   <p className={`mt-1 font-mono text-body-sm tabular-nums ${counterClass(n, max)}`}>{n} / {max}</p>
+                  {!l.missing && untouched && <p className="mt-1 text-body-sm text-text-subtle">Already approved — the draft leaves it as it is.</p>}
                   {untouched && l.refused && <p className="mt-1 text-body-sm text-text-tertiary break-words">The AI wrote: {l.refused}</p>}
                   {untouched && l.issues.map((s, i) => (
                     <p key={i} className="mt-1 text-body-sm text-warning-fg break-words">{s}</p>
