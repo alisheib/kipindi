@@ -23,6 +23,7 @@
  */
 import { assertPaymentModeSane } from "./payment-control";
 import { isAdminTotpEnforced } from "./admin-guard";
+import { previewSecretUsable } from "./journey-preview-secret";
 import { smsConfigured, smsProviderResolution } from "./sms";
 import { blackballConfigured, senderIdProblem } from "./sms-blackball";
 
@@ -48,6 +49,14 @@ export async function runBootChecks(): Promise<void> {
   await assertPaymentModeSane();
 
   if (process.env.NODE_ENV === "production") {
+    // The new journey's preview pass (Vodacom plan S1) is sealed with its OWN secret. Without a usable one the
+    // preview is simply off — `journey-preview.ts` never throws — and this line is how anyone finds out why.
+    if (!previewSecretUsable(process.env.JOURNEY_PREVIEW_SECRET)) {
+      console.error(
+        "[journey] JOURNEY_PREVIEW_SECRET is missing, shorter than 32 characters, a placeholder, or equal to " +
+          "SESSION_SECRET / AUDIT_CHAIN_SECRET — the new journey's staff preview and preview links are OFF until it is set.",
+      );
+    }
     // 🔴 Admin 2FA off in production. This was TRUE on production from before 2026-07-31 and
     // absolutely nothing said so — not this file, not /api/health, not /admin/system. A
     // password-only admin console on a licensed real-money platform is a finding in its own right;

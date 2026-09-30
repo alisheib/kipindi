@@ -16,7 +16,8 @@
  *   §3 · security (§8): each claim is tied to the code that performs it; the retired claims may not return; the
  *        ISO 27001 / pentest sentence stays, because it rests on the owner's recorded attestation (2026-08-20).
  *   §4 · cookies (§7): a census of every cookie name the code writes, pinned; each is described in all three
- *        locales, with the session cap and the sign-out note's lifetime read from the code, not retyped.
+ *        locales, with the session cap, the sign-out note's lifetime and the preview pass's hours read from the
+ *        code, not retyped.
  *   §4h · zh typography: no space after full-width punctuation (a {" "} after "：" printed a gap in §1).
  *
  * ⛔ The privacy page is inline JSX in one file, not dictionary-driven, so `test:i18n` sees none of it (the
@@ -41,11 +42,11 @@ const ok = (label: string, cond: boolean, why = "", evidence = "") => {
 const code = (src: string) => src.replace(/^[ \t]*\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "");
 
 /* ── The pinned facts. Moving any of these is a legal act: a dated COMPLIANCE-DECISIONS entry comes with it. ── */
-const PRIVACY_VERSION = "2026-09-26";
+const PRIVACY_VERSION = "2026-09-30";
 /** sha256 (first 12 hex) of the ENGLISH content block, whitespace-collapsed. The English text is the binding one. */
-const PRIVACY_EN_SHA = "8d28f6b02da9";
-/** Every cookie name the code writes, as of v2026-09-22. A new one must be described in §7 first. */
-const COOKIES = ["_ga", "_ga_W66WRL67MQ", "kp-density", "kp-kyc-notice", "kp-locale", "kp_admin_totp", "kp_pending_2fa", "kp_revoked", "kp_session"];
+const PRIVACY_EN_SHA = "6080888e8a46";
+/** Every cookie name the code writes, as of v2026-09-30. A new one must be described in §7 first. */
+const COOKIES = ["_ga", "_ga_W66WRL67MQ", "kp-density", "kp-kyc-notice", "kp-locale", "kp_admin_totp", "kp_pending_2fa", "kp_preview", "kp_revoked", "kp_session"];
 // ⭐ `_ga` / `_ga_W66WRL67MQ` joined the census 2026-09-15.2: gtag.js SETS them, and our code EXPIRES them when consent is
 // withdrawn (`google-tag.tsx` expireCookie) — a deletion is a write, so the census must see it; it is never spelled to dodge it.
 
@@ -288,6 +289,11 @@ const ttlDays = Number(sessionSrc.match(/const SESSION_TTL_MS = (\d+) \* 24 \* 6
 // E-381 (2026-09-14): the sign-out note is written by `/auth/session-ended`, the one place a dead session cookie is cleared.
 const revokedSecs = Number(code(read("src/app/auth/session-ended/route.ts")).match(/res\.cookies\.set\("kp_revoked", "1", \{[\s\S]{0,120}?maxAge: (\d+),/)?.[1]);
 ok("§4b the session cap and the sign-out note's lifetime were read from the code", ttlDays > 0 && revokedSecs > 0, "", `${ttlDays} days · ${revokedSecs} s`);
+// v2026-09-30 (the Vodacom plan S1, ruling SJ-23): the preview pass's longest life, stated in §7 in words. A pass is
+// capped at this in `mintPreviewPass`, so a longer one in code alone is a §7 that no longer says what is set.
+const previewHours = Number(code(read("src/lib/server/journey-preview.ts")).match(/export const PREVIEW_PASS_HOURS = (\d+);/)?.[1]);
+ok("§4b the preview pass's longest life was read from the code, and is at most a day", previewHours >= 1 && previewHours <= 24, "",
+  `${previewHours} hours`);
 /** What §7 must say about each cookie, per locale. */
 const COOKIE_WORDS: Record<string, Record<Loc, string[]>> = {
   kp_session: { en: ["sign-in session", `${ttlDays} days`], sw: ["kipindi chako cha kuingia", `siku ${ttlDays}`], zh: ["登录会话", `${ttlDays} 天`] },
@@ -298,6 +304,13 @@ const COOKIE_WORDS: Record<string, Record<Loc, string[]>> = {
   "kp-kyc-notice": { en: ["identity notice"], sw: ["taarifa ya utambulisho"], zh: ["身份提示"] },
   kp_admin_totp: { en: ["staff accounts only", "two-factor"], sw: ["wafanyakazi pekee", "hatua mbili"], zh: ["仅限员工账户", "双重验证"] },
   kp_pending_2fa: { en: ["staff accounts only", "two-factor"], sw: ["wafanyakazi pekee", "hatua mbili"], zh: ["仅限员工账户", "双重验证"] },
+  // v2026-09-30 (the Vodacom plan S1, ruling SJ-23): the preview pass, `src/lib/server/journey-preview.ts` — a staff
+  // member's own preview, or a preview link the Owner issued; its hours are read from PREVIEW_PASS_HOURS above.
+  kp_preview: {
+    en: ["kp_preview", "preview of pages not yet launched", "preview link", `at most ${previewHours} hours`],
+    sw: ["kp_preview", "onyesho la awali", "kiungo cha onyesho la awali", `si zaidi ya saa ${previewHours}`],
+    zh: ["kp_preview", "预览", "预览链接", `最长 ${previewHours} 小时`],
+  },
   _ga: { en: ["_ga", "turning analytics off deletes them"], sw: ["_ga", "kuzima takwimu huvifuta"], zh: ["_ga", "关闭分析会将其删除"] },
   _ga_W66WRL67MQ: { en: ["_ga_W66WRL67MQ", "turning analytics off deletes them"], sw: ["_ga_W66WRL67MQ", "kuzima takwimu huvifuta"], zh: ["_ga_W66WRL67MQ", "关闭分析会将其删除"] },
 };
@@ -443,7 +456,7 @@ const plantTls = pageSrc.replace("Connections to our website and app are encrypt
 const plantProcessor = pageSrc.replace("<li>Postmark, nchini Marekani,", "<li>Huduma ya barua pepe, nchini Marekani,");
 const plantTheme = pageSrc.replace("your language, a note kept", "theme preference, your language, a note kept");
 const plantWord = pageSrc.replace("We never sell personal data.", "We do not sell personal data.");
-const plantVersion = pageSrc.replace('sw: "Toleo 2026-09-26 ·', 'sw: "Toleo 2026-09-22 ·');
+const plantVersion = pageSrc.replace('sw: "Toleo 2026-09-30 ·', 'sw: "Toleo 2026-09-26 ·');
 ok("§5a control · each planted copy found its target",
   [plantTls, plantProcessor, plantTheme, plantWord, plantVersion].every((p) => p !== pageSrc));
 ok("§5b control · a restored 'TLS 1.2+' is reported", securityDefects(plantTls).length > 0 && versionDefects(plantTls, decisionsSrc).length > 0,
@@ -461,6 +474,15 @@ const plantedCookieFile = { path: join(ROOT, "src/planted.ts"), src: 'const X = 
 ok("§5h control · a new cookie write is caught by the census", !cookieCensus([...srcFiles, plantedCookieFile]).every((n) => COOKIES.includes(n)),
   "", JSON.stringify(cookieCensus([...srcFiles, plantedCookieFile]).filter((n) => !COOKIES.includes(n))));
 ok("§5i control · a compliance log without the version's entry is reported", versionDefects(pageSrc, "# empty\n").length > 0);
+// §4c's v2026-09-30 row: the preview cookie's name dropped from ONE locale, and ONE locale stating a longer life.
+const plantPreviewSw = pageSrc.replace("kilichosainiwa, kp_preview, huwekwa", "kilichosainiwa, huwekwa");
+const plantPreviewZh = pageSrc.replace("有效期最长 24 小时", "有效期最长 7 天");
+ok("§5an control · the preview cookie unnamed in ONE locale (sw) is reported",
+  plantPreviewSw !== pageSrc && cookieDefects(plantPreviewSw).some((x) => x.startsWith("sw §7") && x.includes("(kp_preview)")),
+  "", cookieDefects(plantPreviewSw).join("; "));
+ok("§5ao control · a preview cookie life other than the code's in ONE locale (zh) is reported",
+  plantPreviewZh !== pageSrc && cookieDefects(plantPreviewZh).some((x) => x.startsWith("zh §7") && x.includes(`${previewHours} 小时`)),
+  "", cookieDefects(plantPreviewZh).join("; "));
 const plantAzampay = pageSrc.replace("<li>Selcom，我们的支付网关", "<li>Selcom 或 Azampay，我们的支付网关");
 const plantRetired = pageSrc.replace("Marketing consent: until you withdraw it, close your account, or 2 years pass without you signing in", "Marketing preferences: until withdrawn or 2 years of inactivity");
 ok("§5j control · planted §4/§5 copies found their targets", plantAzampay !== pageSrc && plantRetired !== pageSrc);

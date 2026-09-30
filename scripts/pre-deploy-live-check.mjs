@@ -10,6 +10,8 @@
  *
  * Local (localhost) runs also drive authed surfaces via /auth/demo (404 in
  * prod) and assert the invite/History/wallet content. Prod runs skip those.
+ * Every run (prod included) asks /api/health for the new journey's rollout and, short of ACTIVE, asserts that no
+ * signed-out page carries the "Preview" marker — section [E2]; [F] asks the same of the signed-in demo player.
  */
 import { chromium } from "playwright";
 
@@ -318,6 +320,78 @@ console.log("\n[E] Tester changes — demos hidden, New tab, footer email");
   await ctx.close();
 }
 
+// ── E2. The new journey's rollout (public — runs against production too) ──
+/**
+ * ⭐ THE VODACOM PLAN S1 DONE-WHEN, ASKED OF THE RUNNING SITE: "staff see a preview marker on production and nobody
+ * else sees anything". The new journey rolls out WITHDRAWN → STAFF_PREVIEW → ACTIVE (`RolloutState`,
+ * `src/lib/feature-state.ts`), and the "Preview" marker (`preview-marker.tsx` — data-testid `journey-preview-marker`,
+ * its exit button `journey-preview-exit`) is rendered only for a browser holding a valid preview pass. A signed-OUT
+ * fetch holds no pass, so while the rollout is short of ACTIVE neither testid may be anywhere in its HTML.
+ *
+ * ⛔ THE STATE IS ASKED OF THE SERVER, NEVER ASSUMED — the invite block's rule (section [F]): GET /api/health →
+ * `simpleJourney`. A missing or malformed field, any key beyond `ceiling` and `state` (that body is public: the
+ * rollout only, never who changed it or why), or a state ranked ABOVE its ceiling (the state is the LOWER of the
+ * ceiling and the Owner's switch) is the health contract changing, and it FAILS rather than let this block guess.
+ * ⛔ AN UNREAD PAGE IS NOT A CLEAN PAGE (section [A], 2026-09-14): a route that failed, answered non-200 or did not
+ * come back as an HTML document FAILS the no-marker check instead of passing it.
+ * Under ACTIVE the checks are SKIPPED — printed with the reason, never passed. While the state is UNKNOWN (the
+ * contract check failed) they still run: no marker on a signed-out page is the expectation in every state short of
+ * ACTIVE, so an unknown state is no reason to stop looking.
+ * `journeyRollout` is read ONCE, here, and section [F] asks the same answer for its signed-in player.
+ */
+console.log("\n[E2] New journey rollout — /api/health contract + no preview marker on signed-out pages");
+const ROLLOUT_WORDS = ["WITHDRAWN", "STAFF_PREVIEW", "ACTIVE"]; // rank = index: WITHDRAWN < STAFF_PREVIEW < ACTIVE
+const PREVIEW_TESTIDS = ["journey-preview-marker", "journey-preview-exit"];
+/** Which of the preview marker's testids a page's HTML carries — the element, or the props in the RSC payload. */
+const previewMarksIn = (html) => PREVIEW_TESTIDS.filter((id) => html.includes(id));
+const journeyRollout = await (async () => {
+  let status = 0, body = null, err = "";
+  try {
+    const r = await fetch(BASE + "/api/health", { headers: { accept: "application/json" } });
+    status = r.status;
+    body = await r.json().catch(() => null);
+  } catch (e) { err = String(e?.message ?? e); }
+  const sj = body && typeof body === "object" ? body.simpleJourney : undefined;
+  const isObj = !!sj && typeof sj === "object" && !Array.isArray(sj);
+  const ceiling = isObj ? sj.ceiling : undefined;
+  const state = isObj ? sj.state : undefined;
+  const shapeOk = isObj && Object.keys(sj).sort().join(",") === "ceiling,state"
+    && ROLLOUT_WORDS.includes(ceiling) && ROLLOUT_WORDS.includes(state);
+  const agrees = shapeOk && ROLLOUT_WORDS.indexOf(state) <= ROLLOUT_WORDS.indexOf(ceiling);
+  const detail = err ? `(GET /api/health failed: ${err})`
+    : !shapeOk ? `(HTTP ${status}; simpleJourney = ${JSON.stringify(sj ?? null)} — the health contract changed: expected exactly { ceiling, state }, each "WITHDRAWN" | "STAFF_PREVIEW" | "ACTIVE")`
+    : !agrees ? `(simpleJourney = ${JSON.stringify(sj)} — state ${state} ranks above its ceiling ${ceiling}, and the state is the LOWER of the ceiling and the Owner's switch)`
+    : `(ceiling=${ceiling}, state=${state})`;
+  return { ok: shapeOk && agrees, state: shapeOk && agrees ? state : null, detail };
+})();
+{
+  ok(`/api/health states the new journey's rollout (simpleJourney.ceiling, .state; state never above its ceiling)`, journeyRollout.ok, journeyRollout.detail);
+  // Controls: the matcher below is the one every no-marker verdict uses, so it is seen to catch and to pass.
+  ok(`control · the preview-marker matcher catches the marker and its exit (element and RSC payload)`,
+    previewMarksIn(`<div data-testid="journey-preview-marker"><button data-testid="journey-preview-exit">`).length === 2
+    && previewMarksIn(`self.__next_f.push([1,"{\\"testId\\":\\"journey-preview-exit\\"}"])`).length === 1);
+  ok(`control · …and passes a page without them`, previewMarksIn(`<div data-testid="notice-bar">Preview</div>`).length === 0);
+  const JOURNEY_PUBLIC_ROUTES = ["/", "/markets"];
+  if (journeyRollout.state !== "ACTIVE") {
+    for (const route of JOURNEY_PUBLIC_ROUTES) {
+      let status = 0, html = "", err = "";
+      try {
+        const r = await fetch(BASE + route, { headers: { accept: "text/html" }, redirect: "follow" });
+        status = r.status;
+        html = await r.text();
+      } catch (e) { err = String(e?.message ?? e); }
+      const read = status === 200 && /<html[\s>]/i.test(html);
+      const marks = read ? previewMarksIn(html) : [];
+      ok(`signed out: ${route} carries no preview marker (rollout ${journeyRollout.state ?? "UNKNOWN"})`, read && marks.length === 0,
+        err ? `(GET ${route} failed: ${err})`
+          : !read ? `(HTTP ${status}, ${html.length} chars, not an HTML document — the page was not read, so nothing was checked)`
+          : marks.length ? `(found ${marks.join(", ")} on a page that holds no preview pass)` : "");
+    }
+  } else {
+    console.log(`  ⚠ SKIP  the ${JOURNEY_PUBLIC_ROUTES.length} signed-out no-preview-marker checks (${JOURNEY_PUBLIC_ROUTES.join(", ")}) — /api/health says simpleJourney.state = ACTIVE: the new journey is the product for everyone, so the pre-launch promise that nobody outside the preview sees it no longer applies ${journeyRollout.detail}. NOT measured by this run.`);
+  }
+}
+
 // ── F. Authed surfaces (LOCAL only — uses /auth/demo, 404 in prod) ──
 if (LOCAL) {
   console.log("\n[F] Authed surfaces (local /auth/demo)");
@@ -343,6 +417,29 @@ if (LOCAL) {
   await page.goto(BASE + "/wallet", { waitUntil: "domcontentloaded" }); await page.waitForTimeout(400);
   ok(`/wallet renders`, (await page.locator("body").innerText()).length > 60);
   ok(`/wallet no error overlay`, !(await hasErrorOverlay(page)));
+
+  /**
+   * ⭐ THE NEW JOURNEY, SIGNED IN (Vodacom plan S1) — section [E2]'s promise for a signed-in PLAYER: a player holds
+   * no preview pass either, so while the rollout is short of ACTIVE "/" carries no preview marker for them. The
+   * state is [E2]'s `journeyRollout` (one /api/health read for the whole run); ACTIVE is a printed SKIP, never a pass.
+   * ⛔ Counted only when this context really IS signed in (`kp_session` present): a demo sign-in that silently
+   * failed would otherwise pass here as a signed-out page. ⛔ And an unread page is not a clean page.
+   * Read from the RENDERED document (`page.content()`, after hydration), so a marker painted client-side counts too.
+   */
+  if (journeyRollout.state !== "ACTIVE") {
+    await page.goto(BASE + "/", { waitUntil: "domcontentloaded" }); await page.waitForTimeout(400);
+    const signedIn = (await ctx.cookies(BASE)).some((c) => c.name === "kp_session" && !!c.value);
+    const homeHtml = await page.content().catch(() => "");
+    const homeRead = /<html[\s>]/i.test(homeHtml) && (await page.locator("body").innerText().catch(() => "")).trim().length > 40;
+    const homeMarks = homeRead ? previewMarksIn(homeHtml) : [];
+    ok(`signed in (demo PLAYER): / carries no preview marker (rollout ${journeyRollout.state ?? "UNKNOWN"})`,
+      signedIn && homeRead && homeMarks.length === 0,
+      !signedIn ? "(no kp_session cookie — the demo sign-in did not hold, so this was not a signed-in page)"
+        : !homeRead ? "(the page could not be read, or rendered no content — nothing was checked)"
+        : homeMarks.length ? `(found ${homeMarks.join(", ")} for a player who holds no preview pass)` : "");
+  } else {
+    console.log(`  ⚠ SKIP  the signed-in no-preview-marker check on / — /api/health says simpleJourney.state = ACTIVE: the new journey is the product for everyone ${journeyRollout.detail}. NOT measured by this run.`);
+  }
 
   /**
    * 🔴 THIS BLOCK HAS BEEN WRONG IN BOTH DIRECTIONS, AND THE HISTORY IS WHY IT IS WRITTEN LIKE THIS.

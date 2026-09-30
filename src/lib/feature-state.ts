@@ -378,3 +378,81 @@ export function installInviteIsLive(): boolean {
 export function houseBotsLive(): boolean {
   return resolvedState("desk") === "ACTIVE";
 }
+
+// ── THE NEW JOURNEY (the Vodacom plan, `docs/VODACOM-PLAN.md` S1, 2026-09-30) ─────────────────────────────
+
+/**
+ * How far the sponsor's journey (the Vodacom plan) has rolled out — THREE positions, and each one is a
+ * different thing a person on 50pick.tz sees:
+ *   · WITHDRAWN     — nobody sees it. A preview pass is ignored, even a valid one.
+ *   · STAFF_PREVIEW — only a browser holding a valid preview pass (`kp_preview`, set by a staff member on
+ *                     `/admin/journey` or by a preview link the Owner issued) sees it, under a "Preview" marker.
+ *   · ACTIVE        — everyone sees it (the S15 flip).
+ *
+ * ⛔ A SEPARATE TYPE FROM `FeatureState`, ON PURPOSE. That type keeps two members because a third that no
+ * consumer distinguished (`COMING_SOON`) was deleted on 2026-09-06 (header above). These three ARE
+ * distinguished — `test:simple-journey-flag` drives all three and asserts three different outcomes — and
+ * widening `FeatureState` would let `FEATURE_INVITE=STAFF_PREVIEW` mean something nobody built.
+ */
+export type RolloutState = "WITHDRAWN" | "STAFF_PREVIEW" | "ACTIVE";
+
+/**
+ * ⭐ THE SHIPPED CEILING. STAFF_PREVIEW until the S15 flip, which is the one-word commit that makes it ACTIVE.
+ * ⛔ Not a member of `PRODUCT_STATE` (`test:withdrawn-features` §6 holds that table to one declaration and two
+ * states), and its name says what it is.
+ */
+const SIMPLE_JOURNEY_SHIPPED: RolloutState = "STAFF_PREVIEW";
+
+const ROLLOUT_RANK: Record<RolloutState, number> = { WITHDRAWN: 0, STAFF_PREVIEW: 1, ACTIVE: 2 };
+
+/** True for exactly the three words, and for nothing else. */
+export function isRolloutState(v: unknown): v is RolloutState {
+  return v === "WITHDRAWN" || v === "STAFF_PREVIEW" || v === "ACTIVE";
+}
+
+/** The LOWER of two positions. ⛔ Anything that is not one of the three words ranks as WITHDRAWN. */
+export function lowerRollout(a: RolloutState, b: RolloutState): RolloutState {
+  const ra = isRolloutState(a) ? ROLLOUT_RANK[a] : 0;
+  const rb = isRolloutState(b) ? ROLLOUT_RANK[b] : 0;
+  return ra <= rb ? (isRolloutState(a) ? a : "WITHDRAWN") : (isRolloutState(b) ? b : "WITHDRAWN");
+}
+
+/**
+ * THE OUTER CEILING over the new journey — what the code and the server's environment allow, before the
+ * Owner's stored switch (`server/simple-journey-switch.ts`) is asked.
+ *
+ * ⭐ `FEATURE_SIMPLEJOURNEY` IS THE HARD OVERRIDE: exactly `WITHDRAWN`, `STAFF_PREVIEW` or `ACTIVE` sets the
+ * ceiling (a Railway variable change is a redeploy). ⛔ Any other value — a typo, lower case, blank — falls back
+ * to the shipped constant, like `resolvedState`: a typo can neither launch the journey nor lift the kill.
+ * ⛔ THE CEILING ONLY EVER BOUNDS. The effective position is the LOWER of this and the Owner's stored switch
+ * (`composeSimpleJourney`), so the env can raise the ceiling but can never overrule an Owner's kill.
+ * ⛔ No viewer argument: the rollout is a property of the product, not of a person. Who sees what inside
+ * STAFF_PREVIEW is `simpleJourneyFor`'s question, below.
+ */
+export function simpleJourneyCeiling(): { ceiling: RolloutState; source: "ENV" | "CODE" } {
+  const raw = process.env.FEATURE_SIMPLEJOURNEY;
+  if (isRolloutState(raw)) return { ceiling: raw, source: "ENV" };
+  return { ceiling: SIMPLE_JOURNEY_SHIPPED, source: "CODE" };
+}
+
+/**
+ * ⭐ THE ONE DECISION: does THIS request get the new journey, and does it wear the "Preview" marker?
+ *
+ * `state` is the effective rollout (`composeSimpleJourney`); `pass` is the request's preview pass AFTER it was
+ * verified and its issuer re-checked (`server/journey-preview.ts` → `resolvePreviewPass`), or null.
+ *   · WITHDRAWN     → nobody, and a pass is ignored.
+ *   · ACTIVE        → everybody, and nobody wears the marker (it is the product now).
+ *   · STAFF_PREVIEW → only a request with a valid pass, and that request wears the marker.
+ * ⛔ A STAFF ROLE ALONE SEES NOTHING NEW. The preview is opt-in (the pass), so a staff member can still see
+ * the site exactly as players see it, and a support officer answering a player looks at the player's screen.
+ * ⛔ AppShell and every journey page ask THIS function through the same per-request resolver
+ * (`resolveSimpleJourney`), so the shell and the page cannot disagree about one request.
+ */
+export function simpleJourneyFor(
+  state: RolloutState,
+  pass: { valid: true } | null | undefined,
+): { journey: boolean; preview: boolean } {
+  if (state === "ACTIVE") return { journey: true, preview: false };
+  if (state === "STAFF_PREVIEW" && pass?.valid === true) return { journey: true, preview: true };
+  return { journey: false, preview: false };
+}

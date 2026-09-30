@@ -16,10 +16,11 @@
 
 ## §0 · RESUME AT
 
-**State (2026-09-29):** S0 filed. The deck and frames, the rulings, the reply to the agency, this tracker, SHELVED.md
-and the compliance record are all in. Nothing reaches players yet.
+**State (2026-09-30):** S1 built and verified locally (§0b below). The rollout switch, the staff preview pass, the
+Owner's `/admin/journey` and Privacy v2026-09-30 are in. Nothing reaches players: the only thing a pass holder sees is
+the "Preview" bar, because no journey screen exists yet.
 
-**Next:** S1 — the switch and preview (plan §5, S1; the mechanics research for it is summarised under §0a below).
+**Next:** S1 close-out on production (§0b "Still open"), then S2 — short titles + competition.
 
 Session law, the same for every session:
 - Code, two-store tests, and `red:*` twins reachable from `red:all`, with declared anchors.
@@ -90,6 +91,48 @@ A gate is named as an `npm run` command only once its key exists in `package.jso
 - `audit()` never rejects; read `.recorded`. Name the actions `journey.preview.on/off`,
   `journey.rollout.attempt/set`.
 
+## §0b · S1 as built (2026-09-30)
+
+**What exists now**
+- **The rollout** — `RolloutState` = WITHDRAWN / STAFF_PREVIEW / ACTIVE, in `src/lib/feature-state.ts`, separate from
+  `FeatureState`. The ceiling is `simpleJourneyCeiling()`: STAFF_PREVIEW as shipped (S15 changes that one word), or
+  exactly what `FEATURE_SIMPLEJOURNEY` says. What anybody sees is the LOWER of the ceiling and the Owner's switch.
+- **The Owner's switch** — `src/lib/server/simple-journey-switch.ts`: one sealed `SystemConfig` row,
+  `journey.rollout.switch`, read through a ≤ 10 s snapshot, so a Stop reaches every container within 10 seconds.
+  No row = no cap (the ceiling decides). A row that cannot be read or does not verify = WITHDRAWN.
+- **The ceremony** — `src/lib/server/simple-journey-ceremony.ts`, the invite switch's shape: Owner on the stored
+  role, two-step check, a 5–300 character reason, the lock, the COMPLIANCE attempt row BEFORE the write, a read-back.
+  Three acts: the cap (Stop · Resume · staff preview only), issue a preview link, revoke one.
+- **The pass** — one HttpOnly cookie, `kp_preview`, sealed with its own secret `JOURNEY_PREVIEW_SECRET`
+  (`src/lib/server/journey-preview.ts`). At most 24 hours. Re-checked on every request: a staff pass counts only
+  while its issuer's stored row is a staff role on an open account; a link pass only while its link is live.
+- **The doors** — `src/app/preview/route.ts` (POST on/off, GET `?t=` for a link), every answer a 303 with
+  `private, no-store`, the decisions in `src/lib/server/journey-preview-doors.ts`.
+- **The one resolver** — `resolveSimpleJourney()`: AppShell and (from S7) every journey page ask it, so they
+  agree. AppShell paints the "Preview" bar (`preview-marker.tsx`) only when it says so.
+- **The console** — `/admin/journey` ("New journey", Overview): every staff role sees it and turns their own
+  preview on or off; only the Owner moves the rollout and creates or revokes links.
+- **Health** — `/api/health` → `simpleJourney: { ceiling, state }`; `qa:live` [E2] asserts no marker for a
+  signed-out visitor or the demo player while the state is not ACTIVE.
+- **Privacy v2026-09-30** — §7 names `kp_preview` in en/sw/zh; COMPLIANCE-DECISIONS has the entry.
+
+**Decisions taken under Ali's delegation (2026-09-30)**
+1. The preview is **opt-in**: a staff role alone sees nothing new, so staff can still see the site as players do.
+2. The pass **survives sign-out and sign-in**, so staff can preview as a guest, register a test player and bet as
+   that player under the same pass (S8/S10/S14). It opens a view and nothing else, and the bar with "Exit preview"
+   is on every page while it counts.
+3. The agency's links live **inside the Owner's sealed record**: a revoke and a Stop are the same kind of act, on
+   one record, with one reason trail. 25 live links at most; ended and revoked links make room.
+4. A Stop is **primary, not claret**: it is undone by Resume, and §B4a keeps claret for acts that cannot be.
+
+**Guards** — `npm run test:simple-journey-flag` (two stores, 128 checks) and `npm run red:simple-journey-flag`
+(in-process, 26 planted defects, each caught), in `predeploy`. `npm run qa:journey-preview` is the local browser
+drive (guest, SUPPORT officer, player, Owner Stop and Resume, a stranger on a link, revoke): 30/30 on 2026-09-30.
+
+**Still open (S1 close-out)** — push, set `JOURNEY_PREVIEW_SECRET` on Railway (without it the preview is simply
+off), verify the deploy, confirm a signed-out visitor sees nothing on production, and one press by Ali on
+`/admin/journey` → "Turn my preview on" to see the bar on 50pick.tz. Then S1 is ✅.
+
 ## §1 · Board
 
 Status: ⬜ not started · 🔨 in progress · ✅ done and verified live · ⛔ removed by ruling.
@@ -97,7 +140,7 @@ Status: ⬜ not started · 🔨 in progress · ✅ done and verified live · ⛔
 | Session | Title | Status | Done when |
 |---|---|---|---|
 | S0 | File, rule, get ready | ✅ | Filed `2ac17c36` on main, 2026-09-29. Deck, frames, rulings, reply, tracker, SHELVED.md and compliance records are filed. `test:docs` + `test:landing-ten-plan` are green. The worktree installs. |
-| S1 | The switch and preview | ⬜ | Staff see a "preview" marker on production and nobody else sees anything. The preview cookie is in Privacy §7 in the same commit. |
+| S1 | The switch and preview | 🔨 | Built and verified locally 2026-09-30 (§0b). Done when staff see a "preview" marker on production and nobody else sees anything. The preview cookie is in Privacy §7 in the same commit. |
 | S2 | Short titles + competition | ⬜ | Every open market renders within 2 lines in sw/en/zh (`test:short-title-fit`). The backfill is approved in /admin. |
 | S3 | The engine (no UI) | ⬜ | Golden fixtures pass: Dodoma ≈2.8×/≈1.4×, 1,000 → TZS 2,700 ≈2.7×, 5,000 → TZS 12,360 ≈2.5×; Yanga ≈2.9×/≈1.4×. Client/server parity is proven. |
 | S3b | Measures baseline | ⬜ | Old-journey analogue counts appear daily, and the 14-day baseline clock is running. |

@@ -97,6 +97,10 @@ console.log("\n[client-graph-safe] \u00a71 client-reachable modules stay clear o
     // where a composer screen could not reach it without pulling the server graph into the browser.
     // It is pinned here from the commit that moved it, not from the commit that first imports it.
     "lib/sms-compose.ts",
+    // ⭐ ADDED 2026-09-30 (Vodacom plan S1). The product's feature table, now also the new journey's rollout
+    // ceiling and its one decision (`simpleJourneyFor`). Seven player routes import it, and its own header forbids a
+    // server import; the database half lives in `lib/server/simple-journey-switch.ts` and must stay there.
+    "lib/feature-state.ts",
     // The statutory footer a composer screen renders beside the body; it imports only app-url
     // and sms-compose, both zero-import, and must stay that way.
     "lib/marketing/footer.ts",

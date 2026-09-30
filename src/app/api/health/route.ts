@@ -19,6 +19,8 @@ import { pingDatabase } from "@/lib/server/prisma";
 import { houseBotSchemaReady } from "@/lib/server/house-bot/schema-ready";
 import { inviteRewardsCeiling } from "@/lib/feature-state";
 import { invitePaysPlayersNow, playerInvitePayableNow } from "@/lib/server/invite-rewards-switch";
+import { simpleJourneyCeiling } from "@/lib/feature-state";
+import { simpleJourneyStateNow } from "@/lib/server/simple-journey-switch";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -94,6 +96,9 @@ export async function GET() {
     // is the one player-facing "paid" (`invitePaysPlayersNow`), asked only once the switch says payable.
     const invitePayable = await playerInvitePayableNow().catch(() => false);
     const invitePaying = invitePayable ? await invitePaysPlayersNow().catch(() => false) : false;
+    // The new journey's rollout (Vodacom plan S1): the same ≤ 10 s read every page makes. Never rejects, and a
+    // failed read answers WITHDRAWN. ⛔ Not part of `ready`: a switch read must never fail a deploy's health gate.
+    const journeyState = await simpleJourneyStateNow().catch(() => "WITHDRAWN" as const);
 
     return NextResponse.json(
       {
@@ -180,6 +185,15 @@ export async function GET() {
           payable: invitePayable,
           paying: invitePaying,
           ceiling: inviteRewardsCeiling().ceiling,
+        },
+        // ⭐ THE NEW JOURNEY'S ROLLOUT (Vodacom plan S1): `ceiling` is what the code and FEATURE_SIMPLEJOURNEY
+        // allow, `state` what is in effect after the Owner's switch on /admin/journey — WITHDRAWN (nobody),
+        // STAFF_PREVIEW (only a browser holding a preview pass) or ACTIVE (everybody). `qa:live` reads it to
+        // know whether a signed-out page may carry the preview marker (never, before ACTIVE). ⛔ The rollout
+        // only: never a viewer's own answer, never who changed it or why.
+        simpleJourney: {
+          ceiling: simpleJourneyCeiling().ceiling,
+          state: journeyState,
         },
         // 🔴 Is transactional email actually being delivered? Every send on this
         // platform is fire-and-forget from a money or auth path, and the failure

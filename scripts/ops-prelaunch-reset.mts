@@ -61,6 +61,9 @@
  *     the record of who made them payable, and why, erased. Deleted, invites read "Never
  *     switched on" (Not payable) and the Owner repeats the ceremony, which writes its
  *     COMPLIANCE row into the new chain.
+ *   journey.rollout.switch — the new journey's rollout switch and its preview links (Vodacom plan S1,
+ *     2026-09-30). DELETED, for the same reason: its COMPLIANCE rows are in the AuditLog this reset wipes.
+ *     Deleted, the rollout reads "No record yet" (the code's ceiling decides) and every preview link is gone.
  *
  * ⛔ THE AUDIT LOG IS A DELIBERATE DOCTRINE OVERRIDE. `docs/DATA-RETENTION.md` §3 says the
  * HMAC chain is on no deletion path, and it is right: deleting any row breaks the chain,
@@ -146,7 +149,7 @@ const CONFIG_ZERO: Record<string, string> = {
 // ⛔ `invite.rewards.switch` (2026-09-26) is here and NOT in CONFIG_KEEP: the reset deletes the whole
 // AuditLog, and that is where the switch's COMPLIANCE rows (who made invites payable, and why) live.
 // A switch that survived the reset would keep paying with its paper trail gone. See the header.
-const CONFIG_DROP_PATTERNS = [/^chat\.daily\./, /^bootstrap\.login_promoted:/, /^test\.overrides$/, /^invite\.rewards\.switch$/];
+const CONFIG_DROP_PATTERNS = [/^chat\.daily\./, /^bootstrap\.login_promoted:/, /^test\.overrides$/, /^invite\.rewards\.switch$/, /^journey\.rollout\.switch$/];
 
 // ── argv ───────────────────────────────────────────────────────────────────
 const argv = process.argv.slice(2);
@@ -695,7 +698,7 @@ async function execute(keep: { ids: string[]; rows: any[] }, unknownConfig: stri
       "drop per-user + dead config keys + the invite payment switch",
       `DELETE FROM "SystemConfig"
         WHERE key LIKE 'chat.daily.%' OR key LIKE 'bootstrap.login_promoted:%' OR key='test.overrides'
-           OR key='invite.rewards.switch'`,
+           OR key='invite.rewards.switch' OR key='journey.rollout.switch'`,
     ],
 
     // 9 ── AI cost history and the audit chain.
@@ -982,6 +985,8 @@ async function assertions(keepIds: string[], base: Baseline) {
   // after the reset invites are Not payable ("Never switched on") until the Owner's ceremony runs again.
   const inviteSwitch = await g(`SELECT count(*)::int n FROM "SystemConfig" WHERE key='invite.rewards.switch'`);
   c.push({ name: "invite payment switch gone (Not payable until the Owner acts again)", ok: inviteSwitch === 0, got: `${inviteSwitch}` });
+  const journeySwitch = await g(`SELECT count(*)::int n FROM "SystemConfig" WHERE key='journey.rollout.switch'`);
+  c.push({ name: "new-journey rollout switch gone (the code's ceiling decides; no preview link survives)", ok: journeySwitch === 0, got: `${journeySwitch}` });
 
   const hp = await one(`SELECT value FROM "SystemConfig" WHERE key='house.pool.state'`);
   c.push({

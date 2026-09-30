@@ -46,7 +46,7 @@ function isValidUtf8(buf: Buffer): boolean {
 }
 
 /** Binary by extension — these are not text and are never expected to decode. */
-const BINARY = /\.(png|jpe?g|gif|webp|avif|ico|pdf|ttf|otf|woff2?|eot|zip|gz|mp4|webm|wasm|xlsx?|docx?)$/i;
+const BINARY = /\.(png|jpe?g|gif|webp|avif|ico|pdf|ttf|otf|woff2?|eot|zip|gz|mp4|webm|wasm|xlsx?|docx?|pptx?)$/i;
 
 const files = execSync("git ls-files", { cwd: process.cwd(), encoding: "utf8", maxBuffer: 32 * 1024 * 1024 })
   .split("\n").map((s) => s.trim()).filter(Boolean).filter((f) => !BINARY.test(f));

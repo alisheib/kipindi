@@ -2862,6 +2862,12 @@ export const dict = {
       // Chrome
       footerLink: "Become an agent",
     },
+    // ⭐ The new journey (Vodacom plan, docs/VODACOM-PLAN.md §3). Keys stay in this namespace until the S15 flip.
+    journey: {
+      /** The marker a browser with a preview pass wears while the journey is in staff preview (S1). */
+      previewMarker: "Preview — you are seeing the new journey before it launches.",
+      previewExit: "Exit preview",
+    },
   },
 
   /* ──────────────────────────── KISWAHILI ───────────────────────────── */
@@ -5132,6 +5138,10 @@ export const dict = {
       invitedBy: "Umetambulishwa na {name}",
       footerLink: "Kuwa wakala",
     },
+    journey: {
+      previewMarker: "Onyesho la awali — unaona safari mpya kabla haijazinduliwa.",
+      previewExit: "Toka kwenye onyesho",
+    },
   },
 
   /* ──────────────────────────── 中文 (Mandarin) ─────────────────────── */
@@ -7383,6 +7393,10 @@ export const dict = {
       verifiedBadge: "50pick 认证代理",
       invitedBy: "由 {name} 推荐",
       footerLink: "成为代理",
+    },
+    journey: {
+      previewMarker: "预览 — 您正在查看尚未上线的新流程。",
+      previewExit: "退出预览",
     },
   },
 } as const;

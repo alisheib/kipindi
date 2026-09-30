@@ -160,6 +160,10 @@ const EXEMPT: Record<string, string> = {
    *    than work in progress; neither can fire by a stray click on the scrim or a stray Escape. The
    *    reward-settings editor on the same page is a different file, and it is not covered by this entry. */
   "app/admin/affiliate/payable-switch.tsx": "① the reason, the typed words and the choice open inside <Modal>, with scrim-close and Escape disabled once anything is entered; Cancel and ✕ are the deliberate exits",
+  /* The new journey's console (Vodacom plan S1, 2026-09-30) — the payable switch's form, one file per ceremony. */
+  "app/admin/journey/rollout-control.tsx": "① the reason opens inside <Modal role=alertdialog>, with scrim-close and Escape disabled once anything is typed; Cancel and ✕ are the deliberate exits",
+  "app/admin/journey/preview-links.tsx": "① the label and reason (create) and the reason (revoke) open only inside <Modal>, with scrim-close and Escape disabled once anything is typed; Cancel and ✕ are the deliberate exits",
+  "app/admin/journey/page.tsx": "nothing can be typed: its only <input>s are type=hidden fields of the two native POST forms to /preview (intent, back)",
   "app/admin/payments/reconcile-controls.tsx": "① fields open inside <Modal>",
   "app/admin/payments/stuck-payout-controls.tsx": "① fields open inside <Modal>",
   "app/admin/players/[id]/balance-adjust-controls.tsx": "① fields open inside <Modal>",

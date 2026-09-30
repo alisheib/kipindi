@@ -36,10 +36,13 @@ const TITLE: Record<Locale, string> = {
 // COMPLIANCE-DECISIONS.md "Privacy v2026-09-22" and `src/lib/card-spacing.ts`.
 // 2026-09-26: §4 names Blackball, the SMS gateway (`src/lib/server/sms-blackball.ts`), live since 2026-09-16 and the rail
 // every marketing text would use — it was the one processor §4 left out. `test:privacy-notice` §2e ties it to the code.
+// 2026-09-30: §7 names the preview cookie `kp_preview` (Vodacom plan S1, ruling SJ-23: every staff role previews the new
+// journey before it launches, and the agency gets a 7-day preview link) — see COMPLIANCE-DECISIONS.md "Privacy v2026-09-30"
+// and `src/lib/server/journey-preview.ts`. `test:privacy-notice` §4 reads its 24 hours from `PREVIEW_PASS_HOURS`.
 const META: Record<Locale, string> = {
-  en: "Version 2026-09-26 · Aligned with the Tanzania Personal Data Protection Act 2022 and EU GDPR principles.",
-  sw: "Toleo 2026-09-26 · Imeoanishwa na Tanzania Personal Data Protection Act 2022 na kanuni za EU GDPR.",
-  zh: "版本 2026-09-26 · 符合 Tanzania Personal Data Protection Act 2022 及 EU GDPR 原则。",
+  en: "Version 2026-09-30 · Aligned with the Tanzania Personal Data Protection Act 2022 and EU GDPR principles.",
+  sw: "Toleo 2026-09-30 · Imeoanishwa na Tanzania Personal Data Protection Act 2022 na kanuni za EU GDPR.",
+  zh: "版本 2026-09-30 · 符合 Tanzania Personal Data Protection Act 2022 及 EU GDPR 原则。",
 };
 
 /**
@@ -132,6 +135,8 @@ function content(): Record<Locale, React.ReactNode> { return {
           holding a random identifier used to count visits; they last 395 days, and turning analytics off deletes them. Analytics is off until you
           choose: your choice is kept in your browser&apos;s storage for 395 days if you allow it, or 180 days if you decline, and then you are asked
           again. No advertising cookies. Refusing analytics does not change how 50pick works.
+          A signed preview cookie, kp_preview, is set only when a 50pick staff member turns on a preview of pages not yet launched, or when you open a preview link 50pick sent you;
+          it holds no personal details beyond who issued it, and lasts at most 24 hours.
           Some display choices, such as hiding your balance or dismissing a prompt, are kept in your browser&apos;s own storage on your device.
         </p>
         <AnalyticsChoice />
@@ -236,6 +241,8 @@ function content(): Record<Locale, React.ReactNode> { return {
           vyenye kitambulisho cha nasibu kinachotumika kuhesabu matembeleo; vinadumu siku 395, na kuzima takwimu huvifuta. Takwimu zimezimwa hadi
           utakapochagua: uamuzi wako huhifadhiwa kwenye hifadhi ya kivinjari chako kwa siku 395 ukiruhusu, au siku 180 ukikataa, kisha utaulizwa
           tena. Hakuna vidakuzi vya matangazo. Kukataa takwimu hakubadilishi jinsi 50pick inavyofanya kazi.
+          Kidakuzi cha onyesho la awali kilichosainiwa, kp_preview, huwekwa tu pale mfanyakazi wa 50pick anapowasha onyesho la awali la kurasa ambazo bado hazijazinduliwa, au unapofungua kiungo cha onyesho la awali ambacho 50pick ilikutumia;
+          hakina taarifa binafsi zaidi ya kuonyesha nani aliyekitoa, na kinadumu si zaidi ya saa 24.
           Baadhi ya machaguo ya maonyesho, kama kuficha salio lako au kufunga ujumbe, huhifadhiwa kwenye hifadhi ya kivinjari chako ndani ya kifaa chako.
         </p>
         <AnalyticsChoice />
@@ -334,7 +341,7 @@ function content(): Record<Locale, React.ReactNode> { return {
 
       <LegalSection n="7" title="Cookie">
         <p>
-          我们仅使用必要的最小 cookie 集合：您的登录会话（HMAC 签名的 HttpOnly cookie，登录后最长 7 天失效）、您的语言、一条保留 30 秒、说明您为何被退出登录的提示、您已关闭钱包身份提示的记录、您在手机上选择的卡片间距，以及仅限员工账户的双重验证登录 cookie。仅在您允许分析时，Google Analytics 才会设置两个 cookie：_ga 和 _ga_W66WRL67MQ，保存用于统计访问的随机标识符，有效期 395 天；关闭分析会将其删除。在您作出选择之前，分析处于关闭状态；您的选择保存在浏览器存储中——允许则保存 395 天，拒绝则保存 180 天，之后会再次询问。不使用任何广告 cookie。拒绝分析不会影响 50pick 的正常使用。部分显示选择（例如隐藏余额或关闭提示）保存在您设备上的浏览器存储中。
+          我们仅使用必要的最小 cookie 集合：您的登录会话（HMAC 签名的 HttpOnly cookie，登录后最长 7 天失效）、您的语言、一条保留 30 秒、说明您为何被退出登录的提示、您已关闭钱包身份提示的记录、您在手机上选择的卡片间距，以及仅限员工账户的双重验证登录 cookie。仅在您允许分析时，Google Analytics 才会设置两个 cookie：_ga 和 _ga_W66WRL67MQ，保存用于统计访问的随机标识符，有效期 395 天；关闭分析会将其删除。在您作出选择之前，分析处于关闭状态；您的选择保存在浏览器存储中——允许则保存 395 天，拒绝则保存 180 天，之后会再次询问。不使用任何广告 cookie。拒绝分析不会影响 50pick 的正常使用。仅当 50pick 员工开启尚未上线页面的预览，或您打开 50pick 发送给您的预览链接时，才会设置一个签名的预览 cookie：kp_preview；除签发者外，它不包含任何个人信息，有效期最长 24 小时。部分显示选择（例如隐藏余额或关闭提示）保存在您设备上的浏览器存储中。
         </p>
         <AnalyticsChoice />
       </LegalSection>

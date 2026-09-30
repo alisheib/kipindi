@@ -52,6 +52,8 @@ import { hasRole, ADMIN_CONSOLE_ROLES, type Role } from "@/lib/server/roles";
 import { inviteIsLiveFor, installInviteIsLive, NO_VIEWER, type InviteViewer } from "@/lib/feature-state";
 import { agentStandingFor, playerInviteEligibleFor } from "@/lib/server/affiliate-service";
 import { invitePaysPlayersNow } from "@/lib/server/invite-rewards-switch";
+import { resolveSimpleJourney } from "@/lib/server/journey-preview";
+import { PreviewMarker } from "./preview-marker";
 import { displayLabel, displayInitials } from "@/lib/display-label";
 import { getServerT } from "@/lib/i18n-server";
 import { getPlatformConfig, maintenanceMessage } from "@/lib/server/platform-config";
@@ -90,6 +92,12 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
      and a reward actually armed — "Make payable → Nothing yet" is NOT paid here. The settings are
      re-read only once the switch says payable. It never rejects — a failed read answers not paid. */
   const invitePayableRead = invitePaysPlayersNow().catch(() => false);
+  /* ⭐ THE NEW JOURNEY (Vodacom plan S1) — resolved through the ONE per-request resolver every journey page
+     asks too (React `cache`), so this shell and the page agree about the request. Started here, beside the
+     session, and awaited at the render: the switch read is a ≤ 10 s snapshot, and the pass is only looked at
+     when the browser holds one. ⛔ It sits AFTER the `/admin` and opt-out returns: the console is never
+     previewed. Never rejects — a failure is "nothing new, no marker". */
+  const journeyRead = resolveSimpleJourney();
   const session = await getSession();
   // ── 🔴 E-381 · A SESSION THAT HAS ENDED — HOW THE ROOT LAYOUT MAY ANSWER IT, AND HOW IT MAY NOT.
   //
@@ -349,6 +357,9 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
    */
   const agentDoorVisible = getAgentConfig().enabled || inviteViewer.agentInGoodStanding;
 
+  /** True only for a request whose preview pass counts (`simpleJourneyFor`). Everybody else gets no marker. */
+  const journeyPreview = (await journeyRead).preview;
+
   return (
     <div className="min-h-screen flex flex-col bg-bg-base text-text">
       {/* Skip-to-content — WCAG 2.4.1. Visually hidden until focused,
@@ -366,6 +377,9 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       <HeaderScrollCast />
       <Suspense fallback={null}><NavProgress /></Suspense>
       <TopAppBar user={topUser} proposalsState={proposalsState} inviteVisible={inviteVisible} invitePaid={invitePaid} />
+      {/* ⭐ THE PREVIEW MARKER — first under the bar, so whoever holds this browser knows at once that they are
+          looking at pages players do not see yet, and has the way out on the same line. */}
+      {journeyPreview && <PreviewMarker label={t.journey.previewMarker} exit={t.journey.previewExit} />}
       <AnnouncementBanner maintenance={maintBanner} announcement={announcement} />
       {/* 🔴 E-381 · the in-place answer to a session that ended during a refresh — see the note at
           `endedReason`. Server-rendered, and its only action is a plain `<a>`. */}

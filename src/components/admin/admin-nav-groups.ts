@@ -24,6 +24,8 @@ const CRUMB_LABELS: Record<string, string> = {
   "ai-usage": "AI usage",
   "2fa": "2FA",
   dsar: "DSAR",
+  // The crumb, the nav item and the page title say the same two words (the nav label already ships in this chunk).
+  journey: "New journey",
 };
 
 /**
@@ -135,6 +137,11 @@ export const NAV_GROUPS: ReadonlyArray<NavGroup> = [
     items: [
       { href: "/admin",      label: "Overview", key: "overview", domain: "overview" },
       { href: "/admin/live", label: "Live ops", key: "live", domain: "overview" },
+      /* ⭐ THE NEW JOURNEY'S SWITCH AND PREVIEW (Vodacom plan S1). `overview`, because EVERY staff role must reach it
+       * (SJ-23: SUPPORT included) to turn its own preview on; only the Owner moves the rollout, and that is decided
+       * on the STORED role by the ceremony, not by this domain. ⛔ `ROUTE_DOMAINS` in roles.ts carries the same pair
+       * (`test:rbac` §7b holds the two to agreeing). */
+      { href: "/admin/journey", label: "New journey", key: "journey", domain: "overview" },
     ],
   },
   {
@@ -289,6 +296,8 @@ export function filterNavGroups(
  */
 const ROUTE_KEYS: ReadonlyArray<readonly [prefix: string, key: string]> = [
   ["/admin/live", "live"],
+  // Free to sit here: no entry is a prefix of "/admin/journey" and it is a prefix of none.
+  ["/admin/journey", "journey"],
   ["/admin/finance", "finance"],
   ["/admin/house", "house"],
   ["/admin/reports", "reports"],

@@ -9,6 +9,76 @@
 ---
 
 
+## 2026-09-30 · Privacy v2026-09-30 — §7 names the staff preview cookie `kp_preview`
+
+**Authority.** Ali's rulings for the Vodacom plan, 2026-09-28/29
+(`docs/design-system/v5-2026-09-29-simplified-journey/INHERIT-MANIFEST.md` §2; § "2026-09-29 · The Vodacom plan" below):
+- **R4** — *"Build hidden behind a staff preview, and launch at once"*.
+- **SJ-23** (delegated) — *"every staff role, SUPPORT included, sees the journey before the flip. The agency gets a
+  signed, revocable 7-day visitor-preview link."*
+- [`VODACOM-PLAN.md`](VODACOM-PLAN.md) S1 — *"Same commit: Privacy §7 cookie entry (en/sw/zh) + the
+  `test:privacy-notice` census"*. This is that entry.
+
+**What the cookie holds.** One sealed pass, HMAC-signed with its own secret, `JOURNEY_PREVIEW_SECRET`
+(`src/lib/server/journey-preview.ts`):
+- its kind, `staff` or `link`;
+- who issued it: the staff member's user id, or the preview link's id;
+- the issue and end times, and a random nonce.
+- **No player data**: no name, phone number, balance or bet. HttpOnly, SameSite=Lax, Secure in production, and written in
+  one place only (`src/app/preview/route.ts`).
+
+**Who gets it.**
+- A staff member of any role, SUPPORT included (SJ-23), who turns the preview on at `/admin/journey`. It is set in their
+  own browser only.
+- Whoever opens a preview link the Owner issued (the agency). This works only while the rollout is `STAFF_PREVIEW` and the
+  link is in the Owner's record, unrevoked and unexpired.
+- Nobody else. An ordinary visitor never receives it.
+
+**How long.** At most 24 hours (`PREVIEW_PASS_HOURS`), and a link's pass never outlives its 7-day link
+(`PREVIEW_LINK_DAYS`). The pass is re-checked on every request, not trusted for its lifetime:
+- a staff pass stops counting when its issuer is no longer staff on an open account;
+- a link pass stops counting when its link is revoked or expires;
+- every pass stops counting when the rollout leaves `STAFF_PREVIEW`.
+
+**It survives sign-out, by design.**
+- Staff preview the journey as a guest, then register a test player and bet as that player under the same pass (plan
+  S8/S10/S14). Signing out must not end the preview.
+- This is safe because the pass opens **only a view**. RBAC, `requireStaff`, the proxy's `/admin` gate and every money
+  path never read it. A browser holding one sees the new journey's screens and nothing else.
+
+**It is always marked.** Every page shown under a pass carries the "Preview" marker with **Exit preview**
+(`src/components/layout/preview-marker.tsx`). Exit is a POST to `/preview` that clears the cookie.
+
+**The audit rows** (`src/lib/server/journey-preview-doors.ts`):
+- `journey.preview.on` — the staff member, their role, the rollout state, the nonce and the end time. The pass is set
+  only once this row is recorded.
+- `journey.preview.off` — written whenever a pass is taken out.
+- `journey.preview.link.opened` — the link's id (with its label, the nonce and the pass's end) and the time. **No
+  address, no device.** The link door's rate limit counts attempts per IP address in the platform's existing limiter,
+  as sign-in does; the address is never written to the row.
+- `journey.preview.refused` — a signed-in account that may not preview (not staff, or a closed account) asked for a
+  pass. It records the account and its role, and no pass is set.
+
+**The wording, as written.** One sentence is added to §7 in each language, after "Refusing analytics does not change how
+50pick works". No existing clause changed.
+- en: *"A signed preview cookie, kp_preview, is set only when a 50pick staff member turns on a preview of pages not yet
+  launched, or when you open a preview link 50pick sent you; it holds no personal details beyond who issued it, and
+  lasts at most 24 hours."*
+- sw: *"Kidakuzi cha onyesho la awali kilichosainiwa, kp_preview, huwekwa tu pale mfanyakazi wa 50pick anapowasha
+  onyesho la awali la kurasa ambazo bado hazijazinduliwa, au unapofungua kiungo cha onyesho la awali ambacho 50pick
+  ilikutumia; hakina taarifa binafsi zaidi ya kuonyesha nani aliyekitoa, na kinadumu si zaidi ya saa 24."*
+- zh: *"仅当 50pick 员工开启尚未上线页面的预览，或您打开 50pick 发送给您的预览链接时，才会设置一个签名的预览 cookie：kp_preview；除签发者外，它不包含任何个人信息，有效期最长 24 小时。"*
+
+**The pins moved** (`test:privacy-notice`):
+- the census: `COOKIES` gains `kp_preview` (§4a). The route writes it through `JOURNEY_PREVIEW_COOKIE`, which the census
+  resolves by name;
+- `COOKIE_WORDS.kp_preview`: the words each language must say, with the hours read from `PREVIEW_PASS_HOURS`, which
+  §4b holds to 1–24;
+- the version (v2026-09-30 in en/sw/zh) and the English hash;
+- two planted controls: §5an (the name dropped from sw) and §5ao (a different life stated in zh).
+
+---
+
 ## 2026-09-29 · The Vodacom plan — the sponsor's "Simplified Journey", built in 50pick's design system (owner rulings R1–R6; decisions SJ-1 … SJ-24)
 
 **Owner decision:** Ali, 2026-09-29, on the sponsor agency's deck "50pick Simplified Journey" (filed raw at

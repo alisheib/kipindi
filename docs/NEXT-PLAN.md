@@ -69,7 +69,7 @@ Ali, 2026-09-26, handing over the v3 concept: *"proceed perfecting it … we can
 | **One bad record** | `mkt_ed8bf4f01932b46fa0be` is settled NDIO while its own officer evidence reads *"No… a total of 20 goals were scored"* — TZS 1,000 on NDIO against TZS 10,000 on HAPANA. One disagreement in 210 resolved markets. The landing page prints the record truthfully; the record is wrong |
 | **Rule** | The gate measures **production**, because a claim about what a page shows is a claim about its content. A failed read is reported unmeasured, never clean. And a green gate is not a 10 until the frames have been looked at |
 
-## ▶ 0c · THE VODACOM PLAN — the sponsor's "Simplified Journey" — `VODACOM-PLAN` · 🔨 **OPENED 2026-09-29 — S0 FILED `2ac17c36`, S1 NEXT** · 1/18 sessions ✅ · supersedes landing v3 WP5, V21 and WP20 (R18)
+## ▶ 0c · THE VODACOM PLAN — the sponsor's "Simplified Journey" — `VODACOM-PLAN` · 🔨 **S0 FILED `2ac17c36` · S1 (the switch and the staff preview) BUILT 2026-09-30, closing out on production** · 1/18 sessions ✅ · supersedes landing v3 WP5, V21 and WP20 (R18)
 
 Ali, 2026-09-29: *"no matter what we need to cut off we need perfection and alignment with what they requested … we should match what they want for sponsorship"*; *"they care about functionality being identical but all our design system intact and consistent"*; *"name it vodacom plan. so in any new session when i say continue vodacom plan they should continue it perfectly, visually and logically"*.
 **▶ Work order and tracker: [`VODACOM-PLAN.md`](VODACOM-PLAN.md). Open it at §0 (RESUME AT), then §1 (board). "Continue Vodacom plan" means exactly that.**

@@ -128,7 +128,7 @@ export const DOMAIN_LABEL: Record<AdminDomain, string> = {
  *  /admin/roles consequence highlighting so the Owner sees what a grant means. */
 export const DOMAIN_SUMMARY: Record<AdminDomain, { view: string; act: string }> = {
   overview: {
-    view: "the dashboard and live ops",
+    view: "the dashboard, live ops, and the new journey's rollout and preview",
     act: "—",
   },
   accounting: {
@@ -233,6 +233,10 @@ export function defaultGrant(role: Role, domain: AdminDomain): Grant {
  */
 export const ROUTE_DOMAINS: ReadonlyArray<readonly [prefix: string, domain: AdminDomain]> = [
   ["/admin/live", "overview"],
+  // The new journey's switch and preview (Vodacom plan S1) — overview, because EVERY staff role (SUPPORT included,
+  // SJ-23) turns its own preview on here. ⛔ Only the Owner moves the rollout, and the ceremony decides that on the
+  // STORED role — `overview` carries no act for any other role, so this row opens a view and nothing else.
+  ["/admin/journey", "overview"],
   // accounting
   ["/admin/insights", "accounting"],
   ["/admin/settlement", "accounting"],

@@ -161,18 +161,25 @@ export function NoticeBarAction({
   children,
   onClick,
   href,
+  post,
   disabled,
   glyph,
   tone = "warning",
+  testId,
 }: {
   children: React.ReactNode;
   onClick?: () => void;
   href?: string;
+  /** ⭐ A native form POST (2026-09-30, the new journey's "Exit preview"): a DOCUMENT navigation that works
+   *  without JavaScript, for a control whose answer changes the root layout (E-70). The fields ride as hidden
+   *  inputs. */
+  post?: { action: string; fields?: Record<string, string> };
   disabled?: boolean;
   glyph?: GlyphKey;
   /** ⚠️ Must match the `tone` of the `NoticeBar` this sits in. Defaults to `warning` so the
    *  original caller (`EmailVerifyBanner`) is unchanged, byte for byte. */
   tone?: NoticeBarTone;
+  testId?: string;
 }) {
   const Glyph = glyph ? I[glyph] : null;
   // 44, not 40 — §A2's "44px preferred on mobile", and this control is the mobile case by
@@ -182,6 +189,17 @@ export function NoticeBarAction({
   // thumb reaches for on a bar that is deliberately never in the reading flow.
   const cls =
     `inline-flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-pill border px-3.5 text-body-sm font-semibold transition-colors disabled:opacity-50 ${ACTION_TONE[tone]}`;
+  if (post) {
+    return (
+      <form method="post" action={post.action} className="shrink-0">
+        {Object.entries(post.fields ?? {}).map(([name, value]) => <input key={name} type="hidden" name={name} value={value} />)}
+        <button type="submit" disabled={disabled} className={cls} data-testid={testId}>
+          {Glyph && <Glyph s={13} />}
+          {children}
+        </button>
+      </form>
+    );
+  }
   if (href) {
     return (
       <a href={href} className={cls}>

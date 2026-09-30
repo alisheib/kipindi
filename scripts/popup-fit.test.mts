@@ -148,6 +148,15 @@ const popups = all.filter((f) => IS_POPUP.test(code(f)));
  * span; the footer is `flex-col-reverse sm:flex-row`, so two long labels stack on a phone; `maxWidth` 520/420
  * is a MAX. The one fixed size is the 44px icon plate on the card, which holds a glyph and no text. PASSES.
  */
+/*
+ * ── 2026-09-30 · +2: `admin/journey/rollout-control.tsx` (the Owner's Stop / Resume / players-back dialog) and
+ * `admin/journey/preview-links.tsx` (create and revoke a preview link) — the Vodacom plan S1. Opened and judged like
+ * the record above: no `truncate`, no `line-clamp-*`, no `whitespace-nowrap`, no `text-ellipsis`, no `max-h-*`, no
+ * `overflow-hidden`, no fixed height on any text. Every sentence is a server-built prop or a fixed sentence in a block
+ * that wraps; each `h2` carries `pr-8`; each footer is `flex-col-reverse sm:flex-row`, so two long labels stack on a
+ * phone; `maxWidth` 440 is a MAX. The one unbroken string — a link's address, a bearer key — sits in a `<code>`
+ * with `break-all` and `max-w-full`, the same cure `agents/agents-client.tsx` carries. PASSES.
+ */
 const REVIEWED: readonly string[] = [
   "src/app/admin/affiliate/payable-switch.tsx",   // reviewed 2026-09-27
   "src/app/admin/agents/[id]/decision-rail.tsx",   // reviewed 2026-09-21
@@ -162,6 +171,8 @@ const REVIEWED: readonly string[] = [
   "src/app/admin/desk/[id]/account-actions.tsx",   // reviewed 2026-09-21
   "src/app/admin/desk/stop-queued.tsx",   // reviewed 2026-09-21
   "src/app/admin/desk/switch-ceremony.tsx",   // reviewed 2026-09-21
+  "src/app/admin/journey/preview-links.tsx",   // reviewed 2026-09-30
+  "src/app/admin/journey/rollout-control.tsx",   // reviewed 2026-09-30
   "src/app/admin/kyc/[id]/kyc-decision-rail.tsx",
   "src/app/admin/kyc/[id]/refused-funds-panel.tsx",   // reviewed 2026-09-21
   "src/app/admin/kyc/[id]/reopen-refusal-control.tsx",   // reviewed 2026-09-21
