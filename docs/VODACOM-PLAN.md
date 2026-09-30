@@ -129,9 +129,52 @@ A gate is named as an `npm run` command only once its key exists in `package.jso
 (in-process, 26 planted defects, each caught), in `predeploy`. `npm run qa:journey-preview` is the local browser
 drive (guest, SUPPORT officer, player, Owner Stop and Resume, a stranger on a link, revoke): 30/30 on 2026-09-30.
 
-**Still open (S1 close-out)** — push, set `JOURNEY_PREVIEW_SECRET` on Railway (without it the preview is simply
-off), verify the deploy, confirm a signed-out visitor sees nothing on production, and one press by Ali on
-`/admin/journey` → "Turn my preview on" to see the bar on 50pick.tz. Then S1 is ✅.
+**Still open (S1 close-out)** — pushed (`41ec1703`), `JOURNEY_PREVIEW_SECRET` set on Railway (48 characters),
+deploy verified, and a signed-out visitor sees nothing on production (`qa:live` 319/0 there, [E2] included). One
+press by Ali remains: `/admin/journey` → "Turn my preview on" → the bar on 50pick.tz. Then S1 is ✅.
+
+## §0c · S2 research (read-only, 2026-09-30): what short titles + competition must touch
+
+**Where things really are** (the plan's names were wrong in places)
+- The model is `PredictionMarket` (`schema.prisma:1612`), not `Market`; there is no `@@map`. `StoredMarket` is in
+  `market-service.ts:207`; both store twins are in `market-dal.ts` (memory `memoryMarkets`, Prisma `toStoredMarket`
+  + the two-arm upsert in `prismaMarkets.set`). `createMarket` (`market-service.ts:640`) is the one funnel.
+- The 5 create paths: the wizard (`markets/actions.ts` `createMarketAction`), AI polls (`ai-poll-publish.ts:143`),
+  candidates (`admin/candidates/actions.ts:71`), proposals (`proposals-service.ts:729`), Up & Down rounds
+  (`updown-service.ts:755`). Seeds and dev routes also call it, so every new input field is OPTIONAL.
+- Latest migration on main: `20260928170000_marketing_contact_book`. Copy the header style of
+  `20260811120000_market_resolution_criterion_i18n`. Re-check `origin/main` right before committing.
+
+**Traps that would ship a defect**
+- A column must be read by `toStoredMarket` AND written in BOTH upsert arms, one key per line (dal-parity's matchers
+  are line-anchored); a column in one arm only is wiped by the next resolve, settle, reopen or void.
+- Never copy recategorise's write (unlocked get, then a full-row `set`): it can overwrite a concurrent stake's pool
+  increment on a LIVE market. Use a narrow `setShortTitles` method in BOTH twins, under `withLock(market:<id>)`.
+  `stamp()` refuses title fields on Postgres but not in memory — green in every suite, a throw in production.
+- A short title stays NULL until approved; never a copy of the full or English title (the F8 rule). The fallback is
+  the reader's OWN full title — `pickLocalized` falls back to English, so it is the wrong helper here.
+- "Fits in 2 lines" cannot be measured on `.mcardp-q`: its clamp and `min-height` make every box exactly 2 lines.
+  `test:short-title-fit` is a PURE budget check (code points: sw/en ≤ 56, zh ≤ 28; GSM-7 for sw/en only, via
+  `sms-compose.ts`), and production's open markets get a separate read-only `qa:` read.
+- A short-title problem must never become an AI `FilterReason` (`approveAIPoll` refuses any): store null plus a
+  warning. `publishApprovedPoll` hand-copies fields, so new ones must be added there or they are dropped.
+- `test:red-anchors` sits exactly at 65 undeclared: S2's red twins are in-process or declared. dal-parity §17–§19
+  belong to marketing; extend §10/§11 in place. Never `prisma migrate diff` (it drops the trigram indexes).
+- S2 changes nothing players see: the classic cards keep full titles; short titles surface on the journey card (S7).
+
+**Recommended build order** — (1) `src/lib/markets/competitions.ts` (zero imports) + `short-title.ts` (the one
+limits constant, the normaliser) + a `foldToGsm7` in `sms-compose.ts`; (2) schema + hand-written migration
+(`SET LOCAL lock_timeout = '3s'`, four `ADD COLUMN IF NOT EXISTS`, plus AIPoll/MarketCandidate columns) + DAL +
+dal-parity + chain-purge redaction; (3) the narrow writer + an audited admin edit (`market.short_title_edited`,
+before/after, 2-line warning) + the 5 create paths; (4) AI: extend the Tier-2 `submit_poll` tool, a mock-safe
+`draftShortTitles` for the backfill, and a separate budgeted sentinel `checkShortTitleAgreement` (never
+auto-approves); drafts staged per market in `SystemConfig` (`shortTitle.draft.<id>`), approved one by one;
+(5) `test:short-title-fit` + an in-process red twin + the production read.
+
+**Decided under delegation unless Ali says otherwise** — English short titles are a question ending in "?"; Chinese
+ones end in "？" (only the Swahili "Je, …?" is in the deck). Up & Down rounds get a deterministic short title from
+`roundTitle` and stay out of the AI backfill. Competition labels live in the `journey` namespace until S15, with an
+`IDENTICAL_OK` reason for proper nouns such as "EPL".
 
 ## §1 · Board
 
