@@ -56,7 +56,7 @@ function shortIssueText(locale: Locale, issue: ShortTitleIssue): string {
         ? "Write it as a question in the form “Je, …?”."
         : locale === "en"
           ? "Write it as a question ending in “?”."
-          : "Write it as a question ending in “？”.";
+          : "Write it as a question ending in ？.";
     // The rule compares on a key (case, spacing, curly quotes, the closing mark and a Swahili "Je, " do not hide a
     // copy), and a Chinese value with no Chinese character in it is refused the same way — so say what to do.
     case "copied_english":

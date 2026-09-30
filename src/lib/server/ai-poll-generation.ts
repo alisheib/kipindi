@@ -866,7 +866,8 @@ function shortTitleQuality(set: ReturnType<typeof normaliseShortTitleSet>): Qual
   for (const loc of SHORT_TITLE_LOCALES) {
     const issues = set.issues[loc];
     if (issues.length === 0) continue;
-    const words = issues.map((i) => issueWords(loc, i)).join(", ");
+    // The root cause only: English text in the Swahili/Chinese slot is refused for that (its length and form follow from it).
+    const words = (issues.includes("copied_english") ? (["copied_english"] as const) : issues).map((i) => issueWords(loc, i)).join(", ");
     out.push(set.hard[loc]
       ? { label: `${SHORT_TITLE_CHIP} · ${LANG_NAME[loc]} left empty — ${words}`, score: 0, status: "warning" }
       : { label: `${SHORT_TITLE_CHIP} · ${LANG_NAME[loc]} kept — check: ${words}`, score: 50, status: "warning" });

@@ -1584,7 +1584,7 @@ function EditForm({ poll, onClose, overlay }: { poll: StoredAIPoll; onClose: () 
   const shortIssueWords = (l: "en" | "sw" | "zh", i: ShortTitleIssue) =>
     i === "too_long" ? `is longer than ${SHORT_TITLE_MAX[l]} characters`
       : i === "not_gsm7" ? "has characters a text message cannot carry"
-        : i === "form" ? (l === "sw" ? "is not in the “Je, …?” form" : l === "en" ? "is not a question ending in “?”" : "is not a question ending in “？”")
+        : i === "form" ? (l === "sw" ? "is not in the “Je, …?” form" : l === "en" ? "is not a question ending in “?”" : "is not a question ending in ？")
           : i === "copied_english" ? (l === "zh" ? "is not written in Chinese — write it in Chinese, or leave it blank" : "is the English one — write it in Swahili, or leave it blank")
             : "has a number the full question does not — check it says the same thing";
   // ⛔ THE SAME imported rule the wizard and the server action use — one policy, three

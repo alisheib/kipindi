@@ -113,7 +113,7 @@ export function shortTitleIssueSentence(locale: Locale, issue: ShortTitleIssue, 
         ? "A Swahili short title is a question in the form “Je, …?”."
         : locale === "en"
           ? "An English short title is a question ending in “?”."
-          : "A Chinese short title is a question ending in “？”.";
+          : "A Chinese short title is a question ending in ？.";
     case "copied_english":
       // For Chinese the rule also refuses ANY value with no Chinese character, copy or not — so it says that.
       return locale === "zh"
@@ -142,7 +142,7 @@ export function changedShortTitleLocales(before: MarketShortTitleFields, after: 
 export type ShortTitleVerdictLine = { kind: "agrees" | "disagrees" | "unchecked"; text: string };
 
 /**
- * ONE LINE PER LANGUAGE, IN WORDS — "agrees", "does not agree: <issue>" or "not checked: <reason>", for the languages
+ * ONE LINE PER LANGUAGE, IN WORDS — "agrees", "does not agree: <issue>" or "not checked — <reason>", for the languages
  * the act checked. ⛔ Three outcomes and only three, and anything unreadable is the third. Nothing checked, no lines.
  */
 export function agreementVerdictLines(
@@ -153,7 +153,7 @@ export function agreementVerdictLines(
   if (!record) return out;
   for (const loc of locales) {
     if (record.status !== "checked") {
-      out[loc] = { kind: "unchecked", text: `not checked: ${record.reason?.trim() || "the sentinel gave no reason"}` };
+      out[loc] = { kind: "unchecked", text: `not checked — ${record.reason?.trim() || "the sentinel gave no reason"}` };
       continue;
     }
     const v = record.perLocale[loc];

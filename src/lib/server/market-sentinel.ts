@@ -542,7 +542,7 @@ export async function sentinelCheckOne(marketId: string, opts?: { model?: string
 //
 // ⛔ "NOT CHECKED" IS A VERDICT OF ITS OWN, NEVER "AGREES". A blocked budget, a missing key, a disabled sentinel, a
 // failed call or an answer that does not cover every language all come back `{ status: "unchecked", reason }` — and
-// every reader (`agreementLine`, the poll chips) prints it as "not checked by the sentinel".
+// every reader (`agreementLine`, the poll chips) prints it as "not checked" (the reason is shown beside it).
 
 const AGREEMENT_LOCALES: readonly Locale[] = ["en", "sw", "zh"];
 const AGREEMENT_LANG: Record<Locale, string> = { en: "English", sw: "Kiswahili", zh: "Chinese" };
@@ -649,12 +649,12 @@ export function parseAgreementVerdict(
 
 /**
  * ONE LANGUAGE'S VERDICT, IN WORDS — for the officer's review screen and the suites. ⛔ Three outcomes and only
- * three: "agrees", "does not agree: <issue>", "not checked by the sentinel". Anything unreadable is the third.
+ * three: "agrees", "does not agree: <issue>", "not checked". Anything unreadable is the third.
  */
 export function agreementLine(a: ShortTitleAgreement | null | undefined, loc: Locale): { kind: "agrees" | "disagrees" | "unchecked"; text: string } {
-  if (!a || a.status !== "checked") return { kind: "unchecked", text: "not checked by the sentinel" };
+  if (!a || a.status !== "checked") return { kind: "unchecked", text: "not checked" };
   const v = a.languages[loc];
-  if (!v || typeof v.agrees !== "boolean") return { kind: "unchecked", text: "not checked by the sentinel" };
+  if (!v || typeof v.agrees !== "boolean") return { kind: "unchecked", text: "not checked" };
   return v.agrees ? { kind: "agrees", text: "agrees" } : { kind: "disagrees", text: `does not agree: ${v.issue ?? "The sentinel gave no reason."}` };
 }
 

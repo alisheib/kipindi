@@ -12,6 +12,11 @@ import { SHORT_TITLE_LOCALES, shortTitleFor } from "@/lib/markets/short-title";
 import { COMPETITIONS, normaliseCompetition } from "@/lib/markets/competitions";
 import { competitionLabel } from "@/lib/markets/competition-label";
 import { shortTitleIssueSentence } from "@/lib/server/short-title-service";
+
+/** A value refused as English in another language's slot is refused for that alone — see the list below. */
+function rootIssues<T extends string>(issues: readonly T[]): T[] {
+  return issues.includes("copied_english" as T) ? (["copied_english"] as T[]) : [...issues];
+}
 import { agreementLine } from "@/lib/server/market-sentinel";
 import type { ShortTitleDraftRow } from "@/lib/server/short-title-backfill";
 import type { ShortTitleDraftView, CompetitionOption } from "./short-title-drafts";
@@ -55,7 +60,9 @@ export function draftView(row: ShortTitleDraftRow): ShortTitleDraftView {
         missing,
         drafted,
         refused,
-        issues: missing ? draft.issues[loc].map((i) => shortTitleIssueSentence(loc, i, refused ?? drafted ?? "")) : [],
+        // ⭐ The ROOT CAUSE only: English text in the Swahili or Chinese slot is refused for that — its length and form
+        // are consequences of being English, and listing them beside it reads as three problems where there is one.
+        issues: missing ? rootIssues(draft.issues[loc]).map((i) => shortTitleIssueSentence(loc, i, refused ?? drafted ?? "")) : [],
         verdict: drafted ? agreementLine(draft.agreement, loc) : null,
       };
     }),

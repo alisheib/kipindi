@@ -20,7 +20,7 @@
  * the server refuses instead of overwriting their words.
  *
  * ⭐ THE SENTINEL'S VERDICT IS SHOWN BESIDE EACH LANGUAGE IT READ after a save — "agrees", "does not agree: …" or
- * "not checked: …" (never "agrees" for a check that did not run). It describes the SAVED words, so typing into the
+ * "not checked — …" (never "agrees" for a check that did not run). It describes the SAVED words, so typing into the
  * field clears it.
  *
  * A competition key this build does not know (stored before a list change) is SHOWN as such rather than as a blank,

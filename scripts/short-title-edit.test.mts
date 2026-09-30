@@ -42,7 +42,7 @@
  *   §17 THE RACES (in memory, where the lock really queues): a value set while an `onlyIfEmpty` approval waits for the
  *       lock is never overwritten; a re-file waiting on the lock never puts back a short title applied meanwhile.
  *   §18 the words, pure: `shortTitleIssueSentence` counts and lists the CLEANED value (the rule's own verdict), and the
- *       sentinel's verdict lines say "agrees" / "does not agree: …" / "not checked: …" and nothing else.
+ *       sentinel's verdict lines say "agrees" / "does not agree: …" / "not checked — …" and nothing else.
  *
  * ⭐ THE SENTINEL IS FAKED THROUGH ITS ONE SEAM (`__setShortTitleSentinelForTests`), and `ANTHROPIC_API_KEY` is removed
  * before a module loads: no key, no network, and every verdict on demand.
@@ -819,10 +819,10 @@ function g18Words() {
   ok("18.lines.checked · a checked record reads \"agrees\" / \"does not agree: <issue>\", only for the languages it holds",
     sameC(L({ status: "checked", perLocale: { en: { agrees: true, issue: null }, sw: { agrees: false, issue: "It drops the date." } } }, ["en", "sw", "zh"]),
       { en: { kind: "agrees", text: "agrees" }, sw: { kind: "disagrees", text: "does not agree: It drops the date." } }));
-  ok("18.lines.unchecked · \"not checked: <reason>\" for every language asked, and nothing checked is no line at all — never \"agrees\"",
+  ok("18.lines.unchecked · \"not checked — <reason>\" for every language asked, and nothing checked is no line at all — never \"agrees\"",
     sameC(L({ status: "unchecked", reason: "no ANTHROPIC_API_KEY on this deployment", perLocale: {} }, ["en", "zh"]), {
-      en: { kind: "unchecked", text: "not checked: no ANTHROPIC_API_KEY on this deployment" },
-      zh: { kind: "unchecked", text: "not checked: no ANTHROPIC_API_KEY on this deployment" },
+      en: { kind: "unchecked", text: "not checked — no ANTHROPIC_API_KEY on this deployment" },
+      zh: { kind: "unchecked", text: "not checked — no ANTHROPIC_API_KEY on this deployment" },
     }) && sameC(L(null, ["en"]), {}));
   const F = (en: string | null, sw: string | null, zh: string | null) => ({ shortTitleEn: en, shortTitleSw: sw, shortTitleZh: zh, competition: null });
   ok("18.lines.changed · the languages read by default are those given a NEW, present short title — a cleared or untouched one is not",

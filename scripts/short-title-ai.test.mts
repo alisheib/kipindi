@@ -617,7 +617,7 @@ async function g4Backfill(I: Impl, ctx: Ctx): Promise<Record<string, StoredMarke
   ok("4.store.refused · a failing language is NULL in the draft, with its issue and the refused words kept",
     !!dB && dB.zh === null && dB.issues.zh.includes("copied_english") && typeof dB.refused.zh === "string" && dB.refused.zh.length > 0 && !!dB.en && !!dB.sw, j(dB));
   ok("4.store.unchecked · the sentinel could not check (no key), and the draft says NOT CHECKED — never agrees",
-    !!dA && dA.agreement.status === "unchecked" && I.line(dA.agreement, "en").kind === "unchecked" && I.line(dA.agreement, "en").text === "not checked by the sentinel", j(dA?.agreement));
+    !!dA && dA.agreement.status === "unchecked" && I.line(dA.agreement, "en").kind === "unchecked" && I.line(dA.agreement, "en").text === "not checked", j(dA?.agreement));
   const cNow = await MS.getMarket(C.id);
   ok("4.skip.has · a market that already has short titles is never drafted",
     !byId.has(C.id) && !indexIds().includes(C.id) && per(C.id) === 0 && cNow?.shortTitleEn === C.shortTitleEn, j({ listed: byId.has(C.id), meter: per(C.id) }));
@@ -946,7 +946,7 @@ async function g6Sentinel(I: Impl, tag: string) {
 
   const nokey = await I.check({ market, shorts });
   ok("6.nokey · with no key the check is NOT CHECKED, and reads as not checked in every language",
-    nokey.status === "unchecked" && /ANTHROPIC_API_KEY/.test(nokey.reason) && (["en", "sw", "zh"] as Loc[]).every((l) => I.line(nokey, l).kind === "unchecked" && I.line(nokey, l).text === "not checked by the sentinel"),
+    nokey.status === "unchecked" && /ANTHROPIC_API_KEY/.test(nokey.reason) && (["en", "sw", "zh"] as Loc[]).every((l) => I.line(nokey, l).kind === "unchecked" && I.line(nokey, l).text === "not checked"),
     j({ nokey, en: I.line(nokey, "en") }));
   const none = await I.check({ market, shorts: {} });
   ok("6.none · no short title means nothing to check — not checked, never agrees", none.status === "unchecked" && I.line(none, "en").kind === "unchecked", j(none));
