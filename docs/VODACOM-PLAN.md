@@ -162,13 +162,13 @@ the S2 commits. Nothing of S2 is live until it is merged to main.
 **What passed (2026-09-30)** — `tsc` 0; `test:short-title-fit`, `test:short-title-edit`, `test:short-title-ai` and their
 in-process red twins; `test:dal-parity` (+ `red:dal-parity`), `test:campaign-compose` (+ red), `test:chain-purge`
 (+ red), `test:i18n`, `test:admin-*`, `test:ai-*`, `test:unsaved-changes`, `test:popup-fit` and ~40 more; the drive
-`npm run qa:short-titles` 14/15 in a real browser (the one miss was the drive's own label, since fixed). Red on main
+`qa:short-titles` 14/15 in a real browser (the one miss was the drive's own label, since fixed). Red on main
 BEFORE S2 and unchanged by it: recategorise (check 5, so `red:recategorise` cannot run), type-scale, tap-target,
 decomment, red-anchors ×2.
 
 **Left to do (S2 close-out)** — (1) the adversarial review (5 lenses + skeptics) was running at the time of this note:
 fix every confirmed finding; (2) re-run the battery and `qa:short-titles`; (3) merge to main, push, verify the deploy
-(the migrations run on production at boot); (4) run `npm run qa:short-title-fit` against production (read-only);
+(the migrations run on production at boot); (4) run the `qa:short-title-fit` read against production (read-only);
 (5) an officer presses "Draft short titles for open markets" and approves them; when every open market has short
 titles within budget, S2 is ✅. S2 changes NOTHING players see — the journey card (S7) is where short titles appear.
 
