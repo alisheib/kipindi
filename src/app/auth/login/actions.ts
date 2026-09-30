@@ -6,15 +6,12 @@ import { loginWithPassword, requestLoginOtp, verifyOtpAndAuth, completeTwoFactor
 import { signSession, verifySession } from "@/lib/server/crypto";
 import { rateCheckAsync } from "@/lib/server/rate-limit";
 import { verifyPlayer2faChallenge } from "@/lib/server/player-2fa";
+// The same-origin rule for `next`, shared with the journey's pending-bet link (Vodacom plan S3).
+import { sanitizeNext } from "@/lib/safe-next";
 
 /** Short-lived, HMAC-signed pre-session token proving the password step passed. */
 const PENDING_2FA_COOKIE = "kp_pending_2fa";
 const PENDING_2FA_TTL_MS = 5 * 60 * 1000;
-
-function sanitizeNext(raw: string): string {
-  const next = /^\/(?![/\\])/.test(raw) ? raw : "";
-  return next && !next.startsWith("/auth/") ? next : "";
-}
 
 /**
  * Phone + password sign-in — the only sign-in any form offers. The OTP path below is

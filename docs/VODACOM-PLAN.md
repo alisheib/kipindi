@@ -21,7 +21,7 @@
 migrations finished on production. It waits on an officer drafting and approving the short titles (§0d). Nothing
 reaches players.
 
-**Next:** S3 is IN PROGRESS on `simple-journey` (§0e: pieces 1–2 of 5 done). In parallel, an officer presses "Draft short
+**Next:** S3 is IN PROGRESS on `simple-journey` (§0e: pieces 1, 2 and 4 of 5 done). In parallel, an officer presses "Draft short
 titles for open markets" on `/admin/ai-polls?tab=short-titles` and approves them (§0d "Left to do"), then S2 is ✅.
 
 Session law, the same for every session:
@@ -145,7 +145,7 @@ S3 is §3.1 in full, built as five pure pieces, each with its suite and an in-pr
 | 1 | The estimate — `src/lib/markets/estimate.ts` (+ `loserShareRate`/`loserSharePct` in `payout.ts`) | ✅ `5070d1a7` | `test:journey-estimate` (predeploy) + red 14/14 |
 | 2 | The card's close label — `src/lib/markets/card-close-label.ts` + `cardClosesToday`/`cardDaysLeft`/`cardDaysLeftOne` en/sw/zh | ✅ | `test:card-close-label` (predeploy) + red 7/7 |
 | 3 | The shortfall plan — `src/lib/journey/shortfall.ts` (+ `depositCeilingFor`, `lossHeadroomFor`) | ⬜ | |
-| 4 | The pending bet — `src/lib/journey/pending-bet.ts` + `src/lib/safe-next.ts` | ⬜ | |
+| 4 | The pending bet — `src/lib/journey/pending-bet.ts` + `src/lib/safe-next.ts` (login's `sanitizeNext` moved there) | ✅ | `test:pending-bet` (predeploy) + red 10/10 |
 | 5 | The sheet API — `GET /api/markets/[id]/sheet` | ⬜ | |
 
 **Decisions taken in S3 (delegated):**
@@ -155,6 +155,12 @@ S3 is §3.1 in full, built as five pure pieces, each with its suite and an in-pr
   19.85, which the natural float formula rounds to 19.8. `test:journey-estimate` §c holds the tie.
 - State precedence: closed → emptyPool → oneSidedRefund → fillsEmptySide → hidden → invalidStake → priced. The empty
   side is a FACT and shows even with the display switch off; the sheet prints a figure for a side it fills.
+- A round's pending bet is `udr_<id>.UP|DOWN.<stake>` (Up & Down round ids are `udr_…`; §3.1's "round_x" was a
+  placeholder). The stake is 1–9 digits, no leading zero; `?bet=` wins over the legacy `?side=`.
+- Only login's copy of the same-origin rule moved to `safe-next.ts`. Twelve more copies of the same regex live in
+  the auth pages, register, 2FA, OTP, session-ended, the preview route and the app shell, with deliberate small
+  differences (some also refuse `/auth`, `/auth?`); folding them in changes auth behaviour and needs its own drive —
+  a follow-up, not S3.
 
 ## §0d · S2 as built (2026-09-30) — LIVE on main since `473807b1`
 

@@ -116,6 +116,10 @@ console.log("\n[client-graph-safe] \u00a71 client-reachable modules stay clear o
     "lib/markets/estimate.ts",
     // The card's close label: imports only `eat-day.ts`, which imports nothing.
     "lib/markets/card-close-label.ts",
+    // The pending-bet link and the same-origin rule it shares with the login form: `safe-next.ts` imports nothing,
+    // `pending-bet.ts` imports only it.
+    "lib/safe-next.ts",
+    "lib/journey/pending-bet.ts",
   ];
   const offenders = [];
   let checked = 0;
