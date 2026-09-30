@@ -181,6 +181,13 @@ shares it). ⭐ The canvas is the source of truth for S4's frames — no copy li
    0.02em. The helpline number is not an amount: it is Inter with tabular figures, because mono sat off the link's
    underline.
 8. **Selection** (the chosen chip or filter) uses the product's own `--pill-active` fill plus a `--brand-400` ring.
+9. **Deposit follows §3.5's order, not the frame's.** The frame omits three things the rulings add:
+   - The phone number comes pre-filled (SJ-13), with "Tumia namba nyingine" beside the "Namba ya simu" label.
+   - "Lipa kwa kadi" sits under "Lipa", not among the wallets.
+   - A small 18+ and helpline line closes the screen (SJ-18: the focused screen has no footer).
+
+   With all three, the screen fits 390 × 844 only with 48-px wallet rows and 12-px gaps. At 360 × 640 it scrolls; S9
+   measures this.
 
 **Verified:** each redraw was rendered locally at 390 × 844 in Chromium and read one screen at a time. Result: no
 overflow, all three fonts loaded, the logos loaded, and the B option of each choice rendered. Ali's standing rule
