@@ -223,9 +223,17 @@ shares it). ⭐ The canvas is the source of truth for S4's frames — no copy li
   - the "cannot be paid" warning only when unavailable.
 
 **Progress on items 2–11 (2026-10-01):**
-- Item 2: the header fit is measured (call 10). Still to draw: the guest, held-wallet and desktop header frames.
-- Item 3: the card states are on the canvas (row "3 · The journey card in every state", ten frames).
-- Next: the home frames (skeleton, 7 chips scrolled, empty category, "Onyesha zaidi"); then items 4–11.
+- Item 2 ✅ on the canvas (row "2 · The header in every state", seven frames):
+  - signed in at 360 and at 320 with TZS 1,250,000;
+  - guest at 390 and at 320 (today's "Ingia" and "Jisajili" pills);
+  - held wallet: the existing "Salio · limegandishwa" with a lock, and no Weka pesa pill, because a frozen wallet
+    cannot take deposits;
+  - balance hidden;
+  - desktop at 1280, with the four destinations, language, bell and avatar.
+- Item 3 ✅ on the canvas: the card row (ten frames) and the home row (loading, seven chips scrolled, an empty
+  category, the end of the first page with "Onyesha zaidi", and desktop at 1280 in three columns).
+  - The empty-category words are drafts, noted on the canvas.
+- Next: item 4 (bet-sheet states), then items 5–11.
 - The copy researched for every state is filed in
   [`S4-COPY-AUDIT.md`](design-system/v5-2026-09-29-simplified-journey/S4-COPY-AUDIT.md), a dated snapshot;
   `i18n-dict.ts` stays the truth. Items marked "NO STRING" there need drafts (R8).
