@@ -4,7 +4,7 @@
  * state (never full-page) in KP_SHOTS for reading one by one:
  *   §1 the Owner saves three short titles on a seeded market → they persist across a reload;
  *   §2 a Swahili short title not in the "Je, …?" form is refused beside its own field, and nothing is saved;
- *   §3 a number the full question does not contain saves, with a "Check these" warning;
+ *   §3 a number the full question does not contain saves, with the warning UNDER the field it names (cleared by typing);
  *   §4 a STALE page (another officer saved meanwhile) is refused, naming the field — it never overwrites;
  *   §5 the create wizard offers the fields, and a counter over budget turns red;
  *   §6 the drafts tab: a run drafts short titles (mock AI); "Edit, then approve" relabels an edited language's verdict;
@@ -70,10 +70,12 @@ await page.getByLabel("English short title").fill("Will it happen before the dea
 await page.getByLabel("Swahili short title").fill("Je, itatokea kabla ya muda kuisha?");
 await page.getByLabel(/Chinese short title/).fill("会在截止前发生吗？");
 await tile("1b-control-filled-1280");
-await page.getByRole("button", { name: "Save short titles" }).click();
+await page.getByRole("button", { name: "Save card wording" }).click();
 await page.waitForTimeout(3000);
 await tile("1c-control-saved-with-verdicts-1280");
-ok("1.2 after the save the sentinel's verdict is shown for each language (locally: not checked)", (await page.getByText(/Sentinel check/).count()) >= 1);
+ok("1.2 after the save the sentinel's verdict is shown for each language (locally: not checked)", (await page.getByText(/Sentinel check/).count()) === 3);
+ok("1.2b …and WHY it did not check is said ONCE for the save, not once per language",
+  (await page.getByText(/Why the sentinel did not check them/).count()) === 1 && (await page.getByText(/Sentinel check: not checked —/).count()) === 0);
 await openMarket();
 ok("1.3 after a reload the English short title is stored", (await page.getByLabel("English short title").inputValue()) === "Will it happen before the deadline?");
 ok("1.4 …and the Swahili one", (await page.getByLabel("Swahili short title").inputValue()) === "Je, itatokea kabla ya muda kuisha?");
@@ -81,10 +83,13 @@ ok("1.5 …and the Chinese one", (await page.getByLabel(/Chinese short title/).i
 
 console.log("\n§2 · a Swahili short title not in the 'Je, …?' form is refused");
 await page.getByLabel("Swahili short title").fill("Itatokea kabla ya muda?");
-await page.getByRole("button", { name: "Save short titles" }).click();
+await page.getByRole("button", { name: "Save card wording" }).click();
 await page.waitForTimeout(2500);
 const swErr = await fieldText(page, "shortTitleSw");
 ok("2.1 the refusal sits beside the Swahili field and names the form", /Je,/.test(swErr), swErr.slice(0, 160));
+const NBSP = String.fromCharCode(0xa0);
+ok("2.1b …with the pattern held on one line by a no-break space after \"Je,\"",
+  ((await page.locator('[data-field="shortTitleSw"]').textContent().catch(() => "")) ?? "").includes(`Je,${NBSP}`));
 ok("2.2 …and the refused field has the focus", (await page.evaluate(() => document.activeElement?.closest("[data-field]")?.getAttribute("data-field") ?? "")) === "shortTitleSw");
 await tile("2a-refused-1280");
 await page.setViewportSize(PHONE); await at(page, page.locator('[data-field="shortTitleSw"]'));
@@ -95,13 +100,16 @@ ok("2.3 …and nothing was saved", (await page.getByLabel("Swahili short title")
 
 console.log("\n§3 · a number the full question does not contain: saves, with a warning");
 await page.getByLabel("English short title").fill("Will it happen by 2031?");
-await page.getByRole("button", { name: "Save short titles" }).click();
+await page.getByRole("button", { name: "Save card wording" }).click();
 await page.waitForTimeout(3000);
-ok("3.1 the save lands and a 'Check these' warning names the number", (await page.getByText("Check these").count()) > 0);
-await at(page, page.getByText("Check these"));
+const enWarn = await fieldText(page, "shortTitleEn");
+ok("3.1 the save lands and the warning sits UNDER the English field, naming the number", /has a number the full question does not/.test(enWarn), enWarn.slice(0, 200));
+ok("3.1b …and the save's toast says to read the notes, not a plain success", (await page.getByText(/read the notes under the fields/).count()) > 0);
+await at(page, page.locator('[data-field="shortTitleEn"]'));
 await tile("3a-warning-1280");
 await page.getByLabel("English short title").fill("Will it happen before the deadline?");
-await page.getByRole("button", { name: "Save short titles" }).click();
+ok("3.2 typing into the field clears the warning about the saved words", !/has a number the full question does not/.test(await fieldText(page, "shortTitleEn")));
+await page.getByRole("button", { name: "Save card wording" }).click();
 await page.waitForTimeout(3000);
 
 console.log("\n§4 · a stale page is refused, never overwrites");
@@ -109,10 +117,10 @@ const other = watch(await ctx.newPage(), "owner-2");
 await openMarket(other);
 await openMarket();
 await other.getByLabel("Swahili short title").fill("Je, itatokea kabla ya mwisho?");
-await other.getByRole("button", { name: "Save short titles" }).click();
+await other.getByRole("button", { name: "Save card wording" }).click();
 await other.waitForTimeout(3000);
 await page.getByLabel("Swahili short title").fill("Je, itatokea mapema?");
-await page.getByRole("button", { name: "Save short titles" }).click();
+await page.getByRole("button", { name: "Save card wording" }).click();
 await page.waitForTimeout(2500);
 const stale = await fieldText(page, "shortTitleSw");
 ok("4.1 the stale page is refused beside the Swahili field ('changed by someone else')", /someone else/i.test(stale), stale.slice(0, 160));
@@ -127,7 +135,8 @@ await page.setViewportSize(DESK);
 console.log("\n§5 · the create wizard");
 await page.goto(`${BASE}/admin/markets/new`, { waitUntil: "domcontentloaded" }); await settle();
 const wizEn = page.getByText(/Short title \(EN\)/i);
-ok("5.1 the wizard's first step has the short-title fields", (await wizEn.count()) > 0);
+ok("5.1 the wizard's first step has the short-title fields, as one group with its heading and the rule", (await wizEn.count()) > 0
+  && (await page.getByText("Card short titles").count()) === 1 && (await page.getByText("Cards show the short title instead of the full question.").count()) === 1);
 await at(page, wizEn);
 await tile("5a-wizard-fields-1280");
 const wizInput = page.locator('[data-field="shortTitleEn"] input').first();
@@ -135,7 +144,8 @@ if ((await wizInput.count()) > 0) {
   await wizInput.fill("Will the shilling strengthen against the dollar before the end of the month?");
   await page.waitForTimeout(500);
   await tile("5b-wizard-over-budget-1280");
-  ok("5.2 a short title over budget shows its counter and a refusal before Continue", /\/ 56/.test(await fieldText(page, "shortTitleEn")));
+  const wizText = await fieldText(page, "shortTitleEn");
+  ok("5.2 a short title over budget shows its counter and the server's own sentence before Continue", /\/ 56/.test(wizText) && /Keep the English short title to 56 characters/.test(wizText) && !/optional/.test(wizText), wizText.slice(0, 200));
 } else skip("5.2 the over-budget counter", "the wizard's English short-title input was not found by its data-field");
 await page.setViewportSize(PHONE); await at(page, wizEn);
 await tile("5c-wizard-390");
@@ -166,8 +176,12 @@ if ((await draftBtn.count()) === 0 || (await draftBtn.isDisabled())) {
       if (v.startsWith("Je, ")) { await inputs.nth(i).fill(v.replace(/\?$/, " leo?")); edited = true; break; }
     }
     await page.waitForTimeout(500);
-    ok("6.2 an edited language's verdict reads 'not checked — edited after the check'", edited && (await page.getByText(/edited after the check/).count()) > 0);
-    await at(page, page.getByText(/edited after the check/));
+    ok("6.2 an edited language's verdict says what happens next: 'not checked yet — the sentinel reads your words when you approve'",
+      edited && (await page.getByText(/the sentinel reads your words when you approve/).count()) > 0);
+    const editRow = page.locator(".glass-panel", { has: page.getByRole("button", { name: "Approve these short titles" }) }).last();
+    ok("6.2b in edit mode each language is on screen ONCE — the fields replace the read-only blocks",
+      (await editRow.getByText("Swahili", { exact: true }).count()) === 0 && (await editRow.getByText("Swahili short title").count()) === 1);
+    await at(page, page.getByText(/the sentinel reads your words when you approve/));
     await tile("6c-edit-mode-1280");
     await page.setViewportSize(PHONE); await page.waitForTimeout(400);
     await tile("6d-edit-mode-390");
@@ -176,7 +190,8 @@ if ((await draftBtn.count()) === 0 || (await draftBtn.isDisabled())) {
     await page.waitForTimeout(500);
     await page.getByRole("button", { name: "Reject", exact: true }).first().click();
     await page.waitForTimeout(500);
-    ok("6.3 Reject asks for a reason before it arms", (await page.getByRole("button", { name: "Reject this draft" }).isDisabled()));
+    ok("6.3 Reject asks for a reason before it arms, and says its minimum", (await page.getByRole("button", { name: "Reject this draft" }).isDisabled())
+      && (await page.getByText(/Required — at least 3 characters/).count()) > 0);
     await at(page, page.getByRole("button", { name: "Reject this draft" }));
     await tile("6e-reject-mode-1280");
     await page.getByRole("button", { name: "Cancel" }).first().click();

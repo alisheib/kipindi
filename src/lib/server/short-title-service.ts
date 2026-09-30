@@ -34,11 +34,10 @@ import { withLock } from "./locks";
 import { marketStore, type MarketShortTitleFields } from "./market-dal";
 import { checkShortTitleAgreement, type ShortTitleAgreement } from "./market-sentinel";
 import {
-  HARD_ISSUES, SHORT_TITLE_LOCALES, SHORT_TITLE_MAX, cleanShortTitle, codePoints, normaliseShortTitleSet, shortTitleFor,
+  HARD_ISSUES, SHORT_TITLE_LOCALES, normaliseShortTitleSet, shortTitleFor, shortTitleIssueSentence,
   type ShortTitleIssue,
 } from "@/lib/markets/short-title";
 import { isCompetition } from "@/lib/markets/competitions";
-import { offendingChars } from "@/lib/sms-compose";
 
 export type ShortTitleField = "shortTitleEn" | "shortTitleSw" | "shortTitleZh" | "competition";
 type TitleField = Exclude<ShortTitleField, "competition">;
@@ -92,37 +91,9 @@ const FIELD_LABEL: Record<ShortTitleField, string> = {
   competition: "The competition",
 };
 
-/**
- * One sentence per issue, in the console's plain English. Exported for the admin control, the wizard's action, the AI
- * generator, the backfill panel and the suites.
- *
- * ⭐ IT CLEANS THE VALUE ITSELF (`cleanShortTitle`: trimmed, zero-width characters dropped, sw/en folded onto GSM-7)
- * before counting or listing characters — the exact value the rule judged. So "it has N" is the count the rule
- * refused, and the characters a text message cannot carry are only those that survived the fold, whichever form of the
- * value a caller hands in (the raw text typed, or the value stored).
- */
-export function shortTitleIssueSentence(locale: Locale, issue: ShortTitleIssue, value: unknown): string {
-  const v = cleanShortTitle(locale, value);
-  switch (issue) {
-    case "too_long":
-      return `Keep the ${LANG[locale]} short title to ${SHORT_TITLE_MAX[locale]} characters — it has ${codePoints(v)}.`;
-    case "not_gsm7":
-      return `The ${LANG[locale]} short title has characters a text message cannot carry: ${offendingChars(v).join(" ")}.`;
-    case "form":
-      return locale === "sw"
-        ? "A Swahili short title is a question in the form “Je, …?”."
-        : locale === "en"
-          ? "An English short title is a question ending in “?”."
-          : "A Chinese short title is a question ending in ？.";
-    case "copied_english":
-      // For Chinese the rule also refuses ANY value with no Chinese character, copy or not — so it says that.
-      return locale === "zh"
-        ? "The Chinese short title is not written in Chinese. Write it in Chinese, or leave it empty so the card shows the full question."
-        : `The ${LANG[locale]} short title is the English one. Write it in ${LANG[locale]}, or leave it empty so the card shows the full question.`;
-    case "number_drift":
-      return `The ${LANG[locale]} short title has a number the full question does not. Check it says the same thing.`;
-  }
-}
+/** One sentence per issue — the words live beside the rules now (client-safe, so the wizard speaks them too); the
+ *  server's callers keep importing them from here. */
+export { shortTitleIssueSentence };
 
 /** A stored value that counts as "none": null, or only whitespace — exactly how a card reads it (`shortTitleFor`). */
 const isEmpty = (v: string | null | undefined): boolean => typeof v !== "string" || v.trim() === "";
@@ -139,11 +110,17 @@ export function changedShortTitleLocales(before: MarketShortTitleFields, after: 
   return SHORT_TITLE_LOCALES.filter((loc) => after[FIELD[loc]] !== before[FIELD[loc]] && shortTitleFor(loc, after) !== null);
 }
 
-export type ShortTitleVerdictLine = { kind: "agrees" | "disagrees" | "unchecked"; text: string };
+export type ShortTitleVerdictLine = {
+  kind: "agrees" | "disagrees" | "unchecked";
+  text: string;
+  /** "unchecked" only: WHY — the same for every language of one act, so a surface says it once, not per language. */
+  reason?: string;
+};
 
 /**
- * ONE LINE PER LANGUAGE, IN WORDS — "agrees", "does not agree: <issue>" or "not checked — <reason>", for the languages
- * the act checked. ⛔ Three outcomes and only three, and anything unreadable is the third. Nothing checked, no lines.
+ * ONE LINE PER LANGUAGE, IN WORDS — "agrees", "does not agree: <issue>" or "not checked" (its `reason` beside it, for
+ * the surface to say ONCE), for the languages the act checked. ⛔ Three outcomes and only three, and anything
+ * unreadable is the third. Nothing checked, no lines.
  */
 export function agreementVerdictLines(
   record: ShortTitleAgreementRecord | null | undefined,
@@ -153,7 +130,7 @@ export function agreementVerdictLines(
   if (!record) return out;
   for (const loc of locales) {
     if (record.status !== "checked") {
-      out[loc] = { kind: "unchecked", text: `not checked — ${record.reason?.trim() || "the sentinel gave no reason"}` };
+      out[loc] = { kind: "unchecked", text: "not checked", reason: record.reason?.trim() || "the sentinel gave no reason" };
       continue;
     }
     const v = record.perLocale[loc];
@@ -341,7 +318,7 @@ export async function applyShortTitles(opts: {
     for (const f of SHORT_TITLE_FIELDS) {
       if (!Object.prototype.hasOwnProperty.call(expected, f) || expected[f] === undefined) continue;
       if (asShown(expected[f]) !== asShown(before[f])) {
-        return { ok: false, field: f, error: `${FIELD_LABEL[f]} was changed by someone else since this page loaded. Reload to see it. Nothing changed.` };
+        return { ok: false, field: f, error: `${FIELD_LABEL[f]} was changed by someone else since this page loaded, so nothing was saved — reload the page to see it.` };
       }
     }
 

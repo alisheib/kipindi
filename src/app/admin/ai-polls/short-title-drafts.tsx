@@ -11,9 +11,13 @@
  * rules again on every approval.
  *
  * ⛔ THE SENTINEL NEVER APPROVES. Its verdict is printed beside each language — "agrees", "does not agree: …" or
- * "not checked by the sentinel" — and the officer's press is the only approval there is. In the edit form a
- * language whose words differ from the ones the sentinel read says so ("not checked — edited after the check"): an
- * old verdict is never shown against new words.
+ * "not checked", with WHY said once for the draft — and the officer's press is the only approval there is. In the edit
+ * form a language whose words differ from the ones the sentinel read says so ("not checked yet — the sentinel reads
+ * your words when you approve"): an old verdict is never shown against new words.
+ *
+ * The edit form REPLACES the read-only language blocks (each title and verdict would otherwise be on screen twice); what
+ * the AI wrote and why the rules refused it stays under the box until the officer types. Its fields are the market
+ * page's fields: the same labels (`SHORT_TITLE_LABEL`), sizes, counter and error state.
  *
  * ⛔ A STALE PAGE NEVER OVERWRITES. "Edit, then approve" sends what this page SHOWED as the market's current value per
  * field; the server refuses, naming the field, when the market has changed since. A plain "Approve" writes a drafted
@@ -31,7 +35,7 @@ import { useDeferredToast } from "@/components/ui/toast";
 import { UnsavedChangesGuard } from "@/components/ui/unsaved-changes";
 import { useMayAct, ActReadOnly } from "@/components/admin/act-gate";
 import { runAdminAction } from "@/lib/client/run-admin-action";
-import { SHORT_TITLE_MAX, cleanShortTitle, codePoints } from "@/lib/markets/short-title";
+import { SHORT_TITLE_LABEL, SHORT_TITLE_MAX, cleanShortTitle, codePoints } from "@/lib/markets/short-title";
 import { cleanReason } from "@/lib/affiliate-rules";
 import { draftShortTitlesAction, approveShortTitleDraftAction, rejectShortTitleDraftAction } from "./short-title-actions";
 
@@ -77,7 +81,7 @@ const shortTitleLength = (loc: Loc, value: string | null) => codePoints(cleanSho
 
 /**
  * The verdict line in the edit form, for the words in the box NOW: the sentinel's verdict only while they are the
- * words it read; once they differ, "not checked — edited after the check"; nothing for an empty box, or for an
+ * words it read; once they differ, "not checked yet — …" (`EDITED_AFTER_CHECK`); nothing for an empty box, or for an
  * already-approved language left as it is.
  */
 function editVerdict(l: ShortTitleDraftLanguageView, value: string, editedText: string): Verdict | null {
@@ -149,10 +153,11 @@ export function ShortTitleDraftsPanel({
         <div>
           <p className="font-display font-semibold text-body-sm text-text">Short titles for open markets</p>
           <p className="mt-1 text-body-sm text-text-secondary leading-relaxed">
-            A short title is the question a phone card shows in two lines. The AI drafts them for open markets that
-            have none; nothing reaches a market until you approve it here. Budgets: English and Swahili{" "}
+            A short title is the question a phone card shows in two lines, instead of the full question. The AI drafts
+            them for open markets that have none; nothing reaches a market until you approve it here — approve one only
+            if it says exactly the same thing as the full question. Budgets: English and Swahili{" "}
             {SHORT_TITLE_MAX.en} characters, Chinese {SHORT_TITLE_MAX.zh}. The full question, the resolution criterion
-            and the source stay on the market&apos;s page unchanged.
+            and the source stay unchanged on the market&apos;s page.
           </p>
           <p className="mt-1 text-body-sm text-text-tertiary">
             {needing === 0
@@ -307,60 +312,63 @@ function DraftRow({
   return (
     <div className="glass-panel p-4 space-y-3">
       <div>
-        <Link
-          href={`/admin/markets/${view.marketId}` as Route}
-          className="font-display font-semibold text-body-sm text-text underline-offset-2 hover:underline break-words"
-        >
-          {view.question}
-        </Link>
+        <p className="font-display font-semibold text-body-sm text-text break-words">
+          <Link href={`/admin/markets/${view.marketId}` as Route} className="underline-offset-2 hover:underline">
+            {view.question}
+          </Link>
+        </p>
         <p className="mt-0.5 text-body-sm text-text-tertiary break-words">{view.questionSw}</p>
         {view.questionZh && <p className="text-body-sm text-text-tertiary break-words">{view.questionZh}</p>}
-        <p className="mt-1 text-body-sm text-text-subtle">Drafted {view.draftedAtLabel}</p>
+        <p className="mt-1 text-body-sm text-text-subtle">Drafted <span className="font-mono tabular-nums">{view.draftedAtLabel}</span></p>
       </div>
 
-      <div className="space-y-2">
-        {view.languages.map((l) => (
-          <div key={l.loc} className="rounded-md border border-border p-3 space-y-1">
-            <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <span className="font-mono text-micro uppercase eyebrow text-text-subtle">{l.language}</span>
-              {l.missing && l.drafted && (
-                <span className={`font-mono text-body-sm tabular-nums ${counterClass(shortTitleLength(l.loc, l.drafted), SHORT_TITLE_MAX[l.loc])}`}>
-                  {shortTitleLength(l.loc, l.drafted)} / {SHORT_TITLE_MAX[l.loc]}
-                </span>
+      {mode !== "edit" && (
+        <div className="space-y-2">
+          {view.languages.map((l) => (
+            <div key={l.loc} className="rounded-md border border-border p-3 space-y-1">
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <span className="font-mono text-micro uppercase eyebrow text-text-subtle">{l.language}</span>
+                {l.missing && l.drafted && (
+                  <span className={`font-mono text-body-sm tabular-nums ${counterClass(shortTitleLength(l.loc, l.drafted), SHORT_TITLE_MAX[l.loc])}`}>
+                    {shortTitleLength(l.loc, l.drafted)} / {SHORT_TITLE_MAX[l.loc]}
+                  </span>
+                )}
+              </div>
+              {!l.missing ? (
+                <p className="text-body-sm text-text-secondary break-words">
+                  Already approved: {l.current ?? "—"} <span className="text-text-subtle">(the draft leaves it as it is)</span>
+                </p>
+              ) : l.drafted ? (
+                <p className="text-body-sm font-medium text-text break-words">{l.drafted}</p>
+              ) : (
+                <p className="text-body-sm text-text-secondary">No short title — the card keeps the full question.</p>
+              )}
+              {l.refused && <p className="text-body-sm text-text-tertiary break-words">The AI wrote: {l.refused}</p>}
+              {l.issues.map((s, i) => (
+                <p key={i} className="text-body-sm text-warning-fg break-words">{s}</p>
+              ))}
+              {l.verdict && (
+                <p className={`text-body-sm ${verdictClass(l.verdict)}`}>
+                  Sentinel check: {l.verdict.text}
+                </p>
               )}
             </div>
-            {!l.missing ? (
-              <p className="text-body-sm text-text-secondary break-words">
-                Already approved: {l.current ?? "—"} <span className="text-text-subtle">(the draft leaves it as it is)</span>
-              </p>
-            ) : l.drafted ? (
-              <p className="text-body-sm font-medium text-text break-words">{l.drafted}</p>
-            ) : (
-              <p className="text-body-sm text-text-secondary">No short title — the card keeps the full question.</p>
-            )}
-            {l.refused && <p className="text-body-sm text-text-tertiary break-words">The AI wrote: {l.refused}</p>}
-            {l.issues.map((s, i) => (
-              <p key={i} className="text-body-sm text-warning-fg">{s}</p>
-            ))}
-            {l.verdict && (
-              <p className={`text-body-sm ${verdictClass(l.verdict)}`}>
-                Sentinel check: {l.verdict.text}
-              </p>
-            )}
-          </div>
-        ))}
-      </div>
-
-      <p className="text-body-sm text-text-secondary">
-        Competition:{" "}
-        {view.competition.draftedLabel
-          ? <>{view.competition.draftedLabel} <span className="text-text-subtle">(drafted)</span></>
-          : view.competition.currentLabel
-            ? <>{view.competition.currentLabel} <span className="text-text-subtle">(already set)</span></>
-            : "none"}
-      </p>
+          ))}
+        </div>
+      )}
+      {/* WHY the sentinel did not check — once for the draft, directly under the verdicts it explains (every mode). */}
       {view.uncheckedReason && (
-        <p className="text-body-sm text-text-tertiary">Why the sentinel did not check it: {view.uncheckedReason}</p>
+        <p className="text-body-sm text-text-tertiary break-words">Why the sentinel did not check them: {view.uncheckedReason}</p>
+      )}
+      {mode !== "edit" && (
+        <p className="text-body-sm text-text-secondary">
+          Competition:{" "}
+          {view.competition.draftedLabel
+            ? <>{view.competition.draftedLabel} <span className="text-text-subtle">(drafted)</span></>
+            : view.competition.currentLabel
+              ? <>{view.competition.currentLabel} <span className="text-text-subtle">(already set)</span></>
+              : "None"}
+        </p>
       )}
 
       {mayAct && mode === "view" && (
@@ -382,49 +390,53 @@ function DraftRow({
 
       {mayAct && mode === "edit" && (
         <div className="space-y-3 border-t border-border pt-3">
-          {view.languages.map((l) => {
-            const value = edit[l.loc];
-            const n = shortTitleLength(l.loc, value);
-            const f = fieldFor[l.loc];
-            const verdict = editVerdict(l, value, view.editedVerdictText);
-            return (
-              <div key={l.loc} className="space-y-1">
-                <Field
-                  label={`${l.language} short title`}
-                  dataField={f}
-                  error={refusal?.field === f ? refusal.message : undefined}
-                  hint={`${n} / ${SHORT_TITLE_MAX[l.loc]} characters. Leave it empty and the card shows the full question.`}
-                >
+          <p className="text-body-sm text-text-subtle">Leave a language empty and its card shows the full question.</p>
+          <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
+            {view.languages.map((l) => {
+              const value = edit[l.loc];
+              const n = shortTitleLength(l.loc, value);
+              const max = SHORT_TITLE_MAX[l.loc];
+              const f = fieldFor[l.loc];
+              const verdict = editVerdict(l, value, view.editedVerdictText);
+              // What the AI wrote and why it was refused describe the AI's words — shown until the officer types.
+              const untouched = value === seedFor(l);
+              return (
+                <Field key={l.loc} label={SHORT_TITLE_LABEL[l.loc]} dataField={f} error={refusal?.field === f ? refusal.message : undefined}>
                   <Input
-                    size="sm"
                     value={value}
                     disabled={pending}
-                    aria-invalid={refusal?.field === f || n > SHORT_TITLE_MAX[l.loc] || undefined}
+                    error={refusal?.field === f || n > max}
                     onChange={(e) => { setEdit({ ...edit, [l.loc]: e.target.value }); if (refusal?.field === f) setRefusal(null); }}
                   />
+                  <p className={`mt-1 font-mono text-body-sm tabular-nums ${counterClass(n, max)}`}>{n} / {max}</p>
+                  {untouched && l.refused && <p className="mt-1 text-body-sm text-text-tertiary break-words">The AI wrote: {l.refused}</p>}
+                  {untouched && l.issues.map((s, i) => (
+                    <p key={i} className="mt-1 text-body-sm text-warning-fg break-words">{s}</p>
+                  ))}
+                  {verdict && (
+                    <p className={`mt-1 text-body-sm break-words ${verdictClass(verdict)}`}>Sentinel check: {verdict.text}</p>
+                  )}
                 </Field>
-                {verdict && (
-                  <p className={`text-body-sm ${verdictClass(verdict)}`}>Sentinel check: {verdict.text}</p>
-                )}
-              </div>
-            );
-          })}
-          <Field label="Competition" dataField="competition" error={refusal?.field === "competition" ? refusal.message : undefined}>
-            <Select
-              size="sm"
-              value={edit.competition}
-              ariaLabel="Competition"
-              disabled={pending}
-              options={competitionChoices}
-              onChange={(v) => { setEdit({ ...edit, competition: v }); if (refusal?.field === "competition") setRefusal(null); }}
-            />
-          </Field>
+              );
+            })}
+          </div>
+          <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
+            <Field label="Competition" hint="Optional. Shown beside the category on the card." dataField="competition" error={refusal?.field === "competition" ? refusal.message : undefined}>
+              <Select
+                value={edit.competition}
+                ariaLabel="Competition"
+                disabled={pending}
+                options={competitionChoices}
+                onChange={(v) => { setEdit({ ...edit, competition: v }); if (refusal?.field === "competition") setRefusal(null); }}
+              />
+            </Field>
+          </div>
           {refusal && refusal.field === null && <p role="alert" className="text-body-sm text-danger-fg">{refusal.message}</p>}
-          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-            <Button type="button" size="md" variant="ghost" onClick={close} disabled={pending}>Cancel</Button>
+          <div className="flex flex-wrap gap-2">
             <Button type="button" size="md" variant="primary" onClick={() => approve(true)} loading={pending}>
               Approve these short titles
             </Button>
+            <Button type="button" size="md" variant="ghost" onClick={close} disabled={pending}>Cancel</Button>
           </div>
         </div>
       )}
@@ -432,10 +444,10 @@ function DraftRow({
       {mayAct && mode === "reject" && (
         <div className="space-y-3 border-t border-border pt-3">
           <Field
-            label="Why — kept with the rejection"
+            label="Reason for rejecting"
             dataField="reason"
             error={refusal?.field === "reason" ? refusal.message : undefined}
-            hint={`${reasonLength} / ${reasonMax} characters. The market is not changed, and it will not be drafted again — its short titles can still be set by hand on the market's page.`}
+            hint={`Required — at least ${reasonMin} characters, kept with the rejection. The market is not changed and will not be drafted again; its short titles can still be set by hand on the market's page.`}
           >
             <Textarea
               value={reason}
@@ -445,13 +457,14 @@ function DraftRow({
               aria-invalid={refusal?.field === "reason" || reasonLength > reasonMax || undefined}
               onChange={(e) => { setReason(e.target.value); if (refusal?.field === "reason") setRefusal(null); }}
             />
+            <p className={`mt-1 font-mono text-body-sm tabular-nums ${counterClass(reasonLength, reasonMax)}`}>{reasonLength} / {reasonMax}</p>
           </Field>
           {refusal && refusal.field === null && <p role="alert" className="text-body-sm text-danger-fg">{refusal.message}</p>}
-          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-            <Button type="button" size="md" variant="ghost" onClick={close} disabled={pending}>Cancel</Button>
+          <div className="flex flex-wrap gap-2">
             <Button type="button" size="md" variant="primary" onClick={reject} loading={pending} disabled={pending || !reasonOk}>
               Reject this draft
             </Button>
+            <Button type="button" size="md" variant="ghost" onClick={close} disabled={pending}>Cancel</Button>
           </div>
         </div>
       )}

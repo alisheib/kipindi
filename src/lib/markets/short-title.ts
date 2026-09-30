@@ -30,7 +30,7 @@
  */
 import type { Locale } from "@/lib/i18n-dict";
 import { pickLocalized } from "@/lib/localized";
-import { encodingFor, foldToGsm7 } from "@/lib/sms-compose";
+import { encodingFor, foldToGsm7, offendingChars } from "@/lib/sms-compose";
 
 /** The ONE budget. ⛔ Written nowhere else — the generator's prompt, the admin counter and the fit test read it. */
 export const SHORT_TITLE_MAX: Readonly<Record<Locale, number>> = { en: 56, sw: 56, zh: 28 };
@@ -240,4 +240,68 @@ export function cardTitle(
 ): { text: string; short: boolean } {
   const short = shortTitleFor(locale, m);
   return short ? { text: short, short: true } : { text: pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh), short: false };
+}
+
+/* ─── THE WORDS — one wording for every surface ─────────────────────────────────────────────────────────────────────
+ * The market page's control, the wizard, the drafts tab and the server's refusals all say these rules in the SAME
+ * words, so the words live beside the rules (client-safe) and every surface imports them. Admin copy is English only.
+ */
+
+const LANGUAGE_NAME: Readonly<Record<Locale, string>> = { en: "English", sw: "Swahili", zh: "Chinese" };
+
+/** Each short-title field's name, the same on the market page and the drafts tab. */
+export const SHORT_TITLE_LABEL: Readonly<Record<Locale, string>> = {
+  en: "English short title",
+  sw: "Swahili short title",
+  zh: "Chinese short title · 中文",
+};
+
+/** The rule every surface states before a short title is typed or approved — a note's title and its body. */
+export const SHORT_TITLE_RULE_TITLE = "Cards show the short title instead of the full question.";
+export const SHORT_TITLE_RULE_BODY =
+  "The full question, the resolution criterion and the source stay unchanged on the market's page — the short title must say exactly the same thing. Leave a language empty and its card shows the full question.";
+
+/**
+ * The Swahili form as the officer copies it — “Je, …?” — with a NO-BREAK space after the comma, so the pattern never
+ * breaks across two lines (it did, at 1280 and at 390). BUILT, never pasted: an invisible character is invisible in
+ * review too.
+ */
+export const SHORT_TITLE_SW_FORM = `“Je,${String.fromCharCode(0xa0)}…?”`;
+
+/** What the officer is told when an act landed and its audit record did not — one recipient, one noun, everywhere. */
+export function shortTitleAuditMissed(what: "change" | "rejection"): string {
+  return `The ${what} is saved, but its audit record was not written. Tell the Owner so the record can be completed.`;
+}
+
+/**
+ * One sentence per issue, in the console's plain English — what every surface prints (the server's refusals, the
+ * market page, the drafts tab, the wizard while the officer types). Each one says what to DO.
+ *
+ * ⭐ IT CLEANS THE VALUE ITSELF (`cleanShortTitle`: trimmed, zero-width characters dropped, sw/en folded onto GSM-7)
+ * before counting or listing characters — the exact value the rule judged. So "it has N" is the count the rule
+ * refused, and the characters a text message cannot carry are only those that survived the fold, whichever form of the
+ * value a caller hands in (the raw text typed, or the value stored).
+ */
+export function shortTitleIssueSentence(locale: Locale, issue: ShortTitleIssue, value: unknown): string {
+  const v = cleanShortTitle(locale, value);
+  const lang = LANGUAGE_NAME[locale];
+  switch (issue) {
+    case "too_long":
+      return `Keep the ${lang} short title to ${SHORT_TITLE_MAX[locale]} characters — it has ${codePoints(v)}.`;
+    case "not_gsm7":
+      return `The ${lang} short title has characters a text message cannot carry: ${offendingChars(v).join(" ")}.`;
+    case "form":
+      return locale === "sw"
+        ? `Write the Swahili short title as a question in the form ${SHORT_TITLE_SW_FORM}.`
+        : locale === "en"
+          ? "Write the English short title as a question ending in “?”."
+          : `Write the Chinese short title as a question ending in ${FW_QUESTION}.`;
+    case "copied_english":
+      // For Chinese the rule also refuses ANY value with no Chinese character, copy or not — so it says that.
+      return locale === "zh"
+        ? "The Chinese short title is not written in Chinese. Write it in Chinese, or leave it empty so the card shows the full question."
+        : `The ${lang} short title is the English one. Write it in ${lang}, or leave it empty so the card shows the full question.`;
+    case "number_drift":
+      return `The ${lang} short title has a number the full question does not. Check it says the same thing.`;
+  }
 }

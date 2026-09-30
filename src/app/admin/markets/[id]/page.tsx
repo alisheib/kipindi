@@ -245,7 +245,7 @@ async function MarketPredictorsContent({
               they must agree with. ⛔ Never on an Up & Down round: a round is not a card and is out of S2, and the
               server refuses it anyway (`applyShortTitles`). */}
           {m.productLine !== "UPDOWN" && (
-            <div className="mt-3 pt-3 border-t border-border/60">
+            <div className="mt-3 py-3 border-y border-border/60">
               <ShortTitleControl
                 marketId={m.id}
                 current={{

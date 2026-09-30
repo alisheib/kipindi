@@ -8,24 +8,25 @@
  */
 import { dict, type Locale } from "@/lib/i18n-dict";
 import { formatDateTimeSafe } from "@/lib/utils";
-import { SHORT_TITLE_LOCALES, shortTitleFor } from "@/lib/markets/short-title";
+import { SHORT_TITLE_LOCALES, shortTitleFor, shortTitleIssueSentence } from "@/lib/markets/short-title";
 import { COMPETITIONS, normaliseCompetition } from "@/lib/markets/competitions";
 import { competitionLabel } from "@/lib/markets/competition-label";
-import { shortTitleIssueSentence } from "@/lib/server/short-title-service";
+import { agreementLine } from "@/lib/server/market-sentinel";
+import type { ShortTitleDraftRow } from "@/lib/server/short-title-backfill";
+import type { ShortTitleDraftView, CompetitionOption } from "./short-title-drafts";
 
 /** A value refused as English in another language's slot is refused for that alone — see the list below. */
 function rootIssues<T extends string>(issues: readonly T[]): T[] {
   return issues.includes("copied_english" as T) ? (["copied_english"] as T[]) : [...issues];
 }
-import { agreementLine } from "@/lib/server/market-sentinel";
-import type { ShortTitleDraftRow } from "@/lib/server/short-title-backfill";
-import type { ShortTitleDraftView, CompetitionOption } from "./short-title-drafts";
 
 const LANGUAGE: Record<Locale, string> = { en: "English", sw: "Swahili", zh: "Chinese" };
 
 /** ⛔ What the edit form's verdict line says once a language's words differ from the ones the sentinel read — the old
- *  verdict was about different words, so it is never shown against the new ones. */
-export const EDITED_AFTER_CHECK = "not checked — edited after the check";
+ *  verdict was about different words, so it is never shown against the new ones. It speaks of the FUTURE, which is the
+ *  one thing true in every case (a draft the sentinel never read, a language the AI never drafted): approving sends
+ *  every language the officer wrote to the sentinel (`sentinelLocales`, short-title-backfill.ts). */
+export const EDITED_AFTER_CHECK = "not checked yet — the sentinel reads your words when you approve";
 
 /** The competition choices, in the ONE list's order, with the dictionary's English labels. */
 export function competitionOptions(): CompetitionOption[] {

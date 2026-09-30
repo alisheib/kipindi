@@ -11,6 +11,9 @@
  *   · A PRICE MOVE (§5, 2026-09-27, the landing v3 WP3+WP4 review, R8) — the grid card inked its 24h move
  *     "+5pt" green-up / rose-down while the featured card on the same page printed the same move "▲5 · 24h ago"
  *     in neutral ink. A move of the YES price is not a side, and a green-up move invites chasing.
+ *   · A FORM ERROR (§6, 2026-09-30, the Vodacom plan S2 design panel) — the market wizard's and the AI poll form's
+ *     validation lines wore `text-no-300` / `border-no-700` while the counter above them wore `text-danger-fg`: two
+ *     reds stacked on one field, and the betting NO pair spent on an app state. A form error is the danger ink.
  *
  * ⛔ SCOPED TO THE NAMED SITES, and the scope is the point: these files use the betting pair correctly elsewhere
  * (Up/Down price arrows, split labels, the YES/NO buttons). Each check is a function returning defects, run on the
@@ -194,6 +197,27 @@ ok("§5c control · every planted copy found its target", plantMoveInline !== mc
 ok("§5d control · a YES/NO-inked move (inline, the retired grid spelling) is reported", moveDefects(css, plantMoveInline).length > 0, "", moveDefects(css, plantMoveInline).join("; "));
 ok("§5e control · a YES-green move in the stylesheet is reported", moveDefects(plantMoveSheet, mcard).length > 0, "", moveDefects(plantMoveSheet, mcard).join("; "));
 ok("§5f control · a grid card with its own move renderer again is reported", moveDefects(css, plantMoveGrid).length > 0, "", moveDefects(css, plantMoveGrid).join("; "));
+
+/* §6 · A FORM ERROR IS NOT A SIDE (the Vodacom plan S2 design panel, 2026-09-30) ──────────────────────────────── */
+console.log("\n§6 · a form's validation line wears the danger ink, never the betting NO pair");
+const WIZARD = "src/app/admin/markets/new/wizard.tsx";
+const SHORT_SURFACES = ["src/app/admin/markets/short-title-control.tsx", "src/app/admin/ai-polls/short-title-drafts.tsx"];
+const POLL_FORM = "src/app/admin/ai-polls/poll-actions.tsx";
+/** The market wizard and the short-title surfaces name no side at all: ANY betting class there is a defect. */
+const anySide = (src: string) => (code(src).match(/\b(?:text|border|bg)-(?:yes|no)-\d{3}\b/g) ?? []);
+/** The AI poll form does name sides (its result icons, its reject chips); a betting class on a FORM-ERROR line does not. */
+const errorLineSides = (src: string) => code(src).split("\n").filter((l) =>
+  /\b(?:text|border)-no-\d{3}\b/.test(l) && /role="alert"|formErrors\.|\b(?:sel|date)Error\b|\b(?:sw|zh)Issue\b/.test(l));
+const wizard = read(WIZARD);
+ok("§6a the market wizard's errors wear the danger ink — no betting class anywhere in it", anySide(wizard).length === 0, anySide(wizard).join(", "));
+for (const f of SHORT_SURFACES) ok(`§6b ${f.split("/").pop()} names no side — no betting class`, anySide(read(f)).length === 0, anySide(read(f)).join(", "));
+const pollForm = read(POLL_FORM);
+ok("§6c the AI poll form's validation lines wear the danger ink", errorLineSides(pollForm).length === 0, errorLineSides(pollForm).slice(0, 3).join(" | "));
+const plantWizard = wizard.replace('leading-snug text-danger-fg">{refused}</p>', 'leading-snug text-no-300">{refused}</p>');
+const plantPoll = pollForm.replace('{dateError && <p className="mt-1 text-body-sm text-danger-fg">{dateError}</p>}', '{dateError && <p className="mt-1 text-body-sm text-no-300">{dateError}</p>}');
+ok("§6d control · every planted copy found its target", plantWizard !== wizard && plantPoll !== pollForm);
+ok("§6e control · a wizard refusal in the NO ink is reported", anySide(plantWizard).length > 0, "", anySide(plantWizard).join(", "));
+ok("§6f control · an AI poll form error in the NO ink is reported", errorLineSides(plantPoll).length > 0, "", errorLineSides(plantPoll).join(" | ").slice(0, 160));
 
 console.log(`\n${fail === 0 ? "ALL PASS" : "FAILURES"} — ${pass} passed, ${fail} failed`);
 if (pass + fail < 8) { console.error(`!! only ${pass + fail} assertions ran`); process.exit(3); }

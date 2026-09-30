@@ -42,7 +42,7 @@
  */
 import { randomUUID } from "node:crypto";
 import type { Locale } from "@/lib/i18n-dict";
-import { SHORT_TITLE_LOCALES, cleanShortTitle, normaliseShortTitleSet, shortTitleFor, type ShortTitleIssue } from "@/lib/markets/short-title";
+import { SHORT_TITLE_LOCALES, cleanShortTitle, normaliseShortTitleSet, shortTitleAuditMissed, shortTitleFor, type ShortTitleIssue } from "@/lib/markets/short-title";
 import { normaliseCompetition, type Competition } from "@/lib/markets/competitions";
 import { cleanReason } from "@/lib/affiliate-rules";
 import { formatDateTimeSafe } from "@/lib/utils";
@@ -835,12 +835,12 @@ export function approvalNotes(r: Extract<DraftApproveResult, { ok: true }>): Dec
         if (!v) continue;
         notes.push(v.agrees
           ? { tone: "ok", text: `Sentinel check of your ${LANGUAGE[loc]} edit: agrees.` }
-          : { tone: "warn", text: `Sentinel check of your ${LANGUAGE[loc]} edit: does not agree — ${v.issue ?? "it gave no reason"}. Correct it on the market's page.` });
+          : { tone: "warn", text: `Sentinel check of your ${LANGUAGE[loc]} edit: does not agree: ${(v.issue ?? "it gave no reason").replace(/[.\s]+$/, "")}. Correct it on the market's page.` });
       }
     }
   }
   if (!r.changed && r.skipped.length === 0) notes.push({ tone: "warn", text: "The market already had these words — nothing changed." });
-  if (!r.recorded) notes.push({ tone: "warn", text: "The change landed but its audit row was not written — tell the Owner." });
+  if (!r.recorded) notes.push({ tone: "warn", text: shortTitleAuditMissed("change") });
   if (!r.draftCleared) notes.push({ tone: "warn", text: "The draft could not be cleared — reload the page." });
   return notes;
 }
@@ -857,7 +857,7 @@ export function rejectNotes(r: Extract<DraftRejectResult, { ok: true }>): Decisi
       ? { tone: "ok", text: "It will not be drafted again. Its short titles can still be set by hand on the market's page." }
       : { tone: "warn", text: "The note that stops this market being drafted again could not be saved — a later run may draft it again." },
   ];
-  if (!r.recorded) notes.push({ tone: "warn", text: "The rejection landed but its audit row was not written — tell the Owner." });
+  if (!r.recorded) notes.push({ tone: "warn", text: shortTitleAuditMissed("rejection") });
   return notes;
 }
 

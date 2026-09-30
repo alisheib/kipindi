@@ -40,7 +40,7 @@ import { Prisma } from "@prisma/client";
 // allow and nothing else; an officer's edit goes through the same functions (non-strict), so the AI can never store
 // what an officer would be refused.
 import type { Locale } from "@/lib/i18n-dict";
-import { SHORT_TITLE_MAX, SHORT_TITLE_LOCALES, normaliseShortTitleSet, type ShortTitleIssue } from "@/lib/markets/short-title";
+import { SHORT_TITLE_MAX, SHORT_TITLE_LOCALES, SHORT_TITLE_SW_FORM, normaliseShortTitleSet, type ShortTitleIssue } from "@/lib/markets/short-title";
 import { isCompetition, normaliseCompetition } from "@/lib/markets/competitions";
 import { shortTitleIssueSentence } from "./short-title-service";
 import type { ShortTitleAgreement } from "./market-sentinel";
@@ -845,7 +845,7 @@ function issueWords(loc: Locale, issue: ShortTitleIssue): string {
   switch (issue) {
     case "too_long": return `over ${SHORT_TITLE_MAX[loc]} characters`;
     case "not_gsm7": return "characters a text message cannot carry";
-    case "form": return loc === "sw" ? "not in the Je, …? form" : "not a question";
+    case "form": return loc === "sw" ? `not in the ${SHORT_TITLE_SW_FORM} form` : "not a question";
     case "copied_english": return loc === "zh" ? "not written in Chinese" : "a copy of the English";
     case "number_drift": return "a number the full question does not have";
   }

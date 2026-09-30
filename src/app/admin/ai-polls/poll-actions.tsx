@@ -16,7 +16,7 @@ import {
   type CriterionTranslationIssue,
 } from "@/lib/localized";
 // The Vodacom plan S2 — the ONE short-title rule and the ONE competition list, the same the server refuses with.
-import { SHORT_TITLE_MAX, SHORT_TITLE_LOCALES, cleanShortTitle, codePoints, normaliseShortTitleSet, type ShortTitleIssue } from "@/lib/markets/short-title";
+import { SHORT_TITLE_MAX, SHORT_TITLE_LOCALES, SHORT_TITLE_SW_FORM, cleanShortTitle, codePoints, normaliseShortTitleSet, type ShortTitleIssue } from "@/lib/markets/short-title";
 import { COMPETITIONS } from "@/lib/markets/competitions";
 import { competitionLabel } from "@/lib/markets/competition-label";
 import { dict } from "@/lib/i18n-dict";
@@ -406,7 +406,7 @@ export function GenerateForm({ generatable }: { generatable: string[] }) {
                   size="sm"
                   error={!!formErrors.title}
                 />
-                {formErrors.title && <p className="mt-1 text-body-sm text-no-300">{formErrors.title}</p>}
+                {formErrors.title && <p className="mt-1 text-body-sm text-danger-fg">{formErrors.title}</p>}
               </div>
 
               {/* Selection Close: Date + Time */}
@@ -431,7 +431,7 @@ export function GenerateForm({ generatable }: { generatable: string[] }) {
                   />
                 </div>
                 {formErrors.selDate
-                  ? <p className="mt-1 text-body-sm text-no-300">{formErrors.selDate}</p>
+                  ? <p className="mt-1 text-body-sm text-danger-fg">{formErrors.selDate}</p>
                   : <p className="mt-1 text-[10px] text-text-subtle">When new bets stop · time defaults to 00:00 if blank</p>
                 }
               </div>
@@ -458,7 +458,7 @@ export function GenerateForm({ generatable }: { generatable: string[] }) {
                   />
                 </div>
                 {formErrors.resDate
-                  ? <p className="mt-1 text-body-sm text-no-300">{formErrors.resDate}</p>
+                  ? <p className="mt-1 text-body-sm text-danger-fg">{formErrors.resDate}</p>
                   : <p className="mt-1 text-[10px] text-text-subtle">When outcome is known · time defaults to 00:00 if blank</p>
                 }
               </div>
@@ -1584,7 +1584,7 @@ function EditForm({ poll, onClose, overlay }: { poll: StoredAIPoll; onClose: () 
   const shortIssueWords = (l: "en" | "sw" | "zh", i: ShortTitleIssue) =>
     i === "too_long" ? `is longer than ${SHORT_TITLE_MAX[l]} characters`
       : i === "not_gsm7" ? "has characters a text message cannot carry"
-        : i === "form" ? (l === "sw" ? "is not in the “Je, …?” form" : l === "en" ? "is not a question ending in “?”" : "is not a question ending in ？")
+        : i === "form" ? (l === "sw" ? `is not in the ${SHORT_TITLE_SW_FORM} form` : l === "en" ? "is not a question ending in “?”" : "is not a question ending in ？")
           : i === "copied_english" ? (l === "zh" ? "is not written in Chinese — write it in Chinese, or leave it blank" : "is the English one — write it in Swahili, or leave it blank")
             : "has a number the full question does not — check it says the same thing";
   // ⛔ THE SAME imported rule the wizard and the server action use — one policy, three
@@ -1727,7 +1727,7 @@ function EditForm({ poll, onClose, overlay }: { poll: StoredAIPoll; onClose: () 
           one budget; a value the rules refuse is refused on Save, here and on the server. */}
       {([
         ["en", "Short title (EN)", shortEn, setShortEn],
-        ["sw", "Short title (SW) · “Je, …?”", shortSw, setShortSw],
+        ["sw", `Short title (SW) · ${SHORT_TITLE_SW_FORM}`, shortSw, setShortSw],
         ["zh", "Short title (ZH) · Chinese", shortZh, setShortZh],
       ] as const).map(([l, text, value, set]) => {
         const hardHere = shortSet.hard[l];
@@ -1739,7 +1739,7 @@ function EditForm({ poll, onClose, overlay }: { poll: StoredAIPoll; onClose: () 
             <span className="text-body-sm text-text-subtle">
               {text} · <span className={n > SHORT_TITLE_MAX[l] ? "text-danger-fg" : undefined}>{n} / {SHORT_TITLE_MAX[l]}</span> · blank = card shows the full question
             </span>
-            <Input value={value} onChange={(e) => set(e.target.value)} size="sm" aria-invalid={hardHere || undefined} />
+            <Input value={value} onChange={(e) => set(e.target.value)} size="sm" error={hardHere} />
             {firstIssue && (
               <p role={hardHere ? "alert" : undefined} className={`mt-1 text-body-sm leading-snug ${hardHere ? "text-danger-fg" : "text-warning-fg"}`}>
                 This short title {shortIssueWords(l, firstIssue)}.
@@ -1769,16 +1769,16 @@ function EditForm({ poll, onClose, overlay }: { poll: StoredAIPoll; onClose: () 
       <label className="block">
         <span className="text-[10px] text-text-subtle">Criterion (SW) · blank = show English + note</span>
         <textarea value={criterionSw} onChange={(e) => setCriterionSw(e.target.value)}
-          className={`${adminTextarea}${swIssue ? " border-no-700" : ""}`} rows={2}
+          className={`${adminTextarea}${swIssue ? " border-danger-500" : ""}`} rows={2}
           aria-invalid={!!swIssue || undefined} />
-        {swIssue && <p role="alert" className="mt-1 text-[10px] leading-snug text-no-300">{issueText(swIssue)}</p>}
+        {swIssue && <p role="alert" className="mt-1 text-[10px] leading-snug text-danger-fg">{issueText(swIssue)}</p>}
       </label>
       <label className="block">
         <span className="text-[10px] text-text-subtle">Criterion (ZH) · blank = show English + note</span>
         <textarea value={criterionZh} onChange={(e) => setCriterionZh(e.target.value)}
-          className={`${adminTextarea}${zhIssue ? " border-no-700" : ""}`} rows={2}
+          className={`${adminTextarea}${zhIssue ? " border-danger-500" : ""}`} rows={2}
           aria-invalid={!!zhIssue || undefined} />
-        {zhIssue && <p role="alert" className="mt-1 text-[10px] leading-snug text-no-300">{issueText(zhIssue)}</p>}
+        {zhIssue && <p role="alert" className="mt-1 text-[10px] leading-snug text-danger-fg">{issueText(zhIssue)}</p>}
       </label>
       <div>
         <span className="text-[10px] text-text-subtle">{bi(SELECTION.selectionClose)}</span>
@@ -1789,7 +1789,7 @@ function EditForm({ poll, onClose, overlay }: { poll: StoredAIPoll; onClose: () 
           <TimeSelect value={selTime} size="md" error={!!selError} aria-label="Selection close time, 24-hour" onChange={(t) => { setSelTime(t); setSelError(""); }} />
         </div>
         {selError
-          ? <p className="mt-1 text-body-sm text-no-300">{selError}</p>
+          ? <p className="mt-1 text-body-sm text-danger-fg">{selError}</p>
           : <p className="mt-0.5 text-[10px] text-text-subtle">When new bets stop. Leave blank to auto-compute from category lead time.</p>
         }
       </div>
@@ -1801,7 +1801,7 @@ function EditForm({ poll, onClose, overlay }: { poll: StoredAIPoll; onClose: () 
           </div>
           <TimeSelect value={editTime} size="md" error={!!dateError} aria-label="Resolution time, 24-hour" onChange={(t) => { setEditTime(t); setDateError(""); }} />
         </div>
-        {dateError && <p className="mt-1 text-body-sm text-no-300">{dateError}</p>}
+        {dateError && <p className="mt-1 text-body-sm text-danger-fg">{dateError}</p>}
       </div>
       <div className="flex flex-col gap-2 pt-1">
         {/* ⚠️ STAYS ENABLED on an unedited poll, on purpose: re-validating through the quality

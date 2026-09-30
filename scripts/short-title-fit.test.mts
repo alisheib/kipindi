@@ -22,8 +22,10 @@
  *   (e) THE ONE FUNNEL — `createMarket` stores the four through the normalisers, and none for an Up & Down round.
  *   (f) THE SEED CATALOGUE — what every seeded LIVE market's card says today, per language. A REPORT: the fallbacks
  *       are the backfill's work, not a failure. Any seeded short title must itself be within budget.
- *   (g) THE WORDS — the wizard's client wording names every issue and says what the rule now means (a Chinese value
- *       must be written in Chinese; the Chinese form is the full-width mark).
+ *   (g) THE WORDS — ONE wording (`shortTitleIssueSentence`, beside the rules) names every issue in every language
+ *       and says what the rule means (a Chinese value must be written in Chinese; the Chinese form is the full-width
+ *       mark; the Swahili pattern is held on one line by a no-break space) — and the wizard speaks it, with no words
+ *       of its own.
  *
  * ⛔ IN-PROCESS BY CONSTRUCTION. `--prove-red` plants each defect IN MEMORY — a budget of 60, a second budget literal
  * in src, a card that falls back through `pickLocalized` over the SHORT titles, a fold that leaves an em dash, a
@@ -43,7 +45,7 @@ import { fileURLToPath } from "node:url";
 import { decomment } from "./lib/decomment.mts";
 import {
   SHORT_TITLE_MAX, SHORT_TITLE_LOCALES, HARD_ISSUES, codePoints, cleanShortTitle, normaliseShortTitle,
-  normaliseShortTitleSet, shortTitleIssues, hasHan, shortTitleFor, cardTitle, type ShortTitleIssue,
+  normaliseShortTitleSet, shortTitleIssues, hasHan, shortTitleFor, cardTitle, shortTitleIssueSentence, type ShortTitleIssue,
 } from "../src/lib/markets/short-title.ts";
 import { foldToGsm7, encodingFor } from "../src/lib/sms-compose.ts";
 import { pickLocalized } from "../src/lib/localized.ts";
@@ -121,7 +123,7 @@ const SRC_FILES: SrcFile[] = walk(SRC).map((p) => ({
 }));
 const SERVICE_SRC = SRC_FILES.find((f) => f.rel === "lib/server/market-service.ts")?.text ?? "";
 const WIZARD_SRC = SRC_FILES.find((f) => f.rel === "app/admin/markets/new/wizard.tsx")?.text ?? "";
-/** Every issue the rule can report — the four HARD ones and the warning. (g) holds the wizard's words to all five. */
+/** Every issue the rule can report — the four HARD ones and the warning. (g) holds the ONE wording to all five. */
 const ALL_ISSUES: readonly ShortTitleIssue[] = ["copied_english", "too_long", "not_gsm7", "form", "number_drift"];
 
 /**
@@ -193,20 +195,6 @@ function createMarketBody(src: string): string {
   return src.slice(at, next < 0 ? undefined : next);
 }
 
-/** (g)'s region: the wizard's `shortIssueText`, from its declaration to the closing brace at column 0. */
-function wizardWords(src: string): string {
-  const at = src.indexOf("function shortIssueText(");
-  if (at < 0) return "";
-  const end = src.indexOf("\n}", at);
-  return src.slice(at, end < 0 ? undefined : end);
-}
-/** One `case "<issue>":` of that switch, up to the next case (or the end). */
-function caseText(body: string, issue: string): string {
-  const at = body.indexOf(`case "${issue}"`);
-  if (at < 0) return "";
-  const next = body.indexOf("case \"", at + 6);
-  return body.slice(at, next < 0 ? undefined : next);
-}
 
 /** (f)'s parser: the object literals of `seedDemoMarkets`'s `seed` array, string-aware, and their string fields. */
 type Seed = Partial<Record<"titleEn" | "titleSw" | "titleZh" | "shortTitleEn" | "shortTitleSw" | "shortTitleZh" | "competition" | "productLine", string>>;
@@ -253,6 +241,7 @@ type Impl = {
   clean: typeof cleanShortTitle;
   cardTitle: typeof cardTitle;
   fold: (text: string) => string;
+  sentence: typeof shortTitleIssueSentence;
   serviceSrc: string;
   wizardSrc: string;
   srcFiles: readonly SrcFile[];
@@ -609,16 +598,24 @@ function run(impl: Impl, log: (l: string) => void): string[] {
   }
 
   /* ── (g) ─────────────────────────────────────────────────────────────── */
-  log("\n(g) THE WORDS — the wizard's client wording says what the rule means");
+  log("\n(g) THE WORDS — one wording for every rule, and the wizard speaks it");
   {
-    const body = wizardWords(impl.wizardSrc);
-    const missing = ALL_ISSUES.filter((i) => caseText(body, i) === "");
-    ok("g.wizard.cases · the wizard's shortIssueText has words for every issue the rule reports",
-      body.length > 0 && missing.length === 0, body ? `no words for: ${missing.join(", ") || "none"}` : "shortIssueText not found in wizard.tsx");
-    const copy = caseText(body, "copied_english"), form = caseText(body, "form");
-    ok("g.wizard.zh · its copied_english words tell a Chinese writer to write in CHINESE (the rule refuses a Chinese value with no Chinese character the same way) and a Swahili one to write in Swahili, and its form words name the full-width mark",
-      /Write it in Chinese/.test(copy) && /Write it in Swahili/.test(copy) && form.includes(FWQ),
-      show({ copy: copy.replace(/\s+/g, " ").slice(0, 240), formNamesFullWidthMark: form.includes(FWQ) }));
+    const said = (l: Locale, i: ShortTitleIssue): string => { try { const s = impl.sentence(l, i, ""); return typeof s === "string" ? s.trim() : ""; } catch { return ""; } };
+    const missing = ALL_ISSUES.flatMap((i) => LOCALES.filter((l) => said(l, i) === "").map((l) => `${l}:${i}`));
+    ok("g.words.cases · shortTitleIssueSentence has words for every issue the rule reports, in every language",
+      missing.length === 0, `no words for: ${missing.join(", ") || "none"}`);
+    const zhCopy = said("zh", "copied_english"), swCopy = said("sw", "copied_english");
+    const zhForm = said("zh", "form"), swForm = said("sw", "form");
+    const SW_PATTERN = `Je,${ch(0xA0)}${ch(0x2026)}?`;
+    ok("g.words.say · copied_english tells a Chinese writer to write in CHINESE (the rule refuses a Chinese value with no Chinese character the same way) and a Swahili one in Swahili; the Chinese form names the full-width mark; the Swahili pattern is held on one line by a NO-BREAK space",
+      /Write it in Chinese/.test(zhCopy) && /Write it in Swahili/.test(swCopy) && zhForm.includes(FWQ) && swForm.includes(SW_PATTERN),
+      show({ zhCopy, swCopy, zhForm, swForm, swHoldsTogether: swForm.includes(SW_PATTERN) }));
+    const wiz = impl.wizardSrc;
+    ok("g.wizard.shared · the wizard speaks those same words: it imports shortTitleIssueSentence, calls it, and has no wording of its own",
+      /import \{[^}]*\bshortTitleIssueSentence\b[^}]*\} from "@\/lib\/markets\/short-title"/.test(wiz)
+        && /shortTitleIssueSentence\(locale, /.test(wiz)
+        && !/case "(?:too_long|not_gsm7|form|copied_english|number_drift)"/.test(wiz),
+      show({ imports: /\bshortTitleIssueSentence\b/.test(wiz), ownCases: (wiz.match(/case "(?:too_long|not_gsm7|form|copied_english|number_drift)"/g) ?? []).length }));
   }
 
   return failed;
@@ -634,6 +631,7 @@ const REAL: Impl = {
   clean: cleanShortTitle,
   cardTitle,
   fold: foldToGsm7,
+  sentence: shortTitleIssueSentence,
   serviceSrc: SERVICE_SRC,
   wizardSrc: WIZARD_SRC,
   srcFiles: SRC_FILES,
@@ -719,9 +717,13 @@ if (!PROVE_RED) {
   /** ST-6's form half missing: the Chinese form accepts the ASCII "?" again. */
   const plantedZhFormAscii: typeof shortTitleIssues = (l, v, c) =>
     shortTitleIssues(l, l === "zh" && v.endsWith("?") ? `${v.slice(0, -1)}${FWQ}` : v, c);
-  /** The wizard's words from before the fix — "write it in this language" to a Chinese writer — and one case lost. */
-  const OLD_WORDS = WIZARD_SRC.replace(/Write it in Chinese/g, "Write it in this language");
-  const LOST_CASE = WIZARD_SRC.replace('case "number_drift"', 'case "number_drift_old"');
+  /** The words from before the fixes — "write it in this language" to a Chinese writer; the Swahili pattern on an
+   *  ordinary space again (it broke across two lines); one issue with no words — and the wizard with its own again. */
+  const plantedOldWords: typeof shortTitleIssueSentence = (l, i, v) => shortTitleIssueSentence(l, i, v).replace(/Write it in Chinese/g, "Write it in this language");
+  const plantedBreakingSpace: typeof shortTitleIssueSentence = (l, i, v) => shortTitleIssueSentence(l, i, v).split(ch(0xA0)).join(" ");
+  const plantedLostCase: typeof shortTitleIssueSentence = (l, i, v) => (i === "number_drift" ? "" : shortTitleIssueSentence(l, i, v));
+  const OWN_WORDS = `${WIZARD_SRC}
+function shortIssueText(locale, issue) { switch (issue) { case "form": return "Write it as a question."; } }`;
 
   const tooLong = "Will " + "a".repeat(60) + "?";
   type Plant = { name: string; expect: RegExp; impl: Impl; landed: boolean; landedAs: string };
@@ -832,18 +834,32 @@ if (!PROVE_RED) {
       landedAs: "the rule passes a Chinese value ending in \"?\"",
     },
     {
-      name: "the wizard's old copied-English words",
-      expect: /^g\.wizard\.zh · /,
-      impl: { ...REAL, wizardSrc: OLD_WORDS },
-      landed: OLD_WORDS !== WIZARD_SRC && !OLD_WORDS.includes("Write it in Chinese"),
+      name: "the old copied-English words",
+      expect: /^g\.words\.say · /,
+      impl: { ...REAL, sentence: plantedOldWords },
+      landed: plantedOldWords("zh", "copied_english", "") !== shortTitleIssueSentence("zh", "copied_english", ""),
       landedAs: "a Chinese writer is told to \"write it in this language\"",
     },
     {
-      name: "the wizard with no words for one issue",
-      expect: /^g\.wizard\.cases · /,
-      impl: { ...REAL, wizardSrc: LOST_CASE },
-      landed: LOST_CASE !== WIZARD_SRC,
-      landedAs: "number_drift has no case in shortIssueText",
+      name: "the Swahili pattern on an ordinary space",
+      expect: /^g\.words\.say · /,
+      impl: { ...REAL, sentence: plantedBreakingSpace },
+      landed: plantedBreakingSpace("sw", "form", "") !== shortTitleIssueSentence("sw", "form", ""),
+      landedAs: "“Je, …?” can break after the comma",
+    },
+    {
+      name: "no words for one issue",
+      expect: /^g\.words\.cases · /,
+      impl: { ...REAL, sentence: plantedLostCase },
+      landed: plantedLostCase("en", "number_drift", "") === "",
+      landedAs: "number_drift says nothing",
+    },
+    {
+      name: "the wizard with words of its own again",
+      expect: /^g\.wizard\.shared · /,
+      impl: { ...REAL, wizardSrc: OWN_WORDS },
+      landed: OWN_WORDS !== WIZARD_SRC,
+      landedAs: "a local switch with its own form sentence",
     },
   ];
 

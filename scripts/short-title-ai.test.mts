@@ -726,7 +726,7 @@ async function g5Decide(I: Impl, M: Record<string, StoredMarket>) {
     !!view && view.competition.current === "legacy-cup" && /^legacy-cup \(not a competition this build knows\)$/.test(view.competition.currentLabel ?? "") && view.competition.drafted === null,
     j(view?.competition));
   ok("5.view.stale · the panel is handed the server's words for a verdict whose words were edited",
-    !!view && view.editedVerdictText === VIEWS.EDITED_AFTER_CHECK && VIEWS.EDITED_AFTER_CHECK === "not checked — edited after the check");
+    !!view && view.editedVerdictText === VIEWS.EDITED_AFTER_CHECK && VIEWS.EDITED_AFTER_CHECK === "not checked yet — the sentinel reads your words when you approve");
 }
 
 // ═════════════════════════════════════════════════════════════════════════════════════════════════════════

@@ -13,12 +13,14 @@ import { SteppedProgress } from "@/components/markets/stepped-progress";
 import { UnsavedChangesGuard } from "@/components/ui/unsaved-changes";
 import { useToast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
+import { Callout } from "@/components/ui/callout";
 import { createMarketAction } from "@/app/markets/actions";
 import { wallClockToUtcIso } from "@/lib/zoned-time";
-// ⛔ The Vodacom plan S2: the SAME short-title rule `createMarketAction` refuses with — imported, never re-implemented.
+// ⛔ The Vodacom plan S2: the SAME short-title rule `createMarketAction` refuses with — imported, never re-implemented —
+// and the SAME words for it (`shortTitleIssueSentence`, the rule note), so this screen says what the server says.
 import {
-  HARD_ISSUES, SHORT_TITLE_MAX, cleanShortTitle, codePoints, normaliseShortTitleSet,
-  type ShortTitleIssue,
+  HARD_ISSUES, SHORT_TITLE_MAX, SHORT_TITLE_RULE_BODY, SHORT_TITLE_RULE_TITLE, cleanShortTitle, codePoints,
+  normaliseShortTitleSet, shortTitleIssueSentence,
 } from "@/lib/markets/short-title";
 import { COMPETITIONS, isCompetition } from "@/lib/markets/competitions";
 import { competitionLabel } from "@/lib/markets/competition-label";
@@ -39,34 +41,6 @@ const COMPETITION_OPTIONS = [
   { value: "", label: "None" },
   ...COMPETITIONS.map((c) => ({ value: c, label: competitionLabel(dict.en, c) })),
 ];
-
-/**
- * What the officer is told about a short-title issue while typing. The RULE is the shared one; this is only its
- * wording on this screen (the criterion fields below do the same). `createMarketAction` refuses every hard issue in
- * its own words, so a value this screen lets through cannot be published as something else.
- */
-function shortIssueText(locale: Locale, issue: ShortTitleIssue): string {
-  switch (issue) {
-    case "too_long":
-      return `Too long for two lines on a card — keep it to ${SHORT_TITLE_MAX[locale]} characters.`;
-    case "not_gsm7":
-      return "It has a character a text message cannot carry. Use plain letters and punctuation.";
-    case "form":
-      return locale === "sw"
-        ? "Write it as a question in the form “Je, …?”."
-        : locale === "en"
-          ? "Write it as a question ending in “?”."
-          : "Write it as a question ending in ？.";
-    // The rule compares on a key (case, spacing, curly quotes, the closing mark and a Swahili "Je, " do not hide a
-    // copy), and a Chinese value with no Chinese character in it is refused the same way — so say what to do.
-    case "copied_english":
-      return locale === "zh"
-        ? "This is not written in Chinese. Write it in Chinese, or leave it empty so the card shows the full question."
-        : "This is the English text. Write it in Swahili, or leave it empty so the card shows the full question.";
-    case "number_drift":
-      return "It has a number the full question does not. Check it says the same thing.";
-  }
-}
 
 type FeeInfo =
   | { model: "loser-share"; feePct: string; estMult: string; showEstimate: boolean }
@@ -141,11 +115,11 @@ export function NewMarketWizard({ feeInfo, platformTz }: { feeInfo: FeeInfo; pla
   // officer types, against the titles on this same step. A hard issue blocks Continue; a warning does not.
   const shorts = normaliseShortTitleSet({ titleEn, titleSw, titleZh, ...shortInput });
   const shortsHard = shorts.hard.en || shorts.hard.sw || shorts.hard.zh;
-  const shortNote = (locale: Locale): { text: string; hard: boolean } | null => {
+  const shortNote = (locale: Locale, value: string): { text: string; hard: boolean } | null => {
     const issues = shorts.issues[locale];
     const hard = issues.find((i) => HARD_ISSUES.has(i));
-    if (hard) return { text: shortIssueText(locale, hard), hard: true };
-    return issues.length ? { text: shortIssueText(locale, issues[0]), hard: false } : null;
+    if (hard) return { text: shortTitleIssueSentence(locale, hard, value), hard: true };
+    return issues.length ? { text: shortTitleIssueSentence(locale, issues[0], value), hard: false } : null;
   };
 
   /* The step that owns the field is rendered first; only then can the field be focused (§K rule 7d). */
@@ -266,46 +240,49 @@ export function NewMarketWizard({ feeInfo, platformTz }: { feeInfo: FeeInfo; pla
           <Field label="Title (ZH) · Chinese / 中文" hint="Optional Chinese translation.">
             <Input value={titleZh} onChange={(e) => setTitleZh(e.target.value)} disabled={pending} placeholder="坦桑尼亚先令会在月底前对美元走强吗？" />
           </Field>
-          {/* ⭐ The Vodacom plan S2 — the card's short question, OPTIONAL in every language. Empty is honest: the card
-              shows the full question. The counters read the one budget (`SHORT_TITLE_MAX`), in code points of the
-              value that will be stored, and the notes below each field come from the rule the server refuses with. */}
-          <p className="text-body-sm text-text-muted">
-            Cards show the short question instead of the full one. The full question, the criterion and the source stay unchanged on the market page — the short title must say exactly the same thing.
-          </p>
-          {SHORT_FIELDS.map(({ key, locale, label, placeholder }) => {
-            const n = codePoints(cleanShortTitle(locale, shortInput[key]));
-            const max = SHORT_TITLE_MAX[locale];
-            const note = shortNote(locale);
-            const refused = serverField?.field === key ? serverField.error : null;
-            return (
-              <Field key={key} label={label} dataField={key}>
-                <Input value={shortInput[key]} onChange={(e) => editShort(key, e.target.value)} disabled={pending}
-                  placeholder={placeholder} error={!!refused || !!note?.hard} />
-                <p className={`mt-1 text-body-sm tabular-nums ${n > max ? "text-danger-fg" : "text-text-subtle"}`}>
-                  {n} / {max} · optional
-                </p>
-                {refused
-                  ? <p role="alert" className="mt-1.5 text-body-sm leading-snug text-no-300">{refused}</p>
-                  : note && (
-                    <p role={note.hard ? "alert" : undefined} className={`mt-1.5 text-body-sm leading-snug ${note.hard ? "text-no-300" : "text-warning-fg"}`}>
-                      {note.text}
-                    </p>
-                  )}
-              </Field>
-            );
-          })}
           <Field label="Category">
             <Select value={category} onChange={(v) => setCategory(v as typeof CATEGORIES[number])}
               options={CATEGORIES.map((c) => ({ value: c, label: c }))} />
           </Field>
-          <Field label="Competition" hint="Optional. Shown beside the category on the card." dataField="competition">
-            <Select ariaLabel="Competition" value={competition}
-              onChange={(v) => { setCompetition(v); if (serverField?.field === "competition") setServerField(null); }}
-              options={COMPETITION_OPTIONS} />
-            {serverField?.field === "competition" && (
-              <p role="alert" className="mt-1.5 text-body-sm leading-snug text-no-300">{serverField.error}</p>
-            )}
-          </Field>
+          {/* ⭐ The Vodacom plan S2 — the card's wording, ONE group with its own heading and the rule note the market
+              page shows (the same words, `SHORT_TITLE_RULE_*`). Every short title is OPTIONAL: empty is honest, the card
+              shows the full question (the note says so once, so the counters do not). The counters read the one budget
+              (`SHORT_TITLE_MAX`), in code points of the value that will be stored; the note under each field is the
+              server's own sentence (`shortTitleIssueSentence`), in the console's one error ink. */}
+          <div className="space-y-3 border-t border-border/60 pt-4">
+            <h4 className="font-display font-semibold text-body-sm text-text">Card short titles</h4>
+            <Callout tone="info" title={SHORT_TITLE_RULE_TITLE}>{SHORT_TITLE_RULE_BODY}</Callout>
+            {SHORT_FIELDS.map(({ key, locale, label, placeholder }) => {
+              const n = codePoints(cleanShortTitle(locale, shortInput[key]));
+              const max = SHORT_TITLE_MAX[locale];
+              const note = shortNote(locale, shortInput[key]);
+              const refused = serverField?.field === key ? serverField.error : null;
+              return (
+                <Field key={key} label={label} dataField={key}>
+                  <Input value={shortInput[key]} onChange={(e) => editShort(key, e.target.value)} disabled={pending}
+                    placeholder={placeholder} error={!!refused || !!note?.hard} />
+                  <p className={`mt-1 font-mono text-body-sm tabular-nums ${n > max ? "text-danger-fg" : "text-text-subtle"}`}>
+                    {n} / {max}
+                  </p>
+                  {refused
+                    ? <p role="alert" className="mt-1.5 text-body-sm leading-snug text-danger-fg">{refused}</p>
+                    : note && (
+                      <p role={note.hard ? "alert" : undefined} className={`mt-1.5 text-body-sm leading-snug ${note.hard ? "text-danger-fg" : "text-warning-fg"}`}>
+                        {note.text}
+                      </p>
+                    )}
+                </Field>
+              );
+            })}
+            <Field label="Competition" hint="Optional. Shown beside the category on the card." dataField="competition">
+              <Select ariaLabel="Competition" value={competition}
+                onChange={(v) => { setCompetition(v); if (serverField?.field === "competition") setServerField(null); }}
+                options={COMPETITION_OPTIONS} />
+              {serverField?.field === "competition" && (
+                <p role="alert" className="mt-1.5 text-body-sm leading-snug text-danger-fg">{serverField.error}</p>
+              )}
+            </Field>
+          </div>
         </Section>
       )}
 
@@ -340,15 +317,15 @@ export function NewMarketWizard({ feeInfo, platformTz }: { feeInfo: FeeInfo; pla
               what is not honest is English printed silently under a Swahili heading. */}
           <Field label="Criterion (SW) · Swahili" hint="Optional. Leave blank if you have no translation — the player is shown the English with a note saying why, which is better than a bad translation of the rule that decides their money.">
             <Textarea value={criterionSw} onChange={(e) => setCriterionSw(e.target.value)} disabled={pending} rows={5}
-              aria-invalid={!!swIssue || undefined} className={swIssue ? "border-no-700" : undefined}
+              aria-invalid={!!swIssue || undefined} className={swIssue ? "border-danger-500" : undefined}
               placeholder="Inatatuliwa NDIYO iwapo kiwango cha katikati cha BoT…" />
-            {swIssue && <p role="alert" className="mt-1.5 text-body-sm leading-snug text-no-300">{issueText(swIssue)}</p>}
+            {swIssue && <p role="alert" className="mt-1.5 text-body-sm leading-snug text-danger-fg">{issueText(swIssue)}</p>}
           </Field>
           <Field label="Criterion (ZH) · Chinese / 中文" hint="Optional. Same rule as Swahili — blank is honest, a copy of the English is not.">
             <Textarea value={criterionZh} onChange={(e) => setCriterionZh(e.target.value)} disabled={pending} rows={5}
-              aria-invalid={!!zhIssue || undefined} className={zhIssue ? "border-no-700" : undefined}
+              aria-invalid={!!zhIssue || undefined} className={zhIssue ? "border-danger-500" : undefined}
               placeholder="若坦桑尼亚银行最后一个营业日的中间价…" />
-            {zhIssue && <p role="alert" className="mt-1.5 text-body-sm leading-snug text-no-300">{issueText(zhIssue)}</p>}
+            {zhIssue && <p role="alert" className="mt-1.5 text-body-sm leading-snug text-danger-fg">{issueText(zhIssue)}</p>}
           </Field>
         </Section>
       )}

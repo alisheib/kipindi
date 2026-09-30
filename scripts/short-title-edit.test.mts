@@ -42,7 +42,8 @@
  *   §17 THE RACES (in memory, where the lock really queues): a value set while an `onlyIfEmpty` approval waits for the
  *       lock is never overwritten; a re-file waiting on the lock never puts back a short title applied meanwhile.
  *   §18 the words, pure: `shortTitleIssueSentence` counts and lists the CLEANED value (the rule's own verdict), and the
- *       sentinel's verdict lines say "agrees" / "does not agree: …" / "not checked — …" and nothing else.
+ *       sentinel's verdict lines say "agrees" / "does not agree: …" / "not checked" (its reason carried beside it, said
+ *       once by the surface) and nothing else.
  *
  * ⭐ THE SENTINEL IS FAKED THROUGH ITS ONE SEAM (`__setShortTitleSentinelForTests`), and `ANTHROPIC_API_KEY` is removed
  * before a module loads: no key, no network, and every verdict on demand.
@@ -192,7 +193,7 @@ const MSVC = await import("../src/lib/server/market-service.ts");
 const { marketStore } = await import("../src/lib/server/market-dal.ts");
 const { audit, auditFlush, getAuditPage } = await import("../src/lib/server/audit.ts");
 const { inLock, withLock, runOutsideLock } = await import("../src/lib/server/locks.ts");
-const { normaliseShortTitleSet, cleanShortTitle, codePoints, shortTitleIssues } = await import("../src/lib/markets/short-title.ts");
+const { normaliseShortTitleSet, cleanShortTitle, codePoints, shortTitleIssues, SHORT_TITLE_RULE_BODY } = await import("../src/lib/markets/short-title.ts");
 const { isCompetition, normaliseCompetition } = await import("../src/lib/markets/competitions.ts");
 const { offendingChars } = await import("../src/lib/sms-compose.ts");
 const { decomment } = await import("./lib/decomment.mts");
@@ -603,12 +604,12 @@ async function g15Contract(I: Impl, tag: string) {
   const x = await run(I, edit(e, { shortTitleEn: "Will Simba win on 12 October?" }, { expectedBefore: { shortTitleEn: "Will Simba beat Yanga on 12 Oct?" } }));
   ok("15.expectedBefore.refused · a field changed since the officer's page loaded is refused, NAMING it — nothing moves, no row",
     !x.r.ok && x.r.field === "shortTitleEn"
-      && x.r.error === "The English short title was changed by someone else since this page loaded. Reload to see it. Nothing changed."
+      && x.r.error === "The English short title was changed by someone else since this page loaded, so nothing was saved — reload the page to see it."
       && same(await readFour(e), GOOD4) && x.store.length === 0 && x.writes.length === 0 && (await trail(e)).length === 0,
     j(x.r));
   const xc = await run(I, edit(e, { shortTitleSw: "Je, Simba itashinda tarehe 12?" }, { expectedBefore: { competition: "epl" } }));
   ok("15.expectedBefore.competition · …the competition too, even when the act does not write it",
-    !xc.r.ok && xc.r.field === "competition" && /^The competition was changed by someone else since this page loaded\./.test(xc.r.error) && same(await readFour(e), GOOD4),
+    !xc.r.ok && xc.r.field === "competition" && /^The competition was changed by someone else since this page loaded, so nothing was saved/.test(xc.r.error) && same(await readFour(e), GOOD4),
     j(xc.r));
   const y = await run(I, edit(e, { shortTitleEn: "Will Simba win on 12 October?", shortTitleZh: "" },
     { expectedBefore: { shortTitleEn: GOOD4.shortTitleEn, shortTitleSw: GOOD4.shortTitleSw, shortTitleZh: GOOD4.shortTitleZh, competition: "ligi-kuu" } }));
@@ -819,11 +820,12 @@ function g18Words() {
   ok("18.lines.checked · a checked record reads \"agrees\" / \"does not agree: <issue>\", only for the languages it holds",
     sameC(L({ status: "checked", perLocale: { en: { agrees: true, issue: null }, sw: { agrees: false, issue: "It drops the date." } } }, ["en", "sw", "zh"]),
       { en: { kind: "agrees", text: "agrees" }, sw: { kind: "disagrees", text: "does not agree: It drops the date." } }));
-  ok("18.lines.unchecked · \"not checked — <reason>\" for every language asked, and nothing checked is no line at all — never \"agrees\"",
+  ok("18.lines.unchecked · \"not checked\", with the reason beside it (for the surface to say ONCE), for every language asked; nothing checked is no line at all — never \"agrees\"",
     sameC(L({ status: "unchecked", reason: "no ANTHROPIC_API_KEY on this deployment", perLocale: {} }, ["en", "zh"]), {
-      en: { kind: "unchecked", text: "not checked — no ANTHROPIC_API_KEY on this deployment" },
-      zh: { kind: "unchecked", text: "not checked — no ANTHROPIC_API_KEY on this deployment" },
-    }) && sameC(L(null, ["en"]), {}));
+      en: { kind: "unchecked", text: "not checked", reason: "no ANTHROPIC_API_KEY on this deployment" },
+      zh: { kind: "unchecked", text: "not checked", reason: "no ANTHROPIC_API_KEY on this deployment" },
+    }) && sameC(L({ status: "unchecked", perLocale: {} }, ["sw"]), { sw: { kind: "unchecked", text: "not checked", reason: "the sentinel gave no reason" } })
+      && sameC(L(null, ["en"]), {}));
   const F = (en: string | null, sw: string | null, zh: string | null) => ({ shortTitleEn: en, shortTitleSw: sw, shortTitleZh: zh, competition: null });
   ok("18.lines.changed · the languages read by default are those given a NEW, present short title — a cleared or untouched one is not",
     same(SVC.changedShortTitleLocales(F("A?", "Je, b?", "c？"), F("A2?", null, "c？")), ["en"])
@@ -881,14 +883,16 @@ function g13Wiring(W: World) {
       && /if \(r\.changed\) \{\s*revalidatePath\("\/admin\/markets"\);\s*revalidatePath\(`\/admin\/markets\/\$\{marketId\}`\);\s*revalidatePath\("\/markets"\);\s*revalidatePath\(`\/markets\/\$\{marketId\}`\);\s*\}/.test(body)
       && reval.length === 4 && !body.includes('"/results"'),
     `${reval.length} revalidations`);
-  ok("13.action.warnings · warnings go back to the officer in the service's own sentences", /shortTitleIssueSentence\(/.test(body) && /warningSentences/.test(body));
+  ok("13.action.warnings · warnings go back to the officer PER LANGUAGE (shown under the field they name), in the service's own sentences",
+    /shortTitleIssueSentence\(/.test(body) && /warningLines\[loc\] = r\.warnings\[loc\]\.map\(/.test(body));
   ok("13.action.expected · the action reads what the page showed (`expected.<field>`, for every field) and hands it to applyShortTitles as expectedBefore",
     /for \(const k of SHORT_TITLE_FIELDS\) \{\s*const shown = field\(`expected\.\$\{k\}`\);\s*if \(shown !== undefined\) expectedBefore\[k\] = shown;\s*\}/.test(body)
       && /via: "edit",\s*expectedBefore,\s*\}\);/.test(body));
   ok("13.action.sentinel · the sentinel is left ON for the edit (the service's \"changed\"), and its verdict goes back in the service's words for the languages it read",
     !/sentinelLocales/.test(body)
       && /const sentinelLines = agreementVerdictLines\(r\.agreement, r\.changed \? changedShortTitleLocales\(r\.before, r\.after\) : \[\]\);/.test(body)
-      && /return \{ \.\.\.r, warningSentences, sentinelLines \};/.test(body));
+      && /const sentinelReason = Object\.values\(sentinelLines\)\.find\(\(l\) => l\?\.kind === "unchecked"\)\?\.reason \?\? null;/.test(body)
+      && /return \{ \.\.\.r, warningLines, sentinelLines, sentinelReason \};/.test(body));
 
   const create = fnBody(W.actions, "createMarketAction");
   const iRule = create.indexOf("normaliseShortTitleSet(");
@@ -919,10 +923,10 @@ function g13Wiring(W: World) {
     /\buseMayAct\s*\(\)/.test(c) && /disabled=\{!dirty \|\| !mayAct\}/.test(c) && /<UnsavedChangesGuard\b/.test(c) && /setMarketShortTitlesAction/.test(c));
   ok("13.control.budget · the counters read SHORT_TITLE_MAX and codePoints — no budget typed by hand",
     /SHORT_TITLE_MAX\[locale\]/.test(c) && /codePoints\(cleanShortTitle\(/.test(c) && !/\b(?:56|28)\b/.test(c));
-  const iWarn = c.indexOf("Cards show this short question instead of the full one.");
-  ok("13.control.warning · the two-line warning is there, ABOVE the inputs",
-    iWarn > 0 && c.includes("The full question, the criterion and the source stay unchanged on the market page — the short title must say exactly the same thing.")
-      && iWarn < c.indexOf("<Input"), j({ iWarn, iInput: c.indexOf("<Input") }));
+  const iWarn = c.indexOf("<Callout tone=\"info\" title={SHORT_TITLE_RULE_TITLE}>{SHORT_TITLE_RULE_BODY}</Callout>");
+  ok("13.control.warning · the rule is there, in the ONE shared wording, ABOVE the inputs — and it says the short title must say exactly the same thing",
+    iWarn > 0 && iWarn < c.indexOf("<Input") && SHORT_TITLE_RULE_BODY.includes("the short title must say exactly the same thing"),
+    j({ iWarn, iInput: c.indexOf("<Input") }));
   ok("13.control.sends-moved · only the fields the officer changed are sent (absent = keep on the server)", /for \(const k of send\) fd\.set\(k, values\[k\]\)/.test(c));
   ok("13.control.expected · …and each one carries what the page showed, so another officer's change is refused, not overwritten",
     /const shown = saved;/.test(c) && /for \(const k of send\) fd\.set\(`expected\.\$\{k\}`, shown\[k\]\);/.test(c));

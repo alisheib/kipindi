@@ -266,14 +266,18 @@ export async function setMarketShortTitlesAction(formData: FormData) {
     revalidatePath("/markets");
     revalidatePath(`/markets/${marketId}`);
   }
-  // A warning (a number the full question does not contain) never refuses; the officer reads it after the save.
-  const warningSentences = (["en", "sw", "zh"] as const).flatMap((loc) => {
+  // A warning (a number the full question does not contain) never refuses; the officer reads it after the save, under
+  // the field it names — so it goes back PER LANGUAGE, in the service's own sentences.
+  const warningLines: Partial<Record<"en" | "sw" | "zh", string[]>> = {};
+  for (const loc of ["en", "sw", "zh"] as const) {
     const value = loc === "en" ? r.after.shortTitleEn : loc === "sw" ? r.after.shortTitleSw : r.after.shortTitleZh;
-    return r.warnings[loc].map((issue) => shortTitleIssueSentence(loc, issue, value ?? ""));
-  });
+    if (r.warnings[loc].length > 0) warningLines[loc] = r.warnings[loc].map((issue) => shortTitleIssueSentence(loc, issue, value ?? ""));
+  }
   // The sentinel's verdict, per language it read — the same languages the service chose ("changed").
   const sentinelLines = agreementVerdictLines(r.agreement, r.changed ? changedShortTitleLocales(r.before, r.after) : []);
-  return { ...r, warningSentences, sentinelLines };
+  // WHY it did not check — one reason for the whole act, so the officer reads it once, not once per language.
+  const sentinelReason = Object.values(sentinelLines).find((l) => l?.kind === "unchecked")?.reason ?? null;
+  return { ...r, warningLines, sentinelLines, sentinelReason };
 }
 
 /**
