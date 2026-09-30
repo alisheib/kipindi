@@ -166,11 +166,21 @@ in-process red twins; `test:dal-parity` (+ `red:dal-parity`), `test:campaign-com
 BEFORE S2 and unchanged by it: recategorise (check 5, so `red:recategorise` cannot run), type-scale, tap-target,
 decomment, red-anchors ×2.
 
-**Left to do (S2 close-out)** — (1) the adversarial review (5 lenses + skeptics) was running at the time of this note:
-fix every confirmed finding; (2) re-run the battery and `qa:short-titles`; (3) merge to main, push, verify the deploy
-(the migrations run on production at boot); (4) run the `qa:short-title-fit` read against production (read-only);
-(5) an officer presses "Draft short titles for open markets" and approves them; when every open market has short
-titles within budget, S2 is ✅. S2 changes NOTHING players see — the journey card (S7) is where short titles appear.
+**Verified since (2026-09-30, late)** — the review's fixes are in (`2536e4a0`, `20d77b45`, `1cfd9567` on the branch):
+`tsc` 0; `test:short-title-fit` + red 17/17, `test:short-title-edit` + red, `test:short-title-ai` 167/0 + red 44/44,
+`red:dal-parity`, `red:campaign-compose`, `red:chain-purge` and `red:recategorise` 9/9 (the recategorise lock fix is
+proven; its check 5, red on main since the /results archive refactor, now follows `lib/results/archive.ts`); the
+browser drive `qa:short-titles` 23/23 with every state read as a viewport tile at 1280 and 390; the Postgres 18.3 proof
+of both migrations. The migrations now RETRY their lock wait inside the SQL, so a busy table can never leave a failed
+boot row. Red on main before S2 and unchanged by it: type-scale, tap-target, decomment, red-anchors x2.
+
+**Left to do (S2 close-out)** — (1) a design-critic panel (3 lenses + second readers) was reading every tile at the time
+of this note: apply what it keeps; (2) merge the branch to main, push, verify the deploy (the two migrations run at
+boot; then `SELECT migration_name, finished_at FROM "_prisma_migrations"` shows both finished); (3) run the
+`qa:short-title-fit` read against production (read-only); (4) an officer presses "Draft short titles for open markets" on
+`/admin/ai-polls?tab=short-titles` and approves them (the sentinel checks each one in production); when every open
+market has short titles within budget, S2 is ✅. S2 changes NOTHING players see — the journey card (S7) is where short
+titles appear.
 
 ## §0c · S2 research (read-only, 2026-09-30): what short titles + competition must touch
 
