@@ -21,8 +21,8 @@ label, the low-balance plan, the pending-bet link and the sheet API, each with i
 (`473807b1`) and waits on an officer approving the short titles (§0d). S1 is LIVE (`41ec1703`) and waits on one press by
 Ali (§0b "Still open"). Nothing reaches players.
 
-**Next:** S3b — the measures baseline (§5): the §3.10 counters on the OLD journey's analogues, so the 14-day baseline
-clock starts before the flip. In parallel: an officer approves the S2 short titles; Ali presses S1's preview switch.
+**Next:** S3b — the measures baseline — IN PROGRESS on `simple-journey` (§0f: the design, pieces A–F). In parallel: an
+officer approves the S2 short titles; Ali presses S1's preview switch.
 
 Session law, the same for every session:
 - Code, two-store tests, and `red:*` twins reachable from `red:all`, with declared anchors.
@@ -134,6 +134,42 @@ drive (guest, SUPPORT officer, player, Owner Stop and Resume, a stranger on a li
 **Still open (S1 close-out)** — pushed (`41ec1703`), `JOURNEY_PREVIEW_SECRET` set on Railway (48 characters),
 deploy verified, and a signed-out visitor sees nothing on production (`qa:live` 319/0 there, [E2] included). One
 press by Ali remains: `/admin/journey` → "Turn my preview on" → the bar on 50pick.tz. Then S1 is ✅.
+
+## §0f · S3b design (2026-10-01) — the measures baseline, IN PROGRESS on `simple-journey`
+
+The §3.10 counters, counting the OLD journey's analogues from now so the 14-day baseline exists before the flip. The
+design follows the visit counter (`/api/pv` + `lib/server/site-visits.ts`, an inline memory/Prisma twin) exactly.
+
+**The steps, and where each is counted.** The new journey writes the same steps from S7/S8 with `variant = new`.
+
+| Step | Counted where | `origin` today (old journey) |
+|---|---|---|
+| home views | the existing visit counter (`SiteVisitPage`, path `/`) — no new counter | — |
+| `sheet_open` | client beacon, once, when `SidePicker` reveals the dial | `home` (home links carry `from=home`), `board` (any other `?side=` link), `market` (a tap on the page) |
+| `low_balance` | client beacon, once per dial, when the insufficient-balance state first shows | `dial`, `updown` |
+| `bet` | server: `buyPositionAction` after `r.ok && !r.data.replayed`, fire-and-forget, never inside a lock | `dial`, `quick` (Up & Down) |
+| `deposit_confirmed` | server: `settleDepositConfirmed`'s post-lock block (`outcome.credited`) | the deposit row's `origin`: `low_balance` (the Up & Down insufficient link carries `from=low-balance`), else `direct` |
+| deposit → bet ≤ 30 min; time to first bet | computed at report time from rows (`completedAt`, `placedAt`, `createdAt`), players only, `houseBotId IS NULL` | — |
+
+**Dimensions.** `variant` = `old`/`new` from `resolveSimpleJourney()` at count time. `utm_source`/`utm_campaign` =
+the visit's first touch, kept in sessionStorage (`kp-utm`, the same safe shapes as `attributionFrom`), sent with client
+beacons and as hidden fields of the bet form; a deposit confirmed by webhook has no browser, so it counts with no tag.
+
+**Excluded.** Staff (the session role on server steps; the client beacon mounts only for a non-staff, non-preview
+viewer, decided by the server layout), preview traffic, automation user agents (`isAutomatedAgent`), house-bot stakes
+(they never pass the action), admin test deposits.
+
+**Schema.** `JourneyFunnelDay { id cuid, day, step, origin, variant, utmSource, utmCampaign (all default ""), count;
+@@unique over every dimension; @@index([day]) }`. `Transaction.origin String?` and `Position.origin String?`
+(create-only). Hand-written additive migrations; the two `ALTER TABLE`s on the money tables use S2's lock-retry block.
+
+**Retention and privacy.** 400 days, pruned beside the visit counts (`retention.ts`). Privacy v2026-10-01: §2 the funnel
+totals with campaign tags, §5 their 400 days, §7 the `kp-utm` session key — one version bump, in the commit that ships
+them. **Report:** a "Journey funnel" panel on `/admin/insights` (the four ratios + time to first bet, by date range).
+
+**Pieces** — A: the store, schema, migration, retention, `test:journey-funnel`; B: `POST /api/funnel` + the beacon +
+the old-journey client wiring; C: the server counters + the `origin` columns; D: Privacy v2026-10-01; E: the insights
+panel; F: battery, drive, merge, deploy, and the first day's counts read on production.
 
 ## §0e · S3 as built (2026-10-01) — ✅ merged to main
 
