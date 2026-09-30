@@ -182,7 +182,10 @@ block; the deposit page/action carry `from=low-balance` → `origin`; the suite 
 time; "deposit → bet ≤ 30 min" is computed from row times), so S3b touches one money table, not two. D: Privacy v2026-10-01 — ✅ (en/sw/zh §2 "Journey counts", §5 400 days, §7 the tab key `kp-utm`; COMPLIANCE-DECISIONS
 "Privacy v2026-10-01"; DATA-RETENTION row; `test:privacy-notice` §4h ties each clause to the schema, the beacon and the
 key, with planted controls; the version pin and the English hash moved in the same commit). E: the insights
-panel. F: battery, drive, merge, deploy, and the first day's counts read on production.
+panel — ✅ ("Journey funnel" card on `/admin/insights`, its own read (`lib/server/journey-funnel-report.ts`): the three
+counted measures per journey over 7/14/28 days and a campaign filter, deposit → bet ≤ 30 min and the median time to a
+first bet from the rows; a pair whose counters disagree is held at 100% and marked (`lib/journey/funnel-measures.ts`);
+behind the page's own access check; the kit `admin-tbl`; red 26/26). F: battery, drive, merge, deploy, and the first day's counts read on production.
 
 ## §0e · S3 as built (2026-10-01) — ✅ merged to main
 

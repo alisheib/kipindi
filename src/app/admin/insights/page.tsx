@@ -24,6 +24,7 @@ import { formatTzs, formatBalancePill, formatNumber } from "@/lib/utils";
 // E-103 · one rule for the share beside a funnel stage, and for the bar width.
 import { funnelShares, stagesAreNested } from "@/lib/funnel-share";
 import { AdminBody } from "@/components/admin/admin-body";
+import { JourneyFunnelCard } from "./journey-funnel-card";
 import { KpiGrid } from "@/components/admin/admin-body";
 
 export const metadata = { title: "Admin · Insights" };
@@ -32,11 +33,12 @@ export const dynamic = "force-dynamic";
 const pct = (num: number, den: number) => (den > 0 ? `${Math.round((num / den) * 100)}%` : "—");
 
 /** E-381 §6 item 10 — belt 2: the stored-row gate, re-read per page render (a flight request can skip the layouts). */
-export default async function InsightsPage() {
-  return <AdminPageGate title="Insights"><InsightsContent /></AdminPageGate>;
+export default async function InsightsPage({ searchParams }: { searchParams: Promise<{ jf?: string; jfc?: string }> }) {
+  const sp = await searchParams;
+  return <AdminPageGate title="Insights"><InsightsContent jf={Number(sp.jf) || 14} jfc={typeof sp.jfc === "string" ? sp.jfc.slice(0, 64) : null} /></AdminPageGate>;
 }
 
-async function InsightsContent() {
+async function InsightsContent({ jf, jfc }: { jf: number; jfc: string | null }) {
   const session = await currentSession();
   // Owner-grade economics — moderators must not read this. Return BEFORE any of
   // the restricted data is computed.
@@ -127,6 +129,9 @@ async function InsightsContent() {
             joined to the players counted here, and a visit-to-register rate would be invented.
           </p>
         </AdminCard>
+
+        {/* ⭐ The Vodacom plan's measures (S3b) — its own read, so a failure here is contained to this card. */}
+        <JourneyFunnelCard days={jf} campaign={jfc} />
 
         {/* Cohort retention + LTV — activity-based, honestly labelled. */}
         <AdminCard title="Cohort retention & value" sw="Vikundi: kubaki na thamani">

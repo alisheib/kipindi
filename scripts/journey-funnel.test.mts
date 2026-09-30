@@ -27,6 +27,8 @@ import { POST as FUNNEL_POST } from "../src/app/api/funnel/route.ts";
 import { RATE_RULES } from "../src/lib/server/rate-limit.ts";
 import { db } from "../src/lib/server/store.ts";
 import { deposit } from "../src/lib/server/wallet-service.ts";
+import * as M from "../src/lib/journey/funnel-measures.ts";
+import { journeyFunnelReport } from "../src/lib/server/journey-funnel-report.ts";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const read = (rel: string) => readFileSync(join(ROOT, rel), "utf8").replace(/\r\n/g, "\n");
@@ -48,6 +50,8 @@ const DEP_PAGE = read("src/app/wallet/deposit/page.tsx");
 const PRISMA_DAL = read("src/lib/server/prisma-dal.ts");
 const MEM_STORE = read("src/lib/server/store.ts");
 const TXN_MIGRATION = read("prisma/migrations/20261001120100_transaction_origin/migration.sql");
+const INSIGHTS = read("src/app/admin/insights/page.tsx");
+const CARD = read("src/app/admin/insights/journey-funnel-card.tsx");
 const PROVE_RED = process.argv.includes("--prove-red");
 
 type Impl = {
@@ -58,6 +62,7 @@ type Impl = {
   depositLinks: string[]; home: string;
   countBet: typeof S.countBetFunnel; countDeposit: typeof S.countDepositFunnel; actions: string; wallet: string;
   depAction: string; depPage: string; prismaDal: string; memStore: string; txnMigration: string;
+  measure: typeof M.measure; totals: typeof M.totalsFor; report: typeof journeyFunnelReport; insights: string; card: string;
 };
 const REAL: Impl = {
   parse: F.parseFunnelBody, body: F.funnelBody, norm: S.normaliseFunnelEvent, record: S.recordFunnel, rows: S.funnelRows,
@@ -65,6 +70,7 @@ const REAL: Impl = {
   post: FUNNEL_POST, route: ROUTE, beacon: BEACON, shell: SHELL, callers: CALLERS, depositLinks: DEPOSIT_LINKS, home: HOME,
   countBet: S.countBetFunnel, countDeposit: S.countDepositFunnel, actions: ACTIONS, wallet: WALLET,
   depAction: DEP_ACTION, depPage: DEP_PAGE, prismaDal: PRISMA_DAL, memStore: MEM_STORE, txnMigration: TXN_MIGRATION,
+  measure: M.measure, totals: M.totalsFor, report: journeyFunnelReport, insights: INSIGHTS, card: CARD,
 };
 let userSeq = 0;
 async function mkUser(id: string, role = "PLAYER") {
@@ -278,6 +284,52 @@ async function run(impl: Impl, log: (l: string) => void, tag: string): Promise<s
       && /origin: _origin, \.\.\.rest \} = patch;/.test(impl.memStore)
       && /ALTER TABLE "Transaction"\s+ADD COLUMN IF NOT EXISTS "origin" TEXT;/.test(impl.txnMigration) && /EXCEPTION WHEN lock_not_available/.test(impl.txnMigration)
       && !/\b(DROP|UPDATE|DELETE)\b/.test(impl.txnMigration.replace(/--[^\n]*/g, "")));
+
+  /* 10 · the measures and the report */
+  const m1 = impl.measure("sheetToBet", 12, 40), m2 = impl.measure("sheetToBet", 45, 40), m3 = impl.measure("homeToSheet", 3, 0);
+  ok("10.measure · a share is the numerator over its own denominator (30%); a numerator above it is held at 100% and flagged; no denominator is no figure",
+    m1.pct === 30 && !m1.overCounted && m2.pct === 100 && m2.overCounted && m3.pct === null && !m3.overCounted, j({ m1, m2, m3 }));
+  const rowsT: M.FunnelTotalRow[] = [
+    { step: "sheet_open", origin: "home", variant: "old", utmCampaign: "", count: 5 },
+    { step: "sheet_open", origin: "board", variant: "old", utmCampaign: "launch", count: 7 },
+    { step: "bet", origin: "dial", variant: "old", utmCampaign: "launch", count: 4 },
+    { step: "bet", origin: "quick", variant: "old", utmCampaign: "", count: 9 },
+    { step: "low_balance", origin: "updown", variant: "old", utmCampaign: "", count: 6 },
+    { step: "deposit_confirmed", origin: "low_balance", variant: "old", utmCampaign: "", count: 2 },
+    { step: "deposit_confirmed", origin: "direct", variant: "old", utmCampaign: "", count: 8 },
+    { step: "sheet_open", origin: "card", variant: "new", utmCampaign: "", count: 3 },
+  ];
+  const tOld = impl.totals(rowsT, "old"), tNew = impl.totals(rowsT, "new"), tCamp = impl.totals(rowsT, "old", "launch");
+  ok("10.totals · sheet → bet counts only bets from a sheet (the dial), never Up & Down quick bets; short → deposit only low-balance deposits; the journeys and a campaign are kept apart",
+    j(tOld) === j({ sheetOpens: 12, sheetOpensFromHome: 5, sheetBets: 4, lowBalanceShown: 6, depositsFromLowBalance: 2 })
+      && tNew.sheetOpens === 3 && tNew.sheetBets === 0 && j(tCamp) === j({ sheetOpens: 7, sheetOpensFromHome: 0, sheetBets: 4, lowBalanceShown: 0, depositsFromLowBalance: 0 }),
+    j({ tOld, tNew, tCamp }));
+
+  const rep0 = await impl.report({ days: 7 });
+  const pl = `usr_rep_${tag}`, hbu = `usr_rep_${tag}_hb`;
+  await mkUser(pl);
+  const nowMs = Date.now(), iso = (t: number) => new Date(t).toISOString();
+  const tx = async (id: string, type: string, status: string, amount: number, at: number, extra: Record<string, unknown> = {}) =>
+    db.txn.create({ id: `txn_rep_${tag}_${id}`, walletId: `wal_${pl}`, userId: pl, type, status, amount, fee: 0, taxWithheld: 0, balanceAfter: null, currency: "TZS",
+      provider: "MPESA", providerRef: null, msisdn: null, description: "", positionId: null, amlReason: null, createdAt: iso(at), updatedAt: iso(at), completedAt: iso(at), idempotencyKey: null, ...extra } as never);
+  await tx("d1", "DEPOSIT", "CONFIRMED", 5_000, nowMs - 2 * 3600_000);
+  await tx("b1", "BET_PLACED", "CONFIRMED", -2_000, nowMs - 2 * 3600_000 + 10 * 60_000);
+  await tx("d2", "DEPOSIT", "CONFIRMED", 5_000, nowMs - 3600_000);
+  await tx("b2", "BET_PLACED", "CONFIRMED", -2_000, nowMs - 3600_000 + 45 * 60_000);
+  await tx("hb", "BET_PLACED", "CONFIRMED", -2_000, nowMs - 3600_000 + 5 * 60_000, { houseBotId: "hb_rep" });
+  const rep1 = await impl.report({ days: 7 });
+  ok("10.report · from the rows: two confirmed deposits, one followed by the player's bet within 30 minutes (the house-marked bet at 5 minutes does not count); one more player with a first bet",
+    rep1.deposits.confirmed - rep0.deposits.confirmed === 2 && rep1.deposits.betWithin30 - rep0.deposits.betWithin30 === 1
+      && rep1.timeToFirstBet.players - rep0.timeToFirstBet.players === 1 && rep1.days === 7 && rep1.liveVariant === "old",
+    j({ before: rep0.deposits, after: rep1.deposits, ttfb: [rep0.timeToFirstBet, rep1.timeToFirstBet] }));
+  void hbu;
+
+  const insights = code(impl.insights);
+  const iGate = insights.indexOf('return <AdminRestricted title="Insights"');
+  const iCard = insights.indexOf("<JourneyFunnelCard days={jf} campaign={jfc} />");
+  ok("10.panel · the panel is mounted on /admin/insights AFTER the page's access check, and it contains its own read failure",
+    iGate > 0 && iCard > iGate && /await journeyFunnelReport\(\{ days, campaign \}\)\.catch\(\(\) => null\)/.test(impl.card)
+      && impl.card.includes("could not be read just now"), j({ iGate, iCard }));
   return failed;
 }
 
@@ -334,6 +386,14 @@ if (!PROVE_RED) {
       impl: { ...REAL, wallet: REAL.wallet.replace('runOutsideLock(() => {\n      void import("./journey-funnel")', '(() => {\n      void import("./journey-funnel")') } },
     { name: "the origin overwritable by an update", expect: /^9\.create-only /,
       impl: { ...REAL, prismaDal: REAL.prismaDal.replace(' || k === "origin") continue;', ") continue;") } },
+    { name: "a ratio printed above 100%", expect: /^10\.measure /,
+      impl: { ...REAL, measure: (k, n, d) => ({ key: k, numerator: n, denominator: d, pct: d > 0 ? Math.round((n / d) * 100) : null, overCounted: false }) } },
+    { name: "Up & Down quick bets counted as sheet bets", expect: /^10\.totals /,
+      impl: { ...REAL, totals: (rows, v, c) => { const t = REAL.totals(rows, v, c); return { ...t, sheetBets: t.sheetBets + rows.filter((r) => r.variant === v && r.step === "bet" && r.origin === "quick" && (!c || r.utmCampaign === c)).reduce((n, r) => n + r.count, 0) }; } } },
+    { name: "every deposit counted as followed by a bet (the 30-minute window ignored)", expect: /^10\.report /,
+      impl: { ...REAL, report: async (o) => { const r = await REAL.report(o); return { ...r, deposits: { ...r.deposits, betWithin30: r.deposits.confirmed } }; } } },
+    { name: "the panel mounted before the access check", expect: /^10\.panel /,
+      impl: { ...REAL, insights: REAL.insights.replace("<JourneyFunnelCard days={jf} campaign={jfc} />", "").replace('return <AdminRestricted title="Insights"', '<JourneyFunnelCard days={jf} campaign={jfc} />; return <AdminRestricted title="Insights"') } },
     { name: "an unsafe utm value kept", expect: /^6\.utm /,
       impl: { ...REAL, utm: (s) => ({ s: String(s.get("utm_source") ?? ""), c: String(s.get("utm_campaign") ?? "").toLowerCase() }) } },
   ];
