@@ -16,11 +16,12 @@
 
 ## §0 · RESUME AT
 
-**State (2026-09-30):** S1 built and verified locally (§0b below). The rollout switch, the staff preview pass, the
-Owner's `/admin/journey` and Privacy v2026-09-30 are in. Nothing reaches players: the only thing a pass holder sees is
-the "Preview" bar, because no journey screen exists yet.
+**State (2026-09-30):** S1 is LIVE (`41ec1703`) and waits on one press by Ali (§0b "Still open"). S2 is
+BUILT on branch `simple-journey` and NOT yet on main — see §0d for exactly what exists, what passed and what is left.
+Nothing reaches players.
 
-**Next:** S1 close-out on production (§0b "Still open"), then S2 — short titles + competition.
+**Next:** S2 close-out (§0d "Left to do"): the adversarial review's fixes, the full battery, merge to main, verify the
+deploy, then Ali (or an officer) runs "Draft short titles" and approves them on `/admin/ai-polls?tab=short-titles`.
 
 Session law, the same for every session:
 - Code, two-store tests, and `red:*` twins reachable from `red:all`, with declared anchors.
@@ -133,6 +134,44 @@ drive (guest, SUPPORT officer, player, Owner Stop and Resume, a stranger on a li
 deploy verified, and a signed-out visitor sees nothing on production (`qa:live` 319/0 there, [E2] included). One
 press by Ali remains: `/admin/journey` → "Turn my preview on" → the bar on 50pick.tz. Then S1 is ✅.
 
+## §0d · S2 as built (2026-09-30) — on branch `simple-journey`, NOT yet on main
+
+**Where it is.** `origin/simple-journey` carries S2 on top of main. To resume on any machine: `cd` into the journey
+worktree (or create it: `git worktree add <dir> origin/simple-journey`), `git fetch`, `git log origin/main..HEAD` shows
+the S2 commits. Nothing of S2 is live until it is merged to main.
+
+**What exists**
+- The rules — `src/lib/markets/short-title.ts` (the ONE budget `SHORT_TITLE_MAX` en/sw 56, zh 28 code points; the forms
+  "Je, …?" / "?" / "？"; GSM-7 for sw/en via the new `foldToGsm7` in `sms-compose.ts`; `cardTitle` falls back to the
+  reader's OWN full title), `competitions.ts` (14 keys, Ligi Kuu first) + `competition-label.ts` (labels in
+  `journey.comp*`, en/sw/zh).
+- The columns — `PredictionMarket` and `AIPoll` each gained `shortTitleEn/Sw/Zh` + `competition` (nullable), by two
+  hand-written additive migrations `20260930200000_market_short_titles` and `20260930200100_ai_poll_short_titles`,
+  PROVEN on Postgres 18.3 (`verify:backup-schema` 13/0, 88 migrations applied).
+- Both stores — `toStoredMarket` reads them, both upsert arms write them, and a narrow `setShortTitles` exists in BOTH
+  twins (never `stamp`, never the full-row `set`). `createMarket` normalises them (Up & Down gets none).
+- The one write after creation — `src/lib/server/short-title-service.ts` `applyShortTitles` (under the market lock,
+  audited before/after): used by the admin edit ("Card short titles" on `/admin/markets/[id]`) and by approving a draft.
+- The wizard (`/admin/markets/new`) takes optional short titles + competition; the AI poll generator drafts them (a
+  failing language is null + a warning chip, never a filter reason) and publishing carries them to the market.
+- The backfill — `src/lib/server/short-title-backfill.ts`: drafts for open markets (kill switch, budget, batch clamp,
+  metered), staged in `SystemConfig` `shortTitle.draft.<id>`, reviewed on `/admin/ai-polls?tab=short-titles`
+  (Approve / Edit, then approve / Reject). The sentinel's `checkShortTitleAgreement` checks each draft; "not checked"
+  never reads as agreement; nothing reaches a market without an officer's approval.
+
+**What passed (2026-09-30)** — `tsc` 0; `test:short-title-fit`, `test:short-title-edit`, `test:short-title-ai` and their
+in-process red twins; `test:dal-parity` (+ `red:dal-parity`), `test:campaign-compose` (+ red), `test:chain-purge`
+(+ red), `test:i18n`, `test:admin-*`, `test:ai-*`, `test:unsaved-changes`, `test:popup-fit` and ~40 more; the drive
+`npm run qa:short-titles` 14/15 in a real browser (the one miss was the drive's own label, since fixed). Red on main
+BEFORE S2 and unchanged by it: recategorise (check 5, so `red:recategorise` cannot run), type-scale, tap-target,
+decomment, red-anchors ×2.
+
+**Left to do (S2 close-out)** — (1) the adversarial review (5 lenses + skeptics) was running at the time of this note:
+fix every confirmed finding; (2) re-run the battery and `qa:short-titles`; (3) merge to main, push, verify the deploy
+(the migrations run on production at boot); (4) run `npm run qa:short-title-fit` against production (read-only);
+(5) an officer presses "Draft short titles for open markets" and approves them; when every open market has short
+titles within budget, S2 is ✅. S2 changes NOTHING players see — the journey card (S7) is where short titles appear.
+
 ## §0c · S2 research (read-only, 2026-09-30): what short titles + competition must touch
 
 **Where things really are** (the plan's names were wrong in places)
@@ -184,7 +223,7 @@ Status: ⬜ not started · 🔨 in progress · ✅ done and verified live · ⛔
 |---|---|---|---|
 | S0 | File, rule, get ready | ✅ | Filed `2ac17c36` on main, 2026-09-29. Deck, frames, rulings, reply, tracker, SHELVED.md and compliance records are filed. `test:docs` + `test:landing-ten-plan` are green. The worktree installs. |
 | S1 | The switch and preview | 🔨 | Built and verified locally 2026-09-30 (§0b). Done when staff see a "preview" marker on production and nobody else sees anything. The preview cookie is in Privacy §7 in the same commit. |
-| S2 | Short titles + competition | ⬜ | Every open market renders within 2 lines in sw/en/zh (`test:short-title-fit`). The backfill is approved in /admin. |
+| S2 | Short titles + competition | 🔨 | Built on branch simple-journey 2026-09-30 (§0d), not yet merged. Done when every open market renders within 2 lines in sw/en/zh (`test:short-title-fit`) and the backfill is approved in /admin. |
 | S3 | The engine (no UI) | ⬜ | Golden fixtures pass: Dodoma ≈2.8×/≈1.4×, 1,000 → TZS 2,700 ≈2.7×, 5,000 → TZS 12,360 ≈2.5×; Yanga ≈2.9×/≈1.4×. Client/server parity is proven. |
 | S3b | Measures baseline | ⬜ | Old-journey analogue counts appear daily, and the 14-day baseline clock is running. |
 | S4 | Claude Design pass | ⬜ | Frames for every new composition and undrawn state are filed and scored by the panel. Ali has reviewed the 5 re-drawn frames. |
