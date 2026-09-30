@@ -185,7 +185,15 @@ key, with planted controls; the version pin and the English hash moved in the sa
 panel — ✅ ("Journey funnel" card on `/admin/insights`, its own read (`lib/server/journey-funnel-report.ts`): the three
 counted measures per journey over 7/14/28 days and a campaign filter, deposit → bet ≤ 30 min and the median time to a
 first bet from the rows; a pair whose counters disagree is held at 100% and marked (`lib/journey/funnel-measures.ts`);
-behind the page's own access check; the kit `admin-tbl`; red 26/26). F: battery, drive, merge, deploy, and the first day's counts read on production.
+behind the page's own access check; the kit `admin-tbl`; red 26/26). F: battery, drive, merge, deploy, and the first day's counts read on production — battery ✅ (green but for the reds
+that pre-date S3b: type-scale, red-anchors ×2, and `test:house-bot-disclosure` 5.1 by construction on a branch that
+changes published words); live drive ✅ 15/15 on a dev server with a real browser (a normal user agent, as the beacon
+skips automation): a player's home-page tap counted as `sheet_open/home`, a board link as `sheet_open/board`, the TZS 0
+dial as `low_balance/dial` twice, a real deposit from `?from=low-balance` confirmed and counted as
+`deposit_confirmed/low_balance`, an admin scoped out; the panel read back "1 of 0", "0 of 2", "50% · 1 of 2" and was
+read as tiles at 1280 and 390 (the phone layout stacks one block per measure — a table squeezed the words). Found and
+fixed by the drive: SWC dropped the space before "(East Africa days)" (made explicit); a guest has no dial in the old
+journey (the market page asks them to sign in), so "sheet" steps come from signed-in players.
 
 ## §0e · S3 as built (2026-10-01) — ✅ merged to main
 

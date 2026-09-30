@@ -66,7 +66,7 @@ export async function JourneyFunnelCard({ days, campaign }: { days: number; camp
   return (
     <AdminCard title="Journey funnel" sw="Safari ya mchezaji" action={windows}>
       <p className="text-body-sm leading-relaxed text-text-subtle">
-        The Vodacom plan&apos;s measures, {r.fromDay} to {r.toDay} (East Africa days). The old journey is counted from
+        The Vodacom plan&apos;s measures, {r.fromDay} to {r.toDay}{" "}(East Africa days). The old journey is counted from
         2026-10-01 so the new one can be compared with at least 14 days of it; the new journey&apos;s column fills from its
         launch. Staff, previews, automation and house stakes are not counted.
       </p>
@@ -79,29 +79,50 @@ export async function JourneyFunnelCard({ days, campaign }: { days: number; camp
           ))}
         </p>
       )}
-      <ScrollX label="The journey funnel, old and new journey side by side" className="mt-3">
-        <table className="admin-tbl min-w-[560px]">
-          <thead>
-            <tr>
-              <th className="text-left">Measure</th>
-              <th className="text-left">Old journey{r.liveVariant === "old" ? " · live" : ""}</th>
-              <th className="text-left">New journey{r.liveVariant === "new" ? " · live" : ""}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {keys.map((k) => (
-              <tr key={k} className="align-top">
-                <td>
-                  <span className="block text-text">{LABEL[k].title}</span>
-                  <span className="block text-body-sm text-text-subtle">{LABEL[k].how}</span>
-                </td>
-                <td><Cell m={r.measures.old.find((m) => m.key === k)} /></td>
-                <td><Cell m={r.measures.new.find((m) => m.key === k)} /></td>
+      {/* Phones: one block per measure (a three-column table squeezes the descriptions to a word a line at 390). */}
+      <ul className="mt-3 space-y-3 sm:hidden" data-testid="journey-funnel-list">
+        {keys.map((k) => (
+          <li key={k} className="rounded-lg border border-border/60 p-3">
+            <p className="text-text">{LABEL[k].title}</p>
+            <p className="text-body-sm text-text-subtle">{LABEL[k].how}</p>
+            <dl className="mt-2 grid grid-cols-2 gap-3">
+              <div>
+                <dt className="text-body-sm text-text-subtle">Old journey{r.liveVariant === "old" ? " · live" : ""}</dt>
+                <dd className="mt-0.5"><Cell m={r.measures.old.find((m) => m.key === k)} /></dd>
+              </div>
+              <div>
+                <dt className="text-body-sm text-text-subtle">New journey{r.liveVariant === "new" ? " · live" : ""}</dt>
+                <dd className="mt-0.5"><Cell m={r.measures.new.find((m) => m.key === k)} /></dd>
+              </div>
+            </dl>
+          </li>
+        ))}
+      </ul>
+      <div className="mt-3 hidden sm:block">
+        <ScrollX label="The journey funnel, old and new journey side by side">
+          <table className="admin-tbl min-w-[560px]">
+            <thead>
+              <tr>
+                <th className="text-left">Measure</th>
+                <th className="text-left">Old journey{r.liveVariant === "old" ? " · live" : ""}</th>
+                <th className="text-left">New journey{r.liveVariant === "new" ? " · live" : ""}</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </ScrollX>
+            </thead>
+            <tbody>
+              {keys.map((k) => (
+                <tr key={k} className="align-top">
+                  <td>
+                    <span className="block text-text">{LABEL[k].title}</span>
+                    <span className="block text-body-sm text-text-subtle">{LABEL[k].how}</span>
+                  </td>
+                  <td><Cell m={r.measures.old.find((m) => m.key === k)} /></td>
+                  <td><Cell m={r.measures.new.find((m) => m.key === k)} /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </ScrollX>
+      </div>
       <dl className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div>
           <dt className="text-body-sm text-text-subtle">{LABEL.depositToBet.title} · all players</dt>
