@@ -20,10 +20,13 @@
 journey's funnel is counted from now — the 14-day baseline clock has started (§0f). S3 (the engine) is ✅. S2 is LIVE
 (`473807b1`) and waits on an officer approving the short titles (§0d). S1 is LIVE (`41ec1703`) and waits on one press
 by Ali (§0b "Still open"). Nothing new reaches players (the counters are invisible; the insights panel is admin-only).
+S4 (the Claude Design pass) is 🔨: part 1 — the agency's 5 frames re-drawn beside the originals, with the component
+map and 3 numbered choices — is on the Design canvas and waits on Ali's three answers (§0g).
 
-**Next:** (1) on the days after the deploy, read the first totals with `qa:journey-funnel` (read-only) — when counts
-appear daily, S3b is ✅ and the baseline runs to 2026-10-15 at the earliest; (2) S4, the Claude Design pass (§5). In
-parallel: an officer approves the S2 short titles; Ali presses S1's preview switch.
+**Next:** (1) S4: Ali answers 1A/1B, 2A/2B, 3A/3B on the canvas; meanwhile draw brief §6 items 2–11 on the
+same canvas, then the four-expert panel, then file BRIEF.md (§0g "Still open"); (2) on the days after the deploy, read
+the first totals with `qa:journey-funnel` (read-only) — when counts appear daily, S3b is ✅ and the baseline runs to
+2026-10-15 at the earliest. In parallel: an officer approves the S2 short titles; Ali presses S1's preview switch.
 
 Session law, the same for every session:
 - Code, two-store tests, and `red:*` twins reachable from `red:all`, with declared anchors.
@@ -135,6 +138,61 @@ drive (guest, SUPPORT officer, player, Owner Stop and Resume, a stranger on a li
 **Still open (S1 close-out)** — pushed (`41ec1703`), `JOURNEY_PREVIEW_SECRET` set on Railway (48 characters),
 deploy verified, and a signed-out visitor sees nothing on production (`qa:live` 319/0 there, [E2] included). One
 press by Ali remains: `/admin/journey` → "Turn my preview on" → the bar on 50pick.tz. Then S1 is ✅.
+
+## §0g · S4 (2026-10-01) — the Design canvas, part 1 up; waiting on Ali's three answers
+
+**The canvas:** https://claude.ai/artifact/UGVgjpiQFwep2hzfYLf3M6 (an Artifact of type Design, private to Ali until he
+shares it). ⭐ The canvas is the source of truth for S4's frames — no copy lives in the repo. To revise it, `read` its
+`project/*.dc.html` files and publish the changed ones to the same URL.
+
+**What is on it (brief §6 item 1):**
+- **Main board:** the component map for all five screens, "What never changes", and three numbered choices. Each choice
+  has a switch in its frame's Tweaks panel:
+  - **1A / 1B:** gold or neutral step numerals (How to Play).
+  - **2A / 2B:** a royal ring or a filled light chip for the chosen amount (Bet sheet, Deposit).
+  - **3A / 3B:** a royal or neutral play plate (Home).
+  - My picks: 1A, 2A, 3A.
+- **Row 1:** the agency's five frames, as delivered.
+- **Row 2:** the same five screens in 50pick's system, at 390 × 844 so they sit beside the agency's frames. The
+  320/360/412 widths come with items 2–11.
+  - They can be tapped through: Home NDIO → Bet sheet → 5,000 → Balance too low → "Weka pesa TZS 3,000" → Deposit.
+    The How-to card opens How to Play.
+  - Every word is the deck's Swahili, from the §3 key table. The figures are S3's golden fixtures.
+
+**Design calls made in the redraw.** Each is written on the Main board. The build (S7/S8) inherits them.
+1. **Estimate panel:** a neutral inset, with the figure in white mono. Green means YES and gold means money-in, so
+   neither is used for an estimate.
+2. **Stake field:**
+   - Focus uses the brand focus ring, never gold.
+   - "Too much" (the attention state) is a strong neutral border, `oklch(78% 0.06 268)`, never the error or NO colour.
+3. **Button inks:**
+   - Pay (Lipa) is the royal primary button.
+   - Place bet (Weka dau) is gold.
+   - Deposit entries are `gilt-metal`.
+4. **Disabled gold button.** `.btn:disabled` (opacity 0.45) turns the gold button a muddy brown on navy. The build adds
+   a navy disabled look for the gold button: background `oklch(28% 0.12 268)`, `--text-subtle` words, a 1px
+   `--border` edge.
+5. **Wallet rows** use the product's own `PaymentLogo` white tiles. The four `public/pay/*` marks are uploaded to the
+   canvas.
+6. **The low-balance row's second line** names all four wallets (from `depositRails()`, R3).
+   - At 390 it wraps to two lines, breaking cleanly before "Mixx by Yas", and it is drawn that way.
+   - S8 must keep each wallet name unbreakable (nowrap), so a break always falls between wallets.
+7. **Amounts** are mono and never letter-spaced (M4), including inside the gold button, which tracks its label
+   0.02em. The helpline number is not an amount: it is Inter with tabular figures, because mono sat off the link's
+   underline.
+8. **Selection** (the chosen chip or filter) uses the product's own `--pill-active` fill plus a `--brand-400` ring.
+
+**Verified:** each redraw was rendered locally at 390 × 844 in Chromium and read one screen at a time. Result: no
+overflow, all three fonts loaded, the logos loaded, and the B option of each choice rendered. Ali's standing rule
+requires this, even though the Design type's own instructions discourage rendering.
+
+**Still open:**
+- Ali answers 1A/1B, 2A/2B, 3A/3B (or accepts my picks).
+- Brief §6 items 2–11 on the same canvas: header states, card states, sheet refusals, deposit states, How-to lengths,
+  Akaunti, Tiketi, market page, Juu/Chini, and the desktop layouts.
+- The four-expert panel scores the canvas.
+- File `design-brief/simple-journey-2026-09/BRIEF.md`.
+- ⛔ No player-facing UI code is written before this is filed.
 
 ## §0f · S3b (2026-10-01) — the measures baseline, LIVE on main since `64a63b7c`
 
@@ -376,7 +434,7 @@ Status: ⬜ not started · 🔨 in progress · ✅ done and verified live · ⛔
 | S2 | Short titles + competition | 🔨 | LIVE `473807b1` 2026-09-30 (§0d); the backfill waits on an officer's approval. Done when every open market renders within 2 lines in sw/en/zh (`test:short-title-fit`) and the backfill is approved in /admin. |
 | S3 | The engine (no UI) | ✅ | `6e7ee63b` 2026-10-01 (§0e). Golden fixtures pass: Dodoma ≈2.8×/≈1.4×, 1,000 → TZS 2,700 ≈2.7×, 5,000 → TZS 12,360 ≈2.5×; Yanga ≈2.9×/≈1.4×. Client/server parity is proven. |
 | S3b | Measures baseline | 🔨 | LIVE `64a63b7c` 2026-10-01 (§0f), counting from the deploy. Done when old-journey analogue counts appear daily (`qa:journey-funnel`) and the 14-day baseline clock is running. |
-| S4 | Claude Design pass | ⬜ | Frames for every new composition and undrawn state are filed and scored by the panel. Ali has reviewed the 5 re-drawn frames. |
+| S4 | Claude Design pass | 🔨 | Part 1 is on the Design canvas (2026-10-01, §0g): the 5 re-drawn frames beside the agency's, the component map and 3 numbered choices. Done when frames for every new composition and undrawn state are filed and scored by the panel, and Ali has reviewed the 5 re-drawn frames. |
 | S5 | ~~Colour foundation~~ | ⛔ | Removed by R5 (50pick's look stays unchanged): no palette, font or brand work. |
 | S6 | Shell (flagged) | ⬜ | Every route keeps an entrance (route census). The header fits at 320/360/390/1024/1150/1279 × sw/en/zh × guest/signed-in. |
 | S7 | Home and cards (flagged) | ⬜ | Staff see the deck's home on production. `test:journey-above-fold` is green. |
