@@ -16,13 +16,14 @@
 
 ## §0 · RESUME AT
 
-**State (2026-10-01):** S3 (the engine, no UI) is ✅ — merged to main 2026-10-01 (§0e): the estimate, the card's close
-label, the low-balance plan, the pending-bet link and the sheet API, each with its suite and red twin. S2 is LIVE
-(`473807b1`) and waits on an officer approving the short titles (§0d). S1 is LIVE (`41ec1703`) and waits on one press by
-Ali (§0b "Still open"). Nothing reaches players.
+**State (2026-10-01):** S3b (the measures baseline) is LIVE (`64a63b7c`, deployed 2026-09-30 22:47 UTC): the old
+journey's funnel is counted from now — the 14-day baseline clock has started (§0f). S3 (the engine) is ✅. S2 is LIVE
+(`473807b1`) and waits on an officer approving the short titles (§0d). S1 is LIVE (`41ec1703`) and waits on one press
+by Ali (§0b "Still open"). Nothing new reaches players (the counters are invisible; the insights panel is admin-only).
 
-**Next:** S3b — the measures baseline — IN PROGRESS on `simple-journey` (§0f: the design, pieces A–F). In parallel: an
-officer approves the S2 short titles; Ali presses S1's preview switch.
+**Next:** (1) on the days after the deploy, read the first totals with `qa:journey-funnel` (read-only) — when counts
+appear daily, S3b is ✅ and the baseline runs to 2026-10-15 at the earliest; (2) S4, the Claude Design pass (§5). In
+parallel: an officer approves the S2 short titles; Ali presses S1's preview switch.
 
 Session law, the same for every session:
 - Code, two-store tests, and `red:*` twins reachable from `red:all`, with declared anchors.
@@ -135,7 +136,7 @@ drive (guest, SUPPORT officer, player, Owner Stop and Resume, a stranger on a li
 deploy verified, and a signed-out visitor sees nothing on production (`qa:live` 319/0 there, [E2] included). One
 press by Ali remains: `/admin/journey` → "Turn my preview on" → the bar on 50pick.tz. Then S1 is ✅.
 
-## §0f · S3b design (2026-10-01) — the measures baseline, IN PROGRESS on `simple-journey`
+## §0f · S3b (2026-10-01) — the measures baseline, LIVE on main since `64a63b7c`
 
 The §3.10 counters, counting the OLD journey's analogues from now so the 14-day baseline exists before the flip. The
 design follows the visit counter (`/api/pv` + `lib/server/site-visits.ts`, an inline memory/Prisma twin) exactly.
@@ -194,6 +195,12 @@ dial as `low_balance/dial` twice, a real deposit from `?from=low-balance` confir
 read as tiles at 1280 and 390 (the phone layout stacks one block per measure — a table squeezed the words). Found and
 fixed by the drive: SWC dropped the space before "(East Africa days)" (made explicit); a guest has no dial in the old
 journey (the market page asks them to sign in), so "sheet" steps come from signed-in players.
+
+**On production (2026-10-01, `?dpl=64a63b7c`, read-only):** both migrations finished (22:47:02 UTC), none unfinished;
+`Transaction.origin` is nullable `text`; `JourneyFunnelDay` has exactly the pinned columns; `POST /api/funnel` answers
+204 (a curl probe is automation and correctly not counted). No totals yet at deploy time (≈ 01:50 EAT) — the first
+day's counts are read with `qa:journey-funnel` (`railway run -s 50pick -- node scripts/qa-journey-funnel.cjs` from a
+Railway-linked tree).
 
 ## §0e · S3 as built (2026-10-01) — ✅ merged to main
 
@@ -368,7 +375,7 @@ Status: ⬜ not started · 🔨 in progress · ✅ done and verified live · ⛔
 | S1 | The switch and preview | 🔨 | Built and verified locally 2026-09-30 (§0b). Done when staff see a "preview" marker on production and nobody else sees anything. The preview cookie is in Privacy §7 in the same commit. |
 | S2 | Short titles + competition | 🔨 | LIVE `473807b1` 2026-09-30 (§0d); the backfill waits on an officer's approval. Done when every open market renders within 2 lines in sw/en/zh (`test:short-title-fit`) and the backfill is approved in /admin. |
 | S3 | The engine (no UI) | ✅ | `6e7ee63b` 2026-10-01 (§0e). Golden fixtures pass: Dodoma ≈2.8×/≈1.4×, 1,000 → TZS 2,700 ≈2.7×, 5,000 → TZS 12,360 ≈2.5×; Yanga ≈2.9×/≈1.4×. Client/server parity is proven. |
-| S3b | Measures baseline | ⬜ | Old-journey analogue counts appear daily, and the 14-day baseline clock is running. |
+| S3b | Measures baseline | 🔨 | LIVE `64a63b7c` 2026-10-01 (§0f), counting from the deploy. Done when old-journey analogue counts appear daily (`qa:journey-funnel`) and the 14-day baseline clock is running. |
 | S4 | Claude Design pass | ⬜ | Frames for every new composition and undrawn state are filed and scored by the panel. Ali has reviewed the 5 re-drawn frames. |
 | S5 | ~~Colour foundation~~ | ⛔ | Removed by R5 (50pick's look stays unchanged): no palette, font or brand work. |
 | S6 | Shell (flagged) | ⬜ | Every route keeps an entrance (route census). The header fits at 320/360/390/1024/1150/1279 × sw/en/zh × guest/signed-in. |

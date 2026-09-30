@@ -519,6 +519,7 @@
     "red:journey-sheet": "tsx scripts/journey-sheet.test.mts --prove-red",
     "test:journey-funnel": "tsx scripts/journey-funnel.test.mts",
     "red:journey-funnel": "tsx scripts/journey-funnel.test.mts --prove-red",
+    "qa:journey-funnel": "node scripts/qa-journey-funnel.cjs",
     "test:signoff": "tsx scripts/signoff.test.mts",
     "test:proposal-evidence-age": "tsx scripts/proposal-evidence-age.test.mts",
     "test:payout-view": "tsx scripts/payout-view.test.mts",
