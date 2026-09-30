@@ -16,13 +16,13 @@
 
 ## §0 · RESUME AT
 
-**State (2026-09-30):** S1 is LIVE (`41ec1703`) and waits on one press by Ali (§0b "Still open"). S2 is
-BUILT on branch `simple-journey` and NOT yet on main — see §0d for exactly what exists, what passed and what is left.
-Nothing reaches players.
+**State (2026-09-30):** S1 is LIVE (`41ec1703`) and waits on one press by Ali (§0b "Still open"). S2 is LIVE
+(`473807b1`, deployed 2026-09-30 20:52 UTC): the columns, the rules, the admin edit, the wizard fields and the drafts tab; both
+migrations finished on production. It waits on an officer drafting and approving the short titles (§0d). Nothing
+reaches players.
 
-**Next:** S2 close-out (§0d "Left to do"): merge `simple-journey` to main, verify the deploy and the two migrations,
-then Ali (or an officer) runs "Draft short titles for open markets" and approves them on
-`/admin/ai-polls?tab=short-titles`.
+**Next:** an officer presses "Draft short titles for open markets" on `/admin/ai-polls?tab=short-titles` and approves
+them (§0d "Left to do"), then S2 is ✅ — or, while that waits, S3 (§5).
 
 Session law, the same for every session:
 - Code, two-store tests, and `red:*` twins reachable from `red:all`, with declared anchors.
@@ -135,11 +135,9 @@ drive (guest, SUPPORT officer, player, Owner Stop and Resume, a stranger on a li
 deploy verified, and a signed-out visitor sees nothing on production (`qa:live` 319/0 there, [E2] included). One
 press by Ali remains: `/admin/journey` → "Turn my preview on" → the bar on 50pick.tz. Then S1 is ✅.
 
-## §0d · S2 as built (2026-09-30) — on branch `simple-journey`, NOT yet on main
+## §0d · S2 as built (2026-09-30) — LIVE on main since `473807b1`
 
-**Where it is.** `origin/simple-journey` carries S2 on top of main. To resume on any machine: `cd` into the journey
-worktree (or create it: `git worktree add <dir> origin/simple-journey`), `git fetch`, `git log origin/main..HEAD` shows
-the S2 commits. Nothing of S2 is live until it is merged to main.
+**Where it is.** On main (merged 2026-09-30 as `473807b1`); `simple-journey` stays the lane's branch for S3 onward.
 
 **What exists**
 - The rules — `src/lib/markets/short-title.ts` (the ONE budget `SHORT_TITLE_MAX` en/sw 56, zh 28 code points; the forms
@@ -196,12 +194,19 @@ browser drive `qa:short-titles` 28/28 with every tile read at 1280 and 390:
   primary-first action rows; the reject reason says its minimum; an edited language says "not checked yet — the
   sentinel reads your words when you approve" (true in every case, unlike "edited after the check").
 
-**Left to do (S2 close-out)** — (1) merge the branch to main, push, verify the deploy (the two migrations run at boot;
-then `SELECT migration_name, finished_at FROM "_prisma_migrations"` shows both finished); (2) run the
-`qa:short-title-fit` read against production (read-only); (3) an officer presses "Draft short titles for open markets"
-on `/admin/ai-polls?tab=short-titles` and approves them (the sentinel checks each one in production); when every open
-market has short titles within budget, S2 is ✅. S2 changes NOTHING players see — the journey card (S7) is where short
-titles appear.
+**Merged and LIVE (2026-09-30)** — `simple-journey` fast-forwarded main to `473807b1`; production served it within
+four minutes (`?dpl=473807b1`). Read-only proofs on production: `_prisma_migrations` shows
+`20260930200000_market_short_titles` and `20260930200100_ai_poll_short_titles` finished (20:52:09 UTC), no migration
+unfinished, and the eight columns exist as nullable `text`; `qa:short-title-fit` read 62 open long-form markets — 0
+stored values break the rules, and all 62 still fall back to the full title in every language (the backfill's work).
+⚠️ NOT driven on production: the admin pages themselves. Every staff QA login except Ali's own was deleted by the
+2026-09-11 reset, and signing in as Ali would sign him out of the console everywhere; they were driven in a real
+browser locally (`qa:short-titles` 28/28) on the same commit.
+
+**Left to do (S2 close-out)** — an officer presses "Draft short titles for open markets" on
+`/admin/ai-polls?tab=short-titles` (one run drafts up to 25; the sentinel checks each draft in production) and approves
+or corrects each one. When every open market has short titles within budget (`qa:short-title-fit` reports 0 fallbacks),
+S2 is ✅. S2 changes NOTHING players see — the journey card (S7) is where short titles appear.
 
 ## §0c · S2 research (read-only, 2026-09-30): what short titles + competition must touch
 
@@ -254,7 +259,7 @@ Status: ⬜ not started · 🔨 in progress · ✅ done and verified live · ⛔
 |---|---|---|---|
 | S0 | File, rule, get ready | ✅ | Filed `2ac17c36` on main, 2026-09-29. Deck, frames, rulings, reply, tracker, SHELVED.md and compliance records are filed. `test:docs` + `test:landing-ten-plan` are green. The worktree installs. |
 | S1 | The switch and preview | 🔨 | Built and verified locally 2026-09-30 (§0b). Done when staff see a "preview" marker on production and nobody else sees anything. The preview cookie is in Privacy §7 in the same commit. |
-| S2 | Short titles + competition | 🔨 | Built on branch simple-journey 2026-09-30 (§0d), not yet merged. Done when every open market renders within 2 lines in sw/en/zh (`test:short-title-fit`) and the backfill is approved in /admin. |
+| S2 | Short titles + competition | 🔨 | LIVE `473807b1` 2026-09-30 (§0d); the backfill waits on an officer's approval. Done when every open market renders within 2 lines in sw/en/zh (`test:short-title-fit`) and the backfill is approved in /admin. |
 | S3 | The engine (no UI) | ⬜ | Golden fixtures pass: Dodoma ≈2.8×/≈1.4×, 1,000 → TZS 2,700 ≈2.7×, 5,000 → TZS 12,360 ≈2.5×; Yanga ≈2.9×/≈1.4×. Client/server parity is proven. |
 | S3b | Measures baseline | ⬜ | Old-journey analogue counts appear daily, and the 14-day baseline clock is running. |
 | S4 | Claude Design pass | ⬜ | Frames for every new composition and undrawn state are filed and scored by the panel. Ali has reviewed the 5 re-drawn frames. |
