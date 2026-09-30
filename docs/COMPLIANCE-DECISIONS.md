@@ -9,6 +9,29 @@
 ---
 
 
+## 2026-10-01 · Privacy v2026-10-01 — §2/§5 the journey counts, §7 the tab key `kp-utm`
+
+**Authority.** [`VODACOM-PLAN.md`](VODACOM-PLAN.md) §3.10 — *"Privacy §7/§2: … the funnel totals with campaign tags.
+Version bumps land in the same commit as each item"* — and §0f, the S3b design (Ali's delegation of the plan's technical
+calls, 2026-09-29).
+
+**What is counted.** Daily totals (`JourneyFunnelDay`) of four steps of using 50pick — a bet slip opened, a
+not-enough-money notice shown, a bet placed, a deposit confirmed — per East Africa day, with where the step started, which
+journey was shown (old/new) and the campaign tags of the visit's first page. **Nothing that identifies a person**: no
+user id, session, IP address, market or amount; the table's columns are pinned by `test:privacy-notice` §4h and
+`test:journey-funnel` §4. Staff, preview traffic, automation and house-bot stakes are not counted.
+
+**The key in the browser.** `kp-utm` in the tab's own sessionStorage: the first page's `utm_source` and `utm_campaign`,
+so the totals can be split by campaign. No identifier; gone when the tab closes. No cookie is set or read
+(`/api/funnel` answers 204 and never touches one).
+
+**Basis.** The same as the visit counts (Privacy v2026-09-15.2): totals that identify no one need no consent. The
+period is 400 days, like the visit counts, for size — pruned by `retention.purge.daily` (`DATA-RETENTION.md`).
+
+**Also recorded.** A deposit started from a not-enough-money notice carries `origin = "low_balance"` on its own
+transaction row (kept with the transaction, 7 years, like every other field of it); nothing else about the person is
+added to it.
+
 ## 2026-09-30 · Privacy v2026-09-30 — §7 names the staff preview cookie `kp_preview`
 
 **Authority.** Ali's rulings for the Vodacom plan, 2026-09-28/29

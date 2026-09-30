@@ -42,9 +42,9 @@ const ok = (label: string, cond: boolean, why = "", evidence = "") => {
 const code = (src: string) => src.replace(/^[ \t]*\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "");
 
 /* ── The pinned facts. Moving any of these is a legal act: a dated COMPLIANCE-DECISIONS entry comes with it. ── */
-const PRIVACY_VERSION = "2026-09-30";
+const PRIVACY_VERSION = "2026-10-01";
 /** sha256 (first 12 hex) of the ENGLISH content block, whitespace-collapsed. The English text is the binding one. */
-const PRIVACY_EN_SHA = "6080888e8a46";
+const PRIVACY_EN_SHA = "45c8e6d42132";
 /** Every cookie name the code writes, as of v2026-09-30. A new one must be described in §7 first. */
 const COOKIES = ["_ga", "_ga_W66WRL67MQ", "kp-density", "kp-kyc-notice", "kp-locale", "kp_admin_totp", "kp_pending_2fa", "kp_preview", "kp_revoked", "kp_session"];
 // ⭐ `_ga` / `_ga_W66WRL67MQ` joined the census 2026-09-15.2: gtag.js SETS them, and our code EXPIRES them when consent is
@@ -456,7 +456,7 @@ const plantTls = pageSrc.replace("Connections to our website and app are encrypt
 const plantProcessor = pageSrc.replace("<li>Postmark, nchini Marekani,", "<li>Huduma ya barua pepe, nchini Marekani,");
 const plantTheme = pageSrc.replace("your language, a note kept", "theme preference, your language, a note kept");
 const plantWord = pageSrc.replace("We never sell personal data.", "We do not sell personal data.");
-const plantVersion = pageSrc.replace('sw: "Toleo 2026-09-30 ·', 'sw: "Toleo 2026-09-26 ·');
+const plantVersion = pageSrc.replace('sw: "Toleo 2026-10-01 ·', 'sw: "Toleo 2026-09-26 ·');
 ok("§5a control · each planted copy found its target",
   [plantTls, plantProcessor, plantTheme, plantWord, plantVersion].every((p) => p !== pageSrc));
 ok("§5b control · a restored 'TLS 1.2+' is reported", securityDefects(plantTls).length > 0 && versionDefects(plantTls, decisionsSrc).length > 0,
@@ -614,6 +614,50 @@ ok("§4g en/sw/zh §2/§5 describe the visit counts, the tables hold no personal
   visitDefects(pageSrc, schemaSrc, visitsServer, beaconSrc, visitsClient).length === 0,
   visitDefects(pageSrc, schemaSrc, visitsServer, beaconSrc, visitsClient).join("; "),
   `${retentionDays(visitsServer)} days`);
+
+/* ════════════════════════════════════════════════════════════════════════════
+ * §4h · THE JOURNEY COUNTS — v2026-10-01 (Vodacom plan S3b, docs/VODACOM-PLAN.md §0f). Counted without consent on the
+ * visit counts' own basis, which is only true while the table holds nothing personal and the browser keeps nothing but
+ * the tab-lived campaign tags §7 names. Each clause is read from the code.
+ * ══════════════════════════════════════════════════════════════════════════ */
+console.log("\n§4h · journey counts: what §2, §5 and §7 say is what the schema, the beacon and the key do");
+const funnelServer = read("src/lib/server/journey-funnel.ts");
+const funnelBeacon = code(read("src/lib/journey/funnel-beacon.ts"));
+const funnelLib = read("src/lib/journey/funnel.ts");
+const funnelDays = (srv: string) => Number(srv.match(/export const JOURNEY_FUNNEL_RETENTION_DAYS = (\d+);/)?.[1]);
+const FUNNEL_WORDS: Record<Loc, { s2: string[]; s5: (d: number) => string; s7: string[] }> = {
+  en: { s2: ["Journey counts", "our servers also add one", "these totals hold no cookie, no identifier"], s5: (d) => `Journey counts, daily totals that identify no one: ${d} days`, s7: ["kp-utm", "utm_source", "utm_campaign", "no identifier"] },
+  sw: { s2: ["Hesabu za safari", "seva zetu pia huongeza", "jumla hizi hazina kidakuzi, kitambulisho"], s5: (d) => `Hesabu za safari, jumla za kila siku zisizomtambulisha mtu yeyote: siku ${d}`, s7: ["kp-utm", "utm_source", "utm_campaign", "hazina kitambulisho"] },
+  zh: { s2: ["使用流程计数", "我们的服务器还会", "这些总数不含 cookie、标识符"], s5: (d) => `使用流程计数（不识别任何人的每日总数）：${d} 天`, s7: ["kp-utm", "utm_source", "utm_campaign", "不含标识符"] },
+};
+function funnelDefects(page: string, schema: string, server: string, beacon: string, lib: string): string[] {
+  const d: string[] = [];
+  const bl = blocks(page);
+  const days = funnelDays(server);
+  if (!(days > 0)) d.push("JOURNEY_FUNNEL_RETENTION_DAYS is unreadable");
+  for (const l of LOCS) {
+    for (const w of FUNNEL_WORDS[l].s2) if (!section(bl[l], "2").includes(w)) d.push(`${l} §2 does not say "${w}" (journey counts)`);
+    if (!section(bl[l], "5").includes(FUNNEL_WORDS[l].s5(days))) d.push(`${l} §5 does not state the journey-count period read from the code (${days} days)`);
+    for (const w of FUNNEL_WORDS[l].s7) if (!section(bl[l], "7").includes(w)) d.push(`${l} §7 does not say "${w}" (the kp-utm tab key)`);
+  }
+  const fields = JSON.stringify(modelFields(schema, "JourneyFunnelDay"));
+  if (fields !== JSON.stringify(["count", "day", "id", "origin", "step", "utmCampaign", "utmSource", "variant"])) d.push(`JourneyFunnelDay has fields ${fields} — §2 says nothing that could identify you is kept`);
+  if (!/export const FUNNEL_UTM_KEY = "kp-utm";/.test(lib)) d.push("the tab-storage key is no longer kp-utm — §7 names it");
+  if (/document\.cookie|localStorage|indexedDB/.test(beacon)) d.push("the funnel beacon touches a cookie or lasting storage — §7 names only the tab key");
+  if ((beacon.match(/sessionStorage\.(?:getItem|setItem)\(([^)]*)\)/g) ?? []).some((c) => !c.includes("FUNNEL_UTM_KEY"))) d.push("the funnel beacon uses a session key other than kp-utm — §7 names only that one");
+  return d;
+}
+ok("§4h en/sw/zh §2/§5/§7 describe the journey counts and the kp-utm key; the table holds no personal field; the beacon keeps only that key",
+  funnelDefects(pageSrc, schemaSrc, funnelServer, funnelBeacon, funnelLib).length === 0,
+  funnelDefects(pageSrc, schemaSrc, funnelServer, funnelBeacon, funnelLib).join("; "),
+  `${funnelDays(funnelServer)} days`);
+const plantFunnelUser = schemaSrc.replace(/(model JourneyFunnelDay \{[\s\S]*?)(\r?\n  count)/, "$1\n  userId      String?$2");
+const plantFunnelStore = funnelBeacon.replace("window.sessionStorage.getItem(FUNNEL_UTM_KEY) !== null", "window.localStorage.getItem(FUNNEL_UTM_KEY) !== null");
+const plantFunnelZh = pageSrc.replace("使用流程计数（不识别任何人的每日总数）：400 天", "使用流程计数：400 天");
+ok("§4h control · planted journey-count copies found their targets", [plantFunnelUser !== schemaSrc, plantFunnelStore !== funnelBeacon, plantFunnelZh !== pageSrc].every(Boolean));
+ok("§4h control · a userId column on the funnel table is reported", funnelDefects(pageSrc, plantFunnelUser, funnelServer, funnelBeacon, funnelLib).some((x) => x.includes("JourneyFunnelDay has fields")));
+ok("§4h control · a funnel beacon that keeps the tags in localStorage is reported", funnelDefects(pageSrc, schemaSrc, funnelServer, plantFunnelStore, funnelLib).some((x) => x.includes("lasting storage")));
+ok("§4h control · the journey-count period dropped from ONE locale (zh) is reported", funnelDefects(plantFunnelZh, schemaSrc, funnelServer, funnelBeacon, funnelLib).some((x) => x.startsWith("zh §5")));
 
 const plantUngated = gaComponent.replace(' && consent === "granted"', "");
 const plantNudge = promptSrc.replace(/variant="ghost"(?= size="sm" data-testid="consent-allow")/, 'variant="primary"');

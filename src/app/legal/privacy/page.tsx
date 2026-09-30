@@ -39,10 +39,13 @@ const TITLE: Record<Locale, string> = {
 // 2026-09-30: §7 names the preview cookie `kp_preview` (Vodacom plan S1, ruling SJ-23: every staff role previews the new
 // journey before it launches, and the agency gets a 7-day preview link) — see COMPLIANCE-DECISIONS.md "Privacy v2026-09-30"
 // and `src/lib/server/journey-preview.ts`. `test:privacy-notice` §4 reads its 24 hours from `PREVIEW_PASS_HOURS`.
+// 2026-10-01: §2 "Journey counts" and §5 their 400 days, §7 the tab-storage key `kp-utm` — the Vodacom plan S3b journey
+// funnel (`src/lib/server/journey-funnel.ts`, `src/lib/journey/funnel-beacon.ts`), daily totals that identify no one, on the
+// visit counts' own basis. See COMPLIANCE-DECISIONS.md "Privacy v2026-10-01"; `test:privacy-notice` §4h ties each clause to the code.
 const META: Record<Locale, string> = {
-  en: "Version 2026-09-30 · Aligned with the Tanzania Personal Data Protection Act 2022 and EU GDPR principles.",
-  sw: "Toleo 2026-09-30 · Imeoanishwa na Tanzania Personal Data Protection Act 2022 na kanuni za EU GDPR.",
-  zh: "版本 2026-09-30 · 符合 Tanzania Personal Data Protection Act 2022 及 EU GDPR 原则。",
+  en: "Version 2026-10-01 · Aligned with the Tanzania Personal Data Protection Act 2022 and EU GDPR principles.",
+  sw: "Toleo 2026-10-01 · Imeoanishwa na Tanzania Personal Data Protection Act 2022 na kanuni za EU GDPR.",
+  zh: "版本 2026-10-01 · 符合 Tanzania Personal Data Protection Act 2022 及 EU GDPR 原则。",
 };
 
 /**
@@ -75,6 +78,7 @@ function content(): Record<Locale, React.ReactNode> { return {
           <li><strong className="text-text">Financial</strong>: deposit and withdrawal records, mobile-money MSISDN, prediction activity; for a card deposit, the billing name and address you enter; and the name registered to a mobile-money number you withdraw to</li>
           <li><strong className="text-text">Technical</strong>: IP address and browser user-agent string, recorded on sign-in and security events; session issue and expiry times; and, if you allow analytics, through Google Analytics, the pages you open, your device and browser type, and your approximate location</li>
           <li><strong className="text-text">Visit counts</strong>: for every visit, our own servers add one to daily totals of the page opened, the website that linked to it and any campaign tags in its address; no cookie or identifier is used, and nothing that could identify you is kept</li>
+          <li><strong className="text-text">Journey counts</strong>: our servers also add one to daily totals of a few steps of using 50pick — a bet slip opened, a not-enough-money notice shown, a bet placed, a deposit confirmed — with where the step started and the campaign tags of your visit&apos;s first page; these totals hold no cookie, no identifier and nothing that could identify you</li>
           <li><strong className="text-text">Behavioural</strong>: deposit and loss limit changes, self-exclusion and cooling-off periods</li>
         </ul>
       </LegalSection>
@@ -112,6 +116,7 @@ function content(): Record<Locale, React.ReactNode> { return {
           <li>Audit log entries: at least 7 years</li>
           <li>Marketing consent: until you withdraw it, close your account, or 2 years pass without you signing in</li>
           <li>Visit counts, daily totals that identify no one: 400 days</li>
+          <li>Journey counts, daily totals that identify no one: 400 days</li>
           <li>Google Analytics, only if you allow analytics: Google keeps the events it receives for 2 months, and data linked to your browser&apos;s random identifier for 14 months</li>
         </ul>
       </LegalSection>
@@ -137,6 +142,8 @@ function content(): Record<Locale, React.ReactNode> { return {
           again. No advertising cookies. Refusing analytics does not change how 50pick works.
           A signed preview cookie, kp_preview, is set only when a 50pick staff member turns on a preview of pages not yet launched, or when you open a preview link 50pick sent you;
           it holds no personal details beyond who issued it, and lasts at most 24 hours.
+          For as long as a browser tab stays open, the campaign tags of your visit&apos;s first page (utm_source and utm_campaign) are kept in that tab&apos;s own storage as kp-utm,
+          so the journey counts can be split by campaign; it holds no identifier and is gone when the tab closes.
           Some display choices, such as hiding your balance or dismissing a prompt, are kept in your browser&apos;s own storage on your device.
         </p>
         <AnalyticsChoice />
@@ -181,6 +188,7 @@ function content(): Record<Locale, React.ReactNode> { return {
           <li><strong className="text-text">Fedha</strong>: kumbukumbu za kuweka na kutoa fedha, MSISDN ya pesa za simu, shughuli za utabiri; kwa kuweka fedha kwa kadi, jina na anwani ya bili unayoandika; na jina lililosajiliwa kwa namba ya pesa za simu unayotolea fedha</li>
           <li><strong className="text-text">Kiufundi</strong>: anwani ya IP na maandishi ya user-agent ya kivinjari, huhifadhiwa unapoingia na kwenye matukio ya usalama; muda wa kuanza na wa kuisha wa kipindi; na, ukiruhusu takwimu, kupitia Google Analytics, kurasa unazofungua, aina ya kifaa na kivinjari chako, na eneo lako la takriban</li>
           <li><strong className="text-text">Hesabu za matembeleo</strong>: kwa kila tembeleo, seva zetu wenyewe huongeza moja kwenye jumla za kila siku za ukurasa uliofunguliwa, tovuti iliyokuleta na lebo za kampeni kwenye anwani yake; hakuna kidakuzi wala kitambulisho kinachotumika, na hakuna chochote kinachoweza kukutambulisha kinachohifadhiwa</li>
+          <li><strong className="text-text">Hesabu za safari</strong>: seva zetu pia huongeza moja kwenye jumla za kila siku za hatua chache za kutumia 50pick — kufungua karatasi ya dau, kuonyeshwa ujumbe wa salio lisilotosha, kuweka dau, kuthibitishwa kwa amana — pamoja na mahali hatua ilipoanzia na lebo za kampeni za ukurasa wa kwanza wa tembeleo lako; jumla hizi hazina kidakuzi, kitambulisho wala chochote kinachoweza kukutambulisha</li>
           <li><strong className="text-text">Kitabia</strong>: mabadiliko ya mipaka ya kuweka fedha na hasara, vipindi vya kujiondoa na kupumzika</li>
         </ul>
       </LegalSection>
@@ -218,6 +226,7 @@ function content(): Record<Locale, React.ReactNode> { return {
           <li>Maingizo ya kumbukumbu za ukaguzi (audit log): angalau miaka 7</li>
           <li>Ridhaa ya matangazo: hadi utakapoiondoa, kufunga akaunti yako, au miaka 2 ipite bila kuingia</li>
           <li>Hesabu za matembeleo, jumla za kila siku zisizomtambulisha mtu yeyote: siku 400</li>
+          <li>Hesabu za safari, jumla za kila siku zisizomtambulisha mtu yeyote: siku 400</li>
           <li>Google Analytics, ikiwa tu utaruhusu takwimu: Google huhifadhi matukio inayopokea kwa miezi 2, na data inayohusishwa na kitambulisho cha nasibu cha kivinjari chako kwa miezi 14</li>
         </ul>
       </LegalSection>
@@ -243,6 +252,8 @@ function content(): Record<Locale, React.ReactNode> { return {
           tena. Hakuna vidakuzi vya matangazo. Kukataa takwimu hakubadilishi jinsi 50pick inavyofanya kazi.
           Kidakuzi cha onyesho la awali kilichosainiwa, kp_preview, huwekwa tu pale mfanyakazi wa 50pick anapowasha onyesho la awali la kurasa ambazo bado hazijazinduliwa, au unapofungua kiungo cha onyesho la awali ambacho 50pick ilikutumia;
           hakina taarifa binafsi zaidi ya kuonyesha nani aliyekitoa, na kinadumu si zaidi ya saa 24.
+          Kwa muda wote kichupo cha kivinjari kikiwa wazi, lebo za kampeni za ukurasa wa kwanza wa tembeleo lako (utm_source na utm_campaign) huhifadhiwa kwenye hifadhi ya kichupo hicho kama kp-utm,
+          ili hesabu za safari zigawanywe kwa kampeni; hazina kitambulisho na hufutika kichupo kinapofungwa.
           Baadhi ya machaguo ya maonyesho, kama kuficha salio lako au kufunga ujumbe, huhifadhiwa kwenye hifadhi ya kivinjari chako ndani ya kifaa chako.
         </p>
         <AnalyticsChoice />
@@ -287,6 +298,7 @@ function content(): Record<Locale, React.ReactNode> { return {
           <li><strong className="text-text">财务</strong>：存款与提现记录、移动货币 MSISDN、预测活动；银行卡充值时您填写的账单姓名与地址；以及您提现至的移动货币号码的注册姓名</li>
           <li><strong className="text-text">技术</strong>：IP 地址与浏览器 user-agent 字符串（在登录及安全事件时记录）；会话签发与到期时间；以及在您允许分析时，通过 Google Analytics 收集的您打开的页面、设备与浏览器类型和大致位置</li>
           <li><strong className="text-text">访问计数</strong>：每次访问时，我们自己的服务器会在每日总数中为所打开的页面、链接到该页面的网站及其地址中的推广标签各加一；不使用 cookie 或标识符，也不保存任何可识别您身份的信息</li>
+          <li><strong className="text-text">使用流程计数</strong>：我们的服务器还会在每日总数中为使用 50pick 的几个步骤各加一——打开投注单、显示余额不足提示、下注、存款确认——并记录该步骤的来源及您此次访问首个页面的推广标签；这些总数不含 cookie、标识符或任何可识别您身份的信息</li>
           <li><strong className="text-text">行为</strong>：存款与亏损限额变更、自我排除与冷静期</li>
         </ul>
       </LegalSection>
@@ -324,6 +336,7 @@ function content(): Record<Locale, React.ReactNode> { return {
           <li>审计日志条目：至少 7 年</li>
           <li>营销同意：直至您撤回、注销账户，或连续 2 年未登录</li>
           <li>访问计数（不识别任何人的每日总数）：400 天</li>
+          <li>使用流程计数（不识别任何人的每日总数）：400 天</li>
           <li>Google Analytics（仅在您允许分析时）：Google 将其接收的事件数据保留 2 个月，与您浏览器随机标识符相关联的数据保留 14 个月</li>
         </ul>
       </LegalSection>
@@ -341,7 +354,7 @@ function content(): Record<Locale, React.ReactNode> { return {
 
       <LegalSection n="7" title="Cookie">
         <p>
-          我们仅使用必要的最小 cookie 集合：您的登录会话（HMAC 签名的 HttpOnly cookie，登录后最长 7 天失效）、您的语言、一条保留 30 秒、说明您为何被退出登录的提示、您已关闭钱包身份提示的记录、您在手机上选择的卡片间距，以及仅限员工账户的双重验证登录 cookie。仅在您允许分析时，Google Analytics 才会设置两个 cookie：_ga 和 _ga_W66WRL67MQ，保存用于统计访问的随机标识符，有效期 395 天；关闭分析会将其删除。在您作出选择之前，分析处于关闭状态；您的选择保存在浏览器存储中——允许则保存 395 天，拒绝则保存 180 天，之后会再次询问。不使用任何广告 cookie。拒绝分析不会影响 50pick 的正常使用。仅当 50pick 员工开启尚未上线页面的预览，或您打开 50pick 发送给您的预览链接时，才会设置一个签名的预览 cookie：kp_preview；除签发者外，它不包含任何个人信息，有效期最长 24 小时。部分显示选择（例如隐藏余额或关闭提示）保存在您设备上的浏览器存储中。
+          我们仅使用必要的最小 cookie 集合：您的登录会话（HMAC 签名的 HttpOnly cookie，登录后最长 7 天失效）、您的语言、一条保留 30 秒、说明您为何被退出登录的提示、您已关闭钱包身份提示的记录、您在手机上选择的卡片间距，以及仅限员工账户的双重验证登录 cookie。仅在您允许分析时，Google Analytics 才会设置两个 cookie：_ga 和 _ga_W66WRL67MQ，保存用于统计访问的随机标识符，有效期 395 天；关闭分析会将其删除。在您作出选择之前，分析处于关闭状态；您的选择保存在浏览器存储中——允许则保存 395 天，拒绝则保存 180 天，之后会再次询问。不使用任何广告 cookie。拒绝分析不会影响 50pick 的正常使用。仅当 50pick 员工开启尚未上线页面的预览，或您打开 50pick 发送给您的预览链接时，才会设置一个签名的预览 cookie：kp_preview；除签发者外，它不包含任何个人信息，有效期最长 24 小时。在浏览器标签页保持打开期间，您此次访问首个页面的推广标签（utm_source 和 utm_campaign）以 kp-utm 的名称保存在该标签页自身的存储中，以便按推广活动拆分使用流程计数；其中不含标识符，标签页关闭即删除。部分显示选择（例如隐藏余额或关闭提示）保存在您设备上的浏览器存储中。
         </p>
         <AnalyticsChoice />
       </LegalSection>

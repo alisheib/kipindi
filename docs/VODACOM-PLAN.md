@@ -179,7 +179,9 @@ the real POST handler; red 16/16). C: the server counters + the `origin` column 
 "low_balance" or NULL, create-only in both twins, migration `20261001120100_transaction_origin` under the lock-retry
 block; the deposit page/action carry `from=low-balance` → `origin`; the suite drives the REAL `deposit()`; red 22/22).
 ⚠️ Decision: `Position.origin` is DEFERRED to S8 — no S3b measure reads it (the bet counter records the origin at bet
-time; "deposit → bet ≤ 30 min" is computed from row times), so S3b touches one money table, not two. D: Privacy v2026-10-01. E: the insights
+time; "deposit → bet ≤ 30 min" is computed from row times), so S3b touches one money table, not two. D: Privacy v2026-10-01 — ✅ (en/sw/zh §2 "Journey counts", §5 400 days, §7 the tab key `kp-utm`; COMPLIANCE-DECISIONS
+"Privacy v2026-10-01"; DATA-RETENTION row; `test:privacy-notice` §4h ties each clause to the schema, the beacon and the
+key, with planted controls; the version pin and the English hash moved in the same commit). E: the insights
 panel. F: battery, drive, merge, deploy, and the first day's counts read on production.
 
 ## §0e · S3 as built (2026-10-01) — ✅ merged to main
