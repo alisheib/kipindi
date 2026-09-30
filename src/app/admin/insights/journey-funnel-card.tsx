@@ -20,11 +20,12 @@ const LABEL: Record<MeasureKey, { title: string; how: string }> = {
   depositToBet: { title: "Deposit → bet (30 min)", how: "confirmed deposits followed by a bet within 30 minutes ÷ confirmed deposits" },
 };
 
+/** A measure: its share (or "—" with no denominator yet) over its two halves, which are always shown. */
 function Cell({ m }: { m: Measure | undefined }) {
-  if (!m || m.pct === null) return <span className="text-text-subtle">—</span>;
+  if (!m) return <span className="text-text-subtle">—</span>;
   return (
     <span className="inline-flex flex-col">
-      <span className="font-mono tabular-nums text-text">{m.pct}%{m.overCounted ? " *" : ""}</span>
+      <span className={`font-mono tabular-nums ${m.pct === null ? "text-text-subtle" : "text-text"}`}>{m.pct === null ? "—" : `${m.pct}%`}{m.overCounted ? " *" : ""}</span>
       <span className="font-mono tabular-nums text-body-sm text-text-subtle">{formatNumber(m.numerator)} of {formatNumber(m.denominator)}</span>
     </span>
   );
