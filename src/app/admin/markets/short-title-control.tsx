@@ -60,11 +60,12 @@ type Values = Record<Key, string>;
 type Verdict = { kind: "agrees" | "disagrees" | "unchecked"; text: string };
 
 /* ⭐ The placeholders are EXAMPLES and say so ("e.g.", the console's convention): a full question about another market,
-   shown bare in an empty box, reads as a stored value that does not match this one. */
+   shown bare in an empty box, reads as a stored value that does not match this one. Short enough to fit the box in a
+   one-third column at 1280 (the first longer ones were cut off mid-word). */
 const LANGS: ReadonlyArray<{ key: TitleKey; locale: Locale; placeholder: string }> = [
-  { key: "shortTitleEn", locale: "en", placeholder: "e.g. Will Simba beat Yanga on Saturday?" },
-  { key: "shortTitleSw", locale: "sw", placeholder: "e.g. Je, Simba itaifunga Yanga Jumamosi?" },
-  { key: "shortTitleZh", locale: "zh", placeholder: "e.g. 辛巴周六会击败扬加吗？" },
+  { key: "shortTitleEn", locale: "en", placeholder: "e.g. Will Simba beat Yanga?" },
+  { key: "shortTitleSw", locale: "sw", placeholder: "e.g. Je, Simba itaifunga Yanga?" },
+  { key: "shortTitleZh", locale: "zh", placeholder: "e.g. 辛巴会击败扬加吗？" },
 ];
 
 /** The one list, with the dictionary's English labels (admin copy is English). Empty = no competition. */

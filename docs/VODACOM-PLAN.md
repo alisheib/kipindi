@@ -20,8 +20,9 @@
 BUILT on branch `simple-journey` and NOT yet on main — see §0d for exactly what exists, what passed and what is left.
 Nothing reaches players.
 
-**Next:** S2 close-out (§0d "Left to do"): the adversarial review's fixes, the full battery, merge to main, verify the
-deploy, then Ali (or an officer) runs "Draft short titles" and approves them on `/admin/ai-polls?tab=short-titles`.
+**Next:** S2 close-out (§0d "Left to do"): merge `simple-journey` to main, verify the deploy and the two migrations,
+then Ali (or an officer) runs "Draft short titles for open markets" and approves them on
+`/admin/ai-polls?tab=short-titles`.
 
 Session law, the same for every session:
 - Code, two-store tests, and `red:*` twins reachable from `red:all`, with declared anchors.
@@ -174,11 +175,31 @@ browser drive `qa:short-titles` 23/23 with every state read as a viewport tile a
 of both migrations. The migrations now RETRY their lock wait inside the SQL, so a busy table can never leave a failed
 boot row. Red on main before S2 and unchanged by it: type-scale, tap-target, decomment, red-anchors x2.
 
-**Left to do (S2 close-out)** — (1) a design-critic panel (3 lenses + second readers) was reading every tile at the time
-of this note: apply what it keeps; (2) merge the branch to main, push, verify the deploy (the two migrations run at
-boot; then `SELECT migration_name, finished_at FROM "_prisma_migrations"` shows both finished); (3) run the
-`qa:short-title-fit` read against production (read-only); (4) an officer presses "Draft short titles for open markets" on
-`/admin/ai-polls?tab=short-titles` and approves them (the sentinel checks each one in production); when every open
+**The design pass (2026-09-30, night)** — three independent design critics (layout, type, kit) read every tile of the
+drive, a second reader kept 54 of their 56 findings, and all 54 are applied (`a994b694`, `bfdb4f04` + the placeholder
+fix on the branch). Verified after it: `tsc` 0; the full battery green except the reds that pre-date S2 (type-scale
+749/239, tap-target, decomment 23/20, red-anchors — the same counts as main); `red:short-title-edit` 52/52; the
+browser drive `qa:short-titles` 28/28 with every tile read at 1280 and 390:
+- ONE WORDING. The rule sentences live beside the rules, client-safe, in `lib/markets/short-title.ts`
+  (`shortTitleIssueSentence`, `SHORT_TITLE_LABEL`, the rule note `SHORT_TITLE_RULE_TITLE`/`_BODY`, `SHORT_TITLE_SW_FORM`
+  with a NO-BREAK space so "Je, …?" never breaks across two lines, `shortTitleAuditMissed`). The server's refusals, the
+  market page, the drafts tab and the wizard all print them; the wizard has no wording of its own.
+- ONE COUNTER, ONE ERROR STATE. `n / max` in the number face, red over budget, and the kit's `error` prop (red box +
+  `aria-invalid`) on all three surfaces — the drafts form's `aria-invalid` was being discarded by the Input atom.
+- ONE ERROR INK. Form errors are `text-danger-fg`, never the betting NO pair — the wizard (its criterion lines too)
+  and the AI poll form; guarded by `test:betting-ink` §6.
+- The market page: an info rule note (it explains; amber is kept for what needs a second look), a real heading, "e.g."
+  placeholders, a number-drift warning UNDER its field (cleared by typing), the sentinel's reason said ONCE, a warning
+  toast when there is something to read, "Save card wording" (it saves the competition too) on its own row, and a rule
+  under the control so the price bar belongs to the market again.
+- The drafts tab: "Edit, then approve" REPLACES the read-only blocks (each language once), with the market page's fields;
+  primary-first action rows; the reject reason says its minimum; an edited language says "not checked yet — the
+  sentinel reads your words when you approve" (true in every case, unlike "edited after the check").
+
+**Left to do (S2 close-out)** — (1) merge the branch to main, push, verify the deploy (the two migrations run at boot;
+then `SELECT migration_name, finished_at FROM "_prisma_migrations"` shows both finished); (2) run the
+`qa:short-title-fit` read against production (read-only); (3) an officer presses "Draft short titles for open markets"
+on `/admin/ai-polls?tab=short-titles` and approves them (the sentinel checks each one in production); when every open
 market has short titles within budget, S2 is ✅. S2 changes NOTHING players see — the journey card (S7) is where short
 titles appear.
 
