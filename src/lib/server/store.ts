@@ -2557,6 +2557,12 @@ const memoryDb = {
       const id = store.contactsByMsisdn.get(msisdn);
       return id ? store.marketingContacts.get(id) ?? null : null;
     },
+    /** Every book row LINKED to an account — erasure's reach (U18b). Usually one; a player who changed
+     *  number can have the old one in the book too. */
+    listByUserId: (userId: string): StoredMarketingContact[] =>
+      Array.from(store.marketingContacts.values())
+        .filter((c) => c.userId === userId)
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id)),
     /** ⛔ `msisdn` is not patchable (see `MarketingContactPatch`), so the unique index can
      *  never need re-pointing here — which is why this does not touch `contactsByMsisdn`. */
     update: (id: string, patch: MarketingContactPatch, at: string): StoredMarketingContact | null => {

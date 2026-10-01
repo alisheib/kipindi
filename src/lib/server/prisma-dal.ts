@@ -3566,6 +3566,14 @@ export const prismaDb = {
       const row = await pc().marketingContact.findUnique({ where: { msisdn } });
       return row ? toStoredMarketingContact(row) : null;
     },
+    /** Every book row LINKED to an account — erasure's reach (U18b). `userId` is indexed. */
+    listByUserId: async (userId: string): Promise<StoredMarketingContact[]> => {
+      const rows = await pc().marketingContact.findMany({
+        where: { userId },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      });
+      return rows.map(toStoredMarketingContact);
+    },
     /** ⛔ `msisdn` is not patchable (see `MarketingContactPatch`), so the unique index can
      *  never need re-pointing here. `updatedAt` is passed EXPLICITLY rather than left to
      *  `@updatedAt`, so both twins stamp the same value from the same caller. */

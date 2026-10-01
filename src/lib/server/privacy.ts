@@ -24,6 +24,7 @@ import { anonymizeClosedAccount, type AnonymizeOutcome } from "./erasure";
 // statutory response paths with a 30-day clock attached (PDPA 2022 §31 / GDPR Art. 17), so an
 // address that does not resolve is a compliance failure, not a typo.
 import { SUPPORT_EMAIL } from "./support-config";
+import { marketingDsarView } from "./marketing/dsar";
 
 const DSAR_QUEUE_KEY = "privacy.dsar_queue";
 
@@ -135,7 +136,7 @@ export async function fulfillDsarRequest(opts: { id: string; officerId: string; 
   if (r.type === "ERASURE") {
     // A routine that THROWS part-way is a refusal the officer must see, not an unhandled error that writes no
     // record (house-bots review MC-4): the same blocked row, with the reason "error". It is re-runnable.
-    erasure = await anonymizeClosedAccount(r.userId).catch((err: unknown): AnonymizeOutcome => {
+    erasure = await anonymizeClosedAccount(r.userId, { officerId: opts.officerId }).catch((err: unknown): AnonymizeOutcome => {
       console.error("[privacy] erasure threw:", (err as Error)?.message ?? err);
       return { ok: false, reason: "error", error: "Erasure stopped part-way with an error. Nothing was marked fulfilled — fix the cause, then run it again." };
     });
@@ -367,6 +368,8 @@ export async function buildDsarBundle(userId: string) {
     kyc,
     responsibleGambling: responsible,
     notificationsCount: notifications.length,
+    // U18b · the consent ledger, the stop list and the contact book, through ONE allowlist both doors share.
+    marketing: await marketingDsarView(user),
     rights: {
       access: "Granted (this document).",
       correction: `Submit a correction request via /profile/account or by contacting ${SUPPORT_EMAIL()}.`,

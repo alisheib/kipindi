@@ -22,6 +22,8 @@ const ERASURE = "src/lib/server/erasure.ts";
 const KYC = "src/lib/server/kyc-service.ts";
 const COMMENTS = "src/lib/server/comments-store.ts";
 const STORE = "src/lib/server/store.ts";
+const MKT_ERASE = "src/lib/server/marketing/erase.ts";
+const MKT_DSAR = "src/lib/server/marketing/dsar.ts";
 
 /** @type {RedMutation[]} */
 export const MUTATIONS = [
@@ -223,5 +225,59 @@ export const MUTATIONS = [
     suite: "erasure",
     from: `        if ((k.idFingerprint ?? "") !== fp) continue;`,
     to: `        if (true) continue;`,
+  },
+  /* ── U18b · erasure reaches marketing (S10, 2026-10-01) ───────────────────────────────── */
+  {
+    // 🔴 THE S6 FINDING, AS IT SHIPPED: erasure touches no marketing store. The tombstone hides the
+    // player from the gate, which reads the ledger's old GIVEN; the book keeps the name and the link.
+    name: "erasure-skips-marketing (the stop list, the ledger and the book are never reached)",
+    file: ERASURE,
+    suite: "erasure",
+    from: `    Object.assign(counts, await eraseMarketingFor({ userId, phoneE164: user.phoneE164, officerId: opts?.officerId ?? null }));`,
+    to: `    void eraseMarketingFor;`,
+  },
+  {
+    // The stop is written as the PERSON's own (WITHDRAWN) — so their old SMS link lifts an erasure.
+    name: "erasure-stop-is-liftable (reason WITHDRAWN, which the person's own link may lift)",
+    file: MKT_ERASE,
+    suite: "erasure",
+    from: `        reason: "OPERATOR",`,
+    to: `        reason: "WITHDRAWN",`,
+  },
+  {
+    // The book is reached by the LINK only: a contact imported before the person signed up keeps
+    // their name, because it never carried a userId.
+    name: "erasure-book-by-link-only (an unlinked row with the same number keeps the name)",
+    file: MKT_ERASE,
+    suite: "erasure",
+    from: `    const byNumber = await Promise.resolve(db.marketingContact.findByMsisdn(accountNumber));
+    if (byNumber) rows.set(byNumber.id, byNumber);
+  }
+  // Every number this person is known by`,
+    to: `    void accountNumber;
+  }
+  // Every number this person is known by`,
+  },
+  {
+    // The kept number is written beside the account id — the stop list can be joined back to the
+    // person who asked to be erased.
+    name: "erasure-evidence-names-the-account (the kept number becomes re-identifiable)",
+    file: MKT_ERASE,
+    suite: "erasure",
+    from: `        evidence: ERASURE_EVIDENCE,
+        recordedBy: input.officerId,
+        createdAt: at,`,
+    to: `        evidence: "erasure:" + input.userId,
+        recordedBy: input.officerId,
+        createdAt: at,`,
+  },
+  {
+    // The export hands over the raw ledger row: a staff member's id and the internal evidence go
+    // out in a player's download.
+    name: "dsar-marketing-raw-rows (recordedBy and evidence leave in the export)",
+    file: MKT_DSAR,
+    suite: "erasure",
+    from: `      consent.push({ status: r.status, source: r.source, wording: r.wording, locale: r.locale, createdAt: r.createdAt });`,
+    to: `      consent.push({ ...r } as never);`,
   },
 ];

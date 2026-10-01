@@ -14,6 +14,7 @@ import { runOutsideLock } from "./locks";
 import { audit, getAuditForActorDurable, type AuditEntry } from "./audit";
 import { db } from "./store";
 import { dsarTxnView, dsarUserView } from "./privacy";
+import { marketingDsarView } from "./marketing/dsar";
 import { destroySession } from "./session";
 import { revokeUserSessions } from "./session-registry";
 import { sendEmailToUser, accountClosedHtml } from "./email";
@@ -90,6 +91,8 @@ export async function exportUserData(userId: string) {
     // house stake's rows among them exactly like their own bets, through the ONE allowlist both releasable doors share —
     // never the raw row (whose `houseBotId` key names the feature) and never a house exclusion (which would leave gaps).
     transactions: (await db.txn.findByUser(userId, 1000)).map(dsarTxnView),
+    // U18b · the consent ledger, the stop list and the contact book — the SAME allowlist the officer's bundle uses.
+    marketing: user ? await marketingDsarView(user) : null,
     /**
      * 🔴 THIS READ WAS THE RING, ON THE GDPR ART. 15 DOOR. The file a player downloads to
      * exercise a statutory right of access contained only whatever of their events happened to

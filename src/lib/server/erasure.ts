@@ -76,6 +76,8 @@ import { pseudonymiseAgentApplications, purgeAgentDocumentsForUser } from "./age
 import { houseBotAlertOnceStore, houseBotStore } from "./house-bot-dal";
 import { withLock } from "./locks";
 import { ALERT_KEY } from "@/lib/house-bot/constants";
+import { eraseMarketingFor } from "./marketing/erase";
+import type { MarketingErasureCounts } from "./marketing/erase";
 
 /**
  * How long an identity document is held after account closure before erasure may destroy
@@ -146,7 +148,7 @@ export type AnonymizeOutcome =
         houseBots: number;
         /** Notification rows whose quoted bot label was replaced (04 R6) — admin inboxes included. */
         houseBotNotificationsRedacted: number;
-      };
+      } & MarketingErasureCounts;
     };
 
 function addYears(iso: string, years: number): string {
@@ -161,6 +163,8 @@ function addYears(iso: string, years: number): string {
  * @param userId the account to erase
  * @param opts.now injectable clock — the 7-year hold is the only thing that reads it, and
  *                 a test that cannot move time cannot prove tier ② at all.
+ * @param opts.officerId the officer fulfilling the request — named as `recordedBy` on the marketing
+ *                 stop and the ledger row (U18b), the way an OPERATOR suppression is documented.
  *
  * ⛔ REFUSES ANYTHING THAT IS NOT `status === "CLOSED"`. The right of erasure attaches to a
  * closed relationship, the 7-year clock is measured from closure, and a routine that will
@@ -169,7 +173,7 @@ function addYears(iso: string, years: number): string {
  */
 export async function anonymizeClosedAccount(
   userId: string,
-  opts?: { now?: number },
+  opts?: { now?: number; officerId?: string | null },
 ): Promise<AnonymizeOutcome> {
   const now = opts?.now ?? Date.now();
   const user = await db.user.findById(userId);
@@ -228,6 +232,7 @@ export async function anonymizeClosedAccount(
     agentApplicationsRedacted: 0, agentDocumentsDeleted: 0, agentDocumentObjectsFailed: 0,
     extraRequestsCleared: 0, comments: 0, notificationsDeleted: 0, notificationsRedacted: 0,
     otps: 0, pushSubscriptions: 0, watchlistEntries: 0, houseBots: 0, houseBotNotificationsRedacted: 0,
+    marketingSuppressed: 0, marketingConsentWithdrawn: 0, marketingContactsEmptied: 0,
   };
 
   // The clock runs from closure. A CLOSED row with no `closedAt` predates that column being
@@ -438,6 +443,16 @@ export async function anonymizeClosedAccount(
   // A bot designated between the refusal above and here cannot happen (designation refuses a CLOSED account),
   // but the DAL refuses again under its row locks — surface it rather than report a complete erasure.
   if (!house.ok) throw new Error(`erasure: ${userId} became house bot ${house.botId} during erasure — re-run after removing it`);
+
+  // ── 4c · MARKETING — the number stopped, the consent withdrawn, the book emptied (U18b) ─────────────
+  // 🔴 Before this, erasure touched no marketing store: on Postgres the tombstoned phone hid the player
+  // from the gate, which then read the LEDGER and found their old GIVEN. ⛔ It must run BEFORE step 6
+  // tombstones the phone — the number is the only key the stop list, the ledger and the book share — so a
+  // re-run (phone already tombstoned) has nothing to key on and skips it; every write in it is idempotent,
+  // so a first pass that died part-way is finished by the next. `marketing/erase.ts` says what is kept.
+  if (!wasErased) {
+    Object.assign(counts, await eraseMarketingFor({ userId, phoneE164: user.phoneE164, officerId: opts?.officerId ?? null }));
+  }
 
   // ── 5 · CREDENTIALS AND DEVICE STATE ────────────────────────────────────────────────
   counts.otps = await db.otp.deleteAllForPhone(user.phoneE164);
