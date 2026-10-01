@@ -20,12 +20,11 @@
 journey's funnel is counted from now — the 14-day baseline clock has started (§0f). S3 (the engine) is ✅. S2 is LIVE
 (`473807b1`) and waits on an officer approving the short titles (§0d). S1 is LIVE (`41ec1703`) and waits on one press
 by Ali (§0b "Still open"). Nothing new reaches players (the counters are invisible; the insights panel is admin-only).
-S4 (the Claude Design pass) is 🔨: all eleven brief items are on the Design canvas and BRIEF.md is filed; the
-four-expert panel scored the first pass D 6.5 · F 6.5 · C 6 · A 5, and every finding is now applied (canvas v16,
-102 boards). It waits on Ali's choices 2 and 3 (§0g).
+S4 (the Claude Design pass) is ✅: all eleven brief items are on the Design canvas, the four-expert panel's findings
+are applied (canvas v16, 102 boards), BRIEF.md is filed, and choices 2A/3A were adopted when Ali said "proceed"
+(§0g). S6 (the flagged shell) is next. Ali is away: every call made meanwhile is a numbered point in §0h.
 
-**Next:** (1) S4: Ali answers choices 2 and 3 on the canvas (1B is set by §M3), then S4 is ✅ (§0g "Still
-open"); (2) on the days after the deploy, read
+**Next:** (1) S6, the flagged shell (§5 "S6"); (2) on the days after the deploy, read
 the first totals with `qa:journey-funnel` (read-only) — when counts appear daily, S3b is ✅ and the baseline runs to
 2026-10-15 at the earliest. In parallel: an officer approves the S2 short titles; Ali presses S1's preview switch.
 
@@ -139,6 +138,24 @@ drive (guest, SUPPORT officer, player, Owner Stop and Resume, a stranger on a li
 **Still open (S1 close-out)** — pushed (`41ec1703`), `JOURNEY_PREVIEW_SECRET` set on Railway (48 characters),
 deploy verified, and a signed-out visitor sees nothing on production (`qa:live` 319/0 there, [E2] included). One
 press by Ali remains: `/admin/journey` → "Turn my preview on" → the bar on 50pick.tz. Then S1 is ✅.
+
+## §0h · Points for Ali — taken while he was away (2026-10-01 →)
+
+Ali said "proceed, taking down points, I'll be away" (2026-10-01). Every call made since then is a numbered point
+here, with how to overrule it. Newest last; nothing here blocks the work.
+
+1. **S4 closed with my picks.** Choice 2 = **2A** (royal ring on the chosen amount), choice 3 = **3A** (royal play
+   plate on the How-to card), choice 1 = **1B** (neutral step numbers — gold would break DESIGN_AUTHORITY §M3).
+   Overrule: flip the frame's Tweaks switch on the canvas and tell the next session.
+2. **The panel's rule changes are adopted** (§0g): no number on an over-100× card; the "bet TZS 2,000 instead"
+   button shows its own estimate; after a deposit the loss limit is explained, never pre-filled; Akaunti gets a
+   Pumzika / Jizuie row above invites. Overrule: say which one.
+3. **A native Swahili speaker must check** the new wording and the corrections to live words (list in
+   `S4-COPY-AUDIT.md`, e.g. "Lipo" → "Malipo"). Needed before S15 (the flip). Who should do it?
+4. **Still yours from before:** press "Turn my preview on" (S1, §0b); an officer approves the short-title drafts in
+   /admin (S2, §0d).
+5. **To confirm with finance:** a payment that lands during a break is returned "within 3 working days" on the
+   canvas — the real period comes from wallet-service.
 
 ## §0g · S4 (2026-10-01) — the Design canvas: all eleven items drawn, the panel's findings applied; waiting on Ali
 
@@ -347,8 +364,8 @@ overflow, all three fonts loaded, the logos loaded, and the B option of each cho
 requires this, even though the Design type's own instructions discourage rendering.
 
 **Still open:**
-- Ali answers choices 2 and 3 (and may overrule 1B), or accepts my picks (2A, 3A).
-- When he has, S4 is ✅ and S6 (the flagged shell) is next; the panel's amendments travel into S6–S11.
+- ✅ Closed 2026-10-01 on Ali's "proceed": choices 2A and 3A adopted (my picks), 1B by §M3 — §0h point 1 lets him
+  overrule any of them on the canvas switches. The panel's amendments travel into S6–S11.
 - A native Swahili review signs off the drafts and the existing-word corrections.
 - ⛔ No player-facing UI code is written before the revision is filed.
 
@@ -597,7 +614,7 @@ Status: ⬜ not started · 🔨 in progress · ✅ done and verified live · ⛔
 | S2 | Short titles + competition | 🔨 | LIVE `473807b1` 2026-09-30 (§0d); the backfill waits on an officer's approval. Done when every open market renders within 2 lines in sw/en/zh (`test:short-title-fit`) and the backfill is approved in /admin. |
 | S3 | The engine (no UI) | ✅ | `6e7ee63b` 2026-10-01 (§0e). Golden fixtures pass: Dodoma ≈2.8×/≈1.4×, 1,000 → TZS 2,700 ≈2.7×, 5,000 → TZS 12,360 ≈2.5×; Yanga ≈2.9×/≈1.4×. Client/server parity is proven. |
 | S3b | Measures baseline | 🔨 | LIVE `64a63b7c` 2026-10-01 (§0f), counting from the deploy. Done when old-journey analogue counts appear daily (`qa:journey-funnel`) and the 14-day baseline clock is running. |
-| S4 | Claude Design pass | 🔨 | On the Design canvas (2026-10-01, §0g): all eleven brief items, 102 boards; the four-expert panel's findings applied (v16); BRIEF.md filed. Waits on Ali's choices 2 and 3. Done when frames for every new composition and undrawn state are filed and scored by the panel, and Ali has reviewed the 5 re-drawn frames. |
+| S4 | Claude Design pass | ✅ | `52afb7c8` 2026-10-01 (§0g): all eleven brief items on the Design canvas, 102 boards; the four-expert panel's findings applied (v16); BRIEF.md filed; choices 1B/2A/3A (§0h point 1). Done when frames for every new composition and undrawn state are filed and scored by the panel, and Ali has reviewed the 5 re-drawn frames. |
 | S5 | ~~Colour foundation~~ | ⛔ | Removed by R5 (50pick's look stays unchanged): no palette, font or brand work. |
 | S6 | Shell (flagged) | ⬜ | Every route keeps an entrance (route census). The header fits at 320/360/390/1024/1150/1279 × sw/en/zh × guest/signed-in. |
 | S7 | Home and cards (flagged) | ⬜ | Staff see the deck's home on production. `test:journey-above-fold` is green. |
