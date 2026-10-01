@@ -153,7 +153,8 @@ WP6b the swap + census + header-fit → WP7 overlays → WP8 short titles on pos
 
 **Progress:**
 - Plan filed (`5a820b9c`).
-- **A0 ✅ `c25dcfb8` (live for every player):** the away summary's "view" link used `?filter=settled`, which the
+- **A0 ✅ `c25dcfb8` (live for every player; verified in the served bundle at `9377eed7` — `/positions?tab=settled`
+  present, the old link absent):** the away summary's "view" link used `?filter=settled`, which the
   positions page never reads, so it opened ALL tickets; it now opens the settled lens. `test:presence-class` 6.8/6.9
   read the parser's keys and lenses from `portfolio.ts`; `red:presence-class` restores the shipped defect (19/19).
 - **WP0 baseline — today's reds, re-derived 2026-10-01 at `5a820b9c` + A0** (`test:all --skip responsive,motion`,
@@ -166,6 +167,17 @@ WP6b the swap + census + header-fit → WP7 overlays → WP8 short titles on pos
   generate-button 32 px), decomment (§2.1 23 > 20), updown-digest, updown-source-class, payout-view, orphans
   (marketing + landing-v3 scripts), eyebrow-roles, validation-focus (admin affiliate fields), failure-reasons (§10
   agent apply toast). Every later S6 battery is read against this list.
+- **WP0 parity harness — `npm run qa:classic-shell-parity`** (written, not yet run; local in-memory server only). Four
+  viewers (guest, demo player, held, unconfirmed email) × en/sw × 360/768/1024/1280 × `/`, `/markets`, `/positions`,
+  `/wallet`, `/profile`, `/account` and an unmatched control path. Per cell: header, rail, shell footer and email bar
+  (markup, boxes, computed styles), the fixed overlays, the footer and scroll padding, and journey traces in the page
+  and in the raw HTML; plus the classic `/positions` body for the signed-in viewers. No other page body is captured
+  (WP10 adds the holder block). **Served-byte changes S6 makes for classic viewers** — the harness's EXPECTED_DIFFS,
+  never a re-baseline (A3): `account-streams-200` — `/account` answers the not-found body at HTTP 200 instead of 404
+  (WP5), with the not-found title, noindex and no journey trace asserted on every run, and no `account/loading.tsx`;
+  WP11's footer class string is to come. WP0 is done when `--prove-red` is green, the baseline is captured at the
+  pre-S6 commit, and a null `--compare` on a fresh server at that commit exits 0 (the instrument's calibration). A
+  compare is refused after a rebase, or after a merge that carries served files in (A18).
 
 ## §0h · Points for Ali — taken while he was away (2026-10-01 →)
 
