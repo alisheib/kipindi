@@ -88,3 +88,26 @@
 
 ## Juu/Chini: "Kiasi"; chips "1K"; "Maalum"; Juu/Chini; "Gusa Juu au Chini kuweka dau"; low balance inline "Salio halitoshi kwa dau hili." + link "Weka pesa" (?from=low-balance);
   udNobodyBacked "Hakuna aliyeweka dau {side} bado — kama hali hii haitabadilika, dau lako litarudi."
+
+## Existing words the S4 panel found wrong (2026-10-01) — fix in the dictionary after the native review
+
+The canvas already shows the corrected words. Each line: key (or where it shows) · today → corrected.
+- `payout2` (receipt, Tiketi, legacy box) · "Lipo" ("it is there") → "Malipo". Its value "Wakati wa utatuzi" → "Matokeo yakitoka".
+- `payoutCalcBody` · "…mara dau litakapofungwa" ("when the bet closes") → "…mara uchaguzi utakapofungwa".
+- Tiketi stat "Mwisho" → "Malipo ya mwisho" · "Imefunguliwa {date}" → "Imewekwa {date}".
+- `failSystemBusy` · "Dau lako HALIJAONDOKA" → "Dau lako HALIJAWEKWA na hakuna pesa iliyokatwa".
+- `failAccountBlocked` · "Wasiliana na msaada tutakueleza sababu." → "…msaada na tutakueleza sababu."
+- `failWalletFrozen` · "hivyo dau haziwezi kuwekwa" → "kwa hiyo huwezi kuweka dau".
+- `failSessionLimit` · "kipindi hiki kimefika … rudi baadaye na kitaanza upya" → "kipindi hiki kimefikia kikomo hicho … rudi baadaye uanze kipindi kipya".
+- `failRateLimited` · "Hilo lilikuwa haraka." → "Umejaribu haraka mno."
+- `failLossLimitDaily` · "Kitaanza upya kesho — … kwenye Uchezaji salama" → "Kitaanza upya kesho saa 00:00 — … kwenye Weka mipaka".
+- `youAlreadyHold` · "Tayari unashikilia NDIO hapa" → "Tayari una dau la NDIO hapa"; `hedgeAddBody` "kwenye soko hili" → "kwenye swali hili".
+- `failSelectionClosed` / "Soko limefungwa" → "Swali hili limefungwa" / "Muda wa kuchagua umekwisha. Sasa tunasubiri matokeo."
+- Cash-out: "Toka bila gharama · Hakuna ada" → "Uza bila ada hadi {saa}"; "TZS {n} pesa yote" → "Rudishiwa TZS {n} kamili".
+- `errDepositLimit` / `errSofRequired` · "Amana hii…" → the C11 sentences (the deposit has not happened yet; SJ-19 "kuweka pesa").
+- `verifyGateTitle` · "ili kuweka fedha" → "ili uweke pesa"; `depositStarted` "Amana imeanza" → "Malipo yameanza" (journey screens).
+- Payout delayed body · "— inaweza tu kutofika mara moja." → "— pesa zinaweza tu kuchelewa kufika."
+- Market chart "Uwezekano wa NDIYO kwa muda" → "NDIO"; market KPI "Kiasi" (pool) → "Bwawa"; "Inaisha {date}" → "Matokeo {date}".
+- Akaunti · "Maswali · Simu · Barua pepe" → "Maswali ya kawaida · Simu 0800 11 0011 · Barua pepe"; "Nafasi ya kadi" → "Ukubwa wa kadi"; "Mipaka · Kujitenga" → "Mipaka · Pumzika · Jizuie".
+- Juu/Chini · "Kiasi" → "Dau lako"; "Gusa Juu au Chini" → "Bonyeza Juu au Chini".
+- Chinese How-to · side words quoted 「是」「否」 in running text; "赢家平分奖池" (split equally — false) → "赢家按投注比例分享奖池".

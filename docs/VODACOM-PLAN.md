@@ -20,11 +20,12 @@
 journey's funnel is counted from now — the 14-day baseline clock has started (§0f). S3 (the engine) is ✅. S2 is LIVE
 (`473807b1`) and waits on an officer approving the short titles (§0d). S1 is LIVE (`41ec1703`) and waits on one press
 by Ali (§0b "Still open"). Nothing new reaches players (the counters are invisible; the insights panel is admin-only).
-S4 (the Claude Design pass) is 🔨: part 1 — the agency's 5 frames re-drawn beside the originals, with the component
-map and 3 numbered choices — is on the Design canvas and waits on Ali's three answers (§0g).
+S4 (the Claude Design pass) is 🔨: all eleven brief items are on the Design canvas (91 frames) and BRIEF.md is
+filed; the four-expert panel scored it D 6.5 · F 6.5 · C 6 · A 5, and the revision that applies every finding is
+in progress (§0g).
 
-**Next:** (1) S4: Ali answers 1A/1B, 2A/2B, 3A/3B on the canvas; meanwhile draw brief §6 items 2–11 on the
-same canvas, then the four-expert panel, then file BRIEF.md (§0g "Still open"); (2) on the days after the deploy, read
+**Next:** (1) S4: finish the panel revision — re-render, re-publish, record the outcome in BRIEF.md; then Ali
+answers choices 2 and 3 (1B is now set by §M3) (§0g "Still open"); (2) on the days after the deploy, read
 the first totals with `qa:journey-funnel` (read-only) — when counts appear daily, S3b is ✅ and the baseline runs to
 2026-10-15 at the earliest. In parallel: an officer approves the S2 short titles; Ali presses S1's preview switch.
 
@@ -139,7 +140,7 @@ drive (guest, SUPPORT officer, player, Owner Stop and Resume, a stranger on a li
 deploy verified, and a signed-out visitor sees nothing on production (`qa:live` 319/0 there, [E2] included). One
 press by Ali remains: `/admin/journey` → "Turn my preview on" → the bar on 50pick.tz. Then S1 is ✅.
 
-## §0g · S4 (2026-10-01) — the Design canvas, part 1 up; waiting on Ali's three answers
+## §0g · S4 (2026-10-01) — the Design canvas: all eleven items drawn, panel scored, revision in progress
 
 **The canvas:** https://claude.ai/artifact/UGVgjpiQFwep2hzfYLf3M6 (an Artifact of type Design, private to Ali until he
 shares it). ⭐ The canvas is the source of truth for S4's frames — no copy lives in the repo. To revise it, `read` its
@@ -297,7 +298,45 @@ shares it). ⭐ The canvas is the source of truth for S4's frames — no copy li
     - "Tumia TZS 2,000 badala yake" (draft) sets the stake, because a Juu/Chini bet needs a side.
     - The market chart title is spelt NDIO; the dictionary still says NDIYO, one of SJ-19's seven fixes.
 - **All eleven brief items are on the canvas: 91 frames.**
-- Next: the four-expert panel, then BRIEF.md.
+- BRIEF.md filed (`fe4e2b2c`); the panel ran next (below).
+
+**The four-expert panel (2026-10-01).** Four independent reviewers read all 90 rendered tiles plus the frame
+sources against `DESIGN_AUTHORITY.md`, the kit components, the rulings and the code:
+
+| Expert | Score | Findings |
+|---|---|---|
+| Design-system fidelity (D) | 6.5 / 10 | D1–D20 |
+| Deck fidelity and flow logic (F) | 6.5 / 10 | F1–F20 |
+| Words: Swahili, terms, money truth (C) | 6 / 10 | C1–C25 |
+| Accessibility, RG and consumer protection (A) | 5 / 10 | A1–A20 |
+
+Every finding was checked against the code before acting; all hold. The whole set is being applied in one revision
+pass (the rulebook is `REVISION-SPEC.md` in the session scratchpad; its outcome is recorded in BRIEF.md). What the
+revision changes, beyond fixing wrong figures and words:
+- **Rulings amended under Ali's delegation (all toward honesty or player protection):**
+  - **SJ-1, the card over the 100× cap:** no number on the card ("Upande mdogo · ona makadirio"); a thin side reads
+    "Faida ndogo · ≈1.0×". The zero-stake multiple over-promised (A7: 1,000 vs 150,000 shows >100×; a 10,000 stake
+    gets ≈12.9×).
+  - **SJ-11, "Weka dau la TZS 2,000 badala yake":** keeps the deck's words and one tap, and gains a second line with
+    the estimate for the amount it places (A1: the only figure on screen was for 5,000).
+  - **§3.5, the loss-limit return:** inform, don't pre-fill. The stake stays as typed, in the attention state; the
+    line says what the limit allows; the chips above the room hide; the button is disabled (A3: pre-filling to the
+    room nudges a player to use up their limit). Design call "the stake clamp uses the loss headroom" is withdrawn.
+  - **SJ-17, Akaunti:** a Pumzika / Jizuie row, and the limits card above invite/rewards (A17).
+  - **Plan §2 "Low-balance warning":** `Callout tone="info"`, not `neutral` (the kit's neutral is the dashed
+    empty-state box, D5). The payout notice takes the same info family.
+- **Choice 1 settled by the law:** 1A (gold step discs) is a decorative element in gold, which `DESIGN_AUTHORITY.md`
+  §M3 names a violation (D1). My pick moves to **1B**; 1A stays on the switch only for Ali to overrule.
+- **Pinned "now":** every frame dates from the deck's own day, 29 Sep 2026 11:19 EAT ("Siku 11" to 10 Okt). The
+  first pass mixed 29 Sep and 1 Okt (F8).
+- **Partly accepted:** A4 asked to drop gold from the deposit row; §M3a puts the deposit door in `gilt-metal`, so the
+  gold stays and only its glow goes, and both option rows are the same height. C19's "Sindano" is the product name of
+  The Needle and stays.
+- **New frames:** sheet — loss room, empty side, empty pool, over the cap, hedge, unknown balance; return still short;
+  waiting past 30 minutes; Juu/Chini round closed while paying; home on a break; the focus states.
+- **Existing words found wrong** (e.g. "Lipo" for Payout, which reads "it is there"; "HALIJAONDOKA"; "pesa yote";
+  "dau haziwezi"): the canvas shows the corrected words, and the dictionary changes ship after the native review,
+  listed in `S4-COPY-AUDIT.md`.
 - The copy researched for every state is filed in
   [`S4-COPY-AUDIT.md`](design-system/v5-2026-09-29-simplified-journey/S4-COPY-AUDIT.md), a dated snapshot;
   `i18n-dict.ts` stays the truth. Items marked "NO STRING" there need drafts (R8).
@@ -307,12 +346,10 @@ overflow, all three fonts loaded, the logos loaded, and the B option of each cho
 requires this, even though the Design type's own instructions discourage rendering.
 
 **Still open:**
-- Ali answers 1A/1B, 2A/2B, 3A/3B (or accepts my picks).
-- Brief §6 items 2–11 on the same canvas: header states, card states, sheet refusals, deposit states, How-to lengths,
-  Akaunti, Tiketi, market page, Juu/Chini, and the desktop layouts.
-- The four-expert panel scores the canvas.
-- File `design-brief/simple-journey-2026-09/BRIEF.md`.
-- ⛔ No player-facing UI code is written before this is filed.
+- 🔨 The panel revision: apply D/F/C/A, re-render every frame, re-publish, record the outcome in BRIEF.md.
+- Ali answers choices 2 and 3 (and may overrule 1B), or accepts my picks.
+- A native Swahili review signs off the drafts and the existing-word corrections.
+- ⛔ No player-facing UI code is written before the revision is filed.
 
 ## §0f · S3b (2026-10-01) — the measures baseline, LIVE on main since `64a63b7c`
 
@@ -902,7 +939,7 @@ The reply also includes:
 | Quick chips | `quickStakes` values; the Up & Down chip layout; full-figure labels; 44px floor; no "+ Maalum" |
 | Estimate box | Neutral inset panel (`--bg-inset` + `--border`). The TZS figure is the box's largest number (deck hierarchy), in `.amount` mono `--text` (not gold, not success, not side ink). "≈{mult}× dau lako" as a `Chip`. Makadirio line below |
 | Weka dau CTA | `btn-gold` (a bet commit keeps gold, §M3a) |
-| Low-balance warning | `Callout tone="neutral"` (UD-1 precedent) with the `alertCircle` glyph |
+| Low-balance warning | `Callout tone="info"` (the S4 panel, D5: the kit's `neutral` is the dashed empty-state box) with the `alertCircle` glyph |
 | Low-balance eyebrow | microlabel, uppercase via CSS for Latin only |
 | Low-balance deposit | **NEW** 2-line action row (glyph + "Weka pesa TZS X" + wallet sub-line from `depositRails()` + "›") in `gilt-metal` (SJ-12) |
 | Bet instead | `btn-outline` |

@@ -46,6 +46,30 @@ words each state uses, and which of them are drafts, are in
 4. **The drafted Swahili.** Every state with no existing string carries a draft, listed on the canvas and in §0g. A
    native review signs them off before S7–S11 ship them.
 
-## The four-expert panel
+## The four-expert panel (2026-10-01)
 
-_Pending — the scores and findings are added here when the panel reports._
+Four independent reviewers read every rendered tile and the frame sources against `DESIGN_AUTHORITY.md`, the kit
+components (`chip.tsx`, `callout.tsx`, the wallet pill), the rulings and the engine code (`estimate.ts`,
+`shortfall.ts`, `payout.ts`).
+
+| Expert | First-pass score | Findings |
+|---|---|---|
+| Design-system fidelity | 6.5 / 10 | D1–D20 |
+| Deck fidelity and flow logic | 6.5 / 10 | F1–F20 |
+| Words (Swahili, terms, money truth) | 6 / 10 | C1–C25 |
+| Accessibility, responsible gambling, consumer protection | 5 / 10 | A1–A20 |
+
+**What they found, in short:**
+- **Figures:** five state frames reused the reference pools with figures that contradicted them; the Juu/Chini pair
+  (× 1.84 / × 2.17) cannot occur under a 13% fee; the frames mixed two "todays" (29 Sep and 1 Okt).
+- **Kit drift:** the side chip existed at five sizes; notices were a hand-rolled royal box; the header figure was
+  white where the product paints it gold; the market chart ignored the four-ink chart law.
+- **Money honesty:** the card's over-cap "zaidi ya 100×" over-promised; "Weka dau la TZS 2,000 badala yake" placed a
+  bet with only the 5,000 estimate on screen; the loss-limit return pre-filled the player's remaining limit.
+- **Missing states:** hedge, empty side, empty pool and over-cap sheets; loss room; still short on return; waiting
+  past 30 minutes; a break on home; keyboard focus.
+- **Words:** existing mistranslations ("Lipo" for Payout, "HALIJAONDOKA", "pesa yote") and SJ-19 term drift.
+
+**Resolution:** every finding was verified against the code and is applied in one revision pass. The rulings it
+amends, and why, are in `docs/VODACOM-PLAN.md` §0g ("The four-expert panel"). _The revision's outcome (frames
+changed, frames added, re-render result) is recorded here when it is published._
