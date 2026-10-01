@@ -278,7 +278,15 @@ shares it). ⭐ The canvas is the source of truth for S4's frames — no copy li
   - "Held" means the payment landed after a break began: it is held in RG suspense until the team returns it
     (`wallet-service`), and the drafted words say exactly that.
   - Every draft is listed on the canvas.
-- Next: items 7–11.
+- Item 7 ✅ (row "7 · How to Play", four frames): English, Chinese, 320×640, and desktop.
+  - Measured sheet heights at 390: Swahili 641, Chinese 636, English 620. Swahili is the longest, as §A5 predicts.
+  - At 320×640 the sheet is capped at the viewport minus 48 px. The steps and MFANO scroll under a fade, while
+    "Nimeelewa, anza" and the limits and helpline line stay pinned, so the exit is always reachable.
+- Item 8 ✅ (row "8 · Akaunti", three frames): signed in, guest, and the staff row.
+  - SJ-17's items appear in its order, grouped into cards without headings. Every label is an existing key; the only
+    new word is the plan's "Toa pesa".
+  - The unread count shows on Arifa and as a dot on the Akaunti tab.
+- Next: items 9–11, then the four-expert panel and BRIEF.md.
 - The copy researched for every state is filed in
   [`S4-COPY-AUDIT.md`](design-system/v5-2026-09-29-simplified-journey/S4-COPY-AUDIT.md), a dated snapshot;
   `i18n-dict.ts` stays the truth. Items marked "NO STRING" there need drafts (R8).
