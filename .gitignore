@@ -224,6 +224,9 @@ shots/*.png
 # EXCEPTION, 2026-08-28 (DESIGN-GATE-2026-08-28): outbound Claude Design commission under
 # review — tracked per §0b's OUTBOUND row; DELETE this exception with the folder once sent.
 !/design-brief/design-gate-2026-08-28/
+# EXCEPTION, 2026-10-01 (Vodacom plan S4): the Simplified Journey design record — the canvas link, its inventory,
+# the panel's scores and Ali's open choices. Tracked per §0b's OUTBOUND row; it links to the rulebook, never copies it.
+!/design-brief/simple-journey-2026-09/
 /design-brief/**/*.zip
 
 # Local playbook + session tooling dropped at the repo root (not build output, not evidence).
