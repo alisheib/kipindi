@@ -2,6 +2,7 @@ import { db } from "@/lib/server/store";
 import type { MessagingKey, StoredMarketingContact } from "@/lib/server/store";
 import { toMsisdn255 } from "@/lib/phone-normalize";
 import { ledgerStamp } from "@/lib/server/marketing/ledger-stamp";
+import { ERASURE_EVIDENCE } from "@/lib/marketing/erasure-mark";
 
 /**
  * U18b · ERASURE REACHES MARKETING — the consent withdrawn, the book emptied.
@@ -59,11 +60,10 @@ export type MarketingErasureCounts = {
  *  shown — the source is OPERATOR, and `recordedBy` names the officer. English, like the console. */
 export const ERASURE_LEDGER_WORDING = "Erasure request fulfilled — marketing consent withdrawn.";
 
-/** The evidence on the ledger row, and the `sourceRef` an emptied book row carries. ⛔ Never the account
- *  id or the request id. ⭐ On the book row it is the importer's signal (U31): a row marked `erasure`
- *  COLLAPSES TO KEEP whatever a file asks, so re-importing an old spreadsheet cannot write the erased
- *  person's name back — the job the first cut's stop was doing, without a stop nobody can lift. */
-export const ERASURE_EVIDENCE = "erasure";
+/** The evidence on the ledger row, and the `sourceRef` an emptied book row carries. ⭐ Declared in the pure
+ *  `@/lib/marketing/erasure-mark` (U31-A) so the importer's browser-side `decide()` reads the same binding;
+ *  re-exported here so every existing importer of this module is unchanged. */
+export { ERASURE_EVIDENCE };
 
 /** The bare `255…` key of an account's number, keyed EXACTLY as the ledger writers key it
  *  (`toMsisdn255`, `consent-ledger.ts`) — so a number on a prefix the send table refuses (064) still finds

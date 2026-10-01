@@ -72,7 +72,12 @@ import type {
   MarketingContactPatch,
   ContactPageQuery,
   ContactPage,
-  ContactBookSummary } from "./store";
+  ContactBookSummary,
+  ContactAudienceWhere,
+  ContactWalkQuery,
+  ContactWalk,
+  ContactTagCountQuery,
+  ContactTagCount } from "./store";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -246,6 +251,37 @@ function toStoredMarketingContact(c: MarketingContactRow): StoredMarketingContac
     updatedAt: iso(c.updatedAt),
     updatedBy: c.updatedBy,
   };
+}
+
+/**
+ * U24 · THE PRISMA TWIN'S ONE AUDIENCE TRANSLATION — `page`, `countWhere`, `summaryWhere` and `walk` all read
+ * through it, and the memory twin's `contactMatchesAudience` (store.ts) mirrors it predicate for predicate
+ * (`test:dal-parity` §21 holds every key of `ContactAudienceWhere` read by both).
+ * ⛔ null MEANS NOTHING — a name query SQL cannot express — never "everything".
+ * ⛔ Every key is checked `!== null`, never by `.length`: an EMPTY array is NOTHING (`in: []` matches no row in
+ * Prisma), and a truthiness test would widen it to the whole book.
+ * 🔴 THE ERASED EXCLUSION CARRIES A NULL ARM. A bare `{ sourceRef: { not: … } }` compiles to `"sourceRef" <> $1`,
+ * which is NULL — so false — for every row with no sourceRef: nearly the whole book would vanish here while the
+ * memory twin's `!==` kept it, and every suite runs on memory.
+ */
+function toPrismaContactWhere(w: ContactAudienceWhere): Prisma.MarketingContactWhereInput | null {
+  const nameWhere = w.name !== null ? queryToWhere(w.name, CONTACT_SEARCH) : {};
+  if (nameWhere === null) return null;
+  const and: Prisma.MarketingContactWhereInput[] = [nameWhere as Prisma.MarketingContactWhereInput];
+  if (w.msisdn !== null) and.push({ msisdn: w.msisdn });
+  if (w.consent !== null) and.push({ consentState: { in: w.consent } as never });
+  if (w.suppressed !== null) and.push({ suppressedAt: w.suppressed ? { not: null } : null });
+  if (w.ndcs !== null) and.push({ ndc: { in: w.ndcs } });
+  if (w.listIds !== null) and.push({ lists: { some: { listId: { in: w.listIds } } } });
+  if (w.tags !== null) and.push({ tags: { hasSome: w.tags } });
+  if (w.sources !== null) and.push({ source: { in: w.sources } as never });
+  if (w.linked !== null) and.push({ userId: w.linked ? { not: null } : null });
+  if (w.importId !== null) and.push({ importId: w.importId });
+  if (w.createdFrom !== null) and.push({ createdAt: { gte: new Date(w.createdFrom) } });
+  if (w.createdBefore !== null) and.push({ createdAt: { lt: new Date(w.createdBefore) } });
+  if (w.ids !== null) and.push({ id: { in: w.ids } });
+  if (w.excludeSourceRef !== null) and.push({ OR: [{ sourceRef: null }, { sourceRef: { not: w.excludeSourceRef } }] });
+  return { AND: and };
 }
 
 /** ContactList row -> StoredContactList (marketing U18). */
@@ -3610,11 +3646,11 @@ export const prismaDb = {
     },
     /** U20 · ONE PAGE and the whole match's count, in one round trip each. ⛔ The number is matched EXACTLY
      *  (`msisdn` equals); a name goes through the shared grammar's `queryToWhere`, and an unexpressible
-     *  query is ZERO rows, never everything. The order mirrors the memory twin: nameless last, ties on id. */
+     *  query is ZERO rows, never everything. The order mirrors the memory twin: nameless last, ties on id.
+     *  U24 · the match is the audience where, through `toPrismaContactWhere` — the one translation. */
     page: async (q: ContactPageQuery): Promise<ContactPage> => {
-      const nameWhere = q.name ? queryToWhere(q.name, CONTACT_SEARCH) : {};
-      if (nameWhere === null) return { rows: [], total: 0 };
-      const where = { AND: [q.msisdn !== null ? { msisdn: q.msisdn } : {}, nameWhere] } as never;
+      const where = toPrismaContactWhere(q.where);
+      if (where === null) return { rows: [], total: 0 };
       const orderBy = (q.sort === "name"
         ? [{ displayName: { sort: q.dir, nulls: "last" } }, { id: q.dir }]
         : q.sort === "operator"
@@ -3626,13 +3662,22 @@ export const prismaDb = {
       ]);
       return { rows: rows.map(toStoredMarketingContact), total };
     },
-    /** U20 · the WHOLE book's counts — one groupBy and one count, never the rows. */
-    summary: async (): Promise<ContactBookSummary> => {
+    /** U24 · how many rows an audience holds — one count, never the rows. */
+    countWhere: async (w: ContactAudienceWhere): Promise<number> => {
+      const where = toPrismaContactWhere(w);
+      return where === null ? 0 : pc().marketingContact.count({ where });
+    },
+    /** U24 · an audience's counts — one groupBy and one count, never the rows. REPLACES U20's whole-book
+     *  `summary()`: the KPI band asks for the whole book through the resolver (`contactAudience(WHOLE_BOOK)`). */
+    summaryWhere: async (w: ContactAudienceWhere): Promise<ContactBookSummary> => {
+      const out: ContactBookSummary = { total: 0, given: 0, unknown: 0, withdrawn: 0, suppressed: 0 };
+      const where = toPrismaContactWhere(w);
+      if (where === null) return out;
       const [groups, suppressed] = await Promise.all([
-        pc().marketingContact.groupBy({ by: ["consentState"], _count: { _all: true } }),
-        pc().marketingContact.count({ where: { suppressedAt: { not: null } } }),
+        pc().marketingContact.groupBy({ by: ["consentState"], where, _count: { _all: true } }),
+        pc().marketingContact.count({ where: { AND: [where, { suppressedAt: { not: null } }] } }),
       ]);
-      const out: ContactBookSummary = { total: 0, given: 0, unknown: 0, withdrawn: 0, suppressed };
+      out.suppressed = suppressed;
       for (const g of groups as Array<{ consentState: string; _count: { _all: number } }>) {
         out.total += g._count._all;
         if (g.consentState === "GIVEN") out.given += g._count._all;
@@ -3640,6 +3685,37 @@ export const prismaDb = {
         else out.unknown += g._count._all;
       }
       return out;
+    },
+    /** U24 · the KEYSET walk, `id` ascending: `id > cursor`, ordered by the same column under the same collation,
+     *  so the walk is self-consistent while rows are written between calls. ⛔ Never `skip`. One extra row is read
+     *  to know whether the walk is finished. */
+    walk: async (q: ContactWalkQuery): Promise<ContactWalk> => {
+      const where = toPrismaContactWhere(q.where);
+      if (where === null) return { rows: [], nextAfterId: null };
+      const rows = await pc().marketingContact.findMany({
+        where: q.afterId === null ? where : { AND: [where, { id: { gt: q.afterId } }] },
+        orderBy: { id: "asc" },
+        take: q.limit + 1,
+      });
+      const more = rows.length > q.limit;
+      const shown = (more ? rows.slice(0, q.limit) : rows).map(toStoredMarketingContact);
+      const last = shown[shown.length - 1];
+      return { rows: shown, nextAfterId: more && last ? last.id : null };
+    },
+    /** U24 (decision M8) · the book's distinct tags with how many contacts carry each, most-carried first.
+     *  ⭐ Counted in SQL over `unnest` — never the rows. A contact counts ONCE per tag (`count(distinct …)`). The
+     *  erased mark is left out NULL-SAFELY (`is distinct from`; a guard arm when nothing is excluded), and ties
+     *  sort `collate "C"` — code-unit order, the memory twin's. ⚠️ `::int`, not bigint: `count` is int8 in Postgres. */
+    tagCounts: async (q: ContactTagCountQuery): Promise<ContactTagCount[]> => {
+      const rows = await pc().$queryRaw<Array<{ tag: string; n: number }>>`
+        select t.tag as tag, count(distinct c.id)::int as n
+          from "MarketingContact" c
+         cross join lateral unnest(c."tags") as t(tag)
+         where (${q.excludeSourceRef}::text is null or c."sourceRef" is distinct from ${q.excludeSourceRef}::text)
+         group by t.tag
+         order by n desc, t.tag collate "C" asc
+         limit ${q.limit}`;
+      return rows.map((r) => ({ tag: r.tag, count: Number(r.n) }));
     },
     listAll: async (): Promise<StoredMarketingContact[]> => {
       const rows = await pc().marketingContact.findMany({

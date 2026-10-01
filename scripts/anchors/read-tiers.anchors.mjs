@@ -31,9 +31,11 @@
  * One function stands between a bad row (a migration, a console edit, an importer) and a granted
  * read, and it is shared by the loader and the writer so the two can never disagree.
  *
- * ── THE FOURTEEN, BY LAYER ─────────────────────────────────────────
+ * ── THE THIRTY-SEVEN, BY LAYER ─────────────────────────────────────
  * ⚠️ This list said EIGHT while the file carried fourteen — a header that counts its own data
  * and then stops being maintained. Keep it in step or delete it; a stale census is worse than none.
+ * 🔴 And it happened AGAIN: it said FOURTEEN while the file carried thirty-five, because the §8
+ * phone work and U19 appended their cases without touching it. Re-counted 2026-10-01 (U39 adds two).
  *
  *   roles.ts (pure model)   support-reads-money · admin-exempted · nothing-is-readable ·
  *                           fails-open · everything-is-maskable
@@ -42,7 +44,19 @@
  *   player page (surface)   email-rendered-raw · region-rendered-raw
  *   roles editor            read-action-refuses-admin · editor-forgets-player-revalidate ·
  *                           server-trusts-the-greying
- *   reveal action (D4)      reveal-is-not-audited
+ *   reveal action (D4)      reveal-is-not-audited · reveal-pinned-to-one-domain-again ·
+ *                           audit-files-a-payout-read-against-a-player · reveal-throws-instead-of-refusing
+ *   the phone (§8)          phone-loses-its-class · msisdn-reads-the-account-phone ·
+ *                           mask-echoes-a-short-number · an-admin-surface-hand-rolls-a-mask-again ·
+ *                           mask-module-imports-the-store · roster-label-falls-back-to-a-phone ·
+ *                           ratchet-population-narrows-again
+ *   the files (§8)          masked-csv-column-lies-about-itself · csv-hands-out-unmasked-numbers ·
+ *                           bulk-pull-is-not-recorded-as-a-pii-read · dsar-bundle-starts-masking ·
+ *                           dsar-export-stops-being-audited · fiu-report-stops-masking-the-phone ·
+ *                           self-exclusion-register-masks-instead-of-hashing
+ *   the contact book (U19)  bare-key-mask-leaks-the-operator-digit · contact-number-revealed-off-a-player-account ·
+ *                           masked-ceiling-handed-the-reveal-and-copy · copy-skips-the-audited-reveal
+ *   the estimate (U39, §9)  campaign-cost-leaves-the-money-class · campaign-cost-decided-on-the-domain-axis-alone
  *
  * ⚠️ SINGLE-LINE ANCHORS; no replacement may CONTAIN its own anchor.
  */
@@ -381,5 +395,24 @@ export const MUTATIONS = [
     from: "        const r = await revealSensitiveAction(field, subjectId);",
     to: "        const r = { ok: true as const, value: masked };",
     expect: "8.24b \u2026and Copy fetches through the AUDITED reveal",
+  },
+  /* \u2500\u2500 U39 \u00b7 the campaign estimate (S10, 2026-10-01) \u2014 \u00a79 \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
+  {
+    name: "campaign-cost-leaves-the-money-class",
+    why: "the money.figures sentence goes back to per-player totals only, while `campaignMoneyVisible` still decides the campaign cost and the SMS credit on that cell \u2014 the Owner flipping it at /admin/roles is told it governs balances and silently governs the campaign money too: \u00a73.5a's phone, in reverse",
+    file: ROLES,
+    suite: "read-tiers",
+    from: `    "wallet balance, bonus balance, lifetime deposits and withdrawals \u2014 any TZS total attributable to one named player \u2014 and the SMS campaign cost estimate and credit",`,
+    to: `    "wallet balance, bonus balance, lifetime deposits and withdrawals \u2014 any TZS total attributable to one named player",`,
+    expect: "9.1 \u2b50 READ_CLASS_SUMMARY's money.figures names the SMS campaign cost estimate and credit",
+  },
+  {
+    name: "campaign-cost-decided-on-the-domain-axis-alone",
+    why: "\ud83d\udd34 the decider drops the read tier and asks only `canView(accounting)`: ADMIN bypasses domains, so the Owner can no longer witness the GROWTH branch by setting his own money.figures cell to none (D3), and a role whose money ceiling is masked but which is granted accounting would see the cost",
+    file: "src/lib/server/marketing/estimate.ts",
+    suite: "read-tiers",
+    from: `  return (await canView(role, "accounting")) && (await readCell(role, "money.figures")) === "read";`,
+    to: `  return await canView(role, "accounting");`,
+    expect: "9.2 \u26d4 the estimate's money decider asks readCell(money.figures)",
   },
 ];

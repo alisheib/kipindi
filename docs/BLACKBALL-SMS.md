@@ -438,6 +438,19 @@ action, and "the remaining fault is entirely inside their platform". Both were o
 - **TZS 6 per delivered SMS** (GSM7, one segment, Tigo Tz — portal Out SMS "Price" for the first send).
 - The account opened with TZS 250 → **about 40 messages**. Production login traffic needs a top-up.
 - UCS2 and long messages bill per segment (unconfirmed with the vendor — §8).
+- ⚠️ **Billing is per DELIVERED message, not per accepted one** — the evidence is live step 3 (Status, above): one
+  good number and one unroutable number were *"accepted whole"* and only TZS 6 was charged. One observation, so it is
+  treated as the likelier model rather than a contract.
+
+**The campaign estimate measures the price instead of hard-coding it (marketing U39, 2026-10-01).** A reply's
+`balance` is pre-charge (§1.4), so the DIFFERENCE between two consecutive replies is the earlier chunk's charge —
+when every message of that chunk was DELIVERED and nothing else was sent or delivered in between.
+`measureSegmentCost` (`src/lib/marketing/segment-cost.ts`) walks exactly those pairs over the last 500 rows and 30
+days, counts only bodies of ≤ 70 characters (one segment in either coding — `SmsMessage` stores no segment count),
+voids top-ups and late charges, and takes the MEDIAN of at least 3 clean pairs. Fewer than that: the configured
+`SMS_PRICE_PER_SEGMENT_TZS` (§6), captioned *"configured, not yet measured"*; neither: *"not yet measured"*, never
+TZS 0. Every figure says "estimated". The portal stays the authority the walk is checked against (U52's capped
+drive).
 
 The cost floor holds `INVITE`/`OPS` traffic below `SMS_BALANCE_FLOOR_TZS` so the float is kept for
 login codes. ⛔ **OTP is exempt, and never waits on a balance read**: refusing a login code to save
@@ -571,6 +584,7 @@ the 15-minute TTL.
 | `SMS_BALANCE_TTL_MS` | default 900000 (15 minutes) |
 | `SMS_BALANCE_RETRY_MS` | default 30000 — after a failed balance read, no new read is attempted for this long (a dead endpoint is not hammered by page renders or `/api/health`) |
 | *(not variables)* | the read's waits are code constants in `sms.ts`: `SMS_BALANCE_RENDER_BUDGET_MS` 2500 (Admin → System) and `SMS_BALANCE_HEALTH_BUDGET_MS` 1000 (`/api/health`); a reading older than 60 s is re-read before the floor refuses on it; a restart that finds the balance already low alarms at most once per low episode in 24 h (§5) |
+| `SMS_PRICE_PER_SEGMENT_TZS` | **optional, unset by default** (owner gate G9 — it puts a money figure in front of officers). A positive number is the campaign estimate's price per segment *until* the walk has ≥ 3 clean delivered pairs (§5), shown as *"configured, not yet measured"*; unset, the cost reads *"not yet measured"* and no TZS total is shown. Read by `src/lib/server/marketing/estimate.ts` only |
 | `INVITE_SMS_MAX_PER_SEND` | default 500 |
 | `OTP_ENABLED` | `1` un-hides `/auth/otp`; ⚠️ no login/register UI links to it yet (§7, step 6) |
 

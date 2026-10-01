@@ -140,6 +140,28 @@ console.log("\n[client-graph-safe] \u00a71 client-reachable modules stay clear o
     // bell's own Server Action exactly as `notifications-panel.tsx` does, and this walker follows that import into the
     // server, where the bundler sends the browser only a reference.
     "lib/journey/unread-count.ts",
+    // ⭐ ADDED 2026-10-01 (marketing U27a, decision M3: each unit pins its own src/lib/contacts files). The ONE parsed
+    // shape every contacts-file reader returns, and the Excel cap, sniffer and refusal copy the import dialog shows
+    // before posting. Both import nothing; `test:contacts-boundary` §2.4 fails if any src/lib/contacts module is missing here.
+    "lib/contacts/parsed-file.ts",
+    "lib/contacts/xlsx-limits.ts",
+    // ⭐ ADDED 2026-10-01 (marketing U28a, pinned in U27a's integration pass under decision M3 — the U27a review
+    // found them unpinned and `test:contacts-boundary` §2.4 red). The one field list and limits table every contacts
+    // reader and writer shares, the CSV writer with its formula-guard pair, and the sample files. Each imports only
+    // other src/lib/contacts modules and `tz-msisdn.ts`, both pinned here.
+    "lib/contacts/contact-fields.ts",
+    "lib/contacts/csv-write.ts",
+    "lib/contacts/sample-sheet.ts",
+    // Further src/lib/contacts modules present when U27a's integration pass ran (decision M3: every one is pinned).
+    "lib/contacts/import-decide.ts",
+    // ⭐ ADDED 2026-10-01 (marketing S10, the pure engines): client-safe src/lib/marketing modules the composer, the
+    // estimate and the confirmation will import into client components — each must stay free of the Prisma client.
+    "lib/marketing/erasure-mark.ts",
+    "lib/marketing/consent-basis.ts",
+    "lib/marketing/campaign-template.ts",
+    "lib/marketing/segment-cost.ts",
+    "lib/marketing/campaign-estimate.ts",
+    "lib/marketing/campaign-confirm.ts",
   ];
   const offenders = [];
   let checked = 0;

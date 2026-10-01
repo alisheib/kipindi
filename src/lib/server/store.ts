@@ -15,7 +15,7 @@ import {
   kindsFor, showsCleared, MONEY_FILTER_KINDS, ACCOUNT_FILTER_KINDS,
   type NotificationFilter, type NotificationSort,
 } from "@/lib/notification-filters";
-import { parseQuery, matchesQuery, fieldNames, NOTIFICATION_SEARCH, CONTACT_SEARCH } from "@/lib/search";
+import { parseQuery, matchesQuery, queryToWhere, fieldNames, NOTIFICATION_SEARCH, CONTACT_SEARCH } from "@/lib/search";
 import type { ParsedQuery } from "@/lib/search";
 import { holdsDocumentNumber } from "@/lib/kyc-refusal";
 
@@ -326,7 +326,7 @@ export type StoredInviteEntry = {
 };
 
 /** Which of OUR lanes a message belongs to — mirrors the `SmsPurpose` enum. */
-export type SmsPurpose = "OTP" | "INVITE" | "OPS";
+export type SmsPurpose = "OTP" | "INVITE" | "OPS" | "MARKETING"; // MARKETING: U35a (D22) — nothing writes it before U37 (test:campaign-models §3.1)
 /** Mirrors the `SmsStatus` enum. ACCEPTED is the gateway's receipt; DELIVERED needs a
  *  delivery report. ⛔ UNKNOWN is AMBIGUOUS, not failed — the request never completed,
  *  so the gateway may hold the message and bill for it. */
@@ -516,24 +516,67 @@ export type MarketingContactPatch = Partial<
 
 /** U20 · the sortable columns of the book. ⚠️ "operator" sorts by the PREFIX (`ndc`). */
 export type ContactPageSort = "added" | "name" | "operator";
-/** U20 · one page of the book. ⛔ `msisdn` is a WHOLE number's bare key, matched EXACTLY — the store never
- *  offers a substring search on the number (a masked role could rebuild a number digit by digit). */
-export type ContactPageQuery = {
+/**
+ * U24 · THE AUDIENCE WHERE — what `toAudienceWhere` (`src/lib/server/marketing/audience.ts`, the ONE translation
+ * from a filter) hands the twins. AND across keys, any-of within one.
+ * ⛔ null means UNCONSTRAINED; an EMPTY array means NOTHING — never "no constraint": a widened bulk, export or
+ * campaign audience is the defect this shape exists to make impossible.
+ * ⭐ Each twin translates it ONCE (`contactMatchesAudience` below, `toPrismaContactWhere` in `prisma-dal.ts`), and
+ * `test:dal-parity` §21 holds every key read by both. ⛔ Named ONLY here, in `prisma-dal.ts` and in `audience.ts`
+ * (`test:contacts-audience` 1.5) — a fourth file naming it is a second path from a filter to the book.
+ */
+export type ContactAudienceWhere = {
+  /** A WHOLE number's bare key, matched EXACTLY. ⛔ Never a substring: a masked role could rebuild a number digit by digit. */
   msisdn: string | null;
-  /** A name query in the shared grammar (`CONTACT_SEARCH`), or null. */
+  /** A name query in the shared grammar (`CONTACT_SEARCH`). One the SQL twin cannot express is NOTHING, in both twins. */
   name: ParsedQuery | null;
+  consent: ContactConsentState[] | null;
+  /** true = `suppressedAt` set (the CACHE of an active stop), false = not set. */
+  suppressed: boolean | null;
+  /** Prefixes, expanded from operator ids by the ONE table (`ndcsForOperator`), never hand-typed. */
+  ndcs: string[] | null;
+  /** A member of ANY of these lists (`ContactListMember`). */
+  listIds: string[] | null;
+  /** Carries ANY of these tags. */
+  tags: string[] | null;
+  sources: ContactSource[] | null;
+  /** true = linked to an account (`userId` set), false = not linked. */
+  linked: boolean | null;
+  importId: string | null;
+  /** ISO instant, INCLUSIVE. */
+  createdFrom: string | null;
+  /** ISO instant, EXCLUSIVE. */
+  createdBefore: string | null;
+  /** A ticked selection — any of these ids. */
+  ids: string[] | null;
+  /** A row whose `sourceRef` EQUALS this is left out — the erased tombstone (`ERASURE_EVIDENCE`, decision C3).
+   *  ⛔ NULL-SAFE in both twins: a row with NO `sourceRef` — nearly the whole book — is kept. */
+  excludeSourceRef: string | null;
+};
+/** U20 · one page of the book. U24 · the match is an audience where; the order and the window are the page's. */
+export type ContactPageQuery = {
+  where: ContactAudienceWhere;
   sort: ContactPageSort;
   dir: "asc" | "desc";
   offset: number;
   limit: number;
 };
 export type ContactPage = { rows: StoredMarketingContact[]; total: number };
-/** U20 · the WHOLE book's counts — never a filtered view. `suppressed` counts the cached `suppressedAt`. */
+/** U20 · the counts of a match — U24: of any audience; the KPI band asks for the WHOLE book.
+ *  `suppressed` counts the cached `suppressedAt`. */
 export type ContactBookSummary = { total: number; given: number; unknown: number; withdrawn: number; suppressed: number };
+/** U24 · a KEYSET walk over an audience, on `id` ascending. ⛔ No offset and no phone number ever forms the cursor:
+ *  a row written between two calls cannot make the walk visit another row twice (an export or a send would). */
+export type ContactWalkQuery = { where: ContactAudienceWhere; afterId: string | null; limit: number };
+export type ContactWalk = { rows: StoredMarketingContact[]; nextAfterId: string | null };
+/** U24 (decision M8) · the book's distinct tags with how many contacts carry each — the rail's pills (U21).
+ *  `excludeSourceRef` is the erased tombstone, left out NULL-safely, exactly as in `ContactAudienceWhere`. */
+export type ContactTagCountQuery = { excludeSourceRef: string | null; limit: number };
+export type ContactTagCount = { tag: string; count: number };
 
 declare global {
   /** DEV ONLY — set by `/api/dev-test/marketing-contacts-seed?fault=1` so the U20 drive can photograph the
-   *  contacts page's error state. Read by the MEMORY twin's `summary()` alone, which never serves production. */
+   *  contacts page's error state. Read by the MEMORY twin's `summaryWhere()` alone, which never serves production. */
   var __50PICK_CONTACTS_READ_FAULT: boolean | undefined;
 }
 
@@ -1198,6 +1241,38 @@ if (!store.marketingContacts)  store.marketingContacts = new Map();
 if (!store.contactsByMsisdn)   store.contactsByMsisdn = new Map();
 if (!store.contactLists)       store.contactLists = new Map();
 if (!store.contactListMembers) store.contactListMembers = new Map();
+
+/* ═══ U24 · THE MEMORY TWIN'S ONE AUDIENCE TRANSLATION ═════════════════════════════════════
+ * ⭐ The Prisma twin's `toPrismaContactWhere` predicate for predicate, so a count on the suites' backend is
+ * production's count. Every key is checked `!== null` — ⛔ never `.length` truthiness, because an EMPTY array
+ * means NOTHING and a truthiness test would read it as "no constraint" and widen to the whole book
+ * (`test:dal-parity` §21.empty). */
+function contactMatchesAudience(c: StoredMarketingContact, w: ContactAudienceWhere): boolean {
+  if (w.msisdn !== null && c.msisdn !== w.msisdn) return false;
+  // ⛔ A name query SQL cannot express (`queryToWhere` → null) is NOTHING here too — never a match the
+  // production twin cannot make.
+  if (w.name !== null && (queryToWhere(w.name, CONTACT_SEARCH) === null || !matchesQuery(w.name, { displayName: c.displayName }, CONTACT_SEARCH))) return false;
+  if (w.consent !== null && !w.consent.includes(c.consentState)) return false;
+  if (w.suppressed !== null && (c.suppressedAt !== null) !== w.suppressed) return false;
+  if (w.ndcs !== null && !w.ndcs.includes(c.ndc)) return false;
+  if (w.listIds !== null && !w.listIds.some((l) => store.contactListMembers.has(`${l}|${c.id}`))) return false;
+  if (w.tags !== null && !w.tags.some((t) => c.tags.includes(t))) return false;
+  if (w.sources !== null && !w.sources.includes(c.source)) return false;
+  if (w.linked !== null && (c.userId !== null) !== w.linked) return false;
+  if (w.importId !== null && c.importId !== w.importId) return false;
+  if (w.createdFrom !== null && Date.parse(c.createdAt) < Date.parse(w.createdFrom)) return false;
+  if (w.createdBefore !== null && Date.parse(c.createdAt) >= Date.parse(w.createdBefore)) return false;
+  if (w.ids !== null && !w.ids.includes(c.id)) return false;
+  // ⛔ NULL-SAFE, like the Prisma twin's OR arm: a row with no sourceRef is not the excluded mark.
+  if (w.excludeSourceRef !== null && c.sourceRef === w.excludeSourceRef) return false;
+  return true;
+}
+
+/** Every book row an audience admits. The memory twin scans because it never serves production (the hard lock
+ *  at the foot of this file); the Prisma twin pages in SQL. */
+function contactsMatching(w: ContactAudienceWhere): StoredMarketingContact[] {
+  return Array.from(store.marketingContacts.values()).filter((c) => contactMatchesAudience(c, w));
+}
 
 const memoryDb = {
   // USER
@@ -2613,12 +2688,10 @@ const memoryDb = {
     },
     /** U20 · ONE PAGE of the book and the size of the whole match. The order breaks every tie on `id`, in
      *  the same direction, and puts a contact with NO name last whichever way names sort — Postgres'
-     *  `nulls: "last"` in the Prisma twin, so a page boundary falls in the same place on both. */
+     *  `nulls: "last"` in the Prisma twin, so a page boundary falls in the same place on both.
+     *  U24 · the match is the audience where, through the ONE translation above. */
     page: (q: ContactPageQuery): ContactPage => {
-      let rows = Array.from(store.marketingContacts.values());
-      if (q.msisdn !== null) rows = rows.filter((c) => c.msisdn === q.msisdn);
-      const nameQuery = q.name;
-      if (nameQuery) rows = rows.filter((c) => matchesQuery(nameQuery, { displayName: c.displayName }, CONTACT_SEARCH));
+      const rows = contactsMatching(q.where);
       const sign = q.dir === "asc" ? 1 : -1;
       rows.sort((a, b) => {
         if (q.sort === "name") {
@@ -2638,12 +2711,16 @@ const memoryDb = {
       });
       return { rows: rows.slice(q.offset, q.offset + q.limit), total: rows.length };
     },
-    summary: (): ContactBookSummary => {
+    /** U24 · how many rows an audience holds. */
+    countWhere: (w: ContactAudienceWhere): number => contactsMatching(w).length,
+    /** U24 · an audience's counts by recorded consent and suppression (REPLACES U20's whole-book `summary()`:
+     *  the KPI band now asks for the whole book through the resolver, `contactAudience(WHOLE_BOOK)`). */
+    summaryWhere: (w: ContactAudienceWhere): ContactBookSummary => {
       // ⛔ DEV ONLY — the U20 drive photographs the page's error state through this switch, set by
       // `/api/dev-test/marketing-contacts-seed?fault=1`. The memory twin never serves production.
       if (globalThis.__50PICK_CONTACTS_READ_FAULT) throw new Error("contact book read fault (dev drive)");
       const out: ContactBookSummary = { total: 0, given: 0, unknown: 0, withdrawn: 0, suppressed: 0 };
-      for (const c of store.marketingContacts.values()) {
+      for (const c of contactsMatching(w)) {
         out.total++;
         if (c.consentState === "GIVEN") out.given++;
         else if (c.consentState === "WITHDRAWN") out.withdrawn++;
@@ -2651,6 +2728,32 @@ const memoryDb = {
         if (c.suppressedAt !== null) out.suppressed++;
       }
       return out;
+    },
+    /** U24 · the KEYSET walk, `id` ascending. ⭐ The SAME comparator orders the rows and places the cursor (plain
+     *  code-unit order — a strict total order, so no two ids ever tie), which is what keeps every row visited once
+     *  while rows are written between calls. One extra row is read to know whether the walk is finished. */
+    walk: (q: ContactWalkQuery): ContactWalk => {
+      const afterId = q.afterId;
+      const rows = contactsMatching(q.where)
+        .filter((c) => afterId === null || c.id > afterId)
+        .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
+        .slice(0, q.limit + 1);
+      const more = rows.length > q.limit;
+      const shown = more ? rows.slice(0, q.limit) : rows;
+      const last = shown[shown.length - 1];
+      return { rows: shown, nextAfterId: more && last ? last.id : null };
+    },
+    /** U24 (decision M8) · the book's distinct tags, most-carried first, then by tag in code-unit order (the
+     *  Prisma twin sorts `collate "C"` for the same order). A contact counts ONCE per tag, however its array reads. */
+    tagCounts: (q: ContactTagCountQuery): ContactTagCount[] => {
+      const counts = new Map<string, number>();
+      for (const c of store.marketingContacts.values()) {
+        if (q.excludeSourceRef !== null && c.sourceRef === q.excludeSourceRef) continue;
+        for (const t of new Set(c.tags)) counts.set(t, (counts.get(t) ?? 0) + 1);
+      }
+      return Array.from(counts, ([tag, count]) => ({ tag, count }))
+        .sort((a, b) => b.count - a.count || (a.tag < b.tag ? -1 : a.tag > b.tag ? 1 : 0))
+        .slice(0, q.limit);
     },
     listAll: (): StoredMarketingContact[] =>
       Array.from(store.marketingContacts.values())

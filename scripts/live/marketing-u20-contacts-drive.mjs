@@ -10,7 +10,11 @@
  *     (with the clear action), never a number search;
  *   · PAGE CLAMP — page 4 of a 5-row result renders the 5 rows;
  *   · ERROR — a failed read is "Couldn't load the contact book", never a zero;
- *   · ADMIN — the role that may reveal gets the eye AND Copy on every row, and the eye shows `+255…`.
+ *   · ADMIN — the role that may reveal gets the eye AND Copy on every row, and the eye shows `+255…`;
+ *   · U24 — a filter in the address (`?op=VODACOM&consent=GIVEN`): only matching rows, the "Showing contacts: …"
+ *     line, the whole-book tiles, sort and pager links that carry the filter; a filter matching nothing; the clamp
+ *     under a filter; an unreadable filter (`?op=NOKIA`, `?from=2026-13-40`) REFUSED with the parameter named;
+ *     and D19's player filter refused to GROWTH.
  * The rows come from `/api/dev-test/marketing-contacts-seed`, through the store method the importers will
  * call (nothing writes a contact yet — U22/U25+). Every capture asserts what it photographed first.
  *
@@ -148,13 +152,10 @@ for (const vp of VIEWPORTS) {
   const numbers = await page.locator("[data-contact-row] td:nth-child(2)").allInnerTexts();
   ok(`${vp.name} · POPULATED · every number is masked +255••••NN for GROWTH`, numbers.length === 20 && numbers.every((t) => MASK.test(t.trim())), numbers.slice(0, 3).join(" | "));
   ok(`${vp.name} · POPULATED · GROWTH has NO eye and NO copy control`, (await page.locator("button.sensitive-reveal").count()) === 0);
-  // A two-word chip broke onto two lines on the first drive ("NO / CONSENT") — every chip label stays one line.
-  const chipHeights = await page.$$eval("[data-contact-row] span.whitespace-nowrap", (els) => els.map((e) => Math.round(e.getBoundingClientRect().height)));
-  ok(`${vp.name} · POPULATED · every Consent chip sits on ONE line`, chipHeights.length === 20 && Math.max(...chipHeights) <= 18, `${chipHeights.length} chips, max ${Math.max(...chipHeights)}px`);
   // 🔴 D19 · a role that may not read a number gets no row-by-row player signal.
   const headGrowth = await page.locator('[data-block="contacts-card"] thead').innerText();
-  ok(`${vp.name} · D19 · GROWTH sees NO Reachable column, NO Source column and NO Player chip`,
-    !/reachable/i.test(headGrowth) && !/source/i.test(headGrowth) && (await page.getByText("Player", { exact: true }).count()) === 0, headGrowth.replace(/[^A-Za-z( )·]+/g, " "));
+  ok(`${vp.name} · D19 · GROWTH sees NO Consent, Reachable or Source column and NO Player chip (D19 + A1.1)`,
+    !/reachable/i.test(headGrowth) && !/source/i.test(headGrowth) && !/consent/i.test(headGrowth) && (await page.getByText("Player", { exact: true }).count()) === 0, headGrowth.replace(/[^A-Za-z( )·]+/g, " "));
   ok(`${vp.name} · POPULATED · the pager is there (45 contacts, 3 pages)`, (await page.locator('a[href*="page=2"]').count()) > 0);
   const text = await mainText(page);
   ok(`${vp.name} · POPULATED · the whole-book tiles: 45 in the book`, /In the book\s*45/i.test(text), text.slice(0, 160));
@@ -179,6 +180,56 @@ for (const vp of VIEWPORTS) {
   // ── PAGE CLAMP ───────────────────────────────────────────────────────────────────────────────
   await openContacts(page, "?q=Asha&page=4");
   ok(`${vp.name} · CLAMP · page 4 of a 5-row result renders the 5 rows`, (await rows.count()) === 5, String(await rows.count()));
+
+  // ── U24 · FILTERS IN THE ADDRESS, THROUGH THE ONE RESOLVER ─────────────────────────────────────
+  // GROWTH reads no number, so its columns are Name · Number · Operator · Consent · Lists·Tags · Added (D19).
+  await openContacts(page, "?op=VODACOM&consent=GIVEN");
+  const fOps = await page.locator("[data-contact-row] td:nth-child(3)").allInnerTexts();
+  const fConsent = await page.locator("[data-contact-row] td:nth-child(4)").allInnerTexts();
+  ok(`${vp.name} · U24 FILTERED · only Vodacom rows with consent given`,
+    fOps.length > 0 && fOps.every((t) => /^Vodacom$/i.test(t.trim())) && fConsent.every((t) => /^given$/i.test(t.trim())),
+    `${fOps.length} rows: ${[...new Set(fOps.map((t) => t.trim()))].join("/")} · ${[...new Set(fConsent.map((t) => t.trim()))].join("/")}`);
+  const lead = ((await page.locator('[data-block="contacts-filtered"]').innerText().catch(() => "")) || "").replace(/\s+/g, " ").trim();
+  ok(`${vp.name} · U24 FILTERED · the line says, in words, what the list is narrowed to — with Clear filters`,
+    /Showing contacts:\s*Operator: Vodacom · Consent: given\s*Clear filters/i.test(lead), lead);
+  ok(`${vp.name} · U24 FILTERED · the KPI band is still the WHOLE book`, /In the book\s*45/i.test(await mainText(page)));
+  const sortHrefs = await page.locator('[data-block="contacts-card"] thead a[href*="sort="]').evaluateAll((as) => as.map((a) => a.getAttribute("href") || ""));
+  ok(`${vp.name} · U24 FILTERED · every sort link carries the filters (one href builder)`,
+    sortHrefs.length === 3 && sortHrefs.every((h) => h.includes("op=VODACOM") && h.includes("consent=GIVEN") && !h.includes("page=")), sortHrefs.join(" | "));
+  ok(`${vp.name} · U24 FILTERED · no horizontal page overflow`, (await overflowOf(page)) === 0, `${await overflowOf(page)}px`);
+  await shoot(page, `${vp.name}-u24-filtered`);
+
+  await openContacts(page, "?suppressed=no");
+  const pagerHrefs = await page.locator('a[href*="page=2"]').evaluateAll((as) => as.map((a) => a.getAttribute("href") || ""));
+  ok(`${vp.name} · U24 PAGER · the pager's links carry the filter (41 unsuppressed rows, 3 pages)`,
+    pagerHrefs.length > 0 && pagerHrefs.every((h) => h.includes("suppressed=no")), pagerHrefs.join(" | "));
+
+  await openContacts(page, "?op=TTCL");
+  const ttcl = await mainText(page);
+  ok(`${vp.name} · U24 NO MATCH · a filter that matches nothing says so, offers Clear filters, and the KPIs stand`,
+    (await rows.count()) === 0 && /No contacts match/.test(ttcl) && (await page.getByRole("link", { name: "Clear filters" }).count()) >= 1 && /In the book\s*45/i.test(ttcl),
+    ttcl.slice(0, 200));
+  await shoot(page, `${vp.name}-u24-no-match`, '[data-block="contacts-card"]');
+
+  await openContacts(page, "?op=VODACOM&page=99");
+  ok(`${vp.name} · U24 CLAMP · page 99 under a filter renders the clamped page's rows, never "no matches"`, (await rows.count()) > 0, String(await rows.count()));
+
+  for (const [query, param] of [["?op=NOKIA", "op"], ["?from=2026-13-40", "from"]]) {
+    await openContacts(page, query);
+    const ref = await mainText(page);
+    ok(`${vp.name} · U24 UNREADABLE ${query} · "This filter can't be read", naming “${param}”, no rows, Clear filters, KPIs still the whole book`,
+      (await rows.count()) === 0 && /This filter can.t be read/.test(ref) && ref.includes(`“${param}”`)
+        && (await page.getByRole("link", { name: "Clear filters" }).count()) === 1 && /In the book\s*45/i.test(ref),
+      ref.slice(0, 240));
+    await shoot(page, `${vp.name}-u24-unreadable-${param}`, '[data-block="contacts-card"]');
+  }
+
+  // 🔴 D19 · the player filter is a membership oracle for a role that may not read a number.
+  await openContacts(page, "?player=yes");
+  const d19 = await mainText(page);
+  ok(`${vp.name} · U24 D19 · GROWTH is refused the player filter — no rows, the reason in words`,
+    (await rows.count()) === 0 && /This filter isn.t available/.test(d19) && /not available to your role/.test(d19), d19.slice(0, 240));
+  await shoot(page, `${vp.name}-u24-d19-refused`, '[data-block="contacts-card"]');
 
   // ── ERROR ────────────────────────────────────────────────────────────────────────────────────
   await seed(page, "fault=1");

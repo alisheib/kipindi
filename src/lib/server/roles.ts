@@ -530,8 +530,12 @@ export const READ_CLASS_LABEL: Record<ReadClass, string> = {
 /** What each class covers, in the words the /admin/roles editor shows. Kept beside the
  *  class list so a new class cannot be added without saying what it means. */
 export const READ_CLASS_SUMMARY: Record<ReadClass, string> = {
+  // ⭐ U39 (2026-10-01) · THE CAMPAIGN ESTIMATE IS GOVERNED BY THIS CELL, SO THE SENTENCE SAYS SO. A campaign's cost and
+  // the account's SMS credit are PLATFORM aggregates, not one player's total; deciding them on money.figures without
+  // these words would silently widen what an Owner flipping the cell at /admin/roles is told he governs (READ-TIERS
+  // §3.5). `campaignMoneyVisible` in `server/marketing/estimate.ts` asks it; `test:read-tiers` §9.1 holds the words.
   "money.figures":
-    "wallet balance, bonus balance, lifetime deposits and withdrawals — any TZS total attributable to one named player",
+    "wallet balance, bonus balance, lifetime deposits and withdrawals — any TZS total attributable to one named player — and the SMS campaign cost estimate and credit",
   "identity.contact": "email address and unmasked phone number — the account-recovery set",
   "identity.personal":
     "date of birth, region, full document number and document images — the KYC set",

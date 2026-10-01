@@ -3029,6 +3029,9 @@ enum SmsPurpose {
   OTP
   INVITE
   OPS
+  /// Marketing U35a (D22): a campaign's messages, its own lane for volume and cost. Written first by U37's test
+  /// send behind the closed live switch (`marketing.sms.live`), never before its migration is deployed (55P04).
+  MARKETING
 }
 
 /// ⭐ "THE GATEWAY TOOK IT" AND "THE HANDSET GOT IT" ARE DIFFERENT FACTS, AND THIS

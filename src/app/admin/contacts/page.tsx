@@ -7,7 +7,7 @@
  * rail), and this page promises none of it.
  *
  * ⭐ SERVER-PAGED, because the book is built for 150,000 people (§3c): the store returns one page and the
- * count of the whole match, never the book. The KPI band is the WHOLE book (`summary()`), never the
+ * count of the whole match, never the book. The KPI band is the WHOLE book (`contactAudience(WHOLE_BOOK).breakdown()`), never the
  * filtered view — a search must not make "Consent given" look like it fell.
  * ⛔ Every number renders through `<Sensitive field="contactPhone">` (U19): GROWTH sees `+255••••01` and no
  * control; a role that may reveal gets the eye and Copy, each one a `pii.revealed` row.
@@ -17,13 +17,18 @@
  * 🔴 D19 · Reachable, Source and the Player chip render ONLY for a viewer who may read a number
  * (`viewerReads`, decided in `contacts-loader.ts`): each one, row by row, tells a masked role whether a
  * number belongs to a player.
+ * ⭐ U24 · every read goes through the ONE audience resolver (`contacts-loader.ts` → `contactAudience`). The
+ * address may carry filters (`?op=VODACOM&consent=GIVEN` — the vocabulary U21's rail will write); a filter
+ * in force is said in words above the table ("Showing contacts: …"), and every link is built by ONE href
+ * builder (`contactsHref`) that carries them. ⛔ A filter that cannot be read is REFUSED — no rows, the
+ * parameter named, a Clear action — never silently dropped into a wider list.
  *
  * Growth domain (`roles.ts`), the same people who run affiliate, bonuses and invites.
  */
 import { AdminPageGate } from "@/components/admin/admin-section-gate";
 import { AdminPageHead, AdminCard, AdminKpi, AdminLoadError } from "@/components/admin/admin-shell";
 import { AdminBody, KpiGrid } from "@/components/admin/admin-body";
-import { AdminPagination, PER_PAGE, buildBaseHref } from "@/components/admin/admin-pagination";
+import { AdminPagination, PER_PAGE } from "@/components/admin/admin-pagination";
 import { SortTh } from "@/components/admin/admin-sort";
 import { AdminTableEmpty } from "@/components/admin/admin-table-empty";
 import { Chip } from "@/components/ui/chip";
@@ -35,8 +40,11 @@ import type { StoredMarketingContact } from "@/lib/server/store";
 import { mayReceiveMarketingSms } from "@/lib/server/marketing/consent";
 import type { MarketingSkipReason } from "@/lib/server/marketing/consent";
 import { formatDate } from "@/lib/utils";
-import { CONTACTS_EMPTY, CONTACTS_NO_MATCH, CONTACTS_SEARCH_PLACEHOLDER } from "./contacts-copy";
-import { operatorBrand } from "./contacts-query";
+import {
+  CONTACTS_EMPTY, CONTACTS_NO_MATCH, CONTACTS_NO_MATCH_FILTERED, CONTACTS_SEARCH_PLACEHOLDER, CONTACTS_FILTERED_LEAD,
+  CONTACTS_FILTER_UNREADABLE, CONTACTS_FILTER_NOT_FOR_ROLE,
+} from "./contacts-copy";
+import { operatorBrand, contactsHref, contactsClearFiltersHref, contactsLinkSp } from "./contacts-query";
 import { loadContacts } from "./contacts-loader";
 import type { ContactsParams, ContactsView } from "./contacts-loader";
 
@@ -102,22 +110,32 @@ async function AdminContactsContent({ searchParams }: { searchParams: Promise<Co
     console.error("[admin/contacts] read failed:", (err as Error)?.message ?? err);
   }
   const summary = view?.summary ?? null;
-  const result = view?.result ?? null;
-  const page = view?.page ?? 1;
+  // ⭐ U24 · the loader's two answers: the list ("ok"), or a filter it would not read ("refused").
+  const listed = view?.kind === "ok" ? view : null;
+  const refused = view?.kind === "refused" ? view : null;
+  const result = listed?.result ?? null;
+  const page = listed?.page ?? 1;
   const sort = view?.sort ?? "added";
   const dir = view?.dir ?? "desc";
   const reads = view?.viewerReads ?? false;
-  const cols = reads ? 8 : 6;
+  // D19 + A1.1: a masked viewer sees Name, Number, Operator, Lists · Tags and Added — no per-row consent, reach,
+  // source or player signal.
+  const cols = reads ? 8 : 5;
 
-  const failed = summary === null || result === null;
+  const failed = view === null;
   const emptyBook = !failed && summary!.total === 0;
   const rows = result?.rows ?? [];
   // ⛔ D19: the gate is not even asked for a viewer who may not see its answer.
   const reach = reads ? await Promise.all(rows.map(reachOf)) : [];
   const lists = await Promise.all(rows.map(async (c) => (await db.contactListMember.listMemberships(c.id)).length));
-  const searching = Boolean(sp.q && sp.q.trim());
-  const baseHref = buildBaseHref("/admin/contacts", { q: sp.q, sort: sp.sort, dir: sp.dir });
-  const clearHref = buildBaseHref("/admin/contacts", { sort: sp.sort, dir: sp.dir });
+  const searching = listed !== null && listed.filter.q !== null;
+  const narrowed = listed !== null && listed.narrowed;
+  // ⭐ ONE href builder (decision C9): it carries every filter, never `page` unless asked, never `edit`.
+  const linkSp = contactsLinkSp(sp);
+  const baseHref = contactsHref(sp);
+  const clearSearchHref = contactsHref(sp, { q: null });
+  const clearFiltersHref = contactsClearFiltersHref(sp);
+  const refusedCopy = refused?.refusal === "role" ? CONTACTS_FILTER_NOT_FOR_ROLE : CONTACTS_FILTER_UNREADABLE;
   const s = summary;
 
   return (
@@ -149,31 +167,54 @@ async function AdminContactsContent({ searchParams }: { searchParams: Promise<Co
               <SearchBox mode="url" placeholder={CONTACTS_SEARCH_PLACEHOLDER} ariaLabel="Search contacts by name or full number" />
             </div>
           )}
+          {/* ⭐ U24 · WHAT THE LIST IS NARROWED TO, IN WORDS (`describeAudience` — the one describer U38 reuses). Shown
+              only when something besides the search box narrows it; the box already shows its own text. The pieces
+              are spaced by the flex gap, never by a JSX space a compiler may drop. */}
+          {narrowed && listed && (
+            <div data-block="contacts-filtered" className="flex flex-wrap items-center gap-x-2 border-b border-border-subtle px-3 py-1 text-caption text-text-secondary">
+              <span className="text-text-tertiary">{CONTACTS_FILTERED_LEAD}</span>
+              <span className="min-w-0 break-words text-text-primary">{listed.described.join(" · ")}</span>
+              <a href={clearFiltersHref} className="inline-flex items-center min-h-[var(--tap-min)] text-royal-300 hover:underline">Clear filters</a>
+            </div>
+          )}
           {!failed && <ScrollX label="Contacts" className="max-h-[calc(100vh-280px)] overflow-y-auto">
             <table className="admin-tbl">
               <thead className="sticky top-0 z-10">
                 <tr>
-                  <SortTh field="name" label="Name" current={sort} dir={dir} sp={sp} baseHref="/admin/contacts" />
+                  <SortTh field="name" label="Name" current={sort} dir={dir} sp={linkSp} baseHref="/admin/contacts" />
                   <th className="text-left">Number</th>
                   {/* ⚠️ "by prefix": the column SORTS by the number's prefix (`ndc`), the one order a brand label
                       cannot give stably across pages (§9 U20). */}
-                  <SortTh field="operator" label="Operator (by prefix)" current={sort} dir={dir} sp={sp} baseHref="/admin/contacts" />
-                  <th className="text-left">Consent</th>
+                  <SortTh field="operator" label="Operator (by prefix)" current={sort} dir={dir} sp={linkSp} baseHref="/admin/contacts" />
+                  {reads && <th className="text-left">Consent</th>}
                   {reads && <th className="text-left">Reachable</th>}
                   <th className="text-left">Lists · Tags</th>
                   {reads && <th className="text-left">Source</th>}
-                  <SortTh field="added" label="Added" current={sort} dir={dir} sp={sp} baseHref="/admin/contacts" />
+                  <SortTh field="added" label="Added" current={sort} dir={dir} sp={linkSp} baseHref="/admin/contacts" />
                 </tr>
               </thead>
               <tbody className="text-text-secondary">
-                {emptyBook ? (
+                {refused ? (
+                  // ⛔ U24 · A FILTER THAT CANNOT BE READ SHOWS NO ROWS — never the whole book under a filter nobody got.
+                  <AdminTableEmpty
+                    colSpan={cols}
+                    title={refusedCopy.title}
+                    body={refusedCopy.body(refused.param, refused.reason)}
+                    action={<a href={clearFiltersHref} className="btn btn-ghost btn-sm">Clear filters</a>}
+                  />
+                ) : emptyBook ? (
                   <AdminTableEmpty colSpan={cols} title={CONTACTS_EMPTY.title} body={CONTACTS_EMPTY.body} />
                 ) : rows.length === 0 ? (
                   <AdminTableEmpty
                     colSpan={cols}
-                    title={CONTACTS_NO_MATCH.title}
-                    body={CONTACTS_NO_MATCH.body}
-                    action={searching ? <a href={clearHref} className="btn btn-ghost btn-sm">Clear search</a> : undefined}
+                    title={searching ? CONTACTS_NO_MATCH.title : CONTACTS_NO_MATCH_FILTERED.title}
+                    body={searching ? CONTACTS_NO_MATCH.body : CONTACTS_NO_MATCH_FILTERED.body}
+                    action={narrowed || searching ? (
+                      <span className="flex flex-wrap gap-2">
+                        {narrowed && <a href={clearFiltersHref} className="btn btn-ghost btn-sm">Clear filters</a>}
+                        {searching && <a href={clearSearchHref} className="btn btn-ghost btn-sm">Clear search</a>}
+                      </span>
+                    ) : undefined}
                   />
                 ) : (
                   rows.map((c, i) => {
@@ -193,7 +234,9 @@ async function AdminContactsContent({ searchParams }: { searchParams: Promise<Co
                         {/* ⛔ ONE LINE: a two-word chip broke in two at 1280 ("AGE NOT / CONFIRMED", measured twice). The Chip
                             sets `white-space: normal` INLINE on purpose (long Swahili phrases elsewhere must wrap), so a
                             class on the chip or its cell cannot override it — the no-wrap span inside the label does. */}
-                        <td><Chip size="sm" variant={consent.variant}><span className="whitespace-nowrap">{consent.label}</span></Chip></td>
+                        {/* 🔴 A1.1 · until U33 a Given/Withdrawn consent can only be a player's (or an erasure's), so the
+                            per-row chip is a membership oracle for a masked viewer — shown only to a reader. */}
+                        {reads && <td><Chip size="sm" variant={consent.variant}><span className="whitespace-nowrap">{consent.label}</span></Chip></td>}
                         {reads && <td><Chip size="sm" variant={r.ok ? "success" : "neutral"}><span className="whitespace-nowrap">{r.label}</span></Chip></td>}
                         <td className="whitespace-nowrap">
                           {lists[i] > 0 && <span className="mr-2 text-caption text-text-tertiary">{lists[i]} {lists[i] === 1 ? "list" : "lists"}</span>}
@@ -212,7 +255,7 @@ async function AdminContactsContent({ searchParams }: { searchParams: Promise<Co
           </ScrollX>}
         </AdminCard></div>
 
-        {!failed && result!.total > PER_PAGE && <AdminPagination total={result!.total} page={page} baseHref={baseHref} />}
+        {result !== null && result.total > PER_PAGE && <AdminPagination total={result.total} page={page} baseHref={baseHref} />}
       </AdminBody>
     </>
   );

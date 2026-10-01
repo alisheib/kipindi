@@ -201,7 +201,7 @@ edited wrongly. If a fifth is ever proposed, it must displace one of these.
 
 | Class | What it covers | Why it is its own class |
 |---|---|---|
-| `money.figures` | wallet balance, bonus balance, lifetime deposits/withdrawals, any TZS total attributable to one named player | The Final Audit remediation blocks `MODERATOR` from money; this is that rule, expressed once |
+| `money.figures` | wallet balance, bonus balance, lifetime deposits/withdrawals, any TZS total attributable to one named player — and the SMS campaign cost estimate and credit (a platform aggregate, §3.5) | The Final Audit remediation blocks `MODERATOR` from money; this is that rule, expressed once |
 | `identity.contact` | email address, unmasked phone | The account-recovery set. `AWARKEH`'s `RA7` is the same lesson one product over: an email on a row is a takeover vector |
 | `identity.personal` | date of birth, region, full document number, document images | The KYC set. Already partly masked; this makes the masking a *rule* rather than a `slice()` |
 | `history.activity` | positions, bets, notification and login history | ⭐ **The one a support agent genuinely needs** — *"which round was this?"* — and the one nothing currently withholds from anyone |
@@ -348,6 +348,19 @@ read "NOT YET BUILT" for eight lines above §3.6, which describes the tab it sai
 for ADMIN and COMPLIANCE it is masked-at-rest and costs a click. That is faithful to §3.1 and may
 prove to be more friction than the field is worth — **a cell to flip in `/admin/roles`, not a
 special case to code.**
+
+**Wired 2026-10-01 (marketing U39a): the SMS campaign estimate — a PLATFORM AGGREGATE, not a
+player's figure.** A campaign's cost, the account's SMS credit and what that credit covers are
+decided by `campaignMoneyVisible(role)` in `src/lib/server/marketing/estimate.ts`: `canView(role,
+"accounting")` **and** `readCell(role, "money.figures") === "read"`. ⚠️ **This WIDENS
+`money.figures`**, which §3.1 defines as totals attributable to one named player — so
+`READ_CLASS_SUMMARY` now says *"… and the SMS campaign cost estimate and credit"*, the sentence the
+Owner reads on `/admin/roles` → Reads (§3.5a's lesson, in reverse: a cell must not govern more than
+its sentence says). ⭐ **An aggregate has no reveal step:** `read` renders the figures, while
+`masked` and `none` render NOTHING — no dots, no `TZS —`, only the sentence *"Cost and credit are
+shown to roles that may read money figures."* ADMIN resolves through the table (D3), so the Owner can
+witness the GROWTH branch by setting his own money.figures cell to `none`. Guards: `test:read-tiers`
+§9 (the wording and both axes, with `red:read-tiers` anchors) and `test:campaign-estimate` §1/§5.
 
 ### 3.6 · AS BUILT — the editor is a TAB, and the Owner is listed on it
 

@@ -308,7 +308,9 @@ export async function blackballSend(
  * 2026-09-16: `{"status":true,"message":"Account balance","data":{"name":…,"currency":"TZS",…},
  * "balance":244.0}` — the portal's figure exactly, AFTER the first message's TZS 6 charge.
  * The `balance` on a send reply is pre-charge on success and a meaningless 0.0 on a refusal
- * (decided before authentication), so neither can price anything or clear a floor. This can.
+ * (decided before authentication), so no ONE reply can price anything or clear a floor — the DIFFERENCE between
+ * two consecutive delivered chunks can (`measureSegmentCost`, `lib/marketing/segment-cost.ts`, U39). This read is
+ * the true figure.
  *
  * ⛔ `balance` is only the account's when `ok` is true — the same envelope, the same rule.
  * Never throws; a transport failure comes back as `transport`, exactly like `blackballSend`.

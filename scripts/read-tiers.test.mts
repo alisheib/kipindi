@@ -746,5 +746,35 @@ ok("8.17 ⭐ POSITIVE CONTROL · §8 reads real files, not empty strings",
    maskSrc.length > 500 && registrySrc.length > 500 && exportSrc.length > 500,
    `${maskSrc.length} / ${registrySrc.length} / ${exportSrc.length} bytes`);
 
+/* ═══════════════════════════════════════════════════════════════════════════════════════════
+ * §9 · THE CAMPAIGN ESTIMATE (U39, 2026-10-01) — a platform aggregate governed by money.figures
+ *
+ * ⚠️ money.figures was defined as "any TZS total attributable to one named player". A campaign's
+ * cost and the account's SMS credit are neither, and U39 decides them on this cell all the same
+ * (`campaignMoneyVisible`, `src/lib/server/marketing/estimate.ts`). That is a WIDENING of the
+ * class, and §3.5a's lesson in reverse says a widening the /admin/roles sentence does not state is
+ * a silent one — so 9.1 holds the sentence and 9.2 holds the decider to BOTH axes.
+ * ⛔ The decider is behaviour-tested by `test:campaign-estimate` §1 (the default grid, D3, masked,
+ * and a positive control); these two are the read-tier record, with `red:read-tiers` anchors.
+ * ═══════════════════════════════════════════════════════════════════════════════════════════ */
+console.log("");
+console.log("§9 · the campaign estimate — a platform aggregate governed by money.figures");
+{
+  const estimateSrc = decomment(readFileSync(join(ROOT, "src/lib/server/marketing/estimate.ts"), "utf8"));
+  const summary = String(READ_CLASS_SUMMARY["money.figures"] ?? "");
+  ok("9.1 ⭐ READ_CLASS_SUMMARY's money.figures names the SMS campaign cost estimate and credit — the widening is said, not silent",
+     summary.includes("the SMS campaign cost estimate and credit")
+     && summary.includes("any TZS total attributable to one named player"),
+     summary);
+  const deciderAt = estimateSrc.indexOf("export async function campaignMoneyVisible");
+  const decider = deciderAt < 0 ? "" : estimateSrc.slice(deciderAt, estimateSrc.indexOf("export const ESTIMATE_BALANCE_MAX_AGE_MS", deciderAt));
+  ok("9.2 ⛔ the estimate's money decider asks readCell(money.figures) for read TOGETHER WITH canView(accounting) — masked is not readable, ADMIN is not exempt",
+     decider.includes('canView(role, "accounting")') && decider.includes('readCell(role, "money.figures")) === "read"'),
+     decider.replace(/\s+/g, " ").slice(0, 220));
+  ok("9.3 ⭐ POSITIVE CONTROL · §9 reads the real decider, not an empty slice",
+     estimateSrc.length > 2000 && deciderAt >= 0 && decider.length > 40,
+     `${estimateSrc.length} bytes · decider ${decider.length} chars`);
+}
+
 console.log(`\nread-tiers: ${pass} passed, ${fail} failed`);
 process.exit(fail > 0 ? 1 : 0);
