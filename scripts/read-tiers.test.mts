@@ -706,6 +706,42 @@ ok("8.19 …and that export is AUDITED, which is what makes 8.18 acceptable",
      "it is matched against other operators' registers, so it must be a stable salted digest and not a display string");
 }
 
+/* ── U19 · the contact book's number (S10, 2026-10-01) ─────────────────────────────────────── */
+{
+  ok("8.22 ⛔ contactPhone is a SEPARATE field addressing a MARKETING CONTACT, not a player's account phone",
+     /contactPhone:\s*\{[\s\S]{0,260}?targetType:\s*"MarketingContact"/.test(registrySrc)
+     && /contactPhone:\s*\{[\s\S]{0,420}?db\.marketingContact\.find\(/.test(registrySrc)
+     && /contactPhone:\s*\{[\s\S]{0,220}?readClass:\s*"identity\.contact"/.test(registrySrc),
+     "a contact may be nobody's account: read back off user.phoneE164 it would reveal some player's number on a row that is not theirs");
+
+  // ⭐ DRIVEN: the book stores the BARE key, and the mask must still read `+255••••NN` (OD25's shape).
+  const { maskPhone } = await import("../src/lib/phone-normalize.ts");
+  const SHAPE = /^\+255•{4}\d{2}$/;
+  ok("8.23 ⭐ a BARE 255… key masks as +255••••NN — the same shape as the account's +255… (EXECUTED)",
+     SHAPE.test(maskPhone("255712000101")) && maskPhone("255712000101") === maskPhone("+255712000101")
+     && /contactPhone:\s*\{[\s\S]{0,320}?mask:\s*maskPhone\b/.test(registrySrc),
+     `${maskPhone("255712000101")} / ${maskPhone("+255712000101")}`);
+  ok("8.23c CONTROL · the old bare-key mask (first four characters as typed) FAILS that shape, so 8.23 can fail",
+     !SHAPE.test(`${"255712000101".slice(0, 4)}••••${"255712000101".slice(-2)}`));
+
+  // ⛔ "Copy number" IS a reveal: it exists only on the `read` branch, and it fetches through the
+  // audited action before it touches the clipboard.
+  const sensSrc = decomment(readFileSync(join(ROOT, "src/components/ui/sensitive.tsx"), "utf8"));
+  const revealUiSrc = decomment(readFileSync(join(ROOT, "src/components/ui/sensitive-reveal.tsx"), "utf8"));
+  const maskedBranch = (sensSrc.match(/if \(cell === "masked"\) \{[\s\S]*?\n {2}\}/) ?? [""])[0];
+  const onCopy = (revealUiSrc.match(/const onCopy = \(\) => \{[\s\S]*?\n {2}\};/) ?? [""])[0];
+  ok("8.24 ⛔ a role at the masked ceiling gets NO copy control — the masked branch renders the span alone",
+     maskedBranch.length > 40 && !/copy|SensitiveReveal/i.test(maskedBranch)
+     && /<SensitiveReveal [^>]*copyable=\{copyable\}/.test(sensSrc),
+     maskedBranch.slice(0, 160));
+  ok("8.24b …and Copy fetches through the AUDITED reveal before it writes the clipboard, rendered only when asked for",
+     onCopy.indexOf("revealSensitiveAction(") > 0 && onCopy.indexOf("revealSensitiveAction(") < onCopy.indexOf("navigator.clipboard.writeText(")
+     && /\{copyable && \(/.test(revealUiSrc),
+     `${onCopy.length} chars`);
+  ok("8.25 the SMS refusal list masks through the ONE mask, so a bad number in it reads +255••••NN, never 2557••••NN",
+     /badMasked\.push\(maskPhone\(msisdn\)\)/.test(decomment(readFileSync(join(ROOT, "src/lib/server/sms.ts"), "utf8"))));
+}
+
 ok("8.17 ⭐ POSITIVE CONTROL · §8 reads real files, not empty strings",
    maskSrc.length > 500 && registrySrc.length > 500 && exportSrc.length > 500,
    `${maskSrc.length} / ${registrySrc.length} / ${exportSrc.length} bytes`);

@@ -934,8 +934,12 @@ async function runSurface(f: Fixtures): Promise<void> {
   const shown = await resolveOptOutToken(f.ancientToken);
   ok("S19 · ⭐ D6 — the page's number reads `+255••••NN`, the shared mask, never `2557••••NN` (the operator digit)",
     shown.ok && /^\+255•{4}\d{2}$/.test(shown.masked), shown.ok ? shown.masked : "did not resolve");
+  // ⚠️ Since U19 (2026-10-01) `maskPhone` itself reads a bare key as the `+` form, so the old shape is
+  // built by hand here — the first four characters as typed, which is what the bare-key mask used to print.
+  const bareKey = toMsisdn255(f.contactPhone);
+  const oldShape = `${bareKey.slice(0, 4)}••••${bareKey.slice(-2)}`;
   ok("S19c · ⚠️ CONTROL — the old bare-key mask (`2557••••NN`) FAILS the S19 pattern, so S19 is capable of failing",
-    !/^\+255•{4}\d{2}$/.test(maskPhone(toMsisdn255(f.contactPhone))), maskPhone(toMsisdn255(f.contactPhone)));
+    !/^\+255•{4}\d{2}$/.test(oldShape) && /^\+255•{4}\d{2}$/.test(maskPhone(bareKey)), `${oldShape} / ${maskPhone(bareKey)}`);
   // ⚠️ SELF-CONTAINED: the person's own stop is made HERE (idempotent — `already` if it stands), so this
   // holds on a fixture `runAssertions` never touched: the red run's surface baseline and every surface plant.
   await stopMarketing(f.contactToken, "SW");

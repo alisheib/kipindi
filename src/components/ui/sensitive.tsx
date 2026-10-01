@@ -54,6 +54,7 @@ export async function Sensitive({
   subjectId,
   value,
   domainAllows = true,
+  copyable = false,
 }: {
   field: SensitiveFieldKey;
   /** The player whose record this is — the reveal action re-reads by this id. */
@@ -62,6 +63,8 @@ export async function Sensitive({
   value: string | null | undefined;
   /** The caller's existing domain gate. See the intersection rule above. */
   domainAllows?: boolean;
+  /** U19 · offer "Copy" — a REVEAL, so it is handed ONLY to the `read` branch below, never to `masked`. */
+  copyable?: boolean;
 }) {
   if (!domainAllows) return null;
   if (value == null || value === "") return null;
@@ -84,6 +87,6 @@ export async function Sensitive({
   }
 
   return (
-    <SensitiveReveal field={field} subjectId={subjectId} masked={masked} label={spec.label} />
+    <SensitiveReveal field={field} subjectId={subjectId} masked={masked} label={spec.label} copyable={copyable} />
   );
 }

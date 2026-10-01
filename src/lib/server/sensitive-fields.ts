@@ -41,7 +41,7 @@ export type SensitiveField = {
    * that the money went somewhere it did not. So the money surfaces address a TRANSACTION, and
    * the audit row must say so or it points a regulator at the wrong record.
    */
-  targetType?: "User" | "Transaction";
+  targetType?: "User" | "Transaction" | "MarketingContact";
   /** Human label, used by the audit payload and the reveal control's accessible name. */
   label: string;
   /**
@@ -136,6 +136,27 @@ export const SENSITIVE_FIELDS = {
     label: "Payout number",
     mask: maskPhone,
     read: async (subjectId) => (await db.txn.findById(subjectId))?.msisdn ?? null,
+  },
+  /**
+   * U19 · A NUMBER IN THE CONTACT BOOK. ⛔ A THIRD SEPARATE FIELD, for the same reason `msisdn` is
+   * one: `subjectId` is a CONTACT id, and the subject is a different row — a contact may be nobody's
+   * account at all. Reading it back off `user.phoneE164` would reveal some player's number on a row
+   * that is not theirs, and the audit row would point at the wrong record (`targetType`).
+   *
+   * Masked `+255••••01` for every role (OD25), from the bare `255…` key the book stores — `maskPhone`
+   * reads the bare key as the `+` form, so the operator digit never shows. The reveal hands back the
+   * `+255…` spelling, the one an officer dials or pastes. A role at the `masked` ceiling (GROWTH)
+   * gets no reveal and no copy control; "Copy number" IS a reveal and goes through the same action.
+   */
+  contactPhone: {
+    readClass: "identity.contact",
+    targetType: "MarketingContact",
+    label: "Contact number",
+    mask: maskPhone,
+    read: async (subjectId) => {
+      const msisdn = (await db.marketingContact.find(subjectId))?.msisdn;
+      return msisdn ? `+${msisdn}` : null;
+    },
   },
   region: {
     readClass: "identity.personal",

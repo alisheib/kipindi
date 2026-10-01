@@ -185,5 +185,10 @@ export function maskPhone(raw: string | null | undefined): string {
   // and the only inputs this refuses are malformed — which is precisely the class that must not
   // be echoed.
   if (!raw || raw.length < 10) return "••••";
-  return `${raw.slice(0, 4)}••••${raw.slice(-2)}`;
+  // ⭐ ONE SHAPE FOR EVERY SPELLING (U19, S10 2026-10-01). The gateway and every marketing store keep
+  // the number BARE (`255…`, `toMsisdn255`); the account keeps `+255…`. Masked as typed, the bare key
+  // read `2557••••01` — the operator digit — in the SMS refusal audit, the delivery-receipt audit and
+  // the contact book. It is read as the `+` form first, so every caller prints `+255••••01`.
+  const v = /^255\d{9}$/.test(raw) ? `+${raw}` : raw;
+  return `${v.slice(0, 4)}••••${v.slice(-2)}`;
 }

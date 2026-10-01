@@ -16,6 +16,12 @@
  * not un-write the audit row and must never look like it does — the read HAPPENED. So the eye
  * toggles the display of a value already fetched, and no second row is written on re-reveal of
  * the same value.
+ *
+ * ⭐ U19 · "COPY NUMBER" IS A REVEAL (`copyable`). It fetches through the SAME action, so the copy
+ * writes the same `pii.revealed` row a look would — and it shows the value it copied, because the
+ * read happened and the control must not pretend otherwise. ⛔ It lives HERE, on the `read` branch
+ * only: a role at the `masked` ceiling never receives this component, so it has no copy control to
+ * find, disable or forge (`test:read-tiers` §8).
  */
 import { useState, useTransition } from "react";
 import { I } from "@/components/ui/glyphs";
@@ -27,16 +33,43 @@ export function SensitiveReveal({
   subjectId,
   masked,
   label,
+  copyable = false,
 }: {
   field: string;
   subjectId: string;
   masked: string;
   label: string;
+  /** Offer "Copy" beside the eye — itself a reveal, through the same audited action. */
+  copyable?: boolean;
 }) {
   const [raw, setRaw] = useState<string | null>(null);
   const [shown, setShown] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
   const [pending, start] = useTransition();
+
+  const onCopy = () => {
+    setError(null);
+    start(async () => {
+      let value = raw;
+      if (value === null) {
+        const r = await revealSensitiveAction(field, subjectId);
+        if (!r.ok) { setError(r.error); return; }
+        value = r.value;
+        setRaw(value);
+      }
+      setShown(true);
+      if (value === null) return;
+      try {
+        await navigator.clipboard.writeText(value);
+        setCopied(true);
+        window.setTimeout(() => setCopied(false), 1600);
+      } catch {
+        // The value is on screen (the read happened), so the officer can still select it.
+        setError("Couldn't copy — select the number instead.");
+      }
+    });
+  };
 
   const onClick = () => {
     setError(null);
@@ -69,6 +102,19 @@ export function SensitiveReveal({
           {shown ? <I.eyeOff s={10} /> : <I.eye s={10} />}
         </GlyphSwap>
       </button>
+      {copyable && (
+        <button
+          type="button"
+          onClick={onCopy}
+          disabled={pending}
+          aria-label={copied ? `${label} copied` : `Copy ${label}`}
+          className="sensitive-reveal inline-flex items-center font-mono text-caption text-text-tertiary hover:text-text-muted disabled:cursor-default"
+        >
+          <GlyphSwap state={copied} className="text-text-subtle">
+            {copied ? <I.check s={10} /> : <I.copy s={10} />}
+          </GlyphSwap>
+        </button>
+      )}
       {error && <span className="text-caption text-danger">{error}</span>}
     </span>
   );
