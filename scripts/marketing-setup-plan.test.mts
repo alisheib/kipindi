@@ -527,7 +527,10 @@ if (!process.argv.includes("--prove-red")) {
       // "◐ HALF-DONE: nothing." verbatim — a line §0 stopped carrying the moment a unit went
       // half-done, so the plant silently became a no-op. A control anchored to prose is a
       // control that dies the next time somebody writes an honest status line.
-      apply: (w) => ({ ...w, doc: w.doc.replace(/^◐ HALF-DONE:.*$/m, "◐ HALF-DONE: waiting on OQ99.") }) },
+      // ⛔ AND ON THE MARKER ALONE, NOT ITS PUNCTUATION (S10, 2026-10-02): §0 began writing "◐ HALF-DONE — three
+      // items" at S10 and the colon-only anchor stopped matching — the same death by honest status line, one
+      // character later. `red:marketing-setup-plan` reported it as "PLANT DID NOT APPLY", 27/28.
+      apply: (w) => ({ ...w, doc: w.doc.replace(/^◐ HALF-DONE\b.*$/m, "◐ HALF-DONE: waiting on OQ99.") }) },
     { name: "a legal question with no safe default", expect: /ships with a safe default/,
       apply: (w) => ({ ...w, doc: w.doc.replace(/^(\| OQ1 \|[^|]*\|)[^|]*\|/m, "$1 — |") }) },
   ];

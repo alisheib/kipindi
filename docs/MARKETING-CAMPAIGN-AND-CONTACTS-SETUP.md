@@ -80,14 +80,24 @@ erasure now withdraws the consent and empties the book, and both data exports ca
   P2002). ⚖️ Recorded asymmetry: erasure empties an unlinked row found by number WHATEVER its age (when in
   doubt, erase); the export withholds one older than the account (when in doubt, do not disclose).
   `test:erasure` 338, `red:erasure` 33 anchors.
-  ❓ FOR ALI (policy, his call — raised by the U21–U28 critic): an officer's "Suppress" (U23) writes an OPERATOR
-  stop that nobody can lift — the same "recycled number refused for ever" trap S10 removed from erasure. Default
-  that will be BUILT unless he rules otherwise: officer stops stay permanent (a staff decision, recorded with the
-  officer's name, is not the person's to undo), and U23's confirmation says so in words.
-  ❓ FOR ALI (public/legal text, his call): the DSAR bundle's `rights.erasure` sentence says "we erase your
-  contact details"; since U18b the number is KEPT in the consent ledger (with the erasure as its last word)
-  and in the emptied book row. Proposed addition, not shipped: "We keep your phone number only in our
-  record of your marketing choices, so that we never send you marketing again."
+  ❓ FOR ALI — THE OWNER GATES G1–G12, ONE LIST (DECISIONS-U29-U40; his alone — the build STOPS at each):
+  G1 · the first OPEN of the live switch `marketing.sms.live` (absent = CLOSED) — recommended: his own test, own number.
+  G2 · the first real campaign start to real players (U42/U43/U47/U52) — CONFIRMED (U40) never implies sending.
+  G3 · real spend beyond the §11.4 ledger cap, or any Blackball top-up (each test send after G1 costs TZS 6).
+  G4 · U33's four consent-basis wordings + the 18+ sentence (append-only evidence); until then nothing live imports them.
+  G5 · OQ3 — the source phrase in the SMS body; until answered it is priced in, and a book recipient without one refused.
+  G6 · OQ11 — whether a yes given under the old wording counts as SMS consent (the gate refuses it as built).
+  G7 · a production QA GROWTH staff account (TOTP-enrolled, never his login) for live checks and U32's ping measurement.
+  G8 · which real phone numbers a live production import may write, and their removal after (unanswered = none).
+  G9 · setting SMS_PRICE_PER_SEGMENT_TZS on Railway — a configured money figure in front of officers (U39).
+  G10 · public/DSAR text — the DSAR `rights.erasure` sentence says "we erase your contact details", but since U18b the
+        number is KEPT in the ledger and the emptied book row. Proposed, not shipped: "We keep your phone number only in
+        our record of your marketing choices, so that we never send you marketing again." Plus any wording U29b's staged
+        rows add to the access export (DATA-RETENTION.md may gain rows; no published period changes).
+  G11 · every 🔵 → ✅ that needs an admin session on www.50pick.tz (U17, U20, U34, U36–U40): no QA admin; his login unused.
+  G12 · officer "Suppress" (U23) permanence — BUILT unless he rules otherwise: an OPERATOR stop nobody can lift (the
+        recycled-number trap S10 removed from erasure) — a staff decision recorded with the officer's name, not the
+        person's to undo — and U23's confirmation says so in words.
   ⚠️ Not reached, owned by U16 (S20): accounts erased BEFORE this (their number is gone from `User`),
   `MarketingOptOutToken`, a retention period for untouched book rows, the `/admin/retention` table.
   ✅ STEP 3 · `red:rbac` (`be0a82ac`) — U17's §7b control made durable (2/2 in-process).
@@ -96,6 +106,33 @@ erasure now withdraws the consent and empties the book, and both data exports ca
   bare `255…` key as `+255…`, which also fixed the SMS refusal audit, the delivery-receipt audit and the
   opt-out mint log — all printed `2557••••NN`); `<Sensitive copyable>` → Copy on the `read` branch only,
   through the audited reveal. `test:read-tiers` 8.22–8.25 (79/79), `red:read-tiers` +4 anchors.
+  ✅ STEP 5 · U20 SHIPPED (`733522d3`, 🔵 — its live check needs an admin session, G11) — the book's list,
+  server-paged, searched by a WHOLE number in any spelling or by name; D19 fixed before it shipped (row-by-row
+  player signals only for a viewer whose identity.contact cell is `read`).
+  ✅ STEP 6 · THE DECISIONS, THEN THE FIRST BUILD TRANCHE (`0dc25b98`, with `006c31bb`, merged with main in `f40b804e`).
+  Two read-only design workflows (U21–U28, then U29–U40: one spec agent per unit, then a critic over each set)
+  found 26 + 29 conflicts between the specs; every one is decided in §9 (A1.1–A1.8, X1–X29, M1–M16), and the calls
+  taken while building are §4's OD47–OD52. Then, each unit adversarially reviewed BEFORE the push (the findings
+  fixed by agents, every fix run here — agents on this laptop run no Node), each with its own in-process red proof:
+  · U24 commit 1 — the ONE resolver: `test:contacts-audience` 37/37, `red:contacts-audience` 15/15;
+    dal-parity §21 (1667/1667; `red:dal-parity` 64/64); a Postgres probe 21/21 after every migration from EMPTY.
+  · U28a + U27a — the field list, the CSV writer, the parsed shape, the Excel limits: `test:contacts-import`
+    78/78 (`red` 82/82), `test:contacts-boundary` 35/35 (`red` 28/28).
+  · U31-A — decide(), the erasure disguise reworked after review (OD47). · U33a — the consent-basis catalogue,
+    DRAFTS until G4 (OD50): `test:marketing-consent` 133/133 (`red` 77/77). · U35a — `SmsPurpose.MARKETING`
+    in its own migration: `test:campaign-models` 4/4 (`red` 3/3). · U37a — the renderer, one campaign
+    one verdict (OD48, OD49): `test:campaign-compose` all 135 checks (`red` 106/106 proofs). · U39a — the estimate:
+    `test:campaign-estimate` 34/34, 0 send requests (`red` 27/27). · U40 — the confirmation's pure rule:
+    `test:campaign-confirm` 46/46 (`red` 48/48).
+  🔴 THE BATTERY CAUGHT WHAT NO SUITE COULD (`006c31bb`): `tsx` strips types without checking them, so a U24 line that
+  did not typecheck passed every suite; the generated Prisma client predated U35a's enum value (production
+  regenerates it on install); and a test file cited a suite that does not exist yet (`test:guards-exist`). And
+  `red:marketing-setup-plan` had stood at 27/28 since S10's own rewrite of the ◐ HALF-DONE line: one plant was
+  anchored on the line's colon and silently stopped applying — re-anchored on the marker in this push (28/28).
+  ⭐ AND A PLATFORM FIX THE SCREENSHOTS FOUND (`006c31bb`): every admin table's zero-row message sat off-centre at phone
+  width wherever its table cannot scroll (`AdminTableEmpty`'s visible-strip cap assumed a padded card) — measured
+  centred on 8 admin pages at 360 and 1280, with an in-page control that puts the old cap back and sees it lopsided.
+  ⚠️ None of these units is ✅ — each is the first part of its row (🟡 on §1), and nothing a player sees changed.
   ⛔ LOCK STARVATION (measured 2026-10-01): `~/heavy-node-lock.sh` waiters poll every 30 s, and a session
   running jobs back to back re-takes the lock within seconds of releasing it — S10's typecheck waited
   40+ minutes without once getting in. S10 ran its battery through the same mkdir protocol polling every
@@ -128,20 +165,14 @@ erasure now withdraws the consent and empties the book, and both data exports ca
   one ("Nitumie ofa na habari za 50pick kwa SMS" 2 hits, the old one 0), on `?dpl=d3379fef…`. A check that
   reads the same before and after proves nothing — this one reverses.
 
-▶ NEXT: THE U21–U28 TRANCHE, IN THE ORDER A DESIGN CRITIC SET (S10 ran a read-only design workflow: one
-  agent per unit verified §9 against the code and wrote a build spec, then a critic cross-checked all eight).
-  ⚠️ The critic found 26 CONFLICTS between the eight specs — three audience resolvers, three tag normalisers,
-  three parser shapes, two cache-mirror copies, limits and labels that disagree — so step 1 is a DOCS-ONLY
-  DECISIONS COMMIT that rewrites §9 for U21–U28 with each conflict resolved, before any code. Then:
-  2a · U24 commit 1 — the ONE resolver (contactAudience), absorbing U21's filter vocabulary, tag counts and
-       U23's ids arm; dal-parity §21; NEW test:contacts-audience (in-process red).
-  2b · in parallel, on disjoint files: U28a (contact-fields.ts, csv-write.ts, sample sheets; the ONE
-       test:contacts-import runner with per-unit section modules) and U27a (the boundary suite, parsed-file.ts).
-  3 · U24 commit 2 — mirrorContactCache: the consent/suppression caches kept in step with the ledger and the
-       stop list by every writer (before the first contact writer, U22).
-  4 · U21 the filter rail · 5 · U22 the add/edit form · 6 · U23 bulk (server + UI in ONE push: orphan-actions).
-  7 · the parser track in parallel with 3–6: U26 vCard, U25 CSV, U27b the XLSX reader · 8 · U28b round trips.
-  The specs are in the S10 scratch directory (not tracked); step 1 folds what matters into §9, which IS tracked.
+▶ NEXT: U24 COMMIT 2 — `mirrorContactCache` (C4): every writer of the consent ledger or the stop list (the opt-out
+  page, the ledger's one append, the profile lift, erasure, the dev seed) refreshes the book row's two caches from the
+  truth, so the consent and suppressed filters and the KPI tiles stop counting a copy nobody updates. It must land
+  before U22 writes the first contact. Then, per C22: U21 the filter rail · U22 the add/edit form (it creates
+  `newContactRow`, X6) · U23 bulk (server + UI in ONE push), with the parser track U26 → U25 → U27b alongside and U28b
+  last; then U29–U40 in the critic's order (§10).
+  ⛔ OWNER GATES STOP THE BUILD (G1–G12 above). ⚠️ G4 now gates the import going live — U32's start action and U33b's
+  panel both reach the draft wordings (OD50) — so asking it early saves a stall at S15/S16.
   ⚠️ VERIFY EACH PREMISE BEFORE BUILDING — this plan's text has been wrong at the start of most sessions.
 
 ✔ LAST SESSION: S8, 2026-09-28 (office PC OMEGA-COMPILE01, worktree `F:/kipindi-s8`, branch `marketing-s8`)
@@ -492,8 +523,9 @@ session, SPLIT IT FIRST and write the split into §2 — do not start and leave 
   signature), and `test:dal-parity` gets a new section with its own planted-key control.
 - Migrations are expand-only. A value added to an **EXISTING enum** (`ALTER TYPE … ADD VALUE`) **ships in
   its own migration one commit before anything writes it** — Postgres refuses to use it in the transaction
-  that adds it (`55P04`, measured at S3b); this binds U35/D22's `MARKETING` and OD9's `UNKNOWN`. A
-  brand-new enum TYPE may be created and used in one migration (U6 did).
+  that adds it (`55P04`, measured at S3b); this bound U35/D22's `MARKETING`, which shipped ALONE as U35a
+  (S10). OD9's `UNKNOWN` is void (no enum migration — §4 OD9). A brand-new enum TYPE may be created and used
+  in one migration (U6 did).
 - Swahili is the DEFAULT player language: every player-facing string is Swahili first. The admin console
   is English chrome with a Swahili gloss on headings only, and ⛔ a `sw` gloss is copied verbatim from
   text already shipped — never invented.
@@ -564,26 +596,26 @@ a Guard key that resolves to a script on disk, `yes` plus the backticked `red:` 
 | U18 | data | ✅ | S9 · S10 | aa2767e9 | there was no contact book, and erasure reached no marketing store — an erased player's sign-up GIVEN decided on Postgres, and neither export had a marketing section → the three tables in both DALs (U18a `fb194038`); erasure appends WITHDRAWN for every number the person consented with (never a stop, so a recycled number's next owner can consent) and empties every book row by link or number; both exports carry the book, the ledger and the stop history from the account's creation, through one allowlist | `test:erasure` · `test:dal-parity` | yes · `red:erasure` (29) · `red:dal-parity` | 2026-10-01 · live: U18a since S9's push (`fb194038`); U18b + both review rounds (`0e68d59e` → `2d4ca3b6` → `aa2767e9`) inside production's `1931d4c3` (proved by DISCRIMINATION: `aa2767e9` absent from the `2d4ca3b6` build, present in `1931d4c3`). No erasure is run on production by a drive (no QA account may be erased), so the behaviour is proven by EXECUTION — `test:erasure` §12, 338/338 |
 | U19 | guard | ✅ | S10 | addf5351 | a contact number had no registry entry, and the ONE mask printed every bare `255…` key as `2557••••01` (the operator digit) — in the SMS refusal audit and the delivery-receipt audit already → `contactPhone` (a CONTACT id, targetType MarketingContact, identity.contact: GROWTH sees `+255••••01` and no control); `maskPhone` reads a bare key as the `+` form, platform-wide; "Copy number" is a reveal through the same audited action, on the `read` branch only | `test:read-tiers` | yes · `red:read-tiers` (35/35, +4) | 2026-10-01 · live on `2d4ca3b6` (proved by DISCRIMINATION: production served `45794cc9` before the push, `2d4ca3b6` after). ⚠️ No live surface to look at yet — no contact exists on production (no writer until U22/U25) — so, like U11, proven by EXECUTION: read-tiers 8.23 runs the mask on a bare key. ⚠️ The export half lands with the export (U34), which must mask through `maskPhone` and name its column (read-tiers 8.9/8.10 are the precedent) |
 | U20 | visual | 🔵 | S10 | 733522d3 | /admin/contacts showed only an empty state and no store could be listed → the book, server-paged (page + summary in both twins), searchable by a WHOLE number in any spelling or by name (never a part of a number), whole-book KPIs, nameless-last sort with an id tiebreak, the page clamp, every number masked, and NO row-by-row player signal for a role that may not read a number (D19, found by the design critic before shipping) | `test:contacts-page` | yes · `red:contacts-page` (8/8, in-process) | awaiting the deploy; drive 65/65 at 1280 + 360 + reduced motion, ghost = real by measurement (KPI band 110/236 px, card top 350/476 px) |
-| U21 | visual | ⬜ | — | — | — | `test:filter-language` | — | filters |
-| U22 | visual | ⬜ | — | — | — | `test:contacts-page` | — | add / edit |
-| U23 | visual | ⬜ | — | — | — | `test:contacts-page` | — | bulk |
-| U24 | engine | ⬜ | — | — | — | `test:contacts-audience` | — | ONE resolver |
+| U21 | visual | ⬜ | — | — | — | `test:contacts-page` · `test:filter-language` | — | filters (RED cell names `red:contacts-page` first, M11) |
+| U22 | visual | ⬜ | — | — | — | `test:contacts-form` | — | add / edit. ⚠️ Residual under D19's own standard (counts allowed, per-row flags not): a masked officer who adds a player's number can see a whole-book count move; the control is U22's per-officer add rate rule and an audit row per add |
+| U23 | visual | ⬜ | — | — | — | `test:contacts-bulk` | — | bulk |
+| U24 | engine | 🟡 | S10 | 0dc25b98 | — | `test:contacts-audience` | — | ONE resolver. Commit 1 landed (`0dc25b98`): `audience.ts`, four DAL members in both twins, the list moved onto it, dal-parity §21, a Postgres probe. Commit 2 (`mirrorContactCache`) is ▶ NEXT. |
 | U25 | pure | ⬜ | — | — | — | `test:contacts-import` | — | CSV |
 | U26 | pure | ⬜ | — | — | — | `test:contacts-import` | — | vCard |
-| U27 | guard | ⬜ | — | — | — | `test:contacts-boundary` | — | XLSX server-only |
-| U28 | pure | ⬜ | — | — | — | `test:contacts-import` | — | one field list |
+| U27 | guard | 🟡 | S10 | 0dc25b98 | — | `test:contacts-boundary` | — | XLSX server-only. U27a landed (`0dc25b98`): `parsed-file.ts` (with `unreadable`), `xlsx-limits.ts` (the exact decoded-size gate, one phone-format remedy), the boundary suite. U27b, the reader, is on the parser track. |
+| U28 | pure | 🟡 | S10 | 0dc25b98 | — | `test:contacts-import` | — | one field list. U28a landed (`0dc25b98`): `contact-fields.ts`, `csv-write.ts`, the sample sheets, the ONE runner with per-unit section modules. U28b (round trips) is last. |
 | U29 | data | ⬜ | — | — | — | `test:dal-parity` | — | staging |
 | U30 | visual | ⬜ | — | — | — | `test:contacts-import` | — | pre-flight |
-| U31 | engine | ⬜ | — | — | — | `test:contacts-import` | — | decide() |
+| U31 | engine | 🟡 | S10 | 0dc25b98 | — | `test:contacts-import` | — | decide(). U31-A landed (`0dc25b98`): the pure rule, the erasure disguise (OD47). U31-B (the facts loader) and the UI come with U30. |
 | U32 | visual | ⬜ | — | — | — | `test:contacts-import` | — | progress = rows |
-| U33 | engine | ⬜ | — | — | — | `test:marketing-consent` | — | basis at import |
+| U33 | engine | 🟡 | S10 | 0dc25b98 | — | `test:marketing-consent` | — | basis at import. U33a-catalog landed (`0dc25b98`): DRAFT wordings until G4, Option A (OD50). The engine and the panel follow. |
 | U34 | guard | ⬜ | — | — | — | `test:contacts-export` | — | export |
-| U35 | data | ⬜ | — | — | — | `test:dal-parity` | — | campaign models |
+| U35 | data | 🟡 | S10 | 0dc25b98 | — | `test:dal-parity` | — | campaign models. U35a landed (`0dc25b98`): `SmsPurpose.MARKETING` in its OWN migration, ahead of any writer; `test:campaign-models`. U35b (the tables) follows. |
 | U36 | visual | ⬜ | — | — | — | `test:admin-nav` | — | list + badge |
-| U37 | visual | ⬜ | — | — | — | `test:campaign-compose` | — | composer |
+| U37 | visual | 🟡 | S10 | 0dc25b98 | — | `test:campaign-compose` | — | composer. U37a landed (`0dc25b98`): the one renderer (OD48, OD49). U37b (the page, save, the test send) follows. |
 | U38 | visual | ⬜ | — | — | — | `test:campaign-audience` | — | audience |
-| U39 | visual | ⬜ | — | — | — | `test:read-tiers` | — | estimate |
-| U40 | guard | ⬜ | — | — | — | `test:campaign-gates` | — | confirm |
+| U39 | visual | 🟡 | S10 | 0dc25b98 | — | `test:read-tiers` | — | estimate. U39a landed (`0dc25b98`): the price from the difference of two delivered reads, the model, the server loader; `test:campaign-estimate`. U39b (the card) follows. |
+| U40 | guard | 🟡 | S10 | 0dc25b98 | — | `test:campaign-gates` | — | confirm. U40-pure landed (`0dc25b98`): the confirmation's one rule; `test:campaign-confirm`. U40a (server) and U40b (UI) follow. |
 | U41 | guard | ⬜ | — | — | — | `test:campaign-gates` | — | officer authorisation (reconcile with the single-admin ruling first, §9 U41) |
 | U42 | engine | ⬜ | — | — | — | `test:marketing-engine` | — | enqueue |
 | U43 | engine | ⬜ | — | — | — | `test:marketing-engine` | — | the slice |
@@ -596,6 +628,11 @@ a Guard key that resolves to a script on disk, `yes` plus the backticked `red:` 
 | U50 | guard | ⬜ | — | — | — | `test:cert-c1` | — | registry + boot |
 | U51 | docs | ⬜ | — | — | — | `test:docs` | — | the operator's guide |
 | U52 | live | ⬜ | — | — | — | `test:marketing-engine` | — | live drive + Seal |
+
+⚠️ **Three ⬜ Guard cells above are superseded until their rows ship (decisions C14 · M11, 2026-10-01):** U21's guard
+is `test:contacts-page` · `test:filter-language`, and its RED cell must name `red:contacts-page` FIRST; U22's guard
+is `test:contacts-form`; U23's is `test:contacts-bulk`. §9 carries the full text; each unit rewrites its own row
+when it ships.
 
 **Defects this programme closes** (detail in §8):
 
@@ -618,7 +655,7 @@ a Guard key that resolves to a script on disk, `yes` plus the backticked `red:` 
 | D15 | U15 | ⬜ | `invite-service.sendCampaign` is a second, ungated send path holding `withLock` across sends |
 | D16 | U16 | ⬜ | new PII stores would sit outside erasure and retention, as `SmsMessage` already does |
 | D17 | U17 | ⬜ | a new admin section is five doors; missing one renders it to the Owner alone |
-| D18 | U27 | ⬜ | no admin uploader, no CSV parser, and a 1 MB server-action ceiling |
+| D18 | U30 | ⬜ | no admin uploader, no CSV parser, and a 1 MB server-action ceiling — owned by U30 (the uploader) since 2026-10-01; U25 and U27 close the other two clauses |
 | D19 | U30 | ⬜ | a pre-flight that says "400 of these are players" is a membership oracle |
 | D20 | U45 | ⬜ | `sendBatch` updates `SmsMessage` rows one at a time — 10k serial UPDATEs for a 10k campaign |
 | D21 | U46 | ⬜ | the DLR route fans out to `InviteEntry` only — receipts now arrive (§3a), and a campaign recipient has nowhere to receive one |
@@ -645,7 +682,7 @@ a Guard key that resolves to a script on disk, `yes` plus the backticked `red:` 
 
 | Session | Date | What happened |
 |---|---|---|
-| S10 | 2026-10-01 | **IN FLIGHT (Ali-Blade15, `marketing-s10`). U18b SHIPPED `0e68d59e` + review rework** — erasure withdraws the consent for every number the person is known by (no stop: a recycled number's next owner can consent) and empties the book (by link AND by number); both exports carry marketing from the account's creation (`test:erasure` 226 → 335; §8's sweep gained the bare-key needle). Before it: Ali: *"proceed with other sessions in parallel, push live, prove it"*. Found §0 three days stale: S9 had shipped U17 + U18a and closed no docs — the board was rebuilt from the two commits (🔎 S9 in §0). ✅ **The consent tie FIXED** on Ali's standing delegation of technical calls: one ledger clock (`ledger-stamp.ts`), both writers stamped; 400 back-to-back appends, 390 sharing a millisecond — the pre-fix writer wrong 249 times, the fix 0; `test:marketing-consent-ledger` §9/§10 (16/16 red) and `test:dal-parity` §20 (`red:dal-parity` 56/56). U18b's first cut was then REFUTED by a review agent before the push (an unliftable stop on recycled numbers; an export that leaked a previous holder's history; two sweep buckets that could not fail; a tombstone read as a stranger's number) and reworked — §0 STEP 2. U19 shipped (`addf5351`, ✅), `red:rbac` (`be0a82ac`). U18 ✅ (`aa2767e9`, round 2 of the review). U20 shipped (`733522d3`): the list, with D19 fixed before it shipped. A design workflow then specced U21–U28 (8 spec agents + a critic: 26 conflicts to resolve first). |
+| S10 | 2026-10-01 | **IN FLIGHT (Ali-Blade15, `marketing-s10`). U18b SHIPPED `0e68d59e` + review rework** — erasure withdraws the consent for every number the person is known by (no stop: a recycled number's next owner can consent) and empties the book (by link AND by number); both exports carry marketing from the account's creation (`test:erasure` 226 → 335; §8's sweep gained the bare-key needle). Before it: Ali: *"proceed with other sessions in parallel, push live, prove it"*. Found §0 three days stale: S9 had shipped U17 + U18a and closed no docs — the board was rebuilt from the two commits (🔎 S9 in §0). ✅ **The consent tie FIXED** on Ali's standing delegation of technical calls: one ledger clock (`ledger-stamp.ts`), both writers stamped; 400 back-to-back appends, 390 sharing a millisecond — the pre-fix writer wrong 249 times, the fix 0; `test:marketing-consent-ledger` §9/§10 (16/16 red) and `test:dal-parity` §20 (`red:dal-parity` 56/56). U18b's first cut was then REFUTED by a review agent before the push (an unliftable stop on recycled numbers; an export that leaked a previous holder's history; two sweep buckets that could not fail; a tombstone read as a stranger's number) and reworked — §0 STEP 2. U19 shipped (`addf5351`, ✅), `red:rbac` (`be0a82ac`). U18 ✅ (`aa2767e9`, round 2 of the review). U20 shipped (`733522d3`): the list, with D19 fixed before it shipped. A design workflow then specced U21–U28 (8 spec agents + a critic: 26 conflicts to resolve first), a second one U29–U40 (29 more); all decided into §9, and the calls taken while building are OD47–OD52. Then the first build tranche, `0dc25b98` (+ `006c31bb`, merged in `f40b804e`): U24 commit 1 (the ONE resolver), U27a, U28a, U31-A, U33a, U35a, U37a, U39a, U40-pure — every unit reviewed adversarially before the push, every fix run here. The merged-tree battery: typecheck, 38 suites, every red proof, the three repo-mutating harnesses, Postgres from empty, the pages rendered and driven, `next build`. All 🟡 — first parts. |
 | S9 | 2026-09-28 | **RECONSTRUCTED BY S10 from `7bef9f97` and `fb194038` — the session wrote no row.** U17 shipped (six doors, `test:rbac` §7b, `test:admin-nav` into `predeploy`, the skeleton equal by construction) and U18a shipped (three tables, both DALs, `test:dal-parity` §19, 8 red cases, the migration proven from EMPTY on PostgreSQL 18.3). Both LIVE that day. U18b (erasure / retention / export) was named as owed, and §1 deliberately left unticked. |
 | S8 | 2026-09-28 | **S7c WENT LIVE — `d3379fef`. No unit ticked (12/52 units, 12/25 defects); the session was the ship itself.** Ali: *"ship it first"*, then *"end session here, mark progress, clean stales"*. Own worktree `F:/kipindi-s8` off `origin/marketing-s7c`, real `npm ci` (⛔ no junction), merged `origin/main` — which moved **three times** during the session, 23 → 54 → 4 commits, because the landing lane was pushing in parallel. ⭐ **Proven by:** typecheck; `npm run build`; every marketing / SMS / DAL / RG / comms suite; all ten red controls (`red:dal-parity`, `red:rg-doors`, `red:marketing-consent`, `red:marketing-consent-ledger`, `red:marketing-optout`, `red:campaign-compose`, `red:sms-cost-guard`, `red:rg-policy`, `red:support-contact`, `red:marketing-setup-plan`); 90 screenshots at 0px overflow, OPENED AND READ (ten SMS-credit states × two widths, /s error + busy, consent HELD ×3 languages, /help FAQ 5, register consent); and the live proof by DISCRIMINATION — /auth/register served "Nipe matangazo" before the push and "Nitumie ofa na habari za 50pick kwa SMS" after, on `?dpl=d3379fef…`. ⭐ **Fixed before the push:** (1) the nine `since` dates said 2026-09-27 for a batch shipping on the 28th — corrected and the append-only hash re-pinned (`9b041893ec43a670` → `718250ee6e8280ed`) only after proving production had never shown those sentences AND that the guard still fails on an EDIT and a REMOVAL; (2) three guards cited by SCRIPT FILE instead of `package.json` key (`test:dev-route-guard` → `test:cert-devroutes`, `test:stacking-contract` → `test:stacking`), which had `test:guards-exist` RED for every lane, one of them already on main. 🔴 **The trap that nearly shipped a regression:** the first `git merge origin/main` took a STALE ref — a parallel session's fetch moved `refs/remotes/origin/main` mid-command — and silently dropped the landing lane's `FIRST_LICENSED_EVIDENCE`; the redone merge was verified per file against the merge base, and the i18n dictionary leaf by leaf (98 ours / 158 main's / 30 deletions honoured / 0 wrong) with a planted defect to prove the checker could fail. ⚠️ Red elsewhere, not ours: `test:stacking` 6.1 (LIVE strip `z-index: 11`) and `test:red-anchors` (two rotted anchors in other lanes) — each byte-identical to `origin/main`. 🔴 **Instrument lessons:** a suite that flakes once and passes 3× is pointing at a real race (here the `latestFor` tie — see ◐ HALF-DONE); a nested drive's failure (U8 BUSY, 1/266) vanished at 266/266 standalone twice, because the opt-out budget refills 1 per 6 s; and a viewport TILE froze a scroll position that made the consent HELD card look obstructed, while a per-painted-line measurement showed it clear in all three languages. |
 | S7c | 2026-09-26 → 27 | **THE END-TO-END REVIEW OF EVERYTHING LIVE, AND ITS FIXES — no unit ticked (12/52 units, 12/25 defects); §10 reordered on Ali's approval so the contacts book is next.** Ali: *"make sure it's all end to end perfect, visually, logically, no screen is weak, nothing lacking."* ⭐ **The method:** every marketing screen photographed on production and on a local build (1280 and 360, three languages), then an adversarial review — eight lenses (three visual, four logic, one docs/prompt), each finding handed to a second agent told to REFUTE it: 99 of 105 survived. The fixes were written by parallel agents on disjoint files that ran NO Node (this laptop's RAM fails under load and other sessions hold the heavy-node lock for long stretches), then one copy pass wrote every string in en/sw/zh, then the suites ran serially on the merged tree. A SECOND review of the fixes (four visual lenses over fresh captures, two code lenses over the diff) confirmed 42 of 54 more, no blockers; fixed the same way. ⭐ **What changed for a person:** the consent names SMS in one noun everywhere and the ledger stores the sentence in the language actually shown (rows written 2026-09-25 → 27 say SW whatever was seen — append-only, so they stay); OQ11's safe default (an old "product updates" yes no longer counts; no backfill); the toggle shows EFFECTIVE consent and is held during a break or self-exclusion; the gate refuses a KYC final refusal (an UNDERAGE refusal used to pass on the self-typed date of birth); the opt-out page is a minimal shell whose heading follows the state and whose resume records its own consent sentence; a stronger stop now takes over a person's own and `lift` lifts only a person's own (both DALs — U16's owed half, done); Admin → System's card headlines the SMS CREDIT with the state and the reason in words and alarms the Owner at the alert line AND the floor (bell + email, never SMS). ⭐ **Proven by:** typecheck; every marketing, RG, SMS, DAL and comms suite; the red controls (`red:dal-parity`, `red:rg-doors`, `red:marketing-consent`, `red:marketing-consent-ledger`, `red:marketing-optout`, `red:campaign-compose`, `red:sms-cost-guard`, `red:rg-policy`, `red:support-contact`, `red:marketing-setup-plan`), each catching every plant; and the screens re-photographed and read. 🔴 **Instrument lessons:** (1) a stale `.next` made every `/api/dev-test/*` route 404 on `next dev`, so a capture photographed the admin SIGN-IN page as "the SMS card" with a green exit — ⛔ `rm -rf .next` before every dev run; (2) `red:marketing-optout`'s baseline raced a fire-and-forget audit write (S22 now polls); (3) the stopped first fix run's agents were waiting on another session's lock for an hour — static-only agents plus one serial battery is the shape that works here. ⚠️ Red elsewhere, not ours: `test:stacking` 6.1 (z-index 11 from the landing lane's LIVE strip), two rotted `test:red-anchors` anchors in other lanes, and `red:feedback-law`'s updown anchor. |
@@ -969,7 +1006,7 @@ is decided, with what it rules out. They are not questions.
 - **OD9 · An imported contact is marketable only when BOTH hold**: a `MessagingConsent{GIVEN}` row with
   the **verbatim wording** the person was shown, **and** a first-party basis (our own form, our own
   event, our own agent roster — the person gave us the number). ⛔ A bought or third-party list is
-  STORED and never marketed; its rows carry `UNKNOWN` and the audience query cannot return them. ⚠️ **`UNKNOWN` IS NOT IN THE SHIPPED ENUM.** U6 shipped `MessagingConsentStatus` as `GIVEN | WITHDRAWN`, because those are the only two states anything writes today. Adding `UNKNOWN` is a value on an EXISTING enum, which Postgres refuses to use in the transaction that adds it (`55P04`, measured on 18.3) — so it must ship in its OWN migration ONE COMMIT before U33 writes it.
+  STORED and never marketed; its rows carry `UNKNOWN` and the audience query cannot return them. ⚠️ **`UNKNOWN` IS NOT IN THE SHIPPED ENUM.** U6 shipped `MessagingConsentStatus` as `GIVEN | WITHDRAWN`, because those are the only two states anything writes today. Adding `UNKNOWN` is a value on an EXISTING enum, which Postgres refuses to use in the transaction that adds it (`55P04`, measured on 18.3) — so it must ship in its OWN migration ONE COMMIT before U33 writes it. ✅ **CORRECTED 2026-10-01 (S10, U33a; decisions X5 · X23): the premise is void and no enum value ships.** A bought or third-party list writes NO ledger row at all, so `MessagingConsentStatus` stays `GIVEN | WITHDRAWN`; `UNKNOWN` lives only on the book row's cache (`ContactConsentState`, U18a), and the gate refuses a number with no GIVEN row exactly as before.
 - **OD10 · Consent can never be granted by a file.** No column alias, no checkbox, no import path may set
   consent to granted; a withdrawn row can never be re-granted by a spreadsheet. ⛔ Un-buildable, not
   defaulted off.
@@ -977,8 +1014,10 @@ is decided, with what it rules out. They are not questions.
   contact deletion, not by re-import, not by an officer. Deleting one re-permits marketing to someone who
   said stop. *(Since U8/S5 a row may be SUPERSEDED — `liftedAt` — and since 2026-09-26 only by the person's
   own act on a stop the person made, reason `WITHDRAWN`: the `/s/` resume or the profile toggle ON. A
-  COMPLAINT, OPERATOR or SELF_EXCLUSION row is never lifted by the person. ⚠️ The DAL half — re-arm
-  precedence and a reason filter on `lift` — is owed before U16/U23, §0 ⚠ RECORDED.)*
+  COMPLAINT, OPERATOR or SELF_EXCLUSION row is never lifted by the person. ~~⚠️ The DAL half — re-arm
+  precedence and a reason filter on `lift` — is owed before U16/U23, §0 ⚠ RECORDED.~~ ✅ 2026-10-01: that DAL
+  half LANDED in S7c — the re-arm precedence and the WITHDRAWN-only `lift` in both twins, guarded by
+  `test:dal-parity` 17.supersede / 17.liftreason — so it gates neither U16 nor U23 (decision M9).)*
 - **OD12 · Marketing suppression on self-exclusion uses `selfExclusionStanding`, never `isLockedOut`**,
   and treats any self-exclusion as lasting at least six months (GN 478T reg 48(3)), lifted only by an
   officer restore **plus** a fresh consent after restoration. ⛔ `isLockedOut` itself is not modified.
@@ -1092,6 +1131,27 @@ is decided, with what it rules out. They are not questions.
   Cybercrimes Act offence.
 - **OD46 · `HOW-TO-SEND-A-CAMPAIGN.md` is written for Ali in plain words**, by the session that ships the
   live page, and an operator who did not write it follows it once before the Seal.
+- **OD47 · An erased number is indistinguishable in the import preview** (S10, U31-A, after review). Every decision
+  carries `shown` — what a browser may see — beside `reason`, the server's truth. An erased row shows exactly what an
+  ordinary in-book contact holding the file's own values would (keep → "kept, your choice"; take the file's version or
+  fill blanks → "no change"), and like any number it still shows "on the stop list" and "repeated in this file" — a
+  disguise that dropped those two would itself be the tell. No preview or plan carries a contact id. The server's own
+  count still says erased.
+- **OD48 · One campaign, one verdict** (S10, U37a). Before any recipient's message the renderer re-runs the WHOLE stored
+  template's check — both languages, the worst-case counter, the fallbacks, the source-line rules — and refuses every
+  recipient if any part fails. Never a half-sent campaign whose confirmation counted people who were then refused.
+- **OD49 · The source phrase is the footer's own line, capped, and priced in while blank** (S10, U37a; OQ3 / G5). At most
+  30 septets; while it is blank the composer reserves that room, so the officer's single-message room is 80 characters
+  until G5 supplies the wording (then 111 minus the phrase and its space). A BOOK contact is refused at render while the
+  phrase is blank; an account recipient is not. A blank phrase is not a save error — a players-only campaign saves and
+  sends.
+- **OD50 · Draft consent wordings reach nothing in production** (S10, U33a, Option A). While the catalogue reads DRAFT
+  (until G4), no production entry — any `src/app` file, any `"use server"` module, the boot hook and the proxy — may
+  import the catalogue or a draft writer, directly OR through its imports (a commit action that calls a helper that
+  calls the writer counts). The gate may read the catalogue; an uncalled writer and its in-memory tests may land.
+- **OD51 · `test:read-tiers` joins `predeploy` at U29b** (M10), not U30 (X26) — the earlier of the two.
+- **OD52 · The masked contacts export drops `source` AND `consent`** (X11 with A1.1: until U33 a recorded consent can
+  only come from a player, so it is a player signal like the source).
 
 ### §4a — The eleven legal questions (each with the safe default that is BUILT)
 
@@ -1276,7 +1336,9 @@ text. The one-line summaries are in §1; what follows is what each one actually 
   guard is structural: grep the schema for phone/e-mail columns and require each owning model to appear
   in both files or be listed with a reason. **U16**
 - **D17 · Five doors** (§5.9). **U17**
-- **D18 · No admin uploader, no CSV parser, 1 MB actions.** **U27**
+- **D18 · No admin uploader, no CSV parser, 1 MB actions.** Three defects in one: U25 builds the parser and U27
+  derives a 700 KiB XLSX cap under the 1 MB ceiling, but the uploader — the first admin file entrance, with the XLSX
+  action beside its caller — is U30's, so the defect closes there (re-owned 2026-10-01, decision C26). **U30**
 - **D19 · A pre-flight that reports which numbers are players is a membership oracle** for a role that
   may not read a number at all. **U30**
 - **D20 · `sendBatch` updates `SmsMessage` rows one at a time** — and the patch is identical for every row
@@ -1447,8 +1509,10 @@ number back; still 49 septets. *(Was, at S2: "the helpline here is deliberately 
 `support-config.ts` publishes, and §12 asserts that they DIFFER" — correct while OQ4 was open, and ⛔ no
 longer a rule: making the two differ again is now the defect.)*
 ⚠️ **OQ3 is priced rather than argued about:** `operatorBudget(locale, sourcePhrase)` takes the source
-phrase, and with a realistic one the budget falls from 111 to **85**. If the lawyer's answer is "in the
-body", that is the number the composer will show.
+phrase, and with a realistic one the budget falls from 111 to **84** (re-derived 2026-10-02 from the suite's own
+output, "budget 111 without a source phrase, 84 with one"; the 85 here was off by one). If the lawyer's answer is "in
+the body", that is the number the composer will show. Until G5 answers, the composer reserves the longest allowed
+phrase (30 septets), so it shows **80** (§4 OD49).
 **Guard:** `test:campaign-compose` §9–§12. **RED:** `red:campaign-compose` — the composer sizing the
 BODY while the engine sends body + footer (every quote short by 49 septets: a 147-character body reads
 as one message and sends as two); the identity check dropped; the footer made optional; the opt-out
@@ -2071,206 +2135,782 @@ through `parseTzNumber`** so `0712 345 678`, `712345678` and `+255712345678` all
 copy, with the clear-filter action) · error (`AdminLoadError`, never a zero).
 **Accept:** page 4 of a 3-row result renders row 1–3, not "no matches".
 
-**U21 · Filters** — `contact-filters.tsx`
-One rail of `FilterPill rank="dense"`: consent · reachability · operator · list · tag · source, all in the
-URL. ⭐ The operator pill's value is a **brand**, expanded to its NDC set by the one table — a hand-written
-NDC array on the page would be the second list.
-**Guard:** `test:filter-language`. **RED:** add an undeclared rail → §0.4 red.
-**States:** loading · none applied · applied · in-progress (n/a) · no-match with the rail STILL rendered ·
-error. ⛔ An empty filter that removes its own controls is a known trap here.
+**U21 · Filters** — `contact-filters.tsx`: a rail over U24's resolver, UI only (decisions C1 · C2 · C9 · C13 · M11 · A1.1)
+One server-rendered rail of `FilterPill rank="dense"`, six axes: consent · suppressed · operator · source · list · tag.
+⛔ U21 turns no filter into a query (C1): U24's `parseContactAudienceParams` reads the URL and `contactAudience` runs
+it; the rail draws what is applied and builds every pill and Clear filters through C9's ONE href builder,
+`contactsHref`. URL per C2 — `consent`, `suppressed`, `op`, `list`, `tag`, `source`, multi-valued as a comma list —
+plus U24's recorded extension (`player`, `import`, `range`/`from`/`to`), for which the rail draws NO axis: an applied
+one shows as one selected, clearable pill, and Clear filters removes it. An unknown value is refused by the loader
+(C8) and the page shows the refused state with Clear filters, never a wider table.
+🔴 **D19 / A1.1 — the rail is role-shaped.** There is NO player axis, for any viewer. For a viewer whose
+identity.contact cell is not `read`, the Consent and Source axes are NOT rendered, and a typed `?consent=`,
+`?source=` or `?player=` is REFUSED by U24's loader with the role refusal ("This filter isn't available to your
+role.") BEFORE any row is read: Source "Sign-up" means the number came with an account, and until U33 a GIVEN or
+WITHDRAWN consent can only come from a player or an erasure, so either axis answers "is this a player?" for a number
+the viewer typed. Whole-book KPI counts stay (a count over the book is not a per-number answer). Readers (`read`) see
+all six axes. ⚠️ Corrected premises: (1) no "reachability" axis — Reachable is the send gate asked per row (RG, KYC,
+age, account), which no column equals; the axis is **Suppressed**, over the `suppressedAt` cache U24 commit 2 keeps
+honest (so U21 lands after that commit, C22). (2) The operator value is the licensee ID (`?op=VODACOM`), never the brand (Tigo became Yas in 2024): label
+`TZ_OPERATORS[id].brand`, prefixes from C10's `ndcsForOperator`, and the Operator COLUMN reads `operatorBrand(c.ndc)`
+only — never the stored `operator` string, which could read "Tigo" under the Yas pill. (3) Nothing writes a list or
+a tag yet, so those axes render only when options exist OR a value is applied; an applied value is always a
+selected, clearable pill ("Unknown list"; a tag outside the top 20 is appended), grouped by U28's `tagKey` (C11),
+counted by U24's `tagCounts` (M8). CONSENT/SOURCE labels move from `page.tsx` to `contacts-copy.ts` once; UNKNOWN
+reads "Not recorded" (C13). Rail and search strip are gated on `!emptyBook` alone, never the match count; a failed
+read draws the rail from the URL, so the filter stays visible (§5.15). `contact-filters.tsx` and its
+`filter-language` ADMIN_SURFACES entry land in ONE commit.
+**Guard:** `test:contacts-page` (C14 — rail model, hrefs, the rail surviving no-match, the Operator column, the
+role-shaped rail) · `test:filter-language` (the declaration; dense rank 1 of 1).
+**RED:** `red:contacts-page` FIRST (M11; in-process): a masked viewer with `?source=REGISTRATION` or `?consent=GIVEN`
+gets rows, or sees the Consent or Source axis drawn, instead of the role refusal (A1.1); a hand-typed 2020-edition
+operator map (Vodacom without 72), pills keeping `page` or dropping the search, only the top-N tags drawn, the rail
+gated on rows, the column reading `c.operator`. Then `red:filter-language` +2 (rail undeclared → §0.4; dense rank
+removed → §6.6) — it WRITES real files: run it detached under the heavy-node lock, alone, then `git status`.
+**States:** loading · none applied · applied (one axis; combined, paged and re-sorted) · in-progress (n/a) · no-match
+with the rail STILL rendered (Clear filters keeps search and sort) · refused (the value named) · refused (role — the
+filter would show which numbers are players; Clear filters) · error (the rail still shows the filter) · empty book
+(no rail, no search).
+**Accept:** page 2 of `?op=VODACOM&tag=vip` sorted by name still carries both filters and the sort; the KPI band is
+the whole book under every filter; `?op=NOKIA` shows the refused state; a GROWTH (masked) session sees no Consent or
+Source axis, and its `?source=REGISTRATION` shows the role refusal with no row read.
 
-**U22 · Add and edit one contact** — `contact-form.tsx` in a `Modal`
-`PhoneInput`; a live verdict under the field on every keystroke (operator `Chip` as soon as two digits
-land; one sentence for every refusal); duplicate check on blur that offers **"Open the existing
-contact →"**. ⛔ There is no "save anyway" — `msisdn` is unique and a button that violates a constraint is
-a button that lies. Consent defaults to **"No consent recorded"**.
-**Guard:** `test:contacts-page`. **RED:** default consent to granted → red.
-**States:** loading · blank · typing (chip + verdict) · saving · refused (duplicate / invalid) · error.
+**U22 · Add and edit one contact** — `contact-form.tsx` in a `Modal` (decisions C3 · C4 · C9 · C11 · C12 · C24 · C25 · M5 · M12 · A1.1 · A1.7)
+⛔ **No consent control** — nothing lawful can be chosen: a contact needs OD9's basis and an 18+ attestation, which
+only U33 builds. The dialog states Consent **"Not recorded"** (the list's label, C13): "This form never records
+consent; a contact with no consent recorded is never sent marketing." No consent key in the request, NO ledger row
+(dal-parity §20's comment naming U22 a writer is reworded); the row's caches come from U24's `mirrorContactCache`
+(C4). 🔴 **D19 / A1.1 — the mirrored consent is a player signal.** Until U33 a GIVEN or WITHDRAWN ledger row can only
+come from a player (sign-up, profile, opt-out) or an erasure, so for a viewer whose identity.contact cell is not
+`read` the post-save consent chip, and any mirrored consent in the edit dialog, is NOT rendered: that viewer sees the
+form's own sentence above and nothing per-number (the list's Consent cell and `?consent=` are already closed to them,
+U24 commit 1 and U21). Readers see the mirrored value. `PhoneInput` gains three ADDITIVE props — `onPasteRaw` (a pasted `+254…` is judged before truncation, never
+called a Mbeya landline), a forwarded ref (the Modal focuses the number, not ✕), a caller's `title` winning — and
+the form is `noValidate`. A pure `src/lib/contacts/contact-number.ts` (pinned, M3) gives the live verdict: the
+operator `Chip` at two digits from C10's `ndcRow`, "4 of 9 digits" while typing, too-short only once settled, 064
+refused at two digits, every sentence `parseTzNumber`'s own. ⛔ No "save anyway": the unique index IS the duplicate
+check — a create returning null (a race included) is a refusal carrying the existing id. "Open the existing
+contact →" opens `?edit=<contact id>` through `contactsHref`, to which U22 adds `edit` as an explicit patch key
+(additive; C9, M12: filters ride along; `edit` is never carried forward from `sp`, so it never reaches SortTh,
+pagination or the SearchBox, and the dialog's close link is `contactsHref(sp)` without it; a cuid travels, never a
+number). The create goes through the ONE builder `newContactRow` (`src/lib/server/contacts/contact-write.ts`, X6 — U22
+creates it; U31, U32 and U33 reuse it), then `mirrorContactCache` for the new row's caches. It never sets `userId` —
+never linked to a player, even when one holds the number — and a player's duplicate shows the same sentence and the
+same Open link as any other (D19). ⛔ **Erased rows (C3, A1.7).** Adding
+an erased number (`sourceRef = "erasure"`) refuses with "This number can't be added to the book." and opens NOTHING —
+the refusal payload carries NO id. To `?edit=` an erased row is MISSING: the edit loader and `editContact` treat
+`sourceRef = "erasure"` as not found (`CONTACT_MISSING`), so no officer can write a name back onto an erased
+person's number — the U22 spec's case that let an erasure-emptied row be edited (its 15.1) is REVERSED and must
+refuse. Fields: Name, Email, Notes, Tags — limits from U28's ONE table (C12), tags through
+`splitTags`/`tagKey` (C11); a stored email renders only through `<Sensitive field="contactEmail">`, a NEW registry
+entry masked like `email`, re-read by contact id (M5). Edit is compare-and-set: `updateIfUnchanged` in both twins,
+writing an EXPLICIT `updatedAt` (C25), never touching the number, `sourceRef`, link, caches or created-by.
+`contact-form-actions.ts` (C24): `softRequireStaff("growth", …)`, per-officer rate rules, every field re-typed, an
+audit row with the MASKED number and field names only. "Add contact" sits in the page head, disabled with its
+reason when the role cannot act (never hidden); the loading ghost reserves its box.
+**Guard:** `test:contacts-form` (C14 — NEW, in `predeploy`, in-process `--prove-red`) · `test:dal-parity` §22 (C7).
+**RED:** `red:contacts-form` — default consent to granted → red (the plan's own); also a spread client draft, a
+constant cache, the number stored as typed, lookup saying "is a player", last write wins, an ungated action, a
+"save anyway" button, a masked viewer adding a seeded player's number and reading "Given" (A1.1), `?edit=` of the
+erased fixture opening the dialog (A1.7), the erased refusal carrying an id. `red:dal-parity` §22: the Prisma where
+loses `updatedAt`; the memory twin loses its compare.
+**States:** loading · blank · typing (chip + verdict) · checking (duplicate lookup held) · saving · saved (toast,
+the row first) · refused (duplicate / invalid / erased / stale / missing — an erased row included / act gate /
+rate-limited) · error.
+**Accept:** `0712 345 678` then `+255712345678` leaves ONE row and a duplicate refusal with its link; for a reader, a
+number whose ledger says WITHDRAWN is added reading "Withdrawn" (the mirror), while a GROWTH (masked) session adding
+a seeded player's number sees no consent value at all; the form wrote zero ledger rows; `?edit=` of the erased
+fixture shows the missing refusal.
 
-**U23 · Selection and bulk** — the bar
-Selection is a `Map<id,row>` (rows, not ids), and "select all N matching" stores the **filter**. Actions:
-add to list · tag / untag · record consent · suppress · export · remove. Confirmations **enumerate** (name
-+ masked number, first 20 + "and N more") below 50, and take a typed word above 50 or when the audience is
-a filter — ⚠️ re-enforced **server-side**. Toasts report server-counted results ("2,981 tagged · 431
-already had it").
-**Guard:** `test:contacts-page`. **RED:** confirm from a client-supplied count → the server must refuse.
-**States:** loading · none selected · selected (bar) · acting (overlay) · refused (act gate, with the
-reason in `title`, never hidden) · error.
+**U23 · Selection and bulk** — the bar (decisions C3 · C4 · C5 · C6 · C11 · C23 · C24 · M4 · M10)
+Selection is a `Map<id, row>` of server-projected rows `{ id, name, masked }` (masked for every role; no `msisdn`
+reaches the client), or "select all N matching", which stores the FILTER. Both travel as U24's audience JSON (C6:
+`parseContactAudienceJson`, ticks as the `ids` arm, ≤ `MAX_AUDIENCE_IDS` = 1,000, `[]` = nothing); every count is
+`contactAudience(f).count()` (U23 joins U24's READERS) and every audit row describes it with `auditContactAudience`.
+Erased rows are in no audience (C3). Actions: tag · untag · add to list (existing, or a new name ≤ 60 characters; a
+case-insensitive duplicate is refused) · record a withdrawal · suppress · remove. ⚠️ Corrected: no staff "record
+consent" (no wording, basis or 18+ attestation until U33, which adds "Given" to this bar), and export is U34's,
+posting the same JSON. A tag runs U28's ONE rule (C11), so a bulk "VIP" is stored as the form stores it. Up to 50
+ticked rows ENUMERATE from the server preview (first 20, masked, "and N more"); above 50, or ANY filter audience, the
+typed word is the SERVER's recomputed count — the run recounts and refuses `confirm_required` / `confirm_mismatch`
+with the new count (OD27/OD28). Tag, untag, list and remove are SET-BASED over the resolver's where (`tagWhere`,
+`untagWhere`, `removeWhere` — the memory twin cascades members and frees the number's index — and `addWhere`).
+Withdraw and suppress write per number, capped at 1,000 (refused above with the reason; re-measure p95 after the
+deploy). Withdraw appends WITHDRAWN (source OPERATOR, a fixed officer wording, `...ledgerStamp()`; a fourth §20
+writer), turns a player's toggle off only through `syncPlayerToggle(…, actor)` (C5), and calls `mirrorContactCache`
+(C4, M4); `contact-bulk.ts` joins U24's CACHE_WRITERS (M4). A filter audience POSTed by a masked role is refused
+`consent`, `source` and `player` exactly as the URL is (U24, A1.1), so a forged body cannot turn the recount into a
+player oracle. ⚠️ Suppress writes an OPERATOR stop NOBODY can lift — not the person, not a recycled number's next owner
+(C23/M13; Ali may rule otherwise, §0 ❓ FOR ALI) — and the confirmation says so in words. The old warning that the
+DAL would let a person's stop link lift it is struck: the re-arm precedence and the WITHDRAWN-only lift shipped in
+S7c. Server and UI ship in ONE push (M10, `test:orphan-actions`): `contact-bulk-actions.ts` (C24), the pure
+`src/lib/contacts/bulk-rules.ts` (pinned, M3), `contact-bulk.ts`, the bar, a select column (+1 to both column counts).
+**Guard:** `test:contacts-bulk` (C14 — NEW, in `predeploy`, in-process `--prove-red`) · `test:dal-parity` §20 / §23 (C7).
+**RED:** confirm from a client-supplied count → the server must refuse (`red:contacts-bulk`; also a reused preview
+count, a filter treated as ticks, a person-liftable suppress, a cascade-less memory remove, a raw search in the audit,
+a masked role's POSTed `sources` audience answered with a count).
+**States:** loading · none selected · selected (bar; rows across pages / all N matching) · confirming (enumerate /
+typed) · acting (overlay) · done (server-counted toast) · refused (act gate, reason in `title`, never hidden;
+audience moved; over the cap) · error.
+**Accept:** a forged count of 3 for 60 ticked rows changes nothing; after a withdrawal a player's number is refused
+`no_consent` (its toggle is off) and a stranger's `consent_withdrawn`.
 
-⚠️ **"Suppress" writes an OPERATOR row, and today the DAL would let a person's old stop link lift it** —
-the re-arm precedence and the reason filter on `lift` must land first (§9 U16). This is also the nearest
-thing to the officer-recorded suppression the `/s/` refusal's "contact us" needs (§9 U8).
+**U24 · One audience resolver** — `src/lib/server/marketing/audience.ts` (OD36; decisions C1–C4 · C6–C10 · M4 · M8 · A1.1)
+`contactAudience(filter)` is the ONE place a filter becomes a query — the list, the KPIs, U21's rail, U23's bulk,
+U34's export and the campaign's counts all read it; a ticked selection is its `ids` arm. audience.ts exports the
+filter type `ContactAudienceFilter`, `parseContactAudienceParams` over the URL vocabulary below (an unknown VALUE
+refuses, never drops; `ids` never in a URL), `parseContactAudienceJson` (an unknown KEY refuses; `ids` ≤
+`MAX_AUDIENCE_IDS` = 1,000), `contactAudienceKey`, `auditContactAudience` (a whole number masked, ids as a count),
+`describeAudience`, `contactsSearch` (moved from `contacts-query.ts`), `toAudienceWhere` and count · breakdown ·
+page (clamped) · walk (keyset on id). The DAL's where is the named `ContactAudienceWhere` in store.ts (`null` =
+unconstrained, ⛔ `[]` = NOTHING), which each twin translates privately.
+⚠️ C1's wording calls `ContactAudienceWhere` audience.ts' filter type. As built: the filter type is
+`ContactAudienceFilter` (audience.ts); `ContactAudienceWhere` is the DAL's where (store.ts); the twin translations
+stay private to store.ts and prisma-dal.ts, and `toAudienceWhere` is the only filter → where translation. Do not
+"fix" this back to C1's letter.
+⭐ **The URL vocabulary, recorded once (a C2 extension, 2026-10-01, matching the resolver as built).** C2's keys —
+`q`, `consent`, `suppressed`, `op`, `list`, `tag`, `source`, `sort`, `dir`, `page` — plus `player` (yes or no),
+`import` (a run id: OD35's "remove everything that run created" is a filter on it) and the Added window `range` /
+`from` / `to` (a named preset, or EAT dates, resolved to absolute instants). Each extension key refuses on its own
+terms, each with its own case in `test:contacts-audience`: `player` not yes/no; `import` not an id; a `range` the
+page does not offer; an unreadable or inverted `from`/`to`; a `range` beside a `from`/`to`; `range=custom` with no
+date. `contactsHref`'s key list mirrors this one, and the suite fails the moment the two differ.
+🔴 **D19 / A1.1 — role-refused axes.** For a viewer whose identity.contact cell is not `read`, the loader REFUSES a
+typed `consent`, `source` or `player` with the role refusal ("This filter isn't available to your role.") BEFORE any
+row is read — C8's refused, with a role reason beside the unreadable one — and the page's per-row Consent chip (U20's
+column) renders only for a `read` viewer. Whole-book KPI counts stay. The same refusal guards an audience POSTed as
+JSON (U23's bulk entrance), so a forged body cannot ask what the URL may not.
+C10's `ndcRow`/`ndcsForOperator` are exported from `tz-msisdn.ts` here. Every reader excludes erased rows (C3) — on
+Prisma as `OR: [{ sourceRef: null }, { sourceRef: { not } }]`, since a bare `not` drops NULL rows. Both twins gain
+`countWhere`, `summaryWhere` (replacing `summary()`), `walk` and `tagCounts` (M8).
+COMMIT 1 also moves the loader onto it — `loadContacts(sp, deps?: { reads? })` returns ok or refused (C8; the
+`search` injection goes, D19's `reads` stays; KPIs = the whole-book `breakdown()`) — and creates C9's `contactsHref`
+in `contacts-query.ts`, since this is the commit in which a filter first reaches the URL: pagination and Clear search
+carry every filter and never `page` unless patched; it NEVER carries `edit` forward from `sp` — only an explicit
+`edit` patch sets it (U22's open link; U22 adds that patch key) — and SortTh, pagination and the SearchBox are
+handed `sp` without it. Plus the refused state with Clear filters, and the role refusal above.
+COMMIT 2, before U21 (C22): `mirrorContactCache(identifier)` (C4) recomputes `consentState` (latest ledger status, else
+UNKNOWN) and `suppressedAt` (the active stop's createdAt, else null) for every book row with that number, called by
+every ledger and stop writer (consent-ledger, optout-service, erase, consent.ts' toggle path, then U22 and U23); the
+schema comment that the resolver keeps the cache true is corrected. ⚠️ Corrected: no export or campaign exists yet,
+so U24 ships a READERS contract that U34 and U40 JOIN; there is no `reachable` predicate (the gate hoisted to list
+time is U9's defect); the campaign's player arm goes INSIDE `audience.ts` (U38/U42).
+**Guard:** `test:contacts-audience` (NEW, in `predeploy`, in-process `--prove-red`) · `test:dal-parity` §21 (C7) ·
+`test:contacts-page` (the loader: the refused state and the role refusal).
+**RED:** a second query path → the structural scan fails (outside the twins only `audience.ts` reads the book in
+bulk; the population names `tagCounts` and U23's where-driven bulk methods too, M4); `red:contacts-audience` also
+plants `[]` widening, a dropped unknown value, a dropped extension key, the href key list drifting from the parser's,
+erased rows counted, an offset walk, a leaked number in the audit and (commit 2) a writer skipping the mirror;
+`red:contacts-page` skips the role refusal for a masked viewer; `red:dal-parity` §21 deletes the Prisma NULL arm.
+**Accept:** for about twelve filters the list total, `count()`, `breakdown().total`, the walked total and the
+page-union, read in ONE run, are equal, and the KPI band equals the whole-book breakdown without the erased row; a
+masked viewer's `?consent=GIVEN` is refused before any row is read, and its list shows no Consent cell.
 
-**U24 · One audience resolver** — `src/lib/server/marketing/audience.ts` (OD36)
-`contactAudience(filter)` — the ONE place a filter becomes a query, read by the list, the counts, every
-bulk action, the export and the campaign. A ticked-row selection is expressed as a filter.
-**Guard:** `test:contacts-audience`. **RED:** a second query path → the structural grep fails.
-**Accept:** the count the list shows, the count the export writes and the count the campaign confirms come
-from one function, proven by a fixture where all three are read in one run.
+**U25 · The CSV reader** — `src/lib/contacts/import-parse.ts` (pure, streaming; decisions C15–C19 · M6)
+RFC 4180 as an INCREMENTAL reader (`createCsvReader().push/end`; `parseCsv` is push + end — §3c.2 forbids
+read-then-split): quotes, doubled quotes, embedded newlines (one row), CRLF and lone CR, the `sep=` directive (first
+line, after the BOM), and a delimiter vote counted outside quotes on the FIRST NON-BLANK RECORD, once per candidate
+with that candidate's own quote rules (a quoted header cell can hold a newline). A manual delimiter beats both. Cells
+stay RAW — no trim, no coercion, no unguard; Excel's scientific `2.55713E+11` is flagged by U28's `draftContactRow`
+(M6), not here. It emits C15's ONE shape from `parsed-file.ts` (U27a), with `format: "csv"` — each row's `line` is
+the record as Excel numbers it (the `sep=` line hidden; blanks counted in `blankRows`, never emitted); warnings
+become `notes` sentences (capped at 50, the true total beside them); a fatal problem (an unterminated quote, a field
+over 32,767 characters, a header over 1 MiB) is a refusal naming its row, never a file. ⭐ BOM: `stripBom` is the
+decode-time stripper (C19), and `DECODE_OPTIONS` sets `ignoreBOM: true` so the platform decoder cannot eat the BOM
+first — otherwise U34's BOM-pair red can never fail; U26's and U28's strips are belts. ⚠️ Corrected: Excel's "Unicode Text" is UTF-16LE with TABs and its "CSV" is windows-1252 on
+an English PC, so `sniffEncoding` (first 4 KB) picks utf-8 / utf-16le / utf-16be / windows-1252, and rows still
+holding U+FFFD are counted and named. `detectFormat(head, fileName)` lets content beat the name (a `.txt` of vCards
+is vCards) through `vcard.ts`'s `looksLikeVcard` (C17) and `xlsx-limits.ts`' ONE spreadsheet sniffer and refusal
+copy (C18). It may import only `src/lib/contacts/*` and `tz-msisdn` (C17), and defines NO guard pair (C16: that is
+`csv-write.ts`). Every special character is written as a char code — the Write/Edit tools decode escapes. Pinned (M3).
+**Guard:** `test:contacts-import` (C21 — U25's `csv` section module in the one runner).
+**RED:** count the delimiter inside quotes → the embedded-comma header `"Jina, kamili";Simu;"Makundi, lebo, zaidi"`
+mis-splits (`red:contacts-import`; also a whole-file vote, no BOM strip, `sep=` ignored, physical-line numbering, a
+stateless chunk parser, buffer-and-reparse, an extension-trusting detector, the platform-default decoder).
+**Accept:** that header gives 3 cells with `Jina, kamili` intact, and a 150,000-row corpus fed in 4,093-character
+chunks equals the one-chunk parse, each character tokenized once.
 
-**U25 · The CSV reader** — `src/lib/contacts/import-parse.ts` (pure)
-RFC 4180: quotes, doubled quotes, embedded newlines, CRLF, **BOM strip**, the `sep=` directive, and a
-delimiter vote counted **outside quotes, on the header line only**. `detectFormat` lets content beat the
-filename (a `.txt` of vCards is vCards).
-**Guard:** `test:contacts-import`. **RED:** count the delimiter inside quotes → the embedded-comma
-fixture mis-splits.
-
-**U26 · The vCard reader** — `src/lib/contacts/vcard.ts` (pure)
-⛔ **Both** continuation rules in ONE walk (RFC 2425 folding and quoted-printable `=`) — separate passes
-corrupt each other silently. `itemN.` group prefixes, bare 2.1 params (`TEL;CELL`), 4.0
-`TEL;VALUE=uri:tel:`, preferred-first, and cards counted so "12 cards, 9 rows" is sayable.
-**Guard:** `test:contacts-import`. **RED:** split the two continuation rules into two passes → red.
+**U26 · The vCard reader** — `src/lib/contacts/vcard.ts` (pure, streaming; decisions C15 · C17 · C20 · A1.2 · A1.8)
+⛔ **Both** continuation rules in ONE walk, decided by the property head — separate passes corrupt each other
+silently, in BOTH orders: unfold-first eats the leading space of a quoted-printable continuation (`Mama Asha`
+arrives as `Mama=Asha`); QP-first swallows the `END:VCARD` after a base64 PHOTO line ending `==`, or after a plain
+`NOTE:Lipa=`, so a whole card is lost. ⚠️ Corrected: the fold is version-aware — 2.1 keeps the whitespace (RFC 822
+style), 3.0/4.0 drop one character (RFC 2425 / 6350). Also: `itemN.` group prefixes stripped; bare 2.1 params
+(`TEL;CELL;PREF`, a bare `QUOTED-PRINTABLE` read as the encoding); 4.0 `tel:` URIs with the scheme stripped and cut
+at the first `;` (a `;ext=101` URI otherwise reads too long, and a `+254` one is never seen as foreign).
+⚠️ "Preferred-first" taken literally is wrong for SMS: every TEL is ordered by preference and kept, and the row's phone
+is the first one `isSendableTzNumber` accepts (a preferred work landline yields to the card's mobile). Cards are
+counted apart from rows: `assertVcardCounts` throws unless cards = rows + unreadable, and `describeVcardCounts` makes
+"12 cards, 9 rows — 2 cards have no phone number; 1 card is cut off before its end." sayable. A streaming push/end
+reader — any split point, a CR|LF split included, equals the whole parse; a 1 MB PHOTO is never buffered. It owns
+`looksLikeVcard`, the ONE sniff (C17), and imports only `tz-msisdn` and `contact-fields` (C20): the field mapping is
+`CONTACT_FIELDS[*].vcard` — name = FN, else N given + family, else ORG. ⛔ **It emits C15's shape (`format: "vcard"`)
+with NO header row (A1.2):** each row's cells sit in the fixed `fileColumns()` order of `CONTACT_FIELDS`, and its
+`line` is the card's ordinal — 1-based, counted over EVERY card, strictly increasing — so `isParsedContactsFile` holds
+and the number U30 prints is the card's own (a header row would either be read as card 1 or collide with card 1 on
+its line). A skipped card goes to `unreadable` (A1.8 / X19: `{ line: its ordinal, reason }`, a reason carrying no
+digits) — the source of U30's unreadable count — with one summary note beside it. Pinned (M3). It stays 🔵 until
+U30/U32 parse a real `.vcf` on production — no production surface reaches it before then (U25's `detectFormat`
+imports its `looksLikeVcard`, C17).
+**Guard:** `test:contacts-import` (C21 — U26's `vcard` section module).
+**RED:** split the two continuation rules into two passes → red — planted in BOTH orders against two fixtures, each
+failing its own assertion (`red:contacts-import`; also the group prefix kept, bare params ignored, the `tel:` URI kept
+whole with `;ext=` and `+254` fixtures and a plain `tel:` as the control, a preferred landline winning, skipped cards
+uncounted or sent to `notes` instead of `unreadable`, a header row emitted (card 1 lost or on a duplicate line), a
+chunk end read as a line end).
+**Accept:** the 12-card fixture says exactly the sentence above, each row's `line` is its card's ordinal (card 1 is
+never lost to a header) and the skipped cards' ordinals are in `unreadable`; 20,000 cards fed in 64 KB chunks give
+20,000 rows with the NDC table built once.
 
 **U27 · XLSX, server-side, and the boundary that proves it** — `src/lib/server/contacts/import-xlsx.ts`
-(D18)
-`exceljs` behind one server action, base64, **capped at 700 KB** with the remedy named on screen ("save it
-as CSV — there is no size limit on CSV"). ⚠️ The phone cell is read as `typeof cell.value === "number" ?
-String(Math.round(cell.value)) : cell.text` — `cell.text` gives `"2.55713E+11"` and that is lossy and
-unrecoverable. One `ParsedContactsFile` shape, two producers.
-**Guard:** `test:contacts-boundary` (no `"use client"` file under the contacts trees may transitively
-import `src/lib/server/**` or `exceljs`) + `test:contacts-import`.
-**RED:** import `exceljs` into the dialog → the boundary guard goes red **while `typecheck` stays green**,
-which is the entire point.
+(contributes D18's ceiling; D18 itself is now U30's, decision C26 · also C15 · C18 · C24 · M3 · M6 · A1.3 · A1.4 · A1.6 · A1.8)
+U27a (first, beside U28a): `src/lib/contacts/parsed-file.ts` — C15's ONE `ParsedContactsFile` (a `format` of csv,
+xlsx, vcard or paste; `fileName`; `rows: { line, cells }[]`; `width`; `blankRows`; `notes`; and, by A1.8 / X19,
+`unreadable: { line, reason }[]` — the records a producer could not read, counted and listed by U30) plus its runtime
+validator; `src/lib/contacts/xlsx-limits.ts` — the derived caps, the ONE spreadsheet sniffer and refusal copy table
+(C18), the ONE phone-format remedy clause ("format the phone column as Number with 0 decimal places", A1.6), and the
+Excel-shortened detector `looksExcelShortened` with its sentence — the ONE copy (M6, C18): `contact-fields.ts`
+imports both and never redefines them, and `test:contacts-import` fails on a second definition anywhere in src; and
+`test:contacts-boundary`. U27b: the reader. ⭐ The cap is DERIVED: Next 16 caps a whole server-action request at 1 MB
+(1,048,576 B); 700 KiB (716,800 bytes) is 955,736 base64 characters, which fits with an 8 KiB envelope — asserted
+against the installed Next's own constant, with no `bodySizeLimit` raised (OD29). ⛔ **The gate measures the EXACT
+decoded size (A1.4):** from the base64 length alone, 3·len/4 minus the `=` padding (a length that is not a multiple
+of 4 is refused), and it refuses above 716,800 bytes before any decode — a length-only gate would let +1 and +2
+bytes through, because 716,800, 716,801 and 716,802 bytes all encode to 955,736 characters. ⚠️ Premise false:
+exceljs 4.4.0's `cell.text` of a number is EXACT; `2.55713E+11` is Excel's DISPLAY, written on a save-as-CSV or a
+paste. `Math.round` on every number would corrupt decimals, and `cell.text` mangles a Date and drops a formula result
+of 0 — so one typed `xlsxCellText` switch: integers exact, float noise rounded, decimals kept, a Date as ISO, a
+formula as its cached result. 🔴 **Excel's NUMERIC shortened form (A1.3):** a CSV holding `2.55713E+11` re-saved as
+xlsx stores the NUMBER 255713000000, which reads as a valid Yas number — a stranger's. So a numeric cell that is an
+integer ≥ 1e11 AND divisible by 1e6 is written as Excel's scientific text (`255713000000` → `2.55713E+11`), and a text
+cell already holding that form is kept VERBATIM; both pass through for U28's one detector, which makes the row
+`invalid` with the shortened-number sentence. U27 flags nothing itself (M6). A genuine number ending in six zeros is
+refused too — the safe side; the sentence sends the officer back to the formatted column. A zip pre-pass inflates
+every entry for real under caps (a bomb, a forged size) and refuses zip64, encryption, xlsb, ods and Strict before
+exceljs loads in memory (never its streaming reader, which spools to tmp); the first VISIBLE sheet; 1-based sheet
+rows; one read in flight; an audit row of counts only. Every refusal that sends the officer to CSV carries the ONE
+remedy clause (A1.6) — "Before you save, format the phone column as Number with 0 decimal places, or Excel will
+shorten long numbers to 2.55713E+11." — and "no size limit on CSV" is a promise U25/U29 keep. ⛔ The action ships
+with its caller in U30's `import-actions.ts` (C24): alone it reds `test:orphan-actions`.
+**Guard:** `test:contacts-boundary` (NEW, in `predeploy`, in-process `--prove-red`: a `"use server"` module is a LEAF;
+a server module imports only PascalCase bindings from a `"use client"` file; no directive under `src/lib/contacts`;
+every file there pinned in `test:client-graph-safe` by its own unit, M3; exactly two exceljs importers; the reader
+never reaches the book or the disk) · `test:contacts-import` (the `xlsx` section module).
+**RED:** import `exceljs` into the dialog → the boundary guard goes red **while `typecheck` and `next build` stay
+green** (exceljs ships a browser build) — planted as a VIRTUAL file, since the dialog is U32's (`red:contacts-boundary`;
+in `red:contacts-import`: `cell.text` everywhere, `Math.round` everywhere, scientific text "repaired", declared sizes
+trusted, a numeric 255713000000 written as exact digits (A1.3), a length-only base64 gate (A1.4), a second
+`looksExcelShortened`).
+**Accept:** base64 for 700 KiB + 1 byte, and + 2, refuses `too_large` before any decode — the load spy is never
+called — while exactly 716,800 bytes is read; an xlsx numeric 255713000000 drafts `invalid` through U28, never a
+contact.
 
-**U28 · One field list, four readers** — `src/lib/contacts/contact-fields.ts` (pure)
-`CONTACT_FIELDS` feeds the export header, the import aliases, the sample sheets and the mapping panel —
-Swahili aliases included (`simu`, `jina`, `nambari`, `makundi`, `maelezo`), because the operator's own
-sheet will be in Swahili; ⛔ the export HEADER row stays English so our own importer can re-read it, and
-the reason is written at the top of the file. One `displayName`, no first/last split. Tags split on `,`,
-`;` and `|`. A `<SampleSheetButton>` beside **every** file entrance, and the suite drives each generated
-sample back through the real parser.
-**Guard:** `test:contacts-import`. **RED:** add a field with no sample value → red.
+**U28 · One field list, five readers** — `src/lib/contacts/contact-fields.ts` (pure; decisions C11 · C12 · C16 · C20 · C21 · M6 · A1.2 · A1.3 · A1.5 · A1.6)
+`CONTACT_FIELDS` (phone · name · first_name · last_name · email · tags · notes) feeds the export header, the import
+aliases, the sample sheets, the mapping panel and U26's vCard mapping (`vcard` per field, C20 — the fifth reader). It
+holds the ONE limits table (C12: name 120, email 254, notes 1000, tag 32, tags 20, list name 60) and the ONE tag rule
+(C11: `splitTags`/`tagKey` — split on `,` `;` `|`, trim, collapse inner spaces, STORED LOWERCASE, letters, digits,
+space, `-` and `_`, 1–32 characters, at most 20 a contact, case-insensitive dedupe), called by U22's form, U23's bulk
+and U31's import and grouped by U21's rail. Headers match by exact lookup of the normalised text, never a substring.
+⚠️ Swahili corrected from shipped text: strong phone aliases `simu`, `namba ya simu`, `nambari ya simu`, `simu ya
+mkononi`; `namba`, `nambari`, `number` and `contact` are WEAK and lose to any strong one (a sheet's "Namba" is often
+the serial); plus `jina`, `jina kamili`, `jina la kwanza`, `jina la mwisho`, `barua pepe`, `kikundi`, `kundi`,
+`makundi`, `maelezo`. ⛔ No consent field exists (OD10): consent-shaped headers are "not imported" and no mapping may
+point at one; a masked export (`phone_masked`) is REFUSED. ⛔ Google Contacts' `Group Membership` and `Labels` are NOT
+tag aliases (A1.5): they sit in `CONTACT_NOT_IMPORTED` with their own sentence (Google's `* myContacts ::: …` labels
+are not tags; map a cleaned column if you want them) — C11 is unchanged. One `displayName`, never split. ⛔ **A vCard
+is never header-matched (A1.2):** `format: "vcard"` is mapped by the fixed `fileColumns()` order U26 writes, with no
+header row, and `line` stays the card ordinal; header matching and the "first row looks like a contact" refusal apply
+to the other producers only. `draftContactRow` unguards every cell, flags Excel's scientific form ONCE for every
+producer (M6) — with U27a's `looksExcelShortened` and sentence, imported from `xlsx-limits.ts` and never redefined
+here (U27a lands first or in the same push) — and since U27b writes an xlsx NUMERIC shortened value as that same text
+(A1.3), the one detector covers every producer: the row is `invalid` with the shortened-number sentence and is never
+imported as a stranger's number. The phone field's hint uses the ONE remedy clause exported from `xlsx-limits.ts`
+(A1.6), never its own wording. A problem names the field and the limit, never the value.
+`contactExportHeader(full)` is English snake_case (the reasons head the file; Swahili headers are READ, never
+WRITTEN). `csv-write.ts` is the ONE writer and the guard pair (C16): `guardCell` adds `'` to the transactions
+export's lead set, so `unguardCell(guardCell(s)) === s` for every s. `sample-sheet.ts`: a BOM'd CSV with phones
+written `0XXX XXX XXX` (Excel keeps text), a 3.0 vCard, no XLSX (exceljs is server-only), and `SAMPLE_MSISDNS`
+derived by `parseTzNumber` for U30 to refuse (a sample may be a real subscriber). `<SampleSheetButton>` ships
+UNMOUNTED until U30's entrance. U28a (beside U24 commit 1) creates the ONE runner — per-unit section modules
+`fields` · `csv` · `vcard` · `xlsx`, one harness (the contacts-page `Impl` swap with in-memory plants, C21) — and
+pins its files (M3); U28b (last) drives each sample through U25's and U26's REAL parsers, never one of its own, and
+round-trips the two A1 cases through the real readers: the vCard sample's card 1 survives as a draft (A1.2), and an
+xlsx holding the NUMBER 255713000000 drafts `invalid` through U27b's reader (A1.3).
+**Guard:** `test:contacts-import` (C21 — NEW, in `predeploy`, in-process `--prove-red`).
+**RED:** add a field with no sample value → red (`red:contacts-import`; also `simu` removed, a weak alias made strong,
+a consent alias on a field, `phone masked` accepted, `Group Membership` or `Labels` mapped to tags, tags not
+lowercased, an identity unguard, a vCard header-matched (card 1 lost), a second shortened-number detector, an entrance
+with no button).
+**Accept:** every export and sample header resolves to its own field; (U28b) the CSV sample re-reads through U25 as
+three drafts with no problem, the vCard sample re-reads through U26 with card 1 as its first draft, and an xlsx
+numeric 255713000000 is `invalid`, never a draft.
 
-**U29 · Staging** — `ContactImport`, `ContactImportRow` + both DALs (OD30)
-Rows are posted in batches of ≤2,000 (≈200 KB — a 5× margin under the 1 MB action limit) into staged
-rows; the run row carries the buckets, the written counters and a `cursor` that is an ordinal into the
-rows this run owns (⛔ never an offset into a query).
-**Guard:** `test:dal-parity` — a NEW section at the next free number (this said §9, which is taken), extending `red:dal-parity`. **RED:** a planted key in one mapper only.
-**Accept:** a closed tab, a reload and a redeploy all leave the run resumable, and the totals come back
-from the server.
+**U29 · Staging** — `ContactImport`, `ContactImportRow` + both DALs (OD26, OD30; decisions X1 · X2 · X18–X20 · X23 · X28 · X29 · M10)
+*(Codes in U29–U40: X· and a bare M· are DECISIONS-U29-U40's; C·, A1.· and anything marked "U21–U28's" are DECISIONS-U21-U28's.)*
+U29 owns the ONE staging model (X2). **U29a · data** — ONE hand-written, expand-only migration with every agreed column
+(brand-new enum types only, so no 55P04 two-step and no conditional migration later): `status` ∈ STAGING · STAGED ·
+COMMITTING · PAUSED · DONE · CANCELLED; compare-and-set cursors `stagedThrough` / `committedThrough` (the name `cursor`
+is banned); `decision` (U31's, frozen by U32's start action); the consent `basis` columns (U33); `pausedAt` ·
+`pausedBy` · `finishedAt`; the file digest; the mapping as U28's `ColumnMapping` (X20). A row carries `line` (the file
+row, C15's name), the drafted fields, `readError`, `outcome` and `outcomeReason` (X4). ⛔ No stored counter (OD26 — "the
+run row carries the buckets" was false): totals are groupBys over rows, and the run holds only the cursors and the
+browser's two figures (`totalRows`, `unreadable`, shown as "read from your file"). Both twins: create (never an upsert),
+find, findOpenFor, transition (CAS on status), stageRows (the CAS `stagedThrough = from - 1` FIRST, in one short
+transaction), totals, after (a keyset on ordinal, never an offset), deleteUnsettled, deleteByMsisdn, purgeFinished.
+⛔ The commit write is U32's ONE `commitBatch` (X3). `MarketingContact.importId` stays a soft key (no FK).
+**U29b · service + privacy arms** (LIVE before any staging is exposed): `src/lib/contacts/import-limits.ts` (pure — a
+batch is ≤2,000 rows AND ≤200 KiB of UTF-8 JSON, since "2,000 rows ≈ 200 KB" was false; the 1 MB ceiling and the
+200,000-row cap come from `xlsx-limits.ts`, X28) and `src/lib/server/contacts/import-staging.ts` (server-only, NOT
+"use server" — its actions ship with U30b's `import-actions.ts`): open (the same digest adopts), stage, view, discard,
+sweep; every key re-derived by `parseTzNumber`; a field over its limit REPORTED by U28's `draftContactRow` into U30's
+`invalid`, never clipped (X20 — the spec's clip and fallback limits are dropped); each parsed-file `unreadable` record
+staged as a row with `readError` (X19). Ownership (X18): the creator, or an ADMIN adopting (pause/resume); the screen
+names who started it. Erasure deletes staged rows by every number the person is known by; the access export carries
+them from the account's creation, notes withheld; the sweep cancels only STAGING/STAGED runs idle 14 days — NEVER a
+PAUSED commit (X29, said on screen) — and purges a run 90 days after `finishedAt`; a DATA-RETENTION.md row (public or
+DSAR wording is G10). Audit `contacts.import.*`, refusals as `contacts.import.stage_refused` (X23), no number. M10:
+`test:erasure`, `test:read-tiers` and `test:client-graph-safe` join `predeploy` here, each green on clean main first —
+the ONE insertion each (U30 and U39 add none, X26).
+**Guard:** `test:dal-parity` §24 (U31/U32/U33's members are sub-assertions, X1) · `test:contacts-staging` (NEW, in
+`predeploy`, in-process `--prove-red`) · `test:erasure` · `test:contacts-staging-db` (redeploy evidence on embedded
+PostgreSQL 18.3, outside `predeploy`).
+**RED:** `red:dal-parity` §24: a planted key in one mapper only (the plan's own); the stageRows CAS dropped; after() by
+offset. `red:contacts-staging`: a posted msisdn trusted; the byte cap removed; any digest adopted; deleteByMsisdn a
+no-op; the sweep cancelling a PAUSED run.
+**Accept:** a closed tab, a reload and a redeploy (a fresh process on real Postgres) resume at `stagedThrough + 1` with
+totals equal to a recount; a 40-row file is one open plus one stage call; staging 5,000 rows writes no contact.
 
-**U30 · Pre-flight** — writes nothing (OD31, D19)
-Six buckets — `new`, `inBook`, `isPlayer`, `dupInFile`, `invalid`, plus `unreadable` counted separately —
-and `assertPreflightAdds` is **exported so the suite asserts it**. `dupInFile` carries the winning **row
-number**, and the rule is printed: *"When a number appears twice, the FIRST row in your file wins."*
-`invalid` carries the §U2 sentence, never a code. Row numbers are 1-based over the **unfiltered** grid.
-🔴 **D19:** for any role whose `identity.contact` cell is not `read`, the `isPlayer` bucket returns a
-COUNT and never a per-row flag; the run is rate-limited per officer and audited.
-**Guard:** `test:contacts-import` + `test:read-tiers`.
-**RED:** drop one bucket increment (the assertion must throw); leak the per-row flag to a masked role;
-count rows before and after over a 5,000-row fixture and require zero delta.
-**States:** loading · no file · reading · pre-flighted (buckets + columns matched + unmapped + dup list +
-basis picker) · refused (no `Phone` column — the column NAMED) · error.
+**U30 · Pre-flight** — writes nothing (OD31, D18, D19; decisions X10 · X16–X20 · X22 · X26 · M1–M3 · M11 · M14, and U21–U28's C26 · M7)
+**§25 · the ONE bulk keyed reads** (X10) land first, as their own commit after U29a — built by U30, the first consumer,
+and reused by U31, U32, U33 and U38: `marketingContact.msisdnsPresent`, `user.findByPhones` (avatar omitted),
+`suppression.findActiveAmong`, `messagingConsent.latestAmong` (the ledger's own `createdAt desc, id desc`), key-only
+where PII matters, ≤2,000 keys a call. **U30a · the engine** (invisible): `src/lib/contacts/preflight.ts` (pure: the
+buckets, an exported `assertPreflightAdds`, the viewer shaper) and `src/lib/server/contacts/preflight.ts` (injected
+deps), the rate rule `contacts.preflight` (12 runs per officer a day) and U31's pure `planImportRows` for the Apply
+label's tallies. It runs on the SERVER over a STAGED run (U29), for its creator or an ADMIN (X18), whose mapping holds
+the phone field (U28's own refusal names the column, X20). Six buckets, recomputed and NEVER stored (OD31) — `new` ·
+`inBook` · `isPlayer` · `dupInFile` · `invalid` · `unreadable` — decided in FILE order: a `readError` → unreadable
+(X19; a skipped vCard card lands there, A1.2); a draft problem → invalid with its sentence and the FIELD named (M2/M3:
+U2's sentence, a sample-sheet number, an Excel-shortened number, an over-limit or malformed field); a repeat →
+dupInFile citing the first row's `line`, under the printed rule *"When a number appears twice, the FIRST row in your
+file wins."*; then inBook — an ERASED row counts as present, "already in the book" (X22: erasure is never disclosed) —
+then isPlayer (via `userPhoneKeyFor`, asked only for keys not in the book), else new.
+🔴 **D19:** for a role whose identity.contact cell is not `read` (the matrix, never a role name), `isPlayer` is a COUNT
+with no per-row flag and `new` never carries a list; each run is rate-limited and audited (`contacts.preflighted` /
+`contacts.preflight_refused`, awaited, no number; U50 registers both, M14). U20 already gates its Player chip.
+**U30b · the screen** — ONE push with U31's choice UI and U33b's panel (X16), owning (X17)
+`src/app/admin/contacts/import/contacts-import-dialog.tsx` and its ONE action file `import-actions.ts` (staging,
+`readXlsxContactsAction`, pre-flight, paste, U32's ping; U32 adds start, commit and pause): the first admin file
+entrance (M1) — a browser-side size check, sniff and `isParsedContactsFile`; the paste producer (`format: "paste"`,
+U21–U28's M7); the mapping panel on U28's `autoMapHeaders`/`validateMapping`; `<SampleSheetButton>` mounted; upload through
+`import-loop.ts`, the ONE driver U32 reuses ("Reading x of y", the server's count); lists paged at 25 with the true
+totals (M11). 🔴 **D18** closes here (C26): the ceiling is proven through the REAL action, and every CSV-directing
+refusal reads U27's ONE copy table and remedy clause (A1.6).
+**Guard:** `test:contacts-import` (the `preflight.mts` section module, C21/X26) · `test:dal-parity` §25 ·
+`test:read-tiers` (the D19 shape) · `test:contacts-boundary` · `test:orphan-actions`.
+**RED:** `red:contacts-import`: drop one bucket increment — every bucket is non-empty in the fixture, so the sum check
+must throw (the plan's own); last-row-wins; a per-row flag or a `new` list reaching GROWTH; the limiter always allowing;
+an erased row counted as new; any store delta over 5,000 rows. `red:dal-parity` §25: a read that is not key-only; the
+avatar omit dropped. 700 KiB + 1 byte through the REAL `readXlsxContactsAction` must refuse `too_large` before exceljs
+loads (D18).
+**States:** loading (adopting a run; skeleton = the real block) · no file · reading (the server's count) · pasted ·
+pre-flighted, masked role (the count only) · pre-flighted, read role (account rows listed) · refused (no Phone column,
+named; too_large or wrong_format with the remedy; rate-limited, with the EAT time; not your run) · error (Retry; never a
+zero).
+**Accept:** the 40-row fixture's six buckets add up to 40; a GROWTH payload carries no player row number; the run
+writes nothing; 700 KiB + 1 byte refuses before any decode.
 
-**U31 · `decide()`** — one rule, three choices (OD32)
-Keep what's in the book (default; counted `skipped`, ⛔ never `failed`) · take the file's version
-(overwrite name/email/notes, **MERGE** tags) · fill blanks only. Bulk choice with a per-row override keyed
-by **file row number** (⛔ not array index). ⛔ A row whose `sourceRef` is `erasure` (emptied by an erasure, U18b — `ERASURE_EVIDENCE`) **collapses to keep** too, or re-importing an old spreadsheet writes the erased person's name back (S10 review). A row whose contact is suppressed **collapses to keep**
-whatever was asked. ⛔ Consent is never written by an import path — a withdrawn row can never be
-re-granted by a file.
-**Guard:** `test:contacts-import`. **RED:** write `GIVEN` over a `WITHDRAWN` row → red; remove the
-suppressed collapse → red.
-**Accept:** the Apply button's label, the confirmation and the request all read the same `decide()`.
+**U31 · `decide()`** — one rule, three choices (OD32, OD33; decisions X3 · X4 · X5 · X10 · X19 · X21 · X22)
+**U31-A** (pure, P1): `src/lib/marketing/erasure-mark.ts` (`ERASURE_EVIDENCE`; `erase.ts` imports and re-exports it, its
+usage lines — the red anchors — untouched), `src/lib/contacts/import-decide.ts` (THE rule, plus `planImportRows` over
+the facts it is handed) and `src/app/admin/contacts/import-copy.ts`. **U31-B**: the server facts loader over §25's bulk
+reads, landing with U30a. **U31 UI**: the choice and per-row override controls, in U30b's push. ⛔ X3: U31 ships no
+apply step and no DAL write — the guarded write is U32's `commitBatch`, which re-decides through this same `decide()`.
+Choices: **keep what's in the book** (the default; kept, ⛔ never failed) · **take the file's version** (a non-blank
+file value replaces a different book value; a blank cell NEVER blanks one; tags MERGE through `tagKey`, stored
+lowercase — X21, so the spec's "keeping the book's spelling" is moot) · **fill blanks only** (tags only when the book row
+has none). One bulk choice with per-row overrides keyed by the file's `line` (X19; ⛔ never an array index — an array, a
+malformed key or a line not in the file is refused). With a book row, in order: erased (`sourceRef = ERASURE_EVIDENCE`)
+→ keep; on the stop list (the ACTIVE suppression, never the `suppressedAt` cache) → keep; created by this run (the first
+row wins, OD33, across batches) → keep; then the choice; an empty patch → keep. With no book row: the ledger's erasure
+WITHDRAWN → keep, else create.
+**The ONE outcome union** (X4) lives here: `ImportOutcome` = create · update · keep · fail; `ImportOutcomeReason` =
+chosen_keep · erased · suppressed · same_run · no_change · write_refused · changed_during_import · invalid — the row
+column, U32's sentences and `import-copy.ts` all read it.
+**Consent** (X5): `decide()` never writes consent, and an existing row never receives an import consent write; a CREATE
+carries `consentWritable` = no ledger row at all AND not suppressed AND no player holds the number — the ONLY seam U33
+writes through. This replaces the old "⛔ Consent is never written by an import path": no FILE can ever grant consent;
+U33 records the officer's run-level attestation, for created rows only. The patch carries only name, email, notes, tags.
+⛔ **X22 (decided in S10, reworked after the U31-A review — §4 OD47):** a browser never learns a number was erased.
+Each decision carries `shown` beside `reason` (the server's truth, where `erased` is still counted): an erased row's
+`shown` is what an ordinary in-book contact holding the file's own values would get (keep → `chosen_keep`; take the
+file's version or fill blanks → `no_change`), and it still reads `suppressed` on the stop list and `same_run` when the
+file repeats it. `shownTally(decisions)` folds per decision. No preview or plan carries a contact id: an erased number
+(in the book or ledger-only) previews as an in-book row showing the file's own name in stored form — as every ordinary
+in-book row now does. The run's first-line map is REQUIRED (`firstLines` over every staged row of the run; the rule
+skips invalid and unreadable rows itself); tags are written in stored form (lowercase, de-duplicated) whenever the
+patch writes tags; notes compare through U28's `cleanNotes`; the field-name allowlist excludes the two DAL twins.
+⚠️ Owed downstream: U30's `msisdnsPresent` counts a ledger-only erased number as present; U32's browser-facing reads
+carry `shown`, never the stored `erased`; U30 and U32 pass `firstLines` over every staged row. D19: a create preview
+carries no consent or player fact.
+**Guard:** `test:contacts-import` (the `decide.mts` section module, C21/X26) · `test:client-graph-safe` (both pure
+modules pinned).
+**RED:** `red:contacts-import`: write `GIVEN` over a `WITHDRAWN` row — `consentWritable` true over any ledger row (the
+plan's own); remove the suppressed collapse (the plan's own); remove the erasure collapse; overrides read by index; tags
+replaced, or a blank cell blanking a value; fill-blanks overwriting; the same-run collapse removed; `erased` reaching a
+browser-facing tally or preview; the label computed from U30's buckets instead of `decide()`.
+**States:** loading (no figure until the server's tallies land) · idle (keep; the label from the per-choice tallies) ·
+take the file's version (the enumerated overwrite list: the first 20 and "and N more", email and notes named, never their
+values) · fill blanks only · per-row override · all kept · refused (a bad override; the decision frozen) · error (never a
+zero tally).
+**Accept:** the Apply button's label, the confirmation and the request all read the same `decide()`; re-importing
+identical values under take-the-file's-version is 0 updated; an erased row's preview, tally and plan are identical to an
+ordinary contact's holding the same values — on the stop list and repeated included.
 
-**U32 · The commit loop and its bar** — `contacts-import-dialog.tsx` (OD34)
-Batch size **derived, not copied**: commit 1 ships a ping action; after deploy, 20 sequential calls from a
-browser on `www.50pick.tz` give p50/p95 recorded in §3 with the date and the build's `?dpl=` sha; Cloudflare
-kills a proxied request at 100 s, so the budget is 60 s (a stated 40 % margin); the per-row fallback is
-concurrency-bounded at **6–8**, because the bet admission gate is sized from the same pool.
-`<ProgressBar value={written} max={total}>` with `Batch 4 of 12 · 1,847 of 5,912 written` beneath. Stop is
-read between batches and rows already written stay written. A server refusal stops the loop and shows the
-REASON. Reopening **adopts** an unfinished run and offers "Resume — 4,065 rows remaining".
-**Guard:** `test:contacts-import`. **RED:** drive the bar from a timer → the stubbed-slow-batch assertion
-must fail.
-**States:** loading · idle · importing (bar + batch line) · stopped (reason + what landed) · done
-(created/updated/skipped/failed + error list capped at 50 **with the true total beside it**) · error.
+**U32 · The commit loop and its bar** — the ONE commit write path (OD26, OD34; decisions X2–X6 · X16–X18 · X23 · X29 · M1/M4 · M13)
+**U32a · ping + budget** — `importPingAction` (the act gate plus one indexed read, reporting server and database time;
+also the dialog's adoption read) ships inside U30b's push (X16), with `src/lib/contacts/import-budget.ts`: the batch size
+is DERIVED from 20 sequential calls on www.50pick.tz (Cloudflare ends a proxied request at 100 s; the budget is 60 s),
+p50/p95 recorded in §3 with the date and the build's `?dpl=` — which needs G7 (a production QA GROWTH account) or Ali
+at the keyboard; until that measurement exists, production refuses `unmeasured`. **U32b+c · engine, loop and bar** —
+ONE push, the actions with their panel (X16).
+**The ONE start action** (M1/M4), in `import-actions.ts` (X17): it freezes U31's decision on the run row, fixes U33's
+basis and moves the run STAGED → COMMITTING, audited — so it is G4-gated too (Option A: it writes a basis).
+**`commitBatch`** (X3), in `src/lib/server/contacts/import-commit.ts`, is ONE transaction through its DAL member in both
+twins: the CAS on `committedThrough` → creates through U22's ONE builder `newContactRow` (X6; duplicates skipped;
+`sourceRef` = the run id) → updates guarded by `updatedAt` AND `sourceRef ≠ "erasure"`, null-safe (Prisma's `{ not }`
+drops NULL rows, so the `sourceRef: null` arm is required) → ONE re-decide on a refused write, after which the row is
+kept as `changed_during_import`, never failed → outcomes (X4's union) → `mirrorContactCache` for every touched number →
+U33's consent write, idempotent over "importId = this run and no ledger row" and re-run at resume and finish (X5). The
+staged payload is blanked as it settles. No withLock, no `Promise.all` over the database, one write at a time (the
+premise "a per-row fallback of 6–8" was false: bets leave only 2–4 spare connections); `busy` is refused while bets
+queue. Status per X2 (COMMITTING · PAUSED · DONE · CANCELLED, which is "leave the rest unimported"); the creator or an
+adopting ADMIN drives it (X18: "Stopped by Amina at 14:02"); the idle sweep never cancels a PAUSED commit (X29).
+**The bar** reuses `import-loop.ts` (U30b's — never a second loop): its value is ONLY the server's `committedThrough`,
+a ProgressBar `label` plus the caption pair "Batch 4 of 12 · 1,847 of 5,912 rows done" ("done", not "written": a kept
+row is not written); after a thrown call it asks for the status first (a 524 may still have committed); a deploy
+mid-run says "reload to resume". Done shows created · updated · kept · failed from the groupBy, the first 50 failures by
+`line` with the true total, and the REQUIRED "Show this import's contacts" link (U24's `import` filter, M13). Audit under
+`contacts.import.*`, a refusal as `contacts.import.commit_refused` (X23), no number.
+**Guard:** `test:contacts-import` (the `commit.mts` section module, X26) · `test:dal-parity` §24 (commitBatch's CAS, the
+null-safe arm, failures read with take ≤ 50 plus a separate count).
+**RED:** `red:contacts-import`: drive the bar from a timer → the stubbed-slow-batch assertion fails (the plan's own); an
+optimistic increment; done counts summed in the browser; a blind re-commit after a throw; a resume from 0; a memory
+commitBatch without its CAS (two drivers both advance); a "consent: yes" column written as GIVEN; a write bypassing
+`decide()` that rewrites an erased row; a concurrency of 8. `red:dal-parity` §24: the CAS or the `sourceRef: null` arm
+dropped.
+**States:** loading (the adoption read; the panel's height held) · idle (Apply, disabled with its reason: no act right,
+no basis, unmeasured) · importing (bar, batch caption, the busy wait) · stopped (by you; by another officer; refused;
+platform updated) · adopted ("Resume — N rows remaining", and who started it) · done (four tiles, failures capped at 50
+with the true total, the import link) · refused (no act right: read-only, never hidden) · error (never a zero).
+**Accept:** a 40-row file finishes in ONE call; a 5,000-row run stopped after batch 2 and resumed from the run id alone
+ends identical to an uninterrupted run; a replayed batch changes nothing.
 
-**U33 · Consent basis at import** — required before Apply enables (OD9, OD10, OQ10)
-A basis picker showing each option's **verbatim stored wording** in full, plus a required proof note
-(≥10 chars) and an explicit 18+ attestation. First-party bases write `GIVEN` ledger rows; ⭐ **"bought /
-third-party list" writes `UNKNOWN`**, and the dialog says so in one sentence before Apply — that is what
-stops this being a spam machine by default. The wording is copied onto every row the run creates and
-⛔ never edited afterwards.
-**Guard:** `test:marketing-consent`. **RED:** edit a stored wording → red; make a third-party basis grant
-consent → red.
+**U33 · Consent basis at import** — required before Apply enables (OD9, OD10, OQ10; decisions X5 · X6 · X23 · X24 · M4 · M7 · G4)
+**U33a-catalog** (pure, P1): `src/lib/marketing/consent-basis.ts`, the ONE append-only catalogue — OWN_FORM ·
+OWN_EVENT · AGENT_ROSTER (first-party) and THIRD_PARTY, each with its verbatim per-person wording, plus the 18+
+sentence, the THIRD_PARTY notice and ONE input check (a proof note of 10–500 characters holding no phone-shaped run; 18+
+asked for a first-party basis only). 🔴 **G4:** the wordings are DRAFTS (`CONSENT_BASIS_G4` reads DRAFT, every `since`
+UNSHIPPED) until Ali confirms them; from the first production row they are append-only evidence, shown in the person's
+DSAR export. ⛔ **Option A (decided in S10 — §4 OD50):** while the wording is DRAFT, no production entry — any `src/app`
+file, any `"use server"` module, the boot hook and the proxy — may import the catalogue or `import-consent`, call
+`recordImportConsentBatch` or `fixConsentBasis`, or reach a draft writer through its imports; the gate may read the
+catalogue, and an uncalled writer and its in-memory tests may land (draft2, with its detector's own control draft3).
+The stored proof note is NFC with invisible characters removed (the phone screen reads a separate NFKC copy, never
+stored), and `importConsentEvidence` answers null for a phone-shaped note, a malformed run id or a key outside the
+catalogue — ⛔ U32 and U33b treat that null as "write nothing".
+**U33a · engine** (after U29b, before U38a — X24): `consent.ts`'s contact branch rewritten — the latest GIVEN must be an
+officer's import attestation or a pinned SMS sentence, else `no_consent`; age is an attestation read BACK through the
+ledger to the number's last erasure WITHDRAWN, so stop → resume keeps an attested contact marketable and no attestation
+ever crosses an erasure (the rg-doors anchor line stays byte-identical). `src/lib/server/marketing/import-consent.ts` is
+the fourth declared ledger writer (dal-parity §20, `...ledgerStamp()`) and a C4 cache writer (caches only through
+`mirrorContactCache`, X6): it reads the basis from the RUN row only and appends GIVEN only for a row the run CREATED that
+`decide()` marked `consentWritable` (X5), idempotent over "importId = this run and no ledger row". The marketing-optout
+fixture is rewritten in the same commit (its labels 1 and 12). ⚠️ Corrected premises: a bought list writes NO ledger
+row — `MessagingConsentStatus` stays GIVEN/WITHDRAWN, UNKNOWN lives only on the book row's cache, and OD9's "UNKNOWN …
+its own migration ONE COMMIT before U33" is void (no enum migration; U33a corrects OD9's text); an imported row's
+`sourceRef` is the run id (X6), never a basis key.
+**U33b · the panel** (production-reachable, so G4-gated): the picker in U30b's pre-flighted state — radio cards each
+showing its FULL wording, a preview rendered from the catalogue (never a hand copy), the proof note with a live count, the
+18+ box hidden for THIRD_PARTY, a neutral THIRD_PARTY callout before Apply ("stored and never sent a marketing SMS") —
+and a locked view on a resumed run. The basis columns are U29a's (X2), written once by U32's start action (M4); audit
+`contacts.import.consent_basis` (X23; the note's length, never its text). U33b also brings the bulk "Record consent →
+Given" to U23's bar through this same picker (M7; U23 omits it until then and says so on the bar).
+**Guard:** `test:marketing-consent` (the consent-basis section module: pin, catalogue, input, writer, gate, draft1 and
+draft2) · `test:marketing-optout` · `test:dal-parity` §20 (WRITERS) and §24 (the basis, write-once) ·
+`test:client-graph-safe` (the catalogue pinned).
+**RED:** `red:marketing-consent`: edit a stored wording → the pin fails (the plan's own); make the third-party basis grant
+consent (the plan's own); drop the player, on-record, importId or basis-from-the-run check; an attestation walk stopping
+at any WITHDRAWN, or crossing an erasure; a DRAFT catalogue imported by an `src/app` file or a "use server" module
+(draft2).
+**States:** loading · unchosen (Apply disabled with its reason) · first-party incomplete (the first missing item named) ·
+note refused (phone-shaped) · ready, first-party ("Import N contacts with consent") · third-party ("… without consent") ·
+locked (a resumed run) · refused (the server's reason) · error (nothing imported; the draft kept).
+**Accept:** a first-party run of three fresh numbers writes exactly three GIVEN rows, each ALLOWED by the gate; a
+third-party run writes none; a player's, an erased and a suppressed number get nothing; stop → resume stays ALLOWED.
 
-**U34 · Export** — `GET /api/admin/contacts/export`
-Modelled on the transactions export: session + domain check answering **404** (don't confirm the endpoint),
-RFC 4180 quoting, the `'` formula guard that the importer's `unguard` reverses, a **UTF-8 BOM written and
-stripped as a PAIR**, the header named `phone_masked` when masked and `phone_e164` when full, masked unless
-`mayReveal` — and a full pull writes `pii.revealed` **with the row count**. Travels as the FILTER through
-`contactAudience`, and the audit names the filter rather than claiming "all".
-**Guard:** `test:contacts-export`. **RED:** drop the `mayReveal` branch; write the BOM and stop stripping
-it (the round-trip fixture's first header mangles).
-**Accept:** export → re-import returns 0 invalid and 0 changed.
+**U34 · Export** — `GET /api/admin/contacts/export` (OD25, OD36; decisions X7 · X11 · X27, and U21–U28's C2 · C3 · C6 · C13 · C16 · C19 · M5 · A1.1)
+**U34a · the export** (parallel-safe with U29a–U32 on disjoint files, P2, once U24, U28a's `csv-write.ts` and U22's
+`contactEmail` entry exist): `src/app/api/admin/contacts/export/route.ts` (a thin GET: the session, the viewer decided
+on the STORED role row, then `checkAdminTotp` — every failure the identical 404), `src/lib/server/contacts/export.ts`
+and the page-head link. **U34b · the round trip** (after U25, U28, U30 and U31).
+ONE writer (X11, C16): U28's `csv-write.ts` — a guard pair that reverses exactly, every cell quoted (that keeps the BOM
+red sensitive: `trim()` eats U+FEFF, but not a broken quote), CRLF, and the BOM written by it and stripped as a PAIR by
+U25's `stripBom` (C19). No second writer and no labels module (C13: `contacts-copy.ts`). Columns come from
+CONTACT_FIELDS (`contactExportHeader`) plus export-only columns (operator, consent, source, added_at); a masked viewer
+gets the phone AND the email masked (the `contactEmail` entry, U21–U28's M5) and NO `source` column (X11) — and, by A1.1, no
+`consent` column either (a per-row consent value is a player signal to a masked role); no `player` column for anyone. A
+full pull writes `pii.revealed` with the row count, awaited BEFORE the first byte, then `contacts.exported`
+(`contacts.export_refused` on a refusal); an audit row that did not record answers 503 with no CSV.
+Rows travel as the FILTER through U24's ONE resolver: `parseContactAudienceParams` (an unknown value refuses, C2), a
+keyset walk by id capped at the audited count, erased rows never exported (C3), the export's own instant as the Added
+window's upper bound (X7 — no DAL change), and the filter described in the audit by `auditContactAudience` (C6: no raw
+number, never "all"). Filters only: no ticked-selection export, and ids never travel in a URL (X27). Over 200,000
+matching → 422 naming both numbers. A masked file is refused by name (`phone_masked`) on re-import. ⚠️ The transactions
+export's two residuals — `mayReveal(session.role)` and a raw `q` in its audit — are never copied; U34's commit records
+them under §0's ⚠ RECORDED (that route is outside §6's permission).
+**Guard:** `test:contacts-export` (NEW, in `predeploy`, in-process `--prove-red`) · `test:contacts-audience` (the export
+leg: the list total = `X-Rows-Matched` = the rows parsed back).
+**RED:** `red:contacts-export`: drop the read-cell (`mayReveal`) branch → a masked file holds a full number (the plan's
+own); write the BOM and stop stripping it → the round-trip fixture's first header mangles (the plan's own); the cell
+decided on the cookie's role; `recorded` ignored; a raw number in the audit; a fetch-all walk; erased rows exported; a
+walk error swallowed into a short file.
+**States:** loading (the head re-measured at delta 0) · populated, read role ("Export CSV") · populated, masked role
+("Export CSV (masked)") · empty book (no control) · no-match (no control; the rail kept) · over the ceiling (disabled,
+the reason visible) · error (no control).
+**Accept:** (U34a) GROWTH downloads a masked file and ADMIN a full one, both audited before the first byte; (U34b) export
+→ re-import returns 0 invalid and 0 changed under take-the-file's-version AND fill-blanks-only, and a one-edit control
+reports exactly 1 changed.
 
 ### Phase C — campaigns (U35–U49)
 
-**U35 · Campaign models** — `SmsCampaign`, `SmsCampaignRecipient`, `SmsPurpose.MARKETING` (D22)
-⚠️ **Two migrations**: one that does nothing but `ALTER TYPE "SmsPurpose" ADD VALUE IF NOT EXISTS
-'MARKETING'`, deployed before any code writes it (Postgres refuses a value added in the same transaction —
-the repo already paid for this once), then the tables. Campaign: name, `bodySw`, `bodyEn?`, coding,
-segments, `audienceFilter` Json (⛔ a filter, never a list of ids, and it lives on the row so a confirmed
-scope cannot be widened afterwards), `audienceCount`, status, `enqueueCursor` (prefixed, so a resume
-cannot restart the wrong walk), stop reason, budget, estimate, window override, approval ids, timestamps.
-Recipient: `msisdn`, `contactId?` (`SetNull`, never Cascade — deleting a contact must not erase the proof
-we messaged them), `userId?` (stamped for the grid, ⛔ re-resolved at send), status, `smsReference?`
-(nullable-unique), `failureClass`, `error`, `skipReason`, `claimToken`, attempts, segments, cost,
-timestamps, **`@@unique([campaignId, msisdn])`**. ⛔ No stored counters.
-**Guard:** `test:dal-parity` — a NEW section at the next free number (this said §10, which is taken). **RED:** planted key; drop the unique index → the U43 concurrency
-control must fail.
+**U35 · Campaign models** — `SmsCampaign`, `SmsCampaignRecipient`, `SmsPurpose.MARKETING` (D22; decisions X1 · X8 · X12–X15 · M5 · M6 · M9)
+**U35a · enum-only migration** — ONE statement, `ALTER TYPE "SmsPurpose" ADD VALUE IF NOT EXISTS 'MARKETING'`, alone in
+its own migration with the store union, and `test:campaign-models` §1.1 (the ADD VALUE stands alone) and §3.1 (the
+MARKETING writer pin, empty); DEPLOYED by itself — production's `/api/health` migrated at that SHA — before anything
+writes MARKETING (U37b's test send), because Postgres refuses a value used in the transaction that added it (55P04).
+**U35b · tables** — three new types, both tables, both twins with named types, `src/lib/server/marketing/campaign-model.ts`
+(the frozen-key list, the seed checks, the zero-filled counts) and dal-parity §26, in ONE hand-written expand-only
+migration (never `prisma migrate diff`); U36 starts only once it is live.
+**SmsCampaign** carries X12's model: status DRAFT · CONFIRMED · PREPARING · RUNNING · PAUSED · DONE · CANCELLED (no
+approval status — OQ1 removed the gate; a status added later is a 55P04 two-step); name, `bodySw`, `bodyEn?`, per-variant
+`codingSw` · `segmentsSw` · `codingEn` · `segmentsEn` (U37's SAVED counts) and `nameFallbackSw` / `nameFallbackEn`;
+`sourcePhrase` (M5); `draftRevision` (the ONE optimistic mechanism); `confirmTier`; `audienceFilter` (U24's canonical
+key JSON, X13 — a filter, never a list of ids, so a confirmed scope cannot be widened); `audienceCount`;
+`audienceWatermark` (U40's keyed members key, null on the typed tier; the client's fence token is never stored);
+`estimateSegments` / `estimateTzs` (frozen at confirm, X15); `enqueueCursor` (`b:<id>` · `p:<userId>` · `done`, parsed in
+`audience.ts` only — no phone number ever forms a cursor, X8) and `enqueuedAt`; stopReason, budgetTzs, createdBy,
+confirmedBy, timestamps. Frozen keys change only in DRAFT; status moves only by a conditional transition (one winner).
+**SmsCampaignRecipient**: `msisdn` (the bare key; a batch holding a non-gateway spelling is refused whole), `contactId?`
+and `userId?` (SetNull, never Cascade; the campaign link RESTRICT — the proof we messaged someone outlives a deleted
+contact), status PENDING · HELD · SENT · DELIVERED · FAILED · SKIPPED (X12), `smsReference` (nullable-unique),
+`optOutToken`, locale, `failureClass`, `error` (never a number), `skipReason` / `skipDetail`, `claimToken` /
+`claimedAt`, attempts, segments, `bodyLen`, `costTzs`, `gateTrail` (JSON: every check, its verdict, the wording and the
+source — written by U43 for EVERY recipient, sent or skipped, M6) and timestamps; `@@unique([campaignId, msisdn])`, an
+index on (campaignId, status). ⛔ No stored counters (OD26) and no delete in either twin.
+**The ONE live-send switch** is SystemConfig `marketing.sms.live` = { enabledBy, enabledAt }, ABSENT meaning CLOSED
+(X14): every marketing-purpose send path checks it, and MARKETING_WRITERS lists `campaign-test-send.ts` from U37 on.
+Owes downstream (M9): U16 brings both models inside erasure, retention and the DSAR export BEFORE U42 writes the first
+recipient. ⚠️ U43's reaper (claim → UNCONFIRMED) and U46's ACCEPTED → UNCONFIRMED name statuses X12 does not carry:
+reconcile at U43 (a value added later is a 55P04 two-step).
+**Guard:** `test:campaign-models` (in `predeploy` from U35a, in-process `--prove-red`) · `test:dal-parity` §26 (U36 and
+U40 extend it, X1).
+**RED:** `red:campaign-models`: the ADD VALUE file also carrying a CREATE TABLE (55P04); the recipient unique index
+removed from the migration or the schema → the dedupe fixture fails (the old RED, "drop the unique index → U43's control
+fails", cannot run before U43, which still plants it in its five-driver control); a CASCADE link; a stored counter; a
+frozen audience widened after DRAFT; an unconditional transition; an undeclared MARKETING writer. `red:dal-parity` §26:
+a planted key in one mapper only; skipDuplicates removed.
+**Accept:** U35a live alone at its SHA; then 1,000 seeds plus the same 1,000 shuffled with 200 new ones give 1,200 rows;
+a confirmed scope cannot be widened; two racing transitions leave exactly one winner.
 
-**U36 · The campaign list** — `/admin/campaigns` + its five doors + the nav badge (OD39)
-Label **"SMS campaigns"** — ⚠️ never "Campaigns": `/admin/invites` already heads "Invite campaigns" and two
-identically-labelled entries is a support ticket waiting to happen. `getSidebarBadges` gains one count
-(running, or paused with outstanding rows) rendered as a `CountBadge`.
-**Guard:** `test:admin-nav`, `test:rbac`, `test:admin-section-gate`.
-**States:** loading · empty · populated · in-progress (a running campaign's row) · refused · error.
+**U36 · The campaign list** — `/admin/campaigns` + its SIX doors + the nav badge (OD24, OD38, OD39; decisions X1 · X12 · M8)
+Only after U35b is LIVE. SIX doors, not five (U17 measured it): a Growth NAV_GROUPS item labelled **"SMS campaigns"**
+(⚠️ never "Campaigns" — `/admin/invites` already heads "Invite campaigns"), its ROUTE_KEYS row, the ROUTE_DOMAINS row
+`["/admin/campaigns", "growth"]` (THE section's visibility; `test:rbac` §7b holds it equal to the nav item's domain), a
+`layout.tsx` with a literal `AdminSectionGate title="SMS campaigns"`, a `loading.tsx` whose skeleton equals the real block
+by construction, the status rail declared in ADMIN_SURFACES (dense on every pill), and the page's OWN AdminPageGate —
+plus CRUMB_LABELS `campaigns: "SMS campaigns"`, so neither the breadcrumb nor the refusal heading says "Campaigns".
+`src/lib/marketing/campaign-status.ts` (pure) is the ONE vocabulary over X12's statuses: the rail (drafts · sending ·
+paused · finished); OUTSTANDING = PENDING + HELD and SETTLED = SENT + DELIVERED + FAILED + SKIPPED (HELD still owes
+someone a message); `campaignProgress` (null for an empty campaign — no 0 % bar); `wantsAttention` (PREPARING or RUNNING,
+or PAUSED with an outstanding row or `enqueuedAt` still null); `stopReasonLabel` ("Engine reason: <key>" for an unknown
+key, never the raw key alone); and the CAMPAIGN_SCREENS flags — U37 flips compose (M8), U47 detail — so the list links
+only to pages that exist. The loader counts the rail over the WHOLE table, clamps then re-reads the page, breaks ties on
+id, reads recipient counts with ONE groupBy over the page's ids (no N+1), and lets a failed read THROW into
+AdminLoadError with the rail kept. Its reads extend dal-parity §26: page, statusCounts, attentionCount, countsByCampaign.
+The badge: `getSidebarBadges(canSeeMoney, canSeeGrowth)` reads the count ONLY for a viewer who may see growth (the badges
+object ships to every staff client), through an async wrapper so a synchronous memory-twin throw cannot take every admin
+page down (B-28). No TZS, budget or estimate on the list (OD24), no raw `audienceFilter`, no pulse (OD38); U38 adds the
+filter in words (`describeAudience`) to each row (M8).
+**Guard:** `test:campaigns-page` (NEW, in `predeploy`, in-process `--prove-red`) · `test:admin-nav` · `test:rbac` ·
+`test:admin-section-gate` · `test:filter-language` · `test:layout-staleness` · `test:dal-parity` §26.
+**RED:** `red:campaigns-page`: a nav item labelled "Campaigns"; HELD counted as settled ("a campaign that still owes
+people a message reads as complete"); the badge read for a viewer without growth; the rail counted from the filtered
+page; a timer-driven bar; `formatTzs` on the list; the detail flag on with no page. `red:rbac`, extended to 4/4: the
+ROUTE_DOMAINS row deleted and the nav domain edited, for /admin/contacts AND /admin/campaigns.
+**States:** loading (ghost card top = real, delta 0) · empty (no rail; no compose link until U37) · populated (the rail
+with server counts; paging past 20) · in-progress (a RUNNING row's determinate bar; the badge) · no-match (the rail still
+rendered; Show all) · refused (a role without growth: "SMS campaigns" restricted, no nav item, no count in its payload) ·
+error (the rail kept with no counts; no badge, never "0").
+**Accept:** GROWTH reaches the page while FINANCE and SUPPORT do not and their payloads carry no campaign count; a
+RUNNING campaign with 4 SENT and 6 HELD rows reads 4 of 10.
 
-**U37 · The composer** — `/admin/campaigns/new` (OD42, OD44)
-One page, three cards, no wizard. Swahili body required, English optional; exactly one placeholder
-`{jina}` with an operator-typed fallback; a live counter per variant showing segments, coding, characters
-left, *"Forced to Unicode by: ’"* (on this platform every UCS-2 character is a stray, so the hint always
-fires and is always right) and *"Includes the stop link, which is required and is counted"*; a read-only
-sender line; and **test-send-to-my-own-number** (⛔ never a typed number — a typed number is how a test
-reaches a player) with the composed text shown verbatim beside it.
-**Guard:** `test:campaign-compose`. **RED:** size before appending the footer; allow a typed test number.
-**States:** loading · blank · typing (counter live) · over-cap · refused (missing SW body / body does not
-begin with `50pick`) · error.
+**U37 · The composer** — `/admin/campaigns/new` (OD42, OD44, OD45; decisions X12 · X14 · X15 · X16 · M5 · M8 · M9 · M12)
+**U37a** (pure, P1): `src/lib/marketing/campaign-template.ts`, THE ONE renderer and the only src file allowed to call
+`composeMarketing`. Exactly one `{jina}`, with a per-variant fallback (`nameFallbackSw` / `nameFallbackEn` — one fallback
+cannot serve both languages), filled only from the player's OWN account name (the first word, folded, GSM-7 letters, at
+most 12, never cut); a book contact always gets the fallback, because a recycled number would print a previous holder's
+name. The counter sizes the WORST case — `{jina}` as 12 septets, the footer and the source phrase — since `{` and `}`
+cost 2 septets each and a long name would otherwise double the segments; UCS-2 is a REFUSAL with the offender named and
+the plain-character fix offered; `variantFor` sends English only to an English account when an English body exists;
+`renderForRecipient` is what the test send and U43 both call. ⛔ **M5 (decided in S10):** the source phrase
+(`SmsCampaign.sourcePhrase`) is priced into the worst-case counter, and the renderer REFUSES a non-account (book)
+recipient while the campaign has none — never dropped until G5 (OQ3) is answered. The phrase is the footer's own
+first line (`marketingFooter(token, locale, sourcePhrase)`), capped at `SOURCE_PHRASE_MAX_CHARS` = 30 septets (refused
+on its own field), and while it is blank the counter reserves the longest allowed phrase: the officer's room is **80**
+until G5 (§4 OD49). ⛔ **One campaign, one verdict (§4 OD48):** the renderer re-runs `validateCampaignTemplate` on the
+WHOLE stored template before any recipient's message and refuses every recipient if any part fails; the recipient's
+own message is checked too (its token is the one thing only it can get wrong). ⚠️ U37b's test send picks its origin
+deliberately (a non-account origin is refused while the phrase is blank); U38/U40 warn at confirm when a population
+holding book contacts meets a blank phrase.
+**U37b · page, save, test send** (after U35a is DEPLOYED and U36 is live): the page with its own AdminPageGate; one
+Message card (Swahili required, English optional, a live counter per variant, a read-only sender line from
+SMS_SENDER_ID that speaks Admin → System's dead-rail words — never an input, OD45); `saveCampaignDraft` re-validates on
+the server, stores the server-computed per-variant coding and segments that the confirmation's estimate reads (X15), and
+saves by compare-and-set on `draftRevision` (X12 — no `baseUpdatedAt`, no second update method); `marketing.campaign_created`.
+The test send (`campaign-test-send.ts`, declared in MARKETING_WRITERS, X14) reaches the officer's OWN number only — the
+action takes (campaignId, variant) and no number or body — through `dispatchSlice` and the ONE gate (no bypass: the
+officer needs consent and a date of birth on their own account), with `ensureOptOutToken` (reuse, else mint), a
+per-officer rate rule (3, refilling one per 10 minutes) and a masked `marketing.campaign_test` row. ⛔ **X14:** it checks
+the ONE live switch `marketing.sms.live` — ABSENT means CLOSED → `live_sends_closed`, with zero rows, transport calls and
+token mints (only the console stub, with no handset and no money, passes while closed). Opening it is G1, and each test
+after that is a real TZS 6 (G3). M8: the same commit flips CAMPAIGN_SCREENS.compose and adds the admin-nav
+REACHED_WITHOUT_NAV row. Owes downstream: U15 allowlists the test send (M9); it obeys the send window once U13 exists,
+and U14's cap excludes `SmsCampaignTest` (M12); U42 and U43 adopt `ensureOptOutToken`, `renderForRecipient` and the switch.
+**Guard:** `test:campaign-compose` (§15 template · §16 one composer · §17 save · §18 test send) · `test:campaign-models`
+§3.1 (the writer pin) · `test:client-graph-safe` (the renderer pinned).
+**RED:** `red:campaign-compose`: size before appending the footer — planted at the NEW layer, the variant counter (the
+`composeMarketing`-layer plant already exists); allow a typed test number (the plan's own); `{jina}` sized as typed; a
+raw display name inserted; a book recipient rendered with no source phrase; a test send that skips the gate; the switch
+read as open with no row; a save trusting posted segments, or saving without the `draftRevision` compare.
+**States:** loading (skeleton = the real blocks) · blank · typing (the counter announced only on a change) · `{jina}` in
+use · over-cap · refused (no Swahili body; not starting "50pick"; UCS-2 with the fix; a placeholder or fallback; no
+source phrase; not a draft; edited elsewhere) · saved · test idle (the masked own number, the verbatim text) · test
+refused (live sends closed; no consent; rate-limited; dead rail) · test handed over (never "delivered") · test
+unconfirmed · error (the text kept).
+**Accept:** for 40 written-out names the rendered size never exceeds the counter's; an input cast with a number still
+reaches only the officer's own key; with the switch absent, a real carrier sends nothing.
 
-**U38 · The audience** — same page (OD26)
-Pills for source · consent · network · list/tag, a `DateTimeRangeFilter` for "joined between", all in the
-URL and all registered. The split, server-counted: **matching · reachable · will receive · not receiving**,
-with every reason line named and counted, in neutral ink. `describeAudience(filter)` renders the filter in
-words — ONE implementation, shown in the builder, the confirm, the campaign row and the page a month
-later. A sample of five, masked, in the enqueue's own order. ⚠️ A permanent info callout: on day one
-"will receive" is small and "no permission on record" is nearly everyone, because consent defaults to
-false and there is no backfill — so the first operator does not file a bug against a working system.
-**Guard:** `test:campaign-audience`. **RED:** derive a count on the client → red.
-**States:** loading · no filter · filtered (the split) · computing · empty audience · error.
+**U38 · The audience** — same page (OD6, OD26, OD36, OD40; decisions X7–X10 · X24 · X25 · M8 · C2 · A1.1)
+**ONE resolver** (X7): U38 EXTENDS U24's `ContactAudienceFilter` inside `audience.ts` with a `population` axis (book ·
+players · both) and the player arm — the same parser (an unknown value REFUSES, C2; A1.1's role refusals hold), the same
+key and the same `describeAudience` (string[]). No second filter type, parser, key or describer: the spec's
+`audience-filter.ts`, its URL parser that "ignores" unknown values and its second describer are dropped. The window is
+U24's (absolute EAT instants, an unreadable or inverted bound refused), and no "last 7 days" default may leak in from
+`DateTimeRangeFilter` or `resolveRange` (`defaultPreset="all"`).
+**U38a · the count** (engine, no surface; after U33a, X24): the player arm inside `audience.ts` and ONE walk (X8) — the
+book by `id`, then players by user `id`, cursor `b:<id>` · `p:<userId>` · `done`, parsed in `audience.ts` only; a number
+in the book is walked once, by its book row; erased tombstones, staff and non-+255 phones are never walked. The
+campaign-audience count (book ∪ players) IS the confirmed population U40 fences and U42 enqueues (X9). The player keyset
+read extends §21, the resolver's own section; the gate's prefetch reuses §25's bulk reads (X10). `consent.ts` gains a
+defaulted `reads` parameter that accounts for U33's attestation walk, the rg-doors anchor line byte-identical; the send
+loop still calls the gate with one argument. The split (`audience-split.ts`): **matching · reachable · will receive ·
+not receiving**, computed by asking the REAL gate for every number with only its reads batched — one decision
+definition, no write, no send; protected standing (rg_*, age_minor, account_status) is ONE line for every role, never
+itemised; a time budget leaves the rest `unchecked` (shown "≥ N"), never guessed; single-flight per filter key and at
+most 2 per process (the pool is shared with bets). A sample of five, masked, in the walk's own order. The operator pill
+reads "Operator (by prefix)", never "network" (numbers are portable). The permanent callout names all three day-one
+reasons: offers start off for players, a yes under the old wording does not count, and a contact needs a recorded
+consent AND an 18+ attestation.
+🔴 **X25 (D19):** the sample shows NO per-row player flag to a masked role, and no number search runs against the
+player arm (a 1-vs-0 count is the oracle). ⛔ **Decided in S10 (safe default):** a whole-number `q` on the BOOK arm also asks
+the gate, which reads the player table — so a masked viewer's `q` on the campaign audience is REFUSED (a role refusal,
+A1.1); U38a may lift it only with a proof in `test:campaign-audience` that the split cannot answer "is this a player".
+**U38b · the card**: the rail (ADMIN_SURFACES, dense), a Suspense keyed by the filter key (unkeyed, old numbers show
+under a new filter), every figure from one server view-model (no browser arithmetic), neutral ink (OD40); U20's
+"Reachable" column reads "Will receive" (one vocabulary); `describeAudience` joins U36's list rows (M8).
+**Guard:** `test:campaign-audience` (NEW, in `predeploy`, in-process `--prove-red`) · `test:dal-parity` §21 and §25
+(bulk equals single per element; `liftedAt: null`; the ledger's identical order; the avatar omit) · `test:filter-language`
+· `test:marketing-consent` · `test:rg-doors`.
+**RED:** `red:campaign-audience`: derive a count on the client → red (the plan's own); decide from the consent cache
+instead of the gate; a lifted stop prefetched as active; the ledger tiebreak dropped; protected reasons itemised;
+`unchecked` counted as will receive; the sample out of walk order; a player flag in a masked sample; the Suspense key
+removed; a walk restart that re-includes the cursor row.
+**States:** loading (the ghost equals the real block) · no filter (nothing computed; "Everyone" is an explicit choice) ·
+filtered (the split) · computing (the keyed fallback under the new sentence) · empty audience (the rail kept; real
+zeros) · error (Count again; never 0).
+**Accept:** on a fixture holding every skip reason, each number's bucket equals the gate's own answer; the projection
+equals a dry `dispatchSlice` over the same walk; a GROWTH sample carries no player flag.
 
-**U39 · The estimate** — segments for GROWTH, money for accounting (OD24)
-Segments × recipients, the per-segment cost **measured** from the balance walk over recent accepted sends
-(⛔ never a bare constant — the caption says "estimated from the last N sends" or "configured, not yet
-measured"), the **live** balance read fresh (⛔ never the 15-minute in-process snapshot, which is
-per-container), and what that balance covers in recipients. A duration **floor**, not a promise.
-**Guard:** `test:read-tiers`. **RED:** render TZS unconditionally → a GROWTH session must show no `TZS`.
-**States:** loading · no audience yet · segments only (GROWTH) · segments and money (accounting role) ·
-balance unreadable (says so, never guesses) · error.
+**U39 · The estimate** — segments for every role, money only for a role that may read it (OD24; decisions X15 · X26 · M9 · M16)
+**U39a** (engine, P1): `src/lib/marketing/segment-cost.ts` — the per-segment price MEASURED by a balance walk over
+DELIVERED, segment-certain chunks (bodyLen ≤ 70; the vendor bills per delivered message, so a walk over accepted sends
+under-prices), the median of at least 3 valid pairs; else `SMS_PRICE_PER_SEGMENT_TZS`, captioned "configured, not yet
+measured" (setting it on Railway is G9); else "not yet measured" — never 0, never a bare constant.
+`src/lib/marketing/campaign-estimate.ts` — `campaignEstimate`, the ONE arithmetic U40 and U49 reuse, and `estimateView`
+(every display string; money strings exist only when money is present). `src/lib/server/marketing/estimate.ts` —
+`campaignMoneyVisible(role)`, THE decider (accounting view AND money.figures `read`; READ_CLASS_SUMMARY now names the
+campaign estimate, so the class is not silently widened), and the loader, which resolves the STORED role itself.
+**The estimate a confirmation freezes** (X15, M16) is computed on the server from the SAVED per-variant segments (U37's
+save) × the campaign POPULATION — the spend ceiling, not the forecast — with the will-receive forecast beside it; only
+the composer's live card may follow the typing. Coverage keeps the login-code reserve; the duration is a FLOOR ("At
+least …, not a promise") at the fastest measured chunk with MAX_SLICES_IN_FLIGHT = 1, which U43 must enforce.
+**The credit** is the FRESH read — `refreshSmsBalance` (S7b, reworked by the audit-fix pass), at most 60 s old within the
+render budget, never the in-process snapshot: a stale, pending or failed answer shows "—" with its reason (no answer;
+keys refused; keys not set; still checking; no balance on this provider) and NEITHER the kept figure NOR "Was" —
+Admin → System's tile prints "Was"; this card must not.
+**U39b** (visual, after U38b): the card in a Suspense holding the role's own tile count, the page wiring that shares
+U38's ONE split promise (the two cards cannot disagree), and a dev-only seed route that drives the real `sendBatch` into
+a loopback stand-in only (U15 allowlists it, M9). X26/M10: `test:read-tiers` joins `predeploy` once, at U29b — U39 adds
+no insertion of its own.
+**Guard:** `test:campaign-estimate` (in `predeploy`, in-process `--prove-red`) · `test:read-tiers` §9 (the decider and the
+READ_CLASS_SUMMARY wording).
+**RED:** `red:campaign-estimate`: render TZS unconditionally → a GROWTH session must show no `TZS` and make zero balance
+reads (the plan's own); a domain-only decider, or `masked` read as readable; accepted-but-undelivered chunks measured; a
+mean instead of the median; every body counted as 1 segment; a stale figure kept; the snapshot read instead of the
+vendor; coverage without the reserve; the floor at the slowest chunk; a frozen estimate built from live sizes or from
+the forecast instead of the population.
+**States:** loading (the role's own tile count; delta 0) · no audience yet · segments only (GROWTH) · segments and money,
+measured · segments and money, configured · cost not yet measured · balance unreadable (the reason, no kept figure) ·
+error (the audience count failed; Refresh).
+**Accept:** a GROWTH page's HTML and flight carry no "TZS"; seven clean delivered chunks measure exactly 6; the confirm's
+frozen estimate equals the population × the saved segments.
 
-⭐ *(2026-09-26)* The fresh read exists now: `refreshSmsBalance` in `sms.ts` (S7b, reworked by the audit-fix
-pass — a render budget, one read in flight, a short pause after a failed read, and an answer that says
-fresh / reused / pending / failed / unavailable, `stale` when the figure could not be confirmed, and why a
-failed read failed). Use it; show "unreadable" for a stale, pending or failed answer rather than the kept
-figure, as Admin → System's tile does (§9 U49).
-
-**U40 · Confirm** — `ConfirmModal` (OD27, OD28)
-≤5 recipients: **enumerate** every one. >5 or unfiltered: the filter in words, the four figures, the
-sample, and a **typed number**. 🔴 The server compares the typed value against the count **it** recomputes.
-`audience_moved` (count + watermark) refuses, sends nothing, and shows the new number. The destructive
-button is never the focused element on open.
-**Guard:** `test:campaign-gates`. **RED:** compare against the posted count → the stale-client fixture must
-be refused and the suite must fail without the fix.
+**U40 · Confirm** — `ConfirmModal` over a server-recomputed fence (OD27, OD28; decisions X1 · X9 · X12 · X13 · X15 · X16 · M14)
+**U40-pure** (P1): `src/lib/marketing/campaign-confirm.ts` — `CONFIRM_ENUMERATE_MAX` = 5; `confirmTier` (≤5 people
+under a filter → enumerate every one; more, or no filter → a typed number); `parseTypedCount` (strict digits, grouping
+allowed); the fence claim; `decideConfirm`, the OD27 gate — 🔴 the typed value is compared ONLY with the count the
+SERVER recomputes, never a posted one; and `startAudienceVerdict` (OD28: above the confirmed count Start refuses, below
+it proceeds and reports), which U42 calls before its first row.
+**U40a · server**: `src/lib/server/marketing/audience-fence.ts` counts through U38's campaign-audience count and walk
+(X9: book ∪ players — never the book-only `contactAudience().count()`, or every Start refuses `audience_moved`, or
+players are messaged unconfirmed) and derives a KEYED members key (a domain-separated HMAC; a bare digest of a
+one-person audience brute-forces back to the number), stored as `audienceWatermark` on the enumerate tier and null when
+typed — the signed fence token the browser holds is never stored (X13). `campaign-confirm-service.ts` recomputes OUTSIDE
+any lock → `decideConfirm` → `db.smsCampaign.confirm`, conditional on DRAFT AND `draftRevision` (it extends §26; the
+ONLY writer of audienceCount, confirmTier, audienceWatermark, confirmedAt and confirmedBy) — and freezes
+`estimateSegments` / `estimateTzs` from U39's arithmetic over the SAVED segments × the population (X15). **U40b · UI**:
+`campaign-confirm.tsx` and its action file in ONE push (X16 — the action alone reds `test:orphan-actions`), wired on
+U37's page, with an additive numeric keypad option on `modal.tsx`.
+The number to type is MATCHING — U47's "On campaign", the rows U42 will write; will receive is shown as a forecast.
+Refusals: `audience_moved` (the count or, when enumerated, the members changed — it shows the new number and sends
+nothing), `typed_mismatch`, `typed_required`, `audience_empty`, `stale_view`, `draft_changed`, `not_draft`. The
+destructive button is never focused on open (`initialFocus={isHard ? inputRef : cancelRef}`, now pinned). Audit
+`marketing.campaign_confirmed` / `marketing.campaign_confirm_refused` (M14), with no number. ⛔ CONFIRMED sends nothing:
+the first real campaign start is G2.
+**Guard:** `test:campaign-confirm` (U40-pure; in `predeploy`, in-process `--prove-red`) · `test:campaign-gates` (U40a —
+NEW: the keyed watermark, the service on the memory twin, the conditional write, "nothing is sent"; U41 extends it) ·
+`test:dal-parity` §26.
+**RED:** `red:campaign-confirm` and `red:campaign-gates`: compare against the posted count → the stale-client fixture is
+accepted, so the suite must fail without the fix (the plan's own); the freeze writing the shown count; the enumerate tier
+skipping the members compare; "unfiltered" ignored; an unconditional confirm (five racing confirms, exactly one may win);
+a bare sha256 members key; the fence counting the book only; `initialFocus` on Confirm; TZS in a GROWTH view.
+**States:** loading (counting: refresh, then open) · idle · blocked (the reason in `title`, never hidden) · enumerate
+open (focus on Cancel) · typed open (focus on the input) · confirming · refused (`audience_moved` remounts with the new
+number) · confirmed (a toast: nothing has been sent) · error (the typed text kept).
+**Accept:** a view taken at 7, then one matching contact added, then "7" typed with the old fence → `audience_moved` at
+8 and nothing confirmed; "8" on the fresh view confirms; the SmsMessage, token and recipient counts never move.
 
 **U41 · Authorisation** — the officer authorisation (OD18) — ⚠️ RE-SCOPED 2026-09-26
 ~~`SystemConfig` `gbt.advertising_approval` {reference, grantedAt, expiresAt, scope, documentUrl} — absent or
@@ -2459,18 +3099,18 @@ removed — the refusal is the evidence, not the send.
 | S6 | U9 · U10 | prove the gate runs in the loop; the RG predicate |
 | S7 | U11 · U12 | age, and the published promise reconciled |
 | S7c | — | the end-to-end review of U1–U12 + S7b and its fixes (2026-09-26 → 27, §2) |
-| S8 | U17 · U18 | the route exists; the book exists — and ships inside erasure/retention from day one (U16's rule for the new store) |
-| S9 | U19 · U20 | masked by construction, then the list — the first contacts Ali sees |
-| S10 | U21 · U22 | filters, then one contact |
-| S11 | U23 · U24 | bulk, then the one resolver it proves |
-| S12 | U25 · U26 | CSV and vCard |
-| S13 | U27 · U28 | XLSX + the boundary guard; the field list |
-| S14 | U29 · U30 | staging, then the pre-flight it makes resumable |
-| S15 | U31 · U32 | `decide()`, then the loop that executes it |
-| S16 | U33 · U34 | consent basis; export (and the round trip that proves both) |
-| S17 | U35 · U36 | campaign models (enum migration first), then the list — Campaigns in the menu |
-| S18 | U37 · U38 | composer and audience — read together or not at all |
-| S19 | U39 · U40 | the estimate, then the confirmation that quotes it |
+| S8 | — (the S7c ship) | S7c went LIVE (`d3379fef`); no unit attempted (§2). The plan had paired U17 · U18 here |
+| S9 | U17 · U18a | the route exists; the book exists, its erasure and export arms (U18b) still owed — reconstructed from its commits (§2). The plan had paired U19 · U20 here |
+| S10 | U18b · U19 · U20 · the design · the first build tranche | U18b, U19 and U20 shipped and the consent tie was fixed; then the session that RAN THE DESIGN — the U21–U28 and U29–U40 workflows (a spec per unit, two critics, two decisions files) — and the FIRST BUILD TRANCHE: the U21–U28 decisions commit, U24 commit 1 ∥ U28a ∥ U27a, U35a (deployed alone) and the P1 pure engines (U31-A, U33a-catalog, U37a, U39a, U40-pure). §1 and §2 record what actually shipped; whatever did not opens S11 |
+| S11 | U24 c2 · U21 (∥ U26) | the cache mirror before the first contact writer, then the rail that filters on it; the parser track starts with vCard |
+| S12 | U22 · U23 (∥ U25 → U27b) | one contact, then bulk (server and UI in ONE push); the CSV and XLSX readers alongside |
+| S13 | U28b · U29a · §25 | the round trips close the parser track; the staging tables (dal-parity §24); the ONE bulk keyed-reads commit, built for U30 (X10) |
+| S14 | U29b · U30a · U33a | staging's service and privacy arms (LIVE before any staging is exposed); the pre-flight engine; the gate's contact branch and the uncalled import writer (Option A) |
+| S15 | U30b + U31 UI + U33b (+ U32's ping) | ONE push, so the live dialog is never a dead end; then deploy and the 20-call ping on www (G7). ⛔ U33b is G4-gated (Option A), so this push waits for G4 |
+| S16 | U32b+c · U34 | the start action, `commitBatch`, the loop and the bar (needs the measurement, and G4: the start fixes a basis); the export and its round trip (U34a may land earlier on disjoint files, P2) |
+| S17 | U35b · U36 | the campaign tables (dal-parity §26), then the list behind six doors — SMS campaigns in the menu |
+| S18 | U37b · U38a | the composer, save and test send (the live switch CLOSED; U35a deployed first); the audience count (after U33a, X24) |
+| S19 | U38b → U39b → U40 | serialised on /admin/campaigns/new: the audience card, the estimate it quotes, then the confirmation that freezes both (U40a + U40b; if S19 overruns, U40b opens S20) |
 | S20 | U15 · U16 | one send path before anything enqueues; erasure and retention reach every marketing store |
 | S21 | U13 · U14 | the window and the cap — now there is a campaign to pause and a MARKETING purpose to count |
 | S22 | U41 · U42 | authorisation, then the enqueue it guards |
@@ -2492,8 +3132,22 @@ since S4 carried U8 into S5. Every row from S5 on moved down one; the pairings a
 written before this date are a log and keep the OLD labels (S4's row says "U35 (S18)", "U42 (S21)") —
 read them as S19 and S22.
 
-⚠️ U30, U43 and U47 are the three most likely to overrun. If one will not fit, **split it before starting**
-and write the split into §2 — a half-built unit is worse than a smaller one.
+⚠️ **RE-CUT 2026-10-01 (S10) to the BUILD ORDER, on Ali's standing delegation — S8–S19 are no longer pairs.** S8 and
+S9 now say what those sessions did. S10–S19 follow the decided order. U21–U28 in decision C22's order: the decisions
+commit → U24 commit 1 ∥ (U28a, U27a) → U24 commit 2 → U21 → U22 → U23, with the parser track U26 → U25 → U27b alongside
+U24 commit 2 → U23 and U28b last (U21 is UI only over U24's resolver and filters on the cache commit 2 keeps honest, so it
+cannot come first). Then U29–U40 in the U29–U40 critic's order, as DECISIONS-U29-U40 fixed it: U35a first and deployed
+alone · the P1 pure engines · U29a · the §25 bulk reads · U29b · U30a · U33a · the U30b + U31 UI + U33b push · U32b+c ·
+U34 · U35b · U36 · U37b · U38a · U38b → U39b → U40. What binds that order: nothing writes MARKETING before U35a is
+deployed; U29b is live before any staging is exposed; U33a comes after U29b (`erase.ts`) and before U38a (`consent.ts`);
+every `*Action` ships with its UI (X16); the serial-only files — the DAL, schema, migrations and dal-parity; `consent.ts`;
+`erase.ts`; the import dialog and `import-actions.ts`; `/admin/campaigns/new`; `contacts/page.tsx`; `rate-limit.ts`;
+`optout-service.ts`; the admin shell, nav and roles; `predeploy` — take one edit at a time, and on Ali-Blade15 parallel
+agents edit statically with ONE serial battery after. ⛔ G4 is on the import's critical path: S15's push carries U33b and
+S16's start action writes a basis (Option A). S20–S27 are unchanged, so it is still 27 sessions end to end.
+
+⚠️ U30, U43 and U47 are the three most likely to overrun (U30 is split since 2026-10-01: U30a · U30b). If one will not
+fit, **split it before starting** and write the split into §2 — a half-built unit is worse than a smaller one.
 
 ---
 
