@@ -64,6 +64,16 @@ erasure now stops the number, withdraws the consent and empties the book, and bo
   needle — the `+255` needle alone had never matched one marketing row. `red:erasure` +5 anchors.
   ⚠️ Not reached, owned by U16 (S20): accounts erased BEFORE this (their number is gone from `User`),
   `MarketingOptOutToken`, a retention period for untouched book rows, the `/admin/retention` table.
+  ✅ STEP 3 · `red:rbac` (`be0a82ac`) — U17's §7b control made durable (2/2 in-process).
+  ✅ STEP 4 · U19 SHIPPED (`addf5351`) — `contactPhone` in the registry (a CONTACT id, `MarketingContact`
+  targetType, re-read through `db.marketingContact.find`); ONE mask for every spelling (`maskPhone` reads a
+  bare `255…` key as `+255…`, which also fixed the SMS refusal audit, the delivery-receipt audit and the
+  opt-out mint log — all printed `2557••••NN`); `<Sensitive copyable>` → Copy on the `read` branch only,
+  through the audited reveal. `test:read-tiers` 8.22–8.25 (79/79), `red:read-tiers` +4 anchors.
+  ⛔ LOCK STARVATION (measured 2026-10-01): `~/heavy-node-lock.sh` waiters poll every 30 s, and a session
+  running jobs back to back re-takes the lock within seconds of releasing it — S10's typecheck waited
+  40+ minutes without once getting in. S10 ran its battery through the same mkdir protocol polling every
+  2 s. Not fixed in the shared script (other sessions' waiters are inside it).
 
 🔎 S9 — RECONSTRUCTED FROM ITS COMMITS (2026-09-28, office PC, branch `marketing-s9`, merged and gone).
   It shipped U17 (`7bef9f97`) and U18a (`fb194038`) to `main` — both LIVE since that day — and ended
@@ -92,12 +102,11 @@ erasure now stops the number, withdraws the consent and empties the book, and bo
   one ("Nitumie ofa na habari za 50pick kwa SMS" 2 hits, the old one 0), on `?dpl=d3379fef…`. A check that
   reads the same before and after proves nothing — this one reverses.
 
-▶ NEXT: U19 · U20 — masked by construction, then the list: the first contacts Ali sees (§10's S9 pair).
-  U19 — `contactPhone` in `sensitive-fields.ts` (keyed by CONTACT id, separate from `phone`), every render
-  through `<Sensitive>`, "Copy number" is a REVEAL (no control at all for a masked role); `test:read-tiers`.
+▶ NEXT: U20 — the list: the first contacts Ali sees (U19 shipped, see 🟡 S10).
   U20 — `/admin/contacts` server-paged, nine columns, "Operator" sorts by `ndc`, whole-book `AdminKpi` by
   `groupBy`, `SearchBox` whose `q` goes through `parseTzNumber`; NEW suite `test:contacts-page` (add it to
   `predeploy`); states loading · empty book · populated · no-match · error at 1280 and 360, OPENED AND READ.
+  Every number renders `<Sensitive field="contactPhone" subjectId={c.id} value={c.msisdn} copyable />` (U19).
   ⚠️ U20's list needs rows to show: no contact WRITER exists yet (U22 is the form, U25+ the importers), so
   U20's drive seeds through the store; say so on the board rather than dressing it up.
   ⚠️ VERIFY EACH PREMISE BEFORE BUILDING — this plan's text has been wrong at the start of most sessions.
@@ -516,7 +525,7 @@ a Guard key that resolves to a script on disk, `yes` plus the backticked `red:` 
 | U16 | data | ⬜ | — | — | — | `test:retention` | — | erasure reaches it |
 | U17 | visual | 🔵 | S9 | 7bef9f97 | /admin/contacts did not exist, and nothing compared a nav item's domain with the page's → six doors (the page carries its own `AdminPageGate`), `test:rbac` §7b holds menu = page, the skeleton equals the real block (230.38 px / 272.63 px, delta 0) | `test:rbac` · `test:admin-section-gate` · `test:admin-nav` | yes · `red:rbac` (2/2 in-process, S10 — the ROUTE_DOMAINS row deleted; the nav item's domain edited) | live since S9's push (production serves later builds); ✅ owes ONE admin-session look at Growth → Contacts on www.50pick.tz — production has no QA admin, only Ali's login (⛔ never used) |
 | U18 | data | 🔵 | S9 · S10 | 0e68d59e | there was no contact book, and erasure reached no marketing store — an erased player's sign-up GIVEN decided on Postgres, and neither export had a marketing section → the three tables in both DALs (U18a `fb194038`), and erasure stops every number the person is known by (OPERATOR, unliftable by their link), appends WITHDRAWN, empties every book row by link or number; both exports carry the book, the ledger and the stop history through one allowlist | `test:erasure` · `test:dal-parity` | yes · `red:erasure` (+5) · `red:dal-parity` | U18a live since S9's push; U18b awaiting the deploy |
-| U19 | guard | ⬜ | — | — | — | `test:read-tiers` | — | masked everywhere |
+| U19 | guard | 🔵 | S10 | addf5351 | a contact number had no registry entry, and the ONE mask printed every bare `255…` key as `2557••••01` (the operator digit) — in the SMS refusal audit and the delivery-receipt audit already → `contactPhone` (a CONTACT id, targetType MarketingContact, identity.contact: GROWTH sees `+255••••01` and no control); `maskPhone` reads a bare key as the `+` form, platform-wide; "Copy number" is a reveal through the same audited action, on the `read` branch only | `test:read-tiers` | yes · `red:read-tiers` (+4) | awaiting the deploy. ⚠️ The export half lands with the export (U34), which must mask through `maskPhone` and name its column (read-tiers 8.9/8.10 are the precedent) |
 | U20 | visual | ⬜ | — | — | — | `test:contacts-page` | — | list + search |
 | U21 | visual | ⬜ | — | — | — | `test:filter-language` | — | filters |
 | U22 | visual | ⬜ | — | — | — | `test:contacts-page` | — | add / edit |
