@@ -144,18 +144,7 @@ ok("/admin/desk → ops", domainForPath("/admin/desk") === "ops", domainForPath(
 // until the other follows. `ownerOnly`/`allStaff` items are exempt because those flags deliberately
 // override the domain check (see `filterNavGroups`), so their literal need not match.
 {
-  const EXEMPT = ["/admin/2fa", "/admin/totp-verify"];
-  const split: string[] = [];
-  for (const g of NAV_GROUPS) {
-    for (const it of g.items) {
-      if (it.ownerOnly || it.allStaff) continue;
-      if (EXEMPT.some((e) => it.href === e || it.href.startsWith(e + "/"))) continue;
-      const resolved = domainForPath(it.href);
-      if (resolved !== it.domain) {
-        split.push(`${it.href} — nav says "${it.domain}", ROUTE_DOMAINS says "${resolved}"`);
-      }
-    }
-  }
+  const split = navDomainSplits(NAV_GROUPS, domainForPath);
   if (split.length) console.log(split.map((p) => "  · " + p).join("\n"));
   ok("every nav item's domain equals domainForPath(its href) — the menu and the page agree", split.length === 0);
 }
@@ -253,5 +242,59 @@ async function navKeysFor(role: Role): Promise<Set<string>> {
   ok("13 · teardown · the ops grant is back to its default (SUPPORT cannot view ops)", !(await canView("SUPPORT", "ops")));
 }
 
+/** §7b's comparison as a function, so `--prove-red` can hand it a planted map. ⛔ ONE definition. */
+function navDomainSplits(groups: typeof NAV_GROUPS, resolve: (href: string) => string): string[] {
+  const EXEMPT = ["/admin/2fa", "/admin/totp-verify"];
+  const split: string[] = [];
+  for (const g of groups) {
+    for (const it of g.items) {
+      if (it.ownerOnly || it.allStaff) continue;
+      if (EXEMPT.some((e) => it.href === e || it.href.startsWith(e + "/"))) continue;
+      const resolved = resolve(it.href);
+      if (resolved !== it.domain) {
+        split.push(`${it.href} — nav says "${it.domain}", ROUTE_DOMAINS says "${resolved}"`);
+      }
+    }
+  }
+  return split;
+}
+
 console.log(`\nrbac: ${pass} passed, ${fail} failed`);
+
+/* ══ THE RED PROOF (`red:rbac`, S10 2026-10-01) — U17's control, made durable ═══════════════════
+ * S9 proved §7b by planting the drift by hand (124 passed / 1 failed). This keeps that proof runnable:
+ * each case plants ONE real drift IN MEMORY and §7b's own function must name /admin/contacts. In-process
+ * by construction — this file makes no file-writing call. */
+if (process.argv.includes("--prove-red")) {
+  const problems: string[] = [];
+  if (fail > 0) problems.push(`BASELINE: the shipped suite is already red (${fail})`);
+  const isContacts = (h: string) => h === "/admin/contacts" || h.startsWith("/admin/contacts/");
+  const cases: Array<{ name: string; splits: string[] }> = [
+    {
+      // U17's RED as §9 wrote it: the ROUTE_DOMAINS row is gone, so the page fails closed to `ops`.
+      name: "the ROUTE_DOMAINS row for /admin/contacts is deleted (the page refuses GROWTH, the menu still shows it)",
+      splits: navDomainSplits(NAV_GROUPS, (h) => (isContacts(h) ? "ops" : domainForPath(h))),
+    },
+    {
+      // The mirror: the menu entry is edited, the route map is not.
+      name: "the Contacts nav item's domain is edited to `ops` while ROUTE_DOMAINS still says growth",
+      splits: navDomainSplits(
+        NAV_GROUPS.map((g) => ({ ...g, items: g.items.map((it) => (isContacts(it.href) ? { ...it, domain: "ops" } : it)) })) as typeof NAV_GROUPS,
+        domainForPath,
+      ),
+    },
+  ];
+  for (const c of cases) {
+    const caught = c.splits.some((x) => x.startsWith("/admin/contacts "));
+    console.log(`${caught ? "caught" : "MISSED"} · ${c.name}${caught ? "" : ` — splits: ${c.splits.join(" | ") || "(none)"}`}`);
+    if (!caught) problems.push(c.name);
+  }
+  if (problems.length) {
+    console.log("\nPROBLEMS:");
+    for (const x of problems) console.log(`  ✗ ${x}`);
+    process.exit(1);
+  }
+  console.log(`\n${cases.length}/${cases.length} caught — RED PROOF COMPLETE`);
+  process.exit(0);
+}
 if (fail > 0) process.exit(1);

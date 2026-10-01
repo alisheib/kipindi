@@ -76,8 +76,8 @@ erasure now stops the number, withdraws the consent and empties the book, and bo
     `predeploy`. The skeleton equals the real block BY CONSTRUCTION (230.38 px both at 1280, 272.63 at
     360). The `filter-language` entry moves to U21 (declaring a page with no FilterPill fails §6). States
     driven: loading, empty, refused — `populated` and `error` are U20's (no store to fill or fail yet).
-    ⚠️ 🔵, not ✅: no red control exists for §7b yet (`red:` key), and the live check needs an admin
-    session — production has no QA admin, only Ali's own login (⛔ never used).
+    ⚠️ 🔵, not ✅: the live check needs an admin session — production has no QA admin, only Ali's own
+    login (⛔ never used). S10 added the durable red control S9 lacked: `red:rbac` (in-process, 2/2).
   · U18a — `MarketingContact`, `ContactList`, `ContactListMember` in `schema.prisma`, both DALs (named
     types) and `test:dal-parity` §19, with 8 new `red:dal-parity` cases. Migration
     `20260928170000_marketing_contact_book` hand-written, all 86 migrations proven from EMPTY on embedded
@@ -514,7 +514,7 @@ a Guard key that resolves to a script on disk, `yes` plus the backticked `red:` 
 | U14 | engine | ⬜ | — | — | — | `test:marketing-consent` | — | frequency cap |
 | U15 | guard | ⬜ | — | — | — | `test:marketing-engine` | — | D15 one send path |
 | U16 | data | ⬜ | — | — | — | `test:retention` | — | erasure reaches it |
-| U17 | visual | 🔵 | S9 | 7bef9f97 | /admin/contacts did not exist, and nothing compared a nav item's domain with the page's → six doors (the page carries its own `AdminPageGate`), `test:rbac` §7b holds menu = page, the skeleton equals the real block (230.38 px / 272.63 px, delta 0) | `test:rbac` · `test:admin-section-gate` · `test:admin-nav` | planted by hand at S9 (124 passed / 1 failed); no `red:` key yet | live since S9's push (production serves later builds); ✅ owes a `red:` control for §7b and one admin-session look at Growth → Contacts — production has no QA admin, only Ali's login |
+| U17 | visual | 🔵 | S9 | 7bef9f97 | /admin/contacts did not exist, and nothing compared a nav item's domain with the page's → six doors (the page carries its own `AdminPageGate`), `test:rbac` §7b holds menu = page, the skeleton equals the real block (230.38 px / 272.63 px, delta 0) | `test:rbac` · `test:admin-section-gate` · `test:admin-nav` | yes · `red:rbac` (2/2 in-process, S10 — the ROUTE_DOMAINS row deleted; the nav item's domain edited) | live since S9's push (production serves later builds); ✅ owes ONE admin-session look at Growth → Contacts on www.50pick.tz — production has no QA admin, only Ali's login (⛔ never used) |
 | U18 | data | 🔵 | S9 · S10 | 0e68d59e | there was no contact book, and erasure reached no marketing store — an erased player's sign-up GIVEN decided on Postgres, and neither export had a marketing section → the three tables in both DALs (U18a `fb194038`), and erasure stops every number the person is known by (OPERATOR, unliftable by their link), appends WITHDRAWN, empties every book row by link or number; both exports carry the book, the ledger and the stop history through one allowlist | `test:erasure` · `test:dal-parity` | yes · `red:erasure` (+5) · `red:dal-parity` | U18a live since S9's push; U18b awaiting the deploy |
 | U19 | guard | ⬜ | — | — | — | `test:read-tiers` | — | masked everywhere |
 | U20 | visual | ⬜ | — | — | — | `test:contacts-page` | — | list + search |

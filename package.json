@@ -243,6 +243,7 @@
     "test:ai-controls": "tsx scripts/ai-controls.test.mts",
     "test:admin-roles": "tsx scripts/admin-roles.test.mts",
     "test:rbac": "tsx scripts/rbac.test.mts",
+    "red:rbac": "tsx scripts/rbac.test.mts --prove-red",
     "test:staff-role": "tsx scripts/staff-role.test.mts",
     "test:ledger": "tsx scripts/ledger.test.mts",
     "test:trial-balance": "tsx scripts/trial-balance.test.mts",
