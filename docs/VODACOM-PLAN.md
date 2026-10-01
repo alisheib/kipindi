@@ -286,7 +286,18 @@ shares it). ⭐ The canvas is the source of truth for S4's frames — no copy li
   - SJ-17's items appear in its order, grouped into cards without headings. Every label is an existing key; the only
     new word is the plan's "Toa pesa".
   - The unread count shows on Arifa and as a dot on the Akaunti tab.
-- Next: items 9–11, then the four-expert panel and BRIEF.md.
+- Items 9–11 ✅:
+  - Tiketi zangu: open (with the Maswali | Juu/Chini switch), settled, empty, and the guest sheet.
+  - The market page, in §3.2's order, with the holder's ticket block above the two big buttons.
+  - The Juu/Chini stake panel and its low-balance state, in the sheet's language.
+  - **Calls:**
+    - Open tickets show no payout figure (SJ-4 keeps §C3), and every timer names its absolute instant.
+    - Juu/Chini keeps its own side buttons and floor-rounded × multiples; only the chips (full figures) and the
+      low-balance pattern change.
+    - "Tumia TZS 2,000 badala yake" (draft) sets the stake, because a Juu/Chini bet needs a side.
+    - The market chart title is spelt NDIO; the dictionary still says NDIYO, one of SJ-19's seven fixes.
+- **All eleven brief items are on the canvas: 91 frames.**
+- Next: the four-expert panel, then BRIEF.md.
 - The copy researched for every state is filed in
   [`S4-COPY-AUDIT.md`](design-system/v5-2026-09-29-simplified-journey/S4-COPY-AUDIT.md), a dated snapshot;
   `i18n-dict.ts` stays the truth. Items marked "NO STRING" there need drafts (R8).
