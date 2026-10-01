@@ -969,7 +969,7 @@ The reply also includes:
 | Deposit wallets | `ProviderRadioGrid` **extended**: `layout="rows"` (radio in royal `--brand-500`, 32px logo, name, royal ring) + `noDefault`; kill-switch-disabled rows |
 | Pending-bet strip | card surface + side `Chip` + sentence, stake in `.amount` |
 | Lipa | `btn btn-primary btn-lg w-full` (brand commit, §M3a D1), live label "Lipa {amount}" |
-| How-to steps | **NEW** `.kp-howto__step`: round badge with "1/2/3" in mono (S4 rules the ink within `test:gold-is-money`; default is the sanctioned gilt step-numeral use; fallback neutral). `.kp-step__n` stays with the shelved band |
+| How-to steps | **NEW** `.kp-howto__step`: round badge with "1/2/3" in mono, NEUTRAL ink — S4 choice 1B (`--bg-royal-soft` fill, `--border-strong` inset ring, `--text` numerals); gold would be decorative gold, which DESIGN_AUTHORITY §M3 forbids. `.kp-step__n` stays with the shelved band |
 | MFANO | `Callout tone="info"` with a microlabel title, body via `fillNodes` |
 | Nimeelewa, anza | `btn-primary` |
 | Footer links | the footer RG idiom (`public-footer.tsx:222`, `app-shell.tsx:584`). ⛔ `.kp-rg` was deleted 2026-09-26; do not revive it |
