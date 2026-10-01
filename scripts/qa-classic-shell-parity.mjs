@@ -626,6 +626,12 @@ async function capture(jar, locale, width, route, plant = null) {
       stable = JSON.stringify(next) === JSON.stringify(snap);
       snap = next;
     }
+    // ⭐ ROBOTS FROM THE BYTES THE SERVER SENT, NOT THE LIVE DOCUMENT. Calibration (two servers, one tree) found the held
+    // viewer's not-found page ending with two "index, follow" metas on one run and "noindex" on the other: the client
+    // replaces head metadata after load. A crawler reads the response, so that is what §3.3 holds to.
+    if (snap.notFound && body) {
+      snap = { ...snap, notFound: { ...snap.notFound, robots: [...body.matchAll(/<meta name="robots" content="([^"]*)"/g)].map((m) => m[1]).sort() } };
+    }
     const pass = (await ctx.cookies(BASE)).some((c) => c.name === "kp_preview");
     return toCell(snap, { status, stable, pass, raw: rawOf(body), pageErrors: [...new Set(pageErrors)].sort() });
   } catch (e) {
