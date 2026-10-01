@@ -85,6 +85,13 @@
  */
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
+/* ⭐ The row shapes, the journey chrome's rows and the predicates §1 and §2 judge EVERY row by live in a module, so
+   `red:journey-shell` can feed them planted source in memory and prove the new rows can fail (the Vodacom plan S6,
+   amendment A13): this file cannot be imported for them, because it runs on import and ends in `process.exit`. */
+import {
+  JOURNEY_SURFACES, JOURNEY_TRAPPED, JOURNEY_LAWS, soleZ, portalsOut, rendersSymbol, formsStackingContext,
+  type Surface, type Trapped,
+} from "./lib/stacking-rows.mts";
 
 const ROOT = new URL("..", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1");
 const rd = (p: string) => readFileSync(join(ROOT, p), "utf8");
@@ -135,27 +142,20 @@ const src = (p: string) => decomment(rd(p));
  * match count is asserted. Zero matches and two matches are both failures.
  */
 function soleNumber(p: string, re: RegExp, label: string): number | null {
-  const body = src(p);
-  const hits = [...body.matchAll(new RegExp(re.source, re.flags.includes("g") ? re.flags : re.flags + "g"))];
-  if (hits.length !== 1) {
-    ok(label, false, `locator matched ${hits.length} times in ${p} — it no longer names one surface, so nothing below it can be trusted`);
+  const { hits, z } = soleZ(src(p), re);
+  if (hits !== 1) {
+    ok(label, false, `locator matched ${hits} times in ${p} — it no longer names one surface, so nothing below it can be trusted`);
     return null;
   }
-  return Number(hits[0][1]);
+  return z;
 }
 
 // ===========================================================================
 // THE CONTRACT — the measured ladder, top to bottom.
 // Every rung below was read off the shipping file, not designed here.
 // ===========================================================================
-type Surface = {
-  id: string;
-  file: string;
-  /** Must capture the z as group 1, and must carry an anchor unique to this surface. */
-  find: RegExp;
-  z: number;
-  note: string;
-};
+/* `Surface` (a root-plane surface; `find` captures its z as group 1 and carries an anchor unique to it) is defined in
+   `./lib/stacking-rows.mts`, beside the journey's rows. */
 
 const ROOT_SURFACES: Surface[] = [
   { id: "skip-link",           file: "src/components/layout/app-shell.tsx",              find: /focus:z-\[(\d+)\][^"]*focus:rounded-md/,                     z: 9999, note: "WCAG 2.4.1 skip link — above literally everything, including a locale change" },
@@ -191,6 +191,8 @@ const ROOT_SURFACES: Surface[] = [
   { id: "bottom-nav",          file: "src/components/layout/bottom-nav.tsx",             find: /lg:hidden fixed inset-x-0 bottom-0 z-(\d+) kp-rail/,         z:   40, note: "primary navigation on the phone" },
   { id: "admin-top-bar",       file: "src/components/admin/admin-shell.tsx",             find: /"relative z-(\d+) border-b border-border"/,                  z:   40, note: "elevated above the page body so the AI-toolkit dropdown overlays content" },
   { id: "top-app-bar",         file: "src/components/layout/top-app-bar.tsx",            find: /"sticky top-0 z-(\d+) app-topbar"/,                          z:   30, note: "the player header" },
+  // S6 · the journey's tab rail (40) and header (30), mounted for a journey request only — rows in `./lib/stacking-rows.mts`.
+  ...JOURNEY_SURFACES,
   /* ⚠️ RE-ANCHORED 2026-09-07 (PLAYER QUERY, stage 1). This read
      `src/components/markets/discovery-bar.tsx`, where the class string used to be written out.
      The PLAYER QUERY campaign fits the same bar to fifteen more routes, so the string became
@@ -203,19 +205,7 @@ const ROOT_SURFACES: Surface[] = [
   { id: "discovery-bar",       file: "src/components/ui/query-bar.tsx",                   find: /kp-discovery-bar sticky top-\[56px\] z-(\d+)/,               z:   20, note: "the shared query bar's filter rail — the lowest chrome rung" },
 ];
 
-/** A surface sealed inside another surface's stacking context. */
-type Trapped = {
-  id: string;
-  file: string;
-  find: RegExp;
-  declared: number;
-  /** The ancestor whose stacking context seals it — an id from ROOT_SURFACES. */
-  ancestor: string;
-  /** The ancestor's file must render this child; this is the symbol it renders. */
-  renderedAs: string;
-  effective: number;
-  note: string;
-};
+/* A surface sealed inside another surface's stacking context: `Trapped`, in `./lib/stacking-rows.mts`. */
 
 const TRAPPED: Trapped[] = [
   {
@@ -248,6 +238,8 @@ const TRAPPED: Trapped[] = [
     declared: 50, ancestor: "admin-top-bar", renderedAs: "AiToolkit", effective: 40,
     note: "the admin AI switchboard — its own file's comment reasons from the 50",
   },
+  // S6 · the same LanguageMenu, hung from the journey header from 1024 — sealed at that header's rung.
+  ...JOURNEY_TRAPPED,
 ];
 
 // ===========================================================================
@@ -274,14 +266,14 @@ for (const t of TRAPPED) {
   // (a) the child cannot portal out of the context. If it ever does, its declared
   //     number becomes the real one and this whole entry must be re-derived.
   ok(`2.x ${t.id} does not portal out of ${t.ancestor}`,
-     !/createPortal\s*\(/.test(childBody),
+     !portalsOut(childBody),
      "it portals now — the trap is gone and the effective z below must be recomputed",
      "no createPortal, so it cannot escape the context");
 
   // (b) the containment is REAL, in source. Without this, "effective" is a guess
   //     about a render tree nobody checked.
   ok(`2.x ${t.ancestor} really renders <${t.renderedAs}>`,
-     new RegExp(`<${t.renderedAs}[\\s/>]`).test(ancBody),
+     rendersSymbol(ancBody, t.renderedAs),
      `${anc.file} no longer renders <${t.renderedAs}> — the ancestor chain changed`,
      "the containment is real, in source");
 
@@ -291,7 +283,7 @@ for (const t of TRAPPED) {
   const ancDecl = ancBody.match(new RegExp(anc.find.source));
   const ancClass = (ancDecl?.[0] ?? "").trim().slice(0, 80);
   ok(`2.x ${t.ancestor} forms a stacking context (positioned + z-index)`,
-     /\b(fixed|sticky|relative|absolute)\b/.test(ancClass) && /z-(?:\[)?\d+/.test(ancClass),
+     formsStackingContext(ancClass),
      `read: "${ancClass}" — without BOTH a position and a z-index there is no context, and nothing is trapped`,
      `"${ancClass}"`);
 
@@ -340,6 +332,8 @@ const LAWS: Array<[string, string, string]> = [
   ["needle", "top-app-bar",          "⭐ THE NEEDLE RULE: same, on desktop"],
   ["bottom-nav", "top-app-bar",      "the phone rail sits over the header when both are on screen"],
   ["top-app-bar", "discovery-bar",   "the board's filter rail scrolls under the header, not over it"],
+  // S6 · needle > journey-tabs > journey-top-bar > discovery-bar: the journey chrome sits where its classic twin sits.
+  ...JOURNEY_LAWS,
 ];
 for (const [above, below, why] of LAWS) {
   ok(`3.x ${above} (${zOf(above)}) > ${below} (${zOf(below)})`,
@@ -524,6 +518,17 @@ function ownerSymbolAt(body: string, index: number): string {
   return best;
 }
 
+/**
+ * ⏳ BUILT, NOT YET MOUNTED — an EXPIRING exemption, not a ratchet (the Vodacom plan S6, WP6a then WP6b).
+ * The journey's tab rail is a viewport-anchored bar like the classic one and, like it, belongs beside <RouteTransition>
+ * in AppShell, a root mount. WP6a builds it and WP6b mounts it, so for that one step it is rendered by NOTHING — in no
+ * route content at all — and §5.2, finding no root mount above it, would read it as a finding.
+ * ⛔ 5.5 holds every entry to "still rendered by nothing": the moment anything renders the file the entry FAILS, and
+ * the commit that mounts it deletes it, after which §5.2 judges the bar like any other.
+ */
+const AWAITING_MOUNT = new Map<string, string>([
+  ["src/components/journey/journey-tabs.tsx", "the journey's tab rail (SJ-16) — WP6b mounts it in AppShell, beside the classic rail"],
+]);
 type Overlay = { file: string; symbol: string; consumers: string[] };
 const fixedOverlays: Overlay[] = [];
 for (const f of tsxFiles) {
@@ -557,6 +562,8 @@ for (const f of tsxFiles) {
   /* ⭐ TRANSITIVE — see `reachesOnlyRootMounts`. The one-hop version could not see that
      `ui/toast.tsx`'s viewport reaches the root through its own provider. */
   if (reachesOnlyRootMounts(r)) continue;
+  // ⏳ Built and rendered by nothing yet — see AWAITING_MOUNT; 5.5 expires the entry the moment that changes.
+  if (AWAITING_MOUNT.has(r) && consumers.length === 0) continue;
   fixedOverlays.push({ file: r, symbol, consumers });
 }
 const ratchetFiles = new Set(FIXED_OVERLAY_RATCHET.map((e) => e.file));
@@ -585,6 +592,18 @@ for (const e of FIXED_OVERLAY_RATCHET) {
      fixedOverlays.some((o) => o.file === e.file),
      "it portals now (or moved to a root mount) — DELETE this entry from FIXED_OVERLAY_RATCHET; a stale ratchet is a second place to be wrong",
      "still un-portaled");
+}
+
+// 5.5 — an AWAITING_MOUNT entry expires the moment anything renders its file (S6).
+for (const [file, why] of AWAITING_MOUNT) {
+  const symbols = [...bodyOf(file).matchAll(/export (?:function|const) ([A-Za-z0-9_]+)/g)].map((m) => m[1]);
+  const renderedBy = [...new Set(symbols.flatMap((s) => consumersOf(s, file)))];
+  ok(`5.5 ${file} is still rendered by nothing — built, not yet mounted`,
+     symbols.length > 0 && renderedBy.length === 0,
+     symbols.length === 0
+       ? "no exported component found in it — re-check the entry"
+       : `rendered by ${renderedBy.join(", ")} now — DELETE its AWAITING_MOUNT entry in this commit; §5.2 judges it from here`,
+     why);
 }
 
 // ===========================================================================

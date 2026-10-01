@@ -120,6 +120,10 @@ const PLAYER = [
   "/legal/rules", "/legal/rules/yes-no", "/legal/rules/up-down",
   "/legal/responsible-gambling",
   "/auth/login", "/auth/register", "/auth/forgot-password",
+  /* ⛔ `/account` (the Akaunti hub, Vodacom plan S6 WP5) IS LEFT OUT ON PURPOSE until this sweep can hold a preview pass
+     (S6-PLAN A15). The hub is drawn only for a request the journey resolver admits; without a pass this sweep would
+     measure the not-found page at every width and report coverage it does not have. The journey's own drive (S6 WP6b)
+     tiles the hub with a real staff pass. Add it here the day this sweep can carry one. */
 ];
 /* 🔴 DG-A-08 (2026-08-30) — THIS FILE HELD THE SECOND COPY OF THE ADMIN ROUTE LIST, AND THE
    FILE IT DIVERGED FROM FORBIDS EXACTLY THAT IN WRITING. `scripts/design-gate/routes.mjs`

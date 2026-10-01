@@ -38,6 +38,13 @@
  * Deposit or a Withdraw in the classic word).
  * ⚠️ THREE OF THEM REWRITE globals.css, so this harness now rewrites the stylesheet while it runs, as it
  * already rewrote the bar and the pill. Run it detached with nothing else running, and diff the tree after.
+ *
+ * ── S6 (2026-10-01) · THE JOURNEY BAR (WP6a) ────────────────────────────────
+ * Five more, each naming its §8c check and each restoring a width gate the journey header must not have: the pill
+ * hidden where the classic one hides, its words yielding with the "+", a guest's Ingia gone from a phone (E-276 in the
+ * new bar), the capsule shown only on a desktop, and the whole money cluster made invisible on a phone by a class on
+ * its wrapper, outside every guard. They rewrite `journey-top-bar.tsx`, which nothing mounts until WP6b; the gate
+ * reads its source, so each is provable from the commit that adds it.
  */
 
 /** @typedef {{ name: string, file: string, suite: string, from: string, to: string, why: string, expect: string }} RedMutation */
@@ -47,6 +54,7 @@ const PILL = "src/components/layout/wallet-balance-pill.tsx";
 const UTILS = "src/lib/utils.ts";
 const SHEET = "src/components/layout/wallet-sheet.tsx";
 const CSS = "src/app/globals.css";
+const JBAR = "src/components/journey/journey-top-bar.tsx";
 
 /** @type {RedMutation[]} */
 export const MUTATIONS = [
@@ -229,5 +237,50 @@ export const MUTATIONS = [
     from: `{!held && !hidden && flashing && delta !== 0 && (`,
     to: `{!hidden && flashing && delta !== 0 && (`,
     expect: "8.19 …and only on a LIVE, unmasked wallet",
+  },
+  {
+    name: "journey-pill-yields-where-the-classic-one-does",
+    why: "the classic bar's rule carried across: + Weka pesa shown only where the bell is, from 1024. On the classic bar that yield is paid for by the rail's centre coin; the journey rail has no coin (SJ-16), so on a phone the money door would simply be gone",
+    file: JBAR,
+    suite: "wallet-reach",
+    from: `{state.pill && (`,
+    to: `{state.pill && pollers.bell && (`,
+    expect: "8c.2 + Weka pesa shows at EVERY width",
+  },
+  {
+    name: "journey-plus-takes-the-words-with-it",
+    why: "the classic pill's label idiom carried across: the words hidden below 1280, so on a phone the gilt pill is a bare + glyph. S4 measured the row with the words in and the + out, never the other way round",
+    file: JBAR,
+    suite: "wallet-reach",
+    from: `<span>{t.journey.depositAction}</span>`,
+    to: `<span className="hidden xl:inline">{t.journey.depositAction}</span>`,
+    expect: "8c.3 its + is the one part that yields",
+  },
+  {
+    name: "journey-sign-in-yields-on-phones",
+    why: "⭐ E-276 IN THE NEW BAR: a returning player's way in hidden on a phone, the same width-0 Sign in Ali found on the classic bar in 2026-09, where the only account control left was the one that makes a NEW account",
+    file: JBAR,
+    suite: "wallet-reach",
+    from: `className="btn btn-ghost btn-md btn-pill kp-jhdr__auth"`,
+    to: `className="hidden sm:inline-flex btn btn-ghost btn-md btn-pill kp-jhdr__auth"`,
+    expect: "8c.4 E-276",
+  },
+  {
+    name: "journey-capsule-only-on-a-desktop",
+    why: "the old non-monotonic ladder's first step, in the journey bar: the balance shown only where the bell is, so a phone player sees no balance at all, which is what Ali ruled out on 2026-08-25",
+    file: JBAR,
+    suite: "wallet-reach",
+    from: `{state.capsule !== "none" && (`,
+    to: `{state.capsule !== "none" && pollers.bell && (`,
+    expect: "8c.1 the capsule is decided by the header state alone",
+  },
+  {
+    name: "journey-money-cluster-invisible-on-phones",
+    why: "the gate moved OUTSIDE every guard: the cluster that holds the capsule, + Weka pesa and a guest's way in made invisible below 1024 by a class on its own wrapper. Each guard still reads clean, so only a check over the whole bar sees it. A visibility class, because the cluster's own stylesheet rule sets its display and would beat a display utility",
+    file: JBAR,
+    suite: "wallet-reach",
+    from: `<div className="kp-jhdr__cluster">`,
+    to: `<div className="invisible lg:visible kp-jhdr__cluster">`,
+    expect: "8c.5 …and nothing AROUND them yields by width either",
   },
 ];

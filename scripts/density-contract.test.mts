@@ -183,6 +183,37 @@ const deco = toggle.match(/if \(decorative\) \{[\s\S]*?\n  \}/)?.[0] ?? "";
 ok("§4f the decorative toggle is a bare aria-hidden span — no role, no focus, no handler",
   !!deco && /<span\s+aria-hidden/.test(deco) && !/role=|tabIndex|onClick|<button/.test(deco));
 
+/* ⭐ §4h · THE AKAUNTI HUB'S CARD-SIZE ROW (Vodacom plan S6 WP5) — the journey's second door to the same switch, held to
+   the rail row's contract: one switch, at least 44px, hidden from 640 up, read through useSyncExternalStore, written
+   through applyCardSpacing, the kit toggle as its picture, and never naming the attribute itself (§3 allows two files).
+   ⚠️ Its height lives in globals.css — the hub row's rung — so the rung is read there rather than from a class. */
+const HUB_ROW_FILE = "src/components/journey/account/card-size-row.tsx";
+const hubRow = read(HUB_ROW_FILE);
+const classTokens = (src: string) => src.split('className="').slice(1).flatMap((s) => s.slice(0, s.indexOf('"')).split(" "));
+const globalsCss = cssFiles.find((f) => f.rel === "src/app/globals.css")?.src ?? "";
+/** The hub row's own rule declares a --h-control rung of 44px or more as its minimum height. */
+const hubRung = (css: string) => {
+  const at = css.indexOf(".kp-hub__row {");
+  const rule = at < 0 ? "" : css.slice(at, css.indexOf("}", at));
+  return ["--h-control-md", "--h-control-lg", "--h-control-xl"].some((r) => rule.includes(`min-height: var(${r})`));
+};
+const hubRowDefects = (src: string, css: string) => [
+  !src && "card-size-row.tsx is missing",
+  !src.includes('role="switch"') && "the row is not a switch",
+  !src.includes("aria-checked={compact}") && "aria-checked is not the Compact state",
+  !src.includes("useSyncExternalStore(subscribeCardSpacing, currentCardSpacing,") && "the state is not read through useSyncExternalStore",
+  !src.includes('applyCardSpacing(compact ? "comfortable" : "compact")') && "the tap does not go through applyCardSpacing",
+  !classTokens(src).includes("sm:hidden") && "the row is not hidden from 640 up (phones only)",
+  !classTokens(src).includes("kp-hub__row") && "the row does not wear the hub row's rung",
+  !hubRung(css) && "the hub row's rule in globals.css declares no --h-control rung of 44px or more",
+  !src.includes("<Toggle on={compact} decorative />") && "the toggle is not the decorative picture",
+  src.includes("data-density") && "it names the attribute itself — only the layout and card-spacing.ts may",
+].filter(Boolean) as string[];
+ok("§4h the Akaunti hub's card-size row is one switch, ≥ 44px, hidden ≥ 640, read through useSyncExternalStore and written through applyCardSpacing, and never names the attribute",
+  hubRowDefects(hubRow, globalsCss).length === 0, hubRowDefects(hubRow, globalsCss).join(" · "));
+ok("§4h′ control · the same row shown at every width is reported",
+  hubRowDefects(hubRow.split("sm:hidden").join(""), globalsCss).length > 0);
+
 /* ── §5 · planted fixtures ─────────────────────────────────────────────────────────────────── */
 console.log("\n§5 · planted fixtures — each must be reported");
 const P = "@media (max-width: 639.98px)";
@@ -241,9 +272,24 @@ if (PROVE_RED) {
     console.log(`  ${hit ? "CAUGHT" : "MISSED"} ${name}`);
     if (hit) caught++;
   }
+  // ⭐ §4h's own plants: the Akaunti hub's card-size row, edited in memory.
+  const hubPlants: Array<[string, string]> = [
+    ["the hub row shows at every width (its phones-only class dropped)", hubRow.split("sm:hidden").join("")],
+    ["the hub row reads its state in render instead of through the store", hubRow.split("useSyncExternalStore(subscribeCardSpacing, currentCardSpacing,").join("useMemo(() => currentCardSpacing(),")],
+    ["the hub row stamps the attribute itself", `${hubRow}${String.fromCharCode(10)}document.documentElement.setAttribute("data-density", "comfortable");`],
+  ];
+  let hubCaught = 0;
+  for (const [name, planted] of hubPlants) {
+    const hit = planted !== hubRow && hubRowDefects(planted, globalsCss).length > 0;
+    console.log(`  ${hit ? "CAUGHT" : "MISSED"} §4h · ${name}`);
+    if (hit) hubCaught++;
+  }
+  const hubClean = hubRowDefects(hubRow, globalsCss).length === 0;
   const clean = cssDefects(real, "src/app/globals.css").defects.length === 0;
   console.log(`\n${caught}/${plants.length} planted density violations caught${clean ? "" : " — ⛔ but the untouched tree is itself red, so the proof is void"}`);
-  process.exit(caught === plants.length && clean ? 0 : 1);
+  console.log(`${hubCaught}/${hubPlants.length} planted §4h hub-row violations caught${hubClean ? "" : " — ⛔ but the untouched hub row is itself red, so the proof is void"}`);
+  console.log(`${caught + hubCaught}/${plants.length + hubPlants.length} planted violations caught in all`);
+  process.exit(caught === plants.length && hubCaught === hubPlants.length && clean && hubClean ? 0 : 1);
 }
 
 console.log(`\n${fails.length ? "FAILURES" : "ALL PASS"} — ${pass} passed, ${fails.length} failed`);

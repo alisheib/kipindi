@@ -96,6 +96,26 @@ for (const l of staffLinks) {
      l.tag === "a", l.snippet);
 }
 
+// ── §2b. THE AKAUNTI HUB → ADMIN (Vodacom plan S6 WP5; SJ-23) ─────────────────────────────────
+// The journey's account hub carries the staff console for every staff role, and it is the same crossing as §2: a soft
+// link keeps the PLAYER layout around the console. ⛔ It is written ONCE, as a plain <a>, in the page itself; the hub's
+// rows are data that render as soft links, so the data may not carry the console at all.
+console.log("");
+console.log("§2b · the Akaunti hub → admin console  (`Staff console`, journey viewers)");
+const hubPage = read("src/app/account/page.tsx");
+const hubLinks = linksTo(hubPage, "/admin");
+ok(`2b.1 the hub's staff console door still exists (href="/admin")`, hubLinks.length > 0,
+   "no element with href=/admin in src/app/account/page.tsx — this suite is now blind to the hub's crossing");
+ok("2b.2 …and there is exactly one of it", hubLinks.length === 1, `${hubLinks.length} found`);
+for (const l of hubLinks) {
+  ok(`2b.3 …written as a plain <a>, not <${l.tag}> — a soft nav keeps the player layout around the console`,
+     l.tag === "a", l.snippet);
+}
+const hubRowsData = read("src/components/journey/account/hub-rows.ts");
+const rowsCrossing = ['"/admin', "'/admin", "`/admin"].filter((q) => hubRowsData.includes(q));
+ok("2b.4 the hub's rows data is found and carries no console href — a row renders as a soft <Link>, which is E-70",
+   hubRowsData.includes("export function hubRowsFor") && rowsCrossing.length === 0, rowsCrossing.join(" "));
+
 // ── §3. THE CONTROL — prove this suite can still SEE a soft link ───────────────────────────
 // ⛔ Without this, §1 and §2 could be passing because `linksTo` is broken and returns nothing
 // useful. Ask for something that IS legitimately a <Link> and require the parser to find it.

@@ -408,5 +408,65 @@ const { dict } = await import("../src/lib/i18n-dict.ts");
      linkTo("/wallet/withdraw").includes("{journey ? t.journey.withdrawAction : t.common.withdraw}"));
 }
 
+// ── 8c · S6 · THE JOURNEY BAR'S HALF — nothing that moves money yields by width (WP6a) ─────
+/**
+ * §8 pins the captioned capsule itself; this pins the journey header that carries it (`journey-top-bar.tsx`, built in
+ * S6 WP6a and mounted for journey viewers only in WP6b). The classic bar's Deposit pill yields below 1024 because the
+ * classic rail carries a coin; the journey rail carries none (SJ-16), so in this bar the capsule, "+ Weka pesa" and a
+ * guest's Ingia / Jisajili show at EVERY width, and the pill's "+" is the one part of it that may go (below 360, where
+ * S4 measured the row full). 8c.1–8c.4 read the bar's own guards, and 8c.5 everything around them: a width gate on a
+ * wrapper outside a guard hides the money as surely as one inside it. Each has a red twin in
+ * `scripts/anchors/wallet-reach.anchors.mjs` that restores a width gate.
+ */
+{
+  const jbar = decomment(readFileSync(join(ROOT, "src/components/journey/journey-top-bar.tsx"), "utf8"));
+  /** The text from `from` to the end of the next `to` after it, or "" when either is missing. */
+  const span = (from: string, to: string) => {
+    const a = jbar.indexOf(from);
+    const b = a < 0 ? -1 : jbar.indexOf(to, a);
+    return a < 0 || b < 0 ? "" : jbar.slice(a, b + to.length);
+  };
+  const count = (s: string, needle: string) => s.split(needle).length - 1;
+  /** A class that shows or hides a thing by width (display or visibility), or the bar's own test of the width. */
+  const WIDTH_GATE = /(?:^|[^a-z0-9-])(?:hidden|invisible|(?:xs|sm|md|lg|xl|2xl|max-[a-z0-9]+):(?:hidden|flex|block|inline|inline-flex|grid|contents|invisible|visible))(?![a-z0-9-])|pollers[.]|useLgUp/;
+  const capsule = span('{state.capsule !== "none" && (', "<WalletBalanceCaptioned");
+  ok("8c.1 the capsule is decided by the header state alone — nothing gates it by width, and it is fed the LIVE balance",
+     capsule.length > 0 && !WIDTH_GATE.test(capsule)
+     && jbar.includes('<WalletBalanceCaptioned balance={liveBalance} held={state.capsule === "held"} />')
+     && jbar.includes("const liveBalance = useLiveBalance(user.balance ?? 0);"),
+     capsule === "" ? "the capsule's guard was not found as written" : capsule.slice(0, 140));
+  const pillBlock = span("{state.pill && (", "</Link>");
+  ok("8c.2 + Weka pesa shows at EVERY width — the classic pill's yield below 1024 is the coin's, and this rail has none",
+     pillBlock.length > 0 && !WIDTH_GATE.test(pillBlock) && pillBlock.includes('href="/wallet/deposit"')
+     && pillBlock.includes('className="btn gilt-metal btn-md btn-pill kp-jhdr__pill"'),
+     pillBlock === "" ? "the pill's guard was not found as written" : pillBlock.slice(0, 160));
+  ok("8c.3 its + is the one part that yields, below 360 — a span the stylesheet hides, never the button; the words and the name stay",
+     pillBlock.includes('<span aria-hidden className="kp-jhdr__plus"><I.plus s={14} /></span>')
+     && pillBlock.includes("<span>{t.journey.depositAction}</span>") && pillBlock.includes("aria-label={t.journey.depositAction}")
+     && css.includes(".kp-jhdr__plus { display: none; }")
+     && css.includes("@media (min-width: 360px) { .kp-jhdr__plus { display: inline-flex; } }"));
+  const auth = span("{state.authPills && (", "{t.common.signUp}");
+  ok("8c.4 E-276 · a guest's Ingia and Jisajili are never width-hidden — both at the 44px rung, at every width",
+     auth.length > 0 && !WIDTH_GATE.test(auth)
+     && auth.includes('className="btn btn-ghost btn-md btn-pill kp-jhdr__auth"')
+     && auth.includes('className="btn btn-primary btn-md btn-pill kp-jhdr__auth"'),
+     auth === "" ? "the guest pills' guard was not found as written" : auth.slice(0, 160));
+  /** Every string the bar writes, class lists included, that carries a width gate, in source order. */
+  const gated = [...jbar.matchAll(/"([^"]*)"|`([^`]*)`/g)].map((m) => m[1] ?? m[2]).filter((v) => WIDTH_GATE.test(v));
+  /** The bar's only width gates: the brand's two halves, the destinations, and the desktop wrappers of language, the
+   *  bell and the account. None of them holds money. */
+  const ALLOWED_GATES = [
+    "mark-flip-i inline-flex xl:hidden",
+    "hidden xl:inline-flex",
+    "hidden lg:flex kp-jnav",
+    "hidden lg:inline-flex",
+    "hidden lg:inline-flex kp-jhdr__bell",
+    "hidden lg:inline-flex",
+  ];
+  ok("8c.5 …and nothing AROUND them yields by width either: the bar's only width gates are the brand's halves, the destinations and the three desktop wrappers, and the width is asked once, for the bell",
+     JSON.stringify(gated) === JSON.stringify(ALLOWED_GATES) && count(jbar, "pollers.") === 1 && count(jbar, "useLgUp(") === 1,
+     JSON.stringify(gated));
+}
+
 console.log(`\nwallet-reach: ${pass} passed, ${fail} failed`);
 if (fail > 0) process.exit(1);

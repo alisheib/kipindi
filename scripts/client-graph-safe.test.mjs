@@ -162,6 +162,9 @@ console.log("\n[client-graph-safe] \u00a71 client-reachable modules stay clear o
     "lib/marketing/segment-cost.ts",
     "lib/marketing/campaign-estimate.ts",
     "lib/marketing/campaign-confirm.ts",
+    // ⭐ ADDED 2026-10-01 (Vodacom plan S6 WP6a). Which unread counter may mount at this width — the bell from lg, the
+    // Akaunti dot below it: a hook over the browser's media query, importing only React, loaded by the journey chrome.
+    "lib/journey/one-poller.ts",
   ];
   const offenders = [];
   let checked = 0;
