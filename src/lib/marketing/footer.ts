@@ -97,7 +97,8 @@ export function footerMeasurementToken(): string {
  * ⚠️ `sourcePhrase` is OQ3's shadow. If the lawyer's answer to "how must ETA s.31(c)'s source of the
  * personal information be given inside a 160-character SMS" is "in the body", that phrase comes out
  * of the same 160 and the budget drops accordingly. Passing it here prices that answer instead of
- * arguing about it. It is counted with the space `composeMarketing` puts after it.
+ * arguing about it. It is counted with the one space `composeMarketing` puts before it (U37a: the
+ * phrase sits between the body and the footer — see there).
  *
  * 🔴 ENCODING-AWARE SINCE 2026-09-26. It always subtracted from the GSM-7 limit, so a UCS-2 message was
  * told "you have 111 characters" when 70 − 49 = 21 fit. `encoding` is the MESSAGE's, and the footer is
@@ -105,7 +106,9 @@ export function footerMeasurementToken(): string {
  */
 export function operatorBudget(locale: MarketingLocale = "SW", sourcePhrase = "", encoding: SmsEncoding = "GSM7"): number {
   const footer = marketingFooter(footerMeasurementToken(), locale);
-  const source = sourcePhrase ? `${sourcePhrase.trim()} ` : "";
+  // ⛔ Trimmed BEFORE the emptiness test: a phrase of spaces is no phrase, and `composeMarketing` prints none.
+  const phrase = (sourcePhrase ?? "").trim();
+  const source = phrase ? `${phrase} ` : "";
   const overhead = unitsIn(footer, encoding) + unitsIn(source, encoding);
   return capUnits(encoding) - overhead;
 }
@@ -127,6 +130,10 @@ export type MarketingCompose = {
  *
  * ⛔ AND THE SIZE IS TAKEN OF THE COMPOSED TEXT. Sizing the body and appending the footer afterwards
  * is the defect this whole unit exists to prevent; `test:campaign-compose` plants exactly that.
+ *
+ * ⛔ ONE CALLER IN `src/` (U37a): `lib/marketing/campaign-template.ts`, the renderer the counter, the test send and
+ * the real send all go through. A screen or an engine composing here on its own is how the officer is shown one
+ * message and a recipient sent another — `test:campaign-compose` §16.1 holds the population.
  */
 export function composeMarketing(
   body: string,
@@ -135,15 +142,21 @@ export function composeMarketing(
   sourcePhrase = "",
 ): MarketingCompose {
   const trimmed = (body ?? "").trim();
-  const source = sourcePhrase ? `${sourcePhrase.trim()} ` : "";
-  const text = `${source}${trimmed}${marketingFooter(token, locale)}`;
+  // 🔴 THE SOURCE PHRASE WENT IN FRONT OF THE BODY UNTIL U37a (2026-10-01): `${source}${trimmed}`. The identity
+  // check then read the PHRASE, so any phrase that did not itself begin with "50pick" (§10's realistic fixture is
+  // one) refused every message carrying it; and the over-cap sentence counted the phrase as the officer's text
+  // while quoting a budget that had already taken it out. Nothing passed a phrase yet, so nothing shipped wrong.
+  // ⭐ OQ3's built safe default says the FOOTER carries the phrase, so it sits between the body and the footer,
+  // one space before it — the units `operatorBudget` prices — and the officer's own "50pick" stays first.
+  const phrase = (sourcePhrase ?? "").trim();
+  const text = `${trimmed}${phrase ? ` ${phrase}` : ""}${marketingFooter(token, locale)}`;
   const size = sizeSms(text);
   // ⭐ The budget in the encoding this message will actually go out in — a single ’ makes it UCS-2.
-  const budget = operatorBudget(locale, sourcePhrase, size.encoding);
+  const budget = operatorBudget(locale, phrase, size.encoding);
   const problems: string[] = [];
 
   // ETA s.32(1)(b) — identity at the START, not somewhere in the middle.
-  if (!`${source}${trimmed}`.startsWith(SENDER_IDENTITY)) {
+  if (!trimmed.startsWith(SENDER_IDENTITY)) {
     problems.push(`The message must begin with “${SENDER_IDENTITY}” so the sender is identified, as the law requires.`);
   }
   if (trimmed.length === 0) {
@@ -156,7 +169,8 @@ export function composeMarketing(
   if (size.segments > SMS_MAX_SEGMENTS) {
     problems.push(
       `This is ${size.segments} messages, and the limit is ${SMS_MAX_SEGMENTS} — you have ${budget} characters before the required footer, ` +
-        `and this uses ${unitsIn(`${source}${trimmed}`, size.encoding)}.`,
+        // ⛔ The OFFICER's text against the OFFICER's room: the phrase is already inside `budget`.
+        `and this uses ${unitsIn(trimmed, size.encoding)}.`,
     );
   }
   if (size.encoding === "UCS2" && size.offending.length > 0) {

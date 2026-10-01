@@ -237,8 +237,12 @@ async function closeLowEpisodeFoundAtBoot(tzs: number, threshold: number): Promi
  *
  * ⚠️ AN ACCEPTED REPLY'S FIGURE IS PRE-CHARGE. The first live send reported TZS 250
  * and the portal then showed 244: the TZS 6 is applied after the reply. So a reading
- * lags by one batch, which is harmless for a floor and is why the price is read from
- * the portal, never computed from a reply.
+ * lags by one batch, which is harmless for a floor — and is why no price is ever read
+ * off ONE reply. ⭐ The DIFFERENCE between two consecutive replies is a different
+ * quantity: when every message of the earlier chunk was DELIVERED (Blackball bills per
+ * delivered message) and nothing else was sent or delivered in between, it is that
+ * chunk's charge. `measureSegmentCost` (`lib/marketing/segment-cost.ts`, U39) walks
+ * exactly those pairs; the portal stays the authority it is checked against.
  *
  * ⛔ THE ALARM IS EDGE-TRIGGERED, NOT LEVEL-TRIGGERED. A level check writes one
  * `sms.balance_low` row per send once the balance is low, burying the hash-chained

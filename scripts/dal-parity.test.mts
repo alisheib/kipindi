@@ -1607,5 +1607,117 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
     createObjects("x(db.messagingConsent.create({ a: { b: 1 }, c: 2 }));").join("") === "{ a: { b: 1 }, c: 2 }");
 }
 
+/* ═══ §21 · The audience where — one named shape, two translators (U24, S10 2026-10-01; decision C7) ═══ */
+{
+  // ⭐ WHY THIS SECTION EXISTS. `ContactAudienceWhere` is what the ONE resolver (`marketing/audience.ts`) hands the
+  // book, and each twin turns it into rows ONCE: `toPrismaContactWhere` (prisma-dal.ts) and `contactMatchesAudience`
+  // (store.ts). Every suite runs on the memory twin, so a key the Prisma translator forgets is an audience that is
+  // right in every test and WIDER in production — a bulk, an export or a campaign acting on people nobody chose.
+  // 🔴 AND THE NULL TRAP: Prisma's `{ sourceRef: { not: x } }` is `"sourceRef" <> $1`, which drops every NULL row —
+  // nearly the whole book — while the memory twin's `!==` keeps them. The erased exclusion must carry a NULL arm.
+  // Also here since U24 (moved from `test:contacts-page` §8/§8b): the number matched EXACTLY in both, the name through
+  // the shared grammar in both, and the page order that puts nameless rows last with an id tiebreak.
+  // U21's tag counts (decision M8) fold in as 21.tags.
+  const wKeys = storedKeys("ContactAudienceWhere");
+  const priW = region(dalSrc, "function toPrismaContactWhere(");
+  const memW = region(storeSrc, "function contactMatchesAudience(");
+  const reads = (k: string) => new RegExp(`\\bw\\.${k}\\b`);
+
+  ok("21.0 · the parser sees ContactAudienceWhere's keys", wKeys.length >= 14, `saw ${wKeys.length}: ${wKeys.join(",")}`);
+  ok("21.0b · both translators resolve", priW.length > 400 && memW.length > 400, `prisma ${priW.length} chars, memory ${memW.length} chars`);
+  for (const k of wKeys) {
+    ok(`21.prisma.${k} · toPrismaContactWhere reads w.${k}`, reads(k).test(priW));
+    ok(`21.memory.${k} · contactMatchesAudience reads w.${k}`, reads(k).test(memW));
+  }
+
+  // ⛔ AN EMPTY ARRAY IS NOTHING. A `.length` anywhere in a translator is the truthiness test that reads `[]` as
+  // "no constraint" — the widening `test:contacts-audience` 2.12 drives.
+  ok("21.empty · ⛔ neither translator tests an array's .length — every key is checked !== null, so an EMPTY array is NOTHING",
+    !/\.length\b/.test(priW) && !/\.length\b/.test(memW));
+
+  const NULL_ARM = /OR:\s*\[\s*\{\s*sourceRef:\s*null\s*\}\s*,\s*\{\s*sourceRef:\s*\{\s*not:\s*w\.excludeSourceRef\s*\}\s*\}\s*\]/;
+  ok("21.null · 🔴 the Prisma erased exclusion carries the NULL arm — OR [{ sourceRef: null }, { sourceRef: { not } }] — so a row with no sourceRef is kept",
+    NULL_ARM.test(priW) && /c\.sourceRef === w\.excludeSourceRef/.test(memW));
+
+  const SUBSTRING = /msisdn\.(?:includes|startsWith|endsWith|indexOf|search|match)\(/;
+  ok("21.msisdn · ⛔ the number is matched EXACTLY in both twins — never a substring a masked role could walk digit by digit",
+    priW.includes("{ msisdn: w.msisdn }") && memW.includes("c.msisdn !== w.msisdn") && !/msisdn:\s*\{/.test(priW) && !SUBSTRING.test(priW + memW));
+
+  ok("21.name · a name goes through the shared grammar in both, and one SQL cannot express is NOTHING in both",
+    priW.includes("queryToWhere(w.name, CONTACT_SEARCH)") && /if \(nameWhere === null\) return null;/.test(priW)
+      && memW.includes("queryToWhere(w.name, CONTACT_SEARCH) === null") && memW.includes("matchesQuery(w.name, { displayName: c.displayName }, CONTACT_SEARCH)"));
+
+  // ── EVERY AUDIENCE MEMBER GOES THROUGH THE ONE TRANSLATOR ──
+  const memBlock = region(storeSrc, "\n  marketingContact: {");
+  /** A memory member's text: from `    <name>: ` to the next member at the same indent (a one-line member has no brace). */
+  const memberText = (block: string, name: string): string => {
+    const at = block.indexOf(`\n    ${name}: `);
+    if (at < 0) return "";
+    const next = block.slice(at + 1).search(/\n {4}\w+\s*:/);
+    return next < 0 ? block.slice(at) : block.slice(at, at + 1 + next);
+  };
+  const MEMBERS = ["page", "countWhere", "summaryWhere", "walk"];
+  const priRouted = MEMBERS.filter((m) => { const b = delegateMethod("marketingContact", m); return b.includes("toPrismaContactWhere(") && /=== null/.test(b); });
+  const memRouted = MEMBERS.filter((m) => memberText(memBlock, m).includes("contactsMatching("));
+  ok("21.route · page, countWhere, summaryWhere and walk read through the ONE translator in each twin (and Prisma honours its null)",
+    priRouted.length === MEMBERS.length && memRouted.length === MEMBERS.length
+      && /contactMatchesAudience\(c, w\)/.test(region(storeSrc, "function contactsMatching(")),
+    `prisma=[${priRouted}] memory=[${memRouted}]`);
+
+  // ── THE WINDOW: every Prisma read is bounded, and the walk is a keyset on id ──
+  const callObjects = (src: string, opener: string): string[] => {
+    const out: string[] = [];
+    for (let at = src.indexOf(opener); at >= 0; at = src.indexOf(opener, at + 1)) {
+      const open = src.indexOf("{", at);
+      let depth = 0;
+      for (let i = open; i < src.length; i++) {
+        if (src[i] === "{") depth++;
+        else if (src[i] === "}") { depth--; if (depth === 0) { out.push(src.slice(open, i + 1)); break; } }
+      }
+    }
+    return out;
+  };
+  const pPage = delegateMethod("marketingContact", "page");
+  const pWalk = delegateMethod("marketingContact", "walk");
+  const finds = [...callObjects(pPage, "findMany("), ...callObjects(pWalk, "findMany(")];
+  ok("21.window · every Prisma findMany in page and walk carries `take`, and the walk orders by id with `gt` — never `skip`",
+    finds.length === 2 && finds.every((o) => /\btake:/.test(o))
+      && /orderBy:\s*\{\s*id:\s*"asc"\s*\}/.test(pWalk) && /id:\s*\{\s*gt:\s*q\.afterId\s*\}/.test(pWalk) && !/\bskip\b/.test(pWalk)
+      && /c\.id > afterId/.test(memberText(memBlock, "walk")) && /a\.id < b\.id/.test(memberText(memBlock, "walk")),
+    `${finds.length} findMany call(s)`);
+
+  // ── THE PAGE ORDER (moved from contacts-page §8/§8b) ──
+  const mPage = memberText(memBlock, "page");
+  ok("21.order · nameless rows sort LAST and every tie breaks on id, the same way in both twins",
+    pPage.includes('nulls: "last"') && pPage.includes("{ id: q.dir }")
+      && mPage.includes("a.displayName === null ? 1 : -1") && mPage.includes("sign * a.id.localeCompare(b.id)"));
+
+  // ── 21.tags · the book's tag counts (U21's rail, decision M8) ──
+  const pTags = delegateMethod("marketingContact", "tagCounts");
+  const mTags = memberText(memBlock, "tagCounts");
+  ok("21.tags.prisma · tagCounts counts each contact ONCE per tag in SQL, leaves the erased mark out NULL-safely, sorts ties in code-unit order and is bounded",
+    /count\(distinct c\.id\)::int/.test(pTags) && /\$\{q\.excludeSourceRef\}::text is null/.test(pTags)
+      && /is distinct from \$\{q\.excludeSourceRef\}::text/.test(pTags) && /collate "C"/.test(pTags) && /limit \$\{q\.limit\}/.test(pTags),
+    `${pTags.length} chars`);
+  ok("21.tags.memory · …and the memory twin mirrors it: once per contact, the mark skipped, the same bound",
+    /new Set\(c\.tags\)/.test(mTags) && /c\.sourceRef === q\.excludeSourceRef/.test(mTags) && /\.slice\(0, q\.limit\)/.test(mTags),
+    `${mTags.length} chars`);
+
+  // ── CONTROLS ─────────────────────────────────────────────────────────────────────────
+  ok("21.c1 · CONTROL · a translator that never reads a key is reported",
+    !reads("tags").test("  if (w.ids !== null) and.push({ id: { in: w.ids } });"));
+  ok("21.c2 · CONTROL · a `.length` truthiness test is detected",
+    /\.length\b/.test("  if (w.ids?.length && !w.ids.includes(c.id)) return false;"));
+  ok("21.c3 · CONTROL · a bare Prisma `not` with no NULL arm fails 21.null",
+    !NULL_ARM.test("  and.push({ sourceRef: { not: w.excludeSourceRef } });"));
+  ok("21.c4 · CONTROL · a substring match on the number is detected",
+    SUBSTRING.test("  if (w.msisdn !== null && !c.msisdn.startsWith(w.msisdn)) return false;"));
+  const plantedSrc = storeSrc.replace("export type ContactAudienceWhere = {", "export type ContactAudienceWhere = {\n  plantedKey: string | null;");
+  ok("21.c5 · CONTROL · a key ADDED to ContactAudienceWhere is seen by the parser and reported unread by both translators",
+    storedKeys("ContactAudienceWhere", plantedSrc).includes("plantedKey") && !reads("plantedKey").test(priW) && !reads("plantedKey").test(memW));
+  ok("21.c6 · CONTROL · the findMany extractor finds a call with no `take`",
+    callObjects("x.findMany({ where, skip: 1 })", "findMany(").some((o) => !/\btake:/.test(o)));
+}
+
 console.log(`\ndal-parity: ${pass} passed, ${fail} failed`);
 if (fail > 0) process.exit(1);

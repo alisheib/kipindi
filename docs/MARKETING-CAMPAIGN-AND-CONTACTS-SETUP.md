@@ -564,9 +564,9 @@ a Guard key that resolves to a script on disk, `yes` plus the backticked `red:` 
 | U18 | data | ✅ | S9 · S10 | aa2767e9 | there was no contact book, and erasure reached no marketing store — an erased player's sign-up GIVEN decided on Postgres, and neither export had a marketing section → the three tables in both DALs (U18a `fb194038`); erasure appends WITHDRAWN for every number the person consented with (never a stop, so a recycled number's next owner can consent) and empties every book row by link or number; both exports carry the book, the ledger and the stop history from the account's creation, through one allowlist | `test:erasure` · `test:dal-parity` | yes · `red:erasure` (29) · `red:dal-parity` | 2026-10-01 · live: U18a since S9's push (`fb194038`); U18b + both review rounds (`0e68d59e` → `2d4ca3b6` → `aa2767e9`) inside production's `1931d4c3` (proved by DISCRIMINATION: `aa2767e9` absent from the `2d4ca3b6` build, present in `1931d4c3`). No erasure is run on production by a drive (no QA account may be erased), so the behaviour is proven by EXECUTION — `test:erasure` §12, 338/338 |
 | U19 | guard | ✅ | S10 | addf5351 | a contact number had no registry entry, and the ONE mask printed every bare `255…` key as `2557••••01` (the operator digit) — in the SMS refusal audit and the delivery-receipt audit already → `contactPhone` (a CONTACT id, targetType MarketingContact, identity.contact: GROWTH sees `+255••••01` and no control); `maskPhone` reads a bare key as the `+` form, platform-wide; "Copy number" is a reveal through the same audited action, on the `read` branch only | `test:read-tiers` | yes · `red:read-tiers` (35/35, +4) | 2026-10-01 · live on `2d4ca3b6` (proved by DISCRIMINATION: production served `45794cc9` before the push, `2d4ca3b6` after). ⚠️ No live surface to look at yet — no contact exists on production (no writer until U22/U25) — so, like U11, proven by EXECUTION: read-tiers 8.23 runs the mask on a bare key. ⚠️ The export half lands with the export (U34), which must mask through `maskPhone` and name its column (read-tiers 8.9/8.10 are the precedent) |
 | U20 | visual | 🔵 | S10 | 733522d3 | /admin/contacts showed only an empty state and no store could be listed → the book, server-paged (page + summary in both twins), searchable by a WHOLE number in any spelling or by name (never a part of a number), whole-book KPIs, nameless-last sort with an id tiebreak, the page clamp, every number masked, and NO row-by-row player signal for a role that may not read a number (D19, found by the design critic before shipping) | `test:contacts-page` | yes · `red:contacts-page` (8/8, in-process) | awaiting the deploy; drive 65/65 at 1280 + 360 + reduced motion, ghost = real by measurement (KPI band 110/236 px, card top 350/476 px) |
-| U21 | visual | ⬜ | — | — | — | `test:filter-language` | — | filters |
-| U22 | visual | ⬜ | — | — | — | `test:contacts-page` | — | add / edit |
-| U23 | visual | ⬜ | — | — | — | `test:contacts-page` | — | bulk |
+| U21 | visual | ⬜ | — | — | — | `test:contacts-page` · `test:filter-language` | — | filters (RED cell names `red:contacts-page` first, M11) |
+| U22 | visual | ⬜ | — | — | — | `test:contacts-form` | — | add / edit. ⚠️ Residual under D19's own standard (counts allowed, per-row flags not): a masked officer who adds a player's number can see a whole-book count move; the control is U22's per-officer add rate rule and an audit row per add |
+| U23 | visual | ⬜ | — | — | — | `test:contacts-bulk` | — | bulk |
 | U24 | engine | ⬜ | — | — | — | `test:contacts-audience` | — | ONE resolver |
 | U25 | pure | ⬜ | — | — | — | `test:contacts-import` | — | CSV |
 | U26 | pure | ⬜ | — | — | — | `test:contacts-import` | — | vCard |
@@ -597,6 +597,11 @@ a Guard key that resolves to a script on disk, `yes` plus the backticked `red:` 
 | U51 | docs | ⬜ | — | — | — | `test:docs` | — | the operator's guide |
 | U52 | live | ⬜ | — | — | — | `test:marketing-engine` | — | live drive + Seal |
 
+⚠️ **Three ⬜ Guard cells above are superseded until their rows ship (decisions C14 · M11, 2026-10-01):** U21's guard
+is `test:contacts-page` · `test:filter-language`, and its RED cell must name `red:contacts-page` FIRST; U22's guard
+is `test:contacts-form`; U23's is `test:contacts-bulk`. §9 carries the full text; each unit rewrites its own row
+when it ships.
+
 **Defects this programme closes** (detail in §8):
 
 | Id | Owner | State | One line |
@@ -618,7 +623,7 @@ a Guard key that resolves to a script on disk, `yes` plus the backticked `red:` 
 | D15 | U15 | ⬜ | `invite-service.sendCampaign` is a second, ungated send path holding `withLock` across sends |
 | D16 | U16 | ⬜ | new PII stores would sit outside erasure and retention, as `SmsMessage` already does |
 | D17 | U17 | ⬜ | a new admin section is five doors; missing one renders it to the Owner alone |
-| D18 | U27 | ⬜ | no admin uploader, no CSV parser, and a 1 MB server-action ceiling |
+| D18 | U30 | ⬜ | no admin uploader, no CSV parser, and a 1 MB server-action ceiling — owned by U30 (the uploader) since 2026-10-01; U25 and U27 close the other two clauses |
 | D19 | U30 | ⬜ | a pre-flight that says "400 of these are players" is a membership oracle |
 | D20 | U45 | ⬜ | `sendBatch` updates `SmsMessage` rows one at a time — 10k serial UPDATEs for a 10k campaign |
 | D21 | U46 | ⬜ | the DLR route fans out to `InviteEntry` only — receipts now arrive (§3a), and a campaign recipient has nowhere to receive one |
@@ -977,8 +982,10 @@ is decided, with what it rules out. They are not questions.
   contact deletion, not by re-import, not by an officer. Deleting one re-permits marketing to someone who
   said stop. *(Since U8/S5 a row may be SUPERSEDED — `liftedAt` — and since 2026-09-26 only by the person's
   own act on a stop the person made, reason `WITHDRAWN`: the `/s/` resume or the profile toggle ON. A
-  COMPLAINT, OPERATOR or SELF_EXCLUSION row is never lifted by the person. ⚠️ The DAL half — re-arm
-  precedence and a reason filter on `lift` — is owed before U16/U23, §0 ⚠ RECORDED.)*
+  COMPLAINT, OPERATOR or SELF_EXCLUSION row is never lifted by the person. ~~⚠️ The DAL half — re-arm
+  precedence and a reason filter on `lift` — is owed before U16/U23, §0 ⚠ RECORDED.~~ ✅ 2026-10-01: that DAL
+  half LANDED in S7c — the re-arm precedence and the WITHDRAWN-only `lift` in both twins, guarded by
+  `test:dal-parity` 17.supersede / 17.liftreason — so it gates neither U16 nor U23 (decision M9).)*
 - **OD12 · Marketing suppression on self-exclusion uses `selfExclusionStanding`, never `isLockedOut`**,
   and treats any self-exclusion as lasting at least six months (GN 478T reg 48(3)), lifted only by an
   officer restore **plus** a fresh consent after restoration. ⛔ `isLockedOut` itself is not modified.
@@ -1276,7 +1283,9 @@ text. The one-line summaries are in §1; what follows is what each one actually 
   guard is structural: grep the schema for phone/e-mail columns and require each owning model to appear
   in both files or be listed with a reason. **U16**
 - **D17 · Five doors** (§5.9). **U17**
-- **D18 · No admin uploader, no CSV parser, 1 MB actions.** **U27**
+- **D18 · No admin uploader, no CSV parser, 1 MB actions.** Three defects in one: U25 builds the parser and U27
+  derives a 700 KiB XLSX cap under the 1 MB ceiling, but the uploader — the first admin file entrance, with the XLSX
+  action beside its caller — is U30's, so the defect closes there (re-owned 2026-10-01, decision C26). **U30**
 - **D19 · A pre-flight that reports which numbers are players is a membership oracle** for a role that
   may not read a number at all. **U30**
 - **D20 · `sendBatch` updates `SmsMessage` rows one at a time** — and the patch is identical for every row
@@ -2071,80 +2080,321 @@ through `parseTzNumber`** so `0712 345 678`, `712345678` and `+255712345678` all
 copy, with the clear-filter action) · error (`AdminLoadError`, never a zero).
 **Accept:** page 4 of a 3-row result renders row 1–3, not "no matches".
 
-**U21 · Filters** — `contact-filters.tsx`
-One rail of `FilterPill rank="dense"`: consent · reachability · operator · list · tag · source, all in the
-URL. ⭐ The operator pill's value is a **brand**, expanded to its NDC set by the one table — a hand-written
-NDC array on the page would be the second list.
-**Guard:** `test:filter-language`. **RED:** add an undeclared rail → §0.4 red.
-**States:** loading · none applied · applied · in-progress (n/a) · no-match with the rail STILL rendered ·
-error. ⛔ An empty filter that removes its own controls is a known trap here.
+**U21 · Filters** — `contact-filters.tsx`: a rail over U24's resolver, UI only (decisions C1 · C2 · C9 · C13 · M11 · A1.1)
+One server-rendered rail of `FilterPill rank="dense"`, six axes: consent · suppressed · operator · source · list · tag.
+⛔ U21 turns no filter into a query (C1): U24's `parseContactAudienceParams` reads the URL and `contactAudience` runs
+it; the rail draws what is applied and builds every pill and Clear filters through C9's ONE href builder,
+`contactsHref`. URL per C2 — `consent`, `suppressed`, `op`, `list`, `tag`, `source`, multi-valued as a comma list —
+plus U24's recorded extension (`player`, `import`, `range`/`from`/`to`), for which the rail draws NO axis: an applied
+one shows as one selected, clearable pill, and Clear filters removes it. An unknown value is refused by the loader
+(C8) and the page shows the refused state with Clear filters, never a wider table.
+🔴 **D19 / A1.1 — the rail is role-shaped.** There is NO player axis, for any viewer. For a viewer whose
+identity.contact cell is not `read`, the Consent and Source axes are NOT rendered, and a typed `?consent=`,
+`?source=` or `?player=` is REFUSED by U24's loader with the role refusal ("This filter isn't available to your
+role.") BEFORE any row is read: Source "Sign-up" means the number came with an account, and until U33 a GIVEN or
+WITHDRAWN consent can only come from a player or an erasure, so either axis answers "is this a player?" for a number
+the viewer typed. Whole-book KPI counts stay (a count over the book is not a per-number answer). Readers (`read`) see
+all six axes. ⚠️ Corrected premises: (1) no "reachability" axis — Reachable is the send gate asked per row (RG, KYC,
+age, account), which no column equals; the axis is **Suppressed**, over the `suppressedAt` cache U24 commit 2 keeps
+honest (so U21 lands after that commit, C22). (2) The operator value is the licensee ID (`?op=VODACOM`), never the brand (Tigo became Yas in 2024): label
+`TZ_OPERATORS[id].brand`, prefixes from C10's `ndcsForOperator`, and the Operator COLUMN reads `operatorBrand(c.ndc)`
+only — never the stored `operator` string, which could read "Tigo" under the Yas pill. (3) Nothing writes a list or
+a tag yet, so those axes render only when options exist OR a value is applied; an applied value is always a
+selected, clearable pill ("Unknown list"; a tag outside the top 20 is appended), grouped by U28's `tagKey` (C11),
+counted by U24's `tagCounts` (M8). CONSENT/SOURCE labels move from `page.tsx` to `contacts-copy.ts` once; UNKNOWN
+reads "Not recorded" (C13). Rail and search strip are gated on `!emptyBook` alone, never the match count; a failed
+read draws the rail from the URL, so the filter stays visible (§5.15). `contact-filters.tsx` and its
+`filter-language` ADMIN_SURFACES entry land in ONE commit.
+**Guard:** `test:contacts-page` (C14 — rail model, hrefs, the rail surviving no-match, the Operator column, the
+role-shaped rail) · `test:filter-language` (the declaration; dense rank 1 of 1).
+**RED:** `red:contacts-page` FIRST (M11; in-process): a masked viewer with `?source=REGISTRATION` or `?consent=GIVEN`
+gets rows, or sees the Consent or Source axis drawn, instead of the role refusal (A1.1); a hand-typed 2020-edition
+operator map (Vodacom without 72), pills keeping `page` or dropping the search, only the top-N tags drawn, the rail
+gated on rows, the column reading `c.operator`. Then `red:filter-language` +2 (rail undeclared → §0.4; dense rank
+removed → §6.6) — it WRITES real files: run it detached under the heavy-node lock, alone, then `git status`.
+**States:** loading · none applied · applied (one axis; combined, paged and re-sorted) · in-progress (n/a) · no-match
+with the rail STILL rendered (Clear filters keeps search and sort) · refused (the value named) · refused (role — the
+filter would show which numbers are players; Clear filters) · error (the rail still shows the filter) · empty book
+(no rail, no search).
+**Accept:** page 2 of `?op=VODACOM&tag=vip` sorted by name still carries both filters and the sort; the KPI band is
+the whole book under every filter; `?op=NOKIA` shows the refused state; a GROWTH (masked) session sees no Consent or
+Source axis, and its `?source=REGISTRATION` shows the role refusal with no row read.
 
-**U22 · Add and edit one contact** — `contact-form.tsx` in a `Modal`
-`PhoneInput`; a live verdict under the field on every keystroke (operator `Chip` as soon as two digits
-land; one sentence for every refusal); duplicate check on blur that offers **"Open the existing
-contact →"**. ⛔ There is no "save anyway" — `msisdn` is unique and a button that violates a constraint is
-a button that lies. Consent defaults to **"No consent recorded"**.
-**Guard:** `test:contacts-page`. **RED:** default consent to granted → red.
-**States:** loading · blank · typing (chip + verdict) · saving · refused (duplicate / invalid) · error.
+**U22 · Add and edit one contact** — `contact-form.tsx` in a `Modal` (decisions C3 · C4 · C9 · C11 · C12 · C24 · C25 · M5 · M12 · A1.1 · A1.7)
+⛔ **No consent control** — nothing lawful can be chosen: a contact needs OD9's basis and an 18+ attestation, which
+only U33 builds. The dialog states Consent **"Not recorded"** (the list's label, C13): "This form never records
+consent; a contact with no consent recorded is never sent marketing." No consent key in the request, NO ledger row
+(dal-parity §20's comment naming U22 a writer is reworded); the row's caches come from U24's `mirrorContactCache`
+(C4). 🔴 **D19 / A1.1 — the mirrored consent is a player signal.** Until U33 a GIVEN or WITHDRAWN ledger row can only
+come from a player (sign-up, profile, opt-out) or an erasure, so for a viewer whose identity.contact cell is not
+`read` the post-save consent chip, and any mirrored consent in the edit dialog, is NOT rendered: that viewer sees the
+form's own sentence above and nothing per-number (the list's Consent cell and `?consent=` are already closed to them,
+U24 commit 1 and U21). Readers see the mirrored value. `PhoneInput` gains three ADDITIVE props — `onPasteRaw` (a pasted `+254…` is judged before truncation, never
+called a Mbeya landline), a forwarded ref (the Modal focuses the number, not ✕), a caller's `title` winning — and
+the form is `noValidate`. A pure `src/lib/contacts/contact-number.ts` (pinned, M3) gives the live verdict: the
+operator `Chip` at two digits from C10's `ndcRow`, "4 of 9 digits" while typing, too-short only once settled, 064
+refused at two digits, every sentence `parseTzNumber`'s own. ⛔ No "save anyway": the unique index IS the duplicate
+check — a create returning null (a race included) is a refusal carrying the existing id. "Open the existing
+contact →" opens `?edit=<contact id>` through `contactsHref`, to which U22 adds `edit` as an explicit patch key
+(additive; C9, M12: filters ride along; `edit` is never carried forward from `sp`, so it never reaches SortTh,
+pagination or the SearchBox, and the dialog's close link is `contactsHref(sp)` without it; a cuid travels, never a
+number). The create never sets `userId` — never linked to a player, even when one holds the number — and a player's
+duplicate shows the same sentence and the same Open link as any other (D19). ⛔ **Erased rows (C3, A1.7).** Adding
+an erased number (`sourceRef = "erasure"`) refuses with "This number can't be added to the book." and opens NOTHING —
+the refusal payload carries NO id. To `?edit=` an erased row is MISSING: the edit loader and `editContact` treat
+`sourceRef = "erasure"` as not found (`CONTACT_MISSING`), so no officer can write a name back onto an erased
+person's number — the U22 spec's case that let an erasure-emptied row be edited (its 15.1) is REVERSED and must
+refuse. Fields: Name, Email, Notes, Tags — limits from U28's ONE table (C12), tags through
+`splitTags`/`tagKey` (C11); a stored email renders only through `<Sensitive field="contactEmail">`, a NEW registry
+entry masked like `email`, re-read by contact id (M5). Edit is compare-and-set: `updateIfUnchanged` in both twins,
+writing an EXPLICIT `updatedAt` (C25), never touching the number, `sourceRef`, link, caches or created-by.
+`contact-form-actions.ts` (C24): `softRequireStaff("growth", …)`, per-officer rate rules, every field re-typed, an
+audit row with the MASKED number and field names only. "Add contact" sits in the page head, disabled with its
+reason when the role cannot act (never hidden); the loading ghost reserves its box.
+**Guard:** `test:contacts-form` (C14 — NEW, in `predeploy`, in-process `--prove-red`) · `test:dal-parity` §22 (C7).
+**RED:** `red:contacts-form` — default consent to granted → red (the plan's own); also a spread client draft, a
+constant cache, the number stored as typed, lookup saying "is a player", last write wins, an ungated action, a
+"save anyway" button, a masked viewer adding a seeded player's number and reading "Given" (A1.1), `?edit=` of the
+erased fixture opening the dialog (A1.7), the erased refusal carrying an id. `red:dal-parity` §22: the Prisma where
+loses `updatedAt`; the memory twin loses its compare.
+**States:** loading · blank · typing (chip + verdict) · checking (duplicate lookup held) · saving · saved (toast,
+the row first) · refused (duplicate / invalid / erased / stale / missing — an erased row included / act gate /
+rate-limited) · error.
+**Accept:** `0712 345 678` then `+255712345678` leaves ONE row and a duplicate refusal with its link; for a reader, a
+number whose ledger says WITHDRAWN is added reading "Withdrawn" (the mirror), while a GROWTH (masked) session adding
+a seeded player's number sees no consent value at all; the form wrote zero ledger rows; `?edit=` of the erased
+fixture shows the missing refusal.
 
-**U23 · Selection and bulk** — the bar
-Selection is a `Map<id,row>` (rows, not ids), and "select all N matching" stores the **filter**. Actions:
-add to list · tag / untag · record consent · suppress · export · remove. Confirmations **enumerate** (name
-+ masked number, first 20 + "and N more") below 50, and take a typed word above 50 or when the audience is
-a filter — ⚠️ re-enforced **server-side**. Toasts report server-counted results ("2,981 tagged · 431
-already had it").
-**Guard:** `test:contacts-page`. **RED:** confirm from a client-supplied count → the server must refuse.
-**States:** loading · none selected · selected (bar) · acting (overlay) · refused (act gate, with the
-reason in `title`, never hidden) · error.
+**U23 · Selection and bulk** — the bar (decisions C3 · C4 · C5 · C6 · C11 · C23 · C24 · M4 · M10)
+Selection is a `Map<id, row>` of server-projected rows `{ id, name, masked }` (masked for every role; no `msisdn`
+reaches the client), or "select all N matching", which stores the FILTER. Both travel as U24's audience JSON (C6:
+`parseContactAudienceJson`, ticks as the `ids` arm, ≤ `MAX_AUDIENCE_IDS` = 1,000, `[]` = nothing); every count is
+`contactAudience(f).count()` (U23 joins U24's READERS) and every audit row describes it with `auditContactAudience`.
+Erased rows are in no audience (C3). Actions: tag · untag · add to list (existing, or a new name ≤ 60 characters; a
+case-insensitive duplicate is refused) · record a withdrawal · suppress · remove. ⚠️ Corrected: no staff "record
+consent" (no wording, basis or 18+ attestation until U33, which adds "Given" to this bar), and export is U34's,
+posting the same JSON. A tag runs U28's ONE rule (C11), so a bulk "VIP" is stored as the form stores it. Up to 50
+ticked rows ENUMERATE from the server preview (first 20, masked, "and N more"); above 50, or ANY filter audience, the
+typed word is the SERVER's recomputed count — the run recounts and refuses `confirm_required` / `confirm_mismatch`
+with the new count (OD27/OD28). Tag, untag, list and remove are SET-BASED over the resolver's where (`tagWhere`,
+`untagWhere`, `removeWhere` — the memory twin cascades members and frees the number's index — and `addWhere`).
+Withdraw and suppress write per number, capped at 1,000 (refused above with the reason; re-measure p95 after the
+deploy). Withdraw appends WITHDRAWN (source OPERATOR, a fixed officer wording, `...ledgerStamp()`; a fourth §20
+writer), turns a player's toggle off only through `syncPlayerToggle(…, actor)` (C5), and calls `mirrorContactCache`
+(C4, M4); `contact-bulk.ts` joins U24's CACHE_WRITERS (M4). A filter audience POSTed by a masked role is refused
+`consent`, `source` and `player` exactly as the URL is (U24, A1.1), so a forged body cannot turn the recount into a
+player oracle. ⚠️ Suppress writes an OPERATOR stop NOBODY can lift — not the person, not a recycled number's next owner
+(C23/M13; Ali may rule otherwise, §0 ❓ FOR ALI) — and the confirmation says so in words. The old warning that the
+DAL would let a person's stop link lift it is struck: the re-arm precedence and the WITHDRAWN-only lift shipped in
+S7c. Server and UI ship in ONE push (M10, `test:orphan-actions`): `contact-bulk-actions.ts` (C24), the pure
+`src/lib/contacts/bulk-rules.ts` (pinned, M3), `contact-bulk.ts`, the bar, a select column (+1 to both column counts).
+**Guard:** `test:contacts-bulk` (C14 — NEW, in `predeploy`, in-process `--prove-red`) · `test:dal-parity` §20 / §23 (C7).
+**RED:** confirm from a client-supplied count → the server must refuse (`red:contacts-bulk`; also a reused preview
+count, a filter treated as ticks, a person-liftable suppress, a cascade-less memory remove, a raw search in the audit,
+a masked role's POSTed `sources` audience answered with a count).
+**States:** loading · none selected · selected (bar; rows across pages / all N matching) · confirming (enumerate /
+typed) · acting (overlay) · done (server-counted toast) · refused (act gate, reason in `title`, never hidden;
+audience moved; over the cap) · error.
+**Accept:** a forged count of 3 for 60 ticked rows changes nothing; after a withdrawal a player's number is refused
+`no_consent` (its toggle is off) and a stranger's `consent_withdrawn`.
 
-⚠️ **"Suppress" writes an OPERATOR row, and today the DAL would let a person's old stop link lift it** —
-the re-arm precedence and the reason filter on `lift` must land first (§9 U16). This is also the nearest
-thing to the officer-recorded suppression the `/s/` refusal's "contact us" needs (§9 U8).
+**U24 · One audience resolver** — `src/lib/server/marketing/audience.ts` (OD36; decisions C1–C4 · C6–C10 · M4 · M8 · A1.1)
+`contactAudience(filter)` is the ONE place a filter becomes a query — the list, the KPIs, U21's rail, U23's bulk,
+U34's export and the campaign's counts all read it; a ticked selection is its `ids` arm. audience.ts exports the
+filter type `ContactAudienceFilter`, `parseContactAudienceParams` over the URL vocabulary below (an unknown VALUE
+refuses, never drops; `ids` never in a URL), `parseContactAudienceJson` (an unknown KEY refuses; `ids` ≤
+`MAX_AUDIENCE_IDS` = 1,000), `contactAudienceKey`, `auditContactAudience` (a whole number masked, ids as a count),
+`describeAudience`, `contactsSearch` (moved from `contacts-query.ts`), `toAudienceWhere` and count · breakdown ·
+page (clamped) · walk (keyset on id). The DAL's where is the named `ContactAudienceWhere` in store.ts (`null` =
+unconstrained, ⛔ `[]` = NOTHING), which each twin translates privately.
+⚠️ C1's wording calls `ContactAudienceWhere` audience.ts' filter type. As built: the filter type is
+`ContactAudienceFilter` (audience.ts); `ContactAudienceWhere` is the DAL's where (store.ts); the twin translations
+stay private to store.ts and prisma-dal.ts, and `toAudienceWhere` is the only filter → where translation. Do not
+"fix" this back to C1's letter.
+⭐ **The URL vocabulary, recorded once (a C2 extension, 2026-10-01, matching the resolver as built).** C2's keys —
+`q`, `consent`, `suppressed`, `op`, `list`, `tag`, `source`, `sort`, `dir`, `page` — plus `player` (yes or no),
+`import` (a run id: OD35's "remove everything that run created" is a filter on it) and the Added window `range` /
+`from` / `to` (a named preset, or EAT dates, resolved to absolute instants). Each extension key refuses on its own
+terms, each with its own case in `test:contacts-audience`: `player` not yes/no; `import` not an id; a `range` the
+page does not offer; an unreadable or inverted `from`/`to`; a `range` beside a `from`/`to`; `range=custom` with no
+date. `contactsHref`'s key list mirrors this one, and the suite fails the moment the two differ.
+🔴 **D19 / A1.1 — role-refused axes.** For a viewer whose identity.contact cell is not `read`, the loader REFUSES a
+typed `consent`, `source` or `player` with the role refusal ("This filter isn't available to your role.") BEFORE any
+row is read — C8's refused, with a role reason beside the unreadable one — and the page's per-row Consent chip (U20's
+column) renders only for a `read` viewer. Whole-book KPI counts stay. The same refusal guards an audience POSTed as
+JSON (U23's bulk entrance), so a forged body cannot ask what the URL may not.
+C10's `ndcRow`/`ndcsForOperator` are exported from `tz-msisdn.ts` here. Every reader excludes erased rows (C3) — on
+Prisma as `OR: [{ sourceRef: null }, { sourceRef: { not } }]`, since a bare `not` drops NULL rows. Both twins gain
+`countWhere`, `summaryWhere` (replacing `summary()`), `walk` and `tagCounts` (M8).
+COMMIT 1 also moves the loader onto it — `loadContacts(sp, deps?: { reads? })` returns ok or refused (C8; the
+`search` injection goes, D19's `reads` stays; KPIs = the whole-book `breakdown()`) — and creates C9's `contactsHref`
+in `contacts-query.ts`, since this is the commit in which a filter first reaches the URL: pagination and Clear search
+carry every filter and never `page` unless patched; it NEVER carries `edit` forward from `sp` — only an explicit
+`edit` patch sets it (U22's open link; U22 adds that patch key) — and SortTh, pagination and the SearchBox are
+handed `sp` without it. Plus the refused state with Clear filters, and the role refusal above.
+COMMIT 2, before U21 (C22): `mirrorContactCache(identifier)` (C4) recomputes `consentState` (latest ledger status, else
+UNKNOWN) and `suppressedAt` (the active stop's createdAt, else null) for every book row with that number, called by
+every ledger and stop writer (consent-ledger, optout-service, erase, consent.ts' toggle path, then U22 and U23); the
+schema comment that the resolver keeps the cache true is corrected. ⚠️ Corrected: no export or campaign exists yet,
+so U24 ships a READERS contract that U34 and U40 JOIN; there is no `reachable` predicate (the gate hoisted to list
+time is U9's defect); the campaign's player arm goes INSIDE `audience.ts` (U38/U42).
+**Guard:** `test:contacts-audience` (NEW, in `predeploy`, in-process `--prove-red`) · `test:dal-parity` §21 (C7) ·
+`test:contacts-page` (the loader: the refused state and the role refusal).
+**RED:** a second query path → the structural scan fails (outside the twins only `audience.ts` reads the book in
+bulk; the population names `tagCounts` and U23's where-driven bulk methods too, M4); `red:contacts-audience` also
+plants `[]` widening, a dropped unknown value, a dropped extension key, the href key list drifting from the parser's,
+erased rows counted, an offset walk, a leaked number in the audit and (commit 2) a writer skipping the mirror;
+`red:contacts-page` skips the role refusal for a masked viewer; `red:dal-parity` §21 deletes the Prisma NULL arm.
+**Accept:** for about twelve filters the list total, `count()`, `breakdown().total`, the walked total and the
+page-union, read in ONE run, are equal, and the KPI band equals the whole-book breakdown without the erased row; a
+masked viewer's `?consent=GIVEN` is refused before any row is read, and its list shows no Consent cell.
 
-**U24 · One audience resolver** — `src/lib/server/marketing/audience.ts` (OD36)
-`contactAudience(filter)` — the ONE place a filter becomes a query, read by the list, the counts, every
-bulk action, the export and the campaign. A ticked-row selection is expressed as a filter.
-**Guard:** `test:contacts-audience`. **RED:** a second query path → the structural grep fails.
-**Accept:** the count the list shows, the count the export writes and the count the campaign confirms come
-from one function, proven by a fixture where all three are read in one run.
+**U25 · The CSV reader** — `src/lib/contacts/import-parse.ts` (pure, streaming; decisions C15–C19 · M6)
+RFC 4180 as an INCREMENTAL reader (`createCsvReader().push/end`; `parseCsv` is push + end — §3c.2 forbids
+read-then-split): quotes, doubled quotes, embedded newlines (one row), CRLF and lone CR, the `sep=` directive (first
+line, after the BOM), and a delimiter vote counted outside quotes on the FIRST NON-BLANK RECORD, once per candidate
+with that candidate's own quote rules (a quoted header cell can hold a newline). A manual delimiter beats both. Cells
+stay RAW — no trim, no coercion, no unguard; Excel's scientific `2.55713E+11` is flagged by U28's `draftContactRow`
+(M6), not here. It emits C15's ONE shape from `parsed-file.ts` (U27a), with `format: "csv"` — each row's `line` is
+the record as Excel numbers it (the `sep=` line hidden; blanks counted in `blankRows`, never emitted); warnings
+become `notes` sentences (capped at 50, the true total beside them); a fatal problem (an unterminated quote, a field
+over 32,767 characters, a header over 1 MiB) is a refusal naming its row, never a file. ⭐ BOM: `stripBom` is the
+decode-time stripper (C19), and `DECODE_OPTIONS` sets `ignoreBOM: true` so the platform decoder cannot eat the BOM
+first — otherwise U34's BOM-pair red can never fail; U26's and U28's strips are belts. ⚠️ Corrected: Excel's "Unicode Text" is UTF-16LE with TABs and its "CSV" is windows-1252 on
+an English PC, so `sniffEncoding` (first 4 KB) picks utf-8 / utf-16le / utf-16be / windows-1252, and rows still
+holding U+FFFD are counted and named. `detectFormat(head, fileName)` lets content beat the name (a `.txt` of vCards
+is vCards) through `vcard.ts`'s `looksLikeVcard` (C17) and `xlsx-limits.ts`' ONE spreadsheet sniffer and refusal
+copy (C18). It may import only `src/lib/contacts/*` and `tz-msisdn` (C17), and defines NO guard pair (C16: that is
+`csv-write.ts`). Every special character is written as a char code — the Write/Edit tools decode escapes. Pinned (M3).
+**Guard:** `test:contacts-import` (C21 — U25's `csv` section module in the one runner).
+**RED:** count the delimiter inside quotes → the embedded-comma header `"Jina, kamili";Simu;"Makundi, lebo, zaidi"`
+mis-splits (`red:contacts-import`; also a whole-file vote, no BOM strip, `sep=` ignored, physical-line numbering, a
+stateless chunk parser, buffer-and-reparse, an extension-trusting detector, the platform-default decoder).
+**Accept:** that header gives 3 cells with `Jina, kamili` intact, and a 150,000-row corpus fed in 4,093-character
+chunks equals the one-chunk parse, each character tokenized once.
 
-**U25 · The CSV reader** — `src/lib/contacts/import-parse.ts` (pure)
-RFC 4180: quotes, doubled quotes, embedded newlines, CRLF, **BOM strip**, the `sep=` directive, and a
-delimiter vote counted **outside quotes, on the header line only**. `detectFormat` lets content beat the
-filename (a `.txt` of vCards is vCards).
-**Guard:** `test:contacts-import`. **RED:** count the delimiter inside quotes → the embedded-comma
-fixture mis-splits.
-
-**U26 · The vCard reader** — `src/lib/contacts/vcard.ts` (pure)
-⛔ **Both** continuation rules in ONE walk (RFC 2425 folding and quoted-printable `=`) — separate passes
-corrupt each other silently. `itemN.` group prefixes, bare 2.1 params (`TEL;CELL`), 4.0
-`TEL;VALUE=uri:tel:`, preferred-first, and cards counted so "12 cards, 9 rows" is sayable.
-**Guard:** `test:contacts-import`. **RED:** split the two continuation rules into two passes → red.
+**U26 · The vCard reader** — `src/lib/contacts/vcard.ts` (pure, streaming; decisions C15 · C17 · C20 · A1.2 · A1.8)
+⛔ **Both** continuation rules in ONE walk, decided by the property head — separate passes corrupt each other
+silently, in BOTH orders: unfold-first eats the leading space of a quoted-printable continuation (`Mama Asha`
+arrives as `Mama=Asha`); QP-first swallows the `END:VCARD` after a base64 PHOTO line ending `==`, or after a plain
+`NOTE:Lipa=`, so a whole card is lost. ⚠️ Corrected: the fold is version-aware — 2.1 keeps the whitespace (RFC 822
+style), 3.0/4.0 drop one character (RFC 2425 / 6350). Also: `itemN.` group prefixes stripped; bare 2.1 params
+(`TEL;CELL;PREF`, a bare `QUOTED-PRINTABLE` read as the encoding); 4.0 `tel:` URIs with the scheme stripped and cut
+at the first `;` (a `;ext=101` URI otherwise reads too long, and a `+254` one is never seen as foreign).
+⚠️ "Preferred-first" taken literally is wrong for SMS: every TEL is ordered by preference and kept, and the row's phone
+is the first one `isSendableTzNumber` accepts (a preferred work landline yields to the card's mobile). Cards are
+counted apart from rows: `assertVcardCounts` throws unless cards = rows + unreadable, and `describeVcardCounts` makes
+"12 cards, 9 rows — 2 cards have no phone number; 1 card is cut off before its end." sayable. A streaming push/end
+reader — any split point, a CR|LF split included, equals the whole parse; a 1 MB PHOTO is never buffered. It owns
+`looksLikeVcard`, the ONE sniff (C17), and imports only `tz-msisdn` and `contact-fields` (C20): the field mapping is
+`CONTACT_FIELDS[*].vcard` — name = FN, else N given + family, else ORG. ⛔ **It emits C15's shape (`format: "vcard"`)
+with NO header row (A1.2):** each row's cells sit in the fixed `fileColumns()` order of `CONTACT_FIELDS`, and its
+`line` is the card's ordinal — 1-based, counted over EVERY card, strictly increasing — so `isParsedContactsFile` holds
+and the number U30 prints is the card's own (a header row would either be read as card 1 or collide with card 1 on
+its line). A skipped card goes to `unreadable` (A1.8 / X19: `{ line: its ordinal, reason }`, a reason carrying no
+digits) — the source of U30's unreadable count — with one summary note beside it. Pinned (M3). It stays 🔵 until
+U30/U32 parse a real `.vcf` on production — no production surface reaches it before then (U25's `detectFormat`
+imports its `looksLikeVcard`, C17).
+**Guard:** `test:contacts-import` (C21 — U26's `vcard` section module).
+**RED:** split the two continuation rules into two passes → red — planted in BOTH orders against two fixtures, each
+failing its own assertion (`red:contacts-import`; also the group prefix kept, bare params ignored, the `tel:` URI kept
+whole with `;ext=` and `+254` fixtures and a plain `tel:` as the control, a preferred landline winning, skipped cards
+uncounted or sent to `notes` instead of `unreadable`, a header row emitted (card 1 lost or on a duplicate line), a
+chunk end read as a line end).
+**Accept:** the 12-card fixture says exactly the sentence above, each row's `line` is its card's ordinal (card 1 is
+never lost to a header) and the skipped cards' ordinals are in `unreadable`; 20,000 cards fed in 64 KB chunks give
+20,000 rows with the NDC table built once.
 
 **U27 · XLSX, server-side, and the boundary that proves it** — `src/lib/server/contacts/import-xlsx.ts`
-(D18)
-`exceljs` behind one server action, base64, **capped at 700 KB** with the remedy named on screen ("save it
-as CSV — there is no size limit on CSV"). ⚠️ The phone cell is read as `typeof cell.value === "number" ?
-String(Math.round(cell.value)) : cell.text` — `cell.text` gives `"2.55713E+11"` and that is lossy and
-unrecoverable. One `ParsedContactsFile` shape, two producers.
-**Guard:** `test:contacts-boundary` (no `"use client"` file under the contacts trees may transitively
-import `src/lib/server/**` or `exceljs`) + `test:contacts-import`.
-**RED:** import `exceljs` into the dialog → the boundary guard goes red **while `typecheck` stays green**,
-which is the entire point.
+(contributes D18's ceiling; D18 itself is now U30's, decision C26 · also C15 · C18 · C24 · M3 · M6 · A1.3 · A1.4 · A1.6 · A1.8)
+U27a (first, beside U28a): `src/lib/contacts/parsed-file.ts` — C15's ONE `ParsedContactsFile` (a `format` of csv,
+xlsx, vcard or paste; `fileName`; `rows: { line, cells }[]`; `width`; `blankRows`; `notes`; and, by A1.8 / X19,
+`unreadable: { line, reason }[]` — the records a producer could not read, counted and listed by U30) plus its runtime
+validator; `src/lib/contacts/xlsx-limits.ts` — the derived caps, the ONE spreadsheet sniffer and refusal copy table
+(C18), the ONE phone-format remedy clause ("format the phone column as Number with 0 decimal places", A1.6), and the
+Excel-shortened detector `looksExcelShortened` with its sentence — the ONE copy (M6, C18): `contact-fields.ts`
+imports both and never redefines them, and `test:contacts-import` fails on a second definition anywhere in src; and
+`test:contacts-boundary`. U27b: the reader. ⭐ The cap is DERIVED: Next 16 caps a whole server-action request at 1 MB
+(1,048,576 B); 700 KiB (716,800 bytes) is 955,736 base64 characters, which fits with an 8 KiB envelope — asserted
+against the installed Next's own constant, with no `bodySizeLimit` raised (OD29). ⛔ **The gate measures the EXACT
+decoded size (A1.4):** from the base64 length alone, 3·len/4 minus the `=` padding (a length that is not a multiple
+of 4 is refused), and it refuses above 716,800 bytes before any decode — a length-only gate would let +1 and +2
+bytes through, because 716,800, 716,801 and 716,802 bytes all encode to 955,736 characters. ⚠️ Premise false:
+exceljs 4.4.0's `cell.text` of a number is EXACT; `2.55713E+11` is Excel's DISPLAY, written on a save-as-CSV or a
+paste. `Math.round` on every number would corrupt decimals, and `cell.text` mangles a Date and drops a formula result
+of 0 — so one typed `xlsxCellText` switch: integers exact, float noise rounded, decimals kept, a Date as ISO, a
+formula as its cached result. 🔴 **Excel's NUMERIC shortened form (A1.3):** a CSV holding `2.55713E+11` re-saved as
+xlsx stores the NUMBER 255713000000, which reads as a valid Yas number — a stranger's. So a numeric cell that is an
+integer ≥ 1e11 AND divisible by 1e6 is written as Excel's scientific text (`255713000000` → `2.55713E+11`), and a text
+cell already holding that form is kept VERBATIM; both pass through for U28's one detector, which makes the row
+`invalid` with the shortened-number sentence. U27 flags nothing itself (M6). A genuine number ending in six zeros is
+refused too — the safe side; the sentence sends the officer back to the formatted column. A zip pre-pass inflates
+every entry for real under caps (a bomb, a forged size) and refuses zip64, encryption, xlsb, ods and Strict before
+exceljs loads in memory (never its streaming reader, which spools to tmp); the first VISIBLE sheet; 1-based sheet
+rows; one read in flight; an audit row of counts only. Every refusal that sends the officer to CSV carries the ONE
+remedy clause (A1.6) — "Before you save, format the phone column as Number with 0 decimal places, or Excel will
+shorten long numbers to 2.55713E+11." — and "no size limit on CSV" is a promise U25/U29 keep. ⛔ The action ships
+with its caller in U30's `import-actions.ts` (C24): alone it reds `test:orphan-actions`.
+**Guard:** `test:contacts-boundary` (NEW, in `predeploy`, in-process `--prove-red`: a `"use server"` module is a LEAF;
+a server module imports only PascalCase bindings from a `"use client"` file; no directive under `src/lib/contacts`;
+every file there pinned in `test:client-graph-safe` by its own unit, M3; exactly two exceljs importers; the reader
+never reaches the book or the disk) · `test:contacts-import` (the `xlsx` section module).
+**RED:** import `exceljs` into the dialog → the boundary guard goes red **while `typecheck` and `next build` stay
+green** (exceljs ships a browser build) — planted as a VIRTUAL file, since the dialog is U32's (`red:contacts-boundary`;
+in `red:contacts-import`: `cell.text` everywhere, `Math.round` everywhere, scientific text "repaired", declared sizes
+trusted, a numeric 255713000000 written as exact digits (A1.3), a length-only base64 gate (A1.4), a second
+`looksExcelShortened`).
+**Accept:** base64 for 700 KiB + 1 byte, and + 2, refuses `too_large` before any decode — the load spy is never
+called — while exactly 716,800 bytes is read; an xlsx numeric 255713000000 drafts `invalid` through U28, never a
+contact.
 
-**U28 · One field list, four readers** — `src/lib/contacts/contact-fields.ts` (pure)
-`CONTACT_FIELDS` feeds the export header, the import aliases, the sample sheets and the mapping panel —
-Swahili aliases included (`simu`, `jina`, `nambari`, `makundi`, `maelezo`), because the operator's own
-sheet will be in Swahili; ⛔ the export HEADER row stays English so our own importer can re-read it, and
-the reason is written at the top of the file. One `displayName`, no first/last split. Tags split on `,`,
-`;` and `|`. A `<SampleSheetButton>` beside **every** file entrance, and the suite drives each generated
-sample back through the real parser.
-**Guard:** `test:contacts-import`. **RED:** add a field with no sample value → red.
+**U28 · One field list, five readers** — `src/lib/contacts/contact-fields.ts` (pure; decisions C11 · C12 · C16 · C20 · C21 · M6 · A1.2 · A1.3 · A1.5 · A1.6)
+`CONTACT_FIELDS` (phone · name · first_name · last_name · email · tags · notes) feeds the export header, the import
+aliases, the sample sheets, the mapping panel and U26's vCard mapping (`vcard` per field, C20 — the fifth reader). It
+holds the ONE limits table (C12: name 120, email 254, notes 1000, tag 32, tags 20, list name 60) and the ONE tag rule
+(C11: `splitTags`/`tagKey` — split on `,` `;` `|`, trim, collapse inner spaces, STORED LOWERCASE, letters, digits,
+space, `-` and `_`, 1–32 characters, at most 20 a contact, case-insensitive dedupe), called by U22's form, U23's bulk
+and U31's import and grouped by U21's rail. Headers match by exact lookup of the normalised text, never a substring.
+⚠️ Swahili corrected from shipped text: strong phone aliases `simu`, `namba ya simu`, `nambari ya simu`, `simu ya
+mkononi`; `namba`, `nambari`, `number` and `contact` are WEAK and lose to any strong one (a sheet's "Namba" is often
+the serial); plus `jina`, `jina kamili`, `jina la kwanza`, `jina la mwisho`, `barua pepe`, `kikundi`, `kundi`,
+`makundi`, `maelezo`. ⛔ No consent field exists (OD10): consent-shaped headers are "not imported" and no mapping may
+point at one; a masked export (`phone_masked`) is REFUSED. ⛔ Google Contacts' `Group Membership` and `Labels` are NOT
+tag aliases (A1.5): they sit in `CONTACT_NOT_IMPORTED` with their own sentence (Google's `* myContacts ::: …` labels
+are not tags; map a cleaned column if you want them) — C11 is unchanged. One `displayName`, never split. ⛔ **A vCard
+is never header-matched (A1.2):** `format: "vcard"` is mapped by the fixed `fileColumns()` order U26 writes, with no
+header row, and `line` stays the card ordinal; header matching and the "first row looks like a contact" refusal apply
+to the other producers only. `draftContactRow` unguards every cell, flags Excel's scientific form ONCE for every
+producer (M6) — with U27a's `looksExcelShortened` and sentence, imported from `xlsx-limits.ts` and never redefined
+here (U27a lands first or in the same push) — and since U27b writes an xlsx NUMERIC shortened value as that same text
+(A1.3), the one detector covers every producer: the row is `invalid` with the shortened-number sentence and is never
+imported as a stranger's number. The phone field's hint uses the ONE remedy clause exported from `xlsx-limits.ts`
+(A1.6), never its own wording. A problem names the field and the limit, never the value.
+`contactExportHeader(full)` is English snake_case (the reasons head the file; Swahili headers are READ, never
+WRITTEN). `csv-write.ts` is the ONE writer and the guard pair (C16): `guardCell` adds `'` to the transactions
+export's lead set, so `unguardCell(guardCell(s)) === s` for every s. `sample-sheet.ts`: a BOM'd CSV with phones
+written `0XXX XXX XXX` (Excel keeps text), a 3.0 vCard, no XLSX (exceljs is server-only), and `SAMPLE_MSISDNS`
+derived by `parseTzNumber` for U30 to refuse (a sample may be a real subscriber). `<SampleSheetButton>` ships
+UNMOUNTED until U30's entrance. U28a (beside U24 commit 1) creates the ONE runner — per-unit section modules
+`fields` · `csv` · `vcard` · `xlsx`, one harness (the contacts-page `Impl` swap with in-memory plants, C21) — and
+pins its files (M3); U28b (last) drives each sample through U25's and U26's REAL parsers, never one of its own, and
+round-trips the two A1 cases through the real readers: the vCard sample's card 1 survives as a draft (A1.2), and an
+xlsx holding the NUMBER 255713000000 drafts `invalid` through U27b's reader (A1.3).
+**Guard:** `test:contacts-import` (C21 — NEW, in `predeploy`, in-process `--prove-red`).
+**RED:** add a field with no sample value → red (`red:contacts-import`; also `simu` removed, a weak alias made strong,
+a consent alias on a field, `phone masked` accepted, `Group Membership` or `Labels` mapped to tags, tags not
+lowercased, an identity unguard, a vCard header-matched (card 1 lost), a second shortened-number detector, an entrance
+with no button).
+**Accept:** every export and sample header resolves to its own field; (U28b) the CSV sample re-reads through U25 as
+three drafts with no problem, the vCard sample re-reads through U26 with card 1 as its first draft, and an xlsx
+numeric 255713000000 is `invalid`, never a draft.
 
 **U29 · Staging** — `ContactImport`, `ContactImportRow` + both DALs (OD30)
 Rows are posted in batches of ≤2,000 (≈200 KB — a 5× margin under the 1 MB action limit) into staged
 rows; the run row carries the buckets, the written counters and a `cursor` that is an ordinal into the
-rows this run owns (⛔ never an offset into a query).
+rows this run owns (⛔ never an offset into a query). Each `unreadable` record of the parsed file (A1.8 / X19 —
+`{ line, reason }`, a skipped vCard card among them) is staged as a row carrying `readError` at its own `line`, so the
+unreadable count comes from rows and U30 can list them.
 **Guard:** `test:dal-parity` — a NEW section at the next free number (this said §9, which is taken), extending `red:dal-parity`. **RED:** a planted key in one mapper only.
 **Accept:** a closed tab, a reload and a redeploy all leave the run resumable, and the totals come back
 from the server.
@@ -2153,14 +2403,25 @@ from the server.
 Six buckets — `new`, `inBook`, `isPlayer`, `dupInFile`, `invalid`, plus `unreadable` counted separately —
 and `assertPreflightAdds` is **exported so the suite asserts it**. `dupInFile` carries the winning **row
 number**, and the rule is printed: *"When a number appears twice, the FIRST row in your file wins."*
-`invalid` carries the §U2 sentence, never a code. Row numbers are 1-based over the **unfiltered** grid.
+`invalid` carries the §U2 sentence, never a code — and a phone cell Excel shortened (text or xlsx numeric, A1.3) is
+`invalid` with U28's shortened-number sentence, never a contact. `unreadable` is counted and listed, each with its
+row number, from the parsed file's `unreadable` (A1.8 / X19; a skipped vCard card lands there, A1.2). Row numbers
+are 1-based over the **unfiltered** grid.
 🔴 **D19:** for any role whose `identity.contact` cell is not `read`, the `isPlayer` bucket returns a
 COUNT and never a per-row flag; the run is rate-limited per officer and audited.
-**Guard:** `test:contacts-import` + `test:read-tiers`.
+🔴 **D18** (re-owned from U27 on 2026-10-01, decision C26): U25 builds the CSV parser and U27 derives the 700 KiB
+XLSX cap under the 1 MB ceiling, but the uploader is THIS unit's — the first admin file entrance, with
+`readXlsxContactsAction` in `import-actions.ts` beside its caller (C24) — so D18 closes here, and its ceiling is
+proven at this entrance, through the real action. U30 also owns the paste producer (`format: "paste"`, M7). Every
+refusal that sends the officer to CSV reads U27's ONE copy table and the ONE remedy clause (A1.6).
+**Guard:** `test:contacts-import` + `test:read-tiers` + `test:contacts-boundary` + `test:orphan-actions`
+(`readXlsxContactsAction` ships beside its caller).
 **RED:** drop one bucket increment (the assertion must throw); leak the per-row flag to a masked role;
-count rows before and after over a 5,000-row fixture and require zero delta.
-**States:** loading · no file · reading · pre-flighted (buckets + columns matched + unmapped + dup list +
-basis picker) · refused (no `Phone` column — the column NAMED) · error.
+count rows before and after over a 5,000-row fixture and require zero delta; post 700 KiB + 1 byte through the REAL
+`readXlsxContactsAction` and require the `too_large` refusal before exceljs loads (D18).
+**States:** loading · no file · reading · pasted (rows from the clipboard, `format: "paste"`) · pre-flighted
+(buckets + columns matched + unmapped + dup list + basis picker) · refused (no `Phone` column — the column NAMED) ·
+refused (too_large / wrong_format — U27's copy table, with the remedy clause) · error.
 
 **U31 · `decide()`** — one rule, three choices (OD32)
 Keep what's in the book (default; counted `skipped`, ⛔ never `failed`) · take the file's version
@@ -2190,7 +2451,8 @@ A basis picker showing each option's **verbatim stored wording** in full, plus a
 (≥10 chars) and an explicit 18+ attestation. First-party bases write `GIVEN` ledger rows; ⭐ **"bought /
 third-party list" writes `UNKNOWN`**, and the dialog says so in one sentence before Apply — that is what
 stops this being a spam machine by default. The wording is copied onto every row the run creates and
-⛔ never edited afterwards.
+⛔ never edited afterwards. U33 also adds the bulk **"Record consent → Given"** action to U23's bar, through this same
+basis picker, verbatim wording, proof note and 18+ attestation (U23 omits it until then and says so on the bar).
 **Guard:** `test:marketing-consent`. **RED:** edit a stored wording → red; make a third-party basis grant
 consent → red.
 
@@ -2491,6 +2753,11 @@ marketing store. Still 27 sessions end to end.
 since S4 carried U8 into S5. Every row from S5 on moved down one; the pairings are unchanged. ⚠️ §2 rows
 written before this date are a log and keep the OLD labels (S4's row says "U35 (S18)", "U42 (S21)") —
 read them as S19 and S22.
+
+⚠️ **S10–S13 build in decision C22's order, not the table's pairs (2026-10-01):** the decisions commit → U24
+commit 1 ∥ (U28a, U27a) → U24 commit 2 → U21 → U22 → U23; the parser track U26 → U25 → U27b runs in parallel with
+U24 commit 2 → U23; U28b last. U21 is UI only over U24's resolver and filters on the cache U24 commit 2 keeps
+honest, so it cannot come first. The S10–S13 rows keep their pairs as a record of the plan.
 
 ⚠️ U30, U43 and U47 are the three most likely to overrun. If one will not fit, **split it before starting**
 and write the split into §2 — a half-built unit is worse than a smaller one.

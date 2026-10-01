@@ -42,6 +42,7 @@ import { formatHeldUntil } from "../src/app/profile/notifications/held-until.ts"
 import { EAT_OFFSET_MS } from "../src/lib/eat-day.ts";
 import { readFileSync } from "node:fs";
 import { decomment } from "./lib/decomment.mts";
+import { REAL_BASIS, assertConsentBasis, basisModel, basisCases } from "./marketing-consent/consent-basis.mts";
 
 /* ⛔ FAILURE IS THE DEFAULT, SET BEFORE THE FIRST `await`. A suite whose verdict is written only
  * at the end scores GREEN when a promise never settles or the process exits early. */
@@ -1054,6 +1055,8 @@ if (!PROVE_RED) {
   assertConsentCard(REAL_CARD, "");
   console.log("\n── consent-01 · the held date, in the page's language (formatHeldUntil, fixed clock)\n");
   assertHeldDate(REAL_HELD, "");
+  console.log("\n── U33a · the consent-basis catalogue (pure; the wordings are G4 DRAFTS, and nothing writes them)\n");
+  assertConsentBasis(REAL_BASIS, "", ok);
   console.log(`\nmarketing-consent: ${pass} passed, ${fail} failed`);
   process.exitCode = fail === 0 ? 0 : 1;
 } else {
@@ -1409,14 +1412,36 @@ if (!PROVE_RED) {
     else console.log(`   caught → ${c.expect}\n`);
   }
 
+  // ── U33a · the consent-basis catalogue: the shipped catalogue green, the model faithful, then one plant at a time ──
+  pass = 0; fail = 0; failed.length = 0;
+  assertConsentBasis(REAL_BASIS, "basisbase:", ok);
+  if (fail !== 0) problems.push(`BASIS BASELINE: the shipped catalogue is already red (${failed.join(" | ")})`);
+  console.log(`\n§0 basis baseline · consent-basis.ts: ${pass} passed, ${fail} failed`);
+  pass = 0; fail = 0; failed.length = 0;
+  assertConsentBasis(basisModel({}), "basismodel:", ok);
+  if (fail !== 0) problems.push(`BASIS MODEL: the defect-free model disagrees with the shipped catalogue (${failed.join(" | ")})`);
+  console.log(`§0b basis model · no defect set: ${pass} passed, ${fail} failed\n`);
+  const BASIS_CASES = basisCases(problems);
+  for (const [i, c] of BASIS_CASES.entries()) {
+    pass = 0; fail = 0; failed.length = 0;
+    const tag = `basisred${i + 1}:`;
+    console.log(`── basis case ${i + 1}: ${c.name}`);
+    assertConsentBasis(c.impl, tag, ok);
+    const wanted = `${tag}${c.expect}`;
+    if (fail === 0) problems.push(`basis case ${i + 1} (${c.name}): stayed GREEN`);
+    else if (!failed.includes(wanted)) problems.push(`basis case ${i + 1} (${c.name}): red, but not on "${c.expect}" — got ${failed.join(" | ")}`);
+    else console.log(`   caught → ${c.expect}\n`);
+  }
+
   const caughtGate = CASES.length - problems.filter((x) => x.startsWith("case")).length;
   const caughtLoop = LOOP_CASES.length - problems.filter((x) => x.startsWith("loop case")).length;
   const caughtToggle = TOGGLE_CASES.length - problems.filter((x) => x.startsWith("toggle case")).length;
   const caughtCard = CARD_CASES.length - problems.filter((x) => x.startsWith("card case")).length;
   const caughtHeld = HELD_CASES.length - problems.filter((x) => x.startsWith("held case")).length;
-  const caught = caughtGate + caughtLoop + caughtToggle + caughtCard + caughtHeld;
-  console.log(`\ngate ${caughtGate}/${CASES.length} · loop ${caughtLoop}/${LOOP_CASES.length} · toggle ${caughtToggle}/${TOGGLE_CASES.length} · card ${caughtCard}/${CARD_CASES.length} · held ${caughtHeld}/${HELD_CASES.length}`);
-  console.log(`${caught}/${CASES.length + LOOP_CASES.length + TOGGLE_CASES.length + CARD_CASES.length + HELD_CASES.length} caught`);
+  const caughtBasis = BASIS_CASES.length - problems.filter((x) => x.startsWith("basis case")).length;
+  const caught = caughtGate + caughtLoop + caughtToggle + caughtCard + caughtHeld + caughtBasis;
+  console.log(`\ngate ${caughtGate}/${CASES.length} · loop ${caughtLoop}/${LOOP_CASES.length} · toggle ${caughtToggle}/${TOGGLE_CASES.length} · card ${caughtCard}/${CARD_CASES.length} · held ${caughtHeld}/${HELD_CASES.length} · basis ${caughtBasis}/${BASIS_CASES.length}`);
+  console.log(`${caught}/${CASES.length + LOOP_CASES.length + TOGGLE_CASES.length + CARD_CASES.length + HELD_CASES.length + BASIS_CASES.length} caught`);
   if (problems.length) {
     console.log("\nPROBLEMS:");
     for (const x of problems) console.log(`  ✗ ${x}`);

@@ -627,4 +627,72 @@ export const MUTATIONS = [
     to: `    clock.seq = 0;`,
     expect: `20.clock · ledger-stamp holds a monotonic counter on globalThis and pads the id to fixed width`,
   },
+  /* ── §21 · the audience where — one named shape, two translators (U24, S10 2026-10-01) ─────── */
+  {
+    // 🔴 THE WIDENING ITSELF: the memory translator tests `.length`, so a ticked-nothing selection reads as "no
+    // constraint" and the whole book is the audience.
+    name: "store.ts — the memory translator reads an empty selection as no constraint (`?.length` truthiness)",
+    file: "src/lib/server/store.ts",
+    from: `  if (w.ids !== null && !w.ids.includes(c.id)) return false;`,
+    to: `  if (w.ids?.length && !w.ids.includes(c.id)) return false;`,
+    expect: `21.empty · ⛔ neither translator tests an array's .length — every key is checked !== null, so an EMPTY array is NOTHING`,
+  },
+  {
+    // 🔴 THE NULL TRAP: a bare `not` is `"sourceRef" <> 'erasure'`, NULL for every row with no sourceRef — the
+    // production book empties while every memory suite stays green.
+    name: "prisma-dal.ts — the erased exclusion loses its NULL arm",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `  if (w.excludeSourceRef !== null) and.push({ OR: [{ sourceRef: null }, { sourceRef: { not: w.excludeSourceRef } }] });`,
+    to: `  if (w.excludeSourceRef !== null) and.push({ OR: [{ sourceRef: { not: w.excludeSourceRef } }] });`,
+    expect: `21.null · 🔴 the Prisma erased exclusion carries the NULL arm — OR [{ sourceRef: null }, { sourceRef: { not } }] — so a row with no sourceRef is kept`,
+  },
+  {
+    // 🔴 A key the production translator forgets: a tag filter that narrows on memory and is IGNORED on Postgres.
+    name: "prisma-dal.ts — the Prisma translator forgets the tags",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `  if (w.tags !== null) and.push({ tags: { hasSome: w.tags } });`,
+    to: `  // (tags dropped from the Prisma translator)`,
+    expect: `21.prisma.tags · toPrismaContactWhere reads w.tags`,
+  },
+  {
+    // 🔴 Erased rows counted on the suites' backend: the memory translator stops leaving the tombstone out.
+    name: "store.ts — the memory translator stops excluding the erased tombstone",
+    file: "src/lib/server/store.ts",
+    from: `  if (w.excludeSourceRef !== null && c.sourceRef === w.excludeSourceRef) return false;`,
+    to: `  // (the erased exclusion removed)`,
+    expect: `21.memory.excludeSourceRef · contactMatchesAudience reads w.excludeSourceRef`,
+  },
+  {
+    // 🔴 A part of a number searched as a number (moved from contacts-page red 5, memory half): a masked role
+    // rebuilds a number digit by digit.
+    name: "store.ts — the memory translator matches the number by prefix",
+    file: "src/lib/server/store.ts",
+    from: `  if (w.msisdn !== null && c.msisdn !== w.msisdn) return false;`,
+    to: `  if (w.msisdn !== null && !c.msisdn.startsWith(w.msisdn)) return false;`,
+    expect: `21.msisdn · ⛔ the number is matched EXACTLY in both twins — never a substring a masked role could walk digit by digit`,
+  },
+  {
+    // …and the Prisma half, as U20's red case 5 planted it.
+    name: "prisma-dal.ts — the Prisma translator searches INSIDE the number",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `  if (w.msisdn !== null) and.push({ msisdn: w.msisdn });`,
+    to: `  if (w.msisdn !== null) and.push({ msisdn: { contains: w.msisdn } });`,
+    expect: `21.msisdn · ⛔ the number is matched EXACTLY in both twins — never a substring a masked role could walk digit by digit`,
+  },
+  {
+    // 🔴 The walk loses its bound: one call reads the whole audience into memory (150,000 rows at §3c's scale).
+    name: "prisma-dal.ts — the keyset walk's findMany loses its `take`",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `        take: q.limit + 1,`,
+    to: `        // (unbounded)`,
+    expect: "21.window · every Prisma findMany in page and walk carries `take`, and the walk orders by id with `gt` — never `skip`",
+  },
+  {
+    // 🔴 A contact with a repeated tag counted twice — the rail's pill promises more people than the filter finds.
+    name: "prisma-dal.ts — tagCounts counts tag occurrences, not contacts",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `        select t.tag as tag, count(distinct c.id)::int as n`,
+    to: `        select t.tag as tag, count(*)::int as n`,
+    expect: `21.tags.prisma · tagCounts counts each contact ONCE per tag in SQL, leaves the erased mark out NULL-safely, sorts ties in code-unit order and is bounded`,
+  },
 ];

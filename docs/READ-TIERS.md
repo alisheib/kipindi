@@ -349,6 +349,19 @@ for ADMIN and COMPLIANCE it is masked-at-rest and costs a click. That is faithfu
 prove to be more friction than the field is worth — **a cell to flip in `/admin/roles`, not a
 special case to code.**
 
+**Wired 2026-10-01 (marketing U39a): the SMS campaign estimate — a PLATFORM AGGREGATE, not a
+player's figure.** A campaign's cost, the account's SMS credit and what that credit covers are
+decided by `campaignMoneyVisible(role)` in `src/lib/server/marketing/estimate.ts`: `canView(role,
+"accounting")` **and** `readCell(role, "money.figures") === "read"`. ⚠️ **This WIDENS
+`money.figures`**, which §3.1 defines as totals attributable to one named player — so
+`READ_CLASS_SUMMARY` now says *"… and the SMS campaign cost estimate and credit"*, the sentence the
+Owner reads on `/admin/roles` → Reads (§3.5a's lesson, in reverse: a cell must not govern more than
+its sentence says). ⭐ **An aggregate has no reveal step:** `read` renders the figures, while
+`masked` and `none` render NOTHING — no dots, no `TZS —`, only the sentence *"Cost and credit are
+shown to roles that may read money figures."* ADMIN resolves through the table (D3), so the Owner can
+witness the GROWTH branch by setting his own money.figures cell to `none`. Guards: `test:read-tiers`
+§9 (the wording and both axes, with `red:read-tiers` anchors) and `test:campaign-estimate` §1/§5.
+
 ### 3.6 · AS BUILT — the editor is a TAB, and the Owner is listed on it
 
 `/admin/roles` now carries two tabs — **Access** (role × domain, "may this role reach this ROUTE?")

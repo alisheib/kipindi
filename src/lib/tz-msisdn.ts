@@ -201,6 +201,27 @@ export function tzTableBuildCount(): number {
   return tableBuilds;
 }
 
+/* ══ THE TWO LOOKUPS EVERY OTHER MODULE READS (U24, decision C10) ════════════ */
+
+/**
+ * The table's row for a two-digit prefix, or null when no operator holds it. ⭐ THE ONE PREFIX → ROW LOOKUP:
+ * the contact book's Operator column (`operatorBrand`), the form's duplicate sentence and every filter read the
+ * row through here, so `NDC_INDEX` stays private and nobody re-scans the table with a `.find` of their own.
+ */
+export function ndcRow(ndc: string): TzNdcRow | null {
+  return NDC_INDEX.get(ndc) ?? null;
+}
+
+/**
+ * Every prefix an operator holds, from the ONE table, in table order — SENDABLE OR NOT (Telxer's 64 is
+ * allocated and reaches nothing, so a filter on it matches nothing real, which is the truth).
+ * ⛔ THE ONE OPERATOR → PREFIXES EXPANSION. A hand-typed `["72", "74", "75", "76"]` is how Vodacom's 79 goes
+ * missing from an audience; `test:contacts-audience` 1.6 forbids the literal and checks this against the table.
+ */
+export function ndcsForOperator(id: TzOperatorId): string[] {
+  return TZ_MOBILE_NDCS.filter((r) => r.operator === id).map((r) => r.ndc);
+}
+
 /* ══ THE VERDICTS ════════════════════════════════════════════════════════════ */
 
 export type TzVerdict =
