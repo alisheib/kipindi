@@ -254,7 +254,16 @@ shares it). ⭐ The canvas is the source of truth for S4's frames — no copy li
     locale (`formatDeadline`, `formatDayTime`, `formatDateTime`, `formatDayShort`). Swahili and Chinese players
     read English months: "8 Oct" and "11 May" where Swahili says "8 Okt" and "11 Mei". The frames show the Swahili.
     Fixing it means threading a locale through every caller, and `test:timer-date` must hold. That is its own lane.
-- Next: items 5–11.
+- Item 5 ✅ on the canvas (row "5 · Balance too low", six frames, each a branch of `shortfallPlan`).
+  - Deposit only: balance 0; and short by less than TZS 500, where the deposit is 500 with a note (draft).
+  - "Bet instead" only: the deposit limit is reached; and every deposit rail is paused.
+  - No option: source of funds is needed.
+  - Waiting: a deposit is already pending.
+  - The two-option state is the redraw in row 2. A held wallet shows item 4's frozen refusal, because the plan blocks
+    it before any offer.
+  - With one option the eyebrow is dropped. When no deposit is offered, the reason is today's refusal sentence, shown
+    before the player tries.
+- Next: items 6–11.
 - The copy researched for every state is filed in
   [`S4-COPY-AUDIT.md`](design-system/v5-2026-09-29-simplified-journey/S4-COPY-AUDIT.md), a dated snapshot;
   `i18n-dict.ts` stays the truth. Items marked "NO STRING" there need drafts (R8).
