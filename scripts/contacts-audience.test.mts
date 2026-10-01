@@ -13,12 +13,17 @@
  *   §3 ⭐ ONE COUNT (the Accept): for twelve filters the list's total, count(), breakdown().total, the keyset walk
  *      and the union of the pages are one number. U34 (export) and U40 (recount) each add their reader to READERS.
  *   §4 the KEYSET walk survives a row written between two calls; §5 the audit and describe forms never print a number.
+ *   §6 (commit 2) THE CACHE: `consentState` and `suppressedAt` are a copy of the ledger and the stop list, so every src
+ *      writer of either store calls `mirrorContactCache` (the population, over the real tree) — and each writer is
+ *      EXECUTED: a stop and a start-again through a contact's link, the profile switch, a sign-up by an imported
+ *      number, an erasure, and the mirror itself.
  *
  * ⛔ IN-PROCESS BY CONSTRUCTION. `--prove-red` plants each defect IN MEMORY — a synthetic file in the scanner's Map,
  * a planted translation handed to `contactAudience`, a parser or key variant — and requires the MATCHING assertion
  * to fail. This file makes no file-modifying call (`test:red-anchors` 4.3 counts it in-process only while that holds).
- * The one store mutation it makes (§4's late row) goes through the store's own create, and is taken back out of the
- * memory map in a `finally`, so every run starts from the same ten rows.
+ * The store mutations it makes (§4's late row, §6's writers) go through the store's own methods, and every book row they
+ * add is taken back out of the memory map in a `finally`, so every run starts from the same ten rows. §6's ledger rows,
+ * stops, links and players sit on run-scoped numbers no other assertion reads.
  *
  * Run:  npm run test:contacts-audience
  * Red:  npm run red:contacts-audience
@@ -30,7 +35,7 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { decomment } from "./lib/decomment.mts";
 import { db } from "../src/lib/server/store.ts";
-import type { StoredMarketingContact } from "../src/lib/server/store.ts";
+import type { StoredMarketingContact, StoredUser, MessagingKey } from "../src/lib/server/store.ts";
 import {
   contactAudience, toAudienceWhere, AUDIENCE_DEPS, WHOLE_BOOK, MAX_AUDIENCE_IDS, CONTACT_AUDIENCE_URL_KEYS,
   parseContactAudienceParams, parseContactAudienceJson, contactAudienceKey, contactAudienceParams, urlExpressible,
@@ -41,7 +46,12 @@ import { CONTACTS_LINK_KEYS, contactsHref } from "../src/app/admin/contacts/cont
 import { loadContacts } from "../src/app/admin/contacts/contacts-loader.ts";
 import { parseTzNumber, TZ_MOBILE_NDCS, TZ_OPERATORS } from "../src/lib/tz-msisdn.ts";
 import type { TzOperatorId } from "../src/lib/tz-msisdn.ts";
-import { ERASURE_EVIDENCE } from "../src/lib/server/marketing/erase.ts";
+import { ERASURE_EVIDENCE, eraseMarketingFor } from "../src/lib/server/marketing/erase.ts";
+import { mirrorContactCache } from "../src/lib/server/marketing/contact-cache.ts";
+import { stopMarketing, resumeMarketing, mintOptOutToken } from "../src/lib/server/marketing/optout-service.ts";
+import { recordPlayerMarketingChoice } from "../src/lib/server/marketing/consent.ts";
+import { appendMarketingConsent } from "../src/lib/server/marketing/consent-ledger.ts";
+import { toMsisdn255 } from "../src/lib/phone-normalize.ts";
 
 const PROVE_RED = process.argv.includes("--prove-red");
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -177,6 +187,103 @@ const NOW = Date.parse("2026-10-01T09:30:15.000Z");
 /** The memory map, reached ONLY to take §4's late row back out (the store has no delete for a contact, by design). */
 const memoryStore = (globalThis as { __50PICK_STORE?: { marketingContacts: Map<string, unknown>; contactsByMsisdn: Map<string, string> } }).__50PICK_STORE;
 
+/* ═══ §6's PIECES (U24 commit 2) — the writers of the truth, and the population they must equal ═══════════ */
+
+/** ⭐ THE DECLARED CACHE WRITERS — every src file that writes the consent ledger or the stop list; each calls
+ *  `mirrorContactCache` after its writes. U22 (the form), U23 (`contact-bulk.ts`, M4) and U33 (the consent basis)
+ *  each APPEND their file in their own commit. */
+const CACHE_HOME = "lib/server/marketing/contact-cache.ts";
+const CACHE_WRITERS = [
+  "app/api/dev-test/marketing-contacts-seed/route.ts",
+  "lib/server/marketing/consent-ledger.ts",
+  "lib/server/marketing/consent.ts",
+  "lib/server/marketing/erase.ts",
+  "lib/server/marketing/optout-service.ts",
+];
+const OPTOUT_SERVICE = "lib/server/marketing/optout-service.ts";
+/** A write to the TRUTH the cache copies: a ledger row, a stop, a lift. */
+const TRUTH_WRITES = /\bdb\.(?:messagingConsent\.create|suppression\.(?:create|lift))\s*\(/;
+const MIRROR_CALL = /\bmirrorContactCache\s*\(/;
+const MIRROR_HOME = /\bexport\s+async\s+function\s+mirrorContactCache\b/;
+type CacheScan = { writers: string[]; unmirrored: string[]; homes: string[] };
+function cacheScan(files: Map<string, string>): CacheScan {
+  const writers: string[] = [];
+  const homes: string[] = [];
+  for (const [path, src] of files) {
+    if (!TWINS.has(path) && TRUTH_WRITES.test(src)) writers.push(path);
+    if (MIRROR_HOME.test(src)) homes.push(path);
+  }
+  const unmirrored = CACHE_WRITERS.filter((path) => !MIRROR_CALL.test(files.get(path) ?? ""));
+  return { writers: writers.sort(), unmirrored, homes: homes.sort() };
+}
+let realCacheScan: CacheScan | null = null;
+const cacheScanOf = (files: Map<string, string>): CacheScan =>
+  (files === REAL_FILES ? (realCacheScan ??= cacheScan(REAL_FILES)) : cacheScan(files));
+
+/** The writers §6 drives — swappable, so a red case can run one as it would without its mirror call. */
+type CacheWriters = {
+  stop: typeof stopMarketing;
+  resume: typeof resumeMarketing;
+  profile: typeof recordPlayerMarketingChoice;
+  append: typeof appendMarketingConsent;
+  erase: typeof eraseMarketingFor;
+  mirror: typeof mirrorContactCache;
+};
+const REAL_CACHE: CacheWriters = {
+  stop: stopMarketing, resume: resumeMarketing, profile: recordPlayerMarketingChoice,
+  append: appendMarketingConsent, erase: eraseMarketingFor, mirror: mirrorContactCache,
+};
+
+type BookMaps = { marketingContacts: Map<string, StoredMarketingContact>; contactsByMsisdn: Map<string, string> };
+const bookMaps = (): BookMaps | undefined => memoryStore as unknown as BookMaps | undefined;
+type CacheCopy = Pick<StoredMarketingContact, "consentState" | "suppressedAt" | "updatedAt">;
+/** A row's cache set behind every writer's back — a row written before commit 2, or one a failed writer left. */
+const staleCache = (id: string, patch: Partial<CacheCopy>): void => {
+  const m = bookMaps()?.marketingContacts;
+  const c = m?.get(id);
+  if (m && c) m.set(id, { ...c, ...patch });
+};
+/** ⛔ A WRITER AS IT RAN BEFORE COMMIT 2: the real writer, then every book row's cache put back exactly as it was —
+ *  which is all the absence of its mirror call leaves. `only` puts back one column (erasure wrote the consent itself,
+ *  never the stop). */
+const withoutMirror = <A extends unknown[], T>(fn: (...a: A) => Promise<T>, only?: "suppressedAt") =>
+  async (...a: A): Promise<T> => {
+    const m = bookMaps()?.marketingContacts;
+    const before = new Map<string, CacheCopy>();
+    for (const c of m?.values() ?? []) before.set(c.id, { consentState: c.consentState, suppressedAt: c.suppressedAt, updatedAt: c.updatedAt });
+    const out = await fn(...a);
+    for (const [id, was] of before) {
+      const c = m?.get(id);
+      if (m && c) m.set(id, only ? { ...c, suppressedAt: was.suppressedAt } : { ...c, ...was });
+    }
+    return out;
+  };
+
+function makeUser(id: string, phoneE164: string, over: Partial<StoredUser>): StoredUser {
+  const now = new Date().toISOString();
+  return {
+    id, phoneE164,
+    passwordHash: null, passwordSalt: null, failedLoginCount: 0, lockedUntil: null,
+    role: "PLAYER", status: "ACTIVE", locale: "SW", displayName: null,
+    dob: "1990-01-01", region: null, acceptedTermsVersion: "v1", acceptedTermsAt: now,
+    marketingOptIn: false, twoFactorEnabled: false, avatarDataUrl: null,
+    createdAt: now, updatedAt: now, lastLoginAt: now, closedAt: null,
+    ...over,
+  } as StoredUser;
+}
+/** Each §6 run writes on its own numbers (0754 5…), so no run reads another's ledger rows, stops or links. */
+let cacheRun = 0;
+
+const L6 = {
+  l60: "6.0 · ⛔ every src writer of the ledger or the stop list IS a declared cache writer, each calls mirrorContactCache, and the mirror is defined once (contact-cache.ts)",
+  l61: "6.1 · ⭐ a STOP through a contact's link leaves its book row WITHDRAWN and suppressed at the stop's OWN time — and an `already` stop repairs a row left stale",
+  l62: "6.2 · ⭐ START AGAIN leaves the row GIVEN and unsuppressed",
+  l63: "6.3 · the profile switch for a player whose number is in the book: ON lifts their stop and the row reads GIVEN, unsuppressed; OFF reads WITHDRAWN",
+  l64: "6.4 · a ledger append — a sign-up by a number imported before — is mirrored onto the row",
+  l65: "6.5 · erasure's emptied row carries the active stop's time, not only the consent",
+  l66: "6.6 · the mirror itself: none for a number not in the book; unchanged (updatedAt kept) on a true row; a stale row is put back from the truth, the stop included, through a +255 spelling",
+};
+
 /* ═══ THE IMPLEMENTATION UNDER TEST — swappable, so a red case can plant one piece ═══════════ */
 
 type Reader = { name: string; total: (f: ContactAudienceFilter, a: ContactAudience) => Promise<number | null> };
@@ -190,6 +297,7 @@ type Impl = {
   audit: typeof auditContactAudience;
   describe: typeof describeAudience;
   readers: Reader[];
+  cache: CacheWriters;
 };
 
 const F = (patch: Partial<ContactAudienceFilter>): ContactAudienceFilter => ({ ...WHOLE_BOOK, ...patch });
@@ -244,6 +352,7 @@ const REAL: Impl = {
   audit: auditContactAudience,
   describe: describeAudience,
   readers: REAL_READERS,
+  cache: REAL_CACHE,
 };
 
 async function runAssertions(impl: Impl, tag: string): Promise<void> {
@@ -453,6 +562,126 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
       && JSON.stringify(windowWords) === JSON.stringify(["Added 3 Sep 2026 → 5 Sep 2026"])
       && JSON.stringify(impl.describe(F({ q: "asha" }))) === JSON.stringify(["Name contains “asha”"]),
     `${JSON.stringify(words)} ${JSON.stringify(windowWords)}`);
+
+  /* ── §6 · THE CACHE, KEPT TRUE BY THE WRITERS (commit 2) ──────────────────────────────────── */
+  const cs = cacheScanOf(impl.files);
+  ok(p(L6.l60),
+    cs.writers.join(",") === [...CACHE_WRITERS].sort().join(",") && cs.unmirrored.length === 0 && cs.homes.join(",") === CACHE_HOME,
+    `writers=[${cs.writers}] unmirrored=[${cs.unmirrored}] homes=[${cs.homes}]`);
+  ok(p("6.c1 · CONTROL · a synthetic ledger append, stop and lift are each a write the population sees; a comment naming one is not"),
+    cacheScan(only("app/x/route.ts", "await db.messagingConsent.create({ ...ledgerStamp() });")).writers.length === 1
+      && cacheScan(only("app/x/route.ts", "await db.suppression.create(row);")).writers.length === 1
+      && cacheScan(only("app/x/route.ts", "await db.suppression.lift(key, why, at);")).writers.length === 1
+      && cacheScan(only("app/x/route.ts", decomment("// db.suppression.create( is the stop list's writer\nexport {};"))).writers.length === 0);
+
+  const run = ++cacheRun;
+  const local = (i: number) => `0754${500000 + run * 10 + i}`;
+  const bare = (i: number): string => {
+    const n = parseTzNumber(local(i));
+    if (n.verdict !== "ok" || !n.msisdn) throw new Error(`§6 fixture ${local(i)} does not parse`);
+    return n.msisdn;
+  };
+  const key6 = (i: number): MessagingKey => ({ channel: "SMS", identifier: bare(i), category: "MARKETING" });
+  const id6 = (what: string) => `c6_${run}_${what}`;
+  const made: StoredMarketingContact[] = [];
+  const book6 = async (id: string, i: number, o: Partial<StoredMarketingContact>) => {
+    const row = contact(id, local(i), { createdAt: "2026-09-15T07:00:00.000Z", ...o });
+    made.push(row);
+    await db.marketingContact.create(row);
+  };
+  const ledger6 = async (i: number, status: "GIVEN" | "WITHDRAWN", source: "IMPORT" | "REGISTRATION" | "OPT_OUT_PAGE", createdAt: string) =>
+    db.messagingConsent.create({
+      id: `c6l_${run}_${i}_${status}`, channel: "SMS", identifier: bare(i), category: "MARKETING", status, source,
+      wording: "Ninakubali kupokea matangazo kwa SMS.", locale: "SW", evidence: "fixture", recordedBy: null, createdAt,
+    });
+  const stop6 = async (i: number, reason: "WITHDRAWN" | "OPERATOR", createdAt: string) =>
+    db.suppression.create({
+      id: `c6s_${run}_${i}`, channel: "SMS", identifier: bare(i), category: "MARKETING", reason,
+      evidence: "fixture", recordedBy: null, createdAt, liftedAt: null, liftedReason: null,
+    });
+  const row6 = async (id: string) => db.marketingContact.find(id);
+  try {
+    // 6.1 / 6.2 · a contact with a link: GIVEN on the ledger, the row agreeing.
+    await ledger6(1, "GIVEN", "IMPORT", "2026-09-15T08:00:00.000Z");
+    await book6(id6("link"), 1, { consentState: "GIVEN" });
+    const token = await mintOptOutToken(bare(1));
+    const stopped = token ? await impl.cache.stop(token, "SW") : null;
+    const afterStop = await row6(id6("link"));
+    const theStop = await db.suppression.find(key6(1));
+    staleCache(id6("link"), { consentState: "GIVEN", suppressedAt: null });
+    const again = token ? await impl.cache.stop(token, "SW") : null;
+    const repaired = await row6(id6("link"));
+    ok(p(L6.l61),
+      stopped?.ok === true && stopped.state === "stopped" && theStop !== null
+        && afterStop?.consentState === "WITHDRAWN" && afterStop.suppressedAt === theStop.createdAt
+        && again?.ok === true && again.state === "already"
+        && repaired?.consentState === "WITHDRAWN" && repaired.suppressedAt === theStop.createdAt,
+      `stop=${JSON.stringify(stopped)} row=${afterStop?.consentState}/${afterStop?.suppressedAt} stop@${theStop?.createdAt} again=${JSON.stringify(again)} repaired=${repaired?.consentState}/${repaired?.suppressedAt}`);
+    const resumed = token ? await impl.cache.resume(token, "SW") : null;
+    const afterResume = await row6(id6("link"));
+    ok(p(L6.l62),
+      resumed?.ok === true && resumed.state === "resumed" && (await db.suppression.find(key6(1))) === null
+        && afterResume?.consentState === "GIVEN" && afterResume.suppressedAt === null,
+      `resume=${JSON.stringify(resumed)} row=${afterResume?.consentState}/${afterResume?.suppressedAt}`);
+
+    // 6.3 · a player who stopped through their link: WITHDRAWN on the ledger, their own stop, the row agreeing.
+    const playerId = `c6u_${run}_player`;
+    await db.user.create(makeUser(playerId, `+${bare(2)}`, { marketingOptIn: false }));
+    await ledger6(2, "WITHDRAWN", "OPT_OUT_PAGE", "2026-09-16T08:00:00.000Z");
+    await stop6(2, "WITHDRAWN", "2026-09-16T08:00:00.000Z");
+    await book6(id6("player"), 2, { userId: playerId, source: "REGISTRATION", consentState: "WITHDRAWN", suppressedAt: "2026-09-16T08:00:00.000Z" });
+    const on = await impl.cache.profile({ userId: playerId, marketingOptIn: true, locale: "SW" });
+    const afterOn = await row6(id6("player"));
+    const off = await impl.cache.profile({ userId: playerId, marketingOptIn: false, locale: "SW" });
+    const afterOff = await row6(id6("player"));
+    ok(p(L6.l63),
+      on.ok && on.liftedStop && afterOn?.consentState === "GIVEN" && afterOn.suppressedAt === null
+        && off.ok && afterOff?.consentState === "WITHDRAWN" && afterOff.suppressedAt === null,
+      `on=${JSON.stringify(on)} → ${afterOn?.consentState}/${afterOn?.suppressedAt}; off=${JSON.stringify(off)} → ${afterOff?.consentState}/${afterOff?.suppressedAt}`);
+
+    // 6.4 · a number imported before its holder signed up.
+    await book6(id6("signup"), 3, {});
+    const appended = await impl.cache.append({
+      phoneE164: `+${bare(3)}`, locale: "SW", status: "GIVEN", source: "REGISTRATION", site: "REGISTRATION", evidence: "terms:v1", recordedBy: null,
+    });
+    const afterSignup = await row6(id6("signup"));
+    ok(p(L6.l64), appended && afterSignup?.consentState === "GIVEN" && afterSignup.suppressedAt === null,
+      `appended=${appended} row=${afterSignup?.consentState}/${afterSignup?.suppressedAt}`);
+
+    // 6.5 · erasure of a player whose number an officer stopped — a row whose cache never heard of the stop.
+    const erasedId = `c6u_${run}_erased`;
+    await db.user.create(makeUser(erasedId, `+${bare(4)}`, { marketingOptIn: true }));
+    await ledger6(4, "GIVEN", "REGISTRATION", "2026-09-17T08:00:00.000Z");
+    await stop6(4, "OPERATOR", "2026-09-20T10:00:00.000Z");
+    await book6(id6("erased"), 4, { userId: erasedId, displayName: "Erased Person", consentState: "GIVEN", suppressedAt: null });
+    const counts = await impl.cache.erase({ userId: erasedId, phoneE164: `+${bare(4)}`, officerId: "off_cache" });
+    const afterErase = await row6(id6("erased"));
+    ok(p(L6.l65),
+      counts.marketingContactsEmptied === 1 && afterErase?.sourceRef === ERASURE_EVIDENCE && afterErase.displayName === null
+        && afterErase.consentState === "WITHDRAWN" && afterErase.suppressedAt === "2026-09-20T10:00:00.000Z",
+      `${JSON.stringify(counts)} row=${afterErase?.consentState}/${afterErase?.suppressedAt}`);
+
+    // 6.6 · the mirror itself, on a row with an officer's stop and no ledger word.
+    await stop6(5, "OPERATOR", "2026-09-21T10:00:00.000Z");
+    await book6(id6("mirror"), 5, { suppressedAt: "2026-09-21T10:00:00.000Z" });
+    const none = await impl.cache.mirror(bare(6));
+    const trueBefore = await row6(id6("mirror"));
+    const unchanged = await impl.cache.mirror(bare(5), "2030-01-01T00:00:00.000Z");
+    const trueAfter = await row6(id6("mirror"));
+    staleCache(id6("mirror"), { consentState: "GIVEN", suppressedAt: null });
+    const updated = await impl.cache.mirror(`+${bare(5)}`);
+    const putBack = await row6(id6("mirror"));
+    ok(p(L6.l66),
+      none === "none" && unchanged === "unchanged" && trueAfter?.updatedAt === trueBefore?.updatedAt
+        && updated === "updated" && putBack?.consentState === "UNKNOWN" && putBack.suppressedAt === "2026-09-21T10:00:00.000Z",
+      `${none}/${unchanged}/${updated} updatedAt ${trueBefore?.updatedAt}→${trueAfter?.updatedAt} row=${putBack?.consentState}/${putBack?.suppressedAt}`);
+  } finally {
+    // ⛔ §6's rows leave the book, so the next run starts from the same ten (§2.0 counts them).
+    for (const row of made) {
+      bookMaps()?.marketingContacts.delete(row.id);
+      bookMaps()?.contactsByMsisdn.delete(row.msisdn);
+    }
+  }
 }
 
 /** ⭐ THE ONE-COUNT TABLE — about a dozen filters, URL-expressible and not. */
@@ -601,6 +830,61 @@ if (!PROVE_RED) {
       name: "R16 · the page's href vocabulary drifts from the parser's — `player` no longer carried by links",
       expect: [LABEL.l17],
       impl: { ...REAL, linkKeys: CONTACTS_LINK_KEYS.filter((k) => k !== "player") },
+    },
+    {
+      name: "R15a · the opt-out service's mirror call removed — a writer of the stop list that never refreshes the book",
+      expect: [L6.l60],
+      impl: { ...REAL, files: withFile(OPTOUT_SERVICE, (REAL_FILES.get(OPTOUT_SERVICE) ?? "").replace(/\bmirrorContactCache\s*\(/g, "void (")) },
+    },
+    {
+      name: "R15b · a STOP that leaves the book as it was — the mirror call's absence, executed",
+      expect: [L6.l61],
+      impl: { ...REAL, cache: { ...REAL_CACHE, stop: withoutMirror(stopMarketing) } },
+    },
+    {
+      name: "R17 · erasure mirrors the consent but not the stop — what it wrote before commit 2",
+      expect: [L6.l65],
+      impl: { ...REAL, cache: { ...REAL_CACHE, erase: withoutMirror(eraseMarketingFor, "suppressedAt") } },
+    },
+    {
+      name: "R18 · the ledger's one append leaves the book as it was — a sign-up by an imported number stays UNKNOWN",
+      expect: [L6.l64],
+      impl: { ...REAL, cache: { ...REAL_CACHE, append: withoutMirror(appendMarketingConsent) } },
+    },
+    {
+      name: "R19 · a mirror that copies the consent and ignores the stop list",
+      expect: [L6.l66],
+      impl: {
+        ...REAL,
+        cache: {
+          ...REAL_CACHE,
+          mirror: async (identifier, at = new Date().toISOString()) => {
+            const row = await db.marketingContact.findByMsisdn(toMsisdn255(identifier));
+            if (!row) return "none";
+            const latest = await db.messagingConsent.latestFor({ channel: "SMS", identifier: row.msisdn, category: "MARKETING" });
+            const consentState = latest ? latest.status : "UNKNOWN";
+            if (row.consentState === consentState) return "unchanged";
+            await db.marketingContact.update(row.id, { consentState }, at);
+            return "updated";
+          },
+        },
+      },
+    },
+    {
+      name: "R20 · a mirror that writes when nothing changed — every refresh moves the row's updatedAt",
+      expect: [L6.l66],
+      impl: {
+        ...REAL,
+        cache: {
+          ...REAL_CACHE,
+          mirror: async (identifier, at = new Date().toISOString()) => {
+            const r = await mirrorContactCache(identifier, at);
+            const row = await db.marketingContact.findByMsisdn(toMsisdn255(identifier));
+            if (r === "unchanged" && row) await db.marketingContact.update(row.id, {}, at);
+            return r;
+          },
+        },
+      },
     },
   ];
 

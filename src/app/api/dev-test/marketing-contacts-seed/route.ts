@@ -21,6 +21,7 @@ import { db } from "@/lib/server/store";
 import type { StoredMarketingContact } from "@/lib/server/store";
 import { parseTzNumber } from "@/lib/tz-msisdn";
 import { ledgerStamp } from "@/lib/server/marketing/ledger-stamp";
+import { mirrorContactCache } from "@/lib/server/marketing/contact-cache";
 
 const SEED_WORDING = "Seeded by the U20 drive (dev only).";
 
@@ -95,6 +96,9 @@ export async function POST(req: Request) {
         liftedAt: null, liftedReason: null,
       });
     }
+    // U24 commit 2 · a writer of the ledger and the stop list mirrors the book like every other — here it
+    // answers "unchanged", because the rows above were written to agree (`test:contacts-audience` §6).
+    await mirrorContactCache(row.msisdn, at);
   }
   return NextResponse.json({ ok: true, created, total: await db.marketingContact.count() });
 }

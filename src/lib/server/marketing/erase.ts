@@ -3,6 +3,7 @@ import type { MessagingKey, StoredMarketingContact } from "@/lib/server/store";
 import { toMsisdn255 } from "@/lib/phone-normalize";
 import { ledgerStamp } from "@/lib/server/marketing/ledger-stamp";
 import { ERASURE_EVIDENCE } from "@/lib/marketing/erasure-mark";
+import { mirrorContactCache } from "@/lib/server/marketing/contact-cache";
 
 /**
  * U18b · ERASURE REACHES MARKETING — the consent withdrawn, the book emptied.
@@ -21,7 +22,7 @@ import { ERASURE_EVIDENCE } from "@/lib/marketing/erasure-mark";
  *      an edit of their history. Nothing is written for a number with no consent to withdraw.
  *   2. EMPTY every book row for the person — found by the account LINK and by the account NUMBER (a
  *      contact imported before they signed up carries no link): link, name, e-mail, notes, tags and import
- *      reference cleared, `rawInput` reduced to the key, the consent cache set to what the ledger now says,
+ *      reference cleared, `rawInput` reduced to the key, the cache (consent AND stop) mirrored from the truth,
  *      and `sourceRef` set to `erasure` — the mark the importer (U31) collapses to KEEP on.
  *      ⚖️ WHEN IN DOUBT, ERASE: an unlinked row found by the number is emptied whatever its age, though it
  *      may be a previous holder's — emptying another person's row harms nobody, leaving the erased person's
@@ -125,12 +126,8 @@ export async function eraseMarketingFor(input: {
 
   // ── 2 · EMPTY THE ROWS ────────────────────────────────────────────────────────────────
   for (const c of rows.values()) {
-    // The cache mirrors the ledger (`ContactConsentState`) — never a value of its own.
-    const latest = await Promise.resolve(db.messagingConsent.latestFor(keyFor(c.msisdn)));
-    const consentState = latest ? latest.status : "UNKNOWN";
     const emptied = c.userId === null && c.displayName === null && c.email === null && c.notes === null
-      && c.tags.length === 0 && c.sourceRef === ERASURE_EVIDENCE && c.importId === null && c.rawInput === c.msisdn
-      && c.consentState === consentState;
+      && c.tags.length === 0 && c.sourceRef === ERASURE_EVIDENCE && c.importId === null && c.rawInput === c.msisdn;
     if (emptied) continue;
     await Promise.resolve(db.marketingContact.update(c.id, {
       userId: null,
@@ -141,10 +138,15 @@ export async function eraseMarketingFor(input: {
       sourceRef: ERASURE_EVIDENCE,
       importId: null,
       rawInput: c.msisdn,
-      consentState,
       updatedBy: input.officerId,
     }, at));
     counts.marketingContactsEmptied++;
   }
+
+  // ── 3 · THE BOOK'S CACHE, from the truth step 1 just wrote (U24 commit 2) ──────────────────
+  // ⭐ The consent AND the stop, through the ONE mirror — never a value of erasure's own. Every number step 1
+  // may have written for is mirrored, so a row about the account's number that is linked to somebody else (a
+  // previous holder's) stops reading a consent the number no longer has.
+  for (const identifier of numbers) await mirrorContactCache(identifier, at);
   return counts;
 }

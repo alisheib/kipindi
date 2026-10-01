@@ -264,11 +264,12 @@ export const MUTATIONS = [
   },
   {
     // The consent cache stops mirroring the ledger and invents WITHDRAWN for a number that never consented.
+    // U24 commit 2 · erasure's cache is the ONE mirror's now (`contact-cache.ts`), so the plant lives there.
     name: "erasure-invents-the-consent-cache (WITHDRAWN on a row whose number never said yes)",
-    file: MKT_ERASE,
+    file: "src/lib/server/marketing/contact-cache.ts",
     suite: "erasure",
-    from: `    const consentState = latest ? latest.status : "UNKNOWN";`,
-    to: `    const consentState = "WITHDRAWN" as const;`,
+    from: `    const consentState: ContactConsentState = latest ? latest.status : "UNKNOWN";`,
+    to: `    const consentState: ContactConsentState = "WITHDRAWN";`,
   },
   {
     // The memory store stops re-keying a changed number: an erased account is found by its OLD number

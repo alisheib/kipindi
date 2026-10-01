@@ -1,6 +1,7 @@
 import { db } from "@/lib/server/store";
 import type { MessagingKey, MessagingLocale, StoredKyc, StoredUser, SuppressionReason } from "@/lib/server/store";
 import { appendMarketingConsent } from "@/lib/server/marketing/consent-ledger";
+import { mirrorContactCache } from "@/lib/server/marketing/contact-cache";
 import { toMsisdn255 } from "@/lib/phone-normalize";
 import { parseTzNumber } from "@/lib/tz-msisdn";
 import { marketingRgStanding, MARKETING_RG_DEPS } from "@/lib/server/marketing/rg";
@@ -370,6 +371,9 @@ export async function recordPlayerMarketingChoice(input: {
       if (stop && isPersonCreatedSuppression(stop.reason)) {
         liftedStop = (await Promise.resolve(db.suppression.lift(key, "profile", new Date().toISOString()))) !== null;
         changed = changed || liftedStop;
+        // U24 commit 2 · the book row stops reading "suppressed" NOW — a lift whose ledger append below then
+        // fails still leaves the cache true (the append mirrors again when it lands).
+        await mirrorContactCache(key.identifier);
       }
     }
     if (user.marketingOptIn !== want) {

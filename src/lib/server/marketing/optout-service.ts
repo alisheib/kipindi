@@ -10,6 +10,7 @@ import { userPhoneKeyFor } from "@/lib/server/marketing/consent";
 import { rateCheckAsync, rateRefundAsync } from "@/lib/server/rate-limit";
 import { dict } from "@/lib/i18n-dict";
 import { ledgerStamp } from "@/lib/server/marketing/ledger-stamp";
+import { mirrorContactCache } from "@/lib/server/marketing/contact-cache";
 
 /**
  * U8 · THE OPT-OUT PAGE'S ONE SERVICE — resolving a token, stopping, and starting again.
@@ -235,9 +236,13 @@ export function resumeMarketingWithinBudget(raw: string, locale: MessagingLocale
  */
 export async function stopMarketing(raw: string, locale: MessagingLocale): Promise<OptOutActResult> {
   const wording = optOutWording("STOP", locale);
+  // U24 commit 2 · the number's book row mirrors whatever landed below — in the `finally`, so a stop whose
+  // ledger write then failed still shows the row suppressed, and an `already` retry repairs a stale one.
+  let mirrorFor: string | null = null;
   try {
     const r = await resolveOptOutToken(raw);
     if (!r.ok) return { ok: false, reason: r.reason };
+    mirrorFor = r.identifier;
     const ref = optOutTokenRef(r.token);
     if (r.suppressed) {
       const latest = await Promise.resolve(db.messagingConsent.latestFor(keyFor(r.identifier)));
@@ -265,6 +270,8 @@ export async function stopMarketing(raw: string, locale: MessagingLocale): Promi
   } catch (err) {
     console.error("[optout] stop failed:", (err as Error)?.message ?? err);
     return { ok: false, reason: "error" };
+  } finally {
+    if (mirrorFor) await mirrorContactCache(mirrorFor);
   }
 }
 
@@ -287,9 +294,12 @@ export async function stopMarketing(raw: string, locale: MessagingLocale): Promi
  */
 export async function resumeMarketing(raw: string, locale: MessagingLocale): Promise<OptOutActResult> {
   const wording = optOutWording("RESUME", locale);
+  // U24 commit 2 · as in `stopMarketing`: the book row mirrors the lift and the GIVEN row, whatever landed.
+  let mirrorFor: string | null = null;
   try {
     const r = await resolveOptOutToken(raw);
     if (!r.ok) return { ok: false, reason: r.reason };
+    mirrorFor = r.identifier;
     if (r.suppressed && !r.resumable) return { ok: true, state: "already" };
     const ref = optOutTokenRef(r.token);
     await Promise.resolve(db.suppression.lift(keyFor(r.identifier), `optout:${ref}`, new Date().toISOString()));
@@ -305,6 +315,8 @@ export async function resumeMarketing(raw: string, locale: MessagingLocale): Pro
   } catch (err) {
     console.error("[optout] resume failed:", (err as Error)?.message ?? err);
     return { ok: false, reason: "error" };
+  } finally {
+    if (mirrorFor) await mirrorContactCache(mirrorFor);
   }
 }
 

@@ -115,5 +115,53 @@ if (whole.ok) {
     `${walked.join(",")} · next=${w3.nextAfterId}`);
 }
 
+// ── 5 · U24 commit 2 · THE CACHE MIRROR ON POSTGRES — after every check above, so their expected sets stand ──────
+// ⭐ WHY HERE. `mirrorContactCache` writes only on a difference, comparing the row's `suppressedAt` (Timestamptz(3))
+// with the stop's `createdAt` (a plain TIMESTAMP(3)) as ISO strings. If the two columns round-tripped an instant
+// differently, the comparison would never hold on Postgres: every writer would UPDATE the row on every call, and
+// the memory twin — where both are just strings — could never show it.
+{
+  const { mirrorContactCache } = await import("../../src/lib/server/marketing/contact-cache.ts");
+  const { mintOptOutToken, stopMarketing } = await import("../../src/lib/server/marketing/optout-service.ts");
+  const seedRow = async (id: string, local: string) => {
+    const p = parseTzNumber(local);
+    if (p.verdict !== "ok" || !p.msisdn || !p.ndc) throw new Error(`seed ${local} does not parse`);
+    await db.marketingContact.create({
+      id, msisdn: p.msisdn, rawInput: local, displayName: null, email: null, ndc: p.ndc, operator: null, source: "IMPORT",
+      sourceRef: null, userId: null, consentState: "GIVEN", suppressedAt: null, tags: [], notes: null, importId: null,
+      createdAt: at(8), createdBy: null, updatedAt: at(8), updatedBy: null,
+    });
+    return p.msisdn;
+  };
+  // A stale row: the cache says GIVEN and unsuppressed; the truth is a WITHDRAWN word and an officer's stop.
+  const m7 = await seedRow("probe_p07", "0755000107");
+  await db.messagingConsent.create({
+    id: "probe_l7", channel: "SMS", identifier: m7, category: "MARKETING", status: "WITHDRAWN", source: "IMPORT",
+    wording: "probe", locale: "EN", evidence: "probe", recordedBy: null, createdAt: at(9),
+  });
+  const STOP_AT = "2026-09-21T10:00:00.123Z";
+  await db.suppression.create({
+    id: "probe_s7", channel: "SMS", identifier: m7, category: "MARKETING", reason: "OPERATOR", evidence: "probe",
+    recordedBy: null, createdAt: STOP_AT, liftedAt: null, liftedReason: null,
+  });
+  const first = await mirrorContactCache(m7);
+  const row7 = await db.marketingContact.find("probe_p07");
+  const second = await mirrorContactCache(m7);
+  ok("5.1 · the mirror puts a stale row back from the truth on Postgres — WITHDRAWN, suppressed at the stop's own millisecond",
+    first === "updated" && row7?.consentState === "WITHDRAWN" && row7?.suppressedAt === STOP_AT, `${first} · ${row7?.consentState} / ${row7?.suppressedAt}`);
+  ok("5.2 · ⛔ and a second call is a READ — the stop's time round-trips the two column types, so nothing is rewritten", second === "unchanged", second);
+
+  // The writer itself, end to end on Postgres: a stop through a minted link.
+  const m8 = await seedRow("probe_p08", "0755000108");
+  const token = await mintOptOutToken(m8);
+  const stopped = token ? await stopMarketing(token, "SW") : null;
+  const row8 = await db.marketingContact.find("probe_p08");
+  const stop8 = await db.suppression.find({ channel: "SMS", identifier: m8, category: "MARKETING" });
+  const again8 = await mirrorContactCache(m8);
+  ok("5.3 · a STOP through a minted link on Postgres leaves its book row WITHDRAWN and suppressed at the stop's time, and the next mirror is a read",
+    stopped?.ok === true && row8?.consentState === "WITHDRAWN" && !!stop8 && row8?.suppressedAt === stop8.createdAt && again8 === "unchanged",
+    `${JSON.stringify(stopped)} · ${row8?.consentState} / ${row8?.suppressedAt} vs ${stop8?.createdAt} · ${again8}`);
+}
+
 console.log(`\ncontacts-audience-pg-probe: ${pass} passed, ${fail} failed`);
 process.exitCode = fail === 0 ? 0 : 1;

@@ -3,6 +3,7 @@ import type { MessagingConsentSource, MessagingConsentStatus, MessagingLocale } 
 import { toMsisdn255 } from "@/lib/phone-normalize";
 import { dict } from "@/lib/i18n-dict";
 import { ledgerStamp } from "@/lib/server/marketing/ledger-stamp";
+import { mirrorContactCache } from "@/lib/server/marketing/contact-cache";
 
 /**
  * U6 · THE CONSENT LEDGER'S ONE WRITER.
@@ -116,5 +117,10 @@ export async function appendMarketingConsent(input: AppendMarketingConsentInput)
   } catch (err) {
     console.error("[marketing-consent] ledger append failed:", (err as Error)?.message ?? err);
     return false;
+  } finally {
+    // U24 commit 2 · a book row for this number — a person imported before they signed up, or a player's own
+    // number — mirrors the ledger's latest word. ⛔ `mirrorContactCache` never throws, so a recorded consent is
+    // never turned into a failure by its cache.
+    await mirrorContactCache(identifier);
   }
 }

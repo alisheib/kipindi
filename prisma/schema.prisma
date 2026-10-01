@@ -3296,8 +3296,10 @@ enum ContactSource {
 ///
 /// ⛔ THIS COLUMN IS A CACHE, NEVER THE ANSWER. The consent ledger is the record; the send gate
 /// (U7) asks the ledger, never this. It exists so the book can be FILTERED and COUNTED without
-/// a per-row ledger read at 150k contacts (§3c). U24's one resolver is what keeps the two
-/// agreeing; a screen that reads this to decide whether to SEND would be reading a copy.
+/// a per-row ledger read at 150k contacts (§3c). The WRITERS keep the two agreeing: every writer of
+/// the ledger or the stop list calls `mirrorContactCache` (U24 commit 2, `marketing/contact-cache.ts`;
+/// `test:contacts-audience` §6), and the one resolver only reads it. A screen that reads this to
+/// decide whether to SEND would be reading a copy.
 enum ContactConsentState {
   /// The default, and the only state a newly imported number may be created in (U22/U33).
   UNKNOWN
@@ -3346,8 +3348,8 @@ model MarketingContact {
   user         User?               @relation(fields: [userId], references: [id], onDelete: SetNull)
   /// ⛔ A CACHE OF THE LEDGER'S ANSWER, never the answer itself — see `ContactConsentState`.
   consentState ContactConsentState @default(UNKNOWN)
-  /// Mirrors an ACTIVE `Suppression` row for this number, for filtering and counting only.
-  /// ⛔ The send gate asks `Suppression`, never this.
+  /// Mirrors an ACTIVE `Suppression` row for this number — its own `createdAt` — for filtering and
+  /// counting only, kept by the same `mirrorContactCache`. ⛔ The send gate asks `Suppression`, never this.
   suppressedAt DateTime?           @db.Timestamptz(3)
   tags         String[]            @default([])
   notes        String?
