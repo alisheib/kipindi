@@ -263,7 +263,22 @@ shares it). ⭐ The canvas is the source of truth for S4's frames — no copy li
     it before any offer.
   - With one option the eyebrow is dropped. When no deposit is offered, the reason is today's refusal sentence, shown
     before the player tries.
-- Next: items 6–11.
+- Item 6 ✅ on the canvas (row "6 · Deposit", 19 frames). They are:
+  - the email-code step: sent, wrong, expired, too many tries, a new code sent, no email on file;
+  - no history (nothing preselected; "Lipa" disabled), one wallet paused, an amount typed below the shortfall, and
+    the payout-delayed notice;
+  - the new waiting page: fresh, slow, long, paid, failed, held for return;
+  - the return: the question closed meanwhile, and the stake clamped;
+  - desktop at 1280.
+  - **Design calls:**
+    - A wrong code is a form error in danger ink (the S2 ruling); everything else is neutral.
+    - The payout notice takes the neutral family on the journey screen, because the brief forbids gold and danger
+      for app state.
+    - The stake clamp uses the loss headroom; a TZS 1,000,000 cap would make the example trivially thin.
+  - "Held" means the payment landed after a break began: it is held in RG suspense until the team returns it
+    (`wallet-service`), and the drafted words say exactly that.
+  - Every draft is listed on the canvas.
+- Next: items 7–11.
 - The copy researched for every state is filed in
   [`S4-COPY-AUDIT.md`](design-system/v5-2026-09-29-simplified-journey/S4-COPY-AUDIT.md), a dated snapshot;
   `i18n-dict.ts` stays the truth. Items marked "NO STRING" there need drafts (R8).
