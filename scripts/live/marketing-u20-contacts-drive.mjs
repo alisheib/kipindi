@@ -182,20 +182,20 @@ for (const vp of VIEWPORTS) {
   ok(`${vp.name} · CLAMP · page 4 of a 5-row result renders the 5 rows`, (await rows.count()) === 5, String(await rows.count()));
 
   // ── U24 · FILTERS IN THE ADDRESS, THROUGH THE ONE RESOLVER ─────────────────────────────────────
-  // GROWTH reads no number, so its columns are Name · Number · Operator · Consent · Lists·Tags · Added (D19).
-  await openContacts(page, "?op=VODACOM&consent=GIVEN");
+  // GROWTH reads no number, so its columns are Name · Number · Operator · Lists·Tags · Added (D19 + A1.1: no Consent,
+  // Reachable or Source) — and it filters only by the axes a masked role may use; consent is asserted REFUSED below.
+  await openContacts(page, "?op=VODACOM&suppressed=no");
   const fOps = await page.locator("[data-contact-row] td:nth-child(3)").allInnerTexts();
-  const fConsent = await page.locator("[data-contact-row] td:nth-child(4)").allInnerTexts();
-  ok(`${vp.name} · U24 FILTERED · only Vodacom rows with consent given`,
-    fOps.length > 0 && fOps.every((t) => /^Vodacom$/i.test(t.trim())) && fConsent.every((t) => /^given$/i.test(t.trim())),
-    `${fOps.length} rows: ${[...new Set(fOps.map((t) => t.trim()))].join("/")} · ${[...new Set(fConsent.map((t) => t.trim()))].join("/")}`);
+  ok(`${vp.name} · U24 FILTERED · only Vodacom rows, none suppressed`,
+    fOps.length > 0 && fOps.every((t) => /^Vodacom$/i.test(t.trim())),
+    `${fOps.length} rows: ${[...new Set(fOps.map((t) => t.trim()))].join("/")}`);
   const lead = ((await page.locator('[data-block="contacts-filtered"]').innerText().catch(() => "")) || "").replace(/\s+/g, " ").trim();
   ok(`${vp.name} · U24 FILTERED · the line says, in words, what the list is narrowed to — with Clear filters`,
-    /Showing contacts:\s*Operator: Vodacom · Consent: given\s*Clear filters/i.test(lead), lead);
+    /Showing contacts:\s*Operator: Vodacom · Not suppressed\s*Clear filters/i.test(lead), lead);
   ok(`${vp.name} · U24 FILTERED · the KPI band is still the WHOLE book`, /In the book\s*45/i.test(await mainText(page)));
   const sortHrefs = await page.locator('[data-block="contacts-card"] thead a[href*="sort="]').evaluateAll((as) => as.map((a) => a.getAttribute("href") || ""));
   ok(`${vp.name} · U24 FILTERED · every sort link carries the filters (one href builder)`,
-    sortHrefs.length === 3 && sortHrefs.every((h) => h.includes("op=VODACOM") && h.includes("consent=GIVEN") && !h.includes("page=")), sortHrefs.join(" | "));
+    sortHrefs.length === 3 && sortHrefs.every((h) => h.includes("op=VODACOM") && h.includes("suppressed=no") && !h.includes("page=")), sortHrefs.join(" | "));
   ok(`${vp.name} · U24 FILTERED · no horizontal page overflow`, (await overflowOf(page)) === 0, `${await overflowOf(page)}px`);
   await shoot(page, `${vp.name}-u24-filtered`);
 
@@ -227,9 +227,16 @@ for (const vp of VIEWPORTS) {
   // 🔴 D19 · the player filter is a membership oracle for a role that may not read a number.
   await openContacts(page, "?player=yes");
   const d19 = await mainText(page);
+  const d19Box = d19.slice(Math.max(0, d19.indexOf("This filter")), d19.indexOf("This filter") + 240);
   ok(`${vp.name} · U24 D19 · GROWTH is refused the player filter — no rows, the reason in words`,
-    (await rows.count()) === 0 && /This filter isn.t available/.test(d19) && /not available to your role/.test(d19), d19.slice(0, 240));
+    (await rows.count()) === 0 && /This filter isn.t available/.test(d19) && /isn.t available to your role: it would show which numbers belong to players/.test(d19), d19Box);
   await shoot(page, `${vp.name}-u24-d19-refused`, '[data-block="contacts-card"]');
+  // A1.1 · until U33 a recorded consent can only come from a player, so a typed consent axis is refused the same way.
+  await openContacts(page, "?op=VODACOM&consent=GIVEN");
+  const a11 = await mainText(page);
+  ok(`${vp.name} · U24 A1.1 · GROWTH is refused a typed consent filter too — no rows, the same reason`,
+    (await rows.count()) === 0 && /This filter isn.t available/.test(a11) && /isn.t available to your role/.test(a11) && /In the book\s*45/i.test(a11),
+    a11.slice(Math.max(0, a11.indexOf("This filter")), a11.indexOf("This filter") + 200));
 
   // ── ERROR ────────────────────────────────────────────────────────────────────────────────────
   await seed(page, "fault=1");
@@ -264,6 +271,18 @@ for (const vp of VIEWPORTS) {
   const adminChips = await adm.page.$$eval("[data-contact-row] span.whitespace-nowrap", (els) => els.map((e) => Math.round(e.getBoundingClientRect().height)));
   ok(`${vp.name} · ADMIN · Consent and Reachable chips each sit on ONE line`, adminChips.length === 40 && Math.max(...adminChips) <= 18, `${adminChips.length} chips, max ${Math.max(...adminChips)}px`);
   await shoot(adm.page, `${vp.name}-admin-rows`, '[data-block="contacts-card"]');
+  // A reader's columns: Name · Number · Operator · Consent · Reachable · Source · Lists·Tags · Added.
+  await openContacts(adm.page, "?op=VODACOM&consent=GIVEN");
+  const aOps = await adm.page.locator("[data-contact-row] td:nth-child(3)").allInnerTexts();
+  const aConsent = await adm.page.locator("[data-contact-row] td:nth-child(4)").allInnerTexts();
+  ok(`${vp.name} · ADMIN · U24 FILTERED · the reader filters by consent: only Vodacom rows with consent given`,
+    aOps.length > 0 && aOps.every((t) => /^Vodacom$/i.test(t.trim())) && aConsent.length === aOps.length && aConsent.every((t) => /^given$/i.test(t.trim())),
+    `${aOps.length} rows: ${[...new Set(aOps.map((t) => t.trim()))].join("/")} · ${[...new Set(aConsent.map((t) => t.trim()))].join("/")}`);
+  const aLead = ((await adm.page.locator('[data-block="contacts-filtered"]').innerText().catch(() => "")) || "").replace(/\s+/g, " ").trim();
+  ok(`${vp.name} · ADMIN · U24 FILTERED · the line says Operator: Vodacom · Consent: given, with Clear filters`,
+    /Showing contacts:\s*Operator: Vodacom · Consent: given\s*Clear filters/i.test(aLead), aLead);
+  await shoot(adm.page, `${vp.name}-admin-u24-filtered`, '[data-block="contacts-card"]');
+  await openContacts(adm.page);
   await adm.page.locator('button[aria-label="Reveal Contact number"]').first().click();
   await adm.page.waitForSelector('button[aria-label="Hide Contact number"]', { timeout: 15000 }).catch(() => {});
   const shown = (await adm.page.locator('button[aria-label="Hide Contact number"]').first().innerText().catch(() => "")).trim();

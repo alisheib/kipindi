@@ -16,7 +16,7 @@
  * the suite must fail without the fix." That is 4.4 here, and plant R1 is exactly that defect.
  *
  * ⚠️ WHAT THIS SUITE DOES NOT HOLD. The keyed HMAC, the signed token, the service on the memory twin, the conditional
- * write and "nothing is sent" belong to U40a's `test:campaign-gates`, which drives the server half. This suite holds
+ * write and "nothing is sent" belong to U40a's server suite (not yet built), which drives the server half. This suite holds
  * the rule those all call, so it can never drift between the modal and the server.
  *
  * ⛔ IN-PROCESS BY CONSTRUCTION. `--prove-red` plants each defect IN MEMORY (a replacement function, or a copied

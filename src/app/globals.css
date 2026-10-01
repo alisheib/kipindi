@@ -5125,6 +5125,12 @@ html[data-sheet-open] .route-enter { animation: none; }
    which is why this one carries no `[data-*]` twin the way `.kp-discovery-bar` above does. */
 .admin-tbl:has(> tbody > tr[data-table-empty]) > thead { display: none; }
 .admin-tbl:has(> tbody > tr[data-table-empty]) { min-width: 0; }
+/* ⭐ …AND THE MESSAGE IN IT IS RELEASED FROM THE VISIBLE-STRIP CAP (2026-10-02). With no minimum width the table
+   cannot scroll, so its one cell IS the visible strip; the cap `AdminTableEmpty` sets for a scrolling table (worked
+   out for a card that pads its table by 20px a side) then only shrank the message and pinned it to the left —
+   measured on /admin/contacts at 360: 20px of card to its left, 62px to its right, the button off centre with it.
+   Unlayered like the two rules above, so it outranks the utility that sets the cap. */
+.admin-tbl:has(> tbody > tr[data-table-empty]) [data-table-empty-pin] { max-width: none; }
 /* 🔴 A MONEY FIGURE IS ONE OBJECT, AND 61 OF THEM WERE BROKEN IN HALF (2026-09-02).
    `th` above has carried `white-space: nowrap` since the table shipped; `td` never did. So a
    column narrower than its content split `TZS 550,560` into "TZS" above "550,560" — §M4 says a

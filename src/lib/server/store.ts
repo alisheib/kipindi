@@ -2749,7 +2749,7 @@ const memoryDb = {
       const counts = new Map<string, number>();
       for (const c of store.marketingContacts.values()) {
         if (q.excludeSourceRef !== null && c.sourceRef === q.excludeSourceRef) continue;
-        for (const t of new Set(c.tags)) counts.set(t, (counts.get(t) ?? 0) + 1);
+        for (const t of new Set<string>(c.tags)) counts.set(t, (counts.get(t) ?? 0) + 1);
       }
       return Array.from(counts, ([tag, count]) => ({ tag, count }))
         .sort((a, b) => b.count - a.count || (a.tag < b.tag ? -1 : a.tag > b.tag ? 1 : 0))

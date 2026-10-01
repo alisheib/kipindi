@@ -1700,7 +1700,7 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
       && /is distinct from \$\{q\.excludeSourceRef\}::text/.test(pTags) && /collate "C"/.test(pTags) && /limit \$\{q\.limit\}/.test(pTags),
     `${pTags.length} chars`);
   ok("21.tags.memory · …and the memory twin mirrors it: once per contact, the mark skipped, the same bound",
-    /new Set\(c\.tags\)/.test(mTags) && /c\.sourceRef === q\.excludeSourceRef/.test(mTags) && /\.slice\(0, q\.limit\)/.test(mTags),
+    /new Set(?:<string>)?\(c\.tags\)/.test(mTags) && /c\.sourceRef === q\.excludeSourceRef/.test(mTags) && /\.slice\(0, q\.limit\)/.test(mTags),
     `${mTags.length} chars`);
 
   // ── CONTROLS ─────────────────────────────────────────────────────────────────────────

@@ -41,8 +41,13 @@ export function AdminTableEmpty({
             720–980px minimum inside a sideways scroller — so at 390 the message centred across the full width,
             off-screen to the right. Below lg (no sidebar) the wrapper is capped at the scroller's visible width
             (the viewport less body 20 + border 1 + card 20 + cell 20 per side = 122px) and sticks to its left
-            edge while the table scrolls. From lg up it is the full cell, so the desktop render is unchanged. */}
-        <div className="sticky left-0 max-w-[calc(100vw-122px)] lg:max-w-none">
+            edge while the table scrolls. From lg up it is the full cell, so the desktop render is unchanged.
+            ⭐ RELEASED WHERE THE TABLE CANNOT SCROLL (2026-10-02). An empty `.admin-tbl` drops its minimum width and
+            its header (globals.css), so its one cell already IS the visible strip — and the cap, worked out for a
+            card that pads its table, then only shrank the message and pinned it left: measured on the contacts
+            page at 360, 20px of card to its left and 62px to its right. globals.css lifts the cap on this marker
+            for exactly that table; a table without the class keeps it. */}
+        <div data-table-empty-pin className="sticky left-0 max-w-[calc(100vw-122px)] lg:max-w-none">
           <EmptyState kind={kind} title={title} body={body} action={action} />
         </div>
       </td>

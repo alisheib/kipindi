@@ -210,7 +210,7 @@ async function AdminContactsContent({ searchParams }: { searchParams: Promise<Co
                     title={searching ? CONTACTS_NO_MATCH.title : CONTACTS_NO_MATCH_FILTERED.title}
                     body={searching ? CONTACTS_NO_MATCH.body : CONTACTS_NO_MATCH_FILTERED.body}
                     action={narrowed || searching ? (
-                      <span className="flex flex-wrap gap-2">
+                      <span className="flex flex-wrap justify-center gap-2">
                         {narrowed && <a href={clearFiltersHref} className="btn btn-ghost btn-sm">Clear filters</a>}
                         {searching && <a href={clearSearchHref} className="btn btn-ghost btn-sm">Clear search</a>}
                       </span>
