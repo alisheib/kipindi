@@ -15,7 +15,8 @@ import {
   kindsFor, showsCleared, MONEY_FILTER_KINDS, ACCOUNT_FILTER_KINDS,
   type NotificationFilter, type NotificationSort,
 } from "@/lib/notification-filters";
-import { parseQuery, matchesQuery, fieldNames, NOTIFICATION_SEARCH } from "@/lib/search";
+import { parseQuery, matchesQuery, fieldNames, NOTIFICATION_SEARCH, CONTACT_SEARCH } from "@/lib/search";
+import type { ParsedQuery } from "@/lib/search";
 import { holdsDocumentNumber } from "@/lib/kyc-refusal";
 
 export type StoredUser = {
@@ -512,6 +513,29 @@ export type ContactListKey = { listId: string; contactId: string };
 export type MarketingContactPatch = Partial<
   Omit<StoredMarketingContact, "id" | "msisdn" | "createdAt" | "createdBy">
 >;
+
+/** U20 · the sortable columns of the book. ⚠️ "operator" sorts by the PREFIX (`ndc`). */
+export type ContactPageSort = "added" | "name" | "operator";
+/** U20 · one page of the book. ⛔ `msisdn` is a WHOLE number's bare key, matched EXACTLY — the store never
+ *  offers a substring search on the number (a masked role could rebuild a number digit by digit). */
+export type ContactPageQuery = {
+  msisdn: string | null;
+  /** A name query in the shared grammar (`CONTACT_SEARCH`), or null. */
+  name: ParsedQuery | null;
+  sort: ContactPageSort;
+  dir: "asc" | "desc";
+  offset: number;
+  limit: number;
+};
+export type ContactPage = { rows: StoredMarketingContact[]; total: number };
+/** U20 · the WHOLE book's counts — never a filtered view. `suppressed` counts the cached `suppressedAt`. */
+export type ContactBookSummary = { total: number; given: number; unknown: number; withdrawn: number; suppressed: number };
+
+declare global {
+  /** DEV ONLY — set by `/api/dev-test/marketing-contacts-seed?fault=1` so the U20 drive can photograph the
+   *  contacts page's error state. Read by the MEMORY twin's `summary()` alone, which never serves production. */
+  var __50PICK_CONTACTS_READ_FAULT: boolean | undefined;
+}
 
 
 
@@ -1219,15 +1243,22 @@ const memoryDb = {
     update: (id: string, patch: Partial<StoredUser>) => {
       const u = store.users.get(id);
       if (!u) return null;
-      const next = { ...u, ...patch, updatedAt: new Date().toISOString() };
-      store.users.set(id, next);
       // ⭐ RE-INDEX A CHANGED NUMBER, as Postgres' unique column does by being the column (S10, §9 U16's
       // finding). The index was written on create only, so an erased account (`phoneE164` → `erased:<id>`)
       // was still found by its OLD number here while Postgres returned nobody — every suite ran the
       // player branch of the marketing gate where production runs the ledger branch.
-      if (next.phoneE164 !== u.phoneE164) {
+      // ⛔ And it refuses what Postgres refuses: a number another account holds is a unique violation
+      // (P2002 there), checked BEFORE anything is written; an `undefined` in the patch changes nothing.
+      const newPhone = typeof patch.phoneE164 === "string" ? patch.phoneE164 : u.phoneE164;
+      if (newPhone !== u.phoneE164) {
+        const holder = store.usersByPhone.get(newPhone);
+        if (holder && holder !== id) throw new Error(`unique constraint: phoneE164 already held (memory twin of P2002)`);
+      }
+      const next = { ...u, ...patch, phoneE164: newPhone, updatedAt: new Date().toISOString() };
+      store.users.set(id, next);
+      if (newPhone !== u.phoneE164) {
         if (store.usersByPhone.get(u.phoneE164) === id) store.usersByPhone.delete(u.phoneE164);
-        store.usersByPhone.set(next.phoneE164, id);
+        store.usersByPhone.set(newPhone, id);
       }
       return next;
     },
@@ -2579,6 +2610,47 @@ const memoryDb = {
       const next = { ...row, ...patch, updatedAt: at };
       store.marketingContacts.set(id, next);
       return next;
+    },
+    /** U20 · ONE PAGE of the book and the size of the whole match. The order breaks every tie on `id`, in
+     *  the same direction, and puts a contact with NO name last whichever way names sort — Postgres'
+     *  `nulls: "last"` in the Prisma twin, so a page boundary falls in the same place on both. */
+    page: (q: ContactPageQuery): ContactPage => {
+      let rows = Array.from(store.marketingContacts.values());
+      if (q.msisdn !== null) rows = rows.filter((c) => c.msisdn === q.msisdn);
+      const nameQuery = q.name;
+      if (nameQuery) rows = rows.filter((c) => matchesQuery(nameQuery, { displayName: c.displayName }, CONTACT_SEARCH));
+      const sign = q.dir === "asc" ? 1 : -1;
+      rows.sort((a, b) => {
+        if (q.sort === "name") {
+          if (a.displayName === null || b.displayName === null) {
+            if (a.displayName !== b.displayName) return a.displayName === null ? 1 : -1;
+          } else {
+            const byName = a.displayName.localeCompare(b.displayName);
+            if (byName !== 0) return sign * byName;
+          }
+        } else {
+          const ka = q.sort === "operator" ? a.ndc : a.createdAt;
+          const kb = q.sort === "operator" ? b.ndc : b.createdAt;
+          const byKey = ka.localeCompare(kb);
+          if (byKey !== 0) return sign * byKey;
+        }
+        return sign * a.id.localeCompare(b.id);
+      });
+      return { rows: rows.slice(q.offset, q.offset + q.limit), total: rows.length };
+    },
+    summary: (): ContactBookSummary => {
+      // ⛔ DEV ONLY — the U20 drive photographs the page's error state through this switch, set by
+      // `/api/dev-test/marketing-contacts-seed?fault=1`. The memory twin never serves production.
+      if (globalThis.__50PICK_CONTACTS_READ_FAULT) throw new Error("contact book read fault (dev drive)");
+      const out: ContactBookSummary = { total: 0, given: 0, unknown: 0, withdrawn: 0, suppressed: 0 };
+      for (const c of store.marketingContacts.values()) {
+        out.total++;
+        if (c.consentState === "GIVEN") out.given++;
+        else if (c.consentState === "WITHDRAWN") out.withdrawn++;
+        else out.unknown++;
+        if (c.suppressedAt !== null) out.suppressed++;
+      }
+      return out;
     },
     listAll: (): StoredMarketingContact[] =>
       Array.from(store.marketingContacts.values())

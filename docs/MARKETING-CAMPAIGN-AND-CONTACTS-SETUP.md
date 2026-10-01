@@ -71,6 +71,15 @@ erasure now withdraws the consent and empties the book, and both data exports ca
   now come only from `parseTzNumber` (`marketingKeyOf`, 12.9b). Also: another live account's number is
   never withdrawn (12.16), and idempotency is proven by calling the step twice (12.15; 9.3's zeros pass by
   construction). `test:erasure` 226 → 335. `red:erasure` 20 → 29 anchors.
+  🔎 A SECOND REVIEW ROUND (same agent, on the rework) — fixed: an emptied row is marked `sourceRef =
+  erasure` and U31's text now collapses such a row to KEEP (the first cut's stop had been doing that job);
+  the export applies erasure's holder check to a linked row's old number (12.16b); a stop refusing the
+  person today is listed undated whatever its age (a re-armed stop keeps its first `createdAt`, 12.10e/f);
+  the account key is read exactly as the ledger writers key it (`toMsisdn255` + a 255[67]+8 check, so a
+  064 number still finds its rows); the memory re-key refuses a phone another account holds (Postgres'
+  P2002). ⚖️ Recorded asymmetry: erasure empties an unlinked row found by number WHATEVER its age (when in
+  doubt, erase); the export withholds one older than the account (when in doubt, do not disclose).
+  `test:erasure` 338, `red:erasure` 33 anchors.
   ❓ FOR ALI (public/legal text, his call): the DSAR bundle's `rights.erasure` sentence says "we erase your
   contact details"; since U18b the number is KEPT in the consent ledger (with the erasure as its last word)
   and in the emptied book row. Proposed addition, not shipped: "We keep your phone number only in our
@@ -2141,7 +2150,7 @@ basis picker) · refused (no `Phone` column — the column NAMED) · error.
 **U31 · `decide()`** — one rule, three choices (OD32)
 Keep what's in the book (default; counted `skipped`, ⛔ never `failed`) · take the file's version
 (overwrite name/email/notes, **MERGE** tags) · fill blanks only. Bulk choice with a per-row override keyed
-by **file row number** (⛔ not array index). A row whose contact is suppressed **collapses to keep**
+by **file row number** (⛔ not array index). ⛔ A row whose `sourceRef` is `erasure` (emptied by an erasure, U18b — `ERASURE_EVIDENCE`) **collapses to keep** too, or re-importing an old spreadsheet writes the erased person's name back (S10 review). A row whose contact is suppressed **collapses to keep**
 whatever was asked. ⛔ Consent is never written by an import path — a withdrawn row can never be
 re-granted by a file.
 **Guard:** `test:contacts-import`. **RED:** write `GIVEN` over a `WITHDRAWN` row → red; remove the

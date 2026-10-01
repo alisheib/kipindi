@@ -1,6 +1,6 @@
 import { db } from "@/lib/server/store";
 import type { MessagingKey, StoredMarketingContact } from "@/lib/server/store";
-import { parseTzNumber } from "@/lib/tz-msisdn";
+import { toMsisdn255 } from "@/lib/phone-normalize";
 import { ledgerStamp } from "@/lib/server/marketing/ledger-stamp";
 
 /**
@@ -19,9 +19,13 @@ import { ledgerStamp } from "@/lib/server/marketing/ledger-stamp";
  *      a WITHDRAWN row recorded by the officer. Append-only: the erasure is the person's last word, not
  *      an edit of their history. Nothing is written for a number with no consent to withdraw.
  *   2. EMPTY every book row for the person — found by the account LINK and by the account NUMBER (a
- *      contact imported before they signed up carries no link): link, name, e-mail, notes, tags, source
- *      and import references cleared, `rawInput` reduced to the key, and the consent cache set to what the
- *      ledger now says. The row is kept, emptied (it holds nothing but the number).
+ *      contact imported before they signed up carries no link): link, name, e-mail, notes, tags and import
+ *      reference cleared, `rawInput` reduced to the key, the consent cache set to what the ledger now says,
+ *      and `sourceRef` set to `erasure` — the mark the importer (U31) collapses to KEEP on.
+ *      ⚖️ WHEN IN DOUBT, ERASE: an unlinked row found by the number is emptied whatever its age, though it
+ *      may be a previous holder's — emptying another person's row harms nobody, leaving the erased person's
+ *      name would breach the request. The export takes the opposite side of the same doubt
+ *      (`dsar.ts`: when in doubt, do not disclose).
  *
  * ⛔ NO STOP-LIST ROW, ON PURPOSE (the S10 review). An OPERATOR suppression can be lifted by nobody —
  * `lift` refuses every reason but WITHDRAWN — and a Tanzanian number outlives its holder: the operator
@@ -55,15 +59,20 @@ export type MarketingErasureCounts = {
  *  shown — the source is OPERATOR, and `recordedBy` names the officer. English, like the console. */
 export const ERASURE_LEDGER_WORDING = "Erasure request fulfilled — marketing consent withdrawn.";
 
-/** The evidence on the ledger row. ⛔ Never the account id or the request id. */
+/** The evidence on the ledger row, and the `sourceRef` an emptied book row carries. ⛔ Never the account
+ *  id or the request id. ⭐ On the book row it is the importer's signal (U31): a row marked `erasure`
+ *  COLLAPSES TO KEEP whatever a file asks, so re-importing an old spreadsheet cannot write the erased
+ *  person's name back — the job the first cut's stop was doing, without a stop nobody can lift. */
 export const ERASURE_EVIDENCE = "erasure";
 
-/** The bare `255…` key of a number, or null for anything that is not a whole sendable number — a
- *  tombstone above all (`erased:usr_…` keeps its hex digits through a naive normaliser). */
+/** The bare `255…` key of an account's number, keyed EXACTLY as the ledger writers key it
+ *  (`toMsisdn255`, `consent-ledger.ts`) — so a number on a prefix the send table refuses (064) still finds
+ *  its own rows — and null for a tombstone (`erased:usr_712345678bcd` keeps hex digits that a normaliser
+ *  turns into a stranger's number) or anything that is not 255 + a mobile 6/7 + eight digits. */
 export function marketingKeyOf(phone: string | null | undefined): string | null {
   if (!phone || phone.startsWith("erased:")) return null;
-  const parsed = parseTzNumber(phone);
-  return parsed.verdict === "ok" && parsed.msisdn ? parsed.msisdn : null;
+  const key = toMsisdn255(phone);
+  return /^255[67][0-9]{8}$/.test(key) ? key : null;
 }
 
 const keyFor = (identifier: string): MessagingKey => ({ channel: "SMS", identifier, category: "MARKETING" });
@@ -120,7 +129,7 @@ export async function eraseMarketingFor(input: {
     const latest = await Promise.resolve(db.messagingConsent.latestFor(keyFor(c.msisdn)));
     const consentState = latest ? latest.status : "UNKNOWN";
     const emptied = c.userId === null && c.displayName === null && c.email === null && c.notes === null
-      && c.tags.length === 0 && c.sourceRef === null && c.importId === null && c.rawInput === c.msisdn
+      && c.tags.length === 0 && c.sourceRef === ERASURE_EVIDENCE && c.importId === null && c.rawInput === c.msisdn
       && c.consentState === consentState;
     if (emptied) continue;
     await Promise.resolve(db.marketingContact.update(c.id, {
@@ -129,7 +138,7 @@ export async function eraseMarketingFor(input: {
       email: null,
       notes: null,
       tags: [],
-      sourceRef: null,
+      sourceRef: ERASURE_EVIDENCE,
       importId: null,
       rawInput: c.msisdn,
       consentState,

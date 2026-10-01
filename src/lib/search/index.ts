@@ -23,6 +23,8 @@ export {
   // ⭐ C7 step 6 · the desk's own owner-only account lookup (ruling 387) — its own grammar, never a widened
   //    `USER_SEARCH`, which would change what a bare token searches on /admin/players.
   ACCOUNT_PICKER_SEARCH,
+  // ⭐ U20 · the contact book — NAME only; a number is found whole, by `parseTzNumber`, never by substring.
+  CONTACT_SEARCH,
   fieldNames, allColumns,
 } from "./fields";
 export type { EntitySchema, FieldSpec, FieldKind } from "./fields";

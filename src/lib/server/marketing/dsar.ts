@@ -12,15 +12,22 @@ import { marketingKeyOf } from "@/lib/server/marketing/erase";
  * agreed to — and whether they are being marketed at all — is not the whole answer (PDPA 2022 / GDPR Art. 15).
  *
  * ⛔ ONLY WHAT IS THIS PERSON'S, AND A NUMBER IS NOT A PERSON (the S10 review). Tanzanian numbers are
- * recycled, so a record keyed by the number may be a PREVIOUS holder's. Ledger and stop-list rows count
- * only from the day this account was created; a book row counts when it is LINKED to the account, or
- * found by the account's number, unlinked, and created after the account. Without that bound a new
+ * recycled, so a record keyed by the number may be a PREVIOUS holder's. Ledger rows count only from the
+ * day this account was created; a book row counts when it is LINKED to the account, or found by the
+ * account's number, unlinked, and created after the account; a linked row's OTHER number counts only
+ * while no other live account holds it (the holder check `erase.ts` makes). Without the bound a new
  * owner's own download handed them the last holder's consent history — and the fact that they had asked
  * a betting site to erase them.
+ * ⭐ A STOP THAT REFUSES THIS PERSON NOW IS SHOWN WHATEVER ITS AGE — a re-armed suppression keeps its
+ * first `createdAt` (both twins), so a date bound alone would hide a stop that is refusing them today.
+ * One that began before the account is listed with `createdAt: null` ("before this account"), so the
+ * previous holder's date is not disclosed.
+ * ⚖️ WHEN IN DOUBT, DO NOT DISCLOSE — the opposite side of the doubt erasure takes (`erase.ts`).
  * ⛔ AN ALLOWLIST, NEVER THE RAW ROW. Left out on purpose: `recordedBy` (a member of STAFF — another
  * person's data), `evidence` (internal references), every row id, and the book's `notes` — staff free
- * text that can name third parties; an officer reviews a note before it is released, the self-service
- * door cannot. A new column reaches the export only by being added here.
+ * text that can name third parties. ⚠️ Both doors share this allowlist, so NEITHER carries notes: an
+ * officer who is asked for them reads the row on the console, redacts, and releases by hand.
+ * A new column reaches the export only by being added here.
  * ⛔ An erased account's `phoneE164` is a tombstone (`erased:usr_…`), never a key: `marketingKeyOf`
  * refuses it, so its digits cannot be read as some stranger's number.
  */
@@ -28,7 +35,8 @@ export type MarketingDsarSection = {
   contacts: Array<Pick<StoredMarketingContact,
     "msisdn" | "displayName" | "email" | "operator" | "source" | "consentState" | "suppressedAt" | "tags" | "createdAt" | "updatedAt">>;
   consent: Array<{ status: string; source: string; wording: string; locale: string; createdAt: string }>;
-  suppression: Array<{ reason: string; createdAt: string; liftedAt: string | null }>;
+  /** `createdAt: null` — the stop began before this account existed (still listed while it refuses them). */
+  suppression: Array<{ reason: string; createdAt: string | null; liftedAt: string | null }>;
 };
 
 export async function marketingDsarView(user: Pick<StoredUser, "id" | "phoneE164" | "createdAt">): Promise<MarketingDsarSection> {
@@ -43,7 +51,12 @@ export async function marketingDsarView(user: Pick<StoredUser, "id" | "phoneE164
   }
   const numbers = new Set<string>();
   if (accountNumber) numbers.add(accountNumber);
-  for (const c of rows.values()) numbers.add(c.msisdn);
+  for (const c of rows.values()) {
+    if (c.msisdn === accountNumber) continue;
+    // ⛔ A number another live account holds now is that account's record, not this person's.
+    const holder = await Promise.resolve(db.user.findByPhone(`+${c.msisdn}`));
+    if (!holder || holder.id === user.id) numbers.add(c.msisdn);
+  }
 
   const consent: MarketingDsarSection["consent"] = [];
   const suppression: MarketingDsarSection["suppression"] = [];
@@ -54,8 +67,10 @@ export async function marketingDsarView(user: Pick<StoredUser, "id" | "phoneE164
       consent.push({ status: r.status, source: r.source, wording: r.wording, locale: r.locale, createdAt: r.createdAt });
     }
     for (const s of await Promise.resolve(db.suppression.listFor(identifier))) {
-      if (s.channel !== "SMS" || s.category !== "MARKETING" || s.createdAt < since) continue;
-      suppression.push({ reason: s.reason, createdAt: s.createdAt, liftedAt: s.liftedAt ?? null });
+      if (s.channel !== "SMS" || s.category !== "MARKETING") continue;
+      const active = !s.liftedAt;
+      if (s.createdAt < since && !active) continue;
+      suppression.push({ reason: s.reason, createdAt: s.createdAt < since ? null : s.createdAt, liftedAt: s.liftedAt ?? null });
     }
   }
 

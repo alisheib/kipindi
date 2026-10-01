@@ -276,8 +276,8 @@ export const MUTATIONS = [
     name: "memory-phone-index-never-rekeyed (the erased account is still found by its old number)",
     file: STORE,
     suite: "erasure",
-    from: `      if (next.phoneE164 !== u.phoneE164) {`,
-    to: `      if (false) {`,
+    from: `        if (store.usersByPhone.get(u.phoneE164) === id) store.usersByPhone.delete(u.phoneE164);`,
+    to: `        void 0;`,
   },
   {
     // The export hands over the raw ledger row: a staff member's id and the internal evidence go
@@ -305,5 +305,44 @@ export const MUTATIONS = [
     suite: "erasure",
     from: `  const accountNumber = marketingKeyOf(user.phoneE164);`,
     to: `  const accountNumber = user.phoneE164.replace(/[^0-9]/g, "").replace(/^7/, "2557");`,
+  },  {
+    // A number that never consented gets a WITHDRAWN row anyway — "consent withdrawn" for consent never given.
+    name: "erasure-withdraws-what-was-never-given (a WITHDRAWN row on a number with no consent)",
+    file: MKT_ERASE,
+    suite: "erasure",
+    from: `    if (latest?.status !== "GIVEN") continue;`,
+    to: `    if (latest?.status === "WITHDRAWN") continue;`,
+  },
+  {
+    // The emptied row loses its mark: a re-import with "take the file's version" writes the name back (U31).
+    name: "erasure-row-unmarked (the importer can no longer tell the row was erased)",
+    file: MKT_ERASE,
+    suite: "erasure",
+    from: `      sourceRef: ERASURE_EVIDENCE,`,
+    to: `      sourceRef: null,`,
+  },
+  {
+    // The export reads an unlinked by-number row whatever its age or link — a previous holder's book row.
+    name: "dsar-by-number-row-unbounded (a previous holder's book row reaches the new owner's file)",
+    file: MKT_DSAR,
+    suite: "erasure",
+    from: `    if (byNumber && byNumber.userId === null && byNumber.createdAt >= since) rows.set(byNumber.id, byNumber);`,
+    to: `    if (byNumber) rows.set(byNumber.id, byNumber);`,
+  },
+  {
+    // The export follows a linked row's old number into ANOTHER live account's consent record.
+    name: "dsar-no-holder-check (another live account's ledger reaches this person's file)",
+    file: MKT_DSAR,
+    suite: "erasure",
+    from: `    if (!holder || holder.id === user.id) numbers.add(c.msisdn);`,
+    to: `    numbers.add(c.msisdn); void holder;`,
+  },
+  {
+    // A stop refusing this person today is hidden because it was first created before their account.
+    name: "dsar-hides-an-active-old-stop (a re-armed stop keeps its first date and drops out)",
+    file: MKT_DSAR,
+    suite: "erasure",
+    from: `      if (s.createdAt < since && !active) continue;`,
+    to: `      if (s.createdAt < since) continue;`,
   },
 ];

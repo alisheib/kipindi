@@ -33,7 +33,7 @@ import {
   kindsFor, showsCleared, MONEY_FILTER_KINDS, ACCOUNT_FILTER_KINDS,
   type NotificationFilter, type NotificationSort,
 } from "@/lib/notification-filters";
-import { parseQuery, queryToWhere, fieldNames, NOTIFICATION_SEARCH } from "@/lib/search";
+import { parseQuery, queryToWhere, fieldNames, NOTIFICATION_SEARCH, CONTACT_SEARCH } from "@/lib/search";
 import { FINAL_REFUSAL_CODES } from "@/lib/kyc-refusal";
 import type {
   StoredUser,
@@ -69,7 +69,10 @@ import type {
   StoredContactList,
   StoredContactListMember,
   ContactListKey,
-  MarketingContactPatch } from "./store";
+  MarketingContactPatch,
+  ContactPageQuery,
+  ContactPage,
+  ContactBookSummary } from "./store";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -3604,6 +3607,39 @@ export const prismaDb = {
         if ((err as { code?: string })?.code === "P2025") return null;
         throw err;
       }
+    },
+    /** U20 · ONE PAGE and the whole match's count, in one round trip each. ⛔ The number is matched EXACTLY
+     *  (`msisdn` equals); a name goes through the shared grammar's `queryToWhere`, and an unexpressible
+     *  query is ZERO rows, never everything. The order mirrors the memory twin: nameless last, ties on id. */
+    page: async (q: ContactPageQuery): Promise<ContactPage> => {
+      const nameWhere = q.name ? queryToWhere(q.name, CONTACT_SEARCH) : {};
+      if (nameWhere === null) return { rows: [], total: 0 };
+      const where = { AND: [q.msisdn !== null ? { msisdn: q.msisdn } : {}, nameWhere] } as never;
+      const orderBy = (q.sort === "name"
+        ? [{ displayName: { sort: q.dir, nulls: "last" } }, { id: q.dir }]
+        : q.sort === "operator"
+          ? [{ ndc: q.dir }, { id: q.dir }]
+          : [{ createdAt: q.dir }, { id: q.dir }]) as never;
+      const [rows, total] = await Promise.all([
+        pc().marketingContact.findMany({ where, orderBy, skip: q.offset, take: q.limit }),
+        pc().marketingContact.count({ where }),
+      ]);
+      return { rows: rows.map(toStoredMarketingContact), total };
+    },
+    /** U20 · the WHOLE book's counts — one groupBy and one count, never the rows. */
+    summary: async (): Promise<ContactBookSummary> => {
+      const [groups, suppressed] = await Promise.all([
+        pc().marketingContact.groupBy({ by: ["consentState"], _count: { _all: true } }),
+        pc().marketingContact.count({ where: { suppressedAt: { not: null } } }),
+      ]);
+      const out: ContactBookSummary = { total: 0, given: 0, unknown: 0, withdrawn: 0, suppressed };
+      for (const g of groups as Array<{ consentState: string; _count: { _all: number } }>) {
+        out.total += g._count._all;
+        if (g.consentState === "GIVEN") out.given += g._count._all;
+        else if (g.consentState === "WITHDRAWN") out.withdrawn += g._count._all;
+        else out.unknown += g._count._all;
+      }
+      return out;
     },
     listAll: async (): Promise<StoredMarketingContact[]> => {
       const rows = await pc().marketingContact.findMany({

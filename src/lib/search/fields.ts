@@ -39,6 +39,18 @@ export type EntitySchema = {
   viewModel?: true;
 };
 
+/**
+ * U20 · THE CONTACT BOOK (`/admin/contacts`). ⛔ NAME ONLY. A number is found as a WHOLE number, through
+ * `parseTzNumber`, matched exactly by the store — never by a substring of `msisdn`: GROWTH sees every number
+ * masked, and a substring search would let that role rebuild one digit by digit.
+ */
+export const CONTACT_SEARCH: EntitySchema = {
+  fields: {
+    name: { columns: ["displayName"], kind: "text" },
+  },
+  default: ["displayName"],
+};
+
 /** Every column named anywhere in a schema — used by the adoption guard. */
 export function allColumns(s: EntitySchema): string[] {
   return [...new Set(Object.values(s.fields).flatMap((f) => f.columns))];

@@ -743,7 +743,7 @@ section("8 · ⭐ THE SWEEP — nothing anywhere still holds an erased identifie
     "txns": "Transaction.msisdn — the payment instrument on a money record (POCA Cap 423 §16, 7y)",
     // ── U18b · the NUMBER is what a stop list stops; nothing else of the person is kept with it ──
     "marketingLedgerKeys": "MessagingConsent.identifier — the append-only consent record (GN 478T reg 51(1)), whose last row is the WITHDRAWN this erasure wrote; the ROWS themselves are swept strictly in consentLedger",
-    "marketingContactKeys": "MarketingContact.msisdn — the emptied book row is kept so a re-import of the number is 'in the book, suppressed — keep' (U31) instead of re-collecting the person",
+    "marketingContactKeys": "MarketingContact.msisdn — the emptied book row is kept, marked sourceRef 'erasure', so a re-import of the number collapses to KEEP (U31) instead of writing the person's name back",
   };
   // ⛔ The OTHER columns are swept STRICTLY (the S10 review: allowlisting a whole bucket exempts it from
   // every needle, so a name written into a ledger row's evidence would have passed). Each marketing store's
@@ -1105,9 +1105,9 @@ section("12 · ⭐ MARKETING — the consent withdrawn, the book emptied (U18b)"
 
   for (const id of ["mc_erase_now", "mc_erase_old"]) {
     const c = await db.marketingContact.find(id);
-    ok(`12.6 ${id} is EMPTIED, not deleted: link broken, name / e-mail / notes / tags / source and import references cleared`,
+    ok(`12.6 ${id} is EMPTIED, not deleted: link broken, name / e-mail / notes / tags / import reference cleared, marked 'erasure' for the importer`,
       !!c && c.userId === null && c.displayName === null && c.email === null && c.notes === null
-        && c.tags.length === 0 && c.sourceRef === null && c.importId === null && c.rawInput === c.msisdn, JSON.stringify(c));
+        && c.tags.length === 0 && c.sourceRef === ERASURE_EVIDENCE && c.importId === null && c.rawInput === c.msisdn, JSON.stringify(c));
   }
   const now = await db.marketingContact.find("mc_erase_now");
   const old = await db.marketingContact.find("mc_erase_old");
@@ -1128,10 +1128,10 @@ section("12 · ⭐ MARKETING — the consent withdrawn, the book emptied (U18b)"
   // and those digits make a valid-shaped Tanzanian number. A stranger lives at it here.
   const tomb = "erased:usr_712345678bcd";
   const naive = toMsisdn255(tomb);
-  await db.marketingContact.create(contactRow("mc_erase_stranger", naive, null, "Stranger Mtu"));
+  const planted = await db.marketingContact.create(contactRow("mc_erase_stranger", naive, null, "Stranger Mtu"));
   const strangerView = await marketingDsarView({ id: "usr_712345678bcd", phoneE164: tomb, createdAt: iso(NOW - 900 * DAY) });
   ok("12.9b ⛔ an erased account's tombstone is never read as a number — a stranger's row at the digits it carries stays out of the file",
-    /^255[67]/.test(naive) && naive.length === 12 && strangerView.contacts.length === 0 && marketingKeyOf(tomb) === null,
+    planted !== null && /^255[67]/.test(naive) && naive.length === 12 && strangerView.contacts.length === 0 && marketingKeyOf(tomb) === null,
     `naive=${naive} contacts=${strangerView.contacts.length}`);
 
   // ⭐ THE RECYCLED NUMBER. The operator hands the erased subject's number to somebody new, who signs up
@@ -1201,6 +1201,28 @@ section("12 · ⭐ MARKETING — the consent withdrawn, the book emptied (U18b)"
   ok("12.10d ⛔ a ledger row OLDER than her account — a previous holder's — is not in her file",
     !bundleJson.includes("previous holder"), bundleJson);
 
+  // ⭐ A STOP OLDER THAN THE ACCOUNT: hidden while lifted (a previous holder's), SHOWN once it refuses this
+  // person — a re-armed suppression keeps its first createdAt, so the date is withheld ("before this account").
+  const M4 = "usr_erase_m4", M4_KEY = "255712000420", M4_CREATED = iso(NOW - 30 * DAY);
+  await db.suppression.create({
+    id: "sup_m4_prev", ...keyOf(M4_KEY), reason: "WITHDRAWN", evidence: "optout:prev", recordedBy: null,
+    createdAt: iso(NOW - 400 * DAY), liftedAt: null, liftedReason: null,
+  });
+  await db.suppression.lift(keyOf(M4_KEY), "optout:prev", iso(NOW - 390 * DAY));
+  const m4User = { id: M4, phoneE164: "+255712000420", createdAt: M4_CREATED };
+  const liftedView = await marketingDsarView(m4User);
+  // The new holder stops by their own link: the SAME row is re-armed, its createdAt untouched.
+  await db.suppression.create({
+    id: "sup_m4_new", ...keyOf(M4_KEY), reason: "WITHDRAWN", evidence: "optout:new", recordedBy: null,
+    createdAt: iso(NOW - 1 * DAY), liftedAt: null, liftedReason: null,
+  });
+  const armedView = await marketingDsarView(m4User);
+  ok("12.10e ⛔ a previous holder's LIFTED stop, older than the account, is not in the file",
+    liftedView.suppression.length === 0, JSON.stringify(liftedView.suppression));
+  ok("12.10f ⭐ …but once it refuses THIS person it is listed — undated, so the previous holder's date stays private",
+    armedView.suppression.length === 1 && armedView.suppression[0].createdAt === null && armedView.suppression[0].liftedAt === null,
+    JSON.stringify(armedView.suppression));
+
   const r2 = await anonymizeClosedAccount(M2, { now: NOW, officerId: DPO });
   const stops = await db.suppression.listFor(M2_KEY);
   ok("12.11 her own LIFTED stop is left exactly as it was — erasure neither writes nor re-arms a stop",
@@ -1243,6 +1265,9 @@ section("12 · ⭐ MARKETING — the consent withdrawn, the book emptied (U18b)"
   }
   await db.marketingContact.create(contactRow("mc_erase_m3", M3_KEY, M3, "Baraka"));
   await db.marketingContact.create(contactRow("mc_erase_m3_old", M3_OLD, M3, "Baraka"));
+  const m3View = await marketingDsarView({ id: M3, phoneE164: M3_PHONE, createdAt: iso(NOW - 80 * DAY) });
+  ok("12.16b ⛔ the export does not hand Baraka the consent record of the LIVE account that now holds his old number",
+    m3View.consent.length === 1 && m3View.contacts.length === 2, JSON.stringify(m3View.consent));
   const first = await eraseMarketingFor({ userId: M3, phoneE164: M3_PHONE, officerId: DPO });
   const again = await eraseMarketingFor({ userId: M3, phoneE164: M3_PHONE, officerId: DPO });
   ok("12.15 ⭐ IDEMPOTENT, EXECUTED · the step called a second time on the same account does nothing and says so",
