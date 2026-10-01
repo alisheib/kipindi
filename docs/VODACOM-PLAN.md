@@ -151,7 +151,21 @@ WP3 journey unread counter → WP4 captioned balance → WP5 Akaunti hub → WP6
 WP6b the swap + census + header-fit → WP7 overlays → WP8 short titles on positions → WP9 Tiketi zangu → WP10 sell look
 (+ the live grace fix) → WP11 `--rail-h` → WP12 proof, merge, deploy.
 
-**Progress:** plan filed.
+**Progress:**
+- Plan filed (`5a820b9c`).
+- **A0 ✅ `c25dcfb8` (live for every player):** the away summary's "view" link used `?filter=settled`, which the
+  positions page never reads, so it opened ALL tickets; it now opens the settled lens. `test:presence-class` 6.8/6.9
+  read the parser's keys and lenses from `portfolio.ts`; `red:presence-class` restores the shipped defect (19/19).
+- **WP0 baseline — today's reds, re-derived 2026-10-01 at `5a820b9c` + A0** (`test:all --skip responsive,motion`,
+  1,550 s): **409/431 green.** The 22 reds are pre-existing on main and none touches S6's files — S6 is neither blamed
+  nor credited for them: live-target-safe (§1b ratchet 13 > 5), marketing-consent-ledger, type-scale (§6 tracking
+  239 > 235), guards-exist, red-anchors (bar-geometry `sort-summary-unbound` and updown-handover `no-handover-at-all`
+  anchors missing after other lanes' commits), revoked-deadend, admin-section-gate, needle-rest (the three ~50 s
+  server-backed suites), house-bot-holder-lifecycle (script population 30 > 25), house-bot-reports,
+  house-bot-surfaces, kyc-copy-truth, stacking (§6.1 an unnamed z=11 in globals.css), tap-target (§5.1 admin
+  generate-button 32 px), decomment (§2.1 23 > 20), updown-digest, updown-source-class, payout-view, orphans
+  (marketing + landing-v3 scripts), eyebrow-roles, validation-focus (admin affiliate fields), failure-reasons (§10
+  agent apply toast). Every later S6 battery is read against this list.
 
 ## §0h · Points for Ali — taken while he was away (2026-10-01 →)
 
