@@ -194,9 +194,9 @@ const EXPECTED_DIFFS = [
     field: "notFound.robots",
     routes: ["/account"],
     from: ["index, follow", "noindex"].join(NL),
-    to: "noindex, nofollow",
+    to: ["noindex", "noindex, nofollow"].join(NL),
     cells: VIEWERS.length * LOCALES.length * WIDTHS.length,
-    reason: "S6 WP5 (A2): /account's own generateMetadata answers every request the journey is not shown to with the not-found page's title and robots noindex, nofollow. On a matched route that page metadata REPLACES the root layout's 'index, follow', and Next adds a noindex of its own only to a 404, so at HTTP 200 the bytes carry the page's one robots meta where an unmatched path sends that pair. Still noindex for a crawler (§3.3 holds it on every run); the title is the same string (§3.2).",
+    reason: "S6 WP5 (A2): /account's own generateMetadata answers every request the journey is not shown to with the not-found page's title and robots noindex, nofollow. On a matched route that page metadata REPLACES the root layout's 'index, follow', and Next adds a noindex of its own only to a 404, so at HTTP 200 the bytes carry Next's not-found noindex plus the page's own noindex, nofollow (measured on the first compare after WP5: every /account cell) where an unmatched path sends the pair above. Still noindex for a crawler (§3.3 holds it on every run); the title is the same string (§3.2).",
   },
 ];
 /** The named differences seen in some of their cells but not all. */
@@ -770,10 +770,10 @@ async function proveRed() {
   // the control path, stays a failure.
   const nf = (robots) => ({ ...cell(200, "f1"), notFound: { title: "Page not found · 404", robots, main: "404 Page not found" } });
   const pair = ["index, follow", "noindex"];
-  const robotsNamed = run("/account", nf(pair), nf(["noindex, nofollow"]));
+  const robotsNamed = run("/account", nf(pair), nf(["noindex", "noindex, nofollow"]));
   const robotsOther = run("/account", nf(pair), nf(["index, follow"]));
-  const robotsElsewhere = run(NOT_FOUND, nf(pair), nf(["noindex, nofollow"]));
-  ok("P.4b /account's robots pair → one 'noindex, nofollow' is the named difference; another value, or the same change on the control path, stays a failure",
+  const robotsElsewhere = run(NOT_FOUND, nf(pair), nf(["noindex", "noindex, nofollow"]));
+  ok("P.4b /account's robots pair → 'noindex' + 'noindex, nofollow' is the named difference; another value, or the same change on the control path, stays a failure",
     robotsNamed.unexpected.length === 0 && robotsNamed.expected.map((e) => e.id).join() === "account-robots-noindex"
       && robotsOther.unexpected.length === 1 && robotsElsewhere.unexpected.length === 1,
     JSON.stringify({ robotsNamed, robotsOther, robotsElsewhere }).slice(0, 300));

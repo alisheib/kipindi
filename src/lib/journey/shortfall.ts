@@ -35,7 +35,7 @@
  *
  * Pure: the only import is the deposit bounds from `validators.ts`, which the deposit form already ships to the
  * browser. The source-of-funds thresholds are INPUTS (declared in `wallet-service.ts`, a server module, where
- * `test:kyc-cert-d3` requires them to stay).
+ * `test:cert-d3` requires them to stay).
  */
 import { DEPOSIT_MAX_TZS, DEPOSIT_MIN_TZS } from "@/lib/server/validators";
 
