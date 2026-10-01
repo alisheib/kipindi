@@ -251,7 +251,12 @@ const BASELINE = new Set<string>([
   "m-axis-reveal", "m-behind", "m-focusable", "m-needle", "m-press",
   "m-raise", "m-seal", "m-skeleton", "mat-flat", "mat-raised-i", "needle-settle-loss",
   // ── One-off page furniture whose page was rebuilt around it.
-  "market-search", "mcardp-q-sw", "tooltip-popover", "value-flash", "value-delta",
+  "market-search", "mcardp-q-sw", "tooltip-popover", "value-flash",
+  /* ⭐ `value-delta` CAME OFF THIS LIST 2026-10-01 (S6 WP4), the good direction again, like `m-indicator` above:
+     the journey header's captioned balance needed a fading ±delta, and this was the kit's recipe for exactly
+     that, waiting for its consumer. ⚠️ Its body was read before reviving it, as §1.2 demands: `animation:
+     value-delta-fade var(--t-stage) var(--m-glide) forwards`, on ladder tokens, with the same in, hold and out
+     keyframe the classic pill's private `wbp-delta-fade` mirrors, so nothing superseded came back with it. */
   // ⚠️ THREE CLASSES CAME OFF THIS LIST BEFORE IT EVER SHIPPED, and §1.2 is why — the first
   // draft was written from a hand-run probe and §1.2 rejected three of its guesses:
   //   · `.pnl-val` reads "script-only" — `type-scale.test.mts` names it. Nothing RENDERS it

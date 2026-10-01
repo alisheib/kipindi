@@ -13,6 +13,9 @@ import { useT } from "@/lib/i18n";
  * the player a calm "yes, your money moved" affordance. Reduced-
  * motion users see the number snap with no pulse — same visual end
  * state, no motion.
+ *
+ * ⭐ S6 (2026-10-01): the journey header's captioned balance, `WalletBalanceCaptioned`, is the last
+ * export in this file. Both capsules roll and flash through ONE hook, `useBalanceRoll` (A18).
  */
 
 import { useEffect, useRef, useState } from "react";
@@ -101,24 +104,23 @@ function motionOff(): boolean {
 }
 
 /**
- * `balance` is the LIVE figure — the bar reads it through `useLiveBalance` and hands it down, so
- * the bar's zero/funded decision and this capsule can never disagree about the same number.
- * `held` is the wallet's freeze (app-shell: `wallet.status !== "ACTIVE"`); the Wallet it opens
- * then says so and offers no money buttons.
+ * ⭐ A18 · THE ROLL AND THE FLASH, WRITTEN ONCE — and both capsules call it: the classic pill below and the
+ * journey header's captioned balance at the end of this file (S6 · SJ-15). The journey capsule needs the
+ * same rolling counter and the same gilt pulse, and the first plan copied these lines into a second private
+ * hook: two definitions of one motion, one edit away from disagreeing (the S6 critic, G19). So the classic
+ * body was MOVED here, line for line, and the classic pill now calls it.
+ * ⛔ Same state, same two effects, same clamp gates, same timings: the classic pill renders exactly what it
+ * rendered before, and its markup was not touched, which is what keeps every red anchor that points into
+ * it resolving once.
+ * ⛔ It takes the figure; it never subscribes. The live figure arrives through `useLiveBalance` above, whose
+ * listener stays the only one in this file (`test:layout-staleness` 5.1b counts it).
  */
-export function WalletBalancePill({ balance, held = false }: { balance: number; held?: boolean }) {
-  const { t } = useT();
-  const effectiveBalance = balance;
-  // ⭐ R1 · THE CAPSULE OPENS THE WALLET instead of navigating to it. The capsule is the anchor:
-  // from lg the panel hangs under it, right edges aligned.
-  const [open, setOpen] = useState(false);
-  const capsuleRef = useRef<HTMLDivElement>(null);
+function useBalanceRoll(effectiveBalance: number): { display: number; flashing: boolean; delta: number } {
   const [display, setDisplay] = useState(effectiveBalance);
   const [flashing, setFlashing] = useState(false);
   const [delta, setDelta] = useState(0);
   const previousRef = useRef(effectiveBalance);
   const rafRef = useRef<number | null>(null);
-  const hidden = useCashHidden();
 
   useEffect(() => {
     const from = previousRef.current;
@@ -168,6 +170,25 @@ export function WalletBalancePill({ balance, held = false }: { balance: number; 
     },
     [],
   );
+
+  return { display, flashing, delta };
+}
+
+/**
+ * `balance` is the LIVE figure — the bar reads it through `useLiveBalance` and hands it down, so
+ * the bar's zero/funded decision and this capsule can never disagree about the same number.
+ * `held` is the wallet's freeze (app-shell: `wallet.status !== "ACTIVE"`); the Wallet it opens
+ * then says so and offers no money buttons.
+ */
+export function WalletBalancePill({ balance, held = false }: { balance: number; held?: boolean }) {
+  const { t } = useT();
+  const effectiveBalance = balance;
+  // ⭐ R1 · THE CAPSULE OPENS THE WALLET instead of navigating to it. The capsule is the anchor:
+  // from lg the panel hangs under it, right edges aligned.
+  const [open, setOpen] = useState(false);
+  const capsuleRef = useRef<HTMLDivElement>(null);
+  const { display, flashing, delta } = useBalanceRoll(effectiveBalance);
+  const hidden = useCashHidden();
 
   return (
     /* ⭐ ONE CAPSULE, TWO CONTROLS — the balance and its eye are a single visual unit.
@@ -411,6 +432,79 @@ export function WalletBalancePill({ balance, held = false }: { balance: number; 
       />
     </div>
     <WalletSheet open={open} onClose={() => setOpen(false)} balance={effectiveBalance} held={held} anchorRef={capsuleRef} />
+    </>
+  );
+}
+
+/**
+ * WalletBalanceCaptioned — the journey header's balance (S6 · SJ-15, build map 2): the caption "Salio" over
+ * the figure "TZS 2,000". Only the journey header renders it (S6 WP6a), and that header mounts only for a
+ * journey viewer (WP6b), so the classic bar and everyone outside the journey are untouched.
+ *
+ * ⭐ WHAT IT KEEPS FROM THE CLASSIC PILL: the roll and the gilt flash (`useBalanceRoll`, one hook for both),
+ * the reserved box that is the wider of figure and mask (D31), the compact form from TZS 1,000,000
+ * (`formatBalancePill`, VODACOM-PLAN §0h point 14), the gold figure on a live balance, and the Wallet a tap
+ * opens: the same WalletSheet, in the journey's words ("Weka pesa", "Toa pesa").
+ * ⭐ WHAT IT DROPS, BY RULING (SJ-15): the eye and the caret. Hiding balances lives in the Wallet it opens,
+ * beside Withdraw, so both stay one tap from the capsule (V19, redefined).
+ * ⛔ THE CURRENCY WORD SHOWS AT EVERY WIDTH. The classic chip drops it below 640 to make room for its eye;
+ * this capsule has no eye, and the S4 fit was measured with the whole string down to 320 (VODACOM-PLAN §0g
+ * design call 10). So the figure is one formatBalancePill string, never split.
+ * ⭐ A11 · ITS NAME IS ITS WORDS. The label is built from the very strings it paints, the caption and the
+ * at-rest figure, so a voice-control user can say what they see (WCAG 2.5.3). A frozen wallet's caption
+ * carries the frozen word, so its name does too; a masked balance says the hide-balances words instead of
+ * reading the dots aloud. The classic "Wallet · …" name would contradict the visible caption.
+ * ⭐ THE ±DELTA TAKES THE CAPTION'S ROW FOR A MOMENT; IT NEVER SHARES IT. The plan set it at the left end of
+ * the caption row, and the widths say no: at 320 the figure box is 64.8px, "Balance" takes about 40 of it and
+ * "+1,000" needs 34, so the two would overprint in English. It covers the whole row on the capsule's own fill
+ * and crossfades with the caption. A frozen wallet shows none: its caption is the frozen word, which nothing
+ * may cover, and the gilt ring still marks the move.
+ * ⚠️ All paint is in globals.css (the kp-jbal rules), on tokens. The flash is a data attribute the stylesheet
+ * answers, not an inline style, so the classic capsule's inline border stays the only one in this file.
+ */
+export function WalletBalanceCaptioned({ balance, held = false }: { balance: number; held?: boolean }) {
+  const { t } = useT();
+  const [open, setOpen] = useState(false);
+  const capsuleRef = useRef<HTMLButtonElement>(null);
+  const { display, flashing, delta } = useBalanceRoll(balance);
+  const hidden = useCashHidden();
+  // A frozen wallet keeps its capsule and says so in the caption ("Salio · limegandishwa"), beside a lock.
+  const caption = held ? t.common.balanceFrozen : t.journey.balanceCaption;
+  // The TARGET, not the rolling value: the reserved box and the name are final from the first frame.
+  const figure = formatBalancePill(balance);
+
+  return (
+    <>
+      <button
+        ref={capsuleRef}
+        type="button"
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        onClick={() => setOpen(true)}
+        aria-label={hidden ? `${caption} · ${t.common.hideBalances}` : `${caption} ${figure}`}
+        className="kp-jbal"
+        data-flash={flashing ? "" : undefined}
+        data-held={held ? "" : undefined}
+        data-masked={hidden ? "" : undefined}
+        data-testid="journey-balance"
+      >
+        {held && <I.lock s={16} className="kp-jbal__lock" />}
+        <span className="kp-jbal__col">
+          <span className="kp-jbal__cap">{caption}</span>
+          <span className="kp-jbal__fig amount">
+            <span aria-hidden className="kp-jbal__sizer">{figure}</span>
+            <span aria-hidden className="kp-jbal__sizer">{BALANCE_MASK}</span>
+            <span>{hidden ? BALANCE_MASK : formatBalancePill(display)}</span>
+          </span>
+          {!held && !hidden && flashing && delta !== 0 && (
+            <span aria-hidden className="kp-jbal__delta value-delta amount" data-sign={delta > 0 ? "up" : "down"}>
+              {delta > 0 ? "+" : ""}
+              {formatNumber(delta)}
+            </span>
+          )}
+        </span>
+      </button>
+      <WalletSheet open={open} onClose={() => setOpen(false)} balance={balance} held={held} anchorRef={capsuleRef} journey />
     </>
   );
 }

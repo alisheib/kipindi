@@ -27,6 +27,17 @@
  * failed to catch the defect" rather than "the harness never ran".
  * ⚠️ And no replacement may CONTAIN its own anchor, or the did-it-reach-disk check refuses a
  * mutation that applied correctly.
+ *
+ * ── S6 (2026-10-01) · THE CAPTIONED CAPSULE ─────────────────────────────────
+ * The journey header's balance (`WalletBalanceCaptioned`, the last export in the pill's file) and the
+ * Wallet's journey words add thirteen, each naming the §8 check that must catch it and restoring one way
+ * that capsule can drift: back toward the classic one it was built beside (an eye, a currency word that
+ * yields, the classic name, an inline ring, a figure that no longer rolls), off the S4 frames (a gold
+ * frozen figure, a figure step at the wrong width, a figure that is not money type, a delta that shares
+ * the caption's row or covers a frozen one), or out of the journey's words (a Wallet without them, a
+ * Deposit or a Withdraw in the classic word).
+ * ⚠️ THREE OF THEM REWRITE globals.css, so this harness now rewrites the stylesheet while it runs, as it
+ * already rewrote the bar and the pill. Run it detached with nothing else running, and diff the tree after.
  */
 
 /** @typedef {{ name: string, file: string, suite: string, from: string, to: string, why: string, expect: string }} RedMutation */
@@ -34,6 +45,8 @@
 const BAR = "src/components/layout/top-app-bar.tsx";
 const PILL = "src/components/layout/wallet-balance-pill.tsx";
 const UTILS = "src/lib/utils.ts";
+const SHEET = "src/components/layout/wallet-sheet.tsx";
+const CSS = "src/app/globals.css";
 
 /** @type {RedMutation[]} */
 export const MUTATIONS = [
@@ -99,5 +112,122 @@ export const MUTATIONS = [
     from: `  return Math.abs(value) >= BALANCE_COMPACT_ABOVE ? formatTzsCompact(value) : formatTzs(value);`,
     to: `  return formatTzs(value);`,
     expect: "5: ⭐ the widest string this pill can EVER render is bounded",
+  },
+  {
+    name: "captioned-gets-an-eye",
+    why: "S6 · the eye comes back INTO the journey capsule. SJ-15 moved hiding balances into the Wallet the capsule opens, beside Withdraw, so the header row carries one control per job; an eye here is a second, smaller target inside a 44px pill on a 320 row that S4 measured with no room to spare",
+    file: PILL,
+    suite: "wallet-reach",
+    from: `<I.lock s={16} className="kp-jbal__lock" />`,
+    to: `<CashEye bare size={14} className="kp-jbal__lock" />`,
+    expect: "8.4 no eye and no caret in the capsule",
+  },
+  {
+    name: "tzs-yields-below-sm",
+    why: "⭐ THE CLASSIC CHIP'S PHONE RULE, COPIED INTO THE CAPSULE THAT RULED IT OUT. The classic chip drops the currency word below 640 to make room for its eye; the journey capsule has no eye, and SJ-15 shows TZS at EVERY width. Copying the classic markup is the most natural way to build this capsule, and it silently brings back a bare number on every phone",
+    file: PILL,
+    suite: "wallet-reach",
+    from: `<span>{hidden ? BALANCE_MASK : formatBalancePill(display)}</span>`,
+    to: `<span><span className="hidden sm:inline">TZS </span>{hidden ? splitCurrency(BALANCE_MASK)[1] : splitCurrency(formatBalancePill(display))[1]}</span>`,
+    expect: "8.5 TZS at EVERY width",
+  },
+  {
+    name: "figure-loses-its-money-type",
+    why: "the figure loses the amount class: no mono family, no tabular digits, no zero tracking. The roll then jitters as proportional digits change width, and §M4 (money is never letter-spaced) has nothing left to hold it at this call site",
+    file: PILL,
+    suite: "wallet-reach",
+    from: `<span className="kp-jbal__fig amount">`,
+    to: `<span className="kp-jbal__fig">`,
+    expect: "8.7 the figure is money type",
+  },
+  {
+    name: "captioned-name-says-wallet",
+    why: "⭐ A11 · the classic capsule's name pasted onto the captioned one: a listener hears Pochi (Wallet) while the button shows Salio, so a voice-control user who says what they see addresses nothing (WCAG 2.5.3), and a frozen wallet stops saying it is frozen. It is the plan's own first draft, which the S6 critic caught as G12",
+    file: PILL,
+    suite: "wallet-reach",
+    from: "aria-label={hidden ? `${caption} · ${t.common.hideBalances}` : `${caption} ${figure}`}",
+    to: "aria-label={hidden ? `${t.common.wallet} · ${t.common.hideBalances}` : `${t.common.wallet} · ${formatTzs(balance)}`}",
+    expect: "8.10 A11",
+  },
+  {
+    name: "captioned-wallet-loses-the-journey-words",
+    why: "the captioned capsule opens the Wallet WITHOUT the journey flag: the sheet says the classic Amana where the journey header says Weka pesa, two words for one action one tap apart",
+    file: PILL,
+    suite: "wallet-reach",
+    from: `anchorRef={capsuleRef} journey />`,
+    to: `anchorRef={capsuleRef} />`,
+    expect: "8.3 the Wallet it opens is anchored to it",
+  },
+  {
+    name: "captioned-drops-the-roll",
+    why: "⭐ A18 · the captioned capsule stops calling the shared hook and paints the figure flat. Every visual check still passes, because the number is right at rest, but a bet no longer rolls the figure or pulses the ring: the silent jump the classic pill was built to end",
+    file: PILL,
+    suite: "wallet-reach",
+    from: `const { display, flashing, delta } = useBalanceRoll(balance);`,
+    to: `const [display, flashing, delta] = [balance, false, 0];`,
+    expect: "8.11 A18",
+  },
+  {
+    name: "journey-withdraw-loses-toa-pesa",
+    why: "⭐ V19, REDEFINED · Withdraw stays one tap from the captioned capsule only if the Wallet it opens names it in the journey's words. Reverting the flag on this one door leaves Weka pesa beside a Withdraw in the classic word, and the pair stops reading as a pair",
+    file: SHEET,
+    suite: "wallet-reach",
+    from: `{journey ? t.journey.withdrawAction : t.common.withdraw}`,
+    to: `{t.common.withdraw}`,
+    expect: "8b.3 V19",
+  },
+  {
+    name: "journey-deposit-loses-weka-pesa",
+    why: "the Wallet's Deposit forgets the journey flag: the journey header says Weka pesa and the door it opens says Amana, one action under two names one tap apart. The Withdraw beside it still says Toa pesa, so the pair reads as two vocabularies",
+    file: SHEET,
+    suite: "wallet-reach",
+    from: `{journey ? t.journey.depositAction : t.common.deposit}`,
+    to: `{t.common.deposit}`,
+    expect: "8b.2 with it, Deposit says the journey's word",
+  },
+  {
+    name: "held-figure-stays-gold",
+    why: "the held half of the plain-ink rule is dropped, so a FROZEN wallet's figure keeps the gold of money you can use. The S4 held frame draws it in plain ink because gold marks a balance a player can spend; the masked half still looks right, which is what makes this the easy slip",
+    file: CSS,
+    suite: "wallet-reach",
+    from: `.kp-jbal:is([data-held], [data-masked]) .kp-jbal__fig { color: var(--text); }`,
+    to: `.kp-jbal[data-masked] .kp-jbal__fig { color: var(--text); }`,
+    expect: "8.8 gold on a live balance, plain ink when held or masked",
+  },
+  {
+    name: "flash-ring-goes-inline",
+    why: "the gilt ring written inline, the way the classic capsule writes its own. It looks the same, and it puts a second inline box-shadow in a file whose one inline border is the classic capsule's: the plan kept the journey's paint in globals.css so the classic markup, and every anchor that points into it, stays the only one of its kind",
+    file: PILL,
+    suite: "wallet-reach",
+    from: `data-flash={flashing ? "" : undefined}`,
+    to: `style={{ boxShadow: flashing ? "0 0 0 3px var(--gold-300)" : undefined }}`,
+    expect: "8.13 the gilt flash is a data attribute the stylesheet paints",
+  },
+  {
+    name: "figure-steps-up-at-640",
+    why: "the figure's 14px step moves to 640, where the classic chip steps its type. Every phone from 360 to 639 then keeps the 12px figure that S4 measured only as the 320 fallback: under the reading floor on the widths most players hold",
+    file: CSS,
+    suite: "wallet-reach",
+    from: `@media (min-width: 360px) { .kp-jbal__fig { font-size: 14px; } }`,
+    to: `@media (min-width: 640px) { .kp-jbal__fig { font-size: 14px; } }`,
+    expect: "8.15 S4 fit rule: the figure is 12px below 360 and 14px from 360",
+  },
+  {
+    name: "delta-shares-the-caption-row",
+    why: "⭐ THE PLAN'S FIRST PLACEMENT, RESTORED: the delta pinned to the left end of the caption row with no fill of its own. It looks fine in Swahili at 360, where a drive would look first, and by the font metrics it overprints Balance in English at 320 on any move of 1,000 or more, and a frozen caption at every width",
+    file: CSS,
+    suite: "wallet-reach",
+    from: `left: 0; right: 0; padding-block: 2px; text-align: right; background: var(--bg-inset);`,
+    to: `left: 0;`,
+    expect: "8.18 the ±delta TAKES the caption's row",
+  },
+  {
+    name: "held-delta-covers-the-frozen-word",
+    why: "the classic pill's delta condition copied across, so a balance that moves while the wallet is frozen covers Salio · limegandishwa with a number for half a second: the frozen word hidden at the one moment the player is looking at it",
+    file: PILL,
+    suite: "wallet-reach",
+    from: `{!held && !hidden && flashing && delta !== 0 && (`,
+    to: `{!hidden && flashing && delta !== 0 && (`,
+    expect: "8.19 …and only on a LIVE, unmasked wallet",
   },
 ];

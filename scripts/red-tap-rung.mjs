@@ -9,6 +9,10 @@
  * of the two PV-13 fixes to the EXACT literal it shipped with in production, and the
  * gate must catch it by name (§6.2), not by some other, unrelated check.
  *
+ * ⭐ S6 (2026-10-01) · A MUTATION MAY NAME ITS OWN CHECK, in an `expect` field; unnamed, it answers to
+ * §6.2 exactly as before. The journey's captioned balance is asked two questions: §6.2 refuses a
+ * hand-typed pixel, and §6.3 refuses a rule that names no rung at all, which §6.2 passes by saying nothing.
+ *
  * ⛔ EVERY MUTATION IS DONE ON A COPY OF THE TREE, via `KP_SRC` — same mechanism as
  * `red-tap-floor.mjs`, so two sessions sharing this working tree never see a
  * deliberately-broken file.
@@ -66,11 +70,14 @@ for (const m of MUTATIONS) {
 
     const res = runGate(src);
     const failed62 = /^FAIL 6\.2/m.test(res.out);
-    if (res.code !== 0 && failed62) {
-      const line = res.out.split("\n").find((l) => l.startsWith("FAIL 6.2"));
+    const want = m.expect ?? "6.2";
+    // §6.2 keeps the line-anchored match it always had; a named check is matched the same way, its dots literal.
+    const caught = want === "6.2" ? failed62 : new RegExp(`^FAIL ${want.replaceAll(".", "[.]")}`, "m").test(res.out);
+    if (res.code !== 0 && caught) {
+      const line = res.out.split("\n").find((l) => l.startsWith(`FAIL ${want}`));
       console.log(`  ✓ ${m.name}\n      caught: ${line?.trim()}`);
     } else {
-      console.log(`  ✗ ${m.name}\n      ⛔ NOT CAUGHT — exit ${res.code}, §6.2 failed: ${failed62}`);
+      console.log(`  ✗ ${m.name}\n      ⛔ NOT CAUGHT — exit ${res.code}, §${want} failed: ${caught}`);
       console.log(res.out.split("\n").filter((l) => l.startsWith("FAIL")).join("\n"));
       bad++;
     }
