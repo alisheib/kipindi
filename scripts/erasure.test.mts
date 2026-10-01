@@ -66,7 +66,8 @@ import { computeTrialBalance } from "../src/lib/server/ledger.ts";
 import { positionStore } from "../src/lib/server/market-dal.ts";
 import { notifyReferralJoined } from "../src/lib/server/notification-service.ts";
 import { ledgerStamp } from "../src/lib/server/marketing/ledger-stamp.ts";
-import { ERASURE_EVIDENCE, ERASURE_LEDGER_WORDING } from "../src/lib/server/marketing/erase.ts";
+import { ERASURE_EVIDENCE, ERASURE_LEDGER_WORDING, eraseMarketingFor, marketingKeyOf } from "../src/lib/server/marketing/erase.ts";
+import { toMsisdn255 } from "../src/lib/phone-normalize.ts";
 import { mayReceiveMarketingSms } from "../src/lib/server/marketing/consent.ts";
 import { marketingDsarView } from "../src/lib/server/marketing/dsar.ts";
 import { buildDsarBundle } from "../src/lib/server/privacy.ts";
@@ -741,13 +742,15 @@ section("8 · ⭐ THE SWEEP — nothing anywhere still holds an erased identifie
     // §16 requires the transaction record for 7 years and the counterparty is part of it.
     "txns": "Transaction.msisdn — the payment instrument on a money record (POCA Cap 423 §16, 7y)",
     // ── U18b · the NUMBER is what a stop list stops; nothing else of the person is kept with it ──
-    "suppressions": "Suppression.identifier — the number on the stop list, the minimum needed to honour the objection (ETA s.32, EPOCA reg 7(4)); never deleted (OD11)",
-    "consentLedger": "MessagingConsent.identifier — the append-only consent record (GN 478T reg 51(1)), whose last row is the WITHDRAWN this erasure wrote",
+    "marketingLedgerKeys": "MessagingConsent.identifier — the append-only consent record (GN 478T reg 51(1)), whose last row is the WITHDRAWN this erasure wrote; the ROWS themselves are swept strictly in consentLedger",
     "marketingContactKeys": "MarketingContact.msisdn — the emptied book row is kept so a re-import of the number is 'in the book, suppressed — keep' (U31) instead of re-collecting the person",
   };
-  // ⛔ The book's OTHER columns are swept STRICTLY: the key columns are masked here and allowlisted in
-  // `marketingContactKeys` alone, so a name, e-mail, note or tag left in the row still fails 8.b.
+  // ⛔ The OTHER columns are swept STRICTLY (the S10 review: allowlisting a whole bucket exempts it from
+  // every needle, so a name written into a ledger row's evidence would have passed). Each marketing store's
+  // KEY column is masked in its strict bucket and allowlisted in a keys-only bucket of its own, so a name,
+  // e-mail, note, tag or mask left anywhere else in the row still fails 8.b.
   const book = await db.marketingContact.listAll();
+  const ledgerRows = [...await db.messagingConsent.listFor(keyOf(SUBJECT_KEY)), ...await db.messagingConsent.listFor(keyOf(SUBJECT_OLD))];
   const buckets: Record<string, unknown> = {
     users: await db.user.list(),
     kyc: await db.kyc.listByUser(SUBJECT),
@@ -779,8 +782,10 @@ section("8 · ⭐ THE SWEEP — nothing anywhere still holds an erased identifie
     // ── U18b · the marketing stores ──────────────────────────────────────────────────────────
     marketingContacts: book.map((c) => ({ ...c, msisdn: "[key]", rawInput: c.rawInput === c.msisdn ? "[key]" : c.rawInput })),
     marketingContactKeys: book.map((c) => ({ msisdn: c.msisdn, rawInput: c.rawInput })),
-    suppressions: [...await db.suppression.listFor(SUBJECT_KEY), ...await db.suppression.listFor(SUBJECT_OLD)],
-    consentLedger: [...await db.messagingConsent.listFor(keyOf(SUBJECT_KEY)), ...await db.messagingConsent.listFor(keyOf(SUBJECT_OLD))],
+    suppressions: [...await db.suppression.listFor(SUBJECT_KEY), ...await db.suppression.listFor(SUBJECT_OLD)]
+      .map((r) => ({ ...r, identifier: "[key]" })),
+    consentLedger: ledgerRows.map((r) => ({ ...r, identifier: "[key]" })),
+    marketingLedgerKeys: ledgerRows.map((r) => r.identifier),
   };
   ok("8.0 CONTROL · the sweep really read something", Object.keys(buckets).length >= 20,
     `${Object.keys(buckets).length} buckets`);
@@ -795,7 +800,7 @@ section("8 · ⭐ THE SWEEP — nothing anywhere still holds an erased identifie
   const MUST_HAVE_CONTENT = ["users", "kyc", "txns", "wallets", "notificationsReferrer",
     "comments", "sourceOfFunds", "positions", "audit",
     "notificationsAdmin", "houseBots", "houseBotEvents", "houseBotIntents", "houseBotPresses",
-    "houseBotTargets", "marketingContacts", "marketingContactKeys", "suppressions", "consentLedger"] as const;
+    "houseBotTargets", "marketingContacts", "marketingContactKeys", "consentLedger", "marketingLedgerKeys"] as const;
   /**
    * ⛔ AND A PAGE-SHAPED BUCKET NEEDS ITS OWN COUNT. `{"rows":[],"nextCursor":null}` is 30
    * characters, so the length test above passes an EMPTY keyset page — which is exactly the
@@ -857,8 +862,7 @@ section("9 · idempotent — running it again changes nothing");
   ok("9.3 …and every counter that would mean new work is zero",
     second.ok && second.counts.idNumbersHashed === 0 && second.counts.documentsDeleted === 0
       && second.counts.notificationsDeleted === 0 && second.counts.otps === 0
-      && second.counts.marketingSuppressed === 0 && second.counts.marketingConsentWithdrawn === 0
-      && second.counts.marketingContactsEmptied === 0,
+      && second.counts.marketingConsentWithdrawn === 0 && second.counts.marketingContactsEmptied === 0,
     second.ok ? JSON.stringify(second.counts) : "-");
   ok("9.4 the user row is unchanged by the re-run",
     JSON.stringify(await db.user.findById(SUBJECT)) === snapshot);
@@ -1067,33 +1071,28 @@ section("11 · the DATABASE half — what a unit run cannot execute, it can stil
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
-section("12 · ⭐ MARKETING — the number stopped, the consent withdrawn, the book emptied (U18b)");
+section("12 · ⭐ MARKETING — the consent withdrawn, the book emptied (U18b)");
 // ═════════════════════════════════════════════════════════════════════════════
 {
   /**
    * 🔴 THE DEFECT, FOUND AT S6 (§9 U16): erasure touched no marketing store. On Postgres the tombstoned
    * phone hid the player from the gate, which then read the LEDGER and found their sign-up GIVEN; and the
    * contact book (U18) is the first store with people who have no account — a row left with the erased
-   * person's name and link is D16 itself. ⭐ Asserted as what the GATE answers, not only as rows.
+   * person's name and link is D16 itself. ⭐ Asserted as what the GATE answers, not only as rows — on a
+   * memory store that now re-keys a changed number the way Postgres does (`store.ts` user.update).
    */
-  ok("12.1 the first pass stopped BOTH numbers the person is known by — today's and the earlier one in the book",
-    result.ok && result.counts.marketingSuppressed === 2, result.ok ? JSON.stringify(result.counts) : "-");
-  ok("12.1b …appended a WITHDRAWN to the ledger for each, and emptied both linked book rows",
-    result.ok && result.counts.marketingConsentWithdrawn === 2 && result.counts.marketingContactsEmptied === 2);
+  ok("12.1 the first pass withdrew the one consent the subject had given — today's number had a GIVEN, the earlier one none",
+    result.ok && result.counts.marketingConsentWithdrawn === 1, result.ok ? JSON.stringify(result.counts) : "-");
+  ok("12.1b …and emptied both linked book rows",
+    result.ok && result.counts.marketingContactsEmptied === 2);
 
-  for (const n of [SUBJECT_KEY, SUBJECT_OLD]) {
-    const which = n === SUBJECT_KEY ? "today's" : "the earlier";
-    const stop = await db.suppression.find(keyOf(n));
-    ok(`12.2 ${which} number is on the stop list — OPERATOR, evidence the bare word '${ERASURE_EVIDENCE}'`,
-      stop?.reason === "OPERATOR" && stop?.evidence === ERASURE_EVIDENCE && stop?.liftedAt === null, JSON.stringify(stop));
-    const verdict = await mayReceiveMarketingSms(`+${n}`);
-    ok(`12.3 ⭐ THE GATE refuses ${which} number as SUPPRESSED — before any consent or player branch is asked`,
-      !verdict.ok && verdict.skipReason === "suppressed", JSON.stringify(verdict));
-  }
-  // ⛔ The person's old SMS link can never re-open an erasure: `lift` lifts only a WITHDRAWN stop.
-  const lifted = await db.suppression.lift(keyOf(SUBJECT_KEY), "optout:old-link", iso(NOW));
-  ok("12.4 ⛔ the person's OLD opt-out link cannot lift the erasure's stop — lift refuses and the stop stands",
-    lifted === null && (await db.suppression.find(keyOf(SUBJECT_KEY)))?.reason === "OPERATOR");
+  ok("12.2 CONTROL · the erased number no longer finds the account — the gate takes the LEDGER branch, as on Postgres",
+    (await db.user.findByPhone(PHONE)) === null);
+  const verdict = await mayReceiveMarketingSms(PHONE);
+  ok("12.3 ⭐ THE GATE refuses the erased number as consent_withdrawn — before U18b the ledger's sign-up GIVEN answered",
+    !verdict.ok && verdict.skipReason === "consent_withdrawn", JSON.stringify(verdict));
+  ok("12.4 ⛔ NO stop-list row is written — an unliftable stop would refuse the number's NEXT owner for ever",
+    !(await db.suppression.find(keyOf(SUBJECT_KEY))) && !(await db.suppression.find(keyOf(SUBJECT_OLD))));
 
   const rows = await db.messagingConsent.listFor(keyOf(SUBJECT_KEY));
   ok("12.5 the ledger's LAST word is the erasure: WITHDRAWN, source OPERATOR, the erasure's own wording",
@@ -1101,24 +1100,64 @@ section("12 · ⭐ MARKETING — the number stopped, the consent withdrawn, the 
       && rows[0]?.evidence === ERASURE_EVIDENCE, JSON.stringify(rows[0]));
   ok("12.5b APPEND-ONLY · the sign-up GIVEN is still there beneath it — history is added to, never edited",
     rows.length === 2 && rows[1]?.status === "GIVEN");
+  ok("12.5c nothing is written for the earlier number, which never consented — there was nothing to withdraw",
+    (await db.messagingConsent.listFor(keyOf(SUBJECT_OLD))).length === 0);
 
   for (const id of ["mc_erase_now", "mc_erase_old"]) {
     const c = await db.marketingContact.find(id);
-    ok(`12.6 ${id} is EMPTIED, not deleted: link broken, name / e-mail / notes / tags / source reference cleared`,
+    ok(`12.6 ${id} is EMPTIED, not deleted: link broken, name / e-mail / notes / tags / source and import references cleared`,
       !!c && c.userId === null && c.displayName === null && c.email === null && c.notes === null
-        && c.tags.length === 0 && c.sourceRef === null, JSON.stringify(c));
-    ok(`12.6b ${id} keeps only its key — rawInput reduced to it — and reads WITHDRAWN and suppressed`,
-      !!c && c.rawInput === c.msisdn && c.consentState === "WITHDRAWN" && c.suppressedAt !== null);
+        && c.tags.length === 0 && c.sourceRef === null && c.importId === null && c.rawInput === c.msisdn, JSON.stringify(c));
   }
+  const now = await db.marketingContact.find("mc_erase_now");
+  const old = await db.marketingContact.find("mc_erase_old");
+  ok("12.6b the consent cache mirrors the LEDGER — WITHDRAWN where a consent was withdrawn, UNKNOWN where none was ever given — and no stop is invented",
+    now?.consentState === "WITHDRAWN" && old?.consentState === "UNKNOWN" && now?.suppressedAt === null && old?.suppressedAt === null,
+    `${now?.consentState} / ${old?.consentState}`);
   const by = await db.marketingContact.find("mc_erase_bystander");
   ok("12.7 CONTROL · somebody else's book row is untouched — the rule is 'this person', not 'the book'",
-    by?.displayName === "Juma Bystander" && by?.consentState === "GIVEN" && by?.suppressedAt === null
-      && !(await db.suppression.find(keyOf(BYSTANDER))));
-  ok("12.8 ⛔ nothing kept beside the number names the account — the stop and the ledger cannot be joined back to it",
-    !JSON.stringify([...await db.suppression.listFor(SUBJECT_KEY), ...rows]).includes(SUBJECT));
-  const after = await marketingDsarView({ id: SUBJECT, phoneE164: erasedPhoneTombstone(SUBJECT) });
+    by?.displayName === "Juma Bystander" && by?.consentState === "GIVEN" && by?.importId === "imp_erase_1");
+  ok("12.8 ⛔ nothing written names the account",
+    !JSON.stringify([...rows, ...await db.messagingConsent.listFor(keyOf(SUBJECT_OLD))]).includes(SUBJECT));
+
+  const after = await marketingDsarView({ id: SUBJECT, phoneE164: erasedPhoneTombstone(SUBJECT), createdAt: iso(NOW - 200 * DAY) });
   ok("12.9 after erasure the export's marketing section is EMPTY — nothing reachable from the account any more",
     after.contacts.length === 0 && after.consent.length === 0 && after.suppression.length === 0, JSON.stringify(after));
+
+  // ⛔ A TOMBSTONE IS NEVER A KEY. `erased:usr_712345678bcd` keeps its digits through a naive normaliser,
+  // and those digits make a valid-shaped Tanzanian number. A stranger lives at it here.
+  const tomb = "erased:usr_712345678bcd";
+  const naive = toMsisdn255(tomb);
+  await db.marketingContact.create(contactRow("mc_erase_stranger", naive, null, "Stranger Mtu"));
+  const strangerView = await marketingDsarView({ id: "usr_712345678bcd", phoneE164: tomb, createdAt: iso(NOW - 900 * DAY) });
+  ok("12.9b ⛔ an erased account's tombstone is never read as a number — a stranger's row at the digits it carries stays out of the file",
+    /^255[67]/.test(naive) && naive.length === 12 && strangerView.contacts.length === 0 && marketingKeyOf(tomb) === null,
+    `naive=${naive} contacts=${strangerView.contacts.length}`);
+
+  // ⭐ THE RECYCLED NUMBER. The operator hands the erased subject's number to somebody new, who signs up
+  // and says yes. Their yes must count, and their own file must not carry the last holder's history.
+  const NEXT = "usr_erase_next_owner";
+  const nextCreated = new Date(Date.now() + 5).toISOString();
+  await db.user.create({
+    id: NEXT, phoneE164: PHONE, email: null, emailVerifiedAt: null, passwordHash: null, passwordSalt: null,
+    failedLoginCount: 0, lockedUntil: null, role: "PLAYER", status: "ACTIVE", locale: "SW", displayName: null,
+    dob: "1992-03-03", region: null, acceptedTermsVersion: "v3", acceptedTermsAt: nextCreated,
+    marketingOptIn: true, twoFactorEnabled: false, avatarDataUrl: null,
+    createdAt: nextCreated, updatedAt: nextCreated, lastLoginAt: null, closedAt: null,
+  } as never);
+  await new Promise((r) => setTimeout(r, 10));
+  await db.messagingConsent.create({
+    ...ledgerStamp(), ...keyOf(SUBJECT_KEY), status: "GIVEN", source: "REGISTRATION",
+    wording: "Nitumie ofa na habari za 50pick kwa SMS (hiari).", locale: "SW", evidence: "register", recordedBy: null,
+  });
+  const nextVerdict = await mayReceiveMarketingSms(PHONE);
+  ok("12.9c ⭐ the number's NEXT owner can consent: their yes is not refused as withdrawn or suppressed",
+    nextVerdict.ok || (nextVerdict.skipReason !== "consent_withdrawn" && nextVerdict.skipReason !== "suppressed"),
+    JSON.stringify(nextVerdict));
+  const nextView = await marketingDsarView({ id: NEXT, phoneE164: PHONE, createdAt: nextCreated });
+  ok("12.9d ⛔ …and their own file carries only their OWN consent — not the last holder's sign-up, nor the erasure row",
+    nextView.consent.length === 1 && nextView.consent[0].status === "GIVEN" && nextView.contacts.length === 0
+      && !JSON.stringify(nextView).includes("Erasure"), JSON.stringify(nextView.consent));
 
   // ── a second person: found by NUMBER only, a lifted stop of their own, and a named officer ──────
   const M2 = "usr_erase_m2", M2_PHONE = "+255712000418", M2_KEY = "255712000418", DPO = "usr_dpo_officer";
@@ -1129,6 +1168,11 @@ section("12 · ⭐ MARKETING — the number stopped, the consent withdrawn, the 
     marketingOptIn: true, twoFactorEnabled: false, avatarDataUrl: null,
     createdAt: iso(NOW - 90 * DAY), updatedAt: iso(NOW - 10 * DAY), lastLoginAt: null, closedAt: iso(NOW - 10 * DAY),
   } as never);
+  // A PREVIOUS holder's consent, written before Neema's account existed — never hers to receive.
+  await db.messagingConsent.create({
+    id: "mc_prev_holder", ...keyOf(M2_KEY), status: "GIVEN", source: "REGISTRATION",
+    wording: "previous holder", locale: "SW", evidence: "prev", recordedBy: null, createdAt: iso(NOW - 400 * DAY),
+  });
   await db.messagingConsent.create({
     ...ledgerStamp(), ...keyOf(M2_KEY), status: "GIVEN", source: "OPT_OUT_PAGE",
     wording: "resume", locale: "SW", evidence: "optout:ref", recordedBy: null,
@@ -1138,36 +1182,76 @@ section("12 · ⭐ MARKETING — the number stopped, the consent withdrawn, the 
     createdAt: iso(NOW - 40 * DAY), liftedAt: null, liftedReason: null,
   });
   await db.suppression.lift(keyOf(M2_KEY), "optout:ref", iso(NOW - 30 * DAY));
-  // Imported before Neema signed up: the row carries NO link, only her number.
+  // Unlinked: the row carries only her number (created after her account, so it is hers to receive).
   await db.marketingContact.create(contactRow("mc_erase_m2", M2_KEY, null, "Neema"));
 
   type MarketingSection = Awaited<ReturnType<typeof marketingDsarView>>;
   const bundle = await buildDsarBundle(M2) as { marketing: MarketingSection } | null;
   const own = await exportUserData(M2) as { marketing: unknown };
   const bundleJson = JSON.stringify(bundle?.marketing ?? null);
-  ok("12.10 ⭐ BEFORE erasure, the officer's bundle carries her marketing: the unlinked book row (found by number), the ledger, the lifted stop",
+  ok("12.10 ⭐ BEFORE erasure, the officer's bundle carries her marketing: the unlinked book row (found by number), her ledger, her lifted stop",
     bundle?.marketing.contacts.length === 1 && bundle.marketing.contacts[0].displayName === "Neema"
       && bundle.marketing.consent.length === 1 && bundle.marketing.suppression.length === 1
       && bundle.marketing.suppression[0].liftedAt !== null, bundleJson);
   ok("12.10b …and the player's own download carries the SAME section — one allowlist, both doors",
     JSON.stringify(own.marketing) === bundleJson);
-  ok("12.10c ⛔ the export is an allowlist: no staff id (recordedBy), no internal evidence, no row id",
+  ok("12.10c ⛔ the export is an allowlist: no staff id, no internal evidence, no row id, no staff notes",
     !bundleJson.includes('"recordedBy"') && !bundleJson.includes('"evidence"') && !bundleJson.includes('"id"')
-      && !bundleJson.includes("optout:ref"), bundleJson);
+      && !bundleJson.includes('"notes"') && !bundleJson.includes("optout:ref") && !bundleJson.includes("at the stadium"), bundleJson);
+  ok("12.10d ⛔ a ledger row OLDER than her account — a previous holder's — is not in her file",
+    !bundleJson.includes("previous holder"), bundleJson);
 
   const r2 = await anonymizeClosedAccount(M2, { now: NOW, officerId: DPO });
-  const stop2 = await db.suppression.find(keyOf(M2_KEY));
-  ok("12.11 ⭐ her own LIFTED stop is re-armed as the officer's: reason OPERATOR, recorded by the DPO, not liftable by her link",
-    r2.ok && r2.counts.marketingSuppressed === 1 && stop2?.reason === "OPERATOR" && stop2?.recordedBy === DPO
-      && (await db.suppression.lift(keyOf(M2_KEY), "optout:ref", iso(NOW))) === null, JSON.stringify(stop2));
+  const stops = await db.suppression.listFor(M2_KEY);
+  ok("12.11 her own LIFTED stop is left exactly as it was — erasure neither writes nor re-arms a stop",
+    r2.ok && stops.length === 1 && stops[0].reason === "WITHDRAWN" && stops[0].liftedAt !== null, JSON.stringify(stops));
+  const last2 = await db.messagingConsent.latestFor(keyOf(M2_KEY));
   ok("12.12 her ledger's last word is the erasure, recorded by the DPO",
-    (await db.messagingConsent.latestFor(keyOf(M2_KEY)))?.recordedBy === DPO);
+    r2.ok && r2.counts.marketingConsentWithdrawn === 1 && last2?.status === "WITHDRAWN" && last2?.recordedBy === DPO);
   const m2c = await db.marketingContact.find("mc_erase_m2");
-  ok("12.13 ⭐ the book row with NO link is reached through the number and emptied",
+  ok("12.13 ⭐ the book row with NO link is reached through the number and emptied, by the DPO",
     r2.ok && r2.counts.marketingContactsEmptied === 1 && m2c?.displayName === null && m2c?.notes === null
       && m2c?.tags.length === 0 && m2c?.updatedBy === DPO, JSON.stringify(m2c));
   ok("12.14 the DSAR door hands the officer to the routine — privacy.ts passes the fulfilling officer",
     readFileSync("src/lib/server/privacy.ts", "utf8").includes("anonymizeClosedAccount(r.userId, { officerId: opts.officerId })"));
+
+  // ── IDEMPOTENT, EXECUTED — and another live account's number is not withdrawn ──────────────────
+  // ⚠️ 9.3's marketing zeros pass by construction (a re-run never reaches this step: the phone is already a
+  // tombstone), so the property is proven HERE, by calling the step twice on a live, unerased account.
+  const M3 = "usr_erase_m3", M3_PHONE = "+255712000419", M3_KEY = "255712000419", OWNER2 = "usr_erase_owner2";
+  const M3_OLD = "255754000419";
+  await db.user.create({
+    id: M3, phoneE164: M3_PHONE, email: null, emailVerifiedAt: null, passwordHash: null, passwordSalt: null,
+    failedLoginCount: 0, lockedUntil: null, role: "PLAYER", status: "CLOSED", locale: "SW", displayName: "Baraka",
+    dob: "1990-04-04", region: null, acceptedTermsVersion: "v3", acceptedTermsAt: iso(NOW - 80 * DAY),
+    marketingOptIn: true, twoFactorEnabled: false, avatarDataUrl: null,
+    createdAt: iso(NOW - 80 * DAY), updatedAt: iso(NOW - 5 * DAY), lastLoginAt: null, closedAt: iso(NOW - 5 * DAY),
+  } as never);
+  // The number Baraka used to have now belongs to a LIVE player, who has said yes.
+  await db.user.create({
+    id: OWNER2, phoneE164: `+${M3_OLD}`, email: null, emailVerifiedAt: null, passwordHash: null, passwordSalt: null,
+    failedLoginCount: 0, lockedUntil: null, role: "PLAYER", status: "ACTIVE", locale: "SW", displayName: "Owner Two",
+    dob: "1993-05-05", region: null, acceptedTermsVersion: "v3", acceptedTermsAt: iso(NOW - 20 * DAY),
+    marketingOptIn: true, twoFactorEnabled: false, avatarDataUrl: null,
+    createdAt: iso(NOW - 20 * DAY), updatedAt: iso(NOW - 20 * DAY), lastLoginAt: null, closedAt: null,
+  } as never);
+  for (const id of [M3_KEY, M3_OLD]) {
+    await db.messagingConsent.create({
+      ...ledgerStamp(), ...keyOf(id), status: "GIVEN", source: "REGISTRATION",
+      wording: "Nitumie ofa na habari za 50pick kwa SMS (hiari).", locale: "SW", evidence: "register", recordedBy: null,
+    });
+  }
+  await db.marketingContact.create(contactRow("mc_erase_m3", M3_KEY, M3, "Baraka"));
+  await db.marketingContact.create(contactRow("mc_erase_m3_old", M3_OLD, M3, "Baraka"));
+  const first = await eraseMarketingFor({ userId: M3, phoneE164: M3_PHONE, officerId: DPO });
+  const again = await eraseMarketingFor({ userId: M3, phoneE164: M3_PHONE, officerId: DPO });
+  ok("12.15 ⭐ IDEMPOTENT, EXECUTED · the step called a second time on the same account does nothing and says so",
+    first.marketingConsentWithdrawn === 1 && first.marketingContactsEmptied === 2
+      && again.marketingConsentWithdrawn === 0 && again.marketingContactsEmptied === 0,
+    `${JSON.stringify(first)} then ${JSON.stringify(again)}`);
+  ok("12.16 ⛔ a number another LIVE account now holds keeps that account's consent — only the erased person's row about it is emptied",
+    (await db.messagingConsent.latestFor(keyOf(M3_OLD)))?.status === "GIVEN"
+      && (await db.marketingContact.find("mc_erase_m3_old"))?.displayName === null);
 }
 
 LOG("");

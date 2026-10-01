@@ -1221,6 +1221,14 @@ const memoryDb = {
       if (!u) return null;
       const next = { ...u, ...patch, updatedAt: new Date().toISOString() };
       store.users.set(id, next);
+      // ⭐ RE-INDEX A CHANGED NUMBER, as Postgres' unique column does by being the column (S10, §9 U16's
+      // finding). The index was written on create only, so an erased account (`phoneE164` → `erased:<id>`)
+      // was still found by its OLD number here while Postgres returned nobody — every suite ran the
+      // player branch of the marketing gate where production runs the ledger branch.
+      if (next.phoneE164 !== u.phoneE164) {
+        if (store.usersByPhone.get(u.phoneE164) === id) store.usersByPhone.delete(u.phoneE164);
+        store.usersByPhone.set(next.phoneE164, id);
+      }
       return next;
     },
     list: (): StoredUser[] => Array.from(store.users.values()),

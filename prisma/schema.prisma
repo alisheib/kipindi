@@ -331,8 +331,8 @@ model User {
   houseBots               HouseBot[]
   /// ⛔ THE BACK-REFERENCE OF A LINK, NOT A COPY (U18). A marketing contact may point at this
   /// account; deleting the account sets that pointer NULL (`onDelete: SetNull`) rather than
-  /// deleting the book row, and `erasure` then suppresses the number — a row left pointing at
-  /// nobody while still looking marketable is exactly D16.
+  /// deleting the book row, and `erasure` empties the row and withdraws the consent in the ledger —
+  /// a row left pointing at nobody while still looking marketable is exactly D16.
   marketingContacts       MarketingContact[]
 
   @@index([role, status])
@@ -3308,8 +3308,8 @@ enum ContactConsentState {
 ///
 /// ⛔ `userId` IS A LINK, NEVER A COPY. An erased player must not survive inside a marketing
 /// row: nothing here duplicates a name, a number or an e-mail that the `User` row owns, and the
-/// erasure path sets this to NULL and suppresses the number rather than leaving it marketable
-/// (U18's Accept; D16).
+/// erasure path sets this to NULL, empties the row and appends WITHDRAWN to the ledger rather than
+/// leaving it marketable (U18b, `marketing/erase.ts`; D16).
 ///
 /// ⚠️ `createdAt` carries `@db.Timestamptz(3)`, unlike `MessagingConsent.createdAt` beside it.
 /// That column is a NAIVE `TIMESTAMP(3)` — the divergence behind the consent-tie defect, where a
@@ -3338,7 +3338,7 @@ model MarketingContact {
   sourceRef    String?
   /// ⛔ A LINK, NEVER A COPY. NULL for a contact who is not a player. `onDelete: SetNull` so a
   /// deleted player breaks the link without deleting the book row, and `erasure` is what then
-  /// suppresses the number — a dangling row that still looked marketable is the D16 defect.
+  /// empties it and withdraws the consent — a dangling row that still looked marketable is D16.
   userId       String?
   user         User?               @relation(fields: [userId], references: [id], onDelete: SetNull)
   /// ⛔ A CACHE OF THE LEDGER'S ANSWER, never the answer itself — see `ContactConsentState`.

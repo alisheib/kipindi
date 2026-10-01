@@ -232,7 +232,7 @@ export async function anonymizeClosedAccount(
     agentApplicationsRedacted: 0, agentDocumentsDeleted: 0, agentDocumentObjectsFailed: 0,
     extraRequestsCleared: 0, comments: 0, notificationsDeleted: 0, notificationsRedacted: 0,
     otps: 0, pushSubscriptions: 0, watchlistEntries: 0, houseBots: 0, houseBotNotificationsRedacted: 0,
-    marketingSuppressed: 0, marketingConsentWithdrawn: 0, marketingContactsEmptied: 0,
+    marketingConsentWithdrawn: 0, marketingContactsEmptied: 0,
   };
 
   // The clock runs from closure. A CLOSED row with no `closedAt` predates that column being
@@ -444,12 +444,12 @@ export async function anonymizeClosedAccount(
   // but the DAL refuses again under its row locks — surface it rather than report a complete erasure.
   if (!house.ok) throw new Error(`erasure: ${userId} became house bot ${house.botId} during erasure — re-run after removing it`);
 
-  // ── 4c · MARKETING — the number stopped, the consent withdrawn, the book emptied (U18b) ─────────────
+  // ── 4c · MARKETING — the consent withdrawn, the book emptied (U18b) ───────────────────────────────
   // 🔴 Before this, erasure touched no marketing store: on Postgres the tombstoned phone hid the player
   // from the gate, which then read the LEDGER and found their old GIVEN. ⛔ It must run BEFORE step 6
-  // tombstones the phone — the number is the only key the stop list, the ledger and the book share — so a
-  // re-run (phone already tombstoned) has nothing to key on and skips it; every write in it is idempotent,
-  // so a first pass that died part-way is finished by the next. `marketing/erase.ts` says what is kept.
+  // tombstones the phone — the number is the only key the ledger and the book share — so a re-run (phone
+  // already tombstoned) has nothing to key on and skips it; every write in it is idempotent, so a first
+  // pass that died part-way is finished by the next. ⛔ No stop-list row: `marketing/erase.ts` says why.
   if (!wasErased) {
     Object.assign(counts, await eraseMarketingFor({ userId, phoneE164: user.phoneE164, officerId: opts?.officerId ?? null }));
   }

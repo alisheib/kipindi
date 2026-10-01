@@ -237,12 +237,13 @@ export const MUTATIONS = [
     to: `    void eraseMarketingFor;`,
   },
   {
-    // The stop is written as the PERSON's own (WITHDRAWN) — so their old SMS link lifts an erasure.
-    name: "erasure-stop-is-liftable (reason WITHDRAWN, which the person's own link may lift)",
+    // ⛔ A number another LIVE account now holds is withdrawn anyway: erasing one person switches off a
+    // consenting stranger's marketing (the S10 review).
+    name: "erasure-withdraws-another-owners-number (a live player's yes is cancelled by someone else's erasure)",
     file: MKT_ERASE,
     suite: "erasure",
-    from: `        reason: "OPERATOR",`,
-    to: `        reason: "WITHDRAWN",`,
+    from: `      if (holder && holder.id !== input.userId) continue;`,
+    to: `      void holder;`,
   },
   {
     // The book is reached by the LINK only: a contact imported before the person signed up keeps
@@ -250,26 +251,33 @@ export const MUTATIONS = [
     name: "erasure-book-by-link-only (an unlinked row with the same number keeps the name)",
     file: MKT_ERASE,
     suite: "erasure",
-    from: `    const byNumber = await Promise.resolve(db.marketingContact.findByMsisdn(accountNumber));
-    if (byNumber) rows.set(byNumber.id, byNumber);
-  }
-  // Every number this person is known by`,
-    to: `    void accountNumber;
-  }
-  // Every number this person is known by`,
+    from: `    if (byNumber && (byNumber.userId === null || byNumber.userId === input.userId)) rows.set(byNumber.id, byNumber);`,
+    to: `    void byNumber;`,
   },
   {
-    // The kept number is written beside the account id — the stop list can be joined back to the
-    // person who asked to be erased.
-    name: "erasure-evidence-names-the-account (the kept number becomes re-identifiable)",
+    // The ledger row is written beside the account id.
+    name: "erasure-evidence-names-the-account (the kept number is written beside the account id)",
     file: MKT_ERASE,
     suite: "erasure",
-    from: `        evidence: ERASURE_EVIDENCE,
-        recordedBy: input.officerId,
-        createdAt: at,`,
-    to: `        evidence: "erasure:" + input.userId,
-        recordedBy: input.officerId,
-        createdAt: at,`,
+    from: `      evidence: ERASURE_EVIDENCE,`,
+    to: `      evidence: "erasure:" + input.userId,`,
+  },
+  {
+    // The consent cache stops mirroring the ledger and invents WITHDRAWN for a number that never consented.
+    name: "erasure-invents-the-consent-cache (WITHDRAWN on a row whose number never said yes)",
+    file: MKT_ERASE,
+    suite: "erasure",
+    from: `    const consentState = latest ? latest.status : "UNKNOWN";`,
+    to: `    const consentState = "WITHDRAWN" as const;`,
+  },
+  {
+    // The memory store stops re-keying a changed number: an erased account is found by its OLD number
+    // again, so every suite runs the player branch of the gate where production runs the ledger branch.
+    name: "memory-phone-index-never-rekeyed (the erased account is still found by its old number)",
+    file: STORE,
+    suite: "erasure",
+    from: `      if (next.phoneE164 !== u.phoneE164) {`,
+    to: `      if (false) {`,
   },
   {
     // The export hands over the raw ledger row: a staff member's id and the internal evidence go
@@ -279,5 +287,23 @@ export const MUTATIONS = [
     suite: "erasure",
     from: `      consent.push({ status: r.status, source: r.source, wording: r.wording, locale: r.locale, createdAt: r.createdAt });`,
     to: `      consent.push({ ...r } as never);`,
+  },
+  {
+    // ⛔ The export forgets the account's start date: a recycled number's new owner downloads the last
+    // holder's consent history and their erasure row (the S10 review).
+    name: "dsar-not-bounded-to-the-account (a previous holder's ledger rows reach the new owner's file)",
+    file: MKT_DSAR,
+    suite: "erasure",
+    from: `      if (r.createdAt < since) continue;`,
+    to: `      void since;`,
+  },
+  {
+    // ⛔ The export keys an erased account's TOMBSTONE through a naive normaliser: its hex digits make a
+    // stranger's number, and the stranger's book row lands in the erased account's file.
+    name: "dsar-reads-the-tombstone-as-a-number (a stranger's row lands in an erased account's file)",
+    file: MKT_DSAR,
+    suite: "erasure",
+    from: `  const accountNumber = marketingKeyOf(user.phoneE164);`,
+    to: `  const accountNumber = user.phoneE164.replace(/[^0-9]/g, "").replace(/^7/, "2557");`,
   },
 ];
