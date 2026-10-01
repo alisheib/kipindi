@@ -149,7 +149,7 @@ Its closing "Amendments" section overrides the body. Owner-level calls are §0h 
 **Order:** A0 (live fix: the away-summary link) → WP0 baseline + parity harness → WP1 words → WP2 pure modules →
 WP3 journey unread counter → WP4 captioned balance → WP5 Akaunti hub → WP6a header/tabs/guest sheet (unmounted) →
 WP6b the swap + census + header-fit → WP7 overlays → WP8 short titles on positions → WP9 Tiketi zangu → WP10 sell look
-(+ the live grace fix) → WP11 `--rail-h` → WP12 proof, merge, deploy.
+(its live grace fix went ahead in its own commit — A8's live half, under Progress) → WP11 `--rail-h` → WP12 proof, merge, deploy.
 
 **Progress:**
 - Plan filed (`5a820b9c`).
@@ -157,6 +157,24 @@ WP6b the swap + census + header-fit → WP7 overlays → WP8 short titles on pos
   present, the old link absent):** the away summary's "view" link used `?filter=settled`, which the
   positions page never reads, so it opened ALL tickets; it now opens the settled lens. `test:presence-class` 6.8/6.9
   read the parser's keys and lenses from `portfolio.ts`; `red:presence-class` restores the shipped defect (19/19).
+- **A8's live half — the free-sell countdown reads the server's instant (staged 2026-10-01; its own commit, for every
+  player, not flagged).** The classic Sell button counted its free exit down from the placement with a constant five
+  minutes; the server sells free for each poll's FROZEN `freeExitGraceMinutes`. `freeExitEndsAt(position, market)`
+  (`market-service.ts`, beside `exitWindowClosesAt`) now gives that instant from the facts `cashOutValue` decides by —
+  `null` when no free window was offered — and the only two files that render SellButton, `src/app/positions/page.tsx`
+  and the holder block of `src/app/markets/[id]/page.tsx`, pass it as `freeUntil`. The button's countdown, its m:ss
+  label and its free/fee state read that instant only; if the instant is withdrawn while the page is open (a cutoff
+  moved earlier), the countdown drops to 0 rather than keeping its last value (the pages also lock the button then, so
+  nothing on screen changes today). The placement prop, the constant and the device-clock "closes in more than five
+  minutes" guard are gone: the server never asks that, and it took the free label and countdown off sales the server
+  still granted free — a bet placed 5–10 minutes before the cutoff read "Sell now … −0 fee" for part of its free
+  window (§0h point 13). Otherwise a default 5-minute poll's countdown and markup are unchanged, and no money moves
+  differently — `cashOutValue` is not edited (`test:house-bot-seam`'s golden grid). Gate: `test:sell-grace-truth` (in
+  predeploy) and its in-process twin `red:sell-grace-truth`. Open, not part of A8 (both predate it): once a free window
+  ends, the button keeps its last server render until the page's next refresh (15 s on a market, 20 s on
+  `/positions`). On a poll with no paid window it still offers "Sell now", and the server refuses that sale; on a
+  legacy poll with a paid window it keeps showing the free price ("−0 fee") while the server charges the fee. Flipping
+  the button at the exit's own instants is a follow-up.
 - **WP0 baseline — today's reds, re-derived 2026-10-01 at `5a820b9c` + A0** (`test:all --skip responsive,motion`,
   1,550 s): **409/431 green.** The 22 reds are pre-existing on main and none touches S6's files — S6 is neither blamed
   nor credited for them: live-target-safe (§1b ratchet 13 > 5), marketing-consent-ledger, type-scale (§6 tracking
@@ -195,8 +213,11 @@ WP6b the swap + census + header-fit → WP7 overlays → WP8 short titles on pos
   `account-robots-noindex` — the robots meta in the bytes `/account` sends becomes the page's own "noindex, nofollow"
   where an unmatched path sends the root layout's "index, follow" and Next's 404 "noindex" (WP5, A2: at HTTP 200 the
   page's metadata replaces the root's, and Next adds no noindex of its own; still noindex for a crawler);
-  WP11's footer class string is to come. WP0 is done when `--prove-red` is green, the baseline is captured at the
-  pre-S6 commit, and a null `--compare` on a fresh server at that commit exits 0 (the instrument's calibration). A
+  WP11's footer class string is to come. Outside the harness's cells (its demo portfolio is empty, and it captures no
+  market page), A8's live half changes what classic holders are served too: each Sell button's props carry `freeUntil`
+  in place of `placedAt`, and its free strip follows the poll's frozen grace (§0h point 13). WP0 is done when
+  `--prove-red` is green, the baseline is captured at the pre-S6 commit, and a null `--compare` on a fresh server at
+  that commit exits 0 (the instrument's calibration). A
   compare is refused after a rebase, or after a merge that carries served files in (A18).
 - **WP5 — the Akaunti hub, `/account` (SJ-17), staged 2026-10-01.** `src/app/account/page.tsx` asks the one resolver
   first and calls `notFound()` for every request the journey is not shown to, before any read; its tab title does the
@@ -252,7 +273,10 @@ here, with how to overrule it. Newest last; nothing here blocks the work.
     production I prove only that nothing changed for players.
 13. **Two live fixes for every player, each in its own commit:** the "away" summary's link now opens settled tickets
     (it opened all); the sell-back countdown reads each market's own free window from the server instead of a fixed
-    5 minutes (a money-truth fix).
+    5 minutes (a money-truth fix). With it goes the button's own check on the phone's clock ("closes in more than five
+    minutes"), which the server never makes: a bet placed 5–10 minutes before the cutoff now keeps its free label and
+    countdown for the whole free window the server grants, where it read "Sell now … −0 fee" for part of it. Overrule:
+    say so, and that check comes back on top of the server's instant (`test:sell-grace-truth` 3.state moves with it).
 14. **Balances of TZS 1,000,000 and more stay compact** ("TZS 1.3M"), as the product shows today; the canvas drew the
     full figure.
 15. **"Pumzika / Jizuie" becomes two rows** in Akaunti: Pumzika → take a break, Jizuie → self-exclusion.

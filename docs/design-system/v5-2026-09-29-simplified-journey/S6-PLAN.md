@@ -1404,6 +1404,20 @@ both read that instant; no `GRACE_MS` in the journey path; `cashOutValue`'s shap
 **The classic `GRACE_MS = 5 min` in `sell-button.tsx` is a live money-truth defect for any poll frozen with another
 grace — fixed platform-wide in its own commit** (SellButton takes the server instant everywhere), with a test and plant.
 
+*As built (A8's live half, 2026-10-01 — its own commit, for every player):* the instant is
+`freeExitEndsAt(position, market)` in `market-service.ts`, beside `exitWindowClosesAt` — `null` when no free window was
+offered, never the placement instant (a clock behind the bet would read that as free) — and SellButton's prop is
+`freeUntil`. Its only two hosts, `src/app/positions/page.tsx` and the holder block of `src/app/markets/[id]/page.tsx`,
+pass `freeUntil={freeExitEndsAt({ placedAt: p.placedAt }, m)}`; the button no longer takes `placedAt`, its free/fee
+state is the countdown alone (the device-clock "closes in more than five minutes" guard is gone), and an instant
+withdrawn while it is mounted zeroes the countdown (the hosts also lock the button then; the button no longer leans on
+that). `test:sell-grace-truth` §2 holds every host to that call, and §3 holds the button to one parse of `freeUntil`,
+one setter and no arithmetic on minutes. ⛔ WP10's journey label formats THIS instant on the server (`formatClock` of
+`freeUntil`, not a label built from the placement). The commit that makes TicketCard forward it extends §2, and §3 too
+if the journey look needs arithmetic or a second parse — in the open, with a plant, never by working around a check.
+WP10's holder-block capture compares against a pre-S6 baseline that predates this fix: a default poll with an hour to
+run must compare equal, and any other difference is named in EXPECTED_DIFFS, never re-baselined.
+
 **A9 · G9 — the route census is a reachability graph.** Roots: the journey tabs, the header, the sheets,
 `hubRowsFor(viewer)`, the footer. Edges: decommented hrefs per page file. A BFS per viewer kind (guest, player, held,
 agent in standing, staff, proposals disabled, invite closed) asserts classic ⊆ journey reachability. Plants: an orphan

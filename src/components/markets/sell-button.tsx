@@ -9,6 +9,13 @@
  * don't recalculate on the client because pool composition changes second
  * by second; the value displayed here is the moment we render — the
  * server re-runs the math when the action fires.
+ *
+ * ⛔ THE FREE-EXIT COUNTDOWN RUNS TO THE SERVER'S INSTANT (`freeUntil`), NEVER TO A WINDOW BUILT
+ * HERE. How long a free exit lasts is each poll's FROZEN grace, and only the server reads it:
+ * `freeExitEndsAt` (market-service) takes it through the same `exitWindowFacts` that
+ * `cashOutValue` sells by. A constant five-minute grace on this side told a poll frozen at 2
+ * minutes it could still sell free after the server had locked the exit, and cut a 10-minute
+ * poll's free window in half on screen (S6 A8). `test:sell-grace-truth` holds both halves.
  */
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
@@ -20,13 +27,11 @@ import { OperationResultModal } from "./operation-result-modal";
 import { formatTzs, formatNumber } from "@/lib/utils";
 import { errorCopy } from "@/lib/error-copy";
 
-const GRACE_MS = 5 * 60_000;
-
 export function SellButton({
   positionId,
   stake,
   value,
-  placedAt,
+  freeUntil,
   closesAt,
   alreadyClosed,
   serverNow,
@@ -36,9 +41,14 @@ export function SellButton({
   stake: number;
   /** Current sellback value (post-slippage). */
   value: number;
-  /** ISO timestamp when the position was placed — used to determine
-   *  whether the 5-minute free-exit grace window is still open. */
-  placedAt?: string;
+  /**
+   * ISO instant the FREE exit ends — the server's own (`freeExitEndsAt`), from this poll's frozen
+   * grace. `null` when no free window was ever offered (a 0-minute grace, or a bet placed with less
+   * than the grace left before selection close). The countdown, its m:ss label and the free/fee
+   * state read this and nothing else; the placement is deliberately no longer a prop, so nothing
+   * here can rebuild a window from it.
+   */
+  freeUntil?: string | null;
   /**
    * ISO timestamp when SELLING shuts — i.e. the selection cutoff
    * (`selectionClosedAt ?? resolutionAt`), NOT the resolution time.
@@ -66,21 +76,25 @@ export function SellButton({
 }) {
   const [pending, start] = useTransition();
   const [closedNow, setClosedNow] = useState(false);
-  // Grace period — ticks once per second to update the countdown label.
+  // The free window — ticks once per second to update the countdown label. It counts down to
+  // the server's instant, so a poll frozen at any grace shows its own window.
   const [graceRemainMs, setGraceRemainMs] = useState<number>(0);
   useEffect(() => {
-    if (!placedAt) return;
-    const placedTs = Date.parse(placedAt);
-    if (!Number.isFinite(placedTs)) return;
+    // NaN when no free window is offered, and when one is WITHDRAWN while this button is mounted
+    // (a cutoff moved earlier, so the bet no longer had its runway): the countdown then reads 0,
+    // never the last value it showed. Both hosts also lock the button then (`alreadyClosed`);
+    // the free state must not lean on that.
+    const freeEndTs = freeUntil ? Date.parse(freeUntil) : NaN;
     // Compute clock offset once: server ahead → positive offset.
     // Applying it keeps the countdown aligned to server time so a device
     // clock that's 1 min behind doesn't show 6:00 instead of 5:00.
     const clockOffset = serverNow != null ? serverNow - Date.now() : 0;
-    const update = () => setGraceRemainMs(Math.max(0, placedTs + GRACE_MS - (Date.now() + clockOffset)));
+    const update = () => setGraceRemainMs(Number.isFinite(freeEndTs) ? Math.max(0, freeEndTs - (Date.now() + clockOffset)) : 0);
     update();
+    if (!Number.isFinite(freeEndTs)) return;
     const id = setInterval(update, 1000);
     return () => clearInterval(id);
-  }, [placedAt, serverNow]);
+  }, [freeUntil, serverNow]);
   // closedNow flips client-side the moment the wall clock crosses
   // resolutionAt. Tick once per second.
   useEffect(() => {
@@ -104,10 +118,13 @@ export function SellButton({
   const { toast, deferToast } = useDeferredToast(pending);
   const { t } = useT();
 
-  // Free exit is only valid if: grace window hasn't expired AND the market
-  // closes in more than 5 min (prevents last-second exploitation).
-  const marketCloseMs = closesAt ? Date.parse(closesAt) - Date.now() : Infinity;
-  const inGrace = graceRemainMs > 0 && marketCloseMs > GRACE_MS;
+  // Free exit is exactly the server's free window: open while its instant is still ahead of the
+  // server-calibrated clock, and no other clock is read. The last-second guard that sat here
+  // ("closes in more than five minutes", on the device clock) was not the server's rule: the
+  // server offers no free window to a bet placed with less than the grace left before selection
+  // close, so the instant never runs past the cutoff — and that guard took the free label off
+  // sales the server still granted free.
+  const inGrace = graceRemainMs > 0;
   // Cash-out is an EARLY EXIT, never a profit. `value` is the stake returned:
   // the full stake inside the free-exit window, or stake − fee outside it.
   // `net` is therefore always ≤ 0 (0 when free, −fee otherwise).

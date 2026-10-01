@@ -9,7 +9,7 @@ import { PnlSummaryStrip } from "@/components/positions/pnl-summary-strip";
 import { CountdownRing } from "@/components/positions/countdown-ring";
 import { SellButton } from "@/components/markets/sell-button";
 import { formatTzsCompact, formatDeadline } from "@/lib/utils";
-import { listPositionsForUser, positionCardMarkets, cashOutValue, isSelectionClosed } from "@/lib/server/market-service";
+import { listPositionsForUser, positionCardMarkets, cashOutValue, freeExitEndsAt, isSelectionClosed } from "@/lib/server/market-service";
 import { currentSession } from "@/lib/server/auth-service";
 import { ensureAffiliateAccount, inviteViewerFor } from "@/lib/server/affiliate-service";
 import { inviteIsLiveFor } from "@/lib/feature-state";
@@ -430,7 +430,9 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
                       positionId={p.id}
                       stake={p.stake}
                       value={liveValue ?? 0}
-                      placedAt={p.placedAt}
+                      // The free window's end from THIS poll's frozen grace — the server's own instant,
+                      // the one `cashOutValue` sells free inside (S6 A8; `test:sell-grace-truth`).
+                      freeUntil={freeExitEndsAt({ placedAt: p.placedAt }, m)}
                       closesAt={cutoffIso}
                       alreadyClosed={sellShut}
                       serverNow={serverNow}

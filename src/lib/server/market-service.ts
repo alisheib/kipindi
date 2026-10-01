@@ -2941,6 +2941,37 @@ export function exitWindowClosesAt(
 }
 
 /**
+ * The instant this stake's FREE exit ends, as the server decides it (S6 A8) — the display twin of
+ * `cashOutValue`'s `inGracePeriod`, read from the SAME facts: the poll's frozen rates (`ratesFor`),
+ * the same reading of the placement, the selling cutoff (`exitClosesAtMs`) and `exitWindowFacts`.
+ * A sale is free exactly while `now < freeExitEndsAt`, and `test:sell-grace-truth` drives that
+ * equivalence against `cashOutValue` itself over every frozen grace it grids.
+ *
+ * `null` when no free window was ever offered — a poll frozen at 0 minutes, or a bet placed with
+ * less than the grace left before selection close (`hadRunway`). ⛔ Not the placement instant, which
+ * is `exitWindowClosesAt`'s convention: a device clock behind the bet would read "free" off it, and
+ * the server refuses that sale. A runway also means the cutoff is at least a grace after the bet,
+ * so the instant never outlives selection close.
+ *
+ * Display only: it moves no money and decides no sale — `cashOutPosition` re-decides everything.
+ */
+export function freeExitEndsAt(
+  position: Pick<StoredPosition, "placedAt">,
+  market: Pick<StoredMarket, "resolutionAt" | "selectionClosedAt" | "feeSnapshot">,
+): string | null {
+  const cfg = ratesFor(market);
+  // Read exactly as `cashOutValue` reads it, the empty placement included.
+  const placedAtMs = position.placedAt ? Date.parse(position.placedAt) : Date.now();
+  const { graceMs, hadRunway } = exitWindowFacts({
+    placedAtMs,
+    closesAtMs: exitClosesAtMs(market),
+    freeExitGraceMinutes: cfg.freeExitGraceMinutes,
+    paidExitWindowMinutes: cfg.paidExitWindowMinutes,
+  });
+  return hadRunway ? new Date(placedAtMs + graceMs).toISOString() : null;
+}
+
+/**
  * Early cash-out value of an OPEN position, and WHETHER it can be sold at all.
  *
  * ── THE EXIT WINDOW (2026-07-15, Ali's design; paid tail removed 2026-07-22) ──

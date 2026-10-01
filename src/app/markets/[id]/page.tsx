@@ -19,7 +19,7 @@ import { SellButton } from "@/components/markets/sell-button";
 import { ResolutionPanel } from "@/components/markets/resolution-panel";
 import { Chip } from "@/components/ui/chip";
 import { Stat } from "@/components/ui/stat";
-import { cashOutValue, getMarket, isClosedByTime, isSelectionClosed, listPositionsForUser, ratesFor } from "@/lib/server/market-service";
+import { cashOutValue, freeExitEndsAt, getMarket, isClosedByTime, isSelectionClosed, listPositionsForUser, ratesFor } from "@/lib/server/market-service";
 import { priceState } from "@/lib/markets/price-state";
 import { sharePreviewDescription, sharePreviewPrice, sharePreviewSettled } from "@/lib/markets/share-preview";
 import { ROOT_OPEN_GRAPH } from "../../layout";
@@ -905,7 +905,9 @@ export default async function MarketDetail({
                         positionId={p.id}
                         stake={p.stake}
                         value={liveValue ?? 0}
-                        placedAt={p.placedAt}
+                        // The free window's end from THIS poll's frozen grace — the server's own instant,
+                        // the one `cashOutValue` sells free inside (S6 A8; `test:sell-grace-truth`).
+                        freeUntil={freeExitEndsAt({ placedAt: p.placedAt }, m)}
                         closesAt={m.selectionClosedAt ?? m.resolutionAt}
                         alreadyClosed={sellShut}
                         serverNow={Date.now()}
