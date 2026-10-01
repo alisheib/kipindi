@@ -1,8 +1,8 @@
-import { randomUUID } from "crypto";
 import { db } from "@/lib/server/store";
 import type { MessagingConsentSource, MessagingConsentStatus, MessagingLocale } from "@/lib/server/store";
 import { toMsisdn255 } from "@/lib/phone-normalize";
 import { dict } from "@/lib/i18n-dict";
+import { ledgerStamp } from "@/lib/server/marketing/ledger-stamp";
 
 /**
  * U6 · THE CONSENT LEDGER'S ONE WRITER.
@@ -98,7 +98,9 @@ export async function appendMarketingConsent(input: AppendMarketingConsentInput)
   try {
     await Promise.resolve(
       db.messagingConsent.create({
-        id: randomUUID(),
+        // ⛔ The ledger's clock, never `randomUUID()` + `new Date()`: a same-millisecond tie
+        // must go to the row written LAST (`ledger-stamp.ts`).
+        ...ledgerStamp(),
         channel: "SMS",
         identifier,
         category: "MARKETING",
@@ -108,7 +110,6 @@ export async function appendMarketingConsent(input: AppendMarketingConsentInput)
         locale: input.locale,
         evidence: input.evidence,
         recordedBy: input.recordedBy,
-        createdAt: new Date().toISOString(),
       }),
     );
     return true;

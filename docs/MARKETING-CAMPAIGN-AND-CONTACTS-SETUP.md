@@ -2,7 +2,8 @@
 
 **STATUS — 🟢 BUILDING. 12/52 units ✅ LIVE (U1–U12), 12/25 defects. 52 units · defects D1–D25 · 46 owner decisions taken on
 Ali's delegation · 11 legal questions, each shipping with a safe default that IS built. S7c went LIVE 2026-09-28 (`d3379fef`).
-NEXT: the contacts book, U17+U18 — ⛔ but read ◐ HALF-DONE first: the consent ledger's `latestFor` breaks a same-millisecond tie at RANDOM, and U18's contacts are the population it decides for.**
+U17 🔵 (`7bef9f97`, live since 2026-09-28) and U18's first half (U18a, `fb194038`, live) were shipped by S9, which closed no docs.
+S10 (2026-10-01) fixed the consent-ledger tie, which had been picking the latest row at random. NEXT: U18b — the book inside erasure, retention and the data export.**
 
 > ⚠️ **THIS FILE IS BOTH THE PLAN AND THE PROGRESS TRACKER.** Any session, on any machine, learns where
 > the programme stands by reading §0 (RESUME AT) and §1 (status board) — and nothing else. `npm run
@@ -34,33 +35,60 @@ NEXT: the contacts book, U17+U18 — ⛔ but read ◐ HALF-DONE first: the conse
 4. Work per §11. Close per §0a step 6.
 
 ```
+🟡 S10 IN FLIGHT — 2026-10-01, Ali-Blade15, worktree `C:/kipindi-marketing`, branch `marketing-s10` (pushed
+  `HEAD:main` step by step). Ali: "proceed with other sessions in parallel, push live, prove it".
+  ✅ STEP 1 · THE CONSENT TIE IS FIXED (◐ HALF-DONE item 1 below, the S8 finding). Decided on Ali's standing
+  delegation of technical calls, because the alternative (leave it) let U18b's erasure writes land on a coin
+  flip. `src/lib/server/marketing/ledger-stamp.ts` is now the ledger's ONE clock: `createdAt` never steps
+  back, and the id is fixed-width lowercase hex (clock 12 + in-millisecond counter 6 + random 14), so
+  `createdAt desc, id desc` is exactly the order of writing, the same under byte order, `localeCompare`
+  and Postgres' `en_US` collation. Both writers (`consent-ledger.ts`, `optout-service.ts`) spread
+  `...ledgerStamp()`. MEASURED BY DISCRIMINATION, in-process: 400 back-to-back appends, 390 of them
+  sharing a millisecond — the pre-fix writer read back WRONG 249 times, the fix 0 times.
+  Guards: `test:marketing-consent-ledger` §9/§10 (16/16 red cases caught, two of them the tie: the old
+  writer, and the clock with a random id), and `test:dal-parity` §20 (every `db.messagingConsent.create(`
+  caller in `src/` is a declared writer and takes the stamp; `red:dal-parity` 56/56 incl. 3 new). ⚠️ The
+  order is per PROCESS; production runs one instance. Rows written before the fix keep their random ids.
+  ⏭ STEP 2 · U18b (below).
+
+🔎 S9 — RECONSTRUCTED FROM ITS COMMITS (2026-09-28, office PC, branch `marketing-s9`, merged and gone).
+  It shipped U17 (`7bef9f97`) and U18a (`fb194038`) to `main` — both LIVE since that day — and ended
+  without touching this file, so §0 still said "NEXT: U17 and U18" for three days. ⛔ LESSON: the tracker
+  rides in the SAME push as the code, or the next session rebuilds it from `git log`.
+  · U17 — /admin/contacts is SIX doors, not five: the page carries its OWN `AdminPageGate` (a layout gate
+    alone is refused by `test:admin-section-gate` §0b′); `test:rbac` §7b (NEW) asserts each nav item's
+    `domain` equals `domainForPath(href)` — the two were independent copies, so deleting the
+    `ROUTE_DOMAINS` row refused the page while the sidebar still showed the link; `test:admin-nav` joined
+    `predeploy`. The skeleton equals the real block BY CONSTRUCTION (230.38 px both at 1280, 272.63 at
+    360). The `filter-language` entry moves to U21 (declaring a page with no FilterPill fails §6). States
+    driven: loading, empty, refused — `populated` and `error` are U20's (no store to fill or fail yet).
+    ⚠️ 🔵, not ✅: no red control exists for §7b yet (`red:` key), and the live check needs an admin
+    session — production has no QA admin, only Ali's own login (⛔ never used).
+  · U18a — `MarketingContact`, `ContactList`, `ContactListMember` in `schema.prisma`, both DALs (named
+    types) and `test:dal-parity` §19, with 8 new `red:dal-parity` cases. Migration
+    `20260928170000_marketing_contact_book` hand-written, all 86 migrations proven from EMPTY on embedded
+    PostgreSQL 18.3. `consentState` is a NEW enum (`ContactConsentState`: UNKNOWN/GIVEN/WITHDRAWN) and only
+    a CACHE — the gate asks the ledger. `userId` is `onDelete: SetNull`, never Cascade.
+  · ⛔ U18 IS NOT DONE: U18b owes the erasure, retention and DSAR-export arms (S9: "§1 does not tick until it
+    lands"). No contact writer exists yet, so nothing has been written under the tie.
+
 ✅ S7c IS LIVE — shipped 2026-09-28 as `d3379fef` (session S8, office PC OMEGA-COMPILE01, worktree
   `F:/kipindi-s8`, branch `marketing-s8`). PROVED BY DISCRIMINATION, never by a build id alone: before the
   push /auth/register served the OLD sentence ("Nipe matangazo" 2 hits, the new one 0); after it, the NEW
   one ("Nitumie ofa na habari za 50pick kwa SMS" 2 hits, the old one 0), on `?dpl=d3379fef…`. A check that
   reads the same before and after proves nothing — this one reverses.
 
-▶ NEXT: U17 and U18 — S8's pair: THE CONTACTS BOOK COMES FIRST. §10 was reordered 2026-09-27 on Ali's
-  approval ("keep going with your plan") so the admin console shows something next session: Contacts in
-  the menu at S8, the list at S9; Campaigns in the menu at S17. U13/U14 moved beside the engine (S21, where
-  a campaign exists to pause and `SmsPurpose.MARKETING` exists to count — both premises were false as
-  written); U15/U16 moved to S20. The previous units are closed; see ✔ LAST SESSION.
-
-  U17 · FIVE DOORS (D17) — `/admin/contacts` in the Growth group, exactly as §9 U17: `NAV_GROUPS` +
-  `ROUTE_KEYS` (label "Contacts"; ⚠️ prefix order is load-bearing), `ROUTE_DOMAINS` `["/admin/contacts",
-  "growth"]`, `layout.tsx` with `AdminSectionGate`, `loading.tsx`, the `filter-language` entry. States:
-  loading · empty · refused · error at 1280 AND 360, screenshots OPENED AND READ. ⛔ The skeleton's height
-  must equal the real block — build it from the real components (the `/s` skeleton needed that fix on
-  2026-09-27: a guessed third text line moved the button 24 px).
-  U18 · THE BOOK — `MarketingContact`, `ContactList`, `ContactListMember` in BOTH DALs with NAMED types and
-  a new `dal-parity` section (next free number — read the file, don't trust a doc), extending
-  `red:dal-parity`. The migration is expand-only and HAND-WRITTEN (⛔ never paste `prisma migrate diff`
-  wholesale — `test:migration-ownership`), proven from EMPTY on embedded PostgreSQL 18.3 before the push.
-  ⛔ THE BOOK SHIPS INSIDE ERASURE AND RETENTION FROM DAY ONE — U16 moved later, so its rule for the NEW
-  store is part of U18's Accept: `userId` is a LINK never a copy, the DSAR export and the retention
-  schedule name `MarketingContact`, and an erased player's number is not left marketable through it. Check
-  whether `test:retention` already discovers phone/e-mail columns structurally; if not, U18 adds the row to
-  the schedule and U16 (S20) adds the structural guard.
+▶ NEXT: U18b — THE BOOK INSIDE ERASURE, RETENTION AND THE DATA EXPORT (U18's other half; S10 is on it).
+  U18's §0 Accept, carried from S8: ⛔ THE BOOK SHIPS INSIDE ERASURE AND RETENTION FROM DAY ONE. `userId`
+  is a LINK never a copy (U18a built that); the DSAR export and the retention schedule name
+  `MarketingContact`; and an erased player's number is not left marketable through the book. The plan
+  for U18b, in `anonymizeClosedAccount`: suppress the erased number (an OPERATOR stop that the person's
+  old SMS link cannot lift — §17.liftreason) and append a WITHDRAWN ledger row, then empty every book row
+  for that person (by `userId` OR by the number): link broken, name / e-mail / notes / tags cleared,
+  `suppressedAt` set. `buildDsarBundle` gains the book rows, the ledger rows and the suppression for the
+  person's number. `docs/DATA-RETENTION.md` names the book. This also closes the S6 finding that erasure
+  can RE-OPEN marketing on Postgres (§9 U16 🔴), for every player, not only contacts.
+  THEN: U19 · U20 (S9's pair in §10) — masked by construction, then the list, the first contacts Ali sees.
   ⚠️ VERIFY EACH PREMISE BEFORE BUILDING — this plan's text has been wrong at the start of most sessions.
 
 ✔ LAST SESSION: S8, 2026-09-28 (office PC OMEGA-COMPILE01, worktree `F:/kipindi-s8`, branch `marketing-s8`)
@@ -110,8 +138,8 @@ NEXT: the contacts book, U17+U18 — ⛔ but read ◐ HALF-DONE first: the conse
   S0b, S0 — each in §2, newest first. ⭐ The habit that found most of it: audit the INSTRUMENT, not only
   the code.
 
-◐ HALF-DONE — ⛔ READ THIS BEFORE U18. Three items, one of them a live defect this lane is about to inherit.
-  1. 🔴 `latestFor` ANSWERS BY COIN FLIP UNDER A TIE — and U18's contacts are the population it decides for.
+◐ HALF-DONE — three items. Item 1 was FIXED by S10 (see 🟡 S10 above); its record stays for the reason.
+  1. ✅ FIXED 2026-10-01 (S10, `ledger-stamp.ts`). WAS: 🔴 `latestFor` ANSWERS BY COIN FLIP UNDER A TIE — and U18's contacts are the population it decides for.
      `db.messagingConsent.latestFor` orders `createdAt desc, id desc` in BOTH twins, but the id is
      `randomUUID()` (`consent-ledger.ts`, `optout-service.ts`), so a tie is broken at random. MEASURED on the
      shipped tree: **396 of 400 back-to-back appends shared a millisecond, and 46% of those answered GIVEN
@@ -475,8 +503,8 @@ a Guard key that resolves to a script on disk, `yes` plus the backticked `red:` 
 | U14 | engine | ⬜ | — | — | — | `test:marketing-consent` | — | frequency cap |
 | U15 | guard | ⬜ | — | — | — | `test:marketing-engine` | — | D15 one send path |
 | U16 | data | ⬜ | — | — | — | `test:retention` | — | erasure reaches it |
-| U17 | visual | ⬜ | — | — | — | `test:rbac` | — | five doors |
-| U18 | data | ⬜ | — | — | — | `test:dal-parity` | — | contact book |
+| U17 | visual | 🔵 | S9 | 7bef9f97 | /admin/contacts did not exist, and nothing compared a nav item's domain with the page's → six doors (the page carries its own `AdminPageGate`), `test:rbac` §7b holds menu = page, the skeleton equals the real block (230.38 px / 272.63 px, delta 0) | `test:rbac` · `test:admin-section-gate` · `test:admin-nav` | planted by hand at S9 (124 passed / 1 failed); no `red:` key yet | live since S9's push (production serves later builds); ✅ owes a `red:` control for §7b and one admin-session look at Growth → Contacts — production has no QA admin, only Ali's login |
+| U18 | data | 🟡 | S9 · S10 | — | — | `test:dal-parity` | — | U18a LIVE `fb194038` (S9: the three tables, both DALs, §19, 8 red cases); U18b — erasure · retention · DSAR export — S10, in progress |
 | U19 | guard | ⬜ | — | — | — | `test:read-tiers` | — | masked everywhere |
 | U20 | visual | ⬜ | — | — | — | `test:contacts-page` | — | list + search |
 | U21 | visual | ⬜ | — | — | — | `test:filter-language` | — | filters |
@@ -560,6 +588,8 @@ a Guard key that resolves to a script on disk, `yes` plus the backticked `red:` 
 
 | Session | Date | What happened |
 |---|---|---|
+| S10 | 2026-10-01 | **IN FLIGHT (Ali-Blade15, `marketing-s10`).** Ali: *"proceed with other sessions in parallel, push live, prove it"*. Found §0 three days stale: S9 had shipped U17 + U18a and closed no docs — the board was rebuilt from the two commits (🔎 S9 in §0). ✅ **The consent tie FIXED** on Ali's standing delegation of technical calls: one ledger clock (`ledger-stamp.ts`), both writers stamped; 400 back-to-back appends, 390 sharing a millisecond — the pre-fix writer wrong 249 times, the fix 0; `test:marketing-consent-ledger` §9/§10 (16/16 red) and `test:dal-parity` §20 (`red:dal-parity` 56/56). Next: U18b. |
+| S9 | 2026-09-28 | **RECONSTRUCTED BY S10 from `7bef9f97` and `fb194038` — the session wrote no row.** U17 shipped (six doors, `test:rbac` §7b, `test:admin-nav` into `predeploy`, the skeleton equal by construction) and U18a shipped (three tables, both DALs, `test:dal-parity` §19, 8 red cases, the migration proven from EMPTY on PostgreSQL 18.3). Both LIVE that day. U18b (erasure / retention / export) was named as owed, and §1 deliberately left unticked. |
 | S8 | 2026-09-28 | **S7c WENT LIVE — `d3379fef`. No unit ticked (12/52 units, 12/25 defects); the session was the ship itself.** Ali: *"ship it first"*, then *"end session here, mark progress, clean stales"*. Own worktree `F:/kipindi-s8` off `origin/marketing-s7c`, real `npm ci` (⛔ no junction), merged `origin/main` — which moved **three times** during the session, 23 → 54 → 4 commits, because the landing lane was pushing in parallel. ⭐ **Proven by:** typecheck; `npm run build`; every marketing / SMS / DAL / RG / comms suite; all ten red controls (`red:dal-parity`, `red:rg-doors`, `red:marketing-consent`, `red:marketing-consent-ledger`, `red:marketing-optout`, `red:campaign-compose`, `red:sms-cost-guard`, `red:rg-policy`, `red:support-contact`, `red:marketing-setup-plan`); 90 screenshots at 0px overflow, OPENED AND READ (ten SMS-credit states × two widths, /s error + busy, consent HELD ×3 languages, /help FAQ 5, register consent); and the live proof by DISCRIMINATION — /auth/register served "Nipe matangazo" before the push and "Nitumie ofa na habari za 50pick kwa SMS" after, on `?dpl=d3379fef…`. ⭐ **Fixed before the push:** (1) the nine `since` dates said 2026-09-27 for a batch shipping on the 28th — corrected and the append-only hash re-pinned (`9b041893ec43a670` → `718250ee6e8280ed`) only after proving production had never shown those sentences AND that the guard still fails on an EDIT and a REMOVAL; (2) three guards cited by SCRIPT FILE instead of `package.json` key (`test:dev-route-guard` → `test:cert-devroutes`, `test:stacking-contract` → `test:stacking`), which had `test:guards-exist` RED for every lane, one of them already on main. 🔴 **The trap that nearly shipped a regression:** the first `git merge origin/main` took a STALE ref — a parallel session's fetch moved `refs/remotes/origin/main` mid-command — and silently dropped the landing lane's `FIRST_LICENSED_EVIDENCE`; the redone merge was verified per file against the merge base, and the i18n dictionary leaf by leaf (98 ours / 158 main's / 30 deletions honoured / 0 wrong) with a planted defect to prove the checker could fail. ⚠️ Red elsewhere, not ours: `test:stacking` 6.1 (LIVE strip `z-index: 11`) and `test:red-anchors` (two rotted anchors in other lanes) — each byte-identical to `origin/main`. 🔴 **Instrument lessons:** a suite that flakes once and passes 3× is pointing at a real race (here the `latestFor` tie — see ◐ HALF-DONE); a nested drive's failure (U8 BUSY, 1/266) vanished at 266/266 standalone twice, because the opt-out budget refills 1 per 6 s; and a viewport TILE froze a scroll position that made the consent HELD card look obstructed, while a per-painted-line measurement showed it clear in all three languages. |
 | S7c | 2026-09-26 → 27 | **THE END-TO-END REVIEW OF EVERYTHING LIVE, AND ITS FIXES — no unit ticked (12/52 units, 12/25 defects); §10 reordered on Ali's approval so the contacts book is next.** Ali: *"make sure it's all end to end perfect, visually, logically, no screen is weak, nothing lacking."* ⭐ **The method:** every marketing screen photographed on production and on a local build (1280 and 360, three languages), then an adversarial review — eight lenses (three visual, four logic, one docs/prompt), each finding handed to a second agent told to REFUTE it: 99 of 105 survived. The fixes were written by parallel agents on disjoint files that ran NO Node (this laptop's RAM fails under load and other sessions hold the heavy-node lock for long stretches), then one copy pass wrote every string in en/sw/zh, then the suites ran serially on the merged tree. A SECOND review of the fixes (four visual lenses over fresh captures, two code lenses over the diff) confirmed 42 of 54 more, no blockers; fixed the same way. ⭐ **What changed for a person:** the consent names SMS in one noun everywhere and the ledger stores the sentence in the language actually shown (rows written 2026-09-25 → 27 say SW whatever was seen — append-only, so they stay); OQ11's safe default (an old "product updates" yes no longer counts; no backfill); the toggle shows EFFECTIVE consent and is held during a break or self-exclusion; the gate refuses a KYC final refusal (an UNDERAGE refusal used to pass on the self-typed date of birth); the opt-out page is a minimal shell whose heading follows the state and whose resume records its own consent sentence; a stronger stop now takes over a person's own and `lift` lifts only a person's own (both DALs — U16's owed half, done); Admin → System's card headlines the SMS CREDIT with the state and the reason in words and alarms the Owner at the alert line AND the floor (bell + email, never SMS). ⭐ **Proven by:** typecheck; every marketing, RG, SMS, DAL and comms suite; the red controls (`red:dal-parity`, `red:rg-doors`, `red:marketing-consent`, `red:marketing-consent-ledger`, `red:marketing-optout`, `red:campaign-compose`, `red:sms-cost-guard`, `red:rg-policy`, `red:support-contact`, `red:marketing-setup-plan`), each catching every plant; and the screens re-photographed and read. 🔴 **Instrument lessons:** (1) a stale `.next` made every `/api/dev-test/*` route 404 on `next dev`, so a capture photographed the admin SIGN-IN page as "the SMS card" with a green exit — ⛔ `rm -rf .next` before every dev run; (2) `red:marketing-optout`'s baseline raced a fire-and-forget audit write (S22 now polls); (3) the stopped first fix run's agents were waiting on another session's lock for an hour — static-only agents plus one serial battery is the shape that works here. ⚠️ Red elsewhere, not ours: `test:stacking` 6.1 (z-index 11 from the landing lane's LIVE strip), two rotted `test:red-anchors` anchors in other lanes, and `red:feedback-law`'s updown anchor. |
 | S7b | 2026-09-26 | **Ali answered OQ1, OQ2 and OQ4 himself — D6 ✅, 12/25 defects.** *"gaming board said they don't care — it's not part of their approval, we can send anything as long as we have SMS gateway · PDPA is not needed · the right helpline is ours."* Recorded verbatim in `COMPLIANCE-DECISIONS.md` 2026-09-26 · Marketing SMS rulings with what the rulings do NOT change (consent under ETA s.32 / EPOCA reg 7(4), no promotion to the self-excluded under GN 478T reg 49(3), every RG/age gate). OD17 and §5.3 withdrawn, U41 re-scoped to the officer authorisation (and flagged to reconcile with Ali's single-admin precedent), OQ2's registration hold dropped. ⭐ **OQ4 implemented:** the marketing footer now reads `support-config.ts`'s helpline — one number — and `test:campaign-compose` §12, which ASSERTED the two helplines differ, now asserts they are the same and that the Board's number appears nowhere; still 49 septets. ⭐ **And Ali asked how much SMS balance we have:** the app could not say — the reading is in-process and empty after every restart, and nothing but a send refreshed it. `refreshSmsBalance` (the same free, authenticated endpoint `sendBatch` already used) now feeds `/admin/system`'s SMS card on render, reused for a minute; `test:sms-cost-guard` §7 proves it reads, records into the one snapshot, SENDS nothing, reuses a fresh reading and never records a refusal's 0.0 (red 7/7). ⛔ Not read by logging in as Ali — the QA admin password is his own login and one session per account would have signed him out. The stale-text sweep for "closed until the Board approves" ran across BLACKBALL-SMS, LIVE-HOSTING-STATUS, RAILWAY-LIVE, README, NEXT-PLAN, CLAUDE.md, COMPLIANCE-DECISIONS and two code comments. |

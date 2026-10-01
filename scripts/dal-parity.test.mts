@@ -1536,5 +1536,73 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
     /c\.user\./.test("    displayName: c.user.name,"));
 }
 
+/* ═══ §20 · The consent ledger's clock — a tie cannot be broken at random (S10, 2026-10-01) ═══ */
+{
+  // 🔴 THE DEFECT BOTH TWINS SHARED, WHICH IS WHY §17 COULD NOT SEE IT. `latestFor` orders
+  // `createdAt desc, id desc` in both, and agreeing is all §17 checks. But the id was `randomUUID()`
+  // and `createdAt` is a millisecond, so a same-millisecond tie went to a random id: 46% of tied
+  // pairs answered GIVEN after a WITHDRAWN (S8's measurement). The twins agreed and were wrong
+  // together. ⭐ The fix lives in the WRITERS (`ledger-stamp.ts` gives every row an id that sorts in
+  // write order), so this section holds the writers, and the order both twins read them back in.
+  // The behaviour itself — 400 appends, every one read back as the latest — is
+  // `test:marketing-consent-ledger` §9, with the pre-fix writer planted as its red case.
+  const WRITERS = ["lib/server/marketing/consent-ledger.ts", "lib/server/marketing/optout-service.ts"];
+
+  // ⛔ THE POPULATION, read from the REAL tree (not KP_SRC): a third writer that skips the clock
+  // would bring the coin flip back for whatever it writes. U22's form and U33's consent basis
+  // will write here — each must join WRITERS and take the stamp.
+  const walk = (dir: string): string[] => readdirSync(dir, { withFileTypes: true }).flatMap((e) =>
+    e.isDirectory() ? walk(join(dir, e.name)) : /\.(ts|tsx)$/.test(e.name) ? [join(dir, e.name)] : []);
+  const srcRoot = join(ROOT, "src");
+  const callers = walk(srcRoot)
+    .filter((f) => /\bdb\.messagingConsent\.create\(/.test(decomment(readFileSync(f, "utf8"))))
+    .map((f) => f.slice(srcRoot.length + 1).replace(/\\/g, "/")).sort();
+  ok("20.0 · every db.messagingConsent.create( caller in src/ is a declared ledger writer",
+    callers.join(",") === [...WRITERS].sort().join(","), `callers=[${callers}]`);
+
+  /** Each `db.messagingConsent.create({ … })` object literal in a source, brace-matched. */
+  const createObjects = (src: string): string[] => {
+    const out: string[] = [];
+    for (let at = src.indexOf("db.messagingConsent.create("); at >= 0; at = src.indexOf("db.messagingConsent.create(", at + 1)) {
+      const open = src.indexOf("{", at);
+      let depth = 0;
+      for (let i = open; i < src.length; i++) {
+        if (src[i] === "{") depth++;
+        else if (src[i] === "}") { depth--; if (depth === 0) { out.push(src.slice(open, i + 1)); break; } }
+      }
+    }
+    return out;
+  };
+  const stamped = (obj: string) => /^\s*\.\.\.ledgerStamp\(\),?\s*$/m.test(obj)
+    && !/^\s*(id|createdAt)\s*:/m.test(obj) && !/randomUUID|new Date\(\)/.test(obj);
+  for (const w of WRITERS) {
+    const src = decomment(readFileSync(join(SRC, w), "utf8"));
+    const objs = createObjects(src);
+    ok(`20.stamp · ${w.split("/").pop()} — every ledger row takes its id AND createdAt from ledgerStamp(), nothing else`,
+      objs.length >= 1 && objs.every(stamped), `${objs.length} create(s); ${objs.filter((o) => !stamped(o)).length} unstamped`);
+    ok(`20.import · ${w.split("/").pop()} imports the ONE clock`,
+      /import\s*\{\s*ledgerStamp\s*\}\s*from\s*"@\/lib\/server\/marketing\/ledger-stamp"/.test(src));
+  }
+
+  // ⭐ THE ORDER THE STAMP IS BUILT FOR — `createdAt desc, id desc` in both twins and both readers —
+  // is §17.tiebreak's, with its own red cases; it is not asserted twice.
+
+  // ⛔ THE CLOCK ITSELF: a counter inside the millisecond, a clock that never steps back, fixed-width hex.
+  const stampSrc = decomment(readFileSync(join(SRC, "lib/server/marketing/ledger-stamp.ts"), "utf8"));
+  ok("20.clock · ledger-stamp holds a monotonic counter on globalThis and pads the id to fixed width",
+    /globalThis\.__50PICK_LEDGER_CLOCK/.test(stampSrc) && /clock\.seq \+= 1/.test(stampSrc)
+      && /padStart\(12, "0"\)/.test(stampSrc) && /padStart\(6, "0"\)/.test(stampSrc));
+
+  // ── CONTROLS ─────────────────────────────────────────────────────────────────────────
+  ok("20.c1 · CONTROL · a create carrying `id: randomUUID()` is NOT stamped",
+    !stamped("{\n  id: randomUUID(),\n  channel: \"SMS\",\n}"));
+  ok("20.c2 · CONTROL · a stamp OVERRIDDEN by a later id is NOT stamped",
+    !stamped("{\n  ...ledgerStamp(),\n  id: randomUUID(),\n}"));
+  ok("20.c3 · CONTROL · a stamped create IS recognised",
+    stamped("{\n  ...ledgerStamp(),\n  channel: \"SMS\",\n}"));
+  ok("20.c4 · CONTROL · the brace matcher finds a nested create's whole object",
+    createObjects("x(db.messagingConsent.create({ a: { b: 1 }, c: 2 }));").join("") === "{ a: { b: 1 }, c: 2 }");
+}
+
 console.log(`\ndal-parity: ${pass} passed, ${fail} failed`);
 if (fail > 0) process.exit(1);

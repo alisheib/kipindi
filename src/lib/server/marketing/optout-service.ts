@@ -9,6 +9,7 @@ import { optOutTokenFromHex, isOptOutTokenShape, normalizeOptOutToken, optOutTok
 import { userPhoneKeyFor } from "@/lib/server/marketing/consent";
 import { rateCheckAsync, rateRefundAsync } from "@/lib/server/rate-limit";
 import { dict } from "@/lib/i18n-dict";
+import { ledgerStamp } from "@/lib/server/marketing/ledger-stamp";
 
 /**
  * U8 · THE OPT-OUT PAGE'S ONE SERVICE — resolving a token, stopping, and starting again.
@@ -311,7 +312,9 @@ export async function resumeMarketing(raw: string, locale: MessagingLocale): Pro
  *  `ref` is `optOutTokenRef(token)` — never the live token. */
 async function appendLedgerRow(identifier: string, status: "GIVEN" | "WITHDRAWN", wording: string, locale: MessagingLocale, ref: string): Promise<void> {
   await Promise.resolve(db.messagingConsent.create({
-    id: randomUUID(),
+    // ⛔ The ledger's clock (`ledger-stamp.ts`): a stop and a resume in one millisecond must
+    // read back in the order they were made, never by a random id.
+    ...ledgerStamp(),
     channel: "SMS",
     identifier,
     category: "MARKETING",
@@ -325,7 +328,6 @@ async function appendLedgerRow(identifier: string, status: "GIVEN" | "WITHDRAWN"
     locale,
     evidence: `optout:${ref}`,
     recordedBy: null,
-    createdAt: new Date().toISOString(),
   }));
 }
 

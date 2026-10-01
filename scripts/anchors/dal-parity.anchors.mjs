@@ -597,4 +597,34 @@ export const MUTATIONS = [
     to: `    // (count removed from the Prisma twin only)`,
     expect: `19.parity.marketingContact · both twins expose the same members`,
   },
+  /* ── §20 · the consent ledger's clock (S10, 2026-10-01) ─────────────────────────────── */
+  {
+    // 🔴 THE TIE ITSELF, as it shipped: the opt-out page's ledger row goes back to a random id
+    // and the wall clock, so a stop and a resume in one millisecond read back at random.
+    name: "optout-service.ts — the opt-out ledger row goes back to randomUUID() + new Date()",
+    file: "src/lib/server/marketing/optout-service.ts",
+    from: `    ...ledgerStamp(),
+    channel: "SMS",`,
+    to: `    id: randomUUID(),
+    createdAt: new Date().toISOString(),
+    channel: "SMS",`,
+    expect: `20.stamp · optout-service.ts — every ledger row takes its id AND createdAt from ledgerStamp(), nothing else`,
+  },
+  {
+    name: "consent-ledger.ts — the register/profile ledger row goes back to randomUUID() + new Date()",
+    file: "src/lib/server/marketing/consent-ledger.ts",
+    from: `        ...ledgerStamp(),`,
+    to: `        id: randomUUID(),
+        createdAt: new Date().toISOString(),`,
+    expect: `20.stamp · consent-ledger.ts — every ledger row takes its id AND createdAt from ledgerStamp(), nothing else`,
+  },
+  {
+    // The counter that breaks a same-millisecond tie stops counting: every stamp in one
+    // millisecond gets seq 0 and the random tail decides again.
+    name: "ledger-stamp.ts — the in-millisecond counter stops counting",
+    file: "src/lib/server/marketing/ledger-stamp.ts",
+    from: `    clock.seq += 1;`,
+    to: `    clock.seq = 0;`,
+    expect: `20.clock · ledger-stamp holds a monotonic counter on globalThis and pads the id to fixed width`,
+  },
 ];

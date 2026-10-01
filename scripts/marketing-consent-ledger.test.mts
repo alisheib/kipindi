@@ -27,12 +27,14 @@
 // ⛔ Captured, never sent: a successful registration mails a verification link.
 process.env.EMAIL_OUTBOX_CAPTURE = "1";
 
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { appendMarketingConsent, marketingConsentWording, renderedLocaleOf } from "../src/lib/server/marketing/consent-ledger.ts";
 import type { AppendMarketingConsentInput, MarketingConsentSite } from "../src/lib/server/marketing/consent-ledger.ts";
 import { SMS_CONSENT_WORDINGS, isSmsConsentWording } from "../src/lib/marketing/consent-wording.ts";
 import { optOutWording } from "../src/lib/server/marketing/optout-service.ts";
+import { ledgerStamp } from "../src/lib/server/marketing/ledger-stamp.ts";
+import { toMsisdn255 } from "../src/lib/phone-normalize.ts";
 import { registerWithPassword } from "../src/lib/server/auth-service.ts";
 import type { PasswordRegisterInput } from "../src/lib/server/auth-service.ts";
 import { db } from "../src/lib/server/store.ts";
@@ -314,10 +316,73 @@ async function runAssertions(impl: Impl, phone: string, tag: string): Promise<vo
   }
   ok(p("8f · ⭐ ONE NAME — every consent point names the same sender, content and channel in its language (D1)"),
     misnamed.length === 0, misnamed.join(" | "));
+
+  /* ═══ §9 · THE TIE (S10, 2026-10-01) — the latest word wins, even inside one millisecond ═══
+   * 🔴 The defect S8 measured: the id was `randomUUID()`, so a same-millisecond tie on `createdAt`
+   * went to whichever random id sorted higher — 46% of tied pairs answered GIVEN after a WITHDRAWN.
+   * It made 2c/2d flake (red once, then green three times) and would decide for every contact in the
+   * book, where the ledger is the only record. ⭐ Driven, not read: N appends back to back on their
+   * own number, alternating, and after EACH one the gate's question must name the row just written. */
+  const tiePhone = `0754${phone.slice(4)}`;
+  const TIE_KEY = { ...KEY, identifier: tiePhone.replace(/^0/, "255") };
+  const TIE_N = 400;
+  let wrongLatest = 0;
+  const written: string[] = [];
+  for (let i = 0; i < TIE_N; i++) {
+    const status = i % 2 === 0 ? "GIVEN" as const : "WITHDRAWN" as const;
+    await impl.append({
+      phoneE164: tiePhone, locale: "SW", status,
+      source: "PROFILE", site: "PROFILE", evidence: `tie:${i}`, recordedBy: null,
+    });
+    written.push(`tie:${i}`);
+    const latestNow = await Promise.resolve(db.messagingConsent.latestFor(TIE_KEY));
+    if (latestNow?.evidence !== `tie:${i}` || latestNow?.status !== status) wrongLatest++;
+  }
+  const tieRows = await Promise.resolve(db.messagingConsent.listFor(TIE_KEY));
+  const sharedMs = tieRows.length - new Set(tieRows.map((r) => r.createdAt)).size;
+  ok(p("9 · ⭐ EXECUTED · after every one of 400 back-to-back appends, latestFor names the row just written"),
+    tieRows.length === TIE_N && wrongLatest === 0, `${wrongLatest} wrong of ${TIE_N}, ${tieRows.length} rows`);
+  ok(p("9a · CONTROL · the run really produced rows written in the same millisecond window (else 9 proved nothing)"),
+    sharedMs >= TIE_N / 4, `${sharedMs} of ${TIE_N} share a createdAt with another row`);
+  ok(p("9b · listFor returns them newest-first in exactly the order they were written"),
+    tieRows.map((r) => r.evidence).join(",") === [...written].reverse().join(","));
+}
+
+/** ⭐ The clock itself, outside any implementation: a clock that steps BACKWARDS (an NTP slew, a VM
+ *  resumed) must still stamp a row that sorts after the one before it, under the twins' own comparison
+ *  and under plain byte order — the order Postgres' collation gives a fixed-width hex id. */
+function clockAssertions(): void {
+  // ⚠️ AHEAD of the process clock, or the first stamp is already "in the past" and lands on the
+  // held branch. Run LAST: it leaves the clock a second in the future for this process only.
+  const t0 = Date.now() + 1000;
+  const a = ledgerStamp(t0 + 5);
+  const b = ledgerStamp(t0 + 5);
+  const c = ledgerStamp(t0);       // the clock stepped back 5 ms
+  const d = ledgerStamp(t0 + 6);
+  const after = (x: { id: string; createdAt: string }, y: { id: string; createdAt: string }) =>
+    (x.createdAt.localeCompare(y.createdAt) || x.id.localeCompare(y.id)) > 0
+    && (x.createdAt > y.createdAt || (x.createdAt === y.createdAt && x.id > y.id));
+  ok("10 · same millisecond → the second stamp sorts after the first", after(b, a), `${a.id} / ${b.id}`);
+  ok("10a · ⛔ the clock stepped BACK → the stamp still sorts after, and createdAt never moves backwards",
+    after(c, b) && c.createdAt >= b.createdAt, `${b.createdAt} → ${c.createdAt}`);
+  ok("10b · the clock moving forward again resumes real time", after(d, c) && d.createdAt === new Date(t0 + 6).toISOString(), d.createdAt);
+  ok("10c · the id is fixed-width lowercase hex — no separator a collation could skip",
+    [a, b, c, d].every((s) => /^[0-9a-f]{32}$/.test(s.id)), a.id);
+}
+
+/** 🔴 The writer exactly as it shipped before S10: a random id, the wall clock. The red proof's plant. */
+async function legacyAppend(i: AppendMarketingConsentInput): Promise<boolean> {
+  await Promise.resolve(db.messagingConsent.create({
+    id: randomUUID(), channel: "SMS", identifier: toMsisdn255(i.phoneE164), category: "MARKETING",
+    status: i.status, source: i.source, wording: marketingConsentWording(i.site, i.locale), locale: i.locale,
+    evidence: i.evidence, recordedBy: i.recordedBy, createdAt: new Date().toISOString(),
+  }));
+  return true;
 }
 
 if (!PROVE_RED) {
   await runAssertions(REAL, "0712345678", "");
+  clockAssertions();
   console.log(`\nmarketing-consent-ledger: ${pass} passed, ${fail} failed`);
   process.exitCode = fail === 0 ? 0 : 1;
 } else {
@@ -440,6 +505,28 @@ if (!PROVE_RED) {
         wording: (site, locale) => (site === "PROFILE" && locale === "SW"
           ? "Habari za bidhaa kwa SMS — Habari za 50pick mara kwa mara kwa SMS kwenye namba yako."
           : marketingConsentWording(site, locale)),
+      },
+    },
+    {
+      name: "🔴 THE TIE · the ledger writer goes back to randomUUID() + the wall clock (as shipped before S10)",
+      phone: "0712345615",
+      expect: "9 · ⭐ EXECUTED · after every one of 400 back-to-back appends, latestFor names the row just written",
+      impl: { ...REAL, append: legacyAppend },
+    },
+    {
+      name: "🔴 THE TIE · the clock holds createdAt but the id is random again — the counter is what breaks the tie",
+      phone: "0712345616",
+      expect: "9 · ⭐ EXECUTED · after every one of 400 back-to-back appends, latestFor names the row just written",
+      impl: {
+        ...REAL,
+        append: async (i) => {
+          await Promise.resolve(db.messagingConsent.create({
+            ...ledgerStamp(), id: randomUUID(), channel: "SMS", identifier: toMsisdn255(i.phoneE164), category: "MARKETING",
+            status: i.status, source: i.source, wording: marketingConsentWording(i.site, i.locale), locale: i.locale,
+            evidence: i.evidence, recordedBy: i.recordedBy,
+          }));
+          return true;
+        },
       },
     },
   ];
