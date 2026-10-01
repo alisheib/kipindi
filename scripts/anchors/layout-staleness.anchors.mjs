@@ -131,4 +131,15 @@ export const MUTATIONS = [
     to: `  "wallet:balance":   "50pick:sse:balance",`,
     check: "5.2 the SSE hook bridges wallet:balance onto that window event",
   },
+  {
+    name: "the-captioned-capsule-subscribes-too",
+    why: "⭐ S6 · TWO CAPSULES, ONE LISTENER. The journey's captioned balance is FED the live figure by its bar "
+       + "and rolls through the classic pill's own hook. A subscription of its own looks harmless (the same "
+       + "event, the same number), and it is how one writer becomes two, each free to drift from the bar's "
+       + "decision that `useLiveBalance` exists to keep single.",
+    file: PILL,
+    from: `  const figure = formatBalancePill(balance);`,
+    to: `  const figure = formatBalancePill(balance) + ""; useEffect(() => { const on = () => {}; window.addEventListener("50pick:sse:wallet-balance", on); return () => window.removeEventListener("50pick:sse:wallet-balance", on); }, []);`,
+    check: "5.1b exactly ONE balance listener",
+  },
 ];

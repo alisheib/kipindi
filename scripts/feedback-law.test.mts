@@ -246,6 +246,10 @@ console.log("\n§4 · Nothing vibrates on a non-action");
 const POLLERS = [
   "src/components/layout/notifications-panel.tsx",
   "src/components/markets/notify-poller.tsx",
+  // The journey's unread count (Vodacom plan S6, WP3): the rule that polls, and the hook that mounts it on the Akaunti
+  // tab and the hub's row. Declared here so a new poller is held to the law, not hidden from it.
+  "src/lib/journey/unread-count.ts",
+  "src/lib/journey/use-unread-count.ts",
 ];
 for (const f of POLLERS) {
   // ⚠️ COMMENTS STRIPPED FIRST, and the reason is worth stating: the notifications panel

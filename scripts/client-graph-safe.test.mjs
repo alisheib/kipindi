@@ -125,6 +125,21 @@ console.log("\n[client-graph-safe] \u00a71 client-reachable modules stay clear o
     "lib/journey/shortfall.ts",
     // The journey funnel's allow-list and wire body (S3b): the beacon builds with it, `/api/funnel` re-checks with it.
     "lib/journey/funnel.ts",
+    // ⭐ ADDED 2026-10-01 (Vodacom plan S6 WP2). The new shell's client-side decisions. `surfaces.ts` was already
+    // client-reachable (the Needle, the channels panel, the consent prompt and the install invitation import it) and is
+    // pinned now; the tab table, the header's truth table and the flag hook are new, read by "use client" chrome and
+    // overlays, and pinned from the commit that adds them. The first three import nothing; `journey-on.ts` imports only
+    // React. ⛔ `lib/journey/viewer-doors.ts` is deliberately NOT here: it is server-only (it reads FEATURE_INVITE
+    // through `inviteIsLiveFor`), and `test:journey-shell` §4 holds it out of every browser bundle instead.
+    "lib/surfaces.ts",
+    "lib/nav/active-tab.ts",
+    "lib/journey/header-state.ts",
+    "lib/journey/journey-on.ts",
+    // ⭐ ADDED 2026-10-01 (Vodacom plan S6 WP3). The journey's unread counter: the rule its hook runs in the browser,
+    // importing nothing. ⛔ The hook itself, `lib/journey/use-unread-count.ts`, is deliberately NOT pinned: it imports the
+    // bell's own Server Action exactly as `notifications-panel.tsx` does, and this walker follows that import into the
+    // server, where the bundler sends the browser only a reference.
+    "lib/journey/unread-count.ts",
   ];
   const offenders = [];
   let checked = 0;

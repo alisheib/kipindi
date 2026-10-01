@@ -47,6 +47,8 @@
  */
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
+// S6 · 5.1b counts a call, so it reads the source with comments blanked, through the one shared stripper.
+import { decomment } from "./lib/decomment.mts";
 
 let pass = 0;
 const fails: string[] = [];
@@ -312,6 +314,13 @@ console.log("\n§5 · the top-bar balance has a live feed, and something actuall
   const pill = read("src/components/layout/wallet-balance-pill.tsx");
   ok("5.1 the pill subscribes to the balance event",
      /addEventListener\("50pick:sse:wallet-balance"/.test(pill), "the READ end of the chain");
+  // ⭐ S6 · TWO CAPSULES, STILL ONE LISTENER. The journey's captioned balance (WP4) rolls through the classic
+  // pill's own hook and is FED the live figure by its bar; it never subscribes. Counted on the CALL, in the
+  // comment-stripped source, because a name in prose is not a listener (5.3's own lesson). 5.1 above reads
+  // raw text and only asks that one exists; a COUNT over raw text would go red on a comment quoting the call.
+  const listeners = decomment(pill).split('addEventListener("50pick:sse:wallet-balance"').length - 1;
+  ok("5.1b exactly ONE balance listener in the pill's file — the captioned balance is fed the figure, it does not subscribe",
+     listeners === 1, `${listeners} listener(s)`);
   const bridge = read("src/lib/use-event-stream.ts");
   ok("5.2 the SSE hook bridges wallet:balance onto that window event",
      /"wallet:balance":\s*"50pick:sse:wallet-balance"/.test(bridge), "the BRIDGE");

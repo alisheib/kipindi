@@ -167,6 +167,23 @@ WP6b the swap + census + header-fit → WP7 overlays → WP8 short titles on pos
   generate-button 32 px), decomment (§2.1 23 > 20), updown-digest, updown-source-class, payout-view, orphans
   (marketing + landing-v3 scripts), eyebrow-roles, validation-focus (admin affiliate fields), failure-reasons (§10
   agent apply toast). Every later S6 battery is read against this list.
+- **WP0 ✅ `0a2961e4` + `73b99a4a`: `qa:classic-shell-parity` calibrated** — `--prove-red` 49/49, baseline
+  `parity-73b99a4a.json` (224 cells, scratchpad), and a null `--compare` on a FRESH server 27/27. Calibration found two
+  instrument faults, both fixed: unrendered svg `<defs>` children report 0×0 boxes at page coordinates (recorded by size
+  only), and the held viewer's not-found page has its head metadata replaced after load, so robots are read from the
+  bytes the server sent.
+- **WP1–WP4 ✅ pushed `1931d4c3` (2026-10-01), flagged — nothing mounted yet:** WP1 the journey.* words (`edc690bc`),
+  WP2 the pure modules + `test:journey-shell` in predeploy (`738e54a3`), WP3 the journey-only unread counter — the
+  classic bell untouched (`84e99716`), WP4 the captioned "Salio" capsule + WalletSheet's journey words, the classic
+  pill's tween extracted with identical output (`1931d4c3`). **Proof:** `qa:classic-shell-parity --compare` against
+  the pre-S6 baseline 27/27 over 224 cells (classic viewers are served the same shell); `test:all` 409/432 — the reds
+  are the §0i baseline's, except `house-bot-designation` (a scratch-Postgres flake: 3/3 green alone) and
+  `house-bot-disclosure` (the D19a published-words pin, green once on main — re-run on the pushed tree: green, with
+  typecheck, i18n, journey-shell, wallet-reach, feedback-law and simple-journey-flag). `red:tap-rung` refuses to run
+  while the pre-existing `tap-target` red stands; `red:journey-shell` catches 55/55.
+- **Next:** WP5 (the Akaunti hub) and WP6a (header, tabs, guest sheet) are drafted and under review; then WP6b — the
+  swap — after which the parity baseline is re-captured from the pre-S6 parent on main (A18), because the marketing lane's
+  commits now sit between the baseline and S6.
 - **WP0 parity harness — `npm run qa:classic-shell-parity`** (written, not yet run; local in-memory server only). Four
   viewers (guest, demo player, held, unconfirmed email) × en/sw × 360/768/1024/1280 × `/`, `/markets`, `/positions`,
   `/wallet`, `/profile`, `/account` and an unmatched control path. Per cell: header, rail, shell footer and email bar
@@ -218,7 +235,13 @@ here, with how to overrule it. Newest last; nothing here blocks the work.
     full figure.
 15. **"Pumzika / Jizuie" becomes two rows** in Akaunti: Pumzika → take a break, Jizuie → self-exclusion.
 16. **The classic notification bell is not touched until S15;** the journey's tab dot and Arifa row get their own
-    counter. Lower risk for live players; one extra request on a journey desktop page.
+    counter. Lower risk for live players. ⚠️ The cost, corrected at WP3 — this point said "one extra request on a
+    journey desktop page", which was wrong: the tab dot checks for notifications every 30 s, as the bell does, and a
+    journey page keeps both loaded at every screen width (each is only hidden at the other width). So a signed-in
+    journey page asks the server twice every 30 s instead of once — about 240 requests an hour per tab on screen
+    instead of 120 — plus one per visit to Akaunti for the Arifa row. Only preview viewers pay it, and only until S15;
+    players outside the journey are unchanged. WP6a can halve it by loading only the one each width shows; say so if
+    you want that made a rule.
 17. **The phone home-screen shortcuts** (Maswali, Tiketi) change at launch, not now — that file is the same for everyone.
 
 ## §0g · S4 (2026-10-01) — the Design canvas: all eleven items drawn, the panel's findings applied; waiting on Ali
@@ -770,6 +793,42 @@ Existing keys reused, unchanged:
 - `market.catAll` / `catSports` / `catWeather` / `catMacro` "Zote / Michezo / Hali ya hewa / Uchumi"
 - `common.yes` / `common.no` "NDIO / HAPANA", read through `sideWord()`
 - `beFirst`, `oneSideOnly`
+
+**S6 keys (2026-10-01, `S6-PLAN.md` WP1).** The shell's words are keys of the `journey` namespace in
+`src/lib/i18n-dict.ts`, their only source; they are not deck strings, so they are not rows of the table above. The five
+that are (`balanceCaption`, `depositAction`, `tabQuestions`, `tabTickets`, `tabAccount`) are verbatim. Every other sw
+value is an S4 canvas word or an S6 draft, listed for the native review under "S6 drafts" in
+[`S4-COPY-AUDIT.md`](design-system/v5-2026-09-29-simplified-journey/S4-COPY-AUDIT.md). Classic words are reused by key
+(WP1 step 2); a journey value repeats a classic one only for a key the plan names (its key list, and A10 for the hub's
+card names).
+
+**The S15 "Tiketi keys" rename list** (SJ-19: "Tiketi" replaces "Nafasi" on player surfaces), re-derived from the sw
+block and a grep of `src/` on 2026-10-01 — re-grep before S15. These keep "nafasi" until the flip (§3.9); at S15 each
+is re-worded, or its surface moves to the journey copy named:
+- `common.positions`, `common.viewPositions`, `common.closeIrreversibleBody`, `common.positionOpenNotify`,
+  `common.positionUnchanged` (→ `journey.sellUnchanged`);
+- `home.myPositions`;
+- `market.yourPositions`, `market.resYourPayoutNote`, `market.udOpenInPositions`, `market.udPositionsOnRound`;
+- `positions.filterAria` (→ `journey.ticketsFilterAria`), `positions.sortAria`, `positions.searchPlaceholder`,
+  `positions.filtersTitle`, `positions.oneResult` / `nResults`, `positions.emptyCashed` (→ `journey.ticketsEmptyCashed`),
+  `positions.emptySearch` and `positions.emptyFilter` (→ `journey.ticketsEmptyLens`), `positions.exitLens`
+  (→ `journey.ticketsExitLens`);
+- `performance.noPerformance`;
+- `error.pageHitSnagBody`, `error.backToPositions` (→ `journey.ticketsBack`), `error.positionsSafe`
+  (→ `journey.ticketsErrorBody`);
+- `dialog.sellPositionNow` (→ `journey.sellConfirmTitle`), `dialog.keepPosition` (→ `journey.sellKeep`);
+- not keys (hard-coded sw): the avatar menu's "Nafasi" row (`avatar-menu.tsx`), the root error page
+  (`global-error.tsx`), the rules pages (`legal/rules/_content-yes-no.tsx`, `_content-up-down.tsx`; binding text, so
+  each moves under its page's version rule), and the agent commission email and notification copy (`server/email.ts`,
+  `server/notification-service.ts`);
+- SJ-19's other half: the support words `chat.ticket` and `chat.ticketSubject` (sw "Tiketi …") become "Ombi la
+  msaada", so "Tiketi" means one thing. No component reads either key today (grep, 2026-10-01).
+
+⛔ Not part of the Tiketi rename ("nafasi" means something else there): `common.busyBody` and `dialog.busyHolding`
+("we are holding your place") and `market.oddsLong` ("a small chance"). `nav.cardSpacing` (spacing) gets its own
+correction to "Ukubwa wa kadi" (`S4-COPY-AUDIT.md`; the journey already reads `journey.hubCardSize`), together with the
+privacy notice's hard-coded "nafasi ya kadi" (`legal/privacy/page.tsx`, under that page's own versioning rule). Admin
+screens are not player surfaces (`admin/players/[id]` "Nafasi ya mwisho" stays).
 
 ## §4 · The audit behind this plan
 
@@ -1596,7 +1655,7 @@ retention/backup/DAL and the privacy lines.
 
 **S6 — Shell (flagged)**
 - Header states (SJ-15); the 4 tabs, `activeTabFor`, `--rail-h`; the guest Tiketi sheet.
-- `useUnreadNotifications` feeding the tab badge and the hub row.
+- The journey's own unread count (`useUnreadCount`, `src/lib/journey/use-unread-count.ts`; S6-PLAN A1) feeding the tab badge and the hub row. The classic bell keeps its own poll; a store shared with it waits for S15.
 - The Akaunti hub (SJ-17).
 - Tiketi zangu: rename, content, and a Maswali | Juu/Chini switch to `/updown/history`.
 - The `surfaces.ts` list; the EmailVerifyBanner rule; overlay stand-downs; the header-fit re-proof.

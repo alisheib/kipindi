@@ -8,6 +8,10 @@
  *
  * Each mutation reverts one of PV-13's two fixes to the EXACT literal it shipped with in
  * production, so a regression on either is provable by name (§6.2), not by coincidence.
+ *
+ * ⭐ S6 (2026-10-01) adds two for the journey header's captioned balance (`.kp-jbal`), which never shipped
+ * a defect: one hand-types the 44px it should name (§6.2), and one drops the height entirely, which only
+ * §6.3 can see. `expect` names the check that must catch a mutation; omitted, it is §6.2.
  */
 
 export const MUTATIONS = [
@@ -33,5 +37,23 @@ export const MUTATIONS = [
     file: "src/app/globals.css",
     from: `box-sizing: border-box; width: var(--h-control-md); height: var(--h-control-md); padding: 8px;`,
     to: `box-sizing: content-box; width: 28px; height: 28px; padding: 8px;`,
+  },
+  {
+    /* ⭐ S6 · WP4 — the journey header's captioned balance declares its box in a stylesheet RULE, the same
+       blind spot as `.mcardp-info`. The `to:` is the literal a hand-tuned header reaches for: 44px, the right
+       number written the wrong way, which §6.2 must still refuse by name. */
+    name: "globals.css — the captioned balance (.kp-jbal) hand-types 44px instead of naming --h-control-md",
+    file: "src/app/globals.css",
+    from: `gap: var(--sp-2); height: var(--h-control-md); padding: 0 10px;`,
+    to: `gap: var(--sp-2); height: 44px; padding: 0 10px;`,
+  },
+  {
+    /* ⭐ S6 · WP4 — A PROHIBITION IS NOT A RUNG. The rule loses its height, so the capsule shrinks to its two
+       lines of type, under 30px. Nothing is hand-typed, so §6.2 passes it; §6.3 must refuse it by name. */
+    name: "globals.css — the captioned balance (.kp-jbal) declares no height at all",
+    file: "src/app/globals.css",
+    from: `gap: var(--sp-2); height: var(--h-control-md); padding: 0 10px;`,
+    to: `gap: var(--sp-2); padding: 0 10px;`,
+    expect: "6.3",
   },
 ];

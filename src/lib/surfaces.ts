@@ -1,5 +1,5 @@
 /**
- * WHERE A NON-ESSENTIAL THING MAY NOT APPEAR — one home for two related questions.
+ * WHERE A NON-ESSENTIAL THING MAY NOT APPEAR — one home for three related questions.
  *
  * ⛔ WHY THIS FILE EXISTS. `isMoneySurface` was private to `needle.tsx`, and the install
  * invitation needs the same class of judgement. Copying it would have given the platform two
@@ -43,4 +43,27 @@ export function isCommitSurface(path: string | null): boolean {
   if (!path) return false;
   if (isMoneySurface(path)) return true;
   return COMMIT_ROUTE.some((re) => re.test(path));
+}
+
+/**
+ * ⭐ THE NEW JOURNEY'S SURFACES (the Vodacom plan S6, S6-PLAN WP2) — the pages the journey re-draws, where the Needle,
+ * the channels panel and the chat bubble stand down for a journey viewer (WP7): the home board, a question, Tiketi
+ * zangu (both kinds), and the deposit screen with the provider's return.
+ *
+ * ⛔ AN EXACT ALLOWLIST, NEVER A PREFIX. A page joins only by being named here; the boards, the hub and every page it
+ * reaches keep all their overlays. A prefix would stand overlays down on pages nobody re-drew.
+ * ⛔ IT ANSWERS FOR THE PAGE ONLY. Whether the READER is in the journey is `useJourneyOn` — the server's answer — and a
+ * stand-down needs both, so for everybody else nothing changes.
+ * Pure like its two neighbours — no import, no directive — and `test:journey-shell` §2 holds this file to that.
+ */
+const JOURNEY_ROUTE = [
+  /^\/$/,                      // the home board
+  /^\/positions$/,             // Tiketi zangu
+  /^\/updown\/history$/,       // Tiketi zangu, Up & Down
+  /^\/markets\/[^/]+$/,        // a question (NOT the board)
+  /^\/wallet\/deposit(\/|$)/,  // the deposit screen and the provider's return
+];
+
+export function isJourneySurface(path: string | null): boolean {
+  return !!path && JOURNEY_ROUTE.some((re) => re.test(path));
 }

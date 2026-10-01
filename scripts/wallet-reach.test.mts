@@ -32,6 +32,14 @@
  * buttons. §1, §4 and §7 pin the amended contract. Authority:
  * `docs/design-system/v4-2026-09-26-landing-ten/INHERIT-MANIFEST.md` R1, L19, L20.
  *
+ * ── AMENDED 2026-10-01 BY S6 (the flagged shell) ─────────────────────────────
+ * The journey header carries its OWN capsule, exported from the same file after the classic one: the
+ * caption "Salio" over "TZS 2,000", TZS at every width, no eye and no caret, and a tap opens the same
+ * Wallet in the journey's words. §8 pins it and §8b the Wallet's journey words; §1–§7 stay verbatim,
+ * because they read FIRST occurrences and the classic capsule is still defined first. Authority:
+ * `docs/design-system/v5-2026-09-29-simplified-journey/S6-PLAN.md` WP4 with amendments A11 and A18;
+ * `docs/VODACOM-PLAN.md` SJ-15, §0g design call 10, §0h points 7 and 14.
+ *
  * Run: npm run test:wallet-reach
  */
 import { readFileSync } from "node:fs";
@@ -52,6 +60,8 @@ const css = readFileSync(join(ROOT, "src/app/globals.css"), "utf8");
 
 const { formatBalancePill, formatTzs, formatTzsCompact, BALANCE_COMPACT_ABOVE } =
   await import("../src/lib/utils.ts");
+// S6 §8 · the journey capsule's words are read from the dictionary itself, never from a copy of them.
+const { dict } = await import("../src/lib/i18n-dict.ts");
 
 // ── 1 · ONE CAPSULE: the number and its eye are a single control ─────────────
 {
@@ -292,6 +302,110 @@ const { formatBalancePill, formatTzs, formatTzsCompact, BALANCE_COMPACT_ABOVE } 
   ok("7: ⭐ …and the Deposit LABEL yields at lg–xl in EVERY balance state (E-190 travels with R10)",
      /<span className="hidden xl:inline">/.test(bar)
      && !/funded \? "hidden sm:inline lg:hidden xl:inline" : "inline"/.test(bar));
+}
+
+// ── 8 · S6 · THE CAPTIONED BALANCE (SJ-15) — the journey header's wallet door ─────
+/**
+ * The journey header (S6, flagged: it mounts only for a journey viewer) carries `WalletBalanceCaptioned`: the
+ * caption over the figure, TZS at every width, no eye and no caret, and a tap opens the same Wallet in the
+ * journey's words. Thirteen of these checks have a red twin in `scripts/anchors/wallet-reach.anchors.mjs`,
+ * each naming its check: 8.3–8.5, 8.7, 8.8, 8.10, 8.11, 8.13, 8.15, 8.18, 8.19, 8b.2 and 8b.3. 8.12's defect is
+ * planted by layout-staleness's twin for 5.1b, and 8.14's height half by tap-rung's two (6.2, 6.3).
+ * ⚠️ The slice runs from the captioned export to the NEXT top-level export, or the end of the file. Bounded,
+ * so an export a later change adds below it never joins the one-button count or the absence scans. It is
+ * defined AFTER the classic capsule, which is why §1–§7 above, reading first occurrences, still see the classic.
+ */
+{
+  const count = (s: string, needle: string) => s.split(needle).length - 1;
+  /** The body of the FIRST stylesheet rule written `<sel> {` — the block is single-line rules. */
+  const ruleBody = (sel: string) => {
+    const at = css.indexOf(`${sel} {`);
+    return at < 0 ? "" : css.slice(at, css.indexOf("}", at));
+  };
+  const classicAt = pill.indexOf("export function WalletBalancePill");
+  const at = pill.indexOf("export function WalletBalanceCaptioned");
+  const next = at < 0 ? -1 : pill.slice(at + 1).search(/^export /m);
+  const cap = at < 0 ? "" : pill.slice(at, next < 0 ? pill.length : at + 1 + next);
+  ok("8.1 the captioned capsule is its own export, defined AFTER the classic one — §1–§7 still read the classic first",
+     classicAt > 0 && at > classicAt);
+  ok("8.2 it is ONE <button> that OPENS the Wallet, announced as a dialog with its state",
+     count(cap, "<button") === 1 && cap.includes('aria-haspopup="dialog"') && cap.includes("aria-expanded={open}")
+     && cap.includes("onClick={() => setOpen(true)}") && cap.includes("ref={capsuleRef}"));
+  ok("8.3 the Wallet it opens is anchored to it and speaks the journey's words — the classic capsule's Wallet does not",
+     cap.includes("<WalletSheet open={open} onClose={() => setOpen(false)} balance={balance} held={held} anchorRef={capsuleRef} journey />")
+     && pill.includes("<WalletSheet open={open} onClose={() => setOpen(false)} balance={effectiveBalance} held={held} anchorRef={capsuleRef} />"));
+  ok("8.4 no eye and no caret in the capsule ⛔ — hiding balances lives in the Wallet it opens (SJ-15)",
+     !cap.includes("<CashEye") && !cap.includes("chevronDown"));
+  ok("8.5 TZS at EVERY width ⭐ — the figure is the whole formatBalancePill string, and nothing in the capsule yields by width",
+     cap.includes("const figure = formatBalancePill(balance);") && cap.includes("{hidden ? BALANCE_MASK : formatBalancePill(display)}")
+     && !cap.includes("splitCurrency") && !/hidden (?:xs|sm|md|lg|xl|2xl):/.test(cap));
+  ok("8.6 the box is the wider of figure and mask, so masking moves nothing (D31, carried over)",
+     cap.includes('<span aria-hidden className="kp-jbal__sizer">{figure}</span>')
+     && cap.includes('<span aria-hidden className="kp-jbal__sizer">{BALANCE_MASK}</span>')
+     && css.includes(".kp-jbal__fig > span { grid-area: 1 / 1; }") && ruleBody(".kp-jbal__sizer").includes("visibility: hidden"));
+  ok("8.7 the figure is money type — the amount class: mono, tabular, never letter-spaced (§M4)",
+     cap.includes('<span className="kp-jbal__fig amount">') && css.includes(".amount.amount {")
+     && !ruleBody(".kp-jbal__fig").includes("letter-spacing"));
+  ok("8.8 gold on a live balance, plain ink when held or masked — as the S4 frames draw it",
+     ruleBody(".kp-jbal__fig").includes("color: var(--gold-300)")
+     && css.includes(".kp-jbal:is([data-held], [data-masked]) .kp-jbal__fig { color: var(--text); }")
+     && cap.includes('data-held={held ? "" : undefined}') && cap.includes('data-masked={hidden ? "" : undefined}'));
+  ok("8.9 the caption is the journey's word, and a frozen wallet says so in it",
+     cap.includes("const caption = held ? t.common.balanceFrozen : t.journey.balanceCaption;")
+     && cap.includes('<span className="kp-jbal__cap">{caption}</span>'));
+  ok("8.10 A11 · its NAME is its visible words — caption and figure, the hide-balances words when masked, never the classic Wallet word",
+     cap.includes("aria-label={hidden ? `${caption} · ${t.common.hideBalances}` : `${caption} ${figure}`}")
+     && !cap.includes("t.common.wallet"));
+  ok("8.11 A18 · the roll and the flash are ONE hook, and both capsules call it — never a copy",
+     count(pill, "function useBalanceRoll(") === 1 && count(pill, "= useBalanceRoll(") === 2
+     && count(pill, "requestAnimationFrame(tick)") === 2 && cap.includes("= useBalanceRoll(balance);"),
+     `${count(pill, "= useBalanceRoll(")} caller(s), ${count(pill, "requestAnimationFrame(tick)")} frame-loop call(s)`);
+  ok("8.12 it never subscribes — the file keeps ONE balance listener, useLiveBalance's",
+     count(pill, 'addEventListener("50pick:sse:wallet-balance"') === 1 && !cap.includes("addEventListener"));
+  ok("8.13 the gilt flash is a data attribute the stylesheet paints — the classic capsule keeps the file's only inline border",
+     cap.includes('data-flash={flashing ? "" : undefined}') && ruleBody(".kp-jbal[data-flash]").includes("box-shadow:")
+     && count(pill, "boxShadow") === 1);
+  ok("8.14 S4 fit rule (§0g design call 10): the 44px rung, 10px side padding to 1024 and 12px from there",
+     ruleBody(".kp-jbal").includes("height: var(--h-control-md)") && ruleBody(".kp-jbal").includes("padding: 0 10px")
+     && css.includes("@media (min-width: 1024px) { .kp-jbal { padding: 0 var(--sp-3); } }"));
+  ok("8.15 S4 fit rule: the figure is 12px below 360 and 14px from 360, mobile-first",
+     ruleBody(".kp-jbal__fig").includes("font-size: 12px")
+     && css.includes("@media (min-width: 360px) { .kp-jbal__fig { font-size: 14px; } }"));
+  const sw = dict.sw.journey;
+  ok("8.16 the words are the deck's (sw) — Salio over the figure; Weka pesa and Toa pesa in the Wallet",
+     sw.balanceCaption === "Salio" && sw.depositAction === "Weka pesa" && sw.withdrawAction === "Toa pesa",
+     `${sw.balanceCaption} · ${sw.depositAction} · ${sw.withdrawAction}`);
+  const drifted = (["en", "sw", "zh"] as const).filter((l) => !dict[l].common.balanceFrozen.startsWith(dict[l].journey.balanceCaption));
+  ok("8.17 a FROZEN wallet's caption begins with the caption word in every locale, so its name starts with what is read first",
+     drifted.length === 0, drifted.join(", "));
+  /* ⭐ THE ±DELTA AND THE CAPTION SHARE ONE ROW, SO ONE OF THEM MUST GIVE WAY FOR THE MOMENT. The plan put the
+     delta at the row's left end beside the caption; by the font metrics that overprints "Balance" at 320 on any
+     move of 1,000 or more, and covers a frozen caption at every width. So the delta covers the whole row, on the
+     capsule's own fill and at the caption's size, and a frozen wallet shows none. */
+  const deltaRule = ruleBody(".kp-jbal__delta");
+  ok("8.18 the ±delta TAKES the caption's row for a moment, never shares it — the whole row, right-aligned, on the capsule's own fill, at the caption's size",
+     deltaRule.includes("left: 0; right: 0;") && deltaRule.includes("text-align: right")
+     && deltaRule.includes("background: var(--bg-inset)") && ruleBody(".kp-jbal").includes("background: var(--bg-inset)")
+     && deltaRule.includes("font-size: var(--type-micro)") && ruleBody(".kp-jbal__cap").includes("font-size: var(--type-micro)")
+     && cap.includes('<span aria-hidden className="kp-jbal__delta value-delta amount"'),
+     deltaRule === "" ? "the .kp-jbal__delta rule was not found" : "");
+  ok("8.19 …and only on a LIVE, unmasked wallet — a frozen wallet's caption is the frozen word, which nothing may cover",
+     cap.includes("{!held && !hidden && flashing && delta !== 0 && ("));
+}
+
+// ── 8b · V19 · WITHDRAW STAYS ONE TAP FROM THE CAPSULE — the Wallet, in the journey's words ─────
+{
+  const sheet = decomment(readFileSync(join(ROOT, "src/components/layout/wallet-sheet.tsx"), "utf8"));
+  const linkTo = (href: string) => {
+    const at = sheet.indexOf(`href="${href}"`);
+    return at < 0 ? "" : sheet.slice(at, sheet.indexOf("</Link>", at));
+  };
+  ok("8b.1 the Wallet takes an OPTIONAL journey flag, off by default — the classic capsule's Wallet keeps today's words",
+     sheet.includes("  journey = false,") && sheet.includes("journey?: boolean;"));
+  ok("8b.2 with it, Deposit says the journey's word",
+     linkTo("/wallet/deposit").includes("{journey ? t.journey.depositAction : t.common.deposit}"));
+  ok("8b.3 V19 · and Withdraw says Toa pesa — one tap from the capsule, beside Deposit at the same size",
+     linkTo("/wallet/withdraw").includes("{journey ? t.journey.withdrawAction : t.common.withdraw}"));
 }
 
 console.log(`\nwallet-reach: ${pass} passed, ${fail} failed`);

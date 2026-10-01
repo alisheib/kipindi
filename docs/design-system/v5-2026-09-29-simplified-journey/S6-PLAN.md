@@ -1345,6 +1345,18 @@ on a journey desktop page that shows both the bell and a hub row, two pollers ru
 `50pick:refresh-notifications` only (no interval) to keep that cost to one request per visit. `useUnreadNotifications`
 (the plan's name for a shared store) is re-scheduled to S15, when the classic bell retires.
 
+*As built (WP3, 2026-10-01):* `useUnreadCount({ userId, mode })` in `src/lib/journey/use-unread-count.ts`, its rule in
+`unread-count.ts` (pure; `test:journey-shell` §6 drives it in process). The Akaunti dot is mode `poll`: the bell's closed
+cadence, ladder and jitter, and both its broadcasts. The Arifa row is mode `once`: a read at mount and on
+`50pick:refresh-notifications`, no beat, no pushed arrival. Both callers pass the viewer's id (never a boolean) and are
+`"use client"` files under `src/components/journey/` (§6 `6.mount`). ⚠️ Because the dot polls, a signed-in journey page
+runs two 30 s pollers at every width until S15, not one extra request on desktop — `VODACOM-PLAN.md` §0h point 16 is
+corrected; WP6a decides whether each width loads only the one it shows. **Still owed:** (1) G1's drive, in WP6a or
+WP12: on a preview session, end A through the idle (E-381) path, sign B in through the header's link, and assert the
+Akaunti dot and the Arifa row never show A's count before B's first answer lands. (2) WP12 proves the bell untouched by
+S6: `git diff --exit-code "$(git merge-base origin/main HEAD)" HEAD -- src/components/layout/notifications-panel.tsx`
+(not a hash in a predeploy test: another lane may fix the bell, and that must not turn predeploy red).
+
 **A2 · G2 — `/account` metadata obeys the switch.** `generateMetadata` calls `resolveSimpleJourney()` first and returns
 the not-found title (and `robots: noindex`) when the journey is off. Pinned in `test:journey-account` with a plant.
 

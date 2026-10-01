@@ -5040,7 +5040,7 @@ html[data-sheet-open] .route-enter { animation: none; }
        these classes — so deleting them takes nothing documented with it.
      · `.trust*` is superseded by the LIVE `.kp-trust` block below (:4315), which is a
        different implementation of the same band. The one `trust` in any className in
-       `src/` is `kp-trust`. ⚠️ A loose `trust` grep returns 16 hits — `trusted`,
+       `src/` is `kp-trust`. ⚠️ A loose `trust` grep returns 16 hits — `trusted`,
        `trustCell`, `trusted-source` — and reads as "in use". It is not.
 
    ⭐ THIS IS THE SECOND TOMBSTONE IN THIS FILE AND THE FIRST ONE DID NOT CATCH THESE.
@@ -5869,6 +5869,46 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
 .kp-wsheet__links { display: flex; flex-wrap: wrap; column-gap: var(--sp-4); }
 .kp-wsheet__link { display: inline-flex; align-items: center; min-height: var(--h-control-md); font-weight: 600; font-size: var(--type-small); color: var(--text); text-decoration: underline; text-decoration-color: var(--border-strong); text-underline-offset: 4px; }
 .kp-wsheet__link:hover { text-decoration-color: currentColor; }
+
+/* ── S6 · THE CAPTIONED BALANCE (SJ-15) — the journey header's wallet door ──────────────────────────────────
+   "Salio" over "TZS 2,000": one 44px button that opens the Wallet above. Only the journey header renders it
+   (WalletBalanceCaptioned in wallet-balance-pill.tsx), so no classic element wears these classes. They still
+   ship to every viewer in this stylesheet: a classic page's CSS grows by these rules and matches none of them.
+   ⭐ Today's capsule look, because the kit wins where the canvas drifts (VODACOM-PLAN §0h point 7): the inset
+   fill, a gold hairline drawn as an inset shadow so it costs no layout, and the same gilt ring while the figure
+   rolls. The ring answers the data-flash attribute the roll sets, so the component writes no inline shadow.
+   ⭐ The S4 fit rules (§0g design call 10), measured with the real fonts at 320 to 412 in sw, en and zh: 10px
+   side padding up to 1024 and 12px from there; the figure 12px below 360 and 14px from 360.
+   ⚠️ The two figure sizes are literals on purpose. The type tokens have no 12 or 14 step, and the utility steps
+   that do carry their own letter-spacing, which a money figure may not have (§M4): the figure takes its family,
+   tabular digits and zero tracking from the amount class instead.
+   ⚠️ SAID PLAINLY: the 12px figure below 360 is under §T4's 12.5px reading floor. It is design call 10's measured
+   exception, the one size that fits every 320 case, and test:type-scale cannot see it, because that gate reads
+   class names and not stylesheet rules. Moving the size here is not what made it legal; the ruling is. */
+.kp-jbal { display: inline-flex; flex-shrink: 0; align-items: center; gap: var(--sp-2); height: var(--h-control-md); padding: 0 10px; border-radius: var(--r-pill); background: var(--bg-inset); box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--gold-300) 35%, transparent); color: var(--text); cursor: pointer; transition: box-shadow var(--t-base) var(--m-glide); }
+.kp-jbal[data-flash] { box-shadow: 0 0 0 3px color-mix(in oklab, var(--gold-300) 22%, transparent), inset 0 0 0 1px var(--gold-300); }
+.kp-jbal__lock { flex-shrink: 0; color: var(--text-muted); }
+.kp-jbal__col { position: relative; display: inline-flex; flex-direction: column; align-items: flex-end; gap: 3px; }
+.kp-jbal__cap { font-size: var(--type-micro); line-height: 1; white-space: nowrap; color: var(--text-subtle); }
+.kp-jbal__fig { display: inline-grid; justify-items: end; font-weight: 700; font-size: 12px; line-height: 1.1; color: var(--gold-300); transition: color var(--t-base) var(--m-glide); }
+/* Three cells in one: two invisible sizers and the painted value, so the box is the wider of figure and mask (D31). */
+.kp-jbal__fig > span { grid-area: 1 / 1; }
+.kp-jbal__sizer { visibility: hidden; }
+.kp-jbal:hover .kp-jbal__fig { color: var(--gold-200); }
+/* Held or masked, the figure is plain ink, as the S4 frames draw it: gold marks money you can use. */
+.kp-jbal:is([data-held], [data-masked]) .kp-jbal__fig { color: var(--text); }
+/* ⭐ THE ±DELTA TAKES THE CAPTION'S ROW FOR A MOMENT; IT NEVER SHARES IT. The plan set it at the row's left end,
+   and the widths refuse it: at 320 the figure box is 64.8px (nine mono characters at 12px), "Balance" takes
+   about 40 of it and "+1,000" needs 34, so English would overprint, and a frozen caption is wider than the box.
+   So it spans the whole row, right-aligned like the caption, on the capsule's own fill and at the caption's own
+   rung, with 2px of bleed above and below so no glyph edge shows through, and the kit's value-delta fade
+   crossfades the two words. The amount class gives it money type. A frozen wallet renders none (the component). */
+.kp-jbal__delta { position: absolute; top: -2px; left: 0; right: 0; padding-block: 2px; text-align: right; background: var(--bg-inset); font-size: var(--type-micro); line-height: 1; pointer-events: none; }
+.kp-jbal__delta[data-sign="up"] { color: var(--yes-300); }
+.kp-jbal__delta[data-sign="down"] { color: var(--no-300); }
+@media (min-width: 360px) { .kp-jbal__fig { font-size: 14px; } }
+@media (min-width: 1024px) { .kp-jbal { padding: 0 var(--sp-3); } }
+
 /* ── WP14 part 2 · THE SIGNED-IN HERO (the delivery's §4a/§4c) ─────────────────────────────────
    Your picks → the balance with the same Deposit/Withdraw pair (or the empty-balance prompt) →
    Set limits. The pair is the Wallet's: one rung, one box, only the skin differs (V19). */

@@ -34,7 +34,7 @@
 - Holder: "Tayari unashikilia NDIO hapa" (youAlreadyHold + here). hedgeOppositeBody "Tayari una dau upande mwingine wa soko hili. Dau zote mbili zinabaki na kila moja hulipwa peke yake — upande mmoja tu unaweza kushinda, na ada yetu hutolewa kabla washindi hawajalipwa." hedgeAddBody "Kuweka tena kunaongeza dau lako kwenye soko hili."
 - Bonus warning failBonusWageringOneSide (never shows in practice; bonus withdrawn).
 - Thin: crowdedWarning "Faida ni ndogo hapa — upande mwingine ni mdogo." · thinUpsideNote "Dau la upande mwingine ndiyo zawadi, kwa hiyo hakuna kingi cha kushinda. Hutalipwa chini ya dau lako ukiwa sahihi — lakini faida hapa ni ndogo."
-- Placing "Inaweka…". Receipt: eyebrow "Dau lipo"; title "{side} · TZS {stake}"; "Tiketi"; "Dau"; "Lipo" = "Wakati wa utatuzi"; "Bahati njema."; buttons keepPredicting "Endelea kutabiri", viewPositions "Tazama nafasi"; "Endelea kucheza" exists (udRcKeepPlaying); "Tiketi zangu" NO STRING (plan).
+- Placing "Inaweka…". Receipt: eyebrow "Dau lipo"; title "{side} · TZS {stake}"; "Tiketi"; "Dau"; "Lipo" = "Wakati wa utatuzi"; "Bahati njema."; buttons keepPredicting "Endelea kutabiri", viewPositions "Tazama nafasi"; "Endelea kucheza" exists (udRcKeepPlaying); "Tiketi zangu" = journey.tabTickets (S6).
 - Closed: "Soko limefungwa" · "Imefungwa · Inasubiri utatuzi" · "Uchaguzi umefungwa — tunasubiri matokeo" · failSelectionClosed "Uchaguzi umefungwa kwenye hili. Sasa linasubiri matokeo." "Swali hili limefungwa" NO STRING.
 - Refusal titles: loss limit "Kikomo cha hasara cha siku kimefikiwa"; others "Kuweka dau hakupatikani"; dial "Haikuwekwa" / "Angalia hili"; busy "Kuna msongamano"; retry "Jaribu tena".
   - failLossLimitDaily "Umefikia kikomo cha hasara cha siku ulichojiwekea. Kitaanza upya kesho — unaweza kukiangalia kwenye Uchezaji salama."
@@ -71,7 +71,7 @@
   Plan-only: "Weka PIN yako · usilipe tena", "hadi dakika 30 · usilipe tena", "Pesa zimeingia", "Hakuna pesa iliyotolewa", "Rudi kwenye dau", "Weka pesa tena", "Bado utapungukiwa TZS {gap} kwa dau lako", "Swali hili limefungwa".
 - First-deposit notice: "Thibitisha utambulisho wako wakati wowote kabla ya kutoa pesa kwa mara ya kwanza." + "Thibitisha".
 
-## Akaunti hub (signed in): Pochi · Toa (Toa pesa NO STRING; "Toa"/"Toa fedha") · Matokeo · Mubashara · Jedwali la Washindi · Alika marafiki · Pendekeza na upate zawadi / Kupendekeza ·
+## Akaunti hub (signed in): Pochi · Toa (Toa pesa = journey.withdrawAction, S6; "Toa"/"Toa fedha") · Matokeo · Mubashara · Jedwali la Washindi · Alika marafiki · Pendekeza na upate zawadi / Kupendekeza ·
   Wasifu · Thibitisha ID (sub "Kitambulisho · picha ya uso · ukaguzi") · Weka mipaka / Vikomo ("Mipaka · Kujitenga") · Uthibitisho wa utatuzi · Msaada ("Maswali · Simu · Barua pepe") · Arifa · Lugha ·
   Nafasi ya kadi (Ndogo/Kubwa; "Kwa simu tu. Hakuna kinachofichwa.") · Sindano (hard-coded) · Tafuta · Kuwa wakala / Dashibodi ya wakala · Konsoli ya wafanyakazi ("Staff · Internal") · Toka
   (confirm: "Kutoka kwenye akaunti" / "Utatolewa kwenye akaunti yako kwenye kifaa hiki." / "Ndio, toka" / "Baki ukiwa umeingia"). Title "Akaunti" (profile.account).
@@ -81,7 +81,7 @@
 - Cash-out: "Toka bila gharama" m:ss · "Hakuna ada"; "TZS {n} pesa yote"; "Uza sasa" "TZS {n} −{fee} ada"; "Kuuza kumefungwa".
 - Dates: "Uchaguzi unafungwa 11 Jun, 14:30" (formatDeadline en-GB: ENGLISH month names even in sw); "Uchaguzi umefungwa"; "Imefunguliwa 11 Jun 2026, 14:30".
 - Stats: Dau · Lipo · "Upande wako ukishinda" · "Dau likifungwa" · "Mwisho"; chips "Inasubiri" / "Imekamilika · Ushindi" / "Imekamilika · Hasara".
-- Empty: "Bado huna utabiri hai" (+ body with banned "dial/imani"), "Tazama masoko →", "Hakuna yako inayoendelea", "Hakuna yako iliyokamilika bado". Guest sheet "Ingia uone tiketi zako" NO STRING.
+- Empty: "Bado huna utabiri hai" (+ body with banned "dial/imani"), "Tazama masoko →", "Hakuna yako inayoendelea", "Hakuna yako iliyokamilika bado". Guest sheet "Ingia uone tiketi zako" = journey.ticketsGuestTitle (S6).
 
 ## Market page: "Chanzo"; "Kigezo cha utatuzi"; KPI "Kiasi" (volume), "Watabiri", "Inaisha"; chart "Uwezekano wa NDIYO kwa muda" (misspelt); countdowns "Uchaguzi unafungwa baada ya" / "Matokeo baada ya"; units Siku/Saa/Dak/Sek;
   holder block "Nafasi zako"; row status WAZI/UMESHINDA/UMEPOTEZA/BATILI/UMETOA; "Imefunguliwa"; SellButton as above.
@@ -108,6 +108,57 @@ The canvas already shows the corrected words. Each line: key (or where it shows)
 - `verifyGateTitle` · "ili kuweka fedha" → "ili uweke pesa"; `depositStarted` "Amana imeanza" → "Malipo yameanza" (journey screens).
 - Payout delayed body · "— inaweza tu kutofika mara moja." → "— pesa zinaweza tu kuchelewa kufika."
 - Market chart "Uwezekano wa NDIYO kwa muda" → "NDIO"; market KPI "Kiasi" (pool) → "Bwawa"; "Inaisha {date}" → "Matokeo {date}".
-- Akaunti · "Maswali · Simu · Barua pepe" → "Maswali ya kawaida · Simu 0800 11 0011 · Barua pepe"; "Nafasi ya kadi" → "Ukubwa wa kadi"; "Mipaka · Kujitenga" → "Mipaka · Pumzika · Jizuie".
+- Akaunti · "Maswali · Simu · Barua pepe" → "Maswali ya kawaida · Simu · Barua pepe" (no number: VODACOM-PLAN §0h point 10 reversed the panel here — 0800 11 0011 is the national helpline, not our desk, and keeps its own labelled row); "Nafasi ya kadi" → "Ukubwa wa kadi"; "Mipaka · Kujitenga" → "Mipaka · Pumzika · Jizuie".
 - Juu/Chini · "Kiasi" → "Dau lako"; "Gusa Juu au Chini" → "Bonyeza Juu au Chini".
 - Chinese How-to · side words quoted 「是」「否」 in running text; "赢家平分奖池" (split equally — false) → "赢家按投注比例分享奖池".
+
+## S6 drafts (2026-10-01) — for the native review
+
+Added by S6 WP1 (`S6-PLAN.md`). These Swahili strings entered `src/lib/i18n-dict.ts` as new keys of the `journey`
+namespace; only journey files read them, so no classic word changed (§3.9). The dictionary stays the truth — re-read a
+value there before quoting it. Each line: key · sw · where it comes from.
+
+**S4 canvas words, now keys** (drawn and panel-checked at S4; the review signs off the dictionary copy):
+- `journey.withdrawAction` · "Toa pesa" · SJ-15's WalletSheet door (the Akaunti hub line above now names the key).
+- `journey.ticketsGuestTitle` · "Ingia uone tiketi zako" · the guest Tiketi sheet (the Tiketi zangu line above now names the key).
+- `journey.ticketsKindAria` · "Aina ya tiketi" · the name of the Maswali | Juu/Chini switch.
+- `journey.ticketsFilterAria` · "Chuja tiketi" · the name of the status strip; replaces "Kichujio cha nafasi" (S6-PLAN A7).
+- `journey.ticketsEmptyOpenTitle` · "Bado huna tiketi hai" · replaces "Bado huna utabiri hai".
+- `journey.ticketsEmptyOpenBody` · "Chagua swali, bonyeza {yes} au {no} — tiketi yako itaonekana hapa." · replaces the body with the banned "dial ya imani".
+- `journey.ticketsBrowse` · "Tazama maswali" · replaces "Tazama masoko →".
+- `journey.ticketPayout` · "Malipo" · the "Lipo" correction above.
+- `journey.ticketPayoutAtResult` · "Matokeo yakitoka" · the "Wakati wa utatuzi" correction above.
+- `journey.ticketFinalPayout` · "Malipo ya mwisho" · replaces "Mwisho".
+- `journey.ticketPlacedAt` · "Imewekwa {date}" · replaces "Imefunguliwa {date}".
+- `journey.sellFreeUntil` · "Uza bila ada hadi {time}" · replaces "Toka bila gharama · Hakuna ada".
+- `journey.sellFreeCta` · "Uza bila ada" · the outlined sell button's first line.
+- `journey.sellFullRefund` · "Rudishiwa {amount} kamili" · replaces "TZS {n} pesa yote".
+- `journey.sellClosedBody` · "Dau hili sasa linasubiri matokeo — haliwezi kuuzwa tena." · replaces "…litaenda hadi malipo…" (`common.sellLockedHint`).
+- `journey.hubGuestPrompt` · "Ingia au jisajili ili kuona pochi na tiketi zako." · the signed-out Akaunti.
+- `journey.hubHelpSub` · "Maswali ya kawaida · Simu · Barua pepe" · the corrected Akaunti line above.
+- `journey.hubLimitsSub` · "Mipaka · Pumzika · Jizuie" · replaces "Mipaka · Kujitenga".
+- `journey.hubCardSize` · "Ukubwa wa kadi" · replaces "Nafasi ya kadi".
+- `journey.hubStaffSub` · "Wafanyakazi tu" · the staff row (the avatar menu's sub is the English "Staff · Internal").
+- The hub's card names (s4-8-akaunti*): `hubGroupMoney` "Pesa", `hubGroupPlay` "Cheza", `hubGroupSafety` "Cheza kistaarabu",
+  `hubGroupInvite` "Alika", `hubGroupProfile` "Wasifu", `hubGroupHelp` "Msaada", `hubGroupSettings` "Mipangilio",
+  `hubGroupAgent` "Wakala", `hubGroupStaff` "Wafanyakazi", and for guests `hubGroupFairnessHelp` "Uadilifu na msaada" and
+  `hubGroupLegal` "Faragha". New words among them: "Cheza", "Wakala", "Wafanyakazi", "Uadilifu na msaada"; the rest
+  repeat an existing value.
+
+**Drafted at S6** (no deck or canvas source) — the "tiketi" copies of classic lines that say "nafasi" (SJ-19):
+- `journey.ticketsEmptyLens` · "Hakuna tiketi inayolingana na vichujio hivi" · of `positions.emptyFilter`.
+- `journey.ticketsEmptyCashed` · "Bado hujauza tiketi yoyote" · of `positions.emptyCashed` ("Hujatoa nafasi yoyote mapema"); "uza" is the journey's sell word.
+- `journey.ticketsExitLens` · "Tiketi zote" · of `positions.exitLens`.
+- `journey.ticketsErrorBody` · "Tiketi zako ziko salama. Tumeandika kilichotokea na tutashughulikia. Madau na malipo yote hayajaathiriwa." · of `error.positionsSafe`.
+- `journey.ticketsBack` · "Rudi kwenye tiketi" · of `error.backToPositions`.
+- `journey.sellConfirmTitle` · "Uza tiketi hii sasa?" · of `dialog.sellPositionNow`.
+- `journey.sellKeep` · "Baki na tiketi" · of `dialog.keepPosition`.
+- `journey.sellUnchanged` · "Tiketi haijabadilika." · of `common.positionUnchanged`.
+
+Not for review: `balanceCaption` "Salio", `depositAction` "Weka pesa", `tabQuestions` "Maswali", `tabTickets` "Tiketi
+zangu" and `tabAccount` "Akaunti" are the deck's own words (VODACOM-PLAN §3, binding).
+
+**Found while drafting** — classic words, left as they are until S15 (§3.9):
+- `error.positionsSafe` (sw) · "hayajaaathiriwa" carries a third "a" → "hayajaathiriwa" (the journey copy is spelt right, as `error.pageHitSnagBody` already is).
+- `profile.helpSupportSub` (en, zh) · "FAQ · Helpline · Email" / "常见问题 · 热线 · 邮件" names our help desk a helpline — §0h point 10's mix-up; the journey copy says "Phone" / "电话".
+- `profile.inviteFriendsSub` (zh) · "分享你的链接 · 查看谁加入" uses the informal 你 → 您.

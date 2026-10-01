@@ -17,6 +17,10 @@
  *     button carries its own truth instead, from the keys the two pages already use as subtitles.
  * ⛔ A frozen wallet gets no money buttons: `/wallet/withdraw` renders no form for it and the bar
  * already hides Deposit, so the sheet says what the wallet page says and offers nothing it refuses.
+ * ⭐ S6 (SJ-15) · `journey` gives the two doors the journey's words, "Weka pesa" and "Toa pesa", for the
+ * journey header's captioned balance. That capsule has no eye of its own: this sheet's eye and its Withdraw
+ * are what keep both one tap from the capsule (V19, redefined). Without the flag the words are today's, so
+ * the classic capsule's Wallet renders exactly as before.
  */
 
 import * as React from "react";
@@ -34,12 +38,15 @@ export function WalletSheet({
   balance,
   held,
   anchorRef,
+  journey = false,
 }: {
   open: boolean;
   onClose: () => void;
   balance: number;
   held: boolean;
   anchorRef: React.RefObject<HTMLElement | null>;
+  /** S6 · the journey capsule's Wallet: its two doors read "Weka pesa" and "Toa pesa". Omitted, today's words. */
+  journey?: boolean;
 }) {
   const { t } = useT();
   const depVia = React.useId();
@@ -82,7 +89,7 @@ export function WalletSheet({
               data-testid="wallet-sheet-deposit"
             >
               <I.plus s={16} />
-              {t.common.deposit}
+              {journey ? t.journey.depositAction : t.common.deposit}
             </Link>
             <span id={depVia} className="kp-wsheet__via">{t.wallet.mobileMoney}</span>
           </div>
@@ -95,7 +102,7 @@ export function WalletSheet({
               data-testid="wallet-sheet-withdraw"
             >
               <I.arrowUpFromLine s={16} />
-              {t.common.withdraw}
+              {journey ? t.journey.withdrawAction : t.common.withdraw}
             </Link>
             <span id={wdVia} className="kp-wsheet__via">{t.wallet.mobileMoneyOnly}</span>
           </div>
