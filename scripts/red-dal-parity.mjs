@@ -38,6 +38,7 @@ const FILES = [
   // §20 (S10, 2026-10-01) · the consent ledger's two writers and its clock.
   "src/lib/server/marketing/consent-ledger.ts", "src/lib/server/marketing/optout-service.ts",
   "src/lib/server/marketing/ledger-stamp.ts", "src/lib/server/marketing/erase.ts",
+  "src/app/api/dev-test/marketing-contacts-seed/route.ts",
 ];
 
 const runGate = (srcDir) => {

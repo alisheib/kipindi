@@ -1547,7 +1547,9 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
   // The behaviour itself — 400 appends, every one read back as the latest — is
   // `test:marketing-consent-ledger` §9, with the pre-fix writer planted as its red case.
   // U18b (S10) joined: erasure appends the person's last word, WITHDRAWN, recorded by the officer.
-  const WRITERS = ["lib/server/marketing/consent-ledger.ts", "lib/server/marketing/optout-service.ts", "lib/server/marketing/erase.ts"];
+  // U20 (S10): the dev-only seed route writes the ledger rows behind the contacts it seeds (404 in production).
+  const WRITERS = ["lib/server/marketing/consent-ledger.ts", "lib/server/marketing/optout-service.ts", "lib/server/marketing/erase.ts",
+    "app/api/dev-test/marketing-contacts-seed/route.ts"];
 
   // ⛔ THE POPULATION, read from the REAL tree (not KP_SRC): a third writer that skips the clock
   // would bring the coin flip back for whatever it writes. U22's form and U33's consent basis
