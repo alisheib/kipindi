@@ -417,6 +417,11 @@ journey (the market page asks them to sign in), so "sheet" steps come from signe
 204 (a curl probe is automation and correctly not counted). No totals yet at deploy time (≈ 01:50 EAT) — the first
 day's counts are read with `qa:journey-funnel` (`railway run -s 50pick -- node scripts/qa-journey-funnel.cjs` from a
 Railway-linked tree).
+- **First read (2026-10-01 01:31 UTC = 04:31 EAT, 2 h 44 min after the deploy, read-only):** totals 0, deposits with
+  an origin 0. That is correct, not a fault: since the deploy there were 0 non-bot positions and no deposits; all 37
+  `BET_PLACED` (and 36 `BET_REFUND`) rows carry a `houseBotId`, which the counter excludes by design. Re-read after a
+  full EAT day of player traffic; S3b turns ✅ when counts appear daily. (From `C:\kipindi-main`, which is
+  Railway-linked: `railway run --service 50pick -- node C:/kipindi-journey/scripts/qa-journey-funnel.cjs`.)
 
 ## §0e · S3 as built (2026-10-01) — ✅ merged to main
 
