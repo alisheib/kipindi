@@ -18,6 +18,15 @@
 
 export const MUTATIONS = [
   {
+    // ⭐ Vodacom S6 A0 (2026-10-01), restored verbatim: the away bar's "view" link used a key the
+    // positions page never reads, so every player landed on "all" instead of their settled tickets.
+    name: "away-summary-bar.tsx — link with ?filter= (a key parsePortfolioParams never reads)",
+    file: "src/components/layout/away-summary-bar.tsx",
+    from: `href="/positions?tab=settled"`,
+    to: `href="/positions?filter=settled"`,
+    expect: "6.8",
+  },
+  {
     // ⭐ E-266, restored verbatim: the destructive flood guard.
     name: "toast.tsx — restore the destructive flood guard (announcements destroyed unseen)",
     file: "src/components/ui/toast.tsx",

@@ -378,6 +378,33 @@ ok("6.3 · the bar is a NoticeBar — it blocks nothing and takes no focus",
       && /if \(!delivered\) return;/.test(seal),
     "with no host mounted it wiped the backlog having shown nothing — E-266's shape on a new path");
 }
+
+/* 6.8/6.9 — THE LINK SPEAKS THE PAGE'S PARAMETER LANGUAGE (Vodacom S6 A0, 2026-10-01). The bar linked
+ * `/positions?filter=settled` while `parsePortfolioParams` reads only `tab`, so "view" landed every player on
+ * "all" — live for everyone. The parser's keys and the lens values are READ from portfolio.ts, never re-typed. */
+{
+  const barSrc = stripComments(read(BAR));
+  const port = stripComments(read("src/lib/positions/portfolio.ts"));
+  const lensList = port.match(/POSITION_LENSES\s*=\s*\[([^\]]*)\]/);
+  const lenses = lensList ? [...lensList[1].matchAll(/"([a-z]+)"/g)].map((m) => m[1]) : [];
+  const parser = sliceBraces(port, "export function parsePortfolioParams(");
+  const keys = parser ? [...parser.matchAll(/one\("([a-z]+)"\)/g)].map((m) => m[1]) : [];
+  const hrefs = [...barSrc.matchAll(/href="(\/positions[^"]*)"/g)].map((m) => m[1]);
+  ok("6.8.control · the lens list, the parser's keys and the bar's /positions links are all locatable",
+    lenses.length >= 3 && keys.includes("tab") && hrefs.length >= 1,
+    `lenses=${lenses.length} keys=${keys.join(",")} hrefs=${hrefs.length}`);
+  const bad = hrefs.filter((h) => {
+    const q = new URLSearchParams(h.split("?")[1] ?? "");
+    for (const [k, v] of q) {
+      if (!keys.includes(k)) return true;
+      if (k === "tab" && !lenses.includes(v)) return true;
+    }
+    return false;
+  });
+  ok("6.8 · ⛔ every /positions link in the bar uses only keys parsePortfolioParams reads, with a real lens",
+    bad.length === 0, `unread by the page: ${bad.join(" · ")}`);
+  ok("6.9 · the away link opens the SETTLED lens", hrefs.includes("/positions?tab=settled"), hrefs.join(" · "));
+}
 ok("6.6 · ⛔ the attention window re-seeds when the PLAYER changes, not once per page-load",
   /who !== identity/.test(stripComments(read(PRESENCE)))
     && /userId\?: string \| null/.test(read(PRESENCE)),

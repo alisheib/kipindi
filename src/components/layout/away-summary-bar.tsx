@@ -140,7 +140,7 @@ export function AwaySummaryBar({
         wins.length > 0 ? (
           <NoticeBarAction tone="info" onClick={openSeal}>{t.notif.awayView}</NoticeBarAction>
         ) : (
-          <NoticeBarAction tone="info" href="/positions?filter=settled">{t.notif.awayView}</NoticeBarAction>
+          <NoticeBarAction tone="info" href="/positions?tab=settled">{t.notif.awayView}</NoticeBarAction>
         )
       }
     >
