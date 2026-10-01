@@ -135,6 +135,11 @@ console.log("\n[client-graph-safe] \u00a71 client-reachable modules stay clear o
     "lib/nav/active-tab.ts",
     "lib/journey/header-state.ts",
     "lib/journey/journey-on.ts",
+    // ⭐ ADDED 2026-10-01 (Vodacom plan S6 WP3). The journey's unread counter: the rule its hook runs in the browser,
+    // importing nothing. ⛔ The hook itself, `lib/journey/use-unread-count.ts`, is deliberately NOT pinned: it imports the
+    // bell's own Server Action exactly as `notifications-panel.tsx` does, and this walker follows that import into the
+    // server, where the bundler sends the browser only a reference.
+    "lib/journey/unread-count.ts",
   ];
   const offenders = [];
   let checked = 0;

@@ -1,6 +1,6 @@
 /**
  * test:journey-shell — THE NEW SHELL'S DECISIONS, HELD BEFORE ANY MARKUP USES THEM (the Vodacom plan S6,
- * `docs/VODACOM-PLAN.md` §0i; `docs/design-system/v5-2026-09-29-simplified-journey/S6-PLAN.md` WP2, A12, A18).
+ * `docs/VODACOM-PLAN.md` §0i; `docs/design-system/v5-2026-09-29-simplified-journey/S6-PLAN.md` WP2, WP3, A1, A12, A18).
  *
  *   npm run test:journey-shell     (in predeploy)
  *   npm run red:journey-shell      (--prove-red: every defect below is planted IN MEMORY and must be caught)
@@ -27,6 +27,13 @@
  *      event go up and come down), `JourneyFlag` renders nothing and is mounted only behind `journeyShown`, and every
  *      file loading `journey-on.ts` is client code — a "use client" file, or a hook module with no directive that only
  *      client code loads ("a build is not a render").
+ *   §6 THE UNREAD COUNT (WP3, as A1 amends it) — the journey's own counter for the Akaunti tab's dot and the hub's
+ *      Arifa row, driven in process on a stand-in clock. The dot asks the bell's question on the bell's closed cadence
+ *      and failure ladder, jitter included, and refreshes on the bell's two broadcasts (all read out of the bell); the
+ *      row reads when it starts and on an inbox change — never on a pushed arrival — and arms no beat; a hidden tab arms
+ *      nothing and a guest starts nothing; a new viewer inherits nothing — not the count, not an answer in flight, not a
+ *      second poller — and a count is shown only to the viewer it was read for (critic G1). Only the journey's client
+ *      components load the hook, and the classic bell loads neither file.
  *
  * ⛔ IN-PROCESS BY CONSTRUCTION. `--prove-red` hands the same checks defective implementations and edited source TEXT
  * held in memory, and requires the check named for each defect to fail. This file makes no file-system change anywhere,
@@ -44,6 +51,7 @@ import * as SURF from "../src/lib/surfaces.ts";
 import * as HDR from "../src/lib/journey/header-state.ts";
 import * as DOORS from "../src/lib/journey/viewer-doors.ts";
 import * as FLAG from "../src/lib/journey/journey-on.ts";
+import * as UNREAD from "../src/lib/journey/unread-count.ts";
 import { NO_VIEWER, type InviteViewer } from "../src/lib/feature-state.ts";
 import { hasRole, ADMIN_CONSOLE_ROLES } from "../src/lib/server/roles.ts";
 import { dict } from "../src/lib/i18n-dict.ts";
@@ -121,6 +129,9 @@ const HEADER_HOME = "src/lib/journey/header-state.ts";
 const DOORS_HOME = "src/lib/journey/viewer-doors.ts";
 const FLAG_HOME = "src/lib/journey/journey-on.ts";
 const FLAG_COMPONENT = "src/components/journey/journey-flag.tsx";
+const UNREAD_HOME = "src/lib/journey/unread-count.ts";
+const UNREAD_HOOK = "src/lib/journey/use-unread-count.ts";
+const BELL = "src/components/layout/notifications-panel.tsx";
 const SHELL = "src/components/layout/app-shell.tsx";
 const BOTTOM_NAV = "src/components/layout/bottom-nav.tsx";
 const text = (w: World, rel: string) => w.files.get(rel) ?? "";
@@ -238,6 +249,7 @@ type Impl = {
   commitSurface: (p: string | null) => boolean;
   header: typeof HDR.journeyHeaderState;
   doors: typeof DOORS.viewerDoorsFor;
+  unread: { feed: (deps: UNREAD.UnreadDeps) => UNREAD.UnreadFeed; shownFor: typeof UNREAD.unreadFor };
   flag: Flag;
 };
 const REAL: Impl = {
@@ -252,6 +264,7 @@ const REAL: Impl = {
   commitSurface: SURF.isCommitSurface,
   header: HDR.journeyHeaderState,
   doors: DOORS.viewerDoorsFor,
+  unread: { feed: UNREAD.createUnreadFeed, shownFor: UNREAD.unreadFor },
   flag: {
     subscribe: FLAG.subscribeJourneyFlag,
     snapshot: FLAG.journeyFlagSnapshot,
@@ -437,6 +450,7 @@ const MAY_IMPORT: Array<[string, readonly string[]]> = [
   [HEADER_HOME, []],
   [DOORS_HOME, ["@/lib/feature-state", "@/lib/server/roles", "type @/lib/server/proposals-config"]],
   [FLAG_HOME, ["react"]],
+  [UNREAD_HOME, []],
 ];
 
 function g2Surfaces(I: Impl, W: World, ok: Ok) {
@@ -646,8 +660,300 @@ function g5Flag(I: Impl, W: World, G: Graph, ok: Ok) {
     mounts === guarded, show({ mounts, guarded }));
 }
 
+/* ══ §6 · THE UNREAD COUNT ═══════════════════════════════════════════════════════════════════════════════════ */
+/*
+ * ⛔ NO HASH OF THE BELL. A1 keeps S6's hands off `notifications-panel.tsx`, and that is proved once, in WP12, on the
+ * branch's own commits (`git diff --exit-code` from the merge base, on that one file). Here the bell is held only where
+ * the journey's counter depends on it — its question, its cadence, its ladder, its two broadcasts — and to loading
+ * neither new file: another lane's fix to the bell must not turn this predeploy gate red.
+ */
+/** Where every file loading the hook must live, as a "use client" file: the journey's own components. */
+const JOURNEY_COMPONENTS = "src/components/journey/";
+/** What the hook may load: React, the module holding the bell's own action, and the counter. */
+const HOOK_MAY_IMPORT = ["react", "@/app/_actions/notifications", "@/lib/journey/unread-count"];
+
+/** How a stand-in read answers: with a count, by failing, or held until the test lets it land. */
+type Answer = number | "fail" | "hold";
+/**
+ * The counter's world, stood in: a clock that moves only when told, a read that answers as told, a jitter source set by
+ * the test, and the window and the document as plain event targets. Nothing real is armed, so a run costs no wall time.
+ */
+function standIn(answer: Answer) {
+  const s = { now: 0, reads: 0, answer, hidden: false, listening: 0, rand: 0.5 };
+  const timers = new Map<number, { at: number; fn: () => void }>();
+  const held: Array<(n: number) => void> = [];
+  const win = new EventTarget();
+  const doc = new EventTarget();
+  let nextId = 1;
+  const deps: UNREAD.UnreadDeps = {
+    read: () => {
+      s.reads++;
+      const a = s.answer;
+      if (a === "fail") return Promise.reject(new Error("offline"));
+      if (a === "hold") return new Promise<number>((land) => { held.push(land); });
+      return Promise.resolve(a);
+    },
+    setTimer: (fn, ms) => {
+      const id = nextId++;
+      timers.set(id, { at: s.now + ms, fn });
+      return id;
+    },
+    clearTimer: (handle) => { timers.delete(handle as number); },
+    hidden: () => s.hidden,
+    listen: (on, type, fn) => {
+      const target = on === "window" ? win : doc;
+      target.addEventListener(type, fn);
+      s.listening++;
+      return () => { target.removeEventListener(type, fn); s.listening--; };
+    },
+    random: () => s.rand,
+  };
+  /** Every answer that can land has landed, and everything it set off has run. */
+  const settle = () => new Promise<void>((done) => { setImmediate(done); });
+  return {
+    s, deps, held, settle,
+    /** How far off each armed timer is, soonest first. */
+    armed: () => [...timers.values()].map((t) => t.at - s.now).sort((a, b) => a - b),
+    /** Let `ms` pass: each timer falling due fires in time order, and what it starts lands before the next one fires. */
+    pass: async (ms: number) => {
+      const until = s.now + ms;
+      for (;;) {
+        let due: [number, { at: number; fn: () => void }] | null = null;
+        for (const t of timers) if (t[1].at <= until && (due === null || t[1].at < due[1].at)) due = t;
+        if (due === null) break;
+        timers.delete(due[0]);
+        s.now = due[1].at;
+        due[1].fn();
+        await settle();
+      }
+      s.now = until;
+      await settle();
+    },
+    broadcast: async (type: string) => { win.dispatchEvent(new Event(type)); await settle(); },
+    setHidden: async (hidden: boolean) => { s.hidden = hidden; doc.dispatchEvent(new Event("visibilitychange")); await settle(); },
+  };
+}
+/** Loaders of the hook that are not "use client" files among the journey's own components. */
+const strayHookLoaders = (w: World, g: Graph) =>
+  [...(g.into.get(UNREAD_HOOK) ?? [])].filter((p) => !(p.startsWith(JOURNEY_COMPONENTS) && isClient(text(w, p)))).sort();
+
+async function g6Unread(I: Impl, W: World, G: Graph, ok: Ok) {
+  const POLL = UNREAD.UNREAD_POLL_MS;
+  const CHANGED = UNREAD.INBOX_CHANGED;
+  const ARRIVED = UNREAD.INBOX_ARRIVED;
+  const countFor = (who: string | null, shown: UNREAD.UnreadShown) => I.unread.shownFor(who, shown);
+
+  // The bell's question, cadence and broadcasts — read out of the bell itself, so the two cannot drift apart silently.
+  const bell = text(W, BELL);
+  const bellNumber = (name: string): number | null => {
+    const head = `const ${name} = `;
+    const at = bell.indexOf(head);
+    return at < 0 ? null : Number(bell.slice(at + head.length, bell.indexOf(";", at)).split("_").join(""));
+  };
+  const cadence = { poll: bellNumber("POLL_CLOSED_MS"), base: bellNumber("POLL_BACKOFF_BASE_MS"), max: bellNumber("POLL_BACKOFF_MAX_MS") };
+  ok("6.cadence · the counter beats on the bell's closed cadence and backs off on the bell's ladder (30 s; 1 s doubling to 30 s)",
+    cadence.poll === UNREAD.UNREAD_POLL_MS && cadence.base === UNREAD.UNREAD_BACKOFF_BASE_MS && cadence.max === UNREAD.UNREAD_BACKOFF_MAX_MS,
+    `bell ${show(cadence)} · counter ${show([UNREAD.UNREAD_POLL_MS, UNREAD.UNREAD_BACKOFF_BASE_MS, UNREAD.UNREAD_BACKOFF_MAX_MS])}`);
+  const unheard = UNREAD.UNREAD_EVENTS.filter((e) => count(bell, `window.addEventListener("${e}", onRefresh);`) !== 1);
+  ok("6.events · the dot refreshes on exactly the bell's two broadcasts — an inbox change and a pushed arrival",
+    show(UNREAD.UNREAD_EVENTS) === show([CHANGED, ARRIVED]) && unheard.length === 0, `the bell does not refresh on: ${unheard.join(", ")}`);
+
+  // The hook: a client file, the bell's own action, the viewer in every step, and no interval.
+  const hook = text(W, UNREAD_HOOK);
+  ok(`6.hook.client · use-unread-count.ts is a "use client" hook module`, isClient(hook));
+  const extra = importsIn(W, UNREAD_HOOK).map((i) => i.spec).filter((spec) => !HOOK_MAY_IMPORT.includes(spec));
+  ok(`6.hook.imports · it loads only ${HOOK_MAY_IMPORT.join(", ")}`, hook.length > 0 && extra.length === 0, `also loads ${extra.join(", ")}`);
+  ok("6.hook.read · it asks the bell's own question (fetchMyNotifications, from the module the bell imports) and keeps only the server's unread total, never the list",
+    hook.includes("(await fetchMyNotifications()).unread") && !hook.includes(".items")
+      && bell.includes(`from "@/app/_actions/notifications";`) && bell.includes("fetchMyNotifications"));
+  ok("6.hook.viewer · it follows the viewer in an effect keyed by the id, lets go on every change and on unmount, and shows only that viewer's count",
+    count(hook, "feed.follow(userId, mode);") === 1 && count(hook, "return () => feed.follow(null, mode);") === 1
+      && count(hook, "}, [feed, userId, mode]);") === 1 && count(hook, "return unreadFor(userId, shown);") === 1);
+  const intervals = [UNREAD_HOME, UNREAD_HOOK].filter((p) => text(W, p).includes("setInterval"));
+  ok("6.nointerval · no interval anywhere in the counter or its hook — every beat is armed by the one before it answering",
+    intervals.length === 0, intervals.join(", "));
+
+  // Who may load it.
+  const loaders = [...(G.into.get(UNREAD_HOOK) ?? [])].sort();
+  const strays = strayHookLoaders(W, G);
+  ok(`6.mount · only the journey's client components load the hook (${loaders.length === 0 ? "none yet: the tab's dot lands in WP6a, the hub's row in WP5" : loaders.join(", ")})`,
+    strays.length === 0, `outside the journey, or not client code: ${strays.join(", ")}`);
+  const coreLoaders = [...(G.into.get(UNREAD_HOME) ?? [])].sort();
+  ok("6.mount.core · only the hook loads the counter", show(coreLoaders) === show([UNREAD_HOOK]), show(coreLoaders));
+  const loadsHook = (directive: string) => `${directive}
+import { useUnreadCount } from "@/lib/journey/use-unread-count";
+`;
+  const probeWorld = worldOf({
+    [UNREAD_HOOK]: hook,
+    "src/components/journey/probe-dot.tsx": loadsHook(`"use client";`),
+    "src/components/layout/probe-bar.tsx": loadsHook(`"use client";`),
+    "src/components/journey/probe-server.tsx": loadsHook(""),
+  });
+  const refused = strayHookLoaders(probeWorld, importGraph(probeWorld));
+  ok("6.mount.c · CONTROL · the rule takes a journey client component and refuses a client file outside the journey and a journey file with no directive",
+    show(refused) === show(["src/components/journey/probe-server.tsx", "src/components/layout/probe-bar.tsx"]), show(refused));
+
+  // The classic bell keeps its own poll until S15 (A1): it loads neither new file.
+  const bellLoads = (G.out.get(BELL) ?? []).filter((p) => p === UNREAD_HOOK || p === UNREAD_HOME);
+  ok("6.bell.apart · the classic bell loads neither the counter nor its hook — it keeps its own poll until S15 (A1)",
+    bell.length > 0 && bellLoads.length === 0, `the bell loads ${bellLoads.join(", ")}`);
+
+  // "poll" — the tab's dot.
+  {
+    const env = standIn(3);
+    const feed = I.unread.feed(env.deps);
+    feed.follow("A", "poll");
+    const atStart = { armed: env.armed(), reads: env.s.reads };
+    await env.pass(0);
+    const first = { reads: env.s.reads, count: countFor("A", feed.snapshot()), armed: env.armed() };
+    ok("6.poll.start · the dot reads once on its first beat, shows the viewer's count, and arms the next beat 30 s out",
+      show(atStart) === show({ armed: [0], reads: 0 }) && show(first) === show({ reads: 1, count: 3, armed: [POLL] }), show({ atStart, first }));
+    await env.pass(POLL);
+    ok("6.poll.beat · …and reads again when that beat falls due", env.s.reads === 2 && show(env.armed()) === show([POLL]),
+      show({ reads: env.s.reads, armed: env.armed() }));
+    await env.setHidden(true);
+    const whileHidden = env.armed();
+    await env.pass(20 * POLL);
+    const hiddenReads = env.s.reads;
+    await env.setHidden(false);
+    await env.pass(0);
+    ok("6.poll.hidden · a hidden tab arms nothing and reads nothing; coming back reads at once",
+      whileHidden.length === 0 && hiddenReads === 2 && env.s.reads === 3, show({ whileHidden, hiddenReads, reads: env.s.reads }));
+    for (const type of UNREAD.UNREAD_EVENTS) {
+      const before = env.s.reads;
+      env.s.answer = 10 + before;
+      await env.broadcast(type);
+      ok(`6.poll.event.${type} · the broadcast reads at once, and the count follows the answer`,
+        env.s.reads === before + 1 && countFor("A", feed.snapshot()) === 10 + before,
+        show({ reads: env.s.reads - before, count: countFor("A", feed.snapshot()) }));
+    }
+    env.s.answer = "hold";
+    await env.broadcast(CHANGED);
+    const inFlight = env.s.reads;
+    await env.pass(POLL);
+    const yielded = { reads: env.s.reads - inFlight, armed: env.armed().length };
+    for (const land of env.held.splice(0)) land(1);
+    await env.settle();
+    ok("6.poll.yield · a beat never stacks a read on one still in flight: it yields and re-arms, and the held answer still lands",
+      show(yielded) === show({ reads: 0, armed: 1 }) && countFor("A", feed.snapshot()) === 1, show({ yielded, count: countFor("A", feed.snapshot()) }));
+    env.s.answer = "fail";
+    await env.pass(POLL);
+    const afterFail = env.armed();
+    ok("6.poll.fail · a failed read keeps the last count and the chain: the next beat is armed, never sooner than the ladder allows",
+      countFor("A", feed.snapshot()) === 1 && afterFail.length === 1 && afterFail[0] >= Math.round(POLL * 0.7),
+      show({ count: countFor("A", feed.snapshot()), afterFail }));
+    feed.follow(null, "poll");
+    ok("6.poll.stop · letting go stops the beat and every listener", env.armed().length === 0 && env.s.listening === 0,
+      show({ armed: env.armed(), listening: env.s.listening }));
+  }
+  // The jitter, at both ends of its band — the part of the ladder the bell calls load-bearing: every tab in the country
+  // loses the server on the same deploy, and without it they all come back on the same beat.
+  {
+    const env = standIn("fail");
+    const feed = I.unread.feed(env.deps);
+    env.s.rand = 0;
+    feed.follow("A", "poll");
+    await env.pass(0);
+    const low = env.armed();
+    env.s.rand = 0.9999;
+    await env.pass(low[0] ?? 0);
+    const high = env.armed();
+    feed.follow(null, "poll");
+    ok("6.poll.jitter · a failed read re-arms 30 s ±30%: 21 s at the jitter's low end, just under 39 s at its high end",
+      low.length === 1 && low[0] === Math.round(POLL * 0.7) && high.length === 1 && high[0] > POLL * 1.29 && high[0] <= POLL * 1.3,
+      show({ low, high }));
+  }
+
+  // "once" — the hub's row (A1): a read when it starts and on an inbox change; never a beat, never a pushed arrival.
+  {
+    const env = standIn(4);
+    const feed = I.unread.feed(env.deps);
+    feed.follow("A", "once");
+    await env.pass(0);
+    const started = { reads: env.s.reads, count: countFor("A", feed.snapshot()), armed: env.armed() };
+    await env.pass(20 * POLL);
+    ok("6.once.nointerval · the hub's row reads once when it starts and then arms nothing — not one read in ten minutes",
+      show(started) === show({ reads: 1, count: 4, armed: [] }) && env.s.reads === 1, show({ started, reads: env.s.reads }));
+    const beforeChange = env.s.reads;
+    env.s.answer = 6;
+    await env.broadcast(CHANGED);
+    ok("6.once.changed · an action that changed the inbox reads once more, the count follows, and nothing is armed",
+      env.s.reads === beforeChange + 1 && countFor("A", feed.snapshot()) === 6 && env.armed().length === 0,
+      show({ reads: env.s.reads - beforeChange, count: countFor("A", feed.snapshot()), armed: env.armed() }));
+    const beforeArrival = env.s.reads;
+    await env.broadcast(ARRIVED);
+    ok("6.once.arrived · a pushed arrival is not a read for the row — one request per visit, not one per notification (A1)",
+      env.s.reads === beforeArrival, `${env.s.reads - beforeArrival} reads`);
+    const before = env.s.reads;
+    await env.setHidden(true);
+    await env.setHidden(false);
+    await env.pass(20 * POLL);
+    ok("6.once.visibility · coming back to the tab is not a read, and the row listens for one thing only: an inbox change",
+      env.s.reads === before && env.armed().length === 0 && env.s.listening === 1,
+      show({ reads: env.s.reads - before, armed: env.armed(), listening: env.s.listening }));
+    feed.follow(null, "once");
+  }
+  {
+    const env = standIn(5);
+    env.s.hidden = true;
+    const feed = I.unread.feed(env.deps);
+    feed.follow("A", "once");
+    await env.pass(0);
+    ok("6.once.hidden · a row opened in a background tab still reads once — one request, not a beat",
+      env.s.reads === 1 && countFor("A", feed.snapshot()) === 5 && env.armed().length === 0, show({ reads: env.s.reads, armed: env.armed() }));
+    feed.follow(null, "once");
+  }
+
+  // A guest starts nothing.
+  for (const mode of ["poll", "once"] as const) {
+    const env = standIn(9);
+    const feed = I.unread.feed(env.deps);
+    feed.follow(null, mode);
+    await env.pass(20 * POLL);
+    for (const type of UNREAD.UNREAD_EVENTS) await env.broadcast(type);
+    const seen = { reads: env.s.reads, armed: env.armed(), listening: env.s.listening, shown: feed.snapshot() };
+    ok(`6.guest.${mode} · a guest starts nothing — no read, no beat, no listener — and is shown nothing`,
+      show(seen) === show({ reads: 0, armed: [], listening: 0, shown: UNREAD.NOTHING_SHOWN }) && countFor(null, feed.snapshot()) === null, show(seen));
+  }
+
+  // A new viewer inherits nothing (critic G1): through a signed-out moment, as AppShell's E-381 path goes, and directly.
+  for (const via of ["guest", "direct"] as const) {
+    const env = standIn(7);
+    const feed = I.unread.feed(env.deps);
+    feed.follow("A", "poll");
+    await env.pass(0);
+    const before = countFor("A", feed.snapshot());
+    env.s.answer = "hold";
+    await env.broadcast(CHANGED);
+    if (via === "guest") feed.follow(null, "poll");
+    feed.follow("B", "poll");
+    const atSwitch = { shown: feed.snapshot(), forB: countFor("B", feed.snapshot()), armed: env.armed() };
+    for (const land of env.held.splice(0)) land(9);
+    await env.settle();
+    const afterLate = feed.snapshot();
+    env.s.answer = 2;
+    await env.pass(0);
+    const bFirst = { reads: env.s.reads, forB: countFor("B", feed.snapshot()), forA: countFor("A", feed.snapshot()) };
+    await env.pass(POLL);
+    const oneBeat = env.s.reads - bFirst.reads;
+    const path = via === "guest" ? "through a signed-out moment" : "directly";
+    ok(`6.viewer.${via}.empty · when B follows A (${path}), nothing is shown at once — not A's count, not for one frame`,
+      before === 7 && atSwitch.shown.unread === null && atSwitch.forB === null, show({ before, atSwitch }));
+    ok(`6.viewer.${via}.late · A's read still in flight at the switch is dropped when it lands`,
+      afterLate.unread === null && afterLate.viewer !== "A", show(afterLate));
+    ok(`6.viewer.${via}.fresh · B starts from nothing: a read at once, then B's own count, never A's`,
+      show(atSwitch.armed) === show([0]) && bFirst.forB === 2 && bFirst.forA === null, show({ armed: atSwitch.armed, bFirst }));
+    ok(`6.viewer.${via}.one · after the switch one poller beats, not two`, oneBeat === 1, `${oneBeat} reads in one beat`);
+    feed.follow(null, "poll");
+  }
+  const A7: UNREAD.UnreadShown = { viewer: "A", unread: 7 };
+  ok("6.gate · a count is shown only to the viewer it was read for — never to the next viewer, never to a guest",
+    countFor("A", A7) === 7 && countFor("B", A7) === null && countFor(null, A7) === null && countFor(null, UNREAD.NOTHING_SHOWN) === null,
+    show({ A: countFor("A", A7), B: countFor("B", A7), guest: countFor(null, A7) }));
+}
+
 /* ══ THE RUN ═════════════════════════════════════════════════════════════════════════════════════════════════ */
-function run(I: Impl, W: World, log: (l: string) => void): { failed: string[]; total: number } {
+async function run(I: Impl, W: World, log: (l: string) => void): Promise<{ failed: string[]; total: number }> {
   const failed: string[] = [];
   let total = 0;
   const ok: Ok = (label, cond, detail = "") => {
@@ -666,12 +972,15 @@ function run(I: Impl, W: World, log: (l: string) => void): { failed: string[]; t
   g4Doors(I, W, G, ok);
   log("\n§5 · the flag — useJourneyOn's parts, JourneyFlag, and who may load the hook");
   g5Flag(I, W, G, ok);
+  log("");
+  log("§6 · the unread count — the bell's question on the bell's cadence, one viewer at a time, and the classic bell apart");
+  await g6Unread(I, W, G, ok);
   return { failed, total };
 }
 
 if (!PROVE_RED) {
   console.log("journey-shell — the new shell's decisions, pure (Vodacom plan S6, WP2)");
-  const { failed, total } = run(REAL, WORLD, (l) => console.log(l));
+  const { failed, total } = await run(REAL, WORLD, (l) => console.log(l));
   console.log(`\nJOURNEY SHELL — ${total === 0 ? "0 checks ran: a zero-assertion run is a SKIPPED run" : failed.length === 0 ? `all ${total} checks passed` : `${failed.length} of ${total} failed`}\n`);
   for (const f of failed) console.log(`  · ${f}`);
   process.exitCode = total > 0 && failed.length === 0 ? 0 : 1;
@@ -684,7 +993,7 @@ if (!PROVE_RED) {
   };
   console.log("RED CONTROL — journey-shell's defects, planted in memory\n");
 
-  const baseline = run(REAL, WORLD, quiet);
+  const baseline = await run(REAL, WORLD, quiet);
   if (baseline.total === 0 || baseline.failed.length > 0) {
     console.log(`INCONCLUSIVE: the clean run already fails (${baseline.failed[0] ?? "0 checks ran"}) — a plant could not be told from it`);
     process.exitCode = 1;
@@ -759,6 +1068,134 @@ if (!PROVE_RED) {
     const flagClient = withFile(WORLD, FLAG_HOME, (s) => `"use client";\n${s}`);
     const flagNoCleanup = withFile(WORLD, FLAG_COMPONENT, (s) => s.replace("useEffect(() => raiseJourneyFlag(), [])", "useEffect(() => { raiseJourneyFlag(); }, [])"));
     const mountedForAll = withFile(WORLD, SHELL, (s) => `${s}\nconst everyone = <JourneyFlag />;\n`);
+
+    // §6 — defective counters, each wrapped around the real one, and the files around them edited in memory.
+    /** G1's defect: the last viewer's count stays up until the next viewer's first answer lands. */
+    const stickyFeed = (deps: UNREAD.UnreadDeps): UNREAD.UnreadFeed => {
+      const real = UNREAD.createUnreadFeed(deps);
+      let last = UNREAD.NOTHING_SHOWN;
+      real.subscribe(() => { const now = real.snapshot(); if (now.unread !== null) last = now; });
+      return { ...real, snapshot: () => last };
+    };
+    /** The switch starts the next viewer and never stops the last one. */
+    const leakyFeed = (deps: UNREAD.UnreadDeps): UNREAD.UnreadFeed => {
+      let latest = UNREAD.NOTHING_SHOWN;
+      const told = new Set<() => void>();
+      return {
+        follow: (userId, mode) => {
+          latest = UNREAD.NOTHING_SHOWN;
+          if (userId === null) return;
+          const run = UNREAD.createUnreadFeed(deps);
+          run.subscribe(() => { latest = run.snapshot(); for (const onChange of told) onChange(); });
+          run.follow(userId, mode);
+        },
+        subscribe: (onChange) => { told.add(onChange); return () => { told.delete(onChange); }; },
+        snapshot: () => latest,
+      };
+    };
+    /** A gate that shows whatever was read last, to whoever asks. */
+    const anyViewer: typeof UNREAD.unreadFor = (_userId, shown) => shown.unread;
+    /** The hub's row beats like the dot: an interval in "once" mode. */
+    const hubPolls = (deps: UNREAD.UnreadDeps): UNREAD.UnreadFeed => {
+      const real = UNREAD.createUnreadFeed(deps);
+      return { ...real, follow: (userId, mode) => real.follow(userId, mode === "once" ? "poll" : mode) };
+    };
+    /** The hub's row hears every pushed arrival too: a request per notification while the row is open. */
+    const rowHearsArrivals = (deps: UNREAD.UnreadDeps): UNREAD.UnreadFeed => UNREAD.createUnreadFeed({
+      ...deps,
+      listen: (on, type, fn) => {
+        const off = deps.listen(on, type, fn);
+        if (type !== UNREAD.INBOX_CHANGED) return off;
+        const alsoOff = deps.listen(on, UNREAD.INBOX_ARRIVED, fn);
+        return () => { off(); alsoOff(); };
+      },
+    });
+    /** A guest read as somebody. */
+    const guestPolls = (deps: UNREAD.UnreadDeps): UNREAD.UnreadFeed => {
+      const real = UNREAD.createUnreadFeed(deps);
+      return { ...real, follow: (userId, mode) => real.follow(userId ?? "guest", mode) };
+    };
+    /** A counter blind to a hidden tab. */
+    const blindToHidden = (deps: UNREAD.UnreadDeps): UNREAD.UnreadFeed => UNREAD.createUnreadFeed({ ...deps, hidden: () => false });
+    /** The jitter dropped: every failed read re-arms at exactly 30 s. */
+    const noJitter = (deps: UNREAD.UnreadDeps): UNREAD.UnreadFeed => UNREAD.createUnreadFeed({ ...deps, random: () => 0.5 });
+    /** A re-arm below the jitter's band: a failed read is tried again in 3 s. */
+    const undercuts = (deps: UNREAD.UnreadDeps): UNREAD.UnreadFeed => UNREAD.createUnreadFeed({ ...deps, random: () => -1 });
+    /* Each defective counter, shown misbehaving on its own before it is handed to the gate. */
+    const stickyKeeps = await (async () => {
+      const env = standIn(7);
+      const feed = stickyFeed(env.deps);
+      feed.follow("A", "poll");
+      await env.pass(0);
+      feed.follow(null, "poll");
+      feed.follow("B", "poll");
+      return feed.snapshot().unread === 7;
+    })();
+    const leakKeepsPolling = await (async () => {
+      const env = standIn(7);
+      const feed = leakyFeed(env.deps);
+      feed.follow("A", "poll");
+      await env.pass(0);
+      feed.follow(null, "poll");
+      await env.pass(UNREAD.UNREAD_POLL_MS);
+      return env.s.reads === 2;
+    })();
+    const hubBeats = await (async () => {
+      const env = standIn(4);
+      hubPolls(env.deps).follow("A", "once");
+      await env.pass(0);
+      return env.armed().length === 1;
+    })();
+    const rowHears = await (async () => {
+      const env = standIn(4);
+      rowHearsArrivals(env.deps).follow("A", "once");
+      await env.pass(0);
+      await env.broadcast(UNREAD.INBOX_ARRIVED);
+      return env.s.reads === 2;
+    })();
+    const guestReads = await (async () => {
+      const env = standIn(4);
+      guestPolls(env.deps).follow(null, "poll");
+      await env.pass(0);
+      return env.s.reads === 1;
+    })();
+    const hiddenPolled = await (async () => {
+      const env = standIn(3);
+      env.s.hidden = true;
+      blindToHidden(env.deps).follow("A", "poll");
+      await env.pass(0);
+      return env.s.reads === 1;
+    })();
+    const jitterGone = await (async () => {
+      const env = standIn("fail");
+      env.s.rand = 0;
+      noJitter(env.deps).follow("A", "poll");
+      await env.pass(0);
+      return show(env.armed()) === show([UNREAD.UNREAD_POLL_MS]);
+    })();
+    const retriesSoon = await (async () => {
+      const env = standIn("fail");
+      undercuts(env.deps).follow("A", "poll");
+      await env.pass(0);
+      return (env.armed()[0] ?? UNREAD.UNREAD_POLL_MS) < Math.round(UNREAD.UNREAD_POLL_MS * 0.7);
+    })();
+    const withHookImport = (s: string) => `${s}
+import { useUnreadCount } from "@/lib/journey/use-unread-count";
+`;
+    const bellLoadsHook = withFile(WORLD, BELL, withHookImport);
+    const shellLoadsHook = withFile(WORLD, SHELL, withHookImport);
+    const hookForgetsViewer = withFile(WORLD, UNREAD_HOOK, (s) => s.replace("}, [feed, userId, mode]);", "}, [feed, mode]);"));
+    const hookCountsList = withFile(WORLD, UNREAD_HOOK,
+      (s) => s.replace("(await fetchMyNotifications()).unread", "(await fetchMyNotifications()).items.length"));
+    const hookLosesDirective = withFile(WORLD, UNREAD_HOOK, (s) => s.replace(`"use client";`, ""));
+    const hookInterval = withFile(WORLD, UNREAD_HOOK, (s) => `${s}
+export const keepAsking = () => window.setInterval(() => {}, 30_000);
+`);
+    const counterImports = withFile(WORLD, UNREAD_HOME, (s) => `import { formatTzs } from "@/lib/utils";
+${s}`);
+    const bellRetimed = withFile(WORLD, BELL, (s) => s.replace("const POLL_CLOSED_MS = 30_000;", "const POLL_CLOSED_MS = 20_000;"));
+    const bellRenamed = withFile(WORLD, BELL, (s) => s.replace(
+      `window.addEventListener("50pick:sse:notification", onRefresh);`, `window.addEventListener("50pick:sse:push", onRefresh);`));
 
     type Plant = { name: string; expect: RegExp; impl?: Partial<Impl>; world?: World; landed: boolean; landedAs: string };
     const plants: Plant[] = [
@@ -852,12 +1289,51 @@ if (!PROVE_RED) {
         world: flagNoCleanup, landed: changed(flagNoCleanup, FLAG_COMPONENT), landedAs: "unmounting leaves data-journey on the page" },
       { name: "JourneyFlag mounted for everyone", expect: at("5.mount ·"),
         world: mountedForAll, landed: changed(mountedForAll, SHELL), landedAs: "a classic page carries data-journey" },
+      // §6 — the unread count
+      { name: "a store that keeps the last viewer's count across a sign-in (critic G1)", expect: at("6.viewer."),
+        impl: { unread: { ...REAL.unread, feed: stickyFeed } }, landed: stickyKeeps, landedAs: "B's dot shows A's count until B's first answer lands" },
+      { name: "the switch never stops the last viewer's poll", expect: at("6.viewer."),
+        impl: { unread: { ...REAL.unread, feed: leakyFeed } }, landed: leakKeepsPolling, landedAs: "A's poll beats on, and its answers land, after A has gone" },
+      { name: "the gate shows whatever was read last, to whoever asks", expect: at("6.gate ·"),
+        impl: { unread: { ...REAL.unread, shownFor: anyViewer } }, landed: anyViewer("B", { viewer: "A", unread: 7 }) === 7,
+        landedAs: "B is shown A's count" },
+      { name: "an interval in the hub's mode", expect: at("6.once.nointerval ·"),
+        impl: { unread: { ...REAL.unread, feed: hubPolls } }, landed: hubBeats, landedAs: "the Arifa row polls beside the dot and the bell" },
+      { name: "the hub's row reads on every pushed arrival (A1: an inbox change only)", expect: at("6.once.arrived ·"),
+        impl: { unread: { ...REAL.unread, feed: rowHearsArrivals } }, landed: rowHears, landedAs: "a request per notification while Akaunti is open" },
+      { name: "a guest polls", expect: at("6.guest."),
+        impl: { unread: { ...REAL.unread, feed: guestPolls } }, landed: guestReads, landedAs: "a signed-out visitor sends the bell's request every 30 s" },
+      { name: "the counter polls a hidden tab", expect: at("6.poll.hidden ·"),
+        impl: { unread: { ...REAL.unread, feed: blindToHidden } }, landed: hiddenPolled, landedAs: "a phone in a pocket wakes its radio every 30 s" },
+      { name: "the jitter is dropped", expect: at("6.poll.jitter ·"),
+        impl: { unread: { ...REAL.unread, feed: noJitter } }, landed: jitterGone,
+        landedAs: "every tab that lost the server on a deploy comes back on the same beat" },
+      { name: "a failed read is retried sooner than the cadence allows", expect: at("6.poll.fail ·"),
+        impl: { unread: { ...REAL.unread, feed: undercuts } }, landed: retriesSoon, landedAs: "a retry storm against a server that is starting up" },
+      { name: "the hook keeps its first viewer for life", expect: at("6.hook.viewer ·"),
+        world: hookForgetsViewer, landed: changed(hookForgetsViewer, UNREAD_HOOK), landedAs: "a sign-in on a shared phone keeps reading for the last player" },
+      { name: "the hook counts the capped list, not the server's total", expect: at("6.hook.read ·"),
+        world: hookCountsList, landed: changed(hookCountsList, UNREAD_HOOK), landedAs: "40 unread shown as 30 — the bell's own 2026-08-22 defect" },
+      { name: "the hook loses its client directive", expect: at("6.hook.client ·"),
+        world: hookLosesDirective, landed: changed(hookLosesDirective, UNREAD_HOOK), landedAs: "the hook's file stops declaring the browser it runs in" },
+      { name: "an interval in the hook", expect: at("6.nointerval ·"),
+        world: hookInterval, landed: changed(hookInterval, UNREAD_HOOK), landedAs: "a beat that stacks requests on a slow radio" },
+      { name: "the counter loads a module", expect: at(`2.pure.${UNREAD_HOME} ·`),
+        world: counterImports, landed: changed(counterImports, UNREAD_HOME), landedAs: "the pure rule reaches for the world" },
+      { name: "a server file loads the hook", expect: at("6.mount ·"),
+        world: shellLoadsHook, landed: changed(shellLoadsHook, SHELL), landedAs: "AppShell calls a hook: a build that never renders" },
+      { name: "the classic bell loads the journey's hook", expect: at("6.bell.apart ·"),
+        world: bellLoadsHook, landed: changed(bellLoadsHook, BELL), landedAs: "every live player's bell moves onto the journey's counter" },
+      { name: "the bell's cadence moves and the counter keeps the old one", expect: at("6.cadence ·"),
+        world: bellRetimed, landed: changed(bellRetimed, BELL), landedAs: "the dot and the bell beat at two rates" },
+      { name: "the bell renames its arrival broadcast and the counter keeps the old name", expect: at("6.events ·"),
+        world: bellRenamed, landed: changed(bellRenamed, BELL), landedAs: "the dot listens for a broadcast the bell no longer hears" },
     ];
 
     let caught = 0;
     for (const p of plants) {
       ok(`PLANT LANDED · ${p.name}`, p.landed, p.landedAs);
-      const r = run({ ...REAL, ...(p.impl ?? {}) }, p.world ?? WORLD, quiet);
+      const r = await run({ ...REAL, ...(p.impl ?? {}) }, p.world ?? WORLD, quiet);
       const hit = r.failed.some((f) => p.expect.test(f));
       if (hit && p.landed) caught++;
       ok(`  └─ fires: ${p.expect.source}`, hit,

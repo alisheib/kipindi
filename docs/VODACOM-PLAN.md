@@ -218,7 +218,13 @@ here, with how to overrule it. Newest last; nothing here blocks the work.
     full figure.
 15. **"Pumzika / Jizuie" becomes two rows** in Akaunti: Pumzika → take a break, Jizuie → self-exclusion.
 16. **The classic notification bell is not touched until S15;** the journey's tab dot and Arifa row get their own
-    counter. Lower risk for live players; one extra request on a journey desktop page.
+    counter. Lower risk for live players. ⚠️ The cost, corrected at WP3 — this point said "one extra request on a
+    journey desktop page", which was wrong: the tab dot checks for notifications every 30 s, as the bell does, and a
+    journey page keeps both loaded at every screen width (each is only hidden at the other width). So a signed-in
+    journey page asks the server twice every 30 s instead of once — about 240 requests an hour per tab on screen
+    instead of 120 — plus one per visit to Akaunti for the Arifa row. Only preview viewers pay it, and only until S15;
+    players outside the journey are unchanged. WP6a can halve it by loading only the one each width shows; say so if
+    you want that made a rule.
 17. **The phone home-screen shortcuts** (Maswali, Tiketi) change at launch, not now — that file is the same for everyone.
 
 ## §0g · S4 (2026-10-01) — the Design canvas: all eleven items drawn, the panel's findings applied; waiting on Ali
@@ -1632,7 +1638,7 @@ retention/backup/DAL and the privacy lines.
 
 **S6 — Shell (flagged)**
 - Header states (SJ-15); the 4 tabs, `activeTabFor`, `--rail-h`; the guest Tiketi sheet.
-- `useUnreadNotifications` feeding the tab badge and the hub row.
+- The journey's own unread count (`useUnreadCount`, `src/lib/journey/use-unread-count.ts`; S6-PLAN A1) feeding the tab badge and the hub row. The classic bell keeps its own poll; a store shared with it waits for S15.
 - The Akaunti hub (SJ-17).
 - Tiketi zangu: rename, content, and a Maswali | Juu/Chini switch to `/updown/history`.
 - The `surfaces.ts` list; the EmailVerifyBanner rule; overlay stand-downs; the header-fit re-proof.
