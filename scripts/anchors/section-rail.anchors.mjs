@@ -46,6 +46,16 @@ export const MUTATIONS = [
     from: `                        aria-current={active ? "page" : undefined}`,
     to: `                        data-was-current={active ? "page" : undefined}`,
   },
+  {
+    name: "the journey tab rail stops saying which tab is current",
+    file: "src/components/journey/journey-tabs.tsx",
+    expect: "every rail of destinations names the one in force",
+    /* S6 WP6a — the journey's rail (SJ-16) takes aria-current from `tabAriaCurrent` (A12): "page" on a tab's own page,
+       "true" on the rest of its section. Built before it is mounted (WP6b), and the gate reads source, so the control
+       holds from the commit that adds it. */
+    from: `                    aria-current={tabAriaCurrent(pathname, d.key)}`,
+    to: `                    data-was-current={tabAriaCurrent(pathname, d.key)}`,
+  },
 ];
 
 /**

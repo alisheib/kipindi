@@ -6309,6 +6309,86 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
   background: var(--gilt);
 }
 
+/* =====================================================================
+   THE JOURNEY SHELL — header and tabs (the Vodacom plan S6, SJ-15 / SJ-16; S6-PLAN.md WP6a)
+   =====================================================================
+   Worn only by `journey-top-bar.tsx`, `journey-tabs.tsx` and the guest Tiketi sheet, which AppShell renders for a
+   journey request alone (WP6b). No classic element carries one of these classes, so a classic page paints exactly as
+   before. ⚠️ The stylesheet itself ships to every viewer: these rules simply match nothing there.
+
+   ⭐ THE S4 FIT RULES, WRITTEN AS MEASURED (VODACOM-PLAN.md §0g design call 10, Chromium with the real fonts).
+   On a phone: 6px gaps, the 26px mark in a 44px home link that borrows 9px of gutter on each side, 10px capsule
+   padding (the capsule's own rule, `.kp-jbal`), 12/10 on the pill and a 16px gutter. Below 360: a 12px gutter, no
+   "+", an even 12px on the pill and a 12px figure (`.kp-jbal__fig`). Each number below is the exact value WP6b's
+   header-fit rule probe compares against (A5), and `test:journey-shell` §7 reads them as written: do not move one
+   without re-measuring the matrix.
+   ⭐ FROM 640, THE CLASSIC BAR'S OWN STEPS (S6-PLAN WP6a step 1; the kit wins where the canvas drifts, §0h point 7).
+   The S4 numbers are a phone's. From 640 the row takes the classic bar's gutter (24px) and its gaps between groups
+   (20px, 12px from 1024 where the destinations take the room, 20px again from 1280), and the right-hand cluster its
+   own 12px. The values are the spacing tokens at the pixels the classic bar's utilities paint, and §7 also reads the
+   classic bar's spellings, so the two bars cannot drift apart silently.
+   ⭐ MOBILE-FIRST, `min-width` ONLY: a phone-only rule would be a rule the density contract has to fence.
+   ⛔ NOTHING HERE SETS `display` ON AN ELEMENT THAT ALSO WEARS A WIDTH UTILITY. These rules come after the utilities,
+   so at equal specificity they win and the utility is ignored — the classic bar's `.btn` lesson, measured at 360.
+   The nav and the desktop-only wrappers take their display from their utilities and nothing else. */
+.kp-jhdr { height: 56px; background: var(--panel); border-bottom: 1px solid var(--border); }
+.kp-jhdr__row { display: flex; align-items: center; gap: 6px; height: 100%; max-width: var(--w-board); margin-inline: auto; padding-inline: var(--sp-3); }
+/* The right-hand controls, grouped as the classic bar groups them: one gap on a phone, the cluster's own from 640. */
+.kp-jhdr__cluster { display: flex; flex-shrink: 0; align-items: center; gap: 6px; }
+.kp-jhdr__home { display: inline-flex; flex-shrink: 0; align-items: center; justify-content: center; min-height: var(--h-control-md); margin-inline: -9px; padding-inline: 9px; transition: opacity var(--t-quick) ease-out; }
+.kp-jhdr__home:hover { opacity: 0.9; }
+.kp-jhdr__plus { display: none; }
+.kp-jhdr__pill { flex-shrink: 0; padding: 0 12px; }
+.kp-jhdr__auth { flex-shrink: 0; padding-inline: 14px; font-size: var(--type-small); }
+/* The bell's slot keeps the bell's 40px box while the bell itself waits for the width to be known, so the cluster
+   does not move when it arrives (`one-poller.ts`). */
+.kp-jhdr__bell { justify-content: center; min-width: var(--h-control-sm); }
+@media (min-width: 360px) { .kp-jhdr__row { padding-inline: var(--sp-4); } }
+@media (min-width: 360px) { .kp-jhdr__plus { display: inline-flex; } }
+@media (min-width: 360px) { .kp-jhdr__pill { padding: 0 12px 0 10px; } }
+@media (min-width: 640px) { .kp-jhdr__row { gap: var(--sp-5); padding-inline: var(--sp-6); } }
+@media (min-width: 640px) { .kp-jhdr__cluster { gap: var(--sp-3); } }
+@media (min-width: 1024px) { .kp-jhdr__row { gap: var(--sp-3); } }
+@media (min-width: 1280px) { .kp-jhdr__row { gap: var(--sp-5); } }
+
+/* ⭐ THE DESTINATIONS FROM 1024 — the kit's SECTION language (§0h point 7; DESIGN_AUTHORITY §K rule 7c, "the underline
+   is the section language"), not the canvas's pills: the `Tabs` line variant's geometry and ink, written once here
+   because these are links in a bar rather than a rail on a page. The underline says "you are here" on a destination's
+   own page and on every page of its section (A12 tells the two apart for a screen reader, not for the eye). Hover
+   previews it in a non-brand ink, so a preview is never mistaken for the selection. */
+.kp-jnav { align-items: center; gap: 2px; margin-inline-start: var(--sp-3); }
+.kp-jnav__link { position: relative; display: inline-flex; align-items: center; min-height: var(--h-control-md); padding: 0 var(--sp-3); border-radius: var(--r-sm); font-size: var(--type-small); font-weight: 600; white-space: nowrap; color: var(--text-muted); background: transparent; transition: color var(--t-quick) ease-out, background var(--t-quick) ease-out; }
+.kp-jnav__link::after { content: ""; position: absolute; left: var(--sp-3); right: var(--sp-3); bottom: 0; height: 2px; border-radius: var(--r-pill); background: var(--border-strong); transform: scaleX(0); transition: transform var(--t-base) var(--m-glide); }
+.kp-jnav__link:not([aria-current]):not([data-on]):hover { color: var(--text); background: var(--bg-overlay); }
+.kp-jnav__link:not([aria-current]):not([data-on]):hover::after { transform: scaleX(1); }
+.kp-jnav__link:is([aria-current], [data-on]) { color: var(--text); }
+.kp-jnav__link:is([aria-current], [data-on])::after { transform: scaleX(1); background: var(--brand-500); box-shadow: 0 0 8px color-mix(in oklab, var(--brand-500) 50%, transparent); }
+
+/* ⭐ THE JOURNEY RAIL — four equal tabs (SJ-16) on the classic rail's own surface, slot, pip and label, worn unchanged.
+   ⛔ `.kp-rail` itself is not edited: the admin pending-changes bar wears it too. The grid goes on the LIST (A18): on
+   the nav, the whole list would be one grid cell. */
+.kp-rail--journey > ul { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); align-items: stretch; }
+/* The Akaunti tab's unread mark: the 8px brand dot on the pip's corner, cut out of the glyph by a ring of the rail's
+   own fill, so it reads against any glyph. */
+.kp-rail__badge { position: absolute; top: -2px; right: 6px; box-shadow: 0 0 0 2px var(--panel); }
+/* ⚠️ THE ONE LABEL THAT DOES NOT FIT, MEASURED RATHER THAN GUESSED (A17). The classic label ellipsises. A quarter of a
+   320 phone is 80px, and "Tiketi zangu" at the rail's 11px mono (0.6em a glyph) needs 12 × 6.6 + 4 = 83.2px, so it
+   would read "Tiketi zan…" there; `test:journey-shell` §8 measures every tab label in sw, en and zh at 320 and 360.
+   Below 360 a label may take a second, centred line; from 360 every label fits on one and the classic rule stands.
+   ⚠️ The measure is a font model until WP6b's 320 drive sees it (A17 asks for the drive). If a copy change ever lets
+   every label fit at 320, §8 says so: delete this wrap and the slot alignment below, in the same commit. */
+.kp-jtab__label { white-space: normal; text-overflow: clip; text-align: center; line-height: 1.15; }
+@media (min-width: 360px) { .kp-jtab__label { white-space: nowrap; text-overflow: ellipsis; line-height: 1; } }
+/* ⚠️ …AND A TWO-LINE LABEL MUST NOT LIFT ITS PIP. The classic slot centres its content, and the grid stretches every
+   slot to the tallest one, so below 360 the Tiketi slot (26 + 4 + 2 × 12.65 = 55.3px of content) would set the rail's
+   height and the three one-line slots would centre their pips about 6px below its pip. So below 360 the journey's
+   slots stack from the top and every pip sits on the slot's padding; from 360 nothing wraps and the classic centring
+   returns. `.kp-rail__item` itself is not edited. */
+.kp-rail--journey .kp-rail__item { justify-content: flex-start; }
+@media (min-width: 360px) { .kp-rail--journey .kp-rail__item { justify-content: center; } }
+/* The guest Tiketi sheet's title: the display face, kept clear of the close button the Modal pins top-right. */
+.kp-jsheet__title { margin: 0; padding-right: var(--sp-12); font-family: var(--font-display); font-weight: 700; font-size: var(--type-h3); line-height: 1.25; color: var(--text); }
+
 /* ── THE CENTRE COIN — UPDATE-2026-09-28 §2 ───────────────────────────────────────
    The rail's middle slot is the wallet's door, and the coin is the 50pick mark AS a control: the
    ring follows the mark's split at its own −14°, the needle rides that split and shows past the

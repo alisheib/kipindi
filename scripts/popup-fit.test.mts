@@ -31,6 +31,8 @@
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { decomment } from "./lib/decomment.mts";
+// S6 · the popup detector and the record's comparison are one module, which red:journey-shell asks too (A13).
+import { IS_POPUP, reviewGaps } from "./lib/popup-review.mts";
 
 let pass = 0;
 const fails: string[] = [];
@@ -56,8 +58,7 @@ function walk(dir: string, out: string[] = []): string[] {
   return out;
 }
 
-/** A popup or warning: it renders a dialog role, or one of the kit's popup primitives. */
-const IS_POPUP = /role="(dialog|alertdialog)"|<Modal\b|<ConfirmDialog\b|<OperationResultModal\b/;
+/** A popup or warning: `IS_POPUP` (`./lib/popup-review.mts`) — a dialog role, or one of the kit's popup primitives. */
 /** The two mechanisms that HIDE text. `whitespace-nowrap` is deliberately absent — see the header. */
 const CLIPS = /\btruncate\b|\bline-clamp-[0-9]+\b/;
 
@@ -165,6 +166,14 @@ const popups = all.filter((f) => IS_POPUP.test(code(f)));
  * wrap; the dialog is the kit's own, so more lines make it taller and its overlay scrolls. The trigger row's label wraps
  * inside its row (the hub row is a minimum height, never a fixed one). PASSES.
  */
+/*
+ * ── 2026-10-01 · +1: `components/journey/tickets-guest-sheet.tsx`, the guest Tiketi sheet (the Vodacom plan S6, WP6a).
+ * Opened and judged like the record above: no `truncate`, no `line-clamp-*`, no `text-ellipsis`, no `max-h-*`, no
+ * `overflow-hidden`. Its one sentence is the H2, which wraps and keeps right padding clear of the Modal's close button.
+ * Its two actions are kit buttons on their own height rung, each a short label (Jisajili / Ingia, Sign up / Sign in,
+ * 注册 / 登录), in a two-up row of equal tracks (`minmax(0, 1fr)`); `maxWidth` 440 is a MAX, and the Modal scrolls when
+ * copy grows. PASSES. ⭐ `red:journey-shell` plants it off this record and proves 1.1's rule catches it (A13).
+ */
 const REVIEWED: readonly string[] = [
   "src/app/admin/affiliate/payable-switch.tsx",   // reviewed 2026-09-27
   "src/app/admin/agents/[id]/decision-rail.tsx",   // reviewed 2026-09-21
@@ -215,6 +224,7 @@ const REVIEWED: readonly string[] = [
   "src/components/admin/kyc-review-controls.tsx",
   "src/components/chat/ChatPanel.tsx",
   "src/components/journey/account/sign-out-row.tsx",   // reviewed 2026-10-01 (Vodacom S6 WP5)
+  "src/components/journey/tickets-guest-sheet.tsx",   // reviewed 2026-10-01 (S6 WP6a)
   "src/components/layout/avatar-menu.tsx",
   "src/components/layout/needle-drawer.tsx",
   "src/components/layout/notifications-panel.tsx",
@@ -242,8 +252,7 @@ const REVIEWED: readonly string[] = [
   "src/components/updown/updown-bet-receipt-modal.tsx",
 ];
 const POPUPS_EXPECTED = REVIEWED.length;
-const unreviewed = popups.filter((f) => !REVIEWED.includes(f));
-const vanished = REVIEWED.filter((f) => !popups.includes(f));
+const { unreviewed, vanished } = reviewGaps(popups, REVIEWED);
 ok(`1.1 ⛔ RATCHET · ${popups.length} popup/warning components found, and the reviewed count is ${POPUPS_EXPECTED}`,
    unreviewed.length === 0 && vanished.length === 0,
    [unreviewed.length ? `UNREVIEWED (${unreviewed.length}): ${unreviewed.join(" · ")} — open each one, judge it against §2 and the record above, then add it BY NAME` : "",

@@ -204,7 +204,8 @@ for (const r of population) {
  *
  * ⭐ 487 `.tsx` files scanned, which is 7g's own recorded figure, so the SCAN is the same size
  * even though the SUBJECT SET is not — the difference is a deliberate narrowing, not a blind
- * spot. ⛔ This constant may only shrink, and only in the same commit as the rail it loses.
+ * spot. ⛔ This constant is the population, re-derived from the run in the commit that changes it: it shrinks with
+ * the rail it loses and grows with the rail it gains (raised for the first time in S6 WP6a, below).
  */
 /**
  * 🔴 LOWERED TO 14 ON 2026-09-07 (PLAYER QUERY, stage 2), IN THE SAME COMMIT AS THE RAIL THAT
@@ -263,7 +264,16 @@ for (const r of population) {
  * ⚠️ The three remaining offenders are unchanged and are NOT mine — `profile/activity/page.tsx:64`
  * and `updown-board-tabs.tsx:249,275` were the same three before this commit.
  */
-const FLOOR = 6;
+/**
+ * ⭐ 6 → 11, RAISED, 2026-10-01 (the Vodacom plan S6, WP6a) — the first time this floor has gone UP, under the rule
+ * above: the floor is the population, re-derived in the commit that changes it. The journey chrome adds two rails of
+ * destinations that each name the current one — the tab rail and the header's links from 1024
+ * (`components/journey/`). The floor had also fallen behind the tree: other lanes had brought the population to 9
+ * without raising it, so a lost rail would have passed silently three times over. 9 + 2 = 11.
+ * ⚠️ Re-derived with a faithful port of this parser over the tree with the new files in place, because the session
+ * that wrote it could run nothing; the first run after this commit must print `population 11`.
+ */
+const FLOOR = 11;
 
 let bad = 0;
 if (population.length < FLOOR) {

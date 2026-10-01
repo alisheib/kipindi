@@ -259,12 +259,19 @@ here, with how to overrule it. Newest last; nothing here blocks the work.
 16. **The classic notification bell is not touched until S15;** the journey's tab dot and Arifa row get their own
     counter. Lower risk for live players. ⚠️ The cost, corrected at WP3 — this point said "one extra request on a
     journey desktop page", which was wrong: the tab dot checks for notifications every 30 s, as the bell does, and a
-    journey page keeps both loaded at every screen width (each is only hidden at the other width). So a signed-in
-    journey page asks the server twice every 30 s instead of once — about 240 requests an hour per tab on screen
-    instead of 120 — plus one per visit to Akaunti for the Arifa row. Only preview viewers pay it, and only until S15;
-    players outside the journey are unchanged. WP6a can halve it by loading only the one each width shows; say so if
-    you want that made a rule.
+    journey page kept both loaded at every screen width (each only hidden at the other width), so a signed-in journey
+    page would have asked twice every 30 s instead of once. ⭐ Resolved at WP6a, as a rule: each width now LOADS only
+    the counter it shows — the header's bell from 1024, the tab dot below it, and neither until the browser has said
+    which width it is — so a signed-in journey page asks once every 30 s, as a classic page does, plus one read per
+    visit to Akaunti for the Arifa row. `test:journey-shell` §8 holds it, with a plant for each half. Only preview
+    viewers are affected until S15; players outside the journey are unchanged. Overrule: say so, and both counters
+    load at every width again (`pollersAt` in `src/lib/journey/one-poller.ts`; the §8 checks move with it).
 17. **The phone home-screen shortcuts** (Maswali, Tiketi) change at launch, not now — that file is the same for everyone.
+18. **"Tiketi zangu" takes two lines in the tab rail on phones narrower than 360 px** (A17). A quarter of a 320 phone
+    is 80 px and the label needs about 83, so it would otherwise read "Tiketi zan…"; every other label, in all three
+    languages, fits on one line, and from 360 px all four do. Below 360 the four tab icons then line up from the top
+    so the two-line tab does not sit higher than the rest. Measured from the font's widths, not yet on a phone: WP6b's
+    320 px check confirms it. Overrule: say so, and the label keeps one line and ends in "…" as the classic rail's do.
 
 ## §0g · S4 (2026-10-01) — the Design canvas: all eleven items drawn, the panel's findings applied; waiting on Ali
 

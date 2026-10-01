@@ -142,4 +142,14 @@ export const MUTATIONS = [
     to: `  const figure = formatBalancePill(balance) + ""; useEffect(() => { const on = () => {}; window.addEventListener("50pick:sse:wallet-balance", on); return () => window.removeEventListener("50pick:sse:wallet-balance", on); }, []);`,
     check: "5.1b exactly ONE balance listener",
   },
+  {
+    name: "the-journey-rail-stops-asking-the-path",
+    why: "S6 · the journey's tab rail keeps calling `activeTabFor`, but with a fixed path instead of the one the browser "
+       + "is on: the shape `the-crumbs-component-trusts-its-prop` names one row up, in the journey's chrome. The rail "
+       + "would light Maswali on every page after a soft navigation, and nothing would look wrong in the source.",
+    file: "src/components/journey/journey-tabs.tsx",
+    from: `  const active = activeTabFor(pathname);`,
+    to: `  const active = activeTabFor("/");`,
+    check: "3.1b the journey tab rail — the pathname is what DECIDES",
+  },
 ];

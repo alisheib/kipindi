@@ -140,6 +140,9 @@ console.log("\n[client-graph-safe] \u00a71 client-reachable modules stay clear o
     // bell's own Server Action exactly as `notifications-panel.tsx` does, and this walker follows that import into the
     // server, where the bundler sends the browser only a reference.
     "lib/journey/unread-count.ts",
+    // ⭐ ADDED 2026-10-01 (Vodacom plan S6 WP6a). Which unread counter may mount at this width — the bell from lg, the
+    // Akaunti dot below it: a hook over the browser's media query, importing only React, loaded by the journey chrome.
+    "lib/journey/one-poller.ts",
   ];
   const offenders = [];
   let checked = 0;

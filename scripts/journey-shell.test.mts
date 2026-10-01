@@ -35,6 +35,20 @@
  *      nothing and a guest starts nothing; a new viewer inherits nothing — not the count, not an answer in flight, not a
  *      second poller — and a count is shown only to the viewer it was read for (critic G1). Only the journey's client
  *      components load the hook, and the classic bell loads neither file.
+ *   §7 THE HEADER (WP6a) — the S4 fit rules read from `globals.css` as written, at the exact values WP6b's rule probe
+ *      reads as computed (A5): a 12px gutter below 360 and 16px from it, 6px gaps, the 44px home link borrowing 9px on
+ *      each side, the "+" hidden below 360, the pill's 12 and 12/10, the capsule's 10 and its 12px/14px figure, the
+ *      guest pills' 14px at 13px type; from 640 the classic bar's own steps, held against the classic bar's spellings;
+ *      the right-hand controls one cluster; no width-capping query anywhere in the shell's rules; the bar renders
+ *      `journeyHeaderState`'s answers with no inline style; the destinations from 1024 take aria-current from
+ *      `tabAriaCurrent` and speak the kit's underline language; and test:stacking's journey rows hold, judged by the
+ *      contract's own predicates (A13).
+ *   §8 THE TABS (WP6a) — exactly the four tabs on the classic rail's own classes, the grid on the list (A18), aria-current
+ *      from the table (A12), no aria-label on a link, a guest's Tiketi zangu a dialog button; the rail label measured in
+ *      sw/en/zh at 320 and 360 (A17), and below 360 the slots stacked from the top so a two-line label cannot lift its
+ *      pip; ONE unread poller per width — the bell mounted only from 1024, the dot's counter only below it, neither
+ *      while the width is unknown, and only client code loading the width hook; the guest sheet on the kit Modal,
+ *      portalled and on test:popup-fit's record (A13); and the chrome built, not mounted (WP6b mounts it).
  *
  * ⛔ IN-PROCESS BY CONSTRUCTION. `--prove-red` hands the same checks defective implementations and edited source TEXT
  * held in memory, and requires the check named for each defect to fail. This file makes no file-system change anywhere,
@@ -46,13 +60,16 @@
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, dirname, relative, sep, posix } from "node:path";
 import { fileURLToPath } from "node:url";
-import { decomment } from "./lib/decomment.mts";
+import { decomment, decommentCss } from "./lib/decomment.mts";
 import * as TAB from "../src/lib/nav/active-tab.ts";
 import * as SURF from "../src/lib/surfaces.ts";
 import * as HDR from "../src/lib/journey/header-state.ts";
 import * as DOORS from "../src/lib/journey/viewer-doors.ts";
 import * as FLAG from "../src/lib/journey/journey-on.ts";
 import * as UNREAD from "../src/lib/journey/unread-count.ts";
+import * as POLL from "../src/lib/journey/one-poller.ts";
+import { JOURNEY_SURFACES, JOURNEY_TRAPPED, JOURNEY_LAWS, soleZ, portalsOut, rendersSymbol, formsStackingContext } from "./lib/stacking-rows.mts";
+import { IS_POPUP, reviewGaps, reviewedIn } from "./lib/popup-review.mts";
 import { NO_VIEWER, type InviteViewer } from "../src/lib/feature-state.ts";
 import { hasRole, ADMIN_CONSOLE_ROLES } from "../src/lib/server/roles.ts";
 import { dict } from "../src/lib/i18n-dict.ts";
@@ -109,6 +126,12 @@ type World = {
   /** `surfaces.ts` as written — the install-invite anchor is checked verbatim, comments and all. */
   surfacesRaw: string;
   glyphs: string;
+  /** `globals.css`, comments blanked: §7 and §8 read the shell's rules as written. */
+  css: string;
+  /** `tailwind.config.ts`: the one place the lg breakpoint is defined. */
+  tailwind: string;
+  /** `scripts/popup-fit.test.mts`, decommented: its review record, read where it is kept (A13). */
+  popupFit: string;
   /** Every src file, decommented, by repo path — so a guard never matches the paragraph explaining a fix. */
   files: ReadonlyMap<string, string>;
   /** Routes decided ahead of their page — `AHEAD_OF_DISK` when absent; the red twin plants a stale entry here. */
@@ -121,6 +144,9 @@ const WORLD: World = {
     .map(routeOf))].sort(),
   surfacesRaw: read("src/lib/surfaces.ts"),
   glyphs: read("src/components/ui/glyphs.tsx"),
+  css: decommentCss(read("src/app/globals.css")),
+  tailwind: read("tailwind.config.ts"),
+  popupFit: decomment(read("scripts/popup-fit.test.mts")),
   files: new Map(sources(join(ROOT, "src")).map((p): [string, string] => {
     const rel = toPosix(relative(ROOT, p));
     return [rel, decomment(read(rel))];
@@ -134,6 +160,11 @@ const FLAG_HOME = "src/lib/journey/journey-on.ts";
 const FLAG_COMPONENT = "src/components/journey/journey-flag.tsx";
 const UNREAD_HOME = "src/lib/journey/unread-count.ts";
 const UNREAD_HOOK = "src/lib/journey/use-unread-count.ts";
+const POLLER_HOME = "src/lib/journey/one-poller.ts";
+const JHDR = "src/components/journey/journey-top-bar.tsx";
+const JTABS = "src/components/journey/journey-tabs.tsx";
+const GUEST_SHEET = "src/components/journey/tickets-guest-sheet.tsx";
+const MODAL = "src/components/ui/modal.tsx";
 const BELL = "src/components/layout/notifications-panel.tsx";
 const SHELL = "src/components/layout/app-shell.tsx";
 const BOTTOM_NAV = "src/components/layout/bottom-nav.tsx";
@@ -253,6 +284,8 @@ type Impl = {
   header: typeof HDR.journeyHeaderState;
   doors: typeof DOORS.viewerDoorsFor;
   unread: { feed: (deps: UNREAD.UnreadDeps) => UNREAD.UnreadFeed; shownFor: typeof UNREAD.unreadFor };
+  pollers: typeof POLL.pollersAt;
+  lgUp: { subscribe: typeof POLL.subscribeLgUp; snapshot: typeof POLL.lgUpSnapshot; serverSnapshot: typeof POLL.lgUpServerSnapshot };
   flag: Flag;
 };
 const REAL: Impl = {
@@ -268,6 +301,8 @@ const REAL: Impl = {
   header: HDR.journeyHeaderState,
   doors: DOORS.viewerDoorsFor,
   unread: { feed: UNREAD.createUnreadFeed, shownFor: UNREAD.unreadFor },
+  pollers: POLL.pollersAt,
+  lgUp: { subscribe: POLL.subscribeLgUp, snapshot: POLL.lgUpSnapshot, serverSnapshot: POLL.lgUpServerSnapshot },
   flag: {
     subscribe: FLAG.subscribeJourneyFlag,
     snapshot: FLAG.journeyFlagSnapshot,
@@ -456,6 +491,7 @@ const MAY_IMPORT: Array<[string, readonly string[]]> = [
   [DOORS_HOME, ["@/lib/feature-state", "@/lib/server/roles", "type @/lib/server/proposals-config"]],
   [FLAG_HOME, ["react"]],
   [UNREAD_HOME, []],
+  [POLLER_HOME, ["react"]],
 ];
 
 function g2Surfaces(I: Impl, W: World, ok: Ok) {
@@ -957,6 +993,358 @@ import { useUnreadCount } from "@/lib/journey/use-unread-count";
     show({ A: countFor("A", A7), B: countFor("B", A7), guest: countFor(null, A7) }));
 }
 
+/* ══ §7 · THE HEADER (S6 WP6a) ═══════════════════════════════════════════════════════════════════════════════ */
+/*
+ * The S4 fit rules are read from `globals.css` AS WRITTEN — the exact numbers WP6b's header-fit rule probe compares
+ * against as computed (A5) — and the bar is held to rendering what `journeyHeaderState` decides, with no inline
+ * style. ⛔ Every rule is a single-line declaration block by construction (the shell's own block in the stylesheet),
+ * which is what lets a rule be read without a CSS parser; §7.first holds the block to `min-width` alone, reading every
+ * media block whole, however it is written.
+ */
+const LF = String.fromCharCode(10);
+/** The declarations of the stylesheet's BASE rule for `sel`: written at a line start, outside every media block. */
+function baseRule(css: string, sel: string): string {
+  const at = css.indexOf(`${LF}${sel} {`);
+  return at < 0 ? "" : css.slice(at, css.indexOf("}", at));
+}
+/** The declarations of `sel` inside a one-line `@media (min-width: Npx)` block, or "". */
+function minWidthRule(css: string, px: number, sel: string): string {
+  const head = `@media (min-width: ${px}px) { ${sel} {`;
+  const at = css.indexOf(head);
+  return at < 0 ? "" : css.slice(at + head.length, css.indexOf("}", at + head.length));
+}
+/** A design token's value as `:root` writes it (`--sp-3: 12px;` gives "12px"), or "". */
+function tokenValue(css: string, name: string): string {
+  const head = `--${name}:`;
+  const at = css.indexOf(head);
+  return at < 0 ? "" : css.slice(at + head.length, css.indexOf(";", at)).trim();
+}
+/** Every `@media` block in a stylesheet: its condition and its body, braces matched (a quoted string is skipped). */
+function mediaBlocks(css: string): { cond: string; body: string }[] {
+  const out: { cond: string; body: string }[] = [];
+  for (let at = css.indexOf("@media"); at >= 0; at = css.indexOf("@media", at + 6)) {
+    const open = css.indexOf("{", at);
+    if (open < 0) break;
+    let depth = 0;
+    let i = open;
+    for (; i < css.length; i++) {
+      const ch = css[i];
+      if (ch === '"' || ch === "'") { const end = css.indexOf(ch, i + 1); i = end < 0 ? css.length : end; continue; }
+      if (ch === "{") depth++;
+      else if (ch === "}" && --depth === 0) break;
+    }
+    out.push({ cond: css.slice(at + 6, open).trim(), body: css.slice(open + 1, i) });
+  }
+  return out;
+}
+/** A width query that caps the viewport: `max-width`, or the range syntax's `width <` and `> width`. */
+const CAPS_WIDTH = /max-width|width *<|> *width/;
+/** Markup with each line trimmed, the lines joined and every blanked JSX comment gone: structure, not indentation. */
+const squash = (s: string) => s.split(LF).map((l) => l.trim()).join("").split("{}").join("");
+/** Where the journey's popups live: its components, and the Akaunti hub's own route (WP5). */
+const JOURNEY_POPUP_HOMES = ["src/components/journey/", "src/app/account/"];
+/** The journey shell's own classes in the stylesheet: header, desktop links, rail, labels, badge, guest sheet. */
+const SHELL_CLASS = /[.]kp-(?:jhdr|jnav|jtab|jsheet|rail--journey|rail__badge)/;
+
+/**
+ * test:stacking's journey rows, judged by the contract's own predicates (`scripts/lib/stacking-rows.mts`) on this
+ * world's source — so a plant here is a plant in the very rows the contract holds (A13).
+ */
+function journeyRung(W: World, id: string) {
+  const row = JOURNEY_SURFACES.find((r) => r.id === id);
+  if (!row) return { row, hits: 0, z: null as number | null, decl: "" };
+  const body = text(W, row.file);
+  const { hits, z } = soleZ(body, row.find);
+  return { row, hits, z, decl: body.match(new RegExp(row.find.source))?.[0] ?? "" };
+}
+
+function g7Header(W: World, ok: Ok) {
+  const bar = text(W, JHDR);
+  const css = W.css;
+  ok(`7.client · journey-top-bar.tsx is a "use client" component rendering ONE journey header, sticky on the classic bar's rung`,
+    isClient(bar) && count(bar, `<header className="sticky top-0 z-30 app-topbar kp-jhdr" data-testid="journey-top-bar">`) === 1,
+    bar.length === 0 ? "file missing" : "");
+  const frame = baseRule(css, ".kp-jhdr");
+  ok("7.frame · the bar is the kit's 56px opaque panel with its 1px edge, in the stylesheet — and no inline style anywhere in the bar (§0h point 6)",
+    frame.includes("height: 56px") && frame.includes("background: var(--panel)") && frame.includes("border-bottom: 1px solid var(--border)")
+      && !bar.includes("style={"),
+    frame === "" ? "no .kp-jhdr rule" : frame);
+  const row = baseRule(css, ".kp-jhdr__row");
+  const row360 = minWidthRule(css, 360, ".kp-jhdr__row");
+  ok("7.gutter · the row's gutter is 12px below 360 and 16px from 360 to 640 (A5) — the spacing tokens, at those values",
+    row.includes("padding-inline: var(--sp-3)") && row360.includes("padding-inline: var(--sp-4)")
+      && tokenValue(css, "sp-3") === "12px" && tokenValue(css, "sp-4") === "16px",
+    show({ row, row360, sp3: tokenValue(css, "sp-3"), sp4: tokenValue(css, "sp-4") }));
+  const cluster = baseRule(css, ".kp-jhdr__cluster");
+  ok("7.gap · 6px between the row's controls below 640 (A5), in the row and inside its cluster alike — the 360 step moves only the gutter",
+    row.includes("gap: 6px;") && row.includes("display: flex") && !row360.includes("gap")
+      && cluster.includes("gap: 6px;") && cluster.includes("display: flex") && cluster.includes("flex-shrink: 0"),
+    show({ row, row360, cluster }));
+  // From 640, the classic bar's own steps (WP6a step 1) — held against the classic bar's spellings, so the two move together.
+  const classic = text(W, "src/components/layout/top-app-bar.tsx");
+  const steps = {
+    row640: minWidthRule(css, 640, ".kp-jhdr__row"),
+    row1024: minWidthRule(css, 1024, ".kp-jhdr__row"),
+    row1280: minWidthRule(css, 1280, ".kp-jhdr__row"),
+    cluster640: minWidthRule(css, 640, ".kp-jhdr__cluster"),
+  };
+  const classicSpells = {
+    row: classic.includes(`"mx-auto max-w-board flex items-center h-full gap-2 px-2 sm:gap-4 sm:px-5 lg:gap-2 xl:gap-4"`),
+    cluster: classic.includes(`"shrink-0 flex items-center gap-1 sm:gap-2"`),
+    scale: W.tailwind.includes(`"2": "12px"`) && W.tailwind.includes(`"4": "20px"`) && W.tailwind.includes(`"5": "24px"`),
+  };
+  ok("7.steps · from 640 the classic bar's own steps: a 24px gutter, the row's gaps 20 / 12 / 20 at 640 / 1024 / 1280 and the cluster's 12 — the classic row and cluster still spelling those values",
+    steps.row640.includes("padding-inline: var(--sp-6)") && steps.row640.includes("gap: var(--sp-5)")
+      && steps.row1024.includes("gap: var(--sp-3)") && !steps.row1024.includes("padding")
+      && steps.row1280.includes("gap: var(--sp-5)") && !steps.row1280.includes("padding")
+      && steps.cluster640.includes("gap: var(--sp-3)")
+      && count(css, ".kp-jhdr__row {") === 5 && count(css, ".kp-jhdr__cluster {") === 2
+      && tokenValue(css, "sp-5") === "20px" && tokenValue(css, "sp-6") === "24px"
+      && classicSpells.row && classicSpells.cluster && classicSpells.scale,
+    show({ ...steps, classicSpells }));
+  const home = baseRule(css, ".kp-jhdr__home");
+  ok("7.home · the home link stays 44px tall and borrows 9px of gutter on each side (A5) — the bar's home link wears the rule",
+    home.includes("min-height: var(--h-control-md)") && home.includes("margin-inline: -9px") && home.includes("padding-inline: 9px")
+      && bar.includes('<Link href="/" aria-label={`50pick ${t.common.home}`} className="kp-jhdr__home">'),
+    home);
+  ok("7.brand · the 26px mark below 1280 and the 22px lockup from 1280 — the classic bar's own rule, so the lockup never takes the room at 1024",
+    bar.includes(`<span className="mark-flip-i inline-flex xl:hidden"><FiftyMark size={26} /></span>`)
+      && bar.includes(`<span className="hidden xl:inline-flex"><FiftyLockup size={22} markClassName="mark-flip-i" /></span>`));
+  ok("7.eighteen · the 18+ roundel is the kit's, with its text as its name (no aria-label on a plain span)",
+    bar.includes(`<span className="kp-rg__18">{t.footer.eighteenPlus}</span>`));
+  const plus = baseRule(css, ".kp-jhdr__plus");
+  ok(`7.plus · the "+" is hidden below 360 and shown from 360 (A5), in a span of its own — never a width utility on the kit button`,
+    plus.includes("display: none") && minWidthRule(css, 360, ".kp-jhdr__plus").includes("display: inline-flex")
+      && bar.includes(`<span aria-hidden className="kp-jhdr__plus"><I.plus s={14} /></span>`),
+    show({ plus, from360: minWidthRule(css, 360, ".kp-jhdr__plus") }));
+  const pillRule = baseRule(css, ".kp-jhdr__pill");
+  ok("7.pill · + Weka pesa is the kit's gilt pill at the 44px rung, padded 12px below 360 and 12/10 from 360, named by its words",
+    pillRule.includes("padding: 0 12px;") && minWidthRule(css, 360, ".kp-jhdr__pill").includes("padding: 0 12px 0 10px")
+      && bar.includes(`className="btn gilt-metal btn-md btn-pill kp-jhdr__pill"`) && bar.includes(`href="/wallet/deposit"`)
+      && bar.includes("aria-label={t.journey.depositAction}") && bar.includes(`data-testid="journey-deposit"`),
+    show({ pillRule, from360: minWidthRule(css, 360, ".kp-jhdr__pill") }));
+  ok("7.figure · the capsule's figure is 12px below 360 and 14px from 360, and its padding 10px (the capsule's own rules, WP4)",
+    baseRule(css, ".kp-jbal__fig").includes("font-size: 12px") && minWidthRule(css, 360, ".kp-jbal__fig").includes("font-size: 14px")
+      && baseRule(css, ".kp-jbal").includes("padding: 0 10px"),
+    show({ fig: minWidthRule(css, 360, ".kp-jbal__fig") }));
+  const auth = baseRule(css, ".kp-jhdr__auth");
+  ok("7.auth · a guest's Ingia and Jisajili are the 44px pills, 13px type and 14px padding at every width (E-276)",
+    auth.includes("padding-inline: 14px") && auth.includes("font-size: var(--type-small)") && tokenValue(css, "type-small") === "13px"
+      && !css.includes("{ .kp-jhdr__auth {")
+      && bar.includes(`className="btn btn-ghost btn-md btn-pill kp-jhdr__auth"`) && bar.includes(`className="btn btn-primary btn-md btn-pill kp-jhdr__auth"`)
+      && bar.includes(`href={"/auth/login" as never}`) && bar.includes(`href={"/auth/register" as never}`),
+    auth);
+  ok("7.state · the bar asks journeyHeaderState once and renders its three answers: the capsule, the pill and the guest pills",
+    count(bar, "journeyHeaderState({") === 1 && bar.includes(`{state.capsule !== "none" && (`) && bar.includes("{state.pill && (")
+      && bar.includes("{state.authPills && (") && bar.includes("const liveBalance = useLiveBalance(user.balance ?? 0);"));
+  ok(`7.desktop · from 1024 the four destinations, each lit by the one table (A12: aria-current from tabAriaCurrent, never a "page" literal), a guest's Tiketi zangu a dialog button — and no NavMore`,
+    bar.includes(`<nav className="hidden lg:flex kp-jnav" aria-label={t.nav.primary}>`) && count(bar, "JOURNEY_TABS.map(") === 1
+      && count(bar, "aria-current={tabAriaCurrent(pathname, d.key)}") === 1 && !bar.includes(`? "page"`)
+      && bar.includes("const active = activeTabFor(pathname);") && bar.includes(`type="button"`) && bar.includes(`aria-haspopup="dialog"`)
+      && count(bar, "className={JNAV}") === 2 && bar.includes(`const JNAV = "kp-jnav__link";`) && !bar.includes("<NavMore") && !bar.includes("kp-navlink"));
+  const jnav = css.split(LF).filter((l) => l.includes(".kp-jnav"));
+  ok("7.underline · the destinations speak the kit's SECTION language: an underline that scales in, brand when current — never the filter pill's fill (§0h point 7)",
+    baseRule(css, ".kp-jnav__link::after").includes("transform: scaleX(0)")
+      && baseRule(css, ".kp-jnav__link:is([aria-current], [data-on])::after").includes("background: var(--brand-500)")
+      && baseRule(css, ".kp-jnav__link:is([aria-current], [data-on])::after").includes("transform: scaleX(1)")
+      && jnav.length >= 4 && !jnav.some((l) => l.includes("--pill-active")),
+    show(jnav.filter((l) => l.includes("--pill-active"))));
+  const flat = squash(bar);
+  ok("7.cluster · the right-hand controls are ONE cluster straight after the spacer, the money first; language and the account show from 1024 only (on a phone the hub holds them), each in a wrapper span, never on a kit control",
+    count(bar, `<div className="kp-jhdr__cluster">`) === 1
+      && flat.includes(`<div className="flex-1" /><div className="kp-jhdr__cluster">{state.capsule !== "none" && (`)
+      && flat.includes(`</span></>)}</div></div>{!user.isAuthed && <TicketsGuestSheet`)
+      && count(bar, "<LanguageMenu") === 1 && bar.includes(`<span className="hidden lg:inline-flex"><LanguageMenu /></span>`)
+      && count(bar, "<AvatarMenu") === 1 && flat.includes(`<span className="hidden lg:inline-flex"><AvatarMenu`));
+  const blocks = mediaBlocks(css);
+  const phoneOnly = blocks.filter((b) => CAPS_WIDTH.test(b.cond) && SHELL_CLASS.test(b.body)).map((b) => `@media ${b.cond}`);
+  ok("7.first · every rule of the journey shell is mobile-first: no width-capping query holds one, however its block is written (nothing for the density contract to fence)",
+    phoneOnly.length === 0 && blocks.some((b) => b.cond === "(min-width: 360px)" && SHELL_CLASS.test(b.body)) && blocks.length > 20,
+    show({ phoneOnly, blocks: blocks.length }));
+  const hdr = journeyRung(W, "journey-top-bar");
+  const lang = JOURNEY_TRAPPED.find((r) => r.id === "journey-language-menu");
+  const menu = lang ? soleZ(text(W, lang.file), lang.find) : { hits: 0, z: null };
+  ok(`7.stack · test:stacking's journey-top-bar row holds: one sticky header at z=${hdr.row?.z} forming a stacking context, and the language menu sealed in it (A13)`,
+    !!hdr.row && hdr.hits === 1 && hdr.z === hdr.row.z && formsStackingContext(hdr.decl)
+      && !!lang && !portalsOut(text(W, lang.file)) && rendersSymbol(bar, lang.renderedAs) && menu.hits === 1 && menu.z === lang.declared
+      && hdr.z === lang.effective,
+    show({ hits: hdr.hits, z: hdr.z, decl: hdr.decl, menu }));
+}
+
+/* ══ §8 · THE TABS (S6 WP6a) ═════════════════════════════════════════════════════════════════════════════════ */
+/**
+ * The rail's label, one line, in px: JetBrains Mono advances every Latin glyph 0.6em, and a CJK glyph (U+2E80 and up)
+ * falls back to a full em. These are the fonts the S4 header was measured with (VODACOM-PLAN §0g design call 10).
+ */
+const monoWidth = (s: string, px: number) => [...s].reduce((w, ch) => w + ((ch.codePointAt(0) ?? 0) >= 0x2e80 ? 1 : 0.6) * px, 0);
+/**
+ * A stand-in window whose `matchMedia` answers the lg query with a value the test sets, and counts its listeners.
+ * Installed only for the call and taken away after, as §5's stand-in document is.
+ */
+function withStandInMedia<R>(matches: boolean, fn: (media: { set: (m: boolean) => void; listening: () => number }) => R): R {
+  const g = globalThis as unknown as Record<string, unknown>;
+  const before = g.window;
+  const target = new EventTarget();
+  let now = matches;
+  let listening = 0;
+  const lgList = {
+    get matches() { return now; },
+    addEventListener: (type: string, fn: () => void) => { target.addEventListener(type, fn); listening++; },
+    removeEventListener: (type: string, fn: () => void) => { target.removeEventListener(type, fn); listening--; },
+  };
+  g.window = { matchMedia: (q: string) => (q === POLL.LG_UP_QUERY ? lgList : { matches: false, addEventListener: () => {}, removeEventListener: () => {} }) };
+  try {
+    return fn({ set: (m) => { now = m; target.dispatchEvent(new Event("change")); }, listening: () => listening });
+  } finally {
+    if (before === undefined) delete g.window;
+    else g.window = before;
+  }
+}
+
+function g8Tabs(I: Impl, W: World, G: Graph, ok: Ok) {
+  const rail = text(W, JTABS);
+  const bar = text(W, JHDR);
+  const sheet = text(W, GUEST_SHEET);
+  const css = W.css;
+  ok(`8.root · journey-tabs.tsx is a "use client" rail: fixed to the bottom below 1024, on the rail's surface, kept clear of the Needle, named as the primary nav`,
+    isClient(rail) && rail.includes(`className="lg:hidden fixed inset-x-0 bottom-0 z-40 kp-rail kp-rail--journey"`)
+      && rail.includes(`data-needle-keepout=""`) && rail.includes(`data-testid="journey-tabs"`) && rail.includes("aria-label={t.nav.primary}"),
+    rail.length === 0 ? "file missing" : "");
+  ok("8.tabs · exactly the four JOURNEY_TABS — every href comes from the table; no centre coin, no More, no accent dot (SJ-16)",
+    count(rail, "JOURNEY_TABS.map(") === 1 && count(rail, "href=") === 1 && rail.includes("href={d.href as never}")
+      && !rail.includes("<NavMore") && !rail.includes("kp-coin") && !rail.includes("deposit-rail") && !rail.includes("kp-rail__dot")
+      && TAB.JOURNEY_TABS.length === 4);
+  const grid = baseRule(css, ".kp-rail--journey > ul");
+  ok("8.grid · four equal tracks on the LIST (A18) — on the nav the whole list would be one cell",
+    grid.includes("display: grid") && grid.includes("grid-template-columns: repeat(4, minmax(0, 1fr))")
+      && baseRule(css, ".kp-rail--journey") === "",
+    grid);
+  ok(`8.aria · aria-current comes from tabAriaCurrent (A12: "page" on a tab's own href, "true" on its section) and the lit pip from activeTabFor — never a "page" literal`,
+    count(rail, "aria-current={tabAriaCurrent(pathname, d.key)}") === 1 && !rail.includes(`"page"`)
+      && rail.includes("const active = activeTabFor(pathname);") && rail.includes("const on = active === d.key;")
+      && count(rail, `data-on={on ? "1" : undefined}`) === 2);
+  ok("8.name · a tab link carries no aria-label, so its visible label is its name and the Akaunti tab's unread words join it",
+    count(rail, "aria-label=") === 1 && rail.includes("aria-label={t.nav.primary}"));
+  ok("8.guest · a guest's Tiketi zangu is a dialog button that opens the guest sheet — never a link whose navigation is cancelled",
+    count(rail, "<button") === 1 && rail.includes(`type="button"`) && rail.includes(`aria-haspopup="dialog"`)
+      && rail.includes("onClick={() => setSheetOpen(true)}") && !rail.includes("preventDefault")
+      && rail.includes(`d.key === "tickets" && userId === null ? (`) && count(rail, "<TicketsGuestSheet") === 1
+      && rail.includes("{userId === null && <TicketsGuestSheet"));
+  ok("8.glyphs · each tab draws its glyph from the table at the rail's 20px",
+    rail.includes("const Ico = I[d.glyph];") && rail.includes("<Ico s={20} />"));
+  ok("8.dot · the Akaunti dot: the bell's count from the journey's counter (mode poll), the 8px brand dot, and the count in words after the label",
+    count(rail, "useUnreadCount(") === 1 && rail.includes(`useUnreadCount({ userId, mode: "poll" })`)
+      && rail.includes(`<Dot tone="brand" size={8} className="kp-rail__badge" />`)
+      && count(rail, "unread !== null && unread > 0") === 2 && rail.includes("t.notif.unreadOne") && rail.includes("t.notif.unreadN"));
+  const badge = baseRule(css, ".kp-rail__badge");
+  ok("8.badge · the dot sits on the pip's corner, cut out of the glyph by a ring of the rail's own fill",
+    badge.includes("position: absolute") && badge.includes("top: -2px") && badge.includes("right: 6px")
+      && badge.includes("box-shadow: 0 0 0 2px var(--panel)"),
+    badge);
+
+  // A17 · the rail label, measured: wrap to two lines below 360 only where a label would otherwise ellipsise.
+  const micro = parseFloat(tokenValue(css, "type-micro"));
+  const padRule = baseRule(css, ".kp-rail__label");
+  const padAt = padRule.indexOf("padding-inline:");
+  const pad = 2 * parseFloat(padAt < 0 ? "NaN" : padRule.slice(padAt + "padding-inline:".length));
+  const oneLine = (s: string) => monoWidth(s, micro) + pad;
+  const labels = (["en", "sw", "zh"] as const).flatMap((loc) => TAB.JOURNEY_TABS.map((d) => ({ loc, key: d.key, s: TAB.tabLabel(dict[loc], d.label) })));
+  const linesIn = (s: string, track: number) => {
+    let lines = 1;
+    let cur = "";
+    for (const word of s.split(" ")) {
+      const next = cur ? `${cur} ${word}` : word;
+      if (cur && oneLine(next) > track) { lines++; cur = word; } else cur = next;
+    }
+    return lines;
+  };
+  const over320 = labels.filter((l) => oneLine(l.s) > 320 / 4);
+  const over360 = labels.filter((l) => oneLine(l.s) > 360 / 4);
+  const notTwo = over320.filter((l) => linesIn(l.s, 320 / 4) > 2 || l.s.split(" ").some((w) => oneLine(w) > 320 / 4));
+  ok("8.label.measure · A17, measured: at 320 a label needs more than its quarter of the phone (so the wrap is earned), it fits two lines there, and from 360 every label fits one",
+    Number.isFinite(micro) && Number.isFinite(pad) && over320.length > 0 && over360.length === 0 && notTwo.length === 0,
+    Number.isFinite(micro) && Number.isFinite(pad) && over320.length === 0
+      ? "every label now fits its quarter of a 320 phone, so A17's wrap is no longer earned: delete the label's wrap and the journey slot's top alignment in globals.css, in the same commit as the copy change, and these two checks with them"
+      : show({ micro, pad, over320: over320.map((l) => `${l.loc} ${l.s} ${oneLine(l.s).toFixed(1)}`), over360: over360.map((l) => `${l.loc} ${l.s}`), notTwo: notTwo.map((l) => l.s) }));
+  ok("8.label · below 360 a label may take a second, centred line; from 360 the classic one-line rule stands",
+    baseRule(css, ".kp-jtab__label").includes("white-space: normal") && baseRule(css, ".kp-jtab__label").includes("text-align: center")
+      && minWidthRule(css, 360, ".kp-jtab__label").includes("white-space: nowrap")
+      && rail.includes(`<span className="kp-rail__label kp-jtab__label">`),
+    baseRule(css, ".kp-jtab__label"));
+  // The grid stretches every slot to the tallest, and the classic slot centres: a two-line label would lift its pip.
+  const wraps = baseRule(css, ".kp-jtab__label").includes("white-space: normal");
+  const align = { below360: baseRule(css, ".kp-rail--journey .kp-rail__item"), from360: minWidthRule(css, 360, ".kp-rail--journey .kp-rail__item") };
+  ok("8.align · while a label may wrap below 360, the journey's slots stack from the top there, so every pip shares one line; from 360 the classic centring returns",
+    !wraps || (align.below360.includes("justify-content: flex-start") && align.from360.includes("justify-content: center")),
+    show(align));
+
+  // ⛔ ONE UNREAD POLLER PER WIDTH (the WP3 review's cost, VODACOM-PLAN §0h point 16).
+  const both = ([null, true, false] as const).filter((w) => I.pollers(w).bell && I.pollers(w).dot);
+  const table = show([null, true, false].map((w) => I.pollers(w as boolean | null)));
+  ok("8.poll · one unread poller per width: the bell from 1024, the dot below it, NEITHER while the width is unknown — never both",
+    both.length === 0 && table === show([{ bell: false, dot: false }, { bell: true, dot: false }, { bell: false, dot: true }]), table);
+  const poller = text(W, POLLER_HOME);
+  const screens = W.tailwind.slice(W.tailwind.indexOf("screens: {"));
+  const lgAt = screens.indexOf(`lg: "`);
+  const lg = lgAt < 0 ? "" : screens.slice(lgAt + 5, screens.indexOf(`"`, lgAt + 5));
+  ok("8.poll.hook · the width is the browser's answer to tailwind's own lg, read through one store whose server answer is null (no poller mounts during hydration)",
+    poller.includes("useSyncExternalStore<boolean | null>(subscribeLgUp, lgUpSnapshot, lgUpServerSnapshot)")
+      && lg === "1024px" && POLL.LG_UP_QUERY === `(min-width: ${lg})` && I.lgUp.serverSnapshot() === null,
+    show({ lg, query: POLL.LG_UP_QUERY, server: I.lgUp.serverSnapshot() }));
+  withStandInMedia(false, (media) => {
+    let told = 0;
+    const leave = I.lgUp.subscribe(() => { told++; });
+    const phone = I.lgUp.snapshot();
+    media.set(true);
+    const desk = I.lgUp.snapshot();
+    leave();
+    media.set(false);
+    ok("8.poll.media · a phone reads false and a desktop true, a change is heard once, and letting go stops listening",
+      phone === false && desk === true && told === 1 && media.listening() === 0, show({ phone, desk, told, listening: media.listening() }));
+  });
+  ok("8.poll.bar · the header MOUNTS the bell only from 1024 — never merely hidden — in a slot that keeps its width",
+    bar.includes("const pollers = pollersAt(useLgUp());") && count(bar, "<NotificationsPanel") === 1
+      && bar.includes(`<span className="hidden lg:inline-flex kp-jhdr__bell">{pollers.bell && <NotificationsPanel />}</span>`)
+      && baseRule(css, ".kp-jhdr__bell").includes("min-width: var(--h-control-sm)"));
+  ok("8.poll.rail · the rail mounts the dot's counter only below 1024, for a signed-in viewer — the counter lives in the one component that guard renders",
+    rail.includes("const pollers = pollersAt(useLgUp());") && count(rail, "<TabUnread") === 1
+      && rail.includes(`d.key === "account" && userId !== null && pollers.dot`) && rail.includes("<TabUnread userId={userId}>{body}</TabUnread>")
+      && !bar.includes("useUnreadCount") && !rail.includes("<NotificationsPanel"));
+  const { loaders, bad } = unvouchedLoaders(W, G, POLLER_HOME);
+  ok(`8.poll.loaders · only client code loads one-poller.ts — the header and the rail (${loaders.join(", ")})`,
+    loaders.includes(JHDR) && loaders.includes(JTABS) && bad.length === 0, `NOT client code: ${bad.join(", ")}`);
+
+  const tabsRung = journeyRung(W, "journey-tabs");
+  const hdrRung = journeyRung(W, "journey-top-bar");
+  ok(`8.stack · test:stacking's journey-tabs row holds: one fixed rail at z=${tabsRung.row?.z} forming a stacking context, ABOVE the journey header (A13)`,
+    !!tabsRung.row && tabsRung.hits === 1 && tabsRung.z === tabsRung.row.z && formsStackingContext(tabsRung.decl)
+      && JOURNEY_LAWS.some(([a, b]) => a === "journey-tabs" && b === "journey-top-bar")
+      && tabsRung.z !== null && hdrRung.z !== null && tabsRung.z > hdrRung.z,
+    show({ tabs: { hits: tabsRung.hits, z: tabsRung.z }, header: hdrRung.z }));
+
+  ok("8.sheet · the guest sheet: the kit's bottom sheet below 1024 (440 wide from there), titled by its H2, Jisajili first and Ingia, each returning to Tiketi zangu and closing the sheet",
+    isClient(sheet) && count(sheet, "<Modal") === 1 && sheet.includes("labelledBy={titleId}") && sheet.includes(`sheetUntil="lg"`)
+      && sheet.includes("maxWidth={440}") && sheet.includes(`panelClassName="kp-wsheet"`) && !sheet.includes("showClose={false}")
+      && sheet.includes(`<h2 id={titleId} className="kp-jsheet__title">{t.journey.ticketsGuestTitle}</h2>`)
+      && sheet.indexOf(`"/auth/register?next=%2Fpositions"`) > 0 && sheet.indexOf(`"/auth/register?next=%2Fpositions"`) < sheet.indexOf(`"/auth/login?next=%2Fpositions"`)
+      && sheet.includes(`className="btn btn-primary btn-lg kp-wsheet__act"`) && sheet.includes(`className="btn btn-outline btn-lg kp-wsheet__act"`)
+      && count(sheet, "onClick={onClose}") === 2);
+  ok("8.sheet.portal · the sheet opens through the kit Modal, which portals to the document body — so it sits on the dialog rung, not sealed in the bar or the rail (A13)",
+    rendersSymbol(sheet, "Modal") && portalsOut(text(W, MODAL)) && !portalsOut(sheet) && !sheet.includes("fixed"));
+  const journeyPopups = [...W.files.keys()].filter((p) => JOURNEY_POPUP_HOMES.some((home) => p.startsWith(home)) && p.endsWith(".tsx") && IS_POPUP.test(text(W, p))).sort();
+  const record = reviewedIn(W.popupFit);
+  const gaps = reviewGaps(journeyPopups, record);
+  ok("8.popup · every popup the journey's components and its hub render is on test:popup-fit's review record — the guest sheet among them (A13)",
+    journeyPopups.includes(GUEST_SHEET) && record.length > 50 && gaps.unreviewed.length === 0,
+    show({ journeyPopups, unreviewed: gaps.unreviewed, record: record.length }));
+  const mounts = [...W.files].filter(([p, s]) => p !== SHELL && (s.includes("<JourneyTopBar") || s.includes("<JourneyTabs"))).map(([p]) => p);
+  const classicLoads = [...G.out]
+    .filter(([p]) => p.startsWith("src/components/layout/") && p !== SHELL)
+    .flatMap(([p, to]) => to.filter((x) => x.startsWith(JOURNEY_COMPONENTS)).map((x) => `${p} loads ${x}`));
+  ok("8.mount · built, not mounted: nothing but AppShell renders the journey header or tabs (WP6b), and no classic layout file loads a journey component",
+    mounts.length === 0 && classicLoads.length === 0, show({ mounts, classicLoads }));
+}
+
 /* ══ THE RUN ═════════════════════════════════════════════════════════════════════════════════════════════════ */
 async function run(I: Impl, W: World, log: (l: string) => void): Promise<{ failed: string[]; total: number }> {
   const failed: string[] = [];
@@ -980,6 +1368,12 @@ async function run(I: Impl, W: World, log: (l: string) => void): Promise<{ faile
   log("");
   log("§6 · the unread count — the bell's question on the bell's cadence, one viewer at a time, and the classic bell apart");
   await g6Unread(I, W, G, ok);
+  log("");
+  log("§7 · the header — the S4 fit rules as written, the bar's markup, its rung and the menu sealed in it (WP6a)");
+  g7Header(W, ok);
+  log("");
+  log("§8 · the tabs — four destinations, one unread poller per width, the guest sheet, nothing mounted yet (WP6a)");
+  g8Tabs(I, W, G, ok);
   return { failed, total };
 }
 
@@ -1202,6 +1596,80 @@ ${s}`);
     const bellRenamed = withFile(WORLD, BELL, (s) => s.replace(
       `window.addEventListener("50pick:sse:notification", onRefresh);`, `window.addEventListener("50pick:sse:push", onRefresh);`));
 
+    // §7 and §8 — the journey chrome (WP6a): the stylesheet, the bar, the rail, the sheet and popup-fit's record,
+    // each edited in memory, plus defective poller decisions and a width store that never lets go.
+    const withCss = (edit: (s: string) => string): World => ({ ...WORLD, css: edit(WORLD.css) });
+    const cssChanged = (w: World) => w.css !== WORLD.css;
+    /** Replace `from` with `to` inside the base rule of `sel` only, the way §7 reads a rule. */
+    const inRule = (sel: string, from: string, to: string) => (css: string) => {
+      const at = css.indexOf(`${LF}${sel} {`);
+      const end = at < 0 ? -1 : css.indexOf("}", at);
+      return at < 0 || end < 0 ? css : css.slice(0, at) + css.slice(at, end).replace(from, to) + css.slice(end);
+    };
+    /** The same, inside the one-line `@media (min-width: Npx)` rule for `sel`. */
+    const inMedia = (px: number, sel: string, from: string, to: string) => (css: string) => {
+      const head = `@media (min-width: ${px}px) { ${sel} {`;
+      const at = css.indexOf(head);
+      const end = at < 0 ? -1 : css.indexOf("}", at + head.length);
+      return at < 0 || end < 0 ? css : css.slice(0, at) + css.slice(at, end).replace(from, to) + css.slice(end);
+    };
+    const plusAt320 = withCss(inRule(".kp-jhdr__plus", "display: none", "display: inline-flex"));
+    const gutter16 = withCss(inRule(".kp-jhdr__row", "padding-inline: var(--sp-3)", "padding-inline: var(--sp-4)"));
+    const figure14 = withCss(inRule(".kp-jbal__fig", "font-size: 12px", "font-size: 14px"));
+    const gap8 = withCss(inRule(".kp-jhdr__row", "gap: 6px;", "gap: 8px;"));
+    const homeFlush = withCss(inRule(".kp-jhdr__home", "margin-inline: -9px", "margin-inline: 0"));
+    const authPad20 = withCss(inRule(".kp-jhdr__auth", "padding-inline: 14px", "padding-inline: 20px"));
+    const pillPad16 = withCss(inRule(".kp-jhdr__pill", "padding: 0 12px;", "padding: 0 16px;"));
+    const phoneOnlyRule = withCss((s) => `${s}${LF}@media (max-width: 359.98px) { .kp-jhdr__row { gap: 4px; } }${LF}`);
+    const phoneOnlyBlock = withCss((s) => `${s}${LF}@media (max-width: 359.98px) {${LF}  .kp-jhdr__row {${LF}    gap: 4px;${LF}  }${LF}}${LF}`);
+    const clusterGap4 = withCss(inRule(".kp-jhdr__cluster", "gap: 6px;", "gap: 4px;"));
+    const flatFrom640 = withCss(inMedia(640, ".kp-jhdr__row", "gap: var(--sp-5); ", ""));
+    const CLASSIC_BAR = "src/components/layout/top-app-bar.tsx";
+    const classicGutterMoves = withFile(WORLD, CLASSIC_BAR, (s) => s.replace("sm:gap-4 sm:px-5 lg:gap-2", "sm:gap-4 sm:px-6 lg:gap-2"));
+    const pillForAnyPlayer = withFile(WORLD, JHDR, (s) => s.replace("{state.pill && (", "{user.isAuthed && ("));
+    const pipsLifted = withCss(inRule(".kp-rail--journey .kp-rail__item", "justify-content: flex-start", "justify-content: center"));
+    const dotAlways = withFile(WORLD, JTABS, (s) => s.replace(
+      `{unread !== null && unread > 0 && <Dot tone="brand" size={8} className="kp-rail__badge" />}`, `<Dot tone="brand" size={8} className="kp-rail__badge" />`));
+    const serverLoadsPoller = withFile(WORLD, SHELL, (s) => `${s}${LF}import { useLgUp } from "@/lib/journey/one-poller";${LF}`);
+    const POLLER_HELPER = "src/lib/journey/width-helper.ts";
+    const pollerTwoHops = withFile(
+      withFile(WORLD, POLLER_HELPER, () => `import { useLgUp } from "./one-poller";${LF}export const useWide = () => useLgUp();${LF}`),
+      SHELL, (s) => `${s}${LF}import { useWide } from "@/lib/journey/width-helper";${LF}`);
+    const pillFill = withCss(inRule(".kp-jnav__link:is([aria-current], [data-on])", "color: var(--text);", "color: var(--text); background: var(--pill-active);"));
+    const gridOnNav = withCss((s) => s.replace(".kp-rail--journey > ul {", ".kp-rail--journey {"));
+    const labelEllipsis = withCss(inRule(".kp-jtab__label", "white-space: normal", "white-space: nowrap"));
+    const badgeBare = withCss(inRule(".kp-rail__badge", "box-shadow: 0 0 0 2px var(--panel)", "box-shadow: none"));
+    const lockupAtLg = withFile(WORLD, JHDR, (s) => s.replace("mark-flip-i inline-flex xl:hidden", "mark-flip-i inline-flex lg:hidden"));
+    const headerNotSticky = withFile(WORLD, JHDR, (s) => s.replace("sticky top-0 z-30 app-topbar kp-jhdr", "top-0 z-30 app-topbar kp-jhdr"));
+    const sectionSaysPage = withFile(WORLD, JHDR, (s) => s.replace("aria-current={tabAriaCurrent(pathname, d.key)}", `aria-current={active === d.key ? "page" : undefined}`));
+    const languageOnPhones = withFile(WORLD, JHDR, (s) => s.replace(`<span className="hidden lg:inline-flex"><LanguageMenu /></span>`, "<LanguageMenu />"));
+    const inlineHeight = withFile(WORLD, JHDR, (s) => s.replace(`data-testid="journey-top-bar"`, `data-testid="journey-top-bar" style={{ height: 64 }}`));
+    const bellEverywhere = withFile(WORLD, JHDR, (s) => s.replace("{pollers.bell && <NotificationsPanel />}", "<NotificationsPanel />"));
+    const tabsAt30 = withFile(WORLD, JTABS, (s) => s.replace("bottom-0 z-40 kp-rail kp-rail--journey", "bottom-0 z-30 kp-rail kp-rail--journey"));
+    const moreReturns = withFile(WORLD, JTABS, (s) => s.replace("</ul>", `</ul><NavMore items={[]} label="" variant="rail" />`));
+    const railSaysPage = withFile(WORLD, JTABS, (s) => s.replace("aria-current={tabAriaCurrent(pathname, d.key)}", `aria-current={on ? "page" : undefined}`));
+    const accountNamed = withFile(WORLD, JTABS, (s) => s.replace("<Link", "<Link aria-label={tabLabel(t, d.label)}"));
+    const guestCancelled = withFile(WORLD, JTABS, (s) => s.replace("<button", `<Link href="/positions" onClick={(e) => e.preventDefault()}`).replace("</button>", "</Link>"));
+    const dotOnDesktop = withFile(WORLD, JTABS, (s) => s.replace(" && pollers.dot", ""));
+    const sheetHandRolled = withFile(WORLD, GUEST_SHEET, (s) => s.replace("<Modal", `<div role="dialog" className="fixed inset-0"`).replace("</Modal>", "</div>"));
+    const sheetForgetsTickets = withFile(WORLD, GUEST_SHEET, (s) => s.replace("/auth/register?next=%2Fpositions", "/auth/register"));
+    const classicMountsRail = withFile(WORLD, BOTTOM_NAV, (s) => `${s}${LF}export const leak = <JourneyTabs userId={null} />;${LF}`);
+    const withRecord = (edit: (s: string) => string): World => ({ ...WORLD, popupFit: edit(WORLD.popupFit) });
+    const sheetUnreviewed = withRecord((s) => s.replace(`"${GUEST_SHEET}",`, ""));
+    /**
+     * WP5's sign-out row, the hub's ConfirmDialog: the second journey popup on popup-fit's record (A13). Named rather
+     * than searched for, so a rename fails here, at its path. ⛔ S6 applies WP5 before WP6a; without it, this cannot land.
+     */
+    const SIGN_OUT_ROW = "src/components/journey/account/sign-out-row.tsx";
+    const signOutUnreviewed = withRecord((s) => s.replace(`"${SIGN_OUT_ROW}",`, ""));
+    /** Two pollers on a desktop: the dot keeps polling where the bell already does. */
+    const bothOnDesktop: Impl["pollers"] = (lgUp) => ({ bell: lgUp === true, dot: lgUp !== false });
+    /** A server that claims a desktop: the hydration mounts the bell everywhere, and a phone's dot after it. */
+    const serverSaysDesktop: Impl["lgUp"] = { ...REAL.lgUp, serverSnapshot: () => true };
+    /** A width store that never lets go: every bar and rail that ever mounted keeps listening, and keeps re-rendering. */
+    const clingsOn: Impl["lgUp"] = { ...REAL.lgUp, subscribe: (onChange) => { POLL.subscribeLgUp(onChange); return () => {}; } };
+    const clingsLanded = withStandInMedia(false, (media) => { clingsOn.subscribe(() => {})(); return media.listening() === 1; });
+
     type Plant = { name: string; expect: RegExp; impl?: Partial<Impl>; world?: World; landed: boolean; landedAs: string };
     const plants: Plant[] = [
       // §1 — the tabs
@@ -1333,6 +1801,96 @@ ${s}`);
         world: bellRetimed, landed: changed(bellRetimed, BELL), landedAs: "the dot and the bell beat at two rates" },
       { name: "the bell renames its arrival broadcast and the counter keeps the old name", expect: at("6.events ·"),
         world: bellRenamed, landed: changed(bellRenamed, BELL), landedAs: "the dot listens for a broadcast the bell no longer hears" },
+      // §7 — the header (WP6a): one plant per S4 rule, then the bar's markup
+      { name: "the + shows below 360", expect: at("7.plus ·"),
+        world: plusAt320, landed: cssChanged(plusAt320), landedAs: "the 320 row carries the glyph S4 measured it could not afford" },
+      { name: "a 16px gutter below 360", expect: at("7.gutter ·"),
+        world: gutter16, landed: cssChanged(gutter16), landedAs: "8px of the 320 row's slack gone to its edges" },
+      { name: "a 14px figure below 360", expect: at("7.figure ·"),
+        world: figure14, landed: cssChanged(figure14), landedAs: "TZS 999,999 two characters wider at 320" },
+      { name: "the gap becomes 8px", expect: at("7.gap ·"),
+        world: gap8, landed: cssChanged(gap8), landedAs: "every gap 2px wider than the row was measured with" },
+      { name: "the cluster's gap becomes 4px", expect: at("7.gap ·"),
+        world: clusterGap4, landed: cssChanged(clusterGap4), landedAs: "the capsule and the pill closer than the row was measured with" },
+      { name: "the row keeps its phone gap from 640", expect: at("7.steps ·"),
+        world: flatFrom640, landed: cssChanged(flatFrom640), landedAs: "a desktop header 6px between groups the classic bar spaces 20px apart" },
+      { name: "the classic bar moves its gutter and the journey keeps the old one", expect: at("7.steps ·"),
+        world: classicGutterMoves, landed: changed(classicGutterMoves, CLASSIC_BAR), landedAs: "two bars, one product, two gutters" },
+      { name: "the home link loses its negative margin", expect: at("7.home ·"),
+        world: homeFlush, landed: cssChanged(homeFlush), landedAs: "the 44px link takes 18px of the row it was lent" },
+      { name: "the guest pills pad 20px", expect: at("7.auth ·"),
+        world: authPad20, landed: cssChanged(authPad20), landedAs: "Ingia and Jisajili 12px wider at 320 (E-276 measured them at the edge)" },
+      { name: "the pill keeps the kit button's 16px padding below 360", expect: at("7.pill ·"),
+        world: pillPad16, landed: cssChanged(pillPad16), landedAs: "+ Weka pesa 8px wider on the narrowest phone" },
+      { name: "the lockup returns at 1024", expect: at("7.brand ·"),
+        world: lockupAtLg, landed: changed(lockupAtLg, JHDR), landedAs: "136px of wordmark in the band where the classic bar lost its account menu (E-190)" },
+      { name: "the journey header is not sticky (A13)", expect: at("7.stack ·"),
+        world: headerNotSticky, landed: changed(headerNotSticky, JHDR), landedAs: "the header scrolls away, and the language menu is sealed in nothing" },
+      { name: "a desktop destination says page for its whole section (A12)", expect: at("7.desktop ·"),
+        world: sectionSaysPage, landed: changed(sectionSaysPage, JHDR), landedAs: "Matokeo announced as the Akaunti page" },
+      { name: "the language menu shows on a phone", expect: at("7.cluster ·"),
+        world: languageOnPhones, landed: changed(languageOnPhones, JHDR), landedAs: "a 44px control the 320 row has no room for" },
+      { name: "a phone-only max-width rule in the shell", expect: at("7.first ·"),
+        world: phoneOnlyRule, landed: cssChanged(phoneOnlyRule), landedAs: "a rule below 360 the density contract would have to fence" },
+      { name: "a phone-only max-width rule in the shell, written across lines", expect: at("7.first ·"),
+        world: phoneOnlyBlock, landed: cssChanged(phoneOnlyBlock), landedAs: "the same rule, in the shape a one-line reader cannot see" },
+      { name: "the pill follows the session, not the header state", expect: at("7.state ·"),
+        world: pillForAnyPlayer, landed: changed(pillForAnyPlayer, JHDR), landedAs: "+ Weka pesa offered on a break, to a held wallet and on the deposit screen itself" },
+      { name: "the desktop destinations wear the filter pill's fill", expect: at("7.underline ·"),
+        world: pillFill, landed: cssChanged(pillFill), landedAs: "the capsule language on a section link (§0h point 7)" },
+      { name: "an inline height on the header", expect: at("7.frame ·"),
+        world: inlineHeight, landed: changed(inlineHeight, JHDR), landedAs: "the canvas's 64px, typed where no probe can tell it from a decision" },
+      // §8 — the tabs, the pollers, the guest sheet (WP6a; A13's four named plants among them)
+      { name: "the journey tabs at z-30 (A13)", expect: at("8.stack ·"),
+        world: tabsAt30, landed: changed(tabsAt30, JTABS), landedAs: "the rail level with its own header" },
+      { name: "More comes back to the rail", expect: at("8.tabs ·"),
+        world: moreReturns, landed: changed(moreReturns, JTABS), landedAs: "a fifth slot SJ-16 removed" },
+      { name: "the grid goes on the nav, not the list (A18)", expect: at("8.grid ·"),
+        world: gridOnNav, landed: cssChanged(gridOnNav), landedAs: "four tabs in one grid cell" },
+      { name: "a tab says page for its whole section (A12)", expect: at("8.aria ·"),
+        world: railSaysPage, landed: changed(railSaysPage, JTABS), landedAs: "the board announces Maswali as the current page" },
+      { name: "a tab link gets an aria-label", expect: at("8.name ·"),
+        world: accountNamed, landed: changed(accountNamed, JTABS), landedAs: "the Akaunti tab's unread words drop out of its name" },
+      { name: "a guest's Tiketi zangu is a link whose navigation is cancelled", expect: at("8.guest ·"),
+        world: guestCancelled, landed: changed(guestCancelled, JTABS), landedAs: "an 8 s phantom progress bar on every guest tap" },
+      { name: "Tiketi zangu ellipsises at 320 (A17)", expect: at("8.label ·"),
+        world: labelEllipsis, landed: cssChanged(labelEllipsis), landedAs: "the rail reads Tiketi zan… on a 320 phone" },
+      { name: "the unread dot loses its cut-out", expect: at("8.badge ·"),
+        world: badgeBare, landed: cssChanged(badgeBare), landedAs: "an 8px dot lost against the glyph under it" },
+      { name: "the journey's slots centre below 360", expect: at("8.align ·"),
+        world: pipsLifted, landed: cssChanged(pipsLifted), landedAs: "on a 320 phone in Swahili the Tiketi pip sits 6px above the other three" },
+      { name: "the unread dot shows at a count of zero", expect: at("8.dot ·"),
+        world: dotAlways, landed: changed(dotAlways, JTABS), landedAs: "every signed-in player's Akaunti tab marked unread, always" },
+      { name: "two unread pollers on a desktop", expect: at("8.poll ·"),
+        impl: { pollers: bothOnDesktop }, landed: bothOnDesktop(true).bell && bothOnDesktop(true).dot,
+        landedAs: "the bell and the dot both ask every 30 s for one number" },
+      { name: "the server claims a desktop", expect: at("8.poll.hook ·"),
+        impl: { lgUp: serverSaysDesktop }, landed: serverSaysDesktop.serverSnapshot() === true,
+        landedAs: "every hydration mounts the bell, and a phone's dot after it" },
+      { name: "the width store never lets go", expect: at("8.poll.media ·"),
+        impl: { lgUp: clingsOn }, landed: clingsLanded, landedAs: "every bar and rail that ever mounted keeps listening to the media query" },
+      { name: "a server file loads the width hook", expect: at("8.poll.loaders ·"),
+        world: serverLoadsPoller, landed: changed(serverLoadsPoller, SHELL), landedAs: "AppShell calls a hook: a build that never renders" },
+      { name: "a server file loads the width hook through a helper", expect: at("8.poll.loaders ·"),
+        world: pollerTwoHops, landed: changed(pollerTwoHops, SHELL) && pollerTwoHops.files.has(POLLER_HELPER),
+        landedAs: "the same, one hop away, where a first-importer check stops looking" },
+      { name: "the bell is mounted at every width, merely hidden on a phone", expect: at("8.poll.bar ·"),
+        world: bellEverywhere, landed: changed(bellEverywhere, JHDR), landedAs: "a hidden bell polling beside the rail's dot" },
+      { name: "the dot's counter is mounted at every width", expect: at("8.poll.rail ·"),
+        world: dotOnDesktop, landed: changed(dotOnDesktop, JTABS), landedAs: "a hidden rail polling beside the desktop bell" },
+      { name: "the guest sheet hand-rolled, unportaled (A13)", expect: at("8.sheet.portal ·"),
+        world: sheetHandRolled, landed: changed(sheetHandRolled, GUEST_SHEET), landedAs: "a dialog sealed at the rail's rung, under the Needle" },
+      { name: "the guest sheet's Jisajili forgets Tiketi zangu", expect: at("8.sheet ·"),
+        world: sheetForgetsTickets, landed: changed(sheetForgetsTickets, GUEST_SHEET), landedAs: "a new player lands on the board, not on the tickets they asked for" },
+      { name: "the guest sheet leaves popup-fit's review record", expect: at("8.popup ·"),
+        world: sheetUnreviewed, landed: sheetUnreviewed.popupFit !== WORLD.popupFit, landedAs: "a popup no one has judged against Ali's rule" },
+      { name: "the hub's sign-out row leaves popup-fit's review record (A13)", expect: at("8.popup ·"),
+        world: signOutUnreviewed, landed: WORLD.files.has(SIGN_OUT_ROW) && signOutUnreviewed.popupFit !== WORLD.popupFit,
+        landedAs: WORLD.files.has(SIGN_OUT_ROW)
+          ? "a ConfirmDialog no one has judged against Ali's rule"
+          : `${SIGN_OUT_ROW} is not in the tree: S6 applies WP5 (the hub) before WP6a` },
+      { name: "a classic component mounts the journey rail", expect: at("8.mount ·"),
+        world: classicMountsRail, landed: changed(classicMountsRail, BOTTOM_NAV), landedAs: "every classic page carries the journey's tabs" },
     ];
 
     let caught = 0;

@@ -1351,7 +1351,8 @@ cadence, ladder and jitter, and both its broadcasts. The Arifa row is mode `once
 `50pick:refresh-notifications`, no beat, no pushed arrival. Both callers pass the viewer's id (never a boolean) and are
 `"use client"` files under `src/components/journey/` (§6 `6.mount`). ⚠️ Because the dot polls, a signed-in journey page
 runs two 30 s pollers at every width until S15, not one extra request on desktop — `VODACOM-PLAN.md` §0h point 16 is
-corrected; WP6a decides whether each width loads only the one it shows. **Still owed:** (1) G1's drive, in WP6a or
+corrected; WP6a then made it ONE per width (the bell mounts only from 1024, the dot only below it, neither before the
+width is known: `src/lib/journey/one-poller.ts`, `test:journey-shell` §8). **Still owed:** (1) G1's drive, in WP6b or
 WP12: on a preview session, end A through the idle (E-381) path, sign B in through the header's link, and assert the
 Akaunti dot and the Arifa row never show A's count before B's first answer lands. (2) WP12 proves the bell untouched by
 S6: `git diff --exit-code "$(git merge-base origin/main HEAD)" HEAD -- src/components/layout/notifications-panel.tsx`
@@ -1380,6 +1381,12 @@ padding-inline 12px below 360 and 16px from 360; the "+" glyph `display:none` be
 home-link margin −9px. Each mutation must fail the rule probe in ≥1 cell — deterministic, and the red criterion. (2) A
 CLIP probe (clip + scrollWidth) on the clean tree only, for "fits". Cells include the widest compact balance strings
 `TZS 999,999` and `TZS 1.25M` (`formatBalancePill` compacts at ≥ 1,000,000); per-cell slack is measured and recorded.
+
+*As built (WP6a, 2026-10-01):* the probe's 12px / 16px gutter and 6px gap are the values below 640. From 640 the row
+takes the classic bar's own steps (WP6a step 1): `.kp-jhdr__row` padding-inline 24px from 640, and gap 20px / 12px /
+20px from 640 / 1024 / 1280; the right-hand controls sit in one `.kp-jhdr__cluster` (6px, then 12px from 640). WP6b's
+rule probe reads those at its 768–1279 cells. `test:journey-shell` 7.steps holds them against the classic bar's own
+spellings, so the two bars cannot drift apart silently.
 
 **A6 · G6 — never `red:all` against a dev server.** Always `red:all -- --skip results-filter,header-fit`, then
 `red:header-fit` and `red:journey-header-fit` standalone, detached, under the lock, then `git diff --exit-code`. The new
@@ -1435,6 +1442,12 @@ WP5 and WP6a.
 the guest hub has no in-page sign-in pair (the header carries it); the rail label wraps to two lines below 360 only if
 the drive shows ellipsis (else unchanged); "Pumzika / Jizuie" becomes TWO rows, "Pumzika" → `#break` and "Jizuie" →
 `#exclude`, each anchor pinned in `test:journey-account`.
+
+*As built (WP6a, 2026-10-01):* the rail label wraps below 360 from a font model, ahead of the drive (`VODACOM-PLAN.md`
+§0h point 18): JetBrains Mono's 0.6em advance at the rail's 11px puts sw "Tiketi zangu" at 83.2px in an 80px track,
+and every other label in en, sw and zh fits. Below 360 the journey's slots stack from the top so the two-line slot
+does not lift its pip. `test:journey-shell` 8.label.measure re-derives the model from the dictionary and the
+stylesheet, and says what to delete if copy ever makes the wrap unearned. **Owed:** WP6b's 320 drive confirms it.
 
 **A18 · G19 — precision.** `activeTabFor` matches `/s` exactly or `^/s/` (plant: `/settings` → null). The tween is
 extracted into one shared hook the classic pill calls with identical output (anchors untouched) — no copy.
