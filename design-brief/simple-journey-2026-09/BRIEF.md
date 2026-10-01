@@ -19,19 +19,23 @@
 
 | Row | Item | Frames |
 |---|---|---|
-| Main | Component map, "what never changes", three numbered choices | 1 |
+| Main | Component map, "what never changes", the choices (1 settled, 2 and 3 open) | 1 |
 | 1 | The agency's five frames, as delivered | 5 |
 | 2 | The same five screens in 50pick's system, tappable end to end | 5 |
 | 2 · Header | Signed in at 360 and 320 (long balance), guest at 390 and 320, held wallet, balance hidden, desktop | 7 |
 | 3 · Card | Priced, closes today, empty pool, one side only, over the cap, legacy fee, selection closed, settled, longest title at 360, at 320 | 10 |
-| 3 · Home | Loading, seven chips scrolled, empty category, end of the first page, desktop | 5 |
-| 4 · Bet sheet | Guest, bounds, estimate updated, legacy, one-sided, holder, thin, placing, receipt, closed, 5 blocking + 4 inline refusals, keyboard at 360×640, desktop dialog | 19 |
+| 3 · Home | Loading, seven chips scrolled, empty category, end of the first page, on a break, desktop | 6 |
+| 4 · Bet sheet | Guest, bounds, estimate updated, balance unknown, legacy, one-sided, empty side, empty pool, over the cap, thin, holder, hedge; placing, receipt, closed, loss-limit room, 5 blocking + 4 inline refusals, keyboard at 360×640, desktop dialog | 25 |
 | 5 · Balance too low | One frame per `shortfallPlan` branch | 6 |
-| 6 · Deposit | Email-code step (6 states), no history, paused rail, below the shortfall, payout notice, waiting (6 states), return (2), desktop | 19 |
+| 6 · Deposit | Email-code step (6 states), no history, paused rail, below the shortfall, payout notice, waiting (7 states, incl. past 30 minutes), return (3, incl. still short), desktop | 21 |
 | 7 · How to Play | English, Chinese, 320×640, desktop | 4 |
 | 8 · Akaunti | Signed in, guest, the staff row | 3 |
 | 9 · Tiketi zangu | Open, settled, empty, guest sheet | 4 |
-| 10–11 | The market page; Juu/Chini stake panel and its low-balance state | 3 |
+| 10–11 | The market page; Juu/Chini stake panel, its low-balance state, the round closed while paying | 4 |
+| 12 | Keyboard focus on every control family, and the reduced-motion rule | 1 |
+
+Every state frame names its pool in its board title, so each figure can be re-derived from the payout formula. Every
+frame dates from the deck's own day, Tuesday 29 Sep 2026, 11:19 EAT.
 
 The design calls made while drawing (each with its reason and measurement) are in `docs/VODACOM-PLAN.md` §0g. The
 words each state uses, and which of them are drafts, are in
@@ -39,10 +43,11 @@ words each state uses, and which of them are drafts, are in
 
 ## Decisions waiting on Ali
 
-1. **Choice 1:** 1A gold or 1B neutral How-to step numerals.
+1. **Choice 1 — settled:** 1B neutral step numerals. 1A (gold) would make gold decorative, which
+   `DESIGN_AUTHORITY.md` §M3 forbids; Ali can still overrule it on the switch.
 2. **Choice 2:** 2A royal ring or 2B filled light chip for the chosen amount.
 3. **Choice 3:** 3A royal or 3B neutral play plate on the How-to card.
-   - Each choice is a switch in its frame's Tweaks panel. My picks are 1A, 2A, 3A.
+   - Each choice is a switch in its frame's Tweaks panel. My picks are 2A and 3A.
 4. **The drafted Swahili.** Every state with no existing string carries a draft, listed on the canvas and in §0g. A
    native review signs them off before S7–S11 ship them.
 
@@ -70,6 +75,19 @@ components (`chip.tsx`, `callout.tsx`, the wallet pill), the rulings and the eng
   past 30 minutes; a break on home; keyboard focus.
 - **Words:** existing mistranslations ("Lipo" for Payout, "HALIJAONDOKA", "pesa yote") and SJ-19 term drift.
 
-**Resolution:** every finding was verified against the code and is applied in one revision pass. The rulings it
-amends, and why, are in `docs/VODACOM-PLAN.md` §0g ("The four-expert panel"). _The revision's outcome (frames
-changed, frames added, re-render result) is recorded here when it is published._
+**Resolution:** every finding was verified against the code and applied in one revision pass. The rulings it
+amends, and why, are in `docs/VODACOM-PLAN.md` §0g ("The four-expert panel").
+
+**Outcome (canvas version 16, 2026-10-01):**
+- Nearly every frame revised, and 11 added: 102 boards in 13 rows.
+- Every frame was re-rendered in Chromium at its own size and read tile by tile. Nothing overflows; the only flags
+  left are the chip rows, which scroll sideways by design.
+- **The verification caught defects the panel did not**, all fixed before publishing:
+  - a free-exit countdown on a ticket placed the day before (the window is the first 5 minutes);
+  - four state frames carried the Yanga question with pools that contradict Yanga's real pool;
+  - a no-break pattern that left the wallet list and the help line with no place to wrap;
+  - the deposit footer wrapping off a 390 × 844 screen;
+  - a "+ Weka pesa" button on the home screen during a break, when such a payment would be held and returned;
+  - eleven frames where a quoting slip silently disabled two styles.
+- Drafted words still need the native Swahili review, with the existing-word corrections listed in
+  `S4-COPY-AUDIT.md`.

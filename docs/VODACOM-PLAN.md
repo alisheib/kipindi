@@ -20,12 +20,12 @@
 journey's funnel is counted from now — the 14-day baseline clock has started (§0f). S3 (the engine) is ✅. S2 is LIVE
 (`473807b1`) and waits on an officer approving the short titles (§0d). S1 is LIVE (`41ec1703`) and waits on one press
 by Ali (§0b "Still open"). Nothing new reaches players (the counters are invisible; the insights panel is admin-only).
-S4 (the Claude Design pass) is 🔨: all eleven brief items are on the Design canvas (91 frames) and BRIEF.md is
-filed; the four-expert panel scored it D 6.5 · F 6.5 · C 6 · A 5, and the revision that applies every finding is
-in progress (§0g).
+S4 (the Claude Design pass) is 🔨: all eleven brief items are on the Design canvas and BRIEF.md is filed; the
+four-expert panel scored the first pass D 6.5 · F 6.5 · C 6 · A 5, and every finding is now applied (canvas v16,
+102 boards). It waits on Ali's choices 2 and 3 (§0g).
 
-**Next:** (1) S4: finish the panel revision — re-render, re-publish, record the outcome in BRIEF.md; then Ali
-answers choices 2 and 3 (1B is now set by §M3) (§0g "Still open"); (2) on the days after the deploy, read
+**Next:** (1) S4: Ali answers choices 2 and 3 on the canvas (1B is set by §M3), then S4 is ✅ (§0g "Still
+open"); (2) on the days after the deploy, read
 the first totals with `qa:journey-funnel` (read-only) — when counts appear daily, S3b is ✅ and the baseline runs to
 2026-10-15 at the earliest. In parallel: an officer approves the S2 short titles; Ali presses S1's preview switch.
 
@@ -140,7 +140,7 @@ drive (guest, SUPPORT officer, player, Owner Stop and Resume, a stranger on a li
 deploy verified, and a signed-out visitor sees nothing on production (`qa:live` 319/0 there, [E2] included). One
 press by Ali remains: `/admin/journey` → "Turn my preview on" → the bar on 50pick.tz. Then S1 is ✅.
 
-## §0g · S4 (2026-10-01) — the Design canvas: all eleven items drawn, panel scored, revision in progress
+## §0g · S4 (2026-10-01) — the Design canvas: all eleven items drawn, the panel's findings applied; waiting on Ali
 
 **The canvas:** https://claude.ai/artifact/UGVgjpiQFwep2hzfYLf3M6 (an Artifact of type Design, private to Ali until he
 shares it). ⭐ The canvas is the source of truth for S4's frames — no copy lives in the repo. To revise it, `read` its
@@ -310,11 +310,12 @@ sources against `DESIGN_AUTHORITY.md`, the kit components, the rulings and the c
 | Words: Swahili, terms, money truth (C) | 6 / 10 | C1–C25 |
 | Accessibility, RG and consumer protection (A) | 5 / 10 | A1–A20 |
 
-Every finding was checked against the code before acting; all hold. The whole set is being applied in one revision
-pass (the rulebook is `REVISION-SPEC.md` in the session scratchpad; its outcome is recorded in BRIEF.md). What the
-revision changes, beyond fixing wrong figures and words:
+Every finding was checked against the code before acting; all hold. **All of them are applied: canvas version 16,
+102 boards (11 new), every frame re-rendered and read tile by tile, nothing overflows.** The outcome, including the
+defects the verification itself caught, is in BRIEF.md. What the revision changes, beyond fixing wrong figures and
+words:
 - **Rulings amended under Ali's delegation (all toward honesty or player protection):**
-  - **SJ-1, the card over the 100× cap:** no number on the card ("Upande mdogo · ona makadirio"); a thin side reads
+  - **SJ-1, the card over the 100× cap:** no number on the card ("Upande mdogo, ona makadirio"); a thin side reads
     "Faida ndogo · ≈1.0×". The zero-stake multiple over-promised (A7: 1,000 vs 150,000 shows >100×; a 10,000 stake
     gets ≈12.9×).
   - **SJ-11, "Weka dau la TZS 2,000 badala yake":** keeps the deck's words and one tap, and gains a second line with
@@ -346,8 +347,8 @@ overflow, all three fonts loaded, the logos loaded, and the B option of each cho
 requires this, even though the Design type's own instructions discourage rendering.
 
 **Still open:**
-- 🔨 The panel revision: apply D/F/C/A, re-render every frame, re-publish, record the outcome in BRIEF.md.
-- Ali answers choices 2 and 3 (and may overrule 1B), or accepts my picks.
+- Ali answers choices 2 and 3 (and may overrule 1B), or accepts my picks (2A, 3A).
+- When he has, S4 is ✅ and S6 (the flagged shell) is next; the panel's amendments travel into S6–S11.
 - A native Swahili review signs off the drafts and the existing-word corrections.
 - ⛔ No player-facing UI code is written before the revision is filed.
 
@@ -591,7 +592,7 @@ Status: ⬜ not started · 🔨 in progress · ✅ done and verified live · ⛔
 | S2 | Short titles + competition | 🔨 | LIVE `473807b1` 2026-09-30 (§0d); the backfill waits on an officer's approval. Done when every open market renders within 2 lines in sw/en/zh (`test:short-title-fit`) and the backfill is approved in /admin. |
 | S3 | The engine (no UI) | ✅ | `6e7ee63b` 2026-10-01 (§0e). Golden fixtures pass: Dodoma ≈2.8×/≈1.4×, 1,000 → TZS 2,700 ≈2.7×, 5,000 → TZS 12,360 ≈2.5×; Yanga ≈2.9×/≈1.4×. Client/server parity is proven. |
 | S3b | Measures baseline | 🔨 | LIVE `64a63b7c` 2026-10-01 (§0f), counting from the deploy. Done when old-journey analogue counts appear daily (`qa:journey-funnel`) and the 14-day baseline clock is running. |
-| S4 | Claude Design pass | 🔨 | Part 1 is on the Design canvas (2026-10-01, §0g): the 5 re-drawn frames beside the agency's, the component map and 3 numbered choices. Done when frames for every new composition and undrawn state are filed and scored by the panel, and Ali has reviewed the 5 re-drawn frames. |
+| S4 | Claude Design pass | 🔨 | On the Design canvas (2026-10-01, §0g): all eleven brief items, 102 boards; the four-expert panel's findings applied (v16); BRIEF.md filed. Waits on Ali's choices 2 and 3. Done when frames for every new composition and undrawn state are filed and scored by the panel, and Ali has reviewed the 5 re-drawn frames. |
 | S5 | ~~Colour foundation~~ | ⛔ | Removed by R5 (50pick's look stays unchanged): no palette, font or brand work. |
 | S6 | Shell (flagged) | ⬜ | Every route keeps an entrance (route census). The header fits at 320/360/390/1024/1150/1279 × sw/en/zh × guest/signed-in. |
 | S7 | Home and cards (flagged) | ⬜ | Staff see the deck's home on production. `test:journey-above-fold` is green. |
