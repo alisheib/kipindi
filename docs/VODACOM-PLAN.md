@@ -167,6 +167,23 @@ WP6b the swap + census + header-fit → WP7 overlays → WP8 short titles on pos
   generate-button 32 px), decomment (§2.1 23 > 20), updown-digest, updown-source-class, payout-view, orphans
   (marketing + landing-v3 scripts), eyebrow-roles, validation-focus (admin affiliate fields), failure-reasons (§10
   agent apply toast). Every later S6 battery is read against this list.
+- **WP0 ✅ `0a2961e4` + `73b99a4a`: `qa:classic-shell-parity` calibrated** — `--prove-red` 49/49, baseline
+  `parity-73b99a4a.json` (224 cells, scratchpad), and a null `--compare` on a FRESH server 27/27. Calibration found two
+  instrument faults, both fixed: unrendered svg `<defs>` children report 0×0 boxes at page coordinates (recorded by size
+  only), and the held viewer's not-found page has its head metadata replaced after load, so robots are read from the
+  bytes the server sent.
+- **WP1–WP4 ✅ pushed `1931d4c3` (2026-10-01), flagged — nothing mounted yet:** WP1 the journey.* words (`edc690bc`),
+  WP2 the pure modules + `test:journey-shell` in predeploy (`738e54a3`), WP3 the journey-only unread counter — the
+  classic bell untouched (`84e99716`), WP4 the captioned "Salio" capsule + WalletSheet's journey words, the classic
+  pill's tween extracted with identical output (`1931d4c3`). **Proof:** `qa:classic-shell-parity --compare` against
+  the pre-S6 baseline 27/27 over 224 cells (classic viewers are served the same shell); `test:all` 409/432 — the reds
+  are the §0i baseline's, except `house-bot-designation` (a scratch-Postgres flake: 3/3 green alone) and
+  `house-bot-disclosure` (the D19a published-words pin, green once on main — re-run on the pushed tree: green, with
+  typecheck, i18n, journey-shell, wallet-reach, feedback-law and simple-journey-flag). `red:tap-rung` refuses to run
+  while the pre-existing `tap-target` red stands; `red:journey-shell` catches 55/55.
+- **Next:** WP5 (the Akaunti hub) and WP6a (header, tabs, guest sheet) are drafted and under review; then WP6b — the
+  swap — after which the parity baseline is re-captured from the pre-S6 parent on main (A18), because the marketing lane's
+  commits now sit between the baseline and S6.
 - **WP0 parity harness — `npm run qa:classic-shell-parity`** (written, not yet run; local in-memory server only). Four
   viewers (guest, demo player, held, unconfirmed email) × en/sw × 360/768/1024/1280 × `/`, `/markets`, `/positions`,
   `/wallet`, `/profile`, `/account` and an unmatched control path. Per cell: header, rail, shell footer and email bar
