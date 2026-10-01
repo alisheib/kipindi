@@ -187,7 +187,16 @@ const EXPECTED_DIFFS = [
     from: 404,
     to: 200,
     cells: VIEWERS.length * LOCALES.length * WIDTHS.length,
-    reason: "S6 WP5 adds the /account hub, which calls notFound() for every request the journey is not shown to. The root loading.tsx has streamed by then, so Next answers the not-found BODY at HTTP 200 where an unmatched path is a true 404 (pre-deploy-live-check.mjs: a 200 is not a render). The body, the title, noindex and the absence of any journey trace are asserted on every run (§3), so only the status may move.",
+    reason: "S6 WP5 adds the /account hub, which calls notFound() for every request the journey is not shown to. The root loading.tsx has streamed by then, so Next answers the not-found BODY at HTTP 200 where an unmatched path is a true 404 (pre-deploy-live-check.mjs: a 200 is not a render). The body, the title, noindex and the absence of any journey trace are asserted on every run (§3); beside the status only the robots meta moves, and that is its own entry (account-robots-noindex).",
+  },
+  {
+    id: "account-robots-noindex",
+    field: "notFound.robots",
+    routes: ["/account"],
+    from: ["index, follow", "noindex"].join(NL),
+    to: "noindex, nofollow",
+    cells: VIEWERS.length * LOCALES.length * WIDTHS.length,
+    reason: "S6 WP5 (A2): /account's own generateMetadata answers every request the journey is not shown to with the not-found page's title and robots noindex, nofollow. On a matched route that page metadata REPLACES the root layout's 'index, follow', and Next adds a noindex of its own only to a 404, so at HTTP 200 the bytes carry the page's one robots meta where an unmatched path sends that pair. Still noindex for a crawler (§3.3 holds it on every run); the title is the same string (§3.2).",
   },
 ];
 /** The named differences seen in some of their cells but not all. */
@@ -757,6 +766,17 @@ async function proveRed() {
   ok("P.3 …and /account 404 → 500 stays a failure (an entry is one transition, not a wildcard)", wrongTo.unexpected.length === 1 && wrongTo.unexpected[0].field === "status");
   const wrongRoute = run("/markets", cell(404, "f1"), cell(200, "f1"));
   ok("P.4 …and 404 → 200 on any other route stays a failure (the entry is scoped to /account)", wrongRoute.unexpected.length === 1);
+  // The robots entry, held the same way: its one transition on /account passes; another value, or the same change on
+  // the control path, stays a failure.
+  const nf = (robots) => ({ ...cell(200, "f1"), notFound: { title: "Page not found · 404", robots, main: "404 Page not found" } });
+  const pair = ["index, follow", "noindex"];
+  const robotsNamed = run("/account", nf(pair), nf(["noindex, nofollow"]));
+  const robotsOther = run("/account", nf(pair), nf(["index, follow"]));
+  const robotsElsewhere = run(NOT_FOUND, nf(pair), nf(["noindex, nofollow"]));
+  ok("P.4b /account's robots pair → one 'noindex, nofollow' is the named difference; another value, or the same change on the control path, stays a failure",
+    robotsNamed.unexpected.length === 0 && robotsNamed.expected.map((e) => e.id).join() === "account-robots-noindex"
+      && robotsOther.unexpected.length === 1 && robotsElsewhere.unexpected.length === 1,
+    JSON.stringify({ robotsNamed, robotsOther, robotsElsewhere }).slice(0, 300));
   const SUB = [{ id: "control-footer-class", field: "regions.footer.html", replace: [['class="pad-old"', 'class="pad-new"']], reason: "the control" }];
   const subOnly = run("/", cell(200, "f1"), cell(200, "f2"), SUB);
   const subPlus = run("/", cell(200, "f1"), cell(200, "f3"), SUB);

@@ -5909,6 +5909,62 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
 @media (min-width: 360px) { .kp-jbal__fig { font-size: 14px; } }
 @media (min-width: 1024px) { .kp-jbal { padding: 0 var(--sp-3); } }
 
+/* ── S6 · THE AKAUNTI HUB (SJ-17) — /account, for journey viewers only ─────────────────────────────────────────────
+   Every door the classic More menu, the avatar menu and the phone header held, as cards of rows: the S4 frames
+   s4-8-akaunti, -guest and -staff, drawn in the kit's tokens. Only the hub's own files wear these classes, and the hub
+   answers not-found to every request the journey is not shown to — but, like every rule in this sheet, they ship to
+   every viewer and match nothing on a classic page.
+   ⭐ A card is a labelled list, never a landmark: the section rail's nav population and the page's landmarks stay as
+   they are (S6-PLAN WP5 step 2).
+   ⭐ The row is the --h-control-xl rung, 56px, the canvas's own row; a row with a second line grows past it rather than
+   clip, so a long Swahili label wraps inside its row.
+   ⚠️ The second line is 13px, the canvas's 12 raised to the small rung: 12px is under §T4's 12.5px reading floor, and
+   the kit wins where the canvas drifts (VODACOM-PLAN §0h point 7).
+   ⚠️ A card clips its own corners, so every focus ring inside it is drawn 2px INSIDE its row — the section rail's
+   precedent: a ring you can see beats one the card cuts away. Nothing in a card is placed absolutely: the language
+   choices open in the flow, and the Needle's drawer and the sign-out dialog portal out of the page.
+   ⚠️ Mobile-first, min-width queries only: no phone-only rule, so the card-spacing fence (test:density-contract) has
+   nothing to judge here. No z-index, no motion. */
+.kp-hub { display: flex; flex-direction: column; gap: var(--sp-4); }
+.kp-hub__prompt { margin: 0; font-size: var(--type-body); line-height: 1.5; color: var(--text-subtle); }
+.kp-hub__id { display: flex; align-items: center; gap: var(--sp-3); min-width: 0; padding: var(--sp-4); border: 1px solid var(--border); border-radius: var(--r-lg); background: var(--bg-elevated); }
+.kp-hub__initials { flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; width: 52px; height: 52px; border: 1px solid var(--border-strong); border-radius: var(--r-pill); background: var(--bg-royal-soft); font-family: var(--font-display); font-weight: 700; font-size: var(--type-h4); color: var(--text); }
+.kp-hub__who { display: flex; flex-direction: column; gap: var(--sp-1); min-width: 0; }
+.kp-hub__name { font-family: var(--font-display); font-weight: 600; font-size: var(--type-h4); line-height: 1.25; color: var(--text); overflow-wrap: anywhere; }
+.kp-hub__phone { font-family: var(--font-mono); font-size: var(--type-small); font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--text-subtle); }
+.kp-hub__grid { display: grid; grid-template-columns: minmax(0, 1fr); align-items: start; gap: var(--sp-4); }
+.kp-hub__card { display: flex; flex-direction: column; min-width: 0; margin: 0; padding: 0; list-style: none; overflow: hidden; border: 1px solid var(--border); border-radius: var(--r-lg); background: var(--bg-elevated); }
+.kp-hub__card--staff { border-style: dashed; border-color: var(--border-strong); }
+.kp-hub__card > li:not(:last-child) { border-bottom: 1px solid color-mix(in oklab, var(--border) 60%, transparent); }
+.kp-hub__card :where(a, button, summary):focus-visible { outline-offset: -2px; }
+.kp-hub__row { display: flex; align-items: center; gap: var(--sp-3); width: 100%; min-height: var(--h-control-xl); padding: var(--sp-2) var(--sp-4); border: 0; background: transparent; color: var(--text); font: inherit; text-align: left; text-decoration: none; cursor: pointer; }
+.kp-hub__row:hover { background: var(--bg-overlay); }
+.kp-hub__glyph { flex-shrink: 0; display: inline-flex; color: var(--text-muted); }
+.kp-hub__text { display: flex; flex: 1 1 auto; flex-direction: column; gap: 2px; min-width: 0; }
+.kp-hub__label { font-size: var(--type-body); font-weight: 500; line-height: 1.3; overflow-wrap: anywhere; }
+.kp-hub__sub { font-size: var(--type-small); line-height: 1.35; color: var(--text-subtle); }
+.kp-hub__value { flex-shrink: 0; font-size: var(--type-small); white-space: nowrap; color: var(--text-subtle); }
+/* A balance in a list of doors is neutral ink: gold marks money that was earned (§M3). */
+.kp-hub__money { flex-shrink: 0; font-family: var(--font-mono); font-weight: 600; font-size: var(--type-body); font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--text); }
+.kp-hub__num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.kp-hub__chev { flex-shrink: 0; color: var(--text-subtle); }
+/* The language row is a disclosure: its summary is the row, and the three languages open beneath it, in the flow. */
+.kp-hub__lang > summary { list-style: none; }
+.kp-hub__lang > summary::-webkit-details-marker { display: none; }
+.kp-hub__lang[open] > summary .kp-hub__chev { transform: rotate(90deg); }
+.kp-hub__opts { display: flex; flex-direction: column; gap: var(--sp-1); padding: 0 var(--sp-2) var(--sp-2); }
+.kp-hub__opt { display: flex; align-items: center; gap: var(--sp-3); width: 100%; min-height: var(--h-control-md); padding: 0 var(--sp-3); border: 0; border-radius: var(--r-md); background: transparent; color: var(--text-muted); font: inherit; font-size: var(--type-body); text-align: left; cursor: pointer; }
+.kp-hub__opt:hover { background: var(--bg-overlay); }
+.kp-hub__opt[aria-selected="true"] { background: var(--pill-active); color: var(--text); font-weight: 600; }
+.kp-hub__tick { flex-shrink: 0; display: inline-flex; width: 16px; color: var(--brand-300); }
+/* The Needle's own menu row, given the hub's height. */
+.kp-hub__needle { display: flex; align-items: center; min-height: var(--h-control-xl); padding: var(--sp-1) var(--sp-2); }
+.kp-hub__needle > button { min-height: var(--h-control-md); }
+/* Sign-out stands alone under the cards, as the canvas draws it: an act, not a door. */
+.kp-hub__exit { display: flex; align-items: center; gap: var(--sp-3); width: 100%; min-height: var(--h-control-xl); padding: 0 var(--sp-4); border: 1px solid var(--border); border-radius: var(--r-lg); background: transparent; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.kp-hub__exit:hover { background: var(--bg-overlay); }
+@media (min-width: 1024px) { .kp-hub__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
 /* ── WP14 part 2 · THE SIGNED-IN HERO (the delivery's §4a/§4c) ─────────────────────────────────
    Your picks → the balance with the same Deposit/Withdraw pair (or the empty-balance prompt) →
    Set limits. The pair is the Wallet's: one rung, one box, only the skin differs (V19). */

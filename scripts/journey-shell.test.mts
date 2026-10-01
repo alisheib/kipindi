@@ -6,8 +6,9 @@
  *   npm run red:journey-shell      (--prove-red: every defect below is planted IN MEMORY and must be caught)
  *
  *   §1 THE TABS — `activeTabFor` over every route on disk, globbed as `test:route-census` globs them: each has an
- *      expected tab or a stated reason for none, a route with neither fails, and `/account`'s exemption (its page lands
- *      in WP5) expires the day the page exists. The four tabs in the deck's order; each tab's own href lights it with
+ *      expected tab or a stated reason for none, a route with neither fails, and a route decided ahead of its page (as
+ *      `/account` was, until WP5 put it on disk) loses its exemption the day the page exists. The four tabs in the
+ *      deck's order; each tab's own href lights it with
  *      `aria-current="page"`, and section membership is `"true"` (A12 — the rule is pinned here, where it is decided;
  *      WP6a's §8 holds the markup to calling it); look-alike paths are claimed by no row (A18: `/settings` is not `/s`);
  *      the table has no shadowed row, no tab nothing reaches and no label missing in en/sw/zh, and the exported guard,
@@ -110,6 +111,8 @@ type World = {
   glyphs: string;
   /** Every src file, decommented, by repo path — so a guard never matches the paragraph explaining a fix. */
   files: ReadonlyMap<string, string>;
+  /** Routes decided ahead of their page — `AHEAD_OF_DISK` when absent; the red twin plants a stale entry here. */
+  ahead?: ReadonlySet<string>;
 };
 const WORLD: World = {
   routes: [...new Set(pages(join(ROOT, "src/app"))
@@ -307,10 +310,11 @@ const EXPECTED: Record<string, Expect> = {
   "/offline": { tab: null, why: "the service worker's offline fallback, a page a reader is sent to and never browses to" },
 };
 /**
- * Decided before its page exists: the Akaunti tab points at `/account` from WP2, and the hub lands in WP5. ⛔ An entry
- * here EXPIRES: `1.census.ahead` fails once the page is on disk, so the commit that adds the page deletes the entry.
+ * Decided before its page exists. ⛔ An entry here EXPIRES: `1.census.ahead` fails once the page is on disk, so the
+ * commit that adds the page deletes the entry — as S6 WP5 did for `/account`, the Akaunti hub. The mechanism stays for
+ * the next route a tab points at before its page lands; the red twin plants a stale entry through the world's `ahead`.
  */
-const AHEAD_OF_DISK = new Set(["/account"]);
+const AHEAD_OF_DISK: ReadonlySet<string> = new Set<string>();
 /** A dynamic segment, filled the way a real URL fills it. */
 const probe = (route: string) => route.replace(/\[[^\]]+\]/g, "x1");
 /** Paths that share a row's letters but not its segment — each must be claimed by NO row (A18). */
@@ -345,9 +349,10 @@ function g1Tabs(I: Impl, W: World, ok: Ok) {
   const missing = W.routes.filter((r) => !(r in EXPECTED));
   ok("1.census · every route on disk has an expected tab or a stated reason for none", missing.length === 0,
     `no decision for: ${missing.join(", ")} — decide it in EXPECTED before it ships`);
-  const ghosts = Object.keys(EXPECTED).filter((r) => !W.routes.includes(r) && !AHEAD_OF_DISK.has(r));
+  const ahead = W.ahead ?? AHEAD_OF_DISK;
+  const ghosts = Object.keys(EXPECTED).filter((r) => !W.routes.includes(r) && !ahead.has(r));
   ok("1.census.ghost · every decision names a route on disk (or one in AHEAD_OF_DISK)", ghosts.length === 0, ghosts.join(", "));
-  const arrived = [...AHEAD_OF_DISK].filter((r) => W.routes.includes(r));
+  const arrived = [...ahead].filter((r) => W.routes.includes(r));
   ok("1.census.ahead · every route decided ahead of its page is still absent from disk — the commit that adds the page deletes its AHEAD_OF_DISK entry",
     arrived.length === 0, `on disk now: ${arrived.join(", ")}`);
   ok("1.census.c · CONTROL · the glob found the real population (≥ 50 routes, / and /markets/[id] among them, nothing under /admin or /api)",
@@ -355,7 +360,7 @@ function g1Tabs(I: Impl, W: World, ok: Ok) {
       && !W.routes.some((r) => r.startsWith("/admin") || r.startsWith("/api")),
     `${W.routes.length} routes`);
 
-  const population = [...new Set([...W.routes, ...AHEAD_OF_DISK])].sort();
+  const population = [...new Set([...W.routes, ...ahead])].sort();
   for (const route of population) {
     const exp = EXPECTED[route];
     if (!exp) continue;
@@ -1043,7 +1048,7 @@ if (!PROVE_RED) {
     const secondResolver = withFile(WORLD, BOTTOM_NAV,
       (s) => `${s}\nfunction activeTabFor(p: string) { return p === "/" ? "questions" : null; }\n`);
     const newRoute: World = { ...WORLD, routes: [...WORLD.routes, "/brand-new"] };
-    const accountLands: World = { ...WORLD, routes: [...WORLD.routes, "/account"].sort() };
+    const accountLands: World = { ...WORLD, ahead: new Set([...AHEAD_OF_DISK, "/account"]) };
     const surfacesImport = withFile(WORLD, SURFACES, (s) => `import { MARK } from "@/lib/brand-mark";\n${s}`);
     const tabsClient = withFile(WORLD, HOME, (s) => `"use client";\n${s}`);
     const doorsRead = withFile(WORLD, DOORS_HOME, (s) => s.replace(
@@ -1217,8 +1222,8 @@ ${s}`);
         world: secondResolver, landed: changed(secondResolver, BOTTOM_NAV), landedAs: "bottom-nav.tsx defines activeTabFor" },
       { name: "a new route ships with no tab decision", expect: at("1.census ·"),
         world: newRoute, landed: !("/brand-new" in EXPECTED), landedAs: "/brand-new is on disk with nothing decided" },
-      { name: "the /account page lands and its AHEAD_OF_DISK exemption stays", expect: at("1.census.ahead ·"),
-        world: accountLands, landed: !WORLD.routes.includes("/account") && accountLands.routes.includes("/account"),
+      { name: "the /account page is on disk and an AHEAD_OF_DISK exemption for it stays", expect: at("1.census.ahead ·"),
+        world: accountLands, landed: WORLD.routes.includes("/account") && !AHEAD_OF_DISK.has("/account"),
         landedAs: "an exemption outlives the reason for it" },
       { name: "the tabs leave the deck's order", expect: at("1.tabs ·"),
         impl: { tabs: outOfOrder }, landed: outOfOrder[1].key === "tickets", landedAs: "Tiketi zangu sits second on the rail" },

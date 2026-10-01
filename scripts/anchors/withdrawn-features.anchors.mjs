@@ -69,4 +69,14 @@ export const MUTATIONS = [
     to: `  const _summaryFirst = await getPlayerReferralSummary(session.userId);\n  if (!inviteIsLiveFor(inviteViewer)) notFound();`,
     expect: "§8",
   },
+  {
+    // §7 — the JOURNEY door (Vodacom S6 WP5): the Akaunti hub's rows stop asking whether this reader may hold a link,
+    // so the hub would offer Invite to a closed account and to an agent out of standing. The rows are data, and the
+    // positional rule reads data as it reads JSX: the href must sit beside the gate.
+    name: "hub-rows.ts — the Akaunti hub offers Invite without consulting the gate",
+    file: "src/components/journey/account/hub-rows.ts",
+    from: `  if (v.doors.inviteVisible) {`,
+    to: `  if (true) {`,
+    expect: "§7",
+  },
 ];

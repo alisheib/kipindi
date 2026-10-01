@@ -157,6 +157,14 @@ const popups = all.filter((f) => IS_POPUP.test(code(f)));
  * phone; `maxWidth` 440 is a MAX. The one unbroken string — a link's address, a bearer key — sits in a `<code>`
  * with `break-all` and `max-w-full`, the same cure `agents/agents-client.tsx` carries. PASSES.
  */
+/*
+ * ── 2026-10-01 · +1: `journey/account/sign-out-row.tsx`, the Akaunti hub's sign-out (the Vodacom plan S6 WP5) — the kit
+ * `ConfirmDialog` the avatar menu already uses, with the same four `profile.signOutConfirm*` words. Opened and judged like
+ * the records above: no `truncate`, no `line-clamp-*`, no `whitespace-nowrap`, no `text-ellipsis`, no `max-h-*`, no
+ * `overflow-hidden`, no fixed height on any text. The title and the one-sentence body are dictionary words in blocks that
+ * wrap; the dialog is the kit's own, so more lines make it taller and its overlay scrolls. The trigger row's label wraps
+ * inside its row (the hub row is a minimum height, never a fixed one). PASSES.
+ */
 const REVIEWED: readonly string[] = [
   "src/app/admin/affiliate/payable-switch.tsx",   // reviewed 2026-09-27
   "src/app/admin/agents/[id]/decision-rail.tsx",   // reviewed 2026-09-21
@@ -206,6 +214,7 @@ const REVIEWED: readonly string[] = [
   "src/components/admin/admin-mobile-nav.tsx",
   "src/components/admin/kyc-review-controls.tsx",
   "src/components/chat/ChatPanel.tsx",
+  "src/components/journey/account/sign-out-row.tsx",   // reviewed 2026-10-01 (Vodacom S6 WP5)
   "src/components/layout/avatar-menu.tsx",
   "src/components/layout/needle-drawer.tsx",
   "src/components/layout/notifications-panel.tsx",

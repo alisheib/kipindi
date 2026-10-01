@@ -9,6 +9,32 @@
 ---
 
 
+## 2026-10-01 · Akaunti, the journey's account hub — "Kuwa wakala" under the footer's own rule, and the national helpline kept apart from our help desk (decided under Ali's delegation)
+
+**Authority.** Ali's delegation of 2026-10-01 ("proceed, taking down points, I'll be away"), recorded as
+[`VODACOM-PLAN.md`](VODACOM-PLAN.md) §0h points 8, 9 and 10 and built in S6 WP5 (`src/app/account/page.tsx`, its rows
+in `src/components/journey/account/hub-rows.ts`). Until the S15 flip the hub is shown only to a journey-preview viewer;
+every other visitor who types `/account` gets the not-found page.
+
+**1 · The agent programme's door appears in Akaunti.** "Kuwa wakala / Become an agent" is a row of the hub for a
+signed-in reader under exactly the footer's visibility rule — the programme enabled, or the reader already an agent in
+good standing (`agentDoorVisible`, composed once in `viewerDoorsFor`). This overrules the footer's own note "never in
+the account menu": on a journey phone the hub is where the header's doors went, and the row is the same plain directory
+line as the footer's — no badge, no gilt, no number, no earnings verb. A signed-out reader is not shown it in the hub
+(the S4 frame draws none); the footer still carries it for them, as today.
+⛔ To overrule: drop the agent card from `hubRowsFor` and say so in §0h point 9.
+
+**2 · 0800 11 0011 is the national problem-gambling helpline, not 50pick's help desk.** The hub's "Msaada" row (our
+help pages) names no phone number; the helpline keeps its own labelled row, "Simu ya msaada · 0800 11 0011", in the
+play-safe card beside the limits and the break, as the footer does. Its label is the footer's word and its number and
+dial target come from `support-config.ts`, the one home of that number (`test:support-contact`); the S4 canvas's
+"Simu 0800 11 0011" under Msaada is corrected to match. ⛔ To overrule: say so — but the national line must never be
+presented as 50pick's own desk.
+
+**3 · The staff console link in Akaunti shows to every staff role** (SJ-23), SUPPORT included; the classic avatar menu
+shows it to Admin, Compliance and Moderator only. It is a plain link to the console, which still checks the role on
+every request, so the link grants nothing by itself.
+
 ## 2026-10-01 · Privacy v2026-10-01 — §2/§5 the journey counts, §7 the tab key `kp-utm`
 
 **Authority.** [`VODACOM-PLAN.md`](VODACOM-PLAN.md) §3.10 — *"Privacy §7/§2: … the funnel totals with campaign tags.

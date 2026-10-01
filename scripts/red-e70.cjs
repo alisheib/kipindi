@@ -23,6 +23,8 @@ const ADMIN = "src/components/admin/admin-shell.tsx";
 const AVATAR = "src/components/layout/avatar-menu.tsx";
 const MENU_PARSER = "scripts/shell-boundary.test.mts";
 const SUITE = "scripts/shell-boundary.test.mts";
+const HUB = "src/app/account/page.tsx";
+const HUB_ROWS = "src/components/journey/account/hub-rows.ts";
 
 const MUTATIONS = [
   {
@@ -48,6 +50,18 @@ const MUTATIONS = [
     file: AVATAR,
     find: `            {isAdmin && (`,
     with: `            {isAdmin && <Link href="/admin">second</Link>}\n            {isAdmin && (`,
+  },
+  {
+    name: "⭐ the Akaunti hub's staff door reverted to <Link> (Vodacom S6 WP5 — the console inside the journey chrome)",
+    file: HUB,
+    find: `<a href="/admin" className="kp-hub__row">`,
+    with: `<Link href="/admin" className="kp-hub__row">`,
+  },
+  {
+    name: "the console added to the hub's rows data, where it would render as a soft link (§2b.4)",
+    file: HUB_ROWS,
+    find: `const SEARCH: HubRow = { id: "search", kind: "link", href: "/markets",`,
+    with: `const SEARCH: HubRow = { id: "search", kind: "link", href: "/admin",`,
   },
   {
     name: "⭐ THE PARSER ITSELF BROKEN — §3's control must catch it, or §1/§2 prove nothing",

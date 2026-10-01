@@ -1360,6 +1360,12 @@ S6: `git diff --exit-code "$(git merge-base origin/main HEAD)" HEAD -- src/compo
 **A2 · G2 — `/account` metadata obeys the switch.** `generateMetadata` calls `resolveSimpleJourney()` first and returns
 the not-found title (and `robots: noindex`) when the journey is off. Pinned in `test:journey-account` with a plant.
 
+*As built (WP5, 2026-10-01):* `{ ...(await notFoundMetadata()), robots: { index: false, follow: false } }`, the
+not-found page's own `generateMetadata` imported from `@/app/not-found` (`test:journey-account` §2, three plants). ⚠️ On
+a matched route at HTTP 200 this page metadata replaces the root layout's robots, and Next adds its own noindex only to
+a 404, so a classic visitor's `/account` sends one robots meta, "noindex, nofollow", where it sent "index, follow" and
+"noindex". Named in `qa:classic-shell-parity` as `account-robots-noindex` (A3); the title is the same string.
+
 **A3 · G3 — the parity harness uses a named EXPECTED-DIFF list, never a re-baseline.** `/account` for classic viewers is
 expected to change from a true 404 to the not-found body at 200 (the root `loading.tsx` streams first), with the
 not-found title, `noindex`, and no journey test id. No `account/loading.tsx` (the root loader is generic). §0i states
@@ -1409,6 +1415,10 @@ membership. Pinned in `test:journey-shell` §8.
 
 **A13 · G14 — the new stacking/popup rows get plants** inside `red:journey-shell` (export the check functions): tabs at
 z-30, header not sticky, tickets sheet unportaled, sign-out row unreviewed.
+
+*As built (WP5, 2026-10-01):* the sign-out row lands in WP5, before WP6a exports the popup check, so its plant lives
+first in `red:journey-account` (check `8.popup`: the row taken off `test:popup-fit`'s record); WP6a's
+`red:journey-shell` adds the plan's own plant beside it. Keep both.
 
 **A14 · G15 — predeploy runs `test:journey-shell`, `test:journey-account` and `test:journey-tickets`.**
 `loadHubViewer(userId, deps)` is extracted and tested against the memory store and the fake Prisma client.

@@ -56,8 +56,9 @@ database write access is another matter: see the replay note in §6.) See §4 an
   *"50pick pays no reward for invites. 18+."* (`inviteNoRewardNote`; the longer wording was cut on
   2026-09-25 in `8a214a1a`)
 
-**Where a player finds it — five doors, every one named "Alika marafiki · Invite friends · 邀请朋友"**
-(the page's own title; one name for one destination), every one behind the same server-resolved
+**Where a player finds it — six doors (five for everyone, and Akaunti for journey-preview viewers until S15), every one named "Alika marafiki · Invite friends · 邀请朋友"**
+(the page's own title; one name for one destination — an agent in good standing reads their dashboard's name,
+"Dashibodi ya wakala", on /profile and in Akaunti), every one behind the same server-resolved
 `inviteVisible`:
 
 | Door | Phone (< 1024px) | Laptop |
@@ -66,6 +67,7 @@ database write access is another matter: see the replay note in §6.) See §4 an
 | **Avatar menu** — the initials circle, top-right | ✅ opens as a centred sheet | ✅ dropdown |
 | **Footer** — "Uadilifu / Fairness" column, every page | ✅ | ✅ |
 | **/profile** — the settings row | ✅ | ✅ |
+| **Akaunti** — the journey's account hub (`/account`), shown only to journey-preview viewers until S15 | ✅ | ✅ |
 | **More ▾** in the top bar | — | ✅ |
 
 ⚠️ Until 2026-09-26 the Zaidi row read the bare verb **"Alika" / "Invite"** while every other door

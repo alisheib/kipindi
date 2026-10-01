@@ -25,10 +25,11 @@ import { useEffect, useRef, useState } from "react";
 import { I } from "@/components/ui/glyphs";
 import { useT, type Locale } from "@/lib/i18n";
 
-const LANGS: Locale[] = ["en", "sw", "zh"];
+/** Exported for the Akaunti hub's language row (Vodacom S6 WP5), so one list of languages serves both controls. */
+export const LANGS: Locale[] = ["en", "sw", "zh"];
 /** The CODE, shown on every row (kit §2). `中文` is the endonym, which is what a reader looks for. */
 const CODES: Record<Locale, string> = { en: "EN", sw: "SW", zh: "ZH" };
-const NAMES: Record<Locale, string> = { en: "English", sw: "Kiswahili", zh: "中文" };
+export const NAMES: Record<Locale, string> = { en: "English", sw: "Kiswahili", zh: "中文" };
 
 export function LanguageMenu() {
   const { locale, setLocale, t } = useT();

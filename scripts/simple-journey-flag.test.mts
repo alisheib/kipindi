@@ -12,7 +12,8 @@
  *   §7  every viewer — guest, player, staff, pass holders, stale passes — on `/` and on `/admin`.
  *   §8  the Owner's ceremony — refusals in order, the attempt row BEFORE the write, kill, resume, links.
  *   §9  the doors (`/preview`) — on, off, and a preview link, with their refusals.
- *   §10 the wiring, read from source: ONE resolver, ONE reader and ONE writer of the cookie, the shell's order,
+ *   §10 the wiring, read from source: ONE resolver, ONE reader and ONE writer of the cookie, the shell's order, the
+ *       Akaunti hub's gate (S6 WP5: /account asks the resolver and calls notFound() before any read),
  *       no-store, the health block, and nothing that grants access ever reading the pass.
  *   §11 `/api/health` reports the rollout.
  *   §12 database mode (its own process, a fake client): a kill written by another container, a failed read,
@@ -638,6 +639,15 @@ function g10Wiring(W: World) {
   ok("10.route.303 · every /preview answer is a 303 to the public host (a document navigation)", /NextResponse\.redirect\(`\$\{await publicBase\(req\)\}\$\{to\}`, 303\)/.test(route));
   ok("10.route.get · GET sets a pass only through the signed-link door", /export async function GET[\s\S]*previewLinkDoor/.test(route) && !/export async function GET[\s\S]*?previewOnDoor[\s\S]*?export async function POST/.test(route));
   ok("10.health · /api/health reports simpleJourney { ceiling, state }", /simpleJourney: \{\s*ceiling: simpleJourneyCeiling\(\)\.ceiling,\s*state: journeyState,/.test(decomment(W.health)));
+  // ⭐ THE AKAUNTI HUB (S6 WP5) asks the same one resolver FIRST and calls notFound() before it reads anything, so a
+  // request the shell treats as classic can never be served the hub by a page that decided for itself.
+  const hub = W.files.get("src/app/account/page.tsx") ?? "";
+  const hubBody = hub.slice(Math.max(0, hub.indexOf("export default async function")));
+  const asked = hubBody.indexOf("await resolveSimpleJourney()");
+  const gated = hubBody.indexOf("if (!journey) notFound();");
+  const firstRead = Math.min(Infinity, ...["currentSession(", "getServerT(", "loadHubViewer(", "db."].map((s) => hubBody.indexOf(s)).filter((i) => i >= 0));
+  ok("10.page.account · /account asks the one resolver and calls notFound() before it reads a session, a word or a row",
+    hub.length > 0 && asked > 0 && gated > asked && Number.isFinite(firstRead) && firstRead > gated, j({ asked, gated, firstRead }));
 }
 
 async function g11Health() {
@@ -790,6 +800,8 @@ const PLANTS: Plant[] = [
     world: (w) => ({ ...w, route: w.route.replace("httpOnly: true,\n      sameSite", "httpOnly: false,\n      sameSite") }) },
   { name: "the health block is dropped", expect: /^10\.health/,
     world: (w) => ({ ...w, health: w.health.replace("simpleJourney: {", "journeyGone: {") }) },
+  { name: "the Akaunti hub renders without the journey (no notFound before its reads)", expect: new RegExp("^10[.]page[.]account"),
+    world: (w) => files(w, "src/app/account/page.tsx", (s) => s.replace("if (!journey) notFound();", "")) },
 ];
 
 {
