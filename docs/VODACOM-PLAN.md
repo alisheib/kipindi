@@ -771,6 +771,42 @@ Existing keys reused, unchanged:
 - `common.yes` / `common.no` "NDIO / HAPANA", read through `sideWord()`
 - `beFirst`, `oneSideOnly`
 
+**S6 keys (2026-10-01, `S6-PLAN.md` WP1).** The shell's words are keys of the `journey` namespace in
+`src/lib/i18n-dict.ts`, their only source; they are not deck strings, so they are not rows of the table above. The five
+that are (`balanceCaption`, `depositAction`, `tabQuestions`, `tabTickets`, `tabAccount`) are verbatim. Every other sw
+value is an S4 canvas word or an S6 draft, listed for the native review under "S6 drafts" in
+[`S4-COPY-AUDIT.md`](design-system/v5-2026-09-29-simplified-journey/S4-COPY-AUDIT.md). Classic words are reused by key
+(WP1 step 2); a journey value repeats a classic one only for a key the plan names (its key list, and A10 for the hub's
+card names).
+
+**The S15 "Tiketi keys" rename list** (SJ-19: "Tiketi" replaces "Nafasi" on player surfaces), re-derived from the sw
+block and a grep of `src/` on 2026-10-01 — re-grep before S15. These keep "nafasi" until the flip (§3.9); at S15 each
+is re-worded, or its surface moves to the journey copy named:
+- `common.positions`, `common.viewPositions`, `common.closeIrreversibleBody`, `common.positionOpenNotify`,
+  `common.positionUnchanged` (→ `journey.sellUnchanged`);
+- `home.myPositions`;
+- `market.yourPositions`, `market.resYourPayoutNote`, `market.udOpenInPositions`, `market.udPositionsOnRound`;
+- `positions.filterAria` (→ `journey.ticketsFilterAria`), `positions.sortAria`, `positions.searchPlaceholder`,
+  `positions.filtersTitle`, `positions.oneResult` / `nResults`, `positions.emptyCashed` (→ `journey.ticketsEmptyCashed`),
+  `positions.emptySearch` and `positions.emptyFilter` (→ `journey.ticketsEmptyLens`), `positions.exitLens`
+  (→ `journey.ticketsExitLens`);
+- `performance.noPerformance`;
+- `error.pageHitSnagBody`, `error.backToPositions` (→ `journey.ticketsBack`), `error.positionsSafe`
+  (→ `journey.ticketsErrorBody`);
+- `dialog.sellPositionNow` (→ `journey.sellConfirmTitle`), `dialog.keepPosition` (→ `journey.sellKeep`);
+- not keys (hard-coded sw): the avatar menu's "Nafasi" row (`avatar-menu.tsx`), the root error page
+  (`global-error.tsx`), the rules pages (`legal/rules/_content-yes-no.tsx`, `_content-up-down.tsx`; binding text, so
+  each moves under its page's version rule), and the agent commission email and notification copy (`server/email.ts`,
+  `server/notification-service.ts`);
+- SJ-19's other half: the support words `chat.ticket` and `chat.ticketSubject` (sw "Tiketi …") become "Ombi la
+  msaada", so "Tiketi" means one thing. No component reads either key today (grep, 2026-10-01).
+
+⛔ Not part of the Tiketi rename ("nafasi" means something else there): `common.busyBody` and `dialog.busyHolding`
+("we are holding your place") and `market.oddsLong` ("a small chance"). `nav.cardSpacing` (spacing) gets its own
+correction to "Ukubwa wa kadi" (`S4-COPY-AUDIT.md`; the journey already reads `journey.hubCardSize`), together with the
+privacy notice's hard-coded "nafasi ya kadi" (`legal/privacy/page.tsx`, under that page's own versioning rule). Admin
+screens are not player surfaces (`admin/players/[id]` "Nafasi ya mwisho" stays).
+
 ## §4 · The audit behind this plan
 
 - **Scope:** on 2026-09-29, 15 read-only checkers audited the plan against the deck, the code, money, i18n and repo

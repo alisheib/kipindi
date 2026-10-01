@@ -2886,6 +2886,82 @@ export const dict = {
       cardClosesToday: "Closes today",
       cardDaysLeft: "{n} days",
       cardDaysLeftOne: "1 day",
+      /**
+       * ⭐ S6 · THE FLAGGED SHELL (S6-PLAN.md WP1). The words the journey header, tabs, Akaunti hub and Tiketi zangu
+       * show. Only journey files read these, so no classic word changes before the S15 flip (§3.9). Every other word
+       * the shell shows comes from its classic key, reused (WP1 step 2). A value here repeats a classic one only for a
+       * key the plan names (its key list, and A10 for the hub card names), so a journey word can be reviewed or
+       * re-worded without moving a classic one. sw is the deck's word (§3), the S4 canvas's, or a draft:
+       * S4-COPY-AUDIT.md "S6 drafts" lists them for the native review (§0h point 3).
+       */
+      /**
+       * The header and its wallet sheet (SJ-15): the caption over the figure, and the sheet's two doors as actions.
+       * ⚠️ depositAction and withdrawAction are words, not the server actions of the same name
+       * (wallet/deposit/actions.ts, wallet/withdraw/actions.ts): a guard looking for those should match their import
+       * or form binding, never the bare name.
+       */
+      balanceCaption: "Balance",
+      depositAction: "Deposit",
+      withdrawAction: "Withdraw",
+      /** The four destinations (SJ-16). The second one is `nav.updown`, unchanged. */
+      tabQuestions: "Questions",
+      tabTickets: "My tickets",
+      tabAccount: "Account",
+      /**
+       * Tiketi zangu (SJ-16, SJ-19): the guest sheet, the Maswali | Juu/Chini switch, the status strip and every empty
+       * and error state. ⛔ A ticket, never a position: no sw value from here to `sellUnchanged` says "nafasi" (A7), and
+       * each classic line the journey Tiketi view would read that does has a journey copy here.
+       */
+      ticketsGuestTitle: "Sign in to see your tickets",
+      ticketsKindAria: "Ticket type",
+      ticketsFilterAria: "Status",
+      ticketsEmptyOpenTitle: "No open tickets yet",
+      ticketsEmptyOpenBody: "Pick a question, tap {yes} or {no} — your ticket shows up here.",
+      ticketsBrowse: "See questions",
+      ticketsEmptyLens: "No tickets match these filters",
+      ticketsEmptyCashed: "You haven't sold a ticket yet",
+      ticketsExitLens: "All tickets",
+      ticketsErrorBody: "Your tickets are safe. We’ve recorded what happened and will investigate. All bets and payouts are unaffected.",
+      ticketsBack: "Back to tickets",
+      /** The ticket card. An open ticket shows no payout figure (SJ-4, §C3): it reads "Payout · When the result is in". */
+      ticketPayout: "Payout",
+      ticketPayoutAtResult: "When the result is in",
+      ticketFinalPayout: "Final payout",
+      ticketPlacedAt: "Placed {date}",
+      /**
+       * The journey sell look (WP10). ⛔ {time} is the server's own end of THAT poll's free window (A8), never a
+       * hard-coded grace; a paid window keeps the classic "Sell now" and its fee.
+       */
+      sellFreeUntil: "Sell free until {time}",
+      sellFreeCta: "Sell free",
+      sellFullRefund: "Get {amount} back in full",
+      sellClosedBody: "This bet is now waiting for the result — it can no longer be sold.",
+      sellConfirmTitle: "Sell this ticket now?",
+      sellKeep: "Keep ticket",
+      sellUnchanged: "Your ticket is unchanged.",
+      /**
+       * The Akaunti hub (SJ-17): its rows reuse their classic labels; these are its signed-out sentence, its sub-lines
+       * and its card-size row. ⛔ Msaada's sub-line names no phone number: the national helpline is not our help desk,
+       * and it keeps its own labelled row (§0h point 10).
+       */
+      hubGuestPrompt: "Sign in or sign up to see your wallet and tickets.",
+      hubHelpSub: "FAQ · Phone · Email",
+      hubLimitsSub: "Limits · Take a break · Self-exclude",
+      hubCardSize: "Card size",
+      hubStaffSub: "Staff only",
+      /** Each card's accessible name (a list label, never a nav landmark), in the canvas order. */
+      hubGroupMoney: "Money",
+      hubGroupPlay: "Play",
+      hubGroupSafety: "Play safe",
+      hubGroupInvite: "Invite",
+      hubGroupProfile: "Profile",
+      hubGroupHelp: "Help",
+      hubGroupSettings: "Settings",
+      hubGroupAgent: "Agent",
+      hubGroupStaff: "Staff",
+      /** Signed out only: the canvas's fairness-and-help card, and the legal card under the footer's own heading. */
+      hubGroupFairnessHelp: "Fairness & help",
+      hubGroupLegal: "Privacy",
     },
   },
 
@@ -5177,6 +5253,51 @@ export const dict = {
       cardClosesToday: "Inafungwa leo",
       cardDaysLeft: "Siku {n}",
       cardDaysLeftOne: "Siku 1",
+      // S6 · the flagged shell — see the comments in the en namespace. The drafts are listed for the native review in S4-COPY-AUDIT.md.
+      balanceCaption: "Salio",
+      depositAction: "Weka pesa",
+      withdrawAction: "Toa pesa",
+      tabQuestions: "Maswali",
+      tabTickets: "Tiketi zangu",
+      tabAccount: "Akaunti",
+      ticketsGuestTitle: "Ingia uone tiketi zako",
+      ticketsKindAria: "Aina ya tiketi",
+      ticketsFilterAria: "Chuja tiketi",
+      ticketsEmptyOpenTitle: "Bado huna tiketi hai",
+      ticketsEmptyOpenBody: "Chagua swali, bonyeza {yes} au {no} — tiketi yako itaonekana hapa.",
+      ticketsBrowse: "Tazama maswali",
+      ticketsEmptyLens: "Hakuna tiketi inayolingana na vichujio hivi",
+      ticketsEmptyCashed: "Bado hujauza tiketi yoyote",
+      ticketsExitLens: "Tiketi zote",
+      ticketsErrorBody: "Tiketi zako ziko salama. Tumeandika kilichotokea na tutashughulikia. Madau na malipo yote hayajaathiriwa.",
+      ticketsBack: "Rudi kwenye tiketi",
+      ticketPayout: "Malipo",
+      ticketPayoutAtResult: "Matokeo yakitoka",
+      ticketFinalPayout: "Malipo ya mwisho",
+      ticketPlacedAt: "Imewekwa {date}",
+      sellFreeUntil: "Uza bila ada hadi {time}",
+      sellFreeCta: "Uza bila ada",
+      sellFullRefund: "Rudishiwa {amount} kamili",
+      sellClosedBody: "Dau hili sasa linasubiri matokeo — haliwezi kuuzwa tena.",
+      sellConfirmTitle: "Uza tiketi hii sasa?",
+      sellKeep: "Baki na tiketi",
+      sellUnchanged: "Tiketi haijabadilika.",
+      hubGuestPrompt: "Ingia au jisajili ili kuona pochi na tiketi zako.",
+      hubHelpSub: "Maswali ya kawaida · Simu · Barua pepe",
+      hubLimitsSub: "Mipaka · Pumzika · Jizuie",
+      hubCardSize: "Ukubwa wa kadi",
+      hubStaffSub: "Wafanyakazi tu",
+      hubGroupMoney: "Pesa",
+      hubGroupPlay: "Cheza",
+      hubGroupSafety: "Cheza kistaarabu",
+      hubGroupInvite: "Alika",
+      hubGroupProfile: "Wasifu",
+      hubGroupHelp: "Msaada",
+      hubGroupSettings: "Mipangilio",
+      hubGroupAgent: "Wakala",
+      hubGroupStaff: "Wafanyakazi",
+      hubGroupFairnessHelp: "Uadilifu na msaada",
+      hubGroupLegal: "Faragha",
     },
   },
 
@@ -7450,6 +7571,51 @@ export const dict = {
       cardClosesToday: "今天截止",
       cardDaysLeft: "{n} 天",
       cardDaysLeftOne: "1 天",
+      // S6 · the flagged shell — see the comments in the en namespace. Formal 您, 充值 for money in, 注单 for a ticket.
+      balanceCaption: "余额",
+      depositAction: "充值",
+      withdrawAction: "提现",
+      tabQuestions: "问题",
+      tabTickets: "我的注单",
+      tabAccount: "账户",
+      ticketsGuestTitle: "登录查看您的注单",
+      ticketsKindAria: "注单类型",
+      ticketsFilterAria: "状态",
+      ticketsEmptyOpenTitle: "您还没有进行中的注单",
+      ticketsEmptyOpenBody: "选择一个问题，点击{yes}或{no}——您的注单将显示在这里。",
+      ticketsBrowse: "查看问题",
+      ticketsEmptyLens: "没有注单符合这些筛选条件",
+      ticketsEmptyCashed: "您还没有卖出过注单",
+      ticketsExitLens: "全部注单",
+      ticketsErrorBody: "您的注单安全无忧。我们已记录相关信息并将进行调查。所有投注和赔付不受影响。",
+      ticketsBack: "返回注单",
+      ticketPayout: "赔付",
+      ticketPayoutAtResult: "结果公布时",
+      ticketFinalPayout: "最终赔付",
+      ticketPlacedAt: "下注于 {date}",
+      sellFreeUntil: "{time} 前可免费卖出",
+      sellFreeCta: "免费卖出",
+      sellFullRefund: "全额退还 {amount}",
+      sellClosedBody: "此投注正在等待结果——已无法卖出。",
+      sellConfirmTitle: "现在卖出此注单？",
+      sellKeep: "保留注单",
+      sellUnchanged: "您的注单未变。",
+      hubGuestPrompt: "登录或注册以查看您的钱包和注单。",
+      hubHelpSub: "常见问题 · 电话 · 邮件",
+      hubLimitsSub: "限额 · 休息一下 · 自我排除",
+      hubCardSize: "卡片大小",
+      hubStaffSub: "仅限员工",
+      hubGroupMoney: "资金",
+      hubGroupPlay: "游戏",
+      hubGroupSafety: "安全博彩",
+      hubGroupInvite: "邀请",
+      hubGroupProfile: "个人资料",
+      hubGroupHelp: "帮助",
+      hubGroupSettings: "设置",
+      hubGroupAgent: "代理",
+      hubGroupStaff: "员工",
+      hubGroupFairnessHelp: "公平性与帮助",
+      hubGroupLegal: "隐私",
     },
   },
 } as const;
