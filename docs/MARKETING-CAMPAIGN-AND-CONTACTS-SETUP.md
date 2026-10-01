@@ -1,6 +1,6 @@
 # MARKETING CAMPAIGN & CONTACTS SETUP — work order and tracker
 
-**STATUS — 🟢 BUILDING. 12/52 units ✅ LIVE (U1–U12), 12/25 defects. 52 units · defects D1–D25 · 46 owner decisions taken on
+**STATUS — 🟢 BUILDING. 13/52 units ✅ LIVE (U1–U12, U19), 12/25 defects. 52 units · defects D1–D25 · 46 owner decisions taken on
 Ali's delegation · 11 legal questions, each shipping with a safe default that IS built. S7c went LIVE 2026-09-28 (`d3379fef`).
 U17 🔵 (`7bef9f97`, live since 2026-09-28) and U18's first half (U18a, `fb194038`, live) were shipped by S9, which closed no docs.
 S10 (2026-10-01) fixed the consent-ledger tie, which had been picking the latest row at random, and shipped U18b (`0e68d59e`):
@@ -124,11 +124,11 @@ erasure now withdraws the consent and empties the book, and both data exports ca
   one ("Nitumie ofa na habari za 50pick kwa SMS" 2 hits, the old one 0), on `?dpl=d3379fef…`. A check that
   reads the same before and after proves nothing — this one reverses.
 
-▶ NEXT: U20 — the list: the first contacts Ali sees (U19 shipped, see 🟡 S10).
+▶ NEXT: U20 — the list: the first contacts Ali sees (the masked number shipped first, see 🟡 S10).
   U20 — `/admin/contacts` server-paged, nine columns, "Operator" sorts by `ndc`, whole-book `AdminKpi` by
   `groupBy`, `SearchBox` whose `q` goes through `parseTzNumber`; NEW suite `test:contacts-page` (add it to
   `predeploy`); states loading · empty book · populated · no-match · error at 1280 and 360, OPENED AND READ.
-  Every number renders `<Sensitive field="contactPhone" subjectId={c.id} value={c.msisdn} copyable />` (U19).
+  Every number renders `<Sensitive field="contactPhone" subjectId={c.id} value={c.msisdn} copyable />`.
   ⚠️ U20's list needs rows to show: no contact WRITER exists yet (U22 is the form, U25+ the importers), so
   U20's drive seeds through the store; say so on the board rather than dressing it up.
   ⚠️ VERIFY EACH PREMISE BEFORE BUILDING — this plan's text has been wrong at the start of most sessions.
@@ -547,7 +547,7 @@ a Guard key that resolves to a script on disk, `yes` plus the backticked `red:` 
 | U16 | data | ⬜ | — | — | — | `test:retention` | — | erasure reaches it |
 | U17 | visual | 🔵 | S9 | 7bef9f97 | /admin/contacts did not exist, and nothing compared a nav item's domain with the page's → six doors (the page carries its own `AdminPageGate`), `test:rbac` §7b holds menu = page, the skeleton equals the real block (230.38 px / 272.63 px, delta 0) | `test:rbac` · `test:admin-section-gate` · `test:admin-nav` | yes · `red:rbac` (2/2 in-process, S10 — the ROUTE_DOMAINS row deleted; the nav item's domain edited) | live since S9's push (production serves later builds); ✅ owes ONE admin-session look at Growth → Contacts on www.50pick.tz — production has no QA admin, only Ali's login (⛔ never used) |
 | U18 | data | 🔵 | S9 · S10 | 0e68d59e | there was no contact book, and erasure reached no marketing store — an erased player's sign-up GIVEN decided on Postgres, and neither export had a marketing section → the three tables in both DALs (U18a `fb194038`); erasure appends WITHDRAWN for every number the person consented with (never a stop, so a recycled number's next owner can consent) and empties every book row by link or number; both exports carry the book, the ledger and the stop history from the account's creation, through one allowlist | `test:erasure` · `test:dal-parity` | yes · `red:erasure` (29) · `red:dal-parity` | U18a live since S9's push; U18b reworked after review, awaiting the deploy |
-| U19 | guard | 🔵 | S10 | addf5351 | a contact number had no registry entry, and the ONE mask printed every bare `255…` key as `2557••••01` (the operator digit) — in the SMS refusal audit and the delivery-receipt audit already → `contactPhone` (a CONTACT id, targetType MarketingContact, identity.contact: GROWTH sees `+255••••01` and no control); `maskPhone` reads a bare key as the `+` form, platform-wide; "Copy number" is a reveal through the same audited action, on the `read` branch only | `test:read-tiers` | yes · `red:read-tiers` (+4) | awaiting the deploy. ⚠️ The export half lands with the export (U34), which must mask through `maskPhone` and name its column (read-tiers 8.9/8.10 are the precedent) |
+| U19 | guard | ✅ | S10 | addf5351 | a contact number had no registry entry, and the ONE mask printed every bare `255…` key as `2557••••01` (the operator digit) — in the SMS refusal audit and the delivery-receipt audit already → `contactPhone` (a CONTACT id, targetType MarketingContact, identity.contact: GROWTH sees `+255••••01` and no control); `maskPhone` reads a bare key as the `+` form, platform-wide; "Copy number" is a reveal through the same audited action, on the `read` branch only | `test:read-tiers` | yes · `red:read-tiers` (35/35, +4) | 2026-10-01 · live on `2d4ca3b6` (proved by DISCRIMINATION: production served `45794cc9` before the push, `2d4ca3b6` after). ⚠️ No live surface to look at yet — no contact exists on production (no writer until U22/U25) — so, like U11, proven by EXECUTION: read-tiers 8.23 runs the mask on a bare key. ⚠️ The export half lands with the export (U34), which must mask through `maskPhone` and name its column (read-tiers 8.9/8.10 are the precedent) |
 | U20 | visual | ⬜ | — | — | — | `test:contacts-page` | — | list + search |
 | U21 | visual | ⬜ | — | — | — | `test:filter-language` | — | filters |
 | U22 | visual | ⬜ | — | — | — | `test:contacts-page` | — | add / edit |
