@@ -24,7 +24,8 @@ S4 (the Claude Design pass) is ✅: all eleven brief items are on the Design can
 are applied (canvas v16, 102 boards), BRIEF.md is filed, and choices 2A/3A were adopted when Ali said "proceed"
 (§0g). S6 (the flagged shell) is next. Ali is away: every call made meanwhile is a numbered point in §0h.
 
-**Next:** (1) S6, the flagged shell (§5 "S6"); (2) on the days after the deploy, read
+**Next:** (1) S6, the flagged shell — the build plan is
+`docs/design-system/v5-2026-09-29-simplified-journey/S6-PLAN.md`, status §0i; start at its amendment A0, then WP0; (2) on the days after the deploy, read
 the first totals with `qa:journey-funnel` (read-only) — when counts appear daily, S3b is ✅ and the baseline runs to
 2026-10-15 at the earliest. In parallel: an officer approves the S2 short titles; Ali presses S1's preview switch.
 
@@ -139,6 +140,19 @@ drive (guest, SUPPORT officer, player, Owner Stop and Resume, a stranger on a li
 deploy verified, and a signed-out visitor sees nothing on production (`qa:live` 319/0 there, [E2] included). One
 press by Ali remains: `/admin/journey` → "Turn my preview on" → the bar on 50pick.tz. Then S1 is ✅.
 
+## §0i · S6 — the flagged shell (2026-10-01 →) 🔨
+
+**The plan:** [`S6-PLAN.md`](design-system/v5-2026-09-29-simplified-journey/S6-PLAN.md) — 13 work packages (WP0–WP12),
+from a read-only mapping workflow (7 researchers, a planner, an adversarial critic: 1 blocker + 9 majors, all accepted).
+Its closing "Amendments" section overrides the body. Owner-level calls are §0h points 6–17.
+
+**Order:** A0 (live fix: the away-summary link) → WP0 baseline + parity harness → WP1 words → WP2 pure modules →
+WP3 journey unread counter → WP4 captioned balance → WP5 Akaunti hub → WP6a header/tabs/guest sheet (unmounted) →
+WP6b the swap + census + header-fit → WP7 overlays → WP8 short titles on positions → WP9 Tiketi zangu → WP10 sell look
+(+ the live grace fix) → WP11 `--rail-h` → WP12 proof, merge, deploy.
+
+**Progress:** plan filed.
+
 ## §0h · Points for Ali — taken while he was away (2026-10-01 →)
 
 Ali said "proceed, taking down points, I'll be away" (2026-10-01). Every call made since then is a numbered point
@@ -156,6 +170,30 @@ here, with how to overrule it. Newest last; nothing here blocks the work.
    /admin (S2, §0d).
 5. **To confirm with finance:** a payment that lands during a break is returned "within 3 working days" on the
    canvas — the real period comes from wallet-service.
+6. **S6 header height stays 56 px** (the kit's bar), not the canvas's 64: the board's sticky filter bar, the panels
+   and S7's above-the-fold budget are built on 56.
+7. **Where the canvas drifts from the kit, the kit wins:** underline section tabs on desktop, a switch row for card size,
+   today's capsule look. Recorded so the canvas is not read as binding on those details.
+8. **The staff console link in Akaunti shows to every staff role**, SUPPORT included (SJ-23); today's avatar menu shows
+   it to Admin, Compliance and Moderator only.
+9. **"Kuwa wakala" appears in Akaunti** under the footer's own visibility rule — this overrules the footer's note "never
+   in the account menu"; recorded in COMPLIANCE-DECISIONS.
+10. **Msaada carries no phone number.** 0800 11 0011 is the national problem-gambling helpline, not 50pick's help desk,
+    so it keeps its own labelled row under Weka mipaka. This reverses the S4 panel's wording for that row; the canvas
+    is corrected to match.
+11. **Tiketi zangu for preview viewers** keeps the ticket number and all 7 filters, and drops the share button, the
+    profit strip, the yes/no bar, search and sort (shelved, not deleted).
+12. **Checking the new shell on 50pick.tz needs your staff preview** (point 4). Until then it is verified locally, and on
+    production I prove only that nothing changed for players.
+13. **Two live fixes for every player, each in its own commit:** the "away" summary's link now opens settled tickets
+    (it opened all); the sell-back countdown reads each market's own free window from the server instead of a fixed
+    5 minutes (a money-truth fix).
+14. **Balances of TZS 1,000,000 and more stay compact** ("TZS 1.3M"), as the product shows today; the canvas drew the
+    full figure.
+15. **"Pumzika / Jizuie" becomes two rows** in Akaunti: Pumzika → take a break, Jizuie → self-exclusion.
+16. **The classic notification bell is not touched until S15;** the journey's tab dot and Arifa row get their own
+    counter. Lower risk for live players; one extra request on a journey desktop page.
+17. **The phone home-screen shortcuts** (Maswali, Tiketi) change at launch, not now — that file is the same for everyone.
 
 ## §0g · S4 (2026-10-01) — the Design canvas: all eleven items drawn, the panel's findings applied; waiting on Ali
 
@@ -616,7 +654,7 @@ Status: ⬜ not started · 🔨 in progress · ✅ done and verified live · ⛔
 | S3b | Measures baseline | 🔨 | LIVE `64a63b7c` 2026-10-01 (§0f), counting from the deploy. Done when old-journey analogue counts appear daily (`qa:journey-funnel`) and the 14-day baseline clock is running. |
 | S4 | Claude Design pass | ✅ | `52afb7c8` 2026-10-01 (§0g): all eleven brief items on the Design canvas, 102 boards; the four-expert panel's findings applied (v16); BRIEF.md filed; choices 1B/2A/3A (§0h point 1). Done when frames for every new composition and undrawn state are filed and scored by the panel, and Ali has reviewed the 5 re-drawn frames. |
 | S5 | ~~Colour foundation~~ | ⛔ | Removed by R5 (50pick's look stays unchanged): no palette, font or brand work. |
-| S6 | Shell (flagged) | ⬜ | Every route keeps an entrance (route census). The header fits at 320/360/390/1024/1150/1279 × sw/en/zh × guest/signed-in. |
+| S6 | Shell (flagged) | 🔨 | Plan filed 2026-10-01 (`S6-PLAN.md`, §0i). Done when every route keeps an entrance (route census). The header fits at 320/360/390/1024/1150/1279 × sw/en/zh × guest/signed-in. |
 | S7 | Home and cards (flagged) | ⬜ | Staff see the deck's home on production. `test:journey-above-fold` is green. |
 | S8 | Bet sheet + low balance (flagged) | ⬜ | `test:bet-sheet`, V20 and the refusal matrix are green. A staff real bet works on production. |
 | S9 | Deposit, email code, waiting and return (flagged) | ⬜ | `test:deposit-return`, `test:deposit-status-read` (exactly-once while racing the webhook) and `test:email-code` are green. The card `order_id` fix is live. |
