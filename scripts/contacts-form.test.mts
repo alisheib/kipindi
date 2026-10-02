@@ -715,7 +715,10 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
   });
   await check(p(L.s7), () => {
     const page = src.page;
-    return [/actions=\{<AddContactButton hrefParams=\{linkSp\} editOpen=\{editLoad !== null\} \/>\}/.test(page)
+    // U34a · the head's actions are a fragment now — the export link, then Add contact — so the button is found inside the
+    // head's own region rather than as the whole `actions` value.
+    const head = page.slice(Math.max(0, page.indexOf("<AdminPageHead")), Math.max(0, page.indexOf("<AdminBody>")));
+    return [head.includes("actions={(") && head.includes("<AddContactButton hrefParams={linkSp} editOpen={editLoad !== null} />")
       && page.includes("<Sensitive field=\"contactPhone\" subjectId={editing.id} value={editing.msisdn} copyable />")
       && page.includes("<Sensitive field=\"contactEmail\" subjectId={editing.id} value={editing.email} />")
       && page.includes("closeHref={contactsHref(sp)}") && page.includes("const editLoad = await loadContactEdit(sp, reads);")
@@ -739,8 +742,14 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
   });
   await check(p(L.s9), () => {
     const body = CONTACTS_EMPTY.body;
+    // U34a · the ghost's head holds the export link's box too; Add contact's 40px box is found inside the head's region.
+    const head = src.loading.slice(Math.max(0, src.loading.indexOf("<AdminPageHead")), Math.max(0, src.loading.indexOf("<SkBody>")));
+    const ADD_BOX = '<div data-skeleton="contacts-add"><SkChip className="h-[40px] w-[';
+    const at = head.indexOf(ADD_BOX);
+    const end = at < 0 ? -1 : head.indexOf('px]" /></div>', at);
+    const width = at < 0 || end < 0 ? "" : head.slice(at + ADD_BOX.length, end);
     return [body.includes("Add contact") && !/Adding[^.]*not live/.test(body) && /importing a file is not live yet/.test(body)
-      && /actions=\{<div data-skeleton="contacts-add"><SkChip className="h-\[40px\] w-\[\d+px\]" \/><\/div>\}/.test(src.loading),
+      && /^[0-9]+$/.test(width),
       body];
   });
   await check(p(L.s10), async () => {

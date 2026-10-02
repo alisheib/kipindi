@@ -88,16 +88,32 @@
  *         the act gate's sentence, every "edit" link still there;
  *       LOADING — the bar's ghost is on screen under the rail's, its height RECORDED against the real bar;
  *       reduced motion at 360 — the confirmation and the overlay open, and Cancel closes the confirmation at once.
- * The rows come from `/api/dev-test/marketing-contacts-seed` (`?count=45`, `?u22=1` for the form's fixtures, and for U23
- * `?u23grant=view-only|reset` and `?u23moved=1`), through the ONE create builder the form uses. Every capture asserts what
- * it photographed first.
+ *   · U34a — THE EXPORT (`[data-block="contacts-export"]`, the page head's link; `/api/admin/contacts/export`), LAST of all:
+ *       EMPTY BOOK — no export control (asserted in the empty-book pass above, before the seed);
+ *       LOADING — the head's ghost reserves the export box beside Add contact's, the same 40px height, so the head wraps at
+ *         360 exactly as the real one and the card's top edge does not move (the U20 assertion holds it);
+ *       POPULATED, MASKED (GROWTH) — the head reads "Export CSV (masked)"; pressed on ?tag=export, the browser DOWNLOADS
+ *         50pick-contacts-<stamp>-masked.csv: the mark, CRLF, every cell quoted, the masked header with no Consent or Source,
+ *         every number +255••••NN behind the formula guard, every email masked, no number in any spelling, four rows —
+ *         the erased tombstone tagged "export" too is not among them; the same address answers X-Rows-Matched 4;
+ *       POPULATED, READER (ADMIN) — "Export CSV"; the file is full (the +255… spelling, emails as stored, Consent and Source);
+ *         the whole book's file holds exactly X-Rows-Matched rows and that is the page's "In the book";
+ *       NO-MATCH — a part of a number matches nothing: no export control, and the rail is still drawn;
+ *       ERROR — a failed read: no export control;
+ *       REFUSED — signed out, a PLAYER and FINANCE (no Growth view) each get the identical 404 "Not Found"; GROWTH's typed
+ *         ?consent= is the role refusal (403) and ?op=NOKIA the unreadable filter (400), each saying nothing was exported;
+ *       ⛔ OVER THE CEILING (more than 200,000 matching) is NOT reachable by seed on the memory twin — it is proved in-process
+ *         by `test:contacts-export` (E1, K7) and never photographed here.
+ * The rows come from `/api/dev-test/marketing-contacts-seed` (`?count=45`, `?u22=1` for the form's fixtures, for U23
+ * `?u23grant=view-only|reset` and `?u23moved=1`, and for U34a `?u34=1`), through the ONE create builder the form uses.
+ * Every capture asserts what it photographed first.
  *
  * Run: BASE=http://localhost:3010 node scripts/live/marketing-u20-contacts-drive.mjs
  * Boot (in-memory, zero prod risk; remove .next first — a stale .next 404s every /api/dev-test route):
  *   SESSION_SECRET=<32+ chars> OTP_PEPPER=<16+ chars> DISABLE_ADMIN_TOTP=true npx next dev -p 3010
  */
 import { chromium } from "playwright";
-import { mkdirSync } from "node:fs";
+import { mkdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 const BASE = process.env.BASE || "http://localhost:3010";
@@ -302,6 +318,11 @@ const VIEWPORTS = [
   { name: "360x780", width: 360, height: 780 },
 ];
 
+/** U34a · the page head — the header that holds the page's own h1 (the ghost renders the same component). */
+const HEAD = "main#main-content header:has(h1)";
+/** U34a · the empty book's head box per width, RECORDED against the ghost's head (printed with MEASURED at the end). */
+const u34EmptyHead = {};
+
 // ── EMPTY BOOK — first, while the book has nothing in it ──────────────────────────────────────
 for (const vp of VIEWPORTS) {
   console.log(`\n[u20] empty book · ${vp.name}`);
@@ -320,6 +341,10 @@ for (const vp of VIEWPORTS) {
   // U22 · the empty row tells the truth: one contact can be added by hand, and it names the button that does it.
   ok(`${vp.name} · U22 EMPTY · the empty row names "Add contact" and offers no import`,
     /Use Add contact/.test(text) && /importing a file is not live yet/.test(text) && (await page.locator('[data-block="contacts-add"]').count()) === 1, text.slice(0, 200));
+  // U34a · nothing to export: an empty book has no export control (the capture below shows it), and its head's height is
+  // RECORDED — at 360 it is one row shorter than the ghost, which reserves the export box (loading.tsx says why).
+  ok(`${vp.name} · U34a EMPTY · no export control on an empty book`, (await page.locator('[data-block="contacts-export"]').count()) === 0);
+  u34EmptyHead[vp.name] = await boxOf(page, HEAD);
   await shoot(page, `${vp.name}-empty`);
   // ── U22 · BLANK, on the EMPTY book: focus in the number (never the ✕), Consent stated, Save disabled ──
   await openAddDialog(page);
@@ -371,7 +396,11 @@ for (const vp of VIEWPORTS) {
     const ghostA = await boxOf(page, '[data-skeleton="contacts-add"]');
     // U23 · the bulk bar's ghost, under the rail's.
     const ghostB = await boxOf(page, '[data-skeleton="contacts-bulk-bar"]');
+    // U34a · the head's ghost holds the export link's box too, before Add contact's — and the whole head is measured.
+    const ghostE = await boxOf(page, '[data-skeleton="contacts-export"]');
+    const ghostHead = await boxOf(page, HEAD);
     ok(`${vp.name} · LOADING · the ghost is on screen and the real page is not yet`, !!ghostK && ghostK.h > 0 && realYet === null, JSON.stringify({ ghostK, realYet }));
+    ok(`${vp.name} · U34a LOADING · the head's ghost reserves a box for the export link`, !!ghostE && ghostE.h > 0 && ghostE.w > 0, JSON.stringify(ghostE));
     ok(`${vp.name} · U22 LOADING · the head's ghost reserves a box for "Add contact"`, !!ghostA && ghostA.h > 0 && ghostA.w > 0, JSON.stringify(ghostA));
     ok(`${vp.name} · U21 LOADING · the rail's ghost is on screen, inside the card ghost`, !!ghostR && ghostR.h > 0 && !!ghostC && ghostR.top > ghostC.top, JSON.stringify({ ghostR, ghostCTop: ghostC?.top }));
     ok(`${vp.name} · U23 LOADING · the bulk bar's ghost is on screen, under the rail's ghost`, !!ghostB && ghostB.h > 0 && !!ghostR && ghostB.top > ghostR.top, JSON.stringify({ ghostB, ghostRTop: ghostR?.top }));
@@ -384,6 +413,8 @@ for (const vp of VIEWPORTS) {
     const realR = await boxOf(page, RAIL);
     const realA = await boxOf(page, '[data-block="contacts-add"]');
     const realB = await boxOf(page, '[data-block="contacts-bulk-bar"]');
+    const realE = await boxOf(page, '[data-block="contacts-export"]');
+    const realHead = await boxOf(page, HEAD);
     // ⚠️ RECORDED, NOT ASSERTED EQUAL: the real rail is role- and data-shaped (loading.tsx says why); the delta is
     // printed in MEASURED so a reader sees how far the swap moves the table, at both widths.
     measured[vp.name] = {
@@ -392,11 +423,20 @@ for (const vp of VIEWPORTS) {
       addGhost: ghostA, addReal: realA, addWidthDelta: ghostA && realA ? Math.round((realA.w - ghostA.w) * 100) / 100 : null,
       // U23 · RECORDED, NOT ASSERTED EQUAL: the bar's buttons wrap by label width and its note wraps at 360 (loading.tsx).
       barGhostH: ghostB?.h, barRealH: realB?.h, barDelta: ghostB && realB ? Math.round((realB.h - ghostB.h) * 100) / 100 : null,
+      // U34a · the export box's width is label-shaped (GROWTH's masked label), so it is RECORDED; its height and the head's are asserted.
+      exportGhost: ghostE, exportReal: realE, exportWidthDelta: ghostE && realE ? Math.round((realE.w - ghostE.w) * 100) / 100 : null,
+      headGhostH: ghostHead?.h, headRealH: realHead?.h,
     };
     // ⭐ U22 · the button's HEIGHT is the kit's 40px rung on both sides of the swap; its width is font-shaped, so it is
     // RECORDED (MEASURED.addWidthDelta) — the header itself is held by the card-top assertion below.
     ok(`${vp.name} · U22 LOADING · the head's ghost is the real "Add contact" button's height within 1px`,
       !!ghostA && !!realA && Math.abs(ghostA.h - realA.h) <= 1, `${ghostA?.h} vs ${realA?.h}`);
+    // ⭐ U34a · THE HEAD RE-MEASURED AT DELTA 0: GROWTH's real head carries "Export CSV (masked)" beside Add contact, and at
+    // 360 the two wrap below the title exactly as the ghost's two boxes do.
+    ok(`${vp.name} · U34a LOADING · the real head says "Export CSV (masked)" on the ghost box's 40px rung, and the head is the ghost's height within 1px`,
+      (await textOf(page, '[data-block="contacts-export"]')) === "Export CSV (masked)" && !!ghostE && !!realE && Math.abs(ghostE.h - realE.h) <= 1
+        && !!ghostHead && !!realHead && Math.abs(ghostHead.h - realHead.h) <= 1,
+      `export ${ghostE?.h} vs ${realE?.h} · head ${ghostHead?.h} vs ${realHead?.h}`);
     ok(`${vp.name} · LOADING · the KPI band's height equals the real band's within 1px`,
       !!ghostK && !!realK && Math.abs(ghostK.h - realK.h) <= 1, `${ghostK?.h} vs ${realK?.h}`);
     // 🔴 OD54 · the band just measured is GROWTH's masked one, with its NEW second tile — so the two-tile rung still holds
@@ -1547,8 +1587,170 @@ for (const [vi, vp] of VIEWPORTS.entries()) {
   await ctx.close();
 }
 
+/* ══ U34a · THE EXPORT — the page head's link, the file it downloads, and the route's refusals ══════════════════════════
+   LAST of all: it reads the book as every section above left it, so each count is READ from the page and the file, never
+   assumed. Read by its own stamps (`data-block="contacts-export"`, `data-export-state`), never by a class string.
+   ⛔ More than 200,000 matching contacts is NOT reachable by seed on the memory twin (and seeding it would load this laptop
+   past its limits); `test:contacts-export` proves the disabled state (E1) and the 422 (K7) in-process instead. */
+const EXPORT = '[data-block="contacts-export"]';
+const EXPORT_PATH = "/api/admin/contacts/export";
+const CRLF = String.fromCharCode(13, 10);
+const FULL_HEAD = ["phone_e164", "name", "email", "tags", "notes", "operator", "consent", "source", "added_at"];
+const MASKED_HEAD = ["phone_masked", "name", "email_masked", "tags", "notes", "operator", "added_at"];
+/** A whole number in any spelling — what a masked file must never carry. */
+const FULL_NUMBER = /255\d{9}|(^|\D)0[67]\d{8}(\D|$)/;
+/**
+ * OUR OWN file's shape, read back for the assertions — every cell quoted, one record per CRLF (the fixture's line breaks
+ * are LF, inside quotes). ⛔ Not a CSV reader: U25's reader is proved against this file by `test:contacts-export` §C.
+ */
+function exportFile(bytes) {
+  const markBytes = bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf;
+  const text = new TextDecoder("utf-8", { ignoreBOM: true }).decode(bytes);
+  const marks = text.split(String.fromCharCode(0xfeff)).length - 1;
+  const body = text.charCodeAt(0) === 0xfeff ? text.slice(1) : text;
+  const lines = body.split(CRLF);
+  const last = lines.pop();
+  const cells = (line) => line.slice(1, -1).split('","').map((c) => c.split('""').join('"'));
+  return {
+    markBytes, marks, text, endsCrlf: last === "",
+    allQuoted: lines.length > 0 && lines.every((l) => l.length >= 2 && l.startsWith('"') && l.endsWith('"')),
+    header: lines.length > 0 ? cells(lines[0]) : [],
+    rows: lines.slice(1).map(cells),
+  };
+}
+/** Press the head's link the way a person does and catch the browser's DOWNLOAD — the route's attachment, read back. */
+async function downloadExport(page) {
+  const [d] = await Promise.all([page.waitForEvent("download", { timeout: 30000 }), page.locator(EXPORT).first().click()]);
+  return { name: d.suggestedFilename(), file: exportFile(readFileSync(await d.path())) };
+}
+/** The same address asked directly — for the headers a download event does not expose, and for the refusals. */
+async function exportAnswer(page, href) {
+  const r = await page.request.get(BASE + href);
+  const h = r.headers();
+  return { status: r.status(), matched: h["x-rows-matched"] ?? null, masked: h["x-export-masked"] ?? null, type: h["content-type"] ?? "", body: await r.text() };
+}
+const exportControl = async (page) => ({
+  count: await page.locator(EXPORT).count(),
+  text: await textOf(page, EXPORT),
+  href: await attrOf(page, EXPORT, "href"),
+  state: await attrOf(page, EXPORT, "data-export-state"),
+});
+/** ⛔ Every U34a capture asserts what it photographs first: the page's own heading, and the export control it claims (by
+ *  its label) or claims ABSENT (null). */
+async function exportShot(page, vp, name, wantLabel) {
+  const h1 = ((await page.locator("main#main-content h1").first().innerText().catch(() => "")) || "").trim();
+  const c = await exportControl(page);
+  const shows = wantLabel === null ? c.count === 0 : c.count === 1 && c.text === wantLabel;
+  ok(`${vp} · ${name} · the capture shows the Contacts heading and ${wantLabel === null ? "NO export control" : `the export control "${wantLabel}"`}`,
+    h1 === "Contacts" && shows, `h1="${h1}" control=${JSON.stringify(c)}`);
+  ok(`${vp} · ${name} · no horizontal page overflow`, (await overflowOf(page)) === 0, `${await overflowOf(page)}px`);
+  await shoot(page, `${vp}-${name}`);
+}
+
+{
+  const { ctx, page } = await staffCtx("GROWTH", "+255700003401", { width: 1280, height: 800 });
+  const s = await seed(page, "u34=1");
+  ok("U34a seed · the export fixture is in the book: four live rows and an erased tombstone, all tagged export", s.ok === true && s.inBook === 4 && s.erasedPresent === true, JSON.stringify(s));
+  await ctx.close();
+}
+
+for (const vp of VIEWPORTS) {
+  console.log(`\n[u34a] ${vp.name}`);
+  const viewport = { width: vp.width, height: vp.height };
+
+  // ── POPULATED, MASKED (GROWTH) — the head, then the file it downloads ──
+  const g = await staffCtx("GROWTH", "+255700003402", viewport);
+  await openContacts(g.page);
+  const gc = await exportControl(g.page);
+  ok(`${vp.name} · U34a MASKED · GROWTH's head offers "Export CSV (masked)", a link to the export carrying no filter on the whole book`,
+    gc.count === 1 && gc.text === "Export CSV (masked)" && gc.state === "ready" && gc.href === EXPORT_PATH, JSON.stringify(gc));
+  await exportShot(g.page, vp.name, "u34a-masked-head", "Export CSV (masked)");
+  await openContacts(g.page, "?tag=export");
+  const gHref = (await attrOf(g.page, EXPORT, "href")) ?? EXPORT_PATH;
+  ok(`${vp.name} · U34a MASKED · on ?tag=export the link carries the list's filter`, gHref === `${EXPORT_PATH}?tag=export`, gHref);
+  const gd = await downloadExport(g.page);
+  const gf = gd.file;
+  const phonesMasked = gf.rows.length === 4 && gf.rows.every((r) => /^'[+]255•{4}\d{2}$/.test(r[0]));
+  const emailsMasked = gf.rows.map((r) => r[2]).filter((e) => e !== "").every((e) => /^.•{4}@example[.]com$/.test(e));
+  ok(`${vp.name} · U34a MASKED · the browser DOWNLOADS ${gd.name}: the mark once, CRLF, every cell quoted, the masked header (no Consent, no Source), four rows, every number +255••••NN behind the guard, every email masked, no number in any spelling`,
+    /^50pick-contacts-\d{4}(-\d{2}){5}-masked[.]csv$/.test(gd.name) && gf.markBytes && gf.marks === 1 && gf.endsCrlf && gf.allQuoted
+      && JSON.stringify(gf.header) === JSON.stringify(MASKED_HEAD) && phonesMasked && emailsMasked && !FULL_NUMBER.test(gf.text)
+      && !gf.text.includes("asha.export@example.com"),
+    `${gd.name} · head [${gf.header.join(",")}] · ${gf.rows.length} rows · first ${JSON.stringify(gf.rows[0])}`);
+  ok(`${vp.name} · U34a MASKED · the erased tombstone tagged "export" is not in the file, and no cell is an unguarded formula`,
+    gf.rows.every((r) => r[0] !== "'+255••••99") && gf.rows.flat().every((cell) => !/^[=+@-]/.test(cell)) && gf.rows.some((r) => r[1] === "'=SUM(1,2)"),
+    gf.rows.map((r) => r[1]).join(" | "));
+  const gh = await exportAnswer(g.page, gHref);
+  ok(`${vp.name} · U34a MASKED · the same address answers 200 text/csv, X-Rows-Matched 4, X-Export-Masked true`,
+    gh.status === 200 && gh.type.startsWith("text/csv") && gh.matched === "4" && gh.masked === "true", JSON.stringify({ ...gh, body: gh.body.slice(0, 40) }));
+  // ── REFUSED · GROWTH's typed consent filter (D19), and an unknown value (C2) ──
+  const roleR = await exportAnswer(g.page, `${EXPORT_PATH}?consent=GIVEN`);
+  const nokiaR = await exportAnswer(g.page, `${EXPORT_PATH}?op=NOKIA`);
+  ok(`${vp.name} · U34a REFUSED · GROWTH's ?consent= is the role refusal (403) and ?op=NOKIA the unreadable filter (400), each saying nothing was exported`,
+    roleR.status === 403 && /isn.t available to your role/.test(roleR.body) && /Nothing was exported[.]$/.test(roleR.body)
+      && nokiaR.status === 400 && nokiaR.body.includes("“op”") && /Nothing was exported[.]$/.test(nokiaR.body),
+    `${roleR.status} ${JSON.stringify(roleR.body.slice(0, 80))} · ${nokiaR.status} ${JSON.stringify(nokiaR.body.slice(0, 80))}`);
+  // ── NO-MATCH — a part of a number matches nothing: no export control, the rail still drawn ──
+  await openContacts(g.page, `?q=${encodeURIComponent("0711000")}`);
+  ok(`${vp.name} · U34a NO-MATCH · nothing matches: no export control, and the rail is still drawn`,
+    (await g.page.locator("[data-contact-row]").count()) === 0 && (await railGroups(g.page)).length > 0 && (await g.page.locator(EXPORT).count()) === 0,
+    `[${await railGroups(g.page)}]`);
+  await exportShot(g.page, vp.name, "u34a-no-match", null);
+  // ── ERROR — a failed read offers no export ──
+  await seed(g.page, "fault=1");
+  await openContacts(g.page);
+  ok(`${vp.name} · U34a ERROR · a failed read offers no export control`,
+    /Couldn.t load the contact book/i.test(await mainText(g.page)) && (await g.page.locator(EXPORT).count()) === 0);
+  await exportShot(g.page, vp.name, "u34a-error", null);
+  await seed(g.page, "fault=0");
+  await g.ctx.close();
+
+  // ── POPULATED, READER (ADMIN) — the head, the export leg on the whole book, and the full file ──
+  const a = await staffCtx("ADMIN", "+255700003403", viewport);
+  await openContacts(a.page);
+  const ac = await exportControl(a.page);
+  ok(`${vp.name} · U34a READER · ADMIN's head offers "Export CSV"`, ac.count === 1 && ac.text === "Export CSV" && ac.href === EXPORT_PATH, JSON.stringify(ac));
+  await exportShot(a.page, vp.name, "u34a-reader-head", "Export CSV");
+  const book = await inTheBook(a.page);
+  const wd = await downloadExport(a.page);
+  const wh = await exportAnswer(a.page, EXPORT_PATH);
+  ok(`${vp.name} · U34a READER · the export leg: the whole book's file holds exactly X-Rows-Matched data rows, and that is the page's "In the book" (${book}) — no erased tombstone among them`,
+    book > 0 && wd.file.rows.length === book && wh.matched === String(book) && wh.masked === "false"
+      && !wd.file.text.includes("766000001") && !wd.file.text.includes("764000099"),
+    `${wd.file.rows.length} rows · X-Rows-Matched ${wh.matched} · In the book ${book}`);
+  await openContacts(a.page, "?tag=export");
+  const ad = await downloadExport(a.page);
+  const af = ad.file;
+  ok(`${vp.name} · U34a READER · the full file: no -masked in its name, the full header (Consent and Source), every number the +255… spelling behind the guard, the emails as stored`,
+    /^50pick-contacts-\d{4}(-\d{2}){5}[.]csv$/.test(ad.name) && JSON.stringify(af.header) === JSON.stringify(FULL_HEAD) && af.rows.length === 4
+      && af.rows.every((r) => /^'[+]2557640000\d{2}$/.test(r[0])) && af.text.includes("asha.export@example.com")
+      && af.rows.every((r) => r[6] === "Not recorded" && r[7] === "Added by staff"),
+    `${ad.name} · head [${af.header.join(",")}] · first ${JSON.stringify(af.rows[0])}`);
+  await a.ctx.close();
+}
+
+// ── U34a · REFUSED — the identical 404 for every caller the route does not let in ──
+{
+  console.log(`\n[u34a] the route's 404s`);
+  const anon = await browser.newContext();
+  const anonPage = await anon.newPage();
+  const player = await staffCtx("PLAYER", "+255700003404", { width: 1280, height: 800 });
+  const finance = await staffCtx("FINANCE", "+255700003405", { width: 1280, height: 800 });
+  const answers = [];
+  for (const [who, page] of [["signed out", anonPage], ["PLAYER", player.page], ["FINANCE", finance.page]]) {
+    const r = await exportAnswer(page, EXPORT_PATH);
+    answers.push({ who, status: r.status, body: r.body, type: r.type });
+  }
+  ok(`U34a REFUSED · signed out, a PLAYER and FINANCE (no Growth view) each get the identical 404 "Not Found" — no file, no mark`,
+    answers.every((x) => x.status === 404 && x.body === "Not Found" && !x.type.startsWith("text/csv")), JSON.stringify(answers));
+  await anon.close();
+  await player.ctx.close();
+  await finance.ctx.close();
+}
+
 await browser.close();
 console.log(`\nMEASURED ${JSON.stringify(measured)}`);
+console.log(`\nMEASURED-U34A empty-book head ${JSON.stringify(u34EmptyHead)} (against each width's headGhostH above)`);
 console.log(`\nu20-contacts-drive: ${pass} passed, ${fail} failed`);
 console.log(`shots: ${SHOTS}`);
 if (fail) process.exitCode = 1;

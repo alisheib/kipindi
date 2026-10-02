@@ -1,5 +1,5 @@
 /**
- * /api/dev-test/marketing-contacts-seed — fill the contact book, for the U20/U21/U22/U23 visual drive.
+ * /api/dev-test/marketing-contacts-seed — fill the contact book, for the U20/U21/U22/U23/U34a visual drive.
  *
  * ⛔ 404 IN PRODUCTION, like every other route under `dev-test/` (`test:cert-devroutes`). It is reachable only
  * where `NODE_ENV` is not `production`, which on this platform means a developer's own machine.
@@ -25,6 +25,10 @@
  *                        reason; `reset` takes the view away again
  *   POST ?u23moved=1   — U23's moved audience: ONE more contact (tag "moved", on 0769 000 0NN, which nothing else uses),
  *                        added between the bulk bar's preview and its confirmation so the server's recount refuses it
+ *   POST ?u34=1        — U34a's export fixture, idempotent: four live contacts tagged "export" (on 0764 000 0NN, which
+ *                        nothing else uses) carrying the file's hard cases — a comma and doubled quotes in a name, a name
+ *                        that is a formula, one already guarded, a line break in a note, emails to mask — and an ERASED
+ *                        tombstone tagged "export" too, so a drive filtering ?tag=export must download exactly four rows
  */
 import { NextResponse } from "next/server";
 import { db } from "@/lib/server/store";
@@ -148,6 +152,51 @@ async function seedU23Moved(): Promise<{ moved: number }> {
   return { moved: -1 };
 }
 
+/* ═══ U34a · the export's drive fixture ═════════════════════════════════════════════════════════════ */
+
+/** On 0764 000 0NN — the 45-row seed never uses 076, U22's fixtures use 076 6 / 076 7 and U23's 0769. */
+const u34Number = (k: number) => `07640000${String(k).padStart(2, "0")}`;
+const LF = String.fromCharCode(10);
+/** The file's hard cases: a comma and doubled quotes in a name, a name that IS a formula, a name already guarded, a line
+ *  break inside a note, a note that leads with a dash, two emails to mask, and a contact with neither name nor email. */
+const U34_ROWS: Array<{ k: number; name: string | null; email: string | null; notes: string | null; tags: string[] }> = [
+  { k: 1, name: 'Asha "Mama" Export, Dar', email: "asha.export@example.com", notes: "Line one" + LF + "Line two, with a comma", tags: ["export", "vip"] },
+  { k: 2, name: "=SUM(1,2)", email: "formula.export@example.com", notes: null, tags: ["export"] },
+  { k: 3, name: "'=already guarded", email: null, notes: "-starts with a dash", tags: ["export"] },
+  { k: 4, name: null, email: null, notes: null, tags: ["export"] },
+];
+
+/** The four through the ONE builder and the ONE mirror, then the tombstone — `sourceRef` the erasure mark, in no file (C3).
+ *  Answers what is IN THE BOOK afterwards (the live rows found, and whether the tombstone is there), never a constant. */
+async function seedU34(): Promise<{ inBook: number; erasedPresent: boolean; erasedNumber: string }> {
+  const at = new Date("2026-09-25T08:00:00.000Z").toISOString();
+  for (const r of U34_ROWS) {
+    const parsed = parseTzNumber(u34Number(r.k));
+    if (parsed.verdict !== "ok" || !parsed.msisdn || (await db.marketingContact.findByMsisdn(parsed.msisdn))) continue;
+    await db.marketingContact.create(newContactRow({
+      number: parsed, rawInput: u34Number(r.k), displayName: r.name, email: r.email, tags: r.tags, notes: r.notes,
+      source: "OPERATOR", sourceRef: null, importId: null, officerId: null, at,
+    }, `mc_seed_export_${r.k}`));
+    await mirrorContactCache(parsed.msisdn, at);
+  }
+  const erased = parseTzNumber(u34Number(99));
+  if (erased.verdict === "ok" && erased.msisdn && !(await db.marketingContact.findByMsisdn(erased.msisdn))) {
+    await db.marketingContact.create(newContactRow({
+      number: erased, rawInput: erased.msisdn, displayName: null, email: null, tags: ["export"], notes: null,
+      source: "IMPORT", sourceRef: ERASURE_EVIDENCE, importId: null, officerId: null, at,
+    }, "mc_seed_export_erased"));
+    await mirrorContactCache(erased.msisdn, at);
+  }
+  let inBook = 0;
+  for (const r of U34_ROWS) {
+    const parsed = parseTzNumber(u34Number(r.k));
+    const row = parsed.verdict === "ok" && parsed.msisdn ? await db.marketingContact.findByMsisdn(parsed.msisdn) : null;
+    if (row && row.sourceRef !== ERASURE_EVIDENCE && row.tags.includes("export")) inBook++;
+  }
+  const tomb = erased.verdict === "ok" && erased.msisdn ? await db.marketingContact.findByMsisdn(erased.msisdn) : null;
+  return { inBook, erasedPresent: tomb?.sourceRef === ERASURE_EVIDENCE, erasedNumber: u34Number(99) };
+}
+
 const NAMES = ["Asha Mwakalinga", "Baraka Juma", null, "Neema Kileo", "Juma Hassan", "Rehema Said", null, "Daudi Mrisho", "Zawadi Ally", "Faraja Mushi"];
 const PREFIXES = ["071", "074", "075", "068", "062", "065", "078", "061"];
 const CONSENT: StoredMarketingContact["consentState"][] = ["UNKNOWN", "GIVEN", "UNKNOWN", "WITHDRAWN", "GIVEN"];
@@ -175,6 +224,9 @@ export async function POST(req: Request) {
   }
   if (url.searchParams.get("u23moved") !== null) {
     return NextResponse.json({ ok: true, ...(await seedU23Moved()) });
+  }
+  if (url.searchParams.get("u34") !== null) {
+    return NextResponse.json({ ok: true, ...(await seedU34()) });
   }
   const count = Math.max(0, Math.min(200, Number(url.searchParams.get("count") ?? "45") || 0));
   const base = Date.parse("2026-09-01T08:00:00.000Z");

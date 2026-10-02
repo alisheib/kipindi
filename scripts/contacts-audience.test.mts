@@ -12,7 +12,9 @@
  *      and two spellings of one filter are one key. 2.16 · the ONE role rule (`roleRefusal`, D19 / A1.1 / OD54), at its
  *      home: every player axis refused by name to a masked viewer — `suppressed` among them since OD54 — none to a reader.
  *   §3 ⭐ ONE COUNT (the Accept): for twelve filters the list's total, count(), breakdown().total, the keyset walk
- *      and the union of the pages are one number. U34 (export) and U40 (recount) each add their reader to READERS.
+ *      and the union of the pages are one number. U34a added THE EXPORT LEG (its plan line): for every filter an
+ *      address can carry, the file a reader downloads holds X-Rows-Matched data rows, parsed back through U25's real
+ *      reader, and that number is the list's. U40 (recount) adds its reader to READERS in its own commit.
  *   §4 the KEYSET walk survives a row written between two calls; §5 the audit and describe forms never print a number.
  *   §6 (commit 2) THE CACHE: `consentState` and `suppressedAt` are a copy of the ledger and the stop list, so every src
  *      writer of either store calls `mirrorContactCache` (the population, over the real tree) — and each writer is
@@ -53,6 +55,9 @@ import { stopMarketing, resumeMarketing, mintOptOutToken } from "../src/lib/serv
 import { recordPlayerMarketingChoice } from "../src/lib/server/marketing/consent.ts";
 import { appendMarketingConsent } from "../src/lib/server/marketing/consent-ledger.ts";
 import { toMsisdn255 } from "../src/lib/phone-normalize.ts";
+import { exportContactsCsv, CONTACTS_EXPORT_DEPS } from "../src/lib/server/contacts/export.ts";
+import type { ContactsExportDeps, ContactsExportViewer } from "../src/lib/server/contacts/export.ts";
+import { decodeBytes, parseCsv } from "../src/lib/contacts/import-parse.ts";
 
 const PROVE_RED = process.argv.includes("--prove-red");
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -85,8 +90,9 @@ const TWINS = new Set([STORE, PRISMA_DAL]);
 /** ⭐ THE DECLARED READERS — every src file that reads the book through the resolver. U23 (bulk recount), U34
  *  (export walk), U38/U40 (counts, recount) and U42 (enqueue walk) each APPEND their file in their own commit.
  *  U23 (S10, 2026-10-02): `contact-bulk.ts` — the bulk bar's recount, its preview sample and its per-number walk; its
- *  set-based writes reach the store's `…Where` members through `contactAudienceWrites` (audience.ts), never directly. */
-const READERS = [LOADER, "lib/server/marketing/contact-bulk.ts"];
+ *  set-based writes reach the store's `…Where` members through `contactAudienceWrites` (audience.ts), never directly.
+ *  U34a (S10, 2026-10-02): `contacts/export.ts` — the export's count and its keyset walk, capped at the audited count. */
+const READERS = [LOADER, "lib/server/marketing/contact-bulk.ts", "lib/server/contacts/export.ts"];
 
 /** The book's SET readers — the members that return many rows or count them. Point lookups (`find`,
  *  `findByMsisdn`, `listByUserId`, `listMemberships`) are not a path from a filter. */
@@ -338,6 +344,29 @@ async function pageUnion(a: ContactAudience, perPage: number): Promise<string[]>
   return ids;
 }
 
+/* ═══ U34a · THE EXPORT LEG — the file, counted twice: by its header and by U25's REAL reader ═════════════════ */
+
+/** A viewer as the export route lets one in, at the `read` cell — so a consent, source or player filter is theirs to ask. */
+const EXPORT_READER: ContactsExportViewer = { userId: "usr_audience_reader", role: "ADMIN", cell: "read" };
+/** The export's audit rows are not this suite's subject (`test:contacts-export` holds them): every row reads as recorded. */
+const RECORDED = (async () => ({ recorded: true })) as unknown as ContactsExportDeps["audit"];
+const EXPORT_LEG = "the export (X-Rows-Matched = the data rows parsed back)";
+/**
+ * The export's total for a filter — or -1 when its two counts disagree: X-Rows-Matched (the count the audit recorded)
+ * against the data rows U25's REAL reader parses back out of the body (its header row taken off). null when the filter
+ * cannot travel in an address: a ticked selection is not exportable (X27), exactly as the list cannot be asked for one.
+ */
+async function exportTotal(f: ContactAudienceFilter, audience: ContactsExportDeps["audience"]): Promise<number | null> {
+  const params = contactAudienceParams(f);
+  if (params === null) return null;
+  const res = await exportContactsCsv({ viewer: EXPORT_READER, params, now: NOW }, { ...CONTACTS_EXPORT_DEPS, audience, audit: RECORDED });
+  if (res.status !== 200) return -1;
+  const matched = Number(res.headers.get("X-Rows-Matched"));
+  const read = parseCsv(decodeBytes(new Uint8Array(await res.arrayBuffer()), "utf-8"));
+  const parsed = read.ok ? read.file.rows.length - 1 : -2;
+  return parsed === matched ? parsed : -1;
+}
+
 const REAL_READERS: Reader[] = [
   {
     name: "the list (loadContacts)",
@@ -352,6 +381,8 @@ const REAL_READERS: Reader[] = [
   { name: "breakdown().total", total: async (_f, a) => (await a.breakdown()).total },
   { name: "the keyset walk (limit 2)", total: async (_f, a) => (await walkAll(a, 2)).length },
   { name: "the page union (perPage 3)", total: async (_f, a) => (await pageUnion(a, 3)).length },
+  // ⭐ U34a · the export leg: the list's total = X-Rows-Matched = the rows parsed back.
+  { name: EXPORT_LEG, total: async (f) => exportTotal(f, (g) => contactAudience(g)) },
 ];
 
 const REAL: Impl = {
@@ -827,6 +858,11 @@ if (!PROVE_RED) {
       name: "R11 · a count from another path — the whole book's total stands in for the filter's",
       expect: [LABEL.l3],
       impl: { ...REAL, readers: REAL_READERS.map((r) => (r.name === "count()" ? { ...r, total: async () => (await db.marketingContact.summaryWhere(toAudienceWhere(WHOLE_BOOK))).total } : r)) },
+    },
+    {
+      name: "R22 · U34a · the export counts another audience — its X-Rows-Matched and its file are the whole book's, whatever the filter",
+      expect: [LABEL.l3],
+      impl: { ...REAL, readers: REAL_READERS.map((r) => (r.name === EXPORT_LEG ? { ...r, total: async (f: ContactAudienceFilter) => exportTotal(f, () => contactAudience(WHOLE_BOOK)) } : r)) },
     },
     {
       name: "R12 · an offset walk — page offsets instead of a keyset",

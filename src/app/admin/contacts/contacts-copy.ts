@@ -14,6 +14,10 @@
  * Admin chrome is English; the Swahili gloss for this section sits on `AdminPageHead`
  * ("Anwani", copied from `src/app/admin/invites/[id]/page.tsx:88`), not on the empty state —
  * `EmptyState`'s `titleSw`/`bodySw` props are accepted for back-compat and NEVER rendered.
+ *
+ * ⭐ U34a · AND THE EXPORT'S — the page head's link (its label says "masked" for a role that may not read a number), the
+ * one over-the-ceiling sentence the page and the route both say, and what the route answers when it sends no file. The
+ * file's own Consent and Source cells read `CONSENT_LABEL` and `SOURCE_LABEL` below, so the file and the page say one word.
  */
 import type { ContactConsentState, ContactSource } from "@/lib/server/store";
 import { adminCount, formatNumber } from "@/lib/utils";
@@ -442,4 +446,28 @@ export function bulkResultLine(r: Pick<BulkOutcome, "action" | "matched" | "chan
   const gone = r.matched - r.changed - r.unchanged - r.full;
   if (gone > 0) parts.push(`${formatNumber(gone)} no longer in the book`);
   return parts.join(" · ");
+}
+
+/* ═══ U34a · THE EXPORT — the page head's link, and what the export route says when it sends no file ═════════════ */
+
+/**
+ * The export link's words. ⛔ THE LABEL SAYS "masked" for a role that may not read a number: a CSV carries no eye and no
+ * tooltip, so the button is the one place the officer learns which file is coming (the file's header says it too). Each
+ * refusal ends by saying that nothing was sent. ⛔ English only: no Swahili is invented for these (§5.13).
+ */
+export const CONTACTS_EXPORT = {
+  label: "Export CSV",
+  labelMasked: "Export CSV (masked)",
+  title: (n: number) => `Download all ${adminCount(n, "matching contact")} as a CSV file. Each download is recorded.`,
+  /** For every viewer who may not read a number — a masked cell's file masks them, a `none` cell's leaves them out. */
+  titleMasked: (n: number) =>
+    `Download all ${adminCount(n, "matching contact")} as a CSV file. Numbers and emails are never in full — masked like +255••••01, or left out. Each download is recorded.`,
+  nothingSent: "Nothing was exported.",
+  unreadable: (param: string, reason: string) => `The “${param}” filter in this address can't be used. ${reason} Nothing was exported.`,
+  unrecorded: "The export could not be recorded, so no file was sent. Try again in a minute.",
+} as const;
+
+/** ⛔ OVER THE CEILING — ONE sentence, both numbers named: the page's disabled control shows it, the route's 422 says it. */
+export function contactsExportTooMany(matched: number, max: number): string {
+  return `Too many to export at once: ${formatNumber(matched)} contacts match, and one file holds at most ${formatNumber(max)}. Narrow the filter.`;
 }

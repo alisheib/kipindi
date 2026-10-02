@@ -1,12 +1,20 @@
 /**
- * /admin/contacts — the marketing address book (U17 doors, U20 the list, U21 the filter rail, U22 the form, U23 bulk).
+ * /admin/contacts — the marketing address book (U17 doors, U20 the list, U21 the filter rail, U22 the form, U23 bulk,
+ * U34a the export).
  *
  * WHAT THIS PAGE IS TODAY, so nobody reads more into it: the book, server-paged, searchable by a WHOLE
  * number or by name, sortable by name, prefix and date, filterable from one rail — ONE contact at a time
  * added or edited by hand (U22: "Add contact" in the page head, `?edit=<contact id>` for the dialog over the
- * list, opened from each row's "edit" link) — and a selection acted on in bulk (U23: the select column and the bar —
- * tag, untag, add to a list, record a withdrawal, suppress, remove). There is no way to import a file yet (U25–U32),
- * to record a consent (U33) or to export (U34), and this page promises none of it.
+ * list, opened from each row's "edit" link) — a selection acted on in bulk (U23: the select column and the bar —
+ * tag, untag, add to a list, record a withdrawal, suppress, remove) — and every contact the filter matches downloaded
+ * as a CSV file (U34a: "Export CSV" in the page head). There is no way to import a file yet (U25–U32) or to record a
+ * consent (U33), and this page promises neither.
+ * ⭐ U34a · THE EXPORT LINK CARRIES THE LIST'S OWN FILTER (`contactsExportHref`: U24's ONE address writer, a relative
+ * window already absolute), so the file is exactly what the list matched — never a ticked selection (X27). It is on
+ * screen only when that read arrived WITH rows: no control on an empty book, a filter that matches nothing, a refused
+ * filter or a failed read. Its label says "(masked)" for a viewer who may not read a number — the file masks the
+ * number and the email for that viewer and carries no Consent or Source column (`src/lib/server/contacts/export.ts`).
+ * Over the ceiling it stays on screen, disabled, with the reason beside it.
  * ⭐ U23 · THE SELECTION HOLDS SERVER-PROJECTED ROWS (`contactSelectionRow`: id, name, the number MASKED for every role),
  * never a stored row, so no raw number reaches the browser through it; "select all N matching" holds the FILTER (its
  * canonical key). Every count the bar confirms is the server's (`contact-bulk.ts`), recounted at the run.
@@ -60,6 +68,7 @@ import { MAX_AUDIENCE_IDS } from "@/lib/server/marketing/audience";
 import { contactFilterAudienceKey, contactFilterIdentity, contactSelectionRow } from "@/lib/server/marketing/contact-bulk";
 import { formatDate } from "@/lib/utils";
 import {
+  CONTACTS_EXPORT, contactsExportTooMany,
   CONTACTS_EMPTY, CONTACTS_NO_MATCH, CONTACTS_NO_MATCH_FILTERED, CONTACTS_SEARCH_PLACEHOLDER, CONTACTS_FILTERED_LEAD,
   CONTACTS_FILTER_UNREADABLE, CONTACTS_FILTER_NOT_FOR_ROLE, CONSENT_LABEL, SOURCE_LABEL, CONTACTS_BULK, CONTACTS_KPI_RECENT,
 } from "./contacts-copy";
@@ -72,6 +81,8 @@ import { AddContactButton, ContactEditDialog } from "./contact-form";
 import { ContactsSelectionProvider } from "./contacts-selection-provider";
 import { ContactRowSelect, ContactPageSelect } from "./contact-row-select";
 import { ContactsBulkBar } from "./contacts-bulk-bar";
+import { Button } from "@/components/ui/button";
+import { contactsExportHref, CONTACTS_EXPORT_MAX } from "@/lib/server/contacts/export";
 
 type ContactsSP = ContactsParams;
 
@@ -112,6 +123,37 @@ async function reachOf(c: StoredMarketingContact): Promise<{ ok: boolean; label:
     // ⛔ A gate that could not answer is not a yes.
     return { ok: false, label: "Not reachable" };
   }
+}
+
+/**
+ * U34a · THE PAGE HEAD'S EXPORT CONTROL. A plain anchor, never a client navigation: the route answers a download
+ * (`Content-Disposition: attachment`), not a page. It sits on the kit's 40px rung beside "Add contact" (`btn-sm`), and
+ * its label says "(masked)" for a viewer who may not read a number. ⛔ OVER THE CEILING it is the kit's DISABLED Button
+ * with its reason beside it — a disabled control is a button, never a dead link (the desk head's idiom), and the reason
+ * is the same sentence the route's 422 says.
+ */
+function ContactsExportControl({ href, matched, reads }: { href: string; matched: number; reads: boolean }) {
+  const label = reads ? CONTACTS_EXPORT.label : CONTACTS_EXPORT.labelMasked;
+  if (matched > CONTACTS_EXPORT_MAX) {
+    const reason = contactsExportTooMany(matched, CONTACTS_EXPORT_MAX);
+    return (
+      <span data-block="contacts-export" data-export-state="over" className="inline-flex flex-wrap items-center gap-2">
+        <span id="contacts-export-reason" className="text-body-sm text-text-secondary max-w-[38ch]">{reason}</span>
+        <Button type="button" size="sm" variant="ghost" disabled aria-describedby="contacts-export-reason" title={reason}>{label}</Button>
+      </span>
+    );
+  }
+  return (
+    <a
+      href={href}
+      className="btn btn-ghost btn-sm admin-focus"
+      data-block="contacts-export"
+      data-export-state="ready"
+      title={reads ? CONTACTS_EXPORT.title(matched) : CONTACTS_EXPORT.titleMasked(matched)}
+    >
+      {label}
+    </a>
+  );
 }
 
 async function AdminContactsContent({ searchParams }: { searchParams: Promise<ContactsSP> }) {
@@ -168,6 +210,10 @@ async function AdminContactsContent({ searchParams }: { searchParams: Promise<Co
   const clearSearchHref = contactsHref(sp, { q: null });
   const clearFiltersHref = contactsClearFiltersHref(sp);
   const refusedCopy = refused?.refusal === "role" ? CONTACTS_FILTER_NOT_FOR_ROLE : CONTACTS_FILTER_UNREADABLE;
+  // ⭐ U34a · THE EXPORT: the filter this list was read with, as the export route's address — offered only when that read
+  // arrived WITH rows (no control on an empty book, a filter that matches nothing, a refused filter or a failed read).
+  const exportable = listed !== null && listed.result.total > 0 ? listed : null;
+  const exportHref = exportable !== null ? contactsExportHref(exportable.filter) : null;
   // ⭐ U21 · built for EVERY state (a refused filter, a failed read), from the address — the options only when the
   // read arrived. Drawn below on `!emptyBook` alone.
   const rail = contactRail({
@@ -186,8 +232,21 @@ async function AdminContactsContent({ searchParams }: { searchParams: Promise<Co
       {/* The gloss is COPIED, never invented (§5.13): "Anwani" is the shipped Swahili beside the exact
           English word "Contacts" — `src/app/admin/invites/[id]/page.tsx:88`.
           ⭐ U22 · "Add contact" lives in the head, DISABLED with its reason for a role that cannot act — never hidden
-          (`useActDisabledReason`). It carries the page's link params, so its duplicate link keeps the filters. */}
-      <AdminPageHead title="Contacts" sw="Anwani" actions={<AddContactButton hrefParams={linkSp} editOpen={editLoad !== null} />} />
+          (`useActDisabledReason`). It carries the page's link params, so its duplicate link keeps the filters.
+          ⭐ U34a · "Export CSV" sits before it, on the same 40px rung — at 360 the two wrap below the title together, which
+          is why the loading ghost reserves a box for each (`loading.tsx`). */}
+      <AdminPageHead
+        title="Contacts"
+        sw="Anwani"
+        actions={(
+          <>
+            {exportable !== null && exportHref !== null && (
+              <ContactsExportControl href={exportHref} matched={exportable.result.total} reads={reads} />
+            )}
+            <AddContactButton hrefParams={linkSp} editOpen={editLoad !== null} />
+          </>
+        )}
+      />
 
       <AdminBody>
         {/* ⭐ THE WHOLE BOOK, never the filtered view.

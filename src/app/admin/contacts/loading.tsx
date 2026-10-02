@@ -22,6 +22,13 @@ import { SkBody, SkBar, SkChip, SkKpiRow, SkTableCard } from "@/components/admin
  * ⭐ U22 · THE HEAD RESERVES "ADD CONTACT". The real page puts a `size="sm"` button in `AdminPageHead`'s actions — the
  * kit's 40px rung (`--h-control-sm`) — so the ghost holds a box of that height and about that width, or the header
  * would grow (or wrap at 360) the moment the page swapped in. The drive measures the two boxes at both widths.
+ * ⭐ U34a · AND "EXPORT CSV" BEFORE IT. On a book with matching rows the real head puts the export link — the same 40px
+ * rung — before "Add contact", and at 360 the two no longer fit beside the title, so they wrap below it TOGETHER. The
+ * ghost therefore holds a second box of that height and about the masked label's width (GROWTH's, the measured view), so
+ * it wraps at 360 exactly as the real head does and the card's top edge does not move. ⚠️ NOT EQUAL IN EVERY STATE, said
+ * rather than hidden: an empty book, a filter that matches nothing and a failed read render NO export control, so at 360
+ * their head is one row shorter than this ghost. A ghost cannot know the book is empty; the populated book is the state
+ * the drive measures at delta 0, and it RECORDS the empty book's difference.
  * ⭐ U23 · THE BULK BAR'S GHOST sits under the rail's, as the bar sits above the table: the count line, the six action
  * buttons on the kit's 40px rung, and the one-line consent note, at the real bar's padding. The table gains the select
  * column (nine ghost columns: the reader's eight and the box). Like the rail, the bar's height is NOT equal by
@@ -37,7 +44,12 @@ export default function Loading() {
       <AdminPageHead
         title="Contacts"
         sw="Anwani"
-        actions={<div data-skeleton="contacts-add"><SkChip className="h-[40px] w-[124px]" /></div>}
+        actions={(
+          <>
+            <div data-skeleton="contacts-export"><SkChip className="h-[40px] w-[160px]" /></div>
+            <div data-skeleton="contacts-add"><SkChip className="h-[40px] w-[124px]" /></div>
+          </>
+        )}
       />
       <SkBody>
         <div data-skeleton="contacts-kpis">
