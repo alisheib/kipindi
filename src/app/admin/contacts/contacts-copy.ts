@@ -338,7 +338,15 @@ export const CONTACTS_BULK = {
   selectRow: (label: string) => `Select ${label}`,
   editRow: (label: string) => `Edit ${label}`,
   selected: (n: number, offPage: number) =>
-    (offPage > 0 ? `${formatNumber(n)} selected · ${formatNumber(offPage)} on another page` : `${formatNumber(n)} selected`),
+    (offPage > 0 ? `${formatNumber(n)} selected · ${formatNumber(offPage)} not on this page` : `${formatNumber(n)} selected`),
+  /** Review F5: "select all matching" replaces ticks made elsewhere — they survive only inside this filter, and the bar says so. */
+  ticksReplaced: (n: number) => (n === 1
+    ? "1 ticked contact not on this page stays selected only if it matches this filter."
+    : `${formatNumber(n)} ticked contacts not on this page stay selected only if they match this filter.`),
+  /** The typed confirmation of an unfiltered "all matching" (review F3). */
+  wholeBook: "Every contact in the book.",
+  /** Every action's hover line while one request is in flight. */
+  busyTitle: "Wait — the last action is still running.",
   selectAllMatching: (n: number) => `Select all ${formatNumber(n)} matching`,
   allMatching: (n: number) => `All ${formatNumber(n)} matching selected`,
   filterChanged: "The filter changed, so the selection of every matching contact was cleared.",
@@ -379,7 +387,9 @@ export function bulkActionState(
   if (!s.mayAct) return { disabled: true, title: s.actReason ?? CONTACT_ROLE_REFUSAL };
   if (s.count === 0) return { disabled: true, title: CONTACTS_BULK.noneTitle };
   if (isPerRowAction(action) && s.count > s.perRowMax) return { disabled: true, title: CONTACTS_BULK.perRowCap(s.perRowMax) };
-  return { disabled: s.busy, title: BULK_COPY[action].hint };
+  // A disabled button always says why — even for the moment a request is in flight (review nit, 2026-10-02).
+  if (s.busy) return { disabled: true, title: CONTACTS_BULK.busyTitle };
+  return { disabled: false, title: BULK_COPY[action].hint };
 }
 
 /** "and 30 more" under an enumerated confirmation — null when every row is named. */

@@ -3840,7 +3840,8 @@ export const prismaDb = {
       let gone = 0;
       let afterId: string | null = null;
       for (;;) {
-        const ids = (await pc().marketingContact.findMany({
+        // ⚠️ Typed: `afterId` is narrowed from this very array at the loop's foot, so an inferred `ids` is circular (TS7022).
+        const ids: string[] = (await pc().marketingContact.findMany({
           where: afterId === null ? where : { AND: [where, { id: { gt: afterId } }] },
           select: { id: true }, orderBy: { id: "asc" }, take: CONTACT_BULK_CHUNK,
         })).map((r) => r.id);

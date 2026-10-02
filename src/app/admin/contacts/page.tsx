@@ -54,7 +54,7 @@ import type { StoredMarketingContact } from "@/lib/server/store";
 import { mayReceiveMarketingSms } from "@/lib/server/marketing/consent";
 import type { MarketingSkipReason } from "@/lib/server/marketing/consent";
 import { MAX_AUDIENCE_IDS } from "@/lib/server/marketing/audience";
-import { contactFilterAudienceKey, contactSelectionRow } from "@/lib/server/marketing/contact-bulk";
+import { contactFilterAudienceKey, contactFilterIdentity, contactSelectionRow } from "@/lib/server/marketing/contact-bulk";
 import { formatDate } from "@/lib/utils";
 import {
   CONTACTS_EMPTY, CONTACTS_NO_MATCH, CONTACTS_NO_MATCH_FILTERED, CONTACTS_SEARCH_PLACEHOLDER, CONTACTS_FILTERED_LEAD,
@@ -144,7 +144,11 @@ async function AdminContactsContent({ searchParams }: { searchParams: Promise<Co
   // role (`contactSelectionRow`) — so the client never receives a stored row.
   const pageRows = rows.map(contactSelectionRow);
   // ⭐ U23 · "select all N matching" stores the FILTER — its canonical key — and only when the list read arrived.
-  const matching = listed !== null ? { key: contactFilterAudienceKey(listed.filter), total: listed.result.total } : null;
+  // ⚠️ `identity` is the filter AS THE ADDRESS WROTE IT (a preset's name, never the instants it resolves to — those move
+  // every minute), and decides "the filter changed"; `key` is what a run posts (review F6).
+  const matching = listed !== null
+    ? { key: contactFilterAudienceKey(listed.filter), identity: contactFilterIdentity(listed.filter, sp), total: listed.result.total }
+    : null;
   const selectable = !failed && !emptyBook;
   // ⛔ D19: the gate is not even asked for a viewer who may not see its answer.
   const reach = reads ? await Promise.all(rows.map(reachOf)) : [];
@@ -179,18 +183,30 @@ async function AdminContactsContent({ searchParams }: { searchParams: Promise<Co
       <AdminPageHead title="Contacts" sw="Anwani" actions={<AddContactButton hrefParams={linkSp} editOpen={editLoad !== null} />} />
 
       <AdminBody>
-        {/* ⭐ THE WHOLE BOOK, never the filtered view. */}
-        <div data-block="contacts-kpis"><KpiGrid>
-          <AdminKpi label="In the book" value={failed ? "" : s!.total.toLocaleString()} unavailable={failed} />
-          <AdminKpi label="Consent given" value={failed ? "" : s!.given.toLocaleString()} unavailable={failed} tone={!failed && s!.given > 0 ? "success" : undefined} />
-          <AdminKpi
-            label="No consent"
-            value={failed ? "" : (s!.unknown + s!.withdrawn).toLocaleString()}
-            unavailable={failed}
-            delta={failed || s!.withdrawn === 0 ? undefined : `${s!.withdrawn.toLocaleString()} withdrawn`}
-          />
-          <AdminKpi label="Suppressed" value={failed ? "" : s!.suppressed.toLocaleString()} unavailable={failed} />
-        </KpiGrid></div>
+        {/* ⭐ THE WHOLE BOOK, never the filtered view.
+            🔴 D19 / A1.1 — THE CONSENT SPLIT IS A READER'S (U23 review F1, 2026-10-02). A1.1 kept whole-book counts for
+            every role ("a count over the book is not a per-number answer"), and U22's add and U23's one-row writes broke
+            that premise: tick ONE row, record a withdrawal, and whether "Consent given" fell, "No consent" rose or nothing
+            moved says what that row was — and until U33 only a player writes GIVEN. A viewer who may not read a number
+            gets the book's size and its stops, in two tiles that hold the four-tile band's rows (`1-lg2`). */}
+        {reads ? (
+          <div data-block="contacts-kpis"><KpiGrid>
+            <AdminKpi label="In the book" value={failed ? "" : s!.total.toLocaleString()} unavailable={failed} />
+            <AdminKpi label="Consent given" value={failed ? "" : s!.given.toLocaleString()} unavailable={failed} tone={!failed && s!.given > 0 ? "success" : undefined} />
+            <AdminKpi
+              label="No consent"
+              value={failed ? "" : (s!.unknown + s!.withdrawn).toLocaleString()}
+              unavailable={failed}
+              delta={failed || s!.withdrawn === 0 ? undefined : `${s!.withdrawn.toLocaleString()} withdrawn`}
+            />
+            <AdminKpi label="Suppressed" value={failed ? "" : s!.suppressed.toLocaleString()} unavailable={failed} />
+          </KpiGrid></div>
+        ) : (
+          <div data-block="contacts-kpis" data-kpis-masked><KpiGrid cols="1-lg2">
+            <AdminKpi label="In the book" value={failed ? "" : s!.total.toLocaleString()} unavailable={failed} />
+            <AdminKpi label="Suppressed" value={failed ? "" : s!.suppressed.toLocaleString()} unavailable={failed} />
+          </KpiGrid></div>
+        )}
 
         <div data-block="contacts-card"><AdminCard padding="p-0">
           {/* ⭐ U23 · THE SELECTION wraps the bar and the table, so the row boxes and the bar read one state — and it keeps its

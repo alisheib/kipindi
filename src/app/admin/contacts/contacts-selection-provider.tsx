@@ -6,7 +6,7 @@
  *
  * ⭐ TWO SHAPES, ONE AUDIENCE (decision C6). ROWS: a Map of SERVER-PROJECTED rows (`{ id, name, masked }` — the number
  * masked for every role, by the server's `contactSelectionRow`), kept ACROSS pages and filters, so the bar can say "3
- * selected · 1 on another page". MATCHING: "select all N matching" stores the FILTER — U24's audience JSON, built on the
+ * selected · 1 not on this page". MATCHING: "select all N matching" stores the FILTER — U24's audience JSON, built on the
  * server — never a list of ids, and the server RECOUNTS it at the run, so a filter that grew is refused rather than
  * half-applied. Either way `audience()` is what the bar posts.
  * ⛔ THE CAP IS U24's (`MAX_AUDIENCE_IDS`, handed in by the page — one cap, decision C6): ticking past it is refused and
@@ -22,8 +22,10 @@ import * as React from "react";
 import type { ContactSelectionRow } from "@/lib/contacts/bulk-rules";
 import { CONTACTS_BULK } from "./contacts-copy";
 
-/** The page's filter, as the server built it: its canonical key (U24's audience JSON, serialised) and its match count. */
-export type ContactsMatching = { key: string; total: number };
+/** The page's filter, as the server built it: its canonical key (U24's audience JSON, serialised — what a run posts), its
+ *  IDENTITY (the filter as the address wrote it — a preset's name, not the minute it resolved to — which decides "the
+ *  filter changed"; review F6) and its match count. */
+export type ContactsMatching = { key: string; identity: string; total: number };
 
 type Ctx = {
   mode: "rows" | "matching";
@@ -72,9 +74,10 @@ export function ContactsSelectionProvider({
 
   // ⛔ "ALL MATCHING" BELONGS TO ONE FILTER. When the page's filter changes (a pill, the search box, a refused or failed
   // read), the stored one no longer describes what is on screen: it is cleared, and the bar says so.
-  const matchingKey = matching?.key ?? null;
+  // ⚠️ Compared by IDENTITY, never by key: a rolling window's key moves every minute while the filter stays put (F6).
+  const matchingKey = matching?.identity ?? null;
   React.useEffect(() => {
-    if (chosen !== null && chosen.key !== matchingKey) {
+    if (chosen !== null && chosen.identity !== matchingKey) {
       setChosen(null);
       setNote(CONTACTS_BULK.filterChanged);
     }
@@ -131,10 +134,13 @@ export function ContactsSelectionProvider({
 
   const selectAllMatching = React.useCallback(() => {
     if (matching === null) return;
-    setNote(null);
+    // ⛔ NEVER LET GO OF A TICK SILENTLY (review F5): ticks off this page may belong to another filter, and "all matching"
+    // replaces them with THIS filter — the bar says which survive.
+    const offPage = [...rows.keys()].filter((id) => !pageIds.includes(id)).length;
+    setNote(offPage > 0 ? CONTACTS_BULK.ticksReplaced(offPage) : null);
     setRows(new Map());
     setChosen(matching);
-  }, [matching]);
+  }, [matching, rows, pageIds]);
 
   const clear = React.useCallback(() => {
     setNote(null);

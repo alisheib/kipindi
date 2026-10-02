@@ -60,7 +60,7 @@
  *       EDIT LINK — every row's "edit" link is ?edit=<that row's id> with the filter and the sort kept, no page, no number;
  *         pressed once, it opens that contact's dialog;
  *       TICKED ACROSS PAGES — two rows, the header box indeterminate; the pager (a client navigation) keeps them:
- *         "3 selected · 2 on another page";
+ *         "3 selected · 2 not on this page";
  *       CONFIRM · ENUMERATE — 22 ticked rows: the server names twenty, every number masked, then "and 2 more", no typed word;
  *       SELECT ALL N MATCHING — the whole page ticked offers it; pressed, "All N matching selected"; a search change clears it,
  *         and the bar says so;
@@ -398,6 +398,12 @@ for (const vp of VIEWPORTS) {
   const numbers = await page.locator(`[data-contact-row] td:nth-child(${COL.number})`).allInnerTexts();
   ok(`${vp.name} · POPULATED · every number is masked +255••••NN for GROWTH`, numbers.length === 20 && numbers.every((t) => MASK.test(t.trim())), numbers.slice(0, 3).join(" | "));
   ok(`${vp.name} · POPULATED · GROWTH has NO eye and NO copy control`, (await page.locator("button.sensitive-reveal").count()) === 0);
+  // 🔴 D19 / A1.1 (U23 review F1): with one-row writes, a whole-book consent count answers per row — a masked role gets none.
+  const kpisMasked = await page.locator('[data-block="contacts-kpis"]').innerText();
+  ok(`${vp.name} · POPULATED · F1 · GROWTH's KPI band is the book's size and its stops only — no Consent given, no No consent, no withdrawn count`,
+    /In the book/i.test(kpisMasked) && /Suppressed/i.test(kpisMasked) && !/consent/i.test(kpisMasked) && !/withdrawn/i.test(kpisMasked)
+      && (await page.locator('[data-block="contacts-kpis"][data-kpis-masked]').count()) === 1,
+    kpisMasked.replace(/\s+/g, " "));
   // 🔴 D19 · a role that may not read a number gets no row-by-row player signal.
   const headGrowth = await page.locator('[data-block="contacts-card"] thead').innerText();
   ok(`${vp.name} · D19 · GROWTH sees NO Consent, Reachable or Source column and NO Player chip (D19 + A1.1)`,
@@ -625,6 +631,11 @@ for (const vp of VIEWPORTS) {
   const eyes = await adm.page.locator('button[aria-label="Reveal Contact number"]').count();
   const copies = await adm.page.locator('button[aria-label="Copy Contact number"]').count();
   ok(`${vp.name} · ADMIN · every row has the eye AND Copy`, eyes === 20 && copies === 20, `${eyes} eyes, ${copies} copies`);
+  const kpisReader = await adm.page.locator('[data-block="contacts-kpis"]').innerText();
+  ok(`${vp.name} · ADMIN · F1 · the reader's KPI band keeps all four tiles — In the book, Consent given, No consent, Suppressed`,
+    /In the book/i.test(kpisReader) && /Consent given/i.test(kpisReader) && /No consent/i.test(kpisReader) && /Suppressed/i.test(kpisReader)
+      && (await adm.page.locator('[data-kpis-masked]').count()) === 0,
+    kpisReader.replace(/\s+/g, " "));
   const headAdmin = await adm.page.locator('[data-block="contacts-card"] thead').innerText();
   ok(`${vp.name} · ADMIN · the role that may read a number sees Reachable and Source`, /reachable/i.test(headAdmin) && /source/i.test(headAdmin));
   const reach = await adm.page.locator(`[data-contact-row] td:nth-child(${COL.reach})`).allInnerTexts();
@@ -1026,9 +1037,19 @@ for (const [vi, vp] of VIEWPORTS.entries()) {
   console.log(`\n[u23] ${vp.name}`);
   const viewport = { width: vp.width, height: vp.height };
   const { ctx, page } = await staffCtx("GROWTH", "+255700002009", viewport);
+  // ⭐ THE CONSOLE IS PINNED TO ENGLISH (2026-10-02): this officer last chose Swahili on the player site. Every kit word
+  // U23 borrows through `useT()` — the typed confirmation's label, a dialog's Cancel — must still read English after
+  // hydration, when an unpinned provider would have read this cookie and switched.
+  await ctx.addCookies([{ name: "kp-locale", value: "sw", url: BASE }]);
 
   // ── NONE SELECTED — the sentence, the six actions on screen and disabled WITH their reason, the boxes named ──
   await openContacts(page);
+  const langOf = await page.evaluate(() => ({
+    cookie: document.cookie.includes("kp-locale=sw"),
+    lang: document.querySelector("main#main-content")?.closest("[lang]")?.getAttribute("lang") ?? null,
+  }));
+  ok(`${vp.name} · U23 ENGLISH · with a Swahili player cookie in this browser, the console still declares lang="en" around its content`,
+    langOf.cookie && langOf.lang === "en", JSON.stringify(langOf));
   const none = await actionStates(page);
   ok(`${vp.name} · U23 NONE · the bar says what ticking does and holds nothing; all six actions are ON SCREEN, disabled, each saying "Tick at least one contact"`,
     (await barLine(page)) === BAR_NONE && (await barCount(page)) === 0 && (await barMode(page)) === "rows"
@@ -1087,9 +1108,9 @@ for (const [vi, vp] of VIEWPORTS.entries()) {
   await page.locator('a[href*="page=2"]').first().click();
   await waitForParams(page, { page: "2" });
   await tickRow(page, 0);
-  ok(`${vp.name} · U23 TICKED · on page 2 the two from page 1 are still held: "3 selected · 2 on another page"`,
-    (await barLine(page)) === "3 selected · 2 on another page" && (await barCount(page)) === 3, await barLine(page));
-  await barShot(page, vp.name, "u23-ticked-pages", "3 selected · 2 on another page");
+  ok(`${vp.name} · U23 TICKED · on page 2 the two from page 1 are still held: "3 selected · 2 not on this page"`,
+    (await barLine(page)) === "3 selected · 2 not on this page" && (await barCount(page)) === 3, await barLine(page));
+  await barShot(page, vp.name, "u23-ticked-pages", "3 selected · 2 not on this page");
 
   // ── CONFIRM · ENUMERATE — up to fifty ticked rows are NAMED by the server: twenty, masked, then "and N more" ──
   await tickPage(page);

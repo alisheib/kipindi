@@ -243,8 +243,8 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
       && (page.match(/c\.msisdn/g) ?? []).length === 2 && page.includes('mayReceiveMarketingSms("+" + c.msisdn)'));
   ok(p("7b · the Operator header says it sorts by the prefix"),
     page.includes('<SortTh field="operator" label="Operator (by prefix)"'));
-  ok(p("7c · a failed read is AdminLoadError and \"unavailable\" tiles — never a zero"),
-    page.includes('<AdminLoadError what="the contact book" />') && (page.match(/unavailable=\{failed\}/g) ?? []).length === 4);
+  ok(p("7c · a failed read is AdminLoadError and \"unavailable\" tiles — never a zero — on all six: the reader's four and the masked viewer's two (OD53)"),
+    page.includes('<AdminLoadError what="the contact book" />') && (page.match(/unavailable=\{failed\}/g) ?? []).length === 6);
   ok(p("7d · the search box is the shared SearchBox, in url mode"), page.includes('<SearchBox mode="url"'));
 
   // ── 8 · (moved) THE TWINS MATCH A NUMBER EXACTLY ───────────────────────────────────────────────

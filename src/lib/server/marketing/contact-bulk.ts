@@ -73,6 +73,8 @@ export const BULK_SENTENCES = {
   confirmRequired: (n: number) => `Type ${n} to confirm — the number of contacts this changes. Nothing was changed.`,
   confirmMismatch: (n: number, typed: string) =>
     `The selection changed: it now holds ${formatNumber(n)} contacts — you confirmed ${typed}. Nothing was changed; review it again.`,
+  walkChanged: (n: number, counted: number) =>
+    `The selection changed while it was being read: it now holds ${formatNumber(n)} contacts, not ${formatNumber(counted)}. Nothing was changed; review it again.`,
   noList: "Choose a list, or name a new one.",
   noSuchList: "That list isn't in the book any more. Choose another, or name a new one.",
   listExists: (name: string) => `A list called “${name}” already exists — two names that differ only in capitals are one list. Choose it instead.`,
@@ -149,6 +151,20 @@ export function contactSelectionRow(c: Pick<StoredMarketingContact, "id" | "disp
  */
 export function contactFilterAudienceKey(f: ContactAudienceFilter): string {
   return contactAudienceKey({ ...f, ids: null });
+}
+
+/**
+ * WHICH FILTER the page shows, for the selection's "the filter changed" (U23 review F6, 2026-10-02): the audience key
+ * with its Added window as the ADDRESS wrote it — `range`, `from`, `to` — never the instants a preset resolves to. A
+ * rolling window ("last 7 days") resolves to new instants every minute, so a key built from them cleared "all matching"
+ * and said the filter had changed when nothing had. The key a run POSTS stays the resolved one, captured at selection.
+ */
+export function contactFilterIdentity(f: ContactAudienceFilter, sp: Record<string, string | string[] | undefined>): string {
+  const first = (v: string | string[] | undefined): string | null => (Array.isArray(v) ? v[0] ?? null : v ?? null);
+  return JSON.stringify([
+    contactAudienceKey({ ...f, ids: null, addedFrom: null, addedBefore: null }),
+    first(sp.range)?.toLowerCase() ?? null, first(sp.from), first(sp.to),
+  ]);
 }
 
 /** Is the audience nothing but ticked rows? A filter — or a filter beside ids — is a filter, and takes the typed tier. */
@@ -284,11 +300,13 @@ const keyOf = (identifier: string): MessagingKey => ({ channel: "SMS", identifie
  * every other number gets one WITHDRAWN row. Either way the player who holds the number, if any, has their own switch
  * turned OFF through the ONE writer (C5) — a repair when the ledger already said it — and the book's cache is mirrored.
  */
-async function withdrawEach(f: ContactAudienceFilter, officerId: string, runId: string, at: string): Promise<ContactBulkCount> {
-  const out: ContactBulkCount = { matched: 0, changed: 0, unchanged: 0, full: 0 };
+async function withdrawEach(rows: StoredMarketingContact[], officerId: string, runId: string, at: string, out: ContactBulkCount): Promise<void> {
   const evidence = BULK_EVIDENCE_PREFIX + runId;
-  for (const c of await audienceRows(f)) {
+  for (const c of rows) {
     out.matched++;
+    // ⛔ THE MIRROR RUNS IN `finally` (review F2, 2026-10-02): a failure after this number's ledger row — the player's
+    // switch, say — must not leave its book row reading GIVEN until some other writer happens by.
+    try {
     const latest = await db.messagingConsent.latestFor(keyOf(c.msisdn));
     if (latest?.status === "WITHDRAWN") {
       out.unchanged++;
@@ -309,9 +327,10 @@ async function withdrawEach(f: ContactAudienceFilter, officerId: string, runId: 
       out.changed++;
     }
     await syncPlayerToggle(c.msisdn, false, { kind: "officer", officerId, runRef: evidence });
-    await mirrorContactCache(c.msisdn, at);
+    } finally {
+      await mirrorContactCache(c.msisdn, at);
+    }
   }
-  return out;
 }
 
 /**
@@ -321,11 +340,11 @@ async function withdrawEach(f: ContactAudienceFilter, officerId: string, runId: 
  * store's re-arm rule), and counts as changed. Then the cache: `suppressedAt` becomes the stop's own time.
  */
 async function suppressEach(
-  f: ContactAudienceFilter, officerId: string, runId: string, at: string, reason: SuppressionReason,
-): Promise<ContactBulkCount> {
-  const out: ContactBulkCount = { matched: 0, changed: 0, unchanged: 0, full: 0 };
-  for (const c of await audienceRows(f)) {
+  rows: StoredMarketingContact[], officerId: string, runId: string, at: string, reason: SuppressionReason, out: ContactBulkCount,
+): Promise<void> {
+  for (const c of rows) {
     out.matched++;
+    try {
     const active = await db.suppression.find(keyOf(c.msisdn));
     if (active !== null && active.reason !== "WITHDRAWN") {
       out.unchanged++;
@@ -344,9 +363,10 @@ async function suppressEach(
       });
       out.changed++;
     }
-    await mirrorContactCache(c.msisdn, at);
+    } finally {
+      await mirrorContactCache(c.msisdn, at);
+    }
   }
-  return out;
 }
 
 const AUDIT_VERB: Record<ContactBulkAction, string> = {
@@ -379,6 +399,13 @@ export async function runContactBulk(
     if (req.typed === null) return refuse("confirm_required", BULK_SENTENCES.confirmRequired(count), undefined, count);
     if (req.typed !== tier.word) return refuse("confirm_mismatch", BULK_SENTENCES.confirmMismatch(count, req.typed), undefined, count);
   }
+  // ⛔ THE WALK MUST HOLD WHAT WAS COUNTED (review F4, 2026-10-02). The cap and the typed word bind the RECOUNT, and a
+  // per-number action walks its rows afterwards: a filter audience can gain rows in between (a new id sorts after the
+  // cursor), or lose some. Nobody confirmed THAT set, so it is refused — the rows are walked BEFORE any write.
+  const rows = isPerRowAction(req.action) ? await audienceRows(req.audience) : [];
+  if (isPerRowAction(req.action) && rows.length !== count) {
+    return refuse("confirm_mismatch", BULK_SENTENCES.walkChanged(rows.length, count), undefined, rows.length);
+  }
 
   const at = deps.now().toISOString();
   const runId = deps.newRunId();
@@ -387,7 +414,26 @@ export async function runContactBulk(
   let listId: string | null = null;
   let listName: string | null = null;
   let listCreated = false;
-  let done: ContactBulkCount;
+  // The per-number loops count into THIS object, so a run that dies mid-way still knows how far it got.
+  const out: ContactBulkCount = { matched: 0, changed: 0, unchanged: 0, full: 0 };
+  const writeAudit = (counts: ContactBulkCount | null, partial: boolean) => deps.audit({
+    category: req.action === "withdraw" || req.action === "suppress" ? "COMPLIANCE" : "ADMIN",
+    action: `contacts.bulk.${AUDIT_VERB[req.action]}`,
+    actorId: officerId,
+    targetType: "MarketingContact",
+    targetId: runId,
+    payload: {
+      audience: deps.describe(req.audience),
+      confirmed: count,
+      ...(counts !== null ? { matched: counts.matched, changed: counts.changed, unchanged: counts.unchanged, full: counts.full } : {}),
+      // A tag is officer text within the tag alphabet — digits allowed — so it is written through the same scrub.
+      ...(tag !== null ? { tag: auditContactAudience({ ...WHOLE_BOOK, tags: [tag] }).tags } : {}),
+      ...(listId !== null ? { listId, listCreated } : {}),
+      ...(partial ? { partial: true } : {}),
+    },
+  });
+  let done: ContactBulkCount = out;
+  try {
   if (req.action === "tag" && tag !== null) {
     done = await contactAudienceWrites(req.audience).tag(tag, CONTACT_LIMITS.tags, stamp);
   } else if (req.action === "untag" && tag !== null) {
@@ -410,31 +456,21 @@ export async function runContactBulk(
   } else if (req.action === "remove") {
     done = await contactAudienceWrites(req.audience).remove();
   } else if (req.action === "withdraw") {
-    done = await withdrawEach(req.audience, officerId, runId, at);
+    await withdrawEach(rows, officerId, runId, at, out);
   } else if (req.action === "suppress") {
-    done = await suppressEach(req.audience, officerId, runId, at, deps.suppressionReason);
+    await suppressEach(rows, officerId, runId, at, deps.suppressionReason, out);
   } else {
     return refuse("bad_request", BULK_SENTENCES.badRequest);
   }
+  } catch (err) {
+    // ⛔ A RUN THAT DIES MID-WAY STILL LEAVES ITS ONE AUDIT ROW (review F2, 2026-10-02) — marked `partial`, with how far a
+    // per-number loop got (a set-based statement's partial count is unknown, so none is claimed). The ledger rows and
+    // stops it did write carry `contacts-bulk:<runId>` as evidence; the error itself goes on to the action.
+    await writeAudit(isPerRowAction(req.action) ? out : null, true).catch(() => undefined);
+    throw err;
+  }
 
-  await deps.audit({
-    category: req.action === "withdraw" || req.action === "suppress" ? "COMPLIANCE" : "ADMIN",
-    action: `contacts.bulk.${AUDIT_VERB[req.action]}`,
-    actorId: officerId,
-    targetType: "MarketingContact",
-    targetId: runId,
-    payload: {
-      audience: deps.describe(req.audience),
-      confirmed: count,
-      matched: done.matched,
-      changed: done.changed,
-      unchanged: done.unchanged,
-      full: done.full,
-      // A tag is officer text within the tag alphabet — digits allowed — so it is written through the same scrub.
-      ...(tag !== null ? { tag: auditContactAudience({ ...WHOLE_BOOK, tags: [tag] }).tags } : {}),
-      ...(listId !== null ? { listId, listCreated } : {}),
-    },
-  });
+  await writeAudit(done, false);
   return { ok: true, action: req.action, matched: done.matched, changed: done.changed, unchanged: done.unchanged, full: done.full, listName };
 }
 

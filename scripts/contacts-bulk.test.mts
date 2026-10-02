@@ -11,8 +11,10 @@
  *           cap, record a withdrawal (the Accept: a player refused no_consent, a stranger consent_withdrawn), remove (the
  *           memory twin's emulated cascade and freed index; evidence kept; the erased tombstone in no audience, C3);
  *   B11–B16 one cap, one audit row through U24's describer, the parser's named keys, D19's role rule on a POSTed filter,
- *           the masked withdrawal reply (A1.1), the server's selection projection, the filter key.
- * Then the source, for what only the source can show (S1–S7): the gated actions, the act-gated bar (its button states
+ *           the masked withdrawal reply (A1.1), the server's selection projection, the filter key;
+ *   B17–B19 the adversarial review's fixes (2026-10-02): a run that dies mid-way keeps its ONE audit row (partial) and
+ *           mirrors the number it died on; the walk must hold what was counted; a rolling window's IDENTITY.
+ * Then the source, for what only the source can show (S1–S10): the gated actions, the act-gated bar (its button states
  * EXECUTED), the server's tier in the confirmation, no raw number in a client file, the page's select column and each
  * row's edit link (EXECUTED through the ONE href builder), the copy, the ghost, the pin and the wiring.
  *
@@ -36,10 +38,10 @@ import type { StoredMarketingContact, StoredUser, MessagingKey } from "../src/li
 import { mayReceiveMarketingSms } from "../src/lib/server/marketing/consent.ts";
 import { isSmsConsentWording, SMS_CONSENT_WORDINGS } from "../src/lib/marketing/consent-wording.ts";
 import {
-  contactAudience, contactAudienceKey, parseContactAudienceJson, MAX_AUDIENCE_IDS, WHOLE_BOOK,
+  contactAudience, contactAudienceKey, parseContactAudienceJson, parseContactAudienceParams, MAX_AUDIENCE_IDS, WHOLE_BOOK,
 } from "../src/lib/server/marketing/audience.ts";
 import {
-  parseBulkRequest, previewContactBulk, runContactBulk, contactBulkReply, contactSelectionRow, contactFilterAudienceKey,
+  parseBulkRequest, previewContactBulk, runContactBulk, contactBulkReply, contactSelectionRow, contactFilterAudienceKey, contactFilterIdentity,
   isTicksOnly, CONTACT_BULK_DEPS, OFFICER_WITHDRAWAL_WORDING, BULK_EVIDENCE_PREFIX,
 } from "../src/lib/server/marketing/contact-bulk.ts";
 import type { ContactBulkDeps, ContactBulkRequest } from "../src/lib/server/marketing/contact-bulk.ts";
@@ -89,6 +91,7 @@ type Impl = {
   reply: typeof contactBulkReply;
   project: typeof contactSelectionRow;
   actionState: typeof bulkActionState;
+  identity: typeof contactFilterIdentity;
   sources: Sources;
 };
 
@@ -105,7 +108,7 @@ const TEST_DEPS: ContactBulkDeps = { ...CONTACT_BULK_DEPS, audit: captureAudit, 
 
 const REAL: Impl = {
   deps: TEST_DEPS, parse: parseBulkRequest, reply: contactBulkReply, project: contactSelectionRow,
-  actionState: bulkActionState, sources: REAL_SOURCES,
+  actionState: bulkActionState, identity: contactFilterIdentity, sources: REAL_SOURCES,
 };
 
 let pass = 0, fail = 0;
@@ -300,6 +303,12 @@ const L = {
   s5: "S5 · the page: the select column first (9 / 6 columns), the provider around the bar and the table with U24's cap, the bar on any read book — and every row's edit link is contactsHref with edit = the row's id (EXECUTED: the id travels, the filters and the sort ride along, page drops, no digits of a number)",
   s6: "S6 · the copy says what the server does: Suppress's permanence in words, the remove's kept records, no \"record consent\" action and the bar's sentence saying why, the result line server-counted",
   s7: "S7 · the ghost holds nine columns and the bar's row; bulk-rules.ts is pure (no directive, ./contact-fields alone) and pinned; the suite is wired into predeploy right after test:contacts-form",
+  b17: "B17 · ⭐ A RUN THAT DIES MID-WAY STILL LEAVES ITS ONE AUDIT ROW (review F2): a withdrawal of three whose second player-switch write fails rejects — one audit row, partial, with how far it got (matched 2, changed 2), the number it died on mirrored WITHDRAWN (the mirror runs in finally), the third untouched",
+  b18: "B18 · ⛔ THE WALK MUST HOLD WHAT WAS COUNTED (review F4): a suppression whose recount said 2 while its walk finds 3 is refused confirm_mismatch with expected 3 — and none of the three numbers has a stop",
+  b19: "B19 · the filter's IDENTITY ignores the minute a rolling window resolves to (review F6): range=7d a minute apart is two keys and ONE identity; 24h, a pill or a typed date is another identity; a typed date is one identity at any hour",
+  s8: "S8 · the selection clears “all matching” on the filter's IDENTITY, never its key (F6), and “select all matching” says when it may let go of ticks made elsewhere (F5) — the copy executed, “not on this page”",
+  s9: "S9 · the confirmation says “and N more” only below a listed sample and names the whole book when nothing narrows it (F3); a button disabled by a request in flight says why (EXECUTED)",
+  s10: "S10 · 🔴 D19 / A1.1 · the KPI band's consent split is a READER's (F1): a masked viewer's band is In the book and Suppressed only, in the 1-lg2 rung that holds the four-tile band's rows; a reader's keeps all four",
 } as const;
 
 async function runAssertions(impl: Impl, tag: string): Promise<void> {
@@ -580,6 +589,59 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
       key];
   });
 
+  /* ── B17–B19 · THE ADVERSARIAL REVIEW'S FIXES (2026-10-02) ─────────────────────────────────────────────── */
+  await fresh(L.b17, async () => {
+    // The player's switch write fails — the memory twin's own `update`, wrapped for this check and put back in `finally`.
+    const users = db.user as unknown as { update: (id: string, patch: unknown) => unknown };
+    const realUpdate = users.update;
+    const before = captured.length;
+    users.update = (id: string, patch: unknown) => {
+      if (id === "usr_b_player") throw new Error("planted: the player's switch could not be written");
+      return realUpdate.call(db.user, id, patch);
+    };
+    let threw = "";
+    try {
+      await run({ action: "withdraw", audience: { ids: ["mc_b_000", "mc_b_player", "mc_b_stranger"] }, typed: null });
+    } catch (err) {
+      threw = (err as Error)?.message ?? String(err);
+    } finally {
+      users.update = realUpdate;
+    }
+    const rows = captured.slice(before) as Array<{ action?: string; payload?: Record<string, unknown> }>;
+    const a = rows[0];
+    const first = await db.marketingContact.find("mc_b_000");
+    const player = await db.marketingContact.find("mc_b_player");
+    const stranger = await db.marketingContact.find("mc_b_stranger");
+    const strangerWord = await db.messagingConsent.latestFor(mkey(N.stranger));
+    return [threw.startsWith("planted") && rows.length === 1 && a?.action === "contacts.bulk.consent_withdrawn"
+      && a?.payload?.partial === true && a?.payload?.matched === 2 && a?.payload?.changed === 2 && a?.payload?.unchanged === 0
+      && first?.consentState === "WITHDRAWN" && player?.consentState === "WITHDRAWN"
+      && stranger?.consentState === "GIVEN" && strangerWord?.status === "GIVEN",
+      JSON.stringify({ threw, audits: rows.length, payload: a?.payload, first: first?.consentState, player: player?.consentState, stranger: stranger?.consentState })];
+  });
+  await fresh(L.b18, async () => {
+    // The recount says 2; the walk then finds the 3 that are really there — the shape of a filter that grew in between.
+    const r = await run({ action: "suppress", audience: { ids: ["mc_b_005", "mc_b_006", "mc_b_007"] }, typed: null }, true, { ...impl.deps, count: async () => 2 });
+    const stops = await Promise.all([5, 6, 7].map((i) => db.suppression.find(mkey(numberOf(i)))));
+    return [!r.ok && r.reason === "confirm_mismatch" && r.expected === 3 && stops.every((x) => x === null), outcome(r)];
+  });
+  await check(p(L.b19), () => {
+    const at = (ms: number, sp: Record<string, string>) => {
+      const r = parseContactAudienceParams(sp, ms);
+      if (!r.ok) throw new Error(`refused: ${r.param}`);
+      return { key: contactFilterAudienceKey(r.filter), id: impl.identity(r.filter, sp) };
+    };
+    const t0 = NOW.getTime();
+    const a = at(t0, { range: "7d" });
+    const b = at(t0 + 60_000, { range: "7d" });
+    const c = at(t0, { range: "24h" });
+    const d = at(t0, { range: "7d", op: "VODACOM" });
+    const e = at(t0, { from: "2026-09-01" });
+    const e2 = at(t0 + 3_600_000, { from: "2026-09-01" });
+    return [a.key !== b.key && a.id === b.id && a.id !== c.id && a.id !== d.id && e.id === e2.id && e.id !== a.id,
+      JSON.stringify({ keysMove: a.key !== b.key, oneIdentity: a.id === b.id, rangeDiffers: a.id !== c.id, pillDiffers: a.id !== d.id, typedDate: e.id === e2.id })];
+  });
+
   /* ── S1–S7 · THE SOURCE ──────────────────────────────────────────────────────────────────────────── */
   const src = impl.sources;
   await check(p(L.s1), () => {
@@ -665,6 +727,34 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
       && scripts["test:contacts-bulk"] === "tsx scripts/contacts-bulk.test.mts" && scripts["red:contacts-bulk"] === "tsx scripts/contacts-bulk.test.mts --prove-red"
       && (scripts.predeploy ?? "").includes("npm run test:contacts-form && npm run test:contacts-bulk &&"),
       `imports [${imports}] · ${scripts["test:contacts-bulk"]}`];
+  });
+  await check(p(L.s8), () => {
+    const pv = src.provider;
+    const byIdentity = pv.includes("chosen.identity !== matchingKey") && pv.includes("matching?.identity ?? null") && !pv.includes("chosen.key !== matchingKey");
+    const notes = pv.includes("CONTACTS_BULK.ticksReplaced(offPage)");
+    const copy = CONTACTS_BULK.ticksReplaced(1) === "1 ticked contact not on this page stays selected only if it matches this filter."
+      && CONTACTS_BULK.ticksReplaced(3) === "3 ticked contacts not on this page stay selected only if they match this filter."
+      && CONTACTS_BULK.selected(3, 2) === "3 selected · 2 not on this page" && CONTACTS_BULK.selected(3, 0) === "3 selected";
+    return [byIdentity && notes && copy, JSON.stringify({ byIdentity, notes, copy })];
+  });
+  await check(p(L.s9), () => {
+    const tailGated = src.bar.includes("const tail = p.sample.length > 0 ? enumerateTail(p.count, p.sample.length) : null;");
+    const whole = src.bar.includes("CONTACTS_BULK.wholeBook") && CONTACTS_BULK.wholeBook === "Every contact in the book.";
+    const busy = impl.actionState("tag", { mayAct: true, actReason: undefined, count: 3, perRowMax: BULK_PER_ROW_MAX, busy: true });
+    const idle = impl.actionState("tag", { mayAct: true, actReason: undefined, count: 3, perRowMax: BULK_PER_ROW_MAX, busy: false });
+    return [tailGated && whole && busy.disabled && busy.title === CONTACTS_BULK.busyTitle && !idle.disabled && idle.title === BULK_COPY.tag.hint,
+      JSON.stringify({ tailGated, whole, busy, idle })];
+  });
+  await check(p(L.s10), () => {
+    const page = src.page;
+    const m = page.indexOf("data-kpis-masked");
+    const masked = m < 0 ? "" : page.slice(m, page.indexOf("</KpiGrid>", m));
+    const r = page.indexOf('<div data-block="contacts-kpis"><KpiGrid>');
+    const reader = r < 0 ? "" : page.slice(r, page.indexOf("</KpiGrid>", r));
+    return [page.includes("{reads ? (") && masked.includes('cols="1-lg2"') && masked.includes('label="In the book"') && masked.includes('label="Suppressed"')
+      && !/consent|withdrawn/i.test(masked)
+      && ["In the book", "Consent given", "No consent", "Suppressed"].every((l) => reader.includes(`label="${l}"`)),
+      `masked: ${masked.replace(/ +/g, " ").slice(0, 160)}`];
   });
 }
 
@@ -796,6 +886,42 @@ if (!PROVE_RED) {
       name: "R16 · the row's edit link carries the number — ?edit= a phone number instead of the contact id",
       expect: L.s5,
       impl: () => ({ ...REAL, sources: withSource("page", "href={contactsHref(sp, { edit: c.id })}", "href={contactsHref(sp, { edit: c.msisdn })}") }),
+    },
+
+    /* ── the adversarial review's fixes (2026-10-02), each on its own assertion ── */
+    {
+      name: "R17 · a run that dies mid-way leaves no audit row — the partial row never reaches the trail",
+      expect: L.b17,
+      impl: () => ({
+        ...REAL,
+        deps: {
+          ...TEST_DEPS,
+          audit: (async (entry: unknown) => {
+            if ((entry as { payload?: Record<string, unknown> }).payload?.partial === true) return { ok: true } as never;
+            return captureAudit(entry as never);
+          }) as unknown as ContactBulkDeps["audit"],
+        },
+      }),
+    },
+    {
+      name: "R18 · the filter's identity is its resolved key — a rolling window “changes” every minute",
+      expect: L.b19,
+      impl: () => ({ ...REAL, identity: (f) => contactFilterAudienceKey(f) }),
+    },
+    {
+      name: "R19 · the selection clears “all matching” on the key, not the identity",
+      expect: L.s8,
+      impl: () => ({ ...REAL, sources: withSource("provider", "chosen.identity !== matchingKey", "chosen.key !== matchingKey") }),
+    },
+    {
+      name: "R20 · “and N more” under a typed confirmation that lists nobody",
+      expect: L.s9,
+      impl: () => ({ ...REAL, sources: withSource("bar", "p.sample.length > 0 ? enumerateTail(p.count, p.sample.length) : null", "enumerateTail(p.count, p.sample.length)") }),
+    },
+    {
+      name: "R21 · 🔴 D19 · a masked viewer's KPI band carries the consent split again",
+      expect: L.s10,
+      impl: () => ({ ...REAL, sources: withSource("page", 'data-kpis-masked><KpiGrid cols="1-lg2">', 'data-kpis-masked><KpiGrid cols="1-lg2"><AdminKpi label="Consent given" value="1" />') }),
     },
   ];
 

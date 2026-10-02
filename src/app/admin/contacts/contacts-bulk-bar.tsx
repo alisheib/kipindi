@@ -310,7 +310,9 @@ function BulkConfirm({ open, preview: p, onCancel, onConfirm }: {
   onConfirm: () => void;
 }) {
   const words = BULK_COPY[p.action];
-  const tail = enumerateTail(p.count, p.sample.length);
+  // ⛔ "and N more" only BELOW a listed sample (review F3): the typed tier lists nobody, so a tail there read as N beyond
+  // something that was never shown.
+  const tail = p.sample.length > 0 ? enumerateTail(p.count, p.sample.length) : null;
   const grave = p.action === "suppress" || p.action === "remove" || p.action === "withdraw";
   return (
     <ConfirmModal
@@ -327,8 +329,11 @@ function BulkConfirm({ open, preview: p, onCancel, onConfirm }: {
       body={(
         <div className="space-y-3" data-bulk-confirm={p.tier.kind}>
           <p data-bulk-consequence>{words.consequence}</p>
-          {p.tier.kind === "typed" && p.described.length > 0 && (
-            <p className="text-body-sm text-text-secondary">{p.described.join(" · ")}</p>
+          {p.tier.kind === "typed" && (
+            // An unfiltered "all matching" describes nothing — so it says, in words, that it is the whole book.
+            <p className="text-body-sm text-text-secondary" data-bulk-described>
+              {p.described.length > 0 ? p.described.join(" · ") : CONTACTS_BULK.wholeBook}
+            </p>
           )}
           {p.sample.length > 0 && (
             // ⛔ A list, not a table, and its own scroll container: twenty names never push the dialog sideways at 360.

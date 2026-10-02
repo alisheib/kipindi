@@ -44,7 +44,7 @@ export function AdminBody({
  * band step differently, and two pages step at `md`/`sm` rather than `lg`.
  * Every entry below is a string that already ships — nothing new is introduced.
  */
-export type KpiCols = "4" | "3" | "2" | "sm3" | "md3-lg4" | "lg3-xl6";
+export type KpiCols = "4" | "3" | "2" | "sm3" | "md3-lg4" | "lg3-xl6" | "1-lg2";
 
 /* ⛔ Every entry here has at least one live caller (`4` is the default and is
  * implicit on 33 of the 38 bands). A ladder nobody uses is a ladder that will be
@@ -68,6 +68,10 @@ const KPI_COLS: Record<KpiCols, string> = {
   "sm3":      "grid-cols-1 sm:grid-cols-3",                // audit — 3 tiles, stacked at 390
   "md3-lg4":  "grid-cols-2 md:grid-cols-3 lg:grid-cols-4", // /admin overview
   "lg3-xl6":  "grid-cols-2 lg:grid-cols-3 xl:grid-cols-6", // reports
+  // /admin/contacts for a viewer who may not read a number (2026-10-02): TWO tiles that take exactly the rows the
+  // four-tile band takes — stacked below `lg` (2 rows, as 2-up × 2), side by side at `lg` (1 row, as 4-across) — so the
+  // route's one skeleton (four tiles) stands for both roles with no jump.
+  "1-lg2":    "grid-cols-1 lg:grid-cols-2",
 };
 
 export function KpiGrid({
