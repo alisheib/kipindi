@@ -695,4 +695,37 @@ export const MUTATIONS = [
     to: `        select t.tag as tag, count(*)::int as n`,
     expect: `21.tags.prisma · tagCounts counts each contact ONCE per tag in SQL, leaves the erased mark out NULL-safely, sorts ties in code-unit order and is bounded`,
   },
+  /* ── §22 · the edit form's compare-and-set (U22, S10 2026-10-02) ───────────────────────────────── */
+  {
+    // 🔴 LAST WRITE WINS, ON POSTGRES ONLY: the conditional update loses its updatedAt clause, so a second officer's
+    // stale save overwrites the first in production while every memory suite still refuses it.
+    name: "prisma-dal.ts — the CAS where loses its updatedAt clause (last write wins on Postgres)",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `          where: { id, updatedAt: new Date(guard.expectedUpdatedAt) },`,
+    to: `          where: { id },`,
+    expect: `22.prisma · the Prisma twin's write is ONE update whose where holds both id and updatedAt: new Date(guard.expectedUpdatedAt), and a refused compare is read back as stale or not_found`,
+  },
+  {
+    // 🔴 …and on the twin every behavioural suite runs on: the memory compare is gone, so a stale edit lands.
+    name: "store.ts — the memory CAS loses its compare (last write wins in memory)",
+    file: "src/lib/server/store.ts",
+    from: `      if (Date.parse(row.updatedAt) !== Date.parse(guard.expectedUpdatedAt)) return { ok: false, reason: "stale" };`,
+    to: `      // (the compare removed)`,
+    expect: `22.memory · the memory twin compares the row's updatedAt with guard.expectedUpdatedAt and returns stale BEFORE it writes`,
+  },
+  {
+    // ⛔ C25 · the Prisma write stops stamping the caller's `at`: `@updatedAt` takes over, the twins hold different
+    // instants, and the NEXT compare disagrees between the backends.
+    // ⚠️ Four lines, because `            updatedAt: new Date(at),` also sits in the plain `update` above it.
+    name: "prisma-dal.ts — the CAS write stops stamping the caller's at (C25 drift)",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `            updatedAt: new Date(at),
+          },
+        });
+        return { ok: true, row: toStoredMarketingContact(written) };`,
+    to: `          },
+        });
+        return { ok: true, row: toStoredMarketingContact(written) };`,
+    expect: `22.at · ⛔ C25 · BOTH twins write the caller's \`at\` as updatedAt, explicitly — never left to @updatedAt`,
+  },
 ];

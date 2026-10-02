@@ -158,6 +158,22 @@ export const SENSITIVE_FIELDS = {
       return msisdn ? `+${msisdn}` : null;
     },
   },
+  /**
+   * U22 · AN EMAIL IN THE CONTACT BOOK (decision M5) — the first surface to show one is the edit dialog. ⛔ A FOURTH
+   * SEPARATE FIELD, for `contactPhone`'s reason: `subjectId` is a CONTACT id, the subject may be nobody's account, and
+   * reading `user.email` would put some player's address on a row that is not theirs (and the audit row would name
+   * the wrong record — `targetType`).
+   * Masked like `email` (`maskEmail`: the first character and the domain) for every role at rest; a role whose
+   * identity.contact cell is `read` may reveal it through the same audited action. The dialog never holds the raw
+   * address: an edit that leaves the field alone KEEPS it, server-side. U34's masked export masks it too (M5).
+   */
+  contactEmail: {
+    readClass: "identity.contact",
+    targetType: "MarketingContact",
+    label: "Contact email",
+    mask: maskEmail,
+    read: async (subjectId) => (await db.marketingContact.find(subjectId))?.email ?? null,
+  },
   region: {
     readClass: "identity.personal",
     label: "Region",

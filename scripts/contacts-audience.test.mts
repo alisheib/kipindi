@@ -190,8 +190,9 @@ const memoryStore = (globalThis as { __50PICK_STORE?: { marketingContacts: Map<s
 /* ═══ §6's PIECES (U24 commit 2) — the writers of the truth, and the population they must equal ═══════════ */
 
 /** ⭐ THE DECLARED CACHE WRITERS — every src file that writes the consent ledger or the stop list; each calls
- *  `mirrorContactCache` after its writes. U22 (the form), U23 (`contact-bulk.ts`, M4) and U33 (the consent basis)
- *  each APPEND their file in their own commit. */
+ *  `mirrorContactCache` after its writes. U23 (`contact-bulk.ts`, M4) and U33 (the consent basis) each APPEND their
+ *  file in their own commit. ⛔ U22's form does not: it writes neither store — it CALLS the mirror for the row it just
+ *  created (its caches come from the truth, C4), which is a reader of the ledger, not a writer of it. */
 const CACHE_HOME = "lib/server/marketing/contact-cache.ts";
 const CACHE_WRITERS = [
   "app/api/dev-test/marketing-contacts-seed/route.ts",

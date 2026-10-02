@@ -33,8 +33,27 @@
  *         the search box still there;
  *       LOADING — the rail's ghost is on screen, and its height against the real rail is RECORDED at both widths
  *         (role- and data-shaped, so not equal by construction — `loading.tsx` says why).
- * The rows come from `/api/dev-test/marketing-contacts-seed`, through the store method the importers will
- * call (nothing writes a contact yet — U22/U25+). Every capture asserts what it photographed first.
+ *   · U22 — ADD AND EDIT ONE CONTACT (`contact-form.tsx`), every state the unit names:
+ *       BLANK — on the EMPTY book (whose row names "Add contact") and on the populated one: focus in the number field,
+ *         never the ✕; Consent "Not recorded" with the form's sentence; Save disabled;
+ *       TYPING — "71" gives the Yas chip and "2 of 9 digits"; "60" the Airtel chip, flagged disputed;
+ *       REFUSED — "64" at two digits with the Telxer sentence; "71234" then Tab with the too-short sentence; a PASTED
+ *         +254 712 345 678 with the foreign sentence, never "Mbeya";
+ *       CHECKING — the duplicate lookup's RESPONSE held (fetched, held, fulfilled — never the request): the checking line
+ *         and Save still disabled; SAVING — the add's response held: Save busy, the dialog aria-busy, Escape refused;
+ *       SAVED — "Contact added", the dialog gone, the new row first, "In the book" up by exactly one;
+ *       DUPLICATE (the Accept) — a number saved typed, then PASTED as +255…: ONE row, the duplicate sentence and its
+ *         link, no "save anyway" anywhere; the link opens `?edit=<id>`;
+ *       EDIT — GROWTH sees the number masked with no eye and no Copy, and NO consent chip (A1.1); ADMIN sees the eye,
+ *         Copy, and the mirrored consent; STALE — two tabs, the second save refused with Reload;
+ *       MISSING — `?edit=mc_nope` AND `?edit=` of the ERASED fixture read the same refusal (A1.7), and Close drops `edit`;
+ *       ERASED — adding the erased number is refused with one sentence and no link (C3);
+ *       A1.1 — GROWTH adding a seeded PLAYER's number (ledger GIVEN) is told no consent value at all, while ADMIN adding a
+ *         number whose ledger says WITHDRAWN reads "Withdrawn" (the mirror);
+ *       ERROR — the add fulfilled with HTTP 500: the danger line, the typing kept, Save available again;
+ *       the head's ghost reserves the button's box (measured), 0px overflow, and at 360 the dialog's Save is reachable.
+ * The rows come from `/api/dev-test/marketing-contacts-seed` (`?count=45`, and `?u22=1` for the form's fixtures),
+ * through the ONE create builder the form uses. Every capture asserts what it photographed first.
  *
  * Run: BASE=http://localhost:3010 node scripts/live/marketing-u20-contacts-drive.mjs
  * Boot (in-memory, zero prod risk; remove .next first — a stale .next 404s every /api/dev-test route):
@@ -142,6 +161,95 @@ async function railShot(page, vp, name, wantGroups, scrollTo = null) {
   await shoot(page, `${vp}-${name}`, scrollTo);
 }
 
+/* ── U22 · THE FORM, read by its own stamps (`data-contact-form`, `data-number-verdict`, `data-number-lookup`,
+   `data-operator-chip`, `data-open-existing`, `data-block="contact-consent"`) — never by a class string ─────────── */
+const DIALOG = '[role="dialog"][aria-modal="true"]';
+const ADD_FORM = '[data-contact-form="add"]';
+const EDIT_FORM = '[data-contact-form="edit"]';
+// ⚠️ Matched by its autocomplete, never by its type: the Input atom renders every numeric field as a text box (it filters the characters
+// itself, keeping inputmode="numeric"), so the visible box is matched by the autocomplete PhoneInput sets.
+const NUMBER = `${ADD_FORM} input[autocomplete="tel-national"]`;
+const SAVE = '[data-contact-form] button[type="submit"]';
+// ⛔ Count first, as U21's review measured above: a bare innerText()/getAttribute() on an ABSENT element waits
+// Playwright's whole default timeout (30 s) before a catch answers — and several U22 reads ask exactly when a line,
+// a chip or the dialog itself may be gone.
+const textOfLoc = async (loc) => ((await loc.count()) > 0 ? ((await loc.first().innerText()) || "").replace(/\s+/g, " ").trim() : "");
+const textOf = (page, selector) => textOfLoc(page.locator(selector));
+const attrOf = async (page, selector, name) => {
+  const loc = page.locator(selector);
+  return (await loc.count()) > 0 ? loc.first().getAttribute(name) : null;
+};
+const dialogHeading = (page) => textOf(page, `${DIALOG} h2`);
+const dialogText = (page) => textOf(page, DIALOG);
+const verdictLine = async (page) => ({
+  stage: await attrOf(page, "[data-number-verdict]", "data-number-verdict"),
+  lookup: await attrOf(page, "[data-number-verdict]", "data-number-lookup"),
+  text: await textOf(page, "[data-number-verdict]"),
+});
+const saveDisabled = (page) => page.locator(SAVE).first().isDisabled();
+const inTheBook = async (page) => Number((/In the book\s*([\d,]+)/i.exec(await mainText(page))?.[1] ?? "-1").replace(/,/g, ""));
+
+async function openAddDialog(page) {
+  await page.locator('[data-block="contacts-add"]').first().click();
+  await page.waitForSelector(`${DIALOG} ${ADD_FORM}`, { timeout: 15000 });
+  await wait(400);
+}
+async function closeDialog(page) {
+  await page.locator(DIALOG).getByRole("button", { name: "Cancel", exact: true }).first().click().catch(() => {});
+  await page.waitForSelector(DIALOG, { state: "detached", timeout: 10000 }).catch(() => {});
+  await wait(300);
+}
+async function typeNumber(page, text) {
+  const input = page.locator(NUMBER).first();
+  await input.fill("");
+  await input.pressSequentially(text, { delay: 30 });
+  await wait(250);
+}
+/** A real paste event on the number field, its clipboard holding `text` — what PhoneInput's `onPasteRaw` hears. */
+async function pasteNumber(page, text) {
+  const input = page.locator(NUMBER).first();
+  await input.fill("");
+  await input.focus();
+  await input.evaluate((el, t) => {
+    const dt = new DataTransfer();
+    dt.setData("text", t);
+    el.dispatchEvent(new ClipboardEvent("paste", { clipboardData: dt, bubbles: true, cancelable: true }));
+  }, text);
+  await wait(300);
+}
+/**
+ * Hold the NEXT server action's RESPONSE on this page — fetched, held, then fulfilled. ⛔ Never the request: a paused
+ * and continued request aborts Next's RSC body. `mode: "fail"` answers that one action with HTTP 500 instead.
+ */
+async function holdNextAction(page, mode = "hold") {
+  let open;
+  const gate = new Promise((r) => { open = r; });
+  let caught = false;
+  const handler = async (route) => {
+    const req = route.request();
+    if (caught || req.method() !== "POST" || !req.headers()["next-action"]) { await route.continue().catch(() => {}); return; }
+    caught = true;
+    if (mode === "fail") { await route.fulfill({ status: 500, contentType: "text/plain", body: "planted failure (u22 drive)" }).catch(() => {}); return; }
+    const response = await route.fetch();
+    await gate;
+    await route.fulfill({ response }).catch(() => {});
+  };
+  await page.route("**/admin/contacts**", handler);
+  return {
+    caught: () => caught,
+    release: async () => { open(); await wait(400); await page.unroute("**/admin/contacts**", handler).catch(() => {}); },
+  };
+}
+/** ⛔ Every U22 capture asserts what it photographs first: the dialog's own heading, and the line it claims. */
+async function formShot(page, vp, name, wantHeading, wantText) {
+  const heading = await dialogHeading(page);
+  const text = await dialogText(page);
+  ok(`${vp} · ${name} · the capture shows the "${wantHeading}" dialog${wantText ? ` saying "${wantText}"` : ""}`,
+    heading === wantHeading && (!wantText || text.includes(wantText)), `heading="${heading}" text="${text.slice(0, 200)}"`);
+  ok(`${vp} · ${name} · no horizontal page overflow with the dialog open`, (await overflowOf(page)) === 0, `${await overflowOf(page)}px`);
+  await page.screenshot({ path: join(SHOTS, `${vp}-${name}.png`) });
+}
+
 const VIEWPORTS = [
   { name: "1280x800", width: 1280, height: 800 },
   { name: "360x780", width: 360, height: 780 },
@@ -161,7 +269,22 @@ for (const vp of VIEWPORTS) {
   ok(`${vp.name} · EMPTY · no horizontal page overflow`, (await overflowOf(page)) === 0);
   // U21 · an empty book has nothing to filter: no rail, exactly as there is no search box.
   ok(`${vp.name} · U21 EMPTY · no filter rail on an empty book`, (await page.locator(RAIL).count()) === 0);
+  // U22 · the empty row tells the truth: one contact can be added by hand, and it names the button that does it.
+  ok(`${vp.name} · U22 EMPTY · the empty row names "Add contact" and offers no import`,
+    /Use Add contact/.test(text) && /importing a file is not live yet/.test(text) && (await page.locator('[data-block="contacts-add"]').count()) === 1, text.slice(0, 200));
   await shoot(page, `${vp.name}-empty`);
+  // ── U22 · BLANK, on the EMPTY book: focus in the number (never the ✕), Consent stated, Save disabled ──
+  await openAddDialog(page);
+  const focusInNumber = await page.evaluate(() => {
+    const a = document.activeElement;
+    return !!a && a.matches('input[autocomplete="tel-national"]') && !!a.closest('[role="dialog"]');
+  });
+  const consentBlock = await textOf(page, '[data-block="contact-consent"]');
+  ok(`${vp.name} · U22 BLANK (empty book) · the dialog opens with focus in the number field, Consent "Not recorded" with the form's sentence, Save disabled`,
+    focusInNumber && /Not recorded/i.test(consentBlock) && /never records consent/.test(consentBlock) && (await saveDisabled(page)),
+    `focus ${focusInNumber} · consent "${consentBlock}"`);
+  await formShot(page, vp.name, "u22-blank-empty-book", "Add a contact", "A Tanzanian mobile number in any spelling");
+  await closeDialog(page);
   await ctx.close();
 }
 
@@ -196,7 +319,10 @@ for (const vp of VIEWPORTS) {
     const realYet = await boxOf(page, '[data-block="contacts-kpis"]');
     // U21 · the rail's ghost, under the search strip's.
     const ghostR = await boxOf(page, '[data-skeleton="contacts-rail"]');
+    // U22 · the head's ghost holds the "Add contact" button's box.
+    const ghostA = await boxOf(page, '[data-skeleton="contacts-add"]');
     ok(`${vp.name} · LOADING · the ghost is on screen and the real page is not yet`, !!ghostK && ghostK.h > 0 && realYet === null, JSON.stringify({ ghostK, realYet }));
+    ok(`${vp.name} · U22 LOADING · the head's ghost reserves a box for "Add contact"`, !!ghostA && ghostA.h > 0 && ghostA.w > 0, JSON.stringify(ghostA));
     ok(`${vp.name} · U21 LOADING · the rail's ghost is on screen, inside the card ghost`, !!ghostR && ghostR.h > 0 && !!ghostC && ghostR.top > ghostC.top, JSON.stringify({ ghostR, ghostCTop: ghostC?.top }));
     await shoot(page, `${vp.name}-loading`);
     await page.unroute("**src_app_admin_contacts_page_tsx**");
@@ -205,9 +331,18 @@ for (const vp of VIEWPORTS) {
     const realK = await boxOf(page, '[data-block="contacts-kpis"]');
     const realC = await boxOf(page, '[data-block="contacts-card"]');
     const realR = await boxOf(page, RAIL);
+    const realA = await boxOf(page, '[data-block="contacts-add"]');
     // ⚠️ RECORDED, NOT ASSERTED EQUAL: the real rail is role- and data-shaped (loading.tsx says why); the delta is
     // printed in MEASURED so a reader sees how far the swap moves the table, at both widths.
-    measured[vp.name] = { ghostK, realK, ghostTop: ghostC?.top, realTop: realC?.top, railGhostH: ghostR?.h, railRealH: realR?.h, railDelta: ghostR && realR ? Math.round((realR.h - ghostR.h) * 100) / 100 : null };
+    measured[vp.name] = {
+      ghostK, realK, ghostTop: ghostC?.top, realTop: realC?.top, railGhostH: ghostR?.h, railRealH: realR?.h,
+      railDelta: ghostR && realR ? Math.round((realR.h - ghostR.h) * 100) / 100 : null,
+      addGhost: ghostA, addReal: realA, addWidthDelta: ghostA && realA ? Math.round((realA.w - ghostA.w) * 100) / 100 : null,
+    };
+    // ⭐ U22 · the button's HEIGHT is the kit's 40px rung on both sides of the swap; its width is font-shaped, so it is
+    // RECORDED (MEASURED.addWidthDelta) — the header itself is held by the card-top assertion below.
+    ok(`${vp.name} · U22 LOADING · the head's ghost is the real "Add contact" button's height within 1px`,
+      !!ghostA && !!realA && Math.abs(ghostA.h - realA.h) <= 1, `${ghostA?.h} vs ${realA?.h}`);
     ok(`${vp.name} · LOADING · the KPI band's height equals the real band's within 1px`,
       !!ghostK && !!realK && Math.abs(ghostK.h - realK.h) <= 1, `${ghostK?.h} vs ${realK?.h}`);
     ok(`${vp.name} · LOADING · the card's top edge does not move when the page swaps in (within 1px)`,
@@ -498,6 +633,240 @@ for (const vp of VIEWPORTS) {
   await adm.ctx.close();
 }
 
+// ── U22 · ADD AND EDIT ONE CONTACT — after every count-sensitive U20/U21 assertion, because it ADDS rows ──────────
+let u22 = { erasedId: null, erasedNumber: "", players: [], withdrawn: [] };
+{
+  const { ctx, page } = await staffCtx("GROWTH", "+255700002006", { width: 1280, height: 800 });
+  u22 = await seed(page, "u22=1");
+  ok("seed · U22's fixtures: an erased row, and per run a player's number (GIVEN) and a WITHDRAWN one, none in the book",
+    typeof u22.erasedId === "string" && u22.players.length >= 2 && u22.withdrawn.length >= 2, JSON.stringify(u22));
+  await ctx.close();
+}
+for (const [vi, vp] of VIEWPORTS.entries()) {
+  console.log(`\n[u22] ${vp.name}`);
+  const viewport = { width: vp.width, height: vp.height };
+  /** Numbers only this run types: 076 7<run> 0000N — the 45-row seed never uses 076, the fixtures use 076 6…. */
+  const fresh = (k) => `0767${vi}${String(k).padStart(5, "0")}`;
+  const { ctx, page } = await staffCtx("GROWTH", "+255700002007", viewport);
+  await openContacts(page);
+
+  // ── BLANK, on the populated book ──
+  const bookBefore = await inTheBook(page);
+  await openAddDialog(page);
+  const focused = await page.evaluate(() => {
+    const a = document.activeElement;
+    return !!a && a.matches('input[autocomplete="tel-national"]') && !!a.closest('[role="dialog"]');
+  });
+  ok(`${vp.name} · U22 BLANK · focus in the number field (not the ✕), Save disabled, Consent "Not recorded" stated`,
+    focused && (await saveDisabled(page)) && /Not recorded/i.test(await dialogText(page)) && /never records consent/.test(await dialogText(page)));
+  await formShot(page, vp.name, "u22-blank", "Add a contact", "This form never records consent");
+
+  // ── TYPING · two digits: the chip from the ONE table, "2 of 9 digits" ──
+  await typeNumber(page, "71");
+  const yas = await verdictLine(page);
+  const yasChip = await textOf(page, "[data-operator-chip]");
+  ok(`${vp.name} · U22 TYPING · "71" shows the Yas chip and "2 of 9 digits", Save still disabled`,
+    yas.stage === "typing" && /^yas$/i.test(yasChip) && yas.text.includes("2 of 9 digits") && (await saveDisabled(page)), `${yasChip} · ${yas.text}`);
+  await formShot(page, vp.name, "u22-typing-71", "Add a contact", "2 of 9 digits");
+  await typeNumber(page, "60");
+  const airtelTitle = (await attrOf(page, "[data-operator-chip]", "title")) || "";
+  ok(`${vp.name} · U22 TYPING · "60" shows the Airtel chip, flagged disputed in its title`,
+    /^airtel$/i.test(await textOf(page, "[data-operator-chip]")) && /060|reserved/i.test(airtelTitle), airtelTitle.slice(0, 80));
+
+  // ── REFUSED · 064 at two digits; too-short once settled; a Kenyan paste judged before truncation ──
+  await typeNumber(page, "64");
+  const tel = await verdictLine(page);
+  ok(`${vp.name} · U22 REFUSED · "64" is refused at TWO digits with the Telxer sentence, Save disabled`,
+    tel.stage === "refused" && tel.text.includes("Telxer") && (await saveDisabled(page)), tel.text.slice(0, 120));
+  await formShot(page, vp.name, "u22-refused-064", "Add a contact", "Telxer");
+  await typeNumber(page, "71234");
+  const typing5 = await verdictLine(page);
+  await page.keyboard.press("Tab");
+  await wait(300);
+  const short = await verdictLine(page);
+  ok(`${vp.name} · U22 REFUSED · "71234" reads "5 of 9 digits" while typing and the too-short sentence once the field is left`,
+    typing5.stage === "typing" && typing5.text.includes("5 of 9 digits") && short.stage === "refused" && /this one has 5/.test(short.text), `${typing5.text} → ${short.text}`);
+  await formShot(page, vp.name, "u22-refused-short", "Add a contact", "this one has 5");
+  await pasteNumber(page, "+254712345678");
+  const kenya = await verdictLine(page);
+  ok(`${vp.name} · U22 REFUSED · a pasted +254 712 345 678 is refused as international — never called a Mbeya landline`,
+    kenya.stage === "refused" && kenya.text.includes("+254") && !/Mbeya/.test(kenya.text) && (await saveDisabled(page)), kenya.text.slice(0, 140));
+  await formShot(page, vp.name, "u22-refused-paste", "Add a contact", "+254");
+
+  // ── CHECKING · the lookup's response held; SAVING · the add's response held; SAVED ──
+  const lookupHold = await holdNextAction(page);
+  await typeNumber(page, fresh(1));
+  await page.waitForSelector('[data-number-lookup="checking"]', { timeout: 15000 }).catch(() => {});
+  const checking = await verdictLine(page);
+  ok(`${vp.name} · U22 CHECKING · with the lookup held, the line says "Checking the book…" and Save stays disabled`,
+    checking.lookup === "checking" && /Checking the book/.test(checking.text) && (await saveDisabled(page)), checking.text);
+  await formShot(page, vp.name, "u22-checking", "Add a contact", "Checking the book");
+  await lookupHold.release();
+  await page.waitForSelector('[data-number-lookup="free"]', { timeout: 15000 }).catch(() => {});
+  ok(`${vp.name} · U22 CHECKED · a fresh number is free: the operator's sentence, and Save enabled`,
+    (await verdictLine(page)).lookup === "free" && !(await saveDisabled(page)), (await verdictLine(page)).text);
+  await page.locator(`${DIALOG} [data-field="displayName"] input`).first().fill(`U22 Drive ${vp.name}`);
+  await page.locator(`${DIALOG} [data-field="tags"] input`).first().fill("drive");
+  const saveHold = await holdNextAction(page);
+  await page.locator(SAVE).first().click();
+  await wait(500);
+  const busy = await attrOf(page, DIALOG, "aria-busy");
+  const saveBusy = await attrOf(page, SAVE, "aria-busy");
+  await page.keyboard.press("Escape");
+  await wait(300);
+  ok(`${vp.name} · U22 SAVING · with the add held, Save is busy, the dialog aria-busy, and Escape does not close it`,
+    busy === "true" && saveBusy === "true" && (await page.locator(DIALOG).count()) === 1, `dialog busy=${busy} save busy=${saveBusy}`);
+  await formShot(page, vp.name, "u22-saving", "Add a contact");
+  await saveHold.release();
+  await page.getByText("Contact added", { exact: true }).first().waitFor({ timeout: 15000 }).catch(() => {});
+  await page.waitForSelector(DIALOG, { state: "detached", timeout: 15000 }).catch(() => {});
+  for (let i = 0; i < 30 && (await inTheBook(page)) !== bookBefore + 1; i++) await wait(300);
+  const firstRow = await textOf(page, "[data-contact-row]");
+  ok(`${vp.name} · U22 SAVED · "Contact added", the dialog gone, the new row FIRST, "In the book" up by exactly one`,
+    (await page.getByText("Contact added", { exact: true }).count()) >= 1 && (await page.locator(DIALOG).count()) === 0
+      && firstRow.includes(`U22 Drive ${vp.name}`) && (await inTheBook(page)) === bookBefore + 1,
+    `${bookBefore} → ${await inTheBook(page)} · first row "${firstRow.slice(0, 80)}"`);
+  // 🔴 A1.1 · GROWTH's toast carries no consent word — the reply had none to give.
+  ok(`${vp.name} · U22 SAVED · A1.1 · GROWTH is told no consent value after the save`, (await page.getByText(/^Consent: /).count()) === 0);
+  await shoot(page, `${vp.name}-u22-saved`);
+
+  // ── DUPLICATE (the Accept): typed once and saved, then PASTED as +255… — one row, the sentence, the link ──
+  await openAddDialog(page);
+  await typeNumber(page, fresh(2));
+  await page.waitForSelector('[data-number-lookup="free"]', { timeout: 15000 }).catch(() => {});
+  await page.locator(SAVE).first().click();
+  await page.waitForSelector(DIALOG, { state: "detached", timeout: 15000 }).catch(() => {});
+  await wait(800);
+  await openAddDialog(page);
+  await pasteNumber(page, `+255${fresh(2).slice(1)}`);
+  await page.waitForSelector('[data-number-lookup="duplicate"]', { timeout: 15000 }).catch(() => {});
+  const dup = await verdictLine(page);
+  const dupText = await dialogText(page);
+  ok(`${vp.name} · U22 DUPLICATE · the same number pasted as +255… reads "This number is already in the book." with the link, Save disabled, no "save anyway" anywhere`,
+    dup.lookup === "duplicate" && dup.text.includes("This number is already in the book.") && (await page.locator(`${DIALOG} a[data-open-existing]`).count()) === 1
+      && (await saveDisabled(page)) && !/anyway/i.test(dupText), dup.text);
+  await formShot(page, vp.name, "u22-duplicate", "Add a contact", "Open the existing contact");
+
+  // ── EDIT · the link opens ?edit=<id>: GROWTH sees the number masked, no eye, no Copy, and NO consent chip ──
+  await page.locator(`${DIALOG} a[data-open-existing]`).first().click();
+  await page.waitForURL((u) => u.searchParams.has("edit"), { timeout: 30000 });
+  await page.waitForSelector(`${DIALOG} ${EDIT_FORM}`, { timeout: 30000 });
+  await wait(800);
+  const editId = new URL(page.url()).searchParams.get("edit") ?? "";
+  const shownNumber = await textOf(page, `${DIALOG} [data-contact-number]`);
+  const growthConsent = await textOf(page, `${DIALOG} [data-block="contact-consent"]`);
+  ok(`${vp.name} · U22 EDIT · the link opened ?edit=<a cuid> over the list, ONE dialog, the number +255••••NN with no eye and no Copy`,
+    /^mc_[a-z]{16}$/.test(editId) && (await page.locator(DIALOG).count()) === 1 && MASK.test(shownNumber)
+      && (await page.locator(`${DIALOG} button.sensitive-reveal`).count()) === 0, `${editId} · "${shownNumber}"`);
+  ok(`${vp.name} · U22 EDIT · A1.1 · GROWTH's edit dialog states the form's sentence and NO consent value`,
+    /never records consent/.test(growthConsent) && !/given|withdrawn|not recorded/i.test(growthConsent.replace(/never records consent|no consent recorded/gi, "")), growthConsent);
+  await formShot(page, vp.name, "u22-edit-growth", "Edit contact", "The number can't be changed");
+
+  // ── STALE · two tabs on one contact: the second save is refused, with Reload ──
+  const tabB = await ctx.newPage();
+  await tabB.goto(`${BASE}/admin/contacts?edit=${encodeURIComponent(editId)}`, { waitUntil: "domcontentloaded" });
+  await tabB.waitForSelector(`${DIALOG} ${EDIT_FORM}`, { timeout: 30000 });
+  await page.locator(`${DIALOG} [data-field="displayName"] input`).first().fill("Tab A");
+  await page.locator(SAVE).first().click();
+  await page.waitForSelector(DIALOG, { state: "detached", timeout: 15000 }).catch(() => {});
+  await tabB.locator(`${DIALOG} [data-field="displayName"] input`).first().fill("Tab B");
+  await tabB.locator(SAVE).first().click();
+  await tabB.waitForSelector(`${DIALOG} [role="alert"]`, { timeout: 15000 }).catch(() => {});
+  const staleText = await dialogText(tabB);
+  ok(`${vp.name} · U22 STALE · the second tab's save is refused — nothing overwritten — and offers Reload`,
+    /Someone changed this contact/.test(staleText) && (await tabB.getByRole("button", { name: "Reload", exact: true }).count()) === 1, staleText.slice(0, 160));
+  await tabB.setViewportSize(viewport);
+  await formShot(tabB, vp.name, "u22-stale", "Edit contact", "Someone changed this contact");
+  await tabB.close();
+
+  // ── MISSING · an unknown id, and the ERASED fixture, read the same refusal (A1.7); Close drops `edit` ──
+  for (const [label, id] of [["missing", "mc_nope"], ["erased-missing", u22.erasedId ?? "mc_seed_erased"]]) {
+    await page.goto(`${BASE}/admin/contacts?op=VODACOM&edit=${encodeURIComponent(id)}`, { waitUntil: "domcontentloaded" });
+    await page.waitForSelector('[data-contact-dialog="missing"]', { timeout: 30000 }).catch(() => {});
+    await wait(500);
+    const missText = await dialogText(page);
+    ok(`${vp.name} · U22 ${label.toUpperCase()} · ?edit=${label === "missing" ? "mc_nope" : "<the erased row>"} shows "This contact isn't in the book." — the same words for an erased row`,
+      (await page.locator('[data-contact-dialog="missing"]').count()) === 1 && missText.includes("This contact isn't in the book.") && (await page.locator(EDIT_FORM).count()) === 0,
+      missText.slice(0, 120));
+    await formShot(page, vp.name, `u22-${label}`, "Edit contact", "This contact isn't in the book.");
+  }
+  await page.locator(DIALOG).getByRole("button", { name: "Close", exact: true }).first().click();
+  await page.waitForURL((u) => !u.searchParams.has("edit"), { timeout: 30000 }).catch(() => {});
+  ok(`${vp.name} · U22 MISSING · Close returns to the list's own address — the filter kept, edit dropped`,
+    !new URL(page.url()).searchParams.has("edit") && new URL(page.url()).searchParams.get("op") === "VODACOM", page.url());
+
+  // ── ERASED · adding the erased number: one sentence, nothing to open (C3) ──
+  await openContacts(page);
+  await openAddDialog(page);
+  await typeNumber(page, u22.erasedNumber || "0766000001");
+  await page.waitForSelector('[data-number-lookup="refused"]', { timeout: 15000 }).catch(() => {});
+  const erasedLine = await verdictLine(page);
+  ok(`${vp.name} · U22 ERASED · the erased number reads "This number can't be added to the book." with NO link, Save disabled`,
+    erasedLine.text.includes("This number can't be added to the book.") && (await page.locator(`${DIALOG} a[data-open-existing]`).count()) === 0 && (await saveDisabled(page)),
+    erasedLine.text);
+  await formShot(page, vp.name, "u22-erased-refused", "Add a contact", "can't be added to the book");
+  await closeDialog(page);
+
+  // ── 🔴 A1.1 · GROWTH adds a seeded PLAYER's number (consent GIVEN at sign-up): no consent value anywhere ──
+  await openAddDialog(page);
+  await typeNumber(page, u22.players[vi] ?? "0766100000");
+  await page.waitForSelector('[data-number-lookup="free"]', { timeout: 15000 }).catch(() => {});
+  await page.locator(SAVE).first().click();
+  await page.getByText("Contact added", { exact: true }).first().waitFor({ timeout: 15000 }).catch(() => {});
+  await page.waitForSelector(DIALOG, { state: "detached", timeout: 15000 }).catch(() => {});
+  await wait(800);
+  ok(`${vp.name} · U22 A1.1 · GROWTH adding a seeded player's number is told no consent value — no "Consent: Given", no consent column`,
+    (await page.getByText(/Consent: /).count()) === 0 && !/consent/i.test(await page.locator('[data-block="contacts-card"] thead').innerText()),
+    (await page.locator('[data-block="contacts-card"] thead').innerText()).replace(/\s+/g, " "));
+  await shoot(page, `${vp.name}-u22-masked-player`);
+
+  // ── ERROR · the add answered with HTTP 500: the danger line, the typing kept, Save available again ──
+  await openAddDialog(page);
+  await typeNumber(page, fresh(3));
+  await page.waitForSelector('[data-number-lookup="free"]', { timeout: 15000 }).catch(() => {});
+  await page.locator(`${DIALOG} [data-field="displayName"] input`).first().fill("Kept after the error");
+  const failing = await holdNextAction(page, "fail");
+  await page.locator(SAVE).first().click();
+  await page.waitForSelector(`${DIALOG} [role="alert"]`, { timeout: 15000 }).catch(() => {});
+  const errText = await dialogText(page);
+  ok(`${vp.name} · U22 ERROR · a 500 is said in the dialog, the typing is kept, and Save is available again`,
+    /Server error/.test(errText) && (await page.locator(`${DIALOG} [data-field="displayName"] input`).first().inputValue()) === "Kept after the error" && !(await saveDisabled(page)),
+    errText.slice(0, 160));
+  await failing.release();
+  // ⭐ At 360 the whole dialog is reachable: Save scrolls into the viewport.
+  await page.locator(SAVE).first().scrollIntoViewIfNeeded();
+  const saveBox = await page.locator(SAVE).first().boundingBox();
+  ok(`${vp.name} · U22 REACH · the dialog's Save can be scrolled fully into view`, !!saveBox && saveBox.y >= 0 && saveBox.y + saveBox.height <= vp.height, JSON.stringify(saveBox));
+  await formShot(page, vp.name, "u22-error", "Add a contact", "Server error");
+  await closeDialog(page);
+  await ctx.close();
+
+  // ── ADMIN · a number whose ledger says WITHDRAWN reads "Withdrawn" (the mirror); the edit shows eye, Copy, consent ──
+  const adm = await staffCtx("ADMIN", "+255700002008", viewport);
+  await openContacts(adm.page);
+  await openAddDialog(adm.page);
+  await typeNumber(adm.page, u22.withdrawn[vi] ?? "0766200000");
+  await adm.page.waitForSelector('[data-number-lookup="free"]', { timeout: 15000 }).catch(() => {});
+  await adm.page.locator(SAVE).first().click();
+  await adm.page.getByText(/Consent: Withdrawn/).first().waitFor({ timeout: 15000 }).catch(() => {});
+  await adm.page.waitForSelector(DIALOG, { state: "detached", timeout: 15000 }).catch(() => {});
+  await wait(1000);
+  const adminFirstConsent = await textOfLoc(adm.page.locator("[data-contact-row]").first().locator("td:nth-child(4)"));
+  ok(`${vp.name} · U22 ADMIN · a reader adding a number whose ledger says WITHDRAWN is told "Consent: Withdrawn", and the new first row reads Withdrawn`,
+    (await adm.page.getByText(/Consent: Withdrawn/).count()) >= 1 && /^withdrawn$/i.test(adminFirstConsent), adminFirstConsent);
+  await shoot(adm.page, `${vp.name}-u22-admin-withdrawn`);
+  await adm.page.goto(`${BASE}/admin/contacts?edit=${encodeURIComponent(editId)}`, { waitUntil: "domcontentloaded" });
+  await adm.page.waitForSelector(`${DIALOG} ${EDIT_FORM}`, { timeout: 30000 });
+  await wait(800);
+  const adminConsent = await textOf(adm.page, `${DIALOG} [data-block="contact-consent"]`);
+  ok(`${vp.name} · U22 ADMIN EDIT · the reader gets the eye AND Copy on the number, and the row's consent and source`,
+    (await adm.page.locator(`${DIALOG} button[aria-label="Reveal Contact number"]`).count()) === 1
+      && (await adm.page.locator(`${DIALOG} button[aria-label="Copy Contact number"]`).count()) === 1
+      && /not recorded/i.test(adminConsent) && /Source: Added by staff/i.test(adminConsent), adminConsent);
+  await formShot(adm.page, vp.name, "u22-edit-admin", "Edit contact", "Source: Added by staff");
+  await adm.ctx.close();
+}
+
 // ── reduced motion, at the narrow width ──────────────────────────────────────────────────────
 {
   console.log(`\n[u20] prefers-reduced-motion: reduce (360x780)`);
@@ -508,6 +877,13 @@ for (const vp of VIEWPORTS) {
   ok("reduced-motion · U21 · the rail is drawn, GROWTH's three axes on Any", (await railGroups(page)).join(",") === "suppressed,op,tag"
     && (await currentChips(page)).join(",") === "suppressed:,op:,tag:", `[${await railGroups(page)}]`);
   await shoot(page, "360x780-reduced");
+  // U22 · the dialog opens on the Modal's own motion, and with motion off it leaves with NO exit beat (modal.tsx).
+  await openAddDialog(page);
+  ok("reduced-motion · U22 · the Add a contact dialog opens", (await dialogHeading(page)) === "Add a contact");
+  await formShot(page, "360x780", "u22-reduced-open", "Add a contact");
+  await page.keyboard.press("Escape");
+  await wait(60);
+  ok("reduced-motion · U22 · an untouched dialog closes on Escape at once — no exit beat held", (await page.locator('[role="dialog"]').count()) === 0);
   await ctx.close();
 }
 

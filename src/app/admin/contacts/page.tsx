@@ -1,10 +1,15 @@
 /**
- * /admin/contacts — the marketing address book (U17 doors, U20 the list, U21 the filter rail).
+ * /admin/contacts — the marketing address book (U17 doors, U20 the list, U21 the filter rail, U22 the form).
  *
  * WHAT THIS PAGE IS TODAY, so nobody reads more into it: the book, server-paged, searchable by a WHOLE
- * number or by name, sortable by name, prefix and date, filterable from one rail — and nothing that changes
- * it. There is no way to add, import, tag, list or remove a contact yet (U22 the form, U23 bulk, U25–U28
- * import), and this page promises none of it.
+ * number or by name, sortable by name, prefix and date, filterable from one rail — and ONE contact at a time
+ * added or edited by hand (U22: "Add contact" in the page head, `?edit=<contact id>` for the dialog over the
+ * list). There is no way to import, tag in bulk, list or remove a contact yet (U23 bulk, U25–U32 import), and
+ * this page promises none of it.
+ * ⭐ U22 · THE FORM RECORDS NO CONSENT (`contact-form.tsx`): nothing lawful can be chosen until U33, so a new
+ * contact's consent is the ledger's, MIRRORED — and shown to a reader only (A1.1). The dialog's number and email
+ * render through `<Sensitive>` here, server-side; the dialog itself never holds either. `edit` is set only by an
+ * explicit patch to the ONE href builder, so no sort header, pager, pill or search box carries it.
  *
  * ⭐ SERVER-PAGED, because the book is built for 150,000 people (§3c): the store returns one page and the
  * count of the whole match, never the book. The KPI band is the WHOLE book (`contactAudience(WHOLE_BOOK).breakdown()`), never the
@@ -49,10 +54,11 @@ import {
   CONTACTS_FILTER_UNREADABLE, CONTACTS_FILTER_NOT_FOR_ROLE, CONSENT_LABEL, SOURCE_LABEL,
 } from "./contacts-copy";
 import { operatorBrand, contactsHref, contactsClearFiltersHref, contactsLinkSp } from "./contacts-query";
-import { loadContacts, viewerReadsContacts } from "./contacts-loader";
+import { loadContacts, loadContactEdit, viewerReadsContacts } from "./contacts-loader";
 import type { ContactsParams, ContactsView } from "./contacts-loader";
 import { contactRail } from "./contacts-rail";
 import { ContactFilters } from "./contact-filters";
+import { AddContactButton, ContactEditDialog } from "./contact-form";
 
 type ContactsSP = ContactsParams;
 
@@ -116,6 +122,10 @@ async function AdminContactsContent({ searchParams }: { searchParams: Promise<Co
   // D19 + A1.1: a masked viewer sees Name, Number, Operator, Lists · Tags and Added — no per-row consent, reach,
   // source or player signal.
   const cols = reads ? 8 : 5;
+  // ⭐ U22 · THE ?edit=<contact id> DIALOG — its own read, so a failed book read does not hide it, nor it the list.
+  // 🔴 An unknown id and an ERASED row are both MISSING (A1.7); the view carries the consent only for a reader (A1.1).
+  const editLoad = await loadContactEdit(sp, reads);
+  const editing = editLoad?.kind === "ready" ? editLoad.row : null;
 
   const failed = view === null;
   const emptyBook = !failed && summary!.total === 0;
@@ -147,8 +157,10 @@ async function AdminContactsContent({ searchParams }: { searchParams: Promise<Co
   return (
     <>
       {/* The gloss is COPIED, never invented (§5.13): "Anwani" is the shipped Swahili beside the exact
-          English word "Contacts" — `src/app/admin/invites/[id]/page.tsx:88`. */}
-      <AdminPageHead title="Contacts" sw="Anwani" />
+          English word "Contacts" — `src/app/admin/invites/[id]/page.tsx:88`.
+          ⭐ U22 · "Add contact" lives in the head, DISABLED with its reason for a role that cannot act — never hidden
+          (`useActDisabledReason`). It carries the page's link params, so its duplicate link keeps the filters. */}
+      <AdminPageHead title="Contacts" sw="Anwani" actions={<AddContactButton hrefParams={linkSp} editOpen={editLoad !== null} />} />
 
       <AdminBody>
         {/* ⭐ THE WHOLE BOOK, never the filtered view. */}
@@ -270,6 +282,21 @@ async function AdminContactsContent({ searchParams }: { searchParams: Promise<Co
 
         {result !== null && result.total > PER_PAGE && <AdminPagination total={result.total} page={page} baseHref={baseHref} />}
       </AdminBody>
+
+      {/* ⭐ U22 · THE DIALOG OVER THE LIST. Keyed by the row and its stamp, so the reload after a refused (stale) save
+          remounts it with the latest values. ⛔ The number and the email render HERE, through <Sensitive> — the dialog
+          is handed slots, never the values — and its close link is the ONE href builder without `edit`. */}
+      {editLoad !== null && (
+        <ContactEditDialog
+          key={editLoad.kind === "ready" ? `${editLoad.view.id}:${editLoad.view.updatedAt}` : `edit-${editLoad.kind}`}
+          state={editLoad.kind === "ready"
+            ? { kind: "ready", contact: editLoad.view }
+            : editLoad.kind === "missing" ? { kind: "missing", sentence: editLoad.sentence } : { kind: "failed" }}
+          numberSlot={editing ? <Sensitive field="contactPhone" subjectId={editing.id} value={editing.msisdn} copyable /> : null}
+          emailSlot={editing ? <Sensitive field="contactEmail" subjectId={editing.id} value={editing.email} /> : null}
+          closeHref={contactsHref(sp)}
+        />
+      )}
     </>
   );
 }

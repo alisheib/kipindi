@@ -70,6 +70,9 @@ import type {
   StoredContactListMember,
   ContactListKey,
   MarketingContactPatch,
+  ContactEditPatch,
+  ContactEditGuard,
+  ContactCasResult,
   ContactPageQuery,
   ContactPage,
   ContactBookSummary,
@@ -3642,6 +3645,34 @@ export const prismaDb = {
       } catch (err) {
         if ((err as { code?: string })?.code === "P2025") return null;
         throw err;
+      }
+    },
+    /** U22 · ⭐ COMPARE-AND-SET — the edit form's ONE write. ONE conditional UPDATE: the row is written only where
+     *  `updatedAt` still equals the instant the dialog was rendered with (Prisma's unique `where` takes the extra
+     *  filter), so two officers' saves cannot both land, and the row handed back is exactly the row written. A
+     *  refused compare raises P2025, read back once to tell "gone" from "changed since". ⛔ `updatedAt` is written
+     *  EXPLICITLY from the caller's `at` (decision C25) — the column is `@updatedAt`, and leaving it to Prisma would
+     *  stamp a different value from the memory twin's, so the next compare would disagree between the backends.
+     *  ⛔ `data` names the four fields and the stamp; the number, `sourceRef`, the link and the caches are not in
+     *  `ContactEditPatch` and never in this write (`test:dal-parity` §22). */
+    updateIfUnchanged: async (id: string, patch: ContactEditPatch, guard: ContactEditGuard, at: string): Promise<ContactCasResult> => {
+      try {
+        const written = await pc().marketingContact.update({
+          where: { id, updatedAt: new Date(guard.expectedUpdatedAt) },
+          data: {
+            displayName: patch.displayName,
+            ...(patch.email !== undefined ? { email: patch.email } : {}),
+            notes: patch.notes,
+            tags: patch.tags,
+            updatedBy: patch.updatedBy,
+            updatedAt: new Date(at),
+          },
+        });
+        return { ok: true, row: toStoredMarketingContact(written) };
+      } catch (err) {
+        if ((err as { code?: string })?.code !== "P2025") throw err;
+        const still = await pc().marketingContact.findUnique({ where: { id } });
+        return { ok: false, reason: still ? "stale" : "not_found" };
       }
     },
     /** U20 · ONE PAGE and the whole match's count, in one round trip each. ⛔ The number is matched EXACTLY

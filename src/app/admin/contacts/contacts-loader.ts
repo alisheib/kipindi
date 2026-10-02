@@ -15,21 +15,29 @@
  * page (`contacts-rail.ts`), which is also where a FAILED read still draws it, from the address alone.
  * ⛔ A read that fails THROWS to the caller, which renders `AdminLoadError` — never a zero, which on a
  * compliance surface reads as "this book is empty".
+ * ⭐ U22 · AND THE ?edit=<contact id> DIALOG'S ONE READ (`loadContactEdit`), apart from the list's: a failed book read
+ * must not hide the dialog, and a failed dialog read is its own "couldn't load" state — never "missing". An unknown
+ * id and an ERASED row are both MISSING (A1.7, `findEditableContact`). 🔴 The view the dialog receives carries no
+ * number and no email (each renders through `<Sensitive>` in the page), and the consent and the source ONLY for a
+ * viewer who may read a number (A1.1 — until U33 a recorded consent can only be a player's).
  */
 import { db } from "@/lib/server/store";
 import { currentSession } from "@/lib/server/auth-service";
 import { mayReveal } from "@/lib/server/rbac";
-import type { ContactBookSummary, ContactPage, ContactTagCount, StoredContactList } from "@/lib/server/store";
+import type { ContactBookSummary, ContactPage, ContactTagCount, StoredContactList, StoredMarketingContact } from "@/lib/server/store";
 import {
   contactAudience, contactTagCounts, describeAudience, narrowsBeyondSearch, parseContactAudienceParams, roleRefusal,
   WHOLE_BOOK,
 } from "@/lib/server/marketing/audience";
 import type { ContactAudienceFilter } from "@/lib/server/marketing/audience";
+import { findEditableContact, CONTACT_MISSING } from "@/lib/server/contacts/contact-write";
 import { PER_PAGE } from "@/components/admin/admin-pagination";
 import { parseSort } from "@/components/admin/admin-sort";
+import { formatDate } from "@/lib/utils";
 import { CONTACT_SORTS } from "./contacts-query";
 import type { ContactSort } from "./contacts-query";
 import { RAIL_TAG_READ } from "./contacts-rail";
+import { CONSENT_LABEL, SOURCE_LABEL } from "./contacts-copy";
 
 /** Next's own shape: a repeated param arrives as an array. */
 export type ContactsParams = Record<string, string | string[] | undefined>;
@@ -117,4 +125,64 @@ export async function loadContacts(sp: ContactsParams, deps: ContactsDeps = {}):
     described: describeAudience(parsed.filter),
     narrowed: narrowsBeyondSearch(parsed.filter),
   };
+}
+
+/* ═══ U22 · THE ?edit=<contact id> DIALOG ═══════════════════════════════════════════════════════════════ */
+
+/** What the edit dialog is handed. ⛔ No number and no email: the page renders each through `<Sensitive>`. */
+export type ContactEditView = {
+  id: string;
+  displayName: string | null;
+  notes: string | null;
+  tags: string[];
+  /** The prefix — the operator chip reads the ONE table from it, as the list's Operator column does. */
+  ndc: string;
+  /** Whether a stored address exists — the dialog offers to keep, replace or remove it without ever holding it. */
+  hasEmail: boolean;
+  addedLabel: string;
+  /** The compare in compare-and-set. */
+  updatedAt: string;
+  /** 🔴 A1.1 · the mirrored consent and the source, for a viewer who may read a number — null for anyone else. */
+  reader: { consentLabel: string; consentVariant: "success" | "neutral" | "warning"; sourceLabel: string } | null;
+};
+
+export type ContactEditLoad =
+  | { kind: "ready"; row: StoredMarketingContact; view: ContactEditView }
+  | { kind: "missing"; sentence: string }
+  | { kind: "failed" };
+
+/** The dialog's view of one row. ⛔ For a masked viewer `reader` is null — not a hidden value, an absent one. */
+export function contactEditView(row: StoredMarketingContact, reads: boolean): ContactEditView {
+  const consent = CONSENT_LABEL[row.consentState];
+  return {
+    id: row.id,
+    displayName: row.displayName,
+    notes: row.notes,
+    tags: [...row.tags],
+    ndc: row.ndc,
+    hasEmail: row.email !== null && row.email !== "",
+    addedLabel: formatDate(row.createdAt),
+    updatedAt: row.updatedAt,
+    reader: reads ? { consentLabel: consent.label, consentVariant: consent.variant, sourceLabel: SOURCE_LABEL[row.source] } : null,
+  };
+}
+
+/**
+ * The `?edit=` read: null when the address asks for no dialog; `missing` for an id that is not a contact, not in the
+ * book, or ERASED (A1.7 — `findEditableContact`, the question `editContact` asks too); `failed` when the read itself
+ * failed, so the dialog says it could not load rather than that the contact is gone.
+ * ⛔ `edit` never travels further than this: `contactsHref` never carries it (decision C9), so no sort header, pager,
+ * pill or search box can reopen the dialog.
+ */
+export async function loadContactEdit(sp: ContactsParams, reads: boolean): Promise<ContactEditLoad | null> {
+  const id = (firstParam(sp.edit) ?? "").trim();
+  if (id === "") return null;
+  try {
+    const row = await findEditableContact(id);
+    if (row === null) return { kind: "missing", sentence: CONTACT_MISSING };
+    return { kind: "ready", row, view: contactEditView(row, reads) };
+  } catch (err) {
+    console.error("[admin/contacts] contact read failed:", (err as Error)?.message ?? err);
+    return { kind: "failed" };
+  }
 }

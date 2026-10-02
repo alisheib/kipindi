@@ -112,6 +112,13 @@ export const RATE_RULES: Record<string, RateRule> = {
   // query, so a wide search costs the same as a narrow one and no bucket can be exhausted on somebody else's behalf.
   // Type-ahead, so the burst is generous and the steady rate is what stops a scripted directory walk.
   "desk.picker":   { capacity: 30, refillPerMin: 15 },
+  // U22 · the contact form on /admin/contacts, keyed on the OFFICER — the convention `desk.picker` set: a bucket nobody
+  // can drain on somebody else's behalf. A save writes a book row and an audit row; a lookup answers "is this number in
+  // the book?". Both are bounded because a role that may type any number must not be able to walk the numbering plan
+  // (D19's own remedy, beside the audit row every create writes). A burst of 60 covers real work; the steady rate is
+  // what stops a script.
+  "contacts.write":  { capacity: 60, refillPerMin: 20 },
+  "contacts.lookup": { capacity: 60, refillPerMin: 30 },
   // First-party visit counter (/api/pv), per IP. A real visitor sends one beacon per page; 60 burst and 30/min steady
   // covers fast browsing on a shared mobile-carrier IP, and stops one client from inflating the counts.
   "pv.ip":         { capacity: 60, refillPerMin: 30 },

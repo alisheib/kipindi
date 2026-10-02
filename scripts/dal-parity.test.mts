@@ -1552,8 +1552,10 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
     "app/api/dev-test/marketing-contacts-seed/route.ts"];
 
   // ⛔ THE POPULATION, read from the REAL tree (not KP_SRC): a third writer that skips the clock
-  // would bring the coin flip back for whatever it writes. U22's form and U33's consent basis
-  // will write here — each must join WRITERS and take the stamp.
+  // would bring the coin flip back for whatever it writes. U23's bulk withdrawal and U33's consent
+  // basis will write here — each must join WRITERS and take the stamp. ⛔ U22's form does NOT: it has
+  // no consent control and writes no ledger row (a new contact's consent is MIRRORED from the ledger
+  // by `mirrorContactCache`, never recorded), so its service is deliberately absent from WRITERS.
   const walk = (dir: string): string[] => readdirSync(dir, { withFileTypes: true }).flatMap((e) =>
     e.isDirectory() ? walk(join(dir, e.name)) : /\.(ts|tsx)$/.test(e.name) ? [join(dir, e.name)] : []);
   const srcRoot = join(ROOT, "src");
@@ -1717,6 +1719,91 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
     storedKeys("ContactAudienceWhere", plantedSrc).includes("plantedKey") && !reads("plantedKey").test(priW) && !reads("plantedKey").test(memW));
   ok("21.c6 · CONTROL · the findMany extractor finds a call with no `take`",
     callObjects("x.findMany({ where, skip: 1 })", "findMany(").some((o) => !/\btake:/.test(o)));
+}
+
+/* ═══ §22 · The edit form's compare-and-set — updateIfUnchanged in both twins (U22, S10 2026-10-02; decision C7) ═══ */
+{
+  // ⭐ WHY THIS SECTION EXISTS. U22's edit is the book's first COMPARE-AND-SET: a row is written only if its
+  // `updatedAt` still equals the instant the dialog was rendered with, so a second officer's stale save is REFUSED
+  // instead of silently overwriting the first. Each half of that lives in a twin — the memory compare every suite
+  // runs on, the Prisma `where` production runs on — and a twin that drops its half is "last write wins" on that
+  // backend alone, with every behavioural suite green (they all run on memory).
+  // ⛔ C25 · AND BOTH TWINS STAMP THE CALLER'S `at`. The column is `@updatedAt`: left to Prisma it would carry a
+  // different instant from the memory twin's, and the NEXT compare would disagree between the backends.
+  // ⛔ THE PATCH IS NARROW BY TYPE. `ContactEditPatch` has keys for the four fields and the stamp only, so neither twin
+  // can write the number, `sourceRef` (an erasure mark must survive), the link or the caches.
+  // The behaviour — two saves on one token, the second refused, the row holding the first — is `test:contacts-form`
+  // §5, executed on the memory twin, with its own red plant.
+  const memBlock = region(storeSrc, "\n  marketingContact: {");
+  const memCas = region(memBlock, "updateIfUnchanged: (");
+  const priCas = delegateMethod("marketingContact", "updateIfUnchanged");
+  const EXPECTED_PATCH = ["displayName", "email", "notes", "tags", "updatedBy"];
+  const patchKeys = storedKeys("ContactEditPatch");
+
+  ok("22.0 · both twins implement updateIfUnchanged, and the parser sees ContactEditPatch's keys",
+    memCas.length > 200 && priCas.length > 200 && patchKeys.length >= 4,
+    `memory ${memCas.length} chars, prisma ${priCas.length} chars, patch [${patchKeys}]`);
+
+  /** The memory compare: the row's stamp against the guard's, refusing as stale — BEFORE the map is written. */
+  const MEM_COMPARE = /\brow\.updatedAt\b[^\n]{0,80}\bguard\.expectedUpdatedAt\b[^\n]{0,60}"stale"/;
+  const memCompares = (body: string): boolean => {
+    const m = MEM_COMPARE.exec(body);
+    const setAt = body.indexOf(".set(");
+    return m !== null && setAt > 0 && m.index < setAt;
+  };
+  ok("22.memory · the memory twin compares the row's updatedAt with guard.expectedUpdatedAt and returns stale BEFORE it writes",
+    memCompares(memCas), memCas.replace(/\s+/g, " ").slice(0, 200));
+
+  /** The Prisma compare: ONE conditional update whose where holds the id AND the guard's instant. */
+  const PRI_WHERE = /\.update\(\{\s*where:\s*\{\s*id,\s*updatedAt:\s*new Date\(guard\.expectedUpdatedAt\)\s*\}/;
+  ok("22.prisma · the Prisma twin's write is ONE update whose where holds both id and updatedAt: new Date(guard.expectedUpdatedAt), and a refused compare is read back as stale or not_found",
+    PRI_WHERE.test(priCas) && /P2025/.test(priCas) && /"stale"/.test(priCas) && /"not_found"/.test(priCas),
+    priCas.replace(/\s+/g, " ").slice(0, 220));
+
+  /** The stamp: each twin writes the caller's `at`, by name. */
+  const MEM_AT = /^\s*updatedAt:\s*at,/m;
+  const PRI_AT = /data:\s*\{[\s\S]*?\bupdatedAt:\s*new Date\(at\)/;
+  ok("22.at · ⛔ C25 · BOTH twins write the caller's `at` as updatedAt, explicitly — never left to @updatedAt",
+    MEM_AT.test(memCas) && PRI_AT.test(priCas));
+
+  /** A write that names what an edit may never touch. */
+  const FORBIDDEN = /\b(?:msisdn|rawInput|sourceRef|userId|consentState|suppressedAt|importId|createdAt|createdBy|operator|ndc|source)\s*:/;
+  /** A WHOLE-patch spread (`...patch,`) — the shape that lets any key the caller holds reach the row. `[...patch.tags]`
+   *  copies one array and is not one. */
+  const PATCH_SPREAD = /\.\.\.patch(?![.\w])/;
+  ok("22.narrow · neither twin's write names the number, sourceRef, the link, the caches or the provenance, and neither spreads the patch",
+    !FORBIDDEN.test(memCas) && !FORBIDDEN.test(priCas) && !PATCH_SPREAD.test(memCas) && !PATCH_SPREAD.test(priCas),
+    `${(FORBIDDEN.exec(memCas) ?? FORBIDDEN.exec(priCas) ?? PATCH_SPREAD.exec(memCas) ?? PATCH_SPREAD.exec(priCas) ?? [""])[0]}`);
+
+  ok("22.patch · ContactEditPatch's keys are EXACTLY the four fields and the stamp — displayName, email, notes, tags, updatedBy",
+    sameSet(patchKeys, EXPECTED_PATCH), setDiff(EXPECTED_PATCH, patchKeys) || patchKeys.join(","));
+
+  const MEM_SIG = /updateIfUnchanged: \(id: string, patch: ContactEditPatch, guard: ContactEditGuard, at: string\): ContactCasResult =>/;
+  const PRI_SIG = /updateIfUnchanged: async \(id: string, patch: ContactEditPatch, guard: ContactEditGuard, at: string\): Promise<ContactCasResult> =>/;
+  const storeImport = dalSrc.slice(0, Math.max(0, dalSrc.indexOf("} from \"./store\";")));
+  const importsNamed = ["ContactEditPatch", "ContactEditGuard", "ContactCasResult"].every((t) => new RegExp(`\\b${t},`).test(storeImport));
+  ok("22.named · both signatures use the NAMED ContactEditPatch, ContactEditGuard and ContactCasResult (never an inline literal) — exported by store.ts, imported by prisma-dal.ts",
+    MEM_SIG.test(memCas) && PRI_SIG.test(priCas)
+      && /export type ContactEditPatch = \{/.test(storeSrc) && /export type ContactEditGuard = \{/.test(storeSrc)
+      && /export type ContactCasResult =/.test(storeSrc) && importsNamed,
+    `memory ${MEM_SIG.test(memCas)} · prisma ${PRI_SIG.test(priCas)} · imported ${importsNamed}`);
+
+  // ── CONTROLS ─────────────────────────────────────────────────────────────────────────
+  // ⛔ Each proves the ASSERTION ABOVE IT can reject, on a literal that would otherwise pass.
+  ok("22.c1 · CONTROL · a Prisma write whose where lost its updatedAt clause FAILS 22.prisma's matcher",
+    !PRI_WHERE.test("const written = await pc().marketingContact.update({\n  where: { id },\n  data: { notes: patch.notes },\n});"));
+  ok("22.c2 · CONTROL · a memory body with no compare FAILS 22.memory's matcher",
+    !memCompares("const row = store.marketingContacts.get(id);\nif (!row) return { ok: false, reason: \"not_found\" };\nstore.marketingContacts.set(id, next);"));
+  ok("22.c3 · CONTROL · a memory body that compares only AFTER it writes FAILS 22.memory's matcher — the order is the property",
+    !memCompares("store.marketingContacts.set(id, next);\nif (Date.parse(row.updatedAt) !== Date.parse(guard.expectedUpdatedAt)) return { ok: false, reason: \"stale\" };"));
+  const plantedPatchSrc = storeSrc.replace("export type ContactEditPatch = {", "export type ContactEditPatch = {\n  sourceRef: string | null;");
+  ok("22.c4 · CONTROL · a key PLANTED in ContactEditPatch (sourceRef) is seen by the parser and fails 22.patch's exact set",
+    storedKeys("ContactEditPatch", plantedPatchSrc).includes("sourceRef") && !sameSet(storedKeys("ContactEditPatch", plantedPatchSrc), EXPECTED_PATCH));
+  ok("22.c5 · CONTROL · a write naming sourceRef, or spreading the whole patch, is caught by 22.narrow's matchers — and a copied array is not",
+    FORBIDDEN.test("  sourceRef: patch.sourceRef,") && PATCH_SPREAD.test("const next = { ...row, ...patch, updatedAt: at };")
+      && !PATCH_SPREAD.test("  tags: [...patch.tags],"));
+  ok("22.c6 · CONTROL · a Prisma data block without the explicit stamp FAILS 22.at's matcher",
+    !PRI_AT.test("data: {\n  displayName: patch.displayName,\n},"));
 }
 
 console.log(`\ndal-parity: ${pass} passed, ${fail} failed`);

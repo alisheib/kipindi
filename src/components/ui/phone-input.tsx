@@ -9,6 +9,16 @@
  *
  * Server-side validators still re-check the value — this component is
  * defensive UX, not the security gate.
+ *
+ * ⭐ U22 (2026-10-02) · THREE ADDITIVE PROPS, for the contact form — no existing caller changes behaviour:
+ *   · the ref is FORWARDED to the visible input, so a dialog can focus the number (`Modal.initialFocus`) instead
+ *     of its ✕;
+ *   · `onPasteRaw(text)` hears the clipboard text FIRST, before the nine-digit cap — a pasted `+254 712 345 678`
+ *     becomes `254712345` in the field, which would read as a Mbeya landline; the raw text lets a caller judge the
+ *     paste itself (`src/lib/contacts/contact-number.ts`);
+ *   · a caller's `title` wins over the player-locale hint (`t.common.phoneInputTitle`), which on an English-only
+ *     console would raise a bubble in the wrong language.
+ * Absent, each behaves exactly as before: no ref, no paste hook, the locale's title.
  */
 
 import * as React from "react";
@@ -22,9 +32,14 @@ import { formatTzPhone } from "@/lib/tz-msisdn";
 type Props = Omit<React.InputHTMLAttributes<HTMLInputElement>, "type" | "onChange" | "size"> & {
   size?: "sm" | "md" | "lg";
   onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  /** U22 · the clipboard text of a paste, handed over BEFORE it is stripped and capped at nine digits. */
+  onPasteRaw?: (text: string) => void;
 };
 
-export function PhoneInput({ defaultValue, value, onChange, name, ...rest }: Props) {
+export const PhoneInput = React.forwardRef<HTMLInputElement, Props>(function PhoneInput(
+  { defaultValue, value, onChange, name, onPasteRaw, ...rest },
+  ref,
+) {
   const { t } = useT();
   const [v, setV] = React.useState<string>(() => stripDigits(String(defaultValue ?? "")));
 
@@ -56,6 +71,8 @@ export function PhoneInput({ defaultValue, value, onChange, name, ...rest }: Pro
 
   const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
     const text = e.clipboardData.getData("text") ?? "";
+    // ⭐ U22 · FIRST, before anything is stripped or capped: the caller hears what was actually pasted.
+    onPasteRaw?.(text);
     if (text === stripDigits(text)) return;       // already clean
     e.preventDefault();
     const cleaned = stripDigits(text);
@@ -80,6 +97,7 @@ export function PhoneInput({ defaultValue, value, onChange, name, ...rest }: Pro
     <>
       <Input
         {...visibleRest}
+        ref={ref}
         id={id}
         type="tel"
         inputMode="numeric"
@@ -94,7 +112,8 @@ export function PhoneInput({ defaultValue, value, onChange, name, ...rest }: Pro
            holds: "712 345 678". It now also enforces completeness, which the old
            `[0-9 ]{9,11}` did not — that one accepted "12 345 678" quite happily. */
         pattern="[67][0-9]{2} [0-9]{3} [0-9]{3}"
-        title={t.common.phoneInputTitle}
+        // ⭐ U22 · a caller's title wins; absent, the locale's hint, exactly as before.
+        title={visibleRest.title ?? t.common.phoneInputTitle}
         maxLength={11}
         mono
         prefix="+255"
@@ -111,7 +130,7 @@ export function PhoneInput({ defaultValue, value, onChange, name, ...rest }: Pro
       {name && <input type="hidden" name={name} value={v} />}
     </>
   );
-}
+});
 
 /**
  * Accept every shape the server's `tzPhone` accepts — `0…`, `255…`, `+255…` and

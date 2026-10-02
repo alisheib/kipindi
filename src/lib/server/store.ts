@@ -514,6 +514,27 @@ export type MarketingContactPatch = Partial<
   Omit<StoredMarketingContact, "id" | "msisdn" | "createdAt" | "createdBy">
 >;
 
+/**
+ * U22 · WHAT AN OFFICER'S EDIT MAY CHANGE — the edit form's four fields and the stamp, and nothing else.
+ * ⛔ NARROWER THAN `MarketingContactPatch` ON PURPOSE: no key for the number, `sourceRef` (an erasure mark must
+ * survive), the link, the caches (`consentState`, `suppressedAt` — the mirror's), the import or the provenance, so
+ * the compare-and-set below cannot write them however it is called. `email` absent KEEPS the stored address.
+ * `test:dal-parity` §22 holds the key set exactly.
+ */
+export type ContactEditPatch = {
+  displayName: string | null;
+  email?: string | null;
+  notes: string | null;
+  tags: string[];
+  updatedBy: string | null;
+};
+/** U22 · the compare in compare-and-set: the row's `updatedAt` as the dialog was rendered. */
+export type ContactEditGuard = { expectedUpdatedAt: string };
+/** U22 · a compare-and-set answer: the row as written, or why nothing was — gone, or changed since. */
+export type ContactCasResult =
+  | { ok: true; row: StoredMarketingContact }
+  | { ok: false; reason: "not_found" | "stale" };
+
 /** U20 · the sortable columns of the book. ⚠️ "operator" sorts by the PREFIX (`ndc`). */
 export type ContactPageSort = "added" | "name" | "operator";
 /**
@@ -2685,6 +2706,29 @@ const memoryDb = {
       const next = { ...row, ...patch, updatedAt: at };
       store.marketingContacts.set(id, next);
       return next;
+    },
+    /** U22 · ⭐ COMPARE-AND-SET — the edit form's ONE write. The row is written only if its `updatedAt` is still
+     *  the one the dialog was rendered with, so a second officer's stale save is REFUSED instead of silently
+     *  overwriting the first. Compared as INSTANTS (`Date.parse`), the Prisma twin's `updatedAt` equality, so the
+     *  twins agree on two spellings of one millisecond. ⛔ The caller's `at` is written EXPLICITLY (decision C25) —
+     *  the same value the Prisma twin stamps. ⛔ The patch's fields are NAMED, never spread: a key outside
+     *  `ContactEditPatch` cannot reach the row (`test:dal-parity` §22). JavaScript runs this to the end before any
+     *  other write, so the compare and the set are one step. */
+    updateIfUnchanged: (id: string, patch: ContactEditPatch, guard: ContactEditGuard, at: string): ContactCasResult => {
+      const row = store.marketingContacts.get(id);
+      if (!row) return { ok: false, reason: "not_found" };
+      if (Date.parse(row.updatedAt) !== Date.parse(guard.expectedUpdatedAt)) return { ok: false, reason: "stale" };
+      const next: StoredMarketingContact = {
+        ...row,
+        displayName: patch.displayName,
+        email: patch.email === undefined ? row.email : patch.email,
+        notes: patch.notes,
+        tags: [...patch.tags],
+        updatedBy: patch.updatedBy,
+        updatedAt: at,
+      };
+      store.marketingContacts.set(id, next);
+      return { ok: true, row: next };
     },
     /** U20 · ONE PAGE of the book and the size of the whole match. The order breaks every tie on `id`, in
      *  the same direction, and puts a contact with NO name last whichever way names sort — Postgres'

@@ -16,6 +16,9 @@ import { SkBody, SkBar, SkChip, SkKpiRow, SkTableCard } from "@/components/admin
  * cannot know the role or the data: a reader's rail adds Consent and Source, and the List and Tag rows exist only
  * when the book has lists or tags. So the rail's height is NOT equal by construction, and the U20/U21 drive records
  * the difference at both widths rather than claiming it away. Nothing above the card's top edge depends on it.
+ * ⭐ U22 · THE HEAD RESERVES "ADD CONTACT". The real page puts a `size="sm"` button in `AdminPageHead`'s actions — the
+ * kit's 40px rung (`--h-control-sm`) — so the ghost holds a box of that height and about that width, or the header
+ * would grow (or wrap at 360) the moment the page swapped in. The drive measures the two boxes at both widths.
  * ⛔ `data-skeleton` stamps are the drive's handles — never match on class strings.
  * ⛔ Never interpolate a Tailwind height and never a numeric `h-`/`w-` key here: this repo's spacing
  * scale is overridden (`w-16` is 96px, not 64).
@@ -23,7 +26,11 @@ import { SkBody, SkBar, SkChip, SkKpiRow, SkTableCard } from "@/components/admin
 export default function Loading() {
   return (
     <>
-      <AdminPageHead title="Contacts" sw="Anwani" />
+      <AdminPageHead
+        title="Contacts"
+        sw="Anwani"
+        actions={<div data-skeleton="contacts-add"><SkChip className="h-[40px] w-[124px]" /></div>}
+      />
       <SkBody>
         <div data-skeleton="contacts-kpis">
           <SkKpiRow count={4} />

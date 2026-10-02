@@ -160,6 +160,9 @@ console.log("\n[client-graph-safe] \u00a71 client-reachable modules stay clear o
     // ⭐ ADDED 2026-10-02 (marketing U25, decision M3). The CSV reader: OD29 parses a CSV in the browser. It imports
     // only parsed-file.ts, vcard.ts and xlsx-limits.ts (C17: src/lib/contacts modules), all pinned here.
     "lib/contacts/import-parse.ts",
+    // ⭐ ADDED 2026-10-02 (marketing U22, decision M3). The contact form's live number verdict: the Add a contact dialog
+    // runs it in the browser on every keystroke. It imports only tz-msisdn.ts and phone-normalize.ts, both pinned here.
+    "lib/contacts/contact-number.ts",
     // ⭐ ADDED 2026-10-01 (marketing S10, the pure engines): client-safe src/lib/marketing modules the composer, the
     // estimate and the confirmation will import into client components — each must stay free of the Prisma client.
     "lib/marketing/erasure-mark.ts",

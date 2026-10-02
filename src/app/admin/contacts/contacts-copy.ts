@@ -14,12 +14,13 @@
  */
 import type { ContactConsentState, ContactSource } from "@/lib/server/store";
 import { adminCount, formatNumber } from "@/lib/utils";
+import { CONTACT_FIELDS } from "@/lib/contacts/contact-fields";
 
 export const CONTACTS_EMPTY = {
   title: "No contacts yet",
-  /** ⛔ States the present, promises nothing: there is no store until U18 and no importer until
-   *  U25, and this programme does not publish a commitment with no code behind it (D12). */
-  body: "The marketing address book is empty. Adding and importing contacts are not live yet.",
+  /** ⛔ States the present, promises nothing (D12): since U22 one contact can be added by hand — the button the
+   *  sentence names sits in the page head — and the importer (U25–U32) is still not live, so it is not offered. */
+  body: "The marketing address book is empty. Use Add contact to put a number in it; importing a file is not live yet.",
 } as const;
 
 /** U20 · a search that matches nothing. ⛔ Says WHY a part of a number finds nothing: the book never
@@ -143,4 +144,93 @@ export function railOperatorTitle(ndcs: readonly string[]): string {
  *  "N of M" form the noun agrees with the WHOLE book, the same rule `/admin/candidates` follows. */
 export function railCountLine(match: number, book: number): string {
   return match === book ? adminCount(book, "contact") : `${formatNumber(match)} of ${adminCount(book, "contact")}`;
+}
+
+/* ═══ U22 · THE CONTACT FORM — the dialog's words (the page head's button, the dialog, its actions) ═══════════ */
+
+/**
+ * The dialog's labels. ⭐ The headings carry NO Swahili: no shipped gloss exists for "Add a contact" or "Edit contact",
+ * and one is never invented (§5.13). The eyebrow reuses the page head's shipped "Anwani".
+ * ⚠️ The keys end in `Label` on purpose: `test:read-tiers` §7 reads `{… .email …}` in an admin .tsx as a raw email
+ * render, so the form never writes a `.email` accessor — not even for a label.
+ */
+export const CONTACT_FORM = {
+  addButton: "Add contact",
+  addTitle: "Add a contact",
+  editTitle: "Edit contact",
+  eyebrow: "Contacts · Anwani",
+  numberLabel: "Phone number",
+  nameLabel: "Name",
+  emailLabel: "Email",
+  notesLabel: "Notes",
+  tagsLabel: "Tags",
+  consent: "Consent",
+  source: "Source",
+  added: "Added",
+  save: "Save contact",
+  saveEdit: "Save changes",
+  cancel: "Cancel",
+  close: "Close",
+  tryAgain: "Try again",
+  reload: "Reload",
+} as const;
+
+/**
+ * ⛔ THE FORM'S OWN SENTENCE ABOUT CONSENT — the one thing every viewer is told (A1.1). Nothing lawful can be chosen
+ * on a form (OD9's basis and an 18+ attestation are U33's), so the add dialog states the list's own label, "Not
+ * recorded" (C13), and this sentence; it never offers a choice.
+ */
+export const CONTACT_CONSENT_NOTE = "This form never records consent; a contact with no consent recorded is never sent marketing.";
+/** The number field's resting help line, before anything is typed. */
+export const CONTACT_NUMBER_HINT = "A Tanzanian mobile number in any spelling: 0712 345 678, +255 712 345 678 or 255712345678.";
+/** The number field's hover text. ⭐ The caller's `title` wins over PhoneInput's own, which is the PLAYER locale's. */
+export const CONTACT_NUMBER_TITLE = "Nine digits after +255";
+/** Edit mode: the number is the row's key. A number that changed is a different person's row (`store.ts`). */
+export const CONTACT_NUMBER_FIXED = "The number can't be changed — add a new number as a new contact.";
+/** The operator chip's hover text — "issued from", never "is on": a number that moved network keeps its prefix. */
+export function contactRangeTitle(brand: string): string {
+  return `Issued from ${brand}'s range — a number that moved network keeps its prefix.`;
+}
+/** While the book is asked whether the number is already in it. */
+export const CONTACT_CHECKING = "Checking the book…";
+/** The duplicate's way out: opens the row that holds the number (`?edit=<contact id>`, a cuid — never the number). */
+export const CONTACT_OPEN_EXISTING = "Open the existing contact →";
+
+/** A field's one-line hint, from the ONE field list (`contact-fields.ts`) — never retyped here. */
+function fieldHint(key: "email" | "tags"): string {
+  return CONTACT_FIELDS.find((f) => f.key === key)?.hint ?? "";
+}
+export const CONTACT_EMAIL_HINT = fieldHint("email");
+export const CONTACT_TAGS_HINT = fieldHint("tags");
+/** Edit mode: the stored address is shown masked (`<Sensitive field="contactEmail">`) and never sent to the dialog. */
+export const CONTACT_EMAIL_KEEP_HINT = "Leave this empty to keep the stored address, or type a new one to replace it.";
+/** The replacement field's accessible name (it sits under the masked address, with no label of its own). */
+export const CONTACT_EMAIL_NEW_LABEL = "New email address";
+export const CONTACT_EMAIL_REMOVE = "Remove the stored address";
+export const CONTACT_EMAIL_KEEP = "Keep the stored address";
+export const CONTACT_EMAIL_REMOVING = "The stored address will be removed when you save.";
+/** The notes counter — the limit is the ONE table's (`CONTACT_LIMITS.notes`), passed in. */
+export function contactNotesCount(used: number, limit: number): string {
+  return `${formatNumber(used)} of ${formatNumber(limit)} characters`;
+}
+
+export const CONTACT_ADDED = "Contact added";
+export const CONTACT_SAVED = "Contact saved";
+export const CONTACT_ADD_FAILED = "Couldn't add the contact";
+export const CONTACT_SAVE_FAILED = "Couldn't save the contact";
+/** 🔴 A1.1 · the post-save consent line — built ONLY when the reply carries the mirrored consent, which it does for a
+ *  reader alone (`contactAddReply`). */
+export function contactAddedConsent(label: string): string {
+  return `Consent: ${label} — read from the consent record. This form never records consent.`;
+}
+/** The dialog's own read failed (`loadContactEdit`): never "missing" — the contact may well be there. */
+export const CONTACT_EDIT_FAILED = "Couldn't load this contact. Try again.";
+
+/** The actions' gate refusal (`softRequireStaff`) — said in words, beside the read-only banner the layout shows. */
+export const CONTACT_ROLE_REFUSAL = "Your role can view contacts but not add or change them.";
+/** The per-officer rate rule refused (`contacts.write` / `contacts.lookup`). */
+export function CONTACT_RATE_LIMITED(retryAfterSec: number): string {
+  const s = Math.max(1, Math.ceil(Number.isFinite(retryAfterSec) ? retryAfterSec : 60));
+  const wait = s < 60 ? `${s} second${s === 1 ? "" : "s"}` : `${Math.ceil(s / 60)} minute${Math.ceil(s / 60) === 1 ? "" : "s"}`;
+  return `Too many contacts in a short time. Wait ${wait}, then try again.`;
 }
