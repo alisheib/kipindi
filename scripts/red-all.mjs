@@ -61,8 +61,16 @@
  *     signed in, and those are the two controls the mutation severs.
  *         DATABASE_URL="" npx next dev -p 3011
  *         BASE=http://localhost:3011 npm run red:header-fit
+ *   · `red:journey-header-fit` (Vodacom S6, A5 and A6) rewrites the journey header's rules in `globals.css` and asks real
+ *     viewports from 320 to 1279, in sw, en and zh, through a staff preview pass, whether each S4 rule still holds. It
+ *     needs an IN-MEMORY dev server on this tree started with DISABLE_ADMIN_TOTP=true, and it runs ONLY ALONE: it
+ *     refuses without `--alone` on its own command line (its package script never passes it, so this runner cannot)
+ *     and whenever KP_RED_ALL is set, which this runner sets for every harness it starts. Both refusals exit 2 before
+ *     anything is written, so here it reads FAIL, premise absent — it runs for minutes, and this runner's timeout kills
+ *     npm but, on Windows, not its node child. Run it alone, detached, then `git diff --exit-code`:
+ *         KP_BASE=http://localhost:3041 npm run red:journey-header-fit -- --alone
  *
- * Or drop them from a serverless run:
+ * Or drop them from a serverless run. `--skip` matches a SUBSTRING, so `header-fit` drops both header harnesses:
  *     npm run red:all -- --skip results-filter,header-fit
  * ⛔ They are NOT silently excused here. A runner that hides an unrunnable guard is the disease
  * this file exists to cure; they fail, and they say why.
@@ -160,7 +168,9 @@ for (const h of harnesses) {
     cwd: root,
     encoding: "utf8",
     shell: process.platform === "win32", // npm.cmd needs a shell on Windows
-    env: { ...process.env, FORCE_COLOR: "0" },
+    // ⛔ KP_RED_ALL marks every harness this runner starts, so one that must never run from here can refuse
+    // (`red:journey-header-fit`, Vodacom S6 A6): a rule written in this header is prose; a mark is a fact.
+    env: { ...process.env, FORCE_COLOR: "0", KP_RED_ALL: "1" },
     maxBuffer: 64 * 1024 * 1024,
     timeout: timeoutMs,
   });

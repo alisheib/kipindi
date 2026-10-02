@@ -48,7 +48,20 @@
  *      sw/en/zh at 320 and 360 (A17), and below 360 the slots stacked from the top so a two-line label cannot lift its
  *      pip; ONE unread poller per width — the bell mounted only from 1024, the dot's counter only below it, neither
  *      while the width is unknown, and only client code loading the width hook; the guest sheet on the kit Modal,
- *      portalled and on test:popup-fit's record (A13); and the chrome built, not mounted (WP6b mounts it).
+ *      portalled and on test:popup-fit's record (A13); and the chrome mounted by AppShell alone, lazily (WP6b).
+ *   §9 THE ROUTE CENSUS (WP6b, A9) — S6's done-when, "every route keeps an entrance", as a reachability graph. Roots
+ *      are what a journey PHONE shows (the four tabs, the header's own links, the sheets, the footer and, on `/account`,
+ *      `hubRowsFor(viewer)`); edges are the path literals of the code each page renders, comments stripped; the walk
+ *      runs for seven kinds of reader, and a guest meeting a protected page walks on from sign-in. Every route the
+ *      classic chrome reaches for a reader, the journey reaches too; every route on disk is reached by some reader or
+ *      is a named EXTERNAL entrance whose generator still names it and that no door reaches yet; the hub holds the
+ *      controls that are not routes; the chrome's door tables are held to their files (both ways; the bell one way,
+ *      A1); and A15's two classic doors (`/updown/history`, `/positions/performance`) are pinned until WP9 re-points
+ *      them. Its limits are written where it is defined.
+ *   §10 THE HEADER-FIT GATE'S TERMS (WP6b, A5, A6) — the drives ask the pill's rules exactly where `journeyHeaderState`
+ *      draws the pill; `red:journey-header-fit` refuses, before its first write, without `--alone` (which its package
+ *      script never passes) and inside `red:all` (which marks its harnesses with KP_RED_ALL); and the stylesheet holds
+ *      no red-run witness, so a mutation a hard kill left behind fails here, by name.
  *
  * ⛔ IN-PROCESS BY CONSTRUCTION. `--prove-red` hands the same checks defective implementations and edited source TEXT
  * held in memory, and requires the check named for each defect to fail. This file makes no file-system change anywhere,
@@ -68,6 +81,9 @@ import * as DOORS from "../src/lib/journey/viewer-doors.ts";
 import * as FLAG from "../src/lib/journey/journey-on.ts";
 import * as UNREAD from "../src/lib/journey/unread-count.ts";
 import * as POLL from "../src/lib/journey/one-poller.ts";
+import * as HUB from "../src/components/journey/account/hub-rows.ts";
+import * as JHF from "./live/journey-header-fit.mjs";
+import { WITNESS_PROPERTY } from "./anchors/journey-header-fit.anchors.mjs";
 import { JOURNEY_SURFACES, JOURNEY_TRAPPED, JOURNEY_LAWS, soleZ, portalsOut, rendersSymbol, formsStackingContext } from "./lib/stacking-rows.mts";
 import { IS_POPUP, reviewGaps, reviewedIn } from "./lib/popup-review.mts";
 import { NO_VIEWER, type InviteViewer } from "../src/lib/feature-state.ts";
@@ -136,7 +152,18 @@ type World = {
   files: ReadonlyMap<string, string>;
   /** Routes decided ahead of their page — `AHEAD_OF_DISK` when absent; the red twin plants a stale entry here. */
   ahead?: ReadonlySet<string>;
+  /** §9: each route's page file (repo path), from the same glob as `routes`. */
+  pageOf: ReadonlyMap<string, string>;
+  /**
+   * §9 and §10: files outside src, read as text — the service worker (an external entrance cites it), the header-fit
+   * red twin and red:all (decommented), and package.json as written.
+   */
+  extra: ReadonlyMap<string, string>;
 };
+/** §10: the header-fit gate's own files (A6), read into the world so the red twin can plant edits in them. */
+const RED_TWIN = "scripts/journey-header-fit-red.mjs";
+const RED_ALL = "scripts/red-all.mjs";
+const PACKAGE = "package.json";
 const WORLD: World = {
   routes: [...new Set(pages(join(ROOT, "src/app"))
     .map((f) => f.replace(/\\/g, "/"))
@@ -151,6 +178,16 @@ const WORLD: World = {
     const rel = toPosix(relative(ROOT, p));
     return [rel, decomment(read(rel))];
   })),
+  pageOf: new Map(pages(join(ROOT, "src/app"))
+    .map((f) => toPosix(relative(ROOT, f)))
+    .filter((rel) => !rel.startsWith("src/app/admin/") && !rel.startsWith("src/app/api/"))
+    .map((rel): [string, string] => [routeOf(join(ROOT, rel)), rel])),
+  extra: new Map([
+    ["public/sw.js", decomment(read("public/sw.js"))],
+    [RED_TWIN, decomment(read(RED_TWIN))],
+    [RED_ALL, decomment(read(RED_ALL))],
+    [PACKAGE, read(PACKAGE)],
+  ]),
 };
 const HOME = "src/lib/nav/active-tab.ts";
 const SURFACES = "src/lib/surfaces.ts";
@@ -283,6 +320,7 @@ type Impl = {
   commitSurface: (p: string | null) => boolean;
   header: typeof HDR.journeyHeaderState;
   doors: typeof DOORS.viewerDoorsFor;
+  hubRows: typeof HUB.hubRowsFor;
   unread: { feed: (deps: UNREAD.UnreadDeps) => UNREAD.UnreadFeed; shownFor: typeof UNREAD.unreadFor };
   pollers: typeof POLL.pollersAt;
   lgUp: { subscribe: typeof POLL.subscribeLgUp; snapshot: typeof POLL.lgUpSnapshot; serverSnapshot: typeof POLL.lgUpServerSnapshot };
@@ -300,6 +338,7 @@ const REAL: Impl = {
   commitSurface: SURF.isCommitSurface,
   header: HDR.journeyHeaderState,
   doors: DOORS.viewerDoorsFor,
+  hubRows: HUB.hubRowsFor,
   unread: { feed: UNREAD.createUnreadFeed, shownFor: UNREAD.unreadFor },
   pollers: POLL.pollersAt,
   lgUp: { subscribe: POLL.subscribeLgUp, snapshot: POLL.lgUpSnapshot, serverSnapshot: POLL.lgUpServerSnapshot },
@@ -1337,12 +1376,551 @@ function g8Tabs(I: Impl, W: World, G: Graph, ok: Ok) {
   ok("8.popup · every popup the journey's components and its hub render is on test:popup-fit's review record — the guest sheet among them (A13)",
     journeyPopups.includes(GUEST_SHEET) && record.length > 50 && gaps.unreviewed.length === 0,
     show({ journeyPopups, unreviewed: gaps.unreviewed, record: record.length }));
+  // ⭐ WP6b: the journey chrome is mounted by AppShell ALONE, and LAZILY. Nothing else renders or loads the header or
+  // the tabs, and AppShell loads them only through lazy bindings, the way it loads its overlays: the root layout's
+  // first-load bundle, which every classic visitor downloads, must not carry them. (The ternaries themselves are pinned
+  // by test:simple-journey-flag 10.shell.chrome.) The graph reads a lazy import(…) as the load it is.
   const mounts = [...W.files].filter(([p, s]) => p !== SHELL && (s.includes("<JourneyTopBar") || s.includes("<JourneyTabs"))).map(([p]) => p);
+  const loadedBy = [JHDR, JTABS].flatMap((f) => (G.into.get(f) ?? []).filter((p) => p !== SHELL).map((p) => `${p} loads ${f}`));
   const classicLoads = [...G.out]
     .filter(([p]) => p.startsWith("src/components/layout/") && p !== SHELL)
     .flatMap(([p, to]) => to.filter((x) => x.startsWith(JOURNEY_COMPONENTS)).map((x) => `${p} loads ${x}`));
-  ok("8.mount · built, not mounted: nothing but AppShell renders the journey header or tabs (WP6b), and no classic layout file loads a journey component",
-    mounts.length === 0 && classicLoads.length === 0, show({ mounts, classicLoads }));
+  ok("8.mount · mounted by AppShell alone (WP6b): nothing else renders or loads the journey header or tabs, and no classic layout file loads a journey component",
+    mounts.length === 0 && loadedBy.length === 0 && classicLoads.length === 0, show({ mounts, loadedBy, classicLoads }));
+  const shellSrc = text(W, SHELL);
+  const lazyLoad = (f: string, symbol: string) => `import("@/${f.slice("src/".length, f.length - ".tsx".length)}").then((m) => ({ default: m.${symbol} }))`;
+  const notLazy = [[JHDR, "JourneyTopBar"], [JTABS, "JourneyTabs"]].filter(([f, symbol]) => count(shellSrc, lazyLoad(f, symbol)) !== 1).map(([f]) => f);
+  const staticImports = count(shellSrc, `from "@/components/journey/`);
+  ok("8.mount.lazy · AppShell loads the journey header and tabs lazily, the way it loads its overlays, and nothing from the journey's components statically — a classic visitor's first-load bundle carries none of their code",
+    (G.into.get(JHDR) ?? []).includes(SHELL) && (G.into.get(JTABS) ?? []).includes(SHELL) && notLazy.length === 0 && staticImports === 0,
+    show({ notLazy, staticImports }));
+}
+
+/* ══ §9 · THE ROUTE CENSUS (S6 WP6b) ═══════════════════════════════════════════════════════════════════════════ */
+/*
+ * S6's done-when, "every route keeps an entrance", as a REACHABILITY GRAPH (A9): never a list of hrefs that merely sit
+ * in some file.
+ *   ROOTS: what a journey PHONE shows. The four tabs (a guest's Tiketi zangu opens the guest sheet), the header's own
+ *   links as `journeyHeaderState` decides them, the Wallet the capsule opens and the footer; and on `/account`, which
+ *   only the Akaunti tab reaches, `hubRowsFor(viewer)`. The language menu, the bell and the avatar menu show from 1024
+ *   only, so they open nothing here.
+ *   EDGES: the path literals of the code each page renders, its comments stripped: the page, the files beside it, the
+ *   layouts above it (never the root's, which renders the chrome) and every component they load. The chrome is never
+ *   an edge; its doors are roots, counted only where a phone shows them.
+ *   READERS: seven kinds, each with the doors `viewerDoorsFor` gives it. A guest who meets a protected page is sent to
+ *   sign in, as `proxy.ts` sends them, and walks on from there.
+ * Per kind: every route the CLASSIC chrome reaches (header, More, avatar menu, rail, coin, bell, the Wallet, the
+ * footer), the journey reaches too. Across kinds: every route on disk is reached, or is a named EXTERNAL entrance whose
+ * generating file still names it (an email, an SMS, the payment provider, the edge, the service worker) and that no
+ * door reaches yet. The door tables are held to their files both ways, so a door added to the classic chrome, or taken
+ * from it, cannot slip past the census.
+ * ⚠️ A15: `/updown/history` and `/positions/performance` enter through CLASSIC page doors until WP9's Tiketi view takes
+ * them over. PINNED names both; the commit that moves them re-points the pins, with a plant.
+ * ⚠️ WHAT IT CANNOT SEE — its limits, stated rather than hidden (the WP6b review):
+ *   · A LINK BUILT IN A `.ts` HELPER IS NO EDGE. The walk follows `.tsx` components only, so a position's permalink
+ *     (`position-permalink.ts`), the performance page's query links and a notification's href are invisible to it —
+ *     which is why `/positions/[positionId]` is filed EXTERNAL although in-app surfaces link it.
+ *   · AN EDGE IS EVERY PATH LITERAL A PAGE'S CODE HOLDS, whoever is reading: every branch of a shared component, a door
+ *     gated to another reader, a `redirect()` or `revalidatePath()` argument. The walk OVER-counts what one reader can
+ *     tap; only the chrome's roots are gated per reader.
+ *   So it proves that no route lost its last entrance and that the journey loses no door the classic chrome had — not
+ *   that a given reader sees a given door, which is the tiles' question (WP6b step 5).
+ * ⚠️ IN PREDEPLOY IT IS BOOKKEEPING ANOTHER LANE CAN TRIP: a new page nothing links fails 9.entrance; a door added to or
+ *   taken from the classic bar, rail, avatar menu, footer or Wallet fails 9.chrome; a page that links an EXTERNAL route
+ *   fails 9.external. Clear it in that lane's commit by editing the table here. The bell alone is held one way: A1
+ *   leaves it to other lanes until S15, so only the door the census counts on is held, never a door it gains.
+ */
+const TOP_BAR_FILE = "src/components/layout/top-app-bar.tsx";
+const AVATAR_FILE = "src/components/layout/avatar-menu.tsx";
+const NAV_MORE_FILE = "src/components/layout/nav-more.tsx";
+const FOOTER_FILE = "src/components/layout/public-footer.tsx";
+const WALLET_SHEET_FILE = "src/components/layout/wallet-sheet.tsx";
+const HUB_ROWS_FILE = "src/components/journey/account/hub-rows.ts";
+const ACCOUNT_PAGE_FILE = "src/app/account/page.tsx";
+const PROXY_FILE = "src/proxy.ts";
+const ACCOUNT_ROUTE = "/account";
+const LOGIN_ROUTE = "/auth/login";
+/**
+ * The chrome: its doors are the census's roots, so a page that loads one of these files inherits none of its doors.
+ * ⛔ Named file by file, never as the journey's whole directory: a journey PAGE component (WP9's Tiketi view, which
+ * A15's pins move to) is an ordinary edge, and the census must see its doors.
+ */
+const CENSUS_CHROME = new Set([
+  SHELL, TOP_BAR_FILE, BOTTOM_NAV, NAV_MORE_FILE, AVATAR_FILE, FOOTER_FILE, WALLET_SHEET_FILE, BELL,
+  "src/components/layout/wallet-balance-pill.tsx", "src/components/layout/away-summary-bar.tsx",
+  "src/components/layout/email-verify-banner.tsx",
+  JHDR, JTABS, GUEST_SHEET, FLAG_COMPONENT,
+]);
+/** The hub's own components and page: `/account`'s doors are `hubRowsFor`'s rows, never what its files happen to name. */
+const HUB_COMPONENTS = "src/components/journey/account/";
+const inChrome = (rel: string) => CENSUS_CHROME.has(rel) || rel.startsWith(HUB_COMPONENTS) || rel.startsWith("src/app/account/");
+/** Next's route files: the router renders them around a page, and nothing imports one as a component. */
+const ROUTE_FILES = new Set(["page.tsx", "layout.tsx", "template.tsx", "loading.tsx", "error.tsx", "global-error.tsx", "not-found.tsx", "default.tsx", "route.ts"]);
+const fileName = (rel: string) => rel.slice(rel.lastIndexOf("/") + 1);
+
+/** A kind of reader the census walks for, with the inputs `viewerDoorsFor` answers it from. */
+type CensusKind = { id: string; who: string; signedIn: boolean; held: boolean; input: DI };
+const CENSUS_KINDS: readonly CensusKind[] = [
+  { id: "guest", who: "a guest", signedIn: false, held: false, input: { ...OPEN, inviteViewer: NO_VIEWER, role: null } },
+  { id: "player", who: "a player", signedIn: true, held: false, input: { ...OPEN, inviteViewer: PLAYER, role: "PLAYER" } },
+  { id: "held", who: "a player whose wallet is held", signedIn: true, held: true, input: { ...OPEN, inviteViewer: PLAYER, role: "PLAYER" } },
+  { id: "agent", who: "an agent in standing, the programme closed", signedIn: true, held: false, input: { ...OPEN, agentEnabled: false, inviteViewer: viewer("AGENT", true, false), role: "AGENT" } },
+  { id: "staff", who: "a SUPPORT officer", signedIn: true, held: false, input: { ...OPEN, inviteViewer: viewer("SUPPORT", false, false), role: "SUPPORT" } },
+  { id: "proposals.DISABLED", who: "a player with proposals DISABLED", signedIn: true, held: false, input: { ...OPEN, proposalsState: "DISABLED", inviteViewer: PLAYER, role: "PLAYER" } },
+  { id: "invite.closed", who: "a player the invite is closed to", signedIn: true, held: false, input: { ...OPEN, inviteViewer: viewer("PLAYER", false, false), role: "PLAYER" } },
+];
+
+/** Who a chrome door shows for, from the reader and the doors `viewerDoorsFor` gave it. */
+type Gate = (k: CensusKind, d: DO) => boolean;
+const ANYONE: Gate = () => true;
+const MEMBER: Gate = (k) => k.signedIn;
+const GUEST_ONLY: Gate = (k) => !k.signedIn;
+const MONEY_IN: Gate = (k) => k.signedIn && !k.held;
+const NOT_HELD: Gate = (k) => !k.held;
+const MEMBER_INVITE: Gate = (k, d) => k.signedIn && d.inviteVisible;
+const INVITE_DOOR: Gate = (_k, d) => d.inviteVisible;
+const PROPOSALS_DOOR: Gate = (_k, d) => d.proposalsVisible;
+const MEMBER_PROPOSALS: Gate = (k, d) => k.signedIn && d.proposalsVisible;
+const AGENT_DOOR: Gate = (_k, d) => d.agentDoorVisible;
+type ChromeDoor = { href: string; file: string; gate: Gate };
+
+/** The classic chrome's own doors, each gated as its file gates it: the bar (with More), the rail (coin and More), the avatar menu, the bell. */
+const CLASSIC_DOORS: readonly ChromeDoor[] = [
+  { href: "/", file: TOP_BAR_FILE, gate: ANYONE },
+  { href: "/markets", file: TOP_BAR_FILE, gate: ANYONE },
+  { href: "/updown", file: TOP_BAR_FILE, gate: ANYONE },
+  { href: "/live", file: TOP_BAR_FILE, gate: ANYONE },
+  { href: "/results", file: TOP_BAR_FILE, gate: ANYONE },
+  { href: "/positions", file: TOP_BAR_FILE, gate: MEMBER },
+  { href: "/leaderboard", file: TOP_BAR_FILE, gate: ANYONE },
+  { href: "/proposals", file: TOP_BAR_FILE, gate: MEMBER_PROPOSALS },
+  { href: "/wallet", file: TOP_BAR_FILE, gate: MEMBER },
+  { href: "/profile/invite", file: TOP_BAR_FILE, gate: MEMBER_INVITE },
+  { href: "/wallet/deposit", file: TOP_BAR_FILE, gate: MONEY_IN },
+  { href: "/auth/login", file: TOP_BAR_FILE, gate: GUEST_ONLY },
+  { href: "/auth/register", file: TOP_BAR_FILE, gate: GUEST_ONLY },
+  { href: "/markets", file: BOTTOM_NAV, gate: ANYONE },
+  { href: "/updown", file: BOTTOM_NAV, gate: ANYONE },
+  { href: "/live", file: BOTTOM_NAV, gate: ANYONE },
+  { href: "/wallet/deposit", file: BOTTOM_NAV, gate: NOT_HELD },
+  { href: "/wallet", file: BOTTOM_NAV, gate: MEMBER },
+  { href: "/results", file: BOTTOM_NAV, gate: ANYONE },
+  { href: "/positions", file: BOTTOM_NAV, gate: MEMBER },
+  { href: "/leaderboard", file: BOTTOM_NAV, gate: ANYONE },
+  { href: "/fairness", file: BOTTOM_NAV, gate: GUEST_ONLY },
+  { href: "/profile/invite", file: BOTTOM_NAV, gate: MEMBER_INVITE },
+  { href: "/proposals", file: BOTTOM_NAV, gate: PROPOSALS_DOOR },
+  { href: "/profile", file: AVATAR_FILE, gate: MEMBER },
+  { href: "/wallet", file: AVATAR_FILE, gate: MEMBER },
+  { href: "/profile/invite", file: AVATAR_FILE, gate: MEMBER_INVITE },
+  { href: "/proposals", file: AVATAR_FILE, gate: MEMBER_PROPOSALS },
+  { href: "/positions", file: AVATAR_FILE, gate: MEMBER },
+  { href: "/results", file: AVATAR_FILE, gate: MEMBER },
+  { href: "/leaderboard", file: AVATAR_FILE, gate: MEMBER },
+  { href: "/profile/kyc", file: AVATAR_FILE, gate: MEMBER },
+  { href: "/notifications", file: BELL, gate: MEMBER },
+];
+/** The footer: both shells render it, at every width. */
+const FOOTER_DOORS: readonly ChromeDoor[] = [
+  { href: "/profile/responsible-gambling", file: FOOTER_FILE, gate: ANYONE },
+  { href: "/legal/responsible-gambling", file: FOOTER_FILE, gate: ANYONE },
+  { href: "/fairness", file: FOOTER_FILE, gate: ANYONE },
+  { href: "/proposals", file: FOOTER_FILE, gate: PROPOSALS_DOOR },
+  { href: "/legal/rules", file: FOOTER_FILE, gate: ANYONE },
+  { href: "/profile/invite", file: FOOTER_FILE, gate: INVITE_DOOR },
+  { href: "/agent", file: FOOTER_FILE, gate: AGENT_DOOR },
+  { href: "/help", file: FOOTER_FILE, gate: ANYONE },
+  { href: "/legal/privacy", file: FOOTER_FILE, gate: ANYONE },
+  { href: "/legal/aml", file: FOOTER_FILE, gate: ANYONE },
+  { href: "/legal/terms", file: FOOTER_FILE, gate: ANYONE },
+  { href: "/profile/account", file: FOOTER_FILE, gate: ANYONE },
+];
+/** The Wallet, which either capsule opens: no money door for a held wallet. */
+const WALLET_SHEET_DOORS: readonly ChromeDoor[] = [
+  { href: "/wallet/deposit", file: WALLET_SHEET_FILE, gate: MONEY_IN },
+  { href: "/wallet/withdraw", file: WALLET_SHEET_FILE, gate: MONEY_IN },
+  { href: "/profile/responsible-gambling", file: WALLET_SHEET_FILE, gate: MEMBER },
+  { href: "/wallet", file: WALLET_SHEET_FILE, gate: MEMBER },
+];
+/** The journey header's own links on a phone, and which of `journeyHeaderState`'s answers shows each. */
+const JOURNEY_HEADER_DOORS: ReadonlyArray<{ href: string; when: "always" | "pill" | "authPills" }> = [
+  { href: "/", when: "always" },
+  { href: "/wallet/deposit", when: "pill" },
+  { href: "/auth/login", when: "authPills" },
+  { href: "/auth/register", when: "authPills" },
+];
+/** What a guest's Tiketi zangu opens: the guest sheet's two doors, each returning to the tickets. */
+const GUEST_SHEET_DOORS: readonly string[] = ["/auth/register?next=%2Fpositions", "/auth/login?next=%2Fpositions"];
+/**
+ * The entrances no door on a page can be: a link a player is SENT, or an address the platform answers on its own. Each
+ * names the file that generates it and the text there that does; ⛔ an entry EXPIRES the day a journey door reaches its
+ * route (`9.external`), and that commit deletes it.
+ */
+const EXTERNAL: ReadonlyArray<{ route: string; file: string; cite: string; why: string }> = [
+  { route: "/positions/[positionId]", file: "src/lib/position-permalink.ts", cite: "/positions/${positionId}", why: "a position's permalink, in the notifications and links a player is sent" },
+  { route: "/wallet/deposit/return", file: "src/app/wallet/deposit/actions.ts", cite: "/wallet/deposit/return", why: "the payment provider's return address" },
+  { route: "/agent/invite/[token]", file: "src/lib/server/agent-application-service.ts", cite: "/agent/invite/${token}", why: "an officer's invitation, sent by email" },
+  { route: "/auth/reset-password", file: "src/lib/server/password-reset.ts", cite: "/auth/reset-password?token=", why: "the reset link, sent by email" },
+  { route: "/auth/verify-email", file: "src/lib/server/email-verification.ts", cite: "/auth/verify-email?token=", why: "the confirmation link, sent by email" },
+  { route: "/auth/admin", file: PROXY_FILE, cite: '"/auth/admin"', why: "the staff sign-in the edge sends the console's visitors to" },
+  { route: "/s", file: "src/lib/marketing/footer.ts", cite: 'OPTOUT_PATH = "/s/"', why: "a marketing SMS's opt-out link that lost its token" },
+  { route: "/s/[token]", file: "src/lib/marketing/footer.ts", cite: 'OPTOUT_PATH = "/s/"', why: "the opt-out link in every marketing SMS" },
+  { route: "/offline", file: "public/sw.js", cite: 'OFFLINE_URL = "/offline"', why: "the service worker's offline fallback" },
+];
+/** A15: the classic page doors two tickets routes enter through until WP9 re-points them. */
+const PINNED: ReadonlyArray<{ route: string; from: string; file: string; why: string }> = [
+  { route: "/updown/history", from: "/updown", file: "src/app/updown/page.tsx", why: "the board's own history link, until WP9's Tiketi switch carries the door" },
+  { route: "/positions/performance", from: "/positions", file: "src/app/positions/page.tsx", why: "the classic Tiketi page's performance link, until WP9's journey view carries it" },
+];
+
+/** A path literal: a quoted or templated string that starts with "/", which is what an href, a redirect and a row's data look like. */
+const PATH_LITERALS = [
+  new RegExp(`"(/[^"${LF}]*)"`, "g"),
+  new RegExp(`'(/[^'${LF}]*)'`, "g"),
+  new RegExp("`(/[^`]*)`", "g"),
+];
+const PATHS_SEEN = new Map<string, readonly string[]>();
+/** Every path literal in a source, its comments stripped first: a door written only in a comment is no door. */
+function pathLiterals(src: string): readonly string[] {
+  const hit = PATHS_SEEN.get(src);
+  if (hit) return hit;
+  const code = decomment(src);
+  const found = PATH_LITERALS.flatMap((re) => [...code.matchAll(re)].map((m) => m[1]));
+  PATHS_SEEN.set(src, found);
+  return found;
+}
+/** An interpolated segment: it matches any dynamic segment of a route, and no static one. */
+const ANY_SEGMENT = "[*]";
+/**
+ * The route of `routes` a path opens, or null: its query and fragment cut off, an interpolated segment matched to a
+ * dynamic one, a static head with an interpolated tail ("/auth/2fa${…}") read as its head. A static segment beats a
+ * dynamic one, so "/proposals/new" is that page and not a proposal's.
+ */
+function routeOfPath(path: string, routes: readonly string[]): string | null {
+  const stop = path.search(/[?#]/);
+  const head = stop < 0 ? path : path.slice(0, stop);
+  const segs: string[] = [];
+  for (const part of head.split("/")) {
+    if (part.length === 0) continue;
+    const at = part.indexOf("${");
+    if (at === 0) { segs.push(ANY_SEGMENT); continue; }
+    if (at > 0) { segs.push(part.slice(0, at)); break; }
+    segs.push(part);
+  }
+  let best: string | null = null;
+  let bestStatic = -1;
+  for (const route of routes) {
+    const rs = route.split("/").filter((s) => s.length > 0);
+    if (rs.length !== segs.length) continue;
+    let statics = 0;
+    let fits = true;
+    rs.forEach((s, i) => {
+      if (s.startsWith("[")) return;
+      if (s === segs[i]) statics++;
+      else fits = false;
+    });
+    if (fits && statics > bestStatic) {
+      best = route;
+      bestStatic = statics;
+    }
+  }
+  return best;
+}
+/**
+ * The code a route's page renders, as repo paths: the page, the files beside it (Next's route files aside), the layouts
+ * above it (never the root's, which renders the chrome) and every component those load, transitively, short of the
+ * chrome and of another route's own files.
+ */
+function doorFilesOf(W: World, G: Graph, byDir: ReadonlyMap<string, readonly string[]>, route: string): string[] {
+  const page = W.pageOf.get(route);
+  if (!page) return [];
+  const dir = posix.dirname(page);
+  const start = new Set<string>([page, ...(byDir.get(dir) ?? []).filter((f) => !ROUTE_FILES.has(fileName(f)))]);
+  for (let d = dir; d.startsWith("src/app/"); d = posix.dirname(d)) {
+    if (W.files.has(`${d}/layout.tsx`)) start.add(`${d}/layout.tsx`);
+  }
+  const seen = new Set<string>(start);
+  const stack = [...start];
+  while (stack.length > 0) {
+    const f = stack.pop() as string;
+    for (const t of G.out.get(f) ?? []) {
+      if (seen.has(t) || !t.endsWith(".tsx") || inChrome(t) || (t.startsWith("src/app/") && ROUTE_FILES.has(fileName(t)))) continue;
+      seen.add(t);
+      stack.push(t);
+    }
+  }
+  return [...seen];
+}
+/** Every route reached from `roots` along `edges`. A route `toLogin` names sends the reader to sign in instead. */
+function reachFrom(roots: readonly string[], edges: (route: string) => readonly string[], toLogin: (route: string) => boolean): Set<string> {
+  const seen = new Set<string>();
+  const queue = [...roots];
+  for (let i = 0; i < queue.length; i++) {
+    const route = toLogin(queue[i]) ? LOGIN_ROUTE : queue[i];
+    if (seen.has(route)) continue;
+    seen.add(route);
+    for (const next of edges(route)) if (!seen.has(next)) queue.push(next);
+  }
+  return seen;
+}
+const QUOTED = new RegExp('"([^"]*)"', "g");
+/** The prefixes `proxy.ts` sends a signed-out visitor to sign in from: read from the file, never typed again here. */
+function protectedPrefixes(W: World): string[] {
+  const src = text(W, PROXY_FILE);
+  const head = "const PROTECTED_PREFIXES = [";
+  const at = src.indexOf(head);
+  if (at < 0) return [];
+  const body = src.slice(at + head.length, src.indexOf("]", at + head.length));
+  return [...body.matchAll(QUOTED)].map((m) => m[1]);
+}
+/** The reader `hubRowsFor` is asked about: a member as `loadHubViewer` composes one, identity still open. */
+function hubViewerFor(k: CensusKind, d: DO): HUB.HubViewer {
+  if (!k.signedIn) return { signedIn: false };
+  return {
+    signedIn: true,
+    userId: `census-${k.id}`,
+    name: "Census Reader",
+    initials: "CR",
+    phone: "+2557******00",
+    balance: 2_000,
+    walletHeld: k.held,
+    kycOffered: true,
+    agentInStanding: k.input.inviteViewer?.agentInGoodStanding === true,
+    proposalsState: k.input.proposalsState,
+    doors: d,
+  };
+}
+/** The doors on `/account` for a reader: `hubRowsFor`'s rows, the only doors the hub page holds. */
+function hubDoorsFor(I: Impl, k: CensusKind, d: DO): string[] {
+  return I.hubRows(hubViewerFor(k, d)).flatMap((g) => g.rows.flatMap((r) => (r.kind === "link" || r.kind === "unread" ? [r.href] : [])));
+}
+/** The journey's phone chrome for a reader: the tabs, the header's own links, the sheets they open, the footer. */
+function journeyRootsFor(I: Impl, k: CensusKind, d: DO): string[] {
+  const out: string[] = [];
+  for (const tab of I.tabs) {
+    if (tab.key === "tickets" && !k.signedIn) out.push(...GUEST_SHEET_DOORS);
+    else out.push(tab.href);
+  }
+  const state = I.header({ isAuthed: k.signedIn, balance: k.signedIn ? 2_000 : null, walletHeld: k.held, onBreak: false, pathname: "/" });
+  for (const h of JOURNEY_HEADER_DOORS) {
+    if (h.when === "always" || (h.when === "pill" && state.pill) || (h.when === "authPills" && state.authPills)) out.push(h.href);
+  }
+  if (state.capsule !== "none") for (const s of WALLET_SHEET_DOORS) if (s.gate(k, d)) out.push(s.href);
+  for (const f of FOOTER_DOORS) if (f.gate(k, d)) out.push(f.href);
+  return out;
+}
+/** The classic chrome for a reader: the bar, More, the avatar menu, the rail, the coin, the bell, the Wallet, the footer. */
+function classicRootsFor(k: CensusKind, d: DO): string[] {
+  return [...CLASSIC_DOORS, ...(k.signedIn ? WALLET_SHEET_DOORS : []), ...FOOTER_DOORS].filter((c) => c.gate(k, d)).map((c) => c.href);
+}
+
+function g9Census(I: Impl, W: World, G: Graph, ok: Ok) {
+  const routes = W.routes;
+  const toRoute = (href: string) => routeOfPath(href, routes);
+  const routesOf = (hrefs: readonly string[]) => hrefs.map(toRoute).filter((r): r is string => r !== null);
+  const namedMemo = new Map<string, Set<string>>();
+  /** The population routes a file's path literals open. */
+  const namedIn = (rel: string): Set<string> => {
+    let s = namedMemo.get(rel);
+    if (!s) {
+      s = new Set(routesOf(pathLiterals(text(W, rel))));
+      namedMemo.set(rel, s);
+    }
+    return s;
+  };
+
+  // The instruments, on fixtures first: the edge reader and the walk.
+  const FX = ["/", "/markets", "/markets/[id]", "/proposals/new", "/proposals/[id]", "/auth/2fa"];
+  const fixture = [
+    "const a = <Link href={`/markets/${m.id}`} />;",
+    'const b = <a href="/proposals/new">new</a>;',
+    "const c = `/auth/2fa${next ? `?next=${next}` : ''}`;",
+    'fetch("/api/markets");',
+    '// <a href="/markets">a door only in a comment</a>',
+  ].join(LF);
+  const fxRoutes = [...new Set(pathLiterals(fixture).map((p) => routeOfPath(p, FX)).filter((r): r is string => r !== null))].sort();
+  ok("9.edges.c · CONTROL · a templated door reads as its dynamic route, a static route beats a dynamic one, an interpolated tail is cut, an API path opens nothing, and a door only in a comment is no door",
+    show(fxRoutes) === show(["/auth/2fa", "/markets/[id]", "/proposals/new"]), show(fxRoutes));
+  const tiny: Record<string, readonly string[]> = { "/": ["/a"], "/a": ["/a", "/wallet"], "/b": ["/c"], "/c": ["/b"] };
+  const walked = [...reachFrom(["/"], (r) => tiny[r] ?? [], (r) => r === "/wallet")].sort();
+  ok("9.reach.c · CONTROL · the walk follows doors, survives a loop, sends a guest's protected page to sign-in, and never enters a cycle nothing links to",
+    show(walked) === show(["/", "/a", LOGIN_ROUTE]), show(walked));
+
+  const PROTECTED = protectedPrefixes(W);
+  ok("9.protected · a guest's walk reads proxy.ts's own protected prefixes — the wallet, the tickets and the profile among them",
+    ["/wallet", "/positions", "/profile"].every((p) => PROTECTED.includes(p)), show(PROTECTED));
+  const isProtected = (route: string) => {
+    const p = probe(route);
+    return PROTECTED.some((x) => p === x || p.startsWith(`${x}/`));
+  };
+  const pageless = routes.filter((r) => !W.pageOf.has(r));
+  ok(`9.population · the census walks the route census's own population (${routes.length} routes), each with its page file`,
+    routes.length >= 50 && pageless.length === 0, `no page file for ${pageless.join(", ")}`);
+
+  const tableHrefs = [
+    ...[...CLASSIC_DOORS, ...FOOTER_DOORS, ...WALLET_SHEET_DOORS].map((c) => c.href),
+    ...JOURNEY_HEADER_DOORS.map((h) => h.href),
+    ...GUEST_SHEET_DOORS,
+    ...EXTERNAL.map((e) => e.route),
+    ...PINNED.flatMap((p) => [p.route, p.from]),
+  ];
+  const unmapped = [...new Set(tableHrefs.filter((h) => toRoute(h) === null))];
+  ok("9.tables · every door, external entrance and pin the census holds names a route on disk", unmapped.length === 0, unmapped.join(", "));
+
+  // Each chrome file names exactly the doors the census holds for it: none it lost, none the census does not know.
+  // ⛔ The bell ONE way only (A1: it is other lanes' to change until S15): the door the census counts on must still be
+  // there, and a door it gains is the bell's business — it never turns this predeploy gate red.
+  const doorsIn = (file: string) => CLASSIC_DOORS.filter((c) => c.file === file).map((c) => c.href);
+  const CHROME_FILES: ReadonlyArray<[string, readonly string[], "both" | "kept"]> = [
+    [TOP_BAR_FILE, doorsIn(TOP_BAR_FILE), "both"],
+    [BOTTOM_NAV, doorsIn(BOTTOM_NAV), "both"],
+    [AVATAR_FILE, doorsIn(AVATAR_FILE), "both"],
+    [BELL, doorsIn(BELL), "kept"],
+    [NAV_MORE_FILE, [], "both"],
+    [FOOTER_FILE, FOOTER_DOORS.map((c) => c.href), "both"],
+    [WALLET_SHEET_FILE, WALLET_SHEET_DOORS.map((c) => c.href), "both"],
+    [JHDR, JOURNEY_HEADER_DOORS.map((h) => h.href), "both"],
+    [GUEST_SHEET, GUEST_SHEET_DOORS, "both"],
+    [JTABS, [], "both"],
+  ];
+  for (const [file, hrefs, ways] of CHROME_FILES) {
+    const held = new Set(routesOf(hrefs).filter((r) => r !== "/"));
+    const has = new Set([...namedIn(file)].filter((r) => r !== "/"));
+    const gone = [...held].filter((r) => !has.has(r));
+    const unknown = ways === "both" ? [...has].filter((r) => !held.has(r)) : [];
+    ok(`9.chrome.${file} · ${ways === "both"
+      ? "names exactly the doors the census holds for it — none it lost, none the census does not know"
+      : "still names the doors the census holds for it (held one way: A1 leaves the bell to other lanes until S15)"}`,
+      text(W, file).length > 0 && gone.length === 0 && unknown.length === 0,
+      text(W, file).length === 0 ? "file missing" : show({ gone, unknown }));
+  }
+
+  // The hub: every row's door opens a real route and reaches some reader; and it holds the controls that are not routes.
+  const kinds = CENSUS_KINDS.map((k) => ({ k, d: I.doors(k.input) }));
+  const hubHrefs = kinds.flatMap(({ k, d }) => hubDoorsFor(I, k, d));
+  const hubBad = [...new Set(hubHrefs.filter((h) => toRoute(h) === null))];
+  const offered = new Set(routesOf(hubHrefs));
+  const unoffered = [...namedIn(HUB_ROWS_FILE)].filter((r) => !offered.has(r));
+  ok("9.hub.complete · every door the hub's rows name opens a route on disk and is offered to some reader the census draws",
+    hubBad.length === 0 && unoffered.length === 0 && offered.size > 10, show({ hubBad, unoffered, offered: offered.size }));
+  for (const { k, d } of kinds) {
+    const has = new Set<string>(I.hubRows(hubViewerFor(k, d)).flatMap((g) => g.rows.map((r) => r.kind)));
+    const need = k.signedIn ? ["language", "unread", "cardSize", "needle"] : ["language"];
+    const missing = need.filter((n) => !has.has(n));
+    ok(`9.controls.${k.id} · the hub holds ${k.signedIn ? "the language, the notifications, the card size and the Needle" : "the language"} for ${k.who}`,
+      missing.length === 0, `missing: ${missing.join(", ")}`);
+  }
+  const page = text(W, ACCOUNT_PAGE_FILE);
+  const staffDoors = kinds.find(({ k }) => k.id === "staff")?.d;
+  const playerDoors = kinds.find(({ k }) => k.id === "player")?.d;
+  ok("9.controls.page · the hub page signs a member out, and opens the console for staff alone, as one plain link, on the doors' own answer",
+    page.includes("{viewer.signedIn && <SignOutRow />}") && page.includes("{viewer.signedIn && viewer.doors.staffConsole && (")
+      && count(page, `<a href="/admin"`) === 1 && staffDoors?.staffConsole === true && playerDoors?.staffConsole === false,
+    show({ staff: staffDoors?.staffConsole, player: playerDoors?.staffConsole }));
+
+  // The walks: classic ⊆ journey for each reader, and every route reached by some reader.
+  const byDir = new Map<string, string[]>();
+  for (const rel of W.files.keys()) {
+    const dir = posix.dirname(rel);
+    const list = byDir.get(dir);
+    if (list) list.push(rel);
+    else byDir.set(dir, [rel]);
+  }
+  const edgeMemo = new Map<string, readonly string[]>();
+  const pageEdges = (route: string): readonly string[] => {
+    const hit = edgeMemo.get(route);
+    if (hit) return hit;
+    const out = new Set<string>();
+    for (const f of doorFilesOf(W, G, byDir, route)) for (const r of namedIn(f)) out.add(r);
+    const list = [...out];
+    edgeMemo.set(route, list);
+    return list;
+  };
+  const journeyReach = new Set<string>();
+  for (const { k, d } of kinds) {
+    const toLogin = (r: string) => !k.signedIn && isProtected(r);
+    const hub = routesOf(hubDoorsFor(I, k, d));
+    const J = reachFrom(routesOf(journeyRootsFor(I, k, d)), (r) => (r === ACCOUNT_ROUTE ? hub : pageEdges(r)), toLogin);
+    const C = reachFrom(routesOf(classicRootsFor(k, d)), (r) => (r === ACCOUNT_ROUTE ? [] : pageEdges(r)), toLogin);
+    for (const r of J) journeyReach.add(r);
+    const lost = [...C].filter((r) => !J.has(r)).sort();
+    ok(`9.subset.${k.id} · every route the classic chrome reaches for ${k.who}, the journey's phone chrome reaches too (classic ${C.size}, journey ${J.size})`,
+      C.size > 10 && lost.length === 0, `the journey loses ${lost.join(", ")}`);
+  }
+  const external = new Map(EXTERNAL.map((e) => [e.route, e]));
+  for (const route of routes) {
+    const ext = external.get(route);
+    ok(`9.entrance.${route} · ${ext ? `external: ${ext.why}` : "a journey reader reaches it from the tabs, the header, the sheets, the hub or the footer"}`,
+      journeyReach.has(route) || ext !== undefined, "no door a journey phone shows leads here, and no external entrance is declared");
+  }
+  for (const e of EXTERNAL) {
+    const src = W.files.get(e.file) ?? W.extra.get(e.file) ?? "";
+    ok(`9.external.${e.route} · ${e.file} still generates it, and no journey door reaches it yet`,
+      routes.includes(e.route) && src.includes(e.cite) && !journeyReach.has(e.route),
+      !routes.includes(e.route) ? "the route is not on disk"
+        : !src.includes(e.cite) ? `${e.file} no longer says ${e.cite}`
+          : "a journey door reaches it now: delete its EXTERNAL entry in this commit");
+  }
+  for (const p of PINNED) {
+    const files = doorFilesOf(W, G, byDir, p.from);
+    ok(`9.pinned.${p.route} · ${p.file} still links it from ${p.from} — ${p.why}`,
+      files.includes(p.file) && namedIn(p.file).has(p.route),
+      files.includes(p.file) ? `${p.file} names no door to ${p.route}` : `${p.from} no longer renders ${p.file}`);
+  }
+}
+
+/* ══ §10 · THE HEADER-FIT GATE'S TERMS (S6 WP6b, A5, A6) ═══════════════════════════════════════════════════════ */
+/*
+ * The header-fit drives read the page through rules defined once (`scripts/live/journey-header-fit.mjs`), and the red
+ * one rewrites `globals.css` for minutes at a time. Three terms keep them honest, each read from its own file:
+ *   RULES — a drive skips the pill's rules exactly where `journeyHeaderState` draws no pill (the deposit screen and its
+ *   return, a guest, a held wallet), so a KP_ROUTE that hides the pill skips what it cannot measure instead of failing
+ *   it, and asks it everywhere else. The drives carry a copy of that rule, because they run on plain node; this holds
+ *   the copy to the original.
+ *   LEASH — `red:journey-header-fit` refuses, before its first write, unless `--alone` is on its own command line, which
+ *   its package script never passes, so `red:all` (which runs the script as written) cannot supply it; and it refuses
+ *   inside a `red:all` run, which marks every harness it starts with KP_RED_ALL. Both exit 2: premise absent.
+ *   WITNESS — the stylesheet holds no red-run witness. Every mutation names itself in one, and a run killed hard between
+ *   a write and its restore (on Windows a forced kill, a crash or a bluescreen runs no handler) leaves it behind: it
+ *   fails here, in predeploy, by name. Restore with `git checkout -- src/app/globals.css`.
+ */
+const ALONE_REFUSAL = 'if (!process.argv.includes("--alone")) die(';
+const RED_ALL_REFUSAL = "if (process.env.KP_RED_ALL) die(";
+const RED_ALL_MARK = 'KP_RED_ALL: "1"';
+/** The red twin's first file write, spelled in two halves so that this in-process file never holds such a call. */
+const FIRST_WRITE = ["write", "FileSync("].join("");
+/** The routes the pill's rule is asked about: two of them draw no pill, the rest do. */
+const PILL_ROUTES = ["/", "/markets", "/updown", "/positions", "/wallet", "/wallet/deposit", "/wallet/deposit/return"];
+
+function g10Terms(I: Impl, W: World, ok: Ok) {
+  const pillRule = JHF.RULES.find((r) => r.when === "pill");
+  const disagree = pillRule ? JHF.STATES.flatMap((s) => PILL_ROUTES
+    .filter((route) => JHF.applies(pillRule, s, route) !== I.header({ isAuthed: s.signedIn, balance: s.signedIn ? 0 : null, walletHeld: s.held === true, onBreak: false, pathname: route }).pill)
+    .map((route) => `${s.id} on ${route}`)) : [];
+  ok("10.rules.pill · the header-fit drives ask the pill's rules exactly where journeyHeaderState draws the pill — never on the deposit screen or its return, for a guest or for a held wallet",
+    !!pillRule && disagree.length === 0, pillRule ? `the drives and the header disagree: ${disagree.join(", ")}` : "no rule reads the pill");
+
+  const twin = W.extra.get(RED_TWIN) ?? "";
+  const firstWrite = twin.indexOf(FIRST_WRITE);
+  const refusesFirst = (refusal: string) => {
+    const at = twin.indexOf(refusal);
+    return at > 0 && firstWrite > at;
+  };
+  let script = "";
+  try {
+    script = String(JSON.parse(W.extra.get(PACKAGE) ?? "{}").scripts?.["red:journey-header-fit"] ?? "");
+  } catch {
+    script = "";
+  }
+  ok("10.leash.alone · red:journey-header-fit refuses, before its first write, unless --alone is on its own command line — and its package script does not pass --alone itself",
+    refusesFirst(ALONE_REFUSAL) && twin.includes("process.exit(2)") && script.includes(RED_TWIN) && !script.includes("--alone"),
+    show({ refusesFirst: refusesFirst(ALONE_REFUSAL), script }));
+  const redAll = W.extra.get(RED_ALL) ?? "";
+  ok("10.leash.red-all · red:all marks every harness it starts with KP_RED_ALL, and the twin refuses, before its first write, when the mark is set",
+    refusesFirst(RED_ALL_REFUSAL) && redAll.includes(RED_ALL_MARK),
+    show({ refusesFirst: refusesFirst(RED_ALL_REFUSAL), marks: redAll.includes(RED_ALL_MARK) }));
+  ok("10.leash.witness · the stylesheet holds no red-run witness — a mutation a hard kill left behind fails here, by name",
+    !W.css.includes(`${WITNESS_PROPERTY}:`), `${WITNESS_PROPERTY} is in globals.css: restore it with git checkout -- src/app/globals.css`);
 }
 
 /* ══ THE RUN ═════════════════════════════════════════════════════════════════════════════════════════════════ */
@@ -1372,8 +1950,14 @@ async function run(I: Impl, W: World, log: (l: string) => void): Promise<{ faile
   log("§7 · the header — the S4 fit rules as written, the bar's markup, its rung and the menu sealed in it (WP6a)");
   g7Header(W, ok);
   log("");
-  log("§8 · the tabs — four destinations, one unread poller per width, the guest sheet, nothing mounted yet (WP6a)");
+  log("§8 · the tabs — four destinations, one unread poller per width, the guest sheet, mounted by AppShell alone, lazily (WP6a, WP6b)");
   g8Tabs(I, W, G, ok);
+  log("");
+  log("§9 · the route census — every route keeps an entrance, and the journey loses no door the classic chrome had (WP6b)");
+  g9Census(I, W, G, ok);
+  log("");
+  log("§10 · the header-fit gate's terms — the drives' pill rule, the red twin's leash, no witness left behind (WP6b, A6)");
+  g10Terms(I, W, ok);
   return { failed, total };
 }
 
@@ -1654,6 +2238,54 @@ ${s}`);
     const sheetHandRolled = withFile(WORLD, GUEST_SHEET, (s) => s.replace("<Modal", `<div role="dialog" className="fixed inset-0"`).replace("</Modal>", "</div>"));
     const sheetForgetsTickets = withFile(WORLD, GUEST_SHEET, (s) => s.replace("/auth/register?next=%2Fpositions", "/auth/register"));
     const classicMountsRail = withFile(WORLD, BOTTOM_NAV, (s) => `${s}${LF}export const leak = <JourneyTabs userId={null} />;${LF}`);
+    // §9 — the census (WP6b): pages nothing reaches, a door only in a comment, a door removed, a tab and a hub row
+    // gone, an external entrance lost or stale, a classic door unknown to the census or gone from its file, a pin lost.
+    const withPage = (w: World, route: string, rel: string, src: string): World => ({
+      ...w,
+      routes: [...w.routes, route].sort(),
+      pageOf: new Map<string, string>([...w.pageOf, [route, rel] as [string, string]]),
+      files: new Map<string, string>([...w.files, [rel, src] as [string, string]]),
+    });
+    const orphanCycle = withPage(
+      withPage(WORLD, "/zz-orphan-a", "src/app/zz-orphan-a/page.tsx", `export default function OrphanA() { return <a href="/zz-orphan-b">b</a>; }${LF}`),
+      "/zz-orphan-b", "src/app/zz-orphan-b/page.tsx", `export default function OrphanB() { return <a href="/zz-orphan-a">a</a>; }${LF}`);
+    const lonely = withPage(WORLD, "/zz-lonely", "src/app/zz-lonely/page.tsx", `export default function Lonely() { return null; }${LF}`);
+    const AGENT_PAGE = "src/app/agent/page.tsx";
+    const APPLY_CLIENT = "src/app/agent/apply/apply-client.tsx";
+    const TERMS = `"/legal/agent-terms"`;
+    const termsTo = (to: string) => (s: string) => s.split(TERMS).join(to);
+    const termsInComment = withFile(withFile(WORLD, AGENT_PAGE, termsTo(`"/legal" /* ${TERMS} */`)), APPLY_CLIENT, termsTo(`"/legal" /* ${TERMS} */`));
+    const termsGone = withFile(withFile(WORLD, AGENT_PAGE, termsTo(`"/legal"`)), APPLY_CLIENT, termsTo(`"/legal"`));
+    const RESET_LINK = "src/lib/server/password-reset.ts";
+    const resetUnnamed = withFile(WORLD, RESET_LINK, (s) => s.split("/auth/reset-password?token=").join("/auth/reset?token="));
+    const PROFILE_PAGE = "src/app/profile/page.tsx";
+    const verifyLinked = withFile(WORLD, PROFILE_PAGE, (s) => `${s}${LF}const stale = <a href="/auth/verify-email">confirm</a>;${LF}`);
+    const barUnknownDoor = withFile(WORLD, TOP_BAR_FILE, (s) => `${s}${LF}const extraDoor = { href: "/watchlist" };${LF}`);
+    const avatarLostKyc = withFile(WORLD, AVATAR_FILE, (s) => s.split(`"/profile/kyc"`).join(`"/kyc"`));
+    const UPDOWN_PAGE = "src/app/updown/page.tsx";
+    const historyUnpinned = withFile(WORLD, UPDOWN_PAGE, (s) => s.split(`"/updown/history"`).join(`"/updown"`));
+    const noAkaunti = TAB.JOURNEY_TABS.filter((t) => t.key !== "account");
+    const withoutRow = (id: string): Impl["hubRows"] => (v) => HUB.hubRowsFor(v).map((g) => ({ ...g, rows: g.rows.filter((r) => r.id !== id) }));
+    const noArifa = withoutRow("notifications");
+    const noLanguage = withoutRow("language");
+    const censusPlayer = CENSUS_KINDS[1];
+    const playerHub = hubViewerFor(censusPlayer, DOORS.viewerDoorsFor(censusPlayer.input));
+    const hasRow = (groups: HUB.HubGroup[], id: string) => groups.some((g) => g.rows.some((r) => r.id === id));
+    // §8 · WP6b — the journey chrome mounted by AppShell alone, and lazily.
+    const MARKETS_PAGE = "src/app/markets/page.tsx";
+    const pageLoadsHeader = withFile(WORLD, MARKETS_PAGE,
+      (s) => `${s}${LF}const Bar = lazy(() => import("@/components/journey/journey-top-bar").then((m) => ({ default: m.JourneyTopBar })));${LF}`);
+    const shellStatic = withFile(WORLD, SHELL, (s) => `${s}${LF}import { JourneyTabs } from "@/components/journey/journey-tabs";${LF}`);
+    // §10 — the header-fit gate's terms: the drives' copy of the pill rule, the red twin's leash, a witness left behind.
+    const withExtra = (rel: string, edit: (s: string) => string): World =>
+      ({ ...WORLD, extra: new Map<string, string>([...WORLD.extra, [rel, edit(WORLD.extra.get(rel) ?? "")] as [string, string]]) });
+    const extraChanged = (w: World, rel: string) => w.extra.get(rel) !== WORLD.extra.get(rel);
+    const twinUnleashed = withExtra(RED_TWIN, (s) => s.replace(ALONE_REFUSAL, "if (false) die("));
+    const scriptSaysAlone = withExtra(PACKAGE, (s) => s.replace(`"node ${RED_TWIN}"`, `"node ${RED_TWIN} --alone"`));
+    const redAllUnmarked = withExtra(RED_ALL, (s) => s.replace(RED_ALL_MARK, 'KP_RED_ALL_OFF: "1"'));
+    const twinIgnoresMark = withExtra(RED_TWIN, (s) => s.replace(RED_ALL_REFUSAL, "if (false) die("));
+    const witnessLeft = withCss((s) => `${s}${LF}.kp-jhdr__plus { ${WITNESS_PROPERTY}: plus-shows-below-360; }${LF}`);
+    const onDeposit = { isAuthed: true, balance: 0, walletHeld: false, onBreak: false, pathname: "/wallet/deposit" };
     const withRecord = (edit: (s: string) => string): World => ({ ...WORLD, popupFit: edit(WORLD.popupFit) });
     const sheetUnreviewed = withRecord((s) => s.replace(`"${GUEST_SHEET}",`, ""));
     /**
@@ -1891,6 +2523,57 @@ ${s}`);
           : `${SIGN_OUT_ROW} is not in the tree: S6 applies WP5 (the hub) before WP6a` },
       { name: "a classic component mounts the journey rail", expect: at("8.mount ·"),
         world: classicMountsRail, landed: changed(classicMountsRail, BOTTOM_NAV), landedAs: "every classic page carries the journey's tabs" },
+      // §9 — the route census (WP6b; A9's three named plants first)
+      { name: "two pages that link only each other — an orphan cycle (A9)", expect: at("9.entrance./zz-orphan-a ·"),
+        world: orphanCycle, landed: orphanCycle.routes.includes("/zz-orphan-a") && orphanCycle.routes.includes("/zz-orphan-b"),
+        landedAs: "two pages that are each other's only door, and no reader reaches either" },
+      { name: "the agent terms' doors survive only inside comments (A9)", expect: at("9.entrance./legal/agent-terms ·"),
+        world: termsInComment, landed: changed(termsInComment, AGENT_PAGE) && changed(termsInComment, APPLY_CLIENT) && text(termsInComment, AGENT_PAGE).includes(TERMS),
+        landedAs: "an href no reader can tap, counted as a door" },
+      { name: "the agent terms lose their door (A9)", expect: at("9.entrance./legal/agent-terms ·"),
+        world: termsGone, landed: !text(termsGone, AGENT_PAGE).includes(TERMS) && !text(termsGone, APPLY_CLIENT).includes(TERMS),
+        landedAs: "an applicant can no longer read what they accept" },
+      { name: "a page joins the population that nothing links", expect: at("9.entrance./zz-lonely ·"),
+        world: lonely, landed: lonely.routes.includes("/zz-lonely"), landedAs: "a route with no entrance" },
+      { name: "the Akaunti tab is removed", expect: at("9.entrance./account ·"),
+        impl: { tabs: noAkaunti }, landed: noAkaunti.length === TAB.JOURNEY_TABS.length - 1,
+        landedAs: "the hub, and every door only it holds, out of reach on a phone" },
+      { name: "the hub loses its Arifa row", expect: at("9.subset.player ·"),
+        impl: { hubRows: noArifa }, landed: hasRow(HUB.hubRowsFor(playerHub), "notifications") && !hasRow(noArifa(playerHub), "notifications"),
+        landedAs: "a journey phone has no way to its notifications; the classic bell had one" },
+      { name: "the hub loses its language control", expect: at("9.controls."),
+        impl: { hubRows: noLanguage }, landed: !hasRow(noLanguage({ signedIn: false }), "language"),
+        landedAs: "a journey phone cannot change its language" },
+      { name: "the reset link's generator no longer names its page", expect: at("9.external./auth/reset-password ·"),
+        world: resetUnnamed, landed: changed(resetUnnamed, RESET_LINK), landedAs: "an external entrance claimed for a page nothing sends anyone to" },
+      { name: "a page links an external entrance, and its exemption stays", expect: at("9.external./auth/verify-email ·"),
+        world: verifyLinked, landed: changed(verifyLinked, PROFILE_PAGE), landedAs: "an exemption that outlived its reason" },
+      { name: "the classic bar gains a door the census does not hold", expect: at(`9.chrome.${TOP_BAR_FILE} ·`),
+        world: barUnknownDoor, landed: changed(barUnknownDoor, TOP_BAR_FILE), landedAs: "a classic door the journey is never asked to keep" },
+      { name: "the avatar menu loses a door the census still holds", expect: at(`9.chrome.${AVATAR_FILE} ·`),
+        world: avatarLostKyc, landed: changed(avatarLostKyc, AVATAR_FILE) && !text(avatarLostKyc, AVATAR_FILE).includes(`"/profile/kyc"`),
+        landedAs: "the journey measured against a classic menu that no longer exists" },
+      { name: "the board's history link is removed — A15's pinned door", expect: at("9.pinned./updown/history ·"),
+        world: historyUnpinned, landed: changed(historyUnpinned, UPDOWN_PAGE), landedAs: "Up & Down tickets reachable from nowhere on a phone" },
+      // §8 · WP6b — the chrome mounted by AppShell alone, and lazily
+      { name: "a page loads the journey header itself", expect: at("8.mount ·"),
+        world: pageLoadsHeader, landed: changed(pageLoadsHeader, MARKETS_PAGE), landedAs: "a second mount of the journey chrome, outside the resolver's one decision" },
+      { name: "AppShell imports the journey tabs statically", expect: at("8.mount.lazy ·"),
+        world: shellStatic, landed: changed(shellStatic, SHELL), landedAs: "every classic visitor downloads the journey chrome's code" },
+      // §10 — the header-fit gate's terms (A5, A6)
+      { name: "the header draws the pill on the deposit screen while the drives skip it there", expect: at("10.rules.pill ·"),
+        impl: { header: pillOnDeposit }, landed: pillOnDeposit(onDeposit).pill && !HDR.journeyHeaderState(onDeposit).pill,
+        landedAs: "a rule the drives no longer ask where the header draws its element" },
+      { name: "the header-fit red twin starts without --alone", expect: at("10.leash.alone ·"),
+        world: twinUnleashed, landed: extraChanged(twinUnleashed, RED_TWIN), landedAs: "anything that runs the script rewrites the stylesheet unbidden" },
+      { name: "the header-fit package script passes --alone itself", expect: at("10.leash.alone ·"),
+        world: scriptSaysAlone, landed: extraChanged(scriptSaysAlone, PACKAGE), landedAs: "red:all runs the script as written, so it supplies the opt-in" },
+      { name: "red:all stops marking the harnesses it starts", expect: at("10.leash.red-all ·"),
+        world: redAllUnmarked, landed: extraChanged(redAllUnmarked, RED_ALL), landedAs: "the twin cannot tell red:all from a person" },
+      { name: "the header-fit red twin ignores red:all's mark", expect: at("10.leash.red-all ·"),
+        world: twinIgnoresMark, landed: extraChanged(twinIgnoresMark, RED_TWIN), landedAs: "a mutator under red:all's timeout, which on Windows outlives it" },
+      { name: "a red run's witness is left in the stylesheet (a hard kill)", expect: at("10.leash.witness ·"),
+        world: witnessLeft, landed: cssChanged(witnessLeft), landedAs: "a planted defect on its way into a commit" },
     ];
 
     let caught = 0;

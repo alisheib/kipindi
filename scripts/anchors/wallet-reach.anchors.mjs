@@ -43,8 +43,8 @@
  * Five more, each naming its §8c check and each restoring a width gate the journey header must not have: the pill
  * hidden where the classic one hides, its words yielding with the "+", a guest's Ingia gone from a phone (E-276 in the
  * new bar), the capsule shown only on a desktop, and the whole money cluster made invisible on a phone by a class on
- * its wrapper, outside every guard. They rewrite `journey-top-bar.tsx`, which nothing mounts until WP6b; the gate
- * reads its source, so each is provable from the commit that adds it.
+ * its wrapper, outside every guard. They rewrite `journey-top-bar.tsx`, which AppShell mounts for a journey request
+ * (WP6b); the gate reads its source, so each was provable from the commit that added it, before the mount.
  */
 
 /** @typedef {{ name: string, file: string, suite: string, from: string, to: string, why: string, expect: string }} RedMutation */

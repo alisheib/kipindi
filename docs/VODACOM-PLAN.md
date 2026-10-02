@@ -207,10 +207,10 @@ WP6b the swap + census + header-fit → WP7 overlays → WP8 short titles on pos
   to end the session while its full `test:all` re-run (after a rebase over 42 marketing commits) was still running:
   the next session reads `scratchpad/s6/testall-a8b.log` (session 0cb4430f) or re-runs `test:all`, and confirms the
   deploy (`?dpl=`) and the served bundle.
-- **⏸ S6 STOPPED HERE (2026-10-02) — resume:** WP8 (short titles on the position projection) is staged and dry-runs
-  clean on top of A8 (`scratchpad/s6/WP8.json`); WP6b (the swap + the reachability census + the header-fit gate)
-  must be RE-DRAFTED — its draft was cut off by a session restart and is not trustworthy. Then WP7, WP9, WP10,
-  WP11, WP12 (S6-PLAN.md). Before WP6b's parity compare, re-capture the baseline from the pre-S6 parent on main (A18).
+- **⏸ S6 STOPPED HERE (2026-10-02) — resume:** WP8 (short titles on the position projection) and WP6b (the swap + the
+  reachability census + the header-fit gate, re-drafted and reviewed) are applied — both bullets below. WP6b is not ✅
+  until every run its bullet lists as owed is done, starting with the parity compare against a baseline re-captured
+  from the pre-S6 parent on main (A18). Then WP7, WP9, WP10, WP11, WP12 (S6-PLAN.md).
   Method and tools: memory `project_kipindi_vodacom_plan` (staged change sets, `apply_changeset.py`, `run-gates.sh`,
   `run-parity.sh`).
 - **WP0 parity harness — `npm run qa:classic-shell-parity`** (written, not yet run; local in-memory server only). Four
@@ -257,6 +257,57 @@ WP6b the swap + census + header-fit → WP7 overlays → WP8 short titles on pos
   checks (the type, both twins' objects and the Prisma select name the same fields, each read from the row, the short
   titles verbatim) and five new `red:dal-parity` plants. Classic viewers: nothing served changes, because no page
   reads the new fields yet.
+- **WP6b — the shell swap, the route census and the header-fit gate (re-drafted and reviewed 2026-10-02; applied, not
+  yet ✅ — the owed list below).** AppShell's two mount points are ternaries on `journeyShown`: a journey request gets
+  the journey header (its break flag is the shell's own `promoSuppressed`) and the four tabs (keyed by the viewer's
+  id); every other request gets, in the else arms, today's `TopAppBar` and `BottomNav` with today's props. Both journey
+  arms are LAZY, declared the way AppShell declares its overlays, each in its own Suspense, so their code stays out of
+  the first-load bundle every classic visitor downloads. The header's fallback is the bar's own empty box (its height,
+  panel and border), so a journey page does not jump while that code arrives; the rail needs none (it takes no room in
+  the page). The cost, until S15 flips which side is lazy: a journey viewer's header hydrates one chunk fetch later.
+  `test:simple-journey-flag` 10.shell.chrome pins both ternaries with their classic arms verbatim, the lazy bindings,
+  and nothing else rendering or loading the journey chrome (6 new plants); `test:journey-shell` 8.mount holds the same
+  from the import graph (2 plants); `test:stacking` now reads a lazy binding as rendering its component (5.6, a
+  control), so its AWAITING_MOUNT exemption for the rail expired with the mount, as it was built to. **The route
+  census** is `test:journey-shell` §9, a reachability graph (A9): the roots are what a journey phone shows (the tabs,
+  the header's own links, the sheets, the footer, and on `/account` the hub's rows), the edges are each page's
+  decommented path literals, and for seven kinds of reader every route the classic chrome reaches, the journey reaches
+  too. Every route on disk has a journey entrance or is one of nine named external ones (email and SMS links, the
+  payment provider's return, the edge's staff sign-in, the service worker's offline page), each tied to the file that
+  generates it and expiring the day a door reaches it. `/updown/history` and `/positions/performance` are pinned to
+  their classic page doors until WP9 re-points them (A15). 12 in-memory plants, A9's three among them (an orphan
+  cycle, a door only in a comment, the agent terms' door removed). Its limits are written in its header: a link built
+  in a `.ts` helper is no edge, and every literal a page holds counts for every reader. ⚠️ In predeploy it is
+  bookkeeping another lane can trip — a new page nothing links, a door added to or taken from the classic chrome, a
+  page that links an external route: clear it in that lane's commit by editing the census's table. The bell is held
+  one way only (A1). **The header-fit gate** is `npm run qa:journey-header-fit`, the clean matrix through a real
+  staff pass: 66 cells (320–1279 × sw/en/zh, a guest and a player at TZS 999,999, and at 320 and 1024 TZS 9.9M,
+  TZS 0, a held wallet and hidden balances). The RULE probe reads every S4 rule against its fixed token (a KP_ROUTE
+  that hides the deposit pill skips the pill's rules there, by the header's own rule, which `test:journey-shell` §10
+  holds the drives' copy to), and the FIT probes report clipping, overflow and each cell's gutter slack, recorded here
+  once measured, with the rail-label lines A17 owes. Its red twin makes nine single-line `globals.css` mutations, each
+  one rule the RULE probe must break in some cell, and a CSS witness makes an unserved mutation read BROKEN. ⛔ It runs
+  only as `npm run red:journey-header-fit -- --alone`: without `--alone`, or inside `red:all` (which now marks every
+  harness it starts with KP_RED_ALL), it refuses with exit 2 before writing anything. `test:journey-shell` §10 holds
+  both refusals, and holds the stylesheet free of witnesses, so a mutation a hard kill left behind fails predeploy by
+  name (and the twin refuses to start over one). Every mutated file is restored on exit, on an error and on any signal
+  the OS delivers, each write retried, and every wait races a 30-minute budget that prints INCONCLUSIVE rather than be
+  killed; a hard kill on Windows runs none of that, which is what the witness check is for. Its anchors are declared
+  in `journey-header-fit.anchors.mjs`. **Served bytes for a classic viewer:** the same markup and RSC rows, because
+  the else arms are today's elements, so `qa:classic-shell-parity` needs no new EXPECTED_DIFFS entry. The journey
+  chrome's JavaScript is lazy, so a classic page's payload names none of it — but parity cannot see JavaScript, so
+  that stays a claim until a production build shows it (owed, item 2). **Owed before WP6b is ✅:** (1) the parity
+  compare against a baseline re-captured from the pre-S6 parent on main (A18); (2) a production build: the root
+  layout's client chunks carry no journey-top-bar or journey-tabs module, or `npm run perf:smoke`'s JavaScript on a
+  classic page is unchanged; (3) `npm run qa:journey-header-fit`, with the per-cell slack and the rail-label lines
+  written here; (4) its red twin, detached, under the heavy-node lock, then `git diff --exit-code`; (5) the
+  qa:journey-shell tiles (WP6b step 5, not yet written: the header at 320–1280 × sw/en/zh, held, masked, zero and
+  999,999, the active tab on each destination, the guest sheet, the Wallet, the unread dot, the focus ring, the tab
+  labels at 320, and no-pass viewers still classic); (6) A1's G1 drive: on a preview session, end account A through
+  the idle (E-381) path, sign B in through the header's link, and the Akaunti dot and the Arifa row never show A's
+  count before B's first answer lands; (7) `scripts/footer-reachable.mjs` learning the pass (A15); (8)
+  `scripts/qa-journey-preview.mjs`'s step-7 pass tiles, its trace regex matching test ids rather than chunk names;
+  (9) the SJ-16 supersession notes in v4 ACCEPTANCE §C2/K65, UPDATE-2026-09-28 §1 and INHERIT-MANIFEST R1/L4/L20.
 
 ## §0h · Points for Ali — taken while he was away (2026-10-01 →)
 

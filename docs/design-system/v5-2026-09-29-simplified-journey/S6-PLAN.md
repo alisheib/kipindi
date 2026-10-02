@@ -487,6 +487,19 @@ Names marked "new" below are proposals. Their package.json keys do not exist yet
    
    **:472** becomes
    `{journeyShown ? <JourneyTabs isAuthed={!!session} /> : <BottomNav isAuthed={!!session} proposalsState={proposalsState} inviteVisible={inviteVisible} walletHeld={!!topUser.walletHeld} />}`
+
+   *As built (WP6b, 2026-10-02):* the tabs take `userId={session?.userId ?? null}` — their one prop, per A1 — not
+   `isAuthed`. And both journey arms are LAZY (the WP6b review): `LazyJourneyTopBar` and `LazyJourneyTabs` are declared
+   the way AppShell declares its overlays, each arm in its own `<Suspense>`, so the journey chrome's code stays out of
+   the first-load bundle every classic visitor downloads. The server still renders a journey page's header; a fallback
+   shows only while the code arrives (a streamed beat, or a switch into the journey mid-visit), so the header's is the
+   bar's own empty box (`.kp-jhdr`: its 56px, its panel and its border) and nothing below it moves, while the tabs' is
+   none (the rail takes no room in the page). The ternaries in the shell therefore read
+   `{journeyShown ? <Suspense fallback={<div aria-hidden="true" className="kp-jhdr" />}><LazyJourneyTopBar … /></Suspense> : <TopAppBar … />}`
+   and `{journeyShown ? <Suspense fallback={null}><LazyJourneyTabs userId={session?.userId ?? null} /></Suspense> : <BottomNav … />}`,
+   the else arms character for character as above. Served bytes for a classic viewer: the markup and RSC rows are
+   today's (the parity compare holds them), and the JavaScript claim waits on a production build — VODACOM-PLAN §0i,
+   WP6b's owed list.
    
    Leave all of these alone:
    - the /admin and opt-out returns;
@@ -1406,6 +1419,29 @@ spellings, so the two bars cannot drift apart silently.
 harness restores every mutated file on SIGINT/SIGTERM/exit and self-limits its runtime, printing INCONCLUSIVE rather
 than being killed.
 
+*As built (WP6b, 2026-10-02; A5 and A6, with the WP6b review's corrections):* the rules, the matrix and the probes are
+written once, in `scripts/live/journey-header-fit.mjs`, and both `qa:journey-header-fit` (the clean matrix: the RULE
+probe, the clip, the overflow, each cell's gutter slack, and below 1024 the rail labels A17 owes) and
+`red:journey-header-fit` import them. The red criterion is the RULE probe alone, and each of the nine mutations
+(`scripts/anchors/journey-header-fit.anchors.mjs`) names the rule that must break. A rule is asked only where its
+element is drawn: a KP_ROUTE on the deposit screen or its return skips the pill's rules there, by the header's own
+rule, whose copy in the drives `test:journey-shell` §10 holds to `journeyHeaderState`; the twin refuses such a route,
+because two of its mutations could never be asked on it. Every mutation's text also names itself in a
+`--kp-red-witness` custom property, the one name the anchors file spells (`WITNESS_PROPERTY`), and the harness
+measures only once the served stylesheet holds it: a mutation the server never served reads BROKEN, not MISSED. The
+widest compact figure is `TZS 9.9M` (TZS 9,940,000): `formatBalancePill` prints one decimal, so the plan's `TZS 1.25M`
+cannot occur, and every `TZS d.dM` is one width in the mono figure. The mark-and-lockup rule is read by the RULE probe
+but not mutated in the browser: `test:journey-shell` 7.brand holds it in source, with its own plant. **A6 as a fact,
+not prose:** the twin refuses, exit 2 and before its first write, without `--alone` on its own command line (its
+package script never passes it, so `red:all` cannot) and whenever KP_RED_ALL is set, which `red:all` now sets for
+every harness it starts; `test:journey-shell` §10 holds both refusals and the mark, with plants. Restores: on exit, on
+an error, and on SIGINT, SIGTERM, SIGHUP and SIGBREAK where the OS delivers them; each write is read back and retried,
+and one that cannot be restored is named loudly with its `git checkout`. ⚠️ A hard kill on Windows (a forced kill, a
+crash, a bluescreen) runs none of that, so the mutation stays on disk with its witness: the twin refuses to start
+over one, `test:journey-shell` §10 fails predeploy on it by name, and §7's rule checks fail on each mutation.
+`RED_BUDGET_S` (1800) is a real bound — every wait races it — and `RED_SETTLE_MS` (180000) bounds each serve. Paths
+resolve from the repository root, not from the directory it was started in.
+
 **A7 · G7 — no "Nafasi" anywhere on the journey Tiketi view.** The journey variant of `PositionsBar` gets
 `journey.ticketsFilterAria` and drops `QueryResultCount` (the canvas shows none). `test:journey-tickets` follows
 `PositionsBar`'s journey branch and asserts no read of a `t.positions.*` key whose sw value matches /nafasi/i, with a
@@ -1435,6 +1471,28 @@ run must compare equal, and any other difference is named in EXPECTED_DIFFS, nev
 `hubRowsFor(viewer)`, the footer. Edges: decommented hrefs per page file. A BFS per viewer kind (guest, player, held,
 agent in standing, staff, proposals disabled, invite closed) asserts classic ⊆ journey reachability. Plants: an orphan
 cycle, an href only inside a comment, `/legal/agent-terms`'s door removed.
+
+*As built (WP6b, 2026-10-02):* `test:journey-shell` §9. A route's edges are the path literals (quoted or templated
+strings that start with "/") of its page, the files beside it, the layouts above it short of the root's, and every
+`.tsx` component they load, comments stripped with `decomment`; the chrome is never an edge, and it is named file by
+file (the journey's bar, rail, guest sheet and flag, the hub's own components), so a journey page component WP9 adds
+is an ordinary edge. The journey's roots are a phone's: the tabs (a guest's Tiketi zangu opens the guest sheet), the
+header's own links per `journeyHeaderState`, the Wallet, the footer, and on `/account` `hubRowsFor(viewer)`. The
+classic roots are tables (bar, More, avatar menu, rail, coin, bell, Wallet, footer), each held to its file both ways
+(`9.chrome`) — the bell one way only, its door still there, because A1 leaves it to other lanes until S15. A guest
+who meets one of `proxy.ts`'s protected prefixes walks on from sign-in. Nine routes are EXTERNAL entrances (email and
+SMS links, the provider's return, the edge's staff sign-in, the service worker's offline page), each tied to the text
+that generates it, and an entry expires the day a journey door reaches its route. A15's two classic doors are PINNED
+until WP9 re-points them, with a plant. Plants (12): A9's three, a page nothing links, the Akaunti tab removed, the
+Arifa row removed (classic ⊆ journey breaks: the classic bell reaches `/notifications`), the language row removed, an
+external entrance lost and one stale, an unknown and a lost classic door, and the pinned history link removed.
+⚠️ Its limits, written in its header: a link built in a `.ts` helper is no edge (`position-permalink.ts`, the
+performance page's query links, a notification's href — why `/positions/[positionId]` is EXTERNAL), and every path
+literal a page holds counts for every reader, whatever branch or gate it sits behind (a `redirect()` or
+`revalidatePath()` argument included), so the walk over-counts what one reader can tap. It proves no route lost its
+last entrance and the journey lost no classic door; the tiles prove what a given reader sees. In predeploy it is
+bookkeeping another lane can trip (a page nothing links, a classic door added or taken, an external route linked):
+that lane's commit edits the census's table.
 
 **A10 · G11 — every hub group and Tiketi state has words.** Add `journey.hubGroupSafety`, `hubGroupProfile`,
 `hubGroupHelp`, `hubGroupSettings`, `hubGroupLegal`, and concrete values for `ticketsEmptyLens`, `ticketsEmptyCashed`,

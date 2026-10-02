@@ -32,6 +32,15 @@ const LazyChannelsPanel = lazy(() =>
 const LazyWinCelebration = lazy(() =>
   import("@/components/markets/win-celebration").then((m) => ({ default: m.WinCelebrationHost })),
 );
+// The journey's header and tabs (the Vodacom plan S6, WP6b) — rendered only for a request the resolver shows the
+// journey to, and lazy for the reason the overlays above are: their code stays out of the first-load bundle that every
+// classic visitor downloads. The server still renders them into a journey page; see the fallbacks where they mount.
+const LazyJourneyTopBar = lazy(() =>
+  import("@/components/journey/journey-top-bar").then((m) => ({ default: m.JourneyTopBar })),
+);
+const LazyJourneyTabs = lazy(() =>
+  import("@/components/journey/journey-tabs").then((m) => ({ default: m.JourneyTabs })),
+);
 import { TopAppBar } from "./top-app-bar";
 import { LiveTicker } from "./live-ticker";
 import { BottomNav } from "./bottom-nav";
@@ -387,7 +396,14 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
           state so React owns it. Do not reintroduce a shell-level DOM mutation for this. */}
       <HeaderScrollCast />
       <Suspense fallback={null}><NavProgress /></Suspense>
-      <TopAppBar user={topUser} proposalsState={proposalsState} inviteVisible={inviteVisible} invitePaid={invitePaid} />
+      {/* ⭐ THE JOURNEY'S HEADER AND TABS (Vodacom plan S6, WP6b), for a request the resolver shows the journey to and
+          for no other: every other request gets today's bar and rail with today's props, in the two else arms. Each
+          journey arm is lazy (see its declaration above), and the server still renders it into the page, so a fallback
+          shows only while its code is on the way — a beat of a streamed page, or a switch into the journey mid-visit
+          (a preview pass turned on). The header's fallback is therefore the bar's own empty box, with its height, its
+          panel and its border, so nothing below it moves; the tabs need none, because the rail is anchored to the
+          viewport and takes no room in the page. */}
+      {journeyShown ? <Suspense fallback={<div aria-hidden="true" className="kp-jhdr" />}><LazyJourneyTopBar user={topUser} onBreak={promoSuppressed} proposalsState={proposalsState} inviteVisible={inviteVisible} invitePaid={invitePaid} /></Suspense> : <TopAppBar user={topUser} proposalsState={proposalsState} inviteVisible={inviteVisible} invitePaid={invitePaid} />}
       {/* ⭐ THE PREVIEW MARKER — first under the bar, so whoever holds this browser knows at once that they are
           looking at pages players do not see yet, and has the way out on the same line. */}
       {journeyPreview && <PreviewMarker label={t.journey.previewMarker} exit={t.journey.previewExit} />}
@@ -469,7 +485,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
           the centre slot is a money-in control and `/wallet/deposit` REFUSES a held wallet, so
           that slot becomes the Wallet door instead. Same input, same rule, two surfaces — read
           from the one place the wallet's status is resolved (`topUser` above). */}
-      <BottomNav isAuthed={!!session} proposalsState={proposalsState} inviteVisible={inviteVisible} walletHeld={!!topUser.walletHeld} />
+      {journeyShown ? <Suspense fallback={null}><LazyJourneyTabs userId={session?.userId ?? null} /></Suspense> : <BottomNav isAuthed={!!session} proposalsState={proposalsState} inviteVisible={inviteVisible} walletHeld={!!topUser.walletHeld} />}
       <RealityCheckHost enabled={!!session} intervalMin={realityCheckMin} userId={session?.userId ?? null} />
       {/* 🔴 SESSION-GATED, like its neighbours on the lines above and below (audit F-08).
           It was the only one of the three that was not, and the omission had no upper bound.

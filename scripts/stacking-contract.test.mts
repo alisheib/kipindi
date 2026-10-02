@@ -475,8 +475,29 @@ const bodyOf = (r: string) => {
   if (!bodyCache.has(r)) bodyCache.set(r, decomment(readFileSync(join(ROOT, r), "utf8")));
   return bodyCache.get(r)!;
 };
-/** Every file that renders `<Symbol …>`, excluding the file that defines it. */
-const consumersOf = (symbol: string, self: string) =>
+/**
+ * ⭐ A LAZY BINDING RENDERS ITS COMPONENT (S6 WP6b). AppShell loads chrome as
+ * `const LazyX = lazy(() => import(…).then((m) => ({ default: m.X })))` and renders `<LazyX …>` — its overlays long
+ * before S6, and the journey's header and tabs since WP6b. A walk that knew only `<X …>` would find the journey rail
+ * rendered by nothing and read a root-mounted bar as a finding (5.2). Each binding is read from source, one per
+ * statement: the name before ` = lazy(() =>`, the component after `default: m.`. 5.6 proves the reader on a fixture.
+ */
+const lazyBindingsIn = (file: string, body: string) => body.split(";").flatMap((stmt) => {
+  const at = stmt.indexOf(" = lazy(() =>");
+  const from = at < 0 ? -1 : stmt.lastIndexOf("const ", at);
+  const pick = at < 0 ? -1 : stmt.indexOf("({ default: m.", at);
+  if (from < 0 || pick < 0) return [];
+  const symbol = stmt.slice(pick + "({ default: m.".length, stmt.indexOf(" })", pick));
+  return [{ file, alias: stmt.slice(from + "const ".length, at), symbol }];
+});
+const LAZY_BINDINGS = tsxFiles.map(relOf).flatMap((r) => lazyBindingsIn(r, bodyOf(r)));
+/** Every file that renders `<Symbol …>` — by that name, or through a lazy binding of it — excluding the file that defines it. */
+const consumersOf = (symbol: string, self: string): string[] => [...new Set([
+  ...rendersOf(symbol, self),
+  ...LAZY_BINDINGS.filter((b) => b.symbol === symbol && b.file !== self && rendersOf(b.alias, self).includes(b.file)).map((b) => b.file),
+])];
+/** Every file that renders `<Symbol …>` by that name, excluding the file that defines it. */
+const rendersOf = (symbol: string, self: string) =>
   tsxFiles.map(relOf).filter((r) => r !== self && new RegExp(`<${symbol}[\\s/>]`).test(bodyOf(r)));
 
 /**
@@ -520,15 +541,15 @@ function ownerSymbolAt(body: string, index: number): string {
 
 /**
  * ⏳ BUILT, NOT YET MOUNTED — an EXPIRING exemption, not a ratchet (the Vodacom plan S6, WP6a then WP6b).
- * The journey's tab rail is a viewport-anchored bar like the classic one and, like it, belongs beside <RouteTransition>
- * in AppShell, a root mount. WP6a builds it and WP6b mounts it, so for that one step it is rendered by NOTHING — in no
+ * A viewport-anchored bar built a step before the commit that mounts it is rendered by NOTHING for that one step — in no
  * route content at all — and §5.2, finding no root mount above it, would read it as a finding.
  * ⛔ 5.5 holds every entry to "still rendered by nothing": the moment anything renders the file the entry FAILS, and
  * the commit that mounts it deletes it, after which §5.2 judges the bar like any other.
+ * ✅ EMPTY SINCE S6 WP6b: AppShell mounts the journey's tab rail beside the classic one — lazily, through
+ * `LazyJourneyTabs`, which the consumer walk above reads as rendering it — a root mount, so §5.2 judges it from there
+ * and 5.5 holds nothing. The mechanism stays for the next bar built ahead of its mount.
  */
-const AWAITING_MOUNT = new Map<string, string>([
-  ["src/components/journey/journey-tabs.tsx", "the journey's tab rail (SJ-16) — WP6b mounts it in AppShell, beside the classic rail"],
-]);
+const AWAITING_MOUNT = new Map<string, string>([]);
 type Overlay = { file: string; symbol: string; consumers: string[] };
 const fixedOverlays: Overlay[] = [];
 for (const f of tsxFiles) {
@@ -604,6 +625,25 @@ for (const [file, why] of AWAITING_MOUNT) {
        ? "no exported component found in it — re-check the entry"
        : `rendered by ${renderedBy.join(", ")} now — DELETE its AWAITING_MOUNT entry in this commit; §5.2 judges it from here`,
      why);
+}
+
+// 5.6 — CONTROL: the lazy-binding reader, on a fixture and on the one real binding the journey rail depends on (S6
+// WP6b). A reader that silently found nothing would leave 5.2 judging the rail as rendered by nobody — loudly, but for
+// the wrong reason; this names the instrument instead.
+{
+  const fixture = [
+    "const LazyA = lazy(() =>",
+    '  import("@/components/a").then((m) => ({ default: m.Alpha })),',
+    ");",
+    "const plain = 1;",
+    'const LazyB = lazy(() => import("@/components/b").then((m) => ({ default: m.Beta })));',
+  ].join(String.fromCharCode(10));
+  const parsed = lazyBindingsIn("fixture.tsx", fixture).map((b) => `${b.alias}=${b.symbol}`).join(" ");
+  const railBy = consumersOf("JourneyTabs", "src/components/journey/journey-tabs.tsx");
+  ok("5.6 CONTROL · a lazy binding reads as rendering its component (LazyA renders Alpha), one binding per statement, and the journey rail's one consumer is AppShell, through its own",
+     parsed === "LazyA=Alpha LazyB=Beta" && railBy.length === 1 && railBy[0] === "src/components/layout/app-shell.tsx",
+     `read "${parsed}" from the fixture; the journey rail is rendered by ${railBy.join(", ") || "nothing"}`,
+     "AppShell renders the journey rail through LazyJourneyTabs");
 }
 
 // ===========================================================================
