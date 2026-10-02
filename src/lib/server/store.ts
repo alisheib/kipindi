@@ -9,6 +9,11 @@ import { prismaDb } from "./prisma-dal";
 import { hasDatabase } from "./prisma";
 import { randomId } from "./crypto";
 import { matchesFilters, sortAndPage, summarise, type TxnSearchFilters, type TxnSearchResult } from "./txn-filters";
+// U35b · the campaign tables' ONE rule set — this twin asks it before every campaign or recipient write, exactly as
+// the Prisma twin does (`test:dal-parity` §26). It takes only TYPES back from this file, so there is no cycle.
+import { assertNewCampaign, assertDraftPatch, assertTransitionShape, assertSeeds, fillRecipientCounts } from "@/lib/server/marketing/campaign-model";
+import type { SmsEncoding } from "@/lib/sms-compose";
+import type { ConfirmTierColumn } from "@/lib/marketing/campaign-confirm";
 // ⛔ The same lens definitions the Prisma DAL reads — one home (§0a), so the two
 // implementations of this contract cannot drift apart about what "Money" means.
 import {
@@ -375,6 +380,143 @@ export type SmsDlr = { status: SmsStatus | null; rawStatus: string; desc: string
  *  body — every assertion about the implementation then fails against 100 characters of type
  *  annotation. Keep both sides of this signature named. */
 export type SmsDlrResult = { changed: boolean; row: StoredSmsMessage | null };
+
+/* ═══ THE CAMPAIGN TABLES (marketing U35b — D22; decisions X12–X15, M5, M6) ═══════════════════════════════
+ *
+ * ⭐ TWO STORES, AND EACH HAS ONE DOOR. Every write to a campaign or a recipient goes through the twins'
+ * `smsCampaign` / `smsCampaignRecipient` namespaces, which ask `marketing/campaign-model.ts`'s rules BEFORE they
+ * write: the frozen keys only in DRAFT and only on the revision the officer saw, a status only by a conditional
+ * transition (one winner), a recipient batch whole or not at all. ⛔ No delete and no stored counter, in either
+ * twin (`test:dal-parity` §26).
+ * ⚠️ NAMED, NOT INLINE: every DAL signature below names its parameter and return types — `dal-parity`'s
+ * `region()` reads a body from the first `{` after a signature (the `SmsDlrResult` note above). */
+
+/** Mirrors `SmsCampaignStatus` (X12). DONE and CANCELLED are terminal; nothing returns to DRAFT. */
+export type SmsCampaignStatus = "DRAFT" | "CONFIRMED" | "PREPARING" | "RUNNING" | "PAUSED" | "DONE" | "CANCELLED";
+/** Mirrors `SmsCampaignRecipientStatus` (X12). ⚠️ HELD is OUTSTANDING — a held row still owes somebody a message. */
+export type SmsCampaignRecipientStatus = "PENDING" | "HELD" | "SENT" | "DELIVERED" | "FAILED" | "SKIPPED";
+
+/** ⭐ ONE CAMPAIGN. ⛔ No counter among these keys (OD26): progress is `countByStatus`, a groupBy over the recipient
+ *  rows. The frozen keys (`SMS_CAMPAIGN_FROZEN`, `campaign-model.ts`) change only in DRAFT. */
+export type StoredSmsCampaign = {
+  id: string;
+  /** Staff-only label, never sent. */
+  name: string;
+  status: SmsCampaignStatus;
+  bodySw: string;
+  /** null = everyone gets Swahili (OD42). */
+  bodyEn: string | null;
+  /** U37's SAVED per-variant verdicts (X15, M16) — the confirmation's estimate reads these, never a live counter. */
+  codingSw: SmsEncoding;
+  segmentsSw: number;
+  codingEn: SmsEncoding | null;
+  segmentsEn: number | null;
+  nameFallbackSw: string | null;
+  nameFallbackEn: string | null;
+  /** M5 · OQ3's phrase for every non-account recipient; null until G5 supplies the wording. */
+  sourcePhrase: string | null;
+  /** ⭐ THE ONE OPTIMISTIC MECHANISM (X12): every draft save compares it and moves it on by one. */
+  draftRevision: number;
+  /** U40's tier as `CONFIRM_TIER_COLUMN` spells it; read back only through `confirmTierFromColumn`. */
+  confirmTier: ConfirmTierColumn | null;
+  /** ⛔ U24's canonical key (`contactAudienceKey`, X13), byte for byte — a FILTER, never a list of ids. */
+  audienceFilter: string;
+  audienceCount: number | null;
+  /** X13: U40's keyed members key on the enumerate tier, null on the typed tier. */
+  audienceWatermark: string | null;
+  /** X15: frozen at the confirmation — the spend ceiling, not the forecast. */
+  estimateSegments: number | null;
+  estimateTzs: number | null;
+  budgetTzs: number | null;
+  /** X8: `b:<id>` · `p:<userId>` · `done`, parsed in `audience.ts` only. ⛔ Never a phone number. */
+  enqueueCursor: string | null;
+  enqueuedAt: string | null;
+  stopReason: string | null;
+  createdBy: string;
+  confirmedBy: string | null;
+  confirmedAt: string | null;
+  startedAt: string | null;
+  pausedAt: string | null;
+  finishedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+/** M6 · one check of §5.8's per-recipient record: what ran, its verdict, the wording shown and its source. U43 writes
+ *  the trail for EVERY recipient, sent or skipped; U35b stores it and never reads inside it. */
+export type SmsCampaignGateCheck = { check: string; verdict: string; wording: string | null; source: string | null };
+export type SmsCampaignGateTrail = SmsCampaignGateCheck[];
+
+/** ⭐ ONE PERSON ON ONE CAMPAIGN — the record that we messaged them, or why we did not. Its `id` is the slice ref and
+ *  `SmsMessage.targetId`. ⛔ `contactId` and `userId` are LINKS, never copies, and the row is never deleted. */
+export type StoredSmsCampaignRecipient = {
+  id: string;
+  campaignId: string;
+  /** ⛔ The ONE key, bare `255…` (U1) — the twins refuse a batch holding any other spelling. */
+  msisdn: string;
+  contactId: string | null;
+  userId: string | null;
+  status: SmsCampaignRecipientStatus;
+  /** The reference handed to the gateway. Nullable-unique. */
+  smsReference: string | null;
+  /** U8's token in this person's footer, minted at enqueue (U42). ⛔ A row without one is never sent. */
+  optOutToken: string | null;
+  /** Which OD42 variant went out — written at send time. */
+  locale: MessagingLocale | null;
+  failureClass: string | null;
+  /** Scrubbed. ⛔ Never a phone number (§5.14). */
+  error: string | null;
+  skipReason: string | null;
+  skipDetail: string | null;
+  claimToken: string | null;
+  claimedAt: string | null;
+  attempts: number;
+  segments: number | null;
+  bodyLen: number | null;
+  /** Provider-reported only. */
+  costTzs: number | null;
+  gateTrail: SmsCampaignGateTrail | null;
+  createdAt: string;
+  updatedAt: string;
+  sentAt: string | null;
+  deliveredAt: string | null;
+  failedAt: string | null;
+};
+
+/** U37's DRAFT SAVE — the officer's composition and nothing else (`campaign-model.ts`'s `draft` keys; a compile-time
+ *  check there holds the two lists equal). Written only while the row is a DRAFT, on `SmsCampaignDraftGuard`. */
+export type SmsCampaignDraftPatch = Partial<Pick<StoredSmsCampaign,
+  | "name" | "bodySw" | "bodyEn" | "codingSw" | "segmentsSw" | "codingEn" | "segmentsEn"
+  | "nameFallbackSw" | "nameFallbackEn" | "sourcePhrase" | "audienceFilter">>;
+/** The compare in the draft save's compare-and-set: the revision the form was rendered on. */
+export type SmsCampaignDraftGuard = { draftRevision: number };
+/** What a TRANSITION may write: the confirmation's fields (only FROM exactly DRAFT, on a revision) and the engine's. */
+export type SmsCampaignTransitionPatch = Partial<Pick<StoredSmsCampaign,
+  | "audienceCount" | "confirmTier" | "audienceWatermark" | "estimateSegments" | "estimateTzs" | "budgetTzs"
+  | "confirmedBy" | "confirmedAt"
+  | "enqueueCursor" | "enqueuedAt" | "stopReason" | "startedAt" | "pausedAt" | "finishedAt">>;
+/**
+ * ⭐ THE ONLY WAY A STATUS MOVES. `from` is the CONDITION — the twins write only a row still in it, so of two racing
+ * writers ONE wins — and `to: null` is a conditional patch with no move (U42's cursor, U43's stamps). `draftRevision`,
+ * when not null, is compared too (U40's confirmation). Both twins stamp `at` as `updatedAt`.
+ * ⚠️ The row handed back is re-read after the write and may already carry a later writer's change: null versus
+ * non-null is the race verdict, never the returned status.
+ */
+export type SmsCampaignTransition = {
+  from: readonly SmsCampaignStatus[];
+  to: SmsCampaignStatus | null;
+  patch: SmsCampaignTransitionPatch;
+  draftRevision: number | null;
+  at: string;
+};
+/** What U42's enqueue writes — and NOTHING that settles a row (no status, no `smsReference`): the Prisma twin's
+ *  `skipDuplicates` has no conflict target, so a colliding settle key would drop a person silently. */
+export type SmsCampaignRecipientSeed = Pick<StoredSmsCampaignRecipient,
+  "id" | "campaignId" | "msisdn" | "contactId" | "userId" | "optOutToken" | "createdAt">;
+/** `inserted` + `duplicates` = the batch. A duplicate is a person already on the campaign (or an id already held). */
+export type SmsCampaignRecipientInsert = { inserted: number; duplicates: number };
+export type SmsCampaignRecipientCount = { status: SmsCampaignRecipientStatus; count: number };
+
 /* ═══ MESSAGING CONSENT AND SUPPRESSION (marketing U6 — D7, D8) ═══════════════════════
  *
  * ⭐ THESE UNIONS ARE THE MEMORY TWIN OF THE PRISMA ENUMS, AND THEY ARE NAMED ON PURPOSE.
@@ -1217,6 +1359,11 @@ declare global {
     contactLists: Map<string, StoredContactList>;
     /** Keyed `${listId}|${contactId}` — the compound primary key. */
     contactListMembers: Map<string, StoredContactListMember>;
+    /** U35b · the campaign tables. */
+    smsCampaigns: Map<string, StoredSmsCampaign>;
+    smsCampaignRecipients: Map<string, StoredSmsCampaignRecipient>;
+    /** ⭐ THE @@unique([campaignId, msisdn]), FAKED — `${campaignId}|${msisdn}` -> recipient id. */
+    recipientsByCampaignMsisdn: Map<string, string>;
   } | undefined;
 }
 
@@ -1253,6 +1400,9 @@ const store = globalThis.__50PICK_STORE ?? (globalThis.__50PICK_STORE = {
   contactsByMsisdn: new Map(),
   contactLists: new Map(),
   contactListMembers: new Map(),
+  smsCampaigns: new Map(),
+  smsCampaignRecipients: new Map(),
+  recipientsByCampaignMsisdn: new Map(),
 });
 
 // Hot-reload safety: if a previous build created the global without the newer maps,
@@ -1283,6 +1433,9 @@ if (!store.marketingContacts)  store.marketingContacts = new Map();
 if (!store.contactsByMsisdn)   store.contactsByMsisdn = new Map();
 if (!store.contactLists)       store.contactLists = new Map();
 if (!store.contactListMembers) store.contactListMembers = new Map();
+if (!store.smsCampaigns)               store.smsCampaigns = new Map();
+if (!store.smsCampaignRecipients)      store.smsCampaignRecipients = new Map();
+if (!store.recipientsByCampaignMsisdn) store.recipientsByCampaignMsisdn = new Map();
 
 /* ═══ U24 · THE MEMORY TWIN'S ONE AUDIENCE TRANSLATION ═════════════════════════════════════
  * ⭐ The Prisma twin's `toPrismaContactWhere` predicate for predicate, so a count on the suites' backend is
@@ -2872,7 +3025,9 @@ const memoryDb = {
      *  contact's list memberships itself (`ContactListMember` onDelete: Cascade), and this twin must too, or every suite
      *  keeps memberships production deletes — U18b's class, a memory index not maintained. ⭐ The unique index is FREED
      *  (only while it still points at this row), so the number can be added again. ⛔ The consent ledger and the stop
-     *  list are keyed by NUMBER and are not touched: removing a book row never deletes evidence. */
+     *  list are keyed by NUMBER and are not touched: removing a book row never deletes evidence.
+     *  ⭐ U35b · AND THE CAMPAIGN LINK IS SET NULL, as Postgres does (`SmsCampaignRecipient.contactId` onDelete: SetNull):
+     *  the recipient row — the record that we messaged somebody — stays, pointing at nobody (`test:dal-parity` §26). */
     removeWhere: (w: ContactAudienceWhere): ContactBulkCount => {
       const out: ContactBulkCount = { matched: 0, changed: 0, unchanged: 0, full: 0 };
       for (const c of contactsMatching(w)) {
@@ -2880,6 +3035,7 @@ const memoryDb = {
         if (!store.marketingContacts.delete(c.id)) continue;
         if (store.contactsByMsisdn.get(c.msisdn) === c.id) store.contactsByMsisdn.delete(c.msisdn);
         for (const [k, m] of store.contactListMembers) if (m.contactId === c.id) store.contactListMembers.delete(k);
+        for (const r of store.smsCampaignRecipients.values()) if (r.contactId === c.id) r.contactId = null;
         out.changed++;
       }
       return out;
@@ -2924,6 +3080,128 @@ const memoryDb = {
       Array.from(store.contactListMembers.values())
         .filter((m) => m.contactId === contactId)
         .sort((a, b) => b.addedAt.localeCompare(a.addedAt) || b.listId.localeCompare(a.listId)),
+  },
+
+  /* ═══ THE CAMPAIGN TABLES (marketing U35b) ═══════════════════════════════════════════════════════════
+   * ⛔ ONE DOOR, AND ITS RULES ARE `campaign-model.ts`'s. Every member asks the rule set FIRST, so a refused write
+   * changes nothing. The frozen keys move only while the row is a DRAFT on the revision the caller saw; the status
+   * moves only while the row is still in `from` — so of two racing writers ONE wins. JavaScript runs each member to
+   * the end before any other write, so the check and the write are one step, as the Prisma twin's conditional
+   * `updateMany` is one statement. Rows go in and come out as COPIES, as Postgres hands back fresh objects.
+   * ⛔ NO `delete` in either namespace and NO stored counter (`test:dal-parity` §26): a recipient row is the
+   * record that we messaged somebody. */
+  smsCampaign: {
+    /** ⭐ A campaign is born a blank DRAFT (`assertNewCampaign`). A second row on one id is Postgres' P2002. */
+    create: (row: StoredSmsCampaign): StoredSmsCampaign => {
+      assertNewCampaign(row);
+      if (store.smsCampaigns.has(row.id)) throw new Error(`unique constraint: SmsCampaign ${row.id} already exists (memory twin of P2002)`);
+      store.smsCampaigns.set(row.id, { ...row });
+      return { ...row };
+    },
+    find: (id: string): StoredSmsCampaign | null => {
+      const row = store.smsCampaigns.get(id);
+      return row ? { ...row } : null;
+    },
+    /** U37's DRAFT SAVE — ⭐ COMPARE-AND-SET on `draftRevision`, the ONE optimistic mechanism (X12). Written only
+     *  while the row is still a DRAFT on the revision the form was rendered on, which then moves on by one; null
+     *  when the row is gone, has left DRAFT, or was saved since. ⛔ So a confirmed scope can never be widened. */
+    update: (id: string, patch: SmsCampaignDraftPatch, guard: SmsCampaignDraftGuard, at: string): StoredSmsCampaign | null => {
+      assertDraftPatch(patch, guard, at);
+      const row = store.smsCampaigns.get(id);
+      if (row === undefined) return null;
+      if (row.status !== "DRAFT" || row.draftRevision !== guard.draftRevision) return null;
+      const next: StoredSmsCampaign = { ...row, draftRevision: guard.draftRevision + 1, updatedAt: at };
+      for (const [k, v] of Object.entries(patch)) if (v !== undefined) (next as Record<string, unknown>)[k] = v;
+      store.smsCampaigns.set(id, next);
+      return { ...next };
+    },
+    /** ⭐ THE ONLY WAY A STATUS MOVES — conditional on `from` (and on `draftRevision` when one is given), so a row
+     *  another writer already moved is not touched and the loser gets null. `to: null` writes without a move. */
+    transition: (id: string, t: SmsCampaignTransition): StoredSmsCampaign | null => {
+      assertTransitionShape(t);
+      const row = store.smsCampaigns.get(id);
+      if (row === undefined) return null;
+      if (!t.from.includes(row.status)) return null;
+      if (t.draftRevision !== null && row.draftRevision !== t.draftRevision) return null;
+      const next: StoredSmsCampaign = { ...row, status: t.to ?? row.status, updatedAt: t.at };
+      for (const [k, v] of Object.entries(t.patch)) if (v !== undefined) (next as Record<string, unknown>)[k] = v;
+      store.smsCampaigns.set(id, next);
+      return { ...next };
+    },
+  },
+
+  smsCampaignRecipient: {
+    /** ⭐ ON CONFLICT DO NOTHING, FAKED — the Prisma twin's `createMany({ skipDuplicates: true })`. The batch is
+     *  checked WHOLE first (`assertSeeds`); then the rows that would be INSERTED are picked out — a seed whose
+     *  (campaignId, msisdn) is already held, or whose id is, is skipped, and the FIRST of two in one batch wins, as
+     *  Postgres' does; then the foreign keys of exactly those rows are checked (Postgres checks a link only for a row
+     *  it inserts), and only then is anything written: Postgres refuses a statement whole, so a partial batch here
+     *  would be a state production can never reach. ⛔ Never an upsert: a person already on the campaign keeps their
+     *  row as it is. */
+    createMany: (seeds: SmsCampaignRecipientSeed[]): SmsCampaignRecipientInsert => {
+      assertSeeds(seeds);
+      const planned = new Set<string>();
+      const toInsert = seeds.filter((s) => {
+        const k = `${s.campaignId}|${s.msisdn}`;
+        if (store.recipientsByCampaignMsisdn.has(k) || store.smsCampaignRecipients.has(s.id) || planned.has(k)) return false;
+        planned.add(k);
+        return true;
+      });
+      for (const s of toInsert) {
+        if (!store.smsCampaigns.has(s.campaignId)) throw new Error(`foreign key: no SmsCampaign ${s.campaignId} (memory twin of P2003) — nothing was written`);
+        if (s.contactId !== null && !store.marketingContacts.has(s.contactId)) throw new Error(`foreign key: no MarketingContact ${s.contactId} (memory twin of P2003) — nothing was written`);
+        if (s.userId !== null && !store.users.has(s.userId)) throw new Error(`foreign key: no User ${s.userId} (memory twin of P2003) — nothing was written`);
+      }
+      for (const s of toInsert) {
+        const k = `${s.campaignId}|${s.msisdn}`;
+        const row: StoredSmsCampaignRecipient = {
+          id: s.id,
+          campaignId: s.campaignId,
+          msisdn: s.msisdn,
+          contactId: s.contactId,
+          userId: s.userId,
+          status: "PENDING",
+          smsReference: null,
+          optOutToken: s.optOutToken,
+          locale: null,
+          failureClass: null,
+          error: null,
+          skipReason: null,
+          skipDetail: null,
+          claimToken: null,
+          claimedAt: null,
+          attempts: 0,
+          segments: null,
+          bodyLen: null,
+          costTzs: null,
+          gateTrail: null,
+          createdAt: s.createdAt,
+          updatedAt: s.createdAt,
+          sentAt: null,
+          deliveredAt: null,
+          failedAt: null,
+        };
+        store.smsCampaignRecipients.set(row.id, row);
+        store.recipientsByCampaignMsisdn.set(k, row.id);
+      }
+      return { inserted: toInsert.length, duplicates: seeds.length - toInsert.length };
+    },
+    /** A copy all the way down — the gate trail too — as Postgres hands back a fresh row. */
+    find: (id: string): StoredSmsCampaignRecipient | null => {
+      // ⚠️ `row` typed: the store literal's `new Map()` widens a read to any under `??`, and the gate trail's copy below
+      // then cannot infer its element (TS7006). That line stays byte-identical — `test:dal-parity` 26.find and its anchor.
+      const row: StoredSmsCampaignRecipient | undefined = store.smsCampaignRecipients.get(id);
+      return row ? { ...row, gateTrail: row.gateTrail === null ? null : row.gateTrail.map((g) => ({ ...g })) } : null;
+    },
+    /** Every recipient status with its count, zeros included, in the schema's order (`fillRecipientCounts`). The
+     *  memory twin tallies because it never serves production; the Prisma twin asks ONE groupBy. */
+    countByStatus: (campaignId: string): SmsCampaignRecipientCount[] => {
+      const raw = new Map<SmsCampaignRecipientStatus, number>();
+      for (const r of store.smsCampaignRecipients.values()) {
+        if (r.campaignId === campaignId) raw.set(r.status, (raw.get(r.status) ?? 0) + 1);
+      }
+      return fillRecipientCounts(Array.from(raw, ([status, count]) => ({ status, count })));
+    },
   },
 };
 

@@ -334,6 +334,10 @@ model User {
   /// deleting the book row, and `erasure` empties the row and withdraws the consent in the ledger —
   /// a row left pointing at nobody while still looking marketable is exactly D16.
   marketingContacts       MarketingContact[]
+  /// ⛔ THE BACK-REFERENCE OF A LINK (U35b). A campaign recipient may point at this account; deleting the
+  /// account sets that pointer NULL (`onDelete: SetNull`) and KEEPS the row — it is the record that we
+  /// messaged somebody. Erasure, retention and the DSAR export reach these rows from U16, before U42 writes one.
+  smsCampaignRecipients   SmsCampaignRecipient[]
 
   @@index([role, status])
   @@index([createdAt])
@@ -3089,7 +3093,8 @@ model SmsMessage {
   /// The undocumented `balance` echoed on the reply that carried this message.
   balanceTzs   Decimal?    @db.Decimal(18, 2)
   attempts     Int         @default(0)
-  /// What the message is ABOUT, so a receipt can act on it. "InviteEntry" | "Otp".
+  /// What the message is ABOUT, so a receipt can act on it. "InviteEntry" | "Otp" | "SmsCampaignRecipient"
+  /// (the recipient's id is the slice ref — `DISPATCH_TARGET_TYPE`, written from U43).
   targetType   String?
   targetId     String?
   createdAt    DateTime    @default(now())
@@ -3360,6 +3365,9 @@ model MarketingContact {
   updatedBy    String?
 
   lists        ContactListMember[]
+  /// ⛔ The campaigns this contact was put on (U35b). `onDelete: SetNull` on the recipient side: deleting the
+  /// contact breaks the link and keeps the recipient row, which is the record that we messaged somebody.
+  smsCampaignRecipients SmsCampaignRecipient[]
 
   /// The operator filter (U21) and the send resolver (U24) both read these.
   @@index([ndc])
@@ -3407,4 +3415,183 @@ model ContactListMember {
   /// and text them twice.
   @@id([listId, contactId])
   @@index([contactId])
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════════════
+// SMS CAMPAIGNS (marketing U35b — D22; decisions X1 · X8 · X12–X15 · M5 · M6 · M9)
+//
+// ⭐ TWO TABLES AND THREE NEW TYPES, IN ONE HAND-WRITTEN EXPAND-ONLY MIGRATION
+// (20261002120000_sms_campaign_models). `test:campaign-models` §1 holds that file and these models
+// equal — column by column, index by index, link by link — and §2 runs the rules on the memory twin.
+//
+// ⛔ NO STORED COUNTERS (OD26) and NO DELETE in either twin. A campaign's progress is a groupBy over its
+// recipient rows, and a recipient row is the record that we messaged somebody (GN 478T reg 51(1)): the
+// campaign link is RESTRICT and the two person links are SET NULL, never Cascade.
+//
+// ⛔ A CAMPAIGN'S FROZEN KEYS CHANGE ONLY IN DRAFT, and its status moves only by a CONDITIONAL transition
+// with one winner. Both are the ONE door's rules — the twins' `smsCampaign` namespace over
+// `src/lib/server/marketing/campaign-model.ts` — and no other file calls these delegates.
+// ═══════════════════════════════════════════════════════════════════════════════════════
+
+/// A campaign's place in its life (X12). ⛔ There is no approval status: OQ1 removed the Gaming Board gate.
+/// CONFIRMED sends nothing — the first start is owner gate G2. DONE and CANCELLED are terminal, and nothing
+/// returns to DRAFT. ⚠️ A status added later is a 55P04 two-step: its own ADD VALUE migration, deployed one
+/// commit ahead of any writer.
+enum SmsCampaignStatus {
+  DRAFT
+  CONFIRMED
+  PREPARING
+  RUNNING
+  PAUSED
+  DONE
+  CANCELLED
+}
+
+/// One recipient's place in the send (X12). ⚠️ HELD is OUTSTANDING, not settled: a held row still owes
+/// somebody a message (U36, U47). SKIPPED is the gate refusing — ⛔ never FAILED (§5.6, OD40). ⚠️ U43's
+/// reaper and U46's late receipt name a state this set does not carry: reconcile at U43 (a 55P04 two-step).
+enum SmsCampaignRecipientStatus {
+  PENDING
+  HELD
+  SENT
+  DELIVERED
+  FAILED
+  SKIPPED
+}
+
+/// The character set of one variant's body — the `SmsEncoding` union of `src/lib/sms-compose.ts`, which
+/// decides it (`encodingFor`). Stored per variant by U37's save; never typed by a person.
+enum SmsEncoding {
+  GSM7
+  UCS2
+}
+
+/// ⭐ ONE MARKETING SMS CAMPAIGN (X12): a Swahili body (an English one optional, OD42), the audience as
+/// U24's FILTER, and its life from draft to done.
+///
+/// ⛔ THE FROZEN KEYS — everything the officer composes (`name`, the bodies, their codings and segment
+/// counts, the name fallbacks, `sourcePhrase`, `audienceFilter`) and everything the confirmation fixes
+/// (`audienceCount`, `confirmTier`, `audienceWatermark`, `estimateSegments`, `estimateTzs`, `budgetTzs`,
+/// `confirmedAt`, `confirmedBy`) — change ONLY while the campaign is a DRAFT, and only on the
+/// `draftRevision` the officer was looking at. So a confirmed scope can never be widened (X13), and the
+/// estimate a confirmation froze is the one it spends against (X15).
+model SmsCampaign {
+  id                String                 @id @default(cuid())
+  /// Staff-only label, never sent.
+  name              String
+  status            SmsCampaignStatus      @default(DRAFT)
+  /// Required (OD42): everybody who is not an English-language account with an English body gets this.
+  bodySw            String
+  /// NULL means everyone gets Swahili — stated on screen (U37).
+  bodyEn            String?
+  /// U37's SAVED per-variant verdicts — what the confirmation's estimate reads (X15, M16), never a live counter.
+  codingSw          SmsEncoding
+  segmentsSw        Int
+  codingEn          SmsEncoding?
+  segmentsEn        Int?
+  /// Each variant's fallback for the name placeholder, required only when that body uses it (U37a).
+  nameFallbackSw    String?
+  nameFallbackEn    String?
+  /// M5 · OQ3's phrase for every non-account recipient — priced in, never dropped; blank until G5.
+  sourcePhrase      String?
+  /// ⭐ THE ONE OPTIMISTIC MECHANISM (X12): every draft save compares it and moves it on by one, and U40's
+  /// confirmation compares it too. There is no `baseUpdatedAt` and no second update path.
+  draftRevision     Int                    @default(0)
+  /// U40's tier as `CONFIRM_TIER_COLUMN` spells it ("ENUMERATE" or "TYPED"), read back only through
+  /// `confirmTierFromColumn`, which refuses anything else. TEXT on purpose: a tier added later is not a
+  /// 55P04 two-step.
+  confirmTier       String?
+  /// ⛔ U24's CANONICAL KEY (`contactAudienceKey`, X13) — a FILTER, never a list of ids (both twins refuse
+  /// an `ids` arm), so the audience is re-resolved at send time and a confirmed scope cannot be widened.
+  /// ⭐ TEXT, NOT Json: Postgres' JSONB reorders object keys, so the canonical key would not come back
+  /// byte-for-byte — and U40 compares it with the resolver's own output.
+  audienceFilter    String
+  /// The campaign population U40 confirmed (X9: the book and the players, one person per number).
+  audienceCount     Int?
+  /// X13: U40's KEYED members key on the enumerate tier, NULL on the typed tier. ⛔ The browser's signed
+  /// fence token is never stored.
+  audienceWatermark String?
+  /// X15: frozen at the confirmation — the saved segments times the population: the spend ceiling, not
+  /// the forecast.
+  estimateSegments  Int?
+  estimateTzs       Decimal?               @db.Decimal(18, 2)
+  /// U49's spend authorisation, set at the confirmation. ⛔ Frozen with it: a budget raised afterwards is
+  /// money nobody approved.
+  budgetTzs         Decimal?               @db.Decimal(18, 2)
+  /// X8: `b:<id>` · `p:<userId>` · `done` — parsed in `audience.ts` ONLY. ⛔ No phone number ever forms a cursor.
+  enqueueCursor     String?
+  enqueuedAt        DateTime?              @db.Timestamptz(3)
+  /// Why it paused or stopped — a key U36's `stopReasonLabel` turns into words.
+  stopReason        String?
+  createdBy         String
+  confirmedBy       String?
+  confirmedAt       DateTime?              @db.Timestamptz(3)
+  startedAt         DateTime?              @db.Timestamptz(3)
+  pausedAt          DateTime?              @db.Timestamptz(3)
+  finishedAt        DateTime?              @db.Timestamptz(3)
+  createdAt         DateTime               @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime               @default(now()) @updatedAt @db.Timestamptz(3)
+
+  recipients        SmsCampaignRecipient[]
+
+  /// U36's list: the status rail and the page order.
+  @@index([status, createdAt])
+  @@index([createdAt])
+}
+
+/// ⭐ ONE PERSON ON ONE CAMPAIGN — and the record that we messaged them, or why we did not (§5.8). Its `id`
+/// is the slice ref and `SmsMessage.targetId` (U9, U43).
+///
+/// ⛔ NEVER DELETED, in either twin. The campaign link is RESTRICT; `contactId` and `userId` are LINKS, never
+/// copies, and SET NULL — a deleted contact or account breaks the pointer and keeps the record.
+/// ⚠️ M9: U16 brings this model inside erasure, retention and the DSAR export BEFORE U42 writes a row.
+model SmsCampaignRecipient {
+  id           String                     @id @default(cuid())
+  campaignId   String
+  campaign     SmsCampaign                @relation(fields: [campaignId], references: [id], onDelete: Restrict)
+  /// The ONE phone key, bare `255XXXXXXXXX` (U1). ⛔ A batch holding any other spelling is refused WHOLE:
+  /// `+255…` beside `255…` would be two rows for one person, and the unique index could not see it.
+  msisdn       String
+  contactId    String?
+  contact      MarketingContact?          @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  userId       String?
+  user         User?                      @relation(fields: [userId], references: [id], onDelete: SetNull)
+  status       SmsCampaignRecipientStatus @default(PENDING)
+  /// The reference handed to the gateway (`SmsMessage.reference`). Nullable-unique: NULLs are distinct.
+  smsReference String?                    @unique
+  /// U8's opt-out token in this person's footer, minted at enqueue (U42). ⛔ A row without one is never sent.
+  optOutToken  String?
+  /// Which OD42 variant went out — written at send time.
+  locale       Locale?
+  failureClass String?
+  /// The wire's refusal, scrubbed. ⛔ Never a phone number (§5.14).
+  error        String?
+  /// The gate's refusal (`MarketingSkipReason`) and its detail — text, so a new reason is not a migration.
+  skipReason   String?
+  skipDetail   String?
+  /// U43's claim on this row, and when — the reaper of a stranded claim needs its age.
+  claimToken   String?
+  claimedAt    DateTime?                  @db.Timestamptz(3)
+  attempts     Int                        @default(0)
+  segments     Int?
+  bodyLen      Int?
+  /// Provider-reported only — never an estimate.
+  costTzs      Decimal?                   @db.Decimal(18, 2)
+  /// M6 · §5.8's record, written by U43 for EVERY recipient, sent or skipped: every check that ran, its
+  /// verdict, the wording and the source.
+  gateTrail    Json?
+  createdAt    DateTime                   @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime                   @default(now()) @updatedAt @db.Timestamptz(3)
+  sentAt       DateTime?                  @db.Timestamptz(3)
+  deliveredAt  DateTime?                  @db.Timestamptz(3)
+  failedAt     DateTime?                  @db.Timestamptz(3)
+
+  /// ⛔ THE ONE KEY — one row per person per campaign, whatever an enqueue restart writes: U42 writes with
+  /// `createMany({ skipDuplicates: true })`, which leans on this index and on nothing else.
+  @@unique([campaignId, msisdn])
+  @@index([campaignId, status])
+  @@index([msisdn])
+  @@index([contactId])
+  @@index([userId])
+  @@index([claimToken])
 }

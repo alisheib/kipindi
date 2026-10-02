@@ -8,9 +8,10 @@ import type { SmsBatchOutcome, SmsOutbound } from "@/lib/server/sms";
  *
  * ⚠️ RE-SCOPED BEFORE BUILDING (S6), BECAUSE THE UNIT'S PREMISE FAILED: there is no send loop to put a
  * gate in. Nothing loops over marketing recipients; the loop is U43 ("the slice", `engine.ts`), the rows
- * it walks are U35, and `SmsPurpose` has no `MARKETING` yet (D22). So U9 ships the innermost step of
- * that loop — ask the gate, per recipient, IMMEDIATELY before the one send — and the contract U43 must
- * pass (`test:marketing-consent`, the U9 section), rather than a gate wrapped round nothing.
+ * it walks are U35's (`SmsCampaignRecipient`, a table since U35b that nothing writes before U42), and
+ * `SmsPurpose.MARKETING` has existed since U35a (D22). So U9 ships the innermost step of that loop — ask
+ * the gate, per recipient, IMMEDIATELY before the one send — and the contract U43 must pass
+ * (`test:marketing-consent`, the U9 section), rather than a gate wrapped round nothing.
  *
  * ⭐ WHY "IMMEDIATELY BEFORE" AND NOT "WHEN THE LIST WAS BUILT" (§5.6): somebody who opts out in minute
  * two must not receive minute four's message. A gate asked once at list-build time answers for the
@@ -33,11 +34,12 @@ import type { SmsBatchOutcome, SmsOutbound } from "@/lib/server/sms";
  * is matched on it — `sendBatch` already hands the key back for exactly this reason (`SmsResult`), and a
  * zip by index credits one person's success to another the day anything reorders or drops a result.
  *
- * ⛔ `send` HAS NO DEFAULT. Until U35 adds `SmsPurpose.MARKETING` there is no honest purpose to give
- * `sendBatch` (folding marketing into `INVITE` or `OPS` is D22's defect), so nothing in production can
- * reach the wire through this function yet. (No Gaming Board approval gate is needed — Ali, 2026-09-26,
- * OQ1 — so what keeps marketing off the wire today is only that the engine is not built.) The caller
- * that supplies the real `send` is U43.
+ * ⛔ `send` HAS NO DEFAULT. `SmsPurpose.MARKETING` is the honest purpose (since U35a; folding marketing
+ * into `INVITE` or `OPS` is D22's defect), but no caller supplies a `send` yet, so nothing in production
+ * can reach the wire through this function. (No Gaming Board approval gate is needed — Ali, 2026-09-26,
+ * OQ1 — so what keeps marketing off the wire today is that the engine is not built, and from U37 the ONE
+ * live switch `marketing.sms.live`, absent = closed, X14.) The caller that supplies the real `send` is
+ * U43, and it must first declare itself in `test:campaign-models` §3.1 (MARKETING_WRITERS).
  *
  * ⭐ THE RG AUDIT LINE LIVES HERE, NOT IN THE GATE (U10). `push.suppressed.rg_lockout` is the precedent:
  * one COMPLIANCE row per RG refusal, against the ACCOUNT, never a phone number (§5.14). It is written

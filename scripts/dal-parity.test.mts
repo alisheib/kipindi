@@ -1946,5 +1946,257 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
       && !SCOPE.untagWhere.test("const carrying: Prisma.MarketingContactWhereInput[] = [{ tags: { has: tag } }];"));
 }
 
+/* ═══ §26 · The campaign tables — SmsCampaign / SmsCampaignRecipient in both twins (U35b, S10 2026-10-02; decision X1) ═══ */
+{
+  // ⭐ WHY THIS SECTION EXISTS. The campaign tables carry three rules that live IN THE TWINS: frozen keys change only in
+  // DRAFT (on the revision the officer saw), a status moves only by a conditional transition with one winner, and a
+  // recipient batch dedupes on (campaignId, msisdn) and is refused whole. Every behavioural suite runs on the memory
+  // twin, so a Prisma twin that loses its half — a WHERE without its condition, a createMany without skipDuplicates, a
+  // key its read mapper drops, a write that names a column and stores a constant — is a campaign that widens, races or
+  // texts somebody twice on production alone. `test:campaign-models` §2 EXECUTES the rules on the memory twin; this
+  // section holds both twins' SHAPE, plantable through KP_SRC. ⛔ The unique key itself lives in schema.prisma, read
+  // from ROOT — so it is held here as the two BEHAVIOURS that implement it (skipDuplicates; the memory index), and as
+  // TEXT by `test:campaign-models` §2.1. U36 and U40 extend this section (decision X1).
+  const cKeys = storedKeys("StoredSmsCampaign");
+  const rKeys = storedKeys("StoredSmsCampaignRecipient");
+  const cRead = region(dalSrc, "function toStoredSmsCampaign(");
+  const rRead = region(dalSrc, "function toStoredSmsCampaignRecipient(");
+  const cMap = region(dalSrc, "const SMS_CAMPAIGN_COLUMN");
+  const cData = region(dalSrc, "function smsCampaignData(");
+  const cPri = region(dalSrc, "\n  smsCampaign: {");
+  const rPri = region(dalSrc, "\n  smsCampaignRecipient: {");
+  const cMem = region(storeSrc, "\n  smsCampaign: {");
+  const rMem = region(storeSrc, "\n  smsCampaignRecipient: {");
+  /** A memory member's text: from `    <name>: ` to the next member at the same indent. */
+  const memberText = (block: string, name: string): string => {
+    const at = block.indexOf(`\n    ${name}: `);
+    if (at < 0) return "";
+    const next = block.slice(at + 1).search(/\n {4}\w+\s*:/);
+    return next < 0 ? block.slice(at) : block.slice(at, at + 1 + next);
+  };
+  const pCreate = delegateMethod("smsCampaign", "create");
+  const pFind = delegateMethod("smsCampaign", "find");
+  const pUpdate = delegateMethod("smsCampaign", "update");
+  const pTransition = delegateMethod("smsCampaign", "transition");
+  const pCreateMany = delegateMethod("smsCampaignRecipient", "createMany");
+  const pCount = delegateMethod("smsCampaignRecipient", "countByStatus");
+  const mCreate = memberText(cMem, "create");
+  const mUpdate = memberText(cMem, "update");
+  const mTransition = memberText(cMem, "transition");
+  const mCreateMany = memberText(rMem, "createMany");
+  const mCount = memberText(rMem, "countByStatus");
+  /** `first` sits in `body` and BEFORE `then` — an order, not a presence: a check after the write is no check. */
+  const before = (body: string, first: string, then: string): boolean => {
+    const a = body.indexOf(first), b = body.indexOf(then);
+    return a >= 0 && b > a;
+  };
+
+  ok("26.0 · the parser sees StoredSmsCampaign's (≥30) and StoredSmsCampaignRecipient's (≥24) keys, and both mappers, the column map and all four namespaces resolve",
+    cKeys.length >= 30 && rKeys.length >= 24 && cRead.length > 400 && rRead.length > 400 && cMap.length > 200 && cData.length > 200
+      && cPri.length > 400 && rPri.length > 400 && cMem.length > 400 && rMem.length > 400,
+    `campaign ${cKeys.length} keys, recipient ${rKeys.length} keys; regions ${[cRead, rRead, cMap, cPri, rPri, cMem, rMem].map((r) => r.length).join("/")}`);
+
+  // ── 26.read · every key FROM the row · 26.exact · no key in a mapper that the stored shape lacks ──
+  for (const k of cKeys) ok(`26.read.campaign · toStoredSmsCampaign maps "${k}" from the row`, readsFrom(cRead, k, "cmp"));
+  for (const k of rKeys) ok(`26.read.recipient · toStoredSmsCampaignRecipient maps "${k}" from the row`, readsFrom(rRead, k, "rcp"));
+  /** The keys a mapper's object literal writes — one per line, at the literal's own indent. */
+  const mapperKeys = (body: string): string[] => [...body.matchAll(/^\s{4}(\w+)\s*:/gm)].map((m) => m[1]);
+  ok("26.exact.campaign · ⛔ toStoredSmsCampaign writes EXACTLY the stored keys — a key planted in the mapper alone is reported",
+    cKeys.length >= 30 && sameSet(mapperKeys(cRead), cKeys), setDiff(cKeys, mapperKeys(cRead)) || `${cKeys.length} keys`);
+  ok("26.exact.recipient · ⛔ toStoredSmsCampaignRecipient writes EXACTLY the stored keys — a key planted in the mapper alone is reported",
+    rKeys.length >= 24 && sameSet(mapperKeys(rRead), rKeys), setDiff(rKeys, mapperKeys(rRead)) || `${rKeys.length} keys`);
+
+  // ── 26.map · the column map names every key, and the ONE patch writer drives off it ──
+  for (const k of cKeys) ok(`26.map · SMS_CAMPAIGN_COLUMN names "${k}"`, writesKey(cMap, k));
+  const NEVER_PATCHED = ["id", "status", "draftRevision", "createdBy", "createdAt", "updatedAt"];
+  const nullKeys = [...cMap.matchAll(/^\s*(\w+):\s*null,/gm)].map((m) => m[1]);
+  ok("26.map.null · the keys NO patch writes are exactly id, status, draftRevision, createdBy, createdAt and updatedAt — a status moves only as a transition's `to`",
+    sameSet(nullKeys, NEVER_PATCHED), setDiff(NEVER_PATCHED, nullKeys) || nullKeys.join(","));
+  for (const k of cKeys.filter((x) => /At$/.test(x) && x !== "createdAt" && x !== "updatedAt")) {
+    ok(`26.date · "${k}" is typed "date" in the map`, new RegExp(`\\b${k}: "date"`).test(cMap));
+  }
+  ok("26.decimal · estimateTzs and budgetTzs are \"decimal\" in the map, and every money column is read back through numOrNull",
+    /\bestimateTzs: "decimal"/.test(cMap) && /\bbudgetTzs: "decimal"/.test(cMap)
+      && /estimateTzs: numOrNull\(cmp\.estimateTzs\)/.test(cRead) && /budgetTzs: numOrNull\(cmp\.budgetTzs\)/.test(cRead)
+      && /costTzs: numOrNull\(rcp\.costTzs\)/.test(rRead));
+  ok("26.update.map · the ONE patch writer drives off SMS_CAMPAIGN_COLUMN and THROWS on an unmapped key; update and transition both go through it, with no allow-list",
+    mentions(cData, "SMS_CAMPAIGN_COLUMN") && /unmapped field/.test(cData) && /throw new Error/.test(cData)
+      && pUpdate.includes("const data = smsCampaignData(patch);") && pTransition.includes("const data = smsCampaignData(t.patch);")
+      && !/if \(patch\.\w+ !== undefined\)/.test(cData + pUpdate + pTransition),
+    `${cData.length} chars`);
+
+  // ── 26.create · every key written at birth FROM the row · 26.createMany · the seed, and nothing that settles a row ──
+  /** `key: row.key,` — or the instant built from it: a value taken FROM the row, never a constant under the key's name. */
+  const writesFromRow = (body: string, k: string): boolean =>
+    new RegExp(`^\\s*${k}: (?:row\\.${k}|new Date\\(row\\.${k}\\)|row\\.${k} \\? new Date\\(row\\.${k}\\) : null),\\r?$`, "m").test(body);
+  for (const k of cKeys) ok(`26.create · smsCampaign.create writes "${k}" FROM the row`, writesFromRow(pCreate, k));
+  const SEED = ["id", "campaignId", "msisdn", "contactId", "userId", "optOutToken", "createdAt"];
+  const seedType = /export type SmsCampaignRecipientSeed = Pick<StoredSmsCampaignRecipient,\s*"id" \| "campaignId" \| "msisdn" \| "contactId" \| "userId" \| "optOutToken" \| "createdAt">;/.test(storeSrc);
+  const dataAt = pCreateMany.indexOf("seeds.map((s) => ({");
+  const dataBlock = dataAt < 0 ? "" : pCreateMany.slice(dataAt, pCreateMany.indexOf("}))", dataAt));
+  const dataKeys = [...dataBlock.matchAll(/^\s*(\w+)\s*:/gm)].map((m) => m[1]);
+  const fromSeed = (k: string): boolean => new RegExp(`^\\s*${k}: s\\.${k},\\r?$`, "m").test(dataBlock);
+  ok("26.createMany.prisma · the Prisma batch writes EXACTLY the seed's keys, each FROM the seed (and updatedAt from its createdAt) — no status, no smsReference, nothing that settles a row",
+    seedType && sameSet(dataKeys, [...SEED, "updatedAt"])
+      && SEED.filter((k) => k !== "createdAt").every(fromSeed)
+      && /^\s*createdAt: new Date\(s\.createdAt\),\r?$/m.test(dataBlock) && /^\s*updatedAt: new Date\(s\.createdAt\),\r?$/m.test(dataBlock),
+    `${setDiff([...SEED, "updatedAt"], dataKeys) || dataKeys.join(",")} · from the seed: ${SEED.filter((k) => k !== "createdAt").filter((k) => !fromSeed(k)).join(",") || "all"}`);
+  ok("26.createMany.memory · the memory batch takes every seed key FROM the seed and births the row PENDING, unclaimed, unsent and uncharged",
+    SEED.every((k) => new RegExp(`^\\s*${k}: s\\.${k},`, "m").test(mCreateMany))
+      && /status: "PENDING",/.test(mCreateMany) && /smsReference: null,/.test(mCreateMany) && /claimToken: null,/.test(mCreateMany)
+      && /attempts: 0,/.test(mCreateMany) && /costTzs: null,/.test(mCreateMany) && /updatedAt: s\.createdAt,/.test(mCreateMany),
+    `${mCreateMany.length} chars`);
+
+  // ── 26.unique · THE ONE KEY, as the two behaviours that implement it ──
+  ok("26.unique.prisma · the Prisma batch is ONE createMany with skipDuplicates: true, and never an upsert",
+    /\.smsCampaignRecipient\.createMany\(\{\s*data,\s*skipDuplicates:\s*true\s*\}\)/.test(pCreateMany) && !mentions(pCreateMany, "upsert"),
+    `${pCreateMany.length} chars`);
+  ok("26.unique.memory · the memory batch SKIPS a (campaignId, msisdn) key — or an id — already held, and the second of two in one batch",
+    /const k = `\$\{s\.campaignId\}\|\$\{s\.msisdn\}`;/.test(mCreateMany)
+      && /if \(store\.recipientsByCampaignMsisdn\.has\(k\) \|\| store\.smsCampaignRecipients\.has\(s\.id\) \|\| planned\.has\(k\)\) return false;/.test(mCreateMany),
+    `${mCreateMany.length} chars`);
+  ok("26.unique.memory.index · …and MAINTAINS the index it skips on, for every row it writes",
+    /store\.recipientsByCampaignMsisdn\.set\(k, row\.id\);/.test(mCreateMany), "a batch that does not set the index lets the next duplicate through");
+
+  // ── 26.key · the batch is checked WHOLE, in both twins, before the first write ──
+  ok("26.key · ⛔ both twins call assertSeeds(seeds) BEFORE their first write — a +255 spelling, a 1,001st seed or a settle key refuses the WHOLE batch",
+    before(pCreateMany, "assertSeeds(seeds)", ".smsCampaignRecipient.createMany(") && before(mCreateMany, "assertSeeds(seeds)", ".set("),
+    `prisma ${before(pCreateMany, "assertSeeds(seeds)", ".smsCampaignRecipient.createMany(")} · memory ${before(mCreateMany, "assertSeeds(seeds)", ".set(")}`);
+  ok("26.fk.memory · the memory batch checks the three foreign keys of the rows it WILL insert, all before it writes — Postgres refuses the statement whole (P2003) and checks no link for a skipped row",
+    before(mCreateMany, "const toInsert = seeds.filter(", "store.smsCampaigns.has(s.campaignId)")
+      && before(mCreateMany, "store.smsCampaigns.has(s.campaignId)", ".set(") && before(mCreateMany, "store.marketingContacts.has(s.contactId)", ".set(")
+      && before(mCreateMany, "store.users.has(s.userId)", ".set("));
+
+  // ── 26.frozen · the draft save: a compare-and-set, only in DRAFT, and it writes the patch ──
+  ok("26.frozen.prisma · ⛔ the Prisma draft save is ONE updateMany whose WHERE holds status: \"DRAFT\" AND the guard's draftRevision and whose data is the patch — null on count 0 — and moves the revision on by one",
+    /\.updateMany\(\{ where: \{ id, status: "DRAFT", draftRevision: guard\.draftRevision \}, data \}\)/.test(pUpdate)
+      && /if \(saved\.count === 0\) return null;/.test(pUpdate) && /data\.draftRevision = guard\.draftRevision \+ 1;/.test(pUpdate),
+    pUpdate.replace(/\s+/g, " ").slice(0, 220));
+  ok("26.frozen.memory · ⛔ the memory draft save refuses unless the row is a DRAFT on the guard's revision, BEFORE it writes the patch, and moves the revision on by one",
+    before(mUpdate, 'if (row.status !== "DRAFT" || row.draftRevision !== guard.draftRevision) return null;', ".set(")
+      && /draftRevision: guard\.draftRevision \+ 1/.test(mUpdate)
+      && /for \(const \[k, v\] of Object\.entries\(patch\)\) if \(v !== undefined\) \(next as Record<string, unknown>\)\[k\] = v;/.test(mUpdate),
+    mUpdate.replace(/\s+/g, " ").slice(0, 220));
+
+  // ── 26.transition · a status moves only by a conditional write — one winner ──
+  ok("26.transition.prisma · ⛔ the Prisma transition is ONE updateMany with status: { in: [...t.from] } in the WHERE (and the revision when one is given) and the patch as its data — null on count 0",
+    /\.updateMany\(\{\s*where: \{ id, status: \{ in: \[\.\.\.t\.from\] \}, \.\.\.\(t\.draftRevision !== null \? \{ draftRevision: t\.draftRevision \} : \{\}\) \},\s*data,\s*\}\)/.test(pTransition)
+      && /if \(moved\.count === 0\) return null;/.test(pTransition),
+    pTransition.replace(/\s+/g, " ").slice(0, 220));
+  ok("26.transition.memory · ⛔ the memory transition refuses a row no longer in `from`, or on another revision, BEFORE it writes the patch",
+    before(mTransition, "if (!t.from.includes(row.status)) return null;", ".set(")
+      && before(mTransition, "if (t.draftRevision !== null && row.draftRevision !== t.draftRevision) return null;", ".set(")
+      && /for \(const \[k, v\] of Object\.entries\(t\.patch\)\) if \(v !== undefined\) \(next as Record<string, unknown>\)\[k\] = v;/.test(mTransition),
+    mTransition.replace(/\s+/g, " ").slice(0, 220));
+  ok("26.shape · both twins ask the ONE rule set FIRST: create → assertNewCampaign, update → assertDraftPatch (with the caller's at), transition → assertTransitionShape",
+    before(pCreate, "assertNewCampaign(row)", "pc().smsCampaign.create(") && before(mCreate, "assertNewCampaign(row)", ".set(")
+      && before(pUpdate, "assertDraftPatch(patch, guard, at)", ".updateMany(") && before(mUpdate, "assertDraftPatch(patch, guard, at)", ".get(")
+      && before(pTransition, "assertTransitionShape(t)", ".updateMany(") && before(mTransition, "assertTransitionShape(t)", ".get("));
+
+  // ── 26.counts · ONE groupBy, zero-filled in both twins ──
+  ok("26.counts.prisma · the Prisma countByStatus is ONE groupBy by status — never the rows — returned through fillRecipientCounts",
+    /\.groupBy\(\{\s*by:\s*\["status"\]/.test(pCount) && !/findMany|\.count\(/.test(pCount) && pCount.includes("fillRecipientCounts("),
+    pCount.replace(/\s+/g, " ").slice(0, 200));
+  ok("26.counts.memory · the memory countByStatus returns through fillRecipientCounts too — every status, zeros included, in the schema's order",
+    mCount.includes("fillRecipientCounts("));
+
+  // ── 26.nodelete · 26.nocounter · 26.link · 26.onedoor ──
+  ok("26.nodelete · ⛔ neither twin's campaign or recipient namespace exposes a delete, or removes a row (a recipient row is the record that we messaged somebody)",
+    [cPri, rPri, cMem, rMem].every((b) => b.length > 200 && !/\bdelete\w*\s*:/.test(b))
+      && [cMem, rMem].every((b) => !/\.delete\(|\.clear\(/.test(b)) && [cPri, rPri].every((b) => !/\.delete(Many)?\(/.test(b)));
+  const COUNTER = (k: string): boolean =>
+    /^(sent|delivered|failed|skipped|held|pending|accepted|handedOver|total|recipients?)/i.test(k) || (/Count$/.test(k) && k !== "audienceCount");
+  ok("26.nocounter · ⛔ no stored counter among StoredSmsCampaign's keys (OD26) — audienceCount, the confirmed population, is the one *Count",
+    cKeys.length >= 30 && !cKeys.some(COUNTER), cKeys.filter(COUNTER).join(",") || "none");
+  ok("26.link · ⛔ the recipient mapper reaches no relation — no contact, user or campaign read through it — so it can copy no person's details",
+    rRead.length > 400 && !/\brcp\.(contact|user|campaign)\./.test(rRead) && !/\bcmp\.recipients\b/.test(cRead));
+  const walkSrc = (dir: string): string[] => readdirSync(dir, { withFileTypes: true }).flatMap((e) =>
+    e.isDirectory() ? walkSrc(join(dir, e.name)) : /\.(ts|tsx)$/.test(e.name) ? [join(dir, e.name)] : []);
+  const srcRoot = join(ROOT, "src");
+  /** A delegate call on the campaign tables by anything but the DAL door (`db.` is the door, so it is not one). */
+  const RAW_DELEGATE = /(?<!\bdb)\.smsCampaign(?:Recipient)?\s*\.\s*(?:create|createMany|createManyAndReturn|update|updateMany|upsert|delete|deleteMany|findMany|findFirst|findFirstOrThrow|findUnique|findUniqueOrThrow|groupBy|count|aggregate)\s*\(/;
+  /** Raw SQL naming either table — the other way round the door. */
+  const RAW_SQL = /\$(?:queryRaw|executeRaw)(?:Unsafe)?\b[^;]*?"SmsCampaign(?:Recipient)?"/;
+  const doors = walkSrc(srcRoot)
+    .filter((f) => { const t = decomment(readFileSync(f, "utf8")); return RAW_DELEGATE.test(t) || RAW_SQL.test(t); })
+    .map((f) => f.slice(srcRoot.length + 1).replace(/\\/g, "/")).sort();
+  ok("26.onedoor · ⛔ no src file but prisma-dal.ts calls a smsCampaign / smsCampaignRecipient delegate or names either table in raw SQL — the frozen and transition rules cannot be walked round",
+    doors.join(",") === "lib/server/prisma-dal.ts" && !RAW_SQL.test(dalSrc), `callers=[${doors}]`);
+
+  // ── 26.parity · the same members in both twins ──
+  const members = (block: string): string[] => Array.from(block.matchAll(/^\s{4}(\w+)\s*:/gm)).map((m) => m[1]).sort();
+  ok("26.parity.smsCampaign · both twins expose the same members",
+    members(cPri).length >= 3 && members(cPri).join(",") === members(cMem).join(","), `prisma=[${members(cPri)}] memory=[${members(cMem)}]`);
+  ok("26.parity.smsCampaignRecipient · both twins expose the same members",
+    members(rPri).length >= 3 && members(rPri).join(",") === members(rMem).join(","), `prisma=[${members(rPri)}] memory=[${members(rMem)}]`);
+
+  // ── 26.named · every signature names its types ──
+  const MEM_SIGS: Array<[string, string]> = [
+    [cMem, "create: (row: StoredSmsCampaign): StoredSmsCampaign =>"],
+    [cMem, "find: (id: string): StoredSmsCampaign | null =>"],
+    [cMem, "update: (id: string, patch: SmsCampaignDraftPatch, guard: SmsCampaignDraftGuard, at: string): StoredSmsCampaign | null =>"],
+    [cMem, "transition: (id: string, t: SmsCampaignTransition): StoredSmsCampaign | null =>"],
+    [rMem, "createMany: (seeds: SmsCampaignRecipientSeed[]): SmsCampaignRecipientInsert =>"],
+    [rMem, "find: (id: string): StoredSmsCampaignRecipient | null =>"],
+    [rMem, "countByStatus: (campaignId: string): SmsCampaignRecipientCount[] =>"],
+  ];
+  const PRI_SIGS: Array<[string, string]> = [
+    [cPri, "create: async (row: StoredSmsCampaign): Promise<StoredSmsCampaign> =>"],
+    [cPri, "find: async (id: string): Promise<StoredSmsCampaign | null> =>"],
+    [cPri, "update: async (id: string, patch: SmsCampaignDraftPatch, guard: SmsCampaignDraftGuard, at: string): Promise<StoredSmsCampaign | null> =>"],
+    [cPri, "transition: async (id: string, t: SmsCampaignTransition): Promise<StoredSmsCampaign | null> =>"],
+    [rPri, "createMany: async (seeds: SmsCampaignRecipientSeed[]): Promise<SmsCampaignRecipientInsert> =>"],
+    [rPri, "find: async (id: string): Promise<StoredSmsCampaignRecipient | null> =>"],
+    [rPri, "countByStatus: async (campaignId: string): Promise<SmsCampaignRecipientCount[]> =>"],
+  ];
+  const NAMED = ["StoredSmsCampaign", "StoredSmsCampaignRecipient", "SmsCampaignDraftPatch", "SmsCampaignDraftGuard",
+    "SmsCampaignTransition", "SmsCampaignRecipientSeed", "SmsCampaignRecipientInsert", "SmsCampaignRecipientCount"];
+  const storeImport = dalSrc.slice(0, Math.max(0, dalSrc.indexOf("} from \"./store\";")));
+  const missingSigs = [...MEM_SIGS, ...PRI_SIGS].filter(([b, s]) => !b.includes(s)).map(([, s]) => s.split(":")[0]);
+  const unexported = NAMED.filter((t) => !new RegExp(`export type ${t} =`).test(storeSrc));
+  const unimported = NAMED.filter((t) => !new RegExp(`\\b${t},`).test(storeImport));
+  ok("26.named · every member of both twins names its parameter and return types (never an inline literal) — exported by store.ts, imported by prisma-dal.ts",
+    missingSigs.length === 0 && unexported.length === 0 && unimported.length === 0,
+    `signatures off: [${missingSigs}] · not exported: [${unexported}] · not imported: [${unimported}]`);
+  ok("26.find · both finds read one row by id and hand back a copy — the gate trail copied too — never the stored object",
+    /findUnique\(\{ where: \{ id \} \}\)/.test(pFind) && /return row \? \{ \.\.\.row \} : null;/.test(memberText(cMem, "find"))
+      && /gateTrail: row\.gateTrail === null \? null : row\.gateTrail\.map\(\(g\) => \(\{ \.\.\.g \}\)\)/.test(memberText(rMem, "find")));
+  // ⭐ THE SET NULL LINK, MIRRORED. Postgres nulls `SmsCampaignRecipient.contactId` when a contact row is deleted (the FK's
+  // onDelete: SetNull); the memory twin deletes contacts in ONE place — U23's `removeWhere` — and must do the same, or
+  // every suite keeps a recipient pointing at a contact production no longer has.
+  const mRemove = memberText(region(storeSrc, "\n  marketingContact: {"), "removeWhere");
+  ok("26.setnull.memory · ⛔ the memory twin's contact removal sets a recipient's contactId to null and deletes no recipient — Postgres' SET NULL, mirrored",
+    mRemove.length > 100 && /for \(const r of store\.smsCampaignRecipients\.values\(\)\) if \(r\.contactId === c\.id\) r\.contactId = null;/.test(mRemove)
+      && !/smsCampaignRecipients\.delete\(/.test(mRemove),
+    `${mRemove.length} chars`);
+
+  // ── CONTROLS ─────────────────────────────────────────────────────────────────────────
+  // ⛔ Each proves the ASSERTION ABOVE IT can reject, on a literal that would otherwise pass.
+  ok("26.c1 · CONTROL · `audienceFilter: \"{}\",` in a read mapper does NOT count as reading it from the row",
+    !readsFrom("    id: cmp.id,\n    audienceFilter: \"{}\",", "audienceFilter", "cmp"));
+  ok("26.c2 · CONTROL · a key planted in a mapper alone IS reported by the exact-set check",
+    cRead.length > 0 && !sameSet(mapperKeys(cRead.replace("    id: cmp.id,", "    id: cmp.id,\n    sentCount: cmp.audienceCount,")), cKeys));
+  ok("26.c3 · CONTROL · a batch without skipDuplicates is reported",
+    !/\.smsCampaignRecipient\.createMany\(\{\s*data,\s*skipDuplicates:\s*true\s*\}\)/.test("const batch = await pc().smsCampaignRecipient.createMany({ data });"));
+  ok("26.c4 · CONTROL · a memory batch that sets without checking the index is reported",
+    !/if \(store\.recipientsByCampaignMsisdn\.has\(k\)/.test("        store.smsCampaignRecipients.set(row.id, row);"));
+  ok("26.c5 · CONTROL · sentCount and recipientCount ARE counters, and audienceCount is NOT",
+    COUNTER("sentCount") && COUNTER("recipientCount") && COUNTER("deliveredTotal") && !COUNTER("audienceCount") && !COUNTER("segmentsSw"));
+  ok("26.c6 · CONTROL · a raw delegate call or raw SQL naming the table IS caught by 26.onedoor, and the DAL door is not",
+    RAW_DELEGATE.test("await pc().smsCampaign.update({ where: { id }, data });") && RAW_DELEGATE.test("await tx.smsCampaignRecipient.deleteMany({});")
+      && RAW_SQL.test("await pc().$executeRawUnsafe(`update \"SmsCampaign\" set status = 'RUNNING'`);")
+      && !RAW_DELEGATE.test("await db.smsCampaign.update(id, patch, guard, at);") && !RAW_DELEGATE.test("store.smsCampaigns.get(id);")
+      && !RAW_SQL.test('export const DISPATCH_TARGET_TYPE = "SmsCampaignRecipient";'));
+  ok("26.c7 · CONTROL · a delete member IS seen by 26.nodelete",
+    /\bdelete\w*\s*:/.test("    deleteDraft: async (id: string) => null,"));
+  ok("26.c8 · CONTROL · an updateMany whose WHERE lost its status condition FAILS 26.transition.prisma's matcher",
+    !/\.updateMany\(\{\s*where: \{ id, status: \{ in: \[\.\.\.t\.from\] \}/.test("const moved = await pc().smsCampaign.updateMany({\n  where: { id },\n  data,\n});"));
+  ok("26.c9 · CONTROL · a memory body that checks only AFTER it writes FAILS before() — the order is the property",
+    !before("store.smsCampaigns.set(id, next);\nif (!t.from.includes(row.status)) return null;", "if (!t.from.includes(row.status)) return null;", ".set("));
+  ok("26.c10 · CONTROL · a create that writes a constant under a key's name FAILS 26.create, and one that writes it from the row passes",
+    !writesFromRow("          audienceFilter: \"{}\",", "audienceFilter") && writesFromRow("          audienceFilter: row.audienceFilter,", "audienceFilter")
+      && writesFromRow("          enqueuedAt: row.enqueuedAt ? new Date(row.enqueuedAt) : null,", "enqueuedAt"));
+}
+
 console.log(`\ndal-parity: ${pass} passed, ${fail} failed`);
 if (fail > 0) process.exit(1);

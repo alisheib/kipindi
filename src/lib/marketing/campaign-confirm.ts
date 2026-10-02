@@ -349,7 +349,9 @@ export function startAudienceVerdict(a: {
 
 export type ConfirmTierColumn = "ENUMERATE" | "TYPED";
 
-/** The `CampaignConfirmTier` enum's spelling of each tier. U40a writes it and U42 reads it back. */
+/** How `SmsCampaign.confirmTier` spells each tier. U40a writes it and U42 reads it back through `confirmTierFromColumn`.
+ *  ⚠️ A TEXT column (U35b), deliberately not a Postgres enum: a tier added later is then not a 55P04 two-step, and this
+ *  reader already refuses anything else. */
 export const CONFIRM_TIER_COLUMN: Readonly<Record<ConfirmTier, ConfirmTierColumn>> = {
   enumerate: "ENUMERATE",
   typed: "TYPED",

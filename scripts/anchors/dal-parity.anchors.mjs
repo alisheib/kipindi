@@ -802,4 +802,237 @@ export const MUTATIONS = [
     to: `        // (an existing member overwritten)`,
     expect: `23.add.memory · the memory add keeps an existing member UNTOUCHED (its original addedAt) — asked BEFORE it writes — stamps a new one with the caller's at, and refuses a list that does not exist, as the foreign key does`,
   },
+  /* ── §26 · the campaign tables (U35b, S10 2026-10-02) ──────────────────────────────────────────────── */
+  {
+    // 🔴 The read half of the no-op, on the campaign: the audience is written and read back as nothing — U40's watermark
+    // compare and U42's walk would run against an empty filter on Postgres only.
+    name: "prisma-dal.ts — toStoredSmsCampaign stops reading audienceFilter from the row",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `    audienceFilter: cmp.audienceFilter,`,
+    to: `    audienceFilter: "{}",`,
+    expect: `26.read.campaign · toStoredSmsCampaign maps "audienceFilter" from the row`,
+  },
+  {
+    // 🔴 A KEY PLANTED IN ONE MAPPER ONLY (the plan's red): the Prisma twin hands back a field the stored shape — and the
+    // memory twin — never carry, so the two backends disagree about what a recipient row IS.
+    name: "prisma-dal.ts — a key planted in the recipient read mapper alone",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `    gateTrail: rcp.gateTrail as SmsCampaignGateTrail | null,`,
+    to: `    gateTrail: rcp.gateTrail as SmsCampaignGateTrail | null,
+    plantedKey: rcp.gateTrail as SmsCampaignGateTrail | null,`,
+    expect: `26.exact.recipient · ⛔ toStoredSmsCampaignRecipient writes EXACTLY the stored keys — a key planted in the mapper alone is reported`,
+  },
+  {
+    // 🔴 The write half, at birth: create names the column and stores a constant — every campaign born on Postgres would
+    // be addressed to the whole book while the memory twin kept the officer's filter.
+    name: "prisma-dal.ts — smsCampaign.create stores a constant audience instead of the row's",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `          audienceFilter: row.audienceFilter,`,
+    to: `          audienceFilter: "{}",`,
+    expect: `26.create · smsCampaign.create writes "audienceFilter" FROM the row`,
+  },
+  {
+    // 🔴 SKIPDUPLICATES REMOVED (the plan's red): an enqueue restart's second batch throws P2002 on Postgres and the
+    // campaign stalls — or, written row by row around it, a person is put on twice. Every memory suite stays green.
+    name: "prisma-dal.ts — the recipient batch loses skipDuplicates",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `      const batch = await pc().smsCampaignRecipient.createMany({ data, skipDuplicates: true });`,
+    to: `      const batch = await pc().smsCampaignRecipient.createMany({ data });`,
+    expect: `26.unique.prisma · the Prisma batch is ONE createMany with skipDuplicates: true, and never an upsert`,
+  },
+  {
+    // 🔴 The batch names the seed's key and drops its value: every recipient written on Postgres has no opt-out link, and
+    // U42's "a row without a token is never sent" quietly holds the whole campaign.
+    name: "prisma-dal.ts — the recipient batch writes optOutToken as null",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `        optOutToken: s.optOutToken,`,
+    to: `        optOutToken: null,`,
+    expect: `26.createMany.prisma · the Prisma batch writes EXACTLY the seed's keys, each FROM the seed (and updatedAt from its createdAt) — no status, no smsReference, nothing that settles a row`,
+  },
+  {
+    // 🔴 …and on the twin every suite runs on: the faked unique index is never asked, so a restart doubles the campaign.
+    name: "store.ts — the memory recipient batch stops skipping a key already held",
+    file: "src/lib/server/store.ts",
+    from: `        if (store.recipientsByCampaignMsisdn.has(k) || store.smsCampaignRecipients.has(s.id) || planned.has(k)) return false;`,
+    to: `        if (store.smsCampaignRecipients.has(s.id)) return false;`,
+    expect: `26.unique.memory · the memory batch SKIPS a (campaignId, msisdn) key — or an id — already held, and the second of two in one batch`,
+  },
+  {
+    name: "store.ts — the memory recipient batch stops maintaining the index it skips on",
+    file: "src/lib/server/store.ts",
+    from: `        store.recipientsByCampaignMsisdn.set(k, row.id);`,
+    to: `        // (the index never written)`,
+    expect: `26.unique.memory.index · …and MAINTAINS the index it skips on, for every row it writes`,
+  },
+  {
+    // 🔴 A CONFIRMED SCOPE WIDENED, ON POSTGRES ONLY: the draft save's WHERE loses its DRAFT clause, so a stale form can
+    // rewrite the audience of a campaign that has already been confirmed.
+    name: "prisma-dal.ts — the draft save's WHERE loses status: \"DRAFT\"",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `      const saved = await pc().smsCampaign.updateMany({ where: { id, status: "DRAFT", draftRevision: guard.draftRevision }, data });`,
+    to: `      const saved = await pc().smsCampaign.updateMany({ where: { id, draftRevision: guard.draftRevision }, data });`,
+    expect: `26.frozen.prisma · ⛔ the Prisma draft save is ONE updateMany whose WHERE holds status: "DRAFT" AND the guard's draftRevision and whose data is the patch — null on count 0 — and moves the revision on by one`,
+  },
+  {
+    // 🔴 The draft save moves the revision and drops the officer's text: "saved" on production, nothing changed.
+    name: "prisma-dal.ts — the draft save writes the revision and the stamp but not the patch",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `      const saved = await pc().smsCampaign.updateMany({ where: { id, status: "DRAFT", draftRevision: guard.draftRevision }, data });`,
+    to: `      const saved = await pc().smsCampaign.updateMany({ where: { id, status: "DRAFT", draftRevision: guard.draftRevision }, data: { draftRevision: guard.draftRevision + 1, updatedAt: new Date(at) } });`,
+    expect: `26.frozen.prisma · ⛔ the Prisma draft save is ONE updateMany whose WHERE holds status: "DRAFT" AND the guard's draftRevision and whose data is the patch — null on count 0 — and moves the revision on by one`,
+  },
+  {
+    name: "store.ts — the memory draft save stops checking that the row is still a DRAFT",
+    file: "src/lib/server/store.ts",
+    from: `      if (row.status !== "DRAFT" || row.draftRevision !== guard.draftRevision) return null;`,
+    to: `      if (row.draftRevision !== guard.draftRevision) return null;`,
+    expect: `26.frozen.memory · ⛔ the memory draft save refuses unless the row is a DRAFT on the guard's revision, BEFORE it writes the patch, and moves the revision on by one`,
+  },
+  {
+    name: "store.ts — the memory draft save moves the revision but never applies the patch",
+    file: "src/lib/server/store.ts",
+    from: `      for (const [k, v] of Object.entries(patch)) if (v !== undefined) (next as Record<string, unknown>)[k] = v;`,
+    to: `      // (the patch never applied)`,
+    expect: `26.frozen.memory · ⛔ the memory draft save refuses unless the row is a DRAFT on the guard's revision, BEFORE it writes the patch, and moves the revision on by one`,
+  },
+  {
+    // 🔴 AN UNCONDITIONAL TRANSITION, ON POSTGRES ONLY: two officers' Pause and Stop both "win", and the row holds
+    // whichever landed last — a cancelled campaign can come back as paused.
+    name: "prisma-dal.ts — the transition's WHERE loses its status condition",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `        where: { id, status: { in: [...t.from] }, ...(t.draftRevision !== null ? { draftRevision: t.draftRevision } : {}) },`,
+    to: `        where: { id, ...(t.draftRevision !== null ? { draftRevision: t.draftRevision } : {}) },`,
+    expect: `26.transition.prisma · ⛔ the Prisma transition is ONE updateMany with status: { in: [...t.from] } in the WHERE (and the revision when one is given) and the patch as its data — null on count 0`,
+  },
+  {
+    // The status moves and the confirmation's or the engine's fields are dropped — a CONFIRMED row with no population.
+    name: "prisma-dal.ts — the transition writes the stamp but not the patch",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `        data,
+      });
+      if (moved.count === 0) return null;`,
+    to: `        data: { updatedAt: new Date(t.at) },
+      });
+      if (moved.count === 0) return null;`,
+    expect: `26.transition.prisma · ⛔ the Prisma transition is ONE updateMany with status: { in: [...t.from] } in the WHERE (and the revision when one is given) and the patch as its data — null on count 0`,
+  },
+  {
+    name: "store.ts — the memory transition stops checking `from`",
+    file: "src/lib/server/store.ts",
+    from: `      if (row === undefined) return null;
+      if (!t.from.includes(row.status)) return null;`,
+    to: `      if (row === undefined) return null;`,
+    expect: "26.transition.memory · ⛔ the memory transition refuses a row no longer in `from`, or on another revision, BEFORE it writes the patch",
+  },
+  {
+    name: "store.ts — the memory transition moves the status but never applies the patch",
+    file: "src/lib/server/store.ts",
+    from: `      for (const [k, v] of Object.entries(t.patch)) if (v !== undefined) (next as Record<string, unknown>)[k] = v;`,
+    to: `      // (the patch never applied)`,
+    expect: "26.transition.memory · ⛔ the memory transition refuses a row no longer in `from`, or on another revision, BEFORE it writes the patch",
+  },
+  {
+    // The counts read every row into the process and tally them — 150,000 rows for one rail at §3c's scale.
+    name: "prisma-dal.ts — countByStatus reads the rows and tallies them instead of one groupBy",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `      const groups = await pc().smsCampaignRecipient.groupBy({ by: ["status"], where: { campaignId }, _count: { _all: true } });`,
+    to: `      const rows = await pc().smsCampaignRecipient.findMany({ where: { campaignId } });
+      const groups = Object.entries(rows.reduce<Record<string, number>>((m, x) => ({ ...m, [x.status]: (m[x.status] ?? 0) + 1 }), {})).map(([status, n]) => ({ status, _count: { _all: n } }));`,
+    expect: `26.counts.prisma · the Prisma countByStatus is ONE groupBy by status — never the rows — returned through fillRecipientCounts`,
+  },
+  {
+    // 🔴 One twin loses a member — a call that works in every suite and throws on production.
+    name: "prisma-dal.ts — the Prisma recipient namespace loses find",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `    find: async (id: string): Promise<StoredSmsCampaignRecipient | null> => {`,
+    to: `    findOne: async (id: string): Promise<StoredSmsCampaignRecipient | null> => {`,
+    expect: `26.parity.smsCampaignRecipient · both twins expose the same members`,
+  },
+  {
+    // 🔴 OD26: a stored counter on the campaign — the number a crash between two writes leaves wrong for ever.
+    name: "store.ts — StoredSmsCampaign gains sentCount",
+    file: "src/lib/server/store.ts",
+    from: `export type StoredSmsCampaign = {`,
+    to: `export type StoredSmsCampaign = {
+  sentCount: number;`,
+    expect: `26.nocounter · ⛔ no stored counter among StoredSmsCampaign's keys (OD26) — audienceCount, the confirmed population, is the one *Count`,
+  },
+  {
+    // 🔴 The record that we messaged somebody becomes deletable.
+    name: "store.ts — the memory recipient namespace gains a delete",
+    file: "src/lib/server/store.ts",
+    from: `  smsCampaignRecipient: {`,
+    to: `  smsCampaignRecipient: {
+    deleteForCampaign: (campaignId: string): number => 0,`,
+    expect: `26.nodelete · ⛔ neither twin's campaign or recipient namespace exposes a delete, or removes a row (a recipient row is the record that we messaged somebody)`,
+  },
+  {
+    // 🔴 THE ONE KEY'S SECOND SPELLING: without the batch check a "+255…" row sits beside the "255…" one, and the unique
+    // index cannot see that they are one person — on Postgres only.
+    name: "prisma-dal.ts — the Prisma recipient batch stops calling assertSeeds",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `      assertSeeds(seeds);
+      if (seeds.length === 0) return { inserted: 0, duplicates: 0 };`,
+    to: `      if (seeds.length === 0) return { inserted: 0, duplicates: 0 };`,
+    expect: `26.key · ⛔ both twins call assertSeeds(seeds) BEFORE their first write — a +255 spelling, a 1,001st seed or a settle key refuses the WHOLE batch`,
+  },
+  {
+    // 🔴 D16 on the campaign: the recipient row carries a COPY of the contact's number, so erasing the contact leaves it.
+    name: "prisma-dal.ts — the recipient mapper reads the number through the contact relation",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `    campaignId: rcp.campaignId,
+    msisdn: rcp.msisdn,`,
+    to: `    campaignId: rcp.campaignId,
+    msisdn: rcp.contact.msisdn,`,
+    expect: `26.link · ⛔ the recipient mapper reaches no relation — no contact, user or campaign read through it — so it can copy no person's details`,
+  },
+  {
+    // The memory transition stops asking the rule set: a frozen key from CONFIRMED, a move back to DRAFT, a terminal row
+    // resumed — every one accepted on the suites' backend.
+    name: "store.ts — the memory transition stops asking assertTransitionShape",
+    file: "src/lib/server/store.ts",
+    from: `      assertTransitionShape(t);
+      const row = store.smsCampaigns.get(id);`,
+    to: `      const row = store.smsCampaigns.get(id);`,
+    expect: `26.shape · both twins ask the ONE rule set FIRST: create → assertNewCampaign, update → assertDraftPatch (with the caller's at), transition → assertTransitionShape`,
+  },
+  {
+    // The write half of the no-op, on the campaign: a stop reason written by the engine reaches nothing on Postgres.
+    name: "prisma-dal.ts — SMS_CAMPAIGN_COLUMN forgets stopReason",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `  enqueuedAt: "date",
+  stopReason: "plain",`,
+    to: `  enqueuedAt: "date",
+  stopReasonX: "plain",`,
+    expect: `26.map · SMS_CAMPAIGN_COLUMN names "stopReason"`,
+  },
+  {
+    // An ISO string reaching a Prisma DateTime throws on Postgres and nowhere else.
+    name: "prisma-dal.ts — SMS_CAMPAIGN_COLUMN types pausedAt plain",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `  startedAt: "date",
+  pausedAt: "date",
+  finishedAt: "date",`,
+    to: `  startedAt: "date",
+  pausedAt: "plain",
+  finishedAt: "date",`,
+    expect: `26.date · "pausedAt" is typed "date" in the map`,
+  },
+  {
+    // A caller that edits the returned trail edits the stored one — a state Postgres, which hands back fresh rows, cannot reach.
+    name: "store.ts — the memory recipient find hands back the stored gate trail",
+    file: "src/lib/server/store.ts",
+    from: `      return row ? { ...row, gateTrail: row.gateTrail === null ? null : row.gateTrail.map((g) => ({ ...g })) } : null;`,
+    to: `      return row ? { ...row } : null;`,
+    expect: `26.find · both finds read one row by id and hand back a copy — the gate trail copied too — never the stored object`,
+  },
+  {
+    // 🔴 A removed contact leaves its recipients pointing at nothing in memory only — Postgres' SET NULL not mirrored, so
+    // every suite reads a contact link production no longer has.
+    name: "store.ts — the memory contact removal stops nulling the campaign recipients' link",
+    file: "src/lib/server/store.ts",
+    from: `        for (const r of store.smsCampaignRecipients.values()) if (r.contactId === c.id) r.contactId = null;`,
+    to: `        // (the recipients' link left dangling)`,
+    expect: `26.setnull.memory · ⛔ the memory twin's contact removal sets a recipient's contactId to null and deletes no recipient — Postgres' SET NULL, mirrored`,
+  },
 ];

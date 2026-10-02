@@ -27,6 +27,9 @@ import {
   type TxnSearchFilters, type TxnSearchResult,
 } from "./txn-filters";
 import { sniffBase64ImageMime } from "./image-signature";
+// U35b · the campaign tables' ONE rule set — asked before every campaign or recipient write, exactly as the memory
+// twin asks it (`test:dal-parity` §26). Pure: it takes only types from the store, so there is no cycle.
+import { assertNewCampaign, assertDraftPatch, assertTransitionShape, assertSeeds, fillRecipientCounts } from "@/lib/server/marketing/campaign-model";
 // ⛔ The lens definitions have ONE home. Re-listing MONEY_KINDS here is how a kind added to
 // the registry later stops appearing under the filter a player would look for it under.
 import {
@@ -58,6 +61,17 @@ import type {
   StoredSmsMessage,
   SmsDlr,
   SmsDlrResult,
+  StoredSmsCampaign,
+  StoredSmsCampaignRecipient,
+  SmsCampaignRecipientStatus,
+  SmsCampaignGateTrail,
+  SmsCampaignDraftPatch,
+  SmsCampaignDraftGuard,
+  SmsCampaignTransition,
+  SmsCampaignTransitionPatch,
+  SmsCampaignRecipientSeed,
+  SmsCampaignRecipientInsert,
+  SmsCampaignRecipientCount,
   StoredAgentApplication,
   StoredAgentApplicationDocument,
   StoredAgentInvitation,
@@ -343,6 +357,166 @@ const SMS_MESSAGE_COLUMN: Record<keyof StoredSmsMessage, "date" | "plain" | null
   deliveredAt: "date",
   failedAt: "date",
 };
+
+/**
+ * SmsCampaign row -> StoredSmsCampaign (marketing U35b).
+ * ⚠️ `estimateTzs` and `budgetTzs` are `Decimal(18,2)`, so Prisma hands back a Decimal object: `numOrNull`, the
+ * coercion every money column uses (the SmsMessage note above). ⭐ `audienceFilter` is TEXT, so it comes back as the
+ * exact string written — U24's canonical key, byte for byte (JSONB would have reordered its keys).
+ */
+type SmsCampaignRow = {
+  id: string; name: string; status: string; bodySw: string; bodyEn: string | null; codingSw: string;
+  segmentsSw: number; codingEn: string | null; segmentsEn: number | null; nameFallbackSw: string | null;
+  nameFallbackEn: string | null; sourcePhrase: string | null; draftRevision: number; confirmTier: string | null;
+  audienceFilter: string; audienceCount: number | null; audienceWatermark: string | null;
+  estimateSegments: number | null; estimateTzs: unknown; budgetTzs: unknown; enqueueCursor: string | null;
+  enqueuedAt: Date | null; stopReason: string | null; createdBy: string; confirmedBy: string | null;
+  confirmedAt: Date | null; startedAt: Date | null; pausedAt: Date | null; finishedAt: Date | null;
+  createdAt: Date; updatedAt: Date;
+};
+function toStoredSmsCampaign(cmp: SmsCampaignRow): StoredSmsCampaign {
+  return {
+    id: cmp.id,
+    name: cmp.name,
+    status: cmp.status as StoredSmsCampaign["status"],
+    bodySw: cmp.bodySw,
+    bodyEn: cmp.bodyEn,
+    codingSw: cmp.codingSw as StoredSmsCampaign["codingSw"],
+    segmentsSw: cmp.segmentsSw,
+    codingEn: cmp.codingEn as StoredSmsCampaign["codingEn"],
+    segmentsEn: cmp.segmentsEn,
+    nameFallbackSw: cmp.nameFallbackSw,
+    nameFallbackEn: cmp.nameFallbackEn,
+    sourcePhrase: cmp.sourcePhrase,
+    draftRevision: cmp.draftRevision,
+    confirmTier: cmp.confirmTier as StoredSmsCampaign["confirmTier"],
+    audienceFilter: cmp.audienceFilter,
+    audienceCount: cmp.audienceCount,
+    audienceWatermark: cmp.audienceWatermark,
+    estimateSegments: cmp.estimateSegments,
+    estimateTzs: numOrNull(cmp.estimateTzs),
+    budgetTzs: numOrNull(cmp.budgetTzs),
+    enqueueCursor: cmp.enqueueCursor,
+    enqueuedAt: iso(cmp.enqueuedAt),
+    stopReason: cmp.stopReason,
+    createdBy: cmp.createdBy,
+    confirmedBy: cmp.confirmedBy,
+    confirmedAt: iso(cmp.confirmedAt),
+    startedAt: iso(cmp.startedAt),
+    pausedAt: iso(cmp.pausedAt),
+    finishedAt: iso(cmp.finishedAt),
+    createdAt: iso(cmp.createdAt),
+    updatedAt: iso(cmp.updatedAt),
+  };
+}
+
+/**
+ * SmsCampaignRecipient row -> StoredSmsCampaignRecipient (marketing U35b).
+ * ⛔ It reads the row's OWN columns and never a relation — no contact, user or campaign reached through — because a
+ * recipient holds LINKS, never a copy of a contact's or a player's details (`test:dal-parity` §26.link).
+ * ⛔ THERE IS NO COLUMN MAP BESIDE IT YET, AND THAT IS DELIBERATE: U35b writes recipients only through `createMany`,
+ * from the seed. The writers that settle a row (U43's claim, U45's settle, U46's receipt) bring the map with their
+ * update — map-driven, never a hand-written allow-list.
+ */
+type SmsCampaignRecipientRow = {
+  id: string; campaignId: string; msisdn: string; contactId: string | null; userId: string | null; status: string;
+  smsReference: string | null; optOutToken: string | null; locale: string | null; failureClass: string | null;
+  error: string | null; skipReason: string | null; skipDetail: string | null; claimToken: string | null;
+  claimedAt: Date | null; attempts: number; segments: number | null; bodyLen: number | null; costTzs: unknown;
+  gateTrail: unknown; createdAt: Date; updatedAt: Date; sentAt: Date | null; deliveredAt: Date | null;
+  failedAt: Date | null;
+};
+function toStoredSmsCampaignRecipient(rcp: SmsCampaignRecipientRow): StoredSmsCampaignRecipient {
+  return {
+    id: rcp.id,
+    campaignId: rcp.campaignId,
+    msisdn: rcp.msisdn,
+    contactId: rcp.contactId,
+    userId: rcp.userId,
+    status: rcp.status as StoredSmsCampaignRecipient["status"],
+    smsReference: rcp.smsReference,
+    optOutToken: rcp.optOutToken,
+    locale: rcp.locale as StoredSmsCampaignRecipient["locale"],
+    failureClass: rcp.failureClass,
+    error: rcp.error,
+    skipReason: rcp.skipReason,
+    skipDetail: rcp.skipDetail,
+    claimToken: rcp.claimToken,
+    claimedAt: iso(rcp.claimedAt),
+    attempts: rcp.attempts,
+    segments: rcp.segments,
+    bodyLen: rcp.bodyLen,
+    costTzs: numOrNull(rcp.costTzs),
+    gateTrail: rcp.gateTrail as SmsCampaignGateTrail | null,
+    createdAt: iso(rcp.createdAt),
+    updatedAt: iso(rcp.updatedAt),
+    sentAt: iso(rcp.sentAt),
+    deliveredAt: iso(rcp.deliveredAt),
+    failedAt: iso(rcp.failedAt),
+  };
+}
+
+/**
+ * Every StoredSmsCampaign key and how a patch writes it, typed `Record<keyof …>` so `tsc` refuses a key added to the
+ * stored shape and forgotten here. `null` = NEVER written through a patch: the id and the provenance are set once,
+ * the status moves only as a transition's `to`, `draftRevision` only by the draft save, `updatedAt` only from `at`.
+ * ⛔ A DateTime column MUST be "date" — an ISO string reaching Prisma throws on Postgres and nowhere else.
+ * "decimal" columns are written as numbers and read back through `numOrNull`.
+ */
+const SMS_CAMPAIGN_COLUMN: Record<keyof StoredSmsCampaign, "date" | "plain" | "decimal" | null> = {
+  id: null,
+  status: null,
+  draftRevision: null,
+  createdBy: null,
+  createdAt: null,
+  updatedAt: null,
+  name: "plain",
+  bodySw: "plain",
+  bodyEn: "plain",
+  codingSw: "plain",
+  segmentsSw: "plain",
+  codingEn: "plain",
+  segmentsEn: "plain",
+  nameFallbackSw: "plain",
+  nameFallbackEn: "plain",
+  sourcePhrase: "plain",
+  audienceFilter: "plain",
+  audienceCount: "plain",
+  confirmTier: "plain",
+  audienceWatermark: "plain",
+  estimateSegments: "plain",
+  estimateTzs: "decimal",
+  budgetTzs: "decimal",
+  confirmedBy: "plain",
+  confirmedAt: "date",
+  enqueueCursor: "plain",
+  enqueuedAt: "date",
+  stopReason: "plain",
+  startedAt: "date",
+  pausedAt: "date",
+  finishedAt: "date",
+};
+
+/**
+ * A campaign patch -> Prisma `data`, DRIVEN BY THE MAP — the 2026-09-07 lesson (`dal-parity` §1): a hand-written
+ * allow-list drops a field silently and still returns a row. ⛔ An unmapped key THROWS, and so does a key the map
+ * says is never patched (the rule set refuses both first; this is the second net).
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function smsCampaignData(patch: SmsCampaignDraftPatch | SmsCampaignTransitionPatch): Record<string, any> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const data: Record<string, any> = {};
+  for (const [k, v] of Object.entries(patch)) {
+    if (v === undefined) continue;
+    const spec = SMS_CAMPAIGN_COLUMN[k as keyof StoredSmsCampaign];
+    if (spec === undefined) {
+      throw new Error(`[prisma-dal] smsCampaign: unmapped field "${k}" — add it to SMS_CAMPAIGN_COLUMN or it is a silent production no-op.`);
+    }
+    if (spec === null) throw new Error(`[prisma-dal] smsCampaign: "${k}" is never written through a patch.`);
+    data[k] = spec === "date" ? (v === null ? null : new Date(v as string)) : v;
+  }
+  return data;
+}
 
 // ---------------------------------------------------------------------------
 // Entity mappers: Prisma row → Stored* type
@@ -3954,6 +4128,125 @@ export const prismaDb = {
         orderBy: [{ addedAt: "desc" }, { listId: "desc" }],
       });
       return rows.map(toStoredContactListMember);
+    },
+  },
+
+  /* ═══ THE CAMPAIGN TABLES (marketing U35b) ═══════════════════════════════════════════════════════════
+   * ⛔ THE ONE DOOR: no other src file calls these two delegates (`test:dal-parity` §26.onedoor), so the rules cannot
+   * be walked round. Every member asks `campaign-model.ts` FIRST; the frozen keys and the status each move in ONE
+   * conditional `updateMany`, so Postgres decides the winner — never a read-then-write — and the recipient batch is
+   * ONE `createMany` with `skipDuplicates` against `@@unique([campaignId, msisdn])`.
+   * ⛔ NO `delete` here or in the memory twin, and no stored counter: progress is a groupBy. */
+  smsCampaign: {
+    /** ⭐ A campaign is born a blank DRAFT (`assertNewCampaign`), and every key is written explicitly. */
+    create: async (row: StoredSmsCampaign): Promise<StoredSmsCampaign> => {
+      assertNewCampaign(row);
+      const created = await pc().smsCampaign.create({
+        data: {
+          id: row.id,
+          name: row.name,
+          status: row.status,
+          bodySw: row.bodySw,
+          bodyEn: row.bodyEn,
+          codingSw: row.codingSw,
+          segmentsSw: row.segmentsSw,
+          codingEn: row.codingEn,
+          segmentsEn: row.segmentsEn,
+          nameFallbackSw: row.nameFallbackSw,
+          nameFallbackEn: row.nameFallbackEn,
+          sourcePhrase: row.sourcePhrase,
+          draftRevision: row.draftRevision,
+          confirmTier: row.confirmTier,
+          audienceFilter: row.audienceFilter,
+          audienceCount: row.audienceCount,
+          audienceWatermark: row.audienceWatermark,
+          estimateSegments: row.estimateSegments,
+          estimateTzs: row.estimateTzs,
+          budgetTzs: row.budgetTzs,
+          enqueueCursor: row.enqueueCursor,
+          enqueuedAt: row.enqueuedAt ? new Date(row.enqueuedAt) : null,
+          stopReason: row.stopReason,
+          createdBy: row.createdBy,
+          confirmedBy: row.confirmedBy,
+          confirmedAt: row.confirmedAt ? new Date(row.confirmedAt) : null,
+          startedAt: row.startedAt ? new Date(row.startedAt) : null,
+          pausedAt: row.pausedAt ? new Date(row.pausedAt) : null,
+          finishedAt: row.finishedAt ? new Date(row.finishedAt) : null,
+          createdAt: new Date(row.createdAt),
+          updatedAt: new Date(row.updatedAt),
+        },
+      });
+      return toStoredSmsCampaign(created);
+    },
+    find: async (id: string): Promise<StoredSmsCampaign | null> => {
+      const row = await pc().smsCampaign.findUnique({ where: { id } });
+      return row ? toStoredSmsCampaign(row) : null;
+    },
+    /** U37's DRAFT SAVE — ⭐ ONE conditional UPDATE: written only where the row is still a DRAFT on the revision the
+     *  form was rendered on, moving the revision on by one, so two saves on one revision cannot both land and a
+     *  confirmed scope can never be widened. A count of 0 is null (gone, no longer a draft, or saved since). */
+    update: async (id: string, patch: SmsCampaignDraftPatch, guard: SmsCampaignDraftGuard, at: string): Promise<StoredSmsCampaign | null> => {
+      assertDraftPatch(patch, guard, at);
+      const data = smsCampaignData(patch);
+      data.draftRevision = guard.draftRevision + 1;
+      data.updatedAt = new Date(at);
+      const saved = await pc().smsCampaign.updateMany({ where: { id, status: "DRAFT", draftRevision: guard.draftRevision }, data });
+      if (saved.count === 0) return null;
+      const after = await pc().smsCampaign.findUnique({ where: { id } });
+      return after ? toStoredSmsCampaign(after) : null;
+    },
+    /** ⭐ THE ONLY WAY A STATUS MOVES — ONE conditional UPDATE whose WHERE holds `status IN from` (and the revision when
+     *  one is given), so of two racing writers Postgres lets exactly one through and the loser gets null.
+     *  ⚠️ The row is re-read after the write and may already carry a later change: null versus non-null is the race
+     *  verdict, never the returned status. */
+    transition: async (id: string, t: SmsCampaignTransition): Promise<StoredSmsCampaign | null> => {
+      assertTransitionShape(t);
+      const data = smsCampaignData(t.patch);
+      if (t.to !== null) data.status = t.to;
+      data.updatedAt = new Date(t.at);
+      const moved = await pc().smsCampaign.updateMany({
+        where: { id, status: { in: [...t.from] }, ...(t.draftRevision !== null ? { draftRevision: t.draftRevision } : {}) },
+        data,
+      });
+      if (moved.count === 0) return null;
+      const after = await pc().smsCampaign.findUnique({ where: { id } });
+      return after ? toStoredSmsCampaign(after) : null;
+    },
+  },
+
+  smsCampaignRecipient: {
+    /** ⭐ THE WHOLE BATCH OR NOTHING, THEN ONE STATEMENT. `assertSeeds` refuses before Postgres is asked; then ONE
+     *  `createMany` with `skipDuplicates` (ON CONFLICT DO NOTHING) against `@@unique([campaignId, msisdn])`, so an
+     *  enqueue restart cannot put one person on a campaign twice, and the first of two in one batch wins. A missing
+     *  campaign, contact or account is P2003 and the statement writes nothing. ⛔ Never an upsert, and the data is the
+     *  seed's keys ONLY — no status (the column's PENDING), no `smsReference`: ON CONFLICT has no target, so a
+     *  colliding settle key would drop a person silently. */
+    createMany: async (seeds: SmsCampaignRecipientSeed[]): Promise<SmsCampaignRecipientInsert> => {
+      assertSeeds(seeds);
+      if (seeds.length === 0) return { inserted: 0, duplicates: 0 };
+      const data = seeds.map((s) => ({
+        id: s.id,
+        campaignId: s.campaignId,
+        msisdn: s.msisdn,
+        contactId: s.contactId,
+        userId: s.userId,
+        optOutToken: s.optOutToken,
+        createdAt: new Date(s.createdAt),
+        updatedAt: new Date(s.createdAt),
+      }));
+      const batch = await pc().smsCampaignRecipient.createMany({ data, skipDuplicates: true });
+      return { inserted: batch.count, duplicates: seeds.length - batch.count };
+    },
+    find: async (id: string): Promise<StoredSmsCampaignRecipient | null> => {
+      const row = await pc().smsCampaignRecipient.findUnique({ where: { id } });
+      return row ? toStoredSmsCampaignRecipient(row) : null;
+    },
+    /** ONE groupBy by status — never the rows — through `fillRecipientCounts`: every status in the schema's order,
+     *  zeros included. */
+    countByStatus: async (campaignId: string): Promise<SmsCampaignRecipientCount[]> => {
+      const groups = await pc().smsCampaignRecipient.groupBy({ by: ["status"], where: { campaignId }, _count: { _all: true } });
+      return fillRecipientCounts((groups as Array<{ status: string; _count: { _all: number } }>)
+        .map((g) => ({ status: g.status as SmsCampaignRecipientStatus, count: g._count._all })));
     },
   },
 };
