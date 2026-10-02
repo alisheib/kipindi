@@ -294,7 +294,7 @@ WP6b the swap + census + header-fit → WP7 overlays → WP8 short titles on pos
   desktop width). The rail: sw "Tiketi zangu" takes two lines at 320 and one from 360, en and zh one everywhere, none
   cut — §0h point 18's model, confirmed. The first runs found three faults in the PROBES, none in the header (a shown
   span and the "+" compute `flex`, not `inline-flex`: a flex item's display is blockified; the slack had been the
-  always-zero gap after the pushed cluster; the verdict cut its list at six), fixed in `beb2ade0`. Its red twin makes nine single-line `globals.css` mutations, each
+  always-zero gap after the pushed cluster; the verdict cut its list at six), each fixed in the drive itself. Its red twin makes nine single-line `globals.css` mutations, each
   one rule the RULE probe must break in some cell, and a CSS witness makes an unserved mutation read BROKEN. ⛔ It runs
   only as `npm run red:journey-header-fit -- --alone`: without `--alone`, or inside `red:all` (which now marks every
   harness it starts with KP_RED_ALL), it refuses with exit 2 before writing anything. `test:journey-shell` §10 holds

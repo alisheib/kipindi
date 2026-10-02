@@ -1441,7 +1441,7 @@ crash, a bluescreen) runs none of that, so the mutation stays on disk with its w
 over one, `test:journey-shell` §10 fails predeploy on it by name, and §7's rule checks fail on each mutation.
 `RED_BUDGET_S` (1800) is a real bound — every wait races it — and `RED_SETTLE_MS` (180000) bounds each serve. Paths
 resolve from the repository root, not from the directory it was started in.
-*Calibrated on its first clean runs (2026-10-02, `beb2ade0`):* a shown brand span and the "+" compute `display: flex`,
+*Calibrated on its first clean runs (2026-10-02, in the drive itself):* a shown brand span and the "+" compute `display: flex`,
 not the `inline-flex` their classes say — each is a flex item, and CSS blockifies a flex item's outer display — so the
 rules expect `flex`; the slack is the row's free space (the spacer between the clusters), because the gap after the
 rightmost control is 0 in every cell once the cluster is pushed to the row's end; the verdict prints every break.
