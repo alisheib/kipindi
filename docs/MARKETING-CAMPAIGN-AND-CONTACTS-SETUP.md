@@ -1,10 +1,10 @@
 # MARKETING CAMPAIGN & CONTACTS SETUP — work order and tracker
 
-**STATUS — 🟢 BUILDING. 16/52 units ✅ LIVE (U1–U12, U18, U19, U24, U35), 13/25 defects. 52 units · defects D1–D25 · 56 owner decisions taken on
+**STATUS — 🟢 BUILDING. 17/52 units ✅ LIVE (U1–U12, U18, U19, U24, U29, U35), 13/25 defects. 52 units · defects D1–D25 · 56 owner decisions taken on
 Ali's delegation · 11 legal questions, each shipping with a safe default that IS built. S7c went LIVE 2026-09-28 (`d3379fef`).
 U17 🔵 (`7bef9f97`, live since 2026-09-28) and U18's first half (U18a, `fb194038`, live) were shipped by S9, which closed no docs.
 S10 (2026-10-01) fixed the consent-ledger tie, which had been picking the latest row at random, and shipped U18b (`0e68d59e`):
-erasure now withdraws the consent and empties the book, and both data exports carry marketing; U19 (`addf5351`) masks a contact's number; U20 (`733522d3`) lists the book. Then U21–U40 were decided (§9, OD47–OD52), the first build tranche went LIVE (`ea87308f`), and U24 is ✅ (`c792901e`: the ONE audience resolver, and the cache every writer keeps true). U21, U22 and U23 (selection and bulk) shipped, and the parser track (U25–U28), all 🔵 — LIVE since 2026-10-02 05:20 UTC (`36aa9bf0`); U35b, the campaign tables, and U29, import staging, shipped (🔵). NEXT: U34a the export and U36 the campaign list (in build), then U30 the import pre-flight.**
+erasure now withdraws the consent and empties the book, and both data exports carry marketing; U19 (`addf5351`) masks a contact's number; U20 (`733522d3`) lists the book. Then U21–U40 were decided (§9, OD47–OD52), the first build tranche went LIVE (`ea87308f`), and U24 is ✅ (`c792901e`: the ONE audience resolver, and the cache every writer keeps true). U21, U22 and U23 (selection and bulk) shipped, and the parser track (U25–U28), all 🔵 — LIVE since 2026-10-02 05:20 UTC (`36aa9bf0`); U35 the campaign tables and U29 import staging are ✅ (both migrations live); U34a, the export, shipped (U34 🟡). NEXT: U36 the campaign list (built, in its battery), U37b the composer, then U30 the import pre-flight.**
 
 > ⚠️ **THIS FILE IS BOTH THE PLAN AND THE PROGRESS TRACKER.** Any session, on any machine, learns where
 > the programme stands by reading §0 (RESUME AT) and §1 (status board) — and nothing else. `npm run
@@ -284,6 +284,23 @@ erasure now withdraws the consent and empties the book, and both data exports ca
   reads newest first; F9 the byte cap stops at the cap instead of stringifying a forged batch whole. Found with it: the
   shared email shape let control characters through (U22's form too) — refused now. `test:contacts-staging` 36/36 (red
   16/16). ⏳ Owed: a PAUSED or COMMITTING run has no retention period until U32 settles it (recorded in DATA-RETENTION).
+  ✅ U29 LIVE 2026-10-02 06:42:34 UTC — production serves `81102ce8` and its deploy log applied
+  `20261002130000_contact_import_staging` ("All migrations have been successfully applied"). U29 ✅; 17/52.
+  ✅ STEP 19 · U34a (`d8fce713` + its review `95a48ae6`) — the contact book as a CSV: GET /api/admin/contacts/export, the
+  viewer decided on the STORED row (never the cookie's role), the second factor, U24's one parser and one role rule
+  (OD54 included), columns from U28's one list — a masked viewer gets the phone and email masked, no consent, no
+  source, and (after the review) every number or email inside a name, a tag or a note masked too; pii.revealed and
+  contacts.exported AWAITED before the first byte (503 with no file if a row did not record); a keyset walk capped at
+  the audited count; the export's own instant bounds the window (X7); 200,000 the ceiling; U28's one writer, the BOM
+  once, the file read back through U25's real reader. ⚖️ ITS REVIEW (1 MAJOR, 5 MINOR): a link on ANY site could make
+  a signed-in officer's browser start the export and write a permanent bulk-reveal row in their name (SameSite=Lax
+  cookies ride a top-level navigation) — the route now refuses a cross-site request and a HEAD before the session is
+  read, and the TRANSACTIONS export, which had the same live hole, got the same gate (`test:read-tiers` 8.11b); U24's
+  audit scrub now catches a spaced or hyphenated number; a cancelled download is not logged as a failed walk.
+  `test:contacts-export` 39/39 (red 24/24), the drive 483/483 — both files downloaded and parsed in a real browser,
+  through the gate; a cross-site fetch and a HEAD measured 404. 🟡 — U34b, the round trip, follows U30/U31.
+  ✅ OD56 (`980ebbce`) — the cache mirror writes the row's own `updatedAt` back, so a one-row suppress or withdrawal no
+  longer moves the edit dialog's token (the side channel OD54's own review found); `test:contacts-audience` 6.6 + R23.
   ⛔ LOCK STARVATION (measured 2026-10-01): `~/heavy-node-lock.sh` waiters poll every 30 s, and a session
   running jobs back to back re-takes the lock within seconds of releasing it — S10's typecheck waited
   40+ minutes without once getting in. S10 ran its battery through the same mkdir protocol polling every
@@ -316,10 +333,10 @@ erasure now withdraws the consent and empties the book, and both data exports ca
   one ("Nitumie ofa na habari za 50pick kwa SMS" 2 hits, the old one 0), on `?dpl=d3379fef…`. A check that
   reads the same before and after proves nothing — this one reverses.
 
-▶ NEXT: U34a the export and U36 the campaign list, built side by side (each in its own block; three-way merged), with
-  OD54 (D19 for suppression); then U30 the pre-flight (it mounts the import entrance and reaches U25/U26/U27b on
-  production; U29's staging is its store), U31-B/UI, U32, U33, U37–U40 in the critic's order (§10). S10 has
-  U34a, U36 and OD54 in build (agents write into scratch; every gate is run here; ⛔ an agent's files are copied only
+▶ NEXT: U36 the campaign list (built — its battery and review next), then U37b the composer (brief ready: OD55 and the
+  closed live switch), U38a, then U30 the pre-flight (it mounts the import entrance and reaches U25/U26/U27b on
+  production; U29's staging is its store), U31-B/UI, U32, U33, U39b, U40 in the critic's order (§10). S10 has
+  U36 merged next (agents write into scratch; every gate is run here; ⛔ an agent's files are copied only
   after its report; each unit gets an adversarial review before its push).
   ⛔ OWNER GATES STOP THE BUILD (G1–G12 above). ⚠️ G4 now gates the import going live — U32's start action and U33b's
   panel both reach the draft wordings (OD50) — so asking it early saves a stall at S15/S16.
@@ -542,6 +559,10 @@ erasure now withdraws the consent and empties the book, and both data exports ca
       lifts; they only fall. Guards: `test:type-scale`, `test:eyebrow-roles` (it runs in `test:all`; add it to
       the lane's serial battery).
 
+⚠ RECORDED, NOT OURS TO CHANGE (U34a, 2026-10-02): the TRANSACTIONS export keeps two residuals the contacts export
+  does not copy — it decides the msisdn cell on `mayReveal(session.role, …)`, the cookie's role (a demotion never
+  reaches a minted cookie, W25), and it writes the raw `q` into its audit row. Its cross-site / HEAD hole, found the
+  same day, WAS fixed (the shared export gate, `test:read-tiers` 8.11b) because it was live and a two-line guard.
 ⚠ RECORDED, NOT OURS TO CHANGE: `selfExclude` keeps the FIRST `selfExclusionStartedAt` across a restore
   and a new exclusion (U10 does not trust that stamp). ERASURE CAN RE-OPEN MARKETING on Postgres — U16's,
   written into its §9 text. ⚠️ `predeploy` at S7's close, all 154 steps run and recorded on the final
@@ -759,12 +780,12 @@ a Guard key that resolves to a script on disk, `yes` plus the backticked `red:` 
 | U26 | pure | 🔵 | S10 | b4faac34 | no reader for a phone's contact export → a streaming vCard reader: both continuation rules in one walk, every card counted, card ordinals as lines | `test:contacts-import` | yes — `red:contacts-import` 120/120 (in-process) | vCard. 🔵 until U30/U32 parse a real .vcf on production — nothing reaches it before then. |
 | U27 | guard | 🔵 | S10 | 2438d66a | an XLSX could only be read by trusting exceljs with whatever arrived → an exact size gate, a capped zip pre-pass and one typed cell switch, server-side, and the boundary that proves exceljs never reaches the browser | `test:contacts-boundary` · `test:contacts-import` | yes — `red:contacts-boundary` 28/28 · `red:contacts-import` 211/211 (in-process) | XLSX server-only: U27a `0dc25b98` + U27b `2438d66a`. 🔵 until U30 reads a real .xlsx on production. |
 | U28 | pure | 🔵 | S10 | a0535f80 | no shared field list → ONE field list, limits table and tag rule for the form, bulk, import and export, and the samples proven back through every real reader | `test:contacts-import` | yes — `red:contacts-import` 211/211 (in-process) | one field list: U28a `0dc25b98`, U28b `a0535f80` (CSV, Swahili, sep=;, vCard round trips) and its xlsx case through U27b's reader (X13, `2438d66a`). 🔵 until U30 mounts the import entrance and its sample button. |
-| U29 | data | 🔵 | S10 | dbdc0018 | an officer's contacts file had nowhere to wait between reading and importing → ONE staging model in both twins: a compare-and-set cursor applied first with the inserts, a keyset on ordinal, both caps before any read, keys re-derived on the server, a sweep that never touches a paused commit — proved on Postgres in two processes | `test:dal-parity` · `test:contacts-staging` | yes — `red:contacts-staging` 10/10 (in-process) · `red:dal-parity` §24 | staging. Pushed — the live check is the migration on production. |
+| U29 | data | ✅ | S10 | dbdc0018 | an officer's contacts file had nowhere to wait between reading and importing → ONE staging model in both twins: a compare-and-set cursor applied first with the inserts, a keyset on ordinal, both caps before any read, keys re-derived on the server, a sweep that never touches a paused commit — proved on Postgres in two processes | `test:dal-parity` · `test:contacts-staging` | yes — `red:contacts-staging` 16/16 (in-process) · `red:dal-parity` §24 | staging. LIVE 2026-10-02 06:42:34 UTC — production serves `81102ce8` and its deploy log applied `20261002130000_contact_import_staging`; the staging probe proved the resume in two processes on Postgres. |
 | U30 | visual | ⬜ | — | — | — | `test:contacts-import` | — | pre-flight |
 | U31 | engine | 🟡 | S10 | 0dc25b98 | — | `test:contacts-import` | — | decide(). U31-A landed (`0dc25b98`): the pure rule, the erasure disguise (OD47). U31-B (the facts loader) and the UI come with U30. |
 | U32 | visual | ⬜ | — | — | — | `test:contacts-import` | — | progress = rows |
 | U33 | engine | 🟡 | S10 | 0dc25b98 | — | `test:marketing-consent` | — | basis at import. U33a-catalog landed (`0dc25b98`): DRAFT wordings until G4, Option A (OD50). The engine and the panel follow. |
-| U34 | guard | ⬜ | — | — | — | `test:contacts-export` | — | export |
+| U34 | guard | 🟡 | S10 | d8fce713 | — | `test:contacts-export` | — | export. U34a landed (`d8fce713` + review `95a48ae6`): the masked/full CSV, audited before the first byte, the cross-site gate; `test:contacts-export`. U34b (the round trip through the importer) follows U30/U31. |
 | U35 | data | ✅ | S10 | bfc37a74 | campaigns had a purpose (U35a `0dc25b98`, live) and nowhere to live → two tables in both twins behind ONE rule set: a draft saved by compare-and-set, a confirmation frozen in one conditional move, recipients deduped on (campaign, number), links never copies, no stored counter — 92 migrations proven from empty | `test:dal-parity` · `test:campaign-models` | yes — `red:campaign-models` 32/32 (in-process) · `red:dal-parity` §26 | campaign models. LIVE 2026-10-02 06:05:54 UTC — production serves `df839f30` and its deploy log applied `20261002120000_sms_campaign_models` (after a first build failed on a Google-font fetch and was rebuilt from source). |
 | U36 | visual | ⬜ | — | — | — | `test:admin-nav` | — | list + badge |
 | U37 | visual | 🟡 | S10 | 0dc25b98 | — | `test:campaign-compose` | — | composer. U37a landed (`0dc25b98`): the one renderer (OD48, OD49). U37b (the page, save, the test send) follows. |
@@ -1319,7 +1340,7 @@ is decided, with what it rules out. They are not questions.
   key erasure would have to chase (U16), and a campaign that targets one person is a message to one person, which is
   only ever the officer's own test send. So U37b's save REFUSES an audience whose `q` is a whole number (a name search
   stays), with a sentence on the audience card, an executed assertion and its own plant.
-- **OD56 · The cache mirror keeps the row's own `updatedAt` — decided, OWED** (S10, found while building OD54).
+- **OD56 · The cache mirror keeps the row's own `updatedAt` — decided, BUILT (`980ebbce`)** (S10, found while building OD54).
   `mirrorContactCache` stamps the caller's instant when it rewrites a row's consent/stop cache, and that `updatedAt` is
   the edit dialog's compare-and-set token, carried to the browser. So a masked officer could read it, suppress (or
   withdraw) ONE row, and read it again: it moves only if the row had no stop (or no withdrawal) before — the very
@@ -2906,6 +2927,12 @@ the reason visible) · error (no control).
 **Accept:** (U34a) GROWTH downloads a masked file and ADMIN a full one, both audited before the first byte; (U34b) export
 → re-import returns 0 invalid and 0 changed under take-the-file's-version AND fill-blanks-only, and a one-edit control
 reports exactly 1 changed.
+⚖️ **U34a shipped in S10 (`d8fce713` + review `95a48ae6`):** the gate — GET only, and a cross-site request refused before
+the session is read (Sec-Fetch-Site same-origin, none or absent passes); free text masked for a non-reader (a number
+or an email inside a name, a tag or a note); a `none` cell reads "Export CSV (masked)" and carries neither identity
+column; over 200,000 is proven in-process only (it cannot be seeded on this laptop); audit ordering is proven in-process
+(A1), not by the drive. ⏳ Owed: U50 registers `contacts.exported` / `contacts.export_refused`; READ-TIERS.md gains the
+export's row; there is no rate limit on exports (none on the transactions export either).
 
 ### Phase C — campaigns (U35–U49)
 
