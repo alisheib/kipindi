@@ -162,3 +162,44 @@ zangu" and `tabAccount` "Akaunti" are the deck's own words (VODACOM-PLAN §3, bi
 - `error.positionsSafe` (sw) · "hayajaaathiriwa" carries a third "a" → "hayajaathiriwa" (the journey copy is spelt right, as `error.pageHitSnagBody` already is).
 - `profile.helpSupportSub` (en, zh) · "FAQ · Helpline · Email" / "常见问题 · 热线 · 邮件" names our help desk a helpline — §0h point 10's mix-up; the journey copy says "Phone" / "电话".
 - `profile.inviteFriendsSub` (zh) · "分享你的链接 · 查看谁加入" uses the informal 你 → 您.
+
+## Swahili review — signed off by Claude (Ali, 2026-10-02: "you will be the Swahili speaker")
+
+Reviewed 2026-10-02, string by string, for grammar (noun-class agreement, tense, object markers), meaning against the
+English, and natural Tanzanian usage on a money screen. Imperative labels ("Cheza", "Alika", "Pumzika", "Jizuie") are
+kept: the product already names its sections and doors with imperatives, and players read them that way.
+
+**1. S6 dictionary keys (journey.*, not shown to anyone until S15) — approved, with three corrections applied:**
+- `journey.hubGuestPrompt` · "Ingia au jisajili ili ~~kuona~~ **uone** pochi na tiketi zako." — after *ili* a person
+  needs the subjunctive with its subject (the S4 panel's own rule, C12); the infinitive left the sentence without one.
+- `journey.ticketsErrorBody` · "Tumeandika kilichotokea na ~~tutashughulikia~~ **tutakichunguza**." — the English says
+  *investigate*, and the verb needs the object marker of *kilichotokea* (class 7, -ki-); "tutashughulikia" had neither.
+- `journey.hubGroupLegal` · ~~"Faragha"~~ **"Sheria na faragha"** (en "Legal & privacy", zh "法律与隐私") — the card holds
+  the privacy notice, the AML/KYC policy, the terms and the RTP rules; "Privacy" named only one of the four, in every
+  language.
+- Every other S6 key is approved as written: `withdrawAction`, `ticketsGuestTitle`, `ticketsKindAria`,
+  `ticketsFilterAria`, `ticketsEmptyOpenTitle`/`Body`, `ticketsBrowse`, `ticketPayout`, `ticketPayoutAtResult`,
+  `ticketFinalPayout`, `ticketPlacedAt` (class 9 *tiketi* → "Imewekwa"), `sellFreeUntil`, `sellFreeCta`,
+  `sellFullRefund`, `sellClosedBody` (class 5 *dau* → "linasubiri … haliwezi"), `hubHelpSub`, `hubLimitsSub`,
+  `hubCardSize`, `hubStaffSub`, the group names, `ticketsEmptyLens`, `ticketsEmptyCashed` ("hujauza", negative perfect
+  of *kuuza*), `ticketsExitLens`, `ticketsBack`, `sellConfirmTitle`, `sellKeep`, `sellUnchanged` (class 9 →
+  "haijabadilika").
+
+**2. Corrections to words players see today — approved as listed above; they ship with S12, never earlier.** Every line
+in "Existing words the S4 panel found wrong" is correct Swahili and says what the English says. Two notes: "kesho saa
+00:00" keeps the platform's 24-hour digital time (the product never uses Swahili clock reckoning); and the classic
+`error.positionsSafe` typo "hayajaaathiriwa" (three a's) is fixed in the same S12 commit.
+
+**3. S4 canvas drafts that S7–S11 will turn into keys — approved, with two corrections the build must use:**
+- Juu/Chini round closed: "Pesa zako zimeingia — TZS 5,000 ~~iko~~ **ziko** kwenye salio lako." — *pesa* takes class 10
+  agreement in the same sentence ("zimeingia"), so the figure that stands for it does too.
+- Its button: "Nenda **kwenye** raundi inayofuata" — *kwenda* to a place needs *kwenye*.
+- Approved as drawn: "Upande mdogo, ona makadirio"; "Faida ndogo · ≈1.0×"; "Kiasi cha chini cha kuweka ni TZS 500 —
+  TZS 300 zitabaki kwenye salio lako."; "Malipo yako ya TZS 3,000 yanasubiri"; "Fuatilia malipo"; "Jaza tamko"; "Weka
+  PIN kwenye simu yako"; "Usianzishe malipo mengine."; "Angalia hali ya malipo"; "Hakuna pesa iliyokatwa"; "Pesa zako
+  zitarudishwa" and its sentence; "Malipo bado hayajathibitishwa" and its sentence; "Maswali yanayofanana"; "Weka pesa
+  tena"; "Kikomo chako cha hasara kinaruhusu hadi TZS 3,000 leo."; "Jisajili uweke dau"; "Makadirio yamesasishwa"; the
+  empty-side and empty-pool lines; "Kripto: hakuna maswali wazi kwa sasa"; "Maswali mapya yataonekana hapa
+  yakichapishwa."; "Onyesha maswali yote"; the break notice and "Mapumziko hadi 8 Okt"; "Kamisheni ya hadi 10% ya bwawa
+  lote hutolewa kabla washindi hawajalipwa."; "≈ zaidi ya 100× dau lako"; "Raundi hii imefungwa"; "Tuma msimbo";
+  "Thibitisha barua pepe yako ili uweke pesa"; "Bado utapungukiwa na TZS 1,000 kwa dau lako."; "Salio lako · —".

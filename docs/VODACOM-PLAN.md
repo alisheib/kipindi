@@ -272,6 +272,9 @@ here, with how to overrule it. Newest last; nothing here blocks the work.
 3. **The Swahili review is Claude's** (Ali, 2026-10-02: "you will be the Swahili speaker"). Every drafted string and
    every correction to a live word (`S4-COPY-AUDIT.md`, e.g. "Lipo" → "Malipo") is reviewed and signed off in that
    file by the session that ships it; corrections to words players see today ship with S12, never earlier.
+   ✅ **First review signed off 2026-10-02** (`S4-COPY-AUDIT.md` "Swahili review"): every S6 key, every live-word
+   correction and the S4 canvas drafts — three journey keys corrected (`hubGuestPrompt`, `ticketsErrorBody`,
+   `hubGroupLegal`), and two canvas drafts the build must take corrected (Juu/Chini round closed).
 4. **Nothing is turned on until the whole Vodacom plan is done** (Ali, 2026-10-02) — not his preview, not the
    journey. S1's done-when ("staff see a preview marker on production") therefore waits for S14; until then every
    new screen is verified on a local server, and production is checked only for "nothing changed for players".

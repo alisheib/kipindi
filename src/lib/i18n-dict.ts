@@ -2961,7 +2961,7 @@ export const dict = {
       hubGroupStaff: "Staff",
       /** Signed out only: the canvas's fairness-and-help card, and the legal card under the footer's own heading. */
       hubGroupFairnessHelp: "Fairness & help",
-      hubGroupLegal: "Privacy",
+      hubGroupLegal: "Legal & privacy",
     },
   },
 
@@ -5269,7 +5269,7 @@ export const dict = {
       ticketsEmptyLens: "Hakuna tiketi inayolingana na vichujio hivi",
       ticketsEmptyCashed: "Bado hujauza tiketi yoyote",
       ticketsExitLens: "Tiketi zote",
-      ticketsErrorBody: "Tiketi zako ziko salama. Tumeandika kilichotokea na tutashughulikia. Madau na malipo yote hayajaathiriwa.",
+      ticketsErrorBody: "Tiketi zako ziko salama. Tumeandika kilichotokea na tutakichunguza. Madau na malipo yote hayajaathiriwa.",
       ticketsBack: "Rudi kwenye tiketi",
       ticketPayout: "Malipo",
       ticketPayoutAtResult: "Matokeo yakitoka",
@@ -5282,7 +5282,7 @@ export const dict = {
       sellConfirmTitle: "Uza tiketi hii sasa?",
       sellKeep: "Baki na tiketi",
       sellUnchanged: "Tiketi haijabadilika.",
-      hubGuestPrompt: "Ingia au jisajili ili kuona pochi na tiketi zako.",
+      hubGuestPrompt: "Ingia au jisajili ili uone pochi na tiketi zako.",
       hubHelpSub: "Maswali ya kawaida · Simu · Barua pepe",
       hubLimitsSub: "Mipaka · Pumzika · Jizuie",
       hubCardSize: "Ukubwa wa kadi",
@@ -5297,7 +5297,7 @@ export const dict = {
       hubGroupAgent: "Wakala",
       hubGroupStaff: "Wafanyakazi",
       hubGroupFairnessHelp: "Uadilifu na msaada",
-      hubGroupLegal: "Faragha",
+      hubGroupLegal: "Sheria na faragha",
     },
   },
 
@@ -7615,7 +7615,7 @@ export const dict = {
       hubGroupAgent: "代理",
       hubGroupStaff: "员工",
       hubGroupFairnessHelp: "公平性与帮助",
-      hubGroupLegal: "隐私",
+      hubGroupLegal: "法律与隐私",
     },
   },
 } as const;
