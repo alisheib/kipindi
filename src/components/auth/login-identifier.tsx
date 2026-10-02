@@ -112,7 +112,7 @@ export function LoginIdentifier({
             autoComplete="tel-national"
             size="lg"
             defaultValue={phoneDefault}
-            aria-invalid={invalid || undefined}
+            error={invalid}
           />
         ) : (
           <Input
@@ -130,7 +130,7 @@ export function LoginIdentifier({
             size="lg"
             defaultValue={emailDefault}
             placeholder={t.auth.emailPlaceholder}
-            aria-invalid={invalid || undefined}
+            error={invalid}
           />
         )}
 

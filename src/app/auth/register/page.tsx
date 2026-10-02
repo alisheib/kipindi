@@ -236,7 +236,7 @@ export default async function RegisterPage({
                 required
                 defaultValue={phoneDefault}
                 size="lg"
-                aria-invalid={sp.error === "exists" ? "true" : undefined}
+                error={sp.error === "exists"}
               />
             </Field>
 
@@ -260,7 +260,7 @@ export default async function RegisterPage({
                 defaultValue={emailDefault}
                 placeholder={t.auth.emailPlaceholder}
                 size="lg"
-                aria-invalid={sp.error === "exists" ? "true" : undefined}
+                error={sp.error === "exists"}
               />
             </Field>
 

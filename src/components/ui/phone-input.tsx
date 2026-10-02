@@ -34,6 +34,9 @@ type Props = Omit<React.InputHTMLAttributes<HTMLInputElement>, "type" | "onChang
   onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
   /** U22 · the clipboard text of a paste, handed over BEFORE it is stripped and capped at nine digits. */
   onPasteRaw?: (text: string) => void;
+  /** The field's error state, passed through to the Input atom — which derives `aria-invalid` from it ALONE (a
+   *  caller's own `aria-invalid` is dropped there, "the two are one fact"). S10: the sign-in and sign-up error states. */
+  error?: boolean | string;
 };
 
 export const PhoneInput = React.forwardRef<HTMLInputElement, Props>(function PhoneInput(
