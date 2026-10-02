@@ -242,6 +242,36 @@ async function navKeysFor(role: Role): Promise<Set<string>> {
   ok("13 · teardown · the ops grant is back to its default (SUPPORT cannot view ops)", !(await canView("SUPPORT", "ops")));
 }
 
+// ── 14 · ONE GRANT STORE PER PROCESS, WHATEVER THE MODULE INSTANCE (2026-10-02) ─────────────────────────────────────
+// Next.js hands route handlers a DIFFERENT module instance from pages and server actions (`email.ts` and
+// `wallet-service.ts` record it). The grant maps were module-scope `let`s, so every instance held its own: U23's drive
+// set a grant from a dev route and the page never saw it; with a DB, a grant edited on /admin/roles (a server action)
+// never reached an `/api/admin/*` route until a restart. Here a SECOND instance of rbac.ts is loaded beside the one this
+// suite imported — a distinct module URL, which is exactly what a second bundle is — and each must see the other's write.
+{
+  const url = new URL("../src/lib/server/rbac.ts", import.meta.url).href + "?instance=second-bundle";
+  const second = (await import(url)) as typeof import("../src/lib/server/rbac.ts");
+  ok("14 · CONTROL · the second import IS a separate module instance (its functions are not this suite's) — else this section proves nothing",
+    second.canView !== canView && second.setRoleGrant !== setRoleGrant);
+  __resetGrantsForTest();
+  const before = await second.canView("AUDITOR", "growth");
+  await setRoleGrant("AUDITOR", "growth", true, false, "rbac-test");
+  ok("14 · a grant written through one instance is read by the other (AUDITOR may now view growth there too)",
+    before === false && (await second.canView("AUDITOR", "growth")) === true && (await second.canAct("AUDITOR", "growth")) === false);
+  await second.setRoleGrant("AUDITOR", "growth", false, false, "rbac-test");
+  ok("14 · …and the other way: the second instance's revoke reaches this one", (await canView("AUDITOR", "growth")) === false);
+  const cellNow = (await second.roleReadGrants("AUDITOR"))["identity.contact"];
+  const flipped = cellNow === "none" ? "masked" : "none";
+  await second.setRoleReadGrant("AUDITOR", "identity.contact", flipped, "rbac-test");
+  const { roleReadGrants: firstReads, resetRoleReadGrantsToDefaults } = await import("../src/lib/server/rbac.ts");
+  ok("14 · the READ axis too: a read cell written through the second instance is the one this instance answers",
+    (await firstReads("AUDITOR"))["identity.contact"] === flipped, `${cellNow} → ${flipped}`);
+  await resetRoleReadGrantsToDefaults();
+  await resetRoleGrantsToDefaults();
+  ok("14 · teardown · both axes are back to their defaults", (await canView("AUDITOR", "growth")) === false
+    && (await second.roleReadGrants("AUDITOR"))["identity.contact"] === cellNow);
+}
+
 /** §7b's comparison as a function, so `--prove-red` can hand it a planted map. ⛔ ONE definition. */
 function navDomainSplits(groups: typeof NAV_GROUPS, resolve: (href: string) => string): string[] {
   const EXEMPT = ["/admin/2fa", "/admin/totp-verify"];

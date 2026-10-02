@@ -9,7 +9,7 @@
  *   • other staff    → the DB `RoleDomainGrant` row for (role, domain) if present,
  *                      else the code `DEFAULT_GRANTS` fallback (`defaultGrant`).
  *
- * The in-memory `overrides` map is, in production (DATABASE_URL set), a cache of the
+ * The in-memory grant map (`caches.grants`, pinned on `globalThis` — see below) is, in production (DATABASE_URL set), a cache of the
  * table hydrated on first read and updated in place on every write; with no DB (unit
  * tests, local dev) it is the AUTHORITATIVE store, so an edit still takes effect for
  * the process without a redeploy — the same contract the live cache provides.
@@ -40,11 +40,25 @@ import {
 
 type GrantKey = `${Role}:${AdminDomain}`;
 
-/** See the file header: cache in DB mode, authoritative store in no-DB mode. */
-let overrides: Map<GrantKey, Grant> | null = null;
+/**
+ * 🔴 PINNED ON `globalThis` (2026-10-02), NOT A MODULE-SCOPE `let` — and the reason is the one `email.ts` and
+ * `wallet-service.ts` already record: Next.js hands route handlers a DIFFERENT MODULE INSTANCE from pages and
+ * server actions. Two module-scope maps meant two caches. With no DB (every drive) a grant set from a route handler
+ * never reached a page — U23's view-only drive state waited 30 s for a page that still refused the role. With a DB
+ * it was worse and silent: a grant edited on /admin/roles (a server action) updated THAT instance's cache and the
+ * table, while every `/api/admin/*` route kept the map it had hydrated — a revoked view still answered there until
+ * the process restarted. One holder per process now: a write or an invalidation reaches every instance.
+ * See the file header: cache in DB mode, authoritative store in no-DB mode.
+ */
+type RbacCaches = { grants: Map<GrantKey, Grant> | null; reads: Map<ReadKey, ReadCell> | null };
+declare global {
+  // eslint-disable-next-line no-var
+  var __50PICK_RBAC: RbacCaches | undefined;
+}
+const caches: RbacCaches = globalThis.__50PICK_RBAC ?? (globalThis.__50PICK_RBAC = { grants: null, reads: null });
 
 async function loadOverrides(): Promise<Map<GrantKey, Grant>> {
-  if (overrides) return overrides;
+  if (caches.grants) return caches.grants;
   const m = new Map<GrantKey, Grant>();
   if (hasDatabase()) {
     const client = prisma();
@@ -61,19 +75,19 @@ async function loadOverrides(): Promise<Map<GrantKey, Grant>> {
       }
     }
   }
-  overrides = m;
+  caches.grants = m;
   return m;
 }
 
 /** Drop the cache so the next read re-hydrates from the DB. In no-DB mode this is
  *  a NO-OP — the in-memory overrides are the store and must survive. */
 export function invalidateGrantsCache(): void {
-  if (hasDatabase()) overrides = null;
+  if (hasDatabase()) caches.grants = null;
 }
 
 /** Test-only reset (no-DB): clears the in-memory store back to pure defaults. */
 export function __resetGrantsForTest(): void {
-  overrides = new Map();
+  caches.grants = new Map();
 }
 
 function effectiveGrant(store: Map<GrantKey, Grant>, role: Role, domain: AdminDomain): Grant {
@@ -203,8 +217,8 @@ export async function resetRoleGrantsToDefaults(): Promise<void> {
 
 type ReadKey = `${Role}:${ReadClass}`;
 
-/** See the file header: cache in DB mode, authoritative store in no-DB mode. */
-let readOverrides: Map<ReadKey, ReadCell> | null = null;
+/** The read-grant cache lives in the same `globalThis` holder as the domain grants (`caches.reads`), for the same
+ *  reason. See the file header: cache in DB mode, authoritative store in no-DB mode. */
 
 const READ_CLASS_SET = new Set<string>(READ_CLASSES);
 const READ_CELL_SET = new Set<string>(["read", "masked", "none"]);
@@ -224,7 +238,7 @@ export function isStorableReadOverride(readClass: string, cell: string): boolean
 }
 
 async function loadReadOverrides(): Promise<Map<ReadKey, ReadCell>> {
-  if (readOverrides) return readOverrides;
+  if (caches.reads) return caches.reads;
   const m = new Map<ReadKey, ReadCell>();
   if (hasDatabase()) {
     const client = prisma();
@@ -248,19 +262,19 @@ async function loadReadOverrides(): Promise<Map<ReadKey, ReadCell>> {
       }
     }
   }
-  readOverrides = m;
+  caches.reads = m;
   return m;
 }
 
 /** Drop the read-grant cache so the next read re-hydrates from the DB. NO-OP with no
  *  DB, where the in-memory map is the store and must survive. */
 export function invalidateReadGrantsCache(): void {
-  if (hasDatabase()) readOverrides = null;
+  if (hasDatabase()) caches.reads = null;
 }
 
 /** Test-only reset (no-DB): clears the in-memory read store back to pure defaults. */
 export function __resetReadGrantsForTest(): void {
-  readOverrides = new Map();
+  caches.reads = new Map();
 }
 
 /** The resolved row for a role: every class, override-or-default. */
