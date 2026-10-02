@@ -294,7 +294,7 @@ const L6 = {
   l63: "6.3 · the profile switch for a player whose number is in the book: ON lifts their stop and the row reads GIVEN, unsuppressed; OFF reads WITHDRAWN",
   l64: "6.4 · a ledger append — a sign-up by a number imported before — is mirrored onto the row",
   l65: "6.5 · erasure's emptied row carries the active stop's time, not only the consent",
-  l66: "6.6 · the mirror itself: none for a number not in the book; unchanged (updatedAt kept) on a true row; a stale row is put back from the truth, the stop included, through a +255 spelling",
+  l66: "6.6 · the mirror itself: none for a number not in the book; unchanged (updatedAt kept) on a true row; a stale row is put back from the truth, the stop included, through a +255 spelling — and ⛔ OD56 the put-back keeps the row's OWN updatedAt (a refresh is not an edit, so the edit dialog's token never moves on one)",
 };
 
 /* ═══ THE IMPLEMENTATION UNDER TEST — swappable, so a red case can plant one piece ═══════════ */
@@ -734,8 +734,9 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
     const putBack = await row6(id6("mirror"));
     ok(p(L6.l66),
       none === "none" && unchanged === "unchanged" && trueAfter?.updatedAt === trueBefore?.updatedAt
-        && updated === "updated" && putBack?.consentState === "UNKNOWN" && putBack.suppressedAt === "2026-09-21T10:00:00.000Z",
-      `${none}/${unchanged}/${updated} updatedAt ${trueBefore?.updatedAt}→${trueAfter?.updatedAt} row=${putBack?.consentState}/${putBack?.suppressedAt}`);
+        && updated === "updated" && putBack?.consentState === "UNKNOWN" && putBack.suppressedAt === "2026-09-21T10:00:00.000Z"
+        && putBack.updatedAt === trueAfter?.updatedAt,
+      `${none}/${unchanged}/${updated} updatedAt ${trueBefore?.updatedAt}→${trueAfter?.updatedAt}→${putBack?.updatedAt} row=${putBack?.consentState}/${putBack?.suppressedAt}`);
   } finally {
     // ⛔ §6's rows leave the book, so the next run starts from the same ten (§2.0 counts them).
     for (const row of made) {
@@ -947,6 +948,22 @@ if (!PROVE_RED) {
             const r = await mirrorContactCache(identifier, at);
             const row = await db.marketingContact.findByMsisdn(toMsisdn255(identifier));
             if (r === "unchanged" && row) await db.marketingContact.update(row.id, {}, at);
+            return r;
+          },
+        },
+      },
+    },
+    {
+      name: "R23 · ⛔ OD56 · the mirror stamps the caller's instant — a one-row suppress moves the edit dialog's token, a stop signal to a masked officer",
+      expect: [L6.l66],
+      impl: {
+        ...REAL,
+        cache: {
+          ...REAL_CACHE,
+          mirror: async (identifier, at = new Date().toISOString()) => {
+            const r = await mirrorContactCache(identifier, at);
+            const row = await db.marketingContact.findByMsisdn(toMsisdn255(identifier));
+            if (r === "updated" && row) await db.marketingContact.update(row.id, {}, at);
             return r;
           },
         },

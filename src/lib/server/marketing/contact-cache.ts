@@ -25,7 +25,14 @@ import { toMsisdn255 } from "@/lib/phone-normalize";
  */
 export type ContactCacheOutcome = "none" | "unchanged" | "updated" | "failed";
 
-export async function mirrorContactCache(identifier: string, at: string = new Date().toISOString()): Promise<ContactCacheOutcome> {
+/**
+ * ⛔ OD56 (2026-10-02) · THE ROW'S OWN `updatedAt` IS WRITTEN BACK — a cache refresh is not an edit. `updatedAt` is the
+ * edit dialog's compare-and-set token and it reaches the browser: if a refresh moved it, a masked officer could read it,
+ * suppress (or withdraw) ONE row, and read it again — it would move only when the row had no stop (or no withdrawal)
+ * before, the very signal OD54 and A1.1 hide. The edit patch carries no cache field, so an officer's save after a
+ * refresh overwrites nothing. `_at` stays in the signature for the callers that pass their instant; it is not stamped.
+ */
+export async function mirrorContactCache(identifier: string, _at: string = new Date().toISOString()): Promise<ContactCacheOutcome> {
   try {
     // ⛔ The bare `255…` key, normalised HERE (the two-format trap, D6): a caller handing `User.phoneE164`
     // (`+255…`) would otherwise find no row and answer `none` for every player.
@@ -38,7 +45,7 @@ export async function mirrorContactCache(identifier: string, at: string = new Da
     // ⭐ The stop's OWN time — "when did they say no" — never the time of this refresh.
     const suppressedAt = stop ? stop.createdAt : null;
     if (row.consentState === consentState && row.suppressedAt === suppressedAt) return "unchanged";
-    await Promise.resolve(db.marketingContact.update(row.id, { consentState, suppressedAt }, at));
+    await Promise.resolve(db.marketingContact.update(row.id, { consentState, suppressedAt }, row.updatedAt));
     return "updated";
   } catch (err) {
     console.error("[contact-cache] mirror failed:", (err as Error)?.message ?? err);
