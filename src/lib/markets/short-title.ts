@@ -232,11 +232,11 @@ export function shortTitleFor(locale: Locale, m: ShortTitleFields): string | nul
 /**
  * ⭐ WHAT A CARD SHOWS: the reader's short title, or the reader's FULL title (the same one every card shows today —
  * `pickLocalized` over the FULL titles, which is where its English fallback belongs). `short` says which, so a card
- * can clamp only the fallback.
+ * can clamp only the fallback. `titleSw` may be NULL (the position projection's): `pickLocalized` reads it as absent.
  */
 export function cardTitle(
   locale: Locale,
-  m: ShortTitleFields & { titleEn: string; titleSw: string; titleZh: string | null },
+  m: ShortTitleFields & { titleEn: string; titleSw: string | null; titleZh: string | null },
 ): { text: string; short: boolean } {
   const short = shortTitleFor(locale, m);
   return short ? { text: short, short: true } : { text: pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh), short: false };

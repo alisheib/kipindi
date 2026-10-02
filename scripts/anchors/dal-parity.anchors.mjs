@@ -277,6 +277,61 @@ export const MUTATIONS = [
     to: `        // (shortTitleSw dropped)`,
     expect: `10.s2.narrow.prisma · the Prisma setShortTitles is an UPDATE of exactly the four columns (+ updatedAt), each from the caller's fields`,
   },
+  /* ── §10 · the position-card projection (the Vodacom plan S6 WP8, 2026-10-01) ──────────
+   * ⭐ FIVE MUTATIONS, one per way a ticket's short title can be lost or invented: the memory twin forgets one, the
+   * Prisma select forgets one (Postgres only — every memory suite stays green), the Prisma mapper reads nothing, and
+   * each twin in turn fills one from the full title (the card would then call a full question short). */
+  {
+    // The MEMORY twin forgets the Swahili short title — the twin every behavioural suite runs on.
+    // ⚠️ Three lines: the same En/Sw/Zh run sits in both upsert arms, where `competition` follows instead of `});`.
+    name: "market-dal.ts — positionCards (memory) drops shortTitleSw",
+    file: "src/lib/server/market-dal.ts",
+    from: `        shortTitleSw: m.shortTitleSw ?? null,
+        shortTitleZh: m.shortTitleZh ?? null,
+      });`,
+    to: `        shortTitleZh: m.shortTitleZh ?? null,
+      });`,
+    expect: `10.cards.memory · the memory positionCardsByIds maps "shortTitleSw" from the row`,
+  },
+  {
+    // ⭐ THE POSTGRES-ONLY NO-OP: mapped from the row but never selected, so production reads NULL and every Chinese
+    // ticket shows the full question. `tsc` would refuse it; a red run goes through tsx.
+    name: "market-dal.ts — positionCards (Prisma) stops SELECTING shortTitleZh",
+    file: "src/lib/server/market-dal.ts",
+    from: `        shortTitleEn: true, shortTitleSw: true, shortTitleZh: true,`,
+    to: `        shortTitleEn: true, shortTitleSw: true,`,
+    expect: `10.cards.select · the Prisma positionCardsByIds SELECTS "shortTitleZh"`,
+  },
+  {
+    // The Prisma mapper keeps the key and reads nothing. ⚠️ Eight spaces: `toStoredMarket` has the line at four.
+    name: "market-dal.ts — positionCards (Prisma) maps shortTitleEn to null",
+    file: "src/lib/server/market-dal.ts",
+    from: `        shortTitleEn: r.shortTitleEn ?? null,`,
+    to: `        shortTitleEn: null,`,
+    expect: `10.cards.prisma · the Prisma positionCardsByIds maps "shortTitleEn" from the row`,
+  },
+  {
+    // ⛔ NULL STOPS MEANING "NONE": the memory twin fills the short title from the full one, so a full question
+    // reaches the ticket card as a short title.
+    name: "market-dal.ts — positionCards (memory) fills shortTitleSw from titleSw",
+    file: "src/lib/server/market-dal.ts",
+    from: `        shortTitleSw: m.shortTitleSw ?? null,
+        shortTitleZh: m.shortTitleZh ?? null,
+      });`,
+    to: `        shortTitleSw: m.shortTitleSw ?? m.titleSw ?? null,
+        shortTitleZh: m.shortTitleZh ?? null,
+      });`,
+    expect: `10.cards.verbatim · "shortTitleSw" is the stored value in BOTH twins, NULL kept as NULL — never filled from another title`,
+  },
+  {
+    // The same invention in the PRISMA twin, the one no behavioural suite runs on: only 10.cards.verbatim sees it.
+    // ⚠️ Eight spaces: `toStoredMarket` has the line at four.
+    name: "market-dal.ts — positionCards (Prisma) fills shortTitleZh from titleZh",
+    file: "src/lib/server/market-dal.ts",
+    from: `        shortTitleZh: r.shortTitleZh ?? null,`,
+    to: `        shortTitleZh: r.shortTitleZh ?? r.titleZh ?? null,`,
+    expect: `10.cards.verbatim · "shortTitleZh" is the stored value in BOTH twins, NULL kept as NULL — never filled from another title`,
+  },
   /* ── §17 · the consent ledger and suppression (marketing U6) ────────────────────────
    * ⭐ EIGHT MUTATIONS, ONE PER RULE §17 EXISTS TO HOLD. Four of them break an ABSENCE —
    * the append-only and never-deleted rules — which is the half a guard usually cannot

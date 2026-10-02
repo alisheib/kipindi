@@ -27,6 +27,10 @@
  * PredictionMarket, including the two markers that must never be rewritten; §11 the schema; §12 that
  * the house DAL never touches a wallet. How the twins BEHAVE is `test:house-bot-migrations`.
  *
+ * ⭐ THE POSITION-CARD PROJECTION (the Vodacom plan S6 WP8). `positionCardsByIds` names its columns by hand in both
+ * twins and in a Prisma `select`; §10's `10.cards` checks hold all three to the type, and the S2 short titles to their
+ * stored value.
+ *
  * KP_SRC points the gate at a copied tree — `red:dal-parity`'s mechanism.
  * Run: npm run test:dal-parity
  */
@@ -605,7 +609,7 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
     !keepsStoredMarkerOnly("positions.set(p.id, prev ? { ...p, houseBotId: prev.houseBotId ?? p.houseBotId ?? null } : p);"));
 }
 
-/* ═══ §10 · the market reopen stamp (house bots, N1 §2) + short titles and competition (Vodacom plan S2) ═══ */
+/* ═══ §10 · the market reopen stamp (house bots, N1 §2) + short titles and competition (Vodacom plan S2) + the position-card projection (S6 WP8) ═══ */
 {
   const mKeys = storedKeys("StoredMarket", marketSvcSrc);
   const read = region(marketDalSrc, "function toStoredMarket(");
@@ -680,6 +684,78 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
   ok("10.s2.c3 · CONTROL · a narrow writer that spreads the caller's object is caught", /\.\.\.fields\b/.test("markets.set(id, { ...cur, ...fields });"));
   ok("10.s2.c4 · CONTROL · a STAMPABLE carrying a title key is caught",
     writesKey("const STAMPABLE = {\n  status: (v) => v,\n  shortTitleEn: (v) => v,\n};", "shortTitleEn"));
+
+  /* ⭐ THE VODACOM PLAN S6 WP8 (2026-10-01) · THE POSITION-CARD PROJECTION. `positionCardsByIds` names its columns by
+   * hand three times: the memory twin copies fields off the stored row, the Prisma twin SELECTS columns and then maps
+   * them. Every behavioural suite runs on the memory twin, so a column the Prisma twin maps but never selects reads
+   * NULL on Postgres and nowhere else. WP8 added the three S2 short titles for the journey's ticket card (WP9); lost
+   * that way, every ticket in production would show the full question while every suite showed the short one.
+   * ⛔ AND NULL MEANS "NO SHORT TITLE" (`cardTitle`, `lib/markets/short-title.ts`): a twin that filled one from a full
+   * title would have the card call a full question short, so each short title is held to its stored value. `tsc`
+   * holds both object literals to the type; these checks also hold the SELECT and the stored-value rule, and they are
+   * the ones `red:dal-parity` can drive (a red run goes through tsx, which does not type-check). Extended here in
+   * place, as S2 did: §17 onward is the marketing lane's. */
+  {
+    const LF = String.fromCharCode(10);
+    /** Lines with any trailing CR dropped — the tree is a Windows checkout. */
+    const linesOf = (s: string) => s.split(LF).map((l) => l.trimEnd());
+    const KEY_LINE = new RegExp("^ *([A-Za-z_][A-Za-z0-9_]*) *:");
+    const SHORTS = ["shortTitleEn", "shortTitleSw", "shortTitleZh"] as const;
+    const typeKeys = storedKeys("PositionCardMarket", marketDalSrc);
+    const memBody = objectMethod(region(marketDalSrc, "const memoryMarkets:"), "positionCardsByIds");
+    const priBody = objectMethod(region(marketDalSrc, "const prismaMarkets:"), "positionCardsByIds");
+    /** The keys of the object a twin hands to `out.set(…, {` — one per line, which is what a card receives. */
+    const setKeys = (body: string, opener: string): string[] =>
+      linesOf(region(body, opener)).slice(1).map((l) => KEY_LINE.exec(l)?.[1] ?? "").filter(Boolean);
+    /** The columns a Prisma `select: { … }` asks for: each `key: true`, comma- or line-separated. */
+    const selectKeys = (body: string): string[] => {
+      const sel = region(body, "select: {");
+      return linesOf(sel.slice(sel.indexOf("{") + 1, sel.lastIndexOf("}"))).flatMap((l) => l.split(","))
+        .map((p) => p.trim()).filter((p) => p.endsWith(": true")).map((p) => p.slice(0, p.indexOf(":")).trim());
+    };
+    /** Passed through as stored: `k: <row>.k ?? null,` and nothing else on the line. */
+    const verbatim = (body: string, k: string, row: string) => linesOf(body).some((l) => l.trim() === `${k}: ${row}.${k} ?? null,`);
+    const memKeys = setKeys(memBody, "out.set(id, {");
+    const priKeys = setKeys(priBody, "out.set(r.id, {");
+    const selKeys = selectKeys(priBody);
+
+    // The floor is the PARSER's, not the projection's width: each list starts at `id`, and `10.cards.same` holds the
+    // rest, so dropping a field on purpose one day fails nothing here.
+    ok("10.cards.0 · the parser finds PositionCardMarket, both twins' out.set objects and the Prisma select, each naming id",
+      [typeKeys, memKeys, priKeys, selKeys].every((keys) => keys.includes("id")),
+      `type ${typeKeys.length} · memory ${memKeys.length} · prisma ${priKeys.length} · select ${selKeys.length}`);
+    ok("10.cards.twins · MarketStore declares positionCardsByIds and BOTH twins implement it",
+      interfaceMethods(marketDalSrc, "MarketStore").includes("positionCardsByIds")
+        && objectMethods(marketDalSrc, "memoryMarkets").includes("positionCardsByIds")
+        && objectMethods(marketDalSrc, "prismaMarkets").includes("positionCardsByIds"));
+    for (const k of SHORTS) ok(`10.cards.type · PositionCardMarket declares "${k}"`, typeKeys.includes(k));
+    for (const k of typeKeys) {
+      ok(`10.cards.memory · the memory positionCardsByIds maps "${k}" from the row`, readsFrom(memBody, k, "m"));
+      ok(`10.cards.prisma · the Prisma positionCardsByIds maps "${k}" from the row`, readsFrom(priBody, k, "r"));
+      ok(`10.cards.select · the Prisma positionCardsByIds SELECTS "${k}"`, selKeys.includes(k));
+    }
+    ok("10.cards.same · the type, the memory object, the Prisma object and the Prisma select name exactly the same fields",
+      sameSet(typeKeys, memKeys) && sameSet(typeKeys, priKeys) && sameSet(typeKeys, selKeys),
+      `memory ${setDiff(typeKeys, memKeys) || "same"} · prisma ${setDiff(typeKeys, priKeys) || "same"} · select ${setDiff(typeKeys, selKeys) || "same"}`);
+    for (const k of SHORTS) {
+      ok(`10.cards.verbatim · "${k}" is the stored value in BOTH twins, NULL kept as NULL — never filled from another title`,
+        verbatim(memBody, k, "m") && verbatim(priBody, k, "r"));
+    }
+
+    // ⛔ CONTROLS — each check above can fail.
+    const dropKey = (body: string, k: string) => linesOf(body).filter((l) => !l.trim().startsWith(`${k}:`)).join(LF);
+    ok("10.cards.c1 · CONTROL · the REAL memory object minus its shortTitleZh line is reported as not the type's list",
+      memKeys.includes("shortTitleZh") && !sameSet(typeKeys, setKeys(dropKey(memBody, "shortTitleZh"), "out.set(id, {")));
+    const plantedSelect = ["select: {", "  id: true, shortTitleEn: true,", "  shortTitleZh: true,", "},"].join(LF);
+    ok("10.cards.c2 · CONTROL · a select without shortTitleSw is caught, and the parser reads both separators",
+      !selectKeys(plantedSelect).includes("shortTitleSw") && sameSet(selectKeys(plantedSelect), ["id", "shortTitleEn", "shortTitleZh"]));
+    ok("10.cards.c3 · CONTROL · `shortTitleSw: null,` does NOT count as reading it from the row",
+      !readsFrom(["        noPool: Number(r.noPool),", "        shortTitleSw: null,"].join(LF), "shortTitleSw", "r"));
+    ok("10.cards.c4 · CONTROL · a short title filled from the full title is caught in either twin, and the honest line is not",
+      !verbatim("        shortTitleSw: m.shortTitleSw ?? m.titleSw ?? null,", "shortTitleSw", "m")
+        && !verbatim("        shortTitleZh: r.shortTitleZh ?? r.titleZh ?? null,", "shortTitleZh", "r")
+        && verbatim("        shortTitleSw: m.shortTitleSw ?? null,", "shortTitleSw", "m"));
+  }
 }
 
 /* ═══ §11 · schema.prisma (house bots; + the S2 short-title columns) ══════════════════════ */

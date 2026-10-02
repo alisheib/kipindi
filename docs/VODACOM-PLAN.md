@@ -249,6 +249,14 @@ WP6b the swap + census + header-fit → WP7 overlays → WP8 short titles on pos
   sweep until that sweep can hold a pass (A15, reason in `responsive-audit.mjs`). Served bytes for a classic viewer:
   `account-streams-200` and `account-robots-noindex` above, both named in the parity harness; the `.kp-hub*` rules in
   `globals.css` (they match nothing on a classic page); and two `export` keywords in `language-menu.tsx`'s client chunk.
+- **WP8 — short titles on the position projection (applied 2026-10-02).** `PositionCardMarket`, the one DAL projection
+  behind `/positions` and the signed-in hero's picks, carries `shortTitleEn/Sw/Zh` as stored, NULL included: the
+  memory twin passes them through, and the Prisma twin selects and maps them. No `competition` (the canvas's ticket
+  card draws none). `cardTitle`'s `titleSw` now takes NULL, so WP9's ticket card uses the S2 helper on the projection
+  as it is (a type widening; `pickLocalized` already read NULL as absent). Gates: `test:dal-parity` §10's `10.cards`
+  checks (the type, both twins' objects and the Prisma select name the same fields, each read from the row, the short
+  titles verbatim) and five new `red:dal-parity` plants. Classic viewers: nothing served changes, because no page
+  reads the new fields yet.
 
 ## §0h · Points for Ali — taken while he was away (2026-10-01 →)
 

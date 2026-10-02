@@ -615,7 +615,7 @@ Plus one plant each.
 **Goal.** Let Tiketi cards show the S2 short title, as the canvas draws, through the one DAL projection, with both twins kept in step.
 
 **Files.**
-- src/lib/server/market-dal.ts (type :67-80; memory twin :676-699; Prisma twin :1176-1205)
+- src/lib/server/market-dal.ts (the `PositionCardMarket` type; `positionCardsByIds` in `memoryMarkets` and `prismaMarkets`)
 - scripts/dal-parity.test.mts
 
 **Steps.**
@@ -628,6 +628,19 @@ Plus one plant each.
 - test:dal-parity + red:dal-parity: two stores
 - test:short-title-fit: unchanged
 - tsc, via test:all
+
+*As built (WP8, 2026-10-01):* `PositionCardMarket` gains `shortTitleEn/Sw/Zh` (`string | null`, required, so `tsc`
+holds both twins' object literals to them); the memory twin passes the stored values through (`?? null`), and the
+Prisma twin selects the three columns and maps them the same way. No `competition`: the canvas's ticket cards
+(s4-9-tiketi-open, s4-9-tiketi-settled) draw no competition label. The helper is S2's `cardTitle`
+(`lib/markets/short-title.ts`); its `titleSw` now accepts NULL, as this projection carries it, so WP9 hands it the
+projection as it is (a type widening only: `pickLocalized` already read NULL as absent). The comments' column counts
+("twelve") are gone rather than bumped, and the Files line names symbols, not line numbers: `test:dal-parity` holds
+the list in §10's `10.cards` checks (extended in place, as S2 did; §17 onward is the marketing lane's) — the type,
+both `out.set` objects and the Prisma `select` name the same fields, each read from its row, the short titles
+verbatim — and `red:dal-parity` gains five plants: the memory twin drops one, the Prisma select forgets one, the
+Prisma mapper reads none, and each twin in turn fills one from the full title. Classic viewers: nothing served
+changes, because no page reads the new fields yet.
 
 ### WP9 — Tiketi zangu journey view, with the Maswali | Juu/Chini switch (L; depends on WP7, WP8)
 

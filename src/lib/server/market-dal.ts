@@ -55,14 +55,24 @@ export type MarketBook = {
 };
 
 /**
- * What a position card needs to know about its market — twelve columns, not the whole row.
+ * What a position card needs to know about its market — the columns named below, not the whole row.
  *
  * ⚠️ EVERY FIELD IS HERE BECAUSE THE PAGE READS IT, and the list is worth stating so nobody adds
- * a thirteenth by habit: the three titles (the card's headline, localised), `category` (the topic
+ * one by habit: the three titles (the card's headline, localised), `category` (the topic
  * filter), `status` (whether a cash-out is even possible), the two pools + `feeSnapshot`
- * (`cashOutValue`'s inputs), both deadlines (`isSelectionClosed` and the countdown ring), and
+ * (`cashOutValue`'s inputs), both deadlines (`isSelectionClosed` and the countdown ring),
  * `selectionClosedNotifiedAt` — which is the only honest witness that the payout figure was
- * restamped, and without which the card would present a stale projection as an exact amount.
+ * restamped, and without which the card would present a stale projection as an exact amount —
+ * and the three S2 SHORT titles, which the journey's ticket card reads through `cardTitle`
+ * (`lib/markets/short-title.ts`: the reader's own short title, else the reader's full title,
+ * English where that is missing; the Vodacom plan S6 WP8 + WP9). The classic card never reads
+ * them, so classic markup does not move.
+ *
+ * ⛔ A SHORT TITLE IS THE STORED VALUE, NULL INCLUDED. NULL means "no short title", and the card then
+ * shows and clamps the full question; a twin that filled one from a full title would have the card
+ * call a full question short. No `competition`: the ticket card draws no competition label (the S4
+ * canvas). `test:dal-parity` §10 (`10.cards`) holds the list: the type, both twins and the Prisma
+ * select name the same fields.
  */
 export type PositionCardMarket = {
   id: string;
@@ -77,6 +87,9 @@ export type PositionCardMarket = {
   selectionClosedAt: string | null;
   selectionClosedNotifiedAt: string | null;
   feeSnapshot: StoredMarket["feeSnapshot"];
+  shortTitleEn: string | null;
+  shortTitleSw: string | null;
+  shortTitleZh: string | null;
 };
 
 /** The two position columns a money attribution read uses. See `PositionStore.attribution()`. */
@@ -294,7 +307,7 @@ export interface MarketStore {
    * `attribution()` below measures at ~13,000 rows and 2,534 ms for ONE such read, and the
    * watchlist re-paid it every 20 SECONDS because the page polls.
    *
-   * ⚠️ IT RETURNS FULL ROWS, unlike `positionCardsByIds`' twelve columns, and that is deliberate:
+   * ⚠️ IT RETURNS FULL ROWS, unlike `positionCardsByIds`' named columns, and that is deliberate:
    * a market CARD reads a wide slice (both pools, predictor count, both deadlines, outcome,
    * product line, all three titles, source URL) and a projection that missed one would fail at the
    * call site rather than here. The saving being bought is the ROW COUNT, which is the half that
@@ -674,7 +687,7 @@ const memoryMarkets: MarketStore = {
     return out;
   },
   async positionCardsByIds(ids) {
-    // Same twelve fields as the Prisma twin, so a suite that passes here means the same thing
+    // Same fields as the Prisma twin, so a suite that passes here means the same thing
     // in production. ⛔ BOTH HALVES EXIST OR NEITHER DOES.
     const out = new Map<string, PositionCardMarket>();
     for (const id of ids) {
@@ -693,6 +706,10 @@ const memoryMarkets: MarketStore = {
         selectionClosedAt: m.selectionClosedAt ?? null,
         selectionClosedNotifiedAt: m.selectionClosedNotifiedAt ?? null,
         feeSnapshot: m.feeSnapshot ?? null,
+        // The S2 short titles AS STORED: NULL stays NULL, and a row from before the columns has none.
+        shortTitleEn: m.shortTitleEn ?? null,
+        shortTitleSw: m.shortTitleSw ?? null,
+        shortTitleZh: m.shortTitleZh ?? null,
       });
     }
     return out;
@@ -1176,7 +1193,7 @@ const prismaMarkets: MarketStore = {
   async positionCardsByIds(ids) {
     const out = new Map<string, PositionCardMarket>();
     if (ids.length === 0) return out;
-    // ⛔ TWELVE COLUMNS, NAMED. A `findUnique` per position reads every column of a very wide
+    // ⛔ THE TYPE'S COLUMNS, NAMED. A `findUnique` per position reads every column of a very wide
     //    table — see the interface note and `attribution()`'s measurements above.
     const rows = await pc().predictionMarket.findMany({
       where: { id: { in: [...ids] } },
@@ -1184,6 +1201,7 @@ const prismaMarkets: MarketStore = {
         id: true, titleEn: true, titleSw: true, titleZh: true, category: true, status: true,
         yesPool: true, noPool: true, resolutionAt: true, selectionClosedAt: true,
         selectionClosedNotifiedAt: true, feeSnapshot: true,
+        shortTitleEn: true, shortTitleSw: true, shortTitleZh: true,
       },
     });
     for (const r of rows) {
@@ -1202,6 +1220,10 @@ const prismaMarkets: MarketStore = {
         selectionClosedAt: r.selectionClosedAt ? r.selectionClosedAt.toISOString() : null,
         selectionClosedNotifiedAt: r.selectionClosedNotifiedAt ? r.selectionClosedNotifiedAt.toISOString() : null,
         feeSnapshot: (r.feeSnapshot as StoredMarket["feeSnapshot"]) ?? null,
+        // ⛔ Each short title is SELECTED above, or Postgres reads it as NULL here and nowhere else.
+        shortTitleEn: r.shortTitleEn ?? null,
+        shortTitleSw: r.shortTitleSw ?? null,
+        shortTitleZh: r.shortTitleZh ?? null,
       });
     }
     return out;

@@ -544,7 +544,7 @@ export async function getMarket(id: string) {
 }
 
 /**
- * The markets behind a set of positions, in ONE query, twelve columns.
+ * The markets behind a set of positions, in ONE query, the card's columns only (`PositionCardMarket`).
  *
  * ⛔ USE THIS, NOT `getMarket` IN A LOOP. `/positions` awaited one full-row `findUnique` per
  * rendered position; `market-dal.ts`'s own note measures what reading every column of that table
