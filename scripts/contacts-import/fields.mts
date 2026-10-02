@@ -21,7 +21,8 @@
  * well, the runner still requires its own label to be among the reds.
  *
  * ⛔ NO PARSER LIVES HERE. A second CSV or vCard reader in the suite is exactly the defect U28 forbids, so the
- * round trips through the REAL readers are U28b and land with U25 and U26 — see the TODO at the end of this file.
+ * round trips through the REAL readers are U28b: §F16–§F18 (CSV, through U25's reader) and §F19b (vCard, through U26's)
+ * have landed; the XLSX case waits for U27b's reader — see the TODO at the end of this file.
  * What can be checked without a reader is: the sample rows handed straight to `draftContactRow` (§F16a), and
  * the writer's own envelope (§F19a, §F26).
  *
@@ -90,6 +91,9 @@ import {
   type SampleFiles,
 } from "../../src/lib/contacts/sample-sheet.ts";
 import { parseTzNumber } from "../../src/lib/tz-msisdn.ts";
+// U28b · the REAL readers — the round trips drive the samples through them, never through a parser written here.
+import { parseCsv } from "../../src/lib/contacts/import-parse.ts";
+import { parseVcardText } from "../../src/lib/contacts/vcard.ts";
 
 /* ⛔ Control characters, the BOM and the backslash are built from their codes: the editing tools decode escape
  * text into raw characters (repo memory), and a raw BOM in a vector would be invisible. */
@@ -158,6 +162,8 @@ export type FieldsImpl = {
   /** Every file `srcFiles()` finds under the contacts trees — §F20 and §F21's population. */
   readonly tree: readonly Source[];
   readonly treeDirs: readonly string[];
+  /** U28b · the REAL readers the round trips run (U25's CSV, U26's vCard) — swappable only so a plant can break one. */
+  readonly readers: { readonly csv: typeof parseCsv; readonly vcard: typeof parseVcardText };
 };
 
 const PATHS = {
@@ -228,6 +234,7 @@ function real(): FieldsImpl {
     sources: { fields: read(PATHS.fields), csvWrite: read(PATHS.csvWrite), sampleSheet: read(PATHS.sampleSheet), route: read(PATHS.route) },
     tree: tree.files,
     treeDirs: tree.dirs,
+    readers: { csv: parseCsv, vcard: parseVcardText },
   };
   return cached;
 }
@@ -381,7 +388,11 @@ export const L = {
   F15b: "F15b · CSV_GUARD_LEADS is EXACTLY the transactions export's set plus the apostrophe, every lead is guarded, and csvCell quotes per RFC 4180",
   F15c: "F15c · toCsv writes CRLF after every line, the BOM when asked, and sep=; after the BOM for ';'",
   F16a: "F16a · the sample rows draft to their literal expectations (cells handed directly — the parser round trip is U28b)",
+  F16: "F16 · ⭐ U28b — the CSV sample re-reads through U25's REAL reader: the BOM is stripped (its first header resolves to Phone) and the drafts are the literal expectations, every number a sample number",
+  F17: "F17 · U28b — the Swahili-header sample re-reads through the same reader to the same drafts",
+  F18: "F18 · U28b — the sep=; sample re-reads to the same drafts: the field list survives the directive and the vote",
   F19a: "F19a · ⭐ the sample vCard — every line ≤ 75 octets, at least one fold, escaped, N:;;;; on every card, CRLF only",
+  F19b: "F19b · ⭐ U28b — the sample vCard re-reads through U26's REAL reader: three rows on lines 1, 2, 3 and no header row, mapped with headerRows 0 so card 1 survives (A1.2), to the literal expectations",
   F19c: "F19c · folding never splits a character or an escape pair",
   F20a: "F20a · ⛔ ONE LIST — no contacts-tree file but src/lib/contacts/contact-fields.ts (by exact path) holds a distinctive key or Swahili alias as a literal",
   F20b: "F20b · CONTROL — the one-list scanner reports a planted list",
@@ -775,6 +786,38 @@ function run(ctx: SectionContext<FieldsImpl>): void {
     && equalRows === EXPECTED_SAMPLE_DRAFTS.length && knownNumbers,
     `${equalRows}/${EXPECTED_SAMPLE_DRAFTS.length} rows as expected · numbers known ${knownNumbers}`);
 
+  // ── F16–F18 · U28b · THE CSV SAMPLES BACK THROUGH U25's REAL READER ────────────────────────────
+  // ⛔ Never a parser of this file's own (U28): the samples go through `parseCsv`, then the ONE mapping and the ONE
+  // drafter — exactly the path an officer's file takes — and must come back as the literal expectations above.
+  const sameDrafts = (ds: readonly ContactDraft[]): boolean =>
+    ds.length === EXPECTED_SAMPLE_DRAFTS.length && ds.every((d, i) => same(d, EXPECTED_SAMPLE_DRAFTS[i]));
+  const allKnown = (ds: readonly ContactDraft[]): boolean => ds.length > 0 && ds.every((d) => {
+    const p = parseTzNumber(d.rawPhone);
+    return p.msisdn !== null && impl.sampleMsisdns.has(p.msisdn);
+  });
+  const viaCsv = (text: string) => {
+    const read = impl.readers.csv(text);
+    if (!read.ok) return { drafts: [] as ContactDraft[], first: "", phone: false, why: read.sentence };
+    const header = read.file.rows[0]?.cells ?? [];
+    const map = v.autoMapFile("csv", header);
+    const first = header[0] ?? "";
+    const m = v.matchHeader(first);
+    const drafts = read.file.rows.slice(map.headerRows).map((r) => v.draftContactRow(r.cells, map.mapping));
+    return { drafts, first, phone: m.kind === "field" && m.field === "phone", why: map.refusal ?? "" };
+  };
+  const rtLabelCsv = impl.samples.csv({ headers: "label", delimiter: "," });
+  const f16 = viaCsv(rtLabelCsv);
+  ok(L.F16, rtLabelCsv.charCodeAt(0) === 0xfeff && f16.first.charCodeAt(0) !== 0xfeff && f16.phone
+    && sameDrafts(f16.drafts) && allKnown(f16.drafts),
+    `sample starts with the BOM ${rtLabelCsv.charCodeAt(0) === 0xfeff} · first header resolves to phone ${f16.phone} · ${f16.drafts.filter((d, i) => same(d, EXPECTED_SAMPLE_DRAFTS[i])).length}/${EXPECTED_SAMPLE_DRAFTS.length} drafts as expected${f16.why ? ` · ${f16.why}` : ""}`);
+  const f17 = viaCsv(impl.samples.csv({ headers: "swahili", delimiter: "," }));
+  ok(L.F17, sameDrafts(f17.drafts) && allKnown(f17.drafts),
+    `${f17.drafts.filter((d, i) => same(d, EXPECTED_SAMPLE_DRAFTS[i])).length}/${EXPECTED_SAMPLE_DRAFTS.length} drafts as expected${f17.why ? ` · ${f17.why}` : ""}`);
+  const semi = impl.samples.csv({ headers: "label", delimiter: ";" });
+  const f18 = viaCsv(semi);
+  ok(L.F18, semi.slice(1, 6) === "sep=;" && sameDrafts(f18.drafts) && allKnown(f18.drafts),
+    `directive written ${semi.slice(1, 6) === "sep=;"} · ${f18.drafts.filter((d, i) => same(d, EXPECTED_SAMPLE_DRAFTS[i])).length}/${EXPECTED_SAMPLE_DRAFTS.length} drafts as expected${f18.why ? ` · ${f18.why}` : ""}`);
+
   // ── F19a · THE SAMPLE vCARD ───────────────────────────────────────────────────────────────────
   const vcf = impl.samples.vcf();
   const physical = vcf.split(CRLF);
@@ -788,6 +831,15 @@ function run(ctx: SectionContext<FieldsImpl>): void {
     && linesEqual("BEGIN:VCARD") === n && linesEqual("END:VCARD") === n && linesEqual("VERSION:3.0") === n && linesEqual("N:;;;;") === n
     && vcf.includes(`${BACKSLASH},`) && vcf.includes(`${BACKSLASH};`) && vcf.includes("—"),
     `longest line ${longest} octets · ${folds} fold(s) · ${linesEqual("BEGIN:VCARD")} card(s)`);
+
+  // ── F19b · U28b · THE SAMPLE vCARD BACK THROUGH U26's REAL READER (A1.2: no header row) ─────────
+  const vfile = impl.readers.vcard(impl.samples.vcf());
+  const vmap = v.autoMapFile("vcard", vfile.rows[0]?.cells ?? []);
+  const vdrafts = vfile.rows.slice(vmap.headerRows).map((r) => v.draftContactRow(r.cells, vmap.mapping));
+  const vlines = vfile.rows.map((r) => r.line).join(",");
+  ok(L.F19b, vfile.rows.length === CONTACT_SAMPLE_ROW_COUNT && vlines === "1,2,3" && vmap.headerRows === 0
+    && vfile.unreadable.length === 0 && sameDrafts(vdrafts) && allKnown(vdrafts),
+    `${vfile.rows.length} row(s) on lines ${vlines} · headerRows ${vmap.headerRows} · ${vdrafts.filter((d, i) => same(d, EXPECTED_SAMPLE_DRAFTS[i])).length}/${EXPECTED_SAMPLE_DRAFTS.length} drafts as expected · unreadable ${vfile.unreadable.length}`);
 
   // ── F19c · FOLDING NEVER SPLITS A CHARACTER OR AN ESCAPE PAIR ─────────────────────────────────
   const emojiLine = `NOTE:${String.fromCodePoint(0x1f600).repeat(30)}`;
@@ -1374,6 +1426,38 @@ const PLANTS: readonly RedPlant<FieldsImpl>[] = [
       CONTACT_NOT_IMPORTED,
     ),
   },
+  // ── U28b · the round trips (each plant breaks the REAL path one way; the label that must catch it) ──
+  {
+    name: "U28b · the CSV reader leaves the byte-order mark on the first header",
+    expect: L.F16,
+    impl: () => ({
+      ...real(),
+      readers: {
+        ...real().readers,
+        csv: (text, options) => {
+          const r = parseCsv(text, options);
+          if (!r.ok || r.file.rows.length === 0) return r;
+          const [head, ...rest] = r.file.rows;
+          return { ok: true as const, file: { ...r.file, rows: [{ ...head, cells: [BOM + (head.cells[0] ?? ""), ...head.cells.slice(1)] }, ...rest] } };
+        },
+      },
+    }),
+  },
+  {
+    name: "U28b · 'simu' dropped — the Swahili sample's phone column no longer maps",
+    expect: L.F17,
+    impl: () => withLists(patchField("phone", { aliases: spec("phone").aliases.filter((a) => a !== "simu") }), CONTACT_NOT_IMPORTED),
+  },
+  {
+    name: "U28b · a reader that ignores sep= and splits every line on commas",
+    expect: L.F18,
+    impl: () => ({ ...real(), readers: { ...real().readers, csv: (text, options) => parseCsv(text, { ...options, delimiter: "comma" }) } }),
+  },
+  {
+    name: "U28b · the sample vCard header-matched — card 1 read as column names (A1.2)",
+    expect: L.F19b,
+    impl: () => withVocab({ autoMapFile: (_format, first) => ({ ...real().vocab.autoMapHeaders(first), headerRows: 1 as const }) }),
+  },
 ];
 
 export const fieldsSection: ImportSection<FieldsImpl> = {
@@ -1389,6 +1473,10 @@ export const fieldsSection: ImportSection<FieldsImpl> = {
  * ⛔ Each of these needs a REAL parser. Writing one in this file would be the second parser U28 forbids, so until
  * the reader exists the claim "the suite drives each sample back through the real parser" is not made.
  *
+ *  ✅ §F16, §F17, §F18 and §F19b LANDED with U28b (S10, after U25 `928265b9` and U26 `b4faac34`), each with its own plant.
+ *  ⏳ The A1.3 case waits for U27b's reader: an xlsx holding the NUMBER 255713000000 must draft `invalid` through it,
+ *    never a contact.
+ *  (The original notes, kept for the record:)
  *  · §F16 · CSV ROUND TRIP through U25's reader (`src/lib/contacts/import-parse.ts`): `contactSampleFile("csv")
  *    .content` starts with U+FEFF; the parsed first header resolves to phone (the BOM really was stripped — the pair
  *    U34 relies on); `autoMapHeaders` then `draftContactRow` give drafts equal to `EXPECTED_SAMPLE_DRAFTS`; every
