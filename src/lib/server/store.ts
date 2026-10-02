@@ -23,6 +23,11 @@ import {
 import { parseQuery, matchesQuery, queryToWhere, fieldNames, NOTIFICATION_SEARCH, CONTACT_SEARCH } from "@/lib/search";
 import type { ParsedQuery } from "@/lib/search";
 import { holdsDocumentNumber } from "@/lib/kyc-refusal";
+// U29 · a staged run carries U28's mapping and drafted problems, the parsed file's format, and U31's choice and outcome
+// union — TYPES only, so loading the store loads no contacts module.
+import type { ColumnMapping, FieldProblem } from "@/lib/contacts/contact-fields";
+import type { ImportChoice, ImportOutcome, RowOverrides } from "@/lib/contacts/import-decide";
+import type { ContactsFileFormat } from "@/lib/contacts/parsed-file";
 
 export type StoredUser = {
   id: string;
@@ -758,6 +763,134 @@ export type ContactWalk = { rows: StoredMarketingContact[]; nextAfterId: string 
 export type ContactTagCountQuery = { excludeSourceRef: string | null; limit: number };
 export type ContactTagCount = { tag: string; count: number };
 
+/* ═══ CONTACT IMPORT STAGING (marketing U29 — decisions X1 · X2 · X18–X20 · X28 · X29) ═════════════════════
+ * ⭐ THE ONE STAGING MODEL (X2): a run row (`ContactImport`) and the file's records (`ContactImportRow`), so an import
+ * survives a closed tab, a reload and a redeploy. ⛔ NO STORED COUNTER (OD26): every total is counted from the rows
+ * (`contactImport.totals`), and the run holds only its two compare-and-set cursors and the browser's two figures.
+ * ⛔ A staged row is NOT a contact and is in no audience: nothing sends from it, and nothing writes the book from it
+ * but U32's ONE commit (X3). Every DAL signature below is NAMED — dal-parity's `region()` would read an inline literal
+ * as the body (`SmsDlrResult`'s note) — and `test:dal-parity` §24 holds the two twins to one shape. */
+
+/** Mirrors `ContactImportStatus` in `schema.prisma` — every status a later unit needs, created at once (X2). */
+export type ContactImportStatus = "STAGING" | "STAGED" | "COMMITTING" | "PAUSED" | "DONE" | "CANCELLED";
+
+/**
+ * ONE IMPORT RUN. `stagedThrough` and `committedThrough` are ORDINALS — how many records are staged, how many the
+ * commit has settled — and each moves only by a compare-and-set (`stageRows` here, U32's `commitBatch`). `totalRows`
+ * and `unreadable` are the BROWSER's figures (OD29 parses in the browser), shown as "read from your file" and held to
+ * what is staged; they decide nothing about consent, money or an audience.
+ * ⭐ The decision (U31), the consent basis (U33) and the pause (U32) are columns HERE, each written by its own unit's
+ * member, so no conditional migration is ever owed (X2). `createdBy` is a soft key, as on the book.
+ */
+export type StoredContactImport = {
+  id: string;
+  status: ContactImportStatus;
+  format: ContactsFileFormat;
+  /** The file's name as the browser reported it — a label, cleaned and bounded. ⛔ Never in an audit payload. */
+  fileName: string | null;
+  /** sha-256 of the file's bytes, 64 lower-case hex, computed in the browser: the same digest ADOPTS the run (X18). */
+  fileDigest: string;
+  /** U28's `ColumnMapping` (X20), validated at open. The server drafts every posted row with THIS, never a posted one. */
+  mapping: ColumnMapping;
+  totalRows: number;
+  unreadable: number;
+  stagedThrough: number;
+  committedThrough: number;
+  /** U31 · the officer's choice, frozen by U32's start action; null until then. */
+  decisionChoice: ImportChoice | null;
+  /** U31 · per-row overrides keyed by the file row, frozen with the choice; empty until then. */
+  decisionOverrides: RowOverrides;
+  decisionConfirmedAt: string | null;
+  decisionConfirmedBy: string | null;
+  /** U33 · the consent basis the run is applied under, written ONCE by U32's start action (owner gate G4). */
+  consentBasis: string | null;
+  consentWording: string | null;
+  consentProofNote: string | null;
+  adultAttestedAt: string | null;
+  consentBasisSetBy: string | null;
+  consentBasisSetAt: string | null;
+  /** U32 · who stopped a commit and when (X18: "Stopped by Amina at 14:02"); a resume clears both. */
+  pausedAt: string | null;
+  pausedBy: string | null;
+  /** Set when the run reaches DONE or CANCELLED; retention deletes the run 90 days after it. */
+  finishedAt: string | null;
+  createdAt: string;
+  createdBy: string;
+  updatedAt: string;
+};
+
+/**
+ * ONE RECORD OF THE FILE, as the SERVER drafted it (X2, X19). `ordinal` is its place in the run — the keyset every walk
+ * uses, never an offset — and `line` its row in the officer's own file (C15's name; one record per line in a run). A
+ * readable record carries U28's drafted fields and their `problems` (REPORTED, never clipped — X20) and the key
+ * `parseTzNumber` derives on the server (`msisdn`, null unless the number is a sendable mobile); an unreadable one
+ * carries `readError` and nothing else. `outcome` and `outcomeReason` are X4's, null until U32's commit settles it.
+ */
+export type StoredContactImportRow = {
+  importId: string;
+  ordinal: number;
+  line: number;
+  rawPhone: string;
+  msisdn: string | null;
+  displayName: string | null;
+  email: string | null;
+  tags: string[];
+  notes: string | null;
+  problems: FieldProblem[];
+  readError: string | null;
+  outcome: ImportOutcome | null;
+  /** TEXT — one of `IMPORT_OUTCOME_REASONS`, read back through `parseImportOutcomeReason` (import-decide.ts). */
+  outcomeReason: string | null;
+  /** When the record reached us — the access export's bound (a row staged before the account existed is not theirs). */
+  stagedAt: string;
+};
+
+/** Staging's compare-and-set batch: rows `from` … `from + n - 1`, staged only while `stagedThrough` is `from - 1`.
+ *  `completes` moves the run to STAGED in the same write. */
+export type ContactImportStageBatch = {
+  importId: string;
+  from: number;
+  rows: StoredContactImportRow[];
+  completes: boolean;
+  at: string;
+};
+/** Why a batch was not staged. `duplicate_line` is the one-record-per-line rule refusing a line already staged. */
+export type ContactImportStageLoss = "not_found" | "not_staging" | "out_of_order" | "already_staged" | "duplicate_line";
+export type ContactImportStageResult =
+  | { ok: true; run: StoredContactImport }
+  | { ok: false; reason: ContactImportStageLoss; run: StoredContactImport | null };
+/** A status compare-and-set. `updatedBefore` (the idle sweep's) also requires the run to be idle still when it lands. */
+export type ContactImportTransition = {
+  importId: string;
+  from: ContactImportStatus[];
+  to: ContactImportStatus;
+  by: string | null;
+  at: string;
+  updatedBefore: string | null;
+};
+/** Counted from the rows, never stored (OD26): every row, those with a read error, those no commit has settled, and
+ *  X4's four outcomes. */
+export type ContactImportTotals = {
+  staged: number;
+  unreadable: number;
+  pending: number;
+  create: number;
+  update: number;
+  keep: number;
+  fail: number;
+};
+/** The idle sweep's read (X29): runs in `statuses` untouched since `idleBefore`, oldest first. */
+export type ContactImportIdleQuery = { statuses: ContactImportStatus[]; idleBefore: string; limit: number };
+/** Retention's purge: up to `limit` DONE or CANCELLED runs finished before `finishedBefore` — their rows go with them. */
+export type ContactImportFinishedPurge = { finishedBefore: string; limit: number };
+/** A keyset window on `ordinal`: the rows after `afterOrdinal`, ascending, at most `limit` (clamped to the page bound). */
+export type ContactImportRowWindow = { importId: string; afterOrdinal: number; limit: number };
+
+/** The most rows one keyset page hands back — one staging batch's worth. The Prisma twin keeps the same bound. */
+export const CONTACT_IMPORT_ROW_PAGE_MAX = 2000;
+/** The most staged rows the access export reads for one number — a person is in a handful of files, never thousands. */
+const CONTACT_IMPORT_ROWS_BY_NUMBER_MAX = 1000;
+
 declare global {
   /** DEV ONLY — set by `/api/dev-test/marketing-contacts-seed?fault=1` so the U20 drive can photograph the
    *  contacts page's error state. Read by the MEMORY twin's `summaryWhere()` alone, which never serves production. */
@@ -1359,6 +1492,10 @@ declare global {
     contactLists: Map<string, StoredContactList>;
     /** Keyed `${listId}|${contactId}` — the compound primary key. */
     contactListMembers: Map<string, StoredContactListMember>;
+    /** U29 · import runs, by id. */
+    contactImports: Map<string, StoredContactImport>;
+    /** U29 · each run's staged rows BY ORDINAL — ⛔ never by array index: erasure deletes a middle row. */
+    contactImportRows: Map<string, Map<number, StoredContactImportRow>>;
     /** U35b · the campaign tables. */
     smsCampaigns: Map<string, StoredSmsCampaign>;
     smsCampaignRecipients: Map<string, StoredSmsCampaignRecipient>;
@@ -1400,6 +1537,8 @@ const store = globalThis.__50PICK_STORE ?? (globalThis.__50PICK_STORE = {
   contactsByMsisdn: new Map(),
   contactLists: new Map(),
   contactListMembers: new Map(),
+  contactImports: new Map(),
+  contactImportRows: new Map(),
   smsCampaigns: new Map(),
   smsCampaignRecipients: new Map(),
   recipientsByCampaignMsisdn: new Map(),
@@ -1433,6 +1572,8 @@ if (!store.marketingContacts)  store.marketingContacts = new Map();
 if (!store.contactsByMsisdn)   store.contactsByMsisdn = new Map();
 if (!store.contactLists)       store.contactLists = new Map();
 if (!store.contactListMembers) store.contactListMembers = new Map();
+if (!store.contactImports)     store.contactImports = new Map();
+if (!store.contactImportRows)  store.contactImportRows = new Map();
 if (!store.smsCampaigns)               store.smsCampaigns = new Map();
 if (!store.smsCampaignRecipients)      store.smsCampaignRecipients = new Map();
 if (!store.recipientsByCampaignMsisdn) store.recipientsByCampaignMsisdn = new Map();
@@ -3080,6 +3221,145 @@ const memoryDb = {
       Array.from(store.contactListMembers.values())
         .filter((m) => m.contactId === contactId)
         .sort((a, b) => b.addedAt.localeCompare(a.addedAt) || b.listId.localeCompare(a.listId)),
+  },
+
+  /* ═══ CONTACT IMPORT STAGING (marketing U29) ═══════════════════════════════════════════════
+   * ⭐ COMPARE-AND-SET BY CONSTRUCTION: JavaScript runs each member to its end before any other write, so every check
+   * below and the write after it are one step — the Prisma twin gets the same from a conditional update (inside one
+   * short transaction, for staging). ⛔ ROWS ARE FOUND BY ORDINAL, never by array index (erasure deletes a middle row),
+   * and a purged run's rows go with it — the cascade Postgres does for the other twin, emulated. Timestamps compare as
+   * INSTANTS (`Date.parse`), as the Prisma twin's columns do. `test:dal-parity` §24 holds the pairs. */
+  contactImport: {
+    /** ⛔ NEVER AN UPSERT: an id already held is refused with null — Postgres's P2002 in the other twin. */
+    create: (row: StoredContactImport): StoredContactImport | null => {
+      if (store.contactImports.has(row.id)) return null;
+      const stored: StoredContactImport = { ...row, mapping: { ...row.mapping }, decisionOverrides: { ...row.decisionOverrides } };
+      store.contactImports.set(row.id, stored);
+      if (!store.contactImportRows.has(row.id)) store.contactImportRows.set(row.id, new Map<number, StoredContactImportRow>());
+      return stored;
+    },
+    find: (id: string): StoredContactImport | null => store.contactImports.get(id) ?? null,
+    /** An officer's OPEN run — the adopt read. The EARLIEST, so two tabs that raced to open one file converge on one. */
+    findOpenFor: (createdBy: string): StoredContactImport | null =>
+      Array.from(store.contactImports.values())
+        .filter((r) => r.createdBy === createdBy && (r.status === "STAGING" || r.status === "STAGED" || r.status === "COMMITTING" || r.status === "PAUSED"))
+        .sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))[0] ?? null,
+    /** The idle sweep's read (X29): runs in `q.statuses` untouched since `q.idleBefore`, oldest first, at most `q.limit`. */
+    listIdle: (q: ContactImportIdleQuery): StoredContactImport[] =>
+      Array.from(store.contactImports.values())
+        .filter((r) => q.statuses.includes(r.status) && Date.parse(r.updatedAt) < Date.parse(q.idleBefore))
+        .sort((a, b) => Date.parse(a.updatedAt) - Date.parse(b.updatedAt) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
+        .slice(0, Math.max(0, q.limit)),
+    /** ⭐ COMPARE-AND-SET ON STATUS: the run moves only from a status in `t.from` — and, for the sweep, only while it is
+     *  still idle. DONE and CANCELLED stamp `finishedAt`; PAUSED records who stopped it and when; a resume clears that. */
+    transition: (t: ContactImportTransition): StoredContactImport | null => {
+      const run = store.contactImports.get(t.importId);
+      if (!run || !t.from.includes(run.status)) return null;
+      if (t.updatedBefore !== null && !(Date.parse(run.updatedAt) < Date.parse(t.updatedBefore))) return null;
+      const resumed = t.to === "COMMITTING" && t.from.includes("PAUSED");
+      const next: StoredContactImport = {
+        ...run,
+        status: t.to,
+        updatedAt: t.at,
+        finishedAt: t.to === "DONE" || t.to === "CANCELLED" ? t.at : run.finishedAt,
+        pausedAt: t.to === "PAUSED" ? t.at : resumed ? null : run.pausedAt,
+        pausedBy: t.to === "PAUSED" ? t.by : resumed ? null : run.pausedBy,
+      };
+      store.contactImports.set(t.importId, next);
+      return next;
+    },
+    /** ⭐ THE STAGING COMPARE-AND-SET (X2): a batch lands only while the run is STAGING and `stagedThrough` is EXACTLY
+     *  `b.from - 1`, so a replay, a racing second tab or a skipped batch writes NOTHING and says why. The rows land
+     *  unsettled (`outcome` null) whatever the caller handed in, and one record per line holds across the whole run. */
+    stageRows: (b: ContactImportStageBatch): ContactImportStageResult => {
+      if (b.rows.length === 0) throw new Error("stageRows: an empty batch");
+      b.rows.forEach((row, i) => {
+        if (row.importId !== b.importId || row.ordinal !== b.from + i) throw new Error("stageRows: the rows must run from b.from, one ordinal each, in this run");
+      });
+      const run = store.contactImports.get(b.importId);
+      if (!run) return { ok: false, reason: "not_found", run: null };
+      if (run.status !== "STAGING") return { ok: false, reason: "not_staging", run };
+      if (run.stagedThrough !== b.from - 1) return { ok: false, reason: run.stagedThrough > b.from - 1 ? "already_staged" : "out_of_order", run };
+      const rows = store.contactImportRows.get(b.importId) ?? new Map<number, StoredContactImportRow>();
+      const lines = new Set<number>();
+      for (const held of rows.values()) lines.add(held.line);
+      for (const row of b.rows) {
+        if (lines.has(row.line)) return { ok: false, reason: "duplicate_line", run };
+        lines.add(row.line);
+      }
+      for (const row of b.rows) {
+        rows.set(row.ordinal, { ...row, tags: [...row.tags], problems: row.problems.map((p) => ({ ...p })), outcome: null, outcomeReason: null });
+      }
+      store.contactImportRows.set(b.importId, rows);
+      const next: StoredContactImport = {
+        ...run,
+        stagedThrough: b.from - 1 + b.rows.length,
+        status: b.completes ? "STAGED" : "STAGING",
+        updatedAt: b.at,
+      };
+      store.contactImports.set(b.importId, next);
+      return { ok: true, run: next };
+    },
+    /** ⛔ COUNTED FROM THE ROWS, never stored (OD26) — the groupBy the Prisma twin runs. */
+    totals: (importId: string): ContactImportTotals => {
+      const out: ContactImportTotals = { staged: 0, unreadable: 0, pending: 0, create: 0, update: 0, keep: 0, fail: 0 };
+      // ⚠️ Typed: the store literal's `new Map()` widens a read to any under `??` (TS7053 on the outcome below).
+      const rows: Map<number, StoredContactImportRow> = store.contactImportRows.get(importId) ?? new Map<number, StoredContactImportRow>();
+      for (const row of rows.values()) {
+        out.staged++;
+        if (row.readError !== null) out.unreadable++;
+        if (row.outcome === null) out.pending++;
+        else out[row.outcome]++;
+      }
+      return out;
+    },
+    /** Retention, 90 days after `finishedAt`: up to `q.limit` DONE or CANCELLED runs go, oldest first, and ⭐ THEIR ROWS
+     *  WITH THEM — the ON DELETE CASCADE Postgres does for the other twin, emulated. */
+    purgeFinished: (q: ContactImportFinishedPurge): number => {
+      const gone = Array.from(store.contactImports.values())
+        .filter((r) => (r.status === "DONE" || r.status === "CANCELLED") && r.finishedAt !== null && Date.parse(r.finishedAt) < Date.parse(q.finishedBefore))
+        .sort((a, b) => Date.parse(a.finishedAt ?? "") - Date.parse(b.finishedAt ?? "") || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
+        .slice(0, Math.max(0, q.limit));
+      for (const r of gone) {
+        store.contactImports.delete(r.id);
+        store.contactImportRows.delete(r.id);
+      }
+      return gone.length;
+    },
+  },
+
+  contactImportRow: {
+    /** ⭐ THE KEYSET (X2): the rows AFTER `w.afterOrdinal`, ascending — never an offset, so a row erasure deletes between
+     *  two pages cannot shift the walk onto the wrong row. */
+    after: (w: ContactImportRowWindow): StoredContactImportRow[] =>
+      Array.from<StoredContactImportRow>((store.contactImportRows.get(w.importId) ?? new Map<number, StoredContactImportRow>()).values())
+        .filter((row) => row.ordinal > w.afterOrdinal)
+        .sort((a, b) => a.ordinal - b.ordinal)
+        .slice(0, Math.max(0, Math.min(w.limit, CONTACT_IMPORT_ROW_PAGE_MAX))),
+    /** A discarded or swept run's UNSETTLED rows (outcome null). A settled row is the commit's record and stays. */
+    deleteUnsettled: (importId: string): number => {
+      const rows = store.contactImportRows.get(importId);
+      if (!rows) return 0;
+      let n = 0;
+      for (const [ordinal, row] of rows) if (row.outcome === null) { rows.delete(ordinal); n++; }
+      return n;
+    },
+    /** ⭐ ERASURE'S REACH (U29b): every staged row, in every run, that holds this number. */
+    deleteByMsisdn: (msisdn: string): number => {
+      let n = 0;
+      for (const rows of store.contactImportRows.values()) {
+        for (const [ordinal, row] of rows) if (row.msisdn === msisdn) { rows.delete(ordinal); n++; }
+      }
+      return n;
+    },
+    /** The access export's read: the staged rows holding this number, oldest first, bounded. */
+    listByMsisdn: (msisdn: string): StoredContactImportRow[] => {
+      const out: StoredContactImportRow[] = [];
+      for (const rows of store.contactImportRows.values()) for (const row of rows.values()) if (row.msisdn === msisdn) out.push(row);
+      return out
+        .sort((a, b) => Date.parse(a.stagedAt) - Date.parse(b.stagedAt) || (a.importId < b.importId ? -1 : a.importId > b.importId ? 1 : 0) || a.ordinal - b.ordinal)
+        .slice(0, CONTACT_IMPORT_ROWS_BY_NUMBER_MAX);
+    },
   },
 
   /* ═══ THE CAMPAIGN TABLES (marketing U35b) ═══════════════════════════════════════════════════════════

@@ -337,6 +337,92 @@ function toStoredContactListMember(m: ContactListMemberRow): StoredContactListMe
   };
 }
 
+// U29 · the staging types — a second import from the store, kept beside the code that reads them (type-only, so the
+// store's import of this module is no cycle).
+import type {
+  StoredContactImport, StoredContactImportRow, ContactImportStageBatch, ContactImportStageResult, ContactImportTransition,
+  ContactImportTotals, ContactImportIdleQuery, ContactImportFinishedPurge, ContactImportRowWindow,
+} from "./store";
+
+/** U29 · the most rows one keyset page, and one access-export read for a number, hand back — the memory twin's bounds. */
+const CONTACT_IMPORT_ROW_PAGE_MAX = 2000;
+const CONTACT_IMPORT_ROWS_BY_NUMBER_MAX = 1000;
+
+/** ContactImport row -> StoredContactImport (marketing U29). ⚠️ Named `…Record`, not `…Row`: `ContactImportRow` is a
+ *  model of its own. The two JSON columns come back as whatever was written: the service validates before it drafts. */
+type ContactImportRecord = {
+  id: string; status: string; format: string; fileName: string | null; fileDigest: string; mapping: unknown;
+  totalRows: number; unreadable: number; stagedThrough: number; committedThrough: number;
+  decisionChoice: string | null; decisionOverrides: unknown; decisionConfirmedAt: Date | null; decisionConfirmedBy: string | null;
+  consentBasis: string | null; consentWording: string | null; consentProofNote: string | null; adultAttestedAt: Date | null;
+  consentBasisSetBy: string | null; consentBasisSetAt: Date | null;
+  pausedAt: Date | null; pausedBy: string | null; finishedAt: Date | null;
+  createdAt: Date; createdBy: string; updatedAt: Date;
+};
+function toStoredContactImport(r: ContactImportRecord): StoredContactImport {
+  return {
+    id: r.id,
+    status: r.status as StoredContactImport["status"],
+    format: r.format as StoredContactImport["format"],
+    fileName: r.fileName,
+    fileDigest: r.fileDigest,
+    mapping: (r.mapping ?? {}) as StoredContactImport["mapping"],
+    totalRows: r.totalRows,
+    unreadable: r.unreadable,
+    stagedThrough: r.stagedThrough,
+    committedThrough: r.committedThrough,
+    decisionChoice: r.decisionChoice as StoredContactImport["decisionChoice"],
+    decisionOverrides: (r.decisionOverrides ?? {}) as StoredContactImport["decisionOverrides"],
+    decisionConfirmedAt: iso(r.decisionConfirmedAt),
+    decisionConfirmedBy: r.decisionConfirmedBy,
+    consentBasis: r.consentBasis,
+    consentWording: r.consentWording,
+    consentProofNote: r.consentProofNote,
+    adultAttestedAt: iso(r.adultAttestedAt),
+    consentBasisSetBy: r.consentBasisSetBy,
+    consentBasisSetAt: iso(r.consentBasisSetAt),
+    pausedAt: iso(r.pausedAt),
+    pausedBy: r.pausedBy,
+    finishedAt: iso(r.finishedAt),
+    createdAt: iso(r.createdAt),
+    createdBy: r.createdBy,
+    updatedAt: iso(r.updatedAt),
+  };
+}
+
+/** ContactImportRow row -> StoredContactImportRow (marketing U29). */
+type ContactImportRowRecord = {
+  importId: string; ordinal: number; line: number; rawPhone: string; msisdn: string | null; displayName: string | null;
+  email: string | null; tags: string[]; notes: string | null; problems: unknown; readError: string | null;
+  outcome: string | null; outcomeReason: string | null; stagedAt: Date;
+};
+function toStoredContactImportRow(w: ContactImportRowRecord): StoredContactImportRow {
+  return {
+    importId: w.importId,
+    ordinal: w.ordinal,
+    line: w.line,
+    rawPhone: w.rawPhone,
+    msisdn: w.msisdn,
+    displayName: w.displayName,
+    email: w.email,
+    tags: w.tags,
+    notes: w.notes,
+    problems: (Array.isArray(w.problems) ? w.problems : []) as StoredContactImportRow["problems"],
+    readError: w.readError,
+    outcome: w.outcome as StoredContactImportRow["outcome"],
+    outcomeReason: w.outcomeReason,
+    stagedAt: iso(w.stagedAt),
+  };
+}
+
+/** U29 · why a staging batch lost its compare-and-set, read off the run as it stands now — in the memory twin's order,
+ *  so the two twins give one answer. */
+function stageLoss(run: StoredContactImport | null, b: ContactImportStageBatch): ContactImportStageResult {
+  if (!run) return { ok: false, reason: "not_found", run: null };
+  if (run.status !== "STAGING") return { ok: false, reason: "not_staging", run };
+  return { ok: false, reason: run.stagedThrough > b.from - 1 ? "already_staged" : "out_of_order", run };
+}
+
 const SMS_MESSAGE_COLUMN: Record<keyof StoredSmsMessage, "date" | "plain" | null> = {
   reference: null,
   createdAt: null,
@@ -4128,6 +4214,196 @@ export const prismaDb = {
         orderBy: [{ addedAt: "desc" }, { listId: "desc" }],
       });
       return rows.map(toStoredContactListMember);
+    },
+  },
+
+  /* ═══ CONTACT IMPORT STAGING (marketing U29) ═══════════════════════════════════════════════
+   * ⭐ EVERY COMPARE-AND-SET IS ONE CONDITIONAL UPDATE: Postgres re-checks its where after a concurrent commit, so the
+   * loser counts 0 and writes nothing. `stageRows` runs that update FIRST, inside ONE short interactive transaction, and
+   * inserts the rows after it — a lost compare inserts nothing, and a refused insert rolls the cursor back with it. The
+   * foreign key's cascade takes a purged run's rows. ⛔ `create` never upserts. `test:dal-parity` §24 holds the pairs. */
+  contactImport: {
+    create: async (row: StoredContactImport): Promise<StoredContactImport | null> => {
+      try {
+        const created = await pc().contactImport.create({
+          data: {
+            id: row.id,
+            status: row.status as never,
+            format: row.format as never,
+            fileName: row.fileName,
+            fileDigest: row.fileDigest,
+            mapping: row.mapping as unknown as Prisma.InputJsonValue,
+            totalRows: row.totalRows,
+            unreadable: row.unreadable,
+            stagedThrough: row.stagedThrough,
+            committedThrough: row.committedThrough,
+            decisionChoice: row.decisionChoice as never,
+            decisionOverrides: row.decisionOverrides as unknown as Prisma.InputJsonValue,
+            decisionConfirmedAt: row.decisionConfirmedAt ? new Date(row.decisionConfirmedAt) : null,
+            decisionConfirmedBy: row.decisionConfirmedBy,
+            consentBasis: row.consentBasis,
+            consentWording: row.consentWording,
+            consentProofNote: row.consentProofNote,
+            adultAttestedAt: row.adultAttestedAt ? new Date(row.adultAttestedAt) : null,
+            consentBasisSetBy: row.consentBasisSetBy,
+            consentBasisSetAt: row.consentBasisSetAt ? new Date(row.consentBasisSetAt) : null,
+            pausedAt: row.pausedAt ? new Date(row.pausedAt) : null,
+            pausedBy: row.pausedBy,
+            finishedAt: row.finishedAt ? new Date(row.finishedAt) : null,
+            createdAt: new Date(row.createdAt),
+            createdBy: row.createdBy,
+            updatedAt: new Date(row.updatedAt),
+          },
+        });
+        return toStoredContactImport(created);
+      } catch (err) {
+        if ((err as { code?: string })?.code === "P2002") return null;
+        throw err;
+      }
+    },
+    find: async (id: string): Promise<StoredContactImport | null> => {
+      const row = await pc().contactImport.findUnique({ where: { id } });
+      return row ? toStoredContactImport(row) : null;
+    },
+    /** An officer's OPEN run — the adopt read. The EARLIEST, so two tabs that raced to open one file converge on one. */
+    findOpenFor: async (createdBy: string): Promise<StoredContactImport | null> => {
+      const row = await pc().contactImport.findFirst({
+        where: { createdBy, status: { in: ["STAGING", "STAGED", "COMMITTING", "PAUSED"] } },
+        orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+      });
+      return row ? toStoredContactImport(row) : null;
+    },
+    /** The idle sweep's read (X29): runs in `q.statuses` untouched since `q.idleBefore`, oldest first, at most `q.limit`. */
+    listIdle: async (q: ContactImportIdleQuery): Promise<StoredContactImport[]> => {
+      const rows = await pc().contactImport.findMany({
+        where: { status: { in: q.statuses as never }, updatedAt: { lt: new Date(q.idleBefore) } },
+        orderBy: [{ updatedAt: "asc" }, { id: "asc" }],
+        take: Math.max(0, q.limit),
+      });
+      return rows.map(toStoredContactImport);
+    },
+    /** ⭐ COMPARE-AND-SET ON STATUS: one conditional update whose where holds the statuses it may move from (and, for the
+     *  sweep, the idle bound). DONE and CANCELLED stamp `finishedAt`; PAUSED records who and when; a resume clears it. */
+    transition: async (t: ContactImportTransition): Promise<StoredContactImport | null> => {
+      const resumed = t.to === "COMMITTING" && t.from.includes("PAUSED");
+      const moved = await pc().contactImport.updateMany({
+        where: {
+          id: t.importId,
+          status: { in: t.from as never },
+          ...(t.updatedBefore !== null ? { updatedAt: { lt: new Date(t.updatedBefore) } } : {}),
+        },
+        data: {
+          status: t.to as never,
+          updatedAt: new Date(t.at),
+          ...(t.to === "DONE" || t.to === "CANCELLED" ? { finishedAt: new Date(t.at) } : {}),
+          ...(t.to === "PAUSED" ? { pausedAt: new Date(t.at), pausedBy: t.by } : {}),
+          ...(resumed ? { pausedAt: null, pausedBy: null } : {}),
+        },
+      });
+      if (moved.count !== 1) return null;
+      const row = await pc().contactImport.findUnique({ where: { id: t.importId } });
+      return row ? toStoredContactImport(row) : null;
+    },
+    /** ⭐ THE STAGING COMPARE-AND-SET (X2). The conditional update — status STAGING and `stagedThrough` exactly
+     *  `b.from - 1` — runs FIRST; only when it counted 1 are the rows inserted, unsettled (no outcome, no reason), in the
+     *  SAME transaction. A replay or a racing tab counts 0 and inserts nothing; a line already staged (the unique
+     *  importId + line) rolls the whole batch back, cursor included. One short row lock per batch — no lock held across
+     *  an import. */
+    stageRows: async (b: ContactImportStageBatch): Promise<ContactImportStageResult> => {
+      if (b.rows.length === 0) throw new Error("stageRows: an empty batch");
+      b.rows.forEach((row, i) => {
+        if (row.importId !== b.importId || row.ordinal !== b.from + i) throw new Error("stageRows: the rows must run from b.from, one ordinal each, in this run");
+      });
+      try {
+        return await pc().$transaction(async (tx) => {
+          const moved = await tx.contactImport.updateMany({
+            where: { id: b.importId, status: "STAGING", stagedThrough: b.from - 1 },
+            data: { stagedThrough: b.from - 1 + b.rows.length, status: b.completes ? "STAGED" : "STAGING", updatedAt: new Date(b.at) },
+          });
+          if (moved.count !== 1) {
+            const current = await tx.contactImport.findUnique({ where: { id: b.importId } });
+            return stageLoss(current ? toStoredContactImport(current) : null, b);
+          }
+          await tx.contactImportRow.createMany({
+            data: b.rows.map((row) => ({
+              importId: b.importId,
+              ordinal: row.ordinal,
+              line: row.line,
+              rawPhone: row.rawPhone,
+              msisdn: row.msisdn,
+              displayName: row.displayName,
+              email: row.email,
+              tags: row.tags,
+              notes: row.notes,
+              problems: row.problems as unknown as Prisma.InputJsonValue,
+              readError: row.readError,
+              stagedAt: new Date(row.stagedAt),
+            })),
+          });
+          const run = await tx.contactImport.findUnique({ where: { id: b.importId } });
+          if (!run) throw new Error("stageRows: the run vanished inside its own transaction");
+          return { ok: true as const, run: toStoredContactImport(run) };
+        }, { timeout: 15_000, maxWait: 5_000 });
+      } catch (err) {
+        if ((err as { code?: string })?.code !== "P2002") throw err;
+        const current = await pc().contactImport.findUnique({ where: { id: b.importId } });
+        return { ok: false, reason: "duplicate_line", run: current ? toStoredContactImport(current) : null };
+      }
+    },
+    /** ⛔ COUNTED FROM THE ROWS, never stored (OD26): one groupBy on outcome and one count of the unreadable — never a
+     *  fetch-all-then-count. */
+    totals: async (importId: string): Promise<ContactImportTotals> => {
+      const groups = await pc().contactImportRow.groupBy({ by: ["outcome"], where: { importId }, _count: { _all: true } });
+      const unreadable = await pc().contactImportRow.count({ where: { importId, readError: { not: null } } });
+      const out: ContactImportTotals = { staged: 0, unreadable, pending: 0, create: 0, update: 0, keep: 0, fail: 0 };
+      for (const g of groups as Array<{ outcome: StoredContactImportRow["outcome"]; _count: { _all: number } }>) {
+        out.staged += g._count._all;
+        if (g.outcome === null) out.pending += g._count._all;
+        else out[g.outcome] += g._count._all;
+      }
+      return out;
+    },
+    /** Retention, 90 days after `finishedAt`: up to `q.limit` DONE or CANCELLED runs, oldest first. Their rows go by the
+     *  foreign key's ON DELETE CASCADE. */
+    purgeFinished: async (q: ContactImportFinishedPurge): Promise<number> => {
+      const ids = (await pc().contactImport.findMany({
+        where: { status: { in: ["DONE", "CANCELLED"] }, finishedAt: { lt: new Date(q.finishedBefore) } },
+        select: { id: true },
+        orderBy: [{ finishedAt: "asc" }, { id: "asc" }],
+        take: Math.max(0, q.limit),
+      })).map((r) => r.id);
+      if (ids.length === 0) return 0;
+      return (await pc().contactImport.deleteMany({
+        where: { id: { in: ids }, status: { in: ["DONE", "CANCELLED"] }, finishedAt: { lt: new Date(q.finishedBefore) } },
+      })).count;
+    },
+  },
+
+  contactImportRow: {
+    /** ⭐ THE KEYSET (X2): the rows AFTER `w.afterOrdinal`, ordinal ascending, bounded — never `skip`, so a row erasure
+     *  deletes between two pages cannot shift the walk onto the wrong row. */
+    after: async (w: ContactImportRowWindow): Promise<StoredContactImportRow[]> => {
+      const rows = await pc().contactImportRow.findMany({
+        where: { importId: w.importId, ordinal: { gt: w.afterOrdinal } },
+        orderBy: { ordinal: "asc" },
+        take: Math.max(0, Math.min(w.limit, CONTACT_IMPORT_ROW_PAGE_MAX)),
+      });
+      return rows.map(toStoredContactImportRow);
+    },
+    /** A discarded or swept run's UNSETTLED rows. A settled row is the commit's record and stays. */
+    deleteUnsettled: async (importId: string): Promise<number> =>
+      (await pc().contactImportRow.deleteMany({ where: { importId, outcome: null } })).count,
+    /** ⭐ ERASURE'S REACH (U29b): every staged row, in every run, that holds this number (indexed). */
+    deleteByMsisdn: async (msisdn: string): Promise<number> =>
+      (await pc().contactImportRow.deleteMany({ where: { msisdn } })).count,
+    /** The access export's read: the staged rows holding this number, oldest first, bounded. */
+    listByMsisdn: async (msisdn: string): Promise<StoredContactImportRow[]> => {
+      const rows = await pc().contactImportRow.findMany({
+        where: { msisdn },
+        orderBy: [{ stagedAt: "asc" }, { importId: "asc" }, { ordinal: "asc" }],
+        take: CONTACT_IMPORT_ROWS_BY_NUMBER_MAX,
+      });
+      return rows.map(toStoredContactImportRow);
     },
   },
 

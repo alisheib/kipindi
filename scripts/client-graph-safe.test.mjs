@@ -167,6 +167,10 @@ console.log("\n[client-graph-safe] \u00a71 client-reachable modules stay clear o
     // the tag and list-name checks and the wire shapes — read by the "use client" bar and by the server's service alike.
     // It imports only contact-fields.ts, pinned here.
     "lib/contacts/bulk-rules.ts",
+    // ⭐ ADDED 2026-10-02 (marketing U29b, decision M3). The staging caps and the ONE packer: the import dialog packs its
+    // batches with it in the browser and the server measures each batch with it. It imports two constants from
+    // xlsx-limits.ts and types from contact-fields.ts and parsed-file.ts, all pinned here.
+    "lib/contacts/import-limits.ts",
     // ⭐ ADDED 2026-10-01 (marketing S10, the pure engines): client-safe src/lib/marketing modules the composer, the
     // estimate and the confirmation will import into client components — each must stay free of the Prisma client.
     "lib/marketing/erasure-mark.ts",

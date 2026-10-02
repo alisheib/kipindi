@@ -3418,6 +3418,159 @@ model ContactListMember {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════════════
+// CONTACT IMPORT STAGING (marketing U29 — OD26 · OD30; decisions X1 · X2 · X18–X20 · X23 · X28 · X29)
+//
+// ⭐ THE ONE STAGING MODEL (X2). A contacts file is read in the BROWSER (OD29) and posted here as rows, batch by
+// batch, so an import survives a closed tab, a reload and a redeploy: the run row says how far staging and the commit
+// have reached, and the rows say what the file said. ONE hand-written expand-only migration
+// (20261002090000_contact_import_staging) carries every column the later units need — U31's frozen decision, U33's
+// consent basis, U32's pause — with four BRAND-NEW enum types, so no value is ever added to an existing enum (55P04)
+// and no conditional migration is owed later.
+//
+// ⛔ NO STORED COUNTER (OD26). How many rows are staged, unreadable, pending, created, updated, kept or failed is a
+// groupBy over ContactImportRow, in both twins. The run carries only its two compare-and-set cursors —
+// `stagedThrough` and `committedThrough`; the name `cursor` is banned, it is Prisma's pagination argument — and the
+// browser's two figures, `totalRows` and `unreadable`, shown as "read from your file".
+//
+// ⛔ A STAGED ROW IS NOT A CONTACT. Nothing here is an audience, nothing here sends, and no consent is read from a
+// file (OD10). `MarketingContact.importId` stays a SOFT key — no foreign key — so `prisma migrate deploy` can never
+// fail validating live book rows, and a run that retention purges leaves the contacts it created as they are.
+// ═══════════════════════════════════════════════════════════════════════════════════════
+
+/// Where a staged import is in its life (X2). ⭐ Every status a later unit needs is created HERE, in the type's own
+/// migration, so no `ALTER TYPE … ADD VALUE` — which must ship one deploy ahead of any writer (55P04) — is ever owed.
+enum ContactImportStatus {
+  /// Records are arriving from the browser, batch by batch; `stagedThrough` moves.
+  STAGING
+  /// Every record the browser read is staged. Pre-flight (U30) reads it; nothing has been written to the book.
+  STAGED
+  /// The commit (U32) is writing it to the book, batch by batch; `committedThrough` moves.
+  COMMITTING
+  /// A commit an officer or a refusal stopped — resumable from `committedThrough`. ⛔ The idle sweep NEVER cancels
+  /// it (X29): only STAGING and STAGED runs are swept.
+  PAUSED
+  /// Every staged row has settled. `finishedAt` is set.
+  DONE
+  /// Left unimported — discarded by its officer, or cancelled by the 14-day idle sweep — with its unsettled rows
+  /// deleted. `finishedAt` is set.
+  CANCELLED
+}
+
+/// The kind of file a run was read from: `ContactsFileFormat` in `src/lib/contacts/parsed-file.ts`, value for value
+/// and in its own lower case (the `AdminDomain` precedent), so neither twin translates.
+enum ContactImportFormat {
+  csv
+  xlsx
+  vcard
+  paste
+}
+
+/// U31's three choices (`IMPORT_CHOICES` in `import-decide.ts`), frozen on the run by U32's start action.
+enum ContactImportChoice {
+  KEEP
+  TAKE_FILE
+  FILL_BLANKS
+}
+
+/// X4's ONE outcome union (`IMPORT_OUTCOMES` in `import-decide.ts`), value for value. A row's outcome is NULL until
+/// U32's commit settles it; its reason is TEXT (`IMPORT_OUTCOME_REASONS`), so a new reason costs no migration.
+enum ContactImportOutcome {
+  create
+  update
+  keep
+  fail
+}
+
+/// ⭐ ONE IMPORT RUN (U29). `stagedThrough` and `committedThrough` are ORDINALS — how many records are staged, how
+/// many the commit has settled — and each moves only by a compare-and-set: staging's `stageRows` (both twins) and
+/// U32's `commitBatch`. `totalRows` and `unreadable` are the BROWSER's figures (OD29 parses in the browser); they
+/// decide nothing about consent, money or an audience, and the server holds every staged batch to them.
+model ContactImport {
+  /// `ci_` and twenty letters, minted by the service — no digit run that could read as a phone number in a log, a
+  /// URL or the book's `sourceRef` (X6). ⛔ `create` never upserts: a held id is refused.
+  id                  String               @id
+  status              ContactImportStatus  @default(STAGING)
+  format              ContactImportFormat
+  /// The file's name as the browser reported it — a label, cleaned and bounded. ⛔ Never in an audit payload, never in
+  /// an access export.
+  fileName            String?
+  /// sha-256 of the file's bytes, 64 lower-case hex, computed in the browser: the same digest ADOPTS the run (X18).
+  fileDigest          String
+  /// U28's `ColumnMapping` (X20), validated at open. The server drafts every posted row with THIS mapping.
+  mapping             Json
+  totalRows           Int
+  unreadable          Int                  @default(0)
+  stagedThrough       Int                  @default(0)
+  committedThrough    Int                  @default(0)
+  /// U31 · the officer's choice and per-row overrides (keyed by the file's `line`), frozen by U32's start action.
+  decisionChoice      ContactImportChoice?
+  decisionOverrides   Json                 @default("{}")
+  decisionConfirmedAt DateTime?            @db.Timestamptz(3)
+  decisionConfirmedBy String?
+  /// U33 · the consent basis the run is applied under, written ONCE by U32's start action (owner gate G4). ⛔ The key
+  /// is validated against the append-only catalogue in `consent-basis.ts`, never a Postgres enum.
+  consentBasis        String?
+  consentWording      String?
+  consentProofNote    String?
+  adultAttestedAt     DateTime?            @db.Timestamptz(3)
+  consentBasisSetBy   String?
+  consentBasisSetAt   DateTime?            @db.Timestamptz(3)
+  /// U32 · who stopped a commit and when (X18: "Stopped by Amina at 14:02"); a resume clears both.
+  pausedAt            DateTime?            @db.Timestamptz(3)
+  pausedBy            String?
+  /// Set when the run reaches DONE or CANCELLED. Retention deletes the run 90 days after it, its rows with it.
+  finishedAt          DateTime?            @db.Timestamptz(3)
+  createdAt           DateTime             @default(now()) @db.Timestamptz(3)
+  /// The officer who started it — a soft key, as on the book. An ADMIN may adopt the run (X18).
+  createdBy           String
+  updatedAt           DateTime             @default(now()) @updatedAt @db.Timestamptz(3)
+
+  rows                ContactImportRow[]
+
+  /// An officer's open run — the adopt read.
+  @@index([createdBy, status])
+  /// The idle sweep (X29).
+  @@index([status, updatedAt])
+  /// The retention purge.
+  @@index([status, finishedAt])
+}
+
+/// ⭐ ONE RECORD OF THE FILE, as the SERVER drafted it (X2, X19). `ordinal` is its place in the run — 1, 2, 3 — and
+/// every walk is a keyset on it, never an offset; `line` is its row in the officer's own file (C15's name). A readable
+/// record carries U28's drafted fields, every over-limit or malformed one REPORTED in `problems` and kept whole (X20),
+/// and the key `parseTzNumber` derives on the server (`msisdn`, NULL unless the number is a sendable mobile); an
+/// unreadable record carries `readError` and nothing else. ⛔ The payload is staff-held personal data: erasure deletes
+/// a person's rows by number, the access export carries them, and the idle sweep and retention delete them.
+model ContactImportRow {
+  importId      String
+  ordinal       Int
+  line          Int
+  rawPhone      String
+  msisdn        String?
+  displayName   String?
+  email         String?
+  tags          String[]              @default([])
+  notes         String?
+  /// U28's `FieldProblem[]` for this record, as `draftContactRow` reported them — a field named, never its value.
+  problems      Json                  @default("[]")
+  readError     String?
+  outcome       ContactImportOutcome?
+  outcomeReason String?
+  /// When the record reached us — the access export's bound (a row staged before the account existed is not theirs).
+  stagedAt      DateTime              @db.Timestamptz(3)
+
+  run           ContactImport         @relation(fields: [importId], references: [id], onDelete: Cascade)
+
+  @@id([importId, ordinal])
+  /// ⛔ One record per file row: a producer that emitted two for one line is refused, never silently doubled.
+  @@unique([importId, line])
+  /// The totals' groupBy.
+  @@index([importId, outcome])
+  /// Erasure's reach — every run's rows holding a number.
+  @@index([msisdn])
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════════════
 // SMS CAMPAIGNS (marketing U35b — D22; decisions X1 · X8 · X12–X15 · M5 · M6 · M9)
 //
 // ⭐ TWO TABLES AND THREE NEW TYPES, IN ONE HAND-WRITTEN EXPAND-ONLY MIGRATION

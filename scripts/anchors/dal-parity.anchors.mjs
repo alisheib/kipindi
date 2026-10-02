@@ -802,6 +802,59 @@ export const MUTATIONS = [
     to: `        // (an existing member overwritten)`,
     expect: `23.add.memory · the memory add keeps an existing member UNTOUCHED (its original addedAt) — asked BEFORE it writes — stamps a new one with the caller's at, and refuses a list that does not exist, as the foreign key does`,
   },
+  /* ── §24 · contact import staging — ContactImport / ContactImportRow (U29, S10 2026-10-02) ─────────────────────────── */
+  {
+    // ⭐ THE PLAN'S OWN RED: a key planted in ONE mapper only. The commit's resume point is written to Postgres and read
+    // back as 0, so a resumed commit would start again from the file's first row — on Postgres only.
+    name: "prisma-dal.ts — toStoredContactImport reads committedThrough as 0 (a key in one mapper only)",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `    committedThrough: r.committedThrough,`,
+    to: `    committedThrough: 0,`,
+    expect: `24.read · toStoredContactImport maps "committedThrough" from the row`,
+  },
+  {
+    // 🔴 THE STAGING COMPARE-AND-SET DROPPED, ON POSTGRES ONLY: two tabs posting one batch both move the cursor (the second
+    // jumps it past rows nobody staged, or the unique line rolls back only the luckier one) while every memory suite
+    // still refuses the second.
+    name: "prisma-dal.ts — stageRows' conditional update loses stagedThrough: b.from - 1",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `            where: { id: b.importId, status: "STAGING", stagedThrough: b.from - 1 },`,
+    to: `            where: { id: b.importId, status: "STAGING" },`,
+    expect: `24.cas.stage.prisma · ⭐ stageRows is ONE interactive transaction, its timeout and maxWait set, whose FIRST write is the compare-and-set — updateMany where { id, status STAGING, stagedThrough: b.from - 1 } — and whose rows are inserted only after it, only when it counted 1`,
+  },
+  {
+    // 🔴 after() BY OFFSET: a row erasure deletes between two pages shifts the walk, and the commit skips a row.
+    name: "prisma-dal.ts — after() pages by offset instead of a keyset on ordinal",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `        where: { importId: w.importId, ordinal: { gt: w.afterOrdinal } },`,
+    to: `        where: { importId: w.importId },
+        skip: w.afterOrdinal,`,
+    expect: `24.keyset.prisma · ⭐ after() is a KEYSET on ordinal — where ordinal gt w.afterOrdinal, ordered ordinal asc, take bounded by CONTACT_IMPORT_ROW_PAGE_MAX — and never skip`,
+  },
+  {
+    // …and the same three defects on the twin every behavioural suite runs on.
+    name: "store.ts — the memory stageRows loses its compare-and-set on stagedThrough",
+    file: "src/lib/server/store.ts",
+    from: `      if (run.stagedThrough !== b.from - 1) return { ok: false, reason: run.stagedThrough > b.from - 1 ? "already_staged" : "out_of_order", run };`,
+    to: `      // (the compare-and-set removed)`,
+    expect: `24.cas.stage.memory · ⭐ the memory stageRows refuses unless the run is STAGING and stagedThrough is exactly b.from - 1 — both asked BEFORE any row or the run is written`,
+  },
+  {
+    name: "store.ts — the memory after() pages by offset (an index) instead of the ordinal keyset",
+    file: "src/lib/server/store.ts",
+    from: `        .filter((row) => row.ordinal > w.afterOrdinal)`,
+    to: `        .filter((_row, index) => index >= w.afterOrdinal)`,
+    expect: `24.keyset.memory · …and the memory after() filters row.ordinal > w.afterOrdinal, sorts by ordinal and slices only from 0 — never an offset`,
+  },
+  {
+    // 🔴 U18b's CLASS AGAIN: the memory purge forgets what Postgres's ON DELETE CASCADE does, so every suite keeps the
+    // staged rows of a run production has deleted — a person's name kept past its period, in memory only.
+    name: "store.ts — the memory purgeFinished forgets the purged runs' rows",
+    file: "src/lib/server/store.ts",
+    from: `        store.contactImportRows.delete(r.id);`,
+    to: `        // (the rows left behind)`,
+    expect: `24.purge.memory.cascade · ⭐ the memory purgeFinished deletes the purged runs' ROWS too — the ON DELETE CASCADE Postgres does for the other twin`,
+  },
   /* ── §26 · the campaign tables (U35b, S10 2026-10-02) ──────────────────────────────────────────────── */
   {
     // 🔴 The read half of the no-op, on the campaign: the audience is written and read back as nothing — U40's watermark

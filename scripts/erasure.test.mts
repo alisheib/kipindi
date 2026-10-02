@@ -72,7 +72,7 @@ import { mayReceiveMarketingSms } from "../src/lib/server/marketing/consent.ts";
 import { marketingDsarView } from "../src/lib/server/marketing/dsar.ts";
 import { buildDsarBundle } from "../src/lib/server/privacy.ts";
 import { exportUserData } from "../src/lib/server/user-service.ts";
-import type { StoredMarketingContact } from "../src/lib/server/store.ts";
+import type { StoredContactImportRow, StoredMarketingContact } from "../src/lib/server/store.ts";
 // 04 A5 / R6 (C5-SPEC ruling 244): the six house tables a holder's erasure has to reach or sweep.
 import {
   houseBotStore, houseBotEventStore, houseBotIntentStore, pressStore, targetStore, newHouseId,
@@ -247,6 +247,36 @@ const contactRow = (id: string, msisdn: string, userId: string | null, displayNa
 await db.marketingContact.create(contactRow("mc_erase_now", SUBJECT_KEY, SUBJECT, NAME));
 await db.marketingContact.create(contactRow("mc_erase_old", SUBJECT_OLD, SUBJECT, NAME));
 await db.marketingContact.create(contactRow("mc_erase_bystander", BYSTANDER, null, "Juma Bystander"));
+
+/* ── U29b · AN IMPORT MID-STAGING ─────────────────────────────────────────────────────────────────────────────
+ * An officer's unfinished import holds the subject's NAME on two rows — today's number and the earlier one — beside two
+ * strangers' rows. Erasure must delete the subject's two (by every number the person is known by) and keep the
+ * strangers': §8 sweeps the run's rows (`contactImportRows`, in MUST_HAVE_CONTENT because the strangers' rows must
+ * remain) and §12 counts them. Written through the DAL alone, independent of the staging service under test elsewhere. */
+const STAGED_RUN = "ci_erasurefixturerunaaa";
+const STAGED_AT = iso(NOW - 2 * DAY);
+const stagedRow = (ordinal: number, line: number, msisdn: string, displayName: string, email: string | null): StoredContactImportRow => ({
+  importId: STAGED_RUN, ordinal, line, rawPhone: `0${msisdn.slice(3, 6)} ${msisdn.slice(6, 9)} ${msisdn.slice(9)}`, msisdn,
+  displayName, email, tags: [displayName.toLowerCase()], notes: `Met ${displayName} at the stadium`, problems: [],
+  readError: null, outcome: null, outcomeReason: null, stagedAt: STAGED_AT,
+});
+await db.contactImport.create({
+  id: STAGED_RUN, status: "STAGING", format: "csv", fileName: "stadium-list.csv", fileDigest: "e".repeat(64),
+  mapping: { phone: 0, name: 1, email: 2, tags: 3, notes: 4 }, totalRows: 6, unreadable: 0, stagedThrough: 0,
+  committedThrough: 0, decisionChoice: null, decisionOverrides: {}, decisionConfirmedAt: null, decisionConfirmedBy: null,
+  consentBasis: null, consentWording: null, consentProofNote: null, adultAttestedAt: null, consentBasisSetBy: null,
+  consentBasisSetAt: null, pausedAt: null, pausedBy: null, finishedAt: null, createdAt: STAGED_AT, createdBy: "usr_officer",
+  updatedAt: STAGED_AT,
+});
+await db.contactImport.stageRows({
+  importId: STAGED_RUN, from: 1, completes: false, at: STAGED_AT,
+  rows: [
+    stagedRow(1, 2, SUBJECT_KEY, NAME, EMAIL),
+    stagedRow(2, 3, "255754000998", "Rehema Stranger", null),
+    stagedRow(3, 4, SUBJECT_OLD, NAME, null),
+    stagedRow(4, 5, "255754000997", "Musa Stranger", null),
+  ],
+});
 
 // ═════════════════════════════════════════════════════════════════════════════
 section("1 · CONTROL — the fixtures are really there before anything is measured");
@@ -786,6 +816,8 @@ section("8 · ⭐ THE SWEEP — nothing anywhere still holds an erased identifie
       .map((r) => ({ ...r, identifier: "[key]" })),
     consentLedger: ledgerRows.map((r) => ({ ...r, identifier: "[key]" })),
     marketingLedgerKeys: ledgerRows.map((r) => r.identifier),
+    // ── U29b · an import mid-staging: the subject's two rows must be gone, the strangers' two must remain ─────────────
+    contactImportRows: await db.contactImportRow.after({ importId: STAGED_RUN, afterOrdinal: 0, limit: 100 }),
   };
   ok("8.0 CONTROL · the sweep really read something", Object.keys(buckets).length >= 20,
     `${Object.keys(buckets).length} buckets`);
@@ -800,7 +832,8 @@ section("8 · ⭐ THE SWEEP — nothing anywhere still holds an erased identifie
   const MUST_HAVE_CONTENT = ["users", "kyc", "txns", "wallets", "notificationsReferrer",
     "comments", "sourceOfFunds", "positions", "audit",
     "notificationsAdmin", "houseBots", "houseBotEvents", "houseBotIntents", "houseBotPresses",
-    "houseBotTargets", "marketingContacts", "marketingContactKeys", "consentLedger", "marketingLedgerKeys"] as const;
+    "houseBotTargets", "marketingContacts", "marketingContactKeys", "consentLedger", "marketingLedgerKeys",
+    "contactImportRows"] as const;
   /**
    * ⛔ AND A PAGE-SHAPED BUCKET NEEDS ITS OWN COUNT. `{"rows":[],"nextCursor":null}` is 30
    * characters, so the length test above passes an EMPTY keyset page — which is exactly the
@@ -1085,6 +1118,11 @@ section("12 · ⭐ MARKETING — the consent withdrawn, the book emptied (U18b)"
     result.ok && result.counts.marketingConsentWithdrawn === 1, result.ok ? JSON.stringify(result.counts) : "-");
   ok("12.1b …and emptied both linked book rows",
     result.ok && result.counts.marketingContactsEmptied === 2);
+  const stagedLeft = await db.contactImportRow.after({ importId: STAGED_RUN, afterOrdinal: 0, limit: 100 });
+  ok("12.1c ⭐ U29b · the first pass DELETED the subject's two staged import rows — today's number and the earlier one — and kept the two strangers' rows in the same run",
+    result.ok && result.counts.marketingStagedRowsDeleted === 2 && stagedLeft.map((r) => r.ordinal).join(",") === "2,4"
+      && !stagedLeft.some((r) => r.msisdn === SUBJECT_KEY || r.msisdn === SUBJECT_OLD || r.displayName === NAME),
+    result.ok ? `${result.counts.marketingStagedRowsDeleted} deleted · left ${stagedLeft.map((r) => r.ordinal).join(",")}` : "-");
 
   ok("12.2 CONTROL · the erased number no longer finds the account — the gate takes the LEDGER branch, as on Postgres",
     (await db.user.findByPhone(PHONE)) === null);
@@ -1123,6 +1161,8 @@ section("12 · ⭐ MARKETING — the consent withdrawn, the book emptied (U18b)"
   const after = await marketingDsarView({ id: SUBJECT, phoneE164: erasedPhoneTombstone(SUBJECT), createdAt: iso(NOW - 200 * DAY) });
   ok("12.9 after erasure the export's marketing section is EMPTY — nothing reachable from the account any more",
     after.contacts.length === 0 && after.consent.length === 0 && after.suppression.length === 0, JSON.stringify(after));
+  ok("12.9e ⛔ U29b · …and no staged import row reaches the export either",
+    after.staged.length === 0, JSON.stringify(after.staged));
 
   // ⛔ A TOMBSTONE IS NEVER A KEY. `erased:usr_712345678bcd` keeps its digits through a naive normaliser,
   // and those digits make a valid-shaped Tanzanian number. A stranger lives at it here.
@@ -1185,6 +1225,10 @@ section("12 · ⭐ MARKETING — the consent withdrawn, the book emptied (U18b)"
   // Unlinked: the row carries only her number (created after her account, so it is hers to receive).
   await db.marketingContact.create(contactRow("mc_erase_m2", M2_KEY, null, "Neema"));
 
+  // U29b · Neema's number is on a staged import row too, with a staff note: the export carries the row, never the note.
+  await db.contactImport.stageRows({
+    importId: STAGED_RUN, from: 5, completes: false, at: iso(NOW - 1 * DAY), rows: [stagedRow(5, 6, M2_KEY, "Neema", null)],
+  });
   type MarketingSection = Awaited<ReturnType<typeof marketingDsarView>>;
   const bundle = await buildDsarBundle(M2) as { marketing: MarketingSection } | null;
   const own = await exportUserData(M2) as { marketing: unknown };
@@ -1200,6 +1244,9 @@ section("12 · ⭐ MARKETING — the consent withdrawn, the book emptied (U18b)"
       && !bundleJson.includes('"notes"') && !bundleJson.includes("optout:ref") && !bundleJson.includes("at the stadium"), bundleJson);
   ok("12.10d ⛔ a ledger row OLDER than her account — a previous holder's — is not in her file",
     !bundleJson.includes("previous holder"), bundleJson);
+  ok("12.10g ⭐ U29b · …and her staged import row is in the file — her name, never the staff note (12.10c holds the note out of the whole section)",
+    bundle?.marketing.staged.length === 1 && bundle.marketing.staged[0].displayName === "Neema" && bundle.marketing.staged[0].msisdn === M2_KEY
+      && !("notes" in bundle.marketing.staged[0]), JSON.stringify(bundle?.marketing.staged));
 
   // ⭐ A STOP OLDER THAN THE ACCOUNT: hidden while lifted (a previous holder's), SHOWN once it refuses this
   // person — a re-armed suppression keeps its first createdAt, so the date is withheld ("before this account").
@@ -1234,6 +1281,9 @@ section("12 · ⭐ MARKETING — the consent withdrawn, the book emptied (U18b)"
   ok("12.13 ⭐ the book row with NO link is reached through the number and emptied, by the DPO",
     r2.ok && r2.counts.marketingContactsEmptied === 1 && m2c?.displayName === null && m2c?.notes === null
       && m2c?.tags.length === 0 && m2c?.updatedBy === DPO, JSON.stringify(m2c));
+  ok("12.13b ⭐ U29b · …and her staged import row is DELETED by her number, the strangers' rows still standing",
+    r2.ok && r2.counts.marketingStagedRowsDeleted === 1
+      && (await db.contactImportRow.after({ importId: STAGED_RUN, afterOrdinal: 0, limit: 100 })).map((r) => r.ordinal).join(",") === "2,4");
   ok("12.14 the DSAR door hands the officer to the routine — privacy.ts passes the fulfilling officer",
     readFileSync("src/lib/server/privacy.ts", "utf8").includes("anonymizeClosedAccount(r.userId, { officerId: opts.officerId })"));
 

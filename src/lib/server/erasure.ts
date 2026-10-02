@@ -232,7 +232,7 @@ export async function anonymizeClosedAccount(
     agentApplicationsRedacted: 0, agentDocumentsDeleted: 0, agentDocumentObjectsFailed: 0,
     extraRequestsCleared: 0, comments: 0, notificationsDeleted: 0, notificationsRedacted: 0,
     otps: 0, pushSubscriptions: 0, watchlistEntries: 0, houseBots: 0, houseBotNotificationsRedacted: 0,
-    marketingConsentWithdrawn: 0, marketingContactsEmptied: 0,
+    marketingConsentWithdrawn: 0, marketingContactsEmptied: 0, marketingStagedRowsDeleted: 0,
   };
 
   // The clock runs from closure. A CLOSED row with no `closedAt` predates that column being

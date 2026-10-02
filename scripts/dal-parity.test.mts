@@ -1946,6 +1946,212 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
       && !SCOPE.untagWhere.test("const carrying: Prisma.MarketingContactWhereInput[] = [{ tags: { has: tag } }];"));
 }
 
+/* ═══ §24 · Contact import staging — ContactImport / ContactImportRow in both twins (U29, S10 2026-10-02; decision X1) ═══ */
+{
+  // ⭐ WHY THIS SECTION EXISTS. U29's staging is the import's resume point: a run row that says how far staging and the
+  // commit have reached, and the file's records. Every behavioural suite runs on the MEMORY twin, so a key one mapper
+  // drops, a compare-and-set one twin forgets, or a walk that pages by offset is right in every test and wrong in
+  // production — a commit that resumes from the file's first row, two tabs that both stage one batch, a row skipped
+  // because erasure deleted the one before it. This section holds the TWO twins to one shape. The behaviour — the
+  // resume, the race, the sweep — is `test:contacts-staging` (memory twin, in-process red) and, on PostgreSQL 18.3,
+  // `test:contacts-staging-db`. U31/U32/U33's members join this section as sub-assertions (X1).
+  const iKeys = storedKeys("StoredContactImport");
+  const rKeys = storedKeys("StoredContactImportRow");
+  const iRead = region(dalSrc, "function toStoredContactImport(");
+  const rRead = region(dalSrc, "function toStoredContactImportRow(");
+  const priRun = region(dalSrc, "\n  contactImport: {");
+  const priRow = region(dalSrc, "\n  contactImportRow: {");
+  const memRun = region(storeSrc, "\n  contactImport: {");
+  const memRow = region(storeSrc, "\n  contactImportRow: {");
+  /** One member's text in a twin's block: from `\n    <name>: ` to the next member at the same indent. */
+  const memberAt = (block: string, name: string): string => {
+    const at = block.indexOf(`\n    ${name}: `);
+    if (at < 0) return "";
+    const next = block.slice(at + 1).search(/\n {4}\w+\s*:/);
+    return next < 0 ? block.slice(at) : block.slice(at, at + 1 + next);
+  };
+  /** Each `<opener>{ … }` object literal in a source, brace-matched from the first brace after the opener. */
+  const objectsAfter = (src: string, opener: string): string[] => {
+    const out: string[] = [];
+    for (let at = src.indexOf(opener); at >= 0; at = src.indexOf(opener, at + 1)) {
+      const open = src.indexOf("{", at);
+      let depth = 0;
+      for (let i = open; i >= 0 && i < src.length; i++) {
+        if (src[i] === "{") depth++;
+        else if (src[i] === "}") { depth--; if (depth === 0) { out.push(src.slice(open, i + 1)); break; } }
+      }
+    }
+    return out;
+  };
+
+  const iCreate = memberAt(priRun, "create");
+  const pStage = memberAt(priRun, "stageRows");
+  const mStage = memberAt(memRun, "stageRows");
+  ok("24.0 · the parser sees StoredContactImport's fields (every agreed column, X2) and StoredContactImportRow's",
+    iKeys.length >= 26 && rKeys.length >= 14, `run ${iKeys.length}: ${iKeys.join(",")} · row ${rKeys.length}: ${rKeys.join(",")}`);
+  ok("24.0b · both read mappers, the Prisma create and both stageRows resolve, and both namespaces exist in both twins",
+    iRead.length > 600 && rRead.length > 300 && iCreate.length > 600 && pStage.length > 600 && mStage.length > 600
+      && memRun.length > 600 && memRow.length > 300 && priRow.length > 300,
+    `mappers ${iRead.length}/${rRead.length} · create ${iCreate.length} · stageRows ${pStage.length}/${mStage.length}`);
+  for (const k of iKeys) {
+    ok(`24.read · toStoredContactImport maps "${k}" from the row`, readsFrom(iRead, k, "r"));
+    ok(`24.create · contactImport.create writes "${k}"`, writesKey(iCreate, k));
+  }
+  for (const k of rKeys) ok(`24.read.row · toStoredContactImportRow maps "${k}" from the row`, readsFrom(rRead, k, "w"));
+
+  // ── A ROW IS STAGED UNSETTLED, AND WHOLE ──
+  const SETTLE_ONLY = ["outcome", "outcomeReason"];
+  const stageData = objectsAfter(pStage, "createMany(").join("\n");
+  for (const k of rKeys.filter((x) => !SETTLE_ONLY.includes(x))) {
+    ok(`24.stage.row · stageRows' createMany writes "${k}"`, writesKey(stageData, k));
+  }
+  ok("24.stage.nosettle · ⛔ a row is staged UNSETTLED: the Prisma createMany writes no outcome and no outcomeReason, and the memory twin stores both as null — a row staged pre-settled would skip the commit loop",
+    stageData.length > 200 && SETTLE_ONLY.every((k) => !writesKey(stageData, k)) && mStage.includes("outcome: null, outcomeReason: null"),
+    `${stageData.length} chars of createMany data`);
+
+  // ── ⭐ THE STAGING COMPARE-AND-SET, IN BOTH TWINS ──
+  const CAS_WHERE = /where:\s*\{\s*id:\s*b\.importId,\s*status:\s*"STAGING",\s*stagedThrough:\s*b\.from - 1\s*\}/;
+  const updAt = pStage.indexOf("updateMany(");
+  const casAt = pStage.search(CAS_WHERE);
+  const insAt = pStage.indexOf("createMany(");
+  ok("24.cas.stage.prisma · ⭐ stageRows is ONE interactive transaction, its timeout and maxWait set, whose FIRST write is the compare-and-set — updateMany where { id, status STAGING, stagedThrough: b.from - 1 } — and whose rows are inserted only after it, only when it counted 1",
+    /\$transaction\(async \(tx\) =>/.test(pStage) && /timeout:\s*15_000/.test(pStage) && /maxWait:\s*5_000/.test(pStage)
+      && updAt > 0 && casAt > updAt && insAt > casAt && /if \(moved\.count !== 1\)/.test(pStage),
+    `updateMany@${updAt} where@${casAt} createMany@${insAt}`);
+  const mStatusAt = mStage.indexOf('if (run.status !== "STAGING")');
+  const mCasAt = mStage.indexOf("if (run.stagedThrough !== b.from - 1)");
+  const mRowsAt = mStage.indexOf("rows.set(");
+  const mRunAt = mStage.indexOf("store.contactImports.set(");
+  ok("24.cas.stage.memory · ⭐ the memory stageRows refuses unless the run is STAGING and stagedThrough is exactly b.from - 1 — both asked BEFORE any row or the run is written",
+    mStatusAt > 0 && mCasAt > 0 && mRowsAt > Math.max(mStatusAt, mCasAt) && mRunAt > Math.max(mStatusAt, mCasAt),
+    `status@${mStatusAt} cas@${mCasAt} rows@${mRowsAt} run@${mRunAt}`);
+  ok("24.cas.lines · one record per file line holds across the run in both twins — the memory twin refuses a line already staged as duplicate_line, the Prisma twin turns the unique index's P2002 into the same answer",
+    /if \(lines\.has\(row\.line\)\) return \{ ok: false, reason: "duplicate_line", run \};/.test(mStage)
+      && /"P2002"/.test(pStage) && /reason: "duplicate_line"/.test(pStage));
+
+  // ── THE STATUS COMPARE-AND-SET ──
+  const pTrans = memberAt(priRun, "transition");
+  const mTrans = memberAt(memRun, "transition");
+  const mFromAt = mTrans.indexOf("!t.from.includes(run.status)");
+  ok("24.cas.transition · a status moves by compare-and-set in both twins: the Prisma where holds status in t.from and the sweep's idle bound, counting 1 or answering null; the memory twin asks the same two BEFORE it writes",
+    /status:\s*\{\s*in:\s*t\.from as never\s*\}/.test(pTrans) && /updatedAt:\s*\{\s*lt:\s*new Date\(t\.updatedBefore\)\s*\}/.test(pTrans)
+      && /if \(moved\.count !== 1\) return null;/.test(pTrans)
+      && mFromAt > 0 && mFromAt < mTrans.indexOf("store.contactImports.set(")
+      && /Date\.parse\(run\.updatedAt\) < Date\.parse\(t\.updatedBefore\)/.test(mTrans),
+    `${pTrans.length}/${mTrans.length} chars`);
+  ok("24.transition.stamps · both twins stamp finishedAt on DONE and CANCELLED, record who paused and when on PAUSED, and clear both on a resume from PAUSED",
+    /t\.to === "DONE" \|\| t\.to === "CANCELLED" \? \{ finishedAt: new Date\(t\.at\) \}/.test(pTrans)
+      && /t\.to === "PAUSED" \? \{ pausedAt: new Date\(t\.at\), pausedBy: t\.by \}/.test(pTrans)
+      && /const resumed = t\.to === "COMMITTING" && t\.from\.includes\("PAUSED"\);/.test(pTrans)
+      && /finishedAt: t\.to === "DONE" \|\| t\.to === "CANCELLED" \? t\.at : run\.finishedAt,/.test(mTrans)
+      && /pausedBy: t\.to === "PAUSED" \? t\.by : resumed \? null : run\.pausedBy,/.test(mTrans)
+      && /const resumed = t\.to === "COMMITTING" && t\.from\.includes\("PAUSED"\);/.test(mTrans));
+
+  // ── ⭐ THE KEYSET, NEVER AN OFFSET ──
+  const pAfter = memberAt(priRow, "after");
+  const mAfter = memberAt(memRow, "after");
+  ok("24.keyset.prisma · ⭐ after() is a KEYSET on ordinal — where ordinal gt w.afterOrdinal, ordered ordinal asc, take bounded by CONTACT_IMPORT_ROW_PAGE_MAX — and never skip",
+    /where:\s*\{\s*importId:\s*w\.importId,\s*ordinal:\s*\{\s*gt:\s*w\.afterOrdinal\s*\}\s*\}/.test(pAfter)
+      && /orderBy:\s*\{\s*ordinal:\s*"asc"\s*\}/.test(pAfter)
+      && /take:\s*Math\.max\(0, Math\.min\(w\.limit, CONTACT_IMPORT_ROW_PAGE_MAX\)\)/.test(pAfter) && !/\bskip\b/.test(pAfter),
+    pAfter.replace(/\s+/g, " ").slice(0, 200));
+  ok("24.keyset.memory · …and the memory after() filters row.ordinal > w.afterOrdinal, sorts by ordinal and slices only from 0 — never an offset",
+    mAfter.includes(".filter((row) => row.ordinal > w.afterOrdinal)") && mAfter.includes(".sort((a, b) => a.ordinal - b.ordinal)")
+      && mAfter.includes(".slice(0, Math.max(0, Math.min(w.limit, CONTACT_IMPORT_ROW_PAGE_MAX)))") && !/\.slice\(w\./.test(mAfter) && !/\bindex\b/.test(mAfter),
+    mAfter.replace(/\s+/g, " ").slice(0, 200));
+  ok("24.keyset.bound · both twins bound a page at the same 2,000 rows",
+    /const CONTACT_IMPORT_ROW_PAGE_MAX = 2000;/.test(dalSrc) && /export const CONTACT_IMPORT_ROW_PAGE_MAX = 2000;/.test(storeSrc));
+
+  // ── ⛔ NO STORED COUNTER ──
+  const pTotals = memberAt(priRun, "totals");
+  const mTotals = memberAt(memRun, "totals");
+  const TOTAL_KEYS = ["staged", "unreadable", "pending", "create", "update", "keep", "fail"];
+  ok("24.totals · ⛔ NO STORED COUNTER (OD26): the Prisma totals is a groupBy on outcome plus one count — never findMany — the memory twin counts the run's rows, neither reads a figure off the run, and ContactImportTotals is EXACTLY the seven counts",
+    /contactImportRow\.groupBy\(\{\s*by:\s*\["outcome"\]/.test(pTotals) && /contactImportRow\.count\(/.test(pTotals) && !/findMany/.test(pTotals)
+      && /store\.contactImportRows\.get\(importId\)/.test(mTotals) && !/stagedThrough|totalRows|contactImports\.get/.test(pTotals + mTotals)
+      && sameSet(storedKeys("ContactImportTotals"), TOTAL_KEYS),
+    setDiff(TOTAL_KEYS, storedKeys("ContactImportTotals")) || `${pTotals.length}/${mTotals.length} chars`);
+
+  // ── create NEVER UPSERTS ──
+  const mCreate = memberAt(memRun, "create");
+  ok("24.unique.prisma · contactImport.create turns P2002 into null and does NOT upsert",
+    /P2002/.test(iCreate) && /return null/.test(iCreate) && !mentions(iCreate, "upsert"));
+  ok("24.unique.memory · the memory create refuses an id already held, and does not overwrite",
+    /if \(store\.contactImports\.has\(row\.id\)\) return null;/.test(mCreate), `${mCreate.length} chars`);
+
+  // ── THE DELETES: unsettled only, every run by number, a purged run's rows with it ──
+  const pUnsettled = memberAt(priRow, "deleteUnsettled");
+  const mUnsettled = memberAt(memRow, "deleteUnsettled");
+  ok("24.unsettled · deleteUnsettled deletes ONLY rows no commit has settled — outcome: null in Prisma, row.outcome === null in memory",
+    /deleteMany\(\{\s*where:\s*\{\s*importId,\s*outcome:\s*null\s*\}\s*\}\)/.test(pUnsettled) && /if \(row\.outcome === null\)/.test(mUnsettled));
+  const pByNumber = memberAt(priRow, "deleteByMsisdn");
+  const mByNumber = memberAt(memRow, "deleteByMsisdn");
+  ok("24.erasure · deleteByMsisdn reaches EVERY run in both twins — deleteMany where msisdn, and the memory twin walks every run's rows",
+    /deleteMany\(\{\s*where:\s*\{\s*msisdn\s*\}\s*\}\)/.test(pByNumber) && /for \(const rows of store\.contactImportRows\.values\(\)\)/.test(mByNumber)
+      && /row\.msisdn === msisdn/.test(mByNumber));
+  const pPurge = memberAt(priRun, "purgeFinished");
+  const mPurge = memberAt(memRun, "purgeFinished");
+  ok("24.purge.prisma · purgeFinished deletes only DONE or CANCELLED runs finished before the bound, a bounded batch at a time, the FK cascade taking their rows",
+    (pPurge.match(/status:\s*\{\s*in:\s*\["DONE", "CANCELLED"\]\s*\}/g) ?? []).length === 2
+      && (pPurge.match(/finishedAt:\s*\{\s*lt:\s*new Date\(q\.finishedBefore\)\s*\}/g) ?? []).length === 2 && /take:\s*Math\.max\(0, q\.limit\)/.test(pPurge),
+    `${pPurge.length} chars`);
+  ok("24.purge.memory.cascade · ⭐ the memory purgeFinished deletes the purged runs' ROWS too — the ON DELETE CASCADE Postgres does for the other twin",
+    /store\.contactImports\.delete\(r\.id\);/.test(mPurge) && /store\.contactImportRows\.delete\(r\.id\);/.test(mPurge)
+      && /r\.status === "DONE" \|\| r\.status === "CANCELLED"/.test(mPurge), `${mPurge.length} chars`);
+
+  // ── THE OPEN RUN: the same four statuses, the earliest first ──
+  const pOpen = memberAt(priRun, "findOpenFor");
+  const mOpen = memberAt(memRun, "findOpenFor");
+  ok("24.open · findOpenFor reads the same four OPEN statuses in both twins, earliest first, so two tabs that raced to open one file converge on one run",
+    /status:\s*\{\s*in:\s*\["STAGING", "STAGED", "COMMITTING", "PAUSED"\]\s*\}/.test(pOpen) && /orderBy:\s*\[\{\s*createdAt:\s*"asc"\s*\},\s*\{\s*id:\s*"asc"\s*\}\]/.test(pOpen)
+      && /r\.status === "STAGING" \|\| r\.status === "STAGED" \|\| r\.status === "COMMITTING" \|\| r\.status === "PAUSED"/.test(mOpen)
+      && /Date\.parse\(a\.createdAt\) - Date\.parse\(b\.createdAt\)/.test(mOpen));
+
+  // ── BOTH TWINS, THE SAME MEMBERS, THE SAME NAMED SIGNATURES ──
+  const members = (block: string): string[] => Array.from(block.matchAll(/^\s{4}(\w+)\s*:/gm)).map((m) => m[1]).sort();
+  ok("24.parity.contactImport · both twins expose the same contactImport members",
+    members(priRun).length >= 8 && members(priRun).join(",") === members(memRun).join(","), `prisma=[${members(priRun)}] memory=[${members(memRun)}]`);
+  ok("24.parity.contactImportRow · …and the same contactImportRow members",
+    members(priRow).length >= 4 && members(priRow).join(",") === members(memRow).join(","), `prisma=[${members(priRow)}] memory=[${members(memRow)}]`);
+  const SIGS: Array<[string, string, string]> = [
+    ["create", "(row: StoredContactImport): StoredContactImport | null =>", "(row: StoredContactImport): Promise<StoredContactImport | null> =>"],
+    ["listIdle", "(q: ContactImportIdleQuery): StoredContactImport[] =>", "(q: ContactImportIdleQuery): Promise<StoredContactImport[]> =>"],
+    ["transition", "(t: ContactImportTransition): StoredContactImport | null =>", "(t: ContactImportTransition): Promise<StoredContactImport | null> =>"],
+    ["stageRows", "(b: ContactImportStageBatch): ContactImportStageResult =>", "(b: ContactImportStageBatch): Promise<ContactImportStageResult> =>"],
+    ["totals", "(importId: string): ContactImportTotals =>", "(importId: string): Promise<ContactImportTotals> =>"],
+    ["purgeFinished", "(q: ContactImportFinishedPurge): number =>", "(q: ContactImportFinishedPurge): Promise<number> =>"],
+    ["after", "(w: ContactImportRowWindow): StoredContactImportRow[] =>", "(w: ContactImportRowWindow): Promise<StoredContactImportRow[]> =>"],
+  ];
+  const unnamed = SIGS.filter(([name, mem, pri]) => {
+    const m = memberAt(name === "after" ? memRow : memRun, name);
+    const p = memberAt(name === "after" ? priRow : priRun, name);
+    return !m.includes(`${name}: ${mem}`) || !p.includes(`${name}: async ${pri}`);
+  }).map(([name]) => name);
+  const stagingImport = /import type \{[^}]*\bContactImportStageBatch\b[^}]*\} from "\.\/store";/.test(dalSrc);
+  ok("24.named · every staging signature uses its NAMED type in both twins (never an inline literal) — declared in store.ts, imported by prisma-dal.ts",
+    unnamed.length === 0 && stagingImport && /export type ContactImportStageBatch = \{/.test(storeSrc) && /export type ContactImportTransition = \{/.test(storeSrc),
+    `unnamed [${unnamed}] · imported ${stagingImport}`);
+
+  // ── CONTROLS ─────────────────────────────────────────────────────────────────────────
+  // ⛔ Each proves the ASSERTION ABOVE IT can reject, on a literal that would otherwise pass.
+  ok("24.c1 · CONTROL · `committedThrough: 0,` in a read mapper does NOT count as reading committedThrough from the row",
+    !readsFrom("    stagedThrough: r.stagedThrough,\n    committedThrough: 0,", "committedThrough", "r"));
+  ok("24.c2 · CONTROL · a stageRows where WITHOUT stagedThrough is NOT the compare-and-set",
+    !CAS_WHERE.test('where: { id: b.importId, status: "STAGING" },'));
+  ok("24.c3 · CONTROL · an after() that pages by skip IS caught",
+    /\bskip\b/.test("where: { importId: w.importId },\n        skip: w.afterOrdinal,"));
+  ok("24.c4 · CONTROL · a totals body that fetches every row IS caught",
+    /findMany/.test("const rows = await pc().contactImportRow.findMany({ where: { importId } });"));
+  ok("24.c5 · CONTROL · a create that upserts IS caught", mentions("await pc().contactImport.upsert({ where, create, update })", "upsert"));
+  ok("24.c6 · CONTROL · the brace matcher finds a nested createMany data object whole",
+    objectsAfter("x.createMany({ data: rows.map((r) => ({ a: 1, b: { c: 2 } })) });", "createMany(").join("") === "{ data: rows.map((r) => ({ a: 1, b: { c: 2 } })) }");
+  const plantedRun = storeSrc.replace("export type StoredContactImport = {", "export type StoredContactImport = {\n  plantedKey: string;");
+  ok("24.c7 · CONTROL · a key PLANTED in StoredContactImport is seen by the parser and reported unmapped by the read mapper — a key in one mapper only cannot pass",
+    storedKeys("StoredContactImport", plantedRun).includes("plantedKey") && !readsFrom(iRead, "plantedKey", "r") && !writesKey(iCreate, "plantedKey"));
+  ok("24.c8 · CONTROL · a memory after() by offset FAILS 24.keyset.memory's needle",
+    !".filter((_row, index) => index >= w.afterOrdinal)".includes(".filter((row) => row.ordinal > w.afterOrdinal)"));
+}
+
 /* ═══ §26 · The campaign tables — SmsCampaign / SmsCampaignRecipient in both twins (U35b, S10 2026-10-02; decision X1) ═══ */
 {
   // ⭐ WHY THIS SECTION EXISTS. The campaign tables carry three rules that live IN THE TWINS: frozen keys change only in

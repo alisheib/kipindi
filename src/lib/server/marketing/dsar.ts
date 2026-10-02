@@ -28,6 +28,10 @@ import { marketingKeyOf } from "@/lib/server/marketing/erase";
  * text that can name third parties. ⚠️ Both doors share this allowlist, so NEITHER carries notes: an
  * officer who is asked for them reads the row on the console, redacts, and releases by hand.
  * A new column reaches the export only by being added here.
+ * ⭐ STAGED IMPORT ROWS (U29b) — a row of an officer's contacts file, staged for import, that holds one of the person's
+ * numbers is something we hold about them too: listed with the number, name, e-mail, tags and outcome it carries, and only
+ * rows staged on or after the account's creation (the same bound). ⛔ Its notes, the file's name, the officer, the run and
+ * the row's keys are withheld, as for the book.
  * ⛔ An erased account's `phoneE164` is a tombstone (`erased:usr_…`), never a key: `marketingKeyOf`
  * refuses it, so its digits cannot be read as some stranger's number.
  */
@@ -37,6 +41,8 @@ export type MarketingDsarSection = {
   consent: Array<{ status: string; source: string; wording: string; locale: string; createdAt: string }>;
   /** `createdAt: null` — the stop began before this account existed (still listed while it refuses them). */
   suppression: Array<{ reason: string; createdAt: string | null; liftedAt: string | null }>;
+  /** U29b · staged import rows holding the person's numbers, staged since the account's creation. */
+  staged: Array<{ msisdn: string; displayName: string | null; email: string | null; tags: string[]; outcome: string | null; stagedAt: string }>;
 };
 
 export async function marketingDsarView(user: Pick<StoredUser, "id" | "phoneE164" | "createdAt">): Promise<MarketingDsarSection> {
@@ -74,6 +80,18 @@ export async function marketingDsarView(user: Pick<StoredUser, "id" | "phoneE164
     }
   }
 
+  // U29b · the staged import rows holding the person's numbers, from the account's creation — through the same allowlist.
+  const staged: MarketingDsarSection["staged"] = [];
+  for (const identifier of numbers) {
+    for (const row of await Promise.resolve(db.contactImportRow.listByMsisdn(identifier))) {
+      if (row.stagedAt < since) continue;
+      staged.push({
+        msisdn: row.msisdn ?? identifier, displayName: row.displayName, email: row.email, tags: [...row.tags],
+        outcome: row.outcome, stagedAt: row.stagedAt,
+      });
+    }
+  }
+
   return {
     contacts: Array.from(rows.values()).map((c) => ({
       msisdn: c.msisdn, displayName: c.displayName, email: c.email, operator: c.operator, source: c.source,
@@ -82,5 +100,6 @@ export async function marketingDsarView(user: Pick<StoredUser, "id" | "phoneE164
     })),
     consent,
     suppression,
+    staged,
   };
 }

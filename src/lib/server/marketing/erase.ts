@@ -28,6 +28,10 @@ import { mirrorContactCache } from "@/lib/server/marketing/contact-cache";
  *      may be a previous holder's — emptying another person's row harms nobody, leaving the erased person's
  *      name would breach the request. The export takes the opposite side of the same doubt
  *      (`dsar.ts`: when in doubt, do not disclose).
+ *   2b. DELETE every STAGED import row (U29b, `ContactImportRow`) holding any number the person is known by — in every
+ *      officer's run, a number another live account now holds included: a staged row is a transient copy of somebody's
+ *      file, never evidence, and ⚖️ when in doubt, erase. A row whose number never parsed carries no key and cannot be
+ *      found by number; it leaves with its run (the 14-day idle sweep, or retention 90 days after the run finishes).
  *
  * ⛔ NO STOP-LIST ROW, ON PURPOSE (the S10 review). An OPERATOR suppression can be lifted by nobody —
  * `lift` refuses every reason but WITHDRAWN — and a Tanzanian number outlives its holder: the operator
@@ -55,6 +59,8 @@ export type MarketingErasureCounts = {
   marketingConsentWithdrawn: number;
   /** Book rows emptied (by link or by number). */
   marketingContactsEmptied: number;
+  /** U29b · staged import rows deleted — by every number the person is known by, in every run. */
+  marketingStagedRowsDeleted: number;
 };
 
 /** The ledger's `wording` for an erasure: what the record SAYS happened. Not a sentence any person was
@@ -84,7 +90,7 @@ export async function eraseMarketingFor(input: {
   phoneE164: string;
   officerId: string | null;
 }): Promise<MarketingErasureCounts> {
-  const counts: MarketingErasureCounts = { marketingConsentWithdrawn: 0, marketingContactsEmptied: 0 };
+  const counts: MarketingErasureCounts = { marketingConsentWithdrawn: 0, marketingContactsEmptied: 0, marketingStagedRowsDeleted: 0 };
   const at = new Date().toISOString();
   const accountNumber = marketingKeyOf(input.phoneE164);
 
@@ -141,6 +147,13 @@ export async function eraseMarketingFor(input: {
       updatedBy: input.officerId,
     }, at));
     counts.marketingContactsEmptied++;
+  }
+
+  // ── 2b · THE STAGED COPIES (U29b) — every staged import row holding a number the person is known by ──────────────
+  // ⚖️ WHEN IN DOUBT, ERASE: unlike the ledger above, a number another live account holds now is NOT skipped — a staged row
+  // is a transient copy of somebody's file, never evidence, and deleting a stranger's copy of it harms nobody.
+  for (const identifier of numbers) {
+    counts.marketingStagedRowsDeleted += await Promise.resolve(db.contactImportRow.deleteByMsisdn(identifier));
   }
 
   // ── 3 · THE BOOK'S CACHE, from the truth step 1 just wrote (U24 commit 2) ──────────────────
