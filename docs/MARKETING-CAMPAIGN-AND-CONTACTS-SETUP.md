@@ -1,10 +1,10 @@
 # MARKETING CAMPAIGN & CONTACTS SETUP — work order and tracker
 
-**STATUS — 🟢 BUILDING. 15/52 units ✅ LIVE (U1–U12, U18, U19, U24), 12/25 defects. 52 units · defects D1–D25 · 55 owner decisions taken on
+**STATUS — 🟢 BUILDING. 16/52 units ✅ LIVE (U1–U12, U18, U19, U24, U35), 13/25 defects. 52 units · defects D1–D25 · 56 owner decisions taken on
 Ali's delegation · 11 legal questions, each shipping with a safe default that IS built. S7c went LIVE 2026-09-28 (`d3379fef`).
 U17 🔵 (`7bef9f97`, live since 2026-09-28) and U18's first half (U18a, `fb194038`, live) were shipped by S9, which closed no docs.
 S10 (2026-10-01) fixed the consent-ledger tie, which had been picking the latest row at random, and shipped U18b (`0e68d59e`):
-erasure now withdraws the consent and empties the book, and both data exports carry marketing; U19 (`addf5351`) masks a contact's number; U20 (`733522d3`) lists the book. Then U21–U40 were decided (§9, OD47–OD52), the first build tranche went LIVE (`ea87308f`), and U24 is ✅ (`c792901e`: the ONE audience resolver, and the cache every writer keeps true). U21, U22 and U23 (selection and bulk) shipped, and the parser track (U25–U28), all 🔵 — LIVE since 2026-10-02 05:20 UTC (`36aa9bf0`); U35b, the campaign tables, shipped (🔵). NEXT: U29 staging and U34a the export (in build), U36 the campaign list, then U30 the import pre-flight.**
+erasure now withdraws the consent and empties the book, and both data exports carry marketing; U19 (`addf5351`) masks a contact's number; U20 (`733522d3`) lists the book. Then U21–U40 were decided (§9, OD47–OD52), the first build tranche went LIVE (`ea87308f`), and U24 is ✅ (`c792901e`: the ONE audience resolver, and the cache every writer keeps true). U21, U22 and U23 (selection and bulk) shipped, and the parser track (U25–U28), all 🔵 — LIVE since 2026-10-02 05:20 UTC (`36aa9bf0`); U35b, the campaign tables, and U29, import staging, shipped (🔵). NEXT: U34a the export and U36 the campaign list (in build), then U30 the import pre-flight.**
 
 > ⚠️ **THIS FILE IS BOTH THE PLAN AND THE PROGRESS TRACKER.** Any session, on any machine, learns where
 > the programme stands by reading §0 (RESUME AT) and §1 (status board) — and nothing else. `npm run
@@ -254,7 +254,36 @@ erasure now withdraws the consent and empties the book, and both data exports ca
   embedded PostgreSQL 18.3 with a drift diff naming none of the new objects; the campaign probe 13/13 on Postgres and
   the contacts probe 38/38 beside it. `test:campaign-models` 29/29 (red 32/32), dal-parity 1863/1863 (§26; red 101/101).
   The typecheck caught one inference the static builder could not (TS7006, a store read widened by `??`). 🔵 — the live
-  check is the migration on production.
+  check is the migration on production — ✅ MET 2026-10-02 06:05:54 UTC: production's deploy log reads "Applying migration
+  `20261002120000_sms_campaign_models` … All migrations have been successfully applied", on `df839f30`. ⚠️ The FIRST
+  build of that push FAILED and production kept serving `36aa9bf0` for 20 minutes: Turbopack could not fetch the Google
+  font `next/font/google` downloads at BUILD time (fonts.gstatic.com) — nothing in the code. Found with the Railway CLI
+  (`railway deployment list`, then the build log) and rebuilt with `railway redeploy --from-source`. A push is live only
+  when `?dpl=` says so; a failed build also blocks every later push until it is rebuilt.
+  ✅ OD54 (`ef72dcd7`) — D19 covers SUPPRESSION: for a viewer whose identity.contact cell is not `read`, `roleRefusal`
+  refuses `suppressed` (yes and no alike) before any row is read, at the page and on U23's POSTed audience; the rail is
+  Operator · List · Tag; no row names a stop; the masked KPI band is "In the book" + "Added in the last 7 days"; a masked
+  officer may still suppress and is told the total only. `test:contacts-page` +5b/9h/13b (red 35/35), `test:contacts-bulk`
+  +B14c/B14d (red 25/25), `test:contacts-audience` +2.16 (red 22/22); the drive re-cut and confirming one suppression per
+  width on its own fixture row. Readers keep everything.
+  ✅ STEP 18 · U29 (`dbdc0018` + `3dd4f399`) — import staging: ONE model (`ContactImport`, `ContactImportRow`) in both twins and its
+  server service, writing NO contact, consent or stop. `stageRows` applies the cursor's compare-and-set FIRST, with the
+  inserts, in one short transaction — two tabs or a retried request stage a batch once, a duplicate line rolls the whole
+  batch back; `after` is a keyset on ordinal. Both caps (2,000 rows AND 200 KiB) are asked before the run is read; every
+  key is re-derived on the server against the STORED mapping; the sweep never touches a PAUSED commit. PROVED ON POSTGRES
+  IN TWO PROCESSES (`test:contacts-staging-db`): a fresh process — the redeploy — resumes a half-staged 10,000-row run at
+  `stagedThrough + 1` with totals equal to a recount; racing stage calls and racing transitions each leave one winner;
+  ~165 ms a 2,000-row batch. `test:contacts-staging` 30/30 (red 10/10), dal-parity §24 (red 107/107), all 93 migrations
+  from empty. Its migration was renamed `20261002130000_…` so it sorts after U35b's, already on production. predeploy
+  gains `test:contacts-staging`, `test:erasure`, `test:read-tiers` and `test:client-graph-safe` (M10 / OD51).
+  ⚖️ U29 AFTER AN ADVERSARIAL REVIEW (`3dd4f399`; 1 MAJOR, 6 MINOR, 1 NIT, no blocker): F2 (MAJOR, Postgres only)
+  a NUL in a phone, email or tag cell — a vCard's `=00`, a CSV past the binary sniff — made Postgres refuse the WHOLE
+  batch on every resume, wedging the run; every cell is cleaned before drafting and a line past the 32-bit integer is
+  refused before the database (probe B.11 on Postgres). F1 only a well-formed run id reaches the signed audit chain;
+  F3 adoption compares the mapping too; F4 the later of two open runs is refused `superseded`; F5 the access export
+  reads newest first; F9 the byte cap stops at the cap instead of stringifying a forged batch whole. Found with it: the
+  shared email shape let control characters through (U22's form too) — refused now. `test:contacts-staging` 36/36 (red
+  16/16). ⏳ Owed: a PAUSED or COMMITTING run has no retention period until U32 settles it (recorded in DATA-RETENTION).
   ⛔ LOCK STARVATION (measured 2026-10-01): `~/heavy-node-lock.sh` waiters poll every 30 s, and a session
   running jobs back to back re-takes the lock within seconds of releasing it — S10's typecheck waited
   40+ minutes without once getting in. S10 ran its battery through the same mkdir protocol polling every
@@ -287,10 +316,10 @@ erasure now withdraws the consent and empties the book, and both data exports ca
   one ("Nitumie ofa na habari za 50pick kwa SMS" 2 hits, the old one 0), on `?dpl=d3379fef…`. A check that
   reads the same before and after proves nothing — this one reverses.
 
-▶ NEXT: U29 staging and U34a the export, built side by side (each in its own block; three-way merged), with OD54 (D19
-  for suppression); then U36 the campaign list (U35b's tables are live), U30 the pre-flight (it mounts the import
-  entrance and reaches U25/U26/U27b on production), U31-B/UI, U32, U33, U37–U40 in the critic's order (§10). S10 has
-  U29, U34a and OD54 in build (agents write into scratch; every gate is run here; ⛔ an agent's files are copied only
+▶ NEXT: U34a the export and U36 the campaign list, built side by side (each in its own block; three-way merged), with
+  OD54 (D19 for suppression); then U30 the pre-flight (it mounts the import entrance and reaches U25/U26/U27b on
+  production; U29's staging is its store), U31-B/UI, U32, U33, U37–U40 in the critic's order (§10). S10 has
+  U34a, U36 and OD54 in build (agents write into scratch; every gate is run here; ⛔ an agent's files are copied only
   after its report; each unit gets an adversarial review before its push).
   ⛔ OWNER GATES STOP THE BUILD (G1–G12 above). ⚠️ G4 now gates the import going live — U32's start action and U33b's
   panel both reach the draft wordings (OD50) — so asking it early saves a stall at S15/S16.
@@ -730,13 +759,13 @@ a Guard key that resolves to a script on disk, `yes` plus the backticked `red:` 
 | U26 | pure | 🔵 | S10 | b4faac34 | no reader for a phone's contact export → a streaming vCard reader: both continuation rules in one walk, every card counted, card ordinals as lines | `test:contacts-import` | yes — `red:contacts-import` 120/120 (in-process) | vCard. 🔵 until U30/U32 parse a real .vcf on production — nothing reaches it before then. |
 | U27 | guard | 🔵 | S10 | 2438d66a | an XLSX could only be read by trusting exceljs with whatever arrived → an exact size gate, a capped zip pre-pass and one typed cell switch, server-side, and the boundary that proves exceljs never reaches the browser | `test:contacts-boundary` · `test:contacts-import` | yes — `red:contacts-boundary` 28/28 · `red:contacts-import` 211/211 (in-process) | XLSX server-only: U27a `0dc25b98` + U27b `2438d66a`. 🔵 until U30 reads a real .xlsx on production. |
 | U28 | pure | 🔵 | S10 | a0535f80 | no shared field list → ONE field list, limits table and tag rule for the form, bulk, import and export, and the samples proven back through every real reader | `test:contacts-import` | yes — `red:contacts-import` 211/211 (in-process) | one field list: U28a `0dc25b98`, U28b `a0535f80` (CSV, Swahili, sep=;, vCard round trips) and its xlsx case through U27b's reader (X13, `2438d66a`). 🔵 until U30 mounts the import entrance and its sample button. |
-| U29 | data | ⬜ | — | — | — | `test:dal-parity` | — | staging |
+| U29 | data | 🔵 | S10 | dbdc0018 | an officer's contacts file had nowhere to wait between reading and importing → ONE staging model in both twins: a compare-and-set cursor applied first with the inserts, a keyset on ordinal, both caps before any read, keys re-derived on the server, a sweep that never touches a paused commit — proved on Postgres in two processes | `test:dal-parity` · `test:contacts-staging` | yes — `red:contacts-staging` 10/10 (in-process) · `red:dal-parity` §24 | staging. Pushed — the live check is the migration on production. |
 | U30 | visual | ⬜ | — | — | — | `test:contacts-import` | — | pre-flight |
 | U31 | engine | 🟡 | S10 | 0dc25b98 | — | `test:contacts-import` | — | decide(). U31-A landed (`0dc25b98`): the pure rule, the erasure disguise (OD47). U31-B (the facts loader) and the UI come with U30. |
 | U32 | visual | ⬜ | — | — | — | `test:contacts-import` | — | progress = rows |
 | U33 | engine | 🟡 | S10 | 0dc25b98 | — | `test:marketing-consent` | — | basis at import. U33a-catalog landed (`0dc25b98`): DRAFT wordings until G4, Option A (OD50). The engine and the panel follow. |
 | U34 | guard | ⬜ | — | — | — | `test:contacts-export` | — | export |
-| U35 | data | 🔵 | S10 | bfc37a74 | campaigns had a purpose (U35a `0dc25b98`, live) and nowhere to live → two tables in both twins behind ONE rule set: a draft saved by compare-and-set, a confirmation frozen in one conditional move, recipients deduped on (campaign, number), links never copies, no stored counter — 92 migrations proven from empty | `test:dal-parity` · `test:campaign-models` | yes — `red:campaign-models` 32/32 (in-process) · `red:dal-parity` §26 | campaign models. Pushed — the live check is the migration applied on production. |
+| U35 | data | ✅ | S10 | bfc37a74 | campaigns had a purpose (U35a `0dc25b98`, live) and nowhere to live → two tables in both twins behind ONE rule set: a draft saved by compare-and-set, a confirmation frozen in one conditional move, recipients deduped on (campaign, number), links never copies, no stored counter — 92 migrations proven from empty | `test:dal-parity` · `test:campaign-models` | yes — `red:campaign-models` 32/32 (in-process) · `red:dal-parity` §26 | campaign models. LIVE 2026-10-02 06:05:54 UTC — production serves `df839f30` and its deploy log applied `20261002120000_sms_campaign_models` (after a first build failed on a Google-font fetch and was rebuilt from source). |
 | U36 | visual | ⬜ | — | — | — | `test:admin-nav` | — | list + badge |
 | U37 | visual | 🟡 | S10 | 0dc25b98 | — | `test:campaign-compose` | — | composer. U37a landed (`0dc25b98`): the one renderer (OD48, OD49). U37b (the page, save, the test send) follows. |
 | U38 | visual | ⬜ | — | — | — | `test:campaign-audience` | — | audience |
@@ -780,7 +809,7 @@ a Guard key that resolves to a script on disk, `yes` plus the backticked `red:` 
 | D19 | U30 | ⬜ | a pre-flight that says "400 of these are players" is a membership oracle |
 | D20 | U45 | ⬜ | `sendBatch` updates `SmsMessage` rows one at a time — 10k serial UPDATEs for a 10k campaign |
 | D21 | U46 | ⬜ | the DLR route fans out to `InviteEntry` only — receipts now arrive (§3a), and a campaign recipient has nowhere to receive one |
-| D22 | U35 | 🔵 `0dc25b98` | no `MARKETING` purpose: per-lane volume and cost are unreadable — U35a's own migration added it (live 2026-10-02); ✅ when U35 is |
+| D22 | U35 | ✅ | no `MARKETING` purpose: per-lane volume and cost are unreadable — U35a's own migration added it (`0dc25b98`, live 2026-10-02), and U35 is ✅ |
 | D23 | U43 | ⬜ | the 30 s `withLock` transaction timeout makes the existing send shape unusable at scale |
 | D24 | U49 | ⬜ | no campaign budget; the only spend control is a floor worth eight messages |
 | D25 | U50 | ⬜ | `comms-registry.ts` states as fact that SMS is "OTP + invite campaigns" |
@@ -1277,8 +1306,9 @@ is decided, with what it rules out. They are not questions.
   whole-book counts for every role ("a count over the book is not a per-number answer"); U22's add and U23's one-row
   writes broke that premise — whether "Consent given" fell after ONE ticked row's withdrawal says what that row was, and
   until U33 only a player writes GIVEN. A viewer whose identity.contact cell is not `read` gets "In the book" and
-  "Suppressed" in the `1-lg2` rung, which holds the four-tile band's rows at every width (no skeleton jump).
-- **OD54 · D19 covers SUPPRESSION too — decided, OWED next** (S10, from the U23 review). Until the import goes live a
+  "Added in the last 7 days" (OD54 took "Suppressed" out too) in the `1-lg2` rung, which holds the four-tile band's
+  rows at every width (no skeleton jump).
+- **OD54 · D19 covers SUPPRESSION too — decided, BUILT (`ef72dcd7`)** (S10, from the U23 review). Until the import goes live a
   stop comes from a player's own opt-out link or from an officer, and U22's add makes ANY number typeable — so for a
   masked viewer the per-row stop, the `suppressed` URL axis, the Suppressed KPI and a suppression's split answer "is
   this a player?" exactly as consent did. They go for a viewer whose identity.contact cell is not `read` (the loader
@@ -1289,6 +1319,14 @@ is decided, with what it rules out. They are not questions.
   key erasure would have to chase (U16), and a campaign that targets one person is a message to one person, which is
   only ever the officer's own test send. So U37b's save REFUSES an audience whose `q` is a whole number (a name search
   stays), with a sentence on the audience card, an executed assertion and its own plant.
+- **OD56 · The cache mirror keeps the row's own `updatedAt` — decided, OWED** (S10, found while building OD54).
+  `mirrorContactCache` stamps the caller's instant when it rewrites a row's consent/stop cache, and that `updatedAt` is
+  the edit dialog's compare-and-set token, carried to the browser. So a masked officer could read it, suppress (or
+  withdraw) ONE row, and read it again: it moves only if the row had no stop (or no withdrawal) before — the very
+  signal OD54 and A1.1 hide. The mirror will write `row.updatedAt` back unchanged: a cache refresh is not an edit, and
+  an officer's compare-and-set then moves only on officers' edits (the edit patch carries no cache field, so nothing
+  is overwritten). One line in `contact-cache.ts`, with an executed assertion and its plant; the suites pinning the
+  mirror's stamp (dal-parity §20, `test:contacts-audience` 6.6) are re-read first.
 
 ### §4a — The eleven legal questions (each with the safe default that is BUILT)
 
@@ -2652,6 +2690,20 @@ offset. `red:contacts-staging`: a posted msisdn trusted; the byte cap removed; a
 no-op; the sweep cancelling a PAUSED run.
 **Accept:** a closed tab, a reload and a redeploy (a fresh process on real Postgres) resume at `stagedThrough + 1` with
 totals equal to a recount; a 40-row file is one open plus one stage call; staging 5,000 rows writes no contact.
+⚖️ **Shipped in S10 (`dbdc0018` + `3dd4f399`), with its builder's calls:** the format and outcome enums are lower-case, exactly the
+TS unions (no translation in either twin); `findOpenFor` answers the EARLIEST open run, so two tabs opening one file
+converge; beyond §9's list, `listIdle` (the sweep) and `listByMsisdn` (the access export); the same file with different
+figures is refused `read_differently`; an unreadable sentence holding seven or more digits is replaced. ⏳ Residual: a
+staged row whose number is not a sendable mobile has no key, so erasure cannot find it by number — it leaves with its
+run (the 14-day sweep, or 90 days after the run ends). ⚠️ OWED BY U30: (1) `xlsx-limits.ts` promises "no size limit
+on CSV" and tells a workbook over 200,000 rows to save as CSV — X28's run cap now refuses that CSV at open, so the
+remedy must become "split the file"; (2) Postgres stores the mapping as JSONB, which reorders its keys — render a
+run's mapping in CONTACT_FIELDS order, never object-key order (adoption compares it as sorted entries); (3) OD54
+reaches the import report: `SHOWN_KEEP_REASONS` (import-decide.ts) names "on the stop list" row by row, so a masked
+viewer's preview must carry no per-row stop reason; (4) a retried LAST batch (a lost response) answers `not_staging`
+— U30 treats a STAGED run in the view as success. The erasure residual covers every number that is not a sendable
+mobile (an unallocated prefix such as 064 included), and a run still staging after an erasure re-stages the person's
+row — U31 keeps it out of the book, and it leaves with its run.
 
 **U30 · Pre-flight** — writes nothing (OD31, D18, D19; decisions X10 · X16–X20 · X22 · X26 · M1–M3 · M11 · M14, and U21–U28's C26 · M7)
 **§25 · the ONE bulk keyed reads** (X10) land first, as their own commit after U29a — built by U30, the first consumer,
