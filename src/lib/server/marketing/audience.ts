@@ -55,7 +55,9 @@ import { ERASURE_EVIDENCE } from "@/lib/server/marketing/erase";
 export type ContactAudienceFilter = {
   /** The search box: a WHOLE number (held as its bare `255…` key) or a name query. */
   q: string | null;
+  /** ⛔ D19 / A1.1: a reader's alone (`roleRefusal`) — until U33 a recorded consent can only be a player's. */
   consent: ContactConsentState[] | null;
+  /** ⛔ D19 / OD54: a reader's alone (`roleRefusal`) — until the importer goes live a stop is a player's or an officer's. */
   suppressed: boolean | null;
   operators: TzOperatorId[] | null;
   lists: string[] | null;
@@ -379,8 +381,13 @@ export function parseContactAudienceParams(sp: Record<string, string | string[] 
  * 🔴 D19 (and DECISIONS A1.1). Until U33 a consent row can only come from a PLAYER (sign-up, profile, opt-out) or
  * an erasure; a `source` of REGISTRATION means the number came with an account (and any source list says it by
  * what it leaves out); `player` says it outright. With a whole number in the search box, each answers "is this
- * person a player?" with one row or none. So a viewer who may not read a number is REFUSED all three, before any
- * row is read — and EVERY door asks this one function: the page today, U23's bulk, U34's export, U40's recount.
+ * person a player?" with one row or none.
+ * 🔴 OD54 · AND `suppressed`, the same way (S10, from the U23 review). Until the importer goes live a STOP comes only
+ * from a player's own opt-out link or from an officer, and U22's "Add contact" makes ANY number typeable — so whether a
+ * typed number is under a stop answers "is this a player?" exactly as its consent does. Yes and no alike: "no" is the
+ * same question asked the other way round.
+ * So a viewer who may not read a number is REFUSED all four, before any row is read — and EVERY door asks this one
+ * function: the page today, U23's bulk, U34's export, U40's recount.
  */
 export const ROLE_REFUSAL_REASON = "This filter isn't available to your role: it would show which numbers belong to players.";
 export function roleRefusal(f: ContactAudienceFilter, viewerReads: boolean): { param: string; reason: string } | null {
@@ -388,6 +395,7 @@ export function roleRefusal(f: ContactAudienceFilter, viewerReads: boolean): { p
   if (f.player !== null) return { param: "player", reason: ROLE_REFUSAL_REASON };
   if (f.sources !== null) return { param: "source", reason: ROLE_REFUSAL_REASON };
   if (f.consent !== null) return { param: "consent", reason: ROLE_REFUSAL_REASON };
+  if (f.suppressed !== null) return { param: "suppressed", reason: ROLE_REFUSAL_REASON };
   return null;
 }
 
@@ -607,6 +615,10 @@ const anyOf = (xs: string[]) => (xs.length === 0 ? "none" : xs.join(" or "));
  * 8 Sep 2026", "Name contains “asha”", "Number +255••••78"). Brand labels come from `TZ_OPERATORS`.
  * ⭐ THE describeAudience — the list page renders it above the table now, and U38's confirm screen must reuse it
  * (one implementation). A whole number is always written masked, whoever reads it.
+ * 🔴 D19 / A1.1 / OD54 · it says what it is handed, for every role — so a masked viewer is never handed a description
+ * naming a consent, source, player or stop predicate: the loader's "Showing contacts:" line and U23's preview describe a
+ * filter only after `roleRefusal` passed it, and the rail's pills (`contacts-rail.ts`) describe one predicate each and
+ * draw none of those four for that viewer.
  */
 export function describeAudience(f: ContactAudienceFilter): string[] {
   const out: string[] = [];

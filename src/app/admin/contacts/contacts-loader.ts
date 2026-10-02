@@ -5,6 +5,10 @@
  *
  * ⭐ THE KPIs ARE THE WHOLE BOOK (`contactAudience(WHOLE_BOOK).breakdown()`), never the filtered view — and they
  * stand in the refused state too.
+ * 🔴 OD54 · A MASKED VIEWER'S SECOND FACT is the contacts ADDED IN THE LAST 7 DAYS — `contactAudience({ ...WHOLE_BOOK,
+ * addedFrom })` counted through the same resolver, whole-book, at the load's ONE clock (`now`, read once: the address's
+ * relative window resolves from it too). It is asked only for that viewer (a reader's band never shows it), and like
+ * every KPI it stands in the refused state. The stop count it replaces is a reader's alone (`page.tsx`).
  * ⭐ PAGE 4 OF A 3-ROW RESULT IS PAGE 1, never "no matches": the resolver's `page()` clamps by the match count.
  * ⛔ AN UNREADABLE FILTER IS REFUSED, NEVER DROPPED (decision C2): `?op=NOKIA` is `{ kind: "refused" }` naming the
  * parameter, and the page shows no rows — a silently widened table is exactly what a bulk action or an export
@@ -34,10 +38,11 @@ import { findEditableContact, CONTACT_MISSING } from "@/lib/server/contacts/cont
 import { PER_PAGE } from "@/components/admin/admin-pagination";
 import { parseSort } from "@/components/admin/admin-sort";
 import { formatDate } from "@/lib/utils";
+import { DAY_MS } from "@/lib/query/windows";
 import { CONTACT_SORTS } from "./contacts-query";
 import type { ContactSort } from "./contacts-query";
 import { RAIL_TAG_READ } from "./contacts-rail";
-import { CONSENT_LABEL, SOURCE_LABEL } from "./contacts-copy";
+import { CONSENT_LABEL, SOURCE_LABEL, CONTACTS_RECENT_DAYS } from "./contacts-copy";
 
 /** Next's own shape: a repeated param arrives as an array. */
 export type ContactsParams = Record<string, string | string[] | undefined>;
@@ -45,9 +50,14 @@ export type ContactsParams = Record<string, string | string[] | undefined>;
 type ContactsBase = {
   /** The WHOLE book's counts, whatever the filter — and in the refused state too. */
   summary: ContactBookSummary;
+  /** 🔴 OD54 · the WHOLE book's contacts added in the last `CONTACTS_RECENT_DAYS` days — the masked band's second fact,
+   *  whatever the filter and in the refused state too. A number for a viewer who may not read a number; null for a
+   *  reader, whose band does not show it (it is not asked). */
+  addedRecently: number | null;
   sort: ContactSort;
   dir: "asc" | "desc";
-  /** D19 · may this viewer see, row by row, what only a PLAYER can have (Reachable, Source, the Player chip)? */
+  /** D19 · may this viewer see, row by row, what only a PLAYER can have (Reachable — which names a stop, OD54 — Source,
+   *  the Player chip)? */
   viewerReads: boolean;
   /** U21 · every list, for the rail's List axis — whole-book, in the refused state too. */
   lists: StoredContactList[];
@@ -76,6 +86,8 @@ export type ContactsView =
 export type ContactsDeps = {
   /** D19's read cell — injected by a script, which has no session. The page gets the real one. */
   reads?: () => Promise<boolean>;
+  /** The load's ONE clock (epoch ms) — injected by a script so its seven days are a fixed window. The page gets the real one. */
+  now?: () => number;
 };
 
 /**
@@ -100,18 +112,27 @@ const firstParam = (v: string | string[] | undefined): string | undefined => (Ar
 
 export async function loadContacts(sp: ContactsParams, deps: ContactsDeps = {}): Promise<ContactsView> {
   const reads = deps.reads ?? viewerReadsContacts;
+  // ⭐ OD54 · the load's ONE clock, read once: the masked band's seven days and the address's relative window both
+  // resolve from it, so they can never straddle a minute between them.
+  const now = deps.now ? deps.now() : Date.now();
   const { sort, dir } = parseSort({ sort: firstParam(sp.sort), dir: firstParam(sp.dir) }, CONTACT_SORTS, "added", "desc");
   const summary = await contactAudience(WHOLE_BOOK).breakdown();
   const viewerReads = await reads();
+  // 🔴 OD54 · a masked viewer's second fact — the book's contacts added in the last 7 days, through the ONE resolver
+  // (whole book, the erased tombstone left out as from every reader) — asked only for the viewer whose band shows it.
+  const addedRecently = viewerReads
+    ? null
+    : await contactAudience({ ...WHOLE_BOOK, addedFrom: new Date(now - CONTACTS_RECENT_DAYS * DAY_MS).toISOString() }).count();
   // ⭐ U21 · the rail's options — whole-book facts, read before the filter is even parsed, so a refused page still
   // draws its whole rail. More tags than the rail draws, so it knows when there are more and an applied tag past the
   // drawn ones still finds its count.
   const [lists, tags] = await Promise.all([db.contactList.listAll(), contactTagCounts(RAIL_TAG_READ)]);
-  const base = { summary, sort, dir, viewerReads, lists, tags };
+  const base = { summary, addedRecently, sort, dir, viewerReads, lists, tags };
 
-  const parsed = parseContactAudienceParams(sp);
+  const parsed = parseContactAudienceParams(sp, now);
   if (!parsed.ok) return { ...base, kind: "refused", refusal: "unreadable", param: parsed.param, reason: parsed.reason };
-  // 🔴 D19 · the ONE role rule every door asks (`roleRefusal`, audience.ts): player, source and consent.
+  // 🔴 D19 · the ONE role rule every door asks (`roleRefusal`, audience.ts): player, source, consent — and, since OD54,
+  // suppressed.
   const role = roleRefusal(parsed.filter, viewerReads);
   if (role !== null) return { ...base, kind: "refused", refusal: "role", param: role.param, reason: role.reason };
 

@@ -14,9 +14,13 @@
  *           the masked withdrawal reply (A1.1), the server's selection projection, the filter key;
  *   B17–B19 the adversarial review's fixes (2026-10-02): a run that dies mid-way keeps its ONE audit row (partial) and
  *           mirrors the number it died on; the walk must hold what was counted; a rolling window's IDENTITY.
+ *   B14c–d  🔴 OD54 (D19 covers SUPPRESSION too): a masked role's POSTed `suppressed` audience is refused role before any
+ *           count; a masked officer may still suppress, and is told the TOTAL ("A stop is on record for N contacts") —
+ *           the preview never splits by stop state, and the reader keeps the split.
  * Then the source, for what only the source can show (S1–S10): the gated actions, the act-gated bar (its button states
  * EXECUTED), the server's tier in the confirmation, no raw number in a client file, the page's select column and each
- * row's edit link (EXECUTED through the ONE href builder), the copy, the ghost, the pin and the wiring.
+ * row's edit link (EXECUTED through the ONE href builder), the copy, the ghost, the pin and the wiring — and S10, the
+ * masked KPI band: two whole-book facts, no consent split (OD53) and no stop count (OD54).
  *
  * ⛔ IN-PROCESS BY CONSTRUCTION. `--prove-red` plants each defect IN MEMORY — a swapped dependency, a parser, a reply
  * shaper, a projection, a source string, or the memory twin's own `removeWhere` wrapped for one case and put back in a
@@ -38,11 +42,11 @@ import type { StoredMarketingContact, StoredUser, MessagingKey } from "../src/li
 import { mayReceiveMarketingSms } from "../src/lib/server/marketing/consent.ts";
 import { isSmsConsentWording, SMS_CONSENT_WORDINGS } from "../src/lib/marketing/consent-wording.ts";
 import {
-  contactAudience, contactAudienceKey, parseContactAudienceJson, parseContactAudienceParams, MAX_AUDIENCE_IDS, WHOLE_BOOK,
+  contactAudience, contactAudienceKey, parseContactAudienceJson, parseContactAudienceParams, roleRefusal, MAX_AUDIENCE_IDS, WHOLE_BOOK,
 } from "../src/lib/server/marketing/audience.ts";
 import {
   parseBulkRequest, previewContactBulk, runContactBulk, contactBulkReply, contactSelectionRow, contactFilterAudienceKey, contactFilterIdentity,
-  isTicksOnly, CONTACT_BULK_DEPS, OFFICER_WITHDRAWAL_WORDING, BULK_EVIDENCE_PREFIX,
+  isTicksOnly, CONTACT_BULK_DEPS, OFFICER_WITHDRAWAL_WORDING, BULK_EVIDENCE_PREFIX, BULK_SENTENCES,
 } from "../src/lib/server/marketing/contact-bulk.ts";
 import type { ContactBulkDeps, ContactBulkRequest } from "../src/lib/server/marketing/contact-bulk.ts";
 import {
@@ -50,7 +54,7 @@ import {
 } from "../src/lib/contacts/bulk-rules.ts";
 import type { BulkOutcome, BulkPreview, BulkRefusal } from "../src/lib/contacts/bulk-rules.ts";
 import {
-  bulkResultLine, enumerateTail, bulkActionState, BULK_COPY, CONTACTS_BULK,
+  bulkResultLine, enumerateTail, bulkActionState, BULK_COPY, CONTACTS_BULK, CONTACTS_KPI_RECENT,
 } from "../src/app/admin/contacts/contacts-copy.ts";
 import { contactsHref } from "../src/app/admin/contacts/contacts-query.ts";
 import { parseTzNumber } from "../src/lib/tz-msisdn.ts";
@@ -92,6 +96,8 @@ type Impl = {
   project: typeof contactSelectionRow;
   actionState: typeof bulkActionState;
   identity: typeof contactFilterIdentity;
+  /** The toast's result line (`contacts-copy.ts`) — the total-only lines included (A1.1, OD54). */
+  line: typeof bulkResultLine;
   sources: Sources;
 };
 
@@ -108,7 +114,7 @@ const TEST_DEPS: ContactBulkDeps = { ...CONTACT_BULK_DEPS, audit: captureAudit, 
 
 const REAL: Impl = {
   deps: TEST_DEPS, parse: parseBulkRequest, reply: contactBulkReply, project: contactSelectionRow,
-  actionState: bulkActionState, identity: contactFilterIdentity, sources: REAL_SOURCES,
+  actionState: bulkActionState, identity: contactFilterIdentity, line: bulkResultLine, sources: REAL_SOURCES,
 };
 
 let pass = 0, fail = 0;
@@ -293,7 +299,9 @@ const L = {
   b12: "B12 · ⭐ ONE AUDIT ROW PER RUN, through U24's describer: action contacts.bulk.tag, the officer, the counts; a whole-number search is +255••••78 and the payload holds neither the nine digits nor the 255 key; ticked ids are a COUNT, never listed",
   b13: "B13 · ⛔ the parser builds a NEW request from named keys: a posted count, tier, officer and matched are never read — the request's keys are action, audience, list, tag and typed — and an unknown audience key refuses",
   b14: "B14 · 🔴 D19 / A1.1 · a masked role's POSTed sources, consent or player audience is refused role BEFORE any count — the preview and the run both, the store's count never asked; a reader gets the count",
-  b14b: "B14b · 🔴 A1.1 · a withdrawal's split is a consent signal: a masked viewer's reply carries the total only (changed and unchanged null) and the line says the total; a reader's carries the split; any other action's reply is untouched",
+  b14b: "B14b · 🔴 A1.1 · a withdrawal's split is a consent signal: a masked viewer's reply carries the total only (changed and unchanged null) and the line says the total; a reader's carries the split; a tag's reply is untouched",
+  b14c: "B14c · 🔴 OD54 · a masked role's POSTed suppressed audience — true, false, or beside an operator — is refused role BEFORE any count, the preview and the run both, naming “suppressed”; a reader gets the count of the stopped rows and the audience in words",
+  b14d: "B14d · 🔴 OD54 · a suppression's split is a stop signal: a masked officer may still suppress, its preview is the TOTAL (no split key) and its reply carries the total only (changed and unchanged null), the line saying “A stop is on record for N contacts” — never “already suppressed”; a reader's carries the split",
   b15: "B15 · ⭐ the selection row is the SERVER's projection: exactly id, name and masked, the number +255••••NN — and the preview's sample is the same projection, twenty named of thirty, \"and 10 more\"",
   b16: "B16 · \"select all matching\" stores the FILTER: the page's canonical key reads back through U24's JSON parser to the same filter and carries no ids; ticks-only is ids alone, and a filter beside ids is a filter",
   s1: "S1 · ⛔ THE ACTIONS ARE GATED: the file opens \"use server\", exports exactly the two actions, each opens with softRequireStaff(\"growth\", …) before its rate rule and the parser, reads the body only through parseBulkRequest, never a count from it; only a landed run revalidates, and the reply goes through contactBulkReply",
@@ -308,7 +316,7 @@ const L = {
   b19: "B19 · the filter's IDENTITY ignores the minute a rolling window resolves to (review F6): range=7d a minute apart is two keys and ONE identity; 24h, a pill or a typed date is another identity; a typed date is one identity at any hour",
   s8: "S8 · the selection clears “all matching” on the filter's IDENTITY, never its key (F6), and “select all matching” says when it may let go of ticks made elsewhere (F5) — the copy executed, “not on this page”",
   s9: "S9 · the confirmation says “and N more” only below a listed sample and names the whole book when nothing narrows it (F3); a button disabled by a request in flight says why (EXECUTED)",
-  s10: "S10 · 🔴 D19 / A1.1 · the KPI band's consent split is a READER's (F1): a masked viewer's band is In the book and Suppressed only, in the 1-lg2 rung that holds the four-tile band's rows; a reader's keeps all four",
+  s10: "S10 · 🔴 D19 / A1.1 / OD54 · the KPI band's consent split (F1) AND its stop count (OD54) are a READER's: a masked viewer's band is exactly two tiles — In the book and the contacts added in the last 7 days (the loader's count) — with no consent, withdrawn or Suppressed tile, in the 1-lg2 rung that holds the four-tile band's rows; a reader's keeps all four",
 } as const;
 
 async function runAssertions(impl: Impl, tag: string): Promise<void> {
@@ -556,15 +564,49 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
     const reader = await preview({ action: "tag", tag: "probe", audience: { sources: ["REGISTRATION"] }, typed: null }, true, counting);
     return [allRole && maskedCounts === 0 && reader.ok && reader.count === 1, `${answers.join(" · ")} · masked counts asked ${maskedCounts} · reader ${outcome(reader)}`];
   });
+  await fresh(L.b14c, async () => {
+    // 🔴 OD54 · the stop axis asked through the bulk door's body — the address's question, refused the same way.
+    let counted = 0;
+    const counting: ContactBulkDeps = { ...impl.deps, count: async (f) => { counted++; return impl.deps.count(f); } };
+    const askedOf: Array<Record<string, unknown>> = [{ suppressed: true }, { suppressed: false }, { suppressed: true, operators: ["VODACOM"] }];
+    const answers: string[] = [];
+    let allRole = true;
+    for (const audience of askedOf) {
+      const pre = await preview({ action: "suppress", audience, typed: null }, false, counting);
+      const r = await run({ action: "suppress", audience, typed: "2" }, false, counting);
+      answers.push(`${pre.ok ? `COUNT ${pre.count}` : pre.reason}/${r.ok ? "RAN" : r.reason}`);
+      if (pre.ok || pre.reason !== "role" || pre.error !== BULK_SENTENCES.role("suppressed") || r.ok || r.reason !== "role") allRole = false;
+    }
+    const maskedCounts = counted;
+    const reader = await preview({ action: "suppress", audience: { suppressed: true }, typed: null }, true, counting);
+    return [allRole && maskedCounts === 0 && reader.ok && reader.count === 2 && reader.described.includes("Suppressed"),
+      `${answers.join(" · ")} · masked counts asked ${maskedCounts} · reader ${outcome(reader)}`];
+  });
   await fresh(L.b14b, async () => {
     const r = await run({ action: "withdraw", audience: { ids: ["mc_b_stranger", "mc_b_withdrawn"] }, typed: null }, false);
     const masked = impl.reply(r, false);
     const reader = impl.reply(r, true);
     const tagged = await run({ action: "tag", tag: "x", audience: { ids: five }, typed: null }, false);
     const taggedMasked = impl.reply(tagged, false);
-    return [masked.ok && masked.changed === null && masked.unchanged === null && bulkResultLine(masked) === "A withdrawal is on record for 2 contacts"
+    return [masked.ok && masked.changed === null && masked.unchanged === null && impl.line(masked) === "A withdrawal is on record for 2 contacts"
       && reader.ok && reader.changed === 1 && reader.unchanged === 1 && JSON.stringify(taggedMasked) === JSON.stringify(tagged),
       `masked ${outcome(masked)} | reader ${outcome(reader)}`];
+  });
+  await fresh(L.b14d, async () => {
+    // A fresh number (a new stop) and an officer's stop (unchanged): the split a masked viewer must not be handed is 1 / 1.
+    const ticked = { action: "suppress", audience: { ids: ["mc_b_010", "mc_b_operator"] }, typed: null };
+    const pre = await preview(ticked, false);
+    const r = await run(ticked, false);
+    const masked = impl.reply(r, false);
+    const reader = impl.reply(r, true);
+    const maskedLine = masked.ok ? impl.line(masked) : "";
+    const PREVIEW_KEYS = "action,count,described,listIsNew,listName,ok,sample,tag,tier";
+    return [pre.ok && pre.count === 2 && Object.keys(pre).sort().join(",") === PREVIEW_KEYS
+      && masked.ok && masked.matched === 2 && masked.changed === null && masked.unchanged === null
+      && maskedLine === "A stop is on record for 2 contacts" && !/already|suppressed/i.test(maskedLine)
+      && impl.line({ action: "suppress", matched: 1, changed: null, unchanged: null, full: 0 }) === "A stop is on record for 1 contact"
+      && reader.ok && reader.changed === 1 && reader.unchanged === 1 && impl.line(reader) === "1 suppressed · 1 already suppressed",
+      `preview ${outcome(pre)} | masked ${outcome(masked)} → "${maskedLine}" | reader ${outcome(reader)}`];
   });
   await fresh(L.b15, async () => {
     const row = await db.marketingContact.find("mc_b_known");
@@ -751,10 +793,14 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
     const masked = m < 0 ? "" : page.slice(m, page.indexOf("</KpiGrid>", m));
     const r = page.indexOf('<div data-block="contacts-kpis"><KpiGrid>');
     const reader = r < 0 ? "" : page.slice(r, page.indexOf("</KpiGrid>", r));
-    return [page.includes("{reads ? (") && masked.includes('cols="1-lg2"') && masked.includes('label="In the book"') && masked.includes('label="Suppressed"')
-      && !/consent|withdrawn/i.test(masked)
+    const tiles = (masked.match(/<AdminKpi /g) ?? []).length;
+    return [page.includes("{reads ? (") && masked.includes('cols="1-lg2"') && tiles === 2 && masked.includes('label="In the book"')
+      // OD54 · the second fact is the loader's whole-book count of the last 7 days, under the copy module's one label.
+      && masked.includes("label={CONTACTS_KPI_RECENT}") && masked.includes("recent!.toLocaleString()")
+      && page.includes("const recent = view?.addedRecently ?? null;") && CONTACTS_KPI_RECENT === "Added in the last 7 days"
+      && !/consent|withdrawn|suppress/i.test(masked)
       && ["In the book", "Consent given", "No consent", "Suppressed"].every((l) => reader.includes(`label="${l}"`)),
-      `masked: ${masked.replace(/ +/g, " ").slice(0, 160)}`];
+      `masked: ${masked.replace(/ +/g, " ").slice(0, 200)}`];
   });
 }
 
@@ -922,6 +968,38 @@ if (!PROVE_RED) {
       name: "R21 · 🔴 D19 · a masked viewer's KPI band carries the consent split again",
       expect: L.s10,
       impl: () => ({ ...REAL, sources: withSource("page", 'data-kpis-masked><KpiGrid cols="1-lg2">', 'data-kpis-masked><KpiGrid cols="1-lg2"><AdminKpi label="Consent given" value="1" />') }),
+    },
+
+    /* ── 🔴 OD54 · D19 covers SUPPRESSION too — each defect on its own assertion ── */
+    {
+      name: "R22 · 🔴 OD54 · the role rule forgets the stop — a masked role's POSTed { suppressed: true } is answered with a count",
+      expect: L.b14c,
+      impl: () => ({ ...REAL, deps: { ...TEST_DEPS, roleRefusal: (f, reads) => roleRefusal({ ...f, suppressed: null }, reads) } }),
+    },
+    {
+      name: "R23 · 🔴 OD54 · a suppression's split reaches a masked viewer — the reply shapes a withdrawal only, as before OD54",
+      expect: L.b14d,
+      impl: () => ({ ...REAL, reply: (r, reads) => (r.ok && r.action === "suppress" ? r : contactBulkReply(r, reads)) }),
+    },
+    {
+      name: "R24 · OD54 · the total-only line borrows the withdrawal's sentence — a masked officer who suppressed is told a withdrawal is on record",
+      expect: L.b14d,
+      impl: () => ({
+        ...REAL,
+        line: (r) => (r.changed === null || r.unchanged === null
+          ? `A withdrawal is on record for ${r.matched} contact${r.matched === 1 ? "" : "s"}`
+          : bulkResultLine(r)),
+      }),
+    },
+    {
+      name: "R25 · 🔴 OD54 · “Suppressed” is back in the masked band — the book's stops, beside its size",
+      expect: L.s10,
+      impl: () => ({
+        ...REAL,
+        sources: withSource("page",
+          '<AdminKpi label={CONTACTS_KPI_RECENT} value={failed ? "" : recent!.toLocaleString()} unavailable={failed} />',
+          '<AdminKpi label="Suppressed" value={failed ? "" : s!.suppressed.toLocaleString()} unavailable={failed} />'),
+      }),
     },
   ];
 

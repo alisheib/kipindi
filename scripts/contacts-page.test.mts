@@ -16,6 +16,10 @@
  * (A1.1 — a masked viewer is drawn no Consent or Source axis and its `?source=`/`?consent=` read no row), and, from
  * the source, the rail surviving no-match, the Operator column reading the one table, the rail file's shape and its
  * filter-language declaration, and the one vocabulary (C13).
+ * 🔴 OD54 · THE STOP IS A READER'S, DRIVEN where it can run: `roleRefusal` refuses `suppressed` to a masked viewer and
+ * allows it to a reader, the REAL loader refuses a masked `?suppressed=` by role with no row read (13b), the masked rail
+ * is Operator · List · Tag (13), the masked band's second fact is the whole book's contacts added in the last 7 days at
+ * the loader's one clock (5b) — and, from the source, no per-row stop signal reaches a masked viewer (9h).
  *
  * ⛔ A PART OF A NUMBER NEVER SEARCHES THE NUMBER. GROWTH sees every number masked; a substring search on
  * `msisdn` would let that role rebuild a number digit by digit. §2 holds it here; the twins' exact match
@@ -37,15 +41,23 @@ import { readFileSync } from "node:fs";
 import { decomment } from "./lib/decomment.mts";
 import { db } from "../src/lib/server/store.ts";
 import type { StoredMarketingContact, ContactBookSummary, ContactTagCount, StoredContactList } from "../src/lib/server/store.ts";
-import { contactsSearch, toAudienceWhere, WHOLE_BOOK, ndcsForOperators } from "../src/lib/server/marketing/audience.ts";
+import {
+  contactsSearch, toAudienceWhere, WHOLE_BOOK, ndcsForOperators, contactAudience, roleRefusal, ROLE_REFUSAL_REASON,
+} from "../src/lib/server/marketing/audience.ts";
+import type { ContactAudienceFilter } from "../src/lib/server/marketing/audience.ts";
+import { contactSelectionRow } from "../src/lib/server/marketing/contact-bulk.ts";
 import { operatorBrand, contactsHref, contactsLinkSp, contactsClearFiltersHref } from "../src/app/admin/contacts/contacts-query.ts";
-import { loadContacts } from "../src/app/admin/contacts/contacts-loader.ts";
+import { loadContacts, contactEditView } from "../src/app/admin/contacts/contacts-loader.ts";
 import type { ContactsParams, ContactsView } from "../src/app/admin/contacts/contacts-loader.ts";
 import { contactRail, TAG_RAIL_CAP } from "../src/app/admin/contacts/contacts-rail.ts";
 import type { ContactRail, RailGroup, RailOption } from "../src/app/admin/contacts/contacts-rail.ts";
-import { CONSENT_LABEL, SOURCE_LABEL, RAIL_KEYS, RAIL_ANY, RAIL_UNKNOWN_LIST, RAIL_LABEL_MAX, railOperatorTitle } from "../src/app/admin/contacts/contacts-copy.ts";
+import {
+  CONSENT_LABEL, SOURCE_LABEL, RAIL_KEYS, RAIL_ANY, RAIL_UNKNOWN_LIST, RAIL_LABEL_MAX, railOperatorTitle,
+  CONTACTS_KPI_RECENT, CONTACTS_RECENT_DAYS,
+} from "../src/app/admin/contacts/contacts-copy.ts";
 import { PER_PAGE } from "../src/components/admin/admin-pagination.tsx";
 import { parseTzNumber, TZ_MOBILE_NDCS, TZ_OPERATORS } from "../src/lib/tz-msisdn.ts";
+import { DAY_MS } from "../src/lib/query/windows.ts";
 
 const PROVE_RED = process.argv.includes("--prove-red");
 
@@ -67,15 +79,19 @@ const REAL_SOURCES: Sources = {
 
 type Impl = {
   search: typeof contactsSearch;
-  /** The page's loader. `reads` is D19's read cell — a script has no session, so it is injected. */
-  load: (sp: ContactsParams, reads?: boolean) => Promise<ContactsView>;
+  /** The page's loader. `reads` is D19's read cell — a script has no session, so it is injected; `now` (OD54) is the
+   *  load's one clock, injected so the masked band's seven days are a fixed window. */
+  load: (sp: ContactsParams, reads?: boolean, now?: number) => Promise<ContactsView>;
   href: typeof contactsHref;
   /** U21 · the page's rail builder. */
   rail: typeof contactRail;
+  /** D19 / A1.1 / OD54 · the ONE role rule every door asks (`audience.ts`). */
+  role: typeof roleRefusal;
   sources: Sources;
 };
-const realLoad = (sp: ContactsParams, reads = false) => loadContacts(sp, { reads: async () => reads });
-const REAL: Impl = { search: contactsSearch, load: realLoad, href: contactsHref, rail: contactRail, sources: REAL_SOURCES };
+const realLoad = (sp: ContactsParams, reads = false, now?: number) =>
+  loadContacts(sp, { reads: async () => reads, ...(now === undefined ? {} : { now: () => now }) });
+const REAL: Impl = { search: contactsSearch, load: realLoad, href: contactsHref, rail: contactRail, role: roleRefusal, sources: REAL_SOURCES };
 
 let pass = 0, fail = 0;
 const failed: string[] = [];
@@ -177,12 +193,20 @@ const U21 = {
   counts: "12g · ⭐ a tag pill's count is the whole book's, shown ONLY where it is exactly what the pill lists — under another filter or a search it is omitted (EXECUTED: each count equals the rows its pill opens)",
   extension: "12h · U24's extension has NO axis: an applied import or window is ONE selected pill (toggle) whose href removes exactly that key and keeps the rest — for a masked viewer too — and Clear filters removes them; an axis with nothing to offer and nothing applied is not drawn",
   fit: "12i · ⛔ a pill never wraps or shrinks, so a label past RAIL_LABEL_MAX — a 60-character list name, five operators at once — is clipped, and its WHOLE text rides in the pill's title",
-  role: "13 · 🔴 A1.1 · THE RAIL IS ROLE-SHAPED: a masked viewer is drawn no Consent, Source or Player pill at all — even with all three typed — and its ?source=REGISTRATION and ?consent=GIVEN are refused by role with NO row read; a reader gets the rows and all six axes",
+  role: "13 · 🔴 A1.1 · THE RAIL IS ROLE-SHAPED: a masked viewer is drawn no Consent, Source, Suppressed (OD54) or Player pill at all — its rail is Operator · List · Tag, even with all four typed — and its ?source=REGISTRATION and ?consent=GIVEN are refused by role with NO row read; a reader gets the rows and all six axes",
   noMatch: "14 · ⛔ THE RAIL SURVIVES NO-MATCH: page.tsx draws <ContactFilters> exactly once, gated on !emptyBook ALONE (a whole-book fact) and built for every state — and a filter matching nothing still yields the whole rail, its value in force, its links keeping the search and the sort",
   column: "15 · ⛔ the Operator COLUMN reads the one numbering table — operatorBrand(c.ndc) — and never the stored operator string, which could say \"Tigo\" under the Yas pill",
   file: "16 · the rail file is a dumb server renderer — ONE data-filter-rail=\"contacts\", ONE FilterPill at the dense rank (replace, scroll={false}, the group's semantics), a FilterGroupKey per axis, no \"use client\", no route, no label typed — and filter-language declares it in ADMIN_SURFACES",
   vocab: "17 · ⭐ ONE vocabulary (C13): the Consent and Source labels live in contacts-copy.ts alone — page.tsx keeps no map of its own, the column and the rail read the same ones, UNKNOWN reads \"Not recorded\"",
   options: "18 · the loader hands the rail its options in BOTH answers — every list, and the book's tags most-carried first through the resolver's own tag reader — whole-book, like the KPIs",
+} as const;
+
+/** 🔴 OD54's labels, ONCE — "D19 covers SUPPRESSION too" (S10): until the importer goes live a stop is a player's own
+ *  opt-out or an officer's, so for a masked viewer it answers "is this a player?" exactly as consent does. */
+const OD54 = {
+  recent: "5b · ⭐ OD54 · a masked viewer's second KPI fact is the contacts ADDED IN THE LAST 7 DAYS — counted over the WHOLE book through the ONE resolver at the load's one clock (the bound inclusive: B, added exactly seven days before, counts; A, a day earlier, does not), the same under a filter and in the refused state — and a reader's view does not ask it",
+  chip: "9h · 🔴 OD54 · no per-row stop signal reaches a masked viewer: page.tsx reads no suppressedAt cache and says no \"Suppressed since\", it writes \"Suppressed\" exactly twice — the gate's REACH map (the reader's Reachable cell) and the reader's KPI band — and neither the selection row nor the edit view carries a stop",
+  axis: "13b · 🔴 OD54 · roleRefusal refuses suppressed — yes and no alike — to a masked viewer with the ROLE_REFUSAL_REASON and allows it to a reader; the loader refuses a masked ?suppressed=yes and ?op=HONORA&suppressed=no by role with NO row read, a reader gets the stopped row and the rest, and a masked viewer's \"Showing contacts:\" line names no stop",
 } as const;
 
 async function runAssertions(impl: Impl, tag: string): Promise<void> {
@@ -219,6 +243,21 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
   const filtered = await impl.load({ q: "baraka" });
   ok(p("5 · ⭐ the KPIs are the WHOLE book — a search does not move them"),
     JSON.stringify(filtered.summary) === JSON.stringify(WHOLE_BOOK_COUNTS), JSON.stringify(filtered.summary));
+
+  // ── 5b · 🔴 OD54 · THE MASKED BAND'S SECOND FACT — the book's contacts added in the last 7 days ──────────────
+  // A fixed clock: B (2 Sep, 10:00Z) was added EXACTLY seven days before it — the bound is inclusive — and A a day
+  // earlier, so a window that drifts by a day either way, or a figure that is not this one, changes the count.
+  const AT = Date.parse("2026-09-09T10:00:00.000Z");
+  const recentMasked = await impl.load({}, false, AT);
+  const recentFiltered = await impl.load({ op: "VODACOM" }, false, AT);
+  const recentRefused = await impl.load({ consent: "GIVEN" }, false, AT);
+  const recentReader = await impl.load({}, true, AT);
+  ok(p(OD54.recent),
+    recentMasked.addedRecently === 3 && recentFiltered.addedRecently === 3
+      && recentRefused.kind === "refused" && recentRefused.addedRecently === 3 && recentReader.addedRecently === null
+      && CONTACTS_RECENT_DAYS === 7 && CONTACTS_KPI_RECENT === "Added in the last 7 days"
+      && impl.sources.loader.includes("contactAudience({ ...WHOLE_BOOK, addedFrom: new Date(now - CONTACTS_RECENT_DAYS * DAY_MS).toISOString() }).count()"),
+    `masked ${recentMasked.addedRecently} · filtered ${recentFiltered.addedRecently} · refused ${recentRefused.kind}/${recentRefused.addedRecently} · reader ${recentReader.addedRecently}`);
 
   // ── 6 · ORDER ────────────────────────────────────────────────────────────────────────────────
   const opAsc = await impl.load({ sort: "operator", dir: "asc" });
@@ -278,6 +317,21 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
       && page.includes("const cols = reads ? 9 : 6;"));
   ok(p("9d · ⛔ D19 · the read cell is asked in the .ts loader — identity.contact through mayReveal, failing closed"),
     impl.sources.loader.includes('mayReveal(role, "identity.contact")') && impl.sources.loader.includes("if (!session) return false;"));
+  // 🔴 OD54 · a stop said per row is the same oracle: the page reads no stop cache, and the ONE row-level "Suppressed" is
+  // the gate's answer in the reader's Reachable cell. What reaches the browser per row — the selection's projection and
+  // the dialog's view — carries none (EXECUTED on B, the suppressed fixture).
+  const reachCell = "{reads && <td><Chip size=\"sm\" variant={r.ok ? \"success\" : \"neutral\"}>";
+  const bandAt = page.indexOf("{reads ? (");
+  const readerBand = bandAt < 0 ? "" : page.slice(bandAt, page.indexOf(") : (", bandAt));
+  const stopWords = (page.match(/Suppressed/g) ?? []).length;
+  const stoppedView = contactEditView(B, false);
+  const stoppedRow = contactSelectionRow(B);
+  ok(p(OD54.chip),
+    !page.includes("suppressedAt") && !/Suppressed since/i.test(page) && stopWords === 2
+      && page.includes('suppressed: "Suppressed",') && readerBand.includes('label="Suppressed"') && page.includes(reachCell)
+      && !("suppressedAt" in stoppedView) && stoppedView.reader === null && !JSON.stringify(stoppedView).includes("Suppressed")
+      && Object.keys(stoppedRow).sort().join(",") === "id,masked,name",
+    `${stopWords} "Suppressed" in page.tsx · reads the stop cache: ${page.includes("suppressedAt")} · edit view [${Object.keys(stoppedView).sort()}] · selection [${Object.keys(stoppedRow).sort()}]`);
 
   // ── 10 · THE OPERATOR LABEL COMES FROM THE ONE TABLE ───────────────────────────────────────────
   ok(p("10 · the operator brand comes from the numbering table, and an unknown prefix has none"),
@@ -487,11 +541,11 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
       && groupOf(longRail, "op")?.options.find((o) => o.key === "VODACOM")?.title === railOperatorTitle(ndcsForOperators(["VODACOM"])),
     `${longOn?.label} | ${opsOn?.label} · longest ${Math.max(...longPills.map((o) => o.label.length))}`);
 
-  // ── 13 · 🔴 A1.1 · THE ROLE-SHAPED RAIL ──────────────────────────────────────────────────────
-  const D19_KEYS = ["consent", "source", "player"];
+  // ── 13 · 🔴 A1.1 · THE ROLE-SHAPED RAIL (and OD54: no Suppressed axis for a masked viewer) ─────────────
+  const D19_KEYS = ["consent", "source", "player", "suppressed"];
   const leaks = (r: ContactRail) => r.groups.filter((g) => D19_KEYS.includes(g.param)).map((g) => g.param);
   const maskedRail = (await railFor(impl, {}, false)).rail;
-  const maskedTyped = impl.rail({ sp: { consent: "GIVEN", source: "REGISTRATION", player: "yes", op: "VODACOM" }, reads: false, lists: none.view.lists ?? null, tags: none.view.tags ?? null, counted: null, clearable: false });
+  const maskedTyped = impl.rail({ sp: { consent: "GIVEN", source: "REGISTRATION", player: "yes", suppressed: "yes", op: "VODACOM" }, reads: false, lists: none.view.lists ?? null, tags: none.view.tags ?? null, counted: null, clearable: false });
   const readerTyped = impl.rail({ sp: { consent: "GIVEN", source: "IMPORT", player: "yes" }, reads: true, lists: none.view.lists ?? null, tags: none.view.tags ?? null, counted: null, clearable: false });
   const srcRead = await readsDuring(() => impl.load({ source: "REGISTRATION" }, false));
   const conRead = await readsDuring(() => impl.load({ consent: "GIVEN" }, false));
@@ -499,13 +553,34 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
   const maskedSrc = srcRead.value;
   const maskedCon = conRead.value;
   ok(p(U21.role),
-    maskedRail.groups.map((g) => g.param).join(",") === "suppressed,op,list,tag" && leaks(maskedRail).length === 0 && leaks(maskedTyped).length === 0
+    maskedRail.groups.map((g) => g.param).join(",") === "op,list,tag" && leaks(maskedRail).length === 0 && leaks(maskedTyped).length === 0
       && readerTyped.groups.filter((g) => g.semantics === "tab").map((g) => g.param).join(",") === "consent,suppressed,op,source,list,tag"
       && readerTyped.groups.some((g) => g.param === "player" && g.semantics === "toggle" && g.options.length === 1 && g.options[0].on)
       && maskedSrc.kind === "refused" && maskedSrc.refusal === "role" && maskedSrc.param === "source" && srcRead.pageCalls === 0
       && maskedCon.kind === "refused" && maskedCon.refusal === "role" && maskedCon.param === "consent" && conRead.pageCalls === 0
       && ids(readerSrc) === [D, A].map((r) => r.id).join(","),
     `masked [${maskedRail.groups.map((g) => g.param)}] typed-leaks [${leaks(maskedTyped)}] · source ${ids(maskedSrc)} (${srcRead.pageCalls} page reads) · consent ${ids(maskedCon)} (${conRead.pageCalls}) · reader ${ids(readerSrc)}`);
+
+  // ── 13b · 🔴 OD54 · THE STOP IS A READER'S AXIS — the ONE role rule, then the REAL loader ───────────────────
+  const F = (patch: Partial<ContactAudienceFilter>): ContactAudienceFilter => ({ ...WHOLE_BOOK, ...patch });
+  const ruleYes = impl.role(F({ suppressed: true }), false);
+  const ruleNo = impl.role(F({ suppressed: false }), false);
+  const ruleReader = impl.role(F({ suppressed: true }), true);
+  // CONTROL: the axes that carry no player signal stay open to a masked viewer.
+  const ruleOpen = impl.role(F({ operators: ["VODACOM"], tags: ["vip"], lists: [L.id] }), false);
+  const supYes = await readsDuring(() => impl.load({ suppressed: "yes" }, false));
+  const supNo = await readsDuring(() => impl.load({ op: "HONORA", suppressed: "no" }, false));
+  const readerYes = await impl.load({ suppressed: "yes" }, true);
+  const readerNo = await impl.load({ suppressed: "no" }, true);
+  const maskedOpen = await impl.load({ op: "HONORA", tag: "vip" }, false);
+  const byRole = (v: ContactsView) => v.kind === "refused" && v.refusal === "role" && v.param === "suppressed" && v.reason === ROLE_REFUSAL_REASON;
+  ok(p(OD54.axis),
+    ruleYes?.param === "suppressed" && ruleYes.reason === ROLE_REFUSAL_REASON && ruleNo?.param === "suppressed" && ruleReader === null && ruleOpen === null
+      && byRole(supYes.value) && supYes.pageCalls === 0 && byRole(supNo.value) && supNo.pageCalls === 0
+      && ids(readerYes) === B.id && ids(readerNo) === [D, C, A].map((r) => r.id).join(",")
+      && maskedOpen.kind === "ok" && ids(maskedOpen) === A.id && maskedOpen.described.length === 2
+      && !maskedOpen.described.some((d) => /suppress|stop/i.test(d)),
+    `rule ${JSON.stringify(ruleYes)} / ${JSON.stringify(ruleNo)} / reader ${JSON.stringify(ruleReader)} / open ${JSON.stringify(ruleOpen)} · masked ${ids(supYes.value)} (${supYes.pageCalls} page reads), ${ids(supNo.value)} (${supNo.pageCalls}) · reader ${ids(readerYes)} | ${ids(readerNo)} · masked open "${maskedOpen.kind === "ok" ? maskedOpen.described.join(" · ") : maskedOpen.kind}"`);
 
   // ── 14 · ⛔ THE RAIL SURVIVES NO-MATCH ────────────────────────────────────────────────────────
   const railAt = page.indexOf("<ContactFilters");
@@ -640,9 +715,9 @@ if (!PROVE_RED) {
       expect: "11b · ⛔ an unreadable filter is REFUSED, naming its parameter — no rows, never the whole book — and the KPIs still stand",
       impl: {
         ...REAL,
-        load: async (sp, reads = false) => {
-          const v = await realLoad(sp, reads);
-          return v.kind === "refused" && v.refusal === "unreadable" ? realLoad({}, reads) : v;
+        load: async (sp, reads = false, now) => {
+          const v = await realLoad(sp, reads, now);
+          return v.kind === "refused" && v.refusal === "unreadable" ? realLoad({}, reads, now) : v;
         },
       },
     },
@@ -651,10 +726,10 @@ if (!PROVE_RED) {
       expect: "11c · 🔴 D19 · a viewer who may not read a number is REFUSED the player filter and the source filter (each answers \"is this a player?\"); a reading viewer is not",
       impl: {
         ...REAL,
-        load: async (sp, reads = false) => {
-          const v = await realLoad(sp, reads);
+        load: async (sp, reads = false, now) => {
+          const v = await realLoad(sp, reads, now);
           if (v.kind !== "refused" || v.refusal !== "role") return v;
-          return { ...(await realLoad(sp, true)), viewerReads: false };
+          return { ...(await realLoad(sp, true, now)), viewerReads: false };
         },
       },
     },
@@ -682,10 +757,10 @@ if (!PROVE_RED) {
       expect: U21.role,
       impl: {
         ...REAL,
-        load: async (sp, reads = false) => {
-          const v = await realLoad(sp, reads);
+        load: async (sp, reads = false, now) => {
+          const v = await realLoad(sp, reads, now);
           if (v.kind !== "refused" || v.refusal !== "role") return v;
-          return { ...(await realLoad(sp, true)), viewerReads: false };
+          return { ...(await realLoad(sp, true, now)), viewerReads: false };
         },
       },
     },
@@ -803,8 +878,8 @@ if (!PROVE_RED) {
       expect: U21.options,
       impl: {
         ...REAL,
-        load: async (sp, reads = false) => {
-          const v = await realLoad(sp, reads);
+        load: async (sp, reads = false, now) => {
+          const v = await realLoad(sp, reads, now);
           return v.kind === "refused" ? { ...v, lists: [], tags: [] } : v;
         },
       },
@@ -858,6 +933,70 @@ if (!PROVE_RED) {
       name: "a long label drawn whole — a 60-character list name runs off a 360px screen",
       expect: U21.fit,
       impl: { ...REAL, rail: (input) => mapPills(contactRail(input), (o) => (o.label.endsWith("…") && o.title !== undefined ? { ...o, label: o.title } : o)) },
+    },
+
+    /* ── 🔴 OD54 · D19 covers SUPPRESSION too — each defect on its own assertion ──────────────────────── */
+    {
+      name: "🔴 OD54 · the role rule forgets the stop — a masked viewer's ?suppressed= reads rows, and a typed number's stop answers \"is this a player?\"",
+      expect: OD54.axis,
+      impl: {
+        ...REAL,
+        role: (f, reads) => roleRefusal({ ...f, suppressed: null }, reads),
+        // The loader as it reads under that rule: a refusal on `suppressed` becomes the reader's list.
+        load: async (sp, reads = false, now) => {
+          const v = await realLoad(sp, reads, now);
+          if (v.kind !== "refused" || v.refusal !== "role" || v.param !== "suppressed") return v;
+          return { ...(await realLoad(sp, true, now)), viewerReads: false };
+        },
+      },
+    },
+    {
+      name: "🔴 OD54 · the rail draws the Suppressed axis for a masked viewer — a pill for a filter that role may not ask",
+      expect: U21.role,
+      impl: {
+        ...REAL,
+        rail: (input) => {
+          const r = contactRail(input);
+          if (input.reads || r.groups.some((g) => g.param === "suppressed")) return r;
+          const stops = contactRail({ ...input, reads: true }).groups.find((g) => g.param === "suppressed");
+          return stops ? { ...r, groups: [stops, ...r.groups] } : r;
+        },
+      },
+    },
+    {
+      name: "🔴 OD54 · a stop chip rendered for every viewer — a row tells GROWTH that the number it typed is under a stop",
+      expect: OD54.chip,
+      impl: {
+        ...REAL,
+        sources: {
+          ...REAL_SOURCES,
+          page: REAL_SOURCES.page.replace("{reads && c.userId && <Chip", '{c.suppressedAt && <Chip size="sm" variant="warning" className="ml-2">Suppressed</Chip>}{reads && c.userId && <Chip'),
+        },
+      },
+    },
+    {
+      name: "🔴 OD54 · the masked band's second fact is the book's stops again — Suppressed under another name",
+      expect: OD54.recent,
+      impl: {
+        ...REAL,
+        load: async (sp, reads = false, now) => {
+          const v = await realLoad(sp, reads, now);
+          return v.addedRecently === null ? v : { ...v, addedRecently: v.summary.suppressed };
+        },
+      },
+    },
+    {
+      name: "OD54 · the window drifts from the vocabulary's rolling 7d — eight days counted, so A, a day before the bound, slips in",
+      expect: OD54.recent,
+      impl: {
+        ...REAL,
+        load: async (sp, reads = false, now) => {
+          const v = await realLoad(sp, reads, now);
+          if (v.addedRecently === null) return v;
+          const from = new Date((now ?? Date.now()) - 8 * DAY_MS).toISOString();
+          return { ...v, addedRecently: await contactAudience({ ...WHOLE_BOOK, addedFrom: from }).count() };
+        },
+      },
     },
   ];
 

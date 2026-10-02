@@ -25,7 +25,9 @@
  * account refusal reads "Not reachable" and never says which (the gate's detail is not this role's to read).
  * 🔴 D19 · Reachable, Source and the Player chip render ONLY for a viewer who may read a number
  * (`viewerReads`, decided in `contacts-loader.ts`): each one, row by row, tells a masked role whether a
- * number belongs to a player.
+ * number belongs to a player. 🔴 OD54 · and so does a STOP: until the importer goes live it is a player's own
+ * opt-out or an officer's, so the one place a row says "Suppressed" — the Reachable cell, the gate's own answer — is a
+ * reader's, this page reads no `suppressedAt` cache for any row, and a masked viewer's KPI band carries no stop count.
  * ⭐ U24 · every read goes through the ONE audience resolver (`contacts-loader.ts` → `contactAudience`). A filter
  * in force is said in words above the table ("Showing contacts: …"), and every link is built by ONE href builder
  * (`contactsHref`) that carries them. ⛔ A filter that cannot be read is REFUSED — no rows, the parameter named, a
@@ -33,8 +35,9 @@
  * ⭐ U21 · THE RAIL (`contact-filters.tsx`, built by `contacts-rail.ts`) draws what the address applies and writes
  * every pill through that builder. It is gated on `!emptyBook` ALONE — a whole-book fact, never the match count —
  * so a filter that matches nothing, a refused filter and a failed read all keep it on screen (§5.15). It is
- * role-shaped (A1.1): a masked viewer gets no Consent or Source axis. ⛔ The Operator COLUMN reads the one numbering
- * table (`operatorBrand(c.ndc)`) and never the stored `operator` string, which could say "Tigo" under the Yas pill.
+ * role-shaped (A1.1, OD54): a masked viewer gets no Consent, Source or Suppressed axis. ⛔ The Operator COLUMN reads
+ * the one numbering table (`operatorBrand(c.ndc)`) and never the stored `operator` string, which could say "Tigo"
+ * under the Yas pill.
  *
  * Growth domain (`roles.ts`), the same people who run affiliate, bonuses and invites.
  */
@@ -58,7 +61,7 @@ import { contactFilterAudienceKey, contactFilterIdentity, contactSelectionRow } 
 import { formatDate } from "@/lib/utils";
 import {
   CONTACTS_EMPTY, CONTACTS_NO_MATCH, CONTACTS_NO_MATCH_FILTERED, CONTACTS_SEARCH_PLACEHOLDER, CONTACTS_FILTERED_LEAD,
-  CONTACTS_FILTER_UNREADABLE, CONTACTS_FILTER_NOT_FOR_ROLE, CONSENT_LABEL, SOURCE_LABEL, CONTACTS_BULK,
+  CONTACTS_FILTER_UNREADABLE, CONTACTS_FILTER_NOT_FOR_ROLE, CONSENT_LABEL, SOURCE_LABEL, CONTACTS_BULK, CONTACTS_KPI_RECENT,
 } from "./contacts-copy";
 import { operatorBrand, contactsHref, contactsClearFiltersHref, contactsLinkSp } from "./contacts-query";
 import { loadContacts, loadContactEdit, viewerReadsContacts } from "./contacts-loader";
@@ -82,8 +85,10 @@ export default async function AdminContactsPage(props: { searchParams: Promise<C
 
 /** ⛔ Only the reasons an operator can act on are named; everything else is "Not reachable". A
  *  self-exclusion, a break, a harm marker, an age or an account status is the player's protected
- *  standing, and this column is read by GROWTH. Typed as a full Record so a new gate reason is a
- *  compile error here, not a silent blank. */
+ *  standing, and it is not named even to the reader this column renders for (D19: GROWTH, a masked
+ *  role, gets no Reachable column at all). 🔴 OD54 · its "Suppressed" is the ONE place a row says it is
+ *  under a stop, which is why the column stays a reader's. Typed as a full Record so a new gate reason
+ *  is a compile error here, not a silent blank. */
 const REACH: Record<MarketingSkipReason, string> = {
   suppressed: "Suppressed",
   no_consent: "No consent",
@@ -119,6 +124,8 @@ async function AdminContactsContent({ searchParams }: { searchParams: Promise<Co
     console.error("[admin/contacts] read failed:", (err as Error)?.message ?? err);
   }
   const summary = view?.summary ?? null;
+  // 🔴 OD54 · the masked band's second fact (the loader asks it for that viewer alone; null for a reader).
+  const recent = view?.addedRecently ?? null;
   // ⭐ U24 · the loader's two answers: the list ("ok"), or a filter it would not read ("refused").
   const listed = view?.kind === "ok" ? view : null;
   const refused = view?.kind === "refused" ? view : null;
@@ -188,7 +195,12 @@ async function AdminContactsContent({ searchParams }: { searchParams: Promise<Co
             every role ("a count over the book is not a per-number answer"), and U22's add and U23's one-row writes broke
             that premise: tick ONE row, record a withdrawal, and whether "Consent given" fell, "No consent" rose or nothing
             moved says what that row was — and until U33 only a player writes GIVEN. A viewer who may not read a number
-            gets the book's size and its stops, in two tiles that hold the four-tile band's rows (`1-lg2`). */}
+            gets two whole-book facts, in two tiles that hold the four-tile band's rows (`1-lg2`), so the route's one
+            skeleton still holds.
+            🔴 OD54 · AND THE STOP COUNT IS A READER'S TOO. Until the importer goes live a stop is a player's own opt-out or
+            an officer's: tick ONE row, suppress it, and whether "Suppressed" rose says whether it was already stopped. So
+            the masked band's second fact is the contacts ADDED IN THE LAST 7 DAYS — counted by the loader through the ONE
+            resolver, over the whole book, at its one clock — which moves the same for any number an officer adds. */}
         {reads ? (
           <div data-block="contacts-kpis"><KpiGrid>
             <AdminKpi label="In the book" value={failed ? "" : s!.total.toLocaleString()} unavailable={failed} />
@@ -204,7 +216,7 @@ async function AdminContactsContent({ searchParams }: { searchParams: Promise<Co
         ) : (
           <div data-block="contacts-kpis" data-kpis-masked><KpiGrid cols="1-lg2">
             <AdminKpi label="In the book" value={failed ? "" : s!.total.toLocaleString()} unavailable={failed} />
-            <AdminKpi label="Suppressed" value={failed ? "" : s!.suppressed.toLocaleString()} unavailable={failed} />
+            <AdminKpi label={CONTACTS_KPI_RECENT} value={failed ? "" : recent!.toLocaleString()} unavailable={failed} />
           </KpiGrid></div>
         )}
 
@@ -321,6 +333,8 @@ async function AdminContactsContent({ searchParams }: { searchParams: Promise<Co
                         {/* 🔴 A1.1 · until U33 a Given/Withdrawn consent can only be a player's (or an erasure's), so the
                             per-row chip is a membership oracle for a masked viewer — shown only to a reader. */}
                         {reads && <td><Chip size="sm" variant={consent.variant}><span className="whitespace-nowrap">{consent.label}</span></Chip></td>}
+                        {/* 🔴 OD54 · the Reachable chip can say "Suppressed" — a stop, which until the importer goes live is a
+                            player's own opt-out or an officer's — so it is a reader's too, and no other cell names a stop. */}
                         {reads && <td><Chip size="sm" variant={r.ok ? "success" : "neutral"}><span className="whitespace-nowrap">{r.label}</span></Chip></td>}
                         <td className="whitespace-nowrap">
                           {lists[i] > 0 && <span className="mr-2 text-body-sm text-text-tertiary">{lists[i]} {lists[i] === 1 ? "list" : "lists"}</span>}

@@ -9,7 +9,8 @@
  *      href vocabulary equals the parser's.
  *   §2 BEHAVIOUR, DRIVEN on the memory twin over a 10-row fixture (one an erased tombstone): every predicate on its
  *      own, AND across them, an empty any-of is NOTHING, the tombstone is in no reader, an unknown value REFUSES,
- *      and two spellings of one filter are one key.
+ *      and two spellings of one filter are one key. 2.16 · the ONE role rule (`roleRefusal`, D19 / A1.1 / OD54), at its
+ *      home: every player axis refused by name to a masked viewer — `suppressed` among them since OD54 — none to a reader.
  *   §3 ⭐ ONE COUNT (the Accept): for twelve filters the list's total, count(), breakdown().total, the keyset walk
  *      and the union of the pages are one number. U34 (export) and U40 (recount) each add their reader to READERS.
  *   §4 the KEYSET walk survives a row written between two calls; §5 the audit and describe forms never print a number.
@@ -39,7 +40,7 @@ import type { StoredMarketingContact, StoredUser, MessagingKey } from "../src/li
 import {
   contactAudience, toAudienceWhere, AUDIENCE_DEPS, WHOLE_BOOK, MAX_AUDIENCE_IDS, CONTACT_AUDIENCE_URL_KEYS,
   parseContactAudienceParams, parseContactAudienceJson, contactAudienceKey, contactAudienceParams, urlExpressible,
-  auditContactAudience, describeAudience, ndcsForOperators, contactTagCounts,
+  auditContactAudience, describeAudience, ndcsForOperators, contactTagCounts, roleRefusal, ROLE_REFUSAL_REASON,
 } from "../src/lib/server/marketing/audience.ts";
 import type { ContactAudienceFilter, ContactAudience, AudienceParse } from "../src/lib/server/marketing/audience.ts";
 import { CONTACTS_LINK_KEYS, contactsHref } from "../src/app/admin/contacts/contacts-query.ts";
@@ -302,9 +303,14 @@ type Impl = {
   key: typeof contactAudienceKey;
   audit: typeof auditContactAudience;
   describe: typeof describeAudience;
+  /** D19 / A1.1 / OD54 · the ONE role rule every door asks. */
+  role: typeof roleRefusal;
   readers: Reader[];
   cache: CacheWriters;
 };
+
+/** 2.16's label, once — the assertion and its red case both read it. */
+const L_ROLE = "2.16 · 🔴 D19 / A1.1 / OD54 · the ONE role rule: a masked viewer is refused every player axis BY NAME — player, source, consent and suppressed (yes and no alike, the address's ?suppressed=no included) — each with the ROLE_REFUSAL_REASON; a reader is refused none; and the axes that carry no player signal (search, operator, list, tag, import, window, ticks) pass for both";
 
 const F = (patch: Partial<ContactAudienceFilter>): ContactAudienceFilter => ({ ...WHOLE_BOOK, ...patch });
 /** A parse that must succeed. A refusal becomes a filter that matches nothing real, so the assertion using it fails
@@ -357,6 +363,7 @@ const REAL: Impl = {
   key: contactAudienceKey,
   audit: auditContactAudience,
   describe: describeAudience,
+  role: roleRefusal,
   readers: REAL_READERS,
   cache: REAL_CACHE,
 };
@@ -508,6 +515,23 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
       && relJson.addedFrom === "2026-09-24T09:30:00.000Z" && relJson.addedBefore === "2026-10-01T09:31:00.000Z"
       && roundTrips.length === 0 && contactAudienceParams(F({ ids: ["a01"] })) === null && contactAudienceParams(F({ tags: [] })) === null,
     `${k1} | ${relKey} | not round-tripping: [${roundTrips}]`);
+
+  // ── 2.16 · 🔴 THE ONE ROLE RULE, at its home (D19 / A1.1 / OD54) ──
+  const playerAxes: Array<[string, ContactAudienceFilter]> = [
+    ["player", F({ player: true })], ["source", F({ sources: ["IMPORT"] })], ["consent", F({ consent: ["GIVEN"] })],
+    ["suppressed", F({ suppressed: true })], ["suppressed", F({ suppressed: false })],
+  ];
+  const misnamed = playerAxes.filter(([param, f]) => {
+    const r = impl.role(f, false);
+    return r === null || r.param !== param || r.reason !== ROLE_REFUSAL_REASON;
+  }).map(([param, f]) => `${param}=${JSON.stringify(impl.role(f, false))}`);
+  const readerRefused = playerAxes.filter(([, f]) => impl.role(f, true) !== null).map(([param]) => param);
+  const openAxes = F({ q: "asha", operators: ["VODACOM"], lists: ["lst_1"], tags: ["vip"], importId: "imp_1", addedFrom: "2026-09-01T00:00:00.000Z", ids: ["a01"] });
+  const typedNo = impl.parse({ suppressed: "no" }, NOW);
+  ok(p(L_ROLE),
+    misnamed.length === 0 && readerRefused.length === 0 && impl.role(openAxes, false) === null && impl.role(openAxes, true) === null
+      && typedNo.ok && impl.role(typedNo.filter, false)?.param === "suppressed",
+    `misnamed [${misnamed.join(" | ")}] · reader refused [${readerRefused}] · open ${JSON.stringify(impl.role(openAxes, false))}`);
 
   /* ── §3 · ⭐ ONE COUNT ─────────────────────────────────────────────────────────────────────── */
   const bad: string[] = [];
@@ -891,6 +915,11 @@ if (!PROVE_RED) {
           },
         },
       },
+    },
+    {
+      name: "R21 · 🔴 OD54 · the role rule forgets the stop — a masked viewer may ask which numbers are under a stop, the player question by another name",
+      expect: [L_ROLE],
+      impl: { ...REAL, role: (f, reads) => roleRefusal({ ...f, suppressed: null }, reads) },
     },
   ];
 

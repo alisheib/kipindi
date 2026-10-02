@@ -12,8 +12,9 @@
  * these are in the book?" — and a run spends `contacts.write`.
  * ⛔ NOTHING IS READ FROM THE BODY BUT THROUGH `parseBulkRequest`, which builds a NEW request from named keys: a posted
  * count, tier or officer never reaches a decision. The service recounts and decides (OD27/OD28).
- * 🔴 D19 / A1.1 · the viewer's read cell goes to the service, which refuses a masked viewer's consent, source or player
- * audience before any count; `contactBulkReply` keeps a withdrawal's split from a viewer who may not read a number.
+ * 🔴 D19 / A1.1 / OD54 · the viewer's read cell goes to the service, which refuses a masked viewer's consent, source,
+ * player or suppressed audience before any count; `contactBulkReply` keeps a withdrawal's and a suppression's split from
+ * a viewer who may not read a number.
  * ⛔ A REFUSAL IS NOT A REVALIDATION: only a run that landed invalidates the list.
  *
  * Guard: `test:contacts-bulk` (§9, this file's shape).

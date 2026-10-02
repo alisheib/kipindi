@@ -14,8 +14,10 @@
  * 🔴 D19 / A1.1 · THE RAIL IS ROLE-SHAPED. There is NO player axis, for anyone. For a viewer whose identity.contact
  * cell is not `read`, Consent and Source are not drawn at all — no axis and no pill — and neither is an applied
  * `player`: until U33 a recorded consent can only be a player's, Source "Sign-up" means the number came with an
- * account, and each answers "is this a player?" for a number the viewer typed. The loader REFUSES all three for that
- * viewer before any row is read (`roleRefusal`), and the refused row names the parameter with Clear filters.
+ * account, and each answers "is this a player?" for a number the viewer typed. 🔴 OD54 · nor is Suppressed: until the
+ * importer goes live a stop is a player's own opt-out or an officer's, so it answers the same question — that viewer's
+ * rail is Operator · List · Tag (List and Tag when the book has them). The loader REFUSES all four for that viewer
+ * before any row is read (`roleRefusal`), and the refused row names the parameter with Clear filters.
  *
  * ⛔ AN APPLIED VALUE IS ALWAYS A VISIBLE, SELECTED PILL. A list id the book has no list for ("Unknown list"), a tag
  * outside the drawn top 20, an operator with no live prefix (Telxer), two values at once (`?op=AIRTEL,VODACOM`), even
@@ -93,7 +95,8 @@ export type ContactRail = {
 export type ContactRailInput = {
   /** The page's address, as Next hands it. */
   sp: ContactsSp;
-  /** D19 · may this viewer read a number? A viewer who may not gets no Consent, Source or Player pill at all. */
+  /** D19 · may this viewer read a number? A viewer who may not gets no Consent, Source, Suppressed (OD54) or Player pill
+   *  at all. */
   reads: boolean;
   /** Every list — or null when the read failed, so only an applied list is drawn. */
   lists: readonly StoredContactList[] | null;
@@ -274,10 +277,11 @@ export function contactRail(input: ContactRailInput): ContactRail {
     groups.push(axis(sp, "consent", RAIL_KEYS.consent,
       CONSENT_ORDER.map((c) => ({ key: c, label: CONSENT_LABEL[c].label })),
       consent, (v) => CONSENT_LABEL[v as ContactConsentState]?.label ?? v));
+    // 🔴 OD54 · a stop is a player signal until the importer goes live — a reader's axis, like Consent.
+    groups.push(axis(sp, "suppressed", RAIL_KEYS.suppressed,
+      [{ key: "yes", label: SUPPRESSED_LABEL.yes }, { key: "no", label: SUPPRESSED_LABEL.no }],
+      suppressed, (v) => (v === "yes" ? SUPPRESSED_LABEL.yes : v === "no" ? SUPPRESSED_LABEL.no : v)));
   }
-  groups.push(axis(sp, "suppressed", RAIL_KEYS.suppressed,
-    [{ key: "yes", label: SUPPRESSED_LABEL.yes }, { key: "no", label: SUPPRESSED_LABEL.no }],
-    suppressed, (v) => (v === "yes" ? SUPPRESSED_LABEL.yes : v === "no" ? SUPPRESSED_LABEL.no : v)));
   groups.push(axis(sp, "op", RAIL_KEYS.op,
     RAIL_OPERATORS.map((o) => ({ key: o.id, label: o.brand, title: railOperatorTitle(o.ndcs) })),
     op, (v) => TZ_OPERATORS[v as TzOperatorId]?.brand ?? v));

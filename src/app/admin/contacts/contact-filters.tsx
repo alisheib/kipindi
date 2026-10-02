@@ -22,8 +22,8 @@
  * ⭐ THE GROUP KEY IS LOAD-BEARING. Every axis opens with "Any"; without its key a row of pills cannot say what it
  * clears. Each axis is a `role="group"` named by that key, so a screen reader announces "Consent" before "Any".
  *
- * 🔴 D19 / A1.1 · ROLE-SHAPED UPSTREAM. A viewer who may not read a number is handed no Consent, Source or Player
- * group at all (`contacts-rail.ts`); this file draws what it is given and cannot add one back.
+ * 🔴 D19 / A1.1 / OD54 · ROLE-SHAPED UPSTREAM. A viewer who may not read a number is handed no Consent, Source,
+ * Suppressed or Player group at all (`contacts-rail.ts`); this file draws what it is given and cannot add one back.
  *
  * @see src/app/admin/contacts/contacts-rail.ts · scripts/filter-language.test.mts
  */

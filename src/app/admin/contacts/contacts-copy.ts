@@ -9,6 +9,7 @@
  * the defect C13 found between two specs ("Not recorded" against "No consent recorded").
  * ⭐ U23 · AND THE BULK BAR'S WORDS — its six actions, the confirmation's consequences (Suppress's permanence among them,
  * C23), and the server-counted result line. The rules those words describe are `src/lib/contacts/bulk-rules.ts`.
+ * 🔴 OD54 · AND THE MASKED KPI BAND'S SECOND FACT (`CONTACTS_KPI_RECENT`), with the window it counts.
  *
  * Admin chrome is English; the Swahili gloss for this section sits on `AdminPageHead`
  * ("Anwani", copied from `src/app/admin/invites/[id]/page.tsx:88`), not on the empty state —
@@ -65,6 +66,19 @@ export const CONTACTS_FILTER_NOT_FOR_ROLE = {
       ? `The “${param}” filter ${reason.slice("This filter ".length)}`
       : `The “${param}” filter can't be used here. ${reason}`,
 } as const;
+
+/* ═══ OD54 · THE MASKED KPI BAND'S SECOND FACT ═══════════════════════════════════════════════════ */
+
+/**
+ * 🔴 D19 / OD53 / OD54 · a viewer who may not read a number gets TWO whole-book facts: the book's size, and how many
+ * contacts were added in the last N days. ⛔ Not "Suppressed": until the importer goes live a stop is a player's own
+ * opt-out or an officer's, so the stop count moved when ONE ticked row was suppressed would say what that row was. This
+ * fact moves the same for any number an officer adds, a player's or a stranger's — no consent, no stop, no player signal.
+ * N is the window vocabulary's rolling `7d` (`lib/query/windows.ts`); the loader counts with it and the label is built
+ * from it, so the figure and its words cannot disagree.
+ */
+export const CONTACTS_RECENT_DAYS = 7;
+export const CONTACTS_KPI_RECENT = `Added in the last ${CONTACTS_RECENT_DAYS} days`;
 
 /* ═══ U21 · ONE VOCABULARY FOR THE COLUMN AND THE RAIL (decision C13) ═══════════════════════════ */
 
@@ -398,12 +412,29 @@ export function enumerateTail(count: number, shown: number): string | null {
 }
 
 /**
+ * 🔴 A1.1 / OD54 · THE TOTAL-ONLY LINES — the two actions whose split a viewer who may not read a number is not handed
+ * (`contactBulkReply`): "already withdrawn" is a consent signal and "already suppressed" a stop signal — until U33 a
+ * recorded withdrawal can only be a player's (or an erasure's), and until the importer goes live a stop a player's own or
+ * an officer's. Each says what is now ON RECORD for the whole selection, which is true whichever rows were already so.
+ * Any other action never arrives without its split; if one did, it says the count alone rather than borrow a sentence
+ * about something that did not happen.
+ */
+const TOTAL_ONLY: Partial<Record<ContactBulkAction, (contacts: string) => string>> = {
+  withdraw: (contacts) => `A withdrawal is on record for ${contacts}`,
+  suppress: (contacts) => `A stop is on record for ${contacts}`,
+};
+
+/**
  * ⭐ THE SERVER-COUNTED RESULT LINE ("3 tagged · 2 already had it"). Every number in it is the store's own count, never
- * the client's. 🔴 A1.1 · when the split is absent (a withdrawal, for a viewer who may not read a number) the line says
- * the total only — the split is a consent signal, and the reply did not carry it.
+ * the client's. 🔴 A1.1 / OD54 · when the split is absent (a withdrawal or a suppression, for a viewer who may not read a
+ * number) the line says the total only (`TOTAL_ONLY`) — the split is a player signal, and the reply did not carry it.
  */
 export function bulkResultLine(r: Pick<BulkOutcome, "action" | "matched" | "changed" | "unchanged" | "full">): string {
-  if (r.changed === null || r.unchanged === null) return `A withdrawal is on record for ${adminCount(r.matched, "contact")}`;
+  if (r.changed === null || r.unchanged === null) {
+    const contacts = adminCount(r.matched, "contact");
+    const total = TOTAL_ONLY[r.action];
+    return total !== undefined ? total(contacts) : contacts;
+  }
   const words = BULK_COPY[r.action];
   const parts = [`${formatNumber(r.changed)} ${words.past(r.changed)}`];
   if (words.already !== null) parts.push(`${formatNumber(r.unchanged)} ${words.already}`);

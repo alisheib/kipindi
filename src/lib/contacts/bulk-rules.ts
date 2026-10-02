@@ -130,8 +130,9 @@ export type BulkPreview = {
 
 /**
  * A run's answer, counted by the store. `changed` and `unchanged` are null when the split is not this viewer's to read:
- * whether a number's consent record already said WITHDRAWN is a player signal (D19 / A1.1), so a masked viewer's
- * withdrawal is told the total only. A row in `matched` that is in none of the counts was gone before the write.
+ * whether a number's consent record already said WITHDRAWN is a player signal (D19 / A1.1), and so is whether it was
+ * already under a stop (OD54), so a masked viewer's withdrawal and suppression are told the total only. A row in
+ * `matched` that is in none of the counts was gone before the write.
  */
 export type BulkOutcome = {
   ok: true;

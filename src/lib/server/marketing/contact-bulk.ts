@@ -8,9 +8,11 @@
  * declared readers), derives the tier from that recount through the ONE rule (`bulkConfirmTier`), and refuses
  * `confirm_required` / `confirm_mismatch` with the new count BEFORE anything is written. A preview's count is never reused.
  * 🔴 D19 / A1.1 · A POSTED FILTER IS ASKED THE ADDRESS'S QUESTION. For a viewer who may not read a number, an audience
- * naming consent, source or player is refused by U24's ONE role rule (`roleRefusal`) before any count, so a forged body
- * cannot turn the recount into a player oracle. And a withdrawal's split ("already withdrawn") is itself a consent
- * signal, so the action layer hands it to a reader alone (`contactBulkReply`).
+ * naming consent, source, player — or, since OD54, suppressed — is refused by U24's ONE role rule (`roleRefusal`) before
+ * any count, so a forged body cannot turn the recount into a player oracle. And a withdrawal's split ("already
+ * withdrawn") is itself a consent signal, and a suppression's ("already suppressed") a stop signal (OD54), so the action
+ * layer hands either split to a reader alone (`contactBulkReply`). An officer may still suppress: a masked one is told
+ * the total.
  * ⭐ TAG, UNTAG, ADD TO A LIST AND REMOVE ARE SET-BASED, over the where the count reads (`contactAudienceWrites`,
  * audience.ts — the only door to the store's `…Where` members). A tag goes through U28's ONE rule (C11).
  * ⭐ A WITHDRAWAL AND A SUPPRESSION WRITE EVIDENCE PER NUMBER, capped at `BULK_PER_ROW_MAX` and refused above it:
@@ -245,6 +247,8 @@ async function resolveParams(req: ContactBulkRequest): Promise<{ ok: true; p: Bu
  * The server's count of the audience, its tier, and — for the enumerate tier — the first `BULK_SAMPLE` rows, masked.
  * Refuses before counting a role-refused audience (D19), and refuses an empty selection or one past the per-number cap,
  * so the officer learns it before typing anything.
+ * 🔴 OD54 · it never splits the audience by stop (or consent) state, for anyone: the count is the TOTAL, the sample is
+ * `{ id, name, masked }`, and `described` cannot name a stop for a masked viewer — the role rule refused one first.
  */
 export async function previewContactBulk(
   req: ContactBulkRequest,
@@ -476,10 +480,12 @@ export async function runContactBulk(
 
 /**
  * 🔴 D19 / A1.1 · WHAT THE ACTION HANDS THE BROWSER. Until U33 a WITHDRAWN ledger row can only be a player's (or an
- * erasure's), so "1 already withdrawn" on a number a masked role ticked answers "is this a player?". A viewer whose
- * identity.contact cell is not `read` is told a withdrawal's total only — the split is absent, not hidden.
+ * erasure's), so "1 already withdrawn" on a number a masked role ticked answers "is this a player?". 🔴 OD54 · and until
+ * the importer goes live a stop can only be a player's own opt-out or an officer's, so "1 already suppressed" answers it
+ * too. A viewer whose identity.contact cell is not `read` is told a withdrawal's or a suppression's TOTAL only — the
+ * split is absent, not hidden. Every other action's split (a tag, a list, a removal) is an officer's own fact and stays.
  */
 export function contactBulkReply(r: BulkOutcome | BulkRefusal, reads: boolean): BulkOutcome | BulkRefusal {
-  if (!r.ok || reads || r.action !== "withdraw") return r;
+  if (!r.ok || reads || (r.action !== "withdraw" && r.action !== "suppress")) return r;
   return { ...r, changed: null, unchanged: null };
 }
