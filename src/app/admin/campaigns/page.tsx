@@ -79,7 +79,7 @@ function CampaignRow({ c, counts }: { c: StoredSmsCampaign; counts: SmsCampaignR
   const view = CAMPAIGN_STATUS_VIEW[c.status];
   const name = c.name.trim() === ""
     ? <span className="text-text-tertiary">{CAMPAIGNS_UNTITLED}</span>
-    : <span className="text-text-primary">{c.name}</span>;
+    : <span className="text-text">{c.name}</span>;
   return (
     <tr data-campaign-row data-campaign-id={c.id}>
       {/* ⛔ A LINK ONLY TO A PAGE THAT EXISTS (432(h)): plain text until U47 lands /admin/campaigns/[id] and flips the flag. */}

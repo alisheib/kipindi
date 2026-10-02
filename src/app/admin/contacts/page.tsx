@@ -302,7 +302,7 @@ async function AdminContactsContent({ searchParams }: { searchParams: Promise<Co
           {narrowed && listed && (
             <div data-block="contacts-filtered" className="flex flex-wrap items-center gap-x-2 border-b border-border-subtle px-3 py-1 text-body-sm text-text-secondary">
               <span className="text-text-tertiary">{CONTACTS_FILTERED_LEAD}</span>
-              <span className="min-w-0 break-words text-text-primary">{listed.described.join(" · ")}</span>
+              <span className="min-w-0 break-words text-text">{listed.described.join(" · ")}</span>
               <a href={clearFiltersHref} className="inline-flex items-center min-h-[var(--tap-min)] text-royal-300 hover:underline">Clear filters</a>
             </div>
           )}
@@ -378,7 +378,7 @@ async function AdminContactsContent({ searchParams }: { searchParams: Promise<Co
                         </td>
                         <td className="whitespace-nowrap">
                           {c.displayName
-                            ? <span className="text-text-primary">{c.displayName}</span>
+                            ? <span className="text-text">{c.displayName}</span>
                             : <span className="text-text-tertiary">No name</span>}
                           {reads && c.userId && <Chip size="sm" variant="info" className="ml-2">Player</Chip>}
                         </td>
