@@ -1421,7 +1421,7 @@ than being killed.
 
 *As built (WP6b, 2026-10-02; A5 and A6, with the WP6b review's corrections):* the rules, the matrix and the probes are
 written once, in `scripts/live/journey-header-fit.mjs`, and both `qa:journey-header-fit` (the clean matrix: the RULE
-probe, the clip, the overflow, each cell's gutter slack, and below 1024 the rail labels A17 owes) and
+probe, the clip, the overflow, each cell's slack — the row's free space — and below 1024 the rail labels A17 owes) and
 `red:journey-header-fit` import them. The red criterion is the RULE probe alone, and each of the nine mutations
 (`scripts/anchors/journey-header-fit.anchors.mjs`) names the rule that must break. A rule is asked only where its
 element is drawn: a KP_ROUTE on the deposit screen or its return skips the pill's rules there, by the header's own
@@ -1441,6 +1441,12 @@ crash, a bluescreen) runs none of that, so the mutation stays on disk with its w
 over one, `test:journey-shell` §10 fails predeploy on it by name, and §7's rule checks fail on each mutation.
 `RED_BUDGET_S` (1800) is a real bound — every wait races it — and `RED_SETTLE_MS` (180000) bounds each serve. Paths
 resolve from the repository root, not from the directory it was started in.
+*Calibrated on its first clean runs (2026-10-02, `beb2ade0`):* a shown brand span and the "+" compute `display: flex`,
+not the `inline-flex` their classes say — each is a flex item, and CSS blockifies a flex item's outer display — so the
+rules expect `flex`; the slack is the row's free space (the spacer between the clusters), because the gap after the
+rightmost control is 0 in every cell once the cluster is pushed to the row's end; the verdict prints every break.
+Result: 66/66 cells, every rule holds, no clip, no overflow, least slack 17.5px (sw 360, TZS 999,999) — the numbers are
+in VODACOM-PLAN §0i.
 
 **A7 · G7 — no "Nafasi" anywhere on the journey Tiketi view.** The journey variant of `PositionsBar` gets
 `journey.ticketsFilterAria` and drops `QueryResultCount` (the canvas shows none). `test:journey-tickets` follows

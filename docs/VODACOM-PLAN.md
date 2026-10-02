@@ -284,8 +284,17 @@ WP6b the swap + census + header-fit → WP7 overlays → WP8 short titles on pos
   staff pass: 66 cells (320–1279 × sw/en/zh, a guest and a player at TZS 999,999, and at 320 and 1024 TZS 9.9M,
   TZS 0, a held wallet and hidden balances). The RULE probe reads every S4 rule against its fixed token (a KP_ROUTE
   that hides the deposit pill skips the pill's rules there, by the header's own rule, which `test:journey-shell` §10
-  holds the drives' copy to), and the FIT probes report clipping, overflow and each cell's gutter slack, recorded here
-  once measured, with the rail-label lines A17 owes. Its red twin makes nine single-line `globals.css` mutations, each
+  holds the drives' copy to), and the FIT probes report clipping, overflow and each cell's slack (the row's free
+  space: what the spacer between the two clusters holds), with the rail-label lines A17 owes. **Measured 2026-10-02
+  (local in-memory server, a real staff pass, Chromium with the real fonts): 66 of 66 cells, every S4 rule holds, no
+  control clipped, no overflow.** Least slack: 17.5px at sw 360 for TZS 999,999 (the "+" arrives and the gutter grows
+  at 360, so 360 is tighter than 320's 18.7px); en 39.6px, zh 63.6px there. TZS 9.9M and TZS 0 leave the same room
+  (sw 33px at 320), by design: the capsule reserves the hidden-balance mask's width, so a short figure never narrows
+  it and hiding balances never moves the header. From 768 nothing is near the edge (≥ 96px at 1024, the tightest
+  desktop width). The rail: sw "Tiketi zangu" takes two lines at 320 and one from 360, en and zh one everywhere, none
+  cut — §0h point 18's model, confirmed. The first runs found three faults in the PROBES, none in the header (a shown
+  span and the "+" compute `flex`, not `inline-flex`: a flex item's display is blockified; the slack had been the
+  always-zero gap after the pushed cluster; the verdict cut its list at six), fixed in `beb2ade0`. Its red twin makes nine single-line `globals.css` mutations, each
   one rule the RULE probe must break in some cell, and a CSS witness makes an unserved mutation read BROKEN. ⛔ It runs
   only as `npm run red:journey-header-fit -- --alone`: without `--alone`, or inside `red:all` (which now marks every
   harness it starts with KP_RED_ALL), it refuses with exit 2 before writing anything. `test:journey-shell` §10 holds
@@ -296,11 +305,11 @@ WP6b the swap + census + header-fit → WP7 overlays → WP8 short titles on pos
   in `journey-header-fit.anchors.mjs`. **Served bytes for a classic viewer:** the same markup and RSC rows, because
   the else arms are today's elements, so `qa:classic-shell-parity` needs no new EXPECTED_DIFFS entry. The journey
   chrome's JavaScript is lazy, so a classic page's payload names none of it — but parity cannot see JavaScript, so
-  that stays a claim until a production build shows it (owed, item 2). **Owed before WP6b is ✅:** (1) the parity
-  compare against a baseline re-captured from the pre-S6 parent on main (A18); (2) a production build: the root
+  that stays a claim until a production build shows it (owed, item 2). **Owed before WP6b is ✅:** (1) ✅ the parity
+  compare against the baseline captured at WP6b's parent `b3153d98` (live main; A18): 224 cells, no unexpected
+  difference, 27/27; (2) a production build: the root
   layout's client chunks carry no journey-top-bar or journey-tabs module, or `npm run perf:smoke`'s JavaScript on a
-  classic page is unchanged; (3) `npm run qa:journey-header-fit`, with the per-cell slack and the rail-label lines
-  written here; (4) its red twin, detached, under the heavy-node lock, then `git diff --exit-code`; (5) the
+  classic page is unchanged; (3) ✅ `npm run qa:journey-header-fit`, 66/66 (above); (4) ✅ its red twin, detached and alone under the heavy-node lock: 9/9 mutations caught, 0 missed, 0 broken, 0 files left modified, and `git diff` of `src/` empty after it; (5) the
   qa:journey-shell tiles (WP6b step 5, not yet written: the header at 320–1280 × sw/en/zh, held, masked, zero and
   999,999, the active tab on each destination, the guest sheet, the Wallet, the unread dot, the focus ring, the tab
   labels at 320, and no-pass viewers still classic); (6) A1's G1 drive: on a preview session, end account A through
@@ -369,8 +378,9 @@ here, with how to overrule it. Newest last; nothing here blocks the work.
 18. **"Tiketi zangu" takes two lines in the tab rail on phones narrower than 360 px** (A17). A quarter of a 320 phone
     is 80 px and the label needs about 83, so it would otherwise read "Tiketi zan…"; every other label, in all three
     languages, fits on one line, and from 360 px all four do. Below 360 the four tab icons then line up from the top
-    so the two-line tab does not sit higher than the rest. Measured from the font's widths, not yet on a phone: WP6b's
-    320 px check confirms it. Overrule: say so, and the label keeps one line and ends in "…" as the classic rail's do.
+    so the two-line tab does not sit higher than the rest. Measured from the font's widths, then confirmed in the browser
+    (2026-10-02, `qa:journey-header-fit`, 66 cells): at 320 px the Swahili "Tiketi zangu" takes two lines and is never
+    cut; every other label, and every label from 360 px, takes one. Overrule: say so, and the label keeps one line and ends in "…" as the classic rail's do.
 19. **The S2 short-title approvals** (Ali, 2026-10-02: "you please approve those"). Claude reviews every drafted
     short title (as the Swahili reviewer) and approves them in /admin — which needs an officer login on 50pick.tz:
     Ali's admin is never re-minted and signing in with it signs him out everywhere. Waiting on Ali: a staff account
