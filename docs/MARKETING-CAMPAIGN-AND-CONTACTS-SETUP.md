@@ -4,7 +4,7 @@
 Ali's delegation · 11 legal questions, each shipping with a safe default that IS built. S7c went LIVE 2026-09-28 (`d3379fef`).
 U17 🔵 (`7bef9f97`, live since 2026-09-28) and U18's first half (U18a, `fb194038`, live) were shipped by S9, which closed no docs.
 S10 (2026-10-01) fixed the consent-ledger tie, which had been picking the latest row at random, and shipped U18b (`0e68d59e`):
-erasure now withdraws the consent and empties the book, and both data exports carry marketing; U19 (`addf5351`) masks a contact's number; U20 (`733522d3`) lists the book. Then U21–U40 were decided (§9, OD47–OD52), the first build tranche went LIVE (`ea87308f`), and U24 is ✅ (`c792901e`: the ONE audience resolver, and the cache every writer keeps true). U21, U22 and U23 (selection and bulk) shipped, and the parser track (U25–U28), all 🔵 — LIVE since 2026-10-02 05:20 UTC (`36aa9bf0`); U35 the campaign tables and U29 import staging are ✅ (both migrations live); U34a, the export, shipped (U34 🟡). NEXT: U36 the campaign list (built, in its battery), U37b the composer, then U30 the import pre-flight.**
+erasure now withdraws the consent and empties the book, and both data exports carry marketing; U19 (`addf5351`) masks a contact's number; U20 (`733522d3`) lists the book. Then U21–U40 were decided (§9, OD47–OD52), the first build tranche went LIVE (`ea87308f`), and U24 is ✅ (`c792901e`: the ONE audience resolver, and the cache every writer keeps true). U21, U22 and U23 (selection and bulk) shipped, and the parser track (U25–U28), all 🔵 — LIVE since 2026-10-02 05:20 UTC (`36aa9bf0`); U35 the campaign tables and U29 import staging are ✅ (both migrations live); U34a, the export, shipped (U34 🟡). U36, the campaign list, is BUILT and its review FIXED on `marketing-s10` (`10c8c20c`) — NOT live yet (§0 ⏸ RESUME). NEXT: ship U36, then U37b the composer, then U30 the import pre-flight.**
 
 > ⚠️ **THIS FILE IS BOTH THE PLAN AND THE PROGRESS TRACKER.** Any session, on any machine, learns where
 > the programme stands by reading §0 (RESUME AT) and §1 (status board) — and nothing else. `npm run
@@ -333,11 +333,40 @@ erasure now withdraws the consent and empties the book, and both data exports ca
   one ("Nitumie ofa na habari za 50pick kwa SMS" 2 hits, the old one 0), on `?dpl=d3379fef…`. A check that
   reads the same before and after proves nothing — this one reverses.
 
-▶ NEXT: U36 the campaign list (built — its battery and review next), then U37b the composer (brief ready: OD55 and the
-  closed live switch), U38a, then U30 the pre-flight (it mounts the import entrance and reaches U25/U26/U27b on
-  production; U29's staging is its store), U31-B/UI, U32, U33, U39b, U40 in the critic's order (§10). S10 has
-  U36 merged next (agents write into scratch; every gate is run here; ⛔ an agent's files are copied only
-  after its report; each unit gets an adversarial review before its push).
+⏸ S10 ENDED HERE (2026-10-02; Ali: "proceed in another session later") — RESUME AT U36's PUSH.
+  · U36 — the campaign list: /admin/campaigns behind its six doors, the status rail, each campaign's progress, the
+    nav badge — is COMMITTED on `marketing-s10` as `10c8c20c` and pushed to origin/marketing-s10 ONLY.
+    ⛔ NOT on main, NOT live. It carries no migration (U35b's tables are already live).
+  · Its adversarial review (1 MAJOR, 2 MINOR). F1 FIXED: a campaign confirmed then cancelled before it started
+    painted "0 of 300 prepared" — progress is now null until the first row is written. F2 FIXED: the loader parsed
+    sort/dir untrimmed while every link trimmed them, so page 2 could read in the other order — one trim now
+    (`test:campaigns-page` 2g). F3 MEASURED, NOT CHANGED — OPEN: the review suspected the badge's Prisma relation
+    filter (an uncorrelated IN) reads every outstanding recipient row on each admin render. `campaigns-list-pg-probe`
+    §9 put 60,000 rows on a paused campaign: the answer holds, and on PostgreSQL 18.3 the uncorrelated IN is an
+    index-only SKIP SCAN of (campaignId, status), while the correlated EXISTS I tried as the fix was planned as a
+    hashed SEQUENTIAL scan — worse — and was reverted. Before 18 there is no skip scan: ⛔ read production's version
+    (`select version()`) before touching the badge's query; §9 prints both plans. Found while photographing it: at
+    1280 the seven columns ran 26px past the card and 16 of 20 names wrapped (measured in the served page) — fixed
+    with the progress bar at 152px, "Segments per SMS" and the day over its clock; the drive now measures the fit.
+    The first build of U36 failed on ONE flipped bit in an emitted react-dom chunk ("cqse" for "case"; the file on
+    disk is clean) — this laptop's failing RAM; the rebuild passed.
+  · Last battery (b42): typecheck green; `test:campaigns-page` 36/36 and `red:campaigns-page` 16/16; `test:dal-parity` green and `red:dal-parity` 118/118; the Postgres probe 10/10 (§9 records the PG 18.3 plans); the campaigns drive 106/106 at 1280, 360 and reduced motion. ⚠️ `next build` last passed BEFORE the review fixes (b40) and the WHOLE predeploy chain has NOT run on this commit — both are the first step of the resume. `test:red-anchors` is red only on two anchors of other lanes (query-bar.tsx, updown-card-phase.ts), as before.
+  · TO SHIP IT: in `C:/kipindi-marketing` (branch `marketing-s10`), rebase on origin/main, run the WHOLE predeploy
+    chain under the heavy-node lock (every `npm run predeploy` command, then the campaigns, contacts and
+    section-gate drives and `next build`), push with `git push origin marketing-s10:main`, and prove it live (`?dpl=`
+    in the Link header names the commit). Then write U36's §0 STEP 20 and flip its §1 row to 🔵 (✅ needs G11).
+  · Recorded, not U36's: the badge — like every sidebar badge — is computed in the root admin layout, so it goes
+    stale across soft navigation until a hard load (OD39's "cannot go stale" is only as true as the others'); "Last
+    activity" is the campaign row's updatedAt, which U43's recipient writes will not move — U43/U47 decide whether
+    the column should read the latest recipient write.
+  · ⚠️ STILL OPEN FOR ALI: production `/api/health` reports `adminTotp: DISABLED`; G1 (the first live send), G4 (the
+    consent wordings), G7 (a production GROWTH staff login).
+▶ NEXT: ship U36 (⏸ above), then U37b the composer (its brief, with OD55 and the closed live switch, is on this laptop
+  at `C:/Users/Ali/AppData/Local/Temp/claude/C--Users-Ali/83bc643c-a332-4527-ac4c-d62e1711c811/scratchpad/brief_u37b.md`
+  — re-derive it from §9 U37b if that folder is gone), U38a, then U30 the pre-flight (it mounts the import entrance
+  and reaches U25/U26/U27b on production; U29's staging is its store), U31-B/UI, U32, U33, U39b, U40 in the critic's
+  order (§10). S10 ran its builders as agents writing into scratch; every gate is run here; ⛔ an agent's files are
+  copied only after its report; each unit gets an adversarial review before its push.
   ⛔ OWNER GATES STOP THE BUILD (G1–G12 above). ⚠️ G4 now gates the import going live — U32's start action and U33b's
   panel both reach the draft wordings (OD50) — so asking it early saves a stall at S15/S16.
   ⚠️ VERIFY EACH PREMISE BEFORE BUILDING — this plan's text has been wrong at the start of most sessions.
@@ -787,7 +816,7 @@ a Guard key that resolves to a script on disk, `yes` plus the backticked `red:` 
 | U33 | engine | 🟡 | S10 | 0dc25b98 | — | `test:marketing-consent` | — | basis at import. U33a-catalog landed (`0dc25b98`): DRAFT wordings until G4, Option A (OD50). The engine and the panel follow. |
 | U34 | guard | 🟡 | S10 | d8fce713 | — | `test:contacts-export` | — | export. U34a landed (`d8fce713` + review `95a48ae6`): the masked/full CSV, audited before the first byte, the cross-site gate; `test:contacts-export`. U34b (the round trip through the importer) follows U30/U31. |
 | U35 | data | ✅ | S10 | bfc37a74 | campaigns had a purpose (U35a `0dc25b98`, live) and nowhere to live → two tables in both twins behind ONE rule set: a draft saved by compare-and-set, a confirmation frozen in one conditional move, recipients deduped on (campaign, number), links never copies, no stored counter — 92 migrations proven from empty | `test:dal-parity` · `test:campaign-models` | yes — `red:campaign-models` 32/32 (in-process) · `red:dal-parity` §26 | campaign models. LIVE 2026-10-02 06:05:54 UTC — production serves `df839f30` and its deploy log applied `20261002120000_sms_campaign_models` (after a first build failed on a Google-font fetch and was rebuilt from source). |
-| U36 | visual | ⬜ | — | — | — | `test:admin-nav` | — | list + badge |
+| U36 | visual | 🟡 | S10 | 10c8c20c | /admin/campaigns did not exist → the campaign list behind six doors (nav item "SMS campaigns", ROUTE_KEYS, ROUTE_DOMAINS growth, the section gate, loading.tsx, the page gate), the status rail over the WHOLE table, server-counted progress (HELD outstanding), the nav badge only for a growth viewer | `test:campaigns-page` · `test:admin-nav` · `test:rbac` · `test:dal-parity` §26 | yes — `red:campaigns-page` (in-process) · `red:rbac` 4/4 · `red:dal-parity` §26 | list + badge. BUILT and reviewed, COMMITTED on `marketing-s10` — NOT pushed to main (S10 ended; §0 ⏸ RESUME). |
 | U37 | visual | 🟡 | S10 | 0dc25b98 | — | `test:campaign-compose` | — | composer. U37a landed (`0dc25b98`): the one renderer (OD48, OD49). U37b (the page, save, the test send) follows. |
 | U38 | visual | ⬜ | — | — | — | `test:campaign-audience` | — | audience |
 | U39 | visual | 🟡 | S10 | 0dc25b98 | — | `test:read-tiers` | — | estimate. U39a landed (`0dc25b98`): the price from the difference of two delivered reads, the model, the server loader; `test:campaign-estimate`. U39b (the card) follows. |
@@ -3018,6 +3047,13 @@ rendered; Show all) · refused (a role without growth: "SMS campaigns" restricte
 error (the rail kept with no counts; no badge, never "0").
 **Accept:** GROWTH reaches the page while FINANCE and SUPPORT do not and their payloads carry no campaign count; a
 RUNNING campaign with 4 SENT and 6 HELD rows reads 4 of 10.
+⚖️ **U36 built in S10 (`10c8c20c`, not yet live — §0 ⏸):** its review's F1 refined the progress rule above — the
+preparing phase is ALSO null until the first row is written (a campaign confirmed then cancelled before it started
+read "0 of 300 prepared"); F2 put the loader's sort parse on the links' trim; F3 (the badge's plan) is OPEN —
+measured on PG 18.3 as an index-only skip scan, a correlated EXISTS planned worse (§0 ⏸). The 1280 fit was
+measured in the served page (26px over, 16 of 20 names wrapped) and fixed: progress 152px, "Segments per SMS", the day
+over its clock; the drive measures it at 1280, and 360 scrolls sideways like the contacts table. The status rail stays
+on the dense rank (32px), as filter-language §6.6 and rule 6 set every admin filter rail, the contacts rail included.
 
 **U37 · The composer** — `/admin/campaigns/new` (OD42, OD44, OD45; decisions X12 · X14 · X15 · X16 · M5 · M8 · M9 · M12)
 **U37a** (pure, P1): `src/lib/marketing/campaign-template.ts`, THE ONE renderer and the only src file allowed to call
