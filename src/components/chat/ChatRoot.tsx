@@ -6,6 +6,8 @@
  * Responsibilities:
  *   • Route guard — hide on /auth/* and /admin/* (the surface is for
  *     authenticated players, not the auth funnel or operators).
+ *   • Journey stand-down — for a journey viewer, not on the new journey's own
+ *     pages (the Vodacom plan S6, WP7); the conversation is kept.
  *   • Open/close state.
  *   • ESC key closes; click outside the panel closes (desktop only).
  *   • Mobile vs desktop variant based on viewport width.
@@ -23,6 +25,8 @@ import type { Message } from "./types";
 import { atRiskReply, buildUserMessage, sendMessage } from "@/lib/chat/send-message";
 import { chatWithClaude } from "@/app/_actions/chat";
 import { useT } from "@/lib/i18n";
+import { isJourneySurface } from "@/lib/surfaces";
+import { useJourneyOn } from "@/lib/journey/journey-on";
 
 // `s` = the marketing opt-out page (D6) — no chat bubble on the way out; `test:marketing-optout` pins it.
 const HIDE_ON = /^\/(auth|admin|s)(\/|$)/;
@@ -87,6 +91,8 @@ export function ChatRoot({ supportEmail }: { supportEmail: string }) {
   // tablet widths for as long as hydration took — visible on the heavier market pages.
   const [isMobile, setIsMobile] = useState<boolean | null>(null);
   const [lang, setLang] = useState<"en" | "sw">("en");
+  // ⭐ S6 WP7 · whether the shell put this page in the new journey (false for everybody else, and on the server).
+  const journeyOn = useJourneyOn();
 
   // Hydrate from sessionStorage on mount so a returning player sees
   // their prior turn. Server-render starts empty — that's correct,
@@ -244,6 +250,10 @@ export function ChatRoot({ supportEmail }: { supportEmail: string }) {
   }, [pathname]);
 
   if (pathname && HIDE_ON.test(pathname)) return null;
+  /* ⭐ S6 WP7 · NOT ON THE NEW JOURNEY'S PAGES, FOR A JOURNEY VIEWER — the bubble stands down there and nowhere else.
+     Unlike HIDE_ON (left as it is) this neither closes the panel nor clears the history: the conversation is where
+     the player left it on the next page that shows the bubble. */
+  if (journeyOn && isJourneySurface(pathname)) return null;
   // Not drawn until the viewport is known, so it never flashes at the desktop offset over the rail.
   if (isMobile === null) return null;
 

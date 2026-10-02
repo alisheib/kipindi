@@ -12,7 +12,8 @@
  *   · mounted ONCE in the app shell; every listener removed on unmount (no leaks);
  *   · elements looked up WITHIN #needle-root (not document) so ids can't clash;
  *   · a visibility gate — hidden on money surfaces (wallet/deposit/withdraw routes
- *     and open money modals) and when the player toggles it off in the navbar;
+ *     and open money modals), when the player toggles it off in the navbar, and, for a
+ *     journey viewer, on the new journey's own pages (the Vodacom plan S6, WP7);
  *   · session() driven from a per-tab session clock; acknowledge() from an event;
  *     onRecord forwarded to analytics only and NEVER rendered.
  *
@@ -25,7 +26,8 @@
 import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { getPrefs, type NeedleTheme } from "@/lib/haptics";
-import { isMoneySurface } from "@/lib/surfaces";
+import { isMoneySurface, isJourneySurface } from "@/lib/surfaces";
+import { useJourneyOn } from "@/lib/journey/journey-on";
 import { PEPSI_PATHS, PEPSI_TRANSFORM } from "@/lib/needle-art";
 import type { NeedleOptions } from "@/lib/needle-physics";
 import "./needle.css";
@@ -748,6 +750,8 @@ export function Needle() {
   const apiRef = useRef<NeedleApi | null>(null);
   const wantSuppressed = useRef(false);
   const pathname = usePathname();
+  // ⭐ S6 WP7 · the shell's answer, through the flag it raises: false for everybody else, and on the server.
+  const journeyOn = useJourneyOn();
   const [hiddenPref, setHiddenPref] = useState(false);
   /* ⭐ SSR renders the HOUSE disc, always — never the persisted value, which lives in
      localStorage and is unreadable on the server. Reading it after mount is what keeps
@@ -786,15 +790,16 @@ export function Needle() {
     return () => { cancelled = true; if (cleanup) cleanup(); };
   }, []);
 
-  // Visibility gate: hide on money surfaces or when toggled off. Written to a ref so
-  // the engine picks it up even if it finishes mounting after this runs.
+  // Visibility gate: hide on money surfaces or when toggled off — and, for a journey viewer, on the
+  // journey's own pages (S6 WP7: the extra term is false for everybody else, so their gate is today's).
+  // Written to a ref so the engine picks it up even if it finishes mounting after this runs.
   useEffect(() => {
-    const suppressed = hiddenPref || isMoneySurface(pathname);
+    const suppressed = hiddenPref || isMoneySurface(pathname) || (journeyOn && isJourneySurface(pathname));
     wantSuppressed.current = suppressed;
     apiRef.current?.setSuppressed(suppressed);
     // A new page is new content under the rail (E-400 ①).
     apiRef.current?.recheckRest();
-  }, [hiddenPref, pathname]);
+  }, [hiddenPref, pathname, journeyOn]);
 
   return <div id="needle-root" ref={hostRef} data-needle-theme={theme} />;
 }

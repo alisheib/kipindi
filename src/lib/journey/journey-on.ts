@@ -4,8 +4,11 @@
  *
  * The decision is the SERVER's: AppShell asks the one per-request resolver (`resolveSimpleJourney`) and, from WP7, mounts
  * `<JourneyFlag />` only when it says yes. The flag stamps `data-journey` on the html element and raises
- * `50pick:journey-flag`; `useJourneyOn` reads the attribute. The Needle, the channels panel and the chat bubble are
- * mounted where no journey prop reaches them — an attribute on the document element does, and the shell is its one writer.
+ * `50pick:journey-flag`; `useJourneyOn` reads the attribute — and the shell's MARK, an empty span the server writes into
+ * the HTML of the same requests (`shell-mark.ts`), so the answer is there before the lazy flag lands. The Needle, the
+ * channels panel and the chat bubble are mounted where no journey prop reaches them — the document does, and the shell
+ * is the one writer of both signals.
+ * ⭐ "NO ATTRIBUTE" BELOW INCLUDES "NO MARK": a classic page carries neither.
  *
  * ⭐ THE SERVER SNAPSHOT IS FALSE, AND SO IS "NO ATTRIBUTE". For every reader the server did not put in the journey, each
  * stand-down term this feeds (`journeyOn && isJourneySurface(pathname)`) is false, so the expression it joins is exactly
@@ -21,6 +24,7 @@
  * next document load or `router.refresh()` — the same staleness the shell itself accepts (`journey-preview.ts`).
  */
 import { useSyncExternalStore } from "react";
+import { JOURNEY_SHELL_MARK } from "./shell-mark";
 
 /** Raised whenever the flag goes up or down. */
 export const JOURNEY_FLAG_EVENT = "50pick:journey-flag";
@@ -32,9 +36,13 @@ export function subscribeJourneyFlag(onChange: () => void): () => void {
   return () => window.removeEventListener(JOURNEY_FLAG_EVENT, onChange);
 }
 
-/** What the html element carries right now (client only). */
+/**
+ * What the page carries right now (client only): the flag on the html element, or the shell's mark in the server's
+ * HTML. ⭐ The mark is what makes the first frame right: `useSyncExternalStore` hydrates on the server snapshot (false)
+ * and reads this straight after, before an overlay's engine or chunk can draw (`shell-mark.ts` has the measurement).
+ */
 export function journeyFlagSnapshot(): boolean {
-  return document.documentElement.hasAttribute(JOURNEY_FLAG_ATTR);
+  return document.documentElement.hasAttribute(JOURNEY_FLAG_ATTR) || document.getElementById(JOURNEY_SHELL_MARK) !== null;
 }
 
 /** ⛔ Always false: the server render, and the hydration that matches it, are today's page. */

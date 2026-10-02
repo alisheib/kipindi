@@ -16,6 +16,7 @@ const INV = "src/components/pwa/install-invite.tsx";
 const SHELL = "src/components/layout/app-shell.tsx";
 const MANIFEST = "public/manifest.json";
 const SURFACES = "src/lib/surfaces.ts";
+const NEEDLE = "src/components/layout/needle.tsx";
 
 export const MUTATIONS = [
   {
@@ -133,6 +134,29 @@ export const MUTATIONS = [
     file: SURFACES,
     from: `export function isMoneySurface(path: string | null): boolean {`,
     to: `function isMoneySurface(path: string | null): boolean {`,
+    check: "5.2 ⭐ ONE definition of a money surface",
+  },
+  {
+    name: "the-needle-defines-its-own-money-surface",
+    why: "⛔ THE DRIFT 5.2 EXISTS FOR, FROM THE NEEDLE'S SIDE. The Needle stops taking `isMoneySurface` from its one "
+       + "home and declares its own, keeping only the journey's import beside it. Since 2026-10-02 (the Vodacom plan "
+       + "S6 WP7, S6-PLAN A4) the import is a list, so 5.2 reads any list — and this is the defect that list must not "
+       + "hide: two definitions of a money surface, free to disagree about where a fidget may appear.",
+    file: NEEDLE,
+    from: `import { isMoneySurface, isJourneySurface } from "@/lib/surfaces";`,
+    to: `import { isJourneySurface } from "@/lib/surfaces";
+function isMoneySurface(path: string | null): boolean { return !!path && path.startsWith("/wallet"); }`,
+    check: "5.2 ⭐ ONE definition of a money surface",
+  },
+  {
+    name: "the-needle-keeps-a-money-route-beside-the-import",
+    why: "⭐ THE NEW NEGATIVE HALF, PROVEN ON ITS OWN. The import stays exactly as it is, so the widened import pattern "
+       + "still passes, and a money route of the Needle's own appears beside it. Only the clause that forbids a local "
+       + "MONEY_ROUTE or isMoneySurface can see this one, so this mutation is what shows that clause bites.",
+    file: NEEDLE,
+    from: `import { isMoneySurface, isJourneySurface } from "@/lib/surfaces";`,
+    to: `import { isMoneySurface, isJourneySurface } from "@/lib/surfaces";
+const MONEY_ROUTE = "/wallet";`,
     check: "5.2 ⭐ ONE definition of a money surface",
   },
 ];

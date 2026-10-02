@@ -117,7 +117,7 @@
 
 **Software architect**
 - [ ] One `MarketRow` and one `ConvictionBar`; no other bar markup exists
-- [ ] The rail is `bottom-nav.tsx`, with no second nav component
+- [ ] The rail is `bottom-nav.tsx`, with no second nav component — ⚠️ 2026-10-02: for journey viewers (the Vodacom plan's SJ-16) the rail is `journey-tabs.tsx` INSTEAD, never both on one page (AppShell's ternary, held by `test:simple-journey-flag` 10.shell.chrome); everyone else: as written
 
 **Brand engineer**
 - [ ] The wordmark matches `lockup-horizontal.svg`

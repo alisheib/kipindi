@@ -25,9 +25,9 @@
  *      same three formulas and the classic chrome the same proposals rule, so the shell and the hub cannot drift apart
  *      silently; and `viewer-doors.ts` in no browser bundle, because it reads FEATURE_INVITE.
  *   §5 THE FLAG — `useJourneyOn`'s parts on a stand-in document (the server snapshot is false; the attribute and the
- *      event go up and come down), `JourneyFlag` renders nothing and is mounted only behind `journeyShown`, and every
- *      file loading `journey-on.ts` is client code — a "use client" file, or a hook module with no directive that only
- *      client code loads ("a build is not a render").
+ *      event go up and come down), `JourneyFlag` renders nothing and is mounted once, only behind `journeyShown` (WP7),
+ *      and every file loading `journey-on.ts` is client code — a "use client" file, or a hook module with no directive
+ *      that only client code loads ("a build is not a render").
  *   §6 THE UNREAD COUNT (WP3, as A1 amends it) — the journey's own counter for the Akaunti tab's dot and the hub's
  *      Arifa row, driven in process on a stand-in clock. The dot asks the bell's question on the bell's closed cadence
  *      and failure ladder, jitter included, and refreshes on the bell's two broadcasts (all read out of the bell); the
@@ -62,6 +62,13 @@
  *      draws the pill; `red:journey-header-fit` refuses, before its first write, without `--alone` (which its package
  *      script never passes) and inside `red:all` (which marks its harnesses with KP_RED_ALL); and the stylesheet holds
  *      no red-run witness, so a mutation a hard kill left behind fails here, by name.
+ *   §11 THE OVERLAYS (WP7) — what the flag is for. On the pages the journey re-draws a journey viewer meets no Needle,
+ *      no channels panel and no chat bubble: each stand-down is ONE term, `journeyOn && isJourneySurface(pathname)`,
+ *      joined to the rule the overlay already had (today's half verbatim, so with the flag down the rule IS today's) or
+ *      a guard straight after the pinned line it follows; each overlay reads the flag once and asks the one list (§2)
+ *      once; the chat keeps its conversation; the HIDE_ON patterns other gates pin are unchanged; the analytics consent
+ *      prompt is still asked of everybody; the email-verify bar is gated on the same per-request answer (VODACOM-PLAN
+ *      §3.2 item 2); and AppShell alone loads the flag, lazily. In the file it sits beside §5, whose flag it reads.
  *
  * ⛔ IN-PROCESS BY CONSTRUCTION. `--prove-red` hands the same checks defective implementations and edited source TEXT
  * held in memory, and requires the check named for each defect to fail. This file makes no file-system change anywhere,
@@ -79,6 +86,7 @@ import * as SURF from "../src/lib/surfaces.ts";
 import * as HDR from "../src/lib/journey/header-state.ts";
 import * as DOORS from "../src/lib/journey/viewer-doors.ts";
 import * as FLAG from "../src/lib/journey/journey-on.ts";
+import * as MARK from "../src/lib/journey/shell-mark.ts";
 import * as UNREAD from "../src/lib/journey/unread-count.ts";
 import * as POLL from "../src/lib/journey/one-poller.ts";
 import * as HUB from "../src/components/journey/account/hub-rows.ts";
@@ -195,6 +203,7 @@ const HEADER_HOME = "src/lib/journey/header-state.ts";
 const DOORS_HOME = "src/lib/journey/viewer-doors.ts";
 const FLAG_HOME = "src/lib/journey/journey-on.ts";
 const FLAG_COMPONENT = "src/components/journey/journey-flag.tsx";
+const MARK_HOME = "src/lib/journey/shell-mark.ts";
 const UNREAD_HOME = "src/lib/journey/unread-count.ts";
 const UNREAD_HOOK = "src/lib/journey/use-unread-count.ts";
 const POLLER_HOME = "src/lib/journey/one-poller.ts";
@@ -528,7 +537,8 @@ const MAY_IMPORT: Array<[string, readonly string[]]> = [
   [HOME, []],
   [HEADER_HOME, []],
   [DOORS_HOME, ["@/lib/feature-state", "@/lib/server/roles", "type @/lib/server/proposals-config"]],
-  [FLAG_HOME, ["react"]],
+  [FLAG_HOME, ["react", "./shell-mark"]],
+  [MARK_HOME, []],
   [UNREAD_HOME, []],
   [POLLER_HOME, ["react"]],
 ];
@@ -666,15 +676,16 @@ function g4Doors(I: Impl, W: World, G: Graph, ok: Ok) {
 
 /* ══ §5 · THE FLAG ═══════════════════════════════════════════════════════════════════════════════════════════ */
 /**
- * A stand-in document and window for the flag's parts: the attribute set of the html element and an event target.
+ * A stand-in document and window for the flag's parts: the attribute set of the html element, an event target, and the
+ * ids the server wrote into the page (`marks` — the shell's mark).
  * Installed only for the call and taken away after, so nothing else in this process ever sees a browser global.
  */
-function withStandInDom<R>(fn: (seen: { events: number }) => R): R {
+function withStandInDom<R>(fn: (seen: { events: number; marks: Set<string> }) => R): R {
   const g = globalThis as unknown as Record<string, unknown>;
   const before = { window: g.window, document: g.document };
   const attrs = new Set<string>();
   const win = new EventTarget();
-  const seen = { events: 0 };
+  const seen = { events: 0, marks: new Set<string>() };
   win.addEventListener(FLAG.JOURNEY_FLAG_EVENT, () => { seen.events++; });
   g.window = win;
   g.document = {
@@ -683,6 +694,7 @@ function withStandInDom<R>(fn: (seen: { events: number }) => R): R {
       setAttribute: (n: string) => { attrs.add(n); },
       removeAttribute: (n: string) => { attrs.delete(n); },
     },
+    getElementById: (id: string) => (seen.marks.has(id) ? {} : null),
   };
   try {
     return fn(seen);
@@ -713,6 +725,12 @@ function g5Flag(I: Impl, W: World, G: Graph, ok: Ok) {
     const again = I.flag.raise();
     ok("5.unsubscribe · after unsubscribing, a change reaches that subscriber no more", told === 2 && seen.events === 3, show({ told, events: seen.events }));
     again();
+    seen.marks.add(MARK.JOURNEY_SHELL_MARK);
+    const marked = I.flag.snapshot();
+    seen.marks.delete(MARK.JOURNEY_SHELL_MARK);
+    const unmarked = I.flag.snapshot();
+    ok("5.mark · the shell's mark alone reads as on, and its absence as off — it is in the server's HTML, so an overlay that hydrates before the lazy flag lands already stands down (the WP7 drive: without it the Needle drew for 1–3 frames)",
+      marked && !unmarked, show({ marked, unmarked }));
   });
   const flagSrc = text(W, FLAG_HOME);
   ok("5.hook · useJourneyOn is useSyncExternalStore over the event, the attribute and the false server snapshot",
@@ -734,10 +752,143 @@ function g5Flag(I: Impl, W: World, G: Graph, ok: Ok) {
   ok("5.importers.c · CONTROL · a hook module only a client file loads is vouched for; the same module loaded by a server file too is not",
     vouchedCase.loaders.includes(HOOK) && vouchedCase.bad.length === 0 && refusedCase.bad.includes(HOOK),
     show({ vouchedCase, refusedCase }));
-  const mounts = [...W.files].reduce((n, [p, s]) => n + (p === FLAG_COMPONENT ? 0 : count(s, "<JourneyFlag")), 0);
-  const guarded = count(text(W, SHELL), "{journeyShown && <JourneyFlag />}");
-  ok("5.mount · JourneyFlag is mounted nowhere, or only as {journeyShown && <JourneyFlag />} in AppShell",
-    mounts === guarded, show({ mounts, guarded }));
+  // ⭐ MOUNTED SINCE WP7: once, in AppShell, behind the resolver's own answer, through the shell's lazy binding (§11 holds
+  // the binding). Nothing else renders it, so a page the server did not put in the journey never carries the flag.
+  const flagMount = "{journeyShown && <Suspense fallback={null}><LazyJourneyFlag /></Suspense>}";
+  const shellText = text(W, SHELL);
+  const direct = [...W.files].filter(([p, s]) => p !== FLAG_COMPONENT && s.includes("<JourneyFlag")).map(([p]) => p);
+  const lazyElsewhere = [...W.files].filter(([p, s]) => p !== SHELL && s.includes("<LazyJourneyFlag")).map(([p]) => p);
+  const mounted = { once: count(shellText, flagMount), lazy: count(shellText, "<LazyJourneyFlag"), direct, lazyElsewhere };
+  ok("5.mount · JourneyFlag is mounted once, in AppShell, only behind journeyShown (WP7) — nothing renders it otherwise, so a classic page never carries data-journey",
+    mounted.once === 1 && mounted.lazy === 1 && direct.length === 0 && lazyElsewhere.length === 0, show(mounted));
+  // ⭐ THE SHELL'S MARK (WP7's drive, 2026-10-03): the same answer, written into the server's HTML, so the first frame
+  // after hydration is already right. Once, in AppShell, behind the resolver's answer; read by the hook; nowhere else.
+  const markMount = "{journeyShown && <span hidden id={JOURNEY_SHELL_MARK} />}";
+  const markUsers = [...W.files].filter(([p, s]) => p !== SHELL && p !== MARK_HOME && p !== FLAG_HOME && s.includes("JOURNEY_SHELL_MARK")).map(([p]) => p);
+  const marks = {
+    once: count(shellText, markMount),
+    rendered: count(shellText, "id={JOURNEY_SHELL_MARK}"),
+    shellImports: shellText.includes(`import { JOURNEY_SHELL_MARK } from "@/lib/journey/shell-mark";`),
+    hookReads: flagSrc.includes(`import { JOURNEY_SHELL_MARK } from "./shell-mark";`) && flagSrc.includes("document.getElementById(JOURNEY_SHELL_MARK) !== null"),
+    markUsers,
+    id: MARK.JOURNEY_SHELL_MARK,
+  };
+  ok("5.mark.mount · AppShell writes the shell's mark once, only behind journeyShown, as a plain element in the server's HTML, and the hook reads it — nothing else touches it, so a classic page never carries it",
+    marks.once === 1 && marks.rendered === 1 && marks.shellImports && marks.hookReads && markUsers.length === 0 && marks.id === "kp-journey-shell", show(marks));
+  const markSrc = text(W, MARK_HOME);
+  ok("5.mark.pure · shell-mark.ts is pure — no import, no directive — because the server shell and the client hook both load it",
+    markSrc.includes("export const JOURNEY_SHELL_MARK") && !markSrc.includes("import") && !isClient(markSrc) && !hasDirective(markSrc, "use server"));
+}
+
+/* ══ §11 · THE OVERLAYS (S6 WP7) ═════════════════════════════════════════════════════════════════════════════ */
+/*
+ * What the flag of §5 is for. On the pages the journey re-draws (`isJourneySurface`, §2), a reader the shell put in the
+ * journey meets no Needle, no channels panel and no chat bubble; everywhere else, and for every other reader, each
+ * overlay is what it was. So each stand-down is ONE term, `journeyOn && isJourneySurface(pathname)`, joined to the rule
+ * the overlay already had — `useJourneyOn` answers false without the flag and on the server (§5), which leaves today's
+ * rule exactly — or a guard straight after the pinned line it follows. Read here with comments stripped: each join as
+ * written beside today's half; each overlay reading the flag once and the one journey list once; the chat keeping its
+ * conversation; the HIDE_ON patterns other gates pin; the analytics consent prompt still asked of every reader; the
+ * email-verify bar gated on the same per-request answer (VODACOM-PLAN §3.2 item 2); and AppShell alone loading the
+ * flag, lazily (5.mount holds where it is mounted).
+ * ⚠️ Kept here, beside §5 whose flag it reads, and numbered after WP6b's §9 and §10.
+ */
+const OVERLAY_NEEDLE = "src/components/layout/needle.tsx";
+const OVERLAY_CHANNELS = "src/components/social/channels-panel.tsx";
+const OVERLAY_CHAT = "src/components/chat/ChatRoot.tsx";
+/** How each overlay reads the flag: the shell's answer, through `useJourneyOn`, once. */
+const OVERLAY_READS_FLAG = "const journeyOn = useJourneyOn();";
+/** The one stand-down term. */
+const OVERLAY_TERM = "journeyOn && isJourneySurface(pathname)";
+/**
+ * A term JOINED to what an overlay already had: the file holds `today + join + end`, and `today + end` no longer — so
+ * with the term false, the expression is today's.
+ */
+const OVERLAY_JOINS: ReadonlyArray<{ id: string; file: string; says: string; today: string; join: string; end: string }> = [
+  { id: "needle", file: OVERLAY_NEEDLE, says: "the Needle hides where it hid, and for a journey viewer on a journey page",
+    today: "const suppressed = hiddenPref || isMoneySurface(pathname)", join: ` || (${OVERLAY_TERM})`, end: ";" },
+  { id: "needle.deps", file: OVERLAY_NEEDLE, says: "its gate runs again when the flag goes up or down",
+    today: "}, [hiddenPref, pathname", join: ", journeyOn", end: "]);" },
+  { id: "channels.eligible", file: OVERLAY_CHANNELS, says: "the channels panel is eligible where it was, and never on a journey page for a journey viewer",
+    today: "const eligible = open && !promoSuppressed && !suppressedRoute(pathname)", join: " && !journeyHidden", end: ";" },
+];
+/** A guard straight after the line it follows, which stays exactly as the overlay's own gates pin it. */
+const OVERLAY_GUARDS: ReadonlyArray<{ id: string; file: string; says: string; pinned: string; guard: string }> = [
+  { id: "channels.render", file: OVERLAY_CHANNELS, says: "its render refuses too, straight after the pinned route-and-break guard",
+    pinned: "if (promoSuppressed || suppressedRoute(pathname)) return null;", guard: "if (journeyHidden) return null;" },
+  { id: "chat", file: OVERLAY_CHAT, says: "the chat bubble stands down straight after its HIDE_ON guard",
+    pinned: "if (pathname && HIDE_ON.test(pathname)) return null;", guard: `if (${OVERLAY_TERM}) return null;` },
+];
+/**
+ * The HIDE_ON patterns as `test:marketing-optout` and `test:social-panel` read them, each backslash spelled "~": they
+ * are compared as written, and a backslash typed into a test is one the editing tools can decode into a control
+ * character (`test:source-bytes`).
+ */
+const OVERLAY_HIDE_ON: ReadonlyArray<[string, string, string]> = [
+  ["chat", OVERLAY_CHAT, "const HIDE_ON = /^~/(auth|admin|s)(~/|$)/;"],
+  ["channels", OVERLAY_CHANNELS, "const HIDE_ON = /^~/s(~/|$)|^~/(auth|admin)(~/|$)|^~/(legal|profile)~/responsible-gambling(~/|$)|^~/markets~/?$/;"],
+];
+const asWritten = (s: string) => s.split("~").join(String.fromCharCode(92));
+/** AppShell's lazy binding for the flag, line by line. */
+const FLAG_BINDING = [
+  "const LazyJourneyFlag = lazy(() =>",
+  `import("@/components/journey/journey-flag").then((m) => ({ default: m.JourneyFlag })),`,
+  ");",
+];
+/** The email-verify bar's mount: today's condition, and never for a journey request. */
+const EMAIL_BAR_MOUNT = "{emailVerifyState && !journeyShown && <EmailVerifyBanner email={emailVerifyState.email} />}";
+
+function g11Overlays(W: World, G: Graph, ok: Ok) {
+  for (const j of OVERLAY_JOINS) {
+    const s = text(W, j.file);
+    const joined = count(s, j.today + j.join + j.end);
+    const bare = count(s, j.today + j.end);
+    ok(`11.${j.id} · ${j.says} — today's half verbatim with the term joined: ${j.today}${j.join}${j.end}`,
+      joined === 1 && bare === 0, show({ joined, bare }));
+  }
+  const named = count(text(W, OVERLAY_CHANNELS), `const journeyHidden = ${OVERLAY_TERM};`);
+  ok("11.channels.term · the channels panel names the term once, as journeyHidden, for its eligibility and its render",
+    named === 1, `${named} definition(s)`);
+  for (const g of OVERLAY_GUARDS) {
+    const s = text(W, g.file);
+    const adjacent = count(squash(s), g.pinned + g.guard);
+    ok(`11.${g.id} · ${g.says}: ${g.pinned} then ${g.guard}`,
+      adjacent === 1 && count(s, g.pinned) === 1 && count(s, g.guard) === 1,
+      show({ adjacent, pinned: count(s, g.pinned), guard: count(s, g.guard) }));
+  }
+  const chat = text(W, OVERLAY_CHAT);
+  const clears = "if (pathname && HIDE_ON.test(pathname)) {clearChatHistory();setMessages([]);setOpen(false);}";
+  ok("11.chat.history · on a journey page the bubble stands down and nothing more — the panel's state and the conversation are kept; only the HIDE_ON effect clears them",
+    count(squash(chat), clears) === 1 && count(chat, "clearChatHistory();") === 1,
+    show({ effect: count(squash(chat), clears), clearCalls: count(chat, "clearChatHistory();") }));
+  for (const [id, file] of [["needle", OVERLAY_NEEDLE], ["channels", OVERLAY_CHANNELS], ["chat", OVERLAY_CHAT]] as const) {
+    const s = text(W, file);
+    const specs = importsIn(W, file).filter((i) => !i.typeOnly).map((i) => i.spec);
+    const own = ["JOURNEY_ROUTE", "function isJourneySurface", "const isJourneySurface"].filter((n) => s.includes(n));
+    const seen = { reads: count(s, OVERLAY_READS_FLAG), asks: count(s, "isJourneySurface("), surfaces: specs.includes("@/lib/surfaces"), hook: specs.includes("@/lib/journey/journey-on"), own };
+    ok(`11.reads.${id} · ${file} is client code that reads the flag once, through useJourneyOn, and asks the one journey list (surfaces.ts, §2) once — no list of its own`,
+      isClient(s) && seen.reads === 1 && seen.asks === 1 && seen.surfaces && seen.hook && own.length === 0, show(seen));
+  }
+  for (const [id, file, line] of OVERLAY_HIDE_ON) {
+    const n = count(text(W, file), asWritten(line));
+    ok(`11.hideon.${id} · ${file}'s HIDE_ON is the pattern other gates pin, unchanged`, n === 1, `${n} occurrence(s)`);
+  }
+  const shell = text(W, SHELL);
+  const mountLines = (tag: string) => shell.split(LF).filter((l) => l.includes(tag)).map((l) => l.trim());
+  const consent = mountLines("<LazyConsentPrompt");
+  const install = mountLines("<LazyInstallInvite");
+  ok("11.consent · the analytics consent prompt is still asked of every reader, journey or not (privacy-notice §4f), and the install invitation keeps its own switch and nothing more",
+    show(consent) === show(["<Suspense fallback={null}><LazyConsentPrompt /></Suspense>"])
+      && show(install) === show(["{installInviteLive && <Suspense fallback={null}><LazyInstallInvite /></Suspense>}"]),
+    show({ consent, install }));
+  ok("11.emailbar · the email-verify bar keeps today's condition and adds the resolver's answer: a classic request's as before, never a journey request's (VODACOM-PLAN §3.2 item 2)",
+    count(shell, EMAIL_BAR_MOUNT) === 1 && count(shell, "<EmailVerifyBanner") === 1 && shell.includes("const journeyShown = (await journeyRead).journey;"),
+    show({ gated: count(shell, EMAIL_BAR_MOUNT), mounts: count(shell, "<EmailVerifyBanner") }));
+  const loaders = [...(G.into.get(FLAG_COMPONENT) ?? [])].sort();
+  const binding = count(squash(shell), FLAG_BINDING.join(""));
+  ok("11.flag.lazy · AppShell alone loads JourneyFlag, through its lazy binding and never a static import — a classic page's first load carries none of it",
+    binding === 1 && !shell.includes(`from "@/components/journey/journey-flag"`) && show(loaders) === show([SHELL]),
+    show({ binding, loaders }));
 }
 
 /* ══ §6 · THE UNREAD COUNT ═══════════════════════════════════════════════════════════════════════════════════ */
@@ -1944,6 +2095,9 @@ async function run(I: Impl, W: World, log: (l: string) => void): Promise<{ faile
   log("\n§5 · the flag — useJourneyOn's parts, JourneyFlag, and who may load the hook");
   g5Flag(I, W, G, ok);
   log("");
+  log("§11 · the overlays — what the flag stands down, for whom, and what it leaves for everybody (WP7; read beside §5, whose flag it is)");
+  g11Overlays(W, G, ok);
+  log("");
   log("§6 · the unread count — the bell's question on the bell's cadence, one viewer at a time, and the classic bell apart");
   await g6Unread(I, W, G, ok);
   log("");
@@ -2050,7 +2204,28 @@ if (!PROVE_RED) {
       SHELL, (s) => `${s}\nimport { useFlagHelper } from "@/lib/journey/flag-helper";\n`);
     const flagClient = withFile(WORLD, FLAG_HOME, (s) => `"use client";\n${s}`);
     const flagNoCleanup = withFile(WORLD, FLAG_COMPONENT, (s) => s.replace("useEffect(() => raiseJourneyFlag(), [])", "useEffect(() => { raiseJourneyFlag(); }, [])"));
+    const markForEveryone = withFile(WORLD, SHELL, (s) => s.replace("{journeyShown && <span hidden id={JOURNEY_SHELL_MARK} />}", "<span hidden id={JOURNEY_SHELL_MARK} />"));
+    const markClient = withFile(WORLD, MARK_HOME, (s) => `"use client";${LF}${s}`);
+    const markIgnored: Impl["flag"]["snapshot"] = () => document.documentElement.hasAttribute(FLAG.JOURNEY_FLAG_ATTR);
     const mountedForAll = withFile(WORLD, SHELL, (s) => `${s}\nconst everyone = <JourneyFlag />;\n`);
+
+    // §11 — the overlays (WP7): a stand-down widened to every reader, dropped or misplaced; the flag read another way;
+    // a HIDE_ON pattern moved; the consent prompt gated; the email bar back for a journey viewer; the flag loaded eagerly.
+    const flagForEveryone = withFile(WORLD, SHELL, (s) => s.replace("{journeyShown && <Suspense fallback={null}><LazyJourneyFlag /></Suspense>}", "<Suspense fallback={null}><LazyJourneyFlag /></Suspense>"));
+    const needleForAll = withFile(WORLD, OVERLAY_NEEDLE, (s) => s.replace(`(${OVERLAY_TERM})`, "isJourneySurface(pathname)"));
+    const needleDepsStale = withFile(WORLD, OVERLAY_NEEDLE, (s) => s.replace("}, [hiddenPref, pathname, journeyOn]);", "}, [hiddenPref, pathname]);"));
+    const panelEligibleAnyway = withFile(WORLD, OVERLAY_CHANNELS, (s) => s.replace(" && !journeyHidden;", ";"));
+    const panelRendersAnyway = withFile(WORLD, OVERLAY_CHANNELS, (s) => s.replace(`${LF}  if (journeyHidden) return null;`, ""));
+    const panelHiddenEverywhere = withFile(WORLD, OVERLAY_CHANNELS, (s) => s.replace(`const journeyHidden = ${OVERLAY_TERM};`, `const journeyHidden = journeyOn && (pathname ?? "").startsWith("/");`));
+    const panelReadsAttribute = withFile(WORLD, OVERLAY_CHANNELS, (s) => s.replace(OVERLAY_READS_FLAG, `const journeyOn = typeof document !== "undefined" && document.documentElement.hasAttribute("data-journey");`));
+    const chatForAll = withFile(WORLD, OVERLAY_CHAT, (s) => s.replace(`if (${OVERLAY_TERM}) return null;`, "if (isJourneySurface(pathname)) return null;"));
+    const chatClearsHistory = withFile(WORLD, OVERLAY_CHAT, (s) => s.replace("if (pathname && HIDE_ON.test(pathname)) {", `if (pathname && (HIDE_ON.test(pathname) || (${OVERLAY_TERM}))) {`));
+    const chatHideWidened = withFile(WORLD, OVERLAY_CHAT, (s) => s.replace("(auth|admin|s)(", "(auth|admin|s|markets)("));
+    const panelHideWidened = withFile(WORLD, OVERLAY_CHANNELS, (s) => s.replace("(legal|profile)", "(legal|profile|help)"));
+    const consentForClassicOnly = withFile(WORLD, SHELL, (s) => s.replace("<Suspense fallback={null}><LazyConsentPrompt /></Suspense>", "{!journeyShown && <Suspense fallback={null}><LazyConsentPrompt /></Suspense>}"));
+    const emailBarForAll = withFile(WORLD, SHELL, (s) => s.replace(EMAIL_BAR_MOUNT, "{emailVerifyState && <EmailVerifyBanner email={emailVerifyState.email} />}"));
+    const flagEager = withFile(WORLD, SHELL, (s) => `${s}${LF}import { JourneyFlag } from "@/components/journey/journey-flag";${LF}`);
+    const flagInClassic = withFile(WORLD, BOTTOM_NAV, (s) => `${s}${LF}import { JourneyFlag } from "@/components/journey/journey-flag";${LF}`);
 
     // §6 — defective counters, each wrapped around the real one, and the files around them edited in memory.
     /** G1's defect: the last viewer's count stays up until the next viewer's first answer lands. */
@@ -2394,6 +2569,44 @@ ${s}`);
         world: flagNoCleanup, landed: changed(flagNoCleanup, FLAG_COMPONENT), landedAs: "unmounting leaves data-journey on the page" },
       { name: "JourneyFlag mounted for everyone", expect: at("5.mount ·"),
         world: mountedForAll, landed: changed(mountedForAll, SHELL), landedAs: "a classic page carries data-journey" },
+      { name: "the snapshot ignores the shell's mark", expect: at("5.mark ·"),
+        impl: { flag: { ...REAL.flag, snapshot: markIgnored } }, landed: true,
+        landedAs: "the Needle draws for a few frames on every journey page's first load, until the lazy flag lands (the WP7 drive's finding)" },
+      { name: "the shell's mark written for every request", expect: at("5.mark.mount ·"),
+        world: markForEveryone, landed: changed(markForEveryone, SHELL), landedAs: "every classic page carries the mark, and loses its overlays on the journey's pages" },
+      { name: "shell-mark.ts gains a client directive", expect: at("5.mark.pure ·"),
+        world: markClient, landed: changed(markClient, MARK_HOME), landedAs: "the server shell loads a client boundary for one string" },
+      // §11 — the overlays (WP7), listed beside §5 whose flag they read; the first is 5.mount's own WP7 shape.
+      { name: "the journey flag mounted for every request (WP7)", expect: at("5.mount ·"),
+        world: flagForEveryone, landed: changed(flagForEveryone, SHELL), landedAs: "every classic page carries data-journey, and loses its overlays on the journey's pages" },
+      { name: "the Needle stands down on a journey page for every reader", expect: at("11.needle ·"),
+        world: needleForAll, landed: changed(needleForAll, OVERLAY_NEEDLE), landedAs: "a classic player's Needle gone from the home board" },
+      { name: "the Needle's gate forgets the flag in its dependencies", expect: at("11.needle.deps ·"),
+        world: needleDepsStale, landed: changed(needleDepsStale, OVERLAY_NEEDLE), landedAs: "the Needle stays up after the flag rises, until the next navigation" },
+      { name: "the channels panel's eligibility drops the journey term", expect: at("11.channels.eligible ·"),
+        world: panelEligibleAnyway, landed: changed(panelEligibleAnyway, OVERLAY_CHANNELS), landedAs: "the panel takes its corner on the home board for a journey viewer" },
+      { name: "the channels panel's render guard drops the journey term", expect: at("11.channels.render ·"),
+        world: panelRendersAnyway, landed: changed(panelRendersAnyway, OVERLAY_CHANNELS), landedAs: "a panel already on screen follows a journey viewer onto the home board" },
+      { name: "the channels panel's term covers every page", expect: at("11.channels.term ·"),
+        world: panelHiddenEverywhere, landed: changed(panelHiddenEverywhere, OVERLAY_CHANNELS), landedAs: "a journey viewer never meets the channels anywhere" },
+      { name: "the channels panel reads the flag's attribute during render", expect: at("11.reads.channels ·"),
+        world: panelReadsAttribute, landed: changed(panelReadsAttribute, OVERLAY_CHANNELS), landedAs: "a hydration mismatch, and a panel deaf to the flag going up or down" },
+      { name: "the chat bubble stands down on a journey page for every reader", expect: at("11.chat ·"),
+        world: chatForAll, landed: changed(chatForAll, OVERLAY_CHAT), landedAs: "a classic player's chat gone from the home board" },
+      { name: "the chat clears the conversation on a journey page", expect: at("11.chat.history ·"),
+        world: chatClearsHistory, landed: changed(chatClearsHistory, OVERLAY_CHAT), landedAs: "a journey viewer's conversation wiped by one tap on Maswali" },
+      { name: "the chat's HIDE_ON widened", expect: at("11.hideon.chat ·"),
+        world: chatHideWidened, landed: changed(chatHideWidened, OVERLAY_CHAT), landedAs: "the bubble gone from the board for every reader, and the opt-out gate's pattern moved" },
+      { name: "the channels panel's HIDE_ON widened", expect: at("11.hideon.channels ·"),
+        world: panelHideWidened, landed: changed(panelHideWidened, OVERLAY_CHANNELS), landedAs: "the panel gone from the help page for every reader" },
+      { name: "the analytics consent prompt withheld from journey viewers", expect: at("11.consent ·"),
+        world: consentForClassicOnly, landed: changed(consentForClassicOnly, SHELL), landedAs: "a preview viewer can never answer the analytics question" },
+      { name: "the email-verify bar shown to journey viewers", expect: at("11.emailbar ·"),
+        world: emailBarForAll, landed: changed(emailBarForAll, SHELL), landedAs: "the bar on every journey page (VODACOM-PLAN §3.2 item 2)" },
+      { name: "AppShell imports the flag eagerly", expect: at("11.flag.lazy ·"),
+        world: flagEager, landed: changed(flagEager, SHELL), landedAs: "every classic visitor's first load carries the journey flag" },
+      { name: "a classic layout component loads the flag", expect: at("11.flag.lazy ·"),
+        world: flagInClassic, landed: changed(flagInClassic, BOTTOM_NAV), landedAs: "the flag's code rides in the classic rail" },
       // §6 — the unread count
       { name: "a store that keeps the last viewer's count across a sign-in (critic G1)", expect: at("6.viewer."),
         impl: { unread: { ...REAL.unread, feed: stickyFeed } }, landed: stickyKeeps, landedAs: "B's dot shows A's count until B's first answer lands" },

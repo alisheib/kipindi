@@ -123,9 +123,18 @@ console.log("\n§5 · never over the bet button or the balance pill");
 ok("5.1 the money-commit gate is applied at RENDER, so a soft navigation removes it",
    /isCommitSurface\(pathname\)/.test(inv), "");
 const surf = read("src/lib/surfaces.ts");
+/* ⚠️ WIDENED 2026-10-02 (the Vodacom plan S6, WP7; S6-PLAN A4), NOT WEAKENED. This read the Needle's import as ONE
+   exact line, `{ isMoneySurface }` alone, and the Needle now takes `isJourneySurface` from the same home beside it
+   (its journey stand-down). The contract is unchanged and is now held from both sides: the Needle imports
+   `isMoneySurface` from `@/lib/surfaces`, in whatever list, AND declares no money surface of its own: no local
+   `MONEY_ROUTE`, no `isMoneySurface` function or binding (read with comments stripped). The second half is new,
+   because an import never proved there was no second definition beside it. `red:install-invite` proves each half
+   with its own mutation (scripts/anchors/install-invite.anchors.mjs). */
+const needleCode = code("src/components/layout/needle.tsx");
+const needleOwnMoney = ["MONEY_ROUTE", "function isMoneySurface", "const isMoneySurface", "let isMoneySurface"].filter((n) => needleCode.includes(n));
 ok("5.2 ⭐ ONE definition of a money surface — the Needle imports it rather than declaring its own",
-   /export function isMoneySurface/.test(surf) && /import \{ isMoneySurface \} from "@\/lib\/surfaces"/.test(read("src/components/layout/needle.tsx")),
-   "two definitions of \"money surface\" is the drift this repo has filed four times");
+   /export function isMoneySurface/.test(surf) && /import \{[^}]*\bisMoneySurface\b[^}]*\} from "@\/lib\/surfaces"/.test(needleCode) && needleOwnMoney.length === 0,
+   `${needleOwnMoney.length > 0 ? `needle.tsx declares its own: ${needleOwnMoney.join(", ")} · ` : ""}two definitions of "money surface" is the drift this repo has filed four times`);
 ok("5.3 the commit gate covers the poll bet card AND the Up & Down round card",
    /\/\^\\\/markets\\\/\[\^\/\]\+\//.test(surf) && /\/\^\\\/updown\\\/\[\^\/\]\+\//.test(surf), surf.match(/COMMIT_ROUTE[\s\S]{0,320}/)?.[0] ?? "");
 /* 🔴 THIS CHECK PINNED THE DEFECT FOR THREE WEEKS. It asserted an INLINE

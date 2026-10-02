@@ -16,18 +16,21 @@
 
 ## §0 · RESUME AT
 
-**State (2026-10-01):** S3b (the measures baseline) is LIVE (`64a63b7c`, deployed 2026-09-30 22:47 UTC): the old
-journey's funnel is counted from now — the 14-day baseline clock has started (§0f). S3 (the engine) is ✅. S2 is LIVE
-(`473807b1`) and waits on an officer approving the short titles (§0d). S1 is LIVE (`41ec1703`) and waits on one press
-by Ali (§0b "Still open"). Nothing new reaches players (the counters are invisible; the insights panel is admin-only).
-S4 (the Claude Design pass) is ✅: all eleven brief items are on the Design canvas, the four-expert panel's findings
-are applied (canvas v16, 102 boards), BRIEF.md is filed, and choices 2A/3A were adopted when Ali said "proceed"
-(§0g). S6 (the flagged shell) is next. Ali is away: every call made meanwhile is a numbered point in §0h.
+**State (2026-10-03):** S6 (the flagged shell) is in progress (§0i): WP0–WP5, WP6a and WP8 are live behind the flag;
+WP6b (the shell swap, the route census, the header-fit gate) and WP7 (the overlay stand-downs and the email-bar rule)
+are verified locally and pushed behind the flag — classic viewers are served what they were (`qa:classic-shell-parity`,
+224 cells, no unexpected difference). ⭐ Ali, 2026-10-02: nothing is turned on — no staff preview, no journey — until
+the whole plan is done; production proves only that nothing changed for players. S3b (the measures baseline) is ✅: the
+old journey's funnel counts daily since 2026-10-01, and the 14-day baseline runs to 2026-10-15 (§0f). S3 (the engine)
+and S4 (the design pass) are ✅. S2 is LIVE (`473807b1`) and waits on an officer approving the short titles (§0d, §0h
+point 19). S1 is LIVE (`41ec1703`) and waits on one press by Ali (§0b "Still open"). Ali is away: every call made
+meanwhile is a numbered point in §0h.
 
-**Next:** (1) S6, the flagged shell — resume at §0i "⏸ S6 STOPPED HERE"; the build plan is
-`docs/design-system/v5-2026-09-29-simplified-journey/S6-PLAN.md`, status §0i; start at its amendment A0, then WP0; (2) on the days after the deploy, read
-the first totals with `qa:journey-funnel` (read-only) — when counts appear daily, S3b is ✅ and the baseline runs to
-2026-10-15 at the earliest. In parallel: an officer approves the S2 short titles; Ali presses S1's preview switch.
+**Next:** (1) S6 — resume at §0i "⏸ S6 STOPPED HERE": WP9 (Tiketi zangu), WP10 (the sell look), WP11 (`--rail-h`),
+then WP12 (proof, records, merge); the build plan is
+`docs/design-system/v5-2026-09-29-simplified-journey/S6-PLAN.md`, whose closing Amendments override its body. (2) When
+Ali says so, and not before (nothing turns on until the plan is done): an officer approves the S2 short titles, and
+Ali presses S1's preview switch.
 
 Session law, the same for every session:
 - Code, two-store tests, and `red:*` twins reachable from `red:all`, with declared anchors.
@@ -207,10 +210,10 @@ WP6b the swap + census + header-fit → WP7 overlays → WP8 short titles on pos
   to end the session while its full `test:all` re-run (after a rebase over 42 marketing commits) was still running:
   the next session reads `scratchpad/s6/testall-a8b.log` (session 0cb4430f) or re-runs `test:all`, and confirms the
   deploy (`?dpl=`) and the served bundle.
-- **⏸ S6 STOPPED HERE (2026-10-02) — resume:** WP8 (short titles on the position projection) and WP6b (the swap + the
-  reachability census + the header-fit gate, re-drafted and reviewed) are applied — both bullets below. WP6b is not ✅
-  until every run its bullet lists as owed is done, starting with the parity compare against a baseline re-captured
-  from the pre-S6 parent on main (A18). Then WP7, WP9, WP10, WP11, WP12 (S6-PLAN.md).
+- **⏸ S6 STOPPED HERE (2026-10-03) — resume:** WP8, WP6b and WP7 are pushed behind the flag (their bullets below;
+  WP6b's owed list keeps its open items, numbered). Next: WP9 (Tiketi zangu — its change set is being drafted in the
+  session scratchpad, `s6/WP9.json`, by a static agent, then reviewed before it is applied), WP10, WP11 (with
+  `scripts/footer-reachable.mjs` learning the pass, WP6b's owed item 7), WP12 (S6-PLAN.md).
   Method and tools: memory `project_kipindi_vodacom_plan` (staged change sets, `apply_changeset.py`, `run-gates.sh`,
   `run-parity.sh`).
 - **WP0 parity harness — `npm run qa:classic-shell-parity`** (written, not yet run; local in-memory server only). Four
@@ -317,6 +320,44 @@ WP6b the swap + census + header-fit → WP7 overlays → WP8 short titles on pos
   count before B's first answer lands; (7) `scripts/footer-reachable.mjs` learning the pass (A15); (8)
   `scripts/qa-journey-preview.mjs`'s step-7 pass tiles, its trace regex matching test ids rather than chunk names;
   (9) the SJ-16 supersession notes in v4 ACCEPTANCE §C2/K65, UPDATE-2026-09-28 §1 and INHERIT-MANIFEST R1/L4/L20.
+- **WP7 — the overlay stand-downs and the email-bar rule (applied 2026-10-03, verified locally, pushed behind the flag
+  with WP6b).** AppShell mounts the journey
+  flag for a journey request only, lazily, beside the funnel's span; while it is mounted the html element carries
+  `data-journey`, which `useJourneyOn()` reads. On the pages the journey re-draws (`isJourneySurface`: `/`, a question,
+  Tiketi zangu in both kinds, the deposit screen and its return) a journey viewer meets no Needle, no channels panel and
+  no chat bubble. Each is one term, `journeyOn && isJourneySurface(pathname)`, joined to the rule the overlay already
+  had: the Needle's visibility gate (and its dependencies), the panel's `eligible` plus a render guard after its pinned
+  line, and a render guard after the chat's HIDE_ON line, which closes nothing and keeps the conversation. For every
+  other viewer each rule is today's, because `useJourneyOn` answers false without the flag and on the server. HIDE_ON,
+  the analytics consent prompt (still asked of everybody) and the install invitation are untouched. A journey viewer
+  gets no email-verify bar (§3.2 item 2): `{emailVerifyState && !journeyShown && …}`, decided per request. The deposit
+  screen's own email gate still refuses an unconfirmed address; what goes is the reminder on every other page (the agent
+  application's fee also needs a confirmed address and loses it too) until S9 asks for the code in the flow. Gates:
+  `test:journey-shell` §11 (each join as written beside today's half, the flag read once and the one list asked once,
+  the chat keeping its conversation, the HIDE_ON patterns, the consent prompt ungated, the email bar gated, the flag
+  loaded lazily by AppShell alone) and 5.mount rewritten for the real mount, with 15 new in-memory plants;
+  `test:simple-journey-flag` 10.shell.emailbar with 2 plants (no gate held this bar before); `test:install-invite` 5.2
+  widened as A4 says (any import list naming `isMoneySurface` from `@/lib/surfaces`, plus a new clause that the Needle
+  declares no money route or predicate of its own), with one new `red:install-invite` mutation per half. SHELVED rows
+  for all four. Served bytes for a classic viewer: no markup; the RSC payload carries one `false` child where the flag
+  would mount; and the Needle's, the panel's and the chat's client code now carry the flag hook and `isJourneySurface`
+  (the Needle is in every page's first load). **Verified (2026-10-03):** WP7's 37 gates (the reds are the §0i
+  baseline's: stacking z=11, red-anchors ×2, orphans — one more, `marketing-compose-drive.mjs`, from the marketing
+  lane's U37b); `red:install-invite` detached and alone, 13/13, the tree byte-identical after;
+  `red:journey-shell` 134/134; `qa:classic-shell-parity --compare` against WP6b's parent: 224 cells, no unexpected
+  difference (the first run lost its server to a segmentation fault in Node at the held viewer — this laptop's RAM —
+  and was re-run whole). **The drive found a flash, and the fix is in:** watched every frame of a fresh load, the chat
+  bubble never drew on a journey page, but the NEEDLE did — 1–3 frames (≈280–370 ms) on every load of `/` and
+  `/positions`, because it hydrates outside the lazy flag's Suspense boundary and started its engine ≈30 ms before the
+  flag landed. So AppShell now also writes the shell's MARK into the server's HTML for a journey request
+  (`{journeyShown && <span hidden id={JOURNEY_SHELL_MARK} />}`, the id in the pure `lib/journey/shell-mark.ts`), and
+  `journeyFlagSnapshot` reads the mark or the flag: `useSyncExternalStore` finds it right after hydration, before any
+  overlay can draw, and the flag stays the event for `router.refresh()`. `test:journey-shell` 5.mark, 5.mark.mount and
+  5.mark.pure, with three plants. Re-driven: 32/32 — on `/` and `/positions` a journey viewer meets neither the Needle
+  nor the bubble in any frame; on `/markets` (the board is not a journey page) and `/help` both are there; a classic
+  viewer has both everywhere, `data-journey` never set (the controls). Served bytes for a classic viewer: one more
+  `false` child in the RSC payload (the mark's slot), no markup. Owed: the full battery with WP6b (below, when the
+  push lands).
 
 ## §0h · Points for Ali — taken while he was away (2026-10-01 →)
 
@@ -669,6 +710,14 @@ Railway-linked tree).
   `BET_PLACED` (and 36 `BET_REFUND`) rows carry a `houseBotId`, which the counter excludes by design. Re-read after a
   full EAT day of player traffic; S3b turns ✅ when counts appear daily. (From `C:\kipindi-main`, which is
   Railway-linked: `railway run --service 50pick -- node C:/kipindi-journey/scripts/qa-journey-funnel.cjs`.)
+- **Second read (2026-10-03, two full EAT days, read-only) — S3b ✅.** Every day has its rows, all `variant = old`
+  (nobody is in the new journey): 2026-10-01 — bet 81 (quick 76, dial 5), low_balance 3 (updown 2, dial 1),
+  sheet_open 10 (board 5, market 4, home 1); 2026-10-02 — bet 82 (quick 80, dial 2), low_balance 16 (updown 9, dial 7),
+  sheet_open 11 (board 8, market 2, home 1). `deposit_confirmed` is 0 on both days, and that is the truth, not a gap:
+  checked against `Transaction`, no player deposit was confirmed on either day (the last three were on 2026-09-30,
+  before the deploy; one failed). The deposit step is proven end to end in the local drive above and counts the next
+  real deposit (the production store's `user.findById` is the one the counter calls, type-checked against it). The
+  14-day baseline runs to 2026-10-15 at the earliest.
 
 ## §0e · S3 as built (2026-10-01) — ✅ merged to main
 
@@ -843,7 +892,7 @@ Status: ⬜ not started · 🔨 in progress · ✅ done and verified live · ⛔
 | S1 | The switch and preview | 🔨 | Built and verified locally 2026-09-30 (§0b). Done when staff see a "preview" marker on production and nobody else sees anything. The preview cookie is in Privacy §7 in the same commit. |
 | S2 | Short titles + competition | 🔨 | LIVE `473807b1` 2026-09-30 (§0d); the backfill waits on an officer's approval. Done when every open market renders within 2 lines in sw/en/zh (`test:short-title-fit`) and the backfill is approved in /admin. |
 | S3 | The engine (no UI) | ✅ | `6e7ee63b` 2026-10-01 (§0e). Golden fixtures pass: Dodoma ≈2.8×/≈1.4×, 1,000 → TZS 2,700 ≈2.7×, 5,000 → TZS 12,360 ≈2.5×; Yanga ≈2.9×/≈1.4×. Client/server parity is proven. |
-| S3b | Measures baseline | 🔨 | LIVE `64a63b7c` 2026-10-01 (§0f), counting from the deploy. Done when old-journey analogue counts appear daily (`qa:journey-funnel`) and the 14-day baseline clock is running. |
+| S3b | Measures baseline | ✅ | LIVE `64a63b7c` 2026-10-01 (§0f); counts appear daily (second read 2026-10-03: both full days, every client and bet step; no deposit was confirmed on either day, checked) and the 14-day baseline runs to 2026-10-15. |
 | S4 | Claude Design pass | ✅ | `52afb7c8` 2026-10-01 (§0g): all eleven brief items on the Design canvas, 102 boards; the four-expert panel's findings applied (v16); BRIEF.md filed; choices 1B/2A/3A (§0h point 1). Done when frames for every new composition and undrawn state are filed and scored by the panel, and Ali has reviewed the 5 re-drawn frames. |
 | S5 | ~~Colour foundation~~ | ⛔ | Removed by R5 (50pick's look stays unchanged): no palette, font or brand work. |
 | S6 | Shell (flagged) | 🔨 | Plan filed 2026-10-01 (`S6-PLAN.md`, §0i). Done when every route keeps an entrance (route census). The header fits at 320/360/390/1024/1150/1279 × sw/en/zh × guest/signed-in. |

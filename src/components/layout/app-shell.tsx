@@ -29,6 +29,11 @@ const LazyConsentPrompt = lazy(() =>
 const LazyChannelsPanel = lazy(() =>
   import("@/components/social/channels-panel").then((m) => ({ default: m.ChannelsPanel })),
 );
+// The journey flag (Vodacom plan S6, WP7): renders nothing, and is mounted below for a journey request only. Lazy like
+// the overlays it speaks to, so a classic page never loads it.
+const LazyJourneyFlag = lazy(() =>
+  import("@/components/journey/journey-flag").then((m) => ({ default: m.JourneyFlag })),
+);
 const LazyWinCelebration = lazy(() =>
   import("@/components/markets/win-celebration").then((m) => ({ default: m.WinCelebrationHost })),
 );
@@ -62,6 +67,7 @@ import { inviteIsLiveFor, installInviteIsLive, NO_VIEWER, type InviteViewer } fr
 import { agentStandingFor, playerInviteEligibleFor } from "@/lib/server/affiliate-service";
 import { invitePaysPlayersNow } from "@/lib/server/invite-rewards-switch";
 import { resolveSimpleJourney } from "@/lib/server/journey-preview";
+import { JOURNEY_SHELL_MARK } from "@/lib/journey/shell-mark";
 import { PreviewMarker } from "./preview-marker";
 import { FunnelUtm } from "@/components/analytics/funnel-utm";
 import { isStaffRole } from "@/lib/server/roles";
@@ -408,6 +414,15 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
           looking at pages players do not see yet, and has the way out on the same line. */}
       {journeyPreview && <PreviewMarker label={t.journey.previewMarker} exit={t.journey.previewExit} />}
       <span hidden data-kp-funnel={funnelScopeValue} />
+      {/* ⭐ THE JOURNEY FLAG (Vodacom plan S6, WP7) — for a request the resolver shows the journey to, and for no other.
+          It renders nothing. While it is mounted the html element carries the journey's attribute, and that is how
+          the Needle, the channels panel and the chat bubble (mounted where no prop reaches them) stand down on the
+          journey's own pages; a classic page never carries it. */}
+      {journeyShown && <Suspense fallback={null}><LazyJourneyFlag /></Suspense>}
+      {/* ⭐ AND THE SHELL'S MARK, IN THE SERVER'S HTML (`lib/journey/shell-mark.ts`): the flag above arrives in its own
+          chunk, after hydration, and the Needle once drew for a few frames before it landed. With the mark on the page
+          from the first byte, every overlay reads the answer right after hydrating. A classic page never carries it. */}
+      {journeyShown && <span hidden id={JOURNEY_SHELL_MARK} />}
       {funnelScopeValue !== "off" && <FunnelUtm />}
       <AnnouncementBanner maintenance={maintBanner} announcement={announcement} />
       {/* 🔴 E-381 · the in-place answer to a session that ended during a refresh — see the note at
@@ -437,8 +452,12 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
           The email bar stays app-wide because an unconfirmed address blocks the NEXT thing the
           player wants to do — adding money — wherever they are when they decide to. The one exception
           (2026-09-13) is /wallet/deposit itself, where the page's own email gate says it with its own
-          resend action; the bar hides there so the player is not told twice (email-verify-banner.tsx). */}
-      {emailVerifyState && <EmailVerifyBanner email={emailVerifyState.email} />}
+          resend action; the bar hides there so the player is not told twice (email-verify-banner.tsx).
+          ⭐ AND NOT FOR A JOURNEY VIEWER (Vodacom plan S6, WP7; VODACOM-PLAN §3.2 item 2, "no email-verify bar on
+          journey"). Decided here, per request, on the resolver's own answer, so no soft navigation changes it. The
+          deposit page's own email gate still stands between an unconfirmed address and a deposit; what a journey viewer
+          goes without is this reminder on every other page, until S9 asks for the code in the flow itself. */}
+      {emailVerifyState && !journeyShown && <EmailVerifyBanner email={emailVerifyState.email} />}
       {/* ⭐ BELOW THE EMAIL GATE, ON PURPOSE. That bar names a COMPLIANCE condition blocking
           the player's first deposit; this one is a courtesy summary of results they already
           hold. If both are up, the one that costs them something must read first.
@@ -516,8 +535,9 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
           so it survives route changes. Signed-in players only (it is a
           responsible-play surface whose presence tracks session length, and every
           viewer must be able to hide it — the toggle lives in the avatar menu, which
-          is authed-only). Hides itself on money surfaces and when toggled off. Not
-          rendered on /admin (that branch returns early). */}
+          is authed-only). Hides itself on money surfaces and when toggled off, and for a
+          journey viewer on the journey's own pages (S6 WP7). Not rendered on /admin (that
+          branch returns early). */}
       {session && <Needle />}
       {/* THE INSTALL INVITATION, AND IT IS NOT SESSION-GATED — a visitor who has not signed up is
           exactly who benefits from a home-screen icon. Its own eligibility rules do the gating (a

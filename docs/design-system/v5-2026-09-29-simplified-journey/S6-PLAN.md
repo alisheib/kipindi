@@ -623,6 +623,25 @@ Plus one plant each.
 - qa:journey-shell: a pass holder sees no bubble, needle or panel on `/` and `/positions`, and does see them on `/help` and `/account`
 - qa:classic-shell-parity --compare
 
+*As built (WP7, 2026-10-02, applied and driven 2026-10-03):* the flag is mounted through a lazy binding like AppShell's other
+overlays (`{journeyShown && <Suspense fallback={null}><LazyJourneyFlag /></Suspense>}`, beside the funnel's span), so a
+classic page never loads it; `test:journey-shell` 5.mount holds the mount and §11 the lazy load. It is §11, not the
+§10 the body names, because WP6b's header-fit terms took §10 first; it sits beside §5 in the file and in the run's
+output. The stand-downs are steps 2–4 as written; each overlay reads `const journeyOn = useJourneyOn();` once, and
+the channels panel names the term once (`journeyHidden`) for its `eligible` and its render guard. The chat's guard returns null and nothing more: it neither closes an open panel nor
+clears the conversation, which is where the player left it on the next page that shows the bubble. A4 as written: 5.2
+matches `isMoneySurface` in any import list from `@/lib/surfaces`, and a new clause forbids a `MONEY_ROUTE` or an
+`isMoneySurface` function or binding in `needle.tsx` (comments stripped); `red:install-invite` gains one mutation per
+half. ⚠️ The flag arrives in its own chunk, so on a journey viewer's first document load an overlay that draws before it
+could show for a moment. The drive measured it: the chat bubble never drew, but the NEEDLE did, for 1–3 frames on
+every fresh load of `/` and `/positions` (it hydrates outside the flag's Suspense boundary, and its engine mounted
+≈30 ms before the flag). Fixed by the shell's MARK: AppShell also writes `{journeyShown && <span hidden
+id={JOURNEY_SHELL_MARK} />}` into the server's HTML (the id lives in the pure `lib/journey/shell-mark.ts`), and
+`journeyFlagSnapshot` reads the mark or the flag, so `useSyncExternalStore` has the answer right after hydration; the
+flag stays the event that tells mounted overlays about a `router.refresh()`. `test:journey-shell` 5.mark,
+5.mark.mount, 5.mark.pure (3 plants). Re-driven 32/32: no frame of either overlay on a journey page, both present on
+`/markets` and `/help`, classic viewers unchanged.
+
 ### WP8 — Short titles on the position projection (two stores) (S; depends on WP0)
 
 **Goal.** Let Tiketi cards show the S2 short title, as the canvas draws, through the one DAL projection, with both twins kept in step.

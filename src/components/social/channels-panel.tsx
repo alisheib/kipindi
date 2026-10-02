@@ -37,6 +37,7 @@
  *  · never over a money control, an auth page, an admin page, or EITHER responsible-gambling
  *    route — a follow prompt on the page where someone is setting a limit is the worst of it
  *  · never while a real modal is open, and never when `promoSuppressed`
+ *  · and, for a journey viewer, never on a page the new journey re-draws (the Vodacom plan S6, WP7)
  *
  * ── ⚠️ EVERY `localStorage` TOUCH IS WRAPPED AND FAILS CLOSED
  * This mounts in the root shell, so an unguarded throw in a private window or with site data
@@ -50,7 +51,8 @@ import { usePathname } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
 import { SOCIAL, SOCIAL_LIVE } from "@/lib/social";
 import { SOCIAL_MARK } from "@/components/ui/social-marks";
-import { isCommitSurface } from "@/lib/surfaces";
+import { isCommitSurface, isJourneySurface } from "@/lib/surfaces";
+import { useJourneyOn } from "@/lib/journey/journey-on";
 import { useInvitationSlot } from "@/lib/invitation-slot";
 import { useExitPhase } from "@/components/ui/modal";
 import { useT } from "@/lib/i18n";
@@ -189,11 +191,16 @@ function measureTop(panel: HTMLElement | null = null): number {
 export function ChannelsPanel({ promoSuppressed }: { promoSuppressed: boolean }) {
   const { t } = useT();
   const pathname = usePathname();
+  /* ⭐ S6 WP7 · NOT ON THE NEW JOURNEY'S PAGES, FOR A JOURNEY VIEWER. A term of `eligible` and of the render guard
+     below, like the route rule beside it; the visit timer never reads the path. For every other viewer `journeyOn`
+     is false, so both read exactly as they did. */
+  const journeyOn = useJourneyOn();
+  const journeyHidden = journeyOn && isJourneySurface(pathname);
   const [open, setOpen] = useState(false);
   const [topPx, setTopPx] = useState(TOP_FALLBACK);
   const panelRef = useRef<HTMLDivElement>(null);
 
-  const eligible = open && !promoSuppressed && !suppressedRoute(pathname);
+  const eligible = open && !promoSuppressed && !suppressedRoute(pathname) && !journeyHidden;
   /* ⭐ ZONE "top-right", AND THE ZONE IS THE FIX. The first version put this and the install card
      in ONE global slot with install at priority 1 — which guarantees this panel never shows,
      because both become eligible on the same visit at the same second and install wins every
@@ -302,6 +309,7 @@ export function ChannelsPanel({ promoSuppressed }: { promoSuppressed: boolean })
 
   if (!present) return null;
   if (promoSuppressed || suppressedRoute(pathname)) return null;
+  if (journeyHidden) return null;
 
   return (
     <div
