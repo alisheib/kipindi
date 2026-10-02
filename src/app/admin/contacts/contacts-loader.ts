@@ -9,21 +9,27 @@
  * ⛔ AN UNREADABLE FILTER IS REFUSED, NEVER DROPPED (decision C2): `?op=NOKIA` is `{ kind: "refused" }` naming the
  * parameter, and the page shows no rows — a silently widened table is exactly what a bulk action or an export
  * would then act on.
+ * ⭐ U21 · THE RAIL'S OPTIONS are read here too, in BOTH answers: every list, and the book's tags most-carried first
+ * (`contactTagCounts`, the resolver's own tag reader — U24/M8). Like the KPIs they are WHOLE-BOOK facts, so a masked
+ * viewer gets them as well: a count over the book is not a per-number answer (A1.1). The rail itself is built by the
+ * page (`contacts-rail.ts`), which is also where a FAILED read still draws it, from the address alone.
  * ⛔ A read that fails THROWS to the caller, which renders `AdminLoadError` — never a zero, which on a
  * compliance surface reads as "this book is empty".
  */
 import { db } from "@/lib/server/store";
 import { currentSession } from "@/lib/server/auth-service";
 import { mayReveal } from "@/lib/server/rbac";
-import type { ContactBookSummary, ContactPage } from "@/lib/server/store";
+import type { ContactBookSummary, ContactPage, ContactTagCount, StoredContactList } from "@/lib/server/store";
 import {
-  contactAudience, describeAudience, narrowsBeyondSearch, parseContactAudienceParams, roleRefusal, WHOLE_BOOK,
+  contactAudience, contactTagCounts, describeAudience, narrowsBeyondSearch, parseContactAudienceParams, roleRefusal,
+  WHOLE_BOOK,
 } from "@/lib/server/marketing/audience";
 import type { ContactAudienceFilter } from "@/lib/server/marketing/audience";
 import { PER_PAGE } from "@/components/admin/admin-pagination";
 import { parseSort } from "@/components/admin/admin-sort";
 import { CONTACT_SORTS } from "./contacts-query";
 import type { ContactSort } from "./contacts-query";
+import { RAIL_TAG_READ } from "./contacts-rail";
 
 /** Next's own shape: a repeated param arrives as an array. */
 export type ContactsParams = Record<string, string | string[] | undefined>;
@@ -35,6 +41,10 @@ type ContactsBase = {
   dir: "asc" | "desc";
   /** D19 · may this viewer see, row by row, what only a PLAYER can have (Reachable, Source, the Player chip)? */
   viewerReads: boolean;
+  /** U21 · every list, for the rail's List axis — whole-book, in the refused state too. */
+  lists: StoredContactList[];
+  /** U21 · the book's tags with how many contacts carry each, most-carried first (the erased tombstone left out). */
+  tags: ContactTagCount[];
 };
 export type ContactsView =
   | (ContactsBase & {
@@ -68,6 +78,8 @@ export type ContactsDeps = {
  * ⛔ So they render only for a viewer whose `identity.contact` cell is `read` — the same cell that may reveal
  * the number. Decided HERE, in a .ts: `test:read-tiers` 4.4 lets no .tsx but `sensitive.tsx` ask the matrix.
  * Fails closed: no session, no role, no read.
+ * ⭐ U21 · the page also asks it on its own when the book's read FAILED, because the filter rail is role-shaped in
+ * the error state too (the loader threw, so its answer never arrived).
  */
 export async function viewerReadsContacts(): Promise<boolean> {
   const session = await currentSession();
@@ -83,7 +95,11 @@ export async function loadContacts(sp: ContactsParams, deps: ContactsDeps = {}):
   const { sort, dir } = parseSort({ sort: firstParam(sp.sort), dir: firstParam(sp.dir) }, CONTACT_SORTS, "added", "desc");
   const summary = await contactAudience(WHOLE_BOOK).breakdown();
   const viewerReads = await reads();
-  const base = { summary, sort, dir, viewerReads };
+  // ⭐ U21 · the rail's options — whole-book facts, read before the filter is even parsed, so a refused page still
+  // draws its whole rail. More tags than the rail draws, so it knows when there are more and an applied tag past the
+  // drawn ones still finds its count.
+  const [lists, tags] = await Promise.all([db.contactList.listAll(), contactTagCounts(RAIL_TAG_READ)]);
+  const base = { summary, sort, dir, viewerReads, lists, tags };
 
   const parsed = parseContactAudienceParams(sp);
   if (!parsed.ok) return { ...base, kind: "refused", refusal: "unreadable", param: parsed.param, reason: parsed.reason };

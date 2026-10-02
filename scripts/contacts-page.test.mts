@@ -1,5 +1,6 @@
 /**
  * test:contacts-page — U20's guard: the contact book's list at /admin/contacts. U24: the address's filters.
+ * U21: the filter rail.
  *
  * ⭐ DRIVEN, NOT READ, wherever the behaviour can run in a script: the REAL loader (`contacts-loader.ts`,
  * the one the page calls) over the memory twin — the four spellings of one number, a part of a number, a
@@ -7,13 +8,23 @@
  * an unreadable filter refused, D19's player filter refused to a masked viewer. Then the source, for what only
  * the source can show: every number through `<Sensitive field="contactPhone">` (U19), the "Reachable" column
  * never naming a player's protected standing, every link built by the ONE href builder.
+ * ⭐ U21 · THE RAIL, driven through the REAL rail builder (`contacts-rail.ts`, the one the page calls) over the
+ * loader's own options: the model with nothing applied, the operator options against the ONE numbering table (and
+ * every operator pill FOLLOWED through the loader), every pill's href (the search and the sort kept, never `page`),
+ * an applied value always drawn (a tag past the top twenty, an unknown list, Telxer, two values, a refused value),
+ * the error path drawing the rail from the address, a tag count shown only where it is true, the ROLE-SHAPED rail
+ * (A1.1 — a masked viewer is drawn no Consent or Source axis and its `?source=`/`?consent=` read no row), and, from
+ * the source, the rail surviving no-match, the Operator column reading the one table, the rail file's shape and its
+ * filter-language declaration, and the one vocabulary (C13).
  *
  * ⛔ A PART OF A NUMBER NEVER SEARCHES THE NUMBER. GROWTH sees every number masked; a substring search on
  * `msisdn` would let that role rebuild a number digit by digit. §2 holds it here; the twins' exact match
  * (U20's §8/§8b) moved to `test:dal-parity` §21.msisdn with U24, where both translations now live.
  *
  * ⛔ IN-PROCESS BY CONSTRUCTION. `--prove-red` plants each defect IN MEMORY (a loader, a source string, an
- * href builder) and requires the MATCHING assertion to fail. This file makes no file-writing call.
+ * href builder, a rail builder) and requires the MATCHING assertion to fail. This file makes no file-writing call.
+ * §13 counts the book's page reads by wrapping the memory twin's method for one call and putting it back in a
+ * `finally` — a store method swapped in memory, never a file.
  * (U20's red case 1 — the search box's normalisation dropped — moved to `red:contacts-audience` R6 with U24,
  * because the normalisation moved into the resolver.)
  *
@@ -25,22 +36,33 @@ process.exitCode = 1;
 import { readFileSync } from "node:fs";
 import { decomment } from "./lib/decomment.mts";
 import { db } from "../src/lib/server/store.ts";
-import type { StoredMarketingContact, ContactBookSummary } from "../src/lib/server/store.ts";
-import { contactsSearch, toAudienceWhere, WHOLE_BOOK } from "../src/lib/server/marketing/audience.ts";
+import type { StoredMarketingContact, ContactBookSummary, ContactTagCount, StoredContactList } from "../src/lib/server/store.ts";
+import { contactsSearch, toAudienceWhere, WHOLE_BOOK, ndcsForOperators } from "../src/lib/server/marketing/audience.ts";
 import { operatorBrand, contactsHref, contactsLinkSp, contactsClearFiltersHref } from "../src/app/admin/contacts/contacts-query.ts";
 import { loadContacts } from "../src/app/admin/contacts/contacts-loader.ts";
 import type { ContactsParams, ContactsView } from "../src/app/admin/contacts/contacts-loader.ts";
+import { contactRail, TAG_RAIL_CAP } from "../src/app/admin/contacts/contacts-rail.ts";
+import type { ContactRail, RailGroup, RailOption } from "../src/app/admin/contacts/contacts-rail.ts";
+import { CONSENT_LABEL, SOURCE_LABEL, RAIL_KEYS, RAIL_ANY, RAIL_UNKNOWN_LIST, railOperatorTitle } from "../src/app/admin/contacts/contacts-copy.ts";
 import { PER_PAGE } from "../src/components/admin/admin-pagination.tsx";
-import { parseTzNumber } from "../src/lib/tz-msisdn.ts";
+import { parseTzNumber, TZ_MOBILE_NDCS, TZ_OPERATORS } from "../src/lib/tz-msisdn.ts";
 
 const PROVE_RED = process.argv.includes("--prove-red");
 
 const read = (rel: string) => decomment(readFileSync(new URL(`../${rel}`, import.meta.url), "utf8")).replace(/\r\n/g, "\n");
+/** ⚠️ RAW, for the filter-language gate: its own regex literals carry bare quotes and backticks, which the comment
+ *  stripper (it tracks strings, not regexes) could misread. §16 reads one array out of it, line-anchored instead. */
+const rawRead = (rel: string) => readFileSync(new URL(`../${rel}`, import.meta.url), "utf8").replace(/\r\n/g, "\n");
 
-type Sources = { page: string; loader: string };
+type Sources = { page: string; loader: string; rail: string; model: string; copy: string; gate: string };
 const REAL_SOURCES: Sources = {
   page: read("src/app/admin/contacts/page.tsx"),
   loader: read("src/app/admin/contacts/contacts-loader.ts"),
+  // ⭐ U21 · the rail's drawing, its model, the one vocabulary, and the gate that must declare the drawing.
+  rail: read("src/app/admin/contacts/contact-filters.tsx"),
+  model: read("src/app/admin/contacts/contacts-rail.ts"),
+  copy: read("src/app/admin/contacts/contacts-copy.ts"),
+  gate: rawRead("scripts/filter-language.test.mts"),
 };
 
 type Impl = {
@@ -48,10 +70,12 @@ type Impl = {
   /** The page's loader. `reads` is D19's read cell — a script has no session, so it is injected. */
   load: (sp: ContactsParams, reads?: boolean) => Promise<ContactsView>;
   href: typeof contactsHref;
+  /** U21 · the page's rail builder. */
+  rail: typeof contactRail;
   sources: Sources;
 };
 const realLoad = (sp: ContactsParams, reads = false) => loadContacts(sp, { reads: async () => reads });
-const REAL: Impl = { search: contactsSearch, load: realLoad, href: contactsHref, sources: REAL_SOURCES };
+const REAL: Impl = { search: contactsSearch, load: realLoad, href: contactsHref, rail: contactRail, sources: REAL_SOURCES };
 
 let pass = 0, fail = 0;
 const failed: string[] = [];
@@ -61,27 +85,99 @@ const ok = (l: string, c: boolean, x = "") => {
 };
 
 /* ── FIXTURES — four contacts, through the store method the importers will call ──────────────── */
-function row(id: string, local: string, displayName: string | null, consentState: StoredMarketingContact["consentState"], day: number, suppressed = false): StoredMarketingContact {
+function row(
+  id: string, local: string, displayName: string | null, consentState: StoredMarketingContact["consentState"], day: number,
+  suppressed = false, source: StoredMarketingContact["source"] = "IMPORT", tags: string[] = [],
+): StoredMarketingContact {
   const p = parseTzNumber(local);
   if (p.verdict !== "ok" || !p.msisdn || !p.ndc) throw new Error(`fixture ${local} does not parse`);
   const at = `2026-09-0${day}T10:00:00.000Z`;
   return {
     id, msisdn: p.msisdn, rawInput: local, displayName, email: null, ndc: p.ndc, operator: null,
-    source: "IMPORT", sourceRef: null, userId: null, consentState, suppressedAt: suppressed ? at : null,
-    tags: [], notes: null, importId: null, createdAt: at, createdBy: null, updatedAt: at, updatedBy: null,
+    source, sourceRef: null, userId: null, consentState, suppressedAt: suppressed ? at : null,
+    tags, notes: null, importId: null, createdAt: at, createdBy: null, updatedAt: at, updatedBy: null,
   };
 }
-const A = row("mc_t_a", "0712345678", "Asha Mwakalinga", "GIVEN", 1);
-const B = row("mc_t_b", "0754000111", "Baraka Juma", "UNKNOWN", 2, true);
-const C = row("mc_t_c", "0621000222", null, "WITHDRAWN", 3);
-const D = row("mc_t_d", "0713000333", "Asha Mwakalinga", "UNKNOWN", 4);
+const A = row("mc_t_a", "0712345678", "Asha Mwakalinga", "GIVEN", 1, false, "IMPORT", ["vip"]);
+// ⭐ U21 · B sits on 072 — Vodacom by TCRA v1.16, a prefix that CHANGED HOLDER since the 2020 edition. A hand-typed
+// 2020 map (Vodacom 74/75/76/79) cannot reach it, so §12b's Vodacom pill must list exactly B.
+const B = row("mc_t_b", "0722000111", "Baraka Juma", "UNKNOWN", 2, true, "OPERATOR", ["vip", "dar"]);
+const C = row("mc_t_c", "0621000222", null, "WITHDRAWN", 3, false, "AGENT", []);
+const D = row("mc_t_d", "0713000333", "Asha Mwakalinga", "UNKNOWN", 4, false, "IMPORT", ["dar"]);
 for (const r of [A, B, C, D]) await db.marketingContact.create(r);
+// ⭐ U21 · ONE list, through the DAL the bulk bar will call — D and B are its members.
+const L: StoredContactList = {
+  id: "cl_t_dar", name: "Dar weekend", description: null,
+  createdAt: "2026-09-05T10:00:00.000Z", createdBy: null, updatedAt: "2026-09-05T10:00:00.000Z", updatedBy: null,
+};
+await db.contactList.create(L);
+for (const m of [D, B]) await db.contactListMember.add({ listId: L.id, contactId: m.id, addedAt: "2026-09-05T10:00:00.000Z", addedBy: null });
 
 const WHOLE_BOOK_COUNTS: ContactBookSummary = { total: 4, given: 1, unknown: 2, withdrawn: 1, suppressed: 1 };
 
 /** The rows a view lists, or `REFUSED:<param>` — so a refusal can never read as "no rows". */
 const ids = (v: ContactsView) => (v.kind === "ok" ? v.result.rows.map((r) => r.id).join(",") : `REFUSED:${v.param}`);
 const total = (v: ContactsView) => (v.kind === "ok" ? v.result.total : -1);
+
+/* ── U21 · THE RAIL'S HELPERS ───────────────────────────────────────────────────────────────── */
+const groupOf = (r: ContactRail, param: string): RailGroup | undefined => r.groups.find((g) => g.param === param);
+const onOf = (g: RailGroup | undefined): RailOption[] => (g ? g.options.filter((o) => o.on) : []);
+const keysOf = (g: RailGroup | undefined) => (g ? g.options.map((o) => o.key).join(",") : "(no group)");
+const labelsOf = (g: RailGroup | undefined) => (g ? g.options.map((o) => o.label).join(",") : "(no group)");
+const pills = (r: ContactRail) => r.groups.flatMap((g) => g.options.map((o) => ({ ...o, param: g.param })));
+const exactlyOneOn = (r: ContactRail) => r.groups.every((g) => g.options.filter((o) => o.on).length === 1);
+/** An href back to the params the page would receive. */
+const spOf = (href: string): ContactsParams => Object.fromEntries(new URL(href, "http://x").searchParams.entries());
+/** The rail the page builds for this address: the loader's own options, and its count when rows were read. */
+async function railFor(impl: Impl, sp: ContactsParams, reads: boolean): Promise<{ view: ContactsView; rail: ContactRail }> {
+  const view = await impl.load(sp, reads);
+  const rail = impl.rail({
+    sp, reads,
+    lists: view.lists ?? null,
+    tags: view.tags ?? null,
+    counted: view.kind === "ok" ? { match: view.result.total, book: view.summary.total } : null,
+  });
+  return { view, rail };
+}
+/** How many times the book's page() is read while `fn` runs. ⛔ The memory twin's method is wrapped for this one
+ *  call and put back in a `finally` — in memory, never on disk. */
+async function readsDuring<T>(fn: () => Promise<T>): Promise<{ value: T; pageCalls: number }> {
+  const book = db.marketingContact as unknown as { page: (q: unknown) => unknown };
+  const real = book.page;
+  let pageCalls = 0;
+  book.page = (q: unknown) => { pageCalls++; return real(q); };
+  try {
+    return { value: await fn(), pageCalls };
+  } finally {
+    book.page = real;
+  }
+}
+/** The ADMIN_SURFACES array of the filter-language gate, as text (raw — see `rawRead`). */
+const adminSurfaces = (gate: string) => {
+  const at = gate.indexOf("const ADMIN_SURFACES = [");
+  const end = at < 0 ? -1 : gate.indexOf("];", at);
+  return end < 0 ? "" : gate.slice(at, end);
+};
+/** Declared as an ELEMENT of that array — a line that opens with the quoted path, never a mention in a comment. */
+const declaresRail = (gate: string) => /^\s*"src\/app\/admin\/contacts\/contact-filters\.tsx",/m.test(adminSurfaces(gate));
+
+/** U21's labels, ONCE — the assertions and the red cases both read them, so a case can never expect a label the suite
+ *  no longer prints. */
+const U21 = {
+  rail: "12 · ⭐ the rail with nothing applied (a reader): the six axes in the plan's order under their keys, each opening with Any — the ONE pill in force — in the column's own words (UNKNOWN reads \"Not recorded\", C13), with the count line",
+  operators: "12b · ⭐ the operator options come from the ONE table — every licensee holding a sendable prefix, no Telxer, labelled by brand, its prefixes the resolver's own — and every operator pill FOLLOWED through the loader lists only its own rows (Vodacom: exactly the 072 row)",
+  hrefs: "12c · ⛔ every pill's href is the ONE builder's: it keeps the search, the sort and every other filter, never page — and a pill changes only its own axis",
+  applied: "12d · ⛔ an applied value is ALWAYS a visible, selected pill — a tag no row carries, a tag past the drawn twenty, an unknown list, a no-network operator, two values at once — with exactly one pill in force on every axis",
+  unreadable: "12e · ⛔ an unreadable value is REFUSED by the loader and still DRAWN by the rail, as typed — Any is the way out, and the other axes keep what they apply (C2)",
+  error: "12f · ⛔ a FAILED read still draws the rail from the address alone (§5.15): the operator, the tag and the list stay selected and clearable, the search is kept, and no count is invented",
+  counts: "12g · ⭐ a tag pill's count is the whole book's, shown ONLY where it is exactly what the pill lists — under another filter or a search it is omitted (EXECUTED: each count equals the rows its pill opens)",
+  role: "13 · 🔴 A1.1 · THE RAIL IS ROLE-SHAPED: a masked viewer is drawn no Consent, Source or Player pill at all — even with all three typed — and its ?source=REGISTRATION and ?consent=GIVEN are refused by role with NO row read; a reader gets the rows and all six axes",
+  noMatch: "14 · ⛔ THE RAIL SURVIVES NO-MATCH: page.tsx draws <ContactFilters> exactly once, gated on !emptyBook ALONE (a whole-book fact) and built for every state — and a filter matching nothing still yields the whole rail, its value in force, its links keeping the search and the sort",
+  column: "15 · ⛔ the Operator COLUMN reads the one numbering table — operatorBrand(c.ndc) — and never the stored operator string, which could say \"Tigo\" under the Yas pill",
+  file: "16 · the rail file is a dumb server renderer — ONE data-filter-rail=\"contacts\", ONE FilterPill at the dense rank (replace, scroll={false}, the group's semantics), a FilterGroupKey per axis, no \"use client\", no route, no label typed — and filter-language declares it in ADMIN_SURFACES",
+  vocab: "17 · ⭐ ONE vocabulary (C13): the Consent and Source labels live in contacts-copy.ts alone — page.tsx keeps no map of its own, the column and the rail read the same ones, UNKNOWN reads \"Not recorded\"",
+  options: "18 · the loader hands the rail its options in BOTH answers — every list, and the book's tags most-carried first through the resolver's own tag reader — whole-book, like the KPIs",
+} as const;
 
 async function runAssertions(impl: Impl, tag: string): Promise<void> {
   const p = (n: string) => `${tag}${n}`;
@@ -164,7 +260,7 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
   ok(p("9c · ⛔ D19 · Reachable, Source and the Player chip render ONLY when the viewer reads — and the gate is not even asked otherwise"),
     page.includes('{reads && <th className="text-left">Reachable</th>}') && page.includes('{reads && <th className="text-left">Source</th>}')
       && page.includes("{reads && c.userId && <Chip") && page.includes("const reach = reads ? await Promise.all(rows.map(reachOf)) : [];")
-      && page.includes("{reads && <td><Chip") && page.includes("{reads && <td className=\"whitespace-nowrap\">{SOURCE[c.source]}</td>}"));
+      && page.includes("{reads && <td><Chip") && page.includes("{reads && <td className=\"whitespace-nowrap\">{SOURCE_LABEL[c.source]}</td>}"));
   const maskedConsent = await impl.load({ consent: "GIVEN" });
   const readerConsent = await impl.load({ consent: "GIVEN" }, true);
   ok(p("9f · ⛔ A1.1 · a masked viewer is REFUSED ?consent= by role; a reader gets the rows"),
@@ -183,7 +279,7 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
 
   // ── 11 · U24 · THE ADDRESS'S FILTERS, THROUGH THE ONE RESOLVER ─────────────────────────────────
   const vod = await impl.load({ op: "VODACOM" });
-  ok(p("11 · ⭐ a filter in the address narrows the list (op=VODACOM is the 075 row alone), says so in words, and the KPIs stay the WHOLE book"),
+  ok(p("11 · ⭐ a filter in the address narrows the list (op=VODACOM is the 072 row alone), says so in words, and the KPIs stay the WHOLE book"),
     ids(vod) === B.id && vod.kind === "ok" && vod.narrowed && vod.described.includes("Operator: Vodacom")
       && JSON.stringify(vod.summary) === JSON.stringify(WHOLE_BOOK_COUNTS),
     `${ids(vod)} ${vod.kind === "ok" ? vod.described.join(" · ") : ""}`);
@@ -230,6 +326,185 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
       && cleared.includes("q=asha") && cleared.includes("sort=name") && !cleared.includes("op=")
       && flat.edit === undefined && flat.page === undefined && flat.op === "VODACOM,AIRTEL",
     `${carried} | ${paged} | ${cleared}`);
+
+  /* ══ 12–18 · U21 · THE FILTER RAIL ══════════════════════════════════════════════════════════════════════════ */
+
+  // ── 12 · THE MODEL, NOTHING APPLIED ──────────────────────────────────────────────────────────
+  const none = await railFor(impl, {}, true);
+  const honora = await railFor(impl, { op: "HONORA" }, true);
+  const noneParams = none.rail.groups.map((g) => g.param).join(",");
+  ok(p(U21.rail),
+    noneParams === "consent,suppressed,op,source,list,tag"
+      && none.rail.groups.map((g) => g.label).join(",") === [RAIL_KEYS.consent, RAIL_KEYS.suppressed, RAIL_KEYS.op, RAIL_KEYS.source, RAIL_KEYS.list, RAIL_KEYS.tag].join(",")
+      && none.rail.groups.every((g) => g.semantics === "tab" && g.options[0]?.key === "" && g.options[0]?.label === RAIL_ANY && g.options[0]?.on === true)
+      && exactlyOneOn(none.rail)
+      && labelsOf(groupOf(none.rail, "consent")) === "Any,Given,Not recorded,Withdrawn"
+      && labelsOf(groupOf(none.rail, "suppressed")) === "Any,Suppressed,Not suppressed"
+      && labelsOf(groupOf(none.rail, "source")) === "Any,Import,Sign-up,Added by staff,Agent"
+      && labelsOf(groupOf(none.rail, "list")) === "Any,Dar weekend" && keysOf(groupOf(none.rail, "list")) === `,${L.id}`
+      && keysOf(groupOf(none.rail, "tag")) === ",dar,vip"
+      && none.rail.countLine === "4 contacts" && honora.rail.countLine === "2 of 4 contacts",
+    `${noneParams} · ${labelsOf(groupOf(none.rail, "consent"))} · ${none.rail.countLine} / ${honora.rail.countLine}`);
+
+  // ── 12b · THE OPERATORS, FROM THE ONE TABLE — and FOLLOWED ───────────────────────────────────
+  const offered = (groupOf(none.rail, "op")?.options ?? []).filter((o) => o.key !== "");
+  const sendable = Array.from(new Set(TZ_MOBILE_NDCS.filter((r) => r.sendable).map((r) => r.operator)))
+    .map((id) => ({ id, brand: TZ_OPERATORS[id].brand }))
+    .sort((x, y) => (x.brand < y.brand ? -1 : x.brand > y.brand ? 1 : 0));
+  const fromTable = offered.length === sendable.length
+    && offered.every((o, i) => o.key === sendable[i].id && o.label === sendable[i].brand && o.title === railOperatorTitle(ndcsForOperators([sendable[i].id])));
+  let brandsHold = offered.length > 0;
+  const reached: string[] = [];
+  for (const o of offered) {
+    const v = await impl.load(spOf(o.href), true);
+    if (v.kind !== "ok") { brandsHold = false; continue; }
+    for (const r of v.result.rows) { reached.push(r.id); if (operatorBrand(r.ndc) !== o.label) brandsHold = false; }
+  }
+  const vodPill = offered.find((o) => o.key === "VODACOM");
+  const vodRows = vodPill ? ids(await impl.load(spOf(vodPill.href), true)) : "(no Vodacom pill)";
+  ok(p(U21.operators),
+    fromTable && offered.map((o) => o.label).join(",") === "Airtel,Halotel,TTCL,Vodacom,Yas" && !offered.some((o) => o.key === "TELXER")
+      && (vodPill?.title ?? "").includes("072") && brandsHold
+      && reached.slice().sort().join(",") === [A, B, C, D].map((r) => r.id).sort().join(",") && vodRows === B.id,
+    `${offered.map((o) => `${o.key}=${o.label}`).join(" ")} · Vodacom → ${vodRows} · ${vodPill?.title ?? ""}`);
+
+  // ── 12c · EVERY PILL'S HREF ──────────────────────────────────────────────────────────────────
+  const hsp: ContactsParams = { q: "asha", sort: "name", dir: "asc", page: "3", op: "HONORA", tag: "rare" };
+  const hrail = (await railFor(impl, hsp, true)).rail;
+  const hrefs = pills(hrail).map((o) => o.href);
+  const vodHref = groupOf(hrail, "op")?.options.find((o) => o.key === "VODACOM")?.href ?? "";
+  const opAnyHref = groupOf(hrail, "op")?.options.find((o) => o.key === "")?.href ?? "op=";
+  const tagAnyHref = groupOf(hrail, "tag")?.options.find((o) => o.key === "")?.href ?? "tag=";
+  ok(p(U21.hrefs),
+    hrefs.length > 10
+      && hrefs.every((h) => h.startsWith("/admin/contacts?") && h.includes("q=asha") && h.includes("sort=name") && h.includes("dir=asc") && !h.includes("page="))
+      && vodHref.includes("op=VODACOM") && vodHref.includes("tag=rare") && !vodHref.includes("HONORA")
+      && !opAnyHref.includes("op=") && opAnyHref.includes("tag=rare")
+      && !tagAnyHref.includes("tag=") && tagAnyHref.includes("op=HONORA")
+      && (await impl.load(spOf(vodHref || "/admin/contacts?op=NOKIA"), true)).kind === "ok",
+    `${vodHref} | ${opAnyHref} | ${tagAnyHref}`);
+
+  // ── 12d · AN APPLIED VALUE IS ALWAYS DRAWN ───────────────────────────────────────────────────
+  const rare = (await railFor(impl, { tag: "rare" }, true)).rail;
+  const unknownList = (await railFor(impl, { list: "nope" }, true)).rail;
+  const telxer = (await railFor(impl, { op: "TELXER" }, true)).rail;
+  const two = (await railFor(impl, { op: "VODACOM,AIRTEL" }, true)).rail;
+  const many: ContactTagCount[] = Array.from({ length: 25 }, (_, i) => ({ tag: `t${String(i).padStart(2, "0")}`, count: 40 - i }));
+  const capped = impl.rail({ sp: { tag: "t22" }, reads: true, lists: [], tags: many, counted: null });
+  const cappedTag = groupOf(capped, "tag");
+  ok(p(U21.applied),
+    onOf(groupOf(rare, "tag")).length === 1 && onOf(groupOf(rare, "tag"))[0]?.key === "rare" && onOf(groupOf(rare, "tag"))[0]?.label === "rare"
+      && onOf(groupOf(unknownList, "list"))[0]?.key === "nope" && onOf(groupOf(unknownList, "list"))[0]?.label === RAIL_UNKNOWN_LIST
+      && onOf(groupOf(telxer, "op"))[0]?.key === "TELXER" && onOf(groupOf(telxer, "op"))[0]?.label === "Telxer"
+      && onOf(groupOf(two, "op"))[0]?.key === "AIRTEL,VODACOM" && onOf(groupOf(two, "op"))[0]?.label === "Airtel or Vodacom"
+      && (cappedTag?.options.length ?? 0) === 1 + TAG_RAIL_CAP + 1 && onOf(cappedTag)[0]?.key === "t22" && capped.notes.length === 1
+      && [rare, unknownList, telxer, two, capped].every(exactlyOneOn),
+    `${keysOf(groupOf(rare, "tag"))} · ${labelsOf(groupOf(unknownList, "list"))} · ${labelsOf(groupOf(telxer, "op"))} · ${labelsOf(groupOf(two, "op"))} · ${cappedTag?.options.length ?? 0} tag pills`);
+
+  // ── 12e · AN UNREADABLE VALUE: REFUSED, AND DRAWN ────────────────────────────────────────────
+  const nokiaSp: ContactsParams = { op: "NOKIA", tag: "vip" };
+  const nokiaView = await impl.load(nokiaSp, true);
+  const nokiaRail = impl.rail({ sp: nokiaSp, reads: true, lists: nokiaView.lists ?? null, tags: nokiaView.tags ?? null, counted: null });
+  const nokiaOn = onOf(groupOf(nokiaRail, "op"));
+  ok(p(U21.unreadable),
+    nokiaView.kind === "refused" && nokiaView.param === "op"
+      && nokiaOn.length === 1 && nokiaOn[0].key === "NOKIA" && nokiaOn[0].label.includes("NOKIA")
+      && groupOf(nokiaRail, "op")?.options[0]?.on === false && !(groupOf(nokiaRail, "op")?.options[0]?.href ?? "op=").includes("op=")
+      && onOf(groupOf(nokiaRail, "tag"))[0]?.key === "vip" && exactlyOneOn(nokiaRail),
+    `${nokiaView.kind} · ${labelsOf(groupOf(nokiaRail, "op"))}`);
+
+  // ── 12f · THE ERROR PATH: THE RAIL FROM THE ADDRESS ──────────────────────────────────────────
+  const errRail = impl.rail({ sp: { q: "asha", op: "VODACOM", tag: "vip", list: L.id }, reads: true, lists: null, tags: null, counted: null });
+  ok(p(U21.error),
+    onOf(groupOf(errRail, "op"))[0]?.key === "VODACOM"
+      && keysOf(groupOf(errRail, "tag")) === ",vip" && onOf(groupOf(errRail, "tag"))[0]?.key === "vip"
+      && keysOf(groupOf(errRail, "list")) === `,${L.id}` && onOf(groupOf(errRail, "list"))[0]?.on === true
+      && onOf(groupOf(errRail, "list"))[0]?.label !== RAIL_UNKNOWN_LIST
+      && pills(errRail).every((o) => o.href.includes("q=asha")) && errRail.countLine === null && pills(errRail).every((o) => o.count === undefined),
+    `${errRail.groups.map((g) => `${g.param}[${keysOf(g)}]`).join(" ")}`);
+
+  // ── 12g · A COUNT ONLY WHERE IT IS TRUE ──────────────────────────────────────────────────────
+  const plainTags = (groupOf(none.rail, "tag")?.options ?? []).filter((o) => o.key !== "");
+  let countsTrue = plainTags.length === 2;
+  for (const o of plainTags) {
+    const v = await impl.load(spOf(o.href), true);
+    if (o.count === undefined || v.kind !== "ok" || v.result.total !== o.count) countsTrue = false;
+  }
+  const searched = (await railFor(impl, { q: "asha" }, true)).rail;
+  ok(p(U21.counts),
+    countsTrue && plainTags.map((o) => `${o.key}:${o.count}`).join(",") === "dar:2,vip:2"
+      && [honora.rail, searched].every((r) => pills(r).every((o) => o.count === undefined)),
+    `${plainTags.map((o) => `${o.key}:${o.count}`).join(",")} · under op=HONORA: ${pills(honora.rail).filter((o) => o.count !== undefined).length} counted`);
+
+  // ── 13 · 🔴 A1.1 · THE ROLE-SHAPED RAIL ──────────────────────────────────────────────────────
+  const D19_KEYS = ["consent", "source", "player"];
+  const leaks = (r: ContactRail) => r.groups.filter((g) => D19_KEYS.includes(g.param)).map((g) => g.param);
+  const maskedRail = (await railFor(impl, {}, false)).rail;
+  const maskedTyped = impl.rail({ sp: { consent: "GIVEN", source: "REGISTRATION", player: "yes", op: "VODACOM" }, reads: false, lists: none.view.lists ?? null, tags: none.view.tags ?? null, counted: null });
+  const readerTyped = impl.rail({ sp: { consent: "GIVEN", source: "IMPORT", player: "yes" }, reads: true, lists: none.view.lists ?? null, tags: none.view.tags ?? null, counted: null });
+  const srcRead = await readsDuring(() => impl.load({ source: "REGISTRATION" }, false));
+  const conRead = await readsDuring(() => impl.load({ consent: "GIVEN" }, false));
+  const readerSrc = await impl.load({ source: "IMPORT" }, true);
+  const maskedSrc = srcRead.value;
+  const maskedCon = conRead.value;
+  ok(p(U21.role),
+    maskedRail.groups.map((g) => g.param).join(",") === "suppressed,op,list,tag" && leaks(maskedRail).length === 0 && leaks(maskedTyped).length === 0
+      && readerTyped.groups.filter((g) => g.semantics === "tab").map((g) => g.param).join(",") === "consent,suppressed,op,source,list,tag"
+      && readerTyped.groups.some((g) => g.param === "player" && g.semantics === "toggle" && g.options.length === 1 && g.options[0].on)
+      && maskedSrc.kind === "refused" && maskedSrc.refusal === "role" && maskedSrc.param === "source" && srcRead.pageCalls === 0
+      && maskedCon.kind === "refused" && maskedCon.refusal === "role" && maskedCon.param === "consent" && conRead.pageCalls === 0
+      && ids(readerSrc) === [D, A].map((r) => r.id).join(","),
+    `masked [${maskedRail.groups.map((g) => g.param)}] typed-leaks [${leaks(maskedTyped)}] · source ${ids(maskedSrc)} (${srcRead.pageCalls} page reads) · consent ${ids(maskedCon)} (${conRead.pageCalls}) · reader ${ids(readerSrc)}`);
+
+  // ── 14 · ⛔ THE RAIL SURVIVES NO-MATCH ────────────────────────────────────────────────────────
+  const railAt = page.indexOf("<ContactFilters");
+  const beforeRail = railAt < 0 ? "" : page.slice(Math.max(0, railAt - 300), railAt);
+  const ttcl = await railFor(impl, { op: "TTCL", q: "asha", sort: "name", dir: "asc" }, true);
+  ok(p(U21.noMatch),
+    (page.match(/<ContactFilters\b/g) ?? []).length === 1
+      && page.includes("{!emptyBook && <ContactFilters rail={rail} />}")
+      && !/rows\.length|result/.test(beforeRail)
+      && page.includes("const rail = contactRail({")
+      && page.includes("const emptyBook = !failed && summary!.total === 0;")
+      && (page.match(/\{!emptyBook && \(/g) ?? []).length === 1 && !page.includes("{!failed && !emptyBook && (")
+      && ttcl.view.kind === "ok" && ttcl.view.result.total === 0
+      && ttcl.rail.groups.length === 6 && onOf(groupOf(ttcl.rail, "op"))[0]?.key === "TTCL"
+      && pills(ttcl.rail).every((o) => o.href.includes("q=asha") && o.href.includes("sort=name")),
+    `${(page.match(/<ContactFilters\b/g) ?? []).length} rail(s) · no-match rail [${ttcl.rail.groups.map((g) => g.param)}]`);
+
+  // ── 15 · ⛔ THE OPERATOR COLUMN ───────────────────────────────────────────────────────────────
+  ok(p(U21.column),
+    page.includes('<td className="whitespace-nowrap">{operatorBrand(c.ndc) ?? "—"}</td>') && !page.includes("c.operator"));
+
+  // ── 16 · THE RAIL FILE ────────────────────────────────────────────────────────────────────────
+  const railSrc = impl.sources.rail;
+  const pillTags = railSrc.match(/<FilterPill\b[\s\S]*?\/>/g) ?? [];
+  ok(p(U21.file),
+    (railSrc.match(/data-filter-rail="contacts"/g) ?? []).length === 1
+      && pillTags.length === 1 && pillTags[0].includes('rank="dense"') && /\sreplace\s/.test(pillTags[0]) && pillTags[0].includes("scroll={false}")
+      && pillTags[0].includes("semantics={g.semantics}") && pillTags[0].includes("testId={`${g.param}:${o.key}`}")
+      && railSrc.includes("<FilterGroupKey>{g.label}</FilterGroupKey>")
+      && !railSrc.includes('"use client"') && !railSrc.includes("/admin/contacts")
+      && !/"(Any|Given|Not recorded|Withdrawn|Suppressed|Import|Sign-up|Vodacom|Unknown list)"/.test(railSrc)
+      && declaresRail(impl.sources.gate),
+    `${pillTags.length} FilterPill tag(s) · declared: ${declaresRail(impl.sources.gate)}`);
+
+  // ── 17 · ⭐ ONE VOCABULARY ────────────────────────────────────────────────────────────────────
+  ok(p(U21.vocab),
+    !/const (CONSENT|SOURCE)\b/.test(page) && page.includes("CONSENT_LABEL[c.consentState]") && page.includes("SOURCE_LABEL[c.source]")
+      && impl.sources.model.includes("CONSENT_LABEL[c].label") && impl.sources.model.includes("SOURCE_LABEL[s]")
+      && !impl.sources.model.includes('"Not recorded"') && !impl.sources.model.includes('"Sign-up"')
+      && /export const CONSENT_LABEL\b/.test(impl.sources.copy) && /export const SOURCE_LABEL\b/.test(impl.sources.copy)
+      && CONSENT_LABEL.UNKNOWN.label === "Not recorded" && SOURCE_LABEL.REGISTRATION === "Sign-up");
+
+  // ── 18 · THE LOADER HANDS THE RAIL ITS OPTIONS ───────────────────────────────────────────────
+  const okView = await impl.load({}, true);
+  const refusedView = await impl.load({ op: "NOKIA" }, true);
+  const optionsOf = (v: ContactsView) => `${(v.lists ?? []).map((l) => l.id).join(",")} | ${(v.tags ?? []).map((t) => `${t.tag}:${t.count}`).join(",")}`;
+  ok(p(U21.options),
+    [okView, refusedView].every((v) => optionsOf(v) === `${L.id} | dar:2,vip:2`)
+      && impl.sources.loader.includes("contactTagCounts(RAIL_TAG_READ)") && impl.sources.loader.includes("db.contactList.listAll()"),
+    `${optionsOf(okView)} // refused: ${optionsOf(refusedView)}`);
 }
 
 if (!PROVE_RED) {
@@ -262,6 +537,21 @@ if (!PROVE_RED) {
     };
     return { kind: "ok", summary, result, page, sort, dir, viewerReads: false, filter: { ...WHOLE_BOOK, q }, described: [], narrowed: false };
   };
+
+  /* ── U21's plants: each one a rail, a loader or a source string as somebody would write it wrongly ── */
+  /** Every pill of a rail, rewritten. */
+  const mapPills = (r: ContactRail, f: (o: RailOption, g: RailGroup) => RailOption): ContactRail =>
+    ({ ...r, groups: r.groups.map((g) => ({ ...g, options: g.options.map((o) => f(o, g)) })) });
+  /** ⛔ The 2020-edition operator map, typed by hand — Vodacom without 072 (it changed holder), Tigo for Yas,
+   *  Halotel by its brand, Zantel long absorbed. Kept HERE, in the test: the src tree may not hold one. */
+  const HAND_TYPED_2020 = [
+    { id: "AIRTEL", brand: "Airtel", ndcs: ["68", "69", "78"] },
+    { id: "HALOTEL", brand: "Halotel", ndcs: ["62"] },
+    { id: "TIGO", brand: "Tigo", ndcs: ["65", "67", "71"] },
+    { id: "TTCL", brand: "TTCL", ndcs: ["73"] },
+    { id: "VODACOM", brand: "Vodacom", ndcs: ["74", "75", "76", "79"] },
+    { id: "ZANTEL", brand: "Zantel", ndcs: ["77"] },
+  ];
 
   const CASES: Array<{ name: string; expect: string; impl: Impl }> = [
     {
@@ -333,6 +623,145 @@ if (!PROVE_RED) {
           return edit ? `${base}${base.includes("?") ? "&" : "?"}edit=${encodeURIComponent(edit)}` : base;
         },
       },
+    },
+
+    /* ── U21 · the plan's RED line, each in memory ─────────────────────────────────────────────── */
+    {
+      name: "🔴 A1.1 · the loader lets a masked viewer filter by source or consent — rows for a number they typed",
+      expect: U21.role,
+      impl: {
+        ...REAL,
+        load: async (sp, reads = false) => {
+          const v = await realLoad(sp, reads);
+          if (v.kind !== "refused" || v.refusal !== "role") return v;
+          return { ...(await realLoad(sp, true)), viewerReads: false };
+        },
+      },
+    },
+    {
+      name: "🔴 A1.1 · the rail draws the Consent and Source axes for a masked viewer",
+      expect: U21.role,
+      impl: { ...REAL, rail: (input) => contactRail({ ...input, reads: true }) },
+    },
+    {
+      name: "a hand-typed 2020-edition operator map — Vodacom 74/75/76/79 without 072, Tigo for Yas",
+      expect: U21.operators,
+      impl: {
+        ...REAL,
+        rail: (input) => {
+          const r = contactRail(input);
+          return {
+            ...r,
+            groups: r.groups.map((g) => (g.param !== "op" ? g : {
+              ...g,
+              options: [g.options[0], ...HAND_TYPED_2020.map((o) => ({ key: o.id, label: o.brand, title: railOperatorTitle(o.ndcs), href: contactsHref(input.sp, { op: o.id }), on: false }))],
+            })),
+          };
+        },
+      },
+    },
+    {
+      name: "the pills keep ?page — a filter change lands on a page that may not exist",
+      expect: U21.hrefs,
+      impl: { ...REAL, rail: (input) => mapPills(contactRail(input), (o) => ({ ...o, href: `${o.href}${o.href.includes("?") ? "&" : "?"}page=3` })) },
+    },
+    {
+      name: "the pills drop the search and the other axes — each pill written as its own param alone",
+      expect: U21.hrefs,
+      impl: {
+        ...REAL,
+        rail: (input) => mapPills(contactRail(input), (o, g) => ({
+          ...o, href: o.key === "" ? "/admin/contacts" : `/admin/contacts?${new URLSearchParams({ [g.param]: o.key })}`,
+        })),
+      },
+    },
+    {
+      name: "only the top-N tags are drawn — an applied tag outside them vanishes, and cannot be seen or cleared",
+      expect: U21.applied,
+      impl: {
+        ...REAL,
+        rail: (input) => {
+          const r = contactRail(input);
+          const top = new Set((input.tags ?? []).slice(0, TAG_RAIL_CAP).map((t) => t.tag));
+          return { ...r, groups: r.groups.map((g) => (g.param !== "tag" ? g : { ...g, options: g.options.filter((o) => o.key === "" || top.has(o.key)) })) };
+        },
+      },
+    },
+    {
+      name: "the rail is gated on rows — a filter that matches nothing takes the rail with it",
+      expect: U21.noMatch,
+      impl: { ...REAL, sources: { ...REAL_SOURCES, page: REAL_SOURCES.page.replace("{!emptyBook && <ContactFilters", "{rows.length > 0 && !emptyBook && <ContactFilters") } },
+    },
+    {
+      name: "the Operator column reads the stored c.operator — \"Tigo\" under the Yas pill",
+      expect: U21.column,
+      impl: { ...REAL, sources: { ...REAL_SOURCES, page: REAL_SOURCES.page.replace('{operatorBrand(c.ndc) ?? "—"}', '{c.operator ?? operatorBrand(c.ndc) ?? "—"}') } },
+    },
+    {
+      name: "an unreadable value is drawn as Any — the rail says \"whole book\" while the table refuses",
+      expect: U21.unreadable,
+      impl: {
+        ...REAL,
+        rail: (input) => {
+          const r = contactRail(input);
+          return {
+            ...r,
+            groups: r.groups.map((g) => {
+              const typed = g.options.filter((o) => o.on && o.label.startsWith("“"));
+              if (typed.length === 0) return g;
+              return { ...g, options: g.options.filter((o) => !typed.includes(o)).map((o) => (o.key === "" ? { ...o, on: true } : o)) };
+            }),
+          };
+        },
+      },
+    },
+    {
+      name: "a failed read hides the list and tag filters — the officer cannot see or clear what is applied",
+      expect: U21.error,
+      impl: {
+        ...REAL,
+        rail: (input) => {
+          const r = contactRail(input);
+          return input.lists === null || input.tags === null ? { ...r, groups: r.groups.filter((g) => g.param !== "list" && g.param !== "tag") } : r;
+        },
+      },
+    },
+    {
+      name: "the tag counts are kept under another filter — a number the click will not show",
+      expect: U21.counts,
+      impl: {
+        ...REAL,
+        rail: (input) => {
+          const counts = new Map((input.tags ?? []).map((t) => [t.tag, t.count]));
+          return mapPills(contactRail(input), (o, g) => (g.param === "tag" && o.key !== "" ? { ...o, count: counts.get(o.key) } : o));
+        },
+      },
+    },
+    {
+      name: "the rail loses its data-filter-rail hook — invisible to filter-language and to every live probe",
+      expect: U21.file,
+      impl: { ...REAL, sources: { ...REAL_SOURCES, rail: REAL_SOURCES.rail.replace('data-filter-rail="contacts"', 'data-rail="contacts"') } },
+    },
+    {
+      name: "the vocabulary typed twice — page.tsx keeps a CONSENT map of its own beside the copy module's",
+      expect: U21.vocab,
+      impl: { ...REAL, sources: { ...REAL_SOURCES, page: REAL_SOURCES.page.replace("const REACH:", 'const CONSENT = { UNKNOWN: "No consent recorded" };\nconst REACH:') } },
+    },
+    {
+      name: "the refused view arrives without the rail's options — a refused page draws a rail with no lists or tags",
+      expect: U21.options,
+      impl: {
+        ...REAL,
+        load: async (sp, reads = false) => {
+          const v = await realLoad(sp, reads);
+          return v.kind === "refused" ? { ...v, lists: [], tags: [] } : v;
+        },
+      },
+    },
+    {
+      name: "the rail drops its Any pills — an address with nothing applied has no pill in force, and no axis can be cleared",
+      expect: U21.rail,
+      impl: { ...REAL, rail: (input) => { const r = contactRail(input); return { ...r, groups: r.groups.map((g) => ({ ...g, options: g.options.filter((o) => o.key !== "") })) }; } },
     },
   ];
 

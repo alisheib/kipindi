@@ -15,6 +15,24 @@
  *     line, the whole-book tiles, sort and pager links that carry the filter; a filter matching nothing; the clamp
  *     under a filter; an unreadable filter (`?op=NOKIA`, `?from=2026-13-40`) REFUSED with the parameter named;
  *     and D19's player filter refused to GROWTH.
+ *   · U21 — THE FILTER RAIL (`[data-filter-rail="contacts"]`), read by its own stamps (`data-rail-group`,
+ *     `data-chip`, `aria-current`), never by class strings:
+ *       NONE APPLIED — GROWTH's rail is Suppressed · Operator · Tag (A1.1: no Consent, no Source), every axis on
+ *         Any, every pill 32px (the dense rank, recorded against --tap-min), the count line "45 contacts", and a
+ *         tag pill's count FOLLOWED (pressing "vip" lists exactly its count);
+ *       APPLIED, ONE AXIS — the Vodacom pill PRESSED (the app's own Link): the address says op=VODACOM, the pill
+ *         is in force, every Operator cell reads Vodacom, the count line says "N of 45", the tiles stay 45;
+ *       COMBINED, PAGED, RE-SORTED — page 2 of a filtered, name-sorted list, then a pill, then a sort header:
+ *         every step keeps the filters and the sort and drops the page; and the plan's own Accept address
+ *         (`?op=VODACOM&tag=vip&sort=name&dir=asc&page=2`) whose every link carries both filters and the sort;
+ *       NO-MATCH — `?op=TTCL` with a search: no rows, the rail STILL drawn with TTCL in force, and Clear filters
+ *         keeps the search and the sort;
+ *       THE MASKED RAIL — GROWTH's `?source=REGISTRATION` is the role refusal, the rail still drawn, with no Source
+ *         axis; a reader (ADMIN) gets all six axes (`?list=nope` draws the List axis, "Unknown list" in force);
+ *       ERROR — a failed read with `?op=VODACOM&tag=vip`: the rail drawn from the address, both values in force,
+ *         the search box still there;
+ *       LOADING — the rail's ghost is on screen, and its height against the real rail is RECORDED at both widths
+ *         (role- and data-shaped, so not equal by construction — `loading.tsx` says why).
  * The rows come from `/api/dev-test/marketing-contacts-seed`, through the store method the importers will
  * call (nothing writes a contact yet — U22/U25+). Every capture asserts what it photographed first.
  *
@@ -81,6 +99,41 @@ async function shoot(page, name, scrollTo = null) {
   await page.screenshot({ path: join(SHOTS, `${name}.png`) });
 }
 
+/* ── U21 · THE RAIL, read by its own stamps — never by a class string ──────────────────────────────────────────── */
+const RAIL = '[data-filter-rail="contacts"]';
+const railGroups = (page) => page.$$eval(`${RAIL} [data-rail-group]`, (els) => els.map((e) => e.getAttribute("data-rail-group") || ""));
+const railChips = (page, prefix = "") => page.$$eval(`${RAIL} a[data-chip]`, (els, pre) => els.map((e) => e.getAttribute("data-chip") || "").filter((c) => c.startsWith(pre)), prefix);
+const currentChips = (page) => page.$$eval(`${RAIL} a[data-chip][aria-current="page"]`, (els) => els.map((e) => e.getAttribute("data-chip") || ""));
+const pressedChips = (page) => page.$$eval(`${RAIL} a[data-chip][aria-pressed="true"]`, (els) => els.map((e) => e.getAttribute("data-chip") || ""));
+const pillHeights = (page) => page.$$eval(`${RAIL} a[data-chip]`, (els) => els.map((e) => Math.round(e.getBoundingClientRect().height * 100) / 100));
+const railLinks = (page) => page.$$eval(`${RAIL} a[data-chip]`, (els) => els.map((e) => ({ chip: e.getAttribute("data-chip") || "", href: e.getAttribute("href") || "" })));
+const sortLinks = (page) => page.locator('[data-block="contacts-card"] thead a[href*="sort="]').evaluateAll((as) => as.map((a) => a.getAttribute("href") || ""));
+const chipCount = (page, chip) => page.locator(`${RAIL} a[data-chip="${chip}"]`).first().getAttribute("data-count").catch(() => null);
+const railCount = async (page) => ((await page.locator(`${RAIL} [data-rail-count]`).innerText().catch(() => "")) || "").trim();
+const tapMin = (page) => page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--tap-min").trim());
+const paramsOf = (href) => new URL(href, "http://x").searchParams;
+
+/** Wait until the address carries exactly what `want` says (null = absent). A pill or a sort header is a CLIENT
+ *  navigation (no load event) and Clear filters a plain <a> (a full one); `waitForURL` follows both, then the card. */
+async function waitForParams(page, want) {
+  await page.waitForURL((u) => Object.entries(want).every(([k, v]) => (v === null ? !u.searchParams.has(k) : u.searchParams.get(k) === v)), { timeout: 30000 });
+  await page.waitForSelector('[data-block="contacts-card"]', { timeout: 30000 });
+  await wait(900);
+}
+/** Press a rail pill — the app's own <Link>, never an injected anchor (an injected <a> is a HARD navigation). */
+async function pressPill(page, chip, want) {
+  await page.locator(`${RAIL} a[data-chip="${chip}"]`).first().click();
+  await waitForParams(page, want);
+}
+/** ⛔ Every U21 capture asserts what it photographs first: the page's own heading, and exactly the rail it claims. */
+async function railShot(page, vp, name, wantGroups, scrollTo = null) {
+  const h1 = ((await page.locator("main#main-content h1").first().innerText().catch(() => "")) || "").trim();
+  const groups = await railGroups(page);
+  ok(`${vp} · ${name} · the capture shows the Contacts heading and exactly the rail it claims [${wantGroups.join(", ") || "no rail"}]`,
+    h1 === "Contacts" && groups.join(",") === wantGroups.join(","), `h1="${h1}" groups=[${groups.join(", ")}]`);
+  await shoot(page, `${vp}-${name}`, scrollTo);
+}
+
 const VIEWPORTS = [
   { name: "1280x800", width: 1280, height: 800 },
   { name: "360x780", width: 360, height: 780 },
@@ -98,6 +151,8 @@ for (const vp of VIEWPORTS) {
   ok(`${vp.name} · EMPTY · no search box on an empty book`, (await page.locator('[data-block="contacts-card"] input').count()) === 0);
   ok(`${vp.name} · EMPTY · the tiles read zero, not a dash`, /In the book\s*0/i.test(text), text.slice(0, 160));
   ok(`${vp.name} · EMPTY · no horizontal page overflow`, (await overflowOf(page)) === 0);
+  // U21 · an empty book has nothing to filter: no rail, exactly as there is no search box.
+  ok(`${vp.name} · U21 EMPTY · no filter rail on an empty book`, (await page.locator(RAIL).count()) === 0);
   await shoot(page, `${vp.name}-empty`);
   await ctx.close();
 }
@@ -131,14 +186,20 @@ for (const vp of VIEWPORTS) {
     const ghostK = await boxOf(page, '[data-skeleton="contacts-kpis"]');
     const ghostC = await boxOf(page, '[data-skeleton="contacts-card"]');
     const realYet = await boxOf(page, '[data-block="contacts-kpis"]');
+    // U21 · the rail's ghost, under the search strip's.
+    const ghostR = await boxOf(page, '[data-skeleton="contacts-rail"]');
     ok(`${vp.name} · LOADING · the ghost is on screen and the real page is not yet`, !!ghostK && ghostK.h > 0 && realYet === null, JSON.stringify({ ghostK, realYet }));
+    ok(`${vp.name} · U21 LOADING · the rail's ghost is on screen, inside the card ghost`, !!ghostR && ghostR.h > 0 && !!ghostC && ghostR.top > ghostC.top, JSON.stringify({ ghostR, ghostCTop: ghostC?.top }));
     await shoot(page, `${vp.name}-loading`);
     await page.unroute("**src_app_admin_contacts_page_tsx**");
     await page.waitForSelector('[data-block="contacts-kpis"]', { timeout: 30000 });
     await wait(800);
     const realK = await boxOf(page, '[data-block="contacts-kpis"]');
     const realC = await boxOf(page, '[data-block="contacts-card"]');
-    measured[vp.name] = { ghostK, realK, ghostTop: ghostC?.top, realTop: realC?.top };
+    const realR = await boxOf(page, RAIL);
+    // ⚠️ RECORDED, NOT ASSERTED EQUAL: the real rail is role- and data-shaped (loading.tsx says why); the delta is
+    // printed in MEASURED so a reader sees how far the swap moves the table, at both widths.
+    measured[vp.name] = { ghostK, realK, ghostTop: ghostC?.top, realTop: realC?.top, railGhostH: ghostR?.h, railRealH: realR?.h, railDelta: ghostR && realR ? Math.round((realR.h - ghostR.h) * 100) / 100 : null };
     ok(`${vp.name} · LOADING · the KPI band's height equals the real band's within 1px`,
       !!ghostK && !!realK && Math.abs(ghostK.h - realK.h) <= 1, `${ghostK?.h} vs ${realK?.h}`);
     ok(`${vp.name} · LOADING · the card's top edge does not move when the page swaps in (within 1px)`,
@@ -223,6 +284,12 @@ for (const vp of VIEWPORTS) {
       ref.slice(0, 240));
     await shoot(page, `${vp.name}-u24-unreadable-${param}`, '[data-block="contacts-card"]');
   }
+  // U21 · the refused value is still DRAWN — as typed, in force on its own axis — and that axis's Any clears it.
+  await openContacts(page, "?op=NOKIA");
+  const nokiaAny = (await railLinks(page)).find((l) => l.chip === "op:");
+  ok(`${vp.name} · U21 UNREADABLE · the rail draws the typed value in force on the Operator axis, and Any clears it`,
+    (await currentChips(page)).join(",") === "suppressed:,op:NOKIA,tag:" && !!nokiaAny && !paramsOf(nokiaAny.href).has("op"),
+    `[${await currentChips(page)}] Any → ${nokiaAny?.href}`);
 
   // 🔴 D19 · the player filter is a membership oracle for a role that may not read a number.
   await openContacts(page, "?player=yes");
@@ -231,12 +298,102 @@ for (const vp of VIEWPORTS) {
   ok(`${vp.name} · U24 D19 · GROWTH is refused the player filter — no rows, the reason in words`,
     (await rows.count()) === 0 && /This filter isn.t available/.test(d19) && /isn.t available to your role: it would show which numbers belong to players/.test(d19), d19Box);
   await shoot(page, `${vp.name}-u24-d19-refused`, '[data-block="contacts-card"]');
+  // U21 · and the masked rail draws no Player pill for it (A1.1: no player signal of any kind for this viewer).
+  ok(`${vp.name} · U21 D19 · the masked rail draws no Player pill for the refused ?player=, and no Consent or Source axis`,
+    (await railChips(page, "player:")).length === 0 && (await railGroups(page)).join(",") === "suppressed,op,tag",
+    `[${await railGroups(page)}]`);
   // A1.1 · until U33 a recorded consent can only come from a player, so a typed consent axis is refused the same way.
   await openContacts(page, "?op=VODACOM&consent=GIVEN");
   const a11 = await mainText(page);
   ok(`${vp.name} · U24 A1.1 · GROWTH is refused a typed consent filter too — no rows, the same reason`,
     (await rows.count()) === 0 && /This filter isn.t available/.test(a11) && /isn.t available to your role/.test(a11) && /In the book\s*45/i.test(a11),
     a11.slice(Math.max(0, a11.indexOf("This filter")), a11.indexOf("This filter") + 200));
+
+  // ── U21 · THE FILTER RAIL, as GROWTH sees it (a masked viewer) ─────────────────────────────────────
+  // A1.1 · GROWTH's rail is Suppressed · Operator · Tag: no Consent and no Source (and no List — the seed writes none).
+  const MASKED_RAIL = ["suppressed", "op", "tag"];
+  await openContacts(page);
+  const noneCurrent = await currentChips(page);
+  const heights = await pillHeights(page);
+  const tm = await tapMin(page);
+  ok(`${vp.name} · U21 NONE APPLIED · GROWTH's rail is Suppressed · Operator · Tag — no Consent, no Source (A1.1) — every axis on Any`,
+    (await railGroups(page)).join(",") === MASKED_RAIL.join(",") && noneCurrent.join(",") === "suppressed:,op:,tag:"
+      && (await railChips(page, "consent:")).length === 0 && (await railChips(page, "source:")).length === 0 && (await railChips(page, "player:")).length === 0,
+    `groups [${await railGroups(page)}] current [${noneCurrent}]`);
+  ok(`${vp.name} · U21 NONE APPLIED · every pill is the dense 32px (recorded against --tap-min ${tm})`,
+    heights.length > 8 && heights.every((h) => Math.abs(h - 32) <= 0.6), `${heights.length} pills: ${[...new Set(heights)].join("/")}px`);
+  measured[vp.name] = { ...(measured[vp.name] ?? {}), pillH: [...new Set(heights)], tapMin: tm };
+  ok(`${vp.name} · U21 NONE APPLIED · the count line reads "45 contacts", and the tag pills carry the book's counts (vip 15, dar 15)`,
+    (await railCount(page)) === "45 contacts" && (await chipCount(page, "tag:vip")) === "15" && (await chipCount(page, "tag:dar")) === "15",
+    `${await railCount(page)} · vip=${await chipCount(page, "tag:vip")} dar=${await chipCount(page, "tag:dar")}`);
+  ok(`${vp.name} · U21 NONE APPLIED · no horizontal page overflow with the rail drawn`, (await overflowOf(page)) === 0, `${await overflowOf(page)}px`);
+  await railShot(page, vp.name, "u21-rail-none", MASKED_RAIL);
+  // ⭐ A count is shown only where it is what the pill lists: press "vip" and the list is exactly that many.
+  const vipCount = await chipCount(page, "tag:vip");
+  await pressPill(page, "tag:vip", { tag: "vip" });
+  ok(`${vp.name} · U21 COUNT TRUTH · pressing the "vip" pill (count ${vipCount}) lists exactly that many`,
+    !!vipCount && (await railCount(page)) === `${vipCount} of 45 contacts` && (await currentChips(page)).includes("tag:vip"), await railCount(page));
+
+  // ── U21 · APPLIED, ONE AXIS — the Vodacom pill pressed from a bare address ──
+  await openContacts(page);
+  await pressPill(page, "op:VODACOM", { op: "VODACOM", page: null });
+  const vOps = await page.locator("[data-contact-row] td:nth-child(3)").allInnerTexts();
+  const vLine = await railCount(page);
+  ok(`${vp.name} · U21 APPLIED · the address says op=VODACOM, the Vodacom pill is in force, every Operator cell reads Vodacom`,
+    (await currentChips(page)).join(",") === "suppressed:,op:VODACOM,tag:" && vOps.length > 0 && vOps.every((t) => t.trim() === "Vodacom"),
+    `${vOps.length} rows: ${[...new Set(vOps.map((t) => t.trim()))].join("/")} · current [${await currentChips(page)}]`);
+  ok(`${vp.name} · U21 APPLIED · the count line says how many of the book, and the KPI tiles stay the WHOLE book`,
+    vLine === `${vOps.length} of 45 contacts` && /In the book\s*45/i.test(await mainText(page)), vLine);
+  await railShot(page, vp.name, "u21-applied-op", MASKED_RAIL);
+
+  // ── U21 · COMBINED, PAGED, RE-SORTED — every step keeps the filters and the sort, and drops the page ──
+  await openContacts(page, "?suppressed=no&sort=name&dir=asc");
+  await page.locator('a[href*="page=2"]').first().click();
+  await waitForParams(page, { suppressed: "no", sort: "name", dir: "asc", page: "2" });
+  const p2Rows = await rows.count();
+  ok(`${vp.name} · U21 PAGED · page 2 of a filtered, name-sorted list keeps the filter and the sort`,
+    p2Rows > 0 && (await currentChips(page)).includes("suppressed:no"), `${p2Rows} rows on page 2 · ${page.url()}`);
+  await pressPill(page, "op:AIRTEL", { op: "AIRTEL", suppressed: "no", sort: "name", dir: "asc", page: null });
+  ok(`${vp.name} · U21 PAGED → PILL · a pill pressed on page 2 keeps the other filter and the sort, and lands on page 1`,
+    (await currentChips(page)).join(",") === "suppressed:no,op:AIRTEL,tag:" && (await rows.count()) > 0, `[${await currentChips(page)}] ${page.url()}`);
+  await page.locator('[data-block="contacts-card"] thead a[href*="sort=added"]').first().click();
+  await waitForParams(page, { op: "AIRTEL", suppressed: "no", sort: "added", page: null });
+  ok(`${vp.name} · U21 RE-SORTED · a sort header keeps both filters, and the page stays dropped`,
+    (await currentChips(page)).join(",") === "suppressed:no,op:AIRTEL,tag:", page.url());
+  await railShot(page, vp.name, "u21-combined", MASKED_RAIL);
+  // ⭐ The plan's own Accept: page 2 of ?op=VODACOM&tag=vip sorted by name still carries both filters and the sort
+  // (the seed holds four such rows, so page 2 clamps to page 1 — and every link must STILL carry everything).
+  await openContacts(page, "?op=VODACOM&tag=vip&sort=name&dir=asc&page=2");
+  const acceptLinks = await railLinks(page);
+  const acceptSorts = await sortLinks(page);
+  const keepsBoth = (href, axis) => { const s = paramsOf(href); return (axis === "op" || s.get("op") === "VODACOM") && (axis === "tag" || s.get("tag") === "vip") && !s.has("page"); };
+  ok(`${vp.name} · U21 ACCEPT · on ?op=VODACOM&tag=vip&sort=name&dir=asc&page=2 every pill keeps the other filter and the sort, every sort link keeps both filters, nothing carries page`,
+    (await rows.count()) === 4 && acceptLinks.length > 8
+      && acceptLinks.every(({ chip, href }) => keepsBoth(href, chip.split(":")[0]) && paramsOf(href).get("sort") === "name" && paramsOf(href).get("dir") === "asc")
+      && acceptSorts.length === 3 && acceptSorts.every((h) => keepsBoth(h, ""))
+      && (await currentChips(page)).join(",") === "suppressed:,op:VODACOM,tag:vip",
+    `${await rows.count()} rows · ${acceptLinks.length} pills · ${acceptSorts.join(" | ")}`);
+
+  // ── U21 · NO-MATCH WITH THE RAIL STILL DRAWN — and Clear filters keeps the search and the sort ──
+  await openContacts(page, "?op=TTCL&q=Asha&sort=name&dir=asc");
+  const nmText = await mainText(page);
+  ok(`${vp.name} · U21 NO MATCH · no rows, yet the whole rail is still drawn with TTCL in force`,
+    (await rows.count()) === 0 && /No contacts match/.test(nmText) && (await currentChips(page)).join(",") === "suppressed:,op:TTCL,tag:",
+    `[${await currentChips(page)}] ${nmText.slice(0, 120)}`);
+  await railShot(page, vp.name, "u21-no-match", MASKED_RAIL);
+  await page.getByRole("link", { name: "Clear filters" }).first().click();
+  await waitForParams(page, { op: null, q: "Asha", sort: "name", dir: "asc" });
+  ok(`${vp.name} · U21 NO MATCH → CLEAR FILTERS · the filter goes, the search and the sort stay, and the rows come back`,
+    (await rows.count()) === 5 && (await currentChips(page)).join(",") === "suppressed:,op:,tag:", `${await rows.count()} rows · ${page.url()}`);
+
+  // ── U21 · THE MASKED RAIL — GROWTH's typed ?source= is the role refusal; the rail stays, with no Source axis ──
+  await openContacts(page, "?source=REGISTRATION");
+  const srcText = await mainText(page);
+  ok(`${vp.name} · U21 MASKED · ?source=REGISTRATION is the role refusal with no rows, and the rail is still drawn — with no Source or Consent pill`,
+    (await rows.count()) === 0 && /isn.t available to your role/.test(srcText)
+      && (await railChips(page, "source:")).length === 0 && (await railChips(page, "consent:")).length === 0,
+    `[${await railGroups(page)}] ${srcText.slice(Math.max(0, srcText.indexOf("This filter")), srcText.indexOf("This filter") + 120)}`);
+  await railShot(page, vp.name, "u21-masked-refused", MASKED_RAIL, '[data-block="contacts-card"]');
 
   // ── ERROR ────────────────────────────────────────────────────────────────────────────────────
   await seed(page, "fault=1");
@@ -253,6 +410,15 @@ for (const vp of VIEWPORTS) {
   });
   ok(`${vp.name} · ERROR · the whole error box is on screen — not clipped by the table`, !!errBox && errBox.left >= 0 && errBox.right <= errBox.vw, JSON.stringify(errBox));
   await shoot(page, `${vp.name}-error`);
+  // ── U21 · ERROR WITH A FILTER APPLIED — the rail drawn from the ADDRESS (§5.15), the search box still there ──
+  await openContacts(page, "?op=VODACOM&tag=vip");
+  const erText = await mainText(page);
+  ok(`${vp.name} · U21 ERROR · a failed read still draws the rail from the address — Vodacom and "vip" in force and clearable — and keeps the search box`,
+    /Couldn.t load the contact book/i.test(erText) && (await currentChips(page)).join(",") === "suppressed:,op:VODACOM,tag:vip"
+      && (await railChips(page, "tag:")).join(",") === "tag:,tag:vip" && (await page.locator('[data-block="contacts-card"] input').count()) === 1
+      && (await railCount(page)) === "",
+    `[${await currentChips(page)}] tags [${await railChips(page, "tag:")}]`);
+  await railShot(page, vp.name, "u21-error-rail", MASKED_RAIL);
   await seed(page, "fault=0");
   await ctx.close();
 
@@ -282,6 +448,27 @@ for (const vp of VIEWPORTS) {
   ok(`${vp.name} · ADMIN · U24 FILTERED · the line says Operator: Vodacom · Consent: given, with Clear filters`,
     /Showing contacts:\s*Operator: Vodacom · Consent: given\s*Clear filters/i.test(aLead), aLead);
   await shoot(adm.page, `${vp.name}-admin-u24-filtered`, '[data-block="contacts-card"]');
+  // ── U21 · THE READER'S RAIL — all six axes (an applied list draws the List axis, "Unknown list" in force) ──
+  const READER_RAIL = ["consent", "suppressed", "op", "source", "list", "tag"];
+  await openContacts(adm.page, "?list=nope");
+  const listPill = adm.page.locator(`${RAIL} a[data-chip="list:nope"]`);
+  ok(`${vp.name} · ADMIN · U21 READER RAIL · a reader gets all six axes, and the unknown list is a selected "Unknown list" pill`,
+    (await railGroups(adm.page)).join(",") === READER_RAIL.join(",") && (await listPill.getAttribute("aria-current").catch(() => null)) === "page"
+      && ((await listPill.innerText().catch(() => "")) || "").trim() === "Unknown list" && (await adm.page.locator("[data-contact-row]").count()) === 0,
+    `[${await railGroups(adm.page)}]`);
+  await railShot(adm.page, vp.name, "u21-reader-rail", READER_RAIL);
+  // A reader's COMBINED + PAGED + RE-SORTED: page 2 of source=IMPORT, not suppressed, by name — then the Consent pill.
+  await openContacts(adm.page, "?source=IMPORT&suppressed=no&sort=name&dir=asc");
+  await adm.page.locator('a[href*="page=2"]').first().click();
+  await waitForParams(adm.page, { source: "IMPORT", suppressed: "no", sort: "name", dir: "asc", page: "2" });
+  const ap2 = await adm.page.locator("[data-contact-row]").count();
+  await pressPill(adm.page, "consent:GIVEN", { consent: "GIVEN", source: "IMPORT", suppressed: "no", sort: "name", dir: "asc", page: null });
+  const aGiven = await adm.page.locator("[data-contact-row] td:nth-child(4)").allInnerTexts();
+  ok(`${vp.name} · ADMIN · U21 COMBINED · page 2 of a two-filter, name-sorted list, then the Consent pill: every filter and the sort kept, the page dropped, every row Given`,
+    ap2 > 0 && aGiven.length > 0 && aGiven.every((t) => /^given$/i.test(t.trim()))
+      && (await currentChips(adm.page)).join(",") === "consent:GIVEN,suppressed:no,op:,source:IMPORT,tag:",
+    `${ap2} rows on page 2 · ${aGiven.length} Given · [${await currentChips(adm.page)}]`);
+  await railShot(adm.page, vp.name, "u21-reader-combined", ["consent", "suppressed", "op", "source", "tag"]);
   await openContacts(adm.page);
   await adm.page.locator('button[aria-label="Reveal Contact number"]').first().click();
   await adm.page.waitForSelector('button[aria-label="Hide Contact number"]', { timeout: 15000 }).catch(() => {});
@@ -298,6 +485,8 @@ for (const vp of VIEWPORTS) {
   ok("reduced-motion · the context really is reduced-motion", await page.evaluate(() => window.matchMedia("(prefers-reduced-motion: reduce)").matches));
   await openContacts(page);
   ok("reduced-motion · the populated page renders its 20 rows", (await page.locator("[data-contact-row]").count()) === 20);
+  ok("reduced-motion · U21 · the rail is drawn, GROWTH's three axes on Any", (await railGroups(page)).join(",") === "suppressed,op,tag"
+    && (await currentChips(page)).join(",") === "suppressed:,op:,tag:", `[${await railGroups(page)}]`);
   await shoot(page, "360x780-reduced");
   await ctx.close();
 }

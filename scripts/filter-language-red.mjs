@@ -474,6 +474,27 @@ const CASES = [
     to: `note: "Smallest stake first, then newest first.", railNote: "desk-activity-sort" }]`,
     expect: "6.6e",
   },
+
+  /* ── 2026-10-02 · U21 · THE CONTACT BOOK'S FILTER RAIL (`src/app/admin/contacts/contact-filters.tsx`) ───────────────
+     The rail file and its ADMIN_SURFACES entry land in ONE commit, so each half alone must be red, on its own
+     assertion. The rail's LOGIC (role shape, hrefs, applied pills, the column) is proven in-process by
+     `red:contacts-page`; these two prove the DECLARATION. */
+  {
+    // The rail renders and emits its hook, but the gate no longer knows it — the undeclared rail §0.4 exists to find.
+    name: "contacts-rail-undeclared (the contact book's rail loses its ADMIN_SURFACES entry while it still emits data-filter-rail)",
+    file: GATE,
+    from: `  "src/app/admin/contacts/contact-filters.tsx", // /admin/contacts — consent + suppressed + operator + source + list + tag (U21)\n`,
+    to: ``,
+    expect: "0.4 no filter rail exists that this gate does not know about",
+  },
+  {
+    // Its one pill leaves the dense rank: a console rail at the player's 44px — 0 dense of 1.
+    name: "contacts-rail-undensified (the contact book's one FilterPill drops rank=\"dense\")",
+    file: "src/app/admin/contacts/contact-filters.tsx",
+    from: `              semantics={g.semantics}\n              rank="dense"\n              replace`,
+    to: `              semantics={g.semantics}\n              replace`,
+    expect: "6.6 EVERY rank-taking control on src/app/admin/contacts/contact-filters.tsx",
+  },
 ];
 
 const runGate = () => {

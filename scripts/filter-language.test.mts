@@ -255,6 +255,13 @@ const ADMIN_SURFACES = [
      one of its chips must take the dense rank, from that control's own module, or a 243-assertion suite goes red
      for a rail that looks right on screen. It is the FIRST declared rail whose hrefs are built on the server. */
   "src/app/admin/desk/activity-filters.tsx",   // /admin/desk?tab=activity and /admin/desk/[id]?tab=activity — ONE rail, both pages: type + product + outcome + window
+  /* DECLARED 2026-10-02 (U21, marketing S10) · the contact book's filter rail — six axes (consent · suppressed ·
+     operator · source · list · tag), role-shaped for D19/A1.1 (a viewer who may not read a number is handed no
+     Consent or Source axis), every label and href built on the server (`contacts-rail.ts`, through the ONE href
+     builder). ONE `FilterPill`, at the dense rank: §6.6 counts it 1 dense of 1. ⛔ Declared in the SAME commit as
+     the rail file — §0.4 refuses an undeclared `data-filter-rail` and §6.1 a declared file that renders no control,
+     so either half alone is red for every lane. `red:filter-language` plants both directions. */
+  "src/app/admin/contacts/contact-filters.tsx", // /admin/contacts — consent + suppressed + operator + source + list + tag (U21)
 ];
 
 /**

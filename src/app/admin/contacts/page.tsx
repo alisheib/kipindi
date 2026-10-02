@@ -1,10 +1,10 @@
 /**
- * /admin/contacts — the marketing address book (U17 doors, U20 the list).
+ * /admin/contacts — the marketing address book (U17 doors, U20 the list, U21 the filter rail).
  *
  * WHAT THIS PAGE IS TODAY, so nobody reads more into it: the book, server-paged, searchable by a WHOLE
- * number or by name, sortable by name, prefix and date — and nothing that changes it. There is no way to
- * add, import, tag, list or remove a contact yet (U22 the form, U23 bulk, U25–U28 import, U21 the filter
- * rail), and this page promises none of it.
+ * number or by name, sortable by name, prefix and date, filterable from one rail — and nothing that changes
+ * it. There is no way to add, import, tag, list or remove a contact yet (U22 the form, U23 bulk, U25–U28
+ * import), and this page promises none of it.
  *
  * ⭐ SERVER-PAGED, because the book is built for 150,000 people (§3c): the store returns one page and the
  * count of the whole match, never the book. The KPI band is the WHOLE book (`contactAudience(WHOLE_BOOK).breakdown()`), never the
@@ -17,11 +17,15 @@
  * 🔴 D19 · Reachable, Source and the Player chip render ONLY for a viewer who may read a number
  * (`viewerReads`, decided in `contacts-loader.ts`): each one, row by row, tells a masked role whether a
  * number belongs to a player.
- * ⭐ U24 · every read goes through the ONE audience resolver (`contacts-loader.ts` → `contactAudience`). The
- * address may carry filters (`?op=VODACOM&consent=GIVEN` — the vocabulary U21's rail will write); a filter
- * in force is said in words above the table ("Showing contacts: …"), and every link is built by ONE href
- * builder (`contactsHref`) that carries them. ⛔ A filter that cannot be read is REFUSED — no rows, the
- * parameter named, a Clear action — never silently dropped into a wider list.
+ * ⭐ U24 · every read goes through the ONE audience resolver (`contacts-loader.ts` → `contactAudience`). A filter
+ * in force is said in words above the table ("Showing contacts: …"), and every link is built by ONE href builder
+ * (`contactsHref`) that carries them. ⛔ A filter that cannot be read is REFUSED — no rows, the parameter named, a
+ * Clear action — never silently dropped into a wider list.
+ * ⭐ U21 · THE RAIL (`contact-filters.tsx`, built by `contacts-rail.ts`) draws what the address applies and writes
+ * every pill through that builder. It is gated on `!emptyBook` ALONE — a whole-book fact, never the match count —
+ * so a filter that matches nothing, a refused filter and a failed read all keep it on screen (§5.15). It is
+ * role-shaped (A1.1): a masked viewer gets no Consent or Source axis. ⛔ The Operator COLUMN reads the one numbering
+ * table (`operatorBrand(c.ndc)`) and never the stored `operator` string, which could say "Tigo" under the Yas pill.
  *
  * Growth domain (`roles.ts`), the same people who run affiliate, bonuses and invites.
  */
@@ -42,11 +46,13 @@ import type { MarketingSkipReason } from "@/lib/server/marketing/consent";
 import { formatDate } from "@/lib/utils";
 import {
   CONTACTS_EMPTY, CONTACTS_NO_MATCH, CONTACTS_NO_MATCH_FILTERED, CONTACTS_SEARCH_PLACEHOLDER, CONTACTS_FILTERED_LEAD,
-  CONTACTS_FILTER_UNREADABLE, CONTACTS_FILTER_NOT_FOR_ROLE,
+  CONTACTS_FILTER_UNREADABLE, CONTACTS_FILTER_NOT_FOR_ROLE, CONSENT_LABEL, SOURCE_LABEL,
 } from "./contacts-copy";
 import { operatorBrand, contactsHref, contactsClearFiltersHref, contactsLinkSp } from "./contacts-query";
-import { loadContacts } from "./contacts-loader";
+import { loadContacts, viewerReadsContacts } from "./contacts-loader";
 import type { ContactsParams, ContactsView } from "./contacts-loader";
+import { contactRail } from "./contacts-rail";
+import { ContactFilters } from "./contact-filters";
 
 type ContactsSP = ContactsParams;
 
@@ -57,19 +63,6 @@ type ContactsSP = ContactsParams;
 export default async function AdminContactsPage(props: { searchParams: Promise<ContactsSP> }) {
   return <AdminPageGate title="Contacts"><AdminContactsContent searchParams={props.searchParams} /></AdminPageGate>;
 }
-
-const CONSENT: Record<StoredMarketingContact["consentState"], { label: string; variant: "success" | "neutral" | "warning" }> = {
-  GIVEN: { label: "Given", variant: "success" },
-  UNKNOWN: { label: "Not recorded", variant: "neutral" },
-  WITHDRAWN: { label: "Withdrawn", variant: "warning" },
-};
-
-const SOURCE: Record<StoredMarketingContact["source"], string> = {
-  IMPORT: "Import",
-  REGISTRATION: "Sign-up",
-  OPERATOR: "Added by staff",
-  AGENT: "Agent",
-};
 
 /** ⛔ Only the reasons an operator can act on are named; everything else is "Not reachable". A
  *  self-exclusion, a break, a harm marker, an age or an account status is the player's protected
@@ -117,7 +110,9 @@ async function AdminContactsContent({ searchParams }: { searchParams: Promise<Co
   const page = listed?.page ?? 1;
   const sort = view?.sort ?? "added";
   const dir = view?.dir ?? "desc";
-  const reads = view?.viewerReads ?? false;
+  // 🔴 D19 · the read cell, from the loader — and when the read FAILED, asked on its own and failing closed: the
+  // rail is role-shaped in the error state too, so a masked viewer's rail never grows a Consent axis on an error.
+  const reads = view !== null ? view.viewerReads : await viewerReadsContacts().catch(() => false);
   // D19 + A1.1: a masked viewer sees Name, Number, Operator, Lists · Tags and Added — no per-row consent, reach,
   // source or player signal.
   const cols = reads ? 8 : 5;
@@ -136,6 +131,15 @@ async function AdminContactsContent({ searchParams }: { searchParams: Promise<Co
   const clearSearchHref = contactsHref(sp, { q: null });
   const clearFiltersHref = contactsClearFiltersHref(sp);
   const refusedCopy = refused?.refusal === "role" ? CONTACTS_FILTER_NOT_FOR_ROLE : CONTACTS_FILTER_UNREADABLE;
+  // ⭐ U21 · built for EVERY state (a refused filter, a failed read), from the address — the options only when the
+  // read arrived. Drawn below on `!emptyBook` alone.
+  const rail = contactRail({
+    sp,
+    reads,
+    lists: view?.lists ?? null,
+    tags: view?.tags ?? null,
+    counted: listed !== null ? { match: listed.result.total, book: listed.summary.total } : null,
+  });
   const s = summary;
 
   return (
@@ -162,11 +166,16 @@ async function AdminContactsContent({ searchParams }: { searchParams: Promise<Co
           {/* ⛔ THE ERROR STANDS OUTSIDE THE TABLE. Inside it, the box scrolled with an 8-column table and its
               sentence was cut off at 360 (measured 2026-10-01): a failure nobody can read is not a stated failure. */}
           {failed && <div className="p-4"><AdminLoadError what="the contact book" /></div>}
-          {!failed && !emptyBook && (
+          {/* ⭐ U21 · the search strip and the rail are gated on `!emptyBook` ALONE — a whole-book fact. A failed read is
+              not an empty book, so the box keeps the officer's query and the rail keeps the filter (§5.15). */}
+          {!emptyBook && (
             <div className="border-b border-border-subtle p-3">
               <SearchBox mode="url" placeholder={CONTACTS_SEARCH_PLACEHOLDER} ariaLabel="Search contacts by name or full number" />
             </div>
           )}
+          {/* ⛔ NEVER the match count: a filter that matches nothing must still show the filter, or the one control that
+              could undo it is gone with the rows (`test:contacts-page` 14). */}
+          {!emptyBook && <ContactFilters rail={rail} />}
           {/* ⭐ U24 · WHAT THE LIST IS NARROWED TO, IN WORDS (`describeAudience` — the one describer U38 reuses). Shown
               only when something besides the search box narrows it; the box already shows its own text. The pieces
               are spaced by the flex gap, never by a JSX space a compiler may drop. */}
@@ -218,7 +227,7 @@ async function AdminContactsContent({ searchParams }: { searchParams: Promise<Co
                   />
                 ) : (
                   rows.map((c, i) => {
-                    const consent = CONSENT[c.consentState];
+                    const consent = CONSENT_LABEL[c.consentState];
                     const r = reach[i];
                     const shownTags = c.tags.slice(0, 2);
                     return (
@@ -230,7 +239,9 @@ async function AdminContactsContent({ searchParams }: { searchParams: Promise<Co
                           {reads && c.userId && <Chip size="sm" variant="info" className="ml-2">Player</Chip>}
                         </td>
                         <td className="font-mono whitespace-nowrap"><Sensitive field="contactPhone" subjectId={c.id} value={c.msisdn} copyable /></td>
-                        <td className="whitespace-nowrap">{c.operator ?? operatorBrand(c.ndc) ?? "—"}</td>
+                        {/* ⛔ U21 · THE ONE TABLE, NEVER THE STORED STRING: the rail filters on the prefix (`ndc`), so the
+                            column must name the prefix's holder too — a stored "Tigo" under the Yas pill is two answers. */}
+                        <td className="whitespace-nowrap">{operatorBrand(c.ndc) ?? "—"}</td>
                         {/* ⛔ ONE LINE: a two-word chip broke in two at 1280 ("AGE NOT / CONFIRMED", measured twice). The Chip
                             sets `white-space: normal` INLINE on purpose (long Swahili phrases elsewhere must wrap), so a
                             class on the chip or its cell cannot override it — the no-wrap span inside the label does. */}
@@ -244,7 +255,7 @@ async function AdminContactsContent({ searchParams }: { searchParams: Promise<Co
                           {c.tags.length > shownTags.length && <span className="text-caption text-text-tertiary">+{c.tags.length - shownTags.length}</span>}
                           {lists[i] === 0 && c.tags.length === 0 && <span className="text-text-tertiary">—</span>}
                         </td>
-                        {reads && <td className="whitespace-nowrap">{SOURCE[c.source]}</td>}
+                        {reads && <td className="whitespace-nowrap">{SOURCE_LABEL[c.source]}</td>}
                         <td className="whitespace-nowrap">{formatDate(c.createdAt)}</td>
                       </tr>
                     );
