@@ -347,6 +347,29 @@ erasure now withdraws the consent and empties the book, and both data exports ca
   (red 16/16), `red:dal-parity` 118/118, the probe 10/10, the drive 106/106. 🔵 — the ✅ needs the production look
   (G11). Recorded, not U36's: the badge goes stale across soft navigation like every sidebar badge; "Last activity"
   is the row's updatedAt, which U43's recipient writes will not move (U43/U47 decide).
+✅ STEP 21 · U37b LIVE (`fb6cca81`, live 2026-10-02 20:21:16 UTC) — the composer at /admin/campaigns/new: one Message card (Swahili
+  required, English optional, a live counter per language that sizes the worst case, the sender a read-only line), the
+  save (re-validated on the server, the server's own coding and segments stored, compare-and-set on draftRevision,
+  DRAFT-only, OD55), and the TEST SEND to the officer's OWN number only — through dispatchSlice and the one gate, behind
+  the ONE live switch `marketing.sms.live` (ABSENT = CLOSED; no writer exists; opening it is G1, Ali's own act), 3 tests
+  then one per 10 minutes, one reused opt-out link per number, one masked audit row per attempt, and "handed over" only
+  when the gateway took it. CAMPAIGN_SCREENS.compose flipped in the same commit, so the list now offers "New campaign".
+  ⚖️ ITS REVIEW (1 MAJOR, 5 MINOR — all fixed before the push): M1 the suite ran its own stand-ins for the switch, the
+  token and the audit, so a switch hard-coded open in `CAMPAIGN_TEST_DEPS` stayed green — §18.5 now runs the shipped
+  reader, §18.14 pins the five wires, §18.15/§18.16 run the shipped token rule and audit, each with its own plant; m2 an
+  all-digit "campaign id" reached the never-pruned audit row — the row names only a campaign that was found; m3 a switch
+  row with a key beside { enabledBy, enabledAt } read OPEN — it reads closed; m4 OD55 read only the canonical search key
+  — a number in a tag, a list id, an import id or a padded search is refused too; m5 the save had no rate rule — it
+  spends `marketing.campaignSave` (30, then 10 a minute) first; m6 the composer saved the first value of a repeated
+  filter key while describing their union — it posts the parsed filter. Checked at the policy: typecheck; `test:campaign-compose` all checks and `red:campaign-compose` 164 proofs held; the compose drive 172/172 (console), 16/16 (switch closed, a carrier configured) and 10/10 (dead rail); the U36 drive 106/106; the section gate 21/21; `next build`; after the rebase onto main `b3153d98`, `test:dal-parity` 2041/2041 and the build again. Production reports 0 SMS sent.
+  ⏳ OWED, recorded: a create whose reply is lost and is retried makes a second identical draft (no idempotency key yet —
+  harmless, a draft sends nothing); U50 registers `marketing.campaign_created` / `marketing.campaign_test`; U15 allowlists
+  the test send (M9); U14's cap excludes it (M12); U42/U43 adopt ensureOptOutToken, renderForRecipient and the switch.
+  ⚠️ BEFORE G1: "own number" means the phone on the officer's account, and password registration does not prove a phone
+  (the interim path) — for a staff account the guarantee rests on the Owner's promotion step.
+  ⚠️ RECORDED, NOT THIS LANE'S: `test:house-bot-reports` (not in predeploy) fails 7 line-pinned checks 0.232.* — the
+  positioned-write sites in market-service.ts moved under today's cash-out fix (`2bb881e0`), and 0.232.4 fails in both
+  store twins; the house-bot lane owns those pins.
 ⚖️ VERIFICATION POLICY — Ali, 2026-10-02: "checks that are already 100% functional — no need to go over them again;
   focus on what has to be checked." Binding from U36's push on:
   · PROVEN STAYS PROVEN. A ✅ unit, and a 🔵 unit whose suite, red, drive and review are green and whose only open
@@ -355,7 +378,9 @@ erasure now withdraws the consent and empties the book, and both data exports ca
   · EACH PUSH RUNS WHAT ITS CHANGE CAN REACH — never again the whole `predeploy` chain per push (Railway itself runs
     only `next build`): typecheck · `next build` · `test:source-bytes` · the unit's own suite and red · each guard whose
     script reads a file the commit MODIFIES (a file merely added beside it does not re-run it) · `test:dal-parity` and
-    `test:red-anchors` when a DAL twin or an anchored file changes · a browser drive only for a screen that changed ·
+    `test:red-anchors` when a DAL twin or an anchored file changes · the ~49 guards that pin predeploy wiring when
+    the predeploy line of package.json changes (U36 skipped them and broke test:contacts-form 6.13) · a browser drive
+    only for a screen that changed ·
     the Postgres probe only when a query or the schema changed. Each battery records what it skipped and why. U36's
     push was the first: after its rebase onto main it ran 11 commands in ~7 minutes, where the old routine ran the
     whole ~200-command chain (measured ~11 minutes of commands per run) plus every drive, on every push.
@@ -390,15 +415,13 @@ erasure now withdraws the consent and empties the book, and both data exports ca
   (replying STOP needs a Blackball reply number); production `/api/health` reports `adminTotp: DISABLED` — turn the
   admin 2-step login back on before the first campaign; G2 the go-ahead, with the Swahili message (it starts with
   "50pick", at most 80 characters) and the day. G4 (the consent wordings) is needed only for contact import.
-▶ NEXT: U37b the composer (in build — its brief, with OD55 and the closed live switch, is on this laptop at
-  `C:/Users/Ali/AppData/Local/Temp/claude/C--Users-Ali/83bc643c-a332-4527-ac4c-d62e1711c811/scratchpad/brief_u37b.md`;
-  re-derive it from §9 U37b if that folder is gone), then the critical path to the first real campaign:
+▶ NEXT: step 2 of the critical path — §25 the four bulk keyed reads — then U38 the audience:
   ⚖️ DECIDED 2026-10-02 (S10, on a read-only census of all 35 unfinished units — Ali asked what is left, whether the
   plan is that big, and why it costs so much): THE FIRST RELEASE IS PLAYERS-ONLY. The contact-file import (U30–U34,
   U33's contact branch) moves AFTER the first campaign: book contacts cannot be messaged before G4/G5 anyway, and
   today's gate refuses every contact-only number (consent.ts), which is the safe state. Ali can reverse this in a word.
   THE CRITICAL PATH to G2, in order — about 140 focused hours:
-    1. U37b the composer — write, save, the test send to the officer's own phone (IN BUILD).
+    1. ✅ U37b the composer — write, save, the test send to the officer's own phone (LIVE, STEP 21; switch CLOSED).
     2. §25 the four bulk keyed reads in both twins (taken out of U30: msisdnsPresent, findByPhones, findActiveAmong,
        latestAmong) — U38a's count asks the gate about every player through them.
     3. U38 the audience — the player arm, ONE walk, the will-receive split, the card (U38a + U38b). X24 is reversed on
@@ -872,7 +895,7 @@ a Guard key that resolves to a script on disk, `yes` plus the backticked `red:` 
 | U34 | guard | 🟡 | S10 | d8fce713 | — | `test:contacts-export` | — | export. U34a landed (`d8fce713` + review `95a48ae6`): the masked/full CSV, audited before the first byte, the cross-site gate; `test:contacts-export`. U34b (the round trip through the importer) follows U30/U31. |
 | U35 | data | ✅ | S10 | bfc37a74 | campaigns had a purpose (U35a `0dc25b98`, live) and nowhere to live → two tables in both twins behind ONE rule set: a draft saved by compare-and-set, a confirmation frozen in one conditional move, recipients deduped on (campaign, number), links never copies, no stored counter — 92 migrations proven from empty | `test:dal-parity` · `test:campaign-models` | yes — `red:campaign-models` 32/32 (in-process) · `red:dal-parity` §26 | campaign models. LIVE 2026-10-02 06:05:54 UTC — production serves `df839f30` and its deploy log applied `20261002120000_sms_campaign_models` (after a first build failed on a Google-font fetch and was rebuilt from source). |
 | U36 | visual | 🔵 | S10 | 06c21ac4 | /admin/campaigns did not exist → the campaign list behind six doors (nav item "SMS campaigns", ROUTE_KEYS, ROUTE_DOMAINS growth, the section gate, loading.tsx, the page gate), the status rail over the WHOLE table, server-counted progress (HELD outstanding), the nav badge only for a growth viewer | `test:campaigns-page` · `test:admin-nav` · `test:rbac` · `test:dal-parity` §26 | yes — `red:campaigns-page` (in-process) · `red:rbac` 4/4 · `red:dal-parity` §26 | list + badge. Pushed and serving (`db4a11a7`, §0 STEP 20) — its live check needs an admin session on production (G7 / G11). |
-| U37 | visual | 🟡 | S10 | 0dc25b98 | — | `test:campaign-compose` | — | composer. U37a landed (`0dc25b98`): the one renderer (OD48, OD49). U37b (the page, save, the test send) follows. |
+| U37 | visual | 🔵 | S10 | fb6cca81 | /admin/campaigns/new did not exist → the composer: one Message card with a worst-case counter per language, the save re-validated on the server (its own segments, compare-and-set, OD55 in every field), and the test send to the officer's own number only, through the one gate and behind the closed live switch | `test:campaign-compose` | yes — `red:campaign-compose` (in-process) · `red:campaign-models` | composer. U37a `0dc25b98` + U37b (§0 STEP 21). Pushed and serving — its live check needs an admin session on production (G7 / G11), and its first real test send needs G1. |
 | U38 | visual | ⬜ | — | — | — | `test:campaign-audience` | — | audience |
 | U39 | visual | 🟡 | S10 | 0dc25b98 | — | `test:read-tiers` | — | estimate. U39a landed (`0dc25b98`): the price from the difference of two delivered reads, the model, the server loader; `test:campaign-estimate`. U39b (the card) follows. |
 | U40 | guard | 🟡 | S10 | 0dc25b98 | — | `test:campaign-gates` | — | confirm. U40-pure landed (`0dc25b98`): the confirmation's one rule; `test:campaign-confirm`. U40a (server) and U40b (UI) follow. |
