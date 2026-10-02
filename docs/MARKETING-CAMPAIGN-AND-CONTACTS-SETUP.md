@@ -199,6 +199,10 @@ erasure now withdraws the consent and empties the book, and both data exports ca
   number). `test:contacts-import` 200/200 across 5 sections, `red:contacts-import` 211/211 (+38). MEASURED: the densest
   ~700 KB workbook holds 59,377 rows (322 ms, heap +108 MB), the realistic one 28,604 — every cap at least twice the
   densest. U27 and U28 are 🔵: complete, waiting for U30 to reach them on production.
+  ⭐ A PLATFORM FIX FOUND ON THE WAY (`75324dde`, outside this programme's units): a failed sign-in or sign-up never
+  marked the refused field for a screen reader — the Input atom derives aria-invalid from `error` alone and drops a
+  caller's own — so /auth/login's identifier and /auth/register's phone and email pass `error` now. Proved by
+  discrimination (`scripts/live/auth-invalid-probe.mjs`: before, 4 FAIL; after, 8/8).
   ⛔ LOCK STARVATION (measured 2026-10-01): `~/heavy-node-lock.sh` waiters poll every 30 s, and a session
   running jobs back to back re-takes the lock within seconds of releasing it — S10's typecheck waited
   40+ minutes without once getting in. S10 ran its battery through the same mkdir protocol polling every
