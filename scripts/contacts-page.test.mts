@@ -275,7 +275,7 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
     `${maskedConsent.kind} / ${readerConsent.kind}`);
   ok(p("9e · ⛔ A1.1 · the per-row Consent column renders ONLY for a reader — until U33 a consent is a player's"),
     page.includes('{reads && <th className="text-left">Consent</th>}') && page.includes("{reads && <td><Chip size=\"sm\" variant={consent.variant}>")
-      && page.includes("const cols = reads ? 8 : 5;"));
+      && page.includes("const cols = reads ? 9 : 6;"));
   ok(p("9d · ⛔ D19 · the read cell is asked in the .ts loader — identity.contact through mayReveal, failing closed"),
     impl.sources.loader.includes('mayReveal(role, "identity.contact")') && impl.sources.loader.includes("if (!session) return false;"));
 

@@ -163,6 +163,10 @@ console.log("\n[client-graph-safe] \u00a71 client-reachable modules stay clear o
     // ⭐ ADDED 2026-10-02 (marketing U22, decision M3). The contact form's live number verdict: the Add a contact dialog
     // runs it in the browser on every keystroke. It imports only tz-msisdn.ts and phone-normalize.ts, both pinned here.
     "lib/contacts/contact-number.ts",
+    // ⭐ ADDED 2026-10-02 (marketing U23, decision M3). The bulk bar's rules — the ONE tier rule, the per-number cap,
+    // the tag and list-name checks and the wire shapes — read by the "use client" bar and by the server's service alike.
+    // It imports only contact-fields.ts, pinned here.
+    "lib/contacts/bulk-rules.ts",
     // ⭐ ADDED 2026-10-01 (marketing S10, the pure engines): client-safe src/lib/marketing modules the composer, the
     // estimate and the confirmation will import into client components — each must stay free of the Prisma client.
     "lib/marketing/erasure-mark.ts",

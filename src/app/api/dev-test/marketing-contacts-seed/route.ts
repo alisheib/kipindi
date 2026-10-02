@@ -1,5 +1,5 @@
 /**
- * /api/dev-test/marketing-contacts-seed — fill the contact book, for the U20/U21/U22 visual drive.
+ * /api/dev-test/marketing-contacts-seed — fill the contact book, for the U20/U21/U22/U23 visual drive.
  *
  * ⛔ 404 IN PRODUCTION, like every other route under `dev-test/` (`test:cert-devroutes`). It is reachable only
  * where `NODE_ENV` is not `production`, which on this platform means a developer's own machine.
@@ -20,6 +20,11 @@
  *   POST ?u22=1        — U22's fixtures, idempotent: an ERASED row (`sourceRef = "erasure"`, decision C3), and for each
  *                        of three drive runs a PLAYER's number whose ledger says GIVEN and a stranger's number whose
  *                        ledger says WITHDRAWN — neither in the book, so the drive adds them through the form
+ *   POST ?u23grant=view-only|reset — U23's act-gate state: the AUDITOR role given Growth VIEW without ACT (no default role
+ *                        holds that pair, `roles.ts`), so the drive can photograph every bulk action disabled with its
+ *                        reason; `reset` takes the view away again
+ *   POST ?u23moved=1   — U23's moved audience: ONE more contact (tag "moved", on 0769 000 0NN, which nothing else uses),
+ *                        added between the bulk bar's preview and its confirmation so the server's recount refuses it
  */
 import { NextResponse } from "next/server";
 import { db } from "@/lib/server/store";
@@ -29,6 +34,7 @@ import { ledgerStamp } from "@/lib/server/marketing/ledger-stamp";
 import { mirrorContactCache } from "@/lib/server/marketing/contact-cache";
 import { newContactRow } from "@/lib/server/contacts/contact-write";
 import { ERASURE_EVIDENCE } from "@/lib/marketing/erasure-mark";
+import { setRoleGrant } from "@/lib/server/rbac";
 
 const SEED_WORDING = "Seeded by the contacts drive (dev only).";
 
@@ -120,6 +126,28 @@ async function seedU22(): Promise<{ erasedId: string | null; erasedNumber: strin
   return { erasedId, erasedNumber: U22_ERASED, players: U22_RUNS.map(u22Player), withdrawn: U22_RUNS.map(u22Withdrawn) };
 }
 
+/* ═══ U23 · the bulk bar's drive fixture ═════════════════════════════════════════════════════════ */
+
+/** On 0769 000 0NN — the 45-row seed never uses 076, U22's fixtures use 076 6 and 076 7. */
+const u23Moved = (k: number) => `07690000${String(k).padStart(2, "0")}`;
+
+/** The next "moved" contact, through the ONE builder and the ONE mirror — the row a recount must notice. */
+async function seedU23Moved(): Promise<{ moved: number }> {
+  const at = new Date().toISOString();
+  for (let k = 0; k < 100; k++) {
+    const parsed = parseTzNumber(u23Moved(k));
+    if (parsed.verdict !== "ok" || !parsed.msisdn) break;
+    if (await db.marketingContact.findByMsisdn(parsed.msisdn)) continue;
+    await db.marketingContact.create(newContactRow({
+      number: parsed, rawInput: u23Moved(k), displayName: `Moved ${k + 1}`, email: null, tags: ["moved"], notes: null,
+      source: "OPERATOR", sourceRef: null, importId: null, officerId: null, at,
+    }, `mc_seed_moved_${String(k).padStart(2, "0")}`));
+    await mirrorContactCache(parsed.msisdn, at);
+    return { moved: k + 1 };
+  }
+  return { moved: -1 };
+}
+
 const NAMES = ["Asha Mwakalinga", "Baraka Juma", null, "Neema Kileo", "Juma Hassan", "Rehema Said", null, "Daudi Mrisho", "Zawadi Ally", "Faraja Mushi"];
 const PREFIXES = ["071", "074", "075", "068", "062", "065", "078", "061"];
 const CONSENT: StoredMarketingContact["consentState"][] = ["UNKNOWN", "GIVEN", "UNKNOWN", "WITHDRAWN", "GIVEN"];
@@ -138,6 +166,15 @@ export async function POST(req: Request) {
   }
   if (url.searchParams.get("u22") !== null) {
     return NextResponse.json({ ok: true, ...(await seedU22()) });
+  }
+  const grant = url.searchParams.get("u23grant");
+  if (grant !== null) {
+    // ⛔ DEV ONLY (the 404 above): Growth VIEW without ACT for the AUDITOR role, or that view taken away again.
+    await setRoleGrant("AUDITOR", "growth", grant === "view-only", false, "dev-seed");
+    return NextResponse.json({ ok: true, grant: grant === "view-only" ? "view-only" : "reset" });
+  }
+  if (url.searchParams.get("u23moved") !== null) {
+    return NextResponse.json({ ok: true, ...(await seedU23Moved()) });
   }
   const count = Math.max(0, Math.min(200, Number(url.searchParams.get("count") ?? "45") || 0));
   const base = Date.parse("2026-09-01T08:00:00.000Z");

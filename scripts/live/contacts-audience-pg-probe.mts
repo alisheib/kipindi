@@ -163,5 +163,114 @@ if (whole.ok) {
     `${JSON.stringify(stopped)} · ${row8?.consentState} / ${row8?.suppressedAt} vs ${stop8?.createdAt} · ${again8}`);
 }
 
+// ── 6 · U23 · THE BULK WRITES ON POSTGRES — after §5, so every expected set above stands ──────────────────────────
+// ⭐ WHY HERE. U23's Prisma twin writes with raw SQL the memory twin cannot show wrong: `array_append`/`array_remove`
+// with a `::text` tag, the caller's instant cast `::timestamptz`, the tag cap as `cardinality(...) < $n::int`; a
+// `createMany` with `skipDuplicates` and its one-row-at-a-time retry on a foreign-key failure (P2003); and a
+// `deleteMany` that leans on the list-member cascade. Every count below is written HERE BY HAND.
+// The live book after §5 (p06 is the erased tombstone, in no audience):
+//   p01 [vip,dar] GIVEN · p02 [dar] UNKNOWN · p03 [] WITHDRAWN · p04 [vip] GIVEN (the player) · p05 [arusha] UNKNOWN
+//   p07 [] and p08 [] WITHDRAWN (§5) · p06 [] the tombstone
+{
+  const { contactAudienceWrites } = await import("../../src/lib/server/marketing/audience.ts");
+  const { prisma } = await import("../../src/lib/server/prisma.ts");
+  const raw = prisma();
+  if (!raw) throw new Error("§6 needs the Prisma client");
+  type Filter = typeof WHOLE_BOOK;
+  type Count = { matched: number; changed: number; unchanged: number; full: number };
+  const ticks = (...ids: string[]): Filter => ({ ...WHOLE_BOOK, ids: ids.map((i) => `probe_${i}`) });
+  const filt = (f: Partial<Filter>): Filter => ({ ...WHOLE_BOOK, ...f });
+  const row = (id: string) => db.marketingContact.find(`probe_${id}`);
+  const tagsOf = async (id: string) => { const r = await row(id); return r ? r.tags.join(",") : "GONE"; };
+  const n = (c: Count) => `${c.matched}/${c.changed}/${c.unchanged}/${c.full}`;
+  const S1 = { at: "2026-10-02T06:00:00.321Z", by: "probe_officer_1" };
+  const S2 = { at: "2026-10-02T06:05:00.987Z", by: "probe_officer_2" };
+  const members = async (listId: string) => (await db.contactListMember.listMembers(listId))
+    .map((m) => `${m.contactId.replace("probe_", "")}@${m.addedAt === S1.at ? "S1" : m.addedAt === S2.at ? "S2" : m.addedAt}:${m.addedBy}`)
+    .sort().join(" ");
+
+  // 6.1 · TAG a ticked selection: the ticked tombstone stays untouched; a row already carrying the tag is not rewritten.
+  const t1 = await contactAudienceWrites(ticks("p01", "p04", "p05", "p06")).tag("vip", 20, S1);
+  const p05 = await row("p05");
+  const p01 = await row("p01");
+  ok("6.1 · TAG on Postgres: 3 matched (the ticked tombstone is not), 1 written, 2 already carrying it (matched/changed/unchanged/full)",
+    n(t1) === "3/1/2/0", n(t1));
+  ok("6.1b · the written row carries the tag once, stamped at the CALLER'S millisecond (the ::timestamptz cast), by the caller",
+    p05?.tags.join(",") === "arusha,vip" && p05?.updatedAt === S1.at && p05?.updatedBy === S1.by, `${p05?.tags} · ${p05?.updatedAt} · ${p05?.updatedBy}`);
+  ok("6.1c · ⛔ a row that already carried the tag is NOT rewritten (its updatedAt is still its seed's), and the tombstone holds no tag",
+    p01?.updatedAt === at(1) && (await tagsOf("p06")) === "", `${p01?.updatedAt} · p06 [${await tagsOf("p06")}]`);
+
+  // 6.2 · THE CAP (decision C11), re-checked inside the statement: at a cap of 2, p01 [vip,dar] is full and p02 [dar] is not.
+  const t2 = await contactAudienceWrites(filt({ tags: ["dar"] })).tag("north", 2, S1);
+  ok("6.2 · ⛔ the cap is checked IN the statement (cardinality < $n::int): p02 gains the tag, p01 at the cap is counted FULL and left as it was",
+    n(t2) === "2/1/0/1" && (await tagsOf("p01")) === "vip,dar" && (await tagsOf("p02")) === "dar,north",
+    `${n(t2)} · p01 [${await tagsOf("p01")}] p02 [${await tagsOf("p02")}]`);
+  const t3 = await contactAudienceWrites(filt({ tags: ["dar"] })).tag("north", 2, S1);
+  ok("6.3 · the same tag again writes nothing: p02 already carries it (unchanged), p01 is still full — never a tag twice",
+    n(t3) === "2/0/1/1" && (await tagsOf("p02")) === "dar,north", `${n(t3)} · p02 [${await tagsOf("p02")}]`);
+
+  // 6.4 · UNTAG (array_remove): the filter's live carriers lose it; a second, ticked untag finds nothing to remove.
+  const u1 = await contactAudienceWrites(filt({ tags: ["vip"] })).untag("vip", S2);
+  const p04 = await row("p04");
+  ok("6.4 · UNTAG on Postgres: the 3 live carriers lose the tag, each stamped at the caller's instant",
+    n(u1) === "3/3/0/0" && (await tagsOf("p01")) === "dar" && p04?.tags.length === 0 && p04?.updatedAt === S2.at && (await tagsOf("p05")) === "arusha",
+    `${n(u1)} · p01 [${await tagsOf("p01")}] p04 [${p04?.tags}] ${p04?.updatedAt} p05 [${await tagsOf("p05")}]`);
+  const u2 = await contactAudienceWrites(ticks("p01", "p03")).untag("vip", S2);
+  ok("6.4b · an untag of rows not carrying the tag counts them UNCHANGED and writes nothing", n(u2) === "2/0/2/0", n(u2));
+
+  // 6.5 · ADD TO A LIST (createMany + skipDuplicates): a member keeps its ORIGINAL addedAt.
+  await db.contactList.create({ id: "probe_list_2", name: "Probe list 2", description: null, createdAt: at(10), createdBy: null, updatedAt: at(10), updatedBy: null });
+  const a1 = await contactAudienceWrites(ticks("p01", "p02", "p06")).addToList("probe_list_2", S1);
+  const a2 = await contactAudienceWrites(filt({ consent: ["GIVEN"] })).addToList("probe_list_2", S2);
+  const m2 = await members("probe_list_2");
+  ok("6.5 · ADD on Postgres: 2 of 3 ticked added (the tombstone is not); then the GIVEN filter (p01, p04) adds only p04",
+    n(a1) === "2/2/0/0" && n(a2) === "2/1/1/0", `${n(a1)} then ${n(a2)}`);
+  ok("6.5b · ⛔ skipDuplicates keeps p01's ORIGINAL addedAt and adder; p04 carries the second stamp",
+    m2 === `p01@S1:${S1.by} p02@S1:${S1.by} p04@S2:${S2.by}`, m2);
+  let refused = "";
+  try { await contactAudienceWrites(ticks("p01")).addToList("probe_no_such_list", S1); } catch (e) { refused = String((e as Error).message); }
+  ok("6.5c · a list that does not exist is REFUSED before anything is written", /no such contact list/.test(refused), refused || "(no refusal)");
+
+  // 6.6 · 🔴 THE P2003 RETRY: a trigger deletes p05 as its membership is inserted — a REAL foreign-key failure, the one a
+  // contact removed between the read and the insert raises. The failed statement rolls its own delete back, so p05
+  // survives; the chunk must be retried one row at a time, p01 and p04 added, p05 counted in neither column.
+  await db.contactList.create({ id: "probe_list_3", name: "Probe list 3", description: null, createdAt: at(10), createdBy: null, updatedAt: at(10), updatedBy: null });
+  await raw.$executeRawUnsafe(`create or replace function probe_vanish() returns trigger language plpgsql as $fn$
+    begin
+      if new."contactId" = 'probe_p05' then delete from "MarketingContact" where "id" = new."contactId"; end if;
+      return new;
+    end $fn$`);
+  await raw.$executeRawUnsafe(`create trigger probe_vanish before insert on "ContactListMember" for each row execute function probe_vanish()`);
+  let a3: Count | null = null;
+  let a3err = "";
+  try { a3 = await contactAudienceWrites(ticks("p01", "p04", "p05")).addToList("probe_list_3", S1); } catch (e) { a3err = String((e as Error).message).slice(0, 300); }
+  await raw.$executeRawUnsafe(`drop trigger probe_vanish on "ContactListMember"`);
+  await raw.$executeRawUnsafe(`drop function probe_vanish()`);
+  const m3 = await members("probe_list_3");
+  ok("6.6 · 🔴 a foreign-key failure (P2003) mid-chunk is retried row by row: p01 and p04 added, the vanished row counted in neither column",
+    a3 !== null && n(a3) === "3/2/0/0" && m3 === `p01@S1:${S1.by} p04@S1:${S1.by}` && (await row("p05")) !== null,
+    a3 ? `${n(a3)} · [${m3}]` : `threw: ${a3err}`);
+
+  // 6.7 · REMOVE (deleteMany): the memberships cascade, the evidence keyed by NUMBER stays, the number is free again.
+  const k2 = parseTzNumber("0754000102");
+  const k7 = parseTzNumber("0755000107");
+  if (!k2.msisdn || !k2.ndc || !k7.msisdn) throw new Error("§6.7 keys do not parse");
+  const r1 = await contactAudienceWrites(ticks("p02", "p07", "p06")).remove();
+  const m2after = await members("probe_list_2");
+  const stop7 = await db.suppression.find({ channel: "SMS", identifier: k7.msisdn, category: "MARKETING" });
+  const word7 = await db.messagingConsent.latestFor({ channel: "SMS", identifier: k7.msisdn, category: "MARKETING" });
+  ok("6.7 · REMOVE on Postgres: the 2 live ticked rows go (the tombstone stays), and p02's membership cascades with it",
+    n(r1) === "2/2/0/0" && (await row("p02")) === null && (await row("p07")) === null && (await row("p06")) !== null
+      && m2after === `p01@S1:${S1.by} p04@S2:${S2.by}`, `${n(r1)} · list 2 [${m2after}]`);
+  ok("6.7b · ⛔ removing a book row deletes NO evidence: p07's stop and its withdrawn word still stand, keyed by its number",
+    !!stop7 && word7?.status === "WITHDRAWN", `${stop7?.id} · ${word7?.status}`);
+  const again2 = await db.marketingContact.create({
+    id: "probe_p02b", msisdn: k2.msisdn, rawInput: "0754000102", displayName: null, email: null, ndc: k2.ndc, operator: null,
+    source: "OPERATOR", sourceRef: null, userId: null, consentState: "UNKNOWN", suppressedAt: null, tags: [], notes: null,
+    importId: null, createdAt: at(11), createdBy: null, updatedAt: at(11), updatedBy: null,
+  });
+  ok("6.7c · the removed row's number is FREE again: the unique key accepts a new book row for it", again2 !== null, String(again2?.id));
+}
+
 console.log(`\ncontacts-audience-pg-probe: ${pass} passed, ${fail} failed`);
 process.exitCode = fail === 0 ? 0 : 1;

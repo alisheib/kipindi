@@ -7,6 +7,8 @@
  * ⭐ U21 · AND ONE VOCABULARY FOR THE COLUMN AND THE RAIL (decision C13). The Consent and Source labels moved here
  * from `page.tsx` ONCE, so the chip in a row and the pill that filters for it can never say two different things —
  * the defect C13 found between two specs ("Not recorded" against "No consent recorded").
+ * ⭐ U23 · AND THE BULK BAR'S WORDS — its six actions, the confirmation's consequences (Suppress's permanence among them,
+ * C23), and the server-counted result line. The rules those words describe are `src/lib/contacts/bulk-rules.ts`.
  *
  * Admin chrome is English; the Swahili gloss for this section sits on `AdminPageHead`
  * ("Anwani", copied from `src/app/admin/invites/[id]/page.tsx:88`), not on the empty state —
@@ -14,7 +16,9 @@
  */
 import type { ContactConsentState, ContactSource } from "@/lib/server/store";
 import { adminCount, formatNumber } from "@/lib/utils";
-import { CONTACT_FIELDS } from "@/lib/contacts/contact-fields";
+import { CONTACT_FIELDS, CONTACT_LIMITS } from "@/lib/contacts/contact-fields";
+import { isPerRowAction } from "@/lib/contacts/bulk-rules";
+import type { BulkOutcome, BulkPreview, ContactBulkAction } from "@/lib/contacts/bulk-rules";
 
 export const CONTACTS_EMPTY = {
   title: "No contacts yet",
@@ -233,4 +237,168 @@ export function CONTACT_RATE_LIMITED(retryAfterSec: number): string {
   const s = Math.max(1, Math.ceil(Number.isFinite(retryAfterSec) ? retryAfterSec : 60));
   const wait = s < 60 ? `${s} second${s === 1 ? "" : "s"}` : `${Math.ceil(s / 60)} minute${Math.ceil(s / 60) === 1 ? "" : "s"}`;
   return `Too many contacts in a short time. Wait ${wait}, then try again.`;
+}
+
+/* ═══ U23 · THE BULK BAR — the bar, the parameter dialog, the confirmation, the result ══════════════════════════ */
+
+/**
+ * Each action's words: its button, its hover line, the overlay's running sentence, the confirmation's title and
+ * consequence, the done toast's title, and the result line's past tense and "already" phrase.
+ * ⛔ SUPPRESS SAYS ITS PERMANENCE IN WORDS (C23/M13): an officer's stop is lifted by nobody — not the person, not a later
+ * holder of the number. ⛔ English only: no Swahili is invented for these (§5.13).
+ */
+export const BULK_COPY: Record<ContactBulkAction, {
+  label: string;
+  hint: string;
+  running: (count: string) => string;
+  title: (count: string, p: Pick<BulkPreview, "tag" | "listName" | "listIsNew">) => string;
+  confirm: (n: number) => string;
+  consequence: string;
+  done: (listName: string | null) => string;
+  past: (n: number) => string;
+  already: string | null;
+}> = {
+  tag: {
+    label: "Tag",
+    hint: "Add one tag to every selected contact.",
+    running: (c) => `Tagging ${c}…`,
+    title: (c, p) => `Tag ${c} with “${p.tag ?? ""}”?`,
+    confirm: (n) => `Tag ${formatNumber(n)}`,
+    consequence: `Each contact gets the tag once. A contact that already has it, or already carries ${CONTACT_LIMITS.tags} tags, is left as it is.`,
+    done: () => "Tagged",
+    past: () => "tagged",
+    already: "already had it",
+  },
+  untag: {
+    label: "Untag",
+    hint: "Remove one tag from every selected contact.",
+    running: (c) => `Removing the tag from ${c}…`,
+    title: (c, p) => `Remove “${p.tag ?? ""}” from ${c}?`,
+    confirm: (n) => `Untag ${formatNumber(n)}`,
+    consequence: "Only the contacts that carry the tag change.",
+    done: () => "Tag removed",
+    past: () => "untagged",
+    already: "didn't have it",
+  },
+  addToList: {
+    label: "Add to list",
+    hint: "Add every selected contact to a list.",
+    running: (c) => `Adding ${c} to the list…`,
+    title: (c, p) => (p.listIsNew ? `Add ${c} to a new list, “${p.listName ?? ""}”?` : `Add ${c} to “${p.listName ?? ""}”?`),
+    confirm: (n) => `Add ${formatNumber(n)}`,
+    consequence: "A contact already on the list keeps the date it joined.",
+    done: (listName) => (listName === null ? "Added to the list" : `Added to “${listName}”`),
+    past: () => "added",
+    already: "already on it",
+  },
+  withdraw: {
+    label: "Record a withdrawal",
+    hint: "Record that these people asked not to receive marketing.",
+    running: (c) => `Recording a withdrawal for ${c}…`,
+    title: (c) => `Record a withdrawal for ${c}?`,
+    confirm: (n) => `Record ${formatNumber(n)}`,
+    consequence: "Each number gets a withdrawal in the consent record, in your name, and a player's own marketing switch is turned off. Nothing here records a consent.",
+    done: () => "Withdrawal recorded",
+    past: (n) => (n === 1 ? "withdrawal recorded" : "withdrawals recorded"),
+    already: "already withdrawn",
+  },
+  suppress: {
+    label: "Suppress",
+    hint: "Stop all marketing to these numbers, permanently.",
+    running: (c) => `Suppressing ${c}…`,
+    title: (c) => `Suppress ${c}?`,
+    confirm: (n) => `Suppress ${formatNumber(n)}`,
+    consequence: "Permanent — no one can lift this, not even the person; a later owner of this number will not receive marketing either.",
+    done: () => "Suppressed",
+    past: () => "suppressed",
+    already: "already suppressed",
+  },
+  remove: {
+    label: "Remove",
+    hint: "Take these contacts out of the book.",
+    running: (c) => `Removing ${c}…`,
+    title: (c) => `Remove ${c} from the book?`,
+    confirm: (n) => `Remove ${formatNumber(n)}`,
+    consequence: "The contacts leave the book and its lists. Their consent and stop records are kept, and rows emptied by an erasure are kept.",
+    done: () => "Removed from the book",
+    past: () => "removed",
+    already: null,
+  },
+};
+
+/** The bar's own sentences. */
+export const CONTACTS_BULK = {
+  none: "Tick contacts to tag, list, withdraw, suppress or remove them.",
+  /** Every action's hover line while nothing is ticked. */
+  noneTitle: "Tick at least one contact",
+  /** ⛔ The bar says why there is no "record consent" (U33 adds it with a recorded basis and an 18+ attestation). */
+  consentNote: "Consent can't be recorded here: a lawful record needs a basis and an 18+ attestation, which this page doesn't take yet.",
+  clear: "Clear",
+  selectPage: "Select every contact on this page",
+  selectRow: (label: string) => `Select ${label}`,
+  editRow: (label: string) => `Edit ${label}`,
+  selected: (n: number, offPage: number) =>
+    (offPage > 0 ? `${formatNumber(n)} selected · ${formatNumber(offPage)} on another page` : `${formatNumber(n)} selected`),
+  selectAllMatching: (n: number) => `Select all ${formatNumber(n)} matching`,
+  allMatching: (n: number) => `All ${formatNumber(n)} matching selected`,
+  filterChanged: "The filter changed, so the selection of every matching contact was cleared.",
+  tickCap: (max: number) => `A selection holds at most ${formatNumber(max)} ticked contacts — use Select all matching for more.`,
+  perRowCap: (max: number) => `A withdrawal or a suppression writes one record per number, so it takes at most ${formatNumber(max)} contacts at a time.`,
+  tagTitle: "Tag the selected contacts",
+  untagTitle: "Remove a tag from the selected contacts",
+  tagLabel: "Tag",
+  tagHint: "One tag: letters, digits, spaces, - or _. It is stored in lower case.",
+  listTitle: "Add the selected contacts to a list",
+  listLabel: "List",
+  listNew: "Name a new list…",
+  listNameLabel: "New list name",
+  listNameHint: `Up to ${CONTACT_LIMITS.listName} characters. A name that differs from a list's only in capitals is that list.`,
+  continue: "Continue",
+  cancel: "Cancel",
+  eyebrow: "Contacts · Anwani",
+  previewFailed: "Couldn't count the selection",
+  refused: "Nothing was changed",
+  failedTitle: "The bulk action didn't finish",
+  failedBody: "Some contacts may already have changed — refresh and read the list before pressing again.",
+  retry: "Review it again",
+  unsavedBody: "A tag or a list name has been typed but nothing has been applied. Leaving now discards it.",
+  noName: "No name",
+  editLink: "edit →",
+  actionsLabel: "Bulk actions",
+} as const;
+
+/**
+ * ⭐ EVERY ACTION BUTTON'S STATE AND ITS REASON, FROM ONE FUNCTION — so no button can be disabled without saying why. A
+ * role that may view but not act gets the act gate's own sentence (`useActDisabledReason`) and the button stays on screen;
+ * nothing ticked, or past the per-number cap, says that. An enabled button's hover line says what it does.
+ */
+export function bulkActionState(
+  action: ContactBulkAction,
+  s: { mayAct: boolean; actReason: string | undefined; count: number; perRowMax: number; busy: boolean },
+): { disabled: boolean; title: string } {
+  if (!s.mayAct) return { disabled: true, title: s.actReason ?? CONTACT_ROLE_REFUSAL };
+  if (s.count === 0) return { disabled: true, title: CONTACTS_BULK.noneTitle };
+  if (isPerRowAction(action) && s.count > s.perRowMax) return { disabled: true, title: CONTACTS_BULK.perRowCap(s.perRowMax) };
+  return { disabled: s.busy, title: BULK_COPY[action].hint };
+}
+
+/** "and 30 more" under an enumerated confirmation — null when every row is named. */
+export function enumerateTail(count: number, shown: number): string | null {
+  return count > shown ? `and ${formatNumber(count - shown)} more` : null;
+}
+
+/**
+ * ⭐ THE SERVER-COUNTED RESULT LINE ("3 tagged · 2 already had it"). Every number in it is the store's own count, never
+ * the client's. 🔴 A1.1 · when the split is absent (a withdrawal, for a viewer who may not read a number) the line says
+ * the total only — the split is a consent signal, and the reply did not carry it.
+ */
+export function bulkResultLine(r: Pick<BulkOutcome, "action" | "matched" | "changed" | "unchanged" | "full">): string {
+  if (r.changed === null || r.unchanged === null) return `A withdrawal is on record for ${adminCount(r.matched, "contact")}`;
+  const words = BULK_COPY[r.action];
+  const parts = [`${formatNumber(r.changed)} ${words.past(r.changed)}`];
+  if (words.already !== null) parts.push(`${formatNumber(r.unchanged)} ${words.already}`);
+  if (r.full > 0) parts.push(`${formatNumber(r.full)} already ${r.full === 1 ? "carries" : "carry"} ${CONTACT_LIMITS.tags} tags`);
+  const gone = r.matched - r.changed - r.unchanged - r.full;
+  if (gone > 0) parts.push(`${formatNumber(gone)} no longer in the book`);
+  return parts.join(" · ");
 }

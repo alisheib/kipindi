@@ -39,6 +39,8 @@ const FILES = [
   "src/lib/server/marketing/consent-ledger.ts", "src/lib/server/marketing/optout-service.ts",
   "src/lib/server/marketing/ledger-stamp.ts", "src/lib/server/marketing/erase.ts",
   "src/app/api/dev-test/marketing-contacts-seed/route.ts",
+  // §20 · U23 (S10, 2026-10-02): the bulk bar's officer withdrawal, the fourth ledger writer — §20.stamp reads it here.
+  "src/lib/server/marketing/contact-bulk.ts",
 ];
 
 const runGate = (srcDir) => {

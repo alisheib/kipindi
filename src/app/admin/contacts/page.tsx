@@ -1,11 +1,15 @@
 /**
- * /admin/contacts — the marketing address book (U17 doors, U20 the list, U21 the filter rail, U22 the form).
+ * /admin/contacts — the marketing address book (U17 doors, U20 the list, U21 the filter rail, U22 the form, U23 bulk).
  *
  * WHAT THIS PAGE IS TODAY, so nobody reads more into it: the book, server-paged, searchable by a WHOLE
- * number or by name, sortable by name, prefix and date, filterable from one rail — and ONE contact at a time
+ * number or by name, sortable by name, prefix and date, filterable from one rail — ONE contact at a time
  * added or edited by hand (U22: "Add contact" in the page head, `?edit=<contact id>` for the dialog over the
- * list). There is no way to import, tag in bulk, list or remove a contact yet (U23 bulk, U25–U32 import), and
- * this page promises none of it.
+ * list, opened from each row's "edit" link) — and a selection acted on in bulk (U23: the select column and the bar —
+ * tag, untag, add to a list, record a withdrawal, suppress, remove). There is no way to import a file yet (U25–U32),
+ * to record a consent (U33) or to export (U34), and this page promises none of it.
+ * ⭐ U23 · THE SELECTION HOLDS SERVER-PROJECTED ROWS (`contactSelectionRow`: id, name, the number MASKED for every role),
+ * never a stored row, so no raw number reaches the browser through it; "select all N matching" holds the FILTER (its
+ * canonical key). Every count the bar confirms is the server's (`contact-bulk.ts`), recounted at the run.
  * ⭐ U22 · THE FORM RECORDS NO CONSENT (`contact-form.tsx`): nothing lawful can be chosen until U33, so a new
  * contact's consent is the ledger's, MIRRORED — and shown to a reader only (A1.1). The dialog's number and email
  * render through `<Sensitive>` here, server-side; the dialog itself never holds either. `edit` is set only by an
@@ -34,6 +38,7 @@
  *
  * Growth domain (`roles.ts`), the same people who run affiliate, bonuses and invites.
  */
+import Link from "next/link";
 import { AdminPageGate } from "@/components/admin/admin-section-gate";
 import { AdminPageHead, AdminCard, AdminKpi, AdminLoadError } from "@/components/admin/admin-shell";
 import { AdminBody, KpiGrid } from "@/components/admin/admin-body";
@@ -48,10 +53,12 @@ import { db } from "@/lib/server/store";
 import type { StoredMarketingContact } from "@/lib/server/store";
 import { mayReceiveMarketingSms } from "@/lib/server/marketing/consent";
 import type { MarketingSkipReason } from "@/lib/server/marketing/consent";
+import { MAX_AUDIENCE_IDS } from "@/lib/server/marketing/audience";
+import { contactFilterAudienceKey, contactSelectionRow } from "@/lib/server/marketing/contact-bulk";
 import { formatDate } from "@/lib/utils";
 import {
   CONTACTS_EMPTY, CONTACTS_NO_MATCH, CONTACTS_NO_MATCH_FILTERED, CONTACTS_SEARCH_PLACEHOLDER, CONTACTS_FILTERED_LEAD,
-  CONTACTS_FILTER_UNREADABLE, CONTACTS_FILTER_NOT_FOR_ROLE, CONSENT_LABEL, SOURCE_LABEL,
+  CONTACTS_FILTER_UNREADABLE, CONTACTS_FILTER_NOT_FOR_ROLE, CONSENT_LABEL, SOURCE_LABEL, CONTACTS_BULK,
 } from "./contacts-copy";
 import { operatorBrand, contactsHref, contactsClearFiltersHref, contactsLinkSp } from "./contacts-query";
 import { loadContacts, loadContactEdit, viewerReadsContacts } from "./contacts-loader";
@@ -59,6 +66,9 @@ import type { ContactsParams, ContactsView } from "./contacts-loader";
 import { contactRail } from "./contacts-rail";
 import { ContactFilters } from "./contact-filters";
 import { AddContactButton, ContactEditDialog } from "./contact-form";
+import { ContactsSelectionProvider } from "./contacts-selection-provider";
+import { ContactRowSelect, ContactPageSelect } from "./contact-row-select";
+import { ContactsBulkBar } from "./contacts-bulk-bar";
 
 type ContactsSP = ContactsParams;
 
@@ -120,8 +130,8 @@ async function AdminContactsContent({ searchParams }: { searchParams: Promise<Co
   // rail is role-shaped in the error state too, so a masked viewer's rail never grows a Consent axis on an error.
   const reads = view !== null ? view.viewerReads : await viewerReadsContacts().catch(() => false);
   // D19 + A1.1: a masked viewer sees Name, Number, Operator, Lists · Tags and Added — no per-row consent, reach,
-  // source or player signal.
-  const cols = reads ? 8 : 5;
+  // source or player signal. U23 · plus the select column, first, for every viewer (ticking is a read affordance).
+  const cols = reads ? 9 : 6;
   // ⭐ U22 · THE ?edit=<contact id> DIALOG — its own read, so a failed book read does not hide it, nor it the list.
   // 🔴 An unknown id and an ERASED row are both MISSING (A1.7); the view carries the consent only for a reader (A1.1).
   const editLoad = await loadContactEdit(sp, reads);
@@ -130,6 +140,12 @@ async function AdminContactsContent({ searchParams }: { searchParams: Promise<Co
   const failed = view === null;
   const emptyBook = !failed && summary!.total === 0;
   const rows = result?.rows ?? [];
+  // ⭐ U23 · the rows as the selection holds them: projected HERE, on the server — id, name, the number masked for every
+  // role (`contactSelectionRow`) — so the client never receives a stored row.
+  const pageRows = rows.map(contactSelectionRow);
+  // ⭐ U23 · "select all N matching" stores the FILTER — its canonical key — and only when the list read arrived.
+  const matching = listed !== null ? { key: contactFilterAudienceKey(listed.filter), total: listed.result.total } : null;
+  const selectable = !failed && !emptyBook;
   // ⛔ D19: the gate is not even asked for a viewer who may not see its answer.
   const reach = reads ? await Promise.all(rows.map(reachOf)) : [];
   const lists = await Promise.all(rows.map(async (c) => (await db.contactListMember.listMemberships(c.id)).length));
@@ -177,6 +193,9 @@ async function AdminContactsContent({ searchParams }: { searchParams: Promise<Co
         </KpiGrid></div>
 
         <div data-block="contacts-card"><AdminCard padding="p-0">
+          {/* ⭐ U23 · THE SELECTION wraps the bar and the table, so the row boxes and the bar read one state — and it keeps its
+              place in the tree across the page's own soft navigations, so ticks survive paging. */}
+          <ContactsSelectionProvider pageRows={pageRows} matching={matching} maxTicks={MAX_AUDIENCE_IDS}>
           {/* ⛔ THE ERROR STANDS OUTSIDE THE TABLE. Inside it, the box scrolled with an 8-column table and its
               sentence was cut off at 360 (measured 2026-10-01): a failure nobody can read is not a stated failure. */}
           {failed && <div className="p-4"><AdminLoadError what="the contact book" /></div>}
@@ -200,10 +219,15 @@ async function AdminContactsContent({ searchParams }: { searchParams: Promise<Co
               <a href={clearFiltersHref} className="inline-flex items-center min-h-[var(--tap-min)] text-royal-300 hover:underline">Clear filters</a>
             </div>
           )}
+          {/* ⭐ U23 · THE BAR — on any read book, the refused state included (ticked rows outlive a refused filter). Its six
+              actions are disabled WITH the act gate's reason for a role that cannot act, never hidden. */}
+          {selectable && <ContactsBulkBar lists={(view?.lists ?? []).map((l) => ({ id: l.id, name: l.name }))} />}
           {!failed && <ScrollX label="Contacts" className="max-h-[calc(100vh-280px)] overflow-y-auto">
             <table className="admin-tbl">
               <thead className="sticky top-0 z-10">
                 <tr>
+                  {/* U23 · the select column: the page's tri-state box, and in each row the row's box and its "edit" link. */}
+                  <th className="text-left">{pageRows.length > 0 && <ContactPageSelect />}</th>
                   <SortTh field="name" label="Name" current={sort} dir={dir} sp={linkSp} baseHref="/admin/contacts" />
                   <th className="text-left">Number</th>
                   {/* ⚠️ "by prefix": the column SORTS by the number's prefix (`ndc`), the one order a brand label
@@ -246,6 +270,25 @@ async function AdminContactsContent({ searchParams }: { searchParams: Promise<Co
                     const shownTags = c.tags.slice(0, 2);
                     return (
                       <tr key={c.id} data-contact-row>
+                        {/* ⭐ U23 · the row's controls: its box (the server's masked projection, never the row) and the way
+                            into its dialog that U22 owed (§9): `?edit=<contact id>` through the ONE href builder, the
+                            filters and the sort carried, `page` dropped. ⛔ The id travels, never the number (D19, §5.14).
+                            Not act-gated: a view-only officer may open the dialog, whose Save is gated (U22). */}
+                        <td>
+                          <div className="flex items-center gap-1">
+                            <ContactRowSelect row={pageRows[i]} />
+                            <Link
+                              href={contactsHref(sp, { edit: c.id })}
+                              replace
+                              scroll={false}
+                              className="row-link whitespace-nowrap font-mono text-micro text-royal-300 hover:underline"
+                              aria-label={CONTACTS_BULK.editRow(pageRows[i].name ?? pageRows[i].masked)}
+                              data-edit-contact={c.id}
+                            >
+                              {CONTACTS_BULK.editLink}
+                            </Link>
+                          </div>
+                        </td>
                         <td className="whitespace-nowrap">
                           {c.displayName
                             ? <span className="text-text-primary">{c.displayName}</span>
@@ -278,6 +321,7 @@ async function AdminContactsContent({ searchParams }: { searchParams: Promise<Co
               </tbody>
             </table>
           </ScrollX>}
+          </ContactsSelectionProvider>
         </AdminCard></div>
 
         {result !== null && result.total > PER_PAGE && <AdminPagination total={result.total} page={page} baseHref={baseHref} />}

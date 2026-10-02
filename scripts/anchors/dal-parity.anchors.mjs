@@ -728,4 +728,78 @@ export const MUTATIONS = [
         return { ok: true, row: toStoredMarketingContact(written) };`,
     expect: `22.at · ⛔ C25 · BOTH twins write the caller's \`at\` as updatedAt, explicitly — never left to @updatedAt`,
   },
+  /* ── §23 · the bulk where-methods (U23, S10 2026-10-02) — and §20's fourth ledger writer ───────────────────────── */
+  {
+    // 🔴 THE COIN FLIP BACK, IN THE BULK BAR: the officer's withdrawal goes back to a random id and the wall clock, so a
+    // withdrawal and the consent it withdraws, written in one millisecond, read back at random.
+    name: "contact-bulk.ts — the officer withdrawal's ledger row goes back to randomUUID() + new Date()",
+    file: "src/lib/server/marketing/contact-bulk.ts",
+    from: `        ...ledgerStamp(),
+        channel: "SMS",
+        identifier: c.msisdn,`,
+    to: `        id: randomUUID(),
+        createdAt: new Date().toISOString(),
+        channel: "SMS",
+        identifier: c.msisdn,`,
+    expect: `20.stamp · contact-bulk.ts — every ledger row takes its id AND createdAt from ledgerStamp(), nothing else`,
+  },
+  {
+    // 🔴 U18b's CLASS: the memory remove forgets what Postgres's ON DELETE CASCADE does, so every suite keeps the list
+    // memberships production deletes — a list that still "holds" a removed contact.
+    name: "store.ts — the memory removeWhere forgets the membership cascade",
+    file: "src/lib/server/store.ts",
+    from: `        for (const [k, m] of store.contactListMembers) if (m.contactId === c.id) store.contactListMembers.delete(k);`,
+    to: `        // (the membership cascade forgotten)`,
+    expect: `23.remove.memory.cascade · ⛔ the memory remove deletes the removed contact's list memberships — what Postgres's ON DELETE CASCADE does for the other twin`,
+  },
+  {
+    // 🔴 …and the secondary index: the number stays "in the book" after its row is gone, so it can never be added again.
+    name: "store.ts — the memory removeWhere leaves the unique index pointing at the removed row",
+    file: "src/lib/server/store.ts",
+    from: `        if (store.contactsByMsisdn.get(c.msisdn) === c.id) store.contactsByMsisdn.delete(c.msisdn);`,
+    to: `        // (the index left behind)`,
+    expect: `23.remove.memory.index · ⛔ the memory remove deletes the row AND frees the unique index it held (only while it still points at that row), so the number can be added again`,
+  },
+  {
+    // 🔴 The 21st tag, on Postgres only: the cap leaves the raw statement, so a bulk tag pushes a full contact past C11's
+    // limit while the memory twin refuses it — and the form can then never save that contact again.
+    name: "prisma-dal.ts — the bulk tag statement loses the 20-tag cap",
+    file: "src/lib/server/prisma-dal.ts",
+    from: ` and cardinality("tags") < \${maxTags}::int`,
+    to: ``,
+    expect: `23.tag.prisma · the Prisma tag walks only rows lacking the tag and writes ONE statement per chunk that re-checks the tag is absent AND the row holds fewer than maxTags, stamping the caller's at and by`,
+  },
+  {
+    // …and on the suites' twin.
+    name: "store.ts — the memory tagWhere ignores the 20-tag cap",
+    file: "src/lib/server/store.ts",
+    from: `        if (c.tags.length >= maxTags) { out.full++; continue; }`,
+    to: `        // (no cap)`,
+    expect: `23.tag.memory · the memory tag leaves a carrier UNCHANGED, refuses a row at maxTags as FULL (C11), appends once and stamps the caller's at and by`,
+  },
+  {
+    // 🔴 THE WIDENING: the untag walk drops the audience, so "untag these five" removes the tag from EVERY contact in
+    // the book that carries it — in production only.
+    name: "prisma-dal.ts — the bulk untag walks every carrier of the tag, not the audience",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `        const carrying: Prisma.MarketingContactWhereInput[] = [where, { tags: { has: tag } }];`,
+    to: `        const carrying: Prisma.MarketingContactWhereInput[] = [{ tags: { has: tag } }];`,
+    expect: `23.scope.prisma · ⛔ each Prisma bulk member walks or deletes only INSIDE the translated where — never every row that carries a tag, never the whole book`,
+  },
+  {
+    // 🔴 Re-adding walks `addedAt` forward (or throws on the compound key): when somebody joined a list is evidence.
+    name: "prisma-dal.ts — the bulk list add loses skipDuplicates",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `          out.changed += (await pc().contactListMember.createMany({ data: rows, skipDuplicates: true })).count;`,
+    to: `          out.changed += (await pc().contactListMember.createMany({ data: rows })).count;`,
+    expect: `23.add.prisma · the Prisma add is createMany with skipDuplicates (never an upsert, so an existing member keeps its addedAt), refuses a missing list first, and retries a chunk one row at a time on P2003`,
+  },
+  {
+    // …and the memory twin overwrites an existing member, walking its addedAt forward.
+    name: "store.ts — the memory addWhere overwrites an existing member",
+    file: "src/lib/server/store.ts",
+    from: `        if (store.contactListMembers.has(k)) { out.unchanged++; continue; }`,
+    to: `        // (an existing member overwritten)`,
+    expect: `23.add.memory · the memory add keeps an existing member UNTOUCHED (its original addedAt) — asked BEFORE it writes — stamps a new one with the caller's at, and refuses a list that does not exist, as the foreign key does`,
+  },
 ];

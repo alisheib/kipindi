@@ -247,7 +247,7 @@ export async function stopMarketing(raw: string, locale: MessagingLocale): Promi
     if (r.suppressed) {
       const latest = await Promise.resolve(db.messagingConsent.latestFor(keyFor(r.identifier)));
       if (latest?.status !== "WITHDRAWN") await appendLedgerRow(r.identifier, "WITHDRAWN", wording, locale, ref);
-      await syncPlayerToggle(r.identifier, false, ref);
+      await syncPlayerToggle(r.identifier, false, { kind: "link", tokenRef: ref });
       return { ok: true, state: "already" };
     }
     await Promise.resolve(db.suppression.create({
@@ -265,7 +265,7 @@ export async function stopMarketing(raw: string, locale: MessagingLocale): Promi
       liftedReason: null,
     }));
     await appendLedgerRow(r.identifier, "WITHDRAWN", wording, locale, ref);
-    await syncPlayerToggle(r.identifier, false, ref);
+    await syncPlayerToggle(r.identifier, false, { kind: "link", tokenRef: ref });
     return { ok: true, state: "stopped" };
   } catch (err) {
     console.error("[optout] stop failed:", (err as Error)?.message ?? err);
@@ -310,7 +310,7 @@ export async function resumeMarketing(raw: string, locale: MessagingLocale): Pro
     // page would report the stop lifted while the gate still refused them for want of consent,
     // which is the same false success in a different costume.
     await appendLedgerRow(r.identifier, "GIVEN", wording, locale, ref);
-    await syncPlayerToggle(r.identifier, true, ref);
+    await syncPlayerToggle(r.identifier, true, { kind: "link", tokenRef: ref });
     return { ok: true, state: "resumed" };
   } catch (err) {
     console.error("[optout] resume failed:", (err as Error)?.message ?? err);
@@ -344,9 +344,24 @@ async function appendLedgerRow(identifier: string, status: "GIVEN" | "WITHDRAWN"
 }
 
 /**
+ * WHO MOVED A PLAYER'S TOGGLE — the audit's actor and its evidence (U23, decision C5).
+ *   · `link` — the person, through their own opt-out link, unauthenticated: the audit's actor is NULL and the evidence
+ *     is the token REFERENCE (`optOutTokenRef`), never the live token.
+ *   · `officer` — staff, recording a withdrawal from the contact book (U23's bulk bar): the actor IS the officer and
+ *     the evidence is the run's reference. ⛔ An officer can only switch a toggle OFF: a "no" is never refused, and a
+ *     "yes" is the person's alone, so `on` from an officer writes nothing.
+ */
+export type PlayerToggleActor =
+  | { kind: "link"; tokenRef: string }
+  | { kind: "officer"; officerId: string; runRef: string };
+
+/**
  * ⭐ WHEN THE NUMBER IS A PLAYER'S, THE PROFILE TOGGLE MOVES WITH IT — and it moves through the
  * SAME audit action `/profile/notifications` already writes, so a compliance reader sees one
  * vocabulary rather than two (`notifications/actions.ts:27`).
+ * ⭐ U23 (decision C5) · EXPORTED, WITH ITS ACTOR — the ONE writer of a player's toggle from a marketing surface. The
+ * bulk bar's "Record a withdrawal" calls it rather than writing `marketingOptIn` itself, so the lookup bridge, the
+ * self-exclusion rule and the audit vocabulary cannot fork into a second copy.
  *
  * ⛔ `userPhoneKeyFor` OR THIS FINDS NOBODY (U7). A bare `findByPhone(identifier)` returns null
  * for every player on the platform and this function would silently do nothing, for everyone,
@@ -357,7 +372,9 @@ async function appendLedgerRow(identifier: string, status: "GIVEN" | "WITHDRAWN"
  * tapped, but their own toggle stays off until they consent again after an officer restores them
  * (rg.ts ③). The page's sentence does not change, so the link-holder learns nothing about RG standing.
  */
-async function syncPlayerToggle(identifier: string, on: boolean, ref: string): Promise<void> {
+export async function syncPlayerToggle(identifier: string, on: boolean, actor: PlayerToggleActor): Promise<void> {
+  // ⛔ An officer never switches a player ON (see `PlayerToggleActor`).
+  if (on && actor.kind !== "link") return;
   const user = await Promise.resolve(db.user.findByPhone(userPhoneKeyFor(identifier)));
   if (!user || user.marketingOptIn === on) return;
   if (on && user.status === "SELF_EXCLUDED") return;
@@ -365,13 +382,16 @@ async function syncPlayerToggle(identifier: string, on: boolean, ref: string): P
   audit({
     category: "COMPLIANCE",
     action: on ? "privacy.marketing_consent.given" : "privacy.marketing_consent.withdrawn",
-    // ⛔ NULL, not the player's own id. They acted without signing in, so the platform cannot
+    // ⛔ A LINK: NULL, not the player's own id. They acted without signing in, so the platform cannot
     // claim the session did it — the token REFERENCE is the evidence (never the live token:
     // `/admin/audit` prints this payload, and the token would let any reader act as the person).
-    actorId: null,
+    // ⭐ AN OFFICER: the officer, by id, with the run that recorded the withdrawal.
+    actorId: actor.kind === "officer" ? actor.officerId : null,
     targetType: "User",
     targetId: user.id,
-    payload: { marketingOptIn: on, via: "optout", tokenRef: ref },
+    payload: actor.kind === "officer"
+      ? { marketingOptIn: on, via: "contacts-bulk", runRef: actor.runRef }
+      : { marketingOptIn: on, via: "optout", tokenRef: actor.tokenRef },
   });
 }
 

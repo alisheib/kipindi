@@ -534,6 +534,27 @@ export type ContactEditGuard = { expectedUpdatedAt: string };
 export type ContactCasResult =
   | { ok: true; row: StoredMarketingContact }
   | { ok: false; reason: "not_found" | "stale" };
+/**
+ * U23 · WHO AND WHEN, FOR A BULK WRITE. Every row a bulk tag, untag or list-add changes is stamped with the caller's
+ * `at` — EXPLICITLY, in both twins, as U22's compare-and-set does (decision C25) — and the officer as `by`.
+ */
+export type ContactBulkStamp = {
+  at: string;
+  by: string;
+};
+/**
+ * U23 · A BULK WRITE'S ANSWER, COUNTED BY THE STORE ITSELF — never by the client, never by a second read.
+ * `matched`: rows the audience held when the write ran · `changed`: rows written (a row removed, for a remove) ·
+ * `unchanged`: rows already as asked (the tag already carried or already absent, already on the list) · `full`: rows
+ * that could not take a tag because they already carry the most a contact may (decision C11). A row the audience held
+ * that is in none of the three was gone before the write reached it. `test:dal-parity` §23 holds the key set exactly.
+ */
+export type ContactBulkCount = {
+  matched: number;
+  changed: number;
+  unchanged: number;
+  full: number;
+};
 
 /** U20 · the sortable columns of the book. ⚠️ "operator" sorts by the PREFIX (`ndc`). */
 export type ContactPageSort = "added" | "name" | "operator";
@@ -2803,6 +2824,66 @@ const memoryDb = {
       Array.from(store.marketingContacts.values())
         .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id)),
     count: (): number => store.marketingContacts.size,
+    /* ═══ U23 · THE BULK WRITES — set-based, through the ONE translation (`contactsMatching`) ═══════════════════
+     * ⭐ Each reads the audience where the resolver counts (`contactAudienceWrites`, audience.ts — the only caller,
+     * `test:contacts-audience` §1.1), so the erased tombstone is in no bulk (C3) and an empty selection writes nothing.
+     * The Prisma twin mirrors each one; `test:dal-parity` §23 holds the pairs. */
+    /** U23 · TAG every row the audience holds. A row already carrying the tag is UNCHANGED; a row already holding
+     *  `maxTags` is FULL and left as it was (decision C11: at most 20 per contact). A changed row is stamped with the
+     *  caller's `at` and `by` — the instant and the officer the Prisma twin writes. */
+    tagWhere: (w: ContactAudienceWhere, tag: string, maxTags: number, stamp: ContactBulkStamp): ContactBulkCount => {
+      const out: ContactBulkCount = { matched: 0, changed: 0, unchanged: 0, full: 0 };
+      for (const c of contactsMatching(w)) {
+        out.matched++;
+        if (c.tags.includes(tag)) { out.unchanged++; continue; }
+        if (c.tags.length >= maxTags) { out.full++; continue; }
+        store.marketingContacts.set(c.id, { ...c, tags: [...c.tags, tag], updatedAt: stamp.at, updatedBy: stamp.by });
+        out.changed++;
+      }
+      return out;
+    },
+    /** U23 · UNTAG every row the audience holds. A row without the tag is UNCHANGED and keeps its stamp. */
+    untagWhere: (w: ContactAudienceWhere, tag: string, stamp: ContactBulkStamp): ContactBulkCount => {
+      const out: ContactBulkCount = { matched: 0, changed: 0, unchanged: 0, full: 0 };
+      for (const c of contactsMatching(w)) {
+        out.matched++;
+        if (!c.tags.includes(tag)) { out.unchanged++; continue; }
+        store.marketingContacts.set(c.id, { ...c, tags: c.tags.filter((t) => t !== tag), updatedAt: stamp.at, updatedBy: stamp.by });
+        out.changed++;
+      }
+      return out;
+    },
+    /** U23 · ADD every row the audience holds to ONE list. ⛔ A member already on it keeps its ORIGINAL `addedAt` —
+     *  when somebody joined a list is evidence (§19.readd) — and a list that does not exist is refused, as Postgres's
+     *  foreign key refuses it. */
+    addWhere: (w: ContactAudienceWhere, listId: string, stamp: ContactBulkStamp): ContactBulkCount => {
+      if (!store.contactLists.has(listId)) throw new Error("addWhere: no such contact list (the foreign key)");
+      const out: ContactBulkCount = { matched: 0, changed: 0, unchanged: 0, full: 0 };
+      for (const c of contactsMatching(w)) {
+        out.matched++;
+        const k = `${listId}|${c.id}`;
+        if (store.contactListMembers.has(k)) { out.unchanged++; continue; }
+        store.contactListMembers.set(k, { listId, contactId: c.id, addedAt: stamp.at, addedBy: stamp.by });
+        out.changed++;
+      }
+      return out;
+    },
+    /** U23 · REMOVE every row the audience holds. ⭐ THE POSTGRES CASCADE, EMULATED: the database deletes a removed
+     *  contact's list memberships itself (`ContactListMember` onDelete: Cascade), and this twin must too, or every suite
+     *  keeps memberships production deletes — U18b's class, a memory index not maintained. ⭐ The unique index is FREED
+     *  (only while it still points at this row), so the number can be added again. ⛔ The consent ledger and the stop
+     *  list are keyed by NUMBER and are not touched: removing a book row never deletes evidence. */
+    removeWhere: (w: ContactAudienceWhere): ContactBulkCount => {
+      const out: ContactBulkCount = { matched: 0, changed: 0, unchanged: 0, full: 0 };
+      for (const c of contactsMatching(w)) {
+        out.matched++;
+        if (!store.marketingContacts.delete(c.id)) continue;
+        if (store.contactsByMsisdn.get(c.msisdn) === c.id) store.contactsByMsisdn.delete(c.msisdn);
+        for (const [k, m] of store.contactListMembers) if (m.contactId === c.id) store.contactListMembers.delete(k);
+        out.changed++;
+      }
+      return out;
+    },
   },
 
   contactList: {

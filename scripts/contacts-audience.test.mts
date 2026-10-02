@@ -82,8 +82,10 @@ const LOADER = "app/admin/contacts/contacts-loader.ts";
 const TWINS = new Set([STORE, PRISMA_DAL]);
 
 /** ⭐ THE DECLARED READERS — every src file that reads the book through the resolver. U23 (bulk recount), U34
- *  (export walk), U38/U40 (counts, recount) and U42 (enqueue walk) each APPEND their file in their own commit. */
-const READERS = [LOADER];
+ *  (export walk), U38/U40 (counts, recount) and U42 (enqueue walk) each APPEND their file in their own commit.
+ *  U23 (S10, 2026-10-02): `contact-bulk.ts` — the bulk bar's recount, its preview sample and its per-number walk; its
+ *  set-based writes reach the store's `…Where` members through `contactAudienceWrites` (audience.ts), never directly. */
+const READERS = [LOADER, "lib/server/marketing/contact-bulk.ts"];
 
 /** The book's SET readers — the members that return many rows or count them. Point lookups (`find`,
  *  `findByMsisdn`, `listByUserId`, `listMemberships`) are not a path from a filter. */
@@ -184,7 +186,8 @@ const WHOLE_BOOK_COUNTS = { total: 9, given: 3, unknown: 4, withdrawn: 2, suppre
 /** A fixed clock for the relative-window cases. */
 const NOW = Date.parse("2026-10-01T09:30:15.000Z");
 
-/** The memory map, reached ONLY to take §4's late row back out (the store has no delete for a contact, by design). */
+/** The memory map, reached ONLY to take §4's late row back out (the store's one delete for a contact is U23's
+ *  audience-scoped `removeWhere`, which this suite has no audience for). */
 const memoryStore = (globalThis as { __50PICK_STORE?: { marketingContacts: Map<string, unknown>; contactsByMsisdn: Map<string, string> } }).__50PICK_STORE;
 
 /* ═══ §6's PIECES (U24 commit 2) — the writers of the truth, and the population they must equal ═══════════ */
@@ -200,6 +203,8 @@ const CACHE_WRITERS = [
   "lib/server/marketing/consent.ts",
   "lib/server/marketing/erase.ts",
   "lib/server/marketing/optout-service.ts",
+  // U23 (M4): the bulk bar's officer withdrawal (a ledger row) and officer suppression (a stop) — mirrored per number.
+  "lib/server/marketing/contact-bulk.ts",
 ];
 const OPTOUT_SERVICE = "lib/server/marketing/optout-service.ts";
 /** A write to the TRUTH the cache copies: a ledger row, a stop, a lift. */

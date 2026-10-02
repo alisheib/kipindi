@@ -3,15 +3,16 @@
  *
  * ⭐ WHAT IT IS. A filter (`ContactAudienceFilter`) is what an officer chose: a search, an operator, a consent
  * state, a list, a tag, a window, a ticked selection. This file is where that choice becomes a query, and the
- * ONLY place it does: the list and its KPI band (U20) read through `contactAudience` today; the bulk recount
- * (U23), the export walk (U34), the campaign's counts and recount (U38, U40) and the send's walk (U42) join it,
- * each in its own commit. OD36: the count the list shows, the count the export writes and the count the
- * campaign confirms are one number, because they are one function.
+ * ONLY place it does: the list and its KPI band (U20) and the bulk bar's recount and its set-based writes (U23,
+ * `contact-bulk.ts`) read through it today; the export walk (U34), the campaign's counts and recount (U38, U40)
+ * and the send's walk (U42) join it, each in its own commit. OD36: the count the list shows, the count the bulk
+ * confirms, the count the export writes and the count the campaign confirms are one number, because they are one
+ * function.
  *
- * ⛔ NO SECOND PATH. Outside the two twins, no file but this one calls the book's set readers
- * (`db.marketingContact.page / countWhere / summaryWhere / walk / tagCounts`), names `ContactAudienceWhere`,
- * or turns a filter into a where. `test:contacts-audience` §1 walks the real `src/` tree and holds it, with
- * an in-process `--prove-red` that plants each kind of second path.
+ * ⛔ NO SECOND PATH. Outside the two twins, no file but this one calls the book's set members
+ * (`db.marketingContact.page / countWhere / summaryWhere / walk / tagCounts` and U23's `…Where` writes), names
+ * `ContactAudienceWhere`, or turns a filter into a where. `test:contacts-audience` §1 walks the real `src/` tree and
+ * holds it, with an in-process `--prove-red` that plants each kind of second path.
  *
  * ⛔ A FILTER NEVER WIDENS SILENTLY (decision C2).
  *   · An UNKNOWN VALUE of a known URL key REFUSES — `?op=NOKIA` is a refused page with a Clear action, never
@@ -32,8 +33,8 @@
  */
 import { db } from "@/lib/server/store";
 import type {
-  ContactAudienceWhere, ContactBookSummary, ContactConsentState, ContactPage, ContactPageSort,
-  ContactSource, ContactTagCount, ContactWalk,
+  ContactAudienceWhere, ContactBookSummary, ContactBulkCount, ContactBulkStamp, ContactConsentState, ContactPage,
+  ContactPageSort, ContactSource, ContactTagCount, ContactWalk,
 } from "@/lib/server/store";
 import { parseQuery, fieldNames, CONTACT_SEARCH } from "@/lib/search";
 import type { ParsedQuery } from "@/lib/search";
@@ -718,4 +719,40 @@ export function contactAudience(f: ContactAudienceFilter, toWhere: typeof toAudi
  */
 export async function contactTagCounts(limit = 200): Promise<ContactTagCount[]> {
   return db.marketingContact.tagCounts({ excludeSourceRef: ERASURE_EVIDENCE, limit: clampInt(limit, 1, WALK_MAX) });
+}
+
+/* ═══ U23 · THE BULK WRITES — set-based, over the where the count reads ═════════════════════════ */
+
+/**
+ * U23 · TAG, UNTAG, ADD TO A LIST, REMOVE — every row an audience holds, in set-based store writes (the twins'
+ * `tagWhere`, `untagWhere`, `addWhere`, `removeWhere`), over EXACTLY the where `contactAudience` counts: the same
+ * filter through the same translation, so the erased tombstone is in no bulk (decision C3) and an empty selection
+ * writes nothing. ⛔ Those store members are SET paths, so `test:contacts-audience` §1.1 lets no file but this one call
+ * them: U23's service (`contact-bulk.ts`) reaches them only through here. Each answer is the store's own count.
+ * The two per-number writes — a withdrawal and a suppression — are not here: they write evidence one number at a time,
+ * walked through `contactAudience(f).walk`, and live in `contact-bulk.ts`.
+ */
+export type ContactAudienceWrites = {
+  /** Add `tag` (already through U28's ONE rule) to every row lacking it; a row holding `maxTags` is left as it was. */
+  tag(tag: string, maxTags: number, stamp: ContactBulkStamp): Promise<ContactBulkCount>;
+  untag(tag: string, stamp: ContactBulkStamp): Promise<ContactBulkCount>;
+  /** An existing member keeps its original `addedAt`. */
+  addToList(listId: string, stamp: ContactBulkStamp): Promise<ContactBulkCount>;
+  /** Memberships go with the rows; the ledger and the stop list (keyed by number) stay. */
+  remove(): Promise<ContactBulkCount>;
+};
+
+/** The writes for one audience. `toWhere` exists for in-process red plants only — production never passes it. */
+export function contactAudienceWrites(f: ContactAudienceFilter, toWhere: typeof toAudienceWhere = toAudienceWhere): ContactAudienceWrites {
+  if (f.ids !== null && f.ids.length > MAX_AUDIENCE_IDS) {
+    // ⛔ REFUSED, never truncated — the same belt as `contactAudience`.
+    throw new Error(`contactAudienceWrites: a selection holds at most ${MAX_AUDIENCE_IDS} contacts (got ${f.ids.length})`);
+  }
+  const where = toWhere(f);
+  return {
+    tag: async (tag, maxTags, stamp) => db.marketingContact.tagWhere(where, tag, maxTags, stamp),
+    untag: async (tag, stamp) => db.marketingContact.untagWhere(where, tag, stamp),
+    addToList: async (listId, stamp) => db.marketingContact.addWhere(where, listId, stamp),
+    remove: async () => db.marketingContact.removeWhere(where),
+  };
 }

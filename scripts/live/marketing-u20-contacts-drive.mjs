@@ -52,8 +52,36 @@
  *         number whose ledger says WITHDRAWN reads "Withdrawn" (the mirror);
  *       ERROR — the add fulfilled with HTTP 500: the danger line, the typing kept, Save available again;
  *       the head's ghost reserves the button's box (measured), 0px overflow, and at 360 the dialog's Save is reachable.
- * The rows come from `/api/dev-test/marketing-contacts-seed` (`?count=45`, and `?u22=1` for the form's fixtures),
- * through the ONE create builder the form uses. Every capture asserts what it photographed first.
+ *   · U23 — THE SELECTION AND THE BULK BAR (`contacts-bulk-bar.tsx`), read by its own stamps (`data-block="contacts-bulk-bar"`,
+ *     `data-bulk-*`, `data-edit-contact`), never by a class string — and every column selector above moved one place right
+ *     for the select column (`COL`). LAST, because it tags contacts, creates lists and adds a row:
+ *       NONE — the bar's sentence; all six actions ON SCREEN, disabled, each saying "Tick at least one contact"; the consent
+ *         note; every row's box named by its name, a nameless row by its MASKED number (never a number); the header box;
+ *       EDIT LINK — every row's "edit" link is ?edit=<that row's id> with the filter and the sort kept, no page, no number;
+ *         pressed once, it opens that contact's dialog;
+ *       TICKED ACROSS PAGES — two rows, the header box indeterminate; the pager (a client navigation) keeps them:
+ *         "3 selected · 2 on another page";
+ *       CONFIRM · ENUMERATE — 22 ticked rows: the server names twenty, every number masked, then "and 2 more", no typed word;
+ *       SELECT ALL N MATCHING — the whole page ticked offers it; pressed, "All N matching selected"; a search change clears it,
+ *         and the bar says so;
+ *       CONFIRM · TYPED — "Type N to confirm" with N the SERVER's count, Confirm disabled until exactly N; Suppress's
+ *         permanence and Remove's kept records in words (both cancelled); a typed Tag run end to end, its result counted;
+ *       REFUSED BY THE SERVER — a contact added between the preview and the confirmation: the recount refuses with both
+ *         counts, and nothing is written;
+ *       ERROR — the run answered with HTTP 500: the error card says contacts MAY have changed and claims no count, the
+ *         selection is kept, and "Review it again" asks the server for a fresh preview;
+ *       PARAMETERS — "a,b" refused in U28's words beside the box, Escape refused once typed; a new list by name; the same
+ *         name in other capitals refused;
+ *       ACTING → DONE — the run's RESPONSE held: "Tagging 2 contacts…"; released: "2 tagged · 0 already had it", the
+ *         selection cleared; GROWTH's withdrawal told the TOTAL only (A1.1), a reader's the split;
+ *       D19 — GROWTH's refused ?player= offers nothing to select; a READER's confirmation names the rows masked too;
+ *       VIEW-ONLY — the AUDITOR role given Growth view without act: the banner, a box still ticks, every action disabled WITH
+ *         the act gate's sentence, every "edit" link still there;
+ *       LOADING — the bar's ghost is on screen under the rail's, its height RECORDED against the real bar;
+ *       reduced motion at 360 — the confirmation and the overlay open, and Cancel closes the confirmation at once.
+ * The rows come from `/api/dev-test/marketing-contacts-seed` (`?count=45`, `?u22=1` for the form's fixtures, and for U23
+ * `?u23grant=view-only|reset` and `?u23moved=1`), through the ONE create builder the form uses. Every capture asserts what
+ * it photographed first.
  *
  * Run: BASE=http://localhost:3010 node scripts/live/marketing-u20-contacts-drive.mjs
  * Boot (in-memory, zero prod risk; remove .next first — a stale .next 404s every /api/dev-test route):
@@ -75,6 +103,9 @@ const ok = (label, cond, detail = "") => {
 };
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const MASK = /^\+255•{4}\d{2}$/;
+/** U23 · THE SELECT COLUMN IS FIRST, so every data column moved one place right: Name 2, Number 3, Operator 4, and for a
+ *  reader Consent 5 and Reachable 6. Named once, so no selector counts columns by hand. */
+const COL = { number: 3, operator: 4, consent: 5, reach: 6 };
 
 const browser = await chromium.launch();
 
@@ -194,8 +225,13 @@ async function openAddDialog(page) {
   await page.waitForSelector(`${DIALOG} ${ADD_FORM}`, { timeout: 15000 });
   await wait(400);
 }
+/** ⛔ BY ITS TEXT, NEVER BY ITS ROLE NAME (U23, 2026-10-02): every Modal's scrim is a button NAMED "Cancel" too
+ *  (`modal.tsx`, the `aria-label` on the scrim) and it comes FIRST in the dialog's DOM, so a role query's `.first()`
+ *  pressed the scrim — which a typed form ignores (`closeOnScrim` off) and which the panel can cover. The scrim has no
+ *  text, so a text match can only reach the real Cancel. */
+const textButton = (page, scope, label) => page.locator(scope).locator("button", { hasText: new RegExp(`^${label}$`) }).first();
 async function closeDialog(page) {
-  await page.locator(DIALOG).getByRole("button", { name: "Cancel", exact: true }).first().click().catch(() => {});
+  await textButton(page, DIALOG, "Cancel").click().catch(() => {});
   await page.waitForSelector(DIALOG, { state: "detached", timeout: 10000 }).catch(() => {});
   await wait(300);
 }
@@ -321,9 +357,12 @@ for (const vp of VIEWPORTS) {
     const ghostR = await boxOf(page, '[data-skeleton="contacts-rail"]');
     // U22 · the head's ghost holds the "Add contact" button's box.
     const ghostA = await boxOf(page, '[data-skeleton="contacts-add"]');
+    // U23 · the bulk bar's ghost, under the rail's.
+    const ghostB = await boxOf(page, '[data-skeleton="contacts-bulk-bar"]');
     ok(`${vp.name} · LOADING · the ghost is on screen and the real page is not yet`, !!ghostK && ghostK.h > 0 && realYet === null, JSON.stringify({ ghostK, realYet }));
     ok(`${vp.name} · U22 LOADING · the head's ghost reserves a box for "Add contact"`, !!ghostA && ghostA.h > 0 && ghostA.w > 0, JSON.stringify(ghostA));
     ok(`${vp.name} · U21 LOADING · the rail's ghost is on screen, inside the card ghost`, !!ghostR && ghostR.h > 0 && !!ghostC && ghostR.top > ghostC.top, JSON.stringify({ ghostR, ghostCTop: ghostC?.top }));
+    ok(`${vp.name} · U23 LOADING · the bulk bar's ghost is on screen, under the rail's ghost`, !!ghostB && ghostB.h > 0 && !!ghostR && ghostB.top > ghostR.top, JSON.stringify({ ghostB, ghostRTop: ghostR?.top }));
     await shoot(page, `${vp.name}-loading`);
     await page.unroute("**src_app_admin_contacts_page_tsx**");
     await page.waitForSelector('[data-block="contacts-kpis"]', { timeout: 30000 });
@@ -332,12 +371,15 @@ for (const vp of VIEWPORTS) {
     const realC = await boxOf(page, '[data-block="contacts-card"]');
     const realR = await boxOf(page, RAIL);
     const realA = await boxOf(page, '[data-block="contacts-add"]');
+    const realB = await boxOf(page, '[data-block="contacts-bulk-bar"]');
     // ⚠️ RECORDED, NOT ASSERTED EQUAL: the real rail is role- and data-shaped (loading.tsx says why); the delta is
     // printed in MEASURED so a reader sees how far the swap moves the table, at both widths.
     measured[vp.name] = {
       ghostK, realK, ghostTop: ghostC?.top, realTop: realC?.top, railGhostH: ghostR?.h, railRealH: realR?.h,
       railDelta: ghostR && realR ? Math.round((realR.h - ghostR.h) * 100) / 100 : null,
       addGhost: ghostA, addReal: realA, addWidthDelta: ghostA && realA ? Math.round((realA.w - ghostA.w) * 100) / 100 : null,
+      // U23 · RECORDED, NOT ASSERTED EQUAL: the bar's buttons wrap by label width and its note wraps at 360 (loading.tsx).
+      barGhostH: ghostB?.h, barRealH: realB?.h, barDelta: ghostB && realB ? Math.round((realB.h - ghostB.h) * 100) / 100 : null,
     };
     // ⭐ U22 · the button's HEIGHT is the kit's 40px rung on both sides of the swap; its width is font-shaped, so it is
     // RECORDED (MEASURED.addWidthDelta) — the header itself is held by the card-top assertion below.
@@ -353,7 +395,7 @@ for (const vp of VIEWPORTS) {
   await openContacts(page);
   const rows = page.locator("[data-contact-row]");
   ok(`${vp.name} · POPULATED · a page of 20`, (await rows.count()) === 20, String(await rows.count()));
-  const numbers = await page.locator("[data-contact-row] td:nth-child(2)").allInnerTexts();
+  const numbers = await page.locator(`[data-contact-row] td:nth-child(${COL.number})`).allInnerTexts();
   ok(`${vp.name} · POPULATED · every number is masked +255••••NN for GROWTH`, numbers.length === 20 && numbers.every((t) => MASK.test(t.trim())), numbers.slice(0, 3).join(" | "));
   ok(`${vp.name} · POPULATED · GROWTH has NO eye and NO copy control`, (await page.locator("button.sensitive-reveal").count()) === 0);
   // 🔴 D19 · a role that may not read a number gets no row-by-row player signal.
@@ -389,7 +431,7 @@ for (const vp of VIEWPORTS) {
   // GROWTH reads no number, so its columns are Name · Number · Operator · Lists·Tags · Added (D19 + A1.1: no Consent,
   // Reachable or Source) — and it filters only by the axes a masked role may use; consent is asserted REFUSED below.
   await openContacts(page, "?op=VODACOM&suppressed=no");
-  const fOps = await page.locator("[data-contact-row] td:nth-child(3)").allInnerTexts();
+  const fOps = await page.locator(`[data-contact-row] td:nth-child(${COL.operator})`).allInnerTexts();
   ok(`${vp.name} · U24 FILTERED · only Vodacom rows, none suppressed`,
     fOps.length > 0 && fOps.every((t) => /^Vodacom$/i.test(t.trim())),
     `${fOps.length} rows: ${[...new Set(fOps.map((t) => t.trim()))].join("/")}`);
@@ -480,7 +522,7 @@ for (const vp of VIEWPORTS) {
   // ── U21 · APPLIED, ONE AXIS — the Vodacom pill pressed from a bare address ──
   await openContacts(page);
   await pressPill(page, "op:VODACOM", { op: "VODACOM", page: null });
-  const vOps = await page.locator("[data-contact-row] td:nth-child(3)").allInnerTexts();
+  const vOps = await page.locator(`[data-contact-row] td:nth-child(${COL.operator})`).allInnerTexts();
   const vLine = await railCount(page);
   ok(`${vp.name} · U21 APPLIED · the address says op=VODACOM, the Vodacom pill is in force, every Operator cell reads Vodacom`,
     (await currentChips(page)).join(",") === "suppressed:,op:VODACOM,tag:" && vOps.length > 0 && vOps.every((t) => t.trim() === "Vodacom"),
@@ -585,17 +627,17 @@ for (const vp of VIEWPORTS) {
   ok(`${vp.name} · ADMIN · every row has the eye AND Copy`, eyes === 20 && copies === 20, `${eyes} eyes, ${copies} copies`);
   const headAdmin = await adm.page.locator('[data-block="contacts-card"] thead').innerText();
   ok(`${vp.name} · ADMIN · the role that may read a number sees Reachable and Source`, /reachable/i.test(headAdmin) && /source/i.test(headAdmin));
-  const reach = await adm.page.locator("[data-contact-row] td:nth-child(5)").allInnerTexts();
+  const reach = await adm.page.locator(`[data-contact-row] td:nth-child(${COL.reach})`).allInnerTexts();
   ok(`${vp.name} · ADMIN · Reachable names the gate's real reasons (age, suppressed, no consent)`,
     reach.some((t) => /age not confirmed/i.test(t)) && reach.some((t) => /suppressed/i.test(t)) && reach.some((t) => /no consent/i.test(t)),
     [...new Set(reach.map((t) => t.trim()))].join(" | "));
   const adminChips = await adm.page.$$eval("[data-contact-row] span.whitespace-nowrap", (els) => els.map((e) => Math.round(e.getBoundingClientRect().height)));
   ok(`${vp.name} · ADMIN · Consent and Reachable chips each sit on ONE line`, adminChips.length === 40 && Math.max(...adminChips) <= 18, `${adminChips.length} chips, max ${Math.max(...adminChips)}px`);
   await shoot(adm.page, `${vp.name}-admin-rows`, '[data-block="contacts-card"]');
-  // A reader's columns: Name · Number · Operator · Consent · Reachable · Source · Lists·Tags · Added.
+  // A reader's columns: (select) · Name · Number · Operator · Consent · Reachable · Source · Lists·Tags · Added.
   await openContacts(adm.page, "?op=VODACOM&consent=GIVEN");
-  const aOps = await adm.page.locator("[data-contact-row] td:nth-child(3)").allInnerTexts();
-  const aConsent = await adm.page.locator("[data-contact-row] td:nth-child(4)").allInnerTexts();
+  const aOps = await adm.page.locator(`[data-contact-row] td:nth-child(${COL.operator})`).allInnerTexts();
+  const aConsent = await adm.page.locator(`[data-contact-row] td:nth-child(${COL.consent})`).allInnerTexts();
   ok(`${vp.name} · ADMIN · U24 FILTERED · the reader filters by consent: only Vodacom rows with consent given`,
     aOps.length > 0 && aOps.every((t) => /^Vodacom$/i.test(t.trim())) && aConsent.length === aOps.length && aConsent.every((t) => /^given$/i.test(t.trim())),
     `${aOps.length} rows: ${[...new Set(aOps.map((t) => t.trim()))].join("/")} · ${[...new Set(aConsent.map((t) => t.trim()))].join("/")}`);
@@ -618,7 +660,7 @@ for (const vp of VIEWPORTS) {
   await waitForParams(adm.page, { source: "IMPORT", suppressed: "no", sort: "name", dir: "asc", page: "2" });
   const ap2 = await adm.page.locator("[data-contact-row]").count();
   await pressPill(adm.page, "consent:GIVEN", { consent: "GIVEN", source: "IMPORT", suppressed: "no", sort: "name", dir: "asc", page: null });
-  const aGiven = await adm.page.locator("[data-contact-row] td:nth-child(4)").allInnerTexts();
+  const aGiven = await adm.page.locator(`[data-contact-row] td:nth-child(${COL.consent})`).allInnerTexts();
   ok(`${vp.name} · ADMIN · U21 COMBINED · page 2 of a two-filter, name-sorted list, then the Consent pill: every filter and the sort kept, the page dropped, every row Given`,
     ap2 > 0 && aGiven.length > 0 && aGiven.every((t) => /^given$/i.test(t.trim()))
       && (await currentChips(adm.page)).join(",") === "consent:GIVEN,suppressed:no,op:,source:IMPORT,tag:",
@@ -851,7 +893,7 @@ for (const [vi, vp] of VIEWPORTS.entries()) {
   await adm.page.getByText(/Consent: Withdrawn/).first().waitFor({ timeout: 15000 }).catch(() => {});
   await adm.page.waitForSelector(DIALOG, { state: "detached", timeout: 15000 }).catch(() => {});
   await wait(1000);
-  const adminFirstConsent = await textOfLoc(adm.page.locator("[data-contact-row]").first().locator("td:nth-child(4)"));
+  const adminFirstConsent = await textOfLoc(adm.page.locator("[data-contact-row]").first().locator(`td:nth-child(${COL.consent})`));
   ok(`${vp.name} · U22 ADMIN · a reader adding a number whose ledger says WITHDRAWN is told "Consent: Withdrawn", and the new first row reads Withdrawn`,
     (await adm.page.getByText(/Consent: Withdrawn/).count()) >= 1 && /^withdrawn$/i.test(adminFirstConsent), adminFirstConsent);
   await shoot(adm.page, `${vp.name}-u22-admin-withdrawn`);
@@ -884,6 +926,502 @@ for (const [vi, vp] of VIEWPORTS.entries()) {
   await page.keyboard.press("Escape");
   await wait(60);
   ok("reduced-motion · U22 · an untouched dialog closes on Escape at once — no exit beat held", (await page.locator('[role="dialog"]').count()) === 0);
+  await ctx.close();
+}
+
+/* ══ U23 · THE SELECTION AND THE BULK BAR — LAST, because it TAGS contacts, creates LISTS, adds a row and records a
+   withdrawal ══════════════════════════════════════════════════════════════════════════════════════════════════════
+   ⛔ After the reduced-motion block on purpose: a list created here draws a List axis on GROWTH's rail, which that block
+   asserts is exactly Suppressed · Operator · Tag. ⛔ Every count is READ from the page — the U22 section grew the book.
+   ⛔ No Suppress and no Remove is ever CONFIRMED here: both are opened, read and cancelled. Read by the bar's own stamps
+   (`data-block="contacts-bulk-bar"`, `data-bulk-*`, `data-edit-contact`), never by a class string. */
+const BAR = '[data-block="contacts-bulk-bar"]';
+// ⚠️ ConfirmModal and the overlay's error card are role="alertdialog"; the U22 `DIALOG` handle matches role="dialog" only.
+const ALERT = '[role="alertdialog"]';
+const BAR_NONE = "Tick contacts to tag, list, withdraw, suppress or remove them.";
+const BULK_ORDER = "tag,untag,addToList,withdraw,suppress,remove";
+const SEARCH = 'input[type="search"][aria-label="Search contacts by name or full number"]';
+/** A bare `255…` key, or a local 06/07 spelling, anywhere in a string — what no selection surface may carry (D19). */
+const NO_NUMBER = (s) => !/255\d{9}|(^|\D)0[67]\d{8}(\D|$)/.test(s);
+const barCount = async (page) => Number((await attrOf(page, BAR, "data-bulk-count")) ?? "-1");
+const barMode = (page) => attrOf(page, BAR, "data-bulk-mode");
+const barLine = (page) => textOf(page, `${BAR} [data-bulk-line]`);
+const barNote = (page) => textOf(page, `${BAR} [data-bulk-note]`);
+const actionStates = (page) => page.$$eval(`${BAR} [data-bulk-action]`, (els) => els.map((e) => ({
+  action: e.getAttribute("data-bulk-action") || "", disabled: e.hasAttribute("disabled"), title: e.getAttribute("title") || "",
+})));
+const rowBoxes = (page) => page.$$eval('[data-contact-row] td:first-child input[type="checkbox"]',
+  (els) => els.map((e) => ({ label: e.getAttribute("aria-label") || "", checked: e.checked })));
+// ⛔ Counted first, as above: a bare evaluate() on an ABSENT box waits Playwright's whole default timeout.
+const headBox = async (page) => {
+  const loc = page.locator('[data-block="contacts-card"] thead th').first().locator('input[type="checkbox"]');
+  return (await loc.count()) > 0 ? loc.first().evaluate((el) => ({ checked: el.checked, indeterminate: el.indeterminate })) : null;
+};
+/** Tick the way a person does — a MOUSE click on the box's label: the real input is sr-only (`checkbox.tsx`), and a label
+ *  that swallowed its own click once left the kit's box mouse-broken and keyboard-fine. */
+async function tickRow(page, i) {
+  await page.locator("[data-contact-row]").nth(i).locator("td").first().locator("label").first().click();
+  await wait(200);
+}
+async function tickPage(page) {
+  await page.locator('[data-block="contacts-card"] thead th').first().locator("label").first().click();
+  await wait(250);
+}
+/** The first number on the rail's count line ("54 contacts", "49 of 54 contacts"): what the address's filter matches. */
+const railMatch = async (page) => Number(((await railCount(page)).match(/^([\d,]+)/)?.[1] ?? "-1").replace(/,/g, ""));
+async function pressBulk(page, action) {
+  await page.locator(`${BAR} [data-bulk-action="${action}"]`).first().click();
+  await wait(300);
+}
+async function waitForParam(page, action) {
+  await page.waitForSelector(`${DIALOG} [data-bulk-param="${action}"]`, { timeout: 15000 }).catch(() => {});
+  await wait(300);
+}
+const tagBox = (page) => page.locator(`${DIALOG} [data-field="tag"] input`).first();
+const newListBox = (page) => page.locator(`${DIALOG} [data-field="newListName"] input`).first();
+async function continueParam(page) {
+  await page.locator(`${DIALOG} [data-bulk-param] button[type="submit"]`).first().click();
+  await wait(300);
+}
+/** The confirmation is built from the SERVER's preview, so it is waited for, never assumed. */
+async function waitForConfirm(page) {
+  await page.waitForSelector(`${ALERT} [data-bulk-confirm]`, { timeout: 20000 }).catch(() => {});
+  await wait(400);
+}
+const confirmTier = (page) => attrOf(page, `${ALERT} [data-bulk-confirm]`, "data-bulk-confirm");
+const confirmTitle = (page) => textOf(page, `${ALERT} h2`);
+const confirmText = (page) => textOf(page, ALERT);
+const consequence = (page) => textOf(page, `${ALERT} [data-bulk-consequence]`);
+const typedBox = (page) => page.locator(`${ALERT} input`).first();
+const confirmButton = (page, label) => page.locator(ALERT).getByRole("button", { name: label, exact: true }).first();
+const sampleMasks = (page) => page.locator(`${ALERT} [data-bulk-sample] [data-masked]`).allInnerTexts();
+async function cancelConfirm(page) {
+  await textButton(page, ALERT, "Cancel").click().catch(() => {});
+  await page.waitForSelector(ALERT, { state: "detached", timeout: 10000 }).catch(() => {});
+  await wait(300);
+}
+/** A deferred toast's description, read once its title is up (anchored patterns only, so no wrapper can match). */
+async function toastLine(page, title, line) {
+  await page.getByText(title, { exact: true }).first().waitFor({ timeout: 20000 }).catch(() => {});
+  return textOfLoc(page.getByText(line));
+}
+const overlayNamed = (page, label) => page.getByRole("dialog", { name: label, exact: true });
+/** ⛔ Every U23 capture asserts what it photographs first: the bar's own sentence, or the confirmation's own title. */
+async function barShot(page, vp, name, wantLine) {
+  const line = await barLine(page);
+  ok(`${vp} · ${name} · the capture shows the bulk bar saying "${wantLine}"`, line === wantLine, `line="${line}"`);
+  ok(`${vp} · ${name} · no horizontal page overflow with the bar drawn`, (await overflowOf(page)) === 0, `${await overflowOf(page)}px`);
+  await shoot(page, `${vp}-${name}`, BAR);
+}
+async function confirmShot(page, vp, name, wantTitle, wantText) {
+  const title = await confirmTitle(page);
+  const text = await confirmText(page);
+  ok(`${vp} · ${name} · the capture shows the confirmation "${wantTitle}"${wantText ? ` saying "${wantText}"` : ""}`,
+    title === wantTitle && (!wantText || text.includes(wantText)), `title="${title}" text="${text.slice(0, 220)}"`);
+  ok(`${vp} · ${name} · no horizontal page overflow with the confirmation open`, (await overflowOf(page)) === 0, `${await overflowOf(page)}px`);
+  await page.screenshot({ path: join(SHOTS, `${vp}-${name}.png`) });
+}
+
+for (const [vi, vp] of VIEWPORTS.entries()) {
+  console.log(`\n[u23] ${vp.name}`);
+  const viewport = { width: vp.width, height: vp.height };
+  const { ctx, page } = await staffCtx("GROWTH", "+255700002009", viewport);
+
+  // ── NONE SELECTED — the sentence, the six actions on screen and disabled WITH their reason, the boxes named ──
+  await openContacts(page);
+  const none = await actionStates(page);
+  ok(`${vp.name} · U23 NONE · the bar says what ticking does and holds nothing; all six actions are ON SCREEN, disabled, each saying "Tick at least one contact"`,
+    (await barLine(page)) === BAR_NONE && (await barCount(page)) === 0 && (await barMode(page)) === "rows"
+      && none.map((a) => a.action).join(",") === BULK_ORDER && none.every((a) => a.disabled && a.title === "Tick at least one contact"),
+    JSON.stringify(none.slice(0, 2)));
+  ok(`${vp.name} · U23 NONE · no "Select all … matching" and no Clear before a tick, and the bar says why consent can't be recorded here`,
+    (await page.locator(`${BAR} [data-bulk-matching]`).count()) === 0 && (await page.locator(`${BAR} [data-bulk-clear]`).count()) === 0
+      && /^Consent can.t be recorded here: a lawful record needs a basis and an 18\+ attestation/.test(await textOf(page, `${BAR} [data-bulk-consent-note]`)));
+  const names = (await page.locator("[data-contact-row] td:nth-child(2)").allInnerTexts()).map((t) => t.replace(/\s+/g, " ").trim());
+  const boxes = await rowBoxes(page);
+  ok(`${vp.name} · U23 NONE · every row's box is named "Select <its name>" — a nameless row by its MASKED number, never a number — none ticked; the header box names the page`,
+    boxes.length === 20 && names.length === 20
+      && boxes.every((b, i) => !b.checked && NO_NUMBER(b.label) && (names[i] === "No name" ? /^Select \+255•{4}\d{2}$/.test(b.label) : b.label === `Select ${names[i]}`))
+      && (await page.getByRole("checkbox", { name: "Select every contact on this page", exact: true }).count()) === 1
+      && (await headBox(page))?.checked === false,
+    boxes.slice(0, 4).map((b) => b.label).join(" | "));
+  await barShot(page, vp.name, "u23-none", BAR_NONE);
+
+  // ── THE EDIT LINK — every row opens ITS dialog by id, never by number; the filter and the sort carried, the page dropped ──
+  await openContacts(page, "?tag=vip&sort=name&dir=asc");
+  const edits = await page.locator("[data-contact-row] a[data-edit-contact]").evaluateAll((as) => as.map((a) => ({
+    id: a.getAttribute("data-edit-contact") || "", href: a.getAttribute("href") || "", label: a.getAttribute("aria-label") || "",
+  })));
+  const vipRows = await page.locator("[data-contact-row]").count();
+  ok(`${vp.name} · U23 EDIT LINK · every row's "edit" link is ?edit=<that row's id> with tag=vip and the name sort kept, no page, and no number in it`,
+    vipRows > 0 && edits.length === vipRows && edits.every(({ id, href, label }) => {
+      const q = paramsOf(href);
+      return id.startsWith("mc_") && q.get("edit") === id && q.get("tag") === "vip" && q.get("sort") === "name" && q.get("dir") === "asc"
+        && !q.has("page") && NO_NUMBER(decodeURIComponent(href)) && /^Edit ./.test(label) && NO_NUMBER(label);
+    }),
+    edits.slice(0, 2).map((e) => e.href).join(" | "));
+  const editTarget = edits[0]?.id ?? "";
+  await page.locator("[data-contact-row] a[data-edit-contact]").first().click();
+  await page.waitForURL((u) => u.searchParams.get("edit") === editTarget, { timeout: 30000 }).catch(() => {});
+  await page.waitForSelector(`${DIALOG} ${EDIT_FORM}`, { timeout: 30000 }).catch(() => {});
+  await wait(600);
+  const opened = new URL(page.url()).searchParams;
+  ok(`${vp.name} · U23 EDIT LINK · pressed, it opens that contact's dialog over the list: the address edit=<the id> with the filter kept, the number masked`,
+    editTarget !== "" && opened.get("edit") === editTarget && opened.get("tag") === "vip" && (await page.locator(`${DIALOG} ${EDIT_FORM}`).count()) === 1
+      && MASK.test(await textOf(page, `${DIALOG} [data-contact-number]`)),
+    page.url());
+  await formShot(page, vp.name, "u23-edit-link", "Edit contact", "The number can't be changed");
+  await closeDialog(page);
+  await page.waitForURL((u) => !u.searchParams.has("edit"), { timeout: 15000 }).catch(() => {});
+
+  // ── TICKED ACROSS PAGES — the pager is a client navigation, and the selection outlives it ──
+  await openContacts(page);
+  await tickRow(page, 0);
+  await tickRow(page, 1);
+  const some = await headBox(page);
+  const live = await actionStates(page);
+  ok(`${vp.name} · U23 TICKED · two rows: "2 selected", the header box INDETERMINATE (some, not all), every action enabled and saying what it does`,
+    (await barLine(page)) === "2 selected" && (await barCount(page)) === 2 && some?.indeterminate === true && some?.checked === false
+      && live.length === 6 && live.every((a) => !a.disabled && a.title !== "" && a.title !== "Tick at least one contact"),
+    JSON.stringify({ line: await barLine(page), some, live: live.slice(0, 2) }));
+  await page.locator('a[href*="page=2"]').first().click();
+  await waitForParams(page, { page: "2" });
+  await tickRow(page, 0);
+  ok(`${vp.name} · U23 TICKED · on page 2 the two from page 1 are still held: "3 selected · 2 on another page"`,
+    (await barLine(page)) === "3 selected · 2 on another page" && (await barCount(page)) === 3, await barLine(page));
+  await barShot(page, vp.name, "u23-ticked-pages", "3 selected · 2 on another page");
+
+  // ── CONFIRM · ENUMERATE — up to fifty ticked rows are NAMED by the server: twenty, masked, then "and N more" ──
+  await tickPage(page);
+  const held = await barCount(page);
+  await pressBulk(page, "remove");
+  await waitForConfirm(page);
+  const named = await sampleMasks(page);
+  const tail = await textOf(page, `${ALERT} [data-bulk-tail]`);
+  ok(`${vp.name} · U23 CONFIRM ENUMERATE · ${held} ticked rows: the SERVER names twenty, every number +255••••NN, then "and ${held - 20} more" — and asks for no typed word`,
+    held > 20 && held <= 50 && (await confirmTier(page)) === "enumerate" && named.length === 20 && named.every((t) => MASK.test(t.trim()))
+      && tail === `and ${held - 20} more` && (await page.locator(`${ALERT} input`).count()) === 0,
+    `${held} held · ${named.length} named · "${tail}" · ${named.slice(0, 2).join(" | ")}`);
+  ok(`${vp.name} · U23 CONFIRM ENUMERATE · Remove says what is KEPT — the consent and stop records, and rows an erasure emptied`,
+    (await consequence(page)) === "The contacts leave the book and its lists. Their consent and stop records are kept, and rows emptied by an erasure are kept.",
+    await consequence(page));
+  await confirmShot(page, vp.name, "u23-confirm-enumerate", `Remove ${held} contacts from the book?`, `and ${held - 20} more`);
+  await cancelConfirm(page); // ⛔ never confirmed
+  ok(`${vp.name} · U23 CONFIRM ENUMERATE · Cancel changes nothing: the ${held} are still held`, (await barCount(page)) === held, String(await barCount(page)));
+  await page.locator(`${BAR} [data-bulk-clear]`).first().click();
+  await wait(250);
+  ok(`${vp.name} · U23 CLEAR · Clear empties the selection`, (await barCount(page)) === 0 && (await barLine(page)) === BAR_NONE, await barLine(page));
+
+  // ── SELECT ALL N MATCHING — the FILTER is what is held (U24's audience JSON); its count is the page's own ──
+  await openContacts(page, "?suppressed=no");
+  const matchTotal = await railMatch(page);
+  await tickPage(page);
+  const offer = await textOf(page, `${BAR} [data-bulk-matching]`);
+  ok(`${vp.name} · U23 ALL MATCHING · the whole page ticked offers "Select all ${matchTotal} matching" — the filter holds more than one page`,
+    matchTotal > 20 && (await barLine(page)) === "20 selected" && (await headBox(page))?.checked === true && offer === `Select all ${matchTotal} matching`,
+    `${await barLine(page)} · "${offer}"`);
+  await page.locator(`${BAR} [data-bulk-matching]`).first().click();
+  await wait(300);
+  ok(`${vp.name} · U23 ALL MATCHING · pressed: "All ${matchTotal} matching selected", the bar in matching mode, every box on the page ticked`,
+    (await barLine(page)) === `All ${matchTotal} matching selected` && (await barMode(page)) === "matching" && (await barCount(page)) === matchTotal
+      && (await rowBoxes(page)).every((b) => b.checked),
+    await barLine(page));
+  await barShot(page, vp.name, "u23-all-matching", `All ${matchTotal} matching selected`);
+
+  // ── CONFIRM · TYPED — a filter is never enumerated: the officer types the SERVER's count, and Confirm waits for exactly it ──
+  await pressBulk(page, "suppress");
+  await waitForConfirm(page);
+  const typeLabel = await attrOf(page, `${ALERT} input`, "aria-label");
+  const goSuppress = confirmButton(page, `Suppress ${matchTotal}`);
+  const offEmpty = await goSuppress.isDisabled();
+  await typedBox(page).fill(String(matchTotal - 1));
+  await wait(150);
+  const offWrong = await goSuppress.isDisabled();
+  await typedBox(page).fill(String(matchTotal));
+  await wait(150);
+  const onRight = !(await goSuppress.isDisabled());
+  ok(`${vp.name} · U23 CONFIRM TYPED · "Type ${matchTotal} to confirm" — the server's count — Confirm disabled empty, disabled at ${matchTotal - 1}, enabled at ${matchTotal}; the audience in words, no rows named`,
+    (await confirmTier(page)) === "typed" && typeLabel === `Type ${matchTotal} to confirm` && offEmpty && offWrong && onRight
+      && (await page.locator(`${ALERT} [data-bulk-sample]`).count()) === 0 && (await confirmText(page)).includes("Not suppressed"),
+    JSON.stringify({ typeLabel, offEmpty, offWrong, onRight }));
+  ok(`${vp.name} · U23 CONFIRM TYPED · Suppress says its PERMANENCE in words: no one can lift it, not even the person, nor a later owner of the number`,
+    (await consequence(page)) === "Permanent — no one can lift this, not even the person; a later owner of this number will not receive marketing either.",
+    await consequence(page));
+  await confirmShot(page, vp.name, "u23-confirm-typed-suppress", `Suppress ${matchTotal} contacts?`, "Permanent");
+  await cancelConfirm(page); // ⛔ never confirmed — a drive does not suppress the book
+  await pressBulk(page, "remove");
+  await waitForConfirm(page);
+  ok(`${vp.name} · U23 CONFIRM TYPED · Remove on a filter asks for the count too, and says the consent and stop records are kept`,
+    (await confirmTier(page)) === "typed" && (await attrOf(page, `${ALERT} input`, "aria-label")) === `Type ${matchTotal} to confirm`
+      && /Their consent and stop records are kept/.test(await consequence(page)),
+    await consequence(page));
+  await confirmShot(page, vp.name, "u23-confirm-typed-remove", `Remove ${matchTotal} contacts from the book?`, "consent and stop records are kept");
+  await cancelConfirm(page); // ⛔ never confirmed
+
+  // ── A TYPED RUN, END TO END — Tag every matching contact: the parameter, the server's count typed, the counted result ──
+  const allTag = `u23all${vi}`;
+  await pressBulk(page, "tag");
+  await waitForParam(page, "tag");
+  await tagBox(page).fill(allTag);
+  await continueParam(page);
+  await waitForConfirm(page);
+  const allTitle = await confirmTitle(page);
+  await typedBox(page).fill(String(matchTotal));
+  await confirmButton(page, `Tag ${matchTotal}`).click();
+  const allLine = await toastLine(page, "Tagged", /^\d+ tagged · \d+ already had it$/);
+  ok(`${vp.name} · U23 TYPED RUN · "Tag ${matchTotal} contacts with “${allTag}”?", typed and confirmed: the toast counts "${matchTotal} tagged · 0 already had it" and the selection is cleared`,
+    allTitle === `Tag ${matchTotal} contacts with “${allTag}”?` && allLine === `${matchTotal} tagged · 0 already had it`
+      && (await barCount(page)) === 0 && (await barMode(page)) === "rows",
+    `${allTitle} · "${allLine}"`);
+
+  // ── A FILTER CHANGE CLEARS "ALL MATCHING" — the stored filter no longer describes the rows on screen — and SAYS so ──
+  await tickPage(page);
+  await page.locator(`${BAR} [data-bulk-matching]`).first().click();
+  await wait(300);
+  const wasMatching = await barMode(page);
+  await page.locator(SEARCH).first().fill("Asha");
+  await page.locator(SEARCH).first().press("Enter");
+  await waitForParams(page, { q: "Asha", suppressed: "no" });
+  ok(`${vp.name} · U23 FILTER CHANGED · a search typed under "all matching" clears it, and the bar says so in words`,
+    wasMatching === "matching" && (await barMode(page)) === "rows" && (await barCount(page)) === 0
+      && (await barNote(page)) === "The filter changed, so the selection of every matching contact was cleared.",
+    `${wasMatching} → ${await barMode(page)} · "${await barNote(page)}"`);
+  await barShot(page, vp.name, "u23-filter-changed", BAR_NONE);
+
+  // ── REFUSED BY THE SERVER — THE AUDIENCE MOVED: a contact joins between the preview and the confirmation, and the RECOUNT
+  // refuses with both counts, writing nothing. ⚠️ Tag, not Suppress: the refusal is one code path for every action (recount
+  // → compare → refuse, before any write), and a defect here must not cost the drive a suppressed book. ──
+  const movedTag = `u23moved${vi}`;
+  await openContacts(page);
+  const bookTotal = await railMatch(page);
+  await tickPage(page);
+  await page.locator(`${BAR} [data-bulk-matching]`).first().click();
+  await wait(300);
+  await pressBulk(page, "tag");
+  await waitForParam(page, "tag");
+  await tagBox(page).fill(movedTag);
+  await continueParam(page);
+  await waitForConfirm(page);
+  const word = (await attrOf(page, `${ALERT} input`, "placeholder")) ?? "";
+  const moved = await seed(page, "u23moved=1");
+  await typedBox(page).fill(word);
+  await confirmButton(page, `Tag ${bookTotal}`).click();
+  const movedLine = await toastLine(page, "Nothing was changed", /^The selection changed: it now holds .+ review it again\.$/);
+  ok(`${vp.name} · U23 REFUSED (SERVER) · a contact added after the preview: the run is REFUSED with both counts — ${bookTotal + 1} now, ${bookTotal} confirmed`,
+    bookTotal > 0 && word === String(bookTotal) && moved.moved > 0
+      && movedLine === `The selection changed: it now holds ${bookTotal + 1} contacts — you confirmed ${bookTotal}. Nothing was changed; review it again.`,
+    `typed ${word} · ${JSON.stringify(moved)} · "${movedLine}"`);
+  ok(`${vp.name} · U23 REFUSED (SERVER) · a refusal keeps the selection — there is nothing to redo but the review`, (await barMode(page)) === "matching", String(await barMode(page)));
+  await shoot(page, `${vp.name}-u23-refused-moved`);
+  await openContacts(page);
+  ok(`${vp.name} · U23 REFUSED (SERVER) · nothing was written: no contact carries "${movedTag}", and the book holds the one new contact`,
+    (await chipCount(page, `tag:${movedTag}`)) === null && (await railMatch(page)) === bookTotal + 1, await railCount(page));
+
+  // ── ERROR — the run answered with HTTP 500: the card says contacts MAY have changed and claims no count; the selection is
+  // kept; "Review it again" asks the server for a fresh preview ──
+  await openContacts(page);
+  await tickRow(page, 0);
+  await pressBulk(page, "tag");
+  await waitForParam(page, "tag");
+  await tagBox(page).fill(`u23err${vi}`);
+  await continueParam(page);
+  await waitForConfirm(page);
+  const failing = await holdNextAction(page, "fail");
+  await confirmButton(page, "Tag 1").click();
+  const errCard = page.getByRole("alertdialog", { name: "The bulk action didn't finish", exact: true });
+  await errCard.first().waitFor({ timeout: 20000 }).catch(() => {});
+  const errText = await textOfLoc(errCard);
+  ok(`${vp.name} · U23 ERROR · a 500 on the run: "The bulk action didn't finish", contacts MAY have changed, no count claimed, "Review it again" offered`,
+    failing.caught() && errText.includes("Some contacts may already have changed — refresh and read the list before pressing again.")
+      && !/\d+ tagged/.test(errText) && (await errCard.getByRole("button", { name: "Review it again", exact: true }).count()) === 1,
+    errText.slice(0, 220));
+  ok(`${vp.name} · U23 ERROR · a failed run keeps the selection`, (await barCount(page)) === 1, String(await barCount(page)));
+  ok(`${vp.name} · U23 ERROR · no horizontal page overflow with the error card up`, (await overflowOf(page)) === 0, `${await overflowOf(page)}px`);
+  await page.screenshot({ path: join(SHOTS, `${vp.name}-u23-error.png`) });
+  await failing.release();
+  await errCard.getByRole("button", { name: "Review it again", exact: true }).first().click().catch(() => {});
+  await waitForConfirm(page);
+  ok(`${vp.name} · U23 ERROR → REVIEW IT AGAIN · the server's fresh preview opens the confirmation again, for the same one contact`,
+    (await confirmTitle(page)) === `Tag 1 contact with “u23err${vi}”?`, await confirmTitle(page));
+  await cancelConfirm(page);
+
+  // ── PARAMETERS · ACTING · DONE — "a,b" refused beside the box; the run's RESPONSE held under the overlay; released, the
+  // toast carries the SERVER's count and the selection is cleared ──
+  await openContacts(page);
+  await tickRow(page, 0);
+  await tickRow(page, 1);
+  await pressBulk(page, "tag");
+  await waitForParam(page, "tag");
+  const focusInTag = await page.evaluate(() => !!document.activeElement?.closest('[data-field="tag"]'));
+  await tagBox(page).fill("a,b");
+  await continueParam(page);
+  const tagErr = await textOf(page, `${DIALOG} [data-field="tag"]`);
+  await page.keyboard.press("Escape");
+  await wait(300);
+  ok(`${vp.name} · U23 PARAMETERS · focus opens in the tag box; "a,b" is refused in U28's words beside it; with something typed, Escape does not close the dialog`,
+    focusInTag && tagErr.includes("Type one tag at a time — a comma, ; or | separates tags.") && (await page.locator(`${DIALOG} [data-bulk-param="tag"]`).count()) === 1,
+    `focus ${focusInTag} · ${tagErr}`);
+  await formShot(page, vp.name, "u23-param-refused", "Tag the selected contacts", "Type one tag at a time");
+  const runTag = `u23tag${vi}`;
+  await tagBox(page).fill(runTag.toUpperCase());
+  await continueParam(page);
+  await waitForConfirm(page);
+  const twoNamed = await sampleMasks(page);
+  ok(`${vp.name} · U23 CONFIRM ENUMERATE · two ticked rows: "Tag 2 contacts with “${runTag}”?" (typed in capitals, stored lower case), both named and masked, no typed word`,
+    (await confirmTitle(page)) === `Tag 2 contacts with “${runTag}”?` && (await confirmTier(page)) === "enumerate"
+      && twoNamed.length === 2 && twoNamed.every((t) => MASK.test(t.trim())) && (await page.locator(`${ALERT} input`).count()) === 0,
+    `${await confirmTitle(page)} · ${twoNamed.join(" | ")}`);
+  const runHold = await holdNextAction(page);
+  await confirmButton(page, "Tag 2").click();
+  await overlayNamed(page, "Tagging 2 contacts…").first().waitFor({ timeout: 15000 }).catch(() => {});
+  ok(`${vp.name} · U23 ACTING · with the run's response held, the overlay says "Tagging 2 contacts…" — what is attempted, no invented progress`,
+    runHold.caught() && (await overlayNamed(page, "Tagging 2 contacts…").count()) === 1, `caught ${runHold.caught()}`);
+  ok(`${vp.name} · U23 ACTING · no horizontal page overflow with the overlay up`, (await overflowOf(page)) === 0, `${await overflowOf(page)}px`);
+  await page.screenshot({ path: join(SHOTS, `${vp.name}-u23-acting.png`) });
+  await runHold.release();
+  const doneLine = await toastLine(page, "Tagged", /^\d+ tagged · \d+ already had it$/);
+  ok(`${vp.name} · U23 DONE · released: the toast carries the SERVER's count, "2 tagged · 0 already had it", the overlay gone, the selection cleared`,
+    doneLine === "2 tagged · 0 already had it" && (await barCount(page)) === 0 && (await barLine(page)) === BAR_NONE
+      && (await overlayNamed(page, "Tagging 2 contacts…").count()) === 0,
+    `"${doneLine}" · ${await barLine(page)}`);
+  await shoot(page, `${vp.name}-u23-done`);
+
+  // ── PARAMETERS · ADD TO LIST — a new list, named; then the same name in other capitals is REFUSED: one list to a person ──
+  const listName = `U23 List ${vi}`;
+  await tickRow(page, 0);
+  await pressBulk(page, "addToList");
+  await waitForParam(page, "addToList");
+  if ((await page.locator(`${DIALOG} [data-field="newListName"]`).count()) === 0) {
+    await page.locator(`${DIALOG} [data-field="list"] [role="combobox"]`).first().click();
+    await page.getByRole("option", { name: "Name a new list…", exact: true }).first().click();
+    await wait(300);
+  }
+  await newListBox(page).fill(listName);
+  await continueParam(page);
+  await waitForConfirm(page);
+  const listTitle = await confirmTitle(page);
+  await confirmButton(page, "Add 1").click();
+  const listLine = await toastLine(page, `Added to “${listName}”`, /^\d+ added · \d+ already on it$/);
+  ok(`${vp.name} · U23 ADD TO LIST · "Add 1 contact to a new list, “${listName}”?" confirmed: the toast names the list and counts "1 added · 0 already on it"`,
+    listTitle === `Add 1 contact to a new list, “${listName}”?` && listLine === "1 added · 0 already on it", `${listTitle} · "${listLine}"`);
+  await wait(800);
+  await tickRow(page, 1);
+  await pressBulk(page, "addToList");
+  await waitForParam(page, "addToList");
+  await page.locator(`${DIALOG} [data-field="list"] [role="combobox"]`).first().click();
+  await wait(300);
+  const listOptions = (await page.getByRole("option").allInnerTexts()).map((t) => t.trim());
+  await page.getByRole("option", { name: "Name a new list…", exact: true }).first().click();
+  await wait(300);
+  await newListBox(page).fill(listName.toLowerCase());
+  await continueParam(page);
+  await page.waitForFunction(() => /already exists/.test(document.querySelector('[data-field="newListName"]')?.textContent || ""), null, { timeout: 15000 }).catch(() => {});
+  const dupErr = await textOf(page, `${DIALOG} [data-field="newListName"]`);
+  ok(`${vp.name} · U23 ADD TO LIST · the picker offers the list just made; "${listName.toLowerCase()}" (only capitals differ) is REFUSED beside the box, and no confirmation opens`,
+    listOptions.includes(listName) && listOptions.includes("Name a new list…")
+      && dupErr.includes(`A list called “${listName}” already exists — two names that differ only in capitals are one list. Choose it instead.`)
+      && (await page.locator(ALERT).count()) === 0,
+    `options [${listOptions.join(", ")}] · ${dupErr}`);
+  await formShot(page, vp.name, "u23-list-duplicate", "Add the selected contacts to a list", "already exists");
+  await textButton(page, DIALOG, "Cancel").click().catch(() => {});
+  await page.waitForSelector(`${DIALOG} [data-bulk-param]`, { state: "detached", timeout: 10000 }).catch(() => {});
+  await page.locator(`${BAR} [data-bulk-clear]`).first().click().catch(() => {});
+  await wait(250);
+
+  // ── 🔴 A1.1 · GROWTH RECORDS A WITHDRAWAL — and is told the TOTAL only: whether a number was already withdrawn is a player
+  // signal this role may not read ──
+  await openContacts(page);
+  const firstId = await attrOf(page, "[data-contact-row] a[data-edit-contact]", "data-edit-contact");
+  await tickRow(page, 0);
+  await pressBulk(page, "withdraw");
+  await waitForConfirm(page);
+  ok(`${vp.name} · U23 WITHDRAW · the confirmation says the withdrawal goes on the record in the officer's name, and records no consent`,
+    (await confirmTitle(page)) === "Record a withdrawal for 1 contact?" && /in your name/.test(await consequence(page)) && /Nothing here records a consent\./.test(await consequence(page)),
+    `${await confirmTitle(page)} · ${await consequence(page)}`);
+  await confirmButton(page, "Record 1").click();
+  const growthWithdrew = await toastLine(page, "Withdrawal recorded", /^A withdrawal is on record for \d+ contacts?$/);
+  ok(`${vp.name} · U23 WITHDRAW · A1.1 · GROWTH's result is the TOTAL only — "A withdrawal is on record for 1 contact" — never the split`,
+    growthWithdrew === "A withdrawal is on record for 1 contact" && (await page.getByText(/already withdrawn/).count()) === 0, `"${growthWithdrew}"`);
+
+  // ── 🔴 D19 · A REFUSED FILTER IS NEVER AN AUDIENCE — GROWTH's ?player= draws the bar with nothing to tick, no "Select all" ──
+  await openContacts(page, "?player=yes");
+  ok(`${vp.name} · U23 D19 · on GROWTH's refused ?player= the bar stands with no rows, no header box and NO "Select all … matching"`,
+    (await page.locator(BAR).count()) === 1 && (await page.locator("[data-contact-row]").count()) === 0
+      && (await page.locator(`${BAR} [data-bulk-matching]`).count()) === 0 && (await headBox(page)) === null && (await barCount(page)) === 0);
+
+  // ── REFUSED BY THE ACT GATE — a role that may VIEW Growth but not act (AUDITOR, given exactly that for this state): the
+  // banner, a box that still ticks, every action ON SCREEN and disabled WITH the gate's sentence — never hidden ──
+  await seed(page, "u23grant=view-only");
+  const aud = await staffCtx("AUDITOR", "+255700002011", viewport);
+  await openContacts(aud.page);
+  const banner = (await aud.page.locator('[role="status"]', { hasText: "so the controls on this page are disabled" }).count()) === 1;
+  await tickRow(aud.page, 0);
+  const gated = await actionStates(aud.page);
+  ok(`${vp.name} · U23 VIEW-ONLY · the read-only banner is up, a box still ticks ("1 selected"), and all six actions are ON SCREEN, disabled, each with the act gate's sentence`,
+    banner && (await barLine(aud.page)) === "1 selected" && gated.map((a) => a.action).join(",") === BULK_ORDER
+      && gated.every((a) => a.disabled && /^Read-only: the .+ role can view .+ but not change it\.$/.test(a.title)),
+    JSON.stringify({ banner, gated: gated.slice(0, 2) }));
+  const audRows = await aud.page.locator("[data-contact-row]").count();
+  ok(`${vp.name} · U23 VIEW-ONLY · the "edit" link is not act-gated: every row still has it (the dialog's Save is gated, U22)`,
+    audRows > 0 && (await aud.page.locator("[data-contact-row] a[data-edit-contact]").count()) === audRows, String(audRows));
+  await barShot(aud.page, vp.name, "u23-view-only", "1 selected");
+  await aud.ctx.close();
+  await seed(page, "u23grant=reset");
+
+  // ── 🔴 D19 · A READER'S CONFIRMATION IS MASKED TOO — selection rows are { id, name, masked } for every role ──
+  const adm = await staffCtx("ADMIN", "+255700002012", viewport);
+  await openContacts(adm.page, "?sort=name&dir=asc");
+  for (const i of [0, 1, 2]) await tickRow(adm.page, i);
+  await pressBulk(adm.page, "suppress");
+  await waitForConfirm(adm.page);
+  const admNamed = await sampleMasks(adm.page);
+  ok(`${vp.name} · U23 ADMIN · even for the role that may reveal a number, the confirmation names the rows MASKED (+255••••NN) — the selection never carries a number`,
+    admNamed.length === 3 && admNamed.every((t) => MASK.test(t.trim())) && NO_NUMBER(await confirmText(adm.page))
+      && (await rowBoxes(adm.page)).every((b) => NO_NUMBER(b.label)),
+    admNamed.join(" | "));
+  await confirmShot(adm.page, vp.name, "u23-admin-masked", "Suppress 3 contacts?", "Permanent");
+  await cancelConfirm(adm.page); // ⛔ never confirmed
+  // A reader's withdrawal result carries the split that GROWTH's did not — on the same newest row, already withdrawn.
+  await openContacts(adm.page);
+  const admFirstId = await attrOf(adm.page, "[data-contact-row] a[data-edit-contact]", "data-edit-contact");
+  await tickRow(adm.page, 0);
+  await pressBulk(adm.page, "withdraw");
+  await waitForConfirm(adm.page);
+  await confirmButton(adm.page, "Record 1").click();
+  const adminWithdrew = await toastLine(adm.page, "Withdrawal recorded", /^\d+ withdrawals? recorded · \d+ already withdrawn$/);
+  ok(`${vp.name} · U23 ADMIN WITHDRAW · a reader is told the split${admFirstId === firstId ? ` — and the row GROWTH just withdrew reads "0 withdrawals recorded · 1 already withdrawn"` : ""}`,
+    admFirstId === firstId ? adminWithdrew === "0 withdrawals recorded · 1 already withdrawn" : /^\d+ withdrawals? recorded · \d+ already withdrawn$/.test(adminWithdrew),
+    `"${adminWithdrew}" · ${admFirstId} vs ${firstId}`);
+  await adm.ctx.close();
+  await ctx.close();
+}
+
+// ── U23 · reduced motion, at the narrow width — the confirmation and the overlay ──
+{
+  console.log(`\n[u23] prefers-reduced-motion: reduce (360x780)`);
+  const { ctx, page } = await staffCtx("GROWTH", "+255700002010", { width: 360, height: 780 }, "reduce");
+  ok("reduced-motion · U23 · the context really is reduced-motion", await page.evaluate(() => window.matchMedia("(prefers-reduced-motion: reduce)").matches));
+  await openContacts(page);
+  await tickRow(page, 0);
+  await pressBulk(page, "remove");
+  await waitForConfirm(page);
+  await confirmShot(page, "360x780", "u23-reduced-confirm", "Remove 1 contact from the book?", "consent and stop records are kept");
+  await textButton(page, ALERT, "Cancel").click().catch(() => {});
+  await wait(60);
+  ok("reduced-motion · U23 · Cancel closes the confirmation at once — no exit beat held", (await page.locator(ALERT).count()) === 0);
+  await pressBulk(page, "tag");
+  await waitForParam(page, "tag");
+  await tagBox(page).fill("u23rm");
+  await continueParam(page);
+  await waitForConfirm(page);
+  const rmHold = await holdNextAction(page);
+  await confirmButton(page, "Tag 1").click();
+  await overlayNamed(page, "Tagging 1 contact…").first().waitFor({ timeout: 15000 }).catch(() => {});
+  ok(`reduced-motion · U23 · the overlay names the run, "Tagging 1 contact…"`, rmHold.caught() && (await overlayNamed(page, "Tagging 1 contact…").count()) === 1);
+  await page.screenshot({ path: join(SHOTS, "360x780-u23-reduced-acting.png") });
+  await rmHold.release();
+  const rmLine = await toastLine(page, "Tagged", /^\d+ tagged · \d+ already had it$/);
+  ok("reduced-motion · U23 · released, the toast carries the server's count", rmLine === "1 tagged · 0 already had it", `"${rmLine}"`);
   await ctx.close();
 }
 

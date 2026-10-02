@@ -73,6 +73,8 @@ import type {
   ContactEditPatch,
   ContactEditGuard,
   ContactCasResult,
+  ContactBulkStamp,
+  ContactBulkCount,
   ContactPageQuery,
   ContactPage,
   ContactBookSummary,
@@ -286,6 +288,10 @@ function toPrismaContactWhere(w: ContactAudienceWhere): Prisma.MarketingContactW
   if (w.excludeSourceRef !== null) and.push({ OR: [{ sourceRef: null }, { sourceRef: { not: w.excludeSourceRef } }] });
   return { AND: and };
 }
+
+/** U23 · how many rows one bulk statement reads or writes at a time: a book of 150,000 is about thirty round trips per
+ *  bulk write — never one read holding the whole book in memory, never one statement per row. */
+const CONTACT_BULK_CHUNK = 5000;
 
 /** ContactList row -> StoredContactList (marketing U18). */
 type ContactListRow = {
@@ -3755,6 +3761,122 @@ export const prismaDb = {
       return rows.map(toStoredMarketingContact);
     },
     count: async (): Promise<number> => pc().marketingContact.count(),
+    /* ═══ U23 · THE BULK WRITES — set-based, through the ONE translation (`toPrismaContactWhere`) ═══════════════
+     * ⭐ Each reads the audience where the resolver counts (`contactAudienceWrites`, audience.ts — the only caller), so
+     * the erased tombstone is in no bulk and a where SQL cannot express (null) writes NOTHING. Rows are found as a KEYSET
+     * on id, bounded by `CONTACT_BULK_CHUNK` and never `skip`, and each chunk is ONE statement. The memory twin mirrors
+     * each one; `test:dal-parity` §23 holds the pairs. */
+    /** U23 · TAG every row the audience holds. The rows lacking the tag are walked, and each chunk is ONE update that
+     *  re-checks, row by row, that the tag is still absent and the row holds fewer than `maxTags` (decision C11) — so a
+     *  row tagged meanwhile is not tagged twice and none passes the limit. ⚠️ Raw SQL because Prisma's where cannot count
+     *  an array. The stamp is the caller's ISO `at` cast to the column's `timestamptz` — never the database clock — so
+     *  both twins write one instant (decision C25). */
+    tagWhere: async (w: ContactAudienceWhere, tag: string, maxTags: number, stamp: ContactBulkStamp): Promise<ContactBulkCount> => {
+      const out: ContactBulkCount = { matched: 0, changed: 0, unchanged: 0, full: 0 };
+      const where = toPrismaContactWhere(w);
+      if (where === null) return out;
+      out.matched = await pc().marketingContact.count({ where });
+      let walked = 0;
+      let afterId: string | null = null;
+      for (;;) {
+        const lacking: Prisma.MarketingContactWhereInput[] = [where, { NOT: { tags: { has: tag } } }];
+        if (afterId !== null) lacking.push({ id: { gt: afterId } });
+        const ids = (await pc().marketingContact.findMany({
+          where: { AND: lacking }, select: { id: true }, orderBy: { id: "asc" }, take: CONTACT_BULK_CHUNK,
+        })).map((r) => r.id);
+        if (ids.length === 0) break;
+        walked += ids.length;
+        const written = await pc().$executeRaw`
+          update "MarketingContact"
+             set "tags" = array_append("tags", ${tag}::text), "updatedAt" = ${stamp.at}::timestamptz, "updatedBy" = ${stamp.by}::text
+           where "id" = any(${ids}::text[]) and not (${tag}::text = any("tags")) and cardinality("tags") < ${maxTags}::int`;
+        out.changed += written;
+        out.full += ids.length - written;
+        if (ids.length < CONTACT_BULK_CHUNK) break;
+        afterId = ids[ids.length - 1];
+      }
+      out.unchanged = Math.max(0, out.matched - walked);
+      return out;
+    },
+    /** U23 · UNTAG every row the audience holds: the rows carrying the tag are walked, and each chunk is ONE update that
+     *  re-checks the tag is still there (`array_remove` — Prisma has no pull). A row without it is UNCHANGED. */
+    untagWhere: async (w: ContactAudienceWhere, tag: string, stamp: ContactBulkStamp): Promise<ContactBulkCount> => {
+      const out: ContactBulkCount = { matched: 0, changed: 0, unchanged: 0, full: 0 };
+      const where = toPrismaContactWhere(w);
+      if (where === null) return out;
+      out.matched = await pc().marketingContact.count({ where });
+      let walked = 0;
+      let afterId: string | null = null;
+      for (;;) {
+        const carrying: Prisma.MarketingContactWhereInput[] = [where, { tags: { has: tag } }];
+        if (afterId !== null) carrying.push({ id: { gt: afterId } });
+        const ids = (await pc().marketingContact.findMany({
+          where: { AND: carrying }, select: { id: true }, orderBy: { id: "asc" }, take: CONTACT_BULK_CHUNK,
+        })).map((r) => r.id);
+        if (ids.length === 0) break;
+        walked += ids.length;
+        out.changed += await pc().$executeRaw`
+          update "MarketingContact"
+             set "tags" = array_remove("tags", ${tag}::text), "updatedAt" = ${stamp.at}::timestamptz, "updatedBy" = ${stamp.by}::text
+           where "id" = any(${ids}::text[]) and ${tag}::text = any("tags")`;
+        if (ids.length < CONTACT_BULK_CHUNK) break;
+        afterId = ids[ids.length - 1];
+      }
+      out.unchanged = Math.max(0, out.matched - walked);
+      return out;
+    },
+    /** U23 · ADD every row the audience holds to ONE list: walked as a keyset, each chunk ONE `createMany` with
+     *  `skipDuplicates` — a member already on the list keeps its ORIGINAL `addedAt` (the compound key is the only unique,
+     *  so the untargeted ON CONFLICT is exact), and nothing is ever upserted. ⛔ A list that does not exist is refused
+     *  before anything is written, as the memory twin refuses it. 🔴 A contact removed between the read and the insert
+     *  fails the whole statement on its foreign key (P2003): that chunk is retried one row at a time, and a row that is
+     *  gone is not added — counted in neither `changed` nor `unchanged`. */
+    addWhere: async (w: ContactAudienceWhere, listId: string, stamp: ContactBulkStamp): Promise<ContactBulkCount> => {
+      const out: ContactBulkCount = { matched: 0, changed: 0, unchanged: 0, full: 0 };
+      const list = await pc().contactList.findUnique({ where: { id: listId }, select: { id: true } });
+      if (!list) throw new Error("addWhere: no such contact list (the foreign key)");
+      const where = toPrismaContactWhere(w);
+      if (where === null) return out;
+      let gone = 0;
+      let afterId: string | null = null;
+      for (;;) {
+        const ids = (await pc().marketingContact.findMany({
+          where: afterId === null ? where : { AND: [where, { id: { gt: afterId } }] },
+          select: { id: true }, orderBy: { id: "asc" }, take: CONTACT_BULK_CHUNK,
+        })).map((r) => r.id);
+        if (ids.length === 0) break;
+        out.matched += ids.length;
+        const rows = ids.map((contactId) => ({ listId, contactId, addedAt: new Date(stamp.at), addedBy: stamp.by }));
+        try {
+          out.changed += (await pc().contactListMember.createMany({ data: rows, skipDuplicates: true })).count;
+        } catch (err) {
+          if ((err as { code?: string })?.code !== "P2003") throw err;
+          for (const row of rows) {
+            try {
+              out.changed += (await pc().contactListMember.createMany({ data: [row], skipDuplicates: true })).count;
+            } catch (one) {
+              if ((one as { code?: string })?.code !== "P2003") throw one;
+              gone++;
+            }
+          }
+        }
+        if (ids.length < CONTACT_BULK_CHUNK) break;
+        afterId = ids[ids.length - 1];
+      }
+      out.unchanged = Math.max(0, out.matched - out.changed - gone);
+      return out;
+    },
+    /** U23 · REMOVE every row the audience holds — ONE `deleteMany` through the ONE translation. Postgres cascades the
+     *  memberships (`ContactListMember` onDelete: Cascade; the memory twin emulates it), and the consent ledger and the
+     *  stop list are keyed by NUMBER, so removing a book row never deletes evidence. */
+    removeWhere: async (w: ContactAudienceWhere): Promise<ContactBulkCount> => {
+      const out: ContactBulkCount = { matched: 0, changed: 0, unchanged: 0, full: 0 };
+      const where = toPrismaContactWhere(w);
+      if (where === null) return out;
+      out.matched = await pc().marketingContact.count({ where });
+      out.changed = (await pc().marketingContact.deleteMany({ where })).count;
+      return out;
+    },
   },
 
   contactList: {

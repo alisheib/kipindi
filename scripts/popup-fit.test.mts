@@ -174,6 +174,21 @@ const popups = all.filter((f) => IS_POPUP.test(code(f)));
  * 注册 / 登录), in a two-up row of equal tracks (`minmax(0, 1fr)`); `maxWidth` 440 is a MAX, and the Modal scrolls when
  * copy grows. PASSES. ⭐ `red:journey-shell` plants it off this record and proves 1.1's rule catches it (A13).
  */
+/*
+ * ── 2026-10-02 · +2: the contact book's two dialogs (marketing U22, U23), opened and judged like the record above.
+ *   · `admin/contacts/contact-form.tsx` — U22's add and edit dialog. It shipped in e4f04528 WITHOUT a line here, so §1.1
+ *     was red from that commit until this one (found while U23 added its own dialog beside it). No `truncate`, no
+ *     `line-clamp-*`, no `whitespace-nowrap`, no `text-ellipsis`, no maximum height, no `overflow-hidden`, no fixed height
+ *     on any text. Every sentence — a refusal, a hint, the consent statement — is a block that wraps; both `h2`s carry
+ *     `pr-8`; both footers are `flex-col-reverse sm:flex-row`; `maxWidth` 480/420 is a MAX. PASSES.
+ *   · `admin/contacts/contacts-bulk-bar.tsx` — U23's parameter dialog (one tag, or a list) and, through the kit's own
+ *     `ConfirmModal`, the confirmation. No `truncate`, no `line-clamp-*`, no `whitespace-nowrap`, no `text-ellipsis`, no
+ *     `overflow-hidden`, no fixed height on any text. The one bounded box is the confirmation's list of up to twenty
+ *     selected contacts: a 38vh maximum height WITH `overflow-y-auto`, so the list scrolls inside the dialog rather than
+ *     clipping (the resolver queue's confirmation is the precedent); each name sits in a `min-w-0 break-words` span and the
+ *     row wraps. The `h2` carries `pr-8`; the footer is `flex-col-reverse sm:flex-row`; `maxWidth` 440/520 is a MAX.
+ *     PASSES.
+ */
 const REVIEWED: readonly string[] = [
   "src/app/admin/affiliate/payable-switch.tsx",   // reviewed 2026-09-27
   "src/app/admin/agents/[id]/decision-rail.tsx",   // reviewed 2026-09-21
@@ -185,6 +200,8 @@ const REVIEWED: readonly string[] = [
   "src/app/admin/approvals/sof-review-client.tsx",
   "src/app/admin/bonuses/bonus-admin-client.tsx",
   "src/app/admin/candidates/candidate-actions.tsx",
+  "src/app/admin/contacts/contact-form.tsx",   // reviewed 2026-10-02 (U22, owed since e4f04528)
+  "src/app/admin/contacts/contacts-bulk-bar.tsx",   // reviewed 2026-10-02 (U23)
   "src/app/admin/desk/[id]/account-actions.tsx",   // reviewed 2026-09-21
   "src/app/admin/desk/stop-queued.tsx",   // reviewed 2026-09-21
   "src/app/admin/desk/switch-ceremony.tsx",   // reviewed 2026-09-21

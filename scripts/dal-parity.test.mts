@@ -1548,14 +1548,15 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
   // `test:marketing-consent-ledger` §9, with the pre-fix writer planted as its red case.
   // U18b (S10) joined: erasure appends the person's last word, WITHDRAWN, recorded by the officer.
   // U20 (S10): the dev-only seed route writes the ledger rows behind the contacts it seeds (404 in production).
+  // U23 (S10): the bulk bar's "Record a withdrawal" appends WITHDRAWN, source OPERATOR, recorded by the officer.
   const WRITERS = ["lib/server/marketing/consent-ledger.ts", "lib/server/marketing/optout-service.ts", "lib/server/marketing/erase.ts",
-    "app/api/dev-test/marketing-contacts-seed/route.ts"];
+    "app/api/dev-test/marketing-contacts-seed/route.ts", "lib/server/marketing/contact-bulk.ts"];
 
-  // ⛔ THE POPULATION, read from the REAL tree (not KP_SRC): a third writer that skips the clock
-  // would bring the coin flip back for whatever it writes. U23's bulk withdrawal and U33's consent
-  // basis will write here — each must join WRITERS and take the stamp. ⛔ U22's form does NOT: it has
-  // no consent control and writes no ledger row (a new contact's consent is MIRRORED from the ledger
-  // by `mirrorContactCache`, never recorded), so its service is deliberately absent from WRITERS.
+  // ⛔ THE POPULATION, read from the REAL tree (not KP_SRC): a writer that skips the clock would bring
+  // the coin flip back for whatever it writes. U23's bulk withdrawal joined (`contact-bulk.ts`); U33's
+  // consent basis will write here too — it must join WRITERS and take the stamp. ⛔ U22's form does NOT:
+  // it has no consent control and writes no ledger row (a new contact's consent is MIRRORED from the
+  // ledger by `mirrorContactCache`, never recorded), so its service is deliberately absent from WRITERS.
   const walk = (dir: string): string[] => readdirSync(dir, { withFileTypes: true }).flatMap((e) =>
     e.isDirectory() ? walk(join(dir, e.name)) : /\.(ts|tsx)$/.test(e.name) ? [join(dir, e.name)] : []);
   const srcRoot = join(ROOT, "src");
@@ -1804,6 +1805,145 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
       && !PATCH_SPREAD.test("  tags: [...patch.tags],"));
   ok("22.c6 · CONTROL · a Prisma data block without the explicit stamp FAILS 22.at's matcher",
     !PRI_AT.test("data: {\n  displayName: patch.displayName,\n},"));
+}
+
+/* ═══ §23 · The bulk where-methods — set-based, through the ONE translator, in both twins (U23, S10 2026-10-02; decision C7) ═══ */
+{
+  // ⭐ WHY THIS SECTION EXISTS. U23's bulk bar tags, untags, lists and removes a whole audience in SET-BASED store writes —
+  // `tagWhere`, `untagWhere`, `addWhere`, `removeWhere` — over the where `contactAudience` counts (reached only through
+  // `contactAudienceWrites`, audience.ts). Every behavioural suite runs on the memory twin, so a Prisma member that forgot
+  // the translator, the audience, the 20-tag cap or `skipDuplicates`, or a memory remove that forgot what Postgres's
+  // cascade does for it, is right in every test and wrong in production — U18b's class, a memory index not maintained.
+  // The behaviour — counts, the cascade, the freed index, the kept addedAt — is `test:contacts-bulk`, executed on the
+  // memory twin with its own red plants; this section holds the TWO twins to one shape.
+  const BULK = ["tagWhere", "untagWhere", "addWhere", "removeWhere"];
+  const memBlock = region(storeSrc, "\n  marketingContact: {");
+  const priBlock = region(dalSrc, "\n  marketingContact: {");
+  /** One member's text in a twin's block: from `\n    <name>: ` to the next member at the same indent. */
+  const memberAt = (block: string, name: string): string => {
+    const at = block.indexOf(`\n    ${name}: `);
+    if (at < 0) return "";
+    const next = block.slice(at + 1).search(/\n {4}\w+\s*:/);
+    return next < 0 ? block.slice(at) : block.slice(at, at + 1 + next);
+  };
+  const mem = Object.fromEntries(BULK.map((m) => [m, memberAt(memBlock, m)])) as Record<string, string>;
+  const pri = Object.fromEntries(BULK.map((m) => [m, memberAt(priBlock, m)])) as Record<string, string>;
+
+  ok("23.0 · both twins implement tagWhere, untagWhere, addWhere and removeWhere on the contact book",
+    BULK.every((m) => mem[m].length > 80 && pri[m].length > 80),
+    BULK.map((m) => `${m} ${mem[m].length}/${pri[m].length}`).join(" · "));
+
+  // ── ONE TRANSLATOR, AND ITS NULL ──
+  const memRouted = BULK.filter((m) => /for \(const c of contactsMatching\(w\)\)/.test(mem[m]));
+  const priRouted = BULK.filter((m) => /const where = toPrismaContactWhere\(w\);\s*if \(where === null\) return out;/.test(pri[m]));
+  ok("23.route · every bulk member reads its rows through the ONE translator in each twin — contactsMatching in memory, toPrismaContactWhere in Prisma, whose null (a name SQL cannot express) writes NOTHING",
+    memRouted.length === BULK.length && priRouted.length === BULK.length, `memory [${memRouted}] prisma [${priRouted}]`);
+
+  // ── ⛔ THE AUDIENCE BOUNDS EVERY PRISMA WRITE — a walk or a delete that dropped `where` would act on the whole book ──
+  const SCOPE: Record<string, RegExp> = {
+    tagWhere: /\[where, \{ NOT: \{ tags: \{ has: tag \} \} \}\]/,
+    untagWhere: /\[where, \{ tags: \{ has: tag \} \}\]/,
+    addWhere: /where: afterId === null \? where : \{ AND: \[where, \{ id: \{ gt: afterId \} \}\] \}/,
+    removeWhere: /deleteMany\(\{ where \}\)/,
+  };
+  const unscoped = BULK.filter((m) => !SCOPE[m].test(pri[m]));
+  ok("23.scope.prisma · ⛔ each Prisma bulk member walks or deletes only INSIDE the translated where — never every row that carries a tag, never the whole book",
+    unscoped.length === 0, `unscoped [${unscoped}]`);
+
+  // ── THE NAMED TYPES ──
+  const SIG_MEM: Record<string, RegExp> = {
+    tagWhere: /tagWhere: \(w: ContactAudienceWhere, tag: string, maxTags: number, stamp: ContactBulkStamp\): ContactBulkCount =>/,
+    untagWhere: /untagWhere: \(w: ContactAudienceWhere, tag: string, stamp: ContactBulkStamp\): ContactBulkCount =>/,
+    addWhere: /addWhere: \(w: ContactAudienceWhere, listId: string, stamp: ContactBulkStamp\): ContactBulkCount =>/,
+    removeWhere: /removeWhere: \(w: ContactAudienceWhere\): ContactBulkCount =>/,
+  };
+  const SIG_PRI: Record<string, RegExp> = {
+    tagWhere: /tagWhere: async \(w: ContactAudienceWhere, tag: string, maxTags: number, stamp: ContactBulkStamp\): Promise<ContactBulkCount> =>/,
+    untagWhere: /untagWhere: async \(w: ContactAudienceWhere, tag: string, stamp: ContactBulkStamp\): Promise<ContactBulkCount> =>/,
+    addWhere: /addWhere: async \(w: ContactAudienceWhere, listId: string, stamp: ContactBulkStamp\): Promise<ContactBulkCount> =>/,
+    removeWhere: /removeWhere: async \(w: ContactAudienceWhere\): Promise<ContactBulkCount> =>/,
+  };
+  const storeImport = dalSrc.slice(0, Math.max(0, dalSrc.indexOf("} from \"./store\";")));
+  const named = BULK.filter((m) => SIG_MEM[m].test(mem[m]) && SIG_PRI[m].test(pri[m]));
+  ok("23.named · all four signatures use the NAMED ContactAudienceWhere, ContactBulkStamp and ContactBulkCount (never an inline literal) — exported by store.ts, imported by prisma-dal.ts",
+    named.length === BULK.length && /export type ContactBulkStamp = \{/.test(storeSrc) && /export type ContactBulkCount = \{/.test(storeSrc)
+      && /\bContactBulkStamp,/.test(storeImport) && /\bContactBulkCount,/.test(storeImport),
+    `named [${named}]`);
+  const COUNT_KEYS = ["matched", "changed", "unchanged", "full"];
+  const STAMP_KEYS = ["at", "by"];
+  ok("23.count · ContactBulkCount is EXACTLY matched, changed, unchanged, full, and ContactBulkStamp EXACTLY at, by — the store counts, and nothing else rides along",
+    sameSet(storedKeys("ContactBulkCount"), COUNT_KEYS) && sameSet(storedKeys("ContactBulkStamp"), STAMP_KEYS),
+    `${setDiff(COUNT_KEYS, storedKeys("ContactBulkCount")) || storedKeys("ContactBulkCount").join(",")} | ${storedKeys("ContactBulkStamp").join(",")}`);
+
+  // ── TAG: a carried tag is unchanged, the cap is kept, the caller stamps — in BOTH ──
+  const memTagOrder = mem.tagWhere.indexOf("if (c.tags.includes(tag)) { out.unchanged++; continue; }");
+  const memCapAt = mem.tagWhere.indexOf("if (c.tags.length >= maxTags) { out.full++; continue; }");
+  ok("23.tag.memory · the memory tag leaves a carrier UNCHANGED, refuses a row at maxTags as FULL (C11), appends once and stamps the caller's at and by",
+    memTagOrder > 0 && memCapAt > memTagOrder && mem.tagWhere.includes("tags: [...c.tags, tag], updatedAt: stamp.at, updatedBy: stamp.by"),
+    `${memTagOrder}/${memCapAt}`);
+  ok("23.tag.prisma · the Prisma tag walks only rows lacking the tag and writes ONE statement per chunk that re-checks the tag is absent AND the row holds fewer than maxTags, stamping the caller's at and by",
+    pri.tagWhere.includes('array_append("tags", ${tag}::text)') && pri.tagWhere.includes('not (${tag}::text = any("tags"))')
+      && pri.tagWhere.includes('cardinality("tags") < ${maxTags}::int')
+      && pri.tagWhere.includes('"updatedAt" = ${stamp.at}::timestamptz') && pri.tagWhere.includes('"updatedBy" = ${stamp.by}::text'),
+    `${pri.tagWhere.length} chars`);
+
+  // ── UNTAG ──
+  ok("23.untag · the untag changes only carriers, in both twins: the memory twin filters the one tag and stamps; the Prisma twin array_removes it with the carrier re-checked in the same statement",
+    mem.untagWhere.includes("if (!c.tags.includes(tag)) { out.unchanged++; continue; }")
+      && mem.untagWhere.includes("tags: c.tags.filter((t) => t !== tag), updatedAt: stamp.at, updatedBy: stamp.by")
+      && pri.untagWhere.includes('array_remove("tags", ${tag}::text)') && pri.untagWhere.includes('and ${tag}::text = any("tags")')
+      && pri.untagWhere.includes('"updatedAt" = ${stamp.at}::timestamptz'),
+    `${mem.untagWhere.length}/${pri.untagWhere.length} chars`);
+
+  // ── ADD TO A LIST: an existing member keeps its addedAt; a list that does not exist is refused ──
+  const memHasAt = mem.addWhere.indexOf("if (store.contactListMembers.has(k)) { out.unchanged++; continue; }");
+  const memSetAt = mem.addWhere.indexOf("store.contactListMembers.set(k,");
+  ok("23.add.memory · the memory add keeps an existing member UNTOUCHED (its original addedAt) — asked BEFORE it writes — stamps a new one with the caller's at, and refuses a list that does not exist, as the foreign key does",
+    memHasAt > 0 && memSetAt > memHasAt && mem.addWhere.includes("addedAt: stamp.at, addedBy: stamp.by")
+      && /if \(!store\.contactLists\.has\(listId\)\) throw/.test(mem.addWhere),
+    `${memHasAt}/${memSetAt}`);
+  ok("23.add.prisma · the Prisma add is createMany with skipDuplicates (never an upsert, so an existing member keeps its addedAt), refuses a missing list first, and retries a chunk one row at a time on P2003",
+    pri.addWhere.includes("createMany({ data: rows, skipDuplicates: true })") && !/\bupsert\b/.test(pri.addWhere)
+      && /contactList\.findUnique\(\{ where: \{ id: listId \}/.test(pri.addWhere) && /if \(!list\) throw/.test(pri.addWhere)
+      && /"P2003"/.test(pri.addWhere) && pri.addWhere.includes("createMany({ data: [row], skipDuplicates: true })")
+      && pri.addWhere.includes("addedAt: new Date(stamp.at), addedBy: stamp.by"),
+    `${pri.addWhere.length} chars`);
+
+  // ── REMOVE: the cascade and the index, emulated in memory; evidence untouched in both ──
+  ok("23.remove.memory.cascade · ⛔ the memory remove deletes the removed contact's list memberships — what Postgres's ON DELETE CASCADE does for the other twin",
+    mem.removeWhere.includes("for (const [k, m] of store.contactListMembers) if (m.contactId === c.id) store.contactListMembers.delete(k);"),
+    `${mem.removeWhere.length} chars`);
+  ok("23.remove.memory.index · ⛔ the memory remove deletes the row AND frees the unique index it held (only while it still points at that row), so the number can be added again",
+    mem.removeWhere.includes("store.marketingContacts.delete(c.id)")
+      && mem.removeWhere.includes("if (store.contactsByMsisdn.get(c.msisdn) === c.id) store.contactsByMsisdn.delete(c.msisdn);"),
+    `${mem.removeWhere.length} chars`);
+  const EVIDENCE = /\b(?:suppressions?|messagingConsents?)\b/;
+  ok("23.remove.evidence · ⛔ neither twin's remove touches the consent ledger or the stop list — they are keyed by NUMBER, and removing a book row never deletes evidence",
+    !EVIDENCE.test(mem.removeWhere) && !EVIDENCE.test(pri.removeWhere) && /deleteMany\(\{ where \}\)/.test(pri.removeWhere),
+    `${(EVIDENCE.exec(mem.removeWhere) ?? EVIDENCE.exec(pri.removeWhere) ?? [""])[0]}`);
+
+  // ── THE WINDOW: every Prisma walk is a bounded keyset on id ──
+  const walks = ["tagWhere", "untagWhere", "addWhere"];
+  const unbounded = walks.filter((m) => !(pri[m].includes("take: CONTACT_BULK_CHUNK") && pri[m].includes('orderBy: { id: "asc" }')
+    && /id: \{ gt: afterId \}/.test(pri[m]) && !/\bskip\b/.test(pri[m])));
+  ok("23.window · every Prisma bulk walk is a KEYSET on id — `take` bounded by CONTACT_BULK_CHUNK, ordered by id, `gt` the cursor, never `skip`",
+    unbounded.length === 0 && /const CONTACT_BULK_CHUNK = \d+;/.test(dalSrc), `unbounded [${unbounded}]`);
+
+  // ── CONTROLS ─────────────────────────────────────────────────────────────────────────
+  // ⛔ Each proves the ASSERTION ABOVE IT can reject, on a literal that would otherwise pass.
+  const plantedCount = storeSrc.replace("export type ContactBulkCount = {", "export type ContactBulkCount = {\n  plantedKey: number;");
+  ok("23.c1 · CONTROL · a key PLANTED in ContactBulkCount is seen by the parser and fails 23.count's exact set",
+    storedKeys("ContactBulkCount", plantedCount).includes("plantedKey") && !sameSet(storedKeys("ContactBulkCount", plantedCount), COUNT_KEYS));
+  ok("23.c2 · CONTROL · a memory remove without the cascade line FAILS 23.remove.memory.cascade's needle",
+    !"for (const c of contactsMatching(w)) { store.marketingContacts.delete(c.id); }".includes("for (const [k, m] of store.contactListMembers) if (m.contactId === c.id) store.contactListMembers.delete(k);"));
+  ok("23.c3 · CONTROL · a Prisma tag statement without the cap FAILS 23.tag.prisma's needle",
+    !'update "MarketingContact" set "tags" = array_append("tags", ${tag}::text) where "id" = any(${ids}::text[])'.includes('cardinality("tags") < ${maxTags}::int'));
+  ok("23.c4 · CONTROL · an upsert in the Prisma add IS seen, and a createMany without skipDuplicates fails the needle",
+    /\bupsert\b/.test("await pc().contactListMember.upsert({ where, create, update: {} });")
+      && !"createMany({ data: rows })".includes("createMany({ data: rows, skipDuplicates: true })"));
+  ok("23.c5 · CONTROL · a member that builds an inline where — not the translator — FAILS 23.route's matcher, and a walk without the audience FAILS 23.scope's",
+    !/const where = toPrismaContactWhere\(w\);\s*if \(where === null\) return out;/.test("const where = { msisdn: w.msisdn };\n      if (where === null) return out;")
+      && !SCOPE.untagWhere.test("const carrying: Prisma.MarketingContactWhereInput[] = [{ tags: { has: tag } }];"));
 }
 
 console.log(`\ndal-parity: ${pass} passed, ${fail} failed`);
