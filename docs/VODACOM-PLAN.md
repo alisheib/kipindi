@@ -24,7 +24,7 @@ S4 (the Claude Design pass) is ✅: all eleven brief items are on the Design can
 are applied (canvas v16, 102 boards), BRIEF.md is filed, and choices 2A/3A were adopted when Ali said "proceed"
 (§0g). S6 (the flagged shell) is next. Ali is away: every call made meanwhile is a numbered point in §0h.
 
-**Next:** (1) S6, the flagged shell — the build plan is
+**Next:** (1) S6, the flagged shell — resume at §0i "⏸ S6 STOPPED HERE"; the build plan is
 `docs/design-system/v5-2026-09-29-simplified-journey/S6-PLAN.md`, status §0i; start at its amendment A0, then WP0; (2) on the days after the deploy, read
 the first totals with `qa:journey-funnel` (read-only) — when counts appear daily, S3b is ✅ and the baseline runs to
 2026-10-15 at the earliest. In parallel: an officer approves the S2 short titles; Ali presses S1's preview switch.
@@ -199,9 +199,20 @@ WP6b the swap + census + header-fit → WP7 overlays → WP8 short titles on pos
   `house-bot-disclosure` (the D19a published-words pin, green once on main — re-run on the pushed tree: green, with
   typecheck, i18n, journey-shell, wallet-reach, feedback-law and simple-journey-flag). `red:tap-rung` refuses to run
   while the pre-existing `tap-target` red stands; `red:journey-shell` catches 55/55.
-- **Next:** WP5 (the Akaunti hub) and WP6a (header, tabs, guest sheet) are drafted and under review; then WP6b — the
-  swap — after which the parity baseline is re-captured from the pre-S6 parent on main (A18), because the marketing lane's
-  commits now sit between the baseline and S6.
+- **WP5 + WP6a ✅ pushed `cbbe360f`** (the Akaunti hub; the journey header, tabs and guest sheet — built, not
+  mounted): parity 27/27 — classic /account changes exactly as named (`account-streams-200`, `account-robots-noindex`,
+  32/32 cells each), nothing else; `red:journey-account` 47/47.
+- **A8 (live fix for every player) pushed 2026-10-02** — the free-sell countdown reads each market's frozen grace from
+  the server (`test:sell-grace-truth` + red 22 plants, cash-out/house-bot seam suites green). ⚠️ Pushed at Ali's request
+  to end the session while its full `test:all` re-run (after a rebase over 42 marketing commits) was still running:
+  the next session reads `scratchpad/s6/testall-a8b.log` (session 0cb4430f) or re-runs `test:all`, and confirms the
+  deploy (`?dpl=`) and the served bundle.
+- **⏸ S6 STOPPED HERE (2026-10-02) — resume:** WP8 (short titles on the position projection) is staged and dry-runs
+  clean on top of A8 (`scratchpad/s6/WP8.json`); WP6b (the swap + the reachability census + the header-fit gate)
+  must be RE-DRAFTED — its draft was cut off by a session restart and is not trustworthy. Then WP7, WP9, WP10,
+  WP11, WP12 (S6-PLAN.md). Before WP6b's parity compare, re-capture the baseline from the pre-S6 parent on main (A18).
+  Method and tools: memory `project_kipindi_vodacom_plan` (staged change sets, `apply_changeset.py`, `run-gates.sh`,
+  `run-parity.sh`).
 - **WP0 parity harness — `npm run qa:classic-shell-parity`** (written, not yet run; local in-memory server only). Four
   viewers (guest, demo player, held, unconfirmed email) × en/sw × 360/768/1024/1280 × `/`, `/markets`, `/positions`,
   `/wallet`, `/profile`, `/account` and an unmatched control path. Per cell: header, rail, shell footer and email bar
@@ -250,10 +261,12 @@ here, with how to overrule it. Newest last; nothing here blocks the work.
 2. **The panel's rule changes are adopted** (§0g): no number on an over-100× card; the "bet TZS 2,000 instead"
    button shows its own estimate; after a deposit the loss limit is explained, never pre-filled; Akaunti gets a
    Pumzika / Jizuie row above invites. Overrule: say which one.
-3. **A native Swahili speaker must check** the new wording and the corrections to live words (list in
-   `S4-COPY-AUDIT.md`, e.g. "Lipo" → "Malipo"). Needed before S15 (the flip). Who should do it?
-4. **Still yours from before:** press "Turn my preview on" (S1, §0b); an officer approves the short-title drafts in
-   /admin (S2, §0d).
+3. **The Swahili review is Claude's** (Ali, 2026-10-02: "you will be the Swahili speaker"). Every drafted string and
+   every correction to a live word (`S4-COPY-AUDIT.md`, e.g. "Lipo" → "Malipo") is reviewed and signed off in that
+   file by the session that ships it; corrections to words players see today ship with S12, never earlier.
+4. **Nothing is turned on until the whole Vodacom plan is done** (Ali, 2026-10-02) — not his preview, not the
+   journey. S1's done-when ("staff see a preview marker on production") therefore waits for S14; until then every
+   new screen is verified on a local server, and production is checked only for "nothing changed for players".
 5. **To confirm with finance:** a payment that lands during a break is returned "within 3 working days" on the
    canvas — the real period comes from wallet-service.
 6. **S6 header height stays 56 px** (the kit's bar), not the canvas's 64: the board's sticky filter bar, the panels
@@ -269,8 +282,8 @@ here, with how to overrule it. Newest last; nothing here blocks the work.
     is corrected to match.
 11. **Tiketi zangu for preview viewers** keeps the ticket number and all 7 filters, and drops the share button, the
     profit strip, the yes/no bar, search and sort (shelved, not deleted).
-12. **Checking the new shell on 50pick.tz needs your staff preview** (point 4). Until then it is verified locally, and on
-    production I prove only that nothing changed for players.
+12. **The new shell is verified locally** (point 4: no preview on production before the plan is done); on production
+    each push proves only that nothing changed for players.
 13. **Two live fixes for every player, each in its own commit:** the "away" summary's link now opens settled tickets
     (it opened all); the sell-back countdown reads each market's own free window from the server instead of a fixed
     5 minutes (a money-truth fix). With it goes the button's own check on the phone's clock ("closes in more than five
@@ -296,6 +309,11 @@ here, with how to overrule it. Newest last; nothing here blocks the work.
     languages, fits on one line, and from 360 px all four do. Below 360 the four tab icons then line up from the top
     so the two-line tab does not sit higher than the rest. Measured from the font's widths, not yet on a phone: WP6b's
     320 px check confirms it. Overrule: say so, and the label keeps one line and ends in "…" as the classic rail's do.
+19. **The S2 short-title approvals** (Ali, 2026-10-02: "you please approve those"). Claude reviews every drafted
+    short title (as the Swahili reviewer) and approves them in /admin — which needs an officer login on 50pick.tz:
+    Ali's admin is never re-minted and signing in with it signs him out everywhere. Waiting on Ali: a staff account
+    for Claude (any officer role with the approve permission), or Ali approves after Claude's review list.
+
 
 ## §0g · S4 (2026-10-01) — the Design canvas: all eleven items drawn, the panel's findings applied; waiting on Ali
 
