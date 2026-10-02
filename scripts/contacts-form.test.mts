@@ -37,7 +37,7 @@ import { db } from "../src/lib/server/store.ts";
 import type { StoredMarketingContact, StoredUser, MessagingKey } from "../src/lib/server/store.ts";
 import { audit, auditFlush, getAuditPage } from "../src/lib/server/audit.ts";
 import { mayReceiveMarketingSms } from "../src/lib/server/marketing/consent.ts";
-import { contactNumberVerdict, contactOperatorChip, contactTypingLine } from "../src/lib/contacts/contact-number.ts";
+import { contactNumberVerdict, contactOperatorChip, contactTypingLine, governingPaste } from "../src/lib/contacts/contact-number.ts";
 import {
   addContact, editContact, lookupContactNumber, contactAddReply, newContactRow, findEditableContact,
   CONTACT_DUPLICATE, CONTACT_ERASED, CONTACT_MISSING, CONTACT_STALE,
@@ -99,6 +99,8 @@ for (const f of walkSrc(SRC)) {
 
 type Impl = {
   verdict: typeof contactNumberVerdict;
+  /** The U22 review · which text governs after a paste. */
+  paste: typeof governingPaste;
   add: typeof addContact;
   edit: typeof editContact;
   lookup: typeof lookupContactNumber;
@@ -108,7 +110,7 @@ type Impl = {
   sources: Sources;
 };
 const REAL: Impl = {
-  verdict: contactNumberVerdict, add: addContact, edit: editContact, lookup: lookupContactNumber,
+  verdict: contactNumberVerdict, paste: governingPaste, add: addContact, edit: editContact, lookup: lookupContactNumber,
   reply: contactAddReply, editLoad: loadContactEdit, href: contactsHref, sources: REAL_SOURCES,
 };
 
@@ -286,6 +288,7 @@ const L = {
   v3: "1.3 · ⛔ 064 is refused at TWO digits, with the very sentence parseTzNumber gives every 064 number",
   v4: "1.4 · no refusal while typing: a short mobile number reads \"N of 9 digits\" until the field is settled, then parseTzNumber's too-short sentence",
   v5: "1.5 · ⭐ a paste is judged BEFORE truncation: a pasted +254… is refused as foreign, never called a Mbeya landline (CONTROL: the truncated digits alone read as one)",
+  v5b: "1.5b · ⛔ a paste MERGED into digits already in the box never governs — the box's own number is what the lookup and the save get — while a paste that made the whole field still does (the U22 review)",
   v6: "1.6 · the four spellings of one number give one verdict: the same stage, digits, chip and sentence",
   v7: "1.7 · every refusal is a person's sentence: non-empty, ending in a full stop, never a code",
   c1: "2.1 · ⭐ THE FORM RECORDS NO CONSENT: a new number reads UNKNOWN, the ledger gains ZERO rows, and the send gate refuses it no_consent (EXECUTED)",
@@ -315,6 +318,7 @@ const L = {
   s3: "6.3 · ⛔ every field re-typed: the actions name each field (text(body.x)) — never a spread of what the browser sent — and only a landed change revalidates the list",
   s4: "6.4 · ⛔ NO CONSENT CONTROL: the form states \"Not recorded\" and the form's sentence, has no consent input of any kind, and neither request carries a consent key",
   s5: "6.5 · ⛔ NO SAVE ANYWAY: one save path per mode, no \"anyway\" anywhere, Save disabled on a duplicate or an erased number, and the duplicate offers only the existing contact's link through contactsHref",
+  s6b: "6.6b · ⛔ the dialog obeys the act gate too — Save and the email toggle are disabled for a view-only officer, each with the reason (the U22 review)",
   s6: "6.6 · the form is an act control and never names a number or an email: useMayAct and useActDisabledReason disable Add contact WITH the reason, the form is noValidate, no msisdn token and no .email accessor",
   s7: "6.7 · the page: Add contact in the head's actions, the dialog's number and email only through <Sensitive> slots, the close link the ONE builder without edit, the list's two c.msisdn reads unchanged",
   s8: "6.8 · ⛔ C9/M12 · edit never travels: the open link carries every filter and the sort into ?edit=, and the close link, the pager's base, SortTh's params and Clear filters all drop it (EXECUTED)",
@@ -367,6 +371,14 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
       return [paste.stage === "refused" && paste.verdict === "foreign" && (paste.sentence ?? "").includes("+254") && !(paste.sentence ?? "").includes("Mbeya")
         && control.verdict === "landline" && (control.sentence ?? "").includes("Mbeya"),
         `paste ${paste.verdict}: ${paste.sentence} | control ${control.verdict}`];
+    });
+    await check(p(L.v5b), () => {
+      const whole = impl.paste("+254712345678", "254712345"); // an empty box: the paste made the field
+      const merged = impl.paste("+255 755 000 111", "712345678"); // the box held 712 345 678 — the paste merged, capped at 9
+      const tail = impl.paste("12 345 678", "712345678"); // typed 7, then pasted the rest: the box is whole, the paste is not
+      const none = impl.paste(null, "712345678");
+      return [whole === "+254712345678" && merged === null && tail === null && none === null,
+        `whole ${whole} · merged ${merged} · tail ${tail} · none ${none}`];
     });
     await check(p(L.v6), () => {
       const spell = ["0712 345 678", "712345678", "+255712345678", "255712345678"].map((s) => impl.verdict({ value: s }));
@@ -695,6 +707,12 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
       && !/msisdn/i.test(form) && !/\.email\b/.test(form) && form.startsWith("\"use client\";"),
       `msisdn ${/msisdn/i.test(form)} · .email ${/\.email\b/.test(form)}`];
   });
+  await check(p(L.s6b), () => {
+    const form = src.form;
+    return [(form.match(/\buseMayAct\(\)/g) ?? []).length >= 2 && /const canSave = !pending && mayAct && /.test(form)
+      && /disabled=\{pending \|\| !mayAct\}/.test(form) && /disabled=\{!canSave\}[^>]*title=\{mayAct \? undefined : actReason\}/.test(form),
+      `useMayAct ×${(form.match(/\buseMayAct\(\)/g) ?? []).length} · canSave gated ${/const canSave = !pending && mayAct && /.test(form)}`];
+  });
   await check(p(L.s7), () => {
     const page = src.page;
     return [/actions=\{<AddContactButton hrefParams=\{linkSp\} editOpen=\{editLoad !== null\} \/>\}/.test(page)
@@ -984,6 +1002,16 @@ if (!PROVE_RED) {
       name: "the paste judged after truncation — a Kenyan number called a Mbeya landline",
       expect: L.v5,
       impl: { ...REAL, verdict: (input) => contactNumberVerdict({ ...input, pasted: null }) },
+    },
+    {
+      name: "the U22 review · a paste always governs — the clipboard text is saved though the box shows a merged number",
+      expect: L.v5b,
+      impl: { ...REAL, paste: (paste) => paste },
+    },
+    {
+      name: "the U22 review · the dialog's Save forgets the act gate — a view-only officer presses it into a refusal",
+      expect: L.s6b,
+      impl: { ...REAL, sources: { ...REAL.sources, form: REAL.sources.form.replace("const canSave = !pending && mayAct && ", "const canSave = !pending && ") } },
     },
     {
       name: "the row linked to the player who holds the number — the Player chip on a row GROWTH typed",

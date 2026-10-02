@@ -80,6 +80,17 @@ export function contactOperatorChip(digits: string): ContactOperatorChip | null 
  * · `pasted` — the RAW text of the paste that produced `value`, when the last edit was a paste;
  * · `settled` — the field was left (blur) or Save was pressed, so a short number is now a refusal.
  */
+/**
+ * ⭐ WHICH TEXT THE SERVER PARSES AFTER A PASTE (the U22 review, S10). A paste is judged on the text that was pasted —
+ * so a +254… is refused as foreign before the box truncates it to nine digits — but ONLY when that paste produced the
+ * WHOLE field. PhoneInput MERGES a paste at the caret into digits already there; the merged box is then the number,
+ * and the clipboard text is not: saving it would save a number the screen never showed (and refuse a valid box whose
+ * pasted tail alone is short). Null means "use the box".
+ */
+export function governingPaste(paste: string | null, fieldValue: string): string | null {
+  return paste !== null && normalizeTzLocalDigits(paste) === fieldValue ? paste : null;
+}
+
 export function contactNumberVerdict(input: { value: string; pasted?: string | null; settled?: boolean }): ContactNumberVerdict {
   const digits = normalizeTzLocalDigits(String(input.value ?? ""));
 

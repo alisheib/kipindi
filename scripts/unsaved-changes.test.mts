@@ -164,7 +164,7 @@ const EXEMPT: Record<string, string> = {
   "app/admin/journey/rollout-control.tsx": "① the reason opens inside <Modal role=alertdialog>, with scrim-close and Escape disabled once anything is typed; Cancel and ✕ are the deliberate exits",
   "app/admin/journey/preview-links.tsx": "① the label and reason (create) and the reason (revoke) open only inside <Modal>, with scrim-close and Escape disabled once anything is typed; Cancel and ✕ are the deliberate exits",
   "app/admin/journey/page.tsx": "nothing can be typed: its only <input>s are type=hidden fields of the two native POST forms to /preview (intent, back)",
-  /* ⭐ U22 (2026-10-02), the payable switch's form. The contact form renders no typed control on the page: the number,
+  /* ⭐ U22 (2026-10-02), the contact form. It renders no typed control on the page: the number,
    *    name, email, notes and tags exist only inside its <Modal>, which sets `closeOnScrim={!dirty && !pending}` and
    *    `closeOnEsc={!dirty && !pending}`, so a stray click or key cannot dismiss typed work, and while a save is in
    *    flight nothing can (`showClose={!pending}`). The deliberate exits are Cancel, ✕ and Save — plus, in the add

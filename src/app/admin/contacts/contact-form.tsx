@@ -44,7 +44,7 @@ import { useDeferredToast } from "@/components/ui/toast";
 import { useMayAct, useActDisabledReason } from "@/components/admin/act-gate";
 import { runAdminAction } from "@/lib/client/run-admin-action";
 import { focusFirstInvalid } from "@/lib/client/focus-first-invalid";
-import { contactNumberVerdict, contactOperatorChip } from "@/lib/contacts/contact-number";
+import { contactNumberVerdict, contactOperatorChip, governingPaste } from "@/lib/contacts/contact-number";
 import type { ContactNumberVerdict, ContactOperatorChip } from "@/lib/contacts/contact-number";
 import { CONTACT_LIMITS, charCount, joinTags } from "@/lib/contacts/contact-fields";
 import type { ContactFormField, ContactNumberLookup } from "@/lib/server/contacts/contact-write";
@@ -265,6 +265,11 @@ function ContactForm({
   onDone: () => void;
 }) {
   const editing = mode.kind === "edit" ? mode.contact : null;
+  // ⛔ THE DIALOG IS AN ACT CONTROL TOO (the U22 review): a view-only officer reaches ?edit= by a typed or shared link,
+  // or keeps a dialog open across a revoked grant — Save and the email toggle are disabled WITH the reason, never
+  // pressed into a refusal that writes a SECURITY row.
+  const mayAct = useMayAct();
+  const actReason = useActDisabledReason();
   const [digits, setDigits] = useState("");
   const [pasted, setPasted] = useState<string | null>(null);
   const [settled, setSettled] = useState(false);
@@ -287,7 +292,8 @@ function ContactForm({
 
   const isAdd = mode.kind === "add";
   const verdict = contactNumberVerdict({ value: digits, pasted, settled });
-  /** What the server parses: the paste as it was pasted, else the field's digits. */
+  /** What the server parses: the paste as it was pasted when it produced the whole field (`governingPaste`), else the
+   *  field's digits. */
   const numberText = pasted ?? digits;
 
   // ⭐ THE LOOKUP — once for each valid number on screen; an answer that arrives for a number since changed is dropped.
@@ -309,7 +315,7 @@ function ContactForm({
     const paste = pendingPaste.current;
     pendingPaste.current = null;
     setDigits(e.target.value);
-    setPasted(paste);
+    setPasted(governingPaste(paste, e.target.value));
     setSettled(false);
     if (refusal !== null && refusal.field === "number") setRefusal(null);
   };
@@ -332,7 +338,7 @@ function ContactForm({
   const asked = lookup.state !== "idle" && lookup.text === numberText ? lookup : null;
   // ⛔ THE ONE SAVE: a valid number the book did not refuse. A duplicate, an erased number or a check still running
   // keeps it disabled — and there is no second way to save.
-  const canSave = !pending && (isAdd
+  const canSave = !pending && mayAct && (isAdd
     ? verdict.stage === "ok" && asked !== null && asked.state !== "checking" && asked.state !== "duplicate" && asked.state !== "refused"
     : true);
   const errorAt = (field: ContactFormField): string | undefined =>
@@ -475,11 +481,13 @@ function ContactForm({
         </Field>
 
         {mode.kind === "edit" && mode.contact.hasEmail ? (
-          <div data-field="email">
+          <div>
             <FieldLegend className="block mb-1.5">{CONTACT_FORM.emailLabel}</FieldLegend>
             <div className="flex flex-wrap items-center gap-2" data-contact-email>{mode.emailSlot}</div>
             {!removeMail && (
-              <div className="mt-2">
+              // ⭐ The field marker sits on the INPUT's wrapper, not the block's: focusFirstInvalid takes the first
+              // control inside it, and the block opens with the reveal eye (the U22 review).
+              <div className="mt-2" data-field="email">
                 <Input
                   type="email"
                   inputMode="email"
@@ -506,7 +514,8 @@ function ContactForm({
                 type="button"
                 size="sm"
                 variant="ghost"
-                disabled={pending}
+                disabled={pending || !mayAct}
+                title={mayAct ? undefined : actReason}
                 onClick={() => {
                   setRemoveMail((v) => !v);
                   setMail("");
@@ -605,7 +614,7 @@ function ContactForm({
           <Button type="button" size="md" variant="ghost" onClick={close} disabled={pending}>
             {CONTACT_FORM.cancel}
           </Button>
-          <Button type="submit" size="md" variant="primary" disabled={!canSave} loading={pending}>
+          <Button type="submit" size="md" variant="primary" disabled={!canSave} loading={pending} title={mayAct ? undefined : actReason}>
             {isAdd ? CONTACT_FORM.save : CONTACT_FORM.saveEdit}
           </Button>
         </div>
