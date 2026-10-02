@@ -154,6 +154,9 @@ console.log("\n[client-graph-safe] \u00a71 client-reachable modules stay clear o
     "lib/contacts/sample-sheet.ts",
     // Further src/lib/contacts modules present when U27a's integration pass ran (decision M3: every one is pinned).
     "lib/contacts/import-decide.ts",
+    // ⭐ ADDED 2026-10-02 (marketing U26, decision M3). The vCard reader: OD29 parses a .vcf in the browser, and U25's
+    // detectFormat will import its looksLikeVcard (C17). It imports only tz-msisdn.ts and contact-fields.ts (C20), both pinned.
+    "lib/contacts/vcard.ts",
     // ⭐ ADDED 2026-10-01 (marketing S10, the pure engines): client-safe src/lib/marketing modules the composer, the
     // estimate and the confirmation will import into client components — each must stay free of the Prisma client.
     "lib/marketing/erasure-mark.ts",

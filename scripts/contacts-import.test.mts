@@ -95,7 +95,7 @@ const SECTION_DIR = "scripts/contacts-import/";
 const REGISTRY: readonly Registered[] = [
   { file: "fields.mts", owner: "U28a", covers: "src/lib/contacts/{contact-fields,csv-write,sample-sheet}.ts" },
   { file: "decide.mts", owner: "U31", covers: "src/lib/contacts/import-decide.ts — the import decision" },
-  // U26  · vcard.mts     — the vCard reader
+  { file: "vcard.mts", owner: "U26", covers: "src/lib/contacts/vcard.ts — the vCard reader" },
   // U25  · csv.mts       — the CSV reader
   // U27b · xlsx.mts      — the XLSX reader
   // U32  · commit.mts, preflight.mts
