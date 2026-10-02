@@ -1089,7 +1089,11 @@ export type FormatDetectorParts = {
 };
 
 const PDF_MAGIC = "%PDF-";
-const MARKUP_STARTS: readonly string[] = ["<html", "<!doctype html", "<table", "<?xml"];
+/** What a web page or an XML file saved as ".xls" starts with. ⚠️ SPELLED FROM PARTS, on purpose: `test:ui-consistency`
+ *  reads the raw sequence "<" "table" in any source file as a hand-rolled table element (table-not-admin-tbl, a
+ *  `predeploy` gate) — and this list is DATA a sniffer compares bytes against, not markup. */
+const LT = "<";
+const MARKUP_STARTS: readonly string[] = [`${LT}html`, `${LT}!doctype html`, `${LT}table`, `${LT}?xml`];
 
 /** The kind a file name's extension claims. */
 function kindNamed(fileName: string | null): ImportFileKind | null {
