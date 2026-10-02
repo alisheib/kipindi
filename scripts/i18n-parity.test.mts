@@ -184,5 +184,45 @@ for (const [name, loc] of [["sw", sw], ["zh", zh]] as const) {
   );
 }
 
+// ── THE OFFICER CONSOLE IS ENGLISH (2026-10-02) ────────────────────────────────────────────────────────────────────
+// Its server copy is English, but the kit words it borrows through `useT()` — a dialog's Cancel and Close, a typed
+// confirmation's "Type 49 to confirm", a date preset — followed the PLAYER default (Swahili) or the officer's last
+// choice on the player site: U23's bulk bar asked "Andika 49 kuthibitisha" above an English sentence, and 41 admin
+// files mount the shared dialogs. `app/admin/layout.tsx` wraps BOTH render paths in a PINNED English provider and
+// says lang="en"; a pinned provider never reads the cookie. Each check carries a CONTROL run on a mutated copy.
+{
+  const { readFileSync, readdirSync } = await import("node:fs");
+  const { join } = await import("node:path");
+  const { decomment } = await import("./lib/decomment.mts");
+  const read = (p: string) => decomment(readFileSync(p, "utf8"));
+  const PIN = '<I18nProvider initial="en" pinned>';
+  const LANG = 'lang="en"';
+  const count = (s: string, needle: string) => s.split(needle).length - 1;
+
+  const layoutPinned = (s: string) => count(s, PIN) === 2 && count(s, LANG) === 2;
+  const layout = read("src/app/admin/layout.tsx");
+  check('the admin console pins English on BOTH render paths (the gate pages and the shell), each with lang="en"',
+    layoutPinned(layout), `${count(layout, PIN)} pinned providers, ${count(layout, LANG)} lang attributes`);
+  check("CONTROL · that check FAILS on the layout with one pin dropped",
+    !layoutPinned(layout.replace(PIN, '<I18nProvider initial="en">')));
+
+  const providerHonoursPin = (s: string) => s.includes("if (pinned) return;") && s.includes("if (pinned || l === locale) return;");
+  const provider = read("src/lib/i18n.tsx");
+  check("a pinned provider never reads the player's cookie or saved choice, and setLocale is a no-op inside it",
+    providerHonoursPin(provider));
+  check("CONTROL · that check FAILS on a provider whose effect reads the cookie anyway",
+    !providerHonoursPin(provider.replace("if (pinned) return;", "")));
+
+  // ⛔ An UNPINNED provider anywhere inside the console hands its subtree back to the cookie — the desk's rail had one.
+  const unpinnedIn = (s: string) => count(s, "<I18nProvider") - count(s, PIN);
+  const walk = (dir: string): string[] => readdirSync(dir, { withFileTypes: true }).flatMap((d) =>
+    d.isDirectory() ? walk(join(dir, d.name)) : /[.]tsx?$/.test(d.name) ? [join(dir, d.name)] : []);
+  const consoleFiles = [...walk("src/app/admin"), ...walk("src/components/admin")];
+  const offenders = consoleFiles.filter((f) => unpinnedIn(read(f)) > 0);
+  check("no file inside the console mounts an UNPINNED I18nProvider", offenders.length === 0, offenders.join(" · "));
+  check("CONTROL · the scan read the console (100+ files) and would catch an unpinned provider",
+    consoleFiles.length > 100 && unpinnedIn('<I18nProvider initial="en"><X /></I18nProvider>') === 1, `${consoleFiles.length} files`);
+}
+
 log(`\n${fail === 0 ? "ALL PASS" : `${fail} FAILED`} — en=${en.size} sw=${sw.size} zh=${zh.size} keys`);
 process.exit(fail === 0 ? 0 : 1);

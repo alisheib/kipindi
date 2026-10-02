@@ -3055,7 +3055,7 @@ try {
         j({ refused, inventedWhy }));
       ok("1.541 · CONTROL · the officer DOES get an answer — which is what makes the two nulls above a measurement — and it is a FINISHED SENTENCE, never an engine code handed to the page to translate",
         mine !== null && typeof mine.headline === "string" && mine.headline.length > 20 && /[.!?]$/.test(mine.headline)
-          && !/[A-Z][A-Z0-9]{2,}_[A-Z]/.test(all(mine)),
+          && !/\b[A-Z][A-Z0-9]{2,}_[A-Z]/.test(all(mine)),
         j(mine));
 
       /* ⛔ THE DESK`S OWN SWITCH ANSWERS BEFORE THE ACCOUNT`S STATE DOES, and before any market is read: an
@@ -6485,16 +6485,19 @@ try {
         && /presets=/.test(listSrc.replace("<ActivityFilters groups={view.filters} />", "<ActivityFilters groups={view.filters} presets={[]} presetDefault=\"all\" />")),
       "");
     const railSrc = decomment(read(`${SECTION}/activity-filters.tsx`));
+    // 2026-10-02 · the rail's local `<I18nProvider initial="en">` is gone — `app/admin/layout.tsx` pins the whole console to
+    // English, and an unpinned provider inside it would hand this rail back to a player cookie — so the window's condition
+    // is pinned on the line that opens `<DateTimeRangeFilter` directly.
     ok("1.410 · decision 4 · the section's ONE rail draws its window only when it is handed one — both activity panels still pass theirs, the find step's list passes none — and the section still holds exactly one rail file",
-      /\{presets !== undefined && presetDefault !== undefined && \(<I18nProvider initial="en">/.test(railSrc)
+      /\{presets !== undefined && presetDefault !== undefined && \(\s*<DateTimeRangeFilter /.test(railSrc)
         && /presets\?: readonly string\[\];/.test(railSrc) && /presetDefault\?: string;/.test(railSrc)
         && /presets=\{feedView\.feedPresets\}/.test(pageCode) && /presets=\{view\.feedPresets\}/.test(decomment(read(DETAIL_PAGE)))
         && sectionFiles.filter((f) => /data-filter-rail/.test(decomment(read(f)))).length === 1,
       "");
     ok("1.410 · decision 4 · CONTROL · the same pin fires on the rail with its window drawn unconditionally again — the shape it had before the list existed",
-      !/\{presets !== undefined && presetDefault !== undefined && \(<I18nProvider initial="en">/.test(
-        railSrc.replace('{presets !== undefined && presetDefault !== undefined && (<I18nProvider initial="en">', '{(<I18nProvider initial="en">'))
-        && railSrc.includes('{presets !== undefined && presetDefault !== undefined && (<I18nProvider initial="en">'),
+      !/\{presets !== undefined && presetDefault !== undefined && \(\s*<DateTimeRangeFilter /.test(
+        railSrc.replace("{presets !== undefined && presetDefault !== undefined && (", "{("))
+        && railSrc.includes("{presets !== undefined && presetDefault !== undefined && ("),
       "");
   }
 

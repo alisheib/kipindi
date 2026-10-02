@@ -54,13 +54,21 @@ function writeCookie(name: string, value: string) {
   document.cookie = `${name}=${encodeURIComponent(value)}; path=/; max-age=${60 * 60 * 24 * 365}; samesite=lax`;
 }
 
-export function I18nProvider({ children, initial = DEFAULT_LOCALE }: { children: ReactNode; initial?: Locale }) {
+/**
+ * ⭐ `pinned` — a surface that IS one language. The officer console's every sentence of server copy is English, and
+ * the kit words it borrows through `useT()` (a dialog's Cancel and Close, a typed confirmation's "Type 49 to confirm")
+ * fell back to `DEFAULT_LOCALE` — Swahili, right for players — or to whatever language the officer last chose on the
+ * player site. Measured 2026-10-02 on U23's bulk bar: "Andika 49 kuthibitisha" above an English sentence. A pinned
+ * provider never reads the player's cookie or saved choice, and `setLocale` is a no-op inside it.
+ */
+export function I18nProvider({ children, initial = DEFAULT_LOCALE, pinned = false }: { children: ReactNode; initial?: Locale; pinned?: boolean }) {
   const [locale, setLocaleState] = useState<Locale>(initial);
   const [isChangingLocale, setIsChangingLocale] = useState(false);
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
 
   useEffect(() => {
+    if (pinned) return;
     const fromCookie = readCookie(COOKIE_NAME);
     if (fromCookie && fromCookie !== locale) {
       setLocaleState(fromCookie);
@@ -85,7 +93,7 @@ export function I18nProvider({ children, initial = DEFAULT_LOCALE }: { children:
   }, [isPending, isChangingLocale]);
 
   const setLocale = useCallback((l: Locale) => {
-    if (l === locale) return;
+    if (pinned || l === locale) return;
     setIsChangingLocale(true);
     setLocaleState(l);
     try {
@@ -96,7 +104,7 @@ export function I18nProvider({ children, initial = DEFAULT_LOCALE }: { children:
     startTransition(() => {
       router.refresh();
     });
-  }, [locale, router, startTransition]);
+  }, [locale, router, startTransition, pinned]);
 
   /**
    * ⭐ THE CONTEXT VALUE IS MEMOISED, AND THAT IS A RENDER BUDGET, NOT TIDINESS.

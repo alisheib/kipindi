@@ -14,6 +14,12 @@ import { TOTP_COOKIE_NAME, TOTP_TTL_SEC } from "@/lib/server/totp-cookie";
 import { isStaffRole, isAdmin } from "@/lib/server/roles";
 import { viewableDomains } from "@/lib/server/rbac";
 import { crumbsFromPath, activeKeyFromPath, adminNextDest } from "@/components/admin/admin-nav-groups";
+// ⭐ THE CONSOLE IS ENGLISH, AND SAYS SO (2026-10-02). Every sentence of its server copy is English, but the kit words it
+// borrows through `useT()` — a dialog's Cancel and Close, a typed confirmation's "Type 49 to confirm", a date preset —
+// followed the PLAYER default (Swahili) or the officer's last choice on the player site: U23's bulk bar asked
+// "Andika 49 kuthibitisha" above an English sentence, and 41 admin files mount the shared dialogs. One pinned provider
+// around both render paths below, plus `lang="en"` so a screen reader reads the console as English. `test:i18n` holds it.
+import { I18nProvider } from "@/lib/i18n";
 
 /**
  * RBAC VIEW gate (2026-07-28). Console admission below admits any STAFF role; this
@@ -110,7 +116,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   // nav here to skip, and a bypass link that skips nothing is noise, not access (WCAG 2.4.1 is
   // about repeated blocks).
   if (TOTP_EXEMPT.has(path)) {
-    return <main id="main-content">{children}</main>;
+    return <I18nProvider initial="en" pinned><main id="main-content" lang="en">{children}</main></I18nProvider>;
   }
 
   // TOTP gate — the cookie is HMAC-signed with userId + sessionId to prevent
@@ -174,7 +180,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const isOwner = isAdmin(viewerRole);
 
   return (
-    <div className="min-h-screen bg-bg-base text-text">
+    <I18nProvider initial="en" pinned>
+    <div className="min-h-screen bg-bg-base text-text" lang="en">
       {/* ⛔ SKIP-TO-CONTENT — WCAG 2.4.1, and the admin console had NEVER had one.
           `AppShell` carries this for every player route; the console does not use `AppShell`,
           so when the 2026-08-22 landmark cleanup removed 44 nested `<main>` elements under
@@ -220,5 +227,6 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         </div>
       </div>
     </div>
+    </I18nProvider>
   );
 }

@@ -41,7 +41,6 @@
  */
 import { FilterGroupKey, FilterPill } from "@/components/ui/filter-pill";
 import { DateTimeRangeFilter } from "@/components/ui/datetime-range-filter";
-import { I18nProvider } from "@/lib/i18n";
 
 /** One option: a finished label, a finished link, and whether it is the one in force. */
 export type RailOption = { key: string; label: string; href: string; on: boolean };
@@ -70,17 +69,19 @@ export function ActivityFilters({
         * cookie set at all — `DEFAULT_LOCALE` is `sw`, which is right for this platform's players and wrong
         * for an officer console whose every other sentence is English server copy. So the rail read
         * **Leo · Saa 24 · Siku 7 · Muda wote · Maalum** beside "Every stake this one account has decided on".
-        * ⛔ THE KIT IS NOT TOUCHED. `DateTimeRangeFilter` takes its words from `useT`, and the honest fix at
-        * this call site is to say which language this surface is in — not to add a label prop to a control
-        * eleven other surfaces share.
-        * ⚠️ AN OFFICER WHO HAS CHOSEN A LANGUAGE STILL GETS IT: the provider's own effect reads the cookie and
-        * overrides this seed. What changes is the DEFAULT, which is the state that was measured.
+        * ⛔ THE KIT IS NOT TOUCHED. `DateTimeRangeFilter` takes its words from `useT`, and the honest fix is
+        * to say which language this surface is in — not to add a label prop to a control eleven other
+        * surfaces share.
+        * ⭐ 2026-10-02 · THAT SENTENCE NOW SITS ON THE WHOLE CONSOLE: `app/admin/layout.tsx` wraps every admin
+        * page in a PINNED English provider (the same defect had reached every admin dialog). The local
+        * provider that stood here is gone ON PURPOSE: it was not pinned, so inside the pinned console it
+        * would have handed this one rail back to a player's `kp-locale` cookie.
         */}
       {/* ⛔ THE CONTROL'S OWN LINE IS KEPT BYTE FOR BYTE: two declared red anchors (`410-rail-rank` and
           `red:filter-language`'s `desk-rail-redensified`) plant the dense rank into exactly that line. */}
-      {presets !== undefined && presetDefault !== undefined && (<I18nProvider initial="en">
+      {presets !== undefined && presetDefault !== undefined && (
         <DateTimeRangeFilter replace presetIds={presets} defaultPreset={presetDefault} />
-      </I18nProvider>)}
+      )}
       {groups.map((g) => (
         <div key={g.param} className="flex items-center gap-1 flex-wrap gap-y-1.5">
           {/* ⛔ THE GROUP KEY IS LOAD-BEARING, NOT DECORATION. Three axes each open with an "Any …" option; without
