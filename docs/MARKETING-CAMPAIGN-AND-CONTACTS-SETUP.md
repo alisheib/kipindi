@@ -172,6 +172,8 @@ erasure now withdraws the consent and empties the book, and both data exports ca
   tokenized ONCE — 150,000 rows in 4,093-character chunks), the delimiter voted outside quotes on the first record,
   `sep=` honoured and hidden, utf-8 / utf-16 / windows-1252 sniffed, content beating the file name. `test:contacts-import`
   164/164 across 4 sections (46 CSV), `red:contacts-import` 169/169 (+49). 🔵 until a real CSV is parsed on production.
+  ⚠️ The first commit took the builder's files minutes before its last three edits (a note's wording, a narrowing,
+  a comment); `21c72715` is the final text, the same counts re-run. ⛔ Copy an agent's files only after its REPORT.
   ⛔ LOCK STARVATION (measured 2026-10-01): `~/heavy-node-lock.sh` waiters poll every 30 s, and a session
   running jobs back to back re-takes the lock within seconds of releasing it — S10's typecheck waited
   40+ minutes without once getting in. S10 ran its battery through the same mkdir protocol polling every
@@ -2373,6 +2375,14 @@ mis-splits (`red:contacts-import`; also a whole-file vote, no BOM strip, `sep=` 
 stateless chunk parser, buffer-and-reparse, an extension-trusting detector, the platform-default decoder).
 **Accept:** that header gives 3 cells with `Jina, kamili` intact, and a 150,000-row corpus fed in 4,093-character
 chunks equals the one-chunk parse, each character tokenized once.
+⚠️ **Built in S10 (`928265b9`, final text `21c72715`) — three premises corrected.** (1) The vote rule as written FAILS its own
+Accept: under the comma's own quote rules the header's second quoted cell does not start a field, so its commas count —
+comma 2, semicolon 2, a tie the candidate order gives to the comma. ⭐ The rule that holds: a candidate under whose rules
+the record's QUOTING BREAKS (a quote not around a whole cell) loses to every candidate that reads it cleanly; C3a pins
+the counts. (2) Rows arrive at `end()`, as U26's `push(): void` does — §3c.2's "parse a stream into batches" means U32
+stages after `end()`, and may stop early on `stats().refused`. (3) The 1 MiB header cap is the VOTE's: with `sep=` or a
+manual delimiter there is no vote, so no cap; `detectFormat` is handed the whole file when it is at most
+`XLSX_MAX_BYTES`, else at least the first `SNIFF_BYTES`.
 
 **U26 · The vCard reader** — `src/lib/contacts/vcard.ts` (pure, streaming; decisions C15 · C17 · C20 · A1.2 · A1.8)
 ⛔ **Both** continuation rules in ONE walk, decided by the property head — separate passes corrupt each other
