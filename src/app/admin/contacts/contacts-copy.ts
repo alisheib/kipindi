@@ -112,6 +112,20 @@ export const RAIL_UNKNOWN_LIST = "Unknown list";
 export const RAIL_CHOSEN_LIST = "Chosen list";
 export const RAIL_MORE_TAGS = (cap: number) => `Showing the ${cap} most-used tags.`;
 export const RAIL_MORE_LISTS = (cap: number) => `Showing the first ${cap} lists, A to Z.`;
+/** Clear filters in the rail's foot — drawn only when the page shows none of its own: a FAILED read has no
+ *  "Showing contacts:" line and no table to hold one, and N filters would otherwise take N presses of "Any". */
+export const RAIL_CLEAR = "Clear filters";
+
+/**
+ * The longest pill label the rail draws whole. A pill never wraps and never shrinks (the kit's `whitespace-nowrap`
+ * and `shrink-0`), so a 60-character list name (C12) or five operators at once would run off a 360px screen. Past
+ * this length the label is clipped and the WHOLE text rides in the pill's hover title. 38 keeps the longest window
+ * ("25 Sep 2026 14:30 → 26 Oct 2026 14:31", 37 characters) and the longest tag (32, C11) whole.
+ */
+export const RAIL_LABEL_MAX = 38;
+export function railFit(label: string): string {
+  return label.length > RAIL_LABEL_MAX ? `${label.slice(0, RAIL_LABEL_MAX - 1)}…` : label;
+}
 
 /** A value the address carries that the parser refused (`?op=NOKIA`), drawn as typed — clipped, and quoted so it
  *  reads as what was typed rather than as an option the book offers. */

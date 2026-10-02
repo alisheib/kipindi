@@ -43,7 +43,7 @@ import { loadContacts } from "../src/app/admin/contacts/contacts-loader.ts";
 import type { ContactsParams, ContactsView } from "../src/app/admin/contacts/contacts-loader.ts";
 import { contactRail, TAG_RAIL_CAP } from "../src/app/admin/contacts/contacts-rail.ts";
 import type { ContactRail, RailGroup, RailOption } from "../src/app/admin/contacts/contacts-rail.ts";
-import { CONSENT_LABEL, SOURCE_LABEL, RAIL_KEYS, RAIL_ANY, RAIL_UNKNOWN_LIST, railOperatorTitle } from "../src/app/admin/contacts/contacts-copy.ts";
+import { CONSENT_LABEL, SOURCE_LABEL, RAIL_KEYS, RAIL_ANY, RAIL_UNKNOWN_LIST, RAIL_LABEL_MAX, railOperatorTitle } from "../src/app/admin/contacts/contacts-copy.ts";
 import { PER_PAGE } from "../src/components/admin/admin-pagination.tsx";
 import { parseTzNumber, TZ_MOBILE_NDCS, TZ_OPERATORS } from "../src/lib/tz-msisdn.ts";
 
@@ -128,6 +128,8 @@ const pills = (r: ContactRail) => r.groups.flatMap((g) => g.options.map((o) => (
 const exactlyOneOn = (r: ContactRail) => r.groups.every((g) => g.options.filter((o) => o.on).length === 1);
 /** An href back to the params the page would receive. */
 const spOf = (href: string): ContactsParams => Object.fromEntries(new URL(href, "http://x").searchParams.entries());
+/** An href's query, for asking what it carries. */
+const paramsOfHref = (href: string) => new URL(href, "http://x").searchParams;
 /** The rail the page builds for this address: the loader's own options, and its count when rows were read. */
 async function railFor(impl: Impl, sp: ContactsParams, reads: boolean): Promise<{ view: ContactsView; rail: ContactRail }> {
   const view = await impl.load(sp, reads);
@@ -136,6 +138,8 @@ async function railFor(impl: Impl, sp: ContactsParams, reads: boolean): Promise<
     lists: view.lists ?? null,
     tags: view.tags ?? null,
     counted: view.kind === "ok" ? { match: view.result.total, book: view.summary.total } : null,
+    // The page passes `clearable: failed`; a read that arrived is not failed.
+    clearable: false,
   });
   return { view, rail };
 }
@@ -169,8 +173,10 @@ const U21 = {
   hrefs: "12c · ⛔ every pill's href is the ONE builder's: it keeps the search, the sort and every other filter, never page — and a pill changes only its own axis",
   applied: "12d · ⛔ an applied value is ALWAYS a visible, selected pill — a tag no row carries, a tag past the drawn twenty, an unknown list, a no-network operator, two values at once — with exactly one pill in force on every axis",
   unreadable: "12e · ⛔ an unreadable value is REFUSED by the loader and still DRAWN by the rail, as typed — Any is the way out, and the other axes keep what they apply (C2)",
-  error: "12f · ⛔ a FAILED read still draws the rail from the address alone (§5.15): the operator, the tag and the list stay selected and clearable, the search is kept, and no count is invented",
+  error: "12f · ⛔ a FAILED read still draws the rail from the address alone (§5.15): the operator, the tag and the list stay selected and clearable, the search is kept, no count is invented — and the rail offers the ONE Clear filters (the page has none then; never a second beside the page's own)",
   counts: "12g · ⭐ a tag pill's count is the whole book's, shown ONLY where it is exactly what the pill lists — under another filter or a search it is omitted (EXECUTED: each count equals the rows its pill opens)",
+  extension: "12h · U24's extension has NO axis: an applied import or window is ONE selected pill (toggle) whose href removes exactly that key and keeps the rest — for a masked viewer too — and Clear filters removes them; an axis with nothing to offer and nothing applied is not drawn",
+  fit: "12i · ⛔ a pill never wraps or shrinks, so a label past RAIL_LABEL_MAX — a 60-character list name, five operators at once — is clipped, and its WHOLE text rides in the pill's title",
   role: "13 · 🔴 A1.1 · THE RAIL IS ROLE-SHAPED: a masked viewer is drawn no Consent, Source or Player pill at all — even with all three typed — and its ?source=REGISTRATION and ?consent=GIVEN are refused by role with NO row read; a reader gets the rows and all six axes",
   noMatch: "14 · ⛔ THE RAIL SURVIVES NO-MATCH: page.tsx draws <ContactFilters> exactly once, gated on !emptyBook ALONE (a whole-book fact) and built for every state — and a filter matching nothing still yields the whole rail, its value in force, its links keeping the search and the sort",
   column: "15 · ⛔ the Operator COLUMN reads the one numbering table — operatorBrand(c.ndc) — and never the stored operator string, which could say \"Tigo\" under the Yas pill",
@@ -390,7 +396,7 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
   const telxer = (await railFor(impl, { op: "TELXER" }, true)).rail;
   const two = (await railFor(impl, { op: "VODACOM,AIRTEL" }, true)).rail;
   const many: ContactTagCount[] = Array.from({ length: 25 }, (_, i) => ({ tag: `t${String(i).padStart(2, "0")}`, count: 40 - i }));
-  const capped = impl.rail({ sp: { tag: "t22" }, reads: true, lists: [], tags: many, counted: null });
+  const capped = impl.rail({ sp: { tag: "t22" }, reads: true, lists: [], tags: many, counted: null, clearable: false });
   const cappedTag = groupOf(capped, "tag");
   ok(p(U21.applied),
     onOf(groupOf(rare, "tag")).length === 1 && onOf(groupOf(rare, "tag"))[0]?.key === "rare" && onOf(groupOf(rare, "tag"))[0]?.label === "rare"
@@ -404,7 +410,7 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
   // ── 12e · AN UNREADABLE VALUE: REFUSED, AND DRAWN ────────────────────────────────────────────
   const nokiaSp: ContactsParams = { op: "NOKIA", tag: "vip" };
   const nokiaView = await impl.load(nokiaSp, true);
-  const nokiaRail = impl.rail({ sp: nokiaSp, reads: true, lists: nokiaView.lists ?? null, tags: nokiaView.tags ?? null, counted: null });
+  const nokiaRail = impl.rail({ sp: nokiaSp, reads: true, lists: nokiaView.lists ?? null, tags: nokiaView.tags ?? null, counted: null, clearable: false });
   const nokiaOn = onOf(groupOf(nokiaRail, "op"));
   ok(p(U21.unreadable),
     nokiaView.kind === "refused" && nokiaView.param === "op"
@@ -414,14 +420,21 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
     `${nokiaView.kind} · ${labelsOf(groupOf(nokiaRail, "op"))}`);
 
   // ── 12f · THE ERROR PATH: THE RAIL FROM THE ADDRESS ──────────────────────────────────────────
-  const errRail = impl.rail({ sp: { q: "asha", op: "VODACOM", tag: "vip", list: L.id }, reads: true, lists: null, tags: null, counted: null });
+  const errRail = impl.rail({ sp: { q: "asha", op: "VODACOM", tag: "vip", list: L.id }, reads: true, lists: null, tags: null, counted: null, clearable: true });
+  const errBare = impl.rail({ sp: { q: "asha" }, reads: true, lists: null, tags: null, counted: null, clearable: true });
   ok(p(U21.error),
     onOf(groupOf(errRail, "op"))[0]?.key === "VODACOM"
       && keysOf(groupOf(errRail, "tag")) === ",vip" && onOf(groupOf(errRail, "tag"))[0]?.key === "vip"
       && keysOf(groupOf(errRail, "list")) === `,${L.id}` && onOf(groupOf(errRail, "list"))[0]?.on === true
       && onOf(groupOf(errRail, "list"))[0]?.label !== RAIL_UNKNOWN_LIST
-      && pills(errRail).every((o) => o.href.includes("q=asha")) && errRail.countLine === null && pills(errRail).every((o) => o.count === undefined),
-    `${errRail.groups.map((g) => `${g.param}[${keysOf(g)}]`).join(" ")}`);
+      && pills(errRail).every((o) => o.href.includes("q=asha")) && errRail.countLine === null && pills(errRail).every((o) => o.count === undefined)
+      // The ONE Clear filters on a failed read — every filter gone, the search kept; none with nothing applied, and
+      // none on a page that draws its own (`hrail`: three filters applied, the read arrived).
+      && errRail.clear?.label === "Clear filters" && errRail.clear?.href === contactsClearFiltersHref({ q: "asha", op: "VODACOM", tag: "vip", list: L.id })
+      && errRail.clear?.href === "/admin/contacts?q=asha"
+      && errBare.clear === null && hrail.clear === null && none.rail.clear === null
+      && page.includes("clearable: failed,"),
+    `${errRail.groups.map((g) => `${g.param}[${keysOf(g)}]`).join(" ")} · clear ${JSON.stringify(errRail.clear)} · beside the page's own: ${JSON.stringify(hrail.clear)}`);
 
   // ── 12g · A COUNT ONLY WHERE IT IS TRUE ──────────────────────────────────────────────────────
   const plainTags = (groupOf(none.rail, "tag")?.options ?? []).filter((o) => o.key !== "");
@@ -436,12 +449,50 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
       && [honora.rail, searched].every((r) => pills(r).every((o) => o.count === undefined)),
     `${plainTags.map((o) => `${o.key}:${o.count}`).join(",")} · under op=HONORA: ${pills(honora.rail).filter((o) => o.count !== undefined).length} counted`);
 
+  // ── 12h · U24'S EXTENSION: NO AXIS, ONE PILL — and no axis with nothing to offer ─────────────
+  const extSp: ContactsParams = { q: "asha", import: "imp_1", sort: "name" };
+  const impRail = impl.rail({ sp: extSp, reads: true, lists: [], tags: [], counted: null, clearable: false });
+  const rangeRail = impl.rail({ sp: { range: "7d", op: "HONORA" }, reads: false, lists: [], tags: [], counted: null, clearable: false });
+  const fromToRail = impl.rail({ sp: { from: "2026-09-01", to: "2026-09-08" }, reads: true, lists: [], tags: [], counted: null, clearable: false });
+  const impG = groupOf(impRail, "import");
+  const rngG = groupOf(rangeRail, "range");
+  const ftG = groupOf(fromToRail, "from");
+  const impHref = paramsOfHref(impG?.options[0]?.href ?? "/admin/contacts?import=x");
+  const rngHref = paramsOfHref(rngG?.options[0]?.href ?? "/admin/contacts?range=x");
+  const allCleared = paramsOfHref(contactsClearFiltersHref({ q: "asha", import: "imp_1", range: "7d", from: "2026-09-01", to: "2026-09-08", player: "yes", sort: "name" }));
+  ok(p(U21.extension),
+    impG?.semantics === "toggle" && impG.options.length === 1 && impG.options[0].on && impG.options[0].key === "imp_1" && impG.options[0].label === "imp_1"
+      && !impHref.has("import") && impHref.get("q") === "asha" && impHref.get("sort") === "name"
+      && rngG?.semantics === "toggle" && rngG.options.length === 1 && rngG.options[0].on && rngG.options[0].key === "7d"
+      && rngG.options[0].label.includes("→") && !rngG.options[0].label.startsWith("Added")
+      && !rngHref.has("range") && !rngHref.has("from") && !rngHref.has("to") && rngHref.get("op") === "HONORA"
+      && ftG?.options[0]?.key === "2026-09-01" && ftG?.options[0]?.label === "1 Sep 2026 → 8 Sep 2026" && ftG?.options[0]?.href === "/admin/contacts"
+      && ["import", "range", "from", "to", "player"].every((k) => !allCleared.has(k)) && allCleared.get("q") === "asha" && allCleared.get("sort") === "name"
+      && !groupOf(impRail, "list") && !groupOf(impRail, "tag") && !groupOf(rangeRail, "list") && !groupOf(rangeRail, "tag"),
+    `import [${labelsOf(impG)}] → ${impG?.options[0]?.href} · range [${labelsOf(rngG)}] → ${rngG?.options[0]?.href} · from/to [${labelsOf(ftG)}] · groups [${impRail.groups.map((g) => g.param)}]`);
+
+  // ── 12i · A LABEL THAT WOULD RUN OFF A PHONE IS CLIPPED, AND KEPT WHOLE IN ITS TITLE ───────────
+  const longName = "Customers who joined in September 2026 from Dar es Salaam";
+  const longList: StoredContactList = { ...L, id: "cl_t_long", name: longName };
+  const fiveOps = "Airtel or Yas or TTCL or Halotel or Vodacom";
+  const longRail = impl.rail({ sp: { op: "AIRTEL,HONORA,TTCL,VIETTEL,VODACOM", list: "cl_t_long" }, reads: true, lists: [L, longList], tags: [], counted: null, clearable: false });
+  const longPills = pills(longRail);
+  const longOn = onOf(groupOf(longRail, "list"))[0];
+  const opsOn = onOf(groupOf(longRail, "op"))[0];
+  ok(p(U21.fit),
+    longPills.length > 10 && longPills.every((o) => o.label.length <= RAIL_LABEL_MAX)
+      && longOn?.key === "cl_t_long" && longOn.title === longName && longOn.label.endsWith("…") && longName.startsWith(longOn.label.slice(0, -1))
+      && opsOn?.key === "AIRTEL,HONORA,TTCL,VIETTEL,VODACOM" && opsOn.title === fiveOps && opsOn.label.endsWith("…")
+      // A short label is left alone, and an operator keeps its prefix title.
+      && groupOf(longRail, "op")?.options.find((o) => o.key === "VODACOM")?.title === railOperatorTitle(ndcsForOperators(["VODACOM"])),
+    `${longOn?.label} | ${opsOn?.label} · longest ${Math.max(...longPills.map((o) => o.label.length))}`);
+
   // ── 13 · 🔴 A1.1 · THE ROLE-SHAPED RAIL ──────────────────────────────────────────────────────
   const D19_KEYS = ["consent", "source", "player"];
   const leaks = (r: ContactRail) => r.groups.filter((g) => D19_KEYS.includes(g.param)).map((g) => g.param);
   const maskedRail = (await railFor(impl, {}, false)).rail;
-  const maskedTyped = impl.rail({ sp: { consent: "GIVEN", source: "REGISTRATION", player: "yes", op: "VODACOM" }, reads: false, lists: none.view.lists ?? null, tags: none.view.tags ?? null, counted: null });
-  const readerTyped = impl.rail({ sp: { consent: "GIVEN", source: "IMPORT", player: "yes" }, reads: true, lists: none.view.lists ?? null, tags: none.view.tags ?? null, counted: null });
+  const maskedTyped = impl.rail({ sp: { consent: "GIVEN", source: "REGISTRATION", player: "yes", op: "VODACOM" }, reads: false, lists: none.view.lists ?? null, tags: none.view.tags ?? null, counted: null, clearable: false });
+  const readerTyped = impl.rail({ sp: { consent: "GIVEN", source: "IMPORT", player: "yes" }, reads: true, lists: none.view.lists ?? null, tags: none.view.tags ?? null, counted: null, clearable: false });
   const srcRead = await readsDuring(() => impl.load({ source: "REGISTRATION" }, false));
   const conRead = await readsDuring(() => impl.load({ consent: "GIVEN" }, false));
   const readerSrc = await impl.load({ source: "IMPORT" }, true);
@@ -762,6 +813,51 @@ if (!PROVE_RED) {
       name: "the rail drops its Any pills — an address with nothing applied has no pill in force, and no axis can be cleared",
       expect: U21.rail,
       impl: { ...REAL, rail: (input) => { const r = contactRail(input); return { ...r, groups: r.groups.map((g) => ({ ...g, options: g.options.filter((o) => o.key !== "") })) }; } },
+    },
+
+    /* ── U21 follow-up (the adversarial review) ─────────────────────────────────────────────────── */
+    {
+      name: "a failed read offers no Clear filters — N filters cost N presses of Any",
+      expect: U21.error,
+      impl: { ...REAL, rail: (input) => ({ ...contactRail(input), clear: null }) },
+    },
+    {
+      name: "the rail draws its own Clear filters beside the page's — one control said twice",
+      expect: U21.error,
+      impl: {
+        ...REAL,
+        rail: (input) => {
+          const r = contactRail(input);
+          const applied = Object.keys(contactsLinkSp(input.sp)).some((k) => k !== "q" && k !== "sort" && k !== "dir");
+          return { ...r, clear: applied ? { label: "Clear filters", href: contactsClearFiltersHref(input.sp) } : null };
+        },
+      },
+    },
+    {
+      name: "the window pill keeps range in its href — pressing it changes nothing",
+      expect: U21.extension,
+      impl: {
+        ...REAL,
+        rail: (input) => mapPills(contactRail(input), (o, g) => (g.semantics === "toggle" && (g.param === "range" || g.param === "from" || g.param === "to") ? { ...o, href: contactsHref(input.sp) } : o)),
+      },
+    },
+    {
+      name: "a lone-Any List axis drawn with nothing to offer and nothing applied — a control with no job",
+      expect: U21.extension,
+      impl: {
+        ...REAL,
+        rail: (input) => {
+          const r = contactRail(input);
+          if (r.groups.some((g) => g.param === "list")) return r;
+          const lone: RailGroup = { param: "list", label: RAIL_KEYS.list, semantics: "tab", options: [{ key: "", label: RAIL_ANY, href: contactsHref(input.sp, { list: null }), on: true }] };
+          return { ...r, groups: [...r.groups, lone] };
+        },
+      },
+    },
+    {
+      name: "a long label drawn whole — a 60-character list name runs off a 360px screen",
+      expect: U21.fit,
+      impl: { ...REAL, rail: (input) => mapPills(contactRail(input), (o) => (o.label.endsWith("…") && o.title !== undefined ? { ...o, label: o.title } : o)) },
     },
   ];
 

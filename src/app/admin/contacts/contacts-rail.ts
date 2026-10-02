@@ -24,7 +24,9 @@
  * U24's recorded extension (`player`, `import`, `range`/`from`/`to`) has NO axis: an applied one is ONE selected
  * pill whose press removes it (toggle semantics), and Clear filters removes it too.
  * ⛔ A FAILED READ STILL DRAWS THE RAIL, FROM THE ADDRESS (§5.15): lists and tags are null, so those two axes carry
- * only what is applied.
+ * only what is applied — and the rail draws Clear filters itself, because on that page nothing else does.
+ * ⛔ A PILL NEVER WRAPS OR SHRINKS (the kit's own geometry), so a label past `RAIL_LABEL_MAX` is clipped here and its
+ * whole text rides in the pill's hover title — a 60-character list name must not run off a 360px screen.
  *
  * ⭐ THE OPTIONS COME FROM THE BOOK'S OWN TABLES, NEVER A TYPED LIST. Operators: every licensee holding a SENDABLE
  * prefix in the ONE numbering table (C10), labelled `TZ_OPERATORS[id].brand` — the value is the licensee id, so a
@@ -46,11 +48,11 @@ import type { ContactConsentState, ContactSource, ContactTagCount, StoredContact
 import { TZ_MOBILE_NDCS, TZ_OPERATORS } from "@/lib/tz-msisdn";
 import type { TzOperatorId } from "@/lib/tz-msisdn";
 import { tagKey } from "@/lib/contacts/contact-fields";
-import { contactsHref, contactsLinkSp } from "./contacts-query";
+import { contactsHref, contactsLinkSp, contactsClearFiltersHref, CONTACTS_FILTER_KEYS } from "./contacts-query";
 import type { ContactsLinkKey } from "./contacts-query";
 import {
   CONSENT_LABEL, SOURCE_LABEL, SUPPRESSED_LABEL, RAIL_KEYS, RAIL_LABEL, RAIL_ANY, RAIL_UNKNOWN_LIST, RAIL_CHOSEN_LIST,
-  RAIL_MORE_TAGS, RAIL_MORE_LISTS, railTypedValue, railOperatorTitle, railCountLine,
+  RAIL_MORE_TAGS, RAIL_MORE_LISTS, RAIL_CLEAR, railTypedValue, railOperatorTitle, railCountLine, railFit,
 } from "./contacts-copy";
 
 /** Next's own shape: a repeated param arrives as an array. */
@@ -84,6 +86,9 @@ export type ContactRail = {
   /** "45 contacts", "3 of 45 contacts" — null when no rows were read (a refused filter, a failed read). */
   countLine: string | null;
   notes: string[];
+  /** Clear filters in the rail's foot — only when the input says the page draws none of its own, and something is
+   *  applied. Built by the ONE href builder (it keeps the search and the sort). */
+  clear: { label: string; href: string } | null;
 };
 export type ContactRailInput = {
   /** The page's address, as Next hands it. */
@@ -96,6 +101,9 @@ export type ContactRailInput = {
   tags: readonly ContactTagCount[] | null;
   /** The match and the whole book, for the count line — null when no rows were read. */
   counted: { match: number; book: number } | null;
+  /** The page shows no Clear filters of its own (a FAILED read: no "Showing contacts:" line, no table), so the rail
+   *  draws one. ⛔ Never beside the page's own — two "Clear filters" on one screen is one control said twice. */
+  clearable: boolean;
 };
 
 /** An operator the rail offers. */
@@ -151,8 +159,11 @@ function windowOf(sp: ContactsSp): WindowApplied {
 }
 
 /** Can this value be addressed — does the parser read `?<param>=<value>` back to exactly this value? A stored tag or
- *  list id that cannot (a pre-C11 tag with a capital, a character the tag rule refuses) gets no pill: its href would
- *  open a refused page, a control that can only fail. */
+ *  list id that cannot gets no pill, for one of two reasons: the parser REFUSES it (a character the tag rule does not
+ *  allow — the href would open a refused page), or it reads back as a DIFFERENT value (a pre-C11 "VIP": the parser
+ *  lowercases it to "vip" while the twins match tags exactly, so a "VIP" pill would list the "vip" rows, not its own).
+ *  ⚠️ So a stored tag that is not its own `tagKey` is unreachable from an address at all — a RESOLVER limit, not the
+ *  rail's: C11 has every writer store the key, and nothing writes a tag before U22/U23/U31. */
 function addressable(param: "tag" | "list", value: string): boolean {
   const r = parseContactAudienceParams({ [param]: value });
   if (!r.ok) return false;
@@ -315,10 +326,18 @@ export function contactRail(input: ContactRailInput): ContactRail {
   if (railLists.length > LIST_RAIL_CAP) notes.push(RAIL_MORE_LISTS(LIST_RAIL_CAP));
   if (railTags.length > TAG_RAIL_CAP) notes.push(RAIL_MORE_TAGS(TAG_RAIL_CAP));
 
+  // ⭐ Something applied — any filter key the address carries, readable or not (Clear filters removes them all).
+  const applied = CONTACTS_FILTER_KEYS.some((k) => flat[k] !== undefined);
+
   return {
     label: RAIL_LABEL,
-    groups,
+    // ⛔ A pill never wraps or shrinks, so a long label is clipped here and the whole text rides in its title.
+    groups: groups.map((g) => ({
+      ...g,
+      options: g.options.map((o) => (railFit(o.label) === o.label ? o : { ...o, label: railFit(o.label), title: o.title ?? o.label })),
+    })),
     countLine: input.counted === null ? null : railCountLine(input.counted.match, input.counted.book),
     notes,
+    clear: input.clearable && applied ? { label: RAIL_CLEAR, href: contactsClearFiltersHref(sp) } : null,
   };
 }

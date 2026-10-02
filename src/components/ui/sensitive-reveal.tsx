@@ -108,7 +108,10 @@ export function SensitiveReveal({
           onClick={onCopy}
           disabled={pending}
           aria-label={copied ? `${label} copied` : `Copy ${label}`}
-          className="sensitive-reveal inline-flex items-center font-mono text-caption text-text-tertiary hover:text-text-muted disabled:cursor-default"
+          // ⭐ An ICON-ONLY control carries no type size (2026-10-02): it renders no glyph of text, so a caption size
+          // here only set its box — and counted as sub-floor reading copy in `test:type-scale` §3. `leading-none` keeps
+          // the box as compact as the eye's beside it; the reach is `.sensitive-reveal`'s own (globals.css).
+          className="sensitive-reveal inline-flex items-center leading-none text-text-tertiary hover:text-text-muted disabled:cursor-default"
         >
           <GlyphSwap state={copied} className="text-text-subtle">
             {copied ? <I.check s={10} /> : <I.copy s={10} />}

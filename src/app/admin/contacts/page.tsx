@@ -139,6 +139,8 @@ async function AdminContactsContent({ searchParams }: { searchParams: Promise<Co
     lists: view?.lists ?? null,
     tags: view?.tags ?? null,
     counted: listed !== null ? { match: listed.result.total, book: listed.summary.total } : null,
+    // A failed read draws no "Showing contacts:" line and no table — so no Clear filters; the rail draws the one.
+    clearable: failed,
   });
   const s = summary;
 
@@ -180,7 +182,7 @@ async function AdminContactsContent({ searchParams }: { searchParams: Promise<Co
               only when something besides the search box narrows it; the box already shows its own text. The pieces
               are spaced by the flex gap, never by a JSX space a compiler may drop. */}
           {narrowed && listed && (
-            <div data-block="contacts-filtered" className="flex flex-wrap items-center gap-x-2 border-b border-border-subtle px-3 py-1 text-caption text-text-secondary">
+            <div data-block="contacts-filtered" className="flex flex-wrap items-center gap-x-2 border-b border-border-subtle px-3 py-1 text-body-sm text-text-secondary">
               <span className="text-text-tertiary">{CONTACTS_FILTERED_LEAD}</span>
               <span className="min-w-0 break-words text-text-primary">{listed.described.join(" · ")}</span>
               <a href={clearFiltersHref} className="inline-flex items-center min-h-[var(--tap-min)] text-royal-300 hover:underline">Clear filters</a>
@@ -250,9 +252,9 @@ async function AdminContactsContent({ searchParams }: { searchParams: Promise<Co
                         {reads && <td><Chip size="sm" variant={consent.variant}><span className="whitespace-nowrap">{consent.label}</span></Chip></td>}
                         {reads && <td><Chip size="sm" variant={r.ok ? "success" : "neutral"}><span className="whitespace-nowrap">{r.label}</span></Chip></td>}
                         <td className="whitespace-nowrap">
-                          {lists[i] > 0 && <span className="mr-2 text-caption text-text-tertiary">{lists[i]} {lists[i] === 1 ? "list" : "lists"}</span>}
+                          {lists[i] > 0 && <span className="mr-2 text-body-sm text-text-tertiary">{lists[i]} {lists[i] === 1 ? "list" : "lists"}</span>}
                           {shownTags.map((t) => <Chip key={t} size="sm" variant="neutral" className="mr-1">{t}</Chip>)}
-                          {c.tags.length > shownTags.length && <span className="text-caption text-text-tertiary">+{c.tags.length - shownTags.length}</span>}
+                          {c.tags.length > shownTags.length && <span className="text-body-sm text-text-tertiary">+{c.tags.length - shownTags.length}</span>}
                           {lists[i] === 0 && c.tags.length === 0 && <span className="text-text-tertiary">—</span>}
                         </td>
                         {reads && <td className="whitespace-nowrap">{SOURCE_LABEL[c.source]}</td>}

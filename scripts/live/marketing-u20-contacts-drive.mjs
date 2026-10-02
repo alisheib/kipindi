@@ -108,8 +108,16 @@ const pressedChips = (page) => page.$$eval(`${RAIL} a[data-chip][aria-pressed="t
 const pillHeights = (page) => page.$$eval(`${RAIL} a[data-chip]`, (els) => els.map((e) => Math.round(e.getBoundingClientRect().height * 100) / 100));
 const railLinks = (page) => page.$$eval(`${RAIL} a[data-chip]`, (els) => els.map((e) => ({ chip: e.getAttribute("data-chip") || "", href: e.getAttribute("href") || "" })));
 const sortLinks = (page) => page.locator('[data-block="contacts-card"] thead a[href*="sort="]').evaluateAll((as) => as.map((a) => a.getAttribute("href") || ""));
-const chipCount = (page, chip) => page.locator(`${RAIL} a[data-chip="${chip}"]`).first().getAttribute("data-count").catch(() => null);
-const railCount = async (page) => ((await page.locator(`${RAIL} [data-rail-count]`).innerText().catch(() => "")) || "").trim();
+// ⛔ An ABSENT element is asked with count() first: a bare innerText()/getAttribute() WAITS Playwright's whole default
+// timeout for it (30 s — measured by review on the error state, where there is no count line), then the catch says "".
+const chipCount = async (page, chip) => {
+  const loc = page.locator(`${RAIL} a[data-chip="${chip}"]`);
+  return (await loc.count()) > 0 ? loc.first().getAttribute("data-count") : null;
+};
+const railCount = async (page) => {
+  const loc = page.locator(`${RAIL} [data-rail-count]`);
+  return (await loc.count()) > 0 ? ((await loc.first().innerText()) || "").trim() : "";
+};
 const tapMin = (page) => page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--tap-min").trim());
 const paramsOf = (href) => new URL(href, "http://x").searchParams;
 
@@ -419,6 +427,18 @@ for (const vp of VIEWPORTS) {
       && (await railCount(page)) === "",
     `[${await currentChips(page)}] tags [${await railChips(page, "tag:")}]`);
   await railShot(page, vp.name, "u21-error-rail", MASKED_RAIL);
+  // The page draws no Clear filters of its own on a failed read (no "Showing contacts:" line, no table) — the rail
+  // draws the ONE, and pressing it removes both filters while the page stays in its error state.
+  const railClear = page.locator(RAIL).getByRole("link", { name: "Clear filters" });
+  ok(`${vp.name} · U21 ERROR · the rail offers the ONE Clear filters on a failed read`,
+    (await railClear.count()) === 1 && (await page.getByRole("link", { name: "Clear filters" }).count()) === 1,
+    `${await railClear.count()} in the rail · ${await page.getByRole("link", { name: "Clear filters" }).count()} on the page`);
+  await railClear.first().click();
+  await waitForParams(page, { op: null, tag: null });
+  ok(`${vp.name} · U21 ERROR → CLEAR FILTERS · both filters go and the rail stays, still saying the read failed`,
+    (await railGroups(page)).join(",") === "suppressed,op" && (await currentChips(page)).join(",") === "suppressed:,op:"
+      && /Couldn.t load the contact book/i.test(await mainText(page)),
+    `[${await railGroups(page)}] ${page.url()}`);
   await seed(page, "fault=0");
   await ctx.close();
 

@@ -53,11 +53,16 @@ export function ContactFilters({ rail }: { rail: ContactRail }) {
           ))}
         </div>
       ))}
-      {/* The count and the notes are spaced by the flex gap, never by a JSX space a compiler may drop. */}
-      {(rail.countLine !== null || rail.notes.length > 0) && (
-        <div data-rail-foot className="flex flex-wrap items-center gap-x-3 gap-y-1 text-caption text-text-tertiary">
+      {/* The count, the notes and (on a failed read only) Clear filters, spaced by the flex gap — never by a JSX space a
+          compiler may drop. ⚠️ `text-body-sm`, not the 11px caption: the notes are SENTENCES, which sit under the reading
+          floor at caption size (`test:type-scale` §3). */}
+      {(rail.countLine !== null || rail.notes.length > 0 || rail.clear !== null) && (
+        <div data-rail-foot className="flex flex-wrap items-center gap-x-3 gap-y-1 text-body-sm text-text-tertiary">
           {rail.countLine !== null && <span data-rail-count className="tabular-nums text-text-secondary">{rail.countLine}</span>}
           {rail.notes.map((n) => <span key={n}>{n}</span>)}
+          {rail.clear !== null && (
+            <a href={rail.clear.href} data-rail-clear className="inline-flex items-center min-h-[var(--tap-min)] text-royal-300 hover:underline">{rail.clear.label}</a>
+          )}
         </div>
       )}
     </div>
