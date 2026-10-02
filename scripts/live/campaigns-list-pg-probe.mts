@@ -158,13 +158,13 @@ const d = (await page(CS.statusesForRail("sending"), "created", "desc")).rows.fi
 const pr = d ? CS.campaignProgress(d, by[idOf("d")]) : null;
 ok("8 · the plan's Accept on Postgres: the RUNNING campaign with 4 SENT and 6 HELD reads 4 of 10", !!pr && pr.value === 4 && pr.max === 10 && pr.phase === "sending", JSON.stringify(pr));
 
-/* ── 9 · THE BADGE AT VOLUME (U36 review F3 — OPEN) ────────────────────────────────────────────────────────────────
+/* ── 9 · THE BADGE AT VOLUME (U36 review F3 — closed by measurement) ────────────────────────────────────────────────
  * 60,000 settled rows go on g — paused with its list finished — and the badge must still read 5. The PLAN is RECORDED,
  * not asserted. F3 asked whether Prisma's `recipients: { some }` (an uncorrelated IN) reads every outstanding recipient
  * row on each admin render. Measured 2026-10-02 on PostgreSQL 18.3: the uncorrelated IN is an index-only SKIP SCAN of
  * (campaignId, status) — skip scan is new in 18 — while a correlated EXISTS was planned as a hashed SEQUENTIAL scan,
- * which is worse. ⛔ Read production's version before changing the badge's query; these two lines say what each shape
- * does on the Postgres this probe runs on. */
+ * which is worse. Production runs 18 (Railway image `postgres-ssl:18`), so the badge keeps the relation filter.
+ * ⛔ These two lines say what each shape does on the Postgres this probe runs on — re-read them if production moves. */
 const VOLUME = 60_000;
 await pg.$executeRawUnsafe(
   `insert into "SmsCampaignRecipient" ("id", "campaignId", "msisdn", "status")

@@ -4519,10 +4519,11 @@ export const prismaDb = {
     /** U36 · the nav badge's count as ONE count() — never the rows. Its where is `wantsAttention` in SQL: a status that
      *  always wants an officer, or PAUSED with the list unfinished or a recipient still OUTSTANDING — both lists spread
      *  from campaign-status.ts, never retyped (HELD is outstanding).
-     *  ⚠️ ITS PLAN IS OPEN (U36 review F3, measured 2026-10-02 by `campaigns-list-pg-probe` §9 over 60,000 rows): the
-     *  relation filter compiles to an UNCORRELATED IN, which PostgreSQL 18.3 serves with an index-only SKIP SCAN of the
-     *  (campaignId, status) index. Before 18 there is no skip scan, so it may read every outstanding row ever written. A
-     *  correlated EXISTS was tried and planned as a hashed SEQUENTIAL scan — worse. ⛔ Read production's version first. */
+     *  ⚖️ ITS PLAN, MEASURED (U36 review F3, 2026-10-02, `campaigns-list-pg-probe` §9 over 60,000 rows): the relation
+     *  filter compiles to an UNCORRELATED IN, which PostgreSQL 18 serves with an index-only SKIP SCAN of the (campaignId,
+     *  status) index — and production runs 18 (Railway image `postgres-ssl:18`, read the same day). A correlated EXISTS
+     *  was tried and planned as a hashed SEQUENTIAL scan — worse. ⛔ Before 18 there is no skip scan: a move to an older
+     *  Postgres reopens this. */
     attentionCount: async (): Promise<number> => {
       return pc().smsCampaign.count({
         where: {
