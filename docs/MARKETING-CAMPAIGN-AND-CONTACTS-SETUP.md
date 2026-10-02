@@ -174,6 +174,10 @@ erasure now withdraws the consent and empties the book, and both data exports ca
   164/164 across 4 sections (46 CSV), `red:contacts-import` 169/169 (+49). 🔵 until a real CSV is parsed on production.
   ⚠️ The first commit took the builder's files minutes before its last three edits (a note's wording, a narrowing,
   a comment); `21c72715` is the final text, the same counts re-run. ⛔ Copy an agent's files only after its REPORT.
+  ✅ STEP 12 · U28b, FIRST HALF (`a0535f80`) — the samples back through the REAL readers, never a parser of the suite's own:
+  the CSV sample (BOM stripped, its first header resolving to Phone), its Swahili-header and `sep=;` variants through
+  U25, and the sample vCard through U26 with no header row and card 1 surviving (A1.2) — each to the literal drafts.
+  `test:contacts-import` 168/168, `red:contacts-import` 173/173 (+4). The A1.3 xlsx case waits for U27b.
   ⛔ LOCK STARVATION (measured 2026-10-01): `~/heavy-node-lock.sh` waiters poll every 30 s, and a session
   running jobs back to back re-takes the lock within seconds of releasing it — S10's typecheck waited
   40+ minutes without once getting in. S10 ran its battery through the same mkdir protocol polling every
@@ -646,7 +650,7 @@ a Guard key that resolves to a script on disk, `yes` plus the backticked `red:` 
 | U25 | pure | 🔵 | S10 | 928265b9 | no CSV reader → an incremental RFC 4180 reader: the delimiter voted outside quotes on the first record, sep= honoured, the encoding sniffed, the BOM stripped once | `test:contacts-import` | yes — `red:contacts-import` 169/169 (in-process) | CSV. 🔵 until U30/U32 parse a real CSV on production — nothing reaches it before then. |
 | U26 | pure | 🔵 | S10 | b4faac34 | no reader for a phone's contact export → a streaming vCard reader: both continuation rules in one walk, every card counted, card ordinals as lines | `test:contacts-import` | yes — `red:contacts-import` 120/120 (in-process) | vCard. 🔵 until U30/U32 parse a real .vcf on production — nothing reaches it before then. |
 | U27 | guard | 🟡 | S10 | 0dc25b98 | — | `test:contacts-boundary` | — | XLSX server-only. U27a landed (`0dc25b98`): `parsed-file.ts` (with `unreadable`), `xlsx-limits.ts` (the exact decoded-size gate, one phone-format remedy), the boundary suite. U27b, the reader, is on the parser track. |
-| U28 | pure | 🟡 | S10 | 0dc25b98 | — | `test:contacts-import` | — | one field list. U28a landed (`0dc25b98`): `contact-fields.ts`, `csv-write.ts`, the sample sheets, the ONE runner with per-unit section modules. U28b (round trips) is last. |
+| U28 | pure | 🟡 | S10 | 0dc25b98 | — | `test:contacts-import` | — | one field list. U28a landed (`0dc25b98`): `contact-fields.ts`, `csv-write.ts`, the sample sheets, the ONE runner with per-unit section modules. U28b's CSV and vCard round trips landed (`a0535f80`); its xlsx case (A1.3) lands with U27b. |
 | U29 | data | ⬜ | — | — | — | `test:dal-parity` | — | staging |
 | U30 | visual | ⬜ | — | — | — | `test:contacts-import` | — | pre-flight |
 | U31 | engine | 🟡 | S10 | 0dc25b98 | — | `test:contacts-import` | — | decide(). U31-A landed (`0dc25b98`): the pure rule, the erasure disguise (OD47). U31-B (the facts loader) and the UI come with U30. |
