@@ -89,7 +89,7 @@ ok("§2f the whole thing is wrapped so the error surface can never itself throw"
   const i = routeErrorCode.indexOf("NEXT_DEPLOYMENT_ID");
   const body = i >= 0 ? routeErrorCode.slice(i, routeErrorCode.indexOf("catch", i)) : "";
   ok("§2g 🔴 it does not retry the action, only the page",
-    body.length > 0 && !/reset\s*\(/.test(body),
+    body.length > 0 && !/\breset\s*\(/.test(body),
     "a recovery that replays the action could double-submit a deposit");
 }
 

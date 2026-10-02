@@ -177,7 +177,7 @@ const PROBE = `() => {
   const pageBtn = [...document.querySelectorAll("[data-pager-group], a[aria-label], button[aria-label], span[aria-label]")]
     .filter((b) => b.hasAttribute("data-pager-group") || /page|ukurasa/i.test(b.getAttribute("aria-label") || ""));
   const pageBtnLegacy = [...document.querySelectorAll("a[aria-label], button[aria-label], span[aria-label]")]
-    .filter((b) => /page|ukurasa/i.test(b.getAttribute("aria-label") || ""));
+    .filter((b) => /\bpage\b|\bukurasa\b/i.test(b.getAttribute("aria-label") || ""));
   /* The pager ROW, not the strip of controls inside it: the row is the one that also carries the reading
      ("1-20 OF 82"), and the row's top is what "where the pager sits" means. Bounded walk — four levels, then
      give up — so a markup change cannot silently promote this to <body>. */
