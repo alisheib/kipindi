@@ -144,6 +144,15 @@ export const RATE_RULES: Record<string, RateRule> = {
   // same rule also caps each valid link's own acts under a hashed per-link key. ⚠️ A throttled act
   // reports the RETRY message, never a success.
   "optout.ip":      { capacity: 30, refillPerMin: 10 },
+  // U37b · the composer's TEST SEND (/admin/campaigns/new), keyed on the OFFICER — the `desk.picker` convention: a bucket
+  // nobody can drain on somebody else's behalf. Once the live switch is open every test is a real SMS to the officer's own
+  // number (a real charge), so the budget is small: 3 at once, then one every 10 minutes. ⛔ Spent BEFORE anything else is
+  // decided, so a refused test spends it too — and a test this budget refuses writes no audit row.
+  "marketing.testSend": { capacity: 3, refillPerMin: 0.1 },
+  // The composer's save, per officer (U37b review m5): every create is a campaign row that is never deleted and an audit
+  // row that is never pruned — the case `contacts.write` bounds on the contacts form. 30 at once and 10 a minute cover
+  // real editing; the steady rate is what stops a script.
+  "marketing.campaignSave": { capacity: 30, refillPerMin: 10 },
 };
 
 export type RateResult = { allowed: boolean; remaining: number; retryAfterSec: number };

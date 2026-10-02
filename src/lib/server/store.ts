@@ -3413,6 +3413,9 @@ const memoryDb = {
       return { ...row };
     },
     find: (id: string): StoredSmsCampaign | null => {
+      // ⛔ DEV ONLY — the U37b drive photographs the composer's read error through U36's switch
+      // (`/api/dev-test/marketing-campaigns-seed?fault=1`). The memory twin never serves production.
+      if (globalThis.__50PICK_CAMPAIGNS_READ_FAULT) throw new Error("campaign read fault (dev drive)");
       const row = store.smsCampaigns.get(id);
       return row ? { ...row } : null;
     },

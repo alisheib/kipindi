@@ -40,6 +40,16 @@
  * WHOLE verdict for every recipient — one campaign, one verdict (§15.13) — and holds the name rules (folded, never cut,
  * a book contact never greeted by a stored name). §16 holds that nothing else in `src/` calls `composeMarketing`.
  *
+ * ⭐ §16.2–§16.5 · §17 · §18 (U37b, 2026-10-02) · THE PAGE, THE SAVE AND THE TEST SEND. §16.2–§16.5 read the composer's own
+ * files (`src/app/admin/campaigns/new/`): the screen sizes nothing itself, offers no sender control (OD45) and no number
+ * control, and names no money (OD24); §17.6 holds the save to the campaign door's ONE draft writer (X12). §17 drives
+ * `saveCampaignDraft` on the memory twin: the server re-validates and stores ITS OWN coding and segments (X15), an edit is a
+ * compare-and-set on `draftRevision`, and an audience of one phone number is refused (OD55). §18 drives
+ * `sendCampaignTest`: the officer's own number only, whatever else is posted; the ONE gate; the ONE live switch — with
+ * `marketing.sms.live` absent a real carrier sends nothing (no token, no row, no transport call; X14); one token per
+ * number; a masked audit row; never "handed over" unless the gateway took it; and the 40-name bound through the save and
+ * the send.
+ *
  * ⛔ IN-PROCESS BY CONSTRUCTION — `--prove-red` plants each defect IN MEMORY and requires the
  * MATCHING assertion to fire. No file-writing call, so it stays outside `test:red-anchors` §4.
  *
@@ -66,6 +76,7 @@ import {
 import { appUrl } from "../src/lib/app-url.ts";
 import { decomment } from "./lib/decomment.mts";
 import { srcFiles, REPO_ROOT } from "./lib/tracked-files.mts";
+import { endOfOpenTag } from "./lib/jsx-open-tag.mts";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -947,6 +958,705 @@ function checkOneComposer(src: ComposerSources, log: (l: string) => void): strin
 
 const COMPOSER_SOURCES = loadComposerSources();
 
+/* ══ §16.2–§16.5 · §17.6 — THE COMPOSER'S OWN FILES, READ (U37b, 2026-10-02) ══════════════════════════════
+ * The page layer of U37a's rules: the screen sizes nothing itself (its counter is the renderer's), offers no sender
+ * control (OD45) and no number control (a test reaches the officer's own number only), and names no money (OD24) —
+ * and the save writes through the campaign door's ONE draft writer (X12). Read from the real tree; every plant below
+ * swaps one source string IN MEMORY. */
+
+/** The composer's route directory — EVERY file in it is read, so a new file joins the population by existing. */
+const SCREEN_DIR = "src/app/admin/campaigns/new/";
+/** What a screen must never reach for: the counter and the text are the renderer's (`campaign-template.ts`). */
+const SIZER_NAMES = ["sizeSms", "encodingFor", "planSms", "unitsIn", "operatorBudget", "capUnits", "marketingFooter", "composeMarketing"];
+const CR17 = cc(13);
+type ScreenSources = { files: ReadonlyMap<string, string>; draftService: string; testService: string };
+
+function loadScreenSources(): ScreenSources {
+  const code = (rel: string) => decomment(readFileSync(join(REPO_ROOT, rel), "utf8")).split(CR17).join("");
+  const files = new Map<string, string>();
+  for (const rel of srcFiles()) if (rel.startsWith(SCREEN_DIR)) files.set(rel, code(rel));
+  return {
+    files,
+    draftService: code("src/lib/server/marketing/campaign-draft.ts"),
+    testService: code("src/lib/server/marketing/campaign-test-send.ts"),
+  };
+}
+
+/** Every open tag of a control someone could type into, read by the shared lexer (an arrow function holds a `>`). */
+function controlTags(text: string): string[] {
+  const out: string[] = [];
+  for (const m of text.matchAll(/<(Input|Textarea|Select|PhoneInput|input|textarea|select)(?=[\s/>])/g)) {
+    const at = m.index ?? 0;
+    const end = endOfOpenTag(text, at);
+    out.push(end < 0 ? text.slice(at, at + 400) : text.slice(at, end + 1));
+  }
+  return out;
+}
+
+/** The braces after `opener` — an object or type literal — brace-counted. "" when the opener is not there. */
+function blockAfter(text: string, opener: string): string {
+  const at = text.indexOf(opener);
+  if (at < 0) return "";
+  const open = text.indexOf("{", at);
+  if (open < 0) return "";
+  let depth = 0;
+  for (let i = open; i < text.length; i++) {
+    if (text[i] === "{") depth++;
+    else if (text[i] === "}") {
+      depth--;
+      if (depth === 0) return text.slice(open, i + 1);
+    }
+  }
+  return "";
+}
+
+function checkComposerScreen(src: ScreenSources, log: (l: string) => void): string[] {
+  const failed: string[] = [];
+  const ok = (label: string, cond: boolean, extra = "") => {
+    if (cond) log(`  ok   ${label}`);
+    else { failed.push(label); log(`  FAIL ${label}${extra ? ` — ${extra}` : ""}`); }
+  };
+  log(`${NL15}§16.2–§16.5 · §17.6 · THE COMPOSER'S OWN FILES — it sizes nothing, offers no sender and no number, names no money`);
+  const client = src.files.get(`${SCREEN_DIR}composer-client.tsx`) ?? "";
+  const counter = src.files.get(`${SCREEN_DIR}composer-counter.tsx`) ?? "";
+  const actions = src.files.get(`${SCREEN_DIR}actions.ts`) ?? "";
+  const copy = src.files.get(`${SCREEN_DIR}composer-copy.ts`) ?? "";
+  ok("§16.2 control · the composer's own files were read — the page, its ghost, the client, the counter, the actions, the copy, the loader",
+    src.files.size >= 7 && client.length > 500 && counter.length > 100 && actions.length > 200 && copy.length > 200
+      && src.files.has(`${SCREEN_DIR}page.tsx`) && src.files.has(`${SCREEN_DIR}loading.tsx`) && src.files.has(`${SCREEN_DIR}composer-loader.ts`),
+    [...src.files.keys()].map((k) => k.slice(SCREEN_DIR.length)).join(", "));
+
+  /* §16.2 · the counter is the renderer's */
+  const reaches = [...src.files].flatMap(([rel, text]) =>
+    SIZER_NAMES.filter((n) => new RegExp(`(?<![A-Za-z0-9_$])${n}(?![A-Za-z0-9_$])`).test(text)).map((n) => `${rel.slice(SCREEN_DIR.length)}:${n}`));
+  const fromTemplate = /import\s*\{[^}]*validateCampaignTemplate[^}]*\}\s*from\s*"@\/lib\/marketing\/campaign-template"/.test(client)
+    && client.includes("validateCampaignTemplate(fields, view.sourcePhrase)") && counter.includes("counterLine(counter)");
+  ok("§16.2 ⛔ the screen sizes nothing itself — its live verdict is validateCampaignTemplate (counterFor) from campaign-template.ts, priced with the campaign's own source line, and no composer file names a sizer (sizeSms, encodingFor, planSms, unitsIn, operatorBudget, capUnits, marketingFooter, composeMarketing)",
+    reaches.length === 0 && fromTemplate, `named: [${reaches.join(", ")}] · verdict from the template ${fromTemplate}`);
+
+  /* §16.3 · OD45 — no sender control */
+  const tags = [...src.files].flatMap(([rel, text]) => controlTags(text).map((t) => ({ rel: rel.slice(SCREEN_DIR.length), t })));
+  const senderTags = tags.filter((x) => /sender/i.test(x.t));
+  const labels = blockAfter(copy, "export const COMPOSE_FIELD");
+  const inputType = blockAfter(src.draftService, "export type CampaignDraftInput");
+  ok("§16.3 ⛔ OD45 · no composer control is a sender — no input, textarea or select names one, no field label offers one — and the save's input type carries no sender, segments, coding or source line",
+    tags.length >= 4 && senderTags.length === 0 && labels.length > 50 && !/sender/i.test(labels)
+      && inputType.length > 50 && !/sender|segments|coding|sourcePhrase/i.test(inputType),
+    `${tags.length} controls · sender controls [${senderTags.map((x) => x.rel).join(", ")}] · input type ${inputType.length} chars`);
+
+  /* §16.4 · no number control, and the test action's own signature */
+  const numberTags = tags.filter((x) => /type=["']tel["']|inputMode=["']tel["']|(?:name|id)=["'](?:phone|msisdn|number|to)["']|^<PhoneInput/i.test(x.t));
+  const phoneImport = [...src.files.values()].some((t) => /PhoneInput|phone-input/.test(t));
+  const sig = /export\s+async\s+function\s+sendCampaignTestAction\s*\(([^)]*)\)/.exec(actions)?.[1] ?? null;
+  const params = sig === null ? [] : sig.split(",").map((p) => p.trim().split(/[\s:?=]/)[0]).filter((p) => p !== "");
+  const testInput = blockAfter(src.testService, "export type CampaignTestInput");
+  const testKeys = [...testInput.matchAll(/([A-Za-z_$][A-Za-z0-9_$]*)\s*\??:/g)].map((m) => m[1]);
+  ok("§16.4 ⛔ NO NUMBER CONTROL — no tel input, no PhoneInput, no field named phone, msisdn, number or to — and sendCampaignTestAction takes exactly (campaignId, variant), its input type no other key",
+    numberTags.length === 0 && !phoneImport && params.join(",") === "campaignId,variant" && testKeys.join(",") === "campaignId,variant",
+    `number controls [${numberTags.map((x) => x.rel).join(", ")}] · PhoneInput ${phoneImport} · params (${params.join(", ")}) · input keys {${testKeys.join(", ")}}`);
+
+  /* §16.5 · OD24 — no money */
+  const money = [...src.files].filter(([, text]) => /TZS|formatTzs/.test(text)).map(([rel]) => rel.slice(SCREEN_DIR.length));
+  ok("§16.5 ⛔ OD24 · no money on the composer — no TZS and no formatTzs in any of its files", money.length === 0, `money in [${money.join(", ")}]`);
+
+  /* §17.6 · X12 — the save's one door, read */
+  const svc = src.draftService;
+  ok("§17.6 X12 · the save writes through the campaign door alone — create, and its ONE draft writer, the compare-and-set update — with no baseUpdatedAt, no second update method and no transition",
+    svc.includes("db.smsCampaign.update(id, patch, guard, at)") && svc.includes("db.smsCampaign.create(row)")
+      && !/baseUpdatedAt|updateDraft|smsCampaign\.transition/.test(svc),
+    `${svc.length} chars`);
+  return failed;
+}
+
+const SCREEN_SOURCES = loadScreenSources();
+
+/* ══ §17–§18 — THE SAVE AND THE TEST SEND, DRIVEN (U37b, 2026-10-02) ════════════════════════════════════════
+ * ⛔ ON THE MEMORY TWIN ONLY. `DATABASE_URL` (and Redis) are removed BEFORE the store is imported — the store picks its
+ * twin at import, and nothing above this line imports it — so a run on a machine with a database configured can never
+ * write a campaign, a token or a message into it. The console provider is pinned; the one real-carrier case (§18.5)
+ * swaps in Blackball with DUMMY keys and a dead address and replaces `fetch` with a counter that refuses, so nothing in
+ * this suite can reach a network.
+ * ⭐ EVERY RUN BUILDS ITS OWN FIXTURES — unique officers, numbers and campaigns — so the red runs below never meet the
+ * baseline's rows. */
+delete process.env.DATABASE_URL;
+delete process.env.REDIS_URL;
+delete process.env.REDIS_ENABLED;
+process.env.SMS_PROVIDER = "console";
+const { db } = await import("../src/lib/server/store.ts");
+const DRAFT = await import("../src/lib/server/marketing/campaign-draft.ts");
+const TEST = await import("../src/lib/server/marketing/campaign-test-send.ts");
+const LIVE = await import("../src/lib/server/marketing/live-switch.ts");
+const { dispatchSlice } = await import("../src/lib/server/marketing/dispatch.ts");
+const { recordPlayerMarketingChoice, mayReceiveMarketingSms } = await import("../src/lib/server/marketing/consent.ts");
+const { ensureOptOutToken, mintOptOutToken } = await import("../src/lib/server/marketing/optout-service.ts");
+const { getAuditPage, auditFlush } = await import("../src/lib/server/audit.ts");
+const { maskPhone } = await import("../src/lib/phone-normalize.ts");
+
+type DraftInput = Parameters<typeof DRAFT.saveCampaignDraft>[0];
+type TestDeps = typeof TEST.CAMPAIGN_TEST_DEPS;
+type TestInput = Parameters<typeof TEST.sendCampaignTest>[0];
+type TestResult = Awaited<ReturnType<typeof TEST.sendCampaignTest>>;
+type StoredRow = NonNullable<Awaited<ReturnType<typeof db.smsCampaign.find>>>;
+
+/** The memory twin's maps §17–§18 count in. */
+type U37bMaps = {
+  smsMessages: Map<string, { targetId: string | null; targetType: string | null; msisdn: string; purpose: string }>;
+  smsCampaigns: Map<string, unknown>;
+};
+function u37bMaps(): U37bMaps {
+  const s = (globalThis as unknown as { __50PICK_STORE?: U37bMaps }).__50PICK_STORE;
+  if (!s || !s.smsMessages || !s.smsCampaigns) throw new Error("the memory store is not loaded — §17–§18 run on the memory twin only");
+  return s;
+}
+const smsRowsFor = (targetId: string) => [...u37bMaps().smsMessages.values()].filter((m) => m.targetId === targetId);
+const smsRowsTo = (msisdn: string) => [...u37bMaps().smsMessages.values()].filter((m) => m.msisdn === msisdn);
+const campaignCount = () => u37bMaps().smsCampaigns.size;
+const tokenCount = async (key: string) => (await db.marketingOptOutToken.listFor(key)).length;
+const MASK_DOTS = cc(0x2022).repeat(4);
+
+let u37bSeq = 0;
+/** A fresh NDC-71 key per fixture (`25571` + seven digits): no run of these sections ever meets another's rows. */
+function u37bKey(): string {
+  u37bSeq++;
+  return `25571${String(3700000 + u37bSeq)}`;
+}
+
+type OfficerFixture = { id: string; key: string; phone: string };
+/** An officer's own account — a GROWTH user — with consent given the way a person gives it (the profile switch's writer). */
+async function u37bOfficer(opts: { consent?: boolean; dob?: string | null; displayName?: string | null; phone?: string } = {}): Promise<OfficerFixture> {
+  const key = u37bKey();
+  const phone = opts.phone ?? `+${key}`;
+  const id = `usr_u37b_${u37bSeq}`;
+  const at = new Date().toISOString();
+  await db.user.create({
+    id, phoneE164: phone, email: null, passwordHash: null, passwordSalt: null, failedLoginCount: 0, lockedUntil: null,
+    role: "GROWTH", status: "ACTIVE", locale: "EN", displayName: opts.displayName === undefined ? "Asha Officer" : opts.displayName,
+    dob: opts.dob === undefined ? "1990-01-01" : opts.dob, region: "TZ", acceptedTermsVersion: "v1", acceptedTermsAt: at,
+    marketingOptIn: false, twoFactorEnabled: false, avatarDataUrl: null, emailVerifiedAt: null, createdAt: at, updatedAt: at,
+    lastLoginAt: at, closedAt: null,
+  });
+  if (opts.consent !== false) {
+    const r = await recordPlayerMarketingChoice({ userId: id, marketingOptIn: true, locale: "EN" });
+    if (!r.ok) throw new Error(`fixture officer ${id}: the consent did not record`);
+  }
+  return { id, key: opts.phone ? phone.replace(/[^0-9]/g, "") : key, phone };
+}
+
+const U37B_SAVER = "usr_u37b_saver";
+/** The real save's door with a silent audit — for fixtures, never for the save under test. */
+const QUIET_DRAFT_DEPS = { ...DRAFT.CAMPAIGN_DRAFT_DEPS, audit: async () => ({}) };
+const draftInput = (over: Partial<DraftInput> = {}): DraftInput => ({
+  id: null, draftRevision: null, name: "U37b fixture", bodySw: "50pick: Habari {jina}, mechi kubwa leo.", bodyEn: "",
+  nameFallbackSw: FB, nameFallbackEn: "Friend", audience: null, ...over,
+});
+/** A saved DRAFT through the REAL save — never a red case's — so a save plant cannot reach the test-send section. */
+async function u37bDraft(over: Partial<DraftInput> = {}): Promise<string> {
+  const r = await DRAFT.saveCampaignDraft(draftInput(over), U37B_SAVER, { viewerReads: true }, QUIET_DRAFT_DEPS);
+  if (!r.ok) throw new Error(`fixture draft refused: ${r.error}`);
+  return r.id;
+}
+/** A fresh draft moved to CONFIRMED through the campaign door's one conditional move. */
+async function u37bConfirm(id: string): Promise<void> {
+  const at = new Date().toISOString();
+  const moved = await db.smsCampaign.transition(id, {
+    from: ["DRAFT"], to: "CONFIRMED", draftRevision: 0, at,
+    patch: {
+      audienceCount: 5, confirmTier: "TYPED", audienceWatermark: null, estimateSegments: 5, estimateTzs: null, budgetTzs: null,
+      confirmedBy: "usr_u37b_owner", confirmedAt: at,
+    },
+  });
+  if (moved === null) throw new Error(`fixture ${id} could not be confirmed`);
+}
+/** The stored row as the renderer reads it. */
+function u37bTemplate(row: StoredRow): CampaignTemplate {
+  return {
+    bodySw: row.bodySw, bodyEn: row.bodyEn ?? "", nameFallbackSw: row.nameFallbackSw ?? "", nameFallbackEn: row.nameFallbackEn ?? "",
+    sourcePhrase: row.sourcePhrase ?? "",
+  };
+}
+
+type Outbound = { to: string; body: string; targetType?: string; targetId?: string };
+type SendSpy = { calls: number; messages: Outbound[] };
+/** A transport stand-in: it records the batch and answers as told — taken, held by the credit floor, a lost reply, or a throw. */
+function u37bSpy(answer: "accept" | "floor" | "transport" | "throw" = "accept"): { send: TestDeps["send"]; spy: SendSpy } {
+  const spy: SendSpy = { calls: 0, messages: [] };
+  const send = async (ms: Outbound[]) => {
+    spy.calls++;
+    spy.messages.push(...ms);
+    const keyed = (m: Outbound) => ({ to: m.to, targetType: m.targetType ?? null, targetId: m.targetId ?? null });
+    if (answer === "throw") throw new Error("the transport threw (fixture)");
+    if (answer === "floor") {
+      return { results: ms.map((m) => ({ ...keyed(m), reference: "", ok: false, code: "BALANCE_FLOOR", error: "below the floor" })), balanceTzs: 10, refused: "BALANCE_FLOOR" };
+    }
+    if (answer === "transport") {
+      return { results: ms.map((m) => ({ ...keyed(m), reference: `sms_lost_${spy.calls}`, ok: false, code: "TRANSPORT", error: "reply lost" })), balanceTzs: null };
+    }
+    return { results: ms.map((m, i) => ({ ...keyed(m), reference: `sms_fixture_${spy.calls}_${i}`, ok: true })), balanceTzs: null };
+  };
+  return { send: send as unknown as TestDeps["send"], spy };
+}
+const ALLOW = async () => ({ allowed: true, remaining: 3, retryAfterSec: 0 });
+const reasonOf = (r: TestResult): string => (r.ok ? "HANDED OVER" : "reason" in r ? String(r.reason) : r.outcome);
+
+/** Each member is what a red case swaps — one at a time. */
+type ComposeImpl = {
+  save: typeof DRAFT.saveCampaignDraft;
+  test: typeof TEST.sendCampaignTest;
+  readSwitch: typeof LIVE.readMarketingLiveSwitch;
+  liveGate: typeof LIVE.marketingLiveGate;
+  ensureToken: typeof ensureOptOutToken;
+  /** ⛔ THE SHIPPED WIRING (U37b review M1): §18.5, §18.15 and §18.16 run ITS switch reader, token rule and audit — the
+   *  suite's own stand-ins above cannot see a regression in `CAMPAIGN_TEST_DEPS` itself. */
+  testDeps: TestDeps;
+  /** campaign-test-send.ts as text — §18.14 pins the wires it is built from. */
+  testSendSource: string;
+};
+const REAL_COMPOSE: ComposeImpl = {
+  save: DRAFT.saveCampaignDraft, test: TEST.sendCampaignTest, readSwitch: LIVE.readMarketingLiveSwitch,
+  liveGate: LIVE.marketingLiveGate, ensureToken: ensureOptOutToken,
+  testDeps: TEST.CAMPAIGN_TEST_DEPS,
+  testSendSource: readFileSync(new URL("../src/lib/server/marketing/campaign-test-send.ts", import.meta.url), "utf8"),
+};
+
+/* ── §17 · the save ── */
+async function checkSave(impl: ComposeImpl, log: (l: string) => void): Promise<string[]> {
+  const failed: string[] = [];
+  const ok = (label: string, cond: boolean, extra = "") => {
+    if (cond) log(`  ok   ${label}`);
+    else { failed.push(label); log(`  FAIL ${label}${extra ? ` — ${extra}` : ""}`); }
+  };
+  const claim = async (label: string, fn: () => Promise<[boolean, string?]>) => {
+    try {
+      const [c, x] = await fn();
+      ok(label, c, x ?? "");
+    } catch (err) {
+      ok(label, false, `threw: ${(err as Error)?.message ?? String(err)}`);
+    }
+  };
+  log(`${NL15}§17 · THE SAVE — the server's verdict and the server's figures, one compare-and-set, never one phone number`);
+  u37bSeq++;
+  const officerId = `usr_u37b_save_${u37bSeq}`;
+  const audits: Array<{ action: string; actorId: string | null; targetId: string | null }> = [];
+  const deps = { ...DRAFT.CAMPAIGN_DRAFT_DEPS, audit: async (e: { action: string; actorId: string | null; targetId: string | null }) => { audits.push(e); return {}; } };
+  const save = (input: DraftInput, viewerReads = true) => impl.save(input, officerId, { viewerReads }, deps as typeof DRAFT.CAMPAIGN_DRAFT_DEPS);
+
+  await claim("§17.1 ⭐ THE SERVER RE-VALIDATES — a body 3 over in the worst case, posted with injected figures (segmentsSw:1, codingSw:'GSM7'), is refused 'invalid' on bodySw, and NO row is written", async () => {
+    const before = campaignCount();
+    const over = `${fillTo(HEAD, operatorBudget("SW", RESERVE))}aaa`;
+    const lie = { ...draftInput({ name: "Over the cap", bodySw: over }), segmentsSw: 1, codingSw: "GSM7", segmentsEn: 1, codingEn: "GSM7" } as unknown as DraftInput;
+    const r = await save(lie);
+    return [!r.ok && r.reason === "invalid" && (r.problems.bodySw?.length ?? 0) > 0 && campaignCount() === before,
+      `${r.ok ? "SAVED" : r.reason} · rows ${before} → ${campaignCount()}`];
+  });
+
+  await claim("§17.2 ⭐ X15 · A VALID SAVE STORES THE SERVER'S FIGURES — born a DRAFT at revision 0, created by the officer, each body with its OWN counter's coding and segments (never the posted 7 / UCS2 / 9), no source line, the whole book as its audience — and ONE marketing.campaign_created row", async () => {
+    const lies = {
+      ...draftInput({ name: "Figures", bodyEn: EN_BODY }),
+      segmentsSw: 7, codingSw: "UCS2", segmentsEn: 9, codingEn: "UCS2", sourcePhrase: "Typed by a browser", status: "CONFIRMED", createdBy: "usr_somebody_else",
+    } as unknown as DraftInput;
+    const r = await save(lies);
+    const row = r.ok ? await db.smsCampaign.find(r.id) : null;
+    const sw = counterFor(draftInput().bodySw, "SW", FB, "");
+    const en = counterFor(EN_BODY, "EN", "Friend", "");
+    const created = row === null ? 0 : audits.filter((a) => a.action === DRAFT.CAMPAIGN_CREATED_ACTION && a.targetId === row.id && a.actorId === officerId).length;
+    return [r.ok && r.created && row !== null && row.status === "DRAFT" && row.draftRevision === 0 && row.createdBy === officerId
+      && row.codingSw === sw.encoding && row.segmentsSw === sw.segments && sw.segments === 1
+      && row.bodyEn === EN_BODY && row.codingEn === en.encoding && row.segmentsEn === en.segments && en.segments === 1
+      && row.sourcePhrase === null && row.audienceFilter === "{}" && created === 1,
+      row === null ? `no row (${r.ok ? "saved?" : r.error})`
+        : `stored ${row.codingSw}/${row.segmentsSw} · ${row.codingEn}/${row.segmentsEn} · ${row.status} rev ${row.draftRevision} by ${row.createdBy} · phrase ${row.sourcePhrase} · audience ${row.audienceFilter} · created rows ${created}`];
+  });
+
+  await claim("§17.3 ⭐ X12 · ONE COMPARE-AND-SET — an edit on the revision the form carried lands (0 → 1); the same edit on the OLD revision, and an edit with no revision at all, are refused 'stale' (saying when it was saved), and the stored body stays the first edit's", async () => {
+    const made = await save(draftInput({ name: "CAS" }));
+    if (!made.ok) return [false, `fixture refused: ${made.error}`];
+    const first = await save(draftInput({ id: made.id, draftRevision: 0, name: "CAS", bodySw: "50pick: Toleo la pili, soka leo." }));
+    const stale = await save(draftInput({ id: made.id, draftRevision: 0, name: "CAS", bodySw: "50pick: Toleo la zamani linashinda." }));
+    const blind = await save(draftInput({ id: made.id, draftRevision: null, name: "CAS", bodySw: "50pick: Bila toleo." }));
+    const row = await db.smsCampaign.find(made.id);
+    return [first.ok && !first.created && first.draftRevision === 1
+      && !stale.ok && stale.reason === "stale" && stale.error.includes("saved this draft at")
+      && !blind.ok && blind.reason === "stale"
+      && row !== null && row.bodySw === "50pick: Toleo la pili, soka leo." && row.draftRevision === 1,
+      `first ${first.ok ? `rev ${first.draftRevision}` : first.reason} · stale ${stale.ok ? "SAVED" : stale.reason} · blind ${blind.ok ? "SAVED" : blind.reason} · stored "${row?.bodySw}" rev ${row?.draftRevision}`];
+  });
+
+  await claim("§17.4 a campaign that left DRAFT cannot be edited — 'not_draft', its body unchanged — and an id that names nothing is 'not_found'", async () => {
+    const made = await save(draftInput({ name: "Confirmed" }));
+    if (!made.ok) return [false, `fixture refused: ${made.error}`];
+    await u37bConfirm(made.id);
+    const nd = await save(draftInput({ id: made.id, draftRevision: 0, name: "Confirmed", bodySw: "50pick: Haipaswi kubadilika." }));
+    const nf = await save(draftInput({ id: "cmp_u37b_nobody_here", draftRevision: 0 }));
+    const row = await db.smsCampaign.find(made.id);
+    return [!nd.ok && nd.reason === "not_draft" && row !== null && row.status === "CONFIRMED" && row.bodySw === draftInput().bodySw
+      && !nf.ok && nf.reason === "not_found",
+      `confirmed → ${nd.ok ? "EDITED" : nd.reason} · unknown → ${nf.ok ? "SAVED" : nf.reason} · stored "${row?.bodySw}"`];
+  });
+
+  await claim("§17.5 ⛔ OD55 · A CAMPAIGN AUDIENCE IS NEVER ONE PHONE NUMBER — a whole-number search in each of its four spellings is refused 'invalid' on the audience card (a group, never one number; the test send for one phone) and writes no row; a NAME search is saved as the filter it is", async () => {
+    const before = campaignCount();
+    const spellings = ["0712345678", "+255712345678", "255712345678", "712345678"];
+    const refused: string[] = [];
+    for (const q of spellings) {
+      const r = await save(draftInput({ name: `One number ${refused.length}`, audience: { q } }));
+      if (!r.ok && r.reason === "invalid" && (r.problems.audience ?? []).some((p) => p.includes("never to one phone number") && p.includes("test send"))) refused.push(q);
+    }
+    const afterRefusals = campaignCount();
+    const named = await save(draftInput({ name: "A name search", audience: { q: "Asha" } }));
+    const row = named.ok ? await db.smsCampaign.find(named.id) : null;
+    return [refused.length === spellings.length && afterRefusals === before && row !== null && row.audienceFilter === '{"q":"Asha"}',
+      `refused ${refused.length} of ${spellings.length} · rows ${before} → ${afterRefusals} · the name search stored ${row?.audienceFilter ?? "NOTHING"}`];
+  });
+  await claim("§17.5b ⛔ OD55 · …AND IN NO OTHER FIELD (U37b review m4) — a whole number as a tag, a list id or an import id, or a search padded past the number parser (\"0712345678 0\" stays name text), is refused the same way and writes no row; a tag with a few digits is saved", async () => {
+    const before = campaignCount();
+    const smuggled: Array<Record<string, string>> = [{ tag: "0712345678" }, { list: "0712345678" }, { import: "255712345678" }, { q: "0712345678 0" }];
+    const refused: string[] = [];
+    for (const audience of smuggled) {
+      const r = await save(draftInput({ name: `Smuggled ${refused.length}`, audience }));
+      if (!r.ok && r.reason === "invalid" && (r.problems.audience ?? []).some((p) => p.includes("never to one phone number"))) refused.push(Object.keys(audience)[0]);
+    }
+    const after = campaignCount();
+    const fine = await save(draftInput({ name: "A tag with digits", audience: { tag: "vip2026" } }));
+    return [refused.length === smuggled.length && after === before && fine.ok,
+      `refused [${refused.join(", ")}] of ${smuggled.length} · rows ${before} → ${after} · vip2026 ${fine.ok ? "saved" : "REFUSED"}`];
+  });
+  return failed;
+}
+
+/* ── §18 · the test send ── */
+async function checkTestSend(impl: ComposeImpl, log: (l: string) => void): Promise<string[]> {
+  const failed: string[] = [];
+  const ok = (label: string, cond: boolean, extra = "") => {
+    if (cond) log(`  ok   ${label}`);
+    else { failed.push(label); log(`  FAIL ${label}${extra ? ` — ${extra}` : ""}`); }
+  };
+  const claim = async (label: string, fn: () => Promise<[boolean, string?]>) => {
+    try {
+      const [c, x] = await fn();
+      ok(label, c, x ?? "");
+    } catch (err) {
+      ok(label, false, `threw: ${(err as Error)?.message ?? String(err)}`);
+    }
+  };
+  log(`${NL15}§18 · THE TEST SEND — the officer's own number, the one gate, the one live switch`);
+  type AuditRow = { action: string; actorId: string | null; targetId: string | null; payload?: Record<string, unknown> };
+  const audits: AuditRow[] = [];
+  const keys: string[] = [];
+  const capture = async (e: AuditRow) => { audits.push(e); return {}; };
+  /** The real dependencies, with an open budget, a capturing audit, and this run's token rule and switch reader. */
+  const deps = (over: Partial<TestDeps> = {}): TestDeps => ({
+    ...TEST.CAMPAIGN_TEST_DEPS, rate: ALLOW, audit: capture, ensureToken: (raw: string) => impl.ensureToken(raw),
+    liveSwitch: () => impl.readSwitch(), ...over,
+  } as TestDeps);
+  const send = (input: unknown, officerId: string, over: Partial<TestDeps> = {}) => impl.test(input as TestInput, officerId, deps(over));
+  const officer = async (opts: Parameters<typeof u37bOfficer>[0] = {}) => {
+    const o = await u37bOfficer(opts);
+    keys.push(o.key);
+    return o;
+  };
+
+  let o: OfficerFixture;
+  let cmp = "";
+  let cmp2 = "";
+  try {
+    o = await officer();
+    cmp = await u37bDraft();
+    cmp2 = await u37bDraft();
+  } catch (err) {
+    ok("§18 fixtures · the officer and the drafts this section stands on were built", false, (err as Error)?.message ?? String(err));
+    return failed;
+  }
+
+  await claim("§18.0 control · the fixture officer is marketable — the REAL gate clears their own number — and the fixture is a saved DRAFT with no English and no source line", async () => {
+    const v = await mayReceiveMarketingSms(o.key);
+    const row = await db.smsCampaign.find(cmp);
+    return [v.ok && row !== null && row.status === "DRAFT" && row.bodyEn === null && row.sourcePhrase === null, JSON.stringify(v)];
+  });
+
+  await claim("§18.1 ⭐ HAPPY PATH (the console stub, the switch absent) — handed over via the stub, and EXACTLY ONE SmsMessage row: purpose MARKETING, target SmsCampaignTest / the campaign id, to the officer's own key — the text THE ONE renderer's for the stored draft, the officer's first name and their own new token, ending in the statutory footer, and the number masked", async () => {
+    const before = await tokenCount(o.key);
+    const r = await send({ campaignId: cmp, variant: "SW" }, o.id, { send: TEST.CAMPAIGN_TEST_DEPS.send });
+    const rows = smsRowsFor(cmp);
+    const tokens = await db.marketingOptOutToken.listFor(o.key);
+    const token = tokens[0]?.token ?? "";
+    const row = await db.smsCampaign.find(cmp);
+    const expected = row === null ? null : renderForRecipient(u37bTemplate(row), { variant: "SW", name: firstNameFor({ userDisplayName: "Asha Officer" }), token, origin: "account" });
+    return [r.ok && r.outcome === "handed_over" && r.via === "stub" && rows.length === 1 && rows[0].purpose === "MARKETING"
+      && rows[0].targetType === TEST.CAMPAIGN_TEST_TARGET_TYPE && rows[0].targetId === cmp && rows[0].msisdn === o.key
+      && before === 0 && tokens.length === 1 && token.length === 8 && expected !== null && expected.ok && r.text === expected.text
+      && r.text.startsWith("50pick: Habari Asha,") && r.text.endsWith(marketingFooter(token, "SW")) && r.maskedTo === maskPhone(o.key)
+      && r.maskedTo.includes(MASK_DOTS) && !r.maskedTo.includes(o.key.slice(5)),
+      `${reasonOf(r)}${r.ok ? ` via ${r.via}` : `: ${r.error}`} · rows ${rows.length} [${rows.map((m) => `${m.purpose}/${m.targetType}`).join(",")}] · tokens ${before} → ${tokens.length}`];
+  });
+
+  await claim("§18.2 ⛔ ACCEPT · AN INPUT CAST WITH A NUMBER STILL REACHES ONLY THE OFFICER'S OWN KEY — {to, msisdn, phone, number} posted beside (campaignId, variant) are never read: the one message goes to the officer's key, nothing to the injected number", async () => {
+    const injected = "255754000001";
+    const before = smsRowsTo(injected).length;
+    const { send: spy, spy: seen } = u37bSpy();
+    const r = await send({ campaignId: cmp2, variant: "SW", to: "+255754000001", msisdn: injected, phone: "0754000001", number: "754000001" }, o.id, { send: spy });
+    return [r.ok && seen.messages.length === 1 && seen.messages[0].to === o.key && seen.messages.every((m) => !m.to.includes("754000001"))
+      && smsRowsTo(injected).length === before,
+      `${reasonOf(r)} · sent to [${seen.messages.map((m) => maskPhone(m.to)).join(", ")}]`];
+  });
+
+  await claim("§18.3 ⛔ a posted body is never read — the STORED draft's text is the one handed over", async () => {
+    const { send: spy, spy: seen } = u37bSpy();
+    const r = await send({ campaignId: cmp2, variant: "SW", body: "50pick: SHINDA SASA bila masharti", text: "50pick: SHINDA" }, o.id, { send: spy });
+    return [r.ok && seen.messages.length === 1 && seen.messages[0].body === r.text && r.text.startsWith("50pick: Habari Asha,") && !r.text.includes("SHINDA"),
+      r.ok ? JSON.stringify(r.text.slice(0, 40)) : `${reasonOf(r)}: ${r.error}`];
+  });
+
+  await claim("§18.4 ⛔ THE ONE GATE RUNS — an officer with no SMS consent is refused no_consent, and one with no date of birth age_unknown with its remedy named, with ZERO transport calls and no row for either", async () => {
+    const noConsent = await officer({ consent: false });
+    const noDob = await officer({ dob: null });
+    const { send: spy, spy: seen } = u37bSpy();
+    const r1 = await send({ campaignId: cmp2, variant: "SW" }, noConsent.id, { send: spy });
+    const r2 = await send({ campaignId: cmp2, variant: "SW" }, noDob.id, { send: spy });
+    return [!r1.ok && r1.outcome === "refused" && r1.reason === "no_consent" && !r2.ok && r2.outcome === "refused" && r2.reason === "age_unknown"
+      && r2.error.includes("date of birth") && seen.calls === 0 && smsRowsTo(noConsent.key).length === 0 && smsRowsTo(noDob.key).length === 0,
+      `no consent → ${reasonOf(r1)} · no date of birth → ${reasonOf(r2)} · transport calls ${seen.calls}`];
+  });
+
+  /** Blackball with DUMMY keys and a dead address, and `fetch` swapped for a counter that refuses: the transport calls,
+   *  rows and token mints of `run` are measured around it, and everything is put back after. ⛔ Never a real key. */
+  const realCarrier = async (key: string, campaignId: string, run: () => Promise<TestResult>) => {
+    const ENV = ["SMS_PROVIDER", "BLACKBALL_CLIENT_ID", "BLACKBALL_CLIENT_SECRET", "SMS_SENDER_ID", "BLACKBALL_API_URL"];
+    const saved = ENV.map((k) => [k, process.env[k]] as const);
+    process.env.SMS_PROVIDER = "blackball";
+    process.env.BLACKBALL_CLIENT_ID = "dummy-not-a-key";
+    process.env.BLACKBALL_CLIENT_SECRET = "dummy-not-a-key";
+    process.env.SMS_SENDER_ID = "50pick";
+    process.env.BLACKBALL_API_URL = "http://127.0.0.1:9/";
+    const realFetch = globalThis.fetch;
+    let fetches = 0;
+    globalThis.fetch = (async () => {
+      fetches++;
+      throw new Error("no network in test:campaign-compose");
+    }) as typeof fetch;
+    const rowsBefore = smsRowsFor(campaignId).length;
+    const tokensBefore = await tokenCount(key);
+    try {
+      const result = await run();
+      return { result, fetches, rows: smsRowsFor(campaignId).length - rowsBefore, tokens: (await tokenCount(key)) - tokensBefore };
+    } finally {
+      globalThis.fetch = realFetch;
+      for (const [k, v] of saved) {
+        if (v === undefined) delete process.env[k];
+        else process.env[k] = v;
+      }
+    }
+  };
+  const OPEN_ROW = { state: "open", enabledBy: "usr_u37b_owner", enabledAt: "2026-10-02T09:00:00.000Z" } as const;
+  let carrier: OfficerFixture | null = null;
+  let cmp5 = "";
+  try {
+    carrier = await officer();
+    cmp5 = await u37bDraft();
+  } catch (err) {
+    ok("§18.5 fixtures · the real-carrier officer and draft were built", false, (err as Error)?.message ?? String(err));
+  }
+  await claim("§18.5 ⭐ X14 · ACCEPT · WITH THE SWITCH ABSENT A REAL CARRIER SENDS NOTHING — Blackball selected (dummy keys) and no marketing.sms.live row, read by the SHIPPED wiring's own reader (CAMPAIGN_TEST_DEPS.liveSwitch): refused live_sends_closed with ZERO transport calls, ZERO SmsMessage rows and ZERO token mints", async () => {
+    if (carrier === null) return [false, "no fixture"];
+    const who = carrier;
+    const m = await realCarrier(who.key, cmp5, () => send({ campaignId: cmp5, variant: "SW" }, who.id, { send: TEST.CAMPAIGN_TEST_DEPS.send, liveSwitch: impl.testDeps.liveSwitch }));
+    return [!m.result.ok && m.result.outcome === "refused" && m.result.reason === "live_sends_closed" && m.fetches === 0 && m.rows === 0 && m.tokens === 0,
+      `${reasonOf(m.result)} · transport calls ${m.fetches} · rows ${m.rows} · tokens ${m.tokens}`];
+  });
+  await claim("§18.5 control · …and the SAME send with the row recorded open DOES reach the transport, writes its row and mints its token — the refused reply leaves it unconfirmed, never handed over — so the zero above is the switch's, not a dead rail's", async () => {
+    if (carrier === null) return [false, "no fixture"];
+    const who = carrier;
+    const m = await realCarrier(who.key, cmp5, () => send({ campaignId: cmp5, variant: "SW" }, who.id, { send: TEST.CAMPAIGN_TEST_DEPS.send, liveSwitch: async () => OPEN_ROW }));
+    return [m.fetches >= 1 && m.rows === 1 && m.tokens === 1 && !m.result.ok && m.result.outcome === "unconfirmed",
+      `${reasonOf(m.result)} · transport calls ${m.fetches} · rows ${m.rows} · tokens ${m.tokens}`];
+  });
+
+  await claim("§18.6 ⛔ X14 · THE READER FAILS CLOSED — no row, a failed read, a read that threw, a value that is not a row, a blank enabledBy and an enabledAt that is not an instant all read CLOSED; only a recorded { enabledBy, enabledAt } under marketing.sms.live reads open", async () => {
+    const asked: string[] = [];
+    const load = (answer: () => unknown) => async (key: string) => {
+      asked.push(key);
+      return answer();
+    };
+    const cases: Array<[string, (key: string) => Promise<unknown>]> = [
+      ["absent", load(() => ({ ok: true, value: null }))],
+      ["failed", load(() => ({ ok: false, error: "connection refused" }))],
+      ["threw", load(() => { throw new Error("boom"); })],
+      ["not a row", load(() => ({ ok: true, value: "on" }))],
+      ["blank enabledBy", load(() => ({ ok: true, value: { enabledBy: "  ", enabledAt: "2026-10-02T09:00:00.000Z" } }))],
+      ["enabledAt not an instant", load(() => ({ ok: true, value: { enabledBy: "usr_owner", enabledAt: "yesterday" } }))],
+      // U37b review m3: a CLOSE recorded in the only shape there is still carries the two fields — it must read closed.
+      ["a key beside the two", load(() => ({ ok: true, value: { enabledBy: "usr_owner", enabledAt: "2026-10-02T09:00:00.000Z", enabled: false } }))],
+    ];
+    const states: string[] = [];
+    for (const [name, l] of cases) states.push(`${name}=${(await impl.readSwitch(l as never)).state}`);
+    const open = await impl.readSwitch(load(() => ({ ok: true, value: { enabledBy: "usr_owner", enabledAt: "2026-10-02T09:00:00.000Z" } })) as never);
+    return [states.every((s) => s.endsWith("=closed")) && open.state === "open" && asked.length === cases.length + 1
+      && asked.every((k) => k === "marketing.sms.live") && LIVE.MARKETING_LIVE_SWITCH_KEY === "marketing.sms.live",
+      `${states.join(" · ")} · recorded=${open.state} · keys [${[...new Set(asked)].join(",")}]`];
+  });
+  await claim("§18.6 the gate — the console stub passes open or closed (no handset, no money), Blackball ONLY when the switch is recorded open, an unrecognised provider never", async () => {
+    const CLOSED = { state: "closed", why: "absent" } as const;
+    const g = (p: string, s: unknown) => impl.liveGate(p as never, s as never).ok;
+    return [g("console", CLOSED) && g("console", OPEN_ROW) && !g("blackball", CLOSED) && g("blackball", OPEN_ROW) && !g("unrecognised", OPEN_ROW) && !g("unrecognised", CLOSED),
+      `console ${g("console", CLOSED)}/${g("console", OPEN_ROW)} · blackball ${g("blackball", CLOSED)}/${g("blackball", OPEN_ROW)} · unrecognised ${g("unrecognised", OPEN_ROW)}`];
+  });
+
+  await claim("§18.7 refused with no row, no transport call and no token — an unknown campaign (not_found), a CONFIRMED one (not_draft), English on a draft with no English (no_english_body), an officer whose own number is outside the numbering plan (own_number_unusable), and a dead rail (rail_dead, the rail named)", async () => {
+    const o7 = await officer();
+    const dead = await officer({ phone: "+255640000001" });
+    const plainDraft = await u37bDraft();
+    const confirmed = await u37bDraft();
+    await u37bConfirm(confirmed);
+    const { send: spy, spy: seen } = u37bSpy();
+    const results = [
+      await send({ campaignId: "cmp_u37b_nothing_here", variant: "SW" }, o7.id, { send: spy }),
+      await send({ campaignId: confirmed, variant: "SW" }, o7.id, { send: spy }),
+      await send({ campaignId: plainDraft, variant: "EN" }, o7.id, { send: spy }),
+      await send({ campaignId: plainDraft, variant: "SW" }, dead.id, { send: spy }),
+      await send({ campaignId: plainDraft, variant: "SW" }, o7.id, { send: spy, rail: () => "sender-id" }),
+    ];
+    const reasons = results.map(reasonOf);
+    const last = results[4];
+    const railNamed = !last.ok && "rail" in last && last.rail === "sender-id";
+    return [reasons.join(",") === "not_found,not_draft,no_english_body,own_number_unusable,rail_dead" && railNamed && seen.calls === 0
+      && smsRowsFor(plainDraft).length === 0 && smsRowsFor(confirmed).length === 0 && (await tokenCount(o7.key)) === 0 && (await tokenCount("255640000001")) === 0,
+      `${reasons.join(", ")} · transport calls ${seen.calls}`];
+  });
+
+  await claim("§18.8 the budget — marketing.testSend, 3 at once per officer: the 4th test inside the window is refused rate_limited with a retry time, sends nothing and writes no audit row (the three before it wrote one each)", async () => {
+    const o8 = await officer();
+    const { send: spy, spy: seen } = u37bSpy();
+    const tries: TestResult[] = [];
+    for (let i = 0; i < 4; i++) tries.push(await send({ campaignId: "cmp_u37b_rate_nothing", variant: "SW" }, o8.id, { send: spy, rate: TEST.CAMPAIGN_TEST_DEPS.rate }));
+    const fourth = tries[3];
+    const wait = !fourth.ok && "retryAfterSec" in fourth ? (fourth.retryAfterSec ?? 0) : 0;
+    const rows = audits.filter((a) => a.actorId === o8.id);
+    return [tries.slice(0, 3).every((r) => reasonOf(r) === "not_found") && reasonOf(fourth) === "rate_limited" && wait > 0 && seen.calls === 0 && rows.length === 3,
+      `${tries.map(reasonOf).join(", ")} · retry after ${wait}s · audit rows ${rows.length}`];
+  });
+
+  await claim("§18.9 ONE NUMBER, ONE LINK — two tests leave exactly ONE opt-out token for the officer's key, and both messages carry it", async () => {
+    const o9 = await officer();
+    const cmp9 = await u37bDraft();
+    const { send: spy } = u37bSpy();
+    const a = await send({ campaignId: cmp9, variant: "SW" }, o9.id, { send: spy });
+    const b = await send({ campaignId: cmp9, variant: "SW" }, o9.id, { send: spy });
+    const tokens = await db.marketingOptOutToken.listFor(o9.key);
+    const link = tokens.length === 1 ? `/s/${tokens[0].token}` : "(no single token)";
+    return [a.ok && b.ok && tokens.length === 1 && a.text.endsWith(link) && b.text.endsWith(link), `tokens ${tokens.length}`];
+  });
+
+  await claim("§18.10 every attempt past the budget writes ONE marketing.campaign_test row with its outcome and reason, against the campaign, the number MASKED — no fixture key and no nine national digits in any row", async () => {
+    const rows = audits.filter((a) => a.action === TEST.CAMPAIGN_TEST_ACTION);
+    const officerRows = rows.filter((a) => a.actorId === o.id);
+    const leaks = rows.filter((a) => {
+      const json = JSON.stringify(a);
+      return keys.some((k) => json.includes(k) || json.includes(k.slice(3))) || /(?<![0-9])255[0-9]{9}(?![0-9])/.test(json);
+    });
+    const shaped = rows.every((a) => a.payload !== undefined && typeof a.payload.outcome === "string" && "reason" in a.payload);
+    return [rows.length >= 10 && officerRows.length === 3 && shaped && leaks.length === 0
+      && officerRows.every((a) => a.payload?.outcome === "handed_over" && a.targetId !== null && String(a.payload?.to ?? "").includes(MASK_DOTS)),
+      `${rows.length} rows · the officer's ${officerRows.length} · shaped ${shaped} · leaking ${leaks.length}`];
+  });
+
+  await claim("§18.10b ⛔ AN ALL-DIGIT 'ID' NEVER REACHES THE AUDIT ROW (U37b review m2) — a test posted with campaignId 255712345678 is refused not_found, and its row names NO target and carries no nine-digit run", async () => {
+    const o10b = await officer();
+    const start = audits.length;
+    const r = await send({ campaignId: "255712345678", variant: "SW" }, o10b.id);
+    const rows = audits.slice(start).filter((a) => a.action === TEST.CAMPAIGN_TEST_ACTION && a.actorId === o10b.id);
+    const carried = JSON.stringify(rows.map((a) => [a.targetId, a.payload]));
+    return [!r.ok && reasonOf(r) === "not_found" && rows.length === 1 && rows[0].targetId === null && !/[0-9]{9}/.test(carried),
+      `${reasonOf(r)} · rows ${rows.length} · target ${rows[0]?.targetId ?? "null"}`];
+  });
+
+  await claim("§18.11 ⛔ NEVER 'HANDED OVER' UNLESS THE GATEWAY TOOK IT — held by the credit floor is refused 'held' with the floor's sentence; a send that threw and a reply that was lost (TRANSPORT) are 'unconfirmed', saying don't resend", async () => {
+    const o11 = await officer();
+    const cmp11 = await u37bDraft();
+    const floor = await send({ campaignId: cmp11, variant: "SW" }, o11.id, { send: u37bSpy("floor").send });
+    const threw = await send({ campaignId: cmp11, variant: "SW" }, o11.id, { send: u37bSpy("throw").send });
+    const lost = await send({ campaignId: cmp11, variant: "SW" }, o11.id, { send: u37bSpy("transport").send });
+    return [!floor.ok && floor.outcome === "refused" && floor.reason === "held" && floor.error.includes("below its floor")
+      && !threw.ok && threw.outcome === "unconfirmed" && threw.error.includes("don't resend")
+      && !lost.ok && lost.outcome === "unconfirmed",
+      `floor ${reasonOf(floor)} · threw ${reasonOf(threw)} · lost ${reasonOf(lost)}`];
+  });
+
+  await claim(`§18.12 ⭐ ACCEPT · FOR ${NAMES.length} WRITTEN-OUT NAMES THE RENDERED SIZE NEVER EXCEEDS THE COUNTER'S — each name as the officer's own account name, through the SAVE (its stored coding and segments) and the TEST SEND (the text it hands to the wire), in both languages: within the counter's units, the stored encoding and the stored segments — and within the counter less the source line's room, the bound for an account recipient, which the longest names reach exactly`, async () => {
+    const id = await u37bDraft({
+      name: "Forty names", bodySw: fillTo(HEAD, operatorBudget("SW", RESERVE)), bodyEn: fillTo(HEAD_EN, operatorBudget("EN", RESERVE)),
+      nameFallbackSw: worstCaseJina(), nameFallbackEn: worstCaseJina(),
+    });
+    const row = await db.smsCampaign.find(id);
+    if (row === null) return [false, "the fixture draft was not stored"];
+    const t = u37bTemplate(row);
+    const counters = { SW: counterFor(t.bodySw, "SW", t.nameFallbackSw, t.sourcePhrase), EN: counterFor(t.bodyEn, "EN", t.nameFallbackEn, t.sourcePhrase) };
+    const stored = { SW: { coding: row.codingSw, segments: row.segmentsSw }, EN: { coding: row.codingEn, segments: row.segmentsEn ?? 0 } };
+    const over: string[] = [];
+    let sends = 0;
+    let reached = 0;
+    for (const name of NAMES) {
+      const off = await officer({ displayName: name ?? null });
+      for (const v of ["SW", "EN"] as CampaignVariant[]) {
+        const { send: spy, spy: seen } = u37bSpy();
+        const r = await send({ campaignId: id, variant: v }, off.id, { send: spy });
+        sends++;
+        const wire = seen.messages[0]?.body ?? "";
+        const s = sizeSms(wire);
+        const c = counters[v];
+        const accountBound = c.units - c.sourceUnits;
+        const within = r.ok && wire !== "" && s.units <= c.units && s.units <= accountBound && s.encoding === stored[v].coding && s.segments <= stored[v].segments;
+        if (!within) over.push(`${v}/${JSON.stringify(name)}: ${s.units} units ${s.encoding} ${s.segments} seg ${reasonOf(r)} vs counter ${c.units} (account ${accountBound})`);
+        if (r.ok && s.units === accountBound) reached++;
+      }
+    }
+    return [over.length === 0 && sends === NAMES.length * 2 && NAMES.length >= 40 && stored.SW.segments === 1 && stored.EN.segments === 1 && reached > 0,
+      `${sends} sends · ${over.length} over: ${over.slice(0, 3).join(" | ")} · ${reached} at the account bound exactly`];
+  });
+
+  await claim("§18.13 ⭐ THE ORIGIN IS CHOSEN — the officer's number is their own account's, so the test renders as an ACCOUNT recipient: with no source line yet it is sent (a contact-book origin is refused), greeting the officer by their own first name — and once a source line is stored, the officer's test still carries none", async () => {
+    const o13 = await officer({ displayName: "Juma Mkuu" });
+    const blankId = await u37bDraft();
+    const phraseId = await u37bDraft();
+    const set = await db.smsCampaign.update(phraseId, { sourcePhrase: PHRASE }, { draftRevision: 0 }, new Date().toISOString());
+    const { send: spy } = u37bSpy();
+    const blank = await send({ campaignId: blankId, variant: "SW" }, o13.id, { send: spy });
+    const phrased = await send({ campaignId: phraseId, variant: "SW" }, o13.id, { send: spy });
+    return [set !== null && blank.ok && blank.text.startsWith("50pick: Habari Juma,") && phrased.ok && !phrased.text.includes(PHRASE),
+      `blank ${blank.ok ? JSON.stringify(blank.text.slice(0, 30)) : `${reasonOf(blank)}: ${blank.error}`} · phrased ${phrased.ok ? (phrased.text.includes(PHRASE) ? "CARRIES THE PHRASE" : "no phrase") : reasonOf(phrased)}`];
+  });
+
+  /* ── §18.14–§18.16 · THE SHIPPED WIRING (U37b review M1). Everything above runs the suite's stand-ins for the switch,
+   *    the token rule and the audit — which is how each plant swaps one of them — so a regression inside
+   *    CAMPAIGN_TEST_DEPS itself (a switch hard-coded open, a mint on every test, an audit that writes nothing) stayed
+   *    green. These three read the wire as it ships. ── */
+  await claim("§18.14 ⛔ THE SHIPPED WIRING IS THE REAL ONE — CAMPAIGN_TEST_DEPS reads the switch through readMarketingLiveSwitch, keeps a token through ensureOptOutToken, audits through audit, sends through dispatchSlice and passes no gate of its own (the one gate inside dispatchSlice)", async () => {
+    const src = impl.testSendSource.split(String.fromCharCode(13)).join("");
+    const at = src.indexOf("export const CAMPAIGN_TEST_DEPS: CampaignTestDeps = {");
+    const block = at < 0 ? "" : src.slice(at, src.indexOf("};", at));
+    const wires = ["liveSwitch: () => readMarketingLiveSwitch(),", "ensureToken: (raw) => ensureOptOutToken(raw),", "  audit,", "dispatch: dispatchSlice,", "gate: undefined,"];
+    const missing = wires.filter((w) => !block.includes(w));
+    return [block !== "" && missing.length === 0, block === "" ? "no CAMPAIGN_TEST_DEPS block" : missing.length ? `not wired: ${missing.join(" | ")}` : "the five wires are the real ones"];
+  });
+  await claim("§18.15 the SHIPPED token rule reuses — CAMPAIGN_TEST_DEPS.ensureToken asked twice for one number returns the same token and leaves ONE row (§18.9 runs the suite's rule; this runs the wire)", async () => {
+    const key = u37bKey();
+    const a = await impl.testDeps.ensureToken(key);
+    const b = await impl.testDeps.ensureToken(key);
+    const n = await tokenCount(key);
+    return [a !== null && a === b && n === 1, `${a === b ? "the same token" : "two different tokens"} · rows ${n}`];
+  });
+  await claim("§18.16 the SHIPPED audit writes the row — one test send through CAMPAIGN_TEST_DEPS.audit leaves ONE marketing.campaign_test entry for the officer in the audit ring, the number masked and the key nowhere (§18.10 reads the suite's capture; this reads the ring)", async () => {
+    const o16 = await officer();
+    const cmp16 = await u37bDraft();
+    const { send: spy } = u37bSpy();
+    const r = await send({ campaignId: cmp16, variant: "SW" }, o16.id, { send: spy, audit: impl.testDeps.audit });
+    await auditFlush();
+    const rows = getAuditPage({ actorId: o16.id, limit: 50 }).filter((e) => e.action === TEST.CAMPAIGN_TEST_ACTION);
+    const json = JSON.stringify(rows);
+    return [r.ok && rows.length === 1 && json.includes(MASK_DOTS) && !json.includes(o16.key) && !json.includes(o16.key.slice(3)),
+      `${reasonOf(r)} · ring rows ${rows.length}`];
+  });
+  return failed;
+}
+
 /* ══ THE RUN ════════════════════════════════════════════════════════════════ */
 
 if (!PROVE_RED) {
@@ -956,6 +1666,9 @@ if (!PROVE_RED) {
     ...checkFold(foldToGsm7, (l) => console.log(l)),
     ...checkTemplate(REAL_TEMPLATE, (l) => console.log(l)),
     ...checkOneComposer(COMPOSER_SOURCES, (l) => console.log(l)),
+    ...checkComposerScreen(SCREEN_SOURCES, (l) => console.log(l)),
+    ...(await checkSave(REAL_COMPOSE, (l) => console.log(l))),
+    ...(await checkTestSend(REAL_COMPOSE, (l) => console.log(l))),
   ];
   console.log(`\nCAMPAIGN COMPOSE — ${failed.length === 0 ? "all checks passed" : `${failed.length} failed`}\n`);
   for (const f of failed) console.log(`  · ${f}`);
@@ -972,6 +1685,7 @@ if (!PROVE_RED) {
   const baseline = [
     ...check(sizeSms, quiet), ...checkEnvelope((body, token) => composeMarketing(body, token), quiet), ...checkFold(foldToGsm7, quiet),
     ...checkTemplate(REAL_TEMPLATE, quiet), ...checkOneComposer(COMPOSER_SOURCES, quiet),
+    ...checkComposerScreen(SCREEN_SOURCES, quiet), ...(await checkSave(REAL_COMPOSE, quiet)), ...(await checkTestSend(REAL_COMPOSE, quiet)),
   ];
   ok("§0 baseline · the shipped module passes every assertion before anything is planted",
     baseline.length === 0, baseline.join("; "));
@@ -1609,6 +2323,491 @@ if (!PROVE_RED) {
       const failures = checkOneComposer(p.sources, quiet);
       ok(`  └─ fires: ${p.expect.source.slice(0, 56)}`, failures.some((f) => p.expect.test(f)),
         failures.length === 0 ? "NOTHING failed — the guard cannot see this defect" : `failed instead: ${failures.slice(0, 2).join(" | ")}`);
+    }
+  }
+
+  /* ── §16.2–§16.5 · §17.6's plants: the composer's own files, one source string swapped in memory (U37b) ──── */
+  {
+    const S = SCREEN_SOURCES;
+    const CLIENT = `${SCREEN_DIR}composer-client.tsx`;
+    const ACTIONS = `${SCREEN_DIR}actions.ts`;
+    const COPY = `${SCREEN_DIR}composer-copy.ts`;
+    const SIG = "sendCampaignTestAction(campaignId: string, variant: CampaignVariant)";
+    const withFile = (rel: string, edit: (text: string) => string): ScreenSources =>
+      ({ ...S, files: new Map([...S.files].map(([k, v]) => [k, k === rel ? edit(v) : v])) });
+    const sizingClient = withFile(CLIENT, (t) => `import { sizeSms } from "@/lib/sms-compose";${NL15}${t}${NL15}export const ownCount = (b: string) => sizeSms(b).segments;`);
+    const senderClient = withFile(CLIENT, (t) => `${t}${NL15}export const SenderField = () => <Input name="senderId" aria-label="Sender ID" />;`);
+    const telClient = withFile(CLIENT, (t) => `${t}${NL15}export const ToField = () => <Input type="tel" name="to" />;`);
+    const typedActions = withFile(ACTIONS, (t) => t.replace(SIG, "sendCampaignTestAction(campaignId: string, variant: CampaignVariant, to: string)"));
+    const moneyCopy = withFile(COPY, (t) => `${t}${NL15}export const COMPOSE_TEST_COST = "Each test costs TZS 6.";`);
+    const secondDoor: ScreenSources = { ...S, draftService: `${S.draftService}${NL15}export const later = (id: string, p: object, base: string) => db.smsCampaign.updateDraft(id, p, base);` };
+    type ScreenPlant = { name: string; expect: RegExp; sources: ScreenSources; landed: () => boolean; landedAs: string };
+    const screenPlants: ScreenPlant[] = [
+      {
+        name: "P9 · the composer sizes on its own — the client imports sizeSms and calls it on the body",
+        expect: /^§16\.2 ⛔/, sources: sizingClient,
+        landed: () => (sizingClient.files.get(CLIENT) ?? "").includes("sizeSms(b)"),
+        landedAs: "sizeSms is imported into the client and called",
+      },
+      {
+        name: "OD45 · a sender field on the composer",
+        expect: /^§16\.3 ⛔/, sources: senderClient,
+        landed: () => (senderClient.files.get(CLIENT) ?? "").includes('name="senderId"'),
+        landedAs: "an Input named senderId is rendered",
+      },
+      {
+        name: "a typed-number field on the composer",
+        expect: /^§16\.4 ⛔/, sources: telClient,
+        landed: () => (telClient.files.get(CLIENT) ?? "").includes('type="tel"'),
+        landedAs: "a tel Input named to is rendered",
+      },
+      {
+        name: "P10 · the test action takes a typed number — sendCampaignTestAction(campaignId, variant, to)",
+        expect: /^§16\.4 ⛔/, sources: typedActions,
+        landed: () => (S.files.get(ACTIONS) ?? "").includes(SIG) && (typedActions.files.get(ACTIONS) ?? "").includes("variant: CampaignVariant, to: string)"),
+        landedAs: "the action's signature gains a third parameter",
+      },
+      {
+        name: "OD24 · a price on the composer",
+        expect: /^§16\.5 ⛔/, sources: moneyCopy,
+        landed: () => (moneyCopy.files.get(COPY) ?? "").includes("TZS 6"),
+        landedAs: "the copy names TZS",
+      },
+      {
+        name: "X12 · a second update method beside the compare-and-set",
+        expect: /^§17\.6/, sources: secondDoor,
+        landed: () => secondDoor.draftService.includes("updateDraft("),
+        landedAs: "the save gains an updateDraft call with a base stamp",
+      },
+    ];
+    for (const p of screenPlants) {
+      ok(`PLANT LANDED · ${p.name}`, p.landed(), p.landedAs);
+      const failures = checkComposerScreen(p.sources, quiet);
+      ok(`  └─ fires: ${p.expect.source.slice(0, 56)}`, failures.some((f) => p.expect.test(f)),
+        failures.length === 0 ? "NOTHING failed — the guard cannot see this defect" : `failed instead: ${failures.slice(0, 2).join(" | ")}`);
+    }
+  }
+
+  /* ── §17's plants: the save (U37b) — each swaps the save for one that carries ONE defect ──────────────── */
+  {
+    const R = REAL_COMPOSE;
+    const realSave = DRAFT.saveCampaignDraft;
+    const LANDED = "usr_u37b_landed";
+    const reads = { viewerReads: true };
+    /** P16 · the save trusts the posted figures — the row it writes carries whatever segments and coding were posted. */
+    const trusting: typeof realSave = (input, officerId, opts, deps = DRAFT.CAMPAIGN_DRAFT_DEPS) => {
+      const p = input as unknown as Record<string, unknown>;
+      const posted = (row: Record<string, unknown>) => ({
+        ...row,
+        ...(typeof p.segmentsSw === "number" ? { segmentsSw: p.segmentsSw } : {}),
+        ...(typeof p.codingSw === "string" ? { codingSw: p.codingSw } : {}),
+        ...(typeof p.segmentsEn === "number" && row.bodyEn !== null ? { segmentsEn: p.segmentsEn } : {}),
+        ...(typeof p.codingEn === "string" && row.bodyEn !== null ? { codingEn: p.codingEn } : {}),
+      });
+      return realSave(input, officerId, opts, { ...deps, campaigns: { ...deps.campaigns, create: (row) => deps.campaigns.create(posted(row as never) as never) } });
+    };
+    /** The save takes the browser's verdict — no re-validation on the server. */
+    const unvalidated: typeof realSave = (input, officerId, opts, deps = DRAFT.CAMPAIGN_DRAFT_DEPS) =>
+      realSave(input, officerId, opts, { ...deps, validate: (f, phrase) => ({ ...validateCampaignTemplate(f, phrase), ok: true, problems: {} }) });
+    /** P17 · the edit without the draftRevision compare — the guard is read off the row, so any revision lands. */
+    const blindEdit: typeof realSave = (input, officerId, opts, deps = DRAFT.CAMPAIGN_DRAFT_DEPS) =>
+      realSave(input, officerId, opts, {
+        ...deps,
+        campaigns: {
+          ...deps.campaigns,
+          update: async (id, patch, _guard, at) => {
+            const now = await deps.campaigns.find(id);
+            return deps.campaigns.update(id, patch, { draftRevision: now?.draftRevision ?? 0 }, at);
+          },
+        },
+      });
+    /** OD55 · the one-number rule dropped. */
+    const anyAudience: typeof realSave = (input, officerId, opts, deps = DRAFT.CAMPAIGN_DRAFT_DEPS) =>
+      realSave(input, officerId, opts, { ...deps, audienceRule: () => null });
+    /** U37b review m4, undone: only the canonical search key is asked — a number in a tag, a list id, an import id or a
+     *  padded search slips through. */
+    const canonicalOnly: typeof realSave = (input, officerId, opts, deps = DRAFT.CAMPAIGN_DRAFT_DEPS) =>
+      realSave(input, officerId, opts, {
+        ...deps,
+        audienceRule: (f) => (f.q !== null && /^255[0-9]{9}$/.test(f.q.trim()) ? DRAFT.CAMPAIGN_AUDIENCE_ONE_NUMBER : null),
+      });
+
+    type SavePlant = { name: string; expect: RegExp[]; impl: ComposeImpl; landed: () => Promise<boolean>; landedAs: string };
+    const savePlants: SavePlant[] = [
+      {
+        name: "P16 · the save trusts the posted segments and coding",
+        expect: [/^§17\.2 ⭐/], impl: { ...R, save: trusting },
+        landed: async () => {
+          const lie = { ...draftInput({ name: "Landed lie" }), segmentsSw: 7, codingSw: "UCS2" } as unknown as DraftInput;
+          const r = await trusting(lie, LANDED, reads, QUIET_DRAFT_DEPS);
+          const row = r.ok ? await db.smsCampaign.find(r.id) : null;
+          return row !== null && row.segmentsSw === 7 && row.codingSw === "UCS2";
+        },
+        landedAs: "a draft posted with segmentsSw:7 / codingSw:UCS2 stores exactly those",
+      },
+      {
+        name: "the save takes the browser's verdict — no re-validation on the server",
+        expect: [/^§17\.1 ⭐/], impl: { ...R, save: unvalidated },
+        landed: async () => {
+          const over = draftInput({ name: "Landed over", bodySw: `${fillTo(HEAD, operatorBudget("SW", RESERVE))}aaa` });
+          const real = await realSave(over, LANDED, reads, QUIET_DRAFT_DEPS);
+          const planted = await unvalidated(over, LANDED, reads, QUIET_DRAFT_DEPS);
+          return !real.ok && planted.ok;
+        },
+        landedAs: "a body 3 over the cap is refused by the real save and stored by the plant",
+      },
+      {
+        name: "P17 · the edit without the draftRevision compare",
+        expect: [/^§17\.3 ⭐/], impl: { ...R, save: blindEdit },
+        landed: async () => {
+          const made = await realSave(draftInput({ name: "Landed CAS" }), LANDED, reads, QUIET_DRAFT_DEPS);
+          if (!made.ok) return false;
+          await realSave(draftInput({ id: made.id, draftRevision: 0, name: "Landed CAS", bodySw: "50pick: Mara ya kwanza." }), LANDED, reads, QUIET_DRAFT_DEPS);
+          const stale = await blindEdit(draftInput({ id: made.id, draftRevision: 0, name: "Landed CAS", bodySw: "50pick: Mara ya pili." }), LANDED, reads, QUIET_DRAFT_DEPS);
+          return stale.ok;
+        },
+        landedAs: "an edit on a revision one save old lands over a colleague's",
+      },
+      {
+        name: "OD55 · the one-number rule dropped — a campaign aimed at one phone",
+        expect: [/^§17\.5 ⛔/], impl: { ...R, save: anyAudience },
+        landed: async () => {
+          const one = draftInput({ name: "Landed one number", audience: { q: "0712345678" } });
+          const real = await realSave(one, LANDED, reads, QUIET_DRAFT_DEPS);
+          const planted = await anyAudience(one, LANDED, reads, QUIET_DRAFT_DEPS);
+          return !real.ok && planted.ok;
+        },
+        landedAs: "a whole-number audience is refused by the real save and stored by the plant",
+      },
+      {
+        name: "OD55 · only the canonical search key asked — a number smuggled in a tag",
+        expect: [/^§17\.5b ⛔/], impl: { ...R, save: canonicalOnly },
+        landed: async () => {
+          const tagged = draftInput({ name: "Landed tag number", audience: { tag: "0712345678" } });
+          const real = await realSave(tagged, LANDED, reads, QUIET_DRAFT_DEPS);
+          const planted = await canonicalOnly(tagged, LANDED, reads, QUIET_DRAFT_DEPS);
+          return !real.ok && planted.ok;
+        },
+        landedAs: "a whole number as a tag is refused by the real save and stored by the plant",
+      },
+    ];
+    for (const p of savePlants) {
+      ok(`PLANT LANDED · ${p.name}`, await p.landed(), p.landedAs);
+      const failures = await checkSave(p.impl, quiet);
+      for (const expect of p.expect) {
+        ok(`  └─ fires: ${expect.source.slice(0, 56)}`, failures.some((f) => expect.test(f)),
+          failures.length === 0 ? "NOTHING failed — the guard cannot see this defect" : `failed instead: ${failures.slice(0, 2).join(" | ")}`);
+      }
+    }
+  }
+
+  /* ── §18's plants: the test send (U37b) — each swaps ONE member, or wraps the send with ONE defect ─────── */
+  {
+    const R = REAL_COMPOSE;
+    const realTest = TEST.sendCampaignTest;
+    const landedDeps = (over: Partial<TestDeps> = {}): TestDeps => ({ ...TEST.CAMPAIGN_TEST_DEPS, rate: ALLOW, audit: async () => ({}), ...over } as TestDeps);
+    const CLEARED = async () => ({ ok: true as const });
+    /** The plan's own RED · a typed test number honoured — the recipient read from the input when one is posted. */
+    const typedNumber: typeof realTest = (input, officerId, deps = TEST.CAMPAIGN_TEST_DEPS) => realTest(input, officerId, {
+      ...deps,
+      users: {
+        findById: async (id) => {
+          const u = await deps.users.findById(id);
+          const to = (input as unknown as Record<string, unknown>).to;
+          return u !== null && typeof to === "string" ? { ...u, phoneE164: to } : u;
+        },
+      },
+    });
+    /** P12 · a posted body honoured. */
+    const postedBody: typeof realTest = (input, officerId, deps = TEST.CAMPAIGN_TEST_DEPS) => realTest(input, officerId, {
+      ...deps,
+      campaigns: {
+        find: async (id) => {
+          const c = await deps.campaigns.find(id);
+          const body = (input as unknown as Record<string, unknown>).body;
+          return c !== null && typeof body === "string" ? { ...c, bodySw: body } : c;
+        },
+      },
+    });
+    /** P13 · the gate skipped — every number cleared, the send called straight on. */
+    const noGate: typeof realTest = (input, officerId, deps = TEST.CAMPAIGN_TEST_DEPS) =>
+      realTest(input, officerId, { ...deps, dispatch: (rows, d) => dispatchSlice(rows, { ...d, gate: CLEARED }) });
+    /** P14 · X14 · the switch read as OPEN when no row exists. */
+    const absentIsOpen: typeof LIVE.readMarketingLiveSwitch = async (load) => {
+      const r = await LIVE.readMarketingLiveSwitch(load);
+      return r.state === "closed" && r.why === "absent" ? { state: "open", enabledBy: "nobody", enabledAt: "1970-01-01T00:00:00.000Z" } : r;
+    };
+    /** U37b review m3, undone: keys beside the two are stripped before the real reader asks, so a recorded CLOSE that
+     *  still carries { enabledBy, enabledAt } reads open. */
+    const extraKeysOpen: typeof LIVE.readMarketingLiveSwitch = (load) => (load === undefined ? LIVE.readMarketingLiveSwitch() : LIVE.readMarketingLiveSwitch(async (key) => {
+      const r = await load(key);
+      if (r.ok && r.value !== null && typeof r.value === "object" && !Array.isArray(r.value)) {
+        const v = r.value as Record<string, unknown>;
+        return { ok: true as const, value: { enabledBy: v.enabledBy, enabledAt: v.enabledAt } };
+      }
+      return r;
+    }));
+    /** U37b review m2, undone: the audit row names the campaign id as POSTED — an all-digit "id" is a whole number. */
+    const rawIdAudited: typeof realTest = (input, officerId, deps = TEST.CAMPAIGN_TEST_DEPS) => realTest(input, officerId, {
+      ...deps,
+      audit: (e) => deps.audit({ ...e, targetId: typeof (input as { campaignId?: unknown })?.campaignId === "string" ? (input as { campaignId: string }).campaignId : null }),
+    });
+    /** X14 · a real carrier let through while the switch is closed. */
+    const gateAlwaysOpen: typeof LIVE.marketingLiveGate = () => ({ ok: true, via: "open" });
+    /** P18 · a fresh token minted on every test — no reuse. */
+    const mintEveryTime: typeof ensureOptOutToken = (raw) => mintOptOutToken(raw);
+    /** P19 · the raw number in the audit row. */
+    const rawAudit: typeof realTest = (input, officerId, deps = TEST.CAMPAIGN_TEST_DEPS) => realTest(input, officerId, {
+      ...deps,
+      audit: async (e) => {
+        const u = await deps.users.findById(officerId);
+        return deps.audit({ ...e, payload: { ...(e.payload ?? {}), number: u?.phoneE164 ?? null } });
+      },
+    });
+    /** A lost reply reported as handed over. */
+    const lostAsHanded: typeof realTest = async (input, officerId, deps = TEST.CAMPAIGN_TEST_DEPS) => {
+      const r = await realTest(input, officerId, deps);
+      return r.outcome === "unconfirmed" ? { ok: true, outcome: "handed_over", via: "open", text: r.text, maskedTo: r.maskedTo, at: r.at, reference: "sms_assumed" } : r;
+    };
+    /** No budget — every test allowed. */
+    const noBudget: typeof realTest = (input, officerId, deps = TEST.CAMPAIGN_TEST_DEPS) => realTest(input, officerId, { ...deps, rate: ALLOW });
+    /** A confirmed campaign tested anyway — the draft check gone. */
+    const anyStatus: typeof realTest = (input, officerId, deps = TEST.CAMPAIGN_TEST_DEPS) => realTest(input, officerId, {
+      ...deps,
+      campaigns: {
+        find: async (id) => {
+          const c = await deps.campaigns.find(id);
+          return c === null ? null : { ...c, status: "DRAFT" };
+        },
+      },
+    });
+    /** The test rendered as a CONTACT-BOOK recipient — false for the officer's own number, and refused while there is no source line. */
+    const asBook: typeof realTest = (input, officerId, deps = TEST.CAMPAIGN_TEST_DEPS) =>
+      realTest(input, officerId, { ...deps, render: (t, r) => renderForRecipient(t, { ...r, origin: "book" }) });
+    /** The account name printed RAW on the wire — no fold, no first word, no letters rule — around the one renderer. */
+    const rawName: typeof realTest = async (input, officerId, deps = TEST.CAMPAIGN_TEST_DEPS) => {
+      const u = await deps.users.findById(officerId);
+      const c = await deps.campaigns.find((input as unknown as { campaignId: string }).campaignId);
+      return realTest(input, officerId, {
+        ...deps,
+        dispatch: (rows, d) => {
+          if (c === null) return dispatchSlice(rows, d);
+          const english = input.variant === "EN" && (c.bodyEn ?? "").trim() !== "";
+          const body = english ? (c.bodyEn ?? "") : c.bodySw;
+          const fallback = (english ? c.nameFallbackEn : c.nameFallbackSw) ?? "";
+          const raw = (u?.displayName ?? "").trim() || fallback;
+          const token = (rows[0]?.body ?? "").slice(-8);
+          const text = composeMarketing(renderBody(body, raw), token, english ? "EN" : "SW").text;
+          return dispatchSlice(rows.map((row) => ({ ...row, body: text })), d);
+        },
+      });
+    };
+
+    type TestPlant = { name: string; expect: RegExp[]; impl: ComposeImpl; landed: () => Promise<boolean>; landedAs: string };
+    const testPlants: TestPlant[] = [
+      {
+        name: "the plan's own RED · a typed test number honoured",
+        expect: [/^§18\.2 ⛔/], impl: { ...R, test: typedNumber },
+        landed: async () => {
+          const o = await u37bOfficer();
+          const id = await u37bDraft();
+          const { send, spy } = u37bSpy();
+          await typedNumber({ campaignId: id, variant: "SW", to: "+255754000002" } as unknown as TestInput, o.id, landedDeps({ send, gate: CLEARED }));
+          return spy.messages[0]?.to === "255754000002";
+        },
+        landedAs: "with the gate cleared, the message goes to the typed number",
+      },
+      {
+        name: "P12 · a posted body honoured",
+        expect: [/^§18\.3 ⛔/], impl: { ...R, test: postedBody },
+        landed: async () => {
+          const o = await u37bOfficer();
+          const id = await u37bDraft();
+          const { send, spy } = u37bSpy();
+          await postedBody({ campaignId: id, variant: "SW", body: "50pick: SHINDA" } as unknown as TestInput, o.id, landedDeps({ send }));
+          return (spy.messages[0]?.body ?? "").startsWith("50pick: SHINDA");
+        },
+        landedAs: "the posted body is what reaches the wire",
+      },
+      {
+        name: "P13 · a test send that skips the gate",
+        expect: [/^§18\.4 ⛔/], impl: { ...R, test: noGate },
+        landed: async () => {
+          const o = await u37bOfficer({ consent: false });
+          const id = await u37bDraft();
+          const { send, spy } = u37bSpy();
+          const real = await realTest({ campaignId: id, variant: "SW" }, o.id, landedDeps({ send }));
+          const planted = await noGate({ campaignId: id, variant: "SW" }, o.id, landedDeps({ send }));
+          return !real.ok && planted.ok && spy.calls === 1;
+        },
+        landedAs: "an officer with no consent is refused by the real send and sent to by the plant",
+      },
+      {
+        name: "P14 · X14 · the switch read as open with no row",
+        expect: [/^§18\.6 ⛔/], impl: { ...R, readSwitch: absentIsOpen },
+        landed: async () => {
+          const absent = async () => ({ ok: true as const, value: null });
+          return (await LIVE.readMarketingLiveSwitch(absent)).state === "closed" && (await absentIsOpen(absent)).state === "open";
+        },
+        landedAs: "no row reads closed for the real reader and open for the plant",
+      },
+      {
+        // U37b review M1 — the mutation that used to survive: the SHIPPED wiring hard-codes the switch open.
+        name: "P14b · X14 · the shipped wiring reads the switch as open — a real carrier sends with no row",
+        expect: [/^§18\.5 ⭐/],
+        impl: { ...R, testDeps: { ...TEST.CAMPAIGN_TEST_DEPS, liveSwitch: async () => ({ state: "open" as const, enabledBy: "code", enabledAt: "2026-10-02T00:00:00.000Z" }) } },
+        landed: async () => (await TEST.CAMPAIGN_TEST_DEPS.liveSwitch()).state === "closed",
+        landedAs: "in this run the shipped reader reads closed (no row), and the plant's wiring reads open",
+      },
+      {
+        name: "the switch reader reads a row with a key beside the two as open (U37b review m3)",
+        expect: [/^§18\.6 ⛔/], impl: { ...R, readSwitch: extraKeysOpen },
+        landed: async () => {
+          const closeRecorded = async () => ({ ok: true as const, value: { enabledBy: "usr_owner", enabledAt: "2026-10-02T09:00:00.000Z", enabled: false } });
+          return (await LIVE.readMarketingLiveSwitch(closeRecorded)).state === "closed" && (await extraKeysOpen(closeRecorded)).state === "open";
+        },
+        landedAs: "a row recording a close reads closed for the real reader and open for the plant",
+      },
+      {
+        name: "an all-digit campaign id written into the audit row (U37b review m2)",
+        expect: [/^§18\.10b/], impl: { ...R, test: rawIdAudited },
+        landed: async () => {
+          const o = await u37bOfficer();
+          const seen: Array<string | null> = [];
+          const grab = async (e: { targetId: string | null }) => { seen.push(e.targetId); return {}; };
+          await realTest({ campaignId: "255712345678", variant: "SW" }, o.id, landedDeps({ audit: grab as never }));
+          await rawIdAudited({ campaignId: "255712345678", variant: "SW" }, o.id, landedDeps({ audit: grab as never }));
+          return seen.length === 2 && seen[0] === null && seen[1] === "255712345678";
+        },
+        landedAs: "the real row names no target and the plant's names the posted digits",
+      },
+      {
+        name: "P14c · the shipped wiring's switch written as a constant in its source",
+        expect: [/^§18\.14 ⛔/],
+        impl: { ...R, testSendSource: R.testSendSource.replace("liveSwitch: () => readMarketingLiveSwitch(),", "liveSwitch: async () => ({ state: 'open', enabledBy: 'code', enabledAt: '2026-10-02T00:00:00.000Z' }),") },
+        landed: async () => R.testSendSource.includes("liveSwitch: () => readMarketingLiveSwitch(),"),
+        landedAs: "the source carries the real reader, so the replacement changes it",
+      },
+      {
+        name: "P18b · the shipped wiring mints a fresh token on every test",
+        expect: [/^§18\.15/],
+        impl: { ...R, testDeps: { ...TEST.CAMPAIGN_TEST_DEPS, ensureToken: (raw: string) => mintOptOutToken(raw) } },
+        landed: async () => {
+          const key = u37bKey();
+          const a = await mintOptOutToken(key);
+          const b = await mintOptOutToken(key);
+          return a !== null && b !== null && a !== b;
+        },
+        landedAs: "minting twice for one number leaves two different tokens",
+      },
+      {
+        name: "the shipped wiring's audit writes nothing",
+        expect: [/^§18\.16/],
+        impl: { ...R, testDeps: { ...TEST.CAMPAIGN_TEST_DEPS, audit: async () => ({}) } },
+        landed: async () => true,
+        landedAs: "a no-op audit needs no proof of landing",
+      },
+      {
+        name: "X14 · the gate lets a real carrier through while the switch is closed",
+        expect: [/^§18\.6 the gate/], impl: { ...R, liveGate: gateAlwaysOpen },
+        landed: async () => {
+          const closed = { state: "closed" as const, why: "absent" as const };
+          return !LIVE.marketingLiveGate("blackball", closed).ok && gateAlwaysOpen("blackball", closed).ok;
+        },
+        landedAs: "Blackball with the switch closed: refused by the real gate, let through by the plant",
+      },
+      {
+        name: "a confirmed campaign tested anyway — the draft check gone",
+        expect: [/^§18\.7/], impl: { ...R, test: anyStatus },
+        landed: async () => {
+          const o = await u37bOfficer();
+          const id = await u37bDraft();
+          await u37bConfirm(id);
+          const { send, spy } = u37bSpy();
+          const planted = await anyStatus({ campaignId: id, variant: "SW" }, o.id, landedDeps({ send }));
+          return planted.ok && spy.calls === 1;
+        },
+        landedAs: "a CONFIRMED campaign's text reaches the wire",
+      },
+      {
+        name: "no budget — every test allowed",
+        expect: [/^§18\.8/], impl: { ...R, test: noBudget },
+        landed: async () => {
+          const o = await u37bOfficer();
+          const tries: TestResult[] = [];
+          for (let i = 0; i < 4; i++) tries.push(await noBudget({ campaignId: "cmp_u37b_rate_landed", variant: "SW" }, o.id, { ...TEST.CAMPAIGN_TEST_DEPS, audit: async () => ({}) }));
+          return tries.every((r) => reasonOf(r) === "not_found");
+        },
+        landedAs: "a fourth test inside the window is not refused",
+      },
+      {
+        name: "P18 · a fresh token minted on every test — no reuse",
+        expect: [/^§18\.9/], impl: { ...R, ensureToken: mintEveryTime },
+        landed: async () => {
+          const key = u37bKey();
+          const a = await mintEveryTime(key);
+          const b = await mintEveryTime(key);
+          return a !== null && b !== null && a !== b && (await tokenCount(key)) === 2;
+        },
+        landedAs: "two calls for one number leave two different tokens",
+      },
+      {
+        name: "P19 · the raw number in the audit row",
+        expect: [/^§18\.10/], impl: { ...R, test: rawAudit },
+        landed: async () => {
+          const o = await u37bOfficer();
+          const id = await u37bDraft();
+          const rows: string[] = [];
+          const { send } = u37bSpy();
+          await rawAudit({ campaignId: id, variant: "SW" }, o.id, landedDeps({ send, audit: async (e) => { rows.push(JSON.stringify(e)); return {}; } }));
+          return rows.some((r) => r.includes(o.key));
+        },
+        landedAs: "the officer's whole number is in the audit payload",
+      },
+      {
+        name: "a lost reply reported as handed over",
+        expect: [/^§18\.11 ⛔/], impl: { ...R, test: lostAsHanded },
+        landed: async () => {
+          const o = await u37bOfficer();
+          const id = await u37bDraft();
+          const r = await lostAsHanded({ campaignId: id, variant: "SW" }, o.id, landedDeps({ send: u37bSpy("transport").send }));
+          return r.ok && r.outcome === "handed_over";
+        },
+        landedAs: "a TRANSPORT failure comes back as handed over",
+      },
+      {
+        name: "the account name printed raw on the wire (no fold, no first word, no letters rule)",
+        expect: [/^§18\.12 ⭐/], impl: { ...R, test: rawName },
+        landed: async () => {
+          const o = await u37bOfficer({ displayName: "BigWinner_1" });
+          const id = await u37bDraft();
+          const { send, spy } = u37bSpy();
+          await rawName({ campaignId: id, variant: "SW" }, o.id, landedDeps({ send }));
+          return (spy.messages[0]?.body ?? "").includes("BigWinner_1");
+        },
+        landedAs: "a handle with an underscore is printed under the sender ID",
+      },
+      {
+        name: "the test rendered as a contact-book recipient",
+        expect: [/^§18\.13 ⭐/], impl: { ...R, test: asBook },
+        landed: async () => {
+          const o = await u37bOfficer();
+          const id = await u37bDraft();
+          const { send } = u37bSpy();
+          const real = await realTest({ campaignId: id, variant: "SW" }, o.id, landedDeps({ send }));
+          const planted = await asBook({ campaignId: id, variant: "SW" }, o.id, landedDeps({ send }));
+          return real.ok && !planted.ok;
+        },
+        landedAs: "with no source line, the real test is sent and the book-origin one refused",
+      },
+    ];
+    for (const p of testPlants) {
+      ok(`PLANT LANDED · ${p.name}`, await p.landed(), p.landedAs);
+      const failures = await checkTestSend(p.impl, quiet);
+      for (const expect of p.expect) {
+        ok(`  └─ fires: ${expect.source.slice(0, 56)}`, failures.some((f) => expect.test(f)),
+          failures.length === 0 ? "NOTHING failed — the guard cannot see this defect" : `failed instead: ${failures.slice(0, 2).join(" | ")}`);
+      }
     }
   }
 

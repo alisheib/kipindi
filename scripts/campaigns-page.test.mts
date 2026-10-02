@@ -262,7 +262,7 @@ const L = {
   s5c: "5c · ⛔ the bar is the server's count: ProgressBar value and max from campaignProgress — no client directive, no timer and no clock in the page or the rail (OD34)",
   s5d: "5d · ⛔ no pulse and no animate-pulse in any file of the campaigns section (OD38)",
   s5e: "5e · a failed read renders AdminLoadError for the SMS campaigns with the rail still drawn — gated on the WHOLE table, never the page's rows — and a rail built without counts carries none",
-  s5f: "5f · ⛔ LINKS ONLY TO PAGES THAT EXIST (432(h)): CAMPAIGN_SCREENS.compose and .detail are true exactly when their page files exist, and the page renders each link only behind its flag",
+  s5f: "5f · ⛔ LINKS ONLY TO PAGES THAT EXIST (432(h)): CAMPAIGN_SCREENS.compose and .detail are true exactly when their page files exist, the page renders each link only behind its flag, and its ghost reserves the head's action behind the same flag",
   s5g: "5g · the empty and no-match states read the copy module — no-match offers Show all, the rail stands outside the rows — the pager is AdminPagination, and a row in flight says when it was read beside a Refresh",
   s5h: "5h · ⛔ the dev seed refuses production FIRST (404 before any await) and touches no SMS path — no sendBatch, no SmsMessage, no SMS module",
   s5i: "5i · the rail file is a dumb server renderer — ONE data-filter-rail campaign-status, ONE FilterPill at the dense rank (tab semantics, replace, no scroll), a FilterGroupKey, no client directive, no route or label typed — and filter-language declares it in ADMIN_SURFACES",
@@ -322,7 +322,9 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
     const layoutOk = S.layout.includes(`<AdminSectionGate title="${T}">{children}</AdminSectionGate>`);
     const pageOk = S.page.includes(`<AdminPageGate title="${T}">`) && count(S.page, `title="${T}"`) === 2 && S.page.includes(`sw="${W}"`)
       && S.page.includes(`export const metadata = { title: "${T} · Admin" };`);
-    const loadingOk = S.loading.includes(`<AdminPageHead title="${T}" sw="${W}" />`);
+    // U37b · the ghost's head now carries the reserved action (5f holds it behind the flag), so its literal title and gloss
+    // are read up to the closing of the gloss, not to the end of the tag.
+    const loadingOk = S.loading.includes(`<AdminPageHead title="${T}" sw="${W}"`);
     const bareWord = [S.layout, S.page, S.loading].some((s) => s.includes('"Campaigns"'));
     return [T === "SMS campaigns" && W === "Kampeni" && layoutOk && pageOk && loadingOk && !bareWord,
       `layout ${layoutOk} · page ${pageOk} · loading ${loadingOk} · a bare 'Campaigns' ${bareWord}`];
@@ -593,7 +595,9 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
     const page = S.page;
     const gated = page.includes("{CAMPAIGN_SCREENS.detail ? <Link href={campaignDetailHref(c.id) as Route}")
       && page.includes("actions={CAMPAIGN_SCREENS.compose ? <Link href={CAMPAIGN_SCREEN_ROUTES.compose as Route}")
-      && !page.includes('"/admin/campaigns/new"') && !page.includes("`/admin/campaigns/");
+      && !page.includes('"/admin/campaigns/new"') && !page.includes("`/admin/campaigns/")
+      // U37b · and the ghost reserves the head's action behind the SAME flag, so the card's top edge holds at 360 too.
+      && S.loading.includes('actions={CAMPAIGN_SCREENS.compose ? <div data-skeleton="campaigns-new">');
     return [impl.screens.compose === composeExists && impl.screens.detail === detailExists && gated,
       `compose flag ${impl.screens.compose} / page ${composeExists} · detail flag ${impl.screens.detail} / page ${detailExists} · gated ${gated}`];
   });

@@ -2,8 +2,9 @@
  * U36 · /admin/campaigns — the SMS campaign list, driven and MEASURED, every state the unit names.
  *
  * WHAT THIS PROVES, at 1280x800 and 360x780 (+ reduced motion at 360), with HeadlessChrome in the UA:
- *   · EMPTY — before any campaign exists: the empty row ("No SMS campaigns yet" + why there is no compose link), NO
- *     rail, no head action, no nav badge, no sideways scroll;
+ *   · EMPTY — before any campaign exists: the empty row ("No SMS campaigns yet" + its pointer to New campaign — U37b turned
+ *     the composer on), NO rail, the head's one action (New campaign → /admin/campaigns/new), no nav badge, no sideways
+ *     scroll;
  *   · LOADING — the ghost on screen while the page chunk is held, and the card's top edge does not move when the real
  *     page swaps in (equal by construction; asserted within 1px). The rail ghost's height against the real rail is
  *     RECORDED, not asserted (the real pills carry counts and wrap by label width at 360 — loading.tsx says why);
@@ -158,12 +159,13 @@ for (const vp of VIEWPORTS) {
   ok(`${vp.name} · UA carries HeadlessChrome`, /HeadlessChrome/.test(await page.evaluate(() => navigator.userAgent)));
   await openCampaigns(page);
   const text = await mainText(page);
-  ok(`${vp.name} · EMPTY · the empty row says there is no campaign, and why there is no compose link`,
-    text.includes("No SMS campaigns yet") && text.includes("Writing a campaign is not live yet."), text.slice(0, 200));
+  // ⭐ U37b · the composer exists (CAMPAIGN_SCREENS.compose is on): the empty row points at the head's one action.
+  ok(`${vp.name} · EMPTY · the empty row says there is no campaign, and points at New campaign`,
+    text.includes("No SMS campaigns yet") && text.includes("Write one with New campaign."), text.slice(0, 200));
   ok(`${vp.name} · EMPTY · no rail on an empty table (a whole-table fact), no table rows`,
     (await page.locator(RAIL).count()) === 0 && (await page.locator("tr[data-campaign-row]").count()) === 0);
-  ok(`${vp.name} · EMPTY · no head action — the composer is not live (CAMPAIGN_SCREENS.compose)`,
-    (await page.locator("main#main-content header a.btn").count()) === 0 && !text.includes("New campaign"));
+  ok(`${vp.name} · EMPTY · the head's one action is New campaign, a link to the composer (CAMPAIGN_SCREENS.compose)`,
+    (await page.locator('main#main-content header a.btn[href="/admin/campaigns/new"]').count()) === 1 && text.includes("New campaign"));
   ok(`${vp.name} · EMPTY · no nav badge on SMS campaigns`, (await navBadge(page, vp.width)) === "");
   ok(`${vp.name} · EMPTY · no horizontal page overflow`, (await overflowOf(page)) === 0, `${await overflowOf(page)}px`);
   await stateShot(page, vp.name, "empty", "No SMS campaigns yet");

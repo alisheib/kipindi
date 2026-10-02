@@ -440,3 +440,24 @@ export async function mintOptOutToken(raw: string): Promise<string | null> {
   console.error(`[optout] could not mint a token in ${OPTOUT_MINT_ATTEMPTS} attempts for ${maskPhone(identifier)}`);
   return null;
 }
+
+/**
+ * U37b · REUSE, ELSE MINT — the opt-out token a number's next marketing SMS carries.
+ *
+ * ⭐ ONE NUMBER, ONE LINK. The link never expires (OD43), so a number that already holds a token gets the SAME one back:
+ * every message it is ever sent offers the one link its owner may already have used, and a second test to the same
+ * officer adds no row. Only a number with no token is minted one (`mintOptOutToken`, with its retry and its
+ * normalisation). ⛔ An unusable number gets null — a caller that gets null sends nothing, exactly as after a failed mint.
+ * ⚠️ Two first sends to one number at the same instant can each mint one; both links work for ever, so the cost is a
+ * second valid link, never a dead one. Owed: U42's enqueue adopts this instead of minting per recipient.
+ *
+ * Guard: `npm run test:campaign-compose` §18 (two tests, one token).
+ */
+export async function ensureOptOutToken(raw: string): Promise<string | null> {
+  // The mint's own boundary: the ONE key, and nothing for an unusable number.
+  const identifier = toMsisdn255(raw);
+  if (!identifier || identifier.length < 12) return null;
+  const existing = await Promise.resolve(db.marketingOptOutToken.listFor(identifier));
+  if (existing.length > 0) return existing[0].token;
+  return mintOptOutToken(identifier);
+}

@@ -59,19 +59,46 @@ const BLACKBALL_KEYS = ["BLACKBALL_CLIENT_ID", "BLACKBALL_CLIENT_SECRET"];
 /** The display name, never the transport slug (§L1 L2). */
 const PROVIDER_LABEL: Record<string, string> = { blackball: "Blackball", console: "Console (dev)", unrecognised: "Unknown provider" };
 
+/** The display name for a provider slug (`sms.name`) — the tile's own, and the composer's sender line's (U37b). */
+export function smsProviderLabel(slug: string): string {
+  return PROVIDER_LABEL[slug] ?? slug;
+}
+
+/** One dead-rail sentence: why, the consequence, the fix — and the Railway names the fix needs. */
+type Said = [why: string, fix: string, vars?: string[]];
+const noteOf = (said: Said): { note: string; vars?: string[] } =>
+  ({ note: `${said[0]}${SEP}${NO_SMS}${SEP}${said[1]}`, ...(said[2] ? { vars: said[2] } : {}) });
+
+/** The four `smsRailProblem` answers in this tile's words. */
+function railSaid(rail: SmsRailProblem, name: string): Said {
+  switch (rail) {
+    case "provider-unrecognised": return ["SMS provider not recognised", "set SMS_PROVIDER to blackball on Railway"];
+    case "console-in-production": return ["The console stub is selected and sends nothing", "set SMS_PROVIDER to blackball on Railway"];
+    case "keys-not-set": return [`${name} keys not set`, "set both keys on Railway", BLACKBALL_KEYS];
+    case "sender-id": return ["Sender ID missing or too long", "check SMS_SENDER_ID on Railway"];
+  }
+}
+
+/**
+ * ⭐ U37b · THE RAIL'S OWN PROBLEM, IN THIS TILE'S WORDS — exported so the SMS campaign composer's read-only sender line
+ * (/admin/campaigns/new, OD45) says exactly what Admin → System says: one wording of one fault, never a second.
+ * `name` is the provider's display name (`smsProviderLabel`).
+ */
+export function railProblemNote(rail: SmsRailProblem, name: string): { note: string; vars?: string[] } {
+  return noteOf(railSaid(rail, name));
+}
+
 /** When NO SMS can leave this box: why, the consequence and the fix, as one sentence — or null. The rail's own problem
  *  first (`smsRailProblem`, the words behind `smsConfigured`), then the balance read's verdict: the read uses the same
  *  keys as every send, so keys the vendor refused are keys no SMS goes out on. */
 function deadRail(i: SmsCreditTileInput, name: string): { note: string; vars?: string[] } | null {
   const keysUnset = i.read?.outcome === "failed" && i.read.error === "not-configured";
   const rail = i.rail ?? (keysUnset ? "keys-not-set" : null);
-  let said: [why: string, fix: string, vars?: string[]] | null = null;
-  if (rail === "provider-unrecognised") said = ["SMS provider not recognised", "set SMS_PROVIDER to blackball on Railway"];
-  else if (rail === "console-in-production") said = ["The console stub is selected and sends nothing", "set SMS_PROVIDER to blackball on Railway"];
-  else if (rail === "keys-not-set") said = [`${name} keys not set`, "set both keys on Railway", BLACKBALL_KEYS];
-  else if (rail === "sender-id") said = ["Sender ID missing or too long", "check SMS_SENDER_ID on Railway"];
-  else if (i.read?.outcome === "failed" && i.read.error === "refused") said = [`${name} refused our keys`, "check both keys on Railway", BLACKBALL_KEYS];
-  return said ? { note: `${said[0]}${SEP}${NO_SMS}${SEP}${said[1]}`, ...(said[2] ? { vars: said[2] } : {}) } : null;
+  if (rail !== null) return railProblemNote(rail, name);
+  if (i.read?.outcome === "failed" && i.read.error === "refused") {
+    return noteOf([`${name} refused our keys`, "check both keys on Railway", BLACKBALL_KEYS]);
+  }
+  return null;
 }
 
 /** Why a read FAILED, in words, when the rail is not dead — or null when the read said nothing more. The balance read
@@ -143,7 +170,7 @@ export type SmsCreditTile = {
 
 export function smsCreditTile(i: SmsCreditTileInput): SmsCreditTile {
   const s = i.snapshot;
-  const name = PROVIDER_LABEL[i.provider] ?? i.provider;
+  const name = smsProviderLabel(i.provider);
   const dead = deadRail(i, name);
   const pending = i.read?.outcome === "pending";
   const reason = failedBecause(i.read, name);

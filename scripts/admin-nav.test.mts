@@ -83,8 +83,9 @@ const ok = (label: string, cond: boolean, extra = "") => {
     // C7-SPEC rulings 321, 326 · the desk, and the two sub-routes that must resolve to the SAME item: a nav entry
     // that fails to highlight looks like a design choice, and on an Owner-only section it would look like a refusal.
     ["/admin/desk", "desk"],
-    // U36 · the SMS campaign list, and the two sub-routes its later units add (U37's /new, U47's /[id]) — one item. No
-    // REACHED_WITHOUT_NAV row yet: §7's staleness half refuses a row for a page that does not exist.
+    // U36 · the SMS campaign list, and the two sub-routes its later units add (U37's /new, U47's /[id]) — one item. U37b's
+    // /new has its REACHED_WITHOUT_NAV row in §7, landed WITH its page; U47 adds /[id]'s with its own (§7's staleness half
+    // refuses a row for a page that does not exist).
     ["/admin/campaigns", "campaigns"],
     ["/admin/campaigns/new", "campaigns"],
     ["/admin/campaigns/smc_0123", "campaigns"],
@@ -154,6 +155,8 @@ const ok = (label: string, cond: boolean, extra = "") => {
     "/admin/staff/[id]": "staff member detail — from the /admin/staff list",
     // Functional sub-routes, reached by a control rather than a menu.
     "/admin/markets/new": "the 'New market' button on /admin/markets",
+    // U37b (decision M8) · landed in the change that adds the page and flips CAMPAIGN_SCREENS.compose — never before it.
+    "/admin/campaigns/new": "the SMS campaign composer — the 'New campaign' action in the head of /admin/campaigns, a real link exactly when this page exists (CAMPAIGN_SCREENS.compose, ruling 432(h))",
     /* ⭐ C7-SPEC ruling 326's TWO rows, each landing in the commit that adds its own page — the account page at C7
      * step 4, the designation wizard at C7 step 6. Neither could land earlier: §7's staleness half is
      * `Object.keys(REACHED_WITHOUT_NAV).filter((p) => !pages.includes(p))`, so a row for a page the crawler cannot

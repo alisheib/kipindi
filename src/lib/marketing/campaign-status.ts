@@ -243,8 +243,9 @@ export const CAMPAIGN_SCREEN_ROUTES = {
   detail: "/admin/campaigns/[id]",
 } as const satisfies Record<keyof CampaignScreens, string>;
 
-/** ⛔ Flip a value here ONLY in the change that lands its page; `test:campaigns-page` 5f refuses either one alone. */
-export const CAMPAIGN_SCREENS: CampaignScreens = { compose: false, detail: false };
+/** ⛔ Flip a value here ONLY in the change that lands its page; `test:campaigns-page` 5f refuses either one alone.
+ *  ⭐ compose is ON since U37b (2026-10-02), which landed /admin/campaigns/new in the same change (M8). */
+export const CAMPAIGN_SCREENS: CampaignScreens = { compose: true, detail: false };
 
 /** One campaign's page, for the row link that exists only once `CAMPAIGN_SCREENS.detail` does. */
 export function campaignDetailHref(id: string): string {

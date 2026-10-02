@@ -68,11 +68,13 @@ function srcTexts(): Array<{ path: string; text: string }> {
 }
 
 /**
- * ⛔ THE FILES ALLOWED TO SEND WITH `purpose: "MARKETING"`. EMPTY until U37's test send (behind the closed
- * `marketing.sms.live` switch, DECISIONS X14) and U43's slice declare themselves here — a send under the new purpose
- * from anywhere else is a campaign path nobody reviewed.
+ * ⛔ THE FILES ALLOWED TO SEND WITH `purpose: "MARKETING"`. U37b's test send declared itself here in the change that
+ * built it (behind the closed `marketing.sms.live` switch, DECISIONS X14); U43's slice declares itself next — a send under
+ * the new purpose from anywhere else is a campaign path nobody reviewed.
  */
-export const MARKETING_WRITERS: readonly string[] = [];
+export const MARKETING_WRITERS: readonly string[] = [
+  "src/lib/server/marketing/campaign-test-send.ts",
+];
 
 /* ═══ THE WORLD — the texts §1 reads and the twin §2 drives, each swappable by a red case ═══════════════════════ */
 
@@ -163,7 +165,7 @@ const L = {
   s210: "2.10 ⭐ the confirmation is ONE move: its fields only with DRAFT → CONFIRMED, on a revision, and all of them — who, when, a population of at least one, the tier and its watermark, the frozen estimates — every gap refused",
   s211: "2.11 the draft-save and birth rules refuse a body without its saved verdict, a half-removed English variant, an emptied column and a value its column cannot take — and the watermark width is U40's MEMBERS_KEY_HEX_CHARS",
   s212: "2.12 a contact removed from the book leaves its campaign recipient row in place with the link set to null — Postgres' SET NULL, mirrored by the memory twin",
-  s31: "3.1 ⛔ no src file sends with purpose MARKETING unless it is a declared MARKETING_WRITER (none until U37/U43)",
+  s31: "3.1 ⛔ no src file sends with purpose MARKETING unless it is a declared MARKETING_WRITER (U37b's test send; U43's slice next)",
 };
 
 /* ═══ THE TEXT READERS (§1) ═══════════════════════════════════════════════════════════════════════════════════ */
