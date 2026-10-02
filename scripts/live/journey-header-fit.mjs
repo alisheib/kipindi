@@ -11,9 +11,9 @@
  *          row's own computed padding moved with the very mutation it was meant to catch (critic G5). This is the red
  *          criterion — deterministic, whatever slack the real balances leave.
  *   FIT  — whether the header FITS, on the clean tree only: `CLIP_PROBE` (a control past the viewport edge with nothing
- *          that scrolls it into view), the row's and the bar's overflow, and the gutter SLACK — how many px the
- *          rightmost control keeps before it would enter the row's right padding. Slack is recorded, never a threshold:
- *          it is the number VODACOM-PLAN §0i keeps per cell.
+ *          that scrolls it into view), the row's and the bar's overflow, and the row's SLACK — the free px the spacer
+ *          between the two clusters holds, i.e. how much wider the header's words could grow before something must
+ *          shrink or clip. Slack is recorded, never a threshold: it is the number VODACOM-PLAN §0i keeps per cell.
  * Below 1024 the drive also reads the journey rail's labels (A17, owed to "WP6b's 320 drive"): none cut, and how many
  * lines each one takes.
  *
@@ -66,9 +66,12 @@ export const RULES = [
   { id: "cluster-gap", sel: ".kp-jhdr__cluster", props: ["column-gap"], want: (w) => (w < 640 ? "6px" : "12px"), when: "all" },
   { id: "home-borrow", sel: ".kp-jhdr__home", props: ["margin-left", "margin-right"], want: () => "-9px", when: "all" },
   { id: "home-pad", sel: ".kp-jhdr__home", props: ["padding-left", "padding-right"], want: () => "9px", when: "all" },
-  { id: "brand-mark", sel: ".kp-jhdr__home > span:first-child", props: ["display"], want: (w) => (w < 1280 ? "inline-flex" : "none"), when: "all" },
-  { id: "brand-lockup", sel: ".kp-jhdr__home > span:last-child", props: ["display"], want: (w) => (w < 1280 ? "none" : "inline-flex"), when: "all" },
-  { id: "plus", sel: ".kp-jhdr__plus", props: ["display"], want: (w) => (w < 360 ? "none" : "inline-flex"), when: "pill" },
+  // ⚠️ "flex", not the "inline-flex" the classes say: both spans are flex ITEMS of the home link, and CSS blockifies a
+  // flex item's outer display, so a shown span always computes "flex" (calibrated on the first clean run, 2026-10-02).
+  { id: "brand-mark", sel: ".kp-jhdr__home > span:first-child", props: ["display"], want: (w) => (w < 1280 ? "flex" : "none"), when: "all" },
+  { id: "brand-lockup", sel: ".kp-jhdr__home > span:last-child", props: ["display"], want: (w) => (w < 1280 ? "none" : "flex"), when: "all" },
+  // the "+" is a flex item of the pill (a .btn), so it blockifies too: shown, it computes "flex"
+  { id: "plus", sel: ".kp-jhdr__plus", props: ["display"], want: (w) => (w < 360 ? "none" : "flex"), when: "pill" },
   { id: "pill-left", sel: ".kp-jhdr__pill", props: ["padding-left"], want: (w) => (w < 360 ? "12px" : "10px"), when: "pill" },
   { id: "pill-right", sel: ".kp-jhdr__pill", props: ["padding-right"], want: () => "12px", when: "pill" },
   { id: "figure", sel: ".kp-jbal__fig", props: ["font-size"], want: (w) => (w < 360 ? "12px" : "14px"), when: "capsule" },
@@ -128,7 +131,7 @@ export function ruleViolations(width, state, answers, route = "/") {
   return out;
 }
 
-/** Runs IN THE PAGE: the gutter slack after the rightmost control, and the row's and the bar's overflow. */
+/** Runs IN THE PAGE: the row's free space (its slack), the rightmost control, and the row's and the bar's overflow. */
 export const FIT_PROBE = () => {
   const bar = document.querySelector('header[data-testid="journey-top-bar"]');
   if (!bar) return null;
@@ -146,11 +149,29 @@ export const FIT_PROBE = () => {
       rightmost = (el.getAttribute("aria-label") || el.textContent || "").trim().slice(0, 32);
     }
   }
-  const pad = row ? Number.parseFloat(getComputedStyle(row).paddingRight) || 0 : 0;
+  // ⭐ THE SLACK IS THE ROW'S FREE SPACE, not the gap after the rightmost control: the cluster is pushed to the row's
+  // end, so that gap is 0 in every cell whatever fits (calibrated on the first clean run, 2026-10-02). Free space =
+  // the row's content width − every visible child's outer width − the gaps between them.
+  let slack = null;
+  if (row) {
+    const rs = getComputedStyle(row);
+    const inner = row.clientWidth - (Number.parseFloat(rs.paddingLeft) || 0) - (Number.parseFloat(rs.paddingRight) || 0);
+    const kids = Array.from(row.children).filter((el) => getComputedStyle(el).display !== "none");
+    let used = 0;
+    for (const el of kids) {
+      const cs = getComputedStyle(el);
+      const grows = (Number.parseFloat(cs.flexGrow) || 0) > 0;
+      // a growing child (a spacer, the desktop links' track) is free space by definition: count only its minimum
+      const w = grows ? (Number.parseFloat(cs.minWidth) || 0) : el.getBoundingClientRect().width;
+      used += w + (Number.parseFloat(cs.marginLeft) || 0) + (Number.parseFloat(cs.marginRight) || 0);
+    }
+    const gap = Number.parseFloat(rs.columnGap) || 0;
+    slack = Math.round((inner - used - gap * Math.max(0, kids.length - 1)) * 10) / 10;
+  }
   return {
     vw,
     rightmost,
-    slack: Math.round((vw - pad - right) * 10) / 10,
+    slack,
     rowOverflow: row ? row.scrollWidth - row.clientWidth : null,
     barOverflow: bar.scrollWidth - bar.clientWidth,
   };
@@ -253,6 +274,14 @@ export async function measureState(browser, base, state, locale, cookies, { rout
       });
     }
     const page = await ctx.newPage();
+    // What a page that never hydrates leaves behind, so the failure names its cause (a dev server's chunk that 404'd
+    // or failed mid-compile, a script error) instead of a bare timeout — one such cell went unexplained, 2026-10-02.
+    const trouble = [];
+    page.on("pageerror", (e) => trouble.push(`script error: ${String(e?.message ?? e).slice(0, 160)}`));
+    page.on("requestfailed", (r) => trouble.push(`request failed: ${r.url().replace(base, "")} (${r.failure()?.errorText ?? "?"})`));
+    page.on("response", (r) => {
+      if (r.status() >= 400 && r.url().includes("/_next/")) trouble.push(`${r.status()}: ${r.url().replace(base, "")}`);
+    });
     await page.goto(`${base}${route}`, { waitUntil: "domcontentloaded", timeout: 240_000 });
     const bar = page.locator(JOURNEY_BAR);
     await bar.waitFor({ timeout: 120_000 }).catch(() => {});
@@ -260,7 +289,10 @@ export async function measureState(browser, base, state, locale, cookies, { rout
     await page.waitForFunction(() => {
       const el = document.querySelector('header[data-testid="journey-top-bar"]');
       return !!el && Object.keys(el).some((k) => k.startsWith("__reactFiber$"));
-    }, null, { timeout: 120_000 });
+    }, null, { timeout: 120_000 }).catch((e) => {
+      const seen = trouble.length ? trouble.slice(0, 6).join(" · ") : "no script error, failed request or failed chunk was seen";
+      throw new Error(`the journey header never hydrated in 120 s (${seen}) — ${String(e?.message ?? e).split(String.fromCharCode(10))[0]}`);
+    });
     await page.evaluate(() => document.fonts.ready.then(() => true));
     const lang = ((await page.getAttribute("html", "lang")) ?? "").toLowerCase();
     if (!lang.startsWith(locale)) throw new Error(`${route} rendered in "${lang}", not ${locale} — every reading would be about another language`);

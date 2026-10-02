@@ -13,8 +13,8 @@
  *     where its element is drawn: on the deposit screen and its return the header draws no pill, so a KP_ROUTE there
  *     skips the pill's rules rather than failing them.
  *   · the FIT probes — `live/clip.mjs`'s own rule over the header (no control past the edge), the row's and the bar's
- *     overflow, and the GUTTER SLACK: the px the rightmost control keeps before the row's right padding. ⭐ Slack is
- *     RECORDED, never a threshold (A5): it is the per-cell number VODACOM-PLAN §0i keeps.
+ *     overflow, and the row's SLACK: the free px the spacer between the clusters holds. ⭐ Slack is RECORDED, never a
+ *     threshold (A5): it is the per-cell number VODACOM-PLAN §0i keeps.
  *   · below 1024, the journey rail's labels — none cut, and the lines each takes. A17 modelled "Tiketi zangu" on two
  *     lines below 360 and every label on one from 360; this is the measurement §0h point 18 is owed.
  * Cells: 320 · 360 · 390 · 768 · 1024 · 1150 · 1279 × sw · en · zh for a pass-holding guest and a player at TZS 999,999
@@ -46,7 +46,8 @@ const ok = (name, pass, detail = "") => {
   console.log(`  ${pass ? "PASS" : "FAIL"} ${name}${detail ? ` — ${detail}` : ""}`);
 };
 const msg = (e) => String(e?.message ?? e).split(NL)[0].slice(0, 240);
-const listOf = (items) => (items.length ? `${items.length}: ${items.slice(0, 6).join(" · ")}${items.length > 6 ? " …" : ""}` : "");
+// Every item, never the first six: a calibration run is read from this line, and a cut list hid 87 of 93 breaks once.
+const listOf = (items) => (items.length ? `${items.length}: ${items.join(" · ")}` : "");
 
 console.log(`qa:journey-header-fit — ${BASE}${ROUTE}`);
 const expected = STATES.reduce((n, s) => n + s.widths.length * JHF_LOCALES.length, 0);
@@ -108,7 +109,7 @@ ok("2.3 neither the header row nor the bar overflows in any cell", overflow.leng
 const cut = cells.flatMap((c) => (c.rail ?? []).filter((l) => l.cut || l.offscreen).map((l) => `${where(c)}: ${l.text}`));
 ok("2.4 no journey tab label is cut or pushed off the screen below 1024 (A17)", cut.length === 0, listOf(cut));
 
-console.log(`${NL}§R · recorded, not judged — the gutter slack (px) by state and language, across its widths`);
+console.log(`${NL}§R · recorded, not judged — the row's slack (px) by state and language, across its widths`);
 for (const state of STATES) {
   for (const locale of JHF_LOCALES) {
     const row = cells.filter((c) => c.state === state.id && c.locale === locale && c.fit);
