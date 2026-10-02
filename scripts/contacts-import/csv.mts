@@ -267,7 +267,7 @@ const UPPER_SEP = "SEP=|" + LF + "Name|Phone" + LF + "Asha|0712345622" + LF;
 const COLON_SEP = "sep=:" + CRLF + "Name;Phone" + CRLF + "Asha;0712345623" + CRLF;
 const DATA_SEP = "Name,Phone" + CRLF + "Asha,0712345624" + CRLF + "sep=;" + CRLF;
 const SEP_NOTE =
-  "The first line of the file names a separator that is not a comma, semicolon, tab or pipe (|), so that line was skipped and the separator was worked out from the first row.";
+  "The first line of the file names a separator that is not a comma, semicolon, tab or pipe (|), so that line was skipped.";
 
 /** C3a — ⭐ THE PLAN'S RED: the embedded-comma header, and a data row of the same shape. */
 const ACCEPT = lines(['"Jina, kamili";Simu;"Makundi, lebo, zaidi"', '"Amina Juma, Mama";0712 345 625;"vip, Dar"']);

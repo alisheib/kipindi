@@ -687,7 +687,7 @@ export type CsvStats = {
   readonly charsTokenized: number;
   /** Characters the vote's scans read — bounded by the header. */
   readonly charsVoted: number;
-  /** The fatal problem, once there is one. */
+  /** The fatal problem, the moment there is one — a streaming caller may stop reading then: `end()` will refuse. */
   readonly refused: CsvRefusalProblem | null;
 };
 
@@ -719,7 +719,8 @@ const READING = 3;
  */
 export function buildCsvReader(rules: CsvRules): CsvBuild {
   const createReader = (options?: CsvReaderOptions): CsvReader => {
-    const fileName = typeof options?.fileName === "string" ? options.fileName : null;
+    const named = options?.fileName;
+    const fileName = typeof named === "string" ? named : null;
     const manual = delimiterOfName(options?.delimiter);
     const rows: ParsedRow[] = [];
     const strays: number[] = [];
@@ -967,8 +968,9 @@ const DELIMITER_WORDS: Readonly<Record<CsvDelimiter, { readonly plural: string; 
 
 const STRAY_TAIL = "text after the closing quotation mark of a cell; that text was kept as part of the cell.";
 const INNER_BOM_TAIL = "with an invisible byte-order mark, as if two files had been joined into one; the mark was removed.";
+/** True whichever way the separator was then chosen — by the vote, or by the officer's manual choice. */
 const SEP_UNSUPPORTED_NOTE =
-  "The first line of the file names a separator that is not a comma, semicolon, tab or pipe (|), so that line was skipped and the separator was worked out from the first row.";
+  "The first line of the file names a separator that is not a comma, semicolon, tab or pipe (|), so that line was skipped.";
 
 /** Excel's plain CSV is the usual cause, so the way out is CSV UTF-8 — and every CSV-directing sentence carries the ONE remedy (A1.6). */
 const replacementTail = (): string =>
