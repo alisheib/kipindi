@@ -452,8 +452,9 @@ voids top-ups and late charges, and takes the MEDIAN of at least 3 clean pairs. 
 TZS 0. Every figure says "estimated". The portal stays the authority the walk is checked against (U52's capped
 drive).
 
-The cost floor holds `INVITE`/`OPS` traffic below `SMS_BALANCE_FLOOR_TZS` so the float is kept for
-login codes. ⛔ **OTP is exempt, and never waits on a balance read**: refusing a login code to save
+The cost floor holds every non-OTP purpose — `INVITE`, `OPS` and, since marketing U35a (2026-10-02),
+`MARKETING` — below `SMS_BALANCE_FLOOR_TZS` so the float is kept for login codes (`sms.ts`: a batch is held
+unless EVERY message in it is OTP). ⛔ **OTP is exempt, and never waits on a balance read**: refusing a login code to save
 a few shillings is a self-inflicted outage. A reading is trusted only from an accepted reply or the
 balance endpoint, expires after `SMS_BALANCE_TTL_MS`, and **unknown is never treated as low**. The
 low-balance alarm is edge-triggered: at or below `SMS_BALANCE_ALERT_TZS` it writes one `sms.balance_low`
