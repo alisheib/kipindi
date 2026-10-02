@@ -74,8 +74,8 @@ export const CONTACTS_FILTER_NOT_FOR_ROLE = {
  * contacts were added in the last N days. ⛔ Not "Suppressed": until the importer goes live a stop is a player's own
  * opt-out or an officer's, so the stop count moved when ONE ticked row was suppressed would say what that row was. This
  * fact moves the same for any number an officer adds, a player's or a stranger's — no consent, no stop, no player signal.
- * N is the window vocabulary's rolling `7d` (`lib/query/windows.ts`); the loader counts with it and the label is built
- * from it, so the figure and its words cannot disagree.
+ * The loader counts `CONTACTS_RECENT_DAYS × DAY_MS` back from its one clock and the label is built from the same
+ * constant, so the figure and its words cannot disagree (the same span as the window vocabulary's rolling `7d`).
  */
 export const CONTACTS_RECENT_DAYS = 7;
 export const CONTACTS_KPI_RECENT = `Added in the last ${CONTACTS_RECENT_DAYS} days`;

@@ -22,8 +22,8 @@
  *         a tag pill's count FOLLOWED (pressing "vip" lists exactly its count);
  *       APPLIED, ONE AXIS — the Vodacom pill PRESSED (the app's own Link): the address says op=VODACOM, the pill
  *         is in force, every Operator cell reads Vodacom, the count line says "N of 45", the tiles stay 45;
- *       COMBINED, PAGED, RE-SORTED — page 2 of a filtered (`?to=2026-09-02`, the one masked filter that holds more than
- *         a page of the seed), name-sorted list, then a pill, then a sort header:
+ *       COMBINED, PAGED, RE-SORTED — page 2 of a filtered (`?to=2026-09-02`, a masked filter that holds more than a page
+ *         of the seed — 37 of 45), name-sorted list, then a pill, then a sort header:
  *         every step keeps the filters and the sort and drops the page; and the plan's own Accept address
  *         (`?op=VODACOM&tag=vip&sort=name&dir=asc&page=2`) whose every link carries both filters and the sort;
  *       NO-MATCH — `?op=TTCL` with a search: no rows, the rail STILL drawn with TTCL in force, and Clear filters
