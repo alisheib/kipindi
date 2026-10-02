@@ -323,6 +323,25 @@ async function phaseB(): Promise<void> {
   ok("B.10 · a held id is refused with null (P2002), never upserted — the PAUSED run is unchanged",
     twice === null && (await statusOf("probe_sweep_paused")) === "PAUSED");
 
+  // ── B.11 · ⭐ ONE BAD BYTE CANNOT WEDGE A RUN ON POSTGRES (review F2) — the one database that refuses a NUL in text ──
+  const NULC = String.fromCharCode(0);
+  const NUL_DIGEST = "c".repeat(64);
+  const nulRun = await S.openContactImport("probe_officer_nul", openBody({ fileDigest: NUL_DIGEST, totalRows: 1, unreadable: 0 }), deps);
+  if (!nulRun.ok) {
+    ok("B.11 · the NUL run opens", false, nulRun.reason);
+  } else {
+    const staged = await S.stageContactRows("probe_officer_nul", {
+      importId: nulRun.view.id, fileDigest: NUL_DIGEST, from: 1,
+      rows: [{ line: 2, cells: ["0712" + NULC + "345679", "Nul" + NULC + " Name", "nul" + NULC + "@example.tz", "vip" + NULC, ""] }],
+    }, deps);
+    const [nulRow] = await recountRows(L, nulRun.view.id);
+    // JSON writes a NUL as its six-character escape, so its tail is searched for — a cleaned row holds none.
+    ok("B.11 · ⭐ a NUL inside the phone, the name, the email and a tag lands on Postgres CLEANED: the row staged with its key, the run STAGED — never refused by 22021 on every resume",
+      staged.ok && !!nulRow && nulRow.msisdn === "255712345679" && nulRow.email === "nul@example.tz" && !JSON.stringify(nulRow).includes("u0000")
+        && (await L.db.contactImport.find(nulRun.view.id))?.status === "STAGED",
+      staged.ok ? `${nulRow?.msisdn} · ${nulRow?.email} · ${nulRow?.tags}` : staged.reason);
+  }
+
   // ── B.timing · the 2,000-row batch, measured rather than assumed ──
   const p50 = percentile(timings, 0.5);
   const p95 = percentile(timings, 0.95);

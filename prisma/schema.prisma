@@ -3423,7 +3423,7 @@ model ContactListMember {
 // ⭐ THE ONE STAGING MODEL (X2). A contacts file is read in the BROWSER (OD29) and posted here as rows, batch by
 // batch, so an import survives a closed tab, a reload and a redeploy: the run row says how far staging and the commit
 // have reached, and the rows say what the file said. ONE hand-written expand-only migration
-// (20261002090000_contact_import_staging) carries every column the later units need — U31's frozen decision, U33's
+// (20261002130000_contact_import_staging) carries every column the later units need — U31's frozen decision, U33's
 // consent basis, U32's pause — with four BRAND-NEW enum types, so no value is ever added to an existing enum (55P04)
 // and no conditional migration is owed later.
 //

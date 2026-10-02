@@ -237,6 +237,12 @@ const L = {
   s1: "S1 · import-staging.ts carries no directive and exports no action (they ship with U30), imports nothing that sends or writes consent, and writes no book row, no ledger row, no stop and no list",
   s2: "S2 · import-limits.ts is pure — two constants from xlsx-limits.ts and types from contact-fields.ts and parsed-file.ts, nothing else — and pinned in client-graph-safe",
   s3: "S3 · the wiring: the suite and its red key in package.json, the suite on predeploy beside test:erasure, test:read-tiers and test:client-graph-safe (M10, each once); the Postgres probe keyed and kept OFF predeploy; the nightly retention pass runs the sweep",
+  t9: "T9 · ⭐ ONE BAD BYTE CANNOT WEDGE A RUN (review F2): a NUL inside the phone, the email and a tag cell and a lone surrogate in the name are read out BEFORE drafting — the row stages with its server key and no NUL or broken character anywhere in it, where Postgres would refuse the whole batch for ever — and a line past the 32-bit integer is refused bad_rows, never sent to the database",
+  t10: "T10 · the byte cap is MEASURED WITH A STOP (review F9): the measure equals stageBatchBytes on a real batch, and on twenty rows sharing ONE 1,000-cell array it stops after reading fewer cells than a single row holds — never building the whole batch as one string first",
+  t11: "T11 · ⛔ A SUPERSEDED RUN IS REFUSED (review F4): an officer holding two open runs — the two-tab race on Postgres — cannot stage into the later one (superseded, with the EARLIEST run's view), and the earliest still stages",
+  t12: "T12 · a forged run id never reaches the audit chain (review F1): a batch_too_large refusal for an id that is not a run id is audited with NO target and nothing number-shaped, and a cursor past the run cap is bad_request",
+  o7: "O7 · the same file MAPPED differently is refused read_differently (review F3) — a resumed run never drafts its next rows through a mapping the officer did not choose — while the same mapping in another key order (JSONB's) is adopted",
+  p4: "P4 · the access export reads a number's staged rows NEWEST first (review F5): two runs staging one number a day apart hand back the newer first, so older rows cannot crowd out the rows the export may show",
 } as const;
 
 /* ═══ THE ASSERTIONS ══════════════════════════════════════════════════════════════════════════════════════════════ */
@@ -762,6 +768,74 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
       && /sweepStaleContactImports\(now\)/.test(SRC.retention),
       `staging ${once("test:contacts-staging")} · erasure ${once("test:erasure")} · read-tiers ${once("test:read-tiers")} · cgs ${once("test:client-graph-safe")}`];
   });
+
+  /* ── THE ADVERSARIAL REVIEW'S FIXES (2026-10-02) ────────────────────────────────────────────────────────────── */
+  const NULC = String.fromCharCode(0);
+  const hasNul = (v: string | null | undefined): boolean => (v ?? "").includes(NULC);
+  await fresh(L.t9, async () => {
+    const id = await open(OFFICER, { totalRows: 3 });
+    const lone = String.fromCharCode(0xd800);
+    const dirty = [cellsRow(2, "0712" + NULC + " 345 678", "Asha" + lone, "asha" + NULC + "@example.tz", "vip" + NULC)];
+    const r = await stageContactRows(OFFICER, stageBody(id, 1, dirty), deps);
+    const [row] = await recount(id);
+    const big = await stageContactRows(OFFICER, stageBody(id, 2, [cellsRow(2_147_483_648, numberOf(1))]), deps);
+    const clean = !!row && !hasNul(row.rawPhone) && !hasNul(row.email) && !hasNul(row.displayName) && !row.tags.some(hasNul)
+      && (row.displayName ?? "").isWellFormed();
+    return [r.ok && clean && row.msisdn === "255712345678" && row.email === "asha@example.tz" && row.tags.join(",") === "vip"
+      && !big.ok && big.reason === "bad_rows" && (await db.contactImport.find(id))?.stagedThrough === 1,
+      `${reasonOf(r)} · clean ${clean} · ${row?.msisdn} · ${reasonOf(big)}`];
+  });
+  await check(p(L.t10), () => {
+    const realBatch = rowsFrom(2, 50);
+    const equal = deps.measureBatch(realBatch, STAGE_BATCH_MAX_BYTES) === stageBatchBytes(realBatch);
+    let reads = 0;
+    const cell = "x".repeat(1000);
+    const shared = new Proxy(Array.from({ length: 1000 }, () => cell), {
+      get(t, k, r) { if (typeof k === "string" && /^[0-9]+$/.test(k)) reads++; return Reflect.get(t, k, r); },
+    });
+    const forged = Array.from({ length: 20 }, (_, i) => ({ line: i + 2, cells: shared }));
+    const measured = deps.measureBatch(forged, STAGE_BATCH_MAX_BYTES);
+    return [equal && measured > STAGE_BATCH_MAX_BYTES && reads < 1000, `equal ${equal} · measured ${measured} · cells read ${reads}`];
+  });
+  await fresh(L.t11, async () => {
+    const first = await open(OFFICER, { totalRows: 4 });
+    // The two-tab race on Postgres, by hand: a SECOND open run for the same officer, created a second later.
+    const base = await db.contactImport.find(first);
+    if (!base) throw new Error("the fixture run is missing");
+    const laterAt = iso(NOW.getTime() + 1000);
+    const made = await db.contactImport.create({ ...base, id: "ci_bbbbbbbbbbbbbbbbbbbb", createdAt: laterAt, updatedAt: laterAt });
+    const refused = await stageContactRows(OFFICER, stageBody("ci_bbbbbbbbbbbbbbbbbbbb", 1, rowsFrom(2, 2)), deps);
+    const landed = await stageContactRows(OFFICER, stageBody(first, 1, rowsFrom(2, 2)), deps);
+    return [!!made && !refused.ok && refused.reason === "superseded" && refused.view?.id === first && landed.ok,
+      `${reasonOf(refused)} · view ${refused.ok ? "-" : refused.view?.id} · ${reasonOf(landed)}`];
+  });
+  await fresh(L.t12, async () => {
+    const before = captured.length;
+    const heavy = [0, 1, 2].map((k) => cellsRow(2 + k, numberOf(k), "", "", "", "x".repeat(70 * 1024)));
+    const r = await stageContactRows(OFFICER, stageBody("Juma 0712345678", 1, heavy), deps);
+    const rows = captured.slice(before) as Array<{ targetId?: unknown }>;
+    const far = await stageContactRows(OFFICER, stageBody("ci_aaaaaaaaaaaaaaaaaaaa", IMPORT_MAX_ROWS + 2, rowsFrom(2, 1)), deps);
+    return [!r.ok && r.reason === "batch_too_large" && rows.length === 1 && rows[0].targetId === null
+      && !JSON.stringify(rows).includes("0712345678") && !far.ok && far.reason === "bad_request",
+      `${reasonOf(r)} · target ${JSON.stringify(rows[0]?.targetId)} · ${reasonOf(far)}`];
+  });
+  await fresh(L.o7, async () => {
+    const id = await open(OFFICER, { totalRows: 6 });
+    await stageContactRows(OFFICER, stageBody(id, 1, rowsFrom(2, 2)), deps);
+    const remapped = await openContactImport(OFFICER, openBody({ totalRows: 6, mapping: { phone: 0, name: 1, email: 2, tags: 3 } }), deps);
+    const reordered = await openContactImport(OFFICER, openBody({ totalRows: 6, mapping: { notes: 4, tags: 3, email: 2, name: 1, phone: 0 } }), deps);
+    return [!remapped.ok && remapped.reason === "read_differently" && reordered.ok && reordered.adopted && reordered.view.id === id,
+      `${reasonOf(remapped)} · ${reordered.ok ? `adopted ${reordered.adopted}` : reasonOf(reordered)}`];
+  });
+  await fresh(L.p4, async () => {
+    const dayBefore = { ...deps, now: () => new Date(NOW.getTime() - DAY) };
+    const older = await open(OFFICER, { totalRows: 1 }, dayBefore);
+    await stageContactRows(OFFICER, stageBody(older, 1, [cellsRow(2, "0712 345 678")]), dayBefore);
+    const newer = await open(OTHER, { totalRows: 1, fileDigest: DIGEST_B }, deps);
+    await stageContactRows(OTHER, stageBody(newer, 1, [cellsRow(2, "0712 345 678")], DIGEST_B), deps);
+    const list = await db.contactImportRow.listByMsisdn("255712345678");
+    return [list.length === 2 && list[0].importId === newer && list[1].importId === older, list.map((x) => `${x.importId.slice(0, 7)}@${x.stagedAt}`).join(" · ")];
+  });
 }
 
 /* ═══ THE RUN — and, with --prove-red, every plant on its own assertion ═══════════════════════════════════════════ */
@@ -812,6 +886,20 @@ if (!PROVE_RED) {
     return row && typeof posted === "string" ? { ...row, msisdn: posted } : row;
   };
 
+  /** 🔴 The cells drafted as posted: a NUL in the phone survives into the stored row (review F2). */
+  const uncleaned: ImportStagingDeps["rowFrom"] = (raw, ordinal, run, at) => {
+    const row = stagedRowFrom(raw, ordinal, run, at);
+    const cells = (raw as { cells?: unknown } | null)?.cells;
+    const phoneAt = run.mapping.phone;
+    return row && Array.isArray(cells) && typeof phoneAt === "number" ? { ...row, rawPhone: String(cells[phoneAt] ?? "").trim() } : row;
+  };
+  /** 🔴 A line past the 32-bit integer let through — Prisma would throw on it, the batch never staged (review F2). */
+  const unbounded: ImportStagingDeps["rowFrom"] = (raw, ordinal, run, at) => {
+    const line = (raw as { line?: unknown } | null)?.line;
+    if (typeof line !== "number" || line <= 2_147_483_647) return stagedRowFrom(raw, ordinal, run, at);
+    const row = stagedRowFrom({ ...(raw as object), line: 1 }, ordinal, run, at);
+    return row ? { ...row, line } : row;
+  };
   type Case = { name: string; expect: string; impl: () => Impl; setup?: () => () => void };
   const CASES: Case[] = [
     /* ── the plan's RED line, each in memory ── */
@@ -836,6 +924,23 @@ if (!PROVE_RED) {
       impl: () => ({ deps: { ...TEST_DEPS, rowFrom: clipper } }) },
     { name: "R10 · any officer adopts any run — the ADMIN rule read as everyone (X18)", expect: L.o5,
       impl: () => ({ deps: { ...TEST_DEPS, isAdmin: async () => true } }) },
+    /* ── the adversarial review's fixes (2026-10-02), each on its own assertion ── */
+    { name: "R11 · the cells drafted as posted — a NUL in the phone is stored, and Postgres would refuse the batch for ever", expect: L.t9,
+      impl: () => ({ deps: { ...TEST_DEPS, rowFrom: uncleaned } }) },
+    { name: "R12 · a line past the 32-bit integer let through to the database", expect: L.t9,
+      impl: () => ({ deps: { ...TEST_DEPS, rowFrom: unbounded } }) },
+    { name: "R13 · the byte cap measured by building the whole batch as one string", expect: L.t10,
+      impl: () => ({ deps: { ...TEST_DEPS, measureBatch: (rows) => stageBatchBytes(rows) } }) },
+    { name: "R14 · the canonical run never asked at stage — the later of two open runs stages beside the earliest", expect: L.t11,
+      impl: () => REAL, setup: () => swap(db.contactImport, "findOpenFor", () => null) },
+    { name: "R15 · adoption reads the figures only — a different mapping is adopted onto the run", expect: L.o7,
+      impl: () => ({ deps: { ...TEST_DEPS, sameMapping: () => true } }) },
+    { name: "R16 · the access export reads oldest first — a number's older rows crowd out the newer", expect: L.p4,
+      impl: () => REAL, setup: () => {
+        const ns = db.contactImportRow as unknown as { listByMsisdn: (m: string) => StoredContactImportRow[] };
+        const real = ns.listByMsisdn;
+        return swap(ns, "listByMsisdn", (m: string) => real(m).slice().reverse());
+      } },
   ];
 
   for (const [i, c] of CASES.entries()) {

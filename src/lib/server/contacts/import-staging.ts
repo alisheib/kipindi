@@ -39,7 +39,7 @@ import { CONTACT_FIELDS, charCount, draftContactRow, validateMapping } from "@/l
 import type { ColumnMapping } from "@/lib/contacts/contact-fields";
 import { CONTACTS_FILE_FORMATS } from "@/lib/contacts/parsed-file";
 import type { ContactsFileFormat } from "@/lib/contacts/parsed-file";
-import { IMPORT_MAX_ROWS, STAGE_BATCH_MAX_BYTES, STAGE_BATCH_MAX_ROWS, stageBatchBytes } from "@/lib/contacts/import-limits";
+import { IMPORT_MAX_ROWS, STAGE_BATCH_MAX_BYTES, STAGE_BATCH_MAX_ROWS, stageBatchBytesUpTo } from "@/lib/contacts/import-limits";
 
 /* ═══ THE PERIODS AND THE SHAPES ═══════════════════════════════════════════════════════════════════════ */
 
@@ -98,6 +98,7 @@ export const STAGING_SENTENCES = {
   badRows: "Some rows in this upload could not be read. Choose the file again.",
   tooManyRowsForRun: "These rows go past the end of the file this import was started with.",
   committing: "This import has started writing contacts. Stop it from the import screen instead.",
+  superseded: "This file is already being imported in another tab. Carry on there, or reload this page to continue it here.",
   finished: "This import has already finished.",
   readErrorWithheld: "This record could not be read.",
 } as const;
@@ -132,7 +133,7 @@ export type StagingRefusalReason =
   | "bad_request" | "bad_format" | "bad_digest" | "bad_counts" | "bad_mapping" | "no_phone_column" | "empty_file"
   | "too_many_rows" | "unfinished_run" | "read_differently" | "not_found" | "not_yours" | "not_staging"
   | "different_file" | "out_of_order" | "already_staged" | "batch_too_many_rows" | "batch_too_large" | "bad_rows"
-  | "too_many_rows_for_run" | "committing" | "finished";
+  | "too_many_rows_for_run" | "committing" | "finished" | "superseded";
 
 /** A refusal: the reason, ONE sentence, and the run as it stands when the caller may see it (never to a stranger). */
 export type StagingRefusal = { ok: false; reason: StagingRefusalReason; message: string; view: ContactImportView | null };
@@ -147,7 +148,10 @@ export type StagingRunContext = { id: string; mapping: ColumnMapping };
 /* ═══ THE ONE ROW BUILDER ══════════════════════════════════════════════════════════════════════════════ */
 
 const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
-const isLine = (v: unknown): v is number => typeof v === "number" && Number.isSafeInteger(v) && v >= 1;
+/** ⛔ A line, an ordinal and a cursor are Postgres INTEGERs (review F2): past 2,147,483,647 Prisma throws — and its
+ *  error can echo the batch into the server log — so a larger one is refused here, never sent to the database. */
+const INT4_MAX = 2_147_483_647;
+const isLine = (v: unknown): v is number => typeof v === "number" && Number.isSafeInteger(v) && v >= 1 && v <= INT4_MAX;
 const isCount = (v: unknown): v is number => typeof v === "number" && Number.isSafeInteger(v) && v >= 0;
 const owns = (o: Record<string, unknown>, key: string): boolean => Object.prototype.hasOwnProperty.call(o, key);
 
@@ -157,7 +161,7 @@ const owns = (o: Record<string, unknown>, key: string): boolean => Object.protot
  * never found by a number, so a number must never ride into one. Null for an empty sentence (the record is malformed).
  */
 function cleanReadError(raw: string): string | null {
-  const text = raw.replace(INVISIBLE, " ").replace(SPACES, " ").trim();
+  const text = raw.toWellFormed().replace(INVISIBLE, " ").replace(SPACES, " ").trim();
   if (text === "") return null;
   if ((text.match(DIGIT) ?? []).length >= 7) return STAGING_SENTENCES.readErrorWithheld;
   return charCount(text) <= READ_ERROR_MAX ? text : `${Array.from(text).slice(0, READ_ERROR_MAX - 1).join("")}…`;
@@ -170,6 +174,17 @@ function cleanReadError(raw: string): string | null {
  * over-limit or malformed one REPORTED in `problems` (X20); its key is `parseTzNumber`'s, set only for a sendable mobile
  * number. An unreadable record keeps its sentence, cleaned. Null for a record of neither shape.
  */
+/**
+ * ⛔ ONE BAD BYTE MUST NEVER WEDGE A RUN (review F2). Postgres text cannot hold NUL (0x00) and refuses the whole batch
+ * over one (22021 — not a duplicate, so the batch rolls back and every resume re-posts it and fails again), and a lone
+ * surrogate is no character at all. A vCard's quoted-printable `=00`, a CSV whose NUL sits past the binary sniff, a
+ * paste: each could put one in a phone, email or tag cell. Both are read out of EVERY cell before it is drafted.
+ */
+const NUL = String.fromCharCode(0);
+export function storableCell(cell: string): string {
+  return (cell.includes(NUL) ? cell.split(NUL).join("") : cell).toWellFormed();
+}
+
 export function stagedRowFrom(raw: unknown, ordinal: number, run: StagingRunContext, at: string): StoredContactImportRow | null {
   if (!isRecord(raw)) return null;
   const line = raw.line;
@@ -187,7 +202,7 @@ export function stagedRowFrom(raw: unknown, ordinal: number, run: StagingRunCont
   }
   const cells = raw.cells;
   if (!Array.isArray(cells) || cells.length > COLUMNS_MAX || !cells.every((c) => typeof c === "string")) return null;
-  const draft = draftContactRow(cells as string[], run.mapping);
+  const draft = draftContactRow((cells as string[]).map(storableCell), run.mapping);
   const number = parseTzNumber(draft.rawPhone);
   return {
     importId: run.id,
@@ -214,6 +229,11 @@ export type ImportStagingDeps = {
   rowFrom: (raw: unknown, ordinal: number, run: StagingRunContext, at: string) => StoredContactImportRow | null;
   /** Are these one file? The digests, compared exactly: "the same digest adopts". */
   sameFile: (a: string, b: string) => boolean;
+  /** Is this file READ the same way? The mappings, compared as sorted entries — Postgres' JSONB orders a mapping's keys
+   *  its own way, so never by text (review F3). */
+  sameMapping: (a: ColumnMapping, b: ColumnMapping) => boolean;
+  /** The batch's size, measured WITH A STOP at the cap (review F9) — never the whole batch built as one string first. */
+  measureBatch: (rows: readonly unknown[], cap: number) => number;
   maxBatchRows: number;
   maxBatchBytes: number;
   /** ⛔ X29 · what the idle sweep may cancel. */
@@ -228,6 +248,8 @@ export type ImportStagingDeps = {
 export const IMPORT_STAGING_DEPS: ImportStagingDeps = {
   rowFrom: stagedRowFrom,
   sameFile: (a, b) => a === b,
+  sameMapping: (a, b) => mappingKey(a) === mappingKey(b),
+  measureBatch: stageBatchBytesUpTo,
   maxBatchRows: STAGE_BATCH_MAX_ROWS,
   maxBatchBytes: STAGE_BATCH_MAX_BYTES,
   sweepable: SWEEPABLE_IMPORT_STATUSES,
@@ -239,6 +261,11 @@ export const IMPORT_STAGING_DEPS: ImportStagingDeps = {
 };
 
 /* ═══ THE PIECES ═══════════════════════════════════════════════════════════════════════════════════════ */
+
+/** A mapping as sorted [field, column] entries — the one comparison of two mappings (`sameMapping`). */
+function mappingKey(m: ColumnMapping): string {
+  return JSON.stringify(Object.entries(m).filter(([, v]) => typeof v === "number").sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)));
+}
 
 const refusal = (reason: StagingRefusalReason, message: string, view: ContactImportView | null = null): StagingRefusal =>
   ({ ok: false, reason, message, view });
@@ -363,7 +390,9 @@ async function adoptOrRefuse(
     await auditRefusal(deps, officerId, open.id, "unfinished_run");
     return refusal("unfinished_run", STAGING_SENTENCES.unfinishedRun, view);
   }
-  if (open.totalRows !== req.totalRows || open.unreadable !== req.unreadable) {
+  // ⭐ READ THE SAME WAY means the same figures AND the same mapping (review F3): a resumed run drafts its next rows
+  // through its STORED mapping, so a reload that auto-mapped another column must not be adopted onto it silently.
+  if (open.totalRows !== req.totalRows || open.unreadable !== req.unreadable || !deps.sameMapping(open.mapping, req.mapping)) {
     await auditRefusal(deps, officerId, open.id, "read_differently", { totalRows: req.totalRows, unreadable: req.unreadable });
     return refusal("read_differently", STAGING_SENTENCES.readDifferently, view);
   }
@@ -413,10 +442,10 @@ export async function openContactImport(
 
 /* ═══ STAGE ════════════════════════════════════════════════════════════════════════════════════════════ */
 
-/** The batch's UTF-8 JSON size, or null when it cannot be measured (it is then not a batch). */
-function batchBytes(rows: readonly unknown[]): number | null {
+/** The batch's UTF-8 JSON size up to the cap, or null when it cannot be measured (it is then not a batch). */
+function batchBytes(rows: readonly unknown[], deps: ImportStagingDeps): number | null {
   try {
-    return stageBatchBytes(rows);
+    return deps.measureBatch(rows, deps.maxBatchBytes);
   } catch {
     return null;
   }
@@ -436,27 +465,30 @@ export async function stageContactRows(
   const fileDigest = body.fileDigest;
   const from = body.from;
   const posted = body.rows;
-  if (typeof importId !== "string" || typeof fileDigest !== "string" || !isLine(from) || !Array.isArray(posted)) {
+  // ⛔ `from` is bounded by the run cap before anything is audited, and only a WELL-FORMED run id ever reaches an audit
+  // row (review F1): the chain is signed and kept for years, and a forged id or cursor could carry a name or a number.
+  if (typeof importId !== "string" || typeof fileDigest !== "string" || !isLine(from) || from > IMPORT_MAX_ROWS + 1 || !Array.isArray(posted)) {
     await auditRefusal(deps, officerId, null, "bad_request");
     return refusal("bad_request", STAGING_SENTENCES.badRequest);
   }
+  const target = IMPORT_ID.test(importId) ? importId : null;
   const rows: unknown[] = posted;
   if (rows.length === 0) {
-    await auditRefusal(deps, officerId, importId, "bad_rows", { rows: 0 });
+    await auditRefusal(deps, officerId, target, "bad_rows", { rows: 0 });
     return refusal("bad_rows", STAGING_SENTENCES.badRows);
   }
   // ⛔ THE TWO CAPS FIRST (import-limits.ts) — re-checked here whatever the browser packed.
   if (rows.length > deps.maxBatchRows) {
-    await auditRefusal(deps, officerId, importId, "batch_too_many_rows", { rows: rows.length });
+    await auditRefusal(deps, officerId, target, "batch_too_many_rows", { rows: rows.length });
     return refusal("batch_too_many_rows", STAGING_SENTENCES.batchTooManyRows);
   }
-  const bytes = batchBytes(rows);
+  const bytes = batchBytes(rows, deps);
   if (bytes === null || bytes > deps.maxBatchBytes) {
-    await auditRefusal(deps, officerId, importId, "batch_too_large", { rows: rows.length, bytes: bytes ?? -1 });
+    await auditRefusal(deps, officerId, target, "batch_too_large", { rows: rows.length, bytes: bytes ?? -1 });
     return refusal("batch_too_large", STAGING_SENTENCES.batchTooLarge);
   }
 
-  const run = IMPORT_ID.test(importId) ? await db.contactImport.find(importId) : null;
+  const run = target !== null ? await db.contactImport.find(target) : null;
   if (!run) {
     await auditRefusal(deps, officerId, null, "not_found");
     return refusal("not_found", STAGING_SENTENCES.notFound);
@@ -472,6 +504,14 @@ export async function stageContactRows(
   if (run.status !== "STAGING") {
     await auditRefusal(deps, officerId, run.id, "not_staging", { from });
     return refusal("not_staging", STAGING_SENTENCES.notStaging, await viewOf(run, officerId));
+  }
+  // ⛔ ONE OPEN RUN PER OFFICER (review F4). Two tabs opening one file at once can each create a run on Postgres (both
+  // read "none open" first), and each re-check can see itself as the earliest. The earliest open run is the officer's
+  // (`findOpenFor`); a later one is refused HERE, so its tab re-opens and adopts the earliest.
+  const canonical = await db.contactImport.findOpenFor(run.createdBy);
+  if (canonical !== null && canonical.id !== run.id) {
+    await auditRefusal(deps, officerId, run.id, "superseded");
+    return refusal("superseded", STAGING_SENTENCES.superseded, await viewOf(canonical, officerId));
   }
   if (from !== run.stagedThrough + 1) {
     // A replay of a batch already staged is the one benign refusal — a retried call, never an incident — so it is not

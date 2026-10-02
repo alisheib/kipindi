@@ -614,7 +614,9 @@ export type ContactVocabulary = {
 };
 
 const UNKNOWN_MATCH: HeaderMatch = { kind: "unknown" };
-const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+/** An email's shape. ⛔ No whitespace, no second @ — and no CONTROL character (U29 review): a NUL passed the old shape
+ *  and then failed Postgres' insert, on the form and in staging alike. */
+const EMAIL_SHAPE = /^[^\s@\p{Cc}]+@[^\s@\p{Cc}]+\.[^\s@\p{Cc}]+$/u;
 const NOTE_BLANK_HEADER = "This column has no name, so it is not read.";
 const NOTE_UNKNOWN_HEADER = "This is not a contact field, so it is not read.";
 const MAPPING_UNKNOWN_FIELD = "This mapping names a field the contact book does not have.";

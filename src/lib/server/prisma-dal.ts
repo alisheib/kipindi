@@ -4396,11 +4396,12 @@ export const prismaDb = {
     /** ⭐ ERASURE'S REACH (U29b): every staged row, in every run, that holds this number (indexed). */
     deleteByMsisdn: async (msisdn: string): Promise<number> =>
       (await pc().contactImportRow.deleteMany({ where: { msisdn } })).count,
-    /** The access export's read: the staged rows holding this number, oldest first, bounded. */
+    /** The access export's read: the staged rows holding this number, NEWEST first, bounded (review F5) — the export
+     *  keeps only rows staged since the account began, so a recycled number's older rows must not crowd those out. */
     listByMsisdn: async (msisdn: string): Promise<StoredContactImportRow[]> => {
       const rows = await pc().contactImportRow.findMany({
         where: { msisdn },
-        orderBy: [{ stagedAt: "asc" }, { importId: "asc" }, { ordinal: "asc" }],
+        orderBy: [{ stagedAt: "desc" }, { importId: "desc" }, { ordinal: "desc" }],
         take: CONTACT_IMPORT_ROWS_BY_NUMBER_MAX,
       });
       return rows.map(toStoredContactImportRow);

@@ -3352,12 +3352,13 @@ const memoryDb = {
       }
       return n;
     },
-    /** The access export's read: the staged rows holding this number, oldest first, bounded. */
+    /** The access export's read: the staged rows holding this number, NEWEST first, bounded (review F5) — the export
+     *  keeps only rows staged since the account began, so a recycled number's older rows must not crowd those out. */
     listByMsisdn: (msisdn: string): StoredContactImportRow[] => {
       const out: StoredContactImportRow[] = [];
       for (const rows of store.contactImportRows.values()) for (const row of rows.values()) if (row.msisdn === msisdn) out.push(row);
       return out
-        .sort((a, b) => Date.parse(a.stagedAt) - Date.parse(b.stagedAt) || (a.importId < b.importId ? -1 : a.importId > b.importId ? 1 : 0) || a.ordinal - b.ordinal)
+        .sort((a, b) => Date.parse(b.stagedAt) - Date.parse(a.stagedAt) || (a.importId < b.importId ? 1 : a.importId > b.importId ? -1 : 0) || b.ordinal - a.ordinal)
         .slice(0, CONTACT_IMPORT_ROWS_BY_NUMBER_MAX);
     },
   },

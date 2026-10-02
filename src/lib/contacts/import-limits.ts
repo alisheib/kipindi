@@ -77,6 +77,48 @@ export function stageBatchBytes(rows: readonly unknown[]): number {
 }
 
 /**
+ * The same measure, WITH A STOP (U29 review F9) — what the server asks. A server action's body may refer to ONE value
+ * many times, so a forged ~160 KB body whose 2,000 rows all point at one large `cells` array would become a string
+ * of hundreds of megabytes if it were stringified whole before the cap could refuse it. This walks the batch value
+ * by value and stops as soon as the running size passes `cap`: exactly `stageBatchBytes(rows)` for any batch of plain
+ * JSON data within the cap (what the browser sends); past the cap, some number above it.
+ */
+export function stageBatchBytesUpTo(rows: readonly unknown[], cap: number): number {
+  return jsonBytesUpTo(rows, cap);
+}
+
+/** `JSON.stringify(v)`'s UTF-8 size, stopping once it passes `room` (undefined, a function or a symbol inside an
+ *  array is written as null, and an object member holding one is skipped, as JSON.stringify does). */
+function jsonBytesUpTo(v: unknown, room: number): number {
+  if (typeof v === "string") return utf8Length(JSON.stringify(v));
+  if (Array.isArray(v)) {
+    let n = 2;
+    for (let i = 0; i < v.length; i++) {
+      if (i > 0) n += 1;
+      const x: unknown = v[i];
+      n += x === undefined || typeof x === "function" || typeof x === "symbol" ? 4 : jsonBytesUpTo(x, room - n);
+      if (n > room) return n;
+    }
+    return n;
+  }
+  if (v !== null && typeof v === "object") {
+    let n = 2;
+    let first = true;
+    for (const key of Object.keys(v)) {
+      const x: unknown = (v as Record<string, unknown>)[key];
+      if (x === undefined || typeof x === "function" || typeof x === "symbol") continue;
+      if (!first) n += 1;
+      first = false;
+      n += utf8Length(JSON.stringify(key)) + 1 + jsonBytesUpTo(x, room - n);
+      if (n > room) return n;
+    }
+    return n;
+  }
+  const s = JSON.stringify(v);
+  return utf8Length(s === undefined ? "null" : s);
+}
+
+/**
  * One parsed row → what the browser posts: the cells of the MAPPED columns at their own positions, every other cell
  * blank and the trailing blanks dropped — so the server, drafting with the run's stored mapping, reads exactly what the
  * officer mapped and nothing more crosses the wire. A row too large for any batch becomes an unreadable record.
