@@ -321,6 +321,14 @@
      hiding content on one breakpoint only. ⚠️ The spacer adds `env(safe-area-inset-bottom)`
      on top, which the bar gets from `.kp-rail`. */
   --h-pending-bar: 64px;  /* .kp-rail pending-changes bar — 40px control + 12px padding ×2 */
+  /* ⭐ THE PHONE RAIL'S RESERVE, IN ONE PLACE (the Vodacom plan S6, S6-PLAN WP11). Below 1024 a rail is fixed to
+     the bottom — the classic tab bar, or the journey's four tabs — and two rules keep the page clear of it: the
+     footer's bottom padding (public-footer.tsx) and the html element's scroll padding (D57, below). Both read this
+     name and add the safe-area inset where they use it. 88 = the 64px item row, its 1px border, and the clearance
+     that keeps a last control out from under the rail. ⚠️ Two offsets stay literal because gates pin them: the chat
+     bubble's 80 (test:stacking's chat-fab locator) and the install card's 148 (test:install-invite 5.4). Both clear
+     this reserve, so a change to it moves them too. */
+  --rail-h: 88px;
 
   /* ---------- E-120 · the hover gain, in ONE place because it is an AA input ----
      🔴 Every solid button used to lighten its own fill on hover — .btn-yes/.btn-no
@@ -940,7 +948,7 @@ html {
      sounding right. ⚠️ If a real case is ever found, note the top band is TWO sticky layers (header 0–56
      plus the bar to 132.3), not one — a probe that compares against `<header>` alone is blind to the strip
      between them, which is how D57 itself stayed hidden. */
-  scroll-padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px));
+  scroll-padding-bottom: calc(var(--rail-h) + env(safe-area-inset-bottom, 0px));
 }
 
 * { box-sizing: border-box; }

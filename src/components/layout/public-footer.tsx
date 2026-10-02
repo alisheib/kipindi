@@ -108,9 +108,11 @@ export function PublicFooter({
    * ⭐ 2026-09-13: this is now the ONLY clearance for the rail. `<main>` no longer carries a copy —
    * the two stacked into ~250px of blank above this footer — because the shell renders this footer
    * unconditionally, so the document always ends here.
+   * ⭐ 2026-10-03 (the Vodacom plan S6, WP11): the reserve is the token `--rail-h` in globals.css, the one name the
+   * html element's scroll padding reads too — the classic tab bar and the journey's four tabs take the same room.
    */
   return (
-    <footer className="mt-8 lg:mt-12 bg-bg-elevated/40 pb-[calc(88px+env(safe-area-inset-bottom))] lg:pb-0">
+    <footer className="mt-8 lg:mt-12 bg-bg-elevated/40 pb-[calc(var(--rail-h)+env(safe-area-inset-bottom))] lg:pb-0">
       {/* Heraldic claret rule with gilt midpoint — regulator/footer chrome. */}
       <div aria-hidden className="claret-rule mx-auto max-w-board" />
       <div className="mx-auto max-w-board px-3 lg:px-6 pt-2 pb-7 grid grid-cols-1 md:grid-cols-4 gap-6 text-[12px]">

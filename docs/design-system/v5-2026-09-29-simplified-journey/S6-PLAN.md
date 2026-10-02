@@ -811,6 +811,12 @@ Plus plants.
 - test:install-invite: 5.4 untouched
 - test:stacking: the chat-fab locator untouched
 
+*As built (WP11, 2026-10-03):* as written, with the parity rule A3 sets instead of the body's "re-baselined": the
+footer's class change is the named EXPECTED_DIFFS entry `footer-rail-h` (a literal substitution, 224 cells), so any
+other change beside it still fails. `scripts/footer-reachable.mjs` gained `--journey` (A15) — a staff pass on every
+context and a per-cell proof that the journey shell is on the page — rather than a new package script, so `red:all`
+gains no server-bound harness. Verified as the VODACOM-PLAN §0i bullet records.
+
 ### WP12 — Proof, records, merge and deploy (M; depends on WP9, WP10, WP11)
 
 **Goal.** Close S6 against its done-when, with drives, tiles and batteries, and ship it behind the flag.

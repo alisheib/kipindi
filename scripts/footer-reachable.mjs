@@ -33,11 +33,27 @@
  * Local only (drives a dev server):
  *   BASE=http://localhost:3011 node scripts/footer-reachable.mjs
  *   BASE=http://localhost:3011 node scripts/footer-reachable.mjs --prove-red
+ *   BASE=http://localhost:3011 node scripts/footer-reachable.mjs --journey [--prove-red]
+ *
+ * ⭐ --journey (the Vodacom plan S6, A15 and WP11): the same probes for a reader the shell puts in the new journey —
+ * every context carries a staff preview pass, minted the way an officer mints one (`live/journey-pass.mjs`), so the
+ * fixed rail is the journey's four tabs and the footer's reserve (`--rail-h`) must clear them as it clears the
+ * classic bar. Each cell first proves the pass counted (the journey header is on the page), or it measures nothing.
+ * `premise` refuses anything but an in-memory server at http://localhost:PORT whose rollout a pass can see.
  */
 import { chromium } from "playwright";
+import { premise, mintStaffPass } from "./live/journey-pass.mjs";
 
 const BASE = process.env.BASE || "http://localhost:3011";
 const PROVE_RED = process.argv.includes("--prove-red");
+const JOURNEY = process.argv.includes("--journey");
+if (JOURNEY) {
+  const p = await premise(BASE);
+  if (p.refuse) {
+    console.log(`[footer-reachable] --journey REFUSED: ${p.refuse}`);
+    process.exit(2);
+  }
+}
 
 /** Below `lg` (1024) the rail is fixed and the clearance matters; 1280 is the control cell. */
 const CELLS = [
@@ -55,17 +71,27 @@ const ok = (label, cond, extra = "") => {
 const host = new URL(BASE).hostname;
 const browser = await chromium.launch();
 let totalProbes = 0;
+/** The journey's pass, minted once and handed to every context (`--journey` only). */
+const previewPass = JOURNEY ? await mintStaffPass(browser, BASE) : null;
 
 for (const [locale, width] of CELLS) {
   const ctx = await browser.newContext({ viewport: { width, height: 780 } });
   // ⚠️ The locale switch is the `kp-locale` COOKIE, not `?lang=`.
-  await ctx.addCookies([{ name: "kp-locale", value: locale, domain: host, path: "/" }]);
+  await ctx.addCookies([{ name: "kp-locale", value: locale, domain: host, path: "/" }, ...(previewPass ? [previewPass] : [])]);
   const page = await ctx.newPage();
   await page.goto(BASE + "/", { waitUntil: "networkidle", timeout: 120000 });
 
   // ⛔ VACUITY FLOOR. An earlier run of this probe caught the dev server mid-recompile, found
   // zero footer links, and would have reported "all reachable" over an empty set.
   await page.waitForFunction(() => document.querySelectorAll("footer a").length >= 10, null, { timeout: 90000 });
+  if (JOURNEY) {
+    // ⛔ VACUITY FLOOR FOR --journey: a pass that did not count shows the classic shell, and every probe below would
+    // then be about the classic rail while the line reads "journey".
+    const journeyShell = await page.locator('header[data-testid="journey-top-bar"]').count();
+    const journeyRail = width < 1024 ? await page.locator('nav[data-testid="journey-tabs"]').count() : 1;
+    ok(`${locale}@${width} · the journey's shell is on the page — the pass counted`, journeyShell === 1 && journeyRail === 1,
+       `journey header ${journeyShell}, journey tabs ${journeyRail}`);
+  }
 
   if (PROVE_RED) {
     // The pre-fix state, restored: the footer no longer clears the fixed rail.
@@ -191,7 +217,7 @@ for (const [locale, width] of CELLS) {
 
 await browser.close();
 
-console.log(`\n[footer-reachable] ${totalProbes} link probes across ${CELLS.length} cells${PROVE_RED ? "  (--prove-red)" : ""}`);
+console.log(`\n[footer-reachable] ${totalProbes} link probes across ${CELLS.length} cells${PROVE_RED ? "  (--prove-red)" : ""}${JOURNEY ? "  (--journey)" : ""}`);
 for (const f of failures) console.log(`  ✗ ${f}`);
 console.log(`\n[footer-reachable] ${pass} passed, ${failures.length} failed`);
 process.exit(failures.length === 0 ? 0 : 1);

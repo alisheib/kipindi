@@ -198,6 +198,13 @@ const EXPECTED_DIFFS = [
     cells: VIEWERS.length * LOCALES.length * WIDTHS.length,
     reason: "S6 WP5 (A2): /account's own generateMetadata answers every request the journey is not shown to with the not-found page's title and robots noindex, nofollow. On a matched route that page metadata REPLACES the root layout's 'index, follow', and Next adds a noindex of its own only to a 404, so at HTTP 200 the bytes carry Next's not-found noindex plus the page's own noindex, nofollow (measured on the first compare after WP5: every /account cell) where an unmatched path sends the pair above. Still noindex for a crawler (§3.3 holds it on every run); the title is the same string (§3.2).",
   },
+  {
+    id: "footer-rail-h",
+    field: "regions.footer.html",
+    replace: [["pb-[calc(88px+env(safe-area-inset-bottom))]", "pb-[calc(var(--rail-h)+env(safe-area-inset-bottom))]"]],
+    cells: VIEWERS.length * LOCALES.length * WIDTHS.length * ROUTES.length,
+    reason: "S6 WP11: the footer's rail reserve names the token --rail-h (88px, globals.css) instead of the literal, so its class string moves in every cell while what it computes does not — footerPaddingBottom and scrollPaddingBottom are their own fields, compared in every cell, and must still be equal (88px below 1024; the footer 0px from 1024).",
+  },
 ];
 /** The named differences seen in some of their cells but not all. */
 const partialExpected = (hits, list = EXPECTED_DIFFS) => list

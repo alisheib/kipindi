@@ -41,7 +41,7 @@
  *    change, so a soft navigation onto a bet card removes it. ⛔ This repo has already shipped a
  *    WhatsApp FAB on top of a CTA and only LOOKING found it.
  *  · **it sits ABOVE the bottom nav**, never on top of it: the nav owns
- *    `88px + env(safe-area-inset-bottom)` and this clears it.
+ *    `88px + env(safe-area-inset-bottom)` (the token `--rail-h`, globals.css) and this clears it.
  *  · **installed means never again.** The `appinstalled` event writes a permanent stop.
  *
  * ── ⚠️ EVERY `localStorage` TOUCH IS WRAPPED, AND THE ABSENT CASE RENDERS CORRECTLY

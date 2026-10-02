@@ -26,8 +26,8 @@ and S4 (the design pass) are ✅. S2 is LIVE (`473807b1`) and waits on an office
 point 19). S1 is LIVE (`41ec1703`) and waits on one press by Ali (§0b "Still open"). Ali is away: every call made
 meanwhile is a numbered point in §0h.
 
-**Next:** (1) S6 — resume at §0i "⏸ S6 STOPPED HERE": WP9 (Tiketi zangu), WP10 (the sell look), WP11 (`--rail-h`),
-then WP12 (proof, records, merge); the build plan is
+**Next:** (1) S6 — resume at §0i "⏸ S6 STOPPED HERE": WP6c (the first-download fix, §0h point 20), WP9 (Tiketi
+zangu), WP10 (the sell look), then WP12 (proof, records, merge); the build plan is
 `docs/design-system/v5-2026-09-29-simplified-journey/S6-PLAN.md`, whose closing Amendments override its body. (2) When
 Ali says so, and not before (nothing turns on until the plan is done): an officer approves the S2 short titles, and
 Ali presses S1's preview switch.
@@ -210,10 +210,11 @@ WP6b the swap + census + header-fit → WP7 overlays → WP8 short titles on pos
   to end the session while its full `test:all` re-run (after a rebase over 42 marketing commits) was still running:
   the next session reads `scratchpad/s6/testall-a8b.log` (session 0cb4430f) or re-runs `test:all`, and confirms the
   deploy (`?dpl=`) and the served bundle.
-- **⏸ S6 STOPPED HERE (2026-10-03) — resume:** WP8, WP6b and WP7 are pushed behind the flag (their bullets below;
-  WP6b's owed list keeps its open items, numbered). Next: WP9 (Tiketi zangu — its change set is being drafted in the
-  session scratchpad, `s6/WP9.json`, by a static agent, then reviewed before it is applied), WP10, WP11 (with
-  `scripts/footer-reachable.mjs` learning the pass, WP6b's owed item 7), WP12 (S6-PLAN.md).
+- **⏸ S6 STOPPED HERE (2026-10-03) — resume:** WP8, WP6b, WP7 and WP11 are pushed behind the flag (their bullets
+  below; WP6b's owed list keeps its open items, numbered). Next: WP6c (§0h point 20 — the journey chrome and AppShell's
+  older overlays out of every visitor's first download, proven by a local production build), WP9 (Tiketi zangu — its
+  change set drafted by a static agent in the session scratchpad, `s6/WP9.json`, reviewed before it is applied),
+  WP10, WP12 (S6-PLAN.md).
   Method and tools: memory `project_kipindi_vodacom_plan` (staged change sets, `apply_changeset.py`, `run-gates.sh`,
   `run-parity.sh`).
 - **WP0 parity harness — `npm run qa:classic-shell-parity`** (written, not yet run; local in-memory server only). Four
@@ -312,14 +313,23 @@ WP6b the swap + census + header-fit → WP7 overlays → WP8 short titles on pos
   compare against the baseline captured at WP6b's parent `b3153d98` (live main; A18): 224 cells, no unexpected
   difference, 27/27; (2) a production build: the root
   layout's client chunks carry no journey-top-bar or journey-tabs module, or `npm run perf:smoke`'s JavaScript on a
-  classic page is unchanged; (3) ✅ `npm run qa:journey-header-fit`, 66/66 (above); (4) ✅ its red twin, detached and alone under the heavy-node lock: 9/9 mutations caught, 0 missed, 0 broken, 0 files left modified, and `git diff` of `src/` empty after it; (5) the
+  classic page is unchanged — ❌ **MEASURED ON PRODUCTION 2026-10-03, AND FALSE** (`scratchpad/s6/prod/chunks-check.sh`,
+  read-only: every `/_next/` script a signed-out visitor's page loads, fetched and searched, with the classic bar's own
+  test ids as the control): before the push, no journey string in the initial scripts of `/`, `/markets`, `/positions`,
+  `/help`; after it, every one carries `journey-top-bar`, `journey-tabs` and nine `kp-jhdr` — +12.5 KB raw on `/`
+  (≈3–4 KB gzipped), downloaded and never rendered. The chunk that holds them also holds the channels panel and the
+  consent prompt: `React.lazy` in a server component (AppShell) does not split client code in this Next/Turbopack
+  build, so the journey chrome landed where AppShell's older "lazy" overlays always were. Nothing a player sees
+  changes; the plan's claim does. Fix scheduled as **WP6c** (§0h point 20); (3) ✅ `npm run qa:journey-header-fit`,
+  66/66 (above); (4) ✅ its red twin, detached and alone under the heavy-node lock: 9/9 mutations caught, 0 missed, 0 broken, 0 files left modified, and `git diff` of `src/` empty after it; (5) the
   qa:journey-shell tiles (WP6b step 5, not yet written: the header at 320–1280 × sw/en/zh, held, masked, zero and
   999,999, the active tab on each destination, the guest sheet, the Wallet, the unread dot, the focus ring, the tab
   labels at 320, and no-pass viewers still classic); (6) A1's G1 drive: on a preview session, end account A through
   the idle (E-381) path, sign B in through the header's link, and the Akaunti dot and the Arifa row never show A's
-  count before B's first answer lands; (7) `scripts/footer-reachable.mjs` learning the pass (A15); (8)
+  count before B's first answer lands; (7) ✅ `scripts/footer-reachable.mjs` learning the pass (A15) — `--journey`, landed with WP11 (its bullet); (8)
   `scripts/qa-journey-preview.mjs`'s step-7 pass tiles, its trace regex matching test ids rather than chunk names;
-  (9) the SJ-16 supersession notes in v4 ACCEPTANCE §C2/K65, UPDATE-2026-09-28 §1 and INHERIT-MANIFEST R1/L4/L20.
+  (9) ✅ the SJ-16 supersession notes in v4 ACCEPTANCE §C2, UPDATE-2026-09-28 §1 and the v4 INHERIT-MANIFEST R1/L4/L20
+  (2026-10-03; each says "for journey viewers only", and every other viewer keeps the rule as written).
 - **WP7 — the overlay stand-downs and the email-bar rule (applied 2026-10-03, verified locally, pushed behind the flag
   with WP6b).** AppShell mounts the journey
   flag for a journey request only, lazily, beside the funnel's span; while it is mounted the html element carries
@@ -356,8 +366,21 @@ WP6b the swap + census + header-fit → WP7 overlays → WP8 short titles on pos
   5.mark.pure, with three plants. Re-driven: 32/32 — on `/` and `/positions` a journey viewer meets neither the Needle
   nor the bubble in any frame; on `/markets` (the board is not a journey page) and `/help` both are there; a classic
   viewer has both everywhere, `data-journey` never set (the controls). Served bytes for a classic viewer: one more
-  `false` child in the RSC payload (the mark's slot), no markup. Owed: the full battery with WP6b (below, when the
-  push lands).
+  `false` child in the RSC payload (the mark's slot), no markup. **Pushed with WP6b, `679acf72`, live 2026-10-03** after
+  the full battery: 428/448, every red on the §0i baseline list (marketing-consent-ledger and guards-exist have turned
+  green since; `needle-rest` still fails only for want of a server on :3009, as at WP0).
+- **WP11 — `--rail-h`, the one name for the phone rail's reserve (2026-10-03).** `--rail-h: 88px` sits in `:root`
+  beside the other reserved heights; the footer's bottom padding (`public-footer.tsx`, now
+  `pb-[calc(var(--rail-h)+env(safe-area-inset-bottom))]`) and D57's html scroll padding read it, so S9's focused chrome
+  and the Mobile Visual lane's U21 have one knob (MOBILE-VISUAL-PLAN's rail row now says: adopt it, never a second).
+  The chat bubble's 80 and the install card's 148 stay literal — test:stacking's chat-fab locator and
+  test:install-invite 5.4 pin them — and each now names `--rail-h` as its source in a comment. `qa:footer-reachable`
+  learns `--journey` (A15; WP6b's owed item 7): every context carries a minted staff pass, and each cell first proves
+  the journey shell is on the page. **Verified:** WP11's gates (only the §0i baseline reds); `qa:footer-reachable`
+  108/108 classic and 114/114 `--journey`, each `--prove-red` catching the buried "Export / close my account" at 360 in
+  en, sw and zh; `qa:classic-shell-parity --compare`: the one named difference `footer-rail-h` in exactly 224 of 224
+  cells, nothing else — the computed footer padding and scroll padding are compared in every cell and equal.
+  **Served bytes for a classic viewer:** the footer's class string and one CSS custom property; computed values equal.
 
 ## §0h · Points for Ali — taken while he was away (2026-10-01 →)
 
@@ -426,6 +449,17 @@ here, with how to overrule it. Newest last; nothing here blocks the work.
     short title (as the Swahili reviewer) and approves them in /admin — which needs an officer login on 50pick.tz:
     Ali's admin is never re-minted and signing in with it signs him out everywhere. Waiting on Ali: a staff account
     for Claude (any officer role with the approve permission), or Ali approves after Claude's review list.
+20. **The journey chrome must not ride in every visitor's first download — WP6c** (found on production 2026-10-03, §0i
+    WP6b item 2). AppShell's `lazy()` bindings did not keep the journey header, tabs and flag out of the scripts a
+    classic page loads (≈3–4 KB gzipped, never rendered). WP6c moves them behind a small client wrapper that loads
+    them with `next/dynamic`, which does split, proven the only way chunking can be proven — a local production build
+    and the same chunk check (the classic page's initial scripts carry no journey string; a journey page's do). The
+    same is true of AppShell's OLDER lazy overlays (the consent prompt, the channels panel, the win celebration…): they
+    have always shipped in the first download. Under Ali's standing rule (2026-09-27: fix the same defect platform-wide,
+    with its own guard) WP6c moves them too — still rendered on the server exactly as now (`next/dynamic` with its
+    server render on), so the HTML every player gets is unchanged (`qa:classic-shell-parity`, 224 cells) and only WHEN
+    their code downloads changes; a new guard holds AppShell to no `lazy()` of a client module. Overrule: say so, and
+    either half stays where it is.
 
 
 ## §0g · S4 (2026-10-01) — the Design canvas: all eleven items drawn, the panel's findings applied; waiting on Ali

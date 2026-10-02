@@ -334,6 +334,7 @@ function ChatRootInner({
         style={{
           position: "fixed",
           right: 16,
+          // 80 clears the phone rail, whose reserve is `--rail-h` (globals.css): move this with that token.
           bottom: isMobile ? 80 : 16,
           zIndex: 60,
         }}
