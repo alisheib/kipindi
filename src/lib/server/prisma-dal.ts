@@ -30,6 +30,11 @@ import { sniffBase64ImageMime } from "./image-signature";
 // U35b · the campaign tables' ONE rule set — asked before every campaign or recipient write, exactly as the memory
 // twin asks it (`test:dal-parity` §26). Pure: it takes only types from the store, so there is no cycle.
 import { assertNewCampaign, assertDraftPatch, assertTransitionShape, assertSeeds, fillRecipientCounts } from "@/lib/server/marketing/campaign-model";
+// U36 · the campaign list's ONE vocabulary: the attention count spreads its statuses (never a retyped list) and every
+// count is zero-filled through its tallies, exactly as the memory twin's are (`test:dal-parity` §26).
+import {
+  ATTENTION_ALWAYS, ATTENTION_WHEN_OWED, OUTSTANDING_RECIPIENT_STATUSES, tallyCampaignStatuses, tallyRecipientsByCampaign,
+} from "@/lib/marketing/campaign-status";
 // ⛔ The lens definitions have ONE home. Re-listing MONEY_KINDS here is how a kind added to
 // the registry later stops appearing under the filter a player would look for it under.
 import {
@@ -72,6 +77,10 @@ import type {
   SmsCampaignRecipientSeed,
   SmsCampaignRecipientInsert,
   SmsCampaignRecipientCount,
+  SmsCampaignPageQuery,
+  SmsCampaignPage,
+  SmsCampaignStatusCounts,
+  SmsCampaignRecipientCountsById,
   StoredAgentApplication,
   StoredAgentApplicationDocument,
   StoredAgentInvitation,
@@ -4489,6 +4498,41 @@ export const prismaDb = {
       const after = await pc().smsCampaign.findUnique({ where: { id } });
       return after ? toStoredSmsCampaign(after) : null;
     },
+    /** U36 · ONE PAGE of the campaign list and the size of the whole match: ONE findMany ordered by the column and then
+     *  by `id` in the same direction (so a page boundary falls where the memory twin's does), and ONE count over the
+     *  SAME where. `statuses` null = every status; an EMPTY list = nothing (`in: []`). */
+    page: async (q: SmsCampaignPageQuery): Promise<SmsCampaignPage> => {
+      const where = q.statuses === null ? {} : { status: { in: [...q.statuses] } };
+      const first = q.sort === "name" ? { name: q.dir } : q.sort === "updated" ? { updatedAt: q.dir } : { createdAt: q.dir };
+      const [rows, total] = await Promise.all([
+        pc().smsCampaign.findMany({ where, orderBy: [first, { id: q.dir }], skip: q.offset, take: q.limit }),
+        pc().smsCampaign.count({ where }),
+      ]);
+      return { rows: rows.map((r) => toStoredSmsCampaign(r)), total };
+    },
+    /** U36 · ONE groupBy by status over the WHOLE table — never the rows — zero-filled. */
+    statusCounts: async (): Promise<SmsCampaignStatusCounts> => {
+      const groups = await pc().smsCampaign.groupBy({ by: ["status"], _count: { _all: true } });
+      return tallyCampaignStatuses((groups as Array<{ status: string; _count: { _all: number } }>)
+        .map((g) => ({ status: g.status, count: g._count._all })));
+    },
+    /** U36 · the nav badge's count as ONE count() — never the rows. Its where is `wantsAttention` in SQL: a status that
+     *  always wants an officer, or PAUSED with the list unfinished or a recipient still OUTSTANDING — both lists spread
+     *  from campaign-status.ts, never retyped (HELD is outstanding).
+     *  ⚠️ ITS PLAN IS OPEN (U36 review F3, measured 2026-10-02 by `campaigns-list-pg-probe` §9 over 60,000 rows): the
+     *  relation filter compiles to an UNCORRELATED IN, which PostgreSQL 18.3 serves with an index-only SKIP SCAN of the
+     *  (campaignId, status) index. Before 18 there is no skip scan, so it may read every outstanding row ever written. A
+     *  correlated EXISTS was tried and planned as a hashed SEQUENTIAL scan — worse. ⛔ Read production's version first. */
+    attentionCount: async (): Promise<number> => {
+      return pc().smsCampaign.count({
+        where: {
+          OR: [
+            { status: { in: [...ATTENTION_ALWAYS] } },
+            { status: ATTENTION_WHEN_OWED, OR: [{ enqueuedAt: null }, { recipients: { some: { status: { in: [...OUTSTANDING_RECIPIENT_STATUSES] } } } }] },
+          ],
+        },
+      });
+    },
   },
 
   smsCampaignRecipient: {
@@ -4524,6 +4568,15 @@ export const prismaDb = {
       const groups = await pc().smsCampaignRecipient.groupBy({ by: ["status"], where: { campaignId }, _count: { _all: true } });
       return fillRecipientCounts((groups as Array<{ status: string; _count: { _all: number } }>)
         .map((g) => ({ status: g.status as SmsCampaignRecipientStatus, count: g._count._all })));
+    },
+    /** U36 · each campaign named, with its recipients by status — ONE groupBy by (campaignId, status) WHERE campaignId
+     *  is one of the ids handed in (the list's page, never the whole table), zero-filled for every id. An empty list
+     *  asks nothing and answers {}. */
+    countsByCampaign: async (ids: readonly string[]): Promise<SmsCampaignRecipientCountsById> => {
+      if (ids.length === 0) return {};
+      const groups = await pc().smsCampaignRecipient.groupBy({ by: ["campaignId", "status"], where: { campaignId: { in: [...ids] } }, _count: { _all: true } });
+      return tallyRecipientsByCampaign(ids, (groups as Array<{ campaignId: string; status: string; _count: { _all: number } }>)
+        .map((g) => ({ campaignId: g.campaignId, status: g.status, count: g._count._all })));
     },
   },
 };

@@ -12,6 +12,10 @@ import { matchesFilters, sortAndPage, summarise, type TxnSearchFilters, type Txn
 // U35b · the campaign tables' ONE rule set — this twin asks it before every campaign or recipient write, exactly as
 // the Prisma twin does (`test:dal-parity` §26). It takes only TYPES back from this file, so there is no cycle.
 import { assertNewCampaign, assertDraftPatch, assertTransitionShape, assertSeeds, fillRecipientCounts } from "@/lib/server/marketing/campaign-model";
+// U36 · the campaign list's ONE vocabulary — this twin asks `wantsAttention` itself (the Prisma twin spreads the same
+// statuses into one count) and answers every count through the same zero-filled tallies. Pure, and it takes only TYPES
+// back from this file, so there is no cycle.
+import { tallyCampaignStatuses, tallyRecipientsByCampaign, wantsAttention } from "@/lib/marketing/campaign-status";
 import type { SmsEncoding } from "@/lib/sms-compose";
 import type { ConfirmTierColumn } from "@/lib/marketing/campaign-confirm";
 // ⛔ The same lens definitions the Prisma DAL reads — one home (§0a), so the two
@@ -521,6 +525,35 @@ export type SmsCampaignRecipientSeed = Pick<StoredSmsCampaignRecipient,
 /** `inserted` + `duplicates` = the batch. A duplicate is a person already on the campaign (or an id already held). */
 export type SmsCampaignRecipientInsert = { inserted: number; duplicates: number };
 export type SmsCampaignRecipientCount = { status: SmsCampaignRecipientStatus; count: number };
+
+/* ── U36 · THE CAMPAIGN LIST'S READS — page, statusCounts, attentionCount, countsByCampaign (`test:dal-parity` §26,
+ * extended by U36 as decision X1 says). ⚠️ NAMED, NOT INLINE: the `SmsDlrResult` note above. ── */
+/** The list's sortable columns: when the campaign was made, its name, its last activity. */
+export type SmsCampaignListSort = "created" | "name" | "updated";
+/** One page of the list. `statuses` null = every status (the rail's All); ⛔ an EMPTY list = nothing, never "no
+ *  constraint". Both twins break every tie on `id`, in the sort's own direction. */
+export type SmsCampaignPageQuery = {
+  statuses: readonly SmsCampaignStatus[] | null;
+  sort: SmsCampaignListSort;
+  dir: "asc" | "desc";
+  offset: number;
+  limit: number;
+};
+export type SmsCampaignPage = { rows: StoredSmsCampaign[]; total: number };
+/** Every campaign status with its count over the WHOLE table, zeros included — the rail's counts. */
+export type SmsCampaignStatusCounts = Record<SmsCampaignStatus, number>;
+/** One campaign's recipients by status, zeros included. ⛔ Never stored (OD26): always counted from the rows. */
+export type SmsCampaignRecipientStatusCounts = Record<SmsCampaignRecipientStatus, number>;
+/** Each campaign asked about, by id, with its recipients by status — and only those. */
+export type SmsCampaignRecipientCountsById = Record<string, SmsCampaignRecipientStatusCounts>;
+
+declare global {
+  /** DEV ONLY — set by `/api/dev-test/marketing-campaigns-seed?fault=1` so the U36 drive can photograph the campaign
+   *  list's error state (the rail kept with no counts, no badge). Read by the MEMORY twin's `page`, `statusCounts` and
+   *  `attentionCount` alone, which never serve production. */
+  // eslint-disable-next-line no-var
+  var __50PICK_CAMPAIGNS_READ_FAULT: boolean | undefined;
+}
 
 /* ═══ MESSAGING CONSENT AND SUPPRESSION (marketing U6 — D7, D8) ═══════════════════════
  *
@@ -3409,6 +3442,39 @@ const memoryDb = {
       store.smsCampaigns.set(id, next);
       return { ...next };
     },
+    /** U36 · ONE PAGE of the campaign list and the size of the whole match. Every tie breaks on `id` in the sort's own
+     *  direction — the Prisma twin's `orderBy: [first, { id: q.dir }]` — so a page boundary falls in the same place in
+     *  both twins. `statuses` null = every status; an EMPTY list = nothing. Rows come out as COPIES. */
+    page: (q: SmsCampaignPageQuery): SmsCampaignPage => {
+      // ⛔ DEV ONLY — the U36 drive photographs the list's error state through this switch
+      // (`/api/dev-test/marketing-campaigns-seed?fault=1`). The memory twin never serves production.
+      if (globalThis.__50PICK_CAMPAIGNS_READ_FAULT) throw new Error("campaign list read fault (dev drive)");
+      const all: StoredSmsCampaign[] = Array.from(store.smsCampaigns.values());
+      const rows = all.filter((c) => q.statuses === null || q.statuses.includes(c.status));
+      const sign = q.dir === "asc" ? 1 : -1;
+      rows.sort((a, b) => {
+        const by = q.sort === "name" ? a.name.localeCompare(b.name)
+          : q.sort === "updated" ? Date.parse(a.updatedAt) - Date.parse(b.updatedAt)
+          : Date.parse(a.createdAt) - Date.parse(b.createdAt);
+        return by !== 0 ? sign * by : sign * a.id.localeCompare(b.id);
+      });
+      return { rows: rows.slice(q.offset, q.offset + q.limit).map((c) => ({ ...c })), total: rows.length };
+    },
+    /** U36 · every status with its count over the WHOLE table, zeros included — the rail's counts, never the page's. */
+    statusCounts: (): SmsCampaignStatusCounts => {
+      if (globalThis.__50PICK_CAMPAIGNS_READ_FAULT) throw new Error("campaign list read fault (dev drive)");
+      const all: StoredSmsCampaign[] = Array.from(store.smsCampaigns.values());
+      return tallyCampaignStatuses(all.map((c) => ({ status: c.status, count: 1 })));
+    },
+    /** U36 · how many campaigns want an officer — the nav badge. ⭐ ONE DEFINITION: the pure `wantsAttention`, asked of
+     *  each campaign over its own recipient tally; the Prisma twin asks the same question as ONE count. */
+    attentionCount: (): number => {
+      if (globalThis.__50PICK_CAMPAIGNS_READ_FAULT) throw new Error("campaign list read fault (dev drive)");
+      const all: StoredSmsCampaign[] = Array.from(store.smsCampaigns.values());
+      const recipients: StoredSmsCampaignRecipient[] = Array.from(store.smsCampaignRecipients.values());
+      const tallies = tallyRecipientsByCampaign(all.map((c) => c.id), recipients.map((r) => ({ campaignId: r.campaignId, status: r.status, count: 1 })));
+      return all.filter((c) => wantsAttention(c, tallies[c.id])).length;
+    },
   },
 
   smsCampaignRecipient: {
@@ -3482,6 +3548,16 @@ const memoryDb = {
         if (r.campaignId === campaignId) raw.set(r.status, (raw.get(r.status) ?? 0) + 1);
       }
       return fillRecipientCounts(Array.from(raw, ([status, count]) => ({ status, count })));
+    },
+    /** U36 · the recipient tally of EACH campaign named — every status, zeros included — and of no other: the list asks
+     *  ONCE for exactly its page's ids (never once per row, never the whole table). An empty list is an empty answer. */
+    countsByCampaign: (ids: readonly string[]): SmsCampaignRecipientCountsById => {
+      if (ids.length === 0) return {};
+      const wanted = new Set(ids);
+      const recipients: StoredSmsCampaignRecipient[] = Array.from(store.smsCampaignRecipients.values());
+      return tallyRecipientsByCampaign(ids, recipients
+        .filter((r) => wanted.has(r.campaignId))
+        .map((r) => ({ campaignId: r.campaignId, status: r.status, count: 1 })));
     },
   },
 };

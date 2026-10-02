@@ -110,6 +110,10 @@ ok("/admin/players/<id> → support", domainForPath("/admin/players/usr_123") ==
 ok("/admin/resolver/<id> → trading", domainForPath("/admin/resolver/mkt_1") === "trading");
 ok("/admin/kyc/<id> → compliance", domainForPath("/admin/kyc/usr_1") === "compliance");
 ok("/admin/updown/rounds → trading", domainForPath("/admin/updown/rounds") === "trading");
+// U36 · the SMS campaign list, and the two sub-routes its later units add (U37's /new, U47's /[id]) — one section, growth.
+ok("/admin/campaigns → growth", domainForPath("/admin/campaigns") === "growth");
+ok("/admin/campaigns/new → growth", domainForPath("/admin/campaigns/new") === "growth");
+ok("/admin/campaigns/<id> → growth", domainForPath("/admin/campaigns/smc_x") === "growth");
 ok("unknown /admin route fails CLOSED to ops", domainForPath("/admin/does-not-exist") === "ops");
 ok("/admin/staff is Owner-only", isOwnerOnlyPath("/admin/staff"));
 ok("/admin/roles is Owner-only", isOwnerOnlyPath("/admin/roles"));
@@ -213,6 +217,14 @@ async function navKeysFor(role: Role): Promise<Set<string>> {
   ok("Auditor nav shows accounting + compliance (view)", aud.has("finance") && aud.has("compliance"));
   ok("Auditor nav HIDES Access + trading", !aud.has("staff") && !aud.has("markets"));
 
+  // U36 · "SMS campaigns" is growth's: GROWTH is shown it, and no other non-Owner role is by default (its badge, which
+  // ships in every viewer's payload, is read only for a viewer who may see growth — `test:campaigns-page` §4).
+  const gro = await navKeysFor("GROWTH");
+  ok("GROWTH nav shows SMS campaigns", gro.has("campaigns"));
+  for (const r of ["FINANCE", "SUPPORT", "MODERATOR", "AUDITOR", "COMPLIANCE"] as Role[]) {
+    ok(`${r} nav HIDES SMS campaigns`, !(await navKeysFor(r)).has("campaigns"));
+  }
+
   // Access (staff/roles) and the desk are Owner-only for EVERY non-Owner role; 2FA setup shows for all staff.
   for (const r of ["COMPLIANCE", "MODERATOR", "FINANCE", "GROWTH", "AUDITOR", "SUPPORT"] as Role[]) {
     const n = await navKeysFor(r);
@@ -293,29 +305,37 @@ console.log(`\nrbac: ${pass} passed, ${fail} failed`);
 
 /* ══ THE RED PROOF (`red:rbac`, S10 2026-10-01) — U17's control, made durable ═══════════════════
  * S9 proved §7b by planting the drift by hand (124 passed / 1 failed). This keeps that proof runnable:
- * each case plants ONE real drift IN MEMORY and §7b's own function must name /admin/contacts. In-process
+ * each case plants ONE real drift IN MEMORY and §7b's own function must name the section it was planted in. U36 made
+ * it 4/4: both halves of the split, for /admin/contacts AND /admin/campaigns. In-process
  * by construction — this file makes no file-writing call. */
 if (process.argv.includes("--prove-red")) {
   const problems: string[] = [];
   if (fail > 0) problems.push(`BASELINE: the shipped suite is already red (${fail})`);
-  const isContacts = (h: string) => h === "/admin/contacts" || h.startsWith("/admin/contacts/");
-  const cases: Array<{ name: string; splits: string[] }> = [
-    {
-      // U17's RED as §9 wrote it: the ROUTE_DOMAINS row is gone, so the page fails closed to `ops`.
-      name: "the ROUTE_DOMAINS row for /admin/contacts is deleted (the page refuses GROWTH, the menu still shows it)",
-      splits: navDomainSplits(NAV_GROUPS, (h) => (isContacts(h) ? "ops" : domainForPath(h))),
-    },
-    {
-      // The mirror: the menu entry is edited, the route map is not.
-      name: "the Contacts nav item's domain is edited to `ops` while ROUTE_DOMAINS still says growth",
-      splits: navDomainSplits(
-        NAV_GROUPS.map((g) => ({ ...g, items: g.items.map((it) => (isContacts(it.href) ? { ...it, domain: "ops" } : it)) })) as typeof NAV_GROUPS,
-        domainForPath,
-      ),
-    },
-  ];
+  // ⭐ U36 · EVERY GROWTH SECTION BUILT ON THE SIX DOORS, BOTH HALVES OF THE SPLIT — 4/4. A section is planted by its
+  // prefix (its page and every sub-route under it), and §7b's own function must name THAT section in each case.
+  const SECTIONS = ["/admin/contacts", "/admin/campaigns"];
+  const cases: Array<{ section: string; name: string; splits: string[] }> = SECTIONS.flatMap((section) => {
+    const inSection = (h: string) => h === section || h.startsWith(section + "/");
+    return [
+      {
+        // U17's RED as §9 wrote it: the ROUTE_DOMAINS row is gone, so the page fails closed to `ops`.
+        section,
+        name: `the ROUTE_DOMAINS row for ${section} is deleted (the page refuses GROWTH, the menu still shows it)`,
+        splits: navDomainSplits(NAV_GROUPS, (h) => (inSection(h) ? "ops" : domainForPath(h))),
+      },
+      {
+        // The mirror: the menu entry is edited, the route map is not.
+        section,
+        name: `the ${section} nav item's domain is edited to "ops" while ROUTE_DOMAINS still says growth`,
+        splits: navDomainSplits(
+          NAV_GROUPS.map((g) => ({ ...g, items: g.items.map((it) => (inSection(it.href) ? { ...it, domain: "ops" } : it)) })) as typeof NAV_GROUPS,
+          domainForPath,
+        ),
+      },
+    ];
+  });
   for (const c of cases) {
-    const caught = c.splits.some((x) => x.startsWith("/admin/contacts "));
+    const caught = c.splits.some((x) => x.startsWith(`${c.section} `));
     console.log(`${caught ? "caught" : "MISSED"} · ${c.name}${caught ? "" : ` — splits: ${c.splits.join(" | ") || "(none)"}`}`);
     if (!caught) problems.push(c.name);
   }

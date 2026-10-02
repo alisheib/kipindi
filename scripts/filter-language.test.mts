@@ -263,6 +263,12 @@ const ADMIN_SURFACES = [
      undeclared `data-filter-rail` and §6.1 a declared file that renders no control, so either half alone is red for
      every lane. `red:filter-language` plants both directions. */
   "src/app/admin/contacts/contact-filters.tsx", // /admin/contacts — consent + suppressed + operator + source + list + tag (U21)
+  /* DECLARED 2026-10-02 (U36, marketing S10) · the SMS campaign list's status rail — ONE axis (All · Drafts · Sending ·
+     Paused · Finished), every label, href and count built on the server (`campaigns-rail.ts`), the counts the WHOLE
+     table's. ONE `FilterPill`, at the dense rank: §6.6 counts it 1 dense of 1. ⛔ Declared in the SAME commit as the
+     rail file — §0.4 refuses an undeclared `data-filter-rail` and §6.1 a declared file that renders no control.
+     `red:filter-language` plants both directions. */
+  "src/app/admin/campaigns/campaign-status-rail.tsx", // /admin/campaigns — status (U36)
 ];
 
 /**

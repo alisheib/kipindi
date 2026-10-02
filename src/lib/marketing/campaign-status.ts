@@ -1,0 +1,252 @@
+/**
+ * U36 · THE ONE VOCABULARY OVER A CAMPAIGN'S STATUS (decision X12) — what the list says about each campaign, which
+ * pill of the status rail it sits under, how far along it is, whether it wants an officer, and which campaign screens
+ * exist yet. The list page, its rail, both DAL twins and the nav badge read THIS module; U47's live page and its
+ * plan suite must read it too, never a second bucket module.
+ *
+ * ⭐ EVERY MAP IS A TOTAL RECORD over the store's own unions (`SmsCampaignStatus`, `SmsCampaignRecipientStatus`), so a
+ * status added to the schema and forgotten here is a COMPILE error, never a row that silently drops off the rail or
+ * out of a count.
+ *
+ * ── THE RECIPIENT SPLIT ─────────────────────────────────────────────────────────────────────────────────────────
+ * OUTSTANDING = PENDING + HELD — ⛔ HELD STILL OWES SOMEBODY A MESSAGE: a shop-wide refusal (the credit floor, the
+ * rail not configured) returns a claimed row to wait, it does not settle it. SETTLED = SENT + DELIVERED + FAILED +
+ * SKIPPED — the four answers a row can end on. Counted as settled, a held row would make a campaign that still owes
+ * people a message read as complete.
+ *
+ * ── PROGRESS ─────────────────────────────────────────────────────────────────────────────────────────────────────
+ * Two phases, never shown at once (the plan's U47 line): PREPARING is rows WRITTEN over the confirmed audience;
+ * from the moment the list is finished (`enqueuedAt`) it is rows SETTLED over rows written. ⛔ A campaign with nothing
+ * to measure (no rows, or no confirmed audience) has NO progress — null, so no 0 % bar is ever painted as progress.
+ * ⛔ The figures are the server's counts (a groupBy over the rows, OD26); nothing here runs on a timer (OD34).
+ *
+ * ── ATTENTION (the nav badge, OD39) ───────────────────────────────────────────────────────────────────────────────
+ * A campaign wants an officer while it is PREPARING or RUNNING, or PAUSED with work left: an outstanding row, or a
+ * list that never finished (`enqueuedAt` still null — a pause during the enqueue has no rows yet, and would otherwise
+ * drop off the badge while most of its audience waits). A badge that never clears stops being read, so DRAFT,
+ * CONFIRMED, DONE and CANCELLED never count.
+ *
+ * ── THE SCREENS (house-bots ruling 432(h)) ────────────────────────────────────────────────────────────────────────
+ * A flag is true EXACTLY when the page at its route exists, and the list renders a link only behind its flag:
+ * `test:campaigns-page` 5f reads the page files off disk and holds each flag to them in BOTH directions. U37 flips
+ * `compose` in the commit that lands /admin/campaigns/new; U47 flips `detail` with /admin/campaigns/[id].
+ *
+ * ⛔ PURE AND CLIENT-SAFE: no runtime import at all — the store is reached for TYPES only (erased), so `store.ts` and
+ * `prisma-dal.ts` may import this file without a cycle, and a client component may import it without the server
+ * graph (pinned in `test:client-graph-safe`).
+ *
+ * Guard: `npm run test:campaigns-page` (§3 the split and progress, §4 attention, §5f the screens).
+ */
+import type {
+  StoredSmsCampaign, SmsCampaignStatus, SmsCampaignRecipientStatus, SmsCampaignStatusCounts,
+  SmsCampaignRecipientStatusCounts, SmsCampaignRecipientCountsById,
+} from "@/lib/server/store";
+
+/* ══ THE STATUS RAIL ═══════════════════════════════════════════════════════════════════════════════════════════ */
+
+/** The rail's four keys (the plan's "drafts · sending · paused · finished"), as the address spells them. */
+export type CampaignRailKey = "drafts" | "sending" | "paused" | "finished";
+
+/** The kit Chip variants a campaign status may wear — a subset of `ui/chip.tsx`'s own (none of them gold: gold is
+ *  money, and a finished campaign is not). */
+export type CampaignChipVariant = "neutral" | "info" | "pending" | "active" | "paused" | "success";
+
+/**
+ * ⭐ EVERY STATUS: its words on the list, its chip, and the ONE rail pill it sits under. A confirmed campaign that
+ * has not started sits with the drafts (nothing has gone out); PREPARING sits with sending (work in flight); a
+ * stopped campaign is finished.
+ */
+export const CAMPAIGN_STATUS_VIEW: Readonly<Record<SmsCampaignStatus, { label: string; chip: CampaignChipVariant; rail: CampaignRailKey }>> = {
+  DRAFT: { label: "Draft", chip: "neutral", rail: "drafts" },
+  CONFIRMED: { label: "Ready to start", chip: "info", rail: "drafts" },
+  PREPARING: { label: "Preparing", chip: "pending", rail: "sending" },
+  RUNNING: { label: "Sending", chip: "active", rail: "sending" },
+  PAUSED: { label: "Paused", chip: "paused", rail: "paused" },
+  DONE: { label: "Finished", chip: "success", rail: "finished" },
+  CANCELLED: { label: "Stopped", chip: "neutral", rail: "finished" },
+};
+
+/** Every campaign status, in the schema's order — the keys of the total Record above. */
+export const CAMPAIGN_STATUSES = Object.freeze(Object.keys(CAMPAIGN_STATUS_VIEW)) as readonly SmsCampaignStatus[];
+
+/** The rail's pills, in order: All first (key ""), then the four keys. `title` is the pill's hover text. */
+export const CAMPAIGN_RAIL: ReadonlyArray<{ key: CampaignRailKey | ""; label: string; title: string }> = [
+  { key: "", label: "All", title: "Every SMS campaign" },
+  { key: "drafts", label: "Drafts", title: "Drafts, and campaigns confirmed but not started" },
+  { key: "sending", label: "Sending", title: "Preparing the list or sending now" },
+  { key: "paused", label: "Paused", title: "Paused by an officer or by the engine" },
+  { key: "finished", label: "Finished", title: "Finished or stopped" },
+];
+
+const RAIL_KEYS: readonly CampaignRailKey[] = ["drafts", "sending", "paused", "finished"];
+
+/** The statuses one rail key lists, or null for every status — an empty, missing or unknown key means All, which is
+ *  the pill the rail then shows in force (the list shows what the rail says it shows). */
+export function statusesForRail(key: string | undefined): SmsCampaignStatus[] | null {
+  const k = (key ?? "").trim();
+  if (!(RAIL_KEYS as readonly string[]).includes(k)) return null;
+  return CAMPAIGN_STATUSES.filter((s) => CAMPAIGN_STATUS_VIEW[s].rail === k);
+}
+
+/** How many campaigns a rail key holds, out of the WHOLE table's counts ("" = All). */
+export function railCount(counts: SmsCampaignStatusCounts, key: CampaignRailKey | ""): number {
+  // Typed once: `.reduce` on a union of a readonly and a mutable array type is a call TypeScript may refuse.
+  const statuses: readonly SmsCampaignStatus[] = key === "" ? CAMPAIGN_STATUSES : statusesForRail(key) ?? [];
+  return statuses.reduce((n, s) => n + counts[s], 0);
+}
+
+/** Every campaign in the table, from its status counts. */
+export function campaignTotal(counts: SmsCampaignStatusCounts): number {
+  return railCount(counts, "");
+}
+
+/* ══ THE RECIPIENT SPLIT ═══════════════════════════════════════════════════════════════════════════════════════ */
+
+/** ⛔ The split, as a total Record: a recipient status added later must be given a side here or nothing compiles. */
+const RECIPIENT_SIDE: Readonly<Record<SmsCampaignRecipientStatus, "outstanding" | "settled">> = {
+  PENDING: "outstanding",
+  HELD: "outstanding",
+  SENT: "settled",
+  DELIVERED: "settled",
+  FAILED: "settled",
+  SKIPPED: "settled",
+};
+const RECIPIENT_STATUSES = Object.keys(RECIPIENT_SIDE) as SmsCampaignRecipientStatus[];
+
+/** Rows that still owe somebody a message: PENDING and HELD. */
+export const OUTSTANDING_RECIPIENT_STATUSES = Object.freeze(RECIPIENT_STATUSES.filter((s) => RECIPIENT_SIDE[s] === "outstanding")) as readonly SmsCampaignRecipientStatus[];
+/** Rows that have their answer: SENT, DELIVERED, FAILED and SKIPPED. */
+export const SETTLED_RECIPIENT_STATUSES = Object.freeze(RECIPIENT_STATUSES.filter((s) => RECIPIENT_SIDE[s] === "settled")) as readonly SmsCampaignRecipientStatus[];
+
+const sum = (counts: SmsCampaignRecipientStatusCounts, statuses: readonly SmsCampaignRecipientStatus[]): number =>
+  statuses.reduce((n, s) => n + counts[s], 0);
+/** Every row the campaign has written. */
+export const recipientRows = (counts: SmsCampaignRecipientStatusCounts): number => sum(counts, RECIPIENT_STATUSES);
+export const outstandingRows = (counts: SmsCampaignRecipientStatusCounts): number => sum(counts, OUTSTANDING_RECIPIENT_STATUSES);
+export const settledRows = (counts: SmsCampaignRecipientStatusCounts): number => sum(counts, SETTLED_RECIPIENT_STATUSES);
+
+/* ══ THE COUNTS, ZERO-FILLED (both twins answer through these) ═════════════════════════════════════════════════ */
+
+export function zeroCampaignStatusCounts(): SmsCampaignStatusCounts {
+  return { DRAFT: 0, CONFIRMED: 0, PREPARING: 0, RUNNING: 0, PAUSED: 0, DONE: 0, CANCELLED: 0 };
+}
+export function zeroRecipientStatusCounts(): SmsCampaignRecipientStatusCounts {
+  return { PENDING: 0, HELD: 0, SENT: 0, DELIVERED: 0, FAILED: 0, SKIPPED: 0 };
+}
+
+const own = (o: object, k: string): boolean => Object.prototype.hasOwnProperty.call(o, k);
+
+/** A groupBy (or a tally) by campaign status, zero-filled. ⛔ A status this code does not know REFUSES: a rail that
+ *  dropped those rows would read the table as smaller than it is. */
+export function tallyCampaignStatuses(raw: ReadonlyArray<{ status: string; count: number }>): SmsCampaignStatusCounts {
+  const out = zeroCampaignStatusCounts();
+  for (const r of raw) {
+    if (!own(out, r.status)) throw new Error(`[campaign-status] "${r.status}" is a campaign status this code does not know`);
+    out[r.status as SmsCampaignStatus] += r.count;
+  }
+  return out;
+}
+
+/** A groupBy (or a tally) by campaign and recipient status, zero-filled for EVERY id asked for — and only for those.
+ *  ⛔ An unknown status, or a count for a campaign nobody asked about, REFUSES (a page would otherwise read
+ *  another campaign's rows, or lose some of its own). */
+export function tallyRecipientsByCampaign(
+  ids: readonly string[],
+  raw: ReadonlyArray<{ campaignId: string; status: string; count: number }>,
+): SmsCampaignRecipientCountsById {
+  const out: SmsCampaignRecipientCountsById = {};
+  for (const id of ids) out[id] = zeroRecipientStatusCounts();
+  for (const r of raw) {
+    const t = own(out, r.campaignId) ? out[r.campaignId] : undefined;
+    if (t === undefined) throw new Error(`[campaign-status] a count for campaign ${r.campaignId}, which was not asked for`);
+    if (!own(t, r.status)) throw new Error(`[campaign-status] "${r.status}" is a recipient status this code does not know`);
+    t[r.status as SmsCampaignRecipientStatus] += r.count;
+  }
+  return out;
+}
+
+/* ══ PROGRESS ═══════════════════════════════════════════════════════════════════════════════════════════════════ */
+
+export type CampaignProgress = { phase: "preparing" | "sending"; value: number; max: number };
+
+/**
+ * How far a campaign has got, or null when there is nothing to measure.
+ *   · DRAFT, CONFIRMED — null: nothing has started.
+ *   · PREPARING, and a PAUSED or CANCELLED campaign whose list never finished (`enqueuedAt` null) — rows WRITTEN over
+ *     the confirmed audience; null without a confirmed audience, and null until the first row is written. ⛔ U36's
+ *     review (F1): with only the audience asked, a campaign confirmed and then cancelled before it started read "0 of
+ *     300 prepared" — a preparation that never began, painted as one, one status after CONFIRMED painted nothing.
+ *   · RUNNING, DONE, and a PAUSED or CANCELLED campaign after its list finished — rows SETTLED over rows written;
+ *     null with no rows (⛔ never "0 of 0", never a 0 % bar for an empty campaign).
+ * ⛔ HELD is outstanding: 4 SENT and 6 HELD read 4 of 10, never 10 of 10.
+ */
+export function campaignProgress(
+  c: Pick<StoredSmsCampaign, "status" | "enqueuedAt" | "audienceCount">,
+  counts: SmsCampaignRecipientStatusCounts,
+): CampaignProgress | null {
+  if (c.status === "DRAFT" || c.status === "CONFIRMED") return null;
+  const rows = recipientRows(counts);
+  const preparing = c.status === "PREPARING" || ((c.status === "PAUSED" || c.status === "CANCELLED") && c.enqueuedAt === null);
+  if (preparing) {
+    const max = c.audienceCount ?? 0;
+    return max > 0 && rows > 0 ? { phase: "preparing", value: Math.min(rows, max), max } : null;
+  }
+  return rows > 0 ? { phase: "sending", value: settledRows(counts), max: rows } : null;
+}
+
+/* ══ ATTENTION ══════════════════════════════════════════════════════════════════════════════════════════════════ */
+
+/** ⭐ The statuses that always want an officer — the Prisma twin's count spreads this very list. */
+export const ATTENTION_ALWAYS: readonly SmsCampaignStatus[] = Object.freeze(["PREPARING", "RUNNING"] as SmsCampaignStatus[]);
+/** The status that wants an officer only while work is left (an outstanding row, or a list never finished). */
+export const ATTENTION_WHEN_OWED: SmsCampaignStatus = "PAUSED";
+
+/** ⭐ THE ONE DEFINITION of "wants attention" — the memory twin's `attentionCount` asks it per campaign. */
+export function wantsAttention(
+  c: Pick<StoredSmsCampaign, "status" | "enqueuedAt">,
+  counts: SmsCampaignRecipientStatusCounts,
+): boolean {
+  if (ATTENTION_ALWAYS.includes(c.status)) return true;
+  if (c.status !== ATTENTION_WHEN_OWED) return false;
+  return c.enqueuedAt === null || outstandingRows(counts) > 0;
+}
+
+/* ══ WHY A CAMPAIGN STOPPED ═════════════════════════════════════════════════════════════════════════════════════ */
+
+/**
+ * The engine's own reasons, in words an officer can act on. The first three are the shop-wide refusals `sendBatch`
+ * returns before a request is made (`SmsFailureCode` in `sms.ts`) and `gate_unanswered` is `dispatchSlice`'s own: the
+ * reasons a slice HOLDS rows for (`dispatch.ts`), which the engine turns into ONE pause (§9 U43). ⚠️ U41, U43 and U49
+ * each add the keys they write — an unknown key is still shown, labelled as the engine's own words.
+ */
+const STOP_REASON_SENTENCE: Readonly<Record<string, string>> = {
+  BALANCE_FLOOR: "The SMS credit is below its floor. Top it up, then resume.",
+  NOT_CONFIGURED: "SMS sending is not set up on the server.",
+  PROVIDER_UNRECOGNISED: "The SMS provider setting is not one this platform knows.",
+  gate_unanswered: "The consent check could not answer, so nobody more was messaged.",
+};
+
+/** A stop reason in words. ⛔ Never the raw key alone: an unknown key reads "Engine reason: <key>". */
+export function stopReasonLabel(key: string): string {
+  const k = key.trim();
+  if (k === "") return "Engine reason: not recorded";
+  return own(STOP_REASON_SENTENCE, k) ? STOP_REASON_SENTENCE[k] : `Engine reason: ${k}`;
+}
+
+/* ══ THE CAMPAIGN SCREENS (432(h)) ══════════════════════════════════════════════════════════════════════════════ */
+
+export type CampaignScreens = { readonly compose: boolean; readonly detail: boolean };
+
+/** Where each campaign screen lives when it exists — routes, so the tie is a page file and not a class of files. */
+export const CAMPAIGN_SCREEN_ROUTES = {
+  compose: "/admin/campaigns/new",
+  detail: "/admin/campaigns/[id]",
+} as const satisfies Record<keyof CampaignScreens, string>;
+
+/** ⛔ Flip a value here ONLY in the change that lands its page; `test:campaigns-page` 5f refuses either one alone. */
+export const CAMPAIGN_SCREENS: CampaignScreens = { compose: false, detail: false };
+
+/** One campaign's page, for the row link that exists only once `CAMPAIGN_SCREENS.detail` does. */
+export function campaignDetailHref(id: string): string {
+  return `/admin/campaigns/${encodeURIComponent(id)}`;
+}

@@ -264,6 +264,11 @@ export const ROUTE_DOMAINS: ReadonlyArray<readonly [prefix: string, domain: Admi
   // still shows the link, because `filterNavGroups` reads the nav item's own `domain` literal.
   // §7b of `test:rbac` is the assertion that keeps those two copies agreeing.
   ["/admin/contacts", "growth"],
+  // The SMS campaign list (U36, 2026-10-02) — growth owns acquisition. ⛔ THIS ROW IS THE SECTION'S VISIBILITY, exactly
+  // as the contacts row above: delete it and `domainForPath` falls closed to `ops`, so the page refuses GROWTH while the
+  // sidebar still shows "SMS campaigns" (it reads the nav item's own `domain`). §7b of `test:rbac` keeps the two
+  // agreeing, and `red:rbac` plants both halves of that split for this section as well.
+  ["/admin/campaigns", "growth"],
   // support
   ["/admin/players", "support"],
   // trading

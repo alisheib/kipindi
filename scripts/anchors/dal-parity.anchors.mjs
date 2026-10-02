@@ -1088,4 +1088,96 @@ export const MUTATIONS = [
     to: `        // (the recipients' link left dangling)`,
     expect: `26.setnull.memory · ⛔ the memory twin's contact removal sets a recipient's contactId to null and deletes no recipient — Postgres' SET NULL, mirrored`,
   },
+  /* ── §26 · U36 · the campaign list's four reads (S10 2026-10-02) ──────────────────────────────────────────────── */
+  {
+    // 🔴 A page boundary that falls differently on production: two campaigns made in the same millisecond swap places
+    // between reads, so the officer sees one on two pages and the other on none.
+    name: "prisma-dal.ts — the campaign page drops its id tiebreak",
+    file: "src/lib/server/prisma-dal.ts",
+    from: "orderBy: [first, { id: q.dir }], skip: q.offset, take: q.limit",
+    to: "orderBy: [first], skip: q.offset, take: q.limit",
+    expect: "26.u36.page.prisma · ⛔ the Prisma page is ONE findMany ordered by the column THEN by id in the same direction, with skip and take, and ONE count over the SAME where — statuses null = every status",
+  },
+  {
+    // The pager counts the whole table while the rows are filtered: page 3 of "Paused" exists on production only.
+    name: "prisma-dal.ts — the campaign page counts without its where",
+    file: "src/lib/server/prisma-dal.ts",
+    from: "pc().smsCampaign.count({ where }),",
+    to: "pc().smsCampaign.count(),",
+    expect: "26.u36.page.prisma · ⛔ the Prisma page is ONE findMany ordered by the column THEN by id in the same direction, with skip and take, and ONE count over the SAME where — statuses null = every status",
+  },
+  {
+    // The same unbroken tie, in the twin every suite runs on.
+    name: "store.ts — the memory campaign page drops its id tiebreak",
+    file: "src/lib/server/store.ts",
+    from: "return by !== 0 ? sign * by : sign * a.id.localeCompare(b.id);",
+    to: "return sign * by;",
+    expect: "26.u36.page.memory · the memory page filters on q.statuses (null = every status), breaks every tie on id in the same direction, and hands back copies",
+  },
+  {
+    // The rail's counts narrowed to one status on production: "Paused 3", and every other pill at 0.
+    name: "prisma-dal.ts — statusCounts groups only the PAUSED campaigns",
+    file: "src/lib/server/prisma-dal.ts",
+    from: 'pc().smsCampaign.groupBy({ by: ["status"], _count: { _all: true } })',
+    to: 'pc().smsCampaign.groupBy({ by: ["status"], where: { status: "PAUSED" }, _count: { _all: true } })',
+    expect: "26.u36.counts.prisma · statusCounts is ONE groupBy by status over the WHOLE table — no where, never the rows — zero-filled through tallyCampaignStatuses",
+  },
+  {
+    // 🔴 HELD dropped from the badge on production: a paused campaign whose rows are all held reads as idle.
+    name: "prisma-dal.ts — attentionCount retypes the outstanding list without HELD",
+    file: "src/lib/server/prisma-dal.ts",
+    from: "{ recipients: { some: { status: { in: [...OUTSTANDING_RECIPIENT_STATUSES] } } } }",
+    to: '{ recipients: { some: { status: { in: ["PENDING"] } } } }',
+    expect: "26.u36.attention.prisma · ⛔ attentionCount is ONE count() — never findMany — whose where names BOTH arms: the ATTENTION_ALWAYS statuses, and PAUSED with enqueuedAt null OR a recipient in OUTSTANDING_RECIPIENT_STATUSES — both lists spread, never retyped",
+  },
+  {
+    // A second definition: every PAUSED campaign counted, settled or not — the badge that never clears.
+    name: "store.ts — the memory attentionCount carries its own predicate",
+    file: "src/lib/server/store.ts",
+    from: "all.filter((c) => wantsAttention(c, tallies[c.id])).length",
+    to: 'all.filter((c) => c.status === "PREPARING" || c.status === "RUNNING" || c.status === "PAUSED").length',
+    expect: "26.u36.attention.memory · the memory attentionCount asks the ONE predicate, wantsAttention, of every campaign over its own tally — no second definition",
+  },
+  {
+    // 🔴 The whole recipient table grouped on every page view — up to 150,000 rows a campaign (§3c).
+    name: "prisma-dal.ts — countsByCampaign groups the whole recipient table",
+    file: "src/lib/server/prisma-dal.ts",
+    from: 'groupBy({ by: ["campaignId", "status"], where: { campaignId: { in: [...ids] } }, _count: { _all: true } })',
+    to: 'groupBy({ by: ["campaignId", "status"], _count: { _all: true } })',
+    expect: "26.u36.bycampaign.prisma · ⛔ countsByCampaign asks NOTHING for an empty list, else ONE groupBy by (campaignId, status) WHERE campaignId is in the ids it was handed — never the whole table — zero-filled per id",
+  },
+  {
+    // An empty page still queries Postgres for nothing.
+    name: "prisma-dal.ts — countsByCampaign queries for an empty list",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `      if (ids.length === 0) return {};
+      const groups = await pc().smsCampaignRecipient.groupBy(`,
+    to: `      const groups = await pc().smsCampaignRecipient.groupBy(`,
+    expect: "26.u36.bycampaign.prisma · ⛔ countsByCampaign asks NOTHING for an empty list, else ONE groupBy by (campaignId, status) WHERE campaignId is in the ids it was handed — never the whole table — zero-filled per id",
+  },
+  {
+    // The memory twin tallies every campaign's rows: green in memory, and a page that reads other campaigns' counts.
+    name: "store.ts — the memory countsByCampaign stops filtering to the ids it was asked for",
+    file: "src/lib/server/store.ts",
+    from: ".filter((r) => wanted.has(r.campaignId))",
+    to: ".filter(() => true)",
+    expect: "26.u36.bycampaign.memory · the memory countsByCampaign answers exactly the ids named — filtered to them, zero-filled — and {} for none",
+  },
+  {
+    // ⛔ A dev switch reaching the production twin: one flag away from every officer seeing "Couldn't load".
+    name: "prisma-dal.ts — the Prisma campaign page reads the dev read fault",
+    file: "src/lib/server/prisma-dal.ts",
+    from: "    page: async (q: SmsCampaignPageQuery): Promise<SmsCampaignPage> => {",
+    to: `    page: async (q: SmsCampaignPageQuery): Promise<SmsCampaignPage> => {
+      if (globalThis.__50PICK_CAMPAIGNS_READ_FAULT) throw new Error("campaign list read fault");`,
+    expect: "26.u36.fault · the DEV read fault is read by the MEMORY twin's page, statusCounts and attentionCount — and NEVER by the Prisma twin, which serves production",
+  },
+  {
+    // The region() trap: an inline literal in the signature hands every body assertion 100 characters of type instead.
+    name: "prisma-dal.ts — the campaign page takes an inline object type",
+    file: "src/lib/server/prisma-dal.ts",
+    from: "page: async (q: SmsCampaignPageQuery): Promise<SmsCampaignPage> =>",
+    to: 'page: async (q: { statuses: SmsCampaignStatus[] | null; sort: "created" | "name" | "updated"; dir: "asc" | "desc"; offset: number; limit: number }): Promise<SmsCampaignPage> =>',
+    expect: "26.u36.named · the four list reads name their parameter and return types in BOTH twins (never an inline literal) — exported by store.ts, imported by prisma-dal.ts",
+  },
 ];

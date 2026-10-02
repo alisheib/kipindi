@@ -26,6 +26,10 @@ const CRUMB_LABELS: Record<string, string> = {
   dsar: "DSAR",
   // The crumb, the nav item and the page title say the same two words (the nav label already ships in this chunk).
   journey: "New journey",
+  // ⛔ U36 · NEVER "Campaigns": /admin/invites already heads its page "Invite campaigns" and titles its own card
+  // "Campaigns". The crumb, the nav item and the page title say the same two words (the nav label already ships in this
+  // chunk), so neither the breadcrumb nor a refusal heading can say the bare word.
+  campaigns: "SMS campaigns",
 };
 
 /**
@@ -213,6 +217,10 @@ export const NAV_GROUPS: ReadonlyArray<NavGroup> = [
       { href: "/admin/bonuses",   label: "Bonuses",   key: "bonuses", domain: "growth" },
       { href: "/admin/contacts",  label: "Contacts",  key: "contacts", domain: "growth" },
       { href: "/admin/invites",   label: "Invites",   key: "invites", domain: "growth" },
+      /* ⭐ U36 · THE SMS CAMPAIGN LIST. ⛔ "SMS campaigns", never "Campaigns" — `/admin/invites` heads "Invite campaigns".
+       * `ROUTE_DOMAINS` in roles.ts carries the same pair (`test:rbac` §7b holds the two to agreeing), and the badge beside
+       * it is read only for a viewer who may see growth (`getSidebarBadges`, admin-shell.tsx). */
+      { href: "/admin/campaigns", label: "SMS campaigns", key: "campaigns", domain: "growth" },
       { href: "/admin/traffic",   label: "Traffic",   key: "traffic", domain: "growth" },
     ],
   },
@@ -330,6 +338,10 @@ const ROUTE_KEYS: ReadonlyArray<readonly [prefix: string, key: string]> = [
   // match, so ["/admin/contacts/import", …] below this row would never be reached.
   ["/admin/contacts", "contacts"],
   ["/admin/invites", "invites"],
+  // U36 · the BARE prefix, free to sit here: nothing in this table is a prefix of "/admin/campaigns" and it is a prefix
+  // of nothing ("/admin/candidates" diverges at the segment's third character). U37's /new and U47's /[id] resolve to
+  // this one item. ⛔ The day a sub-route needs its own key, the LONGER prefix must go ABOVE this line.
+  ["/admin/campaigns", "campaigns"],
   ["/admin/traffic", "traffic"],
   ["/admin/moderation", "moderation"],
   ["/admin/compliance", "compliance"],

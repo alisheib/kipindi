@@ -2402,6 +2402,92 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
   ok("26.c10 · CONTROL · a create that writes a constant under a key's name FAILS 26.create, and one that writes it from the row passes",
     !writesFromRow("          audienceFilter: \"{}\",", "audienceFilter") && writesFromRow("          audienceFilter: row.audienceFilter,", "audienceFilter")
       && writesFromRow("          enqueuedAt: row.enqueuedAt ? new Date(row.enqueuedAt) : null,", "enqueuedAt"));
+
+  // ══ 26.u36 · THE CAMPAIGN LIST'S FOUR READS (U36, S10 2026-10-02 — decision X1: U36 extends §26) ══════════════
+  // ⭐ WHY THEY ARE HELD HERE. The list, its status rail and the nav badge run on four reads — page, statusCounts,
+  // attentionCount, countsByCampaign — and every behavioural suite (`test:campaigns-page` included) drives the MEMORY
+  // twin. A Prisma twin that loses its half is green in memory and wrong live: a tie left unbroken (a campaign shown on
+  // two pages, another on none), a pager counted without the filter, a whole-table recipient groupBy on every page view,
+  // an attention count that retypes the outstanding list and drops HELD. So each read's SHAPE is held in both twins,
+  // plantable through KP_SRC (`red:dal-parity`), and the dev read fault is held to the memory twin alone.
+  {
+    const flat = (s: string) => s.split(String.fromCharCode(13)).join("").split(String.fromCharCode(10)).map((l) => l.trim()).join(" ");
+    const pPage = delegateMethod("smsCampaign", "page");
+    const pStatus = delegateMethod("smsCampaign", "statusCounts");
+    const pAttention = delegateMethod("smsCampaign", "attentionCount");
+    const pByCampaign = delegateMethod("smsCampaignRecipient", "countsByCampaign");
+    const mPage = memberText(cMem, "page");
+    const mStatus = memberText(cMem, "statusCounts");
+    const mAttention = memberText(cMem, "attentionCount");
+    const mByCampaign = memberText(rMem, "countsByCampaign");
+    const U36_SIGS: Array<[string, string]> = [
+      [cMem, "page: (q: SmsCampaignPageQuery): SmsCampaignPage =>"],
+      [cMem, "statusCounts: (): SmsCampaignStatusCounts =>"],
+      [cMem, "attentionCount: (): number =>"],
+      [rMem, "countsByCampaign: (ids: readonly string[]): SmsCampaignRecipientCountsById =>"],
+      [cPri, "page: async (q: SmsCampaignPageQuery): Promise<SmsCampaignPage> =>"],
+      [cPri, "statusCounts: async (): Promise<SmsCampaignStatusCounts> =>"],
+      [cPri, "attentionCount: async (): Promise<number> =>"],
+      [rPri, "countsByCampaign: async (ids: readonly string[]): Promise<SmsCampaignRecipientCountsById> =>"],
+    ];
+    const U36_EXPORTED = ["SmsCampaignListSort", "SmsCampaignPageQuery", "SmsCampaignPage", "SmsCampaignStatusCounts",
+      "SmsCampaignRecipientStatusCounts", "SmsCampaignRecipientCountsById"];
+    const U36_IMPORTED = ["SmsCampaignPageQuery", "SmsCampaignPage", "SmsCampaignStatusCounts", "SmsCampaignRecipientCountsById"];
+    const offSigs = U36_SIGS.filter(([b, s]) => !b.includes(s)).map(([, s]) => s.split(":")[0]);
+    const notExported = U36_EXPORTED.filter((t) => !storeSrc.includes(`export type ${t} =`));
+    const notImported = U36_IMPORTED.filter((t) => !storeImport.includes(`  ${t},`));
+    ok("26.u36.named · the four list reads name their parameter and return types in BOTH twins (never an inline literal) — exported by store.ts, imported by prisma-dal.ts",
+      offSigs.length === 0 && notExported.length === 0 && notImported.length === 0,
+      `signatures off: [${offSigs}] · not exported: [${notExported}] · not imported: [${notImported}]`);
+    ok("26.u36.page.prisma · ⛔ the Prisma page is ONE findMany ordered by the column THEN by id in the same direction, with skip and take, and ONE count over the SAME where — statuses null = every status",
+      pPage.includes("const where = q.statuses === null ? {} : { status: { in: [...q.statuses] } };")
+        && pPage.includes("orderBy: [first, { id: q.dir }], skip: q.offset, take: q.limit")
+        && pPage.includes("pc().smsCampaign.count({ where })")
+        && (pPage.match(/[.]findMany[(]/g) ?? []).length === 1,
+      flat(pPage).slice(0, 260));
+    ok("26.u36.page.memory · the memory page filters on q.statuses (null = every status), breaks every tie on id in the same direction, and hands back copies",
+      mPage.includes("q.statuses === null || q.statuses.includes(c.status)")
+        && mPage.includes("return by !== 0 ? sign * by : sign * a.id.localeCompare(b.id);")
+        && mPage.includes(".map((c) => ({ ...c }))"),
+      flat(mPage).slice(0, 260));
+    ok("26.u36.counts.prisma · statusCounts is ONE groupBy by status over the WHOLE table — no where, never the rows — zero-filled through tallyCampaignStatuses",
+      pStatus.includes('pc().smsCampaign.groupBy({ by: ["status"], _count: { _all: true } })')
+        && pStatus.includes("tallyCampaignStatuses(") && !/findMany|where/.test(pStatus),
+      flat(pStatus).slice(0, 220));
+    ok("26.u36.counts.memory · the memory statusCounts tallies the WHOLE table through the same tallyCampaignStatuses — never a filtered list",
+      mStatus.includes("tallyCampaignStatuses(all.map((c) => ({ status: c.status, count: 1 })))") && !mStatus.includes("filter("),
+      flat(mStatus).slice(0, 220));
+    ok("26.u36.attention.prisma · ⛔ attentionCount is ONE count() — never findMany — whose where names BOTH arms: the ATTENTION_ALWAYS statuses, and PAUSED with enqueuedAt null OR a recipient in OUTSTANDING_RECIPIENT_STATUSES — both lists spread, never retyped",
+      pAttention.includes("pc().smsCampaign.count({")
+        && pAttention.includes("{ status: { in: [...ATTENTION_ALWAYS] } }")
+        && pAttention.includes("{ status: ATTENTION_WHEN_OWED, OR: [{ enqueuedAt: null }, { recipients: { some: { status: { in: [...OUTSTANDING_RECIPIENT_STATUSES] } } } }] }")
+        && !/findMany|"HELD"|"PENDING"|"PREPARING"|"RUNNING"|"PAUSED"/.test(pAttention),
+      flat(pAttention).slice(0, 300));
+    ok("26.u36.attention.memory · the memory attentionCount asks the ONE predicate, wantsAttention, of every campaign over its own tally — no second definition",
+      mAttention.includes("all.filter((c) => wantsAttention(c, tallies[c.id])).length")
+        && !/"HELD"|"PENDING"|"PREPARING"|"RUNNING"|"PAUSED"/.test(mAttention),
+      flat(mAttention).slice(0, 300));
+    ok("26.u36.bycampaign.prisma · ⛔ countsByCampaign asks NOTHING for an empty list, else ONE groupBy by (campaignId, status) WHERE campaignId is in the ids it was handed — never the whole table — zero-filled per id",
+      before(pByCampaign, "if (ids.length === 0) return {};", ".groupBy(")
+        && pByCampaign.includes('groupBy({ by: ["campaignId", "status"], where: { campaignId: { in: [...ids] } }, _count: { _all: true } })')
+        && pByCampaign.includes("tallyRecipientsByCampaign(ids,") && !/findMany/.test(pByCampaign),
+      flat(pByCampaign).slice(0, 300));
+    ok("26.u36.bycampaign.memory · the memory countsByCampaign answers exactly the ids named — filtered to them, zero-filled — and {} for none",
+      before(mByCampaign, "if (ids.length === 0) return {};", "tallyRecipientsByCampaign(")
+        && mByCampaign.includes(".filter((r) => wanted.has(r.campaignId))") && mByCampaign.includes("tallyRecipientsByCampaign(ids,"),
+      flat(mByCampaign).slice(0, 300));
+    const faultReaders = [mPage, mStatus, mAttention].filter((b) => b.includes("globalThis.__50PICK_CAMPAIGNS_READ_FAULT")).length;
+    ok("26.u36.fault · the DEV read fault is read by the MEMORY twin's page, statusCounts and attentionCount — and NEVER by the Prisma twin, which serves production",
+      faultReaders === 3 && !dalSrc.includes("__50PICK_CAMPAIGNS_READ_FAULT"),
+      `${faultReaders} of 3 memory reads · the Prisma twin names it: ${dalSrc.includes("__50PICK_CAMPAIGNS_READ_FAULT")}`);
+    // ── CONTROLS — each proves the matcher above it can reject, on a literal that would otherwise pass ──
+    ok("26.u36.c1 · CONTROL · an inline object-literal parameter type is NOT the named signature 26.u36.named looks for",
+      !"    page: async (q: { statuses: string[] | null }): Promise<SmsCampaignPage> => {".includes("page: async (q: SmsCampaignPageQuery): Promise<SmsCampaignPage> =>"));
+    ok("26.u36.c2 · CONTROL · an orderBy without the id tiebreak, a findMany in the attention count and a groupBy without the ids each FAIL their matcher",
+      !"orderBy: [first], skip: q.offset, take: q.limit".includes("orderBy: [first, { id: q.dir }], skip: q.offset, take: q.limit")
+        && /findMany/.test("const rows = await pc().smsCampaign.findMany({}); return rows.filter(wants).length;")
+        && !'groupBy({ by: ["campaignId", "status"], _count: { _all: true } })'.includes("where: { campaignId: { in: [...ids] } }"));
+  }
 }
 
 console.log(`\ndal-parity: ${pass} passed, ${fail} failed`);

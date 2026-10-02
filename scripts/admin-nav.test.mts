@@ -83,6 +83,11 @@ const ok = (label: string, cond: boolean, extra = "") => {
     // C7-SPEC rulings 321, 326 · the desk, and the two sub-routes that must resolve to the SAME item: a nav entry
     // that fails to highlight looks like a design choice, and on an Owner-only section it would look like a refusal.
     ["/admin/desk", "desk"],
+    // U36 · the SMS campaign list, and the two sub-routes its later units add (U37's /new, U47's /[id]) — one item. No
+    // REACHED_WITHOUT_NAV row yet: §7's staleness half refuses a row for a page that does not exist.
+    ["/admin/campaigns", "campaigns"],
+    ["/admin/campaigns/new", "campaigns"],
+    ["/admin/campaigns/smc_0123", "campaigns"],
   ];
   for (const [path, expected] of cases) {
     const got = activeKeyFromPath(path);

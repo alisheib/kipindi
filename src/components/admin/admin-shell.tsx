@@ -20,6 +20,7 @@ import { filterNavGroups } from "./admin-nav-groups";
 import { roleLabel, type AdminDomain } from "@/lib/server/roles";
 import { AdminSpark } from "./admin-charts";
 import { formatDateISO } from "@/lib/utils";
+import { campaignAttentionBadge } from "@/lib/server/marketing/campaign-attention";
 
 export type AdminSession = {
   userId: string;
@@ -86,13 +87,21 @@ export async function ConfidentialBand({ session }: { session: AdminSession }) {
 // officer because money still sits in the wallet — and it ran the same wallet reads for every viewer, so the badge
 // told a role without money rights how many refused accounts still hold a balance. Both callers pass the viewer's
 // answer (view on accounting); `reactCache` memoises per argument, so it is still one run per request.
-export const getSidebarBadges = reactCache(async (canSeeMoney: boolean) => {
-  const [aml, sof, pendingKyc, refused, { isFileWithUs }] = await Promise.all([
+//
+// 🔴 `canSeeGrowth` (U36, 2026-10-02). The SMS campaign count is the same shape of leak: this object is serialised whole
+// into the props of the sidebar and the drawer for EVERY staff viewer, whatever `filterNavGroups` hides — so a count
+// computed for everyone ships to SUPPORT and FINANCE in their payload. `campaignAttentionBadge` reads nothing for a
+// viewer without growth, runs its read inside an async function (a memory-twin SYNC throw becomes "no badge", never the
+// console-wide crash recorded above), and the key is ABSENT unless there is a count, so no other viewer's payload even
+// names it. Booleans only: `reactCache` memoises per argument, and an options object would re-run every read.
+export const getSidebarBadges = reactCache(async (canSeeMoney: boolean, canSeeGrowth: boolean) => {
+  const [aml, sof, pendingKyc, refused, { isFileWithUs }, campaigns] = await Promise.all([
     Promise.resolve(db.txn.listByStatus("AML_REVIEW")).then((r) => r.length).catch(() => 0),
     Promise.resolve(db.sourceOfFunds.listPending()).then((r) => r.length).catch(() => 0),
     import("@/lib/server/kyc-service").then(({ listPendingKyc }) => listPendingKyc()).catch(() => []),
     openRefusedFundsCases(canSeeMoney).catch(() => 0),
     import("@/lib/kyc-stage"),
+    campaignAttentionBadge(canSeeGrowth).catch(() => undefined),
   ]);
   // ⭐ ONE RULE FOR "WAITING ON US" — `isFileWithUs` (src/lib/kyc-stage.ts), the `with_us` arm of the roster's
   // derivation. ⛔ It counts only what an officer can clear: not ADDITIONAL_INFO_REQUIRED (the player's move —
@@ -113,6 +122,9 @@ export const getSidebarBadges = reactCache(async (canSeeMoney: boolean) => {
     compliance: aml + sof > 0 ? String(aml + sof) : undefined,
     kyc: withUs + refused > 0 ? String(withUs + refused) : undefined,
     approvals: approvals > 0 ? String(approvals) : undefined,
+    // ⛔ U36 · ABSENT, never `campaigns: undefined`, unless there is a count: an undefined value still carries its KEY into
+    // the client payload, and this key must not appear for a viewer who may not see growth.
+    ...(campaigns === undefined ? {} : { campaigns }),
   };
 });
 
@@ -152,7 +164,7 @@ async function openRefusedFundsCases(canSeeMoney: boolean): Promise<number> {
 }
 
 export async function AdminSidebar({ activeKey, viewDomains, isOwner }: { activeKey: string; viewDomains: AdminDomain[]; isOwner: boolean }) {
-  const badges = await getSidebarBadges(isOwner || viewDomains.includes("accounting"));
+  const badges = await getSidebarBadges(isOwner || viewDomains.includes("accounting"), isOwner || viewDomains.includes("growth"));
   // RBAC nav gate — show only the groups/items whose domain the viewer may see.
   const groups = filterNavGroups(viewDomains, isOwner);
   return (
@@ -175,7 +187,7 @@ export async function AdminSidebar({ activeKey, viewDomains, isOwner }: { active
 }
 
 export async function AdminTopBar({ crumbs, session, activeKey, viewDomains, isOwner }: { crumbs: string[]; session: AdminSession; activeKey: string; viewDomains: AdminDomain[]; isOwner: boolean }) {
-  const badges = await getSidebarBadges(isOwner || viewDomains.includes("accounting"));
+  const badges = await getSidebarBadges(isOwner || viewDomains.includes("accounting"), isOwner || viewDomains.includes("growth"));
   const groups = filterNavGroups(viewDomains, isOwner);
   return (
     <div className="relative z-40 border-b border-border"

@@ -495,6 +495,32 @@ const CASES = [
     to: `              semantics={g.semantics}\n              replace`,
     expect: "6.6 EVERY rank-taking control on src/app/admin/contacts/contact-filters.tsx",
   },
+
+  /* ── 2026-10-02 · U36 · THE SMS CAMPAIGN LIST'S STATUS RAIL (`src/app/admin/campaigns/campaign-status-rail.tsx`) ──────
+     The contact book's pair, for the second console rail built on the six doors: the rail file and its ADMIN_SURFACES
+     entry land in ONE commit, so each half alone must be red, on its own assertion. The rail's LOGIC (every href, the
+     whole-table counts, the bare pills on a failed read) is proven in-process by `red:campaigns-page`; these two prove
+     the DECLARATION. */
+  {
+    // The rail renders and emits its hook, but the gate no longer knows it — the undeclared rail §0.4 exists to find.
+    name: "campaigns-rail-undeclared (the SMS campaign list's rail loses its ADMIN_SURFACES entry while it still emits data-filter-rail)",
+    file: GATE,
+    from: `  "src/app/admin/campaigns/campaign-status-rail.tsx", // /admin/campaigns — status (U36)
+`,
+    to: ``,
+    expect: "0.4 no filter rail exists that this gate does not know about",
+  },
+  {
+    // Its one pill leaves the dense rank: a console rail at the player's 44px — 0 dense of 1.
+    name: "campaigns-rail-undensified (the SMS campaign list's one FilterPill drops its dense rank)",
+    file: "src/app/admin/campaigns/campaign-status-rail.tsx",
+    from: `          semantics="tab"
+          rank="dense"
+          replace`,
+    to: `          semantics="tab"
+          replace`,
+    expect: "6.6 EVERY rank-taking control on src/app/admin/campaigns/campaign-status-rail.tsx",
+  },
 ];
 
 const runGate = () => {
