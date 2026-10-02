@@ -625,6 +625,11 @@ ok("8.11 …and a FULL pull writes pii.revealed with the row count, never a valu
    && !/payload:[^}]*t\.msisdn/.test(exportSrc),
    "`transactions.exported` alone does not record that PII left the building");
 
+ok("8.11b ⛔ the transactions CSV refuses a cross-site request and a HEAD BEFORE the session is read — the contacts export's gate (2026-10-02)",
+   exportSrc.includes('if (req.method !== "GET" || !exportRequestAllowed(req.headers.get("sec-fetch-site"))) {')
+   && exportSrc.indexOf("exportRequestAllowed(req.headers") < exportSrc.indexOf("const session = await currentSession();"),
+   "a link on any site could make a signed-in officer's browser pull the file and write its pii.revealed row in their name");
+
 {
   /**
    * 🔴 THE LOOSER OF TWO MASKINGS DECIDES WHAT LEAKED. `/admin/privacy` and

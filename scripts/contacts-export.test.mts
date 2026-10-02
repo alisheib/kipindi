@@ -47,7 +47,7 @@ import { db } from "../src/lib/server/store.ts";
 import type { StoredMarketingContact, StoredUser } from "../src/lib/server/store.ts";
 import {
   contactsExportViewer, CONTACTS_EXPORT_VIEWER_DEPS, exportContactsCsv, CONTACTS_EXPORT_DEPS, contactExportKeys,
-  contactExportRow, contactExportPages, contactsExportHref, exportParamsOf, CONTACT_EXPORT_KEYS, CONTACTS_EXPORT_MAX,
+  contactExportRow, contactExportPages, contactsExportHref, exportParamsOf, exportRequestAllowed, CONTACT_EXPORT_KEYS, CONTACTS_EXPORT_MAX,
   CONTACTS_EXPORT_PAGE, CONTACTS_EXPORT_PATH, CONTACTS_PAGE_PATH,
 } from "../src/lib/server/contacts/export.ts";
 import type { ContactsExportDeps, ContactsExportViewer, ContactsExportViewerDeps } from "../src/lib/server/contacts/export.ts";
@@ -299,13 +299,15 @@ const L = {
   v3: "V3 · the contacts page's own gate, on the stored row: GROWTH → masked, ADMIN → read; FINANCE, COMPLIANCE, AUDITOR, SUPPORT, MODERATOR and PLAYER → no viewer — and the domain asked is domainForPath('/admin/contacts'), growth",
   v4: "V4 · ⛔ a cookie that says ADMIN over a STORED GROWTH row → cell masked — the transactions export's cookie-role residual, NOT copied",
   v5: "V5 · with Growth view granted to every staff role, each viewer's cell IS readCell(role, identity.contact), and read ⇔ mayReveal (the page's viewerReads) — the file and the page agree on who sees numbers, MODERATOR's none included",
-  v6: 'V6 · the route is thin: GET, force-dynamic and nodejs only; the viewer (the stored row) THEN checkAdminTotp, each failure the identical new NextResponse("Not Found", { status: 404 }); no store, no cookie role, no decider of its own',
+  v6: 'V6 · the route is thin: GET, force-dynamic and nodejs only; the gate (GET only, same origin) BEFORE the session, then the viewer (the stored row), THEN checkAdminTotp, every failure the ONE identical new NextResponse("Not Found", { status: 404 }); no store, no cookie role, no decider of its own',
+  v7: 'V7 · ⛔ A CROSS-SITE REQUEST NEVER STARTS AN EXPORT (review MAJOR-1): Sec-Fetch-Site same-origin, none (a typed or bookmarked address) or absent passes; cross-site, same-site or anything else is the 404 — asked, with GET-only (MINOR-1: Next runs a HEAD through the GET handler), before the session is read',
   m1: "M1 · ⭐ GROWTH's file: the masked header (phone and email masked, no Consent, no Source); every number cell the registry's +255••••NN; no fixture number in ANY spelling anywhere in the body; every email masked",
   m2: "M2 · ADMIN's file: the full header; every number the +255… spelling of its row, every email as stored, Consent and Source in the page's words, the operator from the ONE table, the instant added — and M1's detector DOES see these numbers (its positive control)",
   m3: "M3 · 🔴 D19 · no per-row player signal for a masked role: GROWTH's file has no Consent, no Source and no player column and no cell holding a consent or source word; ADMIN's has Consent and Source; no player column for anyone",
   m4: "M4 · a `none` cell's file carries NEITHER identity column (absent, not blank) — no number and no email at all, masked or not",
   m5: "M5 · decision M5 · both identity columns are masked through their registry entries (contactPhone, contactEmail): one read class, one target type, the platform's two masks",
   m6: "M6 · a masked file is REFUSED WHOLE on re-import, in U28's own sentence (its phone header names the mask) — never read as rows of numbers that look cut off",
+  m7: "M7 · ⛔ FREE TEXT TOO (review MINOR-2): in a masked or a none file, a number typed into a name, a tag or a note — spaced, hyphenated or whole — and an email in a note are masked as their columns are; a reader's file keeps the officer's words as typed",
   a1: "A1 · ⭐ THE ACCEPT · GROWTH downloads a masked file and ADMIN a full one, both audited BEFORE the first byte: every audit row resolved before the response existed, before its first chunk was read and before the walk's first step",
   a2: "A2 · an empty match is the mark and the header only — and a reader's empty pull writes NO pii.revealed, one contacts.exported with matched 0",
   a3: "A3 · ⛔ a row that did not record (recorded: false) answers 503 text/plain with no file — no mark, no row — for pii.revealed and for contacts.exported alike, and nothing is written after the failed row but its refusal",
@@ -322,6 +324,7 @@ const L = {
   k5: "K5 · X7 · the export's own instant bounds the window: a row added a second before it is in the file, a row added after it is in neither the count nor the file, and the audited filter's end is the instant",
   k6: "K6 · ⛔ C3 · the erased tombstone is in no file: not the whole book's, not a vip filter's (it carries vip); every row with no sourceRef is",
   k7: "K7 · ⛔ over 200,000 matching → 422 text/plain naming BOTH numbers, the walk never started, no pii.revealed, no contacts.exported, one contacts.export_refused",
+  k8: "K8 · a CANCELLED download is not a failed walk (review MINOR-4): a step still in flight when the officer cancels lands on a closed stream without logging a database fault",
   r1: "R1 · ⛔ C2 · an unknown value refuses (400) BEFORE anything is counted, naming its key; the refusal's audit names the key and never what was typed; a selection in an address is refused too (X27)",
   r2: "R2 · 🔴 D19 · the export asks U24's ONE role rule: every filter that rule keeps from a masked viewer (consent, source and player at the least) is a 403 in the rule's words before anything is counted, every other filter is answered; a reader's source filter is answered",
   r3: "R3 · the route hands the parser the address's own keys only — a repeat as an array, no stray key, nothing on the prototype — and keeps ids, so the parser can refuse it",
@@ -394,16 +397,27 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
   await check(p(L.v6), () => {
     const r = impl.sources.route;
     const exported = [...r.matchAll(/^export\s+(?:async\s+)?(?:function|const)\s+(\w+)/gm)].map((m) => m[1]).sort().join(",");
-    const NOT_FOUND = 'return new NextResponse("Not Found", { status: 404 });';
+    const NOT_FOUND = 'const notFound = () => new NextResponse("Not Found", { status: 404 });';
+    const guardAt = r.indexOf('if (req.method !== "GET" || !exportRequestAllowed(req.headers.get("sec-fetch-site"))) return notFound();');
+    const sessionAt = r.indexOf("const session = await currentSession();");
     const viewerAt = r.indexOf("const viewer = await contactsExportViewer(session);");
     const totpAt = r.indexOf("checkAdminTotp(session.userId, session.sessionId)");
     const runAt = r.indexOf("return exportContactsCsv({ viewer, params: exportParamsOf(new URL(req.url)), now: Date.now() });");
     return [exported === "GET,dynamic,runtime" && r.includes('export const dynamic = "force-dynamic";') && r.includes('export const runtime = "nodejs";')
-      && viewerAt > 0 && totpAt > viewerAt && runAt > totpAt
-      && r.split(NOT_FOUND).length - 1 === 2 && r.split("status:").length - 1 === 2
-      && r.includes("if (!session || !viewer) " + NOT_FOUND) && r.includes('!== "ok") ' + NOT_FOUND)
+      && guardAt > 0 && sessionAt > guardAt && viewerAt > sessionAt && totpAt > viewerAt && runAt > totpAt
+      && r.split(NOT_FOUND).length - 1 === 1 && r.split("status:").length - 1 === 1 && r.split("return notFound();").length - 1 === 3
+      && r.includes("if (!session || !viewer) return notFound();") && r.includes('!== "ok") return notFound();')
       && !/(?<![\w$])db(?![\w$])/.test(r) && !r.includes("session.role") && !importsDecider(r),
       `exports [${exported}] · viewer ${viewerAt} · totp ${totpAt} · run ${runAt}`];
+  });
+
+  await check(p(L.v7), () => {
+    const passes = [null, "same-origin", "none"].every((v) => exportRequestAllowed(v));
+    const refused = ["cross-site", "same-site", "SAME-ORIGIN", ""].every((v) => !exportRequestAllowed(v));
+    const r = impl.sources.route;
+    const guardAt = r.indexOf('if (req.method !== "GET" || !exportRequestAllowed(req.headers.get("sec-fetch-site"))) return notFound();');
+    const sessionAt = r.indexOf("const session = await currentSession();");
+    return [passes && refused && guardAt > 0 && sessionAt > guardAt, `passes ${passes} · refused ${refused} · gate ${guardAt} < session ${sessionAt}`];
   });
 
   /* ── M · WHO GETS WHICH FILE ─────────────────────────────────────────────────────────────────────────────── */
@@ -475,6 +489,18 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
     const full = autoMapHeaders(FULL_HEADER);
     return [head.length > 0 && map.refusal === CONTACT_MASKED_FILE && map.mapping.phone === undefined && full.refusal === null && full.mapping.phone === 0,
       `masked → ${JSON.stringify(map.refusal)} · full → phone at ${full.mapping.phone}`];
+  });
+
+  await check(p(L.m7), () => {
+    const crafted = contactRow("mx_free", "0712000777", { displayName: "Juma 0712345678", tags: ["0754-123-456", "vip"], notes: "alt 0754 123 456 / asha@x.com" });
+    const rowFor = (cell: "read" | "masked" | "none") => impl.deps.row(crafted, impl.deps.keys(cell), cell).join(" | ");
+    const leaks = (t: string) => ["0712345678", "0754 123 456", "0754-123-456", "asha@x.com"].some((x) => t.includes(x));
+    const masked = rowFor("masked");
+    const none = rowFor("none");
+    const read = rowFor("read");
+    return [!leaks(masked) && !leaks(none) && masked.includes("••••78") && masked.includes("••••56") && masked.includes("vip")
+      && read.includes("alt 0754 123 456 / asha@x.com") && read.includes("Juma 0712345678") && read.includes("0754-123-456"),
+      `masked: ${masked.slice(0, 200)}`];
   });
 
   /* ── A · THE RECORD BEFORE THE FIRST BYTE ────────────────────────────────────────────────────────────────── */
@@ -689,6 +715,32 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
       && walked === 0 && actions(c.audits) === "contacts.export_refused" && refused?.payload.reason === "too_many"
       && refused?.payload.matched === CONTACTS_EXPORT_MAX + 1 && refused?.payload.max === CONTACTS_EXPORT_MAX && CONTACTS_EXPORT_MAX === 200_000,
       `${c.status} · ${JSON.stringify(c.text)} · walked ${walked} · ${actions(c.audits)}`];
+  });
+  await check(p(L.k8), async () => {
+    let release: () => void = () => undefined;
+    const gate = new Promise<void>((resolve) => { release = resolve; });
+    const slow: ContactsExportDeps["pages"] = async function* (audience, matched, size) {
+      for await (const rows of contactExportPages(audience, matched, size)) { await gate; yield rows; }
+    };
+    const logged: string[] = [];
+    const realError = console.error;
+    console.error = (...a: unknown[]) => { logged.push(a.map(String).join(" ")); };
+    try {
+      const stub = auditStub();
+      const res = await exportContactsCsv({ viewer: READER, params: {}, now: NOW }, { ...impl.deps, pages: slow, audit: impl.auditVia(stub.fn) });
+      const body = res.body;
+      if (!body) return [false, "no body"];
+      const reader = body.getReader();
+      await reader.read();
+      const pending = reader.read().catch(() => undefined);
+      await reader.cancel();
+      release();
+      await pending;
+      await new Promise((r) => setTimeout(r, 30));
+      return [!logged.some((e) => e.includes("the walk failed")), logged.join(" | ") || "nothing logged"];
+    } finally {
+      console.error = realError;
+    }
   });
 
   /* ── R · THE FILTER ──────────────────────────────────────────────────────────────────────────────────────── */
@@ -957,7 +1009,7 @@ if (!PROVE_RED) {
       expect: L.v6,
       impl: () => ({
         ...REAL,
-        sources: withSource("route", '  if ((await checkAdminTotp(session.userId, session.sessionId)) !== "ok") return new NextResponse("Not Found", { status: 404 });' + LF, ""),
+        sources: withSource("route", '  if ((await checkAdminTotp(session.userId, session.sessionId)) !== "ok") return notFound();' + LF, ""),
       }),
     },
     {
@@ -979,6 +1031,23 @@ if (!PROVE_RED) {
       name: "R22 · a none cell given the masked columns — a role that may see no number gets masked ones",
       expect: L.m4,
       impl: () => ({ ...REAL, deps: { ...CONTACTS_EXPORT_DEPS, keys: (cell) => contactExportKeys(cell === "none" ? "masked" : cell) } }),
+    },
+    {
+      name: "R23 · ⛔ the cross-site gate dropped — a link on any site makes a signed-in officer's browser write a bulk-reveal row in their name",
+      expect: L.v7,
+      impl: () => ({ ...REAL, sources: withSource("route", 'if (req.method !== "GET" || !exportRequestAllowed(req.headers.get("sec-fetch-site"))) return notFound();', "") }),
+    },
+    {
+      name: "R24 · ⛔ free text unmasked in a masked file — a note's number and email go out whole",
+      expect: L.m7,
+      impl: () => ({
+        ...REAL,
+        deps: {
+          ...CONTACTS_EXPORT_DEPS,
+          row: (c, keys, cell) => contactExportRow(c, keys, cell).map((v, i) =>
+            (keys[i] === "name" ? c.displayName ?? "" : keys[i] === "notes" ? c.notes ?? "" : keys[i] === "tags" ? c.tags.join(", ") : v)),
+        },
+      }),
     },
   ];
 

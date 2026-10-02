@@ -56,7 +56,7 @@ import type { ReadCell, Role } from "@/lib/server/roles";
 import { SENSITIVE_FIELDS } from "@/lib/server/sensitive-fields";
 import {
   auditContactAudience, contactAudience, contactAudienceParams, parseContactAudienceParams, roleRefusal,
-  CONTACT_AUDIENCE_URL_KEYS,
+  CONTACT_AUDIENCE_URL_KEYS, scrubPhoneRuns,
 } from "@/lib/server/marketing/audience";
 import type { ContactAudience, ContactAudienceFilter } from "@/lib/server/marketing/audience";
 import { toCsv } from "@/lib/contacts/csv-write";
@@ -155,14 +155,37 @@ export function contactExportHeaderFor(keys: readonly ContactExportKey[], cell: 
  * the registry's own masks (`+255••••NN`, `a••••@example.com`), exactly what the page renders. A reader's number is
  * the `+255…` spelling the reveal hands back; the writer's guard keeps a spreadsheet from reading it as a formula.
  */
+/**
+ * ⛔ FREE TEXT IN A FILE THAT MAY NOT CARRY NUMBERS (U34a review MINOR-2). A masked or `none` file masked the phone and
+ * email COLUMNS, but a note reading "alt 0754 123 456 / asha@x.com" went out whole — and one bulk file of every note is
+ * a different exposure from one dialog. Inside a name, the tags and the notes, every run that reads as a phone number
+ * and every email-shaped word is masked the way its column is. A reader's file keeps the officer's words as typed.
+ */
+const EMAIL_IN_TEXT = /[^\s@]+@[^\s@]+\.[^\s@]+/g;
+export function maskFreeText(s: string): string {
+  return scrubPhoneRuns(s).replace(EMAIL_IN_TEXT, (m) => EMAIL.mask(m));
+}
+
+/**
+ * ⛔ A CROSS-SITE REQUEST NEVER STARTS AN EXPORT (U34a review MAJOR-1). A top-level navigation from another site carries
+ * the SameSite=Lax session and second-factor cookies, so a link anywhere could make a signed-in officer's browser write
+ * a bulk-reveal row in their name (and drop the book in their Downloads) with a filter the link chose. `Sec-Fetch-Site`
+ * from this origin, a typed or bookmarked address ("none"), or a client too old to send the header is let through — the
+ * preview door's rule (`sameOriginRequest`), plus "none" for a download an officer asks for by hand.
+ */
+export function exportRequestAllowed(secFetchSite: string | null): boolean {
+  return secFetchSite === null || secFetchSite === "same-origin" || secFetchSite === "none";
+}
+
 export function contactExportRow(c: StoredMarketingContact, keys: readonly ContactExportKey[], cell: ReadCell): string[] {
   const reveal = cell === "read";
+  const text = (s: string) => (reveal ? s : maskFreeText(s));
   const value: Record<ContactExportKey, () => string> = {
     phone: () => (reveal ? `+${c.msisdn}` : PHONE.mask(c.msisdn)),
-    name: () => c.displayName ?? "",
+    name: () => text(c.displayName ?? ""),
     email: () => (c.email === null || c.email === "" ? "" : reveal ? c.email : EMAIL.mask(c.email)),
-    tags: () => joinTags(c.tags),
-    notes: () => c.notes ?? "",
+    tags: () => text(joinTags(c.tags)),
+    notes: () => text(c.notes ?? ""),
     operator: () => operatorBrand(c.ndc) ?? "",
     consent: () => CONSENT_LABEL[c.consentState].label,
     source: () => SOURCE_LABEL[c.source],
@@ -201,23 +224,32 @@ export async function* contactExportPages(
 function csvStream(head: string, rest: AsyncGenerator<string, void, undefined>): ReadableStream<Uint8Array> {
   const utf8 = new TextEncoder();
   let headSent = false;
+  // ⚠️ A cancelled download (the officer closed it) is not a failed walk (review MINOR-4): a step still in flight when
+  // it was cancelled lands on a closed stream, and that is neither logged as a database fault nor written anywhere.
+  let cancelled = false;
   return new ReadableStream<Uint8Array>({
     async pull(controller) {
+      if (cancelled) return;
       if (!headSent) {
         headSent = true;
         controller.enqueue(utf8.encode(head));
         return;
       }
+      let next: IteratorResult<string, void>;
       try {
-        const next = await rest.next();
-        if (next.done) controller.close();
-        else controller.enqueue(utf8.encode(next.value));
+        next = await rest.next();
       } catch (err) {
+        if (cancelled) return;
         console.error("[contacts-export] the walk failed mid-file; the download fails rather than ending short:", (err as Error)?.message ?? err);
         controller.error(err);
+        return;
       }
+      if (cancelled) return;
+      if (next.done) controller.close();
+      else controller.enqueue(utf8.encode(next.value));
     },
     async cancel() {
+      cancelled = true;
       await rest.return(undefined);
     },
   });

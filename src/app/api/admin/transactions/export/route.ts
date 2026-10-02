@@ -26,6 +26,8 @@ import { maskPhone } from "@/lib/phone-normalize";
 import { audit } from "@/lib/server/audit";
 import { db, TXN_TYPES } from "@/lib/server/store";
 import { checkAdminTotp } from "@/lib/server/admin-guard";
+// The export gate both CSV routes share (cross-site and HEAD refused before anything is read) — the contacts export's.
+import { exportRequestAllowed } from "@/lib/server/contacts/export";
 import { attentionOf, type TxnSearchFilters } from "@/lib/server/txn-filters";
 import { resolveRange } from "@/lib/server/date-range";
 import type { StoredTxn } from "@/lib/server/store";
@@ -71,6 +73,13 @@ function toRow(t: StoredTxn, full: boolean): string {
 }
 
 export async function GET(req: Request) {
+  // ⛔ THE EXPORT GATE, FIRST (2026-10-02 — found by the contacts export's adversarial review): a top-level navigation
+  // from another site carries the SameSite=Lax session and second-factor cookies, so a link anywhere could make a
+  // signed-in officer's browser pull this file and write its pii.revealed row in their name; and Next answers HEAD by
+  // running this handler and dropping the body, which would write the rows for a file that never left.
+  if (req.method !== "GET" || !exportRequestAllowed(req.headers.get("sec-fetch-site"))) {
+    return new NextResponse("Not Found", { status: 404 });
+  }
   // ⛔ W25 — THIS ROUTE TRUSTED THE COOKIE, AND IT WAS THE ONLY ONE THAT DID.
   //
   // It decided on `session.role` — the role stamped into the signed cookie when the session was minted — with no

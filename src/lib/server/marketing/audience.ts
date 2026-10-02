@@ -564,7 +564,15 @@ export function contactAudienceParams(f: ContactAudienceFilter): Record<string, 
 }
 
 /** A run of nine or more digits — a national number or a key — is masked wherever a value could carry one. */
-const scrubDigits = (s: string) => s.replace(/\d{9,}/g, (m) => `••••${m.slice(-2)}`);
+/**
+ * Any run that READS AS A PHONE NUMBER — nine or more digits, single spaces, hyphens or underscores allowed between
+ * them — masked to its last two digits (U34a review MINOR-3: a tag of "0712 345 678" went into the chain whole; the old
+ * scrub caught consecutive digits only). The ONE scrub — the chain's filter here, and the export's free text.
+ */
+export function scrubPhoneRuns(s: string): string {
+  return s.replace(/[0-9](?:[ _-]?[0-9]){8,}/g, (m) => `••••${m.replace(/[^0-9]/g, "").slice(-2)}`);
+}
+const scrubDigits = scrubPhoneRuns;
 
 /**
  * The filter for the unprunable chain (U34's export audit, U40's send audit).

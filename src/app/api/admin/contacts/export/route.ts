@@ -1,7 +1,8 @@
 /**
  * GET /api/admin/contacts/export — the contact book as a CSV file (U34a, S10 2026-10-02).
  *
- * ⛔ THIN ON PURPOSE. Three questions, in this order, and every failure is the SAME answer — the identical 404 that
+ * ⛔ THIN ON PURPOSE. A gate, then three questions, in this order, and every failure is the SAME answer — the identical
+ * 404 that
  * serves nothing (Next renders its own page for an unrouted path, so the shape is not a secret; the protection is
  * that nothing is served):
  *   1. a session at all;
@@ -19,15 +20,22 @@
 import { NextResponse } from "next/server";
 import { currentSession } from "@/lib/server/auth-service";
 import { checkAdminTotp } from "@/lib/server/admin-guard";
-import { contactsExportViewer, exportContactsCsv, exportParamsOf } from "@/lib/server/contacts/export";
+import { contactsExportViewer, exportContactsCsv, exportParamsOf, exportRequestAllowed } from "@/lib/server/contacts/export";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
+/** The ONE answer to every refusal — identical, serving nothing. */
+const notFound = () => new NextResponse("Not Found", { status: 404 });
+
 export async function GET(req: Request) {
+  // ⛔ THE GATE, before anything is read (U34a review): GET only — Next answers HEAD by running this handler and dropping
+  // the body, so a probe would write the reveal rows for a file that never left — and never a cross-site request: a link
+  // on any site could otherwise make a signed-in officer's browser write a bulk-reveal row in their name.
+  if (req.method !== "GET" || !exportRequestAllowed(req.headers.get("sec-fetch-site"))) return notFound();
   const session = await currentSession();
   const viewer = await contactsExportViewer(session);
-  if (!session || !viewer) return new NextResponse("Not Found", { status: 404 });
-  if ((await checkAdminTotp(session.userId, session.sessionId)) !== "ok") return new NextResponse("Not Found", { status: 404 });
+  if (!session || !viewer) return notFound();
+  if ((await checkAdminTotp(session.userId, session.sessionId)) !== "ok") return notFound();
   return exportContactsCsv({ viewer, params: exportParamsOf(new URL(req.url)), now: Date.now() });
 }
