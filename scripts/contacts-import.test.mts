@@ -96,7 +96,7 @@ const REGISTRY: readonly Registered[] = [
   { file: "fields.mts", owner: "U28a", covers: "src/lib/contacts/{contact-fields,csv-write,sample-sheet}.ts" },
   { file: "decide.mts", owner: "U31", covers: "src/lib/contacts/import-decide.ts — the import decision" },
   { file: "vcard.mts", owner: "U26", covers: "src/lib/contacts/vcard.ts — the vCard reader" },
-  // U25  · csv.mts       — the CSV reader
+  { file: "csv.mts", owner: "U25", covers: "src/lib/contacts/import-parse.ts — the CSV reader" },
   // U27b · xlsx.mts      — the XLSX reader
   // U32  · commit.mts, preflight.mts
 ];
