@@ -16,18 +16,18 @@
 
 ## §0 · RESUME AT
 
-**State (2026-10-03):** S6 (the flagged shell) is in progress (§0i): WP0–WP5, WP6a and WP8 are live behind the flag;
-WP6b (the shell swap, the route census, the header-fit gate) and WP7 (the overlay stand-downs and the email-bar rule)
-are verified locally and pushed behind the flag — classic viewers are served what they were (`qa:classic-shell-parity`,
-224 cells, no unexpected difference). ⭐ Ali, 2026-10-02: nothing is turned on — no staff preview, no journey — until
+**State (2026-10-03):** S6 (the flagged shell) is in progress (§0i): WP0–WP11 are live behind the flag — the shell
+swap, the overlay rules, Tiketi zangu (WP9), the journey sell look (WP10), `--rail-h` (WP11) and the first-download fix
+(WP6c), each verified locally before its push — and classic viewers are served what they were
+(`qa:classic-shell-parity`, 224 cells, no unexpected difference; v2 also compares the Sell region). ⭐ Ali, 2026-10-02: nothing is turned on — no staff preview, no journey — until
 the whole plan is done; production proves only that nothing changed for players. S3b (the measures baseline) is ✅: the
 old journey's funnel counts daily since 2026-10-01, and the 14-day baseline runs to 2026-10-15 (§0f). S3 (the engine)
 and S4 (the design pass) are ✅. S2 is LIVE (`473807b1`) and waits on an officer approving the short titles (§0d, §0h
 point 19). S1 is LIVE (`41ec1703`) and waits on one press by Ali (§0b "Still open"). Ali is away: every call made
 meanwhile is a numbered point in §0h.
 
-**Next:** (1) S6 — resume at §0i "⏸ S6 STOPPED HERE": WP6c (the first-download fix, §0h point 20), WP9 (Tiketi
-zangu), WP10 (the sell look), then WP12 (proof, records, merge); the build plan is
+**Next:** (1) S6 — resume at §0i "⏸ S6 STOPPED HERE": A8b and A8c (live fixes to the classic Sell button found
+while proving WP9 and WP10), then WP12 (proof, records, merge); the build plan is
 `docs/design-system/v5-2026-09-29-simplified-journey/S6-PLAN.md`, whose closing Amendments override its body. (2) When
 Ali says so, and not before (nothing turns on until the plan is done): an officer approves the S2 short titles, and
 Ali presses S1's preview switch.
@@ -210,11 +210,20 @@ WP6b the swap + census + header-fit → WP7 overlays → WP8 short titles on pos
   to end the session while its full `test:all` re-run (after a rebase over 42 marketing commits) was still running:
   the next session reads `scratchpad/s6/testall-a8b.log` (session 0cb4430f) or re-runs `test:all`, and confirms the
   deploy (`?dpl=`) and the served bundle.
-- **⏸ S6 STOPPED HERE (2026-10-03) — resume:** WP8, WP6b, WP7 and WP11 are pushed behind the flag (their bullets
-  below; WP6b's owed list keeps its open items, numbered). Next: WP6c (§0h point 20 — the journey chrome and AppShell's
-  older overlays out of every page's initial scripts, proven by a local production build), WP9 (Tiketi zangu — its
-  change set drafted by a static agent in the session scratchpad, `s6/WP9.json`, reviewed before it is applied),
-  WP10, WP12 (S6-PLAN.md).
+- **⏸ S6 STOPPED HERE (2026-10-03) — resume:** WP0–WP11 are pushed behind the flag, WP6c, WP9 and WP10 included
+  (their bullets below, each with what was verified and what is still owed). Next: **A8b**, a live fix for every player —
+  the classic Sell button stays honest when the free window lapses (today it can say "no fee" for up to 20 s after the
+  server starts charging one) and its label fits at 320 in Swahili (it overflows by 7px) — drafted and reviewed by a
+  workflow into `s6/A8b.json`; then **A8c**, the server refusing a sale whose price changed since the player saw it (a
+  money-path change, under the four transaction rules); then WP12 (S6-PLAN.md).
+- **Found and fixed on the way (2026-10-03):** the S3b funnel panel painted "house stakes" on `/admin/insights` (owner
+  ruling D19 keeps house words off admin surfaces outside the house console) — `test:house-bot-surfaces`, red since
+  2026-10-01 and carried on the baseline list as another lane's, is green; three red twins had gone blind for reasons
+  older than S6 and are re-armed — `red:section-rail` (the bottom nav's coin keeps its own `aria-current`, so stripping
+  the tabs' alone changed nothing), `red:measure` (an LF anchor on a CRLF checkout) and `red:feedback-law` (an anchor
+  two spaces short since 2026-09-05); the S4 canvas is committed under
+  `docs/design-system/v5-2026-09-29-simplified-journey/s4-canvas/` (its claude.ai artifact can no longer be read); twelve
+  live Swahili strings that give *dau* class-10 agreement are listed with corrections in `S4-COPY-AUDIT.md` for S12.
   Method and tools: memory `project_kipindi_vodacom_plan` (staged change sets, `apply_changeset.py`, `run-gates.sh`,
   `run-parity.sh`).
 - **WP0 parity harness — `npm run qa:classic-shell-parity`** (written, not yet run; local in-memory server only). Four
@@ -465,7 +474,16 @@ WP6b the swap + census + header-fit → WP7 overlays → WP8 short titles on pos
   belongs on the two older `next/dynamic` parts in `layout/lazy-overlays.tsx` (the chat bubble and the first-visit
   primer, exposed the same way since before S6) and on WP9's `ticket-switch-rail.tsx`, the guard lifted into one
   shared module when a second file takes it (WP9 cannot import a WP6c module while the two change sets must apply in
-  either order).
+  either order). **Verified 2026-10-03, before the push:** (1) ✅ the production build, every part's verdict as expected
+  on `/`, `/markets`, `/positions` and `/help` — ten parts in chunks of their own, out of the initial scripts; the offline
+  banner and the win celebration in them; the control found; WP9's Tabs a chunk of its own on `/positions`; (2) ✅ the
+  HEAD null pair 8/8 identical, then WP6c: every body skeleton identical, no new client-rendered boundary, the head gaining
+  only low-priority script preloads (8 signed out, 12 signed in, 18 for a journey reader) — the comparison tool was
+  corrected first: the tree carries two bail-outs by design (lazy-overlays' chat bubble and primer, `ssr: false`), and the
+  identity avatar's ids differ between server runs; (3) ✅ parity 27/27; (4) ✅ every part mounts, a lost chunk leaves the
+  page up and is reported once, and the control — the guard removed from the consent line — reaches the critical-error
+  screen; (5) ✅ the WP7 frame drive 32/32 (the mid-visit switch is not driven); (6) owed after the push; (7) and (8)
+  owed.
 - **WP9 — Tiketi zangu (2026-10-03).** For a journey request `/positions` is "Tiketi zangu" in the canvas's order, and
   `/updown/history` wears the same name and the Maswali | Juu/Chini switch (the kit's underline rail in link mode,
   `aria-current="page"` on the page being read); every other reader is served today's pages. Both pages ask the one
@@ -507,6 +525,15 @@ WP6b the swap + census + header-fit → WP7 overlays → WP8 short titles on pos
   `qa:classic-shell-parity` with `--compare`, `/positions` included; a production build's first-load check of both
   routes; and the tiles — Tiketi open, settled and empty, the guest sheet and the `/updown/history` switch at 320, 390
   and 1280 in sw, en and zh, with the journey ghost watched on a soft navigation and on a first document load.
+  **Verified 2026-10-03, before the push:** the gates (the reds are the §0i baseline's, plus the D19a published-words pin
+  until the dictionary reaches main); every file-mutating red twin alone, the tree clean after each (two were found blind
+  for reasons older than S6 and re-armed — `red:section-rail`, `red:measure`); `qa:classic-shell-parity --compare`, 224
+  cells, no unexpected difference (its 2.12 tripped only because a scripts-only commit moved HEAD mid-run; the served
+  paths were proved identical); the first-load check of both routes by WP6c's build; tiles at 320, 390 and 1280 in sw, en
+  and zh — the empty state, the guest sheet, open and sold tickets, the Up & Down head — with no overflow, script error or
+  hydration warning. Not drawn: won, lost and refunded cards (the portfolio seed needs twelve real markets and the dev
+  store seeds seven) and the loading ghost (a dev server does not prefetch, so a held response keeps the previous page) —
+  both held in code and by `test:journey-tickets`. Found on the way: the classic Sell label overflows at 320 in sw (A8b).
 - **WP10 — the journey's Sell look (2026-10-03).** On a journey ticket the Sell button wears the canvas's look
   (`s4-canvas/s4-9-tiketi-open.dc.html` beside S6-PLAN, in the kit's tokens); everywhere else it is today's. The card binds the server's free-sell instant
   once (`freeExitEndsAt`, A8) and hands the button that instant, `look="journey"`, the instant's clock time read on the
@@ -572,7 +599,14 @@ WP6b the swap + census + header-fit → WP7 overlays → WP8 short titles on pos
   server at `7c859cdf`, exit 0, before any compare on this tree; then `--compare` on this tree, where A8 says a default
   poll with an hour to run compares equal and the matrix may differ only by WP11's named `footer-rail-h`; and the tiles
   (an open ticket in its free window and as it runs out, a legacy paid window, a shut exit at its first paint, the
-  confirm and both results) at 320, 390 and 1280 in sw, en and zh.
+  confirm and both results) at 320, 390 and 1280 in sw, en and zh. **Verified 2026-10-03, before the push:** the gates
+  (the §0i baseline's reds); `red:journey-tickets` and `red:sell-grace-truth` in process; `red:timer-date`, `red:labels`,
+  `red:position-permalink` and `red:feedback-law` alone (the last 26/26 once its own stale anchor, re-indented on
+  2026-09-05 by PRESENCE-4, was fixed); parity `--prove-red` 68/68; the v2 baseline at `7c859cdf` 28/28, its null compare
+  35/35, then this tree 35/35 — the Sell region, the holder block and the classic confirm compare equal across A8; tiles
+  of the free look at 320, 390 and 1280 in sw, en and zh with no overflow, script error or hydration warning. Not drawn:
+  the lapse, a legacy paid window and a shut exit (the seed's tickets are all inside their free window) — owed with
+  A8b's drive.
 
 ## §0h · Points for Ali — taken while he was away (2026-10-01 →)
 
