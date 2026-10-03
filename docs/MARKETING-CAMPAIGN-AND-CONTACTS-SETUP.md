@@ -396,6 +396,33 @@ erasure now withdraws the consent and empties the book, and both data exports ca
   and harm reads are still one player at a time inside the gate (bounded by the budget and the 2-split limit) — U52
   measures them; AGENT accounts are not walked (PLAYER only, X9); `test:orphans` (not in predeploy) lists the unkeyed
   probe, like U24's and U36's.
+✅ STEP 23 · EVERY CLIENT IS A CONTACT — LIVE (`08add760`, 2026-10-03 12:22:46 UTC). Ali, 2026-10-03: "every client is a
+  contact in 50pick but not every contact is a client — like Awarkeh Mobiles, any number who registers to 50pick is
+  added to contacts." Both sign-up doors now add the new client (role PLAYER, a +255 mobile) to the book — source
+  REGISTRATION ("Signed up"), linked to the account, its consent cache mirrored from the ledger (never invented) —
+  bounded at 1.5 s and never failing or slowing a sign-up; an officer's or an import's row for the number is LINKED,
+  nothing typed overwritten; an erased tombstone is never revived and a row linked to another account is kept (U18b).
+  ✅ THE PRODUCTION BACKFILL RAN the same day (Ali approving each run): dry run → 54 of 57 accounts walked (3 staff or
+  agents not), 54 to create; the real run CREATED 54, failed 0, consent cache 41 already true and 13 repaired; a second
+  dry run → created 0, already linked 54 (idempotent). Run under `railway run --service 50pick` so production's audit
+  secret signed its rows (the chain takes a second writer: each append reads the DB head, `@@unique([prevHash])`).
+  `test:registration-contact` 23 checks, red 25/25; the contacts drive 483/483. ⚖️ ACCEPTED under Ali's rule: with
+  every client in the book, a whole-number lookup tells an officer a number is probably a client (the D19 cost the
+  audit and the builder both named). ⚠️ Owed: on a recycled number a previous holder's typed name could reach the new
+  client's data export once linked (U16); the schema comment at MarketingContact still says no name is copied.
+✅ STEP 24 · A SAVED DRAFT REOPENS FROM THE LIST — LIVE (`c6282309`, 10:59:37 UTC). The validation audit's blocker: a
+  DRAFT row's name opens the composer at its own ?draft= address (campaignDraftHref, from the ONE route table, behind
+  the compose flag); every other row stays plain until U47. `test:campaigns-page` 5k + a plant; the drive 108/108.
+🔎 THE VALIDATION AUDIT (2026-10-03, Ali: "full input form validation and field validation everywhere — clean, perfect,
+  working"): six read-only auditors over every admin input → 49 fixes (6 blocker, 7 major, 36 minor) in 8 batches with
+  disjoint files and one shared validator per kind of field. Batch 1 = STEP 23, batch 2 = STEP 24 (both LIVE); batches
+  3 (one phone rule for every spelling, a paste that replaces), 4 (the composer), 5 (no phone numbers in names or tags,
+  one email rule), 6 (the kit form atoms — the 100× numeric paste on money fields) and 8 (staff and invites) are in
+  build, each with its adversarial review; batch 7 (the contacts screens) follows 3, 5 and 6.
+⚠️ RECORDED, NOT THIS LANE'S ALONE: `test:house-bot-holder-lifecycle` 2.2 (not in predeploy) counts 31 scripts that write
+  an account fact against a shrink-only ceiling of 25. Two are this lane's suites (U7 `marketing-consent.test.mts`, U38a
+  `campaign-audience.test.mts`); the rest are other lanes' (agents, deposits, the Vodacom journey, invites, ops). STEP 23
+  added none. The ceiling's owner (the house-bot lane) reads and admits each member — this lane did not raise it.
 ⚖️ VERIFICATION POLICY — Ali, 2026-10-02: "checks that are already 100% functional — no need to go over them again;
   focus on what has to be checked." Binding from U36's push on:
   · PROVEN STAYS PROVEN. A ✅ unit, and a 🔵 unit whose suite, red, drive and review are green and whose only open
