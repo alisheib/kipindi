@@ -68,8 +68,14 @@ for (const [i, m] of MUTATIONS.entries()) {
     const p = join(root, e.file);
     if (!existsSync(p)) { anchor = `${e.file} does not exist`; break; }
     const src = readFileSync(p, "utf8");
-    if (!src.includes(e.from)) { anchor = `anchor not found in ${e.file}`; break; }
-    writeFileSync(p, src.replace(e.from, e.to), "utf8");
+    // ⚠️ A CHECKOUT'S NEWLINES ARE ITS OWN: git writes CRLF on Windows, so an anchor spelled with a bare LF never
+    // matched there, and stripper-order-restored reported BROKEN HARNESS on every Windows checkout (found 2026-10-03).
+    // Each anchor is matched, and written, in the file's own newline style.
+    const nl = src.includes("\r\n") ? "\r\n" : "\n";
+    const from = e.from.split("\n").join(nl);
+    const to = e.to.split("\n").join(nl);
+    if (!src.includes(from)) { anchor = `anchor not found in ${e.file}`; break; }
+    writeFileSync(p, src.replace(from, to), "utf8");
   }
 
   const label = `${String(i + 1).padStart(2)}. ${m.name}${m.also.length ? ` (+${m.also.length} paired)` : ""}\n        ${m.why}`;

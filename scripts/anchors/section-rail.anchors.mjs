@@ -25,12 +25,14 @@ export const MUTATIONS = [
        into a `RailDest` component so the centre Deposit coin could take the middle track
        (UPDATE-2026-09-28 §2). Anchors match literal text, so an indentation change is a MISS —
        the same silent-stop this sidecar exists to prevent.
-       ⭐ THE COIN HAS ITS OWN `aria-current` (on `coinOn`) AND IS NOT MUTATED HERE. It is a
-       destination too, so it deserves a control — but an undeclared mutation the suite cannot
-       catch would report "missed", and a mutation nothing proves is worse than none. Add it
-       with the assertion that convicts it, not before. */
+       🔴 2026-10-03 — THIS CONTROL HAD BEEN BLIND SINCE THE COIN LANDED. The coin keeps its own
+       `aria-current` (on `coinOn`), and the gate reads a nav block as a whole: with the tabs' marker
+       gone and the coin's still there, the block still "announced", so red:section-rail printed
+       "the gate did NOT notice" on every run. The defect this control plants is the whole rail
+       going silent, so it now strips BOTH markers — the tabs' (`from`) and the coin's (`also`). */
     from: `        aria-current={on ? "page" : undefined}`,
     to: `        data-was-current={on ? "page" : undefined}`,
+    also: [[`            aria-current={coinOn ? "page" : undefined}`, `            data-was-current={coinOn ? "page" : undefined}`]],
   },
   {
     name: "the legal sidebar stops saying which document is open",

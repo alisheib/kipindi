@@ -69,7 +69,14 @@ for (const mut of MUTATIONS) {
     // planted. If the anchor no longer matches, that is reported as ANCHOR ROT, never skipped
     // quietly: an anchor that stops matching is how a control silently stops controlling.
     if (!s.includes(mut.from)) return { rot: true };
-    writeFileSync(f, s.replace(mut.from, mut.to));
+    let t = s.replace(mut.from, mut.to);
+    // A PAIRED EDIT (`also`): one defect that needs two lines changed. Each pair is checked for rot exactly like the
+    // main anchor — a pair that stops matching is a control that silently stops controlling.
+    for (const [from, to] of mut.also ?? []) {
+      if (!t.includes(from)) return { rot: true };
+      t = t.replace(from, to);
+    }
+    writeFileSync(f, t);
     return runGate(src);
   });
   if (res.missing || res.rot) {
