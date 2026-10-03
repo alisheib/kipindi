@@ -189,9 +189,13 @@ writes no manual refund: every one is a rule or a recorded officer decision). Th
 | `src/app/admin/tax/*` | The page, its picker, export buttons, lock panel, rates form, actions |
 | `src/app/api/admin/tax/export/route.ts` | The downloads |
 | `src/lib/server/market-dal.ts` | `positionStore.listLiveDuring` / `getMany` (both twins) |
+| `scripts/live/tax-report-guide.mjs` | The managers' PDF guide (`docs/guides/`) from the real screens |
 | `src/lib/server/reports/pdf.ts` · `xlsx.ts` · `brand.ts` | The shared renderers: `findPdfOverflows` + `summaryColumns`, keep-together tables, the "(continued)" caption, the workbook's tab name, single-spaced dashes |
 
 ## §11 · How Finance files a month — step by step
+
+> The managers' guide, with a picture of every step: [`guides/50pick-how-to-download-the-tax-report.pdf`](guides/50pick-how-to-download-the-tax-report.pdf)
+> (rebuilt from the real screens by `scripts/live/tax-report-guide.mjs`, which refuses to build if a label it quotes changed).
 
 1. Sidebar → **Money → Tax report**. It opens on the last complete month, all products.
 2. Read the coloured line under the filters:

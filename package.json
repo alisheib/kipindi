@@ -172,6 +172,7 @@
     "test:house-book": "tsx scripts/house-book.test.mts",
     "test:tax-report": "tsx scripts/tax-report.test.mts",
     "test:tax-report-page": "tsx scripts/tax-report-page.test.mts",
+    "guide:tax-report": "node scripts/live/tax-report-guide.mjs",
     "red:tax-report": "node scripts/red-tax-report.mjs",
     "test:house-page": "tsx scripts/house-page.test.mts",
     "red:house-page": "node scripts/red-house-page.mjs",
