@@ -400,7 +400,7 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
       && exactlyOneOn(none.rail)
       && labelsOf(groupOf(none.rail, "consent")) === "Any,Given,Not recorded,Withdrawn"
       && labelsOf(groupOf(none.rail, "suppressed")) === "Any,Suppressed,Not suppressed"
-      && labelsOf(groupOf(none.rail, "source")) === "Any,Import,Sign-up,Added by staff,Agent"
+      && labelsOf(groupOf(none.rail, "source")) === "Any,Import,Signed up,Added by staff,Agent"
       && labelsOf(groupOf(none.rail, "list")) === "Any,Dar weekend" && keysOf(groupOf(none.rail, "list")) === `,${L.id}`
       && keysOf(groupOf(none.rail, "tag")) === ",dar,vip"
       && none.rail.countLine === "4 contacts" && honora.rail.countLine === "2 of 4 contacts",
@@ -611,7 +611,7 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
       && pillTags[0].includes("semantics={g.semantics}") && pillTags[0].includes("testId={`${g.param}:${o.key}`}")
       && railSrc.includes("<FilterGroupKey>{g.label}</FilterGroupKey>")
       && !railSrc.includes('"use client"') && !railSrc.includes("/admin/contacts")
-      && !/"(Any|Given|Not recorded|Withdrawn|Suppressed|Import|Sign-up|Vodacom|Unknown list)"/.test(railSrc)
+      && !/"(Any|Given|Not recorded|Withdrawn|Suppressed|Import|Signed up|Vodacom|Unknown list)"/.test(railSrc)
       && declaresRail(impl.sources.gate),
     `${pillTags.length} FilterPill tag(s) · declared: ${declaresRail(impl.sources.gate)}`);
 
@@ -619,9 +619,9 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
   ok(p(U21.vocab),
     !/const (CONSENT|SOURCE)\b/.test(page) && page.includes("CONSENT_LABEL[c.consentState]") && page.includes("SOURCE_LABEL[c.source]")
       && impl.sources.model.includes("CONSENT_LABEL[c].label") && impl.sources.model.includes("SOURCE_LABEL[s]")
-      && !impl.sources.model.includes('"Not recorded"') && !impl.sources.model.includes('"Sign-up"')
+      && !impl.sources.model.includes('"Not recorded"') && !impl.sources.model.includes('"Signed up"')
       && /export const CONSENT_LABEL\b/.test(impl.sources.copy) && /export const SOURCE_LABEL\b/.test(impl.sources.copy)
-      && CONSENT_LABEL.UNKNOWN.label === "Not recorded" && SOURCE_LABEL.REGISTRATION === "Sign-up");
+      && CONSENT_LABEL.UNKNOWN.label === "Not recorded" && SOURCE_LABEL.REGISTRATION === "Signed up");
 
   // ── 18 · THE LOADER HANDS THE RAIL ITS OPTIONS ───────────────────────────────────────────────
   const okView = await impl.load({}, true);

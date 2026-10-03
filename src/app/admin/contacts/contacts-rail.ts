@@ -13,7 +13,7 @@
  *
  * 🔴 D19 / A1.1 · THE RAIL IS ROLE-SHAPED. There is NO player axis, for anyone. For a viewer whose identity.contact
  * cell is not `read`, Consent and Source are not drawn at all — no axis and no pill — and neither is an applied
- * `player`: until U33 a recorded consent can only be a player's, Source "Sign-up" means the number came with an
+ * `player`: until U33 a recorded consent can only be a player's, Source "Signed up" means the number came with an
  * account, and each answers "is this a player?" for a number the viewer typed. 🔴 OD54 · nor is Suppressed: until the
  * importer goes live a stop is a player's own opt-out or an officer's, so it answers the same question — that viewer's
  * rail is Operator · List · Tag (List and Tag when the book has them). The loader REFUSES all four for that viewer

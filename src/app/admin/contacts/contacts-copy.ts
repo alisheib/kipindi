@@ -98,10 +98,15 @@ export const CONSENT_LABEL: Record<ContactConsentState, { label: string; variant
   WITHDRAWN: { label: "Withdrawn", variant: "warning" },
 };
 
-/** Where a number came from, as the Source column AND the rail's Source axis say it. A full Record, as above. */
+/**
+ * Where a number came from, as the Source column AND the rail's Source axis say it. A full Record, as above.
+ * ⭐ REGISTRATION reads "Signed up" (2026-10-03, every client is a contact): the person signed up and their number came
+ * with the account (`marketing/registration-contact.ts`). The column, the rail, the edit dialog and the export all read
+ * it here.
+ */
 export const SOURCE_LABEL: Record<ContactSource, string> = {
   IMPORT: "Import",
-  REGISTRATION: "Sign-up",
+  REGISTRATION: "Signed up",
   OPERATOR: "Added by staff",
   AGENT: "Agent",
 };

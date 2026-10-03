@@ -48,7 +48,14 @@ export async function mirrorContactCache(identifier: string, _at: string = new D
     await Promise.resolve(db.marketingContact.update(row.id, { consentState, suppressedAt }, row.updatedAt));
     return "updated";
   } catch (err) {
-    console.error("[contact-cache] mirror failed:", (err as Error)?.message ?? err);
+    // ⛔ THE ERROR'S NAME AND CODE, NEVER ITS MESSAGE (2026-10-03): a database error's message can print the row it
+    // refused, the number in it — and every sign-up now passes through here (`registration-contact.ts`, the same shape).
+    let kind = "unreadable error";
+    try {
+      const e = (err ?? {}) as { name?: unknown; code?: unknown };
+      kind = [e.name, e.code].filter((x): x is string => typeof x === "string").join(" ") || kind;
+    } catch { /* an error that cannot be read is still reported, as unreadable */ }
+    console.error(`[contact-cache] mirror failed (${kind})`);
     return "failed";
   }
 }

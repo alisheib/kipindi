@@ -32,6 +32,7 @@ import { selfExclusionStanding } from "./responsible-gambling";
 import { SUPPORT_PHONE } from "@/lib/server/support-config";
 import { TERMS_VERSION } from "@/lib/terms-version";
 import { appendMarketingConsent, messagingLocaleOf } from "@/lib/server/marketing/consent-ledger";
+import { registrationContactAtSignup } from "@/lib/server/marketing/registration-contact";
 
 /** Mask a phone for an audit payload — keep country code + last 2 (e.g.
  *  "+25570*****19"). The audit entry already carries actorId, so the full number
@@ -595,6 +596,14 @@ export async function verifyOtpAndAuth(input: z.input<typeof OtpVerifySchema>): 
         payload: { amount: starterBalance },
       });
     }
+
+    // ⭐ EVERY CLIENT IS A CONTACT (owner, 2026-10-03): the number joins the marketing book, linked to this account —
+    // AFTER the account row and the ledger row above, so the book's consent cache mirrors the tick (a ticked box reads
+    // GIVEN, an unticked one UNKNOWN; `marketing/registration-contact.ts`), and after the wallet, so the money comes
+    // first. ⛔ It never fails and never holds the sign-up: outside any lock, bounded, and a failure is logged with no
+    // number — `scripts/live/backfill-registration-contacts.mts` repairs a miss. It writes no ledger row: OD8 stands.
+    await registrationContactAtSignup(user);
+
     audit({ category: "AUTH", action: "user.registered", actorId: user.id, targetType: "User", targetId: user.id, payload: { phone: maskPhoneForAudit(phone) } });
     isNew = true;
     // Welcome email — parity with the password registration path. Best-effort;
@@ -838,6 +847,11 @@ export async function registerWithPassword(input: PasswordRegisterInput): Promis
       payload: { requested: requestedStarter, reason: "LIVE money mode — unledgered starter credit would mint money and break the trial balance." },
     });
   }
+
+  // ⭐ EVERY CLIENT IS A CONTACT (owner, 2026-10-03) — the OTP door's one line, at the same point: after the account
+  // row, the ledger row and the wallet. A bootstrap admin is created ADMIN above and is never a contact. ⛔ It never
+  // fails and never holds the sign-up — it runs outside this `register:` lock, bounded — and the backfill repairs a miss.
+  await registrationContactAtSignup(user);
 
   // Affiliate referral binding — if the user arrived via a ?ref= link, bind
   // them to their referrer and fire any sign-up-triggered reward. Best-effort

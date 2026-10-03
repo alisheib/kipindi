@@ -93,7 +93,7 @@ export type ContactsDeps = {
 /**
  * 🔴 D19 · A MEMBERSHIP ORACLE, ROW BY ROW. Some of the gate's answers can only come from its PLAYER branch
  * (a protected standing, and — until U33 — "Reachable" itself), a stranger's number reads "No consent", the
- * Source "Sign-up" means the number came with an account, and the Player chip says so outright. For a role
+ * Source "Signed up" means the number came with an account, and the Player chip says so outright. For a role
  * that may not read a number at all, any of them answers "is this person a player?" for a number they typed.
  * ⛔ So they render only for a viewer whose `identity.contact` cell is `read` — the same cell that may reveal
  * the number. Decided HERE, in a .ts: `test:read-tiers` 4.4 lets no .tsx but `sensitive.tsx` ask the matrix.
