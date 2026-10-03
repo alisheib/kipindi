@@ -15,6 +15,18 @@
  * bytes the server sent, where a streamed fallback stays after hydration has replaced it (G3). For /account and the
  * control also the title, the robots meta and the main text; for the signed-in viewers' /positions (an empty demo
  * portfolio, the page WP9 rebuilds for journey viewers) the page body too. No other page body is captured.
+ * ⭐ WP10 (S6-PLAN WP10 step 3, A8) — AND THE SELL BUTTON A CLASSIC HOLDER IS SERVED. After the matrix (whose demo
+ * portfolio must stay empty, so the /positions body above is the same from one server to the next), the demo player is
+ * given an open ticket through the real money paths (`/api/dev-test/seed-real-markets`, then `seed-player-portfolio`),
+ * and the two things SellButton draws for it in its free window, the strip and the button, are captured where a classic
+ * holder meets them: the ticket's card on /positions and its question's holder block, at 360 and 1280 in en and sw. In
+ * the holder block at 360 the button is also pressed, once, and the classic confirm it opens is captured — inside its
+ * 10-second quote hold, and never confirmed: only Enter or its gold button sells, and neither is touched. The strip's
+ * ticking clock is read as "m:ss" and a ticket's id as "pos_~"; the rest is compared as the matrix is, against
+ * SELL_EXPECTED_DIFFS (A8: a default poll with an hour to run compares equal). The capture runs inside a default poll's
+ * five-minute free window, and §S fails a run whose cells missed it. The matrix gained the capture, so this is v2: a v1
+ * baseline is refused, and the v2 baseline is captured at the commit just before A8's live half (VODACOM-PLAN §0i names
+ * it), so the Sell cells measure A8's own claim as well as S6's.
  *
  *   KP_BASE=http://localhost:3041 npm run qa:classic-shell-parity                  (the control: --prove-red is the default)
  *   KP_BASE=http://localhost:3041 npm run qa:classic-shell-parity -- --baseline <scratchpad>/parity-<sha8>.json
@@ -149,7 +161,7 @@ function baseRefusal(sha) {
 }
 
 const KIND = "kp-classic-shell-parity";
-const VERSION = 1;
+const VERSION = 2;   // 2 · S6 WP10: the matrix gained the Sell capture, so a v1 baseline cannot be compared — capture a new one
 const VIEWERS = [
   { id: "guest", door: null, who: "a guest" },
   { id: "player", door: "/auth/demo", who: "the demo player" },
@@ -167,7 +179,23 @@ const AUTH = ["/positions", "/wallet", "/profile"];
  *  player's portfolio is empty, so its classic body is the same from one server to the next. */
 const BODY_ROUTE = "/positions";
 const HEIGHT = 800;
-const MATRIX = { viewers: VIEWERS.map((v) => v.id), locales: LOCALES, widths: WIDTHS, routes: ROUTES, body: BODY_ROUTE, height: HEIGHT };
+/**
+ * ⭐ WP10 · THE SELL CAPTURE (S6-PLAN WP10 step 3, A8): an open ticket in its free window, at the two places a classic
+ * holder is sold to — its card on /positions and its question's holder block — at two widths in both languages. Taken
+ * AFTER the matrix, so the demo portfolio the matrix reads is still empty. A cell is keyed by its place, never by the
+ * question's id: each server mints its own. In one cell per language the button is pressed and the classic confirm it
+ * opens is captured too (`confirm`).
+ */
+const SELL_PLACES = ["/positions", "/markets/:held"];
+const SELL_CONFIRM = { width: 360, place: SELL_PLACES[1] };
+const SELL = { locales: LOCALES, widths: [360, 1280], places: SELL_PLACES, confirm: SELL_CONFIRM };
+/** A Sell place's route: the open ticket's question stands in for ":held". */
+const routeOfPlace = (place, held) => (place === SELL_PLACES[1] ? `/markets/${held}` : place);
+/** The Sell cells that press the button and capture the classic confirm it opens. */
+const confirmCell = (width, place) => width === SELL_CONFIRM.width && place === SELL_CONFIRM.place;
+/** The classic confirm, found by what it is: an open modal dialog holding the gold confirm button. */
+const CONFIRM_GOLD = '[role="dialog"][aria-modal="true"] button.btn-gold';
+const MATRIX = { viewers: VIEWERS.map((v) => v.id), locales: LOCALES, widths: WIDTHS, routes: ROUTES, body: BODY_ROUTE, height: HEIGHT, sell: SELL };
 const HOST = new URL(BASE).hostname;
 const keyOf = (v, l, w, r) => `${v}|${l}|${w}|${r}`;
 const partsOf = (k) => { const [v, l, w, r] = k.split("|"); return { v, l, w: Number(w), r }; };
@@ -210,6 +238,12 @@ const EXPECTED_DIFFS = [
 const partialExpected = (hits, list = EXPECTED_DIFFS) => list
   .filter((e) => { const n = hits.get(e.id) ?? 0; return n !== 0 && n !== e.cells; })
   .map((e) => `${e.id} in ${hits.get(e.id)} of its ${e.cells} cells`);
+/**
+ * ⭐ WP10 · THE NAMED DIFFERENCES FOR THE SELL CELLS — none. A8: a classic holder's Sell button on a default poll with an
+ * hour to run compares equal with the baseline captured before A8's live half; any other difference is a named entry
+ * here (with its field, its routes and its `cells`), never a re-baseline.
+ */
+const SELL_EXPECTED_DIFFS = [];
 
 /** The computed properties recorded per element. Geometry is recorded separately, relative to the region's root. */
 const PROPS = [
@@ -236,7 +270,7 @@ const rawOf = (body) => (typeof body !== "string" ? null : {
 });
 
 /** Runs IN THE PAGE. Self-contained: Playwright serialises it, so it may close over nothing. */
-const SNAPSHOT = ({ crest, props, animated, notFound, pageBody }) => {
+const SNAPSHOT = ({ crest, props, animated, notFound, pageBody, sell, confirm }) => {
   const r2 = (n) => Math.round(n * 2) / 2;
   const sigOf = (el, moving) => {
     const cs = getComputedStyle(el);
@@ -299,6 +333,24 @@ const SNAPSHOT = ({ crest, props, animated, notFound, pageBody }) => {
     }
     return [...out].sort();
   };
+  // WP10 · the two things SellButton draws for an open ticket, its free strip and its button, under the held question's
+  // card on /positions or in the question's holder block, found by structure: the classic markup carries no test id,
+  // and must not gain one. The strip's clock ticks, so it is read as "m:ss".
+  const sellOf = ({ held, place }) => {
+    const card = place === "/positions" ? document.querySelector(`#main-content a[data-row-id][href="/markets/${held}"]`) : null;
+    const row = place === "/positions" ? (card ? card.parentElement : null) : document.querySelector("#main-content .ticket-target");
+    const button = row ? [...row.children].find((c) => c.tagName === "BUTTON") ?? null : null;
+    const prev = button ? button.previousElementSibling : null;
+    const strip = prev && prev.tagName === "DIV" && prev.classList.contains("mb-1.5") ? prev : null;
+    const ticks = (r) => (r.html ? { ...r, html: r.html.replace(/>[0-9]{1,2}:[0-9]{2}</g, ">m:ss<") } : r);
+    return { strip: ticks(region(strip ? [strip] : [])), button: ticks(region(button ? [button] : [])) };
+  };
+  // WP10 · the classic confirm the button opened: the open modal dialog that holds the gold confirm, and whether that
+  // confirm can still be pressed (its 10-second quote hold has not run out).
+  const confirmOf = () => {
+    const els = [...document.querySelectorAll('[role="dialog"][aria-modal="true"]')].filter((d) => d.querySelector("button.btn-gold"));
+    return { region: region(els), live: els.length === 1 && !!els[0].querySelector("button.btn-gold:not(:disabled)") };
+  };
   const footers = [...document.querySelectorAll("#main-content + footer")];
   return {
     url: location.pathname + location.search,
@@ -310,6 +362,8 @@ const SNAPSHOT = ({ crest, props, animated, notFound, pageBody }) => {
       ...(pageBody ? { main: region([...document.querySelectorAll("#main-content")]) } : {}),
     },
     overlays: overlays(),
+    ...(sell ? { sell: sellOf(sell) } : {}),
+    ...(confirm ? { confirm: confirmOf() } : {}),
     footerPaddingBottom: footers[0] ? getComputedStyle(footers[0]).paddingBottom : null,
     scrollPaddingBottom: getComputedStyle(document.documentElement).scrollPaddingBottom,
     // The whole document, html included: a journey test id, the flag JourneyFlag sets, or a journey class.
@@ -337,7 +391,7 @@ const norm = (s) => String(s)
   .replace(/\/_next\/static\/[^"'\s)&]+/g, "/_next/static/~")
   .replace(/%2F_next%2Fstatic%2F[^"'\s)&]+/g, "%2F_next%2Fstatic%2F~")
   .replace(/([?&](?:amp;)?)dpl=[^"'&\s]*/g, "$1dpl=~")
-  .replace(/\b(usr|wal|kyc|txn)_[A-Za-z0-9_-]{6,}/g, "$1_~")
+  .replace(/\b(usr|wal|kyc|txn|pos)_[A-Za-z0-9_-]{6,}/g, "$1_~")
   .replace(/datetime="[^"]*"/g, 'datetime="~"')
   .replace(/\b\d+\s*(?:s|secs?|seconds?|m|mins?|minutes?|h|hrs?|hours?|d|days?)\s+ago\b/gi, "~ ago")
   .replace(/\b(?:sekunde|dakika|saa|siku)\s+\d+\s+(?:zilizopita|iliyopita)\b/gi, "~ zilizopita");
@@ -512,6 +566,49 @@ function accountLoaders() {
   return out;
 }
 
+/** §S — the Sell capture is what it claims (WP10). Each check returns the cells (or facts) that fail it. */
+function sellChecks(sell, seed, store) {
+  const all = Object.entries(sell ?? {});
+  const live = all.filter(([, c]) => !c.error);
+  const size = SELL.locales.length * SELL.widths.length * SELL.places.length;
+  const bad = (pred) => live.filter(([k, c]) => pred(k, c)).map(([k]) => k);
+  const html = (c, region) => (c.regions?.[region]?.html ? store[c.regions[region].html] ?? "" : "");
+  const confirmed = (k, c) => (confirmCell(partsOf(k).w, partsOf(k).r)
+    ? c.regions?.confirm?.count === 1 && c.confirmLive === true
+    : c.regions?.confirm === undefined);
+  return [
+    { id: "S.0", name: `the demo player was given an open ticket through the real money paths, and every Sell cell was captured (${size})`,
+      fails: [...(seed && !seed.error && seed.held ? [] : [`the seed: ${seed?.error ?? "not run"}`]), ...(all.length === size ? [] : [`the Sell capture holds ${all.length} cells`]),
+        ...all.filter(([, c]) => c.error).map(([k, c]) => `${k} (${c.error})`)] },
+    { id: "S.1", name: "every Sell cell settled, answered 200 and stayed where it was sent: the holder is signed in",
+      fails: bad((k, c) => !c.stable || c.status !== 200 || c.landed !== partsOf(k).r) },
+    { id: "S.2", name: "every Sell cell was captured INSIDE the free window — one strip, its countdown read as m:ss, and one button — and each confirm cell holds one classic confirm, captured inside its quote hold (and no other cell holds one)",
+      fails: bad((k, c) => c.regions?.strip?.count !== 1 || c.regions?.button?.count !== 1 || !html(c, "strip").includes(">m:ss<") || !confirmed(k, c)) },
+    { id: "S.3", name: "no journey test id, flag or class in a Sell cell, in the page or in the bytes the server sent",
+      fails: bad((k, c) => (c.journey ?? []).length > 0 || !c.raw || !c.raw.shell || c.raw.trace.length > 0) },
+  ];
+}
+
+/** A Sell capture with every §S check met, built in memory: what --prove-red breaks one check at a time. */
+function syntheticSell() {
+  const store = {
+    strip: '<div class="mb-1.5"><span>Free exit</span><span>m:ss</span></div>', button: '<button class="btn">Free exit</button>',
+    confirm: '<div role="dialog" aria-modal="true"><button class="btn btn-gold">Sell</button></div>',
+  };
+  const sell = {};
+  for (const l of SELL.locales) for (const w of SELL.widths) for (const place of SELL.places) {
+    sell[keyOf("sell", l, w, place)] = {
+      status: 200, stable: true, landed: place, pageErrors: [], journey: [], raw: { shell: true, trace: [] },
+      regions: {
+        strip: { count: 1, html: "strip", layout: null }, button: { count: 1, html: "button", layout: null },
+        ...(confirmCell(w, place) ? { confirm: { count: 1, html: "confirm", layout: null } } : {}),
+      },
+      ...(confirmCell(w, place) ? { confirmLive: true } : {}),
+    };
+  }
+  return { sell, seed: { held: "mkt_planted", open: 4, refusals: [] }, store };
+}
+
 /** A capture with every check met, built in memory: what --prove-red breaks one check at a time. */
 function syntheticCapture() {
   const store = { hdr: '<header class="app-topbar"></header>', hdrDeposit: '<header class="app-topbar"><a data-testid="deposit-header"></a></header>' };
@@ -560,7 +657,7 @@ if (BASELINE) {
 if (COMPARE) {
   try { baseline = JSON.parse(readFileSync(COMPARE, "utf8")); } catch (e) { refuse(`cannot read the baseline ${COMPARE}: ${msg(e)}`); }
   if (baseline?.kind !== KIND || baseline.version !== VERSION || JSON.stringify(baseline.matrix) !== JSON.stringify(MATRIX)) {
-    refuse(`${COMPARE} is not a v${VERSION} ${KIND} capture of this matrix (kind=${baseline?.kind}, version=${baseline?.version}). Re-capture it from the pre-S6 base.`);
+    refuse(`${COMPARE} is not a v${VERSION} ${KIND} capture of this matrix (kind=${baseline?.kind}, version=${baseline?.version}, captured at ${short(baseline?.base?.sha) || "an unnamed commit"}). Capture a v${VERSION} baseline into a NEW file at the base VODACOM-PLAN §0i names for it (A8, A18).`);
   }
   if (baseline.role !== "baseline" || baseline.rejected !== false) {
     refuse(`${COMPARE} is not an accepted baseline (role=${baseline.role}, rejected=${baseline.rejected}): a .rejected.json failed a check when it was captured, and a .current.json is a later tree's capture.`);
@@ -692,6 +789,108 @@ async function warm(jar, routes) {
   }
 }
 
+/** WP10 · gives the signed-in demo player a portfolio through the real money paths, and names an open ticket's question. */
+async function seedHolder(jar, beforeSeed = null) {
+  const ctx = await b.newContext();
+  try {
+    await ctx.addCookies(jar);
+    const real = await ctx.request.post(`${BASE}/api/dev-test/seed-real-markets`, { data: {} });
+    const realBody = await real.json().catch(() => null);
+    if (!real.ok() || !realBody?.ok) return { error: `seed-real-markets answered ${real.status()}` };
+    // The pages compile BEFORE the free window starts: a dev server's first request to a route can take a minute.
+    if (beforeSeed) await beforeSeed(realBody.live?.[0]?.id ?? null);
+    const at = Date.now();
+    const res = await ctx.request.post(`${BASE}/api/dev-test/seed-player-portfolio`, { data: { markets: 5 } });
+    const body = await res.json().catch(() => null);
+    // The seed's first question is left OPEN (its plan for five: four open, one sold), and it is the one the cells read.
+    const held = body?.marketIds?.[0];
+    if (!res.ok() || !body?.ok || typeof held !== "string") return { error: `seed-player-portfolio answered ${res.status()}: ${JSON.stringify(body).slice(0, 200)}` };
+    return { held, at, open: body.byStatus?.OPEN ?? 0, refusals: body.refusals ?? [] };
+  } catch (e) {
+    return { error: msg(e) };
+  } finally {
+    await ctx.close().catch(() => {});
+  }
+}
+
+/**
+ * WP10 · one Sell cell, in a FRESH context: the open ticket's strip and button where a classic holder meets them — and,
+ * in a confirm cell, the classic confirm the button opens. ⛔ It is never confirmed: only Enter or the gold button sells,
+ * and neither is touched; the context closes with the dialog open.
+ */
+async function captureSellCell(jar, locale, width, place, held, plant = null) {
+  const ctx = await b.newContext({ viewport: { width, height: HEIGHT } });
+  const pageErrors = [];
+  try {
+    await ctx.addCookies([...jar, localeCookie(locale)]);
+    const page = await ctx.newPage();
+    page.on("pageerror", (e) => pageErrors.push(norm(msg(e)).slice(0, 160)));
+    const { status, body } = await open(page, routeOfPlace(place, held), plant);
+    const args = { crest: CREST, props: PROPS, animated: ANIMATED, notFound: false, pageBody: false, sell: { held, place } };
+    let snap = await page.evaluate(SNAPSHOT, args);
+    let stable = false;
+    for (let i = 0; i < 6 && !stable; i++) {
+      await page.waitForTimeout(700);
+      const next = await page.evaluate(SNAPSHOT, args);
+      stable = JSON.stringify(next.sell) === JSON.stringify(snap.sell) && JSON.stringify(next.journey) === JSON.stringify(snap.journey);
+      snap = next;
+    }
+    const sell = { ...snap.sell };
+    let confirmLive;
+    if (confirmCell(width, place)) {
+      // The one classic surface whose words WP10 now hands through `??`: pressed open, read inside its quote hold.
+      await page.locator("#main-content .ticket-target > button").first().click();
+      await page.locator(CONFIRM_GOLD).first().waitFor({ timeout: 5_000 });
+      const cargs = { ...args, sell: null, confirm: true };
+      let c = await page.evaluate(SNAPSHOT, cargs);
+      let still = false;
+      for (let i = 0; i < 6 && !still; i++) {
+        await page.waitForTimeout(700);
+        const next = await page.evaluate(SNAPSHOT, cargs);
+        still = JSON.stringify(next.confirm) === JSON.stringify(c.confirm);
+        c = next;
+      }
+      sell.confirm = c.confirm.region;
+      confirmLive = c.confirm.live;
+      stable = stable && still;
+    }
+    const regions = {};
+    for (const [name, r] of Object.entries(sell)) {
+      regions[name] = r.count === 0 ? { count: 0, html: null, layout: null } : {
+        count: r.count,
+        html: put(norm(r.html)),
+        layout: put(r.lines.map(([path, geo, sig]) => `${path} ${geo} ${put(norm(sig))}`).join(NL)),
+      };
+    }
+    return {
+      status, stable, landed: snap.url.split(held).join(":held"), regions, journey: snap.journey, raw: rawOf(body),
+      ...(confirmLive === undefined ? {} : { confirmLive }),
+      pageErrors: [...new Set(pageErrors)].sort(),
+    };
+  } catch (e) {
+    return { error: msg(e) };
+  } finally {
+    await ctx.close().catch(() => {});
+  }
+}
+
+/** WP10 · the Sell capture: the demo player is given an open ticket through the real money paths, then every Sell cell. */
+async function captureSell() {
+  console.log(`${NL}§1s · the Sell button a classic holder is served (WP10): the demo player's open ticket, at ${SELL.widths.join("/")} × ${SELL.locales.join("/")}, and the classic confirm at ${SELL_CONFIRM.width} in the holder block`);
+  const keys = [];
+  for (const l of SELL.locales) for (const w of SELL.widths) for (const place of SELL.places) keys.push([keyOf("sell", l, w, place), l, w, place]);
+  const jar = await signIn(VIEWERS.find((v) => v.id === "player"));
+  if (!jar.length) { for (const [k] of keys) sellCells[k] = { error: "the viewer could not be signed in" }; return; }
+  sellSeed = await seedHolder(jar, (anyMarket) => warm(jar, ["/positions", ...(anyMarket ? [`/markets/${anyMarket}`] : [])]));
+  if (sellSeed.error || !sellSeed.held) { for (const [k] of keys) sellCells[k] = { error: `the seed: ${sellSeed.error ?? "no open ticket"}` }; return; }
+  for (const [k, l, w, place] of keys) {
+    sellCells[k] = await captureSellCell(jar, l, w, place, sellSeed.held);
+    if (sellCells[k].error) console.log(`  ✗ ${k} — ${sellCells[k].error}`);
+  }
+  sellSeed.lastCellMs = Date.now() - sellSeed.at;
+  console.log(`  ${keys.length} Sell cells · the last captured ${secs(sellSeed.lastCellMs)} after the seed (a default poll's free window is 5:00; §S.2 fails a cell that missed it)`);
+}
+
 /** Report only (WP0 step 4): how far the classic signed-in header runs past a 320 viewport. Not S6's to fix. */
 async function header320(jar) {
   const out = {};
@@ -723,6 +922,9 @@ async function header320(jar) {
 }
 
 const cells = {};
+/** WP10 · the Sell capture's cells (keyed `sell|locale|width|place`) and the seed that made the open ticket. */
+const sellCells = {};
+let sellSeed = null;
 let report320 = null;
 let treeMoved = null;
 try {
@@ -756,6 +958,8 @@ async function captureMatrix() {
     }
     if (BASELINE && v.id === "player") report320 = await header320(jar);
   }
+  // WP10 · the Sell capture comes last: it gives the demo player a portfolio, and every cell above read it empty.
+  await captureSell();
   still("by the end of the capture");
 }
 
@@ -841,6 +1045,30 @@ async function proveRed() {
     ok(`P.check ${id} — ${what} turns ${id} red, and nothing else in §${section}`, got.join() === id, got.join(" ") || "nothing went red");
   }
 
+  // ②b WP10 · the Sell capture's checks (§S): a clean synthetic capture passes them all, and each plant turns exactly its
+  // own one red.
+  const SS = syntheticSell();
+  const sellRed = (m) => sellChecks(m.sell, m.seed, m.store).filter((x) => x.fails.length).map((x) => x.id);
+  ok("P.7s a clean synthetic Sell capture passes every check in §S", sellRed(SS).length === 0, JSON.stringify(sellRed(SS)));
+  const atSell = (m, l, w, place) => m.sell[keyOf("sell", l, w, place)];
+  const SELL_FLOOR_PLANTS = [
+    ["S.0", "a seed that placed no open ticket", (m) => { m.seed = { error: "planted" }; }],
+    ["S.0", "a Sell cell missing from the capture", (m) => { delete m.sell[keyOf("sell", "sw", 360, SELL_PLACES[1])]; }],
+    ["S.1", "a Sell cell that never settled", (m) => { atSell(m, "en", 1280, SELL_PLACES[0]).stable = false; }],
+    ["S.1", "a Sell cell sent to sign-in", (m) => { atSell(m, "sw", 1280, SELL_PLACES[0]).landed = "/auth/login?next=%2Fpositions"; }],
+    ["S.2", "a Sell cell captured after the free window closed (no strip)", (m) => { atSell(m, "en", 360, SELL_PLACES[1]).regions.strip = { count: 0, html: null, layout: null }; }],
+    ["S.2", "a strip whose ticking clock was not read as m:ss", (m) => { m.store.stripRaw = "<div><span>Free exit</span><span>4:59</span></div>"; atSell(m, "sw", 360, SELL_PLACES[0]).regions.strip.html = "stripRaw"; }],
+    ["S.2", "a confirm cell whose dialog never opened", (m) => { atSell(m, "en", 360, SELL_PLACES[1]).regions.confirm = { count: 0, html: null, layout: null }; }],
+    ["S.2", "a confirm captured after its quote hold ran out (its gold button disabled)", (m) => { atSell(m, "sw", 360, SELL_PLACES[1]).confirmLive = false; }],
+    ["S.3", "a journey trace in a Sell cell", (m) => { atSell(m, "en", 1280, SELL_PLACES[1]).journey = ["testid:journey-tabs"]; }],
+  ];
+  for (const [id, what, plant] of SELL_FLOOR_PLANTS) {
+    const m = structuredClone(SS);
+    plant(m);
+    const got = sellRed(m);
+    ok(`P.check ${id} — ${what} turns ${id} red, and nothing else in §S`, got.join() === id, got.join(" ") || "nothing went red");
+  }
+
   // ③ The browser: the instrument agrees with itself, and sees each plant in its own field and nowhere else.
   const PLANTS = [
     { id: "height", css: "header.app-topbar { height: 64px !important; }", what: "the canvas's 64px bar in place of the kit's 56", need: "regions.header.layout", within: ["regions.header."] },
@@ -882,6 +1110,48 @@ async function proveRed() {
         seen.length ? seen.slice(0, 2).map((d) => `${d.field}: ${d.detail}`).join(" | ").slice(0, 400) : "NOT SEEN — a compare with this harness proves nothing");
     }
   }
+
+  // ④ WP10 · the Sell capture in the browser, after every cell above (they read the demo portfolio empty): the player is
+  // given an open ticket; at BOTH places a classic holder is sold to, two clean captures of a Sell cell agree inside its
+  // free window (in the holder block, with the classic confirm captured inside its quote hold); and a planted change to
+  // the button, to the strip and to the confirm is each reported in its own region and nowhere else.
+  const holder = jars.player ?? [];
+  const seeded = holder.length
+    ? await seedHolder(holder, (anyMarket) => warm(holder, ["/positions", ...(anyMarket ? [`/markets/${anyMarket}`] : [])]))
+    : { error: "the demo player is not signed in" };
+  ok("P.sell the demo player is given an open ticket through the real money paths", !seeded.error && !!seeded.held, seeded.error ?? "");
+  if (!seeded.error && seeded.held) {
+    const SELL_PROVE = [
+      { l: "sw", w: 360, place: SELL_PLACES[1], plants: [
+        { id: "sell-button", css: "#main-content .ticket-target > button { letter-spacing: 2px !important; }", what: "the holder block's Sell button letters spaced out", need: "regions.button.layout", within: ["regions.button."] },
+        { id: "sell-strip", css: '#main-content .ticket-target > div[class~="mb-1.5"] { color: rgb(255, 0, 0) !important; }', what: "the holder block's free strip re-inked", need: "regions.strip.layout", within: ["regions.strip."] },
+        { id: "sell-confirm", css: '[role="dialog"] p { letter-spacing: 2px !important; }', what: "the classic confirm's words spaced out", need: "regions.confirm.layout", within: ["regions.confirm."] },
+      ] },
+      { l: "en", w: 1280, place: SELL_PLACES[0], plants: [
+        { id: "positions-button", css: "#main-content div:has(> a[data-row-id]) > button { letter-spacing: 2px !important; }", what: "the /positions card's Sell button letters spaced out", need: "regions.button.layout", within: ["regions.button."] },
+        { id: "positions-strip", css: '#main-content div:has(> a[data-row-id]) > div[class~="mb-1.5"] { color: rgb(255, 0, 0) !important; }', what: "the /positions card's free strip re-inked", need: "regions.strip.layout", within: ["regions.strip."] },
+      ] },
+    ];
+    for (const { l, w, place, plants } of SELL_PROVE) {
+      const k = keyOf("sell", l, w, place);
+      const clean = await captureSellCell(holder, l, w, place, seeded.held);
+      const again = await captureSellCell(holder, l, w, place, seeded.held);
+      if (clean.error || again.error) { ok(`P.${k} the Sell cell was captured`, false, clean.error ?? again.error); continue; }
+      const noise = diffCells(place, clean, again, blobs, blobs, SELL_EXPECTED_DIFFS).unexpected;
+      const confirmOk = !confirmCell(w, place) || (clean.regions.confirm?.count === 1 && clean.confirmLive === true);
+      ok(`P.${k} two clean captures of a Sell cell agree, inside the free window (the strip's clock read as m:ss)${confirmCell(w, place) ? ", the classic confirm captured inside its quote hold" : ""}`,
+        noise.length === 0 && clean.regions.strip.count === 1 && clean.regions.button.count === 1 && confirmOk,
+        noise.length ? noise.slice(0, 3).map((d) => `${d.field}: ${d.detail}`).join(" | ") : `strip ${clean.regions.strip.count} · button ${clean.regions.button.count} · confirm ${clean.regions.confirm?.count ?? "-"}`);
+      for (const plant of plants) {
+        const planted = await captureSellCell(holder, l, w, place, seeded.held, plant);
+        if (planted.error) { ok(`P.${k} ${plant.id} was captured`, false, planted.error); continue; }
+        const seen = diffCells(place, clean, planted, blobs, blobs, SELL_EXPECTED_DIFFS).unexpected;
+        ok(`P.${k} ⭐ ${plant.what} is reported in ${plant.need}, and nowhere outside ${plant.within.join(" / ")}`,
+          seen.some((d) => inside(d.field, [plant.need])) && seen.every((d) => inside(d.field, plant.within)),
+          seen.length ? seen.slice(0, 2).map((d) => `${d.field}: ${d.detail}`).join(" | ").slice(0, 400) : "NOT SEEN — a Sell compare with this harness proves nothing");
+      }
+    }
+  }
 }
 
 // ── what every capture must show, in every mode that captures the matrix ──────────────────────────────────
@@ -892,6 +1162,9 @@ if (!PROVE_RED) {
 
   console.log(`\n§3 · /account, for a viewer the journey is not shown to, is the not-found page (A3 — every run)`);
   for (const c of accountChecks(cells, accountLoaders())) ok(`${c.id} ${c.name}`, c.fails.length === 0, listOf(c.fails));
+
+  console.log(`${NL}§S · the Sell button a classic holder is served (WP10 — every run that captures)`);
+  for (const c of sellChecks(sellCells, sellSeed, blobs)) ok(`${c.id} ${c.name}`, c.fails.length === 0, listOf(c.fails));
 
   if (COMPARE) {
     console.log(`\n§4 · parity with the baseline (${short(baseline.base.sha)}, captured ${baseline.base.capturedAt})`);
@@ -913,9 +1186,30 @@ if (!PROVE_RED) {
     ok(`4.1 ⭐ no unexpected difference in ${compared} cells`, compared === curKeys.length && differing === 0, differing ? `${differing} cell(s) differ` : "");
     ok("4.2 each named difference is seen in all of its cells or in none", partialExpected(hits).length === 0, partialExpected(hits).join(" · "));
     for (const e of EXPECTED_DIFFS) console.log(`  EXPECTED ${e.id} — seen in ${hits.get(e.id) ?? 0} of ${e.cells} cell(s). ${e.reason}`);
-    if (differing) {
+    // ⭐ WP10 · the Sell cells against the baseline's (A8: a default poll with an hour to run compares equal; any other
+    // difference is a named entry in SELL_EXPECTED_DIFFS, never a re-baseline).
+    const sellBase = baseline.sell ?? {};
+    const sellBaseKeys = Object.keys(sellBase).sort(), sellCurKeys = Object.keys(sellCells).sort();
+    ok("4.3 the same Sell cells as the baseline", sellCurKeys.length > 0 && JSON.stringify(sellBaseKeys) === JSON.stringify(sellCurKeys), `${sellBaseKeys.length} vs ${sellCurKeys.length}`);
+    const sellHits = new Map();
+    let sellDiffering = 0, sellCompared = 0;
+    for (const k of sellCurKeys) {
+      const was = sellBase[k], now = sellCells[k];
+      if (!was || was.error || now.error) continue;
+      sellCompared++;
+      const { unexpected, expected } = diffCells(partsOf(k).r, was, now, baseline.blobs, blobs, SELL_EXPECTED_DIFFS);
+      for (const e of expected) sellHits.set(e.id, (sellHits.get(e.id) ?? 0) + 1);
+      if (!unexpected.length) continue;
+      sellDiffering++;
+      for (const d of unexpected.slice(0, 3)) console.log(`  ✗ ${k} — ${d.field}: ${d.detail}`.slice(0, 600));
+    }
+    ok(`4.4 ⭐ no unexpected difference in the ${sellCompared} Sell cells: a classic holder is sold to by today's Sell button and confirm`,
+      sellCompared > 0 && sellCompared === sellCurKeys.length && sellDiffering === 0, sellDiffering ? `${sellDiffering} Sell cell(s) differ` : "");
+    ok("4.5 each named Sell difference is seen in all of its cells or in none", partialExpected(sellHits, SELL_EXPECTED_DIFFS).length === 0,
+      partialExpected(sellHits, SELL_EXPECTED_DIFFS).join(" · "));
+    if (differing || sellDiffering) {
       const side = `${COMPARE}.current.json`;
-      writeFileSync(side, `${JSON.stringify({ kind: KIND, version: VERSION, role: "compare-capture", base: { sha: HEAD.out, tree: TREE, dirty: DIRTY }, matrix: MATRIX, cells, blobs })}${NL}`, "utf8");
+      writeFileSync(side, `${JSON.stringify({ kind: KIND, version: VERSION, role: "compare-capture", base: { sha: HEAD.out, tree: TREE, dirty: DIRTY }, matrix: MATRIX, cells, sell: sellCells, blobs })}${NL}`, "utf8");
       console.log(`  this run's capture, for reading beside the baseline: ${side}`);
     }
   }
@@ -932,7 +1226,7 @@ if (!PROVE_RED) {
       base: { sha: HEAD.out, main: MAIN, fork: FORK.code === 0 ? FORK.out : null, tree: TREE, dirty: DIRTY, capturedAt: new Date().toISOString() },
       server: { base: BASE, rollout, store: health.store ?? null, browser: BROWSER },
       matrix: MATRIX, expectedDiffs: EXPECTED_DIFFS.map((e) => e.id), report: { header320: report320 },
-      cells, blobs,
+      cells, sell: sellCells, seed: sellSeed, blobs,
     };
     writeFileSync(target, `${JSON.stringify(doc)}${NL}`, "utf8");
     console.log(failedSoFar

@@ -22,8 +22,12 @@
  * ⛔ EVERY DATE IS FORMATTED HERE, ON THE SERVER, FROM ITS INSTANT, and each sits in a `<time>` naming that instant
  * (`test:timer-date` §3); `formatDeadline` adds the year only when the instant is not in this year.
  * ⛔ THE FREE-SELL INSTANT IS THE SERVER'S (A8): `freeExitEndsAt`, asked about this bet's own placement and the market
- * as read. `test:sell-grace-truth` §2 holds this card to that one call, as it holds the classic hosts; the button keeps
- * its classic look until WP10.
+ * as read, and bound once. The Sell button counts down to it and, in the journey's look (WP10), names it as a clock time:
+ * `formatClock` of that same binding, read here on the server in the platform's zone — never the placement plus a grace
+ * ("Uza bila ada hadi 11:23 · 3:42"). `test:sell-grace-truth` §2 holds this card to the one call and its label to the one
+ * binding, as it holds the classic hosts to the call; `test:timer-date` §3 holds the time to the instant. The look also
+ * learns whether the page priced the exit inside its free window (`price.free`), so a free price is offered only while
+ * its countdown runs.
  * ⛔ No share button and no profit figures (A19: shelved for preview viewers, `docs/SHELVED.md`). The ticket number
  * stays: it is what a player quotes to support.
  * ⛔ A SERVER COMPONENT THAT READS NOTHING: the page read and priced every ticket, and its pricing inputs stay there
@@ -37,7 +41,7 @@ import { SellButton } from "@/components/markets/sell-button";
 import { cardTitle } from "@/lib/markets/short-title";
 import { positionStatusWord, sideWord } from "@/lib/side-label";
 import { positionStatusChip } from "@/lib/status-tone";
-import { formatDeadline, formatTzs } from "@/lib/utils";
+import { formatClock, formatDeadline, formatTzs } from "@/lib/utils";
 import { freeExitEndsAt, isSelectionClosed, type StoredPosition } from "@/lib/server/market-service";
 import type { PositionCardMarket } from "@/lib/server/market-dal";
 import type { Dict, Locale } from "@/lib/i18n-dict";
@@ -45,8 +49,11 @@ import { ticketPayout } from "@/components/journey/tickets/ticket-payout";
 
 /** The fields of a position the card draws. */
 export type TicketPosition = Pick<StoredPosition, "id" | "marketId" | "side" | "stake" | "status" | "finalPayout" | "placedAt">;
-/** What the page priced for an open ticket's exit: the value it would sell at now, and whether it can be sold. */
-export type TicketPrice = { value: number | null; sellable: boolean };
+/**
+ * What the page priced for an open ticket's exit: the value it would sell at now, whether it can be sold, and whether
+ * that value is the free window's — the whole stake (`cashOutValue`'s `inGracePeriod`, S6 WP10).
+ */
+export type TicketPrice = { value: number | null; sellable: boolean; free?: boolean };
 
 export function TicketCard({ p, m, price, t, locale, serverNow }: {
   p: TicketPosition;
@@ -65,6 +72,9 @@ export function TicketCard({ p, m, price, t, locale, serverNow }: {
   const liveValue = price?.value ?? null;
   // Selling is shut once selection has closed or the exit window has passed: the classic page's own rule.
   const sellShut = closed || price?.sellable === false;
+  // The free window's end, the server's own instant (A8), bound once: the button counts down to it, and its clock time,
+  // read here on the server, is the time the journey's line names.
+  const freeUntil = freeExitEndsAt({ placedAt: p.placedAt }, m);
   const [placedBefore, placedAfter] = t.journey.ticketPlacedAt.split("{date}");
   return (
     <article
@@ -112,10 +122,13 @@ export function TicketCard({ p, m, price, t, locale, serverNow }: {
             positionId={p.id}
             stake={p.stake}
             value={liveValue ?? 0}
-            freeUntil={freeExitEndsAt({ placedAt: p.placedAt }, m)}
+            pricedFree={price?.free === true}
+            freeUntil={freeUntil}
             closesAt={cutoffIso}
             alreadyClosed={sellShut}
             serverNow={serverNow}
+            look="journey"
+            freeUntilLabel={freeUntil ? formatClock(freeUntil) : null}
           />
         </div>
       )}

@@ -33,20 +33,29 @@
  *      fragment names, and the Utendaji link, after the list and the pager, keeps `/positions/performance` a door on a
  *      journey phone (A15, §0h point 33).
  *   §8 NO HOUSE — no house name in a journey Tiketi file, and nothing there reads a store or prices an exit.
- *   §9 THE SELL BUTTON (A8) — the card hands the button the server's instant, `freeUntil={freeExitEndsAt(…)}`, in its
- *      classic look (the journey look is WP10's), and `test:sell-grace-truth` §2 names the card among its hosts.
+ *   §9 THE SELL BUTTON (A8, WP10) — the card binds the server's instant once, `freeExitEndsAt(…)`, and hands the
+ *      button that instant, the journey's look, the instant's clock time read on the server, and whether the page
+ *      priced the exit free; `test:sell-grace-truth` §2 names the card among its hosts and holds the label to the instant.
  *   §10 LOADING AND ERRORS (§0h point 21) — each loading file asks the per-request resolver beside the words and
  *      returns ONE ghost by its answer: the journey's for a journey request, today's (kept whole) for everybody else,
  *      both picked and drawn on the server. The error pages are client components, never drawn on the server (React's
  *      server renderer cannot run an error boundary): each mounts in the browser as a fresh render and picks its words
  *      from `useJourneyOn()`, which reads the shell's mark, already in the page.
  *   §11 THE WIRING (A14) — this suite is in predeploy and its red twin is declared.
+ *   §12 THE SELL LOOK (WP10) — the journey's look is the card's alone (every host is found on disk), and without it the
+ *      button is today's (its classic return and the dialogs it shares pinned line for line, the dialogs' own words
+ *      today's); the sale is one code path for both looks; the free offer names the server's clock time beside the
+ *      countdown and promises the server's own figure, and every piece of it is drawn only on the free offer; a free
+ *      price whose countdown has run out is withdrawn at once and the page is asked for the server's answer; a price with
+ *      a fee keeps "Uza sasa" and its fee; a shut exit is words, not a button, from the first paint; the button's edge
+ *      is the kit's token for a control's edge; the look computes nothing and formats no time; and the journey's sell
+ *      path says no "nafasi" — its one Chinese 持仓 is the sold receipt's small heading and its three Swahili "toa" words
+ *      today's cash-out headings, each named (VODACOM-PLAN §0h point 36).
  *
- * ⚠️ WHAT IT DOES NOT HOLD. Until WP10, the Sell button's own dialogs keep their classic words, and three of those say
- * "nafasi" in Swahili (`dialog.sellPositionNow`, `dialog.keepPosition`, `common.positionUnchanged`); WP10 hands them the
- * journey's (`journey.sellConfirmTitle`, `sellKeep`, `sellUnchanged`). And off Tiketi zangu itself, until the S15
- * rename (VODACOM-PLAN §3): `/positions/performance`, the question page's holder heading and the desktop avatar menu's
- * row. §4 reads the view, not those.
+ * ⚠️ WHAT IT DOES NOT HOLD. Off Tiketi zangu itself, until the S15 rename (VODACOM-PLAN §3): `/positions/performance`,
+ * the question page's holder heading and the desktop avatar menu's row. §4 and §12 read Tiketi zangu, not those. §12
+ * reads the sell path's words from its source; the refusal sentences a sale can meet are picked at run time from the
+ * shared registry, and are not in that scan (§0h point 36 names the one that says 持仓).
  *
  * ⛔ IN-PROCESS BY CONSTRUCTION. `--prove-red` hands every section edited source TEXT held in memory (and §2 defective
  * payout rules) and requires the check named for each defect to fail — and every check has at least one such plant.
@@ -58,6 +67,7 @@ import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join, posix } from "node:path";
 import { fileURLToPath } from "node:url";
 import { decomment } from "./lib/decomment.mts";
+import { srcFiles } from "./lib/tracked-files.mts";
 import { dict } from "../src/lib/i18n-dict.ts";
 import { POSITION_LENSES } from "../src/lib/positions/portfolio.ts";
 import * as PAYOUT from "../src/components/journey/tickets/ticket-payout.ts";
@@ -98,10 +108,14 @@ const GUEST_SHEET = "src/components/journey/tickets-guest-sheet.tsx";
 const PROXY = "src/proxy.ts";
 const SELL_GATE = "scripts/sell-grace-truth.test.mts";
 const TW_CONFIG = "tailwind.config.ts";
+/** S6 WP10 — the Sell button and its confirm dialog, which draw the journey's look, and the question page, a classic host. */
+const SELL_BUTTON = "src/components/markets/sell-button.tsx";
+const SELL_MODAL = "src/components/markets/sell-confirm-modal.tsx";
+const MARKET_PAGE = "src/app/markets/[id]/page.tsx";
 /** The journey's own Tiketi files, each held whole. */
 const JOURNEY_FILES = [VIEW, CARD, SWITCH, RAIL, GHOST, RULE];
 const SOURCES = [PAGE, BAR, LOADING, ERROR, HISTORY, HISTORY_LOADING, HISTORY_ERROR, ...JOURNEY_FILES,
-  CLASSIC_CARD, TONE, SIDE_LABEL, TABS, GUEST_SHEET, PROXY, SELL_GATE, TW_CONFIG];
+  CLASSIC_CARD, TONE, SIDE_LABEL, TABS, GUEST_SHEET, PROXY, SELL_GATE, TW_CONFIG, SELL_BUTTON, SELL_MODAL, MARKET_PAGE];
 
 type World = {
   files: Readonly<Record<string, string>>;
@@ -314,7 +328,8 @@ function g2Card(I: Impl, W: World, ok: Ok) {
 }
 
 /* ══ §3 · THE DATES ══════════════════════════════════════════════════════════════════════════════════════════ */
-const FORMATTERS = ["toLocale", "new Date(", "formatDateTime(", "formatDayTime(", "formatClock(", "Intl."];
+/** What the card may not call: a locale's own formatter, a Date of its own, the raw deadline pieces, Intl. (Its one clock time is 3.clock's.) */
+const FORMATTERS = ["toLocale", "new Date(", "formatDateTime(", "formatDayTime(", "Intl."];
 
 function g3Dates(W: World, ok: Ok) {
   const card = text(W, CARD);
@@ -324,6 +339,8 @@ function g3Dates(W: World, ok: Ok) {
     card.length > 0 && !isClient(card) && !isClient(text(W, VIEW)) && own.length === 0 && calls.length >= 2
       && calls.every((c) => c.slice(0, c.indexOf(")")).endsWith(", serverNow")),
     show({ own, calls: calls.map((c) => c.slice(0, c.indexOf(")"))) }));
+  ok("3.clock · its one clock time (WP10) is formatClock of the free-sell instant it hands the Sell button, read on the server — never the placement plus a grace",
+    count(card, "formatClock(") === 1 && card.includes(CLOCK_LABEL) && count(card, HOST_BINDING) === 1, show({ clocks: count(card, "formatClock(") }));
 }
 
 /* ══ §4 · THE WORDS (A7) ═════════════════════════════════════════════════════════════════════════════════════ */
@@ -478,23 +495,28 @@ function g8House(W: World, ok: Ok) {
     reading.join(", "));
 }
 
-/* ══ §9 · THE SELL BUTTON (A8) ═══════════════════════════════════════════════════════════════════════════════ */
-const HOST_CALL = "freeUntil={freeExitEndsAt({ placedAt: p.placedAt }, m)}";
+/* ══ §9 · THE SELL BUTTON (A8, WP10) ═════════════════════════════════════════════════════════════════════════ */
+/** The card binds the server's free-sell instant ONCE: the helper's own call, about this bet's placement and the market as read. */
+const HOST_BINDING = "const freeUntil = freeExitEndsAt({ placedAt: p.placedAt }, m);";
+/** That instant's clock time, read on the server from the same binding: the journey's "Uza bila ada hadi {time}". */
+const CLOCK_LABEL = "freeUntilLabel={freeUntil ? formatClock(freeUntil) : null}";
 const HELPER_IMPORT = /import [{][^}]*freeExitEndsAt[^}]*[}] from "@[/]lib[/]server[/]market-service"/;
-const SELL_ELEMENT = ["<SellButton", "positionId={p.id}", "stake={p.stake}", "value={liveValue ?? 0}", HOST_CALL,
-  "closesAt={cutoffIso}", "alreadyClosed={sellShut}", "serverNow={serverNow}", "/>"].join("");
+const CLOCK_IMPORT = /import [{][^}]*formatClock[^}]*[}] from "@[/]lib[/]utils"/;
+const SELL_ELEMENT = ["<SellButton", "positionId={p.id}", "stake={p.stake}", "value={liveValue ?? 0}", "pricedFree={price?.free === true}",
+  "freeUntil={freeUntil}", "closesAt={cutoffIso}", "alreadyClosed={sellShut}", "serverNow={serverNow}", `look="journey"`, CLOCK_LABEL, "/>"].join("");
 
 function g9Sell(W: World, ok: Ok) {
   const card = text(W, CARD);
-  ok("9.host · the card hands the button the server's instant — the helper's own call, about this bet's placement and the market as read — from a server component (A8)",
-    !isClient(card) && HELPER_IMPORT.test(card) && count(card, HOST_CALL) === 1 && count(card, "<SellButton") === 1);
+  ok("9.host · the card binds the server's instant once — the helper's own call, about this bet's placement and the market as read — in a server component (A8)",
+    !isClient(card) && HELPER_IMPORT.test(card) && count(card, HOST_BINDING) === 1 && count(card, "freeExitEndsAt(") === 1 && count(card, "<SellButton") === 1);
   const at = card.indexOf("<SellButton");
   const element = at < 0 ? "" : card.slice(at, card.indexOf("/>", at) + 2);
-  ok("9.classic · …in its classic look: the classic hosts' props and nothing more (the journey look is WP10's)",
-    squash(element) === SELL_ELEMENT, squash(element).slice(0, 240));
+  ok("9.look · …and hands the button that instant, the journey's look, the instant's clock time read on the server from the same binding, and whether the page priced the exit inside its free window (WP10)",
+    squash(element) === SELL_ELEMENT && CLOCK_IMPORT.test(card), squash(element).slice(0, 300));
   const gate = text(W, SELL_GATE);
-  ok("9.gate · test:sell-grace-truth §2 names the card among the hosts it must find, so the card cannot stop being one unseen",
-    gate.includes(`const JOURNEY_CARD = "src/components/journey/tickets/ticket-card.tsx";`) && gate.includes("[POSITIONS, MARKET, JOURNEY_CARD].every("));
+  ok("9.gate · test:sell-grace-truth §2 names the card among the hosts it must find and holds its clock label to the instant (2.label), so neither can change unseen",
+    gate.includes(`const JOURNEY_CARD = "src/components/journey/tickets/ticket-card.tsx";`) && gate.includes("[POSITIONS, MARKET, JOURNEY_CARD].every(")
+      && gate.includes(`ok("2.label · `));
 }
 
 /* ══ §10 · LOADING AND ERRORS (§0h point 21) ═════════════════════════════════════════════════════════════════ */
@@ -582,6 +604,251 @@ function g11Wiring(W: World, ok: Ok) {
     show({ test: W.scripts["test:journey-tickets"], red: W.scripts["red:journey-tickets"] }));
 }
 
+/* ══ §12 · THE SELL LOOK (WP10) ═════════════════════════════════════════════════════════════════════════════ */
+/** Where the button's classic markup begins: from here to the end of the file is what a reader without the look is drawn. */
+const SELL_CLASSIC_HEAD = `const btnVariant = "btn-primary";`;
+/** The button's classic markup as it stands today, line by line with comments stripped: the free strip, the button, and the shared dialogs. */
+const SELL_CLASSIC = [
+  'const btnVariant = "btn-primary";',
+  'return (',
+  '<>',
+  '{inGrace && !closedNow && (',
+  '<div className="mb-1.5 flex items-center gap-1.5 px-2 py-1 rounded-md bg-brand-500/[0.12] border border-brand-500/30">',
+  '<span className="font-mono text-micro font-bold text-brand-300 uppercase tracking-[0.12em]">{t.common.freeExitLabel}</span>',
+  '<span className="font-mono text-[10px] text-brand-300 tabular-nums">{graceLabel}</span>',
+  '<span className="font-mono text-[10px] text-text-subtle">· {t.dialog.noFee}</span>',
+  '</div>',
+  ')}',
+  '<button',
+  'type="button"',
+  'onClick={closedNow ? undefined : openConfirm}',
+  'disabled={pending || closedNow}',
+  'aria-label={',
+  'closedNow',
+  '? t.common.sellLockedHint',
+  ': inGrace',
+  '? `${t.common.freeExitLabel} — ${formatTzs(value)}`',
+  ': `${t.common.cashOut} ${formatTzs(value)}`',
+  '}',
+  'className={`btn ${closedNow ? "btn-ghost" : btnVariant} btn-md w-full whitespace-normal`}',
+  'style={{ justifyContent: "space-between" }}',
+  '>',
+  '<span>',
+  '{closedNow ? t.common.sellLocked',
+  ': pending ? t.common.selling',
+  ': inGrace ? t.common.freeExitLabel',
+  ': t.common.sellNow}',
+  '</span>',
+  '{!closedNow && (',
+  '<span className="font-mono tabular-nums">',
+  'TZS {formatNumber(value)}',
+  '{inGrace',
+  '? <span className="ml-1.5 opacity-80 text-[11px]">{t.common.fullRefund}</span>',
+  ': <span className="ml-1.5 opacity-80 text-[11px]">−{formatNumber(fee)} {t.common.fee}</span>',
+  '}',
+  '</span>',
+  ')}',
+  '</button>',
+  '{dialogs}',
+  '</>',
+  ');',
+  '}',
+].join("");
+/** The dialogs both looks share, line by line: today's two, with the journey's three words only under the look. */
+const SELL_DIALOGS = [
+  'const dialogs = (',
+  '<>',
+  '<SellConfirmModal',
+  'open={confirmOpen}',
+  'pending={pending}',
+  'stake={stake}',
+  'value={value}',
+  'positionId={positionId}',
+  'onConfirm={submit}',
+  'onCancel={() => { if (!pending) setConfirmOpen(false); }}',
+  'titleLabel={journey ? t.journey.sellConfirmTitle : undefined}',
+  'keepLabel={journey ? t.journey.sellKeep : undefined}',
+  '/>',
+  '{resultData && (',
+  '<OperationResultModal',
+  'open={resultOpen}',
+  'variant={resultData.variant}',
+  'eyebrow={resultData.variant === "success" ? t.common.positionSold : t.common.cashOutFailed}',
+  'title={',
+  'resultData.variant === "success"',
+  '? `${formatTzs(resultData.value)} ${t.common.returned}`',
+  ': (resultData.error ?? t.error.tryAgain)',
+  '}',
+  'subtitle={',
+  'resultData.variant === "success"',
+  '? (resultData.net >= 0',
+  '? t.common.fullStakeReturned',
+  ': t.common.stakeReturnedMinusFee)',
+  ': journey ? t.journey.sellUnchanged : t.common.positionUnchanged',
+  '}',
+  'details={resultData.variant === "success" ? [',
+  '{ label: t.common.ticket, value: positionId },',
+  '{ label: t.common.returned, value: formatTzs(resultData.value) },',
+  '{',
+  'label: t.common.earlyExitFee,',
+  'value: resultData.net >= 0 ? t.common.none : formatTzs(Math.abs(resultData.net)),',
+  'tone: "default",',
+  '},',
+  '] : undefined}',
+  'primaryLabel={resultData.variant === "success" ? t.common.doneSawa : t.common.close}',
+  'onClose={() => setResultOpen(false)}',
+  'stripTone="brand"',
+  '/>',
+  ')}',
+  '</>',
+  ');',
+].join("");
+/** The dialogs' three words: the journey's under the look, today's (the dialog's own defaults) without it. */
+const DIALOG_ARMS = ["titleLabel={journey ? t.journey.sellConfirmTitle : undefined}", "keepLabel={journey ? t.journey.sellKeep : undefined}",
+  ": journey ? t.journey.sellUnchanged : t.common.positionUnchanged"];
+const DIALOG_DEFAULTS = ["{titleLabel ?? t.dialog.sellPositionNow}", "{keepLabel ?? t.dialog.keepPosition}"];
+/** The sale, one code path for both looks — in `submit`: the one action, the latch, the deferred toast and the sale's two refresh events. */
+const SALE = ["cashOutPositionAction(", "inFlight.current = true;", "deferToast({", `window.dispatchEvent(new Event("50pick:refresh"));`,
+  `window.dispatchEvent(new Event("50pick:refresh-notifications"));`];
+/** Shut: the server's verdict (a prop, so the server's paint already says it), then this phone's clock. */
+const SHUT = "const shut = closedNow || alreadyClosed === true;";
+/** The free line: drawn only on the free offer; the server's clock time in a <time> naming the instant; the countdown only while it runs. */
+const FREE_LINE_OPEN = "{offerFree && freeUntilLabel ? (";
+const FREE_LINE = `{freeBefore}<time dateTime={freeUntil ?? undefined} className="whitespace-nowrap tabular-nums">{freeUntilLabel}</time>{freeAfter}`;
+const TIMER_OPEN = "{inGrace ? (";
+const TIMER = `<span role="timer" className="whitespace-nowrap font-mono font-bold tabular-nums text-text">{graceLabel}</span>`;
+/** The button's word: the free word only on the free offer; while a lapsed free price waits for the server, "Inapakia…". */
+const WORD_FREE = ": offerFree ? t.journey.sellFreeCta : t.common.sellNow}";
+const WORD_LAPSE = "{pending ? t.common.selling : lapsed ? t.common.loading : ";
+/** The refund the free button promises: the server's own figure for this exit (`value`), never the stake — only on the free offer. */
+const FREE_FIGURE_OPEN = "{offerFree ? (";
+const FREE_FIGURE = `{refundBefore}<span className="amount font-semibold text-text">{formatTzs(value)}</span>{refundAfter}`;
+/** No figure at all while a lapsed free price waits for the server. */
+const FIGURE_OPEN = "{lapsed ? null : (";
+/** A price with a fee: today's figure and today's fee — a fee of 0 is not printed. */
+const PAID_FIGURE = [`<span className="amount text-text">TZS {formatNumber(value)}</span>`,
+  `{fee > 0 ? <>{" "}<span className="amount">−{formatNumber(fee)}</span>{" "}{t.common.fee}</> : null}`];
+const FEE_RULE = "const fee = Math.max(0, stake - value);";
+/** The one button: the same confirm as today's, nothing to press while a sale is in flight or a free price has lapsed. */
+const BUTTON_OPEN = `<button type="button" onClick={openConfirm} disabled={pending || lapsed}`;
+/** Its edge: the kit's outlined class, its only boundary drawn in the kit's token for a control's edge (the canvas's own colour). */
+const EDGE = `className="btn btn-ghost w-full px-2 py-1.5" style={{ borderColor: "var(--border-control)" }}>`;
+/** A lapsed free price closes a confirm still showing it and asks the page for the server's answer at once — once per run of the countdown, re-armed only when the countdown runs again, so no answer can set off another ask by itself. */
+const LAPSE_ASK = [
+  "if (!journey || pricedFree !== true || closedNow || alreadyClosed) return;",
+  "if (inGrace) { lapseArmed.current = true; return; }",
+  "if (!mounted) return;",
+  "if (!pending) setConfirmOpen(false);",
+  "if (!lapseArmed.current) return;",
+  "lapseArmed.current = false;",
+  `window.dispatchEvent(new Event("50pick:refresh"));`,
+];
+const LAPSE_DEPS = "}, [journey, mounted, pricedFree, inGrace, closedNow, alreadyClosed, pending]);";
+const LAPSE_REFRESH = LAPSE_ASK.length - 1;
+/** What the look never does itself: build or format a time, or read the stake (its figures are the server's). */
+const LOOK_NEVER = ["Date", "toLocale", "Intl.", "formatClock(", "formatDeadline(", "formatDayTime(", "formatDateTime(", "formatTime(", "stake"];
+/** An ASCII arithmetic operator between two operands, once strings and tags are taken out of the look. */
+const ARITH = /[A-Za-z0-9_)][ ]*[-+*/%][ ]*[A-Za-z0-9_(]/;
+const STRING_LITERALS = /"[^"]*"|'[^']*'|`[^`]*`/g;
+const JSX_TAGS = /<[/]?[A-Za-z][^<>]*>|<[/]?>/g;
+/** Every SellButton element a host draws, as source. */
+const sellElements = (s: string) => s.split("<SellButton").slice(1).map((x) => x.slice(0, x.indexOf("/>")));
+/** Every src file that renders SellButton, found on disk as this suite starts (a plant can add its own to a world). */
+const SELL_HOSTS_ON_DISK = srcFiles().filter((f) => f !== SELL_BUTTON && /[.]tsx?$/.test(f) && read(f).includes("<SellButton"));
+/** The three props that ask for the journey's look. */
+const JOURNEY_PROPS = ["look=", "freeUntilLabel=", "pricedFree="];
+const sellHosts = (W: World) => [...new Set([...SELL_HOSTS_ON_DISK, ...Object.keys(W.files)])]
+  .filter((f) => f !== SELL_BUTTON && f.startsWith("src/") && /[.]tsx?$/.test(f))
+  .map((f) => [f, sellElements(textOf(W, f))] as const)
+  .filter(([, els]) => els.length > 0);
+/** One word from each place the sell path's scan must reach: the look, the shared dialogs, the confirm and the toasts. */
+const SELL_SEEN = ["journey.sellFreeUntil", "journey.sellFreeCta", "journey.sellFullRefund", "journey.sellClosedBody", "journey.sellConfirmTitle",
+  "journey.sellKeep", "journey.sellUnchanged", "dialog.youReceive", "toast.couldntCashOut", "common.positionSold"];
+const CLASSIC_DIALOG_WORDS = ["dialog.sellPositionNow", "dialog.keepPosition", "common.positionUnchanged"];
+/** ⛔ The sold receipt's small heading keeps today's word, whose Chinese says 持仓 (VODACOM-PLAN §0h point 36): named, so a second cannot arrive. */
+const SOLD_HEADING = "common.positionSold";
+/** ⚠️ The sell path's Swahili words that say "toa" — today's cash-out headings, while "toa" is also the journey's word for withdrawing money (§0h point 36): named, so a fourth cannot arrive unseen. */
+const KUTOA = ["common.cashOutFailed", "dialog.cashOutTitle", "toast.couldntCashOut"];
+const TOA = /(?:^|[^a-z])(?:ku)?toa(?:[^a-z]|$)/i;
+/** `journey ? a : b`, read as a journey reader is drawn it: `a`. */
+const JOURNEY_PAIR = /journey [?] (t[.][A-Za-z]+[.][A-Za-z0-9]+|undefined) : (t[.][A-Za-z]+[.][A-Za-z0-9]+|undefined)/g;
+
+/** The words a journey reader's sell path reads: the button before its classic markup, each `journey ? a : b` as `a`, and the confirm without the defaults the look replaces. */
+function sellPathWords(W: World): string[] {
+  const button = text(W, SELL_BUTTON);
+  const at = button.indexOf(SELL_CLASSIC_HEAD);
+  const path = (at < 0 ? button : button.slice(0, at)).replace(JOURNEY_PAIR, (_m, a: string) => a);
+  let modal = text(W, SELL_MODAL);
+  if (button.includes(DIALOG_ARMS[0])) modal = modal.split(" ?? t.dialog.sellPositionNow").join("");
+  if (button.includes(DIALOG_ARMS[1])) modal = modal.split(" ?? t.dialog.keepPosition").join("");
+  return [...new Set([...`${path}${LF}${modal}`.matchAll(WORD)].map((m) => `${m[1]}.${m[2]}`))].sort();
+}
+
+function g12SellLook(W: World, ok: Ok) {
+  const button = text(W, SELL_BUTTON);
+  const modal = text(W, SELL_MODAL);
+  const look = between(button, "if (journey) {", SELL_CLASSIC_HEAD);
+  const hosts = sellHosts(W);
+  const askers = hosts.filter(([f]) => f !== CARD).flatMap(([f, els]) => els.filter((e) => JOURNEY_PROPS.some((x) => e.includes(x))).map(() => f));
+  const classicHosts = hosts.filter(([f]) => f === PAGE || f === MARKET_PAGE);
+  ok("12.opt-in · the journey look is the journey card's alone: every other file that renders SellButton (found on disk — /positions' classic list and the question page's holder block among them) passes no look, no clock label and no free-price flag, so it draws today's button",
+    SELL_HOSTS_ON_DISK.length >= 3 && [PAGE, MARKET_PAGE, CARD].every((f) => hosts.some(([h]) => h === f)) && classicHosts.every(([, els]) => els.length === 1)
+      && askers.length === 0 && count(text(W, CARD), `look="journey"`) === 1,
+    show({ hosts: hosts.map(([f, els]) => `${f} ×${els.length}`), askers }));
+  const dialogs = squash(between(button, "const dialogs = (", "if (journey) {"));
+  ok("12.default · without the look the button draws today's markup: its classic return, from the variant to the end of the file, is today's line for line, and the dialogs it shares are today's two but for the journey's three words under the look",
+    squash(after(button, SELL_CLASSIC_HEAD)) === SELL_CLASSIC && count(button, SELL_CLASSIC_HEAD) === 1 && dialogs === SELL_DIALOGS,
+    squash(after(button, SELL_CLASSIC_HEAD)) === SELL_CLASSIC ? dialogs.slice(0, 200) : squash(after(button, SELL_CLASSIC_HEAD)).slice(0, 200));
+  ok("12.dialogs · one pair of dialogs for both looks, drawn by both returns: the journey's three words only under the look, and the confirm's own defaults are today's question and keep button",
+    DIALOG_ARMS.every((a) => count(button, a) === 1) && DIALOG_DEFAULTS.every((d) => count(modal, d) === 1)
+      && count(button, "{dialogs}") === 2 && count(button, "<SellConfirmModal") === 1 && count(button, "<OperationResultModal") === 1
+      && count(modal, "t.dialog.sellPositionNow") === 1 && count(modal, "t.dialog.keepPosition") === 1,
+    show({ arms: DIALOG_ARMS.map((a) => count(button, a)), defaults: DIALOG_DEFAULTS.map((d) => count(modal, d)), dialogs: count(button, "{dialogs}") }));
+  const sale = fnBody(button, "const submit = ");
+  ok("12.sale · the sale is one code path for both looks: in submit, one action call, one latch, one deferred toast and each of the sale's two refresh events once — the action, the latch, the toast and the notifications refresh nowhere else — and the journey's one button opens the same confirm",
+    SALE.every((s) => count(sale, s) === 1) && count(button, SALE[0]) === 1 && count(button, SALE[1]) === 1 && count(button, SALE[2]) === 1
+      && count(button, SALE[4]) === 1 && count(look, "<button") === 1 && count(look, BUTTON_OPEN) === 1,
+    show({ inSubmit: SALE.map((s) => count(sale, s)), inFile: SALE.map((s) => count(button, s)), buttons: count(look, "<button") }));
+  ok("12.free · the free offer: its line names the server's clock time, a <time> naming the instant, and — only while it runs — the countdown to that instant; the button reads 'Uza bila ada' over 'Rudishiwa {amount} kamili', the amount the server's own figure (value), never the stake; and every piece of it is drawn only on the free offer",
+    count(look, FREE_LINE_OPEN) === 1 && count(look, FREE_LINE) === 1 && count(look, TIMER_OPEN) === 1 && count(look, TIMER) === 1
+      && look.indexOf(FREE_LINE_OPEN) < look.indexOf(FREE_LINE) && look.indexOf(FREE_LINE) < look.indexOf(TIMER_OPEN) && look.indexOf(TIMER_OPEN) < look.indexOf(TIMER)
+      && look.includes(`t.journey.sellFreeUntil.split("{time}")`) && look.includes(`t.journey.sellFullRefund.split("{amount}")`)
+      && count(look, WORD_FREE) === 1 && count(look, "t.journey.sellFreeCta") === 1
+      && count(look, FREE_FIGURE_OPEN) === 1 && count(look, FREE_FIGURE) === 1 && look.indexOf(FREE_FIGURE_OPEN) < look.indexOf(FREE_FIGURE),
+    show({ line: count(look, FREE_LINE), timer: [count(look, TIMER_OPEN), count(look, TIMER)], word: count(look, WORD_FREE), figure: [count(look, FREE_FIGURE_OPEN), count(look, FREE_FIGURE)] }));
+  const ask = between(button, LAPSE_ASK[0], LAPSE_DEPS);
+  ok("12.lapse · once the countdown has run out with a free price still drawn, the price is withdrawn — nothing to press, 'Inapakia…' and no figure — a confirm still showing it closes, and the page is asked for the server's answer at once, once per run of the countdown; the sale's own refresh stays the sale's",
+    look.includes("disabled={pending || lapsed}") && count(look, WORD_LAPSE) === 1 && count(look, FIGURE_OPEN) === 1
+      && LAPSE_ASK.every((s) => count(ask, s) === 1) && LAPSE_ASK.every((s, i) => i === 0 || ask.indexOf(LAPSE_ASK[i - 1]) < ask.indexOf(s))
+      && count(button, LAPSE_DEPS) === 1 && count(button, LAPSE_ASK[LAPSE_REFRESH]) === 2,
+    show({ ask: LAPSE_ASK.map((s) => count(ask, s)), refreshes: count(button, LAPSE_ASK[LAPSE_REFRESH]), word: count(look, WORD_LAPSE), figure: count(look, FIGURE_OPEN) }));
+  ok("12.paid · a price with a fee keeps today's honest 'Uza sasa' with today's figure and fee — a fee of 0 is not printed — and the button's one fee rule is today's",
+    look.includes("t.common.sellNow") && PAID_FIGURE.every((p) => count(look, p) === 1) && count(button, FEE_RULE) === 1,
+    show(PAID_FIGURE.map((p) => count(look, p))));
+  const shutArm = between(look, "{shut ? (", ") : (");
+  ok("12.closed · once selling has shut the look says so in words, 'Kuuza kumefungwa' and the journey's sentence, with no button to press — from the first paint, because the server's own verdict decides it before this phone's clock does",
+    count(look, SHUT) === 1 && count(look, "{shut ? (") === 1 && shutArm.includes("{t.common.sellLocked}") && shutArm.includes("{t.journey.sellClosedBody}")
+      && !shutArm.includes("<button"),
+    shutArm.slice(0, 200));
+  ok("12.edge · the journey's button wears the kit's outlined class, its only boundary drawn in the kit's token for a control's edge — the canvas's own colour, the one the platform holds to the 3:1 floor for a money control's edge (DESIGN_AUTHORITY's accessibility floor), where the kit's default edge is a card's decorative one",
+    count(look, EDGE) === 1 && look.indexOf(BUTTON_OPEN) < look.indexOf(EDGE), show({ edge: count(look, EDGE) }));
+  const bare = look.replace(STRING_LITERALS, "").replace(JSX_TAGS, " ");
+  const never = LOOK_NEVER.filter((x) => look.includes(x));
+  ok("12.arith · the look computes nothing and formats no time: no arithmetic among its expressions, no Date, no formatter of time, no Intl, no stake; its figures are formatTzs(value), formatNumber(value) and today's fee",
+    look.length > 0 && !ARITH.test(bare) && never.length === 0,
+    show({ arith: (bare.match(ARITH) ?? [""])[0], never }));
+  const words = sellPathWords(W);
+  const unseen = SELL_SEEN.filter((w) => !words.includes(w));
+  const nafasi = words.filter((w) => NAFASI.test(wordAt(W.dicts.sw, w)));
+  const holdings = words.filter((w) => wordAt(W.dicts.zh, w).includes(HOLDINGS));
+  const toa = words.filter((w) => TOA.test(wordAt(W.dicts.sw, w)));
+  const missing = words.flatMap((w) => Object.entries(W.dicts).filter(([, d]) => !wordAt(d, w).trim()).map(([l]) => `${w} in ${l}`));
+  ok("12.words · the journey's sell path (the look, the shared dialogs under it, the confirm with the journey's words, the toasts) says no 'nafasi' and reads none of the three classic lines that do; every word resolves in en, sw and zh; its one Chinese 持仓 is the sold receipt's small heading and its three Swahili 'toa' words today's cash-out headings, each named (§0h point 36)",
+    words.length > 20 && unseen.length === 0 && nafasi.length === 0 && CLASSIC_DIALOG_WORDS.every((w) => !words.includes(w))
+      && holdings.join() === SOLD_HEADING && toa.join() === KUTOA.join() && missing.length === 0,
+    show({ unseen, nafasi, holdings, toa, missing: missing.slice(0, 3), words: words.length }));
+}
+
 /* ══ THE RUN ═════════════════════════════════════════════════════════════════════════════════════════════════ */
 function run(I: Impl, W: World, log: (l: string) => void): { failed: string[]; total: number } {
   const failed: string[] = [];
@@ -607,17 +874,19 @@ function run(I: Impl, W: World, log: (l: string) => void): { failed: string[]; t
   g7View(W, ok);
   log(""); log("§8 · no house — no house name, no read, no pricing in the journey's files");
   g8House(W, ok);
-  log(""); log("§9 · the sell button — the server's instant, the classic look, the gate that names the card");
+  log(""); log("§9 · the sell button — the server's instant bound once, the journey look, its clock time and its free-price flag, the gate that names the card");
   g9Sell(W, ok);
   log(""); log("§10 · loading and errors — one ghost picked on the server, the error words from the flag");
   g10Loading(W, ok);
   log(""); log("§11 · the wiring");
   g11Wiring(W, ok);
+  log(""); log("§12 · the sell look — the card's alone, today's button without it, one sale, the free offer and its lapse, the server's time and figure, no nafasi");
+  g12SellLook(W, ok);
   return { failed, total };
 }
 
 if (!PROVE_RED) {
-  console.log("journey-tickets — Tiketi zangu (Vodacom plan S6, WP9)");
+  console.log("journey-tickets — Tiketi zangu (Vodacom plan S6, WP9 and WP10)");
   const { failed, total } = run(REAL, WORLD, (l) => console.log(l));
   console.log("");
   console.log(`JOURNEY TICKETS — ${total === 0 ? "0 checks ran: a zero-assertion run is a SKIPPED run" : failed.length === 0 ? `all ${total} checks passed` : `${failed.length} of ${total} failed`}`);
@@ -706,10 +975,13 @@ const noPerformance = swap(VIEW, `"/positions/performance"`, `"/positions"`);
 // §8 — no house
 const houseNamed = withFile(CARD, (s) => `${s}${LF}const leak = (p as { houseBotId?: string }).houseBotId;${LF}`);
 const viewReads = withFile(VIEW, (s) => `${s}${LF}const again = await listPositionsForUser("u");${LF}`);
-// §9 — the sell button
-const instantBuilt = swap(CARD, HOST_CALL, "freeUntil={new Date(Date.parse(p.placedAt) + 300000).toISOString()}");
-const journeyLook = swap(CARD, "alreadyClosed={sellShut}", `alreadyClosed={sellShut} look="journey"`);
+// §9 — the sell button (and §3's clock time)
+const instantBuilt = swap(CARD, HOST_BINDING, "const freeUntil = new Date(Date.parse(p.placedAt) + 300000).toISOString();");
+const classicLook = swap(CARD, `look="journey"`, "");
+const freePriceUnsaid = swap(CARD, "pricedFree={price?.free === true}", "");
+const labelFromPlacement = swap(CARD, CLOCK_LABEL, "freeUntilLabel={formatClock(new Date(Date.parse(p.placedAt) + 300000).toISOString())}");
 const gateForgets = swap(SELL_GATE, "[POSITIONS, MARKET, JOURNEY_CARD].every(", "[POSITIONS, MARKET].every(");
+const gateDropsLabel = swap(SELL_GATE, `ok("2.label · `, `ok("2.labelled · `);
 // §10 — loading and errors
 const notAsked = swap(LOADING, ASK_BOTH, "const { t } = await getServerT(); const journey = false;");
 const sessionRead = swap(HISTORY_LOADING, ASK_BOTH, `${ASK_BOTH}${LF}  await currentSession();`);
@@ -722,6 +994,44 @@ const clientImport = withFile(LOADING, (s) => `import { TicketSwitchRail } from 
 const errorForAll = swap(ERROR, "body={journeyOn ? t.journey.ticketsErrorBody : t.error.positionsSafe}", "body={t.journey.ticketsErrorBody}");
 // §11 — the wiring
 const unwired: World = { ...WORLD, scripts: { ...WORLD.scripts, predeploy: (WORLD.scripts.predeploy ?? "").split("npm run test:journey-tickets && ").join("") } };
+// §12 — the sell look
+const PLANTED_HOST = "src/components/markets/zz-planted-sell-host.tsx";
+const classicAsks = swap(PAGE, "alreadyClosed={sellShut}", `alreadyClosed={sellShut} look="journey"`);
+const holderLabel = swap(MARKET_PAGE, "alreadyClosed={sellShut}", "alreadyClosed={sellShut} freeUntilLabel={null}");
+const thirdHostAsks = withFile(PLANTED_HOST, () => [`import { SellButton } from "@/components/markets/sell-button";`,
+  `export function PlantedHost() {`, `  return <SellButton positionId="x" stake={1} value={1} pricedFree look="journey" />;`, `}`].join(LF));
+const classicMoved = swap(SELL_BUTTON, "px-2 py-1 rounded-md", "px-3 py-1 rounded-md");
+const sharedMoved = swap(SELL_BUTTON, "eyebrow={resultData.variant === ", "eyebrow={resultData.variant !== ");
+const defaultWordMoved = swap(SELL_MODAL, "{titleLabel ?? t.dialog.sellPositionNow}", "{titleLabel ?? t.journey.sellConfirmTitle}");
+const keepUnlabelled = swap(SELL_BUTTON, "keepLabel={journey ? t.journey.sellKeep : undefined}", "keepLabel={undefined}");
+const secondConfirm = swap(SELL_BUTTON, "{t.journey.sellClosedBody}",
+  "{t.journey.sellClosedBody}<SellConfirmModal open={false} pending={false} stake={stake} value={value} onConfirm={submit} onCancel={submit} />");
+const saleForked = swap(SELL_BUTTON, "onClick={openConfirm} disabled={pending || lapsed}", "onClick={() => void cashOutPositionAction(new FormData())} disabled={pending || lapsed}");
+const freeFromStake = swap(SELL_BUTTON, FREE_FIGURE, FREE_FIGURE.replace("formatTzs(value)", "formatTzs(stake)"));
+const noTimer = swap(SELL_BUTTON, `<span role="timer"`, "<span");
+const noFreeLine = swap(SELL_BUTTON, FREE_LINE_OPEN, "{false ? (");
+const freeWordByInstant = withFile(SELL_BUTTON, (s) => s.split(WORD_FREE).join(": freeUntil ? t.journey.sellFreeCta : t.common.sellNow}")
+  .split(FREE_FIGURE_OPEN).join("{freeUntil ? ("));
+const refundAlways = swap(SELL_BUTTON, FREE_FIGURE_OPEN, "{true ? (");
+const freeLineByLabel = swap(SELL_BUTTON, FREE_LINE_OPEN, "{freeUntilLabel ? (");
+const timerBeforeCountdown = swap(SELL_BUTTON, TIMER_OPEN, FREE_FIGURE_OPEN);
+const lapseOffered = swap(SELL_BUTTON, "disabled={pending || lapsed}", "disabled={pending}");
+const lapseFigure = swap(SELL_BUTTON, FIGURE_OPEN, "{false ? null : (");
+const lapseWordless = swap(SELL_BUTTON, "lapsed ? t.common.loading : ", "");
+const lapseUnasked = swap(SELL_BUTTON, `${LAPSE_ASK[5]}${LF}    ${LAPSE_ASK[6]}`, LAPSE_ASK[5]);
+const lapseUnarmed = swap(SELL_BUTTON, LAPSE_ASK[4], "");
+const lapseConfirmOpen = swap(SELL_BUTTON, `${LAPSE_ASK[2]}${LF}    ${LAPSE_ASK[3]}`, LAPSE_ASK[2]);
+const paidNoFee = swap(SELL_BUTTON, PAID_FIGURE[1], "");
+const paidZeroFee = swap(SELL_BUTTON, "{fee > 0 ? <>", "{true ? <>");
+const closedButton = swap(SELL_BUTTON, "{t.journey.sellClosedBody}", `{t.journey.sellClosedBody}<button type="button">x</button>`);
+const shutByClock = swap(SELL_BUTTON, SHUT, "const shut = closedNow;");
+const quietEdge = swap(SELL_BUTTON, ` style={{ borderColor: "var(--border-control)" }}>`, ">");
+const clockInBrowser = swap(SELL_BUTTON, "{freeUntilLabel}</time>", "{new Date(freeUntil ?? 0).toLocaleTimeString()}</time>");
+const moneyComputed = swap(SELL_BUTTON, "{formatTzs(value)}</span>{refundAfter}", "{formatTzs(value - fee)}</span>{refundAfter}");
+const swNafasiSell = withWord("sw", "journey", "sellKeep", "Hifadhi nafasi");
+const zhHoldingsSell = withWord("zh", "journey", "sellUnchanged", "您的持仓未变。");
+const swToaSell = withWord("sw", "journey", "sellUnchanged", "Haikufanikiwa kutoa tiketi.");
+const zhMissingSell = withWord("zh", "journey", "sellFreeCta", "");
 
 type Plant = { name: string; expect: string[]; impl?: Partial<Impl>; world?: World; landed: boolean };
 const plants: Plant[] = [
@@ -768,9 +1078,12 @@ const plants: Plant[] = [
   { name: "the Utendaji link is dropped", expect: ["7.performance"], world: noPerformance, landed: changed(noPerformance, VIEW) },
   { name: "the card names a house field", expect: ["8.house"], world: houseNamed, landed: changed(houseNamed, CARD) },
   { name: "the view reads a store itself", expect: ["8.reads"], world: viewReads, landed: changed(viewReads, VIEW) },
-  { name: "the card builds the free-sell instant itself", expect: ["9.host", "9.classic"], world: instantBuilt, landed: changed(instantBuilt, CARD) },
-  { name: "the card takes WP10's journey look early", expect: ["9.classic"], world: journeyLook, landed: changed(journeyLook, CARD) },
+  { name: "the card builds the free-sell instant itself", expect: ["9.host"], world: instantBuilt, landed: changed(instantBuilt, CARD) },
+  { name: "the card asks for the classic look again (its dialogs say nafasi)", expect: ["9.look"], world: classicLook, landed: changed(classicLook, CARD) },
+  { name: "the card stops telling the button whether the price is the free window's (a lapsed free price would be offered)", expect: ["9.look"], world: freePriceUnsaid, landed: changed(freePriceUnsaid, CARD) },
+  { name: "the card's clock time is built from the placement and a grace", expect: ["3.clock"], world: labelFromPlacement, landed: changed(labelFromPlacement, CARD) },
   { name: "the sell gate forgets the journey card", expect: ["9.gate"], world: gateForgets, landed: changed(gateForgets, SELL_GATE) },
+  { name: "the sell gate stops holding the clock label to the instant", expect: ["9.gate"], world: gateDropsLabel, landed: changed(gateDropsLabel, SELL_GATE) },
   { name: "the positions loading file decides for itself instead of asking the resolver", expect: ["10.loading"], world: notAsked, landed: changed(notAsked, LOADING) },
   { name: "the history loading file reads the session itself", expect: ["10.loading"], world: sessionRead, landed: changed(sessionRead, HISTORY_LOADING) },
   { name: "every reader is drawn the journey's ghost", expect: ["10.ghost"], world: journeyForAll, landed: changed(journeyForAll, LOADING) },
@@ -781,6 +1094,39 @@ const plants: Plant[] = [
   { name: "a loading file imports a client module", expect: ["10.pick"], world: clientImport, landed: changed(clientImport, LOADING) },
   { name: "the error page gives every reader the tickets' words", expect: ["10.error"], world: errorForAll, landed: changed(errorForAll, ERROR) },
   { name: "the suite drops out of predeploy", expect: ["11.wired"], world: unwired, landed: unwired.scripts.predeploy !== WORLD.scripts.predeploy },
+  { name: "/positions' classic SellButton asks for the journey look", expect: ["12.opt-in"], world: classicAsks, landed: changed(classicAsks, PAGE) },
+  { name: "the question page's holder block hands a clock label", expect: ["12.opt-in"], world: holderLabel, landed: changed(holderLabel, MARKET_PAGE) },
+  { name: "a third host, found nowhere in a list, asks for the journey look", expect: ["12.opt-in"], world: thirdHostAsks, landed: changed(thirdHostAsks, PLANTED_HOST) },
+  { name: "the classic free strip changes its padding", expect: ["12.default"], world: classicMoved, landed: changed(classicMoved, SELL_BUTTON) },
+  { name: "the shared result dialog changes for every reader", expect: ["12.default"], world: sharedMoved, landed: changed(sharedMoved, SELL_BUTTON) },
+  { name: "the confirm's own default becomes the journey's question (every reader would see it)", expect: ["12.dialogs"], world: defaultWordMoved, landed: changed(defaultWordMoved, SELL_MODAL) },
+  { name: "the look stops handing the keep button its word (Hifadhi nafasi again)", expect: ["12.words", "12.dialogs"], world: keepUnlabelled, landed: changed(keepUnlabelled, SELL_BUTTON) },
+  { name: "the look draws a confirm dialog of its own", expect: ["12.dialogs"], world: secondConfirm, landed: changed(secondConfirm, SELL_BUTTON) },
+  { name: "the journey's button calls the action itself, past the confirm", expect: ["12.sale"], world: saleForked, landed: changed(saleForked, SELL_BUTTON) },
+  { name: "the free button promises the stake, not the server's figure", expect: ["12.free"], world: freeFromStake, landed: changed(freeFromStake, SELL_BUTTON) },
+  { name: "the countdown loses its timer role", expect: ["12.free"], world: noTimer, landed: changed(noTimer, SELL_BUTTON) },
+  { name: "the free line is never drawn", expect: ["12.free"], world: noFreeLine, landed: changed(noFreeLine, SELL_BUTTON) },
+  { name: "the free word and the refund are keyed on the free instant, not the offer (they outlive the free window)", expect: ["12.free"], world: freeWordByInstant, landed: changed(freeWordByInstant, SELL_BUTTON) },
+  { name: "the refund line is drawn whatever the offer ('kamili' over a figure with a fee)", expect: ["12.free"], world: refundAlways, landed: changed(refundAlways, SELL_BUTTON) },
+  { name: "the free line is drawn on the label alone (it outlives the countdown)", expect: ["12.free"], world: freeLineByLabel, landed: changed(freeLineByLabel, SELL_BUTTON) },
+  { name: "the countdown is drawn before it has run (0:00 on the server's paint)", expect: ["12.free"], world: timerBeforeCountdown, landed: changed(timerBeforeCountdown, SELL_BUTTON) },
+  { name: "a lapsed free price can still be pressed", expect: ["12.lapse"], world: lapseOffered, landed: changed(lapseOffered, SELL_BUTTON) },
+  { name: "a lapsed free price keeps its figure", expect: ["12.lapse"], world: lapseFigure, landed: changed(lapseFigure, SELL_BUTTON) },
+  { name: "a lapsed free price keeps the free word (nothing says the button is waiting)", expect: ["12.lapse"], world: lapseWordless, landed: changed(lapseWordless, SELL_BUTTON) },
+  { name: "a lapse never asks the server (the stale offer waits for the poller, up to 20 s)", expect: ["12.lapse"], world: lapseUnasked, landed: changed(lapseUnasked, SELL_BUTTON) },
+  { name: "a lapse asks on every render of the page (an answer that is still free would set off another ask)", expect: ["12.lapse"], world: lapseUnarmed, landed: changed(lapseUnarmed, SELL_BUTTON) },
+  { name: "a lapse leaves the confirm open on the free price", expect: ["12.lapse"], world: lapseConfirmOpen, landed: changed(lapseConfirmOpen, SELL_BUTTON) },
+  { name: "a paid window's fee disappears from the journey's button", expect: ["12.paid"], world: paidNoFee, landed: changed(paidNoFee, SELL_BUTTON) },
+  { name: "a price with no fee prints −0 ada", expect: ["12.paid"], world: paidZeroFee, landed: changed(paidZeroFee, SELL_BUTTON) },
+  { name: "a shut exit draws a button", expect: ["12.closed"], world: closedButton, landed: changed(closedButton, SELL_BUTTON) },
+  { name: "the shut words wait for the phone's clock (a shut ticket's first paint offers a sale)", expect: ["12.closed"], world: shutByClock, landed: changed(shutByClock, SELL_BUTTON) },
+  { name: "the journey's button takes the kit's quieter edge (under the floor on the card)", expect: ["12.edge"], world: quietEdge, landed: changed(quietEdge, SELL_BUTTON) },
+  { name: "the look formats the free window's end in the browser", expect: ["12.arith"], world: clockInBrowser, landed: changed(clockInBrowser, SELL_BUTTON) },
+  { name: "the look works the refund out on the phone", expect: ["12.arith"], world: moneyComputed, landed: changed(moneyComputed, SELL_BUTTON) },
+  { name: "a journey sell word is re-worded with nafasi in Swahili", expect: ["12.words"], world: swNafasiSell, landed: wordChanged(swNafasiSell, "sw", "journey.sellKeep") },
+  { name: "a second word on the sell path says 持仓 in Chinese", expect: ["12.words"], world: zhHoldingsSell, landed: wordChanged(zhHoldingsSell, "zh", "journey.sellUnchanged") },
+  { name: "a journey sell word takes the withdraw verb, kutoa, in Swahili", expect: ["12.words"], world: swToaSell, landed: wordChanged(swToaSell, "sw", "journey.sellUnchanged") },
+  { name: "a word on the sell path is missing in Chinese", expect: ["12.words"], world: zhMissingSell, landed: wordChanged(zhMissingSell, "zh", "journey.sellFreeCta") },
 ];
 
 let caught = 0;

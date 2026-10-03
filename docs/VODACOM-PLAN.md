@@ -507,6 +507,72 @@ WP6b the swap + census + header-fit → WP7 overlays → WP8 short titles on pos
   `qa:classic-shell-parity` with `--compare`, `/positions` included; a production build's first-load check of both
   routes; and the tiles — Tiketi open, settled and empty, the guest sheet and the `/updown/history` switch at 320, 390
   and 1280 in sw, en and zh, with the journey ghost watched on a soft navigation and on a first document load.
+- **WP10 — the journey's Sell look (2026-10-03).** On a journey ticket the Sell button wears the canvas's look
+  (`s4-canvas/s4-9-tiketi-open.dc.html` beside S6-PLAN, in the kit's tokens); everywhere else it is today's. The card binds the server's free-sell instant
+  once (`freeExitEndsAt`, A8) and hands the button that instant, `look="journey"`, the instant's clock time read on the
+  server (`formatClock`, the platform's zone; never a time built from the placement), and whether the page priced the
+  exit inside its free window (`pricedFree`: `/positions` adds `free`, `cashOutValue`'s own `inGracePeriod`, to the
+  price it already computes for every open exit). In the free window the ticket says "Uza bila ada hadi 11:23 · 3:42"
+  (the time in a `<time>` naming the instant, then the button's own countdown to it) over an outlined button, "Uza bila
+  ada" above "Rudishiwa TZS 1,000 kamili": the amount is `value`, the figure the page priced with `cashOutValue`, which
+  inside the free window is the whole stake (`gross`), so nothing on the phone works it out. That free offer stands only
+  while the page priced it free and the countdown runs. On the server's paint, before the countdown has run, it is drawn
+  without the countdown; the moment the countdown runs out the look withdraws it: the button dims to "Inapakia…" with
+  no figure and nothing to press, a confirm still showing the free price closes (unless a sale is already in flight),
+  and the page is asked for the server's answer at once (the `50pick:refresh` event its poller listens to, once per
+  run of the countdown) instead of at the poller's next beat, up to 20 s later. A default poll then shows "Kuuza
+  kumefungwa"; a legacy paid window shows its "Uza sasa", figure and fee. A price with a fee shows "Uza sasa", today's
+  figure and today's fee from the first paint (a fee of 0 is not printed). Once selling has shut: "Kuuza kumefungwa"
+  and the journey's sentence, in words, with no button, from the first paint, because the server's verdict
+  (`alreadyClosed`) decides it before the phone's clock does (today's button shows "Uza sasa · TZS 0 −1,000 ada" there
+  until the page has started; §0h point 37). The button's edge is the kit's token for a control's edge
+  (`--border-control`, the canvas's own colour), set on the button itself because `.btn-ghost` outranks a utility: the
+  edge is the button's only boundary, and the kit's outlined default (`--border`) sits under DESIGN_AUTHORITY's 3:1
+  floor for a money control's edge on the card (1.60:1 against 3.18:1, by `test:contrast`'s own formula). One pair of
+  dialogs serves both looks; under the journey's look the question is "Uza tiketi hii sasa?", the keep button "Baki na
+  tiketi" and a failed sale's line "Tiketi haijabadilika.", so a journey reader meets no "nafasi" on Tiketi zangu
+  itself (§0h points 35 to 37). The sale (the confirm, `cashOutPositionAction`, the in-flight latch, the deferred toast
+  and the sale's two refresh events) is one code path for both looks, and `cashOutValue` is not touched. Gates:
+  `test:journey-tickets` §12 (11 checks: the look the card's alone, every host found on disk; the classic return
+  and the shared dialogs pinned line for line; the three dialog words; one sale; the free offer, every piece of it drawn
+  only on it; the lapse withdrawn and asked about; the paid fee, a 0 unprinted; the shut exit in words from the first
+  paint; the edge token; no arithmetic and no time formatted in the look; the sell path's words: no "nafasi", every word
+  in three languages, its one 持仓 and its three "toa" words named), with §3.clock and §9 rewritten, 36 new
+  in-memory plants (92 in all); `test:sell-grace-truth` §2 now reads a host's one `const` bound to the
+  helper's call (bound nowhere else in the file, so a callback's parameter cannot shadow it, and in the block that holds
+  the element: 2.passes) and holds a clock label to that binding (2.label), and §3 holds the journey's free offer to the
+  countdown narrowed by the server's own pricing (3.journey): 11 new plants (36 in all), the
+  card's old one re-pointed at the binding; `test:timer-date` §3 three checks, with three new `red:timer-date`
+  mutations. `test:ui-consistency`'s `raw-button-btn-class` count for `sell-button.tsx` is re-derived 1 → 2, for a
+  reason: the journey's button holds two lines (20 + 18px) that must grow with the phone's text size, and every kit
+  `<Button>` size fixes its height through `--h-control-*` (the tallest, `btn-xl`, is 56px but brings 24px padding,
+  16.5px type and a 16px radius), so it is a raw `<button>` wearing the kit's own `btn btn-ghost` classes, its height
+  from its padding. `qa:classic-shell-parity` learns WP10 step 3 (its v2): after the matrix, whose demo portfolio stays
+  empty, the demo player is given an open ticket through the real money paths, and that ticket's free strip and button
+  are captured where a classic holder meets them (its card on `/positions` and its question's holder block) at 360 and
+  1280 in en and sw, the strip's ticking clock read as m:ss; in the holder block at 360 the button is also pressed once
+  and the classic confirm it opens is captured inside its 10-second quote hold, never confirmed. §S fails a run whose
+  cells missed the five-minute free window or whose confirm went stale, and `--prove-red` holds §S's four checks to
+  9 plants and, at both places, the capture to a determinism check and to plants on the button, the strip and
+  the confirm. Departure from step 3's letter: the capture is SellButton's own elements and the confirm, not the whole
+  card and holder row, because those rows print the ticket id and the placement time, which differ per server and per
+  minute and are not WP10's. **Served bytes for a classic viewer:** no DOM change and no change to any RSC prop (the
+  classic hosts pass nothing new, the classic return draws today's elements, and `/positions`' new `free` field never
+  leaves the server); the RSC payload's client reference and the pages' script tags name the rebuilt Sell button chunk;
+  no CSS (every utility the look uses is already in `src/`); JS: the Sell button's client code carries the look's
+  branch, its state and its three new props, and the confirm dialog its two optional words. **Owed before WP10 is ✅:**
+  the battery; `red:journey-tickets`, `red:sell-grace-truth` and `red:timer-date` (detached, alone);
+  `qa:classic-shell-parity` `--prove-red`; then the v2 baseline, captured into a NEW file at `7c859cdf`, the parent of
+  A8's live half `2bb881e0`, so the Sell cells measure A8's "a default poll compares equal" across that fix as A8's
+  as-built asks (an ancestor of HEAD with no merge on its first-parent line since it, so A18 accepts it; the seed routes, `/auth/demo`,
+  `/api/health` and the dialogs are byte-identical from it to HEAD; between it and `b3153d98` the only served changes
+  are A8 itself, admin campaign pages, three journey words and WP8's projection, none in a matrix cell) from a worktree
+  at `7c859cdf` with this tree's harness copied into its `scripts/` (not a served path, so the baseline still names a
+  clean `7c859cdf`), a fresh `.next` and an in-memory server from that worktree; then a null `--compare` on a FRESH
+  server at `7c859cdf`, exit 0, before any compare on this tree; then `--compare` on this tree, where A8 says a default
+  poll with an hour to run compares equal and the matrix may differ only by WP11's named `footer-rail-h`; and the tiles
+  (an open ticket in its free window and as it runs out, a legacy paid window, a shut exit at its first paint, the
+  confirm and both results) at 320, 390 and 1280 in sw, en and zh.
 
 ## §0h · Points for Ali — taken while he was away (2026-10-01 →)
 
@@ -668,6 +734,56 @@ here, with how to overrule it. Newest last; nothing here blocks the work.
     question page's block for a ticket holder ("Nafasi zako"); and, on a computer, the avatar menu's "Nafasi" row. All
     of these are on §3's S15 rename list and change at the flip. Overrule: say so, and WP9 gives
     `/positions/performance` journey words now.
+35. **The journey's Sell look, as built (WP10).** In its free window a journey ticket says "Uza bila ada hadi 11:23 ·
+    3:42": 11:23 is when the free window ends, worked out by the server from the question's own free minutes and shown
+    in the platform's clock, and 3:42 counts down to it. Under it, an outlined button: "Uza bila ada" above "Rudishiwa
+    TZS 1,000 kamili", the amount the server would pay for a free sale (the whole stake), never one worked out on the
+    phone. That offer stands only while the server priced the ticket inside its free window and the countdown runs.
+    Until the page has started on the phone (a moment on a fast phone), the same words show without the countdown. The
+    moment the countdown reaches 0:00 the offer goes: the button dims to "Inapakia…" with no figure and nothing to
+    press, an open confirm closes, and the page asks the server straight away, so today's questions show "Kuuza
+    kumefungwa" within a moment (selling locks when the free window ends) and an old question that froze a paid window
+    shows "Uza sasa" with the server's figure and fee. A ticket priced in a paid window shows "Uza sasa", the figure and
+    the fee from the start; a fee of 0 is not printed. Once selling has shut: "Kuuza kumefungwa" over "Dau hili sasa
+    linasubiri matokeo — haliwezi kuuzwa tena.", in words, with nothing to press, from the very first paint. The
+    confirm asks "Uza tiketi hii sasa?" with "Baki na tiketi", and a sale that fails says "Tiketi haijabadilika.", so a
+    journey reader meets no "nafasi" on Tiketi zangu itself any more (point 24 is done, and so is the first sentence of
+    point 34). The button's edge is the canvas's own colour, the kit's colour for a control's edge (3.18:1 on the card;
+    the kit's plain outlined button would be 1.60:1, under the platform's 3:1 floor for a money control's only edge).
+    One departure from the canvas: "Kuuza kumefungwa" sits on its own line above the sentence instead of running into
+    it with a full stop (the dictionary's word has none, and Chinese would need its own). Overrule: say which part.
+36. **The classic words that stay on the journey's Sell path, none of them "nafasi".** WP10 gives journey words only to
+    the three lines that said "nafasi" and mints no new word, so these stay today's until the S15 rename (§3): the
+    confirm's small heading "Toa sasa" (en "Cash out", zh 兑现), which is also the confirm's spoken name; a failed
+    sale's small heading "Haikufanikiwa kutoa" (en "Cash-out failed", zh 兑现失败) and its message title "Imeshindikana
+    kutoa" (en "Couldn't cash out", zh 无法兑现); the sold receipt's small heading "Imeuzwa" (en "Position sold", zh
+    持仓已出售, "holdings sold"); the button's "Inapakia…" while it waits for the server (en "Loading…", zh 加载中…);
+    and the platform's shared refusal sentences, picked when a sale is refused, where the Chinese one shown when a sale
+    races the result says 此投注已不再持仓 (持仓 as "no longer held"). ⚠️ Two wording risks for the review: in Swahili
+    "toa"/"kutoa" is also the journey's word for withdrawing money ("Toa pesa"), so "Haikufanikiwa kutoa" on a failed
+    sale can read as a failed withdrawal; and Chinese says "sell" three ways on this one path (卖出 in the journey's
+    words, 出售 and 兑现 in today's). `test:journey-tickets` §12 names the 持仓 heading and the three "toa" words, so a
+    change to any of them is seen; the refusal sentences are picked at run time and are outside that scan. Overrule:
+    say so, and journey words for these are drafted for the review (en "Ticket sold", zh 注单已卖出 for the receipt; a
+    "kuuza" wording for the two failure headings).
+37. **What today's Sell button still does that WP10 leaves for its own commits (for every player).** WP10 changes no
+    shared Sell code (the countdown, the confirm, the sale) and does not touch today's button, so these stay: (a) the
+    countdown takes the server's time once the page has started on the phone, so it runs late by the time the page took
+    to start (under a second on a fast phone, several on a slow one), and for those seconds a ticket still offers a
+    free sale the server has stopped granting free: the server refuses it, or on an old paid-window question charges
+    the fee after a screen that said none; (b) "Kuuza kumefungwa" at selection close is timed by the phone's own clock,
+    so a phone that runs fast shuts early and one that runs slow keeps the button past the cutoff (the server refuses);
+    (c) if the connection drops after the server has completed a sale, the result says it failed and that the ticket is
+    unchanged, though the next refresh shows it sold; (d) holding Enter on the Sell button for about half a second
+    opens the confirm and sells before it can be read; (e) on an old question with a paid window, the button keeps
+    offering its paid price after the paid window ends, until the page refreshes (within 20 seconds; the server
+    refuses); (f) today's button outside Tiketi zangu still shows "Uza sasa · TZS 0 −1,000 ada" on a ticket whose
+    selling has shut, until the page has started, and keeps a stale free offer ("−0 ada", and "Hakuna ada" in its
+    confirm) for up to 20 seconds after the free window ends, the two moments WP10's look closes for itself; (g) the
+    kit's plain outlined button draws its edge at 1.60:1 on a card, under the 3:1 floor, wherever that edge is a
+    control's only boundary. (a) and (f) are the money-truth ones: the server decides every sale, but on an old
+    paid-window question a player can be shown "no fee" and charged one. Overrule: say which comes first; otherwise
+    (a) and (f) together, then (d).
 
 
 ## §0g · S4 (2026-10-01) — the Design canvas: all eleven items drawn, the panel's findings applied; waiting on Ali
@@ -1276,6 +1392,17 @@ read `journey.ticketsErrorBody` and `ticketsBack`; on `/updown/history` only the
 its result count `positions.oneResult`/`nResults`), the question page's `market.yourPositions` and the avatar menu's
 hard-coded row, every one of them on the list above (§0h point 34). So at S15 the list above is the classic surfaces'
 alone.
+
+*WP10 (2026-10-03):* the journey's Sell look reads `journey.sellFreeUntil`, `sellFreeCta`, `sellFullRefund` and
+`sellClosedBody`, beside the classic `common.sellLocked` (its shut title), `common.sellNow` and `common.fee` (a price
+with a fee), `common.selling`, and `common.loading` (a lapsed free price waiting for the server); under the look its
+dialogs read `journey.sellConfirmTitle`, `sellKeep` and `sellUnchanged` in place of `dialog.sellPositionNow`,
+`dialog.keepPosition` and `common.positionUnchanged`, so those three keys leave a journey reader's Tiketi zangu. The
+dialogs' other words are classic and say no "nafasi" (§0h point 36 lists them): `common.positionSold` stays on the
+sold receipt (en "Position sold", zh 持仓已出售), and `dialog.cashOutTitle`, `common.cashOutFailed` and
+`toast.couldntCashOut` say "toa", which is also the journey's withdraw verb. `test:journey-tickets` §12 reads the sell
+path's words from its source and fails on any Swahili "nafasi", a second Chinese 持仓 or a fourth "toa" written there;
+the shared refusal sentences are picked at run time and are outside that scan (zh `error.failPositionNotOpen` says 持仓).
 
 ⛔ Not part of the Tiketi rename ("nafasi" means something else there): `common.busyBody` and `dialog.busyHolding`
 ("we are holding your place") and `market.oddsLong` ("a small chance"). `nav.cardSpacing` (spacing) gets its own

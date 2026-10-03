@@ -1,7 +1,7 @@
 {
   "_note": "UI-consistency baseline: known drift counts per rule::file. Regenerate after a remediation phase with `npm run test:ui-consistency -- --update-baseline`. DONE when this is empty. See docs/UI-CONSISTENCY-AUDIT.md.",
   "_generated": "run with --update-baseline",
-  "_total": 135,
+  "_total": 136,
   "counts": {
     "adhoc-portal::src/components/ui/unsaved-changes.tsx": 1,
     "bare-text-button::src/components/auth/resend-otp-button.tsx": 1,
@@ -68,7 +68,7 @@
     "raw-button-btn-class::src/components/markets/comments-thread.tsx": 1,
     "raw-button-btn-class::src/components/markets/market-card.tsx": 2,
     "raw-button-btn-class::src/components/markets/notify-prompt.tsx": 1,
-    "raw-button-btn-class::src/components/markets/sell-button.tsx": 1,
+    "raw-button-btn-class::src/components/markets/sell-button.tsx": 2,
     "raw-button-btn-class::src/components/markets/sell-confirm-modal.tsx": 1,
     "raw-button-btn-class::src/components/markets/win-celebration.tsx": 1,
     "raw-button-btn-class::src/components/onboarding/first-visit-primer.tsx": 2,

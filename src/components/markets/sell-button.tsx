@@ -16,6 +16,19 @@
  * `cashOutValue` sells by. A constant five-minute grace on this side told a poll frozen at 2
  * minutes it could still sell free after the server had locked the exit, and cut a 10-minute
  * poll's free window in half on screen (S6 A8). `test:sell-grace-truth` holds both halves.
+ *
+ * ⭐ TWO LOOKS, ONE SALE (the Vodacom plan S6, WP10). With no `look` this draws today's markup and words, byte for byte,
+ * for every host. The journey's ticket card alone asks for `look="journey"`, the S4 frame s4-9-tiketi-open in the kit's
+ * tokens. In the free window: "Uza bila ada hadi 11:23 · 3:42" (the clock time the host read on the server from
+ * `freeUntil`, then this button's own countdown to that instant) over an outlined button, "Uza bila ada" above
+ * "Rudishiwa TZS 1,000 kamili". That free offer stands only while the page priced the exit free (`pricedFree`, the
+ * server's own verdict) and the countdown runs: it is drawn on the server's paint, before the countdown first runs, and
+ * withdrawn the moment the countdown runs out, when the look asks the page for the server's answer at once. A price with
+ * a fee keeps today's "Uza sasa" and its fee; a shut exit is "Kuuza kumefungwa" and the journey's sentence, in words,
+ * from the first paint. The look changes what is drawn and three of the dialogs' words (a ticket where today's say a
+ * position, S6 A7), never the sale: the countdown, the confirm, the one action, the latch on a sale in flight, the
+ * deferred toast and the sale's two refresh events below are the same code for both looks. `test:journey-tickets` §12
+ * holds the look, `test:sell-grace-truth` §3 its free offer, and `test:timer-date` §3 its clock time.
  */
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
@@ -26,6 +39,7 @@ import { SellConfirmModal } from "./sell-confirm-modal";
 import { OperationResultModal } from "./operation-result-modal";
 import { formatTzs, formatNumber } from "@/lib/utils";
 import { errorCopy } from "@/lib/error-copy";
+import { I } from "@/components/ui/glyphs";
 
 export function SellButton({
   positionId,
@@ -35,6 +49,9 @@ export function SellButton({
   closesAt,
   alreadyClosed,
   serverNow,
+  look,
+  freeUntilLabel,
+  pricedFree,
 }: {
   positionId: string;
   /** Stake at place-time. */
@@ -73,6 +90,25 @@ export function SellButton({
    *  clock skew (e.g. server 1 min ahead of device) from showing 6 min
    *  instead of 5 on the free-exit countdown. */
   serverNow?: number;
+  /**
+   * ⭐ THE JOURNEY'S LOOK (S6 WP10) — passed by the journey's ticket card and by no other host. Without it the button is
+   * today's, markup and words (`test:journey-tickets` §12).
+   */
+  look?: "journey";
+  /**
+   * The clock time `freeUntil` names, read ON THE SERVER by the host that passed the instant (`formatClock`, in the
+   * platform's zone), for the journey's "Uza bila ada hadi {time}". ⛔ Never formatted here — this is a client file and
+   * the zone is a server fact — and never built from the placement: it is the instant the countdown runs to (S6 A8;
+   * `test:sell-grace-truth` §2, `test:timer-date` §3). `null` when no free window was offered.
+   */
+  freeUntilLabel?: string | null;
+  /**
+   * The journey's look only: the page priced this exit INSIDE its free window (`cashOutValue`'s own `inGracePeriod`), so
+   * `value` is the whole stake. The look offers that price as free only while the countdown runs, and withdraws it the
+   * moment the countdown runs out: a default poll has locked the exit by then, and a paid window charges its fee
+   * (`test:sell-grace-truth` 3.journey).
+   */
+  pricedFree?: boolean;
 }) {
   const [pending, start] = useTransition();
   const [closedNow, setClosedNow] = useState(false);
@@ -222,6 +258,145 @@ export function SellButton({
     });
   };
 
+  // ⭐ THE JOURNEY'S LOOK, ITS STATE (S6 WP10) — above every return, as hooks must be, and inert without the look.
+  // `mounted` turns true at the browser's first commit: until then the countdown above has not run, so the look draws
+  // the free offer the page priced (`pricedFree`) without a countdown. When the countdown runs out while that free price
+  // is drawn, the price is no longer the offer — a default poll has locked the exit, and a paid window charges its fee —
+  // so the look withdraws it, closes a confirm still showing it (unless a sale is already in flight: the server decides
+  // that one), and asks the page for the server's answer at once rather than at its poller's next beat (up to 20 s).
+  // It asks once per run of the countdown: an answer that is still free restarts the countdown, which re-arms the ask,
+  // so no answer can set off another ask by itself. The sale's own refresh events stay in `submit` above.
+  const journey = look === "journey";
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { if (journey) setMounted(true); }, [journey]);
+  const lapseArmed = useRef(true);
+  useEffect(() => {
+    if (!journey || pricedFree !== true || closedNow || alreadyClosed) return;
+    if (inGrace) { lapseArmed.current = true; return; }
+    if (!mounted) return;
+    if (!pending) setConfirmOpen(false);
+    if (!lapseArmed.current) return;
+    lapseArmed.current = false;
+    window.dispatchEvent(new Event("50pick:refresh"));
+  }, [journey, mounted, pricedFree, inGrace, closedNow, alreadyClosed, pending]);
+
+  // ⭐ THE TWO DIALOGS ARE ONE PAIR FOR BOTH LOOKS — the confirm and the result, wired to the one `submit` above. The
+  // journey's look changes three of their words, each a ticket where today's says a position (S6 A7): the question, the
+  // keep button, and the line under a sale that failed. Without the look they are today's words.
+  const dialogs = (
+    <>
+      <SellConfirmModal
+        open={confirmOpen}
+        pending={pending}
+        stake={stake}
+        value={value}
+        positionId={positionId}
+        onConfirm={submit}
+        onCancel={() => { if (!pending) setConfirmOpen(false); }}
+        titleLabel={journey ? t.journey.sellConfirmTitle : undefined}
+        keepLabel={journey ? t.journey.sellKeep : undefined}
+      />
+      {resultData && (
+        <OperationResultModal
+          open={resultOpen}
+          variant={resultData.variant}
+          eyebrow={resultData.variant === "success" ? t.common.positionSold : t.common.cashOutFailed}
+          title={
+            resultData.variant === "success"
+              ? `${formatTzs(resultData.value)} ${t.common.returned}`
+              : (resultData.error ?? t.error.tryAgain)
+          }
+          subtitle={
+            resultData.variant === "success"
+              ? (resultData.net >= 0
+                  ? t.common.fullStakeReturned
+                  : t.common.stakeReturnedMinusFee)
+              : journey ? t.journey.sellUnchanged : t.common.positionUnchanged
+          }
+          details={resultData.variant === "success" ? [
+            { label: t.common.ticket, value: positionId },
+            { label: t.common.returned, value: formatTzs(resultData.value) },
+            {
+              label: t.common.earlyExitFee,
+              value: resultData.net >= 0 ? t.common.none : formatTzs(Math.abs(resultData.net)),
+              tone: "default",
+            },
+          ] : undefined}
+          primaryLabel={resultData.variant === "success" ? t.common.doneSawa : t.common.close}
+          onClose={() => setResultOpen(false)}
+          stripTone="brand"
+        />
+      )}
+    </>
+  );
+
+  // ⭐ THE JOURNEY'S LOOK (S6 WP10) — the state above, drawn as the canvas draws a ticket's exit, in the kit's tokens. In
+  // the free window: "Uza bila ada hadi {time} · m:ss", where {time} is the clock reading the host made on the server of
+  // the very instant the countdown runs to, then an outlined button, "Uza bila ada" over "Rudishiwa {amount} kamili",
+  // whose amount is `value`: the server's own figure for this exit, the whole stake inside the free window
+  // (`cashOutValue`), never one worked out here. A price with a fee: today's "Uza sasa", figure and fee (a fee of 0 is not
+  // printed). A free price whose countdown has run out: "Inapakia…", no figure and nothing to press, until the server's
+  // answer arrives. Once selling has shut: "Kuuza kumefungwa" and the journey's sentence, in words, with nothing to press
+  // — from the server's own paint, because `alreadyClosed` is the server's verdict and arrives as a prop. The button's
+  // edge is the kit's token for a control's edge, the canvas's own colour: an outlined button's edge is its only
+  // boundary, so it is held to the floor a money control's edge is held to (DESIGN_AUTHORITY's accessibility floor).
+  // ⛔ Nothing in the look formats a time or computes money.
+  if (journey) {
+    // The dictionary marks where the clock time and the amount sit, so each is drawn in its own element.
+    const [freeBefore, freeAfter] = t.journey.sellFreeUntil.split("{time}");
+    const [refundBefore, refundAfter] = t.journey.sellFullRefund.split("{amount}");
+    // Shut: the server's verdict first (a prop, so the server's paint and the browser's first render agree), then this clock.
+    const shut = closedNow || alreadyClosed === true;
+    // The free offer: the page priced the exit free, and the countdown runs — or has not yet run (the server's paint).
+    const offerFree = pricedFree === true && (inGrace || !mounted);
+    // Lapsed: the countdown has run out while the free price is drawn, so it is no longer the offer.
+    const lapsed = pricedFree === true && mounted && !inGrace;
+    return (
+      <>
+        {shut ? (
+          <p className="flex items-start gap-1.5 text-body-sm text-text-subtle">
+            <I.lock s={14} className="mt-0.5 shrink-0" />
+            <span className="min-w-0 break-keep [overflow-wrap:anywhere]">
+              <span className="block font-semibold text-text-muted">{t.common.sellLocked}</span>
+              {t.journey.sellClosedBody}
+            </span>
+          </p>
+        ) : (
+          <div className="space-y-1.5">
+            {offerFree && freeUntilLabel ? (
+              <p className="text-body-sm text-text-muted">
+                {freeBefore}<time dateTime={freeUntil ?? undefined} className="whitespace-nowrap tabular-nums">{freeUntilLabel}</time>{freeAfter}
+                {inGrace ? (
+                  <>
+                    {" · "}
+                    <span role="timer" className="whitespace-nowrap font-mono font-bold tabular-nums text-text">{graceLabel}</span>
+                  </>
+                ) : null}
+              </p>
+            ) : null}
+            <button type="button" onClick={openConfirm} disabled={pending || lapsed} className="btn btn-ghost w-full px-2 py-1.5" style={{ borderColor: "var(--border-control)" }}>
+              <span className="flex flex-col items-center text-center">
+                <span className="whitespace-normal text-body">
+                  {pending ? t.common.selling : lapsed ? t.common.loading : offerFree ? t.journey.sellFreeCta : t.common.sellNow}
+                </span>
+                {lapsed ? null : (
+                  <span className="whitespace-normal text-body-sm font-medium text-text-muted">
+                    {offerFree ? (
+                      <>{refundBefore}<span className="amount font-semibold text-text">{formatTzs(value)}</span>{refundAfter}</>
+                    ) : (
+                      <><span className="amount text-text">TZS {formatNumber(value)}</span>{fee > 0 ? <>{" "}<span className="amount">−{formatNumber(fee)}</span>{" "}{t.common.fee}</> : null}</>
+                    )}
+                  </span>
+                )}
+              </span>
+            </button>
+          </div>
+        )}
+        {dialogs}
+      </>
+    );
+  }
+
   // Cash-out is an early-exit utility, not a win — always the neutral royal CTA.
   const btnVariant = "btn-primary";
 
@@ -269,46 +444,7 @@ export function SellButton({
           </span>
         )}
       </button>
-      <SellConfirmModal
-        open={confirmOpen}
-        pending={pending}
-        stake={stake}
-        value={value}
-        positionId={positionId}
-        onConfirm={submit}
-        onCancel={() => { if (!pending) setConfirmOpen(false); }}
-      />
-      {resultData && (
-        <OperationResultModal
-          open={resultOpen}
-          variant={resultData.variant}
-          eyebrow={resultData.variant === "success" ? t.common.positionSold : t.common.cashOutFailed}
-          title={
-            resultData.variant === "success"
-              ? `${formatTzs(resultData.value)} ${t.common.returned}`
-              : (resultData.error ?? t.error.tryAgain)
-          }
-          subtitle={
-            resultData.variant === "success"
-              ? (resultData.net >= 0
-                  ? t.common.fullStakeReturned
-                  : t.common.stakeReturnedMinusFee)
-              : t.common.positionUnchanged
-          }
-          details={resultData.variant === "success" ? [
-            { label: t.common.ticket, value: positionId },
-            { label: t.common.returned, value: formatTzs(resultData.value) },
-            {
-              label: t.common.earlyExitFee,
-              value: resultData.net >= 0 ? t.common.none : formatTzs(Math.abs(resultData.net)),
-              tone: "default",
-            },
-          ] : undefined}
-          primaryLabel={resultData.variant === "success" ? t.common.doneSawa : t.common.close}
-          onClose={() => setResultOpen(false)}
-          stripTone="brand"
-        />
-      )}
+      {dialogs}
     </>
   );
 }

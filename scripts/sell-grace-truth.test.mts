@@ -20,11 +20,17 @@
  *      requires it to disagree, so the grid can see the defect it exists for.
  *   §2 THE HOSTS — every file that renders SellButton, derived from `src/` on disk: each is a server component,
  *      imports the one helper, and hands every SellButton `freeUntil={freeExitEndsAt(…)}` — asked with the
- *      position's own placement and the market as read — and never a placement. Three must be among them, by name:
- *      `/positions`, the holder block of `/markets/[id]`, and (S6 WP9) the journey's ticket card on Tiketi zangu.
+ *      position's own placement and the market as read, in the attribute or through the one `const` the host binds it
+ *      to (S6 WP10: the file binds that name nowhere else, so no parameter can shadow it, and binds it in the block that
+ *      holds the element) — and never a placement. Three must be among them, by name: `/positions`, the holder block of
+ *      `/markets/[id]`, and (S6 WP9) the journey's ticket card on Tiketi zangu. A clock label beside the countdown
+ *      (WP10's `freeUntilLabel`) is that one binding's own reading on the server, `X ? formatClock(X) : null`, never a
+ *      time built beside it — and the journey's card hands one (2.label).
  *   §3 THE BUTTON — `sell-button.tsx` as a syntax tree: no `GRACE_MS`, no five-minute constant, nothing multiplied
  *      out of minutes; the countdown's one time source is `Date.parse(freeUntil)`, an instant that is withdrawn
- *      zeroes it, and the free/fee state and the m:ss label both read that countdown and nothing else.
+ *      zeroes it, and the free/fee state and the m:ss label both read that countdown and nothing else. In the journey's
+ *      look (S6 WP10) the free offer is that countdown narrowed by the server's own pricing (`pricedFree`): drawn on the
+ *      server's paint before the countdown first runs, and lapsed the moment it has run out (3.journey).
  *   §4 THE WIRING — this suite is in predeploy and its red twin is declared.
  *
  * ⛔ DISPLAY TRUTH ONLY. `cashOutValue` is not edited and its golden grid stays `test:house-bot-seam`'s; this suite
@@ -263,7 +269,10 @@ async function g1Server(I: Impl) {
 // ═════════════════════════════════════════════════════════════════════════════════════════════════════════
 // §2 · THE HOSTS
 // ═════════════════════════════════════════════════════════════════════════════════════════════════════════
-type Host = { rel: string; client: boolean; importsHelper: boolean; els: Array<{ line: number; passes: boolean; placed: boolean; spread: boolean }> };
+type Host = {
+  rel: string; client: boolean; importsHelper: boolean; importsClock: boolean;
+  els: Array<{ line: number; passes: boolean; placed: boolean; spread: boolean; label: "none" | "ok" | "bad" }>;
+};
 /** The helper is asked about the bet's OWN placement: the position itself, or `{ placedAt: <it>.placedAt }` with
  *  nothing beside it. A call on an instant made at render time names the helper and still answers a window the
  *  server never offered. */
@@ -274,10 +283,53 @@ const asksAboutPlacement = (arg: ts.Expression): boolean => {
   return ts.isPropertyAssignment(only) && ts.isIdentifier(only.name) && only.name.text === "placedAt"
     && ts.isPropertyAccessExpression(only.initializer) && only.initializer.name.text === "placedAt";
 };
+/** The helper's own call, `freeExitEndsAt(<the bet's placement>, <the market, as read>)`. */
+const isHelperCall = (sf: ts.SourceFile, call: ts.CallExpression | undefined): boolean =>
+  !!call && call.expression.getText(sf) === "freeExitEndsAt" && call.arguments.length === 2
+    && asksAboutPlacement(call.arguments[0]) && ts.isIdentifier(call.arguments[1]);
+/**
+ * S6 WP10 — every place a file BINDS a name: a variable, a parameter, a destructured element, a function, a class or an
+ * import. A name the file binds once cannot be shadowed, so an element that names it reads that one binding.
+ */
+function bindingSites(sf: ts.SourceFile, name: string): ts.Node[] {
+  const out: ts.Node[] = [];
+  walkTree(sf, (n) => {
+    const p = n.parent;
+    if (!ts.isIdentifier(n) || n.text !== name || !p) return;
+    const binds = (ts.isVariableDeclaration(p) || ts.isParameter(p) || ts.isBindingElement(p) || ts.isFunctionDeclaration(p)
+      || ts.isClassDeclaration(p) || ts.isImportSpecifier(p) || ts.isNamespaceImport(p) || ts.isImportClause(p)) && p.name === n;
+    if (binds) out.push(p);
+  });
+  return out;
+}
+/**
+ * S6 WP10 — the call a name is bound to, when the file binds that name exactly once — as a `const`, with a call, in the
+ * block (or file) that holds the element. The journey's ticket card binds the instant once so it can hand the SAME
+ * instant to the countdown and to its clock label. A `let`, a second binding anywhere in the file (a callback's
+ * parameter that shadows it included), a binding the element cannot see, or anything but a call leaves the name
+ * unbound here, so it cannot pass.
+ */
+function boundCall(sf: ts.SourceFile, name: string, at: ts.Node): ts.CallExpression | undefined {
+  const sites = bindingSites(sf, name);
+  const only = sites.length === 1 ? sites[0] : undefined;
+  const d = only && ts.isVariableDeclaration(only) ? only : undefined;
+  const list = d?.parent;
+  const isConst = !!list && ts.isVariableDeclarationList(list) && (list.flags & ts.NodeFlags.Const) !== 0;
+  const scope = list?.parent?.parent;
+  const holds = !!scope && scope.pos <= at.pos && at.end <= scope.end;
+  return isConst && holds && d && d.initializer && ts.isCallExpression(d.initializer) ? d.initializer : undefined;
+}
+/** S6 WP10 — `X ? formatClock(X) : null`: the clock reading of exactly the binding handed as freeUntil, or no label. */
+const isClockOf = (sf: ts.SourceFile, e: ts.Expression | undefined, name: string): boolean =>
+  !!e && ts.isConditionalExpression(e) && ts.isIdentifier(e.condition) && e.condition.text === name
+    && ts.isCallExpression(e.whenTrue) && e.whenTrue.expression.getText(sf) === "formatClock" && e.whenTrue.arguments.length === 1
+    && ts.isIdentifier(e.whenTrue.arguments[0]) && e.whenTrue.arguments[0].text === name
+    && e.whenFalse.kind === ts.SyntaxKind.NullKeyword;
 function hostOf(rel: string, code: string): Host {
   const sf = parse(rel, code);
   const locals = new Set<string>();
   let importsHelper = false;
+  let importsClock = false;
   for (const st of sf.statements) {
     if (!ts.isImportDeclaration(st) || !ts.isStringLiteral(st.moduleSpecifier)) continue;
     const spec = st.moduleSpecifier.text;
@@ -287,6 +339,7 @@ function hostOf(rel: string, code: string): Host {
       const imported = (e.propertyName ?? e.name).text;
       if (spec.endsWith("/sell-button") && imported === "SellButton") locals.add(e.name.text);
       if (spec === "@/lib/server/market-service" && imported === "freeExitEndsAt") importsHelper = true;
+      if (spec === "@/lib/utils" && imported === "formatClock") importsClock = true;
     }
   }
   if (locals.size === 0) locals.add("SellButton");
@@ -296,21 +349,32 @@ function hostOf(rel: string, code: string): Host {
     let passes = false;
     let placed = false;
     let spread = false;
+    let bound: string | null = null;
+    let labelled = false;
+    let labelExpr: ts.Expression | undefined;
     for (const a of n.attributes.properties) {
       if (!ts.isJsxAttribute(a)) { spread = true; continue; }
       const name = a.name.getText(sf);
       if (name === "placedAt") placed = true;
       if (name === "freeUntil") {
         const init = a.initializer;
-        const call = init && ts.isJsxExpression(init) && init.expression && ts.isCallExpression(init.expression) ? init.expression : undefined;
-        // The market goes in as read (a name), so its frozen rates reach the helper untouched.
-        passes = !!call && call.expression.getText(sf) === "freeExitEndsAt" && call.arguments.length === 2
-          && asksAboutPlacement(call.arguments[0]) && ts.isIdentifier(call.arguments[1]);
+        const expr = init && ts.isJsxExpression(init) ? init.expression : undefined;
+        // The helper's call in the attribute, or (S6 WP10) the one const the file binds it to, nowhere else. The market
+        // goes in as read (a name), so its frozen rates reach the helper untouched.
+        if (expr && ts.isIdentifier(expr)) bound = expr.text;
+        const call = expr && ts.isCallExpression(expr) ? expr : bound !== null ? boundCall(sf, bound, n) : undefined;
+        passes = isHelperCall(sf, call);
+      }
+      if (name === "freeUntilLabel") {
+        labelled = true;
+        const init = a.initializer;
+        labelExpr = init && ts.isJsxExpression(init) ? init.expression : undefined;
       }
     }
-    els.push({ line: lineOf(sf, n), passes, placed, spread });
+    const label = !labelled ? "none" : bound !== null && isClockOf(sf, labelExpr, bound) ? "ok" : "bad";
+    els.push({ line: lineOf(sf, n), passes, placed, spread, label });
   });
-  return { rel, client: isDirective(code, "use client"), importsHelper, els };
+  return { rel, client: isDirective(code, "use client"), importsHelper, importsClock, els };
 }
 
 function g2Hosts(W: World) {
@@ -324,7 +388,7 @@ function g2Hosts(W: World) {
   ok("2.server · every host is a SERVER component, so the instant is computed where the poll's frozen rates are read — never in the browser",
     hosts.length > 0 && clientHosts.length === 0, j(clientHosts));
   const notPassing = hosts.flatMap((h) => h.els.filter((e) => !e.passes).map((e) => `${h.rel}:${e.line}`));
-  ok("2.passes · every SellButton is handed freeUntil={freeExitEndsAt(…)} — the helper's own call, asked about the bet's own placement and the market as read, not an instant built beside it",
+  ok("2.passes · every SellButton is handed freeUntil={freeExitEndsAt(…)} — the helper's own call, asked about the bet's own placement and the market as read, in the attribute or through the one const the file binds it to (bound nowhere else, so nothing shadows it) — not an instant built beside it",
     hosts.length > 0 && notPassing.length === 0, j(notPassing));
   const placed = hosts.flatMap((h) => h.els.filter((e) => e.placed || e.spread).map((e) => `${h.rel}:${e.line}${e.spread ? " (a spread)" : ""}`));
   ok("2.no-placed · no SellButton is handed the placement (or a spread that could carry it), so the button has nothing to build a window from",
@@ -332,11 +396,28 @@ function g2Hosts(W: World) {
   const noImport = hosts.filter((h) => !h.importsHelper).map((h) => h.rel);
   ok("2.import · every host imports freeExitEndsAt from @/lib/server/market-service, the module cashOutValue lives in",
     hosts.length > 0 && noImport.length === 0, j(noImport));
+  const labels = hosts.flatMap((h) => h.els.filter((e) => e.label !== "none").map((e) => ({ h, e })));
+  const badLabels = labels.filter(({ h, e }) => e.label !== "ok" || !h.importsClock).map(({ h, e }) => `${h.rel}:${e.line}`);
+  ok("2.label · every clock label beside the countdown (S6 WP10's freeUntilLabel) is the server's reading of THE instant handed as freeUntil — `X ? formatClock(X) : null` over the one const the host binds the helper's call to, formatClock from @/lib/utils — never a time built beside it; the journey's ticket card hands one",
+    labels.length > 0 && badLabels.length === 0 && labels.some(({ h }) => h.rel === JOURNEY_CARD),
+    j({ labels: labels.map(({ h, e }) => `${h.rel}:${e.line}`), bad: badLabels }));
 }
 
 // ═════════════════════════════════════════════════════════════════════════════════════════════════════════
 // §3 · THE BUTTON
 // ═════════════════════════════════════════════════════════════════════════════════════════════════════════
+/**
+ * S6 WP10 — the journey look's free offer and its lapse: each the countdown, narrowed by the server's own pricing
+ * (`pricedFree`, cashOutValue's `inGracePeriod` as the page priced the exit). `mounted` turns true at the browser's first
+ * commit, in the journey's look only, and is set nowhere else: before it the countdown has not run, so the server's
+ * pricing alone draws the offer (the server's paint).
+ */
+const OFFER_FREE = "const offerFree = pricedFree === true && (inGrace || !mounted);";
+const LAPSED = "const lapsed = pricedFree === true && mounted && !inGrace;";
+const MOUNTED = "const [mounted, setMounted] = useState(false);";
+const MOUNT_EFFECT = "useEffect(() => { if (journey) setMounted(true); }, [journey]);";
+const occurrences = (s: string, x: string) => s.split(x).length - 1;
+
 function g3Button(W: World) {
   say(`${NL}§3 · the button — sell-button.tsx counts down to one instant and builds no window of its own`);
   const code = W.files.get(SELL_BUTTON) ?? "";
@@ -429,6 +510,17 @@ function g3Button(W: World) {
     j({ gMin, gSec, gLabel }));
   ok("3.render · the strip draws that label only while the state holds, and the button's free label reads the same state (the classic markup, unchanged)",
     code.includes("{inGrace && !closedNow && (") && code.includes("{graceLabel}") && code.includes(": inGrace ? t.common.freeExitLabel"));
+  // ⭐ S6 WP10 · THE JOURNEY'S FREE OFFER is that countdown, narrowed by the server's own pricing — never the instant
+  // alone, never the fee, never a clock of its own. Offered while the page priced the exit free and the countdown runs
+  // (or has not yet run: the server's paint); lapsed the moment it has run out, so a default poll's locked exit and a paid
+  // window's fee are never sold as free. `test:journey-tickets` §12 holds what the look draws under each.
+  const offer = initOf("offerFree");
+  const lapse = initOf("lapsed");
+  ok("3.journey · the journey look's free offer is the countdown narrowed by the server's own pricing: offered while the page priced the exit free and the countdown runs — or has not yet run, on the server's paint — and lapsed the moment it has run out; nothing else decides it, and `mounted` is set once, by the look's own mount",
+    occurrences(code, OFFER_FREE) === 1 && occurrences(code, LAPSED) === 1 && offer.length === 1 && lapse.length === 1
+      && occurrences(code, MOUNTED) === 1 && occurrences(code, MOUNT_EFFECT) === 1 && occurrences(code, "setMounted(") === 1
+      && props.includes("pricedFree"),
+    j({ offer, lapse, mounted: occurrences(code, MOUNTED), mountEffect: occurrences(code, MOUNT_EFFECT), setMounted: occurrences(code, "setMounted(") }));
 }
 
 // ═════════════════════════════════════════════════════════════════════════════════════════════════════════
@@ -495,6 +587,9 @@ const variant = (v: Variant) => (p: Position, m: Market): string | null => {
   return new Date(v.endMs ? v.endMs(placedAtMs, f.graceMs, f.windowMs) : placedAtMs + f.graceMs).toISOString();
 };
 const HOST_CALL = "freeUntil={freeExitEndsAt({ placedAt: p.placedAt }, m)}";
+/** S6 WP10 — the journey card binds the instant once, and hands its clock reading beside it. */
+const CARD_BINDING = "const freeUntil = freeExitEndsAt({ placedAt: p.placedAt }, m);";
+const CARD_LABEL = "freeUntilLabel={freeUntil ? formatClock(freeUntil) : null}";
 const FREE_END = "const freeEndTs = freeUntil ? Date.parse(freeUntil) : NaN;";
 const FREE_END_GUARD = "    if (!Number.isFinite(freeEndTs)) return;";
 const PLANTS: Plant[] = [
@@ -533,13 +628,27 @@ const PLANTS: Plant[] = [
     ].join(NL)) },
   { name: "the market page takes its instant from another module", expect: ["2.import"],
     world: (w) => inFile(w, MARKET, "import { cashOutValue, freeExitEndsAt, getMarket,", `import { freeExitEndsAt } from "@/lib/free-exit";${NL}import { cashOutValue, getMarket,`) },
-  // §2 — the journey's ticket card (S6 WP9): a host in the open, held to the same call as the classic two
-  { name: "the journey ticket card builds the instant in JSX from the placement and a constant", expect: ["2.passes"],
-    world: (w) => inFile(w, JOURNEY_CARD, HOST_CALL, "freeUntil={new Date(Date.parse(p.placedAt) + 5 * 60_000).toISOString()}") },
+  // §2 — the journey's ticket card (S6 WP9, WP10): a host in the open, held to the same call as the classic two, bound once
+  { name: "the journey ticket card builds the instant from the placement and a constant", expect: ["2.passes"],
+    world: (w) => inFile(w, JOURNEY_CARD, CARD_BINDING, "const freeUntil = new Date(Date.parse(p.placedAt) + 5 * 60_000).toISOString();") },
+  { name: "the journey ticket card binds the instant with let (a later line could move it)", expect: ["2.passes"],
+    world: (w) => inFile(w, JOURNEY_CARD, CARD_BINDING, CARD_BINDING.replace("const ", "let ")) },
+  { name: "the journey ticket card hands a callback's own freeUntil, a parameter that shadows the binding (read by name alone, it would pass)", expect: ["2.passes"],
+    world: (w) => inFile(inFile(w, JOURNEY_CARD, "<SellButton", "{[cutoffIso].map((freeUntil) => <SellButton key={freeUntil}"),
+      JOURNEY_CARD, `${CARD_LABEL}${NL}          />`, `${CARD_LABEL}${NL}          />)}`) },
   { name: "the journey ticket card becomes a client component (the instant would be computed in the browser)", expect: ["2.server"],
     world: (w) => withFile(w, JOURNEY_CARD, `"use client";${NL}${w.files.get(JOURNEY_CARD) ?? ""}`) },
   { name: "the journey ticket card stops rendering SellButton (a journey reader could no longer sell)", expect: ["2.pop"],
     world: (w) => inFile(w, JOURNEY_CARD, "<SellButton", "<SellButtonGone") },
+  // §2 — S6 WP10: the clock label beside the countdown is the one binding's own reading, made on the server
+  { name: "the journey card's clock label names the selection cutoff, not the free window's end", expect: ["2.label"],
+    world: (w) => inFile(w, JOURNEY_CARD, CARD_LABEL, "freeUntilLabel={formatClock(cutoffIso)}") },
+  { name: "the journey card's clock label is built from the placement and a constant", expect: ["2.label"],
+    world: (w) => inFile(w, JOURNEY_CARD, CARD_LABEL, "freeUntilLabel={formatClock(new Date(Date.parse(p.placedAt) + 5 * 60_000).toISOString())}") },
+  { name: "the journey card formats its clock label the device's way", expect: ["2.label"],
+    world: (w) => inFile(w, JOURNEY_CARD, CARD_LABEL, "freeUntilLabel={freeUntil ? new Date(freeUntil).toLocaleTimeString() : null}") },
+  { name: "the journey card stops handing the clock label (its line would name no time)", expect: ["2.label"],
+    world: (w) => inFile(w, JOURNEY_CARD, CARD_LABEL, "") },
   // §3 — the button
   { name: "GRACE_MS comes back and gates the free state again", expect: ["3.grace-ms"],
     world: (w) => inFile(
@@ -559,6 +668,17 @@ const PLANTS: Plant[] = [
     world: (w) => inFile(w, SELL_BUTTON, "const inGrace = graceRemainMs > 0;", `const inGrace = graceRemainMs > 0 && Date.now() < Date.parse(closesAt ?? "");`) },
   { name: "the m:ss label reads a clock of its own", expect: ["3.label"],
     world: (w) => inFile(w, SELL_BUTTON, "const graceMin = Math.floor(graceRemainMs / 60_000);", `const graceMin = Math.floor((Date.parse(freeUntil ?? "") - Date.now()) / 60_000);`) },
+  // §3 — S6 WP10: the journey's free offer is the countdown narrowed by the server's own pricing, and nothing else
+  { name: "the journey's free offer is read off the free instant alone (it outlives the countdown)", expect: ["3.journey"],
+    world: (w) => inFile(w, SELL_BUTTON, OFFER_FREE, "const offerFree = !!freeUntil;") },
+  { name: "the journey's free offer is read off the fee (a free price outlives the free window)", expect: ["3.journey"],
+    world: (w) => inFile(w, SELL_BUTTON, OFFER_FREE, "const offerFree = fee <= 0;") },
+  { name: "the journey's free offer ignores the countdown (offered for as long as the page's price was free)", expect: ["3.journey"],
+    world: (w) => inFile(w, SELL_BUTTON, OFFER_FREE, "const offerFree = pricedFree === true;") },
+  { name: "the journey's lapse is read off the fee (a no-fee paid window would never come back)", expect: ["3.journey"],
+    world: (w) => inFile(w, SELL_BUTTON, LAPSED, "const lapsed = fee <= 0 && !inGrace;") },
+  { name: "the journey's mount flag waits on a timer, not the first commit (the server's paint outstays the countdown)", expect: ["3.journey"],
+    world: (w) => inFile(w, SELL_BUTTON, MOUNT_EFFECT, "useEffect(() => { if (journey) setTimeout(() => setMounted(true), 5_000); }, [journey]);") },
   // §4 — the wiring
   { name: "the suite drops out of predeploy", expect: ["4.wired"],
     world: (w) => ({ ...w, scripts: { ...w.scripts, predeploy: (w.scripts.predeploy ?? "").split("npm run test:sell-grace-truth && ").join("") } }) },

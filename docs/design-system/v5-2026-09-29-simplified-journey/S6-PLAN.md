@@ -841,6 +841,37 @@ Plus plants.
 - test:timer-date + red:timer-date
 - qa:classic-shell-parity --compare, including the holder block
 
+*As built (WP10, 2026-10-03):* as A8's as-built note binds it, with no label built from the placement. The card binds
+`freeExitEndsAt(...)` once, hands it as `freeUntil`, and beside it `look="journey"`,
+`freeUntilLabel={freeUntil ? formatClock(freeUntil) : null}` (the clock reading made on the server) and
+`pricedFree={price?.free === true}` (`/positions` adds `free`, `cashOutValue`'s own `inGracePeriod`, to the price it
+already computes). `test:sell-grace-truth` §2 is extended in the open: 2.passes reads a host's one `const` bound to the
+helper's call, the only binding of that name in the file (so no parameter can shadow it), in the block that holds the
+element (a `let`, a second binding or any other initializer fails); 2.label holds every label to `X ? formatClock(X) :
+null` over that binding, `formatClock` imported from `@/lib/utils`. §3 is extended in the open too (3.journey): the
+journey's free offer is the countdown narrowed by the server's own pricing, `pricedFree === true && (inGrace ||
+!mounted)`, and it lapses as `pricedFree === true && mounted && !inGrace`; the look parses nothing and multiplies
+nothing (its m:ss is the countdown's own `graceLabel`). SellButton: the look is an early return after every hook; the
+classic return is unchanged but for its two dialogs, which became one shared `dialogs` pair, with the journey's three
+words under the look only (`titleLabel` and `keepLabel` on SellConfirmModal, the failure's unchanged line). Its
+states: shut (the server's `alreadyClosed`, or the phone's clock) is words beside the kit's lock glyph, with no button,
+from the first paint; the free offer is drawn without the countdown on the server's paint; the lapse, the moment the
+countdown runs out, is "Inapakia…" with no figure and nothing to press, an open confirm closed and one `50pick:refresh`
+per run of the countdown, so the server's answer arrives at once; a price with a fee shows today's figure and fee (0
+unprinted). The button is the kit's `btn btn-ghost` without a size class, its edge the kit's `--border-control` set on
+the button itself (the canvas's colour; the kit's outlined default is under the 3:1 floor on a card), because every
+`<Button>` size fixes its height and the two lines must grow with the phone's text size. So `test:ui-consistency`'s
+`raw-button-btn-class` count for `sell-button.tsx` is re-derived 1 → 2 (`scripts/ui-consistency-baseline.json`,
+`_total` 135 → 136). `test:journey-tickets` §12 (11 checks, the classic return and the shared dialogs pinned line
+for line, every host found on disk) with §3.clock and §9 rewritten; `test:timer-date` §3 with three `red:timer-date`
+mutations. Step 3: `qa:classic-shell-parity` v2 seeds the demo player AFTER the matrix and captures the free strip and
+the button on `/positions` and in the holder block (360/1280 × en/sw), and the classic confirm in the holder block at
+360. Departure from step 3's letter: SellButton's own elements and the confirm are captured, not the whole card and
+holder row, which print the ticket id and the placement time (they differ per server and per minute, and are not
+WP10's). The v2 baseline is captured at `7c859cdf`, the parent of A8's live half, so the holder block measures A8's
+claim as A8 asks; a null compare on a fresh server at that commit must exit 0 before any compare on this tree;
+`SELL_EXPECTED_DIFFS` starts empty. Departures and inherited limits: VODACOM-PLAN §0h points 35 to 37.
+
 ### WP11 — --rail-h, the one name for the rail's reserve (S; depends on WP6b)
 
 **Goal.** Replace the two literal 88px rail reserves with --rail-h (build map §2 'Tabs'), so S9's focused chrome and U21 have one knob. Computed values stay the same.

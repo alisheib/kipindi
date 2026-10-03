@@ -7,6 +7,9 @@
  * focus-return, Esc, kit scrim/rise animation, ✕) is now the shared <Modal>
  * primitive. This component owns only the cash-out content and the bespoke
  * Enter-to-confirm keybind — the sell logic and money math are unchanged.
+ *
+ * S6 WP10: two optional words, the journey's question and keep button (`titleLabel`, `keepLabel`), which only
+ * SellButton's journey look passes. Without them every word here is today's.
  */
 
 import { useEffect, useRef, useState } from "react";
@@ -26,9 +29,16 @@ type Props = {
   positionId?: string;
   onConfirm: () => void;
   onCancel: () => void;
+  /**
+   * The journey's question, "Uza tiketi hii sasa?" (S6 WP10: `journey.sellConfirmTitle`, from SellButton's journey look)
+   * — a ticket, where today's `dialog.sellPositionNow` says a position. Without it, today's words.
+   */
+  titleLabel?: string;
+  /** The journey's keep button, "Baki na tiketi" (`journey.sellKeep`); without it, today's `dialog.keepPosition`. */
+  keepLabel?: string;
 };
 
-export function SellConfirmModal({ open, pending, stake, value, positionId, onConfirm, onCancel }: Props) {
+export function SellConfirmModal({ open, pending, stake, value, positionId, onConfirm, onCancel, titleLabel, keepLabel }: Props) {
   const { t } = useT();
   const confirmRef = useRef<HTMLButtonElement>(null);
 
@@ -84,7 +94,7 @@ export function SellConfirmModal({ open, pending, stake, value, positionId, onCo
           {t.dialog.cashOutTitle}
         </p>
         <p className="mt-1 font-display text-[16px] font-semibold text-text leading-snug">
-          {t.dialog.sellPositionNow}
+          {titleLabel ?? t.dialog.sellPositionNow}
         </p>
       </div>
 
@@ -158,7 +168,7 @@ export function SellConfirmModal({ open, pending, stake, value, positionId, onCo
              It was `btn-md`. ⛔ No per-call height: the --h-control-* token owns it. */
           className="btn btn-ghost btn-lg w-full"
         >
-          {t.dialog.keepPosition}
+          {keepLabel ?? t.dialog.keepPosition}
         </button>
       </div>
     </Modal>

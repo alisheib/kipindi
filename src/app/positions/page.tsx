@@ -206,7 +206,9 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
       const sellable = m.status === "LIVE" && co.sellable;
       // ⚠️ A price is offered only when the exit is actually open. Otherwise the button must say
       //    "rides to settlement" — never a number nobody can take.
-      return { id: p.id, value: sellable ? co.value : null, sellable, live: co.value };
+      // ⭐ `free` (S6 WP10): the price is the free window's, the whole stake (`cashOutValue`'s own verdict). Only the
+      //    journey's ticket card reads it, so its Sell look can withdraw a free price once its countdown has run out.
+      return { id: p.id, value: sellable ? co.value : null, sellable, live: co.value, free: sellable && co.inGracePeriod };
     } catch {
       return { id: p.id, value: null as number | null, sellable: false, live: p.potentialPayout };
     }

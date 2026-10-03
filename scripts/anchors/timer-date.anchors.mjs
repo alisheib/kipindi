@@ -36,8 +36,10 @@ const UTILS = "src/lib/utils.ts";
 const PAGE = "src/app/markets/[id]/page.tsx";
 const CLOCK = "src/components/markets/countdown.tsx";
 const GATE = "scripts/timer-date.test.mts";
-/** S6 WP9 — the journey's ticket card, which states two instants for a preview reader. */
+/** S6 WP9 — the journey's ticket card, which states two instants for a preview reader (WP10: and the free-sell time). */
 const JOURNEY_CARD = "src/components/journey/tickets/ticket-card.tsx";
+/** S6 WP10 — the Sell button, whose journey look names the free-sell instant beside its countdown. */
+const SELL_BUTTON = "src/components/markets/sell-button.tsx";
 
 /** @type {RedMutation[]} */
 export const MUTATIONS = [
@@ -121,5 +123,32 @@ export const MUTATIONS = [
     from: `{formatDeadline(p.placedAt, serverNow)}`,
     to: `{formatDayTime(p.placedAt)}`,
     expect: "3: journey ticket-card.tsx routes every deadline through formatDeadline",
+  },
+  {
+    name: "journey-sell-label-names-another-instant",
+    why: "⭐ S6 WP10 · the journey ticket's 'Uza bila ada hadi {time}' names the selection cutoff while the countdown beside it runs to the free window's end — a confident wrong time on the one line that says until when a sale is free",
+    file: JOURNEY_CARD,
+    suite: "timer-date",
+    from: `freeUntilLabel={freeUntil ? formatClock(freeUntil) : null}`,
+    to: `freeUntilLabel={formatClock(cutoffIso)}`,
+    expect: "3: the journey ticket card hands the Sell button the clock time of THE instant it counts to — formatClock of the one binding, on the server",
+  },
+  {
+    name: "journey-sell-time-names-another-instant",
+    why: "S6 WP10 · the Sell button's <time> claims the selection cutoff while its words are the free window's end: a driver reading dateTime is told a different moment from the one shown",
+    file: SELL_BUTTON,
+    suite: "timer-date",
+    from: `<time dateTime={freeUntil ?? undefined}`,
+    to: `<time dateTime={closesAt}`,
+    expect: "3: ...and the button's journey line puts that reading in a <time> naming the same instant, beside its countdown",
+  },
+  {
+    name: "journey-sell-formats-its-own-time",
+    why: "⛔ S6 WP10 · the Sell button formats the free window's end for itself, in the browser. It has no platform zone, so a phone set to another zone shows another time — the three-hour slip, on the line that says until when a sale is free",
+    file: SELL_BUTTON,
+    suite: "timer-date",
+    from: `{freeUntilLabel}</time>`,
+    to: `{freeUntil ? new Date(freeUntil).toLocaleTimeString() : null}</time>`,
+    expect: "3: the Sell button formats no time of its own — no locale formatter, no date helper, no Intl",
   },
 ];

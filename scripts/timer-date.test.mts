@@ -157,6 +157,22 @@ ok("1: the platform zone resolves to a real IANA zone", /^[A-Za-z]+\/[A-Za-z_]+$
     card.includes("const cutoffIso = m.selectionClosedAt ?? m.resolutionAt;") && card.includes("closesAt={cutoffIso}")
       && card.includes("<time dateTime={cutoffIso}"));
 
+  // ⭐ S6 WP10 · THE JOURNEY'S SELL LINE STATES A THIRD INSTANT, "Uza bila ada hadi {time} · m:ss", and its time must be
+  // the instant the countdown runs to. The card binds the server's free-sell instant once, hands it to the Sell button
+  // as `freeUntil`, and hands beside it that same binding's clock reading, `formatClock`, made on the server; the
+  // button puts the reading in a `<time>` naming `freeUntil`, beside its countdown, and formats no time of its own (a
+  // client file has no platform zone). The countdown itself is `test:sell-grace-truth` §3's.
+  const sellButton = read("../src/components/markets/sell-button.tsx");
+  ok("3: the journey ticket card hands the Sell button the clock time of THE instant it counts to — formatClock of the one binding, on the server",
+    card.includes("const freeUntil = freeExitEndsAt({ placedAt: p.placedAt }, m);") && card.includes("freeUntil={freeUntil}")
+      && card.includes("freeUntilLabel={freeUntil ? formatClock(freeUntil) : null}") && card.split("formatClock(").length - 1 === 1);
+  ok("3: ...and the button's journey line puts that reading in a <time> naming the same instant, beside its countdown",
+    sellButton.includes('<time dateTime={freeUntil ?? undefined} className="whitespace-nowrap tabular-nums">{freeUntilLabel}</time>')
+      && /<span role="timer"[^>]*>[{]graceLabel[}]<[/]span>/.test(sellButton));
+  ok("3: the Sell button formats no time of its own — no locale formatter, no date helper, no Intl",
+    sellButton.length > 0 && !/toLocale(Date|Time)?String/.test(sellButton)
+      && !/format(Clock|Deadline|DayTime|DateTime|Time|Date)[(]/.test(sellButton) && !sellButton.includes("Intl."));
+
   const utils = read("../src/lib/utils.ts");
   // ⚠️ `\bformatDayTime\(` also matches its own `export function` line, so count CALL
   // sites only — the first draft of this assertion asserted 1 against a true 2 and went
