@@ -451,16 +451,31 @@ erasure now withdraws the consent and empties the book, and both data exports ca
   read-tiers, client-graph-safe, the contacts suites, staff-role, ui-consistency, hooks-order, campaigns-page,
   campaign-models, pii-logs green; red-anchors and type-scale only their older reds (749/239 unchanged); the paste
   drive 21/21; the composer drive in three boots (console, live-closed, dead-rail); next build.
+✅ STEP 27 · VALIDATION BATCH 6 — LIVE (`08da7cc6`, live 2026-10-03 16:16:10 UTC). A whole-number money box never
+  multiplies, at the kit Input every admin and player money field inherits: a pasted "12,500.00" keeps 12500, a typed
+  dot is refused and the digits typed straight after it dropped, a stray dot inside a number keeps every digit, the
+  Field says so in en/sw/zh only when digits were really cut, a select-all replacement is never swallowed, the hold ends
+  where the caret goes, the ideographic full stops read as a dot, the notice region is always mounted for screen readers.
+  ⭐ THE LIVE DEFECT IT CLOSED: Players → a player → Adjust balance deleted dots, so a pasted "9,500.00" credited TZS
+  950,000 — under the two-person threshold, one officer. Now the kit Field + Input (threshold, typed word, countersign,
+  reason unchanged; the server re-validates on its own); the drive credited a pasted 9,500.00 as exactly TZS 9,500.
+  The affiliate form's 8 money fields stamp their address (validation-focus §4.1 green for the first time); spacing-scale
+  464 → 463. Two adversarial reviews (round 2: nothing MAJOR; 7 MINOR in a follow-up round — a comma typed after a
+  refused dot, a comma-decimal paste, "Tsh. 9,500", the affiliate editor's own decimal cut, a stray dot in an empty
+  deposit box trapping digits, two pins). Battery: typecheck; numeric 85, ui-consistency, unsaved-changes + red,
+  lifecycle-e2e, i18n, labels, confirm-gate + red, campaign-confirm + red and 25 kit-reading suites green; the money
+  drive 12/12, contacts 483, composer 198, staff + invites 24; next build. Older reds seen, other lanes': stacking z=11
+  in globals.css (Vodacom S6 WP11, cb4e8c95), tap-target (datetime-range-filter, reports/generate-button),
+  eyebrow-roles (the OG image route), decomment 24 > 20, red-anchors 2, type-scale 749/239.
 📘 THE ADMIN GUIDE (PDF) — Ali, 2026-10-03: "include screenshots on which pages the admin should go for each step". Every
   step shows the page the admin opens for it (and the menu path to it); none is a step without its page. Built after the
   validation batches land: contacts, a draft, the test send, the SMS balance (Admin → System), every warning and its fix.
 🔎 THE VALIDATION AUDIT (2026-10-03, Ali: "full input form validation and field validation everywhere — clean, perfect,
   working"): six read-only auditors over every admin input → 49 fixes (6 blocker, 7 major, 36 minor) in 8 batches with
   disjoint files and one shared validator per kind of field. Batch 1 = STEP 23, batch 2 = STEP 24, batches 5 + 8 =
-  STEP 25, batches 3 + 4 = STEP 26 (all LIVE; 4 dropped its private phone detector for the book's `phoneNumberIn`). Batch
-  6 (the kit form atoms — the 100× numeric paste on money fields) is in its second fix round: its second review found the
-  player balance adjustment (Players → a player → Adjust balance), a raw box where a pasted "9,500.00" reads TZS 950,000
-  — LIVE TODAY and older than this audit; that round moves it onto the kit field. Batch 7 (the contacts screens) follows.
+  STEP 25, batches 3 + 4 = STEP 26, batch 6 = STEP 27 (all LIVE; 4 dropped its private phone detector for the book's
+  `phoneNumberIn`; 6 closed the live 100× balance-adjust defect). Batch 6's follow-up round (its second review's 7
+  MINOR) is in build; batch 7 (the contacts screens, 17 fixes) is in build and follows.
   Owed from the reviews: the opt-out token mint keys on the gate's own key before U42/U43 (`optout-service.ts`);
   DurationInput's typed "1.5" (DESIGN_AUTHORITY §A7); the Android clipboard chip on a real phone (a drive, no suite
   can); a negation-only search ("-zzz") is described as "Name contains" (batch 7).
