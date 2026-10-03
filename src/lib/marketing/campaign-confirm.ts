@@ -101,8 +101,10 @@ export function parseTypedCount(raw: string | null | undefined): number | null {
 }
 
 /**
- * The word the hard-tier modal arms on: the bare count, with no grouping. ConfirmModal compares exact text, so
- * "5,912" would make the officer type a comma. The figures beside it are grouped; this word is not.
+ * The word the hard-tier modal arms on: the bare count, with no grouping. ConfirmModal reads what is typed against a
+ * count word with `parseTypedCount` (vb6), so the officer may type "5,912" as the figures beside it are written, or
+ * "5912". ⛔ The word itself stays bare: a grouped word is not a count word, and the modal would compare it as exact
+ * text.
  */
 export function confirmTypedWord(count: number): string {
   return String(count);

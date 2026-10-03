@@ -455,6 +455,9 @@ export const dict = {
       phoneInputTitle: "9-digit Tanzania mobile number starting with 6 or 7",
       openCalendar: "Open calendar", invalidDate: "Invalid date", pickDate: "Pick a date",
       dateRequired: "Enter a date",
+      // vb6 · the line a whole-number box prints under itself (input.tsx NUMERIC_NOTICE_KEYS) — a phone box never does
+      wholeNumbersOnly: "Whole numbers only — the part after the dot was dropped.",
+      noNegativeNumbers: "No negative numbers — the minus sign was dropped.",
       prevMonth: "Previous month", nextMonth: "Next month", pickYear: "Pick a year",
       backToCalendar: "Back to calendar",
       time24: "Time, 24-hour", duration: "Duration", durationValue: "Duration value",
@@ -3355,6 +3358,9 @@ export const dict = {
       phoneInputTitle: "Nambari ya simu ya Tanzania yenye tarakimu 9 inayoanza na 6 au 7",
       openCalendar: "Fungua kalenda", invalidDate: "Tarehe si sahihi", pickDate: "Chagua tarehe",
       dateRequired: "Weka tarehe",
+      // vb6 · the line a whole-number box prints under itself (input.tsx NUMERIC_NOTICE_KEYS) — a phone box never does
+      wholeNumbersOnly: "Namba kamili tu — sehemu iliyo baada ya nukta imeondolewa.",
+      noNegativeNumbers: "Hakuna namba hasi — alama ya kutoa imeondolewa.",
       prevMonth: "Mwezi uliopita", nextMonth: "Mwezi ujao", pickYear: "Chagua mwaka",
       backToCalendar: "Rudi kwenye kalenda",
       time24: "Muda, saa 24", duration: "Muda", durationValue: "Thamani ya muda",
@@ -5692,6 +5698,9 @@ export const dict = {
       phoneInputTitle: "9 位坦桑尼亚手机号，以 6 或 7 开头",
       openCalendar: "打开日历", invalidDate: "日期无效", pickDate: "选择日期",
       dateRequired: "请输入日期",
+      // vb6 · the line a whole-number box prints under itself (input.tsx NUMERIC_NOTICE_KEYS) — a phone box never does
+      wholeNumbersOnly: "只能输入整数——小数点后的部分已删除。",
+      noNegativeNumbers: "不能输入负数——负号已删除。",
       prevMonth: "上个月", nextMonth: "下个月", pickYear: "选择年份",
       backToCalendar: "返回日历",
       time24: "时间（24 小时制）", duration: "时长", durationValue: "时长数值",

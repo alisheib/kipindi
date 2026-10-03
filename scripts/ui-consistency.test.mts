@@ -732,10 +732,321 @@ if (fixed.length) {
   console.log("      → npm run test:ui-consistency -- --update-baseline");
 }
 
+// ---------------------------------------------------------------------------
+// KIT PINS (vb6, 2026-10-03) — what the form atoms PROMISE, rendered and driven.
+// ---------------------------------------------------------------------------
+/**
+ * ⭐ THE RULES ABOVE READ SOURCE; THESE READ WHAT THE ATOMS RENDER — in ENGLISH, the way a page renders them: inside the
+ * app router's context and an `I18nProvider` set to "en", exactly as `test:updown-match` renders its card. Without the
+ * provider every `useT()` reads the default locale, which is Swahili, and no English expectation could ever match.
+ * ⛔ The judges that guard a vb6 fix also run on a PLANTED COPY of the product file — the defect put back, the copy built
+ * in memory with esbuild, nothing written — and must go red there, while the same copy with nothing planted passes: a
+ * red plant is then the plant, not the copying.
+ * ⚠️ Normal mode only: `--update-baseline` and `--report` exit above, before a component is loaded.
+ */
+const kitFailures = await (async (): Promise<number> => {
+  let failed = 0;
+  const pin = (label: string, pass: boolean, detail = "") => {
+    console.log(`    ${pass ? "PASS" : "FAIL"} ${label}${pass || !detail ? "" : ` — ${detail}`}`);
+    if (!pass) failed++;
+  };
+  console.log("");
+  console.log("  KIT PINS — the form atoms, rendered in English (vb6)");
+
+  // eslint-free on purpose: this file is not type-checked (tsconfig includes scripts/**/*.ts only).
+  let h: (type: unknown, props?: unknown, ...children: unknown[]) => unknown;
+  let render: (el: unknown) => string;
+  let kit: Record<string, any>;
+  let parseTypedCount: (raw: string) => number | null;
+  /** A copy of `src/<rel>` with each [from, to] planted (every `from` must occur exactly once), optionally cut to the
+   *  slice from `sliceFrom` up to `sliceTo`, built with esbuild and evaluated in memory against the real modules it
+   *  imports; `free` supplies a slice's free names. Nothing touches the disk. */
+  let planted: (rel: string, plants: Array<[string, string]>, slice?: [string, string], free?: Record<string, unknown>) => Promise<Record<string, any>>;
+  try {
+    const reactMod: any = await import("react");
+    const serverMod: any = await import("react-dom/server");
+    const React = reactMod.default ?? reactMod;
+    const toMarkup = serverMod.renderToStaticMarkup ?? serverMod.default?.renderToStaticMarkup;
+    const { I18nProvider } = await import("../src/lib/i18n.tsx");
+    const { AppRouterContext } = await import("next/dist/shared/lib/app-router-context.shared-runtime.js");
+    const router = { push() {}, replace() {}, refresh() {}, back() {}, forward() {}, prefetch() {} };
+    h = (type, props, ...children) => React.createElement(type, props, ...children);
+    render = (el) => toMarkup(h(AppRouterContext.Provider, { value: router }, h(I18nProvider, { initial: "en" }, el)));
+    kit = {
+      ...(await import("../src/components/ui/input.tsx")),
+      ...(await import("../src/components/ui/textarea.tsx")),
+      ...(await import("../src/components/ui/select.tsx")),
+      ...(await import("../src/components/ui/date-select.tsx")),
+      ...(await import("../src/components/ui/modal.tsx")),
+    };
+    ({ parseTypedCount } = await import("../src/lib/marketing/campaign-confirm.ts"));
+    const { transform } = await import("esbuild");
+    const deps: Record<string, unknown> = {
+      react: React,
+      "@/lib/utils": await import("../src/lib/utils.ts"),
+      "@/components/ui/field-legend": await import("../src/components/ui/field-legend.tsx"),
+      "@/lib/i18n": await import("../src/lib/i18n.tsx"),
+    };
+    planted = async (rel, plants, slice, free = {}) => {
+      let src = readFileSync(join(SRC, ...rel.split("/")), "utf8");
+      for (const [from, to] of plants) {
+        const parts = src.split(from);
+        if (parts.length !== 2) throw new Error(`the plant's anchor occurs ${parts.length - 1} times in ${rel}, not once: ${from}`);
+        src = parts.join(to);
+      }
+      if (slice !== undefined) {
+        const start = src.indexOf(slice[0]);
+        const end = src.indexOf(slice[1]);
+        if (start < 0 || end <= start || src.indexOf(slice[0], start + 1) >= 0) throw new Error(`the slice anchors of ${rel} are not found once, in order`);
+        src = src.slice(start, end);
+      }
+      const code = (await transform(src, { loader: "tsx", format: "cjs", target: "es2022", charset: "utf8" })).code;
+      const mod: { exports: Record<string, any> } = { exports: {} };
+      const need = (spec: string) => {
+        if (spec in deps) return deps[spec];
+        throw new Error(`the planted copy of ${rel} imports ${spec}, which this suite does not provide`);
+      };
+      const names = Object.keys(free);
+      new Function("require", "module", "exports", ...names, code)(need, mod, mod.exports, ...names.map((n) => free[n]));
+      return mod.exports;
+    };
+  } catch (e) {
+    pin("K0 the kit atoms load and render outside the app", false, String((e as Error)?.message ?? e));
+    return failed;
+  }
+  const { Field, Input, Textarea, Select, DateSelect, confirmGateArmed } = kit;
+  /** A plant that could not be built is a red pin, never a crash that hides the others. */
+  const tryPlanted = async (...args: Parameters<typeof planted>) => {
+    try { return { mod: await planted(...args), why: "" }; } catch (e) { return { mod: null, why: String((e as Error)?.message ?? e) }; }
+  };
+
+  /** The first open tag a pattern finds, or "". */
+  const tag = (markup: string, re: RegExp) => re.exec(markup)?.[0] ?? "";
+  /** One attribute's value on an open tag, or null. React writes `name="value"` with a single space before each. */
+  const attr = (open: string, name: string): string | null => {
+    const key = ` ${name}="`;
+    const at = open.indexOf(key);
+    if (at < 0) return null;
+    const from = at + key.length;
+    return open.slice(from, open.indexOf('"', from));
+  };
+  const classes = (open: string) => (attr(open, "class") ?? "").split(" ");
+  const textOf = (markup: string) => markup.replace(/<[^>]+>/g, "");
+  /** What a Field's lines do to the control `controlRe` finds: an alert, whether the control names it, invalid. */
+  const judge = (markup: string, controlRe: RegExp) => {
+    const alert = tag(markup, /<p [^>]*role="alert"[^>]*>/);
+    const alertId = alert === "" ? null : attr(alert, "id");
+    const control = tag(markup, controlRe);
+    const described = (attr(control, "aria-describedby") ?? "").split(" ").filter((s) => s !== "");
+    return { alert: alert !== "", named: alertId !== null && described.includes(alertId), invalid: attr(control, "aria-invalid") === "true", described };
+  };
+  const INPUT_RE = /<input[^>]*>/;
+  const AREA_RE = /<textarea[^>]*>/;
+  const COMBO_RE = /<button[^>]*role="combobox"[^>]*>/;
+
+  /* The judges a plant is run against: each takes the Field and Input it renders with. */
+  type Atoms = { Field: any; Input: any };
+  const errorLine = (a: Atoms) => {
+    const markup = render(h(a.Field, { label: "Amount", error: "At least TZS 1,000." }, h(a.Input, { name: "amount" })));
+    const v = judge(markup, INPUT_RE);
+    return { pass: v.alert && v.named && markup.includes(">At least TZS 1,000.</p>"), v };
+  };
+  const throughAnotherType = (a: Atoms) => {
+    /* As a Server Component page hands it over: the element's type is NOT the Input itself (there it is a lazy
+       reference), and only the props say what the box is. */
+    const Passthrough = (p: Record<string, unknown>) => h(a.Input, p);
+    const text = textOf(render(h(a.Field, { label: "Reality check (minutes)" }, h(Passthrough, { name: "rc", type: "number", min: 5, max: 120 }))));
+    return { pass: text.includes("Min 5 · Max 120"), text };
+  };
+  const NBSP = String.fromCharCode(0x00a0);
+  const countGate = (armed: (hard: boolean, word: string, entry: string) => boolean) =>
+    ["2,981", "2 981", `2${NBSP}981`, "2981"].every((entry) => armed(true, "2981", entry) === true);
+  /** A Field's notice line as a page first renders it: the live region is already mounted, empty and with no margin,
+   *  and the control does not name it — it names it only while the region holds words. */
+  const noticeRegion = (a: Atoms) => {
+    const markup = render(h(a.Field, { label: "Amount (TZS)" }, h(a.Input, { name: "amount", inputMode: "numeric" })));
+    const open = tag(markup, /<p [^>]*role="status"[^>]*>/);
+    const id = open === "" ? null : attr(open, "id");
+    const described = (attr(tag(markup, INPUT_RE), "aria-describedby") ?? "").split(" ").filter((s) => s !== "");
+    const v = { open, empty: open !== "" && markup.includes(`${open}</p>`), margin: classes(open).includes("mt-1.5"), described };
+    return { pass: open !== "" && v.empty && !v.margin && id !== null && !described.includes(id), v };
+  };
+
+  // K0b · the copies the plants are made from are faithful
+  {
+    const kitCopy = await tryPlanted("components/ui/input.tsx", []);
+    const gateCopy = await tryPlanted("components/ui/modal.tsx", [], ["export function isCountWord(", "export function ConfirmModal("], { parseTypedCount });
+    const faithful = kitCopy.mod !== null && gateCopy.mod !== null
+      && errorLine(kitCopy.mod as Atoms).pass && throughAnotherType(kitCopy.mod as Atoms).pass && noticeRegion(kitCopy.mod as Atoms).pass
+      && countGate(gateCopy.mod.confirmGateArmed);
+    pin("K0b the in-memory copies with NOTHING planted — input.tsx, and modal.tsx's gate — pass K1, K3d, K7 and K8, so a red plant below is the plant",
+      faithful, `${kitCopy.why} ${gateCopy.why}`.trim());
+  }
+
+  // K1 · the error line is announced and wired
+  {
+    const real = errorLine({ Field, Input });
+    pin("K1 ⭐ a Field with an error renders it as role=alert, and its control's aria-describedby names that line", real.pass, JSON.stringify(real.v));
+    pin("K1b …and the control reads invalid: the Field's error and the box are one fact", real.v.invalid, JSON.stringify(real.v));
+    const hinted = render(h(Field, { label: "Amount", hint: "Whole shillings" }, h(Input, { name: "amount" })));
+    const hv = judge(hinted, INPUT_RE);
+    /* The hint by its own id: the notice's live region is always mounted ahead of it (K8), so the first p is not it. */
+    const hintId = attr(tag(hinted, /<p [^>]*id="[^"]*-hint"[^>]*>/), "id");
+    pin("K1c a Field with only a hint renders no alert and no aria-invalid, and its control is described by the hint",
+      !hv.alert && !hv.invalid && hintId !== null && hv.described.includes(hintId), JSON.stringify({ ...hv, hintId }));
+    const plant = await tryPlanted("components/ui/input.tsx", [['<p id={errorId} role="alert"', '<p id={errorId} data-planted="alert"']]);
+    pin("K1d CONTROL · a copy of input.tsx whose error line lost role=alert fails K1's judge",
+      plant.mod !== null && !errorLine(plant.mod as Atoms).pass, plant.why || "the planted copy still passes K1");
+  }
+
+  // K2 · optional, required, and the name
+  {
+    const opt = render(h(Field, { label: "Name", optional: true }, h(Input, { name: "n" })));
+    pin("K2 a Field marked optional says so after its label, in the dictionary's words", opt.includes(">(optional)</span>"), textOf(opt));
+    const req = render(h(Field, { label: "Name", required: true }, h(Input, { name: "n" })));
+    const plain = render(h(Field, { label: "Name" }, h(Input, { name: "n" })));
+    pin("K2b a Field marked required puts aria-required on its control — and an unmarked one does not",
+      attr(tag(req, INPUT_RE), "aria-required") === "true" && attr(tag(plain, INPUT_RE), "aria-required") === null,
+      `${tag(req, INPUT_RE)} | ${tag(plain, INPUT_RE)}`);
+    const legend = tag(plain, /<span [^>]*id="[^"]*"[^>]*>/);
+    pin("K2c the control's name is the legend alone (aria-labelledby), so the lines under it are read once, as its description",
+      legend !== "" && attr(tag(plain, INPUT_RE), "aria-labelledby") === attr(legend, "id"), tag(plain, INPUT_RE));
+    const ownName = tag(render(h(Field, { label: "Name" }, h(Input, { name: "n", "aria-label": "Given name" }))), INPUT_RE);
+    pin("K2d a control that brings its own name keeps it — the legend never overrides an aria-label",
+      attr(ownName, "aria-labelledby") === null && attr(ownName, "aria-label") === "Given name", ownName);
+  }
+
+  // K3 · a numeric box states its bounds
+  {
+    const stake = textOf(render(h(Field, { label: "Max stake (TZS)" }, h(Input, { name: "maxStake", type: "number", min: 100, max: 10000000 }))));
+    pin("K3 a numeric box's bounds are stated in its hint — min and max are inert on the text input that renders it",
+      stake.includes("Min 100 · Max 10,000,000"), stake);
+    const rate = textOf(render(h(Field, { label: "Rate (%)", hint: "Current 5%." },
+      h(Input, { name: "rate", type: "number", step: "0.1", min: "0", max: "30" }))));
+    pin("K3b after a hint that ends a sentence the bound follows a space; a min of 0 on a box that cannot go negative is not stated",
+      rate.includes("Current 5%. Max 30") && !rate.includes("Min 0"), rate);
+    const money = textOf(render(h(Field, { label: "Min stake (TZS)", hint: "Current TZS 1,000" },
+      h(Input, { name: "minStake", type: "number", min: 1000, max: 1000000 }))));
+    pin("K3c after a hint that does not end a sentence the bound follows a middle dot — 'Current TZS 1,000' and 'Min 1,000' never run together",
+      money.includes("Current TZS 1,000 · Min 1,000 · Max 1,000,000"), money);
+    const lazy = throughAnotherType({ Field, Input });
+    pin("K3d ⭐ the bounds are read from the child's PROPS: a numeric box whose element type is not the Input itself (a Server Component page's lazy reference) still states them",
+      lazy.pass, lazy.text);
+    const plant = await tryPlanted("components/ui/input.tsx", [[
+      "if (!React.isValidElement(children)) return null;",
+      "if (!React.isValidElement(children) || children.type !== Input) return null;",
+    ]]);
+    pin("K3e CONTROL · a copy of input.tsx that checks the child's TYPE (the first build) fails K3d's judge — no bound on a server page",
+      plant.mod !== null && !throughAnotherType(plant.mod as Atoms).pass, plant.why || "the planted copy still states the bounds");
+    const free = textOf(render(h(Field, { label: "Note" }, h(Input, { name: "note", min: "1" }))));
+    pin("K3f a box that is not numeric states no bounds", !free.includes("Min"), free);
+  }
+
+  // K4 · Textarea has an error state
+  {
+    const own = tag(render(h(Textarea, { error: "Too long" })), AREA_RE);
+    pin("K4 ⭐ Textarea takes an error: the danger border, the danger wash and aria-invalid — as the Input does",
+      attr(own, "aria-invalid") === "true" && classes(own).includes("border-danger-500") && (attr(own, "style") ?? "").includes("var(--danger-wash)"), own);
+    const fv = judge(render(h(Field, { label: "Notes", error: "A note can be at most 1,000 characters." }, h(Textarea, { name: "notes" }))), AREA_RE);
+    pin("K4b …and inside a Field with an error it reads invalid and is described by the alert", fv.invalid && fv.named, JSON.stringify(fv));
+    const claimed = tag(render(h(Textarea, { "aria-invalid": true })), AREA_RE);
+    pin("K4c a caller's own aria-invalid paints the box too — one fact (the composer bodies set it today)",
+      classes(claimed).includes("border-danger-500"), claimed);
+    const clean = tag(render(h(Textarea, {})), AREA_RE);
+    pin("K4d a Textarea with no error carries no aria-invalid and keeps the ordinary border",
+      attr(clean, "aria-invalid") === null && classes(clean).includes("border-border") && !classes(clean).includes("border-danger-500"), clean);
+  }
+
+  // K5 · Select has an error state, and takes its Field's
+  {
+    const options = [{ value: "a", label: "Alpha" }];
+    const own = tag(render(h(Select, { options, error: true })), COMBO_RE);
+    pin("K5 ⭐ Select takes an error: aria-invalid on the combobox, the danger border and the danger wash",
+      attr(own, "aria-invalid") === "true" && classes(own).includes("border-danger-500") && (attr(own, "style") ?? "").includes("var(--danger-wash)"), own);
+    const sv = judge(render(h(Field, { label: "List", error: "Choose a list, or name a new one." }, h(Select, { options }))), COMBO_RE);
+    pin("K5b …and inside a Field with an error the combobox reads invalid and names the alert — no hand-written line needed",
+      sv.invalid && sv.named, JSON.stringify(sv));
+    const clean = tag(render(h(Select, { options })), COMBO_RE);
+    pin("K5c a Select with no error has no aria-invalid and keeps the ordinary border",
+      attr(clean, "aria-invalid") === null && classes(clean).includes("border-border"), clean);
+  }
+
+  // K6 · DateSelect has an error state, and checks required itself
+  {
+    const SEG_RE = /<input[^>]*aria-label="(Day|Month|Year)"[^>]*>/g;
+    const segs = (markup: string) => [...markup.matchAll(SEG_RE)].map((m) => m[0]);
+    const errd = render(h(DateSelect, { error: true }));
+    pin("K6 ⭐ DateSelect takes an error: each of its three segments (named in English here) reads invalid, and the box is painted red",
+      segs(errd).length === 3 && segs(errd).every((s) => attr(s, "aria-invalid") === "true")
+        && /<div class="field-measure relative[^"]*border-danger-500/.test(errd), errd.slice(0, 240));
+    const clean = render(h(DateSelect, {}));
+    pin("K6b with no error, no segment reads invalid and the box keeps its border",
+      segs(clean).length === 3 && segs(clean).every((s) => attr(s, "aria-invalid") === null)
+        && /<div class="field-measure relative[^"]*border-border/.test(clean), clean.slice(0, 240));
+    const dateSrc = decomment(readFileSync(join(SRC, "components", "ui", "date-select.tsx"), "utf8"));
+    const asks = (s: string) => /form\.addEventListener\("submit", onSubmit\)/.test(s) && /setAskedFor\(true\)/.test(s)
+      && /t\.common\.dateRequired/.test(s.slice(Math.max(0, s.indexOf("{showMsg &&"))));
+    pin("K6c required is checked in JavaScript: a submit of the field's form with no date asks for one (a noValidate form never shows the bubble)",
+      dateSrc.includes("{showMsg &&") && asks(dateSrc));
+    pin("K6d CONTROL · the same check on a DateSelect that no longer listens for the submit is red",
+      !asks(dateSrc.replace('form.addEventListener("submit", onSubmit)', "void form")));
+  }
+
+  // K7 · a typed-count gate arms on the count as it is written
+  {
+    const arms = (entry: string, word = "2981") => confirmGateArmed(true, word, entry) === true;
+    pin("K7 ⭐ a count gate arms on the count as the title writes it — '2,981', '2 981', a no-break-space grouping and '2981'",
+      countGate(confirmGateArmed));
+    pin("K7b …and on nothing else: '2981.0', '29810', '2,9810', '298' and an empty entry stay disarmed",
+      !arms("2981.0") && !arms("29810") && !arms("2,9810") && !arms("298") && !arms(""));
+    pin("K7c a word gate is unchanged: 'delete' arms DELETE as it always did, 'DELET' and '2,981' do not",
+      confirmGateArmed(true, "DELETE", "delete") && !confirmGateArmed(true, "DELETE", "DELET") && !confirmGateArmed(true, "DELETE", "2,981"));
+    pin("K7d it still fails closed — an empty word never arms — and a medium confirm is always armed",
+      !confirmGateArmed(true, "", "") && !confirmGateArmed(true, "", "2981") && confirmGateArmed(false, "", ""));
+    const plant = await tryPlanted("components/ui/modal.tsx", [["const typed = gateReading(entry, gateWord);", "const typed = entry;"]],
+      ["export function isCountWord(", "export function ConfirmModal("], { parseTypedCount });
+    pin("K7e CONTROL · a copy of modal.tsx's gate that compares the exact text again (the pre-fix gate) fails K7's judge — '2,981' stays disarmed",
+      plant.mod !== null && !countGate(plant.mod.confirmGateArmed), plant.why || "the planted gate still arms on '2,981'");
+    const modalSrc = decomment(readFileSync(join(SRC, "components", "ui", "modal.tsx"), "utf8"));
+    const wired = (s: string) => ({
+      rule: /const armed = confirmGateArmed\(isHard, gateWord, entry\);/.test(s),
+      keypad: /inputMode=\{countGate \? "numeric" : undefined\}/.test(s),
+      enter: /<form\s+noValidate\s+onSubmit=\{\(e\) => \{\s*e\.preventDefault\(\);\s*e\.stopPropagation\(\);\s*if \(armed && !loading\) fire\(\);/.test(s),
+      submit: /ref=\{confirmRef\}\s+type="submit"/.test(s),
+    });
+    const w = wired(modalSrc);
+    pin("K7f the dialog arms through that rule, opens a numeric keypad for a count, and confirms on Enter through a form that stops at the dialog",
+      w.rule && w.keypad && w.enter && w.submit, JSON.stringify(w));
+    const pw = wired(modalSrc.replace("e.stopPropagation();", ""));
+    pin("K7g CONTROL · a gate form whose submit could climb to the page's own form is reported", !pw.enter, JSON.stringify(pw));
+  }
+
+  // K8 · the notice line is a live region that is always there
+  {
+    const real = noticeRegion({ Field, Input });
+    pin("K8 ⭐ a Field's notice line is a live region that is ALWAYS mounted — empty, with no margin, while nothing is owed — and its control does not name it until it holds words",
+      real.pass, JSON.stringify(real.v));
+    const plant = await tryPlanted("components/ui/input.tsx", [[
+      '<p id={noticeId} role="status" className={cn("text-body-sm text-text", notice !== "" && "mt-1.5")}>{notice}</p>',
+      '{notice !== "" ? <p id={noticeId} role="status" className="mt-1.5 text-body-sm text-text">{notice}</p> : null}',
+    ]]);
+    pin("K8b CONTROL · a copy of input.tsx that mounts the notice only once it holds words (the first build) fails K8's judge — a region created already holding its words is announced unreliably",
+      plant.mod !== null && !noticeRegion(plant.mod as Atoms).pass, plant.why || "the planted copy still mounts an empty live region");
+  }
+
+  return failed;
+})();
+
 if (regressions.length) {
   console.log(`\n  FAIL — ${regressions.length} NEW/increased drift (not in the baseline):\n`);
   for (const s of regressions) console.log(`      ${s}`);
   console.log("\n  Fix the drift (use the kit primitive), or if intentional, re-baseline with a documented reason.");
+  process.exit(1);
+}
+
+if (kitFailures > 0) {
+  console.log("");
+  console.log(`  FAIL — ${kitFailures} kit pin(s) red (see KIT PINS above): a form atom broke a promise every form inherits.`);
   process.exit(1);
 }
 

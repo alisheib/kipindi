@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useDeferredToast } from "@/components/ui/toast";
 import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
+import { Field, Input } from "@/components/ui/input";
 import { I } from "@/components/ui/glyphs";
 import { formatTzs } from "@/lib/utils";
 import { adjustBalanceAction } from "./actions";
@@ -47,7 +48,10 @@ export function BalanceAdjustControls({
   // return above these hooks would render fewer hooks than the last pass and crash the page.
   if (!mayAct) return <ActReadOnly />;
 
-  const amt = Number(amount.replace(/[,\s]/g, ""));
+  // ⭐ (vb6) The kit box keeps digits only — it cuts a pasted dot and drops a comma — so its text IS the whole
+  //    number, read as it stands. ⛔ Never re-filtered here: a filter of this page's own is how "9,500.00" became
+  //    950,000 (see the amount field below).
+  const amt = Number(amount);
   // Hard-tier ceremony (B-4): at/above the two-person threshold the officer must
   // type the direction word — mirroring `ConfirmModal tier="hard" typedWord`.
   const needsHard = Number.isFinite(amt) && amt >= TWO_PERSON_THRESHOLD_TZS;
@@ -141,17 +145,22 @@ export function BalanceAdjustControls({
           ))}
         </div>
 
-        <label className="mt-3 block" data-field="amount">
-          <span className="font-mono text-micro uppercase eyebrow font-bold text-text-subtle">Amount (TZS)</span>
-          <input
+        {/* ⭐ (vb6, 2026-10-03) THE KIT BOX, NOT A HAND-ROLLED ONE. This was a raw input whose own filter kept digits
+            AND commas and dropped the dot, so a pasted "9,500.00" held "9,50000" and one officer moved TZS 950,000 —
+            under the two-person threshold, so no second officer was asked. The kit Input cuts a pasted dot ("9,500.00"
+            keeps 9500), refuses a typed one, and its Field says so (DESIGN_AUTHORITY §A7); `test:numeric` pins this
+            field and shows the old handler red. */}
+        <Field label="Amount (TZS)" dataField="amount" className="mt-3">
+          <Input
             ref={amountRef}
             inputMode="numeric"
+            prefix="TZS"
+            mono
             value={amount}
-            onChange={(e) => setAmount(e.target.value.replace(/[^\d,]/g, ""))}
+            onChange={(e) => setAmount(e.target.value)}
             placeholder="e.g. 50,000"
-            className="mt-1 w-full rounded-md border border-border bg-bg-overlay px-2.5 py-2 text-[13px] tabular-nums text-text outline-none admin-focus transition-colors"
           />
-        </label>
+        </Field>
 
         <label className="mt-3 block" data-field="reason">
           <span className="font-mono text-micro uppercase eyebrow font-bold text-text-subtle">Reason · Sababu (required, audit-logged)</span>

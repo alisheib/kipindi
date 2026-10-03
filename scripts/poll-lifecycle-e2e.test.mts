@@ -509,7 +509,9 @@ section("10. Numeric input sanitiser — strict mode");
 {
   // Integer mode
   ok("10.1 strips letters", sanitizeNumericInput("abc123def", { decimal: false, negative: false }) === "123");
-  ok("10.2 strips dots in int mode", sanitizeNumericInput("12.34", { decimal: false, negative: false }) === "1234");
+  // vb6 (2026-10-03): a whole-number box CUTS at the first dot. Deleting it made "12.34" read 1234 — a 100x change
+  // on a money field that no range check catches. The typed path (a refused dot) is pinned in test:numeric.
+  ok("10.2 cuts at the first dot in int mode — never 1234", sanitizeNumericInput("12.34", { decimal: false, negative: false }) === "12");
   ok("10.3 strips scientific notation", sanitizeNumericInput("1e5", { decimal: false, negative: false }) === "15");
   ok("10.4 empty string ok", sanitizeNumericInput("", { decimal: false, negative: false }) === "");
   ok("10.5 pure digits pass", sanitizeNumericInput("42000", { decimal: false, negative: false }) === "42000");

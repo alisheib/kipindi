@@ -17,6 +17,7 @@
 import { useState, useEffect, useRef, useCallback, useId } from "react";
 import { createPortal } from "react-dom";
 import { useExitPhase } from "@/components/ui/modal";
+import { useFieldWiring } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
 
@@ -66,13 +67,21 @@ type Props = {
   /** Why it is disabled, surfaced as the trigger's tooltip. A disabled control with no
    *  reason reads as a bug; the reason turns it into a policy the operator can act on. */
   disabledReason?: string;
+  /** ⭐ The error state (vb6, 2026-10-03) — the danger border, the `--danger-wash` fill and `aria-invalid` on the
+   *  combobox, exactly as the Input paints them. Inside a `<Field error>` it is on already. ⛔ A string is NOT printed
+   *  here: the message is the Field's, so a form never hand-writes a second `role="alert"` line beside a Select. */
+  error?: boolean | string;
 };
 
 export function Select({
   name, value, defaultValue, onChange, options, placeholder,
-  required, className, ariaLabel, size = "md", disabled, disabledReason,
+  required, className, ariaLabel, size = "md", disabled, disabledReason, error,
 }: Props) {
   const { t } = useT();
+  /* The Field this control sits in, if any: its lines describe the trigger, and its error is this control's error.
+     ⛔ The NAME stays this control's own (`ariaLabel`, then the placeholder) — drivers and readers already know it. */
+  const field = useFieldWiring();
+  const errored = !!error || !!field?.invalid;
   const controlled = value !== undefined;
   const [internal, setInternal] = useState(defaultValue ?? "");
   const selected = controlled ? value : internal;
@@ -398,6 +407,9 @@ export function Select({
         onKeyDown={onTriggerKey}
         role="combobox"
         aria-labelledby={labelId}
+        aria-describedby={field?.describedBy}
+        aria-invalid={errored || undefined}
+        aria-required={required || field?.required || undefined}
         aria-expanded={open}
         aria-haspopup="listbox"
         /* ⛔ EMITTED ONLY WHILE OPEN. The listbox is portalled and does not exist in the DOM
@@ -408,7 +420,8 @@ export function Select({
         aria-controls={open ? listboxId : undefined}
         aria-activedescendant={open && focusIdx >= 0 ? optionId(focusIdx) : undefined}
         className={cn(
-          "field-measure flex items-center justify-between w-full border border-border text-left",
+          "field-measure flex items-center justify-between w-full border text-left",
+          errored ? "border-danger-500" : "border-border",
           "focus:outline-none brand-focus",
           "transition-colors font-mono",
           radius, txt, h, pad, gap,
@@ -416,7 +429,7 @@ export function Select({
           disabled && "cursor-not-allowed opacity-50",
           className,
         )}
-        style={{ background: "var(--bg-inset)" }}
+        style={{ background: errored ? "var(--danger-wash)" : "var(--bg-inset)" }}
       >
         {/* ⛔ NOT `truncate` — E-98. A dropdown's closed trigger is the ONLY place the
             operator reads what they chose, so hiding part of it is data loss, not a layout

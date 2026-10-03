@@ -231,5 +231,154 @@ for (const r of Object.keys(EXEMPT)) {
 
 console.log(`  → ${unguarded === 0 ? "ZERO unguarded, zero unexplained" : `🔴 ${unguarded} unguarded and unexplained`}`);
 
+console.log("");
+console.log("§3 · a draft carries every typed control, and restores into a React-controlled field (vb6)");
+
+/**
+ * ⭐ STAND-INS THAT BEHAVE LIKE THE BROWSER WHERE IT MATTERS, AND NOWHERE ELSE. A real control keeps `value` as an
+ * accessor on its PROTOTYPE. React, on mount, redefines `value` on the ELEMENT, so every assignment through the element
+ * also updates React's record of "the last value I saw", and on an `input` event it calls `onChange` only when the
+ * element's value differs from that record. That is the whole mechanism by which a `.value =` restore was swallowed —
+ * the field showed the draft until its next render painted the old state back — so it is reproduced exactly.
+ * ⛔ Each judge also runs on a PLANTED COPY of the kit's draft helpers — the defect put back into the source, the copy
+ * built in memory with esbuild, nothing written — and must go red there; the same copy with nothing planted passes.
+ * ⚠️ The kit module is imported from the REAL tree, never from `KP_SRC`: a copy in a temp directory cannot resolve
+ * `react`. The planted copies and §3.4 read the source from `SRC`, so a mutated tree is still judged on its own code.
+ */
+class StandIn {
+  readonly events: string[] = [];
+  checked = false;
+  onEvent: ((e: Event) => void) | null = null;
+  #value: string;
+  constructor(readonly tagName: string, readonly name: string, readonly type: string, value: string) { this.#value = value; }
+  get value(): string { return this.#value; }
+  set value(v: string) { this.#value = String(v); }
+  dispatchEvent(e: Event): boolean { this.events.push(e.type); this.onEvent?.(e); return true; }
+}
+
+/** What React installs on a controlled field (see above), with the field's `onChange`. */
+function controlledLikeReact(node: StandIn, onChange: (v: string) => void): void {
+  const proto = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(node), "value");
+  if (!proto?.get || !proto.set) throw new Error("the stand-in lost its prototype accessor");
+  const get = proto.get, set = proto.set;
+  let seen = String(get.call(node));
+  Object.defineProperty(node, "value", {
+    configurable: true,
+    get() { return get.call(this); },
+    set(v: string) { seen = String(v); set.call(this, v); },
+  });
+  node.onEvent = (e) => {
+    if (e.type !== "input") return;
+    const now = String(get.call(node));
+    if (now !== seen) { seen = now; onChange(now); }
+  };
+}
+
+type Draft = { values: Record<string, string>; flags: Record<string, boolean> };
+type DraftKit = { draftValuesOf: (els: Iterable<unknown>) => unknown; restoreDraftInto: (els: Iterable<unknown>, d: Draft) => number };
+
+/* The three judges — each takes the helpers it judges, so the shipped ones and a planted copy face the same test. */
+const carries = (k: DraftKit) => {
+  const els = [
+    new StandIn("INPUT", "amount", "text", "12500"),
+    new StandIn("TEXTAREA", "notes", "textarea", "Called twice, no answer"),
+    new StandIn("SELECT", "list", "select-one", "vip"),
+    new StandIn("INPUT", "pin", "password", "1234"),
+    new StandIn("INPUT", "doc", "file", "C:/fakepath/id.png"),
+    new StandIn("INPUT", "side", "radio", "yes"),
+    Object.assign(new StandIn("INPUT", "agree", "checkbox", "on"), { checked: true }),
+    new StandIn("SELECT", "tags", "select-multiple", "a"),
+    new StandIn("TEXTAREA", "", "textarea", "a control with no name posts nothing"),
+  ];
+  const got = JSON.stringify(k.draftValuesOf(els));
+  const want = JSON.stringify({ values: { amount: "12500", notes: "Called twice, no answer", list: "vip" }, flags: { agree: true } });
+  return { pass: got === want, detail: got };
+};
+const DRAFT = "Draft note from before the session expired";
+const restoresControlled = (k: DraftKit) => {
+  let state = "Old note";
+  const notes = new StandIn("TEXTAREA", "notes", "textarea", state);
+  controlledLikeReact(notes, (v) => { state = v; });
+  k.restoreDraftInto([notes], { values: { notes: DRAFT }, flags: {} });
+  const seen = { state, shown: notes.value, events: notes.events.join(",") };
+  return { pass: seen.state === DRAFT && seen.shown === DRAFT && seen.events === "input", detail: JSON.stringify(seen) };
+};
+const selectHearsChange = (k: DraftKit) => {
+  let picked = "none";
+  const list = new StandIn("SELECT", "list", "select-one", "vip");
+  list.onEvent = (e) => { if (e.type === "change") picked = list.value; };
+  const moved = k.restoreDraftInto([list], { values: { list: "new-joiners" }, flags: {} });
+  return { pass: moved === 1 && picked === "new-joiners" && list.events.join(",") === "input,change", detail: JSON.stringify({ moved, picked, events: list.events }) };
+};
+
+let kitDraft: DraftKit | null = null;
+try {
+  kitDraft = await import("../src/components/ui/unsaved-changes.tsx");
+} catch (e) {
+  ok("3.0 the kit's draft helpers load outside the app", false, String((e as Error)?.message ?? e));
+}
+
+/** The kit's draft helpers, cut from `SRC`'s unsaved-changes.tsx with each [from, to] planted (every `from` exactly
+ *  once), built with esbuild and evaluated in memory. */
+async function plantedDraftKit(plants: Array<[string, string]>): Promise<DraftKit> {
+  let src = prim;
+  for (const [from, to] of plants) {
+    const parts = src.split(from);
+    if (parts.length !== 2) throw new Error(`the plant's anchor occurs ${parts.length - 1} times, not once: ${from}`);
+    src = parts.join(to);
+  }
+  const start = src.indexOf("type DraftValues = ");
+  const end = src.indexOf("export function useFormDraft(");
+  if (start < 0 || end <= start) throw new Error("the draft helpers were not found between `type DraftValues` and useFormDraft");
+  const { transform } = await import("esbuild");
+  const code = (await transform(src.slice(start, end), { loader: "ts", format: "cjs", target: "es2022", charset: "utf8" })).code;
+  const mod: { exports: Record<string, unknown> } = { exports: {} };
+  new Function("module", "exports", code)(mod, mod.exports);
+  return mod.exports as unknown as DraftKit;
+}
+const tryDraft = async (plants: Array<[string, string]>) => {
+  try { return { k: await plantedDraftKit(plants), why: "" }; } catch (e) { return { k: null, why: String((e as Error)?.message ?? e) }; }
+};
+
+if (kitDraft) {
+  const c = carries(kitDraft);
+  ok("3.1 a draft carries named inputs, textareas and single selects — never a password, a file, a radio, a multi-select or a nameless control",
+     c.pass, c.detail);
+  const r = restoresControlled(kitDraft);
+  ok("3.2 ⭐ a textarea's draft restores INTO A CONTROLLED FIELD — its onChange receives the draft, so the next render keeps it",
+     r.pass, r.detail);
+  const s = selectHearsChange(kitDraft);
+  ok("3.3 a select's draft is written and raises `change` — the event React's onChange for a select listens to", s.pass, s.detail);
+
+  const copy = await tryDraft([]);
+  ok("3.0b the in-memory copy of the draft helpers with NOTHING planted passes 3.1–3.3 — so a red plant below is the plant",
+     copy.k !== null && carries(copy.k).pass && restoresControlled(copy.k).pass && selectHearsChange(copy.k).pass, copy.why);
+  const PLANTS: Array<{ label: string; judge: (k: DraftKit) => { pass: boolean }; plant: [string, string] }> = [
+    { label: "3.1c CONTROL · a copy whose draft skips the textarea (the pre-fix inputs-only draft) fails 3.1",
+      judge: carries, plant: ['if (tag === "TEXTAREA") return "value";', ""] },
+    { label: "3.2c CONTROL · a copy that restores through the element (`.value =`, the pre-fix restore) leaves the controlled field on its old text — 3.2 refuses it",
+      judge: restoresControlled, plant: ["setNativeValue(node, want);", "(node as { value: string }).value = want;"] },
+    { label: "3.3c CONTROL · a copy that never tells a select `change` fails 3.3",
+      judge: selectHearsChange, plant: ['if (String(node.tagName).toUpperCase() === "SELECT") dispatch("change");', ""] },
+  ];
+  for (const p of PLANTS) {
+    const t = await tryDraft([p.plant]);
+    ok(p.label, t.k !== null && !p.judge(t.k).pass, t.why || "the planted copy still passes");
+  }
+}
+
+/* ⛔ AND THE HOOK USES THEM — read from `SRC`, so the call site that ships is the one judged. */
+const draftHook = (() => { const at = prim.search(/export function useFormDraft\s*\(/); return at < 0 ? "" : prim.slice(at); })();
+const draftWired = (hook: string) => ({
+  reads: /draftValuesOf\(form\.elements\)/.test(hook),
+  restores: /restoreDraftInto\(form\.elements, e\)/.test(hook),
+  noBareAssign: !/(?<![\w.$])el\.value\s*=(?!=)/.test(hook),
+});
+const wiredNow = draftWired(draftHook);
+ok("3.4 useFormDraft writes its draft with draftValuesOf(form.elements) and restores it with restoreDraftInto(form.elements, …)",
+   draftHook !== "" && wiredNow.reads && wiredNow.restores && wiredNow.noBareAssign, JSON.stringify(wiredNow));
+const wiredPlanted = draftWired(draftHook.replace("restoreDraftInto(form.elements, e)", "void form"));
+ok("3.4c CONTROL · a hook that no longer restores through restoreDraftInto is reported", !wiredPlanted.restores, JSON.stringify(wiredPlanted));
+
 console.log(`\n${fail ? `🔴 ${fail} failing` : "✅ every admin form that can lose work guards all three exits"}`);
 process.exit(fail ? 1 : 0);

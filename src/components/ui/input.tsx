@@ -16,10 +16,30 @@
  * construction — no per-call-site discipline required. Decimals are allowed
  * automatically for `inputMode="decimal"` or a fractional `step`; negatives only
  * when `allowNegative` is set (default off — counts, rates, amounts are ≥ 0).
+ *
+ * ⭐ A WHOLE-NUMBER BOX NEVER CHANGES THE SIZE OF A NUMBER (vb6, 2026-10-03). It used to delete every dot, so a pasted
+ * "12.50" became 1250 and "1,500.50" became 150050 — a 100× change that passes every range check, on live money fields
+ * (the agent rail's refund and receipt amounts, config's min and max stake, and now the console's balance adjustment,
+ * which had hand-rolled its own box). Every change is now read by `numericStep`:
+ *   · a PASTE or a DROP that holds a dot keeps what it brought up to that dot, and the Field says the rest was dropped;
+ *   · a TYPED dot is not inserted and the value stays; a digit typed straight after it, at the caret where it was
+ *     refused, is dropped — and only then does the Field say so — until a key that is not a digit, a blur, a deletion,
+ *     a change over a selection or a digit typed anywhere else; so "12500.00" typed key by key ends on 12500;
+ *   · a stray dot typed inside a number keeps every digit that was already there, and says nothing: nothing was lost.
+ * The full stops a Chinese keyboard types (U+3002, U+FF0E, U+FF61) are read as a dot. A comma is read as grouping, so
+ * a comma-decimal entry ("12 500,50") is not caught: it keeps 1250050.
+ * A phone-number box (`type="tel"`: PhoneInput, the deposit number) reads a dot or a dash as a separator, exactly as
+ * before, and says nothing. `test:numeric` drives `numericBox` — the object each box keeps — key by key.
+ *
+ * ⭐ AND `Field` WIRES WHAT IT WRAPS (vb6). The legend, the error line (`role="alert"`), the notice (`role="status"`,
+ * always mounted, so a screen reader hears its words arrive) and the hint get ids, and the kit control inside — this
+ * Input, `Textarea`, `Select`, `DateSelect` — reads them through `useFieldWiring`: `aria-describedby`, `aria-invalid`,
+ * `aria-required`, and the legend as its name. DESIGN_AUTHORITY §A7 holds the rule.
  */
 import * as React from "react";
-import { cn } from "@/lib/utils";
+import { cn, formatNumber } from "@/lib/utils";
 import { FieldLegend } from "@/components/ui/field-legend";
+import { useT } from "@/lib/i18n";
 
 type Props = Omit<React.InputHTMLAttributes<HTMLInputElement>, "size"> & {
   prefix?: React.ReactNode;
@@ -38,17 +58,359 @@ type Props = Omit<React.InputHTMLAttributes<HTMLInputElement>, "size"> & {
   allowNegative?: boolean;
 };
 
-/** Strip a raw string down to a valid number literal. */
-export function sanitizeNumericInput(raw: string, opts: { decimal: boolean; negative: boolean }): string {
-  const neg = opts.negative && /^\s*-/.test(raw);
+/** How a numeric box reads its text. */
+export type NumericOpts = {
+  /** A decimal box keeps its first dot. */
+  decimal: boolean;
+  /** A leading minus is kept. */
+  negative: boolean;
+  /** A phone-number box (`type="tel"`): a dot, a dash or a space only separates digit groups — dropped, never cut, and
+   *  never reported. */
+  separators?: boolean;
+};
+
+/** Strip a raw string down to a valid number literal — the WHOLE text read as one entry, as a paste into an empty box
+ *  is. ⛔ A whole-number box CUTS at the first dot (`readNumericEntry`); a box being typed into reads each change with
+ *  `numericStep`. */
+export function sanitizeNumericInput(raw: string, opts: NumericOpts): string {
+  return readNumericEntry(raw, opts).value;
+}
+
+/** What a numeric box keeps from one whole entry, and what it had to drop on the way. */
+export type NumericEntry = {
+  /** What the box keeps: digits, at most one dot (decimal mode only), and a leading minus where one is allowed. */
+  value: string;
+  /** A whole-number box met a dot: the dot and everything after it were dropped. */
+  cutAtDot: boolean;
+  /** A box that refuses negatives met a leading minus, and dropped it. */
+  droppedMinus: boolean;
+};
+
+/* ⭐ (vb6) THE FULL STOPS A WHOLE-NUMBER BOX READS AS A DOT, besides the ASCII one: the ideographic, full-width and
+   half-width ideographic full stops (U+3002, U+FF0E, U+FF61) that a Chinese keyboard types. Read as nothing, they made
+   "12500" + U+3002 + "00" read 1250000. ⛔ A comma is not one of them: it is read as grouping. */
+const FULL_STOPS = new RegExp("[" + String.fromCharCode(0x3002, 0xff0e, 0xff61) + "]", "g");
+
+/** The text with each of those full stops written as the ASCII dot — one character for one, so a caret still points
+ *  where it pointed. */
+function plainDots(text: string): string {
+  return text.replace(FULL_STOPS, ".");
+}
+
+/**
+ * ⭐ THE READING OF ONE WHOLE ENTRY (vb6, 2026-10-03) — `sanitizeNumericInput` is its `value`.
+ *
+ * 🔴 THE WHOLE-NUMBER BRANCH USED TO DELETE EVERY DOT. A pasted "12.50" became 1250, "1,500.50" became 150050 and
+ * "12,500.00" became 1250000: a 100× change that passes every range check, on live money fields. ⛔ It now CUTS at the
+ * first dot — "12.50" keeps 12, "1,500.50" keeps 1500 — so a number is never multiplied. A European "1.500" keeps 1,
+ * which is visible, and the Field says why. A Chinese keyboard's full stop is a dot here too (`plainDots`).
+ * ⚠️ Decimal mode is unchanged: it keeps the first dot and drops any later one. A minus survives only where negatives
+ * are allowed; where they are not, dropping it is reported, because "-5" becoming 5 is a sign change no range catches.
+ */
+export function readNumericEntry(entry: string, opts: NumericOpts): NumericEntry {
+  const raw = opts.decimal ? entry : plainDots(entry);
+  if (opts.separators) return { value: raw.replace(/[^0-9]/g, ""), cutAtDot: false, droppedMinus: false };
+  const signed = /^\s*-/.test(raw);
   let s = raw.replace(/[^\d.]/g, "");          // keep digits + dots only
+  let cutAtDot = false;
+  const dot = s.indexOf(".");
   if (opts.decimal) {
-    const i = s.indexOf(".");
-    if (i >= 0) s = s.slice(0, i + 1) + s.slice(i + 1).replace(/\./g, ""); // first dot only
-  } else {
-    s = s.replace(/\./g, "");
+    if (dot >= 0) s = s.slice(0, dot + 1) + s.slice(dot + 1).replace(/\./g, ""); // first dot only
+  } else if (dot >= 0) {
+    s = s.slice(0, dot);                        // ⛔ CUT at the first dot — never delete it
+    cutAtDot = true;
   }
-  return (neg ? "-" : "") + s;
+  return { value: (opts.negative && signed ? "-" : "") + s, cutAtDot, droppedMinus: signed && !opts.negative };
+}
+
+/** What a box owes its officer a line for: digits after a dot it cut or dropped, a minus it dropped. */
+export type NumericOwed = { dot: boolean; minus: boolean };
+
+/** What a numeric box carries from one change to the next. */
+export type NumericMemory = {
+  /**
+   * Where a refused dot holds — the caret, in what the box keeps, at which the dot was refused — or `null` when nothing
+   * holds. A digit typed AT that caret is the dot's fraction, and is dropped; a digit typed anywhere else is a digit.
+   */
+  latchedAt: number | null;
+  /** The line the box owes, or `null`. */
+  owed: NumericOwed | null;
+};
+
+export const NO_NUMERIC_MEMORY: NumericMemory = { latchedAt: null, owed: null };
+
+/** One change, as the browser reports it to the change handler. */
+export type NumericChange = {
+  /** The text the box held before the change, or `null` when it is not known. */
+  before: string | null;
+  /** The text after the browser applied the change (`e.target.value`). */
+  raw: string;
+  /** The caret after the change (`e.target.selectionEnd`), or `null` when the box cannot say. */
+  caret: number | null;
+  /** The change replaced a selection that held text — a select-all and a paste, a key typed over a selection. Absent
+   *  counts as no. */
+  replaced?: boolean;
+};
+
+/** What the box keeps after one change, where its caret goes, and what it carries to the next. */
+export type NumericStep = { value: string; caret: number | null; memory: NumericMemory };
+
+/**
+ * Where a change put new text: the span of `raw` that was not there before, or `null` when it cannot be told.
+ * ⭐ The CARET marks the end of what arrived, and everything after it must be the box's old tail — so a paste whose own
+ * last digits happen to match the old text is never mistaken for the old text, which a plain prefix-and-suffix diff
+ * would do (a pasted "12.50" over a selected "1000" would leave "120").
+ */
+function insertedSpan(before: string | null, raw: string, caret: number | null): { start: number; end: number } | null {
+  if (before === null || caret === null || caret < 0 || caret > raw.length) return null;
+  const tailLength = raw.length - caret;
+  if (tailLength > before.length || raw.slice(caret) !== before.slice(before.length - tailLength)) return null;
+  const headMax = Math.min(caret, before.length - tailLength);
+  let start = 0;
+  while (start < headMax && raw[start] === before[start]) start++;
+  return { start, end: caret };
+}
+
+/**
+ * ⭐ ONE CHANGE TO A NUMERIC BOX — the rule every keystroke, paste and drop goes through (vb6, 2026-10-03).
+ *
+ * In a whole-number box:
+ *   ① a digit typed straight after a refused dot — AT the caret where the dot was refused, replacing nothing — is its
+ *     fraction: it is DROPPED, the box keeps exactly what it held, and the Field now says so. The hold ends on a key
+ *     that is not a digit (`numericKey`, or a change that brings one), a blur (`numericBlur`), a deletion, a change
+ *     that replaced a selection (a select-all and a paste), or a digit that lands anywhere else — a tap moved the
+ *     caret, and a phone has no arrow key to end it. So "12500.00" typed key by key ends on 12500, never 1250000;
+ *   ② a dot in what arrived keeps what arrived up to that dot and drops the dot and the rest of it, while the box's own
+ *     text on both sides stays: a pasted "12,500.00" keeps 12500, and a stray dot typed inside "125000" keeps every
+ *     digit. A dot that ENDED what arrived (a typed ".", or a paste ending in one) starts the hold of ①, at the caret.
+ * A Chinese keyboard's full stop is a dot (`plainDots`). When what arrived cannot be told from what was there, the
+ * whole text is read as one paste (`readNumericEntry`). A decimal box and a phone-number box read the whole text,
+ * exactly as they always have.
+ * ⛔ THE LINE IS NEVER FALSE: the dot's line ("the part after the dot was dropped") is owed only once digits after a dot
+ * WERE dropped — cut from what arrived, or dropped by ① — and then until the value moves; a refused dot that dropped
+ * nothing owes nothing. A dropped minus changed the SIGN of every digit typed after it, so its line lasts until the box
+ * is emptied.
+ */
+export function numericStep(memory: NumericMemory, change: NumericChange, opts: NumericOpts): NumericStep {
+  const read = (text: string) => readNumericEntry(text, opts);
+  /* The caret in what the box keeps: the characters in front of it that survive the reading. */
+  const caretIn = (text: string, at: number | null, value: string) =>
+    at === null ? null : Math.min(value.length, read(text.slice(0, at)).value.length);
+  /* Whether reading a text cuts digits: there is a digit after its first dot. */
+  const cutsDigits = (text: string) => {
+    const at = text.indexOf(".");
+    return at >= 0 && /[0-9]/.test(text.slice(at + 1));
+  };
+  const cleanBefore = change.before === null ? null : read(change.before).value;
+  const owing = (dot: boolean, minus: boolean, value: string): NumericOwed | null => {
+    const was = memory.owed;
+    const keepDot = value === cleanBefore && was !== null && was.dot;
+    const keepMinus = value !== "" && was !== null && was.minus;
+    const next = { dot: dot || keepDot, minus: minus || keepMinus };
+    return next.dot || next.minus ? next : null;
+  };
+
+  if (opts.decimal || opts.separators) {
+    const whole = read(change.raw);
+    return {
+      value: whole.value,
+      caret: caretIn(change.raw, change.caret, whole.value),
+      memory: { latchedAt: null, owed: opts.separators ? null : owing(false, whole.droppedMinus, whole.value) },
+    };
+  }
+
+  const raw = plainDots(change.raw);
+  const before = change.before === null ? null : plainDots(change.before);
+  const caret = change.caret;
+  const span = insertedSpan(before, raw, caret);
+  if (span === null || before === null) {
+    const whole = read(raw);
+    const caretOut = caretIn(raw, caret, whole.value);
+    const holds = whole.cutAtDot && !cutsDigits(raw);
+    return {
+      value: whole.value,
+      caret: caretOut,
+      memory: { latchedAt: holds ? caretOut ?? whole.value.length : null, owed: owing(cutsDigits(raw), whole.droppedMinus, whole.value) },
+    };
+  }
+  const head = raw.slice(0, span.start);
+  const arrived = raw.slice(span.start, span.end);
+  const tail = raw.slice(span.end);
+  const removed = before.length - head.length - tail.length;
+
+  // ① the fraction of a refused dot: a digit typed at the dot's caret, replacing nothing
+  if (memory.latchedAt === span.start && removed === 0 && change.replaced !== true && /^[0-9]+$/.test(arrived)) {
+    return { value: before, caret: span.start, memory: { latchedAt: memory.latchedAt, owed: owing(true, false, before) } };
+  }
+
+  // ② a dot in what arrived — and anything else that is not a digit is stripped by the reading, which also cuts at a
+  //    dot a parent may have written into the box itself
+  const dot = arrived.indexOf(".");
+  const kept = dot < 0 ? arrived : arrived.slice(0, dot);
+  const fraction = dot < 0 ? "" : arrived.slice(dot + 1);
+  const text = head + kept + tail;
+  const entry = read(text);
+  const caretOut = caretIn(text, head.length + kept.length, entry.value);
+  /* Digits were dropped: the fraction that arrived held one, or the reading cut one the box itself held. */
+  const cut = /[0-9]/.test(fraction) || cutsDigits(text);
+  return {
+    value: entry.value,
+    caret: caretOut,
+    memory: {
+      latchedAt: dot >= 0 && !/[0-9]/.test(fraction) ? caretOut : null,
+      owed: owing(cut, entry.droppedMinus, entry.value),
+    },
+  };
+}
+
+/* The keys that end nothing: a modifier, or the name a phone keyboard reports for every key it does not name. */
+const SILENT_KEYS = new Set([
+  "Unidentified", "Process", "Dead", "Shift", "Control", "Alt", "AltGraph", "Meta", "CapsLock", "NumLock",
+  "ScrollLock", "Fn", "FnLock", "Hyper", "Super", "Symbol", "SymbolLock", "OS",
+]);
+
+/**
+ * A key went down in the box (`e.key`). A refused dot's hold ends on a key that is not a digit — and only a NAMED key
+ * (an arrow, Home, Backspace, Enter, Tab) is judged here. A printable key is judged by the change it makes: `numericStep`
+ * ends the hold on anything that is not a digit, and a paste shortcut's own digits are still the dot's fraction.
+ * ⚠️ "Unidentified" and "Process" end nothing: an Android keyboard reports one of them for EVERY key, digits included.
+ */
+export function numericKey(memory: NumericMemory, key: string): NumericMemory {
+  if (memory.latchedAt === null || key.length <= 1 || SILENT_KEYS.has(key)) return memory;
+  return { ...memory, latchedAt: null };
+}
+
+/** The box lost focus: a refused dot's hold ends. Its line stays until the box changes. */
+export function numericBlur(memory: NumericMemory): NumericMemory {
+  return memory.latchedAt === null ? memory : { ...memory, latchedAt: null };
+}
+
+/** The element half of a change — what the Input's change handler holds as `e.target`. */
+export type NumericTarget = {
+  value: string;
+  selectionEnd: number | null;
+  setSelectionRange?: (start: number, end: number) => void;
+};
+
+/** One numeric box: its memory, and the five events the Input hands it. */
+export type NumericBox = {
+  /** The box's text, read off the element — on focus, and once a form reset has run. */
+  seen: (value: string) => void;
+  /** The selection the element holds now (`selectionStart`, `selectionEnd`) — read on every select event and on every
+   *  key, so the next change knows whether it replaced text that was selected. */
+  select: (start: number | null, end: number | null) => void;
+  /** A key went down (`e.key`). */
+  key: (key: string) => void;
+  /** The change event: reads `target`, writes back what the box keeps (and the caret), and returns the line now owed.
+   *  `before` is the text a CONTROLLED box held (its `value`); an uncontrolled box remembers its own. */
+  change: (target: NumericTarget, opts: NumericOpts, before?: string) => NumericOwed | null;
+  /** The box lost focus. */
+  blur: () => void;
+  /** Something other than the officer moved the value (a parent, a form reset): the hold and the line end. Returns
+   *  whether there was a line to take back. */
+  moved: (value: string | null) => boolean;
+  /** The line the box owes now. */
+  owed: () => NumericOwed | null;
+};
+
+/**
+ * ⭐ THE INPUT'S NUMERIC HANDLERS, WITHOUT REACT (vb6). Each Input keeps one in a ref and calls it from `onFocus`,
+ * `onSelect`, `onKeyDown`, `onChange` and `onBlur` with the real element; `test:numeric` drives this same object with a
+ * stand-in element, key by key — so the typed path is proven on the code a box runs, not on a description of it.
+ * `change` writes back only when the box keeps something other than what the browser holds, and then puts the caret
+ * where the kept text ends, so the next key lands where the officer is looking (a write moves a caret to the end).
+ * ⚠️ A change cannot see the selection it replaced — the browser has already collapsed it — so the box keeps the last
+ * one it was told of: a select-all followed by a paste reaches `numericStep` as a change that REPLACED text.
+ */
+export function numericBox(): NumericBox {
+  let memory: NumericMemory = NO_NUMERIC_MEMORY;
+  let before: string | null = null;
+  /* The selection last reported held text, so the next change replaces it. */
+  let selected = false;
+  return {
+    seen: (value) => { before = value; },
+    select: (start, end) => { selected = start !== null && end !== null && end > start; },
+    key: (key) => { memory = numericKey(memory, key); },
+    change: (target, opts, given) => {
+      const replaced = selected;
+      selected = false;
+      const next = numericStep(memory, { before: given ?? before, raw: target.value, caret: target.selectionEnd, replaced }, opts);
+      if (next.value !== target.value) {
+        target.value = next.value;
+        if (next.caret !== null && typeof target.setSelectionRange === "function") {
+          try { target.setSelectionRange(next.caret, next.caret); } catch { /* a box that holds no caret */ }
+        }
+      }
+      memory = next.memory;
+      before = next.value;
+      return memory.owed;
+    },
+    blur: () => { memory = numericBlur(memory); },
+    moved: (value) => {
+      const had = memory.owed !== null;
+      memory = NO_NUMERIC_MEMORY;
+      before = value;
+      selected = false;
+      return had;
+    },
+    owed: () => memory.owed,
+  };
+}
+
+/** The dictionary words (`t.common`) of the line a box owes, by what it dropped. */
+export const NUMERIC_NOTICE_KEYS = { dot: "wholeNumbersOnly", minus: "noNegativeNumbers" } as const;
+export type NumericNoticeKey = (typeof NUMERIC_NOTICE_KEYS)[keyof typeof NUMERIC_NOTICE_KEYS];
+
+/** The keys of the line for what a Field's boxes owe, in reading order — none when nothing is owed. */
+export function numericNoticeKeys(owed: NumericOwed | null): NumericNoticeKey[] {
+  if (owed === null) return [];
+  const keys: NumericNoticeKey[] = [];
+  if (owed.dot) keys.push(NUMERIC_NOTICE_KEYS.dot);
+  if (owed.minus) keys.push(NUMERIC_NOTICE_KEYS.minus);
+  return keys;
+}
+
+const sameOwed = (a: NumericOwed | null, b: NumericOwed | null): boolean =>
+  a === b || (a !== null && b !== null && a.dot === b.dot && a.minus === b.minus);
+
+/**
+ * ⭐ WHAT A FIELD TELLS THE CONTROL INSIDE IT (vb6, 2026-10-03). `Field` renders the legend and the lines under the box;
+ * the kit control it wraps reads this and wires itself to them, so a form gets the wiring by using the kit.
+ */
+export type FieldWiring = {
+  /** The ids of the lines under the control, in reading order: the error, a notice, the hint. */
+  describedBy: string | undefined;
+  /** The legend's id. A control with no name of its own takes it, so the lines are read once, as its description. */
+  labelledBy: string;
+  /** The Field is showing an error. */
+  invalid: boolean;
+  /** The Field was declared `required`. */
+  required: boolean;
+  /** A numeric box reports the line it owes (digits after a dot it cut or dropped, a minus it dropped), or `null` once it
+   *  owes none. */
+  report: (owner: string, owed: NumericOwed | null) => void;
+};
+
+const FieldContext = React.createContext<FieldWiring | null>(null);
+
+/** The wiring of the Field this control sits in, or `null` outside one. */
+export function useFieldWiring(): FieldWiring | null {
+  return React.useContext(FieldContext);
+}
+
+/** Space-separated ids, each once, or `undefined` when there are none. */
+export function joinIds(...groups: Array<string | null | undefined | false>): string | undefined {
+  const out: string[] = [];
+  for (const group of groups) {
+    if (!group) continue;
+    for (const id of group.split(/\s+/)) if (id !== "" && !out.includes(id)) out.push(id);
+  }
+  return out.length > 0 ? out.join(" ") : undefined;
+}
+
+/** Whether a caller's own `aria-invalid` claims the control is invalid. ⛔ The string "false" claims nothing. */
+export function claimsInvalid(v: unknown): boolean {
+  return v === true || v === "true" || v === "grammar" || v === "spelling";
 }
 
 // ⚠️ ARBITRARY LITERALS ON PURPOSE. `theme.extend.spacing` is OVERRIDDEN in
@@ -79,27 +441,103 @@ export const Input = React.forwardRef<HTMLInputElement, Props>(function Input(
   { prefix, trailing, mono, error, size = "md", className, containerClassName, allowDecimal, allowNegative, ...rest },
   ref,
 ) {
-  const errored = !!error;
+  const field = useFieldWiring();
+  const owner = React.useId();
 
   // ── Strict numeric mode ────────────────────────────────────────────
-  const { type, inputMode, step, onChange, ...inputRest } = rest;
+  const { type, inputMode, step, onChange, onKeyDown, onFocus, onBlur, onSelect, ...inputRest } = rest;
   const isNumeric = type === "number" || inputMode === "numeric" || inputMode === "decimal";
   const decimal = isNumeric && (
     allowDecimal ??
     (inputMode === "decimal" || (step !== undefined && !Number.isInteger(Number(step))))
   );
   const negative = isNumeric && !!allowNegative;
+  /* ⭐ A PHONE-NUMBER BOX READS A DOT AS A SEPARATOR (vb6). `type="tel"` is what PhoneInput and the deposit number
+     declare, and in a phone number "712.345.678" is one number: cutting it at the dot would keep "712". So a tel box
+     keeps every digit, as it always has, and owes no line — no "Whole numbers only" under a phone number. */
+  const separators = isNumeric && type === "tel";
+  const opts: NumericOpts = { decimal: !!decimal, negative, separators };
+
+  /**
+   * ⭐ THE BOX'S MEMORY (vb6) — one `numericBox` per box, in a ref: the Input paints nothing for it (its Field prints the
+   * line), so a change must not re-render the box. Its line is reported to the Field whenever it changes, and taken back
+   * when the box unmounts, when its form is reset, and when a controlled parent moves the value (a save that clears it,
+   * a Discard) — told apart from the parent echoing what the box itself just wrote.
+   */
+  const box = React.useRef<NumericBox | null>(null);
+  if (box.current === null) box.current = numericBox();
+  const numeric = box.current;
+  const controlledValue = (inputRest as { value?: unknown }).value;
+  const controlled = controlledValue !== undefined && controlledValue !== null;
+  const produced = React.useRef<string | null>(null);
+  const reportRef = React.useRef<FieldWiring["report"] | null>(null);
+  const stopWatchingReset = React.useRef<(() => void) | null>(null);
+  React.useEffect(() => { reportRef.current = field?.report ?? null; });
+  React.useEffect(() => () => {
+    stopWatchingReset.current?.();
+    stopWatchingReset.current = null;
+    if (numeric.moved(null)) reportRef.current?.(owner, null);
+  }, [numeric, owner]);
+  React.useEffect(() => {
+    if (!isNumeric || !controlled) return;
+    const now = String(controlledValue);
+    if (now === produced.current) return;
+    produced.current = now;
+    if (numeric.moved(now)) reportRef.current?.(owner, null);
+  }, [isNumeric, controlled, controlledValue, numeric, owner]);
+  const watchReset = (el: HTMLInputElement) => {
+    const form = el.form;
+    if (stopWatchingReset.current !== null || form === null) return;
+    const onReset = () => {
+      if (numeric.moved(null)) reportRef.current?.(owner, null);
+      /* A reset puts the values back AFTER its event: read what it left once it has. */
+      window.setTimeout(() => numeric.seen(el.value), 0);
+    };
+    form.addEventListener("reset", onReset);
+    stopWatchingReset.current = () => form.removeEventListener("reset", onReset);
+  };
 
   // Sanitise on every input (covers typing, paste, drop, IME). For controlled
   // fields the parent stores the sanitised value via this onChange; for
   // uncontrolled fields we mutate the DOM value in place so junk never sticks.
   const handleChange: React.ChangeEventHandler<HTMLInputElement> | undefined = isNumeric
     ? (e) => {
-        const clean = sanitizeNumericInput(e.target.value, { decimal: !!decimal, negative });
-        if (clean !== e.target.value) e.target.value = clean;
+        const was = numeric.owed();
+        const owed = numeric.change(e.target, opts, controlled ? String(controlledValue) : undefined);
+        produced.current = e.target.value;
+        if (!sameOwed(was, owed)) field?.report(owner, owed);
+        watchReset(e.target);
         onChange?.(e);
       }
     : onChange;
+  /* ⭐ The four other events a numeric box needs (vb6): a key that is not a digit and a blur end a refused dot's hold,
+     a focus reads the text an uncontrolled box holds, and a select — and every key, before it acts — tells the box
+     what is selected, so a change over a selection is known for one. Each still hands the event to the caller's own
+     handler. */
+  const handleKeyDown: React.KeyboardEventHandler<HTMLInputElement> | undefined = isNumeric
+    ? (e) => { numeric.select(e.currentTarget.selectionStart, e.currentTarget.selectionEnd); numeric.key(e.key); onKeyDown?.(e); }
+    : onKeyDown;
+  const handleSelect: React.ReactEventHandler<HTMLInputElement> | undefined = isNumeric
+    ? (e) => { numeric.select(e.currentTarget.selectionStart, e.currentTarget.selectionEnd); onSelect?.(e); }
+    : onSelect;
+  const handleFocus: React.FocusEventHandler<HTMLInputElement> | undefined = isNumeric
+    ? (e) => { numeric.seen(e.target.value); onFocus?.(e); }
+    : onFocus;
+  const handleBlur: React.FocusEventHandler<HTMLInputElement> | undefined = isNumeric
+    ? (e) => { numeric.blur(); onBlur?.(e); }
+    : onBlur;
+
+  /**
+   * ⭐ INVALID IS ONE FACT, WITH THREE SOURCES (vb6): the box's own `error`, the error of the Field it sits in, or the
+   * caller's own `aria-invalid`. Whichever says so, the box both LOOKS invalid (border + wash) and READS invalid.
+   * 🔴 The caller's `aria-invalid` used to be overwritten with nothing whenever `error` was absent — the 2FA code box
+   * set one and it never reached a screen reader. Honouring it here keeps the old promise below (the two can never
+   * disagree) by agreeing in the other direction.
+   */
+  const errored = !!error || !!field?.invalid || claimsInvalid(inputRest["aria-invalid"]);
+  const describedBy = joinIds(inputRest["aria-describedby"], field?.describedBy);
+  const labelledBy = inputRest["aria-labelledby"] ?? (inputRest["aria-label"] ? undefined : field?.labelledBy);
+  const ariaRequired = inputRest["aria-required"] ?? (field?.required ? true : undefined);
 
   // A field the officer cannot edit — either flag. Both make a reader the same promise
   // ("you may not change this"), so both must produce the same appearance.
@@ -170,9 +608,19 @@ export const Input = React.forwardRef<HTMLInputElement, Props>(function Input(
          * "valid" on every untouched box on the page is noise, not information.
          * ⛔ AFTER the spread, so a caller that sets its own `aria-invalid` cannot be silently
          * overridden into disagreeing with its own `error` prop — the two are one fact.
+         * ⭐ (vb6) …and the caller's own claim, and its Field's error, are folded INTO `errored` above rather than
+         * thrown away, so the box paints whatever this attribute says. The three wiring attributes beside it merge
+         * the caller's values with the Field's: a caller's own name (`aria-label` / `aria-labelledby`) always wins.
          */
+        aria-describedby={describedBy}
+        aria-labelledby={labelledBy}
+        aria-required={ariaRequired}
         aria-invalid={errored || undefined}
         onChange={handleChange}
+        onKeyDown={handleKeyDown}
+        onSelect={handleSelect}
+        onFocus={handleFocus}
+        onBlur={handleBlur}
         className={cn(
           "flex-1 min-w-0 bg-transparent px-3 outline-none placeholder:text-text-subtle",
           // ⛔ NOT a bare `text-text`. That explicit colour is what overrode the UA grey and made a
@@ -197,6 +645,41 @@ export const Input = React.forwardRef<HTMLInputElement, Props>(function Input(
   );
 });
 
+/** A bound as a hint prints it: a whole number grouped, a fraction exactly as written; `null` for none. */
+function boundText(v: unknown): string | null {
+  if (typeof v !== "number" && typeof v !== "string") return null;
+  const s = String(v).trim();
+  if (s === "") return null;
+  const n = Number(s);
+  if (!Number.isFinite(n)) return null;
+  return Number.isSafeInteger(n) ? formatNumber(n) : s;
+}
+
+/**
+ * The bounds a Field states for the numeric box that is its direct child, or `null`.
+ *
+ * ⛔ WHY THE FIELD STATES THEM (vb6): the Input renders a numeric box as a TEXT input, where `min` and `max` are inert —
+ * no browser enforces or announces them — so an officer met a bound only as a refusal after Save. "A control must not
+ * offer what the thing behind it will reject" (the asset form's own rule) needs the bound said BEFORE the typing.
+ * 🔴 READ FROM THE CHILD'S PROPS, NEVER ITS TYPE. On a page that is a Server Component the Field and its Input arrive
+ * through the RSC payload, where a client component in an element's type slot is a LAZY REFERENCE — never `Input`
+ * itself — so a type check stated no bound on any server page (the responsible-gambling limits among them). The props
+ * arrive intact: a direct child that declares a numeric box (`type="number"`, `inputMode` numeric or decimal) and a
+ * bound is stated, whatever renders it.
+ * ⚠️ A min of 0 on a box that cannot go negative is not stated: the box already enforces it, and "Min 0" under every
+ * amount would be noise. ⚠️ Read during render, so the server's HTML already carries the bound and nothing shifts on
+ * hydration. A box nested deeper states nothing, which is the old behaviour.
+ */
+export function fieldBounds(children: React.ReactNode): { min: string | null; max: string | null } | null {
+  if (!React.isValidElement(children)) return null;
+  const p = children.props as { type?: unknown; inputMode?: unknown; min?: unknown; max?: unknown; allowNegative?: unknown };
+  if (!(p.type === "number" || p.inputMode === "numeric" || p.inputMode === "decimal")) return null;
+  const minText = boundText(p.min);
+  const min = minText !== null && !(Number(p.min) === 0 && p.allowNegative !== true) ? minText : null;
+  const max = boundText(p.max);
+  return min === null && max === null ? null : { min, max };
+}
+
 /** Field label + Input + hint shorthand. */
 export function Field({
   label,
@@ -205,12 +688,21 @@ export function Field({
   children,
   className,
   dataField,
+  optional,
+  required,
 }: {
   label: React.ReactNode;
   hint?: React.ReactNode;
   error?: string;
   children: React.ReactNode;
   className?: string;
+  /**
+   * ⭐ (vb6) — prints the dictionary's "(optional)" after the label (`t.common.optional`, so it reads "(hiari)" and
+   * "（可选）" too). DESIGN_AUTHORITY §A7: mark the optional field; a field with no mark is required.
+   */
+  optional?: boolean;
+  /** ⭐ (vb6) — puts `aria-required` on the control. It paints no mark of its own (§A7). */
+  required?: boolean;
   /**
    * ⭐ DG-S-05/06 — the ADDRESS a server refusal names, e.g. `fieldError("limitUsd", …)`.
    *
@@ -222,16 +714,81 @@ export function Field({
    */
   dataField?: string;
 }) {
+  const { t } = useT();
+  /* ⚠️ SANITISED, as `select.tsx` sanitises its own: React 19's `useId` emits characters that are legal IDREFs but
+     break the moment an id is written into a selector. */
+  const base = React.useId().replace(/[^a-zA-Z0-9_-]/g, "");
+  const legendId = `fld-${base}-label`;
+  const errorId = `fld-${base}-error`;
+  const noticeId = `fld-${base}-notice`;
+  const hintId = `fld-${base}-hint`;
+
+  /* What the boxes inside owe (digits after a dot cut or dropped, a minus dropped), keyed by the box that owes it. */
+  const [owing, setOwing] = React.useState<Readonly<Record<string, NumericOwed>>>({});
+  const report = React.useCallback((owner: string, owed: NumericOwed | null) => {
+    setOwing((cur) => {
+      const has = Object.prototype.hasOwnProperty.call(cur, owner);
+      if (owed === null) {
+        if (!has) return cur;
+        const next: Record<string, NumericOwed> = {};
+        for (const k of Object.keys(cur)) if (k !== owner) next[k] = cur[k];
+        return next;
+      }
+      return has && sameOwed(cur[owner], owed) ? cur : { ...cur, [owner]: owed };
+    });
+  }, []);
+  const owedHere = Object.values(owing).reduce<NumericOwed | null>(
+    (all, o) => ({ dot: (all?.dot ?? false) || o.dot, minus: (all?.minus ?? false) || o.minus }),
+    null,
+  );
+  /* ⭐ (vb6) The line is the DICTIONARY's (`t.common`): a player page reads it in Swahili or Chinese, the console in
+     English — never a hard-coded sentence (§A5). A phone-number box never owes one. */
+  const notice = numericNoticeKeys(owedHere).map((k) => t.common[k]).join(" ");
+
+  const bounds = fieldBounds(children);
+  const hasError = !!error;
+  const hasHint = !!hint;
+  /* ⛔ The error still REPLACES the hint, exactly as before — a refusal is the one line that matters then. A notice is
+     added beside either: it explains an edit the officer just made, which neither of them knows about. */
+  const showHint = !hasError && (hasHint || bounds !== null);
+  /* Between the caller's hint and the bounds: a space after a finished sentence, a middle dot otherwise — so
+     "Current TZS 1,000" and "Min 1,000" never run together. */
+  const hintEndsSentence = typeof hint === "string" && /[.!?。]\s*$/.test(hint);
+  const describedBy = joinIds(hasError && errorId, notice !== "" && noticeId, showHint && hintId);
+  const isRequired = !!required;
+  const wiring = React.useMemo<FieldWiring>(
+    () => ({ describedBy, labelledBy: legendId, invalid: hasError, required: isRequired, report }),
+    [describedBy, legendId, hasError, isRequired, report],
+  );
+
   return (
     <label className={cn("block", className)} data-field={dataField}>
-      <FieldLegend className="block mb-1.5">
+      <FieldLegend id={legendId} className="block mb-1.5">
         {label}
+        {optional ? <>{" "}<span className="font-normal">{t.common.optional}</span></> : null}
       </FieldLegend>
-      {children}
-      {error ? (
-        <p className="mt-1.5 text-body-sm text-danger-fg">{error}</p>
-      ) : hint ? (
-        <p className="mt-1.5 text-body-sm text-text-subtle">{hint}</p>
+      <FieldContext.Provider value={wiring}>{children}</FieldContext.Provider>
+      {/* ⭐ (vb6) The error line is ANNOUNCED, and the control's `aria-describedby` names it, so it is read again
+          whenever the box is focused. */}
+      {hasError ? (
+        <p id={errorId} role="alert" className="mt-1.5 text-body-sm text-danger-fg">{error}</p>
+      ) : null}
+      {/* ⭐ (vb6) The notice is a LIVE REGION, and it is ALWAYS mounted: a region created already holding its words is
+          announced unreliably, so it waits here empty — no margin, so no height — and only its words come and go. The
+          control names it in `aria-describedby` only while it holds them. */}
+      <p id={noticeId} role="status" className={cn("text-body-sm text-text", notice !== "" && "mt-1.5")}>{notice}</p>
+      {showHint ? (
+        <p id={hintId} className="mt-1.5 text-body-sm text-text-subtle">
+          {hasHint ? hint : null}
+          {hasHint && bounds !== null ? (hintEndsSentence ? " " : " · ") : null}
+          {bounds !== null && bounds.min !== null ? (
+            <span className="whitespace-nowrap">{t.common.min}{" "}<span className="font-mono">{bounds.min}</span></span>
+          ) : null}
+          {bounds !== null && bounds.min !== null && bounds.max !== null ? " · " : null}
+          {bounds !== null && bounds.max !== null ? (
+            <span className="whitespace-nowrap">{t.common.max}{" "}<span className="font-mono">{bounds.max}</span></span>
+          ) : null}
+        </p>
       ) : null}
     </label>
   );

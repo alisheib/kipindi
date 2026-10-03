@@ -32,6 +32,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { haptics } from "@/lib/haptics";
 import { useModalLock } from "@/lib/use-modal-lock";
 import { useT } from "@/lib/i18n";
+import { parseTypedCount } from "@/lib/marketing/campaign-confirm";
 
 const FOCUSABLE =
   'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
@@ -491,10 +492,43 @@ const TONE_INK: Record<Tone, { ring: string; ink: string }> = {
   brand: { ring: "var(--brand-500)", ink: "var(--brand-300)" },
 };
 
+/** A gate word that is the bare spelling of a count — digits only, no leading zero, no grouping: what
+ *  `confirmTypedWord` writes. */
+export function isCountWord(word: string): boolean {
+  const n = parseTypedCount(word);
+  return n !== null && String(n) === word;
+}
+
+/**
+ * ⭐ A GATE WHOSE WORD IS A COUNT READS WHAT WAS TYPED AS A COUNT (vb6, 2026-10-03).
+ *
+ * 🔴 THE TITLE SAID "2,981" AND THE GATE WANTED "2981". A count is written grouped everywhere an officer reads it, and
+ * the gate compared exact text — so typing what the title shows never armed the button, nothing said why, and a phone
+ * opened a letter keyboard for digits. A count word now reads the entry with `parseTypedCount`, the ONE reading the
+ * server's own confirmation uses (`campaign-confirm.ts`): "2,981", "2 981" and a no-break-space grouping arm a 2981
+ * gate; "2981.0", "29810", "2,9810" and full-width digits never do — the digits must be the count's.
+ * ⛔ A WORD GATE ("DELETE", "SEAL") IS UNTOUCHED: the entry comes back exactly as typed.
+ */
+export function gateReading(entry: string, gateWord: string): string {
+  if (!isCountWord(gateWord)) return entry;
+  return parseTypedCount(entry) === parseTypedCount(gateWord) ? gateWord : entry;
+}
+
+/**
+ * The hard gate's arming rule, as a pure function, so `test:ui-consistency` drives the very rule the dialog runs.
+ * ⛔ It FAILS CLOSED (the note inside `ConfirmModal` says why) — `test:confirm-gate` §3 pins this exact line.
+ */
+export function confirmGateArmed(isHard: boolean, gateWord: string, entry: string): boolean {
+  const typed = gateReading(entry, gateWord);
+  const armed = !isHard || (gateWord !== "" && typed.trim().toUpperCase() === gateWord.toUpperCase());
+  return armed;
+}
+
 /**
  * The one confirm surface. Medium tier = a single explicit confirm; hard tier
  * = a type-the-word gate that arms the (irreversible) action only on an exact
- * match — the pattern behind typed-SEAL / typed-PAUSE.
+ * match — the pattern behind typed-SEAL / typed-PAUSE. A word that is a count
+ * matches the count as it is written ("2,981" arms 2981; see `gateReading`).
  */
 export function ConfirmModal({
   open,
@@ -514,7 +548,8 @@ export function ConfirmModal({
   loading = false,
 }: ConfirmModalProps) {
   const { t } = useT();
-  const [typed, setTyped] = React.useState("");
+  /* What the officer typed into the gate — read through `gateReading` before it is compared (vb6). */
+  const [entry, setEntry] = React.useState("");
   const inputRef = React.useRef<HTMLInputElement>(null);
   const confirmRef = React.useRef<HTMLButtonElement>(null);
   const cancelRef = React.useRef<HTMLButtonElement>(null);
@@ -527,7 +562,10 @@ export function ConfirmModal({
      one that fires on the first click. A gate may refuse; it may not quietly stand down. */
   const isHard = tier === "hard";
   const gateWord = typedWord?.trim() ?? "";
-  const armed = !isHard || (gateWord !== "" && typed.trim().toUpperCase() === gateWord.toUpperCase());
+  /* ⭐ (vb6) The rule lives in `confirmGateArmed` above, pure, so a suite drives the rule this dialog runs. A count
+     word ("2981") also opens the numeric keypad. */
+  const armed = confirmGateArmed(isHard, gateWord, entry);
+  const countGate = isHard && isCountWord(gateWord);
 
   if (process.env.NODE_ENV !== "production" && isHard && gateWord === "") {
     throw new Error(
@@ -537,7 +575,10 @@ export function ConfirmModal({
   }
 
   // Reset the typed gate every time the dialog re-opens.
-  React.useEffect(() => { if (open) setTyped(""); }, [open]);
+  React.useEffect(() => { if (open) setEntry(""); }, [open]);
+
+  /* One press, one fire: the confirm button and the gate's Enter both arrive here, through the form below. */
+  const fire = () => { haptics.warning(); onConfirm(); };
 
   const ink = TONE_INK[tone];
   // D1 — one size for the pair (see the `size` prop note). Named from the kit's
@@ -609,52 +650,68 @@ export function ConfirmModal({
         {body}
       </div>
 
-      {isHard && (
-        <label className="block mb-4">
-          <span className="font-mono text-micro uppercase eyebrow text-claret-300 font-bold">
-            {typeLabel}
-          </span>
-          <input
-            ref={inputRef}
-            value={typed}
-            onChange={(e) => setTyped(e.target.value)}
-            autoComplete="off"
-            autoCapitalize="characters"
-            spellCheck={false}
-            aria-label={typeLabel}
-            /* ⛔ DG-A-12 · §T1 — NOT A LABEL. This is `ConfirmModal`'s hard-tier type-to-confirm
-               INPUT: the operator types the word into it to arm an irreversible action, so the
-               uppercase and the 0.2em tracking are the CONTROL's own design and both stay. What
-               was wrong is only the size — `text-[15px]` is on neither ladder (§T1), and 15 sits
-               between the `text-body` (14) and `text-body-lg` (16) rungs. It takes 16: this is
-               something a human types under pressure, and §T4's floor argues up, never down.
-               ⛔ Exempted by name in `qa:dg-eyebrow`, which would have swept it to `text-micro`
-               — 10px — because it is uppercase and tracked. It is an input, not an eyebrow. */
-            className="mt-1 w-full rounded-lg border border-border-strong bg-bg-overlay px-3 py-2.5 font-mono text-body-lg tracking-[0.2em] uppercase text-text outline-none focus:border-[color:var(--brand-400)]"
-            placeholder={typedWord}
-          />
-        </label>
-      )}
+      {/* ⭐ THE GATE AND ITS BUTTONS ARE ONE FORM (vb6, 2026-10-03), so Enter in the word box confirms — once the gate
+          is armed, and never before: the confirm is the form's submit button, and a disabled submit button stops an
+          implicit submission outright. A medium confirm has no box; its buttons behave exactly as they did. */}
+      <form
+        noValidate
+        onSubmit={(e) => {
+          e.preventDefault();
+          /* ⛔ A PORTAL IS STILL INSIDE ITS REACT PARENT. React carries a submit up the component tree, not the DOM
+             tree, so without this a page form that renders this dialog would receive the dialog's submit — and a
+             confirmation would also submit the form behind it. */
+          e.stopPropagation();
+          if (armed && !loading) fire();
+        }}
+      >
+        {isHard && (
+          <label className="block mb-4">
+            <span className="font-mono text-micro uppercase eyebrow text-claret-300 font-bold">
+              {typeLabel}
+            </span>
+            <input
+              ref={inputRef}
+              value={entry}
+              onChange={(e) => setEntry(e.target.value)}
+              /* ⭐ (vb6) A count gate opens the numeric keypad; a word gate keeps the letter keyboard. */
+              inputMode={countGate ? "numeric" : undefined}
+              autoComplete="off"
+              autoCapitalize="characters"
+              spellCheck={false}
+              aria-label={typeLabel}
+              /* ⛔ DG-A-12 · §T1 — NOT A LABEL. This is `ConfirmModal`'s hard-tier type-to-confirm
+                 INPUT: the operator types the word into it to arm an irreversible action, so the
+                 uppercase and the 0.2em tracking are the CONTROL's own design and both stay. What
+                 was wrong is only the size — `text-[15px]` is on neither ladder (§T1), and 15 sits
+                 between the `text-body` (14) and `text-body-lg` (16) rungs. It takes 16: this is
+                 something a human types under pressure, and §T4's floor argues up, never down.
+                 ⛔ Exempted by name in `qa:dg-eyebrow`, which would have swept it to `text-micro`
+                 — 10px — because it is uppercase and tracked. It is an input, not an eyebrow. */
+              className="mt-1 w-full rounded-lg border border-border-strong bg-bg-overlay px-3 py-2.5 font-mono text-body-lg tracking-[0.2em] uppercase text-text outline-none focus:border-[color:var(--brand-400)]"
+              placeholder={typedWord}
+            />
+          </label>
+        )}
 
-      <div className="flex flex-col gap-2">
-        <button
-          ref={confirmRef}
-          type="button"
-          disabled={!armed || loading}
-          aria-busy={loading || undefined}
-          onClick={() => { haptics.warning(); onConfirm(); }}
-          className={`${TONE_BTN[tone]} ${btnSize} w-full`}
-        >
-          {loading ? (
-            <span className="inline-flex items-center gap-2"><Spinner size={14} />{t.common.working}</span>
-          ) : (
-            confirmLabel ?? t.common.confirm
-          )}
-        </button>
-        <button ref={cancelRef} type="button" disabled={loading} onClick={onClose} className={`btn btn-ghost ${btnSize} w-full disabled:opacity-50`}>
-          {cancelLabel ?? t.common.cancel}
-        </button>
-      </div>
+        <div className="flex flex-col gap-2">
+          <button
+            ref={confirmRef}
+            type="submit"
+            disabled={!armed || loading}
+            aria-busy={loading || undefined}
+            className={`${TONE_BTN[tone]} ${btnSize} w-full`}
+          >
+            {loading ? (
+              <span className="inline-flex items-center gap-2"><Spinner size={14} />{t.common.working}</span>
+            ) : (
+              confirmLabel ?? t.common.confirm
+            )}
+          </button>
+          <button ref={cancelRef} type="button" disabled={loading} onClick={onClose} className={`btn btn-ghost ${btnSize} w-full disabled:opacity-50`}>
+            {cancelLabel ?? t.common.cancel}
+          </button>
+        </div>
+      </form>
     </Modal>
   );
 }

@@ -1387,6 +1387,62 @@ them, never dip under.
    ~35–40% longer** and Chinese at ~50% shorter. Wrap or ellipsise text —
    ⛔ **never clip money or a timestamp.**
 6. **Design at 360 / 768 / 1280 / 1920, and zero horizontal overflow at 360.**
+7. **A field states its terms before it is typed into, and its refusal is announced.** Added 2026-10-03 (the
+   validation batch vb6), and it had no rule before: a form got whatever its author remembered. The kit's `<Field>`
+   (`src/components/ui/input.tsx`) carries all of it, so a form inherits it by using the kit and loses it by
+   hand-rolling a label.
+   - **Mark the OPTIONAL field; a field with no mark is required.** `<Field optional>` prints the dictionary's
+     `(optional)` (`t.common.optional` — "(optional)" · "(hiari)" · "（可选）"), so the mark ships in three languages.
+     `<Field required>` puts `aria-required` on the control it wraps. That is what tells a screen reader on the kit
+     controls that carry no native `required` attribute (the `Select` combobox, `DateSelect`'s three segments); a plain
+     input's own `required` attribute is announced as well, in a `noValidate` form or not. ⚠️ The ceremonies'
+     "(required, audit-logged)" on a reason field stays: it tells the officer the words enter the audit trail, which no
+     mark can say. ⛔ Not "(optional)" typed into a `label` (the console still has some, owed the prop), and ⛔ never an
+     asterisk: `/proposals/new` (`Req` in `create-form.tsx`) is the one asterisk form at HEAD — a divergence owed a
+     conversion, not a pattern.
+   - **A numeric box states its bounds in its hint.** The Input renders a numeric field as a text box, where `min` and
+     `max` are inert — no browser enforces or announces them — so an officer met a bound only as a refusal after Save.
+     A `<Field>` whose direct child declares a numeric box (`type="number"`, or `inputMode` numeric or decimal) with
+     `min` / `max` appends them to its hint in the dictionary's words (`Min 2 · Max 8`, from `t.common.min` /
+     `t.common.max`) — after a space when the caller's hint ends a sentence, after a middle dot when it does not, so
+     "Current TZS 1,000" and "Min 1,000" never run together. It reads the child's PROPS, never its type: on a Server
+     Component page the Input arrives as a lazy reference, and the bound is still stated (`fieldBounds`). A min of 0 on
+     a box that cannot go negative is not stated: the box already enforces it. ⛔ Do not restate the bounds in a
+     hand-written hint.
+   - **A refusal is announced, and wired to its box.** `<Field error>` renders its line with `role="alert"`; the
+     control carries `aria-invalid` and an `aria-describedby` naming the line (and a hint or notice), and takes the
+     legend alone as its name (`aria-labelledby`), so the line is read once, as the description — unless the control
+     brings its own `aria-label`, which always wins. **Invalid is one fact:** the control's own `error`, its Field's
+     error, or the caller's own `aria-invalid` — and the box then both LOOKS and READS invalid. `Textarea`, `Select`
+     and `DateSelect` take the same `error` prop as `Input`; the MESSAGE is always the Field's. A `required`
+     `DateSelect` asks for its date when its form is submitted without one, because the browser's bubble never speaks
+     in a `noValidate` form.
+   - **A whole-number box never changes the size of a number.** It reads four characters as a dot: the ASCII `.` and
+     the full stops a Chinese keyboard types — ideographic `。`, full-width `．` and half-width `｡` (U+3002, U+FF0E,
+     U+FF61). A paste or a drop that holds one keeps what it brought up to that dot (`12.50` keeps `12`; `12,500.00`
+     and `12500。00` keep `12500` — never `1250` or `1250000`). A TYPED dot is not inserted, and a digit typed straight
+     after it — at the caret where it was refused — is dropped, until a key that is not a digit, a blur, a deletion, a
+     change over a selection (a select-all and a paste) or a digit typed anywhere else in the box (a tap moves the
+     caret, and a phone has no arrow keys); so `12500.00` typed key by key ends on `12500`. A stray dot typed inside a
+     number keeps every digit that was there (`numericStep`). The Field says why in the dictionary's words — *"Whole
+     numbers only — the part after the dot was dropped."*, `t.common.wholeNumbersOnly` in English, Swahili and Chinese —
+     once digits after a dot WERE dropped (cut from a paste, or typed after a refused dot), and for as long as that is
+     true: a refused dot that dropped nothing says nothing. A dropped minus is said the same way
+     (`t.common.noNegativeNumbers`) until the box is emptied. The line is a live region (`role="status"`) the Field
+     always mounts, empty until it has words, so a screen reader hears them arrive. ⚠️ A comma is read as GROUPING, so
+     a comma-decimal entry is not caught: `12 500,50` keeps `1250050`. ⚠️ A box outside a `<Field>` (the deposit and
+     withdraw amount, the bet stakes) keeps the same rule with no line: the dot never appears and nothing is
+     multiplied. A phone-number box (`type="tel"` — `PhoneInput`, the deposit number) reads a dot or a dash as a
+     separator, keeps every digit and says nothing. ⚠️ `DurationInput` filters its own box with the whole-entry
+     reading, so a typed "1.5" there still reads 15 (a pasted one reads 1) — owed the same rule; and a decimal box
+     still drops a Chinese full stop instead of reading it (`12。5` reads `125`) — owed too. ⛔ A money box is the kit
+     Input, never a hand-rolled one with a filter of its own: the console's balance adjustment kept digits AND commas
+     and dropped the dot, so a pasted `9,500.00` moved TZS 950,000 on one officer's word.
+   - **A typed count arms on the count as it is written.** A hard `ConfirmModal` gate whose word is a count reads the
+     entry with `parseTypedCount` (`src/lib/marketing/campaign-confirm.ts`, the server's own reading), so `2,981` arms
+     a `2981` gate. It opens the numeric keypad, and Enter confirms once the gate is armed. A word gate is unchanged.
+
+   Guarded by `npm run test:ui-consistency` (its KIT PINS), `npm run test:numeric` and `npm run test:unsaved-changes`.
 
 ---
 
@@ -1610,6 +1666,15 @@ their money did not move) · **error** (a hard block or a genuine fault).
 > Everything in F3 is that precedent written down and applied to its siblings, not a new
 > preference. The eight surfaces `FAILURE-INVENTORY.md` §1.5 counted as saying only that
 > something failed were all shouting `danger` at slips.
+
+### F3a — The console answers on the same two variants
+
+Added 2026-10-03 (the validation batch vb6). F3 is written for the player, and the console follows it word for word:
+a refusal the **officer can fix** is the `factual` toast, and a **fault** — a hard block, a failed write, a timeout — is
+`danger`. ⛔ Never `warning`, which is struck in gold (§M3), and never `default`, which paints a tick over a failure.
+⭐ A refusal that names a field belongs AT the field first — `fieldError` → `<Field error>` (§A7) and
+`focusFirstInvalid` — and a toast, when there is one, is the secondary signal (F1). The console is English-only by
+design, so F4's three-language clause does not bind its toasts; its reason-and-next-step clause does.
 
 ### F4 — Every refusal states the reason AND the next step
 

@@ -11,9 +11,10 @@
  * keeps typing/deleting predictable (typing "10" stays "10", never "01").
  */
 
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect, useRef, useId } from "react";
 import { createPortal } from "react-dom";
 import { I } from "@/components/ui/glyphs";
+import { joinIds, useFieldWiring } from "@/components/ui/input";
 import { useModalLock } from "@/lib/use-modal-lock";
 import { cn } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
@@ -40,6 +41,9 @@ type Props = {
    *  `sm` is for compact filter toolbars like /admin/ai-usage; `lg` matches an
    *  <Input size="lg"> beside it. The calendar popup is unchanged at every tier. */
   size?: "md" | "sm" | "lg";
+  /** ⭐ The error state (vb6, 2026-10-03) — the danger border and wash on the box, `aria-invalid` on each segment, as
+   *  the Input paints them. Inside a `<Field error>` it is on already; the message is the Field's, never printed here. */
+  error?: boolean | string;
 };
 
 // ⚠️ ARBITRARY LITERALS ON PURPOSE — kept byte-identical to input.tsx's table.
@@ -65,8 +69,11 @@ const TYPE: Record<NonNullable<Props["size"]>, string> = {
 // digit; add headroom for letter-spacing/sub-pixel so nothing is ever cut.
 const SEG_WIDTH: Record<SegKey, string> = { dd: "2.6ch", mm: "2.6ch", yyyy: "4.8ch" };
 
-export function DateSelect({ name, id, required, min, max, defaultValue, value, onChange, size = "md" }: Props) {
+export function DateSelect({ name, id, required, min, max, defaultValue, value, onChange, size = "md", error }: Props) {
   const { t } = useT();
+  const field = useFieldWiring();
+  /* The id of this control's own message line (invalid / required), sanitised as the kit's other ids are. */
+  const msgId = `ds-${useId().replace(/[^a-zA-Z0-9_-]/g, "")}-msg`;
   const sm = size === "sm";
   // 🔴 D69 · the segment names come from the dictionary, never from `date-mask.ts` — see the note there.
   const SEG_ARIA: Record<SegKey, string> = { dd: t.common.dateDay, mm: t.common.dateMonth, yyyy: t.common.dateYear };
@@ -120,6 +127,26 @@ export function DateSelect({ name, id, required, min, max, defaultValue, value, 
     if (!el) return;
     el.setCustomValidity(required && !isoValue ? t.common.dateRequired : "");
   }, [required, isoValue, t]);
+
+  /* ⛔ AND `required` IS CHECKED IN JAVASCRIPT TOO (vb6, 2026-10-03). The custom validity above speaks only when the
+     BROWSER validates — and every console form is `noValidate`, so a required date left empty was submitted with
+     nothing said at all. A submit of this field's form with no date now asks for one: the box turns red and says
+     `dateRequired`, the same dictionary words as the bubble. ⚠️ It never blocks the submit (the server's refusal is
+     still the gate), and in a form the browser DOES validate, an empty required date stops the submit before this
+     listener runs, so the bubble stays the one voice there. */
+  const [askedFor, setAskedFor] = useState(false);
+  useEffect(() => {
+    if (!required) return undefined;
+    const form = mirrorRef.current?.form;
+    if (!form) return undefined;
+    const onSubmit = () => { if (!mirrorRef.current?.value) setAskedFor(true); };
+    form.addEventListener("submit", onSubmit);
+    return () => form.removeEventListener("submit", onSubmit);
+  }, [required]);
+  const missing = !!required && askedFor && !isoValue && !invalid;
+  /* One fact, as in the Input: a bad date, a missing required one, its own `error`, or its Field's error. */
+  const errored = invalid || missing || !!error || !!field?.invalid;
+  const showMsg = invalid || missing;
 
   const focusSeg = (idx: number) => {
     const el = refs[idx]?.current;
@@ -252,9 +279,9 @@ export function DateSelect({ name, id, required, min, max, defaultValue, value, 
           "field-measure relative flex items-stretch w-full rounded-lg border overflow-hidden transition-colors",
           HEIGHT[size],
           "brand-focus-within",
-          invalid ? "border-danger-500" : "border-border",
+          errored ? "border-danger-500" : "border-border",
         )}
-        style={{ background: invalid ? "var(--danger-wash)" : "var(--bg-inset)" }}
+        style={{ background: errored ? "var(--danger-wash)" : "var(--bg-inset)" }}
       >
         <div className={cn("flex-1 flex items-center tabular-nums font-mono", TYPE[size])}>
           {SEGMENTS.map((seg, idx) => (
@@ -278,6 +305,11 @@ export function DateSelect({ name, id, required, min, max, defaultValue, value, 
                 value={get(seg.key)}
                 placeholder={seg.ph}
                 aria-label={SEG_ARIA[seg.key]}
+                /* ⭐ (vb6) Each segment carries the state: its own message line and its Field's lines describe it,
+                   and it reads invalid and required. ⛔ Its NAME stays the segment's own (Day / Month / Year). */
+                aria-describedby={joinIds(showMsg && msgId, field?.describedBy)}
+                aria-invalid={errored || undefined}
+                aria-required={required || field?.required || undefined}
                 maxLength={seg.max}
                 style={{ width: SEG_WIDTH[seg.key] }}
                 className="bg-transparent text-center text-text outline-none placeholder:text-text-subtle"
@@ -339,7 +371,7 @@ export function DateSelect({ name, id, required, min, max, defaultValue, value, 
         />
       </div>
 
-      {invalid && <p className="mt-1.5 font-mono text-[11px] text-danger-fg">{t.common.invalidDate}</p>}
+      {showMsg && <p id={msgId} role="alert" className="mt-1.5 font-mono text-[11px] text-danger-fg">{invalid ? t.common.invalidDate : t.common.dateRequired}</p>}
 
       {mounted && calOpen && createPortal(
         <div role="dialog" aria-modal="true" aria-label={t.common.pickDate}

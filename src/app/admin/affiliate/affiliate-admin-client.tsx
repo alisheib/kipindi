@@ -37,7 +37,7 @@ import { PayableSwitch } from "./payable-switch";
  */
 
 function Field({
-  label, hint, prefix, suffix, value, onChange, width, readOnly, error,
+  label, hint, prefix, suffix, value, onChange, width, readOnly, error, dataField,
 }: {
   label: string; hint?: string; prefix?: string; suffix?: string;
   value: number; onChange: (n: number) => void; width?: number;
@@ -45,9 +45,12 @@ function Field({
   readOnly?: boolean;
   /** Why the server would refuse THIS field — shown under it, and the Save stays disabled. */
   error?: string;
+  /** The address a refusal names (`fieldError`), stamped as `data-field` so the refusal finds THIS box — the kit
+   *  Field's own prop name, which test:validation-focus §4.1 reads. */
+  dataField?: string;
 }) {
   return (
-    <div style={{ width: width ?? "100%" }}>
+    <div data-field={dataField} style={{ width: width ?? "100%" }}>
       <div className="mb-1.5 text-[12px] font-semibold text-text">{label}</div>
       <Input
         aria-label={label}
@@ -291,14 +294,14 @@ export function AffiliateAdminClient({ config, baseFingerprint, copy, rosterRecr
         {/* ⛔ 50% OF MARGIN IS THE PLATFORM CEILING, AND THE FIELD CANNOT HOLD MORE — the same rule the
             server refuses on save and the payer clamps again. */}
         <Field label="Commission rate" hint={`Share of operator margin · whole percent, max ${Math.round(PLAYER_MAX_COMMISSION_RATE * 100)}%`} suffix="%" width={140} readOnly={locked}
-          error={fieldError("commission.rate")}
+          dataField="commission.rate" error={fieldError("commission.rate")}
           value={Math.round(c.commission.rate * 100)} onChange={(n) => patchCommission({ rate: Math.max(0, Math.min(Math.round(PLAYER_MAX_COMMISSION_RATE * 100), n)) / 100 })} />
         {/* ⛔ 1–60 MONTHS, NEVER "FOR LIFE": the player promo has no lifetime term, and 0 is refused. */}
         <Field label="Window" hint={`${PLAYER_WINDOW_MIN_MONTHS}–${PLAYER_WINDOW_MAX_MONTHS} months from the invite`} suffix="months" width={130} readOnly={locked}
-          error={fieldError("commission.windowMonths")}
+          dataField="commission.windowMonths" error={fieldError("commission.windowMonths")}
           value={c.commission.windowMonths} onChange={(n) => patchCommission({ windowMonths: n })} />
         <Field label="Per-recruit cap" hint="Max earnable per recruit (0 = none)" prefix="TZS" width={180} readOnly={locked}
-          error={fieldError("commission.capPerRecruitTzs")}
+          dataField="commission.capPerRecruitTzs" error={fieldError("commission.capPerRecruitTzs")}
           value={c.commission.capPerRecruitTzs} onChange={(n) => patchCommission({ capPerRecruitTzs: n })} />
       </RewardCard>
 
@@ -312,8 +315,8 @@ export function AffiliateAdminClient({ config, baseFingerprint, copy, rosterRecr
           <Seg<BonusRecipient> value={c.bonus.recipient} onChange={(v) => patchBonus({ recipient: v })} disabled={locked}
             options={[{ v: "NEW", l: "New player" }, { v: "REFERRER", l: "Referrer" }, { v: "BOTH", l: "Both" }]} />
         </div>
-        <Field label="New-player amount" prefix="TZS" width={160} readOnly={locked} error={fieldError("bonus.newAmountTzs")} value={c.bonus.newAmountTzs} onChange={(n) => patchBonus({ newAmountTzs: n })} />
-        <Field label="Referrer amount" prefix="TZS" width={160} readOnly={locked} error={fieldError("bonus.referrerAmountTzs")} value={c.bonus.referrerAmountTzs} onChange={(n) => patchBonus({ referrerAmountTzs: n })} />
+        <Field label="New-player amount" prefix="TZS" width={160} readOnly={locked} dataField="bonus.newAmountTzs" error={fieldError("bonus.newAmountTzs")} value={c.bonus.newAmountTzs} onChange={(n) => patchBonus({ newAmountTzs: n })} />
+        <Field label="Referrer amount" prefix="TZS" width={160} readOnly={locked} dataField="bonus.referrerAmountTzs" error={fieldError("bonus.referrerAmountTzs")} value={c.bonus.referrerAmountTzs} onChange={(n) => patchBonus({ referrerAmountTzs: n })} />
         {/* ⛔ Sign-up is the ONLY trigger (2026-09-26): the RG policy promises no bonus offers tied to deposits. */}
         <div className="w-full">
           <div className="mb-1.5 text-[12px] font-semibold">Trigger</div>
@@ -331,8 +334,8 @@ export function AffiliateAdminClient({ config, baseFingerprint, copy, rosterRecr
           <div className="mb-1.5 text-[12px] font-semibold">Milestone</div>
           <div className="text-body-sm text-text-muted">A friend&apos;s first bet · never a deposit amount (Responsible Gambling policy)</div>
         </div>
-        <Field label="Fixed prize" prefix="TZS" width={150} readOnly={locked} error={fieldError("prize.amountTzs")} value={c.prize.amountTzs} onChange={(n) => patchPrize({ amountTzs: n })} />
-        <Field label="Min bet amount" hint="Recruit's bet must be ≥ this (§4.2c)" prefix="TZS" width={180} readOnly={locked} error={fieldError("prize.minBetAmountTzs")} value={c.prize.minBetAmountTzs ?? 0} onChange={(n) => patchPrize({ minBetAmountTzs: n })} />
+        <Field label="Fixed prize" prefix="TZS" width={150} readOnly={locked} dataField="prize.amountTzs" error={fieldError("prize.amountTzs")} value={c.prize.amountTzs} onChange={(n) => patchPrize({ amountTzs: n })} />
+        <Field label="Min bet amount" hint="Recruit's bet must be ≥ this (§4.2c)" prefix="TZS" width={180} readOnly={locked} dataField="prize.minBetAmountTzs" error={fieldError("prize.minBetAmountTzs")} value={c.prize.minBetAmountTzs ?? 0} onChange={(n) => patchPrize({ minBetAmountTzs: n })} />
         <div className="flex items-center gap-2.5">
           <Toggle on={c.prize.requireDeposit ?? true} onClick={() => patchPrize({ requireDeposit: !(c.prize.requireDeposit ?? true) })} disabled={locked} aria-label="Require deposit" />
           <div>
@@ -340,7 +343,7 @@ export function AffiliateAdminClient({ config, baseFingerprint, copy, rosterRecr
             <div className="text-body-sm text-text-muted">Anti-fraud check: the recruit must have deposited before the first-bet prize fires (not a reward for depositing)</div>
           </div>
         </div>
-        <Field label="Cap per referrer" hint="Max prizes (0 = none)" suffix="prizes" width={180} readOnly={locked} error={fieldError("prize.capPerReferrer")} value={c.prize.capPerReferrer} onChange={(n) => patchPrize({ capPerReferrer: n })} />
+        <Field label="Cap per referrer" hint="Max prizes (0 = none)" suffix="prizes" width={180} readOnly={locked} dataField="prize.capPerReferrer" error={fieldError("prize.capPerReferrer")} value={c.prize.capPerReferrer} onChange={(n) => patchPrize({ capPerReferrer: n })} />
       </RewardCard>
 
       {/* Payable only: what the settings ON SCREEN would pay, then the form's one Save. */}

@@ -767,6 +767,93 @@ function readDraft(slot: string): DraftEntry | null {
   } catch { return null; }
 }
 
+/**
+ * ⭐ WHICH CONTROLS A DRAFT CARRIES, AND HOW IT PUTS THEM BACK (vb6, 2026-10-03) — pure over a form's elements, so
+ * `test:unsaved-changes` §3 drives both on stand-in nodes.
+ *
+ * 🔴 IT USED TO CARRY NAMED `<input>`s ONLY, AND RESTORED THEM THROUGH `.value =`. A textarea (a campaign body, a
+ * contact's notes) and a select were never saved at all. And a React-CONTROLLED field ignored the restore: React keeps
+ * its record of the last value it saw ON THE ELEMENT ITSELF, and an assignment through the element updates that record
+ * too — so the `input` event that followed read "nothing changed", no `onChange` ran, and the next render painted the
+ * old value straight back over the draft.
+ * ⭐ So a value is written through the PROTOTYPE's setter — the browser's own — which leaves React's record behind; the
+ * `input` event then reads a change and the field's `onChange` receives the restored text. A select is also told
+ * `change`, the event React's `onChange` for a select listens to.
+ * ⚠️ Unchanged: a checkbox is set directly and raises `input` (the kit Checkbox listens for exactly that), and a
+ * password or a file is never written to disk. ⛔ A radio is skipped: its state is WHICH of a group is checked, which a
+ * name-to-value map cannot hold, and writing it as a value would overwrite every radio's own value in the group.
+ */
+type DraftValues = { values: Record<string, string>; flags: Record<string, boolean> };
+type DraftNode = { tagName?: unknown; type?: unknown; name?: unknown; value?: unknown; checked?: unknown; dispatchEvent?: unknown };
+
+/** What a draft does with one element: carry its value, carry its checked flag, or leave it alone. */
+function draftKind(node: DraftNode): "value" | "flag" | null {
+  if (typeof node.name !== "string" || node.name === "") return null;
+  const tag = typeof node.tagName === "string" ? node.tagName.toUpperCase() : "";
+  if (tag === "INPUT") {
+    if (node.type === "checkbox") return "flag";
+    if (node.type === "radio" || node.type === "password" || node.type === "file") return null;
+    return "value";
+  }
+  if (tag === "TEXTAREA") return "value";
+  if (tag === "SELECT") return node.type === "select-multiple" ? null : "value";
+  return null;
+}
+
+/** The draft of a form's controls, read off its elements (`form.elements`). */
+export function draftValuesOf(elements: Iterable<unknown>): DraftValues {
+  const values: Record<string, string> = {};
+  const flags: Record<string, boolean> = {};
+  for (const el of elements) {
+    if (typeof el !== "object" || el === null) continue;
+    const node = el as DraftNode;
+    const kind = draftKind(node);
+    if (kind === "flag") flags[node.name as string] = node.checked === true;
+    else if (kind === "value") values[node.name as string] = String(node.value ?? "");
+  }
+  return { values, flags };
+}
+
+/** Write a value through the prototype's own setter — the browser's — rather than through the element (see above). */
+function setNativeValue(node: object, value: string): void {
+  for (let proto: object | null = Object.getPrototypeOf(node); proto !== null; proto = Object.getPrototypeOf(proto)) {
+    const d = Object.getOwnPropertyDescriptor(proto, "value");
+    if (d?.set) { d.set.call(node, value); return; }
+  }
+  (node as { value: string }).value = value;
+}
+
+const ownsKey = (o: object, k: string) => Object.prototype.hasOwnProperty.call(o, k);
+
+/** Put a draft back into a form's controls, raising the events the form and React listen for. Returns how many moved. */
+export function restoreDraftInto(elements: Iterable<unknown>, draft: DraftValues): number {
+  let moved = 0;
+  for (const el of elements) {
+    if (typeof el !== "object" || el === null) continue;
+    const node = el as DraftNode;
+    const kind = draftKind(node);
+    if (kind === null || typeof node.dispatchEvent !== "function") continue;
+    const dispatch = (type: string) => (node.dispatchEvent as (e: Event) => boolean).call(node, new Event(type, { bubbles: true }));
+    const name = node.name as string;
+    if (kind === "flag") {
+      if (!ownsKey(draft.flags, name)) continue;
+      const want = draft.flags[name] === true;
+      if (node.checked === want) continue;
+      (node as { checked: boolean }).checked = want;
+      dispatch("input");
+    } else {
+      if (!ownsKey(draft.values, name)) continue;
+      const want = String(draft.values[name]);
+      if (node.value === want) continue;
+      setNativeValue(node, want);
+      dispatch("input");
+      if (String(node.tagName).toUpperCase() === "SELECT") dispatch("change");
+    }
+    moved++;
+  }
+  return moved;
+}
+
 export function useFormDraft({
   formRef,
   storageKey,
@@ -843,13 +930,8 @@ export function useFormDraft({
     everDirty.current = true;
     const write = () => {
       try {
-        const values: Record<string, string> = {};
-        const flags: Record<string, boolean> = {};
-        for (const el of form.elements) {
-          if (!(el instanceof HTMLInputElement) || !el.name) continue;
-          if (el.type === "checkbox") flags[el.name] = el.checked;
-          else if (el.type !== "password" && el.type !== "file") values[el.name] = el.value;
-        }
+        /* ⭐ (vb6) Inputs, textareas and single selects — `draftValuesOf` says which, and why not a radio. */
+        const { values, flags } = draftValuesOf(form.elements);
         window.localStorage.setItem(slot, JSON.stringify({ v: version, at: Date.now(), values, flags } satisfies DraftEntry));
       } catch { /* a draft that cannot be written must never break the form */ }
     };
@@ -876,22 +958,14 @@ export function useFormDraft({
    * Setting `.value` or `.checked` fires nothing at all, so the form would hold restored work while the pending
    * bar said there was none — the exact class of defect this whole module exists for. One bubbling `input` per
    * control is what the form and the kit's own checkbox are already listening for.
+   * ⭐ (vb6) And a value goes in through the browser's own setter, so a React-CONTROLLED field hears it too — see
+   * `restoreDraftInto`, which does all of it.
    */
   const restore = React.useCallback(() => {
     const form = formRef.current;
     const e = found;
     if (!form || !e) return;
-    for (const el of form.elements) {
-      if (!(el instanceof HTMLInputElement) || !el.name) continue;
-      if (el.type === "checkbox") {
-        if (!(el.name in e.flags) || el.checked === e.flags[el.name]) continue;
-        el.checked = e.flags[el.name];
-      } else {
-        if (!(el.name in e.values) || el.value === e.values[el.name]) continue;
-        el.value = e.values[el.name];
-      }
-      el.dispatchEvent(new Event("input", { bubbles: true }));
-    }
+    restoreDraftInto(form.elements, e);
     setFound(null);
   }, [formRef, found]);
 
