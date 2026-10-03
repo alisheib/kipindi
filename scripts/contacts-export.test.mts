@@ -26,6 +26,9 @@
  *   E1–E5  THE PAGE: the head's control from the list's own filter, only when that read has rows, labelled masked for a
  *          masked viewer, disabled with its reason over the ceiling; the href round-trips through the parser; the ghost
  *          reserves the control's box; the wiring and the words.
+ *   vb7    THE DOOR (V6–V8, EXECUTED): strangers get the one 404, a lapsed second factor goes to the step-up page and never
+ *          to the file, a refused download comes back to the list with ?export=<reason>; a stray address key (R4), an
+ *          unreadable book (R5) and a selection (R6) each refused in words; the Added cell in East Africa Time (M2).
  *
  * ⛔ IN-PROCESS BY CONSTRUCTION. `--prove-red` plants each defect IN MEMORY — a swapped dependency of the export or of the
  * viewer, a reader built without its BOM strip, a wrapped audit, a source string — and requires the MATCHING assertion to
@@ -48,9 +51,11 @@ import type { StoredMarketingContact, StoredUser } from "../src/lib/server/store
 import {
   contactsExportViewer, CONTACTS_EXPORT_VIEWER_DEPS, exportContactsCsv, CONTACTS_EXPORT_DEPS, contactExportKeys,
   contactExportRow, contactExportPages, contactsExportHref, exportParamsOf, exportRequestAllowed, CONTACT_EXPORT_KEYS, CONTACTS_EXPORT_MAX,
-  CONTACTS_EXPORT_PAGE, CONTACTS_EXPORT_PATH, CONTACTS_PAGE_PATH,
+  CONTACTS_EXPORT_PAGE, CONTACTS_EXPORT_PATH, CONTACTS_PAGE_PATH, contactsExportDoor, exportStrayParams, EXPORT_REFUSED_HEADER,
 } from "../src/lib/server/contacts/export.ts";
-import type { ContactsExportDeps, ContactsExportViewer, ContactsExportViewerDeps } from "../src/lib/server/contacts/export.ts";
+import type {
+  ContactsExportDeps, ContactsExportDoorDeps, ContactsExportRequest, ContactsExportViewer, ContactsExportViewerDeps,
+} from "../src/lib/server/contacts/export.ts";
 import {
   contactAudience, contactAudienceKey, toAudienceWhere, parseContactAudienceParams, auditContactAudience, roleRefusal, WHOLE_BOOK,
 } from "../src/lib/server/marketing/audience.ts";
@@ -71,7 +76,7 @@ import { formatNumber } from "../src/lib/utils.ts";
 import {
   CONSENT_LABEL, SOURCE_LABEL, CONTACTS_EXPORT, CONTACTS_FILTER_NOT_FOR_ROLE, contactsExportTooMany,
 } from "../src/app/admin/contacts/contacts-copy.ts";
-import { operatorBrand } from "../src/app/admin/contacts/contacts-query.ts";
+import { contactsHref, operatorBrand } from "../src/app/admin/contacts/contacts-query.ts";
 import { ERASURE_EVIDENCE } from "../src/lib/marketing/erasure-mark.ts";
 
 const PROVE_RED = process.argv.includes("--prove-red");
@@ -90,12 +95,15 @@ const rawRead = (rel: string) => lf(readFileSync(join(ROOT, rel), "utf8"));
 type Sources = {
   exportTs: string; exportRaw: string; route: string; routeRaw: string; page: string; pageRaw: string;
   loading: string; copyRaw: string; pkg: string;
+  /** vb7 review m8 · the door's production dependencies (`export-door-deps.ts`). */
+  doorDeps: string;
 };
 const REAL_SOURCES: Sources = {
   exportTs: read("src/lib/server/contacts/export.ts"),
   exportRaw: rawRead("src/lib/server/contacts/export.ts"),
   route: read("src/app/api/admin/contacts/export/route.ts"),
   routeRaw: rawRead("src/app/api/admin/contacts/export/route.ts"),
+  doorDeps: read("src/lib/server/contacts/export-door-deps.ts"),
   page: read("src/app/admin/contacts/page.tsx"),
   pageRaw: rawRead("src/app/admin/contacts/page.tsx"),
   loading: read("src/app/admin/contacts/loading.tsx"),
@@ -114,6 +122,11 @@ type Impl = {
   /** U25's REAL reader — what C3's round trip reads the file back through. */
   parse: (text: string) => CsvReadResult;
   sources: Sources;
+  /** vb7 · the route's door, and the export itself — swappable, so a red case can plant one. */
+  door: typeof contactsExportDoor;
+  run: typeof exportContactsCsv;
+  /** vb7 review m8 · what V9 drives as the route's dependencies — the production object itself, unless a red case plants. */
+  doorDepsOf: (prod: Readonly<ContactsExportDoorDeps>) => Readonly<ContactsExportDoorDeps>;
 };
 const REAL: Impl = {
   viewerDeps: CONTACTS_EXPORT_VIEWER_DEPS,
@@ -121,6 +134,9 @@ const REAL: Impl = {
   auditVia: (fn) => fn,
   parse: (text) => parseCsv(text),
   sources: REAL_SOURCES,
+  door: contactsExportDoor,
+  run: exportContactsCsv,
+  doorDepsOf: (prod) => prod,
 };
 
 let pass = 0, fail = 0;
@@ -183,9 +199,11 @@ async function drain(res: Response): Promise<{ bytes: Uint8Array; chunks: number
   return { bytes, chunks: parts.length, error };
 }
 
-async function runExport(impl: Impl, viewer: ContactsExportViewer, params: Params, over: Partial<ContactsExportDeps> = {}, stub: Stub = auditStub()): Promise<Run> {
+async function runExport(
+  impl: Impl, viewer: ContactsExportViewer, params: Params, over: Partial<ContactsExportDeps> = {}, stub: Stub = auditStub(), stray: readonly string[] = [],
+): Promise<Run> {
   const deps: ContactsExportDeps = { ...impl.deps, ...over, audit: impl.auditVia(stub.fn) };
-  const res = await exportContactsCsv({ viewer, params, now: NOW }, deps);
+  const res = await impl.run({ viewer, params, now: NOW, stray }, deps);
   const d = await drain(res);
   // ⛔ Decoded as U25 decodes (`DECODE_OPTIONS`: the mark passed through, never eaten) — so the mark can be counted.
   return { status: res.status, headers: res.headers, bytes: d.bytes, text: decodeBytes(d.bytes, "utf-8"), chunks: d.chunks, error: d.error, audits: stub.entries };
@@ -201,6 +219,8 @@ function rowsOf(text: string): string[][] | null {
 
 const NOW = Date.parse("2026-10-02T09:00:00.000Z");
 const AS_OF = new Date(NOW).toISOString();
+/** vb7 · an instant as East Africa Time with its offset — derived here, independently of the module under test. */
+const eatAt = (iso: string) => `${new Date(Date.parse(iso) + 3 * 3_600_000).toISOString().slice(0, 19)}+03:00`;
 
 function contactRow(id: string, local: string, o: Partial<StoredMarketingContact> = {}): StoredMarketingContact {
   const p = parseTzNumber(local);
@@ -299,10 +319,10 @@ const L = {
   v3: "V3 · the contacts page's own gate, on the stored row: GROWTH → masked, ADMIN → read; FINANCE, COMPLIANCE, AUDITOR, SUPPORT, MODERATOR and PLAYER → no viewer — and the domain asked is domainForPath('/admin/contacts'), growth",
   v4: "V4 · ⛔ a cookie that says ADMIN over a STORED GROWTH row → cell masked — the transactions export's cookie-role residual, NOT copied",
   v5: "V5 · with Growth view granted to every staff role, each viewer's cell IS readCell(role, identity.contact), and read ⇔ mayReveal (the page's viewerReads) — the file and the page agree on who sees numbers, MODERATOR's none included",
-  v6: 'V6 · the route is thin: GET, force-dynamic and nodejs only; the gate (GET only, same origin) BEFORE the session, then the viewer (the stored row), THEN checkAdminTotp, every failure the ONE identical new NextResponse("Not Found", { status: 404 }); no store, no cookie role, no decider of its own',
+  v6: 'V6 · the route is thin and its DOOR is the gate, EXECUTED: GET only and never cross-site BEFORE the session is read; no session, no viewer or a HEAD is the ONE identical 404 with nothing run and no factor asked; the route only maps what the door answers — force-dynamic and nodejs, ONE new NextResponse("Not Found", { status: 404 }), a 303 to /admin/ pages only, through the public host — and holds no store, no cookie role, no decider of its own',
   v7: 'V7 · ⛔ A CROSS-SITE REQUEST NEVER STARTS AN EXPORT (review MAJOR-1): Sec-Fetch-Site same-origin, none (a typed or bookmarked address) or absent passes; cross-site, same-site or anything else is the 404 — asked, with GET-only (MINOR-1: Next runs a HEAD through the GET handler), before the session is read',
   m1: "M1 · ⭐ GROWTH's file: the masked header (phone and email masked, no Consent, no Source); every number cell the registry's +255••••NN; no fixture number in ANY spelling anywhere in the body; every email masked",
-  m2: "M2 · ADMIN's file: the full header; every number the +255… spelling of its row, every email as stored, Consent and Source in the page's words, the operator from the ONE table, the instant added — and M1's detector DOES see these numbers (its positive control)",
+  m2: "M2 · ADMIN's file: the full header; every number the +255… spelling of its row, every email as stored, Consent and Source in the page's words, the operator from the ONE table, the instant added in East Africa Time (vb7: with its +03:00, and the file named by the EAT clock) — and M1's detector DOES see these numbers (its positive control)",
   m3: "M3 · 🔴 D19 · no per-row player signal for a masked role: GROWTH's file has no Consent, no Source and no player column and no cell holding a consent or source word; ADMIN's has Consent and Source; no player column for anyone",
   m4: "M4 · a `none` cell's file carries NEITHER identity column (absent, not blank) — no number and no email at all, masked or not",
   m5: "M5 · decision M5 · both identity columns are masked through their registry entries (contactPhone, contactEmail): one read class, one target type, the platform's two masks",
@@ -328,11 +348,16 @@ const L = {
   r1: "R1 · ⛔ C2 · an unknown value refuses (400) BEFORE anything is counted, naming its key; the refusal's audit names the key and never what was typed; a selection in an address is refused too (X27)",
   r2: "R2 · 🔴 D19 · the export asks U24's ONE role rule: every filter that rule keeps from a masked viewer (consent, source and player at the least) is a 403 in the rule's words before anything is counted, every other filter is answered; a reader's source filter is answered",
   r3: "R3 · the route hands the parser the address's own keys only — a repeat as an array, no stray key, nothing on the prototype — and keeps ids, so the parser can refuse it",
+  r4: "R4 · ⛔ vb7 · an address key the page never writes is REFUSED (400, unknown_param), never dropped into the WHOLE book: ?operator=vodacom, ?tags=vip and a utm tag beside a real filter — through the door, nothing counted, one contacts.export_refused that counts the keys and names none, and the officer sent back to the list; exportStrayParams finds exactly the stray keys",
+  r5: "R5 · ⛔ vb7 · a book that cannot be counted is a 503 in words (read_failed) with an export_refused row — never Next's bare 500 with nothing recorded — no file, no reveal, and the log names the fault's kind, never its text",
+  r6: "R6 · vb7 · a selection in the address is told what an export takes — the page's filter, never ticked contacts — in the export's own sentence, never \"tick the contacts on the page again\"",
   e1: "E1 · the page: the head's export control is built from the list's own filter, only when that read arrived WITH rows, before Add contact; labelled masked for a masked viewer; over the ceiling the kit's disabled Button with its reason beside it; no decider in the page, no number added",
   e2: "E2 · contactsExportHref (EXECUTED): every filter an address can carry reads back through the parser — a day later — to the same key, a relative window included; the whole book is the bare path; a selection or an empty any-of gets no link",
   e3: "E3 · the ghost reserves the export control's 40px box in the head, before Add contact's",
   e4: "E4 · wired: test:contacts-export and red:contacts-export exist, and predeploy runs the suite right after test:contacts-bulk",
   e5: "E5 · the words: Export CSV and Export CSV (masked); the over-the-ceiling sentence names both numbers; each title says the download is recorded",
+  v9: "V9 · ⭐ vb7 review m8 · THE ROUTE HANDS THE DOOR THE REAL SECOND FACTOR, by behaviour: the route passes ONE frozen object (CONTACTS_EXPORT_DOOR_DEPS) and nothing beside it; that object's members are the platform's own — currentSession, contactsExportViewer, checkAdminTotp, exportContactsCsv — and driven through the door with 2-step sign-in on, an officer who never set it up is sent to /admin/2fa/setup by the object's OWN second factor, the export never run",
+  v8: "V8 · ⭐ vb7 · AN OFFICER IS NEVER LEFT ON A BARE PAGE, and a lapsed factor NEVER reaches the file: a lapsed second factor (unverified, or never set up) is a 303 to the step-up page whose next is the list for this filter, the export never run; a refused download (an unreadable filter, a stray key, a selection) is a 303 back to the list for the same filter carrying ?export=<reason>; a file is handed through untouched (EXECUTED through the door)",
 } as const;
 
 /* ═══ THE ASSERTIONS ═════════════════════════════════════════════════════════════════════════════════════════ */
@@ -340,6 +365,18 @@ const L = {
 async function runAssertions(impl: Impl, tag: string): Promise<void> {
   const p = (n: string) => `${tag}${n}`;
   const viewerOf = (userId: string, role: Role) => contactsExportViewer(asCookie(userId, role), impl.viewerDeps);
+  /** vb7 · the door's stand-ins: each records that it was asked, the session and viewer as given (the reader by
+   *  default), the second factor as given ("ok" by default), and the export run through THIS impl. */
+  const doorDeps = (o: {
+    session?: { userId: string; sessionId: string } | null; viewer?: ContactsExportViewer | null;
+    factor?: "ok" | "unverified" | "not-enrolled"; run?: (r: ContactsExportRequest) => Promise<Response>;
+  }, asked: string[]): ContactsExportDoorDeps => ({
+    session: async () => { asked.push("session"); return o.session === undefined ? { userId: READER.userId, sessionId: "s_door" } : o.session; },
+    viewer: async () => { asked.push("viewer"); return o.viewer === undefined ? READER : o.viewer; },
+    secondFactor: async () => { asked.push("secondFactor"); return o.factor ?? "ok"; },
+    run: async (r) => { asked.push("run"); return o.run ? o.run(r) : impl.run(r, { ...impl.deps, audit: impl.auditVia(auditStub().fn) }); },
+    now: () => NOW,
+  });
   /** An audience whose walk and count are observed — wrapping THIS impl's resolver, so a planted one is what runs. */
   const observed = (on: { walk?: (after: string | null, limit: number) => void; count?: () => void }) => (f: ContactAudienceFilter): ContactAudience => {
     const a = impl.deps.audience(f);
@@ -394,30 +431,97 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
     const cells = new Set(seen.map((s) => s.split("=")[1]));
     return [wrong.length === 0 && cells.has("read") && cells.has("masked") && cells.has("none"), `${seen.join(" ")}${wrong.length ? ` · wrong: ${wrong.join(",")}` : ""}`];
   });
-  await check(p(L.v6), () => {
+  await check(p(L.v6), async () => {
     const r = impl.sources.route;
     const exported = [...r.matchAll(/^export\s+(?:async\s+)?(?:function|const)\s+(\w+)/gm)].map((m) => m[1]).sort().join(",");
     const NOT_FOUND = 'const notFound = () => new NextResponse("Not Found", { status: 404 });';
-    const guardAt = r.indexOf('if (req.method !== "GET" || !exportRequestAllowed(req.headers.get("sec-fetch-site"))) return notFound();');
-    const sessionAt = r.indexOf("const session = await currentSession();");
-    const viewerAt = r.indexOf("const viewer = await contactsExportViewer(session);");
-    const totpAt = r.indexOf("checkAdminTotp(session.userId, session.sessionId)");
-    const runAt = r.indexOf("return exportContactsCsv({ viewer, params: exportParamsOf(new URL(req.url)), now: Date.now() });");
-    return [exported === "GET,dynamic,runtime" && r.includes('export const dynamic = "force-dynamic";') && r.includes('export const runtime = "nodejs";')
-      && guardAt > 0 && sessionAt > guardAt && viewerAt > sessionAt && totpAt > viewerAt && runAt > totpAt
-      && r.split(NOT_FOUND).length - 1 === 1 && r.split("status:").length - 1 === 1 && r.split("return notFound();").length - 1 === 3
-      && r.includes("if (!session || !viewer) return notFound();") && r.includes('!== "ok") return notFound();')
-      && !/(?<![\w$])db(?![\w$])/.test(r) && !r.includes("session.role") && !importsDecider(r),
-      `exports [${exported}] · viewer ${viewerAt} · totp ${totpAt} · run ${runAt}`];
+    const thin = exported === "GET,dynamic,runtime" && r.includes('export const dynamic = "force-dynamic";') && r.includes('export const runtime = "nodejs";')
+      && r.split(NOT_FOUND).length - 1 === 1 && r.split("status:").length - 1 === 1 && r.split("return notFound();").length - 1 === 1
+      && r.includes('if (door.kind === "response") return door.response;')
+      && r.includes('import { CONTACTS_EXPORT_DOOR_DEPS } from "@/lib/server/contacts/export-door-deps";')
+      && r.includes('secFetchSite: req.headers.get("sec-fetch-site") }, CONTACTS_EXPORT_DOOR_DEPS);')
+      && !/currentSession|checkAdminTotp|secondFactor/.test(r)
+      && r.includes('if (door.kind === "not_found" || !door.to.startsWith("/admin/")) return notFound();')
+      && r.includes("NextResponse.redirect(`${await publicBase(req)}${door.to}`, 303)")
+      && !/(?<![\w$])db(?![\w$])/.test(r) && !r.includes("session.role") && !importsDecider(r);
+    const url = `http://x${CONTACTS_EXPORT_PATH}?tag=vip`;
+    const askedA: string[] = [];
+    const noSession = await impl.door({ method: "GET", url, secFetchSite: "same-origin" }, doorDeps({ session: null }, askedA));
+    const askedB: string[] = [];
+    const noViewer = await impl.door({ method: "GET", url, secFetchSite: null }, doorDeps({ viewer: null }, askedB));
+    const askedC: string[] = [];
+    const head = await impl.door({ method: "HEAD", url, secFetchSite: "same-origin" }, doorDeps({}, askedC));
+    const strangers = noSession.kind === "not_found" && noViewer.kind === "not_found" && head.kind === "not_found"
+      && !askedA.includes("run") && !askedA.includes("secondFactor") && !askedB.includes("run") && !askedB.includes("secondFactor")
+      && askedC.length === 0;
+    return [thin && strangers, `thin ${thin} · exports [${exported}] · no session ${noSession.kind} [${askedA}] · no viewer ${noViewer.kind} [${askedB}] · HEAD ${head.kind} [${askedC}]`];
   });
 
-  await check(p(L.v7), () => {
+  await check(p(L.v7), async () => {
     const passes = [null, "same-origin", "none"].every((v) => exportRequestAllowed(v));
     const refused = ["cross-site", "same-site", "SAME-ORIGIN", ""].every((v) => !exportRequestAllowed(v));
-    const r = impl.sources.route;
-    const guardAt = r.indexOf('if (req.method !== "GET" || !exportRequestAllowed(req.headers.get("sec-fetch-site"))) return notFound();');
-    const sessionAt = r.indexOf("const session = await currentSession();");
-    return [passes && refused && guardAt > 0 && sessionAt > guardAt, `passes ${passes} · refused ${refused} · gate ${guardAt} < session ${sessionAt}`];
+    const asked: string[] = [];
+    const cross = await impl.door({ method: "GET", url: `http://x${CONTACTS_EXPORT_PATH}`, secFetchSite: "cross-site" }, doorDeps({}, asked));
+    const askedTyped: string[] = [];
+    const typed = await impl.door({ method: "GET", url: `http://x${CONTACTS_EXPORT_PATH}`, secFetchSite: "none" }, doorDeps({}, askedTyped));
+    return [passes && refused && cross.kind === "not_found" && asked.length === 0 && typed.kind === "response" && askedTyped[0] === "session",
+      `passes ${passes} · refused ${refused} · cross-site ${cross.kind}, asked [${asked}] · typed ${typed.kind}`];
+  });
+
+  await check(p(L.v8), async () => {
+    const url = `http://x${CONTACTS_EXPORT_PATH}?op=VODACOM&tag=vip`;
+    const list = contactsHref({ op: "VODACOM", tag: "vip" });
+    const askedU: string[] = [];
+    const lapsed = await impl.door({ method: "GET", url, secFetchSite: "same-origin" }, doorDeps({ factor: "unverified" }, askedU));
+    const askedN: string[] = [];
+    const unenrolled = await impl.door({ method: "GET", url, secFetchSite: "same-origin" }, doorDeps({ factor: "not-enrolled" }, askedN));
+    const stepUp = lapsed.kind === "see_other" && lapsed.to === `/admin/totp-verify?next=${encodeURIComponent(list)}` && !askedU.includes("run")
+      && unenrolled.kind === "see_other" && unenrolled.to === `/admin/2fa/setup?next=${encodeURIComponent(list)}` && !askedN.includes("run");
+    const back = (query: string) => impl.door({ method: "GET", url: `http://x${CONTACTS_EXPORT_PATH}${query}`, secFetchSite: "same-origin" }, doorDeps({}, []));
+    const nokia = await back("?op=NOKIA&tag=vip");
+    const stray = await back("?operator=vodacom");
+    const ids = await back("?ids=mx_01&op=VODACOM");
+    const file = await back("?tag=vip");
+    const backToList = nokia.kind === "see_other" && nokia.to === `${contactsHref({ op: "NOKIA", tag: "vip" })}&export=unreadable_filter`
+      && stray.kind === "see_other" && stray.to === "/admin/contacts?export=unknown_param"
+      && ids.kind === "see_other" && ids.to === `${contactsHref({ op: "VODACOM" })}&export=selection`
+      && file.kind === "response" && file.response.status === 200 && (file.response.headers.get("Content-Type") ?? "").startsWith("text/csv")
+      && file.response.headers.get(EXPORT_REFUSED_HEADER) === null;
+    const seen = (a: { kind: string; to?: string }) => (a.kind === "see_other" ? a.to : a.kind);
+    return [stepUp && backToList,
+      `lapsed ${seen(lapsed)} [${askedU}] · not enrolled ${seen(unenrolled)} · nokia ${seen(nokia)} · stray ${seen(stray)} · ids ${seen(ids)} · file ${file.kind}`];
+  });
+
+  await check(p(L.v9), async () => {
+    const prodMod = await import("../src/lib/server/contacts/export-door-deps.ts");
+    const { checkAdminTotp } = await import("../src/lib/server/admin-guard.ts");
+    const { currentSession } = await import("../src/lib/server/auth-service.ts");
+    const prod = prodMod.CONTACTS_EXPORT_DOOR_DEPS;
+    const deps = impl.doorDepsOf(prod);
+    const own = Object.isFrozen(prod) && deps.session === currentSession && deps.viewer === contactsExportViewer
+      && deps.secondFactor === checkAdminTotp && deps.run === exportContactsCsv
+      && impl.sources.doorDeps.includes("export const CONTACTS_EXPORT_DOOR_DEPS: Readonly<ContactsExportDoorDeps> = Object.freeze({")
+      && impl.sources.doorDeps.includes("secondFactor: checkAdminTotp,");
+    // Driven as the route runs it, the session and the viewer stood in (a script has no cookies): 2-step sign-in ON, and
+    // an officer who never set it up — the object's OWN second factor sends him to set it up, and nothing is exported.
+    const asked: string[] = [];
+    const savedSwitch = process.env.DISABLE_ADMIN_TOTP;
+    delete process.env.DISABLE_ADMIN_TOTP;
+    let answer: Awaited<ReturnType<typeof contactsExportDoor>> | null = null;
+    try {
+      answer = await impl.door({ method: "GET", url: `http://x${CONTACTS_EXPORT_PATH}?tag=vip`, secFetchSite: "same-origin" }, {
+        ...deps,
+        session: async () => ({ userId: READER.userId, sessionId: "s_v9" }),
+        viewer: async () => READER,
+        run: async (r) => { asked.push("run"); return (deps.run as typeof exportContactsCsv)(r, { ...impl.deps, audit: impl.auditVia(auditStub().fn) }); },
+      });
+    } finally {
+      if (savedSwitch === undefined) delete process.env.DISABLE_ADMIN_TOTP;
+      else process.env.DISABLE_ADMIN_TOTP = savedSwitch;
+    }
+    const setUp = answer !== null && answer.kind === "see_other" && answer.to === `/admin/2fa/setup?next=${encodeURIComponent(contactsHref({ tag: "vip" }))}`
+      && asked.length === 0;
+    return [own && setUp, `own ${own} · driven → ${answer === null ? "nothing" : answer.kind === "see_other" ? answer.to : answer.kind} · export run ${asked.length}`];
   });
 
   /* ── M · WHO GETS WHICH FILE ─────────────────────────────────────────────────────────────────────────────── */
@@ -442,14 +546,14 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
     const bad = body.map((r, i) => {
       const c = VISIBLE[i];
       const want = [`+${c.msisdn}`, c.displayName ?? "", c.email ?? "", joinTags(c.tags), c.notes ?? "", operatorBrand(c.ndc) ?? "",
-        CONSENT_LABEL[c.consentState].label, SOURCE_LABEL[c.source], c.createdAt];
+        CONSENT_LABEL[c.consentState].label, SOURCE_LABEL[c.source], eatAt(c.createdAt)];
       return r.map((cell) => unguardCell(cell)).join(QUOTE) === want.join(QUOTE) ? null : c.id;
     }).filter((x) => x !== null);
     const detectorSees = VISIBLE.every((c) => a.text.includes(c.msisdn)) && FULL_NUMBER_RUN.test(a.text);
     return [a.status === 200 && JSON.stringify(rows[0]) === JSON.stringify(FULL_HEADER) && body.length === VISIBLE.length && bad.length === 0 && detectorSees
       && a.headers.get("X-Rows-Matched") === String(VISIBLE.length) && a.headers.get("X-Export-Masked") === "false"
       && (a.headers.get("Content-Type") ?? "").startsWith("text/csv")
-      && a.headers.get("Content-Disposition") === 'attachment; filename="50pick-contacts-2026-10-02-09-00-00.csv"'
+      && a.headers.get("Content-Disposition") === 'attachment; filename="50pick-contacts-2026-10-02-12-00-00.csv"'
       && a.headers.get("Cache-Control") === "no-store",
       `${a.status} · ${body.length} rows · wrong [${bad.join(",")}] · ${a.headers.get("Content-Disposition")}`];
   });
@@ -802,6 +906,50 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
       JSON.stringify(got)];
   });
 
+  await check(p(L.r4), async () => {
+    const keys = exportStrayParams(new URL(`http://x${CONTACTS_EXPORT_PATH}?op=VODACOM&operator=vodacom&tags=vip&utm_source=x&operator=again`));
+    let counted = 0;
+    const stub = auditStub();
+    const asked: string[] = [];
+    const answer = await impl.door(
+      { method: "GET", url: `http://x${CONTACTS_EXPORT_PATH}?op=VODACOM&operator=vodacom&tags=vip&utm_source=x`, secFetchSite: "same-origin" },
+      doorDeps({ run: (rq) => impl.run(rq, { ...impl.deps, audience: observed({ count: () => { counted++; } }), audit: impl.auditVia(stub.fn) }) }, asked),
+    );
+    const refused = stub.entries[0];
+    return [JSON.stringify(keys) === JSON.stringify(["operator", "tags", "utm_source"])
+      && answer.kind === "see_other" && answer.to === `${contactsHref({ op: "VODACOM" })}&export=unknown_param` && counted === 0
+      && actions(stub.entries) === "contacts.export_refused" && refused?.payload.reason === "unknown_param" && refused?.payload.keys === 3
+      && JSON.stringify(Object.keys(refused?.payload ?? {}).sort()) === JSON.stringify(["asOf", "keys", "reason", "role"]),
+      `${JSON.stringify(keys)} · ${answer.kind === "see_other" ? answer.to : answer.kind} · counted ${counted} · ${actions(stub.entries)}`];
+  });
+  await check(p(L.r5), async () => {
+    const broken = (f: ContactAudienceFilter): ContactAudience => {
+      const a = impl.deps.audience(f);
+      return { ...a, count: async () => { throw new Error("planted read fault (test:contacts-export)"); } };
+    };
+    const logged: string[] = [];
+    const realError = console.error;
+    console.error = (...a: unknown[]) => { logged.push(a.map(String).join(" ")); };
+    let r: Run | null = null;
+    try {
+      r = await runExport(impl, READER, {}, { audience: broken });
+    } finally {
+      console.error = realError;
+    }
+    if (r === null) return [false, "no answer"];
+    const refused = r.audits[0];
+    return [r.status === 503 && r.text === CONTACTS_EXPORT.readFailed && r.text.charCodeAt(0) !== 0xfeff
+      && actions(r.audits) === "contacts.export_refused" && refused?.payload.reason === "read_failed"
+      && r.headers.get(EXPORT_REFUSED_HEADER) === "read_failed" && !logged.some((l) => l.includes("planted read fault")),
+      `${r.status} ${JSON.stringify(r.text)} · ${actions(r.audits)} · logged ${logged.join(" | ")}`];
+  });
+  await check(p(L.r6), async () => {
+    const r = await runExport(impl, READER, { ids: "mx_01" });
+    return [r.status === 400 && r.text === CONTACTS_EXPORT.noSelection && !/tick the contacts/i.test(r.text)
+      && r.audits[0]?.payload.reason === "unreadable_filter" && r.audits[0]?.payload.param === "ids" && r.headers.get(EXPORT_REFUSED_HEADER) === "selection",
+      `${r.status} ${JSON.stringify(r.text)}`];
+  });
+
   /* ── E · THE PAGE ────────────────────────────────────────────────────────────────────────────────────────── */
   await check(p(L.e1), () => {
     const page = impl.sources.page;
@@ -1011,11 +1159,11 @@ if (!PROVE_RED) {
       impl: () => ({ ...REAL, viewerDeps: { ...CONTACTS_EXPORT_VIEWER_DEPS, canView: (role) => canView(role, "accounting") } }),
     },
     {
-      name: "R18 · the second factor dropped from the route",
+      name: "R18 · the second factor dropped from the route — the door is handed the frozen object with a factor that always says ok beside it",
       expect: L.v6,
       impl: () => ({
         ...REAL,
-        sources: withSource("route", '  if ((await checkAdminTotp(session.userId, session.sessionId)) !== "ok") return notFound();' + LF, ""),
+        sources: withSource("route", ", CONTACTS_EXPORT_DOOR_DEPS);", ', { ...CONTACTS_EXPORT_DOOR_DEPS, secondFactor: async () => "ok" as const });'),
       }),
     },
     {
@@ -1041,7 +1189,7 @@ if (!PROVE_RED) {
     {
       name: "R23 · ⛔ the cross-site gate dropped — a link on any site makes a signed-in officer's browser write a bulk-reveal row in their name",
       expect: L.v7,
-      impl: () => ({ ...REAL, sources: withSource("route", 'if (req.method !== "GET" || !exportRequestAllowed(req.headers.get("sec-fetch-site"))) return notFound();', "") }),
+      impl: () => ({ ...REAL, door: (req, deps) => contactsExportDoor({ ...req, method: "GET", secFetchSite: null }, deps) }),
     },
     {
       name: "R24 · ⛔ free text unmasked in a masked file — a note's number and email go out whole",
@@ -1068,6 +1216,64 @@ if (!PROVE_RED) {
             : v)),
         },
       }),
+    },
+
+    /* ── vb7 · validation batch 7, each on its own assertion ── */
+    {
+      name: "R26 · vb7 · the Added cell back in UTC — an officer in Dar reads every contact three hours early",
+      expect: L.m2,
+      impl: () => ({ ...REAL, deps: { ...CONTACTS_EXPORT_DEPS, row: (c, keys, cell) => contactExportRow(c, keys, cell).map((v, i) => (keys[i] === "added" ? c.createdAt : v)) } }),
+    },
+    {
+      name: "R27 · vb7 · a stray address key dropped again — ?operator=vodacom beside a filter exports what the filter matches, the stray never refused",
+      expect: L.r4,
+      impl: () => ({ ...REAL, door: (req, deps) => contactsExportDoor(req, { ...deps, run: (r) => deps.run({ ...r, stray: [] }) }) }),
+    },
+    {
+      name: "R28 · vb7 · a count that throws is Next's bare 500 again — no refusal, no record",
+      expect: L.r5,
+      impl: () => ({
+        ...REAL,
+        run: async (req, deps = CONTACTS_EXPORT_DEPS) => {
+          const parsed = deps.parse(req.params, req.now);
+          if (parsed.ok) await deps.audience(parsed.filter).count();
+          return exportContactsCsv(req, deps);
+        },
+      }),
+    },
+    {
+      name: "R29 · vb7 · a selection in the address told to tick the contacts again — advice an export can never take",
+      expect: L.r6,
+      impl: () => ({
+        ...REAL,
+        run: async (req, deps) => {
+          const res = await exportContactsCsv(req, deps);
+          return res.headers.get(EXPORT_REFUSED_HEADER) === "selection"
+            ? new Response("The “ids” filter in this address can't be used. A ticked selection cannot travel in an address. Tick the contacts on the page again. Nothing was exported.", { status: 400, headers: res.headers })
+            : res;
+        },
+      }),
+    },
+    {
+      name: "R30 · vb7 · a refused download left on a bare text page — the door hands the refusal's text through instead of the list",
+      expect: L.v8,
+      impl: () => ({
+        ...REAL,
+        door: async (req, deps) => {
+          const a = await contactsExportDoor(req, deps);
+          return a.kind === "see_other" && a.to.includes("export=") ? { kind: "response" as const, response: new Response("Refused", { status: 400 }) } : a;
+        },
+      }),
+    },
+    {
+      name: "R31 · vb7 · ⛔ the door forgets the second factor — a lapsed 2-step sign-in exports the file",
+      expect: L.v8,
+      impl: () => ({ ...REAL, door: (req, deps) => contactsExportDoor(req, { ...deps, secondFactor: async () => "ok" }) }),
+    },
+    {
+      name: "R32 · vb7 review m8 · ⛔ the production dependencies hand the door a factor that always says ok — an officer who never set up 2-step sign-in downloads the book",
+      expect: L.v9,
+      impl: () => ({ ...REAL, doorDepsOf: (prod) => ({ ...prod, secondFactor: async () => "ok" as const }) }),
     },
   ];
 

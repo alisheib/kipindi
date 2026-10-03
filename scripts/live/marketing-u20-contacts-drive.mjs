@@ -7,7 +7,7 @@
  *     (`loading.tsx` explains why the rows below cannot be equal by construction);
  *   · POPULATED — a page of 20, every number masked `+255••••NN` for GROWTH with NO eye and NO copy;
  *   · SEARCH — a whole number in two spellings finds exactly one row; a PART of a number is no-match
- *     (with the clear action), never a number search;
+ *     (with the clear action), never a number search — and (vb7) the no-match row says the parser's own sentence;
  *   · PAGE CLAMP — page 4 of a 5-row result renders the 5 rows;
  *   · ERROR — a failed read is "Couldn't load the contact book", never a zero;
  *   · ADMIN — the role that may reveal gets the eye AND Copy on every row, and the eye shows `+255…`;
@@ -42,7 +42,7 @@
  *   · U22 — ADD AND EDIT ONE CONTACT (`contact-form.tsx`), every state the unit names:
  *       BLANK — on the EMPTY book (whose row names "Add contact") and on the populated one: focus in the number field,
  *         never the ✕; Consent "Not recorded" with the form's sentence; Save disabled;
- *       TYPING — "71" gives the Yas chip and "2 of 9 digits"; "60" the Airtel chip, flagged disputed;
+ *       TYPING — "71" gives the Yas chip and "2 of 9 digits"; "60" the Airtel chip, titled as its newest range;
  *       REFUSED — "64" at two digits with the Telxer sentence; "71234" then Tab with the too-short sentence; a PASTED
  *         +254 712 345 678 with the foreign sentence, never "Mbeya";
  *       CHECKING — the duplicate lookup's RESPONSE held (fetched, held, fulfilled — never the request): the checking line
@@ -74,11 +74,11 @@
  *       CONFIRM · TYPED — "Type N to confirm" with N the SERVER's count, Confirm disabled until exactly N; Suppress's
  *         permanence and Remove's kept records in words (both cancelled); a typed Tag run end to end, its result counted;
  *       REFUSED BY THE SERVER — a contact added between the preview and the confirmation: the recount refuses with both
- *         counts, and nothing is written;
+ *         counts, and nothing is written (vb7: a fresh confirmation for the new count opens, its notice saying why);
  *       ERROR — the run answered with HTTP 500: the error card says contacts MAY have changed and claims no count, the
  *         selection is kept, and "Review it again" asks the server for a fresh preview;
  *       PARAMETERS — "a,b" refused in U28's words beside the box, Escape refused once typed; a new list by name; the same
- *         name in other capitals refused;
+ *         name in other capitals IS that list (vb7: the picker switches to it and says so);
  *       ACTING → DONE — the run's RESPONSE held: "Tagging 2 contacts…"; released: "2 tagged · 0 already had it", the
  *         selection cleared; GROWTH's withdrawal told the TOTAL only (A1.1), a reader's the split — and GROWTH's
  *         suppression of that same one row the TOTAL only too (OD54), a reader's the split;
@@ -101,7 +101,8 @@
  *       NO-MATCH — a part of a number matches nothing: no export control, and the rail is still drawn;
  *       ERROR — a failed read: no export control;
  *       REFUSED — signed out, a PLAYER and FINANCE (no Growth view) each get the identical 404 "Not Found"; GROWTH's typed
- *         ?consent= is the role refusal (403) and ?op=NOKIA the unreadable filter (400), each saying nothing was exported;
+ *         ?consent= (the role refusal) and ?op=NOKIA (the unreadable filter) each come BACK to the list (vb7: a 303 with
+ *         ?export=<reason>), and the list says why above it, with Dismiss;
  *       ⛔ OVER THE CEILING (more than 200,000 matching) is NOT reachable by seed on the memory twin — it is proved in-process
  *         by `test:contacts-export` (E1, K7) and never photographed here.
  * The rows come from `/api/dev-test/marketing-contacts-seed` (`?count=45`, `?u22=1` for the form's fixtures, for U23
@@ -259,6 +260,10 @@ async function openAddDialog(page) {
 const textButton = (page, scope, label) => page.locator(scope).locator("button", { hasText: new RegExp(`^${label}$`) }).first();
 async function closeDialog(page) {
   await textButton(page, DIALOG, "Cancel").click().catch(() => {});
+  // vb7 · a contact dialog holding typing ASKS first ("Discard what you typed?") — the drive discards, as a person closing
+  // it on purpose would.
+  const asked = await page.locator(`${DIALOG} [data-discard-ask]`).first().waitFor({ timeout: 1500 }).then(() => true, () => false);
+  if (asked) await textButton(page, DIALOG, "Discard").click().catch(() => {});
   await page.waitForSelector(DIALOG, { state: "detached", timeout: 10000 }).catch(() => {});
   await wait(300);
 }
@@ -487,7 +492,9 @@ for (const vp of VIEWPORTS) {
   await shoot(page, `${vp.name}-search-one`);
   await openContacts(page, `?q=${encodeURIComponent("0711000")}`);
   const nm = await mainText(page);
-  ok(`${vp.name} · NO MATCH · a PART of a number is not searched — the no-match row says so`, (await rows.count()) === 0 && /No contacts match/.test(nm) && /part of a number is not searched/.test(nm), nm.slice(0, 200));
+  ok(`${vp.name} · NO MATCH · a PART of a number finds nothing, and the no-match row says the parser's own sentence ("this one has 6", cut-off digits — vb7), never "part of a number is not searched"`,
+    (await rows.count()) === 0 && /No contacts match/.test(nm) && /this one has 6[.] Check whether some digits were cut off[.]/.test(nm) && !/part of a number is not searched/.test(nm),
+    nm.slice(0, 200));
   ok(`${vp.name} · NO MATCH · it offers to clear the search`, (await page.getByRole("link", { name: "Clear search" }).count()) === 1);
   await shoot(page, `${vp.name}-no-match`, '[data-block="contacts-card"]');
 
@@ -819,8 +826,8 @@ for (const [vi, vp] of VIEWPORTS.entries()) {
   await formShot(page, vp.name, "u22-typing-71", "Add a contact", "2 of 9 digits");
   await typeNumber(page, "60");
   const airtelTitle = (await attrOf(page, "[data-operator-chip]", "title")) || "";
-  ok(`${vp.name} · U22 TYPING · "60" shows the Airtel chip, flagged disputed in its title`,
-    /^airtel$/i.test(await textOf(page, "[data-operator-chip]")) && /060|reserved/i.test(airtelTitle), airtelTitle.slice(0, 80));
+  ok(`${vp.name} · U22 TYPING · "60" shows the Airtel chip, its title saying in plain words it is Airtel's newest range`,
+    /^airtel$/i.test(await textOf(page, "[data-operator-chip]")) && /newest range/i.test(airtelTitle), airtelTitle.slice(0, 80));
 
   // ── REFUSED · 064 at two digits; too-short once settled; a Kenyan paste judged before truncation ──
   await typeNumber(page, "64");
@@ -1296,7 +1303,7 @@ for (const [vi, vp] of VIEWPORTS.entries()) {
   const allTitle = await confirmTitle(page);
   await typedBox(page).fill(String(matchTotal));
   await confirmButton(page, `Tag ${matchTotal}`).click();
-  const allLine = await toastLine(page, "Tagged", /^\d+ tagged · \d+ already had it$/);
+  const allLine = await toastLine(page, `Tagged “${allTag}”`, /^\d+ tagged · \d+ already had it$/);
   ok(`${vp.name} · U23 TYPED RUN · "Tag ${matchTotal} contacts with “${allTag}”?", typed and confirmed: the toast counts "${matchTotal} tagged · 0 already had it" and the selection is cleared`,
     allTitle === `Tag ${matchTotal} contacts with “${allTag}”?` && allLine === `${matchTotal} tagged · 0 already had it`
       && (await barCount(page)) === 0 && (await barMode(page)) === "rows",
@@ -1334,13 +1341,17 @@ for (const [vi, vp] of VIEWPORTS.entries()) {
   const moved = await seed(page, "u23moved=1");
   await typedBox(page).fill(word);
   await confirmButton(page, `Tag ${bookTotal}`).click();
-  const movedLine = await toastLine(page, "Nothing was changed", /^The selection changed: it now holds .+ review it again\.$/);
-  ok(`${vp.name} · U23 REFUSED (SERVER) · a contact added after the preview: the run is REFUSED with both counts — ${bookTotal + 1} now, ${bookTotal} confirmed`,
-    bookTotal > 0 && word === String(bookTotal) && moved.moved > 0
-      && movedLine === `The selection changed: it now holds ${bookTotal + 1} contacts — you confirmed ${bookTotal}. Nothing was changed; review it again.`,
-    `typed ${word} · ${JSON.stringify(moved)} · "${movedLine}"`);
+  // vb7 · the refusal RE-PREVIEWS: a fresh confirmation for the new count opens, its notice saying why — never a toast.
+  await page.waitForFunction((n) => (document.querySelector('[role="alertdialog"] input')?.getAttribute("placeholder") ?? "") === String(n), bookTotal + 1, { timeout: 20000 }).catch(() => {});
+  const reWord = (await attrOf(page, `${ALERT} input`, "placeholder")) ?? "";
+  const movedLine = await textOf(page, `${ALERT} [data-bulk-confirm] [role="alert"]`);
+  ok(`${vp.name} · U23 REFUSED (SERVER) · a contact added after the preview: the run is REFUSED with both counts — ${bookTotal + 1} now, ${bookTotal} confirmed — and a fresh confirmation asks for ${bookTotal + 1}`,
+    bookTotal > 0 && word === String(bookTotal) && moved.moved > 0 && reWord === String(bookTotal + 1)
+      && movedLine.includes(`The selection changed: it now holds ${bookTotal + 1} contacts — you confirmed ${bookTotal}. Nothing was changed; review it again.`),
+    `typed ${word} · ${JSON.stringify(moved)} · re-asked ${reWord} · "${movedLine}"`);
   ok(`${vp.name} · U23 REFUSED (SERVER) · a refusal keeps the selection — there is nothing to redo but the review`, (await barMode(page)) === "matching", String(await barMode(page)));
   await shoot(page, `${vp.name}-u23-refused-moved`);
+  await cancelConfirm(page); // ⛔ never confirmed — the step proves only that nothing was written
   await openContacts(page);
   ok(`${vp.name} · U23 REFUSED (SERVER) · nothing was written: no contact carries "${movedTag}", and the book holds the one new contact`,
     (await chipCount(page, `tag:${movedTag}`)) === null && (await railMatch(page)) === bookTotal + 1, await railCount(page));
@@ -1407,7 +1418,7 @@ for (const [vi, vp] of VIEWPORTS.entries()) {
   ok(`${vp.name} · U23 ACTING · no horizontal page overflow with the overlay up`, (await overflowOf(page)) === 0, `${await overflowOf(page)}px`);
   await page.screenshot({ path: join(SHOTS, `${vp.name}-u23-acting.png`) });
   await runHold.release();
-  const doneLine = await toastLine(page, "Tagged", /^\d+ tagged · \d+ already had it$/);
+  const doneLine = await toastLine(page, `Tagged “${runTag}”`, /^\d+ tagged · \d+ already had it$/);
   ok(`${vp.name} · U23 DONE · released: the toast carries the SERVER's count, "2 tagged · 0 already had it", the overlay gone, the selection cleared`,
     doneLine === "2 tagged · 0 already had it" && (await barCount(page)) === 0 && (await barLine(page)) === BAR_NONE
       && (await overlayNamed(page, "Tagging 2 contacts…").count()) === 0,
@@ -1443,14 +1454,16 @@ for (const [vi, vp] of VIEWPORTS.entries()) {
   await wait(300);
   await newListBox(page).fill(listName.toLowerCase());
   await continueParam(page);
-  await page.waitForFunction(() => /already exists/.test(document.querySelector('[data-field="newListName"]')?.textContent || ""), null, { timeout: 15000 }).catch(() => {});
-  const dupErr = await textOf(page, `${DIALOG} [data-field="newListName"]`);
-  ok(`${vp.name} · U23 ADD TO LIST · the picker offers the list just made; "${listName.toLowerCase()}" (only capitals differ) is REFUSED beside the box, and no confirmation opens`,
+  // vb7 · a name equal (by listNameKey) to a list the book holds IS that list: the picker switches to it and says so — no
+  // second list, nothing to retype, and no confirmation until Continue is pressed again.
+  await page.waitForSelector(`${DIALOG} [data-bulk-list-note]`, { timeout: 15000 }).catch(() => {});
+  const dupNote = await textOf(page, `${DIALOG} [data-bulk-list-note]`);
+  ok(`${vp.name} · U23 ADD TO LIST · the picker offers the list just made; "${listName.toLowerCase()}" (only capitals differ) IS that list — the picker switches to it and says so, the name box gone, and no confirmation opens`,
     listOptions.includes(listName) && listOptions.includes("Name a new list…")
-      && dupErr.includes(`A list called “${listName}” already exists — two names that differ only in capitals are one list. Choose it instead.`)
-      && (await page.locator(ALERT).count()) === 0,
-    `options [${listOptions.join(", ")}] · ${dupErr}`);
-  await formShot(page, vp.name, "u23-list-duplicate", "Add the selected contacts to a list", "already exists");
+      && dupNote === `“${listName}” is already a list, so it is chosen. Press Continue to add to it.`
+      && (await page.locator(`${DIALOG} [data-field="newListName"]`).count()) === 0 && (await page.locator(ALERT).count()) === 0,
+    `options [${listOptions.join(", ")}] · ${dupNote}`);
+  await formShot(page, vp.name, "u23-list-duplicate", "Add the selected contacts to a list", "is already a list");
   await textButton(page, DIALOG, "Cancel").click().catch(() => {});
   await page.waitForSelector(`${DIALOG} [data-bulk-param]`, { state: "detached", timeout: 10000 }).catch(() => {});
   await page.locator(`${BAR} [data-bulk-clear]`).first().click().catch(() => {});
@@ -1582,7 +1595,7 @@ for (const [vi, vp] of VIEWPORTS.entries()) {
   ok(`reduced-motion · U23 · the overlay names the run, "Tagging 1 contact…"`, rmHold.caught() && (await overlayNamed(page, "Tagging 1 contact…").count()) === 1);
   await page.screenshot({ path: join(SHOTS, "360x780-u23-reduced-acting.png") });
   await rmHold.release();
-  const rmLine = await toastLine(page, "Tagged", /^\d+ tagged · \d+ already had it$/);
+  const rmLine = await toastLine(page, "Tagged “u23rm”", /^\d+ tagged · \d+ already had it$/);
   ok("reduced-motion · U23 · released, the toast carries the server's count", rmLine === "1 tagged · 0 already had it", `"${rmLine}"`);
   await ctx.close();
 }
@@ -1624,10 +1637,13 @@ async function downloadExport(page) {
   return { name: d.suggestedFilename(), file: exportFile(readFileSync(await d.path())) };
 }
 /** The same address asked directly — for the headers a download event does not expose, and for the refusals. */
-async function exportAnswer(page, href) {
-  const r = await page.request.get(BASE + href);
+async function exportAnswer(page, href, opts = {}) {
+  const r = await page.request.get(BASE + href, opts);
   const h = r.headers();
-  return { status: r.status(), matched: h["x-rows-matched"] ?? null, masked: h["x-export-masked"] ?? null, type: h["content-type"] ?? "", body: await r.text() };
+  return {
+    status: r.status(), matched: h["x-rows-matched"] ?? null, masked: h["x-export-masked"] ?? null, type: h["content-type"] ?? "",
+    location: h["location"] ?? null, body: await r.text(),
+  };
 }
 const exportControl = async (page) => ({
   count: await page.locator(EXPORT).count(),
@@ -1683,13 +1699,25 @@ for (const vp of VIEWPORTS) {
   const gh = await exportAnswer(g.page, gHref);
   ok(`${vp.name} · U34a MASKED · the same address answers 200 text/csv, X-Rows-Matched 4, X-Export-Masked true`,
     gh.status === 200 && gh.type.startsWith("text/csv") && gh.matched === "4" && gh.masked === "true", JSON.stringify({ ...gh, body: gh.body.slice(0, 40) }));
-  // ── REFUSED · GROWTH's typed consent filter (D19), and an unknown value (C2) ──
-  const roleR = await exportAnswer(g.page, `${EXPORT_PATH}?consent=GIVEN`);
-  const nokiaR = await exportAnswer(g.page, `${EXPORT_PATH}?op=NOKIA`);
-  ok(`${vp.name} · U34a REFUSED · GROWTH's ?consent= is the role refusal (403) and ?op=NOKIA the unreadable filter (400), each saying nothing was exported`,
-    roleR.status === 403 && /isn.t available to your role/.test(roleR.body) && /Nothing was exported[.]$/.test(roleR.body)
-      && nokiaR.status === 400 && nokiaR.body.includes("“op”") && /Nothing was exported[.]$/.test(nokiaR.body),
-    `${roleR.status} ${JSON.stringify(roleR.body.slice(0, 80))} · ${nokiaR.status} ${JSON.stringify(nokiaR.body.slice(0, 80))}`);
+  // ── REFUSED · GROWTH's typed consent filter (D19), and an unknown value (C2) — vb7: each comes BACK to the list saying
+  // why, never a bare text page. Asked unfollowed for the 303 itself, then followed the way a person's browser follows it. ──
+  const roleR = await exportAnswer(g.page, `${EXPORT_PATH}?consent=GIVEN`, { maxRedirects: 0 });
+  const nokiaR = await exportAnswer(g.page, `${EXPORT_PATH}?op=NOKIA`, { maxRedirects: 0 });
+  ok(`${vp.name} · U34a REFUSED · GROWTH's ?consent= and ?op=NOKIA each answer 303 back to the list for the same filter, carrying ?export=role / ?export=unreadable_filter — no file, no text page`,
+    roleR.status === 303 && (roleR.location ?? "").endsWith("/admin/contacts?consent=GIVEN&export=role")
+      && nokiaR.status === 303 && (nokiaR.location ?? "").endsWith("/admin/contacts?op=NOKIA&export=unreadable_filter")
+      && !roleR.type.startsWith("text/csv") && !nokiaR.type.startsWith("text/csv"),
+    `${roleR.status} ${roleR.location} · ${nokiaR.status} ${nokiaR.location}`);
+  await g.page.goto(`${BASE}${EXPORT_PATH}?consent=GIVEN`, { waitUntil: "domcontentloaded" });
+  await g.page.waitForSelector('[data-block="contacts-export-refused"]', { timeout: 30000 }).catch(() => {});
+  const refusedBanner = await textOf(g.page, '[data-block="contacts-export-refused"]');
+  ok(`${vp.name} · U34a REFUSED · followed, the browser lands on the list for that filter and the list says why above it — with a Dismiss link that drops ?export`,
+    new URL(g.page.url()).pathname === "/admin/contacts" && new URL(g.page.url()).searchParams.get("export") === "role"
+      && refusedBanner.includes("A filter in this address isn't available to your role, so nothing was exported.")
+      && ((await attrOf(g.page, '[data-block="contacts-export-refused"] a', "href")) ?? "").endsWith("/admin/contacts?consent=GIVEN"),
+    `${g.page.url()} · "${refusedBanner}"`);
+  ok(`${vp.name} · U34a REFUSED · no horizontal page overflow with the banner up`, (await overflowOf(g.page)) === 0, `${await overflowOf(g.page)}px`);
+  await shoot(g.page, `${vp.name}-u34a-refused-banner`);
   // ── NO-MATCH — a part of a number matches nothing: no export control, the rail still drawn ──
   await openContacts(g.page, `?q=${encodeURIComponent("0711000")}`);
   ok(`${vp.name} · U34a NO-MATCH · nothing matches: no export control, and the rail is still drawn`,

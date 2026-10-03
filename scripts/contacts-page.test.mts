@@ -31,6 +31,9 @@
  * `finally` — a store method swapped in memory, never a file.
  * (U20's red case 1 — the search box's normalisation dropped — moved to `red:contacts-audience` R6 with U24,
  * because the normalisation moved into the resolver.)
+ * ⭐ vb7 · THE SEARCH BOX SAYS WHAT IT WILL DO (19, 19b) and A REFUSED EXPORT COMES BACK TO THE PAGE (20): the box's echo
+ * reading EXECUTED over every spelling, a typo and a name; the empty state's sentence for a refused number attempt; and
+ * the export refusal banner's reasons, each said, anything else silent.
  *
  * Run:  npm run test:contacts-page
  * Red:  npm run red:contacts-page
@@ -57,6 +60,9 @@ import {
 } from "../src/app/admin/contacts/contacts-copy.ts";
 import { PER_PAGE } from "../src/components/admin/admin-pagination.tsx";
 import { parseTzNumber, TZ_MOBILE_NDCS, TZ_OPERATORS } from "../src/lib/tz-msisdn.ts";
+import { contactSearchEcho, contactSearchNumber, SEARCH_WHOLE_NUMBER } from "../src/lib/contacts/contact-number.ts";
+import { CONTACTS_NO_MATCH, CONTACTS_EXPORT, CONTACTS_EXPORT_REFUSED, contactsExportRefusalSentence } from "../src/app/admin/contacts/contacts-copy.ts";
+import { CONTACT_SEARCH, fieldNames } from "../src/lib/search/index.ts";
 import { DAY_MS } from "../src/lib/query/windows.ts";
 
 const PROVE_RED = process.argv.includes("--prove-red");
@@ -66,7 +72,7 @@ const read = (rel: string) => decomment(readFileSync(new URL(`../${rel}`, import
  *  stripper (it tracks strings, not regexes) could misread. §16 reads one array out of it, line-anchored instead. */
 const rawRead = (rel: string) => readFileSync(new URL(`../${rel}`, import.meta.url), "utf8").replace(/\r\n/g, "\n");
 
-type Sources = { page: string; loader: string; rail: string; model: string; copy: string; gate: string };
+type Sources = { page: string; loader: string; rail: string; model: string; copy: string; gate: string; searchBox: string; kitBox: string };
 const REAL_SOURCES: Sources = {
   page: read("src/app/admin/contacts/page.tsx"),
   loader: read("src/app/admin/contacts/contacts-loader.ts"),
@@ -75,6 +81,9 @@ const REAL_SOURCES: Sources = {
   model: read("src/app/admin/contacts/contacts-rail.ts"),
   copy: read("src/app/admin/contacts/contacts-copy.ts"),
   gate: rawRead("scripts/filter-language.test.mts"),
+  // ⭐ vb7 · the page's client search box, and the kit box it hands its reading to.
+  searchBox: read("src/app/admin/contacts/contacts-search-box.tsx"),
+  kitBox: read("src/components/ui/search-box.tsx"),
 };
 
 type Impl = {
@@ -201,6 +210,13 @@ const U21 = {
   options: "18 · the loader hands the rail its options in BOTH answers — every list, and the book's tags most-carried first through the resolver's own tag reader — whole-book, like the KPIs",
 } as const;
 
+/** vb7's labels, ONCE — the assertions and the red cases both read them. */
+const VB7 = {
+  echo: "19 · ⭐ vb7 · THE SEARCH BOX SAYS WHAT IT WILL DO: a whole number in any spelling echoes \"Whole number — matched exactly\" (never \"3 words\"), a number attempt the parser refuses echoes ITS sentence (a 10-digit typo is told it has ten), a name or a year echoes the grammar's own words (EXECUTED) — and the box is a client wrapper handing the kit SearchBox that reading and the grammar's one field, which the kit puts in its echo row before the word count",
+  empty: "19b · ⭐ vb7 · a refused number attempt that finds nobody says the parser's sentence in the empty state, never \"part of a number is not searched\" — EXECUTED: the 10-digit typo is read by the loader as a name search that finds no row, and the page builds the body from contactSearchNumber (a whole number that finds nobody keeps the general sentence)",
+  banner: "20 · ⭐ vb7 · A REFUSED EXPORT COMES BACK TO THE PAGE: ?export=<reason> is said above the list for each of the export's seven reasons, anything else (an unknown word, constructor, nothing) says nothing, and the page renders it in a Callout with a Dismiss link that is the ONE href builder's — no link carries export=",
+} as const;
+
 /** 🔴 OD54's labels, ONCE — "D19 covers SUPPRESSION too" (S10): until the importer goes live a stop is a player's own
  *  opt-out or an officer's, so for a masked viewer it answers "is this a player?" exactly as consent does. */
 const OD54 = {
@@ -288,7 +304,10 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
     page.includes('<SortTh field="operator" label="Operator (by prefix)"'));
   ok(p("7c · a failed read is AdminLoadError and \"unavailable\" tiles — never a zero — on all six: the reader's four and the masked viewer's two (OD53)"),
     page.includes('<AdminLoadError what="the contact book" />') && (page.match(/unavailable=\{failed\}/g) ?? []).length === 6);
-  ok(p("7d · the search box is the shared SearchBox, in url mode"), page.includes('<SearchBox mode="url"'));
+  // vb7 · the box is the client wrapper's (a function cannot cross from this server page): the page renders the wrapper,
+  // and the wrapper renders the shared SearchBox in url mode.
+  ok(p("7d · the search box is the shared SearchBox, in url mode"),
+    page.includes("<ContactsSearchBox />") && /<SearchBox\s+mode="url"/.test(impl.sources.searchBox));
 
   // ── 8 · (moved) THE TWINS MATCH A NUMBER EXACTLY ───────────────────────────────────────────────
   // ⭐ U24 moved U20's §8/§8b to `test:dal-parity` §21 (21.msisdn, 21.name, 21.order): the number's exact match
@@ -635,6 +654,57 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
     [okView, refusedView].every((v) => optionsOf(v) === `${L.id} | dar:2,vip:2`)
       && impl.sources.loader.includes("contactTagCounts(RAIL_TAG_READ)") && impl.sources.loader.includes("db.contactList.listAll()"),
     `${optionsOf(okView)} // refused: ${optionsOf(refusedView)}`);
+
+  /* ══ 19–20 · vb7 · THE SEARCH BOX'S READING, AND THE EXPORT'S REFUSAL ON THE PAGE ═════════════════════════════════ */
+
+  // ── 19 · THE ECHO ────────────────────────────────────────────────────────────────────────────
+  const typo = "07123456789"; // a trunk zero and ten digits — one too many
+  const echoes = {
+    whole: ["0712 345 678", "+255712345678", "255712345678", "tel:+255712345678"].map((t) => contactSearchEcho(t)),
+    typo: contactSearchEcho(typo),
+    name: contactSearchEcho("Asha Mwakalinga"),
+    year: contactSearchEcho("2026"),
+    blank: contactSearchEcho("  "),
+  };
+  const box = impl.sources.searchBox;
+  const kit = impl.sources.kitBox;
+  ok(p(VB7.echo),
+    echoes.whole.every((e) => e === SEARCH_WHOLE_NUMBER) && SEARCH_WHOLE_NUMBER === "Whole number — matched exactly"
+      && echoes.typo === parseTzNumber(typo).reason && /this one has 10/.test(echoes.typo ?? "")
+      && echoes.name === null && echoes.year === null && echoes.blank === null
+      && box.startsWith('"use client";') && box.includes("helpFields={HELP_FIELDS}") && box.includes("describe={contactSearchEcho}")
+      && box.includes("const HELP_FIELDS = fieldNames(CONTACT_SEARCH);") && JSON.stringify(fieldNames(CONTACT_SEARCH)) === JSON.stringify(["name"])
+      && kit.includes("describe?: (text: string) => string | null;") && kit.includes("const described = describe ? describe(q) : null;")
+      && kit.includes("{invalidReason || described || echo ||"),
+    JSON.stringify(echoes));
+
+  // ── 19b · THE EMPTY STATE OF A REFUSED NUMBER ATTEMPT ──────────────────────────────────────────
+  const typoView = await impl.load({ q: typo });
+  const typoReading = contactSearchNumber(typoView.kind === "ok" && typoView.filter.q !== null ? typoView.filter.q : "");
+  const typoReason = parseTzNumber(typo).reason;
+  ok(p(VB7.empty),
+    typoView.kind === "ok" && typoView.result.total === 0 && typoView.filter.q === typo
+      && typoReading !== null && !typoReading.whole && typoReading.sentence === typoReason
+      && CONTACTS_NO_MATCH.numberBody(typoReading.sentence) === `Nothing in the book matches this search. ${typoReason}`
+      && contactSearchNumber("0712 999 999")?.whole === true
+      && page.includes("const searchNumber = listed !== null && listed.filter.q !== null ? contactSearchNumber(listed.filter.q) : null;")
+      && page.includes("const noMatchBody = searchNumber !== null && !searchNumber.whole ? CONTACTS_NO_MATCH.numberBody(searchNumber.sentence) : CONTACTS_NO_MATCH.body;")
+      && page.includes("body={searching ? noMatchBody : CONTACTS_NO_MATCH_FILTERED.body}"),
+    `${typoView.kind} · ${typoView.kind === "ok" ? typoView.result.total : "-"} row(s) · ${typoReading?.sentence ?? "no reading"}`);
+
+  // ── 20 · THE EXPORT'S REFUSAL, BACK ON THE PAGE ──────────────────────────────────────────────
+  const reasons = Object.keys(CONTACTS_EXPORT_REFUSED) as Array<keyof typeof CONTACTS_EXPORT_REFUSED>;
+  const said = reasons.map((r) => contactsExportRefusalSentence(r));
+  const silent = [contactsExportRefusalSentence("nope"), contactsExportRefusalSentence("constructor"), contactsExportRefusalSentence(undefined),
+    contactsExportRefusalSentence(["nope", "role"])];
+  ok(p(VB7.banner),
+    reasons.length === 7 && said.every((x, i) => x === CONTACTS_EXPORT_REFUSED[reasons[i]] && typeof x === "string" && x.length > 20)
+      && silent.every((x) => x === null) && contactsExportRefusalSentence(["role", "nope"]) === CONTACTS_EXPORT_REFUSED.role
+      && CONTACTS_EXPORT_REFUSED.selection === CONTACTS_EXPORT.noSelection && CONTACTS_EXPORT_REFUSED.unknown_param === CONTACTS_EXPORT.stray
+      && page.includes("const exportRefused = contactsExportRefusalSentence(sp.export);")
+      && page.includes('<Callout tone="warning" role="alert" className="min-w-0 flex-1">{exportRefused}</Callout>')
+      && page.includes("<a href={baseHref}") && !impl.href({ export: "role", op: "VODACOM" }).includes("export="),
+    `${said.length} reason(s) · silent ${JSON.stringify(silent)}`);
 }
 
 if (!PROVE_RED) {
@@ -753,6 +823,26 @@ if (!PROVE_RED) {
           return edit ? `${base}${base.includes("?") ? "&" : "?"}edit=${encodeURIComponent(edit)}` : base;
         },
       },
+    },
+
+    /* ── vb7 · the search box's reading and the export's refusal, each on its own assertion ── */
+    {
+      name: "vb7 · the box echoes the grammar again — \"0712 345 678\" reads \"3 words\": the wrapper hands SearchBox no reading",
+      expect: VB7.echo,
+      impl: { ...REAL, sources: { ...REAL_SOURCES, searchBox: REAL_SOURCES.searchBox.replace("describe={contactSearchEcho}", "") } },
+    },
+    {
+      name: "vb7 · the empty state tells a ten-digit typo that \"part of a number is not searched\" — the parser's sentence dropped",
+      expect: VB7.empty,
+      impl: {
+        ...REAL,
+        sources: { ...REAL_SOURCES, page: REAL_SOURCES.page.replace("body={searching ? noMatchBody : CONTACTS_NO_MATCH_FILTERED.body}", "body={searching ? CONTACTS_NO_MATCH.body : CONTACTS_NO_MATCH_FILTERED.body}") },
+      },
+    },
+    {
+      name: "vb7 · a refused export is never said on the page — the route sends the officer back to a list that says nothing",
+      expect: VB7.banner,
+      impl: { ...REAL, sources: { ...REAL_SOURCES, page: REAL_SOURCES.page.replace("const exportRefused = contactsExportRefusalSentence(sp.export);", "const exportRefused: string | null = null;") } },
     },
 
     /* ── U21 · the plan's RED line, each in memory ─────────────────────────────────────────────── */

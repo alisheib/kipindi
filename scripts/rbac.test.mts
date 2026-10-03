@@ -4,6 +4,8 @@
  * money/PII, Auditor acts nowhere, Support is the desk only), route→domain
  * completeness, the Owner-only surfaces, and the "a grant edit takes effect without
  * a role change or redeploy" contract (exercised via the no-DB in-memory store).
+ * §15 (vb7): `softCheckStaff`, the soft guard for a read the officer did not press — EXECUTED over stored users, with
+ * a red proof per property (`red:rbac`).
  *
  * Run: npx tsx scripts/rbac.test.mts
  */
@@ -30,6 +32,13 @@ import {
   __resetGrantsForTest,
 } from "../src/lib/server/rbac.ts";
 import { NAV_GROUPS, filterNavGroups } from "../src/components/admin/admin-nav-groups.ts";
+// §15's types only — the guard itself is imported where §15 runs, so §1–§14 never depend on its import graph.
+import type { SoftGuardRequest } from "../src/lib/server/rbac-guard.ts";
+import type { SessionData } from "../src/lib/server/session.ts";
+import type { StoredUser } from "../src/lib/server/store.ts";
+// §15.6 (vb7 review M2) reads rbac-guard.ts itself — a read, never a write.
+import { readFileSync } from "node:fs";
+import { decomment } from "./lib/decomment.mts";
 
 let pass = 0, fail = 0;
 const ok = (l: string, c: boolean) => { c ? pass++ : fail++; console.log(`${c ? "PASS" : "FAIL"} ${l}`); };
@@ -284,6 +293,179 @@ async function navKeysFor(role: Role): Promise<Set<string>> {
     && (await second.roleReadGrants("AUDITOR"))["identity.contact"] === cellNow);
 }
 
+// ── 15 · ⭐ vb7 · softCheckStaff — A READ THE OFFICER DID NOT PRESS NEVER NAVIGATES, AND A LAPSED FACTOR NEVER PASSES ──
+// The Add a contact dialog's number lookup runs by itself when the ninth digit lands. Through `softRequireStaff` its
+// second factor was `requireAdminTotp` — a REDIRECT — so once 2-step sign-in is on and its cookie lapses, typing the
+// ninth digit navigated the console to the step-up page and the dialog's typing was gone. `softCheckStaff` is the same
+// guard (the session, the STORED role, `canAct`, the SECURITY row on a refusal) with ONE change: a second factor that is
+// not "ok" is refused in words. EXECUTED: stored users in the memory twin, the request handed in (a script has no request
+// scope for the cookies), every verdict asked of the real guard. ⛔ A lapsed second factor is NEVER `ok`.
+type SoftVerdict = { ok: true; userId: string; sessionId: string } | { ok: false; error: string; secondFactor?: true };
+type SoftGuard = (domain: AdminDomain, action: string, refusal: string, request: SoftGuardRequest) => Promise<SoftVerdict>;
+/** `check` is the guard for a read the officer did not press; `press` the guard for an action they pressed. */
+type SoftGuards = { check: SoftGuard; press: SoftGuard };
+type SoftFactor = Awaited<ReturnType<SoftGuardRequest["secondFactor"]>>;
+type SoftOutcome = { verdict: SoftVerdict | null; to: string | null; threw: string | null };
+/** §15's labels, ONCE — the run asserts each, and each red case must break ITS property. */
+const SOFT_LABELS = {
+  pass: "15.1 · softCheckStaff lets a GROWTH officer whose second factor is ok read — { ok: true } with the session's own ids, the factor asked once",
+  lapsed: "15.2 · ⛔ A SECOND FACTOR THAT IS NOT OK NEVER PASSES — the Owner included: the guard RETURNS { ok: false, secondFactor: true } and never navigates, a lapsed sign-in told “Your 2-step sign-in has lapsed — confirm it in another tab, then try again.” and one never set up told “Set up your 2-step sign-in in another tab, then try again.”",
+  role: "15.3 · ⛔ the role check is kept, BEFORE the factor: AUDITOR (no growth act) is refused in the caller's words with a SECURITY privilege_escalation_blocked row naming the action, the factor never asked — and a cookie that says ADMIN over a STORED AUDITOR row is refused the same (W25)",
+  signin: "15.4 · no session, or a session whose user row is gone, still goes to the sign-in page (/auth/admin), the factor never asked",
+  press: "15.5 · ⛔ an action the officer PRESSES keeps the step-up: softRequireStaff, for an officer who never set up 2-step sign-in, redirects to /admin/2fa/setup — never refused in words",
+  wiring: "15.6 · ⛔ vb7 review M2 · production reads the cookies BY NAME: softRequireStaff asks currentSession() and checkAdminTotp() itself whenever no request is handed in, and rbac-guard exports no object a caller could rewrite under every guard — no SOFT_GUARD_REQUEST, no exported object literal that is not frozen",
+} as const;
+type SoftProperty = keyof typeof SOFT_LABELS;
+
+const softGuard = await import("../src/lib/server/rbac-guard.ts");
+const { getAuditPage, auditFlush } = await import("../src/lib/server/audit.ts");
+const { db } = await import("../src/lib/server/store.ts");
+/** §15.6 · rbac-guard.ts as the guard ships it, comments taken out. */
+const RBAC_GUARD_SRC = decomment(readFileSync(new URL("../src/lib/server/rbac-guard.ts", import.meta.url), "utf8"));
+/** A line break, built from its code. */
+const NL15 = String.fromCharCode(10);
+
+/** §15.6's reading of rbac-guard.ts, as a function so `--prove-red` can hand it a planted copy. ⛔ ONE definition. */
+function softWiring(src: string): { held: boolean; seen: string } {
+  const at = src.indexOf("export async function softRequireStaff(");
+  const end = at < 0 ? -1 : src.indexOf("export async function softCheckStaff(", at + 1);
+  const body = at < 0 ? "" : src.slice(at, end < 0 ? src.length : end);
+  const session = body.includes("const session = opts.request ? await opts.request.session() : await currentSession();");
+  const factor = body.includes("? await opts.request.secondFactor(session.userId, session.sessionId)")
+    && body.includes(": await checkAdminTotp(session.userId, session.sessionId);");
+  const hooks = [...src.matchAll(/^export const (\w+)(?::[^=]+)?\s*=\s*(?!Object\.freeze)[{[]/gm)].map((m) => m[1]);
+  return {
+    held: session && factor && hooks.length === 0 && !src.includes("SOFT_GUARD_REQUEST"),
+    seen: `session by name ${session} · factor by name ${factor} · exported objects [${hooks}]`,
+  };
+}
+
+/** One stored user per role §15 asks about — created once, in the memory twin. */
+async function softCheckUsers(): Promise<Record<"GROWTH" | "AUDITOR" | "ADMIN", string>> {
+  const at = "2026-10-03T08:00:00.000Z";
+  const out = { GROWTH: "", AUDITOR: "", ADMIN: "" };
+  for (const [i, role] of (["GROWTH", "AUDITOR", "ADMIN"] as const).entries()) {
+    const id = `usr_rbac15_${role.toLowerCase()}`;
+    if (!(await db.user.findById(id))) {
+      await db.user.create({
+        id, phoneE164: `+25570095100${i}`, email: null, passwordHash: null, passwordSalt: null, failedLoginCount: 0,
+        lockedUntil: null, role, status: "ACTIVE", locale: "EN", displayName: `RBAC15 ${role}`, dob: "1990-01-01", region: null,
+        acceptedTermsVersion: "v1", acceptedTermsAt: at, marketingOptIn: false, twoFactorEnabled: false, avatarDataUrl: null,
+        emailVerifiedAt: null, createdAt: at, updatedAt: at, lastLoginAt: at, closedAt: null,
+      } as StoredUser);
+    }
+    out[role] = id;
+  }
+  return out;
+}
+
+/** A session cookie as the guard reads it — the ids, and a role the guard must never decide on. */
+function softSession(userId: string, role: SessionData["role"]): SessionData {
+  return { userId, sessionId: `s_rbac15_${userId}`, phoneE164: "+255700951009", role, kycStatus: "NOT_STARTED", iat: 0, exp: Date.now() + 3_600_000, lastSeenAt: 0 };
+}
+
+/** The request handed to the guard: that session, and a second factor that answers `factor` and records being asked. */
+function softRequest(session: SessionData | null, factor: SoftFactor, asked: string[]): SoftGuardRequest {
+  return { session: async () => session, secondFactor: async () => { asked.push("secondFactor"); return factor; } };
+}
+
+/** What one guard call did: returned a verdict, NAVIGATED (a NEXT_REDIRECT, and where to), or threw something else. */
+async function softOutcome(run: () => Promise<SoftVerdict>): Promise<SoftOutcome> {
+  try {
+    return { verdict: await run(), to: null, threw: null };
+  } catch (err) {
+    const digest = String((err as { digest?: unknown } | null)?.digest ?? "");
+    if (digest.startsWith("NEXT_REDIRECT;")) return { verdict: null, to: digest.split(";").slice(2, -2).join(";"), threw: null };
+    return { verdict: null, to: null, threw: (err as Error)?.message ?? String(err) };
+  }
+}
+function softSeen(o: SoftOutcome): string {
+  return o.verdict !== null ? JSON.stringify(o.verdict) : o.to !== null ? `redirect ${o.to}` : `threw ${o.threw}`;
+}
+
+/** §15's verdicts as a function, so `--prove-red` can hand it a planted guard. ⛔ ONE definition. */
+async function softCheckVerdicts(g: SoftGuards): Promise<Record<SoftProperty, { held: boolean; seen: string }>> {
+  const U = SOFT_USERS;
+  const LAPSED = softGuard.SECOND_FACTOR_LAPSED;
+  const NOT_SET_UP = softGuard.SECOND_FACTOR_NOT_SET_UP;
+  const REFUSAL = "rbac test · this role may not check numbers.";
+  const ACTION = "contacts.lookup";
+
+  const askedPass: string[] = [];
+  const pass = await softOutcome(() => g.check("growth", ACTION, REFUSAL, softRequest(softSession(U.GROWTH, "GROWTH"), "ok", askedPass)));
+  const passHeld = pass.verdict !== null && pass.verdict.ok === true && pass.verdict.userId === U.GROWTH
+    && pass.verdict.sessionId === `s_rbac15_${U.GROWTH}` && askedPass.length === 1;
+
+  const lapsedRuns: Array<["GROWTH" | "ADMIN", SoftFactor]> = [["GROWTH", "unverified"], ["GROWTH", "not-enrolled"], ["ADMIN", "unverified"], ["ADMIN", "not-enrolled"]];
+  const lapsedSeen: string[] = [];
+  let lapsedHeld = LAPSED === "Your 2-step sign-in has lapsed — confirm it in another tab, then try again."
+    && NOT_SET_UP === "Set up your 2-step sign-in in another tab, then try again.";
+  for (const [role, factor] of lapsedRuns) {
+    const o = await softOutcome(() => g.check("growth", ACTION, REFUSAL, softRequest(softSession(U[role], role), factor, [])));
+    lapsedSeen.push(`${role}/${factor}: ${softSeen(o)}`);
+    const want = factor === "not-enrolled" ? NOT_SET_UP : LAPSED;
+    if (!(o.verdict !== null && o.verdict.ok === false && o.verdict.error === want && o.verdict.secondFactor === true)) lapsedHeld = false;
+  }
+
+  const blocked = () => getAuditPage({ category: "SECURITY", actorId: U.AUDITOR, limit: 10_000 })
+    .filter((e) => e.action === "privilege_escalation_blocked" && e.targetId === ACTION);
+  await auditFlush();
+  const before = blocked().length;
+  const askedRole: string[] = [];
+  const role = await softOutcome(() => g.check("growth", ACTION, REFUSAL, softRequest(softSession(U.AUDITOR, "AUDITOR"), "ok", askedRole)));
+  const askedCookie: string[] = [];
+  const cookie = await softOutcome(() => g.check("growth", ACTION, REFUSAL, softRequest(softSession(U.AUDITOR, "ADMIN"), "ok", askedCookie)));
+  await auditFlush();
+  const rows = blocked();
+  const inWords = (o: SoftOutcome) => o.verdict !== null && o.verdict.ok === false && o.verdict.error === REFUSAL;
+  const roleHeld = inWords(role) && inWords(cookie) && askedRole.length === 0 && askedCookie.length === 0 && rows.length - before === 2
+    && rows.slice(0, 2).every((e) => e.payload?.role === "AUDITOR" && e.payload?.domain === "growth" && e.payload?.action === ACTION);
+
+  const askedNone: string[] = [];
+  const none = await softOutcome(() => g.check("growth", ACTION, REFUSAL, softRequest(null, "ok", askedNone)));
+  const askedGone: string[] = [];
+  const gone = await softOutcome(() => g.check("growth", ACTION, REFUSAL, softRequest(softSession("usr_rbac15_gone", "GROWTH"), "ok", askedGone)));
+  const signinHeld = none.to === "/auth/admin" && gone.to === "/auth/admin" && askedNone.length === 0 && askedGone.length === 0;
+
+  // A pressed action runs the REAL step-up (`requireAdminTotp`), so 2-step sign-in is switched ON for this one call:
+  // GROWTH holds no secret in the memory twin, so the step-up's answer is the setup page.
+  const savedSwitch = process.env.DISABLE_ADMIN_TOTP;
+  delete process.env.DISABLE_ADMIN_TOTP;
+  let press: SoftOutcome = { verdict: null, to: null, threw: "not run" };
+  try {
+    press = await softOutcome(() => g.press("growth", "contacts.add", REFUSAL, softRequest(softSession(U.GROWTH, "GROWTH"), "ok", [])));
+  } finally {
+    if (savedSwitch === undefined) delete process.env.DISABLE_ADMIN_TOTP;
+    else process.env.DISABLE_ADMIN_TOTP = savedSwitch;
+  }
+  const pressHeld = press.to === "/admin/2fa/setup";
+
+  const wiring = softWiring(RBAC_GUARD_SRC);
+
+  return {
+    pass: { held: passHeld, seen: `${softSeen(pass)} · factor asked ${askedPass.length}` },
+    lapsed: { held: lapsedHeld, seen: lapsedSeen.join(" | ") },
+    role: { held: roleHeld, seen: `${softSeen(role)} · cookie ADMIN: ${softSeen(cookie)} · factor asked ${askedRole.length}/${askedCookie.length} · rows +${rows.length - before}` },
+    signin: { held: signinHeld, seen: `no session: ${softSeen(none)} · no row: ${softSeen(gone)}` },
+    press: { held: pressHeld, seen: softSeen(press) },
+    wiring: wiring,
+  };
+}
+
+__resetGrantsForTest();
+const SOFT_USERS = await softCheckUsers();
+const SOFT_REAL: SoftGuards = {
+  check: softGuard.softCheckStaff,
+  press: (domain, action, refusal, request) => softGuard.softRequireStaff(domain, action, refusal, { request }),
+};
+{
+  const v = await softCheckVerdicts(SOFT_REAL);
+  for (const key of Object.keys(SOFT_LABELS) as SoftProperty[]) {
+    ok(SOFT_LABELS[key], v[key].held);
+    if (!v[key].held) console.log(`     ${v[key].seen}`);
+  }
+}
+
 /** §7b's comparison as a function, so `--prove-red` can hand it a planted map. ⛔ ONE definition. */
 function navDomainSplits(groups: typeof NAV_GROUPS, resolve: (href: string) => string): string[] {
   const EXEMPT = ["/admin/2fa", "/admin/totp-verify"];
@@ -306,8 +488,8 @@ console.log(`\nrbac: ${pass} passed, ${fail} failed`);
 /* ══ THE RED PROOF (`red:rbac`, S10 2026-10-01) — U17's control, made durable ═══════════════════
  * S9 proved §7b by planting the drift by hand (124 passed / 1 failed). This keeps that proof runnable:
  * each case plants ONE real drift IN MEMORY and §7b's own function must name the section it was planted in. U36 made
- * it 4/4: both halves of the split, for /admin/contacts AND /admin/campaigns. In-process
- * by construction — this file makes no file-writing call. */
+ * it 4/4: both halves of the split, for /admin/contacts AND /admin/campaigns. vb7 adds §15's guard — four plants, each
+ * on its own property (8/8). In-process by construction — this file makes no file-writing call. */
 if (process.argv.includes("--prove-red")) {
   const problems: string[] = [];
   if (fail > 0) problems.push(`BASELINE: the shipped suite is already red (${fail})`);
@@ -339,12 +521,64 @@ if (process.argv.includes("--prove-red")) {
     console.log(`${caught ? "caught" : "MISSED"} · ${c.name}${caught ? "" : ` — splits: ${c.splits.join(" | ") || "(none)"}`}`);
     if (!caught) problems.push(c.name);
   }
+  // ⭐ vb7 · §15 · THE SOFT GUARD FOR A READ NOBODY PRESSED — each plant on its own property, and `softCheckVerdicts`
+  // must break THAT property.
+  const softCases: Array<{ name: string; property: SoftProperty; guards: SoftGuards }> = [
+    {
+      name: "§15 · the lookup back on softRequireStaff — a lapsed 2-step sign-in redirects the console mid-typing (with 2-step off, it reads)",
+      property: "lapsed",
+      guards: { ...SOFT_REAL, check: (d, a, r, request) => softGuard.softRequireStaff(d, a, r, { request }) },
+    },
+    {
+      name: "§15 · ⛔ the second factor asked and its answer ignored — a lapsed 2-step sign-in checks numbers",
+      property: "lapsed",
+      guards: { ...SOFT_REAL, check: (d, a, r, request) => softGuard.softCheckStaff(d, a, r, { ...request, secondFactor: async () => "ok" as const }) },
+    },
+    {
+      name: "§15 · ⛔ W25 · the cookie's role trusted — a cookie that says ADMIN over a stored AUDITOR row checks numbers",
+      property: "role",
+      guards: {
+        ...SOFT_REAL,
+        check: async (d, a, r, request) => {
+          const s = await request.session();
+          if (s !== null && s.role === "ADMIN") {
+            return (await request.secondFactor(s.userId, s.sessionId)) === "ok"
+              ? { ok: true as const, userId: s.userId, sessionId: s.sessionId }
+              : { ok: false as const, error: softGuard.SECOND_FACTOR_LAPSED };
+          }
+          return softGuard.softCheckStaff(d, a, r, request);
+        },
+      },
+    },
+    {
+      name: "§15 · ⛔ a pressed Save made soft — softRequireStaff answers a lapsed factor in words instead of the step-up",
+      property: "press",
+      guards: { ...SOFT_REAL, press: (d, a, r, request) => softGuard.softRequireStaff(d, a, r, { refuseSecondFactor: true, request }) },
+    },
+  ];
+  for (const c of softCases) {
+    const v = await softCheckVerdicts(c.guards);
+    const caught = !v[c.property].held;
+    console.log(`${caught ? "caught" : "MISSED"} · ${c.name}${caught ? "" : ` — ${v[c.property].seen}`}`);
+    if (!caught) problems.push(c.name);
+  }
+  // ⭐ vb7 review M2 · §15.6, planted in a COPY of rbac-guard.ts's text: the shared, writable request object back under
+  // every guard built on softRequireStaff — 15.6 must refuse it.
+  const hookName = "§15.6 · ⛔ M2 · the shared request object back — softRequireStaff reads the session through an exported, writable hook";
+  const hooked = RBAC_GUARD_SRC.replace(
+    "const session = opts.request ? await opts.request.session() : await currentSession();",
+    "const session = await (opts.request ?? SOFT_GUARD_REQUEST).session();",
+  ) + NL15 + "export const SOFT_GUARD_REQUEST: SoftGuardRequest = { session: currentSession, secondFactor: checkAdminTotp };" + NL15;
+  const hookCaught = hooked !== RBAC_GUARD_SRC && !softWiring(hooked).held;
+  console.log(`${hookCaught ? "caught" : "MISSED"} · ${hookName}${hookCaught ? "" : ` — ${softWiring(hooked).seen}`}`);
+  if (!hookCaught) problems.push(hookName);
   if (problems.length) {
     console.log("\nPROBLEMS:");
     for (const x of problems) console.log(`  ✗ ${x}`);
     process.exit(1);
   }
-  console.log(`\n${cases.length}/${cases.length} caught — RED PROOF COMPLETE`);
+  const total = cases.length + softCases.length + 1;
+  console.log(`\n${total}/${total} caught — RED PROOF COMPLETE`);
   process.exit(0);
 }
 if (fail > 0) process.exit(1);

@@ -33,7 +33,8 @@
  * ⭐ THE OPTIONS COME FROM THE BOOK'S OWN TABLES, NEVER A TYPED LIST. Operators: every licensee holding a SENDABLE
  * prefix in the ONE numbering table (C10), labelled `TZ_OPERATORS[id].brand` — the value is the licensee id, so a
  * rebrand (Tigo → Yas, 2024) changes a label and never a bookmarked address. Tags: the book's own, most-carried first
- * (`contactTagCounts`, U24/M8), one pill per `tagKey` (C11). Lists: the book's lists, A to Z.
+ * (`contactTagCounts`, U24/M8), one pill per `tagKey` (C11). Lists: the book's lists, A to Z — in the ONE list order
+ * (`compareListsByName`, `bulk-rules.ts`), which the bulk bar's list picker offers too (vb7).
  * ⭐ A COUNT IS SHOWN ONLY WHERE IT IS TRUE. A tag pill carries its whole-book count only while nothing else narrows
  * the list — the one state in which that count is exactly what pressing the pill lists. Under any other filter or a
  * search the count would describe a list the pill does not open, so it is omitted (FilterPill: never invent one).
@@ -50,6 +51,7 @@ import type { ContactConsentState, ContactSource, ContactTagCount, StoredContact
 import { TZ_MOBILE_NDCS, TZ_OPERATORS } from "@/lib/tz-msisdn";
 import type { TzOperatorId } from "@/lib/tz-msisdn";
 import { tagKey } from "@/lib/contacts/contact-fields";
+import { compareListsByName } from "@/lib/contacts/bulk-rules";
 import { contactsHref, contactsLinkSp, contactsClearFiltersHref, CONTACTS_FILTER_KEYS } from "./contacts-query";
 import type { ContactsLinkKey } from "./contacts-query";
 import {
@@ -234,8 +236,6 @@ function phrase(f: ContactAudienceFilter, lead: string, fallback: string): strin
   return said.startsWith(lead) ? said.slice(lead.length) : said;
 }
 
-const byText = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
-
 /* ═══ THE RAIL ══════════════════════════════════════════════════════════════════════════════════ */
 
 /**
@@ -269,7 +269,7 @@ export function contactRail(input: ContactRailInput): ContactRail {
   const railLists = (input.lists ?? [])
     .filter((l) => addressable("list", l.id))
     .slice()
-    .sort((a, b) => a.name.localeCompare(b.name, "en") || byText(a.id, b.id));
+    .sort(compareListsByName);
   const shownLists = railLists.slice(0, LIST_RAIL_CAP);
 
   const groups: RailGroup[] = [];

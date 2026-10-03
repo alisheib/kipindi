@@ -20,12 +20,23 @@
  * ⛔ SUPPRESS IS PERMANENT, AND ITS CONFIRMATION SAYS SO IN WORDS (C23). A run that FAILED is not a run that did nothing:
  * the overlay's error card says some contacts may already have changed and never claims a count, and Retry asks the
  * server for a fresh preview, keeping the selection.
+ * ⭐ vb7 · THE PARAMETERS ARE CHECKED WHERE THEY ARE TYPED. The list picker starts EMPTY ("Choose a list…" — it used to
+ * pre-choose the newest list, so Continue added to whatever list was made last), offers the lists in the rail's own A-to-Z
+ * order (`compareListsByName`), and says "Choose a list, or name a new one." before any round trip; a typed name equal to
+ * a list's (`listNameKey`) switches the picker to that list and says so. The tag box cuts NOTHING (no `maxLength`: it
+ * counts UTF-16 units, the rule counts characters — vb7 review m7) — a 33-character tag is shown and refused in the rule's
+ * own words — its hint names the limit, and Untag offers the book's own tags. Every
+ * refusal focuses its field. A refusal that names the tag or the list reopens the dialog a retry found closed (a list
+ * refusal also reloads the lists); any other refusal stays inside the open dialog with the typing; and a count that moved
+ * since the confirmation asks the server again and reopens the confirmation with the new count and the server's own
+ * sentence on top. A selection past the per-number cap says so in a line, not only in two tooltips.
  *
  * Guard: `test:contacts-bulk` (this file's shape and the copy it renders) · red: `red:contacts-bulk`.
  */
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { Callout } from "@/components/ui/callout";
 import { FieldLegend } from "@/components/ui/field-legend";
 import { Field, Input } from "@/components/ui/input";
 import { Modal, ConfirmModal } from "@/components/ui/modal";
@@ -35,8 +46,11 @@ import { UnsavedChangesGuard } from "@/components/ui/unsaved-changes";
 import { ActionOverlay, useActionOverlay } from "@/components/admin/action-overlay";
 import { useMayAct, useActDisabledReason } from "@/components/admin/act-gate";
 import { runAdminAction } from "@/lib/client/run-admin-action";
+import { focusFirstInvalid } from "@/lib/client/focus-first-invalid";
 import { adminCount } from "@/lib/utils";
-import { BULK_PER_ROW_MAX, CONTACT_BULK_ACTIONS, parseBulkTag, parseListName } from "@/lib/contacts/bulk-rules";
+import {
+  BULK_PER_ROW_MAX, CONTACT_BULK_ACTIONS, LIST_NONE, compareListsByName, listNameKey, parseBulkTag, parseListName,
+} from "@/lib/contacts/bulk-rules";
 import type { BulkPreview, ContactBulkAction, ContactBulkPost } from "@/lib/contacts/bulk-rules";
 import { previewContactBulkAction, runContactBulkAction } from "./contact-bulk-actions";
 import { useContactsSelection } from "./contacts-selection-provider";
@@ -46,12 +60,15 @@ import { BULK_COPY, CONTACTS_BULK, bulkActionState, bulkResultLine, enumerateTai
 const NEW_LIST = "+new";
 
 type ParamAction = "tag" | "untag" | "addToList";
-type ParamDraft = { action: ParamAction; tag: string; listChoice: string; newName: string; error: string | null };
-type Confirming = { post: ContactBulkPost; preview: BulkPreview };
+/** `listChoice` "" = nothing chosen yet (vb7: the picker starts empty). `note` = the picker's own word (a typed name that
+ *  is already a list, chosen). */
+type ParamDraft = { action: ParamAction; tag: string; listChoice: string; newName: string; error: string | null; note: string | null };
+/** `notice` (vb7) — the server's sentence when the count moved since the last confirmation, said on the new one. */
+type Confirming = { post: ContactBulkPost; preview: BulkPreview; notice: string | null };
 
 const needsParam = (a: ContactBulkAction): a is ParamAction => a === "tag" || a === "untag" || a === "addToList";
 
-export function ContactsBulkBar({ lists }: { lists: Array<{ id: string; name: string }> }) {
+export function ContactsBulkBar({ lists, tags }: { lists: Array<{ id: string; name: string }>; tags: string[] }) {
   const mayAct = useMayAct();
   const actReason = useActDisabledReason();
   const s = useContactsSelection();
@@ -59,13 +76,24 @@ export function ContactsBulkBar({ lists }: { lists: Array<{ id: string; name: st
   const [pending, startTransition] = React.useTransition();
   const [param, setParam] = React.useState<ParamDraft | null>(null);
   const [paramOpen, setParamOpen] = React.useState(false);
+  // vb7 · a refusal that names no field, said INSIDE the open parameter dialog — the typing stays.
+  const [paramRefusal, setParamRefusal] = React.useState<string | null>(null);
   const [confirming, setConfirming] = React.useState<Confirming | null>(null);
   const [confirmOpen, setConfirmOpen] = React.useState(false);
   const overlay = useActionOverlay();
   const { toast, deferToast } = useDeferredToast(pending);
   const headingId = React.useId();
+  const tagListId = React.useId();
   const fieldRef = React.useRef<HTMLInputElement>(null);
+  const formRef = React.useRef<HTMLFormElement>(null);
   const lastPost = React.useRef<ContactBulkPost | null>(null);
+  // vb7 · whether the parameter dialog is open, for an answer that lands after the render that asked.
+  const paramOpenRef = React.useRef(false);
+  React.useEffect(() => {
+    paramOpenRef.current = paramOpen;
+  }, [paramOpen]);
+  /** vb7 · the lists in the ONE order the rail draws them (`compareListsByName`). */
+  const sortedLists = React.useMemo(() => [...lists].sort(compareListsByName), [lists]);
 
   const paramDirty = paramOpen && param !== null && (param.tag !== "" || param.newName !== "");
   // "Select all N matching" is offered once the whole page is ticked and the filter holds more than this page.
@@ -74,23 +102,37 @@ export function ContactsBulkBar({ lists }: { lists: Array<{ id: string; name: st
     ? CONTACTS_BULK.none
     : s.mode === "matching" ? CONTACTS_BULK.allMatching(s.count) : CONTACTS_BULK.selected(s.count, s.offPage);
 
-  /** Ask the server for the selection's count; open the confirmation from ITS answer. A refusal that names the tag or
-   *  the list stays in the parameter dialog, beside what was typed. */
-  const preview = (post: ContactBulkPost) => {
+  /**
+   * Ask the server for the selection's count; open the confirmation from ITS answer (`notice`, vb7: a sentence for its
+   * top). ⭐ vb7 · a refusal that names the tag or the list goes back into the parameter dialog — REOPENED when a retry
+   * found it closed — beside what was typed, the field focused, and a list refusal reloads the page's lists (one was
+   * deleted, or created by someone else). Any other refusal stays inside an open dialog, keeping the typing.
+   */
+  const preview = (post: ContactBulkPost, notice: string | null = null) => {
     lastPost.current = post;
+    setParamRefusal(null);
     startTransition(async () => {
       const r = await runAdminAction(() => previewContactBulkAction(post));
       if (r.ok) {
         setParamOpen(false);
-        setConfirming({ post, preview: r });
+        setConfirming({ post, preview: r, notice });
         setConfirmOpen(true);
         return;
       }
       if ("field" in r && (r.field === "tag" || r.field === "list")) {
-        setParam((p) => (p === null ? p : { ...p, error: r.error }));
+        const wasOpen = paramOpenRef.current;
+        setParam((p) => (p === null ? p : { ...p, error: r.error, note: null }));
+        setParamOpen(true);
+        if (r.field === "list") router.refresh();
+        // The refused field takes the focus: the new name's box when a name was posted, else the picker or the tag box.
+        // A dialog reopened by a retry focuses its own first field (`initialFocus`).
+        if (wasOpen) focusFirstInvalid(formRef.current, [r.field === "tag" ? "tag" : post.newListName !== undefined ? "newListName" : "list"]);
         return;
       }
-      setParamOpen(false);
+      if (paramOpenRef.current) {
+        setParamRefusal(r.error);
+        return;
+      }
       toast({ title: CONTACTS_BULK.previewFailed, description: r.error, variant: "danger" });
     });
   };
@@ -98,7 +140,9 @@ export function ContactsBulkBar({ lists }: { lists: Array<{ id: string; name: st
   const begin = (action: ContactBulkAction) => {
     if (!mayAct || s.count === 0 || pending) return;
     if (needsParam(action)) {
-      setParam({ action, tag: "", listChoice: lists[0]?.id ?? NEW_LIST, newName: "", error: null });
+      // ⭐ vb7 · the picker starts EMPTY: it used to choose the newest list, so Continue added to whatever list was made last.
+      setParam({ action, tag: "", listChoice: "", newName: "", error: null, note: null });
+      setParamRefusal(null);
       setParamOpen(true);
       return;
     }
@@ -112,13 +156,28 @@ export function ContactsBulkBar({ lists }: { lists: Array<{ id: string; name: st
   const continueParam = () => {
     if (param === null || pending) return;
     if (param.action === "addToList") {
+      if (param.listChoice === "") {
+        // ⛔ vb7 · nothing chosen: said here, before any round trip, in the server's own words — and the picker focused.
+        setParam({ ...param, error: LIST_NONE, note: null });
+        focusFirstInvalid(formRef.current, ["list"]);
+        return;
+      }
       if (param.listChoice !== NEW_LIST) {
         preview({ action: "addToList", audience: s.audience(), typed: null, listId: param.listChoice });
         return;
       }
       const named = parseListName(param.newName);
       if (!named.ok) {
-        setParam({ ...param, error: named.sentence });
+        setParam({ ...param, error: named.sentence, note: null });
+        focusFirstInvalid(formRef.current, ["newListName"]);
+        return;
+      }
+      // ⭐ vb7 · ONE LIST PER NAME TO A PERSON: a name equal by listNameKey to a list the book holds IS that list — the
+      // picker switches to it and says so, rather than asking the server to refuse a second one.
+      const key = listNameKey(named.name);
+      const same = sortedLists.find((l) => listNameKey(l.name) === key);
+      if (same !== undefined) {
+        setParam({ ...param, listChoice: same.id, newName: "", error: null, note: CONTACTS_BULK.listExisting(same.name) });
         return;
       }
       preview({ action: "addToList", audience: s.audience(), typed: null, newListName: named.name });
@@ -127,6 +186,7 @@ export function ContactsBulkBar({ lists }: { lists: Array<{ id: string; name: st
     const tag = parseBulkTag(param.tag, param.action);
     if (!tag.ok) {
       setParam({ ...param, error: tag.sentence });
+      focusFirstInvalid(formRef.current, ["tag"]);
       return;
     }
     preview({ action: param.action, audience: s.audience(), typed: null, tag: tag.tag });
@@ -146,12 +206,19 @@ export function ContactsBulkBar({ lists }: { lists: Array<{ id: string; name: st
         overlay.dismiss();
         s.clear();
         router.refresh();
-        deferToast({ title: BULK_COPY[r.action].done(r.listName), description: bulkResultLine(r), variant: "success" });
+        // vb7 · the done toast names its tag or its list ("Tagged “vip”").
+        deferToast({ title: BULK_COPY[r.action].done(r), description: bulkResultLine(r), variant: "success" });
         return;
       }
       if ("reason" in r && r.reason !== undefined && r.reason !== "error") {
         // A refusal wrote nothing: the moved audience (with both counts), the cap, the gate — in the server's words.
         overlay.dismiss();
+        // ⭐ vb7 · A MOVED COUNT IS NOT A DEAD END: the server is asked again, and the confirmation reopens with the NEW
+        // count and the server's own sentence on top — never a toast to read and then redo by hand.
+        if (r.reason === "confirm_required" || r.reason === "confirm_mismatch") {
+          preview(lastPost.current ?? post, r.error);
+          return;
+        }
         toast({ title: CONTACTS_BULK.refused, description: r.error, variant: "warning" });
         return;
       }
@@ -192,6 +259,10 @@ export function ContactsBulkBar({ lists }: { lists: Array<{ id: string; name: st
           })}
         </div>
         {s.note !== null && <p role="status" className="text-body-sm text-warning-fg" data-bulk-note>{s.note}</p>}
+        {/* ⭐ vb7 · the per-number cap, said in a line — the two buttons it disables say it only in a tooltip. */}
+        {s.count > BULK_PER_ROW_MAX && (
+          <p className="text-body-sm text-text-secondary" data-bulk-per-row-cap>{CONTACTS_BULK.perRowCap(BULK_PER_ROW_MAX)}</p>
+        )}
         <p className="text-body-sm text-text-tertiary" data-bulk-consent-note>{CONTACTS_BULK.consentNote}</p>
       </div>
 
@@ -216,6 +287,7 @@ export function ContactsBulkBar({ lists }: { lists: Array<{ id: string; name: st
             </h2>
           </div>
           <form
+            ref={formRef}
             noValidate
             onSubmit={(e) => {
               e.preventDefault();
@@ -228,10 +300,15 @@ export function ContactsBulkBar({ lists }: { lists: Array<{ id: string; name: st
               <>
                 <div data-field="list">
                   <FieldLegend className="block mb-1.5">{CONTACTS_BULK.listLabel}</FieldLegend>
+                  {/* ⭐ vb7 · empty until the officer chooses ("Choose a list…"), the lists in the rail's A-to-Z order. */}
                   <Select
                     value={param.listChoice}
-                    onChange={(v) => setParam({ ...param, listChoice: v, error: null })}
-                    options={[...lists.map((l) => ({ value: l.id, label: l.name })), { value: NEW_LIST, label: CONTACTS_BULK.listNew }]}
+                    onChange={(v) => {
+                      setParam({ ...param, listChoice: v, error: null, note: null });
+                      setParamRefusal(null);
+                    }}
+                    options={[...sortedLists.map((l) => ({ value: l.id, label: l.name })), { value: NEW_LIST, label: CONTACTS_BULK.listNew }]}
+                    placeholder={CONTACTS_BULK.listChoose}
                     ariaLabel={CONTACTS_BULK.listLabel}
                     size="sm"
                     disabled={pending}
@@ -239,13 +316,19 @@ export function ContactsBulkBar({ lists }: { lists: Array<{ id: string; name: st
                   {param.listChoice !== NEW_LIST && param.error !== null && (
                     <p className="mt-1.5 text-body-sm text-danger-fg" role="alert">{param.error}</p>
                   )}
+                  {param.note !== null && (
+                    <p className="mt-1.5 text-body-sm text-text-secondary" role="status" data-bulk-list-note>{param.note}</p>
+                  )}
                 </div>
                 {param.listChoice === NEW_LIST && (
                   <Field label={CONTACTS_BULK.listNameLabel} hint={CONTACTS_BULK.listNameHint} error={param.error ?? undefined} dataField="newListName">
                     <Input
                       ref={fieldRef}
                       value={param.newName}
-                      onChange={(e) => setParam({ ...param, newName: e.target.value, error: null })}
+                      onChange={(e) => {
+                        setParam({ ...param, newName: e.target.value, error: null, note: null });
+                        setParamRefusal(null);
+                      }}
                       autoComplete="off"
                       disabled={pending}
                       error={param.error !== null}
@@ -254,19 +337,33 @@ export function ContactsBulkBar({ lists }: { lists: Array<{ id: string; name: st
                 )}
               </>
             ) : (
-              <Field label={CONTACTS_BULK.tagLabel} hint={CONTACTS_BULK.tagHint} error={param.error ?? undefined} dataField="tag">
-                <Input
-                  ref={fieldRef}
-                  value={param.tag}
-                  onChange={(e) => setParam({ ...param, tag: e.target.value, error: null })}
-                  autoComplete="off"
-                  autoCapitalize="none"
-                  spellCheck={false}
-                  disabled={pending}
-                  error={param.error !== null}
-                />
-              </Field>
+              <>
+                <Field label={CONTACTS_BULK.tagLabel} hint={CONTACTS_BULK.tagHint} error={param.error ?? undefined} dataField="tag">
+                  <Input
+                    ref={fieldRef}
+                    value={param.tag}
+                    onChange={(e) => {
+                      setParam({ ...param, tag: e.target.value, error: null });
+                      setParamRefusal(null);
+                    }}
+                    list={param.action === "untag" && tags.length > 0 ? tagListId : undefined}
+                    autoComplete="off"
+                    autoCapitalize="none"
+                    spellCheck={false}
+                    disabled={pending}
+                    error={param.error !== null}
+                  />
+                </Field>
+                {/* ⭐ vb7 · Untag offers the book's own tags — the one taken off is always one the book holds. */}
+                {param.action === "untag" && tags.length > 0 && (
+                  <datalist id={tagListId}>
+                    {tags.map((t) => <option key={t} value={t} />)}
+                  </datalist>
+                )}
+              </>
             )}
+            {/* vb7 · a refusal that names no field stays here, beside the typing — never a toast that closes the dialog. */}
+            {paramRefusal !== null && <Callout tone="warning" role="alert">{paramRefusal}</Callout>}
             <div className="flex flex-col-reverse gap-2 pt-1 sm:flex-row sm:justify-end">
               <Button type="button" size="md" variant="ghost" onClick={closeParam} disabled={pending}>
                 {CONTACTS_BULK.cancel}
@@ -280,7 +377,7 @@ export function ContactsBulkBar({ lists }: { lists: Array<{ id: string; name: st
       )}
 
       {confirming !== null && (
-        <BulkConfirm open={confirmOpen} preview={confirming.preview} onCancel={() => setConfirmOpen(false)} onConfirm={run} />
+        <BulkConfirm open={confirmOpen} preview={confirming.preview} notice={confirming.notice} onCancel={() => setConfirmOpen(false)} onConfirm={run} />
       )}
 
       <ActionOverlay
@@ -303,9 +400,11 @@ export function ContactsBulkBar({ lists }: { lists: Array<{ id: string; name: st
  * fifty ticked rows it names them (the first twenty, masked, then "and N more"); above that, or for a filter, the officer
  * types the server's count. The consequence sentence is always said — Suppress's permanence among them.
  */
-function BulkConfirm({ open, preview: p, onCancel, onConfirm }: {
+function BulkConfirm({ open, preview: p, notice, onCancel, onConfirm }: {
   open: boolean;
   preview: BulkPreview;
+  /** vb7 · the server's sentence when the count moved since the last confirmation — read before the new count. */
+  notice: string | null;
   onCancel: () => void;
   onConfirm: () => void;
 }) {
@@ -328,6 +427,7 @@ function BulkConfirm({ open, preview: p, onCancel, onConfirm }: {
       cancelLabel={CONTACTS_BULK.cancel}
       body={(
         <div className="space-y-3" data-bulk-confirm={p.tier.kind}>
+          {notice !== null && <Callout tone="warning" role="alert">{notice}</Callout>}
           <p data-bulk-consequence>{words.consequence}</p>
           {p.tier.kind === "typed" && (
             // An unfiltered "all matching" describes nothing — so it says, in words, that it is the whole book.

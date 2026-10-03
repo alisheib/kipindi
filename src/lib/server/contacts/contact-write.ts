@@ -20,6 +20,14 @@
  * ⭐ THE EDIT IS COMPARE-AND-SET (`updateIfUnchanged` in both twins, decision C25): two officers editing one contact
  * cannot silently overwrite each other — the second save is refused as stale. It writes the four fields and the
  * stamp, and never the number, `sourceRef`, the link, the caches or the provenance.
+ * ⭐ vb7 · AN EDIT THAT CHANGES NOTHING WRITES NOTHING: no stamp moves (another officer's open dialog stays valid) and no
+ * audit row is written with no fields. Every saved edit answers with the fields it changed, for the dialog's toast.
+ * ⛔ vb7 review M1 · …AND NONE OF THAT MAY DEPEND ON THE HIDDEN EMAIL. A stale token is refused FIRST, before anything
+ * typed is compared with the row, and a submitted replacement email ALWAYS counts as changed and is written — so a masked
+ * officer cannot learn whether a typed address equals the stored one from "nothing changed" against "stale".
+ * ⛔ vb7 · THE RAW NUMBER TEXT HAS A LENGTH (`contactNumberTooLong`, the importer's limit, C12): a paste longer than any
+ * phone number is refused, never parsed for the number inside it and cut into `rawInput`; and the builder cleans the
+ * text it keeps of invisible and control characters, so a NUL cannot fail the insert as "Saving the contact failed".
  * ⛔ THE AUDIT NAMES THE MASKED NUMBER AND THE FIELD NAMES — never the digits, the name, the email or the notes.
  *
  * Guard: `test:contacts-form` (§2–§5, executed on the memory twin) · `test:dal-parity` §22 (the two CAS twins).
@@ -33,7 +41,9 @@ import { ERASURE_EVIDENCE } from "@/lib/marketing/erasure-mark";
 import { parseTzNumber } from "@/lib/tz-msisdn";
 import type { TzNumber } from "@/lib/tz-msisdn";
 import { maskPhone } from "@/lib/phone-normalize";
-import { CONTACT_LIMITS, charCount, contactFormDraft } from "@/lib/contacts/contact-fields";
+import { CONTACT_LIMITS, charCount, cleanDisplayName, contactFormDraft } from "@/lib/contacts/contact-fields";
+import type { ContactFormFieldKey } from "@/lib/contacts/contact-fields";
+import { CONTACT_PASTE_TOO_LONG, contactNumberTooLong } from "@/lib/contacts/contact-number";
 
 /* ═══ THE WIRE SHAPES ═══════════════════════════════════════════════════════════════════════════ */
 
@@ -86,7 +96,9 @@ export type ContactAddReply =
   | Exclude<ContactAddResult, { ok: true }>;
 
 export type ContactEditResult =
-  | { ok: true; id: string; updatedAt: string }
+  /** `changed`: the fields this save changed, in the dialog's order — none when nothing needed saving (vb7: then
+   *  nothing was written, and `updatedAt` is the row's own). */
+  | { ok: true; id: string; updatedAt: string; changed: ContactFormFieldKey[] }
   /** Unknown — or erased (A1.7): the same answer, so the refusal is no erasure oracle. */
   | { ok: false; reason: "missing"; error: string }
   | { ok: false; reason: "stale"; error: string }
@@ -135,7 +147,8 @@ export function contactFormFields(input: { displayName: string; email: string; n
 export type NewContactFields = {
   /** parseTzNumber's own answer for the raw text — it must be `ok`. */
   number: TzNumber;
-  /** What the officer actually typed or pasted, or the file's cell (kept, clipped to `CONTACT_LIMITS.phone`). */
+  /** What the officer actually typed or pasted, or the file's cell (kept cleaned of invisible and control characters,
+   *  clipped to `CONTACT_LIMITS.phone` — `cleanRawInput`). */
   rawInput: string;
   displayName: string | null;
   email: string | null;
@@ -158,6 +171,15 @@ export function newContactId(): string {
 const clipChars = (s: string, limit: number): string => (charCount(s) > limit ? Array.from(s).slice(0, limit).join("") : s);
 
 /**
+ * ⛔ vb7 · THE RAW TEXT AS A ROW KEEPS IT: invisible format and control characters out — a NUL failed Postgres' insert
+ * as "Saving the contact failed" — whitespace collapsed and trimmed, by the ONE cleaner a stored name takes
+ * (`cleanDisplayName`), then clipped to the limits table's phone length. The digits a person typed are kept as typed.
+ */
+export function cleanRawInput(raw: string): string {
+  return clipChars(cleanDisplayName(String(raw ?? "")) ?? "", CONTACT_LIMITS.phone);
+}
+
+/**
  * ⭐ THE ONE PLACE A NEW `StoredMarketingContact` IS SHAPED. The form, the importer's commit (U31/U32) and U33 call it;
  * none builds a row of its own.
  * ⛔ `userId` is null and the caches are UNKNOWN / null, whatever the caller holds: a link is sign-up's fact, and the
@@ -172,7 +194,7 @@ export function newContactRow(fields: NewContactFields, id: string = newContactI
   return {
     id,
     msisdn: n.msisdn,
-    rawInput: clipChars(String(fields.rawInput ?? "").trim(), CONTACT_LIMITS.phone),
+    rawInput: cleanRawInput(fields.rawInput),
     displayName: fields.displayName,
     email: fields.email,
     ndc: n.ndc,
@@ -255,6 +277,9 @@ async function takenRefusal(msisdn: string): Promise<ContactAddResult> {
  */
 export async function addContact(request: ContactAddRequest, officerId: string, now: Date = new Date()): Promise<ContactAddResult> {
   const raw = String(request.number ?? "");
+  // ⛔ vb7 · longer than any phone number is written (C12, the importer's limit): refused whole — never parsed for the
+  // number inside it, and never cut into the row's raw text.
+  if (contactNumberTooLong(raw)) return { ok: false, reason: "invalid_number", field: "number", error: CONTACT_PASTE_TOO_LONG };
   const parsed = parseTzNumber(raw);
   if (parsed.verdict !== "ok" || parsed.msisdn === null) {
     return { ok: false, reason: "invalid_number", field: "number", error: parsed.reason };
@@ -308,13 +333,19 @@ export function contactAddReply(result: ContactAddResult, reads: boolean): Conta
 
 /* ═══ EDIT — compare-and-set ═════════════════════════════════════════════════════════════════════ */
 
-const changedFields = (before: StoredMarketingContact, after: StoredMarketingContact): string[] =>
-  [
-    before.displayName !== after.displayName ? "displayName" : null,
-    before.email !== after.email ? "email" : null,
-    before.notes !== after.notes ? "notes" : null,
-    before.tags.join("\n") !== after.tags.join("\n") ? "tags" : null,
-  ].filter((k): k is string => k !== null);
+/**
+ * The fields an edit changed, in the dialog's order. ⛔ vb7 review M1 · `emailSubmitted`: a replacement address typed
+ * into the box ALWAYS counts as "email" — compared by value, the answer would say whether the typed address equals the
+ * hidden one, to an officer who may not read it.
+ */
+const changedFields = (before: StoredMarketingContact, after: StoredMarketingContact, emailSubmitted: boolean): ContactFormFieldKey[] => {
+  const out: ContactFormFieldKey[] = [];
+  if (before.displayName !== after.displayName) out.push("displayName");
+  if (emailSubmitted || before.email !== after.email) out.push("email");
+  if (before.notes !== after.notes) out.push("notes");
+  if (JSON.stringify(before.tags) !== JSON.stringify(after.tags)) out.push("tags");
+  return out;
+};
 
 /**
  * One contact's name, email, notes and tags, changed — ONLY if nobody changed the row since the dialog was rendered.
@@ -332,8 +363,23 @@ export async function editContact(request: ContactEditRequest, officerId: string
   if (!fields.ok) return { ok: false, reason: "invalid_field", field: fields.field, error: fields.error };
 
   // An unreadable token can match no row: refused as stale, never handed to a database that would throw on it.
+  // ⛔ vb7 review M1 · …and a token that is not the row's own stamp is refused HERE, FIRST — before anything typed is
+  // compared with the row. Asked after the "nothing changed" test, a stale save with the right guess at a hidden email
+  // answered "nothing changed" (no write, no audit row) and a wrong guess "stale": an oracle on the address.
   const expected = String(request.expectedUpdatedAt ?? "");
-  if (!Number.isFinite(Date.parse(expected))) return { ok: false, reason: "stale", error: CONTACT_STALE };
+  const expectedAt = Date.parse(expected);
+  if (!Number.isFinite(expectedAt) || expectedAt !== Date.parse(row.updatedAt)) return { ok: false, reason: "stale", error: CONTACT_STALE };
+  // ⭐ vb7 · NOTHING CHANGED IS NOTHING WRITTEN: the stamp stays (another officer's open dialog stays valid), and no
+  // audit row is written that names no field. The answer says so, by naming none. ⛔ A submitted email is a change by
+  // definition (`changedFields`), whatever it equals.
+  const wanted: StoredMarketingContact = {
+    ...row,
+    displayName: fields.value.displayName,
+    email: keepEmail ? row.email : fields.value.email,
+    notes: fields.value.notes,
+    tags: fields.value.tags,
+  };
+  if (changedFields(row, wanted, !keepEmail).length === 0) return { ok: true, id: row.id, updatedAt: row.updatedAt, changed: [] };
   // ⭐ A WRITE IN THE SAME MILLISECOND AS THE LAST ONE MUST STILL MOVE `updatedAt`, or a second edit carrying the same
   // token would pass the compare: at = the later of now and the row's own stamp + 1 ms.
   const at = new Date(Math.max(now.getTime(), Date.parse(row.updatedAt) + 1)).toISOString();
@@ -350,13 +396,14 @@ export async function editContact(request: ContactEditRequest, officerId: string
       ? { ok: false, reason: "stale", error: CONTACT_STALE }
       : { ok: false, reason: "missing", error: CONTACT_MISSING };
   }
+  const changed = changedFields(row, cas.row, !keepEmail);
   await audit({
     category: "ADMIN",
     action: "contacts.contact.edited",
     actorId: officerId,
     targetType: "MarketingContact",
     targetId: row.id,
-    payload: { number: maskPhone(row.msisdn), fields: changedFields(row, cas.row) },
+    payload: { number: maskPhone(row.msisdn), fields: changed },
   });
-  return { ok: true, id: row.id, updatedAt: cas.row.updatedAt };
+  return { ok: true, id: row.id, updatedAt: cas.row.updatedAt, changed };
 }

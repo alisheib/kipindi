@@ -14,6 +14,8 @@
  *      2.17–2.22 (vb5) · the shared field rules as this resolver reads them: `?tag=` through the ONE tag rule (marks,
  *      NFKC), the search box's text cleaned like a stored name and refused when it is invisible or longer than the
  *      grammar keeps, a lone quote searched literally (never every row), and the phone-run mask that IS contact-fields'.
+ *      2.23 (vb7) · a name search is DESCRIBED from the terms the grammar runs — `-zzz` is "Name doesn't contain “zzz”",
+ *      never "Name contains “-zzz”" — and each description is held to the rows the resolver lists for it.
  *   §3 ⭐ ONE COUNT (the Accept): for twelve filters the list's total, count(), breakdown().total, the keyset walk
  *      and the union of the pages are one number. U34a added THE EXPORT LEG (its plan line): for every filter an
  *      address can carry, the file a reader downloads holds X-Rows-Matched data rows, parsed back through U25's real
@@ -121,6 +123,10 @@ const ALIASES: RegExp[] = [
 ];
 /** A Prisma delegate on the book's tables, reached by anything but `db.` (pc(), prisma()!, a transaction's tx). */
 const PRISMA_DIRECT = new RegExp(`(?<!\\bdb)\\.${NS}\\.\\w+\\s*\\(`);
+/** vb7 · inside the MEMORY twin, its own facade (`memoryDb.marketingContact.removeWhere(…)`, which removeBoundWhere
+ *  calls so the twin still deletes a contact in ONE place) is the twin calling itself, not a Prisma delegate. `memoryDb`
+ *  is module-local to store.ts, so the exemption applies to that file alone. */
+const PRISMA_DIRECT_IN_STORE = new RegExp(`(?<!\\bdb|\\bmemoryDb)\\.${NS}\\.\\w+\\s*\\(`);
 const MEMORY_MAPS = /\.(marketingContacts|contactListMembers|contactsByMsisdn|contactLists)\b/;
 const RAW_SQL = /\$(?:queryRaw|executeRaw)(?:Unsafe)?[\s\S]{0,600}?"(?:MarketingContact|ContactList|ContactListMember)"/;
 const NDC_LITERAL = /\[\s*["'][67]\d["']\s*,\s*["'][67]\d["']/;
@@ -144,7 +150,7 @@ function scan(files: Map<string, string>): Scan {
       if (SET_READERS.test(ex ? src.replace(ex.allowed, "") : src)) out.setReaders.push(path);
       if (ALIASES.some((re) => re.test(src))) out.aliases.push(path);
     }
-    if (path !== PRISMA_DAL && (PRISMA_DIRECT.test(src) || RAW_SQL.test(src))) out.direct.push(path);
+    if (path !== PRISMA_DAL && ((path === STORE ? PRISMA_DIRECT_IN_STORE : PRISMA_DIRECT).test(src) || RAW_SQL.test(src))) out.direct.push(path);
     if (path !== STORE && MEMORY_MAPS.test(src)) out.direct.push(path);
     if (path !== RESOLVER && /\b(?:contactAudience|contactTagCounts)\b/.test(src)) out.readers.push(path);
     if (!twin && path !== RESOLVER && /\bContactAudienceWhere\b/.test(src)) out.whereNamers.push(path);
@@ -331,6 +337,10 @@ const LV5 = {
   quote: "2.20 · ⛔ vb5 · C2 · a search the grammar finds no word in (a lone quote, two quotes) is a literal search that lists nothing — never every row under 'Name contains'",
   mask: "2.21 · ⛔ vb5 · ONE phone-run rule: audience.ts's scrubPhoneRuns IS contact-fields' own, and the audit form masks the dotted, no-break-space, en-dash and bracketed spellings to four bullets and the last two digits",
   sep: "2.22 · vb5 review m5 · an address's tag holding ; or | is refused naming tag in the RULE's words (“A tag never holds a comma, ; or |.”), in the address and in JSON — never the bulk box's “Type one tag at a time”, which speaks to somebody typing",
+};
+/** vb7 · the description of a search — its label once, read by its assertion and its red case. */
+const LV7 = {
+  describe: "2.23 · ⛔ vb7 · a name search is DESCRIBED FROM THE TERMS THE GRAMMAR RUNS, never echoed as typed: ?q=-zzz is “Name doesn't contain “zzz”” and lists the book's names, asha -juma is “Name contains “asha”, not “juma”” and lists only the Asha rows, every wanted word is “and”, a phrase stays one phrase, each word is clipped at 40, and a whole number stays +255••••NN",
 };
 
 const F = (patch: Partial<ContactAudienceFilter>): ContactAudienceFilter => ({ ...WHOLE_BOOK, ...patch });
@@ -642,6 +652,26 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
     !r.ok && r.param === param && r.reason.endsWith(TAG_SEPARATOR_IN_ADDRESS) && !r.reason.includes(TAG_ONE_AT_A_TIME_SENTENCE);
   ok(p(LV5.sep), saysRule(sepUrl, "tag") && saysRule(sepJson, "tags"),
     `address → ${sepUrl.ok ? "ACCEPTED" : sepUrl.reason} · JSON → ${sepJson.ok ? "ACCEPTED" : sepJson.reason}`);
+
+  /* ── 2.23 · ⛔ vb7 · A NAME SEARCH, SAID FROM THE TERMS THE GRAMMAR RUNS ────────────────────────── */
+  // The grammar reads `-zzz` as an EXCLUDED word, so it lists nearly the whole book — and it was described as "Name
+  // contains “-zzz”" above a list a bulk action would then write to. Each search here is said AND listed, so the words
+  // are held to the rows the resolver returns for them.
+  const said = (q: string) => JSON.stringify(impl.describe(must(impl.parse({ q }, NOW))));
+  const listed = (q: string) => ids(must(impl.parse({ q }, NOW)));
+  const longWord = "x".repeat(50);
+  const minusListed = await listed("-zzz");
+  const mixedListed = await listed("asha -juma");
+  const bothListed = await listed("asha juma");
+  ok(p(LV7.describe),
+    said("-zzz") === JSON.stringify(["Name doesn't contain “zzz”"]) && minusListed.includes("a01") && minusListed.includes("a06")
+      && said("asha -juma") === JSON.stringify(["Name contains “asha”, not “juma”"]) && mixedListed === "a01,a04"
+      && said("asha juma") === JSON.stringify(["Name contains “asha” and “juma”"]) && bothListed === ""
+      && said("-zzz -yyy") === JSON.stringify(["Name doesn't contain “zzz” or “yyy”"])
+      && said('"asha m"') === JSON.stringify(["Name contains “asha m”"])
+      && said(longWord) === JSON.stringify([`Name contains “${"x".repeat(39)}…”`])
+      && said("0712 345 678") === JSON.stringify(["Number +255••••78"]),
+    `${said("-zzz")} lists ${minusListed || "nothing"} · ${said("asha -juma")} lists ${mixedListed || "nothing"} · ${said("asha juma")} lists ${bothListed || "nothing"}`);
 
   /* ── §3 · ⭐ ONE COUNT ─────────────────────────────────────────────────────────────────────── */
   const bad: string[] = [];
@@ -1133,6 +1163,16 @@ if (!PROVE_RED) {
           const r = parseContactAudienceParams(sp, now);
           return r.ok ? r : { ...r, reason: r.reason.replace(TAG_SEPARATOR_IN_ADDRESS, TAG_ONE_AT_A_TIME_SENTENCE) };
         },
+      },
+    },
+    {
+      name: "R30 · vb7 · a name search echoed as typed again — ?q=-zzz, which lists nearly the whole book, is described as “Name contains “-zzz””",
+      expect: [LV7.describe],
+      impl: {
+        ...REAL,
+        describe: (f) => describeAudience(f).map((phrase) => (f.q !== null && phrase.startsWith("Name ")
+          ? `Name contains “${f.q.length > 40 ? `${f.q.slice(0, 39)}…` : f.q}”`
+          : phrase)),
       },
     },
   ];

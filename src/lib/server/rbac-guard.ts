@@ -14,7 +14,8 @@ import { redirect } from "next/navigation";
 import { currentSession } from "./auth-service";
 import { db } from "./store";
 import { audit } from "./audit";
-import { requireAdminTotp } from "./admin-guard";
+import { checkAdminTotp, requireAdminTotp } from "./admin-guard";
+import type { AdminTotpStatus } from "./admin-guard";
 import { canAct, canView } from "./rbac";
 import type { OperatorRefusal } from "../operator-refusal";
 import type { SessionData } from "./session";
@@ -90,6 +91,36 @@ export async function scopeRefusalToViewer(
 }
 
 /**
+ * ⭐ vb7 · WHAT A SOFT STAFF GUARD READS FROM THE REQUEST, when a test hands it in — the session, and the second
+ * factor's verdict. `test:rbac` §15 passes one, because a script has no request scope for `cookies()` to read.
+ * ⛔ ONLY EVER A PARAMETER (vb7 review M2). Production passes nothing, and the guard then asks `currentSession()` and
+ * `checkAdminTotp()` itself, by name. A shared, exported request object would be a writable hook under every guard built
+ * on `softRequireStaff` — payments, KYC, settlement, privacy, purge — so there is none, and none may be added.
+ */
+export type SoftGuardRequest = {
+  session: () => Promise<SessionData | null>;
+  secondFactor: (userId: string, sessionId: string) => Promise<AdminTotpStatus>;
+};
+
+/** vb7 · `softRequireStaff`'s options — set by `softCheckStaff` alone. */
+export type SoftStaffOptions = {
+  /** A second factor that is not "ok" is REFUSED IN WORDS (`secondFactorRefusal`) instead of redirecting to the step-up
+   *  page — for a read the officer did not press. */
+  refuseSecondFactor?: boolean;
+  /** `test:rbac` §15's request — never passed in production. */
+  request?: SoftGuardRequest;
+};
+
+/** vb7 · a 2-step sign-in that lapsed, and one never set up — each said in words by `softCheckStaff`, never redirected to. */
+export const SECOND_FACTOR_LAPSED = "Your 2-step sign-in has lapsed — confirm it in another tab, then try again.";
+export const SECOND_FACTOR_NOT_SET_UP = "Set up your 2-step sign-in in another tab, then try again.";
+
+/** vb7 · the sentence for a second factor that is not "ok": set it up when it never was, confirm it when it lapsed. */
+export function secondFactorRefusal(status: Exclude<AdminTotpStatus, "ok">): string {
+  return status === "not-enrolled" ? SECOND_FACTOR_NOT_SET_UP : SECOND_FACTOR_LAPSED;
+}
+
+/**
  * The SOFT form of `requireStaff` — for surfaces that RETURN `{ ok: false, error }`
  * instead of throwing, because their controls render the message inline.
  *
@@ -116,13 +147,19 @@ export async function scopeRefusalToViewer(
  * Returns the officer's session on success. Redirects (rather than soft-refusing) when
  * there is no session at all, exactly like `requireStaff` — a signed-out visitor needs the
  * login page, not an inline message they cannot act on.
+ *
+ * ⭐ vb7 · `opts` is `softCheckStaff`'s alone (below): ONE body holds the decision for both guards. A caller that
+ * passes nothing — every caller but that one — gets exactly what it always got: the cookies read here, by name.
  */
 export async function softRequireStaff(
   domain: AdminDomain,
   action: string,
   refusal: string,
-): Promise<{ ok: true; userId: string; sessionId: string } | { ok: false; error: string }> {
-  const session = await currentSession();
+  opts: SoftStaffOptions = {},
+): Promise<{ ok: true; userId: string; sessionId: string } | { ok: false; error: string; secondFactor?: true }> {
+  // ⛔ vb7 review M2 · production reads the session cookie HERE, by name — a request is a test's parameter, never a shared
+  // object a caller could rewrite under every guard.
+  const session = opts.request ? await opts.request.session() : await currentSession();
   if (!session) redirect("/auth/admin");
   const me = await db.user.findById(session.userId);
   if (!me) redirect("/auth/admin");
@@ -137,8 +174,43 @@ export async function softRequireStaff(
     });
     return { ok: false, error: refusal };
   }
-  await requireAdminTotp(session.userId, session.sessionId); // step-up 2FA, as requireStaff does
+  if (opts.refuseSecondFactor) {
+    // ⭐ vb7 · softCheckStaff · a read the officer did not press: a second factor that is not "ok" is refused in words —
+    // set it up when it never was, confirm it when it lapsed — and marked, so the dialog can hold its Save.
+    const factor = opts.request
+      ? await opts.request.secondFactor(session.userId, session.sessionId)
+      : await checkAdminTotp(session.userId, session.sessionId);
+    if (factor !== "ok") return { ok: false, error: secondFactorRefusal(factor), secondFactor: true };
+  } else {
+    await requireAdminTotp(session.userId, session.sessionId); // step-up 2FA, as requireStaff does
+  }
   return { ok: true, userId: session.userId, sessionId: session.sessionId };
+}
+
+/**
+ * ⭐ vb7 · THE NON-REDIRECTING SOFT GUARD — for a READ THE OFFICER DID NOT PRESS: the Add a contact dialog's number
+ * lookup, which runs by itself when the ninth digit lands.
+ *
+ * 🔴 THE DEFECT IT CLOSES. The lookup went through `softRequireStaff`, whose second factor is `requireAdminTotp` — a
+ * REDIRECT. Once 2-step sign-in is on and its eight-hour cookie has lapsed, typing the ninth digit navigated the
+ * console to the step-up page and the dialog's typing was gone, for a read nobody asked for. Latent while production
+ * runs with 2-step off; it must land before the owner turns it back on.
+ *
+ * ⛔ IT IS `softRequireStaff` ITSELF — the same session, the same STORED role, the same `canAct`, the same SECURITY
+ * audit on a refusal — with ONE difference: a second factor that is not "ok" is refused in words instead of a redirect
+ * (`secondFactorRefusal`: "has lapsed" for a lapsed one, "Set up your 2-step sign-in" for one never set up), and the
+ * refusal says so (`secondFactor: true`). ⛔ NEVER for an action the officer pressed: a Save takes the step-up, as
+ * before. ⚠️ A missing session still goes to the sign-in page, exactly as `softRequireStaff`'s does.
+ * `request` exists for `test:rbac` §15's in-process cases (no request scope there); production never passes it, and
+ * the guard then reads the cookies itself.
+ */
+export async function softCheckStaff(
+  domain: AdminDomain,
+  action: string,
+  refusal: string,
+  request?: SoftGuardRequest,
+): Promise<{ ok: true; userId: string; sessionId: string } | { ok: false; error: string; secondFactor?: true }> {
+  return softRequireStaff(domain, action, refusal, { refuseSecondFactor: true, request });
 }
 
 /**

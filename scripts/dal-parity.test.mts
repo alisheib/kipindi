@@ -2076,6 +2076,29 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
   ok("23.window · every Prisma bulk walk is a KEYSET on id — `take` bounded by CONTACT_BULK_CHUNK, ordered by id, `gt` the cursor, never `skip`",
     unbounded.length === 0 && /const CONTACT_BULK_CHUNK = \d+;/.test(dalSrc), `unbounded [${unbounded}]`);
 
+  // ── ⭐ vb7 (review m1) · THE BOUND REMOVE — a bulk Remove over a filter takes its confirmed ids ALL OR NOTHING. The
+  // behaviour (one call, nobody removed on a fault, the rolled-back audit row) is `test:contacts-bulk` B22, on the memory
+  // twin; this holds the two twins to one shape — the Prisma twin's ONE transaction above all. ──
+  const memBound = memberAt(memBlock, "removeBoundWhere");
+  const priBound = memberAt(priBlock, "removeBoundWhere");
+  ok("23.bound.memory · ⛔ vb7 · the memory bound remove goes THROUGH removeWhere — the twin's one contact delete, with its cascade, freed index and SET NULL — over the audience narrowed to the given ids (∩ any ids it already holds), never deleting a row itself",
+    /removeBoundWhere: \(w: ContactAudienceWhere, ids: readonly string\[\]\): ContactBulkCount =>/.test(memBound)
+      && memBound.includes("memoryDb.marketingContact.removeWhere({ ...w, ids: w.ids === null ? [...ids] : w.ids.filter((id) => ids.includes(id)) })")
+      && !/\.delete\(/.test(memBound),
+    `${memBound.length} chars`);
+  ok("23.bound.prisma · ⛔ vb7 · the Prisma bound remove runs EVERY chunk inside ONE interactive transaction with a timeout — each chunk one count and one deleteMany on the transaction's own client, inside the translated where AND that chunk's ids — so a fault at any chunk removes nobody; a where SQL cannot express writes nothing",
+    /removeBoundWhere: async \(w: ContactAudienceWhere, ids: readonly string\[\]\): Promise<ContactBulkCount> =>/.test(priBound)
+      && /const where = toPrismaContactWhere\(w\);\s*if \(where === null \|\| ids\.length === 0\) return out;/.test(priBound)
+      && /return pc\(\)\.\$transaction\(async \(tx\) => \{/.test(priBound)
+      && priBound.includes("{ AND: [where, { id: { in: ids.slice(i, i + CONTACT_BULK_CHUNK) } }] }")
+      && priBound.includes("await tx.marketingContact.count({ where: scoped })") && priBound.includes("await tx.marketingContact.deleteMany({ where: scoped })")
+      && !/pc\(\)\.marketingContact\./.test(priBound)
+      && /\}, \{ timeout: CONTACT_BULK_TX_TIMEOUT_MS, maxWait: [0-9_]+ \}\);/.test(priBound) && /const CONTACT_BULK_TX_TIMEOUT_MS = [0-9_]+;/.test(dalSrc),
+    `${priBound.length} chars`);
+  ok("23.bound.evidence · ⛔ vb7 · neither bound remove touches the consent ledger or the stop list — removing book rows never deletes evidence",
+    memBound.length > 80 && priBound.length > 80 && !EVIDENCE.test(memBound) && !EVIDENCE.test(priBound),
+    `${memBound.length}/${priBound.length} chars`);
+
   // ── CONTROLS ─────────────────────────────────────────────────────────────────────────
   // ⛔ Each proves the ASSERTION ABOVE IT can reject, on a literal that would otherwise pass.
   const plantedCount = storeSrc.replace("export type ContactBulkCount = {", "export type ContactBulkCount = {\n  plantedKey: number;");
@@ -2088,6 +2111,9 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
   ok("23.c4 · CONTROL · an upsert in the Prisma add IS seen, and a createMany without skipDuplicates fails the needle",
     /\bupsert\b/.test("await pc().contactListMember.upsert({ where, create, update: {} });")
       && !"createMany({ data: rows })".includes("createMany({ data: rows, skipDuplicates: true })"));
+  ok("23.c6 · CONTROL · vb7 · a chunk deleted through pc() — OUTSIDE the transaction — FAILS 23.bound.prisma's client check, and a transaction with no timeout FAILS its option matcher",
+    /pc\(\)\.marketingContact\./.test("out.changed += (await pc().marketingContact.deleteMany({ where: scoped })).count;")
+      && !/\}, \{ timeout: CONTACT_BULK_TX_TIMEOUT_MS, maxWait: [0-9_]+ \}\);/.test("      });"));
   ok("23.c5 · CONTROL · a member that builds an inline where — not the translator — FAILS 23.route's matcher, and a walk without the audience FAILS 23.scope's",
     !/const where = toPrismaContactWhere\(w\);\s*if \(where === null\) return out;/.test("const where = { msisdn: w.msisdn };\n      if (where === null) return out;")
       && !SCOPE.untagWhere.test("const carrying: Prisma.MarketingContactWhereInput[] = [{ tags: { has: tag } }];"));

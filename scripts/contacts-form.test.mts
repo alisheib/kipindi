@@ -18,6 +18,10 @@
  * field re-typed; no consent control and no second save in the form; the page's <Sensitive> slots; `edit` never
  * carried by the ONE href builder (C9/M12, executed); the copy; the `contactEmail` registry entry (M5, executed);
  * PhoneInput's three additive props; the pure module pinned; the suite wired.
+ * vb7 (validation batch 7): a paste longer than a phone number refused in the browser (1.8) and on the server (3.6), the
+ * raw text cleaned of control characters (3.6), an edit that changes nothing writing nothing (4.7), the dialog's live
+ * field rules (6.14), its honesty — optional labels, no silent cut, read-only for a view-only officer, the discard
+ * question, the toasts (6.15) — and the lookup that never redirects (6.16, with `test:rbac` §15 executing its guard).
  *
  * ⛔ IN-PROCESS BY CONSTRUCTION. `--prove-red` plants each defect IN MEMORY — a service, a loader, a reply shaper, an
  * href builder or a source string swapped — and requires the MATCHING assertion to fail. This file makes no
@@ -37,22 +41,32 @@ import { db } from "../src/lib/server/store.ts";
 import type { StoredMarketingContact, StoredUser, MessagingKey } from "../src/lib/server/store.ts";
 import { audit, auditFlush, getAuditPage } from "../src/lib/server/audit.ts";
 import { mayReceiveMarketingSms } from "../src/lib/server/marketing/consent.ts";
-import { contactNumberVerdict, contactOperatorChip, contactTypingLine, governingPaste } from "../src/lib/contacts/contact-number.ts";
 import {
-  addContact, editContact, lookupContactNumber, contactAddReply, newContactRow, findEditableContact,
+  contactNumberVerdict, contactOperatorChip, contactTypingLine, governingPaste, contactNumberTooLong, CONTACT_PASTE_TOO_LONG,
+} from "../src/lib/contacts/contact-number.ts";
+import {
+  addContact, editContact, lookupContactNumber, contactAddReply, newContactRow, findEditableContact, cleanRawInput,
   CONTACT_DUPLICATE, CONTACT_ERASED, CONTACT_MISSING, CONTACT_STALE,
 } from "../src/lib/server/contacts/contact-write.ts";
 import type { ContactAddRequest, ContactAddResult, ContactEditRequest, ContactEditResult } from "../src/lib/server/contacts/contact-write.ts";
 import { loadContactEdit, contactEditView } from "../src/app/admin/contacts/contacts-loader.ts";
 import { contactsHref, contactsLinkSp, contactsClearFiltersHref } from "../src/app/admin/contacts/contacts-query.ts";
-import { CONSENT_LABEL, CONTACTS_EMPTY } from "../src/app/admin/contacts/contacts-copy.ts";
+import {
+  CONSENT_LABEL, CONTACTS_EMPTY, CONTACT_FORM, CONTACT_ADDED_FILTERED, CONTACT_NOTHING_TO_SAVE, CONTACT_ROLE_REFUSAL,
+  CONTACT_LOOKUP_RATE_LIMITED, CONTACT_LOOKUP_FALLBACK, CONTACT_ADD_FALLBACK, CONTACT_EDIT_FALLBACK, contactAddedWho,
+  contactSavedTitle, contactRangeDisputedTitle,
+} from "../src/app/admin/contacts/contacts-copy.ts";
 import { SENSITIVE_FIELDS, maskEmail } from "../src/lib/server/sensitive-fields.ts";
 import { parseTzNumber, TZ_MOBILE_NDCS, TZ_OPERATORS } from "../src/lib/tz-msisdn.ts";
 import { normalizeTzLocalDigits, maskPhone } from "../src/lib/phone-normalize.ts";
-import { CONTACT_LIMITS, NAME_HAS_PHONE_SENTENCE, NAME_TOO_LONG_SENTENCE, splitTags } from "../src/lib/contacts/contact-fields.ts";
+import {
+  CONTACT_LIMITS, NAME_HAS_PHONE_SENTENCE, NAME_TOO_LONG_SENTENCE, EMAIL_SHAPE_SENTENCE, TAG_HAS_PHONE_SENTENCE, contactFormProblems, splitTags,
+} from "../src/lib/contacts/contact-fields.ts";
 import { ERASURE_EVIDENCE } from "../src/lib/marketing/erasure-mark.ts";
 
 const PROVE_RED = process.argv.includes("--prove-red");
+/** vb7 review · the line break the source plants splice with, built from its code. */
+const LF = String.fromCharCode(10);
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 
 const read = (rel: string) => decomment(readFileSync(join(ROOT, rel), "utf8")).replace(/\r\n/g, "\n");
@@ -61,6 +75,8 @@ const rawRead = (rel: string) => readFileSync(join(ROOT, rel), "utf8").replace(/
 type Sources = {
   actions: string; actionsRaw: string; form: string; page: string; loading: string; write: string;
   number: string; phone: string; phoneRaw: string; registry: string; rate: string; cgs: string; pkg: string;
+  /** vb7 review m5a · the unsaved-changes gate, whose exemption list must no longer name the dialog. */
+  unsaved: string;
 };
 const REAL_SOURCES: Sources = {
   actions: read("src/app/admin/contacts/contact-form-actions.ts"),
@@ -75,6 +91,7 @@ const REAL_SOURCES: Sources = {
   registry: read("src/lib/server/sensitive-fields.ts"),
   rate: read("src/lib/server/rate-limit.ts"),
   cgs: read("scripts/client-graph-safe.test.mjs"),
+  unsaved: read("scripts/unsaved-changes.test.mts"),
   pkg: rawRead("package.json"),
 };
 
@@ -188,6 +205,8 @@ const N = {
   edit: "0713 000 555",
   mail: "0713 000 556",
   sameMs: "0713 000 557",
+  still: "0713 000 558",
+  hidden: "0713 000 559",
 } as const;
 
 const bare = (local: string): string => {
@@ -259,6 +278,10 @@ async function seedFixtures(): Promise<void> {
   }));
   await db.marketingContact.create(literalRow("mc_u22_mail", N.mail, { displayName: "Mail", email: "keep@example.com" }));
   await db.marketingContact.create(literalRow("mc_u22_ms", N.sameMs, { displayName: "Same ms", createdAt: NOW.toISOString(), updatedAt: NOW.toISOString() }));
+  // vb7 · a row an edit can leave exactly as it is (4.7).
+  await db.marketingContact.create(literalRow("mc_u22_still", N.still, { displayName: "Still", notes: "kept", tags: ["a", "b"] }));
+  // vb7 review M1 · a row whose email a masked officer cannot see (4.8).
+  await db.marketingContact.create(literalRow("mc_u22_hidden", N.hidden, { displayName: "Hidden", email: "secret@example.com" }));
 }
 
 /** The book's region of a source, from an opener to its matching close brace (or "" when absent). */
@@ -291,6 +314,7 @@ const L = {
   v5b: "1.5b · ⛔ a paste MERGED into digits already in the box never governs — the box's own number is what the lookup and the save get — while a paste that made the whole field still does (the U22 review)",
   v6: "1.6 · the four spellings of one number give one verdict: the same stage, digits, chip and sentence",
   v7: "1.7 · every refusal is a person's sentence: non-empty, ending in a full stop, never a code",
+  v8: "1.8 · ⛔ vb7 · a paste longer than any phone number is REFUSED before the lookup: 41 characters holding a valid number — and a sentence with a number in it — read CONTACT_PASTE_TOO_LONG and never ok (the lookup runs on ok alone), while a 40-character spaced number still parses (CONTROL: the 41 characters' own digits are a valid number)",
   c1: "2.1 · ⭐ THE FORM RECORDS NO CONSENT: a new number reads UNKNOWN, the ledger gains ZERO rows, and the send gate refuses it no_consent (EXECUTED)",
   c2: "2.2 · ⛔ the client cannot smuggle a consent, a link, a source, a reference, an import, a stop or a number: the row is OPERATOR, unlinked, mirrored, and keyed by the number it parsed",
   c3: "2.3 · ⭐ THE CACHE MIRRORS THE LEDGER AND THE STOP LIST: a number whose ledger says WITHDRAWN behind an active stop is added reading WITHDRAWN, suppressed at the stop's own time (CONTROL: a clean number reads UNKNOWN, unsuppressed)",
@@ -303,17 +327,20 @@ const L = {
   d3: "3.3 · 🔴 D19 · the lookup says nothing else: exactly three keys for every answer, and a player's number answers exactly like a stranger's, in the book and out of it",
   d4: "3.4 · ⛔ C3 · an ERASED number is refused with one sentence and NO id — by the lookup and by the save — and nothing is written",
   d5: "3.5 · the server refuses what the dialog might not: 064 and a landline with parseTzNumber's own sentence, a 121-character name, a bad email, a 33-character tag and (vb5) a short name holding a phone number — told THAT, never the length sentence — each naming its field and writing nothing (CONTROL: 120 characters pass)",
+  d6: "3.6 · ⛔ vb7 · the server holds the same length: a 41-character raw number is refused invalid_number on the number field in the paste sentence and nothing is written; a NUL, a tab and a zero-width space in a raw number are kept out of rawInput (cleanRawInput) while the number is still saved",
   e1: "4.1 · the edit writes ONLY the name, email, notes and tags (and the stamp): the number, source, sourceRef, link, caches, import and provenance are untouched",
   e2: "4.2 · ⭐ COMPARE-AND-SET: two saves on one token — the first lands, the second is refused as stale, and the row holds the first",
   e3: "4.3 · an unknown id is MISSING, and a malformed one is missing without the store being read",
   e4: "4.4 · ⛔ A1.7 · an ERASED row is MISSING to the edit: refused, and the row is left exactly as it was",
   e5: "4.5 · the email: null keeps the stored address, text replaces it (lower case), \"\" removes it",
   e6: "4.6 · ⭐ C25 · an edit in the same millisecond as the row's stamp still moves updatedAt, so the old token is refused",
+  e8: "4.8 · ⛔ vb7 review M1 · NO ORACLE ON A HIDDEN EMAIL: a stale token is refused FIRST — before anything typed is compared with the row — and a submitted email ALWAYS counts as changed and is written: a stale save carrying the RIGHT guess is “stale” (never a quiet “nothing changed”), and with the current token the right guess and a wrong one answer alike — ok, [email], the stamp moved, one contacts.contact.edited row each",
+  e7: "4.7 · ⭐ vb7 · an edit that changes nothing WRITES NOTHING: ok with no field changed, updatedAt and updatedBy untouched, no contacts.contact.edited row — while a real edit answers the fields it changed, in the dialog's order, and the toast says them (\"Contact saved — name and tags updated.\")",
   l1: "5.1 · ⛔ A1.7 · ?edit= of the erased fixture is MISSING — the dialog never opens on an erased person's row (an unknown id reads the same; a live row opens)",
   l2: "5.2 · 🔴 A1.1 · the edit view carries no number and no email, and the consent and the source ONLY for a reader",
   l3: "5.3 · 🔴 A1.1 · a masked viewer adding a seeded player's number reads no consent: the reply has no consent key and no \"Given\", a reader's carries the mirror, and the action and the form go through that reply",
   l4: "5.4 · no ?edit= is no dialog read, and a read that fails is FAILED — never missing",
-  s1: "6.1 · ⛔ THE ACTIONS ARE GATED: the file opens \"use server\", and each of its three actions opens with softRequireStaff(\"growth\", …) and returns the refusal before the rate rule, the service or the store",
+  s1: "6.1 · ⛔ THE ACTIONS ARE GATED: the file opens \"use server\", and each of its three actions opens with its staff guard on \"growth\" — softRequireStaff for add and edit, softCheckStaff for the lookup (vb7) — and returns the refusal before the rate rule, the service or the store",
   s2: "6.2 · per-officer rate rules: contacts.write and contacts.lookup are declared, and each action spends its own on the officer as a string literal, refusing in words",
   s3: "6.3 · ⛔ every field re-typed: the actions name each field (text(body.x)) — never a spread of what the browser sent — and only a landed change revalidates the list",
   s4: "6.4 · ⛔ NO CONSENT CONTROL: the form states \"Not recorded\" and the form's sentence, has no consent input of any kind, and neither request carries a consent key",
@@ -325,8 +352,13 @@ const L = {
   s9: "6.9 · the copy tells the truth: the empty book names Add contact and promises no import, and the loading ghost reserves the head's 40px button box",
   s10: "6.10 · ⭐ M5 · contactEmail is a registry field of its own: identity.contact, the MarketingContact target, masked like email, re-read by contact id (EXECUTED)",
   s11: "6.11 · PhoneInput's three props are ADDITIVE: the ref forwarded to the visible input, onPasteRaw heard before the strip, a caller's title winning — the hidden carrier still only with a name, the formatter's import line intact",
-  s12: "6.12 · contact-number.ts is pure and pinned: no directive, it imports only tz-msisdn and phone-normalize, and test:client-graph-safe pins it",
+  s12: "6.12 · contact-number.ts is pure and pinned: no directive, it imports only tz-msisdn, phone-normalize and (vb7) contact-fields, and test:client-graph-safe pins it",
   s13: "6.13 · the suite is wired: test:contacts-form and red:contacts-form exist, and predeploy runs test:contacts-form right after test:contacts-page",
+  s14: "6.14 · ⭐ vb7 · the dialog runs the shared rule LIVE: contactFormProblems for every field at once (EXECUTED: a bad email plus a bad tag are two sentences, each on its own field, before any server call), the email said once its box is left, counters for the name, the notes and the tags outside the Field so they stay beside an error, Save held until something changed and every field is within its rule — EVERY problem that holds it the stated reason, the email's too before its box is left (review m6) — and the number box red and aria-invalid on a refused number, described by an id'd verdict line that is not itself live",
+  s15: "6.15 · vb7 · the dialog's honesty: the four optional fields carry the kit's optional mark (never typed into a label, §A7), no box has a maxLength at all (review m7: it counts UTF-16 units, the rules count characters — 121 emoji are refused, never cut to 120), every box is read-only for a view-only officer with the reason on screen, ✕ and Cancel ask before typing is thrown away, a field's refusal is the factual toast, the added toast names the contact (and a narrowed list), the saved toast names the fields, and the 060 chip speaks plain words (the copy EXECUTED)",
+  s17: "6.17 · ⛔ vb7 review m3 · a number check REFUSED FOR THE 2-STEP SIGN-IN holds Save: the lookup's refusal is marked secondFactor (the actions' Refused type carries it), the dialog keeps it as a state of its own — the factor's sentence on the number's line with Check again, the same sentence in Save's visible reason — and Save stays off, so it never meets the step-up redirect that would lose the typing (the two sentences are rbac 15.2's)",
+  s18: "6.18 · ⛔ vb7 review m5a · the dialog is GUARDED as every typed form is: <UnsavedChangesGuard> asks before a link or the tab leaves typed fields — the four free fields only, so typing just the number and following the duplicate's “Open the existing contact” asks nothing — and test:unsaved-changes no longer lists the file as exempt; ✕ and Cancel keep the dialog's own ask",
+  s16: "6.16 · ⛔ vb7 · THE LOOKUP NEVER REDIRECTS FOR THE 2-STEP SIGN-IN: lookupContactNumberAction opens with softCheckStaff — the role check and its SECURITY audit kept, a second factor that lapsed or was never set up refused in words (test:rbac §15 executes the guard; no session at all still goes to sign in) — while add and edit keep softRequireStaff and its step-up; the lookup's rate refusal is a number check's own sentence, and every failure names its next step",
 } as const;
 
 const VECTORS = ["712345678", "754000111", "621000222", "601234567", "641234567", "221234567", "911234567", "301234567", "411234567", "801234567", "501234567"];
@@ -374,7 +406,7 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
     });
     await check(p(L.v5b), () => {
       const whole = impl.paste("+254712345678", "254712345"); // an empty box: the paste made the field
-      const merged = impl.paste("+255 755 000 111", "712345678"); // the box held 712 345 678 — the paste merged, capped at 9
+      const merged = impl.paste("345", "712345678"); // the box held 712 678 — a short paste merged at the caret
       const tail = impl.paste("12 345 678", "712345678"); // typed 7, then pasted the rest: the box is whole, the paste is not
       const none = impl.paste(null, "712345678");
       return [whole === "+254712345678" && merged === null && tail === null && none === null,
@@ -393,6 +425,19 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
       const bad = refusals.filter((v) => typeof v.sentence !== "string" || v.sentence.trim().length < 12 || !v.sentence.trim().endsWith(".")
         || /^[a-z_]+$/.test(v.sentence) || /\b(?:too_short|too_long|unallocated_prefix|not_a_number)\b/.test(v.sentence));
       return [refusals.length >= 8 && bad.length === 0, `${refusals.length} refusals, ${bad.length} not a sentence`];
+    });
+    await check(p(L.v8), () => {
+      const at40 = "0712" + " ".repeat(29) + "345 678";
+      const at41 = "0712" + " ".repeat(30) + "345 678";
+      const sentence = "Amina Juma, Mlimani City stand, 0712 345 678";
+      const v41 = impl.verdict({ value: normalizeTzLocalDigits(at41), pasted: at41 });
+      const vSentence = impl.verdict({ value: normalizeTzLocalDigits(sentence), pasted: sentence });
+      const v40 = impl.verdict({ value: normalizeTzLocalDigits(at40), pasted: at40 });
+      const lookupOnOk = impl.sources.form.includes('if (!isAdd || verdict.stage !== "ok") return;');
+      return [at40.length === 40 && at41.length === 41 && v41.stage === "refused" && v41.sentence === CONTACT_PASTE_TOO_LONG
+        && vSentence.stage === "refused" && vSentence.sentence === CONTACT_PASTE_TOO_LONG && v40.stage === "ok"
+        && parseTzNumber(at41).verdict === "ok" && contactNumberTooLong(at41) && !contactNumberTooLong(at40) && lookupOnOk,
+        `41 → ${v41.stage}: ${v41.sentence} · the sentence → ${vSentence.stage} · 40 → ${v40.stage} · lookup on ok alone ${lookupOnOk}`];
     });
 
     /* ── §2 · THE CREATE ──────────────────────────────────────────────────────────────────────────── */
@@ -538,6 +583,22 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
         [...refused, long, exact, mail, tagged, phoned].map((r) => (r.ok ? "ok" : `${r.reason}:${"field" in r ? r.field : ""}`)).join(" | ")
           + ` · the phone-number name is told: ${phoned.ok ? "SAVED" : phoned.error}`];
     });
+    await check(p(L.d6), async () => {
+      const at41 = "0713" + " ".repeat(30) + "440 007";
+      const long = await impl.add(req(at41), OFFICER, NOW);
+      const NUL = String.fromCharCode(0);
+      const TAB = String.fromCharCode(9);
+      const ZWSP = String.fromCharCode(0x200b);
+      const dirty = `0713${NUL}440${TAB}008${ZWSP}`;
+      const saved = await impl.add(req(dirty), OFFICER, NOW);
+      const row = saved.ok ? await db.marketingContact.find(saved.id) : null;
+      const raw = row?.rawInput ?? "";
+      const clean = ![...raw].some((c) => c.charCodeAt(0) < 32 || c === ZWSP);
+      return [at41.length === 41 && !long.ok && long.reason === "invalid_number" && long.field === "number" && long.error === CONTACT_PASTE_TOO_LONG
+        && (await db.marketingContact.findByMsisdn(bare("0713 440 007"))) === null
+        && saved.ok && row !== null && row.msisdn === bare("0713 440 008") && clean && raw === "0713440 008" && cleanRawInput(dirty) === raw,
+        `41 → ${long.ok ? "SAVED" : `${long.reason}: ${long.error}`} · raw kept ${JSON.stringify(raw)} · clean ${clean}`];
+    });
 
     /* ── §4 · THE EDIT ────────────────────────────────────────────────────────────────────────────── */
     const FIXED: (keyof StoredMarketingContact)[] = ["msisdn", "rawInput", "ndc", "operator", "source", "sourceRef", "userId", "consentState", "suppressedAt", "importId", "createdAt", "createdBy"];
@@ -599,6 +660,51 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
       return [a.ok && s1 !== null && Date.parse(s1.updatedAt) === Date.parse(s0.updatedAt) + 1 && !b.ok && b.reason === "stale" && s2?.displayName === "A",
         `${s0.updatedAt} → ${s1?.updatedAt} · second ${b.ok ? "ok" : b.reason}`];
     });
+    await check(p(L.e7), async () => {
+      const s0 = await db.marketingContact.find("mc_u22_still");
+      if (!s0) return [false, "no fixture"];
+      const editedRows = async () => {
+        await auditFlush();
+        return getAuditPage({ limit: 1000 }).filter((e) => e.targetId === "mc_u22_still" && e.action === "contacts.contact.edited").length;
+      };
+      const rows0 = await editedRows();
+      // The same values, spelled differently: a padded name, the tags in another case — they clean to what is stored.
+      const same = await impl.edit(editReq("mc_u22_still", s0.updatedAt, { displayName: " Still ", notes: "kept", tags: "A, b" }), OTHER_OFFICER, LATER);
+      const s1 = await db.marketingContact.find("mc_u22_still");
+      const rows1 = await editedRows();
+      const real = await impl.edit(editReq("mc_u22_still", s1?.updatedAt ?? "", { displayName: "Still Here", notes: "kept", tags: "a, b, c" }), OFFICER, LATER);
+      const rows2 = await editedRows();
+      return [same.ok && same.changed.length === 0 && s1 !== null && s1.updatedAt === s0.updatedAt && s1.updatedBy === s0.updatedBy && rows1 === rows0
+        && real.ok && JSON.stringify(real.changed) === JSON.stringify(["displayName", "tags"]) && rows2 === rows0 + 1
+        && contactSavedTitle(real.changed) === "Contact saved — name and tags updated." && contactSavedTitle([]) === CONTACT_NOTHING_TO_SAVE
+        && contactSavedTitle(["notes"]) === "Contact saved — notes updated.",
+        `same → ${same.ok ? `ok [${same.changed}]` : same.reason}, stamp ${s0.updatedAt} → ${s1?.updatedAt}, audit rows ${rows0}→${rows1} · real → ${real.ok ? `[${real.changed}]` : real.reason}, rows → ${rows2}`];
+    });
+
+    await check(p(L.e8), async () => {
+      const h0 = await db.marketingContact.find("mc_u22_hidden");
+      if (!h0) return [false, "no fixture"];
+      const editedRows = async () => {
+        await auditFlush();
+        return getAuditPage({ limit: 1000 }).filter((e) => e.targetId === "mc_u22_hidden" && e.action === "contacts.contact.edited").length;
+      };
+      const rows0 = await editedRows();
+      // A STALE token carrying the right guess and nothing else changed — the old order answered "nothing changed".
+      const staleRight = await impl.edit(editReq("mc_u22_hidden", "2026-01-01T00:00:00.000Z", { displayName: "Hidden", email: "secret@example.com" }), OTHER_OFFICER, LATER);
+      const h1 = await db.marketingContact.find("mc_u22_hidden");
+      // The current token: the right guess, then a wrong one — the same shape of answer each time.
+      const right = await impl.edit(editReq("mc_u22_hidden", h1?.updatedAt ?? "", { displayName: "Hidden", email: " Secret@Example.com " }), OTHER_OFFICER, LATER);
+      const h2 = await db.marketingContact.find("mc_u22_hidden");
+      const rows2 = await editedRows();
+      const wrong = await impl.edit(editReq("mc_u22_hidden", h2?.updatedAt ?? "", { displayName: "Hidden", email: "guess@example.com" }), OTHER_OFFICER, LATER);
+      const h3 = await db.marketingContact.find("mc_u22_hidden");
+      const rows3 = await editedRows();
+      const alike = right.ok && wrong.ok && JSON.stringify(right.changed) === JSON.stringify(["email"]) && JSON.stringify(wrong.changed) === JSON.stringify(["email"]);
+      return [!staleRight.ok && staleRight.reason === "stale" && h1 !== null && h1.updatedAt === h0.updatedAt
+        && alike && h2 !== null && h2.updatedAt !== h1.updatedAt && rows2 === rows0 + 1
+        && h3 !== null && h3.updatedAt !== h2.updatedAt && rows3 === rows0 + 2 && h3.email === "guess@example.com",
+        `stale + right → ${staleRight.ok ? `ok [${staleRight.changed}]` : staleRight.reason} · right → ${right.ok ? `[${right.changed}]` : right.reason} · wrong → ${wrong.ok ? `[${wrong.changed}]` : wrong.reason} · rows ${rows0}→${rows2}→${rows3}`];
+    });
 
     /* ── §5 · THE ?edit= LOADER AND THE ADD REPLY ─────────────────────────────────────────────────── */
     await check(p(L.l1), async () => {
@@ -656,12 +762,13 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
   const ACTIONS = ["lookupContactNumberAction", "addContactAction", "editContactAction"];
   await check(p(L.s1), () => {
     const exported = [...src.actions.matchAll(/^export async function (\w+)\(/gm)].map((m) => m[1]).sort().join(",");
-    const GATE_FIRST = /^\s*const g = await softRequireStaff\("growth", "contacts\.(?:lookup|add|edit)", CONTACT_ROLE_REFUSAL\);\s*if \(!g\.ok\) return g;/;
+    const GATE_FIRST = /^\s*const g = await soft(?:Require|Check)Staff\("growth", "contacts\.(?:lookup|add|edit)", CONTACT_ROLE_REFUSAL\);\s*if \(!g\.ok\) return g;/;
     const gated = ACTIONS.map((n) => {
       const body = actionBody(src.actions, n);
       const firstLine = body.slice(0, body.indexOf("\n"));
       const rest = body.slice(body.indexOf("\n") + 1);
-      return firstLine.trimEnd().endsWith("{") && GATE_FIRST.test(rest) && rest.indexOf("softRequireStaff(") < rest.indexOf("rateCheckAsync(") ? null : n;
+      const gateAt = rest.search(/soft(?:Require|Check)Staff\(/);
+      return firstLine.trimEnd().endsWith("{") && GATE_FIRST.test(rest) && gateAt >= 0 && gateAt < rest.indexOf("rateCheckAsync(") ? null : n;
     }).filter((n) => n !== null);
     return [src.actionsRaw.startsWith("\"use server\";") && exported === [...ACTIONS].sort().join(",") && gated.length === 0,
       `exported [${exported}] ungated [${gated}]`];
@@ -672,7 +779,9 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
     const spends = /rateCheckAsync\(g\.userId, "contacts\.lookup"\)/.test(actionBody(src.actions, "lookupContactNumberAction"))
       && /rateCheckAsync\(g\.userId, "contacts\.write"\)/.test(actionBody(src.actions, "addContactAction"))
       && /rateCheckAsync\(g\.userId, "contacts\.write"\)/.test(actionBody(src.actions, "editContactAction"));
-    const inWords = (src.actions.match(/if \(!rate\.allowed\) return \{ ok: false, error: CONTACT_RATE_LIMITED\(rate\.retryAfterSec\) \};/g) ?? []).length === 3;
+    // vb7 · the lookup's refusal is a number check's own sentence; add and edit keep the contacts one.
+    const inWords = (src.actions.match(/if \(!rate\.allowed\) return \{ ok: false, error: CONTACT_RATE_LIMITED\(rate\.retryAfterSec\) \};/g) ?? []).length === 2
+      && (src.actions.match(/if \(!rate\.allowed\) return \{ ok: false, error: CONTACT_LOOKUP_RATE_LIMITED\(rate\.retryAfterSec\) \};/g) ?? []).length === 1;
     return [declared && spends && inWords, `declared ${declared} · spends ${spends} · in words ${inWords}`];
   });
   await check(p(L.s3), () => {
@@ -714,7 +823,7 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
   await check(p(L.s6b), () => {
     const form = src.form;
     return [(form.match(/\buseMayAct\(\)/g) ?? []).length >= 2 && /const canSave = !pending && mayAct && /.test(form)
-      && /disabled=\{pending \|\| !mayAct\}/.test(form) && /disabled=\{!canSave\}[^>]*title=\{mayAct \? undefined : actReason\}/.test(form),
+      && /disabled=\{pending \|\| !mayAct\}/.test(form) && /disabled=\{!canSave\}[^>]*title=\{mayAct \? saveTitle : actReason\}/.test(form),
       `useMayAct ×${(form.match(/\buseMayAct\(\)/g) ?? []).length} · canSave gated ${/const canSave = !pending && mayAct && /.test(form)}`];
   });
   await check(p(L.s7), () => {
@@ -783,7 +892,7 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
   });
   await check(p(L.s12), () => {
     const specs = [...src.number.matchAll(/^import\s[^;]*?from\s+"([^"]+)";/gm)].map((m) => m[1]);
-    return [specs.length >= 2 && specs.every((s) => s === "../tz-msisdn" || s === "../phone-normalize") && !/"use (?:client|server)"/.test(src.number)
+    return [specs.length >= 2 && specs.every((s) => s === "../tz-msisdn" || s === "../phone-normalize" || s === "./contact-fields") && !/"use (?:client|server)"/.test(src.number)
       && /^\s*"lib\/contacts\/contact-number\.ts",/m.test(src.cgs), `imports [${specs}]`];
   });
   await check(p(L.s13), () => {
@@ -792,6 +901,93 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
       && scripts["red:contacts-form"] === "tsx scripts/contacts-form.test.mts --prove-red"
       && (scripts.predeploy ?? "").includes("npm run test:contacts-page && npm run test:contacts-form &&"),
       `${scripts["test:contacts-form"]} · ${scripts["red:contacts-form"]}`];
+  });
+  await check(p(L.s14), () => {
+    const form = src.form;
+    // EXECUTED · the rule the dialog asks live: a bad email AND a bad tag are two sentences, each naming its own field.
+    const two = contactFormProblems({ displayName: "Asha", email: "not-an-address", notes: "", tags: "vip, (0712) 345 678" });
+    const twoOk = two.length === 2 && two[0].field === "email" && two[0].sentence === EMAIL_SHAPE_SENTENCE
+      && two[1].field === "tags" && two[1].sentence === TAG_HAS_PHONE_SENTENCE;
+    const live = form.includes("const problems = contactFormProblems({ displayName: name, email: typedMail, notes, tags });")
+      && (form.match(/onBlur=\{\(\) => setMailTouched\(true\)\}/g) ?? []).length === 2
+      && form.includes('const shownProblems = problems.filter((p) => p.field !== "email" || mailTouched);')
+      && form.includes("contactCharacterCount(nameUsed, NAME_MAX)") && form.includes("contactCharacterCount(notesUsed, NOTES_MAX)")
+      && form.includes("contactTagsCount(tagsUsed, TAGS_MAX)") && (form.match(/<FieldCount /g) ?? []).length === 3;
+    // review m6 · the reason names EVERY problem that holds Save — the email's while its box is still being typed in.
+    const typing = contactFormProblems({ displayName: "Asha", email: "asha@", notes: "", tags: "" });
+    const save = /const canSave = !pending && mayAct && dirty && firstProblem === null && /.test(form)
+      && form.includes('const blockers = [...(asked !== null && asked.state === "factor" ? [asked.sentence] : []), ...problems.map((p) => p.sentence)];')
+      && form.includes('const saveReason = !mayAct ? (actReason ?? null) : blockers.length > 0 ? blockers.join(" ") : null;')
+      && form.includes('const saveTitle = blockers.length > 0 ? blockers.join(" ") : undefined;') && !form.includes("shownProblems[0]")
+      && typing.length === 1 && typing[0].field === "email" && typing[0].sentence === EMAIL_SHAPE_SENTENCE;
+    const number = form.includes('error={verdict.stage === "refused" || errorAt("number") !== undefined}')
+      && form.includes("aria-describedby={numberLineId}") && /<NumberVerdictLine\s+id=\{numberLineId\}/.test(form)
+      && /<div\s+id=\{id\}[^>]*data-number-verdict/.test(form) && !/aria-live="polite"\s+data-number-verdict/.test(form)
+      && form.includes('<p className="sr-only" aria-live="polite" data-number-announce>{announce}</p>');
+    return [twoOk && live && save && number, JSON.stringify({ twoOk, live, save, number })];
+  });
+  await check(p(L.s15), () => {
+    const form = src.form;
+    // §A7 · the optional mark is the kit Field's own prop (t.common.optional, three languages) — never typed into a label.
+    const plain = [CONTACT_FORM.nameLabel, CONTACT_FORM.emailLabel, CONTACT_FORM.notesLabel, CONTACT_FORM.tagsLabel];
+    const labels = plain.every((l) => !l.includes("optional"))
+      && ["nameLabel", "emailLabel", "notesLabel", "tagsLabel"].every((k) => form.includes(`label={CONTACT_FORM.${k}} optional`))
+      && form.includes("{t.common.optional}")
+      && !CONTACT_FORM.numberLabel.includes("optional");
+    // review m7 · no box has a maxLength: a cap counts UTF-16 units — 121 emoji are 242 of them — while the rule counts
+    // characters, so the rule refuses what a cap would have cut to an accepted 120 (EXECUTED).
+    const emoji = String.fromCodePoint(0x1f600).repeat(121);
+    const longName = contactFormProblems({ displayName: emoji, email: "", notes: "", tags: "" });
+    const noCut = !/maxLength=/.test(form) && !form.includes("BOX_MAX") && emoji.length === 242
+      && longName.length === 1 && longName[0].field === "displayName" && longName[0].sentence === NAME_TOO_LONG_SENTENCE;
+    const readOnly = (form.match(/readOnly=\{!mayAct\}/g) ?? []).length === 6
+      && form.includes('<p id={saveReasonId} className="text-body-sm text-text-secondary" data-save-reason>{saveReason}</p>');
+    const discard = /const close = \(\) => \{\s*if \(pending\) return;\s*if \(dirty\) \{\s*setAsking\(true\);/.test(form)
+      && form.includes("{CONTACT_FORM.discardAsk}") && form.includes("onClick={onClose}") && form.includes("{CONTACT_FORM.keepEditing}");
+    const toasts = form.includes('variant: field !== null ? "factual" : "danger"') && form.includes("contactAddedWho(addedName, lastTwo)")
+      && form.includes("filtered ? CONTACT_ADDED_FILTERED : null") && form.includes('deferToast({ title: contactSavedTitle(r.changed), variant: "success" });')
+      && form.includes("contactRangeDisputedTitle(chip.brand)");
+    const words = contactAddedWho(null, "78") === "A contact with no name (number ending 78) is in the book."
+      && contactAddedWho("Asha", "01") === "Asha (number ending 01) is in the book."
+      && contactRangeDisputedTitle("Airtel") === "Airtel's newest range — accepted, though the regulator's plan doesn't list it yet."
+      && CONTACT_ADDED_FILTERED === "It may be outside the current filter.";
+    return [labels && noCut && readOnly && discard && toasts && words, JSON.stringify({ labels, noCut, readOnly, discard, toasts, words })];
+  });
+  await check(p(L.s17), () => {
+    const form = src.form;
+    const marked = src.actions.includes("type Refused = { ok: false; error: string; field?: string; secondFactor?: true };");
+    const kept = form.includes('if (!r.ok) return r.secondFactor === true ? { state: "factor", text, sentence: r.error } : { state: "unknown", text, sentence: r.error };')
+      && form.includes('| { state: "factor"; text: string; sentence: string };');
+    const held = /asked\.state !== "refused"\s*&& asked\.state !== "factor"/.test(form)
+      && form.includes('const blockers = [...(asked !== null && asked.state === "factor" ? [asked.sentence] : []), ...problems.map((p) => p.sentence)];');
+    const said = /asked\.state === "factor"\) \{[\s\S]{0,240}?text-danger-fg">\{asked\.sentence\}<\/span>[\s\S]{0,240}?onClick=\{onRecheck\}/.test(form)
+      && form.includes("}, [isAdd, verdict.stage, numberText, checkRound]);") && CONTACT_FORM.checkAgain === "Check again";
+    return [marked && kept && held && said, JSON.stringify({ marked, kept, held, said })];
+  });
+  await check(p(L.s18), () => {
+    const form = src.form;
+    const guard = form.includes('import { UnsavedChangesGuard } from "@/components/ui/unsaved-changes";')
+      && form.includes("<UnsavedChangesGuard dirty={open && fieldsTyped} body={CONTACT_FORM.unsavedBody} />")
+      && form.includes('const fieldsTyped = isAdd ? name !== "" || mail !== "" || notes !== "" || tags !== "" : dirty;')
+      && CONTACT_FORM.unsavedBody.length > 20;
+    const unexempt = src.unsaved.includes("const EXEMPT: Record<string, string> = {") && !src.unsaved.includes('"app/admin/contacts/contact-form.tsx":');
+    return [guard && unexempt, JSON.stringify({ guard, unexempt })];
+  });
+  await check(p(L.s16), () => {
+    const lookup = actionBody(src.actions, "lookupContactNumberAction");
+    const add = actionBody(src.actions, "addContactAction");
+    const edit = actionBody(src.actions, "editContactAction");
+    const gates = /const g = await softCheckStaff\("growth", "contacts\.lookup", CONTACT_ROLE_REFUSAL\);/.test(lookup) && !/softRequireStaff\(/.test(lookup)
+      && /const g = await softRequireStaff\("growth", "contacts\.add", CONTACT_ROLE_REFUSAL\);/.test(add)
+      && /const g = await softRequireStaff\("growth", "contacts\.edit", CONTACT_ROLE_REFUSAL\);/.test(edit)
+      && src.actions.includes('import { softCheckStaff, softRequireStaff } from "@/lib/server/rbac-guard";');
+    const words = lookup.includes("CONTACT_LOOKUP_RATE_LIMITED(rate.retryAfterSec)") && lookup.includes("safeError(err, CONTACT_LOOKUP_FALLBACK)")
+      && add.includes("safeError(err, CONTACT_ADD_FALLBACK)") && edit.includes("safeError(err, CONTACT_EDIT_FALLBACK)")
+      && CONTACT_LOOKUP_RATE_LIMITED(30) === "Too many number checks — wait 30 seconds, then try again."
+      && CONTACT_LOOKUP_FALLBACK === "Checking the number failed — you can still save; the book refuses a duplicate."
+      && CONTACT_ADD_FALLBACK === "Saving the contact failed — it may not have saved. Reload the book to check before adding it again."
+      && CONTACT_EDIT_FALLBACK.startsWith("Saving the changes failed") && CONTACT_ROLE_REFUSAL.endsWith("ask an officer with Growth access.");
+    return [gates && words, JSON.stringify({ gates, words })];
   });
 }
 
@@ -1140,6 +1336,126 @@ if (!PROVE_RED) {
           const base = contactsHref(sp, patch);
           const e = Array.isArray(sp.edit) ? sp.edit[0] : sp.edit;
           return e && !base.includes("edit=") ? `${base}${base.includes("?") ? "&" : "?"}edit=${encodeURIComponent(e)}` : base;
+        },
+      },
+    },
+
+    /* ── vb7 · validation batch 7, each on its own assertion ── */
+    {
+      name: "vb7 · a long paste judged only by the digits read out of it — the 41-character paste holding a number is ok",
+      expect: L.v8,
+      impl: { ...REAL, verdict: (input) => contactNumberVerdict({ ...input, pasted: typeof input.pasted === "string" && input.pasted.length > 40 ? null : input.pasted }) },
+    },
+    {
+      name: "vb7 · the server parses a long raw number for the digits inside it — the paste is saved, its raw text cut",
+      expect: L.d6,
+      impl: { ...REAL, add: (request, officerId, now) => addContact({ ...request, number: request.number.length > 40 ? request.number.replace(/ +/g, " ") : request.number }, officerId, now) },
+    },
+    {
+      name: "vb7 · the raw text kept as typed — a NUL in rawInput, the insert Postgres refuses as \"Saving the contact failed\"",
+      expect: L.d6,
+      impl: {
+        ...REAL,
+        add: async (request, officerId, now = new Date()) => {
+          const r = await addContact(request, officerId, now);
+          if (r.ok) await db.marketingContact.update(r.id, { rawInput: request.number }, now.toISOString());
+          return r;
+        },
+      },
+    },
+    {
+      name: "vb7 · an edit that changes nothing writes anyway — the stamp moves under another officer's open dialog and an empty audit row is written",
+      expect: L.e7,
+      impl: {
+        ...REAL,
+        edit: async (request, officerId, now = new Date()) => {
+          const r = await editContact(request, officerId, now);
+          if (!r.ok || r.changed.length > 0) return r;
+          const at = now.toISOString();
+          await db.marketingContact.update(request.id, { updatedBy: officerId }, at);
+          await audit({ category: "ADMIN", action: "contacts.contact.edited", actorId: officerId, targetType: "MarketingContact", targetId: request.id, payload: { fields: [] } });
+          return { ...r, updatedAt: at };
+        },
+      },
+    },
+    {
+      name: "vb7 · the dialog checks only the number in the browser — name, email, notes and tags wait for Save, one problem a round trip",
+      expect: L.s14,
+      impl: {
+        ...REAL,
+        sources: {
+          ...REAL_SOURCES,
+          form: REAL_SOURCES.form.replace(
+            "const problems = contactFormProblems({ displayName: name, email: typedMail, notes, tags });",
+            "const problems: ReturnType<typeof contactFormProblems> = [];",
+          ),
+        },
+      },
+    },
+    {
+      name: "vb7 · a refused number gets no red box and no aria-invalid — the error prop forgets the verdict",
+      expect: L.s14,
+      impl: {
+        ...REAL,
+        sources: { ...REAL_SOURCES, form: REAL_SOURCES.form.replace('error={verdict.stage === "refused" || errorAt("number") !== undefined}', 'error={errorAt("number") !== undefined}') },
+      },
+    },
+    {
+      name: "vb7 · Edit Save enabled with nothing changed — the save writes anyway and moves the stamp",
+      expect: L.s14,
+      impl: {
+        ...REAL,
+        sources: { ...REAL_SOURCES, form: REAL_SOURCES.form.replace("const canSave = !pending && mayAct && dirty && firstProblem === null && ", "const canSave = !pending && mayAct && ") },
+      },
+    },
+    {
+      name: "vb7 · the silent cut back — the name box cut at 120 characters without a word",
+      expect: L.s15,
+      impl: { ...REAL, sources: { ...REAL_SOURCES, form: REAL_SOURCES.form.replace("value={name}" + LF, "value={name}" + LF + "              maxLength={NAME_MAX}" + LF) } },
+    },
+    /* ── the vb7 review's fixes (2026-10-03), each on its own assertion ── */
+    {
+      name: "vb7 review M1 · the old order — “nothing changed” asked before the token, by value: the right guess at a hidden email is a quiet ok, a wrong one stale",
+      expect: L.e8,
+      impl: {
+        ...REAL,
+        edit: async (request, officerId, now) => {
+          const row = await findEditableContact(request.id);
+          if (row !== null && request.email !== null && String(request.email).trim().toLowerCase() === (row.email ?? "")
+            && request.displayName.trim() === (row.displayName ?? "") && request.notes.trim() === (row.notes ?? "")
+            && JSON.stringify(splitTags(request.tags)) === JSON.stringify(row.tags)) {
+            return { ok: true, id: row.id, updatedAt: row.updatedAt, changed: [] };
+          }
+          return editContact(request, officerId, now);
+        },
+      },
+    },
+    {
+      name: "vb7 review m6 · the reason waits for the email's blur again — Save off while an address is typed, and no word why",
+      expect: L.s14,
+      impl: { ...REAL, sources: { ...REAL_SOURCES, form: REAL_SOURCES.form.replace("...problems.map((p) => p.sentence)];", "...shownProblems.map((p) => p.sentence)];") } },
+    },
+    {
+      name: "vb7 review m3 · a refusal for the 2-step sign-in leaves Save on — Save meets the step-up redirect and the typing is lost",
+      expect: L.s17,
+      impl: { ...REAL, sources: { ...REAL_SOURCES, form: REAL_SOURCES.form.replace('      && asked.state !== "factor"' + LF, "") } },
+    },
+    {
+      name: "vb7 review m5a · the guard watches the number too — typing a number and following the duplicate's link asks to discard",
+      expect: L.s18,
+      impl: { ...REAL, sources: { ...REAL_SOURCES, form: REAL_SOURCES.form.replace("<UnsavedChangesGuard dirty={open && fieldsTyped}", "<UnsavedChangesGuard dirty={open && dirty}") } },
+    },
+    {
+      name: "vb7 · the lookup back on the redirecting guard — a lapsed second factor navigates the console away from the open dialog",
+      expect: L.s16,
+      impl: {
+        ...REAL,
+        sources: {
+          ...REAL_SOURCES,
+          actions: REAL_SOURCES.actions.replace(
+            "const g = await softCheckStaff(\"growth\", \"contacts.lookup\", CONTACT_ROLE_REFUSAL);",
+            "const g = await softRequireStaff(\"growth\", \"contacts.lookup\", CONTACT_ROLE_REFUSAL);",
+          ),
         },
       },
     },

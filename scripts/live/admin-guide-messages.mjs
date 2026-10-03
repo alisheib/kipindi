@@ -254,7 +254,7 @@ export const MESSAGES = [
   { area: "Add / edit contact", message: "A name can be at most 120 characters.", check: "A name can be at most", meaning: "The name is too long.", action: "Shorten it." },
   { area: "Add / edit contact", message: "Notes can be at most 1000 characters.", check: "Notes can be at most", meaning: "The notes are too long.", action: "Shorten them." },
   { area: "Add / edit contact", message: "Someone changed this contact after you opened it, so nothing was saved. Reload to see the latest version, then make your change again.", meaning: "Two people edited the same contact.", action: "Reload, check their change, then make yours." },
-  { area: "Add / edit contact", message: "Your role can view contacts but not add or change them.", meaning: "Your role is view-only here.", action: "Ask an officer with Growth access, or the owner." },
+  { area: "Add / edit contact", message: "Your role can view contacts but not add or change them — ask an officer with Growth access.", meaning: "Your role is view-only here.", action: "Ask an officer with Growth access, or the owner." },
   // ── phone numbers
   { area: "Phone number", message: "A Tanzanian number has nine digits after +255; this one has 8. Check whether some digits were cut off.", check: "Check whether some digits were cut off.", meaning: "A digit or more is missing.", action: "Check the number with the person and type it again." },
   { area: "Phone number", message: "This is an international number outside Tanzania (country code +254…). 50pick sends only to Tanzanian mobile numbers.", check: "50pick sends only to Tanzanian mobile numbers.", meaning: "Only Tanzanian mobiles can be added.", action: "Ask for their Tanzanian mobile number." },

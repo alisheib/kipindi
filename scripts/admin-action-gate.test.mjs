@@ -27,8 +27,10 @@ const ok = (label, cond, extra = "") => {
   if (cond) { pass++; console.log(`  ✓ ${label}`); } else { failures.push(`${label} ${extra}`.trim()); console.log(`  ✗ ${label} ${extra}`); }
 };
 
-/** The gates that answer "may this viewer act". `softRequire*` return a verdict the caller must branch on. */
-const GATE = /\b(requireStaff|requireOwner|requireAdmin|softRequireStaff|softRequireConsole|assertOwner|houseConsoleAudience)\s*\(/;
+/** The gates that answer "may this viewer act". `softRequire*` and `softCheckStaff` return a verdict the caller must
+ *  branch on. ⭐ vb7 (review m8) · `softCheckStaff` is `softRequireStaff` with a lapsed 2-step sign-in refused in words —
+ *  the contact book's number lookup opens with it — so it is a gate here too. */
+const GATE = /\b(requireStaff|requireOwner|requireAdmin|softRequireStaff|softCheckStaff|softRequireConsole|assertOwner|houseConsoleAudience)\s*\(/;
 /**
  * THE SAME QUESTION, ASKED INLINE. Not every gate is a named helper: `_actions/ai-toolkit.ts:34` writes the check out
  * longhand — `currentSession()`, then `db.user.findById(session.userId)`, then `role === "ADMIN" || canAct(role, …)`,
@@ -285,6 +287,8 @@ console.log("\n[admin-action-gate] §3 CONTROL · the scanner catches what it ex
   ok("§3 an action whose gate runs AFTER the read is caught", violation(exportedFunctions(late)[0].body) === "the gate runs AFTER the first data access");
   ok("§3 a correctly gated action is NOT flagged", violation(exportedFunctions(good)[0].body) === null);
   ok("§3 an action that touches no data is NOT flagged", violation(exportedFunctions(inert)[0].body) === null);
+  const softChecked = `export async function look(n: string) { const g = await softCheckStaff("growth", "contacts.lookup", "No."); if (!g.ok) return g; return db.marketingContact.findByMsisdn(n); }`;
+  ok("§3 CONTROL · vb7 · an action that opens with softCheckStaff is gated — it is NOT flagged", violation(exportedFunctions(softChecked)[0].body) === null);
 
   // ── The three shapes that defeated earlier versions of this scanner. Each is a control, not a unit test:
   // every one of them PASSED silently before the review, which is how a guard comes to be trusted while blind. ──

@@ -1384,4 +1384,23 @@ export const MUTATIONS = [
     to: 'page: async (q: { statuses: SmsCampaignStatus[] | null; sort: "created" | "name" | "updated"; dir: "asc" | "desc"; offset: number; limit: number }): Promise<SmsCampaignPage> =>',
     expect: "26.u36.named · the four list reads name their parameter and return types in BOTH twins (never an inline literal) — exported by store.ts, imported by prisma-dal.ts",
   },
+  /* ── §23 · vb7 (review m1) · the bound Remove, all or nothing ─────────────────────────────────────────────────── */
+  {
+    // 🔴 THE CHUNKS OUT OF THEIR TRANSACTION: each delete commits on its own, so a fault at chunk 37 leaves 36 removed.
+    name: "prisma-dal.ts — the bound Remove's chunks leave their ONE transaction",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `      return pc().$transaction(async (tx) => {
+        for (let i = 0; i < ids.length; i += CONTACT_BULK_CHUNK) {`,
+    to: `      return (async (tx = pc()) => {
+        for (let i = 0; i < ids.length; i += CONTACT_BULK_CHUNK) {`,
+    expect: "23.bound.prisma · ⛔ vb7 · the Prisma bound remove runs EVERY chunk inside ONE interactive transaction with a timeout — each chunk one count and one deleteMany on the transaction's own client, inside the translated where AND that chunk's ids — so a fault at any chunk removes nobody; a where SQL cannot express writes nothing",
+  },
+  {
+    // The memory twin forgets the audience: every confirmed id removed, a row that stopped matching included.
+    name: "store.ts — the memory bound Remove drops the audience and keeps only the ids",
+    file: "src/lib/server/store.ts",
+    from: "memoryDb.marketingContact.removeWhere({ ...w, ids: w.ids === null ? [...ids] : w.ids.filter((id) => ids.includes(id)) })",
+    to: "memoryDb.marketingContact.removeWhere({ ...w, msisdn: null, name: null, tags: null, ids: [...ids] })",
+    expect: "23.bound.memory · ⛔ vb7 · the memory bound remove goes THROUGH removeWhere — the twin's one contact delete, with its cascade, freed index and SET NULL — over the audience narrowed to the given ids (∩ any ids it already holds), never deleting a row itself",
+  },
 ];

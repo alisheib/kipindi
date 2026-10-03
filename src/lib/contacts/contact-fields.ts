@@ -226,7 +226,8 @@ export const CONTACT_FIELDS: readonly ContactFieldSpec[] = [
     maxLength: CONTACT_LIMITS.email,
     vcard: ["EMAIL"],
     samples: ["amina.juma@example.com", "Baraka.M@Example.com", ""],
-    hint: "Optional. Stored in lower case.",
+    // vb7 · the dialog's label carries the kit's optional mark (§A7), so the hint no longer says "Optional." again.
+    hint: "Stored in lower case.",
   },
   {
     key: "tags",

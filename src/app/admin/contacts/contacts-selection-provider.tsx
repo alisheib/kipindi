@@ -13,6 +13,8 @@
  * SAID, never silently dropped, and "select all matching" is the way to more.
  * ⛔ A FILTER CHANGE CLEARS "ALL MATCHING", AND SAYS SO: the stored filter no longer describes the rows on screen. Ticked
  * rows survive it — each is named, and the confirmation lists them from the server.
+ * ⛔ vb7 · SO DOES UNTICKING ONE ROW OF "ALL MATCHING": the selection falls back to this page's other rows, and the bar
+ * says so (`matchingNarrowed`) — it used to drop thousands to a page's worth in silence.
  * ⛔ THIS FILE IMPORTS NO SERVER ACTION: it is state only, which keeps it out of the act gate's population — the gate
  * belongs on the control that SUBMITS (`contacts-bulk-bar.tsx`). Ticking is a READ affordance: a view-only officer ticks.
  * ⚠️ The ticks live in this provider's state, so they survive the page's own soft navigations (the pager, a sort, a pill,
@@ -90,10 +92,11 @@ export function ContactsSelectionProvider({
 
   const toggle = React.useCallback((row: ContactSelectionRow) => {
     if (chosen !== null) {
-      // Unticking one row of "all matching" falls back to this page's rows, less that one.
+      // Unticking one row of "all matching" falls back to this page's rows, less that one — and SAYS so (vb7): the
+      // selection shrank from every matching contact to a page's worth.
       setChosen(null);
       setRows(new Map(pageRows.filter((r) => r.id !== row.id).map((r) => [r.id, r])));
-      setNote(null);
+      setNote(CONTACTS_BULK.matchingNarrowed);
       return;
     }
     const next = new Map(rows);

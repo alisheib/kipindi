@@ -3362,6 +3362,13 @@ const memoryDb = {
       }
       return out;
     },
+    /** vb7 (review m1) · REMOVE every row the audience holds AMONG `ids` — a bulk Remove's confirmed ids — ALL OR
+     *  NOTHING, as the Prisma twin's ONE transaction is. ⭐ Through `removeWhere` itself, so this twin still deletes a
+     *  contact in ONE place (the cascade, the freed index, the campaign SET NULL — `test:dal-parity` §23, §26), over the
+     *  audience narrowed to those ids (∩ any ids it already holds). The rows are chosen in one synchronous pass before
+     *  any is deleted, and nothing in that loop can throw part-way. */
+    removeBoundWhere: (w: ContactAudienceWhere, ids: readonly string[]): ContactBulkCount =>
+      memoryDb.marketingContact.removeWhere({ ...w, ids: w.ids === null ? [...ids] : w.ids.filter((id) => ids.includes(id)) }),
   },
 
   contactList: {

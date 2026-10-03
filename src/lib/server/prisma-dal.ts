@@ -320,6 +320,12 @@ function toPrismaContactWhere(w: ContactAudienceWhere): Prisma.MarketingContactW
  *  bulk write — never one read holding the whole book in memory, never one statement per row. */
 const CONTACT_BULK_CHUNK = 5000;
 
+/** vb7 (review m1) · the longest ONE bulk Remove may hold its transaction. The largest book a bulk can name is the export's
+ *  ceiling, 200,000 rows: forty chunks of CONTACT_BULK_CHUNK, each one count and one delete (the memberships cascade, the
+ *  campaign links SET NULL) — two minutes is generous for that. Running out of it is a fault like any other: rolled back,
+ *  nobody removed, and the run's audit row says so. */
+const CONTACT_BULK_TX_TIMEOUT_MS = 120_000;
+
 /** §25 · the most distinct keys one bulk keyed read takes — the memory twin's `BULK_KEYED_READ_MAX`, the same number
  *  (`test:dal-parity` §25). ⚠️ Not imported from the store: the store imports this module, so a VALUE import back would
  *  be a cycle — the two constants are held equal by the gate instead. */
@@ -4235,6 +4241,25 @@ export const prismaDb = {
       out.matched = await pc().marketingContact.count({ where });
       out.changed = (await pc().marketingContact.deleteMany({ where })).count;
       return out;
+    },
+    /** vb7 (review m1) · REMOVE every row the audience holds AMONG `ids` — a bulk Remove's confirmed ids — ALL OR NOTHING.
+     *  Each chunk is ONE count and ONE `deleteMany` inside the translated where AND the chunk's ids, and EVERY chunk runs in
+     *  ONE interactive transaction on its client (`tx`), so a fault at any chunk rolls the whole Remove back and no
+     *  contact is gone. A row that stopped matching is not deleted (the where still binds); a row that joined is in no
+     *  chunk. The timeout is the largest Remove the book can ask for (`CONTACT_BULK_TX_TIMEOUT_MS`). The memory twin
+     *  mirrors it; `test:dal-parity` §23 holds the pair. */
+    removeBoundWhere: async (w: ContactAudienceWhere, ids: readonly string[]): Promise<ContactBulkCount> => {
+      const out: ContactBulkCount = { matched: 0, changed: 0, unchanged: 0, full: 0 };
+      const where = toPrismaContactWhere(w);
+      if (where === null || ids.length === 0) return out;
+      return pc().$transaction(async (tx) => {
+        for (let i = 0; i < ids.length; i += CONTACT_BULK_CHUNK) {
+          const scoped: Prisma.MarketingContactWhereInput = { AND: [where, { id: { in: ids.slice(i, i + CONTACT_BULK_CHUNK) } }] };
+          out.matched += await tx.marketingContact.count({ where: scoped });
+          out.changed += (await tx.marketingContact.deleteMany({ where: scoped })).count;
+        }
+        return out;
+      }, { timeout: CONTACT_BULK_TX_TIMEOUT_MS, maxWait: 5_000 });
     },
   },
 

@@ -54,7 +54,7 @@ import type {
   ContactPageSort, ContactSource, ContactTagCount, ContactWalk, MarketingContactPresenceQuery, PlayerWalk, PlayerWalkQuery,
 } from "@/lib/server/store";
 import { parseQuery, fieldNames, CONTACT_SEARCH, MAX_QUERY_LEN } from "@/lib/search";
-import type { ParsedQuery } from "@/lib/search";
+import type { ParsedQuery, SearchTerm } from "@/lib/search";
 import { TAG_ONE_AT_A_TIME_SENTENCE, cleanDisplayName, parseFilterTag, scrubPhoneRuns } from "@/lib/contacts/contact-fields";
 import { parseTzNumber, ndcsForOperator, TZ_OPERATORS } from "@/lib/tz-msisdn";
 import type { TzOperatorId } from "@/lib/tz-msisdn";
@@ -741,6 +741,27 @@ function eatLabel(at: string, exclusiveEnd: boolean): string {
 
 const anyOf = (xs: string[]) => (xs.length === 0 ? "none" : xs.join(" or "));
 
+/** One search word as the description quotes it, clipped at 40 characters: the phrase is shown in a line above the table,
+ *  and a long unbroken word would stretch it past the card at 360. */
+const quoteWord = (t: SearchTerm) => `“${t.value.length > 40 ? `${t.value.slice(0, 39)}…` : t.value}”`;
+
+/**
+ * ⛔ vb7 · A NAME SEARCH, SAID FROM WHAT THE GRAMMAR WILL RUN — never echoed as typed. The shared grammar reads `-zzz` as
+ * an EXCLUDED word, so `?q=-zzz` matches nearly the whole book, and it used to be described as "Name contains “-zzz”" —
+ * the opposite of what it did, above a list a bulk action would then write to. Now: every wanted word must appear, in
+ * any order ("Name contains “asha” and “juma”"), a quoted phrase is one phrase, an excluded word is "not" ("Name
+ * contains “asha”, not “juma”"), and a search of excluded words alone says so ("Name doesn't contain “zzz”"). The
+ * grammar lower-cases what it matches, and the description quotes what is matched. Each word is clipped at 40.
+ */
+function describeNameSearch(name: ParsedQuery | null, raw: string): string {
+  if (name === null || name.mode !== "terms") return `Name contains “${raw.length > 40 ? `${raw.slice(0, 39)}…` : raw}”`;
+  const wanted = name.terms.filter((t) => !t.negated).map(quoteWord);
+  const unwanted = name.terms.filter((t) => t.negated).map(quoteWord);
+  if (wanted.length === 0) return `Name doesn't contain ${unwanted.join(" or ")}`;
+  const contains = `Name contains ${wanted.join(" and ")}`;
+  return unwanted.length === 0 ? contains : `${contains}, not ${unwanted.join(" or ")}`;
+}
+
 /** U38a · the population in words — the first phrase whenever it is set. The book (null) says nothing, as before. */
 const POPULATION_WORDS: Record<AudiencePopulation, string> = { players: "Player accounts", both: "Contact book and player accounts" };
 /** The window's verb: a book row is ADDED, an account JOINS (its `createdAt`), and the union says both. */
@@ -748,7 +769,8 @@ const WINDOW_VERB: Record<AudiencePopulation | "book", string> = { book: "Added"
 
 /**
  * The filter in words, one phrase per predicate ("Operator: Vodacom", "Consent: given", "Added 1 Sep 2026 →
- * 8 Sep 2026", "Name contains “asha”", "Number +255••••78"). Brand labels come from `TZ_OPERATORS`.
+ * 8 Sep 2026", "Name contains “asha”", "Name doesn't contain “zzz”", "Number +255••••78"). Brand labels come from
+ * `TZ_OPERATORS`; a name search is said from the terms the grammar runs (`describeNameSearch`, vb7).
  * ⭐ THE describeAudience — the list page renders it above the table now, and U38's confirm screen must reuse it
  * (one implementation). A whole number is always written masked, whoever reads it.
  * 🔴 D19 / A1.1 / OD54 · it says what it is handed, for every role — so a masked viewer is never handed a description
@@ -761,9 +783,9 @@ export function describeAudience(f: ContactAudienceFilter): string[] {
   if (f.population != null) out.push(POPULATION_WORDS[f.population]);
   if (f.q !== null) {
     const s = contactsSearch(f.q);
-    // Clipped to 40 characters: the phrase is shown in a line above the table and a long unbroken word would
-    // stretch it past the card at 360.
-    out.push(s.msisdn !== null ? `Number ${maskPhone(s.msisdn)}` : `Name contains “${f.q.length > 40 ? `${f.q.slice(0, 39)}…` : f.q}”`);
+    // ⛔ vb7 · a whole number is said masked; a name search is said from the terms the grammar runs, each word clipped at
+    // 40 characters (`describeNameSearch`) — never the raw text, which called an excluded word a wanted one.
+    out.push(s.msisdn !== null ? `Number ${maskPhone(s.msisdn)}` : describeNameSearch(s.name, f.q));
   }
   if (f.operators !== null) out.push(`Operator: ${anyOf(f.operators.map((op) => TZ_OPERATORS[op].brand))}`);
   if (f.consent !== null) out.push(`Consent: ${anyOf(f.consent.map((c) => CONSENT_WORDS[c]))}`);
@@ -881,7 +903,8 @@ export async function contactTagCounts(limit = 200): Promise<ContactTagCount[]> 
 
 /**
  * U23 · TAG, UNTAG, ADD TO A LIST, REMOVE — every row an audience holds, in set-based store writes (the twins'
- * `tagWhere`, `untagWhere`, `addWhere`, `removeWhere`), over EXACTLY the where `contactAudience` counts: the same
+ * `tagWhere`, `untagWhere`, `addWhere`, `removeWhere`, and vb7's `removeBoundWhere`), over EXACTLY the where
+ * `contactAudience` counts: the same
  * filter through the same translation, so the erased tombstone is in no bulk (decision C3) and an empty selection
  * writes nothing. ⛔ Those store members are SET paths, so `test:contacts-audience` §1.1 lets no file but this one call
  * them: U23's service (`contact-bulk.ts`) reaches them only through here. Each answer is the store's own count.
@@ -896,6 +919,10 @@ export type ContactAudienceWrites = {
   addToList(listId: string, stamp: ContactBulkStamp): Promise<ContactBulkCount>;
   /** Memberships go with the rows; the ledger and the stop list (keyed by number) stay. */
   remove(): Promise<ContactBulkCount>;
+  /** ⭐ vb7 (review m1) · REMOVE the rows the audience holds AMONG `ids` — a bulk Remove's confirmed ids — ALL OR
+   *  NOTHING: ONE transaction in Postgres however many chunks the ids take, one pass in the memory twin. A row that
+   *  stopped matching is not removed (the where still binds), and a row that joined is in no id. */
+  removeBound(ids: readonly string[]): Promise<ContactBulkCount>;
 };
 
 /** The writes for one audience. `toWhere` exists for in-process red plants only — production never passes it. */
@@ -914,6 +941,7 @@ export function contactAudienceWrites(f: ContactAudienceFilter, toWhere: typeof 
     untag: async (tag, stamp) => db.marketingContact.untagWhere(where, tag, stamp),
     addToList: async (listId, stamp) => db.marketingContact.addWhere(where, listId, stamp),
     remove: async () => db.marketingContact.removeWhere(where),
+    removeBound: async (ids) => db.marketingContact.removeBoundWhere(where, ids),
   };
 }
 

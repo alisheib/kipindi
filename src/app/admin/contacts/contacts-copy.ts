@@ -18,10 +18,15 @@
  * ⭐ U34a · AND THE EXPORT'S — the page head's link (its label says "masked" for a role that may not read a number), the
  * one over-the-ceiling sentence the page and the route both say, and what the route answers when it sends no file. The
  * file's own Consent and Source cells read `CONSENT_LABEL` and `SOURCE_LABEL` below, so the file and the page say one word.
+ *
+ * ⭐ vb7 · AND THE WORDS THE VALIDATION PASS ADDED: the dialog's live counters, its optional labels, its discard question
+ * and the toasts that name the contact; the lookup's own rate and failure sentences; the bar's list picker, its tag
+ * toasts and the "all matching" note; and the export's refusals as the page says them (`CONTACTS_EXPORT_REFUSED`).
  */
 import type { ContactConsentState, ContactSource } from "@/lib/server/store";
 import { adminCount, formatNumber } from "@/lib/utils";
 import { CONTACT_FIELDS, CONTACT_LIMITS } from "@/lib/contacts/contact-fields";
+import type { ContactFormFieldKey } from "@/lib/contacts/contact-fields";
 import { isPerRowAction } from "@/lib/contacts/bulk-rules";
 import type { BulkOutcome, BulkPreview, ContactBulkAction } from "@/lib/contacts/bulk-rules";
 
@@ -37,6 +42,9 @@ export const CONTACTS_EMPTY = {
 export const CONTACTS_NO_MATCH = {
   title: "No contacts match",
   body: "Nothing in the book matches this search. Search by name, or by a complete phone number — part of a number is not searched.",
+  /** ⭐ vb7 · a number attempt the parser refuses (`contactSearchNumber`): ITS sentence says why it found nobody — a
+   *  ten-digit typo is told it has ten digits, never "part of a number is not searched". */
+  numberBody: (reason: string) => `Nothing in the book matches this search. ${reason}`,
 } as const;
 
 /** U24 · filters (not a search) that match nothing. U21 · the rail stays on screen above this row, so the sentence
@@ -48,6 +56,8 @@ export const CONTACTS_NO_MATCH_FILTERED = {
 
 /** Short on purpose: "Name or full phone number" was clipped at 360 ("…phone numl", measured 2026-10-01). */
 export const CONTACTS_SEARCH_PLACEHOLDER = "Name or full number";
+/** The search box's accessible name (`contacts-search-box.tsx`). */
+export const CONTACTS_SEARCH_LABEL = "Search contacts by name or full number";
 
 /** U24 · the lead of the one line above the table that says, in words, what the list is narrowed to
  *  (`describeAudience`) — shown whenever anything but the search box narrows it. */
@@ -180,6 +190,7 @@ export function railCountLine(match: number, book: number): string {
  * and one is never invented (§5.13). The eyebrow reuses the page head's shipped "Anwani".
  * ⚠️ The keys end in `Label` on purpose: `test:read-tiers` §7 reads `{… .email …}` in an admin .tsx as a raw email
  * render, so the form never writes a `.email` accessor — not even for a label.
+ * ⭐ vb7 · every field but the number is OPTIONAL, and its label says so — a field with no mark reads as required.
  */
 export const CONTACT_FORM = {
   addButton: "Add contact",
@@ -200,6 +211,14 @@ export const CONTACT_FORM = {
   close: "Close",
   tryAgain: "Try again",
   reload: "Reload",
+  /** vb7 · ✕ and Cancel ask before typing is thrown away (Escape and the scrim already refuse while anything is typed). */
+  discardAsk: "Discard what you typed? Nothing has been saved yet.",
+  discard: "Discard",
+  keepEditing: "Keep editing",
+  /** vb7 (review m3) · after the 2-step sign-in is put right in another tab, the number is checked again from here. */
+  checkAgain: "Check again",
+  /** vb7 (review m5a) · the page guard's words, when the dialog holds typing and a link or the tab would leave it. */
+  unsavedBody: "This contact has details typed that have not been saved. Leaving now discards them.",
 } as const;
 
 /**
@@ -217,6 +236,11 @@ export const CONTACT_NUMBER_FIXED = "The number can't be changed — add a new n
 /** The operator chip's hover text — "issued from", never "is on": a number that moved network keeps its prefix. */
 export function contactRangeTitle(brand: string): string {
   return `Issued from ${brand}'s range — a number that moved network keeps its prefix.`;
+}
+/** vb7 · the chip's hover text for a prefix the regulator and the carrier data disagree about (060) — said in plain
+ *  words, never the numbering table's developer note. */
+export function contactRangeDisputedTitle(brand: string): string {
+  return `${brand}'s newest range — accepted, though the regulator's plan doesn't list it yet.`;
 }
 /** While the book is asked whether the number is already in it. */
 export const CONTACT_CHECKING = "Checking the book…";
@@ -236,13 +260,33 @@ export const CONTACT_EMAIL_NEW_LABEL = "New email address";
 export const CONTACT_EMAIL_REMOVE = "Remove the stored address";
 export const CONTACT_EMAIL_KEEP = "Keep the stored address";
 export const CONTACT_EMAIL_REMOVING = "The stored address will be removed when you save.";
-/** The notes counter — the limit is the ONE table's (`CONTACT_LIMITS.notes`), passed in. */
-export function contactNotesCount(used: number, limit: number): string {
+/** vb7 · a field's character counter (the name's and the notes') — the limit is the ONE table's, passed in. */
+export function contactCharacterCount(used: number, limit: number): string {
   return `${formatNumber(used)} of ${formatNumber(limit)} characters`;
+}
+/** vb7 · the tags counter — the limit is the ONE table's (`CONTACT_LIMITS.tags`), passed in. */
+export function contactTagsCount(used: number, limit: number): string {
+  return `${formatNumber(used)} of ${formatNumber(limit)} tags`;
 }
 
 export const CONTACT_ADDED = "Contact added";
-export const CONTACT_SAVED = "Contact saved";
+/** vb7 · the added toast names the contact: its name (or that it has none) and the number's last two digits — the
+ *  two digits every role already sees in the masked number. */
+export function contactAddedWho(name: string | null, lastTwo: string): string {
+  return `${name ?? "A contact with no name"} (number ending ${lastTwo}) is in the book.`;
+}
+/** vb7 · said after the added line when the list is narrowed: the new row may not be among the rows on screen. */
+export const CONTACT_ADDED_FILTERED = "It may be outside the current filter.";
+/** vb7 · an edit whose cleaned values equal the row's — nothing was written (`editContact`). */
+export const CONTACT_NOTHING_TO_SAVE = "Nothing to save — the contact already reads this way.";
+/** vb7 · the saved toast names what changed ("Contact saved — name and tags updated."). */
+const FIELD_WORDS: Record<ContactFormFieldKey, string> = { displayName: "name", email: "email", notes: "notes", tags: "tags" };
+export function contactSavedTitle(changed: readonly ContactFormFieldKey[]): string {
+  if (changed.length === 0) return CONTACT_NOTHING_TO_SAVE;
+  const words = changed.map((f) => FIELD_WORDS[f]);
+  const list = words.length === 1 ? words[0] : `${words.slice(0, -1).join(", ")} and ${words[words.length - 1]}`;
+  return `Contact saved — ${list} updated.`;
+}
 export const CONTACT_ADD_FAILED = "Couldn't add the contact";
 export const CONTACT_SAVE_FAILED = "Couldn't save the contact";
 /** 🔴 A1.1 · the post-save consent line — built ONLY when the reply carries the mirrored consent, which it does for a
@@ -253,14 +297,26 @@ export function contactAddedConsent(label: string): string {
 /** The dialog's own read failed (`loadContactEdit`): never "missing" — the contact may well be there. */
 export const CONTACT_EDIT_FAILED = "Couldn't load this contact. Try again.";
 
-/** The actions' gate refusal (`softRequireStaff`) — said in words, beside the read-only banner the layout shows. */
-export const CONTACT_ROLE_REFUSAL = "Your role can view contacts but not add or change them.";
-/** The per-officer rate rule refused (`contacts.write` / `contacts.lookup`). */
-export function CONTACT_RATE_LIMITED(retryAfterSec: number): string {
+/** The actions' gate refusal (`softRequireStaff`) — said in words, beside the read-only banner the layout shows. vb7: it
+ *  says who CAN act. */
+export const CONTACT_ROLE_REFUSAL = "Your role can view contacts but not add or change them — ask an officer with Growth access.";
+/** How long to wait, in words: seconds under a minute, else whole minutes. */
+function waitWords(retryAfterSec: number): string {
   const s = Math.max(1, Math.ceil(Number.isFinite(retryAfterSec) ? retryAfterSec : 60));
-  const wait = s < 60 ? `${s} second${s === 1 ? "" : "s"}` : `${Math.ceil(s / 60)} minute${Math.ceil(s / 60) === 1 ? "" : "s"}`;
-  return `Too many contacts in a short time. Wait ${wait}, then try again.`;
+  return s < 60 ? `${s} second${s === 1 ? "" : "s"}` : `${Math.ceil(s / 60)} minute${Math.ceil(s / 60) === 1 ? "" : "s"}`;
 }
+/** The per-officer rate rule refused a save or a bulk action (`contacts.write` / `contacts.lookup`). */
+export function CONTACT_RATE_LIMITED(retryAfterSec: number): string {
+  return `Too many contacts in a short time. Wait ${waitWords(retryAfterSec)}, then try again.`;
+}
+/** vb7 · the number lookup's own rate refusal (`contacts.lookup`) — it checks numbers, it adds no contact. */
+export function CONTACT_LOOKUP_RATE_LIMITED(retryAfterSec: number): string {
+  return `Too many number checks — wait ${waitWords(retryAfterSec)}, then try again.`;
+}
+/** vb7 · the actions' failures, each with the next step (`safeError` keeps the error's own text in the server log). */
+export const CONTACT_LOOKUP_FALLBACK = "Checking the number failed — you can still save; the book refuses a duplicate.";
+export const CONTACT_ADD_FALLBACK = "Saving the contact failed — it may not have saved. Reload the book to check before adding it again.";
+export const CONTACT_EDIT_FALLBACK = "Saving the changes failed — they may not have saved. Reload the contact to check before saving again.";
 
 /* ═══ U23 · THE BULK BAR — the bar, the parameter dialog, the confirmation, the result ══════════════════════════ */
 
@@ -277,7 +333,8 @@ export const BULK_COPY: Record<ContactBulkAction, {
   title: (count: string, p: Pick<BulkPreview, "tag" | "listName" | "listIsNew">) => string;
   confirm: (n: number) => string;
   consequence: string;
-  done: (listName: string | null) => string;
+  /** vb7 · the done toast's title, from the server's outcome — a tag toast names its tag, a list toast its list. */
+  done: (r: Pick<BulkOutcome, "listName" | "tag">) => string;
   past: (n: number) => string;
   already: string | null;
 }> = {
@@ -287,8 +344,8 @@ export const BULK_COPY: Record<ContactBulkAction, {
     running: (c) => `Tagging ${c}…`,
     title: (c, p) => `Tag ${c} with “${p.tag ?? ""}”?`,
     confirm: (n) => `Tag ${formatNumber(n)}`,
-    consequence: `Each contact gets the tag once. A contact that already has it, or already carries ${CONTACT_LIMITS.tags} tags, is left as it is.`,
-    done: () => "Tagged",
+    consequence: `Each contact gets the tag once. A contact that already has it, or already carries ${formatNumber(CONTACT_LIMITS.tags)} tags, is left as it is.`,
+    done: (r) => (r.tag === null ? "Tagged" : `Tagged “${r.tag}”`),
     past: () => "tagged",
     already: "already had it",
   },
@@ -299,7 +356,7 @@ export const BULK_COPY: Record<ContactBulkAction, {
     title: (c, p) => `Remove “${p.tag ?? ""}” from ${c}?`,
     confirm: (n) => `Untag ${formatNumber(n)}`,
     consequence: "Only the contacts that carry the tag change.",
-    done: () => "Tag removed",
+    done: (r) => (r.tag === null ? "Tag removed" : `“${r.tag}” removed`),
     past: () => "untagged",
     already: "didn't have it",
   },
@@ -310,7 +367,7 @@ export const BULK_COPY: Record<ContactBulkAction, {
     title: (c, p) => (p.listIsNew ? `Add ${c} to a new list, “${p.listName ?? ""}”?` : `Add ${c} to “${p.listName ?? ""}”?`),
     confirm: (n) => `Add ${formatNumber(n)}`,
     consequence: "A contact already on the list keeps the date it joined.",
-    done: (listName) => (listName === null ? "Added to the list" : `Added to “${listName}”`),
+    done: (r) => (r.listName === null ? "Added to the list" : `Added to “${r.listName}”`),
     past: () => "added",
     already: "already on it",
   },
@@ -366,6 +423,8 @@ export const CONTACTS_BULK = {
   ticksReplaced: (n: number) => (n === 1
     ? "1 ticked contact not on this page stays selected only if it matches this filter."
     : `${formatNumber(n)} ticked contacts not on this page stay selected only if they match this filter.`),
+  /** vb7 · ticking one row while "all matching" was chosen narrows the selection to this page's other rows — said. */
+  matchingNarrowed: "Select all matching was cleared — only the other contacts on this page stay selected.",
   /** The typed confirmation of an unfiltered "all matching" (review F3). */
   wholeBook: "Every contact in the book.",
   /** Every action's hover line while one request is in flight. */
@@ -378,16 +437,23 @@ export const CONTACTS_BULK = {
   tagTitle: "Tag the selected contacts",
   untagTitle: "Remove a tag from the selected contacts",
   tagLabel: "Tag",
-  tagHint: "One tag: letters, digits, spaces, - or _. It is stored in lower case.",
+  tagHint: `One tag, up to ${formatNumber(CONTACT_LIMITS.tag)} characters: letters, digits, spaces, - or _. It is stored in lower case.`,
   listTitle: "Add the selected contacts to a list",
   listLabel: "List",
+  /** vb7 · the picker starts EMPTY — it used to choose the newest list for the officer. */
+  listChoose: "Choose a list…",
   listNew: "Name a new list…",
   listNameLabel: "New list name",
-  listNameHint: `Up to ${CONTACT_LIMITS.listName} characters. A name that differs from a list's only in capitals is that list.`,
+  listNameHint: `Up to ${formatNumber(CONTACT_LIMITS.listName)} characters. A name that differs from a list's only in capitals is that list.`,
+  /** vb7 · a typed name equal to a list's (`listNameKey`) IS that list: the picker switches to it and says so. */
+  listExisting: (name: string) => `“${name}” is already a list, so it is chosen. Press Continue to add to it.`,
   continue: "Continue",
   cancel: "Cancel",
   eyebrow: "Contacts · Anwani",
   previewFailed: "Couldn't count the selection",
+  /** vb7 · the two actions' failures, each with the next step. */
+  previewFallback: "Counting the selection failed — nothing was changed. Try again.",
+  runFallback: "The bulk action failed — some contacts may have changed. Reload the list before running it again.",
   refused: "Nothing was changed",
   failedTitle: "The bulk action didn't finish",
   failedBody: "Some contacts may already have changed — refresh and read the list before pressing again.",
@@ -447,7 +513,7 @@ export function bulkResultLine(r: Pick<BulkOutcome, "action" | "matched" | "chan
   const words = BULK_COPY[r.action];
   const parts = [`${formatNumber(r.changed)} ${words.past(r.changed)}`];
   if (words.already !== null) parts.push(`${formatNumber(r.unchanged)} ${words.already}`);
-  if (r.full > 0) parts.push(`${formatNumber(r.full)} already ${r.full === 1 ? "carries" : "carry"} ${CONTACT_LIMITS.tags} tags`);
+  if (r.full > 0) parts.push(`${formatNumber(r.full)} already ${r.full === 1 ? "carries" : "carry"} ${formatNumber(CONTACT_LIMITS.tags)} tags`);
   const gone = r.matched - r.changed - r.unchanged - r.full;
   if (gone > 0) parts.push(`${formatNumber(gone)} no longer in the book`);
   return parts.join(" · ");
@@ -470,7 +536,43 @@ export const CONTACTS_EXPORT = {
   nothingSent: "Nothing was exported.",
   unreadable: (param: string, reason: string) => `The “${param}” filter in this address can't be used. ${reason} Nothing was exported.`,
   unrecorded: "The export could not be recorded, so no file was sent. Try again in a minute.",
+  /** vb7 · an address key the page never writes (`?operator=`, `?tags=`) — refused, never dropped into the whole book. */
+  stray: "The address carries a filter this page does not write. Nothing was exported.",
+  /** vb7 · a selection in the address: the export never takes ticked rows, so the sentence is the export's own. */
+  noSelection: "An export takes the page's filter, never ticked contacts. Filter the list to the people you want, then export. Nothing was exported.",
+  /** vb7 · the book could not be counted — a database fault is a refusal with a next step, never a bare 500. */
+  readFailed: "The contact book could not be read, so no file was sent. Try again in a minute.",
+  /** vb7 · the refusal banner's way out — the list's own address without `?export=`. */
+  dismiss: "Dismiss",
 } as const;
+
+/**
+ * ⭐ vb7 · WHAT THE PAGE SAYS WHEN THE EXPORT SENT NO FILE. The export link is a plain link, so a refusal used to replace
+ * the console with a bare text page; the route now answers a signed-in officer's refusal with a 303 back to the list,
+ * carrying `?export=<reason>`, and the page says the reason's sentence above the list. ⛔ Only these keys are read —
+ * any other value says nothing, and nothing typed into the address is ever repeated.
+ */
+export const CONTACTS_EXPORT_REFUSED = {
+  unknown_param: CONTACTS_EXPORT.stray,
+  selection: CONTACTS_EXPORT.noSelection,
+  unreadable_filter: "A filter in this address can't be read, so nothing was exported. Clear it, then export again.",
+  role: "A filter in this address isn't available to your role, so nothing was exported.",
+  too_many: "Too many contacts match for one file, so nothing was exported. Narrow the filter, then export again.",
+  unrecorded: CONTACTS_EXPORT.unrecorded,
+  read_failed: CONTACTS_EXPORT.readFailed,
+} as const;
+export type ContactsExportRefusal = keyof typeof CONTACTS_EXPORT_REFUSED;
+
+/** Is this a refusal the page can say? (`hasOwnProperty`, so `?export=constructor` reads as nothing.) */
+export function isContactsExportRefusal(raw: unknown): raw is ContactsExportRefusal {
+  return typeof raw === "string" && Object.prototype.hasOwnProperty.call(CONTACTS_EXPORT_REFUSED, raw);
+}
+
+/** The page's banner for `?export=` — the first value, a known reason, its sentence — or null. */
+export function contactsExportRefusalSentence(raw: string | string[] | undefined): string | null {
+  const first = Array.isArray(raw) ? raw[0] : raw;
+  return isContactsExportRefusal(first) ? CONTACTS_EXPORT_REFUSED[first] : null;
+}
 
 /** ⛔ OVER THE CEILING — ONE sentence, both numbers named: the page's disabled control shows it, the route's 422 says it. */
 export function contactsExportTooMany(matched: number, max: number): string {

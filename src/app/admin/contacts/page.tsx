@@ -46,6 +46,13 @@
  * role-shaped (A1.1, OD54): a masked viewer gets no Consent, Source or Suppressed axis. ⛔ The Operator COLUMN reads
  * the one numbering table (`operatorBrand(c.ndc)`) and never the stored `operator` string, which could say "Tigo"
  * under the Yas pill.
+ * ⭐ vb7 · THE SEARCH BOX SAYS WHAT IT WILL DO (`ContactsSearchBox`): a whole number echoes "Whole number — matched
+ * exactly" (never "3 words"), a number attempt the parser refuses echoes ITS sentence — and the empty state of such a
+ * search says that sentence too (`contactSearchNumber`), instead of "part of a number is not searched". The box's help
+ * names the grammar's one field, as every admin SearchBox does.
+ * ⭐ vb7 · A REFUSED EXPORT COMES BACK HERE: the export route answers an officer's refusal with a 303 to this page and
+ * `?export=<reason>` — a known reason only (`contactsExportRefusalSentence`) — and the page says it above the list, with
+ * a way to put it away. ⛔ No link here carries `export` (the ONE href builder does not write it).
  *
  * Growth domain (`roles.ts`), the same people who run affiliate, bonuses and invites.
  */
@@ -59,17 +66,18 @@ import { AdminTableEmpty } from "@/components/admin/admin-table-empty";
 import { Chip } from "@/components/ui/chip";
 import { Sensitive } from "@/components/ui/sensitive";
 import { ScrollX } from "@/components/ui/scroll-x";
-import { SearchBox } from "@/components/ui/search-box";
+import { Callout } from "@/components/ui/callout";
 import { db } from "@/lib/server/store";
 import type { StoredMarketingContact } from "@/lib/server/store";
 import { mayReceiveMarketingSms } from "@/lib/server/marketing/consent";
 import type { MarketingSkipReason } from "@/lib/server/marketing/consent";
 import { MAX_AUDIENCE_IDS } from "@/lib/server/marketing/audience";
 import { contactFilterAudienceKey, contactFilterIdentity, contactSelectionRow } from "@/lib/server/marketing/contact-bulk";
+import { contactSearchNumber } from "@/lib/contacts/contact-number";
 import { formatDate } from "@/lib/utils";
 import {
-  CONTACTS_EXPORT, contactsExportTooMany,
-  CONTACTS_EMPTY, CONTACTS_NO_MATCH, CONTACTS_NO_MATCH_FILTERED, CONTACTS_SEARCH_PLACEHOLDER, CONTACTS_FILTERED_LEAD,
+  CONTACTS_EXPORT, contactsExportTooMany, contactsExportRefusalSentence,
+  CONTACTS_EMPTY, CONTACTS_NO_MATCH, CONTACTS_NO_MATCH_FILTERED, CONTACTS_FILTERED_LEAD,
   CONTACTS_FILTER_UNREADABLE, CONTACTS_FILTER_NOT_FOR_ROLE, CONSENT_LABEL, SOURCE_LABEL, CONTACTS_BULK, CONTACTS_KPI_RECENT,
 } from "./contacts-copy";
 import { operatorBrand, contactsHref, contactsClearFiltersHref, contactsLinkSp } from "./contacts-query";
@@ -81,6 +89,7 @@ import { AddContactButton, ContactEditDialog } from "./contact-form";
 import { ContactsSelectionProvider } from "./contacts-selection-provider";
 import { ContactRowSelect, ContactPageSelect } from "./contact-row-select";
 import { ContactsBulkBar } from "./contacts-bulk-bar";
+import { ContactsSearchBox } from "./contacts-search-box";
 import { Button } from "@/components/ui/button";
 import { contactsExportHref, CONTACTS_EXPORT_MAX } from "@/lib/server/contacts/export";
 
@@ -203,6 +212,12 @@ async function AdminContactsContent({ searchParams }: { searchParams: Promise<Co
   const reach = reads ? await Promise.all(rows.map(reachOf)) : [];
   const lists = await Promise.all(rows.map(async (c) => (await db.contactListMember.listMemberships(c.id)).length));
   const searching = listed !== null && listed.filter.q !== null;
+  // ⭐ vb7 · a number attempt the parser refuses found nobody because it was searched as a name — the empty state says the
+  // parser's own sentence instead of the general one (a whole number that matches nobody keeps the general one).
+  const searchNumber = listed !== null && listed.filter.q !== null ? contactSearchNumber(listed.filter.q) : null;
+  const noMatchBody = searchNumber !== null && !searchNumber.whole ? CONTACTS_NO_MATCH.numberBody(searchNumber.sentence) : CONTACTS_NO_MATCH.body;
+  // ⭐ vb7 · the export route's refusal, said here: a known reason's sentence, or nothing.
+  const exportRefused = contactsExportRefusalSentence(sp.export);
   const narrowed = listed !== null && listed.narrowed;
   // ⭐ ONE href builder (decision C9): it carries every filter, never `page` unless asked, never `edit`.
   const linkSp = contactsLinkSp(sp);
@@ -249,6 +264,14 @@ async function AdminContactsContent({ searchParams }: { searchParams: Promise<Co
       />
 
       <AdminBody>
+        {/* ⭐ vb7 · A REFUSED EXPORT, SAID ON THE PAGE — the route sent the officer back here instead of a bare text page.
+            "Dismiss" is the ONE href builder, which never writes `export`. */}
+        {exportRefused !== null && (
+          <div data-block="contacts-export-refused" className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <Callout tone="warning" role="alert" className="min-w-0 flex-1">{exportRefused}</Callout>
+            <a href={baseHref} className="inline-flex items-center min-h-[var(--tap-min)] text-body-sm text-royal-300 hover:underline">{CONTACTS_EXPORT.dismiss}</a>
+          </div>
+        )}
         {/* ⭐ THE WHOLE BOOK, never the filtered view.
             🔴 D19 / A1.1 — THE CONSENT SPLIT IS A READER'S (U23 review F1, 2026-10-02). A1.1 kept whole-book counts for
             every role ("a count over the book is not a per-number answer"), and U22's add and U23's one-row writes broke
@@ -290,7 +313,7 @@ async function AdminContactsContent({ searchParams }: { searchParams: Promise<Co
               not an empty book, so the box keeps the officer's query and the rail keeps the filter (§5.15). */}
           {!emptyBook && (
             <div className="border-b border-border-subtle p-3">
-              <SearchBox mode="url" placeholder={CONTACTS_SEARCH_PLACEHOLDER} ariaLabel="Search contacts by name or full number" />
+              <ContactsSearchBox />
             </div>
           )}
           {/* ⛔ NEVER the match count: a filter that matches nothing must still show the filter, or the one control that
@@ -308,7 +331,7 @@ async function AdminContactsContent({ searchParams }: { searchParams: Promise<Co
           )}
           {/* ⭐ U23 · THE BAR — on any read book, the refused state included (ticked rows outlive a refused filter). Its six
               actions are disabled WITH the act gate's reason for a role that cannot act, never hidden. */}
-          {selectable && <ContactsBulkBar lists={(view?.lists ?? []).map((l) => ({ id: l.id, name: l.name }))} />}
+          {selectable && <ContactsBulkBar lists={(view?.lists ?? []).map((l) => ({ id: l.id, name: l.name }))} tags={(view?.tags ?? []).map((t) => t.tag)} />}
           {!failed && <ScrollX label="Contacts" className="max-h-[calc(100vh-280px)] overflow-y-auto">
             <table className="admin-tbl">
               <thead className="sticky top-0 z-10">
@@ -342,7 +365,7 @@ async function AdminContactsContent({ searchParams }: { searchParams: Promise<Co
                   <AdminTableEmpty
                     colSpan={cols}
                     title={searching ? CONTACTS_NO_MATCH.title : CONTACTS_NO_MATCH_FILTERED.title}
-                    body={searching ? CONTACTS_NO_MATCH.body : CONTACTS_NO_MATCH_FILTERED.body}
+                    body={searching ? noMatchBody : CONTACTS_NO_MATCH_FILTERED.body}
                     action={narrowed || searching ? (
                       <span className="flex flex-wrap justify-center gap-2">
                         {narrowed && <a href={clearFiltersHref} className="btn btn-ghost btn-sm">Clear filters</a>}

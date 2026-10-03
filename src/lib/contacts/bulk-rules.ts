@@ -12,6 +12,9 @@
  * lower case, a separator refused rather than split — so a bulk "VIP" is the "vip" the form stores; an UNTAG reads the
  * tag as the book holds it (`parseFilterTag`, vb5 review M1); a new list's name is cleaned like a name, holds no phone
  * number and is held to `CONTACT_LIMITS.listName`.
+ * ⭐ vb7 · THE LIST PICKER'S TWO RULES LIVE HERE TOO, so the bar can say them before any round trip: the "choose a list"
+ * sentence (`LIST_NONE`, the server's own words) and the ONE A-to-Z order the rail and the picker share
+ * (`compareListsByName`).
  * ⛔ THE SELECTION'S ID CAP IS NOT HERE: it is U24's ONE cap (`MAX_AUDIENCE_IDS`, `audience.ts`, decision C6), which the
  * page hands the bar — a second copy of the number would be a second cap.
  * ⛔ PURE AND CLIENT-SAFE: it imports `./contact-fields` alone (pinned), nothing from `lib/server` or `app/` —
@@ -77,6 +80,8 @@ export function parseBulkTag(raw: unknown, action: "tag" | "untag"): BulkTagVerd
   return v.ok ? { ok: true, tag: v.tag } : { ok: false, sentence: v.sentence };
 }
 
+/** ⛔ vb7 · neither a list nor a new name was given — the bar says it before the round trip, the server after it. */
+export const LIST_NONE = "Choose a list, or name a new one.";
 export const LIST_NAME_EMPTY = "Type a name for the new list.";
 export const LIST_NAME_TOO_LONG = `A list name can be at most ${CONTACT_LIMITS.listName} characters.`;
 export const LIST_NAME_HAS_PHONE = "A list name can't hold a phone number — remove the number from the name.";
@@ -98,6 +103,14 @@ export function parseListName(raw: unknown): ListNameVerdict {
  *  unique index is case-sensitive — so a new name is compared with every list by this key, and a clash is refused. */
 export function listNameKey(name: string): string {
   return name.normalize("NFKC").toLowerCase();
+}
+
+/**
+ * ⭐ vb7 · THE ONE ORDER FOR LISTS — A to Z by name (English collation), a tie broken by id so the order is total. The
+ * filter rail draws its list pills in it (`contacts-rail.ts`) and the bulk bar's picker offers its lists in it.
+ */
+export function compareListsByName(a: { id: string; name: string }, b: { id: string; name: string }): number {
+  return a.name.localeCompare(b.name, "en") || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
 }
 
 /* ═══ THE WIRE — what the bar posts, and what the server answers ═══════════════════════════════════ */
@@ -155,4 +168,6 @@ export type BulkOutcome = {
   unchanged: number | null;
   full: number;
   listName: string | null;
+  /** vb7 · the tag a tag or untag run wrote, as stored — for the done toast ("Tagged “vip”"); null for any other action. */
+  tag: string | null;
 };

@@ -17,6 +17,9 @@
  *   B14c–d  🔴 OD54 (D19 covers SUPPRESSION too): a masked role's POSTed `suppressed` audience is refused role before any
  *           count; a masked officer may still suppress, and is told the TOTAL ("A stop is on record for N contacts") —
  *           the preview never splits by stop state, and the reader keeps the split.
+ *   vb7     B20–B21: a set-based write over a filter is bound to the confirmed rows (a contact that joins after the
+ *           recount is written by nobody), and a post with neither a list nor a name is told to choose one. S12–S14: the
+ *           bar's parameters checked where they are typed, the "all matching" note, and the toasts that name their tag.
  * Then the source, for what only the source can show (S1–S10): the gated actions, the act-gated bar (its button states
  * EXECUTED), the server's tier in the confirmation, no raw number in a client file, the page's select column and each
  * row's edit link (EXECUTED through the ONE href builder), the copy, the ghost, the pin and the wiring — and S10, the
@@ -42,7 +45,8 @@ import type { StoredMarketingContact, StoredUser, MessagingKey } from "../src/li
 import { mayReceiveMarketingSms } from "../src/lib/server/marketing/consent.ts";
 import { isSmsConsentWording, SMS_CONSENT_WORDINGS } from "../src/lib/marketing/consent-wording.ts";
 import {
-  contactAudience, contactAudienceKey, parseContactAudienceJson, parseContactAudienceParams, roleRefusal, MAX_AUDIENCE_IDS, WHOLE_BOOK,
+  contactAudience, contactAudienceKey, contactAudienceWrites, parseContactAudienceJson, parseContactAudienceParams, roleRefusal, MAX_AUDIENCE_IDS,
+  WHOLE_BOOK,
 } from "../src/lib/server/marketing/audience.ts";
 import {
   parseBulkRequest, previewContactBulk, runContactBulk, contactBulkReply, contactSelectionRow, contactFilterAudienceKey, contactFilterIdentity,
@@ -50,8 +54,8 @@ import {
 } from "../src/lib/server/marketing/contact-bulk.ts";
 import type { ContactBulkDeps, ContactBulkRequest } from "../src/lib/server/marketing/contact-bulk.ts";
 import {
-  bulkConfirmTier, parseBulkTag, parseListName, BULK_ENUMERATE_MAX, BULK_SAMPLE, BULK_PER_ROW_MAX, CONTACT_BULK_ACTIONS,
-  LIST_NAME_HAS_PHONE, PER_ROW_ACTIONS,
+  bulkConfirmTier, parseBulkTag, parseListName, compareListsByName, BULK_ENUMERATE_MAX, BULK_SAMPLE, BULK_PER_ROW_MAX, CONTACT_BULK_ACTIONS,
+  LIST_NAME_HAS_PHONE, LIST_NAME_EMPTY, LIST_NONE, PER_ROW_ACTIONS,
 } from "../src/lib/contacts/bulk-rules.ts";
 import type { BulkOutcome, BulkPreview, BulkRefusal } from "../src/lib/contacts/bulk-rules.ts";
 import {
@@ -71,7 +75,7 @@ const rawRead = (rel: string) => readFileSync(join(ROOT, rel), "utf8").replace(/
 
 type Sources = {
   actions: string; actionsRaw: string; bar: string; barRaw: string; provider: string; rowSelect: string; page: string;
-  loading: string; service: string; rules: string; cgs: string; pkg: string;
+  loading: string; service: string; rules: string; cgs: string; pkg: string; rail: string;
 };
 const REAL_SOURCES: Sources = {
   actions: read("src/app/admin/contacts/contact-bulk-actions.ts"),
@@ -84,6 +88,8 @@ const REAL_SOURCES: Sources = {
   loading: read("src/app/admin/contacts/loading.tsx"),
   service: read("src/lib/server/marketing/contact-bulk.ts"),
   rules: read("src/lib/contacts/bulk-rules.ts"),
+  // vb7 · the rail, for the ONE list order it shares with the bar's picker.
+  rail: read("src/app/admin/contacts/contacts-rail.ts"),
   cgs: rawRead("scripts/client-graph-safe.test.mjs"),
   pkg: rawRead("package.json"),
 };
@@ -99,6 +105,8 @@ type Impl = {
   identity: typeof contactFilterIdentity;
   /** The toast's result line (`contacts-copy.ts`) — the total-only lines included (A1.1, OD54). */
   line: typeof bulkResultLine;
+  /** vb7 · the run itself — swappable, so a red case can plant the unbound set-based write. */
+  run: typeof runContactBulk;
   sources: Sources;
 };
 
@@ -115,7 +123,7 @@ const TEST_DEPS: ContactBulkDeps = { ...CONTACT_BULK_DEPS, audit: captureAudit, 
 
 const REAL: Impl = {
   deps: TEST_DEPS, parse: parseBulkRequest, reply: contactBulkReply, project: contactSelectionRow,
-  actionState: bulkActionState, identity: contactFilterIdentity, line: bulkResultLine, sources: REAL_SOURCES,
+  actionState: bulkActionState, identity: contactFilterIdentity, line: bulkResultLine, sources: REAL_SOURCES, run: runContactBulk,
 };
 
 let pass = 0, fail = 0;
@@ -170,6 +178,7 @@ const N = {
   withdrawn: "0713700005",
   full: "0713700006",
   ashaLate: "0713700007",
+  ashaAfter: "0713700008",
   known: "0712345678",
 } as const;
 /** 60 ticked-to-be rows + the erased tombstone, the player, the stranger, two stops, the WITHDRAWN one, the full one, the known number. */
@@ -320,6 +329,12 @@ const L = {
   s9: "S9 · the confirmation says “and N more” only below a listed sample and names the whole book when nothing narrows it (F3); a button disabled by a request in flight says why (EXECUTED)",
   s11: "S11 · ⭐ vb5 review M1 · the ACTION rides with the tag text to the ONE rule on both sides — the bar asks parseBulkTag(param.tag, param.action), the service parseBulkTag(req.tag, req.action), and the rule reads an untag through parseFilterTag — so the browser never refuses an untag the server would run",
   s10: "S10 · 🔴 D19 / A1.1 / OD54 · the KPI band's consent split (F1) AND its stop count (OD54) are a READER's: a masked viewer's band is exactly two tiles — In the book and the contacts added in the last 7 days (the loader's count) — with no consent, withdrawn or Suppressed tile, in the 1-lg2 rung that holds the four-tile band's rows; a reader's keeps all four",
+  b20: "B20 · ⛔ vb7 · A SET-BASED WRITE OVER A FILTER IS BOUND TO THE CONFIRMED ROWS: a Remove of the three “Asha” contacts confirmed with “3”, while a fourth starts matching right after the recount, is refused confirm_mismatch with both counts (4, not 3) and removes NOBODY — the newcomer included; with nobody joining, the same Remove takes exactly the three; (review m8) a confirmed row that STOPS matching between the id walk and the write is NOT removed — the write binds the filter AND the ids, never the ids alone; and a filter Tag written seven ids at a time still counts all sixty",
+  b22: "B22 · ⛔ vb7 review m1 · A REMOVE IS ALL OR NOTHING: a Remove over a filter hands the store its confirmed ids in ONE call (removeBound — one transaction in Postgres), however small the chunk size, never a call per chunk; and a store fault part-way removes NOBODY, the run's one audit row saying rolledBack and claiming no count, never partial",
+  b21: "B21 · ⛔ vb7 · a post with neither a list nor a new name (or a blank list id) is told LIST_NONE — “Choose a list, or name a new one.”, the bar's own words — never “Type a name for the new list.”, which a new name posted empty is still told; and the empty-selection refusal says what to do next",
+  s12: "S12 · ⭐ vb7 · the bar checks its parameters where they are typed: the picker starts EMPTY with “Choose a list…”, its lists in the rail's own order (ONE comparator, EXECUTED), LIST_NONE before any round trip, a name equal to a list's switching the picker to it, the tag box with NO maxLength (it counts UTF-16 units, the rule counts characters — review m7) and the limit in its hint, every refusal focused, a field refusal reopening the dialog (a list refusal refreshing), any other refusal kept in the dialog, a moved count re-previewed with the server's sentence, the per-number cap in a line, and Untag offering the book's tags",
+  s13: "S13 · vb7 · unticking one row of “all matching” SAYS the selection narrowed to this page's other rows (matchingNarrowed) — it fell to a page's worth in silence",
+  s14: "S14 · vb7 · a run's outcome carries its tag, and the toasts name it (“Tagged “vip””, ““vip” removed”) or the list (EXECUTED); the two actions' failures name their next step",
 } as const;
 
 async function runAssertions(impl: Impl, tag: string): Promise<void> {
@@ -337,7 +352,7 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
     return r.req;
   };
   const run = (body: Record<string, unknown>, reads = true, deps = impl.deps): Promise<BulkOutcome | BulkRefusal> =>
-    runContactBulk(parsed(body), OFFICER, reads, deps);
+    impl.run(parsed(body), OFFICER, reads, deps);
   const preview = (body: Record<string, unknown>, reads = true, deps = impl.deps): Promise<BulkPreview | BulkRefusal> =>
     previewContactBulk(parsed(body), reads, deps);
   const tagsOf = async (ids: readonly string[]) => JSON.stringify(await Promise.all(ids.map(async (id) => (await db.marketingContact.find(id))?.tags ?? null)));
@@ -395,7 +410,9 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
     const second = await run({ action: "tag", tag: "moved", audience: { q: "Asha" }, typed: word });
     const moved = (await db.marketingContact.listAll()).filter((c) => c.tags.includes("moved")).length;
     return [!first.ok && first.reason === "confirm_mismatch" && first.expected === 60 && (await tagsOf(B60)) === before
-      && pre.ok && pre.count === 3 && word === "3" && !second.ok && second.reason === "confirm_mismatch" && second.expected === 4 && moved === 0,
+      && pre.ok && pre.count === 3 && word === "3" && !second.ok && second.reason === "confirm_mismatch" && second.expected === 4 && moved === 0
+      // vb7 · refused by the RECOUNT, in its own sentence — the id walk (B20) is the second line, never the first.
+      && second.error === BULK_SENTENCES.confirmMismatch(4, "3"),
       `${outcome(first)} | preview ${pre.ok ? pre.count : outcome(pre)} | ${outcome(second)} | tagged ${moved}`];
   });
   await fresh(L.b4, async () => {
@@ -831,6 +848,168 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
     const rules = src.rules.includes('action === "untag" ? parseFilterTag(text) : parseOneTag(text)');
     return [bar && service && rules, `bar ${bar} · service ${service} · rules ${rules}`];
   });
+
+  /* ── B20–B21, S12–S14 · vb7 ─────────────────────────────────────────────────────────────────────── */
+  await fresh(L.b20, async () => {
+    const ashaIds = async () => (await db.marketingContact.listAll()).filter((c) => /asha/i.test(c.displayName ?? "")).map((c) => c.id).sort().join(",");
+    // CONTROL · nobody joins: the Remove over the filter takes exactly the three it confirmed (rolled back after).
+    let controlOk = false;
+    let controlSeen = "";
+    await inScratchBook(async () => {
+      const c = await run({ action: "remove", audience: { q: "Asha" }, typed: "3" });
+      controlOk = c.ok && c.matched === 3 && c.changed === 3 && (await ashaIds()) === "";
+      controlSeen = outcome(c);
+    });
+    // ⛔ review m8 · a confirmed row STOPS matching between the id walk and the write (renamed out of "Asha" the moment its
+    // id is walked): it is NOT removed — the write reaches the filter AND the walked ids, never the ids alone. Run while the
+    // book holds exactly the three it confirms (before the newcomer below joins), in its own scratch book.
+    let stoppedOk = false;
+    let stoppedSeen = "";
+    await inScratchBook(async () => {
+      let victim = "";
+      const stopping: ContactBulkDeps = {
+        ...impl.deps,
+        walkIds: async (f) => {
+          const ids = await impl.deps.walkIds(f);
+          const row = ids.length > 0 ? await db.marketingContact.find(ids[0]) : null;
+          if (row !== null) {
+            victim = row.id;
+            await db.marketingContact.updateIfUnchanged(row.id, { displayName: "Zed Stopped", notes: row.notes, tags: [...row.tags], updatedBy: OFFICER },
+              { expectedUpdatedAt: row.updatedAt }, new Date(Date.parse(row.updatedAt) + 1000).toISOString());
+          }
+          return ids;
+        },
+      };
+      const s = await run({ action: "remove", audience: { q: "Asha" }, typed: "3" }, true, stopping);
+      const kept = victim === "" ? null : await db.marketingContact.find(victim);
+      stoppedOk = s.ok && s.matched === 2 && s.changed === 2 && kept !== null && kept.displayName === "Zed Stopped" && (await ashaIds()) === "";
+      stoppedSeen = `${outcome(s)} · the renamed row ${kept === null ? "REMOVED" : "kept"}`;
+    });
+    const start = await ashaIds();
+    // The recount says 3; a fourth "Asha" starts matching right after it — the window a set-based write over a filter had.
+    let planted = false;
+    const planting: ContactBulkDeps = {
+      ...impl.deps,
+      count: async (f) => {
+        const n = await impl.deps.count(f);
+        if (!planted) {
+          planted = true;
+          await db.marketingContact.create(literalRow("mc_b_asha_after", N.ashaAfter, { displayName: "Asha After" }));
+        }
+        return n;
+      },
+    };
+    const r = await run({ action: "remove", audience: { q: "Asha" }, typed: "3" }, true, planting);
+    const end = await ashaIds();
+    // The bound write's chunks are summed: a filter Tag over the sixty "Bulk" rows, seven ids a statement, counts sixty.
+    const chunky = await run({ action: "tag", tag: "chunked", audience: { q: "Bulk" }, typed: "60" }, true, { ...impl.deps, setChunk: 7 });
+    const tagged = (await db.marketingContact.listAll()).filter((c) => c.tags.includes("chunked")).length;
+    return [controlOk && !r.ok && r.reason === "confirm_mismatch" && r.expected === 4 && r.error === BULK_SENTENCES.walkChanged(4, 3)
+      && end === [...start.split(","), "mc_b_asha_after"].sort().join(",") && stoppedOk
+      && chunky.ok && chunky.matched === 60 && chunky.changed === 60 && tagged === 60,
+      `control ${controlSeen} · planted ${outcome(r)} · Asha rows ${start} → ${end} · stopped ${stoppedSeen} · chunked ${outcome(chunky)} (${tagged} tagged)`];
+  });
+  await fresh(L.b22, async () => {
+    const ashaIds = async () => (await db.marketingContact.listAll()).filter((c) => /asha/i.test(c.displayName ?? "")).map((c) => c.id).sort().join(",");
+    const start = await ashaIds();
+    // ONE call: the confirmed ids reach the store in one removeBound, however small the chunk size.
+    const calls: string[] = [];
+    const spying: ContactBulkDeps = {
+      ...impl.deps,
+      setChunk: 1,
+      writes: (f) => {
+        const w = impl.deps.writes(f);
+        return {
+          ...w,
+          remove: async () => { calls.push("remove"); return w.remove(); },
+          removeBound: async (ids) => { calls.push(`removeBound:${ids.length}`); return w.removeBound(ids); },
+        };
+      },
+    };
+    let oneCall = false;
+    let oneSeen = "";
+    await inScratchBook(async () => {
+      const r = await run({ action: "remove", audience: { q: "Asha" }, typed: "3" }, true, spying);
+      oneCall = r.ok && r.changed === 3 && JSON.stringify(calls) === JSON.stringify(["removeBound:3"]) && (await ashaIds()) === "";
+      oneSeen = `${outcome(r)} · calls [${calls}]`;
+    });
+    // A fault in the store: nobody removed, and the run's one row says it was rolled back — no count, never partial.
+    const before = captured.length;
+    const faulting: ContactBulkDeps = {
+      ...impl.deps,
+      writes: (f) => ({ ...impl.deps.writes(f), removeBound: async () => { throw new Error("planted store fault (contacts-bulk B22)"); } }),
+    };
+    let threw = "";
+    try {
+      await run({ action: "remove", audience: { q: "Asha" }, typed: "3" }, true, faulting);
+    } catch (err) {
+      threw = (err as Error)?.message ?? String(err);
+    }
+    const rows = captured.slice(before) as Array<{ action?: string; payload?: Record<string, unknown> }>;
+    const a = rows[0];
+    const after = await ashaIds();
+    return [oneCall && threw.includes("planted store fault") && after === start && rows.length === 1 && a?.action === "contacts.bulk.remove"
+      && a?.payload?.rolledBack === true && !("matched" in (a?.payload ?? {})) && !("partial" in (a?.payload ?? {})),
+      `one call: ${oneSeen} · fault: ${threw || "did not throw"} · Asha ${start} → ${after} · audit ${JSON.stringify(a?.payload ?? null)}`];
+  });
+  await fresh(L.b21, async () => {
+    const neither = await preview({ action: "addToList", audience: { ids: five }, typed: null });
+    const blankId = await preview({ action: "addToList", audience: { ids: five }, typed: null, listId: "   " });
+    const emptyName = await preview({ action: "addToList", audience: { ids: five }, typed: null, newListName: "" });
+    const parsedNeither = impl.parse({ action: "addToList", audience: { ids: five }, typed: null });
+    return [!neither.ok && neither.reason === "bad_list" && neither.field === "list" && neither.error === LIST_NONE
+      && LIST_NONE === "Choose a list, or name a new one." && BULK_SENTENCES.noList === LIST_NONE
+      && !blankId.ok && blankId.error === LIST_NONE && !emptyName.ok && emptyName.error === LIST_NAME_EMPTY
+      && parsedNeither.ok && parsedNeither.req.list === null
+      && BULK_SENTENCES.empty.endsWith("Clear the selection and tick the contacts again."),
+      `neither → ${outcome(neither)} · blank id → ${outcome(blankId)} · empty name → ${outcome(emptyName)}`];
+  });
+  await check(p(L.s12), () => {
+    const bar = src.bar;
+    const lists = [{ id: "l3", name: "Zeta" }, { id: "l2", name: "same" }, { id: "l1", name: "same" }, { id: "l0", name: "alpha" }, { id: "l4", name: "Beta" }];
+    const reference = [...lists].sort((a, b) => a.name.localeCompare(b.name, "en") || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)).map((l) => l.id).join(",");
+    const ordered = [...lists].sort(compareListsByName).map((l) => l.id).join(",");
+    const picker = bar.includes('setParam({ action, tag: "", listChoice: "", newName: "", error: null, note: null });')
+      && bar.includes("placeholder={CONTACTS_BULK.listChoose}") && CONTACTS_BULK.listChoose === "Choose a list…"
+      && bar.includes("const sortedLists = React.useMemo(() => [...lists].sort(compareListsByName), [lists]);")
+      && bar.includes("options={[...sortedLists.map((l) => ({ value: l.id, label: l.name }))") && !bar.includes("lists[0]?.id")
+      && src.rail.includes(".sort(compareListsByName)") && ordered === reference && ordered.indexOf("l1") < ordered.indexOf("l2");
+    const before = bar.includes('if (param.listChoice === "") {') && bar.includes("setParam({ ...param, error: LIST_NONE, note: null });")
+      && bar.includes('focusFirstInvalid(formRef.current, ["list"]);');
+    const same = bar.includes("const same = sortedLists.find((l) => listNameKey(l.name) === key);")
+      && bar.includes("note: CONTACTS_BULK.listExisting(same.name)");
+    const tagBox = !bar.includes("maxLength") && !bar.includes("TAG_BOX_MAX") && CONTACTS_BULK.tagHint.includes(`${CONTACT_LIMITS.tag} characters`);
+    const focus = bar.includes('focusFirstInvalid(formRef.current, ["tag"]);') && bar.includes('focusFirstInvalid(formRef.current, ["newListName"]);');
+    const reopen = /if \("field" in r && \(r\.field === "tag" \|\| r\.field === "list"\)\) \{[\s\S]{0,400}?setParamOpen\(true\);[\s\S]{0,200}?if \(r\.field === "list"\) router\.refresh\(\);/.test(bar);
+    const keep = bar.includes("setParamRefusal(r.error);") && bar.includes('{paramRefusal !== null && <Callout tone="warning" role="alert">{paramRefusal}</Callout>}');
+    const moved = /if \(r\.reason === "confirm_required" \|\| r\.reason === "confirm_mismatch"\) \{\s*preview\(lastPost\.current \?\? post, r\.error\);/.test(bar)
+      && bar.includes('{notice !== null && <Callout tone="warning" role="alert">{notice}</Callout>}');
+    const cap = bar.includes("{s.count > BULK_PER_ROW_MAX && (") && bar.includes("{CONTACTS_BULK.perRowCap(BULK_PER_ROW_MAX)}");
+    const untag = bar.includes('list={param.action === "untag" && tags.length > 0 ? tagListId : undefined}') && bar.includes("<datalist id={tagListId}>")
+      && src.page.includes("tags={(view?.tags ?? []).map((t) => t.tag)}");
+    return [picker && before && same && tagBox && focus && reopen && keep && moved && cap && untag,
+      JSON.stringify({ picker, before, same, tagBox, focus, reopen, keep, moved, cap, untag, ordered, reference })];
+  });
+  await check(p(L.s13), () => {
+    const pv = src.provider;
+    const narrowed = /if \(chosen !== null\) \{[\s\S]{0,400}?setRows\(new Map\(pageRows\.filter\(\(r\) => r\.id !== row\.id\)[\s\S]{0,200}?setNote\(CONTACTS_BULK\.matchingNarrowed\);/.test(pv);
+    return [narrowed && CONTACTS_BULK.matchingNarrowed === "Select all matching was cleared — only the other contacts on this page stay selected.",
+      `narrowed note ${narrowed}`];
+  });
+  await fresh(L.s14, async () => {
+    const tagged = await run({ action: "tag", tag: " VIP ", audience: { ids: five }, typed: null });
+    const untagged = await run({ action: "untag", tag: "vip", audience: { ids: five }, typed: null });
+    const listed = await run({ action: "addToList", listId: "lst_b_existing", audience: { ids: five }, typed: null });
+    const titles = [tagged, untagged, listed].map((r) => (r.ok ? BULK_COPY[r.action].done(r) : `REFUSED ${r.reason}`));
+    return [tagged.ok && tagged.tag === "vip" && untagged.ok && untagged.tag === "vip" && listed.ok && listed.tag === null
+      && titles[0] === "Tagged “vip”" && titles[1] === "“vip” removed" && titles[2] === "Added to “Existing list”"
+      && BULK_COPY.tag.done({ tag: null, listName: null }) === "Tagged"
+      && src.actions.includes("safeError(err, CONTACTS_BULK.previewFallback)") && src.actions.includes("safeError(err, CONTACTS_BULK.runFallback)")
+      && CONTACTS_BULK.previewFallback === "Counting the selection failed — nothing was changed. Try again."
+      && CONTACTS_BULK.runFallback === "The bulk action failed — some contacts may have changed. Reload the list before running it again."
+      && src.bar.includes('deferToast({ title: BULK_COPY[r.action].done(r), description: bulkResultLine(r), variant: "success" });'),
+      titles.join(" | ")];
+  });
 }
 
 if (!PROVE_RED) {
@@ -1046,6 +1225,74 @@ if (!PROVE_RED) {
       name: "R28 · vb5 M1 · the rule reads an untag through the WRITE rule — both actions ask parseOneTag",
       expect: L.s11,
       impl: () => ({ ...REAL, sources: withSource("rules", 'action === "untag" ? parseFilterTag(text) : parseOneTag(text)', "parseOneTag(text)") }),
+    },
+
+    /* ── vb7 · validation batch 7, each on its own assertion ── */
+    {
+      name: "R29 · vb7 · the set-based write over the FILTER again — a Remove deletes the contact that joined after the recount, beyond the count typed",
+      expect: L.b20,
+      impl: () => ({
+        ...REAL,
+        run: async (req, officerId, reads, deps = TEST_DEPS) => {
+          if (req.action !== "remove" || isTicksOnly(req.audience)) return runContactBulk(req, officerId, reads, deps);
+          const count = await deps.count(req.audience);
+          if (req.typed !== String(count)) return { ok: false, reason: req.typed === null ? "confirm_required" : "confirm_mismatch", error: "moved", expected: count };
+          const done = await contactAudienceWrites(req.audience).remove();
+          return { ok: true, action: req.action, matched: done.matched, changed: done.changed, unchanged: done.unchanged, full: done.full, listName: null, tag: null };
+        },
+      }),
+    },
+    {
+      name: "R30 · vb7 · no list and no name read as a new list named nothing — the officer is told to type a name nobody asked for",
+      expect: L.b21,
+      impl: () => ({
+        ...REAL,
+        parse: ((x: unknown) => {
+          const r = parseBulkRequest(x);
+          return r.ok && r.req.action === "addToList" && r.req.list === null ? { ok: true, req: { ...r.req, list: { kind: "new", name: "" } } } : r;
+        }) as typeof parseBulkRequest,
+      }),
+    },
+    {
+      name: "R31 · vb7 · the picker pre-chooses the newest list again — Continue adds to whatever list was made last",
+      expect: L.s12,
+      impl: () => ({ ...REAL, sources: withSource("bar", 'listChoice: "", newName: "", error: null, note: null', 'listChoice: lists[0]?.id ?? NEW_LIST, newName: "", error: null, note: null') }),
+    },
+    {
+      name: "R32 · vb7 · unticking one row of “all matching” falls to a page's worth in silence again",
+      expect: L.s13,
+      impl: () => ({ ...REAL, sources: withSource("provider", "setNote(CONTACTS_BULK.matchingNarrowed);", "setNote(null);") }),
+    },
+    {
+      name: "R33 · vb7 · the run's outcome forgets its tag — every tag toast reads a bare “Tagged”",
+      expect: L.s14,
+      impl: () => ({ ...REAL, run: async (req, officerId, reads, deps) => { const r = await runContactBulk(req, officerId, reads, deps); return r.ok ? { ...r, tag: null } : r; } }),
+    },
+    /* ── the vb7 review's fixes (2026-10-03), each on its own assertion ── */
+    {
+      name: "R34 · vb7 review m8 · the bound write drops the filter and keeps only the ids — a row that stopped matching after the walk is removed with the rest",
+      expect: L.b20,
+      impl: () => ({ ...REAL, deps: { ...TEST_DEPS, writes: (f) => contactAudienceWrites({ ...WHOLE_BOOK, ids: f.ids }) } }),
+    },
+    {
+      name: "R35 · vb7 review m1 · the Remove chunked again — one store call per chunk, so a fault part-way leaves the first chunks removed",
+      expect: L.b22,
+      impl: () => ({
+        ...REAL,
+        run: async (req, officerId, reads, deps = TEST_DEPS) => {
+          if (req.action !== "remove" || isTicksOnly(req.audience)) return runContactBulk(req, officerId, reads, deps);
+          const count = await deps.count(req.audience);
+          if (req.typed !== String(count)) return { ok: false, reason: req.typed === null ? "confirm_required" : "confirm_mismatch", error: "moved", expected: count };
+          const ids = await deps.walkIds(req.audience);
+          const done = { matched: 0, changed: 0, unchanged: 0, full: 0 };
+          for (const id of ids) {
+            const part = await deps.writes({ ...req.audience, ids: [id] }).remove();
+            done.matched += part.matched;
+            done.changed += part.changed;
+          }
+          return { ok: true, action: req.action, matched: done.matched, changed: done.changed, unchanged: 0, full: 0, listName: null, tag: null };
+        },
+      }),
     },
   ];
 

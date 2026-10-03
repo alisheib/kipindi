@@ -15,6 +15,18 @@
  * the total.
  * ⭐ TAG, UNTAG, ADD TO A LIST AND REMOVE ARE SET-BASED, over the where the count reads (`contactAudienceWrites`,
  * audience.ts — the only door to the store's `…Where` members). A tag goes through U28's ONE rule (C11).
+ * ⛔ vb7 · OVER A FILTER, A SET-BASED WRITE IS BOUND TO THE CONFIRMED ROWS: they are walked before any write and refused
+ * if they are not the recounted number, and the write reaches the filter AND those ids — so a contact that starts
+ * matching after the recount is written by nobody, one that stops matching is not written, and a Remove never deletes
+ * beyond the typed count.
+ * ⛔ vb7 (review m1) · A REMOVE IS ALL OR NOTHING: over a filter its confirmed ids go to the store in ONE call
+ * (`removeBound` → the twins' `removeBoundWhere`: ONE transaction in Postgres, however many chunks the ids take), and over
+ * ticked rows it is ONE statement — so a fault removes nobody, and the run's audit row says `rolledBack`. ⚠️ A tag, an
+ * untag or an add to a list over a filter is written a chunk at a time, as the Prisma twin's set paths always are: a fault
+ * part-way leaves the chunks before it written (each is harmless to run again), and the audit row says `partial`, with
+ * how far it got.
+ * ⭐ vb7 · a post with neither a list nor a new name is told "Choose a list, or name a new one." (`LIST_NONE`, the bar's
+ * own words), and a run's outcome carries its tag, for the toast.
  * ⭐ A WITHDRAWAL AND A SUPPRESSION WRITE EVIDENCE PER NUMBER, capped at `BULK_PER_ROW_MAX` and refused above it:
  *   · withdraw — a WITHDRAWN ledger row (source OPERATOR, the fixed officer wording, the officer as recorder, the ledger's
  *     one clock — `test:dal-parity` §20 counts this file a writer), a player's own switch turned OFF only through
@@ -40,13 +52,13 @@ import {
   contactAudience, contactAudienceKey, contactAudienceWrites, auditContactAudience, describeAudience,
   parseContactAudienceJson, roleRefusal, MAX_AUDIENCE_IDS, ROLE_REFUSAL_REASON, WHOLE_BOOK,
 } from "@/lib/server/marketing/audience";
-import type { ContactAudienceFilter } from "@/lib/server/marketing/audience";
+import type { ContactAudienceFilter, ContactAudienceWrites } from "@/lib/server/marketing/audience";
 import { ledgerStamp } from "@/lib/server/marketing/ledger-stamp";
 import { mirrorContactCache } from "@/lib/server/marketing/contact-cache";
 import { syncPlayerToggle } from "@/lib/server/marketing/optout-service";
 import { CONTACT_LIMITS } from "@/lib/contacts/contact-fields";
 import {
-  BULK_PER_ROW_MAX, BULK_SAMPLE, bulkConfirmTier, isContactBulkAction, isPerRowAction, listNameKey, parseBulkTag,
+  BULK_PER_ROW_MAX, BULK_SAMPLE, LIST_NONE, bulkConfirmTier, isContactBulkAction, isPerRowAction, listNameKey, parseBulkTag,
   parseListName,
 } from "@/lib/contacts/bulk-rules";
 import type {
@@ -68,7 +80,7 @@ export const BULK_SENTENCES = {
   badRequest: "This isn't an action the contact book offers.",
   badAudience: "The selection could not be read.",
   role: (param: string) => `The “${param}” filter ${ROLE_REFUSAL_REASON.slice("This filter ".length)}`,
-  empty: "Nothing was changed: the selection holds no contacts in the book.",
+  empty: "Nothing was changed: the selection holds no contacts in the book. Clear the selection and tick the contacts again.",
   perRowCap: (n: number, max: number) =>
     `A withdrawal or a suppression writes one record per number, so it takes at most ${formatNumber(max)} contacts at a time; `
     + `this selection holds ${formatNumber(n)}. Nothing was changed — narrow it and run it in parts.`,
@@ -77,7 +89,8 @@ export const BULK_SENTENCES = {
     `The selection changed: it now holds ${formatNumber(n)} contacts — you confirmed ${typed}. Nothing was changed; review it again.`,
   walkChanged: (n: number, counted: number) =>
     `The selection changed while it was being read: it now holds ${formatNumber(n)} contacts, not ${formatNumber(counted)}. Nothing was changed; review it again.`,
-  noList: "Choose a list, or name a new one.",
+  /** vb7 · the bar's own words (`bulk-rules.ts`), said before the round trip there and after it here. */
+  noList: LIST_NONE,
   noSuchList: "That list isn't in the book any more. Choose another, or name a new one.",
   listExists: (name: string) => `A list called “${name}” already exists — two names that differ only in capitals are one list. Choose it instead.`,
 } as const;
@@ -122,7 +135,10 @@ export function parseBulkRequest(input: unknown): { ok: true; req: ContactBulkRe
   let list: ContactBulkRequest["list"] = null;
   if (action === "addToList") {
     const id = (text(body.listId) ?? "").trim();
-    list = id !== "" ? { kind: "existing", id } : { kind: "new", name: text(body.newListName) ?? "" };
+    const name = text(body.newListName);
+    // ⛔ vb7 · neither a list nor a name is NO list ("Choose a list, or name a new one.") — never "Type a name for the new
+    // list", which answered a question nobody asked. A name that is a string, even "", is a new list being named.
+    list = id !== "" ? { kind: "existing", id } : name !== null ? { kind: "new", name } : null;
   }
   return {
     ok: true,
@@ -198,6 +214,13 @@ export type ContactBulkDeps = {
   audit: typeof audit;
   now: () => Date;
   newRunId: () => string;
+  /** vb7 · how many walked ids one bound tag, untag or add-to-list write takes — at most U24's ONE cap
+   *  (`MAX_AUDIENCE_IDS`, what one audience may name). A suite lowers it to drive several chunks over a small book. */
+  setChunk: number;
+  /** vb7 (review m8) · the ids a FILTER audience holds, walked before any write (`audienceIds`) — and the set-based
+   *  writes (`contactAudienceWrites`). Seams for the suite's in-process cases; production never passes them. */
+  walkIds: (f: ContactAudienceFilter) => Promise<string[]>;
+  writes: (f: ContactAudienceFilter) => ContactAudienceWrites;
 };
 
 export const CONTACT_BULK_DEPS: ContactBulkDeps = {
@@ -211,6 +234,9 @@ export const CONTACT_BULK_DEPS: ContactBulkDeps = {
   now: () => new Date(),
   // Sixteen letters: a run id rides in evidence and audit rows, and must never hold a digit run.
   newRunId: () => Array.from(randomBytes(16), (b) => String.fromCharCode(97 + (b % 26))).join(""),
+  setChunk: MAX_AUDIENCE_IDS,
+  walkIds: (f) => audienceIds(f),
+  writes: (f) => contactAudienceWrites(f),
 };
 
 /* ═══ THE PARAMETERS — a tag through U28's ONE rule, a list that exists or a new name nobody holds ═══════════ */
@@ -294,6 +320,20 @@ async function audienceRows(f: ContactAudienceFilter): Promise<StoredMarketingCo
     const page = await audience.walk(afterId, 1000);
     rows.push(...page.rows);
     if (page.nextAfterId === null) return rows;
+    afterId = page.nextAfterId;
+  }
+}
+
+/** vb7 · every id a FILTER audience holds, by the same keyset walk — what a bound set-based write may reach. Ids only:
+ *  a Remove over a large filter must not hold every row in memory to know which ones it confirmed. */
+async function audienceIds(f: ContactAudienceFilter): Promise<string[]> {
+  const audience = contactAudience(f);
+  const ids: string[] = [];
+  let afterId: string | null = null;
+  for (;;) {
+    const page = await audience.walk(afterId, 1000);
+    for (const c of page.rows) ids.push(c.id);
+    if (page.nextAfterId === null) return ids;
     afterId = page.nextAfterId;
   }
 }
@@ -411,6 +451,16 @@ export async function runContactBulk(
   if (isPerRowAction(req.action) && rows.length !== count) {
     return refuse("confirm_mismatch", BULK_SENTENCES.walkChanged(rows.length, count), undefined, rows.length);
   }
+  // ⛔ vb7 · …AND A SET-BASED WRITE OVER A FILTER IS BOUND TO THE ROWS THAT WERE CONFIRMED. Tag, untag, add to a list and
+  // remove were one statement over the FILTER, after the recount: a contact that started matching in between was written
+  // too, and a Remove deleted beyond the count the officer typed. Now the filter's ids are walked here, BEFORE any write,
+  // and refused unless they are the confirmed count; the write then reaches the filter AND those ids, a chunk at a time,
+  // so a row that joined later is in no chunk and a row that stopped matching fails the filter. A large Remove still
+  // runs — a mismatch is refused, the size is never capped. Ticked rows are their own bound: no id joins a ticked list.
+  const bound = !isPerRowAction(req.action) && !isTicksOnly(req.audience) ? await deps.walkIds(req.audience) : null;
+  if (bound !== null && bound.length !== count) {
+    return refuse("confirm_mismatch", BULK_SENTENCES.walkChanged(bound.length, count), undefined, bound.length);
+  }
 
   const at = deps.now().toISOString();
   const runId = deps.newRunId();
@@ -419,9 +469,12 @@ export async function runContactBulk(
   let listId: string | null = null;
   let listName: string | null = null;
   let listCreated = false;
-  // The per-number loops count into THIS object, so a run that dies mid-way still knows how far it got.
+  // The per-number loops — and a bound write's chunks (vb7) — count into THIS object, so a run that dies mid-way still
+  // knows how far it got.
   const out: ContactBulkCount = { matched: 0, changed: 0, unchanged: 0, full: 0 };
-  const writeAudit = (counts: ContactBulkCount | null, partial: boolean) => deps.audit({
+  /** `ended`: "done"; "partial" — a run that died part-way, with how far it got; "rolled_back" (vb7 review m1) — a Remove
+   *  that died, which removed nobody. */
+  const writeAudit = (counts: ContactBulkCount | null, ended: "done" | "partial" | "rolled_back") => deps.audit({
     category: req.action === "withdraw" || req.action === "suppress" ? "COMPLIANCE" : "ADMIN",
     action: `contacts.bulk.${AUDIT_VERB[req.action]}`,
     actorId: officerId,
@@ -434,15 +487,30 @@ export async function runContactBulk(
       // A tag is officer text within the tag alphabet — digits allowed — so it is written through the same scrub.
       ...(tag !== null ? { tag: auditContactAudience({ ...WHOLE_BOOK, tags: [tag] }).tags } : {}),
       ...(listId !== null ? { listId, listCreated } : {}),
-      ...(partial ? { partial: true } : {}),
+      ...(ended === "partial" ? { partial: true } : {}),
+      ...(ended === "rolled_back" ? { rolledBack: true } : {}),
     },
   });
+  /** vb7 · one set-based tag, untag or add-to-list write: over ticked rows in one statement (the store's own count); over a
+   *  filter, the confirmed ids a chunk at a time, each chunk the filter AND its ids, summed into `out`. */
+  const setWrite = async (write: (w: ContactAudienceWrites) => Promise<ContactBulkCount>): Promise<ContactBulkCount> => {
+    if (bound === null) return write(deps.writes(req.audience));
+    const size = Math.max(1, Math.min(MAX_AUDIENCE_IDS, Math.floor(deps.setChunk)));
+    for (let i = 0; i < bound.length; i += size) {
+      const part = await write(deps.writes({ ...req.audience, ids: bound.slice(i, i + size) }));
+      out.matched += part.matched;
+      out.changed += part.changed;
+      out.unchanged += part.unchanged;
+      out.full += part.full;
+    }
+    return out;
+  };
   let done: ContactBulkCount = out;
   try {
   if (req.action === "tag" && tag !== null) {
-    done = await contactAudienceWrites(req.audience).tag(tag, CONTACT_LIMITS.tags, stamp);
+    done = await setWrite((w) => w.tag(tag, CONTACT_LIMITS.tags, stamp));
   } else if (req.action === "untag" && tag !== null) {
-    done = await contactAudienceWrites(req.audience).untag(tag, stamp);
+    done = await setWrite((w) => w.untag(tag, stamp));
   } else if (req.action === "addToList" && params.p.list !== null) {
     const chosen = params.p.list;
     let row: StoredContactList | null = chosen.kind === "existing" ? chosen.row : null;
@@ -455,11 +523,14 @@ export async function runContactBulk(
       listCreated = true;
     }
     if (row === null) return refuse("bad_list", BULK_SENTENCES.noSuchList, "list");
-    listId = row.id;
+    const listRowId = row.id;
+    listId = listRowId;
     listName = row.name;
-    done = await contactAudienceWrites(req.audience).addToList(row.id, stamp);
+    done = await setWrite((w) => w.addToList(listRowId, stamp));
   } else if (req.action === "remove") {
-    done = await contactAudienceWrites(req.audience).remove();
+    // ⛔ vb7 (review m1) · ALL OR NOTHING: over a filter, the confirmed ids in ONE call — the store runs every chunk in ONE
+    // transaction — and over ticked rows ONE statement.
+    done = bound !== null ? await deps.writes(req.audience).removeBound(bound) : await deps.writes(req.audience).remove();
   } else if (req.action === "withdraw") {
     await withdrawEach(rows, officerId, runId, at, out);
   } else if (req.action === "suppress") {
@@ -469,14 +540,20 @@ export async function runContactBulk(
   }
   } catch (err) {
     // ⛔ A RUN THAT DIES MID-WAY STILL LEAVES ITS ONE AUDIT ROW (review F2, 2026-10-02) — marked `partial`, with how far a
-    // per-number loop got (a set-based statement's partial count is unknown, so none is claimed). The ledger rows and
-    // stops it did write carry `contacts-bulk:<runId>` as evidence; the error itself goes on to the action.
-    await writeAudit(isPerRowAction(req.action) ? out : null, true).catch(() => undefined);
+    // per-number loop got, or (vb7) how far a bound write's chunks got; a single set-based statement's partial count is
+    // unknown, so none is claimed. The ledger rows and stops it did write carry `contacts-bulk:<runId>` as evidence; the
+    // error itself goes on to the action. ⭐ vb7 (review m1) · a REMOVE is all or nothing, so one that died removed nobody:
+    // its row says `rolledBack`, and claims no count.
+    if (req.action === "remove") await writeAudit(null, "rolled_back").catch(() => undefined);
+    else await writeAudit(isPerRowAction(req.action) || bound !== null ? out : null, "partial").catch(() => undefined);
     throw err;
   }
 
-  await writeAudit(done, false);
-  return { ok: true, action: req.action, matched: done.matched, changed: done.changed, unchanged: done.unchanged, full: done.full, listName };
+  await writeAudit(done, "done");
+  return {
+    ok: true, action: req.action, matched: done.matched, changed: done.changed, unchanged: done.unchanged, full: done.full, listName,
+    tag: req.action === "tag" || req.action === "untag" ? tag : null,
+  };
 }
 
 /**

@@ -16,6 +16,8 @@
  * player or suppressed audience before any count; `contactBulkReply` keeps a withdrawal's and a suppression's split from
  * a viewer who may not read a number.
  * ⛔ A REFUSAL IS NOT A REVALIDATION: only a run that landed invalidates the list.
+ * ⭐ vb7 · each failure names the next step: a preview that failed changed nothing; a run that failed may have changed
+ * some contacts, so the list is reloaded before it is run again.
  *
  * Guard: `test:contacts-bulk` (§9, this file's shape).
  */
@@ -26,7 +28,7 @@ import { safeError } from "@/lib/server/safe-error";
 import { contactBulkReply, parseBulkRequest, previewContactBulk, runContactBulk } from "@/lib/server/marketing/contact-bulk";
 import type { BulkOutcome, BulkPreview, BulkRefusal } from "@/lib/contacts/bulk-rules";
 import { viewerReadsContacts } from "./contacts-loader";
-import { CONTACT_ROLE_REFUSAL, CONTACT_RATE_LIMITED } from "./contacts-copy";
+import { CONTACT_ROLE_REFUSAL, CONTACT_RATE_LIMITED, CONTACTS_BULK } from "./contacts-copy";
 
 /** How many contacts the selection holds NOW, the tier its confirmation takes, and — up to fifty ticked — who they are. */
 export async function previewContactBulkAction(input: unknown): Promise<BulkPreview | BulkRefusal> {
@@ -39,7 +41,7 @@ export async function previewContactBulkAction(input: unknown): Promise<BulkPrev
     if (!parsed.ok) return parsed;
     return await previewContactBulk(parsed.req, await viewerReadsContacts().catch(() => false));
   } catch (err) {
-    return { ok: false, reason: "error", error: safeError(err, "Counting the selected contacts failed") };
+    return { ok: false, reason: "error", error: safeError(err, CONTACTS_BULK.previewFallback) };
   }
 }
 
@@ -57,7 +59,7 @@ export async function runContactBulkAction(input: unknown): Promise<BulkOutcome 
     reads = await viewerReadsContacts().catch(() => false);
     result = await runContactBulk(parsed.req, g.userId, reads);
   } catch (err) {
-    return { ok: false, reason: "error", error: safeError(err, "The bulk action failed") };
+    return { ok: false, reason: "error", error: safeError(err, CONTACTS_BULK.runFallback) };
   }
   if (result.ok) {
     try { revalidatePath("/admin/contacts"); } catch { /* landed; a stale list is the smaller harm */ }

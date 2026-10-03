@@ -161,7 +161,8 @@ console.log("\n[client-graph-safe] \u00a71 client-reachable modules stay clear o
     // only parsed-file.ts, vcard.ts and xlsx-limits.ts (C17: src/lib/contacts modules), all pinned here.
     "lib/contacts/import-parse.ts",
     // ⭐ ADDED 2026-10-02 (marketing U22, decision M3). The contact form's live number verdict: the Add a contact dialog
-    // runs it in the browser on every keystroke. It imports only tz-msisdn.ts and phone-normalize.ts, both pinned here.
+    // runs it in the browser on every keystroke. It imports only tz-msisdn.ts, phone-normalize.ts and (vb7, the paste's
+    // length limit) contact-fields.ts, all pinned here.
     "lib/contacts/contact-number.ts",
     // ⭐ ADDED 2026-10-02 (marketing U23, decision M3). The bulk bar's rules — the ONE tier rule, the per-number cap,
     // the tag and list-name checks and the wire shapes — read by the "use client" bar and by the server's service alike.

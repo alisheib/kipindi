@@ -43,6 +43,18 @@
  * (`mayReveal(session.role, …)`) and writes its raw `q` into the chain. That route is outside this unit's permission;
  * the plan's §0 records both.
  *
+ * ⭐ vb7 · THE VALIDATION PASS:
+ *   · AN ADDRESS KEY THE PAGE NEVER WRITES IS REFUSED (400, `unknown_param`) — `?operator=vodacom` or `?tags=vip` used to
+ *     be dropped by `exportParamsOf` and export the WHOLE book under a filter nobody got;
+ *   · A BOOK THAT CANNOT BE COUNTED is a 503 with a sentence and an `export_refused` row (`read_failed`), never Next's
+ *     bare 500 with no record;
+ *   · A SELECTION IN THE ADDRESS is told what an export takes — the page's filter, never ticked rows;
+ *   · THE FILE SPEAKS EAST AFRICA TIME: its name and its Added cells are the wall clock an officer in Dar reads, each
+ *     cell still one exact instant (`+03:00`);
+ *   · THE DOOR (`contactsExportDoor`) is the route's whole decision, here where the suite drives it: a stranger still
+ *     gets the ONE 404, an officer whose second factor lapsed goes to the step-up page, and a refused download comes back
+ *     to the list as a 303 carrying `?export=<reason>`, which the page says in words.
+ *
  * Guard: `npm run test:contacts-export` (in-process, with a `--prove-red` run) · the export leg of
  * `npm run test:contacts-audience` (the list's total = X-Rows-Matched = the rows parsed back).
  */
@@ -61,10 +73,13 @@ import {
 import type { ContactAudience, ContactAudienceFilter } from "@/lib/server/marketing/audience";
 import { toCsv } from "@/lib/contacts/csv-write";
 import { contactExportHeader, joinTags } from "@/lib/contacts/contact-fields";
-import { operatorBrand } from "@/app/admin/contacts/contacts-query";
+import { EAT_OFFSET_MS } from "@/lib/eat-day";
+import type { AdminTotpStatus } from "@/lib/server/admin-guard";
+import { contactsHref, operatorBrand } from "@/app/admin/contacts/contacts-query";
 import {
-  CONSENT_LABEL, CONTACTS_EXPORT, CONTACTS_FILTER_NOT_FOR_ROLE, SOURCE_LABEL, contactsExportTooMany,
+  CONSENT_LABEL, CONTACTS_EXPORT, CONTACTS_FILTER_NOT_FOR_ROLE, SOURCE_LABEL, contactsExportTooMany, isContactsExportRefusal,
 } from "@/app/admin/contacts/contacts-copy";
+import type { ContactsExportRefusal } from "@/app/admin/contacts/contacts-copy";
 
 /* ═══ THE CONSTANTS ════════════════════════════════════════════════════════════════════════════════ */
 
@@ -177,6 +192,20 @@ export function exportRequestAllowed(secFetchSite: string | null): boolean {
   return secFetchSite === null || secFetchSite === "same-origin" || secFetchSite === "none";
 }
 
+/** vb7 · East Africa Time's offset as ISO 8601 writes it ("+03:00"), from the ONE offset (`EAT_OFFSET_MS`). */
+const EAT_SUFFIX = `+${String(Math.floor(EAT_OFFSET_MS / 3_600_000)).padStart(2, "0")}:${String(Math.floor((EAT_OFFSET_MS % 3_600_000) / 60_000)).padStart(2, "0")}`;
+
+/**
+ * ⭐ vb7 · AN INSTANT AS EAST AFRICA TIME — ISO 8601 with its offset ("2026-09-01T10:00:00+03:00"): the wall clock an
+ * officer in Dar reads, and still exactly one instant to any program that reads the file. An unreadable stamp is kept as
+ * stored, never invented.
+ */
+export function eatIsoInstant(iso: string): string {
+  const ms = Date.parse(iso);
+  if (!Number.isFinite(ms)) return iso;
+  return `${new Date(ms + EAT_OFFSET_MS).toISOString().slice(0, 19)}${EAT_SUFFIX}`;
+}
+
 export function contactExportRow(c: StoredMarketingContact, keys: readonly ContactExportKey[], cell: ReadCell): string[] {
   const reveal = cell === "read";
   const text = (s: string) => (reveal ? s : maskFreeText(s));
@@ -189,7 +218,7 @@ export function contactExportRow(c: StoredMarketingContact, keys: readonly Conta
     operator: () => operatorBrand(c.ndc) ?? "",
     consent: () => CONSENT_LABEL[c.consentState].label,
     source: () => SOURCE_LABEL[c.source],
-    added: () => c.createdAt,
+    added: () => eatIsoInstant(c.createdAt),
   };
   return keys.map((k) => value[k]());
 }
@@ -300,10 +329,20 @@ export type ContactsExportRequest = {
   params: Record<string, string | string[] | undefined>;
   /** The export's own instant, in ms — the Added window's upper bound (X7) and the file name's stamp. */
   now: number;
+  /** vb7 · the address keys the parser does not read (`exportStrayParams`) — any one refuses the export. */
+  stray?: readonly string[];
 };
 
 /** The keys the parser reads — `ids` included, so a selection in an address is REFUSED rather than ignored (X27). */
 const PARAM_KEYS: readonly string[] = [...CONTACT_AUDIENCE_URL_KEYS, "ids"];
+
+/** ⛔ vb7 · every key of the address the parser does NOT read, each once — so the export can REFUSE it instead of
+ *  dropping it into the whole book. Counted, never echoed: a key can hold anything someone typed. */
+export function exportStrayParams(url: URL): string[] {
+  const seen = new Set<string>();
+  for (const key of url.searchParams.keys()) if (!PARAM_KEYS.includes(key)) seen.add(key);
+  return [...seen];
+}
 
 /** The route's address → the parser's input, one value per key or an array for a repeated key, and nothing the parser
  *  does not read (so no key can reach the object's prototype). */
@@ -340,11 +379,29 @@ function knownParam(param: string): string {
   return PARAM_KEYS.includes(param) ? param : "filter";
 }
 
-function plain(status: number, sentence: string): Response {
+/** vb7 · the header a refusal names its reason in — the door reads it to send the officer back to the list. */
+export const EXPORT_REFUSED_HEADER = "X-Export-Refused";
+
+function plain(status: number, sentence: string, refusal: ContactsExportRefusal): Response {
   return new Response(sentence, {
     status,
-    headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" },
+    headers: {
+      "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff",
+      [EXPORT_REFUSED_HEADER]: refusal,
+    },
   });
+}
+
+/** vb7 · the count, at the export's instant — or the fault it threw, which the export answers as `read_failed`. */
+async function countFor(deps: ContactsExportDeps, filter: ContactAudienceFilter): Promise<
+  { ok: true; audience: ContactAudience; matched: number } | { ok: false; error: unknown }
+> {
+  try {
+    const audience = deps.audience(filter);
+    return { ok: true, audience, matched: await audience.count() };
+  } catch (error) {
+    return { ok: false, error };
+  }
 }
 
 /**
@@ -366,33 +423,46 @@ export async function exportContactsCsv(req: ContactsExportRequest, deps: Contac
     targetId: exportId,
     payload: { role: viewer.role, asOf, ...payload },
   });
-  const refuse = async (status: number, sentence: string, payload: Record<string, unknown>): Promise<Response> => {
+  const refuse = async (status: number, sentence: string, payload: Record<string, unknown>, refusal: ContactsExportRefusal): Promise<Response> => {
     await record("contacts.export_refused", payload);
-    return plain(status, sentence);
+    return plain(status, sentence, refusal);
   };
   const unrecorded = async (which: string): Promise<Response> => {
     console.error(`[contacts-export] ${which} was not recorded, so no file was sent`);
     await record("contacts.export_refused", { reason: "unrecorded", unrecorded: which });
-    return plain(503, CONTACTS_EXPORT.unrecorded);
+    return plain(503, CONTACTS_EXPORT.unrecorded, "unrecorded");
   };
+
+  // ── ⛔ vb7 · a key this page never writes is REFUSED, never dropped — `?operator=vodacom` exported the whole book. The
+  // record counts the keys and names none (a key can hold anything someone typed). ──
+  const stray = req.stray ?? [];
+  if (stray.length > 0) return refuse(400, CONTACTS_EXPORT.stray, { reason: "unknown_param", keys: stray.length }, "unknown_param");
 
   // ── the filter: U24's ONE parser, then its ONE role rule — both before anything is counted ──
   const parsed = deps.parse(req.params, req.now);
   if (!parsed.ok) {
-    return refuse(400, CONTACTS_EXPORT.unreadable(parsed.param, parsed.reason), { reason: "unreadable_filter", param: knownParam(parsed.param) });
+    // vb7 · a selection in the address is told what an export takes — the page's filter, never ticked rows.
+    if (parsed.param === "ids") return refuse(400, CONTACTS_EXPORT.noSelection, { reason: "unreadable_filter", param: "ids" }, "selection");
+    return refuse(400, CONTACTS_EXPORT.unreadable(parsed.param, parsed.reason), { reason: "unreadable_filter", param: knownParam(parsed.param) }, "unreadable_filter");
   }
   const role = deps.roleRefusal(parsed.filter, reads);
   if (role !== null) {
-    return refuse(403, `${CONTACTS_FILTER_NOT_FOR_ROLE.body(role.param, role.reason)} ${CONTACTS_EXPORT.nothingSent}`, { reason: "role", param: knownParam(role.param) });
+    return refuse(403, `${CONTACTS_FILTER_NOT_FOR_ROLE.body(role.param, role.reason)} ${CONTACTS_EXPORT.nothingSent}`, { reason: "role", param: knownParam(role.param) }, "role");
   }
 
   // ── the count, at the export's own instant (X7) ──
   const filter = boundedBy(parsed.filter, asOf);
-  const audience = deps.audience(filter);
-  const matched = await audience.count();
+  // ⛔ vb7 · a book that cannot be counted is a REFUSAL — a sentence with a next step and an export_refused row — never
+  // Next's bare 500 with nothing recorded. Only the fault's name is logged: a database error's text can print the query.
+  const counted = await countFor(deps, filter);
+  if (!counted.ok) {
+    console.error("[contacts-export] the book could not be counted, so no file was sent:", (counted.error as Error)?.name ?? "Error");
+    return refuse(503, CONTACTS_EXPORT.readFailed, { reason: "read_failed" }, "read_failed");
+  }
+  const { audience, matched } = counted;
   const described = deps.describe(filter);
   if (matched > deps.max) {
-    return refuse(422, contactsExportTooMany(matched, deps.max), { reason: "too_many", matched, max: deps.max, filter: described });
+    return refuse(422, contactsExportTooMany(matched, deps.max), { reason: "too_many", matched, max: deps.max, filter: described }, "too_many");
   }
 
   const keys = deps.keys(viewer.cell);
@@ -415,7 +485,8 @@ export async function exportContactsCsv(req: ContactsExportRequest, deps: Contac
       yield deps.write(rows.map((c) => deps.row(c, keys, viewer.cell)));
     }
   }
-  const stamp = asOf.slice(0, 19).replace(/[:T]/g, "-");
+  // vb7 · the file's name is stamped in East Africa Time — the clock on the officer's wall, as its Added cells are.
+  const stamp = new Date(req.now + EAT_OFFSET_MS).toISOString().slice(0, 19).replace(/[:T]/g, "-");
   return new Response(csvStream(deps.write([header], { bom: true }), chunks()), {
     status: 200,
     headers: {
@@ -430,4 +501,73 @@ export async function exportContactsCsv(req: ContactsExportRequest, deps: Contac
       "X-Export-Masked": String(!reads),
     },
   });
+}
+
+/* ═══ vb7 · THE DOOR — the route's whole decision, where the suite drives it ═══════════════════════════════════════ */
+
+/** What the door reads of the request: its method, its address and its `Sec-Fetch-Site` header. ⛔ Only the address's
+ *  query is read — never its host, which on Railway is the container's. */
+export type ContactsExportDoorRequest = { method: string; url: string; secFetchSite: string | null };
+
+/** The door's answer: the ONE 404, a 303 to one of this console's own pages, or the export's own response. */
+export type ContactsExportDoorAnswer =
+  | { kind: "not_found" }
+  | { kind: "see_other"; to: string }
+  | { kind: "response"; response: Response };
+
+/** What the door asks, in order. The route passes the platform's own; `test:contacts-export` passes stand-ins. */
+export type ContactsExportDoorDeps = {
+  /** The session cookie — the viewer's id and nothing else is read from it. */
+  session: () => Promise<{ userId: string; sessionId: string } | null>;
+  /** The viewer on the STORED role (`contactsExportViewer`). */
+  viewer: (session: { userId: string } | null) => Promise<ContactsExportViewer | null>;
+  /** The second factor (`checkAdminTotp`): a direct GET skips the admin layout's gate, so the door asks itself. */
+  secondFactor: (userId: string, sessionId: string) => Promise<AdminTotpStatus>;
+  /** The export (`exportContactsCsv`). */
+  run: (req: ContactsExportRequest) => Promise<Response>;
+  now: () => number;
+};
+
+/** vb7 · a lapsed (or never set up) second factor: the step-up page, which returns the officer to the list's own address
+ *  for this filter — written by the ONE href builder, so `ids`, `page` and any stray key never travel. */
+export function contactsExportStepUpHref(status: Exclude<AdminTotpStatus, "ok">, params: Record<string, string | string[]>): string {
+  const page = status === "not-enrolled" ? "/admin/2fa/setup" : "/admin/totp-verify";
+  return `${page}?next=${encodeURIComponent(contactsHref(params))}`;
+}
+
+/** vb7 · a refused download: the list again, for the same filter, saying why (`?export=<reason>`, read by the page from
+ *  `CONTACTS_EXPORT_REFUSED`). */
+export function contactsExportBackHref(params: Record<string, string | string[]>, refusal: ContactsExportRefusal): string {
+  const list = contactsHref(params);
+  return `${list}${list.includes("?") ? "&" : "?"}export=${encodeURIComponent(refusal)}`;
+}
+
+/** vb7 · the reason a response refused with (`EXPORT_REFUSED_HEADER`, set by `plain`) — or null for a file. */
+export function contactsExportRefusalOf(response: Response): ContactsExportRefusal | null {
+  const raw = response.headers.get(EXPORT_REFUSED_HEADER);
+  return isContactsExportRefusal(raw) ? raw : null;
+}
+
+/**
+ * ⭐ vb7 · THE EXPORT'S DOOR — the route's whole decision, in this order, and the order IS the gate:
+ *   1. GET only, never a cross-site request (`exportRequestAllowed`) — before the session is read;
+ *   2. a session, and a viewer decided on the STORED role (`contactsExportViewer`);
+ *      ⛔ a failure of 1 or 2 is the ONE identical 404 — a stranger learns nothing and is sent nowhere;
+ *   3. the second factor: an officer whose 2-step sign-in lapsed, or was never set up, is sent to the step-up page with
+ *      `next` the list for this filter — never the file, and never "Not Found";
+ *   4. the export; a refusal it answers comes back to the list as a 303 with `?export=<reason>`, which the page says in
+ *      words, and a file is handed through untouched.
+ */
+export async function contactsExportDoor(req: ContactsExportDoorRequest, deps: ContactsExportDoorDeps): Promise<ContactsExportDoorAnswer> {
+  if (req.method !== "GET" || !exportRequestAllowed(req.secFetchSite)) return { kind: "not_found" };
+  const session = await deps.session();
+  const viewer = await deps.viewer(session);
+  if (!session || !viewer) return { kind: "not_found" };
+  const url = new URL(req.url, "http://export.invalid");
+  const params = exportParamsOf(url);
+  const factor = await deps.secondFactor(session.userId, session.sessionId);
+  if (factor !== "ok") return { kind: "see_other", to: contactsExportStepUpHref(factor, params) };
+  const response = await deps.run({ viewer, params, stray: exportStrayParams(url), now: deps.now() });
+  const refused = contactsExportRefusalOf(response);
+  return refused === null ? { kind: "response", response } : { kind: "see_other", to: contactsExportBackHref(params, refused) };
 }

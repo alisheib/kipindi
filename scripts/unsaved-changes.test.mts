@@ -164,12 +164,9 @@ const EXEMPT: Record<string, string> = {
   "app/admin/journey/rollout-control.tsx": "① the reason opens inside <Modal role=alertdialog>, with scrim-close and Escape disabled once anything is typed; Cancel and ✕ are the deliberate exits",
   "app/admin/journey/preview-links.tsx": "① the label and reason (create) and the reason (revoke) open only inside <Modal>, with scrim-close and Escape disabled once anything is typed; Cancel and ✕ are the deliberate exits",
   "app/admin/journey/page.tsx": "nothing can be typed: its only <input>s are type=hidden fields of the two native POST forms to /preview (intent, back)",
-  /* ⭐ U22 (2026-10-02), the contact form. It renders no typed control on the page: the number,
-   *    name, email, notes and tags exist only inside its <Modal>, which sets `closeOnScrim={!dirty && !pending}` and
-   *    `closeOnEsc={!dirty && !pending}`, so a stray click or key cannot dismiss typed work, and while a save is in
-   *    flight nothing can (`showClose={!pending}`). The deliberate exits are Cancel, ✕ and Save — plus, in the add
-   *    dialog, the duplicate's "Open the existing contact" link, a press that chooses the row already in the book. */
-  "app/admin/contacts/contact-form.tsx": "① the contact's fields open inside <Modal>, with scrim-close and Escape disabled once anything is typed; Cancel, ✕, Save and the duplicate's link are the deliberate exits",
+  /* ✅ vb7 review m5a (2026-10-03): U22's contact form LEFT this list — it renders <UnsavedChangesGuard> now, over its four
+   *    free fields (never the number alone, so a duplicate's "Open the existing contact" asks nothing when only the
+   *    number was typed), beside its own in-dialog ask on ✕ and Cancel. The list only shrinks. */
   "app/admin/payments/reconcile-controls.tsx": "① fields open inside <Modal>",
   "app/admin/payments/stuck-payout-controls.tsx": "① fields open inside <Modal>",
   "app/admin/players/[id]/balance-adjust-controls.tsx": "① fields open inside <Modal>",

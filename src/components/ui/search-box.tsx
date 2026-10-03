@@ -30,6 +30,11 @@
  * Two couplings that scripts/markets-search-e2e.mjs asserts and that must not
  * change casually: the placeholder on /markets matches /Search markets/, and the
  * clear button's aria-label matches /Clear search/.
+ *
+ * ⭐ vb7 · `describe` (optional): a surface's own reading of what its search will do. When it returns text, the echo
+ * row says that instead of the grammar's word count — the contact book reads "0712 345 678" as "Whole number — matched
+ * exactly", never "3 words", because it matches a whole number and never searches a part of one. Absent, or returning
+ * null, the echo is exactly as before. A regex refusal still wins over both.
  */
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -56,6 +61,9 @@ type Props = {
   helpFields?: readonly string[];
   /** Opt in to `/pattern/`. Admin surfaces only — see prisma-where.ts. */
   allowRegex?: boolean;
+  /** vb7 · the surface's own reading of the text: when it returns text, the echo row shows it instead of the word count.
+   *  ⛔ A function, so only a client component can pass it (a server page wraps the box in a client file). */
+  describe?: (text: string) => string | null;
   className?: string;
 };
 
@@ -69,6 +77,7 @@ export function SearchBox({
   debounceMs = 250,
   helpFields,
   allowRegex = false,
+  describe,
   className,
 }: Props) {
   const { t } = useT();
@@ -130,6 +139,8 @@ export function SearchBox({
     field: t.common.searchField,
     pattern: t.common.searchPattern,
   });
+  /* vb7 · the surface's own reading, when it has one for this text — it stands in for the grammar's word count. */
+  const described = describe ? describe(q) : null;
   const invalidReason =
     parsed.mode === "invalid"
       ? parsed.reason === "regex-too-long" ? t.common.searchRegexTooLong
@@ -183,7 +194,7 @@ export function SearchBox({
         aria-live="polite"
         className={`mt-1.5 min-h-[17px] text-[11px] ${invalidReason ? "text-danger-fg" : "text-text-subtle"}`}
       >
-        {invalidReason || echo || " "}
+        {invalidReason || described || echo || " "}
       </p>
     </div>
   );
