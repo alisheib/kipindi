@@ -12,7 +12,7 @@ import { Select } from "@/components/ui/select";
 import { Toggle } from "@/components/ui/toggle";
 import { UnsavedChangesGuard, PendingChangesBar, useFormDirty } from "@/components/ui/unsaved-changes";
 import { verifyChainAction, updateSupportConfigAction, updatePlatformTimezoneAction, setMaintenanceModeAction, setAnnouncementAction } from "./actions";
-import { HELPLINE, LICENCE_NUMBER, toDialTarget, type SupportConfig } from "@/lib/support-config";
+import { toDialTarget, toHelplineDial, type SupportConfig } from "@/lib/support-config";
 
 type AnnouncementTone = "info" | "warning" | "success";
 
@@ -95,11 +95,13 @@ export function SupportConfigForm({ config }: { config: SupportConfig }) {
   const cfgFormRef = useRef<HTMLFormElement>(null);
   /* The form's own Save. The bar draws no second one while this is on screen (owner, 2026-09-22). */
   const saveRef = useRef<HTMLButtonElement>(null);
-  /* ⭐ The ONE piece of controlled state on this form, and only so the dial target can be
-     previewed as it is typed. The phone box stays uncontrolled (`defaultValue`) so the snapshot
-     hook keeps owning `dirty` — this mirrors the value rather than driving it. */
+  /* ⭐ The only controlled state on this form, and only so the two dial targets can be previewed as
+     they are typed. The boxes stay uncontrolled (`defaultValue`) so the snapshot hook keeps owning
+     `dirty` — these mirror the values rather than driving them. */
   const [phone, setPhone] = useState(config.phone);
+  const [helpline, setHelpline] = useState(config.nationalHelpline);
   const dialPreview = toDialTarget(phone);
+  const helplineDialPreview = toHelplineDial(helpline);
   const { dirty, markSaved, formProps } = useFormDirty(cfgFormRef);
   const [pending, start] = useTransition();
   const router = useRouter();
@@ -133,74 +135,59 @@ export function SupportConfigForm({ config }: { config: SupportConfig }) {
     });
   };
 
+  /* 🔴 EVERY BOX ON THIS CARD IS EDITABLE — the owner's rule, 2026-10-03: "everything should be
+     changeable … admins can change anything". Until then three of the five were greyed-out inputs
+     (the dial target, the helpline, the licence), and an admin reported the console as read-only.
+     ⭐ The dial targets are still DERIVED, never typed — a box for them would let the number a player
+     reads and the number a tap calls be saved apart — so each is a line of text under the number it
+     comes from, not a disabled input that reads as locked. */
+  const dialsLine = (target: string) =>
+    target ? (
+      <>A tap dials <span className="font-mono text-text-secondary">{target}</span>.</>
+    ) : (
+      <span className="text-danger-fg">Not a dialable number yet.</span>
+    );
+
   return (
     <form ref={cfgFormRef} {...formProps} onSubmit={onSubmit} className="space-y-3">
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
         {/* ⭐ DG-S-05/06 — `dataField` is the ADDRESS `updateSupportConfigAction` names when it
             refuses ("Email is required."). It lands on the <label> wrapper, which CONTAINS the
-            input, so `focusFirstInvalid` finds the control inside it. ⛔ The two strings must
-            match; nothing across the server/client boundary can check that for you. */}
+            input, so `focusFirstInvalid` finds the control inside it. ⛔ The strings must match
+            the action's; nothing across the server/client boundary can check that for you. */}
         <Field label="Support email" hint="Shown on help, login, legal, KYC pages" dataField="support-email">
           <Input name="email" defaultValue={config.email} required />
         </Field>
         {/* 🔴 THE HINT USED TO READ "E.g. +255 22 211 5811" — a landline that appears nowhere in
-            the live row, so the console steered every operator toward a retired number in a
-            retired format. ⭐ And `phoneTel`, the thing a TAP actually dials, had no control and
-            no preview at all: it was derived from this box by stripping spaces and brackets, which
-            never converted a local `0…` to E.164. An operator could therefore save a number that
-            reads correctly on /help and cannot be dialled from outside Tanzania, and nothing on
-            this screen would say so. The preview below is that missing feedback — it is the SAME
-            `toDialTarget` the server action stores, so what you see is what gets saved. */}
+            the live row. ⭐ The dial line under it is the SAME `toDialTarget` the server action
+            stores, so what you see is what gets saved. */}
         <Field
           label="Support phone"
-          hint="E.g. 0712 345 678 — the local form a player reads"
+          hint={<>50pick&apos;s own desk, shown as &ldquo;Contact us&rdquo;. {dialsLine(dialPreview)}</>}
           dataField="support-phone"
         >
           <Input name="phone" defaultValue={config.phone} onChange={(e) => setPhone(e.currentTarget.value)} required />
         </Field>
+        {/* ⭐ E-328 lives in this hint and in the action's refusal now, not in a lock: this is the
+            national line, and saving our own desk number here is refused. */}
         <Field
-          label="Dial target"
-          hint="Derived from the phone above · this is what a tap calls"
+          label="National helpline"
+          hint={<>Tanzania&apos;s problem-gambling helpline, shown as &ldquo;Helpline&rdquo; on every page. Not our desk number. {dialsLine(helplineDialPreview)}</>}
+          dataField="support-helpline"
         >
-          <Input value={dialPreview || "— not dialable —"} readOnly disabled />
+          <Input name="nationalHelpline" defaultValue={config.nationalHelpline} onChange={(e) => setHelpline(e.currentTarget.value)} required />
         </Field>
-        {/* 🔴 READ-ONLY, AND THE FIELD BEING UNEDITABLE IS THE FIX (E-328).
-            This box used to be an <Input name="helpline">, and what an operator typed into it
-            on 2026-08-19 and again on 2026-09-08 was `+255769777877` — 50pick's OWN desk. It
-            reached nobody only because nothing read the row at all (E-226); the moment the
-            reader existed it would have published the operator's number under "Tanzania
-            Helpline" on `/legal/responsible-gambling`, walking a player who is excluding
-            themselves straight back to us. It is shown rather than hidden because an officer
-            still needs to know which number the site publishes — they simply cannot move it.
-            ⭐ Safe to read `HELPLINE()` from this client component precisely because it is now
-            a pinned constant: browser bundle and server agree by construction. */}
-        {/* 🔴 THE HINT STATED THE FACT AND NOT THE REASON — the owner's literal ask was
-            "if anything cannot be changed, show a warning why". "not editable" answers WHETHER,
-            which an officer had already worked out by typing into it; it never answers WHY, and a
-            control that refuses without explaining reads as broken. That is how this campaign
-            started. */}
-        <Field
-          label="Problem-gambling helpline"
-          hint="Locked by design: this is Tanzania's NATIONAL helpline, not ours. Pinning it is what stops a player who is self-excluding from being routed back to us. It has no setter and no stored value, so there is nothing here that could be changed."
-        >
-          <Input value={HELPLINE()} readOnly disabled />
-        </Field>
-        {/* ⭐ ROW 4.5 — `LICENCE_NUMBER()` renders in EVERY footer and had no admin field and no
-            mention anywhere in the console, so an officer could not confirm what the platform
-            publishes to a Board reviewer without reading the source. Shown with the same locked
-            treatment as the helpline, for the same reason: a licence number an operator could
-            retype through a form is not evidence of anything. */}
         <Field
           label="Operating licence"
-          hint="Locked by design: issued by the Gaming Board of Tanzania and published in every footer. A licence number an operator could retype is not evidence of anything, so there is no setter."
+          hint="Gaming Board of Tanzania licence number, printed in every footer, the terms and the game rules."
+          dataField="support-licence"
         >
-          <Input value={LICENCE_NUMBER()} readOnly disabled mono />
+          <Input name="licenceNumber" defaultValue={config.licenceNumber} required mono />
         </Field>
       </div>
-      {/* ⭐ Disabled while nothing has changed. Safe to key off `dirty` because every editable
-          control here is a named text box the snapshot hook reads; the three read-only boxes
-          carry no name and post nothing. A disabled default button also stops Enter in a box
-          from submitting a form with nothing to save. */}
+      {/* ⭐ Disabled while nothing has changed. Safe to key off `dirty` because every control here
+          is a named text box the snapshot hook reads. A disabled default button also stops Enter in
+          a box from submitting a form with nothing to save. */}
       <Button ref={saveRef} type="submit" variant="primary" loading={pending} disabled={!dirty}>
         Save · Hifadhi
       </Button>
@@ -210,12 +197,12 @@ export function SupportConfigForm({ config }: { config: SupportConfig }) {
       <PendingChangesBar
         dirty={dirty}
         saving={pending}
-        detail="Support contact details are shown on help, login, legal and KYC pages."
+        detail="Support contacts, the helpline and the licence are shown on public pages."
         saveAnchor={saveRef}
         onSave={() => cfgFormRef.current?.requestSubmit()}
-        /* ⛔ `reset()` fires no event, so the dial preview's mirror is put back by hand — or
-           "Dial target" would keep showing the number that was just discarded. */
-        onDiscard={() => { cfgFormRef.current?.reset(); setPhone(config.phone); markSaved(); }}
+        /* ⛔ `reset()` fires no event, so the dial previews' mirrors are put back by hand — or
+           the "A tap dials" lines would keep showing the numbers that were just discarded. */
+        onDiscard={() => { cfgFormRef.current?.reset(); setPhone(config.phone); setHelpline(config.nationalHelpline); markSaved(); }}
         saveLabel="Save · Hifadhi"
       />
       <UnsavedChangesGuard dirty={dirty} body="The support contact details have been changed but not saved. Leaving now discards the change." />

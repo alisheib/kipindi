@@ -86,6 +86,30 @@ function readLocale(): "en" | "sw" | "zh" {
   return v === "en" || v === "sw" || v === "zh" ? v : "sw";
 }
 
+/**
+ * ⭐ THE SAVED HELPLINE, WHEN THE ROOT LAYOUT PUBLISHED ONE (owner's rule 2026-10-03: the helpline is
+ * editable in /admin/system). The layout writes it onto <html> as `data-kp-helpline` /
+ * `data-kp-helpline-tel`; on a crash AFTER the page loaded those attributes are still on the document,
+ * so this page prints the number the admin saved. On a server-side crash the layout never ran, and the
+ * copies in MINI_DICT above — the default — are the answer.
+ * ⛔ The names are spelled here, not imported, because this file imports nothing but React;
+ * `test:support-contact` §15 holds them in step with `PUBLIC_FACT_ATTRS` in `@/lib/support-config`.
+ */
+function readPublishedHelpline(): { text: string; tel: string } | null {
+  if (typeof document === "undefined") return null;
+  try {
+    const el = document.documentElement;
+    const text = el.getAttribute("data-kp-helpline");
+    const tel = el.getAttribute("data-kp-helpline-tel");
+    return text && tel ? { text, tel } : null;
+  } catch {
+    return null;
+  }
+}
+
+/** The default helpline's dial form — the fallback when no saved value was published. */
+const HELPLINE_FALLBACK_TEL = "0800110011";
+
 export default function GlobalError({
   error,
   reset,
@@ -126,6 +150,10 @@ export default function GlobalError({
 
   const lang = useMemo(() => readLocale(), []);
   const t = MINI_DICT[lang];
+  /* Read once per mount, like the locale: the attributes may be gone from <html> after this page commits. */
+  const published = useMemo(() => readPublishedHelpline(), []);
+  const helplineText = published ? t.helpline.replace(/0800[\d\s]*$/, published.text) : t.helpline;
+  const helplineTel = published ? published.tel : HELPLINE_FALLBACK_TEL;
 
   // Inline OKLCH so the page is readable even with no stylesheet.
   const BG = "oklch(15% 0.130 268)";
@@ -326,8 +354,8 @@ export default function GlobalError({
                 {t.rg}
               </a>
               <span style={{ color: BORDER }}>{"   ·   "}</span>
-              <a href="tel:0800110011" style={{ color: TEXT_MUTED, textDecoration: "none" }}>
-                {t.helpline}
+              <a href={`tel:${helplineTel}`} style={{ color: TEXT_MUTED, textDecoration: "none" }}>
+                {helplineText}
               </a>
             </span>
             <span>{t.gbt}</span>

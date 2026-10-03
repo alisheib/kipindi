@@ -24,8 +24,8 @@ const mk=`<img src="https://kipindi-production.up.railway.app/icons/mark-color-5
  * ⛔ This file is plain `.mjs` and cannot import the TypeScript source of truth, so the honest
  * answer is not a NEWER literal — that is how it got wrong in the first place — but to state
  * nothing it cannot source. Set `SAMPLE_SUPPORT_EMAIL` to render a contact line; leave it unset
- * and the sample simply omits one. The statutory helpline is safe to name because it is a PINNED
- * constant with no setter and no persisted field: it cannot drift.
+ * and the sample simply omits one. The helpline below is the DEFAULT (`SUPPORT_DEFAULTS` in
+ * `support-config.ts`); since 2026-10-03 an admin can change the live one, so a sample may lag it.
  */
 const SAMPLE_SUPPORT_EMAIL = process.env.SAMPLE_SUPPORT_EMAIL || "";
 const FOOTER_CONTACT = SAMPLE_SUPPORT_EMAIL

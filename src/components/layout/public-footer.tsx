@@ -188,7 +188,8 @@ export function PublicFooter({
               every page now.
               ⛔ IT SITS ABOVE THE HELPLINE AND IS NAMED "Contact us", NOT "Helpline",
               and that separation is the whole point. `HELPLINE()` is the INDEPENDENT
-              problem-gambling line — free, not ours, a pinned constant with no setter.
+              problem-gambling line — free, not ours (editable in /admin/system since 2026-10-03,
+              and a save that makes it our own desk number is refused).
               `supportPhone` is 50pick's own desk. Unit 2 exists because those two were
               conflated: `/help` showed our number under "Free helpline · 24/7", and the
               chatbot was instructed to hand it to a self-identifying problem gambler.

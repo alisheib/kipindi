@@ -23,13 +23,17 @@
  * `reality-check.tsx:183` still renders `{t.rg.helpline}` — "Tanzania Helpline" /
  * "Msaada wa Tanzania" / "坦桑尼亚热线" — beside `SUPPORT_PHONE()`.
  *
- * ⭐ THE RULE THE SPLIT ENCODES: the operator's own address and desk line are THEIRS to
- * change; the national problem-gambling helpline is NOT. Pinning it is not a restriction,
- * it is the only arrangement in which a persisted row cannot walk a distressed player back
- * to the operator.
+ * ⭐ THE RULE, SINCE 2026-10-03 (Ali: "everything should be changeable"): every public value —
+ * the desk line, the national helpline, the licence — is the admins' to change. Until that day
+ * the helpline and licence were PINNED, and that was overruled. What the pinning protected is
+ * kept by other means: the editable helpline lives under NEW keys so the stale `helpline` value
+ * (our desk) is never read back (§2.1), and a save that makes the helpline our own desk number
+ * is refused (§10).
  *
  *   §1 a saved row REACHES the readers            (E-226 — the missing reader)
- *   §2 a saved row CANNOT move the helpline       (E-328 — the trap in the remedy)
+ *   §2 the stale `helpline` key never becomes the helpline (E-328), and a SAVED helpline and
+ *      licence reach the readers on the server and in a browser (owner's rule, 2026-10-03)
+ *   §16 every box on the admin card is editable, and the layout publishes what is saved
  *   §3 POPULATION: label says helpline => renders the helpline
  *   §4 POPULATION: no client bundle reads an operator-editable contact value
  *
@@ -64,9 +68,10 @@ const SAVED_ROW = {
   helplineTel: "+255769777877",
 };
 
-const { __defineSupportConfigForTest, HELPLINE, HELPLINE_TEL } = await import(
-  "../src/lib/server/support-config.ts"
-);
+const {
+  __defineSupportConfigForTest, HELPLINE, HELPLINE_TEL, LICENCE_NUMBER, setSupportConfig, getSupportConfig,
+} = await import("../src/lib/server/support-config.ts");
+const { SUPPORT_DEFAULTS: DEFAULTS, publicFactAttrs, PUBLIC_FACT_ATTRS } = await import("../src/lib/support-config.ts");
 
 {
   const store = {
@@ -86,15 +91,72 @@ const { __defineSupportConfigForTest, HELPLINE, HELPLINE_TEL } = await import(
   ok("§1 saved phone reaches the reader", got.phone === "+255769777877", `got ${got.phone}`);
   ok("§1 saved phoneTel reaches the reader", got.phoneTel === "+255769777877", `got ${got.phoneTel}`);
 
-  // §2 — and the SAME row cannot move the helpline. Not "does not today": the field is
-  // not part of the persisted shape at all, so there is no value for a row to carry.
-  ok("§2 helpline ignores the saved row", HELPLINE() === "0800 11 0011", `got ${HELPLINE()}`);
-  ok("§2 helplineTel ignores the saved row", HELPLINE_TEL() === "0800110011", `got ${HELPLINE_TEL()}`);
-  ok(
-    "§2 helpline is not a persisted field",
+  // §2 — the helpline is EDITABLE since the owner's rule of 2026-10-03, and that makes the old row
+  // dangerous: its `helpline` key holds our own desk. ⛔ So the stale key must never become the
+  // helpline. The editable one is stored under `nationalHelpline`, and `migrate` takes fields by name.
+  ok("§2.1 the stale `helpline` key in the saved row does NOT become the helpline",
+    got.nationalHelpline === DEFAULTS.nationalHelpline && got.nationalHelplineTel === DEFAULTS.nationalHelplineTel,
+    `got ${got.nationalHelpline} / ${got.nationalHelplineTel}`);
+  ok("§2.2 the stale keys are not carried in the live config at all",
     !("helpline" in (got as Record<string, unknown>)) && !("helplineTel" in (got as Record<string, unknown>)),
-    `config still carries ${Object.keys(got).join(",")}`,
-  );
+    `config still carries ${Object.keys(got).join(",")}`);
+
+  // §2.3 — ⭐ THE OTHER HALF OF THE RULE: a row that DOES save a helpline and a licence reaches the
+  // config. Without this, §2.1 passes over a factory that ignores every helpline whatsoever — which
+  // is the pinning the owner overruled.
+  {
+    const saved = { ...SAVED_ROW, nationalHelpline: "0800 22 3344", nationalHelplineTel: "0800223344", licenceNumber: "TEST/123" };
+    const cfg2 = __defineSupportConfigForTest({
+      loadConfigResult: (async () => ({ ok: true as const, value: saved })) as never,
+      saveConfig: (async () => {}) as never,
+      hasDatabase: (() => true) as never,
+    });
+    await tick();
+    await tick();
+    const g2 = cfg2.get();
+    ok("§2.3 ⭐ a saved helpline and licence REACH the config (the owner's rule, 2026-10-03)",
+      g2.nationalHelpline === "0800 22 3344" && g2.nationalHelplineTel === "0800223344" && g2.licenceNumber === "TEST/123",
+      JSON.stringify({ h: g2.nationalHelpline, t: g2.nationalHelplineTel, l: g2.licenceNumber }));
+  }
+
+  // §2.4 — the READERS read the live config on the server. `HELPLINE()` lives in the client-safe
+  // half, which cannot import the server module; it reads the getter the server module registers on
+  // `globalThis`. A save through the real setter must move all three readers, and putting the
+  // defaults back must move them back.
+  {
+    ok("§2.4 the server module registered the live reader",
+      typeof (globalThis as { __50PICK_SUPPORT_READ?: unknown }).__50PICK_SUPPORT_READ === "function");
+    const live = getSupportConfig();
+    const res = setSupportConfig({ ...live, nationalHelpline: "0800 22 3344", licenceNumber: "TEST/123" }, "officer_test");
+    ok("§2.4 a helpline and licence save through the real setter is accepted", res.ok === true, JSON.stringify(res));
+    ok("§2.4 ★ HELPLINE() / HELPLINE_TEL() / LICENCE_NUMBER() return the SAVED values on the server",
+      HELPLINE() === "0800 22 3344" && HELPLINE_TEL() === "0800223344" && LICENCE_NUMBER() === "TEST/123",
+      `${HELPLINE()} / ${HELPLINE_TEL()} / ${LICENCE_NUMBER()}`);
+    setSupportConfig({ ...live }, "officer_test");
+    ok("§2.4 …and putting the stored values back moves the readers back",
+      HELPLINE() === live.nationalHelpline && LICENCE_NUMBER() === live.licenceNumber, `${HELPLINE()} / ${LICENCE_NUMBER()}`);
+  }
+
+  // §2.5 — and in a BROWSER the readers take the attributes the root layout publishes on <html>.
+  // Simulated with the smallest `window` the reader touches; the attributes are produced by the SAME
+  // `publicFactAttrs` the layout spreads, so the names cannot be tested apart from the ones shipped.
+  {
+    const g = globalThis as { window?: unknown };
+    const prior = g.window;
+    const attrs = publicFactAttrs({ nationalHelpline: "0800 55 6677", nationalHelplineTel: "0800556677", licenceNumber: "TEST/456" });
+    g.window = { document: { documentElement: { getAttribute: (n: string) => attrs[n] ?? null } } };
+    const read = { h: HELPLINE(), t: HELPLINE_TEL(), l: LICENCE_NUMBER() };
+    g.window = { document: { documentElement: { getAttribute: () => null } } };
+    const bare = { h: HELPLINE(), t: HELPLINE_TEL(), l: LICENCE_NUMBER() };
+    g.window = prior;
+    ok("§2.5 ★ in a browser, the readers return what the layout published on <html>",
+      read.h === "0800 55 6677" && read.t === "0800556677" && read.l === "TEST/456", JSON.stringify(read));
+    ok("§2.5 ⚠️ CONTROL — with nothing published, the browser readers fall back to the defaults, never blank",
+      bare.h === DEFAULTS.nationalHelpline && bare.t === DEFAULTS.nationalHelplineTel && bare.l === DEFAULTS.licenceNumber,
+      JSON.stringify(bare));
+    ok("§2.5 the attribute names are the declared ones",
+      Object.keys(attrs).sort().join(",") === Object.values(PUBLIC_FACT_ATTRS).sort().join(","), Object.keys(attrs).join(","));
+  }
 
   // ── §10 · THE WRITER REFUSES WHAT IT CANNOT PUBLISH ────────────────────────────────────
   // 🔴 `SUPPORT_EMAIL()` is now the `ReplyTo` on every outbound message and the footer of all 61
@@ -105,23 +167,37 @@ const { __defineSupportConfigForTest, HELPLINE, HELPLINE_TEL } = await import(
   // returned `{ok:false}` after already mutating the registry would satisfy the first alone, and
   // that is precisely the shape of defect this campaign's Unit 3 is about.
   const before = cfg.get();
-  const refuses = (label: string, patch: Record<string, string>) => {
-    const res = cfg.set(patch as never, "officer_test");
-    ok(`§10 refuses ${label}`, res.ok === false, JSON.stringify(res));
+  const unchanged = () => {
     const after = cfg.get();
-    ok(`§10 …and leaves the stored config untouched after ${label}`,
-       after.email === before.email && after.phone === before.phone && after.phoneTel === before.phoneTel,
-       JSON.stringify(after));
+    return after.email === before.email && after.phone === before.phone && after.phoneTel === before.phoneTel
+      && after.nationalHelpline === before.nationalHelpline && after.nationalHelplineTel === before.nationalHelplineTel
+      && after.licenceNumber === before.licenceNumber;
   };
-  refuses("an address with no @", { email: "msaada", phone: before.phone, phoneTel: before.phoneTel });
-  refuses("an address with a space", { email: "msaada @50pick.tz", phone: before.phone, phoneTel: before.phoneTel });
-  refuses("a blank phone", { email: before.email, phone: "   ", phoneTel: "" });
-  refuses("an undialable phone", { email: before.email, phone: "not-a-number", phoneTel: "" });
+  const refuses = (label: string, patch: Record<string, string>, because?: RegExp) => {
+    const res = cfg.set({ ...before, ...patch } as never, "officer_test");
+    ok(`§10 refuses ${label}`, res.ok === false && (!because || because.test(String((res as { error?: string }).error ?? ""))), JSON.stringify(res));
+    ok(`§10 …and leaves the stored config untouched after ${label}`, unchanged(), JSON.stringify(cfg.get()));
+  };
+  refuses("an address with no @", { email: "msaada" });
+  refuses("an address with a space", { email: "msaada @50pick.tz" });
+  refuses("a blank phone", { phone: "   ", phoneTel: "" });
+  refuses("an undialable phone", { phone: "not-a-number", phoneTel: "" });
+  // ── the fields the owner unlocked on 2026-10-03 — editable, never unvalidated ──
+  refuses("a blank helpline", { nationalHelpline: "  ", nationalHelplineTel: "" });
+  refuses("a helpline with words in it", { nationalHelpline: "call us", nationalHelplineTel: "" });
+  // 🔴 E-328 AS A REFUSAL: the one value the helpline must never hold is our own desk.
+  refuses("the helpline set to our OWN support number (E-328)",
+    { nationalHelpline: "0769 777 877", nationalHelplineTel: "0769777877" }, /own support number/);
+  refuses("a blank licence", { licenceNumber: "   " });
+  refuses("a licence carrying markup", { licenceNumber: "<b>OUS</b>" });
 
   // ⭐ THE POSITIVE CONTROL. Without it every §10 row above would still pass if `set()` refused
   // EVERYTHING — a config that never saves is not a validated config, it is a broken one.
-  const good = cfg.set({ email: "msaada@50pick.tz", phone: "0712345678", phoneTel: "+255712345678" } as never, "officer_test");
-  ok("§10 ⚠️ CONTROL — a well-formed save is ACCEPTED", good.ok === true, JSON.stringify(good));
+  const good = cfg.set({
+    email: "msaada@50pick.tz", phone: "0712345678", phoneTel: "+255712345678",
+    nationalHelpline: "0800 11 0011", nationalHelplineTel: "0800110011", licenceNumber: "GBT/2026/77",
+  } as never, "officer_test");
+  ok("§10 ⚠️ CONTROL — a well-formed save, helpline and licence included, is ACCEPTED", good.ok === true, JSON.stringify(good));
 }
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -200,7 +276,8 @@ for (const f of files) {
   // ── §4 ── A "use client" module cannot be hydrated: its module cache is the BROWSER
   // bundle's, which no server-side load ever touches. So an operator-editable value read
   // from a client component is stale by construction, forever, however good the server
-  // hydration is. The pinned helpline is safe there precisely because it is a constant.
+  // hydration is. `HELPLINE()` / `LICENCE_NUMBER()` are safe there because in a browser they read
+  // the attributes the root layout publishes on <html> (§2.5, §16) — not a module cache.
   //
   // ⛔ THE DIRECTIVE IS SEARCHED OVER THE WHOLE FILE, NOT THE FIRST FEW LINES — and that is
   // not a refinement, it is the bug this section was written with. The first version read the
@@ -482,7 +559,9 @@ for (const f of files) {
       if (depth < 0) { end = i; break; }
     }
     const span = src.slice(m.index, end);
-    for (const g of OPERATOR_GETTERS) {
+    // ⭐ The helpline and licence readers are config reads too since 2026-10-03 — a value that captures
+    // them at import keeps the old number for the life of the process (the SMS footer did, until then).
+    for (const g of [...OPERATOR_GETTERS, ...HELPLINE_GETTERS, "LICENCE_NUMBER"]) {
       const call = span.search(new RegExp(`\\b${g}\\s*\\(`));
       if (call < 0) continue;
       // Anything before the call that defers evaluation — an arrow or a function expression.
@@ -522,8 +601,8 @@ ok("§11 no module-scope value captures a config getter", [...new Set(v11)].leng
   // second copy of the licence number. It did, on the first run with `scripts/` in scope.
   const LICENCE = ["OUS", "00000202602"].join("");
   const licenceDecl = readFileSync(join(SRC, "lib/support-config.ts"), "utf8");
-  ok("§12.1 ⭐ the licence constant is the number Ali supplied — pinned against the RULING, not against itself",
-    new RegExp(`LICENCE_NUMBER_VALUE\\s*=\\s*"${LICENCE}"`).test(licenceDecl),
+  ok("§12.1 ⭐ the licence DEFAULT is the number Ali supplied — pinned against the RULING, not against itself",
+    new RegExp(`licenceNumber:\\s*"${LICENCE}"`).test(licenceDecl),
     "the one assertion that rules-copy §3a cannot make, because it reads the value it checks");
 
   // Comments are stripped: this repo documents its retired values in prose, and a guard
@@ -855,8 +934,10 @@ ok("§11 no module-scope value captures a config getter", [...new Set(v11)].leng
  */
 {
   const ge = readFileSync(join(SRC, "app/global-error.tsx"), "utf8");
-  const helpline = HELPLINE();
-  const helplineTel = HELPLINE_TEL();
+  // ⭐ Compared to the DEFAULT, not to `HELPLINE()`: since 2026-10-03 the live helpline is editable,
+  // and these copies are the page's FALLBACK for a crash in which nothing was published.
+  const helpline = DEFAULTS.nationalHelpline;
+  const helplineTel = DEFAULTS.nationalHelplineTel;
 
   // Population DISCOVERED: every Tanzanian-helpline-shaped run of digits in the file,
   // spaced or unspaced. A hand-typed list of four line numbers would go blind the moment
@@ -864,7 +945,7 @@ ok("§11 no module-scope value captures a config getter", [...new Set(v11)].leng
   const shaped = [...ge.matchAll(/0800[\d\s]{6,12}/g)].map((m) => m[0].trim());
   const wrong = shaped.filter((s) => s !== helpline && s.replace(/\s/g, "") !== helplineTel.replace(/\s/g, ""));
 
-  ok("§15.1 ★ every helpline copy in the root error boundary matches the pinned constant",
+  ok("§15.1 ★ every helpline copy in the root error boundary matches the default helpline",
     wrong.length === 0, wrong.join(" | "));
   // ⭐ CONTROL — 15.1 passes beautifully over a file that stopped showing the helpline at
   // all. The error page is where a player lands when everything else is broken; it losing
@@ -875,6 +956,41 @@ ok("§11 no module-scope value captures a config getter", [...new Set(v11)].leng
   ok("§15.3 ⚠️ CONTROL — the detector rejects a drifted copy",
     [...("Helpline 0800 11 9999").matchAll(/0800[\d\s]{6,12}/g)]
       .map((m) => m[0].trim()).some((s) => s !== helpline));
+  // ⭐ §15.4 — the error page READS the saved helpline by spelling the attribute names itself (it imports
+  // nothing). A name that drifts from `PUBLIC_FACT_ATTRS` makes it silently print the default for ever.
+  ok("§15.4 ★ the error boundary reads the saved helpline under the SAME attribute names the layout publishes",
+    ge.includes(`getAttribute("${PUBLIC_FACT_ATTRS.nationalHelpline}")`) && ge.includes(`getAttribute("${PUBLIC_FACT_ATTRS.nationalHelplineTel}")`),
+    `expected ${PUBLIC_FACT_ATTRS.nationalHelpline} and ${PUBLIC_FACT_ATTRS.nationalHelplineTel}`);
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// §16 — EVERYTHING ON THE CARD IS EDITABLE, AND WHAT IS SAVED IS PUBLISHED   (owner's rule, 2026-10-03)
+// ────────────────────────────────────────────────────────────────────────────
+/**
+ * ⭐ Ali, 2026-10-03: "everything should be changeable — admins can change anything, licence, numbers,
+ * everything." His admin had reported the Support contacts card as read-only: three of its five boxes
+ * were greyed-out inputs. These pin the rule from both ends — the console offers every value, and the
+ * value the console saves is the one every page prints.
+ */
+{
+  const client = decomment(readFileSync(join(SRC, "app/admin/system/system-client.tsx"), "utf8"));
+  const formAt = client.indexOf("export function SupportConfigForm(");
+  const form = formAt < 0 ? "" : client.slice(formAt, client.indexOf("export function ", formAt + 10));
+  const inputs = [...form.matchAll(/<Input\b[\s\S]*?\/>/g)].map((m) => m[0]);
+  ok("§16.1 ★ the Support contacts card has no read-only or disabled box",
+    inputs.length > 0 && inputs.every((i) => !/\breadOnly\b|\bdisabled\b/.test(i)),
+    inputs.filter((i) => /\breadOnly\b|\bdisabled\b/.test(i)).join(" | ") || `found ${inputs.length} inputs`);
+  const names = inputs.map((i) => /name="([^"]+)"/.exec(i)?.[1]).filter(Boolean);
+  ok("§16.2 ★ the card offers all four values — email, phone, helpline, licence",
+    ["email", "phone", "nationalHelpline", "licenceNumber"].every((n) => names.includes(n)), names.join(","));
+  const action = decomment(readFileSync(join(SRC, "app/admin/system/actions.ts"), "utf8"));
+  ok("§16.3 the save action reads the names the form posts — and never the stale `helpline` key (E-328)",
+    action.includes('formData.get("nationalHelpline")') && action.includes('formData.get("licenceNumber")')
+      && !/formData\.get\(["']helpline["']\)/.test(action));
+  const layout = decomment(readFileSync(join(SRC, "app/layout.tsx"), "utf8"));
+  const htmlTag = /<html[^>]*>/.exec(layout)?.[0] ?? "";
+  ok("§16.4 ★ the root layout publishes the SAVED facts on <html> (what HELPLINE() reads in a browser)",
+    htmlTag.includes("{...publicFactAttrs(getSupportConfig())}"), htmlTag || "no <html> tag found");
 }
 
 // ── The population itself must not be empty, or §3 and §4 would pass by finding nothing.

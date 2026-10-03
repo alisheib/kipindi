@@ -20,26 +20,31 @@
  * persist from a de-hydrated process rather than overwriting a good row with code defaults.
  * Support-config simply never adopted it. Six configs already had.
  *
- * ⛔ THE HELPLINE IS NOT HERE, AND ITS ABSENCE IS THE POINT — see `@/lib/support-config`.
- * It is a pinned constant, so no persisted row and no admin form can move it.
+ * ⭐ THE HELPLINE AND THE LICENCE ARE HERE TOO since the owner's rule of 2026-10-03 ("everything
+ * should be changeable"). They were pinned constants; they are now persisted, validated and audited
+ * by the same factory. `@/lib/support-config` explains how a saved value reaches a client component.
  */
 import { defineConfig } from "./define-config";
-import { SUPPORT_CONFIG_KEY, SUPPORT_DEFAULTS, toDialTarget, type SupportConfig } from "../support-config";
+import { SUPPORT_CONFIG_KEY, SUPPORT_DEFAULTS, toDialTarget, toHelplineDial, licenceProblem, type SupportConfig } from "../support-config";
 
 export { HELPLINE, HELPLINE_TEL, LICENCE_NUMBER, SUPPORT_CONFIG_KEY, type SupportConfig } from "../support-config";
 
 /**
- * The persisted row predates the split and still carries `helpline` / `helplineTel`.
- * `defineConfig` merges `{ ...defaults, ...restored }`, so without this those two keys would
- * ride back into the live config object — inert today, but they are exactly the values E-328
- * exists to keep away from a player, and a later `set()` would write them out again. Drop
- * them on the way in: hydration takes the three fields it owns and nothing else.
+ * 🔴 The persisted row predates the split and still carries `helpline` / `helplineTel` — and what
+ * they hold is `+255769777877`, 50pick's OWN desk (E-328). `defineConfig` merges
+ * `{ ...defaults, ...restored }`, so without this those keys would ride back into the live config
+ * object, and a later `set()` would write them out again. ⛔ AND THEY MUST NEVER BECOME THE
+ * HELPLINE: that is why the editable helpline lives under NEW keys (`nationalHelpline`,
+ * `nationalHelplineTel`). Hydration takes the fields it owns, by name, and nothing else.
  */
 const migrate = (persisted: Record<string, unknown>): Partial<SupportConfig> => {
   const out: Partial<SupportConfig> = {};
   if (typeof persisted.email === "string") out.email = persisted.email;
   if (typeof persisted.phone === "string") out.phone = persisted.phone;
   if (typeof persisted.phoneTel === "string") out.phoneTel = persisted.phoneTel;
+  if (typeof persisted.nationalHelpline === "string" && persisted.nationalHelpline.trim()) out.nationalHelpline = persisted.nationalHelpline;
+  if (typeof persisted.nationalHelplineTel === "string" && persisted.nationalHelplineTel.trim()) out.nationalHelplineTel = persisted.nationalHelplineTel;
+  if (typeof persisted.licenceNumber === "string" && persisted.licenceNumber.trim()) out.licenceNumber = persisted.licenceNumber;
   return out;
 };
 
@@ -68,6 +73,21 @@ const validate = (c: SupportConfig): { ok: true } | { ok: false; reason: string 
   if (!toDialTarget(c.phoneTel || c.phone)) {
     return { ok: false, reason: `"${c.phone}" does not yield a dialable number, so the tel: link would be dead.` };
   }
+  // ── The national helpline (editable since 2026-10-03). ──
+  if (!(c.nationalHelpline ?? "").trim()) return { ok: false, reason: "The national helpline cannot be blank — it is printed on every page as \"Helpline\"." };
+  if (!toHelplineDial(c.nationalHelpline) || c.nationalHelplineTel !== toHelplineDial(c.nationalHelpline)) {
+    return { ok: false, reason: `"${c.nationalHelpline}" does not yield a dialable helpline, so its tel: link would be dead.` };
+  }
+  /* 🔴 E-328, KEPT WITHOUT THE LOCK. The one value this field must never hold is our own desk:
+     published under "Helpline", it routes a player who is excluding themselves back to 50pick.
+     Compared as dial targets, so `0769 777 877` and `+255769777877` are the same number. */
+  const desk = toDialTarget(c.phoneTel || c.phone);
+  if (desk && toDialTarget(c.nationalHelpline) === desk) {
+    return { ok: false, reason: "The national helpline cannot be 50pick's own support number. It is the independent problem-gambling line a player is sent to for help; our desk is the Support phone." };
+  }
+  // ── The licence number (editable since 2026-10-03). ──
+  const lp = licenceProblem(c.licenceNumber);
+  if (lp) return { ok: false, reason: lp };
   return { ok: true };
 };
 
@@ -93,11 +113,25 @@ export function getSupportConfig(): SupportConfig {
   return cfg.get();
 }
 
+/* ⭐ THE SERVER-SIDE READERS' SOURCE. `HELPLINE()`, `HELPLINE_TEL()` and `LICENCE_NUMBER()` live in the
+   client-safe half, which may not import this file; on the server they call this instead. Registered at
+   load, and the root layout imports this module on every request, so it is in place before any page
+   renders. ⛔ `__defineSupportConfigForTest` below does NOT register — a test seam must never become
+   what the live readers read. */
+globalThis.__50PICK_SUPPORT_READ = () => cfg.get();
+
 const clean = (patch: Partial<SupportConfig>): Partial<SupportConfig> => {
   const out: Partial<SupportConfig> = {};
   if (patch.email !== undefined) out.email = patch.email.trim();
   if (patch.phone !== undefined) out.phone = patch.phone.trim();
   if (patch.phoneTel !== undefined) out.phoneTel = patch.phoneTel.replace(/\s/g, "");
+  // ⭐ The helpline's dial target is DERIVED here, never taken from the caller — so the number a
+  // player reads and the number a tap dials cannot be saved apart.
+  if (patch.nationalHelpline !== undefined) {
+    out.nationalHelpline = patch.nationalHelpline.trim();
+    out.nationalHelplineTel = toHelplineDial(out.nationalHelpline);
+  }
+  if (patch.licenceNumber !== undefined) out.licenceNumber = patch.licenceNumber.trim().replace(/\s+/g, " ");
   return out;
 };
 

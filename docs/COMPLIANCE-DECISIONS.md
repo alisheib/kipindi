@@ -9,6 +9,35 @@
 ---
 
 
+## 2026-10-03 · Every public fact is editable by admins — the national helpline and the licence number are no longer pinned (owner ruling)
+
+**Authority.** Ali, 2026-10-03, after his admin reported that the Support contacts card in `/admin/system` was
+read-only: *"everything should be changeable … admins can change anything please — licence, numbers, everything — they
+are my team; if in Tanzania anything changes we should be capable of changing always"*, then *"all changeable, that's
+my new rule."*
+
+**What changed.** The national problem-gambling helpline (`0800 11 0011`) and the Gaming Board licence number
+(`OUS00000202602`) were pinned constants with greyed-out boxes on that card — the helpline since E-328, the licence
+since it was supplied on 2026-09-10. Both are now saved, validated and audited exactly like the support email and phone
+(`config.support_updated`), and every page prints the saved value: server pages through the config, client components
+through attributes the root layout publishes on `<html>` (`src/lib/support-config.ts`, "HOW A SAVED VALUE REACHES A
+CLIENT COMPONENT"). The SMS footer and the self-exclusion email read the saved helpline at send time. The two dial
+targets stay DERIVED from the number typed — shown as a "A tap dials …" line, not a box — so the number a player reads
+and the number a tap calls cannot be saved apart. The values the owner ruled are the defaults.
+
+**What the pinning protected, and how it is kept without a lock (E-328).** The live `support_config` row's old
+`helpline` key holds `+255769777877` — our own desk — from a form that once offered the field. Published as the
+"Helpline", that would send a player who is excluding themselves back to us. So: (1) the editable helpline is stored
+under new keys, `nationalHelpline` / `nationalHelplineTel`, and the stale key is never read back; (2) a save whose
+helpline dials the same number as the Support phone is refused, with the reason on screen. A blank or undialable
+helpline and a blank or malformed licence number are refused too. Enforced by `npm run test:support-contact` §2, §10
+and §16, proved by `npm run red:support-contact` (9/9 planted defects caught).
+
+**Supersedes** the "pinned, no setter, no admin control" rule for the helpline (E-328, 2026-09-10) and for the licence
+number (2026-09-10). It does not change OQ4 (2026-09-26): `0800 11 0011` is still the helpline 50pick publishes — it is
+now simply a value an admin can update if Tanzania's changes.
+⛔ Do not restore: re-pinning either value, or showing a public fact as a disabled box, reverses this ruling.
+
 ## 2026-10-01 · Akaunti, the journey's account hub — "Kuwa wakala" under the footer's own rule, and the national helpline kept apart from our help desk (decided under Ali's delegation)
 
 **Authority.** Ali's delegation of 2026-10-01 ("proceed, taking down points, I'll be away"), recorded as

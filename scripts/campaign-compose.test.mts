@@ -64,7 +64,7 @@ import {
 import { smsCodingFor } from "../src/lib/server/sms-blackball.ts";
 import {
   marketingFooter, operatorBudget, composeMarketing, shortDomain, footerMeasurementToken,
-  SENDER_IDENTITY, STATUTORY_SMS_HELPLINE,
+  SENDER_IDENTITY, statutorySmsHelpline,
   type MarketingCompose,
 } from "../src/lib/marketing/footer.ts";
 import {
@@ -284,7 +284,7 @@ function checkEnvelope(compose: Composer, log: (l: string) => void): string[] {
     log(`       ${JSON.stringify(f)}`);
     ok("§9 the footer carries the sender identity", f.includes(SENDER_IDENTITY));
     ok("§9 …the age restriction, in the Swahili already shipped on the registration screen", f.includes("18+"));
-    ok("§9 …the helpline (the one 50pick publishes — OQ4)", f.includes(STATUTORY_SMS_HELPLINE));
+    ok("§9 …the helpline (the one 50pick publishes — OQ4)", f.includes(statutorySmsHelpline()));
     ok("§9 …and a working opt-out link", f.includes(`${shortDomain()}/s/${TOKEN}`), f);
     ok("§9 ⭐ it is 49 septets — and that number is COMPUTED, not typed",
       sizeSms(f).units === 49, `${sizeSms(f).units} septets`);
@@ -353,9 +353,9 @@ function checkEnvelope(compose: Composer, log: (l: string) => void): string[] {
   log("\n§12 · ONE HELPLINE — the footer carries the number support-config publishes (OQ4, answered 2026-09-26)");
   {
     const support = readFileSync(new URL("../src/lib/support-config.ts", import.meta.url), "utf8");
-    const published = (support.match(/STATUTORY_HELPLINE\s*=\s*"([^"]+)"/) || [])[1] ?? "";
+    const published = (support.match(/nationalHelpline:\s*"([^"]+)"/) || [])[1] ?? "";
     ok("§12 control · support-config's published helpline was actually read", published.length > 5, `read "${published}"`);
-    checkHelpline(published, STATUTORY_SMS_HELPLINE, marketingFooter, ok);
+    checkHelpline(published, statutorySmsHelpline(), marketingFooter, ok);
   }
 
   /* ── §13 · ONE cap, and the budget in the message's own encoding (2026-09-26) ── */
@@ -1848,11 +1848,11 @@ if (!PROVE_RED) {
   // assertions are the ones that must fire, and nothing else about the footer is under test here.
   {
     const support = readFileSync(new URL("../src/lib/support-config.ts", import.meta.url), "utf8");
-    const published = (support.match(/STATUTORY_HELPLINE\s*=\s*"([^"]+)"/) || [])[1] ?? "";
+    const published = (support.match(/nationalHelpline:\s*"([^"]+)"/) || [])[1] ?? "";
     const BOARD = "0800110051";
-    const planted = (token: string, locale: "SW" | "EN") => marketingFooter(token, locale).replace(STATUTORY_SMS_HELPLINE, BOARD);
+    const planted = (token: string, locale: "SW" | "EN") => marketingFooter(token, locale).replace(statutorySmsHelpline(), BOARD);
     ok("PLANT LANDED · the Board's 0800110051 back in the footer in place of the published helpline",
-      planted("a1b2c3d4", "SW").includes(BOARD) && planted("a1b2c3d4", "EN").includes(BOARD) && !planted("a1b2c3d4", "SW").includes(STATUTORY_SMS_HELPLINE),
+      planted("a1b2c3d4", "SW").includes(BOARD) && planted("a1b2c3d4", "EN").includes(BOARD) && !planted("a1b2c3d4", "SW").includes(statutorySmsHelpline()),
       JSON.stringify(planted("a1b2c3d4", "SW")));
     const failures: string[] = [];
     checkHelpline(published, BOARD, planted, (label, cond) => { if (!cond) failures.push(label); });
@@ -1861,7 +1861,7 @@ if (!PROVE_RED) {
         failures.length === 0 ? "NOTHING failed — the guard cannot see this defect" : `failed instead: ${failures.join(" | ")}`);
     }
     const control: string[] = [];
-    checkHelpline(published, STATUTORY_SMS_HELPLINE, marketingFooter, (label, cond) => { if (!cond) control.push(label); });
+    checkHelpline(published, statutorySmsHelpline(), marketingFooter, (label, cond) => { if (!cond) control.push(label); });
     ok("  └─ control: the same two assertions pass on the shipped footer", control.length === 0, control.join(" | "));
   }
 

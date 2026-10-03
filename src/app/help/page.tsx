@@ -3,8 +3,8 @@ import { I } from "@/components/ui/glyphs";
 import { PageHeader } from "@/components/ui/page-header";
 import { PageHero } from "@/components/ui/page-hero";
 import { SUPPORT_EMAIL, SUPPORT_PHONE, SUPPORT_PHONE_TEL } from "@/lib/server/support-config";
-// ⭐ The statutory helpline is a PINNED CONSTANT in the client-safe half — no setter, no
-// persisted field, no admin control. It is what an at-risk question must return.
+// ⭐ The national helpline — editable in /admin/system since 2026-10-03, read through the
+// client-safe half. It is what an at-risk question must return.
 import { HELPLINE, HELPLINE_TEL } from "@/lib/support-config";
 import { getServerT } from "@/lib/i18n-server";
 import { getEffectiveConfig } from "@/lib/server/market-config";

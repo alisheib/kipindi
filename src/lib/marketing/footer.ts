@@ -46,8 +46,12 @@ export const OPTOUT_TOKEN_CHARS = 8;
 /** The opt-out path. `50pick.tz/s/<token>` — short because every character is a septet. */
 export const OPTOUT_PATH = "/s/";
 
-/** OURS — the number `support-config.ts` publishes, in dial form (OQ4, answered 2026-09-26). */
-export const STATUTORY_SMS_HELPLINE = HELPLINE_TEL();
+/** OURS — the number `support-config.ts` publishes, in dial form (OQ4, answered 2026-09-26).
+ *  ⛔ A FUNCTION, NOT A CONSTANT: since 2026-10-03 the helpline is editable in /admin/system, and a
+ *  value captured at import would keep the old number for the life of the process. */
+export function statutorySmsHelpline(): string {
+  return HELPLINE_TEL();
+}
 
 /** ETA s.32(1)(b): the sender must be identified, and at the START of the message. */
 export const SENDER_IDENTITY = "50pick";
@@ -88,7 +92,7 @@ export function shortDomain(): string {
 export function marketingFooter(token: string, locale: MarketingLocale = "SW", sourcePhrase = ""): string {
   // ⛔ Trimmed BEFORE the emptiness test: a phrase of spaces is no phrase.
   const phrase = (sourcePhrase ?? "").trim();
-  return `\n${phrase ? `${phrase} ` : ""}${SENDER_IDENTITY} 18+ ${STATUTORY_SMS_HELPLINE} ${STOP_WORD[locale]}: ${shortDomain()}${OPTOUT_PATH}${token}`;
+  return `\n${phrase ? `${phrase} ` : ""}${SENDER_IDENTITY} 18+ ${statutorySmsHelpline()} ${STOP_WORD[locale]}: ${shortDomain()}${OPTOUT_PATH}${token}`;
 }
 
 /** A token of the right shape, for measuring the footer without minting a real one. */

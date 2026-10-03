@@ -65,12 +65,10 @@ const COMPANY = "50pick";
  *
  * ⭐ `support-config.ts` already declares itself the single source of truth and exports a
  * synchronous `HELPLINE()`. A private copy beside it could only ever disagree. Import it.
- * ⚠️ **CORRECTED 2026-09-10: `HELPLINE()` is NOT "admin-overridable" and has not been since
- * E-328.** It is a PINNED CONSTANT with no setter, no persisted field and no admin control — that
- * is the entire point of the split, and a comment inviting the next reader to believe an operator
- * can move the national problem-gambling number is the same rot this file's own history warns
- * about. What IS operator-editable is the support email and desk phone, read through
- * `SUPPORT_EMAIL()` / `SUPPORT_PHONE()`.
+ * ⭐ **SINCE 2026-10-03 `HELPLINE()` IS ADMIN-EDITABLE** (owner's rule: "everything should be
+ * changeable"). It was a pinned constant from E-328 until then. It reads the saved row, stored under
+ * `nationalHelpline` — never the stale `helpline` key, which holds our own desk — and a save that makes
+ * it the support phone is refused. Call it at send time; never capture it at import.
  */
 import { HELPLINE } from "@/lib/support-config";
 import { SUPPORT_EMAIL } from "@/lib/server/support-config";

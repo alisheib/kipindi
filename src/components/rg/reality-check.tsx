@@ -18,10 +18,10 @@ import * as React from "react";
 import Link from "next/link";
 import { Modal } from "@/components/ui/modal";
 import { I } from "@/components/ui/glyphs";
-// ⛔ THE CLIENT-SAFE HALF ONLY. This is a `"use client"` module, so it may read the PINNED
-// constants (no setter, no hydration) but never the operator getters — `test:support-contact`
-// §4/§5 fail on a client component that reads a config getter, because a browser bundle's
-// module cache can never be hydrated server-side. `HELPLINE_TEL` is pinned beside `HELPLINE`.
+// ⛔ THE CLIENT-SAFE HALF ONLY. This is a `"use client"` module, so it reads `HELPLINE()` — which in a
+// browser takes the SAVED helpline from the attributes the root layout publishes on <html> — but never
+// the desk getters: `test:support-contact` §4/§5 fail on a client component that reads one, because a
+// browser bundle's module cache can never be hydrated server-side.
 import { HELPLINE, HELPLINE_TEL } from "@/lib/support-config";
 import { useT } from "@/lib/i18n";
 import { isModalDialogOpen } from "@/lib/modal-open";

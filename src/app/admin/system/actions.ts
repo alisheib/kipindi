@@ -12,7 +12,7 @@ import { setSupportConfigVerified } from "@/lib/server/support-config";
 // ⭐ The dial-target derivation lives beside the defaults, in the client-safe half, so the admin
 // FORM can preview exactly what this action will store rather than the operator finding out from
 // a dead tel: link on the public site.
-import { toDialTarget } from "@/lib/support-config";
+import { toDialTarget, toHelplineDial, licenceProblem } from "@/lib/support-config";
 // `PlatformConfig` is imported for the RETURN TYPES below only (DG-S-05 rule 4): naming the
 // failure side `ActionFailure` means naming the success side too, and the success side of the
 // two platform writers is whatever `setPlatformConfig` hands back — spelled out here rather
@@ -93,14 +93,31 @@ export async function updateSupportConfigAction(
        owner changes it — `test:support-contact` §8 caught this line doing precisely that. */
     return fieldError("support-phone", `"${phone}" is not a dialable number. Use the local form 0712 345 678, or the international form +255 712 345 678.`);
   }
-  /* 🔴 `helpline` IS NO LONGER READ FROM THIS FORM, AND THAT IS THE FIX, NOT AN OMISSION
-     (E-328). The row this action saved on 2026-08-19 and again on 2026-09-08 carried
-     `helpline: "+255769777877"` — 50pick's own desk — because the field existed and somebody
-     filled it in. It did no harm only for as long as NOTHING READ THE ROW AT ALL (E-226); the
-     moment a reader existed it would have published the operator's number under "Tanzania
-     Helpline" on `/legal/responsible-gambling`. The national problem-gambling line is now a
-     pinned constant in `@/lib/support-config` with no setter and no persisted field, so there
-     is no longer any input through which it could be moved. */
+  /* ⭐ THE HELPLINE AND THE LICENCE ARE EDITABLE (owner's rule, 2026-10-03: "everything should be
+     changeable"). Until then this form read neither — they were pinned constants — and an admin read the
+     greyed boxes as a broken console. ⚠️ Each is read only when the form POSTS it, so a page still open
+     from the previous deploy (which has no such inputs) saves its email and phone without blanking them.
+     🔴 E-328 survives as a refusal, not a lock: the form field is `nationalHelpline`, never `helpline` —
+     the stale `helpline` key in the live row holds our own desk number — and a helpline that dials the
+     Support phone is refused below. */
+  const patch: { email: string; phone: string; phoneTel: string; nationalHelpline?: string; licenceNumber?: string } = { email, phone, phoneTel };
+  if (formData.has("nationalHelpline")) {
+    const nationalHelpline = String(formData.get("nationalHelpline") ?? "").trim();
+    if (!nationalHelpline) return fieldError("support-helpline", "The national helpline is required — it is printed on every page as \"Helpline\".");
+    if (!toHelplineDial(nationalHelpline)) {
+      return fieldError("support-helpline", `"${nationalHelpline}" is not a dialable number. Use digits only, e.g. 0800 11 0011.`);
+    }
+    if (toDialTarget(nationalHelpline) && toDialTarget(nationalHelpline) === phoneTel) {
+      return fieldError("support-helpline", "This is 50pick's own Support phone. The helpline must be the independent national problem-gambling line a player is sent to for help.");
+    }
+    patch.nationalHelpline = nationalHelpline;
+  }
+  if (formData.has("licenceNumber")) {
+    const licenceNumber = String(formData.get("licenceNumber") ?? "").trim();
+    const problem = licenceProblem(licenceNumber);
+    if (problem) return fieldError("support-licence", problem);
+    patch.licenceNumber = licenceNumber;
+  }
   try {
     /* Persistence AND the ADMIN audit row are the factory's now — `defineConfig` merges,
        validates, caches, saves and audits in one place, and REFUSES to write from a process
@@ -111,9 +128,11 @@ export async function updateSupportConfigAction(
        was not on disk. It reverted at the next restart, and the officer's only evidence said
        it had worked. This one persists, reads the row back, and only then caches, audits and
        reports success. */
-    const res = await setSupportConfigVerified({ email, phone, phoneTel }, session.userId);
+    const res = await setSupportConfigVerified(patch, session.userId);
     if (!res.ok) return { ok: false as const, error: res.error };
     revalidatePath("/admin/system");
+    /* The helpline and licence print on every public page, so drop any cached render of any of them. */
+    revalidatePath("/", "layout");
     return { ok: true as const };
   } catch (err) {
     return { ok: false as const, error: safeError(err, "Config update failed") };
