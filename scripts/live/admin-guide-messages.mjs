@@ -58,11 +58,14 @@ export const SECTIONS = [
         do: [
           "Type or paste the phone number in any spelling — 0712 345 678, +255 712 345 678 or 255712345678. The box keeps the nine digits after +255.",
           "As soon as the number is complete, the form shows its network (Vodacom, Airtel, Yas, Halotel…) and checks the book.",
-          "Add a name, an email, notes and tags if you have them — all optional.",
-          "Press Save. A message confirms it and the new contact appears in the list.",
+          "Add a name, an email, notes and tags if you have them — each is marked (optional), and the counters under the boxes show the room left.",
+          "Press Save contact. A message confirms it and the new contact appears in the list.",
         ],
         shots: ["05-add-filled", "06-added"],
-        notes: ["Pasting a whole number into the phone box replaces what was there, so two numbers can never mix into one."],
+        notes: [
+          "Pasting a whole number into the phone box replaces what was there, so two numbers can never mix into one.",
+          "A paste longer than a phone number (a name and a number together, say) is refused — copy the number alone.",
+        ],
       },
       {
         title: "When the number is already in the book",
@@ -74,8 +77,8 @@ export const SECTIONS = [
         title: "When the form shows a problem",
         where: "Growth → Contacts → Add contact (or a contact's Edit)",
         do: [
-          "Each problem is written in red under its own field, and the first one is selected for you.",
-          "Fix what it says, then press Save again. Nothing is saved until every field is fine.",
+          "Each box is checked as you type — an email when you leave its box — and a problem is written in red under its own field.",
+          "While anything needs fixing, Save waits, and the reason is written beside it (outlined in red). Fix what it says and Save comes back.",
           "A name or a tag can't hold a phone number — the number belongs in the phone box.",
         ],
         shots: ["08-form-errors"],
@@ -83,8 +86,13 @@ export const SECTIONS = [
       {
         title: "Edit a contact",
         where: "Growth → Contacts → the row's edit link",
-        do: ["Press the edit link on the contact's row.", "Change the name, email, notes or tags, then Save.", "The phone number itself can't be changed — add a new number as a new contact."],
+        do: [
+          "Press the edit link on the contact's row.",
+          "Change the name, email, notes or tags, then Save changes. The button waits until something has changed.",
+          "The phone number itself can't be changed — add a new number as a new contact.",
+        ],
         shots: ["09-edit"],
+        notes: ["Closing the form with typing in it asks first: Discard throws the typing away, Keep editing goes back to it. Leaving the page asks too."],
       },
     ],
   },
@@ -96,7 +104,7 @@ export const SECTIONS = [
         where: "Growth → Contacts → the search box",
         do: [
           "Type part of a name to find matching contacts.",
-          "Type a WHOLE phone number, in any spelling, to find that one contact. Part of a number never searches numbers (it keeps hidden numbers hidden).",
+          "Type a WHOLE phone number, in any spelling, to find that one contact — the line under the box says “Whole number — matched exactly”. Part of a number never searches numbers (it keeps hidden numbers hidden).",
           "The line above the table says what the list is showing.",
         ],
         shots: ["10-search-name", "11-search-number"],
@@ -132,12 +140,18 @@ export const SECTIONS = [
         notes: [
           "Suppress stops a number from EVER receiving marketing, and nobody can undo it — use it when a person or the Gaming Board asks 50pick to stop.",
           "Remove deletes the contacts from the book; the records of consent and stops are kept.",
+          "Add to list: the list box starts empty — choose a list, or name a new one — so nothing goes into a list by mistake.",
         ],
       },
       {
         title: "Export the list",
         where: "Growth → Contacts → Export CSV (top right)",
-        do: ["Filter the list first if you want only part of it.", "Press Export CSV. The file downloads to your computer.", "Roles that can't read numbers get a file with the numbers hidden."],
+        do: [
+          "Filter the list first if you want only part of it.",
+          "Press Export CSV. The file downloads to your computer.",
+          "Roles that can't read numbers get a file with the numbers hidden.",
+          "If an export is refused, the reason shows at the top of the Contacts page and nothing is downloaded.",
+        ],
         shots: ["16-export"],
       },
     ],
@@ -252,15 +266,28 @@ export const MESSAGES = [
   { area: "Add / edit contact", message: "A tag can hold only letters, digits, spaces, - and _.", meaning: "The tag has a character tags can't hold.", action: "Remove the character." },
   { area: "Add / edit contact", message: "This doesn't look like an email address (name@example.com).", meaning: "The email is not a complete address.", action: "Fix it, or leave the email empty." },
   { area: "Add / edit contact", message: "A name can be at most 120 characters.", check: "A name can be at most", meaning: "The name is too long.", action: "Shorten it." },
-  { area: "Add / edit contact", message: "Notes can be at most 1000 characters.", check: "Notes can be at most", meaning: "The notes are too long.", action: "Shorten them." },
+  { area: "Add / edit contact", message: "Notes can be at most 1,000 characters.", check: "Notes can be at most", meaning: "The notes are too long.", action: "Shorten them." },
   { area: "Add / edit contact", message: "Someone changed this contact after you opened it, so nothing was saved. Reload to see the latest version, then make your change again.", meaning: "Two people edited the same contact.", action: "Reload, check their change, then make yours." },
   { area: "Add / edit contact", message: "Your role can view contacts but not add or change them — ask an officer with Growth access.", meaning: "Your role is view-only here.", action: "Ask an officer with Growth access, or the owner." },
+  { area: "Add / edit contact", message: "That paste is longer than a phone number — paste the number alone.", meaning: "The paste held more than a number — words, or a second number.", action: "Copy just the number and paste it again." },
+  { area: "Add / edit contact", message: "Discard what you typed? Nothing has been saved yet.", meaning: "You pressed Cancel or ✕ with typing in the form.", action: "Keep editing to go back, or Discard to close without saving." },
+  { area: "Add / edit contact", message: "Checking the number failed — you can still save; the book refuses a duplicate.", meaning: "The check for a duplicate did not reach the server.", action: "Press Save contact anyway — a duplicate is still refused on Save." },
+  { area: "Add / edit contact", message: "Saving the contact failed — it may not have saved. Reload the book to check before adding it again.", meaning: "The save got no answer, so it may or may not have saved.", action: "Reload the list and search the number before adding it again." },
+  { area: "Add / edit contact", message: "Too many number checks — wait …, then try again.", check: "Too many number checks — wait ", meaning: "The number was checked many times in a short time.", action: "Wait the time it says, then type the number again." },
+  { area: "Add / edit contact", message: "Your 2-step sign-in has lapsed — confirm it in another tab, then try again.", meaning: "Your 2-step confirmation has expired (only once the owner turns 2-step sign-in on).", action: "Open the admin console in another tab, confirm your code there, then press Check again." },
   // ── phone numbers
   { area: "Phone number", message: "A Tanzanian number has nine digits after +255; this one has 8. Check whether some digits were cut off.", check: "Check whether some digits were cut off.", meaning: "A digit or more is missing.", action: "Check the number with the person and type it again." },
   { area: "Phone number", message: "This is an international number outside Tanzania (country code +254…). 50pick sends only to Tanzanian mobile numbers.", check: "50pick sends only to Tanzanian mobile numbers.", meaning: "Only Tanzanian mobiles can be added.", action: "Ask for their Tanzanian mobile number." },
   // ── many contacts at once
   { area: "Bulk actions", message: "Type one tag at a time — a comma, ; or | separates tags.", meaning: "The bulk Tag box takes one tag.", action: "Type a single tag." },
   { area: "Bulk actions", message: "A list name can't hold a phone number — remove the number from the name.", meaning: "List names show to every staff role.", action: "Name the list with words." },
+  { area: "Bulk actions", message: "Choose a list, or name a new one.", meaning: "Add to list needs a list.", action: "Pick a list in the box, or type a new list's name." },
+  { area: "Bulk actions", message: "The selection changed while it was being read: it now holds … contacts, not …. Nothing was changed; review it again.", check: "The selection changed while it was being read: it now holds ", meaning: "Contacts joined or left the selection between the count and the action.", action: "Review it again — the confirmation counts afresh." },
+  { area: "Bulk actions", message: "Counting the selection failed — nothing was changed. Try again.", meaning: "The count did not reach the server.", action: "Try again." },
+  { area: "Bulk actions", message: "The bulk action failed — some contacts may have changed. Reload the list before running it again.", meaning: "The action stopped part-way.", action: "Reload the list, check what changed, then run it again if needed." },
+  // ── export
+  { area: "Export", message: "The address carries a filter this page does not write. Nothing was exported.", meaning: "The page address was edited by hand with a filter the page doesn't offer.", action: "Clear the filters, choose them on the page, then export again." },
+  { area: "Export", message: "The contact book could not be read, so no file was sent. Try again in a minute.", meaning: "The database did not answer.", action: "Try again in a minute. If it keeps happening, tell the owner." },
   // ── campaigns
   { area: "SMS campaign", message: "Give the campaign a name — only staff see it.", meaning: "The name is empty.", action: "Type a name." },
   { area: "SMS campaign", message: "The Swahili message is required — it is the one every recipient can be sent.", meaning: "The Swahili message is empty.", action: "Write the Swahili message." },

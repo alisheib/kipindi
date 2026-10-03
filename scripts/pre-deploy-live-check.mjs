@@ -543,10 +543,19 @@ if (LOCAL) {
 
   // Card-body click opens the market detail WITH NO side preselected (like the
   // Details link); the YES/NO buttons enter with that side locked.
+  // A fresh in-memory boot has NO markets, so the board had no card and this block only ever reported "no live card
+  // found": seed the catalogue first (idempotent — a no-op once 25 are live; the route is 404 in production).
+  if (LOCAL) await fetch(BASE + "/api/dev-test/seed-markets", { method: "POST" }).catch(() => {});
   await page.goto(BASE + "/markets", { waitUntil: "domcontentloaded" }); await page.waitForTimeout(500);
   const liveCard = page.locator(".mcardp:has(.mcardp-actions)").first();
   if (await liveCard.count() > 0) {
-    await liveCard.locator(".mcardp-q").click();
+    // ⛔ Since 8fc9c638 (2026-09-23) a card opens through a stretched link (`.mcardp-open`) laid OVER its body, so the
+    // question text sits under it and an element click on `.mcardp-q` is refused ("intercepts pointer events") — the
+    // run died here whenever the board had a market. A finger on the question lands on that link: click the question's
+    // POINT and let the browser's hit-test choose the element, exactly as a tap does.
+    await liveCard.scrollIntoViewIfNeeded();
+    const q = await liveCard.locator(".mcardp-q").boundingBox();
+    if (q) await page.mouse.click(q.x + q.width / 2, q.y + q.height / 2);
     await page.waitForURL(/\/markets\/mkt_[^?]+$/, { timeout: 8000 }).catch(() => {});
     ok(`live card body click -> details, NO side`, /\/markets\/mkt_/.test(page.url()) && !/\?side=/.test(page.url()), page.url());
 

@@ -4,7 +4,7 @@
 Ali's delegation · 11 legal questions, each shipping with a safe default that IS built. S7c went LIVE 2026-09-28 (`d3379fef`).
 U17 🔵 (`7bef9f97`, live since 2026-09-28) and U18's first half (U18a, `fb194038`, live) were shipped by S9, which closed no docs.
 S10 (2026-10-01) fixed the consent-ledger tie, which had been picking the latest row at random, and shipped U18b (`0e68d59e`):
-erasure now withdraws the consent and empties the book, and both data exports carry marketing; U19 (`addf5351`) masks a contact's number; U20 (`733522d3`) lists the book. Then U21–U40 were decided (§9, OD47–OD52), the first build tranche went LIVE (`ea87308f`), and U24 is ✅ (`c792901e`: the ONE audience resolver, and the cache every writer keeps true). U21, U22 and U23 (selection and bulk) shipped, and the parser track (U25–U28), all 🔵 — LIVE since 2026-10-02 05:20 UTC (`36aa9bf0`); U35 the campaign tables and U29 import staging are ✅ (both migrations live); U34a, the export, shipped (U34 🟡). U36, the campaign list, is LIVE (🔵, `db4a11a7`). Verification is focused from 2026-10-02 (§0 ⚖️, Ali). NEXT: U37b the composer (in build), then the critical path to the first real campaign (§0 ▶ NEXT).**
+erasure now withdraws the consent and empties the book, and both data exports carry marketing; U19 (`addf5351`) masks a contact's number; U20 (`733522d3`) lists the book. Then U21–U40 were decided (§9, OD47–OD52), the first build tranche went LIVE (`ea87308f`), and U24 is ✅ (`c792901e`: the ONE audience resolver, and the cache every writer keeps true). U21, U22 and U23 (selection and bulk) shipped, and the parser track (U25–U28), all 🔵 — LIVE since 2026-10-02 05:20 UTC (`36aa9bf0`); U35 the campaign tables and U29 import staging are ✅ (both migrations live); U34a, the export, shipped (U34 🟡). U36, the campaign list, is LIVE (🔵, `db4a11a7`). Verification is focused from 2026-10-02 (§0 ⚖️, Ali). On 2026-10-03 U37b the composer (🔵, STEP 21) and U38a the player audience (STEP 22) went LIVE with the live switch CLOSED; Ali ruled OD57 + OD58 (licence outreach — the contact book is in the first release); the validation audit's 49 fixes went LIVE in eight batches (STEPS 23–28, the last `ad0e7549`); and the admin guide PDF reached v1.1. NEXT: U33a, then U37c — the critical path in §0 ▶ NEXT.**
 
 > ⚠️ **THIS FILE IS BOTH THE PLAN AND THE PROGRESS TRACKER.** Any session, on any machine, learns where
 > the programme stands by reading §0 (RESUME AT) and §1 (status board) — and nothing else. `npm run
@@ -474,20 +474,63 @@ erasure now withdraws the consent and empties the book, and both data exports ca
   a tap ends the hold; two pins tightened. numeric 98 judges each with a plant; the money drive 15/15 (the deposit
   box at 390 included); red:player-invite-unpaid left the affiliate file byte-identical. Owed (§A7): a typed comma
   decimal, a decimal box's Chinese full stop, DurationInput's "1.5".
+✅ STEP 28 · VALIDATION BATCH 7 — LIVE (`ad0e7549`, live 2026-10-03 20:16:37 UTC). The contacts screens, 17 fixes (1
+  major, 16 minor), the last batch. The Add / Edit dialog judges every field as it is typed (an email when its box is
+  left, tags "N of 20", counters); Save waits with its reason beside it; an Edit with nothing changed can't be saved;
+  ✕ / Cancel / leaving the page ask before typing is discarded; the optional fields carry the kit's optional mark
+  (§A7); a paste longer than a phone number is refused whole; the notes refusal now writes "1,000" as the counter
+  under the box does (it said "1000"). The automatic number lookup uses the new
+  `softCheckStaff`: a lapsed 2-step is refused IN WORDS instead of redirecting the console mid-typing (it had to be
+  live before admin 2-step returns — it now is). The search box reads a whole number ("Whole number — matched
+  exactly", SearchBox's optional `describe`), and a search of excluded words alone reads "Name doesn't contain …".
+  Bulk: the tag box holds 32, Untag offers the book's tags, a list name can't hold a phone number, Add to list starts
+  empty, ticking a row in "All N matching" says the selection narrowed, the rail's Select reaches every list and tag
+  past the 20 pills, and tag / untag / add-to-list / remove write ONLY the contacts counted at the confirmation (Remove
+  in one Postgres transaction, 5,000 ids a chunk — the probe: all-or-nothing under a planted fault). Export refuses a
+  filter the page never writes (nothing exported), says a read failure in words, and sends a lapsed 2-step to the
+  step-up page. Verified: contacts-form 53, contacts-page 51, contacts-bulk 46, contacts-export 44, contacts-audience
+  53, rbac 145, dal-parity 2066, admin-soft-gate 24 — each with its red; the contacts drive 487/487; next build; the
+  live smoke (signed out: /admin/contacts → sign-in, the export door a bare 404). ⚖️ THE WHOLE PREDEPLOY CHAIN, ONCE
+  (rbac-guard.ts is platform-wide — the policy's own trigger): 199 of 203 green; the four reds are other lanes' —
+  `test:stacking` and `test:kyc-copy-truth` (Vodacom), `test:wallet-status-writers` 37 against its pin of 36 (the tax
+  report's dev fixture `seed-tax-books`, d1b82f9a — batch 7 adds no wallet write), and `qa:live` (STEP 28b).
+🔧 STEP 28b · qa:live's MARKET-CARD BLOCK RUNS AGAIN (`the commit that carries this entry`, harness only). Since 8fc9c638 (2026-09-23, the cards
+  lane) a market card opens through a stretched link laid over its body, so qa:live's element click on the question
+  was refused and the script stopped there whenever the board had a market — the authed betting checks after it (the
+  YES button's locked dial, the drag lock, the typed stake) never ran; on a fresh in-memory boot it said "no live card
+  found" instead. qa:live now seeds the market catalogue on a local run and clicks the question at its POINT, as a
+  finger does (the overlay takes it, which is what a player gets). On a fresh, unseeded boot: the served board held 0 cards, qa:live seeded the catalogue itself, and ALL 303 checks passed, the card block's 13 among them (the whole-chain run had 289 passed and 1 failed; a seeded run before the fix died at the click).
+⚠️ RECORDED, NOT THIS LANE'S (seen in batch 7's runs, neither in predeploy): `test:unsaved-changes` is red on main for the
+  tax report's three forms (`app/admin/tax/lock-panel.tsx`, `period-jump.tsx`, `rates-form.tsx` — d1b82f9a), so its
+  red control proves nothing until that lane guards them; `test:red-anchors` has two anchors rotted since 2026-09-24
+  (`query-bar.tsx`, the mobile lane; `updown-card-phase.ts`, Up & Down).
+✅ STEP 29 · U33a-0 · THE PRE-LEDGER CENSUS = 0 (read-only, on production, 2026-10-03 ~21:05 UTC). The first unit of U33a's
+  build order: `scripts/live/marketing-preledger-offs.mjs`, run by a scratch runner that reads both cutoffs from Railway
+  (U6 `6429f86f` first deployed in `32067c92`, build created 2026-09-25 10:49:49 UTC; the next deploy 11:02:17) and reads
+  through the Postgres public proxy; every query inside ONE `SET TRANSACTION READ ONLY` transaction (it reported
+  `read-only: on`). Accounts whose latest own marketing-switch audit row is a withdrawal before the cutoff, with the
+  switch off now and no later ledger row: 0 under either cutoff, and 0 with none. ⭐ THE CONTROL — the same read saw
+  61,251 audit rows (10,629 COMPLIANCE) and NOT ONE `privacy.*` action: the profile switch and its audit action arrived
+  together (`6f0495ef`, 2026-09-14, the E-409 window's first day) and no player ever changed it on production. So U33a-R
+  ships `PRE_LEDGER_OFFS = "reconciled"`, citing this count; no backfill and no `preledger-withdrawals.ts` are needed.
 📘 THE ADMIN GUIDE (PDF) — Ali, 2026-10-03: "include screenshots on which pages the admin should go for each step". Every
   step shows the page the admin opens for it (and the menu path to it); none is a step without its page. ✅ v1 BUILT
   2026-10-03 on the live code (batches 1–6): `docs/guides/50pick-admin-guide-contacts-and-sms-campaigns.pdf` — 23 pages,
   22 steps, 29 screenshots with the control outlined in red, the SMS balance's six states, and 26 messages each checked
   against the source before the PDF may build. Regenerate: `scripts/live/admin-guide.mjs` (+ `admin-guide-messages.mjs`)
-  on a live-closed dev boot. v1.1 follows batch 7 (the contacts dialog then says every problem at once).
+  on a live-closed dev boot. ✅ v1.1 BUILT 2026-10-03 on the live code (batch 7): 27 pages, 22 steps, 29
+  screenshots, 38 messages each checked against the source (rbac-guard.ts now read too). The dialog's steps say each
+  box is checked as you type, Save waits with its reason (outlined in red), an unchanged edit can't be saved and Cancel
+  asks before discarding; eleven new messages (the long paste, the discard question, the lapsed 2-step, the lookup
+  and save fallbacks, the bulk and export refusals). Copied to Ali's Desktop.
 🔎 THE VALIDATION AUDIT (2026-10-03, Ali: "full input form validation and field validation everywhere — clean, perfect,
   working"): six read-only auditors over every admin input → 49 fixes (6 blocker, 7 major, 36 minor) in 8 batches with
   disjoint files and one shared validator per kind of field. Batch 1 = STEP 23, batch 2 = STEP 24, batches 5 + 8 =
   STEP 25, batches 3 + 4 = STEP 26, batch 6 = STEP 27 (all LIVE; 4 dropped its private phone detector for the book's
-  `phoneNumberIn`; 6 closed the live 100× balance-adjust defect). Batch 6's follow-up round is LIVE (STEP 27b); batch 7 (the contacts screens, 17 fixes) is in build and follows.
+  `phoneNumberIn`; 6 closed the live 100× balance-adjust defect). Batch 6's follow-up round is LIVE (STEP 27b) and batch 7, the contacts screens, is LIVE (STEP 28) — ALL EIGHT BATCHES ARE LIVE.
   Owed from the reviews: the opt-out token mint keys on the gate's own key before U42/U43 (`optout-service.ts`);
   DurationInput's typed "1.5" (DESIGN_AUTHORITY §A7); the Android clipboard chip on a real phone (a drive, no suite
-  can); a negation-only search ("-zzz") is described as "Name contains" (batch 7).
+  can).
 ⚠️ RECORDED, NOT THIS LANE'S ALONE: `test:house-bot-holder-lifecycle` 2.2 (not in predeploy) counts 31 scripts that write
   an account fact against a shrink-only ceiling of 25. Two are this lane's suites (U7 `marketing-consent.test.mts`, U38a
   `campaign-audience.test.mts`); the rest are other lanes' (agents, deposits, the Vodacom journey, invites, ops). STEP 23
@@ -603,17 +646,16 @@ erasure now withdraws the consent and empties the book, and both data exports ca
   (replying STOP needs a Blackball reply number); production `/api/health` reports `adminTotp: DISABLED` — turn the
   admin 2-step login back on before the first campaign; G2 the go-ahead, with the Swahili message (it starts with
   "50pick", at most 80 characters) and the day. G4 (the consent wordings) is needed only for contact import.
-▶ NEXT: the validation batches still open (3 + 4 merging, 6 in its second round, 7 in build) and THE ADMIN GUIDE (PDF,
-  a page screenshot for every step); then U33a — the gate under OD58 (never-ticked players and non-members on the
+▶ NEXT: U33a — in its build order (spec §11): U33a-0 is done (STEP 29, the census = 0); then U33w the wordings and U33p the
+  policy lines (both editable cards on /admin/system), U33a-L, U33a-R and U33a-G, the gate under OD58 (never-ticked players and non-members on the
   licence basis, recorded per list; a person's own stop, self-exclusion and under-18 kept) — then U37c, THE TEST SEND TO
   ANY TYPED NUMBER (Ali, 2026-10-03: "don't hardcode my number"; through the same gate, the officer's own number a
   one-tap default; ⚠️ campaign-compose's red "a typed test number honoured" is then inverted on purpose, never deleted),
-  then U38b the audience card, U33b and U40 the confirmation. (The players-only release below is WITHDRAWN by OD57.)
-  ⚖️ DECIDED 2026-10-02 (S10, on a read-only census of all 35 unfinished units — Ali asked what is left, whether the
-  plan is that big, and why it costs so much): THE FIRST RELEASE IS PLAYERS-ONLY. The contact-file import (U30–U34,
-  U33's contact branch) moves AFTER the first campaign: book contacts cannot be messaged before G4/G5 anyway, and
-  today's gate refuses every contact-only number (consent.ts), which is the safe state. Ali can reverse this in a word.
-  THE CRITICAL PATH to G2, in order — about 140 focused hours:
+  then U38b the audience card, U33b and U40 the confirmation. (The validation audit and the admin guide are DONE —
+  STEP 28 and the guide's v1.1.)
+  THE CRITICAL PATH to G2, in order — re-derived by the 2026-10-03 census: about 83–172 focused hours, G2
+  realistically between 12 and 25 October 2026 (owner waits come on top). The contact-FILE import (U30–U32) still
+  follows the first campaign; typed contacts and lists are in it (OD57):
     1. ✅ U37b the composer — write, save, the test send to the officer's own phone (LIVE, STEP 21; switch CLOSED).
     2. ✅ §25 the four bulk keyed reads in both twins (LIVE, STEP 22; taken out of U30: msisdnsPresent, findByPhones, findActiveAmong,
        latestAmong) — U38a's count asks the gate about every player through them.
@@ -621,6 +663,8 @@ erasure now withdraws the consent and empties the book, and both data exports ca
        purpose: U38a goes before U33a, and U33a later re-threads its read accounting (~2.5 h).
    3b. U33a + U33b — THE CONTACT BOOK IN THE FIRST RELEASE (OD57): the gate's contact branch on a recorded basis (consent,
        or acquisition outreach under the GBT licence) with 18+ attested per list, and the basis panel + bulk record.
+   3c. U37c — THE TEST SEND TO ANY TYPED NUMBER (Ali, 2026-10-03: "don't hardcode my number"), through the same gate;
+       the officer's own number a one-tap default (spec: `docs/marketing-specs/U33a-U37c-OD58.md`).
     4. U40 the confirmation — the typed count against a server recount, scope and spend frozen, budgetTzs written.
     5. U41 — RECORD THE DECISION ONLY: U40's typed confirmation is the authorisation (Ali's single-admin ruling;
        `test:two-admin` asserts there is no two-officer lock). The two-officer toggle waits until Ali asks for one.
@@ -633,8 +677,9 @@ erasure now withdraws the consent and empties the book, and both data exports ca
    10. U49a the marketing credit floor and the refusal at Start (login codes share the credit).
    11. U47b the live page's controls — Start/Continue, Pause, Resume, Stop — with a slice driver run from the open page
        (U44's pump is deferred) and the "money never waits for marketing" yield inside the slice; no Retry yet.
-   12. U52a the live drive on production — at most 6 sends to Ali's own phone (G1, G3) — then G2.
-  AFTER THE FIRST CAMPAIGN (about 250 hours): U14 the frequency cap (⛔ BEFORE A SECOND CAMPAIGN); U44 the pump; U46a
+   12. U52a the live drive on production — at most 6 sends to Jay's phone (+255 772 619 619, G7) through a book list,
+       a suppressed control refused, the stop link tapped on the handset (G1, G3) — then G2.
+  AFTER THE FIRST CAMPAIGN (about 103–200 focused hours, the 2026-10-03 census): U14 the frequency cap (⛔ BEFORE A SECOND CAMPAIGN); U44 the pump; U46a
   receipts; U46b inbound STOP (needs Blackball's answer, OQ8); U49b the 90% auto-pause; U45 scale; U15 one send path
   (⛔ never set FEATURE_BONUS=ACTIVE before it lands); U16b; U39b the estimate card; U41's toggle; U47a polish and
   Retry; U48 results; U50 declarations; U51 the guide; U52b the Seal; the production looks; and the import track
@@ -2576,15 +2621,19 @@ from the code, not yet executed on Postgres). Erasure tombstones `User.phoneE164
 then returns null, so the gate falls to the LEDGER branch — and an erased player whose last ledger row is a
 registration or profile GIVEN passes. ⛔ The memory store refuses instead, because `usersByPhone` is written
 only on create and never re-indexed on update, so every suite (all run on memory) finds the erased row —
-a DAL-parity defect that makes the dangerous branch unreachable in tests. U16 must: write a WITHDRAWN ledger
-row (source `OPERATOR`, or a new erasure source) and a suppression row at erasure, fix the memory index, and
-prove the erased number is refused on BOTH stores. ⚠️ The lapse and closure writers (`retention.ts`,
+a DAL-parity defect that makes the dangerous branch unreachable in tests. ✅ CLOSED BY U18b (S10, `0e68d59e` and
+its review rework): erasure appends a WITHDRAWN row for every number the person is known by, the memory store
+re-keys a changed phone, and the erased number is refused on BOTH stores. ⛔ NO suppression row at erasure — U18b's
+review reversed that: a stop is kept for ever, so it would bar a recycled number's NEXT owner from ever consenting. ⚠️ The lapse and closure writers (`retention.ts`,
 `user-service.ts`) also clear the boolean with no ledger row — seven `marketingOptIn` writer sites now, three
 unwired.
 ✅ **DONE 2026-09-27 (S7c) — the DAL half below is built and guarded (`dal-parity` §17.supersede and
-§17.liftreason, `red:dal-parity`, `test:marketing-optout` 32b). What U16 still owes is its own writes: the
-erasure ledger row and suppression, and the memory index fix.**
-🔴 **AND THE SUPPRESSION U16 WRITES MUST OUTRANK A PERSON'S OLD STOP (found 2026-09-26, both DALs).**
+§17.liftreason, `red:dal-parity`, `test:marketing-optout` 32b). The erasure writes landed with U18b (above). What
+U16 still owes: U16a — erasure, the access export and retention reach `SmsCampaign`, `SmsCampaignRecipient` and the
+opt-out tokens, before U42 writes the first recipient; U16b — the rest (the 730-day lapse's ledger row, import-row
+expiry, the published schedule).**
+🔴 **AND A NON-WITHDRAWN SUPPRESSION MUST OUTRANK A PERSON'S OLD STOP (found 2026-09-26, both DALs; ✅ built at S7c —
+U23's officer Suppress, an OPERATOR stop, relies on it; U16 itself writes no suppression).**
 Suppression is one row per (channel, identifier, category). `db.suppression.create` on an existing row only
 clears its lift and keeps the FIRST row's reason, evidence and recorder; `db.suppression.lift` has no reason
 filter. So if the person once stopped by link and resumed, an erasure (or U23's officer "suppress") layered
@@ -3660,6 +3709,9 @@ removed — the refusal is the evidence, not the send.
 ---
 
 ## §10 — SESSION ORDER (two units per session)
+
+> ⚠️ **SUPERSEDED FROM S11 ON (2026-10-03).** S10 built U21–U28, U36, U37b and U38a itself, and OD57 + OD58 re-ordered
+> the path. The order to follow is §0's critical path (▶ NEXT); the rows below S10 are the design-time pairing only.
 
 | S | Units | Why this pairing |
 |---|---|---|

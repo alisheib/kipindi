@@ -748,7 +748,10 @@ export const NAME_TOO_LONG_SENTENCE = `A name can be at most ${CONTACT_LIMITS.di
  *  (OD25). Asked before the length — a short name with a number in it is not "too long". ONE wording for adding and
  *  editing: an edit's number is a read-only slot, so the sentence never sends the officer to it (vb5 review m1). */
 export const NAME_HAS_PHONE_SENTENCE = "A name can't hold a phone number — remove the number from the name.";
-export const NOTES_TOO_LONG_SENTENCE = `Notes can be at most ${CONTACT_LIMITS.notes} characters.`;
+/** vb7 · the limit grouped as the counter under the box writes it ("0 of 1,000 characters") — the two used to disagree,
+ *  "1,000" under the box and "1000" in the refusal. ⛔ Inline, the platform's own format (utils' TZ_NUMBER: en-US, whole
+ *  numbers): this file's purity law (`test:contacts-import` F1) admits no import of `../utils`. */
+export const NOTES_TOO_LONG_SENTENCE = `Notes can be at most ${CONTACT_LIMITS.notes.toLocaleString("en-US", { maximumFractionDigits: 0 })} characters.`;
 
 /* ══ THE ONE EMAIL RULE (vb5) ═══════════════════════════════════════════════════════════════════ */
 

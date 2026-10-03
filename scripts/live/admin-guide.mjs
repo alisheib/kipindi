@@ -37,6 +37,8 @@ const shots = new Map();
 const SOURCE_DIRS = [
   "src/app/admin/contacts", "src/lib/contacts", "src/lib/server/contacts", "src/lib/server/marketing", "src/lib/marketing",
   "src/app/admin/campaigns", "src/app/admin/system", "src/lib/tz-msisdn.ts", "src/lib/server/staff-roles.ts",
+  // v1.1 · the lapsed 2-step sentence the number lookup says (batch 7's softCheckStaff).
+  "src/lib/server/rbac-guard.ts",
 ];
 function readTree(path) {
   const st = statSync(path);
@@ -61,6 +63,16 @@ async function shoot(page, id) {
   const path = join(SHOTS, `${id}.png`);
   await page.screenshot({ path });
   shots.set(id, path);
+}
+/** v1.1 · the contact dialog is taller than an 800-high window, so its Save — and, since batch 7, the reason beside a
+ *  waiting Save — fell below the picture while the step said to press it. Shoot the dialog in a taller window, whole. */
+async function shootTall(page, id) {
+  const vp = page.viewportSize();
+  await page.setViewportSize({ width: vp.width, height: 1240 });
+  await wait(350);
+  await shoot(page, id);
+  await page.setViewportSize(vp);
+  await wait(200);
 }
 async function step(id, fn) {
   try { await fn(); } catch (err) { failures.push(`${id}: ${err?.message ?? err}`); }
@@ -96,13 +108,15 @@ async function guideContext(viewport) {
 const mark = (page, selector) => page.evaluate((sel) => document.querySelectorAll(sel).forEach((e) => e.classList.add("kp-guide-mark")), selector);
 const unmark = (page) => page.evaluate(() => document.querySelectorAll(".kp-guide-mark").forEach((e) => e.classList.remove("kp-guide-mark")));
 /** Outline the card that carries a label (the System page's KPI tiles have no stamp of their own). */
-const markCardByLabel = (page, label) => page.evaluate((text) => {
-  const all = Array.from(document.querySelectorAll("main *"));
-  const el = all.find((e) => e.childElementCount === 0 && (e.textContent || "").trim().toUpperCase() === text.toUpperCase());
-  const card = el ? el.closest("[class*='rounded']") : null;
-  if (card) card.classList.add("kp-guide-mark");
-  return card !== null;
-}, label);
+const markCardByLabel = async (page, label) => {
+  const el = page.locator("main").getByText(label, { exact: true }).first();
+  if ((await el.count()) === 0) return false;
+  return el.evaluate((node) => {
+    const card = node.closest("[class*='rounded']");
+    if (card) card.classList.add("kp-guide-mark");
+    return card !== null;
+  });
+};
 /** Leftover toasts from an earlier step never sit in a later step's picture. */
 async function clearToasts(page) {
   for (const b of await page.locator("button[data-toast-dismiss]").all()) await b.click({ timeout: 2000 }).catch(() => {});
@@ -125,6 +139,9 @@ const SAVE = '[data-contact-form] button[type="submit"]';
 const textButton = (page, scope, label) => page.locator(scope).locator("button", { hasText: label }).first();
 async function closeDialog(page) {
   await textButton(page, DIALOG, "Cancel").click().catch(() => {});
+  // v1.1 · batch 7: Cancel with typing in the form ASKS first ("Discard what you typed?") — answer it, as an admin would.
+  const ask = page.locator(`${DIALOG} [data-discard-ask]`);
+  if (await ask.isVisible().catch(() => false)) await textButton(page, DIALOG, "Discard").click().catch(() => {});
   await page.waitForSelector(DIALOG, { state: "detached", timeout: 10_000 }).catch(() => {});
 }
 async function openAdd(page) {
@@ -162,7 +179,7 @@ await step("04-add", async () => {
   await shoot(page, "04a-add-button");
   await unmark(page);
   await openAdd(page);
-  await shoot(page, "04-add-empty");
+  await shootTall(page, "04-add-empty");
   await page.locator(NUMBER).first().focus();
   await paste(page, "0754 321 987");
   await wait(1200);
@@ -170,7 +187,7 @@ await step("04-add", async () => {
   await field(page, "email").fill("neema@example.com");
   await field(page, "tags").fill("vip, dar");
   await wait(300);
-  await shoot(page, "05-add-filled");
+  await shootTall(page, "05-add-filled");
   await page.locator(SAVE).first().click();
   await page.waitForSelector(DIALOG, { state: "detached", timeout: 20_000 });
   await wait(700);
@@ -184,7 +201,7 @@ await step("07-duplicate", async () => {
   await page.waitForSelector('[data-number-lookup="duplicate"]', { timeout: 15_000 });
   await wait(300);
   await mark(page, "[data-open-existing]");
-  await shoot(page, "07-duplicate");
+  await shootTall(page, "07-duplicate");
   await unmark(page);
   await closeDialog(page);
 });
@@ -197,10 +214,11 @@ await step("08-form-errors", async () => {
   await field(page, "displayName").fill("Juma 0712 345 678");
   await field(page, "email").fill("juma@example");
   await field(page, "email").press("Tab");
-  await page.locator(SAVE).first().click().catch(() => {});
+  // v1.1 · batch 7: the problems show AS YOU TYPE and Save waits, its reason written beside it — nothing to press.
   await wait(700);
   await clearToasts(page);
-  await shoot(page, "08-form-errors");
+  await mark(page, "[data-save-reason]");
+  await shootTall(page, "08-form-errors");
   await closeDialog(page);
 });
 await step("09-edit", async () => {
@@ -208,7 +226,7 @@ await step("09-edit", async () => {
   await page.locator("[data-contact-row] a[data-edit-contact]").first().click();
   await page.waitForSelector(`${DIALOG} [data-contact-form="edit"]`, { timeout: 15_000 });
   await wait(400);
-  await shoot(page, "09-edit");
+  await shootTall(page, "09-edit");
   await closeDialog(page);
 });
 await step("10-search", async () => {
@@ -300,7 +318,7 @@ await step("18-compose", async () => {
 });
 await step("23-draft", async () => {
   await page.goto(`${BASE}/admin/campaigns`, { waitUntil: "networkidle" });
-  await mark(page, 'main table a');
+  await mark(page, 'main table tbody a');
   await shoot(page, "23-campaigns-draft");
   await unmark(page);
   await page.locator("main a", { hasText: "October welcome" }).first().click();
