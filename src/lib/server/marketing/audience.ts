@@ -28,19 +28,30 @@
  * (`mayReceiveMarketingSms`), several reads each; hoisted into a list-build predicate it is the U9 defect —
  * the opted-out number sent to. `consent` and `suppressed` here are the CACHE columns, named as what they are.
  *
+ * ⭐ U38a · THE CAMPAIGN AUDIENCE, IN THIS SAME FILE (decisions X7–X9, X25). The filter gains ONE axis, `population` —
+ * the contact book (null, so every filter written before U38 reads exactly as it did), `players` or `both` — through the
+ * same parser, key and describer; there is no second filter type. With `players` or `both` only the axes both arms can
+ * honour may be set (the operator and the window); a book-only axis there is REFUSED, never dropped (C2). The JSON
+ * parser reads the axis only at a campaign's door (`AudienceScope`) — a contact-book door refuses it by name. ONE walk,
+ * `walkCampaignAudience`, visits the book by id and then the players by account id, its cursor `b:<id>` · `p:<id>` ·
+ * `done` read here alone; a number the book holds is walked once, by its book row; erased tombstones, staff and
+ * non-`+255` numbers never. Its length, `campaignAudienceCount`, IS the population U40 confirms and U42 enqueues (X9).
+ * The will-receive split asks the send gate about each walked number (`audience-split.ts`).
+ *
  * Guards: `test:contacts-audience` (structure, behaviour, the ONE-COUNT readers table, the keyset walk, the
- * masking of the audit and describe forms) and `test:dal-parity` §21 (the two twins' translations).
+ * masking of the audit and describe forms), `test:dal-parity` §21 (the two twins' translations, and since U38a the
+ * player arm's keyset read) and `test:campaign-audience` (the population axis, the walk, the split).
  */
 import { db } from "@/lib/server/store";
 import type {
   ContactAudienceWhere, ContactBookSummary, ContactBulkCount, ContactBulkStamp, ContactConsentState, ContactPage,
-  ContactPageSort, ContactSource, ContactTagCount, ContactWalk,
+  ContactPageSort, ContactSource, ContactTagCount, ContactWalk, MarketingContactPresenceQuery, PlayerWalk, PlayerWalkQuery,
 } from "@/lib/server/store";
 import { parseQuery, fieldNames, CONTACT_SEARCH } from "@/lib/search";
 import type { ParsedQuery } from "@/lib/search";
 import { parseTzNumber, ndcsForOperator, TZ_OPERATORS } from "@/lib/tz-msisdn";
 import type { TzOperatorId } from "@/lib/tz-msisdn";
-import { maskPhone } from "@/lib/phone-normalize";
+import { maskPhone, toMsisdn255 } from "@/lib/phone-normalize";
 import { parseEatLocal, resolveRange, formatEatLocal } from "@/lib/server/date-range";
 import { FULL_PRESETS, DAY_MS } from "@/lib/query/windows";
 import { EAT_OFFSET_MS, eatDayKey, formatEatDay } from "@/lib/eat-day";
@@ -72,20 +83,34 @@ export type ContactAudienceFilter = {
   addedBefore: string | null;
   /** A ticked selection, at most `MAX_AUDIENCE_IDS`. ⛔ Travels in a request body, never in an address. */
   ids: string[] | null;
+  /**
+   * U38a · WHO the audience is drawn from (decision X7): null is THE CONTACT BOOK — U24's meaning, so every filter
+   * written before U38 (the list's, the bulk bar's, the export's, a draft's stored one) reads exactly as it did —
+   * `players` is the player accounts, `both` the book ∪ the players, one row per number (`walkCampaignAudience`).
+   * ⛔ With `players` or `both` only the axes BOTH arms can honour may be set — the operator and the window
+   * (`populationProblem`); the contact book's readers (`contactAudience`) refuse any population at all.
+   */
+  population: AudiencePopulation | null;
 };
 
+/** U38a · the population axis's values. The contact book is null (and the JSON spelling `"book"` reads as null), so
+ *  one filter has one key. */
+export type AudiencePopulation = "players" | "both";
+
 /** Every key, in the ONE canonical order (`contactAudienceKey` writes them so). A Record, so a key added to the
- *  filter type and forgotten here is a compile error, not a predicate the JSON parser silently refuses. */
+ *  filter type and forgotten here is a compile error, not a predicate the JSON parser silently refuses.
+ *  ⚠️ `population` is LAST on purpose: a key is written in this order and a null is omitted, so every key stored before
+ *  U38 is byte-identical to the one this writes for the same filter. */
 const FILTER_KEY_SET: Record<keyof ContactAudienceFilter, true> = {
   q: true, consent: true, suppressed: true, operators: true, lists: true, tags: true, sources: true,
-  player: true, importId: true, addedFrom: true, addedBefore: true, ids: true,
+  player: true, importId: true, addedFrom: true, addedBefore: true, ids: true, population: true,
 };
 const FILTER_KEYS = Object.keys(FILTER_KEY_SET) as (keyof ContactAudienceFilter)[];
 
 /** The whole book: every predicate unconstrained (the erased tombstone is still left out — decision C3). */
 export const WHOLE_BOOK: ContactAudienceFilter = Object.freeze({
   q: null, consent: null, suppressed: null, operators: null, lists: null, tags: null, sources: null,
-  player: null, importId: null, addedFrom: null, addedBefore: null, ids: null,
+  player: null, importId: null, addedFrom: null, addedBefore: null, ids: null, population: null,
 });
 
 /** ⛔ A selection above this is REFUSED, never truncated — a truncated selection acts on people nobody ticked
@@ -369,9 +394,12 @@ export function parseContactAudienceParams(sp: Record<string, string | string[] 
   const win = readWindow(sp, now);
   if (!win.ok) return refuse(win.param, win.reason);
 
+  // ⚠️ `population` is not part of the contacts page's address vocabulary (`CONTACT_AUDIENCE_URL_KEYS`, which
+  // `contacts-query.ts` mirrors): an address always means the contact book. U38b's audience rail decides how a
+  // campaign's population travels in an address; until then it travels only in a posted or stored filter (JSON).
   return {
     ok: true,
-    filter: { q, consent, suppressed, operators, lists, tags, sources, player, importId, addedFrom: win.from, addedBefore: win.before, ids: null },
+    filter: { q, consent, suppressed, operators, lists, tags, sources, player, importId, addedFrom: win.from, addedBefore: win.before, ids: null, population: null },
   };
 }
 
@@ -399,6 +427,44 @@ export function roleRefusal(f: ContactAudienceFilter, viewerReads: boolean): { p
   return null;
 }
 
+/* ═══ U38a · THE POPULATION AXIS — which axes a player account can honour ═══════════════════════ */
+
+/** The JSON spellings of the axis — `book` is the contact book, held as null (one filter, one key). */
+const POPULATIONS = ["book", "players", "both"] as const;
+
+/**
+ * The axes ONLY the contact book carries: the search (⛔ X25 — no number search ever runs against the player arm, where
+ * a count of one or none is the oracle), the book's own consent, stop, source and link columns, its lists, tags and
+ * imports, and a ticked selection of book rows. A player account has none of them.
+ */
+const BOOK_ONLY_AXES: readonly (keyof ContactAudienceFilter)[] = [
+  "q", "consent", "suppressed", "lists", "tags", "sources", "player", "importId", "ids",
+];
+
+export const POPULATION_BOOK_ONLY_REASON =
+  "This narrows the contact book only — a player account has no such field. Choose the contact book as the audience, or take it off.";
+
+/**
+ * Which door reads a posted or stored filter. ⛔ A CONTACT-BOOK door (`"book"`, the default — U23's bulk bar) acts on the
+ * book alone: a population there is REFUSED BY NAME, never read as the book and never handed to the book's reader to
+ * throw (a thrown read is a generic "failed" where a refusal names the axis). Only a campaign's door (`"campaign"`)
+ * admits the axis (X7).
+ */
+export type AudienceScope = "book" | "campaign";
+export const POPULATION_BOOK_DOOR_REASON =
+  "Player accounts are a campaign's audience — this acts on the contact book alone. Take the audience choice off.";
+
+/**
+ * ⛔ A FILTER THAT CANNOT APPLY TO AN ARM IS REFUSED, NAMING THE AXIS — never dropped for that arm (which would WIDEN
+ * the players to every account) and never read as "that arm matches nobody" (an audience quietly smaller than its
+ * words). With `players` or `both`, only the operator and the window may narrow. null when the filter is coherent.
+ */
+export function populationProblem(f: ContactAudienceFilter): { param: string; reason: string } | null {
+  if (f.population == null) return null;
+  for (const k of BOOK_ONLY_AXES) if (f[k] !== null) return { param: k, reason: POPULATION_BOOK_ONLY_REASON };
+  return null;
+}
+
 /* ═══ THE JSON PARSER — posted and stored filters ══════════════════════════════════════════ */
 
 function readJsonStrings(v: unknown): string[] | null {
@@ -421,8 +487,11 @@ function readJsonInstant(v: unknown): string | null {
  * ⛔ An unknown KEY refuses too: a predicate this parser does not know is a predicate it would drop, and a dropped
  * predicate widens the audience. `ids` are allowed here (≤ `MAX_AUDIENCE_IDS`, more REFUSES), and `[]` stays `[]`
  * — nothing.
+ * U38a · `scope` names the door (`AudienceScope`): the population axis is read only at a campaign's door. ⚠️ U38b passes
+ * `"campaign"` at the campaign doors that read a stored filter (`composer-loader.ts`, `campaign-draft.ts`) when the
+ * composer can hold a population — until then a stored population reads there as unreadable, the safe state.
  */
-export function parseContactAudienceJson(raw: unknown): AudienceParse {
+export function parseContactAudienceJson(raw: unknown, scope: AudienceScope = "book"): AudienceParse {
   if (raw === null || typeof raw !== "object" || Array.isArray(raw)) return refuse("filter", "The audience is not a filter.");
   const o = raw as Record<string, unknown>;
   for (const k of Object.keys(o)) {
@@ -507,6 +576,18 @@ export function parseContactAudienceJson(raw: unknown): AudienceParse {
   if (f.addedFrom !== null && f.addedBefore !== null && Date.parse(f.addedFrom) >= Date.parse(f.addedBefore)) {
     return refuse("addedFrom", INVERTED_REASON);
   }
+  // U38a · the population axis — an unknown value REFUSES (C2), and `book` is held as null so one filter has one key.
+  if (has("population")) {
+    const given = o.population;
+    const p = typeof given === "string" ? POPULATIONS.find((x) => x === given) : undefined;
+    if (p === undefined) {
+      return refuse("population", `“${clip(String(given))}” is not an audience population (${POPULATIONS.join(", ")}).`);
+    }
+    if (p !== "book" && scope !== "campaign") return refuse("population", POPULATION_BOOK_DOOR_REASON);
+    f.population = p === "book" ? null : p;
+  }
+  const mixed = populationProblem(f);
+  if (mixed !== null) return refuse(mixed.param, mixed.reason);
   return { ok: true, filter: f };
 }
 
@@ -534,6 +615,9 @@ export function contactAudienceKey(f: ContactAudienceFilter): string {
  */
 export function urlExpressible(f: ContactAudienceFilter): boolean {
   if (f.ids !== null) return false;
+  // U38a · an address always means the contact book (`parseContactAudienceParams`), so a population cannot be written
+  // as one — a link that dropped it would open the BOOK under a heading that says players.
+  if (f.population != null) return false;
   for (const xs of [f.consent, f.operators, f.lists, f.tags, f.sources]) if (xs !== null && xs.length === 0) return false;
   for (const at of [f.addedFrom, f.addedBefore]) if (at !== null && Date.parse(at) % 60_000 !== 0) return false;
   return true;
@@ -597,6 +681,7 @@ export function auditContactAudience(f: ContactAudienceFilter): Record<string, s
   if (f.addedFrom !== null) out.addedFrom = f.addedFrom;
   if (f.addedBefore !== null) out.addedBefore = f.addedBefore;
   if (f.ids !== null) out.selected = f.ids.length;
+  if (f.population != null) out.population = f.population;
   return out;
 }
 
@@ -618,6 +703,11 @@ function eatLabel(at: string, exclusiveEnd: boolean): string {
 
 const anyOf = (xs: string[]) => (xs.length === 0 ? "none" : xs.join(" or "));
 
+/** U38a · the population in words — the first phrase whenever it is set. The book (null) says nothing, as before. */
+const POPULATION_WORDS: Record<AudiencePopulation, string> = { players: "Player accounts", both: "Contact book and player accounts" };
+/** The window's verb: a book row is ADDED, an account JOINS (its `createdAt`), and the union says both. */
+const WINDOW_VERB: Record<AudiencePopulation | "book", string> = { book: "Added", players: "Joined", both: "Added or joined" };
+
 /**
  * The filter in words, one phrase per predicate ("Operator: Vodacom", "Consent: given", "Added 1 Sep 2026 →
  * 8 Sep 2026", "Name contains “asha”", "Number +255••••78"). Brand labels come from `TZ_OPERATORS`.
@@ -630,6 +720,7 @@ const anyOf = (xs: string[]) => (xs.length === 0 ? "none" : xs.join(" or "));
  */
 export function describeAudience(f: ContactAudienceFilter): string[] {
   const out: string[] = [];
+  if (f.population != null) out.push(POPULATION_WORDS[f.population]);
   if (f.q !== null) {
     const s = contactsSearch(f.q);
     // Clipped to 40 characters: the phrase is shown in a line above the table and a long unbroken word would
@@ -644,9 +735,10 @@ export function describeAudience(f: ContactAudienceFilter): string[] {
   if (f.sources !== null) out.push(`Source: ${anyOf(f.sources.map((s) => SOURCE_WORDS[s]))}`);
   if (f.player !== null) out.push(f.player ? "Players only" : "Not players");
   if (f.importId !== null) out.push(`From import ${scrubDigits(f.importId)}`);
-  if (f.addedFrom !== null && f.addedBefore !== null) out.push(`Added ${eatLabel(f.addedFrom, false)} → ${eatLabel(f.addedBefore, true)}`);
-  else if (f.addedFrom !== null) out.push(`Added from ${eatLabel(f.addedFrom, false)}`);
-  else if (f.addedBefore !== null) out.push(`Added up to ${eatLabel(f.addedBefore, true)}`);
+  const verb = WINDOW_VERB[f.population ?? "book"];
+  if (f.addedFrom !== null && f.addedBefore !== null) out.push(`${verb} ${eatLabel(f.addedFrom, false)} → ${eatLabel(f.addedBefore, true)}`);
+  else if (f.addedFrom !== null) out.push(`${verb} from ${eatLabel(f.addedFrom, false)}`);
+  else if (f.addedBefore !== null) out.push(`${verb} up to ${eatLabel(f.addedBefore, true)}`);
   if (f.ids !== null) out.push(f.ids.length === 1 ? "1 selected contact" : `${f.ids.length} selected contacts`);
   return out;
 }
@@ -714,6 +806,12 @@ export function contactAudience(f: ContactAudienceFilter, toWhere: typeof toAudi
     // ⛔ REFUSED, never truncated — the JSON parser refuses first; this is the belt for a filter built in code.
     throw new Error(`contactAudience: a selection holds at most ${MAX_AUDIENCE_IDS} contacts (got ${f.ids.length})`);
   }
+  if (f.population != null) {
+    // ⛔ U38a · the CONTACT BOOK'S reader never reads a campaign population as the book — a bulk, an export or a count
+    // handed `players` would otherwise act on the book under a heading that says players. The campaign audience is
+    // walked by `walkCampaignAudience`, which hands this function the book arm alone.
+    throw new Error(`contactAudience: the contact book's reader was handed the population "${f.population}" — walk it with walkCampaignAudience`);
+  }
   const where = toWhere(f);
   return {
     filter: f,
@@ -768,6 +866,10 @@ export function contactAudienceWrites(f: ContactAudienceFilter, toWhere: typeof 
     // ⛔ REFUSED, never truncated — the same belt as `contactAudience`.
     throw new Error(`contactAudienceWrites: a selection holds at most ${MAX_AUDIENCE_IDS} contacts (got ${f.ids.length})`);
   }
+  if (f.population != null) {
+    // ⛔ U38a · the same belt: a bulk write acts on the contact book, never on a campaign population.
+    throw new Error(`contactAudienceWrites: a bulk write acts on the contact book — it was handed the population "${f.population}"`);
+  }
   const where = toWhere(f);
   return {
     tag: async (tag, maxTags, stamp) => db.marketingContact.tagWhere(where, tag, maxTags, stamp),
@@ -775,4 +877,176 @@ export function contactAudienceWrites(f: ContactAudienceFilter, toWhere: typeof 
     addToList: async (listId, stamp) => db.marketingContact.addWhere(where, listId, stamp),
     remove: async () => db.marketingContact.removeWhere(where),
   };
+}
+
+/* ═══ U38a · THE CAMPAIGN AUDIENCE — the book ∪ the players, ONE walk (decisions X7–X9, X25) ═════════════════════ */
+
+export const CAMPAIGN_SEARCH_REFUSAL_REASON =
+  "A search isn't available to your role on a campaign's audience: counting who will receive asks the sending rules about each number, which would show which numbers belong to players.";
+/** ⭐ ONE sentence, here: the campaign door below and U37's draft save (`campaign-draft.ts`, which re-exports it). */
+export const CAMPAIGN_AUDIENCE_SELECTION = "A campaign's audience is a filter, never a list of ticked contacts.";
+
+/**
+ * 🔴 X25 / D19 · THE CAMPAIGN AUDIENCE'S ROLE RULE — U24's `roleRefusal` (consent, source, player, stop), and the search.
+ * ⛔ A viewer who may not read a number is refused ANY search here. Decided in S10 for a whole number: the split asks the
+ * gate about the book row's number, the gate reads the player table, so one row's answer says "is this a player".
+ * ⭐ U38a widens it to a NAME search on the same ground — a name narrowed to one book row makes the split's figures that
+ * row's own verdict, the protected line included. A reader is refused nothing new. A population carrying a book-only
+ * axis (`populationProblem`) is refused here too, for a filter built in code.
+ * ⛔ A TICKED SELECTION (`ids`) IS REFUSED FOR EVERY ROLE, first: a campaign's audience is a filter, never a list of
+ * people (X13 — U37's save and `assertAudienceFilter` refuse it too), and one ticked row would make a masked viewer's
+ * figures that row's own verdict, the protected line included.
+ * ⚠️ RESIDUAL, for U38b and U40: any axis that narrows the audience to one known person — a tag, a list, an import, a
+ * one-minute window — makes a masked viewer's figures that person's verdict. A minimum audience for masked figures is
+ * theirs to decide; this rule closes the three oracles named so far.
+ */
+export function campaignAudienceRefusal(f: ContactAudienceFilter, viewerReads: boolean): { param: string; reason: string } | null {
+  if (f.ids !== null) return { param: "ids", reason: CAMPAIGN_AUDIENCE_SELECTION };
+  const role = roleRefusal(f, viewerReads);
+  if (role !== null) return role;
+  if (!viewerReads && f.q !== null) return { param: "q", reason: CAMPAIGN_SEARCH_REFUSAL_REASON };
+  return populationProblem(f);
+}
+
+/** The player arm, as the store's keyset read takes it: the operator's prefixes from the ONE table, and the window. */
+export type PlayerArm = Pick<PlayerWalkQuery, "ndcs" | "createdFrom" | "createdBefore">;
+/** A filter's two arms. null = that arm is off: the book for `players`, the players for the book (population null). */
+export type AudienceArms = { book: ContactAudienceFilter | null; players: PlayerArm | null };
+
+/** The filter → its arms. ⛔ THROWS on a population carrying a book-only axis — the JSON parser refuses it first; this
+ *  is the belt for a filter built in code, so an arm is never silently dropped (wider) or emptied (narrower). */
+export function audienceArms(f: ContactAudienceFilter): AudienceArms {
+  const mixed = populationProblem(f);
+  if (mixed !== null) throw new Error(`audienceArms: "${mixed.param}" cannot narrow player accounts — refused, never dropped`);
+  return {
+    book: f.population === "players" ? null : { ...f, population: null },
+    players: f.population == null ? null : {
+      ndcs: f.operators === null ? null : ndcsForOperators(f.operators),
+      createdFrom: f.addedFrom,
+      createdBefore: f.addedBefore,
+    },
+  };
+}
+
+/**
+ * One row of the campaign audience, as U42 will enqueue it. ⛔ A book row carries its CONTACT id and its own
+ * `linkedUserId` — the book's link, never a test of "is this a player" (the gate finds the account by NUMBER) — and a
+ * player row its ACCOUNT id. `msisdn` is the bare `255…` key either way.
+ */
+export type CampaignAudienceRow =
+  | { kind: "contact"; msisdn: string; contactId: string; linkedUserId: string | null; name: string | null }
+  | { kind: "player"; msisdn: string; userId: string };
+/** One page of the walk and where to resume — `b:<contact id>` · `p:<account id>` · `done`. ⭐ A page may hold fewer
+ *  rows than asked, even none, and only `done` ends the walk. */
+export type CampaignAudiencePage = { rows: CampaignAudienceRow[]; next: string };
+
+/** The most rows one call of the walk returns — the book walk's own clamp. */
+export const CAMPAIGN_WALK_MAX = WALK_MAX;
+
+/** The store reads the player phase makes — swappable for the suite's in-process red plants; production never passes it. */
+export type CampaignWalkDeps = {
+  players: (q: PlayerWalkQuery) => Promise<PlayerWalk>;
+  inBook: (q: MarketingContactPresenceQuery) => Promise<string[]>;
+};
+/** Frozen: the default is production's walk, and U42's enqueue will read it — nothing may reassign a member in-process. */
+export const CAMPAIGN_WALK_DEPS: Readonly<CampaignWalkDeps> = Object.freeze({
+  players: async (q: PlayerWalkQuery) => db.user.playerWalk(q),
+  inBook: async (q: MarketingContactPresenceQuery) => db.marketingContact.msisdnsPresent(q),
+});
+
+type WalkAt = { phase: "book"; after: string | null } | { phase: "players"; after: string | null } | { phase: "done" };
+
+/** ⛔ THE CURSOR IS READ HERE AND NOWHERE ELSE (decision X8). A cursor this walk did not write — or one naming an arm the
+ *  filter does not have — REFUSES: never read as "start again" (a restart re-sends) and never as "done". */
+function readCampaignCursor(cursor: string | null, arms: AudienceArms): WalkAt {
+  if (cursor === null) {
+    if (arms.book !== null) return { phase: "book", after: null };
+    return arms.players !== null ? { phase: "players", after: null } : { phase: "done" };
+  }
+  if (cursor === "done") return { phase: "done" };
+  const phase = cursor.slice(0, 2);
+  const after = cursor.slice(2);
+  // ⛔ An id of digits alone is refused too: no id this walk writes is one, and that shape is a phone number — the stored
+  // cursor's own rule (`campaign-model.ts` `isCursor`, U35's `enqueueCursor`), so the two can never disagree.
+  if ((phase !== "b:" && phase !== "p:") || !ID_SHAPE.test(after) || /^[0-9]+$/.test(after)) {
+    throw new Error(`walkCampaignAudience: “${clip(cursor)}” is not a cursor this walk wrote`);
+  }
+  if (phase === "b:") {
+    if (arms.book === null) throw new Error("walkCampaignAudience: a contact-book cursor on an audience with no contact book");
+    return { phase: "book", after };
+  }
+  if (arms.players === null) throw new Error("walkCampaignAudience: a player cursor on an audience with no player accounts");
+  return { phase: "players", after };
+}
+
+/**
+ * ⭐ THE ONE WALK (decision X8) — the campaign audience in its ONE order: the book by contact id, then the players by
+ * account id. U38a's count and split read it; U40's confirmation counts it; U42 enqueues it.
+ * ⛔ A NUMBER THE BOOK HOLDS IS WALKED ONCE, BY ITS BOOK ROW: with both arms on, a player whose number a LIVE book row
+ * holds is skipped in the player phase — the book row speaks for the number, so a window that admits the account but not
+ * the row leaves that person out (narrower), never in twice. An ERASED tombstone is in no audience (C3): it is never
+ * walked, and it does not hide the player at its number. Staff, erased accounts and non-`+255` numbers are never walked
+ * (`user.playerWalk`).
+ * ⛔ Keyset reads only, `>` the cursor: a row written between two calls is never visited twice, and no phone number ever
+ * forms a cursor. `deps` exists for in-process red plants only — production never passes it.
+ */
+export async function walkCampaignAudience(
+  f: ContactAudienceFilter,
+  cursor: string | null,
+  limit: number,
+  deps: CampaignWalkDeps = CAMPAIGN_WALK_DEPS,
+): Promise<CampaignAudiencePage> {
+  const arms = audienceArms(f);
+  const take = clampInt(limit, 1, CAMPAIGN_WALK_MAX);
+  const at = readCampaignCursor(cursor, arms);
+  if (at.phase === "done") return { rows: [], next: "done" };
+  let playersAfter: string | null = at.after;
+  if (at.phase === "book" && arms.book !== null) {
+    const page = await contactAudience(arms.book).walk(at.after, take);
+    const last = page.rows[page.rows.length - 1];
+    if (last !== undefined) {
+      const rows = page.rows.map((c): CampaignAudienceRow => ({
+        kind: "contact", msisdn: c.msisdn, contactId: c.id, linkedUserId: c.userId, name: c.displayName,
+      }));
+      // More book rows → resume after the last. The book done → the same cursor moves on to the players at the next
+      // call, or the walk is done when there is no player arm.
+      const next = page.nextAfterId !== null ? `b:${page.nextAfterId}` : arms.players !== null ? `b:${last.id}` : "done";
+      return { rows, next };
+    }
+    if (arms.players === null) return { rows: [], next: "done" };
+    playersAfter = null; // the book is exhausted at this cursor: the players, from the first account
+  }
+  if (arms.players === null) return { rows: [], next: "done" };
+  const walk = await deps.players({ afterId: playersAfter, limit: take, ...arms.players });
+  if (walk.rows.length === 0) return { rows: [], next: "done" };
+  const keys = walk.rows.map((u) => toMsisdn255(u.phoneE164));
+  const heldByBook = arms.book === null
+    ? new Set<string>()
+    : new Set(await deps.inBook({ msisdns: keys, excludeSourceRef: ERASURE_EVIDENCE }));
+  const rows: CampaignAudienceRow[] = [];
+  walk.rows.forEach((u, i) => {
+    if (!heldByBook.has(keys[i])) rows.push({ kind: "player", msisdn: keys[i], userId: u.id });
+  });
+  return { rows, next: walk.nextAfterId !== null ? `p:${walk.nextAfterId}` : "done" };
+}
+
+/**
+ * ⭐ THE CAMPAIGN-AUDIENCE COUNT (decision X9) — how many rows the ONE walk yields. This IS the population U40 fences and
+ * U42 enqueues — never the book-only `contactAudience(f).count()`, which would leave players unconfirmed or refuse every
+ * Start. It walks and counts; who will RECEIVE is the gate's answer (`audience-split.ts`). `walk` exists for in-process
+ * red plants only — production never passes it.
+ */
+export async function campaignAudienceCount(
+  f: ContactAudienceFilter,
+  walk: typeof walkCampaignAudience = walkCampaignAudience,
+): Promise<number> {
+  let n = 0;
+  let cursor: string | null = null;
+  for (;;) {
+    const page: CampaignAudiencePage = await walk(f, cursor, CAMPAIGN_WALK_MAX);
+    n += page.rows.length;
+    if (page.next === "done") return n;
+    if (page.next === cursor) throw new Error("campaignAudienceCount: the walk did not move — refusing to loop");
+    cursor = page.next;
+  }
 }

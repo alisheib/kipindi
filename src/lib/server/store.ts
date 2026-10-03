@@ -578,6 +578,30 @@ export type MessagingKey = {
   category: MessagingCategory;
 };
 
+/* ═══ §25 · THE ONE BULK KEYED READS (decision X10) ════════════════════════════════════════
+ * ⭐ FOUR READS, EACH THE SINGLE-KEY READ IT MIRRORS ASKED OF A SET: `marketingContact.msisdnsPresent` (who is in the
+ * book), `user.findByPhones` (the accounts behind a set of numbers), `suppression.findActiveAmong` (the stops still in
+ * force) and `messagingConsent.latestAmong` (each number's latest word). Built once and reused by U30–U33 and U38: the
+ * audience split (`audience-split.ts`) answers the send gate's three single reads from them a chunk at a time, so those
+ * three reads over 150,000 numbers are a few hundred queries, never 450,000. ⚠️ Only those three: the RG standing, the
+ * identity check and the harm-marker scan the gate makes for a consenting player stay its own reads, one player at a
+ * time (bounded by the split's time budget; U52 measures them).
+ * ⛔ EACH ANSWERS EXACTLY WHAT ITS SINGLE READ ANSWERS, PER ELEMENT — `findActiveAmong` only rows whose lift is unset
+ * (as `find`), `latestAmong` the ledger's own `createdAt desc, id desc` (as `latestFor`), `findByPhones` the account
+ * `findByPhone` returns with the avatar omitted. A bulk read that disagreed with its single read once would be a second
+ * definition of "suppressed" or "consented".
+ * ⛔ KEY-ONLY WHERE PII MATTERS: `msisdnsPresent` hands back keys, never a book row's name, email or notes.
+ * ⛔ AT MOST `BULK_KEYED_READ_MAX` DISTINCT KEYS A CALL, refused above — never cut off — and an empty set is answered
+ * with nothing, without a query. The Prisma twin keeps the same bound; `test:dal-parity` §25 holds the pairs, and
+ * `scripts/live/bulk-reads-pg-probe.mts` proves the Prisma half on a real Postgres. */
+export const BULK_KEYED_READ_MAX = 2000;
+/** A set of numbers on one channel for one purpose — a DAL parameter, named for `MessagingKey`'s reason. */
+export type MessagingKeyBatch = {
+  channel: MessagingChannel;
+  category: MessagingCategory;
+  identifiers: string[];
+};
+
 /** ⭐ APPEND-ONLY. A withdrawal is a NEW row, never an edit of the row that granted consent,
  *  so the ledger can always answer what was true on the day a message went out (GN 478T reg
  *  51(1)). ⛔ There is deliberately no `update` and no `delete` for this namespace in either
@@ -795,6 +819,40 @@ export type ContactWalk = { rows: StoredMarketingContact[]; nextAfterId: string 
  *  `excludeSourceRef` is the erased tombstone, left out NULL-safely, exactly as in `ContactAudienceWhere`. */
 export type ContactTagCountQuery = { excludeSourceRef: string | null; limit: number };
 export type ContactTagCount = { tag: string; count: number };
+/**
+ * §25 · WHICH OF THESE NUMBERS THE BOOK HOLDS — keys in, keys out (`marketingContact.msisdnsPresent`).
+ * `excludeSourceRef` leaves a row carrying that mark out, NULL-SAFELY, exactly as `ContactAudienceWhere` does:
+ * ⭐ U30's pre-flight passes null, so an ERASED row still counts as present ("already in the book" — erasure is never
+ * disclosed, X22); U38a's campaign walk passes the erasure mark, because a tombstone is in no audience (C3) and the
+ * player at that number must be walked as a player, not dropped as "in the book".
+ */
+export type MarketingContactPresenceQuery = {
+  msisdns: string[];
+  excludeSourceRef: string | null;
+};
+/**
+ * U38a · THE PLAYER ARM OF A CAMPAIGN AUDIENCE, as a KEYSET on the account id (decision X8) — `user.playerWalk`.
+ * ⛔ ONLY PLAYER ACCOUNTS ON A `+255…` NUMBER: staff are never an audience, and an erased account (`erased:<id>`) or a
+ * foreign number never matches the prefix. `ndcs` narrows by the number's prefix (null = any; ⛔ an EMPTY array is
+ * NOTHING), and the window is the account's `createdAt` — `createdFrom` INCLUSIVE, `createdBefore` EXCLUSIVE.
+ * ⛔ No offset and no phone number ever forms the cursor: `afterId` is an account id, compared `>` (never `>=`).
+ */
+export type PlayerWalkQuery = {
+  afterId: string | null;
+  limit: number;
+  ndcs: string[] | null;
+  createdFrom: string | null;
+  createdBefore: string | null;
+};
+/** ⛔ KEY-ONLY: the account id and its number — no name, no date of birth, no avatar. */
+export type PlayerWalkRow = {
+  id: string;
+  phoneE164: string;
+};
+export type PlayerWalk = {
+  rows: PlayerWalkRow[];
+  nextAfterId: string | null;
+};
 
 /* ═══ CONTACT IMPORT STAGING (marketing U29 — decisions X1 · X2 · X18–X20 · X28 · X29) ═════════════════════
  * ⭐ THE ONE STAGING MODEL (X2): a run row (`ContactImport`) and the file's records (`ContactImportRow`), so an import
@@ -1643,6 +1701,27 @@ function contactsMatching(w: ContactAudienceWhere): StoredMarketingContact[] {
   return Array.from(store.marketingContacts.values()).filter((c) => contactMatchesAudience(c, w));
 }
 
+/** §25 · a bulk read's keys, deduplicated — and ⛔ REFUSED above `BULK_KEYED_READ_MAX`, never cut off: a truncated set
+ *  answers for numbers nobody asked about and stays silent on the rest. The Prisma twin's `bulkKeys` is the same rule. */
+function bulkKeys(keys: readonly string[], read: string): string[] {
+  const unique = Array.from(new Set(keys));
+  if (unique.length > BULK_KEYED_READ_MAX) {
+    throw new Error(`${read}: at most ${BULK_KEYED_READ_MAX} keys a call (got ${unique.length}) — refused, never cut off`);
+  }
+  return unique;
+}
+
+/** U38a · THE MEMORY TWIN'S PLAYER ARM — the Prisma twin's `playerWalk` where, predicate for predicate. Every key is
+ *  checked `!== null` — ⛔ never `.length` truthiness: an EMPTY prefix list is NOTHING, never "no constraint". */
+function playerMatchesWalk(u: StoredUser, q: PlayerWalkQuery): boolean {
+  if (u.role !== "PLAYER") return false;
+  if (!u.phoneE164.startsWith("+255")) return false;
+  if (q.ndcs !== null && !q.ndcs.some((n) => u.phoneE164.startsWith(`+255${n}`))) return false;
+  if (q.createdFrom !== null && Date.parse(u.createdAt) < Date.parse(q.createdFrom)) return false;
+  if (q.createdBefore !== null && Date.parse(u.createdAt) >= Date.parse(q.createdBefore)) return false;
+  return true;
+}
+
 const memoryDb = {
   // USER
   user: {
@@ -1720,6 +1799,34 @@ const memoryDb = {
       const out: StoredUser[] = [];
       for (const id of new Set(ids)) { const u = store.users.get(id); if (u) out.push(u); }
       return out;
+    },
+    /** §25 · the accounts behind a set of numbers (`+255…`, the account's own spelling) — `findByPhone` asked of a set,
+     *  through the same index. ⛔ The avatar is OMITTED, exactly as the Prisma twin omits it: a copy reporting null, so
+     *  the two twins hand back one shape and nothing here can be rendered as a picture. Ordered by number. */
+    findByPhones: (phones: string[]): StoredUser[] => {
+      const keys = bulkKeys(phones, "user.findByPhones");
+      if (keys.length === 0) return [];
+      const out: StoredUser[] = [];
+      for (const phone of keys) {
+        const id = store.usersByPhone.get(phone);
+        const u = id ? store.users.get(id) : undefined;
+        if (u) out.push({ ...u, avatarDataUrl: null });
+      }
+      return out.sort((a, b) => (a.phoneE164 < b.phoneE164 ? -1 : a.phoneE164 > b.phoneE164 ? 1 : 0));
+    },
+    /** U38a · THE PLAYER ARM'S KEYSET WALK, `id` ascending (see `PlayerWalkQuery`). ⭐ The SAME comparator orders the
+     *  rows and places the cursor (plain code-unit order), so an account created between two calls cannot make the walk
+     *  visit another twice. One extra row is read to know whether the walk is finished. The resolver clamps `limit`. */
+    playerWalk: (q: PlayerWalkQuery): PlayerWalk => {
+      const afterId = q.afterId;
+      const rows = Array.from(store.users.values())
+        .filter((u) => playerMatchesWalk(u, q) && (afterId === null || u.id > afterId))
+        .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
+        .slice(0, q.limit + 1);
+      const more = rows.length > q.limit;
+      const shown = more ? rows.slice(0, q.limit) : rows;
+      const last = shown[shown.length - 1];
+      return { rows: shown.map((u) => ({ id: u.id, phoneE164: u.phoneE164 })), nextAfterId: more && last ? last.id : null };
     },
     /** Everyone this referrer recruited — indexed on `recruitedBy` in Postgres, so the agent
      *  dashboard and `/admin/agents/[id]` stop scanning the whole user table. */
@@ -2903,6 +3010,20 @@ const memoryDb = {
       Array.from(store.messagingConsents.values())
         .filter((r) => r.channel === key.channel && r.identifier === key.identifier && r.category === key.category)
         .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id)),
+    /** §25 · each number's LATEST word — `latestFor` asked of a set: the SAME order (`createdAt desc, id desc`, the tie
+     *  broken on the id the ledger's clock makes sort in write order), the FIRST row per number kept. A number with no
+     *  row is absent. Ordered by number. */
+    latestAmong: (q: MessagingKeyBatch): StoredMessagingConsent[] => {
+      const keys = bulkKeys(q.identifiers, "messagingConsent.latestAmong");
+      if (keys.length === 0) return [];
+      const want = new Set(keys);
+      const ordered = Array.from(store.messagingConsents.values())
+        .filter((r) => r.channel === q.channel && r.category === q.category && want.has(r.identifier))
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id));
+      const latest = new Map<string, StoredMessagingConsent>();
+      for (const r of ordered) if (!latest.has(r.identifier)) latest.set(r.identifier, r);
+      return Array.from(latest.values()).sort((a, b) => (a.identifier < b.identifier ? -1 : a.identifier > b.identifier ? 1 : 0));
+    },
   },
 
   /* ═══ SUPPRESSION (marketing U6, lift U8) ══════════════════════════════════════════════
@@ -2969,6 +3090,19 @@ const memoryDb = {
         }
       }
       return null;
+    },
+    /** §25 · the stops STILL IN FORCE among a set of numbers — `find` asked of a set, and the same question: a row is
+     *  refusing unless its lift is set, read FALSILY exactly as `find` reads it (a row with no lift field still refuses).
+     *  ⛔ A lifted row is not returned here; it is still there — `listFor` returns it. Ordered by number. */
+    findActiveAmong: (q: MessagingKeyBatch): StoredSuppression[] => {
+      const keys = bulkKeys(q.identifiers, "suppression.findActiveAmong");
+      if (keys.length === 0) return [];
+      const want = new Set(keys);
+      const out: StoredSuppression[] = [];
+      for (const r of store.suppressions.values()) {
+        if (r.channel === q.channel && r.category === q.category && want.has(r.identifier) && !r.liftedAt) out.push(r);
+      }
+      return out.sort((a, b) => (a.identifier < b.identifier ? -1 : a.identifier > b.identifier ? 1 : 0));
     },
     /** ⭐ SUPERSEDE, NEVER DELETE (U8). Returns the row it lifted, or null when there was no
      *  ACTIVE row to lift — so the caller can tell "I stopped their refusal" from "there was
@@ -3039,6 +3173,20 @@ const memoryDb = {
     findByMsisdn: (msisdn: string): StoredMarketingContact | null => {
       const id = store.contactsByMsisdn.get(msisdn);
       return id ? store.marketingContacts.get(id) ?? null : null;
+    },
+    /** §25 · WHICH of these keys the book holds — `findByMsisdn` asked of a set, through the same index, answering KEYS
+     *  only (a book row's name, email and notes never leave). A row carrying `excludeSourceRef` is left out NULL-SAFELY:
+     *  a row with no `sourceRef` — nearly the whole book — is kept. Ordered by key. */
+    msisdnsPresent: (q: MarketingContactPresenceQuery): string[] => {
+      const keys = bulkKeys(q.msisdns, "marketingContact.msisdnsPresent");
+      if (keys.length === 0) return [];
+      const out: string[] = [];
+      for (const m of keys) {
+        const id = store.contactsByMsisdn.get(m);
+        const c = id ? store.marketingContacts.get(id) : undefined;
+        if (c && (q.excludeSourceRef === null || c.sourceRef !== q.excludeSourceRef)) out.push(m);
+      }
+      return out.sort();
     },
     /** Every book row LINKED to an account — erasure's reach (U18b). Usually one; a player who changed
      *  number can have the old one in the book too. */

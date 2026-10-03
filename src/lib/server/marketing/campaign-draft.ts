@@ -33,7 +33,7 @@ import type { CampaignDraftFields, TemplateField, TemplateVerdict } from "@/lib/
 import type { SmsEncoding } from "@/lib/sms-compose";
 import {
   WHOLE_BOOK, parseContactAudienceParams, parseContactAudienceJson, contactAudienceKey, roleRefusal, auditContactAudience,
-  scrubPhoneRuns,
+  scrubPhoneRuns, CAMPAIGN_AUDIENCE_SELECTION,
 } from "@/lib/server/marketing/audience";
 import type { ContactAudienceFilter } from "@/lib/server/marketing/audience";
 import { formatClock } from "@/lib/utils";
@@ -47,7 +47,8 @@ export const CAMPAIGN_NOT_DRAFT = "This campaign is no longer a draft — its me
 /** OD55 · said on the audience card. */
 export const CAMPAIGN_AUDIENCE_ONE_NUMBER =
   "A campaign goes to a group, never to one phone number — take the number out of the audience. To see the message on a phone, use the test send: it goes to your own number.";
-export const CAMPAIGN_AUDIENCE_SELECTION = "A campaign's audience is a filter, never a list of ticked contacts.";
+/** ⭐ The sentence lives in `audience.ts` (U38a's campaign door refuses a selection with it too) — ONE copy. */
+export { CAMPAIGN_AUDIENCE_SELECTION };
 export const CAMPAIGN_AUDIENCE_UNREADABLE = "The saved audience could not be read — choose it again.";
 
 /** Someone saved since this form was rendered — when, on the console's clock. */

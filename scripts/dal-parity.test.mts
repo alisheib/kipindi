@@ -1417,12 +1417,28 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
   const tally = (block: string, needle: RegExp): number => (block.match(needle) || []).length;
   const TIE_PRISMA = /\{ createdAt: "desc" \}, \{ id: "desc" \}/g;
   const TIE_MEMORY = /b\.id\.localeCompare\(a\.id\)/g;
-  ok("17.tiebreak.prisma · BOTH Prisma readers order by createdAt DESC then id DESC",
-    tally(cPri, TIE_PRISMA) >= 2, `${tally(cPri, TIE_PRISMA)} of 2 readers`);
-  ok("17.tiebreak.memory · BOTH memory readers break the tie on id, the same way",
-    tally(cMem, TIE_MEMORY) >= 2, `${tally(cMem, TIE_MEMORY)} of 2 readers`);
-  ok("17.tiebreak.c1 · CONTROL · one reader carrying the tiebreak is NOT enough to pass",
-    tally('orderBy: [{ createdAt: "desc" }, { id: "desc" }], orderBy: { createdAt: "desc" },', TIE_PRISMA) < 2);
+  // ⭐ BY NAME, NOT BY TALLY (§25, 2026-10-02). A tally over the namespace was the fix for one reader passing on its
+  // sibling's behalf — and §25's `latestAmong` is a THIRD reader carrying the same order, so with a tally the tiebreak
+  // dropped from `latestFor` alone still counted two and passed: the very defect the note above describes, back. Each
+  // reader is now held to the order in its OWN text.
+  const TIE_READERS = ["latestFor", "listFor", "latestAmong"];
+  const NL17 = String.fromCharCode(10);
+  const NEXT_MEMBER17 = new RegExp(NL17 + " {4}[A-Za-z0-9_]+ *:");
+  const ledgerMember = (block: string, name: string): string => {
+    const at = block.indexOf(`${NL17}    ${name}: `);
+    if (at < 0) return "";
+    const next = block.slice(at + 1).search(NEXT_MEMBER17);
+    return next < 0 ? block.slice(at) : block.slice(at, at + 1 + next);
+  };
+  const priUntied = TIE_READERS.filter((m) => tally(ledgerMember(cPri, m), TIE_PRISMA) < 1);
+  const memUntied = TIE_READERS.filter((m) => tally(ledgerMember(cMem, m), TIE_MEMORY) < 1);
+  ok("17.tiebreak.prisma · EVERY Prisma ledger reader — latestFor, listFor and §25's latestAmong — orders by createdAt DESC then id DESC, each in its own text",
+    priUntied.length === 0, priUntied.length ? `no tiebreak in [${priUntied}]` : `${TIE_READERS.length} readers`);
+  ok("17.tiebreak.memory · EVERY memory ledger reader breaks the tie on id, the same way, each in its own text",
+    memUntied.length === 0, memUntied.length ? `no tiebreak in [${memUntied}]` : `${TIE_READERS.length} readers`);
+  ok("17.tiebreak.c1 · CONTROL · a reader without the tiebreak is reported BY NAME even when its siblings carry it",
+    TIE_READERS.filter((m) => tally(ledgerMember(cPri.replace('orderBy: [{ createdAt: "desc" }, { id: "desc" }],', 'orderBy: { createdAt: "desc" },'), m), TIE_PRISMA) < 1).length === 1
+      && tally('orderBy: [{ createdAt: "desc" }, { id: "desc" }], orderBy: { createdAt: "desc" },', TIE_PRISMA) === 1);
 
   // ── CONTROLS — each proves the assertion above it is CAPABLE of failing. ──────────────
   ok("17.c1 · CONTROL · `wording: null,` in a read mapper does NOT count as carrying it",
@@ -1781,6 +1797,61 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
   ok("21.tags.memory · …and the memory twin mirrors it: once per contact, the mark skipped, the same bound",
     /new Set(?:<string>)?\(c\.tags\)/.test(mTags) && /c\.sourceRef === q\.excludeSourceRef/.test(mTags) && /\.slice\(0, q\.limit\)/.test(mTags),
     `${mTags.length} chars`);
+
+  // ── 21.players · U38a · THE PLAYER ARM'S KEYSET READ — `user.playerWalk`, the resolver's other half (S10 2026-10-02) ──
+  // ⭐ WHY HERE. The campaign audience is the book ∪ the players, walked by ONE function (`walkCampaignAudience`,
+  // audience.ts); its player phase reads accounts through this member. Every suite runs on the memory twin, so a Prisma
+  // where that forgot the role (staff texted), the `+255` prefix (an erased `erased:<id>` account or a foreign number
+  // walked), the cursor's strict `gt` (a restart re-sending the cursor row) or its key-only `select` (names and 96 kB
+  // avatars dragged through every chunk) is right in every test and wrong in production.
+  {
+    const NLP = String.fromCharCode(10);
+    const flatP = (s: string) => s.split(String.fromCharCode(13)).join("").split(NLP).map((l) => l.trim()).join(" ");
+    const userMem = region(storeSrc, `${NLP}  user: {`);
+    const NEXT_MEMBER_P = new RegExp(NLP + " {4}[A-Za-z0-9_]+ *:");
+    const memberOf = (block: string, name: string): string => {
+      const at = block.indexOf(`${NLP}    ${name}: `);
+      if (at < 0) return "";
+      const next = block.slice(at + 1).search(NEXT_MEMBER_P);
+      return next < 0 ? block.slice(at) : block.slice(at, at + 1 + next);
+    };
+    const pWalkP = delegateMethod("user", "playerWalk");
+    const mWalkP = memberOf(userMem, "playerWalk");
+    const mMatch = region(storeSrc, "function playerMatchesWalk(");
+    const storeImportP = dalSrc.slice(0, Math.max(0, dalSrc.indexOf('} from "./store";')));
+    ok("21.players.named · playerWalk names PlayerWalkQuery and PlayerWalk in BOTH twins (never an inline literal) — exported by store.ts, imported by prisma-dal.ts; the query is EXACTLY afterId, limit, ndcs, createdFrom, createdBefore and a row EXACTLY id, phoneE164 (key-only)",
+      mWalkP.includes("playerWalk: (q: PlayerWalkQuery): PlayerWalk =>") && pWalkP.includes("playerWalk: async (q: PlayerWalkQuery): Promise<PlayerWalk> =>")
+        && storeImportP.includes("  PlayerWalkQuery,") && storeImportP.includes("  PlayerWalk,")
+        && sameSet(storedKeys("PlayerWalkQuery"), ["afterId", "limit", "ndcs", "createdFrom", "createdBefore"])
+        && sameSet(storedKeys("PlayerWalkRow"), ["id", "phoneE164"]) && sameSet(storedKeys("PlayerWalk"), ["rows", "nextAfterId"]),
+      `memory ${mWalkP.length} chars · prisma ${pWalkP.length} chars · query [${storedKeys("PlayerWalkQuery")}] · row [${storedKeys("PlayerWalkRow")}]`);
+    const fp = flatP(pWalkP);
+    ok("21.players.prisma · ⛔ the Prisma walk is PLAYER accounts on a +255 number only, the prefixes as an any-of of `+255<ndc>` starts (an EMPTY list answered with nothing BEFORE any query — Prisma reads a nested `OR: []` as no condition, measured on Postgres), the window gte/lt on createdAt, a KEYSET `id gt` the cursor ordered by id asc with take limit + 1 and never skip, and a key-only select of the id and the number",
+      fp.includes('const and: Prisma.UserWhereInput[] = [{ role: "PLAYER" }, { phoneE164: { startsWith: "+255" } }];')
+        && fp.includes("if (q.ndcs !== null) and.push({ OR: q.ndcs.map((n) => ({ phoneE164: { startsWith: `+255${n}` } })) });")
+        && fp.includes("if (q.createdFrom !== null) and.push({ createdAt: { gte: new Date(q.createdFrom) } });")
+        && fp.includes("if (q.createdBefore !== null) and.push({ createdAt: { lt: new Date(q.createdBefore) } });")
+        && fp.includes("if (q.afterId !== null) and.push({ id: { gt: q.afterId } });")
+        && fp.includes('select: { id: true, phoneE164: true }, orderBy: { id: "asc" }, take: q.limit + 1,')
+        && fp.includes("if (q.ndcs !== null && q.ndcs.length === 0) return { rows: [], nextAfterId: null };")
+        && !pWalkP.includes("skip"),
+      fp.slice(0, 260));
+    const fm = flatP(mWalkP);
+    const fmm = flatP(mMatch);
+    ok("21.players.memory · …and the memory twin is the same where, predicate for predicate — role PLAYER, the +255 start, the prefixes checked !== null, the window, `id >` the cursor (never >=), code-unit order, limit + 1 — and hands back only the id and the number",
+      fmm.includes('if (u.role !== "PLAYER") return false;') && fmm.includes('if (!u.phoneE164.startsWith("+255")) return false;')
+        && fmm.includes("if (q.ndcs !== null && !q.ndcs.some((n) => u.phoneE164.startsWith(`+255${n}`))) return false;")
+        && fmm.includes("if (q.createdFrom !== null && Date.parse(u.createdAt) < Date.parse(q.createdFrom)) return false;")
+        && fmm.includes("if (q.createdBefore !== null && Date.parse(u.createdAt) >= Date.parse(q.createdBefore)) return false;")
+        && fm.includes("(afterId === null || u.id > afterId)") && fm.includes(".sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))")
+        && fm.includes(".slice(0, q.limit + 1)") && fm.includes("rows: shown.map((u) => ({ id: u.id, phoneE164: u.phoneE164 }))")
+        && !/ndcs[?]?[.]length/.test(mMatch),
+      `${fm.slice(0, 160)} | ${fmm.slice(0, 120)}`);
+    ok("21.players.c1 · CONTROL · a where without the role, a cursor read >=, and a prefix list tested by .length each FAIL their matcher",
+      !flatP('const and: Prisma.UserWhereInput[] = [{ phoneE164: { startsWith: "+255" } }];').includes('[{ role: "PLAYER" }, { phoneE164: { startsWith: "+255" } }]')
+        && !"(afterId === null || u.id >= afterId)".includes("(afterId === null || u.id > afterId)")
+        && /ndcs[?]?[.]length/.test("if (q.ndcs?.length && !q.ndcs.some((n) => u.phoneE164.startsWith(n))) return false;"));
+  }
 
   // ── CONTROLS ─────────────────────────────────────────────────────────────────────────
   ok("21.c1 · CONTROL · a translator that never reads a key is reported",
@@ -2226,6 +2297,157 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
     storedKeys("StoredContactImport", plantedRun).includes("plantedKey") && !readsFrom(iRead, "plantedKey", "r") && !writesKey(iCreate, "plantedKey"));
   ok("24.c8 · CONTROL · a memory after() by offset FAILS 24.keyset.memory's needle",
     !".filter((_row, index) => index >= w.afterOrdinal)".includes(".filter((row) => row.ordinal > w.afterOrdinal)"));
+}
+
+/* ═══ §25 · The ONE bulk keyed reads — msisdnsPresent · findByPhones · findActiveAmong · latestAmong in both twins (S10 2026-10-02; decision X10) ═══ */
+{
+  // ⭐ WHY THIS SECTION EXISTS. §25's four reads are each a single-key read asked of a SET — the book's presence, the
+  // accounts behind numbers, the stops in force, the latest word — and U38a's audience split hands their answers to the
+  // send gate in place of its own single reads. So each must answer EXACTLY what its single read answers, per element:
+  // a bulk `findActiveAmong` that forgot `liftedAt: null` counts a resubscribed person as suppressed; a `latestAmong`
+  // that lost the id tiebreak flips a same-millisecond "yes then no" to yes; a `findByPhones` that dropped the avatar
+  // omit drags up to 96 kB a row through every 1,000-number chunk; a `msisdnsPresent` that is not key-only carries a
+  // book row's name and notes where only a key was asked for. Every behavioural suite runs on the memory twin, so each
+  // of these is green in every test and wrong in production — this section holds the TWO twins to one shape. The
+  // per-element proof is EXECUTED twice: on the memory twin by `test:campaign-audience` (§4.0), and on a real Postgres
+  // by `scripts/live/bulk-reads-pg-probe.mts`.
+  const NL25 = String.fromCharCode(10);
+  const flat25 = (s: string) => s.split(String.fromCharCode(13)).join("").split(NL25).map((l) => l.trim()).join(" ");
+  const NEXT_MEMBER25 = new RegExp(NL25 + " {4}[A-Za-z0-9_]+ *:");
+  const memberOf = (block: string, name: string): string => {
+    const at = block.indexOf(`${NL25}    ${name}: `);
+    if (at < 0) return "";
+    const next = block.slice(at + 1).search(NEXT_MEMBER25);
+    return next < 0 ? block.slice(at) : block.slice(at, at + 1 + next);
+  };
+  /** `first` sits in `body` and BEFORE `then` — an order, not a presence. */
+  const before = (body: string, first: string, then: string): boolean => {
+    const a = body.indexOf(first), b = body.indexOf(then);
+    return a >= 0 && b > a;
+  };
+  const ns = (src: string, name: string) => region(src, `${NL25}  ${name}: {`);
+  const mem = {
+    present: memberOf(ns(storeSrc, "marketingContact"), "msisdnsPresent"),
+    phones: memberOf(ns(storeSrc, "user"), "findByPhones"),
+    active: memberOf(ns(storeSrc, "suppression"), "findActiveAmong"),
+    latest: memberOf(ns(storeSrc, "messagingConsent"), "latestAmong"),
+  };
+  const pri = {
+    present: memberOf(ns(dalSrc, "marketingContact"), "msisdnsPresent"),
+    phones: memberOf(ns(dalSrc, "user"), "findByPhones"),
+    active: memberOf(ns(dalSrc, "suppression"), "findActiveAmong"),
+    latest: memberOf(ns(dalSrc, "messagingConsent"), "latestAmong"),
+  };
+  type ReadKey = keyof typeof mem;
+  const READ_KEYS: ReadKey[] = ["present", "phones", "active", "latest"];
+  const fm = Object.fromEntries(READ_KEYS.map((k) => [k, flat25(mem[k])])) as Record<ReadKey, string>;
+  const fp = Object.fromEntries(READ_KEYS.map((k) => [k, flat25(pri[k])])) as Record<ReadKey, string>;
+
+  ok("25.0 · both twins implement all four reads — marketingContact.msisdnsPresent, user.findByPhones, suppression.findActiveAmong, messagingConsent.latestAmong",
+    READ_KEYS.every((k) => mem[k].length > 150 && pri[k].length > 150),
+    READ_KEYS.map((k) => `${k} ${mem[k].length}/${pri[k].length}`).join(" · "));
+
+  // ── NAMED ──
+  const SIGS: Record<ReadKey, [string, string]> = {
+    present: ["msisdnsPresent: (q: MarketingContactPresenceQuery): string[] =>", "msisdnsPresent: async (q: MarketingContactPresenceQuery): Promise<string[]> =>"],
+    phones: ["findByPhones: (phones: string[]): StoredUser[] =>", "findByPhones: async (phones: string[]): Promise<StoredUser[]> =>"],
+    active: ["findActiveAmong: (q: MessagingKeyBatch): StoredSuppression[] =>", "findActiveAmong: async (q: MessagingKeyBatch): Promise<StoredSuppression[]> =>"],
+    latest: ["latestAmong: (q: MessagingKeyBatch): StoredMessagingConsent[] =>", "latestAmong: async (q: MessagingKeyBatch): Promise<StoredMessagingConsent[]> =>"],
+  };
+  const storeImport25 = dalSrc.slice(0, Math.max(0, dalSrc.indexOf('} from "./store";')));
+  const offSigs = READ_KEYS.filter((k) => !mem[k].includes(SIGS[k][0]) || !pri[k].includes(SIGS[k][1]));
+  const BATCH_KEYS = ["channel", "category", "identifiers"];
+  const PRESENCE_KEYS = ["msisdns", "excludeSourceRef"];
+  ok("25.named · every signature names its types in BOTH twins (never an inline literal) — MessagingKeyBatch is EXACTLY channel, category, identifiers and MarketingContactPresenceQuery EXACTLY msisdns, excludeSourceRef; exported by store.ts, imported by prisma-dal.ts",
+    offSigs.length === 0 && storeImport25.includes("  MessagingKeyBatch,") && storeImport25.includes("  MarketingContactPresenceQuery,")
+      && storeSrc.includes("export type MessagingKeyBatch = {") && storeSrc.includes("export type MarketingContactPresenceQuery = {")
+      && sameSet(storedKeys("MessagingKeyBatch"), BATCH_KEYS) && sameSet(storedKeys("MarketingContactPresenceQuery"), PRESENCE_KEYS),
+    `signatures off [${offSigs}] · batch [${storedKeys("MessagingKeyBatch")}] · presence [${storedKeys("MarketingContactPresenceQuery")}]`);
+
+  // ── THE BOUND, AND THE EMPTY SET ──
+  const READ_NAME: Record<ReadKey, [string, string]> = {
+    present: ["q.msisdns", "marketingContact.msisdnsPresent"],
+    phones: ["phones", "user.findByPhones"],
+    active: ["q.identifiers", "suppression.findActiveAmong"],
+    latest: ["q.identifiers", "messagingConsent.latestAmong"],
+  };
+  const keysLine = (k: ReadKey) => `const keys = bulkKeys(${READ_NAME[k][0]}, "${READ_NAME[k][1]}");`;
+  const helperOk = (src: string) => {
+    const h = flat25(region(src, "function bulkKeys("));
+    return h.includes("const unique = Array.from(new Set(keys));") && h.includes("if (unique.length > BULK_KEYED_READ_MAX) {")
+      && h.includes("throw new Error(") && h.includes("return unique;");
+  };
+  const unbounded = READ_KEYS.filter((k) => !fm[k].includes(keysLine(k)) || !fp[k].includes(keysLine(k)));
+  ok("25.bound · ⛔ both twins refuse a call above 2,000 distinct keys through ONE helper each (bulkKeys — deduplicate, then throw above BULK_KEYED_READ_MAX, never cut off), the two constants equal, and every read takes its keys through it",
+    helperOk(storeSrc) && helperOk(dalSrc) && storeSrc.includes("export const BULK_KEYED_READ_MAX = 2000;") && dalSrc.includes("const BULK_KEYED_READ_MAX = 2000;")
+      && unbounded.length === 0,
+    `helpers ${helperOk(storeSrc)}/${helperOk(dalSrc)} · without the helper [${unbounded}]`);
+  const EMPTY = "if (keys.length === 0) return [];";
+  const queriesEmpty = READ_KEYS.filter((k) => !before(fp[k], keysLine(k), EMPTY) || !before(fp[k], EMPTY, "pc()"));
+  const memEmpty = READ_KEYS.filter((k) => !before(fm[k], keysLine(k), EMPTY));
+  ok("25.empty · ⛔ an EMPTY key set is answered with nothing, WITHOUT a query — every Prisma read returns [] before its first pc(), and the memory twin answers the same",
+    queriesEmpty.length === 0 && memEmpty.length === 0, `prisma queries on empty [${queriesEmpty}] · memory [${memEmpty}]`);
+
+  // ── KEY-ONLY, AND THE NULL-SAFE ERASURE MARK ──
+  ok("25.keyonly · ⛔ msisdnsPresent is KEY-ONLY — the Prisma read selects the key alone and maps it, never a book row (no toStoredMarketingContact), and the memory twin hands back the key it was asked, never the row",
+    fp.present.includes("select: { msisdn: true },") && fp.present.includes("return rows.map((r) => r.msisdn).sort();")
+      && !pri.present.includes("toStoredMarketingContact(") && fm.present.includes("out.push(m);") && fm.present.includes("return out.sort();")
+      && !/out[.]push[(]c[^A-Za-z0-9_]/.test(mem.present),
+    fp.present.slice(0, 240));
+  ok("25.null · ⛔ the erasure mark is left out NULL-SAFELY in both twins — Prisma's OR carries the { sourceRef: null } arm (a bare `not` drops every row with no mark, nearly the whole book), the memory twin keeps a row whose sourceRef is not the mark, and null excludes nothing",
+    fp.present.includes("where: q.excludeSourceRef === null ? { msisdn: { in: keys } } : { msisdn: { in: keys }, OR: [{ sourceRef: null }, { sourceRef: { not: q.excludeSourceRef } }] },")
+      && fm.present.includes("if (c && (q.excludeSourceRef === null || c.sourceRef !== q.excludeSourceRef)) out.push(m);"),
+    fp.present.slice(0, 240));
+
+  // ── THE AVATAR ──
+  ok("25.avatar · ⛔ findByPhones OMITS the avatar in BOTH twins — Prisma's omit: { avatarDataUrl: true } with the row reported null, the memory twin a copy reporting null — so a 1,000-number chunk never drags 96 kB a row out of Postgres",
+    fp.phones.includes("omit: { avatarDataUrl: true }") && fp.phones.includes("return rows.map((r) => toStoredUser({ ...r, avatarDataUrl: null }));")
+      && fm.phones.includes("if (u) out.push({ ...u, avatarDataUrl: null });"),
+    fp.phones.slice(0, 240));
+
+  // ── THE SAME QUESTION AS THE SINGLE READ ──
+  const pFind = flat25(delegateMethod("suppression", "find"));
+  const mFind = flat25(region(ns(storeSrc, "suppression"), "find: ("));
+  ok("25.active · ⛔ findActiveAmong asks find's question — Prisma's where carries liftedAt: null beside the key set, as find's does; the memory twin reads the lift FALSILY (!r.liftedAt), as find does, never the strict === null that fails open",
+    fp.active.includes("where: { channel: q.channel, category: q.category, identifier: { in: keys }, liftedAt: null },") && pFind.includes("liftedAt: null,")
+      && fm.active.includes("if (r.channel === q.channel && r.category === q.category && want.has(r.identifier) && !r.liftedAt) out.push(r);")
+      && mFind.includes("return !r.liftedAt ? r : null;") && !/liftedAt [=!]==? null/.test(mem.active),
+    `${fp.active.slice(0, 160)} | ${fm.active.slice(0, 160)}`);
+  const pLatestFor = flat25(delegateMethod("messagingConsent", "latestFor"));
+  const mLatestFor = flat25(memberOf(ns(storeSrc, "messagingConsent"), "latestFor"));
+  const MEM_ORDER = "b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id)";
+  const PRI_ORDER = 'orderBy: [{ createdAt: "desc" }, { id: "desc" }],';
+  ok("25.order · ⛔ latestAmong reads the ledger in latestFor's OWN order — createdAt DESC then id DESC in both twins, the identical text latestFor carries — and keeps the FIRST row per number, never the last",
+    fp.latest.includes(PRI_ORDER) && pLatestFor.includes(PRI_ORDER)
+      && fp.latest.includes("for (const r of rows) if (!latest.has(r.identifier)) latest.set(r.identifier, toStoredMessagingConsent(r));")
+      && fm.latest.includes(`.sort((a, b) => ${MEM_ORDER});`) && mLatestFor.includes(MEM_ORDER)
+      && fm.latest.includes("for (const r of ordered) if (!latest.has(r.identifier)) latest.set(r.identifier, r);"),
+    `${fp.latest.slice(0, 200)} | ${fm.latest.slice(0, 200)}`);
+  ok("25.keys · each read asks ONLY its key set, through the index its single read uses — the unique msisdn and phoneE164 in Prisma, the twin's own secondary maps in memory, and the batch's channel and category beside the identifiers",
+    fp.present.includes("msisdn: { in: keys }") && fp.phones.includes("where: { phoneE164: { in: keys } }")
+      && fp.latest.includes("where: { channel: q.channel, category: q.category, identifier: { in: keys } },")
+      && fm.present.includes("const id = store.contactsByMsisdn.get(m);") && fm.phones.includes("const id = store.usersByPhone.get(phone);")
+      && fm.latest.includes(".filter((r) => r.channel === q.channel && r.category === q.category && want.has(r.identifier))"));
+  const membersOf = (block: string): string[] => Array.from(block.matchAll(/^ {4}([A-Za-z0-9_]+) *:/gm)).map((m) => m[1]);
+  ok("25.parity · the user namespace carries findByPhones and the player walk in BOTH twins (§17 and §19 hold the other three namespaces' members equal)",
+    ["findByPhones", "playerWalk"].every((n) => membersOf(ns(storeSrc, "user")).includes(n) && membersOf(ns(dalSrc, "user")).includes(n)));
+
+  // ── CONTROLS — each proves the matcher above it can reject, on a literal that would otherwise pass ──
+  ok("25.c1 · CONTROL · a Prisma presence read without its key-only select, and a memory one that pushes the row, each FAIL 25.keyonly's needles",
+    !flat25("const rows = await pc().marketingContact.findMany({ where: { msisdn: { in: keys } } });").includes("select: { msisdn: true },")
+      && /out[.]push[(]c[^A-Za-z0-9_]/.test("if (c) out.push(c);"));
+  ok("25.c2 · CONTROL · a findByPhones without the omit FAILS 25.avatar's needle",
+    !"const rows = await pc().user.findMany({ where: { phoneE164: { in: keys } } });".includes("omit: { avatarDataUrl: true }"));
+  ok("25.c3 · CONTROL · the strict memory predicate is SEEN by 25.active, and a Prisma where without the lift fails its needle",
+    /liftedAt [=!]==? null/.test("if (want.has(r.identifier) && r.liftedAt === null) out.push(r);")
+      && !"where: { channel: q.channel, category: q.category, identifier: { in: keys } },".includes("liftedAt: null"));
+  ok("25.c4 · CONTROL · an order without the id leg FAILS 25.order's needle",
+    !'orderBy: { createdAt: "desc" },'.includes(PRI_ORDER) && !".sort((a, b) => b.createdAt.localeCompare(a.createdAt));".includes(MEM_ORDER));
+  ok("25.c5 · CONTROL · a read that queries BEFORE its empty check FAILS 25.empty's order",
+    !before('const keys = bulkKeys(phones, "user.findByPhones"); const rows = await pc().user.findMany({}); if (keys.length === 0) return [];', EMPTY, "pc()"));
+  const plantedBatch = storeSrc.replace("export type MessagingKeyBatch = {", `export type MessagingKeyBatch = {${NL25}  plantedKey: string;`);
+  ok("25.c6 · CONTROL · a key PLANTED in MessagingKeyBatch is seen by the parser and fails 25.named's exact set",
+    storedKeys("MessagingKeyBatch", plantedBatch).includes("plantedKey") && !sameSet(storedKeys("MessagingKeyBatch", plantedBatch), BATCH_KEYS));
 }
 
 /* ═══ §26 · The campaign tables — SmsCampaign / SmsCampaignRecipient in both twins (U35b, S10 2026-10-02; decision X1) ═══ */

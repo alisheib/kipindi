@@ -87,6 +87,10 @@ import type {
   AgentApplicationStatus,
   AgentDocType, StoredKycStageRow, NotificationRedactScope,
   StoredMessagingConsent, StoredSuppression, MessagingKey,
+  MessagingKeyBatch,
+  MarketingContactPresenceQuery,
+  PlayerWalkQuery,
+  PlayerWalk,
   StoredMarketingOptOutToken,
   StoredMarketingContact,
   StoredContactList,
@@ -315,6 +319,19 @@ function toPrismaContactWhere(w: ContactAudienceWhere): Prisma.MarketingContactW
 /** U23 · how many rows one bulk statement reads or writes at a time: a book of 150,000 is about thirty round trips per
  *  bulk write — never one read holding the whole book in memory, never one statement per row. */
 const CONTACT_BULK_CHUNK = 5000;
+
+/** §25 · the most distinct keys one bulk keyed read takes — the memory twin's `BULK_KEYED_READ_MAX`, the same number
+ *  (`test:dal-parity` §25). ⚠️ Not imported from the store: the store imports this module, so a VALUE import back would
+ *  be a cycle — the two constants are held equal by the gate instead. */
+const BULK_KEYED_READ_MAX = 2000;
+/** §25 · a bulk read's keys, deduplicated — and ⛔ REFUSED above the bound, never cut off (the memory twin's rule). */
+function bulkKeys(keys: readonly string[], read: string): string[] {
+  const unique = Array.from(new Set(keys));
+  if (unique.length > BULK_KEYED_READ_MAX) {
+    throw new Error(`${read}: at most ${BULK_KEYED_READ_MAX} keys a call (got ${unique.length}) — refused, never cut off`);
+  }
+  return unique;
+}
 
 /** ContactList row -> StoredContactList (marketing U18). */
 type ContactListRow = {
@@ -1471,6 +1488,38 @@ export const prismaDb = {
       if (unique.length === 0) return [];
       const rows = await pc().user.findMany({ where: { id: { in: unique } }, omit: { avatarDataUrl: true } });
       return rows.map((r) => toStoredUser({ ...r, avatarDataUrl: null }));
+    },
+    /** §25 · the accounts behind a set of numbers — `findByPhone` asked of a set, ONE query on the unique `phoneE164`.
+     *  ⛔ The avatar is OMITTED (audit F-11c): up to 96 kB a row, and a 1,000-number chunk would otherwise drag ~96 MB
+     *  out of Postgres for a column the gate never reads. Reported null, as the memory twin reports it. */
+    findByPhones: async (phones: string[]): Promise<StoredUser[]> => {
+      const keys = bulkKeys(phones, "user.findByPhones");
+      if (keys.length === 0) return [];
+      const rows = await pc().user.findMany({ where: { phoneE164: { in: keys } }, omit: { avatarDataUrl: true }, orderBy: { phoneE164: "asc" } });
+      return rows.map((r) => toStoredUser({ ...r, avatarDataUrl: null }));
+    },
+    /** U38a · THE PLAYER ARM'S KEYSET WALK — `id > cursor`, ordered by the same column, so the walk is self-consistent
+     *  while accounts are created between calls. ⛔ Never `skip`. ⛔ KEY-ONLY: a `select` of the id and the number. An
+     *  EMPTY prefix list is an empty OR, which Prisma answers with nothing — never "every prefix". One extra row is read
+     *  to know whether the walk is finished. */
+    playerWalk: async (q: PlayerWalkQuery): Promise<PlayerWalk> => {
+      // ⛔ AN EMPTY PREFIX LIST IS NOTHING, NEVER "NO CONSTRAINT" — answered here, before any query: Prisma reads a
+      // nested `OR: []` as no condition at all (bulk-reads-pg-probe 7 measured every player coming back for []).
+      if (q.ndcs !== null && q.ndcs.length === 0) return { rows: [], nextAfterId: null };
+      const and: Prisma.UserWhereInput[] = [{ role: "PLAYER" }, { phoneE164: { startsWith: "+255" } }];
+      if (q.ndcs !== null) and.push({ OR: q.ndcs.map((n) => ({ phoneE164: { startsWith: `+255${n}` } })) });
+      if (q.createdFrom !== null) and.push({ createdAt: { gte: new Date(q.createdFrom) } });
+      if (q.createdBefore !== null) and.push({ createdAt: { lt: new Date(q.createdBefore) } });
+      if (q.afterId !== null) and.push({ id: { gt: q.afterId } });
+      const rows = await pc().user.findMany({
+        where: { AND: and },
+        select: { id: true, phoneE164: true },
+        orderBy: { id: "asc" }, take: q.limit + 1,
+      });
+      const more = rows.length > q.limit;
+      const shown = more ? rows.slice(0, q.limit) : rows;
+      const last = shown[shown.length - 1];
+      return { rows: shown.map((r) => ({ id: r.id, phoneE164: r.phoneE164 })), nextAfterId: more && last ? last.id : null };
     },
     /** Indexed on `recruitedBy` (migration 20260907120100). Newest first. */
     listByRecruiter: async (referrerUserId: string): Promise<StoredUser[]> => {
@@ -3717,6 +3766,20 @@ export const prismaDb = {
       });
       return rows.map(toStoredMessagingConsent);
     },
+    /** §25 · each number's LATEST word — `latestFor` asked of a set: ONE query in the ledger's own order
+     *  (`createdAt desc, id desc`, served by the [channel, identifier, category, createdAt] index), the FIRST row per
+     *  number kept. A number with no row is absent. */
+    latestAmong: async (q: MessagingKeyBatch): Promise<StoredMessagingConsent[]> => {
+      const keys = bulkKeys(q.identifiers, "messagingConsent.latestAmong");
+      if (keys.length === 0) return [];
+      const rows = await pc().messagingConsent.findMany({
+        where: { channel: q.channel, category: q.category, identifier: { in: keys } },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      });
+      const latest = new Map<string, StoredMessagingConsent>();
+      for (const r of rows) if (!latest.has(r.identifier)) latest.set(r.identifier, toStoredMessagingConsent(r));
+      return Array.from(latest.values()).sort((a, b) => (a.identifier < b.identifier ? -1 : a.identifier > b.identifier ? 1 : 0));
+    },
   },
 
   /* ═══ SUPPRESSION (marketing U6, lift U8) ════════════════════════════════════════════
@@ -3811,6 +3874,17 @@ export const prismaDb = {
       });
       return rows.map(toStoredSuppression);
     },
+    /** §25 · the stops STILL IN FORCE among a set of numbers — `find` asked of a set, ONE query, and `liftedAt: null`
+     *  part of the QUESTION exactly as it is in `find`. ⛔ A lifted row is not returned; `listFor` still returns it. */
+    findActiveAmong: async (q: MessagingKeyBatch): Promise<StoredSuppression[]> => {
+      const keys = bulkKeys(q.identifiers, "suppression.findActiveAmong");
+      if (keys.length === 0) return [];
+      const rows = await pc().suppression.findMany({
+        where: { channel: q.channel, category: q.category, identifier: { in: keys }, liftedAt: null },
+        orderBy: [{ identifier: "asc" }, { id: "asc" }],
+      });
+      return rows.map(toStoredSuppression);
+    },
   },
   /* ═══ OPT-OUT TOKENS (marketing U8) ══════════════════════════════════════════════════════
    * ⛔ NO `delete` — OD43's link never expires. */
@@ -3882,6 +3956,21 @@ export const prismaDb = {
     findByMsisdn: async (msisdn: string): Promise<StoredMarketingContact | null> => {
       const row = await pc().marketingContact.findUnique({ where: { msisdn } });
       return row ? toStoredMarketingContact(row) : null;
+    },
+    /** §25 · WHICH of these keys the book holds — `findByMsisdn` asked of a set, ONE query on the unique `msisdn`, and
+     *  ⛔ KEY-ONLY: a `select` of the key, so a book row's name, email and notes never leave Postgres. A row carrying
+     *  `excludeSourceRef` is left out NULL-SAFELY — `"sourceRef" <> $1` alone would drop every row with no mark, which
+     *  is nearly the whole book — so the exclusion carries the NULL arm, as the audience where does. */
+    msisdnsPresent: async (q: MarketingContactPresenceQuery): Promise<string[]> => {
+      const keys = bulkKeys(q.msisdns, "marketingContact.msisdnsPresent");
+      if (keys.length === 0) return [];
+      const rows = await pc().marketingContact.findMany({
+        where: q.excludeSourceRef === null
+          ? { msisdn: { in: keys } }
+          : { msisdn: { in: keys }, OR: [{ sourceRef: null }, { sourceRef: { not: q.excludeSourceRef } }] },
+        select: { msisdn: true },
+      });
+      return rows.map((r) => r.msisdn).sort();
     },
     /** Every book row LINKED to an account — erasure's reach (U18b). `userId` is indexed. */
     listByUserId: async (userId: string): Promise<StoredMarketingContact[]> => {

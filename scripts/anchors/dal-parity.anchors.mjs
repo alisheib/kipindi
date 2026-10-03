@@ -436,7 +436,9 @@ export const MUTATIONS = [
     to: `        orderBy: { createdAt: "desc" },
       });
       return row ? toStoredMessagingConsent(row) : null;`,
-    expect: `17.tiebreak.prisma · BOTH Prisma readers order by createdAt DESC then id DESC`,
+    // §25 (2026-10-02): §17.tiebreak now holds each reader BY NAME — `latestAmong` is a third reader carrying the same
+    // order, and a tally would have counted it in place of the one this case removes.
+    expect: `17.tiebreak.prisma · EVERY Prisma ledger reader — latestFor, listFor and §25's latestAmong — orders by createdAt DESC then id DESC, each in its own text`,
   },
   {
     // The memory twin stops being idempotent: a re-import replaces the row and moves the date.
@@ -498,7 +500,7 @@ export const MUTATIONS = [
     file: "src/lib/server/store.ts",
     from: `        .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id))[0] ?? null,`,
     to: `        .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0] ?? null,`,
-    expect: `17.tiebreak.memory · BOTH memory readers break the tie on id, the same way`,
+    expect: `17.tiebreak.memory · EVERY memory ledger reader breaks the tie on id, the same way, each in its own text`,
   },
   /* ── §18 · the opt-out link (marketing U8) ──────────────────────────────────────────── */
   {
@@ -750,6 +752,57 @@ export const MUTATIONS = [
     to: `        select t.tag as tag, count(*)::int as n`,
     expect: `21.tags.prisma · tagCounts counts each contact ONCE per tag in SQL, leaves the erased mark out NULL-safely, sorts ties in code-unit order and is bounded`,
   },
+  /* ── §21 · U38a · the player arm's keyset read — user.playerWalk (S10 2026-10-02) ──────────────────────────── */
+  {
+    // 🔴 EVERY PLAYER, ON POSTGRES ONLY: an empty prefix list handed to Prisma as `OR: []` is no condition at all, so
+    // "no operator" walks — and asks about, and enqueues — every player, while the memory twin answers nothing.
+    name: "prisma-dal.ts — the player walk asks Postgres with an empty prefix list",
+    file: "src/lib/server/prisma-dal.ts",
+    from: "      if (q.ndcs !== null && q.ndcs.length === 0) return { rows: [], nextAfterId: null };",
+    to: "      // (the empty-list answer removed)",
+    expect: "21.players.prisma · ⛔ the Prisma walk is PLAYER accounts on a +255 number only, the prefixes as an any-of of `+255<ndc>` starts (an EMPTY list answered with nothing BEFORE any query — Prisma reads a nested `OR: []` as no condition, measured on Postgres), the window gte/lt on createdAt, a KEYSET `id gt` the cursor ordered by id asc with take limit + 1 and never skip, and a key-only select of the id and the number",
+  },
+  {
+    // 🔴 STAFF IN A CAMPAIGN, ON POSTGRES ONLY: the player walk loses its role, so every officer's account on a +255
+    // number is walked — and asked about, and enqueued — while every memory suite walks players alone.
+    name: "prisma-dal.ts — the player walk loses role PLAYER",
+    file: "src/lib/server/prisma-dal.ts",
+    from: 'const and: Prisma.UserWhereInput[] = [{ role: "PLAYER" }, { phoneE164: { startsWith: "+255" } }];',
+    to: 'const and: Prisma.UserWhereInput[] = [{ phoneE164: { startsWith: "+255" } }];',
+    expect: "21.players.prisma · ⛔ the Prisma walk is PLAYER accounts on a +255 number only, the prefixes as an any-of of `+255<ndc>` starts (an EMPTY list answered with nothing BEFORE any query — Prisma reads a nested `OR: []` as no condition, measured on Postgres), the window gte/lt on createdAt, a KEYSET `id gt` the cursor ordered by id asc with take limit + 1 and never skip, and a key-only select of the id and the number",
+  },
+  {
+    // 🔴 A RESTART RE-SENDS: `gte` re-includes the cursor's own account at every page boundary — U42's enqueue would
+    // write it twice (the unique index saves the row; the walk is still wrong) on Postgres only.
+    name: "prisma-dal.ts — the player walk's cursor reads gte",
+    file: "src/lib/server/prisma-dal.ts",
+    from: "if (q.afterId !== null) and.push({ id: { gt: q.afterId } });",
+    to: "if (q.afterId !== null) and.push({ id: { gte: q.afterId } });",
+    expect: "21.players.prisma · ⛔ the Prisma walk is PLAYER accounts on a +255 number only, the prefixes as an any-of of `+255<ndc>` starts (an EMPTY list answered with nothing BEFORE any query — Prisma reads a nested `OR: []` as no condition, measured on Postgres), the window gte/lt on createdAt, a KEYSET `id gt` the cursor ordered by id asc with take limit + 1 and never skip, and a key-only select of the id and the number",
+  },
+  {
+    // The player walk drags whole account rows — names, dates of birth, 96 kB avatars — through every chunk.
+    name: "prisma-dal.ts — the player walk loses its key-only select",
+    file: "src/lib/server/prisma-dal.ts",
+    from: "        select: { id: true, phoneE164: true },",
+    to: "        // (every column)",
+    expect: "21.players.prisma · ⛔ the Prisma walk is PLAYER accounts on a +255 number only, the prefixes as an any-of of `+255<ndc>` starts (an EMPTY list answered with nothing BEFORE any query — Prisma reads a nested `OR: []` as no condition, measured on Postgres), the window gte/lt on createdAt, a KEYSET `id gt` the cursor ordered by id asc with take limit + 1 and never skip, and a key-only select of the id and the number",
+  },
+  {
+    // …and on the twin every suite runs on: the cursor row walked twice at every page boundary.
+    name: "store.ts — the memory player walk's cursor reads >=",
+    file: "src/lib/server/store.ts",
+    from: "        .filter((u) => playerMatchesWalk(u, q) && (afterId === null || u.id > afterId))",
+    to: "        .filter((u) => playerMatchesWalk(u, q) && (afterId === null || u.id >= afterId))",
+    expect: "21.players.memory · …and the memory twin is the same where, predicate for predicate — role PLAYER, the +255 start, the prefixes checked !== null, the window, `id >` the cursor (never >=), code-unit order, limit + 1 — and hands back only the id and the number",
+  },
+  {
+    name: "store.ts — the memory player arm admits every role",
+    file: "src/lib/server/store.ts",
+    from: '  if (u.role !== "PLAYER") return false;',
+    to: "  // (every role)",
+    expect: "21.players.memory · …and the memory twin is the same where, predicate for predicate — role PLAYER, the +255 start, the prefixes checked !== null, the window, `id >` the cursor (never >=), code-unit order, limit + 1 — and hands back only the id and the number",
+  },
   /* ── §22 · the edit form's compare-and-set (U22, S10 2026-10-02) ───────────────────────────────── */
   {
     // 🔴 LAST WRITE WINS, ON POSTGRES ONLY: the conditional update loses its updatedAt clause, so a second officer's
@@ -909,6 +962,102 @@ export const MUTATIONS = [
     from: `        store.contactImportRows.delete(r.id);`,
     to: `        // (the rows left behind)`,
     expect: `24.purge.memory.cascade · ⭐ the memory purgeFinished deletes the purged runs' ROWS too — the ON DELETE CASCADE Postgres does for the other twin`,
+  },
+  /* ── §25 · the ONE bulk keyed reads (S10 2026-10-02; decision X10) ──────────────────────────────────────────── */
+  {
+    // ⭐ THE PLAN'S OWN RED: a read that is not key-only. The presence read drags every book row's name, email and notes
+    // out of Postgres where a key was asked for — invisible to every memory suite.
+    name: "prisma-dal.ts — msisdnsPresent loses its key-only select",
+    file: "src/lib/server/prisma-dal.ts",
+    from: "        select: { msisdn: true },",
+    to: "        // (the whole row)",
+    expect: "25.keyonly · ⛔ msisdnsPresent is KEY-ONLY — the Prisma read selects the key alone and maps it, never a book row (no toStoredMarketingContact), and the memory twin hands back the key it was asked, never the row",
+  },
+  {
+    // 🔴 THE NULL TRAP, AGAIN: a bare `not` is `"sourceRef" <> $1`, which drops every row with no mark — nearly the whole
+    // book reads as absent, and the campaign walk sends the player phase every number the book already holds.
+    name: "prisma-dal.ts — msisdnsPresent loses the erasure mark's NULL arm",
+    file: "src/lib/server/prisma-dal.ts",
+    from: "          : { msisdn: { in: keys }, OR: [{ sourceRef: null }, { sourceRef: { not: q.excludeSourceRef } }] },",
+    to: "          : { msisdn: { in: keys }, sourceRef: { not: q.excludeSourceRef } },",
+    expect: "25.null · ⛔ the erasure mark is left out NULL-SAFELY in both twins — Prisma's OR carries the { sourceRef: null } arm (a bare `not` drops every row with no mark, nearly the whole book), the memory twin keeps a row whose sourceRef is not the mark, and null excludes nothing",
+  },
+  {
+    // ⭐ THE PLAN'S OWN RED: the avatar omit dropped — up to 96 kB a row through every 1,000-number chunk, on Postgres only.
+    name: "prisma-dal.ts — findByPhones loses the avatar omit",
+    file: "src/lib/server/prisma-dal.ts",
+    from: 'const rows = await pc().user.findMany({ where: { phoneE164: { in: keys } }, omit: { avatarDataUrl: true }, orderBy: { phoneE164: "asc" } });',
+    to: 'const rows = await pc().user.findMany({ where: { phoneE164: { in: keys } }, orderBy: { phoneE164: "asc" } });',
+    expect: "25.avatar · ⛔ findByPhones OMITS the avatar in BOTH twins — Prisma's omit: { avatarDataUrl: true } with the row reported null, the memory twin a copy reporting null — so a 1,000-number chunk never drags 96 kB a row out of Postgres",
+  },
+  {
+    // …and the twins disagree on the shape: the memory twin hands back the avatar the Prisma twin omits.
+    name: "store.ts — the memory findByPhones hands back the avatar",
+    file: "src/lib/server/store.ts",
+    from: "        if (u) out.push({ ...u, avatarDataUrl: null });",
+    to: "        if (u) out.push(u);",
+    expect: "25.avatar · ⛔ findByPhones OMITS the avatar in BOTH twins — Prisma's omit: { avatarDataUrl: true } with the row reported null, the memory twin a copy reporting null — so a 1,000-number chunk never drags 96 kB a row out of Postgres",
+  },
+  {
+    // 🔴 A RESUBSCRIBED PERSON COUNTED AS SUPPRESSED, ON POSTGRES ONLY: the bulk stop read forgets the lift that `find`
+    // asks about, so every lifted stop reads as in force and the split under-counts who will receive.
+    name: "prisma-dal.ts — findActiveAmong loses liftedAt: null",
+    file: "src/lib/server/prisma-dal.ts",
+    from: "        where: { channel: q.channel, category: q.category, identifier: { in: keys }, liftedAt: null },",
+    to: "        where: { channel: q.channel, category: q.category, identifier: { in: keys } },",
+    expect: "25.active · ⛔ findActiveAmong asks find's question — Prisma's where carries liftedAt: null beside the key set, as find's does; the memory twin reads the lift FALSILY (!r.liftedAt), as find does, never the strict === null that fails open",
+  },
+  {
+    // 🔴 The strict predicate — a row with no lift FIELD reads as lifted, so a suppressed person is handed back as
+    // marketable: failing OPEN, the one direction the law does not forgive (§17.active's lesson).
+    name: "store.ts — the memory findActiveAmong reads the lift strictly",
+    file: "src/lib/server/store.ts",
+    from: "        if (r.channel === q.channel && r.category === q.category && want.has(r.identifier) && !r.liftedAt) out.push(r);",
+    to: "        if (r.channel === q.channel && r.category === q.category && want.has(r.identifier) && r.liftedAt === null) out.push(r);",
+    expect: "25.active · ⛔ findActiveAmong asks find's question — Prisma's where carries liftedAt: null beside the key set, as find's does; the memory twin reads the lift FALSILY (!r.liftedAt), as find does, never the strict === null that fails open",
+  },
+  {
+    // ⭐ THE PLAN'S OWN RED (U38's "the ledger tiebreak dropped"): two rows in one millisecond — a yes, then a no — and the
+    // bulk read picks the yes on Postgres while `latestFor` picks the no.
+    name: "prisma-dal.ts — latestAmong loses the id tiebreak",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `        where: { channel: q.channel, category: q.category, identifier: { in: keys } },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],`,
+    to: `        where: { channel: q.channel, category: q.category, identifier: { in: keys } },
+        orderBy: { createdAt: "desc" },`,
+    expect: "25.order · ⛔ latestAmong reads the ledger in latestFor's OWN order — createdAt DESC then id DESC in both twins, the identical text latestFor carries — and keeps the FIRST row per number, never the last",
+  },
+  {
+    name: "store.ts — the memory latestAmong loses the id tiebreak",
+    file: "src/lib/server/store.ts",
+    from: "        .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id));",
+    to: "        .sort((a, b) => b.createdAt.localeCompare(a.createdAt));",
+    expect: "25.order · ⛔ latestAmong reads the ledger in latestFor's OWN order — createdAt DESC then id DESC in both twins, the identical text latestFor carries — and keeps the FIRST row per number, never the last",
+  },
+  {
+    // A bound that no longer bounds: 2,001 keys reach Postgres in one IN list instead of being refused.
+    name: "prisma-dal.ts — the bulk reads' 2,000-key bound stops refusing",
+    file: "src/lib/server/prisma-dal.ts",
+    from: "  if (unique.length > BULK_KEYED_READ_MAX) {",
+    to: "  if (unique.length > Number.MAX_SAFE_INTEGER) {",
+    expect: "25.bound · ⛔ both twins refuse a call above 2,000 distinct keys through ONE helper each (bulkKeys — deduplicate, then throw above BULK_KEYED_READ_MAX, never cut off), the two constants equal, and every read takes its keys through it",
+  },
+  {
+    // An empty chunk still costs a round trip — and an `IN ()` the planner reads for nothing.
+    name: "prisma-dal.ts — findByPhones queries for an empty set",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `      const keys = bulkKeys(phones, "user.findByPhones");
+      if (keys.length === 0) return [];`,
+    to: `      const keys = bulkKeys(phones, "user.findByPhones");`,
+    expect: "25.empty · ⛔ an EMPTY key set is answered with nothing, WITHOUT a query — every Prisma read returns [] before its first pc(), and the memory twin answers the same",
+  },
+  {
+    // The region() trap: an inline literal in the signature hands every body assertion the type instead of the body.
+    name: "prisma-dal.ts — findActiveAmong takes an inline object type",
+    file: "src/lib/server/prisma-dal.ts",
+    from: "    findActiveAmong: async (q: MessagingKeyBatch): Promise<StoredSuppression[]> => {",
+    to: '    findActiveAmong: async (q: { channel: "SMS"; category: "MARKETING"; identifiers: string[] }): Promise<StoredSuppression[]> => {',
+    expect: "25.named · every signature names its types in BOTH twins (never an inline literal) — MessagingKeyBatch is EXACTLY channel, category, identifiers and MarketingContactPresenceQuery EXACTLY msisdns, excludeSourceRef; exported by store.ts, imported by prisma-dal.ts",
   },
   /* ── §26 · the campaign tables (U35b, S10 2026-10-02) ──────────────────────────────────────────────── */
   {

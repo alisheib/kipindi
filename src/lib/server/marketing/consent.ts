@@ -1,5 +1,7 @@
 import { db } from "@/lib/server/store";
-import type { MessagingKey, MessagingLocale, StoredKyc, StoredUser, SuppressionReason } from "@/lib/server/store";
+import type {
+  MessagingKey, MessagingLocale, StoredKyc, StoredMessagingConsent, StoredSuppression, StoredUser, SuppressionReason,
+} from "@/lib/server/store";
 import { appendMarketingConsent } from "@/lib/server/marketing/consent-ledger";
 import { mirrorContactCache } from "@/lib/server/marketing/contact-cache";
 import { toMsisdn255 } from "@/lib/phone-normalize";
@@ -125,6 +127,32 @@ export function isPersonCreatedSuppression(reason: SuppressionReason | string | 
 }
 
 /**
+ * U38a · THE GATE'S THREE SINGLE-KEY READS, NAMED — so a COUNT can hand it the same answers read in bulk.
+ *
+ * ⭐ ONE DECISION DEFINITION. The audience split (`audience-split.ts`) asks THIS gate about every number, with these
+ * three reads answered from §25's bulk reads (`findActiveAmong`, `findByPhones`, `latestAmong`, a chunk at a time) —
+ * never a second copy of the gate's logic run over pre-read rows. Each bulk read answers exactly what the single read
+ * answers (`test:dal-parity` §25; the per-element proof is `test:campaign-audience` and the Postgres probe).
+ * ⛔ THE SEND LOOP NEVER PASSES THEM: `dispatch.ts` calls the gate with ONE argument, so every send reads fresh,
+ * immediately before the message leaves (§5.6). The RG standing and the identity check stay direct reads either way.
+ * ⚠️ X24 WAS REVERSED ON PURPOSE (2026-10-02): U38a landed before U33a, so U33a re-threads this when the contact branch
+ * reads the 18+ attestation.
+ */
+export type MarketingGateReads = {
+  suppression: (key: MessagingKey) => Promise<StoredSuppression | null> | StoredSuppression | null;
+  userByPhone: (phone: string) => Promise<StoredUser | null> | StoredUser | null;
+  latestConsent: (key: MessagingKey) => Promise<StoredMessagingConsent | null> | StoredMessagingConsent | null;
+};
+
+/** The default — the store's own single-key reads, asked AT CALL TIME, so the twin `db` resolves to is the one read.
+ *  ⛔ FROZEN: it is the SEND LOOP's default, so an in-process assignment to a member would change every send's read. */
+export const DB_GATE_READS: Readonly<MarketingGateReads> = Object.freeze({
+  suppression: (key: MessagingKey) => db.suppression.find(key),
+  userByPhone: (phone: string) => db.user.findByPhone(phone),
+  latestConsent: (key: MessagingKey) => db.messagingConsent.latestFor(key),
+});
+
+/**
  * 2a · A PLAYER'S CONSENT (OD8 as corrected by OQ11's built default, D3 2026-09-26). ⛔ The toggle
  * alone is no longer enough: until 2026-09-26 neither consent point named SMS ("product updates",
  * "Product news", "Nipe matangazo"), so OD8's premise that the screen said so was false. The player's
@@ -132,11 +160,15 @@ export function isPersonCreatedSuppression(reason: SuppressionReason | string | 
  * sentences (`consent-wording.ts`). ⛔ The ledger never GRANTS over a player's "no" (OD10) — it is an
  * extra condition, never an alternative. Shared by the gate and the profile toggle's read (D4).
  */
-async function playerConsentRefusal(user: Pick<StoredUser, "id" | "marketingOptIn">, key: MessagingKey): Promise<MarketingGateVerdict | null> {
+async function playerConsentRefusal(
+  user: Pick<StoredUser, "id" | "marketingOptIn">,
+  key: MessagingKey,
+  reads: MarketingGateReads = DB_GATE_READS,
+): Promise<MarketingGateVerdict | null> {
   if (user.marketingOptIn !== true) {
     return refuse("no_consent", "the player's own marketing toggle is off", user.id);
   }
-  const latest = await Promise.resolve(db.messagingConsent.latestFor(key));
+  const latest = await Promise.resolve(reads.latestConsent(key));
   if (!latest) return refuse("no_consent", "no consent row in the ledger — the consent predates the SMS wording", user.id);
   if (latest.status !== "GIVEN") return refuse("consent_withdrawn", `consent withdrawn on ${latest.createdAt}`, user.id);
   if (!isSmsConsentWording(latest.wording)) return refuse("no_consent", "consent predates the SMS wording", user.id);
@@ -157,8 +189,11 @@ async function readKyc(userId: string): Promise<KycRead> {
 /**
  * @param now — injectable so the EAT-midnight age boundaries and the RG clock can be driven by a
  *   suite; production callers omit it.
+ * @param reads — U38a: the three single-key reads (`MarketingGateReads`). DEFAULTED to the store's own, so every
+ *   existing caller — the send loop above all — is unchanged and reads fresh; only the audience split passes the
+ *   chunk's bulk answers, and the decision below is the same code either way.
  */
-export async function mayReceiveMarketingSms(msisdn: string, now: Date = new Date()): Promise<MarketingGateVerdict> {
+export async function mayReceiveMarketingSms(msisdn: string, now: Date = new Date(), reads: MarketingGateReads = DB_GATE_READS): Promise<MarketingGateVerdict> {
   // ⛔ An unusable number is refused here rather than at the wire, so it never becomes a
   // billed send attempt (D2, U1). ⭐ Judged by the numbering plan (`tz-msisdn.ts`), not by length:
   // a Kenyan +254…, a landline, the 13-digit "+255 0712…" typo and a dead NDC 064 are all twelve-plus
@@ -178,19 +213,20 @@ export async function mayReceiveMarketingSms(msisdn: string, now: Date = new Dat
   // asked to be resubscribed in 2027 is marketable again WITHOUT the evidence of the original
   // refusal being destroyed. ⛔ Nothing here filters the lift a second time: a gate that
   // re-implemented the DAL's question would be a second definition of "suppressed", and the
-  // two only have to disagree once.
-  const suppressed = await Promise.resolve(db.suppression.find(key));
+  // two only have to disagree once. (U38a: a split hands in `findActiveAmong`'s answer — the same
+  // question asked of a set, `test:dal-parity` §25.)
+  const suppressed = await Promise.resolve(reads.suppression(key));
   if (suppressed) {
     return refuse("suppressed", `suppressed ${suppressed.reason.toLowerCase()} on ${suppressed.createdAt}`);
   }
 
   // ── 2 · IF THE NUMBER BELONGS TO A PLAYER, THE PLAYER GOVERNS ───────────────────────────
-  const user = await Promise.resolve(db.user.findByPhone(userPhoneKeyFor(identifier)));
+  const user = await Promise.resolve(reads.userByPhone(userPhoneKeyFor(identifier)));
   if (user) {
     // ── 2a · CONSENT — the toggle AND an SMS-naming GIVEN row as the latest ledger entry (D3, see
     // `playerConsentRefusal`). Asked before RG because it is two cheap reads, and the RG step below
     // is the costly one.
-    const noConsent = await playerConsentRefusal(user, key);
+    const noConsent = await playerConsentRefusal(user, key, reads);
     if (noConsent) return noConsent;
     // ── 2b · RG STANDING — self-exclusion → cooling-off → harm markers (U10, `rg.ts`).
     // ⛔ NEVER `isLockedOut` (OD12, D9): it LIFTS ITSELF when the chosen period elapses, so a 24-hour
@@ -237,7 +273,7 @@ export async function mayReceiveMarketingSms(msisdn: string, now: Date = new Dat
   // ── 3 · OTHERWISE THE LEDGER GOVERNS ────────────────────────────────────────────────────
   // ⛔ No row is not "not yet decided" — it is NO. There is no lawful basis but consent in
   // Tanzania (OD7), so silence can never be treated as permission.
-  const latest = await Promise.resolve(db.messagingConsent.latestFor(key));
+  const latest = await Promise.resolve(reads.latestConsent(key));
   if (!latest) {
     return refuse("no_consent", "no consent has ever been recorded for this number");
   }
