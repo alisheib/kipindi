@@ -35,7 +35,7 @@ import { ProgressBar } from "@/components/ui/progress-bar";
 import { ScrollX } from "@/components/ui/scroll-x";
 import type { StoredSmsCampaign, SmsCampaignRecipientStatusCounts, SmsCampaignRecipientCountsById } from "@/lib/server/store";
 import {
-  CAMPAIGN_SCREENS, CAMPAIGN_SCREEN_ROUTES, CAMPAIGN_STATUS_VIEW, campaignDetailHref, campaignProgress, campaignTotal,
+  CAMPAIGN_SCREENS, CAMPAIGN_SCREEN_ROUTES, CAMPAIGN_STATUS_VIEW, campaignDetailHref, campaignDraftHref, campaignProgress, campaignTotal,
   stopReasonLabel, zeroRecipientStatusCounts,
 } from "@/lib/marketing/campaign-status";
 import { formatClock, formatDate } from "@/lib/utils";
@@ -83,7 +83,9 @@ function CampaignRow({ c, counts }: { c: StoredSmsCampaign; counts: SmsCampaignR
   return (
     <tr data-campaign-row data-campaign-id={c.id}>
       {/* ⛔ A LINK ONLY TO A PAGE THAT EXISTS (432(h)): plain text until U47 lands /admin/campaigns/[id] and flips the flag. */}
-      <td>{CAMPAIGN_SCREENS.detail ? <Link href={campaignDetailHref(c.id) as Route} className="hover:underline">{name}</Link> : name}</td>
+      {/* ⭐ A SAVED DRAFT REOPENS FROM HERE: a DRAFT row links to the composer at its own ?draft= address (behind the
+          compose flag); every other row stays plain text until U47 lands its page and flips `detail`. */}
+      <td>{CAMPAIGN_SCREENS.detail ? <Link href={campaignDetailHref(c.id) as Route} className="hover:underline">{name}</Link> : c.status === "DRAFT" && CAMPAIGN_SCREENS.compose ? <Link href={campaignDraftHref(c.id) as Route} className="hover:underline">{name}</Link> : name}</td>
       <td>
         <Chip size="sm" variant={view.chip}><span className="whitespace-nowrap">{view.label}</span></Chip>
         {/* ⛔ The engine's reason in words — an unknown key reads "Engine reason: <key>", never the key alone. */}

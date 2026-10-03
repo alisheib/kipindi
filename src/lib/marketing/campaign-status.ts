@@ -251,3 +251,9 @@ export const CAMPAIGN_SCREENS: CampaignScreens = { compose: true, detail: false 
 export function campaignDetailHref(id: string): string {
   return `/admin/campaigns/${encodeURIComponent(id)}`;
 }
+
+/** A saved DRAFT reopens in the composer at its own address (`?draft=<id>`) — the one door back to a draft until U47's
+ *  detail page exists (the validation audit, 2026-10-03: a saved draft could not be found again from the list). */
+export function campaignDraftHref(id: string): string {
+  return `${CAMPAIGN_SCREEN_ROUTES.compose}?draft=${encodeURIComponent(id)}`;
+}

@@ -263,6 +263,7 @@ const L = {
   s5d: "5d · ⛔ no pulse and no animate-pulse in any file of the campaigns section (OD38)",
   s5e: "5e · a failed read renders AdminLoadError for the SMS campaigns with the rail still drawn — gated on the WHOLE table, never the page's rows — and a rail built without counts carries none",
   s5f: "5f · ⛔ LINKS ONLY TO PAGES THAT EXIST (432(h)): CAMPAIGN_SCREENS.compose and .detail are true exactly when their page files exist, the page renders each link only behind its flag, and its ghost reserves the head's action behind the same flag",
+  s5k: "5k · ⭐ A SAVED DRAFT REOPENS FROM THE LIST: a DRAFT row's name links to the composer at its own ?draft= address (campaignDraftHref, from the ONE route table), behind the compose flag — every other row stays plain while detail is false",
   s5g: "5g · the empty and no-match states read the copy module — no-match offers Show all, the rail stands outside the rows — the pager is AdminPagination, and a row in flight says when it was read beside a Refresh",
   s5h: "5h · ⛔ the dev seed refuses production FIRST (404 before any await) and touches no SMS path — no sendBatch, no SmsMessage, no SMS module",
   s5i: "5i · the rail file is a dumb server renderer — ONE data-filter-rail campaign-status, ONE FilterPill at the dense rank (tab semantics, replace, no scroll), a FilterGroupKey, no client directive, no route or label typed — and filter-language declares it in ADMIN_SURFACES",
@@ -601,6 +602,12 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
     return [impl.screens.compose === composeExists && impl.screens.detail === detailExists && gated,
       `compose flag ${impl.screens.compose} / page ${composeExists} · detail flag ${impl.screens.detail} / page ${detailExists} · gated ${gated}`];
   });
+  await check(p(L.s5k), () => {
+    const page = S.page;
+    const linked = page.includes(': c.status === "DRAFT" && CAMPAIGN_SCREENS.compose ? <Link href={campaignDraftHref(c.id) as Route}');
+    const href = CS.campaignDraftHref("cmp x");
+    return [linked && href === `${CS.CAMPAIGN_SCREEN_ROUTES.compose}?draft=cmp%20x` && href.startsWith("/admin/campaigns/new?draft="), `linked ${linked} · ${href}`];
+  });
   await check(p(L.s5g), () => {
     const page = S.page;
     return [page.includes("title={CAMPAIGNS_EMPTY.title}") && page.includes("CAMPAIGNS_NO_MATCH[view.rail]") && page.includes("{CAMPAIGNS_SHOW_ALL}")
@@ -719,12 +726,14 @@ if (!PROVE_RED) {
     'getSidebarBadges(isOwner || viewDomains.includes("accounting"), false)',
   );
   const railOnRows = REAL_SOURCES.page.replace("{!emptyTable && <CampaignStatusRail rail={rail} />}", "{rows.length > 0 && !emptyTable && <CampaignStatusRail rail={rail} />}");
+  const draftUnflagged = REAL_SOURCES.page.replace(' : c.status === "DRAFT" && CAMPAIGN_SCREENS.compose ? ', ' : c.status === "DRAFT" ? ');
   // ⛔ A source plant that found nothing to replace proves nothing — each must differ from the shipped text.
   const sourcePlants: Array<[string, string, string]> = [
     ["a timer-driven bar", timerPage, REAL_SOURCES.page],
     ["formatTzs on the list", moneyPage, REAL_SOURCES.page],
     ["one shell caller drops the growth answer", oneArgShell, REAL_SOURCES.shell],
     ["the rail gated on the page's rows", railOnRows, REAL_SOURCES.page],
+    ["a draft link drawn without the compose flag", draftUnflagged, REAL_SOURCES.page],
   ];
   for (const [name, planted, shipped] of sourcePlants) if (planted === shipped) problems.push(`PLANT "${name}" did not apply — its anchor is gone`);
 
@@ -747,6 +756,7 @@ if (!PROVE_RED) {
     { name: "Promise.resolve(db.smsCampaign.attentionCount()) over a synchronous throw (B-28)", expect: L.s4d, impl: { ...REAL, badge: promiseResolved } },
     { name: "one shell caller drops the growth answer", expect: L.s4e, impl: { ...REAL, sources: { ...REAL_SOURCES, shell: oneArgShell } } },
     { name: "the rail gated on the page's rows — a filter that matches nothing takes its own undo with it", expect: L.s5e, impl: { ...REAL, sources: { ...REAL_SOURCES, page: railOnRows } } },
+    { name: "a draft link drawn without the compose flag", expect: L.s5k, impl: { ...REAL, sources: { ...REAL_SOURCES, page: draftUnflagged } } },
   ];
 
   for (const [i, c] of CASES.entries()) {

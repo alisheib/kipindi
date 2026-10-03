@@ -242,6 +242,11 @@ for (const vp of VIEWPORTS) {
   ok(`${vp.name} · POPULATED · a page of 20, newest first — the three in flight head it`,
     ids.length === 20 && ids[0] === "cmp_seed_22" && ids[1] === "cmp_seed_21" && ids[2] === "cmp_seed_20", ids.slice(0, 4).join(","));
   ok(`${vp.name} · POPULATED · the pager is there (22 campaigns, 2 pages)`, (await page.locator('a[href*="page=2"]').count()) > 0);
+  // ⭐ A SAVED DRAFT REOPENS FROM THE LIST (the validation audit's blocker, 2026-10-03).
+  const draftHref = await page.locator('tr[data-campaign-row]:has-text("DRAFT") td:first-child a').first().getAttribute("href").catch(() => null);
+  const sendingLinks = await page.locator('tr[data-campaign-row]:has-text("SENDING") td:first-child a').count();
+  ok(`${vp.name} · POPULATED · a DRAFT row's name opens the composer at its ?draft= address; a SENDING row stays plain`,
+    typeof draftHref === "string" && draftHref.startsWith("/admin/campaigns/new?draft=") && sendingLinks === 0, `${draftHref} · sending links ${sendingLinks}`);
   // ⚖️ 1280 is the console's narrowest desktop. As first built, the seven columns ran 26px past the card there and 16 of
   // 20 names wrapped (measured 2026-10-02); 360 scrolls sideways by design, as the contacts table does.
   if (vp.width >= 1280) {
@@ -258,8 +263,15 @@ for (const vp of VIEWPORTS) {
     ok(`${vp.name} · POPULATED · the table fits its card — no column past the edge — and no campaign name wraps`,
       fit !== null && fit.over <= 0 && fit.wrapped === 0, JSON.stringify(fit));
   }
-  ok(`${vp.name} · POPULATED · names are plain text — no link into a campaign page that does not exist yet (U47)`,
-    (await page.locator("tr[data-campaign-row] td:first-child a").count()) === 0);
+  // ⭐ Since the validation audit (2026-10-03) a DRAFT's name reopens it in the composer — a page that EXISTS. What must
+  // still never appear is a link into the campaign page U47 has not built: every name link goes to the composer, and
+  // only a DRAFT row carries one.
+  const nameLinks = await page.$$eval("tr[data-campaign-row] td:first-child a", (els) => els.map((a) => ({
+    href: a.getAttribute("href") || "", draft: (a.closest("tr")?.textContent || "").toUpperCase().includes("DRAFT"),
+  })));
+  ok(`${vp.name} · POPULATED · no name links into a campaign page that does not exist yet (U47) — only DRAFT rows link, and only to the composer`,
+    nameLinks.length > 0 && nameLinks.every((l) => l.draft && l.href.startsWith("/admin/campaigns/new?draft=")),
+    JSON.stringify(nameLinks.slice(0, 4)));
   const draftRow = await textOfLoc(rowOf(page, "cmp_seed_19"));
   // ⚠️ The kit Chip is `uppercase` in CSS, and innerText returns the RENDERED case — chip words are matched case-blind.
   ok(`${vp.name} · POPULATED · an unnamed draft reads "Untitled campaign" and its audience "Not confirmed"`,
