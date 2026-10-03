@@ -432,14 +432,32 @@ erasure now withdraws the consent and empties the book, and both data exports ca
   before the audit chain; the invites screen checks an email by the ONE rule on blur and says "an email or a phone" under
   Email. Production read-only count (m1, counts only): 57 contacts, all from sign-ups (3 joined through the hook since
   the backfill), 0 names and 0 tags holding a number, 0 lists — nothing to clean. Battery (focused): typecheck; contacts-import 208, contacts-audience 52, marketing-consent 133, contacts-form 44, contacts-bulk 40, contacts-export 39, campaign-compose, staff-role 35, invites 42 — each with its red (bulk 28/28, audience 30/30, the composer's 164 proofs); registration-contact, campaign-audience, the contacts page, staging and boundary, client-graph-safe, dal-parity, invite-flow, email-stress, read-tiers, single-save, hooks-order, admin-act-gate, search-adoption and ui-consistency green; red-anchors and validation-focus only their older reds (two other lanes' anchors; the affiliate form's 8 unstamped fields — fixed with batch 6); the contacts drive 483/483; the new staff + invites drive 24/24 (its first runs caught its own stale selector and scripted paste); next build.
+✅ STEP 26 · VALIDATION BATCHES 3 + 4 — LIVE (`ffb92ace`, live 2026-10-03 15:30:24 UTC). Batch 3, one phone rule for every spelling: the trunk
+  zero after +255 is dropped (a number cut short reads "too short — check whether some digits were cut off", never an
+  invented 007 range); "too long" says what to fix; every refusal ends with the next step; another keyboard's digits
+  are read through ONE table (phone-normalize's toAsciiDigits — house-bot's rules.ts imports it, and its import
+  allowlist names it); PhoneInput REPLACES the box on a whole-number paste or one that would overflow it — never a mix
+  of two numbers — while a short paste that fits inserts; the dispatch hands the wire the gate's own key; the contacts
+  search reads "+255 0712 345 678". Batch 4, the composer: a name refuses a phone number only (dates and times pass) and
+  says so before Save; a stale or no-longer-draft copy reloads only through a confirmation, "Save as a new draft"
+  keeps the audience; the saved line invites a test only when one can go; the own-number remedy names the owner and
+  Staff & roles. ONE PHONE DETECTOR: contact-fields' phoneNumberIn is the refusal's finding — holdsPhoneRun asks it and
+  the campaign name calls it (vb4's private copy removed); digits from other keyboards are judged like any figure and
+  masked to 0–9. ⚖️ Delegated: a single digit pasted into a full box replaces it (the box shows it, Save is off — no
+  wrong number can be saved). ⚠️ Owed: PhoneInput keeps no caret through its reformat (older than vb3); the opt-out
+  token mint keys on the gate's key before U42/U43; the Android clipboard chip, on a real phone. Battery (focused):
+  typecheck; tz-msisdn, phone-normalize, marketing-consent, contacts-page, contacts-import (Arabic-Indic vectors,
+  phoneNumberIn), campaign-compose and campaign-audience each with its red; contacts-form, house-bot-rules 577,
+  read-tiers, client-graph-safe, the contacts suites, staff-role, ui-consistency, hooks-order, campaigns-page,
+  campaign-models, pii-logs green; red-anchors and type-scale only their older reds (749/239 unchanged); the paste
+  drive 21/21; the composer drive in three boots (console, live-closed, dead-rail); next build.
 📘 THE ADMIN GUIDE (PDF) — Ali, 2026-10-03: "include screenshots on which pages the admin should go for each step". Every
   step shows the page the admin opens for it (and the menu path to it); none is a step without its page. Built after the
   validation batches land: contacts, a draft, the test send, the SMS balance (Admin → System), every warning and its fix.
 🔎 THE VALIDATION AUDIT (2026-10-03, Ali: "full input form validation and field validation everywhere — clean, perfect,
   working"): six read-only auditors over every admin input → 49 fixes (6 blocker, 7 major, 36 minor) in 8 batches with
   disjoint files and one shared validator per kind of field. Batch 1 = STEP 23, batch 2 = STEP 24, batches 5 + 8 =
-  STEP 25 (all LIVE). Batches 3 (one phone rule for every spelling, a paste that replaces) and 4 (the composer) are
-  fixed after their reviews and merge next — 4 drops its private phone detector for the book's (`phoneNumberIn`). Batch
+  STEP 25, batches 3 + 4 = STEP 26 (all LIVE; 4 dropped its private phone detector for the book's `phoneNumberIn`). Batch
   6 (the kit form atoms — the 100× numeric paste on money fields) is in its second fix round: its second review found the
   player balance adjustment (Players → a player → Adjust balance), a raw box where a pasted "9,500.00" reads TZS 950,000
   — LIVE TODAY and older than this audit; that round moves it onto the kit field. Batch 7 (the contacts screens) follows.
