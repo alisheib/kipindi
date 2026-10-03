@@ -1,0 +1,102 @@
+{
+ "job": "U27a",
+ "built": {
+  "filesWritten": [
+   "C:\\kipindi-marketing\\src\\lib\\contacts\\parsed-file.ts",
+   "C:\\kipindi-marketing\\src\\lib\\contacts\\xlsx-limits.ts",
+   "C:\\kipindi-marketing\\scripts\\contacts-boundary.test.mts",
+   "C:\\kipindi-marketing\\scripts\\client-graph-safe.test.mjs"
+  ],
+  "summary": "U27a is written. Nothing was executed in Node (your rule). I checked it by careful reading, by a Python copy of the walker (same regexes, run over the current tree), by a bracket/literal balance check and by a scan for hidden characters. None of these is a real run, so the lead's run is the first real one.\n\nFILES\n1. src/lib/contacts/parsed-file.ts — the ONE shape, exactly as C15 writes it: format \"csv\"|\"xlsx\"|\"vcard\"|\"paste\", fileName, rows {line, cells}[], width, blankRows, notes: string[]. It imports nothing and has no directive. It also exports:\n   - ContactsFileFormat and CONTACTS_FILE_FORMATS (the list can't miss a format: compile error).\n   - ParsedRow.\n   - NOTE_LIST_CAP = 50 and formatRowList (\"rows 4, 9 and 12\", past 50 \"and N more\"), so every producer's notes name rows the same way.\n   - isParsedContactsFile. It checks: format; fileName text or null; every line a whole number ≥1 and strictly increasing; every cell a string; width equal to the widest row; blankRows ≥0; every note a string.\n   Following C15, U27.md's `source` field and its structured ParseNote union are gone. The shape's name appears in no comment, so even a plain grep counts exactly one declaration.\n\n2. src/lib/contacts/xlsx-limits.ts — imports nothing (decision C18). It holds:\n   - The derived transport numbers: NEXT_ACTION_BODY_LIMIT_BYTES 1048576, XLSX_ENVELOPE_ALLOWANCE 8 KiB, XLSX_MAX_BYTES 700 KiB, base64LengthFor, XLSX_MAX_BASE64_CHARS 955,736. 955,736 + 8,192 = 963,928 ≤ 1,048,576.\n   - Provisional caps for U27b to measure: inflated 48 MiB, rows 200,000, entries 1000.\n   - The ONE sniffer: sniffSpreadsheetBytes (\"zip\"|\"cfb\"|\"other\", matching the full magic bytes, never just \"PK\"), headIsOdsZip, cfbLooksEncrypted (pass the WHOLE file), and spreadsheetHeadKind, which returns \"xlsx\"|\"ods\"|\"xls\"|\"protected\"|null. U25's detectFormat and U27b's step 5 should call spreadsheetHeadKind.\n   - The ONE copy table: XlsxRefusal, WrongFormatKind, XLSX_REFUSALS and WRONG_FORMAT_KINDS (both lists can't miss an entry: compile error), and xlsxRefusalSentence. Every route to CSV carries the \"Number with 0 decimal places\" step. A sheet name is not echoed if it contains a run of 7 or more digits, and control characters are dropped.\n   - formatFileSize rounds UP (1 KB = 1024 bytes), so a file one byte over the cap reads \"701 KB\", never \"700 KB\".\n   - The M6 detector: EXCEL_SHORTENED_TEXT, looksExcelShortened, excelShortenedSentence. U28's draftContactRow should import these; this file only detects.\n\n3. scripts/contacts-boundary.test.mts — the new suite, 33 assertions, run in-process. The walker resolves imports the way client-graph-safe does, but also follows re-exports, import(), side-effect imports and require(). It drops type-only imports and reads which names are imported. A \"use server\" module is a LEAF, and next/dynamic's `.then(m => m.X)` is read as the component it picks.\n   - §0 proves the walker can fail.\n   - §1: client side of the owned routes. The 11 islands are measured, all clean.\n   - §2: the pure modules, including §2.6: exactly one ParsedContactsFile declaration.\n   - §3: exceljs stays where it is.\n   - §4.1: owned server→client crossings carry only PascalCase names (12 measured, all PascalCase).\n   - §4.2: the same over every src/app entry, as a ratchet. The pinned list is empty: measured 0 offenders across 394 entries, 865 modules and 413 crossings.\n   - §5: the reader's data and disk boundaries. They bind U27b's files once they exist; the disk-touch pattern is built by concatenation.\n   - §6: the transport limit (OD29).\n   - §7: the contract modules, executed.\n   --prove-red runs 19 plants entirely in memory: R1–R14 (the spec's R1–R13 plus a duplicate shape declaration) and K1–K5 (sniffer, validator, size rounding, detector case, row-list cap). The plant that puts a client file over a server import is R3 (and R4, where the \"use server\" line is removed). The file has no file-writing calls, no raw tab or zero-width characters and no backslash-u escapes.\n\n4. scripts/client-graph-safe.test.mjs — pinned only lib/contacts/parsed-file.ts and lib/contacts/xlsx-limits.ts, at the end of PINNED, with a comment. CRLF endings kept, nothing else touched.\n\nWHERE I DEPARTED FROM U27.md\n- §0.2 now checks that every local import of page.tsx and contacts-loader.ts resolves, and that page.tsx reaches store.ts. The spec's wording (\"each imports store.ts directly\") would break as soon as U21/U24 move the loader's store import.\n- R12's plant is called unpinned-plant.ts, because U28a's real sample-sheet.ts now exists.\n- R3 imports the store, because import-xlsx.ts does not exist yet.\n- §3.1 allows U27b's import-xlsx.ts only once that file exists.",
+  "suiteKeysToAdd": [
+   "\"test:contacts-boundary\": \"tsx scripts/contacts-boundary.test.mts\"",
+   "\"red:contacts-boundary\": \"tsx scripts/contacts-boundary.test.mts --prove-red\"",
+   "predeploy: insert `npm run test:contacts-boundary` right after `npm run test:contacts-page` (U27.md adds `&& npm run test:contacts-import` after it once U28a's key exists)"
+  ],
+  "howToVerify": [
+   "npm run test:contacts-boundary — must end `contacts-boundary: 33 passed, 0 failed`. It prints the populations by name: owned client files (0 today), 11 islands, 5 pure modules, the owned server modules. Until U28a pins its three files in client-graph-safe, exactly one FAIL is expected, §2.4, naming src/lib/contacts/contact-fields.ts, csv-write.ts and sample-sheet.ts.",
+   "npm run red:contacts-boundary — every case prints `caught → <its label>`, the last line must be `19/19 caught · RED PROOF COMPLETE`, and it exits 0. If the baseline is red (e.g. the §2.4 pins above), it prints PROBLEMS and exits 1.",
+   "npm run test:client-graph-safe — must print `ALL PASS`; the §1 ratchet count goes up by 2 (both new modules walked, neither reaches prisma.ts).",
+   "npm run typecheck — clean. Both src/lib/contacts files are covered by tsconfig; the .mts suite is not.",
+   "npm run test:red-anchors — red:contacts-boundary must appear in the list of in-process red proofs; 4.1/4.2 stay at the ceiling of 65.",
+   "npm run test:guards-exist and npm run test:orphans — pass once both package.json keys exist (the new files cite `test:contacts-boundary` and `npm run red:contacts-boundary`).",
+   "grep -cE \"writeFileSync|writeFile\\s*\\(|appendFileSync|rmSync|unlinkSync|renameSync|copyFileSync|cpSync\" scripts/contacts-boundary.test.mts — must print 0."
+  ],
+  "openQuestions": [
+   "§2.4 will be RED until U28a's three files are pinned in client-graph-safe's PINNED: src/lib/contacts/contact-fields.ts, csv-write.ts and sample-sheet.ts. They already exist and are unpinned. Under M3 each unit pins its own, and I was told to pin only mine, so the U28a pins need merging when you integrate.",
+   "exceljs IS in package.json dependencies (\"exceljs\": \"^4.4.0\"), and 4.4.0 is installed. Its package.json declares \"browser\": \"./dist/exceljs.min.js\" at line 19. Installed Next is 16.2.4, and action-handler.js still holds defaultBodySizeLimit = '1 MB'. Nothing to add.",
+   "C15 makes notes plain strings, so U27.md's structured ParseNote, its `source` field and X4's \"excel_shortened note at {line,col}\" no longer fit. M6 moves that flag to U28's draftContactRow. U27b's spec and its import-suite section should be amended to write note sentences (formatRowList is there for that) and to drop the per-cell shortened note.",
+   "Nothing was run in Node. The 0 offenders for §4.2 and the clean islands come from a Python copy of the walker. If your real run disagrees, trust the run and send me the output.",
+   "Detecting a password-protected workbook (\"protected\" vs \"xls\") needs the WHOLE file: the CFB directory can sit anywhere. If U25's detectFormat passes only a 4 KB head, a protected workbook may be called an old .xls; the xls sentence says \"looks like\" because of that. U32's dialog should sniff the whole file, which is at most 700 KB by then.",
+   "Docs were not touched (§9 U27 rewrite, D18 re-owned to U30, §1 row), per my file list. They are yours in the integration commit."
+  ]
+ },
+ "review": {
+  "findings": [
+   {
+    "severity": "medium",
+    "file": "C:\\kipindi-marketing\\src\\lib\\contacts\\xlsx-limits.ts",
+    "line": "21-24, 189, 215-220, 259",
+    "problem": "The file's own rule is false. The header says, as a must-not (⛔), that 'every sentence that sends an officer to CSV also tells them to format the phone column as Number with 0 decimal places first'. The U27a report repeats the claim. In fact only too_large, too_big_inflated and too_many_rows carry KEEP_EVERY_DIGIT. Six sentences send the officer to CSV without the warning: RESAVE (used by xls, xlsb and strict), ods ('…or as CSV, then choose it again.'), other ('…or save the list as CSV.') and unreadable ('…or save it as CSV.'). Example: an officer with a legacy .xls of 12-digit numbers follows the xls sentence, Excel writes 2.55713E+11 into the CSV, and the digits are gone. M6 flags the cell later, which costs a round trip. §7.3 (contacts-boundary.test.mts 660-669) never checks this, so nothing goes red.",
+    "fix": "Append KEEP_EVERY_DIGIT to RESAVE, ods, other and unreadable. unreadable is spec-fixed text, so note that one departure. Then add a clause to s73: every sentence in `sentences` that includes 'CSV' must also include 'Number with 0 decimal places'. Add a K-plant that removes the clause from RESAVE and expects s73. If you would rather not change the copy, narrow the header claim to the three size refusals and drop the claim from the report."
+   },
+   {
+    "severity": "medium",
+    "file": "C:\\kipindi-marketing\\src\\lib\\contacts\\xlsx-limits.ts",
+    "line": "210 (test: contacts-boundary.test.mts 655, 661)",
+    "problem": "sheetLabel's rule against echoing phone numbers misses the most common written form. `/\\d{7,}/` only catches an unbroken run of digits. A sheet named '0712 345 678', '0712-345-678' or '+255 712 345 678' (all within 31 chars) is echoed whole: 'The sheet \"0712 345 678\" has no rows to read.' That defeats the stated purpose at line 196-197 (§5.14). The s73 checks (digitSheet uses '255712345678'; the sentence filter is `/\\d{7,}/`) are blind to it in the same way.",
+    "fix": "Count digits with separators removed before deciding: `if (!label || /\\d{7,}/.test(label.replace(/[\\s\\-.()+\\/]/g, \"\"))) return null;` (or refuse when the total digit count is 7 or more). Extend s73 with c.sentence('empty', { sheet: '0712 345 678' }) and '+255 712-345-678'. Both must come back without the name. Apply the same digit-count test to the sentence filter."
+   },
+   {
+    "severity": "medium",
+    "file": "C:\\kipindi-marketing\\scripts\\contacts-boundary.test.mts",
+    "line": "544-546 (client-graph-safe.test.mjs 143-147)",
+    "problem": "The baseline is RED today. §2.4 fails on src/lib/contacts/contact-fields.ts, csv-write.ts and sample-sheet.ts (U28a's files, unpinned). An independent Python port of the walker confirms it: 25 pins, those 3 missing. So `test:contacts-boundary` exits 1, and `red:contacts-boundary` prints PROBLEMS (BASELINE) and exits 1. R12 is currently 'caught' only because §2.4 is red in every case. If the predeploy key goes in before U28a's pins, predeploy goes red. This is U28a's M3 omission, not U27a's, but it blocks the integration.",
+    "fix": "In the same integration commit that adds the package.json keys, add 'lib/contacts/contact-fields.ts', 'lib/contacts/csv-write.ts' and 'lib/contacts/sample-sheet.ts' to PINNED in client-graph-safe.test.mjs, then re-run test:contacts-boundary (33/0) and red:contacts-boundary (19/19)."
+   },
+   {
+    "severity": "low",
+    "file": "C:\\kipindi-marketing\\scripts\\contacts-boundary.test.mts",
+    "line": "289, 523-526",
+    "problem": "serverGraph silently skips unresolved edges (`if (t.kind !== \"file\") continue;`). The islands, which are §1's client population, and every §4 crossing come from that graph. c09 ('an unresolved edge is a blind spot, not a pass') only checks the client walk and the pure walk. Example: an owned server module imports a client module outside the owned trees with a spelling the resolver can't map, such as './x.js' for x.tsx, which moduleResolution 'bundler' accepts. That island drops out of §1, and its crossing drops out of §4.1, with every assertion green. Measured today: 0 unresolved in the owned graph and 0 in the app graph, so this is latent.",
+    "fix": "Have serverGraph return `unresolved` the way walk does. Fold the owned graph's unresolved edges into c09, and optionally the app graph's into s42. Add a plant: an owned server module imports './search-box.js'. Expect c09."
+   },
+   {
+    "severity": "low",
+    "file": "C:\\kipindi-marketing\\scripts\\contacts-boundary.test.mts",
+    "line": "739-746, 572-576",
+    "problem": "Nothing proves the §4.2 ratchet can fail. R5's virtual import-preview.ts is not an APP_ENTRY, not 'use server' and not reached from one, so only s41 fires. s42 runs the same machinery over appEntries, but no case demonstrates it. If appEntries were wrong, for example a broken APP_ENTRY regex, nothing would notice.",
+    "fix": "Add a case R15 (or widen R5). Overlay a virtual entry, src/app/admin/contacts/import/page.tsx, that imports { parseThing } from a virtual 'use client' module, and expect L.s42. s41 also fires, which is fine."
+   },
+   {
+    "severity": "low",
+    "file": "C:\\kipindi-marketing\\scripts\\contacts-boundary.test.mts",
+    "line": "327-331",
+    "problem": "The recorded counts in the PINNED_CROSSINGS comment are already wrong. It says '394 entries, 864 server modules, 413 crossings'. An independent port over the current tree measures 414 entries (354 by file name + 58 'use server' + root entries), 865 modules and 413 crossings. The report itself says 865. The verdict (0 offenders) agrees, but the numbers will only drift further.",
+    "fix": "Drop the counts from the comment. Keep 'measured EMPTY on 2026-10-01'. The s42 PASS line already prints live counts."
+   },
+   {
+    "severity": "low",
+    "file": "C:\\kipindi-marketing\\src\\lib\\contacts\\xlsx-limits.ts",
+    "line": "130-144",
+    "problem": "spreadsheetHeadKind is the one classifier U25's detectFormat and U32's dialog are told to call. Its name and JSDoc invite passing just the head of the file. But 'protected' is only detected when the WHOLE file is passed: the CFB directory holding EncryptionInfo usually sits near the end. That warning appears only on cfbLooksEncrypted. A 4 KB head classifies a password-protected workbook as 'xls' and shows the wrong fix.",
+    "fix": "Move the warning into spreadsheetHeadKind's JSDoc ('pass the whole file, at most 700 KB; a head can only tell zip from cfb'), or rename it to spreadsheetKind(bytes). Optionally add an §7.1 case: CFB magic + 4 KB padding + utf16le('EncryptionInfo') must give 'protected'."
+   },
+   {
+    "severity": "low",
+    "file": "C:\\kipindi-marketing\\src\\lib\\contacts\\parsed-file.ts",
+    "line": "69-97",
+    "problem": "isParsedContactsFile says it checks 'the promises in the header that can be checked'. It skips one that can: rows are NON-blank (header line 11). A producer bug that pushes an all-'' row instead of counting it in blankRows still validates, and the preview shows an empty row the officer cannot map.",
+    "fix": "Inside the row loop, add `if (!r.cells.some((c) => c !== \"\")) return false;`. Add a malformed case to s72, { ...good, rows: [{ line: 1, cells: [\"\", \"\"] }], width: 2 }, and a K-plant that drops the check."
+   },
+   {
+    "severity": "low",
+    "file": "C:\\kipindi-marketing\\scripts\\contacts-boundary.test.mts",
+    "line": "96, 448, 510-515",
+    "problem": "The CRLF part of §0.7 is never exercised. makeRepo runs tidy() on every overlay, which turns the probe's \\r\\n into \\n before isDirective sees it. So 'a directive after a comment block under CRLF is seen' only proves the LF case. Separately, R4 has the red half of the spec's R4 but not its paired green control: the same virtual dialog with import-actions.ts keeping 'use server' should stay clean in the owned population. §0.6's probe pair covers the rule elsewhere.",
+    "fix": "Either drop 'under CRLF' from L.c07, or also assert isDirective on the raw CRLF string. For R4, run the dialog plus a 'use server' import-actions overlay in the baseline section and require s11 to pass, so the plant's flip is from green to red in the same population."
+   }
+  ],
+  "verdict": "No typecheck errors and no raw zero-width characters were found. The walker does follow the whole import graph, transitively, and every red plant should hit its named assertion. What needs fixing is the refusal copy, the sheet-name echo rule and some missing test coverage. Nothing was run in Node. Checks I did run: a byte scan of all four files, and an independent Python port of the walker over the current tree.\n\n**Byte scan.** No zero-width, no-break, bidi, tab or control characters in any of the four files. No backslash-u escapes in the new files; the 16 in client-graph-safe.test.mjs were already there before this change (in its strings). The only invisible code point is U+FE0F inside a '⚠️' in a comment. client-graph-safe.test.mjs is still CRLF throughout (162 of 162 line endings).\n\n**Python port results** (decomment, isDirective, the five edge regexes, resolution and both walks):\n- 11 islands and 12 crossings, all PascalCase.\n- §4.2: 0 offenders.\n- No unresolved edges, in any graph.\n- §0.2: page.tsx reaches store.ts. §0.6: sensitive-reveal's leaf is players/actions.ts and the raw walk reaches audit.ts.\n- §2.6: exactly one declaration, in parsed-file.ts. §3.1: the only exceljs importer is reports/xlsx.ts.\n- §2.4 is the one failure, on U28a's three unpinned files.\n\n**Graph walk.** The walk is a real BFS. It follows import, `export … from`, import(), side-effect imports and require(), drops type-only edges, and stops only at a \"use server\" module that is not an entry.\n- A client file that reaches a server module two hops away goes red: R4 (dialog → import-actions without \"use server\" → store) fails §1.1, and R2 (dialog → parsed-file → store) fails §2.2 and §1.1.\n\n**Red plants.** All 19 should hit their named assertion. Things I checked:\n- R8's anchor 'experimental: {' exists in next.config.ts.\n- §6.2's two strings exist in Next 16.2.4's action-handler.js.\n- The ODS zip header is laid out correctly (30 bytes, method at 8, name length at 26).\n- 1468006 bytes reads as '1.4 MB', and one byte over the cap reads '701 KB'.\n- K2, K3 and K5 each hit a specific malformed case.\n\n**Decision C15.** The parsed shape matches exactly: format, fileName string or null, rows {line, cells: string[]}[], width, blankRows, notes: string[]. `source` and ParseNote are gone. C18 and M6 are followed: U28a's contact-fields.ts imports the detector from xlsx-limits. M3 is followed for U27a's own two pins.\n\n**TypeScript.** No errors visible by reading. Every switch is exhaustive, the `never` default is right, and the `Object.keys(...) as readonly X[]` cast already compiles in payment-providers.ts. The .mts suite is not covered by tsconfig.\n\n**Issues to fix:**\n1. Six refusal sentences send the officer to CSV without the 'Number with 0 decimal places' step. The file's own header and the report both claim every one does.\n2. The rule that stops a sheet name echoing a phone number misses spaced or dashed numbers such as '0712 345 678'.\n3. §2.4 is red today, so both suites exit 1 until U28a's pins are merged. That blocks the integration commit, though it is U28a's omission, not U27a's.\n4. Lower-severity gaps: the server graph silently skips unresolved edges; no plant proves §4.2 can fail; the recorded counts in a comment are already stale; spreadsheetHeadKind invites passing only a head; the validator skips the non-blank-row check; the §0.7 CRLF control and R4's green control are not really exercised."
+ }
+}

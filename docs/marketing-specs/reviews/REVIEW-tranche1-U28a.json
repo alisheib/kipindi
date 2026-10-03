@@ -1,0 +1,115 @@
+{
+ "job": "U28a",
+ "built": {
+  "filesWritten": [
+   "C:\\kipindi-marketing\\src\\lib\\contacts\\contact-fields.ts",
+   "C:\\kipindi-marketing\\src\\lib\\contacts\\csv-write.ts",
+   "C:\\kipindi-marketing\\src\\lib\\contacts\\sample-sheet.ts",
+   "C:\\kipindi-marketing\\scripts\\contacts-import.test.mts",
+   "C:\\kipindi-marketing\\scripts\\contacts-import\\fields.mts"
+  ],
+  "summary": "U28a is written. Nothing was run: no node, tsc or tests, as the job required. Every file was checked by reading it, and a byte scan of all five found no raw control, zero-width, no-break-space, BOM or tab characters, no backslash-u text, and no write-call tokens. All the regex escapes survived the Write tool.\n\n**contact-fields.ts — the one field list**\n- `CONTACT_FIELDS` has 7 import fields: phone, name, first_name, last_name, email, tags, notes. Phone has strong and weak aliases. The aliases include the Swahili headers, Google's headers and the export headers. Every alias is written already normalised, and nothing is registered implicitly.\n- `CONTACT_NOT_IMPORTED` holds the export-only columns (operator, consent, source, added_at). It also holds the refused columns `phone_masked` and `email_masked`. Consent words resolve to \"not imported\" with the OD10 sentence.\n- `CONTACT_LIMITS` is the C12 table (displayName 120, email 254, notes 1000, tag 32, tags 20, listName 60), plus phone 40 for the raw cell.\n- The C11 tag rule is here: `splitTags`, `tagKey`, `joinTags`, `checkTags`, plus `parseTags` (for U22) and `parseOneTag` (for U23). Tags are stored lower case and only letters, digits, space, - and _ are allowed.\n- Also here: `normaliseHeader`, `cleanDisplayName`, and `composeName` (the one composer, shared with U26).\n- The C20 vCard mapping is here: `vcard` is an ordered list per field, name is FN, then N, then ORG, and `pickVcardValue` reads it. `fileColumns()` gives the grid and sample columns.\n- `buildContactVocabulary(fields, notImported)` is the factory. It provides `matchHeader` (exact Map lookup), `autoMapHeaders` (strong beats weak, then leftmost; name parts only when there is no Name column), `validateMapping`, `draftContactRow` and `exportHeader`. The named exports, `CONTACT_VOCABULARY` and `contactExportHeader` are its default instance.\n  - `autoMapHeaders` refuses a masked file, a headerless file (without echoing the cell) and a file with no phone column.\n  - `validateMapping` refuses a masked file outright, a consent or not-imported column on any field, and a forged consent key.\n  - `draftContactRow` unguards every cell first, never echoes a value in a problem sentence, and flags Excel's scientific form (M6).\n\n**csv-write.ts — the C16 writer pair**\n- Exports `CSV_BOM` (built from its char code), `CSV_EOL`, `CSV_GUARD_LEADS`, `guardCell`, `unguardCell`, `csvCell` and `toCsv`.\n- The guard set is the transactions export's set plus the apostrophe, so `unguardCell(guardCell(s)) === s` holds for every string.\n- `toCsv` writes CRLF after every line, an optional BOM, and a `sep=;` line for the semicolon form.\n\n**sample-sheet.ts — the samples**\n- `buildSampleFiles` is a factory, so plants run in memory. `contactSampleCsv` covers the label, Swahili and `;` variants; `contactSampleFile` gives csv or vcf.\n- The vCard is 3.0, escaped, and folded at 75 octets without splitting a character or an escape pair.\n- `SAMPLE_MSISDNS` is derived from the samples, never typed. `isSampleMsisdn` accepts any spelling of a sample number. `SAMPLE_ROW_SENTENCE` is the sentence U30 must use to refuse a sample row.\n\n**The runner and the fields section (C21)**\n- `scripts/contacts-import.test.mts` holds a fixed registry: a section exports `{name, owner, real, run(ctx), plants}`. Only the fields section exists today.\n- It sets `process.exitCode = 1` first. A section that asserts nothing, or that throws, counts as a FAIL.\n- `--prove-red` runs the baseline green, then each plant, and requires the matching label to go red.\n- `fields.mts` makes 41 assertions: §F1–F15, F16a, F19a/c, F20–F21 with planted controls, and F23–F26 for M6, C20, M5 and the sample-file envelope. It has 26 in-memory plants: the spec's 17 (including plant 13, folding disabled) plus 9 for the decisions.\n- The real-parser round trips (§F16–F19b) and §F22 (the button) are a clearly marked TODO; no fake tests.\n\n**Three things to know before committing**\n1. contact-fields.ts imports `looksExcelShortened` and `excelShortenedSentence` from U27a's `./xlsx-limits.ts`. That file is on disk but uncommitted, so U28a must be committed together with U27a or after it. I did this to keep one detector, which U27a's own docblock asks for.\n2. U27a's `test:contacts-boundary` §2.4 fails until my three src files are added to PINNED in client-graph-safe.\n3. The button file, `sample-sheet-button.tsx`, is not built: it was outside this job's file list.",
+  "suiteKeysToAdd": [
+   "\"test:contacts-import\": \"tsx scripts/contacts-import.test.mts\"",
+   "\"red:contacts-import\": \"tsx scripts/contacts-import.test.mts --prove-red\"",
+   "predeploy: insert `npm run test:contacts-import` directly after `npm run test:contacts-page` (same commit as the files — the five docblocks cite `npm run test:contacts-import` / `npm run red:contacts-import`, so test:guards-exist needs the keys in that commit)",
+   "scripts/client-graph-safe.test.mjs PINNED (lead's file): add \"lib/contacts/contact-fields.ts\", \"lib/contacts/csv-write.ts\", \"lib/contacts/sample-sheet.ts\" — test:contacts-boundary §2.4 fails without them"
+  ],
+  "howToVerify": [
+   "~/heavy-node-lock.sh run lead npx tsx scripts/contacts-import.test.mts   (no `| tail`) → must exit 0 and end with `contacts-import: 43 passed, 0 failed across 1 section(s)` (1 registry check + 41 section assertions + 1 'asserted something'). Read the two population lines: `F20 population: N file(s) under 2 existing tree(s): src/app/admin/contacts, src/lib/contacts` and `F21 population: 0 file entrance(s)`.",
+   "~/heavy-node-lock.sh run lead npx tsx scripts/contacts-import.test.mts --prove-red → must exit 0 and print `baseline fields: 41 passed, 0 failed`, then `26/26 caught across 1 section(s)` and `RED PROOF COMPLETE`. Any 'stayed GREEN' or 'red, but not on' line counts as a failure.",
+   "~/heavy-node-lock.sh run lead npm run typecheck → clean. It covers the three src/lib/contacts files; the .mts scripts are outside tsconfig's include.",
+   "After pinning the three files: ~/heavy-node-lock.sh run lead npm run test:contacts-boundary → §2.1–§2.5 green (no directive; nothing reaches lib/server or exceljs; all files pinned). Then npm run test:client-graph-safe → green.",
+   "npm run test:red-anchors → red:contacts-import is counted in-process (the command has --prove-red and the runner holds no write-call token), so the ceiling does not move.",
+   "npm run test:guards-exist (after adding the keys), npm run test:search-adoption, npm run test:pii-logs → all green. The last one scans scripts/**, including the new section module.",
+   "Byte scan for invisible characters (should print 0 for each file): LC_ALL=C.UTF-8 grep -c -P '[\\x00-\\x08\\x0B\\x0C\\x0E-\\x1F\\x7F\\x{200B}\\x{200C}\\x{200D}\\x{2060}\\x{FEFF}\\x{00A0}]' src/lib/contacts/contact-fields.ts src/lib/contacts/csv-write.ts src/lib/contacts/sample-sheet.ts scripts/contacts-import.test.mts scripts/contacts-import/fields.mts",
+   "git diff --cached --stat before committing: it must include src/lib/contacts/xlsx-limits.ts (U27a), because contact-fields.ts imports it."
+  ],
+  "openQuestions": [
+   "C11 vs the U28 spec — Google Contacts labels: I followed C11 strictly. Tags split on , ; | only, and ':' and '*' are not tag characters. So a Google Labels or Group Membership cell such as '* myContacts ::: Friends' becomes one tags problem per row, never mangled; §F11b pins this. The spec's ':::' split plus dropping '* ' labels would be safe to add, because neither can produce a valid tag that collides. It needs a one-line C11 amendment if you want Google files to import their labels.",
+   "M5, extended into the header: `contactExportHeader(false)` now writes `email_masked` as well as `phone_masked`, and both are refused headers. The spec's §F4 said the two headers differ only in column 0; §F25 asserts they differ at columns 0 and 2. Please confirm before U34 consumes it.",
+   "C20 changes the spec's API: `VcardSource` is now TEL | FN | N | ORG | EMAIL | CATEGORIES | NOTE, and `vcard` is an ordered array (name ['FN','N','ORG'], name parts []). U26 should take its grid headers from `fileColumns().map(f => f.label)` (the same Phone, Name, Email, Tags, Notes) instead of hand-typing them. It should fill N with `composeName(given, family)`, pick values with `pickVcardValue`, and split CATEGORIES with `splitTags`. Its §V11.1 import rule needs relaxing to tz-msisdn plus contact-fields, as C20 states.",
+   "U26's planned §V11.3 fails any src/lib/contacts file except vcard.ts that contains /BEGIN:VCARD/i. sample-sheet.ts legitimately writes 'BEGIN:VCARD' because it is the sample writer. Narrow that rule to sniffing code, or exempt sample-sheet.ts, or U26 lands red.",
+   "Commit coupling: contact-fields.ts imports `./xlsx-limits` (U27a, currently uncommitted), so U28a cannot be committed ahead of U27a.",
+   "`CONTACT_LIMITS.phone = 40` (the raw phone cell) is added to the C12 table, which listed only six entries; I kept it in the one table rather than make a second constant. U22's `rawInput` slice(0, 64) should read it rather than use its own number.",
+   "Name clash: U28's `ContactDraft` (one drafted import row) shares its name with the `ContactDraft` request type in U22's spec (contact-draft.ts). Suggest U22 renames its type. Under C11 and C12, U22 should also import `parseTags` and `CONTACT_LIMITS` from contact-fields rather than define `parseContactTags` and its own limits. U23 should use `parseOneTag` and `CONTACT_LIMITS.listName` rather than its own `parseTagInput`.",
+   "§F22 and `src/app/admin/contacts/sample-sheet-button.tsx` were outside this job's file set (the lead owns src/app/admin/contacts/*), so the button is unbuilt. §F22 is listed in the TODO in fields.mts; whoever builds the button adds §F22 there.",
+   "Docs are not in my file set and are still to do: the §9 consumer lines for U25, U26, U27, U30, U34, U22 and U31, and the §1 U28 row."
+  ]
+ },
+ "review": {
+  "findings": [
+   {
+    "severity": "medium",
+    "file": "C:\\kipindi-marketing\\scripts\\contacts-import\\fields.mts",
+    "line": "833-840",
+    "problem": "Plant 1 (\"a field with no sample value\", the plan's RED) is confounded. The planted `city` field has `vcard: []`. F2 already rejects any field whose vcard is empty unless it is a name part (`f.vcard.length > 0 || foldedIntoName(f)`), so `city` fails F2 because of its vCard before its samples are ever looked at. If someone deleted the sample clause `f.samples.some((s) => s.trim() !== \"\")` from F2, this plant would still go red and `--prove-red` would still print 26/26. The rule this plant claims to prove is not proven.",
+    "fix": "Isolate the defect. Give the planted field a vCard source (`vcard: [\"NOTE\"]`) so that only the empty samples break F2. Alternatively, patch an existing field instead: `withLists(patchField(\"notes\", { samples: [\"\", \"\", \"\"] }), CONTACT_NOT_IMPORTED)`."
+   },
+   {
+    "severity": "medium",
+    "file": "C:\\kipindi-marketing\\src\\lib\\contacts\\contact-fields.ts",
+    "line": "215-218",
+    "problem": "The decisions say C11 wins, so tags split only on , ; | and ':' and '*' are not tag characters. But the strong tag aliases still include \"group membership\", \"labels\" and \"label\", which only made sense alongside the spec's ':::' split and '* ' drop that C11 removed. Both Google Contacts CSV formats (old 'Group Membership', new 'Labels') auto-map to Tags. Every row's cell contains '* myContacts ::: …', so checkTags refuses it, and a Google export (the most likely source file) gets a tags problem on EVERY row by default. F5 (fields.mts:484, 'Group Membership' → tags strong) and F11b googleLabels (fields.mts:585) pin this combination as correct.",
+    "fix": "Under C11 as decided, take \"group membership\" and \"labels\"/\"label\" out of the tags aliases. The column then reads 'not a contact field' and the officer can choose to map a cleaned column. Or list them in CONTACT_NOT_IMPORTED with their own sentence explaining Google's ' ::: ' / '* myContacts' labels. Update the F5 vector to match. If Google labels must import, record a one-line C11 amendment (split ':::', drop '* ' system labels) in the same commit."
+   },
+   {
+    "severity": "low",
+    "file": "C:\\kipindi-marketing\\scripts\\contacts-import.test.mts",
+    "line": "69-74, 118-135, 185-193",
+    "problem": "The runner never checks how many sections it runs. If SECTIONS is empty, for example after a bad merge when U25/U26/U27b add their lines, normal mode still passes (only the registry check runs) and --prove-red prints '0/0 caught … RED PROOF COMPLETE' with exit 0. A section module dropped into scripts/contacts-import/ but never registered also runs nothing, silently. That is the 'empty population reads as a pass' shape the header warns about.",
+    "fix": "Assert `SECTIONS.length >= 1`. List scripts/contacts-import/*.mts with readdirSync (read-only, so the in-process status is kept) and fail on any module that is not registered, printing the count. In --prove-red, push a problem when `cases === 0`."
+   },
+   {
+    "severity": "low",
+    "file": "C:\\kipindi-marketing\\scripts\\contacts-import\\fields.mts",
+    "line": "146-158, 287",
+    "problem": "F20/F21 use a private walker (`/\\.(ts|tsx|mts)$/`) instead of the repo's one population helper, `scripts/lib/tracked-files.mts` `srcFiles()`, whose header says '⛔ A SECOND WALKER IS THE DEFECT'. It skips .js/.mjs/.cjs, so a second header list in a .js file under the contacts trees would not be seen. Also, the one-list exemption is by basename (`f.path.endsWith(\"/contact-fields.ts\")`), so a second list in a file of that name in any contacts tree, e.g. src/app/admin/contacts/contact-fields.ts, is exempt.",
+    "fix": "Build the population as `srcFiles().filter((f) => CONTACT_TREES.some((d) => f.startsWith(d + \"/\")))` and keep the printed count and the floor. Exempt by exact path: `f.path === PATHS.fields`."
+   },
+   {
+    "severity": "low",
+    "file": "C:\\kipindi-marketing\\scripts\\contacts-import\\fields.mts",
+    "line": "680-687",
+    "problem": "csv-write.ts:51-52 says §F15 'requires this one to be that set plus `'`'. F15b never reads CSV_GUARD_LEADS. It only checks that each route lead and `'` gets guarded, and that one fixed list of non-leads is spared. An extra lead outside that list, such as ';' or '|', would go unnoticed, so the claim is stronger than the check.",
+    "fix": "Import CSV_GUARD_LEADS and assert set equality: `same([...new Set(CSV_GUARD_LEADS)].sort(), [...new Set([...leads, \"'\"])].sort())`. Or soften the csv-write.ts comment to match what is checked."
+   },
+   {
+    "severity": "low",
+    "file": "C:\\kipindi-marketing\\src\\lib\\contacts\\contact-fields.ts",
+    "line": "649, 606-611",
+    "problem": "(a) The headerless test is `parseTzNumber(h).verdict === \"ok\"`, and parseTzNumber throws away every non-digit. A real header such as 'Phone (0712 345 678)' or 'Simu 0754123456' therefore marks the whole file headerless and refuses it with the wrong sentence. (b) The no-Phone refusal lists the headers whenever none has 6 or more digits. For a headerless file with no phone column (say a name and email list), the 'headers' are the first contact's name and email, and they get echoed into the sentence. The spec allows this, but it brushes against §5.14.",
+    "fix": "(a) Only treat a cell as a number when it is shaped like one, e.g. `/^[\\s'+()\\-.\\d]+$/.test(h) && parseTzNumber(h).verdict === \"ok\"`. (b) Also hold back the header list when any header contains '@' or looks like a person's name next to an email-shaped cell. At minimum, record the residual echo case in the docblock."
+   },
+   {
+    "severity": "low",
+    "file": "C:\\kipindi-marketing\\src\\lib\\contacts\\contact-fields.ts",
+    "line": "156",
+    "problem": "The Phone hint tells the officer to 'Keep the spaces, or format the column as Text'. The M6 sentence that draftContactRow attaches to the same Phone column, `excelShortenedSentence()` in xlsx-limits.ts:291 (with KEEP_EVERY_DIGIT at :187), says 'format the phone column as Number with 0 decimal places'. The mapping panel will show two different remedies for one problem.",
+    "fix": "Pick one remedy and word it once. Either point the hint at the same 'Number with 0 decimal places' step, or move the remedy clause into an exported constant in xlsx-limits.ts that both read (C18 makes that file the one copy table)."
+   },
+   {
+    "severity": "low",
+    "file": "C:\\kipindi-marketing\\src\\lib\\contacts\\contact-fields.ts",
+    "line": "442-450, 553, 634-639",
+    "problem": "cleanDisplayName removes Cc only, so it keeps Cf characters: bidi overrides U+202A–U+202E and U+2066–U+2069, and zero-width spaces. A name with RLO is stored and later shown in admin rows and in SMS {jina}. Header text also comes back raw (MappedColumn.header, clipHeader in the no-Phone sentence). xlsx-limits.ts' sheetLabel already strips exactly these direction controls, so the contacts tree is inconsistent about it.",
+    "fix": "Strip bidi controls and ZWSP (e.g. `/[‪-‮⁦-⁩​⁠﻿]/g`, built without backslash-u text per the repo rule, or `\\p{Cf}` minus ZWJ/ZWNJ) in cleanDisplayName and clipHeader. Add one F10/F12 vector for it."
+   },
+   {
+    "severity": "low",
+    "file": "C:\\kipindi-marketing\\src\\lib\\contacts\\contact-fields.ts",
+    "line": "370",
+    "problem": "TAG_ALLOWED is `/^[\\p{L}\\p{M}\\p{N} _-]+$/u`, so a tag made only of combining marks (a lone U+0301 after NFKC) or only of '-'/'_' passes. C11 lists letters, digits, space, - and _; a tag that renders as nothing is accepted and stored.",
+    "fix": "Require at least one letter or digit: `/^(?=.*[\\p{L}\\p{N}])[\\p{L}\\p{M}\\p{N} _-]+$/u`. Add a check(['́'])-style vector to F11b, building the character with String.fromCharCode."
+   },
+   {
+    "severity": "low",
+    "file": "C:\\kipindi-marketing\\scripts\\contacts-import\\fields.mts",
+    "line": "694-736",
+    "problem": "17 of the 41 assertions have no red plant. Among them are F16a (the literal EXPECTED_SAMPLE_DRAFTS that U28b will reuse as its oracle), F8a (the numeric-header echo suppression, a §5.14 rule), F19c (fold never splits an escape pair) and F15c (the CSV envelope). They can fail as written, but nothing proves it, which falls short of the repo's 'prove by mutation' rule for the assertions that carry the most weight.",
+    "fix": "Add in-memory plants for at least these four: a draftContactRow that stops lowercasing email → F16a; an autoMapHeaders that always lists the headers → F8a; a foldVcardLine that counts '\\,' as two separate units → F19c; a toCsv that writes LF → F15c."
+   }
+  ],
+  "verdict": "The U28a work is sound, and nothing in it should fail typecheck. I checked by reading only and ran nothing. I traced all 41 assertions against the shipped code and expect the baseline to be green. That includes parseTzNumber on the three sample numbers (Vodacom 074, Honora 067 and Viettel 062 are all sendable), the route's lead set (6 leads), the vCard fold arithmetic and the F20 population (11 files, no distinctive tokens).\n\nEach of the 26 plants turns its named label red with no earlier throw, but plant 1 proves less than it claims: its vCard alone makes F2 fail, so the empty-samples rule is not actually tested (finding 1).\n\nWhat checks out:\n- **Tag rule:** follows C11 (split on , ; |, NFKC, collapsed spaces, stored lower case, 1–32 characters, at most 20).\n- **Limits:** follow C12, plus phone 40.\n- **Guard pair:** `unguardCell(guardCell(s)) === s` holds for every string.\n- **Client safety:** contact-fields imports only tz-msisdn, csv-write and xlsx-limits, all of which are import-free or client-safe. csv-write imports nothing. sample-sheet imports only contact-fields, csv-write and tz-msisdn.\n- **Decisions:** OD10, M5, M6 and C20 are all honoured.\n- **Hidden characters:** a byte scan found no zero-width, no-break space, BOM, bidi or control characters in any of the five files.\n- **Other gates:** red-anchors (no file-writing calls), pii-logs and search-adoption all pass for these files.\n\nThe one real product defect is that C11 was applied strictly but the tag aliases were not trimmed to match. As a result, a Google Contacts export gets a tags problem on every row by default (finding 2). The other findings are low-severity hardening and guard-strength gaps.\n\nBefore committing, the lead still has to do what the report already lists: commit with U27a, add the three PINNED entries and add the package.json and predeploy keys."
+ }
+}

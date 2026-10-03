@@ -1,0 +1,116 @@
+{
+ "job": "U39a",
+ "built": {
+  "filesWritten": [
+   "C:\\kipindi-marketing\\src\\lib\\marketing\\segment-cost.ts",
+   "C:\\kipindi-marketing\\src\\lib\\marketing\\campaign-estimate.ts",
+   "C:\\kipindi-marketing\\src\\lib\\server\\marketing\\estimate.ts",
+   "C:\\kipindi-marketing\\scripts\\campaign-estimate.test.mts",
+   "C:\\kipindi-marketing\\src\\lib\\server\\roles.ts",
+   "C:\\kipindi-marketing\\src\\lib\\server\\sms.ts",
+   "C:\\kipindi-marketing\\scripts\\read-tiers.test.mts",
+   "C:\\kipindi-marketing\\scripts\\anchors\\read-tiers.anchors.mjs",
+   "C:\\kipindi-marketing\\docs\\READ-TIERS.md",
+   "C:\\kipindi-marketing\\docs\\BLACKBALL-SMS.md"
+  ],
+  "summary": "I built U39a, the pure engine plus the server estimate. There is no UI, no action, no migration and no store or DAL change. Nothing has been run (only one accidental no-op, see open questions). I checked the code by reading it against the real types and call sites in sms.ts, sms-blackball.ts, rbac.ts, roles.ts, store.ts and utils.ts.\n\n**New files**\n1. `src/lib/marketing/segment-cost.ts`: pure and client-safe; it imports only sms-compose. It works on a narrow `CostWalkRow` (no phone number, reference or body). It exports:\n   - `COST_WALK` (500 rows, 30 days, at least 3 pairs, at least 3 chunks) and `segmentsOf` (1 segment only when bodyLen is 70 or less, otherwise null).\n   - `validCostPairs`: a chunk is the rows that share createdAt, sentAt and balance. A pair counts only when every row of the earlier chunk was DELIVERED and has a certain segment count, the next chunk was created later, all deliveries landed before it, no other row of the same provider was created or delivered in between, and the balance drop is positive.\n   - `measureSegmentCost`: the median of the pairs; otherwise the configured price; otherwise unknown. An empty history gives unknown('no-sends'), never 0.\n   - `chunkTimes` and `measureChunkPace`: the fastest measured chunk.\n2. `src/lib/marketing/campaign-estimate.ts`: pure and client-safe. It holds the one arithmetic (`campaignEstimate`), `MAX_SLICES_IN_FLIGHT = 1`, `savedVariantSizes`, and `estimateView`, which produces every string. Per X15 the audience is `{ok:true, population, forecast}`. Billable segments = the campaign population × the largest saved variant: that is the spend ceiling. The forecast (will receive) only appears in the segments note and drives the duration floor. Money strings exist only when `inputs.money` is non-null. An unreadable credit has no figure field, so it can never print the kept figure or \"Was\". Amounts of TZS 1,000,000 or more are compacted, with the exact figure in provenance. The EAT clock uses eat-day's fixed offset.\n3. `src/lib/server/marketing/estimate.ts`: server side.\n   - `campaignMoneyVisible(role)` is the one money decider: it needs both `canView(accounting)` and `readCell(money.figures) === \"read\"`.\n   - `ESTIMATE_BALANCE_MAX_AGE_MS` is 60,000.\n   - `balanceFigureOf` drops any figure the read could not confirm.\n   - `EstimateDeps` is injectable and adds a `provider` dep. `loadEstimateInputsFor` makes no balance read and computes no cost for a non-money role, fails closed, and never throws.\n   - `loadEstimateInputs` resolves the viewer's stored role through React `cache`. It imports no audience or contacts module.\n4. `scripts/campaign-estimate.test.mts`: 31 assertions in §1–§6 (spec §6.3 lives in read-tiers §9). Its `--prove-red` runs 19 in-memory plants: the spec's R1–R12 plus X15 (pricing the forecast), the stray-row window, a failed count read as zero, a server import in the pure module, an audience import in estimate.ts, a constant decider, and GROWTH hard-coded out. Plants may list several labels that must all fail. The suite stubs `globalThis.fetch` at the balance endpoint only, counts any send request (it must stay 0), writes no file, and ends with an explicit exit.\n\n**Changed files**\n- `roles.ts`: the `money.figures` summary now ends \"— and the SMS campaign cost estimate and credit\".\n- `sms.ts`: the comment at old lines 238–241 is reconciled with the walk. No behaviour change.\n- `read-tiers.test.mts`: new §9 with 9.1 (the wording), 9.2 (both axes, read from the decommented decider) and 9.3 (a check that §9 read the real file).\n- `read-tiers.anchors.mjs`: two new mutations, `campaign-cost-leaves-the-money-class` and `campaign-cost-decided-on-the-domain-axis-alone`. Each `from` resolves exactly once (checked with grep -F). I also rewrote the header count, which had gone stale: it now says 37. The Edit tool wrote these entries' non-ASCII characters as \\u escapes, matching the file's existing style; the string values are the same in JS.\n- Docs: READ-TIERS.md §3.5 records the estimate as a wired platform total with no reveal step. BLACKBALL-SMS.md §5 says billing is per delivered message and describes the walk; §6 gains a row for the optional `SMS_PRICE_PER_SEGMENT_TZS`.\n\n**For the lead to register**\n- package.json keys (listed below).\n- In `scripts/client-graph-safe.test.mjs`, add \"lib/marketing/segment-cost.ts\" and \"lib/marketing/campaign-estimate.ts\" to PINNED (M3; that file is off-limits to me).\n- I did not touch the plan doc, which is off-limits. Its §9 U39 and §1 row need the lead's rewrite.",
+  "suiteKeysToAdd": [
+   "\"test:campaign-estimate\": \"tsx scripts/campaign-estimate.test.mts\"",
+   "\"red:campaign-estimate\": \"tsx scripts/campaign-estimate.test.mts --prove-red\"",
+   "predeploy: insert `npm run test:campaign-estimate` immediately after `npm run test:campaign-compose` (assertion 6.1 checks both keys and the predeploy membership)",
+   "NOT added by U39a: test:read-tiers in predeploy. DECISIONS X26 assigns it to U30 and M10 to U29b; it must be measured green on clean main first"
+  ],
+  "sectionModulesToRegister": [],
+  "howToVerify": [
+   "Run everything serially through ~/heavy-node-lock.sh, after adding the package.json keys and the two client-graph-safe pins.",
+   "npm run typecheck: the three new src modules are under strict tsc. Points worth a look: the discriminated-union narrowing in campaignEstimate on `a.ok === false || !isCount(a.population)`, the Promise.all union in loadEstimateInputsFor, and `StoredUser.role` being assigned to Role.",
+   "npm run test:campaign-estimate: expect 31 passed, 0 failed, 0 send requests. Assertion 6.1 stays red until the keys and predeploy entry are added.",
+   "npm run red:campaign-estimate: expect a green baseline, then 19/19 caught and RED PROOF COMPLETE. Each case must fail its own listed labels.",
+   "npm run test:read-tiers: the existing assertions plus 9.1, 9.2 and 9.3 all pass.",
+   "npm run test:red-anchors: both new read-tiers anchors resolve exactly once (roles.ts summary line; the estimate.ts return line).",
+   "npm run red:read-tiers is file-mutating: run it detached through the lock, then check git status and scan for NUL/control characters. The two new cases must be caught on '9.1 ⭐ READ_CLASS_SUMMARY's money.figures names…' and '9.2 ⛔ the estimate's money decider asks readCell(money.figures)'.",
+   "Sanity runs on touched neighbours: npm run test:sms-cost-guard (sms.ts comment only), npm run test:rbac, npm run test:admin-roles (the /admin/roles Reads tab shows the new summary text), npm run test:client-graph-safe (after the pins), npm run test:orphans (after the keys), npm run test:money-format, npm run test:pii-logs.",
+   "Optional by eye: on /admin/roles → Reads, the money.figures row now ends '— and the SMS campaign cost estimate and credit'."
+  ],
+  "openQuestions": [
+   "Process note: while checking the React version I accidentally ran `node -e \"\"` (an empty script) folded into a grep command. It executed nothing, wrote nothing and took no lock. No other node/npm/tsx/tsc command ran.",
+   "Duration rounding departs from the spec. The spec's UI example shows 249 requests × 1.4 s as 'At least 6 min', but that is 5 min 48 s, so a floor must round DOWN: estimateView prints 'At least 5 min' (and 'At least 1 h 33 min' for 93.3 min). U39b's copy should follow.",
+   "X15 changes the audience input from `{willReceive}` to `{ok:true, population, forecast}`. Population is U38's campaign-audience count (X9), the spend ceiling, and the only figure that is priced. Forecast is U38's will-receive and drives only the duration floor; with no forecast the duration shows '—'. U38b/U39b must pass both from the one split promise.",
+   "U40's freeze needs a decision. loadEstimateInputsFor returns money: null for a role without the money decider's yes (e.g. GROWTH), so U40 cannot freeze estimateTzs from that loader when such a role confirms. U40 should build the freeze inputs on the server without the viewer gate (cost from measureSegmentCost on the saved segments, balance not needed), write estimateSegments/estimateTzs, and never render the TZS to that viewer. Not built here.",
+   "A deliberate departure: when the send history cannot be read and SMS_PRICE_PER_SEGMENT_TZS is set, the loader returns the configured price rather than unknown('history-unreadable'). It is captioned 'configured, not yet measured' either way; with no price set it is unknown('history-unreadable'), as the spec says. Assertion 2.5 pins both.",
+   "Additions beyond the spec: a 'no-message' state (no variants, no SW variant, or a bad segment count gives no totals instead of a zero); a forecast of 0 shows duration '—' with words; `savedVariantSizes` reads U35's decided X12 column names (codingSw/segmentsSw/codingEn/segmentsEn); `EstimateDeps.provider` (default smsProviderResolution()).",
+   "test:read-tiers is still not on predeploy (X26 says U30, M10 says U29b; the two decisions conflict). Until it joins, read-tiers §9 gates no deploy. test:campaign-estimate's 6.1 asserts only its own predeploy membership.",
+   "The lead must pin lib/marketing/segment-cost.ts and lib/marketing/campaign-estimate.ts in scripts/client-graph-safe.test.mjs PINNED (M3). Assertion 6.4 is only a source-level backstop for that pin.",
+   "The plan doc (off-limits to me) needs: §9 U39 rewritten (delivered not accepted, the bodyLen ≤ 70 rule, the env price, the decider, X15's population pricing); the §1 row's Guard set to `test:campaign-estimate` · `test:read-tiers` and RED to `red:campaign-estimate` (+ the red:read-tiers anchors); one line in §9 U43 (it must enforce MAX_SLICES_IN_FLIGHT = 1 per campaign); one line in §9 U49 (reuse campaignEstimate + measureSegmentCost, swap reserveTzs for the marketing floor, read the balance tighter than 60 s at Start); and M9's U15 allowlist for U39b's dev seed route.",
+   "Owner gate G9 (Ali): whether to set SMS_PRICE_PER_SEGMENT_TZS on Railway (e.g. 6). Unset, the cost reads 'not yet measured' until 3 clean delivered pairs of single-segment sends exist."
+  ]
+ },
+ "review": {
+  "verdict": "U39a is sound. Nothing critical or high. I found no TypeScript error by reading, and no decision is broken. Checked against DECISIONS: X15 prices the population (the ceiling), not the forecast; M16 takes the sizes from the saved X12 columns; and per X26/M10 test:read-tiers was rightly left off predeploy. Checked by hand: every one of the 31 assertions comes out green on the shipped code, except 6.1, which stays red until the lead adds the package.json keys. I checked each of the 19 in-memory plants: each fails the assertion it names. Other checks that passed: the two pure modules import nothing server-side (segment-cost imports only sms-compose; campaign-estimate imports sms-compose, utils and eat-day, all client-safe). No raw zero-width or control characters, and no literal escapes, in any of the touched files (the \\u escapes in the anchors match that file's existing style). Both read-tiers anchors resolve exactly once, their expect labels prefix-match the printed FAIL lines (U+2B50 and U+26D4, no FE0F), and the header count of 37 is correct. No file outside their ownership was touched; client-graph-safe.test.mjs and package.json were changed by other units. The real weaknesses are in coverage. Two of the walk's five pair conditions, and the divide-by-segments step, are never exercised: every clean fixture chunk has one row and delivers 2 s after it is sent. So deleting those code paths leaves the suite and every plant green. Smaller items: a stale contradicting comment in sms-blackball.ts, the READ-TIERS §3.1 definition row left unwidened, no self-check of the M3 pin, and a fully non-breaking duration phrase. One deliberate departure needs the lead's sign-off: when the history read fails and SMS_PRICE_PER_SEGMENT_TZS is set, the loader returns the configured price rather than unknown('history-unreadable'). It is documented and pinned by 2.5. Process note, my own: I accidentally ran `node -e \"\"` (an empty script) inside a grep command while checking red:all. It did nothing, wrote nothing and took no lock. No other node, npm, tsx or tsc command ran.",
+  "findings": [
+   {
+    "severity": "medium",
+    "file": "C:\\kipindi-marketing\\scripts\\campaign-estimate.test.mts",
+    "line": "136-153, 375-383 (tests segment-cost.ts:135 and :138)",
+    "problem": "Two of the spec's pair conditions are never tested. The first is 'every c_i delivery is at or before c_i+1.createdAt' (segment-cost.ts:135). The second is the delivered arm of the inside check, `|| inside(msOf(r.deliveredAt))` (segment-cost.ts:138), which catches a late delivery of another chunk. In every fixture, walk() delivers 2 s after the send and chunks are 10 min apart, and stray() rows have deliveredAt null. So neither condition ever decides anything. Deleting either line leaves the baseline and all 19 plants green, even though they are the guard against a charge landing between the two readings and over-counting the price.",
+    "fix": "Add a fixture, as §3.5b or a new §3.7. Take walk([{charge:6},{charge:6},{charge:6},{charge:12},{charge:6},{charge:6}]) and move chunk 3's deliveredAt to chunkAt(4)+1 min. That voids (c3,c4) through the self-delivery check and (c4,c5) through the inside-delivered arm, so the expected result is measured 6 with pairs===3. Removing either check gives pairs===4, and the self-check also prices one pair at 12. Add two plants as row transforms through impl.measure: R20 'charge assumed at acceptance' (set every row's deliveredAt to its sentAt before measuring) and R21 'deliveries ignored in the window' (null out the deliveredAt of rows that are not members). Each must fail the new label."
+   },
+   {
+    "severity": "medium",
+    "file": "C:\\kipindi-marketing\\scripts\\campaign-estimate.test.mts",
+    "line": "136-153 (tests segment-cost.ts:141 and :167)",
+    "problem": "Every DELIVERED chunk in the fixtures has exactly one row; the only multi-row chunk is §3.2's `mixed`, which is never valid. So unit = Δ / Σ segments(c_i) is never exercised with a divisor above 1, and `sends` always equals `pairs`. A walk that drops the division (pricing live step 2's batch of two, TZS 12, at 12 a segment), or one that reports pairs as sends, stays green in the baseline and under every plant. R5 still fails §3.2 on pairs===3, whatever the divisor.",
+    "fix": "Add a positive case: walk(Array.from({length:5}, () => ({charge:12, rows:[{},{}]}))) must measure exactly 6 with pairs 4 and sends 8. Add plant R22 'unit is the chunk's whole charge', for example measure: (rows,o) => { const m = measureSegmentCost(rows,o); if (m.kind!=='measured') return m; const u = validCostPairs(rows,o).map(p=>p.delta).sort((a,b)=>a-b); return {...m, tzsPerSegment: u[Math.floor(u.length/2)]}; }. It must fail the new label."
+   },
+   {
+    "severity": "low",
+    "file": "C:\\kipindi-marketing\\src\\lib\\server\\sms-blackball.ts",
+    "line": "310-311",
+    "problem": "The blackballBalance doc comment still says a send reply's balance is pre-charge on success and 0.0 on a refusal, 'so neither can price anything or clear a floor'. U39 now prices exactly from the difference of consecutive accepted-reply balances. The spec's own premise says that contradiction must be reconciled in the same commit, or the code contradicts its own record. Only sms.ts:238-245 was reconciled.",
+    "fix": "Reword it in the same style as the sms.ts change. For example: 'so no ONE reply can price anything or clear a floor — the DIFFERENCE between two consecutive delivered chunks can (measureSegmentCost, lib/marketing/segment-cost.ts, U39). This read is the true figure.'"
+   },
+   {
+    "severity": "low",
+    "file": "C:\\kipindi-marketing\\docs\\READ-TIERS.md",
+    "line": "204",
+    "problem": "The §3.1 class table, the class's defining row, still describes money.figures as 'wallet balance, bonus balance, lifetime deposits/withdrawals, any TZS total attributable to one named player'. The widening to the SMS campaign cost estimate and credit is recorded only in the new §3.5 paragraph. That leaves two disagreeing definitions, and READ_CLASS_SUMMARY in roles.ts now matches only one of them.",
+    "fix": "Append '— and the SMS campaign cost estimate and credit (a platform aggregate, §3.5)' to the money.figures row in the §3.1 table, so the definition, the §3.5 note and READ_CLASS_SUMMARY all say the same thing."
+   },
+   {
+    "severity": "low",
+    "file": "C:\\kipindi-marketing\\scripts\\campaign-estimate.test.mts",
+    "line": "527-533",
+    "problem": "Assertion 6.4 checks only first-hop imports. Its regex requires `from`, so a side-effect import (`import \"@/lib/server/x\"`) or an `export … from` re-export escapes it. It also never checks the M3 pin, so if the lead forgets to add the two modules to client-graph-safe's PINNED list, nothing goes red. The precedent in campaign-compose.test.mts §16.6 (U37a) reads PINNED and asserts that its own module is in it.",
+    "fix": "Use U37a's import regex: /^\\s*import\\s+(?:[^;]*?\\s+from\\s+)?[\"']([^\"']+)[\"']/gm, plus a matching export-from pattern. Add 6.4b: decomment scripts/client-graph-safe.test.mjs, slice 'const PINNED = [' through '];', and assert that it includes '\"lib/marketing/segment-cost.ts\"' and '\"lib/marketing/campaign-estimate.ts\"'. It stays red until the lead pins them, which is the point."
+   },
+   {
+    "severity": "low",
+    "file": "C:\\kipindi-marketing\\src\\lib\\marketing\\campaign-estimate.ts",
+    "line": "236-245",
+    "problem": "floorPhrase wraps the entire phrase in keep(): every space becomes a no-break space. 'At least 1 h 33 min' (19 characters) therefore cannot wrap anywhere. Rendered as a KPI value in U39b's 2-up grid at 360 px, it will overflow or clip, and the spec requires that nothing clips at 360. Only money is compacted, and §5.5 asserts nothing about the duration's width.",
+    "fix": "Keep only the number-and-unit units, so lines can break between them: `At least ${keep(`${h} h`)}${rest ? ` ${keep(`${rest} min`)}` : \"\"}`, and the same for the s and min branches. Optionally add a §5.5 check that the duration value contains an ordinary space."
+   },
+   {
+    "severity": "low",
+    "file": "C:\\kipindi-marketing\\src\\lib\\server\\marketing\\estimate.ts",
+    "line": "146-158",
+    "problem": "loadEstimateInputsFor never throws, but loadEstimateInputs awaits viewerRole() unguarded. A rejected currentSession(), headers() or db.user.findById reaches the U39b Suspense section as a throw instead of failing closed to no money, which goes against the module's own '⛔ never throws / fails closed' contract for the src/app entry point.",
+    "fix": "Fail closed: `let role: Role | null = null; try { role = await viewerRole(); } catch { role = null; } return loadEstimateInputsFor(role, audience);` A null role already means no balance read and money: null."
+   },
+   {
+    "severity": "low",
+    "file": "C:\\kipindi-marketing\\scripts\\campaign-estimate.test.mts",
+    "line": "296-318",
+    "problem": "§1 calls setRoleReadGrant and setRoleGrant (ADMIN money.figures none and then masked; SUPPORT and GROWTH granted accounting; GROWTH money.figures read) and cleans up only through the in-memory __reset*ForTest. rbac.ts upserts to RoleReadGrant and RoleDomainGrant whenever DATABASE_URL is set. A run from a shell that has DATABASE_URL set (for example after the pg probe) would leave GROWTH and SUPPORT with campaign-money access, and ADMIN masked, in that database. That contradicts the header's 'writes no file' promise. rbac and read-tiers suites carry the same exposure, but this one widens access.",
+    "fix": "Make the first statement after process.exitCode = 1 a refusal: `if (process.env.DATABASE_URL) { console.error('campaign-estimate: refuses to run with DATABASE_URL set — §1 writes role grants'); process.exit(1); }`. rbac's hasDatabase() is read lazily, so the guard holds even though imports are hoisted."
+   },
+   {
+    "severity": "low",
+    "file": "C:\\kipindi-marketing\\.env.example",
+    "line": "41-43",
+    "problem": "The new optional SMS_PRICE_PER_SEGMENT_TZS is documented in BLACKBALL-SMS.md §6 but is missing from .env.example, the operator's template that sits beside SMS_BALANCE_FLOOR_TZS. Owner gate G9 decides whether it is set, so the template should show it as unset, with its consequence.",
+    "fix": "Add a commented-out entry under the SMS balance block: `# SMS_PRICE_PER_SEGMENT_TZS=\"6\"  # optional, owner gate G9 — the campaign estimate's price until ≥ 3 clean delivered pairs are measured; unset = 'not yet measured'`."
+   }
+  ]
+ }
+}

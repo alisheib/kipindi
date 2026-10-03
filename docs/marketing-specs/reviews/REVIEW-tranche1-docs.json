@@ -1,0 +1,145 @@
+{
+ "job": "docs",
+ "built": {
+  "filesWritten": [
+   "C:\\kipindi-marketing\\docs\\MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md"
+  ],
+  "summary": "I rewrote §9 for U21–U28 in docs/MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md to follow DECISIONS-U21-U28.md. That is the only file changed; the diff touches only the hunks listed below. Nothing was run with Node: the checks were done by reading the guard sources, plus grep scans of the diff.\n\n**What each unit now says**\n- Every heading keeps the `**U2x · <title>**` form. Each body names the files it builds, the shared contracts it owns or uses, and the decision codes it follows. Each has **Guard:** / **RED:** / **Accept:** lines, and U21, U22 and U23 have a **States:** line with 8 states including loading and error.\n- Units are 23–29 lines. That is a bit over the ~25 target for U21–U24 and U28; the binding detail would not fit in fewer.\n\n**Spec findings folded in, with the decisions**\n- **U21:** the \"reachability\" axis becomes \"Suppressed\". The operator value is the operator ID (`op=VODACOM`), never the brand, and the Operator column reads `operatorBrand(c.ndc)` only. The rail is UI only over U24 (C1). The RED line names `red:contacts-page` first (M11). The `red:filter-language` cases write real files, so they must run detached under the lock.\n- **U22:** no consent control; consent reads \"Not recorded\" (C13). New rows get their cached consent from `mirrorContactCache` (C4). `PhoneInput` gets three additive props. Duplicates link to `?edit=<id>`, which keeps the filters (C9, M12). An erased number gets the one refusal sentence and opens nothing (C3). Adds the `contactEmail` registry entry (M5), compare-and-set edits with an explicit `updatedAt` (C25, dal-parity §22), `contact-form-actions.ts` (C24) and its own suite `test:contacts-form`.\n- **U23:** \"record consent\" is dropped until U33 and export moves to U34. Bulk reads through U24's audience JSON, `count()` and `auditContactAudience` (C6), uses `syncPlayerToggle` with an actor (C5) and calls the cache mirror (C4/M4). Officer Suppress is permanent and the confirmation says so (C23/M13). Server and UI ship in one push (M10); dal-parity §23; `test:contacts-bulk`. The stale \"land the DAL fix first\" warning is struck. The B9 claim is corrected: a player's number is refused `no_consent`, a stranger's `consent_withdrawn`.\n- **U24:** the one resolver, with `[]` meaning nothing and unknown values refused (C2). Erased rows are excluded everywhere, with the Prisma NULL arm spelled out (C3). New loader contract (C8). Commit 2 is `mirrorContactCache`. Corrected: there is no `reachable` predicate, and U34/U40 join a READERS contract later. dal-parity §21.\n- **U25:** streaming reader with the per-candidate delimiter vote on the first non-blank record. `DECODE_OPTIONS` passes the BOM through so `stripBom` is the decode-time stripper (C19). Encoding sniff added. Emits the one `ParsedContactsFile` shape (C15). Imports `looksLikeVcard` from vcard.ts and the spreadsheet sniffer from xlsx-limits.ts (C17/C18); defines no formula-guard pair (C16).\n- **U26:** both continuation rules in one walk, with the red planted in both orders. Folding depends on the vCard version. `tel:` URIs are stripped, using `;ext=` and `+254` fixtures. Phone choice is preferred-then-sendable. Owns `looksLikeVcard` and maps fields through `contact-fields` (C20).\n- **U27:** corrected premise — exceljs `cell.text` of a number is exact, and `2.55713E+11` is Excel's display when saving as CSV or pasting. The 700 KiB cap is derived from Next's 1 MB limit. The on-screen remedy now tells the user to format the phone column first. The action moves to U30 (it would fail `test:orphan-actions` alone). Covers U27a/U27b and the corrected `test:contacts-boundary` rules (`\"use server\"` files are leaves, the reverse boundary, every unit pins its own files — M3).\n- **U28:** \"five readers\". One limits table (C12), one tag rule (C11), Swahili aliases taken from shipped text with weak and strong tiers, no consent field, masked export refused. `csv-write.ts` owns the guard pair with the `'` lead (C16). Flags Excel's scientific form once (M6). The sample button ships unmounted. U28a creates the one runner (C21); U28b does the round trips through the real parsers.\n\n**Other edits**\n- **D18 → U30 (C26):** changed in the §1 defect row, the §8 register entry (its last bold unit is now **U30**), and one new 🔴 D18 line in U30's §9 text. That line also records M7: U30 owns the paste producer.\n- **OD11 (M9):** the \"owed before U16/U23\" clause is struck through, with a dated ✅ note that the database half landed in S7c (`test:dal-parity` 17.supersede / 17.liftreason).\n- **Untouched as instructed:** §0 ▶ NEXT, and every §1 unit row's status and columns.\n\n**Guard-constraint checks (static)**\n- No `scripts/` path or `npm run` in any added line.\n- No new OQ ids.\n- No added line starts with `|` except the edited D18 table row.\n- No line starts with `#`, and no stray `**U<n> ·` line inside a body.\n- Zero invisible characters (zero-width, BOM, no-break space), control characters, backslashes or CRs in the file.",
+  "suiteKeysToAdd": [],
+  "howToVerify": [
+   "npm run test:marketing-setup-plan  → must end 'MARKETING SETUP TRACKER — all checks passed' (§2 finds U21–U28 headings, §3 sees D18 owned by U30 in both §1 and §8 and named inside U30's §9 text)",
+   "npm run red:marketing-setup-plan  → must print 'control … passes cleanly' three times and 'RED — N/N planted lies caught' with no line reading MISSED or PLANT DID NOT APPLY",
+   "npm run test:docs  → must end '✅ every reference in docs/ resolves.' (no new scripts/ path or npm run was written)",
+   "npm run test:guards-exist  → must exit 0; the new keys (test:contacts-form, test:contacts-bulk, test:contacts-audience, test:contacts-boundary, test:contacts-import and their red: twins) appear only in '§2 · cited only in docs — reported not failed'",
+   "git diff --stat -- docs/MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md  → exactly one file; hunks only at §1 D18 row (~621), §4 OD11 (~980), §8 D18 (~1281), §9 U21–U28 (~2078–2302) and U30 (~2326)",
+   "grep -n 'D18' docs/MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md  → the §1 row reads '| D18 | U30 | ⬜ |', the §8 entry ends '**U30**', and a '🔴 **D18**' line sits inside U30's §9 body",
+   "LC_ALL=C.UTF-8 grep -cP '\\x{200B}|\\x{200C}|\\x{200D}|\\x{2060}|\\x{FEFF}|\\x{00A0}|[\\x00-\\x08\\x0B-\\x1F\\x7F]' docs/MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md  → must print 0"
+  ],
+  "openQuestions": [
+   "C9 assigns no unit to create contactsHref. I gave it to U24 commit 1 in U24's text, because that is the commit where a filter first reaches the URL: without it, page 2 and Clear search would drop the filter between U24c1 and U21. U21 reuses it. Change this if your U24c1 does not create it.",
+   "§1 unit rows were not touched, so their Guard cells now disagree with §9: U22 and U23 still read `test:contacts-page` (decisions: `test:contacts-form` / `test:contacts-bulk`), and U21 lacks `test:contacts-page`. When each unit ships, update the row, and U21's RED cell must name `red:contacts-page` first (M11).",
+   "U26 emits a header row built from CONTACT_FIELDS labels, and each card's `line` is the card ordinal. U27's spec validator requires every line to be an integer of at least 1, strictly increasing, so the producer-built header row needs a rule (line 0, an offset, or no header with a fixed mapping). DECISIONS does not settle this; decide before U27a's `isParsedContactsFile` lands.",
+   "C11's character rule (letters, digits, space, -, _) would refuse a Google Contacts 'Labels' cell like '* myContacts ::: Friends'. The U28 spec proposed splitting on ':::' and dropping '* ' system labels, but DECISIONS left that out, so U28's text follows C11 strictly. Decide before U28a.",
+   "M6 puts the scientific-form flag in U28's draftContactRow, while the detector (`looksExcelShortened`) lives in U27a's xlsx-limits.ts. U28's text therefore says U27a lands first or in the same push, even though C22 shows U28a and U27a in parallel.",
+   "C2's URL vocabulary has no `player`, `import` or date-window params, so U24's URL parser follows C2 only and the U24 spec's player/importId/addedFrom predicates are not in §9. A later unit adds any of them inside audience.ts, with its own refusal cases.",
+   "Out of my scope and still stale: §10's session table (still S10 = U21·U22, S11 = U23·U24, against C22's order); U34's text (still says the importer's `unguard`, and should write through csv-write.ts, mask email via contactEmail (M5) and use contactExportHeader); U31's text (should use tagKey/splitTags). U28's text records what U30 and U34 must import, but their own §9 bodies do not yet."
+  ]
+ },
+ "review": {
+  "findings": [
+   {
+    "severity": "high",
+    "file": "C:\\kipindi-marketing\\docs\\MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md",
+    "line": "2079-2082, 2092, 2101-2103",
+    "problem": "D19 is not met in U21. The rail gives a `source` axis to every viewer, and `?source=` is a URL key for everyone. U20 already hides the Source column from masked viewers because Source 'Sign-up' (REGISTRATION) means the number came with an account. A masked viewer could tick the pill, or type `?source=REGISTRATION`, and see exactly the player rows. The doc says 'No \"is a player\" axis for a masked viewer (D19)' but ships one under another name. The lead's in-progress `src/app/admin/contacts/contacts-loader.ts` (`playerSignal`, `PLAYER_SIGNAL_REASON`) already refuses `source` and `player` for a non-read viewer, so the doc is now behind the code it is meant to govern.",
+    "fix": "In U21 say that the Source axis renders only when `viewerReads`. For any other viewer the loader REFUSES a typed `source` (and `player`) with a role refusal, before any row is read (C8's `refused`). Add 'refused (role — the filter would show which numbers are players)' to U21's States. Add a `red:contacts-page` plant: a masked viewer with `?source=REGISTRATION` gets rows. U24's text should name the same role refusal, since the loader is U24 commit 1."
+   },
+   {
+    "severity": "high",
+    "file": "C:\\kipindi-marketing\\docs\\MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md",
+    "line": "2110-2111, 2134-2135 (U22); 2079 consent axis",
+    "problem": "D19 is not met in U22. The Consent chip is shown to every role (page.tsx renders it without `reads`). C4's mirror sets `consentState` from the ledger's latest row for the msisdn. Before U33, the only GIVEN ledger rows come from a player's REGISTRATION or PROFILE consent, and WITHDRAWN comes from a player opting out or an erasure. So GROWTH (masked) can add any number with the form and read 'Given' or 'Withdrawn', which answers 'is this a player?'. The `?consent=` axis and differencing the whole-book KPI do the same. U22's own Accept shows exactly that signal. The U22 spec flagged this (\"a mirrored consent of 'Given' pre-U33 means a player\"), but the rewrite does not carry it.",
+    "fix": "U22 must state a mitigation. Option A: for a non-read viewer the Consent cell, the consent pill axis and the post-save chip are not rendered, and `?consent=` is refused by role, as Source is. Option B: record it as a ❓ FOR ALI residual risk, with the per-officer rate rule and audit row named as the control. In either case add a `red:contacts-form` plant: a masked viewer adds a seeded player's number and reads 'Given'."
+   },
+   {
+    "severity": "high",
+    "file": "C:\\kipindi-marketing\\docs\\MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md",
+    "line": "2234-2235 (U26)",
+    "problem": "The vCard row contract cannot be met. U26 emits 'columns from CONTACT_FIELDS' with each card row's `line` = the card ordinal, starting at 1. U27a's `isParsedContactsFile` (already in `src/lib/contacts/parsed-file.ts`) requires every line to be an integer ≥ 1 and strictly increasing. U28's `autoMapHeaders` (already in `src/lib/contacts/contact-fields.ts`, `headerlessSentence`) needs row 1 to be a header row. Two outcomes are possible. With no header row, card 1 is read as column names and the whole .vcf is refused ('The first row looks like a contact'). With a header row at line 1, card 1 collides on line 1, the validator rejects the file, and the ordinals U30 prints are off by one. The engineer raised this as an open question but wrote the contract as if it were settled.",
+    "fix": "Decide it in the doc now, before U26 or U28b. Recommended: a vCard emits NO header row; U28 maps `format: \"vcard\"` by the fixed `fileColumns()` order and never header-matches it; `line` stays the card ordinal. Write the rule into both U26 and U28, and add a U28b round-trip assertion that card 1 survives. Also say where U30's `unreadable` count for skipped cards comes from, now that C15's `notes` are plain strings."
+   },
+   {
+    "severity": "high",
+    "file": "C:\\kipindi-marketing\\docs\\MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md",
+    "line": "2257-2258 (U27), 2286 (U28), 2311-2321 (U30)",
+    "problem": "Excel's numeric shortened form can still import a stranger's number. When a CSV holding '2.55713E+11' is re-saved as xlsx, the sheet stores the NUMBER 255713000000. U27b's `xlsxCellText` writes that as exact text, and `parseTzNumber` accepts it as a valid Yas (71) number. U28's one detector (`looksExcelShortened`) only matches the E+ text, so `draftContactRow` cannot see this case. U27's 'flagged by line and column' becomes a string note under C15's `notes: string[]`, which nothing downstream can act on. The U27 spec's binding consequence, 'U30 must turn flagged phone cells into invalid' (or a U33 first-party basis markets a stranger), was dropped from the rewrite. U27's 'flagged' also contradicts M6's 'flagged ONCE, in draftContactRow'.",
+    "fix": "Choose one rule and write it into U27, U28 and U30. Option A: U27b writes a numeric-shortened value (an integer ≥ 1e11 divisible by 1e6) as Excel's scientific text, so U28's single detector flags it and the row is invalid. Option B: C15 gains a machine-readable per-cell flag that `draftContactRow` reads. Then remove 'flagged' from U27, or define it as 'passed through for U28', and add a U28b red: an xlsx numeric 255713000000 must not import."
+   },
+   {
+    "severity": "medium",
+    "file": "C:\\kipindi-marketing\\docs\\MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md",
+    "line": "2119-2124 (U22)",
+    "problem": "C3 is only partly honoured. C3 says erased rows are excluded from EVERY reader and that the duplicate check is the only code that sees them. U22 covers the add path ('opens NOTHING') but says nothing about `?edit=<id>`. Its edit text ('never touching ... `sourceRef`') reads like the U22 spec, which deliberately allowed editing an erasure-emptied row (spec assertion 15.1 expects ok). An implementer following spec plus doc would let `?edit=<erased cuid>` open the tombstone, and an officer could write a name back onto an erased person's number. The doc also does not say that the erased refusal must carry no `existingId`.",
+    "fix": "Add to U22: the edit loader and `editContact` treat `sourceRef = \"erasure\"` as missing (CONTACT_MISSING); the erased refusal payload carries no id; the spec's 15.1 is reversed (editing an erased row must refuse). Add a `red:contacts-form` plant: `?edit=` of the erased fixture opens the dialog."
+   },
+   {
+    "severity": "medium",
+    "file": "C:\\kipindi-marketing\\docs\\MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md",
+    "line": "2252, 2272 (U27 Accept)",
+    "problem": "The U27 Accept cannot be met by the cap the doc describes. 'Base64 for 700 KiB + 1 byte refuses `too_large` before any decode' fails because 716,800 and 716,801 bytes both encode to 955,736 base64 characters (4·ceil(n/3)). U27a's `XLSX_MAX_BASE64_CHARS = base64LengthFor(XLSX_MAX_BYTES)` gate ('refuses a LONGER base64 field', `src/lib/contacts/xlsx-limits.ts:50`) lets +1 and +2 bytes through to a decode. The Accept either fails, or gets quietly bent to a spy on exceljs load only.",
+    "fix": "Choose one. Option A: say the gate computes the exact decoded size before decoding (3·len/4 − the '=' count, length a multiple of 4) and refuses above 716,800; the Accept then holds. Option B: change the Accept to '700 KiB + 3 bytes refuses by length; +1 and +2 refuse after decode, before exceljs loads'."
+   },
+   {
+    "severity": "medium",
+    "file": "C:\\kipindi-marketing\\docs\\MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md",
+    "line": "2251, 2286 (U27a detector / U28 applies it)",
+    "problem": "M6 and C18 ('flagged once', 'ONE refusal copy table') are already broken in the tree the doc governs. The doc says U28 applies U27a's detector, but there are two. `src/lib/contacts/contact-fields.ts:482-489` defines its own `looksExcelShortened` (regex `E\\+?`, accepts '2.55713E11') and `EXCEL_SHORTENED_SENTENCE`. `src/lib/contacts/xlsx-limits.ts:279-287` defines another (regex `E\\+`, plus a differently worded `excelShortenedSentence`). contact-fields.ts does not import xlsx-limits.",
+    "fix": "Choose one owner in the doc and have the lead delete the other copy before U28a/U27a commit. The cheapest fix matching the doc: contact-fields.ts imports `looksExcelShortened` and the sentence from xlsx-limits.ts (both are pure, and C17 allows src/lib/contacts/* imports), with one regex. Add a structural assertion (one definition in src) to `test:contacts-import`."
+   },
+   {
+    "severity": "medium",
+    "file": "C:\\kipindi-marketing\\docs\\MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md",
+    "line": "567-569 (§1 board)",
+    "problem": "C14 and M11 are not on the board. §9 now says U21 = `test:contacts-page` with `red:contacts-page` first, U22 = `test:contacts-form` and U23 = `test:contacts-bulk`, but the §1 rows still read U21 `test:filter-language`, U22 `test:contacts-page` and U23 `test:contacts-page`. M11 is about U21's RED CELL, and that cell is untouched. A fresh session trusts §1 first (§0 step 2), so the stale authority wins. The tracker's §1b resolves only the first backticked key, so this will pass silently when the rows flip.",
+    "fix": "In the same decisions commit, edit only the Guard and RED cells. This is safe for ⬜ rows: the tracker's '⬜ claims nothing' checks only commit, measure and date. U21 Guard `test:contacts-page` · `test:filter-language`, RED placeholder naming `red:contacts-page` first. U22 Guard `test:contacts-form`. U23 Guard `test:contacts-bulk`. If the lead insists §1 stays frozen, write a one-line ⚠️ under the board saying the U21–U23 Guard cells are superseded by C14/M11."
+   },
+   {
+    "severity": "medium",
+    "file": "C:\\kipindi-marketing\\docs\\MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md",
+    "line": "2171 (U24)",
+    "problem": "The doc and the code being built disagree on the URL vocabulary. U24 says `parseContactAudienceParams` reads 'C2's URL' only. The lead's `src/lib/server/marketing/audience.ts:111` has `CONTACT_AUDIENCE_URL_KEYS` = C2 plus `player`, `import`, `range`, `from`, `to`, and `ContactAudienceFilter` carries player, importId and addedFrom/addedBefore. One of them is wrong. C2 is binding, and OD35 ('remove everything that run created') needs an import filter at some point.",
+    "fix": "Name the real vocabulary once, in U24. Either strike the extra keys from audience.ts for commit 1, or record a C2 extension: player and source are role-refused for masked viewers (D19); import is for OD35; range/from/to are refused when unreadable or inverted. Give the extension its own refusal cases, so the doc stays the single source of truth."
+   },
+   {
+    "severity": "low",
+    "file": "C:\\kipindi-marketing\\docs\\MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md",
+    "line": "2627-2630 (§10)",
+    "problem": "C22's build order is not in §10. §10 still says S10 = U21 · U22 and S11 = U23 · U24, so U21 is built before the resolver it is now 'UI only over'. ▶ NEXT has the right order, but §10 is the pairing table every session prompt consults. The docs engineer marked it out of scope, but it is a C22 decision about U21–U28.",
+    "fix": "Add one ⚠️ line under §10 citing C22 (decisions commit → U24 c1 ∥ U28a/U27a → U24 c2 → U21 → U22 → U23; U26 → U25 → U27b in parallel; U28b last), or re-row S10–S13."
+   },
+   {
+    "severity": "low",
+    "file": "C:\\kipindi-marketing\\docs\\MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md",
+    "line": "2181 (U24) vs 2117-2118 (U22)",
+    "problem": "The text contradicts itself on `edit`. U24 says `contactsHref` carries 'never `edit`', while U22 opens `?edit=<contact id>` 'via `contactsHref`' and C9 routes the dialog's open and close through it. An implementer cannot tell whether `contactsHref(sp, { edit })` is legal.",
+    "fix": "In U24, write: 'never carries `edit` forward from sp; only an explicit `edit` patch (U22's open link) sets it, and SortTh, pagination and SearchBox get sp without it'."
+   },
+   {
+    "severity": "low",
+    "file": "C:\\kipindi-marketing\\docs\\MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md",
+    "line": "2182 (U24 commit 2)",
+    "problem": "'COMMIT 2, before U22' is weaker than C22, which orders U24 c2 → U21. U21's Suppressed axis filters on the `suppressedAt` cache that commit 2 keeps honest, so U21 must not land before it.",
+    "fix": "Change to 'COMMIT 2, before U21 (C22)'."
+   },
+   {
+    "severity": "low",
+    "file": "C:\\kipindi-marketing\\docs\\MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md",
+    "line": "2170 (U24)",
+    "problem": "The text differs from C1's wording without saying why. C1 says audience.ts exports 'the filter type (`ContactAudienceWhere`) ... the twin translations'. U24 puts `ContactAudienceWhere` in store.ts, says each twin translates it privately, and never names `ContactAudienceFilter`, which is the type audience.ts actually exports (spec and lead code). The doc is right on substance, but a later reviewer could 'fix' it back to C1's letter.",
+    "fix": "Add a ⚠️ line: 'C1's filter type is `ContactAudienceFilter` (audience.ts); `ContactAudienceWhere` is the DAL's where (store.ts); the twin translations stay private to store.ts and prisma-dal.ts, and `toAudienceWhere` is the only filter → where translation'."
+   },
+   {
+    "severity": "low",
+    "file": "C:\\kipindi-marketing\\docs\\MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md",
+    "line": "2322-2326 (U30)",
+    "problem": "D18 now closes in U30, but U30's Guard, RED and States do not cover any part of it. The Guard is `test:contacts-import` + `test:read-tiers` (no `test:contacts-boundary` or `test:orphan-actions` for `readXlsxContactsAction`). No RED drives the 700 KiB refusal through the real action. The States have no too_large, wrong_format or paste state. The tracker only needs the id named, so D18 could go ✅ with the ceiling unproven at its entrance.",
+    "fix": "Add `test:contacts-boundary` / `test:orphan-actions` to U30's Guard. Add a RED: post 700 KiB + 1 through the real action and require a refusal before exceljs loads. Extend U30's States with refused too_large / wrong_format (U27's copy table) and a paste state."
+   },
+   {
+    "severity": "low",
+    "file": "C:\\kipindi-marketing\\docs\\MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md",
+    "line": "2144 (U23) vs 2351-2358 (U33); 2236-2237 (U26); 2156-2157 (U23)",
+    "problem": "Three cross-unit statements have no owner or are false. (1) U23 says U33 'adds \"Given\" to this bar', but U33's body never says so, so the promise has no owner. (2) U26 says 'nothing imports it before then', but U25's `detectFormat` imports `looksLikeVcard` from vcard.ts (C17). (3) M4's 'CACHE_WRITERS includes contact-bulk.ts' is not written in U23 or U24.",
+    "fix": "(1) Add one line to U33's body: it adds the bulk 'Given' action. (2) Reword to 'no production surface reaches it before U30/U32'. (3) Add 'contact-bulk.ts joins U24's CACHE_WRITERS (M4)' to U23."
+   },
+   {
+    "severity": "low",
+    "file": "C:\\kipindi-marketing\\docs\\MARKETING-CAMPAIGN-AND-CONTACTS-SETUP.md",
+    "line": "2120-2121 (U22), 2092 (U21)",
+    "problem": "Two D19 phrases are ambiguous. 'a player's number reads like any duplicate and is never linked' can be read as 'no Open-existing link for a player's duplicate', which would itself be an oracle. The intended meaning is that the create never sets `userId`. Separately, 'No \"is a player\" axis for a masked viewer' implies such an axis exists for readers, but C2 defines none.",
+    "fix": "Write 'the create never sets `userId` (never linked to a player, even when one holds the number); a player's duplicate shows the same sentence and the same Open link as any other'. For U21, write 'no player axis'. If one is wanted for readers, it is a C2 extension with role refusal (see the U24 finding)."
+   }
+  ],
+  "verdict": "The structure is sound: D18 moves to U30 the same way in the §1 row, in §8 (whose last bold unit is now **U30**) and in a 🔴 D18 line inside U30's §9 body. The added lines name no script by path and no `npm run`, add no new OQ, put no stray table rows or `**U<n> ·` lines in the bodies, and contain no invisible characters. The hunks touch only §1 D18, OD11 (M9), §8 D18, U21–U28 and U30. Read statically, test:marketing-setup-plan, its red control, test:docs and test:guards-exist should still pass. That is green, not proof the plan is right: the edit carries several binding decisions incompletely, and some of the contracts it writes cannot be built. 1) D19 fails twice. U21 gives every viewer a Source axis, which U20 already treats as a player signal (the lead's loader already refuses it for masked viewers). U22 plus C4's mirror turns the Consent chip into a per-number player oracle before U33. 2) The vCard row contract (`line` = card ordinal, columns from CONTACT_FIELDS) conflicts with U27a's validator and U28's header rule, so card 1, or the whole .vcf, is lost. 3) An xlsx-stored 255713000000 is a valid stranger's number. Nothing flags it now that C15's notes are plain strings, and the spec's 'U30 turns flagged cells invalid' was dropped. 4) C3: `?edit=` of an erased row is not ruled out (the spec allowed it). 5) U27's '700 KiB + 1 byte refuses before any decode' cannot hold under a length-only gate, because +1 byte gives the same base64 length. The parallel build already has two `looksExcelShortened` copies, against M6/C18. §1's Guard and RED cells (C14/M11) and §10 (C22) still say the old thing, and U24's URL vocabulary differs from the lead's audience.ts. Fix the four high findings before the decisions commit lands; the rest are one-line text corrections."
+ }
+}

@@ -1,0 +1,96 @@
+{
+ "job": "U31-A",
+ "built": {
+  "summary": "U31-A, the pure first commit, is written but not run. Nothing was executed (no node, tsx or tsc), as the rules require. I checked it by reading it against the real `contact-fields.ts`, `parsed-file.ts`, `erase.ts`, the import runner and the guards it touches.\n\n**1. `src/lib/marketing/erasure-mark.ts` (new).** Imports nothing. Holds `export const ERASURE_EVIDENCE = \"erasure\" as const`; the docblock moved here from erase.ts.\n\n**2. `erase.ts`: two lines changed, not one.** It needs an import line plus `export { ERASURE_EVIDENCE };` in place of the old declaration. A bare re-export-from line would leave erase.ts's own three uses of the constant with nothing to refer to. Those usage lines are unchanged, so the erasure anchors at erasure.anchors.mjs:262/:321 still resolve. contacts-audience.test, erasure.test and audience.ts still import the constant from erase.ts.\n\n**3. `src/lib/contacts/import-decide.ts` (new).** Imports only ./contact-fields and ../marketing/erasure-mark. It contains:\n- **Choices and overrides:** `IMPORT_CHOICES`, `DEFAULT_IMPORT_CHOICE` = KEEP, `RowOverrides` keyed by `line` (X19), `effectiveChoice`, `parseImportChoice`, and `parseRowOverrides(raw, knownLines?)`. The parser refuses arrays, keys like 0, 06, 1.5 and -1, any value that is not one of the three choices, lines not in the file, and non-plain objects.\n- **The patch:** `IMPORT_PATCH_KEYS`, and an `ImportPatch` type built from that list, so a consent field cannot be expressed.\n- **The outcome union (X4):** `IMPORT_OUTCOMES`, `IMPORT_OUTCOME_REASONS`, `IMPORT_OUTCOME_OF_REASON` (changed_during_import counts as keep; write_refused and invalid count as fail), `outcomeOf`, `isImportOutcomeRow`, `parseImportOutcomeReason`.\n- **`decide()`:** checks in this order — erased, then active stop, then same run, then the choice, then nothing to change. A new number whose latest ledger row is the erasure withdrawal is kept. `consentWritable` exists only on a create, and is true only when the number has no ledger row, no active stop and no player (X5).\n- **Tags:** `mergeTags` compares by `tagKey` (X21), never rewrites the book's tags, and caps at `MAX_TAGS`; tags that don't fit are listed.\n- **Planning:** `firstLines` and `repeatOf` (first row wins, OD33), `decideRows`, `tallyDecisions`, `shownTally`, `addTallies`, `previewFor`, `adjustTally`, and a pure `planImportRows({ runId, candidates, facts, firstLines? })`. It throws if a number's facts were not loaded, and the message names the row, not the number.\n\n**4. `scripts/contacts-import/decide.mts` (new).** Exports `decideSection` (owner U31-A) in the runner's `ImportSection` shape. It has 24 labelled assertions:\n- D0 is a 168-cell matrix with a typed expected verdict per cell.\n- D1–D16 cover the rules. D11 checks the plan against hand-worked counts and checks that `adjustTally` gives the same result as calling `decide()` with the overrides. D12 is X4, D14 is D19, D14b is X22.\n\nIt has 28 red plants, each built in memory. The file makes no file-writing call, comments included.\n\n**Where I departed from the spec on purpose (binding decisions, or real holes):**\n- **No `consentCacheOf`, and no `consentCache`/`suppressed` on a create.** X6/C4 say the caches are written only through `mirrorContactCache`.\n- **New `repeatOf` fact.** `importId === runId` only catches rows this run created. Updates never set `importId`, so without `repeatOf` an in-book number that appears twice in a file would be written twice and the last row would win, breaking OD33.\n- **What the browser sees.** Previews and `ShownTally` show the erased reason as `no_change` and name no contact (X22/C3). A create preview is exactly `{line, kind}` (D19).\n- **Not built:** `import-copy.ts`, because it sits in `src/app/admin/contacts/`, which I may not edit; it belongs to the U31 UI push. Also not built: `loadDecideFacts`, `applyImportRows`, `updateFromImport`, dal-parity entries and any migration — those are U31-B or U32 per X3.\n\n**What you need to do before the battery:**\n- **Register the section** in `scripts/contacts-import.test.mts`: add `import { decideSection } from \"./contacts-import/decide.mts\";` and put `decideSection,` in `SECTIONS`.\n- **Pin both new modules** in `scripts/client-graph-safe.test.mjs`: add \"lib/contacts/import-decide.ts\" and \"lib/marketing/erasure-mark.ts\". This is required: `test:contacts-boundary` §2.4 goes red for any src/lib/contacts module that is not pinned.\n- **Docs pass on the plan:** rewrite §9 U31 (the consent sentence per X5, the suppression authority, same run including `repeatOf`, erasure hidden from the browser, the tag cap), set the §1 U31 row to 🟡 (commit A only), and strike the stale OD11 'owed' note.",
+  "filesWritten": [
+   "C:\\kipindi-marketing\\src\\lib\\marketing\\erasure-mark.ts",
+   "C:\\kipindi-marketing\\src\\lib\\contacts\\import-decide.ts",
+   "C:\\kipindi-marketing\\src\\lib\\server\\marketing\\erase.ts",
+   "C:\\kipindi-marketing\\scripts\\contacts-import\\decide.mts"
+  ],
+  "suiteKeysToAdd": [
+   "test:contacts-import → \"tsx scripts/contacts-import.test.mts\" (only if U28a's lead has not already added it; it is absent from package.json today)",
+   "red:contacts-import → \"tsx scripts/contacts-import.test.mts --prove-red\" (same condition)"
+  ],
+  "sectionModulesToRegister": [
+   "scripts/contacts-import/decide.mts — export `decideSection` (name \"decide\", owner \"U31-A\"). In scripts/contacts-import.test.mts add `import { decideSection } from \"./contacts-import/decide.mts\";` and `decideSection, // U31-A · src/lib/contacts/import-decide.ts + src/lib/marketing/erasure-mark.ts` to SECTIONS"
+  ],
+  "howToVerify": [
+   "Lead edits first: register decideSection in scripts/contacts-import.test.mts, and add \"lib/contacts/import-decide.ts\" and \"lib/marketing/erasure-mark.ts\" to PINNED in scripts/client-graph-safe.test.mjs. Without the pins, test:contacts-boundary §2.4 goes red.",
+   "rm -rf .next is not needed (no route changed). Run serially, detached, through ~/heavy-node-lock.sh run <who> <cmd>, never under `timeout`.",
+   "npx tsx scripts/contacts-import.test.mts → expect every `decide · D0…D16` line PASS (24 assertions), plus `decide · the section asserted something`, and exit 0.",
+   "npx tsx scripts/contacts-import.test.mts --prove-red → expect a green baseline for section decide, '28/28 caught' for the decide plants (on top of the fields plants), and RED PROOF COMPLETE. Any 'stayed GREEN' or 'red, but not on' line is a defect.",
+   "npm run typecheck (tsc over src/**: import-decide.ts uses `as const satisfies`, a -readonly mapped ImportPatch and `export { ERASURE_EVIDENCE }` under isolatedModules).",
+   "npm run test:contacts-boundary → §2.1–§2.4 green with import-decide.ts present and pinned; §2.2 should show it reaching only lib/marketing/erasure-mark, contact-fields and contact-fields' pure imports.",
+   "npm run test:client-graph-safe → §1 walks both new pins clean of the Prisma client.",
+   "npm run test:erasure and npm run red:erasure → still green: erase.ts re-exports the constant and the anchored usage lines (`evidence: ERASURE_EVIDENCE,`, `sourceRef: ERASURE_EVIDENCE,`) are byte-identical.",
+   "npm run test:contacts-audience and npm run test:dal-parity → still green: the first imports ERASURE_EVIDENCE through erase.ts; the second reads erase.ts as text for the §20 writer list.",
+   "npm run test:red-anchors → decide.mts contains no file-writing token, so the in-process count is unchanged.",
+   "Grep check: `grep -rn 'TAKE_FILE\\|FILL_BLANKS' src` should list only src/lib/contacts/import-decide.ts (§D10 holds this)."
+  ],
+  "openQuestions": [
+   "Tag cap (decided on delegation; overrule if wrong): when a merge would take a contact past 20 tags, decide() adds file tags in file order until the cap, lists the rest in `tagsNotAdded` on both update and no_change keep decisions, and never drops them silently. The alternative is refusing the whole tag change for that row.",
+   "X22 hiding is my reading of 'erasure is never disclosed'. Previews and ShownTally show the erased reason as `no_change` and name no contact. The spec's UI copy '9 erased on request' is therefore superseded, and import-copy.ts (U31 UI) must not word erasure at all. The server truth (ImportDecision, DecisionTally, the row's outcomeReason) still says `erased`.",
+   "A new number whose latest ledger row is the erasure withdrawal has no book row, so U30's msisdnsPresent calls it 'new', but decide() keeps it (owner decision 4). U30 and the Apply label must take counts from planImportRows' byChoice, never from U30's buckets, or the label and the request disagree on such rows.",
+   "Contract for U32's commitBatch: pass `firstLines` built over the WHOLE run's staged (line, msisdn) pairs to decideRows. Otherwise an in-book number repeated across two batches is updated twice, because the importId check only covers creates.",
+   "consentCacheOf and the create decision's consentCache/suppressed fields were dropped under X6/C4 (caches only via mirrorContactCache). The create decision carries only `consentWritable`, and U33 must write the basis only where it is true.",
+   "ImportCandidate uses `line` (X19), not the spec's rowNumber. It is typed as Pick<ContactDraft, displayName|email|notes> plus line, msisdn and tags, so a U28 rename breaks tsc in src. The spec's `rawInput` field was dropped because decide() never reads it; the create builder takes it from the staged row.",
+   "erase.ts got two changed lines (an import plus `export { ERASURE_EVIDENCE }` replacing the declaration), not a single re-export line. A bare `export … from` gives erase.ts's own three uses of the constant nothing to refer to.",
+   "planImportRows is pure and takes `facts: ReadonlyMap<msisdn, NumberFacts>`. The server loader that fills it (loadDecideFacts over the §25 bulk keyed reads) is U31-B. The spec's D2/D3/D4/D9/D11–D13 halves that run against the store are listed as a TODO at the end of decide.mts."
+  ]
+ },
+ "review": {
+  "verdict": "One real defect needs fixing before this lands; the rest is sound. By reading, I found no TypeScript errors in import-decide.ts. It checks under strict, isolatedModules and TS 5.7, including `as const satisfies`, the -readonly mapped ImportPatch and `export { ERASURE_EVIDENCE }`. All 24 assertions hold against the shipped code. That includes D11's hand-worked EXPECTED_SHOWN, which I recomputed row by row. All 28 plants fail their own matching label. D3d and D16 pass against the decommented sources (erase.ts has no quoted \"erasure\" outside comments). Neither new module imports anything server-side. The engineer touched only the four files they claimed: the erase.ts diff is exactly the import line plus `export { ERASURE_EVIDENCE }`, and the erasure anchors at :262 and :321 still resolve. None of the four files contains a raw control character, a zero-width character or a typed backslash-u. The blocking problem: the X22 'erasure is never disclosed' handling, which the report says is honoured, can be told apart from every other row, and test D14b locks the leaking shape in place. Two corrections to the report's lead instructions: the runner already registers decide.mts by file name, so there is no SECTIONS import to add; and import-decide.ts is already pinned, but erasure-mark.ts is not.",
+  "findings": [
+   {
+    "severity": "high",
+    "file": "src/lib/contacts/import-decide.ts",
+    "line": "202-209, 486-494, 550-560 (and scripts/contacts-import/decide.mts 693-703)",
+    "problem": "X22/C3 is broken: erasure can be read off both the label and the per-row preview. Erased is always shown as `no_change`, whatever the choice. But under KEEP (the default label) every ordinary in-book row is `chosen_keep`, so under KEEP `keepBy.no_change` counts erased rows and nothing else. The suite's own literals prove it: EXPECTED_SHOWN.KEEP.keepBy.no_change = 2 = exactly the two erased lines, 5 and 7. Per row, previewOf returns `{kind:\"keep\", reason:\"no_change\"}` only for a 'fixed keep'. An ordinary row is never fixed, because KEEP gives it chosen_keep and TAKE/FILL never do, so this shape exists only for erased numbers. Example: a GROWTH officer imports a one-row file, sees 'kept · nothing to change' under KEEP, and knows the number was erased. A ledger-only erased NEW number leaks the same way: U30 calls it 'new', decide keeps it, and the counts disagree. X22's own wording says an erased row should read 'already in the book', which is chosen_keep's copy, not no_change. D14b asserts the leaking shape is correct.",
+    "fix": "Make the browser fold depend on the decision. In shownTally/previewOf, map an erased keep to what an ordinary unchanged in-book row shows under its `asked` choice: KEEP → chosen_keep, TAKE_FILE/FILL_BLANKS → no_change. To keep adjustTally equal to decide with overrides, fold per decision (from `d.asked`), not per bulk choice. Preview erased rows in the inBook shape, with byChoice {KEEP: chosen_keep, TAKE: no_change, FILL: no_change}. Name no contactId (drop contactId from every preview, or use an opaque per-plan token). A per-row residue remains: a blank book row plus a file value showing 'no change' under TAKE. The lead may prefer to fold erased into the stop-list reason under a neutral shown reason, worded something like 'can't be changed by an import', so erased and stop-listed rows look the same. Either way, have U30's msisdnsPresent treat ledger-erased numbers as present, and give U32's row reads a shown reason. Rewrite D14b to assert indistinguishability: an erased row's preview and KEEP tally equal those of an ordinary identical-values row (or a stop-listed one, modulo line). Add a plant that restores the current fold."
+   },
+   {
+    "severity": "medium",
+    "file": "scripts/contacts-import/decide.mts",
+    "line": "124-142",
+    "problem": "walkSrc is a second src walker. scripts/lib/tracked-files.mts says 'A SECOND WALKER IS THE DEFECT', and the sibling fields.mts uses srcFiles(). The populations differ: walkSrc's CODE_FILE matches .jsx but skips .cjs, and srcFiles is the reverse. A .cjs file under src that spells \"TAKE_FILE\" is invisible to D10's 'ONE rule' scan, while its count floor still passes.",
+    "fix": "Import `srcFiles` (and `REPO_ROOT`) from \"../lib/tracked-files.mts\". Build srcMentions from `srcFiles()`, reading each path and keeping files whose raw text includes TAKE_FILE/FILL_BLANKS. Delete walkSrc and CODE_FILE. Keep the printed count and the >= 100 floor."
+   },
+   {
+    "severity": "low",
+    "file": "src/lib/contacts/import-decide.ts",
+    "line": "281-284",
+    "problem": "The notes 'stored form' is a second normaliser that disagrees with U28's cleanNotes. cleanNotes also drops format characters (zero-width etc.) and control characters other than LF/TAB, and the file side of a candidate has already been through it. decide re-normalises both sides with only CRLF→LF plus trim, so the comparison is lopsided. A book note holding a ZWSP or control character re-imported from U34's export reads as different. TAKE_FILE then plans an update and counts 'Notes will be replaced' for identical visible text, which breaks the 'export → re-import changes 0 rows' property D8 exists for.",
+    "fix": "Ask the lead to export cleanNotes from contact-fields.ts (U28's file is off-limits here), and use it as STORED_FORM.notes so both sides go through the ONE notes rule. Add a D8 case with a zero-width character in the book's note."
+   },
+   {
+    "severity": "low",
+    "file": "src/lib/contacts/import-decide.ts",
+    "line": "437-446, 609-628",
+    "problem": "Same-run across batches (OD33) is opt-in. decideRows and planImportRows default `first` to firstLines(candidates), so a per-batch caller that forgets the whole-run map writes an in-book number repeated across batches twice, and the last row wins. The contract also leaves open which rows go into the map. If the whole-run map includes an INVALID first occurrence (valid number, bad email), every valid repeat becomes same_run and the number is never imported.",
+    "fix": "Make `first` / `firstLines` a required parameter of decideRows and planImportRows. In the docblock, say it must be built over the run's decidable (valid) rows only, never over invalid or unreadable ones. Add a D9 case for an invalid first occurrence."
+   },
+   {
+    "severity": "low",
+    "file": "src/lib/contacts/import-decide.ts",
+    "line": "306-321",
+    "problem": "mergeTags writes the book's tags back verbatim inside a TAKE_FILE/FILL_BLANKS patch. A legacy book row with ['VIP'] plus a file tag 'weekend' persists ['VIP','weekend'] through the import writer. C11 binds every writer, the import included, to store tags lowercase.",
+    "fix": "When a patch writes tags (added.length > 0), emit the book's tags normalised through tagKey and de-duplicated, then the new ones. Keys are already compared through tagKey, so no_change cases (D8's legacy-case row) are unaffected. Add a D8b/D6 case asserting the written list is all-lowercase."
+   },
+   {
+    "severity": "low",
+    "file": "scripts/contacts-import/decide.mts",
+    "line": "349-354",
+    "problem": "D10's allowlist exempts all of store.ts and prisma-dal.ts, two of the largest files in src. A second rule written there (`choice === \"TAKE_FILE\"`) would pass. Neither file spells the choices today; the spec only exempted the ContactImport type and mapper, which do not exist yet.",
+    "fix": "Drop store.ts and prisma-dal.ts from ALLOWED_SPELLERS until U29/U32 adds the ContactImport decision mapper. Then allow only that mapper, for example by requiring that every quoted choice in those files sits inside the named mapper function, or by importing IMPORT_CHOICES instead of spelling the strings."
+   },
+   {
+    "severity": "low",
+    "file": "scripts/contacts-import.test.mts",
+    "line": "92-99 (REGISTRY); scripts/client-graph-safe.test.mjs ~156",
+    "problem": "The report's lead instructions are stale. The runner has no SECTIONS import list: it finds sections by shape through a file-name REGISTRY, and that REGISTRY already contains `{ file: \"decide.mts\", owner: \"U31\" }`. Adding `import { decideSection }` and a `decideSection,` entry as instructed would be wrong. Likewise PINNED already contains \"lib/contacts/import-decide.ts\", but \"lib/marketing/erasure-mark.ts\" is still missing.",
+    "fix": "The lead should edit the runner registry not at all, beyond optionally aligning the owner to \"U31-A\". Add only \"lib/marketing/erasure-mark.ts\" to PINNED in client-graph-safe.test.mjs. Re-read both files before editing, since other agents write them."
+   }
+  ]
+ }
+}
