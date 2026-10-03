@@ -413,12 +413,39 @@ erasure now withdraws the consent and empties the book, and both data exports ca
 ✅ STEP 24 · A SAVED DRAFT REOPENS FROM THE LIST — LIVE (`c6282309`, 10:59:37 UTC). The validation audit's blocker: a
   DRAFT row's name opens the composer at its own ?draft= address (campaignDraftHref, from the ONE route table, behind
   the compose flag); every other row stays plain until U47. `test:campaigns-page` 5k + a plant; the drive 108/108.
+✅ STEP 25 · VALIDATION BATCHES 5 + 8 — LIVE (`a3b98f26`, live 2026-10-03 15:17:14 UTC). Batch 5, the shared field rules: ONE phone rule in
+  free text — `holdsPhoneRun` REFUSES a Tanzanian mobile number (any stretch of digit groups the numbering plan reads as
+  one, through brackets, dots, dashes, no-break spaces, full-width digits and invisible characters) in a contact's name and
+  tags, a new list's name, a consent proof note, a role change's reason and a campaign audience's text; `scrubPhoneRuns`
+  MASKS every run of nine digits in a masked export and the audit chain (the bracketed, dotted, no-break and en-dash
+  spellings the old mask let through). ONE email rule (`checkContactEmail`) for the contact form, the importer and the
+  invites screen; the contact form says EVERY problem at once; a search of invisible characters only, or past 120
+  characters, is refused (never the whole book), a lone quote searched literally. Its review (1 MAJOR, 5 MINOR), all
+  fixed in the same push: M1 bulk Untag reads a tag as the book holds it, so a phone-number tag stored earlier can still
+  be taken off; m1/m2 the name sentences say the fix ("remove the number"; a name may be left empty); m3 nine digits
+  alone no longer refuse — a deposit band ("5000-10000"), a photo's name or a dotted date with a time pass, and are still
+  masked; m4 the masked export is proven on every spelling; m5 an address's separator refusal states the rule; and a new
+  list's name can't hold a phone number. OD55 reads the officer's text through the same refusal and ids through the mask.
+  Batch 8, staff and invites: the add-staff phone is the kit PhoneInput (a pasted +255 number is reduced), every problem
+  sits under its own field with the first one focused, and a refused form opens no confirmation and raises no toast; a
+  reason is refused (never cut) past 500 characters or when it holds a phone number, and cleaned of control characters
+  before the audit chain; the invites screen checks an email by the ONE rule on blur and says "an email or a phone" under
+  Email. Production read-only count (m1, counts only): 57 contacts, all from sign-ups (3 joined through the hook since
+  the backfill), 0 names and 0 tags holding a number, 0 lists — nothing to clean. Battery (focused): typecheck; contacts-import 208, contacts-audience 52, marketing-consent 133, contacts-form 44, contacts-bulk 40, contacts-export 39, campaign-compose, staff-role 35, invites 42 — each with its red (bulk 28/28, audience 30/30, the composer's 164 proofs); registration-contact, campaign-audience, the contacts page, staging and boundary, client-graph-safe, dal-parity, invite-flow, email-stress, read-tiers, single-save, hooks-order, admin-act-gate, search-adoption and ui-consistency green; red-anchors and validation-focus only their older reds (two other lanes' anchors; the affiliate form's 8 unstamped fields — fixed with batch 6); the contacts drive 483/483; the new staff + invites drive 24/24 (its first runs caught its own stale selector and scripted paste); next build.
+📘 THE ADMIN GUIDE (PDF) — Ali, 2026-10-03: "include screenshots on which pages the admin should go for each step". Every
+  step shows the page the admin opens for it (and the menu path to it); none is a step without its page. Built after the
+  validation batches land: contacts, a draft, the test send, the SMS balance (Admin → System), every warning and its fix.
 🔎 THE VALIDATION AUDIT (2026-10-03, Ali: "full input form validation and field validation everywhere — clean, perfect,
   working"): six read-only auditors over every admin input → 49 fixes (6 blocker, 7 major, 36 minor) in 8 batches with
-  disjoint files and one shared validator per kind of field. Batch 1 = STEP 23, batch 2 = STEP 24 (both LIVE); batches
-  3 (one phone rule for every spelling, a paste that replaces), 4 (the composer), 5 (no phone numbers in names or tags,
-  one email rule), 6 (the kit form atoms — the 100× numeric paste on money fields) and 8 (staff and invites) are in
-  build, each with its adversarial review; batch 7 (the contacts screens) follows 3, 5 and 6.
+  disjoint files and one shared validator per kind of field. Batch 1 = STEP 23, batch 2 = STEP 24, batches 5 + 8 =
+  STEP 25 (all LIVE). Batches 3 (one phone rule for every spelling, a paste that replaces) and 4 (the composer) are
+  fixed after their reviews and merge next — 4 drops its private phone detector for the book's (`phoneNumberIn`). Batch
+  6 (the kit form atoms — the 100× numeric paste on money fields) is in its second fix round: its second review found the
+  player balance adjustment (Players → a player → Adjust balance), a raw box where a pasted "9,500.00" reads TZS 950,000
+  — LIVE TODAY and older than this audit; that round moves it onto the kit field. Batch 7 (the contacts screens) follows.
+  Owed from the reviews: the opt-out token mint keys on the gate's own key before U42/U43 (`optout-service.ts`);
+  DurationInput's typed "1.5" (DESIGN_AUTHORITY §A7); the Android clipboard chip on a real phone (a drive, no suite
+  can); a negation-only search ("-zzz") is described as "Name contains" (batch 7).
 ⚠️ RECORDED, NOT THIS LANE'S ALONE: `test:house-bot-holder-lifecycle` 2.2 (not in predeploy) counts 31 scripts that write
   an account fact against a shrink-only ceiling of 25. Two are this lane's suites (U7 `marketing-consent.test.mts`, U38a
   `campaign-audience.test.mts`); the rest are other lanes' (agents, deposits, the Vodacom journey, invites, ops). STEP 23
@@ -475,11 +502,32 @@ erasure now withdraws the consent and empties the book, and both data exports ca
     branch admits a contact on a recorded BASIS — the person's consent, OR "acquisition outreach under 50pick's GBT
     licence", recorded per list (U33b) and never written as a consent the person did not give. KEPT, each because it
     protects 50pick: a stop honoured for ever (carriers block senders that ignore opt-outs); self-excluded people never
-    (a GBT licence condition); adults only, attested per list (the licence bars marketing to minors); the "50pick"
+    (50pick's own published promise — OD58); adults only, attested per list (the Gaming Act bars minors); the "50pick"
     opening and the opt-out link in every SMS (ETA s.32); the 08:00–20:00 window and the frequency cap. A 50pick PLAYER
     keeps their OWN choice — they were asked, and a player who did not say yes is not messaged. Recorded once: the GBT
     licence covers gambling advertising, while SMS to non-customers also falls under the communications and data rules
     (TCRA, PDPA) — the basis is Ali's ruling and is recorded as his.
+  · ⚖️ OD58 (Ali, 2026-10-03, the same afternoon): "our licence allows us to send to anyone, whether they like it or not,
+    based on GBT — if they don't want messages it's their duty to talk to GBT, and we stop after GBT tells us; our
+    platform has nothing to do with preventing the audience." DECIDED (Claude, delegated; told Ali the same hour):
+    (1) a 50pick PLAYER who never ticked the SMS box is reachable on the same basis as a non-member (the licence outreach
+    basis, recorded per list) — OD57's "a player keeps their own choice" now means only that a player who turned SMS OFF
+    has used their stop. (2) A GBT instruction is a stop: an officer records it as an OPERATOR stop (U23's Suppress —
+    nobody can lift it). (3) KEPT, each re-checked against the law that day: the person's OWN stop (the opt-out link) —
+    the Electronic Transactions Act 2015 s.32 requires every commercial SMS to offer a way to refuse further messages
+    (and asks for consent — recorded as a legal risk Ali accepts with OD57), and the Personal Data Protection Act 2022
+    s.35 gives anyone the right to stop direct marketing, complaints going to the Data Protection Commission, not GBT;
+    TCRA registers the sender ID with every network, and spam complaints can block it, taking the login and withdrawal
+    codes that share the Blackball rail with it. SELF-EXCLUDED people and anyone UNDER 18 never — 50pick publishes the
+    promise itself (/legal/responsible-gambling: "No marketing messages to a self-excluded player … or to anyone under
+    18 or whose age we cannot confirm"; the self-exclude dialog: "no marketing"), and the Gaming Act bars minors. If Ali's
+    lawyer confirms in writing that the opt-out can go, Claude revisits that one; the self-exclusion and under-18 blocks
+    stay regardless. ⚠️ For U33a/G4: the RG page's "whose age we cannot confirm" must be squared with the per-list 18+
+    attestation before a non-member is messaged. (4) THE TEST SEND TAKES ANY NUMBER the officer types (Ali: "don't
+    hardcode my number") through the same gate, the officer's own number a one-tap default — built on batch 4's composer.
+    (5) Before G2, read the Board's advertising code (iGaming Business, 2024: every ad to carry the safer-gambling message
+    and the helpline; no reward as an inducement) against the first campaign's message. Sources: fbattorneys.co.tz
+    (ETA s.32), cyrilla.org (PDPA notes), telerivet.com (TCRA sender IDs), igamingbusiness.com (the code).
   · ⛔ NOT done by Claude: ticking Ali's OWN consent (his personal legal record) and re-enabling admin 2-step login
     (it would lock Ali out unless his authenticator is enrolled — waits for "my authenticator works").
 🔎 WHAT STILL HAS TO BE CHECKED — and nothing else is re-checked:
@@ -499,8 +547,12 @@ erasure now withdraws the consent and empties the book, and both data exports ca
   (replying STOP needs a Blackball reply number); production `/api/health` reports `adminTotp: DISABLED` — turn the
   admin 2-step login back on before the first campaign; G2 the go-ahead, with the Swahili message (it starts with
   "50pick", at most 80 characters) and the day. G4 (the consent wordings) is needed only for contact import.
-▶ NEXT: U33a — the contact branch under OD57 (non-members on a recorded basis; ⚖️ DELEGATED below) — and U38b the
-  audience card, then U33b and U40 the confirmation. (The players-only release below is WITHDRAWN by OD57.)
+▶ NEXT: the validation batches still open (3 + 4 merging, 6 in its second round, 7 in build) and THE ADMIN GUIDE (PDF,
+  a page screenshot for every step); then U33a — the gate under OD58 (never-ticked players and non-members on the
+  licence basis, recorded per list; a person's own stop, self-exclusion and under-18 kept) — then U37c, THE TEST SEND TO
+  ANY TYPED NUMBER (Ali, 2026-10-03: "don't hardcode my number"; through the same gate, the officer's own number a
+  one-tap default; ⚠️ campaign-compose's red "a typed test number honoured" is then inverted on purpose, never deleted),
+  then U38b the audience card, U33b and U40 the confirmation. (The players-only release below is WITHDRAWN by OD57.)
   ⚖️ DECIDED 2026-10-02 (S10, on a read-only census of all 35 unfinished units — Ali asked what is left, whether the
   plan is that big, and why it costs so much): THE FIRST RELEASE IS PLAYERS-ONLY. The contact-file import (U30–U34,
   U33's contact branch) moves AFTER the first campaign: book contacts cannot be messaged before G4/G5 anyway, and
