@@ -341,6 +341,10 @@ section("§0 · module law");
     // Ruling 166 · the platform's one side/outcome vocabulary. Pure, and the alternative is a hand-written
     // `side === "YES" ? …` in three languages, which is the defect `side-label.ts` exists to end.
     "@/lib/side-label",
+    // Validation batch 3 (2026-10-03) · the ONE digit table (`toAsciiDigits`): every decimal digit a keyboard writes,
+    // read as ASCII. It lived privately in rules.ts until the phone rules needed the same table; `phone-normalize.ts`
+    // imports nothing (`test:read-tiers` 8.6 pins that), so this is no widening of the server-import rule.
+    "@/lib/phone-normalize",
     "./clock",
     "./constants",
     "./pause-reasons",

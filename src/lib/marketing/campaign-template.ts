@@ -46,6 +46,17 @@
  * a Chinese-language account included — gets Swahili. ⚠️ `User.locale` is not yet a live signal (OD42 amended): the
  * rule is still ONE function, `variantFor`, so the screen can state it in the same words.
  *
+ * ── WHAT THE OFFICER TYPED, CLEANED THE WAY THE SAVE STORES IT (validation audit, 2026-10-03) ──
+ * ⭐ The fallback word is TRIMMED before it is judged — a phone keyboard adds a space after a suggested word ("Mteja "),
+ * and the save trims it anyway, so the screen refused what the server would store — and the renderer prints exactly
+ * the trimmed word it judged. ⭐ The campaign's name is cleaned by the contact book's ONE name cleaner
+ * (`cleanDisplayName`) before its checks: a name of zero-width characters is blank, and a direction override cannot
+ * reverse it in the list. ⛔ A name holding a Tanzanian mobile number is refused HERE, in the verdict the screen and the
+ * save share, by the contact book's ONE detector (`phoneNumberIn`) — a campaign row is never deleted — and ONLY such a
+ * number: a date or a time is not one.
+ * ⛔ A Unicode body is told so in ONE sentence that names what to replace, and never quotes a negative room (one pasted
+ * curly quote used to say "you have -10 characters before the required footer").
+ *
  * Guard: `npm run test:campaign-compose` §15–§16. Red: `npm run red:campaign-compose`.
  */
 import {
@@ -53,6 +64,7 @@ import {
   type MarketingCompose, type MarketingLocale,
 } from "@/lib/marketing/footer";
 import { encodingFor, foldToGsm7, offendingChars, unitsIn, GSM7_BASIC, type SmsEncoding } from "@/lib/sms-compose";
+import { charCount, cleanDisplayName, phoneNumberIn } from "@/lib/contacts/contact-fields";
 
 /* ══ THE SHAPES ══════════════════════════════════════════════════════════════ */
 
@@ -223,8 +235,10 @@ function templateChecks(body: string, fallback: string): { body: string[]; fallb
   }
   if (scan.stray > 0) bodyProblems.push(`A “{” or “}” here is not part of ${JINA} — remove it, or write ${JINA} exactly.`);
   if (scan.jina > 0) {
-    const fb = fallback ?? "";
-    if (fb.trim().length === 0) {
+    // ⭐ TRIMMED FIRST, as the save stores it and the renderer prints it: "Mteja " (a phone keyboard's space after a
+    // suggested word) is the word "Mteja", never a refusal the server would not make.
+    const fb = (fallback ?? "").trim();
+    if (fb.length === 0) {
       fallbackProblems.push(`This message uses ${JINA}, so it needs a word to print when a name cannot be used.`);
     } else if (!isUsableFallback(fb)) {
       fallbackProblems.push(
@@ -301,6 +315,37 @@ export function describeOffenders(text: string): OffenderView[] {
   });
 }
 
+/** At most this many characters are named in the Unicode sentence; the rest are counted ("and 3 more"). */
+const UNICODE_NAMED_MAX = 5;
+
+/**
+ * ⭐ A UNICODE BODY'S ONE SENTENCE — what to replace, named by `describeOffenders`' labels (an invisible character by
+ * its code point, never a blank), and the room Unicode leaves. ⛔ It never quotes a negative room: whenever the footer
+ * and the source line (or its reserve) take all of Unicode's 70 characters, there is no room to quote.
+ */
+function unicodeProblem(offenders: OffenderView[], room: number): string {
+  const named = offenders.slice(0, UNICODE_NAMED_MAX).map((o) => o.label).join(", ");
+  const more = offenders.length > UNICODE_NAMED_MAX ? ` and ${offenders.length - UNICODE_NAMED_MAX} more` : "";
+  const why = room <= 0
+    ? "Unicode leaves no room once the required footer is added"
+    : `Unicode cuts this message to ${room} characters before the required footer`;
+  return `${why} — replace: ${named}${more}.`;
+}
+
+/**
+ * The envelope's refusals as the COUNTER says them. ⭐ For a Unicode body, `unicodeProblem` comes FIRST — the sentence the
+ * field and the Save line show — and stands in for the envelope's own GSM sentence, which quotes each character bare (a
+ * blank for a no-break space). ⛔ The over-cap sentence is dropped while Unicode leaves no room: its "you have N
+ * characters" would be negative. `composeMarketing` is untouched — a recipient's own refusals stay the envelope's.
+ */
+function counterProblems(composed: MarketingCompose, offenders: OffenderView[]): string[] {
+  if (composed.size.encoding !== "UCS2" || offenders.length === 0) return composed.problems;
+  const noRoom = composed.budget <= 0;
+  const rest = composed.problems.filter((p) =>
+    !p.includes("is not in the GSM alphabet") && !(noRoom && p.includes("messages, and the limit is")));
+  return [unicodeProblem(offenders, composed.budget), ...rest];
+}
+
 /* ══ THE COUNTER ═════════════════════════════════════════════════════════════ */
 
 export type VariantCounter = {
@@ -357,7 +402,8 @@ export function counterFor(body: string, variant: CampaignVariant, fallback: str
   const encoding = composed.size.encoding;
   const bodyUnits = unitsIn(rendered.trim(), encoding);
   const checks = templateChecks(raw, fallback);
-  const problems = [...composed.problems, ...checks.body];
+  const offenders = describeOffenders(composed.text);
+  const problems = [...counterProblems(composed, offenders), ...checks.body];
   return {
     variant: v,
     empty: raw.trim().length === 0,
@@ -370,11 +416,22 @@ export function counterFor(body: string, variant: CampaignVariant, fallback: str
     footerUnits: unitsIn(marketingFooter(token, v), encoding),
     sourceUnits: unitsIn(`${phrase} `, encoding),
     jinaReserve: scan.jina * unitsIn(worstCaseJina(), encoding),
-    offenders: describeOffenders(composed.text),
+    offenders,
     problems,
     fallbackProblems: checks.fallback,
     ok: problems.length === 0 && checks.fallback.length === 0,
   };
+}
+
+/* ══ THE CAMPAIGN'S NAME ═════════════════════════════════════════════════════ */
+
+/**
+ * OD55 for the label — a campaign row is never deleted, so a number typed into its name would be kept for good. The
+ * sentence names the number by its last two digits only (so the officer can find it) and says how to write other figures.
+ */
+export function campaignNameHoldsNumber(digits: string): string {
+  return `A campaign name can't hold a phone number — the digits ending ${digits.slice(-2)} read as one, and campaigns are ` +
+    "kept for good. Name the group it is for, or write other figures with a comma or a slash.";
 }
 
 /* ══ THE WHOLE DRAFT ═════════════════════════════════════════════════════════ */
@@ -431,11 +488,18 @@ function templateFieldVerdict(t: CampaignTemplate): Pick<TemplateVerdict, "probl
  */
 export function validateCampaignTemplate(f: CampaignDraftFields, sourcePhrase: string): TemplateVerdict {
   const problems: TemplateVerdict["problems"] = {};
-  const name = (f.name ?? "").trim();
-  const nameChars = [...name].length;
+  // ⭐ The contact book's ONE name cleaner, as the save stores it: invisible format characters (zero-width spaces,
+  // direction overrides) and controls dropped, spaces collapsed, trimmed — so a name of zero-width characters is blank.
+  const name = cleanDisplayName(f.name ?? "") ?? "";
+  const nameChars = charCount(name);
   if (nameChars === 0) problems.name = ["Give the campaign a name — only staff see it."];
-  else if (nameChars > CAMPAIGN_NAME_MAX_CHARS) {
-    problems.name = [`The name is ${nameChars} characters — the limit is ${CAMPAIGN_NAME_MAX_CHARS}.`];
+  else {
+    const said: string[] = [];
+    if (nameChars > CAMPAIGN_NAME_MAX_CHARS) said.push(`The name is ${nameChars} characters — the limit is ${CAMPAIGN_NAME_MAX_CHARS}.`);
+    // ⛔ OD55 for the label, in the ONE verdict — so Save is off on the screen before it is pressed, and the save agrees.
+    const phone = phoneNumberIn(name);
+    if (phone !== null) said.push(campaignNameHoldsNumber(phone));
+    if (said.length > 0) problems.name = said;
   }
 
   const template = templateFieldVerdict({
@@ -513,7 +577,8 @@ export function renderForRecipient(t: CampaignTemplate, r: CampaignRecipient): M
   const english = r?.variant === "EN" && (t.bodyEn ?? "").trim().length > 0;
   const variant: CampaignVariant = english ? "EN" : "SW";
   const body = (english ? t.bodyEn : t.bodySw) ?? "";
-  const fallback = (english ? t.nameFallbackEn : t.nameFallbackSw) ?? "";
+  // ⭐ The word the verdict judged — trimmed, exactly as `templateChecks` reads it — is the word that prints.
+  const fallback = ((english ? t.nameFallbackEn : t.nameFallbackSw) ?? "").trim();
   // ⛔ ONLY exactly "account" counts as the person's own: anything else is treated as a book contact.
   const fromAccount = r?.origin === "account";
   const jina = fromAccount ? jinaFor(r.name, fallback) : fallback;

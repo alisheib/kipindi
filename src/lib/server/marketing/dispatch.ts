@@ -2,6 +2,7 @@ import { audit } from "@/lib/server/audit";
 import { mayReceiveMarketingSms } from "@/lib/server/marketing/consent";
 import type { MarketingGateVerdict, MarketingSkipReason } from "@/lib/server/marketing/consent";
 import type { SmsBatchOutcome, SmsOutbound } from "@/lib/server/sms";
+import { parseTzNumber } from "@/lib/tz-msisdn";
 
 /**
  * U9 · THE GATE RUNS IN THE LOOP — the one dispatch step every marketing send loop must use.
@@ -45,6 +46,13 @@ import type { SmsBatchOutcome, SmsOutbound } from "@/lib/server/sms";
  * one COMPLIANCE row per RG refusal, against the ACCOUNT, never a phone number (§5.14). It is written
  * when a refusal is ACTED ON — an audience count asks the same gate for every number in the book and
  * must not write to an unprunable chain. `actorId` is null: the system acted, not the player.
+ *
+ * ⭐ THE GATE'S OWN KEY GOES ON THE WIRE (vb3, 2026-10-03). The gate reads every spelling through the numbering plan —
+ * `+255 0712…` and an Arabic keyboard's digits included — and keys it `255…`; the wire rewrites raw text with
+ * `toMsisdn255`, which keeps that trunk zero, so a person the gate had just cleared was refused `BAD_MSISDN` and an
+ * `sms.refused` row written. A cleared row is therefore sent under `parseTzNumber`'s key, the one its stop and its
+ * consent were read under, never under the text the row was written in. A caller that mints the row's opt-out link
+ * mints it under that same key (`campaign-test-send.ts` does). Guard: `test:marketing-consent` U9.13.
  */
 
 export type SliceRecipient = { ref: string; msisdn: string; body: string };
@@ -95,7 +103,14 @@ export async function dispatchSlice(rows: SliceRecipient[], deps: SliceDeps): Pr
       }
       continue;
     }
-    cleared.push(row);
+    // ⭐ vb3 · the gate's key, not the row's spelling (see the header). Only an injected gate can clear a number the
+    // plan refuses — the ONE gate never does — and nothing unkeyed is sent: it is skipped, as the gate would have it.
+    const key = parseTzNumber(row.msisdn).msisdn;
+    if (key === null) {
+      outcomes.set(row.ref, { ref: row.ref, outcome: "skipped", skipReason: "bad_msisdn", detail: "no sendable key" });
+      continue;
+    }
+    cleared.push({ ...row, msisdn: key });
   }
 
   if (cleared.length > 0) {

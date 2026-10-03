@@ -196,8 +196,11 @@ async function readKyc(userId: string): Promise<KycRead> {
 export async function mayReceiveMarketingSms(msisdn: string, now: Date = new Date(), reads: MarketingGateReads = DB_GATE_READS): Promise<MarketingGateVerdict> {
   // ⛔ An unusable number is refused here rather than at the wire, so it never becomes a
   // billed send attempt (D2, U1). ⭐ Judged by the numbering plan (`tz-msisdn.ts`), not by length:
-  // a Kenyan +254…, a landline, the 13-digit "+255 0712…" typo and a dead NDC 064 are all twelve-plus
-  // digits and all undeliverable. The key is the parser's own `255…` form.
+  // a Kenyan +254…, a landline and a dead NDC 064 are all twelve-plus digits and all undeliverable.
+  // ⭐ vb3 (2026-10-03): "+255 0712…" — the trunk zero written after the country code — is NOT among them. It is
+  // the same person's number, and the parser keys it 255712… like every other spelling (marketing-consent 40b).
+  // The key is always the parser's own `255…` form, never a rail's rewrite of the raw text: `toMsisdn255` keeps
+  // that zero, by design.
   const parsed = parseTzNumber(msisdn);
   if (parsed.verdict !== "ok" || !parsed.msisdn) {
     return refuse("bad_msisdn", `not a sendable Tanzanian mobile number (${parsed.verdict}): ${parsed.reason}`);

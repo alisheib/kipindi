@@ -33,6 +33,7 @@ import {
   parseFilterTag,
   parseOneTag,
   parseTags,
+  phoneNumberIn,
   scrubPhoneRuns,
   tagKey,
   type ColumnMapping,
@@ -85,6 +86,8 @@ const FW_STOP = ch(0xff0e);
 const E_ACUTE = ch(0xe9);
 /** Digits in their full-width forms (U+FF10 onward) — what a phone keyboard in CJK mode types. */
 const fullWidth = (s: string): string => s.replace(/[0-9]/g, (d) => ch(0xff10 + Number(d)));
+/** Digits in their Arabic-Indic forms (U+0660 onward) — another keyboard's digits, which NFKC leaves as they are. */
+const arabicIndic = (s: string): string => s.replace(/[0-9]/g, (d) => ch(0x660 + Number(d)));
 /** "Hindi" in Devanagari: two vowel signs and an anusvara are combining marks. */
 const HINDI = ch(0x939, 0x93f, 0x902, 0x926, 0x940);
 /** "VIP" in full-width letters — NFKC stores it as "vip". */
@@ -112,6 +115,8 @@ const MORE_PHONES: readonly string[] = [
   "[0712] 345 678",
   `0712${ZWSP}345${ZWSP}678`,
   `${fullWidth("0712")}${FW_STOP}${fullWidth("345")}${FW_STOP}${fullWidth("678")}`,
+  // vb3 · another keyboard's digits are READ (readAsciiDigits) — refused as the number they spell, masked to 0–9.
+  arabicIndic("0712 345 678"),
 ];
 const ALL_PHONES: readonly string[] = [...PHONE_SPELLINGS, ...MORE_PHONES];
 /** ⛔ Not numbers: a slash or a comma never joins, eight digits are not nine, and a short number in a name stays. */
@@ -119,7 +124,11 @@ const NOT_PHONES: readonly string[] = ["12/03/2026", "stand 12, 14", "1234 5678"
 /** ⭐ vb5 review m3 · runs of nine or more digits that hold NO Tanzanian mobile number — a deposit band, a photo's name, a
  *  dotted date with a time, a long reference, nine digits whose prefix no operator holds: MASKED in a masked file (a run is
  *  a run — the safe direction), never REFUSED. */
-const MASKED_NOT_REFUSED: readonly string[] = ["5000-10000", "10000-50000", "IMG_20261003_143052", "01.11.2026 7.30 am", "123.456.789", "TCK-2026100312345"];
+const MASKED_NOT_REFUSED: readonly string[] = [
+  "5000-10000", "10000-50000", "IMG_20261003_143052", "01.11.2026 7.30 am", "123.456.789", "TCK-2026100312345",
+  // vb3 · read, so judged like any figure: a band in Arabic-Indic digits holds no number.
+  arabicIndic("5000-10000"),
+];
 
 /** The importer's own sentences for a name holding a number — typed as LITERALS, never computed by the code under test. */
 const NAME_CELL_HOLDS_PHONE = "The Name cell holds a phone number — remove the number (a name can be left empty).";
@@ -150,7 +159,7 @@ const show = (xs: readonly string[]): string => (xs.length === 0 ? "none" : xs.m
 /* ══ THE ASSERTION LABELS — one place, so a plant names exactly the line it must turn red ═══════════ */
 
 export const RULES_LABELS = {
-  V1: "V1 · ⭐ ONE PHONE-RUN RULE — a Tanzanian mobile number written with whitespace (no-break too), a full stop, brackets, a plus, a low line or any dash between its digits, read through NFKC and through invisible characters, is refused; a slash or a comma never joins, eight digits are not one, and (vb5 review m3) a run holding no such number — a deposit band, a photo's name, a dotted date with a time, a long reference — is not refused",
+  V1: "V1 · ⭐ ONE PHONE-RUN RULE — a Tanzanian mobile number written with whitespace (no-break too), a full stop, brackets, a plus, a low line or any dash between its digits, read through NFKC and through invisible characters, is refused; a slash or a comma never joins, eight digits are not one, and (vb5 review m3) a run holding no such number — a deposit band, a photo's name, a dotted date with a time, a long reference — is not refused; another keyboard's digits are read (vb3), and phoneNumberIn names the digits it found (vb4)",
   V2: "V2 · ⛔ scrubPhoneRuns masks EVERY run holdsPhoneRun refuses — the bracketed, dotted, no-break-space, en-dash and full-width spellings each as four bullets and the last two digits — and, the safe direction, the runs it does not refuse too; it leaves a date, a list and a short number as written",
   V3: "V3 · ⛔ a TAG holding a phone number is refused by every writer's door — checkTags, parseTags (the form), parseOneTag (the bulk box) and an imported row — with ONE sentence that never echoes it",
   V4: "V4 · ⛔ a NAME holding a phone number is refused — an imported Name cell, First + Last composed, and the form, each in its own words and never echoed — while a name with a date or a short number is kept",
@@ -169,7 +178,11 @@ function run(ctx: SectionContext<RulesImpl>): void {
   // ── V1 · THE ONE PHONE-RUN RULE ──────────────────────────────────────────────────────────────
   const missed = ALL_PHONES.filter((v) => !impl.holds(v));
   const overReach = [...NOT_PHONES, ...MASKED_NOT_REFUSED].filter((v) => impl.holds(v));
-  ok(L.V1, missed.length === 0 && overReach.length === 0, `missed ${show(missed)} · flagged wrongly ${show(overReach)}`);
+  // vb4 · the finding itself, for the door that names the number (a campaign's name): the digits of the stretch it read.
+  const finds = [["Week 40 0712 345 678", "0712345678"], ["List 1 0712345678", "0712345678"], ["5000-10000", null]] as const;
+  const misread = finds.filter(([text, want]) => phoneNumberIn(text) !== want).map(([text]) => text);
+  ok(L.V1, missed.length === 0 && overReach.length === 0 && misread.length === 0,
+    `missed ${show(missed)} · flagged wrongly ${show(overReach)} · phoneNumberIn misread ${show(misread)}`);
 
   // ── V2 · THE MASK IS THE SAME RULE ───────────────────────────────────────────────────────────
   // ⚠️ The agreement is read against the MODULE's detector, so a plant on `holds` (V1) cannot turn V2 red.

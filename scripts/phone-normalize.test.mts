@@ -52,6 +52,18 @@
  *      (the control), every bad one is refused `BAD_MSISDN`, no `SmsMessage` row is written for it,
  *      and ⭐ NO HTTP REQUEST IS MADE — the refusal has to happen before the money, not after.
  * §6 · the standing invariant: no row in the store carries a msisdn the gateway cannot use.
+ * §2b · vb3 (2026-10-03) · the box's new spellings: ONE trunk zero written after +255 is dropped — before the nine,
+ *      or before a number cut short — and another keyboard's digits (full-width, Arabic-Indic) are read.
+ * §2c · vb3 · THE PASTE RULE (`pasteIntoBox`): a whole number REPLACES the box, caret at the end or in the middle,
+ *      plain digits included; so does a paste that would push the box past nine digits, never a mix of two; a
+ *      short paste that fits is inserted at the caret; and `pasteReplacesBox` — `PhoneInput`'s shortcut — agrees.
+ * §7 · vb3 · THE COMPONENT READS THE RULE: `PhoneInput` asks `pasteReplacesBox` before its clean-paste shortcut
+ *      and sets the box from `pasteIntoBox`, with no splice of its own (source — a client component needs a
+ *      browser; the browser half is the drive). §7b · ONE DIGIT TABLE: house-bot's `rules.ts` imports
+ *      `toAsciiDigits` from `phone-normalize.ts` and keeps no copy of its own.
+ * ⚠️ `+255 0712…` IS DELIBERATELY NOT ONE OF THE TWELVE VECTORS. The box reduces it to its nine digits; the money
+ *      rail (`toMsisdn255`) is unchanged and keeps the thirteen, which the wire predicate refuses — the spelling
+ *      fails CLOSED there, so §3's identity rightly does not hold for it. §4's vectors are unchanged.
  *
  * ⚠️ WHAT §4 DOES NOT COVER, DELIBERATELY. `0701234567` normalises to `255701234567`, which is
  * twelve digits starting `2557`, so the wire predicate ACCEPTS it without any view on who holds NDC
@@ -69,10 +81,12 @@
  * Run:  npm run test:phone-normalize
  * Red:  npm run red:phone-normalize
  */
-import { normalizeTzLocalDigits, toMsisdn255, isGatewayMsisdn } from "../src/lib/phone-normalize.ts";
+import { normalizeTzLocalDigits, toMsisdn255, isGatewayMsisdn, pasteIntoBox, pasteReplacesBox } from "../src/lib/phone-normalize.ts";
 import { tzPhone } from "../src/lib/server/validators.ts";
 import { sendBatch } from "../src/lib/server/sms.ts";
 import { db } from "../src/lib/server/store.ts";
+import { readFileSync } from "node:fs";
+import { decomment } from "./lib/decomment.mts";
 
 /* ⛔ FAILURE IS THE DEFAULT AND IS SET BEFORE THE FIRST `await`. A suite whose verdict is written
  * only at the end scores GREEN when a promise never settles or the process exits early — the exit
@@ -88,13 +102,16 @@ type Impl = {
   toMsisdn255: (raw: string) => string;
   normalizeTzLocalDigits: (raw: string) => string;
   isGatewayMsisdn: (msisdn: string) => boolean;
+  /** vb3 · the number box after a paste, and `PhoneInput`'s whole-number test. */
+  pasteIntoBox: (boxDigits: string, selStart: number, selEnd: number, clipboard: string) => string;
+  pasteReplacesBox: (boxDigits: string, selStart: number, selEnd: number, clipboard: string) => boolean;
 };
 
-const REAL: Impl = { toMsisdn255, normalizeTzLocalDigits, isGatewayMsisdn };
+const REAL: Impl = { toMsisdn255, normalizeTzLocalDigits, isGatewayMsisdn, pasteIntoBox, pasteReplacesBox };
 
 /** The code exactly as it stood before this unit — the defect, restored, for the red control.
  *  Copied from `src/lib/phone-normalize.ts` at `a008232e`. */
-const NAIVE: Impl = {
+const NAIVE: Pick<Impl, "toMsisdn255" | "normalizeTzLocalDigits" | "isGatewayMsisdn"> = {
   toMsisdn255: (raw: string): string => {
     const d = (raw ?? "").replace(/\D/g, "");
     if (d.startsWith("255")) return d;
@@ -111,6 +128,44 @@ const NAIVE: Impl = {
   // Before D2 there was no predicate at all: everything reached the wire.
   isGatewayMsisdn: () => true,
 };
+
+/** vb3 · the number box and its paste as they stood before 2026-10-03 — restored for the red control. The reducer
+ *  kept the trunk zero after 255 and read ASCII digits only; every paste was spliced in at the caret; and the
+ *  component took a paste over only when it was not "already clean". Copied from `phone-normalize.ts` and
+ *  `phone-input.tsx` at `0968026c`. */
+const preVb3Reduce = (raw: string): string => {
+  let d = (raw ?? "").replace(/\D+/g, "");
+  if (d.startsWith("00")) d = d.slice(2);
+  if (d.startsWith("255")) d = d.slice(3);
+  else if (d.startsWith("0")) d = d.replace(/^0+/, "");
+  return d.slice(0, 9);
+};
+const PRE_VB3: Pick<Impl, "normalizeTzLocalDigits" | "pasteIntoBox" | "pasteReplacesBox"> = {
+  normalizeTzLocalDigits: preVb3Reduce,
+  pasteIntoBox: (box, start, end, clipboard) => (box.slice(0, start) + preVb3Reduce(clipboard) + box.slice(end)).slice(0, 9),
+  pasteReplacesBox: (_box, _start, _end, clipboard) => clipboard !== preVb3Reduce(clipboard),
+};
+
+/** vb3's FIRST build, restored for the red control: the box dropped the trunk zero only at exactly ten digits, and a
+ *  paste replaced the box only when it held nine digits — an overflowing one was still spliced and cut to nine. */
+const FIRST_BUILD: Pick<Impl, "normalizeTzLocalDigits" | "pasteIntoBox" | "pasteReplacesBox"> = {
+  normalizeTzLocalDigits: (raw) => {
+    const d = (raw ?? "").replace(/\D+/g, "");
+    return /^(?:00)?2550\d{6,8}$/.test(d) ? d.replace(/^(?:00)?255/, "").slice(0, 9) : normalizeTzLocalDigits(raw);
+  },
+  pasteIntoBox: (box, start, end, clipboard) => {
+    const pasted = normalizeTzLocalDigits(clipboard);
+    return pasted.length === 9 ? pasted : (box.slice(0, start) + pasted + box.slice(end)).slice(0, 9);
+  },
+  pasteReplacesBox: (_box, _start, _end, clipboard) => normalizeTzLocalDigits(clipboard).length === 9,
+};
+
+/** vb3 · the same digits as another keyboard writes them — built from code points, so no escape is decoded on the
+ *  way to disk. */
+const writtenIn = (zero: number, s: string): string =>
+  [...s].map((c) => (c >= "0" && c <= "9" ? String.fromCharCode(zero + c.charCodeAt(0) - 48) : c)).join("");
+const FULL_WIDTH = writtenIn(0xff10, "0712 345 678");   // a Chinese input method in full-width mode
+const ARABIC_INDIC = writtenIn(0x0660, "0712345678");    // a phone set to Arabic
 
 /* ══ THE TWELVE VECTORS ══════════════════════════════════════════════════════
  * Written out, one stated result each. `local` is what the form field keeps; `msisdn` is what the
@@ -220,6 +275,61 @@ function checkPure(impl: Impl, log: (line: string) => void): string[] {
       .map((v) => `"${v.raw}" -> ${impl.toMsisdn255(v.raw).length} digits`).join("; "),
   );
 
+  /* ── §2b · vb3 · the box reads every spelling of one number ──────────────── */
+  log("\n§2b · vb3 · ONE BOX RULE FOR EVERY SPELLING");
+  for (const [raw, why] of [
+    ["+255 0712 345 678", "the trunk zero written after +255 is dropped"],
+    ["2550712345678", "…with no plus"],
+  ] as const) {
+    const got = impl.normalizeTzLocalDigits(raw);
+    ok(`§2b vb3 · normalizeTzLocalDigits("${raw}") is "712345678" — ${why}`, got === "712345678", `got "${got}"`);
+  }
+  {
+    const got = impl.normalizeTzLocalDigits("+255 00712 345 678");
+    ok(`§2b vb3 · …and ONE zero only: "+255 00712 345 678" keeps its second zero — the box never turns a spelling the parser refuses into a number that looks whole`,
+      got === "007123456", `got "${got}"`);
+  }
+  {
+    const got = impl.normalizeTzLocalDigits("+255 0712 345 67");
+    ok(`§2b vb3 · …and the trunk zero before a number cut short goes too: "+255 0712 345 67" shows 712 345 67, eight of nine — never 071 234 567, a range nobody holds`,
+      got === "71234567", `got "${got}"`);
+  }
+  {
+    const fw = impl.normalizeTzLocalDigits(FULL_WIDTH);
+    const ar = impl.normalizeTzLocalDigits(ARABIC_INDIC);
+    ok("§2b vb3 · the box reads another keyboard's digits — full-width and Arabic-Indic give the same nine",
+      fw === "712345678" && ar === "712345678", `full-width "${fw}" · Arabic-Indic "${ar}"`);
+  }
+
+  /* ── §2c · vb3 · a paste of a whole number replaces the box ─────────────── */
+  log("\n§2c · vb3 · A PASTE OF A WHOLE NUMBER REPLACES THE BOX");
+  {
+    const full = "712345678"; // the box, full: "712 345 678"
+    const atEnd = impl.pasteIntoBox(full, 9, 9, "0755 000 111");
+    ok("§2c vb3 · pasteIntoBox · a whole number pasted into a FULL box with the caret at the END replaces it — the old number is never kept",
+      atEnd === "755000111", `got "${atEnd}"`);
+    const mid = impl.pasteIntoBox(full, 3, 3, "0755 000 111");
+    ok("§2c vb3 · pasteIntoBox · …with the caret in the MIDDLE it replaces it too — never a third number built from both",
+      mid === "755000111", `got "${mid}"`);
+    const plain = impl.pasteIntoBox(full, 9, 9, "755000111");
+    const trunk = impl.pasteIntoBox(full, 0, 9, "+255 0712 345 678");
+    ok("§2c vb3 · pasteIntoBox · plain digits replace it too (the shortcut once let the browser drop them), and '+255 0712…' as its own nine",
+      plain === "755000111" && trunk === "712345678", `plain "${plain}" · trunk "${trunk}"`);
+    const inserted = impl.pasteIntoBox("712678", 3, 3, "345");
+    const selected = impl.pasteIntoBox(full, 3, 6, "999");
+    ok("§2c vb3 · pasteIntoBox · a SHORT paste is inserted at the caret (three digits in the middle) and replaces a selection",
+      inserted === "712345678" && selected === "712999678", `inserted "${inserted}" · selected "${selected}"`);
+    const nearWhole = [0, 9, 3].map((at) => impl.pasteIntoBox("755000111", at, at, "0712 345 67"));
+    const completes = impl.pasteIntoBox("712", 3, 3, "345678");
+    ok("§2c vb3 · pasteIntoBox · a paste that would push the box past nine digits REPLACES it — a number missing its last digit, pasted at the start, the end or the middle of a full box, becomes the eight digits it holds, never a mix of two numbers (CONTROL: the rest of a number pasted after its start still completes it)",
+      nearWhole.every((v) => v === "71234567") && completes === "712345678", `near-whole [${nearWhole.join(" | ")}] · completes "${completes}"`);
+    const missed = ["0755 000 111", "755000111", "+255 0712 345 678"].filter((c) => !impl.pasteReplacesBox(full, 9, 9, c));
+    const overflows = impl.pasteReplacesBox(full, 0, 0, "0712 345 67") && impl.pasteReplacesBox("712345", 6, 6, "4567");
+    const wrongly = ["345", "+255", "07"].filter((c) => impl.pasteReplacesBox("712", 3, 3, c));
+    ok("§2c vb3 · pasteReplacesBox, the component's shortcut, is true for every whole number — plain digits included — and for a paste that would overflow the box, and false for a short paste that fits",
+      missed.length === 0 && overflows && wrongly.length === 0, `missed [${missed.join(" | ")}] · overflows ${overflows} · wrongly [${wrongly.join(" | ")}]`);
+  }
+
   /* ── §3 · the two rails agree, and the foreign vector proves it is not vacuous ── */
   log("\n§3 · THE TWO RAILS AGREE (and one vector proves the identity has teeth)");
   for (const v of VECTORS.filter((x) => !x.foreign)) {
@@ -271,6 +381,35 @@ function checkPure(impl: Impl, log: (line: string) => void): string[] {
 async function badRowsInStore(): Promise<string[]> {
   const rows = await db.smsMessage.listRecent(10_000);
   return rows.filter((r) => !isGatewayMsisdn(r.msisdn)).map((r) => `${r.reference}=${r.msisdn}`);
+}
+
+/* ══ §7 · vb3 · THE COMPONENT READS THE RULE ════════════════════════════════
+ * Source, because `PhoneInput` is a "use client" component and needs a browser to run; the browser half is the
+ * drive. §2c proves the rule; this proves the box asks it — so the inline splice cannot come back while every pure
+ * assertion stays green. */
+const PHONE_INPUT = decomment(readFileSync(new URL("../src/components/ui/phone-input.tsx", import.meta.url), "utf8"));
+const WIRING = "§7 vb3 · PhoneInput asks pasteReplacesBox BEFORE its clean-paste shortcut and sets the box from pasteIntoBox — no splice of its own";
+function checkWiring(src: string, log: (line: string) => void): string[] {
+  const guard = src.indexOf("if (!pasteReplacesBox(raw, start, end, text)) {");
+  const shortcut = src.indexOf("if (text === stripDigits(text)) return;");
+  const wired = guard > 0 && shortcut > guard && /const next = pasteIntoBox\(raw, start, end, text\);/.test(src)
+    && !/raw\.slice\(0, start\)/.test(src);
+  log(`  ${wired ? "ok  " : "FAIL"} ${WIRING}`);
+  return wired ? [] : [WIRING];
+}
+
+/* ══ §7b · vb3 · ONE DIGIT TABLE ════════════════════════════════════════════
+ * Every keyboard's digits are read through ONE table, `toAsciiDigits` in `phone-normalize.ts`. House-bot's whole-number
+ * parser kept a private copy until vb3, and two copies drift. Source, like §7: a deleted copy cannot be driven. */
+const RULES_SRC = decomment(readFileSync(new URL("../src/lib/house-bot/rules.ts", import.meta.url), "utf8"));
+const ONE_TABLE = "§7b vb3 · ONE digit table — house-bot's rules.ts imports toAsciiDigits from @/lib/phone-normalize and keeps no copy of its own";
+function checkOneTable(src: string, log: (line: string) => void): string[] {
+  const line = /^import \{([^}]*)\} from "@[/]lib[/]phone-normalize";/m.exec(src);
+  const imported = line !== null && line[1].split(",").map((s) => s.trim()).includes("toAsciiDigits");
+  const copy = /const DIGIT_ZEROS|function toAsciiDigits/.test(src);
+  const oneTable = imported && !copy;
+  log(`  ${oneTable ? "ok  " : "FAIL"} ${ONE_TABLE}`);
+  return oneTable ? [] : [ONE_TABLE];
 }
 
 /* ══ THE RUN ═════════════════════════════════════════════════════════════════ */
@@ -355,6 +494,12 @@ if (!PROVE_RED) {
     ok("§6 every SmsMessage row written in this run is dialable", bad.length === 0, bad.join(", "));
   }
 
+  /* ── §7 · the component reads the rule ───────────────────────────────────── */
+  log("\n§7 · vb3 · THE COMPONENT READS THE RULE");
+  failed.push(...checkWiring(PHONE_INPUT, log));
+  log("\n§7b · vb3 · ONE DIGIT TABLE");
+  failed.push(...checkOneTable(RULES_SRC, log));
+
   console.log(`\nPHONE NORMALIZE — ${failed.length === 0 ? "all checks passed" : `${failed.length} failed`}\n`);
   for (const f of failed) console.log(`  · ${f}`);
   process.exitCode = failed.length === 0 ? 0 : 1;
@@ -378,6 +523,14 @@ if (!PROVE_RED) {
   ok("§0 baseline · the shipped implementation passes every pure assertion", baseline.length === 0, baseline.join("; "));
 
   type Plant = { name: string; expect: RegExp; impl: Impl; landed: () => boolean; landedAs: string };
+
+  /* ── vb3's planted reducers and pastes ── */
+  /** The drop made greedy: every zero after the country code comes off, so two zeros pass as one. */
+  const greedyReduce = (raw: string) => REAL.normalizeTzLocalDigits((raw ?? "").replace(/^(\+?(?:00)?255\D*)0+/, "$1"));
+  /** The digit map dropped: every decimal digit outside 0-9 falls away before the reducer sees it. */
+  const asciiOnlyReduce = (raw: string) => REAL.normalizeTzLocalDigits((raw ?? "").replace(/\p{Nd}/gu, (c) => (c >= "0" && c <= "9" ? c : "")));
+  /** A paste that always replaces — even three digits meant for the middle. */
+  const alwaysReplace = (_box: string, _from: number, _to: number, clipboard: string) => REAL.normalizeTzLocalDigits(clipboard);
   const plants: Plant[] = [
     {
       name: "D1 · the pre-fix toMsisdn255 (leading zero tested before the country code)",
@@ -446,6 +599,84 @@ if (!PROVE_RED) {
       landed: () => "255" + REAL.normalizeTzLocalDigits("+254712345678") === "255254712345",
       landedAs: "a toMsisdn255 defined AS the identity makes §3 vacuous",
     },
+    // ── vb3 · one box rule for every spelling, and a paste that replaces ──
+    {
+      name: "vb3 · the pre-vb3 reducer — the trunk zero kept after 255, so a pasted '+255 0712…' shows 071 234 567",
+      expect: /^§2b vb3 · normalizeTzLocalDigits\("\+255 0712 345 678"\)/,
+      impl: { ...REAL, normalizeTzLocalDigits: PRE_VB3.normalizeTzLocalDigits },
+      landed: () => PRE_VB3.normalizeTzLocalDigits("+255 0712 345 678") === "071234567",
+      landedAs: `PRE_VB3.normalizeTzLocalDigits("+255 0712 345 678") = "${PRE_VB3.normalizeTzLocalDigits("+255 0712 345 678")}"`,
+    },
+    {
+      name: "vb3 · the drop made greedy — both zeros of '+255 00712…' stripped, so the box shows a number the parser refuses",
+      expect: /^§2b vb3 · …and ONE zero only/,
+      impl: { ...REAL, normalizeTzLocalDigits: greedyReduce },
+      landed: () => greedyReduce("+255 00712 345 678") === "712345678",
+      landedAs: `greedyReduce("+255 00712 345 678") = "${greedyReduce("+255 00712 345 678")}"`,
+    },
+    {
+      name: "vb3 · the digit map dropped — an Arabic or Chinese keyboard's digits vanish from the box",
+      expect: /^§2b vb3 · the box reads another keyboard's digits/,
+      impl: { ...REAL, normalizeTzLocalDigits: asciiOnlyReduce },
+      landed: () => asciiOnlyReduce(ARABIC_INDIC) === "" && asciiOnlyReduce(FULL_WIDTH) === "",
+      landedAs: "with the map gone, nothing of either number reaches the box",
+    },
+    {
+      name: "vb3 · the pre-vb3 paste — spliced at the caret: a whole number into a full box, caret at the end, keeps the OLD number",
+      expect: /^§2c vb3 · pasteIntoBox · a whole number pasted into a FULL box with the caret at the END/,
+      impl: { ...REAL, pasteIntoBox: PRE_VB3.pasteIntoBox },
+      landed: () => PRE_VB3.pasteIntoBox("712345678", 9, 9, "0755 000 111") === "712345678",
+      landedAs: `the splice keeps "${PRE_VB3.pasteIntoBox("712345678", 9, 9, "0755 000 111")}"`,
+    },
+    {
+      name: "vb3 · …and with the caret in the middle the splice builds a THIRD number from the two",
+      expect: /^§2c vb3 · pasteIntoBox · …with the caret in the MIDDLE/,
+      impl: { ...REAL, pasteIntoBox: PRE_VB3.pasteIntoBox },
+      landed: () => PRE_VB3.pasteIntoBox("712345678", 3, 3, "0755 000 111") === "712755000",
+      landedAs: `the splice builds "${PRE_VB3.pasteIntoBox("712345678", 3, 3, "0755 000 111")}"`,
+    },
+    {
+      name: "vb3 · …and a plain nine-digit paste fares no better — the old number stays",
+      expect: /^§2c vb3 · pasteIntoBox · plain digits replace it too/,
+      impl: { ...REAL, pasteIntoBox: PRE_VB3.pasteIntoBox },
+      landed: () => PRE_VB3.pasteIntoBox("712345678", 9, 9, "755000111") === "712345678",
+      landedAs: "the splice keeps the old number for plain digits too",
+    },
+    {
+      name: "vb3 · a paste that ALWAYS replaces — three digits meant for the middle wipe the box",
+      expect: /^§2c vb3 · pasteIntoBox · a SHORT paste is inserted at the caret/,
+      impl: { ...REAL, pasteIntoBox: alwaysReplace },
+      landed: () => alwaysReplace("712678", 3, 3, "345") === "345",
+      landedAs: `alwaysReplace("712678", 3, 3, "345") = "${alwaysReplace("712678", 3, 3, "345")}"`,
+    },
+    {
+      name: "vb3 · the shortcut still 'already clean' — a plain nine-digit paste goes to the browser, which drops it into a full box",
+      expect: /^§2c vb3 · pasteReplacesBox, the component's shortcut/,
+      impl: { ...REAL, pasteReplacesBox: PRE_VB3.pasteReplacesBox },
+      landed: () => PRE_VB3.pasteReplacesBox("712345678", 9, 9, "755000111") === false,
+      landedAs: "the old shortcut leaves a plain nine-digit paste to the browser",
+    },
+    {
+      name: "vb3 · the FIRST build's box — the trunk zero dropped only at exactly ten digits, so '+255 0712 345 67' shows 071 234 567",
+      expect: /^§2b vb3 · …and the trunk zero before a number cut short goes too/,
+      impl: { ...REAL, normalizeTzLocalDigits: FIRST_BUILD.normalizeTzLocalDigits },
+      landed: () => FIRST_BUILD.normalizeTzLocalDigits("+255 0712 345 67") === "071234567",
+      landedAs: `the first build's box reads "+255 0712 345 67" as "${FIRST_BUILD.normalizeTzLocalDigits("+255 0712 345 67")}"`,
+    },
+    {
+      name: "vb3 · the FIRST build's paste — only a nine-digit paste replaced, so a number missing its last digit was cut into a mix of two",
+      expect: /^§2c vb3 · pasteIntoBox · a paste that would push the box past nine digits REPLACES it/,
+      impl: { ...REAL, pasteIntoBox: FIRST_BUILD.pasteIntoBox },
+      landed: () => FIRST_BUILD.pasteIntoBox("755000111", 0, 0, "0712 345 67") === "712345677",
+      landedAs: `the first build's paste gives "${FIRST_BUILD.pasteIntoBox("755000111", 0, 0, "0712 345 67")}"`,
+    },
+    {
+      name: "vb3 · the FIRST build's shortcut — an overflowing short paste left to the browser, whose maxLength drops it or cuts it to fit",
+      expect: /^§2c vb3 · pasteReplacesBox, the component's shortcut/,
+      impl: { ...REAL, pasteReplacesBox: FIRST_BUILD.pasteReplacesBox },
+      landed: () => FIRST_BUILD.pasteReplacesBox("712345678", 0, 0, "0712 345 67") === false,
+      landedAs: "the first build's test says an eight-digit paste into a full box does not replace it",
+    },
   ];
 
   for (const p of plants) {
@@ -471,6 +702,35 @@ if (!PROVE_RED) {
       bad.some((b) => b.startsWith(ref)), bad.join(", "));
     ok("  └─ fires: §6 every SmsMessage row written in this run is dialable", bad.length > 0,
       "the invariant did not see a row the gateway cannot dial");
+  }
+
+  // §7 reads the SOURCE, so its plants are source-level — still in memory, and nothing is written.
+  {
+    ok("§0 baseline · the shipped PhoneInput reads the rule", checkWiring(PHONE_INPUT, quiet).length === 0);
+    const SOURCE_PLANTS = [
+      ["vb3 · the inline splice back in the component — the rule tested, the box not asking it",
+        "const next = pasteIntoBox(raw, start, end, text);",
+        "const next = (raw.slice(0, start) + stripDigits(text) + raw.slice(end)).slice(0, 9);"],
+      ["vb3 · the whole-number test dropped — a plain nine-digit paste goes straight to the shortcut again",
+        "if (!pasteReplacesBox(raw, start, end, text)) {",
+        "if (true) {"],
+    ] as const;
+    for (const [name, from, to] of SOURCE_PLANTS) {
+      ok(`PLANT LANDED · ${name}`, PHONE_INPUT.split(from).length === 2, "the anchor must match the shipped source exactly once");
+      ok(`  └─ fires: ${WIRING.slice(0, 60)}`, checkWiring(PHONE_INPUT.replace(from, to), quiet).includes(WIRING),
+        "the wiring check did not see the planted component");
+    }
+  }
+
+  // §7b reads rules.ts's SOURCE: a private copy put back must fire — in memory, and nothing is written.
+  {
+    ok("§0 baseline · house-bot's rules.ts reads the one digit table", checkOneTable(RULES_SRC, quiet).length === 0);
+    const IMPORT = 'import { toAsciiDigits } from "@/lib/phone-normalize";';
+    ok("PLANT LANDED · vb3 · house-bot's private digit table put back — the second copy that drifts", RULES_SRC.split(IMPORT).length === 2,
+      "the import line must match the shipped source exactly once");
+    ok(`  └─ fires: ${ONE_TABLE.slice(0, 60)}`,
+      checkOneTable(RULES_SRC.replace(IMPORT, "function toAsciiDigits(s: string): string | null { return s; }"), quiet).includes(ONE_TABLE),
+      "the one-table check did not see the private copy");
   }
 
   console.log(`\nRED CONTROL — ${fail === 0 ? `all ${pass} proofs held` : `${fail} of ${pass + fail} FAILED`}\n`);

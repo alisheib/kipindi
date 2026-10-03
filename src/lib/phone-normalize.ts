@@ -15,6 +15,13 @@
  *
  * A Tanzanian mobile subscriber number is `[67]\d{8}`, so neither a leading `0`
  * nor a leading `255` can be part of it; stripping them is unambiguous.
+ *
+ * ⭐ vb3 (2026-10-03) · ONE PHONE RULE FOR EVERY SPELLING. Two more spellings reduce here: the trunk zero
+ * written after the country code (`+255 0712 345 678`, and the `+255 (0) 712…` a business card prints), and
+ * digits from another keyboard (Arabic-Indic, full-width). The numbering plan reads the same text the same
+ * way: `tz-msisdn.ts` imports `readAsciiDigits` from here — never the other way round, because this file
+ * imports nothing (`test:read-tiers` 8.6). And the number box's paste rule lives here too: a paste that
+ * holds a whole number, or that would push the box past nine digits, REPLACES the box (`pasteIntoBox`).
  */
 
 /**
@@ -49,6 +56,60 @@ export function moneyFormMsisdn(
 }
 
 /**
+ * ⭐ EVERY DECIMAL DIGIT A KEYBOARD CAN WRITE, READ AS ASCII — the one digit reader (vb3, 2026-10-03).
+ *
+ * 🔴 `\D` IS ASCII-ONLY IN JAVASCRIPT, WHATEVER THE FLAGS. A phone set to Arabic types its number in
+ * Arabic-Indic digits, a Chinese input method in full-width ones, and the strip below threw every one of those
+ * digits away: the box stayed empty, and the parser called a real number "no digits". House-bot's whole-number
+ * parser already read them with this table; it lives HERE now, its one home, and `house-bot/rules.ts` imports it
+ * (its private copy is deleted, and `test:phone-normalize` §7b keeps it gone). This file imports nothing, so a
+ * client component reaches it without dragging anything along.
+ *
+ * Returns null when a decimal digit comes from a block the table does not know; each caller decides what that
+ * means (house-bot refuses the value, `readAsciiDigits` below leaves the text as it was). The text must be NFKC
+ * first: full-width digits are compatibility characters, which NFKC maps and this table does not.
+ */
+const DIGIT_ZEROS = [
+  0x0030, 0x0660, 0x06f0, 0x07c0, 0x0966, 0x09e6, 0x0a66, 0x0ae6, 0x0b66, 0x0be6, 0x0c66, 0x0ce6, 0x0d66, 0x0de6,
+  0x0e50, 0x0ed0, 0x0f20, 0x1040, 0x1090, 0x17e0, 0x1810, 0x1946, 0x19d0, 0x1a80, 0x1a90, 0x1b50, 0x1bb0, 0x1c40,
+  0x1c50, 0xa620, 0xa8d0, 0xa900, 0xa9d0, 0xa9f0, 0xaa50, 0xabf0,
+] as const;
+
+const DECIMAL_DIGIT = /\p{Nd}/u;
+
+export function toAsciiDigits(s: string): string | null {
+  let out = "";
+  for (const ch of s) {
+    const cp = ch.codePointAt(0) ?? 0;
+    if ((cp >= 0x30 && cp <= 0x39) || !DECIMAL_DIGIT.test(ch)) {
+      out += ch;
+      continue;
+    }
+    let zero = -1;
+    for (const z of DIGIT_ZEROS) if (z <= cp && cp < z + 10) zero = z;
+    if (zero < 0) return null;
+    out += String(cp - zero);
+  }
+  return out;
+}
+
+/** Any character past 7-bit ASCII. Module-level and used with `.test` only, so it carries no `/g` state. */
+const NON_ASCII = /[^\x00-\x7F]/;
+
+/**
+ * A phone text with every digit read as ASCII: NFKC first (full-width digits and the full-width plus become
+ * ASCII), then the table above. ⭐ Plain ASCII — nearly every number — comes back untouched, after one test.
+ * ⚠️ A digit from a block the table does not know leaves the text exactly as it was, so it falls away with the
+ * other non-digits, as every digit outside 0-9 did before vb3. Never a guess.
+ */
+export function readAsciiDigits(raw: string): string {
+  const s = raw ?? "";
+  if (!NON_ASCII.test(s)) return s;
+  const n = s.normalize("NFKC");
+  return toAsciiDigits(n) ?? n;
+}
+
+/**
  * Canonical 9-digit local part, or as much of it as has been typed so far.
  *
  * 🔴 THE IDD PREFIX HAS TO COME OFF FIRST, AND UNTIL 2026-09-25 IT DID NOT. `00` is the
@@ -61,13 +122,74 @@ export function moneyFormMsisdn(
  * ⚠️ `00712345678` STILL MEANS WHAT IT ALWAYS DID. Stripping the IDD leaves `712345678`, which is
  * the same answer the old leading-zero strip gave — the "double-zero fat finger" vector this
  * module's suite has carried since August is unchanged, deliberately.
+ *
+ * ⭐ vb3 (2026-10-03) · ONE TRUNK ZERO AFTER THE COUNTRY CODE IS DROPPED. People write `+255 0712 345 678` —
+ * the country code AND the zero they dial at home. A Tanzanian number never begins with `0` after `255`, so
+ * when no more than ten digits follow, a leading zero there is that trunk zero, and it goes: a pasted
+ * `+255 0712…` showed `071 234 567`, a number that is nobody's, and now shows `712 345 678`; with a digit lost
+ * it shows `712 345 67`, eight of nine, never `071 234 567`. Exactly ONE zero — `+255 00712…` keeps its zeros.
+ * It is the parser's own rule (`tz-msisdn.ts`), so the box and the verdict always drop the same zero. And every
+ * digit is read through `readAsciiDigits` first, so an Arabic or Chinese keyboard's digits stay in the box.
  */
 export function normalizeTzLocalDigits(raw: string): string {
-  let d = (raw ?? "").replace(/\D+/g, "");
+  let d = readAsciiDigits(raw).replace(/\D+/g, "");
   if (d.startsWith("00")) d = d.slice(2);               // IDD prefix — before the trunk prefix
-  if (d.startsWith("255")) d = d.slice(3);              // +255 / 255 country code
-  else if (d.startsWith("0")) d = d.replace(/^0+/, ""); // local trunk prefix
+  if (d.startsWith("255")) {                            // +255 / 255 country code
+    d = d.slice(3);
+    if (d.startsWith("0") && d.length <= 10) d = d.slice(1); // vb3 · the one trunk zero written after the code
+  } else if (d.startsWith("0")) d = d.replace(/^0+/, ""); // local trunk prefix
   return d.slice(0, 9);
+}
+
+/** Nine national digits after +255 — a whole Tanzanian number, and everything the number box holds. */
+const NATIONAL_DIGITS = 9;
+
+/** The box's digits and its selection as the paste rule reads them: digits only, nine at most, the selection
+ *  clamped to them and in order — a caret past the end, or one that is not a number, is at the end. */
+function boxSelection(boxDigits: string, selStart: number, selEnd: number): { box: string; from: number; to: number } {
+  const box = (boxDigits ?? "").replace(/\D+/g, "").slice(0, NATIONAL_DIGITS);
+  const at = (n: number) => (Number.isFinite(n) ? Math.min(Math.max(Math.trunc(n), 0), box.length) : box.length);
+  return { box, from: Math.min(at(selStart), at(selEnd)), to: Math.max(at(selStart), at(selEnd)) };
+}
+
+/**
+ * ⭐ vb3 (2026-10-03) · DOES THIS PASTE REPLACE THE BOX? Yes when the clipboard holds a whole number (it reduces to
+ * nine national digits), and yes when inserting it at the selection would push the box past nine digits — cut to
+ * nine, that insert kept the head of one number and the start of another, a number nobody wrote. `PhoneInput`
+ * asks this BEFORE its clean-paste shortcut, and `pasteIntoBox` asks it to choose between replacing and
+ * inserting — one decision, so the component and the rule can never disagree about it.
+ */
+export function pasteReplacesBox(boxDigits: string, selStart: number, selEnd: number, clipboard: string): boolean {
+  const pasted = normalizeTzLocalDigits(clipboard);
+  if (pasted.length === NATIONAL_DIGITS) return true;
+  const { box, from, to } = boxSelection(boxDigits, selStart, selEnd);
+  return box.length - (to - from) + pasted.length > NATIONAL_DIGITS;
+}
+
+/**
+ * ⭐ vb3 (2026-10-03) · WHAT THE NUMBER BOX HOLDS AFTER A PASTE — pure, so a suite drives it without React.
+ *
+ * 🔴 THE DEFECT. `PhoneInput` spliced every paste into the digits already in the box, at the caret, and kept
+ * nine. So a different whole number pasted into a FULL box either kept the OLD number without a word (caret
+ * at the end — or any plain-digit paste, which the "already clean" shortcut left to the browser and the
+ * field's `maxLength` then dropped) or built a THIRD number from the two (caret in the middle); and a number
+ * missing its last digit, pasted the same way, was cut to nine as a mix of both. The add-contact dialog saved
+ * it; the sign-in form sent it.
+ * ⭐ THE RULE. A paste that replaces the box (`pasteReplacesBox`: a whole number, or one that would overflow it)
+ * BECOMES the box, whatever the caret and the selection — a number missing a digit then reads "8 of 9 digits",
+ * which the officer can see and fix. A shorter paste that fits keeps the insert it always had: its digits at the
+ * caret, the selection replaced.
+ *
+ * @param boxDigits the digits the box holds now (already reduced — `PhoneInput`'s own value)
+ * @param selStart the selection's start, counted in DIGITS, not in the formatted "712 345 678"
+ * @param selEnd the selection's end, in digits — equal to `selStart` for a caret
+ * @param clipboard the pasted text, exactly as pasted
+ */
+export function pasteIntoBox(boxDigits: string, selStart: number, selEnd: number, clipboard: string): string {
+  const pasted = normalizeTzLocalDigits(clipboard);
+  if (pasteReplacesBox(boxDigits, selStart, selEnd, clipboard)) return pasted;
+  const { box, from, to } = boxSelection(boxDigits, selStart, selEnd);
+  return box.slice(0, from) + pasted + box.slice(to); // it fits: pasteReplacesBox has just said so
 }
 
 /**
@@ -91,6 +213,13 @@ export function normalizeTzLocalDigits(raw: string): string {
  *
  * Lives in this module because it is pure and imports nothing, so a client
  * component can reach it — see the boundary note on `maskPhone` below.
+ *
+ * ⚠️ vb3 (2026-10-03) · IT DOES NOT LEARN `+255 0712…`, ON PURPOSE — this rail is unchanged. The box above and
+ * the numbering plan now read that spelling as the same person's number; here it stays thirteen digits, which
+ * `isGatewayMsisdn` refuses, so the spelling fails CLOSED on the money wire. And no production caller hands it
+ * that spelling: each passes a number `tzPhone` accepted (its pattern cannot match a zero after `255`) or a key
+ * `parseTzNumber` minted — the marketing dispatch included, which puts the gate's own key on the wire, never
+ * the row's text (`dispatch.ts`, vb3). `phone-normalize.test.mts` §4 is unchanged.
  *
  * Guard: `npm run test:phone-normalize`.
  */

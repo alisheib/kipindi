@@ -60,7 +60,7 @@
  * Guard: `npm run test:contacts-import` (sections "fields" and, for the shared rules, "field-rules") · red:
  * `npm run red:contacts-import`.
  */
-import { parseTzNumber } from "../tz-msisdn";
+import { parseTzNumber, readAsciiDigits } from "../tz-msisdn";
 import { unguardCell } from "./csv-write";
 import type { ContactsFileFormat } from "./parsed-file";
 import { PHONE_FORMAT_REMEDY, excelShortenedSentence, looksExcelShortened } from "./xlsx-limits";
@@ -434,10 +434,10 @@ export function normaliseHeader(raw: string): string {
  * it), each run as four bullets and its last two digits — the M7 gap was the old mask missing the bracketed, dotted,
  * no-break-space and en-dash spellings this rule reads.
  * `holdsPhoneRun` REFUSES ONLY A RUN THAT HOLDS A TANZANIAN MOBILE NUMBER — some stretch of its consecutive digit groups
- * that THE ONE NUMBER RULE (`parseTzNumber`) reads as one (`runHoldsNumber`) — in a contact's name and tags (U22's form,
+ * that THE ONE NUMBER RULE (`parseTzNumber`) reads as one (`numberInRun`) — in a contact's name and tags (U22's form,
  * U23's bulk box and the importer, through `checkTags`, `draftContactRow` and `contactFormProblems`), the consent proof
- * note (`consent-basis.ts`), a role change's reason (`staff-roles.ts`), and the campaign door's audience text (OD55,
- * `campaign-draft.ts`). ⭐ The vb5 review (m3): nine digits alone refused a deposit band ("5000-10000"), a photo's name
+ * note (`consent-basis.ts`), a role change's reason (`staff-roles.ts`), the campaign door's audience text (OD55,
+ * `campaign-draft.ts`) and a campaign's name (`campaign-template.ts`, through `phoneNumberIn`). ⭐ The vb5 review (m3): nine digits alone refused a deposit band ("5000-10000"), a photo's name
  * (IMG_20261003_143052) and a dotted date with a time — none of them a number the book could hold. Masking more than is
  * refused is the safe direction: such a figure is still masked in a masked export.
  */
@@ -458,7 +458,7 @@ type PhoneRun = {
   readonly lastTwo: string;
   /** The run's digit groups in ASCII digits — "(0712) 345-678" is 0712 · 345 · 678 — which the refusal reads. */
   readonly groups: readonly string[];
-  /** A digit that NFKC leaves as something other than 0–9 (Arabic-Indic, say): such a run is refused whole. */
+  /** A digit no table reads as 0–9 — NFKC and `readAsciiDigits` both leave it as it was: such a run is refused whole. */
   readonly unreadDigit: boolean;
 };
 
@@ -513,9 +513,13 @@ function phoneRuns(text: string): PhoneRun[] {
         if (start < 0) start = from;
         digits += 1;
         end = at;
+        // Another keyboard's digit (Arabic-Indic, Devanagari…) is READ the parser's way (`readAsciiDigits`, vb3), so the
+        // refusal judges it and the mask shows its last two as 0–9 — as NFKC already does for a full-width digit.
+        const a = f >= "0" && f <= "9" ? f : readAsciiDigits(f);
+        const readable = a.length === 1 && a >= "0" && a <= "9";
         prev = last;
-        last = f;
-        if (f >= "0" && f <= "9") group += f;
+        last = readable ? a : f;
+        if (readable) group += a;
         else unreadDigit = true;
       } else if (PHONE_JOINER.test(f)) {
         if (group !== "") {
@@ -535,28 +539,42 @@ function phoneRuns(text: string): PhoneRun[] {
 const PHONE_DIGITS_MAX = 14;
 
 /**
- * Does a run HOLD a Tanzanian mobile number? Every stretch of its consecutive digit groups is asked — so a number
- * written after another figure ("Week 40 0712 345 678") is found — and one that THE ONE NUMBER RULE (`parseTzNumber`:
- * an allocated mobile prefix, with or without 0, 255 or 00255) reads as a number holds one. Groups are never cut, so a
- * long reference ("IMG_20261003_143052") or a band ("5000-10000") holds none. A run with an unread digit holds one.
+ * The Tanzanian mobile number a run HOLDS, as its digits — or null. Every stretch of its consecutive digit groups is
+ * asked — so a number written after another figure ("Week 40 0712 345 678") is found — and the first that THE ONE
+ * NUMBER RULE (`parseTzNumber`: an allocated mobile prefix, with or without 0, 255 or 00255) reads as a number is it.
+ * Groups are never cut, so a long reference ("IMG_20261003_143052") or a band ("5000-10000") holds none. A run with an
+ * unread digit holds one, answered by its last two digits as read.
  */
-function runHoldsNumber(run: PhoneRun): boolean {
-  if (run.unreadDigit) return true;
+function numberInRun(run: PhoneRun): string | null {
+  if (run.unreadDigit) return run.lastTwo;
   const g = run.groups;
   for (let i = 0; i < g.length; i++) {
     let digits = "";
     for (let j = i; j < g.length; j++) {
       digits += g[j];
       if (digits.length > PHONE_DIGITS_MAX) break;
-      if (digits.length >= PHONE_RUN_MIN_DIGITS && parseTzNumber(digits).verdict === "ok") return true;
+      if (digits.length >= PHONE_RUN_MIN_DIGITS && parseTzNumber(digits).verdict === "ok") return digits;
     }
   }
-  return false;
+  return null;
+}
+
+/**
+ * ⭐ The first Tanzanian mobile number a text holds, as its digits — or null. The refusal's own finding, for a door that
+ * names the number by its last two digits: the campaign's name (`campaign-template.ts`), which kept a private copy of
+ * this reading until vb4 landed.
+ */
+export function phoneNumberIn(text: string): string | null {
+  for (const run of phoneRuns(String(text ?? ""))) {
+    const found = numberInRun(run);
+    if (found !== null) return found;
+  }
+  return null;
 }
 
 /** ⭐ The refusing half: does this text hold a Tanzanian mobile number in any spelling the scanner above reads? */
 export function holdsPhoneRun(text: string): boolean {
-  return phoneRuns(String(text ?? "")).some(runHoldsNumber);
+  return phoneNumberIn(text) !== null;
 }
 
 /** ⭐ The masking half: EVERY run as four bullets and its last two digits; nothing else in the text changes. */
@@ -885,8 +903,9 @@ const HEADER_CLIP = 30;
 
 const isNamePart = (k: ImportFieldKey): boolean => k === "first_name" || k === "last_name";
 
-/** A header with six or more digits "reads as a number": the refusal then lists no headers (§5.14). */
-const readsAsNumber = (h: string): boolean => h.replace(NON_DIGITS, "").length >= 6;
+/** A header with six or more digits "reads as a number": the refusal then lists no headers (§5.14). The digits are
+ *  read the parser's way (`readAsciiDigits`, vb3), so an Arabic-Indic or full-width number counts as one too. */
+const readsAsNumber = (h: string): boolean => readAsciiDigits(h).replace(NON_DIGITS, "").length >= 6;
 
 /** Only digits, spaces and the punctuation a phone number is written with — nothing else. */
 const NUMBER_SHAPED = /^[\s'+().\d-]+$/;
@@ -897,7 +916,9 @@ const NUMBER_SHAPED = /^[\s'+().\d-]+$/;
  * "Phone (0712 345 678)" or "Simu 0754123456" would otherwise refuse the whole file as headerless.
  */
 const readsAsContactNumber = (h: string): boolean => {
-  const t = dropFormatChars(h);
+  // vb3 · every keyboard's digits are read as ASCII first, by the parser's own reader, so the shape test and the
+  // verdict see one text: an Arabic-Indic or full-width number in the first row is a contact, never a header.
+  const t = readAsciiDigits(dropFormatChars(h));
   return NUMBER_SHAPED.test(t) && parseTzNumber(t).verdict === "ok";
 };
 

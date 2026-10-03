@@ -19,12 +19,20 @@
  *   · a caller's `title` wins over the player-locale hint (`t.common.phoneInputTitle`), which on an English-only
  *     console would raise a bubble in the wrong language.
  * Absent, each behaves exactly as before: no ref, no paste hook, the locale's title.
+ *
+ * ⭐ vb3 (2026-10-03) · A PASTE THAT HOLDS A WHOLE NUMBER, OR WOULD OVERFLOW THE BOX, REPLACES IT (`pasteIntoBox`,
+ * `@/lib/phone-normalize`). Every paste used to be spliced in at the caret and cut to nine, so a different whole
+ * number pasted into a full box kept the old one or built a third from both, and the form submitted it. A
+ * shorter paste that fits still inserts at the caret.
+ * ⚠️ Only the PASTE event is handled. A keyboard's clipboard suggestion (Gboard's chip on Android) may arrive as
+ * typed text instead, which `maxLength` cuts before any handler sees it. Unverified on a device: drive it before
+ * relying on it.
  */
 
 import * as React from "react";
 import { Input } from "./input";
 import { useT } from "@/lib/i18n";
-import { normalizeTzLocalDigits } from "@/lib/phone-normalize";
+import { normalizeTzLocalDigits, pasteIntoBox, pasteReplacesBox } from "@/lib/phone-normalize";
 // 🔴 THE GROUPING USED TO LIVE IN THIS FILE, PRIVATELY — and a second copy of it lived in
 // `wallet/withdraw/page.tsx` as a regex with no nine-digit cap. One home now; see `tz-msisdn.ts`.
 import { formatTzPhone } from "@/lib/tz-msisdn";
@@ -76,19 +84,26 @@ export const PhoneInput = React.forwardRef<HTMLInputElement, Props>(function Pho
     const text = e.clipboardData.getData("text") ?? "";
     // ⭐ U22 · FIRST, before anything is stripped or capped: the caller hears what was actually pasted.
     onPasteRaw?.(text);
-    if (text === stripDigits(text)) return;       // already clean
-    e.preventDefault();
-    const cleaned = stripDigits(text);
     const target = e.currentTarget;
     const raw = stripDigits(target.value);
     const start = digitsBefore(target.value, target.selectionStart ?? target.value.length);
     const end = digitsBefore(target.value, target.selectionEnd ?? target.value.length);
-    const merged = (raw.slice(0, start) + cleaned + raw.slice(end)).slice(0, 9);
-    setV(merged);
+    // ⭐ vb3 · A PASTE THAT REPLACES THE BOX is decided HERE, before the clean-paste shortcut: a whole number, or one
+    // that would push the box past nine digits. A plain-digit paste is "already clean", and the shortcut handed it
+    // to the browser, whose maxLength drops it into a full box without a word, or cuts it to fit a partial one —
+    // the old number stayed, or a mix of two, and the form submitted it.
+    if (!pasteReplacesBox(raw, start, end, text)) {
+      if (text === stripDigits(text)) return;     // already clean, and it fits: the browser inserts it at the caret
+    }
+    e.preventDefault();
+    // ⭐ vb3 · the rule, not a splice written here: a paste that replaces the box becomes it, a shorter one is
+    // inserted at the caret with the selection replaced (`pasteIntoBox`, driven by `test:phone-normalize` §2c).
+    const next = pasteIntoBox(raw, start, end, text);
+    setV(next);
     // ⛔ The old handler stopped at `setV`, so a CONTROLLED caller never heard
     // about a paste at all: its state kept the pre-paste number while the field
     // showed the pasted one. Same synthetic shape `handle` emits.
-    const synthetic = { ...e, target: { ...target, value: merged, name: name ?? "" } };
+    const synthetic = { ...e, target: { ...target, value: next, name: name ?? "" } };
     onChange?.(synthetic as unknown as React.ChangeEvent<HTMLInputElement>);
   };
 

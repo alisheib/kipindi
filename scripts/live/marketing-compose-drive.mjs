@@ -9,30 +9,39 @@
  *   · BLANK — Save off WITH its reason (beside it and in its title), the live counter at its full room, the source line's
  *     reserved room said, "No English text", the sender line the server's (the console stub, said honestly), the whole
  *     book as the audience, the test card naming the officer's own number masked and "Save first"; ⛔ no tel input, no
- *     number, sender or money control, no TZS;
+ *     number, sender or money control, no TZS; the reason is a button that puts focus in Campaign name, and a click
+ *     inside the Audience card with nothing wrong never focuses the card;
  *   · REFUSED — no Swahili message; a message not starting "50pick"; a placeholder that is not {jina} — each said beside
  *     Save (and on its field), with Save off;
  *   · TYPING — the counter falls by exactly the characters typed, key by key, while the live region does not speak;
+ *   · NAME — a name holding a phone number is refused before Save is pressed (named by its last two digits only); a date
+ *     and a time ("Derby 2026-10-03 18:00") are not a phone number and leave Save on;
  *   · {jina} — the 12-character reserve (the counter falls by 12 for six typed characters), the fallback field appears,
- *     and Save says what it needs;
+ *     Save says what it needs, and the word with a phone keyboard's trailing space ("Rafiki ") turns Save on;
  *   · OVER-CAP — "N over · 2 messages · the limit is 1", announced once, Save off with the reason;
- *   · UNICODE — "Forced to Unicode by: ’ (curly apostrophe)", and "Replace with plain characters" puts it right;
- *   · SAVED — "Saved HH:MM", the address carries the draft (a reload reopens it), Save quiet with "Nothing to save" in
- *     its title, and the test card's exact preview (the stop link as xxxxxxxx until the first test);
+ *   · UNICODE — "Forced to Unicode by: ’ (curly apostrophe)", the field's ONE sentence ("Unicode leaves no room … —
+ *     replace: ’ (curly apostrophe).") with no negative number, and "Replace with plain characters" puts it right;
+ *   · SAVED — "Draft saved HH:MM — nothing was sent. Send yourself a test below.", the address carries the draft (a reload
+ *     reopens it), Save quiet with "Nothing to save" in its title, and the test card's exact preview (the stop link as
+ *     xxxxxxxx until the first test);
  *   · TEST IDLE · TEST REFUSED (the ONE gate: no SMS consent, with the remedy link) · THE REMEDY (the officer's own
  *     consent switch, through that link) · TEST HANDED OVER — to the console stub, the exact text, NEVER "delivered" —
  *     the English test carrying the SAME stop link (one number, one link) · the budget (the 4th test refused);
- *   · EDIT AFTER SAVE (the test waits for the save) · STALE (a second tab saved first: refused with the time, Reload
- *     adopts theirs) · SAVE FAILED (the text kept, Try again lands) · TEST ERROR (the action failed in transit);
- *   · OD55 — an audience that is one phone number refused on the audience card (a name search is not);
+ *   · EDIT AFTER SAVE (the test waits for the save) · STALE (a second tab saved first: refused with the time; Reload ASKS —
+ *     "Keep my text" keeps it, with "Save as a new draft" still offered, and "Discard my text and load theirs" adopts
+ *     theirs) · SAVE FAILED (the text kept, Try again lands) · TEST ERROR (the action failed in transit);
+ *   · OD55 — an audience that is one phone number (a list id, open to every role) refused on the audience card, and the
+ *     Save reason puts focus on that card; X25 — a search on a campaign's audience refused for this masked role, with
+ *     "Remove the filter", which takes it out of the address and keeps every character typed;
  *   · MISSING (?draft= naming nothing) · READ-ONLY (a confirmed campaign) · ERROR (the read fault) · REFUSED (FINANCE).
  *   PASS=live-closed (SMS_PROVIDER=blackball with DUMMY keys and BLACKBALL_API_URL at a dead local port):
- *   · the sender line names the server's sender ID; the test card says up front that marketing SMS are not switched on;
- *     a test is refused live_sends_closed, and the preview still shows xxxxxxxx after a reload — no token was minted.
+ *   · the sender line names the server's sender ID; the test card says up front that marketing SMS are not switched on,
+ *     and the saved line does not invite a test; a test is refused live_sends_closed, and the preview still shows
+ *     xxxxxxxx after a reload — no token was minted.
  *     ⛔ Nothing in this drive opens the switch or writes `marketing.sms.live`: opening it is the owner's act (G1).
  *   PASS=dead-rail (SMS_PROVIDER=blackball and NO keys):
- *   · the sender line speaks Admin → System's dead-rail words with both Railway names; a draft still saves; a test is
- *     refused rail_dead, pointing at that line.
+ *   · the sender line speaks Admin → System's dead-rail words with both Railway names; a draft still saves, its saved line
+ *     inviting no test; a test is refused rail_dead, pointing at that line.
  *   NOT DRIVEN: the test's "unconfirmed" state — it needs a carrier that took the request and lost the reply, which only a
  *   recorded switch could reach; `test:campaign-compose` §18.11 and §18.5's control hold it.
  *
@@ -105,6 +114,20 @@ const STALE = "Someone else saved this draft at ";
 const SAVE_FAILED = "Couldn't save — your text is still here. Try again.";
 const ACTION_FAILED = "Server error — nothing may have applied.";
 const ONE_NUMBER = "A campaign goes to a group, never to one phone number — take the number out of the audience. To see the message on a phone, use the test send: it goes to your own number.";
+/** X25 · the campaign door's refusal of a search for a role that may not read numbers (audience.ts). */
+const SEARCH_REFUSED = "A search isn't available to your role on a campaign's audience: counting who will receive asks the sending rules about each number, which would show which numbers belong to players.";
+const REMOVE_FILTER = "Remove the filter";
+/** The ONE verdict's sentence for a name holding a phone number — named by its last two digits, never in full. */
+const NAME_PHONE = "A campaign name can't hold a phone number — the digits ending 78 read as one, and campaigns are kept for good. Name the group it is for, or write other figures with a comma or a slash.";
+const UNICODE_NO_ROOM = `Unicode leaves no room once the required footer is added — replace: ${RSQ} (curly apostrophe).`;
+const DISCARD_CONFIRM = "Discard my text and load theirs";
+const DISCARD_CANCEL = "Keep my text";
+const DISCARD_SAID = "replaces what you typed here";
+/** The saved line: with the test below when the page can send one (the console pass), without it otherwise. */
+const SAVED_RE = /^Draft saved [0-9]{2}:[0-9]{2} — nothing was sent[.] Send yourself a test below[.]$/;
+const SAVED_NO_TEST_RE = /^Draft saved [0-9]{2}:[0-9]{2} — nothing was sent[.]$/;
+/** A negative number in a sentence: a hyphen-minus straight before a digit, not inside a word ("GSM-7" passes). */
+const NEG_NUMBER = /(?:^|[^0-9A-Za-z])-[0-9]/;
 const LOAD_ERROR = "Couldn't load this SMS campaign";
 const LDQ = String.fromCharCode(0x201c);
 const RDQ = String.fromCharCode(0x201d);
@@ -430,6 +453,18 @@ async function consolePass() {
         && !/TZS/.test(await mainText(page)));
     await fitCheck(page, vp.name, "blank");
     await stateShot(page, vp.name, "blank", BLOCKED + NAME_PROBLEM);
+    // ⭐ Validation takes the officer to the field: the reason is a button, and focus lands in the name's own input.
+    await page.locator('[data-compose-save-reason="name"]').first().click().catch(() => {});
+    await wait(300);
+    const landedIn = await page.evaluate(() => document.activeElement?.closest?.("label[data-field]")?.getAttribute("data-field") ?? null);
+    ok(`${vp.name} · BLANK · the reason is a button that takes the officer to the field it names — focus lands in Campaign name`,
+      landedIn === "name" && (await page.evaluate(() => document.activeElement?.tagName ?? "")) === "INPUT", String(landedIn));
+    // ⛔ The Audience card is a tab stop only while it shows a problem: a click inside it now must not focus (or ring) it.
+    await page.locator("[data-audience-line]").first().click().catch(() => {});
+    await wait(250);
+    ok(`${vp.name} · BLANK · a click inside the Audience card with nothing wrong never focuses the card — no tab stop, no ring`,
+      !(await page.evaluate(() => document.activeElement?.getAttribute?.("data-field") === "audience"))
+        && (await attr(page, '[data-field="audience"]', "tabindex")) === null);
 
     // ── REFUSED — the template's own refusals, each said beside Save and on its field ──────────────────────────────
     await page.locator(SEL.name).fill(NAME);
@@ -467,6 +502,20 @@ async function consolePass() {
     await fitCheck(page, vp.name, "typing");
     await stateShot(page, vp.name, "typing", more.line, SEL.message);
 
+    // ── NAME — a phone number in the name is refused before Save is pressed; a date and a time are not one ─────────
+    await page.locator(SEL.name).fill("Juma 0712 345 678");
+    await wait(250);
+    ok(`${vp.name} · NAME · a name holding a phone number — Save off, and the reason and the field say so, naming only its last two digits`,
+      (await isDisabled(page, SEL.save)) === true && (await textOf(page, SEL.reason)) === BLOCKED + NAME_PHONE
+        && (await textOf(page, 'label[data-field="name"] p.text-danger-fg')) === NAME_PHONE, await textOf(page, SEL.reason));
+    await stateShot(page, vp.name, "refused-name-phone", NAME_PHONE, SEL.message);
+    await page.locator(SEL.name).fill("Derby 2026-10-03 18:00");
+    await wait(250);
+    ok(`${vp.name} · NAME · a date and a time are not a phone number — "Derby 2026-10-03 18:00" leaves Save on, with no reason`,
+      (await isDisabled(page, SEL.save)) === false && !(await has(page, SEL.reason)));
+    await page.locator(SEL.name).fill(NAME);
+    await wait(250);
+
     // ── {jina} — the 12-character reserve, the fallback field, and what Save needs ───────────────────────────────
     await page.locator(SEL.bodySw).fill(BODY_JINA);
     await wait(300);
@@ -477,9 +526,12 @@ async function consolePass() {
       `${blank.left} → ${jina.left} (worst case ${worst(BODY_JINA)} for ${BODY_JINA.length} typed)`);
     ok(`${vp.name} · {jina} · the Swahili fallback field appears, and Save says it needs the word`,
       (await has(page, SEL.fallbackSw)) && (await isDisabled(page, SEL.save)) === true && jinaReason === BLOCKED + FALLBACK_PROBLEM, jinaReason);
-    await page.locator(SEL.fallbackSw).fill(FALLBACK_SW);
+    // ⭐ A phone keyboard adds a space after a suggested word: "Rafiki " is the word "Rafiki", never a refusal.
+    await page.locator(SEL.fallbackSw).fill(`${FALLBACK_SW} `);
     await wait(250);
-    ok(`${vp.name} · {jina} · with the fallback written, Save is on`, (await isDisabled(page, SEL.save)) === false && !(await has(page, SEL.reason)));
+    ok(`${vp.name} · {jina} · with the fallback written — a phone keyboard's trailing space and all ("${FALLBACK_SW} ") — Save is on`,
+      (await isDisabled(page, SEL.save)) === false && !(await has(page, SEL.reason))
+        && (await page.locator('label[data-field="nameFallbackSw"] p.text-danger-fg').count()) === 0);
     await stateShot(page, vp.name, "jina", JINA_RESERVE, SEL.message);
 
     // ── OVER-CAP ────────────────────────────────────────────────────────────────────────────────────────────────
@@ -505,6 +557,10 @@ async function consolePass() {
     ok(`${vp.name} · UNICODE · refused with the offender named — "${FORCED} ${RSQ} (curly apostrophe)" — and announced`,
       uni.state === "unicode" && offenders.startsWith(`${FORCED} ${RSQ} (curly apostrophe)`) && uni.live === "Unicode — refused until the marked characters are replaced."
         && (await isDisabled(page, SEL.save)) === true, `${offenders} · ${uni.live}`);
+    const uniSaid = await textOf(page, 'label[data-field="bodySw"] p.text-danger-fg');
+    ok(`${vp.name} · UNICODE · the field says in ONE sentence what to replace and that Unicode leaves no room — no negative number anywhere on the card — and the counter line asks for no cut`,
+      uniSaid === UNICODE_NO_ROOM && new RegExp(`^Unicode leaves no room ${MID} [0-9]+ messages ${MID} the limit is 1$`).test(uni.line)
+        && !NEG_NUMBER.test(await textOf(page, SEL.message)), `"${uniSaid}" · "${uni.line}"`);
     await stateShot(page, vp.name, "unicode", FORCED, SEL.message);
     await page.locator('[data-counter="SW"] [data-counter-fold]').first().click();
     await wait(300);
@@ -527,8 +583,8 @@ async function consolePass() {
     const url = new URL(page.url());
     const draftId = url.searchParams.get("draft") ?? "";
     const savedLine = await textOf(page, SEL.saved);
-    ok(`${vp.name} · SAVED · "Saved HH:MM", and the address now names the draft (?draft=${draftId})`,
-      /^cmp_[A-Za-z0-9_-]+$/.test(draftId) && /^Saved [0-9]{2}:[0-9]{2}$/.test(savedLine), `${savedLine} · ${page.url()}`);
+    ok(`${vp.name} · SAVED · "Draft saved HH:MM — nothing was sent. Send yourself a test below.", and the address now names the draft (?draft=${draftId})`,
+      /^cmp_[A-Za-z0-9_-]+$/.test(draftId) && SAVED_RE.test(savedLine), `${savedLine} · ${page.url()}`);
     ok(`${vp.name} · SAVED · Save is quiet — no reason beside it, "Nothing to save" in its title`,
       (await isDisabled(page, SEL.save)) === true && !(await has(page, SEL.reason)) && (await attr(page, SEL.save, "title")) === NO_CHANGES);
     const pSw = await previewOf(page, "SW");
@@ -626,9 +682,22 @@ async function consolePass() {
       staleText.startsWith(STALE) && CLOCK_RE.test(staleText) && (await page.locator(SEL.name).inputValue()) === `${NAME} A`, staleText);
     await fitCheck(page, vp.name, "refused-stale");
     await stateShot(page, vp.name, "refused-stale", STALE, SEL.message);
+    // ⛔ Reload replaces what the officer typed, so it ASKS first — and "Keep my text" keeps every character.
     await page.getByRole("button", { name: "Reload" }).first().click().catch(() => {});
+    await page.waitForSelector('[role="alertdialog"]', { timeout: 15000 }).catch(() => {});
+    ok(`${vp.name} · STALE · Reload ASKS first — the dialog says the typed text would be replaced, and nothing is replaced yet`,
+      (await textOf(page, '[role="alertdialog"]')).includes(DISCARD_SAID) && (await page.locator(SEL.name).inputValue()) === `${NAME} A`,
+      await textOf(page, '[role="alertdialog"]'));
+    await shoot(page, `${vp.name}-stale-confirm`);
+    await page.getByRole("button", { name: DISCARD_CANCEL }).first().click().catch(() => {});
+    await page.waitForSelector('[role="alertdialog"]', { state: "detached", timeout: 15000 }).catch(() => {});
+    ok(`${vp.name} · STALE · "${DISCARD_CANCEL}" keeps every character, the refusal stays, and the text can still be saved as a new draft (offered, and on — the audience carries)`,
+      (await page.locator(SEL.name).inputValue()) === `${NAME} A` && (await has(page, '[data-compose-refusal="stale"]'))
+        && (await isDisabled(page, '[data-compose-save-new="stale"]')) === false && !(await has(page, '[role="alertdialog"]')));
+    await page.getByRole("button", { name: "Reload" }).first().click().catch(() => {});
+    await page.getByRole("button", { name: DISCARD_CONFIRM }).first().click({ timeout: 15000 }).catch(() => {});
     await page.waitForFunction((n) => document.querySelector('label[data-field="name"] input')?.value === n, `${NAME} B`, { timeout: 30000 }).catch(() => {});
-    ok(`${vp.name} · STALE · Reload puts the other tab's version on screen, and the refusal goes`,
+    ok(`${vp.name} · STALE · "${DISCARD_CONFIRM}" puts the other tab's version on screen, and the refusal goes`,
       (await page.locator(SEL.name).inputValue()) === `${NAME} B` && !(await has(page, '[data-compose-refusal="stale"]')));
     await pageB.close();
 
@@ -658,20 +727,46 @@ async function consolePass() {
     await stateShot(page, vp.name, "test-error", ACTION_FAILED, SEL.test);
     await cut2.disarm();
 
-    // ── OD55 — an audience that is one phone number ───────────────────────────────────────────────────────────────
-    await openComposer(page, "?q=0712345678");
+    // ── OD55 — an audience that is one phone number, in a field every role may filter by: a list id ─────────────────
+    // ⚠️ Not ?q= (a search is refused for this masked role first, X25 — below) and not ?tag= (once the shared tag rule
+    // reads the filter address, its parser refuses a tag holding a number before OD55 is asked); a list id reaches OD55
+    // for every role, today and after (`test:campaign-compose` §17.5b).
+    await openComposer(page, "?list=0712345678");
     await page.locator(SEL.name).fill(NAME);
     await page.locator(SEL.bodySw).fill(BODY_TYPED);
     await wait(300);
-    ok(`${vp.name} · OD55 · a whole phone number as the audience is refused ON the audience card, and Save says why`,
+    ok(`${vp.name} · OD55 · a whole phone number as the audience (a list id) is refused ON the audience card, and Save says why`,
       (await textOf(page, "[data-audience-problem]")) === ONE_NUMBER && (await isDisabled(page, SEL.save)) === true
         && (await textOf(page, SEL.reason)) === BLOCKED + ONE_NUMBER, await textOf(page, "[data-audience-problem]"));
+    // ⭐ The reason is a button to the card it names — a tab stop now, because the card shows a problem.
+    await page.locator('[data-compose-save-reason="audience"]').first().click().catch(() => {});
+    await wait(400);
+    ok(`${vp.name} · OD55 · the Save reason takes the officer to the Audience card — focus lands on it`,
+      await page.evaluate(() => document.activeElement?.getAttribute?.("data-field") === "audience"));
     await fitCheck(page, vp.name, "refused-one-number");
     await stateShot(page, vp.name, "refused-one-number", "never to one phone number", SEL.audience);
+
+    // ── X25 — a search on a campaign's audience, for a role that may not read numbers (GROWTH is masked) ─────────────
     await openComposer(page, "?q=Asha");
-    ok(`${vp.name} · OD55 · a NAME search is a filter like any other — described, never refused`,
-      (await attr(page, "[data-audience]", "data-audience")) === "filtered" && (await textOf(page, SEL.audience)).includes("Contacts matching:")
-        && (await page.locator("[data-audience-line]").count()) >= 1 && !(await has(page, "[data-audience-problem]")));
+    await page.locator(SEL.name).fill(NAME);
+    await page.locator(SEL.bodySw).fill(BODY_TYPED);
+    await wait(300);
+    ok(`${vp.name} · X25 · a search is refused on a campaign's audience for this masked role — the count's own sentence, nothing described, Save off, and "${REMOVE_FILTER}" offered`,
+      (await textOf(page, "[data-audience-problem]")) === SEARCH_REFUSED && (await page.locator("[data-audience-line]").count()) === 0
+        && (await isDisabled(page, SEL.save)) === true && (await textOf(page, "[data-audience-clear]")) === REMOVE_FILTER,
+      await textOf(page, "[data-audience-problem]"));
+    await fitCheck(page, vp.name, "refused-search");
+    await stateShot(page, vp.name, "refused-search", SEARCH_REFUSED, SEL.audience);
+    await page.locator("[data-audience-clear]").first().click().catch(() => {});
+    await page.waitForFunction(() => !new URL(location.href).searchParams.has("q"), null, { timeout: 30000 }).catch(() => {});
+    await page.waitForSelector('[data-audience="everyone"]', { timeout: 30000 }).catch(() => {});
+    await wait(400);
+    ok(`${vp.name} · X25 · "${REMOVE_FILTER}" takes the search out of the address — the whole book, no problem, Save on — and every character typed is still here`,
+      !new URL(page.url()).searchParams.has("q") && (await attr(page, "[data-audience]", "data-audience")) === "everyone"
+        && !(await has(page, "[data-audience-problem]")) && (await page.locator(SEL.name).inputValue()) === NAME
+        && (await page.locator(SEL.bodySw).inputValue()) === BODY_TYPED && (await isDisabled(page, SEL.save)) === false,
+      `${page.url()} · "${await page.locator(SEL.name).inputValue()}"`);
+    await stateShot(page, vp.name, "search-removed", EVERYONE, SEL.audience);
 
     // ── MISSING — ?draft= naming nothing ────────────────────────────────────────────────────────────────────────────
     await openComposer(page, "?draft=cmp_nobody_here", "missing");
@@ -791,6 +886,8 @@ async function liveClosedPass() {
     const draftId = new URL(page.url()).searchParams.get("draft") ?? "";
     ok(`${vp.name} · LIVE CLOSED · saved; the preview's stop link is still xxxxxxxx`,
       /^cmp_/.test(draftId) && (await previewOf(page, "SW")).endsWith("/s/xxxxxxxx"));
+    ok(`${vp.name} · LIVE CLOSED · the saved line says nothing was sent and does NOT invite the test this card would refuse`,
+      SAVED_NO_TEST_RE.test(await textOf(page, SEL.saved)), await textOf(page, SEL.saved));
     await stateShot(page, vp.name, "live-closed-saved", LIVE_NOTE, SEL.test);
     const refused = await sendTest(page, "SW");
     ok(`${vp.name} · LIVE CLOSED · ⛔ X14 · the test is refused live_sends_closed, in words — never handed over`,
@@ -827,7 +924,8 @@ async function deadRailPass() {
     await wait(250);
     await save(page);
     await waitReady(page);
-    ok(`${vp.name} · DEAD RAIL · a draft still saves — the rail is about sending, never about writing`, await has(page, SEL.saved));
+    ok(`${vp.name} · DEAD RAIL · a draft still saves — the rail is about sending, never about writing — and its saved line invites no test`,
+      (await has(page, SEL.saved)) && SAVED_NO_TEST_RE.test(await textOf(page, SEL.saved)), await textOf(page, SEL.saved));
     const refused = await sendTest(page, "SW");
     ok(`${vp.name} · DEAD RAIL · the test is refused rail_dead, pointing at the sender line — never handed over`,
       refused?.outcome === "refused" && refused.reason === "rail_dead" && refused.sentence === RAIL_DEAD, JSON.stringify(refused));

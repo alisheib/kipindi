@@ -17,8 +17,17 @@
  * ⭐ THE AUDIENCE IS A FILTER (U24's canonical key, X13), read from the composer's own address in the contacts filter
  * vocabulary (U38 adds the controls that write it). ⛔ OD55: a whole phone number is refused — a campaign targets a
  * group; one person is reached only by the officer's own test send, and a number frozen into a confirmed campaign's
- * filter is a key erasure would have to chase (U16). A name search stays allowed. A posted filter is held to the same
- * role rule as every door that reads the book (`roleRefusal`, A1.1).
+ * filter is a key erasure would have to chase (U16). A name search stays allowed for a viewer who reads numbers.
+ * ⛔ X25 · A POSTED filter meets the campaign door's OWN rule (`campaignAudienceRefusal`, the one U38a's count asks):
+ * a ticked selection for every role, and for this viewer the role rule — consent, source, player, stop, and ANY search
+ * for a viewer who may not read a number (validation audit, 2026-10-03: a masked officer could save `?q=asha`, which
+ * the count then refused). A STORED filter is held to the rule every role meets and kept as it is — the screen notes
+ * it, and nothing on the page could take it out.
+ *
+ * ⭐ WHAT IS STORED IS WHAT WAS JUDGED (validation audit, 2026-10-03): the name cleaned by the contact book's ONE name
+ * cleaner — and a name holding a Tanzanian mobile number is refused by the ONE verdict (`validateCampaignTemplate`, so
+ * the screen refuses it before Save is pressed; a campaign row is never deleted); a body's `{jina}` fallback stored ONLY
+ * while that body uses `{jina}` — a hidden, unchecked word is never kept.
  *
  * `marketing.campaign_created` is written once, when the draft is born. Owed: U50 registers it.
  *
@@ -28,15 +37,17 @@ import { db } from "@/lib/server/store";
 import type { SmsCampaignDraftGuard, SmsCampaignDraftPatch, StoredSmsCampaign } from "@/lib/server/store";
 import { audit } from "@/lib/server/audit";
 import { randomId } from "@/lib/server/crypto";
-import { validateCampaignTemplate } from "@/lib/marketing/campaign-template";
+import { validateCampaignTemplate, scanPlaceholders } from "@/lib/marketing/campaign-template";
 import type { CampaignDraftFields, TemplateField, TemplateVerdict } from "@/lib/marketing/campaign-template";
+import { cleanDisplayName } from "@/lib/contacts/contact-fields";
 import type { SmsEncoding } from "@/lib/sms-compose";
 import {
-  WHOLE_BOOK, parseContactAudienceParams, parseContactAudienceJson, contactAudienceKey, roleRefusal, auditContactAudience,
-  scrubPhoneRuns, CAMPAIGN_AUDIENCE_SELECTION,
+  WHOLE_BOOK, parseContactAudienceParams, parseContactAudienceJson, contactAudienceKey, campaignAudienceRefusal,
+  auditContactAudience, scrubPhoneRuns, CAMPAIGN_AUDIENCE_SELECTION,
 } from "@/lib/server/marketing/audience";
 import type { ContactAudienceFilter } from "@/lib/server/marketing/audience";
 import { holdsPhoneRun } from "@/lib/contacts/contact-fields";
+import { SMS_CAMPAIGN_VALUE } from "@/lib/server/marketing/campaign-model";
 import { formatClock } from "@/lib/utils";
 
 /* ══ THE SENTENCES — the server's, shown as they are ═══════════════════════════════════════════════════════════════ */
@@ -81,7 +92,7 @@ export type CampaignDraftInput = {
 };
 
 export type CampaignDraftOptions = {
-  /** May this officer read a number (`identity.contact` = read)? A posted filter is held to `roleRefusal` (A1.1). */
+  /** May this officer read a number (`identity.contact` = read)? A posted filter is held to `campaignAudienceRefusal` (X25 · A1.1). */
   viewerReads: boolean;
 };
 
@@ -143,7 +154,7 @@ type AudienceVerdict = { ok: true; filter: ContactAudienceFilter; key: string; w
 
 /**
  * The audience this save stores: the posted address (re-parsed here — an unknown value refuses, C2), else the stored
- * filter (kept as it is), else the whole book. OD55 is asked of every one of them.
+ * filter (kept as it is), else the whole book. The campaign door's rule and OD55 are asked of every one of them.
  */
 function audienceOf(
   posted: Record<string, string> | null,
@@ -156,9 +167,6 @@ function audienceOf(
     const parsed = parseContactAudienceParams(posted);
     if (!parsed.ok) return { ok: false, reason: parsed.reason };
     filter = parsed.filter;
-    // ⛔ A posted filter is the officer's own choice, so it meets the role rule every door asks (A1.1).
-    const role = roleRefusal(filter, viewerReads);
-    if (role !== null) return { ok: false, reason: role.reason };
   } else if (current !== null) {
     let raw: unknown = null;
     try {
@@ -170,7 +178,11 @@ function audienceOf(
     if (!parsed.ok) return { ok: false, reason: CAMPAIGN_AUDIENCE_UNREADABLE };
     filter = parsed.filter;
   }
-  if (filter.ids !== null) return { ok: false, reason: CAMPAIGN_AUDIENCE_SELECTION };
+  // ⛔ X25 · THE CAMPAIGN DOOR'S OWN RULE, the one U38a's count asks — never the book's narrower `roleRefusal`. A POSTED
+  // filter is the officer's own choice: it meets this viewer's role rule (any search, for a viewer who may not read a
+  // number). A STORED one meets the rule every role meets — a ticked selection — and is otherwise kept as it is.
+  const door = campaignAudienceRefusal(filter, posted !== null ? viewerReads : true);
+  if (door !== null) return { ok: false, reason: door.reason };
   const one = rule(filter);
   if (one !== null) return { ok: false, reason: one };
   return { ok: true, filter, key: contactAudienceKey(filter), write: posted !== null || current === null };
@@ -179,7 +191,9 @@ function audienceOf(
 /* ══ THE SAVE ════════════════════════════════════════════════════════════════════════════════════════════════════ */
 
 const text = (v: unknown): string => (typeof v === "string" ? v : "");
-const isRevision = (v: unknown): v is number => typeof v === "number" && Number.isSafeInteger(v) && v >= 0;
+/** ⛔ THE COLUMN'S OWN RULE (`campaign-model.ts`): a whole number within Postgres INTEGER — never a second copy here, so
+ *  a revision past 2,147,483,647 is "no revision" (stale), not a value the door then throws on. */
+const isRevision = SMS_CAMPAIGN_VALUE.draftRevision;
 const orNull = (s: string): string | null => (s === "" ? null : s);
 
 /** The figures stored beside each body — the SERVER's counter's, from the verdict it just computed (X15). */
@@ -193,6 +207,19 @@ function storedFigures(verdict: TemplateVerdict, fields: CampaignDraftFields): P
     bodyEn: english ? fields.bodyEn : null,
     codingEn: english ? en.encoding : null,
     segmentsEn: english ? en.segments : null,
+  };
+}
+
+/**
+ * ⛔ A `{jina}` FALLBACK IS STORED ONLY WHILE ITS BODY USES `{jina}`. The screen hides the field once the placeholder is
+ * gone and the verdict stops judging it — so a word kept anyway would be stored UNCHECKED ("Rafiki1" typed, then the
+ * placeholder deleted). Not judged, not kept.
+ */
+function storedFallbacks(fields: CampaignDraftFields): Pick<StoredSmsCampaign, "nameFallbackSw" | "nameFallbackEn"> {
+  const uses = (body: string) => body !== "" && scanPlaceholders(body).jina > 0;
+  return {
+    nameFallbackSw: uses(fields.bodySw) ? orNull(fields.nameFallbackSw) : null,
+    nameFallbackEn: uses(fields.bodyEn) ? orNull(fields.nameFallbackEn) : null,
   };
 }
 
@@ -229,9 +256,10 @@ export async function saveCampaignDraft(
   options: CampaignDraftOptions,
   deps: CampaignDraftDeps = CAMPAIGN_DRAFT_DEPS,
 ): Promise<CampaignDraftResult> {
-  // ⛔ Every field re-read BY NAME and trimmed; what is validated below is exactly what is stored.
+  // ⛔ Every field re-read BY NAME and trimmed — the name by the contact book's ONE name cleaner, as the verdict reads
+  // it; what is validated below is exactly what is stored.
   const fields: CampaignDraftFields = {
-    name: text(input?.name).trim(),
+    name: cleanDisplayName(text(input?.name)) ?? "",
     bodySw: text(input?.bodySw).trim(),
     bodyEn: text(input?.bodyEn).trim(),
     nameFallbackSw: text(input?.nameFallbackSw).trim(),
@@ -254,6 +282,7 @@ export async function saveCampaignDraft(
   const audience = audienceOf(input?.audience ?? null, current, options.viewerReads, deps.audienceRule);
   if (!audience.ok) problems.audience = [audience.reason];
   // M5 · the source line is the campaign's own (OQ3's wording, owner gate G5) — blank on a new draft — never posted.
+  // ⭐ The ONE verdict refuses a name holding a phone number too, exactly as the screen did before Save was pressed.
   const verdict = deps.validate(fields, current?.sourcePhrase ?? "");
   Object.assign(problems, verdict.problems);
   if (!audience.ok || !verdict.ok || Object.keys(problems).length > 0) {
@@ -261,13 +290,14 @@ export async function saveCampaignDraft(
   }
 
   const figures = storedFigures(verdict, fields);
+  const fallbacks = storedFallbacks(fields);
   const at = deps.now().toISOString();
 
   if (current === null) {
     const row: StoredSmsCampaign = {
       id: deps.newId(), name: fields.name, status: "DRAFT", bodySw: fields.bodySw, bodyEn: figures.bodyEn,
       codingSw: figures.codingSw, segmentsSw: figures.segmentsSw, codingEn: figures.codingEn, segmentsEn: figures.segmentsEn,
-      nameFallbackSw: orNull(fields.nameFallbackSw), nameFallbackEn: orNull(fields.nameFallbackEn), sourcePhrase: null,
+      nameFallbackSw: fallbacks.nameFallbackSw, nameFallbackEn: fallbacks.nameFallbackEn, sourcePhrase: null,
       draftRevision: 0, confirmTier: null, audienceFilter: audience.key, audienceCount: null, audienceWatermark: null,
       estimateSegments: null, estimateTzs: null, budgetTzs: null, enqueueCursor: null, enqueuedAt: null, stopReason: null,
       createdBy: officerId, confirmedBy: null, confirmedAt: null, startedAt: null, pausedAt: null, finishedAt: null,
@@ -299,7 +329,7 @@ export async function saveCampaignDraft(
     name: fields.name,
     bodySw: fields.bodySw, codingSw: figures.codingSw, segmentsSw: figures.segmentsSw,
     bodyEn: figures.bodyEn, codingEn: figures.codingEn, segmentsEn: figures.segmentsEn,
-    nameFallbackSw: orNull(fields.nameFallbackSw), nameFallbackEn: orNull(fields.nameFallbackEn),
+    nameFallbackSw: fallbacks.nameFallbackSw, nameFallbackEn: fallbacks.nameFallbackEn,
     ...(audience.write ? { audienceFilter: audience.key } : {}),
   };
   const revision = input.draftRevision as number;

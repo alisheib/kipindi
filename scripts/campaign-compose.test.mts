@@ -50,6 +50,21 @@
  * number; a masked audit row; never "handed over" unless the gateway took it; and the 40-name bound through the save and
  * the send.
  *
+ * ⭐ §15.14–§15.16 · §16.7–§16.13 · §17.7–§17.11 (the validation audit, 2026-10-03) · THE COMPOSER'S FIELDS, VALIDATED AS
+ * STORED. The `{jina}` fallback is judged trimmed (a phone keyboard's trailing space no longer blocks Save) and printed as
+ * judged; a Unicode body gets ONE sentence naming what to replace and never a negative room; the name is cleaned by the
+ * contact book's one cleaner, refused when it holds a phone number, and stored cleaned; a fallback is stored only while
+ * its body uses `{jina}`; a masked viewer's posted search meets the campaign door's own rule (X25) on the save AND the
+ * card, which offers to remove a refused address filter; a revision past INT4 is "stale", never thrown; the Save reason
+ * takes the officer to the field; a refusal offers only the step that can work; the counter offers the fold when ANY
+ * offender folds; and the words say what happened and what is next.
+ * ⭐ §15.17–§15.18 · §16.14–§16.16 · §17.12 (the same audit's review round) · a name is refused for a phone number in the
+ * ONE verdict — so the screen refuses it before Save — and ONLY for a Tanzanian mobile number (`parseTzNumber`), never a
+ * date or a time, wherever in the name it sits; a draft confirmed since reloads only through the same confirmation, and
+ * either refusal can keep the officer's text as a NEW draft, which carries the audience on screen (`carry`) or is not
+ * offered — never the whole book by omission; the saved line invites a test only when the page can send one; and the
+ * Audience card takes focus only while it shows a problem.
+ *
  * ⛔ IN-PROCESS BY CONSTRUCTION — `--prove-red` plants each defect IN MEMORY and requires the
  * MATCHING assertion to fire. No file-writing call, so it stays outside `test:red-anchors` §4.
  *
@@ -70,9 +85,10 @@ import {
 import {
   JINA, JINA_MAX_CHARS, CAMPAIGN_NAME_MAX_CHARS, SOURCE_PHRASE_MAX_CHARS,
   counterFor, renderForRecipient, renderBody, worstCaseJina, jinaFor, firstNameFor, scanPlaceholders,
-  validateCampaignTemplate, describeOffenders, variantFor,
+  validateCampaignTemplate, describeOffenders, variantFor, campaignNameHoldsNumber,
   type CampaignTemplate, type CampaignDraftFields, type CampaignVariant, type RecipientOrigin,
 } from "../src/lib/marketing/campaign-template.ts";
+import { parseTzNumber } from "../src/lib/tz-msisdn.ts";
 import { appUrl } from "../src/lib/app-url.ts";
 import { decomment } from "./lib/decomment.mts";
 import { srcFiles, REPO_ROOT } from "./lib/tracked-files.mts";
@@ -507,6 +523,26 @@ const NBSP15 = cc(0x00A0);
 const ZWSP15 = cc(0x200B);
 const ZOE = `Zo${cc(0xEB)}`;
 const ONEIL = `O${RSQ15}Neil`;
+/** §15.15 · one pasted curly quote — Unicode, and with the source line's reserve kept, no room at all. */
+const UNI15 = `50pick: leo ni siku ya soka${RSQ15} karibu`;
+/** A RIGHT-TO-LEFT OVERRIDE — a format character the name cleaner drops (it would reverse a name in a list). */
+const RLO16 = cc(0x202E);
+/** A negative number in a sentence: a hyphen-minus straight before a digit, not inside a word ("zero-width" passes). */
+const NEG_NUMBER = /(?:^|[^0-9A-Za-z])-[0-9]/;
+/** §15.17 · names an officer writes that hold figures and NO phone number — dates, times, a batch, a comma'd figure. */
+const NAMES_WITH_FIGURES17 = [
+  "Derby 2026-10-03 18:00", "Promo 03/10 16h", "Simba v Yanga 2026-10-05 16h", "Promo 03-10-2026 1800", "Batch 20261003-2",
+  "Week 40 2026 10 03", "Jackpot 700,000,000",
+];
+/** §15.17 · names that hold one Tanzanian mobile number, each ending 78, in the spellings an officer types. */
+const NAMES_WITH_PHONES17 = ["Juma 0712 345 678", "Juma 0712 345 678 VIP", "VIP +255 712 345 678", "Call 0712345678 now"];
+/** §15.18 · full-width digits, built — never typed (a compatibility fold makes them digits). */
+const FULL_WIDTH18 = (digits: string) => [...digits].map((d) => String.fromCodePoint(0xFF10 + Number(d))).join("");
+/** §15.18 · the number after another figure, in brackets, joined by en dashes, or in full-width digits. */
+const NAMES_HIDING_PHONES18 = [
+  "Week 40 0712 345 678", "List 1 0712345678", "Juma (0712) 345-678", `Juma 0712${cc(0x2013)}345${cc(0x2013)}678`,
+  `Juma ${FULL_WIDTH18("0712")} ${FULL_WIDTH18("345")} ${FULL_WIDTH18("678")}`,
+];
 const EMOJI_NAME = `Juma${String.fromCodePoint(0x1F600)}`;
 const CJK_NAME = cc(0x738B, 0x4F1F);
 const GREEK_GSM_NAME = cc(0x394, 0x3A6, 0x393);
@@ -889,6 +925,59 @@ function checkTemplate(impl: TemplateImpl, log: (l: string) => void): string[] {
       asStored.map((x) => `${x.line}/${x.origin} ok=${x.r.ok}`).join(" · "));
   }
 
+  /* ── §15.14 · the fallback, judged as the save stores it — trimmed (the validation audit, 2026-10-03) ── */
+  {
+    const typed14 = ["Mteja ", " Mteja wetu "].map((nameFallbackSw) => v({ nameFallbackSw }));
+    const counter14 = impl.counterFor(tpl().bodySw, "SW", "Mteja ", "");
+    const printed14 = impl.renderForRecipient(tpl({ nameFallbackSw: " Mteja wetu ", sourcePhrase: PHRASE }), { variant: "SW", name: null, token: TT, origin: "book" });
+    ok("§15.14 ⭐ THE FALLBACK IS TRIMMED BEFORE IT IS JUDGED — 'Mteja ' and ' Mteja wetu ' (a phone keyboard's space after a suggested word) pass the verdict and the counter, and the renderer prints exactly the trimmed word",
+      typed14.every((x) => x.ok) && counter14.ok && counter14.fallbackProblems.length === 0
+        && printed14.ok && printed14.text.startsWith("50pick: Habari Mteja wetu, soka leo."),
+      JSON.stringify({ verdicts: typed14.map((x) => x.problems), counter: counter14.fallbackProblems, printed: printed14.text.slice(0, 40), problems: printed14.problems }));
+  }
+
+  /* ── §15.15 · a Unicode body: ONE sentence naming what to replace, never a negative room (the validation audit) ── */
+  {
+    const c15 = impl.counterFor(UNI15, "SW", FB, "");
+    const v15 = impl.validate(draft({ bodySw: UNI15 }), "");
+    const seven15 = [0x2018, 0x2019, 0x201C, 0x201D, 0x2013, 0x2014, 0x2026].map((x) => cc(x)).join(" ");
+    const many15 = impl.counterFor(`50pick ${seven15}`, "SW", FB, "");
+    // A six-letter source line leaves Unicode some room: the sentence then quotes it, and it is positive.
+    const room15 = impl.counterFor(UNI15, "SW", FB, "Chanzo");
+    const negatives = [...c15.problems, ...many15.problems, ...room15.problems, ...(v15.problems.bodySw ?? [])].filter((p) => NEG_NUMBER.test(p));
+    const first15 = c15.problems[0] ?? "";
+    ok("§15.15 ⭐ A UNICODE BODY IS TOLD IN ONE SENTENCE WHAT TO REPLACE, AND NEVER A NEGATIVE ROOM — one curly quote with the source line's reserve kept reads 'Unicode leaves no room once the required footer is added' and 'replace:' the curly apostrophe by its label, first, on the counter and on the field; seven offenders name five and count the rest; a short source line's positive room is quoted; no sentence holds a negative number",
+      !c15.ok && first15.startsWith("Unicode leaves no room once the required footer is added") && first15.endsWith(`replace: ${RSQ15} (curly apostrophe).`)
+        && v15.problems.bodySw?.[0] === first15
+        && many15.offenders.length === 7 && (many15.problems[0] ?? "").endsWith(" and 2 more.") && (many15.problems[0] ?? "").includes("(en dash)")
+        && room15.budget > 0 && (room15.problems[0] ?? "").startsWith(`Unicode cuts this message to ${room15.budget} characters`)
+        && negatives.length === 0,
+      JSON.stringify({ first: c15.problems, many: many15.problems[0], room: room15.problems, negatives }));
+  }
+
+  /* ── §15.16 · the campaign's name, cleaned by the contact book's ONE name cleaner before its checks ── */
+  {
+    const invisible16 = v({ name: ZWSP15.repeat(3) });
+    const padded16 = v({ name: `${"n".repeat(CAMPAIGN_NAME_MAX_CHARS)}${ZWSP15}${RLO16}` });
+    ok(`§15.16 ⭐ THE NAME IS CLEANED BEFORE IT IS JUDGED — a name of zero-width spaces only is blank ("Give the campaign a name"), and the ${CAMPAIGN_NAME_MAX_CHARS}-character limit counts what is left once the invisible characters (a zero-width space, a direction override) are dropped`,
+      !invisible16.ok && (invisible16.problems.name?.[0] ?? "").startsWith("Give the campaign a name") && padded16.ok,
+      JSON.stringify({ invisible: invisible16.problems, padded: padded16.problems }));
+  }
+
+  /* ── §15.17–§15.18 · the campaign's name refuses a phone number — and ONLY a Tanzanian mobile number (review round) ── */
+  {
+    const refusedDates = NAMES_WITH_FIGURES17.filter((name) => !v({ name }).ok);
+    const said17 = NAMES_WITH_PHONES17.map((name) => v({ name }).problems.name ?? []);
+    const sentence17 = campaignNameHoldsNumber("0712345678");
+    const masked17 = sentence17.includes("ending 78") && !sentence17.includes("0712") && !sentence17.includes("345");
+    ok("§15.17 ⭐ A CAMPAIGN NAME REFUSES A PHONE NUMBER, AND ONLY A PHONE NUMBER — in the ONE verdict the screen shows before Save is pressed: a date, a time, a batch or a figure written with a comma passes ('Derby 2026-10-03 18:00', 'Promo 03/10 16h'), while a Tanzanian mobile number in any spelling is refused on the name with one sentence that names it by its last two digits only",
+      refusedDates.length === 0 && said17.every((list) => list.length === 1 && list[0] === sentence17) && masked17,
+      JSON.stringify({ refusedDates, said: said17, sentence: sentence17 }));
+    const missed18 = NAMES_HIDING_PHONES18.filter((name) => v({ name }).ok);
+    ok("§15.18 ⭐ …WHEREVER IN THE NAME IT SITS — after another figure ('Week 40 0712 345 678'), in brackets, joined by en dashes, or in full-width digits, the number is still found and refused",
+      missed18.length === 0, `missed [${missed18.join(" | ")}]`);
+  }
+
   return failed;
 }
 
@@ -993,6 +1082,17 @@ function controlTags(text: string): string[] {
   return out;
 }
 
+/** From `opener` to the next `until` (or 600 characters on) — one branch of a JSX conditional, read on its own. */
+function branchOf(text: string, opener: string, until: string): string {
+  const at = text.indexOf(opener);
+  if (at < 0) return "";
+  const next = text.indexOf(until, at + opener.length);
+  return text.slice(at, next < 0 ? at + 600 : next);
+}
+
+/** How many times `needle` occurs in `text`. */
+const occurrences = (text: string, needle: string): number => text.split(needle).length - 1;
+
 /** The braces after `opener` — an object or type literal — brace-counted. "" when the opener is not there. */
 function blockAfter(text: string, opener: string): string {
   const at = text.indexOf(opener);
@@ -1065,6 +1165,71 @@ function checkComposerScreen(src: ScreenSources, log: (l: string) => void): stri
     svc.includes("db.smsCampaign.update(id, patch, guard, at)") && svc.includes("db.smsCampaign.create(row)")
       && !/baseUpdatedAt|updateDraft|smsCampaign\.transition/.test(svc),
     `${svc.length} chars`);
+
+  /* §16.7 · validation takes the officer to the field (the validation audit, 2026-10-03) */
+  const reason7 = branchOf(client, "showReason && c.blockedField !== null", "</button>");
+  const goTo7 = blockAfter(client, "const goToField = ");
+  const cut7 = tags.filter((x) => /maxLength/.test(x.t)).map((x) => x.rel);
+  ok("§16.7 ⭐ THE SAVE REASON TAKES THE OFFICER TO THE FIELD — a button (onClick goToBlocked) wherever it names a field this page draws; goToField asks focusFirstInvalid and READS its result (not-rendered handled); the Audience card carries data-field audience; no composer control carries maxLength (the verdict refuses, the browser never cuts); and the §16.2 literal is kept",
+    reason7.includes("<button") && reason7.includes("onClick={c.goToBlocked}") && reason7.includes("data-compose-save-reason")
+      && goTo7.includes("focusFirstInvalid(root, keys)") && goTo7.includes('"not-rendered"')
+      && client.includes('data-field="audience"')
+      && cut7.length === 0 && client.includes("validateCampaignTemplate(fields, view.sourcePhrase)"),
+    `reason ${reason7.length} chars · goToField ${goTo7.length} chars · maxLength in [${cut7.join(", ")}]`);
+
+  /* §16.8 · a refusal offers only the step that can work; both bodies show their error; the Swahili hint; the Remove control */
+  const changed8 = branchOf(client, '(c.refusal.kind === "stale" || c.refusal.kind === "not_draft") && (', "c.refusal.kind ===");
+  const notFound8 = branchOf(client, 'c.refusal.kind === "not_found" && (', "c.refusal.kind ===");
+  const modal8 = branchOf(client, "<ConfirmModal", "/>");
+  const modalAt8 = client.indexOf("<ConfirmModal");
+  const formAt8 = client.indexOf("export function ComposerMessage(");
+  ok("§16.8 ⭐ A REFUSAL OFFERS ONLY THE STEP THAT CAN WORK — a stale save AND a draft confirmed since load the stored version only through ONE ConfirmModal ('Discard my text and load theirs'), held outside the composer's form, and either can keep the officer's text as a new draft; nothing reloads blind; a missing draft saves as new; only a save lost in transit is prefixed with 'Couldn't save … Try again.'; both bodies wear the danger border with their error; the Swahili hint is the copy's; a refused address filter has its Remove control",
+    changed8.includes("onClick={() => c.askDiscard(true)}") && changed8.includes("onClick={c.saveAsNew}")
+      && !client.includes("onClick={c.reload}") && notFound8.includes("onClick={c.saveAsNew}")
+      && modal8.includes("onConfirm={reload}") && modal8.includes("confirmLabel={COMPOSE_DISCARD_CONFIRM}")
+      && occurrences(client, "<ConfirmModal") === 1 && modalAt8 > 0 && formAt8 > modalAt8
+      && client.includes('kind === "failed" ? `${COMPOSE_SAVE_FAILED} ${r.error}` : r.error')
+      && client.includes('className={c.problemAt("bodySw") !== undefined ? "border-danger-500" : undefined}')
+      && client.includes('className={c.problemAt("bodyEn") !== undefined ? "border-danger-500" : undefined}')
+      && client.includes("hint={COMPOSE_BODY_SW_HINT}")
+      && client.includes("a.clearHref !== null") && client.includes("router.replace((a.clearHref"),
+    `stale/not_draft ${changed8.length} chars · modal ${modal8.length} chars at ${modalAt8} (form at ${formAt8}) · not_found ${notFound8.length} · blind reloads ${occurrences(client, "onClick={c.reload}")}`);
+
+  /* §16.9 · the counter row: the ONE cap, and the fold offered when any offender folds */
+  ok("§16.9 the counter row offers the fold through foldOffered (ANY offender with a plain twin) and reads its cap from SMS_MAX_SEGMENTS — no literal cap, no every()",
+    counter.includes("foldOffered(counter)") && counter.includes("counter.segments > SMS_MAX_SEGMENTS")
+      && !/segments > 1(?![0-9])/.test(counter) && !counter.includes(".every("),
+    `${counter.length} chars`);
+
+  /* §16.10 · every action refusal carries its reason */
+  const refusedWith = (reason: string) => occurrences(actions, `return { ok: false, reason: "${reason}"`);
+  ok("§16.10 ⭐ EVERY ACTION REFUSAL CARRIES ITS REASON — the role's (both actions), the save budget's, and an unfinished save's or test's (both catches, each with its own check-first sentence); the revision is campaign-model's INT4 rule; no bare 'return g' and no bare 'failed' fallback label is left",
+    refusedWith("role") === 2 && refusedWith("rate_limited") === 1 && refusedWith("unfinished") === 2
+      && actions.includes("safeError(err, COMPOSE_SAVE_UNFINISHED)") && actions.includes("safeError(err, COMPOSE_TEST_UNFINISHED)")
+      && actions.includes("SMS_CAMPAIGN_VALUE.draftRevision(v)") && !/return g;/.test(actions)
+      && !actions.includes("Saving the draft failed") && !actions.includes("The test send failed"),
+    `role ${refusedWith("role")} · rate_limited ${refusedWith("rate_limited")} · unfinished ${refusedWith("unfinished")}`);
+
+  /* §16.14 · a NEW draft keeps the audience on screen, or is not offered (the review round) */
+  ok("§16.14 ⛔ 'SAVE AS A NEW DRAFT' POSTS THE AUDIENCE IT KEEPS — the card's carry, never the address alone (a draft with no address filter would become the whole book) — and is off, with its reason, when the audience cannot travel",
+    client.includes("audience: asNew ? view.audience.carry : view.audience.params")
+      && client.includes("view.audience.carry === null ? COMPOSE_SAVE_AS_NEW_AUDIENCE")
+      && client.includes("const canSaveAsNew = saveAsNewBlocked === null && !saving;")
+      && client.includes("title={c.saveAsNewBlocked ?? undefined}"),
+    `${occurrences(client, "view.audience.carry")} reads of carry`);
+
+  /* §16.15 · the saved line invites a test only when the page can send one */
+  ok("§16.15 the saved line names the test below only when this page can send one — the live switch open (no live note), the officer's own number reachable, the rail up",
+    client.includes("const canTest = view.test.liveNote === null && view.test.ownNumberMasked !== null && !view.sender.dead;")
+      && client.includes("composeSaved(c.saved.savedAt, canTest)"),
+    `composeSaved calls: ${occurrences(client, "composeSaved(")}`);
+
+  /* §16.16 · the Audience card takes focus only while it shows a problem */
+  const card16 = branchOf(client, "export function ComposerAudience(", "function TestOutcome(");
+  ok("§16.16 the Audience card is a programmatic tab stop, with its focus ring, ONLY while it shows a problem — a click inside a card with nothing wrong never frames it",
+    card16.includes("tabIndex={flagged ? -1 : undefined}") && !card16.includes("tabIndex={-1}")
+      && card16.includes('className={flagged ? "space-y-2 rounded-md brand-focus" : "space-y-2 rounded-md"}'),
+    `card ${card16.length} chars · tab stops in it: ${occurrences(card16, "tabIndex=")}`);
   return failed;
 }
 
@@ -1091,6 +1256,10 @@ const { recordPlayerMarketingChoice, mayReceiveMarketingSms } = await import("..
 const { ensureOptOutToken, mintOptOutToken } = await import("../src/lib/server/marketing/optout-service.ts");
 const { getAuditPage, auditFlush } = await import("../src/lib/server/audit.ts");
 const { maskPhone } = await import("../src/lib/phone-normalize.ts");
+/** The validation audit's sections (2026-10-03) read the campaign door's sentences, the composer's words and its card. */
+const AUDIENCE = await import("../src/lib/server/marketing/audience.ts");
+const COMPOSE_COPY = await import("../src/app/admin/campaigns/new/composer-copy.ts");
+const LOADER = await import("../src/app/admin/campaigns/new/composer-loader.ts");
 
 type DraftInput = Parameters<typeof DRAFT.saveCampaignDraft>[0];
 type TestDeps = typeof TEST.CAMPAIGN_TEST_DEPS;
@@ -1210,13 +1379,88 @@ type ComposeImpl = {
   testDeps: TestDeps;
   /** campaign-test-send.ts as text — §18.14 pins the wires it is built from. */
   testSendSource: string;
+  /** The composer's Audience card (`composeAudienceView`) — §17.8 asks it for a masked viewer, the save's own rule. */
+  audienceView: typeof LOADER.composeAudienceView;
 };
 const REAL_COMPOSE: ComposeImpl = {
   save: DRAFT.saveCampaignDraft, test: TEST.sendCampaignTest, readSwitch: LIVE.readMarketingLiveSwitch,
   liveGate: LIVE.marketingLiveGate, ensureToken: ensureOptOutToken,
   testDeps: TEST.CAMPAIGN_TEST_DEPS,
   testSendSource: readFileSync(new URL("../src/lib/server/marketing/campaign-test-send.ts", import.meta.url), "utf8"),
+  audienceView: LOADER.composeAudienceView,
 };
+
+/* ══ §16.11–§16.13 — THE COMPOSER'S WORDS, EXECUTED (the validation audit, 2026-10-03) ══════════════════════════════════
+ * What the counter row offers, what its line says while Unicode leaves no room, and the sentences a save, a refusal and
+ * an unusable own number print — each member swappable, so a plant replaces exactly one in memory. */
+type WordsImpl = {
+  foldOffered: typeof COMPOSE_COPY.foldOffered;
+  counterLine: typeof COMPOSE_COPY.counterLine;
+  composeSaved: typeof COMPOSE_COPY.composeSaved;
+  bodyHint: string;
+  saveUnfinished: string;
+  testUnfinished: string;
+  ownNumberUnusable: string;
+};
+const REAL_WORDS: WordsImpl = {
+  foldOffered: COMPOSE_COPY.foldOffered, counterLine: COMPOSE_COPY.counterLine, composeSaved: COMPOSE_COPY.composeSaved,
+  bodyHint: COMPOSE_COPY.COMPOSE_BODY_SW_HINT, saveUnfinished: COMPOSE_COPY.COMPOSE_SAVE_UNFINISHED, testUnfinished: COMPOSE_COPY.COMPOSE_TEST_UNFINISHED,
+  ownNumberUnusable: TEST.TEST_OWN_NUMBER_UNUSABLE,
+};
+const EMOJI16 = String.fromCodePoint(0x1F600);
+/** A pasted curly quote beside an emoji — one offender with a plain twin, one without. */
+const MIXED16 = `50pick: Habari${RSQ15}s ${EMOJI16} leo`;
+
+function checkComposerWords(w: WordsImpl, log: (l: string) => void): string[] {
+  const failed: string[] = [];
+  const ok = (label: string, cond: boolean, extra = "") => {
+    if (cond) log(`  ok   ${label}`);
+    else { failed.push(label); log(`  FAIL ${label}${extra ? ` — ${extra}` : ""}`); }
+  };
+  log(`${NL15}§16.11–§16.13 · THE COMPOSER'S WORDS — the fold offer, the counter line, what a save and a refusal say`);
+
+  /* §16.11 · the fold is offered when ANY offender has a plain twin */
+  {
+    const both = counterFor(MIXED16, "SW", FB, "");
+    const folded = counterFor(foldToGsm7(MIXED16), "SW", FB, "");
+    const emojiOnly = counterFor(`50pick: Habari ${EMOJI16} leo`, "SW", FB, "");
+    ok("§16.11 ⭐ 'REPLACE WITH PLAIN CHARACTERS' IS OFFERED WHEN ANY OFFENDER FOLDS — an emoji beside a curly quote no longer hides it; after the fold only the emoji is named, and nothing more is offered (an emoji alone never is)",
+      both.offenders.length === 2 && w.foldOffered(both)
+        && folded.encoding === "UCS2" && folded.offenders.length === 1 && folded.offenders[0].ch === EMOJI16 && !w.foldOffered(folded)
+        && emojiOnly.encoding === "UCS2" && !w.foldOffered(emojiOnly),
+      JSON.stringify({ both: both.offenders.map((o) => o.label), folded: folded.offenders.map((o) => o.label), offered: [w.foldOffered(both), w.foldOffered(folded), w.foldOffered(emojiOnly)] }));
+  }
+
+  /* §16.12 · the counter line never asks for a cut that cannot fix it */
+  {
+    const spaced = (s: string) => s.split(NBSP15).join(" ");
+    const uni = counterFor(UNI15, "SW", FB, "");
+    const gsmOver = counterFor(`${fillTo(HEAD, operatorBudget("SW", RESERVE))}aa`, "SW", FB, "");
+    const lineU = spaced(w.counterLine(uni));
+    const lineG = spaced(w.counterLine(gsmOver));
+    ok(`§16.12 ⛔ THE COUNTER LINE NEVER ASKS FOR A CUT THAT CANNOT FIX IT — while Unicode leaves no room it reads 'Unicode leaves no room · ${uni.segments} messages · the limit is ${SMS_MAX_SEGMENTS}', no 'over' and no negative; a GSM-7 body two past its room still reads '2 over'`,
+      uni.budget <= 0 && lineU === `Unicode leaves no room · ${uni.segments} messages · the limit is ${SMS_MAX_SEGMENTS}`
+        && !/over/.test(lineU) && !NEG_NUMBER.test(lineU)
+        && lineG === `2 over · ${gsmOver.segments} messages · the limit is ${SMS_MAX_SEGMENTS}`,
+      `unicode "${lineU}" (room ${uni.budget}) · GSM-7 "${lineG}"`);
+  }
+
+  /* §16.13 · what a save, an unfinished action and an unusable own number say */
+  {
+    const saved = w.composeSaved("2026-10-03T11:02:00.000Z", true);
+    const noTest = w.composeSaved("2026-10-03T11:02:00.000Z", false);
+    ok("§16.13 THE WORDS SAY WHAT HAPPENED AND WHAT IS NEXT — a save reads 'Draft saved HH:MM' then that nothing was sent, and names the test below ONLY when the page can send one; the Swahili hint is built from the identity and the placeholder themselves; an unfinished save or test says to check first, never to try again; an unusable own number says the number can't be changed and names who to ask and where (the owner, /admin/staff), promising no step the owner may not take",
+      /^Draft saved [0-9]{2}:[0-9]{2} /.test(saved) && saved.endsWith("nothing was sent. Send yourself a test below.")
+        && /^Draft saved [0-9]{2}:[0-9]{2} /.test(noTest) && noTest.endsWith("nothing was sent.") && !/test/i.test(noTest)
+        && w.bodyHint === `Begin with ${SENDER_IDENTITY} (lower case). ${JINA} prints the first name.`
+        && w.saveUnfinished.includes("before saving again") && !/try again/i.test(w.saveUnfinished)
+        && w.testUnfinished.includes("Check your phone") && !/try again/i.test(w.testUnfinished)
+        && w.ownNumberUnusable.includes("can't be changed") && w.ownNumberUnusable.includes("ask the owner")
+        && w.ownNumberUnusable.includes("/admin/staff") && !/an account on your/i.test(w.ownNumberUnusable),
+      JSON.stringify({ saved, noTest, hint: w.bodyHint, own: w.ownNumberUnusable }));
+  }
+  return failed;
+}
 
 /* ── §17 · the save ── */
 async function checkSave(impl: ComposeImpl, log: (l: string) => void): Promise<string[]> {
@@ -1321,6 +1565,84 @@ async function checkSave(impl: ComposeImpl, log: (l: string) => void): Promise<s
     const band = await save(draftInput({ name: "A deposit band", audience: { tag: "5000-10000" } }));
     return [refused.length === smuggled.length && after === before && fine.ok && band.ok,
       `refused [${refused.join(", ")}] of ${smuggled.length} · rows ${before} → ${after} · vip2026 ${fine.ok ? "saved" : "REFUSED"} · 5000-10000 ${band.ok ? "saved" : "REFUSED"}`];
+  });
+
+  /* ── §17.7–§17.11 · the validation audit (2026-10-03) ── */
+  await claim("§17.7 ⛔ X25 · A MASKED VIEWER'S POSTED SEARCH MEETS THE CAMPAIGN DOOR'S OWN RULE — q=asha posted by a viewer who may not read a number is refused 'invalid' on the audience card with the sentence U38a's count gives (CAMPAIGN_SEARCH_REFUSAL_REASON) and writes no row; a reader's is saved; and that STORED search is kept when a masked viewer next saves the draft (noted, never blocked)", async () => {
+    const before = campaignCount();
+    const masked = await save(draftInput({ name: "Masked search", audience: { q: "asha" } }), false);
+    const afterRefusal = campaignCount();
+    const reader = await save(draftInput({ name: "Reader search", audience: { q: "asha" } }), true);
+    const kept = reader.ok
+      ? await save(draftInput({ id: reader.id, draftRevision: reader.draftRevision, name: "Reader search, edited by a masked viewer" }), false)
+      : null;
+    const row = reader.ok ? await db.smsCampaign.find(reader.id) : null;
+    return [!masked.ok && masked.reason === "invalid" && (masked.problems.audience ?? []).includes(AUDIENCE.CAMPAIGN_SEARCH_REFUSAL_REASON)
+      && afterRefusal === before && reader.ok && kept !== null && kept.ok && row !== null && row.audienceFilter === '{"q":"asha"}',
+      `masked ${masked.ok ? "SAVED" : masked.reason} · rows ${before} → ${afterRefusal} · reader ${reader.ok ? "saved" : reader.error} · masked re-save ${kept === null ? "-" : kept.ok ? "saved" : kept.error} · stored ${row?.audienceFilter ?? "NOTHING"}`];
+  });
+
+  await claim("§17.8 ⛔ X25 · THE CARD ASKS THE SAVE'S RULE — ?q=asha for a masked viewer is refused on the Audience card with the same sentence, nothing described, and 'Remove the filter' leads to the composer's own address with the draft kept (?draft=<id>, or the bare composer); a reader's is described, with no remove control; a STORED search this viewer may not use is noted and never blocks Save", async () => {
+    const made = await save(draftInput({ name: "Card fixture" }));
+    if (!made.ok) return [false, `fixture refused: ${made.error}`];
+    const row = await db.smsCampaign.find(made.id);
+    if (row === null) return [false, "the fixture draft was not stored"];
+    const masked = impl.audienceView({ draft: made.id, q: "asha" }, row, false);
+    const reader = impl.audienceView({ draft: made.id, q: "asha" }, row, true);
+    const blank = impl.audienceView({ q: "asha" }, null, false);
+    const stored = impl.audienceView({ draft: made.id }, { ...row, audienceFilter: '{"q":"asha"}' }, false);
+    return [masked.problem === AUDIENCE.CAMPAIGN_SEARCH_REFUSAL_REASON && masked.lines.length === 0
+      && masked.clearHref === `/admin/campaigns/new?draft=${encodeURIComponent(made.id)}`
+      && reader.problem === null && reader.lines.length > 0 && reader.clearHref === null
+      && blank.problem === AUDIENCE.CAMPAIGN_SEARCH_REFUSAL_REASON && blank.clearHref === "/admin/campaigns/new"
+      && stored.problem === null && stored.note !== null && stored.lines.length === 0 && stored.clearHref === null,
+      JSON.stringify({ masked: [masked.problem, masked.clearHref, masked.lines.length], reader: [reader.problem, reader.clearHref, reader.lines.length], blank: blank.clearHref, stored: [stored.problem, stored.note, stored.lines.length] })];
+  });
+
+  await claim("§17.9 ⛔ A {jina} FALLBACK IS STORED ONLY WHILE ITS BODY USES {jina} — a body without it stores null for both words (the hidden 'Rafiki1', and an English word with no English body), and a body with it stores its word trimmed ('Mteja ' becomes 'Mteja')", async () => {
+    const without = await save(draftInput({ name: "No placeholder", bodySw: "50pick: Mechi kubwa leo.", nameFallbackSw: "Rafiki1", nameFallbackEn: "Friend" }));
+    const withIt = await save(draftInput({ name: "Placeholder", nameFallbackSw: "Mteja " }));
+    const a = without.ok ? await db.smsCampaign.find(without.id) : null;
+    const b = withIt.ok ? await db.smsCampaign.find(withIt.id) : null;
+    return [a !== null && a.nameFallbackSw === null && a.nameFallbackEn === null && b !== null && b.nameFallbackSw === "Mteja" && b.nameFallbackEn === null,
+      `without {jina}: ${a === null ? (without.ok ? "no row" : without.error) : `${a.nameFallbackSw}/${a.nameFallbackEn}`} · with: ${b === null ? (withIt.ok ? "no row" : withIt.error) : `${JSON.stringify(b.nameFallbackSw)}/${b.nameFallbackEn}`}`];
+  });
+
+  await claim("§17.10 ⛔ OD55 ON THE LABEL, AND THE NAME AS JUDGED — the save asks the ONE verdict: 'Juma 0712 345 678 VIP' is refused 'invalid' on the name with the verdict's own sentence (a campaign row is never deleted) and writes no row, while 'Derby 2026-10-03 18:00' — a date and a time — is saved; the name stored is the cleaned one (a zero-width space and a direction override gone, the spaces collapsed)", async () => {
+    const before = campaignCount();
+    const phone = await save(draftInput({ name: "Juma 0712 345 678 VIP" }));
+    const afterRefusal = campaignCount();
+    const messy = await save(draftInput({ name: `  Derby${ZWSP15}   week ${RLO16}` }));
+    const dated = await save(draftInput({ name: "Derby 2026-10-03 18:00" }));
+    const row = messy.ok ? await db.smsCampaign.find(messy.id) : null;
+    return [!phone.ok && phone.reason === "invalid" && (phone.problems.name ?? []).includes(campaignNameHoldsNumber("0712345678")) && afterRefusal === before
+      && row !== null && row.name === "Derby week" && dated.ok,
+      `phone ${phone.ok ? "SAVED" : phone.reason} · rows ${before} → ${afterRefusal} · stored ${JSON.stringify(row?.name ?? null)} · the dated name ${dated.ok ? "saved" : dated.error}`];
+  });
+
+  await claim("§17.11 ⛔ A REVISION PAST POSTGRES INTEGER IS 'NO REVISION' — an edit posted with draftRevision 2,147,483,648 is refused 'stale' (saying when it was saved), never thrown into the campaign door, and the stored row is untouched", async () => {
+    const made = await save(draftInput({ name: "Revision cap" }));
+    if (!made.ok) return [false, `fixture refused: ${made.error}`];
+    const r = await save(draftInput({ id: made.id, draftRevision: 2147483648, name: "Revision cap", bodySw: "50pick: Haipaswi kuandikwa." }));
+    const row = await db.smsCampaign.find(made.id);
+    return [!r.ok && r.reason === "stale" && r.error.includes("saved this draft at") && row !== null && row.draftRevision === 0 && row.bodySw === draftInput().bodySw,
+      `${r.ok ? "SAVED" : r.reason} · stored rev ${row?.draftRevision} "${row?.bodySw}"`];
+  });
+
+  await claim("§17.12 ⛔ 'SAVE AS A NEW DRAFT' KEEPS THE AUDIENCE ON SCREEN — the card hands a stored filter over written as an address (carry), and a NEW draft saved with it stores that same filter, never the whole book; the whole book carries as no filter at all; a stored search a masked viewer may not post, and a refused address filter, carry nothing (the save is then not offered)", async () => {
+    const made = await save(draftInput({ name: "Carry fixture", audience: { tag: "vip" } }));
+    if (!made.ok) return [false, `fixture refused: ${made.error}`];
+    const row = await db.smsCampaign.find(made.id);
+    if (row === null) return [false, "the fixture draft was not stored"];
+    const kept = impl.audienceView({ draft: made.id }, row, true);
+    const copy = kept.carry === null ? null : await save(draftInput({ name: "Carry fixture, kept as new", audience: kept.carry }));
+    const copied = copy !== null && copy.ok ? await db.smsCampaign.find(copy.id) : null;
+    const book = impl.audienceView({}, null, true);
+    const hidden = impl.audienceView({ draft: made.id }, { ...row, audienceFilter: '{"q":"asha"}' }, false);
+    const refused = impl.audienceView({ q: "asha" }, null, false);
+    return [row.audienceFilter === '{"tags":["vip"]}' && copied !== null && copied.audienceFilter === row.audienceFilter
+      && book.carry !== null && Object.keys(book.carry).length === 0 && hidden.carry === null && refused.carry === null,
+      JSON.stringify({ stored: row.audienceFilter, carry: kept.carry, copied: copied?.audienceFilter ?? (copy === null ? "nothing carried" : copy.ok ? "no row" : copy.error), book: book.carry, hidden: hidden.carry, refused: refused.carry })];
   });
   return failed;
 }
@@ -1669,6 +1991,7 @@ if (!PROVE_RED) {
     ...checkTemplate(REAL_TEMPLATE, (l) => console.log(l)),
     ...checkOneComposer(COMPOSER_SOURCES, (l) => console.log(l)),
     ...checkComposerScreen(SCREEN_SOURCES, (l) => console.log(l)),
+    ...checkComposerWords(REAL_WORDS, (l) => console.log(l)),
     ...(await checkSave(REAL_COMPOSE, (l) => console.log(l))),
     ...(await checkTestSend(REAL_COMPOSE, (l) => console.log(l))),
   ];
@@ -1687,7 +2010,8 @@ if (!PROVE_RED) {
   const baseline = [
     ...check(sizeSms, quiet), ...checkEnvelope((body, token) => composeMarketing(body, token), quiet), ...checkFold(foldToGsm7, quiet),
     ...checkTemplate(REAL_TEMPLATE, quiet), ...checkOneComposer(COMPOSER_SOURCES, quiet),
-    ...checkComposerScreen(SCREEN_SOURCES, quiet), ...(await checkSave(REAL_COMPOSE, quiet)), ...(await checkTestSend(REAL_COMPOSE, quiet)),
+    ...checkComposerScreen(SCREEN_SOURCES, quiet), ...checkComposerWords(REAL_WORDS, quiet),
+    ...(await checkSave(REAL_COMPOSE, quiet)), ...(await checkTestSend(REAL_COMPOSE, quiet)),
   ];
   ok("§0 baseline · the shipped module passes every assertion before anything is planted",
     baseline.length === 0, baseline.join("; "));
@@ -2089,6 +2413,70 @@ if (!PROVE_RED) {
     /** §15.13 · the source line checked only where it is printed, and trimmed — an account recipient's check never sees it. */
     const phraseWhereSent: typeof renderForRecipient = (t, r) =>
       renderForRecipient({ ...t, sourcePhrase: r.origin === "account" ? "" : t.sourcePhrase.trim() }, r);
+    /** §15.14 · the fallback judged UNTRIMMED, as the screen judged it before the audit — "Mteja " refused, Save disabled. */
+    const untrimmedFallback: typeof validateCampaignTemplate = (f, phrase) => {
+      const real = validateCampaignTemplate(f, phrase);
+      const fb = f.nameFallbackSw ?? "";
+      if (scanPlaceholders(f.bodySw ?? "").jina === 0 || fb === fb.trim() || fb.trim() === "") return real;
+      const problems = { ...real.problems, nameFallbackSw: [`The word for ${JINA} must be letters, at most ${JINA_MAX_CHARS} characters.`] };
+      return { ...real, problems, ok: false };
+    };
+    /** §15.15 · the envelope's own sentences as the counter's — "you have -10 characters" for one pasted curly quote. */
+    const rawEnvelope: typeof counterFor = (body, variant, fallback, phrase) => {
+      const real = counterFor(body, variant, fallback, phrase);
+      if (real.encoding !== "UCS2") return real;
+      const c = composeMarketing(renderBody(body ?? "", worstCaseJina()), footerMeasurementToken(), variant, (phrase ?? "").trim() || RESERVE);
+      return { ...real, problems: c.problems };
+    };
+    /** §15.16 · the name only trimmed — a name of zero-width spaces is a name, and the invisible characters count. */
+    const nameTrimmedOnly: typeof validateCampaignTemplate = (f, phrase) => {
+      const real = validateCampaignTemplate(f, phrase);
+      const name = (f.name ?? "").trim();
+      const n = [...name].length;
+      const { name: _cleaned, ...rest } = real.problems;
+      const problems = n === 0 ? { ...rest, name: ["Give the campaign a name."] }
+        : n > CAMPAIGN_NAME_MAX_CHARS ? { ...rest, name: [`The name is ${n} characters.`] } : rest;
+      return { ...real, problems, ok: Object.keys(problems).length === 0 };
+    };
+    type Verdict17 = ReturnType<typeof validateCampaignTemplate>;
+    const PHONE_SAID17 = "A campaign name can't hold a phone number";
+    /** The verdict with its phone-in-the-name sentence taken out — what two of the plants below do to it. */
+    const phoneUnsaid = (real: Verdict17): Verdict17 => {
+      const kept = (real.problems.name ?? []).filter((p) => !p.startsWith(PHONE_SAID17));
+      const { name: _said, ...rest } = real.problems;
+      const problems = kept.length > 0 ? { ...rest, name: kept } : rest;
+      return { ...real, problems, ok: Object.keys(problems).length === 0 };
+    };
+    /** §15.17 · the test the first build used — any run of nine digits (`scrubPhoneRuns`) — so a date and a time read as a phone. */
+    const scrubbedName: typeof validateCampaignTemplate = (f, phrase) => {
+      const real = validateCampaignTemplate(f, phrase);
+      const name = (f.name ?? "").trim();
+      if (name === "" || AUDIENCE.scrubPhoneRuns(name) === name || (real.problems.name ?? []).some((p) => p.startsWith(PHONE_SAID17))) return real;
+      const problems = { ...real.problems, name: [...(real.problems.name ?? []), `${PHONE_SAID17}.`] };
+      return { ...real, problems, ok: false };
+    };
+    /** §15.17 · no phone test on the name at all — the label keeps a stranger's number for good. */
+    const phoneUnchecked: typeof validateCampaignTemplate = (f, phrase) => phoneUnsaid(validateCampaignTemplate(f, phrase));
+    /** §15.18 · only each WHOLE run asked — a number after another figure ("Week 40 0712 345 678") reads as one long figure. */
+    const RUN_JOINERS18 = ` .()[]+_-${cc(0x2013)}`;
+    const wholeRunHolds = (name: string): boolean => {
+      const runs: string[] = [];
+      let digits = "";
+      for (const ch of name.normalize("NFKC")) {
+        if (ch >= "0" && ch <= "9") digits += ch;
+        else if (digits !== "" && RUN_JOINERS18.includes(ch)) continue;
+        else {
+          if (digits !== "") runs.push(digits);
+          digits = "";
+        }
+      }
+      if (digits !== "") runs.push(digits);
+      return runs.some((r) => parseTzNumber(r).verdict === "ok");
+    };
+    const wholeRunOnly: typeof validateCampaignTemplate = (f, phrase) => {
+      const real = validateCampaignTemplate(f, phrase);
+      return wholeRunHolds(f.name ?? "") ? real : phoneUnsaid(real);
+    };
 
     const R = REAL_TEMPLATE;
     type TemplatePlant = { name: string; expect: RegExp[]; impl: TemplateImpl; landed: () => boolean; landedAs: string };
@@ -2279,6 +2667,48 @@ if (!PROVE_RED) {
         landed: () => true,
         landedAs: "an always-ok counter needs no proof of landing",
       },
+      {
+        name: "§15.14 · the fallback judged untrimmed — a phone keyboard's trailing space disables Save",
+        expect: [/^§15[.]14 ⭐/],
+        impl: { ...R, validate: untrimmedFallback },
+        landed: () => validateCampaignTemplate(draft({ nameFallbackSw: "Mteja " }), "").ok && !untrimmedFallback(draft({ nameFallbackSw: "Mteja " }), "").ok,
+        landedAs: "'Mteja ' passes the real verdict and is refused by the plant",
+      },
+      {
+        name: "§15.15 · the envelope's sentences as the counter's — one curly quote quotes a negative room",
+        expect: [/^§15[.]15 ⭐/],
+        impl: { ...R, counterFor: rawEnvelope },
+        landed: () => rawEnvelope(UNI15, "SW", FB, "").problems.some((p) => NEG_NUMBER.test(p)) && !counterFor(UNI15, "SW", FB, "").problems.some((p) => NEG_NUMBER.test(p)),
+        landedAs: "the plant's sentences hold a negative room; the real counter's hold none",
+      },
+      {
+        name: "§15.16 · the name only trimmed — zero-width spaces make a name",
+        expect: [/^§15[.]16 ⭐/],
+        impl: { ...R, validate: nameTrimmedOnly },
+        landed: () => !validateCampaignTemplate(draft({ name: ZWSP15 }), "").ok && nameTrimmedOnly(draft({ name: ZWSP15 }), "").ok,
+        landedAs: "a name of one zero-width space is blank for the real verdict and a name for the plant",
+      },
+      {
+        name: "§15.17 · any run of nine digits refused as a phone — 'Derby 2026-10-03 18:00' cannot be saved",
+        expect: [/^§15[.]17 ⭐/],
+        impl: { ...R, validate: scrubbedName },
+        landed: () => validateCampaignTemplate(draft({ name: "Derby 2026-10-03 18:00" }), "").ok && !scrubbedName(draft({ name: "Derby 2026-10-03 18:00" }), "").ok,
+        landedAs: "the dated name passes the real verdict and is refused by the plant",
+      },
+      {
+        name: "§15.17 · no phone test on the name — 'Juma 0712 345 678' kept for good",
+        expect: [/^§15[.]17 ⭐/, /^§15[.]18 ⭐/],
+        impl: { ...R, validate: phoneUnchecked },
+        landed: () => !validateCampaignTemplate(draft({ name: "Juma 0712 345 678" }), "").ok && phoneUnchecked(draft({ name: "Juma 0712 345 678" }), "").ok,
+        landedAs: "the name holding a number is refused by the real verdict and passed by the plant",
+      },
+      {
+        name: "§15.18 · only each whole run asked — a number written after another figure slips through",
+        expect: [/^§15[.]18 ⭐/],
+        impl: { ...R, validate: wholeRunOnly },
+        landed: () => !validateCampaignTemplate(draft({ name: "Week 40 0712 345 678" }), "").ok && wholeRunOnly(draft({ name: "Week 40 0712 345 678" }), "").ok,
+        landedAs: "'Week 40 0712 345 678' is refused by the real verdict and passed by the plant",
+      },
     ];
     for (const p of templatePlants) {
       ok(`PLANT LANDED · ${p.name}`, p.landed(), p.landedAs);
@@ -2343,6 +2773,29 @@ if (!PROVE_RED) {
     const typedActions = withFile(ACTIONS, (t) => t.replace(SIG, "sendCampaignTestAction(campaignId: string, variant: CampaignVariant, to: string)"));
     const moneyCopy = withFile(COPY, (t) => `${t}${NL15}export const COMPOSE_TEST_COST = "Each test costs TZS 6.";`);
     const secondDoor: ScreenSources = { ...S, draftService: `${S.draftService}${NL15}export const later = (id: string, p: object, base: string) => db.smsCampaign.updateDraft(id, p, base);` };
+    const COUNTER_REL = `${SCREEN_DIR}composer-counter.tsx`;
+    /** ⛔ Every anchor below resolves EXACTLY ONCE in the real source — each plant's `landed` proves it before it is read. */
+    const once = (rel: string, anchor: string) => occurrences(S.files.get(rel) ?? "", anchor) === 1;
+    const swapOnce = (rel: string, anchor: string, planted: string) => withFile(rel, (t) => t.replace(anchor, planted));
+    const SAVE_ROLE = `"marketing.campaign.save", COMPOSE_ROLE_REFUSAL);${NL15}  if (!g.ok) return { ok: false, reason: "role", error: g.error };`;
+    const NAME_ONCHANGE = 'onChange={(e) => c.setField("name", e.target.value)}';
+    const ASK_FIRST = "onClick={() => c.askDiscard(true)}";
+    const CHANGED_OPENER = '(c.refusal.kind === "stale" || c.refusal.kind === "not_draft") && (';
+    const KEEP_TEXT = "onClick={c.saveAsNew} disabled={!c.canSaveAsNew} title={c.saveAsNewBlocked ?? undefined} data-compose-save-new={c.refusal.kind}";
+    const CARRY_POST = "audience: asNew ? view.audience.carry : view.audience.params";
+    const SAVED_CALL = "composeSaved(c.saved.savedAt, canTest)";
+    const FLAGGED_STOP = "tabIndex={flagged ? -1 : undefined}";
+    const reasonAsText = withFile(CLIENT, (t) => t.split("onClick={c.goToBlocked}").join(""));
+    const cutName = swapOnce(CLIENT, NAME_ONCHANGE, `${NAME_ONCHANGE} maxLength={80}`);
+    const blindReload = swapOnce(CLIENT, ASK_FIRST, "onClick={c.reload}");
+    const blindNotDraft = swapOnce(CLIENT, CHANGED_OPENER,
+      `c.refusal.kind === "not_draft" && (<Button type="button" onClick={c.reload}>{COMPOSE_RELOAD}</Button>)}${NL15}{c.refusal.kind === "stale" && (`);
+    const noKeepText = swapOnce(CLIENT, KEEP_TEXT, "onClick={c.save} disabled={!c.canSave} data-compose-save-new={c.refusal.kind}");
+    const literalCap = swapOnce(COUNTER_REL, "counter.segments > SMS_MAX_SEGMENTS", "counter.segments > 1");
+    const bareRole = swapOnce(ACTIONS, SAVE_ROLE, `"marketing.campaign.save", COMPOSE_ROLE_REFUSAL);${NL15}  if (!g.ok) return g;`);
+    const carryDropped = swapOnce(CLIENT, CARRY_POST, "audience: view.audience.params");
+    const alwaysInvite = swapOnce(CLIENT, SAVED_CALL, "composeSaved(c.saved.savedAt, true)");
+    const alwaysFocusable = swapOnce(CLIENT, FLAGGED_STOP, "tabIndex={-1}");
     type ScreenPlant = { name: string; expect: RegExp; sources: ScreenSources; landed: () => boolean; landedAs: string };
     const screenPlants: ScreenPlant[] = [
       {
@@ -2381,10 +2834,141 @@ if (!PROVE_RED) {
         landed: () => secondDoor.draftService.includes("updateDraft("),
         landedAs: "the save gains an updateDraft call with a base stamp",
       },
+      {
+        name: "§16.7 · the Save reason as plain text again — nothing takes the officer to the field",
+        expect: /^§16[.]7 ⭐/, sources: reasonAsText,
+        landed: () => (S.files.get(CLIENT) ?? "").includes("onClick={c.goToBlocked}") && !(reasonAsText.files.get(CLIENT) ?? "").includes("onClick={c.goToBlocked}"),
+        landedAs: "the reason button loses its handler",
+      },
+      {
+        name: "§16.7 · the campaign name cut silently by maxLength again",
+        expect: /^§16[.]7 ⭐/, sources: cutName,
+        landed: () => once(CLIENT, NAME_ONCHANGE) && (cutName.files.get(CLIENT) ?? "").includes(`${NAME_ONCHANGE} maxLength={80}`),
+        landedAs: "the name Input (its one onChange) gains maxLength",
+      },
+      {
+        name: "§16.8 · a stale save and a confirmed draft reload straight over the officer's text — no confirmation",
+        expect: /^§16[.]8 ⭐/, sources: blindReload,
+        landed: () => once(CLIENT, ASK_FIRST) && (blindReload.files.get(CLIENT) ?? "").includes("onClick={c.reload}"),
+        landedAs: "the Reload of both refusals calls reload directly",
+      },
+      {
+        name: "§16.8 · a draft confirmed since reloads blind again — the first build's not_draft branch",
+        expect: /^§16[.]8 ⭐/, sources: blindNotDraft,
+        landed: () => once(CLIENT, CHANGED_OPENER)
+          && (blindNotDraft.files.get(CLIENT) ?? "").includes('c.refusal.kind === "not_draft" && (<Button type="button" onClick={c.reload}>'),
+        landedAs: "not_draft gets its own Reload that replaces the text with no confirmation",
+      },
+      {
+        name: "§16.8 · a stale or confirmed draft can no longer keep the officer's text as a new draft",
+        expect: /^§16[.]8 ⭐/, sources: noKeepText,
+        landed: () => once(CLIENT, KEEP_TEXT) && !(noKeepText.files.get(CLIENT) ?? "").includes(KEEP_TEXT),
+        landedAs: "the refusal's second button saves the same draft again (refused again) instead of a new one",
+      },
+      {
+        name: "§16.9 · the counter row's literal cap of 1 back",
+        expect: /^§16[.]9 /, sources: literalCap,
+        landed: () => once(COUNTER_REL, "counter.segments > SMS_MAX_SEGMENTS") && (literalCap.files.get(COUNTER_REL) ?? "").includes("counter.segments > 1"),
+        landedAs: "the counter compares segments with a literal 1",
+      },
+      {
+        name: "§16.10 · the save's role refusal returned bare — the screen prefixes 'Try again' to a retry that cannot win",
+        expect: /^§16[.]10 ⭐/, sources: bareRole,
+        landed: () => once(ACTIONS, SAVE_ROLE) && (bareRole.files.get(ACTIONS) ?? "").includes("if (!g.ok) return g;"),
+        landedAs: "the save action's role refusal loses its reason",
+      },
+      {
+        name: "§16.14 · 'Save as a new draft' posts the address alone — a draft with a stored filter becomes the whole book",
+        expect: /^§16[.]14 ⛔/, sources: carryDropped,
+        landed: () => once(CLIENT, CARRY_POST) && !(carryDropped.files.get(CLIENT) ?? "").includes(CARRY_POST),
+        landedAs: "the new draft posts view.audience.params, null without an address filter",
+      },
+      {
+        name: "§16.15 · the saved line invites a test whatever the page can send",
+        expect: /^§16[.]15 /, sources: alwaysInvite,
+        landed: () => once(CLIENT, SAVED_CALL) && (alwaysInvite.files.get(CLIENT) ?? "").includes("composeSaved(c.saved.savedAt, true)"),
+        landedAs: "the saved line is always told the test can go",
+      },
+      {
+        name: "§16.16 · the Audience card a tab stop always — any click inside draws its ring",
+        expect: /^§16[.]16 /, sources: alwaysFocusable,
+        landed: () => once(CLIENT, FLAGGED_STOP) && (alwaysFocusable.files.get(CLIENT) ?? "").includes("tabIndex={-1}"),
+        landedAs: "the card carries tabIndex -1 with nothing wrong",
+      },
     ];
     for (const p of screenPlants) {
       ok(`PLANT LANDED · ${p.name}`, p.landed(), p.landedAs);
       const failures = checkComposerScreen(p.sources, quiet);
+      ok(`  └─ fires: ${p.expect.source.slice(0, 56)}`, failures.some((f) => p.expect.test(f)),
+        failures.length === 0 ? "NOTHING failed — the guard cannot see this defect" : `failed instead: ${failures.slice(0, 2).join(" | ")}`);
+    }
+  }
+
+  /* ── §16.11–§16.13's plants: the composer's words, one member swapped in memory (the validation audit) ── */
+  {
+    const W = REAL_WORDS;
+    /** §16.11 · the fold offered only when EVERY offender folds — one emoji hides it for a curly quote. */
+    const foldEvery: typeof COMPOSE_COPY.foldOffered = (c) => c.encoding === "UCS2" && c.offenders.length > 0 && c.offenders.every((o) => o.foldable);
+    /** §16.12 · "N over" whatever the encoding — dozens of characters to cut for one curly quote. */
+    const overLine: typeof COMPOSE_COPY.counterLine = (c) => (c.left < 0 || c.segments > SMS_MAX_SEGMENTS
+      ? `${Math.max(1, -c.left)} over · ${c.segments} messages · the limit is ${SMS_MAX_SEGMENTS}`
+      : COMPOSE_COPY.counterLine(c));
+    /** §16.13 · the bare "Saved 14:02" — nothing says that nothing was sent, or what is next. */
+    const bareSaved: typeof COMPOSE_COPY.composeSaved = (at) => `Saved ${at.slice(11, 16)}`;
+    /** §16.13 · the test below named whatever the page can send — the live switch closed, the number unusable. */
+    const inviteAlways: typeof COMPOSE_COPY.composeSaved = (at) => COMPOSE_COPY.composeSaved(at, true);
+    /** §16.13 · the first build's remedy: a step the owner may not be able to take (no such account exists yet). */
+    const PROMISED_ACCOUNT = "Your account's phone number is not a Tanzanian mobile number an SMS can reach, so no test can be sent. " +
+      "An account's number can't be changed — the owner can give staff access to an account on your mobile number, in Staff & roles (/admin/staff).";
+    type WordsPlant = { name: string; expect: RegExp; words: WordsImpl; landed: () => boolean; landedAs: string };
+    const wordsPlants: WordsPlant[] = [
+      {
+        name: "§16.11 · the fold offered only when every offender folds — an emoji hides it for a curly quote",
+        expect: /^§16[.]11 ⭐/, words: { ...W, foldOffered: foldEvery },
+        landed: () => COMPOSE_COPY.foldOffered(counterFor(MIXED16, "SW", FB, "")) && !foldEvery(counterFor(MIXED16, "SW", FB, "")),
+        landedAs: "an emoji beside a curly quote: offered by the real rule, hidden by the plant",
+      },
+      {
+        name: "§16.12 · 'N over' while Unicode leaves no room",
+        expect: /^§16[.]12 ⛔/, words: { ...W, counterLine: overLine },
+        landed: () => /over/.test(overLine(counterFor(UNI15, "SW", FB, ""))) && !/over/.test(COMPOSE_COPY.counterLine(counterFor(UNI15, "SW", FB, ""))),
+        landedAs: "one curly quote reads as characters to cut in the plant, and as no room in the real line",
+      },
+      {
+        name: "§16.13 · the bare 'Saved HH:MM' — nothing was sent goes unsaid",
+        expect: /^§16[.]13 /, words: { ...W, composeSaved: bareSaved },
+        landed: () => !bareSaved("2026-10-03T11:02:00.000Z", true).includes("nothing was sent") && COMPOSE_COPY.composeSaved("2026-10-03T11:02:00.000Z", true).includes("nothing was sent"),
+        landedAs: "the plant's saved line drops what the real one says",
+      },
+      {
+        name: "§16.13 · the saved line invites a test the page would refuse",
+        expect: /^§16[.]13 /, words: { ...W, composeSaved: inviteAlways },
+        landed: () => inviteAlways("2026-10-03T11:02:00.000Z", false).includes("test below") && !COMPOSE_COPY.composeSaved("2026-10-03T11:02:00.000Z", false).includes("test below"),
+        landedAs: "told the page cannot test, the plant still names the test below; the real line does not",
+      },
+      {
+        name: "§16.13 · an unusable own number with no remedy — the sentence before the audit",
+        expect: /^§16[.]13 /,
+        words: { ...W, ownNumberUnusable: "Your account's phone number is not a Tanzanian mobile number an SMS can reach, so no test can be sent." },
+        landed: () => REAL_WORDS.ownNumberUnusable.includes("/admin/staff"),
+        landedAs: "the shipped sentence names the remedy; the plant's does not",
+      },
+      {
+        name: "§16.13 · an unusable own number promised a step the owner may not take — staff access to an account that may not exist",
+        expect: /^§16[.]13 /, words: { ...W, ownNumberUnusable: PROMISED_ACCOUNT },
+        landed: () => !/an account on your/i.test(REAL_WORDS.ownNumberUnusable) && /an account on your/i.test(PROMISED_ACCOUNT),
+        landedAs: "the plant promises an account on the officer's number; the shipped sentence promises nothing it cannot keep",
+      },
+      {
+        name: "§16.13 · an unfinished save told to try again",
+        expect: /^§16[.]13 /, words: { ...W, saveUnfinished: "Saving the draft failed. Try again." },
+        landed: () => !/try again/i.test(REAL_WORDS.saveUnfinished),
+        landedAs: "the shipped sentence never says try again; the plant's does",
+      },
+    ];
+    for (const p of wordsPlants) {
+      ok(`PLANT LANDED · ${p.name}`, p.landed(), p.landedAs);
+      const failures = checkComposerWords(p.words, quiet);
       ok(`  └─ fires: ${p.expect.source.slice(0, 56)}`, failures.some((f) => p.expect.test(f)),
         failures.length === 0 ? "NOTHING failed — the guard cannot see this defect" : `failed instead: ${failures.slice(0, 2).join(" | ")}`);
     }
@@ -2433,6 +3017,51 @@ if (!PROVE_RED) {
         ...deps,
         audienceRule: (f) => (f.q !== null && /^255[0-9]{9}$/.test(f.q.trim()) ? DRAFT.CAMPAIGN_AUDIENCE_ONE_NUMBER : null),
       });
+    /** §17.7 · X25 undone — a posted search held to the book's role rule alone, so a masked viewer's is saved. */
+    const searchAllowed: typeof realSave = (input, officerId, opts, deps = DRAFT.CAMPAIGN_DRAFT_DEPS) => {
+      const posted = input?.audience ?? null;
+      const onlySearch = posted !== null && Object.keys(posted).every((k) => k === "q");
+      return realSave(input, officerId, onlySearch ? { viewerReads: true } : opts, deps);
+    };
+    /** §17.8 · the card judging for a reader whoever is looking — a masked viewer's search described, never refused. */
+    const readerCard: typeof LOADER.composeAudienceView = (sp, draft) => LOADER.composeAudienceView(sp, draft, true);
+    /** §17.8 · the refused address filter with no way to take it out. */
+    const noClear: typeof LOADER.composeAudienceView = (sp, draft, reads) => ({ ...LOADER.composeAudienceView(sp, draft, reads), clearHref: null });
+    /** §17.12 · the card hands every NEW draft no filter at all — the stored audience dropped, the whole book saved instead. */
+    const wideCarry: typeof LOADER.composeAudienceView = (sp, draft, reads) => ({ ...LOADER.composeAudienceView(sp, draft, reads), carry: {} });
+    /** §17.9 · the posted fallbacks stored whatever the body — a hidden, unchecked word kept. */
+    const keepsHidden: typeof realSave = (input, officerId, opts, deps = DRAFT.CAMPAIGN_DRAFT_DEPS) =>
+      realSave(input, officerId, opts, {
+        ...deps,
+        campaigns: {
+          ...deps.campaigns,
+          create: (row) => deps.campaigns.create({
+            ...row,
+            nameFallbackSw: (input?.nameFallbackSw ?? "").trim() || null,
+            nameFallbackEn: (input?.nameFallbackEn ?? "").trim() || null,
+          }),
+        },
+      });
+    /** §17.10 · OD55 on the label undone — the check passed a scrubbed name, the row kept the typed one. */
+    const phoneName: typeof realSave = (input, officerId, opts, deps = DRAFT.CAMPAIGN_DRAFT_DEPS) => {
+      const typed = typeof input?.name === "string" ? input.name : "";
+      return realSave({ ...input, name: AUDIENCE.scrubPhoneRuns(typed) }, officerId, opts, {
+        ...deps, campaigns: { ...deps.campaigns, create: (row) => deps.campaigns.create({ ...row, name: typed }) },
+      });
+    };
+    /** §17.10 · the name stored as typed (only trimmed) — the invisible characters kept. */
+    const typedName: typeof realSave = (input, officerId, opts, deps = DRAFT.CAMPAIGN_DRAFT_DEPS) =>
+      realSave(input, officerId, opts, {
+        ...deps, campaigns: { ...deps.campaigns, create: (row) => deps.campaigns.create({ ...row, name: (input?.name ?? "").trim() }) },
+      });
+    /** §17.11 · the INT4 cap undone — a revision the column cannot hold is handed to the door, which throws. */
+    const uncapped: typeof realSave = async (input, officerId, opts, deps = DRAFT.CAMPAIGN_DRAFT_DEPS) => {
+      const r = input?.draftRevision;
+      if (typeof input?.id === "string" && typeof r === "number" && Number.isSafeInteger(r) && r > 2147483647) {
+        await deps.campaigns.update(input.id, { name: input.name }, { draftRevision: r }, deps.now().toISOString());
+      }
+      return realSave(input, officerId, opts, deps);
+    };
 
     type SavePlant = { name: string; expect: RegExp[]; impl: ComposeImpl; landed: () => Promise<boolean>; landedAs: string };
     const savePlants: SavePlant[] = [
@@ -2491,6 +3120,84 @@ if (!PROVE_RED) {
           return !real.ok && planted.ok;
         },
         landedAs: "a whole number as a tag is refused by the real save and stored by the plant",
+      },
+      {
+        name: "§17.7 · X25 undone — a masked viewer's posted search saved under the book's role rule",
+        expect: [/^§17[.]7 ⛔/], impl: { ...R, save: searchAllowed },
+        landed: async () => {
+          const search = draftInput({ name: "Landed masked search", audience: { q: "asha" } });
+          const real = await realSave(search, LANDED, { viewerReads: false }, QUIET_DRAFT_DEPS);
+          const planted = await searchAllowed(search, LANDED, { viewerReads: false }, QUIET_DRAFT_DEPS);
+          return !real.ok && planted.ok;
+        },
+        landedAs: "q=asha from a masked viewer is refused by the real save and stored by the plant",
+      },
+      {
+        name: "§17.8 · the card judging for a reader whoever looks — a masked viewer's search described, never refused",
+        expect: [/^§17[.]8 ⛔/], impl: { ...R, audienceView: readerCard },
+        landed: async () => readerCard({ q: "asha" }, null, false).problem === null && LOADER.composeAudienceView({ q: "asha" }, null, false).problem !== null,
+        landedAs: "the real card refuses q=asha for a masked viewer; the plant's describes it",
+      },
+      {
+        name: "§17.8 · a refused address filter with no way to take it out",
+        expect: [/^§17[.]8 ⛔/], impl: { ...R, audienceView: noClear },
+        landed: async () => LOADER.composeAudienceView({ q: "asha" }, null, false).clearHref !== null && noClear({ q: "asha" }, null, false).clearHref === null,
+        landedAs: "the real card offers the remove control; the plant's does not",
+      },
+      {
+        name: "§17.9 · the posted fallbacks stored whatever the body — a hidden, unchecked word kept",
+        expect: [/^§17[.]9 ⛔/], impl: { ...R, save: keepsHidden },
+        landed: async () => {
+          const r = await keepsHidden(draftInput({ name: "Landed hidden word", bodySw: "50pick: Mechi kubwa leo.", nameFallbackSw: "Rafiki1" }), LANDED, reads, QUIET_DRAFT_DEPS);
+          const row = r.ok ? await db.smsCampaign.find(r.id) : null;
+          return row !== null && row.nameFallbackSw === "Rafiki1";
+        },
+        landedAs: "a body with no {jina} keeps the hidden 'Rafiki1'",
+      },
+      {
+        name: "§17.10 · OD55 on the label undone — a phone number stored in the campaign's name",
+        expect: [/^§17[.]10 ⛔/], impl: { ...R, save: phoneName },
+        landed: async () => {
+          const r = await phoneName(draftInput({ name: "Landed 0712 345 678" }), LANDED, reads, QUIET_DRAFT_DEPS);
+          const row = r.ok ? await db.smsCampaign.find(r.id) : null;
+          return row !== null && row.name === "Landed 0712 345 678";
+        },
+        landedAs: "the name with a whole number is stored as typed",
+      },
+      {
+        name: "§17.10 · the name stored as typed — the zero-width space and the direction override kept",
+        expect: [/^§17[.]10 ⛔/], impl: { ...R, save: typedName },
+        landed: async () => {
+          const r = await typedName(draftInput({ name: `Landed${ZWSP15} name${RLO16}` }), LANDED, reads, QUIET_DRAFT_DEPS);
+          const row = r.ok ? await db.smsCampaign.find(r.id) : null;
+          return row !== null && row.name.includes(ZWSP15);
+        },
+        landedAs: "the stored name keeps an invisible character",
+      },
+      {
+        name: "§17.11 · the INT4 cap undone — a revision the column cannot hold handed to the door",
+        expect: [/^§17[.]11 ⛔/], impl: { ...R, save: uncapped },
+        landed: async () => {
+          const made = await realSave(draftInput({ name: "Landed revision cap" }), LANDED, reads, QUIET_DRAFT_DEPS);
+          if (!made.ok) return false;
+          const huge = draftInput({ id: made.id, draftRevision: 2147483648, name: "Landed revision cap" });
+          const real = await realSave(huge, LANDED, reads, QUIET_DRAFT_DEPS);
+          let threw = false;
+          try { await uncapped(huge, LANDED, reads, QUIET_DRAFT_DEPS); } catch { threw = true; }
+          return !real.ok && real.reason === "stale" && threw;
+        },
+        landedAs: "the real save answers stale; the plant throws in the door",
+      },
+      {
+        name: "§17.12 · 'Save as a new draft' carries no filter — the new draft goes to the whole contact book",
+        expect: [/^§17[.]12 ⛔/], impl: { ...R, audienceView: wideCarry },
+        landed: async () => {
+          const tagged = { id: "cmp_u37b_landed_carry", audienceFilter: '{"tags":["vip"]}' } as unknown as StoredRow;
+          const real = LOADER.composeAudienceView({ draft: tagged.id }, tagged, true).carry;
+          const planted = wideCarry({ draft: tagged.id }, tagged, true).carry;
+          return real !== null && real.tag === "vip" && planted !== null && Object.keys(planted).length === 0;
+        },
+        landedAs: "a stored tag filter carries as tag=vip on the real card and as no filter on the plant's",
       },
     ];
     for (const p of savePlants) {

@@ -72,7 +72,13 @@ export const TEST_LIVE_SENDS_CLOSED = "Marketing SMS are not switched on yet. Th
 export const TEST_NOT_FOUND = "This campaign was not found — save it first, then test it.";
 export const TEST_NOT_DRAFT = "This campaign is no longer a draft, so it can't be tested.";
 export const TEST_NO_ENGLISH = "This campaign has no saved English message — test the Swahili one.";
-export const TEST_OWN_NUMBER_UNUSABLE = "Your account's phone number is not a Tanzanian mobile number an SMS can reach, so no test can be sent.";
+/** ⭐ With who can help, and where (validation audit, 2026-10-03). An account's number cannot be changed anywhere on the
+ *  platform — it is the sign-in identity — and staff access is the owner's, in Staff & roles. ⛔ It names no step the owner
+ *  might not take: Staff & roles promotes only an account that already exists, and whether an officer may hold a second
+ *  one is the owner's call, not this sentence's. */
+export const TEST_OWN_NUMBER_UNUSABLE =
+  "Your account's phone number is not a Tanzanian mobile number an SMS can reach, so no test can be sent. " +
+  "An account's number can't be changed — ask the owner, who manages staff access in Staff & roles (/admin/staff).";
 export const TEST_RAIL_DEAD = "No SMS can leave this server right now — the sender line above says why.";
 export const TEST_TOKEN_UNAVAILABLE = "Your stop link couldn't be made, so nothing was sent — try again.";
 export const TEST_TEMPLATE_INVALID = "The saved message no longer passes its own check — correct it and save again.";

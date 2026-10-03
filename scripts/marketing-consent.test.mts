@@ -374,7 +374,8 @@ async function runAssertions(gate: Gate, f: Fixtures, tag: string): Promise<void
     await expect(`${label} reaches the SAME consenting player: ALLOWED`, form, "ALLOWED");
   }
   await expect("40 · ⛔ a Kenyan +254… is refused before it can be billed", "+254712345678", "bad_msisdn");
-  await expect("40b · ⛔ the 13-digit '+255 0712…' typo is refused, never looked up under a wrong key", `+255 0${nat}`, "bad_msisdn");
+  await expect("40b · ⭐ vb3 · '+255 0712…' — the trunk zero written after the country code — reaches the SAME consenting player: ALLOWED, under the right 255… key", `+255 0${nat}`, "ALLOWED");
+  await expect("40b2 · ⛔ vb3 · …and the same spelling of a SUPPRESSED number is refused as suppressed — its stop is read under the right key, never a wrong one", `+255 0${toMsisdn255(f.suppressed).slice(3)}`, "suppressed");
   await expect("40c · ⛔ a Dar es Salaam landline is refused — it cannot receive an SMS", "255221234567", "bad_msisdn");
   await expect("40d · ⭐ a CONSENTING PLAYER on NDC 064 is refused — tzPhone accepts it, but it has no live network (billed, never delivered)", f.ndc64, "bad_msisdn");
 }
@@ -405,6 +406,9 @@ type Defect = {
   utcAge?: boolean;                 // age on the UTC date, not Tanzania's — the birthday arrives 3 hours late
   under25OffByOne?: boolean;        // the under-25 line drawn at 24
   lengthOnlyMsisdn?: boolean;       // pre-audit step 0: "twelve digits or more" is a Tanzanian mobile
+  // ── 2026-10-03 (vb3) ──
+  trunkZeroRefused?: boolean;       // pre-vb3 step 0: "+255 0712…" read as a 13-digit typo — the same person refused as too_long
+  moneyRailKey?: boolean;           // the key taken from toMsisdn255, the money rail vb3 left alone: "+255 0712…" read under 2550712…
 };
 
 function gateWithDefect(d: Defect): Gate {
@@ -416,7 +420,9 @@ function gateWithDefect(d: Defect): Gate {
     } else {
       const parsed = parseTzNumber(msisdn);
       if (parsed.verdict !== "ok" || !parsed.msisdn) return { ok: false, skipReason: "bad_msisdn", detail: parsed.verdict };
-      identifier = parsed.msisdn;
+      // vb3's two plants: the pre-vb3 refusal of the trunk-zero spelling, and a key rewritten by the money rail.
+      if (d.trunkZeroRefused && /^(?:00)?2550\d{9}$/.test(msisdn.replace(/\D/g, ""))) return { ok: false, skipReason: "bad_msisdn", detail: "too_long" };
+      identifier = d.moneyRailKey ? toMsisdn255(msisdn) : parsed.msisdn;
     }
     const key = { channel: "SMS" as const, identifier, category: "MARKETING" as const };
 
@@ -524,7 +530,9 @@ function gateWithDefect(d: Defect): Gate {
  * `selfExclude`, a `coolOff` — and none of them may reach the wire in slice two.
  * ⚠️ There is no production loop yet (U43). This contract is written so U43's engine plugs in as another
  * DRIVER and must pass the same assertions; today the driver is `dispatchSlice` called once per slice.
- * The fake wire returns its results in REVERSED order, so a loop that settles by position cannot pass. */
+ * The fake wire returns its results in REVERSED order, so a loop that settles by position cannot pass.
+ * ⭐ vb3 · one row is WRITTEN '+255 0712…': the wire must be given the gate's own key for it (U9.13), never the row's
+ * spelling. */
 type Driver = (slices: SliceRecipient[][], between: () => Promise<void>, deps: SliceDeps) => Promise<SliceOutcome[]>;
 type Dispatch = (rows: SliceRecipient[], deps: SliceDeps) => Promise<SliceOutcome[]>;
 
@@ -568,15 +576,19 @@ async function seedLoop(run: number) {
     return { id, msisdn: toMsisdn255(p(i)) };
   };
   const A = await mkp(1), B = await mkp(2), X = await mkp(3), Y = await mkp(4), Z = await mkp(5), F = await mkp(6), G = await mkp(7);
+  // vb3 · H consents like A; its row is WRITTEN with the trunk zero after +255 (U9.13).
+  const H = await mkp(8);
   const token = await mintOptOutToken(X.msisdn);
-  return { A, B, X, Y, Z, F, G, token };
+  return { A, B, X, Y, Z, F, G, H, token };
 }
 
 async function runLoopContract(driver: Driver, run: number, tag: string): Promise<void> {
   const p = (n: string) => `${tag}${n}`;
   const w = await seedLoop(run);
   const row = (who: { msisdn: string }, ref: string): SliceRecipient => ({ ref, msisdn: who.msisdn, body: "50pick: tangazo." });
-  const slices = [[row(w.A, "rA")], [row(w.X, "rX"), row(w.Y, "rY"), row(w.Z, "rZ"), row(w.B, "rB"), row(w.F, "rF")]];
+  // vb3 · H's row is written "+255 0712…" — the gate keys it 255712…, and the wire must be given exactly that (U9.13).
+  const trunkRow: SliceRecipient = { ref: "rH", msisdn: `+255 0${w.H.msisdn.slice(3)}`, body: "50pick: tangazo." };
+  const slices = [[row(w.A, "rA"), trunkRow], [row(w.X, "rX"), row(w.Y, "rY"), row(w.Z, "rZ"), row(w.B, "rB"), row(w.F, "rF")]];
   const wire = fakeWire(new Set([w.F.msisdn]));
   const between = async () => {
     // Three people change their minds while the campaign is between slices — each through the real act.
@@ -611,6 +623,10 @@ async function runLoopContract(driver: Driver, run: number, tag: string): Promis
   ok(p("U9.7 · a message the wire refused is `failed` with the wire's code — not skipped, not handed over"),
     of("rF")?.outcome === "failed" && (of("rF") as { code?: string }).code === "BAD_MSISDN", show("rF"));
   ok(p("U9.8 · ONE send per slice — two slices, two calls to the wire"), wire.calls === 2, `${wire.calls} call(s)`);
+  const onWireAsH = wire.sent.filter((m) => m.targetId === "rH").map((m) => m.to);
+  ok(p("U9.13 · ⭐ vb3 · a consenting player whose row is written '+255 0712…' is handed over under the GATE'S key — the wire is given 255712…, never the row's own spelling (sendBatch would rewrite that to 2550712… and refuse it BAD_MSISDN)"),
+    of("rH")?.outcome === "handed_over" && onWireAsH.length === 1 && onWireAsH[0] === w.H.msisdn,
+    `${show("rH")} · on the wire as [${onWireAsH.join(", ")}]`);
 
   // ── the three ways a slice ends without a verdict about the PERSON ────────────────────────
   const G = row(w.G, "rG");
@@ -629,7 +645,7 @@ async function runLoopContract(driver: Driver, run: number, tag: string): Promis
 
 /** The dispatch step written out so one step at a time can be made wrong. Never ships; with no flag set it
  *  is asserted to agree with `dispatchSlice` on the whole contract before any plant is trusted. */
-type LoopDefect = { hoisted?: boolean; settleByIndex?: boolean; skipAsFailed?: boolean; gateErrorSends?: boolean; noRgAudit?: boolean };
+type LoopDefect = { hoisted?: boolean; settleByIndex?: boolean; skipAsFailed?: boolean; gateErrorSends?: boolean; noRgAudit?: boolean; rawOnWire?: boolean };
 function dispatchModel(d: LoopDefect): Dispatch {
   return async (rows, deps) => {
     const ask = deps.gate ?? mayReceiveMarketingSms;
@@ -651,7 +667,10 @@ function dispatchModel(d: LoopDefect): Dispatch {
         }
         continue;
       }
-      cleared.push(r);
+      // vb3 · the gate's key on the wire, as dispatchSlice puts it — or, planted, the row's own spelling as it did before.
+      const key = parseTzNumber(r.msisdn).msisdn;
+      if (key === null) { out.set(r.ref, { ref: r.ref, outcome: "skipped", skipReason: "bad_msisdn", detail: "no sendable key" }); continue; }
+      cleared.push(d.rawOnWire ? r : { ...r, msisdn: key });
     }
     if (cleared.length) {
       let b: SmsBatchOutcome | null = null;
@@ -1177,6 +1196,17 @@ if (!PROVE_RED) {
       defect: { lengthOnlyMsisdn: true },
       expect: "40d · ⭐ a CONSENTING PLAYER on NDC 064 is refused — tzPhone accepts it, but it has no live network (billed, never delivered)",
     },
+    // ── 2026-10-03 · vb3 ──
+    {
+      name: "🔴 pre-vb3 step 0 — '+255 0712…' read as a 13-digit typo, so a consenting player who wrote the zero they dial at home is refused bad_msisdn",
+      defect: { trunkZeroRefused: true },
+      expect: "40b · ⭐ vb3 · '+255 0712…' — the trunk zero written after the country code — reaches the SAME consenting player: ALLOWED, under the right 255… key",
+    },
+    {
+      name: "⛔ the key taken from the money rail (toMsisdn255 keeps the trunk zero) — '+255 0712…' read under 2550712…, where no stop and no consent is filed",
+      defect: { moneyRailKey: true },
+      expect: "40b2 · ⛔ vb3 · …and the same spelling of a SUPPRESSED number is refused as suppressed — its stop is read under the right key, never a wrong one",
+    },
   ];
 
   for (const [i, c] of CASES.entries()) {
@@ -1227,6 +1257,11 @@ if (!PROVE_RED) {
       name: "an RG refusal acted on with no audit line",
       driver: loopOver(dispatchModel({ noRgAudit: true })),
       expect: "U9.2b · …and the RG refusal left ONE COMPLIANCE audit line against the ACCOUNT, with no phone number in it (§5.14)",
+    },
+    {
+      name: "🔴 pre-vb3 dispatch — the row's own spelling put on the wire: '+255 0712…' handed to sendBatch, whose toMsisdn255 keeps the zero, so a consenting player the gate cleared is refused BAD_MSISDN",
+      driver: loopOver(dispatchModel({ rawOnWire: true })),
+      expect: "U9.13 · ⭐ vb3 · a consenting player whose row is written '+255 0712…' is handed over under the GATE'S key — the wire is given 255712…, never the row's own spelling (sendBatch would rewrite that to 2550712… and refuse it BAD_MSISDN)",
     },
   ];
   for (const [i, c] of LOOP_CASES.entries()) {

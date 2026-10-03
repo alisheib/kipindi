@@ -36,6 +36,13 @@
  * never which network it is on today. §7 asserts no payment or wallet module imports this file, so a
  * withdrawal can never be routed on a guess.
  *
+ * ⭐ vb3 (2026-10-03) · ONE RULE FOR EVERY SPELLING. §2 carries the trunk zero written after the country code in
+ * the four ways people write it, a full-width and an Arabic-Indic number — each the same person's 255712345678 —
+ * the same zero before a number cut short (too short, never an invented 007 range), and the neighbours that stay
+ * refused. §10 asserts the sentences (no raw text, a next step on every refusal, too-long advice that fits what
+ * was written), that the number box and this verdict read one text, and that the importer's header check reads
+ * another keyboard's digits as this parser does. Each new assertion has its own plant.
+ *
  * ⛔ NO CALENDAR-TRIGGERED ASSERTION. §1 requires the plan's review date to PARSE and prints its age.
  * It never fails on a date: a guard that goes red on a birthday is a guard someone disables.
  *
@@ -60,7 +67,8 @@ import {
   type TzVerdict,
 } from "../src/lib/tz-msisdn.ts";
 import { formatTzPhone as formatFromModule } from "../src/lib/tz-msisdn.ts";
-import { isGatewayMsisdn } from "../src/lib/phone-normalize.ts";
+import { isGatewayMsisdn, normalizeTzLocalDigits } from "../src/lib/phone-normalize.ts";
+import { autoMapHeaders, type AutoMapResult } from "../src/lib/contacts/contact-fields.ts";
 
 process.exitCode = 1; // failure is the default; cleared only at the very end
 
@@ -81,6 +89,15 @@ type Fixture = {
   brand?: string;
   display?: string;
 };
+
+/** vb3 · the same digits as another keyboard writes them — built from code points, so no escape is decoded on the
+ *  way to disk and the file holds no character a reader cannot see. */
+const writtenIn = (zero: number, s: string): string =>
+  [...s].map((c) => (c >= "0" && c <= "9" ? String.fromCharCode(zero + c.charCodeAt(0) - 48) : c)).join("");
+/** A Chinese input method in full-width mode. */
+const FULL_WIDTH = writtenIn(0xff10, "0712 345 678");
+/** A phone set to Arabic. */
+const ARABIC_INDIC = writtenIn(0x0660, "0712345678");
 
 const FIXTURES: Fixture[] = [
   // ok — one per operator, so a table that loses a whole operator is caught
@@ -124,11 +141,29 @@ const FIXTURES: Fixture[] = [
   { raw: "'+255712345678", verdict: "ok", why: "our CSV export writes a leading apostrophe", msisdn: "255712345678", ndc: "71", brand: "Yas" },
   // ⭐ D1's vector, reaching the parser rather than the wire
   { raw: "00255712345678", verdict: "ok", why: "IDD prefix instead of the plus", msisdn: "255712345678", ndc: "71", brand: "Yas" },
+  // ⭐ vb3 · THE TRUNK ZERO WRITTEN AFTER THE COUNTRY CODE — one person, in the four ways people write it
+  { raw: "+255 0712 345 678", verdict: "ok", why: "vb3 · the zero dialled at home, kept after +255", msisdn: "255712345678", ndc: "71", brand: "Yas", display: "712 345 678" },
+  { raw: "+2550712345678", verdict: "ok", why: "vb3 · …unspaced", msisdn: "255712345678" },
+  { raw: "2550712345678", verdict: "ok", why: "vb3 · …with no plus", msisdn: "255712345678" },
+  { raw: "+255 (0) 712 345 678", verdict: "ok", why: "vb3 · …with the (0) a business card prints", msisdn: "255712345678" },
+  // ⭐ vb3 · another keyboard's digits
+  { raw: FULL_WIDTH, verdict: "ok", why: "vb3 · full-width digits, as a Chinese input method writes them", msisdn: "255712345678", ndc: "71" },
+  { raw: ARABIC_INDIC, verdict: "ok", why: "vb3 · Arabic-Indic digits, as a phone set to Arabic writes them", msisdn: "255712345678", ndc: "71" },
+  // ⛔ vb3 · …and the neighbours that stay refused: ONE zero, only after 255, and none when eleven or more digits follow
+  { raw: "+255 00712 345 678", verdict: "too_long", why: "vb3 · two zeros after +255 — only one can be a trunk zero" },
+  { raw: "+255 0712 345 6789", verdict: "too_long", why: "vb3 · fourteen digits — eleven after +255, so no zero is dropped" },
+  { raw: "+254 0712 345 678", verdict: "foreign", why: "vb3 · a Kenyan trunk zero changes nothing — still foreign" },
+  // ⭐ vb3 · the same trunk zero before a number cut short: too short ("some digits were cut off"), never the range 007
+  { raw: "+255 0712 345 67", verdict: "too_short", why: "vb3 · the zero dialled at home, and a digit lost" },
 ];
 
 /* ══ THE ASSERTIONS ═════════════════════════════════════════════════════════ */
 
-function check(parse: Parser, format: (d: string) => string, log: (l: string) => void): string[] {
+function check(
+  parse: Parser, format: (d: string) => string, log: (l: string) => void,
+  box: (raw: string) => string = normalizeTzLocalDigits,
+  headers: (cells: readonly string[]) => AutoMapResult = autoMapHeaders,
+): string[] {
   const failed: string[] = [];
   const ok = (label: string, cond: boolean, extra = "") => {
     if (cond) log(`  ok   ${label}`);
@@ -237,6 +272,38 @@ function check(parse: Parser, format: (d: string) => string, log: (l: string) =>
     OLD_WITHDRAW_COPY("255712345678") !== format("255712345678"),
     `old "${OLD_WITHDRAW_COPY("255712345678")}" vs one-home "${format("255712345678")}"`);
 
+  /* ── §10 · vb3 · one rule for every spelling, and sentences that help ──── */
+  log("\n§10 · vb3 · ONE RULE FOR EVERY SPELLING, AND SENTENCES THAT HELP");
+  const word = parse("Juma Mwakalinga");
+  ok("§10 vb3 · a cell with no digits is never repeated back — the sentence quotes no raw text (§5.14)",
+    word.verdict === "not_a_number" && !word.reason.includes("Juma"), `${word.verdict} — ${word.reason}`);
+  const NEXT_STEP = /Ask for their (?:Tanzanian )?mobile number(?: instead)?\.$/;
+  const silent = FIXTURES.filter((f) => ["not_a_number", "landline", "foreign", "unallocated_prefix"].includes(f.verdict) && !NEXT_STEP.test(parse(f.raw).reason));
+  ok("§10 vb3 · every not_a_number, landline, foreign and unallocated sentence ends with the next step — ask for their mobile number",
+    silent.length === 0, silent.map((f) => `"${f.raw}": ${parse(f.raw).reason}`).join(" | "));
+  const tooLong = {
+    oneOver: parse("+2557123456789").reason,
+    twoZeros: parse("+255 00712 345 678").reason,
+    twoNumbers: parse("+255 712 345 678 / +255 755 000 111").reason,
+    noCode: parse("0712345678901").reason,
+  };
+  ok("§10 vb3 · too long says what to fix in what was written — one digit over after +255: check for an extra digit; more: check for extra digits; two numbers' worth: keep one; never to add a + and a country code it already has (CONTROL: with no code, the international hint stays)",
+    /Check for an extra digit\.$/.test(tooLong.oneOver) && /Check for extra digits\.$/.test(tooLong.twoZeros)
+      && /It may hold more than one number\. Keep one\.$/.test(tooLong.twoNumbers)
+      && ![tooLong.oneOver, tooLong.twoZeros, tooLong.twoNumbers].some((r) => r.includes("country code"))
+      && /write it with a \+ and its country code\.$/.test(tooLong.noCode),
+    Object.values(tooLong).join(" | "));
+  const drift = FIXTURES.filter((f) => f.verdict === "ok").map((f) => f.raw)
+    .filter((s) => { const r = parse(s); return !(r.verdict === "ok" && r.msisdn !== null && box(s) === r.msisdn.slice(3)); });
+  ok("§10 vb3 · the number box and the verdict read ONE text — for every accepted spelling the box keeps exactly the nine digits the verdict keys",
+    drift.length === 0, drift.map((s) => `"${s}": box ${box(s)}, verdict ${parse(s).msisdn}`).join(" | "));
+  // vb3 · the importer's header check (contact-fields) reads the digits through this parser's own reader.
+  const firstRows = [ARABIC_INDIC, FULL_WIDTH].map((n) => headers(["Juma", n]));
+  const listed = headers(["Name", `Juma ${ARABIC_INDIC}`]);
+  ok("§10 vb3 · the importer's header check reads another keyboard's digits as this parser does — a first row holding an Arabic-Indic or full-width number is a contact (headerless), and a header holding one is never listed back (§5.14)",
+    firstRows.every((r) => r.headerless) && listed.refusal !== null && !listed.refusal.includes("Juma"),
+    `headerless ${firstRows.map((r) => r.headerless).join("/")} · refusal ${listed.refusal}`);
+
   return failed;
 }
 
@@ -336,7 +403,44 @@ if (!PROVE_RED) {
     return { ...r, operator: { id: "TELXER", licensee: "stale", brand, walletHint: null } };
   };
 
-  type Plant = { name: string; expect: RegExp; parse: Parser; format?: (d: string) => string; landed: () => boolean; landedAs: string };
+  type Plant = {
+    name: string; expect: RegExp; parse: Parser; format?: (d: string) => string; box?: (raw: string) => string;
+    headers?: (cells: readonly string[]) => AutoMapResult; landed: () => boolean; landedAs: string;
+  };
+
+  /* ── vb3's planted parsers and box — each the shape the code had, or nearly had, before 2026-10-03 ── */
+  /** The trunk zero KEPT: the pre-vb3 parser refused "+255 0712…" as thirteen digits. */
+  const keepsTrunkZero: Parser = (raw) => {
+    const r = parseTzNumber(raw);
+    return /^(?:00)?2550\d{9}$/.test((raw ?? "").replace(/\D/g, ""))
+      ? { ...r, verdict: "too_long", msisdn: null, e164: null, ndc: null, operator: null, display: null, reason: "A Tanzanian number has nine digits after +255; this one has 10." }
+      : r;
+  };
+  /** The drop made greedy: EVERY zero after the country code comes off, so two zeros pass as one. */
+  const dropsEveryZero: Parser = (raw) => parseTzNumber((raw ?? "").replace(/^(\+?(?:00)?255\D*)0+/, "$1"));
+  /** Digits read the pre-vb3 way: ASCII 0-9 only, every other decimal digit falling away with the non-digits. */
+  const asciiDigitsOnly: Parser = (raw) => parseTzNumber((raw ?? "").replace(/\p{Nd}/gu, (c) => (c >= "0" && c <= "9" ? c : "")));
+  /** The number box before 2026-10-03: the trunk zero kept after 255 (`phone-normalize.ts` at 0968026c). */
+  const boxKeepsTrunkZero = (raw: string): string => {
+    let d = (raw ?? "").replace(/\D+/g, "");
+    if (d.startsWith("00")) d = d.slice(2);
+    if (d.startsWith("255")) d = d.slice(3);
+    else if (d.startsWith("0")) d = d.replace(/^0+/, "");
+    return d.slice(0, 9);
+  };
+  /** The FIRST vb3 build: the trunk zero dropped only at exactly ten digits, so a number cut short after "+255 0"
+   *  kept its zero and read as the range 007 — modelled on what that build answered. */
+  const dropsOnlyAtTen: Parser = (raw) => {
+    const r = parseTzNumber(raw);
+    return /^(?:00)?2550\d{6,8}$/.test((raw ?? "").replace(/\D/g, ""))
+      ? { ...r, verdict: "unallocated_prefix", msisdn: null, e164: null, ndc: "07", operator: null, display: null, reason: "Numbers beginning 007 are not part of Tanzania's numbering plan. Ask for their mobile number instead." }
+      : r;
+  };
+  /** The three too-long next steps the shipped parser ends with. */
+  const TOO_LONG_STEP = /(?:Check for an extra digit\.|Check for extra digits\.|It may hold more than one number\. Keep one\.)$/;
+  /** The importer's header check reading ASCII digits only (contact-fields before vb3): another keyboard's digits vanish. */
+  const asciiHeaders = (cells: readonly string[]): AutoMapResult =>
+    autoMapHeaders(cells.map((c) => c.replace(/\p{Nd}/gu, (d) => (d >= "0" && d <= "9" ? d : ""))));
   const plants: Plant[] = [
     {
       name: "① the 2020 edition's answer for NDC 63 (Amotel)",
@@ -402,11 +506,91 @@ if (!PROVE_RED) {
       landed: () => TZ_MOBILE_NDCS.some((r) => r.ndc === "60" && !!r.disputed),
       landedAs: "60 is the disputed row: TCRA says reserved, the carriers say Airtel",
     },
+    // ── vb3 · one rule for every spelling, and sentences that help ──
+    {
+      name: "vb3 · the trunk zero KEPT after +255 — the pre-vb3 parser reads '+255 0712…' as a 13-digit typo",
+      expect: /^§2 "\+255 0712 345 678" is ok/,
+      parse: keepsTrunkZero,
+      landed: () => keepsTrunkZero("+255 0712 345 678").verdict === "too_long",
+      landedAs: "the planted parser answers too_long for +255 0712 345 678",
+    },
+    {
+      name: "vb3 · EVERY zero after +255 dropped — over-eager, so two zeros pass as a trunk zero",
+      expect: /^§2 "\+255 00712 345 678" is too_long/,
+      parse: dropsEveryZero,
+      landed: () => dropsEveryZero("+255 00712 345 678").verdict === "ok",
+      landedAs: "the planted parser answers ok for +255 00712 345 678",
+    },
+    {
+      name: "vb3 · digits read as ASCII only (the pre-vb3 strip) — an Arabic keyboard's number has 'no digits'",
+      expect: new RegExp('^§2 "' + ARABIC_INDIC + '" is ok'),
+      parse: asciiDigitsOnly,
+      landed: () => asciiDigitsOnly(ARABIC_INDIC).verdict === "not_a_number",
+      landedAs: "the planted parser finds no digits in the Arabic-Indic number",
+    },
+    {
+      name: "vb3 · …and a Chinese input method's full-width number is not a number either",
+      expect: new RegExp('^§2 "' + FULL_WIDTH + '" is ok'),
+      parse: asciiDigitsOnly,
+      landed: () => asciiDigitsOnly(FULL_WIDTH).verdict === "not_a_number",
+      landedAs: "the planted parser finds no digits in the full-width number",
+    },
+    {
+      name: "vb3 · the raw cell quoted back in the not_a_number sentence (§5.14)",
+      expect: /^§10 vb3 · a cell with no digits is never repeated back/,
+      parse: (raw) => { const r = parseTzNumber(raw); return r.verdict === "not_a_number" && (raw ?? "").trim() !== "" ? { ...r, reason: `"${(raw ?? "").trim()}" has no digits in it, so it is not a phone number.` } : r; },
+      landed: () => !parseTzNumber("Juma Mwakalinga").reason.includes("Juma"),
+      landedAs: "the shipped sentence quotes nothing, so the plant is what puts the name back",
+    },
+    {
+      name: "vb3 · a refusal with no next step — the officer told what is wrong and not what to do",
+      expect: /^§10 vb3 · every not_a_number, landline, foreign and unallocated sentence ends with the next step/,
+      parse: (raw) => { const r = parseTzNumber(raw); return { ...r, reason: r.reason.replace(/ Ask for their [^.]*\.$/, "") }; },
+      landed: () => parseTzNumber("0222123456").reason.endsWith("Ask for their mobile number instead."),
+      landedAs: "the shipped landline sentence carries the step the plant strips",
+    },
+    {
+      name: "vb3 · the old too-long advice — 'write it with a + and its country code' to someone who wrote +255",
+      expect: /^§10 vb3 · too long says what to fix in what was written/,
+      parse: (raw) => { const r = parseTzNumber(raw); return r.verdict === "too_long" ? { ...r, reason: r.reason.replace(TOO_LONG_STEP, "If it is an international number, write it with a + and its country code.") } : r; },
+      landed: () => parseTzNumber("+2557123456789").reason.endsWith("Check for an extra digit."),
+      landedAs: "the shipped sentence for +2557123456789 is the one the plant rewrites",
+    },
+    {
+      name: "vb3 · the number box WITHOUT the trunk-zero rule — the field shows 071 234 567 while the verdict keys 712 345 678",
+      expect: /^§10 vb3 · the number box and the verdict read ONE text/,
+      parse: parseTzNumber,
+      box: boxKeepsTrunkZero,
+      landed: () => boxKeepsTrunkZero("+255 0712 345 678") === "071234567",
+      landedAs: `the planted box reads "+255 0712 345 678" as "${boxKeepsTrunkZero("+255 0712 345 678")}"`,
+    },
+    {
+      name: "vb3 · 'Check for an extra digit.' at every length after +255 (the first vb3 build) — two numbers in one cell told to look for one digit",
+      expect: /^§10 vb3 · too long says what to fix in what was written/,
+      parse: (raw) => { const r = parseTzNumber(raw); return r.verdict === "too_long" && !r.reason.endsWith("country code.") ? { ...r, reason: r.reason.replace(TOO_LONG_STEP, "Check for an extra digit.") } : r; },
+      landed: () => parseTzNumber("+255 712 345 678 / +255 755 000 111").reason.endsWith("Keep one."),
+      landedAs: "the shipped sentence for two numbers in one cell is the one the plant flattens",
+    },
+    {
+      name: "vb3 · the trunk zero dropped only at exactly ten digits (the first vb3 build) — '+255 0712 345 67' read as the invented range 007",
+      expect: /^§2 "\+255 0712 345 67" is too_short/,
+      parse: dropsOnlyAtTen,
+      landed: () => dropsOnlyAtTen("+255 0712 345 67").verdict === "unallocated_prefix",
+      landedAs: "the planted parser answers unallocated_prefix (007) for +255 0712 345 67",
+    },
+    {
+      name: "vb3 · the importer's header check reading ASCII digits only (contact-fields before vb3) — an Arabic phone's first-row contact taken for a header",
+      expect: /^§10 vb3 · the importer's header check reads another keyboard's digits as this parser does/,
+      parse: parseTzNumber,
+      headers: asciiHeaders,
+      landed: () => autoMapHeaders(["Juma", ARABIC_INDIC]).headerless && !asciiHeaders(["Juma", ARABIC_INDIC]).headerless,
+      landedAs: "the shipped header check calls that first row a contact; the planted one cannot see its digits",
+    },
   ];
 
   for (const p of plants) {
     ok(`PLANT LANDED · ${p.name}`, p.landed(), p.landedAs);
-    const failures = check(p.parse, p.format ?? formatFromModule, quiet);
+    const failures = check(p.parse, p.format ?? formatFromModule, quiet, p.box ?? normalizeTzLocalDigits, p.headers ?? autoMapHeaders);
     const matched = failures.filter((f) => p.expect.test(f));
     ok(`  └─ fires: ${p.expect.source.slice(0, 58)}`, matched.length > 0,
       failures.length === 0 ? "NOTHING failed — the guard cannot see this defect" : `failed instead: ${failures.slice(0, 2).join(" | ")}`);

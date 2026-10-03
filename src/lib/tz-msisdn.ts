@@ -53,6 +53,14 @@
  * are supported by nobody. `ok` here means "this is a real Tanzanian mobile number", never "this
  * message will arrive looking the way you wrote it". That is the gateway's business, not this file's.
  *
+ * ── ONE RULE FOR EVERY SPELLING (vb3, 2026-10-03) ───────────────────────────
+ * The digits are read through `phone-normalize.ts`'s `readAsciiDigits` — the number box's own reader — so an
+ * Arabic or Chinese keyboard's digits count here exactly as they show there, and the trunk zero written after
+ * the country code (`+255 0712 345 678`) is dropped by the same rule in both places. The import runs one way
+ * only: the wire module imports nothing (`test:read-tiers` 8.6), and it must never carry this table. The reader
+ * is re-exported below, so a module that judges numbers with this parser reads their digits through the same
+ * door — the importer's header check (`contact-fields.ts`) does.
+ *
  * ── PERFORMANCE IS A CORRECTNESS PROPERTY HERE ───────────────────────────────
  * The contacts importer is specified for ~150,000 rows, so `parseTzNumber` runs 150,000 times in one
  * job. Every regex is a module-level constant and the NDC index is built exactly ONCE at module
@@ -63,6 +71,10 @@
  * Guard: `npm run test:tz-msisdn` · red: `npm run red:tz-msisdn`.
  */
 import { type PaymentMethodId, paymentMethodName } from "./payment-providers";
+import { readAsciiDigits } from "./phone-normalize";
+
+/** vb3 · the parser's own digit reader, for a module that must read a number's digits exactly as this file does. */
+export { readAsciiDigits };
 
 /* ══ THE PLAN THIS FILE ENCODES ══════════════════════════════════════════════ */
 
@@ -245,7 +257,8 @@ export type TzNumber = {
   /** The 3-3-3 grouping, for a screen. Present whenever there are nine national digits to group. */
   readonly display: string | null;
   /** ⭐ ONE SENTENCE, IN WORDS, FOR A HUMAN — never a code. This is what an importer shows beside a
-   *  row it refused, and "UNALLOCATED_PREFIX" tells the person who pasted it nothing at all. */
+   *  row it refused, and "UNALLOCATED_PREFIX" tells the person who pasted it nothing at all.
+   *  ⛔ It never repeats the raw text (§5.14), and every refusal ends with the officer's next step (vb3). */
   readonly reason: string;
 };
 
@@ -254,6 +267,23 @@ export type TzNumber = {
 const NON_DIGITS = /\D/g;
 const LEADING_QUOTES = /^['\s]+/;
 const LEADING_ZEROS = /^0+/;
+
+/** vb3 · the next step a landline or unallocated refusal ends with — the officer's move, in plain words. */
+const ASK_FOR_MOBILE = "Ask for their mobile number instead.";
+/** vb3 · …and the one a cell with no number in it ends with: there is nothing to correct, only a number to get. */
+const ASK_FOR_NUMBER = "Ask for their mobile number.";
+
+/**
+ * vb3 · the next step for a number that is too long, read from what was written. Two numbers' worth of digits is
+ * two numbers in one cell, whatever else. Written after the country code, the + and the code are already there,
+ * so the fault is an extra digit, or several — never "add a + and a country code". With no country code, it may
+ * be an international number written without its +.
+ */
+function tooLongStep(digitCount: number, afterCode: boolean): string {
+  if (digitCount >= 18) return "It may hold more than one number. Keep one.";
+  if (!afterCode) return "If it is an international number, write it with a + and its country code.";
+  return digitCount === 10 ? "Check for an extra digit." : "Check for extra digits.";
+}
 
 /* ══ THE PARSER ══════════════════════════════════════════════════════════════ */
 
@@ -264,13 +294,17 @@ export function parseTzNumber(raw: string): TzNumber {
 
   // ⭐ The leading apostrophe is ours: the CSV export writes `'+255…` so a spreadsheet does not read
   // the number as a formula. Our own round trip must survive it.
-  const trimmed = (raw ?? "").replace(LEADING_QUOTES, "");
-  if (trimmed === "") return none("not_a_number", "This row has no phone number in it.");
+  // ⭐ vb3 · …and EVERY KEYBOARD'S DIGITS are read first, before anything is stripped: `\D` is ASCII-only, so a
+  // number typed on a phone set to Arabic, or in a Chinese input method's full-width digits, came out as "no
+  // digits". `readAsciiDigits` (`phone-normalize.ts`) is the number box's own reader — one text for both.
+  const trimmed = readAsciiDigits(raw ?? "").replace(LEADING_QUOTES, "");
+  if (trimmed === "") return none("not_a_number", `This row has no phone number in it. ${ASK_FOR_NUMBER}`);
 
   const hadPlus = trimmed.startsWith("+");
   let digits = trimmed.replace(NON_DIGITS, "");
   if (digits === "") {
-    return none("not_a_number", `“${clip(raw)}” has no digits in it, so it is not a phone number.`);
+    // ⛔ vb3 · the cell is never repeated back (§5.14): it may hold a name, and this sentence reaches screens and audits.
+    return none("not_a_number", `This has no digits in it, so it is not a phone number. ${ASK_FOR_NUMBER}`);
   }
 
   const hadIdd = digits.startsWith("00");
@@ -281,13 +315,25 @@ export function parseTzNumber(raw: string): TzNumber {
     return none(
       "foreign",
       `This is an international number outside Tanzania (country code +${digits.slice(0, 3)}…). ` +
-        `50pick sends only to Tanzanian mobile numbers.`,
+        `50pick sends only to Tanzanian mobile numbers. Ask for their Tanzanian mobile number instead.`,
     );
   }
 
+  // ⭐ vb3 · AFTER THE COUNTRY CODE, ONE TRUNK ZERO IS DROPPED. `+255 0712 345 678` — and the `+255 (0) 712…` a
+  // business card prints — is the country code AND the zero dialled at home. A Tanzanian number never begins with
+  // `0` after `255`, so a zero there is that trunk zero whenever no more than ten digits follow: ten are the zero
+  // plus the nine, and fewer are the zero plus a number cut short, which then reads too short ("Check whether some
+  // digits were cut off") instead of as an invented `007` range. 🔴 It was refused as too long, with advice to
+  // write the + and the country code the officer had just written; the contacts search turned it into a name
+  // search that found nobody; the send gate refused the person. Exactly ONE zero — `+255 00712…` (eleven digits)
+  // stays too long. The number box drops the same zero (`normalizeTzLocalDigits`), so the field and this verdict
+  // name one number.
+  const afterCode = digits.startsWith(TZ_COUNTRY_CODE) && digits.length > 9;
   let national: string;
-  if (digits.startsWith(TZ_COUNTRY_CODE) && digits.length > 9) national = digits.slice(3);
-  else if (digits.startsWith("0")) national = digits.replace(LEADING_ZEROS, "");
+  if (afterCode) {
+    national = digits.slice(3);
+    if (national.startsWith("0") && national.length <= 10) national = national.slice(1);
+  } else if (digits.startsWith("0")) national = digits.replace(LEADING_ZEROS, "");
   else national = digits;
 
   if (national.length < 9) {
@@ -298,10 +344,11 @@ export function parseTzNumber(raw: string): TzNumber {
     );
   }
   if (national.length > 9) {
+    // vb3 · the next step fits what was written (`tooLongStep`): an extra digit after +255, two numbers in one cell,
+    // or an international number written without its + — never "add a +" to someone who wrote one.
     return none(
       "too_long",
-      `A Tanzanian number has nine digits after +255; this one has ${national.length}. ` +
-        `If it is an international number, write it with a + and its country code.`,
+      `A Tanzanian number has nine digits after +255; this one has ${national.length}. ${tooLongStep(national.length, afterCode)}`,
     );
   }
 
@@ -312,10 +359,11 @@ export function parseTzNumber(raw: string): TzNumber {
   if (national[0] === "6" || national[0] === "7") {
     const row = NDC_INDEX.get(lead);
     if (!row) {
-      return none("unallocated_prefix", `No Tanzanian operator holds numbers beginning 0${lead}.`, { ndc: lead, display });
+      return none("unallocated_prefix", `No Tanzanian operator holds numbers beginning 0${lead}. ${ASK_FOR_MOBILE}`, { ndc: lead, display });
     }
     if (!row.sendable) {
-      return none("unallocated_prefix", row.note ?? `Numbers beginning 0${lead} are not reachable.`, {
+      const why = row.note ?? `Numbers beginning 0${lead} are not reachable.`;
+      return none("unallocated_prefix", `${why} ${ASK_FOR_MOBILE}`, {
         ndc: lead, display, operator: TZ_OPERATORS[row.operator],
       });
     }
@@ -334,29 +382,30 @@ export function parseTzNumber(raw: string): TzNumber {
   }
 
   // ── everything else that is nine digits and Tanzanian ───────────────────
+  // vb3 · every refusal below ends with the officer's next step (`ASK_FOR_MOBILE`).
   if (TZ_FIXED_AREAS[lead]) {
-    return none("landline", `This is a landline in ${TZ_FIXED_AREAS[lead]}. A landline cannot receive an SMS.`, { ndc: lead, display });
+    return none("landline", `This is a landline in ${TZ_FIXED_AREAS[lead]}. A landline cannot receive an SMS. ${ASK_FOR_MOBILE}`, { ndc: lead, display });
   }
   if (lead === "20" || lead === "21" || lead === "29") {
-    return none("landline", `Numbers beginning 0${lead} are a fixed-line range the regulator has reserved and nobody uses yet.`, { ndc: lead, display });
+    return none("landline", `Numbers beginning 0${lead} are a fixed-line range the regulator has reserved and nobody uses yet. ${ASK_FOR_MOBILE}`, { ndc: lead, display });
   }
   if (national[0] === "5") {
-    return none("landline", `Numbers beginning 0${lead} are corporate data lines, not mobile numbers.`, { ndc: lead, display });
+    return none("landline", `Numbers beginning 0${lead} are corporate data lines, not mobile numbers. ${ASK_FOR_MOBILE}`, { ndc: lead, display });
   }
   if (national.startsWith("800") || national.startsWith("808") || national.startsWith("840") || national.startsWith("86")) {
-    return none("landline", `This is a toll-free or shared-cost service number, not a mobile number.`, { ndc: lead, display });
+    return none("landline", `This is a toll-free or shared-cost service number, not a mobile number. ${ASK_FOR_MOBILE}`, { ndc: lead, display });
   }
   if (national[0] === "9") {
-    return none("landline", `This is a premium-rate service number, not a mobile number.`, { ndc: lead, display });
+    return none("landline", `This is a premium-rate service number, not a mobile number. ${ASK_FOR_MOBILE}`, { ndc: lead, display });
   }
   if (national.startsWith("41")) {
-    return none("landline", `Numbers beginning 041 are internet telephone lines, not mobile numbers.`, { ndc: lead, display });
+    return none("landline", `Numbers beginning 041 are internet telephone lines, not mobile numbers. ${ASK_FOR_MOBILE}`, { ndc: lead, display });
   }
   if (national.startsWith("30")) {
-    return none("landline", `Numbers beginning 030 are machine-to-machine lines, not mobile numbers.`, { ndc: lead, display });
+    return none("landline", `Numbers beginning 030 are machine-to-machine lines, not mobile numbers. ${ASK_FOR_MOBILE}`, { ndc: lead, display });
   }
 
-  return none("unallocated_prefix", `Numbers beginning 0${lead} are not part of Tanzania's numbering plan.`, { ndc: lead, display });
+  return none("unallocated_prefix", `Numbers beginning 0${lead} are not part of Tanzania's numbering plan. ${ASK_FOR_MOBILE}`, { ndc: lead, display });
 }
 
 /** True only for a number this platform may put on the wire. */
@@ -390,10 +439,4 @@ export function formatTzPhone(digits: string): string {
   if (d.length <= 3) return d;
   if (d.length <= 6) return `${d.slice(0, 3)} ${d.slice(3)}`;
   return `${d.slice(0, 3)} ${d.slice(3, 6)} ${d.slice(6)}`;
-}
-
-/** Keeps a quoted echo of bad input short enough for one line of a table cell. */
-function clip(s: string): string {
-  const t = (s ?? "").trim();
-  return t.length <= 24 ? t : `${t.slice(0, 24)}…`;
 }

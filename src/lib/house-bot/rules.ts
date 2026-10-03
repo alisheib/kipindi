@@ -21,6 +21,7 @@
  * margin to the automatic counter turns the 5:00 row of `test:house-bot-rules` red, on purpose.
  */
 import { MARKET_CATEGORIES, type MarketCategory } from "@/lib/markets/categories";
+import { toAsciiDigits } from "@/lib/phone-normalize";
 import { ALLOWED_DURATIONS } from "@/lib/updown-durations";
 import { BY_HAND_SCREENS, CONSOLE_LIMITS_HREF as LIMITS_TAB_HREF, consoleBotTabHref, type ByHandScreens } from "./console-routes";
 import {
@@ -164,33 +165,10 @@ export const REQUIRED_NUMBER_COPY = "Enter a whole number.";
 /** How an unset cap reads everywhere it is shown (04 C1). */
 export const NOT_SET_COPY = "Not set — this bot cannot bet";
 
-/**
- * The zero of every decimal-digit block the parser maps to ASCII. A `\p{Nd}` digit outside these
- * blocks is refused rather than guessed.
- */
-const DIGIT_ZEROS = [
-  0x0030, 0x0660, 0x06f0, 0x07c0, 0x0966, 0x09e6, 0x0a66, 0x0ae6, 0x0b66, 0x0be6, 0x0c66, 0x0ce6, 0x0d66, 0x0de6,
-  0x0e50, 0x0ed0, 0x0f20, 0x1040, 0x1090, 0x17e0, 0x1810, 0x1946, 0x19d0, 0x1a80, 0x1a90, 0x1b50, 0x1bb0, 0x1c40,
-  0x1c50, 0xa620, 0xa8d0, 0xa900, 0xa9d0, 0xa9f0, 0xaa50, 0xabf0,
-] as const;
-
-const DECIMAL_DIGIT = /\p{Nd}/u;
-
-function toAsciiDigits(s: string): string | null {
-  let out = "";
-  for (const ch of s) {
-    const cp = ch.codePointAt(0) ?? 0;
-    if ((cp >= 0x30 && cp <= 0x39) || !DECIMAL_DIGIT.test(ch)) {
-      out += ch;
-      continue;
-    }
-    let zero = -1;
-    for (const z of DIGIT_ZEROS) if (z <= cp && cp < z + 10) zero = z;
-    if (zero < 0) return null;
-    out += String(cp - zero);
-  }
-  return out;
-}
+// Every decimal digit a keyboard can write is read as ASCII by `toAsciiDigits`, from the ONE digit table in
+// `@/lib/phone-normalize` (vb3, 2026-10-03) — the number box's and the numbering plan's own. It lived here,
+// privately, until the phone rules needed it too; one table now, so the two can never drift (`test:phone-normalize`
+// §7b). A `\p{Nd}` digit outside its blocks is still refused rather than guessed: null, so NOT_A_NUMBER.
 
 /**
  * A typed whole number.

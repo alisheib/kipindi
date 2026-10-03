@@ -221,6 +221,10 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
   ok(p("1 · ⭐ the four spellings of one number each find EXACTLY that contact (EXECUTED)"),
     found.every((f) => f === A.id), found.join(" | "));
   ok(p("1b · CONTROL · a different WHOLE number finds nothing"), ids(await impl.load({ q: "0712 999 999" })) === "");
+  // ⭐ vb3 · the trunk zero written after the country code is the same person — never a name search that finds nobody.
+  const trunk = ids(await impl.load({ q: "+255 0712 345 678" }));
+  ok(p("1c · ⭐ vb3 · '+255 0712 345 678' — the trunk zero written after the country code — finds EXACTLY that contact, never a name search that finds nobody (EXECUTED)"),
+    trunk === A.id, trunk);
 
   // ── 2 · ⛔ A PART OF A NUMBER IS NEVER A NUMBER SEARCH ─────────────────────────────────────────
   const part = impl.search("0712345");
@@ -996,6 +1000,17 @@ if (!PROVE_RED) {
           const from = new Date((now ?? Date.now()) - 8 * DAY_MS).toISOString();
           return { ...v, addedRecently: await contactAudience({ ...WHOLE_BOOK, addedFrom: from }).count() };
         },
+      },
+    },
+    {
+      name: "🔴 pre-vb3 · '+255 0712…' read as a 13-digit typo — the search box ran it as a NAME query, which finds nobody",
+      expect: "1c · ⭐ vb3 · '+255 0712 345 678' — the trunk zero written after the country code — finds EXACTLY that contact, never a name search that finds nobody (EXECUTED)",
+      impl: {
+        ...REAL,
+        // The pre-vb3 parser refused the spelling as too long, so the loader got a name query; "zzzz" is one that, like
+        // the digits it stands for, no contact's name holds.
+        load: (sp, reads = false, now) =>
+          realLoad(/^(?:00)?2550[0-9]{9}$/.test(String(sp.q ?? "").replace(/[^0-9]/g, "")) ? { ...sp, q: "zzzz" } : sp, reads, now),
       },
     },
   ];

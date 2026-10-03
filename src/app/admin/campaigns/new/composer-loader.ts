@@ -5,9 +5,13 @@
  * posing as a new one — and a read that fails THROWS to the page, which renders `AdminLoadError`.
  * ⭐ THE AUDIENCE, IN WORDS: the composer's own address in the contacts filter vocabulary (U38 adds the controls that
  * write it), else the draft's stored filter, else the whole book — parsed by U24's ONE parser (an unknown value is a
- * refusal, C2), held to the role rule every door asks before it describes a filter (`roleRefusal`, A1.1), and to the
- * save's shape rules (never a ticked selection, never one phone number — OD55). The save's own refusals, said before the
- * officer presses Save; a STORED filter this viewer may not have described is noted, never blocked (the save keeps it).
+ * refusal, C2), held to the campaign door's own rule exactly as the save holds it (`campaignAudienceRefusal`, X25 — a
+ * ticked selection for every role, and for a posted filter this viewer's role rule, any search included for a viewer
+ * who may not read a number), and to OD55 (never one phone number). The save's own refusals, said before the officer
+ * presses Save — and when the ADDRESS is what is refused, the card offers to remove it (`clearHref`), since nothing else
+ * on the page can; a STORED filter this viewer may not have described is noted, never blocked (the save keeps it). It
+ * also says what a save AS A NEW DRAFT must post to keep that audience (`carry`), or that it cannot — never the whole
+ * book by omission.
  * ⭐ THE SENDER LINE (OD45) is the server's `SMS_SENDER_ID`, read-only, and a dead rail speaks Admin → System's own words
  * (`railProblemNote`) — never a second wording of the fault.
  * ⭐ THE TEST CARD reads the officer's OWN account: the number masked, the first name the renderer would print, and their
@@ -21,16 +25,15 @@ import type { SmsCampaignStatus, StoredSmsCampaign } from "@/lib/server/store";
 import { smsProviderResolution, smsRailProblem } from "@/lib/server/sms";
 import { readMarketingLiveSwitch, marketingLiveGate } from "@/lib/server/marketing/live-switch";
 import {
-  CONTACT_AUDIENCE_URL_KEYS, WHOLE_BOOK, parseContactAudienceParams, parseContactAudienceJson, describeAudience, roleRefusal,
-  contactAudienceParams,
+  CONTACT_AUDIENCE_URL_KEYS, WHOLE_BOOK, parseContactAudienceParams, parseContactAudienceJson, describeAudience,
+  campaignAudienceRefusal, contactAudienceParams,
 } from "@/lib/server/marketing/audience";
 import type { ContactAudienceFilter } from "@/lib/server/marketing/audience";
-import {
-  wholeNumberAudienceProblem, CAMPAIGN_AUDIENCE_SELECTION, CAMPAIGN_AUDIENCE_UNREADABLE,
-} from "@/lib/server/marketing/campaign-draft";
+import { wholeNumberAudienceProblem, CAMPAIGN_AUDIENCE_UNREADABLE } from "@/lib/server/marketing/campaign-draft";
 import { TEST_OWN_NUMBER_UNUSABLE } from "@/lib/server/marketing/campaign-test-send";
 import { renderForRecipient, firstNameFor } from "@/lib/marketing/campaign-template";
 import type { CampaignDraftFields, CampaignTemplate } from "@/lib/marketing/campaign-template";
+import { CAMPAIGN_SCREEN_ROUTES, campaignDraftHref } from "@/lib/marketing/campaign-status";
 import { footerMeasurementToken } from "@/lib/marketing/footer";
 import { maskPhone } from "@/lib/phone-normalize";
 import { parseTzNumber } from "@/lib/tz-msisdn";
@@ -62,6 +65,18 @@ export type ComposeAudienceView = {
   note: string | null;
   /** The address's filter params, posted with a save — null when the address carries none (the stored one is kept). */
   params: Record<string, string> | null;
+  /**
+   * ⭐ "Remove the filter" — the composer's own address WITHOUT its filter (the draft kept), offered only while the
+   * ADDRESS is what the save would refuse: the page has no other control that takes it out. null otherwise.
+   */
+  clearHref: string | null;
+  /**
+   * ⭐ What "Save as a new draft" posts so the NEW draft keeps this audience: the address's filter, else the stored one
+   * written as an address (`{}` for the whole book). ⛔ null when it cannot travel — a filter this viewer may not post
+   * (the hidden note), one no address can write exactly, or a refused one — and the screen then does not offer the save:
+   * a missing audience would otherwise quietly become the whole contact book.
+   */
+  carry: Record<string, string> | null;
 };
 
 export type ComposeSenderView = { line: string; dead: boolean; vars: string[] };
@@ -111,18 +126,25 @@ function templateOf(c: StoredSmsCampaign): CampaignTemplate {
   return { bodySw: f.bodySw, bodyEn: f.bodyEn, nameFallbackSw: f.nameFallbackSw, nameFallbackEn: f.nameFallbackEn, sourcePhrase: c.sourcePhrase ?? "" };
 }
 
-/** The audience on screen: the address's, else the stored one, else the whole book — and why it cannot be saved. */
-async function audienceView(sp: ComposeParams, draft: StoredSmsCampaign | null): Promise<ComposeAudienceView> {
+/**
+ * The audience on screen: the address's, else the stored one, else the whole book — and why it cannot be saved, asked
+ * EXACTLY as the save asks it (`audienceOf` in `campaign-draft.ts`): the campaign door's rule (`campaignAudienceRefusal`
+ * — this viewer's role for a posted filter, the rule every role meets for a stored one), then OD55. ⭐ The viewer's read
+ * grant is handed in, so `test:campaign-compose` §17.7 asks it for a masked viewer without a session.
+ */
+export function composeAudienceView(sp: ComposeParams, draft: StoredSmsCampaign | null, reads: boolean): ComposeAudienceView {
   let params: Record<string, string> = {};
   for (const k of CONTACT_AUDIENCE_URL_KEYS) {
     const v = first(sp[k])?.trim();
     if (v) params[k] = v;
   }
   const fromAddress = Object.keys(params).length > 0;
+  // ⭐ The composer's own address WITHOUT the filter, the draft kept — the one way to take a refused address filter out.
+  const clearHref = !fromAddress ? null : draft !== null ? campaignDraftHref(draft.id) : CAMPAIGN_SCREEN_ROUTES.compose;
   let filter: ContactAudienceFilter = WHOLE_BOOK;
   if (fromAddress) {
     const parsed = parseContactAudienceParams(sp);
-    if (!parsed.ok) return { lines: [], everyone: false, problem: parsed.reason, note: null, params };
+    if (!parsed.ok) return { lines: [], everyone: false, problem: parsed.reason, note: null, params, clearHref, carry: null };
     filter = parsed.filter;
     // ⛔ THE CARD AND THE SAVE READ ONE AUDIENCE (U37b review m6): the parser unions a repeated key, so what is posted is
     // re-spelt from the parsed filter — never the first raw value of each key, which saved Vodacom under "Airtel or Vodacom".
@@ -132,26 +154,36 @@ async function audienceView(sp: ComposeParams, draft: StoredSmsCampaign | null):
     try {
       raw = JSON.parse(draft.audienceFilter);
     } catch {
-      return { lines: [], everyone: false, problem: CAMPAIGN_AUDIENCE_UNREADABLE, note: null, params: null };
+      return { lines: [], everyone: false, problem: CAMPAIGN_AUDIENCE_UNREADABLE, note: null, params: null, clearHref: null, carry: null };
     }
     const parsed = parseContactAudienceJson(raw);
-    if (!parsed.ok) return { lines: [], everyone: false, problem: CAMPAIGN_AUDIENCE_UNREADABLE, note: null, params: null };
+    if (!parsed.ok) {
+      return { lines: [], everyone: false, problem: CAMPAIGN_AUDIENCE_UNREADABLE, note: null, params: null, clearHref: null, carry: null };
+    }
     filter = parsed.filter;
   }
-  // ⛔ THE SAVE'S OWN REFUSALS OF THE FILTER'S SHAPE, in its order: a ticked selection, then one phone number (OD55).
-  const shape = filter.ids !== null ? CAMPAIGN_AUDIENCE_SELECTION : wholeNumberAudienceProblem(filter);
-  // ⛔ A filter is described only after the role rule passed it (A1.1) — a masked viewer is never handed a phrase naming
-  // a consent, source, player or stop predicate. A POSTED one the role may not use is refused, as the save refuses it;
-  // a STORED one is only left undescribed — the save keeps it as it is, so blocking Save here would refuse a save the
-  // server accepts.
-  const role = roleRefusal(filter, await viewerReadsContacts());
-  if (role !== null) {
+  // ⛔ THE SAVE'S OWN REFUSALS, in its order: the campaign door's rule (a ticked selection for every role; for a posted
+  // filter, this viewer's role rule, any search included for a masked viewer), then one phone number (OD55).
+  const door = campaignAudienceRefusal(filter, fromAddress ? reads : true);
+  const problem = door?.reason ?? wholeNumberAudienceProblem(filter);
+  const clear = problem !== null ? clearHref : null;
+  // ⭐ A NEW draft is a POSTED filter, so it meets this viewer's own rule: the address's (already asked above), or the
+  // stored one re-asked for this viewer and written as an address — never a filter the new draft could not save.
+  const carry = problem !== null ? null
+    : fromAddress ? params
+      : campaignAudienceRefusal(filter, reads) === null ? contactAudienceParams(filter) : null;
+  // ⛔ A filter is described only when this viewer's role rule passes it (A1.1 · X25) — asked without the ticked
+  // selection, which every role is refused and which says nothing about a role — so a masked viewer is never handed a
+  // phrase naming a consent, source, player or stop predicate, or a search. A POSTED one the role may not use is refused
+  // above, as the save refuses it; a STORED one is only left undescribed — the save keeps it as it is, so blocking Save
+  // here would refuse a save the server accepts.
+  if (campaignAudienceRefusal({ ...filter, ids: null }, reads) !== null) {
     return fromAddress
-      ? { lines: [], everyone: false, problem: role.reason, note: null, params }
-      : { lines: [], everyone: false, problem: shape, note: COMPOSE_AUDIENCE_HIDDEN, params: null };
+      ? { lines: [], everyone: false, problem, note: null, params, clearHref: clear, carry }
+      : { lines: [], everyone: false, problem, note: COMPOSE_AUDIENCE_HIDDEN, params: null, clearHref: null, carry };
   }
   const lines = describeAudience(filter);
-  return { lines, everyone: lines.length === 0, problem: shape, note: null, params: fromAddress ? params : null };
+  return { lines, everyone: lines.length === 0, problem, note: null, params: fromAddress ? params : null, clearHref: clear, carry };
 }
 
 /** OD45 · the sender line: the server's value, or the stub's honest sentence, or Admin → System's words for a dead rail. */
@@ -202,7 +234,7 @@ export async function loadComposer(sp: ComposeParams): Promise<ComposeView> {
     },
     readOnly: draft !== null && draft.status !== "DRAFT",
     sourcePhrase: draft?.sourcePhrase ?? "",
-    audience: await audienceView(sp, draft),
+    audience: composeAudienceView(sp, draft, await viewerReadsContacts()),
     sender: senderView(),
     test: {
       ownNumberMasked: key !== null ? maskPhone(key) : null,

@@ -7,12 +7,16 @@
  * does not move while the officer types inside one message, so a screen reader is not read a number on every key. The
  * visible line ("80 characters left · 1 message · GSM-7") updates per keystroke beside it, wrapping only at " · ".
  * ⭐ UCS-2 IS A REFUSAL WITH THE OFFENDER NAMED ("Forced to Unicode by: ’ (curly apostrophe)"), and "Replace with plain
- * characters" is offered only when every offender has a plain twin (`describeOffenders`' `foldable`).
+ * characters" is offered when ANY offender has a plain twin (`foldOffered`) — the fold swaps those, and whatever has
+ * no twin (an emoji) stays named here on its own (validation audit, 2026-10-03: one emoji hid the button for a quote).
+ * ⛔ The cap is `SMS_MAX_SEGMENTS`, the ONE cap — never a literal here.
  */
 import { Button } from "@/components/ui/button";
 import type { VariantCounter } from "@/lib/marketing/campaign-template";
+import { SMS_MAX_SEGMENTS } from "@/lib/sms-compose";
 import {
   COMPOSE_FOLD, COMPOSE_FORCED, COMPOSE_JINA_RESERVE, COMPOSE_STOP_LINK, composeSourceLine, counterAnnounce, counterLine,
+  foldOffered,
 } from "./composer-copy";
 
 export function ComposerCounter({
@@ -24,9 +28,9 @@ export function ComposerCounter({
   disabled: boolean;
   onFold: () => void;
 }) {
-  const over = counter.left < 0 || counter.segments > 1;
+  const over = counter.left < 0 || counter.segments > SMS_MAX_SEGMENTS;
   const unicode = counter.encoding === "UCS2";
-  const foldable = unicode && counter.offenders.length > 0 && counter.offenders.every((o) => o.foldable);
+  const foldable = foldOffered(counter);
   return (
     <div className="mt-2 space-y-1.5" data-counter={counter.variant} data-counter-state={unicode ? "unicode" : over ? "over" : "fits"}>
       <p className={`text-body-sm tabular-nums ${over || unicode ? "text-danger-fg" : "text-text-secondary"}`} data-counter-line>
