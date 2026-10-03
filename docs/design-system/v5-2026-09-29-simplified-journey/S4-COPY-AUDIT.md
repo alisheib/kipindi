@@ -98,6 +98,27 @@ The canvas already shows the corrected words. Each line: key (or where it shows)
 - `failSystemBusy` · "Dau lako HALIJAONDOKA" → "Dau lako HALIJAWEKWA na hakuna pesa iliyokatwa".
 - `failAccountBlocked` · "Wasiliana na msaada tutakueleza sababu." → "…msaada na tutakueleza sababu."
 - `failWalletFrozen` · "hivyo dau haziwezi kuwekwa" → "kwa hiyo huwezi kuweka dau".
+
+**Found 2026-10-03 by Claude as Ali's Swahili reviewer — the same error as `failWalletFrozen`, twelve more times.** The
+panel ruled *dau* class 5/6 (singular *dau lako / limefungwa*, plural *madau ya / yamefungwa*); these live strings give
+it class-10 agreement (*dau zote / zinafungwa / zako*). *Madau* is the plural Tanzanian betting copy already uses. Same
+rule as above: they ship with S12, never earlier.
+- `udNoHistory` · "Bado hakuna dau za Juu na Chini" → "Bado hakuna madau ya Juu na Chini".
+- `udHistoryBody` · "…tofauti na dau zako za muda mrefu." → "…tofauti na madau yako ya muda mrefu."
+- `udRcBetsClose` · "Dau zinafungwa" → "Madau yanafungwa".
+- `udEstimateNote` · "Dau zikifungwa, inakuwa malipo yako kamili." → "Madau yakifungwa, inakuwa malipo yako kamili."
+- `udNobodyBackedEither` · "…wakati dau zinafungwa, kila dau litarudi." → "…wakati madau yanafungwa, kila dau litarudi."
+- `resVoidRefund` · "Dau zote zilirejeshwa kikamilifu — hakuna ada iliyokatwa." → "Madau yote yalirejeshwa kikamilifu — hakuna
+  ada iliyokatwa."
+- `noVoidedSettlementsBody` · "…iwapo dau zitarudishwa." → "…iwapo madau yatarudishwa."
+- `hedgeBothBody` and `hedgeOppositeBody` · "Dau zote mbili zinabaki na kila moja hulipwa peke yake" → "Madau yote mawili
+  yanabaki na kila moja hulipwa peke yake".
+- `card3Body` · "dau za washindi zinarudishwa zote na haziguswi kamwe" → "madau ya washindi yanarudishwa yote na hayaguswi
+  kamwe".
+- `faq1a` and `faq1aLoser` · "Dau za kila mchezaji kwenye soko moja zinajiunga bwawa moja" → "Madau ya kila mchezaji
+  kwenye soko moja yanaungana kuwa bwawa moja"; `faq1aLoser` also "kutoka dau za upande ulioshindwa" → "kutoka madau ya
+  upande ulioshindwa".
+
 - `failSessionLimit` · "kipindi hiki kimefika … rudi baadaye na kitaanza upya" → "kipindi hiki kimefikia kikomo hicho … rudi baadaye uanze kipindi kipya".
 - `failRateLimited` · "Hilo lilikuwa haraka." → "Umejaribu haraka mno."
 - `failLossLimitDaily` · "Kitaanza upya kesho — … kwenye Uchezaji salama" → "Kitaanza upya kesho saa 00:00 — … kwenye Weka mipaka".
