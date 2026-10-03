@@ -468,8 +468,11 @@ erasure now withdraws the consent and empties the book, and both data exports ca
   in globals.css (Vodacom S6 WP11, cb4e8c95), tap-target (datetime-range-filter, reports/generate-button),
   eyebrow-roles (the OG image route), decomment 24 > 20, red-anchors 2, type-scale 749/239.
 📘 THE ADMIN GUIDE (PDF) — Ali, 2026-10-03: "include screenshots on which pages the admin should go for each step". Every
-  step shows the page the admin opens for it (and the menu path to it); none is a step without its page. Built after the
-  validation batches land: contacts, a draft, the test send, the SMS balance (Admin → System), every warning and its fix.
+  step shows the page the admin opens for it (and the menu path to it); none is a step without its page. ✅ v1 BUILT
+  2026-10-03 on the live code (batches 1–6): `docs/guides/50pick-admin-guide-contacts-and-sms-campaigns.pdf` — 23 pages,
+  22 steps, 29 screenshots with the control outlined in red, the SMS balance's six states, and 26 messages each checked
+  against the source before the PDF may build. Regenerate: `scripts/live/admin-guide.mjs` (+ `admin-guide-messages.mjs`)
+  on a live-closed dev boot. v1.1 follows batch 7 (the contacts dialog then says every problem at once).
 🔎 THE VALIDATION AUDIT (2026-10-03, Ali: "full input form validation and field validation everywhere — clean, perfect,
   working"): six read-only auditors over every admin input → 49 fixes (6 blocker, 7 major, 36 minor) in 8 batches with
   disjoint files and one shared validator per kind of field. Batch 1 = STEP 23, batch 2 = STEP 24, batches 5 + 8 =
@@ -561,6 +564,20 @@ erasure now withdraws the consent and empties the book, and both data exports ca
     (5) Before G2, read the Board's advertising code (iGaming Business, 2024: every ad to carry the safer-gambling message
     and the helpline; no reward as an inducement) against the first campaign's message. Sources: fbattorneys.co.tz
     (ETA s.32), cyrilla.org (PDPA notes), telerivet.com (TCRA sender IDs), igamingbusiness.com (the code).
+  · 📐 OD59 (2026-10-03) · THE U33a + U37c DESIGN is written and tracked: `docs/marketing-specs/U33a-U37c-OD58.md` (a
+    read-only design pass, re-read as an adversary). Every unit ships INERT: a non-consent basis counts only while ONE
+    admin record (`marketing.outreach.licence`, Admin → System) is OPEN, and it cannot open until the policy lines and
+    wordings are saved — so tests to typed numbers stay refused until Ali approves those words. No licence basis is ever
+    written to the consent ledger (a new append-only `ContactListBasis` per list; players covered by the record); every
+    allowed verdict names its basis; a masked role learns nothing (one neutral sentence, a 3-second floor); typed tests
+    capped per recipient and per officer; every wording and policy line editable with validation + audit (the
+    admins-can-change-everything rule). ⚠️ ALI'S 13 QUESTIONS (built defaults in brackets): Q1 never-ticked players reached
+    without a list [yes] · Q2 sign-ups since 09-28 who left "Send me offers by SMS (optional)" unticked [reach them;
+    reword the box first] · Q3 Privacy §3/§4 lines · Q4 RG §4 line · Q5 the outreach wording, 18+ confirmations, notice ·
+    Q6 the source line · Q7 list basis expiry for recycled numbers [no] · Q8 agent referees promised no marketing [build
+    the exclusion] · Q9 lapsed consents kept out [yes] · Q10 the profile switch reads ON under outreach + its note · Q11
+    typed tests only while outreach is open [yes] · Q12 who records a list basis [growth officers] · Q13 the stop-link
+    lawyer question.
   · ⛔ NOT done by Claude: ticking Ali's OWN consent (his personal legal record) and re-enabling admin 2-step login
     (it would lock Ali out unless his authenticator is enrolled — waits for "my authenticator works").
 🔎 WHAT STILL HAS TO BE CHECKED — and nothing else is re-checked:
