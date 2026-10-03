@@ -1584,6 +1584,33 @@ if the journey look needs arithmetic or a second parse — in the open, with a p
 WP10's holder-block capture compares against a pre-S6 baseline that predates this fix: a default poll with an hour to
 run must compare equal, and any other difference is named in EXPECTED_DIFFS, never re-baselined.
 
+*As built (A8b, drafted 2026-10-03 — its own commit, for every player):* WP10's lapse, given to today's look; the
+server's shut verdict drawn from the button's first commit; and today's free row fitted to a 320 phone on `/positions`.
+Both classic hosts pass `pricedFree` for an open exit on a LIVE question — `/positions` the `free` its prices already
+carry (`sellable && co.inGracePeriod`, where `sellable` is LIVE and `co.sellable`; its two rows priced as no free
+window now say `free: false`), the question page's holder block `positionPricedFree` (`m.status === "LIVE" &&
+co.sellable && co.inGracePeriod`, off the same `co`) — and in SellButton the `mounted` flag, the one lapse effect and
+the `lapsed` verdict serve both looks: the effect names no look, the flag turns true at either look's first commit,
+and the verdict is declared once above the journey's look. Today's return reads it: disabled, `common.loading` as its
+words and its spoken name (`common.selling` while a sale is in flight), no figure (its free strip already goes with the
+countdown). It reads `shutNow` (`closedNow || (mounted && alreadyClosed === true)`) wherever it read `closedNow`, so a
+refresh that brings the server's "shut" is drawn shut in that render, not as one enabled "Uza sasa · TZS 0" render
+while the effect copies the verdict into `closedNow`; before the first commit `shutNow` is `closedNow`, so the served
+markup is today's. Below Tailwind's `xs` (360) its free note is hidden; from 360 it is inline, as today, and nothing
+else in the row changes — the label keeps one line at every width, because letting it wrap stacks Chinese one glyph a
+line, taller than the button, in the question page's narrower holder block. Pinned in the open: `test:sell-grace-truth`
+2.priced (both hosts' flag expressions pinned whole), 3.classic (the lapse effect pinned whole, the reads of `lapsed`
+and `shutNow`), 3.render, and §5 (the static fit model, mirroring `test:journey-shell` 8.label.measure: Inter at 600
+bounded per glyph by the repo's own 500 and 700 files and by their alternates under the body's `font-feature-settings`,
+read from the fonts' substitutions; JetBrains Mono from its file; CJK at a full em; the stylesheet's own button; both
+hosts' geometry from their pages; prices from `cashOutValue`), with 3.journey's mount-flag constant and its timer plant
+moved; `test:journey-tickets` §12's classic pin (`SELL_CLASSIC`, regenerated from the button), the lapse effect's
+first line and dependencies (`LAPSE_ASK`, `LAPSE_DEPS`) and its opt-in props (`look` and `freeUntilLabel` only);
+`qa:classic-shell-parity`'s `SELL_EXPECTED_DIFFS` gains `sell-narrow-phone` (the free note's class string), with a
+synthetic P.5s. No word of the dictionary changes. Records: VODACOM-PLAN §0i (A8b) and §0h points 35 and 37: (a) the
+Back/Forward case A8b's withdrawal cannot see, (f) what A8b closes and the server paint it keeps, and (h) the holder
+block's overflow, which the v2 baseline already measures at 360 — the next step for today's button, measured first.
+
 **A9 · G9 — the route census is a reachability graph.** Roots: the journey tabs, the header, the sheets,
 `hubRowsFor(viewer)`, the footer. Edges: decommented hrefs per page file. A BFS per viewer kind (guest, player, held,
 agent in standing, staff, proposals disabled, invite closed) asserts classic ⊆ journey reachability. Plants: an orphan

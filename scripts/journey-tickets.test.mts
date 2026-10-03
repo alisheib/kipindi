@@ -50,7 +50,10 @@
  *      a fee keeps "Uza sasa" and its fee; a shut exit is words, not a button, from the first paint; the button's edge
  *      is the kit's token for a control's edge; the look computes nothing and formats no time; and the journey's sell
  *      path says no "nafasi" — its one Chinese 持仓 is the sold receipt's small heading and its three Swahili "toa" words
- *      today's cash-out headings, each named (VODACOM-PLAN §0h point 36).
+ *      today's cash-out headings, each named (VODACOM-PLAN §0h point 36). Since S6 A8b the lapse is both looks': today's
+ *      return withdraws a lapsed free price too and draws the server's shut verdict from its first commit, and every host
+ *      passes the free-price flag, which therefore asks for no look. §12 pins today's return as it now stands;
+ *      `test:sell-grace-truth` holds the classic half (2.priced, 3.classic, §5).
  *
  * ⚠️ WHAT IT DOES NOT HOLD. Off Tiketi zangu itself, until the S15 rename (VODACOM-PLAN §3): `/positions/performance`,
  * the question page's holder heading and the desktop avatar menu's row. §4 and §12 read Tiketi zangu, not those. §12
@@ -607,12 +610,13 @@ function g11Wiring(W: World, ok: Ok) {
 /* ══ §12 · THE SELL LOOK (WP10) ═════════════════════════════════════════════════════════════════════════════ */
 /** Where the button's classic markup begins: from here to the end of the file is what a reader without the look is drawn. */
 const SELL_CLASSIC_HEAD = `const btnVariant = "btn-primary";`;
-/** The button's classic markup as it stands today, line by line with comments stripped: the free strip, the button, and the shared dialogs. */
+/** The button's classic markup as it stands today, line by line with comments stripped: the free strip, the button (since S6 A8b, with its lapse, the server's shut verdict from its first commit and its free note's narrow-phone classes), and the shared dialogs. */
 const SELL_CLASSIC = [
   'const btnVariant = "btn-primary";',
+  'const shutNow = closedNow || (mounted && alreadyClosed === true);',
   'return (',
   '<>',
-  '{inGrace && !closedNow && (',
+  '{inGrace && !shutNow && (',
   '<div className="mb-1.5 flex items-center gap-1.5 px-2 py-1 rounded-md bg-brand-500/[0.12] border border-brand-500/30">',
   '<span className="font-mono text-micro font-bold text-brand-300 uppercase tracking-[0.12em]">{t.common.freeExitLabel}</span>',
   '<span className="font-mono text-[10px] text-brand-300 tabular-nums">{graceLabel}</span>',
@@ -621,29 +625,32 @@ const SELL_CLASSIC = [
   ')}',
   '<button',
   'type="button"',
-  'onClick={closedNow ? undefined : openConfirm}',
-  'disabled={pending || closedNow}',
+  'onClick={shutNow ? undefined : openConfirm}',
+  'disabled={pending || shutNow || lapsed}',
   'aria-label={',
-  'closedNow',
+  'shutNow',
   '? t.common.sellLockedHint',
+  ': lapsed',
+  '? (pending ? t.common.selling : t.common.loading)',
   ': inGrace',
   '? `${t.common.freeExitLabel} — ${formatTzs(value)}`',
   ': `${t.common.cashOut} ${formatTzs(value)}`',
   '}',
-  'className={`btn ${closedNow ? "btn-ghost" : btnVariant} btn-md w-full whitespace-normal`}',
+  'className={`btn ${shutNow ? "btn-ghost" : btnVariant} btn-md w-full whitespace-normal`}',
   'style={{ justifyContent: "space-between" }}',
   '>',
   '<span>',
-  '{closedNow ? t.common.sellLocked',
+  '{shutNow ? t.common.sellLocked',
   ': pending ? t.common.selling',
+  ': lapsed ? t.common.loading',
   ': inGrace ? t.common.freeExitLabel',
   ': t.common.sellNow}',
   '</span>',
-  '{!closedNow && (',
+  '{!shutNow && !lapsed && (',
   '<span className="font-mono tabular-nums">',
   'TZS {formatNumber(value)}',
   '{inGrace',
-  '? <span className="ml-1.5 opacity-80 text-[11px]">{t.common.fullRefund}</span>',
+  '? <span className="ml-1.5 hidden opacity-80 text-[11px] xs:inline">{t.common.fullRefund}</span>',
   ': <span className="ml-1.5 opacity-80 text-[11px]">−{formatNumber(fee)} {t.common.fee}</span>',
   '}',
   '</span>',
@@ -733,9 +740,9 @@ const FEE_RULE = "const fee = Math.max(0, stake - value);";
 const BUTTON_OPEN = `<button type="button" onClick={openConfirm} disabled={pending || lapsed}`;
 /** Its edge: the kit's outlined class, its only boundary drawn in the kit's token for a control's edge (the canvas's own colour). */
 const EDGE = `className="btn btn-ghost w-full px-2 py-1.5" style={{ borderColor: "var(--border-control)" }}>`;
-/** A lapsed free price closes a confirm still showing it and asks the page for the server's answer at once — once per run of the countdown, re-armed only when the countdown runs again, so no answer can set off another ask by itself. */
+/** A lapsed free price closes a confirm still showing it and asks the page for the server's answer at once — once per run of the countdown, re-armed only when the countdown runs again, so no answer can set off another ask by itself. One effect for both looks since S6 A8b, so its guard and its dependencies name no look. */
 const LAPSE_ASK = [
-  "if (!journey || pricedFree !== true || closedNow || alreadyClosed) return;",
+  "if (pricedFree !== true || closedNow || alreadyClosed) return;",
   "if (inGrace) { lapseArmed.current = true; return; }",
   "if (!mounted) return;",
   "if (!pending) setConfirmOpen(false);",
@@ -743,7 +750,7 @@ const LAPSE_ASK = [
   "lapseArmed.current = false;",
   `window.dispatchEvent(new Event("50pick:refresh"));`,
 ];
-const LAPSE_DEPS = "}, [journey, mounted, pricedFree, inGrace, closedNow, alreadyClosed, pending]);";
+const LAPSE_DEPS = "}, [mounted, pricedFree, inGrace, closedNow, alreadyClosed, pending]);";
 const LAPSE_REFRESH = LAPSE_ASK.length - 1;
 /** What the look never does itself: build or format a time, or read the stake (its figures are the server's). */
 const LOOK_NEVER = ["Date", "toLocale", "Intl.", "formatClock(", "formatDeadline(", "formatDayTime(", "formatDateTime(", "formatTime(", "stake"];
@@ -755,8 +762,9 @@ const JSX_TAGS = /<[/]?[A-Za-z][^<>]*>|<[/]?>/g;
 const sellElements = (s: string) => s.split("<SellButton").slice(1).map((x) => x.slice(0, x.indexOf("/>")));
 /** Every src file that renders SellButton, found on disk as this suite starts (a plant can add its own to a world). */
 const SELL_HOSTS_ON_DISK = srcFiles().filter((f) => f !== SELL_BUTTON && /[.]tsx?$/.test(f) && read(f).includes("<SellButton"));
-/** The three props that ask for the journey's look. */
-const JOURNEY_PROPS = ["look=", "freeUntilLabel=", "pricedFree="];
+/** The two props that ask for the journey's look. The free-price flag is every host's since S6 A8b (today's look withdraws a
+ *  lapsed free price too), so it asks for no look; `test:sell-grace-truth` 2.priced holds every host to it. */
+const JOURNEY_PROPS = ["look=", "freeUntilLabel="];
 const sellHosts = (W: World) => [...new Set([...SELL_HOSTS_ON_DISK, ...Object.keys(W.files)])]
   .filter((f) => f !== SELL_BUTTON && f.startsWith("src/") && /[.]tsx?$/.test(f))
   .map((f) => [f, sellElements(textOf(W, f))] as const)
@@ -791,7 +799,7 @@ function g12SellLook(W: World, ok: Ok) {
   const hosts = sellHosts(W);
   const askers = hosts.filter(([f]) => f !== CARD).flatMap(([f, els]) => els.filter((e) => JOURNEY_PROPS.some((x) => e.includes(x))).map(() => f));
   const classicHosts = hosts.filter(([f]) => f === PAGE || f === MARKET_PAGE);
-  ok("12.opt-in · the journey look is the journey card's alone: every other file that renders SellButton (found on disk — /positions' classic list and the question page's holder block among them) passes no look, no clock label and no free-price flag, so it draws today's button",
+  ok("12.opt-in · the journey look is the journey card's alone: every other file that renders SellButton (found on disk — /positions' classic list and the question page's holder block among them) passes no look and no clock label, so it draws today's button (the free-price flag is every host's since S6 A8b)",
     SELL_HOSTS_ON_DISK.length >= 3 && [PAGE, MARKET_PAGE, CARD].every((f) => hosts.some(([h]) => h === f)) && classicHosts.every(([, els]) => els.length === 1)
       && askers.length === 0 && count(text(W, CARD), `look="journey"`) === 1,
     show({ hosts: hosts.map(([f, els]) => `${f} ×${els.length}`), askers }));

@@ -25,13 +25,24 @@
  *      holds the element) — and never a placement. Three must be among them, by name: `/positions`, the holder block of
  *      `/markets/[id]`, and (S6 WP9) the journey's ticket card on Tiketi zangu. A clock label beside the countdown
  *      (WP10's `freeUntilLabel`) is that one binding's own reading on the server, `X ? formatClock(X) : null`, never a
- *      time built beside it — and the journey's card hands one (2.label).
+ *      time built beside it — and the journey's card hands one (2.label). Every SellButton is handed `pricedFree`, read
+ *      strictly (`=== true`), and the two pages that price an exit hand `cashOutValue`'s own `inGracePeriod` for an open
+ *      exit on a LIVE question, off the very `co` that priced it, each expression pinned whole (S6 A8b, 2.priced).
  *   §3 THE BUTTON — `sell-button.tsx` as a syntax tree: no `GRACE_MS`, no five-minute constant, nothing multiplied
  *      out of minutes; the countdown's one time source is `Date.parse(freeUntil)`, an instant that is withdrawn
  *      zeroes it, and the free/fee state and the m:ss label both read that countdown and nothing else. In the journey's
  *      look (S6 WP10) the free offer is that countdown narrowed by the server's own pricing (`pricedFree`): drawn on the
- *      server's paint before the countdown first runs, and lapsed the moment it has run out (3.journey).
+ *      server's paint before the countdown first runs, and lapsed the moment it has run out (3.journey). Since S6 A8b
+ *      the lapse is both looks': one effect, pinned whole, that names no look; the verdict declared once above the
+ *      journey's look; and today's button reading it — nothing to press, 'Inapakia…' for its words and its spoken name,
+ *      no figure — and reading the server's shut verdict from its first commit, never the phone's clock alone (3.classic).
  *   §4 THE WIRING — this suite is in predeploy and its red twin is declared.
+ *   §5 THE FIT (S6 A8b) — a static model of today's button row, from the repo's own font files (the body's alternates
+ *      included), stylesheet, pages and words: on a 320 phone (below Tailwind's `xs`) the free row on /positions holds
+ *      one line inside the button's content and every other row one line inside the button, in en, sw and zh, for every
+ *      stake and fee rate on a grid to the platform's maximum; in the question page's holder block no label grows taller
+ *      than the button; and the model sees the defect it was written for (the Swahili free row a browser measured too
+ *      wide at 320 before A8b) and the measured fit from 360.
  *
  * ⛔ DISPLAY TRUTH ONLY. `cashOutValue` is not edited and its golden grid stays `test:house-bot-seam`'s; this suite
  * calls it as the oracle and never re-implements it.
@@ -60,7 +71,10 @@ const CR = String.fromCharCode(13);
 
 const SVC = await import("../src/lib/server/market-service.ts");
 const { exitWindowFacts } = await import("../src/lib/exit-window.ts");
-const { DEFAULT_FREE_EXIT_GRACE_MINUTES } = await import("../src/lib/payout.ts");
+const { DEFAULT_FREE_EXIT_GRACE_MINUTES, PLATFORM_MIN_STAKE, PLATFORM_MAX_STAKE } = await import("../src/lib/payout.ts");
+// S6 A8b · §5's model draws the row with the product's own number format and words.
+const { formatNumber } = await import("../src/lib/utils.ts");
+const { dict } = await import("../src/lib/i18n-dict.ts");
 
 // ── OUTPUT ────────────────────────────────────────────────────────────────────────────────────────────────
 type Result = { label: string; ok: boolean; detail: string };
@@ -85,12 +99,21 @@ const POSITIONS = "src/app/positions/page.tsx";
 const MARKET = "src/app/markets/[id]/page.tsx";
 /** S6 WP9 — the journey's ticket card renders the button on Tiketi zangu: a host like the two above, held to the same call. */
 const JOURNEY_CARD = "src/components/journey/tickets/ticket-card.tsx";
+/** S6 A8b — the page gutter both classic hosts sit in, which §5 reads. */
+const PAGE_CONTAINER = "src/components/layout/page-container.tsx";
 const readRaw = (rel: string) => readFileSync(join(REPO_ROOT, rel), "utf8").split(CR).join("");
-type World = { files: Map<string, string>; rawSellButton: string; scripts: Record<string, string> };
+/** S6 A8b · §5 also reads the stylesheet, the Tailwind config and the three languages' words, so a plant can move each. */
+type World = {
+  files: Map<string, string>; rawSellButton: string; scripts: Record<string, string>;
+  css: string; tw: string; words: Record<string, unknown>;
+};
 const WORLD: World = {
   files: new Map(srcFiles().map((rel) => [rel, decomment(readRaw(rel))])),
   rawSellButton: readRaw(SELL_BUTTON),
   scripts: (JSON.parse(readRaw("package.json")) as { scripts: Record<string, string> }).scripts,
+  css: readRaw("src/app/globals.css"),
+  tw: readRaw("tailwind.config.ts"),
+  words: { en: dict.en, sw: dict.sw, zh: dict.zh },
 };
 
 // ── SYNTAX-TREE HELPERS (parsed, never type-checked) ───────────────────────────────────────────────────────
@@ -271,8 +294,18 @@ async function g1Server(I: Impl) {
 // ═════════════════════════════════════════════════════════════════════════════════════════════════════════
 type Host = {
   rel: string; client: boolean; importsHelper: boolean; importsClock: boolean;
-  els: Array<{ line: number; passes: boolean; placed: boolean; spread: boolean; label: "none" | "ok" | "bad" }>;
+  els: Array<{ line: number; passes: boolean; placed: boolean; spread: boolean; label: "none" | "ok" | "bad"; priced: boolean }>;
 };
+/**
+ * S6 A8b — the two pages that price an exit, each handing its Sell button the verdict `cashOutValue` priced it with, for
+ * an open exit on a LIVE question: [the file, the flag as its element reads it, the flag's own expression, whole — so no
+ * clause can be added to either end of it]. The journey's ticket card reads `/positions`' own prices
+ * (`test:journey-tickets` 9.look pins its element).
+ */
+const PRICED_FROM: ReadonlyArray<readonly [string, string, string]> = [
+  [POSITIONS, "pricedFree={price?.free === true}", "free: sellable && co.inGracePeriod };"],
+  [MARKET, "pricedFree={positionPricedFree.get(p.id) === true}", `positionPricedFree.set(p.id, m.status === "LIVE" && co.sellable && co.inGracePeriod);`],
+];
 /** The helper is asked about the bet's OWN placement: the position itself, or `{ placedAt: <it>.placedAt }` with
  *  nothing beside it. A call on an instant made at render time names the helper and still answers a window the
  *  server never offered. */
@@ -352,6 +385,7 @@ function hostOf(rel: string, code: string): Host {
     let bound: string | null = null;
     let labelled = false;
     let labelExpr: ts.Expression | undefined;
+    let priced = false;
     for (const a of n.attributes.properties) {
       if (!ts.isJsxAttribute(a)) { spread = true; continue; }
       const name = a.name.getText(sf);
@@ -370,9 +404,16 @@ function hostOf(rel: string, code: string): Host {
         const init = a.initializer;
         labelExpr = init && ts.isJsxExpression(init) ? init.expression : undefined;
       }
+      // S6 A8b · the page's own verdict that it priced the exit inside its free window, read strictly (`… === true`).
+      if (name === "pricedFree") {
+        const init = a.initializer;
+        const expr = init && ts.isJsxExpression(init) ? init.expression : undefined;
+        priced = !!expr && ts.isBinaryExpression(expr) && expr.operatorToken.kind === ts.SyntaxKind.EqualsEqualsEqualsToken
+          && expr.right.kind === ts.SyntaxKind.TrueKeyword;
+      }
     }
     const label = !labelled ? "none" : bound !== null && isClockOf(sf, labelExpr, bound) ? "ok" : "bad";
-    els.push({ line: lineOf(sf, n), passes, placed, spread, label });
+    els.push({ line: lineOf(sf, n), passes, placed, spread, label, priced });
   });
   return { rel, client: isDirective(code, "use client"), importsHelper, importsClock, els };
 }
@@ -401,6 +442,15 @@ function g2Hosts(W: World) {
   ok("2.label · every clock label beside the countdown (S6 WP10's freeUntilLabel) is the server's reading of THE instant handed as freeUntil — `X ? formatClock(X) : null` over the one const the host binds the helper's call to, formatClock from @/lib/utils — never a time built beside it; the journey's ticket card hands one",
     labels.length > 0 && badLabels.length === 0 && labels.some(({ h }) => h.rel === JOURNEY_CARD),
     j({ labels: labels.map(({ h, e }) => `${h.rel}:${e.line}`), bad: badLabels }));
+  // ⭐ S6 A8b · the free-price flag is every host's: a host that never says its price is the free window's leaves today's
+  // button offering that price after its countdown has run out, until the page's next refresh.
+  const unpriced = hosts.flatMap((h) => h.els.filter((e) => !e.priced).map((e) => `${h.rel}:${e.line}`));
+  const unsourced = PRICED_FROM.filter(([rel, element, source]) => {
+    const file = W.files.get(rel) ?? "";
+    return occurrences(file, element) !== 1 || occurrences(file, source) !== 1;
+  }).map(([rel]) => rel);
+  ok("2.priced · every SellButton is handed pricedFree, read strictly (=== true), so a free price its countdown has outlived is withdrawn on every host (S6 A8b) — and the two pages that price an exit hand cashOutValue's own inGracePeriod for an open exit on a LIVE question, off the very `co` that priced it, each expression whole",
+    hosts.length > 0 && unpriced.length === 0 && unsourced.length === 0, j({ unpriced, unsourced }));
 }
 
 // ═════════════════════════════════════════════════════════════════════════════════════════════════════════
@@ -415,8 +465,40 @@ function g2Hosts(W: World) {
 const OFFER_FREE = "const offerFree = pricedFree === true && (inGrace || !mounted);";
 const LAPSED = "const lapsed = pricedFree === true && mounted && !inGrace;";
 const MOUNTED = "const [mounted, setMounted] = useState(false);";
-const MOUNT_EFFECT = "useEffect(() => { if (journey) setMounted(true); }, [journey]);";
+/** S6 A8b — the flag turns true at the button's first commit in either look, since both read the lapse. */
+const MOUNT_EFFECT = "useEffect(() => { setMounted(true); }, []);";
 const occurrences = (s: string, x: string) => s.split(x).length - 1;
+/** Each line trimmed and the lines joined, so a check reads the code and not its layout (`test:journey-tickets`' own). */
+const squash = (s: string) => s.split(NL).map((l) => l.trim()).join("");
+/**
+ * S6 A8b — today's look withdraws a lapsed free price too. The one lapse effect is pinned WHOLE — its opening, the ask line
+ * by line, its dependencies — so it names no look and nothing can be added before, inside or after the ask; the verdict is
+ * declared once ABOVE the journey's look, so both returns read it; today's return reads it four times (nothing to press,
+ * 'Inapakia…' for its words and its spoken name — 'Inauza…' while a sale is in flight — and no figure); and today's return
+ * reads the server's shut verdict from its first commit (`shutNow`), so a refresh that brings it is never drawn as one
+ * pressable 'Uza sasa · TZS 0' render, and reads the phone's clock nowhere else.
+ */
+const LAPSE_GUARD = "if (pricedFree !== true || closedNow || alreadyClosed) return;";
+const LAPSE_DEPS = "}, [mounted, pricedFree, inGrace, closedNow, alreadyClosed, pending]);";
+const LAPSE_EFFECT = [
+  "useEffect(() => {",
+  LAPSE_GUARD,
+  "if (inGrace) { lapseArmed.current = true; return; }",
+  "if (!mounted) return;",
+  "if (!pending) setConfirmOpen(false);",
+  "if (!lapseArmed.current) return;",
+  "lapseArmed.current = false;",
+  `window.dispatchEvent(new Event("50pick:refresh"));`,
+  LAPSE_DEPS,
+].join("");
+const CLASSIC_HEAD = `const btnVariant = "btn-primary";`;
+const SHUT_NOW = "const shutNow = closedNow || (mounted && alreadyClosed === true);";
+const CLASSIC_LAPSE = [
+  "disabled={pending || shutNow || lapsed}",
+  "aria-label={shutNow? t.common.sellLockedHint: lapsed? (pending ? t.common.selling : t.common.loading): inGrace?",
+  "{shutNow ? t.common.sellLocked: pending ? t.common.selling: lapsed ? t.common.loading: inGrace ? t.common.freeExitLabel: t.common.sellNow}",
+  "{!shutNow && !lapsed && (",
+];
 
 function g3Button(W: World) {
   say(`${NL}§3 · the button — sell-button.tsx counts down to one instant and builds no window of its own`);
@@ -508,19 +590,33 @@ function g3Button(W: World) {
   ok("3.label · the m:ss label reads the SAME countdown as the state: its minutes and seconds come from graceRemainMs, and from no clock of their own",
     fromCountdown(gMin) && fromCountdown(gSec) && gLabel.length === 1 && gLabel[0].includes("graceMin") && gLabel[0].includes("graceSec"),
     j({ gMin, gSec, gLabel }));
-  ok("3.render · the strip draws that label only while the state holds, and the button's free label reads the same state (the classic markup, unchanged)",
-    code.includes("{inGrace && !closedNow && (") && code.includes("{graceLabel}") && code.includes(": inGrace ? t.common.freeExitLabel"));
+  ok("3.render · the strip draws that label only while the state holds and the exit is not shut (S6 A8b: by the shut verdict today's button reads, shutNow), and the button's free label reads the same state",
+    code.includes("{inGrace && !shutNow && (") && code.includes("{graceLabel}") && code.includes(": inGrace ? t.common.freeExitLabel"));
   // ⭐ S6 WP10 · THE JOURNEY'S FREE OFFER is that countdown, narrowed by the server's own pricing — never the instant
   // alone, never the fee, never a clock of its own. Offered while the page priced the exit free and the countdown runs
   // (or has not yet run: the server's paint); lapsed the moment it has run out, so a default poll's locked exit and a paid
   // window's fee are never sold as free. `test:journey-tickets` §12 holds what the look draws under each.
   const offer = initOf("offerFree");
   const lapse = initOf("lapsed");
-  ok("3.journey · the journey look's free offer is the countdown narrowed by the server's own pricing: offered while the page priced the exit free and the countdown runs — or has not yet run, on the server's paint — and lapsed the moment it has run out; nothing else decides it, and `mounted` is set once, by the look's own mount",
+  ok("3.journey · the journey look's free offer is the countdown narrowed by the server's own pricing: offered while the page priced the exit free and the countdown runs — or has not yet run, on the server's paint — and lapsed the moment it has run out; nothing else decides it, and `mounted` is set once, by the button's own first commit (in either look since S6 A8b)",
     occurrences(code, OFFER_FREE) === 1 && occurrences(code, LAPSED) === 1 && offer.length === 1 && lapse.length === 1
       && occurrences(code, MOUNTED) === 1 && occurrences(code, MOUNT_EFFECT) === 1 && occurrences(code, "setMounted(") === 1
       && props.includes("pricedFree"),
     j({ offer, lapse, mounted: occurrences(code, MOUNTED), mountEffect: occurrences(code, MOUNT_EFFECT), setMounted: occurrences(code, "setMounted(") }));
+  // ⭐ S6 A8b · TODAY'S LOOK WITHDRAWS A LAPSED FREE PRICE TOO, AND DRAWS THE SERVER'S SHUT VERDICT FROM ITS FIRST COMMIT.
+  // Until A8b it turned that price into 'Uza sasa · TZS 3,600 −0 ada' until the page's next refresh, its confirm said
+  // 'Hakuna ada' while the server charged the fee, and the server's 'shut' answer was first drawn as one pressable
+  // 'Uza sasa · TZS 0 −3,600 ada' render while an effect copied it into the clock's state.
+  const flat = squash(code);
+  const classic = squash(code.slice(Math.max(0, code.indexOf(CLASSIC_HEAD))));
+  const lapseAt = code.indexOf(LAPSED);
+  const lookAt = code.indexOf("if (journey) {");
+  const missing = CLASSIC_LAPSE.filter((x) => occurrences(classic, x) !== 1);
+  ok("3.classic · today's look withdraws a lapsed free price too (S6 A8b): the one lapse effect is exactly the ask — no look named, nothing added — the verdict is declared once, above the journey's look, and today's button reads it (nothing to press, 'Inapakia…' for its words and its spoken name, no figure); and it draws the server's shut verdict from its first commit (shutNow), reading the phone's clock nowhere else",
+    code.includes(CLASSIC_HEAD) && occurrences(flat, LAPSE_EFFECT) === 1 && occurrences(code, LAPSED) === 1 && lapseAt >= 0 && lookAt > lapseAt
+      && occurrences(code, MOUNT_EFFECT) === 1 && occurrences(classic, SHUT_NOW) === 1 && occurrences(classic, "closedNow") === 1
+      && missing.length === 0,
+    j({ effect: occurrences(flat, LAPSE_EFFECT), lapseAt, lookAt, shutNow: occurrences(classic, SHUT_NOW), clock: occurrences(classic, "closedNow"), missing }));
 }
 
 // ═════════════════════════════════════════════════════════════════════════════════════════════════════════
@@ -535,11 +631,380 @@ function g4Wiring(W: World) {
     j({ test: W.scripts["test:sell-grace-truth"], red: W.scripts["red:sell-grace-truth"] }));
 }
 
+// ═════════════════════════════════════════════════════════════════════════════════════════════════════════
+// §5 · THE FIT (S6 A8b)
+// ═════════════════════════════════════════════════════════════════════════════════════════════════════════
+/**
+ * ⭐ TODAY'S FREE ROW HOLDS ONE LINE ON A 320 PHONE ON /positions, IN EVERY LANGUAGE, AND NOTHING IN THE ROW GROWS TALLER
+ * THAN THE BUTTON — a static model of the row, mirroring how `test:journey-shell` 8.label.measure models the rail label
+ * from its font's advance widths. Measured in a browser first (2026-10-03, classic /positions, the demo player's seeded
+ * tickets): at 320 in Swahili the free row "Toka bila gharama · TZS 3,600 pesa yote" was 277px of text in the button's
+ * 254px content, its end past the button's edge, while English and Chinese fitted, and every language fitted from 360.
+ * A8b leaves the free note out below 360 (Tailwind's `xs`; the strip above it already says there is no fee) and moves
+ * nothing else in the row: the label keeps one line at every width, as today. The row is the label, the button's gap,
+ * then the figure and its note:
+ *   · the label is Inter at the button's 600. The repo carries Inter's 500 and 700 (the report fonts); a weight between
+ *     them draws no glyph wider than the wider of the two. Each glyph is also bounded by its alternates under the body's
+ *     `font-feature-settings` (cv11's single-storey a is wider), read from the font's own substitutions, so the model
+ *     holds whether or not the served font draws them (the measured row shows it draws the plain a today);
+ *   · the figure and its note are JetBrains Mono, read from its own file (0.6em a glyph);
+ *   · a CJK glyph is drawn by the platform's CJK face (the stacks end in `--font-cjk`), a full em;
+ *   · `.btn-primary`'s letter-spacing adds to every glyph. Kerning is not read: the model reads the measured Swahili row
+ *     a few pixels WIDE (5.control prints its reading).
+ * Two hosts draw this button, each one column below 768, inside the page's gutter: /positions' classic list directly, and
+ * the question page's holder block inside its section's and its row's border and padding, each read from the page. On
+ * /positions at 320 the free row holds one line inside the button's content (5.free), and every other row — drawn as
+ * today — one line inside the button (5.paid; a Chinese legacy paid row with a six-figure fee runs into its padding, as it
+ * does today). In the holder block no label takes more lines than the button holds (5.holder): letting the label wrap
+ * there stacks Chinese one glyph a line, and that block's row overflows at 320 and, in Swahili, from 360 to about 430px,
+ * today and after A8b — VODACOM-PLAN §0h point 37 (h), its own measured step. From 360 the row is today's, which
+ * `qa:classic-shell-parity`'s Sell cells hold to the pixel.
+ */
+const FIT_FONTS = "src/lib/server/reports/fonts/";
+const CJK_FROM = 0x2e80;
+type Face = { upm: number; advance: (cp: number, features: readonly string[]) => number | null };
+/**
+ * A TrueType file's advance widths, read the way a shaper reads them before kerning: the table directory,
+ * `head.unitsPerEm`, `hhea.numberOfHMetrics`, `hmtx`, the Windows Unicode `cmap` (format 4), and the one-for-one
+ * substitutions a feature asks for (`GSUB` lookup type 1, through extension lookups). A glyph's advance under a list of
+ * features is the widest of its own and its alternates'. Null when unreadable.
+ */
+function fontFace(rel: string): Face | null {
+  try {
+    const buf = readFileSync(join(REPO_ROOT, rel));
+    const dv = new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
+    const tagAt = (at: number) => String.fromCharCode(dv.getUint8(at), dv.getUint8(at + 1), dv.getUint8(at + 2), dv.getUint8(at + 3));
+    const tables = new Map<string, number>();
+    for (let i = 0; i < dv.getUint16(4); i++) tables.set(tagAt(12 + 16 * i), dv.getUint32(12 + 16 * i + 8));
+    const upm = dv.getUint16((tables.get("head") ?? 0) + 18);
+    const metrics = dv.getUint16((tables.get("hhea") ?? 0) + 34);
+    const hmtx = tables.get("hmtx") ?? 0;
+    const cmap = tables.get("cmap") ?? 0;
+    let sub = -1;
+    for (let i = 0; i < dv.getUint16(cmap + 2); i++) {
+      const rec = cmap + 4 + 8 * i;
+      const at = cmap + dv.getUint32(rec + 4);
+      if (dv.getUint16(rec) === 3 && dv.getUint16(rec + 2) === 1 && dv.getUint16(at) === 4) sub = at;
+    }
+    if (sub < 0 || upm === 0) return null;
+    const segX2 = dv.getUint16(sub + 6);
+    const ends = sub + 14;
+    const starts = ends + segX2 + 2;
+    const deltas = starts + segX2;
+    const ranges = deltas + segX2;
+    const glyph = (cp: number): number => {
+      for (let s = 0; s < segX2; s += 2) {
+        if (cp > dv.getUint16(ends + s)) continue;
+        const start = dv.getUint16(starts + s);
+        if (cp < start) return 0;
+        const ro = dv.getUint16(ranges + s);
+        if (ro === 0) return (cp + dv.getInt16(deltas + s)) & 0xffff;
+        const g = dv.getUint16(ranges + s + ro + 2 * (cp - start));
+        return g === 0 ? 0 : (g + dv.getInt16(deltas + s)) & 0xffff;
+      }
+      return 0;
+    };
+    // One feature's one-for-one substitutions: its records in the FeatureList, their lookups, and each single-substitution
+    // subtable (format 1 a delta, format 2 a list), an extension lookup followed to the subtable it wraps.
+    const gsub = tables.get("GSUB") ?? 0;
+    const known = new Map<string, Map<number, number>>();
+    const substitutions = (feature: string): Map<number, number> => {
+      const had = known.get(feature);
+      if (had) return had;
+      const out = new Map<number, number>();
+      known.set(feature, out);
+      if (gsub === 0) return out;
+      const features = gsub + dv.getUint16(gsub + 6);
+      const lookups = gsub + dv.getUint16(gsub + 8);
+      for (let i = 0; i < dv.getUint16(features); i++) {
+        const rec = features + 2 + 6 * i;
+        if (tagAt(rec) !== feature) continue;
+        const table = features + dv.getUint16(rec + 4);
+        for (let k = 0; k < dv.getUint16(table + 2); k++) {
+          const lookup = lookups + dv.getUint16(lookups + 2 + 2 * dv.getUint16(table + 4 + 2 * k));
+          for (let s = 0; s < dv.getUint16(lookup + 4); s++) {
+            let at = lookup + dv.getUint16(lookup + 6 + 2 * s);
+            let type = dv.getUint16(lookup);
+            if (type === 7) { type = dv.getUint16(at + 2); at += dv.getUint32(at + 4); }
+            if (type !== 1) continue;
+            const cov = at + dv.getUint16(at + 2);
+            const covered: number[] = [];
+            if (dv.getUint16(cov) === 1) {
+              for (let c = 0; c < dv.getUint16(cov + 2); c++) covered.push(dv.getUint16(cov + 4 + 2 * c));
+            } else {
+              for (let c = 0; c < dv.getUint16(cov + 2); c++) {
+                for (let g = dv.getUint16(cov + 4 + 6 * c); g <= dv.getUint16(cov + 6 + 6 * c); g++) covered.push(g);
+              }
+            }
+            const one = at;
+            covered.forEach((g, idx) => out.set(g, dv.getUint16(one) === 1 ? (g + dv.getInt16(one + 4)) & 0xffff : dv.getUint16(one + 6 + 2 * idx)));
+          }
+        }
+      }
+      return out;
+    };
+    const widthOf = (g: number) => dv.getUint16(hmtx + 4 * Math.min(g, metrics - 1));
+    // Read lazily, so an unreadable table fails closed: no advance, so 5.model reports the glyph missing.
+    const advance = (cp: number, features: readonly string[]): number | null => {
+      try {
+        const g = glyph(cp);
+        return g === 0 ? null : Math.max(widthOf(g), ...features.map((f) => widthOf(substitutions(f).get(g) ?? g)));
+      } catch {
+        return null;
+      }
+    };
+    return { upm, advance };
+  } catch {
+    return null;
+  }
+}
+const FIT_INTER = [fontFace(`${FIT_FONTS}Inter-Medium.ttf`), fontFace(`${FIT_FONTS}Inter-Bold.ttf`)];
+const FIT_MONO = fontFace(`${FIT_FONTS}JetBrainsMono-Bold.ttf`);
+const emOf = (f: Face | null, cp: number, features: readonly string[] = []): number => {
+  const a = f ? f.advance(cp, features) : null;
+  return f && a !== null ? a / f.upm : Number.NaN;
+};
+/** One glyph of the label, in ems: a CJK glyph a full em, any other the widest of Inter's 500 and 700 and of their
+ *  alternates under the body's features. */
+const labelEmOf = (features: readonly string[]) => (cp: number): number =>
+  (cp >= CJK_FROM ? 1 : Math.max(...FIT_INTER.map((f) => emOf(f, cp, features))));
+/** One glyph of the figure or its note, in ems: a CJK glyph a full em, any other JetBrains Mono's own advance. */
+const monoEm = (cp: number): number => (cp >= CJK_FROM ? 1 : emOf(FIT_MONO, cp));
+const runPx = (s: string, em: (cp: number) => number, px: number, track: number): number =>
+  [...s].reduce((w, ch) => w + em(ch.codePointAt(0) ?? 0) * px + track, 0);
+/**
+ * The label's lines when its classes let it wrap: the browser's flex layout gives it the room left beside the figure, or
+ * its widest unbreakable piece if that is wider (it cannot shrink below it), and breaks greedily between words — and
+ * between CJK glyphs, unless `break-keep` keeps them whole (an ellipsis stays with the glyph before it). A line's
+ * trailing space hangs.
+ */
+function wrapped(s: string, avail: number, keep: boolean, w: (t: string) => number): { lines: number; room: number } {
+  const toks: Array<[string, boolean]> = [];
+  s.split(" ").forEach((word, i) => {
+    const chars = [...word];
+    if (keep || !chars.some((ch) => (ch.codePointAt(0) ?? 0) >= CJK_FROM)) { toks.push([word, i > 0]); return; }
+    chars.forEach((ch, k) => {
+      if (ch === "…" && k > 0) toks[toks.length - 1][0] += ch;
+      else toks.push([ch, k === 0 && i > 0]);
+    });
+  });
+  const room = Math.max(avail, ...toks.map(([t]) => w(t)));
+  let lines = 1;
+  let cur = "";
+  for (const [t, spaced] of toks) {
+    const next = cur === "" ? t : `${cur}${spaced ? " " : ""}${t}`;
+    if (cur !== "" && w(next) > room) { lines++; cur = t; } else cur = next;
+  }
+  return { lines, room };
+}
+/** Stakes on every digit-length boundary to the platform's maximum (the measured ticket's among them), and the fee rates a
+ *  frozen poll can carry — `cashOutValue` clamps its rate to [0, 0.30]. */
+const FIT_STAKES = [PLATFORM_MIN_STAKE, 3_600, 9_999, 10_000, 99_999, 100_000, 999_999, PLATFORM_MAX_STAKE];
+const FIT_RATES = [0, 0.01, 0.1, 0.25, 0.3];
+const FIT_WORDS = ["freeExitLabel", "selling", "sellNow", "fee", "fullRefund", "sellLocked", "loading"];
+/** Today's markup for the spans the narrow-phone rule touches or leaves (S6 A8b), as `test:journey-tickets` §12 pins them. */
+const FIT_NOTE = `<span className="ml-1.5 hidden opacity-80 text-[11px] xs:inline">{t.common.fullRefund}</span>`;
+const FIT_FEE = `<span className="ml-1.5 opacity-80 text-[11px]">−{formatNumber(fee)} {t.common.fee}</span>`;
+const FIT_LABEL = `<span>${NL}          {shutNow ? t.common.sellLocked`;
+/** The question page's holder block: the page, the section and the row the button sits in (S6 A8b, read by §5). */
+const HOLDER_PAGE = `<PageContainer tier="reading">`;
+const HOLDER_SECTION = `<section className="rounded-xl border border-border bg-bg-elevated p-5 space-y-3">`;
+const HOLDER_ROW = `<div key={p.id} id={p.id} className="ticket-target scroll-mt-24 rounded-md border border-border bg-bg-overlay/40 p-3 space-y-2">`;
+/** Tailwind's own `border` is 1px: the config overrides no border width (5.model pins that). */
+const HOLDER_EDGE = 1;
+/** What `cashOutValue` prices a stake at — in its free window, or in a paid one at `rate` — the oracle, never re-implemented. */
+async function fitPrice(stake: number, rate: number, free: boolean) {
+  const position = { side: "YES" as const, stake, placedAt: new Date(T0).toISOString(), bonusStakeTzs: 0 };
+  const market = {
+    id: "mkt_sell_fit",
+    yesPool: 10_000,
+    noPool: 5_000,
+    resolutionAt: new Date(T0 + 24 * 60 * MIN).toISOString(),
+    selectionClosedAt: new Date(T0 + 60 * MIN).toISOString(),
+    feeSnapshot: {
+      commissionRate: 0.13,
+      feeCeilingRate: 0.5,
+      cashOutFeeRate: rate,
+      freeExitGraceMinutes: 2,
+      paidExitWindowMinutes: 2,
+      traTaxOnCommissionRate: 0,
+      gbtLevyOnCommissionRate: 0,
+    } as never,
+  };
+  return at(T0 + (free ? 1 : 3) * MIN, () => SVC.cashOutValue(position, market));
+}
+type FitRow = { loc: string; state: string; stake: number; label: string; figure: string; note: string; free: boolean };
+
+async function g5Fit(W: World) {
+  say(`${NL}§5 · the fit — today's free row holds one line on a 320 phone on /positions, and nothing in the row grows taller than the button on either host (S6 A8b)`);
+  const css = W.css;
+  const cssLine = (head: string) => {
+    const a = css.indexOf(NL + head);
+    if (a < 0) return "";
+    const b = css.indexOf(NL, a + 1);
+    return css.slice(a + 1, b < 0 ? css.length : b);
+  };
+  const cssRule = (head: string) => {
+    const a = css.indexOf(NL + head);
+    if (a < 0) return "";
+    const b = css.indexOf(`${NL}}`, a + 1);
+    return b < 0 ? "" : css.slice(a + 1, b + 2);
+  };
+  const numAfter = (s: string, head: string) => {
+    const a = s.indexOf(head);
+    return a < 0 ? Number.NaN : Number.parseFloat(s.slice(a + head.length));
+  };
+  const md = cssLine(".btn-md {");
+  const btn = cssRule(".btn {");
+  const primary = cssRule(".btn-primary {");
+  const body = cssRule("body {");
+  const spacing = W.tw.slice(Math.max(0, W.tw.indexOf("spacing: {")));
+  const screens = W.tw.slice(Math.max(0, W.tw.indexOf("screens: {")));
+  // The body's font features, which the button inherits: each a tag between double quotes.
+  const featureAt = body.indexOf("font-feature-settings:");
+  const features = featureAt < 0 ? [] : body.slice(featureAt, body.indexOf(";", featureAt)).split(`"`).filter((_, i) => i % 2 === 1);
+  const code = W.files.get(SELL_BUTTON) ?? "";
+  const classic = squash(code.slice(Math.max(0, code.indexOf(CLASSIC_HEAD))));
+  /** The class list of the span in today's markup whose content starts with `content`: [] for a bare span, null for none. */
+  const spanClass = (content: string): string[] | null => {
+    const atContent = classic.indexOf(`>${content}`);
+    const open = atContent < 0 ? -1 : classic.lastIndexOf("<span", atContent);
+    if (open < 0) return null;
+    const tag = classic.slice(open, atContent + 1);
+    const q = tag.indexOf(`className="`);
+    return q < 0 ? [] : tag.slice(q + 11, tag.indexOf(`"`, q + 11)).split(" ").filter(Boolean);
+  };
+  const note = spanClass("{t.common.fullRefund}") ?? [];
+  const feeNote = spanClass("−{formatNumber(fee)}") ?? [];
+  const label = spanClass("{shutNow ? t.common.sellLocked");
+  const has = (cls: string[], ...want: string[]) => want.every((x) => cls.includes(x));
+  const noteHidden = has(note, "hidden", "xs:inline");
+  // The label wraps below `xs` only if its classes say so; `break-keep` then keeps CJK words whole.
+  const wraps = !!label && label.includes("whitespace-normal");
+  const keep = !!label && label.includes("break-keep");
+  const M = {
+    font: numAfter(md, "font-size: "),
+    padding: numAfter(md, "padding: 0 "),
+    height: numAfter(css, "--h-control-md: "),
+    border: numAfter(btn, "border: "),
+    gap: numAfter(btn, "gap: "),
+    tracking: numAfter(primary, "letter-spacing: "),
+    lineHeight: numAfter(body, "line-height: "),
+    notePx: numAfter(note.find((c) => c.startsWith("text-[")) ?? "", "text-["),
+    noteMargin: note.includes("ml-1.5") ? numAfter(spacing, `"1.5": "`) : Number.NaN,
+    gutter: numAfter(spacing, `"3": "`),
+    sectionPad: numAfter(spacing, `"5": "`),
+    rowPad: numAfter(spacing, `"3": "`),
+    xs: numAfter(screens, `xs: "`),
+  };
+  const list = W.files.get(POSITIONS) ?? "";
+  const page = W.files.get(MARKET) ?? "";
+  const pinned = {
+    gutter: (W.files.get(PAGE_CONTAINER) ?? "").includes(`pad === "page" && "px-3 lg:px-6 py-6"`),
+    oneColumn: list.includes(`<div className="grid grid-cols-1 items-start gap-3 md:grid-cols-2">`) && list.includes(`<div key={p.id} className="space-y-2">`),
+    holder: page.includes(HOLDER_PAGE) && occurrences(page, HOLDER_SECTION) === 1 && occurrences(page, HOLDER_ROW) === 1,
+    borders: !W.tw.includes("borderWidth"),
+    fonts: FIT_INTER.every((f) => f !== null) && FIT_MONO !== null,
+    mono: monoEm(0x30) === 0.6,
+  };
+  // The prices the rows draw, from the oracle: each stake in its free window, and in a paid one at every rate.
+  const priced: Array<{ stake: number; free: boolean; value: number; fee: number }> = [];
+  for (const stake of FIT_STAKES) {
+    const f = await fitPrice(stake, 0.1, true);
+    priced.push({ stake, free: true, value: f.value, fee: f.fee });
+    for (const rate of FIT_RATES) {
+      const p = await fitPrice(stake, rate, false);
+      priced.push({ stake, free: false, value: p.value, fee: p.fee });
+    }
+  }
+  const word = (loc: string, key: string): string => {
+    const v = ((W.words[loc] as { common?: Record<string, unknown> } | undefined)?.common ?? {})[key];
+    return typeof v === "string" ? v : "";
+  };
+  const LOCS = ["en", "sw", "zh"];
+  const unworded = LOCS.flatMap((loc) => FIT_WORDS.filter((k) => !word(loc, k)).map((k) => `${loc}.common.${k}`));
+  const rowsFor = (noteDrawn: boolean): FitRow[] => LOCS.flatMap((loc) => {
+    const out: FitRow[] = [];
+    for (const p of priced) {
+      const figure = `TZS ${formatNumber(p.value)}`;
+      if (p.free) {
+        const freeNote = noteDrawn ? word(loc, "fullRefund") : "";
+        out.push({ loc, state: "free", stake: p.stake, label: word(loc, "freeExitLabel"), figure, note: freeNote, free: true });
+        out.push({ loc, state: "free, selling", stake: p.stake, label: word(loc, "selling"), figure, note: freeNote, free: true });
+        // The server's paint draws the free price with a fee of 0, before the countdown first runs (VODACOM-PLAN §0h point 37 (f)).
+        out.push({ loc, state: "first paint", stake: p.stake, label: word(loc, "sellNow"), figure, note: `−${formatNumber(0)} ${word(loc, "fee")}`, free: false });
+      } else {
+        const feeLine = `−${formatNumber(p.fee)} ${word(loc, "fee")}`;
+        out.push({ loc, state: "paid", stake: p.stake, label: word(loc, "sellNow"), figure, note: feeLine, free: false });
+        out.push({ loc, state: "paid, selling", stake: p.stake, label: word(loc, "selling"), figure, note: feeLine, free: false });
+      }
+    }
+    out.push({ loc, state: "shut", stake: 0, label: word(loc, "sellLocked"), figure: "", note: "", free: false });
+    out.push({ loc, state: "lapsed", stake: 0, label: word(loc, "loading"), figure: "", note: "", free: false });
+    return out;
+  });
+  const track = M.tracking * M.font;
+  const labelEm = labelEmOf(features);
+  const labelPx = (s: string) => runPx(s, labelEm, M.font, track);
+  const restPx = (r: FitRow) => (r.figure
+    ? M.gap + runPx(r.figure, monoEm, M.font, track) + (r.note ? M.noteMargin + runPx(r.note, monoEm, M.notePx, track) : 0)
+    : 0);
+  /** The row in a button whose content is `C` wide: the label's lines, and the room left at the content's end (below 0: past it). */
+  const layout = (r: FitRow, C: number, wrap: boolean, keepWhole: boolean): { lines: number; spare: number } => {
+    const avail = C - restPx(r);
+    const whole = labelPx(r.label);
+    if (whole <= avail || !wrap) return { lines: 1, spare: avail - whole };
+    const { lines, room } = wrapped(r.label, avail, keepWhole, labelPx);
+    return { lines, spare: avail - room };
+  };
+  const contentAt = (viewport: number, inset: number) => viewport - 2 * M.gutter - inset - 2 * M.border - 2 * M.padding;
+  const holderInset = 2 * (HOLDER_EDGE + M.sectionPad) + 2 * (HOLDER_EDGE + M.rowPad);
+  const PHONE = 320;
+  const C320 = contentAt(PHONE, 0);
+  const H320 = contentAt(PHONE, holderInset);
+  const rows = rowsFor(!noteHidden);
+  const glyphless = rows.filter((r) => !Number.isFinite(labelPx(r.label) + restPx(r))).map((r) => `${r.loc} ${r.state} ${r.stake}`);
+  const values = Object.entries(M).filter(([, v]) => !Number.isFinite(v)).map(([k]) => k);
+  say(`     the model: ${j(M)} · the body's features: ${j(features)} · the button's content at ${PHONE}: ${C320}px on /positions, ${H320}px in the holder block · below ${M.xs} the free note is ${noteHidden ? "left out" : "drawn"} and the label ${wraps ? (keep ? "may wrap, CJK kept whole" : "may wrap") : "keeps one line"}`);
+  ok("5.model · the model reads its facts from source — the button's type, padding, gap, border, letter-spacing and height and the body's font features from the stylesheet, the note's size and margin from today's markup, the page's gutter, `xs` and the holder block's paddings from the Tailwind config and the two pages — and its glyphs and their alternates from the repo's own font files (JetBrains Mono at 0.6em); every word the row draws exists in en, sw and zh, and every glyph is in the fonts",
+    values.length === 0 && Object.values(pinned).every(Boolean) && unworded.length === 0 && glyphless.length === 0 && M.xs > PHONE && H320 > 0,
+    j({ values, pinned, unworded, glyphless: glyphless.slice(0, 3) }));
+  ok("5.classes · today's markup carries one narrow-phone rule, below `xs` only: the free note is hidden there and inline from it; the label carries no class, so it keeps today's one line at every width (a label let wrap stacks taller than the button in the holder block, 5.holder); and the fee beside a paid price is drawn at every width",
+    noteHidden && label !== null && label.length === 0 && feeNote.length > 0 && !feeNote.includes("hidden"), j({ note, label, feeNote }));
+  const rowAt = (r: FitRow, C: number) => layout(r, C, wraps, keep);
+  const freeAt = rows.filter((r) => r.free).map((r) => ({ r, f: rowAt(r, C320) }));
+  const freeBad = freeAt.filter(({ f }) => f.lines !== 1 || f.spare < 0).map(({ r }) => `${r.loc} ${r.state} TZS ${r.stake}`);
+  const leastFree = Math.min(...freeAt.map(({ f }) => f.spare));
+  ok(`5.free · on /positions at ${PHONE} the free row — the free word or the selling word, then the whole stake, its note left out — holds ONE line inside the button's content in en, sw and zh for every stake on the grid, to the platform's maximum (least room left: ${leastFree.toFixed(1)}px)`,
+    freeAt.length > 0 && freeBad.length === 0, freeBad.slice(0, 3).join(" | "));
+  const otherAt = rows.filter((r) => !r.free).map((r) => ({ r, f: rowAt(r, C320) }));
+  const otherBad = otherAt.filter(({ f }) => f.lines !== 1 || f.spare < -M.padding)
+    .map(({ r, f }) => `${r.loc} ${r.state} TZS ${r.stake}: ${r.figure} ${r.note} (${f.lines} lines, ${f.spare.toFixed(1)}px)`);
+  const leastBy = (loc: string) => Math.min(...otherAt.filter(({ r }) => r.loc === loc).map(({ f }) => f.spare)).toFixed(1);
+  ok(`5.paid · on /positions at ${PHONE} every other row — a price with its fee (selling or not), the server's first paint, shut, and a lapsed free price — is drawn as today, on ONE line inside the button: the least room left at its content's end is en ${leastBy("en")}, sw ${leastBy("sw")} and zh ${leastBy("zh")}px, where below 0 runs into the button's ${M.padding}px padding and never past its edge`,
+    otherAt.length > 0 && otherBad.length === 0, otherBad.slice(0, 3).join(" | "));
+  const holderAt = rows.map((r) => ({ r, f: rowAt(r, H320) }));
+  const tall = holderAt.filter(({ f }) => f.lines * M.font * M.lineHeight > M.height - 2 * M.border)
+    .map(({ r, f }) => `${r.loc} ${r.state} TZS ${r.stake}: ${f.lines} lines`);
+  const worstBy = (loc: string) => Math.min(...holderAt.filter(({ r }) => r.loc === loc).map(({ f }) => f.spare)).toFixed(1);
+  ok(`5.holder · in the question page's holder block at ${PHONE} (a ${H320}px content box: its section's and its row's border and padding, read from the page) no label takes more lines than the button's ${M.height}px holds, so nothing in the row is taller than the button; the row's overflow at its content's end (at the worst en ${worstBy("en")}, sw ${worstBy("sw")}, zh ${worstBy("zh")}px) is VODACOM-PLAN §0h point 37 (h), its own step`,
+    holderAt.length > 0 && H320 > 0 && tall.length === 0, tall.slice(0, 3).join(" | "));
+  // CONTROL — today's rules from 360 applied at 320 (the note drawn), as the browser measured them.
+  const measured = rowsFor(true).filter((r) => r.state === "free" && r.stake === 3_600);
+  const at320 = Object.fromEntries(measured.map((r) => [r.loc, layout(r, C320, false, false)]));
+  const at360 = Object.fromEntries(measured.map((r) => [r.loc, layout(r, contentAt(M.xs, 0), false, false)]));
+  ok(`5.control · CONTROL · with today's rules at ${PHONE} (the note drawn) the model sees what the browser measured: the Swahili free row for TZS 3,600 is wider than the button's ${C320}px content (the model reads ${at320.sw ? (C320 - at320.sw.spare).toFixed(1) : "?"}px of row; the browser measured 277px), the English and Chinese rows fit, and from ${M.xs} all three fit — so 5.free can see the defect it was written for`,
+    measured.length === 3 && (at320.sw?.spare ?? 0) < 0 && (at320.en?.spare ?? -1) >= 0 && (at320.zh?.spare ?? -1) >= 0
+      && LOCS.every((l) => (at360[l]?.spare ?? -1) >= 0),
+    j({ at320, at360 }));
+}
+
 async function runAll(I: Impl, W: World) {
   await g1Server(I);
   g2Hosts(W);
   g3Button(W);
   g4Wiring(W);
+  await g5Fit(W);
 }
 
 if (!PROVE_RED) {
@@ -564,6 +1029,11 @@ const withFile = (w: World, rel: string, code: string): World => {
   const files = new Map(w.files);
   files.set(rel, code);
   return { ...w, files };
+};
+/** S6 A8b · one word of one language replaced, for §5's copy plants. */
+const withWord = (w: World, loc: string, key: string, value: string): World => {
+  const lang = (w.words[loc] ?? {}) as { common?: Record<string, unknown> };
+  return { ...w, words: { ...w.words, [loc]: { ...lang, common: { ...(lang.common ?? {}), [key]: value } } } };
 };
 /** The real reading with exactly ONE input or step swapped, so each §1 plant is one defect and nothing else. */
 type Variant = {
@@ -678,7 +1148,60 @@ const PLANTS: Plant[] = [
   { name: "the journey's lapse is read off the fee (a no-fee paid window would never come back)", expect: ["3.journey"],
     world: (w) => inFile(w, SELL_BUTTON, LAPSED, "const lapsed = fee <= 0 && !inGrace;") },
   { name: "the journey's mount flag waits on a timer, not the first commit (the server's paint outstays the countdown)", expect: ["3.journey"],
-    world: (w) => inFile(w, SELL_BUTTON, MOUNT_EFFECT, "useEffect(() => { if (journey) setTimeout(() => setMounted(true), 5_000); }, [journey]);") },
+    world: (w) => inFile(w, SELL_BUTTON, MOUNT_EFFECT, "useEffect(() => { setTimeout(() => setMounted(true), 5_000); }, []);") },
+  // §3 — S6 A8b: today's look withdraws a lapsed free price too, and draws the server's shut verdict from its first commit
+  { name: "today's button can still be pressed over a lapsed free price", expect: ["3.classic"],
+    world: (w) => inFile(w, SELL_BUTTON, "disabled={pending || shutNow || lapsed}", "disabled={pending || shutNow}") },
+  { name: "today's button keeps the stale figure while it waits for the server", expect: ["3.classic"],
+    world: (w) => inFile(w, SELL_BUTTON, "{!shutNow && !lapsed && (", "{!shutNow && (") },
+  { name: "today's button says 'Uza sasa' over a lapsed free price (nothing says it is waiting)", expect: ["3.classic"],
+    world: (w) => inFile(w, SELL_BUTTON, `            : lapsed ? t.common.loading${NL}`, "") },
+  { name: "today's button names the stale figure to a screen reader while it waits", expect: ["3.classic"],
+    world: (w) => inFile(w, SELL_BUTTON, `            : lapsed${NL}            ? (pending ? t.common.selling : t.common.loading)${NL}`, "") },
+  { name: "the lapse is the journey's alone again (today's button keeps a stale free price until the next refresh)", expect: ["3.classic"],
+    world: (w) => inFile(w, SELL_BUTTON, LAPSE_GUARD, `if (look !== "journey" || pricedFree !== true || closedNow || alreadyClosed) return;`) },
+  { name: "the lapse effect skips today's look through the look prop, after its guard (its confirm stays open on the free price, and nothing asks the server)", expect: ["3.classic"],
+    world: (w) => inFile(w, SELL_BUTTON, LAPSE_GUARD, `${LAPSE_GUARD}${NL}    if (!look) return;`) },
+  { name: "the lapse effect skips today's look before its guard", expect: ["3.classic"],
+    world: (w) => inFile(w, SELL_BUTTON, `    ${LAPSE_GUARD}`, `    if (look !== "journey") return;${NL}    ${LAPSE_GUARD}`) },
+  { name: "the mount flag is the journey's alone again (today's button can never lapse)", expect: ["3.journey", "3.classic"],
+    world: (w) => inFile(w, SELL_BUTTON, MOUNT_EFFECT, `useEffect(() => { if (look === "journey") setMounted(true); }, [look]);`) },
+  { name: "the lapse verdict moves inside the journey's look (today's return can no longer read it)", expect: ["3.classic"],
+    world: (w) => inFile(inFile(w, SELL_BUTTON, LAPSED, ""), SELL_BUTTON, "if (journey) {", `if (journey) {${NL}    ${LAPSED}`) },
+  { name: "today's button waits an effect for the server's shut verdict (a bright, pressable 'Uza sasa · TZS 0' between 'Inapakia…' and 'Kuuza kumefungwa')", expect: ["3.classic"],
+    world: (w) => inFile(w, SELL_BUTTON, SHUT_NOW, "const shutNow = closedNow;") },
+  { name: "today's button draws the server's shut verdict before the page has started (the markup it is served moves)", expect: ["3.classic"],
+    world: (w) => inFile(w, SELL_BUTTON, SHUT_NOW, "const shutNow = closedNow || alreadyClosed === true;") },
+  { name: "today's free strip reads the phone's clock alone (it outlives the server's shut verdict for a render)", expect: ["3.render", "3.classic"],
+    world: (w) => inFile(w, SELL_BUTTON, "{inGrace && !shutNow && (", "{inGrace && !closedNow && (") },
+  // §2 — S6 A8b: every host hands the free-price flag, from cashOutValue's own verdict
+  { name: "the question page stops telling its Sell button whether the price is the free window's (a lapsed free price is offered until the next refresh)", expect: ["2.priced"],
+    world: (w) => inFile(w, MARKET, "pricedFree={positionPricedFree.get(p.id) === true}", "") },
+  { name: "/positions' classic list hands the flag loosely (any price would read as free)", expect: ["2.priced"],
+    world: (w) => inFile(w, POSITIONS, "pricedFree={price?.free === true}", "pricedFree={!!price}") },
+  { name: "the question page reads its flag off the fee, not cashOutValue's verdict", expect: ["2.priced"],
+    world: (w) => inFile(w, MARKET, PRICED_FROM[1][2], "positionPricedFree.set(p.id, co.sellable && co.fee === 0);") },
+  { name: "/positions' flag gains a clause (a paid window with no fee would read as free, and lapse into 'Inapakia…' for good)", expect: ["2.priced"],
+    world: (w) => inFile(w, POSITIONS, PRICED_FROM[0][2], "free: sellable && co.inGracePeriod || co.fee === 0 };") },
+  { name: "the question page's flag drops the LIVE gate /positions reads (a CLOSED question's free price would be flagged)", expect: ["2.priced"],
+    world: (w) => inFile(w, MARKET, PRICED_FROM[1][2], "positionPricedFree.set(p.id, co.sellable && co.inGracePeriod);") },
+  // §5 — S6 A8b: the fit
+  { name: "the free note is drawn below 360 again (the Swahili free row overflows a 320 phone on /positions, as measured)", expect: ["5.free", "5.classes"],
+    world: (w) => inFile(w, SELL_BUTTON, FIT_NOTE, FIT_NOTE.replace("ml-1.5 hidden opacity-80 text-[11px] xs:inline", "ml-1.5 opacity-80 text-[11px]")) },
+  { name: "the label may wrap below 360 (in the holder block Chinese stacks one glyph a line, taller than the button)", expect: ["5.holder", "5.classes"],
+    world: (w) => inFile(w, SELL_BUTTON, FIT_LABEL, FIT_LABEL.replace("<span>", `<span className="whitespace-normal xs:whitespace-nowrap">`)) },
+  { name: "the label may wrap below 360 with Chinese kept whole (in the holder block Swahili's three words stack taller than the button)", expect: ["5.holder", "5.classes"],
+    world: (w) => inFile(w, SELL_BUTTON, FIT_LABEL, FIT_LABEL.replace("<span>", `<span className="whitespace-normal break-keep xs:whitespace-nowrap">`)) },
+  { name: "the fee beside a paid price is hidden below 360 too (a price shown without its fee)", expect: ["5.classes"],
+    world: (w) => inFile(w, SELL_BUTTON, FIT_FEE, FIT_FEE.replace("ml-1.5 opacity-80 text-[11px]", "ml-1.5 hidden opacity-80 text-[11px] xs:inline")) },
+  { name: "the stylesheet spreads the button's letters ten times wider (the row the model reads no longer fits)", expect: ["5.free"],
+    world: (w) => ({ ...w, css: w.css.split("letter-spacing: 0.005em;").join("letter-spacing: 0.05em;") }) },
+  { name: "a longer Swahili free word (copy the row cannot hold on one line at 320)", expect: ["5.free"],
+    world: (w) => withWord(w, "sw", "freeExitLabel", "Toka bila gharama yoyote") },
+  { name: "a word the row draws is missing in Chinese (the model would measure an empty label)", expect: ["5.model"],
+    world: (w) => withWord(w, "zh", "loading", "") },
+  { name: "the holder block's row changes its padding (the model would measure a button that is not there)", expect: ["5.model"],
+    world: (w) => inFile(w, MARKET, HOLDER_ROW, HOLDER_ROW.replace(" p-3 ", " p-4 ")) },
   // §4 — the wiring
   { name: "the suite drops out of predeploy", expect: ["4.wired"],
     world: (w) => ({ ...w, scripts: { ...w.scripts, predeploy: (w.scripts.predeploy ?? "").split("npm run test:sell-grace-truth && ").join("") } }) },
@@ -695,7 +1218,8 @@ const PLANTS: Plant[] = [
   }
   const sameWorld = (a: World, b: World) =>
     a.files.size === b.files.size && [...b.files].every(([k, v]) => a.files.get(k) === v)
-    && a.rawSellButton === b.rawSellButton && j(a.scripts) === j(b.scripts);
+    && a.rawSellButton === b.rawSellButton && j(a.scripts) === j(b.scripts)
+    && a.css === b.css && a.tw === b.tw && a.words === b.words;
   let caught = 0;
   for (const plant of PLANTS) {
     results = [];

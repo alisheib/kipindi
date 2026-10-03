@@ -339,6 +339,10 @@ export default async function MarketDetail({
   // "selling closed" rather than a price the server would refuse.
   const positionCashOutValues = new Map<string, number | null>();
   const positionSellable = new Map<string, boolean>();
+  // S6 A8b — whether that price is the free window's on a LIVE question (`cashOutValue`'s own `inGracePeriod`, as
+  // `/positions` reads it), so the Sell button can withdraw it the moment its countdown runs out instead of offering it
+  // until this page's next refresh (15 s).
+  const positionPricedFree = new Map<string, boolean>();
   for (const p of myPositions) {
     if (!isResolved && (m.status === "LIVE" || m.status === "CLOSED") && p.status === "OPEN") {
       try {
@@ -348,6 +352,7 @@ export default async function MarketDetail({
         const co = await cashOutValue({ side: p.side, stake: p.stake, placedAt: p.placedAt, bonusStakeTzs: p.bonusStakeTzs, houseBotId: p.houseBotId }, { id: m.id, yesPool: m.yesPool, noPool: m.noPool, resolutionAt: m.resolutionAt, selectionClosedAt: m.selectionClosedAt, feeSnapshot: m.feeSnapshot });
         positionCashOutValues.set(p.id, co.sellable ? co.value : null);
         positionSellable.set(p.id, co.sellable);
+        positionPricedFree.set(p.id, m.status === "LIVE" && co.sellable && co.inGracePeriod);
       } catch { positionCashOutValues.set(p.id, null); positionSellable.set(p.id, false); }
     } else {
       positionCashOutValues.set(p.id, null);
@@ -911,6 +916,8 @@ export default async function MarketDetail({
                         closesAt={m.selectionClosedAt ?? m.resolutionAt}
                         alreadyClosed={sellShut}
                         serverNow={Date.now()}
+                        // S6 A8b: the page priced this exit inside its free window, so a lapsed free price is withdrawn.
+                        pricedFree={positionPricedFree.get(p.id) === true}
                       />
                     )}
                   </div>

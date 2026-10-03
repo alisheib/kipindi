@@ -196,7 +196,7 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
     // SellButton still renders and TELLS them selling has shut. Silently removing the control
     // leaves them guessing where their exit went.
     if (!m || (m.status !== "LIVE" && m.status !== "CLOSED")) {
-      return { id: p.id, value: null as number | null, sellable: false, live: p.potentialPayout };
+      return { id: p.id, value: null as number | null, sellable: false, live: p.potentialPayout, free: false };
     }
     try {
       const co = await cashOutValue(
@@ -206,11 +206,12 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
       const sellable = m.status === "LIVE" && co.sellable;
       // ⚠️ A price is offered only when the exit is actually open. Otherwise the button must say
       //    "rides to settlement" — never a number nobody can take.
-      // ⭐ `free` (S6 WP10): the price is the free window's, the whole stake (`cashOutValue`'s own verdict). Only the
-      //    journey's ticket card reads it, so its Sell look can withdraw a free price once its countdown has run out.
+      // ⭐ `free` (S6 WP10, A8b): the price is the free window's, the whole stake (`cashOutValue`'s own verdict). Every
+      //    Sell button on this page reads it — the journey's ticket card and the classic list below — so it can withdraw
+      //    a free price once its countdown has run out.
       return { id: p.id, value: sellable ? co.value : null, sellable, live: co.value, free: sellable && co.inGracePeriod };
     } catch {
-      return { id: p.id, value: null as number | null, sellable: false, live: p.potentialPayout };
+      return { id: p.id, value: null as number | null, sellable: false, live: p.potentialPayout, free: false };
     }
   }));
   const pricedById = new Map(priced.map((x) => [x.id, x]));
@@ -469,6 +470,9 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
                       closesAt={cutoffIso}
                       alreadyClosed={sellShut}
                       serverNow={serverNow}
+                      // S6 A8b: the price is the free window's (`free`, above), so the button can withdraw it the moment
+                      // its countdown runs out instead of offering it until this page's next refresh (20 s).
+                      pricedFree={price?.free === true}
                     />
                   )}
                 </div>

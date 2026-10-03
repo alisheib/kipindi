@@ -173,11 +173,14 @@ WP6b the swap + census + header-fit → WP7 overlays → WP8 short titles on pos
   still granted free — a bet placed 5–10 minutes before the cutoff read "Sell now … −0 fee" for part of its free
   window (§0h point 13). Otherwise a default 5-minute poll's countdown and markup are unchanged, and no money moves
   differently — `cashOutValue` is not edited (`test:house-bot-seam`'s golden grid). Gate: `test:sell-grace-truth` (in
-  predeploy) and its in-process twin `red:sell-grace-truth`. Open, not part of A8 (both predate it): once a free window
-  ends, the button keeps its last server render until the page's next refresh (15 s on a market, 20 s on
-  `/positions`). On a poll with no paid window it still offers "Sell now", and the server refuses that sale; on a
-  legacy poll with a paid window it keeps showing the free price ("−0 fee") while the server charges the fee. Flipping
-  the button at the exit's own instants is a follow-up.
+  predeploy) and its in-process twin `red:sell-grace-truth`. Not part of A8 (both predated it), and closed by A8b (its
+  bullet below) for a page whose countdown runs from its own render: once a free window ended, the button kept its last
+  server render until the page's next refresh (15 s on a market, 20 s on `/positions`) — on a poll with no paid window
+  it still offered "Sell now", which the server refused; on a legacy poll with a paid window it kept showing the free
+  price ("−0 fee", and "No fee" in its confirm) while the server charged the fee. Since A8b the button withdraws that
+  price the moment its countdown runs out and asks the server at once. A page brought back by Back or Forward restarts
+  its countdown from that old render, so it can still show the free offer for up to one poll (§0h point 37 (a)), and
+  flipping the button at the paid window's own end (§0h point 37 (e)) is still a follow-up.
 - **WP0 baseline — today's reds, re-derived 2026-10-01 at `5a820b9c` + A0** (`test:all --skip responsive,motion`,
   1,550 s): **409/431 green.** The 22 reds are pre-existing on main and none touches S6's files — S6 is neither blamed
   nor credited for them: live-target-safe (§1b ratchet 13 > 5), marketing-consent-ledger, type-scale (§6 tracking
@@ -607,6 +610,37 @@ WP6b the swap + census + header-fit → WP7 overlays → WP8 short titles on pos
   of the free look at 320, 390 and 1280 in sw, en and zh with no overflow, script error or hydration warning. Not drawn:
   the lapse, a legacy paid window and a shut exit (the seed's tickets are all inside their free window) — owed with
   A8b's drive.
+- **A8b — today's Sell button withdraws a lapsed free price, draws the server's "shut" at once, and its free row fits a
+  320 phone on `/positions` (drafted 2026-10-03; its own commit, for every player, not flagged).** WP10's lapse, given
+  to the classic look: both classic hosts pass `pricedFree` (`cashOutValue`'s own `inGracePeriod` for an open exit on a
+  LIVE question: `/positions`' `free`, the holder block's new `positionPricedFree`), and the `mounted` flag, the lapse
+  effect and `lapsed` serve both looks. From the moment its countdown runs out over a free price, today's button is
+  disabled, says "Inapakia…" (`common.loading`; "Inauza…" while a sale is in flight) as its words and its spoken name,
+  draws no figure, closes a confirm still showing the free price unless a sale is in flight, and asks the page for the
+  server's answer once — it no longer offers "Uza sasa · TZS 3,600 −0 ada" (and "Hakuna ada" in its confirm) while the
+  server charges the fee. When that answer is "selling has shut", the button is drawn shut in the same render
+  (`shutNow`: the server's verdict counts from the button's first commit), never as one bright, pressable "Uza sasa ·
+  TZS 0 −3,600 ada" first. Before the page has started on the phone, today's button draws what it drew (§0h point 37
+  (f)); a page brought back by Back or Forward is §0h point 37 (a). The sale, `cashOutValue` and every figure are
+  untouched. The 320 overflow (measured on `/positions`: the Swahili free row 7px wider than its button): below 360
+  (Tailwind's `xs`) the free note is left out — the strip above says "Hakuna ada" — and nothing else in the row moves;
+  the label keeps one line at every width, as today (letting it wrap stacked Chinese one glyph a line, taller than the
+  button, in the question page's narrower holder block). Gates: `test:sell-grace-truth` 2.priced (both hosts' flags
+  pinned whole), 3.classic (the lapse effect pinned whole; the four reads of `lapsed` and `shutNow` in today's return),
+  3.render, and a new §5 (a static model of the row from the repo's own fonts — the body's wider cv11 "a" included —
+  stylesheet and pages: on `/positions` at 320 the free row holds one line inside the button's content in en, sw and
+  zh to TZS 1,000,000, and every other row one line inside the button; in the holder block no label grows taller than
+  the button), 25 plants; `test:journey-tickets` §12 re-pinned in the open; `qa:classic-shell-parity`'s named Sell
+  difference `sell-narrow-phone` (the free note's class string, 8 of 8 Sell cells), with a synthetic P.5s. **Served bytes
+  for a classic viewer:** two classes on the free note's span (computed styles equal from 360), `pricedFree` in each
+  Sell button's RSC props, one `xs` rule in the stylesheet, the lapse and `shutNow` in the Sell button's client code.
+  **Owed:** the battery, the red twins, the parity `--prove-red` and `--compare`, and the drives — a free ticket lapsing
+  on both hosts ("Inapakia…", then "Kuuza kumefungwa" with nothing bright between, one refresh), with its confirm open
+  and with a sale in flight; a legacy paid window; the page's clock jumped forward after load (the ask, a still-free
+  answer that re-arms it, no second ask); Back to `/positions` and to a question page after a detour through `/help`
+  that crosses a ticket's free-window end; tiles at 320, 390 and 1280 in sw, en and zh on both hosts. ⚠️ Not fixed
+  here, and the next step for today's button: the holder block's own overflow, which the v2 baseline already measures
+  (§0h point 37 (h)).
 
 ## §0h · Points for Ali — taken while he was away (2026-10-01 →)
 
@@ -785,7 +819,10 @@ here, with how to overrule it. Newest last; nothing here blocks the work.
     point 34). The button's edge is the canvas's own colour, the kit's colour for a control's edge (3.18:1 on the card;
     the kit's plain outlined button would be 1.60:1, under the platform's 3:1 floor for a money control's only edge).
     One departure from the canvas: "Kuuza kumefungwa" sits on its own line above the sentence instead of running into
-    it with a full stop (the dictionary's word has none, and Chinese would need its own). Overrule: say which part.
+    it with a full stop (the dictionary's word has none, and Chinese would need its own). Since A8b (2026-10-03)
+    today's button outside Tiketi zangu withdraws a lapsed free price the same way, in its own look — dimmed,
+    "Inapakia…", no figure — so neither look offers a free price its countdown has outlived (point 37 (f); a page
+    brought back by Back or Forward is point 37 (a)). Overrule: say which part.
 36. **The classic words that stay on the journey's Sell path, none of them "nafasi".** WP10 gives journey words only to
     the three lines that said "nafasi" and mints no new word, so these stay today's until the S15 rename (§3): the
     confirm's small heading "Toa sasa" (en "Cash out", zh 兑现), which is also the confirm's spoken name; a failed
@@ -805,19 +842,41 @@ here, with how to overrule it. Newest last; nothing here blocks the work.
     countdown takes the server's time once the page has started on the phone, so it runs late by the time the page took
     to start (under a second on a fast phone, several on a slow one), and for those seconds a ticket still offers a
     free sale the server has stopped granting free: the server refuses it, or on an old paid-window question charges
-    the fee after a screen that said none; (b) "Kuuza kumefungwa" at selection close is timed by the phone's own clock,
+    the fee after a screen that said none. A page brought back by the browser's Back or Forward is the page as it was
+    rendered, however old (Next serves it from its own back/forward cache), so its countdown restarts from the time
+    that render had left, and a free offer the server ended while the player was elsewhere shows again, in both looks,
+    until the page's poller next refreshes (up to 20 seconds on `/positions`, 15 on a question page); A8b's withdrawal
+    cannot see it, because the restarted countdown is still running; (b) "Kuuza kumefungwa" at selection close is
+    timed by the phone's own clock,
     so a phone that runs fast shuts early and one that runs slow keeps the button past the cutoff (the server refuses);
     (c) if the connection drops after the server has completed a sale, the result says it failed and that the ticket is
     unchanged, though the next refresh shows it sold; (d) holding Enter on the Sell button for about half a second
     opens the confirm and sells before it can be read; (e) on an old question with a paid window, the button keeps
     offering its paid price after the paid window ends, until the page refreshes (within 20 seconds; the server
     refuses); (f) today's button outside Tiketi zangu still shows "Uza sasa · TZS 0 −1,000 ada" on a ticket whose
-    selling has shut, until the page has started, and keeps a stale free offer ("−0 ada", and "Hakuna ada" in its
-    confirm) for up to 20 seconds after the free window ends, the two moments WP10's look closes for itself; (g) the
-    kit's plain outlined button draws its edge at 1.60:1 on a card, under the 3:1 floor, wherever that edge is a
-    control's only boundary. (a) and (f) are the money-truth ones: the server decides every sale, but on an old
-    paid-window question a player can be shown "no fee" and charged one. Overrule: say which comes first; otherwise
-    (a) and (f) together, then (d).
+    selling has shut, and "Uza sasa · TZS {stake} −0 ada" on a ticket in its free window, until the page has started:
+    that is its server paint, kept by A8b on purpose, so on a page served in the free window's last seconds the "−0 ada"
+    outlives the server's window until the page starts. Its stale free offer once the countdown has run out ("−0 ada",
+    and "Hakuna ada" in its confirm, for up to 20 seconds) is closed by A8b (2026-10-03, §0i), which gives today's
+    button WP10's withdrawal. Left in both looks, for the journey look's owner: the confirm closes one render after the
+    button withdraws the price, so for about a frame it still shows the free price with its sell button live (the
+    server decides that sale, as it does one sent a moment before the countdown ran out), and closing it in the same
+    render changes the dialogs both looks share; (g) the kit's plain outlined button draws its edge at 1.60:1 on a
+    card, under the 3:1 floor, wherever that edge is a control's only boundary; (h) on a question's page today's button
+    sits in the holder block, inside its section's and its row's border and padding, so it is 84px narrower than on
+    `/positions` (204px on a 320 phone, where `/positions` gives 288), and its free row does not fit there below about
+    430px in Swahili and about 376px in English. The v2 baseline (`7c859cdf`, a TZS 1,500 ticket) already measures it
+    at 360: the Swahili row runs 67px past the button's content and 50px past its edge, out of its ticket card, and the
+    English row 14px into the button's padding. A8b leaves that so from 360 (parity holds those cells); below 360 its
+    left-out note shortens the Swahili free row by about 68px, but at 320 every row there still overflows, in every
+    language. On `/positions`, from 360 a Swahili free row for a six-figure stake runs over until about 367px, and for
+    TZS 1,000,000 until about 384px; at 320 a Chinese legacy paid row with a six-figure fee runs about 5px into the
+    button's padding, inside its edge, as it does today. The holder block is the next step for today's button: a layout
+    drawn for that width, measured first, then named in SELL_EXPECTED_DIFFS from a compare (A3), never re-baselined.
+    (a) is the money-truth one left (A8b closed (f)'s stale free offer): the server decides every sale, but for the
+    seconds the countdown runs late, or for up to one poll after Back or Forward, an old paid-window question can show
+    "no fee" and charge one. Overrule: say which comes first; otherwise (h) next, measured first (the default
+    language's question page overflows at the most common phone widths), then (a), then (d).
 
 
 ## §0g · S4 (2026-10-01) — the Design canvas: all eleven items drawn, the panel's findings applied; waiting on Ali

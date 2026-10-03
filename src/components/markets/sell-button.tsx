@@ -29,6 +29,19 @@
  * position, S6 A7), never the sale: the countdown, the confirm, the one action, the latch on a sale in flight, the
  * deferred toast and the sale's two refresh events below are the same code for both looks. `test:journey-tickets` §12
  * holds the look, `test:sell-grace-truth` §3 its free offer, and `test:timer-date` §3 its clock time.
+ *
+ * ⭐ A FREE PRICE ITS COUNTDOWN HAS OUTLIVED IS WITHDRAWN IN BOTH LOOKS (S6 A8b, for every player). A host that priced the
+ * exit inside its free window says so (`pricedFree`, `cashOutValue`'s own `inGracePeriod`), and that price is the whole
+ * stake. The moment this button's countdown runs out it is no longer the offer — a default poll has locked the exit, and
+ * a legacy paid window charges its fee — so either look then says "Inapakia…" with no figure and nothing to press,
+ * closes a confirm still showing the free price (unless a sale is already in flight: the server decides that one), and
+ * asks the page for the server's answer once. Until A8b today's look turned that price into "Uza sasa · TZS 3,600 −0
+ * ada" until the page's next refresh (up to 20 s), and its confirm said "Hakuna ada" while the server charged the fee.
+ * Today's look also draws the server's shut verdict from its first commit (`shutNow`), so that answer is never preceded
+ * by one pressable "Uza sasa · TZS 0" render, and below 360px it leaves out its free note ("pesa yote": the strip above
+ * it already says "Hakuna ada"), so its free row fits a 320px phone on /positions in every language; its label keeps one
+ * line at every width. `test:sell-grace-truth` holds every host to the flag (2.priced), the withdrawal and the shut
+ * verdict (3.classic), and the fit (§5).
  */
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
@@ -103,10 +116,10 @@ export function SellButton({
    */
   freeUntilLabel?: string | null;
   /**
-   * The journey's look only: the page priced this exit INSIDE its free window (`cashOutValue`'s own `inGracePeriod`), so
-   * `value` is the whole stake. The look offers that price as free only while the countdown runs, and withdraws it the
-   * moment the countdown runs out: a default poll has locked the exit by then, and a paid window charges its fee
-   * (`test:sell-grace-truth` 3.journey).
+   * The page priced this exit INSIDE its free window (`cashOutValue`'s own `inGracePeriod`), so `value` is the whole stake.
+   * Every host passes it (the journey's card since WP10, today's two hosts since A8b). Either look offers that price as
+   * free only while the countdown runs, and withdraws it the moment the countdown runs out: a default poll has locked the
+   * exit, and a paid window charges its fee (`test:sell-grace-truth` 3.journey, 3.classic and 2.priced).
    */
   pricedFree?: boolean;
 }) {
@@ -258,27 +271,30 @@ export function SellButton({
     });
   };
 
-  // ⭐ THE JOURNEY'S LOOK, ITS STATE (S6 WP10) — above every return, as hooks must be, and inert without the look.
-  // `mounted` turns true at the browser's first commit: until then the countdown above has not run, so the look draws
-  // the free offer the page priced (`pricedFree`) without a countdown. When the countdown runs out while that free price
-  // is drawn, the price is no longer the offer — a default poll has locked the exit, and a paid window charges its fee —
-  // so the look withdraws it, closes a confirm still showing it (unless a sale is already in flight: the server decides
-  // that one), and asks the page for the server's answer at once rather than at its poller's next beat (up to 20 s).
-  // It asks once per run of the countdown: an answer that is still free restarts the countdown, which re-arms the ask,
-  // so no answer can set off another ask by itself. The sale's own refresh events stay in `submit` above.
+  // ⭐ THE LAPSE, BOTH LOOKS' (S6 WP10 for the journey's look, A8b for today's) — above every return, as hooks must be.
+  // `mounted` turns true at the browser's first commit: until then the countdown above has not run, so the server's
+  // paint is drawn from the page's own price (the journey's look offers it free; today's draws its markup as it always
+  // has). When the countdown runs out while the page's free price (`pricedFree`) is drawn, the price is no longer the
+  // offer — a default poll has locked the exit, and a paid window charges its fee — so the button withdraws it
+  // (`lapsed`, in either look), closes a confirm still showing it (unless a sale is already in flight: the server
+  // decides that one), and asks the page for the server's answer at once rather than at its poller's next beat (up to
+  // 20 s). It asks once per run of the countdown: an answer that is still free restarts the countdown, which re-arms the
+  // ask, so no answer can set off another ask by itself. The sale's own refresh events stay in `submit` above.
   const journey = look === "journey";
   const [mounted, setMounted] = useState(false);
-  useEffect(() => { if (journey) setMounted(true); }, [journey]);
+  useEffect(() => { setMounted(true); }, []);
   const lapseArmed = useRef(true);
   useEffect(() => {
-    if (!journey || pricedFree !== true || closedNow || alreadyClosed) return;
+    if (pricedFree !== true || closedNow || alreadyClosed) return;
     if (inGrace) { lapseArmed.current = true; return; }
     if (!mounted) return;
     if (!pending) setConfirmOpen(false);
     if (!lapseArmed.current) return;
     lapseArmed.current = false;
     window.dispatchEvent(new Event("50pick:refresh"));
-  }, [journey, mounted, pricedFree, inGrace, closedNow, alreadyClosed, pending]);
+  }, [mounted, pricedFree, inGrace, closedNow, alreadyClosed, pending]);
+  // Lapsed: the countdown has run out while the page's free price is drawn, so it is no longer the offer (both looks).
+  const lapsed = pricedFree === true && mounted && !inGrace;
 
   // ⭐ THE TWO DIALOGS ARE ONE PAIR FOR BOTH LOOKS — the confirm and the result, wired to the one `submit` above. The
   // journey's look changes three of their words, each a ticket where today's says a position (S6 A7): the question, the
@@ -349,8 +365,6 @@ export function SellButton({
     const shut = closedNow || alreadyClosed === true;
     // The free offer: the page priced the exit free, and the countdown runs — or has not yet run (the server's paint).
     const offerFree = pricedFree === true && (inGrace || !mounted);
-    // Lapsed: the countdown has run out while the free price is drawn, so it is no longer the offer.
-    const lapsed = pricedFree === true && mounted && !inGrace;
     return (
       <>
         {shut ? (
@@ -398,11 +412,23 @@ export function SellButton({
   }
 
   // Cash-out is an early-exit utility, not a win — always the neutral royal CTA.
+  // ⭐ S6 A8b — today's look reads the lapse too (`lapsed`, above): a free price the countdown has outlived is withdrawn,
+  // so the button is disabled and says "Inapakia…" (`common.loading`, the journey's word for the same wait; "Inauza…"
+  // while a sale is in flight) as its words and its spoken name, with no figure, until the server's answer arrives — it
+  // can no longer offer "Uza sasa · TZS 3,600 −0 ada" for a price the server has stopped granting. Below 360px it leaves
+  // out its free note (the strip above already says "Hakuna ada"), so the free row fits a 320px phone on /positions in
+  // every language. Its label keeps one line at every width, as today: let it wrap and, in the question page's narrower
+  // holder block, Chinese would stack one glyph a line, taller than the button.
   const btnVariant = "btn-primary";
+  // Shut: this phone's clock (`closedNow`), and — from the first commit — the server's verdict as it arrives, so a
+  // refresh that brings `alreadyClosed` is drawn shut in that very render, never as one pressable "Uza sasa · TZS 0
+  // −3,600 ada" while the effect above copies the verdict into `closedNow`. Before the first commit it is `closedNow`
+  // alone, so the server's paint and the browser's first render are today's.
+  const shutNow = closedNow || (mounted && alreadyClosed === true);
 
   return (
     <>
-      {inGrace && !closedNow && (
+      {inGrace && !shutNow && (
         <div className="mb-1.5 flex items-center gap-1.5 px-2 py-1 rounded-md bg-brand-500/[0.12] border border-brand-500/30">
           <span className="font-mono text-micro font-bold text-brand-300 uppercase tracking-[0.12em]">{t.common.freeExitLabel}</span>
           <span className="font-mono text-[10px] text-brand-300 tabular-nums">{graceLabel}</span>
@@ -411,11 +437,13 @@ export function SellButton({
       )}
       <button
         type="button"
-        onClick={closedNow ? undefined : openConfirm}
-        disabled={pending || closedNow}
+        onClick={shutNow ? undefined : openConfirm}
+        disabled={pending || shutNow || lapsed}
         aria-label={
-          closedNow
+          shutNow
             ? t.common.sellLockedHint
+            : lapsed
+            ? (pending ? t.common.selling : t.common.loading)
             : inGrace
             ? `${t.common.freeExitLabel} — ${formatTzs(value)}`
             : `${t.common.cashOut} ${formatTzs(value)}`
@@ -425,20 +453,21 @@ export function SellButton({
         // btn-md capped at 38px; `h-auto` beside it was always inert (no cascade
         // layers — `.btn-md`'s `height` wins on source order). ⛔ Do not re-add
         // a per-call height: the token owns it.
-        className={`btn ${closedNow ? "btn-ghost" : btnVariant} btn-md w-full whitespace-normal`}
+        className={`btn ${shutNow ? "btn-ghost" : btnVariant} btn-md w-full whitespace-normal`}
         style={{ justifyContent: "space-between" }}
       >
         <span>
-          {closedNow ? t.common.sellLocked
+          {shutNow ? t.common.sellLocked
             : pending ? t.common.selling
+            : lapsed ? t.common.loading
             : inGrace ? t.common.freeExitLabel
             : t.common.sellNow}
         </span>
-        {!closedNow && (
+        {!shutNow && !lapsed && (
           <span className="font-mono tabular-nums">
             TZS {formatNumber(value)}
             {inGrace
-              ? <span className="ml-1.5 opacity-80 text-[11px]">{t.common.fullRefund}</span>
+              ? <span className="ml-1.5 hidden opacity-80 text-[11px] xs:inline">{t.common.fullRefund}</span>
               : <span className="ml-1.5 opacity-80 text-[11px]">−{formatNumber(fee)} {t.common.fee}</span>
             }
           </span>

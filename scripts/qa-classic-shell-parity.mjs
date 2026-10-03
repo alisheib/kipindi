@@ -23,7 +23,8 @@
  * the holder block at 360 the button is also pressed, once, and the classic confirm it opens is captured — inside its
  * 10-second quote hold, and never confirmed: only Enter or its gold button sells, and neither is touched. The strip's
  * ticking clock is read as "m:ss" and a ticket's id as "pos_~"; the rest is compared as the matrix is, against
- * SELL_EXPECTED_DIFFS (A8: a default poll with an hour to run compares equal). The capture runs inside a default poll's
+ * SELL_EXPECTED_DIFFS (A8: a default poll with an hour to run compares equal; S6 A8b names the one change it makes, the
+ * classic button's free note gaining its narrow-phone classes). The capture runs inside a default poll's
  * five-minute free window, and §S fails a run whose cells missed it. The matrix gained the capture, so this is v2: a v1
  * baseline is refused, and the v2 baseline is captured at the commit just before A8's live half (VODACOM-PLAN §0i names
  * it), so the Sell cells measure A8's own claim as well as S6's.
@@ -239,11 +240,23 @@ const partialExpected = (hits, list = EXPECTED_DIFFS) => list
   .filter((e) => { const n = hits.get(e.id) ?? 0; return n !== 0 && n !== e.cells; })
   .map((e) => `${e.id} in ${hits.get(e.id)} of its ${e.cells} cells`);
 /**
- * ⭐ WP10 · THE NAMED DIFFERENCES FOR THE SELL CELLS — none. A8: a classic holder's Sell button on a default poll with an
- * hour to run compares equal with the baseline captured before A8's live half; any other difference is a named entry
- * here (with its field, its routes and its `cells`), never a re-baseline.
+ * ⭐ WP10 · THE NAMED DIFFERENCES FOR THE SELL CELLS — one, S6 A8b's. A8: a classic holder's Sell button on a default poll
+ * with an hour to run compares equal with the baseline captured before A8's live half; any other difference is a named
+ * entry here (with its field, its routes and its `cells`), never a re-baseline.
  */
-const SELL_EXPECTED_DIFFS = [];
+const SELL_EXPECTED_DIFFS = [
+  {
+    id: "sell-narrow-phone",
+    field: "regions.button.html",
+    routes: SELL_PLACES,
+    replace: [
+      ['<span class="ml-1.5 opacity-80 text-[11px]">full refund</span>', '<span class="ml-1.5 hidden opacity-80 text-[11px] xs:inline">full refund</span>'],
+      ['<span class="ml-1.5 opacity-80 text-[11px]">pesa yote</span>', '<span class="ml-1.5 hidden opacity-80 text-[11px] xs:inline">pesa yote</span>'],
+    ],
+    cells: SELL.locales.length * SELL.widths.length * SELL.places.length,
+    reason: "S6 A8b: below 360px (Tailwind's xs) the classic Sell button leaves out its free note — the strip above it already says there is no fee — so its free row fits a 320px phone on /positions in every language (test:sell-grace-truth §5). The Sell cells are captured at 360 and 1280, where the note is inline as before: the free note's span carries two classes it did not, in every Sell cell, and nothing else moves — the computed styles and boxes are their own field (regions.button.layout), compared in every cell, and must still be equal.",
+  },
+];
 
 /** The computed properties recorded per element. Geometry is recorded separately, relative to the region's root. */
 const PROPS = [
@@ -997,6 +1010,27 @@ async function proveRed() {
   const hits = (n) => new Map([[e0.id, n]]);
   ok(`P.6 a named difference seen in part of its population is reported (§4.2), and in all or none of it is not`,
     partialExpected(hits(e0.cells - 1)).length === 1 && partialExpected(hits(e0.cells)).length === 0 && partialExpected(new Map()).length === 0);
+  // ①b S6 A8b · the one named Sell difference, held the same way: the classic button's free row as a capture serialises it,
+  // before and after its free note gains the narrow-phone classes. The transition passes at both Sell places in en and in
+  // sw; a second change beside it, or the same change off the Sell places, stays a failure.
+  const sellStore = {};
+  const sellCell = (html) => {
+    const id = `b${Object.keys(sellStore).length}`;
+    sellStore[id] = html;
+    return { ...cell(200, "f1"), landed: SELL_PLACES[0], regions: { button: { count: 1, html: id, layout: null } } };
+  };
+  const sellButtonHtml = (label, note, narrow, figure = "TZS 3,600") => `<button type="button" class="btn btn-primary btn-md w-full whitespace-normal"><span>${label}</span><span class="font-mono tabular-nums">${figure}<span class="${narrow ? "ml-1.5 hidden opacity-80 text-[11px] xs:inline" : "ml-1.5 opacity-80 text-[11px]"}">${note}</span></span></button>`;
+  const sellRuns = [["en", "Free exit", "full refund"], ["sw", "Toka bila gharama", "pesa yote"]].map(([l, label, note]) => {
+    const was = sellCell(sellButtonHtml(label, note, false));
+    const now = sellCell(sellButtonHtml(label, note, true));
+    const plus = sellCell(sellButtonHtml(label, note, true, "TZS 3,601"));
+    const diff = (place, a, b) => diffCells(place, a, b, sellStore, sellStore, SELL_EXPECTED_DIFFS);
+    return { l, named: SELL_PLACES.map((p) => diff(p, was, now)), plus: diff(SELL_PLACES[0], was, plus), elsewhere: diff("/", was, now) };
+  });
+  ok("P.5s S6 A8b's named Sell difference — the classic button's free note gaining its narrow-phone classes — passes at both Sell places in en and in sw, while a second change beside it, or the same change off the Sell places, stays a failure",
+    sellRuns.every((r) => r.named.every((d) => d.unexpected.length === 0 && d.expected.map((e) => e.id).join() === "sell-narrow-phone")
+      && r.plus.unexpected.length === 1 && r.elsewhere.unexpected.length === 1),
+    JSON.stringify(sellRuns).slice(0, 400));
 
   // ② The checks of §2 and §3: a clean synthetic capture passes them all, and each plant turns exactly its own one red.
   const S = syntheticCapture();
