@@ -610,13 +610,13 @@ function g11Wiring(W: World, ok: Ok) {
 /* ══ §12 · THE SELL LOOK (WP10) ═════════════════════════════════════════════════════════════════════════════ */
 /** Where the button's classic markup begins: from here to the end of the file is what a reader without the look is drawn. */
 const SELL_CLASSIC_HEAD = `const btnVariant = "btn-primary";`;
-/** The button's classic markup as it stands today, line by line with comments stripped: the free strip, the button (since S6 A8b, with its lapse, the server's shut verdict from its first commit and its free note's narrow-phone classes), and the shared dialogs. */
+/** The button's classic markup as it stands today, line by line with comments stripped: the free strip, the button (since S6 A8b, with its lapse, the server's shut verdict from its first commit and its free note's narrow-phone classes; since S6 A8c, the wait on a moved price), and the shared dialogs. */
 const SELL_CLASSIC = [
   'const btnVariant = "btn-primary";',
   'const shutNow = closedNow || (mounted && alreadyClosed === true);',
   'return (',
   '<>',
-  '{inGrace && !shutNow && (',
+  '{inGrace && !shutNow && !repricing && (',
   '<div className="mb-1.5 flex items-center gap-1.5 px-2 py-1 rounded-md bg-brand-500/[0.12] border border-brand-500/30">',
   '<span className="font-mono text-micro font-bold text-brand-300 uppercase tracking-[0.12em]">{t.common.freeExitLabel}</span>',
   '<span className="font-mono text-[10px] text-brand-300 tabular-nums">{graceLabel}</span>',
@@ -626,10 +626,12 @@ const SELL_CLASSIC = [
   '<button',
   'type="button"',
   'onClick={shutNow ? undefined : openConfirm}',
-  'disabled={pending || shutNow || lapsed}',
+  'disabled={pending || shutNow || lapsed || repricing}',
   'aria-label={',
   'shutNow',
   '? t.common.sellLockedHint',
+  ': repricing',
+  '? t.common.loading',
   ': lapsed',
   '? (pending ? t.common.selling : t.common.loading)',
   ': inGrace',
@@ -641,12 +643,13 @@ const SELL_CLASSIC = [
   '>',
   '<span>',
   '{shutNow ? t.common.sellLocked',
+  ': repricing ? t.common.loading',
   ': pending ? t.common.selling',
   ': lapsed ? t.common.loading',
   ': inGrace ? t.common.freeExitLabel',
   ': t.common.sellNow}',
   '</span>',
-  '{!shutNow && !lapsed && (',
+  '{!shutNow && !lapsed && !repricing && (',
   '<span className="font-mono tabular-nums">',
   'TZS {formatNumber(value)}',
   '{inGrace',
@@ -717,27 +720,30 @@ const DIALOG_DEFAULTS = ["{titleLabel ?? t.dialog.sellPositionNow}", "{keepLabel
 /** The sale, one code path for both looks — in `submit`: the one action, the latch, the deferred toast and the sale's two refresh events. */
 const SALE = ["cashOutPositionAction(", "inFlight.current = true;", "deferToast({", `window.dispatchEvent(new Event("50pick:refresh"));`,
   `window.dispatchEvent(new Event("50pick:refresh-notifications"));`];
+/** S6 A8c — a sale refused because its price moved asks the page for the server's new price, once, inside the refusal branch, with the button waiting on it (`repricing`): so the page refresh is written twice in `submit`, the sale's and this one, and three times in the file with the lapse's. */
+const PRICE_ASK = `if (moved) { setRepricing(true); window.dispatchEvent(new Event("50pick:refresh")); }`;
+const SALE_REFRESH = 3;
 /** Shut: the server's verdict (a prop, so the server's paint already says it), then this phone's clock. */
 const SHUT = "const shut = closedNow || alreadyClosed === true;";
 /** The free line: drawn only on the free offer; the server's clock time in a <time> naming the instant; the countdown only while it runs. */
-const FREE_LINE_OPEN = "{offerFree && freeUntilLabel ? (";
+const FREE_LINE_OPEN = "{offerFree && freeUntilLabel && !repricing ? (";
 const FREE_LINE = `{freeBefore}<time dateTime={freeUntil ?? undefined} className="whitespace-nowrap tabular-nums">{freeUntilLabel}</time>{freeAfter}`;
 const TIMER_OPEN = "{inGrace ? (";
 const TIMER = `<span role="timer" className="whitespace-nowrap font-mono font-bold tabular-nums text-text">{graceLabel}</span>`;
-/** The button's word: the free word only on the free offer; while a lapsed free price waits for the server, "Inapakia…". */
+/** The button's word: the free word only on the free offer; while a lapsed free price waits for the server, "Inapakia…". Since S6 A8c a price the server refused because it moved waits the same way, ahead of a sale in flight. */
 const WORD_FREE = ": offerFree ? t.journey.sellFreeCta : t.common.sellNow}";
-const WORD_LAPSE = "{pending ? t.common.selling : lapsed ? t.common.loading : ";
+const WORD_LAPSE = "{repricing ? t.common.loading : pending ? t.common.selling : lapsed ? t.common.loading : ";
 /** The refund the free button promises: the server's own figure for this exit (`value`), never the stake — only on the free offer. */
 const FREE_FIGURE_OPEN = "{offerFree ? (";
 const FREE_FIGURE = `{refundBefore}<span className="amount font-semibold text-text">{formatTzs(value)}</span>{refundAfter}`;
-/** No figure at all while a lapsed free price waits for the server. */
-const FIGURE_OPEN = "{lapsed ? null : (";
+/** No figure at all while a lapsed free price waits for the server. Since S6 A8c, nor while a moved price does. */
+const FIGURE_OPEN = "{lapsed || repricing ? null : (";
 /** A price with a fee: today's figure and today's fee — a fee of 0 is not printed. */
 const PAID_FIGURE = [`<span className="amount text-text">TZS {formatNumber(value)}</span>`,
   `{fee > 0 ? <>{" "}<span className="amount">−{formatNumber(fee)}</span>{" "}{t.common.fee}</> : null}`];
 const FEE_RULE = "const fee = Math.max(0, stake - value);";
-/** The one button: the same confirm as today's, nothing to press while a sale is in flight or a free price has lapsed. */
-const BUTTON_OPEN = `<button type="button" onClick={openConfirm} disabled={pending || lapsed}`;
+/** The one button: the same confirm as today's, nothing to press while a sale is in flight or a free price has lapsed. Since S6 A8c, nor while a moved price waits for the server. */
+const BUTTON_OPEN = `<button type="button" onClick={openConfirm} disabled={pending || lapsed || repricing}`;
 /** Its edge: the kit's outlined class, its only boundary drawn in the kit's token for a control's edge (the canvas's own colour). */
 const EDGE = `className="btn btn-ghost w-full px-2 py-1.5" style={{ borderColor: "var(--border-control)" }}>`;
 /** A lapsed free price closes a confirm still showing it and asks the page for the server's answer at once — once per run of the countdown, re-armed only when the countdown runs again, so no answer can set off another ask by itself. One effect for both looks since S6 A8b, so its guard and its dependencies name no look. */
@@ -813,10 +819,12 @@ function g12SellLook(W: World, ok: Ok) {
       && count(modal, "t.dialog.sellPositionNow") === 1 && count(modal, "t.dialog.keepPosition") === 1,
     show({ arms: DIALOG_ARMS.map((a) => count(button, a)), defaults: DIALOG_DEFAULTS.map((d) => count(modal, d)), dialogs: count(button, "{dialogs}") }));
   const sale = fnBody(button, "const submit = ");
-  ok("12.sale · the sale is one code path for both looks: in submit, one action call, one latch, one deferred toast and each of the sale's two refresh events once — the action, the latch, the toast and the notifications refresh nowhere else — and the journey's one button opens the same confirm",
-    SALE.every((s) => count(sale, s) === 1) && count(button, SALE[0]) === 1 && count(button, SALE[1]) === 1 && count(button, SALE[2]) === 1
+  ok("12.sale · the sale is one code path for both looks: in submit, one action call, one latch, one deferred toast, the notifications refresh once and the page refresh twice — the sale's own and, since S6 A8c, the one a refusal for a moved price asks, inside the refusal branch only, with the button waiting on it — the action, the latch, the toast and the notifications refresh nowhere else, and the journey's one button opens the same confirm",
+    SALE.every((s, i) => count(sale, s) === (i === SALE_REFRESH ? 2 : 1)) && count(sale, PRICE_ASK) === 1 && count(button, PRICE_ASK) === 1
+      && count(between(sale, "if (!r.ok) {", "return;"), PRICE_ASK) === 1
+      && count(button, SALE[0]) === 1 && count(button, SALE[1]) === 1 && count(button, SALE[2]) === 1
       && count(button, SALE[4]) === 1 && count(look, "<button") === 1 && count(look, BUTTON_OPEN) === 1,
-    show({ inSubmit: SALE.map((s) => count(sale, s)), inFile: SALE.map((s) => count(button, s)), buttons: count(look, "<button") }));
+    show({ inSubmit: SALE.map((s) => count(sale, s)), priceAsk: count(sale, PRICE_ASK), inFile: SALE.map((s) => count(button, s)), buttons: count(look, "<button") }));
   ok("12.free · the free offer: its line names the server's clock time, a <time> naming the instant, and — only while it runs — the countdown to that instant; the button reads 'Uza bila ada' over 'Rudishiwa {amount} kamili', the amount the server's own figure (value), never the stake; and every piece of it is drawn only on the free offer",
     count(look, FREE_LINE_OPEN) === 1 && count(look, FREE_LINE) === 1 && count(look, TIMER_OPEN) === 1 && count(look, TIMER) === 1
       && look.indexOf(FREE_LINE_OPEN) < look.indexOf(FREE_LINE) && look.indexOf(FREE_LINE) < look.indexOf(TIMER_OPEN) && look.indexOf(TIMER_OPEN) < look.indexOf(TIMER)
@@ -825,10 +833,10 @@ function g12SellLook(W: World, ok: Ok) {
       && count(look, FREE_FIGURE_OPEN) === 1 && count(look, FREE_FIGURE) === 1 && look.indexOf(FREE_FIGURE_OPEN) < look.indexOf(FREE_FIGURE),
     show({ line: count(look, FREE_LINE), timer: [count(look, TIMER_OPEN), count(look, TIMER)], word: count(look, WORD_FREE), figure: [count(look, FREE_FIGURE_OPEN), count(look, FREE_FIGURE)] }));
   const ask = between(button, LAPSE_ASK[0], LAPSE_DEPS);
-  ok("12.lapse · once the countdown has run out with a free price still drawn, the price is withdrawn — nothing to press, 'Inapakia…' and no figure — a confirm still showing it closes, and the page is asked for the server's answer at once, once per run of the countdown; the sale's own refresh stays the sale's",
-    look.includes("disabled={pending || lapsed}") && count(look, WORD_LAPSE) === 1 && count(look, FIGURE_OPEN) === 1
+  ok("12.lapse · once the countdown has run out with a free price still drawn, the price is withdrawn — nothing to press, 'Inapakia…' and no figure — a confirm still showing it closes, and the page is asked for the server's answer at once, once per run of the countdown; the sale's own refresh stays the sale's (the file's three page refreshes: the sale's, a moved price's since S6 A8c, and this one); and since S6 A8c a moved price waits the same way, ahead of a sale in flight",
+    look.includes("disabled={pending || lapsed || repricing}") && count(look, WORD_LAPSE) === 1 && count(look, FIGURE_OPEN) === 1
       && LAPSE_ASK.every((s) => count(ask, s) === 1) && LAPSE_ASK.every((s, i) => i === 0 || ask.indexOf(LAPSE_ASK[i - 1]) < ask.indexOf(s))
-      && count(button, LAPSE_DEPS) === 1 && count(button, LAPSE_ASK[LAPSE_REFRESH]) === 2,
+      && count(button, LAPSE_DEPS) === 1 && count(button, LAPSE_ASK[LAPSE_REFRESH]) === 3,
     show({ ask: LAPSE_ASK.map((s) => count(ask, s)), refreshes: count(button, LAPSE_ASK[LAPSE_REFRESH]), word: count(look, WORD_LAPSE), figure: count(look, FIGURE_OPEN) }));
   ok("12.paid · a price with a fee keeps today's honest 'Uza sasa' with today's figure and fee — a fee of 0 is not printed — and the button's one fee rule is today's",
     look.includes("t.common.sellNow") && PAID_FIGURE.every((p) => count(look, p) === 1) && count(button, FEE_RULE) === 1,
@@ -1014,7 +1022,7 @@ const defaultWordMoved = swap(SELL_MODAL, "{titleLabel ?? t.dialog.sellPositionN
 const keepUnlabelled = swap(SELL_BUTTON, "keepLabel={journey ? t.journey.sellKeep : undefined}", "keepLabel={undefined}");
 const secondConfirm = swap(SELL_BUTTON, "{t.journey.sellClosedBody}",
   "{t.journey.sellClosedBody}<SellConfirmModal open={false} pending={false} stake={stake} value={value} onConfirm={submit} onCancel={submit} />");
-const saleForked = swap(SELL_BUTTON, "onClick={openConfirm} disabled={pending || lapsed}", "onClick={() => void cashOutPositionAction(new FormData())} disabled={pending || lapsed}");
+const saleForked = swap(SELL_BUTTON, "onClick={openConfirm} disabled={pending || lapsed || repricing}", "onClick={() => void cashOutPositionAction(new FormData())} disabled={pending || lapsed || repricing}");
 const freeFromStake = swap(SELL_BUTTON, FREE_FIGURE, FREE_FIGURE.replace("formatTzs(value)", "formatTzs(stake)"));
 const noTimer = swap(SELL_BUTTON, `<span role="timer"`, "<span");
 const noFreeLine = swap(SELL_BUTTON, FREE_LINE_OPEN, "{false ? (");
@@ -1023,12 +1031,17 @@ const freeWordByInstant = withFile(SELL_BUTTON, (s) => s.split(WORD_FREE).join("
 const refundAlways = swap(SELL_BUTTON, FREE_FIGURE_OPEN, "{true ? (");
 const freeLineByLabel = swap(SELL_BUTTON, FREE_LINE_OPEN, "{freeUntilLabel ? (");
 const timerBeforeCountdown = swap(SELL_BUTTON, TIMER_OPEN, FREE_FIGURE_OPEN);
-const lapseOffered = swap(SELL_BUTTON, "disabled={pending || lapsed}", "disabled={pending}");
+const lapseOffered = swap(SELL_BUTTON, "disabled={pending || lapsed || repricing}", "disabled={pending || repricing}");
 const lapseFigure = swap(SELL_BUTTON, FIGURE_OPEN, "{false ? null : (");
 const lapseWordless = swap(SELL_BUTTON, "lapsed ? t.common.loading : ", "");
 const lapseUnasked = swap(SELL_BUTTON, `${LAPSE_ASK[5]}${LF}    ${LAPSE_ASK[6]}`, LAPSE_ASK[5]);
 const lapseUnarmed = swap(SELL_BUTTON, LAPSE_ASK[4], "");
 const lapseConfirmOpen = swap(SELL_BUTTON, `${LAPSE_ASK[2]}${LF}    ${LAPSE_ASK[3]}`, LAPSE_ASK[2]);
+// S6 A8c — the moved price's one refresh, inside the refusal branch only, and the journey's look waiting on it
+const priceUnasked = swap(SELL_BUTTON, PRICE_ASK, "");
+const everyRefusalAsks = swap(SELL_BUTTON, PRICE_ASK, SALE[SALE_REFRESH]);
+const movedSaysSelling = swap(SELL_BUTTON, WORD_LAPSE, "{pending ? t.common.selling : lapsed ? t.common.loading : ");
+const movedKeepsFigure = swap(SELL_BUTTON, FIGURE_OPEN, "{lapsed ? null : (");
 const paidNoFee = swap(SELL_BUTTON, PAID_FIGURE[1], "");
 const paidZeroFee = swap(SELL_BUTTON, "{fee > 0 ? <>", "{true ? <>");
 const closedButton = swap(SELL_BUTTON, "{t.journey.sellClosedBody}", `{t.journey.sellClosedBody}<button type="button">x</button>`);
@@ -1124,6 +1137,10 @@ const plants: Plant[] = [
   { name: "a lapse never asks the server (the stale offer waits for the poller, up to 20 s)", expect: ["12.lapse"], world: lapseUnasked, landed: changed(lapseUnasked, SELL_BUTTON) },
   { name: "a lapse asks on every render of the page (an answer that is still free would set off another ask)", expect: ["12.lapse"], world: lapseUnarmed, landed: changed(lapseUnarmed, SELL_BUTTON) },
   { name: "a lapse leaves the confirm open on the free price", expect: ["12.lapse"], world: lapseConfirmOpen, landed: changed(lapseConfirmOpen, SELL_BUTTON) },
+  { name: "a sale refused because its price moved never asks the page for the new price (the button keeps the stale figure until the poller's next beat)", expect: ["12.sale", "12.lapse"], world: priceUnasked, landed: changed(priceUnasked, SELL_BUTTON) },
+  { name: "every refused sale asks the page to refresh, not only a moved price", expect: ["12.sale"], world: everyRefusalAsks, landed: changed(everyRefusalAsks, SELL_BUTTON) },
+  { name: "the journey's button says 'Inauza…' while a moved price waits for the server (under a result that says nothing was sold)", expect: ["12.lapse"], world: movedSaysSelling, landed: changed(movedSaysSelling, SELL_BUTTON) },
+  { name: "the journey's button keeps the refused figure while a moved price waits for the server", expect: ["12.lapse"], world: movedKeepsFigure, landed: changed(movedKeepsFigure, SELL_BUTTON) },
   { name: "a paid window's fee disappears from the journey's button", expect: ["12.paid"], world: paidNoFee, landed: changed(paidNoFee, SELL_BUTTON) },
   { name: "a price with no fee prints −0 ada", expect: ["12.paid"], world: paidZeroFee, landed: changed(paidZeroFee, SELL_BUTTON) },
   { name: "a shut exit draws a button", expect: ["12.closed"], world: closedButton, landed: changed(closedButton, SELL_BUTTON) },

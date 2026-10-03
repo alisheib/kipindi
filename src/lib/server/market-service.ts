@@ -3082,9 +3082,43 @@ export async function cashOutValue(
   return { value, ratio, gross, fee: cashOutFee, feeRate, inGracePeriod, sellable, reason };
 }
 
+/**
+ * ⭐ S6 A8c · THE FIGURE A SELLER CONFIRMED, AS THE SELL BUTTON SENDS IT. No field (`null` or `undefined`): no figure,
+ * and `cashOutPosition` checks nothing, as before. Otherwise only a plain non-negative whole number of shillings, written
+ * the way `String(value)` writes one, is read. Anything else — grouped ("3,600"), signed, decimal, empty, a word, past the
+ * safe integers, padded, with leading zeros, an exponent — is refused, so `cashOutPositionFromForm` turns the sale down
+ * before the money path and nothing moves. ⛔ A broken figure is never read as no figure: that would switch the check off
+ * for exactly the client that is broken. `test:sell-price-guard` §3 runs it.
+ */
+export function readExpectedSaleValue(raw: unknown): { ok: true; expectedValue?: number } | { ok: false } {
+  if (raw === null || raw === undefined) return { ok: true };
+  if (typeof raw !== "string" || raw === "") return { ok: false };
+  const n = Number(raw);
+  if (!Number.isSafeInteger(n) || n < 0 || String(n) !== raw) return { ok: false };
+  return { ok: true, expectedValue: n };
+}
+
+/**
+ * Cash out an OPEN position before resolution, at the price its exit window allows (`cashOutValue`).
+ *
+ * ⭐ S6 A8c · THE SELLER IS PAID EXACTLY THE FIGURE THEY CONFIRMED, OR NOTHING HAPPENS. `opts.expectedValue` is the net
+ * figure the Sell button's confirm showed (its `value`). When it is given, the sale goes ahead only if it equals, to the
+ * shilling, what this sale credits — `paid`, `cashOutValue`'s price under the conservation clamp — read under both locks,
+ * after every refusal that came before it and before the first write. Any difference, in either direction, is refused
+ * with `CONFLICT` and the server's own figures (`detail.value`, `detail.fee`): `price_changed` when the price moved,
+ * `cashout_pool_short` when the pool holds less than the price (no page could offer what that sale pays). Nothing has
+ * been written, so the lock's transaction commits nothing. A higher figure is refused too: the player confirmed a
+ * different sale. With no figure there is no check, exactly as before: the dev routes, every internal caller, and a page
+ * that was open when this shipped. Every earlier refusal keeps its place and its words, so a poll whose exit locks with
+ * its free window still answers `exit_window_closed`, whatever figure arrives. A page's sale reaches this through
+ * `cashOutPositionFromForm` (below), which records a refused price once this has returned. `test:cashout-price-guard`
+ * (both stores, with `red:cashout-price-guard`) and `test:sell-price-guard` (the check's text and place, with its
+ * in-process red) hold it.
+ */
 export async function cashOutPosition(
   userId: string,
   positionId: string,
+  opts: { expectedValue?: number } = {},
 ): Promise<ServiceResult<{ value: number; balance: number }>> {
   // Synchronous by design, same reason as buyPositionInner above: cash-out runs
   // under admission too, and Redis must never be able to slow a player's exit
@@ -3234,6 +3268,43 @@ export async function cashOutPosition(
     // whole debit comes from there. The clamp is belt-and-braces against a future
     // change breaking that invariant: pay the lesser rather than mint.
     const ownDebit = Math.min(ownPool, gross);
+    // Never credit more than actually left the pool.
+    const paid = Math.min(value, ownDebit);
+    // Whatever we removed but did not pay the player is ours. If the clamp above
+    // ever bit, the fee shrinks with it — the ledger group must still balance.
+    const houseFee = Math.max(0, ownDebit - paid);
+
+    // ── S6 A8c · THE FIGURE THE PLAYER CONFIRMED, OR NOTHING ─────────────────────────────────
+    // `paid` and `houseFee` are worked out here, before the first write, so the check below compares the player's
+    // figure with the very number the wallet is credited — never with `value`, the price, which the clamp above can
+    // cut. It sits after every refusal above, so a poll whose exit has locked still answers in its own words whatever
+    // figure arrives, and before the pool's debit, so a refusal leaves nothing behind in either store: nothing has been
+    // written, and the lock's transaction commits nothing. Strict both ways: a figure above `paid` is a different sale
+    // from the one the player confirmed, just as one below is. Nothing is audited or emitted in here, like every refusal
+    // above: `cashOutPositionFromForm` records a refused price once this function has returned, outside both locks.
+    if (opts.expectedValue !== undefined && opts.expectedValue !== paid) {
+      // A pool holding less than the price (`paid` below `value`: the clamp above bit — a broken invariant that should
+      // never happen). Every Sell button prices `cashOutValue`'s own figure, so no page would ever offer what this sale
+      // pays, and "the price changed" would send the player round a loop: the sale is unavailable, and the record the
+      // form's path writes carries both figures for whoever repairs the pool.
+      if (paid !== value) {
+        return {
+          ok: false as const,
+          error: "This sale is unavailable: the pool holds less than its price — nothing was sold. · Dau hili haliwezi kuuzwa sasa: bwawa lina kiasi kidogo kuliko bei yake — hakuna kilichouzwa.",
+          code: "CONFLICT" as const,
+          reason: "cashout_pool_short" as const,
+          detail: { value: paid, fee: houseFee },
+        };
+      }
+      return {
+        ok: false as const,
+        error: "The sell price changed after it was confirmed — nothing was sold. · Bei ya kuuza imebadilika baada ya kuthibitishwa — dau hili halijauzwa.",
+        code: "CONFLICT" as const,
+        reason: "price_changed" as const,
+        detail: { value: paid, fee: houseFee },
+      };
+    }
+
     // ATOMIC DELTA, not a read-modify-write. This is a genuine pool mutation on a
     // market that is still LIVE and still taking bets, so it cannot be a `stamp`
     // and it must not be a full-row `set`: writing back `m` would rewrite BOTH
@@ -3249,12 +3320,6 @@ export async function cashOutPosition(
     recordSnapshot(m.id, m.yesPool, m.noPool);
     // SSE: push updated odds after cash-out changes the pool
     emit("market:odds", { marketId: m.id, yesPct: impliedYesPct(m) });
-
-    // Never credit more than actually left the pool.
-    const paid = Math.min(value, ownDebit);
-    // Whatever we removed but did not pay the player is ours. If the clamp above
-    // ever bit, the fee shrinks with it — the ledger group must still balance.
-    const houseFee = Math.max(0, ownDebit - paid);
 
     // Mark the position closed.
     p.status = "CASHED_OUT";
@@ -3352,6 +3417,65 @@ export async function cashOutPosition(
     void emitWalletBalances([userId]);
     return { ok: true as const, data: { value: paid, balance: newBalance } };
     });
+  });
+}
+
+/**
+ * ⭐ S6 A8c · A SALE AS A PAGE'S REQUEST MAKES IT — the whole of `cashOutPositionAction` after its session check, kept here
+ * so both stores' suites run the very path a Sell button's request takes (`test:cashout-price-guard`) and the action stays
+ * one call (`test:sell-price-guard` §2). It reads the ticket and the figure the confirm showed from the form, through the
+ * one parser: no figure field, no figure and no check, as before A8c (a page open since before the deploy); a figure that
+ * is not a plain whole number is refused HERE, before the money path, with the generic line (`unknown_failure`), and
+ * nothing moves. Otherwise it is `cashOutPosition` with that figure.
+ *
+ * ⭐ A REFUSED PRICE IS RECORDED (VODACOM-PLAN §0h point 44): a moved price (`price_changed`), a short pool
+ * (`cashout_pool_short`) and a broken figure each write one `market.position.sell_refused` audit row — the reason, the
+ * figure sent and the server's figures — fire-and-forget, after `cashOutPosition` has returned, so outside both locks and
+ * never in the money's transaction. A broken figure first spends a cash-out token, so a client sending them in a loop
+ * meets the cash-out limit rather than writing rows without end. No other refusal is recorded: a shut exit, a settled
+ * market and the rest are the player's state, not a price the platform moved.
+ */
+export async function cashOutPositionFromForm(
+  userId: string,
+  form: { get(name: string): unknown },
+): Promise<ServiceResult<{ value: number; balance: number }>> {
+  const positionId = String(form.get("positionId") ?? "");
+  const raw = form.get("expectedValue");
+  const expected = readExpectedSaleValue(raw);
+  if (!expected.ok) {
+    // The token a sale spends, taken before the refusal is recorded.
+    const rl = rateCheck(userId, "bet.cashout");
+    if (!rl.allowed) return { ok: false, error: "Slow down.", code: "RATE_LIMITED", retryAfterSec: rl.retryAfterSec };
+    recordRefusedSale(userId, positionId, "unknown_failure", String(raw).slice(0, 32), undefined);
+    return {
+      ok: false,
+      error: "The sell request carried no readable price — nothing was sold. · Ombi la kuuza halikuwa na bei inayosomeka — hakuna kilichouzwa.",
+      code: "INVALID",
+      reason: "unknown_failure",
+    };
+  }
+  const r = await cashOutPosition(userId, positionId, { expectedValue: expected.expectedValue });
+  if (!r.ok && (r.reason === "price_changed" || r.reason === "cashout_pool_short")) {
+    recordRefusedSale(userId, positionId, r.reason, expected.expectedValue ?? null, r.detail);
+  }
+  return r;
+}
+
+/** One refused sale, recorded after the fact (S6 A8c). Never awaited, so the reply to the player waits on nothing. */
+function recordRefusedSale(
+  userId: string,
+  positionId: string,
+  reason: FailureReason,
+  expected: number | string | null,
+  detail: { value?: number; fee?: number } | undefined,
+): void {
+  void audit({
+    category: "BET",
+    action: "market.position.sell_refused",
+    actorId: userId,
+    targetType: "Position",
+    targetId: positionId || null,
+    payload: { reason, expected, value: detail?.value ?? null, fee: detail?.fee ?? null },
   });
 }
 

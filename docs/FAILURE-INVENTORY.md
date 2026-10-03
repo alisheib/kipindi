@@ -218,6 +218,8 @@ the way `tzsFigures` does today.
 | `market_settled` | INVALID | info | `:1918` |
 | `cashout_value_zero` | INVALID | **warning** | `:1976` |
 | `exit_window_closed` | INVALID | info | `:1970` — 🔴 product-specific copy, see §3.2 |
+| `price_changed` | CONFLICT | **warning** | S6 A8c (2026-10-03): inside both locks, after every row above and before the first write; `detail` carries `value` (what a sale pays now) and `fee`; recorded as `market.position.sell_refused` |
+| `cashout_pool_short` | CONFLICT | **error** | S6 A8c: the same check where the pool holds less than the sale's net price (the conservation clamp bites) — no page could offer what the sale pays, so it is unavailable and the player is sent to support; recorded with both figures |
 
 ### 2.3 · Wallet, KYC, auth, proposals, objections
 

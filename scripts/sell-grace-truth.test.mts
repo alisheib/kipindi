@@ -493,11 +493,16 @@ const LAPSE_EFFECT = [
 ].join("");
 const CLASSIC_HEAD = `const btnVariant = "btn-primary";`;
 const SHUT_NOW = "const shutNow = closedNow || (mounted && alreadyClosed === true);";
+/**
+ * ⭐ S6 A8c — and a price the server refused because it moved waits the same way, ahead of a sale in flight (`repricing`,
+ * set by that refusal and cleared when the refreshed page is drawn): nothing to press, 'Inapakia…' for its words and its
+ * spoken name, no figure — re-pinned in the open, each read a plant below removes.
+ */
 const CLASSIC_LAPSE = [
-  "disabled={pending || shutNow || lapsed}",
-  "aria-label={shutNow? t.common.sellLockedHint: lapsed? (pending ? t.common.selling : t.common.loading): inGrace?",
-  "{shutNow ? t.common.sellLocked: pending ? t.common.selling: lapsed ? t.common.loading: inGrace ? t.common.freeExitLabel: t.common.sellNow}",
-  "{!shutNow && !lapsed && (",
+  "disabled={pending || shutNow || lapsed || repricing}",
+  "aria-label={shutNow? t.common.sellLockedHint: repricing? t.common.loading: lapsed? (pending ? t.common.selling : t.common.loading): inGrace?",
+  "{shutNow ? t.common.sellLocked: repricing ? t.common.loading: pending ? t.common.selling: lapsed ? t.common.loading: inGrace ? t.common.freeExitLabel: t.common.sellNow}",
+  "{!shutNow && !lapsed && !repricing && (",
 ];
 
 function g3Button(W: World) {
@@ -590,8 +595,8 @@ function g3Button(W: World) {
   ok("3.label · the m:ss label reads the SAME countdown as the state: its minutes and seconds come from graceRemainMs, and from no clock of their own",
     fromCountdown(gMin) && fromCountdown(gSec) && gLabel.length === 1 && gLabel[0].includes("graceMin") && gLabel[0].includes("graceSec"),
     j({ gMin, gSec, gLabel }));
-  ok("3.render · the strip draws that label only while the state holds and the exit is not shut (S6 A8b: by the shut verdict today's button reads, shutNow), and the button's free label reads the same state",
-    code.includes("{inGrace && !shutNow && (") && code.includes("{graceLabel}") && code.includes(": inGrace ? t.common.freeExitLabel"));
+  ok("3.render · the strip draws that label only while the state holds and the exit is not shut (S6 A8b: by the shut verdict today's button reads, shutNow), nor while a price the server refused because it moved waits for the server (S6 A8c, repricing), and the button's free label reads the same state",
+    code.includes("{inGrace && !shutNow && !repricing && (") && code.includes("{graceLabel}") && code.includes(": inGrace ? t.common.freeExitLabel"));
   // ⭐ S6 WP10 · THE JOURNEY'S FREE OFFER is that countdown, narrowed by the server's own pricing — never the instant
   // alone, never the fee, never a clock of its own. Offered while the page priced the exit free and the countdown runs
   // (or has not yet run: the server's paint); lapsed the moment it has run out, so a default poll's locked exit and a paid
@@ -1151,9 +1156,9 @@ const PLANTS: Plant[] = [
     world: (w) => inFile(w, SELL_BUTTON, MOUNT_EFFECT, "useEffect(() => { setTimeout(() => setMounted(true), 5_000); }, []);") },
   // §3 — S6 A8b: today's look withdraws a lapsed free price too, and draws the server's shut verdict from its first commit
   { name: "today's button can still be pressed over a lapsed free price", expect: ["3.classic"],
-    world: (w) => inFile(w, SELL_BUTTON, "disabled={pending || shutNow || lapsed}", "disabled={pending || shutNow}") },
+    world: (w) => inFile(w, SELL_BUTTON, "disabled={pending || shutNow || lapsed || repricing}", "disabled={pending || shutNow || repricing}") },
   { name: "today's button keeps the stale figure while it waits for the server", expect: ["3.classic"],
-    world: (w) => inFile(w, SELL_BUTTON, "{!shutNow && !lapsed && (", "{!shutNow && (") },
+    world: (w) => inFile(w, SELL_BUTTON, "{!shutNow && !lapsed && !repricing && (", "{!shutNow && !repricing && (") },
   { name: "today's button says 'Uza sasa' over a lapsed free price (nothing says it is waiting)", expect: ["3.classic"],
     world: (w) => inFile(w, SELL_BUTTON, `            : lapsed ? t.common.loading${NL}`, "") },
   { name: "today's button names the stale figure to a screen reader while it waits", expect: ["3.classic"],
@@ -1173,7 +1178,12 @@ const PLANTS: Plant[] = [
   { name: "today's button draws the server's shut verdict before the page has started (the markup it is served moves)", expect: ["3.classic"],
     world: (w) => inFile(w, SELL_BUTTON, SHUT_NOW, "const shutNow = closedNow || alreadyClosed === true;") },
   { name: "today's free strip reads the phone's clock alone (it outlives the server's shut verdict for a render)", expect: ["3.render", "3.classic"],
-    world: (w) => inFile(w, SELL_BUTTON, "{inGrace && !shutNow && (", "{inGrace && !closedNow && (") },
+    world: (w) => inFile(w, SELL_BUTTON, "{inGrace && !shutNow && !repricing && (", "{inGrace && !closedNow && !repricing && (") },
+  // §3 — S6 A8c: a price the server refused because it moved waits the same way, ahead of a sale in flight
+  { name: "today's button says 'Inauza…' while a moved price waits for the server (under a result that says nothing was sold)", expect: ["3.classic"],
+    world: (w) => inFile(w, SELL_BUTTON, `            : repricing ? t.common.loading${NL}`, "") },
+  { name: "today's free strip keeps counting down over a price the server refused because it moved", expect: ["3.render"],
+    world: (w) => inFile(w, SELL_BUTTON, "{inGrace && !shutNow && !repricing && (", "{inGrace && !shutNow && (") },
   // §2 — S6 A8b: every host hands the free-price flag, from cashOutValue's own verdict
   { name: "the question page stops telling its Sell button whether the price is the free window's (a lapsed free price is offered until the next refresh)", expect: ["2.priced"],
     world: (w) => inFile(w, MARKET, "pricedFree={positionPricedFree.get(p.id) === true}", "") },

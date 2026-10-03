@@ -110,6 +110,18 @@ export type FailureReason =
   | "market_settled"
   | "cashout_value_zero"
   | "exit_window_closed"
+  /**
+   * S6 A8c · the sale's price moved after the player confirmed it — a free window ending as they tapped, on a poll with a
+   * paid window — so the server refused rather than pay a figure the player never saw. `detail.value` is what a sale pays
+   * NOW and `detail.fee` its fee; the sentence names the new figure, and the refreshed Sell button prints it.
+   */
+  | "price_changed"
+  /**
+   * S6 A8c · the pool holds less than the sale's net price (the conservation clamp bites — a broken invariant that should
+   * never happen), so no page can show what a sale would pay: refused as unavailable and the player sent to support, with
+   * both figures in the page's record of the refusal (`market.position.sell_refused`). `detail` is the server's figures.
+   */
+  | "cashout_pool_short"
   /** Sanctioned change (b)/(c): an idempotency key that belongs to another account's bet, or a request
    *  carrying a reserved prefix. ⛔ The house seam's own refusals are NOT player reasons and never live in
    *  this client-bundled file (C4 ruling 148, D19): they are `HouseSeamReason` in `house-bot/bet-path.ts`. */
@@ -251,7 +263,7 @@ export interface ReasonSpec {
   /** The dictionary key under `t.fail`. */
   key: string;
   /** Figures this reason's copy interpolates. Declared so the guard can check them. */
-  needs?: readonly ("min" | "max" | "balance" | "needed" | "retryAfterSec" | "until" | "remaining" | "net" | "last4" | "limitMin" | "playedMin")[];
+  needs?: readonly ("min" | "max" | "balance" | "needed" | "retryAfterSec" | "until" | "remaining" | "net" | "last4" | "limitMin" | "playedMin" | "value")[];
 }
 
 /**
@@ -299,6 +311,10 @@ export const REASONS: Record<FailureReason, ReasonSpec> = {
   market_settled:       { severity: "info",    channel: "toast",  key: "failMarketSettled" },
   cashout_value_zero:   { severity: "warning", channel: "toast",  key: "failCashoutValueZero" },
   exit_window_closed:   { severity: "info",    channel: "toast",  key: "failExitWindowClosed" },
+  // S6 A8c · a WARNING: the player can sell again at once, at the price named, and their money did not move.
+  price_changed:        { severity: "warning", channel: "toast",  key: "failPriceChanged", needs: ["value"] },
+  // S6 A8c · an ERROR: a fault of ours the player cannot fix — a pool short of the price; the sentence sends them to support.
+  cashout_pool_short:   { severity: "error",   channel: "toast",  key: "failCashoutPoolShort" },
 
   // A request id that belongs to another bet: nothing moved, the player can retry → warning.
   idempotency_key_conflict:         { severity: "warning", channel: "toast", key: "failIdempotencyKeyConflict" },
@@ -552,6 +568,10 @@ export interface FailureDetail {
   limitMin?: number;
   /** `E-235` · how long this play session has actually run, in minutes. */
   playedMin?: number;
+  /** S6 A8c · what a cash-out pays NOW, after its fee — the server's figure, named when the price a seller confirmed has moved. */
+  value?: number;
+  /** S6 A8c · that sale's fee, beside it. Carried for the record and the tests; the refreshed Sell button prints the fee itself. */
+  fee?: number;
   /** Server-only (house seam): WHICH cap a refusal hit (a `CapCode` in `house-bot/constants.ts`). */
   cap?: string;
   /** Server-only (house seam): WHICH conflict a refusal names (a `ConflictCode`). */
@@ -644,6 +664,8 @@ export function renderFailure(
     // session limit reads as a stake. `E-235`.
     limitMin: d.limitMin != null ? String(d.limitMin) : "—",
     playedMin: d.playedMin != null ? String(d.playedMin) : "—",
+    // S6 A8c · money again: the new price of a sale whose price moved (`price_changed`).
+    value: d.value != null ? money(d.value) : "—",
   };
   // 🔴 A GLOBAL SUBSTITUTION, AND IT HAS TO BE. This was a chain of `String.replace(str, …)`
   // calls, and `replace` with a STRING pattern substitutes only the FIRST occurrence — so

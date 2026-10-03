@@ -232,3 +232,18 @@ in "Existing words the S4 panel found wrong" is correct Swahili and says what th
   yakichapishwa."; "Onyesha maswali yote"; the break notice and "Mapumziko hadi 8 Okt"; "Kamisheni ya hadi 10% ya bwawa
   lote hutolewa kabla washindi hawajalipwa."; "≈ zaidi ya 100× dau lako"; "Raundi hii imefungwa"; "Tuma msimbo";
   "Thibitisha barua pepe yako ili uweke pesa"; "Bado utapungukiwa na TZS 1,000 kwa dau lako."; "Salio lako · —".
+
+**4. S6 A8c (2026-10-03, revised 2026-10-04) — two live keys, approved as written:** `error.failPriceChanged` · "Bei
+imebadilika kuwa {value}. Dau lako halijauzwa — unaweza kuliuza kwa bei mpya." — *bei* (class 9) takes "imebadilika
+kuwa" for "changed to"; *dau* is class 5 throughout: *lako*, *halijauzwa* (negative perfect, "has not been sold") and
+*kuliuza*, whose object marker *-li-* is the bet's. ⚠️ *Bei* is the word the A8c brief names among the house's for a
+sale's price; it is NOT an existing Sell phrase — the dictionary's other *bei mpya* is Up & Down's new asset reading
+("Bado hakuna bei mpya."), the confirm prints its figure under *Utapokea*, the quote line says *kiasi*, and
+`failCashoutValueZero` says *thamani ya kuuza*. It is kept because the sentence is read beside the refreshed button that
+prints the very price it names; "kwa bei mpya" is plain Swahili for "at the new price". And `error.failCashoutPoolShort` ·
+"Kuna hitilafu upande wetu, hivyo dau hili haliwezi kuuzwa sasa. Wasiliana na msaada." — the platform's own "hitilafu
+upande wetu" (`failSystemError`) and "Wasiliana na msaada" (`failAccountBlocked`); *dau hili haliwezi kuuzwa*, class 5.
+Both ship with A8c, live strings for every player, and not with S12, because they are new sentences rather than
+corrections to ones players see today. Chinese for the same keys: "价格已变为 {value}。您的投注未卖出——您可以按新价格卖出。" and
+"我们这边出现错误，您的投注暂时无法卖出。请联系客服。" — formal 您, and 卖出, the failure registry's word for sell; the second takes the
+platform's own 我们这边出现错误 and 请联系客服.

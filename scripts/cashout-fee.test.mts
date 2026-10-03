@@ -34,6 +34,8 @@ import { createMarket, buyPosition, cashOutPosition, cashOutValue, getMarket, re
 import { positionStore } from "../src/lib/server/market-dal.ts";
 import { setGlobalConfig, getGlobalConfig, settledPayoutWhole } from "../src/lib/server/market-config.ts";
 import { DEFAULT_CASHOUT_FEE_RATE } from "../src/lib/payout.ts";
+// S6 A8c — the price guard's cases, run here in memory (predeploy); test:cashout-price-guard runs the same list on both stores.
+import { runPriceGuardCases } from "./lib/cashout-price-guard-cases.mts";
 
 import "./lib/verified-fixtures.mts";
 /** Backdate a position's placedAt so it is past the free-exit grace window. */
@@ -307,5 +309,12 @@ await fundedUser("usr_co_b");
   await setGlobalConfig({ paidExitWindowMinutes: 15 }, "officer_test"); // restore for any later blocks
 }
 
+// ── S6 A8c · A SALE IS PAID THE FIGURE THE PLAYER CONFIRMED, OR NOTHING HAPPENS ─────────────────────────────────────
+// The same cases `test:cashout-price-guard` runs on the memory store and on Postgres. Each case freezes its own rates on its
+// own poll (`rateOverrides`), so the config this suite set above reaches none of them.
+await runPriceGuardCases(ok);
+
 console.log(`\ncashout-fee: ${pass} passed, ${fail} failed`);
-if (fail > 0) process.exit(1);
+// An explicit exit either way: the price guard's cases load the store and the event bus, and a passing run must not
+// wait on a handle it does not own.
+process.exit(fail > 0 ? 1 : 0);

@@ -1,8 +1,10 @@
 /**
- * Runs one house-bot case file twice — on a fresh scratch Postgres database and on the memory store —
+ * Runs one case file twice — on a fresh scratch Postgres database and on the memory store —
  * each in its own child process (the stores choose their backend at import). Every two-store house suite runs through
  * it: `test:house-bot-money`, `test:house-bot-caps`, `test:house-bot-designation`, `test:house-bot-engine`,
- * `test:house-bot-comms`, `test:house-bot-info-edge` and `test:house-bot-reports` (C5-SPEC ruling 176).
+ * `test:house-bot-comms`, `test:house-bot-info-edge`, `test:house-bot-reports`, `test:house-bot-console` and
+ * `test:house-bot-ops` (C5-SPEC ruling 176) — and one suite that is not the house's: `test:cashout-price-guard`
+ * (Vodacom plan S6, A8c), the sale's price guard every player meets.
  *
  * ⛔ NO POSTGRES IS A FAILURE, NOT A SKIP: without `VERIFY_DATABASE_URL` (set by `db-scratch --run`) the
  * Postgres half is NOT MEASURED and the suite exits 3. Only a loopback cluster is accepted.

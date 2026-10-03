@@ -214,11 +214,11 @@ WP6b the swap + census + header-fit → WP7 overlays → WP8 short titles on pos
   the next session reads `scratchpad/s6/testall-a8b.log` (session 0cb4430f) or re-runs `test:all`, and confirms the
   deploy (`?dpl=`) and the served bundle.
 - **⏸ S6 STOPPED HERE (2026-10-03) — resume:** WP0–WP11 are pushed behind the flag, WP6c, WP9 and WP10 included
-  (their bullets below, each with what was verified and what is still owed). Next: **A8b**, a live fix for every player —
-  the classic Sell button stays honest when the free window lapses (today it can say "no fee" for up to 20 s after the
-  server starts charging one) and its label fits at 320 in Swahili (it overflows by 7px) — drafted and reviewed by a
-  workflow into `s6/A8b.json`; then **A8c**, the server refusing a sale whose price changed since the player saw it (a
-  money-path change, under the four transaction rules); then WP12 (S6-PLAN.md).
+  (their bullets below, each with what was verified and what is still owed). Next: **A8c**, a live fix for every player,
+  drafted and reviewed by a workflow into `s6/A8c.json` on top of **A8b** (committed as `2d0f56e7`; its bullet lists what
+  it still owes): the server sells only at the figure the player confirmed, and otherwise refuses — a money-path change,
+  under the four transaction rules. A8c owes its battery, its red twins and its drives before its own commit (its bullet
+  below); then WP12 (S6-PLAN.md).
 - **Found and fixed on the way (2026-10-03):** the S3b funnel panel painted "house stakes" on `/admin/insights` (owner
   ruling D19 keeps house words off admin surfaces outside the house console) — `test:house-bot-surfaces`, red since
   2026-10-01 and carried on the baseline list as another lane's, is green; three red twins had gone blind for reasons
@@ -634,13 +634,90 @@ WP6b the swap + census + header-fit → WP7 overlays → WP8 short titles on pos
   difference `sell-narrow-phone` (the free note's class string, 8 of 8 Sell cells), with a synthetic P.5s. **Served bytes
   for a classic viewer:** two classes on the free note's span (computed styles equal from 360), `pricedFree` in each
   Sell button's RSC props, one `xs` rule in the stylesheet, the lapse and `shutNow` in the Sell button's client code.
-  **Owed:** the battery, the red twins, the parity `--prove-red` and `--compare`, and the drives — a free ticket lapsing
-  on both hosts ("Inapakia…", then "Kuuza kumefungwa" with nothing bright between, one refresh), with its confirm open
-  and with a sale in flight; a legacy paid window; the page's clock jumped forward after load (the ask, a still-free
-  answer that re-arms it, no second ask); Back to `/positions` and to a question page after a detour through `/help`
-  that crosses a ticket's free-window end; tiles at 320, 390 and 1280 in sw, en and zh on both hosts. ⚠️ Not fixed
+  **Verified 2026-10-04 and LIVE `1be05fbf` (22:32 UTC):** the gates (the §0i baseline's reds only, each failing on
+  the same checks); `red:timer-date` and `red:feedback-law` alone; parity `--prove-red` 69/69 and `--compare` 35/35 on
+  a fresh server (`sell-narrow-phone` in 8 of 8 Sell cells, nothing else); the lapse drive
+  (`scratchpad/s6/a8b-drive/lapse-drive.mjs`, a 3-minute free window, with a paid window and without): at 0:00 every
+  ticket draws "Inapakia…" (disabled, no figure), then the server's answer within about a second — "Uza sasa · TZS
+  3,240 −360 ada" or "Kuuza kumefungwa" — never "−0 ada", one ask per button; a sale in flight keeps "Inauza…" and
+  its confirm and shows the server's result; a confirm open at 0:00 closes with no sale; a page clock jumped past the
+  window asks once per button and re-arms; Back after the window offers the stale free price for 20.2 s (§0h point 37
+  (a): its fix is A8e); tiles at 320, 360, 390 and 1280 in sw, en and zh on both hosts — every `/positions` row on one
+  line inside its button, the holder block measured for A8d; the battery 433/451, every red on the baseline list;
+  production read back (`?dpl=`, the `xs:inline` rule served, no journey chrome in a classic first load). ⚠️ Not fixed
   here, and the next step for today's button: the holder block's own overflow, which the v2 baseline already measures
   (§0h point 37 (h)).
+- **A8c — the server sells only at the figure the player confirmed (drafted 2026-10-03 on top of A8b, revised 2026-10-04
+  after its review; its own commit, for every player, not flagged).** The Sell button's `submit()` — the one sale both
+  looks share — sends the figure its confirm showed (`value`, as `expectedValue`, written `String(value)`), and
+  `cashOutPositionAction` is now one call, `cashOutPositionFromForm` (market-service), so both stores' suites run the
+  very path a page's request takes. It reads the figure through `readExpectedSaleValue`: no field, no check (the dev
+  routes, every internal caller, a page open since before the deploy); a figure that is not a plain whole number is
+  refused there, before the money path, with the generic "Hitilafu imetokea. Jaribu tena." (`unknown_failure`). Then
+  `cashOutPosition` sells only if the figure equals, to the shilling, what the sale would credit — `paid`,
+  `cashOutValue`'s price under the conservation clamp, read under both locks and compared before the first write. Any
+  difference, either way, is refused with `CONFLICT` and the server's figures in `detail` (`value`, what a sale pays now,
+  and its `fee`), and nothing is written: no pool, wallet, position, transaction, ledger line, wagering reversal, chart
+  point or odds push. Two refusals: `price_changed` when the price moved, and `cashout_pool_short` when the pool holds
+  less than the sale's net price (the clamp bites — a broken pool, which should never happen): every Sell button prices
+  `cashOutValue`'s own figure, so no page could ever offer what that sale would pay, and "the price changed" would send
+  the player round a loop — so it says "Kuna hitilafu upande wetu, hivyo dau hili haliwezi kuuzwa sasa. Wasiliana na
+  msaada." Every refusal that came before keeps its place and its words, so a poll whose exit locks with its free window
+  (every current poll) still answers "Muda wa kuuza dau hili umefungwa" whatever figure arrives. A moved price, a short
+  pool and a broken figure each write one `market.position.sell_refused` audit row (the reason, the figure sent, the
+  server's figures) from `cashOutPositionFromForm`, fire-and-forget, once `cashOutPosition` has returned — outside both
+  locks — so a broken pool, or a host handing the button a wrong figure, is seen in the audit and not only by the player;
+  a broken figure spends a cash-out token first, so a client in a loop meets the cash-out limit. What it closes: on a
+  legacy poll with a paid window, a sale confirmed at the free price a moment before 0:00 — the countdown running late,
+  a page brought back by Back or Forward, the confirm's last frame (§0h point 37 (a) and (f)) — was paid stake − fee
+  after a screen that said "no fee"; now it is refused, the toast (the calm `factual` one, with no error buzz) and the
+  result say "Bei imebadilika kuwa TZS 9,000. Dau lako halijauzwa — unaweza kuliuza kwa bei mpya.", the page asks the
+  server once, and until the new price is drawn both looks say "Inapakia…" with no figure — never "Inauza…" under a
+  result that says nothing was sold — so one more tap sells at it (§0h points 38 to 44). Why nothing moves on a refusal:
+  between the lock and the check there are five reads (the position twice, the market, the wallet, `cashOutValue`), the
+  second lock, refusals and arithmetic, and no write — so on Postgres the lock's transaction has run only its two
+  advisory locks and commits nothing, and on the memory store no object read under the lock has been touched. Gates:
+  `test:sell-price-guard` (new, in predeploy, 42 checks: the check's text, place and two refusals, the statements before
+  it, each reason's one emitter; the action's one call, the form's parser, refusal, hand-off and record; the client's one
+  figure, calm toast, one refresh and wait; the three hosts' `value` binding; the sentences in three languages) and its
+  in-process red `red:sell-price-guard` (46 plants); `test:cashout-price-guard` (new, both stores through db-scratch: the
+  moved price, a figure one shilling above and one below, no figure, a current poll past its window, a short pool, the
+  service failing closed, six broken figures through the page's path, two sales at once, the refusal records — every
+  "nothing moved" paired with a sale that moves the same observable in the same run — and the trial balance on
+  Postgres) with its own red `red:cashout-price-guard` (new, declared anchors: nine defects planted into the real
+  service, each required to redden its own case on the memory store); the same cases in memory inside `test:cashout`;
+  `test:journey-tickets` §12 and `test:sell-grace-truth` §3 re-pinned in the open (the page refresh written twice in
+  `submit` and three times in the file; both looks' wait), their plants re-anchored and six new ones (four in §12, two
+  in §3); `test:failure-reasons`' figure fixture gains `value` (its two §10 reds, the agent apply toast, are the
+  baseline's and stay as they were); `test:house-bot-reports` 0.232.2 and its controls re-pinned in the open (the seven
+  positioned `db.txn.create(` sites — red on the A8b tree since three earlier commits on this branch moved them, and
+  moved again by A8c; that pin's note splits the moves by commit). **Served bytes for a classic viewer:** no markup,
+  text, prop or CSS change (`repricing` is false on the server's paint); the client code of the Sell button (one more
+  form field, the calm toast, the wait, one guarded refresh), the dictionary (two sentences in each of three languages)
+  and the failure registry (two rows) is rebuilt, so the pages' script tags and the RSC payload's client references
+  name the rebuilt chunks, as any client change does; the server action reads its form through
+  `cashOutPositionFromForm`. **Owed:** the battery, compared red by red with the same run on the A8b tree (`2d0f56e7`),
+  never with a remembered list; `red:sell-price-guard`, `red:journey-tickets` and `red:sell-grace-truth`, then — after
+  the commit, because it refuses a target that differs from HEAD — `red:cashout-price-guard`; `test:cashout-price-guard`
+  on the scratch cluster (its floor, 62 on memory and 65 on Postgres, is the count it makes by construction until a run
+  prints it); `red:all -- --skip results-filter,header-fit --timeout 900`, detached and never piped, compared red by red
+  with the same run on the A8b tree; and the drives — on both hosts, a legacy paid-window ticket confirmed at its free
+  price across 0:00 (refused with the new figure, the button "Inapakia…" until the new price is drawn — one page refresh
+  asked by the refusal, and A8b's own as well when the countdown ran out while the sale was in flight — then sold at
+  it), a current poll the same way (`exit_window_closed`, unchanged), and hand-built requests posting `expectedValue`
+  "3,600" and "" against a sellable ticket (each refused with the generic line; the wallet balance, both pools, the
+  position's status, final payout and settled time, and the ticket's CASHOUT rows read before and after, all unchanged;
+  one `market.position.sell_refused` row each); tiles of the refusal's toast, result and waiting button at 320, 390 and
+  1280 in sw, en and zh. **Found on the way, for later (not changed here):** `cashOutPosition` records the chart point,
+  pushes the odds, notifies, emails, audits and pushes the wallet balance inside both locks, which the four transaction
+  rules put after the outer lock. That is safe today only because none of the function's writes takes the lock's
+  transaction — each commits on its own, deliberately (see `reverseWageringLocked`'s note) — so every announcement
+  describes money that has already moved. The same fact means the exit is not one money transaction: the pool's debit,
+  the position, the wagering reversal, the credit and the transaction can each land without the next, and the cash-out
+  ledger group is posted after the credit without being awaited. Whoever threads the exit's writes into the lock's
+  transaction must move those six calls after the outer lock in the same change. And today's Sell button still paints
+  every other refusal with the red `danger` toast whatever the registry's severity (an `info` shut exit included) and
+  opens the ✗ result for each, and A8b's in-flight lapse still reads "Inauza…" until its own refresh is drawn.
 
 ## §0h · Points for Ali — taken while he was away (2026-10-01 →)
 
@@ -877,6 +954,76 @@ here, with how to overrule it. Newest last; nothing here blocks the work.
     seconds the countdown runs late, or for up to one poll after Back or Forward, an old paid-window question can show
     "no fee" and charge one. Overrule: say which comes first; otherwise (h) next, measured first (the default
     language's question page overflows at the most common phone widths), then (a), then (d).
+    Since A8c (§0i; points 38 to 44), the money half of (a) and the last frame of (f) are closed: a sale confirmed at a
+    figure the server no longer pays is refused and the new price named, so a screen that said "no fee" is never followed
+    by a fee; what (a) still leaves is the stale free offer itself, for those seconds.
+38. **A sale is paid the figure the player confirmed, or nothing happens (S6 A8c, for every player).** The Sell button
+    sends the net figure its confirm showed — its `value`, the figure under "Utapokea" in the confirm — as
+    `expectedValue`, written `String(value)` (a plain whole number, never formatted), from `submit()`, the one sale both
+    looks share, so one line serves both. The three hosts hand the button `cashOutValue`'s own price, and
+    `test:sell-price-guard` 4.hosts pins each binding: since A8c a wrong one would refuse every sale on that host.
+    Overrule: say so, and it sends another figure (the stake, or the fee beside the price); point 39's comparison moves
+    with it.
+39. **The comparison is strict, in both directions, against what the sale credits.** The server sells only if the figure
+    equals, to the shilling, `paid` — `cashOutValue`'s price under the conservation clamp, the very number the wallet is
+    credited — read under both locks before the first write. A figure above it is refused as well as one below: the
+    player confirmed a different sale. The clamp changes `paid` only where a pool holds less than the sale's NET price (a
+    broken pool, which should never happen); a pool below the stake but not below the net price still sells at the
+    confirmed figure, and the house's fee shrinks by the shortfall, as before A8c. Where it does change `paid`, the page's
+    price can never equal it, so that refusal is `cashout_pool_short` (point 41), not a price change. Before A8c that
+    sale paid the smaller figure after a confirm that showed the larger, and called the difference an early-exit fee.
+    Overrule: say so, and only a figure below is refused.
+40. **The check sits after every refusal that existed, inside both locks, before the first write.** So a poll whose exit
+    locks with its free window still answers "Muda wa kuuza dau hili umefungwa", word for word, whatever figure arrives —
+    A8c changes no answer that existed — and nothing is written before it: a refusal commits nothing in either store.
+    Overrule: say so, and it moves earlier (a shut exit would then be told its price changed, which is not why it is
+    refused).
+41. **Two refusals, both `CONFLICT`, with the server's figures in `detail` (`value`, what a sale pays now, and `fee`).**
+    `price_changed` (new): the price moved — a warning (the player can sell again at once, and their money did not
+    move), shown as a toast. Its sentence names the new figure: "Bei imebadilika kuwa TZS 9,000. Dau lako halijauzwa —
+    unaweza kuliuza kwa bei mpya." (en "The price changed to TZS 9,000. Your bet was not sold — you can sell it at the
+    new price.", zh "价格已变为 TZS 9,000。您的投注未卖出——您可以按新价格卖出。"); the fee is printed by the refreshed button, as for any paid
+    price. `cashout_pool_short` (new, ⚠️ a departure from the one reason first decided): the pool holds less than the
+    sale's net price, so no page could ever show what the sale would pay, and "you can sell it at the new price" would
+    be false — the player would tap, be refused, see the same figure, and tap again into the cash-out limit. It is an
+    error (a fault of ours the player cannot fix) and says "Kuna hitilafu upande wetu, hivyo dau hili haliwezi kuuzwa
+    sasa. Wasiliana na msaada." (en "Something went wrong at our end, so this bet can’t be sold now. Contact support.",
+    zh "我们这边出现错误，您的投注暂时无法卖出。请联系客服。"); its record (point 44) carries both figures for whoever repairs the pool. Both
+    Swahili sentences are signed off in `S4-COPY-AUDIT.md` ("Swahili review" 4). Overrule: say which part — the fee
+    named in the sentence too; or the short pool told its price changed, as first decided (the pages would then have to
+    price the clamp themselves, which also turns their free and fee words false in that state).
+42. **No figure, no check; a broken figure, no sale.** A request without `expectedValue` sells exactly as before: the dev
+    routes, every internal caller, and a page that was open when A8c deployed (its code sends no figure). A request whose
+    figure is not a plain whole number is refused before the money path — by `cashOutPositionFromForm`, now the whole of
+    `cashOutPositionAction` after its session check, so both stores' suites run it — with the platform's generic
+    "Hitilafu imetokea. Jaribu tena." (`unknown_failure`, code `INVALID`), honest because nothing happened, and is never
+    read as no figure: a client sending a broken figure is a bug to see, not a reason to sell without the check.
+    Overrule: say so, and either a missing figure is refused too (once no page from before A8c can be open) or a broken
+    one is treated as missing.
+43. **What the player sees when the price moved.** The confirm closes, as for every refusal. The toast ("Imeshindikana
+    kutoa" over the sentence in point 41) is the calm `factual` one — no red, no error buzz — as `DESIGN_AUTHORITY.md`
+    §F3 gives a refusal the player can fix; the result opens with the same sentence as its title. ⚠️ That result is a
+    departure from §F2, which gives such a refusal no popup: it stays because the confirm the player was reading has just
+    closed and the new figure must be read before the next tap, and because today's Sell button opens it for every
+    refusal. The page then asks the server once — the refusal's own refresh; when the countdown ran out while the sale
+    was in flight, A8b's refresh at 0:00 runs as well, so a drive sees two then and one otherwise — and until the
+    refreshed page is drawn both looks say "Inapakia…" with no figure and nothing to press: never "Inauza…" under a result
+    that says nothing was sold (the refresh starts inside the sale's transition, so its pending state outlasts the
+    answer). Then the button draws the new price and one more tap sells at it. A short pool keeps today's red toast (an
+    error) and asks nothing. Overrule: say so (a confirm that reopens itself at the new price was not built: a money
+    confirm should never open on its own; and the other refusals' toasts keep `danger` whatever their severity — routing
+    them all by the registry, as the bet card does, is its own change, for every refusal).
+44. **A refused price is recorded, outside the locks.** `cashOutPositionFromForm` writes one `market.position.sell_refused`
+    audit row (category `BET`, the player as actor, the ticket as target; the reason, the figure sent, the server's
+    `value` and `fee`) for a moved price, a short pool and a broken figure — fire-and-forget, once `cashOutPosition` has
+    returned, so nothing is written, audited or emitted inside the locks and the reply to the player waits on nothing. A
+    broken figure spends a cash-out token first, so a client sending them in a loop meets the cash-out limit rather than
+    writing rows without end. No other refusal is recorded: a shut exit, a settled market and the rest are the player's
+    state, not a price the platform moved. Why: before A8c a short pool showed in the sale's own audit row
+    (`quotedValueBeforeClamp`); a refused sale writes no such row, so without this a broken pool, or a host handing the
+    button a wrong figure, would be seen only by the player. The cost, named: the row also appears in the player's own
+    activity list (`/profile/account`), filed under "Madau". Overrule: say so, and refusals are not recorded at all (the
+    other option first left open), or only the short pool is.
 
 
 ## §0g · S4 (2026-10-01) — the Design canvas: all eleven items drawn, the panel's findings applied; waiting on Ali

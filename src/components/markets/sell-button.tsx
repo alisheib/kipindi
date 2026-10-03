@@ -42,6 +42,16 @@
  * it already says "Hakuna ada"), so its free row fits a 320px phone on /positions in every language; its label keeps one
  * line at every width. `test:sell-grace-truth` holds every host to the flag (2.priced), the withdrawal and the shut
  * verdict (3.classic), and the fit (§5).
+ *
+ * ⭐ THE SALE CARRIES THE FIGURE THE PLAYER CONFIRMED (S6 A8c, for every player). `submit()` — the one sale both looks share —
+ * sends `value`, the figure the confirm showed, as `expectedValue`, and the server sells at exactly that figure or not at
+ * all. If the price has moved since this button drew it (a free window ending a moment before the tap, on a poll with a
+ * paid window), the server refuses with its new figure (`price_changed`) and nothing moves: the toast — the calm
+ * `factual` one, as a refusal one tap fixes is — and the result name the new price, the page is asked once for it, and
+ * until it is drawn both looks say "Inapakia…" with no figure (`repricing`), so the next tap sells at it. A pool short of
+ * the price (`cashout_pool_short`) is refused as unavailable, with today's red toast and no refresh: no page could show
+ * what that sale would pay. `test:sell-price-guard` §4 holds the figure sent, the toast, the one refresh and the wait;
+ * `test:journey-tickets` §12 and `test:sell-grace-truth` §3 count them beside the lapse.
  */
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
@@ -210,6 +220,15 @@ export function SellButton({
   // refuses a repeat arriving from any surface that never armed the ref.
   const inFlight = useRef(false);
 
+  // ⭐ S6 A8c · WAITING FOR THE SERVER'S NEW PRICE. When a sale is refused because its price moved after this button drew
+  // it, the page is asked once for the server's figure (in `submit`), and until that answer has been drawn the button
+  // offers nothing: in either look it says "Inapakia…", draws no figure and has nothing to press. Without this it would
+  // read "Inauza…" under a result that says nothing was sold, beside the refused figure: the page's refresh starts inside
+  // the sale's transition, so `pending` stays true until the refreshed page is drawn. The wait ends exactly then, when
+  // `pending` falls. It is false on the server's paint, so no served byte changes.
+  const [repricing, setRepricing] = useState(false);
+  useEffect(() => { if (!pending) setRepricing(false); }, [pending]);
+
   const submit = () => {
     if (inFlight.current || pending) return;
     inFlight.current = true;
@@ -217,6 +236,9 @@ export function SellButton({
       try {
         const fd = new FormData();
         fd.set("positionId", positionId);
+        // ⭐ S6 A8c — the figure this player confirmed, exactly as the confirm printed it, as a plain whole number: the
+        // server sells at that figure or not at all. Both looks sell through here.
+        fd.set("expectedValue", String(value));
         // A throw here was as silent as it was on the bet path (see conviction-dial):
         // the rejection escaped the transition, the confirm dialog dismissed itself, and
         // no toast, modal or error state ever mounted — leaving the player unsure whether
@@ -240,9 +262,16 @@ export function SellButton({
           // B-7 — the refusal is rendered as toast body AND modal title, so it must
           // be the localized line, never the raw service string.
           const msg = errorCopy(t, r);
-          toast({ title: t.toast.couldntCashOut, description: msg, variant: "danger" });
+          // ⭐ S6 A8c — a price that moved after this button drew it (`price_changed`): the sentence names the server's new
+          // figure (the refusal's `detail`, never the figure this button held). It is a refusal one more tap fixes, and the
+          // player's money did not move, so its toast is the calm `factual` one with no error buzz (DESIGN_AUTHORITY §F3);
+          // every other refusal keeps today's. The page is then asked once for the server's price, as a sale asks, and the
+          // button waits on it (`repricing`), so the next tap sells at it.
+          const moved = r.reason === "price_changed";
+          toast({ title: t.toast.couldntCashOut, description: msg, variant: moved ? "factual" : "danger" });
           setResultData({ variant: "danger", value: value, net, error: msg });
           setResultOpen(true);
+          if (moved) { setRepricing(true); window.dispatchEvent(new Event("50pick:refresh")); }
           return;
         }
         const realisedValue = r.data!.value;
@@ -357,6 +386,8 @@ export function SellButton({
   // edge is the kit's token for a control's edge, the canvas's own colour: an outlined button's edge is its only
   // boundary, so it is held to the floor a money control's edge is held to (DESIGN_AUTHORITY's accessibility floor).
   // ⛔ Nothing in the look formats a time or computes money.
+  // ⭐ S6 A8c — a price the server refused because it moved is withdrawn the same way until the refreshed page brings the
+  // server's price (`repricing`): "Inapakia…" ahead of "Inauza…", no figure, no free line, nothing to press.
   if (journey) {
     // The dictionary marks where the clock time and the amount sit, so each is drawn in its own element.
     const [freeBefore, freeAfter] = t.journey.sellFreeUntil.split("{time}");
@@ -377,7 +408,7 @@ export function SellButton({
           </p>
         ) : (
           <div className="space-y-1.5">
-            {offerFree && freeUntilLabel ? (
+            {offerFree && freeUntilLabel && !repricing ? (
               <p className="text-body-sm text-text-muted">
                 {freeBefore}<time dateTime={freeUntil ?? undefined} className="whitespace-nowrap tabular-nums">{freeUntilLabel}</time>{freeAfter}
                 {inGrace ? (
@@ -388,12 +419,12 @@ export function SellButton({
                 ) : null}
               </p>
             ) : null}
-            <button type="button" onClick={openConfirm} disabled={pending || lapsed} className="btn btn-ghost w-full px-2 py-1.5" style={{ borderColor: "var(--border-control)" }}>
+            <button type="button" onClick={openConfirm} disabled={pending || lapsed || repricing} className="btn btn-ghost w-full px-2 py-1.5" style={{ borderColor: "var(--border-control)" }}>
               <span className="flex flex-col items-center text-center">
                 <span className="whitespace-normal text-body">
-                  {pending ? t.common.selling : lapsed ? t.common.loading : offerFree ? t.journey.sellFreeCta : t.common.sellNow}
+                  {repricing ? t.common.loading : pending ? t.common.selling : lapsed ? t.common.loading : offerFree ? t.journey.sellFreeCta : t.common.sellNow}
                 </span>
-                {lapsed ? null : (
+                {lapsed || repricing ? null : (
                   <span className="whitespace-normal text-body-sm font-medium text-text-muted">
                     {offerFree ? (
                       <>{refundBefore}<span className="amount font-semibold text-text">{formatTzs(value)}</span>{refundAfter}</>
@@ -419,6 +450,8 @@ export function SellButton({
   // out its free note (the strip above already says "Hakuna ada"), so the free row fits a 320px phone on /positions in
   // every language. Its label keeps one line at every width, as today: let it wrap and, in the question page's narrower
   // holder block, Chinese would stack one glyph a line, taller than the button.
+  // ⭐ S6 A8c — a price the server refused because it moved (`repricing`, above) is withdrawn the same way, strip and all:
+  // "Inapakia…" ahead of "Inauza…", no figure, nothing to press, until the refreshed page brings the server's price.
   const btnVariant = "btn-primary";
   // Shut: this phone's clock (`closedNow`), and — from the first commit — the server's verdict as it arrives, so a
   // refresh that brings `alreadyClosed` is drawn shut in that very render, never as one pressable "Uza sasa · TZS 0
@@ -428,7 +461,7 @@ export function SellButton({
 
   return (
     <>
-      {inGrace && !shutNow && (
+      {inGrace && !shutNow && !repricing && (
         <div className="mb-1.5 flex items-center gap-1.5 px-2 py-1 rounded-md bg-brand-500/[0.12] border border-brand-500/30">
           <span className="font-mono text-micro font-bold text-brand-300 uppercase tracking-[0.12em]">{t.common.freeExitLabel}</span>
           <span className="font-mono text-[10px] text-brand-300 tabular-nums">{graceLabel}</span>
@@ -438,10 +471,12 @@ export function SellButton({
       <button
         type="button"
         onClick={shutNow ? undefined : openConfirm}
-        disabled={pending || shutNow || lapsed}
+        disabled={pending || shutNow || lapsed || repricing}
         aria-label={
           shutNow
             ? t.common.sellLockedHint
+            : repricing
+            ? t.common.loading
             : lapsed
             ? (pending ? t.common.selling : t.common.loading)
             : inGrace
@@ -458,12 +493,13 @@ export function SellButton({
       >
         <span>
           {shutNow ? t.common.sellLocked
+            : repricing ? t.common.loading
             : pending ? t.common.selling
             : lapsed ? t.common.loading
             : inGrace ? t.common.freeExitLabel
             : t.common.sellNow}
         </span>
-        {!shutNow && !lapsed && (
+        {!shutNow && !lapsed && !repricing && (
           <span className="font-mono tabular-nums">
             TZS {formatNumber(value)}
             {inGrace

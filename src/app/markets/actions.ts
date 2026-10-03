@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { currentSession } from "@/lib/server/auth-service";
-import { buyPosition, cashOutPosition, resolveMarket, emergencyVoidMarket, adminReopenMarket, createMarket, listPositionsForUser, type CreateMarketInput, type Side, recategoriseMarket, MARKET_CATEGORIES } from "@/lib/server/market-service";
+import { buyPosition, cashOutPositionFromForm, resolveMarket, emergencyVoidMarket, adminReopenMarket, createMarket, listPositionsForUser, type CreateMarketInput, type Side, recategoriseMarket, MARKET_CATEGORIES } from "@/lib/server/market-service";
 import { addComment, reportComment, deleteComment, restoreComment, type CommentSide } from "@/lib/server/comments-store";
 import { isSourceTrusted, seedDefaultSources } from "@/lib/server/source-registry";
 import { db, type ObjectionReason } from "@/lib/server/store";
@@ -123,8 +123,11 @@ export async function buyPositionAction(formData: FormData) {
 export async function cashOutPositionAction(formData: FormData) {
   const session = await currentSession();
   if (!session) redirect("/auth/login");
-  const positionId = String(formData.get("positionId") ?? "");
-  const r = await cashOutPosition(session.userId, positionId);
+  // ⭐ S6 A8c — the sale as the Sell button's form asks for it: the ticket and the figure its confirm showed, read and
+  // checked by `cashOutPositionFromForm` (market-service), which both stores' suites run as this very path. A broken
+  // figure is refused there before the money path; a refused price is recorded there once the money path has returned.
+  // `test:sell-price-guard` §2.
+  const r = await cashOutPositionFromForm(session.userId, formData);
   if (r.ok) {
     revalidatePath("/positions");
     revalidatePath("/wallet");

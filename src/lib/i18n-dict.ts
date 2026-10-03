@@ -2434,6 +2434,11 @@ export const dict = {
       failMarketSettled: "This market has settled. Your bet is final.",
       failCashoutValueZero: "There’s nothing on the other side yet, so this bet has no sell value.",
       failExitWindowClosed: "The window to sell this bet has closed — it now rides to the result.",
+      // S6 A8c · a sale refused because its price moved after the player confirmed it. {value} is the server's NEW figure
+      // (`detail.value`), never the one the button held; nothing was sold, and the page refreshes to that price.
+      failPriceChanged: "The price changed to {value}. Your bet was not sold — you can sell it at the new price.",
+      // S6 A8c · a sale refused because the pool holds less than its price — a fault of ours the player cannot fix.
+      failCashoutPoolShort: "Something went wrong at our end, so this bet can’t be sold now. Contact support.",
       // Sanctioned change (b)/(c): a request id that belongs to a different bet. sw/zh are drafted and marked
       // for native review; English is binding.
       failIdempotencyKeyConflict: "This request was already used for a different bet, so nothing was placed. Refresh the page and try again.",
@@ -4865,6 +4870,9 @@ export const dict = {
       failMarketSettled: "Soko hili limelipwa. Dau lako ni la mwisho.",
       failCashoutValueZero: "Bado hakuna dau upande wa pili, hivyo dau hili halina thamani ya kuuza.",
       failExitWindowClosed: "Muda wa kuuza dau hili umefungwa — sasa litaenda hadi matokeo.",
+      // S6 A8c — Claude's Swahili review (S4-COPY-AUDIT, Swahili review 4): dau in class 5 (lako, halijauzwa, kuliuza; hili, haliwezi).
+      failPriceChanged: "Bei imebadilika kuwa {value}. Dau lako halijauzwa — unaweza kuliuza kwa bei mpya.",
+      failCashoutPoolShort: "Kuna hitilafu upande wetu, hivyo dau hili haliwezi kuuzwa sasa. Wasiliana na msaada.",
       // A request id that belongs to a different bet — drafted, marked for native review.
       failIdempotencyKeyConflict: "Ombi hili tayari limetumika kwa dau tofauti, kwa hivyo hakuna kilichowekwa. Pakia upya ukurasa kisha jaribu tena.",
       failBonusWageringOneSide: "Dau hili halitahesabiwa kwenye bonasi yako. Tayari una fedha upande wa pili wa soko hili, na upande mmoja tu ndio unaohesabiwa kwenye {remaining} unayohitaji kuweka kabla ya bonasi yako kutolewa.",
@@ -7190,6 +7198,8 @@ export const dict = {
       failMarketSettled: "此市场已结算，您的投注为最终结果。",
       failCashoutValueZero: "另一方尚无资金，因此此投注没有卖出价值。",
       failExitWindowClosed: "此投注的卖出窗口已关闭——将持至结果。",
+      failPriceChanged: "价格已变为 {value}。您的投注未卖出——您可以按新价格卖出。",
+      failCashoutPoolShort: "我们这边出现错误，您的投注暂时无法卖出。请联系客服。",
       // A request id that belongs to a different bet — drafted, marked for native review.
       failIdempotencyKeyConflict: "该请求已用于另一笔投注，因此未下注。请刷新页面后重试。",
       failBonusWageringOneSide: "此注不计入您的奖金要求。您在本市场的另一方已有资金，仅一方计入您提取奖金前仍需投注的 {remaining}。",

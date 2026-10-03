@@ -1611,6 +1611,41 @@ synthetic P.5s. No word of the dictionary changes. Records: VODACOM-PLAN §0i (A
 Back/Forward case A8b's withdrawal cannot see, (f) what A8b closes and the server paint it keeps, and (h) the holder
 block's overflow, which the v2 baseline already measures at 360 — the next step for today's button, measured first.
 
+*As built (A8c, drafted 2026-10-03 on top of A8b, revised 2026-10-04 after its review — its own commit, for every player):*
+the server sells only at the figure the player confirmed. SellButton's `submit()` sets `fd.set("expectedValue",
+String(value))` beside the position, so both looks send it. `cashOutPositionAction` is one call after its session check,
+`cashOutPositionFromForm(userId, form)` (market-service), which reads the figure once through `readExpectedSaleValue` (no
+field → no figure; anything but a plain non-negative safe integer, written as `String` writes one → a cash-out token
+spent, the refusal recorded, and `INVALID` / `unknown_failure` returned before the money path) and hands `{ expectedValue
+}` to `cashOutPosition(userId, positionId, opts = {})`. There `paid` and `houseFee` move up from after the pool's debit to
+just after `ownDebit` (the same expressions and comments), and the check `opts.expectedValue !== undefined &&
+opts.expectedValue !== paid` returns `CONFLICT` with `detail: { value: paid, fee: houseFee }` — `cashout_pool_short` when
+`paid !== value` (the pool holds less than the price, so no page could offer what the sale pays), else `price_changed` —
+after every refusal that existed, before `marketStore.addToPool`, the first write; the statements before it are five
+reads, the second lock, refusals and arithmetic. Back in `cashOutPositionFromForm`, once `cashOutPosition` has returned, a
+moved price or a short pool (and, above, a broken figure) is recorded as one fire-and-forget `market.position.sell_refused`
+audit row through `recordRefusedSale`. The registry gains two rows (`price_changed`: warning, toast, `failPriceChanged`,
+needs `value`; `cashout_pool_short`: error, toast, `failCashoutPoolShort`), `FailureDetail` gains `value` and `fee`,
+`renderFailure` interpolates `{value}` through the surface's money formatter, and the dictionary gains both keys in en, sw
+and zh. On `price_changed` the button's refusal branch toasts `factual` instead of `danger`, and after the result sets
+`repricing` and dispatches `50pick:refresh` once; `repricing` (cleared when `pending` falls, so once the refreshed page is
+drawn) puts "Inapakia…" ahead of "Inauza…" and withdraws the figure, the free strip or line and the press in both looks.
+Pinned in the open: `test:sell-price-guard` (42 checks, in predeploy) with `red:sell-price-guard` (46 in-process plants:
+the check removed, moved after the debit or before the locks, one-way either way, against the price instead of `paid`;
+a write or an assignment before it; the refusal audited, naming the price, or under another code; the short-pool branch
+dropped or testing the fee; a second emitter; the action reading the form itself again; the form's path ignoring a broken
+figure, spending no token on it, dropping the figure, recording no refused price, or recording every refusal; three
+defective parsers; the client sending `formatTzs(value)`, the net or nothing; the moved price asking no refresh, every
+refusal asking one, the moved price toasted as an alarm, today's button saying "Inauza…" or the journey's keeping its
+figure while it waits, the wait never ending; five host bindings; the sentences missing or figureless, the rows made loud,
+figureless or fixable; the suite out of predeploy; `test:cashout` no longer running the cases);
+`test:cashout-price-guard` (both stores, 62 and 65 assertions by construction) with `red:cashout-price-guard` (nine
+declared anchors planted into the real service, the memory child) and the same cases inside `test:cashout`;
+`test:journey-tickets` §12's sale, lapse and default pins and `test:sell-grace-truth` §3's classic and render pins
+re-derived (the page refresh twice in `submit`, three times in the file; both looks' wait), with six new plants;
+`test:failure-reasons`' figure fixture gains `value`; `test:house-bot-reports` 0.232.2 and its controls re-pinned.
+Records: VODACOM-PLAN §0i (A8c) and §0h points 37 (what A8c closes) and 38 to 44.
+
 **A9 · G9 — the route census is a reachability graph.** Roots: the journey tabs, the header, the sheets,
 `hubRowsFor(viewer)`, the footer. Edges: decommented hrefs per page file. A BFS per viewer kind (guest, player, held,
 agent in standing, staff, proposals disabled, invite closed) asserts classic ⊆ journey reachability. Plants: an orphan
