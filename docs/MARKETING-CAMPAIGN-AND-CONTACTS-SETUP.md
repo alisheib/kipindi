@@ -467,6 +467,13 @@ erasure now withdraws the consent and empties the book, and both data exports ca
   drive 12/12, contacts 483, composer 198, staff + invites 24; next build. Older reds seen, other lanes': stacking z=11
   in globals.css (Vodacom S6 WP11, cb4e8c95), tap-target (datetime-range-filter, reports/generate-button),
   eyebrow-roles (the OG image route), decomment 24 > 20, red-anchors 2, type-scale 749/239.
+✅ STEP 27b · BATCH 6 ROUND 3 — LIVE (`b236f422`, live 2026-10-03 17:54:08 UTC). The second review's seven MINORs:
+  a comma or letter typed at a refused dot keeps the hold ("9500.,00" → 9500); a pasted comma before the last one or
+  two digits is a decimal mark ("9 500,00" → 9500); "Tsh. 9,500" keeps 9500; the affiliate editor's boxes are plain
+  whole-number kit boxes ("5000.50" → 5000); a stray "." in an EMPTY box no longer traps digits (the deposit form);
+  a tap ends the hold; two pins tightened. numeric 98 judges each with a plant; the money drive 15/15 (the deposit
+  box at 390 included); red:player-invite-unpaid left the affiliate file byte-identical. Owed (§A7): a typed comma
+  decimal, a decimal box's Chinese full stop, DurationInput's "1.5".
 📘 THE ADMIN GUIDE (PDF) — Ali, 2026-10-03: "include screenshots on which pages the admin should go for each step". Every
   step shows the page the admin opens for it (and the menu path to it); none is a step without its page. ✅ v1 BUILT
   2026-10-03 on the live code (batches 1–6): `docs/guides/50pick-admin-guide-contacts-and-sms-campaigns.pdf` — 23 pages,
@@ -477,8 +484,7 @@ erasure now withdraws the consent and empties the book, and both data exports ca
   working"): six read-only auditors over every admin input → 49 fixes (6 blocker, 7 major, 36 minor) in 8 batches with
   disjoint files and one shared validator per kind of field. Batch 1 = STEP 23, batch 2 = STEP 24, batches 5 + 8 =
   STEP 25, batches 3 + 4 = STEP 26, batch 6 = STEP 27 (all LIVE; 4 dropped its private phone detector for the book's
-  `phoneNumberIn`; 6 closed the live 100× balance-adjust defect). Batch 6's follow-up round (its second review's 7
-  MINOR) is in build; batch 7 (the contacts screens, 17 fixes) is in build and follows.
+  `phoneNumberIn`; 6 closed the live 100× balance-adjust defect). Batch 6's follow-up round is LIVE (STEP 27b); batch 7 (the contacts screens, 17 fixes) is in build and follows.
   Owed from the reviews: the opt-out token mint keys on the gate's own key before U42/U43 (`optout-service.ts`);
   DurationInput's typed "1.5" (DESIGN_AUTHORITY §A7); the Android clipboard chip on a real phone (a drive, no suite
   can); a negation-only search ("-zzz") is described as "Name contains" (batch 7).
