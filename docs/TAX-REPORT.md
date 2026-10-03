@@ -10,6 +10,7 @@
 
 | | |
 |---|---|
+| Live | 🟢 **LIVE 2026-10-03, `d1b82f9a`** on https://50pick.tz/admin/tax (deploy read back from `?dpl=`; the export route answers an anonymous request with 401) |
 | Page | `/admin/tax` — Money → **Tax report** in the sidebar |
 | Who sees it | Owner (ADMIN), Finance, Compliance, Auditor — accounting VIEW (`roles.ts` `ROUTE_DOMAINS`) |
 | Who locks a period | Finance or the Owner (accounting ACT). The Owner alone (the stored ADMIN role) reopens one, records new rates, or locks a period out of balance — including one product while the whole book behind it is out |
