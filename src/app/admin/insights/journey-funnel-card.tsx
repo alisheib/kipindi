@@ -68,7 +68,7 @@ export async function JourneyFunnelCard({ days, campaign }: { days: number; camp
       <p className="text-body-sm leading-relaxed text-text-subtle">
         The Vodacom plan&apos;s measures, {r.fromDay} to {r.toDay}{" "}(East Africa days). The old journey is counted from
         2026-10-01 so the new one can be compared with at least 14 days of it; the new journey&apos;s column fills from its
-        launch. Staff, previews, automation and house stakes are not counted.
+        launch. Staff, previews and anything automated are not counted.
       </p>
       {r.campaigns.length > 0 && (
         <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-body-sm text-text-subtle">
