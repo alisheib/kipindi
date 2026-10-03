@@ -437,6 +437,13 @@ action, and "the remaining fault is entirely inside their platform". Both were o
 
 - **TZS 6 per delivered SMS** (GSM7, one segment, Tigo Tz — portal Out SMS "Price" for the first send).
 - The account opened with TZS 250 → **about 40 messages**. Production login traffic needs a top-up.
+- ✅ **Topped up — read 2026-10-03 09:39 UTC through the free balance read: TZS 600,190** (account "OCEAN ENTERTAINMENT
+  LTD"), about 100,000 one-segment messages. At Ali's request, ONE operational test SMS (no offer, no link — not
+  marketing) went to +255 772 619 619 (Jaykishnan Kaba) through the platform's own `sms-blackball.ts` with production's
+  credentials (`railway run`): accepted ("Successfully submitted 1 message(s) to broker."), sender `50pick`, GSM7, 69
+  characters, reference `50pick-test-mus79qtq-jk-once`; the balance read straight after said **TZS 600,184 — TZS 6**,
+  the price measured again. It was sent from a script, not the app, so no `SmsMessage` row exists for it and its
+  delivery receipt reaches the app as an unknown reference; the recipient's word is its delivery proof.
 - UCS2 and long messages bill per segment (unconfirmed with the vendor — §8).
 - ⚠️ **Billing is per DELIVERED message, not per accepted one** — the evidence is live step 3 (Status, above): one
   good number and one unroutable number were *"accepted whole"* and only TZS 6 was charged. One observation, so it is

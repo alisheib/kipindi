@@ -370,6 +370,32 @@ erasure now withdraws the consent and empties the book, and both data exports ca
   ⚠️ RECORDED, NOT THIS LANE'S: `test:house-bot-reports` (not in predeploy) fails 7 line-pinned checks 0.232.* — the
   positioned-write sites in market-service.ts moved under today's cash-out fix (`2bb881e0`), and 0.232.4 fails in both
   store twins; the house-bot lane owns those pins.
+✅ STEP 22 · §25 + U38a LIVE (`bd097333`, live 2026-10-03 10:19:29 UTC) — critical-path steps 2 and 3a. §25: the four bulk keyed reads
+  in both twins (`marketingContact.msisdnsPresent` keys only and NULL-safe on the erasure mark, `user.findByPhones` with
+  the avatar omitted, `suppression.findActiveAmong` on `liftedAt: null`, `messagingConsent.latestAmong` in the ledger's
+  own `createdAt desc, id desc`), duplicates folded, more than 2,000 keys REFUSED (never truncated), an empty set asked
+  nothing; plus `user.playerWalk`, §21's keyset read for the player arm (PLAYER role and +255 numbers only, key-only).
+  U38a: ONE resolver gains a `population` axis (book · players · both) — the same filter type, parser, key and describer;
+  a book-only axis beside a population refused by name; the book's own doors refuse a population; ONE walk (the book by
+  id, then players by id; cursor `b:` · `p:` · `done`, a digits-only id refused; a number in the book walked once, by its
+  book row; tombstones, staff and non-+255 numbers never walked); `campaignAudienceCount` is the population U40 fences and
+  U42 enqueues (X9); `audience-split.ts` asks the REAL gate about every number with only its three reads batched — counts
+  counted, never derived; protected standing ONE line; past the 10 s budget the rest `unchecked`; one split per filter
+  key and at most 2 per process; a sample of five in walk order, no per-row detail for a masked viewer; nothing written.
+  X25 (D19): the campaign audience refuses ticked `ids` for every role and any `q` for a masked viewer. consent.ts gains
+  a defaulted, frozen `reads`; the rg-doors line is byte-identical and the send loop still calls the gate with one
+  argument. X24 REVERSED (decided 2026-10-02): U38a lands before U33a; book contacts read "not receiving" until then.
+  ⚖️ The builder commissioned its own adversarial review (6 findings: a posted population read as a generic failure,
+  ticked ids accepted at the campaign door, an overstated cost claim, no timeout on a split slot, reassignable read
+  wiring, a store snapshot that recorded nested Maps as {}) — five fixed with plants, the slot timeout documented for
+  U52 to size. Checked (focused): typecheck; `test:campaign-audience` with `red:campaign-audience` 24/24; `test:dal-parity` with `red:dal-parity` 140/140; the resolver and gate suites (contacts-audience, marketing-consent, rg-doors and contacts-bulk with their reds; filter-language, erasure, the contacts and campaign suites); `bulk-reads-pg-probe` 9/9 — its check 7 FOUND that Prisma reads a nested `OR: []` as no condition (an empty prefix list walked every player on Postgres; the memory twin walked none), fixed before the push with dal-parity pinning the early answer; the build, again after the rebase onto main `679acf72`.
+  ⏳ OWED, recorded: U38b passes "campaign" to `parseContactAudienceJson` (composer-loader.ts, campaign-draft.ts) and
+  uses `campaignAudienceCount` — until then a stored population reads "unreadable", the safe state; a masked viewer can
+  still narrow the figures to one person through a tag, a list, an import or a very narrow window — a minimum audience
+  size is U38b/U40's decision; U30 passes `excludeSourceRef: null` wherever tombstones count (X22); the RG, identity
+  and harm reads are still one player at a time inside the gate (bounded by the budget and the 2-split limit) — U52
+  measures them; AGENT accounts are not walked (PLAYER only, X9); `test:orphans` (not in predeploy) lists the unkeyed
+  probe, like U24's and U36's.
 ⚖️ VERIFICATION POLICY — Ali, 2026-10-02: "checks that are already 100% functional — no need to go over them again;
   focus on what has to be checked." Binding from U36's push on:
   · PROVEN STAYS PROVEN. A ✅ unit, and a 🔵 unit whose suite, red, drive and review are green and whose only open
@@ -399,6 +425,36 @@ erasure now withdraws the consent and empties the book, and both data exports ca
     `test:kyc-copy-truth` §2 — the privacy page's Swahili journey-counts line (Vodacom S3b `ad43b996`, not this
     lane); and `qa:live` / `test:admin-section-gate` never ran (no dev server). Before the one full run: capture
     rc=$? first, start a dev server for the browser checks (or log them NOT RUN), print a failure count.
+⚖️ DELEGATED BY ALI, 2026-10-03 ("all other you tick them, instead of me"; each step approved by him manually):
+  · OQ8 — opt-out by LINK alone for now (replying STOP waits for a Blackball reply number, U46b).
+  · G9 — the price is TZS 6 per SMS until our own sends measure it (measured twice: 2026-09-16 and 2026-10-03).
+  · G3 — credit topped up (TZS 600,184); the FIRST campaign's spending cap is TZS 10,000 (~1,600 SMS) — U40 writes
+    it as budgetTzs; Ali may raise it.
+  · G1 — Claude opens `marketing.sms.live` ONLY for each test send and closes it straight after.
+  · G7 — Jay Kaba (+255 772 619 619) is ALREADY an admin, so the first campaign SMS goes to him through the
+    composer's test send WITH JAY SIGNED IN AS HIMSELF (the test reaches the signed-in officer's own number only); if
+    the gate refuses his account it names the remedy (tick "send me offers by SMS" on his own profile — his own
+    consent). Claude opens the switch for that one test and closes it after. ⛔ Claude never signs in as Jay or Ali.
+  · ⚖️ SCOPE REVERSED BY ALI (2026-10-03): "we won't be sending just to 50pick members — it's a marketing campaign, so
+    it would be sent to anyone with a phone." The PLAYERS-ONLY first release (2026-10-02) is withdrawn: the CONTACT
+    BOOK is in the first release. U33a (the gate's contact branch and the consent writer) and U33b (the consent-basis
+    panel and bulk record-consent) join the critical path before G2, with G4 (Ali approves the four consent-basis
+    wordings and the 18+ sentence — drafted in U33a-catalog, OD50). ⛔ A contact still receives NOTHING without a
+    recorded basis and an 18+ attestation — the legal floor the gate holds. The bulk FILE import (U30–U32) follows the
+    first campaign; small lists go in through the live add form (U22) and bulk record-consent (U33b).
+  · ⚖️ OD57 (Ali, 2026-10-03, twice): the campaigns are made to ATTRACT NEW CLIENTS to 50pick under 50pick's Gaming
+    Board of Tanzania licence — "remove any rules that prevent us from sending messages to non-50pick people; we got a
+    licence that allows us to send to anyone." DECIDED: a NON-MEMBER needs NO prior consent of their own. U33a's contact
+    branch admits a contact on a recorded BASIS — the person's consent, OR "acquisition outreach under 50pick's GBT
+    licence", recorded per list (U33b) and never written as a consent the person did not give. KEPT, each because it
+    protects 50pick: a stop honoured for ever (carriers block senders that ignore opt-outs); self-excluded people never
+    (a GBT licence condition); adults only, attested per list (the licence bars marketing to minors); the "50pick"
+    opening and the opt-out link in every SMS (ETA s.32); the 08:00–20:00 window and the frequency cap. A 50pick PLAYER
+    keeps their OWN choice — they were asked, and a player who did not say yes is not messaged. Recorded once: the GBT
+    licence covers gambling advertising, while SMS to non-customers also falls under the communications and data rules
+    (TCRA, PDPA) — the basis is Ali's ruling and is recorded as his.
+  · ⛔ NOT done by Claude: ticking Ali's OWN consent (his personal legal record) and re-enabling admin 2-step login
+    (it would lock Ali out unless his authenticator is enrolled — waits for "my authenticator works").
 🔎 WHAT STILL HAS TO BE CHECKED — and nothing else is re-checked:
   1. The production look, in ONE sitting with a production GROWTH staff login (G7): Growth → Contacts (U17, U20–U23,
      U34a) and Growth → SMS campaigns (U36) render for that role, and a FINANCE login does not see them. A look, not a
@@ -410,22 +466,26 @@ erasure now withdraws the consent and empties the book, and both data exports ca
   ⚠️ STILL ALI'S, in the order the path needs them: G7 one production GROWTH staff login with its 2-step code
   (never his own); his own account ticks the NEW "send me offers by SMS" box and has a date of birth and a phone (the
   gate has no bypass — an old "product updates" tick is refused); G1 a yes to test sends to his own phone (~TZS 6
-  each); G3 a credit top-up and the most the first campaign may spend (login codes share the credit); G9 (optional)
+  each); G3 the most the first campaign may spend — the credit is TOPPED UP (TZS 600,184 on 2026-10-03, read after
+  one operational test SMS proved the rail end to end — BLACKBALL-SMS §5; login codes share it); G9 (optional)
   a price of TZS 6 per SMS in settings until our sends measure it; OQ8 is opt-out by link alone acceptable for now
   (replying STOP needs a Blackball reply number); production `/api/health` reports `adminTotp: DISABLED` — turn the
   admin 2-step login back on before the first campaign; G2 the go-ahead, with the Swahili message (it starts with
   "50pick", at most 80 characters) and the day. G4 (the consent wordings) is needed only for contact import.
-▶ NEXT: step 2 of the critical path — §25 the four bulk keyed reads — then U38 the audience:
+▶ NEXT: U33a — the contact branch under OD57 (non-members on a recorded basis; ⚖️ DELEGATED below) — and U38b the
+  audience card, then U33b and U40 the confirmation. (The players-only release below is WITHDRAWN by OD57.)
   ⚖️ DECIDED 2026-10-02 (S10, on a read-only census of all 35 unfinished units — Ali asked what is left, whether the
   plan is that big, and why it costs so much): THE FIRST RELEASE IS PLAYERS-ONLY. The contact-file import (U30–U34,
   U33's contact branch) moves AFTER the first campaign: book contacts cannot be messaged before G4/G5 anyway, and
   today's gate refuses every contact-only number (consent.ts), which is the safe state. Ali can reverse this in a word.
   THE CRITICAL PATH to G2, in order — about 140 focused hours:
     1. ✅ U37b the composer — write, save, the test send to the officer's own phone (LIVE, STEP 21; switch CLOSED).
-    2. §25 the four bulk keyed reads in both twins (taken out of U30: msisdnsPresent, findByPhones, findActiveAmong,
+    2. ✅ §25 the four bulk keyed reads in both twins (LIVE, STEP 22; taken out of U30: msisdnsPresent, findByPhones, findActiveAmong,
        latestAmong) — U38a's count asks the gate about every player through them.
-    3. U38 the audience — the player arm, ONE walk, the will-receive split, the card (U38a + U38b). X24 is reversed on
+    3. U38 the audience — ✅ U38a LIVE (STEP 22: the player arm, ONE walk, the will-receive split); U38b the card NEXT. X24 is reversed on
        purpose: U38a goes before U33a, and U33a later re-threads its read accounting (~2.5 h).
+   3b. U33a + U33b — THE CONTACT BOOK IN THE FIRST RELEASE (OD57): the gate's contact branch on a recorded basis (consent,
+       or acquisition outreach under the GBT licence) with 18+ attested per list, and the basis panel + bulk record.
     4. U40 the confirmation — the typed count against a server recount, scope and spend frozen, budgetTzs written.
     5. U41 — RECORD THE DECISION ONLY: U40's typed confirmation is the authorisation (Ali's single-admin ruling;
        `test:two-admin` asserts there is no two-officer lock). The two-officer toggle waits until Ali asks for one.
@@ -896,7 +956,7 @@ a Guard key that resolves to a script on disk, `yes` plus the backticked `red:` 
 | U35 | data | ✅ | S10 | bfc37a74 | campaigns had a purpose (U35a `0dc25b98`, live) and nowhere to live → two tables in both twins behind ONE rule set: a draft saved by compare-and-set, a confirmation frozen in one conditional move, recipients deduped on (campaign, number), links never copies, no stored counter — 92 migrations proven from empty | `test:dal-parity` · `test:campaign-models` | yes — `red:campaign-models` 32/32 (in-process) · `red:dal-parity` §26 | campaign models. LIVE 2026-10-02 06:05:54 UTC — production serves `df839f30` and its deploy log applied `20261002120000_sms_campaign_models` (after a first build failed on a Google-font fetch and was rebuilt from source). |
 | U36 | visual | 🔵 | S10 | 06c21ac4 | /admin/campaigns did not exist → the campaign list behind six doors (nav item "SMS campaigns", ROUTE_KEYS, ROUTE_DOMAINS growth, the section gate, loading.tsx, the page gate), the status rail over the WHOLE table, server-counted progress (HELD outstanding), the nav badge only for a growth viewer | `test:campaigns-page` · `test:admin-nav` · `test:rbac` · `test:dal-parity` §26 | yes — `red:campaigns-page` (in-process) · `red:rbac` 4/4 · `red:dal-parity` §26 | list + badge. Pushed and serving (`db4a11a7`, §0 STEP 20) — its live check needs an admin session on production (G7 / G11). |
 | U37 | visual | 🔵 | S10 | fb6cca81 | /admin/campaigns/new did not exist → the composer: one Message card with a worst-case counter per language, the save re-validated on the server (its own segments, compare-and-set, OD55 in every field), and the test send to the officer's own number only, through the one gate and behind the closed live switch | `test:campaign-compose` | yes — `red:campaign-compose` (in-process) · `red:campaign-models` | composer. U37a `0dc25b98` + U37b (§0 STEP 21). Pushed and serving — its live check needs an admin session on production (G7 / G11), and its first real test send needs G1. |
-| U38 | visual | ⬜ | — | — | — | `test:campaign-audience` | — | audience |
+| U38 | visual | 🟡 | S10 | bd097333 | the campaign could only target the book → U38a: ONE resolver with a population axis, the player arm, ONE walk, and the will-receive split asked of the real gate, over §25's bulk reads | `test:campaign-audience` · `test:dal-parity` §21 §25 | yes — `red:campaign-audience` (in-process) · `red:dal-parity` §21 §25 | audience. U38a + §25 landed (§0 STEP 22); U38b (the card on the composer) follows. |
 | U39 | visual | 🟡 | S10 | 0dc25b98 | — | `test:read-tiers` | — | estimate. U39a landed (`0dc25b98`): the price from the difference of two delivered reads, the model, the server loader; `test:campaign-estimate`. U39b (the card) follows. |
 | U40 | guard | 🟡 | S10 | 0dc25b98 | — | `test:campaign-gates` | — | confirm. U40-pure landed (`0dc25b98`): the confirmation's one rule; `test:campaign-confirm`. U40a (server) and U40b (UI) follow. |
 | U41 | guard | ⬜ | — | — | — | `test:campaign-gates` | — | officer authorisation (reconcile with the single-admin ruling first, §9 U41) |
@@ -2972,7 +3032,7 @@ catalogue, and an uncalled writer and its in-memory tests may land (draft2, with
 The stored proof note is NFC with invisible characters removed (the phone screen reads a separate NFKC copy, never
 stored), and `importConsentEvidence` answers null for a phone-shaped note, a malformed run id or a key outside the
 catalogue — ⛔ U32 and U33b treat that null as "write nothing".
-**U33a · engine** (after U29b, before U38a — X24): `consent.ts`'s contact branch rewritten — the latest GIVEN must be an
+**U33a · engine** (after U29b; ⚠️ X24 REVERSED 2026-10-02 — U38a went first, so U33a re-threads U38a's read accounting): `consent.ts`'s contact branch rewritten — the latest GIVEN must be an
 officer's import attestation or a pinned SMS sentence, else `no_consent`; age is an attestation read BACK through the
 ledger to the number's last erasure WITHDRAWN, so stop → resume keeps an attested contact marketable and no attestation
 ever crosses an erasure (the rg-doors anchor line stays byte-identical). `src/lib/server/marketing/import-consent.ts` is
@@ -3186,7 +3246,7 @@ key and the same `describeAudience` (string[]). No second filter type, parser, k
 `audience-filter.ts`, its URL parser that "ignores" unknown values and its second describer are dropped. The window is
 U24's (absolute EAT instants, an unreadable or inverted bound refused), and no "last 7 days" default may leak in from
 `DateTimeRangeFilter` or `resolveRange` (`defaultPreset="all"`).
-**U38a · the count** (engine, no surface; after U33a, X24): the player arm inside `audience.ts` and ONE walk (X8) — the
+**U38a · the count** (engine, no surface; LIVE before U33a — X24 reversed 2026-10-02, §0 STEP 22): the player arm inside `audience.ts` and ONE walk (X8) — the
 book by `id`, then players by user `id`, cursor `b:<id>` · `p:<userId>` · `done`, parsed in `audience.ts` only; a number
 in the book is walked once, by its book row; erased tombstones, staff and non-+255 phones are never walked. The
 campaign-audience count (book ∪ players) IS the confirmed population U40 fences and U42 enqueues (X9). The player keyset
@@ -3302,7 +3362,7 @@ stop the campaign, and the suite must fail; and let the composer approve their o
 required.
 
 **U42 · Enqueue** — `src/lib/server/marketing/enqueue.ts`
-Two keyset walks (contacts by `msisdn`, players by `phoneE164`), a prefixed cursor carrying the phase,
+U38a's ONE walk (X8: the book by `id`, then players by user `id` — no phone number ever forms a cursor), its prefixed cursor carrying the phase,
 `createMany({ skipDuplicates: true })` against the unique index, chunks of 1,000, resumable, with a stated
 backstop of 200,000 recipients reported rather than silently truncated. The opt-out token is minted here.
 **Guard:** `test:marketing-engine`. **RED:** restart mid-walk → no duplicate row, no skipped row.
@@ -3486,7 +3546,7 @@ removed — the refusal is the evidence, not the send.
 | S15 | U30b + U31 UI + U33b (+ U32's ping) | ONE push, so the live dialog is never a dead end; then deploy and the 20-call ping on www (G7). ⛔ U33b is G4-gated (Option A), so this push waits for G4 |
 | S16 | U32b+c · U34 | the start action, `commitBatch`, the loop and the bar (needs the measurement, and G4: the start fixes a basis); the export and its round trip (U34a may land earlier on disjoint files, P2) |
 | S17 | U35b · U36 | the campaign tables (dal-parity §26), then the list behind six doors — SMS campaigns in the menu |
-| S18 | U37b · U38a | the composer, save and test send (the live switch CLOSED; U35a deployed first); the audience count (after U33a, X24) |
+| S18 | U37b · U38a | the composer, save and test send (the live switch CLOSED; U35a deployed first); the audience count (U38a, before U33a since 2026-10-02) |
 | S19 | U38b → U39b → U40 | serialised on /admin/campaigns/new: the audience card, the estimate it quotes, then the confirmation that freezes both (U40a + U40b; if S19 overruns, U40b opens S20) |
 | S20 | U15 · U16 | one send path before anything enqueues; erasure and retention reach every marketing store |
 | S21 | U13 · U14 | the window and the cap — now there is a campaign to pause and a MARKETING purpose to count |
@@ -3516,7 +3576,7 @@ U24 commit 2 → U23 and U28b last (U21 is UI only over U24's resolver and filte
 cannot come first). Then U29–U40 in the U29–U40 critic's order, as DECISIONS-U29-U40 fixed it: U35a first and deployed
 alone · the P1 pure engines · U29a · the §25 bulk reads · U29b · U30a · U33a · the U30b + U31 UI + U33b push · U32b+c ·
 U34 · U35b · U36 · U37b · U38a · U38b → U39b → U40. What binds that order: nothing writes MARKETING before U35a is
-deployed; U29b is live before any staging is exposed; U33a comes after U29b (`erase.ts`) and before U38a (`consent.ts`);
+deployed; U29b is live before any staging is exposed; U33a comes after U29b (`erase.ts`) — and AFTER U38a since 2026-10-02 (X24 reversed; it re-threads U38a's `consent.ts` reads);
 every `*Action` ships with its UI (X16); the serial-only files — the DAL, schema, migrations and dal-parity; `consent.ts`;
 `erase.ts`; the import dialog and `import-actions.ts`; `/admin/campaigns/new`; `contacts/page.tsx`; `rate-limit.ts`;
 `optout-service.ts`; the admin shell, nav and roles; `predeploy` — take one edit at a time, and on Ali-Blade15 parallel
