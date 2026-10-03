@@ -246,6 +246,10 @@ const ADMIN_SURFACES = [
   "src/app/admin/finance/page.tsx",                 // window only
   "src/app/admin/house/page.tsx",                   // /admin/house — window + the product rail on BY GAME
   "src/app/admin/reports/page.tsx",                 // window only
+  /* DECLARED 2026-10-03 · the Government Tax Report's two rails — period type (Month · Week · Day · Custom) and
+     product (All · Polls · Up & Down) — every href built on the server by `taxPageHref` (docs/TAX-REPORT.md). Both
+     rails are `FilterPill` at the dense rank. ⛔ Declared in the SAME commit as the page, or §0.4 refuses it. */
+  "src/app/admin/tax/page.tsx",                     // /admin/tax — period type + product
   "src/app/admin/transactions/page.tsx",            // window only
   "src/app/admin/traffic/page.tsx",                 // window only — first-party visit counts (2026-09-15)
   "src/app/admin/updown/page.tsx",                  // window only

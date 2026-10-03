@@ -286,6 +286,7 @@ scripts/.kyc-gate-red.lock
 scripts/.kyc-copy-truth-red.lock
 scripts/.refused-funds-race-red.lock
 /.red-refused-funds-*/
+/.red-tax-report-*/
 
 # 2026-09-20 (C5-8) — the THREE house-bot red harnesses' locks, and the temp file every red harness writes
 # through before renaming over the real source.

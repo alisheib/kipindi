@@ -99,6 +99,7 @@ to teal and resurrects the killed light theme.
 
 | Doc | | |
 |---|---|---|
+| [`TAX-REPORT.md`](TAX-REPORT.md) | 🟢 LAW | ⭐ **The Government Tax Report, `/admin/tax`** — the owner's plan *"Government Tax Reporting System"* v1.0 (agreed with the Gaming Board, ruling 2026-10-03): Report 1 (Sales · Payout · On hold · Refunds + the check) and Report 2 (Commission 13% × Payout · TRA 10% · GBT 5%), any day/week/month/custom window, all products or one, PDF/Excel/CSV, period locks. Read §2 for why the check carries two reconciling items, §3 for the three sources. `npm run test:tax-report` · `npm run red:tax-report`. |
 | [`SELCOM-PAYOUT-RAILS.md`](SELCOM-PAYOUT-RAILS.md) | 🟢 LAW | **The single source of truth for payout state.** Everything else in `SELCOM-*` is history or evidence. Contains the `railway run` vs `railway ssh` trap and two fenced wrong diagnoses. |
 | [`SELCOM-DISBURSEMENT-ACTIVATION.md`](SELCOM-DISBURSEMENT-ACTIVATION.md) | 🔵 LIVE | Activation runbook. Carries a "CORRECTED 2026-07-30" banner — read that first. |
 | [`SELCOM-API-DIGEST.md`](SELCOM-API-DIGEST.md) | 🟢 LAW | Real-money signing reference for the adapter. |

@@ -30,6 +30,8 @@ const CRUMB_LABELS: Record<string, string> = {
   // "Campaigns". The crumb, the nav item and the page title say the same two words (the nav label already ships in this
   // chunk), so neither the breadcrumb nor a refusal heading can say the bare word.
   campaigns: "SMS campaigns",
+  // The crumb, the nav item and the page title say the same two words.
+  tax: "Tax report",
 };
 
 /**
@@ -169,6 +171,10 @@ export const NAV_GROUPS: ReadonlyArray<NavGroup> = [
        * components, and a built chunk of this codebase ships `ROUTE_KEYS` and `CRUMB_LABELS` verbatim. */
       { href: "/admin/desk", label: "Desk", key: "desk", domain: "ops", ownerOnly: true },
       { href: "/admin/reports", label: "Reports", key: "reports", domain: "accounting" },
+      /* ⭐ THE GOVERNMENT TAX REPORT (docs/TAX-REPORT.md) — Sales, Payout, On hold, Refunds and the TRA/GBT tax on
+       * them, per day, week or month, locked when Finance files it. Beside Reports because it is the filing
+       * the statutory library sits next to; its own item because it is a working page, not a download card. */
+      { href: "/admin/tax", label: "Tax report", key: "tax", domain: "accounting" },
       { href: "/admin/payments", label: "Payments ops", key: "payments", domain: "accounting" },
       { href: "/admin/transactions", label: "Transactions", key: "transactions", domain: "accounting" },
     ],
@@ -309,6 +315,8 @@ const ROUTE_KEYS: ReadonlyArray<readonly [prefix: string, key: string]> = [
   ["/admin/finance", "finance"],
   ["/admin/house", "house"],
   ["/admin/reports", "reports"],
+  // Free to sit here: no entry is a prefix of "/admin/tax" and it is a prefix of none.
+  ["/admin/tax", "tax"],
   ["/admin/payments", "payments"],
   ["/admin/players/cohorts", "cohorts"],
   ["/admin/players", "players"],

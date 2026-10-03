@@ -161,10 +161,11 @@ export async function buildFinanceWindow(
            both renderers used to erase it — the defect fixed in this same commit for
            match-integrity, where the Gaming Board's totals row shipped with a blank first cell.
            This section is shaped so that cannot recur. */
-        { header: "Poll", key: "title", width: 42 },
+        { header: "Poll", key: "title", width: 41 },
         { header: "Settled", key: "settled", width: 14 },
         { header: "Fee model", key: "model", width: 18 },
-        { header: "Outcome", key: "outcome", width: 10 },
+        // 11, not 10: the header "Outcome" was 0.2pt wider than a 10 (`findPdfOverflows`, 2026-10-03).
+        { header: "Outcome", key: "outcome", width: 11 },
         { header: "Pool", sub: "TZS", key: "pool", format: "tzs", align: "right", width: 16 },
         { header: "Fee taken", sub: "TZS", key: "fee", format: "tzs", align: "right", width: 16 },
         { header: "Operator net", sub: "TZS", key: "net", format: "tzs", align: "right", width: 16 },

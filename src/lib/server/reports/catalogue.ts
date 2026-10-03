@@ -42,7 +42,9 @@ import { asOf, calendarMonth, cumulative, eatDay, monthCompleteness, selectedWin
  *  columns in the same order. */
 async function regulatorSignatures(generatorId: string) {
   const u = await db.user.findById(generatorId);
-  const generator = u?.displayName?.trim() || `Generator · ${generatorId}`;
+  // No display name: "Generator" — the id prints on its own line beneath. "Generator · usr_…" repeated it, and at 36
+  // characters did not fit the attestation box even at its floor size (`findPdfOverflows`, 2026-10-03).
+  const generator = u?.displayName?.trim() || "Generator";
   return [
     { role: "Prepared by",   name: generator, id: generatorId },
     { role: "Reviewed by",   name: "" }, // countersigned on the issued copy — never pre-filled
@@ -476,7 +478,8 @@ export async function buildSxRegister(generatorId: string): Promise<Report> {
     },
     summary: [
       { label: "Active entries", num: rows.length, format: "integer", tone: "neutral" },
-      { label: "Hash algorithm", value: "SHA-256(salt:idType:idNumber)", tone: "neutral" },
+      // Spaced so it can wrap: as one token it was wider than its tile and printed split mid-word (`findPdfOverflows`, 2026-10-03).
+      { label: "Hash algorithm", value: "SHA-256 of salt:idType:idNumber", tone: "neutral" },
       { label: "Schema version", value: "GBT-v1", tone: "neutral" },
     ],
     sections: [
@@ -1238,14 +1241,15 @@ export async function buildMatchIntegrity(generatorId: string): Promise<Report> 
         titleSw: "Masoko yaliyobatilishwa",
         description: "Markets resolved as VOID — stakes returned to players. Pool in TZS.",
         columns: [
-          { header: "Market", key: "market", width: 46 },
+          { header: "Market", key: "market", width: 43 },
           { header: "Category", key: "category", width: 16 },
           { header: "Voided on", key: "voidedOn", format: "date", width: 14 },
           // L57 · the path that sealed THIS void, derived from its own stage officers — never from the toggle's
           // current value, which says nothing about how a market sealed last month.
           { header: "Resolution path", key: "path", width: 18 },
           { header: "Pool", sub: "TZS", key: "pool", format: "tzs", align: "right", width: 16 },
-          { header: "Predictors", key: "predictors", format: "integer", align: "right", width: 12 },
+          // 15, not 12: the header "Predictors" printed split in a 12 (`findPdfOverflows`, 2026-10-03).
+          { header: "Predictors", key: "predictors", format: "integer", align: "right", width: 15 },
         ],
         rows: marketRows,
       },

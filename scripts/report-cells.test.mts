@@ -15,7 +15,7 @@
 import ExcelJS from "exceljs";
 import { REPORT_CATALOGUE, type ReportId } from "../src/lib/server/reports/catalogue.ts";
 import { renderXlsx } from "../src/lib/server/reports/xlsx.ts";
-import { renderPdf } from "../src/lib/server/reports/pdf.ts";
+import { renderPdf, findPdfOverflows } from "../src/lib/server/reports/pdf.ts";
 import { summaryText, type Report } from "../src/lib/server/reports/types.ts";
 
 let pass = 0, fail = 0;
@@ -303,6 +303,37 @@ const NUMERIC_TILES: Record<string, number> = {
   ok("a negative money tile stays a negative NUMBER in the red-negative money format",
     cell(2).value === -12_345 && cell(2).numFmt === NUMFMT.tzs, `${JSON.stringify(cell(2).value)} · ${cell(2).numFmt}`);
   ok("a non-finite tile is written as the PDF's \"—\", never as NaN", cell(3).value === "—", JSON.stringify(cell(3).value));
+}
+
+console.log("\n── · Every catalogue PDF fits its boxes — nothing printed split mid-token ──");
+/* 🔴 THE PRINTED PAGE, MEASURED (2026-10-03). pdfkit splits a token wider than its line mid-token — a header
+   "Predictors" printed as "Predict" / "ors", a tile's "SHA-256(salt:idType:idNumber)" cut in two. Every catalogue
+   report is built and measured with the renderer's own fonts (`findPdfOverflows`): each KPI tile, header, cell and
+   totals band. On the in-memory store the tables are mostly empty, so this pins the STATIC words — the tax report's
+   own suite measures ten-digit figures (`test:tax-report` §13.27). */
+{
+  const ids = Object.keys(REPORT_CATALOGUE) as ReportId[];
+  const found: string[] = [];
+  for (const id of ids) {
+    const entry = REPORT_CATALOGUE[id] as { build: (u: string) => Promise<Report> };
+    const report = await entry.build(GEN);
+    for (const o of findPdfOverflows(report)) found.push(`${id}: ${o.where} — "${o.text}" needs ${o.needPt}pt of ${o.havePt}pt`);
+  }
+  ok(`every catalogue report's PDF boxes hold their words (${ids.length} reports measured)`, found.length === 0, found.slice(0, 6).join(" | "));
+  const probe: Report = {
+    title: "Fit probe", subtitle: "control", reference: "FIT-PROBE", meta: { generatedAt: new Date(0).toISOString(), generatedBy: GEN, period: "control" },
+    sections: [{ title: "Probe", columns: [{ header: "Line", key: "a", width: 90 }, { header: "Predictors", key: "b", format: "integer", width: 8 }], rows: [{ a: "x", b: 1_234_567 }] }],
+  };
+  const caught = findPdfOverflows(probe);
+  ok("CONTROL · a too-narrow column is caught (its header and its seven-digit count)",
+    caught.some((o) => o.text === "Predictors") && caught.some((o) => o.text === "1,234,567"), JSON.stringify(caught));
+  // The attestation: a name shrinks to its floor size before it is cut — a usual name fits, an absurd one is caught.
+  const sig = (name: string): Report => ({ ...probe, sections: [], signatures: [{ role: "Prepared by", name, id: "usr_0123456789abcdef0123" }, { role: "Reviewed by", name: "" }, { role: "Approved by", name: "" }] });
+  for (const name of ["Generator", "Mwanaisha Abdallah Kassim-Mwinyi"]) {
+    ok(`a signatory's name ("${name}") and a full-length id fit the attestation box on one line`, findPdfOverflows(sig(name)).length === 0, JSON.stringify(findPdfOverflows(sig(name))));
+  }
+  ok("CONTROL · a name too long even at its floor size is caught, never silently cut",
+    findPdfOverflows(sig("An Officer Whose Display Name Runs On And On Well Past Any Box")).some((o) => o.where.startsWith("attestation")));
 }
 
 console.log(`\nreport-cells: ${pass} passed, ${fail} failed`);

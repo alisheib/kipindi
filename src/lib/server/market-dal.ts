@@ -552,6 +552,30 @@ export interface PositionStore {
    */
   attribution(ids?: readonly string[]): Promise<PositionAttribution[]>;
   /**
+   * ⭐ EVERY BET THAT WAS WAITING FOR A RESULT AT ANY MOMENT OF `[startMs, endMs)` — the one read
+   * the Government Tax Report's "On hold" needs (`tax-report-data.ts`, `docs/TAX-REPORT.md` §3).
+   *
+   * A bet is live at instant T when it was placed before T and had not yet left "open" at T:
+   * `placedAt < T AND (status = 'OPEN' OR settledAt IS NULL OR settledAt >= T)` — every way a bet
+   * leaves open (win, loss, void, one-sided refund, emergency void, early exit, orphan repair)
+   * stamps `settledAt`, and a bet whose STATUS is still OPEN has not left, whatever a stray stamp
+   * says. Live at ANY moment of the window is therefore
+   * `placedAt < endMs AND (status = 'OPEN' OR settledAt IS NULL OR settledAt >= startMs)`: the bets
+   * brought forward into the window, the bets placed in it, and the bets still open at its end.
+   *
+   * ⛔ NOT `listOpen()`. That is the open set NOW; a report for September read on 5 October must
+   * count a bet that was open on 30 September and settled on 2 October, which `listOpen()` has
+   * already forgotten. ⚠️ No index serves `settledAt`; the read is a bounded scan of the bets
+   * placed before the window's end, the same order of cost as `listOpen()`'s seq scan.
+   */
+  listLiveDuring(startMs: number, endMs: number): Promise<StoredPosition[]>;
+  /**
+   * Bets by id — for a money record whose bet is NOT among `listLiveDuring`'s rows (a payout on a
+   * bet stamped outside the window is an exception the report must name, and it needs the bet to
+   * name it). Chunked like `attribution(ids)`. Missing ids are simply absent from the result.
+   */
+  getMany(ids: readonly string[]): Promise<StoredPosition[]>;
+  /**
    * One player's positions on one market.
    *
    * ⛔ NOT `listForMarket(...).filter(...)`. The one-side-per-round rule reads this INSIDE the
@@ -767,6 +791,16 @@ const memoryPositions: PositionStore = {
   async attribution(ids) {
     const src = ids ? ids.map((id) => positions.get(id)).filter((p): p is StoredPosition => !!p) : Array.from(positions.values());
     return src.map((p) => ({ id: p.id, marketId: p.marketId }));
+  },
+  async listLiveDuring(startMs, endMs) {
+    // The same predicate as the Prisma twin's WHERE, on the same two columns.
+    return Array.from(positions.values()).filter((p) => {
+      if (!(Date.parse(p.placedAt) < endMs)) return false;
+      return p.status === "OPEN" || p.settledAt == null || Date.parse(p.settledAt) >= startMs;
+    });
+  },
+  async getMany(ids) {
+    return ids.map((id) => positions.get(id)).filter((p): p is StoredPosition => !!p);
   },
   async listOpen() { return Array.from(positions.values()).filter((p) => p.status === "OPEN"); },
   async listForUser(userId, limit = 100, productLine) {
@@ -1339,6 +1373,23 @@ const prismaPositions: PositionStore = {
     const select = { id: true, marketId: true } as const;
     if (ids === undefined) return pc().position.findMany({ select });
     return (await Promise.all(idChunks(ids).map((chunk) => pc().position.findMany({ where: { id: { in: chunk } }, select })))).flat();
+  },
+  async listLiveDuring(startMs, endMs) {
+    // ⛔ The OR is never empty, so the "nested `OR: []` matches everything" trap cannot arise here.
+    // `placedAt`/`settledAt` are TIMESTAMP(3) holding UTC; a JS Date binds as that UTC instant,
+    // exactly as `set()` writes them.
+    const rows = await pc().position.findMany({
+      where: {
+        placedAt: { lt: new Date(endMs) },
+        OR: [{ status: "OPEN" }, { settledAt: null }, { settledAt: { gte: new Date(startMs) } }],
+      },
+      orderBy: [{ placedAt: "asc" }, { id: "asc" }],
+    });
+    return rows.map(toStoredPosition);
+  },
+  async getMany(ids) {
+    if (ids.length === 0) return [];
+    return (await Promise.all(idChunks(ids).map((chunk) => pc().position.findMany({ where: { id: { in: chunk } } })))).flat().map(toStoredPosition);
   },
   async listOpen() {
     // Pushed down. See the interface comment: this runs on every boot and the table only

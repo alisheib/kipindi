@@ -53,7 +53,9 @@ export async function ConfidentialBand({ session }: { session: AdminSession }) {
         <span className="inline-block h-1.5 w-1.5 rounded-pill" style={{ background: "var(--claret-200)" }} />
         <span className="text-white">Staff · Confidential · Internal only</span>
       </span>
-      <span className="hidden sm:inline text-white/70">
+      {/* From 1024px: at 640-1023 the two halves could not share the 28px band — both wrapped and ran into each other
+          (measured on every admin page, 2026-10-03). */}
+      <span className="hidden lg:inline text-white/70">
         50pick Africa · {roleLabel(session.role)} · session #{shortSessionLabel(session)} · {email}
       </span>
     </div>

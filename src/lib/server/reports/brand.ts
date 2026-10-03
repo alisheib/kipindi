@@ -52,7 +52,7 @@ export const COMPANY = {
 export function toAnsiSafe(s: string): string {
   return s
     .replace(/→/g, "->").replace(/←/g, "<-")
-    .replace(/—/g, " - ").replace(/–/g, "-").replace(/−/g, "-")
+    .replace(/ — /g, " - ").replace(/—/g, " - ").replace(/–/g, "-").replace(/−/g, "-")
     .replace(/'/g, "'").replace(/'/g, "'")
     .replace(/\u201c/g, '"').replace(/\u201d/g, '"')
     .replace(/…/g, "...");

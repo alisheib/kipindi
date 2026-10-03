@@ -110,6 +110,10 @@ export type Report = {
   /** Top-of-document KPIs (renders as a 2–4 col grid in PDF, a header
    *  block in XLSX). Optional. */
   summary?: SummaryItem[];
+  /** How many KPI tiles share a row in the PDF (default 4). A 4-across tile holds about nine digits of a 17pt
+   *  figure before pdfkit splits the number mid-digit, so a report whose tiles carry large money figures asks
+   *  for 3 (`findPdfOverflows` in pdf.ts measures it). The XLSX ignores it. */
+  summaryColumns?: 2 | 3 | 4;
   /** One or more tabular sections. */
   sections: Section[];
   /** Methodology notes / disclaimers — printed in the footer band. */

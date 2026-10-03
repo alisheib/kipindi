@@ -2782,6 +2782,39 @@ model SystemConfig {
   updatedAt DateTime @updatedAt
 }
 
+/// GOVERNMENT TAX REPORT — one row per LOCK of a reporting period (docs/TAX-REPORT.md §6).
+/// A lock freezes a period's figures exactly as filed: `snapshot` is the whole computed report —
+/// integers and strings only (cents, whole shillings, basis points), so jsonb cannot round it — and
+/// `sha256` its canonical hash. Releasing a lock never deletes it: `unlockedAt/By/Reason` are written
+/// once, and a re-lock is a NEW row, so the table itself is the history of what was filed and why it
+/// was reopened. Time columns are TIMESTAMPTZ(3), like every table created since 2026-09-16.
+/// SQL-only (migration 20261003180000_tax_period_lock):
+///   "TaxPeriodLock_active_key" UNIQUE (periodKind, periodKey, product) WHERE "unlockedAt" IS NULL —
+///     at most one live lock per period and product, enforced by the database, so two officers
+///     pressing Lock at the same moment cannot both win;
+///   CHECK periodKind IN ('day','week','month') · CHECK product IN ('ALL','MARKET','UPDOWN').
+model TaxPeriodLock {
+  id                     String    @id
+  periodKind             String
+  periodKey              String
+  product                String
+  periodStart            DateTime  @db.Timestamptz(3)
+  periodEnd              DateTime  @db.Timestamptz(3)
+  snapshot               Json
+  sha256                 String
+  balanced               Boolean
+  lockedBy               String
+  lockedAt               DateTime  @default(now()) @db.Timestamptz(3)
+  note                   String?
+  /// The Owner's stated reason when a period is locked OUT of balance, with its exceptions acknowledged.
+  exceptionsAcknowledged String?
+  unlockedBy             String?
+  unlockedAt             DateTime? @db.Timestamptz(3)
+  unlockReason           String?
+
+  @@index([periodKind, periodKey, product])
+}
+
 // RBAC grant matrix — the DATA behind role-based admin access. One row per
 // (role, domain); `canView` drives nav + route visibility, `canAct` drives
 // mutations. Owner-edited live at /admin/roles (no deploy). The loader

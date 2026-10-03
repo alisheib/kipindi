@@ -81,6 +81,17 @@ Ali, 2026-09-29: *"no matter what we need to cut off we need perfection and alig
 | **Next** | Read it from the tracker's §0 **Next:**, never from this cell |
 | **Rule** | Every session rewrites §0 and ticks §1 in its own commits, and **updates this row's count in the same commit** — `npm run test:vodacom-plan` asserts the two agree |
 
+## ▶ 0d · GOVERNMENT TAX REPORT — `TAX-REPORT` · 🔵 **BUILT 2026-10-03 · `/admin/tax`** · status and proof in [`TAX-REPORT.md`](TAX-REPORT.md) §0
+
+Ali, 2026-10-03: *"create and push live this report … as mentioned in the pdf"* — the plan *"Government Tax Reporting
+System"* v1.0, **made in coordination with the Gaming Board** (ruling in `COMPLIANCE-DECISIONS.md`, same date).
+
+| | |
+|---|---|
+| **What** | Report 1 (Sales · Payout · On hold · Refunds + the check) and Report 2 (Commission 13% × Payout · TRA 10% · GBT 5%) for any day, week, month or custom window, all products or one; PDF · Excel · CSV; period locks with drift; admin-editable, effective-dated rates |
+| **Where** | Worktree `C:\kipindi-tax`, branch `tax-report` → `main` |
+| **Next** | Read [`TAX-REPORT.md`](TAX-REPORT.md) §0 — never this cell |
+
 ## 00 · PRE-LAUNCH DATA RESET — `PRELAUNCH-RESET` · 🏁 **DONE 2026-09-11, EXECUTED ON PRODUCTION**
 
 Ali's go-live instruction, 2026-09-11. **▶ Record and runbook:

@@ -248,6 +248,11 @@ export const ROUTE_DOMAINS: ReadonlyArray<readonly [prefix: string, domain: Admi
    * so this one line also covers the `/admin/house/<marketId>` drill-down. */
   ["/admin/house", "accounting"],
   ["/admin/reports", "accounting"],
+  /* The Government Tax Report: viewed and exported with accounting VIEW (Finance, Compliance, Auditor), locked with
+   * accounting ACT (Finance). Unregistered it would fall closed to "ops" — the Owner alone — and the people who file
+   * the period could not open it. Its Owner-only acts (rates, reopening, an out-of-balance lock) gate on "ops" in
+   * their server actions. */
+  ["/admin/tax", "accounting"],
   ["/admin/payments", "accounting"],
   ["/admin/transactions", "accounting"],
   ["/admin/config", "accounting"],

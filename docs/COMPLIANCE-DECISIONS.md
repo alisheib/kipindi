@@ -9,6 +9,36 @@
 ---
 
 
+## 2026-10-03 · The Government Tax Report files the plan's model, coordinated with the Gaming Board (owner ruling)
+
+**Authority.** Ali, 2026-10-03, handing over the *"Government Tax Reporting System — Project Plan v1.0"*: *"create and
+push live this report … as mentioned in the pdf"*, then *"the report I gave you was made in coordination with GBT, so
+don't add any restrictions from your side — all valid already"*, and *"any decision you take them"*.
+
+**What it rules.** The tax a period owes is computed by the plan's approved model (§3.3): **Commission = 13% × Payout ·
+TRA = 10% × Commission · GBT = 5% × Commission · Total = TRA + GBT**, every line rounded to the nearest shilling at each
+step — on `/admin/tax` and in its PDF, Excel and CSV exports (`docs/TAX-REPORT.md`). Payout is the plan's own definition:
+winnings paid on rounds resulted in the period, never a withdrawal. The rates are admin settings with effective dates
+(owner rule of 2026-10-03, "every value changeable"), defaulting to 13% / 10% / 5%.
+
+**How it sits beside the Finance Seal rule.** `SESSION-PROMPT-FINANCE-SEAL.md` §5 — *levies are READ from
+`HOUSE:TRA_LEVY` / `HOUSE:GBT_LEVY`, never computed* — governs every report that states the levy **booked at
+settlement** (13% of the losing side, levied per round); those reports are unchanged. This report states a different
+figure, the **filing model** the owner agreed with the Gaming Board, and says on its face that it is computed by that
+model, never that it was read from the ledger. The two are not reconciled against each other and neither overrides the
+other.
+
+**The one extension of the plan's rule, and why it is not a restriction.** The plan's check *Sales = Payout + On hold
++ Refunds* is carried in its general form, *Sales + On hold brought forward = Payout + Refunds + Platform fee kept + On
+hold* — identical to the plan's whenever nothing is brought forward and no fee is kept (its worked example), and the
+only form in which a live 50pick period can balance (`docs/TAX-REPORT.md` §2). Without it every period would fail the
+check and sign-off would be blocked for ever.
+⛔ Do not restore: computing this report's tax from the booked levies, folding the platform fee into Payout, or dropping
+the brought-forward term each reverses this ruling.
+
+---
+
+
 ## 2026-10-03 · Every public fact is editable by admins — the national helpline and the licence number are no longer pinned (owner ruling)
 
 **Authority.** Ali, 2026-10-03, after his admin reported that the Support contacts card in `/admin/system` was

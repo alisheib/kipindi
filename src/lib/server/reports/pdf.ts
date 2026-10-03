@@ -181,7 +181,7 @@ function drawHeader(ctx: DocCtx, report: Report): number {
     const vw = doc.widthOfString(v);
     /* ⚠️ THIS ROW USED TO RUN OFF THE PAGE RATHER THAN WRAP. Every pair is drawn with
        `lineBreak: false` at an accumulated `mx`, so pdfkit will not wrap it for us — a long
-       `generatedBy` (the `Generator · usr_…` fallback, when the officer has no displayName) already
+       `generatedBy` (a long name, or a raw `usr_…` id when the officer has no displayName) already
        pushed "Classification" toward the right margin on portrait. Measure the pair and break the
        LINE, never the pair: a label stranded on one line with its value on the next is unreadable. */
     if (mx > contentX && mx + lw + vw > contentX + contentW) {
@@ -225,9 +225,9 @@ function drawHeader(ctx: DocCtx, report: Report): number {
 
 /* ── KPI summary ──────────────────────────────────────────────────── */
 
-function drawSummary(ctx: DocCtx, summary: SummaryItem[], startY: number): number {
+function drawSummary(ctx: DocCtx, summary: SummaryItem[], startY: number, maxCols: number = 4): number {
   const { doc, contentX, contentW } = ctx;
-  const cols = Math.min(4, summary.length);
+  const cols = Math.min(maxCols, summary.length);
   const gap = 8;
   const cardW = (contentW - (cols - 1) * gap) / cols;
   const labelW = cardW - 24;
@@ -331,6 +331,8 @@ function measureRowHeight(doc: InstanceType<typeof PDFDocument>, row: Record<str
 const TH_TOP = 6;      // pad above the header text
 const TH_BOT = 6;      // pad below the last header/sub line
 const TH_GAP = 2;      // gap between a wrapped header and its sub-line
+const CONTINUED_H = 14; // the "<table> (continued)" caption above a header repeated on a new page
+const KEEP_WHOLE_ROWS = 10; // a table this short moves whole to the next page rather than split
 
 /** The header band's height, sized to fit the tallest (possibly two-line)
  *  header plus a sub-line. Computed once and reused for both the room check and
@@ -353,6 +355,13 @@ function tableHeaderHeight(doc: InstanceType<typeof PDFDocument>, sec: Section, 
 function drawTableHeader(ctx: DocCtx, sec: Section, colW: number[], y: number, continuation = false): number {
   const { doc, contentX, contentW } = ctx;
   const { headerH, headTextH } = tableHeaderHeight(doc, sec, colW);
+  if (continuation) {
+    // ⛔ ABOVE the band, naming the table: the old "continued" sat under the band's right edge, over the first row's
+    // right-aligned figure (measured on the tax report's By product, 2026-10-03).
+    doc.fillColor(BRAND.inkSubtle).font(FN.italic).fontSize(S.thSub)
+       .text(toAnsiSafe(`${sec.title} (continued)`), contentX, y, { width: contentW, lineBreak: false, ellipsis: true });
+    y += CONTINUED_H;
+  }
   doc.save();
   doc.rect(contentX, y, contentW, headerH).fill(BRAND.royal);
   doc.rect(contentX, y + headerH - 1.5, contentW, 1.5).fill(BRAND.gilt);
@@ -372,10 +381,6 @@ function drawTableHeader(ctx: DocCtx, sec: Section, colW: number[], y: number, c
     }
     xC += colW[i];
   }
-  if (continuation) {
-    doc.fillColor(BRAND.giltSoft).font(FN.regular).fontSize(S.thSub)
-       .text(toAnsiSafe("continued"), contentX + contentW - 55, y + headerH + 2, { width: 55, align: "right", lineBreak: false });
-  }
   return y + headerH;
 }
 
@@ -383,7 +388,22 @@ function drawTableHeader(ctx: DocCtx, sec: Section, colW: number[], y: number, c
 
 function drawSection(ctx: DocCtx, sec: Section, startY: number): number {
   const { doc, contentX, contentW } = ctx;
-  let y = ensureRoom(ctx, 80, startY);
+  const colW = computeColWidths(sec.columns, contentW);
+  const { headerH } = tableHeaderHeight(doc, sec, colW);
+  // ⛔ KEEP A HEADING WITH ITS TABLE, AND A SHORT TABLE WHOLE. Measure before drawing anything: a table of up to
+  // KEEP_WHOLE_ROWS rows that fits on a page moves whole to the next page rather than split; a longer one starts only
+  // where its heading has at least three rows under it, and continues under a repeated header (the row loop keeps its
+  // last two rows, and its last row and totals, together). A fixed 80pt let a heading print alone at a page's foot, and
+  // a five-line Report 2 split one line / four (measured on the tax report, 2026-10-03).
+  doc.font(FN.regular).fontSize(S.sectionDesc);
+  const descH = sec.description ? doc.heightOfString(toAnsiSafe(sec.description), { width: contentW }) + 6 : 0;
+  const headH = 18 + (sec.titleSw ? 13 : 0) + descH + headerH;
+  const rowHs = sec.rows.map((r) => measureRowHeight(doc, r as Record<string, unknown>, sec.columns, colW));
+  const totalsH = sec.totals ? MIN_ROW_H + 6 : 0;
+  const wholeH = headH + (rowHs.length > 0 ? rowHs.reduce((a, b) => a + b, 0) : MIN_ROW_H) + totalsH + 2;
+  const short = rowHs.length <= KEEP_WHOLE_ROWS && wholeH <= ctx.contentBottomY - CONTENT_TOP;
+  const needed = short ? wholeH : headH + rowHs.slice(0, 3).reduce((a, b) => a + b, 0) + 2;
+  let y = ensureRoom(ctx, needed, startY);
 
   // Section title with gilt accent bar
   doc.save();
@@ -403,8 +423,6 @@ function drawSection(ctx: DocCtx, sec: Section, startY: number): number {
     y = doc.y + 6;
   }
 
-  const colW = computeColWidths(sec.columns, contentW);
-  const { headerH } = tableHeaderHeight(doc, sec, colW);
   y = ensureRoom(ctx, headerH + MIN_ROW_H, y);
   y = drawTableHeader(ctx, sec, colW, y);
 
@@ -417,10 +435,13 @@ function drawSection(ctx: DocCtx, sec: Section, startY: number): number {
              contentX, y + CELL_PAD_Y, { width: contentW, align: "center", lineBreak: false });
     y += MIN_ROW_H;
   } else {
-    for (let ri = 0; ri < sec.rows.length; ri++) {
-      const rowH = measureRowHeight(doc, sec.rows[ri] as Record<string, unknown>, sec.columns, colW);
-
-      if (y + rowH + 2 > ctx.contentBottomY) {
+    const n = sec.rows.length;
+    for (let ri = 0; ri < n; ri++) {
+      const rowH = rowHs[ri];
+      // No single-row widow on a new page, and never a totals band alone: the second-to-last row breaks early when the
+      // last row (and the totals) would not follow it, and the last row when its totals would not.
+      const tail = ri === n - 1 ? totalsH : ri === n - 2 && ri >= 3 ? rowHs[n - 1] + totalsH : 0;
+      if (y + rowH + 2 > ctx.contentBottomY || (ri > 0 && tail > 0 && y + rowH + tail + 2 > ctx.contentBottomY)) {
         y = addContentPage(ctx);
         y = drawTableHeader(ctx, sec, colW, y, true);
       }
@@ -509,6 +530,23 @@ function drawNotes(ctx: DocCtx, notes: string[], startY: number): number {
 
 /* ── Signatures ───────────────────────────────────────────────────── */
 
+/** The attestation's name and id sizes, and the floor each may shrink to before it is cut. */
+const SIG_NAME = { size: S.sectionTitle - 2, min: 8 };
+const SIG_ID = { size: 7.5, min: 6 };
+
+/**
+ * One line, always: the size steps down (to `min`) until the text fits, and only then is it cut with an ellipsis.
+ * ⛔ pdfkit wraps a too-wide text even under `lineBreak: false` once a width is given — a long "Prepared by" name
+ * printed its second line over the id and the signature rule (measured on the GBT pack's attestation, 2026-10-03).
+ * `height` of one line is what makes `ellipsis` cut instead of wrap.
+ */
+function fitOneLine(doc: InstanceType<typeof PDFDocument>, text: string, x: number, y: number, width: number, font: string, size: number, min: number): void {
+  let s = size;
+  doc.font(font).fontSize(s);
+  while (s > min && doc.widthOfString(text) > width) { s -= 0.5; doc.fontSize(s); }
+  doc.text(text, x, y, { width, height: doc.currentLineHeight(true), lineBreak: false, ellipsis: true });
+}
+
 function drawSignatures(ctx: DocCtx, sigs: SignatureRow[], startY: number): number {
   const { doc, contentX, contentW } = ctx;
   const blockH = 62;
@@ -533,11 +571,11 @@ function drawSignatures(ctx: DocCtx, sigs: SignatureRow[], startY: number): numb
     doc.restore();
     doc.fillColor(BRAND.inkMuted).font(FN.bold).fontSize(S.kpiLabel)
        .text(toAnsiSafe(s.role.toUpperCase()), x + 12, y + 8, { width: cellW - 20, lineBreak: false });
-    doc.fillColor(BRAND.royalDeep).font(FN.bold).fontSize(S.sectionTitle - 2)
-       .text(toAnsiSafe(s.name), x + 12, y + 22, { width: cellW - 20, lineBreak: false, ellipsis: true });
+    doc.fillColor(BRAND.royalDeep);
+    fitOneLine(doc, toAnsiSafe(s.name), x + 12, y + 22, cellW - 20, FN.bold, SIG_NAME.size, SIG_NAME.min);
     if (s.id) {
-      doc.fillColor(BRAND.inkSubtle).font(FN.mono).fontSize(7.5)
-         .text(toAnsiSafe(s.id), x + 12, y + 36, { width: cellW - 20, lineBreak: false, ellipsis: true });
+      doc.fillColor(BRAND.inkSubtle);
+      fitOneLine(doc, toAnsiSafe(s.id), x + 12, y + 36, cellW - 20, FN.mono, SIG_ID.size, SIG_ID.min);
     }
     const lineY = y + blockH - 14;
     doc.save();
@@ -590,7 +628,7 @@ export async function renderPdf(report: Report): Promise<Buffer> {
 
       let y = drawHeader(ctx, report);
       if (report.summary && report.summary.length > 0) {
-        y = drawSummary(ctx, report.summary, y);
+        y = drawSummary(ctx, report.summary, y, report.summaryColumns ?? 4);
       }
       for (const sec of report.sections) {
         y = drawSection(ctx, sec, y);
@@ -615,4 +653,82 @@ export async function renderPdf(report: Report): Promise<Buffer> {
       reject(err);
     }
   });
+}
+
+/* ── Fit check ────────────────────────────────────────────────────── */
+
+/** One box whose text cannot fit it: pdfkit splits a token wider than its line mid-token — "100,000,00" over "0". */
+export type PdfOverflow = { where: string; text: string; needPt: number; havePt: number };
+
+/**
+ * ⭐ THE PRINTED PAGE, MEASURED. Every box `renderPdf` draws text into, measured with the SAME fonts, sizes and
+ * widths it draws with: each KPI label and value, each column header and sub-line, each body cell, each totals
+ * cell. A box fails when one unbreakable token (a figure, a code, an id — split here at spaces only, the
+ * conservative reading) is wider than the box, because pdfkit then breaks it mid-token; a header or KPI label
+ * also fails past its two-line cap (the renderer cuts it with an ellipsis); and a totals cell, drawn in a
+ * fixed-height band, fails unless its whole text fits one line. Prose that wraps between words is fine.
+ * Returns [] when everything fits. A report's guard calls it on a fixture with large figures; rendering never does.
+ */
+export function findPdfOverflows(report: Report): PdfOverflow[] {
+  const doc = new PDFDocument({ size: "A4", layout: report.orientation ?? "portrait", margins: { top: 0, bottom: 0, left: 0, right: 0 } });
+  registerFonts(doc);
+  const contentW = doc.page.width - PAD * 2;
+  const out: PdfOverflow[] = [];
+  const pt = (n: number) => Math.round(n * 10) / 10;
+  const fits = (where: string, raw: string, font: string, size: number, havePt: number, mode: "tokens" | "line" | "two-lines") => {
+    const text = toAnsiSafe(raw).trim();
+    if (!text) return;
+    doc.font(font).fontSize(size);
+    if (mode === "line") {
+      const w = doc.widthOfString(text);
+      if (w > havePt) out.push({ where, text, needPt: pt(w), havePt: pt(havePt) });
+      return;
+    }
+    for (const tok of text.split(" ")) {
+      const w = doc.widthOfString(tok);
+      if (w > havePt) out.push({ where, text: tok, needPt: pt(w), havePt: pt(havePt) });
+    }
+    if (mode === "two-lines") {
+      const h = doc.heightOfString(text, { width: havePt });
+      if (h > doc.currentLineHeight(true) * 2 + 0.5) out.push({ where: `${where} (more than two lines)`, text, needPt: pt(h), havePt: pt(doc.currentLineHeight(true) * 2) });
+    }
+  };
+
+  if (report.summary && report.summary.length > 0) {
+    const cols = Math.min(report.summaryColumns ?? 4, report.summary.length);
+    const cardW = (contentW - (cols - 1) * 8) / cols;
+    for (const k of report.summary) {
+      fits(`summary "${k.label}" · label`, k.label.toUpperCase(), FN.bold, S.kpiLabel, cardW - 24, "two-lines");
+      fits(`summary "${k.label}" · value`, summaryText(k), FN.bold, S.kpiValue, cardW - 20, "two-lines");
+    }
+  }
+  if (report.signatures && report.signatures.length > 0) {
+    // A name or id that does not fit even at its floor size is CUT (ellipsis) — a signatory's name half-printed.
+    const cellW = (contentW - (report.signatures.length - 1) * 8) / report.signatures.length;
+    for (const sg of report.signatures) {
+      fits(`attestation "${sg.role}" · name`, sg.name, FN.bold, SIG_NAME.min, cellW - 20, "line");
+      if (sg.id) fits(`attestation "${sg.role}" · id`, sg.id, FN.mono, SIG_ID.min, cellW - 20, "line");
+    }
+  }
+  for (const sec of report.sections) {
+    const colW = computeColWidths(sec.columns, contentW);
+    sec.columns.forEach((c, i) => {
+      const have = colW[i] - CELL_PAD_X * 2;
+      const isNum = c.format === "tzs" || c.format === "integer" || c.format === "percent";
+      fits(`${sec.title} · header "${c.header}"`, c.header, FN.bold, S.th, have, "two-lines");
+      if (c.sub) fits(`${sec.title} · "${c.header}" sub-line`, c.sub, FN.regular, S.thSub, have, "line");
+      for (const r of sec.rows) fits(`${sec.title} · ${c.header}`, renderCellText(r[c.key], c.format), isNum ? FN.mono : FN.regular, isNum ? S.tdMono : S.td, have, "tokens");
+      if (sec.totals) {
+        const v = sec.totals[c.key];
+        const text = v !== undefined && v !== null ? renderCellText(v, c.format) : i === 0 ? "Total" : "";
+        fits(`${sec.title} · totals ${c.header}`, text, isNum ? FN.monoBold : FN.bold, S.total, have, "line");
+      }
+    });
+  }
+  return out;
+}
+
+/** Which faces the renderer found — a fit check measured on the fallback fonts says so, rather than passing quietly. */
+export function pdfFontsLoaded(): { inter: boolean; mono: boolean } {
+  return { inter: !!(FONTS.regular && FONTS.bold), mono: !!(FONTS.mono && FONTS.monoBold) };
 }

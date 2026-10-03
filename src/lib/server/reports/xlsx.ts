@@ -65,6 +65,22 @@ function neutralizeFormula(s: string): string {
   return /^[=+\-@\t\r]/.test(s) ? `'${s}` : s;
 }
 
+/**
+ * Excel's sheet name: at most 31 characters, none of the seven it forbids. A long title keeps its head rather than a
+ * cut mid-phrase — "Government Tax Report — OUT OF BALANCE" names its tab "Government Tax Report", where a plain
+ * 31-character slice wrote "Government Tax Report — OUT OF " (2026-10-03); a title with no head is cut at a word.
+ */
+function sheetNameOf(title: string): string {
+  const FORBIDDEN = new Set([":", String.fromCharCode(92), "/", "?", "*", "[", "]"]);
+  const clean = [...title].map((ch) => (FORBIDDEN.has(ch) ? "-" : ch)).join("").trim();
+  if (clean.length <= 31) return clean;
+  const head = clean.split(" — ")[0].trim();
+  if (head.length > 0 && head.length <= 31) return head;
+  const cut = clean.slice(0, 31);
+  const space = cut.lastIndexOf(" ");
+  return (space > 10 ? cut.slice(0, space) : cut).replace(/[ —–-]+$/, "");
+}
+
 export async function renderXlsx(report: Report): Promise<Buffer> {
   const wb = new ExcelJS.Workbook();
   wb.creator = `${COMPANY.name} · Reporting`;
@@ -75,7 +91,7 @@ export async function renderXlsx(report: Report): Promise<Buffer> {
   wb.created = new Date(report.meta.generatedAt);
   wb.lastModifiedBy = report.meta.generatedBy;
 
-  const sheet = wb.addWorksheet(report.title.slice(0, 31), {
+  const sheet = wb.addWorksheet(sheetNameOf(report.title), {
     properties: { tabColor: { argb: argb(BRAND.gilt) } },
     pageSetup: {
       paperSize: 9,
