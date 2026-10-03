@@ -307,7 +307,7 @@ const L = {
   m4: "M4 · a `none` cell's file carries NEITHER identity column (absent, not blank) — no number and no email at all, masked or not",
   m5: "M5 · decision M5 · both identity columns are masked through their registry entries (contactPhone, contactEmail): one read class, one target type, the platform's two masks",
   m6: "M6 · a masked file is REFUSED WHOLE on re-import, in U28's own sentence (its phone header names the mask) — never read as rows of numbers that look cut off",
-  m7: "M7 · ⛔ FREE TEXT TOO (review MINOR-2): in a masked or a none file, a number typed into a name, a tag or a note — spaced, hyphenated or whole — and an email in a note are masked as their columns are; a reader's file keeps the officer's words as typed",
+  m7: "M7 · ⛔ FREE TEXT TOO (review MINOR-2): in a masked or a none file, a number typed into a name, a tag or a note — spaced, hyphenated or whole, and (vb5 review m4) bracketed, dotted, no-break-spaced or en-dashed — and an email in a note are masked as their columns are; a reader's file keeps the officer's words as typed",
   a1: "A1 · ⭐ THE ACCEPT · GROWTH downloads a masked file and ADMIN a full one, both audited BEFORE the first byte: every audit row resolved before the response existed, before its first chunk was read and before the walk's first step",
   a2: "A2 · an empty match is the mark and the header only — and a reader's empty pull writes NO pii.revealed, one contacts.exported with matched 0",
   a3: "A3 · ⛔ a row that did not record (recorded: false) answers 503 text/plain with no file — no mark, no row — for pii.revealed and for contacts.exported alike, and nothing is written after the failed row but its refusal",
@@ -492,14 +492,20 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
   });
 
   await check(p(L.m7), () => {
-    const crafted = contactRow("mx_free", "0712000777", { displayName: "Juma 0712345678", tags: ["0754-123-456", "vip"], notes: "alt 0754 123 456 / asha@x.com" });
+    // vb5 review m4 · the spellings the single-separator mask missed, each in the note — built from codes, never typed.
+    const nb = String.fromCharCode(0xa0);
+    const en = String.fromCharCode(0x2013);
+    const spellings = ["(0754) 111 222", "0754.333.444", `0754${nb}555${nb}666`, `0754${en}777${en}888`];
+    const note = `alt 0754 123 456 / asha@x.com · ${spellings.join(" · ")}`;
+    const crafted = contactRow("mx_free", "0712000777", { displayName: "Juma 0712345678", tags: ["0754-123-456", "vip"], notes: note });
     const rowFor = (cell: "read" | "masked" | "none") => impl.deps.row(crafted, impl.deps.keys(cell), cell).join(" | ");
-    const leaks = (t: string) => ["0712345678", "0754 123 456", "0754-123-456", "asha@x.com"].some((x) => t.includes(x));
+    const leaks = (t: string) => ["0712345678", "0754 123 456", "0754-123-456", "asha@x.com", ...spellings].some((x) => t.includes(x));
     const masked = rowFor("masked");
     const none = rowFor("none");
     const read = rowFor("read");
     return [!leaks(masked) && !leaks(none) && masked.includes("••••78") && masked.includes("••••56") && masked.includes("vip")
-      && read.includes("alt 0754 123 456 / asha@x.com") && read.includes("Juma 0712345678") && read.includes("0754-123-456"),
+      && ["••••22", "••••44", "••••66", "••••88"].every((m) => masked.includes(m))
+      && read.includes(note) && read.includes("Juma 0712345678") && read.includes("0754-123-456"),
       `masked: ${masked.slice(0, 200)}`];
   });
 
@@ -1046,6 +1052,20 @@ if (!PROVE_RED) {
           ...CONTACTS_EXPORT_DEPS,
           row: (c, keys, cell) => contactExportRow(c, keys, cell).map((v, i) =>
             (keys[i] === "name" ? c.displayName ?? "" : keys[i] === "notes" ? c.notes ?? "" : keys[i] === "tags" ? c.tags.join(", ") : v)),
+        },
+      }),
+    },
+    {
+      name: "R25 · vb5 review m4 · the M7 gap again — a masked note scrubbed by the old single-separator rule: a bracketed, dotted, no-break-spaced or en-dashed number goes out whole",
+      expect: L.m7,
+      impl: () => ({
+        ...REAL,
+        deps: {
+          ...CONTACTS_EXPORT_DEPS,
+          row: (c, keys, cell) => contactExportRow(c, keys, cell).map((v, i) => (keys[i] === "notes" && cell !== "read"
+            ? (c.notes ?? "").replace(/[0-9](?:[ _-]?[0-9]){8,}/g, (m) => `••••${m.replace(/[^0-9]/g, "").slice(-2)}`)
+              .replace(/[^ @]+@[^ @]+[.][^ @]+/g, (m) => maskEmail(m))
+            : v)),
         },
       }),
     },

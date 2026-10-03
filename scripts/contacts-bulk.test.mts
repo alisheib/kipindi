@@ -50,7 +50,8 @@ import {
 } from "../src/lib/server/marketing/contact-bulk.ts";
 import type { ContactBulkDeps, ContactBulkRequest } from "../src/lib/server/marketing/contact-bulk.ts";
 import {
-  bulkConfirmTier, parseBulkTag, BULK_ENUMERATE_MAX, BULK_SAMPLE, BULK_PER_ROW_MAX, CONTACT_BULK_ACTIONS, PER_ROW_ACTIONS,
+  bulkConfirmTier, parseBulkTag, parseListName, BULK_ENUMERATE_MAX, BULK_SAMPLE, BULK_PER_ROW_MAX, CONTACT_BULK_ACTIONS,
+  LIST_NAME_HAS_PHONE, PER_ROW_ACTIONS,
 } from "../src/lib/contacts/bulk-rules.ts";
 import type { BulkOutcome, BulkPreview, BulkRefusal } from "../src/lib/contacts/bulk-rules.ts";
 import {
@@ -59,7 +60,7 @@ import {
 import { contactsHref } from "../src/app/admin/contacts/contacts-query.ts";
 import { parseTzNumber } from "../src/lib/tz-msisdn.ts";
 import { maskPhone } from "../src/lib/phone-normalize.ts";
-import { CONTACT_LIMITS, splitTags } from "../src/lib/contacts/contact-fields.ts";
+import { CONTACT_LIMITS, TAG_HAS_PHONE_SENTENCE, splitTags } from "../src/lib/contacts/contact-fields.ts";
 import { ERASURE_EVIDENCE } from "../src/lib/marketing/erasure-mark.ts";
 
 const PROVE_RED = process.argv.includes("--prove-red");
@@ -290,6 +291,7 @@ const L = {
   b5: "B5 · tag counts are the STORE's: 5 ticked, 2 already vip → matched 5, changed 3, unchanged 2, the line \"3 tagged · 2 already had it\"; a re-run changes 0; a row holding 20 tags is FULL and left as it was; the erased tombstone, ticked too, is in no audience and untouched",
   b5b: "B5b · ⭐ C11 · a tag runs U28's ONE rule: \" VIP \" is \"vip\" — the form's own spelling (splitTags); \"a,b\", \"\", spaces and 33 characters are refused, and a run carrying a bad tag is bad_tag, names its field and writes nothing",
   b6: "B6 · untag mirrors it: matched 5, changed 2, unchanged 3; a row without the tag keeps its stamp; the officer is updatedBy on the changed rows only",
+  b6b: "B6b · ⭐ vb5 review M1 · a phone-number tag stored before the rule is still TAKEN OFF: untag “0712 345 678” over the two rows holding it changes 2 and leaves only their other tag; tagging with it is bad_tag in the rule's own sentence and writes nothing; parseBulkTag reads it for untag and refuses it for tag; a new list's name holding a number is refused, one holding a year is not",
   b7: "B7 · add to a list: a NEW name creates it (changed 5, the name returned); a re-run changes 0; an existing member keeps its ORIGINAL addedAt; \"arusha EVENT\" is refused list_exists and creates nothing; an unknown list is bad_list",
   b8: "B8 · ⭐ C23 · suppress writes an OPERATOR stop NOBODY can lift: reason OPERATOR, the officer, the run's evidence; the row's suppressedAt is the stop's own time; the gate says suppressed; a person's old WITHDRAWN stop is taken over (createdAt kept) and its link can no longer lift it; an officer's stop is unchanged",
   b8b: "B8b · the per-number cap is asked BEFORE anything is written: with the cap at 3, a suppress over 4 is too_many_for_per_row with expected 4 — its preview too — and none of the 4 numbers has a stop",
@@ -316,6 +318,7 @@ const L = {
   b19: "B19 · the filter's IDENTITY ignores the minute a rolling window resolves to (review F6): range=7d a minute apart is two keys and ONE identity; 24h, a pill or a typed date is another identity; a typed date is one identity at any hour",
   s8: "S8 · the selection clears “all matching” on the filter's IDENTITY, never its key (F6), and “select all matching” says when it may let go of ticks made elsewhere (F5) — the copy executed, “not on this page”",
   s9: "S9 · the confirmation says “and N more” only below a listed sample and names the whole book when nothing narrows it (F3); a button disabled by a request in flight says why (EXECUTED)",
+  s11: "S11 · ⭐ vb5 review M1 · the ACTION rides with the tag text to the ONE rule on both sides — the bar asks parseBulkTag(param.tag, param.action), the service parseBulkTag(req.tag, req.action), and the rule reads an untag through parseFilterTag — so the browser never refuses an untag the server would run",
   s10: "S10 · 🔴 D19 / A1.1 / OD54 · the KPI band's consent split (F1) AND its stop count (OD54) are a READER's: a masked viewer's band is exactly two tiles — In the book and the contacts added in the last 7 days (the loader's count) — with no consent, withdrawn or Suppressed tile, in the 1-lg2 rung that holds the four-tile band's rows; a reader's keeps all four",
 } as const;
 
@@ -431,8 +434,8 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
       `${outcome(r1)} | ${outcome(r2)} | ${outcome(rFull)} | ${outcome(rErased)}`];
   });
   await fresh(L.b5b, async () => {
-    const vip = parseBulkTag(" VIP ");
-    const refused = ["a,b", "", "  ", "x".repeat(CONTACT_LIMITS.tag + 1)].map((t) => parseBulkTag(t));
+    const vip = parseBulkTag(" VIP ", "tag");
+    const refused = ["a,b", "", "  ", "x".repeat(CONTACT_LIMITS.tag + 1)].map((t) => parseBulkTag(t, "tag"));
     const before = await tagsOf(five);
     const r = await run({ action: "tag", tag: "a,b", audience: { ids: five }, typed: null });
     return [vip.ok && vip.tag === "vip" && vip.tag === splitTags(" VIP ")[0] && refused.every((v) => !v.ok)
@@ -447,6 +450,26 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
     return [r.ok && r.matched === 5 && r.changed === 2 && r.unchanged === 3
       && [0, 1].every((i) => after[i] !== null && !after[i]!.tags.includes("vip") && after[i]!.updatedBy === OFFICER) && untouched,
       outcome(r)];
+  });
+  await fresh(L.b6b, async () => {
+    // Two rows carry a tag stored before the phone-number rule — U23's box accepted one until vb5.
+    const PHONE_TAG = "0712 345 678";
+    const held = ["mc_b_phonetag_0", "mc_b_phonetag_1"];
+    for (const [k, id] of held.entries()) await db.marketingContact.create(literalRow(id, numberOf(90 + k), { tags: ["vip", PHONE_TAG] }));
+    const reads = parseBulkTag(PHONE_TAG, "untag");
+    const writes = parseBulkTag(PHONE_TAG, "tag");
+    const before = await tagsOf(five);
+    const refused = await run({ action: "tag", tag: PHONE_TAG, audience: { ids: five }, typed: null });
+    const untouched = (await tagsOf(five)) === before;
+    const r = await run({ action: "untag", tag: PHONE_TAG, audience: { ids: held }, typed: null });
+    const after = await Promise.all(held.map((id) => db.marketingContact.find(id)));
+    const list = parseListName("Wateja 0712 345 678");
+    const year = parseListName("Wateja 2026");
+    return [reads.ok && reads.tag === PHONE_TAG && !writes.ok && writes.sentence === TAG_HAS_PHONE_SENTENCE
+      && !refused.ok && refused.reason === "bad_tag" && refused.error === TAG_HAS_PHONE_SENTENCE && untouched
+      && r.ok && r.matched === 2 && r.changed === 2 && after.every((c) => c !== null && JSON.stringify(c.tags) === JSON.stringify(["vip"]))
+      && !list.ok && list.sentence === LIST_NAME_HAS_PHONE && year.ok,
+      `untag reads ${JSON.stringify(reads)} · tag ${JSON.stringify(writes)} · ${outcome(refused)} · ${outcome(r)} · list ${JSON.stringify(list)} · year ${JSON.stringify(year)}`];
   });
   await fresh(L.b7, async () => {
     const r1 = await run({ action: "addToList", newListName: "Arusha event", audience: { ids: five }, typed: null });
@@ -802,6 +825,12 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
       && ["In the book", "Consent given", "No consent", "Suppressed"].every((l) => reader.includes(`label="${l}"`)),
       `masked: ${masked.replace(/ +/g, " ").slice(0, 200)}`];
   });
+  await check(p(L.s11), () => {
+    const bar = src.bar.includes("parseBulkTag(param.tag, param.action)");
+    const service = src.service.includes('parseBulkTag(req.tag ?? "", req.action)');
+    const rules = src.rules.includes('action === "untag" ? parseFilterTag(text) : parseOneTag(text)');
+    return [bar && service && rules, `bar ${bar} · service ${service} · rules ${rules}`];
+  });
 }
 
 if (!PROVE_RED) {
@@ -1000,6 +1029,23 @@ if (!PROVE_RED) {
           '<AdminKpi label={CONTACTS_KPI_RECENT} value={failed ? "" : recent!.toLocaleString()} unavailable={failed} />',
           '<AdminKpi label="Suppressed" value={failed ? "" : s!.suppressed.toLocaleString()} unavailable={failed} />'),
       }),
+    },
+
+    /* ── the vb5 review's M1 (2026-10-03), each on its own assertion ── */
+    {
+      name: "R26 · vb5 M1 · the service drops the action — an untag of a stored phone-number tag meets the write rule and is refused",
+      expect: L.s11,
+      impl: () => ({ ...REAL, sources: withSource("service", 'parseBulkTag(req.tag ?? "", req.action)', 'parseBulkTag(req.tag ?? "", "tag")') }),
+    },
+    {
+      name: "R27 · vb5 M1 · the bar drops the action — the browser refuses the untag the server would run",
+      expect: L.s11,
+      impl: () => ({ ...REAL, sources: withSource("bar", "parseBulkTag(param.tag, param.action)", 'parseBulkTag(param.tag, "tag")') }),
+    },
+    {
+      name: "R28 · vb5 M1 · the rule reads an untag through the WRITE rule — both actions ask parseOneTag",
+      expect: L.s11,
+      impl: () => ({ ...REAL, sources: withSource("rules", 'action === "untag" ? parseFilterTag(text) : parseOneTag(text)', "parseOneTag(text)") }),
     },
   ];
 

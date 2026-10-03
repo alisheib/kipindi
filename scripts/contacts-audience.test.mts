@@ -11,6 +11,9 @@
  *      own, AND across them, an empty any-of is NOTHING, the tombstone is in no reader, an unknown value REFUSES,
  *      and two spellings of one filter are one key. 2.16 · the ONE role rule (`roleRefusal`, D19 / A1.1 / OD54), at its
  *      home: every player axis refused by name to a masked viewer — `suppressed` among them since OD54 — none to a reader.
+ *      2.17–2.22 (vb5) · the shared field rules as this resolver reads them: `?tag=` through the ONE tag rule (marks,
+ *      NFKC), the search box's text cleaned like a stored name and refused when it is invisible or longer than the
+ *      grammar keeps, a lone quote searched literally (never every row), and the phone-run mask that IS contact-fields'.
  *   §3 ⭐ ONE COUNT (the Accept): for twelve filters the list's total, count(), breakdown().total, the keyset walk
  *      and the union of the pages are one number. U34a added THE EXPORT LEG (its plan line): for every filter an
  *      address can carry, the file a reader downloads holds X-Rows-Matched data rows, parsed back through U25's real
@@ -43,7 +46,10 @@ import {
   contactAudience, toAudienceWhere, AUDIENCE_DEPS, WHOLE_BOOK, MAX_AUDIENCE_IDS, CONTACT_AUDIENCE_URL_KEYS,
   parseContactAudienceParams, parseContactAudienceJson, contactAudienceKey, contactAudienceParams, urlExpressible,
   auditContactAudience, describeAudience, ndcsForOperators, contactTagCounts, roleRefusal, ROLE_REFUSAL_REASON,
+  contactsSearch, scrubPhoneRuns, SEARCH_TOO_LONG, SEARCH_UNREADABLE, TAG_SEPARATOR_IN_ADDRESS,
 } from "../src/lib/server/marketing/audience.ts";
+import { scrubPhoneRuns as fieldsScrubPhoneRuns, TAG_ONE_AT_A_TIME_SENTENCE } from "../src/lib/contacts/contact-fields.ts";
+import { parseQuery, fieldNames, CONTACT_SEARCH, MAX_QUERY_LEN } from "../src/lib/search/index.ts";
 import type { ContactAudienceFilter, ContactAudience, AudienceParse } from "../src/lib/server/marketing/audience.ts";
 import { CONTACTS_LINK_KEYS, contactsHref } from "../src/app/admin/contacts/contacts-query.ts";
 import { loadContacts } from "../src/app/admin/contacts/contacts-loader.ts";
@@ -317,6 +323,15 @@ type Impl = {
 
 /** 2.16's label, once — the assertion and its red case both read it. */
 const L_ROLE = "2.16 · 🔴 D19 / A1.1 / OD54 · the ONE role rule: a masked viewer is refused every player axis BY NAME — player, source, consent and suppressed (yes and no alike, the address's ?suppressed=no included) — each with the ROLE_REFUSAL_REASON; a reader is refused none; and the axes that carry no player signal (search, operator, list, tag, import, window, ticks) pass for both";
+/** vb5 · the shared field rules as this resolver reads them — each label once, read by its assertion and its red case. */
+const LV5 = {
+  tag: "2.17 · ⭐ vb5 · ?tag= reads through the ONE tag rule (parseFilterTag): a Devanagari tag — combining marks — filters exactly its row, and a full-width VIP finds the stored vip",
+  clean: "2.18 · ⛔ vb5 · the search box's text is cleaned like a stored name before any reader: Asha followed by a NUL finds the Asha rows, and a search of invisible characters only (?q=%00) is REFUSED naming q, in the address and in JSON — never the whole book, never a NUL handed to Postgres",
+  long: "2.19 · ⛔ vb5 · C2 · a search longer than the grammar keeps (MAX_QUERY_LEN) is REFUSED naming q, in the address and in JSON — never clipped; one at the limit passes whole",
+  quote: "2.20 · ⛔ vb5 · C2 · a search the grammar finds no word in (a lone quote, two quotes) is a literal search that lists nothing — never every row under 'Name contains'",
+  mask: "2.21 · ⛔ vb5 · ONE phone-run rule: audience.ts's scrubPhoneRuns IS contact-fields' own, and the audit form masks the dotted, no-break-space, en-dash and bracketed spellings to four bullets and the last two digits",
+  sep: "2.22 · vb5 review m5 · an address's tag holding ; or | is refused naming tag in the RULE's words (“A tag never holds a comma, ; or |.”), in the address and in JSON — never the bulk box's “Type one tag at a time”, which speaks to somebody typing",
+};
 
 const F = (patch: Partial<ContactAudienceFilter>): ContactAudienceFilter => ({ ...WHOLE_BOOK, ...patch });
 /** A parse that must succeed. A refusal becomes a filter that matches nothing real, so the assertion using it fails
@@ -564,6 +579,70 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
       && typedNo.ok && impl.role(typedNo.filter, false)?.param === "suppressed",
     `misnamed [${misnamed.join(" | ")}] · reader refused [${readerRefused}] · open ${JSON.stringify(impl.role(openAxes, false))}`);
 
+  /* ── 2.17–2.21 · vb5 · THE SHARED FIELD RULES, AS THIS RESOLVER READS THEM ──────────────────── */
+  // 2.17 · a Devanagari-tagged row is added for this assertion alone and taken back out, so every run starts from the
+  // same ten rows (§2.0 counts them). The characters are built from their codes (repo memory).
+  const HINDI = String.fromCharCode(0x939, 0x93f, 0x902, 0x926, 0x940);
+  const FULL_VIP = String.fromCharCode(0xff36, 0xff29, 0xff30);
+  const hindiRow = contact("a017", "0712000017", { displayName: "Tag Row", tags: [HINDI], createdAt: "2026-09-12T07:00:00.000Z" });
+  let hindiIds = "";
+  let fullVipIds = "";
+  try {
+    await db.marketingContact.create(hindiRow);
+    hindiIds = await viaUrl({ tag: HINDI });
+    fullVipIds = await viaUrl({ tag: FULL_VIP });
+  } finally {
+    memoryStore?.marketingContacts.delete(hindiRow.id);
+    memoryStore?.contactsByMsisdn.delete(hindiRow.msisdn);
+  }
+  ok(p(LV5.tag), hindiIds === "a017" && fullVipIds === "a01,a04",
+    `?tag=<Devanagari> → ${hindiIds} · ?tag=<full-width VIP> → ${fullVipIds}`);
+
+  const NUL = String.fromCharCode(0);
+  const nulOnly = impl.parse({ q: NUL }, NOW);
+  const nulJson = impl.parseJson({ q: NUL });
+  const ashaNul = impl.parse({ q: `Asha${NUL}` }, NOW);
+  const ashaFound = ashaNul.ok ? await ids(ashaNul.filter) : "REFUSED";
+  ok(p(LV5.clean),
+    !nulOnly.ok && nulOnly.param === "q" && nulOnly.reason === SEARCH_UNREADABLE && !nulJson.ok && nulJson.param === "q"
+      && ashaNul.ok && ashaNul.filter.q === "Asha" && ashaFound === "a01,a04",
+    `?q=<NUL> → ${nulOnly.ok ? "A FILTER" : nulOnly.param} · JSON → ${nulJson.ok ? "A FILTER" : nulJson.param} · Asha+<NUL> → ${ashaNul.ok ? JSON.stringify(ashaNul.filter.q) : "refused"}, finds ${ashaFound}`);
+
+  const overLimit = "a".repeat(MAX_QUERY_LEN + 1);
+  const atLimit = "a".repeat(MAX_QUERY_LEN);
+  const rOver = impl.parse({ q: overLimit }, NOW);
+  const jOver = impl.parseJson({ q: overLimit });
+  const rAt = impl.parse({ q: atLimit }, NOW);
+  ok(p(LV5.long),
+    !rOver.ok && rOver.param === "q" && rOver.reason === SEARCH_TOO_LONG && !jOver.ok && jOver.param === "q"
+      && rAt.ok && rAt.filter.q === atLimit,
+    `${MAX_QUERY_LEN + 1} characters → ${rOver.ok ? `a filter of ${rOver.filter.q?.length ?? 0}` : rOver.param} · JSON → ${jOver.ok ? "a filter" : jOver.param} · ${MAX_QUERY_LEN} → ${rAt.ok ? "kept" : rAt.param}`);
+
+  const quote = impl.parse({ q: '"' }, NOW);
+  const quotes = impl.parse({ q: '""' }, NOW);
+  const quoteCount = quote.ok ? await impl.audience(quote.filter).count() : -1;
+  const quotesCount = quotes.ok ? await impl.audience(quotes.filter).count() : -1;
+  ok(p(LV5.quote), quote.ok && quote.filter.q === '"' && quoteCount === 0 && quotes.ok && quotesCount === 0,
+    `?q=" → ${quote.ok ? `${quoteCount} row(s)` : "refused"} · ?q="" → ${quotes.ok ? `${quotesCount} row(s)` : "refused"}`);
+
+  const NBSP = String.fromCharCode(0xa0);
+  const EN_DASH = String.fromCharCode(0x2013);
+  const maskSpellings = ["0754.123.456", `0754${NBSP}123${NBSP}456`, `0754${EN_DASH}123${EN_DASH}456`, "(0754) 123 456"];
+  const audited = maskSpellings.map((t) => {
+    const tags = impl.audit(F({ tags: [t] })).tags;
+    return Array.isArray(tags) ? String(tags[0] ?? "") : "";
+  });
+  const allMasked = audited.every((t) => (t.match(/[0-9]/g) ?? []).length === 2 && t.endsWith("••••56"));
+  ok(p(LV5.mask), scrubPhoneRuns === fieldsScrubPhoneRuns && allMasked,
+    `the same function ${scrubPhoneRuns === fieldsScrubPhoneRuns} · audited tags ${JSON.stringify(audited)}`);
+
+  const sepUrl = impl.parse({ tag: "vip;dar" }, NOW);
+  const sepJson = impl.parseJson({ tags: ["vip|dar"] });
+  const saysRule = (r: AudienceParse, param: string): boolean =>
+    !r.ok && r.param === param && r.reason.endsWith(TAG_SEPARATOR_IN_ADDRESS) && !r.reason.includes(TAG_ONE_AT_A_TIME_SENTENCE);
+  ok(p(LV5.sep), saysRule(sepUrl, "tag") && saysRule(sepJson, "tags"),
+    `address → ${sepUrl.ok ? "ACCEPTED" : sepUrl.reason} · JSON → ${sepJson.ok ? "ACCEPTED" : sepJson.reason}`);
+
   /* ── §3 · ⭐ ONE COUNT ─────────────────────────────────────────────────────────────────────── */
   const bad: string[] = [];
   for (const c of ONE_COUNT) {
@@ -804,6 +883,52 @@ if (!PROVE_RED) {
   ].join("\n");
   const planted = (toWhere: typeof toAudienceWhere) => (f: ContactAudienceFilter) => contactAudience(f, toWhere);
 
+  /* vb5 · the readers as they stood before the shared field rules — each plant changes ONE thing, and only for the input
+   * its own assertion sends, so no neighbour turns red first. */
+  const firstQ = (v: string | string[] | undefined): string | undefined =>
+    (Array.isArray(v) ? v : [v]).find((s) => String(s ?? "").trim() !== "");
+  const tagTokens = (v: string | string[] | undefined): string[] =>
+    (v === undefined ? [] : Array.isArray(v) ? v : [v]).flatMap((s) => String(s ?? "").split(",")).map((s) => s.trim()).filter((s) => s !== "");
+  /** The tag shape `audience.ts` kept: no NFKC, no combining marks. */
+  const PRE_VB5_TAG = /^[\p{L}\p{N} _-]{1,32}$/u;
+  const preVb5TagOf = (raw: string): string | null => {
+    const t = raw.trim().replace(/\s+/g, " ").toLowerCase();
+    return PRE_VB5_TAG.test(t) ? t : null;
+  };
+  const preVb5TagParse: typeof parseContactAudienceParams = (sp, now) => {
+    const raw = tagTokens(sp.tag);
+    const r = parseContactAudienceParams({ ...sp, tag: undefined }, now);
+    if (raw.length === 0 || !r.ok) return r;
+    const read = raw.map(preVb5TagOf);
+    if (read.some((t) => t === null)) return { ok: false, param: "tag", reason: "planted: the pre-vb5 tag shape" };
+    return { ok: true, filter: { ...r.filter, tags: [...new Set(read as string[])].sort() } };
+  };
+  /** The box's text kept as typed whenever it holds a control or format character — the NUL included. */
+  const INVISIBLE_CHAR = /[\p{Cc}\p{Cf}]/u;
+  const uncleanedQParse: typeof parseContactAudienceParams = (sp, now) => {
+    const q0 = firstQ(sp.q);
+    if (q0 === undefined || !INVISIBLE_CHAR.test(q0)) return parseContactAudienceParams(sp, now);
+    const r = parseContactAudienceParams({ ...sp, q: undefined }, now);
+    return r.ok ? { ok: true, filter: { ...r.filter, q: q0.trim() } } : r;
+  };
+  /** A search over the limit cut to it, as the grammar's own slice would. */
+  const clippedQParse: typeof parseContactAudienceParams = (sp, now) => {
+    const r = parseContactAudienceParams(sp, now);
+    if (r.ok || r.param !== "q" || r.reason !== SEARCH_TOO_LONG) return r;
+    return parseContactAudienceParams({ ...sp, q: (firstQ(sp.q) ?? "").trim().slice(0, MAX_QUERY_LEN) }, now);
+  };
+  /** The search box's reading before vb5: the grammar's answer as it is, `empty` and all. */
+  const preVb5Search: typeof contactsSearch = (raw) => {
+    const text = (raw ?? "").trim();
+    if (text === "") return { msisdn: null, name: null };
+    const parsed = parseTzNumber(text);
+    if (parsed.verdict === "ok" && parsed.msisdn) return { msisdn: parsed.msisdn, name: null };
+    return { msisdn: null, name: parseQuery(text, { fields: fieldNames(CONTACT_SEARCH) }) };
+  };
+  /** The single-separator mask this file kept before vb5. */
+  const singleSeparatorScrub = (s: string): string =>
+    s.replace(/[0-9](?:[ _-]?[0-9]){8,}/g, (m) => `••••${m.replace(/[^0-9]/g, "").slice(-2)}`);
+
   const CASES: Array<{ name: string; expect: string[]; impl: Impl }> = [
     {
       name: "R1 · a second query path: an export draft pages the book itself",
@@ -973,6 +1098,42 @@ if (!PROVE_RED) {
       name: "R21 · 🔴 OD54 · the role rule forgets the stop — a masked viewer may ask which numbers are under a stop, the player question by another name",
       expect: [L_ROLE],
       impl: { ...REAL, role: (f, reads) => roleRefusal({ ...f, suppressed: null }, reads) },
+    },
+    {
+      name: "R24 · vb5 · the address's own tag copy again — no NFKC and no combining marks: a Devanagari tag has no address, a full-width one misses its row",
+      expect: [LV5.tag],
+      impl: { ...REAL, parse: preVb5TagParse },
+    },
+    {
+      name: "R25 · vb5 · the search box's text kept as typed — a NUL becomes a filter Postgres would refuse, and Asha+NUL finds nobody",
+      expect: [LV5.clean],
+      impl: { ...REAL, parse: uncleanedQParse },
+    },
+    {
+      name: "R26 · vb5 · C2 · a long search silently cut to the grammar's limit — the filter is not the one typed",
+      expect: [LV5.long],
+      impl: { ...REAL, parse: clippedQParse },
+    },
+    {
+      name: "R27 · vb5 · C2 · a lone quote read as no constraint — the whole book under 'Name contains', for a bulk Tag to write to",
+      expect: [LV5.quote],
+      impl: { ...REAL, audience: planted((f) => toAudienceWhere(f, { ...AUDIENCE_DEPS, search: preVb5Search })) },
+    },
+    {
+      name: "R28 · vb5 · the audit form's single-separator mask — a dotted, bracketed, no-break-space or en-dash number rides into the unprunable chain whole",
+      expect: [LV5.mask],
+      impl: { ...REAL, audit: (f) => ({ ...auditContactAudience(f), ...(f.tags !== null ? { tags: f.tags.map(singleSeparatorScrub) } : {}) }) },
+    },
+    {
+      name: "R29 · vb5 review m5 · the address speaks to a typist again — a ; in ?tag= is told “Type one tag at a time”",
+      expect: [LV5.sep],
+      impl: {
+        ...REAL,
+        parse: (sp, now) => {
+          const r = parseContactAudienceParams(sp, now);
+          return r.ok ? r : { ...r, reason: r.reason.replace(TAG_SEPARATOR_IN_ADDRESS, TAG_ONE_AT_A_TIME_SENTENCE) };
+        },
+      },
     },
   ];
 

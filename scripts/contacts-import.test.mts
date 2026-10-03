@@ -98,6 +98,7 @@ const REGISTRY: readonly Registered[] = [
   { file: "vcard.mts", owner: "U26", covers: "src/lib/contacts/vcard.ts — the vCard reader" },
   { file: "csv.mts", owner: "U25", covers: "src/lib/contacts/import-parse.ts — the CSV reader" },
   { file: "xlsx.mts", owner: "U27b", covers: "src/lib/server/contacts/{import-xlsx,import-xlsx-run}.ts — the XLSX reader and its officer wrapper" },
+  { file: "field-rules.mts", owner: "vb5", covers: "src/lib/contacts/contact-fields.ts — the shared field rules: phone runs, the email rule, the form's problems, the filter's tag reader" },
   // U32  · commit.mts, preflight.mts
 ];
 

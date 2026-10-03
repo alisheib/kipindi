@@ -14,6 +14,10 @@ import {
   classifyContact, parseContacts, createCampaign, addContacts, addContactsStructured, sendCampaign,
   bindRegistration, getCampaignDetail,
 } from "../src/lib/server/invite-service.ts";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
+import { decomment } from "./lib/decomment.mts";
 
 let pass = 0, fail = 0;
 function ok(label: string, cond: boolean, extra?: string) {
@@ -48,6 +52,23 @@ const bonus = async (uid: string) => (await db.wallet.findByUserId(uid))?.bonusB
   ok("2 valid (dupe removed)", valid.length === 2, `valid=${valid.length}`);
   ok("amount override parsed", valid.find((v) => v.value === "+255712345678")?.bonusAmountTzs === 15_000);
   ok("1 invalid line", invalid.length === 1, `invalid=${invalid.length}`);
+}
+
+// ── vb8 · ONE email rule: the contact book's checkContactEmail, in the service and in the form ──
+{
+  const NUL = String.fromCharCode(0);
+  ok("vb8 · an address holding a NUL is refused (the old regex in this file let it through, then Postgres refused the insert)",
+     classifyContact(`jane${NUL}@example.com`) === null);
+  const root = join(dirname(fileURLToPath(import.meta.url)), "..");
+  const read = (p: string) => decomment(readFileSync(join(root, p), "utf8"));
+  /** A hand-rolled email regex: a class, a non-space escape, a word escape or a dot, then a quantifier, then the @. */
+  const privateRule = (src: string) => ["]+@", "]*@", "S+@", "S*@", "w+@", "w*@", ".+@", ".*@"].some((t) => src.includes(t));
+  const BS = String.fromCharCode(92);
+  ok("vb8 · CONTROL — the private-rule detector sees the regex both invites files used to carry, and a looser one",
+     privateRule("const EMAIL_RE = /^[^ @]+@[^ @]+[.][^ @]+$/;") && privateRule(`const EMAIL = /^${BS}S+@${BS}S+$/;`));
+  const files = ["src/lib/server/invite-service.ts", "src/app/admin/invites/invite-admin-client.tsx"].map(read);
+  ok("vb8 · neither invites file keeps an email rule of its own — both call checkContactEmail from contact-fields",
+     files.every((s) => !privateRule(s) && s.includes("checkContactEmail(") && s.includes(`from "@/lib/contacts/contact-fields"`)));
 }
 
 // ── createCampaign + addContacts ─────────────────────────────────────────────

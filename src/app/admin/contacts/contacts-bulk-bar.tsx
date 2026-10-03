@@ -124,7 +124,7 @@ export function ContactsBulkBar({ lists }: { lists: Array<{ id: string; name: st
       preview({ action: "addToList", audience: s.audience(), typed: null, newListName: named.name });
       return;
     }
-    const tag = parseBulkTag(param.tag);
+    const tag = parseBulkTag(param.tag, param.action);
     if (!tag.ok) {
       setParam({ ...param, error: tag.sentence });
       return;

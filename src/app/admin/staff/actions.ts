@@ -12,6 +12,11 @@
  *   4. A COMPLIANCE audit entry (immutable, hash-chained) is the authoritative record.
  *
  * The pure validation lives in ../../../lib/server/staff-roles.ts so it can be unit-tested.
+ *
+ * ⭐ vb8 (2026-10-03) · THE REASON IS READ WHOLE AND CHECKED, NEVER CUT. Both actions used to `.slice(0, 500)` the
+ * reason before any rule saw it, so a longer one was silently shortened into the compliance log. They now hand the
+ * raw text to `checkStaffReason` (through `validateRoleChange` for a role change): over 500 characters, or holding a
+ * phone number, is refused at the `reason` field, and what is stored is the cleaned text the rule checked.
  */
 import { runOutsideLock } from "@/lib/server/locks";
 import { revalidatePath } from "next/cache";
@@ -19,11 +24,10 @@ import { db } from "@/lib/server/store";
 import { audit } from "@/lib/server/audit";
 import { revokeUserSessions } from "@/lib/server/session-registry";
 import { requireOwner } from "@/lib/server/rbac-guard";
-import { fieldError } from "@/lib/server/field-error";
+import { fieldError, type ActionFailure } from "@/lib/server/field-error";
 import { sendEmailToUser, staffRoleChangedHtml } from "@/lib/server/email";
 import { ROLE_LABEL, type Role } from "@/lib/server/roles";
-import { validateRoleChange, isStaffAssignable, type AssignableRole } from "@/lib/server/staff-roles";
-import { tzPhone } from "@/lib/server/validators";
+import { validateRoleChange, isStaffAssignable, checkStaffPhone, checkStaffReason, type AssignableRole } from "@/lib/server/staff-roles";
 import { safeError } from "@/lib/server/safe-error";
 
 async function applyRoleChange(
@@ -68,41 +72,41 @@ async function applyRoleChange(
 }
 
 /** Change an existing staffer's (or any account's) role. */
-export async function setStaffRoleAction(formData: FormData): Promise<{ ok: true } | { ok: false; error: string }> {
+export async function setStaffRoleAction(formData: FormData): Promise<{ ok: true } | ActionFailure> {
   const officerId = (await requireOwner("setStaffRole")).userId;
   const targetId = String(formData.get("userId") ?? "").trim();
   const newRole = String(formData.get("role") ?? "").trim();
-  const reason = String(formData.get("reason") ?? "").trim().slice(0, 500);
+  const reason = String(formData.get("reason") ?? "");
 
   const target = targetId ? await db.user.findById(targetId) : null;
+  // ⭐ A refusal the form can fix names its field ("role" or "reason") — AssignRoleForm takes the officer there.
   const v = validateRoleChange({ actorId: officerId, targetId, prevRole: target?.role ?? "", newRole, reason });
   if (!v.ok) return v;
   if (!target) return { ok: false, error: "Account not found." };
-  return applyRoleChange(officerId, target, v.newRole, reason);
+  return applyRoleChange(officerId, target, v.newRole, v.reason);
 }
 
 /** Promote an existing account (looked up by phone) to a staff role. The person must
  *  already have a normal 50pick account — we never create logins here. */
-export async function addStaffByPhoneAction(formData: FormData): Promise<{ ok: true; userId: string } | { ok: false; error: string; field?: string }> {
+export async function addStaffByPhoneAction(formData: FormData): Promise<{ ok: true; userId: string } | ActionFailure> {
   const officerId = (await requireOwner("addStaffByPhone")).userId;
-  const phoneRaw = String(formData.get("phone") ?? "").trim();
+  const phone = checkStaffPhone(String(formData.get("phone") ?? ""));
   const newRole = String(formData.get("role") ?? "").trim();
-  const reason = String(formData.get("reason") ?? "").trim().slice(0, 500);
+  const reason = checkStaffReason(String(formData.get("reason") ?? ""));
 
   /* ⭐ DG-S-05 — every refusal below names the control whose VALUE has to change, which on a
      three-field form is not guessable from the sentence alone: "That's your own account" and
      "Already SUPPORT" are both about the person, but one is fixed at the phone and the other
      at the role. §F4 asks for the reason AND the next step; `field` is the next step. */
-  const parsed = tzPhone.safeParse(phoneRaw);
-  if (!parsed.success) return fieldError("phone", "Enter a valid Tanzanian phone (+255…).");
+  if (!phone.ok) return fieldError("phone", phone.error);
   if (!isStaffAssignable(newRole)) return fieldError("role", "Pick a staff role.");
-  if (reason.length < 5) return fieldError("reason", "A reason is required (≥ 5 characters).");
+  if (!reason.ok) return fieldError("reason", reason.error);
 
-  const target = await db.user.findByPhone(parsed.data);
+  const target = await db.user.findByPhone(phone.phone);
   if (!target) return fieldError("phone", "No account with that phone. Ask them to register a normal account first, then add them.");
   if (target.id === officerId) return fieldError("phone", "That's your own account.");
   if (target.role === newRole) return fieldError("role", `Already ${ROLE_LABEL[newRole as Role]}.`);
 
-  const r = await applyRoleChange(officerId, target, newRole as AssignableRole, reason);
+  const r = await applyRoleChange(officerId, target, newRole as AssignableRole, reason.reason);
   return r.ok ? { ok: true, userId: target.id } : r;
 }

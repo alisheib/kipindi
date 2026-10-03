@@ -49,7 +49,7 @@ import { CONSENT_LABEL, CONTACTS_EMPTY } from "../src/app/admin/contacts/contact
 import { SENSITIVE_FIELDS, maskEmail } from "../src/lib/server/sensitive-fields.ts";
 import { parseTzNumber, TZ_MOBILE_NDCS, TZ_OPERATORS } from "../src/lib/tz-msisdn.ts";
 import { normalizeTzLocalDigits, maskPhone } from "../src/lib/phone-normalize.ts";
-import { CONTACT_LIMITS, splitTags } from "../src/lib/contacts/contact-fields.ts";
+import { CONTACT_LIMITS, NAME_HAS_PHONE_SENTENCE, NAME_TOO_LONG_SENTENCE, splitTags } from "../src/lib/contacts/contact-fields.ts";
 import { ERASURE_EVIDENCE } from "../src/lib/marketing/erasure-mark.ts";
 
 const PROVE_RED = process.argv.includes("--prove-red");
@@ -302,7 +302,7 @@ const L = {
   d2: "3.2 · the race: a row created between the lookup and the save is a refusal carrying ITS id — no throw, no second row",
   d3: "3.3 · 🔴 D19 · the lookup says nothing else: exactly three keys for every answer, and a player's number answers exactly like a stranger's, in the book and out of it",
   d4: "3.4 · ⛔ C3 · an ERASED number is refused with one sentence and NO id — by the lookup and by the save — and nothing is written",
-  d5: "3.5 · the server refuses what the dialog might not: 064 and a landline with parseTzNumber's own sentence, a 121-character name, a bad email and a 33-character tag, each naming its field and writing nothing (CONTROL: 120 characters pass)",
+  d5: "3.5 · the server refuses what the dialog might not: 064 and a landline with parseTzNumber's own sentence, a 121-character name, a bad email, a 33-character tag and (vb5) a short name holding a phone number — told THAT, never the length sentence — each naming its field and writing nothing (CONTROL: 120 characters pass)",
   e1: "4.1 · the edit writes ONLY the name, email, notes and tags (and the stamp): the number, source, sourceRef, link, caches, import and provenance are untouched",
   e2: "4.2 · ⭐ COMPARE-AND-SET: two saves on one token — the first lands, the second is refused as stale, and the row holds the first",
   e3: "4.3 · an unknown id is MISSING, and a malformed one is missing without the store being read",
@@ -527,12 +527,16 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
       const exact = await impl.add(req("0713 440 002", { displayName: "y".repeat(CONTACT_LIMITS.displayName) }), OFFICER, NOW);
       const mail = await impl.add(req("0713 440 003", { email: "not-an-address" }), OFFICER, NOW);
       const tagged = await impl.add(req("0713 440 004", { tags: "a".repeat(CONTACT_LIMITS.tag + 1) }), OFFICER, NOW);
+      // vb5 · a name holding a phone number — the masked number in plain sight on every row — refused in its own words.
+      const phoned = await impl.add(req("0713 440 005", { displayName: "Juma 0712 345 678" }), OFFICER, NOW);
       const numbersOk = refused.every((r, i) => !r.ok && r.reason === "invalid_number" && r.field === "number" && r.error === parseTzNumber(bad[i]).reason);
-      const nothing = (await Promise.all(["0713 440 001", "0713 440 003", "0713 440 004"].map((n) => db.marketingContact.findByMsisdn(bare(n))))).every((x) => x === null)
+      const nothing = (await Promise.all(["0713 440 001", "0713 440 003", "0713 440 004", "0713 440 005"].map((n) => db.marketingContact.findByMsisdn(bare(n))))).every((x) => x === null)
         && (await db.marketingContact.findByMsisdn("255641234567")) === null;
       return [numbersOk && !long.ok && long.reason === "invalid_field" && long.field === "displayName" && exact.ok
-        && !mail.ok && mail.reason === "invalid_field" && mail.field === "email" && !tagged.ok && tagged.reason === "invalid_field" && tagged.field === "tags" && nothing,
-        [...refused, long, exact, mail, tagged].map((r) => (r.ok ? "ok" : `${r.reason}:${"field" in r ? r.field : ""}`)).join(" | ")];
+        && !mail.ok && mail.reason === "invalid_field" && mail.field === "email" && !tagged.ok && tagged.reason === "invalid_field" && tagged.field === "tags"
+        && !phoned.ok && phoned.reason === "invalid_field" && phoned.field === "displayName" && phoned.error === NAME_HAS_PHONE_SENTENCE && nothing,
+        [...refused, long, exact, mail, tagged, phoned].map((r) => (r.ok ? "ok" : `${r.reason}:${"field" in r ? r.field : ""}`)).join(" | ")
+          + ` · the phone-number name is told: ${phoned.ok ? "SAVED" : phoned.error}`];
     });
 
     /* ── §4 · THE EDIT ────────────────────────────────────────────────────────────────────────────── */
@@ -975,6 +979,17 @@ if (!PROVE_RED) {
           const q = parseTzNumber(request.number);
           const tomb = q.msisdn ? await db.marketingContact.findByMsisdn(q.msisdn) : null;
           return { ...r, existingId: tomb?.id ?? "" } as ContactAddResult;
+        },
+      },
+    },
+    {
+      name: "vb5 · every name refusal worded as the length one (contact-write's own mapping before vb5) — a short name holding a number is told it is too long",
+      expect: L.d5,
+      impl: {
+        ...REAL,
+        add: async (request, officerId, now = new Date()) => {
+          const r = await addContact(request, officerId, now);
+          return !r.ok && r.reason === "invalid_field" && r.field === "displayName" ? { ...r, error: NAME_TOO_LONG_SENTENCE } : r;
         },
       },
     },

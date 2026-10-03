@@ -9,8 +9,9 @@
  * matching", which can grow while the officer reads — the officer types the server's count in digits, so a confirmation
  * is bound to the scope it was given for and a moved audience is refused.
  * ⭐ THE PARAMETERS GO THROUGH U28's ONE RULE (`contact-fields.ts`, decisions C11/C12): a tag is `parseOneTag` — stored
- * lower case, a separator refused rather than split — so a bulk "VIP" is the "vip" the form stores; a new list's name is
- * cleaned like a name and held to `CONTACT_LIMITS.listName`.
+ * lower case, a separator refused rather than split — so a bulk "VIP" is the "vip" the form stores; an UNTAG reads the
+ * tag as the book holds it (`parseFilterTag`, vb5 review M1); a new list's name is cleaned like a name, holds no phone
+ * number and is held to `CONTACT_LIMITS.listName`.
  * ⛔ THE SELECTION'S ID CAP IS NOT HERE: it is U24's ONE cap (`MAX_AUDIENCE_IDS`, `audience.ts`, decision C6), which the
  * page hands the bar — a second copy of the number would be a second cap.
  * ⛔ PURE AND CLIENT-SAFE: it imports `./contact-fields` alone (pinned), nothing from `lib/server` or `app/` —
@@ -18,7 +19,7 @@
  *
  * Guard: `test:contacts-bulk` · red: `red:contacts-bulk`.
  */
-import { CONTACT_LIMITS, charCount, cleanDisplayName, parseOneTag } from "./contact-fields";
+import { CONTACT_LIMITS, charCount, cleanDisplayName, holdsPhoneRun, parseFilterTag, parseOneTag } from "./contact-fields";
 
 /** Up to this many TICKED rows, the confirmation names them (from the server's preview); above it, a typed count. */
 export const BULK_ENUMERATE_MAX = 50;
@@ -64,19 +65,31 @@ export function bulkConfirmTier(serverCount: number, ticksOnly: boolean): BulkCo
 }
 
 export type BulkTagVerdict = { ok: true; tag: string } | { ok: false; sentence: string };
-/** The bulk Tag / Untag box: ONE tag, through U28's ONE rule (`parseOneTag`) — the browser and the server ask this. */
-export function parseBulkTag(raw: unknown): BulkTagVerdict {
-  const v = parseOneTag(typeof raw === "string" ? raw : "");
+/**
+ * The bulk Tag / Untag box: ONE tag, through U28's ONE rule — the browser and the server ask this, each naming the action.
+ * ⭐ vb5 review M1 · TAG WRITES, so it asks the write rule (`parseOneTag`: no phone number). UNTAG REMOVES what the book
+ * already holds, so it reads the tag as an address does (`parseFilterTag`): a phone-number tag stored before that rule
+ * stays removable — the write rule would refuse the very tag the officer is taking off.
+ */
+export function parseBulkTag(raw: unknown, action: "tag" | "untag"): BulkTagVerdict {
+  const text = typeof raw === "string" ? raw : "";
+  const v = action === "untag" ? parseFilterTag(text) : parseOneTag(text);
   return v.ok ? { ok: true, tag: v.tag } : { ok: false, sentence: v.sentence };
 }
 
 export const LIST_NAME_EMPTY = "Type a name for the new list.";
 export const LIST_NAME_TOO_LONG = `A list name can be at most ${CONTACT_LIMITS.listName} characters.`;
+export const LIST_NAME_HAS_PHONE = "A list name can't hold a phone number — remove the number from the name.";
 export type ListNameVerdict = { ok: true; name: string } | { ok: false; sentence: string };
-/** A new list's name: cleaned like a name (NFC, invisible characters out, spaces collapsed), 1–60 characters (C12). */
+/**
+ * A new list's name: cleaned like a name (NFC, invisible characters out, spaces collapsed), 1–60 characters (C12).
+ * ⛔ vb5 review · no phone number (`holdsPhoneRun`), asked before the length as a contact's name is: the rail prints every
+ * list's name in full to every role while the number column is masked (OD25).
+ */
 export function parseListName(raw: unknown): ListNameVerdict {
   const name = cleanDisplayName(typeof raw === "string" ? raw : "");
   if (name === null) return { ok: false, sentence: LIST_NAME_EMPTY };
+  if (holdsPhoneRun(name)) return { ok: false, sentence: LIST_NAME_HAS_PHONE };
   if (charCount(name) > CONTACT_LIMITS.listName) return { ok: false, sentence: LIST_NAME_TOO_LONG };
   return { ok: true, name };
 }

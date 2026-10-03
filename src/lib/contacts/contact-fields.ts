@@ -42,11 +42,23 @@
  * maps `format: "vcard"` by that fixed order (`fileColumnsMapping`) and never looks for column names in it,
  * so card 1 is a contact, not a header row — and `line` stays the card ordinal.
  *
+ * ── THE SHARED FIELD RULES (vb5, S10 2026-10-03) ─────────────────────────────────────────────────
+ * One client-safe home for the rules every door of the book asks, so no door keeps a second copy:
+ * · THE PHONE-RUN RULE — `holdsPhoneRun` refuses a phone number hidden in free text (a contact's name and tags here;
+ *   the consent proof note and a staff role change's reason import it) and `scrubPhoneRuns` masks (`audience.ts`
+ *   re-exports it for the masked export and the audit chain). ONE scanner answers both: the mask takes every run of
+ *   nine or more digits, the refusal only a run holding a Tanzanian mobile number — so whatever is refused is masked.
+ * · THE EMAIL RULE — `checkContactEmail`; the importer asks the same rule and words it about a cell.
+ * · THE FORM — `contactFormProblems` / `contactFormDraft`, EVERY problem of the add/edit dialog's four fields in the
+ *   dialog's words. Moved here from `contact-write.ts`, which imports node:crypto and so cannot run in the browser.
+ * · THE FILTER'S TAG READER — `parseFilterTag`, the write rule as an address reads a tag (see its own note).
+ *
  * Pure and client-safe. It imports `../tz-msisdn` (client-safe by its own header), `./csv-write` (the
  * formula-guard pair, C16), `./xlsx-limits` (Excel's scientific-form detector and sentence, M6/C18, and the ONE
  * phone-format remedy clause, A1.6 — itself import-free) and the format TYPE from `./parsed-file` (C15,
  * import-free), and nothing else: no lib/server, no node:, no React.
- * Guard: `npm run test:contacts-import` · red: `npm run red:contacts-import`.
+ * Guard: `npm run test:contacts-import` (sections "fields" and, for the shared rules, "field-rules") · red:
+ * `npm run red:contacts-import`.
  */
 import { parseTzNumber } from "../tz-msisdn";
 import { unguardCell } from "./csv-write";
@@ -409,6 +421,158 @@ export function normaliseHeader(raw: string): string {
     .trim();
 }
 
+/* ══ THE ONE PHONE-RUN RULE — a phone number hidden in free text (vb5) ══════════════════════════ */
+
+/**
+ * ⭐ ONE DETECTOR AND ONE MASK, ONE SCANNER UNDER BOTH (vb5, S10 2026-10-03). NINE OR MORE DIGITS joined only by
+ * whitespace (the no-break spaces included), a full stop, a parenthesis, a square bracket, a plus sign, a low line or
+ * any dash form a RUN. Each character is read through NFKC first, so a full-width or circled digit is a
+ * digit and a full-width full stop is a full stop; and the INVISIBLE characters — format characters and combining
+ * marks — never break a run, so a zero-width space or a keycap between the digits hides nothing.
+ * ⛔ A SOLIDUS OR A COMMA NEVER JOINS: a date written 12/03/2026, or stands "12, 14", is not a number.
+ * `scrubPhoneRuns` MASKS EVERY RUN: a masked export's free text and the audit chain's filter (`audience.ts` re-exports
+ * it), each run as four bullets and its last two digits — the M7 gap was the old mask missing the bracketed, dotted,
+ * no-break-space and en-dash spellings this rule reads.
+ * `holdsPhoneRun` REFUSES ONLY A RUN THAT HOLDS A TANZANIAN MOBILE NUMBER — some stretch of its consecutive digit groups
+ * that THE ONE NUMBER RULE (`parseTzNumber`) reads as one (`runHoldsNumber`) — in a contact's name and tags (U22's form,
+ * U23's bulk box and the importer, through `checkTags`, `draftContactRow` and `contactFormProblems`), the consent proof
+ * note (`consent-basis.ts`), a role change's reason (`staff-roles.ts`), and the campaign door's audience text (OD55,
+ * `campaign-draft.ts`). ⭐ The vb5 review (m3): nine digits alone refused a deposit band ("5000-10000"), a photo's name
+ * (IMG_20261003_143052) and a dotted date with a time — none of them a number the book could hold. Masking more than is
+ * refused is the safe direction: such a figure is still masked in a masked export.
+ */
+const PHONE_RUN_MIN_DIGITS = 9;
+const PHONE_MASK = "••••";
+/* The joiners' punctuation — full stop, both parentheses, both square brackets and plus — each escaped for a character
+ * class, then the low line, which takes no escape (a needless one is an error under the u flag). Built from codes,
+ * never typed: an editing tool decodes typed escapes (repo memory). */
+const BACKSLASH = String.fromCharCode(92);
+const JOINER_MARKS = [46, 40, 41, 91, 93, 43].map((c) => BACKSLASH + String.fromCharCode(c)).join("") + String.fromCharCode(95);
+/** ONE character that may stand between two digits of a number. Tested on one character at a time — never global. */
+const PHONE_JOINER = new RegExp(`^[${BACKSLASH}s${JOINER_MARKS}${BACKSLASH}p{Pd}${BACKSLASH}p{Cf}${BACKSLASH}p{M}]$`, "u");
+const PHONE_DIGIT = new RegExp(`^${BACKSLASH}p{Nd}$`, "u");
+
+type PhoneRun = {
+  readonly start: number;
+  readonly end: number;
+  readonly lastTwo: string;
+  /** The run's digit groups in ASCII digits — "(0712) 345-678" is 0712 · 345 · 678 — which the refusal reads. */
+  readonly groups: readonly string[];
+  /** A digit that NFKC leaves as something other than 0–9 (Arabic-Indic, say): such a run is refused whole. */
+  readonly unreadDigit: boolean;
+};
+
+/**
+ * Every phone-shaped run in a text, as offsets into the text AS GIVEN — so a mask replaces exactly the characters that
+ * formed the run — with its last two digits as read (a full-width digit reads as its ASCII twin) and its digit groups.
+ * One linear pass, one character at a time; an ASCII character needs no folding. A run starts and ends on a digit, so a
+ * leading plus or a trailing bracket stays outside the mask; every joiner inside it ends a group.
+ */
+function phoneRuns(text: string): PhoneRun[] {
+  // ⚡ The common case first — every cell of a masked export passes through here. An all-ASCII text with fewer than
+  // nine digits cannot hold a run; any other character may fold into one or more digits, so such a text is read in full.
+  let asciiDigits = 0;
+  let allAscii = true;
+  for (let i = 0; i < text.length; i++) {
+    const code = text.charCodeAt(i);
+    if (code >= 128) {
+      allAscii = false;
+      break;
+    }
+    if (code >= 48 && code <= 57) asciiDigits += 1;
+  }
+  if (allAscii && asciiDigits < PHONE_RUN_MIN_DIGITS) return [];
+
+  const runs: PhoneRun[] = [];
+  let start = -1;
+  let end = -1;
+  let digits = 0;
+  let prev = "";
+  let last = "";
+  let group = "";
+  let groups: string[] = [];
+  let unreadDigit = false;
+  const close = (): void => {
+    if (group !== "") groups.push(group);
+    if (start >= 0 && digits >= PHONE_RUN_MIN_DIGITS) runs.push({ start, end, lastTwo: prev + last, groups, unreadDigit });
+    start = -1;
+    digits = 0;
+    prev = "";
+    last = "";
+    group = "";
+    groups = [];
+    unreadDigit = false;
+  };
+  let at = 0;
+  for (const c of text) {
+    const from = at;
+    at += c.length;
+    const folded = c.charCodeAt(0) < 128 ? c : c.normalize("NFKC");
+    for (const f of folded) {
+      if (PHONE_DIGIT.test(f)) {
+        if (start < 0) start = from;
+        digits += 1;
+        end = at;
+        prev = last;
+        last = f;
+        if (f >= "0" && f <= "9") group += f;
+        else unreadDigit = true;
+      } else if (PHONE_JOINER.test(f)) {
+        if (group !== "") {
+          groups.push(group);
+          group = "";
+        }
+      } else {
+        close();
+      }
+    }
+  }
+  close();
+  return runs;
+}
+
+/** The most digits one Tanzanian mobile number is written with: 00, 255 and the nine national digits. */
+const PHONE_DIGITS_MAX = 14;
+
+/**
+ * Does a run HOLD a Tanzanian mobile number? Every stretch of its consecutive digit groups is asked — so a number
+ * written after another figure ("Week 40 0712 345 678") is found — and one that THE ONE NUMBER RULE (`parseTzNumber`:
+ * an allocated mobile prefix, with or without 0, 255 or 00255) reads as a number holds one. Groups are never cut, so a
+ * long reference ("IMG_20261003_143052") or a band ("5000-10000") holds none. A run with an unread digit holds one.
+ */
+function runHoldsNumber(run: PhoneRun): boolean {
+  if (run.unreadDigit) return true;
+  const g = run.groups;
+  for (let i = 0; i < g.length; i++) {
+    let digits = "";
+    for (let j = i; j < g.length; j++) {
+      digits += g[j];
+      if (digits.length > PHONE_DIGITS_MAX) break;
+      if (digits.length >= PHONE_RUN_MIN_DIGITS && parseTzNumber(digits).verdict === "ok") return true;
+    }
+  }
+  return false;
+}
+
+/** ⭐ The refusing half: does this text hold a Tanzanian mobile number in any spelling the scanner above reads? */
+export function holdsPhoneRun(text: string): boolean {
+  return phoneRuns(String(text ?? "")).some(runHoldsNumber);
+}
+
+/** ⭐ The masking half: EVERY run as four bullets and its last two digits; nothing else in the text changes. */
+export function scrubPhoneRuns(text: string): string {
+  const s = String(text ?? "");
+  const runs = phoneRuns(s);
+  if (runs.length === 0) return s;
+  let out = "";
+  let at = 0;
+  for (const r of runs) {
+    out += s.slice(at, r.start) + PHONE_MASK + r.lastTwo;
+    at = r.end;
+  }
+  return out + s.slice(at);
+}
+
 /* ══ THE ONE TAG RULE (decision C11) ════════════════════════════════════════════════════════════ */
 
 /**
@@ -426,6 +590,12 @@ export function normaliseHeader(raw: string): string {
  *
  * ⛔ A tag needs at least one letter or digit: a lone combining mark, or only `-` and `_`, renders as nothing
  * (or as punctuation) and is refused with its own sentence.
+ *
+ * ⛔ vb5 · A TAG NEVER HOLDS A PHONE NUMBER (`holdsPhoneRun`): a tag prints in full to every role — on each row, on the
+ * rail's pill, in its `?tag=` address and in the "Showing contacts" line — while the number column is masked (OD25),
+ * so a number typed as a tag was the masked number in plain sight. It is the FIRST character rule asked, so
+ * "(0712) 345 678" is told it holds a number, not that brackets are not allowed. Tags already stored keep working:
+ * nothing is migrated, and an address still reads one (`parseFilterTag`).
  */
 const TAG_SEPARATORS = /[,;|]/;
 const TAG_ALLOWED = /^[\p{L}\p{M}\p{N} _-]+$/u;
@@ -435,6 +605,7 @@ export const TAG_CHARACTERS_SENTENCE = "A tag can hold only letters, digits, spa
 export const TAG_NEEDS_LETTER_SENTENCE = "A tag needs at least one letter or digit.";
 export const TAG_EMPTY_SENTENCE = "Type a tag.";
 export const TAG_ONE_AT_A_TIME_SENTENCE = "Type one tag at a time — a comma, ; or | separates tags.";
+export const TAG_HAS_PHONE_SENTENCE = "A tag can't hold a phone number.";
 
 /** A tag's stored form, and the key every reader groups by: NFKC, whitespace collapsed, trimmed, lower case. */
 export function tagKey(tag: string): string {
@@ -461,15 +632,12 @@ export function joinTags(tags: readonly string[]): string {
 
 export type TagLimits = { readonly tag: number; readonly tags: number };
 
-/**
- * The first rule a tag list breaks, as ONE sentence for a person — or null. ⛔ The sentence names the rule and
- * the limit and never the tag itself (a tags cell can hold anything someone pasted).
- */
-export function checkTags(
-  tags: readonly string[],
-  limits: TagLimits = { tag: CONTACT_LIMITS.tag, tags: CONTACT_LIMITS.tags },
-): string | null {
+/** The first rule a tag list breaks — the writers' whole rule when `phones` holds, an address's reading when it does
+ *  not (`parseFilterTag`). The count, then a phone number, then each tag's emptiness and length, its characters, and
+ *  at least one letter or digit. */
+function firstTagProblem(tags: readonly string[], limits: TagLimits, phones: boolean): string | null {
   if (tags.length > limits.tags) return `A contact can have at most ${limits.tags} tags.`;
+  if (phones) for (const t of tags) if (holdsPhoneRun(t)) return TAG_HAS_PHONE_SENTENCE;
   for (const t of tags) {
     if (t.length === 0) return TAG_EMPTY_SENTENCE;
     if (longerThan(t, limits.tag)) return `Each tag can be at most ${limits.tag} characters.`;
@@ -477,6 +645,18 @@ export function checkTags(
   for (const t of tags) if (!TAG_ALLOWED.test(t)) return TAG_CHARACTERS_SENTENCE;
   for (const t of tags) if (!TAG_HAS_LETTER.test(t)) return TAG_NEEDS_LETTER_SENTENCE;
   return null;
+}
+
+/**
+ * The first rule a tag list breaks, as ONE sentence for a person — or null. ⛔ The sentence names the rule and
+ * the limit and never the tag itself (a tags cell can hold anything someone pasted). ⛔ vb5: a tag holding a phone
+ * number is refused, before any other character rule.
+ */
+export function checkTags(
+  tags: readonly string[],
+  limits: TagLimits = { tag: CONTACT_LIMITS.tag, tags: CONTACT_LIMITS.tags },
+): string | null {
+  return firstTagProblem(tags, limits, true);
 }
 
 export type TagsVerdict = { readonly ok: true; readonly tags: string[] } | { readonly ok: false; readonly sentence: string };
@@ -490,14 +670,32 @@ export function parseTags(raw: string): TagsVerdict {
 
 export type OneTagVerdict = { readonly ok: true; readonly tag: string } | { readonly ok: false; readonly sentence: string };
 
-/** ONE tag typed on its own (U23's bulk "Tag" box): a separator is refused rather than split. */
-export function parseOneTag(raw: string): OneTagVerdict {
+/** ONE tag on its own: a separator is refused rather than split, then `tagKey`, then the rule (`phones`: the writers'). */
+function oneTag(raw: string, phones: boolean): OneTagVerdict {
   const text = String(raw ?? "");
   if (TAG_SEPARATORS.test(text)) return { ok: false, sentence: TAG_ONE_AT_A_TIME_SENTENCE };
   const tag = tagKey(text);
   if (tag === "") return { ok: false, sentence: TAG_EMPTY_SENTENCE };
-  const problem = checkTags([tag]);
+  const problem = firstTagProblem([tag], { tag: CONTACT_LIMITS.tag, tags: CONTACT_LIMITS.tags }, phones);
   return problem === null ? { ok: true, tag } : { ok: false, sentence: problem };
+}
+
+/** ONE tag typed on its own (U23's bulk "Tag" box): a separator is refused rather than split. */
+export function parseOneTag(raw: string): OneTagVerdict {
+  return oneTag(raw, true);
+}
+
+/**
+ * ⭐ vb5 · ONE tag as a FILTER reads it — the contacts page's `?tag=` and a posted or stored audience's tags
+ * (`audience.ts`), where the address once kept a narrower copy of this rule. The write rule's own steps: one tag,
+ * `tagKey` (NFKC, so a full-width tag is its stored form), 1–32 characters of letters, combining marks (Devanagari,
+ * Arabic vowel marks, a keycap), digits, space, - and _, and at least one letter or digit.
+ * ⛔ EXCEPT THE PHONE-NUMBER RULE, ON PURPOSE. A filter READS what the book holds, and a tag stored before that rule must
+ * stay addressable, so it can be found and taken off — while a campaign audience naming one is refused by OD55 in its
+ * own words ("never to one phone number", `campaign-draft.ts`), which a refusal here would pre-empt.
+ */
+export function parseFilterTag(raw: string): OneTagVerdict {
+  return oneTag(raw, false);
 }
 
 /* ══ NAMES ══════════════════════════════════════════════════════════════════════════════════════ */
@@ -523,6 +721,67 @@ export function cleanDisplayName(raw: string): string | null {
 export function composeName(given: string, family: string): string | null {
   const parts = [cleanDisplayName(given), cleanDisplayName(family)].filter((p): p is string => p !== null);
   return parts.length > 0 ? parts.join(" ") : null;
+}
+
+/** The FORM's sentences for a name and for notes (`contactFormProblems`); the importer words its own, about a cell. */
+export const NAME_TOO_LONG_SENTENCE = `A name can be at most ${CONTACT_LIMITS.displayName} characters.`;
+/** ⛔ vb5 · A name never holds a phone number: a name prints in full to every role while the number column is masked
+ *  (OD25). Asked before the length — a short name with a number in it is not "too long". ONE wording for adding and
+ *  editing: an edit's number is a read-only slot, so the sentence never sends the officer to it (vb5 review m1). */
+export const NAME_HAS_PHONE_SENTENCE = "A name can't hold a phone number — remove the number from the name.";
+export const NOTES_TOO_LONG_SENTENCE = `Notes can be at most ${CONTACT_LIMITS.notes} characters.`;
+
+/* ══ THE ONE EMAIL RULE (vb5) ═══════════════════════════════════════════════════════════════════ */
+
+/** The form's two email sentences. ⛔ ONE sentence for every shape problem — the rule is not explained piecemeal. */
+export const EMAIL_SHAPE_SENTENCE = "This doesn't look like an email address (name@example.com).";
+export const EMAIL_TOO_LONG_SENTENCE = `An email address can be at most ${CONTACT_LIMITS.email} characters.`;
+
+/** Never inside an address: whitespace, a control character (the U29 review: a NUL passed the old shape and then failed
+ *  Postgres' insert) or an invisible format character (a zero-width space pasted with it). */
+const EMAIL_INVISIBLE = /[\s\p{Cc}\p{Cf}]/u;
+/** Never inside an address either: less-than, greater-than, both parentheses, comma, semicolon, colon, the double quote
+ *  and both square brackets — what a pasted display name, a mailto link or a list leaves behind. Built from codes. */
+const EMAIL_REFUSED = String.fromCharCode(60, 62, 40, 41, 44, 59, 58, 34, 91, 93);
+
+/** An address's shape: none of the characters above, ONE @ with text before it, and a domain holding a dot that neither
+ *  starts nor ends it nor doubles inside it. */
+function emailShapeOk(email: string): boolean {
+  if (EMAIL_INVISIBLE.test(email)) return false;
+  for (const c of EMAIL_REFUSED) if (email.includes(c)) return false;
+  const at = email.indexOf("@");
+  if (at <= 0 || at !== email.lastIndexOf("@")) return false;
+  const domain = email.slice(at + 1);
+  return domain.includes(".") && !domain.startsWith(".") && !domain.endsWith(".") && !domain.includes("..");
+}
+
+type EmailRead = { readonly email: string | null; readonly problem: "too_long" | "shape" | null };
+
+/** ⭐ THE ONE EMAIL RULE, as both its wordings ask it: trimmed and lower-cased, blank is none, then the limit, then the
+ *  shape. The importer passes its field's limit (read from `CONTACT_LIMITS`), a person's field the table's own. */
+function readEmail(raw: string, limit: number): EmailRead {
+  const email = String(raw ?? "").trim().toLowerCase();
+  if (email === "") return { email: null, problem: null };
+  if (longerThan(email, limit)) return { email, problem: "too_long" };
+  return { email, problem: emailShapeOk(email) ? null : "shape" };
+}
+
+export type EmailVerdict =
+  | { readonly ok: true; readonly email: string | null }
+  | { readonly ok: false; readonly reason: "too_long" | "shape"; readonly sentence: string };
+
+/**
+ * ⭐ vb5 · THE ONE EMAIL RULE, for a person's field: trimmed and lower-cased; blank is NO address (the field is
+ * optional — a caller that requires one checks `email !== null`); at most 254 characters; one @ and a dot in the
+ * domain; no whitespace, control or invisible format character, none of `< > ( ) , ; : "` or a square bracket, and no
+ * dot at either end of the domain or doubled inside it. The dialog asks it on blur, the server again on save, and the
+ * importer's `draftContactRow` asks the same rule and words it about a cell. Anything not a string is no address.
+ */
+export function checkContactEmail(raw: unknown): EmailVerdict {
+  const e = readEmail(typeof raw === "string" ? raw : "", CONTACT_LIMITS.email);
+  if (e.problem === "too_long") return { ok: false, reason: "too_long", sentence: EMAIL_TOO_LONG_SENTENCE };
+  if (e.problem === "shape") return { ok: false, reason: "shape", sentence: EMAIL_SHAPE_SENTENCE };
+  return { ok: true, email: e.email };
 }
 
 /* ══ THE vCARD MAPPING (decision C20) ═══════════════════════════════════════════════════════════ */
@@ -614,9 +873,8 @@ export type ContactVocabulary = {
 };
 
 const UNKNOWN_MATCH: HeaderMatch = { kind: "unknown" };
-/** An email's shape. ⛔ No whitespace, no second @ — and no CONTROL character (U29 review): a NUL passed the old shape
- *  and then failed Postgres' insert, on the form and in staging alike. */
-const EMAIL_SHAPE = /^[^\s@\p{Cc}]+@[^\s@\p{Cc}]+\.[^\s@\p{Cc}]+$/u;
+/* An email's shape is THE ONE EMAIL RULE above (`readEmail`, vb5) — the old private shape let a trailing or doubled
+ * domain dot, angle brackets, a mailto link and a zero-width space through. */
 const NOTE_BLANK_HEADER = "This column has no name, so it is not read.";
 const NOTE_UNKNOWN_HEADER = "This is not a contact field, so it is not read.";
 const MAPPING_UNKNOWN_FIELD = "This mapping names a field the contact book does not have.";
@@ -818,6 +1076,12 @@ export function buildContactVocabulary(
   const tagsSpec = byKey.get("tags");
   const notesSpec = byKey.get("notes");
   const tagLimits: TagLimits = { tag: tagsSpec?.maxLength ?? CONTACT_LIMITS.tag, tags: CONTACT_LIMITS.tags };
+  // ⛔ vb5 · the name's phone-number sentences, about a cell — derived from the list's labels, never the cell's value.
+  // The row is refused, never mended (a cell is not silently changed), and the sentence says the fix: the number goes,
+  // and an empty name is allowed — a list that writes the number into its Name column is fixed by clearing it (m2).
+  const numberGoes = "remove the number (a name can be left empty).";
+  const nameCellHoldsPhone = `The ${labelOf("name")} cell holds a phone number — ${numberGoes}`;
+  const partsHoldPhone = `${labelOf("first_name")} and ${labelOf("last_name")} together hold a phone number — ${numberGoes}`;
 
   const draftContactRow = (cells: readonly string[], mapping: ColumnMapping): ContactDraft => {
     // Every mapped cell is unguarded first; a ragged row's missing cells read as "".
@@ -838,29 +1102,32 @@ export function buildContactVocabulary(
     // detector and its sentence are U27's (`xlsx-limits.ts`, the ONE copy table — C18).
     else if (looksExcelShortened(rawPhone)) problems.push({ field: "phone", sentence: excelShortenedSentence() });
 
+    // ⛔ vb5 · A NAME NEVER HOLDS A PHONE NUMBER (`holdsPhoneRun`), asked on the name as it would be STORED and before its
+    // length: a name prints in full to a masked role, and a short name with a number in it is not "too long".
     let displayName: string | null = null;
     const nameLimit = nameSpec?.maxLength ?? CONTACT_LIMITS.displayName;
     if (mapping.name !== undefined) {
       displayName = cleanDisplayName(cellOf("name"));
-      if (displayName !== null && longerThan(displayName, nameLimit)) {
+      if (displayName !== null && holdsPhoneRun(displayName)) problems.push({ field: "name", sentence: nameCellHoldsPhone });
+      else if (displayName !== null && longerThan(displayName, nameLimit)) {
         problems.push({ field: "name", sentence: cellTooLong(labelOf("name"), nameLimit) });
       }
     } else if (mapping.first_name !== undefined || mapping.last_name !== undefined) {
       displayName = composeName(cellOf("first_name"), cellOf("last_name"));
-      if (displayName !== null && longerThan(displayName, nameLimit)) {
+      if (displayName !== null && holdsPhoneRun(displayName)) problems.push({ field: "name", sentence: partsHoldPhone });
+      else if (displayName !== null && longerThan(displayName, nameLimit)) {
         problems.push({ field: "name", sentence: `${labelOf("first_name")} and ${labelOf("last_name")} together are longer than ${nameLimit} characters.` });
       }
     }
 
-    const emailCell = cellOf("email").trim().toLowerCase();
-    const email = emailCell === "" ? null : emailCell;
-    if (email !== null) {
-      const emailLabel = labelOf("email");
-      const emailLimit = emailSpec?.maxLength ?? CONTACT_LIMITS.email;
-      if (longerThan(email, emailLimit)) problems.push({ field: "email", sentence: cellTooLong(emailLabel, emailLimit) });
-      else if (!EMAIL_SHAPE.test(email)) {
-        problems.push({ field: "email", sentence: `The ${emailLabel} cell doesn't look like an email address (name@example.com).` });
-      }
+    // ⭐ vb5 · THE ONE EMAIL RULE (`readEmail`) — the field's own limit, the one shape, worded about a cell.
+    const emailLabel = labelOf("email");
+    const emailLimit = emailSpec?.maxLength ?? CONTACT_LIMITS.email;
+    const emailRead = readEmail(cellOf("email"), emailLimit);
+    const email = emailRead.email;
+    if (emailRead.problem === "too_long") problems.push({ field: "email", sentence: cellTooLong(emailLabel, emailLimit) });
+    else if (emailRead.problem === "shape") {
+      problems.push({ field: "email", sentence: `The ${emailLabel} cell doesn't look like an email address (name@example.com).` });
     }
 
     const tags = splitTags(cellOf("tags"));
@@ -935,4 +1202,62 @@ export function draftContactRow(cells: readonly string[], mapping: ColumnMapping
  */
 export function contactExportHeader(full: boolean): readonly string[] {
   return CONTACT_VOCABULARY.exportHeader(full);
+}
+
+/* ══ THE CONTACT FORM — every problem, in the dialog's words (vb5, moved out of contact-write.ts) ═══ */
+
+/** The add / edit dialog's four free fields, as the browser holds them and the server is posted them. */
+export type ContactFormInput = { readonly displayName: string; readonly email: string; readonly notes: string; readonly tags: string };
+/** A form field by the name its `data-field` carries. The number is not here: `parseTzNumber` judges it. */
+export type ContactFormFieldKey = "displayName" | "email" | "notes" | "tags";
+export type ContactFormProblem = { readonly field: ContactFormFieldKey; readonly sentence: string };
+/** The four fields as a row would store them: empty is null (tags: none). */
+export type ContactFormValues = {
+  readonly displayName: string | null;
+  readonly email: string | null;
+  readonly tags: string[];
+  readonly notes: string | null;
+};
+export type ContactFormDraft = { readonly values: ContactFormValues; readonly problems: readonly ContactFormProblem[] };
+
+/** The form's fields as a row of cells, so `draftContactRow` — the rule every writer of a row shares — reads them exactly
+ *  as it reads an imported row: one limits table, one tag rule, one email rule, one phone-run rule. */
+const FORM_MAPPING: ColumnMapping = { name: 0, email: 1, tags: 2, notes: 3 };
+/** The order the dialog draws its fields in — the order the problems come back in. */
+const FORM_ORDER: ReadonlyArray<readonly [ImportFieldKey, ContactFormFieldKey]> = [
+  ["name", "displayName"], ["email", "email"], ["notes", "notes"], ["tags", "tags"],
+];
+
+/** One problem in the dialog's words ("a name", never "the Name cell"). The RULE is `draftContactRow`'s, and which of its
+ *  rules fired is read back with the same predicates in the same order — a phone number before a length; a tag problem
+ *  keeps `checkTags`' sentence, which already speaks to a person. */
+function formSentence(p: FieldProblem, d: ContactDraft): string {
+  if (p.field === "name") return d.displayName !== null && holdsPhoneRun(d.displayName) ? NAME_HAS_PHONE_SENTENCE : NAME_TOO_LONG_SENTENCE;
+  if (p.field === "email") return d.email !== null && longerThan(d.email, CONTACT_LIMITS.email) ? EMAIL_TOO_LONG_SENTENCE : EMAIL_SHAPE_SENTENCE;
+  if (p.field === "notes") return NOTES_TOO_LONG_SENTENCE;
+  return p.sentence;
+}
+
+/**
+ * ⭐ vb5 · THE CONTACT FORM'S FOUR FIELDS, cleaned and checked: the values a row would store, and EVERY problem — one per
+ * field, in the dialog's order. Name: cleaned (NFC, invisible characters out, spaces collapsed), no phone number, at most
+ * 120 characters. Email: THE ONE EMAIL RULE. Notes: at most 1,000 characters. Tags: split on , ; | and THE ONE TAG RULE.
+ * Pure and client-safe — the dialog may ask it in the browser — and the server's `contactFormFields` (`contact-write.ts`)
+ * answers with its first problem, so the two cannot disagree.
+ */
+export function contactFormDraft(input: ContactFormInput): ContactFormDraft {
+  const text = (v: unknown): string => String(v ?? "");
+  const d = draftContactRow([text(input?.displayName), text(input?.email), text(input?.tags), text(input?.notes)], FORM_MAPPING);
+  const problems: ContactFormProblem[] = [];
+  for (const [key, field] of FORM_ORDER) {
+    const p = d.problems.find((x) => x.field === key);
+    if (p !== undefined) problems.push({ field, sentence: formSentence(p, d) });
+  }
+  return { values: { displayName: d.displayName, email: d.email, tags: d.tags, notes: d.notes }, problems };
+}
+
+/** ⭐ vb5 · EVERY problem the dialog's four fields hold, as `{ field, sentence }` in the dialog's order — none when the
+ *  contact can be saved. */
+export function contactFormProblems(input: ContactFormInput): ContactFormProblem[] {
+  return [...contactFormDraft(input).problems];
 }

@@ -1307,7 +1307,7 @@ async function checkSave(impl: ComposeImpl, log: (l: string) => void): Promise<s
     return [refused.length === spellings.length && afterRefusals === before && row !== null && row.audienceFilter === '{"q":"Asha"}',
       `refused ${refused.length} of ${spellings.length} · rows ${before} → ${afterRefusals} · the name search stored ${row?.audienceFilter ?? "NOTHING"}`];
   });
-  await claim("§17.5b ⛔ OD55 · …AND IN NO OTHER FIELD (U37b review m4) — a whole number as a tag, a list id or an import id, or a search padded past the number parser (\"0712345678 0\" stays name text), is refused the same way and writes no row; a tag with a few digits is saved", async () => {
+  await claim("§17.5b ⛔ OD55 · …AND IN NO OTHER FIELD (U37b review m4) — a whole number as a tag, a list id or an import id, or a search padded past the number parser (\"0712345678 0\" stays name text), is refused the same way and writes no row; a tag with a few digits is saved, and so is a deposit band (5000-10000, the vb5 review m3)", async () => {
     const before = campaignCount();
     const smuggled: Array<Record<string, string>> = [{ tag: "0712345678" }, { list: "0712345678" }, { import: "255712345678" }, { q: "0712345678 0" }];
     const refused: string[] = [];
@@ -1317,8 +1317,10 @@ async function checkSave(impl: ComposeImpl, log: (l: string) => void): Promise<s
     }
     const after = campaignCount();
     const fine = await save(draftInput({ name: "A tag with digits", audience: { tag: "vip2026" } }));
-    return [refused.length === smuggled.length && after === before && fine.ok,
-      `refused [${refused.join(", ")}] of ${smuggled.length} · rows ${before} → ${after} · vip2026 ${fine.ok ? "saved" : "REFUSED"}`];
+    // vb5 review m3 · a deposit band holds nine digits and no number — the book stores it as a tag, so OD55 lets it be aimed at.
+    const band = await save(draftInput({ name: "A deposit band", audience: { tag: "5000-10000" } }));
+    return [refused.length === smuggled.length && after === before && fine.ok && band.ok,
+      `refused [${refused.join(", ")}] of ${smuggled.length} · rows ${before} → ${after} · vip2026 ${fine.ok ? "saved" : "REFUSED"} · 5000-10000 ${band.ok ? "saved" : "REFUSED"}`];
   });
   return failed;
 }

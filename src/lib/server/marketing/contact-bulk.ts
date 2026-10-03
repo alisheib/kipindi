@@ -222,7 +222,8 @@ type BulkParams = {
 
 async function resolveParams(req: ContactBulkRequest): Promise<{ ok: true; p: BulkParams } | BulkRefusal> {
   if (req.action === "tag" || req.action === "untag") {
-    const t = parseBulkTag(req.tag ?? "");
+    // ⭐ The action rides with the text: an untag reads the tag as the book holds it (vb5 review M1).
+    const t = parseBulkTag(req.tag ?? "", req.action);
     return t.ok ? { ok: true, p: { tag: t.tag, list: null } } : refuse("bad_tag", t.sentence, "tag");
   }
   if (req.action !== "addToList") return { ok: true, p: { tag: null, list: null } };

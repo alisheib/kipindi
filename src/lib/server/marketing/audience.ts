@@ -38,6 +38,12 @@
  * non-`+255` numbers never. Its length, `campaignAudienceCount`, IS the population U40 confirms and U42 enqueues (X9).
  * The will-receive split asks the send gate about each walked number (`audience-split.ts`).
  *
+ * ⭐ vb5 · THE SHARED FIELD RULES, READ HERE, KEPT IN `contact-fields.ts` (S10 2026-10-03). A `?tag=` is read by
+ * `parseFilterTag` — the write rule's own steps, where this file kept a narrower copy — and the phone-run mask the audit
+ * and the export use is `contact-fields.ts`' `scrubPhoneRuns`, re-exported here so `export.ts` and `campaign-draft.ts`
+ * keep importing it from here: the mask and the dialog's refusal are one rule. The search box's text is cleaned like a
+ * stored name (no NUL reaches Postgres' contains), and a search longer than the grammar keeps is REFUSED, never cut.
+ *
  * Guards: `test:contacts-audience` (structure, behaviour, the ONE-COUNT readers table, the keyset walk, the
  * masking of the audit and describe forms), `test:dal-parity` §21 (the two twins' translations, and since U38a the
  * player arm's keyset read) and `test:campaign-audience` (the population axis, the walk, the split).
@@ -47,8 +53,9 @@ import type {
   ContactAudienceWhere, ContactBookSummary, ContactBulkCount, ContactBulkStamp, ContactConsentState, ContactPage,
   ContactPageSort, ContactSource, ContactTagCount, ContactWalk, MarketingContactPresenceQuery, PlayerWalk, PlayerWalkQuery,
 } from "@/lib/server/store";
-import { parseQuery, fieldNames, CONTACT_SEARCH } from "@/lib/search";
+import { parseQuery, fieldNames, CONTACT_SEARCH, MAX_QUERY_LEN } from "@/lib/search";
 import type { ParsedQuery } from "@/lib/search";
+import { TAG_ONE_AT_A_TIME_SENTENCE, cleanDisplayName, parseFilterTag, scrubPhoneRuns } from "@/lib/contacts/contact-fields";
 import { parseTzNumber, ndcsForOperator, TZ_OPERATORS } from "@/lib/tz-msisdn";
 import type { TzOperatorId } from "@/lib/tz-msisdn";
 import { maskPhone, toMsisdn255 } from "@/lib/phone-normalize";
@@ -139,14 +146,11 @@ export const CONTACT_AUDIENCE_URL_KEYS = ["q", "consent", "suppressed", "op", "l
 
 /** A list or import id as the store mints them (cuid; the dev seed's `mc_seed_000`). Narrower can only refuse. */
 const ID_SHAPE = /^[A-Za-z0-9_-]{1,64}$/;
-/** Decision C11's tag alphabet: letters, digits, space, `-`, `_`; 1–32 characters; stored lowercase.
- *  ⚠️ U28a's `tagKey` (`src/lib/contacts/contact-fields.ts`) is THE tag rule; when it lands, `tagOf` reads through it. */
-const TAG_SHAPE = /^[\p{L}\p{N} _-]{1,32}$/u;
-
-function tagOf(raw: string): string | null {
-  const t = raw.trim().replace(/\s+/g, " ").toLowerCase();
-  return TAG_SHAPE.test(t) ? t : null;
-}
+/* ⭐ vb5 · A TAG IS READ BY THE ONE TAG RULE (`parseFilterTag`, `contact-fields.ts`) — the copy this file kept had no NFKC
+ * and no combining marks, so a Devanagari or Arabic tag the form stores had no pill and no address, and a full-width
+ * `?tag=` missed its stored form. The phone-run mask is the same file's (`scrubPhoneRuns`), re-exported for the export
+ * and the draft save, which import it from here. */
+export { scrubPhoneRuns };
 
 const clip = (s: string) => (s.length > 40 ? `${s.slice(0, 40)}…` : s);
 const refuse = (param: string, reason: string): AudienceParse => ({ ok: false, param, reason });
@@ -169,21 +173,44 @@ export type ContactsSearch = {
  * ⛔ A PART OF A NUMBER NEVER SEARCHES THE NUMBER COLUMN. GROWTH sees every number masked (`+255••••01`, U19); a
  * substring search on `msisdn` would let that role rebuild a number digit by digit. Anything that is not a whole
  * sendable number is a NAME search through the shared grammar (`CONTACT_SEARCH`), which reaches `displayName` alone.
+ * ⛔ vb5 · TEXT IN THE BOX IS NEVER "NO CONSTRAINT" (C2). A lone quote, or quotes and a dash, leaves the grammar no word to
+ * look for, and its `empty` reads as EVERY row in both twins — the whole book under "Name contains “"”", which a bulk
+ * Tag would then write to. Such text is searched for literally, as one phrase: it matches what it says, which is in
+ * practice nothing. (The grammar's own rule: it never errors and never matches everything.)
  */
 export function contactsSearch(raw: string | null | undefined): ContactsSearch {
   const text = (raw ?? "").trim();
   if (text === "") return { msisdn: null, name: null };
   const parsed = parseTzNumber(text);
   if (parsed.verdict === "ok" && parsed.msisdn) return { msisdn: parsed.msisdn, name: null };
-  return { msisdn: null, name: parseQuery(text, { fields: fieldNames(CONTACT_SEARCH) }) };
+  const name = parseQuery(text, { fields: fieldNames(CONTACT_SEARCH) });
+  if (name.mode !== "empty") return { msisdn: null, name };
+  return { msisdn: null, name: { mode: "terms", raw: text, terms: [{ kind: "phrase", value: text.toLowerCase(), negated: false }] } };
 }
 
-/** The box's text as a filter holds it: a whole number as its bare key (so two spellings are one filter), any
- *  other text trimmed, nothing as null. */
-function canonicalQ(raw: string): string | null {
-  const text = raw.trim();
-  if (text === "") return null;
-  return contactsSearch(text).msisdn ?? text;
+/** ⛔ vb5 · C2: a search the grammar would CUT (`parseQuery` keeps its first `MAX_QUERY_LEN` units) is refused, naming
+ *  the limit. */
+export const SEARCH_TOO_LONG = `A search holds at most ${MAX_QUERY_LEN} characters.`;
+/** ⛔ vb5 · a search of invisible or control characters only (a NUL in a hand-edited address): nothing in it can match a
+ *  stored name, and "nothing" must never read as "no search" — the whole book. */
+export const SEARCH_UNREADABLE = "This search holds only invisible characters — type a name or a number.";
+
+type QRead = { ok: true; q: string | null } | { ok: false; reason: string };
+
+/**
+ * The box's text as a filter holds it: a whole number as its bare key (so two spellings are one filter), any other text
+ * CLEANED AS A STORED NAME IS (`cleanDisplayName`: NFC, invisible format and control characters out, spaces collapsed)
+ * — so no NUL ever reaches Postgres' contains, and a search finds the names the book stores — nothing as null.
+ * ⛔ vb5 · C2, REFUSED, NEVER WIDENED OR CUT: text that cleans to nothing (`SEARCH_UNREADABLE`), and text longer than the
+ * grammar keeps (`SEARCH_TOO_LONG` — counted as the box's own maxLength and the grammar count, in UTF-16 units, so
+ * nothing the grammar would clip ever passes).
+ */
+function readQ(raw: string): QRead {
+  if (raw.trim() === "") return { ok: true, q: null };
+  const text = cleanDisplayName(raw);
+  if (text === null) return { ok: false, reason: SEARCH_UNREADABLE };
+  if (text.length > MAX_QUERY_LEN) return { ok: false, reason: SEARCH_TOO_LONG };
+  return { ok: true, q: contactsSearch(text).msisdn ?? text };
 }
 
 /* ═══ THE PREFIXES ═════════════════════════════════════════════════════════════════════════ */
@@ -237,12 +264,18 @@ function readIds(raw: string[]): Read<string[]> {
   return { ok: true, value: canon(raw) };
 }
 
-function readTags(raw: string[]): Read<string[]> {
+/** An address is not typed into a box, so a separator inside one of its tags is said as the rule (vb5 review m5) — the
+ *  rule's own sentence ("Type one tag at a time…") speaks to somebody at the bulk box. */
+export const TAG_SEPARATOR_IN_ADDRESS = "A tag never holds a comma, ; or |.";
+
+/** Every tag through THE ONE TAG RULE as a filter reads it (`parseFilterTag`); a refusal carries the rule's own sentence,
+ *  the separator's said as the rule. */
+function readTags(raw: string[]): { ok: true; value: string[] } | { ok: false; bad: string; why: string } {
   const out: string[] = [];
   for (const t of raw) {
-    const tag = tagOf(t);
-    if (tag === null) return { ok: false, bad: t };
-    out.push(tag);
+    const v = parseFilterTag(t);
+    if (!v.ok) return { ok: false, bad: t, why: v.sentence === TAG_ONE_AT_A_TIME_SENTENCE ? TAG_SEPARATOR_IN_ADDRESS : v.sentence };
+    out.push(v.tag);
   }
   return { ok: true, value: canon(out) };
 }
@@ -320,7 +353,9 @@ export function parseContactAudienceParams(sp: Record<string, string | string[] 
   // The first NON-BLANK value — the same one the link builder carries (`contactsLinkSp`), so `?q=&q=asha` cannot
   // list the whole book while every link on the page says "asha".
   const qFirst = (Array.isArray(sp.q) ? sp.q : [sp.q]).find((v) => String(v ?? "").trim() !== "");
-  const q = canonicalQ(String(qFirst ?? ""));
+  const qRead = readQ(String(qFirst ?? ""));
+  if (!qRead.ok) return refuse("q", qRead.reason);
+  const q = qRead.q;
 
   let consent: ContactConsentState[] | null = null;
   const consentRaw = tokens(sp.consent);
@@ -358,7 +393,7 @@ export function parseContactAudienceParams(sp: Record<string, string | string[] 
   const tagRaw = tokens(sp.tag);
   if (tagRaw.length > 0) {
     const r = readTags(tagRaw);
-    if (!r.ok) return refuse("tag", `“${clip(r.bad)}” is not a tag: a tag is 1–32 letters, digits, spaces, - or _.`);
+    if (!r.ok) return refuse("tag", `“${clip(r.bad)}” is not a tag. ${r.why}`);
     tags = r.value;
   }
 
@@ -504,7 +539,9 @@ export function parseContactAudienceJson(raw: unknown, scope: AudienceScope = "b
 
   if (has("q")) {
     if (typeof o.q !== "string") return refuse("q", "The search must be text.");
-    f.q = canonicalQ(o.q);
+    const qRead = readQ(o.q);
+    if (!qRead.ok) return refuse("q", qRead.reason);
+    f.q = qRead.q;
   }
   if (has("consent")) {
     const xs = readJsonStrings(o.consent);
@@ -538,7 +575,7 @@ export function parseContactAudienceJson(raw: unknown, scope: AudienceScope = "b
     const xs = readJsonStrings(o.tags);
     const r = xs === null ? null : readTags(xs);
     if (r === null) return refuse("tags", "Tags must be a list of tags.");
-    if (!r.ok) return refuse("tags", `“${clip(r.bad)}” is not a tag.`);
+    if (!r.ok) return refuse("tags", `“${clip(r.bad)}” is not a tag. ${r.why}`);
     f.tags = r.value;
   }
   if (has("ids")) {
@@ -603,8 +640,11 @@ export function contactAudienceKey(f: ContactAudienceFilter): string {
   for (const k of FILTER_KEYS) {
     const v = f[k];
     if (v === null || v === undefined) continue;
-    if (k === "q" && typeof v === "string") out.q = canonicalQ(v) ?? v;
-    else out[k] = Array.isArray(v) ? canon(v as string[]) : v;
+    if (k === "q" && typeof v === "string") {
+      // A parsed filter's q is already canonical; a filter built in code is canonicalised when it can be, else kept.
+      const r = readQ(v);
+      out.q = r.ok && r.q !== null ? r.q : v;
+    } else out[k] = Array.isArray(v) ? canon(v as string[]) : v;
   }
   return JSON.stringify(out);
 }
@@ -647,15 +687,13 @@ export function contactAudienceParams(f: ContactAudienceFilter): Record<string, 
   return out;
 }
 
-/** A run of nine or more digits — a national number or a key — is masked wherever a value could carry one. */
 /**
- * Any run that READS AS A PHONE NUMBER — nine or more digits, single spaces, hyphens or underscores allowed between
- * them — masked to its last two digits (U34a review MINOR-3: a tag of "0712 345 678" went into the chain whole; the old
- * scrub caught consecutive digits only). The ONE scrub — the chain's filter here, and the export's free text.
+ * Any run that READS AS A PHONE NUMBER is masked to its last two digits wherever a value could carry one — the chain's
+ * filter here and the export's free text (U34a review MINOR-3: a tag of "0712 345 678" went into the chain whole).
+ * ⭐ vb5 · THE ONE SCRUB IS `contact-fields.ts`' `scrubPhoneRuns` (re-exported above): the same scanner as the
+ * `holdsPhoneRun` that refuses a number in a name or a tag, so "(0754) 123 456", "0754.123.456" and the no-break-space
+ * and en-dash spellings — which the single-separator copy this file kept let through — are masked too.
  */
-export function scrubPhoneRuns(s: string): string {
-  return s.replace(/[0-9](?:[ _-]?[0-9]){8,}/g, (m) => `••••${m.replace(/[^0-9]/g, "").slice(-2)}`);
-}
 const scrubDigits = scrubPhoneRuns;
 
 /**

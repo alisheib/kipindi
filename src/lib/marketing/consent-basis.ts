@@ -36,12 +36,15 @@
  * ⛔ ENGLISH, ON PURPOSE. The officer reads it in admin chrome, and the ledger row records locale EN — the
  * `erase.ts` precedent (`ERASURE_LEDGER_WORDING`).
  *
- * ⛔ PURE AND IMPORT-FREE. The basis panel will render it in the browser; the gate and the import writer read it
+ * ⛔ PURE AND CLIENT-SAFE. The basis panel will render it in the browser; the gate and the import writer read it
  * on the server. `test:client-graph-safe` pins it (decision M3) — ⚠️ that suite joins predeploy only at U29b
- * (M10), so until then the pin holds when the suite is run, not at every deploy.
+ * (M10), so until then the pin holds when the suite is run, not at every deploy. Its ONE import (vb5) is the phone-run
+ * detector every free-text field shares (`holdsPhoneRun`, `../contacts/contact-fields`, itself pure and pinned) — this
+ * file kept a private copy of it until then.
  *
  * Guard: `npm run test:marketing-consent` (the U33a section, `scripts/marketing-consent/consent-basis.mts`).
  */
+import { holdsPhoneRun } from "../contacts/contact-fields";
 
 export type ConsentBasisKey = "OWN_FORM" | "OWN_EVENT" | "AGENT_ROSTER" | "THIRD_PARTY";
 
@@ -181,20 +184,16 @@ export function proofNoteChars(raw: unknown): number {
   return Array.from(normalizeProofNote(raw)).length;
 }
 
-/**
- * §5.14 · The separators the spec names, and only those: whitespace, `.`, `(` `)` `[` `]`, `+` and every dash
- * (`\p{Pd}`: hyphen, en and em dash, the full-width hyphen). ⚠️ NOT `/`, `_`, `,` or `·`, on purpose — a date range
- * ("12/03/2026-14/03/2026") or a list of stand numbers would read as one long number. A number written with
- * those separators passes this screen.
+/*
+ * §5.14 · ⛔ vb5 · THE NOTE IS SCREENED BY THE ONE PHONE-RUN DETECTOR (`holdsPhoneRun`, `contact-fields.ts`) — the rule
+ * that refuses a number in a contact's name or tags: a Tanzanian mobile number written with whitespace, a full stop, a
+ * parenthesis, a square bracket, a plus sign, a LOW LINE or any dash between its digits, read through NFKC (a
+ * full-width or circled digit is a digit) on a copy that is never stored. The low line joins since vb5 — the private
+ * copy this file kept did not, so "0712_345_678" passed — and since the vb5 review (m3) only a number an operator's
+ * prefix holds is refused, so a photo's name (IMG_20261003_143052.jpg) passes. ⚠️ A solidus or a comma still never
+ * joins, on purpose: a date range (12/03/2026-14/03/2026) or a list of stand numbers is not one long number, so a
+ * number written with those passes this screen.
  */
-const NUMBER_SEPARATORS = /[\s.()\[\]+\p{Pd}]/gu;
-const PHONE_RUN = /\p{Nd}{9,}/u;
-
-/** ⛔ §5.14 · A run of nine or more digits once the separators above are gone, read on a compatibility-folded copy
- *  that is never stored (NFKC: a full-width or circled digit is a digit, a full-width dot is a dot). */
-function holdsPhoneShapedRun(note: string): boolean {
-  return PHONE_RUN.test(note.normalize("NFKC").replace(NUMBER_SEPARATORS, ""));
-}
 
 /**
  * ⭐ THE ONE DOOR for a basis: the panel enables Apply on it and the start action validates the request with it,
@@ -207,7 +206,7 @@ export function checkConsentBasisInput(input: ConsentBasisInput): ConsentBasisCh
   const basis = consentBasisFor(input?.basisKey);
   if (!basis) return refuse("unknown_basis");
   const proofNote = normalizeProofNote(input?.proofNote);
-  if (holdsPhoneShapedRun(proofNote)) return refuse("note_has_phone");
+  if (holdsPhoneRun(proofNote)) return refuse("note_has_phone");
   const chars = Array.from(proofNote).length;
   if (chars < PROOF_NOTE_MIN) return refuse("note_too_short");
   if (chars > PROOF_NOTE_MAX) return refuse("note_too_long");
@@ -232,6 +231,6 @@ const RUN_ID = /^[A-Za-z0-9_-]+$/;
  */
 export function importConsentEvidence(runId: string, key: ConsentBasisKey, proofNote: string): string | null {
   const note = normalizeProofNote(proofNote);
-  if (typeof runId !== "string" || !RUN_ID.test(runId) || !consentBasisFor(key) || holdsPhoneShapedRun(note)) return null;
+  if (typeof runId !== "string" || !RUN_ID.test(runId) || !consentBasisFor(key) || holdsPhoneRun(note)) return null;
   return `import:${runId} basis:${key} note:${note}`;
 }

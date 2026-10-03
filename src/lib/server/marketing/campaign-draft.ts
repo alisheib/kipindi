@@ -36,6 +36,7 @@ import {
   scrubPhoneRuns, CAMPAIGN_AUDIENCE_SELECTION,
 } from "@/lib/server/marketing/audience";
 import type { ContactAudienceFilter } from "@/lib/server/marketing/audience";
+import { holdsPhoneRun } from "@/lib/contacts/contact-fields";
 import { formatClock } from "@/lib/utils";
 
 /* ══ THE SENTENCES — the server's, shown as they are ═══════════════════════════════════════════════════════════════ */
@@ -123,13 +124,19 @@ const WHOLE_NUMBER_KEY = /^255[0-9]{9}$/;
 /**
  * ⛔ OD55 · the sentence when the audience holds a whole phone number ANYWHERE it can, else null: the search, a tag, a
  * list id, the import id. U37b's review (m4): `?tag=0712345678`, or a search padded past the number parser ("0712345678
- * 0" stays name text), stored one person in a field the canonical-key test never read. A name search passes; the store
- * mints list and import ids as letters only (`cl_…`, `ci_…`), so a phone-length digit run in any of them is a number.
+ * 0" stays name text), stored one person in a field the canonical-key test never read. A name search passes.
+ * ⭐ The officer's TEXT — the search and the tags — is asked THE ONE REFUSAL the book's writers ask (`holdsPhoneRun`: a
+ * Tanzanian mobile number), so a tag the book accepts ("5000-10000") can always be aimed at (the vb5 review, m3). The
+ * IDS are asked the broad mask: the store mints list and import ids as letters only (`cl_…`, `ci_…`), so any run of
+ * nine digits in one is a hand-made address.
  */
 export function wholeNumberAudienceProblem(f: ContactAudienceFilter): string | null {
-  const texts = [f.q ?? "", ...(f.tags ?? []), ...(f.lists ?? []), f.importId ?? ""];
+  const texts = [f.q ?? "", ...(f.tags ?? [])];
+  const ids = [...(f.lists ?? []), f.importId ?? ""];
   const canonical = f.q !== null && WHOLE_NUMBER_KEY.test(f.q.trim());
-  return canonical || texts.some((t) => t !== "" && scrubPhoneRuns(t) !== t) ? CAMPAIGN_AUDIENCE_ONE_NUMBER : null;
+  return canonical || texts.some((t) => t !== "" && holdsPhoneRun(t)) || ids.some((t) => t !== "" && scrubPhoneRuns(t) !== t)
+    ? CAMPAIGN_AUDIENCE_ONE_NUMBER
+    : null;
 }
 
 type AudienceVerdict = { ok: true; filter: ContactAudienceFilter; key: string; write: boolean } | { ok: false; reason: string };

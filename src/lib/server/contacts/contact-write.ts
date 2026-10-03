@@ -33,8 +33,7 @@ import { ERASURE_EVIDENCE } from "@/lib/marketing/erasure-mark";
 import { parseTzNumber } from "@/lib/tz-msisdn";
 import type { TzNumber } from "@/lib/tz-msisdn";
 import { maskPhone } from "@/lib/phone-normalize";
-import { CONTACT_LIMITS, charCount, draftContactRow } from "@/lib/contacts/contact-fields";
-import type { ColumnMapping, FieldProblem, ImportFieldKey } from "@/lib/contacts/contact-fields";
+import { CONTACT_LIMITS, charCount, contactFormDraft } from "@/lib/contacts/contact-fields";
 
 /* ═══ THE WIRE SHAPES ═══════════════════════════════════════════════════════════════════════════ */
 
@@ -104,52 +103,29 @@ export const CONTACT_MISSING = "This contact isn't in the book.";
 export const CONTACT_STALE =
   "Someone changed this contact after you opened it, so nothing was saved. Reload to see the latest version, then make your change again.";
 
-const NAME_TOO_LONG = `A name can be at most ${CONTACT_LIMITS.displayName} characters.`;
-const EMAIL_TOO_LONG = `An email address can be at most ${CONTACT_LIMITS.email} characters.`;
-const EMAIL_SHAPE = "This doesn't look like an email address (name@example.com).";
-const NOTES_TOO_LONG = `Notes can be at most ${CONTACT_LIMITS.notes} characters.`;
-
-/* ═══ THE FIELDS — the importer's ONE drafting rule (U28, decisions C11 and C12) ═════════════════ */
-
-/** The form's four fields as a row of cells, so `draftContactRow` — the rule every writer of a row shares — reads
- *  them exactly as it reads an imported row: one limits table, one tag rule, one email rule. */
-const FORM_MAPPING: ColumnMapping = { name: 0, email: 1, tags: 2, notes: 3 };
-/** The order the dialog draws them in: the first problem in this order is the one a refusal names. */
-const FORM_ORDER: readonly ImportFieldKey[] = ["name", "email", "notes", "tags"];
-const FORM_FIELD: Partial<Record<ImportFieldKey, ContactFormField>> = {
-  name: "displayName", email: "email", notes: "notes", tags: "tags",
-};
+/* ═══ THE FIELDS — the ONE form rule (`contactFormDraft`, contact-fields.ts) ════════════════════════ */
 
 export type ContactFields = { displayName: string | null; email: string | null; tags: string[]; notes: string | null };
 export type ContactFieldsVerdict =
   | { ok: true; value: ContactFields }
   | { ok: false; field: ContactFormField; error: string };
 
-/** One problem, in the form's words. The RULE is `draftContactRow`'s; only the wording is the form's own ("a name",
- *  not "the Name cell"), and a tag problem keeps `checkTags`' sentence, which already speaks to a person. */
-function formSentence(p: FieldProblem, email: string | null): string {
-  if (p.field === "name") return NAME_TOO_LONG;
-  if (p.field === "email") return email !== null && charCount(email) > CONTACT_LIMITS.email ? EMAIL_TOO_LONG : EMAIL_SHAPE;
-  if (p.field === "notes") return NOTES_TOO_LONG;
-  return p.sentence;
-}
-
 /**
- * The four fields, cleaned and checked. Name: NFC, invisible characters out, spaces collapsed, ≤ 120 characters.
- * Email: trimmed, lower case, ≤ 254, the importer's shape. Notes: ≤ 1000. Tags: `splitTags` + `checkTags` — split on
- * `,` `;` `|`, stored lower case, ≤ 32 characters each and 20 per contact. Empty is null (tags: []).
+ * The four fields, cleaned and checked — by `contactFormDraft` (vb5 moved the form's rule and its words to
+ * `contact-fields.ts`, pure and client-safe, so the dialog can ask the very same rule in the browser; this file imports
+ * node:crypto and cannot run there). The first problem in the dialog's order is the one a refusal names. Name: NFC,
+ * invisible characters out, spaces collapsed, NO phone number, ≤ 120 characters. Email: THE ONE EMAIL RULE
+ * (`checkContactEmail`'s). Notes: ≤ 1000. Tags: split on `,` `;` `|`, THE ONE TAG RULE (no phone number), stored lower
+ * case, ≤ 32 characters each and 20 per contact. Empty is null (tags: []).
+ * ⛔ vb5 · the wording is the form's own and follows the rule that fired — a short name holding a number is told so, never
+ * "at most 120 characters" (this file mapped every name problem to the length sentence).
  */
 export function contactFormFields(input: { displayName: string; email: string; notes: string; tags: string }): ContactFieldsVerdict {
-  const drafted = draftContactRow(
-    [String(input.displayName ?? ""), String(input.email ?? ""), String(input.tags ?? ""), String(input.notes ?? "")],
-    FORM_MAPPING,
-  );
-  for (const key of FORM_ORDER) {
-    const problem = drafted.problems.find((p) => p.field === key);
-    const field = FORM_FIELD[key];
-    if (problem !== undefined && field !== undefined) return { ok: false, field, error: formSentence(problem, drafted.email) };
-  }
-  return { ok: true, value: { displayName: drafted.displayName, email: drafted.email, tags: drafted.tags, notes: drafted.notes } };
+  const drafted = contactFormDraft(input);
+  const first = drafted.problems[0];
+  if (first !== undefined) return { ok: false, field: first.field, error: first.sentence };
+  const v = drafted.values;
+  return { ok: true, value: { displayName: v.displayName, email: v.email, tags: [...v.tags], notes: v.notes } };
 }
 
 /* ═══ THE ONE CREATE BUILDER (decision X6) ═══════════════════════════════════════════════════════ */

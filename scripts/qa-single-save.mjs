@@ -416,7 +416,8 @@ const TARGETS = [
   {
     key: "staff", title: "Add staff", url: "/admin/staff",
     prepare: async () => { playerReady = await seedPlayer(); },
-    field: 'main input[name="phone"]', labels: ["Add as staff"], dirty: () => STAFF_PHONE, disabledWhenClean: true,
+    // vb8 · the phone is the kit PhoneInput: the VISIBLE box (its name rides on a hidden input for the form post).
+    field: 'main [data-field="phone"] input[autocomplete="tel-national"]', labels: ["Add as staff"], dirty: () => STAFF_PHONE, disabledWhenClean: true,
     selectProbe: 'form:has([data-qa-field="staff"]) [data-field="role"] [role="combobox"]',
     beforeSave: async () => {
       if (!playerReady) return "the player to promote could not be seeded (POST /api/dev-test/seed-admin as PLAYER)";

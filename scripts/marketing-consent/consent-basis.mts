@@ -422,7 +422,7 @@ export const BASIS_LABELS = {
   in1: "U33.in1 · an unknown basis key is refused as unknown_basis — never guessed, never defaulted",
   in2: "U33.in2 · a proof note under 10 characters, counted AFTER trimming and collapsing whitespace, is note_too_short — exactly 10 passes",
   in3: "U33.in3 · 501 characters is note_too_long — exactly 500 passes",
-  in4: "U33.in4 · ⛔ §5.14 · a note holding a phone number — spaced, +255 with brackets, zero-width joined, full-width, en-dashed, dotted — is note_has_phone; eight digits are not one",
+  in4: "U33.in4 · ⛔ §5.14 · a note holding a phone number — spaced, +255 with brackets, zero-width joined, full-width, en-dashed, dotted, joined by low lines (vb5: the ONE phone-run rule) — is note_has_phone; eight digits are not one, and (vb5 review m3) neither is a photo's name nor nine digits no operator holds",
   in5: "U33.in5 · ⭐ first-party without the 18+ box is adult_not_attested (only the boolean true attests); a bought list never asks — it passes unticked, and a stale tick is NOT carried onto it",
   in6: "U33.in6 · a complete first-party input passes — the catalogue's own entry, the composed wording, the note collapsed but in the officer's OWN characters ('№4' stays '№4'), the 18+ recorded",
   in7: "U33.in7 · every refusal answers in its OWN sentence — five refusals, five sentences; the phone one tells the officer to remove the number",
@@ -539,9 +539,14 @@ export function assertConsentBasis(impl: BasisImpl, tag: string, ok: Ok): void {
     `met at stand 0712${ZWSP}345${ZWSP}678`,
     `roadshow ${fullWidth("0712 345 678")}`,
     `call 0712${EN_DASH}345${EN_DASH}678 after six`,
-    "stand 123.456.789 sign-ups",
+    "stand 0754.123.456 sign-ups",
+    // ⛔ vb5 · the low line joins too — the ONE phone-run rule; the catalogue's own copy let it through.
+    "roadshow 0712_345_678 sign-ups",
   ].map((n) => verdict(ask("OWN_EVENT", n, true)));
-  const notPhones = ["Kariakoo roadshow, 2026, stand 14, 340 sign-ups", "stand 1234 5678 sheet"].map((n) => verdict(ask("OWN_EVENT", n, true)));
+  // vb5 review m3 · the rule refuses a Tanzanian mobile number, not every nine digits: a photo's name and a figure no
+  // operator's prefix holds are kept.
+  const notPhones = ["Kariakoo roadshow, 2026, stand 14, 340 sign-ups", "stand 1234 5678 sheet", "photo IMG_20261003_143052.jpg at the stand", "stand 123.456.789 sign-ups"]
+    .map((n) => verdict(ask("OWN_EVENT", n, true)));
   ok(p(L.in4), phones.every((v) => v === "note_has_phone") && notPhones.every((v) => v === "ok"), `${phones.join(",")} · ${notPhones.join(",")}`);
 
   const unticked = verdict(ask("OWN_EVENT", NOTE_OK, false));
@@ -613,6 +618,10 @@ export function assertConsentBasis(impl: BasisImpl, tag: string, ok: Ok): void {
  * ⚠️ Every member DELEGATES to the shipped function unless its own flag is set, and the runner proves the
  * defect-free model green (§0b) before any plant is read — so a red case can only be blamed on its flag. */
 
+/** vb5 plant only · the note screen as the catalogue kept its own copy before vb5: every separator but the low line. */
+const PRE_VB5_SEPARATORS = /[\s.()\[\]+\p{Pd}]/gu;
+const PRE_VB5_PHONE_RUN = /\p{Nd}{9,}/u;
+
 export type BasisDefect = {
   /** The stored wording loses its 18+ sentence. */
   composeDropsAdult?: boolean;
@@ -622,6 +631,8 @@ export type BasisDefect = {
   recordedByIgnored?: boolean;
   /** The §5.14 digit screen removed from the door. */
   noPhoneScreen?: boolean;
+  /** vb5 · the screen as the catalogue kept its own copy before vb5 — every separator but the low line. */
+  lowLineNotJoined?: boolean;
   /** The 18+ box ignored. */
   adultIgnored?: boolean;
   /** The 18+ box demanded for a bought list too. */
@@ -681,6 +692,15 @@ export function basisModel(d: BasisDefect): BasisImpl {
         // The rest of the door as it runs with the screen gone: the same note with every digit blanked to a letter.
         const rest = checkConsentBasisInput({ ...i, proofNote: normalizeProofNote(i.proofNote).replace(/\p{Nd}/gu, "x") });
         return rest.ok ? { ...rest, proofNote: normalizeProofNote(i.proofNote) } : rest;
+      }
+      if (d.lowLineNotJoined) {
+        const r = checkConsentBasisInput(i);
+        const note = normalizeProofNote(i?.proofNote);
+        // The pre-vb5 screen still catches every other spelling; only a number joined by low lines slips past it, and
+        // the rest of the door then runs on the same note with every digit blanked to a letter.
+        if (r.ok || r.reason !== "note_has_phone" || PRE_VB5_PHONE_RUN.test(note.normalize("NFKC").replace(PRE_VB5_SEPARATORS, ""))) return r;
+        const rest = checkConsentBasisInput({ ...i, proofNote: note.replace(/\p{Nd}/gu, "x") });
+        return rest.ok ? { ...rest, proofNote: note } : rest;
       }
       if (d.unknownDefaults) {
         // A key the catalogue does not hold becomes OWN_FORM instead of a refusal.
@@ -877,6 +897,11 @@ export function basisCases(problems: string[]): BasisCase[] {
       name: "⛔ the digit screen removed — a phone number rides into seven-year evidence",
       expect: L.in4,
       impl: basisModel({ noPhoneScreen: true }),
+    },
+    {
+      name: "vb5 · the catalogue's own screen again, without the low line — '0712_345_678' rides into seven-year evidence",
+      expect: L.in4,
+      impl: basisModel({ lowLineNotJoined: true }),
     },
     {
       name: "the 18+ box ignored — a first-party run with no age statement records one",

@@ -19,17 +19,28 @@ import { getBonusConfig } from "./bonus-config";
 import { bonusIsLiveFor } from "@/lib/feature-state";
 import { creditBonus } from "./bonus-service";
 import { tzPhone } from "./validators";
+// vb8 · the contact book's ONE email rule — this file kept a looser copy of its own (see `classifyContact`).
+import { checkContactEmail } from "@/lib/contacts/contact-fields";
 import { sendEmail, inviteHtml } from "./email";
 import { sendBatch, inviteMessage, smsConfigured } from "./sms";
 import { formatTzs } from "@/lib/utils";
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-/** Classify + normalize a contact string into EMAIL or PHONE (E.164), or null. */
+/**
+ * Classify + normalize a contact string into EMAIL or PHONE (E.164), or null.
+ *
+ * ⭐ vb8 (2026-10-03) · THE EMAIL HALF IS THE CONTACT BOOK'S ONE RULE (`checkContactEmail`). This file kept a regex
+ * of its own that let a NUL — and every other control character, a trailing dot, `<a@b.tz>` — through: the U29
+ * class of bug, where Postgres refuses the insert. Anything holding an `@` is judged as an email and nothing else,
+ * since `tzPhone` could never read it as a number, so an address the rule refuses is simply invalid. What is stored is
+ * the rule's own normalised address (trimmed, lower case).
+ */
 export function classifyContact(raw: string): { type: ContactType; value: string } | null {
   const v = (raw ?? "").trim();
   if (!v) return null;
-  if (EMAIL_RE.test(v)) return { type: "EMAIL", value: v.toLowerCase() };
+  if (v.includes("@")) {
+    const email = checkContactEmail(v);
+    return email.ok && email.email !== null ? { type: "EMAIL", value: email.email } : null;
+  }
   const phone = tzPhone.safeParse(v);
   if (phone.success) return { type: "PHONE", value: phone.data };
   return null;

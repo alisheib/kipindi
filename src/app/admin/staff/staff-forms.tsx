@@ -8,17 +8,28 @@
  *
  * `roleInfos` is computed server-side from the LIVE grant matrix (so it reflects any
  * edits made at /admin/roles), then handed to the client as plain data.
+ *
+ * ⭐ vb8 (2026-10-03) · A REFUSAL SITS UNDER ITS FIELD, AND THE FORM TAKES YOU THERE. "Phone required", "Reason
+ * required" and "No change" used to be toasts that named no field. Both forms now check with the SAME rules the
+ * actions refuse with (`checkStaffPhone`, `checkStaffReason` in `staff-roles.ts`) before the confirmation opens, put
+ * every problem under its own field, and focus the first one on screen (`focusFirstInvalid`). A refusal the server
+ * names a field for lands there too; a toast is left only for what no field can fix (an account that is gone, a fault).
+ * The add form's phone is the kit `PhoneInput`, so every spelling (0712…, +255 712…, 255…, spaces, dashes) is
+ * reduced to its nine digits before `tzPhone` sees it — and the form is `noValidate`, so a short number is refused by
+ * the sentence under the field, not by a browser bubble in the player's language.
  */
 import { useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useDeferredToast } from "@/components/ui/toast";
 import { Input, Field } from "@/components/ui/input";
+import { PhoneInput } from "@/components/ui/phone-input";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { ConfirmModal } from "@/components/ui/modal";
 import { UnsavedChangesGuard, PendingChangesBar } from "@/components/ui/unsaved-changes";
 import { focusFirstInvalid } from "@/lib/client/focus-first-invalid";
 import { runAdminAction } from "@/lib/client/run-admin-action";
+import { checkStaffPhone, checkStaffReason, STAFF_REASON_MIN, STAFF_REASON_MAX } from "@/lib/server/staff-roles";
 import { setStaffRoleAction, addStaffByPhoneAction } from "./actions";
 
 export type RoleInfo = {
@@ -35,6 +46,38 @@ export type RoleInfo = {
 const MONEY = "var(--warning-500)";
 const GAIN = "var(--yes-500)";
 const REVOKE = "var(--no-500)";
+
+/** The fields a refusal can name — each one a `dataField` below, so `focusFirstInvalid` can find it. */
+type StaffField = "phone" | "role" | "reason";
+type StaffErrors = Partial<Record<StaffField, string>>;
+
+/** The field a server refusal names, if this form draws it — anything else is not an address here. */
+const fieldOf = (field: string | undefined, drawn: readonly StaffField[]): StaffField | null =>
+  drawn.find((f) => f === field) ?? null;
+
+/** The fields that hold a problem, for `focusFirstInvalid` (which picks the first ON SCREEN, not the first listed). */
+const fieldsWith = (errors: StaffErrors): StaffField[] =>
+  (["phone", "role", "reason"] as const).filter((f) => errors[f] !== undefined);
+
+/** One refusal, on one field. */
+const only = (field: StaffField, sentence: string): StaffErrors => {
+  const errors: StaffErrors = {};
+  errors[field] = sentence;
+  return errors;
+};
+
+/** The refusals with one field's answered — the same object when that field had none, so nothing re-renders. */
+const without = (errors: StaffErrors, field: StaffField): StaffErrors => {
+  if (errors[field] === undefined) return errors;
+  const next = { ...errors };
+  delete next[field];
+  return next;
+};
+
+/** The reason's rule, said before anything is typed — the same bounds `checkStaffReason` refuses with. */
+const REASON_RULE = `${STAFF_REASON_MIN} to ${STAFF_REASON_MAX} characters, no phone numbers. Recorded in the compliance log.`;
+const ROLE_UNCHANGED = "Pick a different role first.";
+const PHONE_TITLE = "9-digit Tanzania mobile number starting with 6 or 7";
 
 /** The always-visible "what this means" panel. */
 function Consequence({ info, isRevoke }: { info: RoleInfo | undefined; isRevoke: boolean }) {
@@ -95,8 +138,10 @@ export function AssignRoleForm({ userId, currentRole, roleInfos }: { userId: str
   const { deferToast, toast } = useDeferredToast(pending);
   const [role, setRole] = useState<string>(currentRole);
   const [reason, setReason] = useState("");
+  const [errors, setErrors] = useState<StaffErrors>({});
   const [confirming, setConfirming] = useState(false);
-  /* The bar submits through the FORM, not past it — see the note on onSave below. */
+  /* The bar submits through the FORM, not past it — see the note on onSave below. It is also the container
+     `focusFirstInvalid` searches, so a refusal lands on THIS form's field. */
   const assignFormRef = useRef<HTMLFormElement>(null);
   /* The form's own Save. The bar draws no second one while this is on screen (owner, 2026-09-22). */
   const saveRef = useRef<HTMLButtonElement>(null);
@@ -107,6 +152,8 @@ export function AssignRoleForm({ userId, currentRole, roleInfos }: { userId: str
   const isRevoke = role === "PLAYER";
   const info = roleInfos[role];
   const changed = role !== currentRole;
+  /** An edit answers the refusal on its own field, and only that one. */
+  const clear = (field: StaffField) => setErrors((cur) => without(cur, field));
 
   const run = () => {
     start(async () => {
@@ -117,31 +164,49 @@ export function AssignRoleForm({ userId, currentRole, roleInfos }: { userId: str
       /* A THROWN action (an expired owner session, a server fault) becomes `{ ok: false }` here,
          so it lands in the toast rather than ending the spinner in silence. */
       const r = await runAdminAction(() => setStaffRoleAction(fd));
-      if (!r.ok) { toast({ title: "Couldn't change role", description: r.error, variant: "danger" }); return; }
+      if (!r.ok) {
+        /* ⭐ vb8 · a refusal that names "role" or "reason" sits under that field, and the officer is taken there (the
+           confirmation has already closed). Only a refusal no field can fix, or a field that is not on screen, toasts. */
+        const field = fieldOf(r.field, ["role", "reason"]);
+        if (field !== null) {
+          setErrors(only(field, r.error));
+          if (focusFirstInvalid(assignFormRef.current, [field]).ok) return;
+        }
+        toast({ title: "Couldn't change role", description: r.error, variant: "danger" });
+        return;
+      }
       router.refresh();
       deferToast({ title: "Role updated", description: "They've been signed out and will re-enter with the new role.", variant: "success" });
       setReason("");
+      setErrors({});
     });
   };
 
+  /* ⭐ vb8 · every problem, each under its own field, and the first one on screen focused — before the confirmation
+     opens. The reason is checked by the action's own rule, so the two cannot disagree. */
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!changed) { toast({ title: "No change", description: "Pick a different role first.", variant: "warning" }); return; }
-    if (reason.trim().length < 5) { toast({ title: "Reason required", description: "Add a short reason (≥ 5 characters).", variant: "warning" }); return; }
+    const found: StaffErrors = {};
+    if (!changed) found.role = ROLE_UNCHANGED;
+    const why = checkStaffReason(reason);
+    if (!why.ok) found.reason = why.error;
+    setErrors(found);
+    const fields = fieldsWith(found);
+    if (fields.length > 0) { focusFirstInvalid(assignFormRef.current, fields); return; }
     setConfirming(true);
   };
 
   return (
     <form ref={assignFormRef} onSubmit={onSubmit} className="space-y-3">
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <Field label="Role" hint="One role per person.">
+        <Field label="Role" hint="One role per person." error={errors.role} dataField="role">
           {/* ⛔ CONTROLLED (`value`, not `defaultValue`). Uncontrolled, Discard put `role` back
               while the dropdown went on SHOWING the discarded pick — the consequence panel and
               the Save label said one role, the control another. */}
-          <Select name="role" ariaLabel="Role" value={role} onChange={setRole} options={ROLE_OPTIONS(roleInfos, true)} />
+          <Select name="role" ariaLabel="Role" value={role} onChange={(v) => { setRole(v); clear("role"); }} options={ROLE_OPTIONS(roleInfos, true)} />
         </Field>
-        <Field label="Reason (audited)" hint="Why the change — recorded in the compliance log.">
-          <Input name="reason" value={reason} onChange={(e) => setReason(e.currentTarget.value)} placeholder="e.g. moved to the finance desk" />
+        <Field label="Reason (audited)" hint={`Why the change — ${REASON_RULE}`} error={errors.reason} dataField="reason">
+          <Input name="reason" value={reason} onChange={(e) => { setReason(e.currentTarget.value); clear("reason"); }} placeholder="e.g. moved to the finance desk" error={errors.reason !== undefined} />
         </Field>
       </div>
       <Consequence info={info} isRevoke={isRevoke} />
@@ -151,10 +216,10 @@ export function AssignRoleForm({ userId, currentRole, roleInfos }: { userId: str
         detail="A role change signs this person out of every device."
         /* ⛔ requestSubmit(), NOT setConfirming(true): the bar must take the SAME path as the
            button, or it skips this form onSubmit guard and would open the confirm ceremony for
-           a no-op (a typed reason with no role change) or for a reason under 5 characters. */
+           a no-op (a typed reason with no role change) or for a reason the rule refuses. */
         saveAnchor={saveRef}
         onSave={() => assignFormRef.current?.requestSubmit()}
-        onDiscard={() => { setRole(currentRole); setReason(""); }}
+        onDiscard={() => { setRole(currentRole); setReason(""); setErrors({}); }}
         saveLabel={isRevoke ? "Revoke staff access" : "Change role"}
       />
       <UnsavedChangesGuard dirty={unsaved} body="This role change has not been saved. Leaving now discards it." />
@@ -167,7 +232,7 @@ export function AssignRoleForm({ userId, currentRole, roleInfos }: { userId: str
         variant="primary"
         loading={pending}
         disabled={!changed}
-        title={changed ? undefined : "Pick a different role first."}
+        title={changed ? undefined : ROLE_UNCHANGED}
       >
         {isRevoke ? "Revoke staff access" : "Change role"}
       </Button>
@@ -200,9 +265,11 @@ export function AddStaffForm({ roleInfos }: { roleInfos: Record<string, RoleInfo
   const [pending, start] = useTransition();
   const router = useRouter();
   const { deferToast, toast } = useDeferredToast(pending);
+  /* The nine national digits `PhoneInput` hands back — every spelling already reduced. */
   const [phone, setPhone] = useState("");
   const [role, setRole] = useState<string>("SUPPORT");
   const [reason, setReason] = useState("");
+  const [errors, setErrors] = useState<StaffErrors>({});
   const [confirming, setConfirming] = useState(false);
   /* The container `focusFirstInvalid` searches — see the note in `run()` for why it is this
      form and not the document. */
@@ -215,6 +282,8 @@ export function AddStaffForm({ roleInfos }: { roleInfos: Record<string, RoleInfo
   const unsaved = phone.trim() !== "" || reason.trim() !== "" || role !== "SUPPORT";
   const info = roleInfos[role];
   const options = useMemo(() => ROLE_OPTIONS(roleInfos, false), [roleInfos]);
+  /** An edit answers the refusal on its own field, and only that one. */
+  const clear = (field: StaffField) => setErrors((cur) => without(cur, field));
 
   const run = () => {
     start(async () => {
@@ -225,15 +294,18 @@ export function AddStaffForm({ roleInfos }: { roleInfos: Record<string, RoleInfo
       // Same wrapper as the role change above: a thrown action surfaces, never in silence.
       const r = await runAdminAction(() => addStaffByPhoneAction(fd));
       if (!r.ok) {
+        /* ⛔ SCOPED TO THIS FORM, NOT `document.body`. The role-change form owns a `role` and a `reason`
+           field too (on the detail page), and `focusFirstInvalid` picks the first match in DOM order by
+           design — so the container is what makes it this form's control, wherever the two forms are
+           ever drawn. The confirm modal has already closed (`onConfirm` sets it false before calling
+           this), so the field is on screen. ⭐ vb8 · the refusal sits under that field; only a refusal
+           no field can fix, or a field that is not on screen, toasts. */
+        const field = fieldOf(r.field, ["phone", "role", "reason"]);
+        if (field !== null) {
+          setErrors(only(field, r.error));
+          if (focusFirstInvalid(formRef.current, [field]).ok) return;
+        }
         toast({ title: "Couldn't add staff", description: r.error, variant: "danger" });
-        /* ⛔ SCOPED TO THIS FORM, NOT `document.body`. This page renders TWO forms and both
-           own a `role` and a `reason` field — the role-change form above this one. A
-           document-wide search would hand back the FIRST match in document order, i.e. the
-           other form's control, and take the officer to a field that is not the one that
-           refused. `focusFirstInvalid` picks the first match in DOM order by design, so the
-           container is what makes it the right one. The confirm modal has already closed
-           (`onConfirm` sets it false before calling this), so the field is on screen. */
-        if (r.field) focusFirstInvalid(formRef.current, [r.field]);
         return;
       }
       router.refresh();
@@ -242,30 +314,38 @@ export function AddStaffForm({ roleInfos }: { roleInfos: Record<string, RoleInfo
          than SUPPORT kept `unsaved` true, so the bar went on saying "Unsaved changes" over a
          promotion that had just been saved — owner, 2026-09-26: "users are confused whether the
          save worked or not". */
-      setPhone(""); setReason(""); setRole("SUPPORT");
+      setPhone(""); setReason(""); setRole("SUPPORT"); setErrors({});
     });
   };
 
+  /* ⭐ vb8 · the phone and the reason are checked by the action's own rules, every problem lands under its field, and
+     the first one on screen is focused — the confirmation opens only for a request the server can accept. */
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!phone.trim()) { toast({ title: "Phone required", variant: "warning" }); return; }
-    if (reason.trim().length < 5) { toast({ title: "Reason required", description: "Add a short reason (≥ 5 characters).", variant: "warning" }); return; }
+    const found: StaffErrors = {};
+    const account = checkStaffPhone(phone);
+    if (!account.ok) found.phone = account.error;
+    const why = checkStaffReason(reason);
+    if (!why.ok) found.reason = why.error;
+    setErrors(found);
+    const fields = fieldsWith(found);
+    if (fields.length > 0) { focusFirstInvalid(formRef.current, fields); return; }
     setConfirming(true);
   };
 
   return (
-    <form ref={formRef} onSubmit={onSubmit} className="space-y-3">
+    <form ref={formRef} noValidate onSubmit={onSubmit} className="space-y-3">
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <Field label="Phone" hint="Their existing 50pick account." dataField="phone">
-          <Input name="phone" value={phone} onChange={(e) => setPhone(e.currentTarget.value)} placeholder="+255…" mono />
+        <Field label="Phone" hint="Their existing 50pick account." error={errors.phone} dataField="phone">
+          <PhoneInput name="phone" value={phone} onChange={(e) => { setPhone(e.target.value); clear("phone"); }} title={PHONE_TITLE} error={errors.phone !== undefined} />
         </Field>
-        <Field label="Role" dataField="role">
+        <Field label="Role" error={errors.role} dataField="role">
           {/* Controlled for the same reason as the role-change form: Discard and a successful
               add both put `role` back, and the dropdown has to show it. */}
-          <Select name="role" ariaLabel="Role" value={role} onChange={setRole} options={options} />
+          <Select name="role" ariaLabel="Role" value={role} onChange={(v) => { setRole(v); clear("role"); }} options={options} />
         </Field>
-        <Field label="Reason (audited)" dataField="reason">
-          <Input name="reason" value={reason} onChange={(e) => setReason(e.currentTarget.value)} placeholder="e.g. new support hire" />
+        <Field label="Reason (audited)" hint={REASON_RULE} error={errors.reason} dataField="reason">
+          <Input name="reason" value={reason} onChange={(e) => { setReason(e.currentTarget.value); clear("reason"); }} placeholder="e.g. new support hire" error={errors.reason !== undefined} />
         </Field>
       </div>
       <Consequence info={info} isRevoke={false} />
@@ -276,7 +356,7 @@ export function AddStaffForm({ roleInfos }: { roleInfos: Record<string, RoleInfo
         saveAnchor={saveRef}
         /* Through the FORM, so the bar cannot skip onSubmit validation. */
         onSave={() => formRef.current?.requestSubmit()}
-        onDiscard={() => { setPhone(""); setRole("SUPPORT"); setReason(""); }}
+        onDiscard={() => { setPhone(""); setRole("SUPPORT"); setReason(""); setErrors({}); }}
         saveLabel="Add as staff"
         savedLabel="Staff added"
       />

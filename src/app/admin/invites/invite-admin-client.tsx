@@ -12,11 +12,20 @@ import { useDeferredToast } from "@/components/ui/toast";
 import { UnsavedChangesGuard, PendingChangesBar } from "@/components/ui/unsaved-changes";
 import { formatTzs } from "@/lib/utils";
 import { runAdminAction } from "@/lib/client/run-admin-action";
+import { focusFirstInvalid } from "@/lib/client/focus-first-invalid";
+import { checkContactEmail } from "@/lib/contacts/contact-fields";
 import { createCampaignAction, addContactsStructuredAction, sendCampaignAction, cancelCampaignAction } from "./invite-actions";
 import { FieldLegend } from "@/components/ui/field-legend";
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 type StagedRow = { email: string; phone: string; amount: number | "" };
+
+/* ⭐ vb8 (2026-10-03) · THE STAGING CHECKS SIT UNDER THEIR FIELDS. The email is the contact book's ONE rule
+   (`checkContactEmail` — this file's own regex let a NUL through, and the server's copy agreed with it); the phone is
+   the nine digits `PhoneInput` keeps. Two of the three checks were toasts that named no field. */
+/** The nine digits `PhoneInput` keeps, read as a Tanzanian mobile: 6… or 7…. */
+const TZ_MOBILE_DIGITS = /^[67][0-9]{8}$/;
+const NEED_EMAIL_OR_PHONE = "Enter an email or a phone number — a contact needs at least one.";
+const PHONE_INCOMPLETE = "Enter all 9 digits of a Tanzanian mobile number, starting with 6 or 7.";
 
 /** Create-campaign form (on the list page). */
 /* ⛔ THE DEFAULTS ARE NAMED ONCE. `dirty` compares against them and Discard restores them, so a
@@ -123,6 +132,9 @@ export function CampaignControls({ campaignId, status, queued, smsLive }: { camp
   const [phone, setPhone] = useState("");        // raw 9 digits (PhoneInput strips to canonical)
   const [amount, setAmount] = useState<number | "">("");
   const [emailErr, setEmailErr] = useState<string | undefined>();
+  const [phoneErr, setPhoneErr] = useState<string | undefined>();
+  /* The entry fields' container — what `focusFirstInvalid` searches, so a refusal lands on THIS form's field. */
+  const entryRef = useRef<HTMLDivElement>(null);
   const [rows, setRows] = useState<StagedRow[]>([]);
   const [busy, setBusy] = useState<string | null>(null); // which phase is in flight (for live feedback)
   const locked = status === "CANCELLED";
@@ -136,14 +148,24 @@ export function CampaignControls({ campaignId, status, queued, smsLive }: { camp
     });
   };
 
+  /** The contact book's ONE email rule — blank is no email, which a row may lack (it needs an email OR a phone). */
+  const emailProblem = (text: string): string | undefined => {
+    if (text.trim() === "") return undefined;
+    const verdict = checkContactEmail(text);
+    return verdict.ok ? undefined : verdict.sentence;
+  };
+
+  /* Every problem under its own field, and the first one on screen focused — nothing here is a toast any more. */
   const addToList = () => {
     const e = email.trim();
     const p = phone.trim();
-    if (!e && !p) { toast({ title: "Enter an email or a phone", variant: "danger" }); return; }
-    if (e && !EMAIL_RE.test(e)) { setEmailErr("That doesn't look like an email"); return; }
-    if (p && !/^[67]\d{8}$/.test(p)) { toast({ title: "Phone must be a 9-digit TZ mobile (6… or 7…)", variant: "danger" }); return; }
-    setEmailErr(undefined);
-    setRows((r) => [...r, { email: e, phone: p, amount }]);
+    const eErr = e ? emailProblem(e) : p ? undefined : NEED_EMAIL_OR_PHONE;
+    const pErr = p && !TZ_MOBILE_DIGITS.test(p) ? PHONE_INCOMPLETE : undefined;
+    setEmailErr(eErr);
+    setPhoneErr(pErr);
+    const bad = [eErr === undefined ? null : "email", pErr === undefined ? null : "phone"].filter((f): f is string => f !== null);
+    if (bad.length > 0) { focusFirstInvalid(entryRef.current, bad); return; }
+    setRows((r) => [...r, { email: e.toLowerCase(), phone: p, amount }]);
     setEmail(""); setPhone(""); setAmount("");
   };
   const removeRow = (i: number) => setRows((r) => r.filter((_, idx) => idx !== i));
@@ -183,16 +205,18 @@ export function CampaignControls({ campaignId, status, queued, smsLive }: { camp
   return (
     <div className="space-y-4">
       {/* Structured contact entry */}
-      <div className="space-y-3">
+      <div ref={entryRef} className="space-y-3">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <Field label="Email" hint="jane@example.com" error={emailErr} className="lg:col-span-2">
+          <Field label="Email" hint="jane@example.com" error={emailErr} className="lg:col-span-2" dataField="email">
             <Input
               type="email" inputMode="email" autoComplete="off" size="sm" placeholder="jane@example.com"
               value={email} error={emailErr} onChange={(e) => { setEmail(e.target.value); if (emailErr) setEmailErr(undefined); }}
+              /* Checked on blur as well as on Add — a typed address only: leaving an empty box is not a mistake. */
+              onBlur={() => { if (email.trim() !== "") setEmailErr(emailProblem(email)); }}
             />
           </Field>
-          <Field label="Phone" hint={smsLive ? "Any TZ mobile" : "Captured now · SMS sends once live"}>
-            <PhoneInput size="sm" value={phone} onChange={(e) => setPhone(e.target.value)} />
+          <Field label="Phone" hint={smsLive ? "Any TZ mobile" : "Captured now · SMS sends once live"} error={phoneErr} dataField="phone">
+            <PhoneInput size="sm" value={phone} error={phoneErr !== undefined} onChange={(e) => { setPhone(e.target.value); if (phoneErr) setPhoneErr(undefined); if (emailErr === NEED_EMAIL_OR_PHONE) setEmailErr(undefined); }} />
           </Field>
           <Field label="Bonus" hint="Blank = campaign default">
             <Input

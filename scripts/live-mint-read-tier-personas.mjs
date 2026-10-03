@@ -173,7 +173,9 @@ try {
       const page = await ctx.newPage();
       await page.goto(`${BASE}/admin/staff`, { waitUntil: "domcontentloaded", timeout: 90_000 });
       await page.waitForTimeout(2_500);
-      await page.fill('input[name="phone"]', e164);
+      // vb8 · the kit PhoneInput: type the nine national digits into the VISIBLE box (its name is on a hidden input).
+      if (!e164.startsWith("+255")) throw new Error(`not a +255 number: ${e164}`);
+      await page.fill('main [data-field="phone"] input[autocomplete="tel-national"]', e164.slice(4));
       // The role Select is the kit combobox — ask it by its ACCESSIBLE NAME (E-225).
       const role = page.getByRole("combobox", { name: "Role" }).last();
       await role.click();
