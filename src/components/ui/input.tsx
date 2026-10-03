@@ -21,13 +21,16 @@
  * "12.50" became 1250 and "1,500.50" became 150050 — a 100× change that passes every range check, on live money fields
  * (the agent rail's refund and receipt amounts, config's min and max stake, and now the console's balance adjustment,
  * which had hand-rolled its own box). Every change is now read by `numericStep`:
- *   · a PASTE or a DROP that holds a dot keeps what it brought up to that dot, and the Field says the rest was dropped;
+ *   · a PASTE or a DROP that holds a decimal mark keeps what it brought up to it, and the Field says the rest was dropped;
  *   · a TYPED dot is not inserted and the value stays; a digit typed straight after it, at the caret where it was
- *     refused, is dropped — and only then does the Field say so — until a key that is not a digit, a blur, a deletion,
- *     a change over a selection or a digit typed anywhere else; so "12500.00" typed key by key ends on 12500;
+ *     refused, is dropped — and only then does the Field say so — and so is one typed after a comma or a letter there
+ *     ("9500.,00" ends on 9500), until a named key, a blur, a deletion, a change over a selection, a caret that settles
+ *     anywhere else (a tap) or anything that lands elsewhere; so "12500.00" typed key by key ends on 12500. A dot typed
+ *     with no digit before it (an empty box) holds nothing: there is no number for a fraction to multiply;
  *   · a stray dot typed inside a number keeps every digit that was already there, and says nothing: nothing was lost.
- * The full stops a Chinese keyboard types (U+3002, U+FF0E, U+FF61) are read as a dot. A comma is read as grouping, so
- * a comma-decimal entry ("12 500,50") is not caught: it keeps 1250050.
+ * A decimal mark is a dot or a Chinese keyboard's full stop (U+3002, U+FF0E, U+FF61) — never a currency's abbreviation
+ * ("Tsh. 9,500" keeps 9500) — or, in a paste, a comma before its last one or two digits ("9 500,00" keeps 9500). A
+ * TYPED comma is read as grouping, so "9500,00" typed key by key still reads 950000: owed (DESIGN_AUTHORITY §A7).
  * A phone-number box (`type="tel"`: PhoneInput, the deposit number) reads a dot or a dash as a separator, exactly as
  * before, and says nothing. `test:numeric` drives `numericBox` — the object each box keeps — key by key.
  *
@@ -88,7 +91,7 @@ export type NumericEntry = {
 
 /* ⭐ (vb6) THE FULL STOPS A WHOLE-NUMBER BOX READS AS A DOT, besides the ASCII one: the ideographic, full-width and
    half-width ideographic full stops (U+3002, U+FF0E, U+FF61) that a Chinese keyboard types. Read as nothing, they made
-   "12500" + U+3002 + "00" read 1250000. ⛔ A comma is not one of them: it is read as grouping. */
+   "12500" + U+3002 + "00" read 1250000. */
 const FULL_STOPS = new RegExp("[" + String.fromCharCode(0x3002, 0xff0e, 0xff61) + "]", "g");
 
 /** The text with each of those full stops written as the ASCII dot — one character for one, so a caret still points
@@ -98,17 +101,50 @@ function plainDots(text: string): string {
 }
 
 /**
+ * ⭐ WHAT A WHOLE-NUMBER BOX READS IN A TEXT (vb6), one character for one so a caret still points where it pointed:
+ *   · each full stop as the ASCII dot (`plainDots`);
+ *   · a dot that directly follows a letter BEFORE any digit has appeared — a currency's abbreviation leading the
+ *     number: "Tsh. 9,500", "TSh. 9,500.00", "Sh.9,500" — as nothing (a space, which the reading strips). Cut there,
+ *     the box emptied and said a fraction was dropped. Once a digit has appeared — in the text, or in the box before
+ *     the caret (`digitsBefore`) — every dot is a decimal mark, so "9500a.50" keeps 9500, and "Tsh.50" pasted after a
+ *     9500 already in the box keeps 9500: never 950050;
+ *   · when `entry` — the text is everything that ARRIVED, a paste or a drop — a comma before its LAST one or two digits
+ *     as the decimal mark it must be: grouping always leads three digits, so "9 500,00" keeps 9500, never 950000.
+ *     ⚠️ A TYPED comma cannot be read so — the digits after it have not arrived yet — so "9500,00" typed key by key
+ *     still reads 950000: owed (DESIGN_AUTHORITY §A7).
+ */
+function wholeText(text: string, entry: boolean, digitsBefore = false): string {
+  const dots = plainDots(text);
+  let out = "";
+  let digitSeen = digitsBefore;
+  for (let i = 0; i < dots.length; i++) {
+    const c = dots[i];
+    out += c === "." && !digitSeen && i > 0 && /[A-Za-z]/.test(dots[i - 1]) ? " " : c;
+    if (/[0-9]/.test(c)) digitSeen = true;
+  }
+  return entry ? out.replace(/,([0-9]{1,2})([^0-9]*)$/, ".$1$2") : out;
+}
+
+/**
  * ⭐ THE READING OF ONE WHOLE ENTRY (vb6, 2026-10-03) — `sanitizeNumericInput` is its `value`.
  *
  * 🔴 THE WHOLE-NUMBER BRANCH USED TO DELETE EVERY DOT. A pasted "12.50" became 1250, "1,500.50" became 150050 and
  * "12,500.00" became 1250000: a 100× change that passes every range check, on live money fields. ⛔ It now CUTS at the
- * first dot — "12.50" keeps 12, "1,500.50" keeps 1500 — so a number is never multiplied. A European "1.500" keeps 1,
- * which is visible, and the Field says why. A Chinese keyboard's full stop is a dot here too (`plainDots`).
+ * first decimal mark — "12.50" keeps 12, "1,500.50" keeps 1500 — so a number is never multiplied. A European "1.500"
+ * keeps 1, which is visible, and the Field says why. What counts as a decimal mark is `wholeText`'s: a dot or a Chinese
+ * full stop, never a currency's abbreviation dot, and a comma before the entry's last one or two digits.
  * ⚠️ Decimal mode is unchanged: it keeps the first dot and drops any later one. A minus survives only where negatives
  * are allowed; where they are not, dropping it is reported, because "-5" becoming 5 is a sign change no range catches.
  */
 export function readNumericEntry(entry: string, opts: NumericOpts): NumericEntry {
-  const raw = opts.decimal ? entry : plainDots(entry);
+  return readText(entry, opts, true);
+}
+
+/** The reading itself. `entry`: the text is all that arrived, so a comma before its last one or two digits is its
+ *  decimal mark (`wholeText`); a text the box composed around what arrived — or a part of one, read for a caret — is
+ *  read without that rule. */
+function readText(text: string, opts: NumericOpts, entry: boolean): NumericEntry {
+  const raw = opts.decimal ? text : wholeText(text, entry);
   if (opts.separators) return { value: raw.replace(/[^0-9]/g, ""), cutAtDot: false, droppedMinus: false };
   const signed = /^\s*-/.test(raw);
   let s = raw.replace(/[^\d.]/g, "");          // keep digits + dots only
@@ -176,23 +212,28 @@ function insertedSpan(before: string | null, raw: string, caret: number | null):
  *
  * In a whole-number box:
  *   ① a digit typed straight after a refused dot — AT the caret where the dot was refused, replacing nothing — is its
- *     fraction: it is DROPPED, the box keeps exactly what it held, and the Field now says so. The hold ends on a key
- *     that is not a digit (`numericKey`, or a change that brings one), a blur (`numericBlur`), a deletion, a change
- *     that replaced a selection (a select-all and a paste), or a digit that lands anywhere else — a tap moved the
- *     caret, and a phone has no arrow key to end it. So "12500.00" typed key by key ends on 12500, never 1250000;
- *   ② a dot in what arrived keeps what arrived up to that dot and drops the dot and the rest of it, while the box's own
- *     text on both sides stays: a pasted "12,500.00" keeps 12500, and a stray dot typed inside "125000" keeps every
- *     digit. A dot that ENDED what arrived (a typed ".", or a paste ending in one) starts the hold of ①, at the caret.
- * A Chinese keyboard's full stop is a dot (`plainDots`). When what arrived cannot be told from what was there, the
- * whole text is read as one paste (`readNumericEntry`). A decimal box and a phone-number box read the whole text,
- * exactly as they always have.
+ *     fraction: it is DROPPED, the box keeps exactly what it held, and the Field now says so. A character the reading
+ *     strips (a comma, a space, a letter, a minus) typed there moves nothing, so the dot still holds: "9500.,00" ends on
+ *     9500. The hold ends on a named key (`numericKey`), a blur (`numericBlur`), a deletion, a change that replaced a
+ *     selection (a select-all and a paste), a caret that settles anywhere else (`numericBox`'s `select` — a tap or a
+ *     click, which a phone with no arrow keys depends on), or anything that lands anywhere else. So "12500.00" typed
+ *     key by key ends on 12500, never 1250000;
+ *   ② a decimal mark in what arrived (`wholeText`: a dot, a Chinese full stop, or a comma before its last one or two
+ *     digits — never a currency's abbreviation dot) keeps what arrived up to it and drops the mark and the rest, while
+ *     the box's own text on both sides stays: a pasted "12,500.00" or "9 500,00" keeps what came before the mark, and a
+ *     stray dot typed inside "125000" keeps every digit. A dot that ENDED what arrived (a typed ".", or a paste ending
+ *     in one) starts the hold of ①, at the caret — but only where a whole number stands before that caret: in an empty
+ *     box there is nothing a fraction could multiply, and a hold would only swallow the digits that follow.
+ * When what arrived cannot be told from what was there, the whole text is read as one paste (`readNumericEntry`). A
+ * decimal box and a phone-number box read the whole text, exactly as they always have.
  * ⛔ THE LINE IS NEVER FALSE: the dot's line ("the part after the dot was dropped") is owed only once digits after a dot
  * WERE dropped — cut from what arrived, or dropped by ① — and then until the value moves; a refused dot that dropped
  * nothing owes nothing. A dropped minus changed the SIGN of every digit typed after it, so its line lasts until the box
  * is emptied.
  */
 export function numericStep(memory: NumericMemory, change: NumericChange, opts: NumericOpts): NumericStep {
-  const read = (text: string) => readNumericEntry(text, opts);
+  /* The reading of a text the box composed: the comma rule belongs to what arrived alone (`readText`). */
+  const read = (text: string) => readText(text, opts, false);
   /* The caret in what the box keeps: the characters in front of it that survive the reading. */
   const caretIn = (text: string, at: number | null, value: string) =>
     at === null ? null : Math.min(value.length, read(text.slice(0, at)).value.length);
@@ -201,6 +242,8 @@ export function numericStep(memory: NumericMemory, change: NumericChange, opts: 
     const at = text.indexOf(".");
     return at >= 0 && /[0-9]/.test(text.slice(at + 1));
   };
+  /* A refused dot holds only where a whole number stands before its caret — there is nothing else to protect. */
+  const guards = (value: string, at: number | null) => /[0-9]/.test(value.slice(0, at ?? value.length));
   const cleanBefore = change.before === null ? null : read(change.before).value;
   const owing = (dot: boolean, minus: boolean, value: string): NumericOwed | null => {
     const was = memory.owed;
@@ -224,40 +267,47 @@ export function numericStep(memory: NumericMemory, change: NumericChange, opts: 
   const caret = change.caret;
   const span = insertedSpan(before, raw, caret);
   if (span === null || before === null) {
-    const whole = read(raw);
+    /* The whole text is one entry, read as `readNumericEntry` reads one — its comma rule included. */
+    const whole = readNumericEntry(change.raw, opts);
+    const marked = wholeText(change.raw, true);
     const caretOut = caretIn(raw, caret, whole.value);
-    const holds = whole.cutAtDot && !cutsDigits(raw);
+    const holds = whole.cutAtDot && !cutsDigits(marked) && guards(whole.value, caretOut);
     return {
       value: whole.value,
       caret: caretOut,
-      memory: { latchedAt: holds ? caretOut ?? whole.value.length : null, owed: owing(cutsDigits(raw), whole.droppedMinus, whole.value) },
+      memory: { latchedAt: holds ? caretOut ?? whole.value.length : null, owed: owing(cutsDigits(marked), whole.droppedMinus, whole.value) },
     };
   }
   const head = raw.slice(0, span.start);
   const arrived = raw.slice(span.start, span.end);
   const tail = raw.slice(span.end);
   const removed = before.length - head.length - tail.length;
+  /* The change sits exactly where a refused dot holds: at its caret, removing nothing, replacing no selection. */
+  const atHold = memory.latchedAt === span.start && removed === 0 && change.replaced !== true;
 
-  // ① the fraction of a refused dot: a digit typed at the dot's caret, replacing nothing
-  if (memory.latchedAt === span.start && removed === 0 && change.replaced !== true && /^[0-9]+$/.test(arrived)) {
+  // ① the fraction of a refused dot: a digit typed at the dot's caret
+  if (atHold && /^[0-9]+$/.test(arrived)) {
     return { value: before, caret: span.start, memory: { latchedAt: memory.latchedAt, owed: owing(true, false, before) } };
   }
 
-  // ② a dot in what arrived — and anything else that is not a digit is stripped by the reading, which also cuts at a
-  //    dot a parent may have written into the box itself
-  const dot = arrived.indexOf(".");
-  const kept = dot < 0 ? arrived : arrived.slice(0, dot);
-  const fraction = dot < 0 ? "" : arrived.slice(dot + 1);
+  // ② a decimal mark in what arrived — and anything else that is not a digit is stripped by the reading, which also
+  //    cuts at a dot a parent may have written into the box itself
+  const marked = wholeText(arrived, true, /[0-9]/.test(head));
+  const dot = marked.indexOf(".");
+  const kept = dot < 0 ? marked : marked.slice(0, dot);
+  const fraction = dot < 0 ? "" : marked.slice(dot + 1);
   const text = head + kept + tail;
   const entry = read(text);
   const caretOut = caretIn(text, head.length + kept.length, entry.value);
   /* Digits were dropped: the fraction that arrived held one, or the reading cut one the box itself held. */
   const cut = /[0-9]/.test(fraction) || cutsDigits(text);
+  /* A character the reading strips, typed at the dot's caret, moves nothing: the dot still holds ("9500.,00"). */
+  const keepsHold = atHold && dot < 0 && !/[0-9]/.test(arrived);
   return {
     value: entry.value,
     caret: caretOut,
     memory: {
-      latchedAt: dot >= 0 && !/[0-9]/.test(fraction) ? caretOut : null,
+      latchedAt: keepsHold ? memory.latchedAt : dot >= 0 && !/[0-9]/.test(fraction) && guards(entry.value, caretOut) ? caretOut : null,
       owed: owing(cut, entry.droppedMinus, entry.value),
     },
   };
@@ -270,9 +320,10 @@ const SILENT_KEYS = new Set([
 ]);
 
 /**
- * A key went down in the box (`e.key`). A refused dot's hold ends on a key that is not a digit — and only a NAMED key
- * (an arrow, Home, Backspace, Enter, Tab) is judged here. A printable key is judged by the change it makes: `numericStep`
- * ends the hold on anything that is not a digit, and a paste shortcut's own digits are still the dot's fraction.
+ * A key went down in the box (`e.key`). A refused dot's hold ends on a NAMED key (an arrow, Home, Backspace, Enter,
+ * Tab), judged here. A printable key is judged by the change it makes in `numericStep`: a digit at the dot's caret is
+ * its fraction, a character the reading strips leaves the hold standing, and a paste shortcut's own digits are still
+ * the dot's fraction.
  * ⚠️ "Unidentified" and "Process" end nothing: an Android keyboard reports one of them for EVERY key, digits included.
  */
 export function numericKey(memory: NumericMemory, key: string): NumericMemory {
@@ -297,7 +348,8 @@ export type NumericBox = {
   /** The box's text, read off the element — on focus, and once a form reset has run. */
   seen: (value: string) => void;
   /** The selection the element holds now (`selectionStart`, `selectionEnd`) — read on every select event and on every
-   *  key, so the next change knows whether it replaced text that was selected. */
+   *  key, so the next change knows whether it replaced text that was selected, and a caret that settles away from a
+   *  refused dot's caret ends its hold. */
   select: (start: number | null, end: number | null) => void;
   /** A key went down (`e.key`). */
   key: (key: string) => void;
@@ -329,7 +381,12 @@ export function numericBox(): NumericBox {
   let selected = false;
   return {
     seen: (value) => { before = value; },
-    select: (start, end) => { selected = start !== null && end !== null && end > start; },
+    select: (start, end) => {
+      selected = start !== null && end !== null && end > start;
+      /* ⭐ A caret that settles anywhere but the dot's caret — a tap, a click — ends the hold: the officer has moved on,
+         and on a phone with no arrow keys this is the only way to say so. */
+      if (start !== null && start === end && memory.latchedAt !== null && start !== memory.latchedAt) memory = { ...memory, latchedAt: null };
+    },
     key: (key) => { memory = numericKey(memory, key); },
     change: (target, opts, given) => {
       const replaced = selected;

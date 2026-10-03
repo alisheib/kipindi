@@ -1417,27 +1417,37 @@ them, never dip under.
      and `DateSelect` take the same `error` prop as `Input`; the MESSAGE is always the Field's. A `required`
      `DateSelect` asks for its date when its form is submitted without one, because the browser's bubble never speaks
      in a `noValidate` form.
-   - **A whole-number box never changes the size of a number.** It reads four characters as a dot: the ASCII `.` and
-     the full stops a Chinese keyboard types — ideographic `。`, full-width `．` and half-width `｡` (U+3002, U+FF0E,
-     U+FF61). A paste or a drop that holds one keeps what it brought up to that dot (`12.50` keeps `12`; `12,500.00`
-     and `12500。00` keep `12500` — never `1250` or `1250000`). A TYPED dot is not inserted, and a digit typed straight
-     after it — at the caret where it was refused — is dropped, until a key that is not a digit, a blur, a deletion, a
-     change over a selection (a select-all and a paste) or a digit typed anywhere else in the box (a tap moves the
-     caret, and a phone has no arrow keys); so `12500.00` typed key by key ends on `12500`. A stray dot typed inside a
-     number keeps every digit that was there (`numericStep`). The Field says why in the dictionary's words — *"Whole
-     numbers only — the part after the dot was dropped."*, `t.common.wholeNumbersOnly` in English, Swahili and Chinese —
-     once digits after a dot WERE dropped (cut from a paste, or typed after a refused dot), and for as long as that is
-     true: a refused dot that dropped nothing says nothing. A dropped minus is said the same way
-     (`t.common.noNegativeNumbers`) until the box is emptied. The line is a live region (`role="status"`) the Field
-     always mounts, empty until it has words, so a screen reader hears them arrive. ⚠️ A comma is read as GROUPING, so
-     a comma-decimal entry is not caught: `12 500,50` keeps `1250050`. ⚠️ A box outside a `<Field>` (the deposit and
-     withdraw amount, the bet stakes) keeps the same rule with no line: the dot never appears and nothing is
-     multiplied. A phone-number box (`type="tel"` — `PhoneInput`, the deposit number) reads a dot or a dash as a
-     separator, keeps every digit and says nothing. ⚠️ `DurationInput` filters its own box with the whole-entry
-     reading, so a typed "1.5" there still reads 15 (a pasted one reads 1) — owed the same rule; and a decimal box
-     still drops a Chinese full stop instead of reading it (`12。5` reads `125`) — owed too. ⛔ A money box is the kit
-     Input, never a hand-rolled one with a filter of its own: the console's balance adjustment kept digits AND commas
-     and dropped the dot, so a pasted `9,500.00` moved TZS 950,000 on one officer's word.
+   - **A whole-number box never changes the size of a number.** Its decimal mark is a dot — the ASCII `.` or a full
+     stop a Chinese keyboard types, ideographic `。`, full-width `．` or half-width `｡` (U+3002, U+FF0E, U+FF61) — and,
+     in a PASTE or a drop, a comma before its last one or two digits: grouping always leads three, so `9 500,00` keeps
+     `9500`. A dot that directly follows a letter before any digit has appeared is a currency's abbreviation, not a
+     mark: `Tsh. 9,500`, `TSh. 9,500.00` and `Sh.9,500` keep `9500` (once a digit has appeared every dot is a mark
+     again, so `9500a.50` keeps `9500`). A paste or a drop that holds a mark keeps what it brought up to it (`12.50`
+     keeps `12`; `12,500.00` and `12500。00` keep `12500` — never `1250` or `1250000`). A TYPED dot is not inserted,
+     and a digit typed straight after it — at the caret where it was refused — is dropped; so is one typed after a
+     comma, a space or a letter typed there (`9500.,00` keeps `9500`). The hold ends on a named key (an arrow,
+     Backspace, Enter, Tab), a blur, a deletion, a change over a selection (a select-all and a paste), a caret that
+     settles anywhere else — a tap or a click, which the box hears through its select event, and which a phone with
+     no arrow keys depends on — or anything that lands anywhere else; so `12500.00` typed key by key ends on `12500`.
+     ⭐ A dot typed with NO digit before its caret holds nothing: in an empty box there is no number for a fraction to
+     multiply, and a hold there only swallowed the digits that followed — on the deposit and withdraw box, with no line
+     to say why. A stray dot typed inside a number keeps every digit that was there (`numericStep`). The Field says why
+     in the dictionary's words — *"Whole numbers only — the part after the dot was dropped."*,
+     `t.common.wholeNumbersOnly` in English, Swahili and Chinese — once digits after a mark WERE dropped (cut from a
+     paste, or typed after a refused dot), and for as long as that is true: a refused dot that dropped nothing says
+     nothing. A dropped minus is said the same way (`t.common.noNegativeNumbers`) until the box is emptied. The line is
+     a live region (`role="status"`) the Field always mounts, empty until it has words, so a screen reader hears them
+     arrive. ⚠️ A TYPED comma cannot be read as a mark — the digits after it have not arrived — so `9500,00` typed key
+     by key still reads `950000`: owed. ⚠️ A box outside a `<Field>` (the deposit and withdraw amount, the bet stakes)
+     keeps the same rule with no line: the dot never appears and nothing is multiplied. A phone-number box
+     (`type="tel"` — `PhoneInput`, the deposit number) reads a dot or a dash as a separator, keeps every digit and says
+     nothing. ⚠️ `DurationInput` filters its own box with the whole-entry reading, so a typed "1.5" there still reads
+     15 (a pasted one reads 1) — owed the same rule; and a decimal box still drops a Chinese full stop instead of
+     reading it (`12。5` reads `125`) — owed too. ⛔ A money box is the kit's WHOLE-NUMBER Input — never a hand-rolled
+     one with a filter of its own (the console's balance adjustment kept digits AND commas and dropped the dot, so a
+     pasted `9,500.00` moved TZS 950,000 on one officer's word), and never a decimal box whose parent stores a whole
+     number (the affiliate editor let the dot through and painted its number back without it, so a typed `5000.50`
+     held 500050).
    - **A typed count arms on the count as it is written.** A hard `ConfirmModal` gate whose word is a count reads the
      entry with `parseTypedCount` (`src/lib/marketing/campaign-confirm.ts`, the server's own reading), so `2,981` arms
      a `2981` gate. It opens the numeric keypad, and Enter confirms once the gate is armed. A word gate is unchanged.

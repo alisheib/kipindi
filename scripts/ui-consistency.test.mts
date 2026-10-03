@@ -861,15 +861,19 @@ const kitFailures = await (async (): Promise<number> => {
   const NBSP = String.fromCharCode(0x00a0);
   const countGate = (armed: (hard: boolean, word: string, entry: string) => boolean) =>
     ["2,981", "2 981", `2${NBSP}981`, "2981"].every((entry) => armed(true, "2981", entry) === true);
-  /** A Field's notice line as a page first renders it: the live region is already mounted, empty and with no margin,
-   *  and the control does not name it — it names it only while the region holds words. */
+  /** A Field's notice line as a page first renders it: the live region is already mounted, empty, and its classes are
+   *  EXACTLY the two the source gives it while nothing is owed — type only, so no margin, padding or minimum height can
+   *  give the empty region a height — and the control does not name it: it names it only while the region holds words. */
+  const NOTICE_EMPTY_CLASSES = ["text-body-sm", "text-text"];
   const noticeRegion = (a: Atoms) => {
     const markup = render(h(a.Field, { label: "Amount (TZS)" }, h(a.Input, { name: "amount", inputMode: "numeric" })));
     const open = tag(markup, /<p [^>]*role="status"[^>]*>/);
     const id = open === "" ? null : attr(open, "id");
     const described = (attr(tag(markup, INPUT_RE), "aria-describedby") ?? "").split(" ").filter((s) => s !== "");
-    const v = { open, empty: open !== "" && markup.includes(`${open}</p>`), margin: classes(open).includes("mt-1.5"), described };
-    return { pass: open !== "" && v.empty && !v.margin && id !== null && !described.includes(id), v };
+    const cls = classes(open).filter((c) => c !== "");
+    const v = { open, empty: open !== "" && markup.includes(`${open}</p>`), cls, described };
+    const exact = cls.length === NOTICE_EMPTY_CLASSES.length && NOTICE_EMPTY_CLASSES.every((c) => cls.includes(c));
+    return { pass: open !== "" && v.empty && exact && id !== null && !described.includes(id), v };
   };
 
   // K0b · the copies the plants are made from are faithful
@@ -1024,7 +1028,7 @@ const kitFailures = await (async (): Promise<number> => {
   // K8 · the notice line is a live region that is always there
   {
     const real = noticeRegion({ Field, Input });
-    pin("K8 ⭐ a Field's notice line is a live region that is ALWAYS mounted — empty, with no margin, while nothing is owed — and its control does not name it until it holds words",
+    pin("K8 ⭐ a Field's notice line is a live region that is ALWAYS mounted — empty while nothing is owed, its classes exactly text-body-sm and text-text (no margin, padding or minimum height to give it a height) — and its control does not name it until it holds words",
       real.pass, JSON.stringify(real.v));
     const plant = await tryPlanted("components/ui/input.tsx", [[
       '<p id={noticeId} role="status" className={cn("text-body-sm text-text", notice !== "" && "mt-1.5")}>{notice}</p>',
@@ -1032,6 +1036,12 @@ const kitFailures = await (async (): Promise<number> => {
     ]]);
     pin("K8b CONTROL · a copy of input.tsx that mounts the notice only once it holds words (the first build) fails K8's judge — a region created already holding its words is announced unreliably",
       plant.mod !== null && !noticeRegion(plant.mod as Atoms).pass, plant.why || "the planted copy still mounts an empty live region");
+    const padded = await tryPlanted("components/ui/input.tsx", [[
+      '<p id={noticeId} role="status" className={cn("text-body-sm text-text", notice !== "" && "mt-1.5")}>{notice}</p>',
+      '<p id={noticeId} role="status" className={cn("text-body-sm text-text py-1", notice !== "" && "mt-1.5")}>{notice}</p>',
+    ]]);
+    pin("K8c CONTROL · a copy of input.tsx whose empty notice carries one more class (py-1) fails K8's judge — the empty region would take a height under every field",
+      padded.mod !== null && !noticeRegion(padded.mod as Atoms).pass, padded.why || "the planted copy's padded empty notice still passes");
   }
 
   return failed;

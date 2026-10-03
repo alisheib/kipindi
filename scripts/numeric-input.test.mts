@@ -5,11 +5,13 @@
  *
  * ⭐ AND IT MUST NEVER CHANGE THE SIZE OF A NUMBER (vb6, 2026-10-03). The whole-number branch used to DELETE every
  * dot, so a pasted "12.50" became 1250 on the agent rail's refund amount — a 100× change no range check catches. A
- * paste now keeps what it brought up to its first dot; a TYPED dot is refused and the digits typed straight after it,
- * at its caret, are dropped (so "12500.00" typed key by key ends on 12500) until a change over a selection, a digit
- * typed anywhere else, a named key, a blur or a deletion; a stray dot inside a number keeps every digit; a Chinese
- * keyboard's full stop is a dot; the line is owed only once digits were dropped; a phone box (type="tel") reads a dot
- * as a separator. The typed path is driven through `numericBox` — the very object each Input keeps and calls from its
+ * paste now keeps what it brought up to its first decimal mark (a dot, a Chinese keyboard's full stop, or a comma
+ * before its last one or two digits — never a currency's abbreviation dot); a TYPED dot is refused and the digits
+ * typed straight after it at its caret — through a comma or a letter typed there — are dropped (so "12500.00" typed
+ * key by key ends on 12500) until a change over a selection, a caret that settles elsewhere, anything that lands
+ * elsewhere, a named key, a blur or a deletion; a dot refused with no digit before it holds nothing; a stray dot inside
+ * a number keeps every digit; the line is owed only once digits were dropped; a phone box (type="tel") reads a dot as
+ * a separator. The typed path is driven through `numericBox` — the very object each Input keeps and calls from its
  * own handlers — with a stand-in element, and every judge is shown RED on a planted copy of input.tsx (built in memory
  * with esbuild; nothing is written), while the same copy with nothing planted passes. The console's balance
  * adjustment, the one money box that was still hand-rolled, is pinned to the kit box at the end.
@@ -138,7 +140,8 @@ function element(value: string): El {
 
 /**
  * One box, one officer. A step is a key ("1", ".", "a"), a named key ("Backspace", "ArrowLeft", "ArrowRight"),
- * "paste:TEXT" (text arrives with no key), "selectAll", "tap:N" (a pointer puts the caret at N), "blur" or "focus".
+ * "paste:TEXT" (text arrives with no key), "selectAll", "tap:N" (a pointer puts the caret at N), "drop:N:TEXT" (the
+ * pointer drops TEXT at N — no key, and no select event before it), "blur" or "focus".
  * `android` reports every key as "Unidentified", which is what an Android keyboard sends for digits and dots alike.
  * ⭐ The box is told the selection as the Input tells it: before every key (its onKeyDown) and after every move of the
  * caret or the selection (its onSelect — a select-all, a tap, an arrow).
@@ -164,6 +167,14 @@ function drive(kit: Kit, steps: string[], opts: Opts = INT, start = "", android 
       el.selectionStart = to;
       el.selectionEnd = to;
       told();
+    }
+    else if (s.startsWith("drop:")) {
+      const [, at, ...text] = s.split(":");
+      const to = Math.max(0, Math.min(el.value.length, Number(at)));
+      el.selectionStart = to;
+      el.selectionEnd = to;
+      put(text.join(":"));
+      box.change(el, opts);
     }
     else if (s.startsWith("paste:")) { put(s.slice(6)); box.change(el, opts); }
     else if (s === "ArrowLeft" || s === "ArrowRight") {
@@ -251,10 +262,10 @@ const JUDGES: Record<string, { label: string; run: (kit: Kit) => Verdict }> = {
     },
   },
   emptyDot: {
-    label: "a dot typed into an empty box says nothing until the digit after it is dropped, then says so, keeps saying so through a stripped letter, and the line goes once the box moves",
+    label: "⭐ a dot typed into an EMPTY box is refused and holds nothing — there is no whole number for a fraction to multiply — so it says nothing, and the digits typed after it are digits: . 5 a (blur) 5 reads 55",
     run: (kit) => {
       const r = drive(kit, [".", "5", "a", "blur", "focus", "5"]);
-      return { pass: r.value === "5" && lines(r.owed) === "-DDDD-", detail: show({ value: r.value, lines: lines(r.owed) }) };
+      return { pass: r.value === "55" && lines(r.owed) === "------", detail: show({ value: r.value, lines: lines(r.owed) }) };
     },
   },
   minus: {
@@ -306,9 +317,9 @@ const JUDGES: Record<string, { label: string; run: (kit: Kit) => Verdict }> = {
     },
   },
   pointer: {
-    label: "⭐ a caret moved by a tap ends the hold: 12500, a refused dot, a tap after the 12, then 7 — the 7 is inserted (127500), as it must be on a phone with no arrow keys",
+    label: "⭐ a digit that lands away from the dot's caret is a digit, even when nothing told the box the caret moved: 12500, a refused dot, a 7 dropped by the pointer after the 12 — 127500",
     run: (kit) => {
-      const r = drive(kit, [..."12500.", "tap:2", "7"]);
+      const r = drive(kit, [..."12500.", "drop:2:7"]);
       return { pass: r.value === "127500" && r.caret === 3, detail: show({ value: r.value, caret: r.caret }) };
     },
   },
@@ -319,6 +330,50 @@ const JUDGES: Record<string, { label: string; run: (kit: Kit) => Verdict }> = {
       const whole = stops.map((stop) => kit.sanitizeNumericInput(`12500${stop}00`, INT));
       const typed = drive(kit, [..."12500", stops[0], "0", "0"]).value;
       return { pass: whole.every((v) => v === "12500") && typed === "12500", detail: show({ whole, typed }) };
+    },
+  },
+  stripped: {
+    label: "⭐ a character the reading strips, typed after a refused dot (a comma, a space, a letter), leaves the hold standing: 12500 . , 0 0 ends on 12500, never 1250000 — and the line, owed once a zero is dropped, stays through the next stripped letter",
+    run: (kit) => {
+      const r = drive(kit, [..."12500.", ",", "0", "0", "a"]);
+      return { pass: r.value === "12500" && lines(r.owed) === "-------DDD", detail: show({ value: r.value, lines: lines(r.owed) }) };
+    },
+  },
+  commaDecimal: {
+    label: "⭐ a pasted comma before its last one or two digits is the decimal mark it must be: 9 500,00 keeps 9500 and 12 500,50 keeps 12500 (never 950000 or 1250050), while 9,500 and 1,500,000 stay grouping; pasted into the box, 9 500,00 keeps 9500 and says so",
+    run: (kit) => {
+      const whole = ["9 500,00", "12 500,50", "9,500", "1,500,000"].map((t) => kit.sanitizeNumericInput(t, INT));
+      const pasted = drive(kit, ["paste:9 500,00"]);
+      return {
+        pass: show(whole) === show(["9500", "12500", "9500", "1500000"]) && pasted.value === "9500" && lines(pasted.owed) === "D",
+        detail: show({ whole, pasted: pasted.value, lines: lines(pasted.owed) }),
+      };
+    },
+  },
+  currencyDot: {
+    label: "⭐ a currency's abbreviation is not a decimal mark: Tsh. 9,500, TSh. 9,500.00 and Sh.9,500 keep 9500 (the box no longer empties), and once a digit has appeared — in the text or in the box — a dot is a mark again: 9500a.50, and Tsh.50 pasted after 9500, keep 9500, never 950050; pasted, Tsh. 9,500 owes no line",
+    run: (kit) => {
+      const whole = ["Tsh. 9,500", "TSh. 9,500.00", "Sh.9,500", "9500a.50"].map((t) => kit.sanitizeNumericInput(t, INT));
+      const pasted = drive(kit, ["paste:Tsh. 9,500"]);
+      const after = drive(kit, [..."9500", "paste:Tsh.50"]).value;
+      return {
+        pass: whole.every((v) => v === "9500") && pasted.value === "9500" && lines(pasted.owed) === "-" && after === "9500",
+        detail: show({ whole, pasted: pasted.value, lines: lines(pasted.owed), after }),
+      };
+    },
+  },
+  emptyHold: {
+    label: "⭐ a stray dot in an EMPTY box holds nothing: . then 5000 reads 5000 — the deposit and withdraw box has no Field to explain a swallowed digit, and a hold there trapped a player until a blur",
+    run: (kit) => {
+      const r = drive(kit, [".", "5", "0", "0", "0"]);
+      return { pass: r.value === "5000" && lines(r.owed) === "-----", detail: show({ value: r.value, lines: lines(r.owed) }) };
+    },
+  },
+  tapAway: {
+    label: "⭐ a caret that settles away from the dot's caret ends the hold, even when the next digit lands back on it: 12500, a refused dot, a tap after the 12, a tap back at the end, then 0 — 125000",
+    run: (kit) => {
+      const r = drive(kit, [..."12500.", "tap:2", "tap:5", "0"]);
+      return { pass: r.value === "125000", detail: show({ value: r.value, lines: lines(r.owed) }) };
     },
   },
 };
@@ -372,7 +427,7 @@ const PLANTS: Array<{ judge: string; what: string; plant: Array<[string, string]
   { judge: "whole", what: "the pre-fix whole-number branch — every dot deleted",
     plant: [["s = s.slice(0, dot);", 's = s.split(".").join("");']] },
   { judge: "typed", what: "the hold removed — a digit typed after a refused dot is appended (12500.00 → 1250000)",
-    plant: [["if (memory.latchedAt === span.start && removed === 0 && change.replaced !== true && /^[0-9]+$/.test(arrived)) {", "if (false) {"]] },
+    plant: [["if (atHold && /^[0-9]+$/.test(arrived)) {", "if (false) {"]] },
   { judge: "stray", what: "the first build's cut — a stray dot cuts every digit after it",
     plant: [["const text = head + kept + tail;", "const text = dot < 0 ? head + kept + tail : head + kept;"]] },
   { judge: "stray", what: "the second build's line — every refused dot owes 'the part after the dot was dropped', though it dropped nothing",
@@ -385,9 +440,9 @@ const PLANTS: Array<{ judge: string; what: string; plant: Array<[string, string]
     plant: [["const tailLength = raw.length - caret;",
       "let tailLength = 0; while (tailLength < Math.min(raw.length, before.length) && raw[raw.length - 1 - tailLength] === before[before.length - 1 - tailLength]) tailLength++; caret = raw.length - tailLength;"]] },
   { judge: "pasteHold", what: "every dot holds, even one whose paste carried its fraction — the next digit is lost",
-    plant: [["latchedAt: dot >= 0 && !/[0-9]/.test(fraction) ? caretOut : null,", "latchedAt: dot >= 0 ? caretOut : null,"]] },
-  { judge: "emptyDot", what: "the dot's line dropped by a change that moved nothing",
-    plant: [["const keepDot = value === cleanBefore && was !== null && was.dot;", "const keepDot = false;"]] },
+    plant: [["dot >= 0 && !/[0-9]/.test(fraction) && guards(entry.value, caretOut)", "dot >= 0 && guards(entry.value, caretOut)"]] },
+  { judge: "emptyDot", what: "the third build's trap — a dot refused in an empty box holds, so the digits after it are swallowed until a blur",
+    plant: [["/[0-9]/.test(value.slice(0, at ?? value.length))", "true"]] },
   { judge: "minus", what: "the minus line dropped on the next digit — the sign change goes silent",
     plant: [['const keepMinus = value !== "" && was !== null && was.minus;', "const keepMinus = false;"]] },
   { judge: "decimal", what: "a decimal box read as a whole-number box",
@@ -402,6 +457,20 @@ const PLANTS: Array<{ judge: string; what: string; plant: Array<[string, string]
     plant: [["memory.latchedAt === span.start", "memory.latchedAt !== null"]] },
   { judge: "ideographic", what: "the Chinese full stops not read as dots — 12500 + U+3002 + 00 reads 1250000 (the second build)",
     plant: [['return text.replace(FULL_STOPS, ".");', "return text;"]] },
+  { judge: "stripped", what: "the third build's gap — a comma typed after a refused dot ends the hold, so 9500.,00 reads 950000",
+    plant: [["const keepsHold = atHold && dot < 0 && !/[0-9]/.test(arrived);", "const keepsHold = false;"]] },
+  { judge: "stripped", what: "the dot's line dropped by a change that moved nothing",
+    plant: [["const keepDot = value === cleanBefore && was !== null && was.dot;", "const keepDot = false;"]] },
+  { judge: "commaDecimal", what: "a pasted comma read as grouping wherever it stands — 9 500,00 reads 950000 (the third build)",
+    plant: [['return entry ? out.replace(/,([0-9]{1,2})([^0-9]*)$/, ".$1$2") : out;', "return out;"]] },
+  { judge: "currencyDot", what: "a currency's abbreviation dot cut as a decimal mark — Tsh. 9,500 empties the box (the third build)",
+    plant: [['out += c === "." && !digitSeen && i > 0 && /[A-Za-z]/.test(dots[i - 1]) ? " " : c;', "out += c;"]] },
+  { judge: "currencyDot", what: "a letter's dot read as an abbreviation even after a digit — 9500a.50 reads 950050",
+    plant: [["!digitSeen && ", ""]] },
+  { judge: "emptyHold", what: "the third build's trap on the deposit box — a stray dot in an empty box holds, so 5000 typed after it reads nothing",
+    plant: [["/[0-9]/.test(value.slice(0, at ?? value.length))", "true"]] },
+  { judge: "tapAway", what: "the third build's select, which never ends the hold — a tap away and back, and the next digit still vanishes",
+    plant: [["if (start !== null && start === end && memory.latchedAt !== null && start !== memory.latchedAt) memory = { ...memory, latchedAt: null };", ""]] },
 ];
 for (const p of PLANTS) {
   let verdict = "";
@@ -443,7 +512,11 @@ for (const p of PLANTS) {
       parentMoves: /if \(now === produced\.current\) return;/.test(kit) && /if \(numeric\.moved\(now\)\) reportRef\.current\?\.\(owner, null\);/.test(kit)
         && /produced\.current = e\.target\.value;/.test(handler),
       reset: /form\.addEventListener\("reset", onReset\)/.test(kit) && /watchReset\(e\.target\);/.test(handler),
-      select: /numeric[.]select[(]e[.]currentTarget[.]selectionStart, e[.]currentTarget[.]selectionEnd[)]/.test(kit) && /onSelect=[{]handleSelect[}]/.test(kit),
+      /* BOTH call sites, each in its own handler's body: the key's (the selection before the key acts) and the select
+         event's — one of them alone leaves a gap a phone falls into. */
+      select: [/const handleKeyDown[^=]*= *isNumeric[^]*?: *onKeyDown;/, /const handleSelect[^=]*= *isNumeric[^]*?: *onSelect;/]
+        .every((re) => /numeric[.]select[(]e[.]currentTarget[.]selectionStart, e[.]currentTarget[.]selectionEnd[)]/.test(re.exec(kit)?.[0] ?? ""))
+        && /onSelect=[{]handleSelect[}]/.test(kit),
     };
   };
   const ALL = { oneBoxPerInput: true, change: true, report: true, key: true, focus: true, blur: true, tel: true, words: true, phoneIsTel: true, parentMoves: true, reset: true, select: true };
@@ -459,6 +532,7 @@ for (const p of PLANTS) {
     ["parentMoves", "input.tsx", "if (numeric.moved(now)) reportRef.current?.(owner, null);", "void now;"],
     ["reset", "input.tsx", 'form.addEventListener("reset", onReset);', "void onReset;"],
     ["select", "input.tsx", "onSelect={handleSelect}", ""],
+    ["select", "input.tsx", "numeric.select(e.currentTarget.selectionStart, e.currentTarget.selectionEnd); numeric.key(e.key);", "numeric.key(e.key);"],
     ["phoneIsTel", "phone-input.tsx", 'type="tel"', 'type="text"'],
   ];
   for (const [flag, file, from, to] of CALL_PLANTS) {

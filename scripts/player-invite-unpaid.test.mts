@@ -1562,13 +1562,47 @@ setAffiliateConfig({
       ok("8.client.post · the Save posts { baseFingerprint: base.fingerprint, changes: changedRewardFields(base.config, c) } — only what changed",
         /const post = \{ baseFingerprint: base\.fingerprint, changes: changedRewardFields\(base\.config, c\) \};/.test(client));
       const wholeExpr = /const whole = ([^;]+);/.exec(client)?.[1] ?? "";
-      const { sanitizeNumericInput } = (await import("../src/components/ui/input.tsx")) as unknown as { sanitizeNumericInput: (raw: string, o: { decimal: boolean; negative: boolean }) => string };
+      type KitBox = {
+        seen: (v: string) => void; select: (a: number | null, b: number | null) => void; key: (k: string) => void;
+        change: (t: { value: string; selectionEnd: number | null; setSelectionRange?: (a: number, b: number) => void }, o: { decimal: boolean; negative: boolean }, before?: string) => unknown;
+      };
+      const { sanitizeNumericInput, numericBox } = (await import("../src/components/ui/input.tsx")) as unknown as {
+        sanitizeNumericInput: (raw: string, o: { decimal: boolean; negative: boolean }) => string;
+        numericBox: () => KitBox;
+      };
       const allowDecimal = /inputMode="numeric"\s+allowDecimal/.test(client);
       const parse = new Function("e", `const whole = ${wholeExpr}; const n = whole === "" ? 0 : Number(whole); return Number.isFinite(n) ? n : 0;`) as (ev: unknown) => number;
       const typed = (raw: string) => parse({ target: { value: sanitizeNumericInput(raw, { decimal: allowDecimal, negative: false }) } });
-      ok("8.client.whole · the field's own parse, run as written: a pasted '7.5' holds 7 (never '75', clamped to 50%), '1500.75' is 1500, '1,500' is 1500, '' is 0",
-        wholeExpr !== "" && typed("7.5") === 7 && typed("1500.75") === 1_500 && typed("1,500") === 1_500 && typed("") === 0,
-        JSON.stringify({ wholeExpr, t75: wholeExpr ? typed("7.5") : null }));
+      /* ⭐ (vb6) THE TYPED PATH, as this editor runs it: each key goes through the box the Input keeps (`numericBox`),
+         then the parent stores the parsed number and the box is painted back as String(n). That repaint is what turned a
+         typed "5000.50" into 500050 while the box let the dot through: the dot vanished, and the 50 was appended. It
+         starts on the 0 a field shows, selected, as an officer replaces it. */
+      const typedKeys = (keys: string): number => {
+        const box = numericBox();
+        let painted = "0";
+        const el = {
+          value: painted, selectionStart: 0, selectionEnd: painted.length,
+          setSelectionRange: (a: number, b: number) => { el.selectionStart = a; el.selectionEnd = b; },
+        };
+        box.seen(painted);
+        for (const k of keys) {
+          box.select(el.selectionStart, el.selectionEnd);
+          box.key(k);
+          const at = el.selectionStart + 1;
+          el.value = el.value.slice(0, el.selectionStart) + k + el.value.slice(el.selectionEnd);
+          el.selectionStart = at;
+          el.selectionEnd = at;
+          box.change(el, { decimal: allowDecimal, negative: false }, painted);
+          painted = String(parse({ target: { value: el.value } }));
+          if (el.value !== painted) { el.value = painted; el.selectionStart = painted.length; el.selectionEnd = painted.length; }
+        }
+        return Number(painted);
+      };
+      const decimalBox = client.includes("allowDecimal");
+      ok("8.client.whole · every field is a WHOLE-NUMBER kit box — no allowDecimal in the editor — so a '5000.50' typed key by key, the parent's number painted back after each key, holds 5000 (never 500050); and the field's parse, run as written over what the box keeps: a pasted '7.5' holds 7 (never '75', clamped to 50%), '1500.75' is 1500, '1,500' is 1500, '' is 0",
+        !decimalBox && wholeExpr !== "" && typedKeys("5000.50") === 5_000
+          && typed("7.5") === 7 && typed("1500.75") === 1_500 && typed("1,500") === 1_500 && typed("") === 0,
+        JSON.stringify({ decimalBox, wholeExpr, typed: wholeExpr ? typedKeys("5000.50") : null, t75: wholeExpr ? typed("7.5") : null }));
       ok("8.client.words · the typed-words field opens the keyboard in capitals and is never pre-filled; the live count is the CLEANED length; every dialog the server offers is rendered",
         /autoCapitalize="characters"/.test(sw) && /const \[typed, setTyped\] = useState\(""\);/.test(sw)
           && /const left = dialog\.reasonMax - cleanReason\(reason\)\.length;/.test(sw) && /\[copy\.makePayable, copy\.stopPaying\]\.filter/.test(sw));

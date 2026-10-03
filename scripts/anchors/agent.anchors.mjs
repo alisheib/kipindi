@@ -905,12 +905,16 @@ export const MUTATIONS = [
     to: `disabled={!unsaved} onClick={save}`,
     expect: "8.client.save",
   },
+  /* ⭐ RE-AIMED 2026-10-03 (validation batch vb6, round 3). The case used to take the page's own split(".") away, when
+   * the page cut the dot itself behind a decimal box. The box is the kit's whole-number box now and cuts first, so that
+   * plant moved nothing and the case could no longer go red. The defect that can still ship is the decimal box coming
+   * back: the parent paints its number back without the dot, and a typed "5000.50" holds 500050. */
   {
     gate: "player-invite-unpaid",
-    name: "affiliate-admin-client.tsx — the numeric field drops the dot instead of what follows it (a pasted '7.5' becomes 75, clamped to 50%)",
+    name: "affiliate-admin-client.tsx — a field lets the dot through again (a decimal box): its number is painted back without the dot, so a typed '5000.50' holds 500050",
     file: "src/app/admin/affiliate/affiliate-admin-client.tsx",
-    from: `          const whole = e.target.value.split(".")[0]`,
-    to: `          const whole = e.target.value`,
+    from: `        inputMode="numeric"`,
+    to: `        inputMode="numeric" allowDecimal`,
     expect: "8.client.whole",
   },
   {

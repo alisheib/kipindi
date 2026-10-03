@@ -59,17 +59,19 @@ function Field({
         mono
         size="sm"
         inputMode="numeric"
-        allowDecimal
         readOnly={readOnly}
         error={error}
         value={value}
         onChange={(e) => {
           if (readOnly) return;
           /* ⛔ WHOLE NUMBERS ONLY, AND WHAT IS SHOWN IS WHAT IS HELD (addendum F, 2026-09-26). Every field
-             here is whole shillings, months, a count or a whole percent. The atom alone strips the dot, so a
-             pasted "7.5" became "75" — clamped to a 50% commission. The dot is let through to HERE and
-             everything from it on is dropped: "7.5" is 7, on screen and in the draft alike. */
-          const whole = e.target.value.split(".")[0].replace(/\D/g, "");
+             here is whole shillings, months, a count or a whole percent. ⭐ (vb6, 2026-10-03) The box is the
+             kit's WHOLE-NUMBER box now, and it does the cutting: a pasted "7.5" keeps 7 (never "75", clamped to
+             50%), a typed dot is refused and the digits after it dropped, and it holds digits only — so this
+             reads the box as it stands. 🔴 It used to let the dot through (a decimal box) and cut it HERE, and
+             the parent, storing the number, painted the box back without its dot, so the digits typed after
+             it were appended: a typed "5000.50" held 500050 on a TZS field. */
+          const whole = e.target.value;
           const n = whole === "" ? 0 : Number(whole);
           onChange(Number.isFinite(n) ? n : 0);
         }}

@@ -14,6 +14,9 @@
  *   9  a REAL credit of 9,500 on the in-memory store: the player's balance moves by exactly 9,500;
  *  10  /auth/register at 390: 712.345.678 typed into the phone box keeps all nine digits (a tel box reads dots as
  *      separators, never as a decimal point).
+ *  11  round 3 . the player's deposit box at 390 (the AmountField, no kit Field, so no line): a stray "." in the empty
+ *      box holds nothing, then 5000 reads 5000; "." then 5 still 5000; a tap between 5 and 000 then 1 gives 51000; a
+ *      pasted "Tsh. 9,500" and "9 500,00" each read 9500, never 950,000.
  *   Viewport tiles of the dialog at 1280 and 390.
  *
  * Run: BASE=http://localhost:3010 node scripts/live/validation-vb6-money-fields-drive.mjs
@@ -207,6 +210,41 @@ await phone.pressSequentially("712.345.678", { delay: 40 });
 await wait(300);
 ok("10 · 712.345.678 typed into the register phone box keeps all nine digits", (await phone.inputValue()) === "712 345 678", await phone.inputValue());
 await out.close();
+
+// 11 . round 3 . the deposit AmountField at 390, as a demo player.
+const player = await browser.newContext({ viewport: { width: 390, height: 844 } });
+const dp = await player.newPage();
+await dp.goto(`${BASE}/auth/demo`, { waitUntil: "domcontentloaded" });
+// The deposit page keeps a live connection open, so it never goes network-idle: wait for the box itself.
+await dp.goto(`${BASE}/wallet/deposit`, { waitUntil: "domcontentloaded" });
+const amount = dp.locator("form", { has: dp.locator('input[inputmode="numeric"]') }).locator('input[inputmode="numeric"]').first();
+await amount.waitFor({ state: "visible", timeout: 60_000 });
+const digits = async () => (await amount.inputValue()).replace(/[^0-9]/g, "");
+await amount.focus();
+await amount.press(".");
+await amount.pressSequentially("5000", { delay: 40 });
+await wait(200);
+const r1 = await digits();
+await amount.press(".");
+await amount.press("5");
+await wait(200);
+const r2 = await digits();
+await amount.evaluate((el) => el.setSelectionRange(1, 1));
+await amount.press("1");
+await wait(200);
+const r3 = await digits();
+ok("11 . deposit box: a stray dot then 5000 reads 5000; a dot then 5 still 5000; a tap after 5 then 1 gives 51000", r1 === "5000" && r2 === "5000" && r3 === "51000", `${r1} . ${r2} . ${r3}`);
+for (const pasted of ["Tsh. 9,500", "9 500,00"]) {
+  await amount.focus();
+  await amount.press("Control+A");
+  await amount.press("Backspace");
+  await paste(dp, pasted);
+  await wait(250);
+  const got = await digits();
+  ok(`11 . deposit box: a pasted "${pasted}" reads 9500`, got === "9500", got);
+}
+await dp.screenshot({ path: join(SHOTS, "390-deposit-amount.png") });
+await player.close();
 
 await browser.close();
 console.log(`\nvalidation vb6 money fields drive: ${pass} passed, ${fail} failed`);
