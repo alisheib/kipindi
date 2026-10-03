@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="sw">
+<head>
+<meta charset="utf-8">
+<title>Tiketi zangu · settled tickets</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700&amp;family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="width: 390px; height: 860px; box-sizing: border-box; display: flex; flex-direction: column; background: oklch(6.5% 0.13 268); color: oklch(98% 0.012 268); font-family: Inter, system-ui, sans-serif">
+
+<header style="flex-shrink: 0; height: 64px; box-sizing: border-box; padding: 0 16px; display: flex; align-items: center; gap: 6px">
+<a href="#" aria-label="50pick, nyumbani" style="display: inline-flex; align-items: center; justify-content: center; min-height: 44px; margin: 0 -9px; padding: 0 9px"><svg viewBox="0 0 100 100" width="26" height="26" aria-hidden="true" style="display: block"><path d="M 38.87 5.37 A 46 46 0 0 0 61.13 94.63 Z" fill="#1EA362"></path><path d="M 38.87 5.37 A 46 46 0 0 1 61.13 94.63 Z" fill="#B03A3E"></path><line x1="38.39" y1="3.43" x2="61.61" y2="96.57" stroke="#E3BC66" stroke-width="3.5" stroke-linecap="round"></line><circle cx="50" cy="50" r="5" fill="#E3BC66"></circle><circle cx="50" cy="50" r="1.7" fill="#1A2140"></circle></svg></a>
+<span aria-label="Umri 18+" style="flex: none; display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; box-sizing: border-box; border: 2px solid oklch(70% 0.08 268); border-radius: 999px; font-family: Sora, sans-serif; font-size: 11px; font-weight: 700; color: oklch(98% 0.012 268)">18+</span>
+<div style="flex-grow: 1"></div>
+<button type="button" style="display: inline-flex; flex-direction: column; align-items: flex-end; justify-content: center; gap: 3px; height: 44px; box-sizing: border-box; padding: 0 10px; border-radius: 999px; background: oklch(22% 0.14 268); border: 1px solid oklch(36% 0.13 268); color: oklch(98% 0.012 268); font-family: Inter, system-ui, sans-serif; cursor: pointer"><span style="font-size: 11px; line-height: 1; color: oklch(70% 0.08 268)">Salio</span><span style="font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 600; line-height: 1.1; color: oklch(86% 0.110 84)">TZS 2,000</span></button>
+<button type="button" style="display: inline-flex; align-items: center; gap: 6px; height: 44px; box-sizing: border-box; padding: 0 12px 0 10px; border: 0; border-radius: 999px; background-image: linear-gradient(166deg, oklch(91% 0.09 84) 0%, oklch(79% 0.114 84) 48%, oklch(72% 0.114 84) 100%); color: oklch(20% 0.05 84); font-family: Inter, system-ui, sans-serif; font-size: 14px; font-weight: 700; white-space: nowrap; cursor: pointer; box-shadow: inset 0 0 0 1px oklch(95% 0.054 84 / 0.35)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg><span>Weka pesa</span></button>
+</header>
+
+<main style="flex-grow: 1; min-height: 0; overflow: hidden; box-sizing: border-box; padding: 8px 16px 0; display: flex; flex-direction: column; gap: 14px">
+<h1 style="margin: 0; font-family: Sora, sans-serif; font-weight: 700; font-size: 26px; line-height: 1.2">Tiketi zangu</h1>
+<div role="tablist" aria-label="Aina ya tiketi" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 4px; border-radius: 999px; background: oklch(11% 0.11 268); border: 1px solid oklch(36% 0.13 268)">
+<button type="button" role="tab" aria-selected="true" style="height: 44px; border: 0; border-radius: 999px; background: oklch(40% 0.12 262 / 0.6); color: oklch(98% 0.012 268); font-family: Inter, system-ui, sans-serif; font-size: 14px; font-weight: 600">Maswali</button>
+<button type="button" role="tab" aria-selected="false" style="height: 44px; border: 0; border-radius: 999px; background: transparent; color: oklch(86% 0.04 268); font-family: Inter, system-ui, sans-serif; font-size: 14px; font-weight: 500">Juu/Chini</button>
+</div>
+<div role="group" aria-label="Hali" data-bleed="" style="display: flex; gap: 8px; margin-right: -16px; overflow: hidden">
+<button type="button" aria-pressed="false" style="flex-shrink: 0; height: 44px; padding: 0 16px; border-radius: 999px; background: transparent; border: 1px solid oklch(36% 0.13 268); color: oklch(86% 0.04 268); font-family: Inter, system-ui, sans-serif; font-size: 14px; font-weight: 500">Zote</button>
+<button type="button" aria-pressed="false" style="flex-shrink: 0; height: 44px; padding: 0 16px; border-radius: 999px; background: transparent; border: 1px solid oklch(36% 0.13 268); color: oklch(86% 0.04 268); font-family: Inter, system-ui, sans-serif; font-size: 14px; font-weight: 500">Hai</button>
+<button type="button" aria-pressed="true" style="flex-shrink: 0; height: 44px; padding: 0 16px; border-radius: 999px; background: oklch(40% 0.12 262 / 0.35); border: 1.5px solid oklch(72% 0.16 262); color: oklch(98% 0.012 268); font-family: Inter, system-ui, sans-serif; font-size: 14px; font-weight: 600">Imekamilika</button>
+<button type="button" aria-pressed="false" style="flex-shrink: 0; height: 44px; padding: 0 16px; border-radius: 999px; background: transparent; border: 1px solid oklch(36% 0.13 268); color: oklch(86% 0.04 268); font-family: Inter, system-ui, sans-serif; font-size: 14px; font-weight: 500">Umeshinda</button>
+<button type="button" aria-pressed="false" style="flex-shrink: 0; height: 44px; padding: 0 16px; border-radius: 999px; background: transparent; border: 1px solid oklch(36% 0.13 268); color: oklch(86% 0.04 268); font-family: Inter, system-ui, sans-serif; font-size: 14px; font-weight: 500">Umeshindwa</button>
+</div>
+
+<article style="display: flex; flex-direction: column; gap: 12px; padding: 16px; border-radius: 16px; background: oklch(22% 0.14 268); border: 1px solid oklch(36% 0.13 268)">
+<div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px"><span style="display: inline-flex; align-items: center; height: 28px; box-sizing: border-box; padding: 0 12px; border-radius: 999px; border: 1px solid oklch(61% 0.16 150 / 0.5); background: oklch(52% 0.15 150 / 0.22); color: oklch(80% 0.14 152); font-family: Inter, system-ui, sans-serif; font-size: 13px; font-weight: 700; letter-spacing: 0.06em; white-space: nowrap">NDIO</span><span style="display: inline-flex; align-items: center; height: 28px; box-sizing: border-box; padding: 0 10px; border-radius: 999px; font-size: 12px; font-weight: 600; background: oklch(62% 0.12 166 / 0.18); border: 1px solid oklch(62% 0.12 166 / 0.36); color: oklch(84% 0.11 166); white-space: nowrap">Imekamilika · Ushindi</span></div>
+<h2 style="margin: 0; font-family: Sora, sans-serif; font-weight: 600; font-size: 17px; line-height: 1.3">Je,&nbsp;Simba itaifunga Azam tarehe 27&nbsp;Sep?</h2>
+<dl style="margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px">
+<div style="min-width: 0; display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-radius: 12px; background: oklch(11% 0.11 268)"><dt style="font-size: 12px; color: oklch(70% 0.08 268)">Dau</dt><dd style="margin: 0; font-family: 'JetBrains Mono', monospace; font-size: 15px; font-weight: 700">TZS 1,000</dd></div>
+<div style="min-width: 0; display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-radius: 12px; background: oklch(11% 0.11 268)"><dt style="font-size: 12px; color: oklch(70% 0.08 268)">Malipo ya mwisho</dt><dd style="margin: 0; font-family: 'JetBrains Mono', monospace; font-size: 15px; font-weight: 700">TZS 2,218</dd></div>
+</dl>
+<p style="display: flex; align-items: center; gap: 6px; margin: 0; font-size: 13px; color: oklch(86% 0.04 268)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0"><circle cx="12" cy="12" r="8.5"></circle><path d="M12 7.5V12l3 2"></path></svg><span>Imewekwa <span style="font-variant-numeric: tabular-nums; white-space: nowrap">24 Sep, 20:10</span></span></p>
+</article>
+<article style="display: flex; flex-direction: column; gap: 12px; padding: 16px; border-radius: 16px; background: oklch(22% 0.14 268); border: 1px solid oklch(36% 0.13 268)">
+<div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px"><span style="display: inline-flex; align-items: center; height: 28px; box-sizing: border-box; padding: 0 12px; border-radius: 999px; border: 1px solid oklch(61% 0.16 150 / 0.5); background: oklch(52% 0.15 150 / 0.22); color: oklch(80% 0.14 152); font-family: Inter, system-ui, sans-serif; font-size: 13px; font-weight: 700; letter-spacing: 0.06em; white-space: nowrap">NDIO</span><span style="display: inline-flex; align-items: center; height: 28px; box-sizing: border-box; padding: 0 10px; border-radius: 999px; font-size: 12px; font-weight: 600; background: oklch(11% 0.11 268); border: 1px solid oklch(36% 0.13 268); color: oklch(86% 0.04 268); white-space: nowrap">Imekamilika · Hasara</span></div>
+<h2 style="margin: 0; font-family: Sora, sans-serif; font-weight: 600; font-size: 17px; line-height: 1.3">Je,&nbsp;Dar es Salaam itapata mvua tarehe 26&nbsp;Sep?</h2>
+<dl style="margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px">
+<div style="min-width: 0; display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-radius: 12px; background: oklch(11% 0.11 268)"><dt style="font-size: 12px; color: oklch(70% 0.08 268)">Dau</dt><dd style="margin: 0; font-family: 'JetBrains Mono', monospace; font-size: 15px; font-weight: 700">TZS 2,000</dd></div>
+<div style="min-width: 0; display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-radius: 12px; background: oklch(11% 0.11 268)"><dt style="font-size: 12px; color: oklch(70% 0.08 268)">Malipo ya mwisho</dt><dd style="margin: 0; font-family: 'JetBrains Mono', monospace; font-size: 15px; font-weight: 700">TZS 0</dd></div>
+</dl>
+<p style="display: flex; align-items: center; gap: 6px; margin: 0; font-size: 13px; color: oklch(86% 0.04 268)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0"><circle cx="12" cy="12" r="8.5"></circle><path d="M12 7.5V12l3 2"></path></svg><span>Imewekwa <span style="font-variant-numeric: tabular-nums; white-space: nowrap">25 Sep, 08:40</span></span></p>
+</article>
+</main>
+
+<nav aria-label="Menyu kuu" style="flex-shrink: 0; height: 68px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); background: oklch(20% 0.13 268); border-top: 1px solid oklch(36% 0.13 268)">
+<a href="#" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; color: oklch(70% 0.08 268); text-decoration: none"><span style="display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 26px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M9.6 9.3a2.5 2.5 0 0 1 4.8.9c0 1.7-2.4 2.2-2.4 3.6"></path><path d="M12 17h.01"></path></svg></span><span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; line-height: 1">Maswali</span></a>
+<a href="#" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; color: oklch(70% 0.08 268); text-decoration: none"><span style="display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 26px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 20V5"></path><path d="m4 9 4-4 4 4"></path><path d="M16 4v15"></path><path d="m12 15 4 4 4-4"></path></svg></span><span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; line-height: 1">Juu/Chini</span></a>
+<a href="#" aria-current="page" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; color: oklch(98% 0.012 268); text-decoration: none"><span style="display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 26px; border-radius: 999px; background: oklch(40% 0.12 262 / 0.35); box-shadow: inset 0 0 0 1px oklch(96% 0.04 268 / 0.055)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7.5A1.5 1.5 0 0 1 4.5 6h15A1.5 1.5 0 0 1 21 7.5V10a2 2 0 0 0 0 4v2.5a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 16.5V14a2 2 0 0 0 0-4z"></path><path d="M14.5 6.5v11" stroke-dasharray="2 2.5"></path></svg></span><span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; line-height: 1">Tiketi zangu</span></a>
+<a href="#" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; color: oklch(70% 0.08 268); text-decoration: none"><span style="display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 26px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8.5" r="3.5"></circle><path d="M5 19.5c1.2-3.2 3.9-4.8 7-4.8s5.8 1.6 7 4.8"></path></svg></span><span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; line-height: 1">Akaunti</span></a>
+</nav>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":860}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

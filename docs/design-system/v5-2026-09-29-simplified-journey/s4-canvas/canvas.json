@@ -1,0 +1,1057 @@
+{
+ "v": 3,
+ "createdOnFiles": {
+  "v": 1,
+  "at": "2026-10-01T02:30:00+03:00"
+ },
+ "title": "50pick Vodacom journey — S4 design pass",
+ "launch": {
+  "view": "canvas"
+ },
+ "pages": [],
+ "boards": {
+  "Main.dc.html": {
+   "x": 0,
+   "y": 0,
+   "w": 1280,
+   "h": 1987,
+   "title": "Component map and choices"
+  },
+  "agency-1-home.dc.html": {
+   "x": 0,
+   "y": 2587,
+   "w": 390,
+   "h": 825,
+   "title": "Agency · 1 Home"
+  },
+  "agency-2-bet-sheet.dc.html": {
+   "x": 470,
+   "y": 2587,
+   "w": 390,
+   "h": 825,
+   "title": "Agency · 2 Bet sheet"
+  },
+  "agency-3-balance-too-low.dc.html": {
+   "x": 940,
+   "y": 2587,
+   "w": 390,
+   "h": 825,
+   "title": "Agency · 3 Balance too low"
+  },
+  "agency-4-deposit.dc.html": {
+   "x": 1410,
+   "y": 2587,
+   "w": 390,
+   "h": 825,
+   "title": "Agency · 4 Deposit"
+  },
+  "agency-5-how-to-play.dc.html": {
+   "x": 1880,
+   "y": 2587,
+   "w": 390,
+   "h": 825,
+   "title": "Agency · 5 How to Play"
+  },
+  "pick-1-home.dc.html": {
+   "x": 0,
+   "y": 3837,
+   "w": 390,
+   "h": 844,
+   "title": "50pick · 1 Home",
+   "is_interactive": true
+  },
+  "pick-2-bet-sheet.dc.html": {
+   "x": 470,
+   "y": 3837,
+   "w": 390,
+   "h": 844,
+   "title": "50pick · 2 Bet sheet",
+   "is_interactive": true
+  },
+  "pick-3-balance-too-low.dc.html": {
+   "x": 940,
+   "y": 3837,
+   "w": 390,
+   "h": 844,
+   "title": "50pick · 3 Balance too low",
+   "is_interactive": true
+  },
+  "pick-4-deposit.dc.html": {
+   "x": 1410,
+   "y": 3837,
+   "w": 390,
+   "h": 844,
+   "title": "50pick · 4 Deposit",
+   "is_interactive": true
+  },
+  "pick-5-how-to-play.dc.html": {
+   "x": 1880,
+   "y": 3837,
+   "w": 390,
+   "h": 844,
+   "title": "50pick · 5 How to Play",
+   "is_interactive": true
+  },
+  "s4-2-hdr-360-long.dc.html": {
+   "x": 0,
+   "y": 5281,
+   "w": 360,
+   "h": 64,
+   "title": "Header · signed in at 360, TZS 1,250,000"
+  },
+  "s4-2-hdr-320-long.dc.html": {
+   "x": 440,
+   "y": 5281,
+   "w": 320,
+   "h": 64,
+   "title": "Header · signed in at 320, TZS 1,250,000"
+  },
+  "s4-2-hdr-guest-390.dc.html": {
+   "x": 840,
+   "y": 5281,
+   "w": 390,
+   "h": 64,
+   "title": "Header · guest at 390"
+  },
+  "s4-2-hdr-guest-320.dc.html": {
+   "x": 1310,
+   "y": 5281,
+   "w": 320,
+   "h": 64,
+   "title": "Header · guest at 320"
+  },
+  "s4-2-hdr-held.dc.html": {
+   "x": 1710,
+   "y": 5281,
+   "w": 390,
+   "h": 64,
+   "title": "Header · held (frozen) wallet"
+  },
+  "s4-2-hdr-masked.dc.html": {
+   "x": 2180,
+   "y": 5281,
+   "w": 390,
+   "h": 64,
+   "title": "Header · balance hidden"
+  },
+  "s4-2-hdr-desktop.dc.html": {
+   "x": 2650,
+   "y": 5281,
+   "w": 1280,
+   "h": 64,
+   "title": "Header · desktop at 1280"
+  },
+  "s4-3-card-priced.dc.html": {
+   "x": 0,
+   "y": 6171,
+   "w": 390,
+   "h": 219,
+   "title": "Card · priced (Yanga · pool NDIO 20,000 · HAPANA 43,700)"
+  },
+  "s4-3-card-today.dc.html": {
+   "x": 470,
+   "y": 6171,
+   "w": 390,
+   "h": 219,
+   "title": "Card · closes today (Dodoma · pool NDIO 24,825 · HAPANA 50,462)"
+  },
+  "s4-3-card-empty-pool.dc.html": {
+   "x": 940,
+   "y": 6171,
+   "w": 390,
+   "h": 219,
+   "title": "Card · nobody has bet yet (Arusha · pool 0 · 0)"
+  },
+  "s4-3-card-one-side.dc.html": {
+   "x": 1410,
+   "y": 6171,
+   "w": 390,
+   "h": 219,
+   "title": "Card · only one side has money (Azam · pool NDIO 20,000 · HAPANA 0)"
+  },
+  "s4-3-card-over-cap.dc.html": {
+   "x": 1880,
+   "y": 6171,
+   "w": 390,
+   "h": 231,
+   "title": "Card · above the 100× cap: no number (Theluji · pool NDIO 500 · HAPANA 180,000)"
+  },
+  "s4-3-card-legacy.dc.html": {
+   "x": 2350,
+   "y": 6171,
+   "w": 390,
+   "h": 219,
+   "title": "Card · legacy capped fee, no figure (inflation question)"
+  },
+  "s4-3-card-closed.dc.html": {
+   "x": 2820,
+   "y": 6171,
+   "w": 390,
+   "h": 219,
+   "title": "Card · selection closed 11:19 (Mwanza)"
+  },
+  "s4-3-card-settled.dc.html": {
+   "x": 3290,
+   "y": 6171,
+   "w": 390,
+   "h": 219,
+   "title": "Card · settled (Simba · resolved NDIO 27 Sep)"
+  },
+  "s4-3-card-longest-360.dc.html": {
+   "x": 3760,
+   "y": 6171,
+   "w": 360,
+   "h": 219,
+   "title": "Card · longest short title (56) at 360"
+  },
+  "s4-3-card-320.dc.html": {
+   "x": 4200,
+   "y": 6171,
+   "w": 320,
+   "h": 232,
+   "title": "Card · at 320, second lines wrap"
+  },
+  "s4-3-home-skeleton.dc.html": {
+   "x": 0,
+   "y": 7351,
+   "w": 390,
+   "h": 844,
+   "title": "Home · loading"
+  },
+  "s4-3-home-chips.dc.html": {
+   "x": 470,
+   "y": 7351,
+   "w": 390,
+   "h": 76,
+   "title": "Home · seven chips, scrolled"
+  },
+  "s4-3-home-empty.dc.html": {
+   "x": 940,
+   "y": 7351,
+   "w": 390,
+   "h": 844,
+   "title": "Home · a category with nothing open"
+  },
+  "s4-3-home-end.dc.html": {
+   "x": 1410,
+   "y": 7351,
+   "w": 390,
+   "h": 1012,
+   "title": "Home · end of the first page"
+  },
+  "s4-3-home-break.dc.html": {
+   "x": 1880,
+   "y": 7351,
+   "w": 390,
+   "h": 844,
+   "title": "Home · on a cooling-off break (no multiples)"
+  },
+  "s4-3-home-desktop.dc.html": {
+   "x": 2350,
+   "y": 7351,
+   "w": 1280,
+   "h": 434,
+   "title": "Home · desktop at 1280"
+  },
+  "s4-4-sheet-guest.dc.html": {
+   "x": 0,
+   "y": 8963,
+   "w": 390,
+   "h": 636,
+   "title": "Sheet · guest (Jisajili uweke dau / Ingia)"
+  },
+  "s4-4-sheet-below-min.dc.html": {
+   "x": 470,
+   "y": 8963,
+   "w": 390,
+   "h": 605,
+   "title": "Sheet · stake below the minimum"
+  },
+  "s4-4-sheet-above-max.dc.html": {
+   "x": 940,
+   "y": 8963,
+   "w": 390,
+   "h": 624,
+   "title": "Sheet · stake above the maximum"
+  },
+  "s4-4-sheet-updated.dc.html": {
+   "x": 1410,
+   "y": 8963,
+   "w": 390,
+   "h": 637,
+   "title": "Sheet · the estimate was updated (Dodoma · NDIO pool 24,825 → 26,100)"
+  },
+  "s4-4-sheet-unknown-balance.dc.html": {
+   "x": 1880,
+   "y": 8963,
+   "w": 390,
+   "h": 611,
+   "title": "Sheet · balance unknown (Salio lako —), the server decides"
+  },
+  "s4-4-sheet-legacy.dc.html": {
+   "x": 2350,
+   "y": 8963,
+   "w": 390,
+   "h": 580,
+   "title": "Sheet · legacy capped fee: no figure, the commission named"
+  },
+  "s4-4-sheet-one-sided.dc.html": {
+   "x": 2820,
+   "y": 8963,
+   "w": 390,
+   "h": 540,
+   "title": "Sheet · the other side is empty, refund (Azam · pool NDIO 20,000 · HAPANA 0)"
+  },
+  "s4-4-sheet-empty-side.dc.html": {
+   "x": 3290,
+   "y": 8963,
+   "w": 390,
+   "h": 687,
+   "title": "Sheet · this side is empty, first in (Azam · pool NDIO 20,000 · HAPANA 0)"
+  },
+  "s4-4-sheet-empty-pool.dc.html": {
+   "x": 3760,
+   "y": 8963,
+   "w": 390,
+   "h": 587,
+   "title": "Sheet · nobody has bet yet: no figure (Arusha · pool 0 · 0)"
+  },
+  "s4-4-sheet-over-cap.dc.html": {
+   "x": 4230,
+   "y": 8963,
+   "w": 390,
+   "h": 612,
+   "title": "Sheet · over the 100× cap at the stake (Theluji · pool NDIO 500 · HAPANA 180,000)"
+  },
+  "s4-4-sheet-thin.dc.html": {
+   "x": 4700,
+   "y": 8963,
+   "w": 390,
+   "h": 709,
+   "title": "Sheet · thin upside ≈1.0× (Theluji · pool NDIO 500 · HAPANA 180,000)"
+  },
+  "s4-4-sheet-holder.dc.html": {
+   "x": 5170,
+   "y": 8963,
+   "w": 390,
+   "h": 715,
+   "title": "Sheet · already holds this side (Dodoma)"
+  },
+  "s4-4-sheet-hedge.dc.html": {
+   "x": 5640,
+   "y": 8963,
+   "w": 390,
+   "h": 769,
+   "title": "Sheet · holds the OTHER side, the hedge line (Dodoma)"
+  },
+  "s4-4-sheet-placing.dc.html": {
+   "x": 0,
+   "y": 10332,
+   "w": 390,
+   "h": 612,
+   "title": "Sheet · placing"
+  },
+  "s4-4-sheet-receipt.dc.html": {
+   "x": 470,
+   "y": 10332,
+   "w": 390,
+   "h": 414,
+   "title": "Sheet · bet placed (receipt)"
+  },
+  "s4-4-sheet-closed.dc.html": {
+   "x": 940,
+   "y": 10332,
+   "w": 390,
+   "h": 424,
+   "title": "Sheet · the question closed while open (Mwanza, 11:19)"
+  },
+  "s4-4-sheet-loss-room.dc.html": {
+   "x": 1410,
+   "y": 10332,
+   "w": 390,
+   "h": 533,
+   "title": "Sheet · stake above the loss-limit room (inform, never pre-fill)"
+  },
+  "s4-4-block-loss.dc.html": {
+   "x": 1880,
+   "y": 10332,
+   "w": 390,
+   "h": 585,
+   "title": "Refused · daily loss limit reached (room below the minimum stake)"
+  },
+  "s4-4-block-selfex.dc.html": {
+   "x": 2350,
+   "y": 10332,
+   "w": 390,
+   "h": 499,
+   "title": "Refused · self-excluded"
+  },
+  "s4-4-block-cooling.dc.html": {
+   "x": 2820,
+   "y": 10332,
+   "w": 390,
+   "h": 582,
+   "title": "Refused · cooling-off break"
+  },
+  "s4-4-block-blocked.dc.html": {
+   "x": 3290,
+   "y": 10332,
+   "w": 390,
+   "h": 541,
+   "title": "Refused · account blocked"
+  },
+  "s4-4-block-frozen.dc.html": {
+   "x": 3760,
+   "y": 10332,
+   "w": 390,
+   "h": 541,
+   "title": "Refused · wallet frozen"
+  },
+  "s4-4-inline-refusals.dc.html": {
+   "x": 4230,
+   "y": 10332,
+   "w": 390,
+   "h": 966,
+   "title": "Refused inline · session limit, too fast, busy, maintenance"
+  },
+  "s4-4-sheet-keyboard-360.dc.html": {
+   "x": 4700,
+   "y": 10332,
+   "w": 360,
+   "h": 640,
+   "title": "Sheet · keyboard open at 360×640"
+  },
+  "s4-4-sheet-desktop.dc.html": {
+   "x": 5140,
+   "y": 10332,
+   "w": 1280,
+   "h": 800,
+   "title": "Sheet · desktop, a centred dialog"
+  },
+  "s4-5-low-zero.dc.html": {
+   "x": 0,
+   "y": 11898,
+   "w": 390,
+   "h": 556,
+   "title": "Low balance · balance 0, deposit only"
+  },
+  "s4-5-low-min500.dc.html": {
+   "x": 470,
+   "y": 11898,
+   "w": 390,
+   "h": 600,
+   "title": "Low balance · short by less than TZS 500"
+  },
+  "s4-5-low-limit.dc.html": {
+   "x": 940,
+   "y": 11898,
+   "w": 390,
+   "h": 598,
+   "title": "Low balance · deposit limit reached, bet instead only"
+  },
+  "s4-5-low-paused.dc.html": {
+   "x": 1410,
+   "y": 11898,
+   "w": 390,
+   "h": 598,
+   "title": "Low balance · deposit rails paused, bet instead"
+  },
+  "s4-5-low-sof.dc.html": {
+   "x": 1880,
+   "y": 11898,
+   "w": 390,
+   "h": 604,
+   "title": "Low balance · source of funds needed, no option"
+  },
+  "s4-5-low-pending.dc.html": {
+   "x": 2350,
+   "y": 11898,
+   "w": 390,
+   "h": 604,
+   "title": "Low balance · a deposit is already on its way"
+  },
+  "s4-6-code-sent.dc.html": {
+   "x": 0,
+   "y": 13102,
+   "w": 390,
+   "h": 339,
+   "title": "Code step · sent"
+  },
+  "s4-6-code-wrong.dc.html": {
+   "x": 470,
+   "y": 13102,
+   "w": 390,
+   "h": 368,
+   "title": "Code step · wrong code"
+  },
+  "s4-6-code-expired.dc.html": {
+   "x": 940,
+   "y": 13102,
+   "w": 390,
+   "h": 368,
+   "title": "Code step · expired"
+  },
+  "s4-6-code-locked.dc.html": {
+   "x": 1410,
+   "y": 13102,
+   "w": 390,
+   "h": 368,
+   "title": "Code step · too many tries"
+  },
+  "s4-6-code-resent.dc.html": {
+   "x": 1880,
+   "y": 13102,
+   "w": 390,
+   "h": 368,
+   "title": "Code step · a new code sent"
+  },
+  "s4-6-code-no-email.dc.html": {
+   "x": 2350,
+   "y": 13102,
+   "w": 390,
+   "h": 329,
+   "title": "Code step · no email on file"
+  },
+  "s4-6-dep-no-history.dc.html": {
+   "x": 2820,
+   "y": 13102,
+   "w": 390,
+   "h": 368,
+   "title": "Deposit · no history, nothing preselected"
+  },
+  "s4-6-dep-paused-rail.dc.html": {
+   "x": 3290,
+   "y": 13102,
+   "w": 390,
+   "h": 273,
+   "title": "Deposit · one wallet paused"
+  },
+  "s4-6-dep-below-shortfall.dc.html": {
+   "x": 3760,
+   "y": 13102,
+   "w": 390,
+   "h": 268,
+   "title": "Deposit · typed below the shortfall"
+  },
+  "s4-6-dep-payout-notice.dc.html": {
+   "x": 4230,
+   "y": 13102,
+   "w": 390,
+   "h": 291,
+   "title": "Deposit · withdrawals slower than usual"
+  },
+  "s4-6-wait-fresh.dc.html": {
+   "x": 0,
+   "y": 14070,
+   "w": 390,
+   "h": 600,
+   "title": "Waiting · fresh (under a minute)"
+  },
+  "s4-6-wait-slow.dc.html": {
+   "x": 470,
+   "y": 14070,
+   "w": 390,
+   "h": 600,
+   "title": "Waiting · slow (1–10 min)"
+  },
+  "s4-6-wait-long.dc.html": {
+   "x": 940,
+   "y": 14070,
+   "w": 390,
+   "h": 600,
+   "title": "Waiting · long (10–30 min)"
+  },
+  "s4-6-wait-over30.dc.html": {
+   "x": 1410,
+   "y": 14070,
+   "w": 390,
+   "h": 844,
+   "title": "Waiting · past 30 minutes, still unconfirmed"
+  },
+  "s4-6-wait-paid.dc.html": {
+   "x": 1880,
+   "y": 14070,
+   "w": 390,
+   "h": 600,
+   "title": "Waiting · paid, back to the bet (no auto-redirect)"
+  },
+  "s4-6-wait-failed.dc.html": {
+   "x": 2350,
+   "y": 14070,
+   "w": 390,
+   "h": 600,
+   "title": "Waiting · failed, nothing taken"
+  },
+  "s4-6-wait-held.dc.html": {
+   "x": 2820,
+   "y": 14070,
+   "w": 390,
+   "h": 600,
+   "title": "Waiting · held for return"
+  },
+  "s4-6-return-closed.dc.html": {
+   "x": 3290,
+   "y": 14070,
+   "w": 390,
+   "h": 740,
+   "title": "Return · the question closed while paying (Mwanza)"
+  },
+  "s4-6-return-clamped.dc.html": {
+   "x": 3760,
+   "y": 14070,
+   "w": 390,
+   "h": 560,
+   "title": "Return · stake above the loss-limit room (inform, never pre-fill)"
+  },
+  "s4-6-return-still-short.dc.html": {
+   "x": 4230,
+   "y": 14070,
+   "w": 390,
+   "h": 844,
+   "title": "Return · paid TZS 2,000, still short by TZS 1,000"
+  },
+  "s4-6-dep-desktop.dc.html": {
+   "x": 4700,
+   "y": 14070,
+   "w": 1280,
+   "h": 900,
+   "title": "Deposit · desktop at 1280"
+  },
+  "s4-7-howto-en.dc.html": {
+   "x": 0,
+   "y": 15570,
+   "w": 390,
+   "h": 712,
+   "title": "How to Play · English"
+  },
+  "s4-7-howto-zh.dc.html": {
+   "x": 470,
+   "y": 15570,
+   "w": 390,
+   "h": 696,
+   "title": "How to Play · Chinese"
+  },
+  "s4-7-howto-320.dc.html": {
+   "x": 940,
+   "y": 15570,
+   "w": 320,
+   "h": 640,
+   "title": "How to Play · 320×640, MFANO above the pinned button"
+  },
+  "s4-7-howto-desktop.dc.html": {
+   "x": 1340,
+   "y": 15570,
+   "w": 1280,
+   "h": 800,
+   "title": "How to Play · desktop dialog"
+  },
+  "s4-8-akaunti.dc.html": {
+   "x": 0,
+   "y": 16970,
+   "w": 390,
+   "h": 1684,
+   "title": "Akaunti · signed in"
+  },
+  "s4-8-akaunti-guest.dc.html": {
+   "x": 470,
+   "y": 16970,
+   "w": 390,
+   "h": 1036,
+   "title": "Akaunti · guest"
+  },
+  "s4-8-akaunti-staff.dc.html": {
+   "x": 940,
+   "y": 16970,
+   "w": 390,
+   "h": 170,
+   "title": "Akaunti · the staff row (staff only)"
+  },
+  "s4-9-tiketi-open.dc.html": {
+   "x": 0,
+   "y": 19254,
+   "w": 390,
+   "h": 984,
+   "title": "Tiketi zangu · open (Maswali | Juu/Chini switch)"
+  },
+  "s4-9-tiketi-settled.dc.html": {
+   "x": 470,
+   "y": 19254,
+   "w": 390,
+   "h": 860,
+   "title": "Tiketi zangu · settled (Simba win · Dar rain loss)"
+  },
+  "s4-9-tiketi-empty.dc.html": {
+   "x": 940,
+   "y": 19254,
+   "w": 390,
+   "h": 844,
+   "title": "Tiketi zangu · nothing open yet"
+  },
+  "s4-9-tiketi-guest.dc.html": {
+   "x": 1410,
+   "y": 19254,
+   "w": 390,
+   "h": 300,
+   "title": "Tiketi zangu · a guest taps the tab"
+  },
+  "s4-10-market.dc.html": {
+   "x": 0,
+   "y": 20838,
+   "w": 390,
+   "h": 1340,
+   "title": "Market page · full wording, chart, countdowns, the holder's ticket"
+  },
+  "s4-11-updown-panel.dc.html": {
+   "x": 470,
+   "y": 20838,
+   "w": 390,
+   "h": 394,
+   "title": "Juu/Chini · stake panel (round JUU 10,000 · CHINI 8,000)"
+  },
+  "s4-11-updown-low.dc.html": {
+   "x": 940,
+   "y": 20838,
+   "w": 390,
+   "h": 576,
+   "title": "Juu/Chini · not enough balance, side chosen first"
+  },
+  "s4-11-updown-round-closed.dc.html": {
+   "x": 1410,
+   "y": 20838,
+   "w": 390,
+   "h": 240,
+   "title": "Juu/Chini · the round closed while paying"
+  },
+  "s4-12-focus.dc.html": {
+   "x": 0,
+   "y": 22778,
+   "w": 390,
+   "h": 1122,
+   "title": "Focus · the keyboard focus ring on every control family"
+  }
+ },
+ "order": [
+  "Main.dc.html",
+  "agency-1-home.dc.html",
+  "agency-2-bet-sheet.dc.html",
+  "agency-3-balance-too-low.dc.html",
+  "agency-4-deposit.dc.html",
+  "agency-5-how-to-play.dc.html",
+  "pick-1-home.dc.html",
+  "pick-2-bet-sheet.dc.html",
+  "pick-3-balance-too-low.dc.html",
+  "pick-4-deposit.dc.html",
+  "pick-5-how-to-play.dc.html",
+  "s4-2-hdr-360-long.dc.html",
+  "s4-2-hdr-320-long.dc.html",
+  "s4-2-hdr-guest-390.dc.html",
+  "s4-2-hdr-guest-320.dc.html",
+  "s4-2-hdr-held.dc.html",
+  "s4-2-hdr-masked.dc.html",
+  "s4-2-hdr-desktop.dc.html",
+  "s4-3-card-priced.dc.html",
+  "s4-3-card-today.dc.html",
+  "s4-3-card-empty-pool.dc.html",
+  "s4-3-card-one-side.dc.html",
+  "s4-3-card-over-cap.dc.html",
+  "s4-3-card-legacy.dc.html",
+  "s4-3-card-closed.dc.html",
+  "s4-3-card-settled.dc.html",
+  "s4-3-card-longest-360.dc.html",
+  "s4-3-card-320.dc.html",
+  "s4-3-home-skeleton.dc.html",
+  "s4-3-home-chips.dc.html",
+  "s4-3-home-empty.dc.html",
+  "s4-3-home-end.dc.html",
+  "s4-3-home-break.dc.html",
+  "s4-3-home-desktop.dc.html",
+  "s4-4-sheet-guest.dc.html",
+  "s4-4-sheet-below-min.dc.html",
+  "s4-4-sheet-above-max.dc.html",
+  "s4-4-sheet-updated.dc.html",
+  "s4-4-sheet-unknown-balance.dc.html",
+  "s4-4-sheet-legacy.dc.html",
+  "s4-4-sheet-one-sided.dc.html",
+  "s4-4-sheet-empty-side.dc.html",
+  "s4-4-sheet-empty-pool.dc.html",
+  "s4-4-sheet-over-cap.dc.html",
+  "s4-4-sheet-thin.dc.html",
+  "s4-4-sheet-holder.dc.html",
+  "s4-4-sheet-hedge.dc.html",
+  "s4-4-sheet-placing.dc.html",
+  "s4-4-sheet-receipt.dc.html",
+  "s4-4-sheet-closed.dc.html",
+  "s4-4-sheet-loss-room.dc.html",
+  "s4-4-block-loss.dc.html",
+  "s4-4-block-selfex.dc.html",
+  "s4-4-block-cooling.dc.html",
+  "s4-4-block-blocked.dc.html",
+  "s4-4-block-frozen.dc.html",
+  "s4-4-inline-refusals.dc.html",
+  "s4-4-sheet-keyboard-360.dc.html",
+  "s4-4-sheet-desktop.dc.html",
+  "s4-5-low-zero.dc.html",
+  "s4-5-low-min500.dc.html",
+  "s4-5-low-limit.dc.html",
+  "s4-5-low-paused.dc.html",
+  "s4-5-low-sof.dc.html",
+  "s4-5-low-pending.dc.html",
+  "s4-6-code-sent.dc.html",
+  "s4-6-code-wrong.dc.html",
+  "s4-6-code-expired.dc.html",
+  "s4-6-code-locked.dc.html",
+  "s4-6-code-resent.dc.html",
+  "s4-6-code-no-email.dc.html",
+  "s4-6-dep-no-history.dc.html",
+  "s4-6-dep-paused-rail.dc.html",
+  "s4-6-dep-below-shortfall.dc.html",
+  "s4-6-dep-payout-notice.dc.html",
+  "s4-6-wait-fresh.dc.html",
+  "s4-6-wait-slow.dc.html",
+  "s4-6-wait-long.dc.html",
+  "s4-6-wait-over30.dc.html",
+  "s4-6-wait-paid.dc.html",
+  "s4-6-wait-failed.dc.html",
+  "s4-6-wait-held.dc.html",
+  "s4-6-return-closed.dc.html",
+  "s4-6-return-clamped.dc.html",
+  "s4-6-return-still-short.dc.html",
+  "s4-6-dep-desktop.dc.html",
+  "s4-7-howto-en.dc.html",
+  "s4-7-howto-zh.dc.html",
+  "s4-7-howto-320.dc.html",
+  "s4-7-howto-desktop.dc.html",
+  "s4-8-akaunti.dc.html",
+  "s4-8-akaunti-guest.dc.html",
+  "s4-8-akaunti-staff.dc.html",
+  "s4-9-tiketi-open.dc.html",
+  "s4-9-tiketi-settled.dc.html",
+  "s4-9-tiketi-empty.dc.html",
+  "s4-9-tiketi-guest.dc.html",
+  "s4-10-market.dc.html",
+  "s4-11-updown-panel.dc.html",
+  "s4-11-updown-low.dc.html",
+  "s4-11-updown-round-closed.dc.html",
+  "s4-12-focus.dc.html"
+ ],
+ "notes": {
+  "rowagency": {
+   "x": 0,
+   "y": 2327,
+   "text": "The agency's five frames, as delivered",
+   "kind": "title1",
+   "maxW": 2270
+  },
+  "rowpick": {
+   "x": 0,
+   "y": 3577,
+   "text": "The same five screens in 50pick's own design system",
+   "kind": "title1",
+   "maxW": 2270
+  },
+  "rowheader": {
+   "x": 0,
+   "y": 5021,
+   "text": "2 · The header in every state",
+   "kind": "title1",
+   "maxW": 2270
+  },
+  "hdrfit": {
+   "x": 4010,
+   "y": 5281,
+   "w": 400,
+   "maxH": 250,
+   "fill": "blue",
+   "text": "Measured in Chromium at 320/360/390/412 in sw/en/zh with balances up to TZS 10,000,000. From 360 up: the product's 26-px mark, 6-px gaps, slimmer pill padding. Below 360: a 12-px gutter, \"Weka pesa\" without the \"+\", a 12-px figure. The figure is gold, as the product's wallet pill paints it (R1). One 18+ roundel everywhere (.kp-rg__18). Held wallet: the existing \"Salio · limegandishwa\" with a lock, and no Weka pesa pill — a frozen wallet cannot take deposits. Guest pills are 44 px tall."
+  },
+  "rowcards": {
+   "x": 0,
+   "y": 5911,
+   "text": "3 · The journey card in every state",
+   "kind": "title1",
+   "maxW": 2270
+  },
+  "cardwords": {
+   "x": 4600,
+   "y": 6171,
+   "w": 380,
+   "maxH": 300,
+   "fill": "blue",
+   "text": "Wording: \"Kuwa wa kwanza\" is SJ-1's word, drawn as a new short key (the existing beFirst wraps at every width). A figure never leaves its unit: \"≈2.8× dau\", \"1 Oktoba\", \"10 Okt\" are joined by a no-break space. Over the 100× cap the card shows no number — \"Upande mdogo, ona makadirio\" — because the zero-stake multiple over-promises once a real stake joins the small side; a thin side (≈1.0×) reads \"Faida ndogo · ≈1.0×\" (SJ-1 amended after the panel; both drafts). Button content is top-aligned, so the side words share a line when one second line wraps."
+  },
+  "cardlegacy": {
+   "x": 4600,
+   "y": 6511,
+   "w": 380,
+   "maxH": 200,
+   "fill": "orange",
+   "text": "Legacy capped market: the card shows the side word alone (describeFeeModel is English admin text). The sheet names the commission in a drafted player sentence: \"Kamisheni ya hadi 10% ya bwawa lote hutolewa kabla washindi hawajalipwa.\" — the capped fee is min(10% of the pool, a third of the smaller side), so \"up to 10% of the whole pool\" is always true."
+  },
+  "rowhome": {
+   "x": 0,
+   "y": 7091,
+   "text": "3 · Home · loading, chips, empty, end of page, on a break, desktop",
+   "kind": "title1",
+   "maxW": 2270
+  },
+  "homedrafts": {
+   "x": 3710,
+   "y": 7351,
+   "w": 400,
+   "maxH": 280,
+   "fill": "orange",
+   "text": "Draft words — no string exists yet: \"Kripto: hakuna maswali wazi kwa sasa\", \"Maswali mapya yataonekana hapa yakichapishwa.\", \"Onyesha maswali yote\"; on a break: \"Uko kwenye mapumziko hadi 8 Okt, 14:30\", \"Kuweka dau kumezimwa hadi wakati huo. Unaweza kuendelea kuangalia maswali.\", \"Mapumziko hadi 8 Okt\". On a break the cards show no multiples at all, and the header drops \"+ Weka pesa\": a payment that lands during a break is held and returned (the waiting row's \"held\" frame). The first page ends in close order (soonest first, SJ-6). The footer carries the helpline and the licence number (SJ-24)."
+  },
+  "rowsheet": {
+   "x": 0,
+   "y": 8703,
+   "text": "4 · The bet sheet · choosing, and every kind of estimate",
+   "kind": "title1",
+   "maxW": 2270
+  },
+  "sheetcalls": {
+   "x": 6110,
+   "y": 8963,
+   "w": 420,
+   "maxH": 400,
+   "fill": "blue",
+   "text": "Design calls. Every estimate carries ≈ — the figure and the multiple chip — and the chip sits on its own row in every state. Bounds: the first sentence of today's refusal, in the kit's info notice; the figure shows \"TZS —\" and the button reads \"Weka dau\" with no amount (§3.3). Each sheet has one hidden polite live region that reads the new figure aloud when it changes. Empty side: the sheet prints the figure at a real stake and says it will fall as others join. Empty pool: no figure. Over the cap at the stake: the figure is printed and the chip reads \"≈ zaidi ya 100×\". Hedge: the existing hedge sentence, in the info notice. Unknown balance: \"Salio lako —\" and the button stays live; the server decides."
+  },
+  "rowsheet2": {
+   "x": 0,
+   "y": 10072,
+   "text": "4 · The bet sheet · placing, closed, the limits, refusals, keyboard, desktop",
+   "kind": "title1",
+   "maxW": 2270
+  },
+  "sheetfinds": {
+   "x": 6500,
+   "y": 10332,
+   "w": 420,
+   "maxH": 300,
+   "fill": "orange",
+   "text": "The limits and refusals. A stake above the loss-limit room is never pre-filled to the room: the stake stays as typed, the notice says what the limit allows, chips above the room hide, the button is disabled (§3.5 amended — pre-filling nudges a player to use up their limit). The blocking refusals carry no side chip, carry the helpline, and stack their buttons full-width. The receipt does not close itself. Drafts: \"Kikomo chako cha hasara kinaruhusu hadi TZS 3,000 leo.\", \"Jisajili uweke dau\", \"Makadirio yamesasishwa\", the empty-side and empty-pool lines. formatDeadline prints English months in Swahili (\"8 Oct\") — an S12 finding; the frames show \"8 Okt\"."
+  },
+  "rowlow": {
+   "x": 0,
+   "y": 11638,
+   "text": "5 · Balance too low · every variant the engine can return",
+   "kind": "title1",
+   "maxW": 2270
+  },
+  "lownotes": {
+   "x": 2820,
+   "y": 11898,
+   "w": 420,
+   "maxH": 330,
+   "fill": "blue",
+   "text": "Each frame is a branch of shortfallPlan (lib/journey/shortfall.ts). The two-option state is the 50pick redraw in row 2. \"Weka dau la TZS 2,000 badala yake\" places the bet in one tap, so it carries its own estimate on a second line (SJ-11 amended); both option rows are the same height and the gold row has no glow. A held wallet never reaches this screen: the plan blocks it first. With one option the eyebrow is dropped. When no deposit is offered, the reason is shown before the player tries, in the info notice. Drafts: \"Kiasi cha chini cha kuweka ni TZS 500 — TZS 300 zitabaki kwenye salio lako.\", \"Malipo yako ya TZS 3,000 yanasubiri\", \"Fuatilia malipo\", \"Jaza tamko\"."
+  },
+  "rowdeposit": {
+   "x": 0,
+   "y": 12842,
+   "text": "6 · Deposit · the email code and the deposit variants",
+   "kind": "title1",
+   "maxW": 2270
+  },
+  "depnotes": {
+   "x": 4700,
+   "y": 13102,
+   "w": 440,
+   "maxH": 300,
+   "fill": "blue",
+   "text": "The code step sits between the PIN note and \"Lipa\" (§3.5 order 9); one one-time-code input drawn as six cells; Lipa enables on success without re-entering anything. A wrong code is a form error in the kit's danger ink (the S2 ruling); every other state is neutral, including \"Msimbo mpya umetumwa.\". The payout notice uses the kit's info notice and shows the delayed words (F1). Phone numbers are Inter with tabular figures; only amounts are mono. Drafts: \"Tuma msimbo\", \"Thibitisha barua pepe yako ili uweke pesa\"."
+  },
+  "rowdeposit2": {
+   "x": 0,
+   "y": 13810,
+   "text": "6 · Deposit · waiting, the return, desktop",
+   "kind": "title1",
+   "maxW": 2270
+  },
+  "waitnotes": {
+   "x": 6060,
+   "y": 14070,
+   "w": 440,
+   "maxH": 360,
+   "fill": "orange",
+   "text": "The waiting page uses the focused chrome and the 18+ and helpline line (SJ-18). Paid does not redirect by itself: the player taps \"Rudi kwenye dau\" (WCAG 2.2.1). Failed keeps the pending-bet strip. Past 30 minutes: still unconfirmed, the reference and Msaada. Held for return: a payment that landed during a break is returned by the team (wallet-service) — the period \"siku 3 za kazi\" is to be confirmed there. The return never pre-fills the loss-limit room. Drafts: \"Weka PIN kwenye simu yako\", \"Usianzishe malipo mengine.\", \"Angalia hali ya malipo\", \"Hakuna pesa iliyokatwa\", \"Pesa zako zitarudishwa\" and its sentence, \"Malipo bado hayajathibitishwa\" and its sentence, \"Maswali yanayofanana\", \"Weka pesa tena\" (plan)."
+  },
+  "rowhowto": {
+   "x": 0,
+   "y": 15310,
+   "text": "7 · How to Play · English, Chinese, 320×640, desktop",
+   "kind": "title1",
+   "maxW": 2270
+  },
+  "howtonotes": {
+   "x": 2700,
+   "y": 15570,
+   "w": 400,
+   "maxH": 300,
+   "fill": "blue",
+   "text": "Step numerals are neutral (1B): gold on a decorative element breaks DESIGN_AUTHORITY §M3. MFANO sits after the steps, not inside the list, and ends with the deck's estimate line. The steps region is focusable and named for keyboard scrolling. At 320×640 the sheet is capped at the viewport minus 48 px and the spacing is tightened (never the type) until MFANO's last line — the loss sentence and the estimate line — sits above the pinned \"Nimeelewa, anza\"; nothing has to scroll. Chinese quotes the side words 「是」「否」 inside sentences and says winners share the pool in proportion to their stakes. Chinese uses keep-all (R8)."
+  },
+  "rowakaunti": {
+   "x": 0,
+   "y": 16710,
+   "text": "8 · Akaunti · signed in, guest, the staff row",
+   "kind": "title1",
+   "maxW": 2270
+  },
+  "akauntinotes": {
+   "x": 1410,
+   "y": 16970,
+   "w": 420,
+   "maxH": 330,
+   "fill": "blue",
+   "text": "SJ-17's items grouped into cards without headings; the limits card now comes before invite and rewards, and carries a Pumzika / Jizuie row (SJ-17 amended after the panel). Every label is today's key except the plan's \"Toa pesa\" and the corrected \"Ukubwa wa kadi\" and \"Maswali ya kawaida\"; Msaada shows the helpline number. Alika and Pendekeza show only when inviteIsLiveFor / proposalsState allow; the staff row (\"Wafanyakazi tu\", draft) is a plain link to /admin, staff only. The unread count rides on Arifa and as a dot on the Akaunti tab, with hidden text for screen readers. \"Jina Lako\" is a placeholder name."
+  },
+  "row_tiketinotes": {
+   "x": 0,
+   "y": 18994,
+   "text": "9 · Tiketi zangu · open, settled, empty, guest",
+   "kind": "title1",
+   "maxW": 2270
+  },
+  "tiketinotes": {
+   "x": 1880,
+   "y": 19254,
+   "w": 420,
+   "maxH": 330,
+   "fill": "blue",
+   "text": "The page is renamed \"Tiketi zangu\" (SJ-19). Open tickets show no payout figure before resolution — \"Malipo · Matokeo yakitoka\" (SJ-4 keeps §C3). Every timer names its absolute instant (\"Uza bila ada hadi 11:23 · 3:42\" — the free exit is the first 5 minutes after placing, so the open Dodoma ticket was placed at 11:18; the Yanga ticket, placed on 28 Sep, is past its window). Selling is one verb: \"Uza bila ada\" inside the free window, then \"Kuuza kumefungwa\". The settled tickets are two questions that closed before today: the Simba win is real arithmetic on its final pool (TZS 1,000 on NDIO, pool 30,000 / 42,000 → TZS 2,218). Drafts: \"Bado huna tiketi hai\", its sentence, \"Tazama maswali\", \"Ingia uone tiketi zako\" (plan)."
+  },
+  "row_marketnotes": {
+   "x": 0,
+   "y": 20578,
+   "text": "10–11 · The market page, and Juu/Chini in the same language",
+   "kind": "title1",
+   "maxW": 2270
+  },
+  "marketnotes": {
+   "x": 1880,
+   "y": 20838,
+   "w": 420,
+   "maxH": 360,
+   "fill": "blue",
+   "text": "Market page (§3.2): full wording, source, pool (\"Bwawa\"), chart, both countdowns each with its absolute time, then the holder's ticket block above the two big buttons, which show the side words only — an estimate is licensed only on the cards and in the sheet (SJ-4), and the sheet the buttons open shows it. The chart follows the four-ink chart law: a gilt dashed 50 line, green above, rose below, the value tag in the leading side's ink — at 33% NDIO that is rose. The pool is the real Dodoma sum (24,825 + 50,462 = TZS 75,287). Juu/Chini: the side is chosen before the low-balance offer, because a pending Juu/Chini bet needs a side; the × multiples carry ≈ and the existing note that they move with every bet."
+  },
+  "rowfocus": {
+   "x": 0,
+   "y": 22518,
+   "text": "12 · Keyboard focus and reduced motion",
+   "kind": "title1",
+   "maxW": 2270
+  },
+  "focusnotes": {
+   "x": 470,
+   "y": 22778,
+   "w": 420,
+   "maxH": 260,
+   "fill": "blue",
+   "text": "Keyboard focus: the product's own .btn:focus-visible ring (2-px brand-500 outline, 2-px offset, a soft 4-px halo) on every control family; the gold button keeps a real outline (DESIGN_AUTHORITY §M3, E-129); wallet rows and the stake and phone fields show it with :focus-within. Reduced motion: no shimmer, no press-pop, sheets fade instead of slide, spinners become a static icon, countdowns tick by the minute."
+  }
+ },
+ "designSystems": []
+}

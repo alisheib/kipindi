@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Component map and choices</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700&amp;family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:oklch(76% 0.13 268)}a:hover{color:oklch(86% 0.08 268)}
+</style>
+</helmet>
+<div style="width: 1280px; min-height: 1600px; box-sizing: border-box; padding: 64px 72px; background: oklch(6.5% 0.13 268); color: oklch(98% 0.012 268); font-family: Inter, system-ui, sans-serif; display: flex; flex-direction: column; gap: 32px">
+<div style="display: flex; flex-direction: column; gap: 10px">
+<p style="margin: 0; font-family: 'JetBrains Mono', monospace; font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: oklch(70% 0.08 268)">Vodacom plan · S4 design pass · 2026-10-01</p>
+<h1 style="margin: 0; font-family: Sora, sans-serif; font-weight: 700; font-size: 40px; line-height: 1.15">The agency&#39;s five screens, drawn in 50pick&#39;s own system</h1>
+<p style="margin: 0; max-width: 900px; font-size: 17px; line-height: 1.6; color: oklch(86% 0.04 268)">What happens on each screen — the flow, the order of things, every word — is the agency&#39;s, unchanged. How it looks is 50pick&#39;s: our navy ground and glass cards, our green and rose for YES and NO, gold only for money going in and for placing a bet, royal for paying, Sora for headlines, Inter for reading, JetBrains Mono for every figure. Below: each agency frame, and under it the same screen redrawn. This board maps each part to the 50pick component that draws it, and lists the three choices still open.</p>
+<p style="margin: 0; max-width: 900px; font-size: 15px; line-height: 1.6; color: oklch(70% 0.08 268)">Reviewed on 1 October by four independent experts — our design system, the deck&#39;s logic, the words, and accessibility with responsible gambling. Their first-pass scores were 6.5, 6.5, 6 and 5 out of 10. Every finding was checked against the code and applied: the figures, the dates, the kit components, the words, eleven states that were missing, and the keyboard focus states.</p>
+<p style="margin: 0; max-width: 900px; font-size: 15px; line-height: 1.6; color: oklch(70% 0.08 268)">The redrawn screens can be tapped through. Press Play on the 50pick Home frame, then tap NDIO on the Dodoma card, then 5,000, then "Weka pesa TZS 3,000", then back. The How-to card opens How to Play. The wallet logos are the ones 50pick already shows.</p>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px">
+<div style="background: oklch(22% 0.14 268); border: 1px solid oklch(36% 0.13 268); border-radius: 16px; padding: 24px; display: flex; flex-direction: column; gap: 12px">
+<h2 style="margin: 0; font-family: Sora, sans-serif; font-weight: 600; font-size: 20px">1 · Home</h2>
+<p style="margin: 0; font-size: 15px; line-height: 1.55; color: oklch(86% 0.04 268)">Two-tone yellow wordmark → <strong>50pick&#39;s own mark</strong>, unchanged. Salio + figure → <strong>captioned balance pill</strong> (new: "Salio" over the mono figure, painted gold as the product&#39;s wallet pill already paints it). "+ Weka pesa" → the existing <strong>gilt pill</strong>, now on phones too. "Jinsi ya kucheza" card → a <strong>new card</strong> on our card surface with a play glyph plate (never gilt). Headline → our <strong>hero headline</strong>, side words in the headline&#39;s own ink. Chips → our <strong>filter pills</strong>. Question card → the <strong>journey card</strong>: meta row, short title in two lines, our YES/NO buttons with "Shinda ≈2.8× dau" in mono. Four tabs → our <strong>bottom navigation</strong>.</p>
+</div>
+<div style="background: oklch(22% 0.14 268); border: 1px solid oklch(36% 0.13 268); border-radius: 16px; padding: 24px; display: flex; flex-direction: column; gap: 12px">
+<h2 style="margin: 0; font-family: Sora, sans-serif; font-weight: 600; font-size: 20px">2 · Bet sheet</h2>
+<p style="margin: 0; font-size: 15px; line-height: 1.55; color: oklch(86% 0.04 268)">Bottom sheet → our <strong>sheet</strong> (a centred dialog on desktop). "Umechagua NDIO" → the kit&#39;s <strong>YES chip</strong> (tinted, 28 px, one size on every screen). Gold-ringed stake box → our <strong>large input</strong> with a TZS prefix and thousands separators; its focus ring is our focus colour, never gold. Quick amounts → our <strong>stake chips</strong>, 44 px tall. The green estimate box → a <strong>neutral inset panel</strong>: ≈ TZS 2,700 is the largest figure, in white mono (green means YES and gold means money-in on 50pick, so neither is spent on an estimate), with "≈2.7× dau lako" as a neutral chip on its own row and the Makadirio line under it. Every estimate on every screen carries ≈. "Weka dau" → our <strong>gold button</strong>: placing a bet keeps gold.</p>
+</div>
+<div style="background: oklch(22% 0.14 268); border: 1px solid oklch(36% 0.13 268); border-radius: 16px; padding: 24px; display: flex; flex-direction: column; gap: 12px">
+<h2 style="margin: 0; font-family: Sora, sans-serif; font-weight: 600; font-size: 20px">3 · Balance too low</h2>
+<p style="margin: 0; font-size: 15px; line-height: 1.55; color: oklch(86% 0.04 268)">Orange-ringed stake box → the input&#39;s <strong>attention state</strong>: a stronger neutral border, never the error or NO colour. Compact estimate row → a <strong>new compact row</strong>. "Salio halitoshi" → the kit&#39;s <strong>info notice</strong> (Callout, info tone) with the alert glyph. The eyebrow → our <strong>micro label</strong>. The yellow deposit row → a <strong>new two-line action row</strong> in gilt, with the wallets on its second line and no glow. "Weka dau la TZS 2,000 badala yake" → our <strong>outline button</strong>, the same height, with a second line naming what TZS 2,000 could win (≈ TZS 5,273), because this button places the bet in one tap and the figure above it is for TZS 5,000. The disabled "Weka dau" → a <strong>disabled button in navy with muted words</strong>: gold at half strength, our current disabled style, turns a muddy brown on navy, so the build adds this disabled look for the gold button.</p>
+</div>
+<div style="background: oklch(22% 0.14 268); border: 1px solid oklch(36% 0.13 268); border-radius: 16px; padding: 24px; display: flex; flex-direction: column; gap: 12px">
+<h2 style="margin: 0; font-family: Sora, sans-serif; font-weight: 600; font-size: 20px">4 · Deposit</h2>
+<p style="margin: 0; font-size: 15px; line-height: 1.55; color: oklch(86% 0.04 268)">Back button + title → the <strong>focused deposit header</strong>. "Dau lako … linakusubiri" → a <strong>pending-bet strip</strong>: card surface, YES chip, the stake in mono. Amount + chips → the large input and chips. Yellow radio rows → our <strong>wallet rows</strong>: royal radio, logo, royal ring when chosen; <strong>Mixx by Yas</strong> as the fourth row (your ruling 3). Phone box → our <strong>phone input</strong> with the +255 prefix, already filled with the number of the last confirmed deposit (else the registered one), with "Tumia namba nyingine" beside its label. "Lipa TZS 3,000" → our <strong>royal primary button</strong>: paying is a brand commit, not a money-in entry. "Lipa kwa kadi" sits under it, and a small <strong>18+ and helpline line</strong> closes the screen, because this focused screen has no footer.</p>
+</div>
+<div style="background: oklch(22% 0.14 268); border: 1px solid oklch(36% 0.13 268); border-radius: 16px; padding: 24px; display: flex; flex-direction: column; gap: 12px">
+<h2 style="margin: 0; font-family: Sora, sans-serif; font-weight: 600; font-size: 20px">5 · How to Play</h2>
+<p style="margin: 0; font-size: 15px; line-height: 1.55; color: oklch(86% 0.04 268)">Sheet + close → our <strong>sheet</strong>. Yellow numbered circles → <strong>new step badges</strong> with mono numerals, neutral (choice 1, now settled). The dashed MFANO box with green figures → our <strong>info notice</strong> with a micro-label title; the figures in white mono. "Nimeelewa, anza" → our <strong>royal primary button</strong>. "Weka mipaka · Msaada" → our <strong>footer&#39;s responsible-gaming links</strong>.</p>
+</div>
+<div style="background: oklch(11% 0.11 268); border: 1px solid oklch(44% 0.15 268); border-radius: 16px; padding: 24px; display: flex; flex-direction: column; gap: 12px">
+<h2 style="margin: 0; font-family: Sora, sans-serif; font-weight: 600; font-size: 20px">What never changes</h2>
+<p style="margin: 0; font-size: 15px; line-height: 1.55; color: oklch(86% 0.04 268)">The agency&#39;s colours, typeface and two-tone wordmark are not adopted (your ruling 5). Every word on these five screens is the deck&#39;s Swahili, verbatim. The figures are real: the Dodoma market at 13% gives ≈2.8× on the card, TZS 2,700 at TZS 1,000 and TZS 12,360 at TZS 5,000 — computed by the same code the server pays with. Every frame is dated from the deck&#39;s own day, Tuesday 29 September 2026, so "Inafungwa leo" and "Siku 11" agree everywhere.</p>
+</div>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 16px">
+<h2 style="margin: 0; font-family: Sora, sans-serif; font-weight: 700; font-size: 28px">The three choices — adopted on 1 October; switch any of them to overrule</h2>
+<div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px">
+<div style="background: oklch(22% 0.14 268); border: 1px solid oklch(36% 0.13 268); border-radius: 16px; padding: 24px; display: flex; flex-direction: column; gap: 10px">
+<p style="margin: 0; font-family: 'JetBrains Mono', monospace; font-size: 13px; color: oklch(80% 0.1141 84)">CHOICE 1</p>
+<h3 style="margin: 0; font-family: Sora, sans-serif; font-weight: 600; font-size: 18px">How to Play step numbers</h3>
+<p style="margin: 0; font-size: 15px; line-height: 1.55; color: oklch(86% 0.04 268)"><strong>1A</strong> gold badges. <strong>1B</strong> neutral badges, so gold appears only where money moves. <strong>Settled by our own rule:</strong> gold on a decorative element is a violation of the design authority (§M3), and the panel caught it, so 1B is now drawn.</p>
+<p style="margin: 0; font-size: 14px; color: oklch(70% 0.08 268)">Adopted: 1B. 1A stays on the switch only if you want to overrule the rule: How to Play frame, Tweaks › Choice 1.</p>
+</div>
+<div style="background: oklch(22% 0.14 268); border: 1px solid oklch(36% 0.13 268); border-radius: 16px; padding: 24px; display: flex; flex-direction: column; gap: 10px">
+<p style="margin: 0; font-family: 'JetBrains Mono', monospace; font-size: 13px; color: oklch(80% 0.1141 84)">CHOICE 2</p>
+<h3 style="margin: 0; font-family: Sora, sans-serif; font-weight: 600; font-size: 18px">The chosen stake amount</h3>
+<p style="margin: 0; font-size: 15px; line-height: 1.55; color: oklch(86% 0.04 268)"><strong>2A</strong> a royal ring, as drawn — our selection colour. <strong>2B</strong> a filled light chip (white with dark text), which reads as "chosen" at a glance on a small phone.</p>
+<p style="margin: 0; font-size: 14px; color: oklch(70% 0.08 268)">Adopted: 2A — one selection colour across the product. Switch it on the Bet sheet or Deposit frame: Tweaks › Choice 2.</p>
+</div>
+<div style="background: oklch(22% 0.14 268); border: 1px solid oklch(36% 0.13 268); border-radius: 16px; padding: 24px; display: flex; flex-direction: column; gap: 10px">
+<p style="margin: 0; font-family: 'JetBrains Mono', monospace; font-size: 13px; color: oklch(80% 0.1141 84)">CHOICE 3</p>
+<h3 style="margin: 0; font-family: Sora, sans-serif; font-weight: 600; font-size: 18px">The play glyph on the How-to card</h3>
+<p style="margin: 0; font-size: 15px; line-height: 1.55; color: oklch(86% 0.04 268)"><strong>3A</strong> a royal plate, as drawn. <strong>3B</strong> a neutral plate, quieter under the gold "Weka pesa" above it.</p>
+<p style="margin: 0; font-size: 14px; color: oklch(70% 0.08 268)">Adopted: 3A — the card is the first thing a new player should tap. Switch it on the Home frame: Tweaks › Choice 3.</p>
+</div>
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":1987}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

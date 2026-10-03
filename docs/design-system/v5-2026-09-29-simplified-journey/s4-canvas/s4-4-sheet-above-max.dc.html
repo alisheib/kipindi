@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="sw">
+<head>
+<meta charset="utf-8">
+<title>Bet sheet · stake above the maximum</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700&amp;family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="width: 390px; height: 624px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: flex-end; background: oklch(6.5% 0.13 268); color: oklch(98% 0.012 268); font-family: Inter, system-ui, sans-serif">
+<section role="dialog" aria-modal="true" aria-labelledby="t" style="box-sizing: border-box; padding: 8px 16px 24px; border-radius: 24px 24px 0 0; background: oklch(22% 0.14 268); border-top: 1px solid oklch(44% 0.15 268); display: flex; flex-direction: column; gap: 14px">
+<div aria-hidden="true" style="align-self: center; width: 40px; height: 4px; border-radius: 999px; background: oklch(44% 0.15 268)"></div>
+<div style="display: flex; align-items: center; justify-content: space-between; gap: 12px">
+<span style="display: inline-flex; align-items: center; height: 28px; box-sizing: border-box; padding: 0 12px; border-radius: 999px; border: 1px solid oklch(61% 0.16 150 / 0.5); background: oklch(52% 0.15 150 / 0.22); color: oklch(80% 0.14 152); font-family: Inter, system-ui, sans-serif; font-size: 13px; font-weight: 700; letter-spacing: 0.06em; white-space: nowrap">Umechagua NDIO</span>
+<button type="button" aria-label="Funga" style="display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border: 0; border-radius: 999px; background: oklch(30% 0.165 268); color: oklch(98% 0.012 268); cursor: pointer"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"></path></svg></button>
+</div>
+<h2 id="t" style="margin: 0; font-family: Sora, sans-serif; font-weight: 600; font-size: 20px; line-height: 1.3">Je,&nbsp;Dodoma itapata mvua tarehe 1&nbsp;Oktoba?</h2>
+<div style="display: flex; flex-direction: column; gap: 8px">
+<label for="s" style="font-size: 14px; font-weight: 500; color: oklch(86% 0.04 268)">Dau lako</label>
+<div style="display: flex; align-items: center; gap: 10px; height: 60px; box-sizing: border-box; padding: 0 16px; border-radius: 12px; background: oklch(11% 0.11 268); border: 2px solid oklch(78% 0.06 268)">
+<span style="font-family: 'JetBrains Mono', monospace; font-size: 18px; font-weight: 600; color: oklch(70% 0.08 268)">TZS</span>
+<input id="s" type="text" inputmode="numeric" value="2,000,000" aria-invalid="true" aria-describedby="b" style="flex-grow: 1; min-width: 0; padding: 0; border: 0; outline: none; background: transparent; font-family: 'JetBrains Mono', monospace; font-size: 26px; font-weight: 700; color: oklch(98% 0.012 268)">
+</div>
+<p id="b" role="status" style="display: flex; align-items: center; gap: 8px; margin: 0; font-size: 14px; line-height: 1.4; color: oklch(86% 0.04 268)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0"><circle cx="12" cy="12" r="9"></circle><path d="M12 11v5.5M12 7.5h.01"></path></svg><span>Kiwango cha juu kwa dau moja ni <span style="font-family: 'JetBrains Mono', monospace; font-weight: 600; color: oklch(98% 0.012 268); white-space: nowrap">TZS 1,000,000</span>.</span></p>
+</div>
+<div role="group" aria-label="Kiasi cha haraka" style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px">
+<button type="button" aria-pressed="false" style="height: 44px; box-sizing: border-box; border-radius: 12px; border: 1px solid oklch(36% 0.13 268); background: transparent; color: oklch(86% 0.04 268); font-family: 'JetBrains Mono', monospace; font-size: 15px; font-weight: 500">1,000</button>
+<button type="button" aria-pressed="false" style="height: 44px; box-sizing: border-box; border-radius: 12px; border: 1px solid oklch(36% 0.13 268); background: transparent; color: oklch(86% 0.04 268); font-family: 'JetBrains Mono', monospace; font-size: 15px; font-weight: 500">2,000</button>
+<button type="button" aria-pressed="false" style="height: 44px; box-sizing: border-box; border-radius: 12px; border: 1px solid oklch(36% 0.13 268); background: transparent; color: oklch(86% 0.04 268); font-family: 'JetBrains Mono', monospace; font-size: 15px; font-weight: 500">5,000</button>
+<button type="button" aria-pressed="false" style="height: 44px; box-sizing: border-box; border-radius: 12px; border: 1px solid oklch(36% 0.13 268); background: transparent; color: oklch(86% 0.04 268); font-family: 'JetBrains Mono', monospace; font-size: 15px; font-weight: 500">10,000</button>
+</div>
+<div style="display: flex; flex-direction: column; gap: 8px; padding: 16px; border-radius: 16px; background: oklch(11% 0.11 268); border: 1px solid oklch(36% 0.13 268)">
+<span style="font-size: 14px; line-height: 1.4; color: oklch(86% 0.04 268)">Ukishinda, unapata takriban</span>
+<span style="font-family: 'JetBrains Mono', monospace; font-size: 32px; font-weight: 700; line-height: 1.1; color: oklch(52% 0.13 268)">TZS —</span>
+<p style="margin: 0; font-size: 12.5px; line-height: 1.5; color: oklch(70% 0.08 268)">Makadirio. Kiasi halisi hutegemea bwawa soko likifungwa. Kamisheni ya 13% imeshatolewa.</p>
+</div>
+<p aria-live="polite" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; margin: 0"></p>
+<div style="display: flex; align-items: center; justify-content: space-between; gap: 12px">
+<span style="font-size: 14px; color: oklch(86% 0.04 268)">Salio lako</span>
+<span style="font-family: 'JetBrains Mono', monospace; font-size: 15px; font-weight: 600; white-space: nowrap">TZS 2,500,000</span>
+</div>
+<button type="button" disabled aria-describedby="b" style="height: 54px; box-sizing: border-box; border: 1px solid oklch(36% 0.13 268); border-radius: 12px; background: oklch(28% 0.12 268); color: oklch(70% 0.08 268); font-family: Inter, system-ui, sans-serif; font-size: 16px; font-weight: 700; letter-spacing: 0.02em; cursor: not-allowed">Weka dau</button>
+</section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":624}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
