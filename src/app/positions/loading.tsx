@@ -2,6 +2,8 @@ import { getServerT } from "@/lib/i18n-server";
 import { PageContainer } from "@/components/layout/page-container";
 import { PageHeader } from "@/components/ui/page-header";
 import { QUERY_BAR_CLASS, QUERY_BAR_ROW1_CLASS, QUERY_BAR_ROW2_CLASS } from "@/components/ui/query-bar";
+import { resolveSimpleJourney } from "@/lib/server/journey-preview";
+import { TicketsGhost } from "@/components/journey/tickets/tickets-ghost";
 
 /**
  * ⭐ THE SKELETON'S JOB IS THAT NOTHING MOVES WHEN THE DATA LANDS — §B7 rule 3, and the reason it
@@ -22,7 +24,13 @@ import { QUERY_BAR_CLASS, QUERY_BAR_ROW1_CLASS, QUERY_BAR_ROW2_CLASS } from "@/c
  * from the thing it stands in for, silently, for as long as nobody screenshots the first paint.
  */
 export default async function PositionsLoading() {
-  const { t } = await getServerT();
+  /* ⭐ S6 WP9 — THE GHOST IS CHOSEN ON THE SERVER (VODACOM-PLAN §0h point 21), from the same per-request answer the page
+     and the shell read, asked beside the words: a journey reader is drawn Tiketi zangu's ghost, everybody else the ghost
+     below — today's, unchanged — and neither is sent the other's. The answer is React-cached per request: a document
+     load has already asked it for the shell, and a move inside the app costs a reader without a preview pass a cookie
+     and header read and the journey switch's in-process snapshot. */
+  const [{ t }, { journey }] = await Promise.all([getServerT(), resolveSimpleJourney()]);
+  if (journey) return <TicketsGhost t={t} />;
   return (
     <PageContainer tier="reading" className="space-y-6">
       {/* Same three strings, in the same order, as the real header — a skeleton that names the

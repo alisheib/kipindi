@@ -86,6 +86,19 @@ const MUTATIONS = [
     find: `  if (!position || position.userId !== session.userId) notFound();`,
     with: `  if (!position) notFound();`,
   },
+  {
+    // ⭐ S6 WP9 — the journey's Tiketi view is drawn instead of the classic JSX for a preview reader.
+    name: "journey-tickets-view-stops-scrolling-to-the-fragment (E-101b on the journey's view)",
+    file: "src/components/journey/tickets/tickets-view.tsx",
+    find: `      <HashFocus />`,
+    with: ``,
+  },
+  {
+    name: "journey-ticket-card-loses-its-anchor (the fragment names nothing on a journey phone)",
+    file: "src/components/journey/tickets/ticket-card.tsx",
+    find: `      id={p.id}`,
+    with: ``,
+  },
 ];
 
 const run = () => spawnSync("npx", ["tsx", SUITE], { encoding: "utf8", shell: true });

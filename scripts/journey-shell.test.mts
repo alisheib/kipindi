@@ -56,8 +56,9 @@
  *      classic chrome reaches for a reader, the journey reaches too; every route on disk is reached by some reader or
  *      is a named EXTERNAL entrance whose generator still names it and that no door reaches yet; the hub holds the
  *      controls that are not routes; the chrome's door tables are held to their files (both ways; the bell one way,
- *      A1); and A15's two classic doors (`/updown/history`, `/positions/performance`) are pinned until WP9 re-points
- *      them. Its limits are written where it is defined.
+ *      A1); and A15's two routes (`/updown/history`, `/positions/performance`) are pinned at four doors — each classic
+ *      page's own and, since WP9, the journey Tiketi view's — each with its plant. Its limits are written where it is
+ *      defined.
  *   §10 THE HEADER-FIT GATE'S TERMS (WP6b, A5, A6) — the drives ask the pill's rules exactly where `journeyHeaderState`
  *      draws the pill; `red:journey-header-fit` refuses, before its first write, without `--alone` (which its package
  *      script never passes) and inside `red:all` (which marks its harnesses with KP_RED_ALL); and the stylesheet holds
@@ -1565,8 +1566,10 @@ function g8Tabs(I: Impl, W: World, G: Graph, ok: Ok) {
  * generating file still names it (an email, an SMS, the payment provider, the edge, the service worker) and that no
  * door reaches yet. The door tables are held to their files both ways, so a door added to the classic chrome, or taken
  * from it, cannot slip past the census.
- * ⚠️ A15: `/updown/history` and `/positions/performance` enter through CLASSIC page doors until WP9's Tiketi view takes
- * them over. PINNED names both; the commit that moves them re-points the pins, with a plant.
+ * ⚠️ A15: `/updown/history` and `/positions/performance` each have TWO doors — the classic page's own (every classic
+ * reader's) and, since WP9, the journey Tiketi view's (a journey phone's: the switch's Juu/Chini, the view's Utendaji
+ * link). The census reads every branch of a page's code for every reader, so one door would hide the loss of the other:
+ * PINNED holds all four, each to its file, each with its own plant.
  * ⚠️ WHAT IT CANNOT SEE — its limits, stated rather than hidden (the WP6b review):
  *   · A LINK BUILT IN A `.ts` HELPER IS NO EDGE. The walk follows `.tsx` components only, so a position's permalink
  *     (`position-permalink.ts`), the performance page's query links and a notification's href are invisible to it —
@@ -1718,10 +1721,16 @@ const EXTERNAL: ReadonlyArray<{ route: string; file: string; cite: string; why: 
   { route: "/s/[token]", file: "src/lib/marketing/footer.ts", cite: 'OPTOUT_PATH = "/s/"', why: "the opt-out link in every marketing SMS" },
   { route: "/offline", file: "public/sw.js", cite: 'OFFLINE_URL = "/offline"', why: "the service worker's offline fallback" },
 ];
-/** A15: the classic page doors two tickets routes enter through until WP9 re-points them. */
+/**
+ * A15: the four doors two tickets routes enter through — each classic page's own, which every classic reader uses, and
+ * (WP9) the journey Tiketi view's, which a journey phone uses. Each is held to its file with its own plant: the census
+ * counts every branch of a page for every reader, so a single pin per route would let either door go unseen.
+ */
 const PINNED: ReadonlyArray<{ route: string; from: string; file: string; why: string }> = [
-  { route: "/updown/history", from: "/updown", file: "src/app/updown/page.tsx", why: "the board's own history link, until WP9's Tiketi switch carries the door" },
-  { route: "/positions/performance", from: "/positions", file: "src/app/positions/page.tsx", why: "the classic Tiketi page's performance link, until WP9's journey view carries it" },
+  { route: "/updown/history", from: "/updown", file: "src/app/updown/page.tsx", why: "the board's own history link, every classic reader's door" },
+  { route: "/positions/performance", from: "/positions", file: "src/app/positions/page.tsx", why: "the classic Tiketi page's performance link, every classic reader's door" },
+  { route: "/updown/history", from: "/positions", file: "src/components/journey/tickets/ticket-switch.tsx", why: "the Tiketi switch's Juu/Chini door, a journey phone's (WP9)" },
+  { route: "/positions/performance", from: "/positions", file: "src/components/journey/tickets/tickets-view.tsx", why: "the journey Tiketi view's Utendaji link, a journey phone's (WP9)" },
 ];
 
 /** A path literal: a quoted or templated string that starts with "/", which is what an href, a redirect and a row's data look like. */
@@ -2439,6 +2448,12 @@ ${s}`);
     const avatarLostKyc = withFile(WORLD, AVATAR_FILE, (s) => s.split(`"/profile/kyc"`).join(`"/kyc"`));
     const UPDOWN_PAGE = "src/app/updown/page.tsx";
     const historyUnpinned = withFile(WORLD, UPDOWN_PAGE, (s) => s.split(`"/updown/history"`).join(`"/updown"`));
+    const POSITIONS_PAGE = "src/app/positions/page.tsx";
+    const performanceUnpinned = withFile(WORLD, POSITIONS_PAGE, (s) => s.split(`"/positions/performance"`).join(`"/positions"`));
+    const TICKET_SWITCH = "src/components/journey/tickets/ticket-switch.tsx";
+    const TICKETS_VIEW = "src/components/journey/tickets/tickets-view.tsx";
+    const switchUnpinned = withFile(WORLD, TICKET_SWITCH, (s) => s.split(`"/updown/history"`).join(`"/updown"`));
+    const utendajiUnpinned = withFile(WORLD, TICKETS_VIEW, (s) => s.split(`"/positions/performance"`).join(`"/positions"`));
     const noAkaunti = TAB.JOURNEY_TABS.filter((t) => t.key !== "account");
     const withoutRow = (id: string): Impl["hubRows"] => (v) => HUB.hubRowsFor(v).map((g) => ({ ...g, rows: g.rows.filter((r) => r.id !== id) }));
     const noArifa = withoutRow("notifications");
@@ -2766,8 +2781,14 @@ ${s}`);
       { name: "the avatar menu loses a door the census still holds", expect: at(`9.chrome.${AVATAR_FILE} ·`),
         world: avatarLostKyc, landed: changed(avatarLostKyc, AVATAR_FILE) && !text(avatarLostKyc, AVATAR_FILE).includes(`"/profile/kyc"`),
         landedAs: "the journey measured against a classic menu that no longer exists" },
-      { name: "the board's history link is removed — A15's pinned door", expect: at("9.pinned./updown/history ·"),
-        world: historyUnpinned, landed: changed(historyUnpinned, UPDOWN_PAGE), landedAs: "Up & Down tickets reachable from nowhere on a phone" },
+      { name: "the board's history link is removed — A15's classic door", expect: at(`9.pinned./updown/history · ${UPDOWN_PAGE}`),
+        world: historyUnpinned, landed: changed(historyUnpinned, UPDOWN_PAGE), landedAs: "the board's door to the Up & Down tickets gone" },
+      { name: "the classic Tiketi page's performance link is removed — A15's classic door", expect: at(`9.pinned./positions/performance · ${POSITIONS_PAGE}`),
+        world: performanceUnpinned, landed: changed(performanceUnpinned, POSITIONS_PAGE), landedAs: "the classic page's door to the performance page gone" },
+      { name: "the Tiketi switch loses its Juu/Chini door — A15's journey door (WP9)", expect: at(`9.pinned./updown/history · ${TICKET_SWITCH}`),
+        world: switchUnpinned, landed: changed(switchUnpinned, TICKET_SWITCH), landedAs: "the switch's door to the Up & Down tickets gone" },
+      { name: "the journey Tiketi view loses its Utendaji link — A15's journey door (WP9)", expect: at(`9.pinned./positions/performance · ${TICKETS_VIEW}`),
+        world: utendajiUnpinned, landed: changed(utendajiUnpinned, TICKETS_VIEW), landedAs: "the view's door to the performance page gone" },
       // §8 · WP6b — the chrome mounted by AppShell alone, and lazily
       { name: "a page loads the journey header itself", expect: at("8.mount ·"),
         world: pageLoadsHeader, landed: changed(pageLoadsHeader, MARKETS_PAGE), landedAs: "a second mount of the journey chrome, outside the resolver's one decision" },

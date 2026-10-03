@@ -36,6 +36,8 @@ const UTILS = "src/lib/utils.ts";
 const PAGE = "src/app/markets/[id]/page.tsx";
 const CLOCK = "src/components/markets/countdown.tsx";
 const GATE = "scripts/timer-date.test.mts";
+/** S6 WP9 — the journey's ticket card, which states two instants for a preview reader. */
+const JOURNEY_CARD = "src/components/journey/tickets/ticket-card.tsx";
 
 /** @type {RedMutation[]} */
 export const MUTATIONS = [
@@ -101,5 +103,23 @@ export const MUTATIONS = [
     from: `  const resolvedLabel = label ?? t.common.closesIn;`,
     to: `  const resolvedLabel = (label ?? t.common.closesIn).trim(); void new Date(to).toLocaleDateString();`,
     expect: "3: Countdown derives no format of its own",
+  },
+  {
+    name: "journey-card-names-another-instant",
+    why: "⭐ S6 WP9 · the journey ticket's close line formats the RESOLUTION while its <time> claims the selection cutoff — present, formatted, zoned, and about a different moment, the wrong-instant case on a preview reader's ticket",
+    file: JOURNEY_CARD,
+    suite: "timer-date",
+    from: `<time dateTime={cutoffIso} className="whitespace-nowrap tabular-nums">{formatDeadline(cutoffIso, serverNow)}</time>`,
+    to: `<time dateTime={cutoffIso} className="whitespace-nowrap tabular-nums">{formatDeadline(m.resolutionAt, serverNow)}</time>`,
+    expect: "3: ...its <time dateTime={cutoffIso}> names the SAME instant it formats",
+  },
+  {
+    name: "journey-card-year-blind",
+    why: "S6 WP9 · the journey ticket's placement date goes through the raw same-year formatter, so a ticket placed last year reads as this year's",
+    file: JOURNEY_CARD,
+    suite: "timer-date",
+    from: `{formatDeadline(p.placedAt, serverNow)}`,
+    to: `{formatDayTime(p.placedAt)}`,
+    expect: "3: journey ticket-card.tsx routes every deadline through formatDeadline",
   },
 ];

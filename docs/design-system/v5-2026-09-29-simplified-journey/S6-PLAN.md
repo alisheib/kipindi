@@ -749,6 +749,58 @@ changes, because no page reads the new fields yet.
 - test:type-scale: no new off-ladder sizes
 - qa:journey-shell: Tiketi tiles for open, settled, empty and guest-sheet, plus the /updown/history switch, at 320/390/1280 × sw/en/zh
 
+*As built (WP9, 2026-10-03):* `/positions` asks the one resolver after its session check and, for a journey request,
+returns `TicketsView` (`src/components/journey/tickets/`) before its classic JSX, which is byte for byte today's; its
+tab title follows the same answer (A2's precedent). Every read and the exit pricing stay on the page; the view is
+handed the rows, the positions, their markets and the priced exits, and cuts the list by the lens ALONE: search and
+sort are shelved for preview viewers (A19, VODACOM-PLAN §0h point 11), the side, topic and window groups are row 2's,
+which step 5's variant does not draw, and a link's other settings are ignored for a journey reader (§0h point 23).
+Step 5's variant is a sibling export, `PositionsBarJourney` in `positions-bar.tsx`, not a prop, and both bars render
+`PositionsRail` — the classic bar's own outer element, moved there verbatim — so the classic markup is today's and the
+rail hook is written once (`red:filter-language`'s vacuity case still removes the only one; a second copy would have
+made its anchor ambiguous). The file stays the declared filter SURFACE: row 1 only, all seven lenses (§0h point 11),
+no count on any pill and no result count, the strip named `journey.ticketsFilterAria` (A7; en "Filter tickets" and zh
+"筛选注单" since WP9). An empty outcome lens reads four new journey keys, `ticketsEmptySettled`, `ticketsEmptyWon`,
+`ticketsEmptyLost` and `ticketsEmptyRefunded` (en and sw the classic lines, zh 注单 for 持仓; §0h point 27).
+`TicketCard` draws the canvas's order in the kit's atoms: the side and state chips (the state's colour is
+`positionStatusChip` in `status-tone.ts`, extracted from `position-card.tsx`, which now calls it — no copy); the short
+title as the only link (`cardTitle`; the fallback held to two lines by a clamp on the words inside the link), padded
+12px each way and pulled back by the same negative margin — `side-picker.tsx`'s absorber, with no new CSS — so the link
+is a 44px target and the card does not move; Dau and Malipo through `ticketPayout` — NO figure until the result,
+whether betting is open, selling has closed or the closing sweep has stamped the market (SJ-4, §C3; §0h point 22
+supersedes step 4's exact figure, and the classic card keeps its own) — then "Malipo ya mwisho", the ticket number,
+and "Imewekwa" and "Uchaguzi unafungwa", each a `<time>` naming its instant and formatted by `formatDeadline` with the
+render's clock. The classic SellButton is handed `freeUntil={freeExitEndsAt({ placedAt: p.placedAt }, m)}`: the card
+is a third host, so `test:sell-grace-truth` §2 names it, with three plants (A8). The head, `TicketsHead`, is the kit's
+`PageHeader` with the name alone — its `eyebrow` became optional and is drawn only when given, and every classic call
+site passes one — and then step 3's switch, the kit `<Tabs variant="line">` in link mode, which `TicketSwitch` reaches
+only through `TicketSwitchRail`, a small client wrapper that loads `Tabs` with `next/dynamic` and its server render on
+(`layout/lazy-overlays.tsx`'s pattern without `ssr: false`), so a classic reader of either route is not sent the kit's
+code (§0h point 20; WP6c's production build proves it, owed). The Utendaji link sits after the list and the pager
+(§0h point 33). `/updown/history` renders `TicketsHead` for a journey request through two sibling ternaries standing
+where its back link and its header stood — never one over a fragment — so a classic reader's tree and payload are
+today's; its gutter wrapper, the scroll to a linked ticket, the poller, `?day` and everything below are unchanged.
+Step 7, with A16 overruled (§0h point 21): the loading ghosts are chosen ON THE SERVER — each loading file asks the
+per-request resolver beside the words in one `Promise.all` and returns one ghost, the journey's for a journey request
+and today's, unchanged, for everybody else (`/updown/history`'s two head lines are sibling ternaries too). A16 feared
+the question would delay every reader; it is React-cached per request, a document load has already asked it for the
+shell, and a soft navigation by a reader without a preview pass costs a cookie and header read and the switch's
+in-process snapshot (the store re-read at most every 10 s, never under a WITHDRAWN ceiling). It buys no classic-ghost
+("Nafasi") flash on a journey reader's first load, and no journey ghost tree, words or client module in a classic
+reader's bytes. The two error pages stay client components (Next requires it) and are never drawn on the server
+(React's server renderer cannot run an error boundary): each mounts in the browser as a fresh render, where
+`useJourneyOn()` reads the shell's mark already in the page, so a journey reader's first sight of one has the tickets'
+words — `/positions`' body and back link, `/updown/history`'s body only. A15: `test:journey-shell` §9 pins each
+tickets route at both its doors — the classic page's (the board's history link, the classic page's performance link)
+and the journey view's (the switch, the Utendaji link) — four pins, a plant each, because the census reads every
+branch of a page for every reader and one door would hide the loss of the other. A14: `test:journey-tickets` is in
+predeploy and `red:journey-tickets` plants a defect for every one of its checks, in memory. Extended in the open:
+`test:timer-date` §3 (seven card checks, two `red:timer-date` mutations) and `test:position-permalink` 5.5/5.6 (two
+`red:position-permalink` mutations); the card also carries the id a fragment names, so `HashFocus` has a card to
+centre. ⚠️ Still saying "nafasi" to a journey reader: the Sell button's dialogs (WP10) and, off Tiketi zangu itself,
+`/positions/performance` (not rebuilt in WP9), the question page's holder heading and the desktop avatar menu's row —
+all on VODACOM-PLAN §3's S15 rename list (§0h point 34).
+
 ### WP10 — Journey sell look on the ticket card (opt-in, no money change) (M; depends on WP9)
 
 **Goal.** Show the canvas's 'Uza bila ada hadi 11:23 · 3:42' with an outlined 'Uza bila ada / Rudishiwa TZS n kamili' on journey tickets, with the cash-out logic untouched.

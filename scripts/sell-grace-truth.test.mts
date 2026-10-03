@@ -20,7 +20,8 @@
  *      requires it to disagree, so the grid can see the defect it exists for.
  *   §2 THE HOSTS — every file that renders SellButton, derived from `src/` on disk: each is a server component,
  *      imports the one helper, and hands every SellButton `freeUntil={freeExitEndsAt(…)}` — asked with the
- *      position's own placement and the market as read — and never a placement.
+ *      position's own placement and the market as read — and never a placement. Three must be among them, by name:
+ *      `/positions`, the holder block of `/markets/[id]`, and (S6 WP9) the journey's ticket card on Tiketi zangu.
  *   §3 THE BUTTON — `sell-button.tsx` as a syntax tree: no `GRACE_MS`, no five-minute constant, nothing multiplied
  *      out of minutes; the countdown's one time source is `Date.parse(freeUntil)`, an instant that is withdrawn
  *      zeroes it, and the free/fee state and the m:ss label both read that countdown and nothing else.
@@ -76,6 +77,8 @@ const REAL: Impl = { freeExitEndsAt: SVC.freeExitEndsAt };
 const SELL_BUTTON = "src/components/markets/sell-button.tsx";
 const POSITIONS = "src/app/positions/page.tsx";
 const MARKET = "src/app/markets/[id]/page.tsx";
+/** S6 WP9 — the journey's ticket card renders the button on Tiketi zangu: a host like the two above, held to the same call. */
+const JOURNEY_CARD = "src/components/journey/tickets/ticket-card.tsx";
 const readRaw = (rel: string) => readFileSync(join(REPO_ROOT, rel), "utf8").split(CR).join("");
 type World = { files: Map<string, string>; rawSellButton: string; scripts: Record<string, string> };
 const WORLD: World = {
@@ -315,8 +318,8 @@ function g2Hosts(W: World) {
   const mentions = [...W.files].filter(([rel, code]) => rel !== SELL_BUTTON && (code.includes("SellButton") || code.includes("/sell-button")));
   const hosts = mentions.map(([rel, code]) => hostOf(rel, code)).filter((h) => h.els.length > 0);
   say(`     src files read: ${W.files.size} · files naming SellButton: ${mentions.length} · hosts that render it (${hosts.length}): ${hosts.map((h) => `${h.rel} ×${h.els.length}`).join(", ")}`);
-  ok("2.pop · the hosts are derived from disk, and they include the two this fix was written for — /positions and the holder block of /markets/[id]",
-    W.files.size >= 500 && [POSITIONS, MARKET].every((f) => hosts.some((h) => h.rel === f)), j({ files: W.files.size, hosts: hosts.map((h) => h.rel) }));
+  ok("2.pop · the hosts are derived from disk, and they include the two this fix was written for — /positions and the holder block of /markets/[id] — and the journey's ticket card (S6 WP9)",
+    W.files.size >= 500 && [POSITIONS, MARKET, JOURNEY_CARD].every((f) => hosts.some((h) => h.rel === f)), j({ files: W.files.size, hosts: hosts.map((h) => h.rel) }));
   const clientHosts = hosts.filter((h) => h.client).map((h) => h.rel);
   ok("2.server · every host is a SERVER component, so the instant is computed where the poll's frozen rates are read — never in the browser",
     hosts.length > 0 && clientHosts.length === 0, j(clientHosts));
@@ -530,6 +533,13 @@ const PLANTS: Plant[] = [
     ].join(NL)) },
   { name: "the market page takes its instant from another module", expect: ["2.import"],
     world: (w) => inFile(w, MARKET, "import { cashOutValue, freeExitEndsAt, getMarket,", `import { freeExitEndsAt } from "@/lib/free-exit";${NL}import { cashOutValue, getMarket,`) },
+  // §2 — the journey's ticket card (S6 WP9): a host in the open, held to the same call as the classic two
+  { name: "the journey ticket card builds the instant in JSX from the placement and a constant", expect: ["2.passes"],
+    world: (w) => inFile(w, JOURNEY_CARD, HOST_CALL, "freeUntil={new Date(Date.parse(p.placedAt) + 5 * 60_000).toISOString()}") },
+  { name: "the journey ticket card becomes a client component (the instant would be computed in the browser)", expect: ["2.server"],
+    world: (w) => withFile(w, JOURNEY_CARD, `"use client";${NL}${w.files.get(JOURNEY_CARD) ?? ""}`) },
+  { name: "the journey ticket card stops rendering SellButton (a journey reader could no longer sell)", expect: ["2.pop"],
+    world: (w) => inFile(w, JOURNEY_CARD, "<SellButton", "<SellButtonGone") },
   // §3 — the button
   { name: "GRACE_MS comes back and gates the free state again", expect: ["3.grace-ms"],
     world: (w) => inFile(

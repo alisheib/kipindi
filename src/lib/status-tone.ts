@@ -274,6 +274,20 @@ export function playerStatusChip(word: string): StatusChipVariant | null {
 }
 
 /**
+ * ⭐ A POSITION'S STATUS CHIP, DECIDED ONCE (the Vodacom plan S6, S6-PLAN WP9 step 4). The classic position card and
+ * the journey's ticket card both paint a ticket's state, and both paint it through THIS, so the two cards cannot come
+ * to disagree about what a lost bet or a refund looks like. The WORD stays `positionStatusWord`'s (`side-label`); this
+ * is the colour alone.
+ * ⛔ `LOSS` KEEPS THE BETTING ROSE (`no`) — Ali's ruling, `STATUS_TONE_EXCEPTIONS.LOSS` below: the red of the No side
+ * chip on the same card, never the status `rose`, which is the platform's failure colour.
+ * ⛔ AND THE FALLBACK IS EXPLICIT: a word the dictionary has no player opinion about is `warning`, said here rather than
+ * left to a lookup that yields `undefined` (the ruling quoted at `playerStatusChip` above).
+ */
+export function positionStatusChip(status: string): StatusChipVariant | "no" {
+  return status === "LOSS" ? "no" : (playerStatusChip(status) ?? "warning");
+}
+
+/**
  * ⛔ THE DIVERGENCES THAT ARE DECISIONS, STATED AS DECISIONS.
  *
  * Anything in here is deliberate and must not be "harmonised" by a later session.
@@ -344,7 +358,8 @@ export const STATUS_TONE_EXCEPTIONS = {
    * anything: it is the ordinary other half of a two-sided market. ⛔ It would also put a
    * different red beside the No chip it sits next to, on the same card, in the same row.
    *
-   * ⭐ SO THE CARD KEEPS AN EXPLICIT `"no"` ARM rather than reading `TONE_CHIP[STATUS_TONE.LOSS…]`,
+   * ⭐ SO THE CARDS KEEP ONE EXPLICIT `"no"` ARM rather than reading `TONE_CHIP[STATUS_TONE.LOSS…]` —
+   * `positionStatusChip` above, which the classic position card and the journey's ticket card both call (S6 WP9) —
    * and the arm carries a pointer back to this entry. The table's `rose` records what the STATUS
    * reading would be — for any surface that renders the word outside a betting context — and this
    * note records why the card does not use it.

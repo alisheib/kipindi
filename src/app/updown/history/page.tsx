@@ -20,6 +20,8 @@ import { RefreshPoller } from "@/components/ui/refresh-poller";
 import { currentSession } from "@/lib/server/auth-service";
 import { getMyUpDownHistory, type MyRoundRow } from "@/lib/server/updown-board";
 import { getServerT } from "@/lib/i18n-server";
+import { resolveSimpleJourney } from "@/lib/server/journey-preview";
+import { TicketsHead } from "@/components/journey/tickets/ticket-switch";
 import { eatDayWindow, isInEatDay, eatDayKey, formatEatDay } from "@/lib/eat-day";
 import { pickLocalized } from "@/lib/localized";
 import { formatTzs, formatTzsSigned } from "@/lib/utils";
@@ -84,6 +86,9 @@ export default async function UpDownHistoryPage({ searchParams }: {
   const { t, locale } = await getServerT();
   const session = await currentSession();
   if (!session) redirect(`/auth/login?next=${encodeURIComponent("/updown/history")}`);
+  // ⭐ S6 WP9 — the one cached resolver, asked once for this request: a journey reader is on Tiketi zangu's Up & Down
+  // kind, and only the header below changes for them.
+  const { journey } = await resolveSimpleJourney();
 
   // ── The digest's deep link (`?day=YYYY-MM-DD`), one EAT calendar day ──────
   //
@@ -288,10 +293,18 @@ export default async function UpDownHistoryPage({ searchParams }: {
       {/* E-101b · a `#pos_…` fragment names one card in this grid; this is what scrolls to it.
           Without it the anchors render, the ring applies, and the player still lands at the top. */}
       <HashFocus />
-      <BackLink fallbackHref="/updown" label={t.market.udBackToBoard} />
-      <div className="mt-3">
-        <PageHeader eyebrow={t.market.udTitle} title={t.market.udHistoryTitle} subtitle={t.market.udHistoryBody} />
-      </div>
+      {/* ⭐ TIKETI ZANGU, UP & DOWN (the Vodacom plan S6, S6-PLAN WP9 step 6): for a journey request this page is the
+          second kind of ticket, so it wears the tickets' name and the Maswali | Juu/Chini switch, Juu/Chini current, in
+          place of the back link and the game's header. ⛔ TWO SIBLING TERNARIES, NEVER ONE OVER A FRAGMENT: each stands
+          where its element stood, so a reader the journey is not shown to is served today's tree exactly, payload and
+          all. The wrapper above with its gutter, the scroll to a linked ticket, the poller, the day filter and everything
+          below are everybody's. */}
+      {journey ? <TicketsHead current="updown" t={t} /> : <BackLink fallbackHref="/updown" label={t.market.udBackToBoard} />}
+      {journey ? null : (
+        <div className="mt-3">
+          <PageHeader eyebrow={t.market.udTitle} title={t.market.udHistoryTitle} subtitle={t.market.udHistoryBody} />
+        </div>
+      )}
 
       {/* The day rail — the filter's state AND the way in and out of it, in one control.
           ⚠️ IT REPLACES A CHIP THAT ONLY REPORTED. The old row was a `chip-pending` badge

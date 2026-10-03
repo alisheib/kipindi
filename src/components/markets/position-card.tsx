@@ -11,8 +11,9 @@ import { I } from "@/components/ui/glyphs";
 import { useT } from "@/lib/i18n";
 import { sideWord, positionStatusWord, type LabelProductLine } from "@/lib/side-label";
 // ⭐ THE STATUS-COLOUR DICTIONARY (stage 5.3). The word comes from `side-label`, the COLOUR from
-// here — two definition sites for two different facts, neither typed at this call site.
-import { playerStatusChip } from "@/lib/status-tone";
+// here — two definition sites for two different facts, neither typed at this call site. Since S6 WP9 the
+// chip's whole rule is `positionStatusChip`, which the journey's ticket card calls too: one rule, two cards.
+import { positionStatusChip } from "@/lib/status-tone";
 import { PositionShare } from "@/components/markets/position-share";
 
 type Props = {
@@ -80,27 +81,24 @@ export function PositionCard({ marketId, marketTitle, side, productLine, stake, 
           <Chip size="sm" variant={side === "YES" ? "yes" : "no"}>{sideWord(t, side, productLine)}</Chip>
           {/**
             * ⭐ PLAYER QUERY, STAGE 5.3 — THE TONE COMES FROM THE DICTIONARY NOW. Three of the five
-            * `PositionStatus` values had no entry in `status-tone.ts`, so this ternary hand-typed
-            * its variant beside the status label: the exact shape §B11 names as a defect. It is
-            * what stops the *Refunded* lens stage 4 gave five surfaces from disagreeing with the
-            * card it filters to about what refunded looks like.
+            * `PositionStatus` values had no entry in `status-tone.ts`, so this card hand-typed its
+            * variant beside the status label: the exact shape §B11 names as a defect. It is what
+            * stops the *Refunded* lens stage 4 gave five surfaces from disagreeing with the card it
+            * filters to about what refunded looks like.
             *
-            * ⛔ TWO ARMS DELIBERATELY DO NOT GO THROUGH IT, and both are recorded as decisions in
-            * `STATUS_TONE_EXCEPTIONS` rather than left as drift:
-            *   · `LOSS` keeps the BETTING rose (`no`) — Ali's ruling. It is the same red as the No
-            *     side chip one row above; the status `rose` resolves to `danger`, the platform's
-            *     FAILURE colour, and a bet that lost is the ordinary other half of a two-sided
-            *     market rather than a fault. Harmonising it would also put two different reds side
-            *     by side on one card.
-            *   · the FINAL ARM stays an explicit literal — see below.
-            *
-            * ⛔ AND THE FALLBACK IS EXPLICIT, WHICH IS ALI'S RULING VERBATIM: *"A bare map lookup
-            * returning `undefined` is an untoned chip that no gate would catch."* `TONE_CHIP` is
-            * total over `StatusTone`, but `STATUS_TONE` is not total over every string a status
-            * column can hold, so the `??` is what makes this expression total.
+            * ⭐ S6 WP9 — AND THE WHOLE RULE IS ONE FUNCTION NOW, `positionStatusChip` (`status-tone.ts`),
+            * which the journey's ticket card calls too, so the two cards cannot drift apart. Its two
+            * decisions are recorded there, beside the dictionary they qualify:
+            *   · `LOSS` keeps the BETTING rose (`no`) — Ali's ruling, `STATUS_TONE_EXCEPTIONS.LOSS`. It is
+            *     the same red as the No side chip one row above; the status `rose` resolves to `danger`,
+            *     the platform's FAILURE colour, and a bet that lost is the ordinary other half of a
+            *     two-sided market rather than a fault.
+            *   · the FALLBACK is explicit, Ali's ruling verbatim: *"A bare map lookup returning
+            *     `undefined` is an untoned chip that no gate would catch."* `STATUS_TONE` is not total
+            *     over every string a status column can hold, so the helper says what it does with one.
             *
             * ⭐ `CASHED_OUT` IS SLATE HERE SINCE 2026-09-09, AND THIS CARD IS THE ONLY PLACE THE
-            * CHANGE IS VISIBLE. It shipped amber, which is what this ternary's final arm used to
+            * CHANGE IS VISIBLE. It shipped amber, which is what the card's old ternary's final arm used to
             * paint before the dictionary had an opinion; stage 5.3 recorded that amber as measured
             * and filed the mismatch instead of repainting a live money chip. Ali answered `slate`:
             * amber means *somebody must act*, and a cashed-out position is terminal. ⛔ The
@@ -108,19 +106,12 @@ export function PositionCard({ marketId, marketTitle, side, productLine, stake, 
             * amended — so if you came here looking for it, the dictionary is now simply being
             * obeyed and there is nothing left to except.
             *
-            * ⚠️ `playerStatusChip` is now total over all five `PositionStatus` values, so the `??`
-            * arm below is unreachable from this card today. It stays because that totality is a
-            * property of the dictionary, not of this file, and a status column can hold a word the
-            * dictionary has no player opinion about.
+            * ⚠️ `playerStatusChip` is now total over all five `PositionStatus` values, so the helper's
+            * fallback is unreachable from this card today. It stays because that totality is a property
+            * of the dictionary, not of this file, and a status column can hold a word the dictionary has
+            * no player opinion about.
             */}
-          <Chip size="sm" variant={
-            // ⛔ Ali's ruling — the betting rose, not the status rose. See the exception.
-            status === "LOSS" ? "no"
-            // ⛔ AND THE FALLBACK IS EXPLICIT AND VISIBLE. `playerStatusChip` returns `null` for a
-            //    word the dictionary has no player opinion about; `?? "warning"` is this card
-            //    saying what it does with that, rather than a lookup quietly yielding `undefined`.
-            : (playerStatusChip(status) ?? "warning")
-          }>{statusLabel}</Chip>
+          <Chip size="sm" variant={positionStatusChip(status)}>{statusLabel}</Chip>
         </div>
         <span className="font-mono text-[14px] font-bold tabular-nums text-text">
           <Cash>{formatTzs(stake)}</Cash>

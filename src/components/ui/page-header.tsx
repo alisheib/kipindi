@@ -27,7 +27,12 @@ export function PageHeader({
   tone = "subtle",
   className,
 }: {
-  eyebrow: string;
+  /**
+   * The small line over the heading, with `icon` inside it. ⭐ Optional since the Vodacom plan S6 (WP9): Tiketi zangu's
+   * head is the name alone — the canvas draws no line over it, and the classic one says "Nafasi" — so the line is drawn
+   * only when it is given. Every other call site passes one, and for them the line is the element it always was.
+   */
+  eyebrow?: string;
   /** A node, so a loading skeleton can render the SAME heading with its text as a placeholder bar. */
   title: ReactNode;
   subtitle?: ReactNode;
@@ -37,12 +42,14 @@ export function PageHeader({
 }) {
   return (
     <div className={className}>
-      <p
-        className={`flex items-center gap-2 mb-1 font-mono text-caption uppercase eyebrow font-bold ${EYEBROW_TONE[tone]}`}
-      >
-        {icon}
-        {eyebrow}
-      </p>
+      {eyebrow != null && (
+        <p
+          className={`flex items-center gap-2 mb-1 font-mono text-caption uppercase eyebrow font-bold ${EYEBROW_TONE[tone]}`}
+        >
+          {icon}
+          {eyebrow}
+        </p>
+      )}
       {/* ⭐ DG-P-03 · §T1/§T7 — ONE LINE, 31 CALL SITES, AND NOT ONE PIXEL MOVES.
           This was `text-[28px]`, an arbitrary — and it is the arbitrary every page title in the
           product inherits, so it was the highest-leverage one in the tree. `text-title-lg` IS

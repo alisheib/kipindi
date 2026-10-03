@@ -131,9 +131,31 @@ ok("1: the platform zone resolves to a real IANA zone", /^[A-Za-z]+\/[A-Za-z_]+$
   for (const [file, src] of [
     ["markets/[id]/page.tsx", market],
     ["positions/page.tsx", read("../src/app/positions/page.tsx")],
+    // ⭐ S6 WP9 — the journey's ticket card states the same two instants to a preview reader.
+    ["journey ticket-card.tsx", read("../src/components/journey/tickets/ticket-card.tsx")],
   ] as const) {
     ok(`3: ${file} routes every deadline through formatDeadline`, !/\bformatDayTime\(/.test(src));
   }
+
+  // ⭐ S6 WP9 · THE JOURNEY'S TICKET CARD STATES TWO INSTANTS — when the ticket was placed and when selection closes —
+  // and, like the market page's timers, each date must name the instant it is about: every `formatDeadline(` on the
+  // card sits inside a `<time dateTime={X}>` whose X is the very expression it formats, asked with the render's own
+  // `serverNow` (so the year rule reads the server's clock). ⛔ And the card formats on the server: no directive, and
+  // no locale formatter of its own. Patterns are spelt with character classes, so no escape is typed here.
+  const card = read("../src/components/journey/tickets/ticket-card.tsx");
+  const dated = [...card.matchAll(/<time dateTime=[{]([^}]+)[}][^>]*>[{]formatDeadline[(]([^,)]+), serverNow[)][}]<[/]time>/g)];
+  ok("3: the journey ticket card dates both of its instants (placed, selection closes)", dated.length === 2, `found ${dated.length}`);
+  for (const m of dated) {
+    ok(`3: ...its <time dateTime={${m[1].trim()}}> names the SAME instant it formats`, m[1].trim() === m[2].trim(),
+      `dateTime=${m[1]} formats ${m[2]}`);
+  }
+  ok("3: ...and the card formats no date outside those two", card.split("formatDeadline(").length - 1 === dated.length,
+    `${card.split("formatDeadline(").length - 1} formatDeadline calls`);
+  ok("3: the journey ticket card formats on the server, never with a locale formatter of its own",
+    card.length > 0 && !card.trimStart().startsWith(`"use client"`) && !/toLocale(Date|Time)?String/.test(card));
+  ok("3: ...and its close line names the instant its Sell button closes at",
+    card.includes("const cutoffIso = m.selectionClosedAt ?? m.resolutionAt;") && card.includes("closesAt={cutoffIso}")
+      && card.includes("<time dateTime={cutoffIso}"));
 
   const utils = read("../src/lib/utils.ts");
   // ⚠️ `\bformatDayTime\(` also matches its own `export function` line, so count CALL

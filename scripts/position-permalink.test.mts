@@ -131,10 +131,20 @@ console.log("\n── 5 · the destinations RENDER the anchor, or the fragment l
     "src/app/updown/[roundId]/page.tsx",
     "src/app/updown/history/page.tsx",
     "src/app/positions/page.tsx",
+    // ⭐ S6 WP9 — the journey's Tiketi view is drawn INSTEAD of the classic JSX for a preview reader, so it mounts the
+    // scroll itself.
+    "src/components/journey/tickets/tickets-view.tsx",
   ]) {
     ok(`5.5 ⭐ ${f.replace("src/app", "")} scrolls to the fragment (<HashFocus />)`,
       /<HashFocus\s*\/>/.test(code(f)), "no <HashFocus /> rendered");
   }
+
+  // ⭐ S6 WP9 — and the journey's ticket card carries the id the fragment names, as the market page's card does.
+  // (" id=" with its space: the card's `data-row-id` also ends in "id={p.id}".)
+  const ticketCard = code("src/components/journey/tickets/ticket-card.tsx");
+  ok("5.6 ⭐ the journey's ticket card carries its own id as an anchor, ringed and offset under the header",
+    ticketCard.includes(" id={p.id}") && ticketCard.includes("ticket-target") && ticketCard.includes("scroll-mt-"),
+    "no id={p.id} on the journey ticket card");
 
   const css = read("src/app/globals.css");
   ok("5.4 a targeted row is VISIBLY marked, so the player can see which one they came for",

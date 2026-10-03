@@ -32,10 +32,15 @@ import { RefreshPoller } from "@/components/ui/refresh-poller";
 import { getServerT } from "@/lib/i18n-server";
 import { pickLocalized } from "@/lib/localized";
 import { PageContainer } from "@/components/layout/page-container";
+import { resolveSimpleJourney } from "@/lib/server/journey-preview";
+import { TicketsView } from "@/components/journey/tickets/tickets-view";
 
 export async function generateMetadata() {
   const { t } = await getServerT();
-  return { title: t.common.positions };
+  // ⭐ THE TAB TITLE FOLLOWS THE PAGE (S6 WP9): "Tiketi zangu" for a request the one resolver puts in the journey,
+  // today's word for everybody else — the same cached answer the body below and the shell are given.
+  const { journey } = await resolveSimpleJourney();
+  return { title: journey ? t.journey.tabTickets : t.common.positions };
 }
 export const dynamic = "force-dynamic";
 
@@ -43,6 +48,10 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
   const { t, locale } = await getServerT();
   const session = await currentSession();
   if (!session) redirect("/auth/login?next=/positions");
+  // ⭐ THE NEW JOURNEY, ASKED ONCE FOR THIS REQUEST (the Vodacom plan S6, S6-PLAN WP9) — the one cached resolver AppShell
+  // asked too, so the page and its chrome cannot disagree. Everything below is read and priced for both views; only the
+  // render branches, just above the classic JSX.
+  const { journey } = await resolveSimpleJourney();
   const sp = await searchParams;
 
   /**
@@ -251,6 +260,28 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
     : cause === "search-miss" ? t.positions.emptySearchBody
     : cause === "window-miss" ? t.positions.emptyWindowBody
     : t.positions.emptyFilterBody;
+
+  /**
+   * ⭐ TIKETI ZANGU, FOR A JOURNEY REQUEST (the Vodacom plan S6, SJ-16 and SJ-19; S6-PLAN WP9 as amended by A7, A8 and
+   * A19) — returned BEFORE the classic JSX below, which stays byte for byte today's for everybody else. The view is
+   * handed what this page has already read and priced (every position, its market, each open exit's live value) and
+   * reads nothing of its own; the exit pricing and its pricing inputs stay on the page (`test:journey-tickets` §8).
+   */
+  if (journey) {
+    return (
+      <TicketsView
+        rows={rows}
+        positions={byId}
+        markets={marketMap}
+        prices={pricedById}
+        lens={state.tab}
+        page={pageNum}
+        serverNow={serverNow}
+        locale={locale}
+        t={t}
+      />
+    );
+  }
 
   return (
     <PageContainer tier="reading" className="space-y-6">

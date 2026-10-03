@@ -52,6 +52,7 @@ import {
   type WhenId,
 } from "@/lib/positions/portfolio";
 import { effectiveDir } from "@/lib/query/sort";
+import type { ReactNode } from "react";
 
 export type PortfolioCounts = {
   tab: Record<string, number>;
@@ -137,7 +138,7 @@ export function PositionsBar({
   );
 
   return (
-    <div data-filter-rail className={QUERY_BAR_CLASS}>
+    <PositionsRail>
       {/* ── row 1 · the seven lenses, and the count they must agree with ───────────────── */}
       <div className={QUERY_BAR_ROW1_CLASS}>
         <QueryStrip ariaLabel={t.positions.filterAria}>
@@ -249,6 +250,56 @@ export function PositionsBar({
 
         <span className="hidden lg:contents">{clear}</span>
       </div>
-    </div>
+    </PositionsRail>
+  );
+}
+
+/**
+ * ⭐ THE BAR'S ONE RAIL ELEMENT, SHARED BY BOTH VARIANTS (S6 WP9) — the sticky query bar's class and the
+ * `data-filter-rail` hook every live probe addresses. It is `PositionsBar`'s own outer element, moved here verbatim, so
+ * the hook is written ONCE in this file: `red:filter-language`'s vacuity case removes it in one place and the gate must
+ * see the rail go — a second copy in the journey variant would have kept the gate green over a vanished classic rail,
+ * and made that case's anchor ambiguous. A server component, so the element it renders is the one `PositionsBar`
+ * rendered, in the same place: the classic bar's markup is today's.
+ */
+function PositionsRail({ children }: { children: ReactNode }) {
+  return <div data-filter-rail className={QUERY_BAR_CLASS}>{children}</div>;
+}
+
+/**
+ * ⭐ THE BAR ON TIKETI ZANGU — this bar's journey variant (the Vodacom plan S6, S6-PLAN WP9 step 5 as amended by A7; the
+ * S4 frames s4-9-tiketi-*): row 1 alone, the seven lenses with no count on any of them and no result count beside them
+ * (the canvas draws none), on the same rail, the same strip and the same pill.
+ *
+ * ⛔ "NAFASI" NEVER APPEARS HERE (A7, SJ-19): the strip is named `journey.ticketsFilterAria`, never the classic
+ * `positions.filterAria`, and the result count ("Nafasi {n}" in Swahili) is not drawn; the lens words are the page's own
+ * (`lensLabel`), none of which says it. `test:journey-tickets` §4 follows this function and every helper it calls.
+ * ⛔ ALL SEVEN LENSES STAY (§0h point 11): nothing a player can narrow by is taken away; the strip scrolls, as drawn.
+ * Sort (shelved for preview viewers, A19 and VODACOM-PLAN §0h point 11) and the phone sheet with the side, topic and
+ * window groups are row 2's, which this variant does not draw (WP9 step 5; §0h point 23).
+ * ⭐ A SIBLING OF `PositionsBar`, NOT A PROP ON IT: the classic bar computes and draws exactly what it did, and this one is
+ * handed nothing it does not draw. Row 1's class has no bottom padding of its own (row 2 supplies it on the classic
+ * bar), so the strip adds the scale's `pb-2`.
+ */
+export function PositionsBarJourney({ state, t }: { state: PortfolioState; t: Dict }) {
+  return (
+    <PositionsRail>
+      <div className={`${QUERY_BAR_ROW1_CLASS} pb-2`}>
+        <QueryStrip ariaLabel={t.journey.ticketsFilterAria}>
+          {POSITION_LENSES.map((l) => (
+            <FilterPill
+              key={l}
+              href={buildPortfolioHref(state, { tab: l })}
+              label={lensLabel(t, l)}
+              on={state.tab === l}
+              testId={`tab:${l}`}
+              semantics="toggle"
+              replace
+              scroll={false}
+            />
+          ))}
+        </QueryStrip>
+      </div>
+    </PositionsRail>
   );
 }

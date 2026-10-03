@@ -163,6 +163,14 @@ zangu" and `tabAccount` "Akaunti" are the deck's own words (VODACOM-PLAN §3, bi
 - `profile.helpSupportSub` (en, zh) · "FAQ · Helpline · Email" / "常见问题 · 热线 · 邮件" names our help desk a helpline — §0h point 10's mix-up; the journey copy says "Phone" / "电话".
 - `profile.inviteFriendsSub` (zh) · "分享你的链接 · 查看谁加入" uses the informal 你 → 您.
 
+**Added at S6 WP9 (2026-10-03)** — Tiketi zangu's own copies of classic lines that say 持仓 in Chinese, and its
+strip's name in every language (VODACOM-PLAN §0h point 27):
+- `journey.ticketsEmptySettled` · "Hakuna yako iliyokamilika bado" · of `positions.emptySettledLens`: en and sw verbatim (already reviewed); zh "您还没有已结算的注单" (注单 for 持仓, approved).
+- `journey.ticketsEmptyWon` · "Hakuna yako iliyoshinda bado" · of `positions.emptyWon`; zh "您还没有获胜的注单".
+- `journey.ticketsEmptyLost` · "Hakuna yako iliyopotea" · of `positions.emptyLost`; zh "您没有失利的注单".
+- `journey.ticketsEmptyRefunded` · "Hakuna yako iliyorudishwa" · of `positions.emptyRefunded`; zh "您没有被退还的注单".
+- `journey.ticketsFilterAria` · "Chuja tiketi", unchanged · en "Status" → "Filter tickets" and zh "状态" → "筛选注单" (approved): the strip's name now says what it does in every language, as the Swahili always did.
+
 ## Swahili review — signed off by Claude (Ali, 2026-10-02: "you will be the Swahili speaker")
 
 Reviewed 2026-10-02, string by string, for grammar (noun-class agreement, tense, object markers), meaning against the

@@ -381,6 +381,47 @@ WP6b the swap + census + header-fit → WP7 overlays → WP8 short titles on pos
   en, sw and zh; `qa:classic-shell-parity --compare`: the one named difference `footer-rail-h` in exactly 224 of 224
   cells, nothing else — the computed footer padding and scroll padding are compared in every cell and equal.
   **Served bytes for a classic viewer:** the footer's class string and one CSS custom property; computed values equal.
+- **WP9 — Tiketi zangu (2026-10-03).** For a journey request `/positions` is "Tiketi zangu" in the canvas's order, and
+  `/updown/history` wears the same name and the Maswali | Juu/Chini switch (the kit's underline rail in link mode,
+  `aria-current="page"` on the page being read); every other reader is served today's pages. Both pages ask the one
+  per-request resolver after their session check, as the shell does. `/positions` returns the journey's view before its
+  classic JSX, which is unchanged, and keeps every read and the exit pricing; `/updown/history` swaps its back link and
+  its header through two sibling ternaries, each standing where its element stood, so a classic reader's tree is
+  today's. The head is the kit's `PageHeader` with the name alone (its eyebrow is now optional, and every classic call
+  site still passes one), then the switch, whose kit `Tabs` loads through a small client wrapper (`next/dynamic`, the
+  server render on), so a classic reader of either route is sent only the wrapper. The view is handed what the page
+  read and lists by the lens alone: search and sort are shelved for preview viewers (§0h point 11, A19), the side,
+  topic and window groups are row 2's, which the journey's bar does not draw (WP9 step 5), and a link's other settings
+  are ignored for a journey reader (§0h point 23); its bar draws all seven lenses with no counts and no "Nafasi" (A7),
+  named "Chuja tiketi" (en "Filter tickets", zh "筛选注单"), and an empty outcome lens reads the journey's own copies
+  of today's sentences, zh 注单 where today's say 持仓 (§0h point 27). Its ticket card shows the side and the state (one
+  colour rule, `positionStatusChip`, which the classic card now calls too), the short title as its only link — a 44px
+  target that moves nothing — Dau and Malipo — no figure until the result, whatever the market is doing (SJ-4, §C3,
+  §0h point 22), then what was paid — the ticket number, and when it was placed and when selection closes, each
+  formatted on the server from its instant. Its Sell button is the classic one (the journey look is WP10's), handed the
+  server's free-sell instant (A8). The Utendaji link sits after the list and the pager (§0h point 33). The loading
+  ghosts are chosen on the server from the same answer (§0h point 21), so a journey reader never meets the classic
+  ghost. The error pages are never drawn on the server: each mounts in the browser, where the journey flag reads the
+  shell's mark already in the page, so a journey reader's first sight of one has the tickets' words — on `/positions`
+  the body and the back link, on `/updown/history` the body only (its back link stays "Rudi Juu na Chini") — and both
+  keep RouteError's own eyebrow and headline. Gates: `test:journey-tickets` (new, in predeploy) and its in-process red
+  twin, a plant for every check; `test:sell-grace-truth` §2 names the journey card as a host (three plants);
+  `test:timer-date` §3 (seven card checks) and `test:position-permalink` 5.5/5.6 cover the journey card, with two new
+  `red:timer-date` and two new `red:position-permalink` mutations; `test:journey-shell` §9 pins each tickets route at
+  both its doors — the classic page's and the journey view's — a plant each. SHELVED rows for the profit strip, the
+  yes/no bar, search, row 2 of the bar and the lens counts, the countdown ring, sharing, the classic header and card, and
+  the Up & Down history's back link and header. Still saying "nafasi" to a journey reader: the Sell button's own dialogs
+  (until WP10, §0h point 24); and, off Tiketi zangu itself, `/positions/performance` (its eyebrow, back link, empty title
+  and result count), the question page's holder heading ("Nafasi zako") and the desktop avatar menu's "Nafasi" row — all
+  on §3's S15 rename list (§0h point 34). Served bytes for a classic viewer: no markup, title, CSS or RSC change on
+  either page. JS: the small switch wrapper joins both routes' client graph (the kit `Tabs` loads only when a journey
+  request draws the rail — WP6c's production build proves it, owed); the dictionary every page bundles gains four
+  journey keys and two journey values change; `PageHeader` draws its eyebrow under a condition every classic call site
+  meets (its code also ships to `/wallet` and the opt-out page); the two error pages' chunks import the flag hook; the
+  position card's calls the shared chip rule (same result). Owed before WP9 is ✅: the battery and the red twins;
+  `qa:classic-shell-parity` with `--compare`, `/positions` included; a production build's first-load check of both
+  routes; and the tiles — Tiketi open, settled and empty, the guest sheet and the `/updown/history` switch at 320, 390
+  and 1280 in sw, en and zh, with the journey ghost watched on a soft navigation and on a first document load.
 
 ## §0h · Points for Ali — taken while he was away (2026-10-01 →)
 
@@ -460,6 +501,79 @@ here, with how to overrule it. Newest last; nothing here blocks the work.
     server render on), so the HTML every player gets is unchanged (`qa:classic-shell-parity`, 224 cells) and only WHEN
     their code downloads changes; a new guard holds AppShell to no `lazy()` of a client module. Overrule: say so, and
     either half stays where it is.
+21. **Tiketi zangu's loading picture is chosen on the server** (WP9; departs from S6-PLAN A16's letter). While
+    `/positions` or `/updown/history` loads, its loading file asks the same per-request answer the page and the shell
+    use — is this reader in the journey? — together with the words, and draws one picture: the journey's for a journey
+    reader, today's for everybody else. A16 said to pick it in the browser and never ask, because asking would delay
+    every reader. It does not: the answer is worked out once per request and kept; a page opened fresh has already
+    worked it out for the shell; and moving inside the app, a reader with no preview pass costs only a cookie and header
+    read and the switch's copy in memory (the stored switch is re-read at most every 10 seconds, and not at all while the
+    Owner's ceiling is WITHDRAWN). What it buys: a journey reader no longer sees today's picture (with "Nafasi") while
+    the page loads, and a classic reader is sent nothing of the journey's picture and no new script for it. The two
+    error pages are never drawn on the server — Next runs them only in the browser — so each reads the journey flag as
+    it appears, from the shell's mark already in the page: a journey reader's first sight of one is already in the
+    tickets' words. Overrule: say so, and the loading pictures go back to being picked in the browser (A16 as written),
+    with a brief classic picture on a fresh load.
+22. **No payout figure on a journey ticket until the result** (supersedes S6-PLAN WP9 step 4's exact figure after
+    betting closes). An open ticket says "Malipo · Matokeo yakitoka" while betting is open, after selling closes, and
+    after the closing sweep has fixed the exact amount; the amount appears only with the result — "Malipo ya mwisho":
+    the payout for a win, TZS 0 for a loss, the stake for a refund, the sale price for a sold ticket. Why: SJ-4 and
+    DESIGN_AUTHORITY §C3 (amended 2026-09-29) keep a position's payout hidden before the result in Tiketi zangu by name,
+    and the canvas draws every pending ticket this way, one whose selling has closed included. Today's position card
+    does not change: it keeps its exact figure after betting closes. Overrule: say so, and journey tickets show the
+    exact figure once betting has closed and the sweep has run, as today's card does.
+23. **A journey reader's Tiketi zangu is cut by its lens alone, and a shared link's other settings are ignored.**
+    Search and sort are put away for preview viewers (point 11, A19); the side, topic and window filters live on the
+    bar's second row, which the journey's bar does not draw (WP9 step 5: row one only). So a `/positions` link carrying a
+    search, a sort, or a side, topic or window filter opens, for a journey reader, that lens's whole list — the extra
+    settings are ignored rather than applied with no way to see or clear them. Readers outside the journey are
+    unchanged. Overrule: say so, and either the second row comes back for journey readers or the view applies a link's
+    settings anyway.
+24. **The Sell button keeps today's words until WP10.** Inside a journey ticket the button and its confirm dialog are
+    today's, and three of its Swahili lines still say "nafasi" (`dialog.sellPositionNow`, `dialog.keepPosition`,
+    `common.positionUnchanged`). WP10 gives the button the journey's look and words. Overrule: say so, and those three
+    get journey wording now.
+25. **What the error pages say to a journey reader.** On `/positions` the body says their tickets are safe
+    (`journey.ticketsErrorBody`) and the button says "Rudi kwenye tiketi" (`journey.ticketsBack`). On `/updown/history`
+    only the body changes (today's says "nafasi"); its button stays "Rudi Juu na Chini". Both keep the error page's own
+    small heading and headline. Overrule: say which words should change.
+26. **Tiketi zangu's heading, and the browser tab on its Up & Down side.** On both kinds the heading is "Tiketi zangu"
+    alone — the platform's page heading with no small line over it (today's says "Nafasi") — with the Maswali |
+    Juu/Chini switch under it. The browser tab follows the page on Maswali ("Tiketi zangu"), but `/updown/history` keeps
+    its own tab title, "Juu na Chini zako", for a journey reader while its heading says "Tiketi zangu". Why: the heading
+    names the place and the switch names the kind, but the tab is the only name a reader sees when the page is not in
+    front of them — the tab strip, the browser's history, a bookmark — so the Up & Down tab keeps saying which tickets
+    it holds; WP9 step 6 changes that page's header only. Overrule: say so, and both tabs read "Tiketi zangu" (or the
+    heading gets a small line over it again).
+27. **Empty Tiketi zangu lists.** No tickets at all, or none open (the Hai lens): the canvas's empty card, "Bado huna
+    tiketi hai" with "Tazama maswali" to the questions, and no filter buttons. An empty settled, won, lost or refunded
+    lens: the journey's own copies of today's sentences (`journey.ticketsEmptySettled` and three more) — the same words
+    in Swahili and English, which say no "nafasi", and in Chinese 注单 ("ticket") where today's say 持仓 ("holdings"),
+    so the view reads neither. Nothing sold yet: "Bado hujauza tiketi yoyote". The one way out offered reads "Tiketi
+    zote (n)". Overrule: say which sentence.
+28. **Ticket dates** — "Imewekwa {date}" and "Uchaguzi unafungwa {date}" — use the platform's deadline format (day and
+    time, the year only when it is not this year), written on the server. Overrule: say which format.
+29. **An open ticket whose selling has closed says "Uchaguzi umefungwa"** where the closing date would be. Overrule:
+    say so, and it shows the date it closed.
+30. **The journey's filter bar is a second bar beside today's, not a setting on it** (WP9 step 5 said "a variant").
+    Both draw one shared outer strip, so the filter gate still finds the strip once and today's bar is drawn exactly as
+    before. Recorded because it departs from the plan's wording. Overrule: say so, and it becomes a setting on today's
+    bar.
+31. **Each ticket can be linked to directly:** a notification's link to a ticket scrolls to it and outlines it, as on a
+    question's page. Overrule: say so.
+32. **The journey's lens strip has 12 px of space below it**, not the 10 px under today's second row: 10 px is a
+    spacing step the design gate counts as a defect, and writing it by hand would add a style rule for every visitor.
+    Overrule: say so, and it becomes 10 px.
+33. **The "Utendaji" link sits below the tickets.** After the list and the pager, as a quiet small link, shown only
+    when the reader has a ticket — as on today's page, where it sits beside the heading. Why: the canvas's head is the
+    name and the switch alone, and the link has to stay so `/positions/performance` keeps a door on a journey phone
+    (A15). Overrule: say so, and it goes back beside the heading.
+34. **Where a journey reader still meets "nafasi" after WP9.** On Tiketi zangu itself, only inside the Sell button's
+    dialogs, until WP10 (point 24). One tap away: `/positions/performance`, which the Utendaji link opens and WP9 does
+    not rebuild — its small heading and back link ("Nafasi"), its empty title and its result count ("Nafasi {n}"); the
+    question page's block for a ticket holder ("Nafasi zako"); and, on a computer, the avatar menu's "Nafasi" row. All
+    of these are on §3's S15 rename list and change at the flip. Overrule: say so, and WP9 gives
+    `/positions/performance` journey words now.
 
 
 ## §0g · S4 (2026-10-01) — the Design canvas: all eleven items drawn, the panel's findings applied; waiting on Ali
@@ -1049,6 +1163,25 @@ is re-worded, or its surface moves to the journey copy named:
   `server/notification-service.ts`);
 - SJ-19's other half: the support words `chat.ticket` and `chat.ticketSubject` (sw "Tiketi …") become "Ombi la
   msaada", so "Tiketi" means one thing. No component reads either key today (grep, 2026-10-01).
+
+*WP9 (2026-10-03):* the journey's Tiketi view's own files read none of the keys above; the classic Sell button inside
+its cards does, until WP10 (`dialog.sellPositionNow`, `dialog.keepPosition`, `common.positionUnchanged`; §0h point
+24). Its lens strip is named `journey.ticketsFilterAria` ("Chuja tiketi"; en "Filter tickets" and zh "筛选注单" since
+WP9) and draws no result count and no count on any lens. Its empty states read the canvas's
+`journey.ticketsEmptyOpenTitle` and `ticketsEmptyOpenBody` (no tickets, or none open), `journey.ticketsEmptyCashed`
+(none sold) and, for the four outcome lenses, `journey.ticketsEmptySettled`, `ticketsEmptyWon`, `ticketsEmptyLost` and
+`ticketsEmptyRefunded` — en and sw repeat the classic `positions.emptySettledLens`, `emptyWon`, `emptyLost` and
+`emptyRefunded` (a repeat §0h point 27 names, as the rule above asks), and zh says 注单 where those say 持仓 — over
+the classic `positions.emptyLensBody`, which says neither; `journey.ticketsEmptyLens` is only a defensive fallback no
+lens reaches, and the one exit reads `journey.ticketsExitLens`. On `/positions` the error page's body and back link
+read `journey.ticketsErrorBody` and `ticketsBack`; on `/updown/history` only the body does (its back link stays
+`market.udBackToBoard`), and both keep `error.somethingWentWrong` and `error.pageHitSnag`. The tab title is
+`journey.tabTickets`. `test:journey-tickets` §4 fails on any Swahili "nafasi" or Chinese 持仓 the view reads. Still
+"nafasi" to a journey reader after WP9: those three Sell-button keys (WP10) and, off Tiketi zangu itself,
+`/positions/performance` (its eyebrow and back link `common.positions`, its empty title `performance.noPerformance`,
+its result count `positions.oneResult`/`nResults`), the question page's `market.yourPositions` and the avatar menu's
+hard-coded row, every one of them on the list above (§0h point 34). So at S15 the list above is the classic surfaces'
+alone.
 
 ⛔ Not part of the Tiketi rename ("nafasi" means something else there): `common.busyBody` and `dialog.busyHolding`
 ("we are holding your place") and `market.oddsLong` ("a small chance"). `nav.cardSpacing` (spacing) gets its own
