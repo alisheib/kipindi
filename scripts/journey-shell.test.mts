@@ -48,7 +48,8 @@
  *      sw/en/zh at 320 and 360 (A17), and below 360 the slots stacked from the top so a two-line label cannot lift its
  *      pip; ONE unread poller per width — the bell mounted only from 1024, the dot's counter only below it, neither
  *      while the width is unknown, and only client code loading the width hook; the guest sheet on the kit Modal,
- *      portalled and on test:popup-fit's record (A13); and the chrome mounted by AppShell alone, lazily (WP6b).
+ *      portalled and on test:popup-fit's record (A13); and the chrome mounted by AppShell alone, lazily (WP6b), through
+ *      the shell's one lazy module (WP6c).
  *   §9 THE ROUTE CENSUS (WP6b, A9) — S6's done-when, "every route keeps an entrance", as a reachability graph. Roots
  *      are what a journey PHONE shows (the four tabs, the header's own links, the sheets, the footer and, on `/account`,
  *      `hubRowsFor(viewer)`); edges are the path literals of the code each page renders, comments stripped; the walk
@@ -69,7 +70,18 @@
  *      a guard straight after the pinned line it follows; each overlay reads the flag once and asks the one list (§2)
  *      once; the chat keeps its conversation; the HIDE_ON patterns other gates pin are unchanged; the analytics consent
  *      prompt is still asked of everybody; the email-verify bar is gated on the same per-request answer (VODACOM-PLAN
- *      §3.2 item 2); and AppShell alone loads the flag, lazily. In the file it sits beside §5, whose flag it reads.
+ *      §3.2 item 2); and the shell's lazy module alone loads the flag, through `next/dynamic` (WP6c). In the file it
+ *      sits beside §5, whose flag it reads.
+ *   §12 THE SHELL'S DEFERRED PARTS (WP6c, VODACOM-PLAN §0h point 20) — AppShell is a server component, and its own
+ *      `React.lazy` split nothing: every module it named rode in every page's first load. So every lazily loaded part
+ *      AppShell renders comes from ONE client module, `shell-lazy.tsx`, under the name it always had, each the one child
+ *      of the Suspense boundary it always had; AppShell imports none of the parts' own modules and no React `lazy`, and
+ *      imports the offline banner statically (its job is a connection that fails); that module is "use client", imports
+ *      nothing statically but `next/dynamic`, declares exactly the parts table (each part one line, server render on, no
+ *      option object, its loader ending in the lost-chunk guard, which takes a ChunkLoadError alone) and only AppShell
+ *      imports it; every module it loads is "use client" and loaded from there alone (the win celebration's three
+ *      static importers named); and no server module anywhere in src defers a "use client" module through
+ *      `import(…)`.
  *
  * ⛔ IN-PROCESS BY CONSTRUCTION. `--prove-red` hands the same checks defective implementations and edited source TEXT
  * held in memory, and requires the check named for each defect to fail. This file makes no file-system change anywhere,
@@ -214,6 +226,47 @@ const GUEST_SHEET = "src/components/journey/tickets-guest-sheet.tsx";
 const MODAL = "src/components/ui/modal.tsx";
 const BELL = "src/components/layout/notifications-panel.tsx";
 const SHELL = "src/components/layout/app-shell.tsx";
+/**
+ * The shell's ONE lazy module (S6 WP6c; VODACOM-PLAN §0h point 20): every part AppShell loads only when it renders it,
+ * each a `next/dynamic` of a "use client" component with its server render on and no option object, its loader ending
+ * in the lost-chunk guard, under the name AppShell renders it by. AppShell's own `React.lazy` bindings split nothing:
+ * every module they named rode in every page's first load. §12 holds the module, AppShell and the parts' modules to the
+ * table below; §8 and §11 read the journey's three parts from it. The offline banner is not a part, on purpose: AppShell
+ * imports it statically (12.shell.offline).
+ */
+const SHELL_LAZY = "src/components/layout/shell-lazy.tsx";
+/** Each part: the binding AppShell renders, the module `next/dynamic` loads, and the component it picks from it. */
+const SHELL_PARTS: ReadonlyArray<readonly [string, string, string]> = [
+  ["LazyPullToRefresh", "@/components/ui/pull-to-refresh", "PullToRefresh"],
+  ["LazyWinCelebration", "@/components/markets/win-celebration", "WinCelebrationHost"],
+  ["LazyNotifyPoller", "@/components/markets/notify-poller", "NotifyPoller"],
+  ["LazyEventStream", "@/components/layout/event-stream-provider", "EventStreamProvider"],
+  ["LazyInstallInvite", "@/components/pwa/install-invite", "InstallInvite"],
+  ["LazyConsentPrompt", "@/components/analytics/consent-prompt", "ConsentPrompt"],
+  ["LazyChannelsPanel", "@/components/social/channels-panel", "ChannelsPanel"],
+  ["LazyJourneyFlag", "@/components/journey/journey-flag", "JourneyFlag"],
+  ["LazyJourneyTopBar", "@/components/journey/journey-top-bar", "JourneyTopBar"],
+  ["LazyJourneyTabs", "@/components/journey/journey-tabs", "JourneyTabs"],
+];
+/** A part's one line in the shell's lazy module, exactly as it is written there. */
+const partLine = ([binding, spec, symbol]: readonly [string, string, string]) =>
+  `export const ${binding} = dynamic(() => import("${spec}").then((m) => m.${symbol}).catch(nothingIfLost));`;
+/** The line of the part AppShell renders by this name, or "" when the table has no such part (no check accepts ""). */
+const partLineOf = (binding: string): string => {
+  const row = SHELL_PARTS.find(([b]) => b === binding);
+  return row ? partLine(row) : "";
+};
+/** The names `file` imports from the src module `target` through `import { … } from "…"`, by any specifier resolving to it. */
+function importedNames(w: World, file: string, target: string): string[] {
+  return [...text(w, file).matchAll(STATIC_FROM)]
+    .filter((m) => resolveIn(w, file, m[2]) === target)
+    .flatMap((m) => {
+      const clause = m[1].trim();
+      return clause.startsWith("{") && clause.endsWith("}")
+        ? clause.slice(1, -1).split(",").map((n) => n.trim()).filter((n) => n.length > 0)
+        : [clause];
+    });
+}
 const BOTTOM_NAV = "src/components/layout/bottom-nav.tsx";
 const text = (w: World, rel: string) => w.files.get(rel) ?? "";
 /** A file's first statement is this directive (`trimStart` also drops a byte-order mark). */
@@ -790,8 +843,8 @@ function g5Flag(I: Impl, W: World, G: Graph, ok: Ok) {
  * rule exactly — or a guard straight after the pinned line it follows. Read here with comments stripped: each join as
  * written beside today's half; each overlay reading the flag once and the one journey list once; the chat keeping its
  * conversation; the HIDE_ON patterns other gates pin; the analytics consent prompt still asked of every reader; the
- * email-verify bar gated on the same per-request answer (VODACOM-PLAN §3.2 item 2); and AppShell alone loading the
- * flag, lazily (5.mount holds where it is mounted).
+ * email-verify bar gated on the same per-request answer (VODACOM-PLAN §3.2 item 2); and the shell's lazy module alone
+ * loading the flag, through `next/dynamic` (WP6c; 5.mount holds where it is mounted).
  * ⚠️ Kept here, beside §5 whose flag it reads, and numbered after WP6b's §9 and §10.
  */
 const OVERLAY_NEEDLE = "src/components/layout/needle.tsx";
@@ -830,12 +883,8 @@ const OVERLAY_HIDE_ON: ReadonlyArray<[string, string, string]> = [
   ["channels", OVERLAY_CHANNELS, "const HIDE_ON = /^~/s(~/|$)|^~/(auth|admin)(~/|$)|^~/(legal|profile)~/responsible-gambling(~/|$)|^~/markets~/?$/;"],
 ];
 const asWritten = (s: string) => s.split("~").join(String.fromCharCode(92));
-/** AppShell's lazy binding for the flag, line by line. */
-const FLAG_BINDING = [
-  "const LazyJourneyFlag = lazy(() =>",
-  `import("@/components/journey/journey-flag").then((m) => ({ default: m.JourneyFlag })),`,
-  ");",
-];
+/** The flag's one line in the shell's lazy module (WP6c): `next/dynamic`, server render on, no option object. */
+const FLAG_BINDING = partLineOf("LazyJourneyFlag");
 /** The email-verify bar's mount: today's condition, and never for a journey request. */
 const EMAIL_BAR_MOUNT = "{emailVerifyState && !journeyShown && <EmailVerifyBanner email={emailVerifyState.email} />}";
 
@@ -886,9 +935,9 @@ function g11Overlays(W: World, G: Graph, ok: Ok) {
     count(shell, EMAIL_BAR_MOUNT) === 1 && count(shell, "<EmailVerifyBanner") === 1 && shell.includes("const journeyShown = (await journeyRead).journey;"),
     show({ gated: count(shell, EMAIL_BAR_MOUNT), mounts: count(shell, "<EmailVerifyBanner") }));
   const loaders = [...(G.into.get(FLAG_COMPONENT) ?? [])].sort();
-  const binding = count(squash(shell), FLAG_BINDING.join(""));
-  ok("11.flag.lazy · AppShell alone loads JourneyFlag, through its lazy binding and never a static import — a classic page's first load carries none of it",
-    binding === 1 && !shell.includes(`from "@/components/journey/journey-flag"`) && show(loaders) === show([SHELL]),
+  const binding = count(text(W, SHELL_LAZY), FLAG_BINDING);
+  ok("11.flag.lazy · the shell's lazy module alone loads JourneyFlag, through next/dynamic (WP6c), and AppShell never imports it — a classic page's first load carries none of it",
+    FLAG_BINDING.length > 0 && binding === 1 && !shell.includes(`from "@/components/journey/journey-flag"`) && show(loaders) === show([SHELL_LAZY]),
     show({ binding, loaders }));
 }
 
@@ -1528,24 +1577,27 @@ function g8Tabs(I: Impl, W: World, G: Graph, ok: Ok) {
   ok("8.popup · every popup the journey's components and its hub render is on test:popup-fit's review record — the guest sheet among them (A13)",
     journeyPopups.includes(GUEST_SHEET) && record.length > 50 && gaps.unreviewed.length === 0,
     show({ journeyPopups, unreviewed: gaps.unreviewed, record: record.length }));
-  // ⭐ WP6b: the journey chrome is mounted by AppShell ALONE, and LAZILY. Nothing else renders or loads the header or
-  // the tabs, and AppShell loads them only through lazy bindings, the way it loads its overlays: the root layout's
-  // first-load bundle, which every classic visitor downloads, must not carry them. (The ternaries themselves are pinned
-  // by test:simple-journey-flag 10.shell.chrome.) The graph reads a lazy import(…) as the load it is.
+  // ⭐ WP6b: the journey chrome is mounted by AppShell ALONE, and LAZILY: since WP6c through the shell's one lazy module,
+  // which loads the header and the tabs with `next/dynamic` (§12 holds that module whole). Nothing else renders or loads
+  // them: the root layout's first-load bundle, which every classic visitor downloads, must not carry them. (The
+  // ternaries themselves are pinned by test:simple-journey-flag 10.shell.chrome.) The graph reads a dynamic import(…) as
+  // the load it is.
   const mounts = [...W.files].filter(([p, s]) => p !== SHELL && (s.includes("<JourneyTopBar") || s.includes("<JourneyTabs"))).map(([p]) => p);
-  const loadedBy = [JHDR, JTABS].flatMap((f) => (G.into.get(f) ?? []).filter((p) => p !== SHELL).map((p) => `${p} loads ${f}`));
+  const loadedBy = [JHDR, JTABS].flatMap((f) => (G.into.get(f) ?? []).filter((p) => p !== SHELL_LAZY).map((p) => `${p} loads ${f}`));
   const classicLoads = [...G.out]
-    .filter(([p]) => p.startsWith("src/components/layout/") && p !== SHELL)
+    .filter(([p]) => p.startsWith("src/components/layout/") && p !== SHELL && p !== SHELL_LAZY)
     .flatMap(([p, to]) => to.filter((x) => x.startsWith(JOURNEY_COMPONENTS)).map((x) => `${p} loads ${x}`));
-  ok("8.mount · mounted by AppShell alone (WP6b): nothing else renders or loads the journey header or tabs, and no classic layout file loads a journey component",
+  ok("8.mount · mounted by AppShell alone (WP6b), through the shell's lazy module (WP6c): nothing else renders or loads the journey header or tabs, and no other classic layout file loads a journey component",
     mounts.length === 0 && loadedBy.length === 0 && classicLoads.length === 0, show({ mounts, loadedBy, classicLoads }));
   const shellSrc = text(W, SHELL);
-  const lazyLoad = (f: string, symbol: string) => `import("@/${f.slice("src/".length, f.length - ".tsx".length)}").then((m) => ({ default: m.${symbol} }))`;
-  const notLazy = [[JHDR, "JourneyTopBar"], [JTABS, "JourneyTabs"]].filter(([f, symbol]) => count(shellSrc, lazyLoad(f, symbol)) !== 1).map(([f]) => f);
-  const staticImports = count(shellSrc, `from "@/components/journey/`);
-  ok("8.mount.lazy · AppShell loads the journey header and tabs lazily, the way it loads its overlays, and nothing from the journey's components statically — a classic visitor's first-load bundle carries none of their code",
-    (G.into.get(JHDR) ?? []).includes(SHELL) && (G.into.get(JTABS) ?? []).includes(SHELL) && notLazy.length === 0 && staticImports === 0,
-    show({ notLazy, staticImports }));
+  const lazySrc = text(W, SHELL_LAZY);
+  const armsImported = importedNames(W, SHELL, SHELL_LAZY);
+  const notLazy = ["LazyJourneyTopBar", "LazyJourneyTabs"].filter((b) => count(lazySrc, partLineOf(b)) !== 1 || !armsImported.includes(b));
+  const staticImports = count(shellSrc, `from "@/components/journey/`) + count(lazySrc, `from "@/components/journey/`);
+  const chromeLoaders = [JHDR, JTABS].map((f) => [...(G.into.get(f) ?? [])].sort());
+  ok("8.mount.lazy · AppShell renders the journey header and tabs through the shell's lazy module, which loads each with next/dynamic (WP6c), and nothing imports the journey's components statically — a classic visitor's first-load bundle carries none of their code",
+    chromeLoaders.every((l) => show(l) === show([SHELL_LAZY])) && notLazy.length === 0 && staticImports === 0,
+    show({ chromeLoaders, notLazy, staticImports }));
 }
 
 /* ══ §9 · THE ROUTE CENSUS (S6 WP6b) ═══════════════════════════════════════════════════════════════════════════ */
@@ -2083,6 +2135,164 @@ function g10Terms(I: Impl, W: World, ok: Ok) {
     !W.css.includes(`${WITNESS_PROPERTY}:`), `${WITNESS_PROPERTY} is in globals.css: restore it with git checkout -- src/app/globals.css`);
 }
 
+/* ══ §12 · THE SHELL'S DEFERRED PARTS (S6 WP6c) ════════════════════════════════════════════════════════════════ */
+/*
+ * VODACOM-PLAN §0h point 20. AppShell is a SERVER component, and `React.lazy(() => import(…))` there split nothing in
+ * this build: production showed the journey's header and tabs in the first-load scripts of every page, for every
+ * visitor, in the chunk that held the channels panel and the consent prompt, and a local production build read the
+ * older parts there too. What does split, as that build showed, is `next/dynamic` in a client module, so every part
+ * AppShell loads lazily comes from ONE such module, `shell-lazy.tsx` (SHELL_PARTS, at the top). Read here, decommented:
+ *   (a) AppShell calls no React `lazy` and imports none, under any name;
+ *   (b) every lazily loaded part it renders is a binding it imports from that module under the table's name, rendered
+ *       once, as the one child of its own Suspense boundary: next/dynamic adds none of its own, so that boundary is the
+ *       part's only one (without it the part's boundary markers leave the HTML, and its chunk holds up the hydration of
+ *       the whole page); AppShell imports none of the parts' own modules, by any import; nothing else imports the
+ *       module; and the offline banner is NOT a part: AppShell imports it statically, as its code always came, because
+ *       its one job is a connection that fails;
+ *   (c) the module is "use client", its one static import is `next/dynamic`, and it declares exactly the table, each
+ *       part one line with no option object — no `ssr: false` (the part would leave the server's HTML) and no `loading`
+ *       (a Suspense boundary of next/dynamic's own inside AppShell's: new boundary markers) — each loader ending in
+ *       `.catch(nothingIfLost)`, the guard that leaves out a part whose code never arrives (a ChunkLoadError: without it
+ *       the whole page falls to the critical-error screen), reports it once, and throws every other error on;
+ *   (d) every module it loads is a "use client" module, and the module is that part's only loader (a static import
+ *       anywhere else puts the part's code back in that file's first load), save the three named files that import the
+ *       win celebration's module for `dispatchWinCelebration`;
+ *   and, platform-wide, no server module in src calls or imports React's `lazy`, and none defers a "use client" module
+ *   through `import(…)` at all — React.lazy, next/dynamic or any wrapper: the defect AppShell had, wherever it recurs.
+ * ⚠️ It cannot see chunking itself: that a part leaves the first load is shown only by a production build (VODACOM-PLAN
+ * §0i, WP6c). This holds the source to the shape that build proved.
+ */
+/** A call of React's lazy (`lazy(`, `React.lazy(`, with or without type arguments), and not a longer name that ends in it (`makelazy(`). */
+const LAZY_CALL = new RegExp("(?<![A-Za-z0-9_$])(?:React[.])?lazy[ ]*(?:<[^()]*>)?[ ]*[(]");
+/** React's `lazy` imported by name, or renamed (`lazy as deferred`). */
+const LAZY_IMPORT = new RegExp(`import[^;]*[{,][ ]*lazy(?:[ ]+as[ ]+[A-Za-z0-9_$]+)?[ ]*[,}][^;]*from[ ]*["']react["']`);
+/** Every element whose tag is a lazily loaded part's name. */
+const LAZY_TAG = new RegExp("<(Lazy[A-Za-z0-9_]*)(?![A-Za-z0-9_])", "g");
+/** A part as the one child of its own Suspense boundary, in squashed source: a fallback of null or of one empty element. */
+const wrappedPart = (binding: string) =>
+  new RegExp(`<Suspense fallback=[{](?:null|<[^{}<>]*/>)[}]><${binding}(?:[ ][^<>]*)?[ ]/></Suspense>`, "g");
+/**
+ * The lost-chunk guard every part's loader ends in, as written in the module (the stand-in squashed): it renders
+ * nothing; it takes a ChunkLoadError alone and throws every other error on; it reports the loss to the client-error
+ * endpoint the error boundaries use; and it gives the stand-in.
+ */
+const LOST_GUARD = {
+  stand: "function Nothing(): null {return null;}",
+  head: "function nothingIfLost(error: unknown): typeof Nothing {",
+  rethrow: `if (!(error instanceof Error) || error.name !== "ChunkLoadError") throw error;`,
+  report: `navigator.sendBeacon("/api/client-error",`,
+  gives: "return Nothing;",
+};
+/** The offline banner: imported statically by AppShell and mounted in its own boundary — never a deferred part. */
+const OFFLINE_BANNER = "src/components/ui/offline-banner.tsx";
+const OFFLINE_MOUNT = "<Suspense fallback={null}><OfflineBanner /></Suspense>";
+/** The win celebration's module, and the three files that import it statically for `dispatchWinCelebration`. */
+const WIN_HOME = "src/components/markets/win-celebration.tsx";
+const WIN_IMPORTERS = ["src/components/layout/away-summary-bar.tsx", "src/components/markets/notify-poller.tsx", "src/components/updown/updown-result-announcer.tsx"];
+/** Every `import(…)` or `require(…)` in a server module of src that names a "use client" module, as "file -> module". */
+function deferredClientImports(w: World): string[] {
+  return [...w.files].filter(([, s]) => !isClient(s)).flatMap(([p, s]) => [...s.matchAll(CALLED)]
+    .map((m) => resolveIn(w, p, m[1]))
+    .filter((t): t is string => t !== null && isClient(text(w, t)))
+    .map((t) => `${p} -> ${t}`));
+}
+
+function g12ShellParts(W: World, G: Graph, ok: Ok) {
+  const shell = text(W, SHELL);
+  const lazySrc = text(W, SHELL_LAZY);
+  const table = SHELL_PARTS.map(([b]) => b);
+  const lazyHit = LAZY_CALL.exec(shell)?.[0] ?? null;
+  ok("12.shell.nolazy · AppShell calls no React lazy and imports none, under any name: in a server component it split nothing (VODACOM-PLAN §0h point 20)",
+    shell.length > 0 && lazyHit === null && !LAZY_IMPORT.test(shell), show({ lazyHit, imported: LAZY_IMPORT.test(shell) }));
+  const imported = importedNames(W, SHELL, SHELL_LAZY);
+  const rendered = [...shell.matchAll(LAZY_TAG)].map((m) => m[1]);
+  const notOnce = table.filter((b) => rendered.filter((r) => r === b).length !== 1);
+  const stray = [...new Set(rendered.filter((r) => !table.includes(r)))];
+  const ownBinding = new RegExp("(?:const|let|var|function|class)[ ]+Lazy[A-Za-z0-9_]*").test(shell);
+  ok(`12.shell.parts · every lazily loaded part AppShell renders is imported from the shell's lazy module under its table name, and rendered once (${table.length})`,
+    show([...imported].sort()) === show([...table].sort()) && notOnce.length === 0 && stray.length === 0 && !ownBinding,
+    show({ imported, notOnce, stray, ownBinding }));
+  const flat = squash(shell);
+  const unwrapped = table.filter((b) => [...flat.matchAll(wrappedPart(b))].length !== 1);
+  ok(`12.shell.wrapped · every part is the one child of its own Suspense boundary in AppShell, as before WP6c: next/dynamic adds none, so without it the part's boundary markers leave the HTML and its chunk holds up the whole page's hydration (${table.length})`,
+    unwrapped.length === 0, show({ unwrapped }));
+  const offline = {
+    imported: importedNames(W, SHELL, OFFLINE_BANNER), mounted: count(flat, OFFLINE_MOUNT), tags: count(shell, "<OfflineBanner"),
+    deferred: (G.out.get(SHELL_LAZY) ?? []).includes(OFFLINE_BANNER), loaders: [...(G.into.get(OFFLINE_BANNER) ?? [])].sort(),
+  };
+  ok("12.shell.offline · the offline banner is NOT deferred: AppShell imports it statically, as its code always came, so it is ready before the connection it reports on can fail; mounted once, in its own Suspense boundary, and loaded by nothing else",
+    show(offline.imported) === show(["OfflineBanner"]) && offline.mounted === 1 && offline.tags === 1 && !offline.deferred && show(offline.loaders) === show([SHELL]),
+    show(offline));
+  const partFiles = SHELL_PARTS.map(([, spec]) => resolveIn(W, SHELL_LAZY, spec));
+  const shellLoads = G.out.get(SHELL) ?? [];
+  const direct = partFiles.filter((f): f is string => f !== null && shellLoads.includes(f));
+  const unresolved = SHELL_PARTS.filter((_, i) => partFiles[i] === null).map(([b]) => b);
+  ok("12.shell.only · AppShell imports none of the parts' own modules, by any import: its one way to them is the shell's lazy module",
+    shellLoads.includes(SHELL_LAZY) && unresolved.length === 0 && direct.length === 0, show({ direct, unresolved }));
+  const home = [...(G.into.get(SHELL_LAZY) ?? [])].sort();
+  ok("12.module.home · AppShell alone imports the shell's lazy module", show(home) === show([SHELL]), show(home));
+  ok(`12.module.client · ${SHELL_LAZY} is a "use client" module, the one client boundary AppShell renders its parts through`,
+    lazySrc.length > 0 && isClient(lazySrc), lazySrc.length === 0 ? "file missing" : "no directive");
+  const statics = [...lazySrc.matchAll(STATIC_FROM)].map((m) => `${m[1].trim()} from ${m[2]}`);
+  const bare = [...lazySrc.matchAll(BARE_IMPORT)].map((m) => m[1]);
+  const options = ["ssr", "loading", "suspense"].filter((word) => lazySrc.includes(word));
+  const calls = count(lazySrc, "dynamic(");
+  ok("12.module.dynamic · it loads every part with next/dynamic and nothing statically: its one static import is next/dynamic, no part passes an option object (no ssr: false, no loading), and it calls no React lazy",
+    show(statics) === show(["dynamic from next/dynamic"]) && bare.length === 0 && options.length === 0 && calls === SHELL_PARTS.length
+      && !LAZY_CALL.test(lazySrc),
+    show({ statics, bare, options, calls }));
+  const missing = SHELL_PARTS.filter((row) => count(lazySrc, partLine(row)) !== 1).map(([b]) => b);
+  const exported = count(lazySrc, "export ");
+  ok(`12.parts.table · the module declares exactly the ${SHELL_PARTS.length} parts of the table, each its one line: export const <name> = dynamic(() => import("<module>").then((m) => m.<component>).catch(nothingIfLost));`,
+    missing.length === 0 && exported === SHELL_PARTS.length, show({ missing, exported }));
+  const guard = {
+    stand: count(squash(lazySrc), LOST_GUARD.stand), head: count(lazySrc, LOST_GUARD.head), rethrow: count(lazySrc, LOST_GUARD.rethrow),
+    report: count(lazySrc, LOST_GUARD.report), gives: count(lazySrc, LOST_GUARD.gives),
+  };
+  const order = [LOST_GUARD.head, LOST_GUARD.rethrow, LOST_GUARD.report, LOST_GUARD.gives].map((s) => lazySrc.indexOf(s));
+  ok("12.module.lost · a part whose code never arrives is left out, not fatal: the guard every loader ends in takes a ChunkLoadError alone (any other error is thrown on, as before WP6c), reports it to /api/client-error, and gives a stand-in that renders nothing",
+    Object.values(guard).every((n) => n === 1) && order.every((at, i) => at >= 0 && (i === 0 || at > order[i - 1])),
+    show({ guard, order }));
+  const loads = importsIn(W, SHELL_LAZY).filter((i) => i.spec !== "next/dynamic");
+  const notClient = loads.map((i) => resolveIn(W, SHELL_LAZY, i.spec) ?? `${i.spec} (unresolved)`).filter((f) => !isClient(text(W, f)));
+  ok(`12.parts.client · every module the shell's lazy module loads is a "use client" module (${loads.length})`,
+    loads.length === SHELL_PARTS.length && notClient.length === 0, show({ notClient }));
+  const strayLoaders = SHELL_PARTS.map(([b], i) => {
+    const file = partFiles[i];
+    const want = file === WIN_HOME ? [...WIN_IMPORTERS, SHELL_LAZY].sort() : [SHELL_LAZY];
+    const got = file === null ? [] : [...(G.into.get(file) ?? [])].sort();
+    return { b, got, same: show(got) === show(want) };
+  }).filter((r) => !r.same).map((r) => `${r.b}: ${r.got.join(", ") || "nothing"}`);
+  ok("12.parts.home · the shell's lazy module is each part's one loader (a static import anywhere else puts that part's code back in that file's first load), save the three named files that import the win celebration's module for dispatchWinCelebration (a fourth is a finding)",
+    unresolved.length === 0 && strayLoaders.length === 0, strayLoaders.join(" | "));
+  const serverLazy = [...W.files].filter(([, s]) => !isClient(s) && (LAZY_CALL.test(s) || LAZY_IMPORT.test(s))).map(([p]) => p);
+  ok("12.nolazy.platform · no server module in src calls or imports React's lazy, the defect AppShell had (a client module may)",
+    serverLazy.length === 0, serverLazy.join(", "));
+  const deferred = deferredClientImports(W);
+  ok(`12.nodefer.platform · no server module in src defers a "use client" module through import(…) — React.lazy, next/dynamic or any wrapper: from a server file that module joins the first load all the same`,
+    deferred.length === 0, deferred.join(", "));
+  const cases = ['const A = lazy(() => import("x"));', "const B = React.lazy(load);", "const C = makelazy(1);", "const D = LazyThing(2);", "const E = lazy<Props>(load);"];
+  const caught = cases.map((c) => LAZY_CALL.test(c));
+  const importCases = ['import { Suspense, lazy } from "react";', 'import { lazy as deferred } from "react";', 'import { lazyLoad } from "react";', 'import { lazy } from "./mine";'];
+  const importsCaught = importCases.map((c) => LAZY_IMPORT.test(c));
+  const probe = worldOf({ [SHELL]: `import {${LF}  LazyA, LazyB,${LF}} from "./shell-lazy";${LF}import { C } from "./other";${LF}`, [SHELL_LAZY]: "" });
+  const probeNames = importedNames(probe, SHELL, SHELL_LAZY);
+  const probeTags = [...`<Suspense><LazyA />${LF}<LazyBee x={1} />`.matchAll(LAZY_TAG)].map((m) => m[1]);
+  const wrapProbe = ["<Suspense fallback={null}><LazyA /></Suspense>", '<Suspense fallback={<div className="x" />}><LazyA b={c} /></Suspense>', "<LazyA />",
+    "<Suspense fallback={null}><LazyA /><X /></Suspense>"].map((s) => [...s.matchAll(wrappedPart("LazyA"))].length);
+  const deferProbe = deferredClientImports(worldOf({
+    "src/p/server.tsx": `const X = dynamic(() => import("@/p/client").then((m) => m.C));${LF}const Y = import("./plain");${LF}`,
+    "src/p/client.tsx": `"use client";${LF}export function C() { return null; }${LF}`,
+    "src/p/plain.ts": `export const p = 1;${LF}`,
+    "src/p/other.tsx": `"use client";${LF}const Z = dynamic(() => import("@/p/client").then((m) => m.C));${LF}`,
+  }));
+  ok("12.c · CONTROL · the readers can fail: the lazy reader takes lazy(, React.lazy( and lazy<T>( and leaves makelazy( and a Lazy name alone; the import reader takes lazy by name or renamed, from react only; the list reader reads across lines, from the module named; the tag reader finds each part's element; the boundary reader takes a part alone in its boundary and nothing else; the deferral reader takes a server file's import of a client module and nothing else",
+    show(caught) === show([true, true, false, false, true]) && show(importsCaught) === show([true, true, false, false])
+      && show(probeNames) === show(["LazyA", "LazyB"]) && show(probeTags) === show(["LazyA", "LazyBee"])
+      && show(wrapProbe) === show([1, 1, 0, 0]) && show(deferProbe) === show(["src/p/server.tsx -> src/p/client.tsx"]),
+    show({ caught, importsCaught, probeNames, probeTags, wrapProbe, deferProbe }));
+}
+
 /* ══ THE RUN ═════════════════════════════════════════════════════════════════════════════════════════════════ */
 async function run(I: Impl, W: World, log: (l: string) => void): Promise<{ failed: string[]; total: number }> {
   const failed: string[] = [];
@@ -2121,6 +2331,9 @@ async function run(I: Impl, W: World, log: (l: string) => void): Promise<{ faile
   log("");
   log("§10 · the header-fit gate's terms — the drives' pill rule, the red twin's leash, no witness left behind (WP6b, A6)");
   g10Terms(I, W, ok);
+  log("");
+  log("§12 · the shell's deferred parts — no React lazy in AppShell, one client module of next/dynamic parts each in its own boundary, a lost chunk left out, no server module deferring a client one (WP6c)");
+  g12ShellParts(W, G, ok);
   return { failed, total };
 }
 
@@ -2466,6 +2679,53 @@ ${s}`);
     const pageLoadsHeader = withFile(WORLD, MARKETS_PAGE,
       (s) => `${s}${LF}const Bar = lazy(() => import("@/components/journey/journey-top-bar").then((m) => ({ default: m.JourneyTopBar })));${LF}`);
     const shellStatic = withFile(WORLD, SHELL, (s) => `${s}${LF}import { JourneyTabs } from "@/components/journey/journey-tabs";${LF}`);
+    // §12 · WP6c — the shell's deferred parts: React lazy back in a server file (by name, renamed, or next/dynamic in a
+    // server module), an option object, a part reached around the module, a directive lost, a part pointed elsewhere,
+    // a second home, a static import, a stray name, a part rendered twice or outside its boundary, the offline banner
+    // deferred, a second loader of a part, and the lost-chunk guard weakened or dropped.
+    const HELP_PAGE = "src/app/help/page.tsx";
+    const ROOT_LAYOUT = "src/app/layout.tsx";
+    const FOOTER = "src/components/layout/public-footer.tsx";
+    const PULL_TO_REFRESH = "src/components/ui/pull-to-refresh.tsx";
+    const lazyAgain = withFile(WORLD, SHELL, (s) => s.replace(`import { Suspense } from "react";`, `import { Suspense, lazy } from "react";`)
+      + `${LF}const LazyOld = lazy(() => import("@/components/ui/offline-banner").then((m) => ({ default: m.OfflineBanner })));${LF}`);
+    const ssrOff = withFile(WORLD, SHELL_LAZY, (s) => s.replace(".then((m) => m.ChannelsPanel).catch(nothingIfLost));",
+      ".then((m) => m.ChannelsPanel).catch(nothingIfLost), { ssr: false });"));
+    const loadingBox = withFile(WORLD, SHELL_LAZY, (s) => s.replace(".then((m) => m.JourneyTopBar).catch(nothingIfLost));",
+      ".then((m) => m.JourneyTopBar).catch(nothingIfLost), { loading: () => null });"));
+    const shellDirect = withFile(WORLD, SHELL, (s) => `${s}${LF}import { ChannelsPanel } from "@/components/social/channels-panel";${LF}`);
+    const moduleServer = withFile(WORLD, SHELL_LAZY, (s) => s.replace(`"use client";`, ""));
+    const partServer = withFile(WORLD, PULL_TO_REFRESH, (s) => s.replace(`"use client";`, ""));
+    const serverPageLazy = withFile(WORLD, HELP_PAGE,
+      (s) => `${s}${LF}const Banner = lazy(() => import("@/components/ui/offline-banner").then((m) => ({ default: m.OfflineBanner })));${LF}`);
+    const partSwapped = withFile(WORLD, SHELL_LAZY, (s) => s.replace(`import("@/components/analytics/consent-prompt").then((m) => m.ConsentPrompt)`,
+      `import("@/components/pwa/install-invite").then((m) => m.InstallInvite)`));
+    const secondHome = withFile(WORLD, HELP_PAGE, (s) => `${s}${LF}import { LazyChannelsPanel } from "@/components/layout/shell-lazy";${LF}`);
+    const moduleStatic = withFile(WORLD, SHELL_LAZY, (s) => `${s}${LF}import { JourneyTabs } from "@/components/journey/journey-tabs";${LF}`);
+    const strayPart = withFile(WORLD, SHELL, (s) => s.replace("<LazyPullToRefresh />", "<LazyPullToRefresh /><LazyStray />"));
+    const lazyRenamed = withFile(WORLD, SHELL, (s) => s.replace(`import { Suspense } from "react";`, `import { Suspense, lazy as deferred } from "react";`)
+      + `${LF}const Old = deferred(() => import("@/components/ui/offline-banner").then((m) => ({ default: m.OfflineBanner })));${LF}`);
+    const shellDynamic = withFile(WORLD, SHELL, (s) => `${s}${LF}import dynamic from "next/dynamic";${LF}`
+      + `const DeferredNeedle = dynamic(() => import("@/components/layout/needle").then((m) => m.Needle));${LF}`);
+    const layoutDynamic = withFile(WORLD, ROOT_LAYOUT, (s) => `${s}${LF}import dynamic from "next/dynamic";${LF}`
+      + `const Banner = dynamic(() => import("@/components/ui/offline-banner").then((m) => m.OfflineBanner));${LF}`);
+    const pageImportsLazy = withFile(WORLD, HELP_PAGE, (s) => `${s}${LF}import { lazy } from "react";${LF}`);
+    const panelUnwrapped = withFile(WORLD, SHELL, (s) => s.replace("<Suspense fallback={null}><LazyChannelsPanel promoSuppressed={promoSuppressed} /></Suspense>",
+      "<LazyChannelsPanel promoSuppressed={promoSuppressed} />"));
+    const winUnwrapped = withFile(WORLD, SHELL, (s) => s.replace("<Suspense fallback={null}><LazyWinCelebration /></Suspense>", "<LazyWinCelebration />"));
+    const pullUnwrapped = withFile(WORLD, SHELL, (s) => s.replace(
+      new RegExp(`<Suspense fallback=[{]null[}]>[ ${LF}]*<LazyPullToRefresh />[ ${LF}]*</Suspense>`), "<LazyPullToRefresh />"));
+    const winTwice = withFile(WORLD, SHELL, (s) => s.replace("<Suspense fallback={null}><LazyWinCelebration /></Suspense>",
+      "<Suspense fallback={null}><LazyWinCelebration /></Suspense><Suspense fallback={null}><LazyWinCelebration /></Suspense>"));
+    const offlineDeferred = withFile(
+      withFile(WORLD, SHELL_LAZY, (s) => `${s}${LF}export const LazyOfflineBanner = dynamic(() => `
+        + `import("@/components/ui/offline-banner").then((m) => m.OfflineBanner).catch(nothingIfLost));${LF}`),
+      SHELL, (s) => s.replace(`import { OfflineBanner } from "@/components/ui/offline-banner";`, "").replace("<OfflineBanner />", "<LazyOfflineBanner />"));
+    const extraDynamic = withFile(WORLD, SHELL_LAZY,
+      (s) => `${s}${LF}const Extra = dynamic(() => import("@/components/ui/offline-banner").then((m) => m.OfflineBanner));${LF}`);
+    const footerLoadsPart = withFile(WORLD, FOOTER, (s) => `${s}${LF}import { ConsentPrompt } from "@/components/analytics/consent-prompt";${LF}`);
+    const guardSwallows = withFile(WORLD, SHELL_LAZY, (s) => s.replace(`if (!(error instanceof Error) || error.name !== "ChunkLoadError") throw error;`, ""));
+    const guardDropped = withFile(WORLD, SHELL_LAZY, (s) => s.replace(".then((m) => m.ConsentPrompt).catch(nothingIfLost));", ".then((m) => m.ConsentPrompt));"));
     // §10 — the header-fit gate's terms: the drives' copy of the pill rule, the red twin's leash, a witness left behind.
     const withExtra = (rel: string, edit: (s: string) => string): World =>
       ({ ...WORLD, extra: new Map<string, string>([...WORLD.extra, [rel, edit(WORLD.extra.get(rel) ?? "")] as [string, string]]) });
@@ -2794,6 +3054,55 @@ ${s}`);
         world: pageLoadsHeader, landed: changed(pageLoadsHeader, MARKETS_PAGE), landedAs: "a second mount of the journey chrome, outside the resolver's one decision" },
       { name: "AppShell imports the journey tabs statically", expect: at("8.mount.lazy ·"),
         world: shellStatic, landed: changed(shellStatic, SHELL), landedAs: "every classic visitor downloads the journey chrome's code" },
+      // §12 · WP6c — the shell's deferred parts (the plan's four first)
+      { name: "a React lazy binding put back in AppShell", expect: at("12.shell.nolazy ·"),
+        world: lazyAgain, landed: changed(lazyAgain, SHELL), landedAs: "a part's code back in every page's first load (production, 2026-10-03)" },
+      { name: "a part loads with ssr: false", expect: at("12.module.dynamic ·"),
+        world: ssrOff, landed: changed(ssrOff, SHELL_LAZY), landedAs: "the part leaves the server's HTML, inside a Suspense boundary of next/dynamic's own" },
+      { name: "AppShell imports a part straight from its own file", expect: at("12.shell.only ·"),
+        world: shellDirect, landed: changed(shellDirect, SHELL), landedAs: "the channels panel back in every page's first load" },
+      { name: "the shell's lazy module loses its client directive", expect: at("12.module.client ·"),
+        world: moduleServer, landed: changed(moduleServer, SHELL_LAZY), landedAs: "next/dynamic in a server file: not the shape the production build proved" },
+      { name: "a part passes a loading option", expect: at("12.module.dynamic ·"),
+        world: loadingBox, landed: changed(loadingBox, SHELL_LAZY), landedAs: "a second Suspense boundary inside AppShell's: new markers in a journey page's HTML" },
+      { name: "a part's own module loses its client directive", expect: at("12.parts.client ·"),
+        world: partServer, landed: changed(partServer, PULL_TO_REFRESH), landedAs: "a module that does not declare itself client code, loaded as client code" },
+      { name: "a server page loads a client part with React lazy", expect: at("12.nolazy.platform ·"),
+        world: serverPageLazy, landed: changed(serverPageLazy, HELP_PAGE), landedAs: "the same first-load leak, from /help" },
+      { name: "a part's binding loads another module", expect: at("12.parts.table ·"),
+        world: partSwapped, landed: changed(partSwapped, SHELL_LAZY), landedAs: "the consent prompt's mount renders the install card" },
+      { name: "a second file imports the shell's lazy module", expect: at("12.module.home ·"),
+        world: secondHome, landed: changed(secondHome, HELP_PAGE), landedAs: "a shell part mounted outside the shell" },
+      { name: "the shell's lazy module imports a part statically", expect: at("12.module.dynamic ·"),
+        world: moduleStatic, landed: changed(moduleStatic, SHELL_LAZY), landedAs: "the journey rail back in every page's first load, through the module that keeps it out" },
+      { name: "AppShell renders a lazy part the module does not declare", expect: at("12.shell.parts ·"),
+        world: strayPart, landed: changed(strayPart, SHELL), landedAs: "a part declared somewhere other than the one module" },
+      { name: "AppShell imports React lazy under another name", expect: at("12.shell.nolazy ·"),
+        world: lazyRenamed, landed: changed(lazyRenamed, SHELL), landedAs: "the same React.lazy, out of the readers' sight by its name" },
+      { name: "AppShell defers a client module with next/dynamic itself", expect: at("12.nodefer.platform ·"),
+        world: shellDynamic, landed: changed(shellDynamic, SHELL), landedAs: "next/dynamic in a server file: the module back in every page's first load" },
+      { name: "the root layout defers a client module with next/dynamic", expect: at("12.nodefer.platform ·"),
+        world: layoutDynamic, landed: changed(layoutDynamic, ROOT_LAYOUT), landedAs: "the same leak, from the root layout" },
+      { name: "a server page imports React lazy without calling it", expect: at("12.nolazy.platform ·"),
+        world: pageImportsLazy, landed: changed(pageImportsLazy, HELP_PAGE), landedAs: "a server page set up to make the same mistake" },
+      { name: "AppShell renders the channels panel outside its Suspense boundary", expect: at("12.shell.wrapped ·"),
+        world: panelUnwrapped, landed: changed(panelUnwrapped, SHELL), landedAs: "the panel's boundary markers leave the HTML, and its chunk holds up the page's hydration" },
+      { name: "AppShell renders the win celebration outside its Suspense boundary", expect: at("12.shell.wrapped ·"),
+        world: winUnwrapped, landed: changed(winUnwrapped, SHELL), landedAs: "the same, for a one-line mount" },
+      { name: "AppShell drops pull-to-refresh's three-line Suspense boundary", expect: at("12.shell.wrapped ·"),
+        world: pullUnwrapped, landed: changed(pullUnwrapped, SHELL), landedAs: "the same, for a mount written over three lines" },
+      { name: "AppShell renders a part twice", expect: at("12.shell.parts ·"),
+        world: winTwice, landed: changed(winTwice, SHELL), landedAs: "two celebration hosts: one win, two seals" },
+      { name: "the offline banner deferred like the parts", expect: at("12.shell.offline ·"),
+        world: offlineDeferred, landed: changed(offlineDeferred, SHELL) && changed(offlineDeferred, SHELL_LAZY), landedAs: "the banner's code behind a fetch the dropped connection it reports on can stop" },
+      { name: "the shell's lazy module declares a part outside the table", expect: at("12.module.dynamic ·"),
+        world: extraDynamic, landed: changed(extraDynamic, SHELL_LAZY), landedAs: "a part no gate names" },
+      { name: "a classic file imports a part's module statically", expect: at("12.parts.home ·"),
+        world: footerLoadsPart, landed: changed(footerLoadsPart, FOOTER), landedAs: "the consent prompt back in every page's first load, through the footer" },
+      { name: "the lost-chunk guard takes every error", expect: at("12.module.lost ·"),
+        world: guardSwallows, landed: changed(guardSwallows, SHELL_LAZY), landedAs: "a part's render bug hidden as if its chunk were lost" },
+      { name: "a part's loader drops the lost-chunk guard", expect: at("12.parts.table ·"),
+        world: guardDropped, landed: changed(guardDropped, SHELL_LAZY), landedAs: "a dropped connection takes the whole page to the critical-error screen" },
       // §10 — the header-fit gate's terms (A5, A6)
       { name: "the header draws the pill on the deposit screen while the drives skip it there", expect: at("10.rules.pill ·"),
         impl: { header: pillOnDeposit }, landed: pillOnDeposit(onDeposit).pill && !HDR.journeyHeaderState(onDeposit).pill,

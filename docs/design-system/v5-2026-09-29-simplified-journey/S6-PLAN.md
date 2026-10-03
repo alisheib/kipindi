@@ -491,7 +491,8 @@ Names marked "new" below are proposals. Their package.json keys do not exist yet
    *As built (WP6b, 2026-10-02):* the tabs take `userId={session?.userId ?? null}` — their one prop, per A1 — not
    `isAuthed`. And both journey arms are LAZY (the WP6b review): `LazyJourneyTopBar` and `LazyJourneyTabs` are declared
    the way AppShell declares its overlays, each arm in its own `<Suspense>`, so the journey chrome's code stays out of
-   the first-load bundle every classic visitor downloads. The server still renders a journey page's header; a fallback
+   the first-load bundle every classic visitor downloads (⚠️ it did not: `React.lazy` in a server component split
+   nothing; corrected by WP6c, "As built (WP6c)" at the end). The server still renders a journey page's header; a fallback
    shows only while the code arrives (a streamed beat, or a switch into the journey mid-visit), so the header's is the
    bar's own empty box (`.kp-jhdr`: its 56px, its panel and its border) and nothing below it moves, while the tabs' is
    none (the rail takes no room in the page). The ternaries in the shell therefore read
@@ -625,14 +626,16 @@ Plus one plant each.
 
 *As built (WP7, 2026-10-02, applied and driven 2026-10-03):* the flag is mounted through a lazy binding like AppShell's other
 overlays (`{journeyShown && <Suspense fallback={null}><LazyJourneyFlag /></Suspense>}`, beside the funnel's span), so a
-classic page never loads it; `test:journey-shell` 5.mount holds the mount and §11 the lazy load. It is §11, not the
+classic page never loads it (true from WP6c, which moved the binding into `shell-lazy.tsx`); `test:journey-shell` 5.mount
+holds the mount and §11 the lazy load. It is §11, not the
 §10 the body names, because WP6b's header-fit terms took §10 first; it sits beside §5 in the file and in the run's
 output. The stand-downs are steps 2–4 as written; each overlay reads `const journeyOn = useJourneyOn();` once, and
 the channels panel names the term once (`journeyHidden`) for its `eligible` and its render guard. The chat's guard returns null and nothing more: it neither closes an open panel nor
 clears the conversation, which is where the player left it on the next page that shows the bubble. A4 as written: 5.2
 matches `isMoneySurface` in any import list from `@/lib/surfaces`, and a new clause forbids a `MONEY_ROUTE` or an
 `isMoneySurface` function or binding in `needle.tsx` (comments stripped); `red:install-invite` gains one mutation per
-half. ⚠️ The flag arrives in its own chunk, so on a journey viewer's first document load an overlay that draws before it
+half. ⚠️ The flag hydrates inside its own Suspense boundary (and, from WP6c, arrives in its own chunk), so on a journey
+viewer's first document load an overlay that draws before it
 could show for a moment. The drive measured it: the chat bubble never drew, but the NEEDLE did, for 1–3 frames on
 every fresh load of `/` and `/positions` (it hydrates outside the flag's Suspense boundary, and its engine mounted
 ≈30 ms before the flag). Fixed by the shell's MARK: AppShell also writes `{journeyShown && <span hidden
@@ -1628,3 +1631,23 @@ phone number (0800 11 0011 is the national problem-gambling helpline, not our de
 canvas is corrected to match); Tiketi cards keep the ticket number and drop share/profit strip/yes-no bar/search/sort
 for preview viewers (shelved, not deleted); production proof = nothing changed for players, until Ali's preview is on;
 manifest shortcuts move at S12/S15.
+
+*As built (WP6c, 2026-10-03; `VODACOM-PLAN.md` §0h point 20 and §0i):* AppShell's eleven `React.lazy` bindings (the
+offline banner, pull-to-refresh, the notify poller, the event stream, the install card, the analytics consent prompt,
+the channels panel, the journey flag, the win celebration, and the journey header and tabs) split nothing: in this
+Next 16/Turbopack build a client module that a server component reaches through `import()` still joins the root
+layout's client entry, so every one of them rode in every page's first-load scripts (the journey header and tabs,
+beside the channels panel and the consent prompt, measured on production after WP6b; the eight older parts read in a
+local production build, 2026-10-03). Ten now live in one client module, `src/components/layout/shell-lazy.tsx`, each
+written `export const LazyX = dynamic(() => import("…").then((m) => m.X).catch(nothingIfLost));` with no option
+object: the server render stays on, and `next/dynamic` adds no Suspense boundary of its own (it adds one only for
+`ssr: false` or `loading`), so AppShell keeps its `<Suspense>` wrappers and fallbacks, imports the parts under the
+names it rendered, and renders each exactly where and as it did. The eleventh, the offline banner, is imported
+statically and rendered in its own boundary as before (its tag is the one JSX change): its job is a connection that
+fails, so its code comes with the page as it always did. A part whose chunk never arrives (a `ChunkLoadError`) renders
+nothing and is reported once to `/api/client-error`, instead of taking the page to the critical-error screen; any
+other error is thrown on. This corrects the WP6b and WP7 as-built notes above, whose "lazy, so a classic page never
+loads it" became true here, not there. Guard: `test:journey-shell` §12 (15 checks, 24 plants); its 8.mount,
+8.mount.lazy and 11.flag.lazy, `test:simple-journey-flag` 10.shell.chrome.lazy and .only (3 plants), and
+`test:stacking`'s binding reader read the new home. Owed: the production build's first-load reading, the served-HTML
+compare, the parity compare and the lost-chunk drive (VODACOM-PLAN §0i, WP6c).

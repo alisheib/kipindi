@@ -212,7 +212,7 @@ WP6b the swap + census + header-fit → WP7 overlays → WP8 short titles on pos
   deploy (`?dpl=`) and the served bundle.
 - **⏸ S6 STOPPED HERE (2026-10-03) — resume:** WP8, WP6b, WP7 and WP11 are pushed behind the flag (their bullets
   below; WP6b's owed list keeps its open items, numbered). Next: WP6c (§0h point 20 — the journey chrome and AppShell's
-  older overlays out of every visitor's first download, proven by a local production build), WP9 (Tiketi zangu — its
+  older overlays out of every page's initial scripts, proven by a local production build), WP9 (Tiketi zangu — its
   change set drafted by a static agent in the session scratchpad, `s6/WP9.json`, reviewed before it is applied),
   WP10, WP12 (S6-PLAN.md).
   Method and tools: memory `project_kipindi_vodacom_plan` (staged change sets, `apply_changeset.py`, `run-gates.sh`,
@@ -266,7 +266,8 @@ WP6b the swap + census + header-fit → WP7 overlays → WP8 short titles on pos
   the journey header (its break flag is the shell's own `promoSuppressed`) and the four tabs (keyed by the viewer's
   id); every other request gets, in the else arms, today's `TopAppBar` and `BottomNav` with today's props. Both journey
   arms are LAZY, declared the way AppShell declares its overlays, each in its own Suspense, so their code stays out of
-  the first-load bundle every classic visitor downloads. The header's fallback is the bar's own empty box (its height,
+  the first-load bundle every classic visitor downloads (⚠️ it did not: owed item 2 below, fixed by WP6c). The header's
+  fallback is the bar's own empty box (its height,
   panel and border), so a journey page does not jump while that code arrives; the rail needs none (it takes no room in
   the page). The cost, until S15 flips which side is lazy: a journey viewer's header hydrates one chunk fetch later.
   `test:simple-journey-flag` 10.shell.chrome pins both ternaries with their classic arms verbatim, the lazy bindings,
@@ -320,7 +321,8 @@ WP6b the swap + census + header-fit → WP7 overlays → WP8 short titles on pos
   (≈3–4 KB gzipped), downloaded and never rendered. The chunk that holds them also holds the channels panel and the
   consent prompt: `React.lazy` in a server component (AppShell) does not split client code in this Next/Turbopack
   build, so the journey chrome landed where AppShell's older "lazy" overlays always were. Nothing a player sees
-  changes; the plan's claim does. Fix scheduled as **WP6c** (§0h point 20); (3) ✅ `npm run qa:journey-header-fit`,
+  changes; the plan's claim does. Fixed by **WP6c** (§0h point 20; its bullet below, applied 2026-10-03); this item turns ✅ when
+  the coordinator's local production build reads no journey header or tabs code in a classic page's initial scripts; (3) ✅ `npm run qa:journey-header-fit`,
   66/66 (above); (4) ✅ its red twin, detached and alone under the heavy-node lock: 9/9 mutations caught, 0 missed, 0 broken, 0 files left modified, and `git diff` of `src/` empty after it; (5) the
   qa:journey-shell tiles (WP6b step 5, not yet written: the header at 320–1280 × sw/en/zh, held, masked, zero and
   999,999, the active tab on each destination, the guest sheet, the Wallet, the unread dot, the focus ring, the tab
@@ -381,6 +383,89 @@ WP6b the swap + census + header-fit → WP7 overlays → WP8 short titles on pos
   en, sw and zh; `qa:classic-shell-parity --compare`: the one named difference `footer-rail-h` in exactly 224 of 224
   cells, nothing else — the computed footer padding and scroll padding are compared in every cell and equal.
   **Served bytes for a classic viewer:** the footer's class string and one CSS custom property; computed values equal.
+- **WP6c — AppShell's lazily loaded parts, out of every page's initial scripts (applied 2026-10-03; §0h point 20,
+  WP6b's owed item 2).** AppShell is a server component, and its eleven `React.lazy` bindings split nothing in this
+  Next 16/Turbopack build: a client module that a server component reaches through `import()` still joins the root
+  layout's client entry, so all eleven rode in the scripts every page loads first, for every visitor (production
+  showed the journey's header and tabs there after WP6b, in the chunk that already held the channels panel and the
+  consent prompt; a local production build read the eight older parts there too, 2026-10-03). Ten now come from ONE
+  client module, `src/components/layout/shell-lazy.tsx`, each a `next/dynamic` import of its "use client" component
+  with no option object (the server render stays on, no `loading`), under the name AppShell already rendered it by:
+  pull-to-refresh, the win celebration, the notify poller, the event stream, the install card, the analytics consent
+  prompt, the channels panel, the journey flag, and the journey header and tabs. AppShell imports them and renders
+  each exactly where, and with exactly the props, it did (those JSX lines are untouched), inside the Suspense
+  boundaries and fallbacks it already had, the journey header's `kp-jhdr` box among them; each boundary is now its
+  part's only one, because `next/dynamic` adds its own only for `ssr: false` or a `loading` option
+  (`node_modules/next/dist/shared/lib/lazy-dynamic/loadable.js`, `hasSuspenseBoundary`). The eleventh, the offline
+  banner, is imported statically instead and still rendered in its own boundary: its one job is a connection that
+  fails, so its code comes with the page's own scripts, as it always did, and never by a fetch the same failure could
+  stop. **A part whose code never arrives is left out, not fatal.** Each part is now a fetch of its own; a dropped
+  connection, or a deploy landing between the page and a part's chunk, gives a `ChunkLoadError` that Turbopack never
+  retries, and with no error boundary between AppShell and the root, React's rejected lazy load would put the whole
+  page on the critical-error screen ("Something broke too early to recover", whose "Try again" re-renders the same
+  rejection). So every loader ends in `.catch(nothingIfLost)`: that part renders nothing for the rest of the page's
+  life, one report per page goes to `/api/client-error`, and any other error is thrown on, as before. The server never
+  takes that path (its chunks are on disk), so the HTML does not change. **Served bytes for a classic viewer:** the
+  body's markup is the same elements in the same Suspense boundaries; the head gains one low-priority script preload
+  per chunk of each part the server rendered (Next's PreloadChunks, from the route's react-loadable manifest: signed
+  out, pull-to-refresh, the win celebration, the consent prompt and the channels panel; signed in, also the poller and
+  the event stream); the RSC rows of those parts name `shell-lazy.tsx` and its `Lazy…` exports instead of each part's
+  own module; and the initial scripts lose the parts' code. Those classic overlays still download on every classic
+  page, now at low priority beside the page's own scripts (the win celebration's code stays in the initial scripts,
+  because `away-summary-bar.tsx` imports `dispatchWinCelebration` from it); only the journey's three parts and the
+  withdrawn install card leave a classic visitor's downloads, the journey chrome's ≈12.5 KB raw among them. Turbopack
+  copies a helper two async chunks share into both (the experiment build did so for the journey header and tabs), so
+  `invitation-slot.ts` likely downloads twice, in the consent prompt's chunk and the panel's, and still runs once.
+  **Timing:** each part hydrates when its chunk lands instead of with the page; a soft navigation that starts before a
+  part's chunk has landed waits for it (React hydrates a boundary before it passes a changed context into it); a soft
+  sign-in mounts the poller and the event stream with no preload, so their chunks are fetched then. A journey viewer's
+  header and tabs hydrate one chunk fetch later, as WP6b said: until then a header link is a full page load and its
+  buttons do nothing, and on a switch into the journey mid-visit the header shows its `kp-jhdr` box and the rail is
+  absent until the tabs' chunk lands — accepted while journey viewers are staff, measured before S15 (owed 7). **What
+  parity cannot see:** `qa:classic-shell-parity` compares the shell's regions (header, rail, footer, email bar, the
+  signed-in `/positions` body) and the on-screen fixed overlays; every part's boundary sits beside those regions, so
+  the boundaries are held by `test:journey-shell` 12.shell.wrapped and the bytes by owed drive (2). **Guard:**
+  `test:journey-shell` §12, in predeploy: AppShell calls and imports no React `lazy` under any name; every lazily
+  loaded part it renders is imported from that one module under its table name and rendered once, as the one child of
+  its own Suspense boundary, and AppShell imports none of the parts' own modules; the offline banner is imported
+  statically and mounted once in its own boundary; the module is "use client", imports nothing statically but
+  `next/dynamic`, declares exactly the ten parts (each one line, no option object, ending in the guard), keeps the
+  guard as written (a `ChunkLoadError` alone, reported, anything else thrown on), and only AppShell imports it; each
+  part's module is "use client" and loaded from there alone (the win celebration's three static importers named); and
+  no server module in `src` calls React's `lazy` or defers a "use client" module through `import()` at all,
+  `next/dynamic` included. 24 in-memory plants in `red:journey-shell`; `test:journey-shell` 8.mount, 8.mount.lazy and
+  11.flag.lazy, `test:simple-journey-flag` 10.shell.chrome.lazy and .only (3 new plants) and `test:stacking`'s binding
+  reader (5.6) read the new home. **Proof so far:** a throwaway local production build of the same pattern for the
+  journey's three parts (2026-10-03, `scratchpad/s6/wp6c/first-load-experiment.txt`): the journey header and tabs left
+  the initial scripts of `/`, `/markets`, `/positions` and `/help` for chunks of their own, each listed in the route's
+  react-loadable manifest, while the channels panel and the consent prompt, still `React.lazy` there, stayed in them
+  (the in-build control), and the classic deposit control was found. **Owed (the coordinator's drives):** (1) a
+  production build read by `scratchpad/s6/wp6c/first-load-parts.py` (and `first-load.py`) on `/`, `/markets`,
+  `/positions` and `/help`: every part but the win celebration in a chunk of its own with its marker out of the
+  initial scripts, the offline banner's and the win celebration's markers in them (`first-load.py`'s flag marker,
+  `raiseJourneyFlag`, cannot leave: `journey-on.ts` defines it and the Needle loads that on every page by design since
+  WP7); (2) the served HTML, compared by `scratchpad/s6/wp6c/shell-skeleton.py`: the second (warm) response of each of
+  those four routes, signed out in en, plus one signed-in cell and one journey-preview cell, from a server at HEAD and
+  a server with WP6c, after a HEAD-against-HEAD null pair that must show no change: the body's skeleton identical, no
+  client-rendered boundary (`<!--$!-->`), the head changed only by low-priority script preloads and the initial script
+  list (the dev server: `next start` cannot serve here, because the in-memory store refuses production and
+  `/auth/demo` answers 404 there, so the production build is read statically by (1)); (3)
+  `qa:classic-shell-parity --compare`, 224 cells, only the `footer-rail-h` difference WP11 named; (4) every part still
+  mounts (the offline banner when the context goes offline, the consent prompt with `?consent=1`, the win
+  celebration's `ack.accepted` on a `50pick:celebrate` event, the signed-in `/api/events` stream), and a part's chunk
+  aborted on a classic page (Playwright `route.abort`) leaves the page up, that part absent and one
+  `/api/client-error` report, while the same abort with that line's `.catch(nothingIfLost)` removed reaches the
+  critical-error screen (the drive can fail); (5) the WP7 frame drive (32 cells), plus a switch into the journey
+  mid-visit; (6) after the push, production read as a guest by `scratchpad/s6/wp6c/chunks-check-wp6c.sh`
+  (`prod/chunks-check.sh` with the script preloads listed apart): no journey header or tabs code (`journey-top-bar`,
+  `journey-tabs`, `kp-jhdr`) in the initial scripts, the preloads present and no `<!--$!-->` in the HTML; it reports
+  `kp-journey-shell` without failing (`shell-mark.ts`, which `journey-on.ts` brings into every page by design), and
+  any byte figure adds the preloads to the scripts; (7) before S15, the journey header's and tabs' time to interactive
+  on a throttled phone, and whether they still belong behind a low-priority chunk; (8) platform: the same `.catch`
+  belongs on the two older `next/dynamic` parts in `layout/lazy-overlays.tsx` (the chat bubble and the first-visit
+  primer, exposed the same way since before S6) and on WP9's `ticket-switch-rail.tsx`, the guard lifted into one
+  shared module when a second file takes it (WP9 cannot import a WP6c module while the two change sets must apply in
+  either order).
 - **WP9 — Tiketi zangu (2026-10-03).** For a journey request `/positions` is "Tiketi zangu" in the canvas's order, and
   `/updown/history` wears the same name and the Maswali | Juu/Chini switch (the kit's underline rail in link mode,
   `aria-current="page"` on the page being read); every other reader is served today's pages. Both pages ask the one
@@ -498,9 +583,18 @@ here, with how to overrule it. Newest last; nothing here blocks the work.
     same is true of AppShell's OLDER lazy overlays (the consent prompt, the channels panel, the win celebration…): they
     have always shipped in the first download. Under Ali's standing rule (2026-09-27: fix the same defect platform-wide,
     with its own guard) WP6c moves them too — still rendered on the server exactly as now (`next/dynamic` with its
-    server render on), so the HTML every player gets is unchanged (`qa:classic-shell-parity`, 224 cells) and only WHEN
-    their code downloads changes; a new guard holds AppShell to no `lazy()` of a client module. Overrule: say so, and
-    either half stays where it is.
+    server render on), so the markup every player gets is unchanged (the same elements in the same Suspense
+    boundaries; the head gains low-priority preloads of their code, §0i WP6c) and only WHEN their code downloads
+    changes; a new guard holds every server module to no `lazy()` or `next/dynamic` of a
+    client module. Overrule: say so, and
+    either half stays where it is. **Built (2026-10-03, §0i WP6c):** both halves together. Ten of AppShell's eleven
+    lazily loaded parts now come from one client module, `src/components/layout/shell-lazy.tsx`, through `next/dynamic`
+    with the server render on; the eleventh, the offline banner, is imported statically, its code arriving with the
+    page as it always did (its one job is a connection that fails). A part whose code never arrives is left out, not
+    fatal. `test:journey-shell` §12 is the guard. Done when the coordinator's production build shows a classic page's
+    initial scripts without the ten, the served-HTML compare finds a classic viewer's body markup unchanged (the head's
+    preloads, the script list and the inline RSC data move), and `qa:classic-shell-parity` finds the shell's regions
+    unchanged.
 21. **Tiketi zangu's loading picture is chosen on the server** (WP9; departs from S6-PLAN A16's letter). While
     `/positions` or `/updown/history` loads, its loading file asks the same per-request answer the page and the shell
     use — is this reader in the journey? — together with the words, and draws one picture: the journey's for a journey

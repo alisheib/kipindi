@@ -14,7 +14,8 @@
  *   §9  the doors (`/preview`) — on, off, and a preview link, with their refusals.
  *   §10 the wiring, read from source: ONE resolver, ONE reader and ONE writer of the cookie, the shell's order and its
  *       swap (S6 WP6b: the journey header and tabs only in the `journeyShown` arms, as lazy bindings in their own
- *       Suspense, today's bar and rail in the else arms, and nothing else rendering or loading them), the
+ *       Suspense, since WP6c `next/dynamic` parts of the shell's one lazy module, today's bar and rail in the else arms,
+ *       and nothing else rendering or loading them), the
  *       Akaunti hub's gate (S6 WP5: /account asks the resolver and calls notFound() before any read),
  *       the email-verify bar (S6 WP7: a classic request's on today's condition, never a journey request's), no-store,
  *       the health block, and nothing that grants access ever reading the pass.
@@ -666,20 +667,23 @@ function g10Wiring(W: World) {
   // ⭐ THE SHELL SWAP (S6 WP6b). The journey's header and tabs render only in the `journeyShown` arm of a ternary whose
   // else arm is today's classic element with today's props, written out here so a change to either arm is a decision:
   // a request the resolver does not show the journey to is served what it was served before. Each journey arm is a LAZY
-  // binding in its own Suspense, declared the way AppShell declares its overlays, so the journey chrome's code stays out
-  // of the first-load bundle every classic visitor downloads. The header's fallback is the bar's own empty box (its
+  // binding in its own Suspense, since WP6c a `next/dynamic` part of the shell's one client module, `shell-lazy.tsx`
+  // (AppShell's own `React.lazy` split nothing: VODACOM-PLAN §0h point 20), so the journey chrome's code stays out of
+  // the first-load bundle every classic visitor downloads. The header's fallback is the bar's own empty box (its
   // height, panel and border), so a journey page does not jump while that code arrives; the tabs need none, because
   // the rail takes no room in the page. And nothing else renders or loads the journey chrome, or loads it into a
   // classic layout component.
   const SWAP_HEADER = '{journeyShown ? <Suspense fallback={<div aria-hidden="true" className="kp-jhdr" />}><LazyJourneyTopBar user={topUser} onBreak={promoSuppressed} proposalsState={proposalsState} inviteVisible={inviteVisible} invitePaid={invitePaid} /></Suspense> : <TopAppBar user={topUser} proposalsState={proposalsState} inviteVisible={inviteVisible} invitePaid={invitePaid} />}';
   const SWAP_RAIL = "{journeyShown ? <Suspense fallback={null}><LazyJourneyTabs userId={session?.userId ?? null} /></Suspense> : <BottomNav isAuthed={!!session} proposalsState={proposalsState} inviteVisible={inviteVisible} walletHeld={!!topUser.walletHeld} />}";
-  const LAZY_LINES = [
-    "const LazyJourneyTopBar = lazy(() =>",
-    'import("@/components/journey/journey-top-bar").then((m) => ({ default: m.JourneyTopBar })),',
-    "const LazyJourneyTabs = lazy(() =>",
-    'import("@/components/journey/journey-tabs").then((m) => ({ default: m.JourneyTabs })),',
+  const SHELL_LAZY = "src/components/layout/shell-lazy.tsx";
+  /** The two journey arms' lines in the shell's one lazy module (S6 WP6c): `next/dynamic`, server render on, no option object, the lost-chunk guard last. */
+  const DYNAMIC_LINES = [
+    'export const LazyJourneyTopBar = dynamic(() => import("@/components/journey/journey-top-bar").then((m) => m.JourneyTopBar).catch(nothingIfLost));',
+    'export const LazyJourneyTabs = dynamic(() => import("@/components/journey/journey-tabs").then((m) => m.JourneyTabs).catch(nothingIfLost));',
   ];
+  const lazySrc = W.files.get(SHELL_LAZY) ?? "";
   const tally = (needle: string) => shell.split(needle).length - 1;
+  const tallyLazy = (needle: string) => lazySrc.split(needle).length - 1;
   ok("10.shell.chrome.header · the journey header renders only in the journeyShown arm, lazily, over the bar's own empty box, and the else arm is today's TopAppBar with today's props",
     tally(SWAP_HEADER) === 1 && tally("<LazyJourneyTopBar") === 1 && tally("<TopAppBar") === 1,
     j({ swap: tally(SWAP_HEADER), journey: tally("<LazyJourneyTopBar"), classic: tally("<TopAppBar") }));
@@ -687,17 +691,22 @@ function g10Wiring(W: World) {
     tally(SWAP_RAIL) === 1 && tally("<LazyJourneyTabs") === 1 && tally("<BottomNav") === 1,
     j({ swap: tally(SWAP_RAIL), journey: tally("<LazyJourneyTabs"), classic: tally("<BottomNav") }));
   const staticJourney = tally('from "@/components/journey/');
-  ok("10.shell.chrome.lazy · AppShell declares the journey header and tabs as lazy bindings, the way it declares its overlays, and imports nothing from the journey's components statically",
-    LAZY_LINES.every((line) => tally(line) === 1) && staticJourney === 0,
-    j({ lazy: LAZY_LINES.map(tally), staticImports: staticJourney }));
+  const fromModule = shell.split(";").filter((stmt) => stmt.includes('from "./shell-lazy"')).join(" ");
+  const armsImported = ["LazyJourneyTopBar", "LazyJourneyTabs"].filter((b) => fromModule.includes(b)).length;
+  const lazyCall = new RegExp("(?<![A-Za-z0-9_$])(?:React[.])?lazy[ ]*[(]").test(shell);
+  ok("10.shell.chrome.lazy · AppShell renders the journey header and tabs through the shell's one lazy module, which declares each with next/dynamic (S6 WP6c); AppShell declares no React lazy binding and imports nothing from the journey's components statically",
+    DYNAMIC_LINES.every((line) => tallyLazy(line) === 1) && armsImported === 2 && !lazyCall && staticJourney === 0,
+    j({ dynamic: DYNAMIC_LINES.map(tallyLazy), armsImported, lazyCall, staticImports: staticJourney }));
   const SHELL_FILE = "src/components/layout/app-shell.tsx";
   const CHROME_MODULES = ["@/components/journey/journey-top-bar", "@/components/journey/journey-tabs"];
   const elsewhere = [...W.files]
-    .filter(([p, s]) => p !== SHELL_FILE && (s.includes("<JourneyTopBar") || s.includes("<JourneyTabs") || CHROME_MODULES.some((m) => s.includes(m))))
+    .filter(([p, s]) => p !== SHELL_FILE && p !== SHELL_LAZY && (s.includes("<JourneyTopBar") || s.includes("<JourneyTabs") || CHROME_MODULES.some((m) => s.includes(m))))
     .map(([p]) => p);
-  const classicLoads = [...W.files].filter(([p, s]) => p.startsWith("src/components/layout/") && p !== SHELL_FILE && s.includes("@/components/journey/")).map(([p]) => p);
-  ok("10.shell.chrome.only · nothing but AppShell renders or loads the journey chrome, and no classic layout component loads a journey module",
-    elsewhere.length === 0 && classicLoads.length === 0, j({ elsewhere, classicLoads }));
+  const classicLoads = [...W.files].filter(([p, s]) => p.startsWith("src/components/layout/") && p !== SHELL_FILE && p !== SHELL_LAZY && s.includes("@/components/journey/")).map(([p]) => p);
+  /** The shell's lazy module may name a journey module only inside a `next/dynamic` import, and renders none itself. */
+  const lazyStrays = tallyLazy('"@/components/journey/') - tallyLazy('dynamic(() => import("@/components/journey/') + tallyLazy("<JourneyTopBar") + tallyLazy("<JourneyTabs");
+  ok("10.shell.chrome.only · nothing but AppShell renders or loads the journey chrome (the shell's lazy module names it only in its next/dynamic imports, S6 WP6c), and no other classic layout component loads a journey module",
+    elsewhere.length === 0 && classicLoads.length === 0 && lazyStrays === 0, j({ elsewhere, classicLoads, lazyStrays }));
 }
 
 async function g11Health() {
@@ -868,6 +877,12 @@ const PLANTS: Plant[] = [
     world: (w) => ({ ...w, shell: w.shell.replace('import { BottomNav } from "./bottom-nav";', 'import { BottomNav } from "./bottom-nav"; import { JourneyTopBar } from "@/components/journey/journey-top-bar";') }) },
   { name: "a classic component imports a journey module (S6 WP6b)", expect: new RegExp("^10[.]shell[.]chrome[.]only"),
     world: (w) => files(w, "src/components/layout/top-app-bar.tsx", (s) => `${s} import { JourneyTabs } from "@/components/journey/journey-tabs";`) },
+  { name: "the journey header's part turns its server render off (S6 WP6c)", expect: new RegExp("^10[.]shell[.]chrome[.]lazy"),
+    world: (w) => files(w, "src/components/layout/shell-lazy.tsx", (s) => s.replace(".then((m) => m.JourneyTopBar).catch(nothingIfLost));", ".then((m) => m.JourneyTopBar).catch(nothingIfLost), { ssr: false });")) },
+  { name: "AppShell declares the journey tabs with React lazy again (S6 WP6c)", expect: new RegExp("^10[.]shell[.]chrome[.]lazy"),
+    world: (w) => ({ ...w, shell: w.shell.replace('import { BottomNav } from "./bottom-nav";', 'import { BottomNav } from "./bottom-nav"; const LazyRail = lazy(() => import("@/components/journey/journey-tabs").then((m) => ({ default: m.JourneyTabs })));') }) },
+  { name: "the shell's lazy module imports the journey header statically (S6 WP6c)", expect: new RegExp("^10[.]shell[.]chrome[.]only"),
+    world: (w) => files(w, "src/components/layout/shell-lazy.tsx", (s) => `${s} import { JourneyTopBar } from "@/components/journey/journey-top-bar";`) },
 ];
 
 {

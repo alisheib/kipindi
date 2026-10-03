@@ -476,25 +476,51 @@ const bodyOf = (r: string) => {
   return bodyCache.get(r)!;
 };
 /**
- * ⭐ A LAZY BINDING RENDERS ITS COMPONENT (S6 WP6b). AppShell loads chrome as
- * `const LazyX = lazy(() => import(…).then((m) => ({ default: m.X })))` and renders `<LazyX …>` — its overlays long
- * before S6, and the journey's header and tabs since WP6b. A walk that knew only `<X …>` would find the journey rail
- * rendered by nothing and read a root-mounted bar as a finding (5.2). Each binding is read from source, one per
- * statement: the name before ` = lazy(() =>`, the component after `default: m.`. 5.6 proves the reader on a fixture.
+ * ⭐ A LAZY BINDING RENDERS ITS COMPONENT (S6 WP6b, WP6c). AppShell renders chrome through bindings, `<LazyX …>` for a
+ * component `X`: its overlays long before S6, and the journey's header and tabs since WP6b. A walk that knew only `<X …>`
+ * would find the journey rail rendered by nothing and read a root-mounted bar as a finding (5.2). Each binding is read
+ * from source, one per statement, in the two forms this repo writes: React's lazy (the name before ` = lazy(() =>`, the
+ * component after `({ default: m.`), and, since WP6c, `next/dynamic` (the name before ` = dynamic(() =>`, the
+ * component after `.then((m) => m.`, a `.catch(…)` after it or not). A binding renders its component wherever its NAME
+ * is rendered: in the file that declares it, or in a file that imports that name from it, as AppShell imports every
+ * part from `shell-lazy.tsx`.
+ * 5.6 proves the reader on a fixture and on the journey rail.
  */
-const lazyBindingsIn = (file: string, body: string) => body.split(";").flatMap((stmt) => {
-  const at = stmt.indexOf(" = lazy(() =>");
+const BINDING_FORMS = [
+  { opener: " = lazy(() =>", pick: "({ default: m.", end: " })" },
+  { opener: " = dynamic(() =>", pick: ".then((m) => m.", end: ")" },
+];
+const lazyBindingsIn = (file: string, body: string) => body.split(";").flatMap((stmt) => BINDING_FORMS.flatMap((f) => {
+  const at = stmt.indexOf(f.opener);
   const from = at < 0 ? -1 : stmt.lastIndexOf("const ", at);
-  const pick = at < 0 ? -1 : stmt.indexOf("({ default: m.", at);
+  const pick = at < 0 ? -1 : stmt.indexOf(f.pick, at);
   if (from < 0 || pick < 0) return [];
-  const symbol = stmt.slice(pick + "({ default: m.".length, stmt.indexOf(" })", pick));
-  return [{ file, alias: stmt.slice(from + "const ".length, at), symbol }];
-});
+  const start = pick + f.pick.length;
+  return [{ file, alias: stmt.slice(from + "const ".length, at), symbol: stmt.slice(start, stmt.indexOf(f.end, start)) }];
+}));
 const LAZY_BINDINGS = tsxFiles.map(relOf).flatMap((r) => lazyBindingsIn(r, bodyOf(r)));
-/** Every file that renders `<Symbol …>` — by that name, or through a lazy binding of it — excluding the file that defines it. */
+/**
+ * Does `r` import the name `alias` from `file`? One `import { … } from "…"` statement whose list holds the name and whose
+ * specifier, `@/…` or `./…` (the forms the shell writes), is `file` without its extension.
+ */
+const importsFrom = (r: string, alias: string, file: string): boolean => {
+  const want = file.slice(0, file.lastIndexOf("."));
+  const dir = r.slice(0, r.lastIndexOf("/"));
+  return bodyOf(r).split(";").some((stmt) => {
+    const open = stmt.indexOf("import {");
+    const close = stmt.indexOf("} from ");
+    if (open < 0 || close < open) return false;
+    const names = stmt.slice(open + "import {".length, close).split(",").map((n) => n.trim());
+    const spec = stmt.slice(close + "} from ".length).trim().slice(1, -1);
+    const target = spec.startsWith("@/") ? `src/${spec.slice(2)}` : spec.startsWith("./") ? `${dir}/${spec.slice(2)}` : spec;
+    return names.includes(alias) && target === want;
+  });
+};
+/** Every file that renders `<Symbol …>`, by that name or through a binding of it, excluding the file that defines it. */
 const consumersOf = (symbol: string, self: string): string[] => [...new Set([
   ...rendersOf(symbol, self),
-  ...LAZY_BINDINGS.filter((b) => b.symbol === symbol && b.file !== self && rendersOf(b.alias, self).includes(b.file)).map((b) => b.file),
+  ...LAZY_BINDINGS.filter((b) => b.symbol === symbol && b.file !== self)
+    .flatMap((b) => rendersOf(b.alias, self).filter((r) => r === b.file || importsFrom(r, b.alias, b.file))),
 ])];
 /** Every file that renders `<Symbol …>` by that name, excluding the file that defines it. */
 const rendersOf = (symbol: string, self: string) =>
@@ -627,8 +653,8 @@ for (const [file, why] of AWAITING_MOUNT) {
      why);
 }
 
-// 5.6 — CONTROL: the lazy-binding reader, on a fixture and on the one real binding the journey rail depends on (S6
-// WP6b). A reader that silently found nothing would leave 5.2 judging the rail as rendered by nobody — loudly, but for
+// 5.6 — CONTROL: the binding reader, on a fixture and on the one real binding the journey rail depends on (S6 WP6b,
+// WP6c). A reader that silently found nothing would leave 5.2 judging the rail as rendered by nobody — loudly, but for
 // the wrong reason; this names the instrument instead.
 {
   const fixture = [
@@ -637,13 +663,15 @@ for (const [file, why] of AWAITING_MOUNT) {
     ");",
     "const plain = 1;",
     'const LazyB = lazy(() => import("@/components/b").then((m) => ({ default: m.Beta })));',
+    'export const LazyC = dynamic(() => import("@/components/c").then((m) => m.Gamma));',
+    'export const LazyD = dynamic(() => import("@/components/d").then((m) => m.Delta).catch(nothingIfLost));',
   ].join(String.fromCharCode(10));
   const parsed = lazyBindingsIn("fixture.tsx", fixture).map((b) => `${b.alias}=${b.symbol}`).join(" ");
   const railBy = consumersOf("JourneyTabs", "src/components/journey/journey-tabs.tsx");
-  ok("5.6 CONTROL · a lazy binding reads as rendering its component (LazyA renders Alpha), one binding per statement, and the journey rail's one consumer is AppShell, through its own",
-     parsed === "LazyA=Alpha LazyB=Beta" && railBy.length === 1 && railBy[0] === "src/components/layout/app-shell.tsx",
+  ok("5.6 CONTROL · a binding reads as rendering its component in both forms (LazyA renders Alpha; LazyC, next/dynamic, renders Gamma; LazyD, with the lost-chunk guard after it, renders Delta), one per statement, and the journey rail's one consumer is AppShell, through the binding it imports from the shell's lazy module (WP6c)",
+     parsed === "LazyA=Alpha LazyB=Beta LazyC=Gamma LazyD=Delta" && railBy.length === 1 && railBy[0] === "src/components/layout/app-shell.tsx",
      `read "${parsed}" from the fixture; the journey rail is rendered by ${railBy.join(", ") || "nothing"}`,
-     "AppShell renders the journey rail through LazyJourneyTabs");
+     "AppShell renders the journey rail through LazyJourneyTabs, declared in shell-lazy.tsx");
 }
 
 // ===========================================================================

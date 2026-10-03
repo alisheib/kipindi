@@ -1,51 +1,24 @@
-import { Suspense, lazy } from "react";
+import { Suspense } from "react";
 import { headers } from "next/headers";
 import { getAgentConfig } from "@/lib/server/agent-config";
 import { SUPPORT_EMAIL, SUPPORT_PHONE, SUPPORT_PHONE_TEL } from "@/lib/server/support-config";
 
-const LazyOfflineBanner = lazy(() =>
-  import("@/components/ui/offline-banner").then((m) => ({ default: m.OfflineBanner })),
-);
-const LazyPullToRefresh = lazy(() =>
-  import("@/components/ui/pull-to-refresh").then((m) => ({ default: m.PullToRefresh })),
-);
-// Background, event-driven, never-LCP components — split out of the critical
-// first-load bundle (they render nothing until an event/poll fires, so a
-// post-hydration load is invisible). Trims initial JS on the low-end/2G profile.
-const LazyNotifyPoller = lazy(() =>
-  import("@/components/markets/notify-poller").then((m) => ({ default: m.NotifyPoller })),
-);
-const LazyEventStream = lazy(() =>
-  import("./event-stream-provider").then((m) => ({ default: m.EventStreamProvider })),
-);
-const LazyInstallInvite = lazy(() =>
-  import("@/components/pwa/install-invite").then((m) => ({ default: m.InstallInvite })),
-);
-// Analytics consent — opt-in, asked once (see components/analytics/consent-prompt.tsx). Lazy for the same reason
-// as the invitations: it renders nothing until well after first paint.
-const LazyConsentPrompt = lazy(() =>
-  import("@/components/analytics/consent-prompt").then((m) => ({ default: m.ConsentPrompt })),
-);
-const LazyChannelsPanel = lazy(() =>
-  import("@/components/social/channels-panel").then((m) => ({ default: m.ChannelsPanel })),
-);
-// The journey flag (Vodacom plan S6, WP7): renders nothing, and is mounted below for a journey request only. Lazy like
-// the overlays it speaks to, so a classic page never loads it.
-const LazyJourneyFlag = lazy(() =>
-  import("@/components/journey/journey-flag").then((m) => ({ default: m.JourneyFlag })),
-);
-const LazyWinCelebration = lazy(() =>
-  import("@/components/markets/win-celebration").then((m) => ({ default: m.WinCelebrationHost })),
-);
-// The journey's header and tabs (the Vodacom plan S6, WP6b) — rendered only for a request the resolver shows the
-// journey to, and lazy for the reason the overlays above are: their code stays out of the first-load bundle that every
-// classic visitor downloads. The server still renders them into a journey page; see the fallbacks where they mount.
-const LazyJourneyTopBar = lazy(() =>
-  import("@/components/journey/journey-top-bar").then((m) => ({ default: m.JourneyTopBar })),
-);
-const LazyJourneyTabs = lazy(() =>
-  import("@/components/journey/journey-tabs").then((m) => ({ default: m.JourneyTabs })),
-);
+// ⭐ THE PARTS THIS SHELL LOADS ONLY WHEN IT RENDERS THEM (the overlays, the journey flag, and the journey's header and
+// tabs) come from ONE client module, `./shell-lazy`, which declares each with `next/dynamic` (the Vodacom plan S6,
+// WP6c; VODACOM-PLAN §0h point 20). They are rendered below under the names they always had, where they always were,
+// with the same props, each in the Suspense boundary it always had, which is now that part's only one (next/dynamic
+// adds none): keep every part the one child of its own. A part whose code never arrives is left out rather than taking
+// the page down (`nothingIfLost`, there). ⛔ NEVER A REACT LAZY HERE: this is a SERVER component, and its own
+// `React.lazy` bindings kept nothing out of the first load (production and a local build, 2026-10-03): every module
+// they named rode in the scripts every page loads first, for every visitor. `test:journey-shell` §12 holds this.
+import {
+  LazyPullToRefresh, LazyNotifyPoller, LazyEventStream, LazyInstallInvite, LazyConsentPrompt, LazyChannelsPanel,
+  LazyJourneyFlag, LazyWinCelebration, LazyJourneyTopBar, LazyJourneyTabs,
+} from "./shell-lazy";
+// ⛔ THE OFFLINE BANNER IS NOT ONE OF THEM, ON PURPOSE (WP6c): its one job is a connection that fails, so its code comes
+// with the page's own scripts, as it always did, and never by a fetch of its own that the same failure could stop. It
+// was a `React.lazy` binding here, which split nothing, so this changes nothing a player gets (12.shell.offline).
+import { OfflineBanner } from "@/components/ui/offline-banner";
 import { TopAppBar } from "./top-app-bar";
 import { LiveTicker } from "./live-ticker";
 import { BottomNav } from "./bottom-nav";
@@ -404,8 +377,9 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       <Suspense fallback={null}><NavProgress /></Suspense>
       {/* ⭐ THE JOURNEY'S HEADER AND TABS (Vodacom plan S6, WP6b), for a request the resolver shows the journey to and
           for no other: every other request gets today's bar and rail with today's props, in the two else arms. Each
-          journey arm is lazy (see its declaration above), and the server still renders it into the page, so a fallback
-          shows only while its code is on the way — a beat of a streamed page, or a switch into the journey mid-visit
+          journey arm is lazy, a `next/dynamic` part of `./shell-lazy` (WP6c; see the note at its import), and the
+          server still renders it into the page, so a fallback shows only while its code is on the way — a beat of a
+          streamed page, or a switch into the journey mid-visit
           (a preview pass turned on). The header's fallback is therefore the bar's own empty box, with its height, its
           panel and its border, so nothing below it moves; the tabs need none, because the rail is anchored to the
           viewport and takes no room in the page. */}
@@ -526,7 +500,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
         <AuthFlash />
       </Suspense>
       <Suspense fallback={null}>
-        <LazyOfflineBanner />
+        <OfflineBanner />
       </Suspense>
       <Suspense fallback={null}>
         <LazyPullToRefresh />

@@ -338,8 +338,10 @@ const APP_ENTRY = /^(?:page|layout|template|loading|error|global-error|not-found
 const ROOT_ENTRIES = ["src/proxy.ts", "src/middleware.ts", "src/instrumentation.ts"];
 /**
  * §4.2's pinned offenders — server modules anywhere in src/app that hand a "use client" module's non-component export
- * to the server. ⛔ MAY ONLY SHRINK. Measured EMPTY on 2026-10-01 (the eight next/dynamic imports in `app-shell.tsx`
- * read as the component each `.then` picks). The live counts are in §4.2's PASS line, never recorded here.
+ * to the server. ⛔ MAY ONLY SHRINK. Measured EMPTY on 2026-10-01 (then the eight lazy `import()`s in `app-shell.tsx`,
+ * read as the component each `.then` picks; since S6 WP6c AppShell imports its PascalCase `Lazy…` parts from
+ * `shell-lazy.tsx`, and `OfflineBanner` from its own file, instead). The live counts are in §4.2's PASS line, never
+ * recorded here.
  */
 const PINNED_CROSSINGS: readonly string[] = [];
 
