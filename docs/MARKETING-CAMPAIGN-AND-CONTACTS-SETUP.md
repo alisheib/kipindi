@@ -535,7 +535,9 @@ erasure now withdraws the consent and empties the book, and both data exports ca
   import suite's six sections are named by path, so the gate sees the runner reach them. Owed: the five Postgres probes
   need a portable runner before they can be keyed (each expects its caller to export DATABASE_URL and migrate, in a bash
   wrapper npm cannot run on Windows). The other twelve orphans are the landing lane's.
-✅ STEP 31 · U33a-L · THE LIST-BASIS TABLE — `ContactListBasis`: the basis 50pick reaches a contact LIST's numbers
+✅ STEP 31 · U33a-L · THE LIST-BASIS TABLE — LIVE (`7692eba7`, live 2026-10-04 08:43:42 UTC; production read back in a
+  READ ONLY transaction: the migration row finished, not rolled back; the table there and empty; its foreign key
+  RESTRICT). `ContactListBasis`: the basis 50pick reaches a contact LIST's numbers
   on (a person's consent, or outreach under the Gaming Board licence — OD57/OD58), recorded per list, with the saved
   wording and 18+ sentence (and their versions) it was recorded under, the officer's proof note, who and when, and a
   one-way revocation. A hand-written, additive migration (`20261004120000_contact_list_basis`: one table, two indexes,
